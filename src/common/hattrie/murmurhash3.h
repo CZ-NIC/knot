@@ -8,4 +8,3 @@
 uint32_t hash(const char* data, size_t len);
 
 #endif
-

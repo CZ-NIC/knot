@@ -1,29 +1,43 @@
-ACLOCAL_AMFLAGS = -I ../m4
+ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
+SUBDIRS = . tests
 
-sbin_PROGRAMS = knotc knotd kdig khost knsupdate
-noinst_PROGRAMS = unittests unittests-xfr zscanner-tool
+sbin_PROGRAMS = knotc knotd
+bin_PROGRAMS = kdig khost knsupdate
+noinst_PROGRAMS = zscanner-tool
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 # $(YACC) will generate header file
-AM_CFLAGS = -Wall -Ilibknot -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' \
+	-DSBINDIR='"$(sbindir)"' -DCONFIG_DIR='"${config_dir}"' \
+	-DSTORAGE_DIR='"${storage_dir}"' -DRUN_DIR='"${run_dir}"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
 
+EXTRA_DIST =					\
+	zscanner/scanner.rl			\
+	zscanner/scanner_body.rl		\
+	zscanner/test/run_tests.sh		\
+	zscanner/test/cases
+
 BUILT_SOURCES =					\
-	tests/sample_conf.rc			\
-	libknotd_la-cf-lex.c			\
-	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h
+	knot/conf/libknotd_la-cf-lex.c		\
+	knot/conf/libknotd_la-cf-parse.c	\
+	knot/conf/libknotd_la-cf-parse.h
 
 CLEANFILES =					\
-	tests/sample_conf.rc			\
-	libknotd_la-cf-lex.c			\
-	libknotd_la-cf-parse.c			\
-	libknotd_la-cf-parse.h
+	knot/conf/libknotd_la-cf-lex.c		\
+	knot/conf/libknotd_la-cf-parse.c	\
+	knot/conf/libknotd_la-cf-parse.h
 
-nodist_unittests_SOURCES =			\
-	tests/sample_conf.rc
+if HAVE_RAGEL
+BUILT_SOURCES += zscanner/scanner.c
+CLEANFILES += zscanner/scanner.c
+
+zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
+	$(RAGEL) $(FSM_TYPE) -s -o $@ $(srcdir)/zscanner/scanner.rl
+
+endif
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
@@ -90,52 +104,10 @@ knsupdate_SOURCES =				\
 	utils/nsupdate/nsupdate_exec.h		\
 	utils/nsupdate/nsupdate_exec.c
 
-unittests_SOURCES =				\
-	tests/common/acl_tests.c		\
-	tests/common/acl_tests.h		\
-	tests/common/base32hex_tests.c		\
-	tests/common/base32hex_tests.h		\
-	tests/common/base64_tests.c		\
-	tests/common/base64_tests.h		\
-	tests/common/descriptor_tests.h		\
-	tests/common/descriptor_tests.c		\
-	tests/common/events_tests.c		\
-	tests/common/events_tests.h		\
-	tests/common/fdset_tests.c		\
-	tests/common/fdset_tests.h		\
-	tests/common/skiplist_tests.c		\
-	tests/common/skiplist_tests.h		\
-	tests/common/slab_tests.c		\
-	tests/common/slab_tests.h		\
-	tests/knot/conf_tests.c			\
-	tests/knot/conf_tests.h			\
-	tests/knot/dthreads_tests.c		\
-	tests/knot/dthreads_tests.h		\
-	tests/knot/journal_tests.c		\
-	tests/knot/journal_tests.h		\
-	tests/knot/server_tests.c		\
-	tests/knot/server_tests.h		\
-	tests/knot/rrl_tests.h			\
-	tests/knot/rrl_tests.c			\
-	tests/zscanner/zscanner_tests.h		\
-	tests/zscanner/zscanner_tests.c		\
-	tests/libknot/dname_tests.h		\
-	tests/libknot/dname_tests.c		\
-	tests/libknot/ztree_tests.h		\
-	tests/libknot/ztree_tests.c		\
-	tests/libknot/wire_tests.h		\
-	tests/libknot/wire_tests.c		\
-	tests/libknot/rrset_tests.c		\
-	tests/libknot/rrset_tests.h		\
-	tests/libknot/sign_tests.c		\
-	tests/libknot/sign_tests.h		\
-	tests/unittests_main.c
-
-unittests_xfr_SOURCES = 			\
-	tests/xfr_tests.c			\
-	tests/xfr_tests.h
-
 libknot_la_SOURCES =				\
+	libknot/common.h			\
+	libknot/consts.h			\
+	libknot/consts.c			\
 	libknot/util/utils.c			\
 	libknot/util/debug.c			\
 	libknot/util/debug.h			\
@@ -164,6 +136,8 @@ libknot_la_SOURCES =				\
 	libknot/zone/zone-diff.c		\
 	libknot/nameserver/name-server.h	\
 	libknot/nameserver/name-server.c	\
+	libknot/nameserver/chaos.h		\
+	libknot/nameserver/chaos.c		\
 	libknot/updates/changesets.h		\
 	libknot/updates/changesets.c		\
 	libknot/updates/xfr-in.h		\
@@ -192,15 +166,19 @@ libknot_la_SOURCES =				\
 	libknot/sign/key.c			\
 	libknot/sign/bnutils.h			\
 	libknot/sign/bnutils.c			\
+	libknot/sign/dnssec.h			\
+	libknot/sign/dnssec.c			\
 	libknot/sign/sig0.h			\
 	libknot/sign/sig0.c
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
 	common/slab/slab.h			\
+	common/slab/alloc-common.h		\
 	common/libtap/tap.c			\
 	common/libtap/tap.h			\
 	common/libtap/tap_unit.h		\
+	common/atomic.h				\
 	common/mempattern.h			\
 	common/mempattern.c			\
 	common/descriptor.h			\
@@ -250,6 +228,8 @@ libknots_la_SOURCES =				\
 	common/getline.c			\
 	common/log.c				\
 	common/log.h				\
+	common/mempool.c			\
+	common/mempool.h			\
 	common/hattrie/ahtable.c		\
 	common/hattrie/ahtable.h		\
 	common/hattrie/hat-trie.c		\
@@ -262,7 +242,8 @@ libknotd_la_SOURCES =				\
 	knot/stat/stat.c			\
 	knot/stat/gatherer.h			\
 	knot/stat/stat.h			\
-	knot/common.h				\
+	knot/stat/stat-common.h			\
+	knot/knot.h				\
 	knot/other/debug.h			\
 	knot/conf/cf-lex.l			\
 	knot/conf/cf-parse.y			\
@@ -304,10 +285,9 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-load.h			\
 	knot/zone/zone-load.c			\
+	knot/zone/estimator.h			\
+	knot/zone/estimator.c			\
 	knot/server/server.h
-
-zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL) $(FSM_TYPE) -s -o zscanner/scanner.c zscanner/scanner.rl
 
 zscanner_tool_SOURCES =				\
 	zscanner/test/zscanner-tool.c		\
@@ -332,10 +312,10 @@ knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
-unittests_LDADD = libknotd.la libknots.la @LIBOBJS@
-unittests_xfr_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
 
-tests/sample_conf.rc: tests/files/sample_conf
-	../resource.sh tests/files/sample_conf >$@
-
+# Create storage and run-time directories
+install-data-hook:
+	$(INSTALL) -d $(DESTDIR)/@config_dir@
+	$(INSTALL) -d $(DESTDIR)/@run_dir@
+	$(INSTALL) -d $(DESTDIR)/@storage_dir@

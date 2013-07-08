@@ -19,7 +19,7 @@
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief Contains gatherer structure and its API.
- * 
+ *
  * \addtogroup statistics
  * @{
  */
@@ -55,7 +55,7 @@ struct flow_data {
 typedef struct flow_data flow_data_t;
 
 /*!
- * \brief Gatherer structure, used for gathering statistics from 
+ * \brief Gatherer structure, used for gathering statistics from
  *        multiple threads.
  */
 struct gatherer {

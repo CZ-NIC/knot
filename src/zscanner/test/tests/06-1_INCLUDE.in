@@ -1,6 +1,0 @@
-$ORIGIN .
-$TTL	1
-
-; KO
-$INCLUDE ./includes/include1	a	; Origin is not FQD
-

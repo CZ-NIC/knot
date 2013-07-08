@@ -27,8 +27,6 @@
 #ifndef _KNOTD_DEBUG_H_
 #define _KNOTD_DEBUG_H_
 
-#include "config.h" /* autoconf generated */
-
 #ifdef KNOTD_SERVER_DEBUG
   #define KNOTD_THREADS_DEBUG
   #define KNOTD_JOURNAL_DEBUG

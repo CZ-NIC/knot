@@ -115,7 +115,6 @@ typedef struct conf_zone_t {
 	char *name;               /*!< Zone name. */
 	uint16_t cls;             /*!< Zone class (IN or CH). */
 	char *file;               /*!< Path to a zone file. */
-	char *db;                 /*!< Path to a database file. */
 	char *ixfr_db;            /*!< Path to a IXFR database file. */
 	size_t ixfr_fslimit;      /*!< File size limit for IXFR journal. */
 	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
@@ -178,6 +177,7 @@ typedef struct conf_control_t {
 	conf_iface_t *iface; /*!< Remote control interface. */
 	list allow;          /*!< List of allowed remotes. */
 	acl_t* acl;          /*!< ACL. */
+	bool have;           /*!< Set if configured. */
 } conf_control_t;
 
 /*!
@@ -191,9 +191,11 @@ typedef struct conf_t {
 	 */
 	char *filename; /*!< Name of the config file. */
 	char *identity; /*!< Identity to return on CH TXT id.server. */
+	char *hostname; /*!< Host name to return on CH TXT hostname.{bind,server} */
 	char *version;  /*!< Version for CH TXT version.{bind|server} */
 	char *storage;  /*!< Persistent storage path for databases and such. */
-	char *pidfile;  /*!< PID file path. */
+	char *rundir;   /*!< Run-time directory path. */
+	char *pidfile;  /*!< PID file location. */
 	char *nsid;     /*!< Server's NSID. */
 	size_t nsid_len;/*!< Server's NSID length. */
 	int   workers;  /*!< Number of workers per interface. */
@@ -249,7 +251,7 @@ typedef struct conf_t {
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	hattrie_t *names; /*!< Zone tree for duplicate checking. */
-	
+
 	/*
 	 * Remote control interface.
 	 */

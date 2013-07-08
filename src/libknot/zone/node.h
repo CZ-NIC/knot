@@ -70,7 +70,7 @@ struct knot_node {
 	const struct knot_zone *zone;
 
 	struct knot_node *new_node;
-	
+
 	unsigned int children;
 
 	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */

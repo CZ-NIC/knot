@@ -1,0 +1,28 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	SRV	0	0	0	@			; The simplest variant
+_ldap._tcp.test.tld.	SRV	0	0	0	@ 	; Underscores in owner
+@	SRV	65535	65535	65535	@			; Maximal numbers
+@	SRV	0	0	0	\0320\ \\\"\.\@\*.tld.	; Dname with specials
+@	TYPE33	\# 7 000000000000 00				; TYPE + Hexadecimal rdata
+@	TYPE33	0	0	0	@			; TYPE
+@	srv	0	0	0	@			; Type in lower-case
+
+; KO
+@	SRV
+@	SRV						; Empty rdata
+@	SRV	\# 0					; Hex empty rdata
+@	SRV	\#					; Missing hex length
+@	SRV	1h	0	0	@		; Bad priority
+@	SRV	0	1h	0	@		; Bad weight
+@	SRV	0	0	1h	@		; Bad port
+@	SRV	0	0	0	%		; Bad target
+@	SRV	65536	0	0	@		; Priority overflow
+@	SRV	0	65536	0	@		; Weight overflow
+@	SRV	0	0	65536	@		; Port overflow
+@	SRV	0	0	0	@ x		; Unexpected item
+@	SRV	0	0	0			; Missing item
+@	SRV	\# 8 000000000000 00 00			; Too long rdata
+@	SRV	\# 8 000000000000 00			; Bad rdata length

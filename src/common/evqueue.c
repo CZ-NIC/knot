@@ -14,16 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <config.h>
 
 #include "common/evqueue.h"
 #include "common/fdset.h"
-
-/*! \brief Singleton application-wide event queue. */
-evqueue_t *s_evqueue = 0;
 
 evqueue_t *evqueue_new()
 {
@@ -133,4 +130,3 @@ int evqueue_add(evqueue_t *q, const event_t *ev)
 
 	return 0;
 }
-

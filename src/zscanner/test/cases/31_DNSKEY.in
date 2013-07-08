@@ -1,0 +1,35 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	DNSKEY	0	0	0	AA==		; The simplest variant
+@	DNSKEY	65535	255	255	AA==		; Maximal numbers
+@	DNSKEY	0	0	RSAMD5	AA==		; Algorithm mnemonic
+@	DNSKEY	0	0	0	Zm8=		; One char padding
+@	DNSKEY	0	0	0	Zm9v		; Without padding
+@	DNSKEY	0	0	0	Zm9vYg==	; Two base64 blocks
+@	DNSKEY	0	0	0	Zm9v YmE=	; Two base64 blocks with blank space between them
+@	TYPE48	\# 5 0000000000				; TYPE + Hexadecimal rdata
+@	TYPE48	0	0	0	AA==		; TYPE
+@	dnskey	0	0	0	AA==		; Type in lower-case
+
+; KO
+@	DNSKEY
+@	DNSKEY						; Empty rdata
+@	DNSKEY	\# 0					; Hex empty rdata
+@	DNSKEY	\#					; Missing hex length
+@	DNSKEY	65536	0	0	AA==		; Type overflow
+@	DNSKEY	0	256	0	AA==		; Key tag overflow
+@	DNSKEY	0	0	256	AA==		; Algorithm overflow
+@	DNSKEY	0	0	0	A		; Continuous block length must be multiple of 4
+@	DNSKEY	0	0	0	AB		; Continuous block length must be multiple of 4
+@	DNSKEY	0	0	0	ABC		; Continuous block length must be multiple of 4
+@	DNSKEY	0	0	0	AA ==		; Continuous block length must be multiple of 4
+@	DNSKEY	0	0	0	A===		; Bad padding
+@	DNSKEY	0	0	0	=		; Bad padding
+@	DNSKEY	0	0	0	==		; Bad padding
+@	DNSKEY	0	0	0	===		; Bad padding
+@	DNSKEY	0	0	0	====		; Bad padding
+@	DNSKEY	0	0	0			; Missing item
+@	DNSKEY	\# 5 000000000000			; Too long rdata
+@	DNSKEY	\# 6 0000000000				; Bad rdata length

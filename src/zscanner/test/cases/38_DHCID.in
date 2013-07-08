@@ -1,0 +1,29 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	DHCID	AA==		; The simplest variant
+@	DHCID	Zm8=		; One char padding
+@	DHCID	Zm9v		; Without padding
+@	DHCID	Zm9vYg==	; Two base64 blocks
+@	DHCID	Zm9v YmE=	; Two base64 blocks with blank space between them
+@	TYPE49	\# 1 00		; TYPE + Hexadecimal rdata
+@	TYPE49	AA==		; TYPE
+@	dhcid	AA==		; Type in lower-case
+
+; KO
+@	DHCID
+@	DHCID			; Empty rdata
+@	DHCID	\# 0		; Hex empty rdata
+@	DHCID	\#		; Missing hex length
+@	DHCID	A		; Continuous block length must be multiple of 4
+@	DHCID	AB		; Continuous block length must be multiple of 4
+@	DHCID	ABC		; Continuous block length must be multiple of 4
+@	DHCID	AA ==		; Continuous block length must be multiple of 4
+@	DHCID	A===		; Bad padding
+@	DHCID	=		; Bad padding
+@	DHCID	==		; Bad padding
+@	DHCID	===		; Bad padding
+@	DHCID	====		; Bad padding
+@	DHCID	\# 1 0000	; Too long rdata
+@	DHCID	\# 2 00		; Bad rdata length

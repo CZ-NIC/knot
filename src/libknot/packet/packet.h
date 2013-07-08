@@ -37,24 +37,6 @@
 #include "zone/zone.h"
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure for holding information needed for compressing domain names.
- *
- * It's a simple table of domain names and their offsets in wire format of the
- * packet.
- *
- * \todo Consider using some better lookup structure.
- */
-struct knot_compressed_dnames {
-	const knot_dname_t **dnames;  /*!< Domain names present in packet. */
-	size_t *offsets;          /*!< Offsets of domain names in the packet. */
-	int *to_free;             /*< Indices of dnames to free. */
-	short count;              /*!< Count of items in the previous arrays. */
-	short max;                /*!< Capacity of the structure (allocated). */
-	short default_count;
-};
-
-typedef struct knot_compressed_dnames knot_compressed_dnames_t;
 
 struct knot_wildcard_nodes {
 	const knot_node_t **nodes; /*!< Wildcard nodes from CNAME processing. */
@@ -101,6 +83,18 @@ enum knot_packet_prealloc_type {
 
 typedef enum knot_packet_prealloc_type knot_packet_prealloc_type_t;
 
+/* Maximum number of compressed names. */
+#define COMPR_MAXLEN 64
+/* Volatile portion of the compression table. */
+#define COMPR_VOLATILE (COMPR_MAXLEN / 4)
+#define COMPR_FIXEDLEN (COMPR_MAXLEN - COMPR_VOLATILE)
+
+/* Compression table pointer. */
+typedef struct {
+	uint16_t off;		/*!< Packet data offset. */
+	uint8_t lbcount;	/*!< Dname label count. */
+} knot_compr_ptr_t;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing a DNS packet.
@@ -119,8 +113,6 @@ struct knot_packet {
 	 * \note Only one Question is supported!
 	 */
 	knot_question_t question;
-
-	uint8_t *owner_tmp;  /*!< Allocated space for RRSet owner wire format.*/
 
 	const knot_rrset_t **answer;      /*!< Answer RRSets. */
 	const knot_rrset_t **authority;   /*!< Authority RRSets. */
@@ -148,7 +140,7 @@ struct knot_packet {
 	size_t max_size;  /*!< Maximum allowed size of the packet. */
 
 	/*! \brief Information needed for compressing domain names in packet. */
-	knot_compressed_dnames_t compression;
+	knot_compr_ptr_t compression[COMPR_MAXLEN];
 
 	/*! \brief Wildcard nodes to be processed for NSEC/NSEC3. */
 	knot_wildcard_nodes_t wildcard_nodes;
@@ -166,6 +158,7 @@ struct knot_packet {
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 	uint16_t flags;         /*!< Packet flags. */
 	const knot_zone_t *zone; /*!< Associated zone. */
+	mm_ctx_t mm; /*!< Memory allocation context. */
 };
 
 typedef struct knot_packet knot_packet_t;
@@ -235,25 +228,6 @@ enum {
 	PREALLOC_QNAME = PREALLOC_QNAME_DNAME
 	                 + PREALLOC_QNAME_NAME
 	                 + PREALLOC_QNAME_LABELS,
-	/*!
-	 * \brief Space for RR owner wire format.
-	 *
-	 * Temporary buffer, used when putting RRSets to the response.
-	 */
-	PREALLOC_RR_OWNER = 256,
-
-	/*! \brief Space for one part of the compression table (domain names).*/
-	PREALLOC_DOMAINS =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(knot_dname_t *),
-	/*! \brief Space for other part of the compression table (offsets). */
-	PREALLOC_OFFSETS =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t),
-
-	PREALLOC_TO_FREE =
-		DEFAULT_DOMAINS_IN_RESPONSE * sizeof(int),
-
-	PREALLOC_COMPRESSION = PREALLOC_DOMAINS + PREALLOC_OFFSETS
-	                       + PREALLOC_TO_FREE,
 
 	PREALLOC_WC_NODES =
 		DEFAULT_WILDCARD_NODES * sizeof(knot_node_t *),
@@ -271,11 +245,9 @@ enum {
 	/*! \brief Total preallocated size for the response. */
 	PREALLOC_RESPONSE = PREALLOC_PACKET
 	                 + PREALLOC_QNAME
-	                 + PREALLOC_RR_OWNER
 	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT)
 	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT)
 	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT)
-	                 + PREALLOC_COMPRESSION
 	                 + PREALLOC_WC
 	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS)
 };
@@ -297,6 +269,13 @@ typedef enum {
  * \return New packet structure or NULL if an error occured.
  */
 knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc);
+
+/*!
+ * \brief Memory managed version of new packet create.
+ *
+ * See knot_packet_new() for info about parameters and output.
+ */
+knot_packet_t *knot_packet_new_mm(knot_packet_prealloc_type_t prealloc, mm_ctx_t *mm);
 
 /*!
  * \brief Parses the DNS packet from wire format.

@@ -14,15 +14,29 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/resource.h>
-#include <config.h>
 #include <stdarg.h>
 
+#include "mempattern.h"
 #include "common/log.h"
 #include "common/slab/alloc-common.h"
+
+static void *mm_malloc(void *ctx, size_t n)
+{
+	UNUSED(ctx);
+	return malloc(n);
+}
+
+void mm_ctx_init(mm_ctx_t *mm)
+{
+	mm->ctx = NULL;
+	mm->alloc = mm_malloc;
+	mm->free = free;
+}
 
 void* xmalloc(size_t l)
 {
@@ -53,7 +67,7 @@ int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
 	if (maxlen < min) {
 		return -2; /* size_t overflow */
 	}
-	
+
 	/* Meet target size but trim excessive amounts. */
 	if (*reserved < min || *reserved > maxlen) {
 		void *trimmed = realloc(*p, maxlen * tlen);
@@ -64,7 +78,7 @@ int mreserve(char **p, size_t tlen, size_t min, size_t allow, size_t *reserved)
 			return -1;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -73,21 +87,21 @@ char* sprintf_alloc(const char *fmt, ...)
 	int size = 100;
 	char *p = NULL, *np = NULL;
 	va_list ap;
-	
+
 	if ((p = malloc(size)) == NULL)
 		return NULL;
-	
+
 	while (1) {
-		
+
 		/* Try to print in the allocated space. */
 		va_start(ap, fmt);
 		int n = vsnprintf(p, size, fmt, ap);
 		va_end(ap);
-		
+
 		/* If that worked, return the string. */
 		if (n > -1 && n < size)
 			return p;
-		
+
 		/* Else try again with more space. */
 		if (n > -1) {       /* glibc 2.1 */
 			size = n+1; /* precisely what is needed */
@@ -101,7 +115,7 @@ char* sprintf_alloc(const char *fmt, ...)
 			p = np;
 		}
 	}
-	
+
 	/* Should never get here. */
 	return p;
 }
@@ -111,7 +125,7 @@ char* strcdup(const char *s1, const char *s2)
 	if (!s1 || !s2) {
 		return NULL;
 	}
-	
+
 	size_t slen = strlen(s1);
 	size_t s2len = strlen(s2);
 	size_t nlen = slen + s2len + 1;

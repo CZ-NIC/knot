@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include "utils/common/resolv.h"
 
 #include <stdio.h>			// fopen
@@ -36,7 +37,7 @@ server_t* parse_nameserver(const char *nameserver, const char *def_port)
 	// OpenBSD notation: nameserver [address]:port
 	if (nameserver[0] == '[') {
 		char *addr, *port;
-	
+
 		char   *start = (char *)nameserver + 1;
 		char   *end = index(nameserver, ']');
 		size_t addr_len = end - start;

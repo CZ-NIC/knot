@@ -1,0 +1,5 @@
+$ORIGIN .
+$TTL	1
+
+; KO
+$INCLUDE @abs_builddir@/		; Given file is a directory

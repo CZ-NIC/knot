@@ -266,7 +266,7 @@
 		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 (fc <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)fc <= (UINT64_MAX % 10) + ASCII_0)
 			)
 		   ) {
 			s->number64 *= 10;
@@ -617,7 +617,8 @@
 		        sizeof(s->include_filename));
 
 		// Check for correct string copy.
-		if (strlen(s->include_filename) != rdata_tail - s->r_data) {
+		if (strlen(s->include_filename) !=
+		    (size_t)(rdata_tail - s->r_data)) {
 			SCANNER_ERROR(ZSCANNER_EBAD_INCLUDE_FILENAME);
 			fhold; fgoto err_line;
 		}
@@ -1238,6 +1239,10 @@
 	    | "NSEC3PARAM"i %{ type_num(KNOT_RRTYPE_NSEC3PARAM, &rdata_tail); }
 	    | "TLSA"i       %{ type_num(KNOT_RRTYPE_TLSA, &rdata_tail); }
 	    | "SPF"i        %{ type_num(KNOT_RRTYPE_SPF, &rdata_tail); }
+	    | "NID"i        %{ type_num(KNOT_RRTYPE_NID, &rdata_tail); }
+	    | "L32"i        %{ type_num(KNOT_RRTYPE_L32, &rdata_tail); }
+	    | "L64"i        %{ type_num(KNOT_RRTYPE_L64, &rdata_tail); }
+	    | "LP"i         %{ type_num(KNOT_RRTYPE_LP, &rdata_tail); }
 	    | "EUI48"i      %{ type_num(KNOT_RRTYPE_EUI48, &rdata_tail); }
 	    | "EUI64"i      %{ type_num(KNOT_RRTYPE_EUI64, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
@@ -1290,6 +1295,10 @@
 	    | "NSEC3PARAM"i %{ window_add_bit(KNOT_RRTYPE_NSEC3PARAM, s); }
 	    | "TLSA"i       %{ window_add_bit(KNOT_RRTYPE_TLSA, s); }
 	    | "SPF"i        %{ window_add_bit(KNOT_RRTYPE_SPF, s); }
+	    | "NID"i        %{ window_add_bit(KNOT_RRTYPE_NID, s); }
+	    | "L32"i        %{ window_add_bit(KNOT_RRTYPE_L32, s); }
+	    | "L64"i        %{ window_add_bit(KNOT_RRTYPE_L64, s); }
+	    | "LP"i         %{ window_add_bit(KNOT_RRTYPE_LP, s); }
 	    | "EUI48"i      %{ window_add_bit(KNOT_RRTYPE_EUI48, s); }
 	    | "EUI64"i      %{ window_add_bit(KNOT_RRTYPE_EUI64, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
@@ -1524,12 +1533,43 @@
 			fhold; fgoto err_line;
 		}
 	}
+	action _eui_sep_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_CHAR_DASH);                       
+		fhold; fgoto err_line;
+	}
 
-	eui48 = (hex_char %_eui_count . ('-' . hex_char %_eui_count)+
+	eui48 = (hex_char %_eui_count .
+	         ('-' >!_eui_sep_error . hex_char %_eui_count)+
 		) $!_hex_char_error >_eui_init %_eui48_exit;
 
-	eui64 = (hex_char %_eui_count . ('-' . hex_char %_eui_count)+
+	eui64 = (hex_char %_eui_count .
+	         ('-' >!_eui_sep_error . hex_char %_eui_count)+
 		) $!_hex_char_error >_eui_init %_eui64_exit;
+	# END
+
+	# BEGIN - ILNP processing
+	action _l64_init {
+		s->item_length = 0;
+	}
+	action _l64_count {
+		s->item_length++;
+	}
+	action _l64_exit {
+		if (s->item_length != 4) {
+			SCANNER_WARNING(ZSCANNER_EBAD_L64_LENGTH);
+			fhold; fgoto err_line;
+		}
+	}
+	action _l64_sep_error {
+		SCANNER_WARNING(ZSCANNER_EBAD_CHAR_COLON);
+		fhold; fgoto err_line;
+	}
+
+	l64_label = (hex_char . hex_char) $!_hex_char_error %_l64_count;
+	l64 = (l64_label . (':' >!_l64_sep_error . l64_label)+
+	      ) $!_hex_char_error >_l64_init %_l64_exit;
+
+	l32 = ipv4_addr %_ipv4_addr_write;
 	# END
 
 	# BEGIN - Mnemomic names processing
@@ -1685,6 +1725,14 @@
 		(num8 . sep . num8 . sep . num8 . sep . hex_array)
 		$!_r_data_error %_ret . end_wchar;
 
+	r_data_l32 :=
+		(num16 . sep . l32)
+		$!_r_data_error %_ret . all_wchar;
+
+	r_data_l64 :=
+		(num16 . sep . l64)
+		$!_r_data_error %_ret . all_wchar;
+
 	r_data_eui48 :=
 		(eui48)
 		$!_r_data_error %_ret . all_wchar;
@@ -1714,6 +1762,7 @@
 		case KNOT_RRTYPE_AFSDB:
 		case KNOT_RRTYPE_RT:
 		case KNOT_RRTYPE_KX:
+		case KNOT_RRTYPE_LP:
 			fcall r_data_mx;
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
@@ -1751,6 +1800,11 @@
 			fcall r_data_nsec3param;
 		case KNOT_RRTYPE_TLSA:
 			fcall r_data_tlsa;
+		case KNOT_RRTYPE_NID:
+		case KNOT_RRTYPE_L64:
+			fcall r_data_l64;
+		case KNOT_RRTYPE_L32:
+			fcall r_data_l32;
 		case KNOT_RRTYPE_EUI48:
 			fcall r_data_eui48;
 		case KNOT_RRTYPE_EUI64:
@@ -1794,6 +1848,10 @@
 		case KNOT_RRTYPE_NSEC3:
 		case KNOT_RRTYPE_NSEC3PARAM:
 		case KNOT_RRTYPE_TLSA:
+		case KNOT_RRTYPE_NID:
+		case KNOT_RRTYPE_L32:
+		case KNOT_RRTYPE_L64:
+		case KNOT_RRTYPE_LP:
 		case KNOT_RRTYPE_EUI48:
 		case KNOT_RRTYPE_EUI64:
 			fcall nonempty_hex_r_data;
@@ -1857,6 +1915,10 @@
 		| "NSEC3PARAM"i %{ s->r_type = KNOT_RRTYPE_NSEC3PARAM; }
 		| "TLSA"i       %{ s->r_type = KNOT_RRTYPE_TLSA; }
 		| "SPF"i        %{ s->r_type = KNOT_RRTYPE_SPF; }
+		| "NID"i        %{ s->r_type = KNOT_RRTYPE_NID; }
+		| "L32"i        %{ s->r_type = KNOT_RRTYPE_L32; }
+		| "L64"i        %{ s->r_type = KNOT_RRTYPE_L64; }
+		| "LP"i         %{ s->r_type = KNOT_RRTYPE_LP; }
 		| "EUI48"i      %{ s->r_type = KNOT_RRTYPE_EUI48; }
 		| "EUI64"i      %{ s->r_type = KNOT_RRTYPE_EUI64; }
 		| "TYPE"i      . type_number
@@ -1892,4 +1954,3 @@
 	main := (record | directive | blank)*;
 	# END
 }%%
-

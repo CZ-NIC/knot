@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <string.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -28,14 +29,15 @@
 #include "libknot/libknot.h"
 
 #define DEFAULT_RETRIES_NSUPDATE	3
-#define DEFAULT_TIMEOUT_NSUPDATE	300
+#define DEFAULT_TIMEOUT_NSUPDATE	12
 
 static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.format = FORMAT_NSUPDATE,
 	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = false, .reduce = false },
-	.show_header = true,
+	           .verbose = false, .reduce = false, .human_ttl = false,
+	           .human_tmstamp = true },
 	.show_query = false,
+	.show_header = true,
 	.show_edns = false,
 	.show_question = true,
 	.show_answer = true,
@@ -44,8 +46,9 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_footer = false,
 };
 
-static void parse_rr(const scanner_t *s) {
-	return; /* Dummy */
+static void parse_rr(const scanner_t *s)
+{
+	UNUSED(s);
 }
 
 static void parse_err(const scanner_t *s) {
@@ -61,7 +64,7 @@ static int parser_set_default(scanner_t *s, const char *fmt, ...)
 	int n = vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 
-	if (n < 0 || n >= sizeof(buf)) {
+	if (n < 0 || (size_t)n >= sizeof(buf)) {
 		return KNOT_ESPACE;
 	}
 
@@ -76,6 +79,8 @@ static int parser_set_default(scanner_t *s, const char *fmt, ...)
 static int nsupdate_init(nsupdate_params_t *params)
 {
 	memset(params, 0, sizeof(nsupdate_params_t));
+
+	params->stop = false;
 
 	/* Initialize list. */
 	init_list(&params->qfiles);
@@ -101,6 +106,7 @@ static int nsupdate_init(nsupdate_params_t *params)
 	params->rrp->process_record = parse_rr;
 	params->rrp->process_error = parse_err;
 	params->rrp->default_class = params->class_num;
+	params->zone = strdup(".");
 	nsupdate_set_ttl(params, 0);
 	nsupdate_set_origin(params, ".");
 
@@ -133,16 +139,15 @@ void nsupdate_clean(nsupdate_params_t *params)
 	memset(params, 0, sizeof(*params));
 }
 
-static void nsupdate_help(int argc, char *argv[])
+static void nsupdate_help(void)
 {
-	printf("Usage: %s [-d] [-v] [-k keyfile | -y [hmac:]name:key] "
-	       "[-p port] [-t timeout] [-r retries] [filename]\n",
-	       argv[0]);
+	printf("Usage: knsupdate [-d] [-v] [-k keyfile | -y [hmac:]name:key]\n"
+	       "                 [-p port] [-t timeout] [-r retries] [filename]\n");
 }
 
 int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 {
-	int opt = 0;
+	int opt = 0, li = 0;
 	int ret = KNOT_EOK;
 
 	if (params == NULL || argv == NULL) {
@@ -154,16 +159,32 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 		return ret;
 	}
 
+	// Long options.
+	struct option opts[] = {
+		{ "version", no_argument, 0, 'V' },
+		{ "help",    no_argument, 0, 'h' },
+		{ 0,         0,           0, 0 }
+	};
+
 	/* Command line options processing. */
-	while ((opt = getopt(argc, argv, "dDvp:t:r:y:k:")) != -1) {
+	while ((opt = getopt_long(argc, argv, "dhDvVp:t:r:y:k:", opts, &li))
+	       != -1) {
 		switch (opt) {
 		case 'd':
 		case 'D': /* Extra debugging. */
 			msg_enable_debug(1);
 			break;
+		case 'h':
+			nsupdate_help();
+			params->stop = true;
+			return KNOT_EOK;
 		case 'v':
 			params->protocol = PROTO_TCP;
 			break;
+		case 'V':
+			printf(KNSUPDATE_VERSION);
+			params->stop = true;
+			return KNOT_EOK;
 		case 'p':
 			free(params->server->service);
 			params->server->service = strdup(optarg);
@@ -189,7 +210,7 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 			if (ret != KNOT_EOK) return ret;
 			break;
 		default:
-			nsupdate_help(argc, argv);
+			nsupdate_help();
 			return KNOT_ENOTSUP;
 		}
 	}
@@ -199,7 +220,8 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 		params->retries = 0;
 	} else {
 		/* If wait/tries < 1 s, set 1 second for each try. */
-		if (params->wait > 0 && params->wait < ( 1 + params->retries)) {
+		if (params->wait > 0 &&
+		    (uint32_t)params->wait < ( 1 + params->retries)) {
 			params->wait = 1;
 		} else {
 			params->wait /= (1 + params->retries);
@@ -238,12 +260,8 @@ int nsupdate_set_origin(nsupdate_params_t *params, const char *origin)
 
 	free(fqdn);
 
-	if (ret == KNOT_EOK) {
-		if (params->zone) free(params->zone);
-		params->zone = strdup(origin);
-	} else {
+	if (ret != KNOT_EOK) {
 		ERR("failed to set default origin, %s\n", knot_strerror(ret));
 	}
 	return ret;
 }
-

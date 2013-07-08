@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <stdlib.h>			// EXIT_FAILURE
 
 #include "common/errcode.h"		// KNOT_EOK
@@ -25,21 +26,14 @@ int main(int argc, char *argv[])
 	int ret = EXIT_SUCCESS;
 
 	dig_params_t params;
-	switch (dig_parse(&params, argc, argv)) {
-	case KNOT_EOK:
-		if (dig_exec(&params) != KNOT_EOK) {
+	if (dig_parse(&params, argc, argv) == KNOT_EOK) {
+		if (!params.stop && dig_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
-		break;
-	case KNOT_ESTOP:
-		ret = EXIT_SUCCESS;
-		break;
-	default:
+	} else {
 		ret = EXIT_FAILURE;
-		break;
 	}
 
 	dig_clean(&params);
 	return ret;
 }
-

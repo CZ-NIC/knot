@@ -14,11 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "knot/zone/zone-dump.h"
-
 #include <config.h>
 #include <inttypes.h>
 
+#include "knot/zone/zone-dump.h"
 #include "common/descriptor.h"
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
@@ -156,19 +155,23 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	char date[64];
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
+	// Dump trailing statistics.
+	fprintf(file, ";; Written %"PRIu64" records\n"
+	              ";; Time %s\n",
+	        params.rr_count, date);
+
 	// Get master information.
 	sockaddr_t *master = &((zonedata_t *)zone->zone->data)->xfr_in.master;
 
-	int  port = sockaddr_portnum(master);
-	char addr[INET6_ADDRSTRLEN] = "NULL";
+	int port = sockaddr_portnum(master);
 
-	sockaddr_tostr(master, addr, sizeof(addr));
+	// If a master server is configured, dump info about it.
+	if (port >= 0) {
+		char addr[INET6_ADDRSTRLEN] = "NULL";
+		sockaddr_tostr(master, addr, sizeof(addr));
 
-	// Dump trailing statistics.
-	fprintf(file, ";; Written %"PRIu64" records\n"
-	              ";; Transfered from %s#%i\n"
-	              ";; On %s\n",
-	        params.rr_count, addr, port, date);
+		fprintf(file, ";; Transfered from %s#%i\n", addr, port);
+	}
 
 	free(buf);
 

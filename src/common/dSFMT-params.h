@@ -1,5 +1,3 @@
-#include <config.h>
-
 #ifndef DSFMT_PARAMS_H
 #define DSFMT_PARAMS_H
 
@@ -10,7 +8,7 @@
   following definitions are in dSFMT-paramsXXXX.h file.
   ----------------------*/
 /** the pick up position of the array.
-#define DSFMT_POS1 122 
+#define DSFMT_POS1 122
 */
 
 /** the parameter of shift left as four 32-bit registers.

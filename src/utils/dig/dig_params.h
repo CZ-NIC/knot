@@ -29,14 +29,19 @@
 
 #include <stdbool.h>			// bool
 
-#include "utils/common/params.h"	// params_t
+#include "utils/common/params.h"	// protocol_t
+#include "utils/common/exec.h"		// sign_context_t
+
+#define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
 
 /*! \brief Operation mode of dig. */
 typedef enum {
-	/*!< Classic queries in list. */
+	/*!< Standard 1-message query/reply. */
 	OPERATION_QUERY,
+	/*!< Zone transfer (AXFR or IXFR). */
+	OPERATION_XFR,
 	/*!< Query for NS and all authoritative SOA records. */
-	OPERATION_LIST_SOA,
+	OPERATION_LIST_SOA
 } operation_t;
 
 /*! \brief DNS header and EDNS flags. */
@@ -67,6 +72,8 @@ typedef struct {
 	char		*owner;
 	/*!< List of nameservers to query to. */
 	list		servers;
+	/*!< Local interface (optional). */
+	server_t	*local;
 	/*!< Operation mode. */
 	operation_t	operation;
 	/*!< Version of ip protocol to use. */
@@ -81,6 +88,8 @@ typedef struct {
 	uint32_t	retries;
 	/*!< Wait for network response in seconds (-1 means forever). */
 	int32_t		wait;
+	/*!< Ignore truncated response. */
+	bool		ignore_tc;
 	/*!< Stop quering if servfail. */
 	bool		servfail_stop;
 	/*!< Class number (16unsigned + -1 uninitialized). */
@@ -93,12 +102,18 @@ typedef struct {
 	flags_t		flags;
 	/*!< Output settings. */
 	style_t		style;
+	/*!< Query for NSID. */
+	bool		nsid;
 	/*!< Key parameters. */
 	knot_key_params_t key_params;
+	/*!< Context for operations with signatures. */
+	sign_context_t	sign_ctx;
 } query_t;
 
 /*! \brief Settings for dig. */
 typedef struct {
+	/*!< Stop processing - just pring help, version,... */
+	bool	stop;
 	/*!< List of DNS queries to process. */
 	list	queries;
 	/*!< Default settings for queries. */

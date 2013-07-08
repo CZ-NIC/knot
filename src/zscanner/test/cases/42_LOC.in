@@ -1,0 +1,67 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	LOC	1     N 1     E	0			; The simplest case
+@	LOC	0 1   N 1     E 0			; Combination of parameters
+@	LOC	0 0 1 N 1     E 0			; Combination of parameters
+@	LOC	1     N 0 1   E 0			; Combination of parameters
+@	LOC	1     N 0 0 1 E 0			; Combination of parameters
+@	LOC	1     N 0 0 1 E 0m			; Combination of parameters
+@	LOC	1     N 1     E 0 1			; Combination of parameters
+@	LOC	1     N 1     E 0 1m			; Combination of parameters
+@	LOC	1     N 1     E 0 0 1			; Combination of parameters
+@	LOC	1     N 1     E 0 0 1m			; Combination of parameters
+@	LOC	1     N 1     E 0 0 0 1			; Combination of parameters
+@	LOC	1     N 1     E 0 0 0 1m		; Combination of parameters
+@	LOC	0 0 0 N 0 0 0 E	-100000.00 0 0 0	; Minimal values
+@	LOC	90 59 59.999 S 180 59 59.999 W 42849672.95m 90000000.00m 90000000.00m 90000000.00m	; Maximal values
+@	LOC	0     S 0 0 0.001 W 0			; Float dd.ddd test
+@	LOC	0     S 0 0 0.01  W 0			; Float dd.ddd test
+@	LOC	0     S 0 0 0.1   W 0			; Float dd.ddd test
+@	LOC	0     S 0 0 1.0   W 0			; Float dd.ddd test
+@	LOC	0     S 0 0 10    W 0			; Float dd.ddd test
+@	LOC	0     S 0     W 0 0.01			; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 0.10			; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 1.0			; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 10			; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 100			; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 1000			; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 10000			; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 100000		; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 1000000		; Number to [mantisa,exponent] test
+@	LOC	0     S 0     W 0 10000000		; Number to [mantisa,exponent] test
+@	LOC	\# 16 00 00 00 00 00000000 00000000 00000000	; Hexadecimal rdata
+@	TYPE29	\# 16 00 00 00 00 00000000 00000000 00000000	; TYPE + Hexadecimal rdata
+@	TYPE29	0     N 0     E 0			; TYPE
+@	loc	0     N 0     E 0			; Type in lower-case
+
+; KO
+@	LOC
+@	LOC						; Empty rdata
+@	LOC	\# 0					; Hex empty rdata
+@	LOC	\#					; Missing hex length
+@	LOC	91 0 0 N 0 0 0 E 0 0 0 0		; Degree overflow
+@	LOC	0 60 0 N 0 0 0 E 0 0 0 0		; Minute overflow
+@	LOC	0 0 60 0 N 0 0 0 E 0 0 0 0		; Second overflow
+@	LOC	0 0 0 N 181 0 0 E 0 0 0 0		; Degree overflow
+@	LOC	0 0 0 N 0 60 0 E 0 0 0 0		; Minute overflow
+@	LOC	0 0 0 N 0 0 60 E 0 0 0 0		; Second overflow
+@	LOC	0 0 0 N 0 0 0 E 42849672.96 0 0 0	; Altitude overflow
+@	LOC	0 0 0 N 0 0 0 E 42849673 0 0 0		; Altitude overflow
+@	LOC	0 0 0 N 0 0 0 E -100000.01 0 0 0	; Altitude underflow
+@	LOC	0 0 0 N 0 0 0 E -100001 0 0 0		; Altitude underflow
+@	LOC	0 0 0 N 0 0 0 E 0 90000000.01 0 0	; Size overflow
+@	LOC	0 0 0 N 0 0 0 E 0 90000001 0 0		; Size overflow
+@	LOC	0 0 0 N 0 0 0 E 0 0 90000000.01 0	; HP overflow
+@	LOC	0 0 0 N 0 0 0 E 0 0 90000001 0		; HP overflow
+@	LOC	0 0 0 N 0 0 0 E 0 0 0 90000000.01	; VP overflow
+@	LOC	0 0 0 N 0 0 0 E 0 0 0 90000001		; VP overflow
+@	LOC	1       1     E	0			; Missing N or S
+@	LOC	1     x 1     E	0			; Bad letter
+@	LOC	1     N 1      	0			; Missing E or W
+@	LOC	1     N 1     x	0			; Bad letter
+@	LOC	1     N 1     E				; Missing altitude
+@	LOC	0 0 0 N 0 0 0 E 0 0 0 0 x		; Unexpected item
+@	LOC	\# 17 00 00 00 00 00000000 00000000 00000000 00	; Too long rdata
+@	LOC	\# 17 00 00 00 00 00000000 00000000 00000000	; Bad rdata length

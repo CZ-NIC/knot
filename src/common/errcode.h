@@ -30,6 +30,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "common/errors.h"
 
+/* errno -> Knot error mapping.
+ * \note offset is required, otherwise it would interfere with TSIG errors.
+ */
+#define ERRBASE 100
+#define err2code(x) (-(ERRBASE + (x)))
+
 /*! \brief Error codes used in the library. */
 enum knot_error {
 	KNOT_EOK = 0,             /*!< OK */
@@ -40,17 +46,17 @@ enum knot_error {
 	KNOT_TSIG_EBADTIME = -18, /*!< TSIG signing time out of range. */
 
 	/* Directly mapped error codes. */
-	KNOT_ENOMEM = -ENOMEM,             /*!< Out of memory. */
-	KNOT_EINVAL = -EINVAL,             /*!< Invalid parameter passed. */
-	KNOT_ENOTSUP = -ENOTSUP,           /*!< Parameter not supported. */
-	KNOT_EBUSY = -EBUSY,               /*!< Requested resource is busy. */
-	KNOT_EAGAIN = -EAGAIN,             /*!< OS lacked necessary resources. */
-	KNOT_EACCES = -EACCES,             /*!< Permission is denied. */
-	KNOT_ECONNREFUSED = -ECONNREFUSED, /*!< Connection is refused. */
-	KNOT_EISCONN = -EISCONN,           /*!< Already connected. */
-	KNOT_EADDRINUSE = -EADDRINUSE,     /*!< Address already in use. */
-	KNOT_ENOENT = -ENOENT,             /*!< Resource not found. */
-	KNOT_ERANGE = -ERANGE,             /*!< Value is out of range. */
+	KNOT_ENOMEM = err2code(ENOMEM),             /*!< Out of memory. */
+	KNOT_EINVAL = err2code(EINVAL),             /*!< Invalid parameter passed. */
+	KNOT_ENOTSUP = err2code(ENOTSUP),           /*!< Parameter not supported. */
+	KNOT_EBUSY = err2code(EBUSY),               /*!< Requested resource is busy. */
+	KNOT_EAGAIN = err2code(EAGAIN),             /*!< OS lacked necessary resources. */
+	KNOT_EACCES = err2code(EACCES),             /*!< Permission is denied. */
+	KNOT_ECONNREFUSED = err2code(ECONNREFUSED), /*!< Connection is refused. */
+	KNOT_EISCONN = err2code(EISCONN),           /*!< Already connected. */
+	KNOT_EADDRINUSE = err2code(EADDRINUSE),     /*!< Address already in use. */
+	KNOT_ENOENT = err2code(ENOENT),             /*!< Resource not found. */
+	KNOT_ERANGE = err2code(ERANGE),             /*!< Value is out of range. */
 
 	/* General errors. */
 	KNOT_ERROR = -10000,  /*!< General error. */
@@ -78,19 +84,30 @@ enum knot_error {
 	KNOT_ENOXFR,          /*!< Transfer was not sent. */
 	KNOT_ENOIXFR,         /*!< Transfer is not IXFR (is in AXFR format). */
 	KNOT_EXFRREFUSED,     /*!< Zone transfer refused by the server. */
-	KNOT_EXFRDENIED,      /*!< Transfer not allowed. */ 
+	KNOT_EDENIED,         /*!< Not allowed. */
 	KNOT_ECONN,           /*!< Connection reset. */
 	KNOT_EIXFRSPACE,      /*!< IXFR reply did not fit in. */
 	KNOT_ECNAME,          /*!< CNAME loop found in zone. */
 	KNOT_ENODIFF,         /*!< No zone diff can be created. */
 	KNOT_EDSDIGESTLEN,    /*!< DS digest length does not match digest type. */
 	KNOT_ENOTSIG,         /*!< Expected a TSIG or SIG(0). */
-	KNOT_ESTOP,           /*!< Stop doing something. */
 	KNOT_ELIMIT,          /*!< Exceeded response rate limit. */
+
+	/* Control states. */
+	KNOT_CTL_STOP,        /*!< Stop requested. */
+
+	/* Network errors. */
+	KNOT_NET_EADDR,
+	KNOT_NET_ESOCKET,
+	KNOT_NET_ECONNECT,
+	KNOT_NET_ESEND,
+	KNOT_NET_ERECV,
+	KNOT_NET_ETIMEOUT,
 
 	/* Zone file loader errors. */
 	FLOADER_EFSTAT,
 	FLOADER_EDIRECTORY,
+	FLOADER_EWRITABLE,
 	FLOADER_EEMPTY,
 	FLOADER_EDEFAULTS,
 	FLOADER_EMMAP,
@@ -151,6 +168,15 @@ enum knot_error {
 	ZSCANNER_EBAD_ALGORITHM,
 	ZSCANNER_EBAD_CERT_TYPE,
 	ZSCANNER_EBAD_EUI_LENGTH,
+	ZSCANNER_EBAD_L64_LENGTH,
+	ZSCANNER_EBAD_CHAR_COLON,
+	ZSCANNER_EBAD_CHAR_DASH,
+
+	/* Encoding errors. */
+	KNOT_BASE64_ESIZE,
+	KNOT_BASE64_ECHAR,
+	KNOT_BASE32HEX_ESIZE,
+	KNOT_BASE32HEX_ECHAR,
 
 	/* Key parsing errors. */
 	KNOT_KEY_EPUBLIC_KEY_OPEN,

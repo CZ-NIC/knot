@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include "utils/dig/dig_exec.h"
 
 #include <stdlib.h>			// free
@@ -23,6 +24,7 @@
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
+#include "common/print.h"		// time_diff
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/descriptor.h"		// KNOT_RRTYPE_
 #include "utils/common/msg.h"		// WARN
@@ -38,12 +40,11 @@ static knot_packet_t* create_query_packet(const query_t *query,
 
 	// Set packet buffer size.
 	int max_size = query->udp_size;
-
 	if (max_size < 0) {
 		if (get_socktype(query->protocol, query->type_num)
 		    == SOCK_STREAM) {
 			max_size = MAX_PACKET_SIZE;
-		} else if (query->flags.do_flag == true) {
+		} else if (query->flags.do_flag || query->nsid) {
 			max_size = DEFAULT_EDNS_SIZE;
 		} else {
 			max_size = DEFAULT_UDP_SIZE;
@@ -52,7 +53,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 
 	// Create packet skeleton.
 	packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE, max_size);
-
 	if (packet == NULL) {
 		return NULL;
 	}
@@ -84,15 +84,15 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	q.qclass = query->class_num;
 	q.qtype = query->type_num;
 	q.qname = knot_dname_new_from_str(query->owner, strlen(query->owner), 0);
-
 	if (q.qname == NULL) {
-		knot_dname_release(q.qname);
 		knot_packet_free(&packet);
 		return NULL;
 	}
 
 	// Set packet question.
 	if (knot_query_set_question(packet, &q) != KNOT_EOK) {
+		// It's necessary to release q.qname by hand as it isn't
+		// connected with the packet yet.
 		knot_dname_release(q.qname);
 		knot_packet_free(&packet);
 		return NULL;
@@ -111,7 +111,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		                                   query->class_num,
 		                                   0);
 		if (soa == NULL) {
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -121,7 +120,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		                                    sizeof(wire), sizeof(wire));
 		if (ret != KNOT_EOK) {
 			free(soa);
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -133,20 +131,17 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		ret = knot_query_add_rrset_authority(packet, soa);
 		if (ret != KNOT_EOK) {
 			free(soa);
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
 	}
 
-	// Set DO flag to EDNS section.
-	if (query->flags.do_flag == true) {
+	// Create EDNS section if required.
+	if (query->udp_size > 0 || query->flags.do_flag || query->nsid) {
 		knot_opt_rr_t *opt_rr = knot_edns_new();
-
 		if (opt_rr == NULL) {
 			ERR("can't create EDNS section\n");
 			knot_edns_free(&opt_rr);
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -157,12 +152,25 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		if (knot_response_add_opt(packet, opt_rr, 0, 0) != KNOT_EOK) {
 			ERR("can't set EDNS section\n");
 			knot_edns_free(&opt_rr);
-			knot_dname_release(q.qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
 
-		knot_edns_set_do(&packet->opt_rr);
+		// Set DO flag to EDNS section.
+		if (query->flags.do_flag) {
+			knot_edns_set_do(&packet->opt_rr);
+		}
+
+		if (query->nsid) {
+			if (knot_edns_add_option(&packet->opt_rr,
+			                         EDNS_OPTION_NSID,
+			                         0, NULL) != KNOT_EOK) {
+				ERR("can't set NSID query\n");
+				knot_edns_free(&opt_rr);
+				knot_packet_free(&packet);
+				return NULL;
+			}
+		}
 
 		knot_edns_free(&opt_rr);
 	}
@@ -170,15 +178,29 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	// Create wire query.
 	if (knot_packet_to_wire(packet, data, data_len) != KNOT_EOK) {
 		ERR("can't create wire query packet\n");
-		knot_dname_release(q.qname);
 		knot_packet_free(&packet);
 		return NULL;
+	}
+
+	// Sign the packet if a key was specified.
+	if (query->key_params.name != NULL) {
+		int ret = sign_packet(packet, (sign_context_t *)&query->sign_ctx,
+		                      &query->key_params);
+		if (ret != KNOT_EOK) {
+			ERR("failed to sign query packet (%s)\n",
+			    knot_strerror(ret));
+			knot_packet_free(&packet);
+			return NULL;
+		}
+
+		*data_len = packet->size;
 	}
 
 	return packet;
 }
 
-static bool check_id(const knot_packet_t *query, const knot_packet_t *reply)
+static bool check_reply_id(const knot_packet_t *reply,
+                           const knot_packet_t *query)
 {
 	uint16_t query_id = knot_wire_get_id(query->wireformat);
 	uint16_t reply_id = knot_wire_get_id(reply->wireformat);
@@ -192,19 +214,8 @@ static bool check_id(const knot_packet_t *query, const knot_packet_t *reply)
 	return true;
 }
 
-static int check_rcode(const bool servfail_stop, const knot_packet_t *reply)
-{
-	uint8_t rcode = knot_wire_get_rcode(reply->wireformat);
-
-	if (rcode == KNOT_RCODE_SERVFAIL && servfail_stop == true) {
-		return -1;
-	}
-
-	return rcode;
-}
-
-static void check_question(const knot_packet_t *query,
-                           const knot_packet_t *reply)
+static void check_reply_question(const knot_packet_t *reply,
+                                 const knot_packet_t *query)
 {
 	if (reply->header.qdcount < 1) {
 		WARN("response doesn't have question section\n");
@@ -224,7 +235,7 @@ static void check_question(const knot_packet_t *query,
 
 static int64_t first_serial_check(const knot_packet_t *reply)
 {
-	if (reply->an_rrsets <= 0) {
+	if (reply->header.ancount <= 0) {
 		return -1;
 	}
 
@@ -239,11 +250,11 @@ static int64_t first_serial_check(const knot_packet_t *reply)
 
 static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 {
-	if (reply->an_rrsets <= 0) {
+	if (reply->header.ancount <= 0) {
 		return false;
 	}
 
-	const knot_rrset_t *last = *(reply->answer + reply->an_rrsets - 1);
+	const knot_rrset_t *last = *(reply->answer + reply->header.ancount - 1);
 
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
@@ -258,21 +269,141 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 	}
 }
 
-void process_query(const query_t *query)
+static int process_query_packet(const knot_packet_t     *query,
+                                net_t                   *net,
+                                const bool              ignore_tc,
+                                const sign_context_t    *sign_ctx,
+                                const knot_key_params_t *key_params,
+                                const style_t           *style)
 {
-	float		elapsed;
-	bool 		id_ok, stop;
-	node		*server = NULL;
-	knot_packet_t	*out_packet;
-	size_t		out_len = 0;
-	uint8_t		*out = NULL;
-	knot_packet_t	*in_packet;
-	int		in_len;
+	struct timeval	t_start, t_query, t_end;
+	knot_packet_t	*reply;
 	uint8_t		in[MAX_PACKET_SIZE];
-	struct timeval	t_start, t_end;
-	size_t		total_len = 0;
-	size_t		msg_count = 0;
-	size_t		rr_count = 0;
+	int		in_len;
+	int		ret;
+
+	// Get start query time.
+	gettimeofday(&t_start, NULL);
+
+	// Connect to the server.
+	ret = net_connect(net);
+	if (ret != KNOT_EOK) {
+		return -1;
+	}
+
+	// Send query packet.
+	ret = net_send(net, query->wireformat, query->size);
+	if (ret != KNOT_EOK) {
+		net_close(net);
+		return -1;
+	}
+
+	// Get stop query time and start reply time.
+	gettimeofday(&t_query, NULL);
+
+	// Print query packet if required.
+	if (style->show_query) {
+		print_packet(query, query->size, net,
+		             time_diff(&t_start, &t_query),
+		             false, style);
+	}
+
+	// Loop over incoming messages, unless reply id is correct or timeout.
+	while (true) {
+		// Receive a reply message.
+		in_len = net_receive(net, in, sizeof(in));
+		if (in_len <= 0) {
+			net_close(net);
+			return -1;
+		}
+
+		// Get stop reply time.
+		gettimeofday(&t_end, NULL);
+
+		// Create reply packet structure to fill up.
+		reply = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+		if (reply == NULL) {
+			net_close(net);
+			return -1;
+		}
+
+		// Parse reply to the packet structure.
+		if (knot_packet_parse_from_wire(reply, in, in_len, 0,
+		                                KNOT_PACKET_DUPL_NO_MERGE)
+		    != KNOT_EOK) {
+			ERR("malformed reply packet from %s\n", net->remote_str);
+			knot_packet_free(&reply);
+			net_close(net);
+			return -1;
+		}
+
+		// Compare reply header id.
+		if (check_reply_id(reply, query)) {
+			break;
+		// Check for timeout.
+		} else if (time_diff(&t_query, &t_end) > 1000 * net->wait) {
+			knot_packet_free(&reply);
+			net_close(net);
+			return -1;
+		}
+
+		knot_packet_free(&reply);
+	}
+
+	// Check for TC bit and repeat query with TCP if required.
+	if (knot_wire_get_tc(reply->wireformat) != 0 &&
+	    ignore_tc == false && net->socktype == SOCK_DGRAM) {
+		WARN("truncated reply from %s, retrying over TCP\n",
+		     net->remote_str);
+		knot_packet_free(&reply);
+		net_close(net);
+
+		net->socktype = SOCK_STREAM;
+
+		return process_query_packet(query, net, true, sign_ctx,
+		                            key_params, style);
+	}
+
+	// Check for question sections equality.
+	if (knot_wire_get_rcode(in) == KNOT_RCODE_NOERROR) {
+		check_reply_question(reply, query);
+	}
+
+	// Verify signature if a key was specified.
+	if (key_params->name != NULL) {
+		ret = verify_packet(reply, sign_ctx, key_params);
+		if (ret != KNOT_EOK) {
+			ERR("reply verification for %s (%s)\n",
+			    net->remote_str, knot_strerror(ret));
+			knot_packet_free(&reply);
+			net_close(net);
+			return -1;
+		}
+	}
+
+	// Print reply packet.
+	print_packet(reply, in_len, net, time_diff(&t_query, &t_end),
+	             true, style);
+
+	knot_packet_free(&reply);
+	net_close(net);
+
+	// Check for SERVFAIL.
+	if (knot_wire_get_rcode(in) == KNOT_RCODE_SERVFAIL) {
+		return 1;
+	}
+
+	return 0;
+}
+
+static void process_query(const query_t *query)
+{
+	node          *server = NULL;
+	knot_packet_t *out_packet;
+	uint8_t       *out = NULL;
+	size_t        out_len = 0;
+	net_t         net;
+	int           ret;
 
 	if (query == NULL) {
 		DBG_NULL;
@@ -281,215 +412,291 @@ void process_query(const query_t *query)
 
 	// Create query packet.
 	out_packet = create_query_packet(query, &out, &out_len);
-
 	if (out_packet == NULL) {
+		ERR("can't create query packet\n");
 		return;
 	}
 
+	// Get connection parameters.
+	int iptype = get_iptype(query->ip);
+	int socktype = get_socktype(query->protocol, query->type_num);
+
+	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
-		net_t net;
-		int   rcode, ret;
+		server_t *remote = (server_t *)server;
 
-		// Start meassuring of query/xfr time.
-		gettimeofday(&t_start, NULL);
+		DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+		    "port(%s), protocol(%s)\n", query->owner, query->class_num,
+		    query->type_num, remote->name, remote->service,
+		    get_sockname(socktype));
 
-		// Send query message.
-		ret = net_connect(NULL,
-		                  (server_t *)server,
-		                  get_iptype(query->ip),
-		                  get_socktype(query->protocol, query->type_num),
-		                  query->wait,
-		                  &net);
+		// Loop over the number of retries.
+		for (size_t i = 0; i <= query->retries; i++) {
+			// Initialize network structure for current server.
+			ret = net_init(query->local, remote, iptype, socktype,
+				       query->wait, &net);
+			if (ret != KNOT_EOK) {
+				continue;
+			}
 
-		if (ret != KNOT_EOK) {
-			continue;
-		}
+			// Loop over all resolved addresses for remote.
+			while (net.srv != NULL) {
+				ret = process_query_packet(out_packet, &net,
+							   query->ignore_tc,
+							   &query->sign_ctx,
+							   &query->key_params,
+							   &query->style);
+				// If error try next resolved address.
+				if (ret != 0) {
+					net.srv = (net.srv)->ai_next;
+					continue;
+				}
 
-		ret = net_send(&net, out, out_len);
-
-		if (ret != KNOT_EOK) {
-			net_close(&net);
-			continue;
-		}
-
-		id_ok = false;
-		stop = false;
-		// Loop over incomming messages, unless reply id is correct.
-		while (id_ok == false) {
-			// Receive reply message.
-			in_len = net_receive(&net, in, sizeof(in));
-
-			if (in_len <= 0) {
-				stop = true;
 				break;
 			}
 
-			// Create reply packet structure to fill up.
-			in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
-
-			if (in_packet == NULL) {
-				stop = true;
-				break;
+			// Success.
+			if (ret == 0) {
+				net_clean(&net);
+				knot_packet_free(&out_packet);
+				return;
+			// SERVFAIL.
+			} else if (ret == 1 && query->servfail_stop == true) {
+				net_clean(&net);
+				knot_packet_free(&out_packet);
+				return;
 			}
 
-			// Parse reply to packet structure.
-			if (knot_packet_parse_from_wire(in_packet, in,
-			                                in_len, 0,
-			                              KNOT_PACKET_DUPL_NO_MERGE)
-			    != KNOT_EOK) {
-				ERR("can't parse reply packet\n");
-				stop = true;
-				knot_packet_free(&in_packet);
-				break;
+			if (i < query->retries) {
+				DBG("retrying server %s#%s(%s)\n",
+				    remote->name, remote->service,
+				    get_sockname(socktype));
 			}
 
-			// Compare reply header id.
-			id_ok = check_id(out_packet, in_packet);
+			net_clean(&net);
 		}
 
-		// Timeout/data error -> try next nameserver.
-		if (stop == true) {
-			net_close(&net);
-			continue;
+		WARN("failed to query server %s#%s(%s)\n",
+		     remote->name, remote->service, get_sockname(socktype));
+	}
+
+	knot_packet_free(&out_packet);
+}
+
+static int process_packet_xfr(const knot_packet_t     *query,
+                              net_t                   *net,
+                              const sign_context_t    *sign_ctx,
+                              const knot_key_params_t *key_params,
+                              const style_t           *style)
+{
+	struct timeval t_start, t_query, t_end;
+	knot_packet_t  *reply;
+	uint8_t        in[MAX_PACKET_SIZE];
+	int            in_len;
+	int            ret;
+	int64_t        serial = 0;
+	size_t         total_len = 0;
+	size_t         msg_count = 0;
+	size_t         rr_count = 0;
+
+	// Get start query time.
+	gettimeofday(&t_start, NULL);
+
+	// Connect to the server.
+	ret = net_connect(net);
+	if (ret != KNOT_EOK) {
+		return -1;
+	}
+
+	// Send query packet.
+	ret = net_send(net, query->wireformat, query->size);
+	if (ret != KNOT_EOK) {
+		net_close(net);
+		return -1;
+	}
+
+	// Get stop query time and start reply time.
+	gettimeofday(&t_query, NULL);
+
+
+	// Print query packet if required.
+	if (style->show_query) {
+		print_packet(query, query->size, net,
+		             time_diff(&t_start, &t_query),
+		             false, style);
+	}
+
+	// Print leading transfer information.
+	print_header_xfr(&query->question, style);
+
+	// Loop over reply messages unless first and last SOA serials differ.
+	while (true) {
+		// Receive a reply message.
+		in_len = net_receive(net, in, sizeof(in));
+		if (in_len <= 0) {
+			net_close(net);
+			return -1;
 		}
 
-		// Check rcode.
-		rcode = check_rcode(query->servfail_stop, in_packet);
-
-		// Servfail + stop if servfail -> stop processing.
-		if (rcode == -1) {
-			net_close(&net);
-			break;
-		// Servfail -> try next nameserver.
-		} else if (rcode == KNOT_RCODE_SERVFAIL) {
-			net_close(&net);
-			continue;
+		// Create reply packet structure to fill up.
+		reply = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+		if (reply == NULL) {
+			net_close(net);
+			return -1;
 		}
 
-		// Check for question sections equality.
-		check_question(out_packet, in_packet);
-
-		// Dump one standard reply message and finish.
-		if (query->type_num != KNOT_RRTYPE_AXFR &&
-		    query->type_num != KNOT_RRTYPE_IXFR) {
-			// Stop meassuring of query time.
-			gettimeofday(&t_end, NULL);
-
-			// Calculate elapsed time.
-			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
-			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
-
-			// Count reply message.
-			msg_count++;
-			total_len += in_len;
-
-			// Print formated data.
-			print_packet(in_packet, total_len, &net, elapsed,
-			             true, &query->style);
-
-			knot_packet_free(&in_packet);
-
-			net_close(&net);
-
-			// Stop quering nameservers.
-			break;
+		// Parse reply to the packet structure.
+		if (knot_packet_parse_from_wire(reply, in, in_len, 0,
+		                                KNOT_PACKET_DUPL_NO_MERGE)
+		    != KNOT_EOK) {
+			ERR("malformed reply packet from %s\n", net->remote_str);
+			knot_packet_free(&reply);
+			net_close(net);
+			return -1;
 		}
 
-		// Count first XFR message.
+		// Compare reply header id.
+		if (check_reply_id(reply, query) == false) {
+			knot_packet_free(&reply);
+			net_close(net);
+			return -1;
+		}
+
+		// Check for reply error.
+		uint8_t rcode_id = knot_wire_get_rcode(in);
+		if (rcode_id != KNOT_RCODE_NOERROR) {
+			knot_lookup_table_t *rcode =
+				knot_lookup_by_id(knot_rcode_names, rcode_id);
+			if (rcode != NULL) {
+				ERR("server %s respond %s\n",
+				    net->remote_str, rcode->name);
+			} else {
+				ERR("server %s respond %i\n",
+				    net->remote_str, rcode_id);
+			}
+
+			knot_packet_free(&reply);
+			net_close(net);
+			return -1;
+		}
+
+		// The first message has a special treatment.
+		if (msg_count == 0) {
+			// Verify 1. signature if a key was specified.
+			if (key_params->name != NULL) {
+				ret = verify_packet(reply, sign_ctx, key_params);
+				if (ret != KNOT_EOK) {
+					ERR("reply verification for %s (%s)\n",
+					    net->remote_str, knot_strerror(ret));
+					knot_packet_free(&reply);
+					net_close(net);
+					return -1;
+				}
+			}
+
+			// Read first SOA serial.
+			serial = first_serial_check(reply);
+
+			if (serial < 0) {
+				ERR("first answer record isn't SOA\n");
+				knot_packet_free(&reply);
+				net_close(net);
+				return -1;
+			}
+
+			// Check for question sections equality.
+			check_reply_question(reply, query);
+		}
+
 		msg_count++;
-		rr_count += in_packet->an_rrsets;
+		rr_count += reply->header.ancount;
 		total_len += in_len;
 
-		// Start XFR dump.
-		print_header_xfr(query->owner, query->type_num, &query->style);
+		// Print reply packet.
+		print_data_xfr(reply, style);
 
-		print_data_xfr(in_packet, &query->style);
+		// Stop if last SOA record has correct serial.
+		if (last_serial_check(serial, reply)) {
+			knot_packet_free(&reply);
+			break;
+		}
 
-		// Read first SOA serial.
-		int64_t serial = first_serial_check(in_packet);
+		knot_packet_free(&reply);
+	}
 
-		if (serial < 0) {
-			ERR("first answer resource record must be SOA\n");
-			net_close(&net);
+	// Get stop reply time.
+	gettimeofday(&t_end, NULL);
+
+	// Print trailing transfer information.
+	print_footer_xfr(total_len, msg_count, rr_count, net,
+	                 time_diff(&t_query, &t_end), style);
+
+	net_close(net);
+
+	return 0;
+}
+
+static void process_query_xfr(const query_t *query)
+{
+	knot_packet_t *out_packet;
+	uint8_t       *out = NULL;
+	size_t        out_len = 0;
+	net_t         net;
+	int           ret;
+
+	if (query == NULL) {
+		DBG_NULL;
+		return;
+	}
+
+	// Create query packet.
+	out_packet = create_query_packet(query, &out, &out_len);
+	if (out_packet == NULL) {
+		ERR("can't create query packet\n");
+		return;
+	}
+
+	// Get connection parameters.
+	int iptype = get_iptype(query->ip);
+	int socktype = get_socktype(query->protocol, query->type_num);
+
+	// Use the first nameserver from the list.
+	server_t *remote = HEAD(query->servers);
+
+	DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+	    "port(%s), protocol(%s)\n", query->owner, query->class_num,
+	    query->type_num, remote->name, remote->service,
+	    get_sockname(socktype));
+
+	// Initialize network structure.
+	ret = net_init(query->local, remote, iptype, socktype,
+	               query->wait, &net);
+	if (ret != KNOT_EOK) {
+		knot_packet_free(&out_packet);
+		return;
+	}
+
+	// Loop over all resolved addresses for remote.
+	while (net.srv != NULL) {
+		ret = process_packet_xfr(out_packet, &net,
+		                         &query->sign_ctx,
+		                         &query->key_params,
+		                         &query->style);
+		// If error try next resolved address.
+		if (ret != 0) {
+			net.srv = (net.srv)->ai_next;
 			continue;
 		}
 
-		stop = false;
-		// Loop over incoming XFR messages unless last
-		// SOA serial != first SOA serial.
-		while (last_serial_check(serial, in_packet) == false) {
-			knot_packet_free(&in_packet);
-
-			// Receive reply message.
-			in_len = net_receive(&net, in, sizeof(in));
-
-			if (in_len <= 0) {
-				stop = true;
-				break;
-			}
-
-			// Create reply packet structure to fill up.
-			in_packet = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
-
-			if (in_packet == NULL) {
-				stop = true;
-				break;
-			}
-
-			// Parse reply to packet structure.
-			if (knot_packet_parse_from_wire(in_packet, in,
-							in_len, 0,
-						      KNOT_PACKET_DUPL_NO_MERGE)
-			    != KNOT_EOK) {
-				ERR("can't parse reply packet\n");
-				stop = true;
-				knot_packet_free(&in_packet);
-				break;
-			}
-
-			// Compare reply header id.
-			id_ok = check_id(out_packet, in_packet);
-
-			// Check rcode.
-			rcode = check_rcode(query->servfail_stop, in_packet);
-
-			if (rcode != KNOT_RCODE_NOERROR) {
-				stop = true;
-				knot_packet_free(&in_packet);
-				break;
-			}
-
-			// Dump message data.
-			print_data_xfr(in_packet, &query->style);
-
-			// Count non-first XFR message.
-			msg_count++;
-			rr_count += in_packet->an_rrsets;
-			total_len += in_len;
-		}
-
-		// For successful XFR print final information.
-		if (stop == false) {
-			// Stop meassuring of query time.
-			gettimeofday(&t_end, NULL);
-
-			// Calculate elapsed time.
-			elapsed = (t_end.tv_sec - t_start.tv_sec) * 1000 +
-			          ((t_end.tv_usec - t_start.tv_usec) / 1000.0);
-
-			print_footer_xfr(total_len, msg_count, rr_count, &net,
-			                 elapsed, &query->style);
-
-			knot_packet_free(&in_packet);
-		}
-
-		net_close(&net);
-
-		// Stop quering nameservers.
 		break;
 	}
 
-	// Drop query packet.
+	if (ret != 0) {
+		ERR("failed to query server %s#%s(%s)\n",
+		    remote->name, remote->service, get_sockname(socktype));
+	}
+
+	net_clean(&net);
 	knot_packet_free(&out_packet);
 }
 
@@ -509,6 +716,9 @@ int dig_exec(const dig_params_t *params)
 		switch (query->operation) {
 		case OPERATION_QUERY:
 			process_query(query);
+			break;
+		case OPERATION_XFR:
+			process_query_xfr(query);
 			break;
 		case OPERATION_LIST_SOA:
 			break;

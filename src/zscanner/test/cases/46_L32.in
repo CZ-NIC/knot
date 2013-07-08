@@ -1,0 +1,25 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	L32	0	0.0.0.0		; The simplest case
+@	L32	65535	255.255.255.255	; The maximal case
+@	L32	\# 6 000000000000	; Hexadecimal rdata
+@	TYPE105	\# 6 000000000000	; TYPE + Hexadecimal rdata
+@	TYPE105	0	0.0.0.0		; TYPE
+@	l32	0	0.0.0.0		; Type in lower-case
+
+; KO
+@	L32
+@	L32				; Empty rdata
+@	L32	\# 0			; Hex empty rdata
+@	L32	\#			; Missing hex length
+@	L32	65536	0.0.0.0		; Too big preference
+
+@	L32	0	0.0.0.256	; 8-bit overflow
+@	L32	0	0.0.0		; Short address
+@	L32	0	0.0.0.0.0	; Long address
+@	L32	0	0.0.0.x		; Bad character
+@	L32	0	0.0.0.0 x	; Unexpected item
+@	L32	\# 7 000000000000 00	; Too long rdata
+@	L32	\# 7 000000000000	; Bad rdata length

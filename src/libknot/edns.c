@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -62,7 +63,7 @@ int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 
-	if (max_size < KNOT_EDNS_MIN_SIZE) {
+	if ((int)max_size < KNOT_EDNS_MIN_SIZE) {
 		dbg_edns("Not enough data to parse OPT RR header.\n");
 		return KNOT_EFEWDATA;
 	}
@@ -184,7 +185,7 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 			// data
 			if (size - pos < opt_size) {
 				dbg_edns("Not enough data to parse options: "
-				         "size - pos=%d, opt_size=%d\n",
+				         "size - pos=%zu, opt_size=%d\n",
 				         size - pos, opt_size);
 				return KNOT_EMALF;
 			}
@@ -197,8 +198,8 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
 			pos += 4 + opt_size;
 		}
 	}
-	
-	
+
+
 	dbg_edns_verb("EDNS created.\n");
 
 	return KNOT_EOK;
@@ -354,9 +355,9 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 
-	assert(KNOT_EDNS_MIN_SIZE <= max_size);
+	assert(KNOT_EDNS_MIN_SIZE <= (int)max_size);
 
-	if (max_size < opt_rr->size) {
+	if ((int)max_size < opt_rr->size) {
 		dbg_edns("Not enough place for OPT RR wire format.\n");
 		return KNOT_ESPACE;
 	}
@@ -423,9 +424,7 @@ void knot_edns_free_options(knot_opt_rr_t *opt_rr)
 		/* Free the option data, if any. */
 		for (int i = 0; i < opt_rr->option_count; i++) {
 			knot_opt_option_t *option = &(opt_rr->options[i]);
-			if (option->data != NULL) {
-				free(option->data);
-			}
+			free(option->data);
 		}
 		free(opt_rr->options);
 	}

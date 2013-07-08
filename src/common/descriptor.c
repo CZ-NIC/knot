@@ -14,13 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "common/descriptor.h"
 #include "libknot/util/utils.h"		// knot_lookup_table_t
 
 #include <stdio.h>			// snprintf
 #include <stdlib.h>			// strtoul
 
-/*! 
+/*!
  * \brief The last RR type number in the descriptors table.
  */
 const int KNOT_RRTYPE_LAST = KNOT_RRTYPE_ANY;
@@ -37,22 +38,11 @@ static knot_lookup_table_t dns_classes[] = {
 };
 
 /*!
- * \brief DS digest lengths.
- */
-enum knot_ds_algorithm_len
-{
-	KNOT_DS_DIGEST_LEN_SHA1		= 20,	/* 20B - RFC 3658 */
-	KNOT_DS_DIGEST_LEN_SHA256	= 32,	/* 32B - RFC 4509 */
-	KNOT_DS_DIGEST_LEN_GOST		= 32,	/* 32B - RFC 5933 */
-	KNOT_DS_DIGEST_LEN_SHA384	= 48,	/* 48B - RFC 6605 */
-};
-
-/*!
  * \brief RR type descriptors.
  */
 static const rdata_descriptor_t rdata_descriptors[] = {
 	[0]                      = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END } },
+	                               KNOT_RDATA_WF_END }, NULL },
 	[KNOT_RRTYPE_A]          = { { 4, KNOT_RDATA_WF_END }, "A" },
 	[KNOT_RRTYPE_NS]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_END }, "NS" },
@@ -125,6 +115,11 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "TLSA" },
 	[KNOT_RRTYPE_SPF]        = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "SPF" },
+	[KNOT_RRTYPE_NID]        = { { 10 }, "NID" },
+	[KNOT_RRTYPE_L32]        = { { 6 }, "L32" },
+	[KNOT_RRTYPE_L64]        = { { 10 }, "L64" },
+	[KNOT_RRTYPE_LP]         = { { 2, KNOT_RDATA_WF_COMPRESSED_DNAME },
+	                             "LP" },
 	[KNOT_RRTYPE_EUI48]      = { { 6, KNOT_RDATA_WF_END }, "EUI48" },
 	[KNOT_RRTYPE_EUI64]      = { { 8, KNOT_RDATA_WF_END }, "EUI64" },
 	[KNOT_RRTYPE_TKEY]       = { { KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
@@ -164,7 +159,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 		ret = snprintf(out, out_len, "TYPE%u", rrtype);
 	}
 
-	if (ret <= 0 || ret >= out_len) {
+	if (ret <= 0 || (size_t)ret >= out_len) {
 		return -1;
 	} else {
 		return ret;
@@ -173,8 +168,8 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 
 int knot_rrtype_from_string(const char *name, uint16_t *num)
 {
+	int i;
 	char *end;
-	unsigned i;
 	unsigned long n;
 
 	// Try to find name in descriptors table.
@@ -217,7 +212,7 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 		ret = snprintf(out, out_len, "CLASS%u", rrclass);
 	}
 
-	if (ret <= 0 || ret >= out_len) {
+	if (ret <= 0 || (size_t)ret >= out_len) {
 		return -1;
 	} else {
 		return ret;
@@ -293,20 +288,4 @@ int knot_rrtype_is_metatype(const uint16_t type)
 	       type == KNOT_RRTYPE_IXFR ||
 	       type == KNOT_RRTYPE_AXFR ||
 	       type == KNOT_RRTYPE_ANY;
-}
-
-size_t knot_ds_digest_length(const uint8_t algorithm)
-{
-	switch (algorithm) {
-	case KNOT_DS_ALG_SHA1:
-		return KNOT_DS_DIGEST_LEN_SHA1;
-	case KNOT_DS_ALG_SHA256:
-		return KNOT_DS_DIGEST_LEN_SHA256;
-	case KNOT_DS_ALG_GOST:
-		return KNOT_DS_DIGEST_LEN_GOST;
-	case KNOT_DS_ALG_SHA384:
-		return KNOT_DS_DIGEST_LEN_SHA384;
-	default:
-		return 0;
-	}
 }

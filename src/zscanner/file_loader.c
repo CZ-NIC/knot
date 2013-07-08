@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "zscanner/file_loader.h"
 
 #include <inttypes.h>			// PRIu64
@@ -53,8 +54,8 @@ static int load_settings(file_loader_t *fl)
 	size_t buf_len = strlen(fl->file_name) + 100;
 	settings_name = malloc(buf_len);
 	ret = snprintf(settings_name, buf_len, "ZONE DEFAULTS <%s>",
-	               fl->file_name);
-	if (ret < 0 || ret >= buf_len) {
+		       fl->file_name);
+	if (ret < 0 || (size_t)ret >= buf_len) {
 		free(settings_name);
 		return -1;
 	}
@@ -136,13 +137,12 @@ file_loader_t* file_loader_create(const char	 *file_name,
 		       "$ORIGIN %s\n"
 		       "$TTL %u\n",
 		       zone_origin, default_ttl);
-
-	if (ret > 0) {
-		fl->settings_length = ret;
-	} else {
+	if (ret <= 0 || (size_t)ret >= sizeof(fl->settings_buffer)) {
 		file_loader_free(fl);
 		return NULL;
 	}
+
+	fl->settings_length = ret;
 
 	return fl;
 }
@@ -235,7 +235,7 @@ int file_loader_process(file_loader_t *fl)
 		// Artificial last block containing newline char only.
 		if (is_last_block == true && fl->scanner->stop == 0) {
 			ret = scanner_process(zone_termination,
-		  			      zone_termination + 1,
+					      zone_termination + 1,
 					      true,
 					      fl->scanner);
 		}
@@ -253,4 +253,3 @@ int file_loader_process(file_loader_t *fl)
 
 	return KNOT_EOK;
 }
-

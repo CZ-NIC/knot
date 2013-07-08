@@ -14,16 +14,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* Required for RTLD_DEFAULT. */
-#endif
-
+#include <config.h>
 #include <dlfcn.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#include <config.h>
 #include "common/fdset.h"
 
 /* Workarounds for clock_gettime() not available on some platforms. */
@@ -39,6 +35,7 @@ typedef struct timeval timev_t;
 #endif
 
 struct fdset_backend_t _fdset_backend = {
+	NULL
 };
 
 /*! \brief Set backend implementation. */
@@ -146,13 +143,13 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
 	if (base == NULL || base->atimes == NULL) {
 		return -1;
 	}
-	
+
 	/* Lift watchdog if interval is negative. */
 	if (interval < 0) {
 		skip_remove(base->atimes, (void*)((size_t)fd), NULL, free);
 		return 0;
 	}
-	
+
 	/* Find if exists. */
 	timev_t *ts = NULL;
 	ts = (timev_t*)skip_find(base->atimes, (void*)((size_t)fd));
@@ -163,12 +160,12 @@ int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
 		}
 		skip_insert(base->atimes, (void*)((size_t)fd), (void*)ts, NULL);
 	}
-	
+
 	/* Update clock. */
 	if (time_now(ts) < 0) {
 		return -1;
 	}
-	
+
 	ts->tv_sec += interval; /* Only seconds precision. */
 	return 0;
 }
@@ -179,19 +176,19 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
 	if (base == NULL || base->atimes == NULL) {
 		return -1;
 	}
-	
+
 	/* Get time threshold. */
 	timev_t now;
 	if (time_now(&now) < 0) {
 		return -1;
 	}
-	
+
 	/* Inspect all nodes. */
 	int sweeped = 0;
 	const skip_node_t *n = skip_first(base->atimes);
 	while (n != NULL) {
 		const skip_node_t* pnext = skip_next(n);
-		
+
 		/* Evaluate */
 		timev_t *ts = (timev_t*)n->value;
 		if (ts->tv_sec <= now.tv_sec) {
@@ -200,7 +197,7 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
 		}
 		n = pnext;
 	}
-	
+
 	return sweeped;
 }
 
@@ -210,7 +207,7 @@ int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
  * Like select(2) but set the signals to block while waiting in
  * select.  This version is not entirely race condition safe.  Only
  * operating system support can make it so.
- * 
+ *
  * Copyright (c) 2001-2011, NLnet Labs. All rights reserved.
  *
  * This software is open source.
@@ -269,7 +266,7 @@ pselect_compat (int n,
 	} else {
 		result = select(n, readfds, writefds, exceptfds, NULL);
 	}
-	
+
 	if (sigmask && sigprocmask(SIG_SETMASK, &saved_sigmask, NULL) == -1)
 		return -1;
 

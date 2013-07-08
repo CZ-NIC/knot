@@ -32,8 +32,6 @@
 
 int dig_exec(const dig_params_t *params);
 
-void process_query(const query_t *query);
-
 #endif // _DIG__DIG_EXEC_H_
 
 /*! @} */

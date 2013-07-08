@@ -5,16 +5,16 @@ The reader of this document is assumed to know the principles of
 Domain Name System.
 
 @menu
-* What is Knot DNS::            
+* What is Knot DNS::
 * Knot DNS features::
-* Scope of this document::           
+* Scope of this document::
 @end menu
 
 @node What is Knot DNS
 @section What is Knot DNS
 
-Knot DNS is a high-performance open source DNS server. It 
-implements only authoritative domain name service. Knot DNS 
+Knot DNS is a high-performance open source DNS server. It
+implements only authoritative domain name service. Knot DNS
 is best suited for use on TLD domains but can reliably serve
 any other zones as well.
 
@@ -47,15 +47,17 @@ Server features:
 @item Semantic checks of zones
 @end itemize
 
-For more info and downloads see 
+For more info and downloads see
 @url{http://www.knot-dns.cz, www.knot-dns.cz}.
 
-Git repository: 
+Git repository:
 @url{git://git.nic.cz/knot-dns.git, git://git.nic.cz/knot-dns.git}
 
-Knot DNS issue tracker: 
-@url{https://git.nic.cz/redmine/projects/knot-dns,
-git.nic.cz/redmine/projects/knot-dns}
+Git repository browser:
+@url{https://gitlab.labs.nic.cz/knot/tree/master, gitlab.labs.nic.cz/knot/tree/master}
+
+Knot DNS issue tracker:
+@url{https://gitlab.labs.nic.cz/knot/issues, gitlab.labs.nic.cz/knot/issues}
 
 Knot DNS users mailing list:
 @url{mailto:knot-dns-users@@lists.nic.cz, knot-dns-users@@lists.nic.cz}
@@ -65,4 +67,3 @@ Knot DNS users mailing list:
 
 This document covers the basic information on installing,
 configuring and troubleshooting the Knot DNS server.
-

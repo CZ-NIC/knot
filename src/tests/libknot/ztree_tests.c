@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "tests/libknot/ztree_tests.h"
 #include "libknot/zone/zone-tree.h"
 
@@ -27,12 +28,12 @@ static void ztree_init_data()
 	NAME[1] = knot_dname_new_from_str("master.ac.", 10, NULL);
 	NAME[2] = knot_dname_new_from_str("ac.", 3, NULL);
 	NAME[3] = knot_dname_new_from_str("ns.", 3, NULL);
-	
+
 	knot_dname_t *order[NCOUNT] = {
 	        NAME[0], NAME[2], NAME[1], NAME[3]
 	};
 	memcpy(ORDER, order, NCOUNT * sizeof(knot_dname_t*));
-	
+
 	for (unsigned i = 0; i < NCOUNT; ++i) {
 		memset(NODE + i, 0, sizeof(knot_node_t));
 		NODE[i].owner = NAME[i];
@@ -89,7 +90,7 @@ static int ztree_tests_run(int argc, char *argv[])
 	/* 1. create test */
 	knot_zone_tree_t* t = knot_zone_tree_create();
 	ok(t != NULL, "ztree: created");
-	
+
 	/* 2. insert test */
 	unsigned passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
@@ -99,7 +100,7 @@ static int ztree_tests_run(int argc, char *argv[])
 		}
 	}
 	ok(passed, "ztree: insertion");
-	
+
 	/* 3. check data test */
 	passed = 1;
 	const knot_node_t *node = NULL;
@@ -111,10 +112,10 @@ static int ztree_tests_run(int argc, char *argv[])
 		}
 	}
 	ok(passed, "ztree: lookup");
-	
+
 	/* heal index for ordered lookup */
 	hattrie_build_index(t);
-	
+
 	/* 4. ordered lookup */
 	passed = 1;
 	node = NULL;
@@ -123,12 +124,12 @@ static int ztree_tests_run(int argc, char *argv[])
 	knot_zone_tree_find_less_or_equal(t, tmp_dn, &node, &prev);
 	knot_dname_free(&tmp_dn);
 	ok(prev == NODE + 1, "ztree: ordered lookup");
-	
+
 	/* 5. ordered traversal */
 	struct ztree_iter it = { KNOT_EOK, 0 };
 	knot_zone_tree_apply_inorder(t, ztree_iter_data, &it);
 	ok (it.ret == KNOT_EOK, "ztree: ordered traversal");
-	
+
 	knot_zone_tree_free(&t);
 	ztree_free_data();
 	return 0;

@@ -13,6 +13,17 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file extra.h
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \brief API for managing custom data in the configuration parser.
+ *
+ * \addtogroup config
+ * @{
+ */
+
 #ifndef _KNOT_CONF_EXTRA_H_
 #define _KNOT_CONF_EXTRA_H_
 
@@ -24,14 +35,14 @@
  * \brief Custom data held within the parser context.
  */
 typedef struct {
-	bool error;		   //!< Indicates that error was set.
+	bool error;                //!< Indicates that error was set.
 	conf_includes_t *includes; //!< Used to handle filenames in includes.
 } conf_extra_t;
 
 /*!
  * \brief Init structure with custom data for config parser.
  *
- * \param file		      Name of the main configuration file.
+ * \param file                Name of the main configuration file.
  * \param includes_max_depth  Max depth of file inclusions.
  *
  * \return Initialized stucture or NULL.
@@ -46,3 +57,5 @@ conf_extra_t *conf_extra_init(const char *file, int includes_max_depth);
 void conf_extra_free(conf_extra_t *extra);
 
 #endif /* _KNOT_CONF_EXTRA_H_ */
+
+/*! @} */

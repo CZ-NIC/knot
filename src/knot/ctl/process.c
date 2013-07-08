@@ -25,8 +25,10 @@
 #include <unistd.h>
 #include <assert.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
 #include "common/mempattern.h"
@@ -36,9 +38,13 @@ char* pid_filename()
 	rcu_read_lock();
 
 	/* Read configuration. */
-	char* ret = 0;
-	if (conf() && conf()->pidfile != NULL) {
-		ret = strdup(conf()->pidfile);
+	char* ret = NULL;
+
+	if (conf()) {
+		if (conf()->pidfile != NULL)
+			ret = strdup(conf()->pidfile);
+		else if (conf()->rundir != NULL)
+			ret = strcdup(conf()->rundir, "/knot.pid");
 	}
 
 	rcu_read_unlock();
@@ -88,37 +94,33 @@ pid_t pid_read(const char* fn)
 
 int pid_write(const char* fn)
 {
-	if (!fn) {
+	if (!fn)
 		return KNOT_EINVAL;
-	}
 
-	// Convert
+	/* Convert. */
 	char buf[64];
-	int wbytes = 0;
-	wbytes = snprintf(buf, sizeof(buf), "%lu", (unsigned long) getpid());
-	if (wbytes < 0) {
+	int len = 0;
+	len = snprintf(buf, sizeof(buf), "%lu", (unsigned long) getpid());
+	if (len < 0)
 		return KNOT_EINVAL;
+
+	/* Create file. */
+	int ret = KNOT_EOK;
+	int fd = open(fn, O_RDWR|O_CREAT, 0644);
+	if (fd >= 0) {
+		if (write(fd, buf, len) != len)
+			ret = KNOT_ERROR;
+		close(fd);
+	} else {
+		ret = knot_map_errno(errno);
 	}
 
-	// Write
-	FILE *fp = fopen(fn, "w");
-	if (fp) {
-		int rc = fwrite(buf, wbytes, 1, fp);
-		fclose(fp);
-		if (rc < 0) {
-			return KNOT_ERROR;
-		}
-
-		return 0;
-	}
-
-	return KNOT_ENOENT;
+	return ret;
 }
 
 int pid_remove(const char* fn)
 {
 	if (unlink(fn) < 0) {
-		perror("unlink");
 		return KNOT_EINVAL;
 	}
 
@@ -130,11 +132,11 @@ int pid_running(pid_t pid)
 	return kill(pid, 0) == 0;
 }
 
-void proc_update_privileges(int uid, int gid)
+int proc_update_privileges(int uid, int gid)
 {
 #ifdef HAVE_SETGROUPS
 	/* Drop supplementary groups. */
-	if (uid != getuid() || gid != getgid()) {
+	if ((uid_t)uid != getuid() || (gid_t)gid != getgid()) {
 		if (setgroups(0, NULL) < 0) {
 			log_server_warning("Failed to drop supplementary groups"
 			                   " for uid '%d' (%s).\n",
@@ -142,93 +144,64 @@ void proc_update_privileges(int uid, int gid)
 		}
 	}
 #endif
-	
+
 	/* Watch uid/gid. */
-	if (gid != getgid()) {
+	if ((gid_t)gid != getgid()) {
 		log_server_info("Changing group id to '%d'.\n", gid);
 		if (setregid(gid, gid) < 0) {
 			log_server_error("Failed to change gid to '%d'.\n",
 			                 gid);
 		}
 	}
-	if (uid != getuid()) {
+	if ((uid_t)uid != getuid()) {
 		log_server_info("Changing user id to '%d'.\n", uid);
 		if (setreuid(uid, uid) < 0) {
 			log_server_error("Failed to change uid to '%d'.\n",
 			                 uid);
 		}
 	}
-	
+
 	/* Check storage writeability. */
+	int ret = KNOT_EOK;
 	char *lfile = strcdup(conf()->storage, "/knot.lock");
 	assert(lfile != NULL);
 	FILE* fp = fopen(lfile, "w");
 	if (fp == NULL) {
 		log_server_warning("Storage directory '%s' is not writeable.\n",
 		                   conf()->storage);
+		ret = KNOT_EACCES;
 	} else {
 		fclose(fp);
 		unlink(lfile);
 	}
+
 	free(lfile);
-}
-
-pid_t pid_wait(pid_t proc, int *rc)
-{
-	/* Wait for finish. */
-	sigset_t newset;
-	sigfillset(&newset);
-	sigprocmask(SIG_BLOCK, &newset, 0);
-	proc = waitpid(proc, rc, 0);
-	sigprocmask(SIG_UNBLOCK, &newset, 0);
-	return proc;
-}
-
-
-pid_t pid_start(const char *argv[], int argc, int drop_privs)
-{
-	pid_t chproc = fork();
-	if (chproc == 0) {
-	
-		/* Alter privileges. */
-		if (drop_privs) {
-			proc_update_privileges(conf()->uid, conf()->gid);
-		}
-
-		/* Duplicate, it doesn't run from stack address anyway. */
-		char **args = malloc((argc + 1) * sizeof(char*));
-		memset(args, 0, (argc + 1) * sizeof(char*));
-		int ci = 0;
-		for (int i = 0; i < argc; ++i) {
-			if (strlen(argv[i]) > 0) {
-				args[ci++] = strdup(argv[i]);
-			}
-		}
-		args[ci] = 0;
-
-		/* Execute command. */
-		fflush(stdout);
-		fflush(stderr);
-		execvp(args[0], args);
-
-		/* Execute failed. */
-		log_server_error("Failed to run executable '%s'\n", args[0]);
-		for (int i = 0; i < argc; ++i) {
-			free(args[i]);
-		}
-		free(args);
-
-		exit(1);
-		return -1;
-	}
-	
-	return chproc;
-}
-
-int cmd_exec(const char *argv[], int argc)
-{
-	int ret = 0;
-	pid_t proc = pid_start(argv, argc, 0);
-	pid_wait(proc, &ret);
 	return ret;
+}
+
+char *pid_check_and_create()
+{
+	struct stat st;
+	char* pidfile = pid_filename();
+	pid_t pid = pid_read(pidfile);
+
+	/* Check PID for existence and liveness. */
+	if (pid > 0 && pid_running(pid)) {
+		log_server_error("Server PID found, already running.\n");
+		free(pidfile);
+		return NULL;
+	} else if (stat(pidfile, &st) == 0) {
+		log_server_warning("Removing stale PID file '%s'.\n", pidfile);
+		pid_remove(pidfile);
+	}
+
+	/* Create a PID file. */
+	int ret = pid_write(pidfile);
+	if (ret != KNOT_EOK) {
+		log_server_error("Couldn't create a PID file '%s'.\n", pidfile);
+		free(pidfile);
+		return NULL;
+	}
+
+	return pidfile;
 }

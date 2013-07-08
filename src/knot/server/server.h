@@ -36,7 +36,6 @@
 #ifndef _KNOTD_SERVER_H_
 #define _KNOTD_SERVER_H_
 
-#include "knot/common.h"
 #include "libknot/nameserver/name-server.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/socket.h"
@@ -64,7 +63,7 @@ typedef struct iohandler {
 	struct server_t    *server; /*!< Reference to server */
 	void               *data;   /*!< Persistent data for I/O handler. */
 	iostate_t          *state;
-	void (*interrupt)(struct iohandler *h); /*!< Interrupt handler. */
+	void (*dtor)(void *data); /*!< Data destructor. */
 } iohandler_t;
 
 /*! \brief Round-robin mechanism of switching.
@@ -128,7 +127,7 @@ typedef struct server_t {
 
 	/*! \brief List of interfaces. */
 	ifacelist_t* ifaces;
-	
+
 	/*! \brief Rate limiting. */
 	rrl_table_t *rrl;
 
@@ -203,7 +202,7 @@ int server_refresh(server_t *server);
  *
  * \param server Server instance.
  * \param cf Config file path.
- * \return 
+ * \return
  */
 int server_reload(server_t *server, const char *cf);
 

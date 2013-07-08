@@ -1,5 +1,5 @@
-/** 
- * @file dSFMT.c 
+/**
+ * @file dSFMT.c
  * @brief double precision SIMD-oriented Fast Mersenne Twister (dSFMT)
  * based on IEEE 754 format.
  *
@@ -11,6 +11,8 @@
  *
  * The new BSD License is applied to this software, see LICENSE.txt
  */
+
+#include <config.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -128,7 +130,7 @@ static void setup_const(void) {
  */
 inline static void do_recursion(w128_t *r, w128_t *a, w128_t *b, w128_t *u) {
     __m128i v, w, x, y, z;
-    
+
     x = a->si;
     z = _mm_slli_epi64(x, DSFMT_SL1);
     y = _mm_shuffle_epi32(u->si, SSE2_SHUFF);
@@ -237,7 +239,7 @@ inline static void convert_o0o1(w128_t *w) {
  * This function fills the user-specified array with double precision
  * floating point pseudorandom numbers of the IEEE 754 format.
  * @param dsfmt dsfmt state vector.
- * @param array an 128-bit array to be filled by pseudorandom numbers.  
+ * @param array an 128-bit array to be filled by pseudorandom numbers.
  * @param size number of 128-bit pseudorandom numbers to be generated.
  */
 inline static void gen_rand_array_c1o2(dsfmt_t *dsfmt, w128_t *array,
@@ -275,7 +277,7 @@ inline static void gen_rand_array_c1o2(dsfmt_t *dsfmt, w128_t *array,
  * This function fills the user-specified array with double precision
  * floating point pseudorandom numbers of the IEEE 754 format.
  * @param dsfmt dsfmt state vector.
- * @param array an 128-bit array to be filled by pseudorandom numbers.  
+ * @param array an 128-bit array to be filled by pseudorandom numbers.
  * @param size number of 128-bit pseudorandom numbers to be generated.
  */
 inline static void gen_rand_array_c0o1(dsfmt_t *dsfmt, w128_t *array,
@@ -318,7 +320,7 @@ inline static void gen_rand_array_c0o1(dsfmt_t *dsfmt, w128_t *array,
  * This function fills the user-specified array with double precision
  * floating point pseudorandom numbers of the IEEE 754 format.
  * @param dsfmt dsfmt state vector.
- * @param array an 128-bit array to be filled by pseudorandom numbers.  
+ * @param array an 128-bit array to be filled by pseudorandom numbers.
  * @param size number of 128-bit pseudorandom numbers to be generated.
  */
 inline static void gen_rand_array_o0o1(dsfmt_t *dsfmt, w128_t *array,
@@ -361,7 +363,7 @@ inline static void gen_rand_array_o0o1(dsfmt_t *dsfmt, w128_t *array,
  * This function fills the user-specified array with double precision
  * floating point pseudorandom numbers of the IEEE 754 format.
  * @param dsfmt dsfmt state vector.
- * @param array an 128-bit array to be filled by pseudorandom numbers.  
+ * @param array an 128-bit array to be filled by pseudorandom numbers.
  * @param size number of 128-bit pseudorandom numbers to be generated.
  */
 inline static void gen_rand_array_o0c1(dsfmt_t *dsfmt, w128_t *array,
@@ -634,7 +636,7 @@ void dsfmt_chk_init_gen_rand(dsfmt_t *dsfmt, uint32_t seed, int mexp) {
     psfmt = &dsfmt->status[0].u32[0];
     psfmt[idxof(0)] = seed;
     for (i = 1; i < (DSFMT_N + 1) * 4; i++) {
-        psfmt[idxof(i)] = 1812433253UL 
+        psfmt[idxof(i)] = 1812433253UL
 	    * (psfmt[idxof(i - 1)] ^ (psfmt[idxof(i - 1)] >> 30)) + i;
     }
     initial_mask(dsfmt);
@@ -685,7 +687,7 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
     } else {
 	count = size;
     }
-    r = ini_func1(psfmt32[idxof(0)] ^ psfmt32[idxof(mid % size)] 
+    r = ini_func1(psfmt32[idxof(0)] ^ psfmt32[idxof(mid % size)]
 		  ^ psfmt32[idxof((size - 1) % size)]);
     psfmt32[idxof(mid % size)] += r;
     r += key_length;
@@ -693,8 +695,8 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
     psfmt32[idxof(0)] = r;
     count--;
     for (i = 1, j = 0; (j < count) && (j < key_length); j++) {
-	r = ini_func1(psfmt32[idxof(i)] 
-		      ^ psfmt32[idxof((i + mid) % size)] 
+	r = ini_func1(psfmt32[idxof(i)]
+		      ^ psfmt32[idxof((i + mid) % size)]
 		      ^ psfmt32[idxof((i + size - 1) % size)]);
 	psfmt32[idxof((i + mid) % size)] += r;
 	r += init_key[j] + i;
@@ -703,8 +705,8 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
 	i = (i + 1) % size;
     }
     for (; j < count; j++) {
-	r = ini_func1(psfmt32[idxof(i)] 
-		      ^ psfmt32[idxof((i + mid) % size)] 
+	r = ini_func1(psfmt32[idxof(i)]
+		      ^ psfmt32[idxof((i + mid) % size)]
 		      ^ psfmt32[idxof((i + size - 1) % size)]);
 	psfmt32[idxof((i + mid) % size)] += r;
 	r += i;
@@ -713,8 +715,8 @@ void dsfmt_chk_init_by_array(dsfmt_t *dsfmt, uint32_t init_key[],
 	i = (i + 1) % size;
     }
     for (j = 0; j < size; j++) {
-	r = ini_func2(psfmt32[idxof(i)] 
-		      + psfmt32[idxof((i + mid) % size)] 
+	r = ini_func2(psfmt32[idxof(i)]
+		      + psfmt32[idxof((i + mid) % size)]
 		      + psfmt32[idxof((i + size - 1) % size)]);
 	psfmt32[idxof((i + mid) % size)] ^= r;
 	r -= i;

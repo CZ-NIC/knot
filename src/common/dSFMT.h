@@ -1,5 +1,5 @@
-/** 
- * @file dSFMT.h 
+/**
+ * @file dSFMT.h
  *
  * @brief double precision SIMD oriented Fast Mersenne Twister(dSFMT)
  * pseudorandom number generator based on IEEE 754 format.
@@ -18,7 +18,7 @@
  * and you have to define PRIu64 and PRIx64 in this file as follows:
  * @verbatim
  typedef unsigned int uint32_t
- typedef unsigned long long uint64_t  
+ typedef unsigned long long uint64_t
  #define PRIu64 "llu"
  #define PRIx64 "llx"
 @endverbatim
@@ -27,8 +27,6 @@
  * PRIu64 and PRIx64 are used for printf function to print 64-bit
  * unsigned int and 64-bit unsigned int in hexadecimal format.
  */
-
-#include <config.h>
 
 #ifndef DSFMT_H
 #define DSFMT_H
@@ -45,7 +43,7 @@
 /*-----------------
   BASIC DEFINITIONS
   -----------------*/
-/* Mersenne Exponent. The period of the sequence 
+/* Mersenne Exponent. The period of the sequence
  *  is a multiple of 2^DSFMT_MEXP-1.
  * #define DSFMT_MEXP 19937 */
 /** DSFMT generator has an internal state array of 128-bit integers,
@@ -119,7 +117,7 @@ typedef unsigned __int64 uint64_t;
 #endif
 
 #ifndef UINT64_C
-#  define UINT64_C(v) (v ## ULL) 
+#  define UINT64_C(v) (v ## ULL)
 #endif
 
 /*------------------------------------------
@@ -313,7 +311,7 @@ inline static double dsfmt_gv_genrand_close_open(void) {
  * This function generates and returns double precision pseudorandom
  * number which distributes uniformly in the range (0, 1].
  * dsfmt_init_gen_rand() or dsfmt_init_by_array() must be called
- * before this function. 
+ * before this function.
  * @param dsfmt dsfmt internal state date
  * @return double precision floating point pseudorandom number
  */

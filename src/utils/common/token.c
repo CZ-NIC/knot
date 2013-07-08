@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include "utils/common/token.h"
 
 #include <stdio.h>
@@ -95,10 +96,10 @@ int tok_find(const char *lp, const char **tbl)
 		} else {
 			ERR("unexpected literal: '%s'\n", lp);
 		}
-		ERR("syntax error\n");
+
 		return KNOT_EPARSEFAIL;
 	}
-	
+
 	return bp;
 }
 
@@ -120,7 +121,7 @@ int tok_process_lines(FILE *fp, lparse_f cb, void *arg)
 	}
 
 	int ret = KNOT_EOK;
-	
+
 	/* Parse lines. */
 	char *buf = NULL;
 	size_t buflen = 0;
@@ -133,4 +134,3 @@ int tok_process_lines(FILE *fp, lparse_f cb, void *arg)
 	free(buf);
 	return ret;
 }
-

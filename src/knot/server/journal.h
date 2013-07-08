@@ -44,8 +44,6 @@
 #include <stdint.h>
 #include <fcntl.h>
 
-#include "knot/zone/zone-load.h"
-
 /*!
  * \brief Journal entry flags.
  */
@@ -129,9 +127,11 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
  * Journal defaults and constants.
  */
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
-/* HEADER = magic, crc, max_entries, qhead, qtail */
-#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3) 
 #define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '0', '5'}
+#define MAGIC_LENGTH 7
+/* HEADER = magic, crc, max_entries, qhead, qtail */
+#define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3)
+
 
 /*!
  * \brief Create new journal.
@@ -295,7 +295,7 @@ int journal_update(journal_t *journal, journal_node_t *n);
 
 /*!
  * \brief Begin transaction of multiple entries.
- * 
+ *
  * \note Only one transaction at a time is supported.
  *
  * \param journal Associated journal.
@@ -308,7 +308,7 @@ int journal_trans_begin(journal_t *journal);
 
 /*!
  * \brief Commit pending transaction.
- * 
+ *
  * \note Only one transaction at a time is supported.
  *
  * \param journal Associated journal.
@@ -321,7 +321,7 @@ int journal_trans_commit(journal_t *journal);
 
 /*!
  * \brief Rollback pending transaction.
- * 
+ *
  * \note Only one transaction at a time is supported.
  *
  * \param journal Associated journal.
@@ -346,7 +346,7 @@ int journal_close(journal_t *journal);
  * \brief Retain journal for use.
  *
  * Allows to track usage of lazily-opened journals.
- * 
+ *
  * \param journal Journal.
  *
  * \return Retained journal.

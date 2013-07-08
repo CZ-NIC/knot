@@ -1,0 +1,24 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+t01	IN	10	NS	@	; All items are mentioned
+	IN	10	NS	@	; Same as above without OWNER
+t02	20	IN	NS	@	; Switched CLASS and TTL
+	20	IN	NS	@	; Same as above without OWNER
+t03		30	NS	@	; Missing CLASS
+		30	NS	@	; Same as above without OWNER
+t04	IN		NS	@	; Missing TTL
+	IN		NS	@	; Same as above without OWNER
+t05			NS	@	; Missing CLASS and TTL
+			NS	@	; Same as above without OWNER
+
+@	( )		NS	(	; Multiline 1/5
+	)	()	(		; Multiline 2/5
+
+				@	; Multiline 4/5
+		)	(
+)					; Multiline 6/6
+
+; KO
+@			NS ((@))	; Nested parentheses - ERROR = STOP PROCESSING!

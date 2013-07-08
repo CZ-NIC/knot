@@ -70,7 +70,7 @@ def chop_and_write_rr_response(rr):
 			fp.write(pack('H', len(rr.rdata)))
 			fp.write(rr.rdata)
 
-	
+
 	if rr.type == 50:
 		f = open('nsec3debug', 'wb')
 		rdata.to_wire(f)
@@ -101,12 +101,12 @@ def chop_and_write_packet(packet):
 #	fp.write(pack('H', packet.qr))
 #	fp.write(pack('H', packet.opcode))
 #	fp.write(pack('H', packet.aa)) #TODO these are not uint16_t
-#	fp.write(pack('H', packet.rcode)) 
+#	fp.write(pack('H', packet.rcode))
 	fp.write(pack('H', packet.qdcount))
 	fp.write(pack('H', packet.ancount))
 	fp.write(pack('H', packet.nscount))
 	fp.write(pack('H', packet.arcount))
-	
+
 #write query flag
 	fp.write(pack('H', packet.qr))
 

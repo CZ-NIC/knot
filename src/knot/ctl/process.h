@@ -89,41 +89,18 @@ int pid_running(pid_t pid);
  * \param uid New user ID.
  * \param gid New group ID.
  *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EACCESS if storage is not writeable.
  */
-void proc_update_privileges(int uid, int gid);
+int proc_update_privileges(int uid, int gid);
+
 
 /*!
- * \brief Wait for process to finish.
- *
- * \param proc Process ID.
- * \param rc Destination for return code.
- *
- * \return PID of finished process.
+ * \brief Check if PID file exists and create it if possible.
+ * \retval NULL if failed
+ * \retval Created PID file path
  */
-pid_t pid_wait(pid_t proc, int *rc);
-
-/*!
- * \brief Start command with given parameters.
- *
- * Set drop_privs = 1 to change privileges according to conf().
- *
- * \param argv Parameter list.
- * \param argc Parameter count.
- * \param drop_privs Set to 1 to alter privileges.
- *
- * \return PID of started process.
- */
-pid_t pid_start(const char *argv[], int argc, int drop_privs);
-
-/*!
- * \brief Execute command and wait for finish.
- *
- * \param argv Parameter list.
- * \param argc Parameter count.
- *
- * \return Return code.
- */
-int cmd_exec(const char *argv[], int argc);
+char *pid_check_and_create();
 
 #endif // _KNOTD_PROCESS_H_
 

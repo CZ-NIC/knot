@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <inttypes.h>			// PRIu64
 #include <stdio.h>			// printf
 #include <stdlib.h>			// atoi
@@ -26,12 +27,12 @@
 
 #define DEFAULT_MODE	1
 
-/*! \brief Prints help. */
-void help(int argc, char **argv)
+void help(void)
 {
 	printf("\nZone scanner testing tool.\n"
-	       "Usage: %s [parameters] origin zonefile\n", argv[0]);
-	printf("Parameters:\n"
+	       "Usage: zscanner-tool [parameters] origin zonefile\n"
+	       "\n"
+	       "Parameters:\n"
 	       " -m [0,1,2]   Processing mode.\n"
 	       "     0        Empty output.\n"
 	       "     1        Debug output (DEFAULT).\n"
@@ -68,7 +69,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'h': // Fall through.
 		default:
-			help(argc, argv);
+			help();
 			return EXIT_FAILURE;
 		}
 	}
@@ -78,7 +79,7 @@ int main(int argc, char *argv[])
 	} else {
 		// Check if there are 2 remaining non-options.
 		if (argc - optind != 2) {
-			help(argc, argv);
+			help();
 			return EXIT_FAILURE;
 		}
 
@@ -92,8 +93,8 @@ int main(int argc, char *argv[])
 						zone_file,
 						DEFAULT_CLASS,
 						DEFAULT_TTL,
-						&empty_process_record,
-						&empty_process_error,
+						&empty_process,
+						&empty_process,
 						NULL);
 			break;
 		case 1:
@@ -116,7 +117,7 @@ int main(int argc, char *argv[])
 			break;
 		default:
 			printf("Bad mode number!\n");
-			help(argc, argv);
+			help();
 			return EXIT_FAILURE;
 		}
 
@@ -157,4 +158,3 @@ int main(int argc, char *argv[])
 
 	return EXIT_SUCCESS;
 }
-

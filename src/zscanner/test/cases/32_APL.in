@@ -1,0 +1,30 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	APL				; The simplest variant - blank list
+@	APL	1:0.0.0.0/0		; Minimal ipv4 prefix length
+@	APL	1:255.255.255.255/32	; Maximal ipv4 prefix length
+@	APL	1:255.255.255.255/30	; Prefix length isn't multiple of 8
+@	APL	2:0::0/0		; Minimal ipv6 prefix length
+@	APL	2:0::0/128		; Maximal ipv6 prefix length
+@	APL	2:FFFF:FFFF:FFFF::/2	; Trailing zeroes test
+@	APL	!1:0.0.0.0/0		; Negation flag
+@	APL	1:0.0.0.0/0 1:255.255.255.255/32	; More APLs
+@	TYPE42	\# 4 00010000		; TYPE + Hexadecimal rdata
+@	TYPE42	1:0.0.0.0/0		; TYPE
+@	APL	\# 0			; Zero length rdata
+@	apl	1:0.0.0.0/0		; Type in lower-case
+
+; KO
+@	APL	0:0.0.0.0/32		; Bad address family
+@	APL	x:0.0.0.0/32		; Bad address family
+@	APL	!x:0.0.0.0/32		; Bad address family
+@	APL	1:0.0.0.0/33		; Prefix length is too long
+@	APL	2:0::0/129		; Prefix length is too long
+@	APL	2::/0			; Bad ipv6 address
+@	APL	2:0::0/x		; Bad prefix length
+@	APL	1:0.0.0.0/		; Missing prefix length
+@	APL	\#			; Missing hex length
+@	APL	\# 4 0001000000		; Too long rdata
+@	APL	\# 5 00000000		; Bad rdata length

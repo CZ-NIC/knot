@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include "utils/common/netio.h"
 
 #include <stdlib.h>			// free
@@ -24,6 +25,9 @@
 #include <netinet/in.h>			// ntohl (BSD)
 #include <arpa/inet.h>			// inet_ntop
 #include <unistd.h>			// close
+#ifdef HAVE_SYS_UIO_H			// struct iovec (OpenBSD)
+#include <sys/uio.h>
+#endif // HAVE_SYS_UIO_H
 
 #include "utils/common/msg.h"		// WARN
 #include "common/descriptor.h"		// KNOT_CLASS_IN
@@ -48,6 +52,11 @@ server_t* server_create(const char *name, const char *service)
 	server->name = strdup(name);
 	server->service = strdup(service);
 
+	if (server->name == NULL || server->service == NULL) {
+		server_free(server);
+		return NULL;
+	}
+
 	// Return result.
 	return server;
 }
@@ -62,12 +71,6 @@ void server_free(server_t *server)
 	free(server->name);
 	free(server->service);
 	free(server);
-}
-
-static void net_clean(net_t *net)
-{
-	free(net->proto);
-	free(net->addr);
 }
 
 int get_iptype(const ip_t ip)
@@ -88,9 +91,6 @@ int get_socktype(const protocol_t proto, const uint16_t type)
 	case PROTO_TCP:
 		return SOCK_STREAM;
 	case PROTO_UDP:
-		if (type == KNOT_RRTYPE_AXFR || type == KNOT_RRTYPE_IXFR) {
-			WARN("using UDP for zone transfer\n");
-		}
 		return SOCK_DGRAM;
 	default:
 		if (type == KNOT_RRTYPE_AXFR || type == KNOT_RRTYPE_IXFR) {
@@ -101,77 +101,140 @@ int get_socktype(const protocol_t proto, const uint16_t type)
 	}
 }
 
-static void net_info(net_t *net)
+const char* get_sockname(const int socktype)
 {
-	struct sockaddr_storage ss;
-	socklen_t               ss_len = sizeof(ss);
-	char                    addr[INET6_ADDRSTRLEN] = "NULL";
-	int                     port = -1;
+	const char *proto;
 
-	// Set connected socket type.
-	switch (net->socktype) {
+	switch (socktype) {
 	case SOCK_STREAM:
-		net->proto = strdup("TCP");
+		proto = "TCP";
 		break;
 	case SOCK_DGRAM:
-		net->proto = strdup("UDP");
+		proto = "UDP";
+		break;
+	default:
+		proto = "UNKNOWN";
 		break;
 	}
 
-	// Get connected address.
-	if (getpeername(net->sockfd, (struct sockaddr*)&ss, &ss_len) == 0) {
-		if (ss.ss_family == AF_INET) {
-			struct sockaddr_in *s = (struct sockaddr_in *)&ss;
-			port = ntohs(s->sin_port);
-			inet_ntop(AF_INET, &s->sin_addr, addr, sizeof(addr));
-		} else { // AF_INET6
-			struct sockaddr_in6 *s = (struct sockaddr_in6 *)&ss;
-			port = ntohs(s->sin6_port);
-			inet_ntop(AF_INET6, &s->sin6_addr, addr, sizeof(addr));
-		}
-	}
-
-	net->addr = strdup(addr);
-	net->port = port;
+	return proto;
 }
 
-int net_connect(const server_t *local,
-                const server_t *remote,
-                const int      iptype,
-                const int      socktype,
-                const int      wait,
-                net_t          *net)
+static int get_addr(const server_t  *server,
+                    const int       iptype,
+                    const int       socktype,
+                    struct addrinfo **info)
 {
-	struct addrinfo hints, *res;
-	struct pollfd   pfd;
-	int             sockfd, cs, err = 0;
-	socklen_t       err_len = sizeof(err);
+	struct addrinfo hints;
 
+	// Set connection hints.
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = iptype;
+	hints.ai_socktype = socktype;
+
+	// Get connection parameters.
+	if (getaddrinfo(server->name, server->service, &hints, info) != 0) {
+		ERR("can't resolve address %s#%s\n",
+		    server->name, server->service);
+		return -1;
+	}
+
+	return 0;
+}
+
+static void get_addr_str(const struct sockaddr_storage *ss,
+                         const int                     socktype,
+                         char                          **dst)
+{
+	char     addr[INET6_ADDRSTRLEN] = "NULL";
+	char     buf[128] = "NULL";
+	uint16_t port;
+
+	// Get network address string and port number.
+	if (ss->ss_family == AF_INET) {
+		struct sockaddr_in *s = (struct sockaddr_in *)ss;
+		inet_ntop(ss->ss_family, &s->sin_addr, addr, sizeof(addr));
+		port = ntohs(s->sin_port);
+	} else {
+		struct sockaddr_in6 *s = (struct sockaddr_in6 *)ss;
+		inet_ntop(ss->ss_family, &s->sin6_addr, addr, sizeof(addr));
+		port = ntohs(s->sin6_port);
+	}
+
+	// Free previous string if any.
+	free(*dst);
+	*dst = NULL;
+
+	// Write formated information string.
+	int ret = snprintf(buf, sizeof(buf), "%s#%u(%s)", addr, port,
+	                   get_sockname(socktype));
+	if (ret > 0) {
+		*dst = strdup(buf);
+	} else {
+		*dst = strdup("NULL");
+	}
+}
+
+int net_init(const server_t *local,
+             const server_t *remote,
+             const int      iptype,
+             const int      socktype,
+             const int      wait,
+             net_t          *net)
+{
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
-	memset(&hints, 0, sizeof(hints));
+	// Clean network structure.
+	memset(net, 0, sizeof(*net));
 
-	// Fill in relevant hints.
-	hints.ai_family = iptype;
-	hints.ai_socktype = socktype;
-
-	// Get connection parameters.
-	if (getaddrinfo(remote->name, remote->service, &hints, &res) != 0) {
-		WARN("can't use server %s service %s\n",
-		     remote->name, remote->service);
-		return KNOT_ERROR;
+	// Get remote address list.
+	if (get_addr(remote, iptype, socktype, &net->remote_info) != 0) {
+		return KNOT_NET_EADDR;
 	}
 
+	// Set current remote address.
+	net->srv = net->remote_info;
+
+	// Get local address if specified.
+	if (local != NULL) {
+		if (get_addr(local, iptype, socktype, &net->local_info) != 0) {
+			return KNOT_NET_EADDR;
+		}
+	}
+
+	// Store network parameters.
+	net->iptype = iptype;
+	net->socktype = socktype;
+	net->wait = wait;
+	net->local = local;
+	net->remote = remote;
+
+	return KNOT_EOK;
+}
+
+int net_connect(net_t *net)
+{
+	struct pollfd pfd;
+	int           sockfd, cs, err = 0;
+	socklen_t     err_len = sizeof(err);
+
+	if (net == NULL || net->srv == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	// Set remote information string.
+	get_addr_str((struct sockaddr_storage *)net->srv->ai_addr,
+	             net->socktype, &net->remote_str);
+
 	// Create socket.
-	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	sockfd = socket(net->srv->ai_family, net->socktype, 0);
 	if (sockfd == -1) {
-		WARN("can't create socket for %s#%s\n",
-		     remote->name, remote->service);
-		freeaddrinfo(res);
-		return KNOT_ERROR;
+		WARN("can't create socket for %s\n", net->remote_str);
+		return KNOT_NET_ESOCKET;
 	}
 
 	// Initialize poll descriptor structure.
@@ -181,70 +244,50 @@ int net_connect(const server_t *local,
 
 	// Set non-blocking socket.
 	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
-		WARN("can't create non-blocking socket\n");
+		WARN("can't set non-blocking socket for %s\n", net->remote_str);
+		return KNOT_NET_ESOCKET;
 	}
 
-	// Bind to address if specified.
-	if (local != NULL) {
-		struct addrinfo lhints, *lres;
+	// Bind address to socket if specified.
+	if (net->local_info != NULL) {
+		// Set local information string.
+		get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
+		             net->socktype, &net->local_str);
 
-		memset(&lhints, 0, sizeof(lhints));
-
-		// Fill in relevant hints.
-		lhints.ai_family = iptype;
-		lhints.ai_socktype = socktype;
-
-		// Get connection parameters.
-		if (getaddrinfo(local->name, local->service, &lhints, &lres)
-		    != 0) {
-			WARN("can't use local %s service %s\n",
-			     local->name, local->service);
-		}
-
-		// Bind to the address.
-		if (bind(sockfd, lres->ai_addr, lres->ai_addrlen) == -1) {
-			WARN("can't bind to %s#%s\n",
-			     local->name, local->service);
+		if (bind(sockfd, net->local_info->ai_addr,
+		         net->local_info->ai_addrlen) == -1) {
+			WARN("can't assign address %s\n", net->local_str);
+			return KNOT_NET_ESOCKET;
 		}
 	}
 
-	// Connect using socket.
-	if (connect(sockfd, res->ai_addr, res->ai_addrlen) == -1 &&
-	    errno != EINPROGRESS) {
-		WARN("can't connect to %s#%s\n",
-		     remote->name, remote->service);
-		close(sockfd);
-		freeaddrinfo(res);
-		return KNOT_ERROR;
+	if (net->socktype == SOCK_STREAM) {
+		// Connect using socket.
+		if (connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen)
+		    == -1 && errno != EINPROGRESS) {
+			WARN("can't connect to %s\n", net->remote_str);
+			close(sockfd);
+			return KNOT_NET_ECONNECT;
+		}
+
+		// Check for connection timeout.
+		if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+			WARN("connection timeout for %s\n", net->remote_str);
+			close(sockfd);
+			return KNOT_NET_ECONNECT;
+		}
+
+		// Check if NB socket is writeable.
+		cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
+		if (cs < 0 || err != 0) {
+			WARN("can't connect to %s\n", net->remote_str);
+			close(sockfd);
+			return KNOT_NET_ECONNECT;
+		}
 	}
 
-	// Free getaddrr data.
-	freeaddrinfo(res);
-
-	// Check for connection timeout.
-	if (poll(&pfd, 1, 1000 * wait) != 1) {
-		WARN("can't wait for connection to %s#%s\n",
-		     remote->name, remote->service);
-		close(sockfd);
-		return KNOT_ERROR;
-	}
-	
-	// Check if NB socket is writeable.
-	cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
-	if (cs < 0 || err != 0) {
-		WARN("can't connect to %s#%s\n",
-		     remote->name, remote->service);
-		close(sockfd);
-		return KNOT_ERROR;
-	}
-
-	// Fill in output.
+	// Store socket descriptor.
 	net->sockfd = sockfd;
-	net->socktype = socktype;
-	net->wait = wait;
-
-	// Fill in additional information.
-	net_info(net);
 
 	return KNOT_EOK;
 }
@@ -256,23 +299,32 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		return KNOT_EINVAL;
 	}
 
-	// For TCP add leading length bytes.
 	if (net->socktype == SOCK_STREAM) {
+		struct iovec iov[2];
+
+		// Leading packet length bytes.
 		uint16_t pktsize = htons(buf_len);
 
-		if (send(net->sockfd, &pktsize, sizeof(pktsize), 0) !=
-		    sizeof(pktsize)) {
-			WARN("can't send leading TCP bytes to %s#%i\n",
-			net->addr, net->port);
-			return KNOT_ERROR;
-		}
-	}
+		iov[0].iov_base = &pktsize;
+		iov[0].iov_len = sizeof(pktsize);
+		iov[1].iov_base = (uint8_t *)buf;
+		iov[1].iov_len = buf_len;
 
-	// Send data.
-	if (send(net->sockfd, buf, buf_len, 0) != buf_len) {
-		WARN("can't send query to %s#%i over %s\n",
-		     net->addr, net->port, net->proto);
-		return KNOT_ERROR;
+		// Compute packet total length.
+		ssize_t total = iov[0].iov_len + iov[1].iov_len;
+
+		// Send data.
+		if (writev(net->sockfd, iov, 2) != total) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
+	} else {
+		// Send data.
+		if (sendto(net->sockfd, buf, buf_len, 0, net->srv->ai_addr,
+		           net->srv->ai_addrlen) != (ssize_t)buf_len) {
+			WARN("can't send query to %s\n", net->remote_str);
+			return KNOT_NET_ESEND;
+		}
 	}
 
 	return KNOT_EOK;
@@ -300,19 +352,18 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		// Receive TCP message header.
 		while (total < sizeof(msg_len)) {
 			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("can't wait for TCP answer from %s#%i\n",
-				     net->addr, net->port);
-				return KNOT_ERROR;
+				WARN("response timeout for %s\n",
+				     net->remote_str);
+				return KNOT_NET_ETIMEOUT;
 			}
 
 			// Receive piece of message.
 			ret = recv(net->sockfd, (uint8_t *)&msg_len + total,
 			           sizeof(msg_len) - total, 0);
-
 			if (ret <= 0) {
-				WARN("can't receive TCP answer from %s#%i\n",
-				     net->addr, net->port);
-				return KNOT_ERROR;
+				WARN("can't receive reply from %s\n",
+				     net->remote_str);
+				return KNOT_NET_ERECV;
 			}
 
 			total += ret;
@@ -326,18 +377,17 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		// Receive whole answer message by parts.
 		while (total < msg_len) {
 			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("can't wait for TCP answer from %s#%i\n",
-				     net->addr, net->port);
-				return KNOT_ERROR;
+				WARN("response timeout for %s\n",
+				     net->remote_str);
+				return KNOT_NET_ETIMEOUT;
 			}
 
 			// Receive piece of message.
 			ret = recv(net->sockfd, buf + total, msg_len - total, 0);
-
 			if (ret <= 0) {
-				WARN("can't receive TCP answer from %s#%i\n",
-				     net->addr, net->port);
-				return KNOT_ERROR;
+				WARN("can't receive reply from %s\n",
+				     net->remote_str);
+				return KNOT_NET_ERECV;
 			}
 
 			total += ret;
@@ -345,26 +395,43 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 		return total;
 	} else {
-		// Wait for datagram data.
-		if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-			WARN("can't wait for UDP answer from %s#%i\n",
-			     net->addr, net->port);
-			return KNOT_ERROR;
+		struct sockaddr_storage from;
+
+		// Receive replies unless correct reply or timeout.
+		while (true) {
+			socklen_t from_len = sizeof(from);
+
+			// Wait for datagram data.
+			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+				WARN("response timeout for %s\n",
+				     net->remote_str);
+				return KNOT_NET_ETIMEOUT;
+			}
+
+			// Receive whole UDP datagram.
+			ret = recvfrom(net->sockfd, buf, buf_len, 0,
+				       (struct sockaddr *)&from, &from_len);
+			if (ret <= 0) {
+				WARN("can't receive reply from %s\n",
+				     net->remote_str);
+				return KNOT_NET_ERECV;
+			}
+
+			// Compare reply address with the remote one.
+			if (from_len > sizeof(from) ||
+			    memcmp(&from, net->srv->ai_addr, from_len) != 0) {
+				char *src = NULL;
+				get_addr_str(&from, net->socktype, &src);
+				WARN("unexpected reply source %s\n", src);
+				free(src);
+				continue;
+			}
+
+			return ret;
 		}
-
-		// Receive whole UDP datagram.
-		ret = recv(net->sockfd, buf, buf_len, 0);
-
-		if (ret <= 0) {
-			WARN("can't receive UDP answer from %s#%i\n",
-			     net->addr, net->port);
-			return KNOT_ERROR;
-		}
-
-		return ret;
 	}
 
-	return KNOT_EOK;
+	return KNOT_NET_ERECV;
 }
 
 void net_close(net_t *net)
@@ -375,6 +442,24 @@ void net_close(net_t *net)
 	}
 
 	close(net->sockfd);
-	net_clean(net);
+	net->sockfd = -1;
 }
 
+void net_clean(net_t *net)
+{
+	if (net == NULL) {
+		DBG_NULL;
+		return;
+	}
+
+	free(net->local_str);
+	free(net->remote_str);
+
+	if (net->local_info != NULL) {
+		freeaddrinfo(net->local_info);
+	}
+
+	if (net->remote_info != NULL) {
+		freeaddrinfo(net->remote_info);
+	}
+}

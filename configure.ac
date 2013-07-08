@@ -1,23 +1,37 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.2.0], [knot-dns@labs.nic.cz])
-AM_INIT_AUTOMAKE([gnu -Wall -Werror])
+AC_INIT([knot], [1.3.0-rc3], [knot-dns@labs.nic.cz])
+AM_INIT_AUTOMAKE([gnits subdir-objects dist-bzip2 dist-xz -Wall -Werror])
+AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
+
+# Automatically update release date based on configure.ac date
+release_date=`doc/mdate-sh configure.ac`
+AC_SUBST([RELEASE_DATE], $release_date)
+
+# Check SSE, SSE2 and SSE3 support
 AX_EXT
+CFLAGS="$CFLAGS $SIMD_FLAGS"
+
+# Set compiler compatibility flags
+AC_PROG_CC_C99
+AM_PROG_CC_C_O
+AC_PROG_CPP_WERROR
 
 # Checks for programs.
-AC_PROG_CC
-m4_pattern_allow([AM_PROG_AR]) # for automake 1.12
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
 
 # Initialize libtool
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 LT_INIT
+
+# Use pkg-config
+PKG_PROG_PKG_CONFIG
 
 AC_CACHE_CHECK([for reentrant lex], [ac_cv_path_LEX],
   [AC_PATH_PROGS_FEATURE_CHECK([LEX], [$LEX flex gflex],
@@ -51,23 +65,16 @@ AS_IF([test "x$YACC_BISON" != "xbison"],
     [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
-# Full path to Knot source
-abs_srcdir=`(cd $srcdir && pwd)`
-AC_DEFINE_UNQUOTED([SOURCE_ABSOLUTE_DIR], ["$abs_srcdir"], [Knot source full path.])
-
 # Check for Ragel
-AC_PATH_PROG([RAGEL], [ragel], [echo !UNPROCESSED! ragel])
-
+AC_PATH_PROG([RAGEL], [ragel], [true])
+AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "true")
+  
 # Set FSM type for Ragel
 AC_SUBST([FSM_TYPE], [-T0])
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--enable-fastparser], [Set to generate fast goto driven state machine (Ragel option G2)]),
-    AC_SUBST([FSM_TYPE], [-G2]),
+    AS_HELP_STRING([--enable-fastparser], [Generate fast zone parser (requires Ragel!)]),
+    [touch src/zscanner/scanner.rl; AC_SUBST([FSM_TYPE], [-G2])],
     [])
-
-# Set compiler compatibility flags
-AC_PROG_CPP_WERROR
-AC_PROG_CC_C99
 
 # Debug modules
 AC_ARG_ENABLE([debug],
@@ -141,35 +148,144 @@ AC_ARG_ENABLE([recvmmsg],
 AC_ARG_ENABLE([lto],
     AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, enable if not broken for some extra speed [default=no]]),
     [case "${enableval}" in
-      yes) AX_CHECK_COMPILER_FLAGS("-flto", [CFLAGS="$CFLAGS -flto"], []) ;;
+      yes) AX_CHECK_COMPILE_FLAG("-flto", [CFLAGS="$CFLAGS -flto"], []) ;;
       no) ;;
       *)  AC_MSG_ERROR([bad value ${enableval} for --enable-lto]) ;;
     esac])
 
-AX_CHECK_COMPILER_FLAGS("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [])
+# Check for enable microseconds in log messages
+AC_ARG_ENABLE([microseconds-log],
+    AS_HELP_STRING([--enable-microseconds-log], [enable microseconds in log messages [default=no]]),
+    AC_DEFINE([ENABLE_MICROSECONDS_LOG], [1], [microseconds in log messages]))
+
+AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
 
 # Disable strict aliasing
 # FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
-AX_CHECK_COMPILER_FLAGS("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
+AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
+
+# Default directories
+run_dir="${localstatedir}/run/knot"
+AC_ARG_WITH([rundir],
+        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=`eval echo ${localstatedir}`/run/knot]]),
+        [run_dir=$withval])
+AC_SUBST(run_dir)
+
+storage_dir="${sharedstatedir}/knot"
+AC_ARG_WITH([storage],
+        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=$(sharedstatedir)/knot]]),
+        [storage_dir=$withval])
+AC_SUBST(storage_dir)
+
+config_dir="${sysconfdir}/knot"
+AC_ARG_WITH([configdir],
+        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=$(sysconfdir)/knot]]),
+        [config_dir=$withval])
+AC_SUBST(config_dir)
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
-# TODO: check if paths exist before appending
-CFLAGS="$CFLAGS -I/usr/local/include $SIMD_FLAGS"
-LDFLAGS="$LDFLAGS -L/usr/local/lib"
+
+dnl Check for userspace-rcu library
+AC_ARG_WITH(urcu,
+[  --with-urcu=DIR        where to find userspace-rcu library])
+
+AS_IF([test "$with_urcu" != "no"], [
+  PKG_CHECK_MODULES([liburcu], liburcu, [
+    CPPFLAGS="$CPPFLAGS $liburcu_CFLAGS"
+    LIBS="$LIBS $liburcu_LIBS"
+    with_urcu=yes
+  ],[
+    for try_urcu in "$with_urcu" "" "/usr/local"; do
+      save_LIBS="$LIBS"
+      save_CPPFLAGS="$CPPFLAGS"
+
+      AS_IF([test -d "$try_urcu"], [
+        liburcu_CFLAGS="-I$try_urcu/include"
+        liburcu_LIBS="-L$try_urcu/lib"
+      ],[
+        liburcu_CFLAGS=""
+        liburcu_LIBS=""
+      ])
+
+      CPPFLAGS="$CPPFLAGS $liburcu_CFLAGS"
+      LIBS="$LIBS $liburcu_LIBS"
+
+      AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [
+        with_urcu=yes
+	break
+      ],[
+        CPPFLAGS="$save_CPPFLAGS"
+        LIBS="$save_LIBS"
+        with_urcu=no
+	# do not cache result of AC_SEARCH_LIBS test
+	unset ac_cv_search_rcu_set_pointer_sym
+      ])
+    done
+
+    AS_IF([test "$with_urcu" = "no"],[
+      AC_MSG_ERROR([liburcu is required])
+    ])
+  ])
+])
+
+AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])], [])
+
+dnl Check for OpenSSL
+AC_ARG_WITH(openssl,
+[  --with-openssl=DIR        where to find openssl library])
+
+AS_IF([test "$with_openssl" != "no"],[
+  PKG_CHECK_MODULES([libcrypto], libcrypto, [
+    CPPFLAGS="$CPPFLAGS $libcrypto_CFLAGS"
+    LIBS="$LIBS $libcrypto_LIBS"
+    with_openssl=yes
+  ],[
+
+    for try_openssl in "$with_openssl" "" "/usr/local"; do
+      save_LIBS="$LIBS"
+      save_CPPFLAGS="$CPPFLAGS"
+
+      AS_IF([test -d "$try_openssl"], [
+        libcrypto_CFLAGS="-I$try_openssl/include"
+        libcrypto_LIBS="-L$try_openssl/lib"
+      ],[
+        libcrypto_CFLAGS=""
+        libcrypto_LIBS=""
+      ])
+
+      CPPFLAGS="$CPPFLAGS $libcrypto_CFLAGS"
+      LIBS="$LIBS $libcrypto_LIBS"
+
+      AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto], [
+        with_openssl=yes
+	break
+      ],[
+        with_openssl=no
+	# do not cache result of AC_SEARCH_LIBS test
+	unset ac_cv_search_OpenSSL_add_all_digests
+      ])
+
+      CPPFLAGS="$save_CPPFLAGS"
+      LIBS="$save_LIBS"
+    done
+
+    AS_IF([test "$with_openssl" = "no"],[
+      AC_MSG_ERROR([libcrypto (part of OpenSSL) is required])
+    ])
+  ])
+])
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
-AC_SEARCH_LIBS([rcu_set_pointer_sym], [urcu], [], [AC_MSG_ERROR([liburcu not found])])
-AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])], [])
 AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([clock_gettime], [rt])
-AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto],[], [AC_MSG_ERROR([libcrypto not found])])
 AC_SEARCH_LIBS([capng_apply], [cap-ng])
 AC_SEARCH_LIBS([adler32], [z])
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h cap-ng.h ev.h fcntl.h inttypes.h limits.h malloc.h math.h netdb.h netinet/in.h netinet/in_systm.h pthread_np.h signal.h stdbool.h stdint.h stdlib.h string.h strings.h syslog.h sys/select.h sys/socket.h sys/stat.h sys/time.h sys/wait.h unistd.h urcu.h])
+AC_CHECK_HEADERS_ONCE([cap-ng.h netinet/in_systm.h pthread_np.h signal.h sys/select.h sys/time.h sys/wait.h sys/uio.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -178,10 +294,10 @@ AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 
 # Set PRNG parameters
-AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters.])
+AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime epoll_wait fgetln getline kqueue madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select sendmmsg setgroups])
+AC_CHECK_FUNCS([clock_gettime gettimeofday epoll_wait fgetln getline kqueue madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select sendmmsg setgroups])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
@@ -191,9 +307,24 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset_create(); cpuset_destroy(set);]])],
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
+gl_VISIBILITY()
+CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
+
 AC_CONFIG_FILES([Makefile
 		 samples/Makefile
 		 src/Makefile
+		 src/tests/Makefile
 		 doc/Makefile
-		 man/Makefile])
+		 man/Makefile
+		 src/zscanner/test/run_tests.sh
+		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
+		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin
+		 src/zscanner/test/cases/06-0_INCLUDE.in:src/zscanner/test/cases/06-0_INCLUDE.inin
+		 man/khost.1
+		 man/knotc.8
+		 man/knotd.8
+		 man/kdig.1
+		 man/knsupdate.1
+		 man/knot.conf.5
+		 ])
 AC_OUTPUT

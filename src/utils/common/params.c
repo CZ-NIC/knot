@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include "utils/common/params.h"
 
 #include <stdio.h>
@@ -25,8 +26,7 @@
 #include "libknot/libknot.h"
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/mempattern.h"		// strcdup
-#include "common/descriptor.h"		// KNOT_RRTYPE_ 
-#include "libknot/sign/key.h"		// knot_key_params_t
+#include "common/descriptor.h"		// KNOT_RRTYPE_
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/resolv.h"	// parse_nameserver
 #include "utils/common/token.h"		// token
@@ -55,7 +55,7 @@ char* get_reverse_name(const char *name)
 		               (num >>  0) & 0xFF, (num >>  8) & 0xFF,
 		               (num >> 16) & 0xFF, (num >> 24) & 0xFF,
 		               IPV4_REVERSE_DOMAIN);
-		if (ret < 0 || ret >= sizeof(buf)) {
+		if (ret < 0 || (size_t)ret >= sizeof(buf)) {
 			return NULL;
 		}
 
@@ -71,7 +71,7 @@ char* get_reverse_name(const char *name)
 			right = (addr6.s6_addr)[i] & 0x0F;
 
 			ret = snprintf(pos, len, "%x.%x.", right, left);
-			if (ret < 0 || ret >= len) {
+			if (ret < 0 || (size_t)ret >= len) {
 				return NULL;
 			}
 
@@ -81,7 +81,7 @@ char* get_reverse_name(const char *name)
 
 		// Add IPv6 reverse domain.
 		ret = snprintf(pos, len, "%s", IPV6_REVERSE_DOMAIN);
-		if (ret < 0 || ret >= len) {
+		if (ret < 0 || (size_t)ret >= len) {
 			return NULL;
 		}
 
@@ -168,7 +168,7 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 			char *end;
 
 			// Convert string to serial.
-			unsigned long serial = strtoul(param_str, &end, 10);
+			unsigned long long serial = strtoull(param_str, &end, 10);
 
 			// Check for bad serial string.
 			if (end == param_str || *end != '\0' ||
@@ -217,7 +217,7 @@ int params_parse_wait(const char *value, int32_t *dst)
 	}
 
 	/* Convert string to number. */
-	long num = strtol(value, &end, 10);
+	long long num = strtoll(value, &end, 10);
 
 	/* Check for bad string (empty or incorrect). */
 	if (end == value || *end != '\0') {
@@ -225,11 +225,11 @@ int params_parse_wait(const char *value, int32_t *dst)
 		return KNOT_EINVAL;
 	} else if (num < 1) {
 		num = 1;
-		WARN("time %s is too short, using %ld instead\n", value, num);
+		WARN("time %s is too short, using %lld instead\n", value, num);
 	/* Reduce maximal value. Poll takes signed int in milliseconds. */
 	} else if (num > INT32_MAX) {
 		num = INT32_MAX / 1000;
-		WARN("time %s is too big, using %ld instead\n", value, num);
+		WARN("time %s is too big, using %lld instead\n", value, num);
 	}
 
 	*dst = num;
@@ -247,7 +247,7 @@ int params_parse_num(const char *value, uint32_t *dst)
 	}
 
 	// Convert string to number.
-	unsigned long num = strtoul(value, &end, 10);
+	unsigned long long num = strtoull(value, &end, 10);
 
 	// Check for bad string.
 	if (end == value || *end != '\0') {
@@ -257,7 +257,7 @@ int params_parse_num(const char *value, uint32_t *dst)
 
 	if (num > UINT32_MAX) {
 		num = UINT32_MAX;
-		WARN("number %s is too big, using %lu instead\n", value, num);
+		WARN("number %s is too big, using %llu instead\n", value, num);
 	}
 
 	*dst = num;
@@ -275,7 +275,7 @@ int params_parse_bufsize(const char *value, int32_t *dst)
 	}
 
 	// Convert string to number.
-	unsigned long num = strtoul(value, &end, 10);
+	unsigned long long num = strtoull(value, &end, 10);
 
 	// Check for bad string.
 	if (end == value || *end != '\0') {
@@ -285,7 +285,7 @@ int params_parse_bufsize(const char *value, int32_t *dst)
 
 	if (num > UINT16_MAX) {
 		num = UINT16_MAX;
-		WARN("size %s is too big, using %lu instead\n", value, num);
+		WARN("size %s is too big, using %llu instead\n", value, num);
 	}
 
 	*dst = num;
@@ -302,7 +302,8 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 
 	/* Invalidate previous key. */
 	if (key_params->name) {
-		knot_free_key_params(key_params);
+		ERR("Key specified multiple times.\n");
+		return KNOT_EINVAL;
 	}
 
 	char *h = strdup(value);
@@ -322,7 +323,7 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(tsig_alg_table, h);
+		alg = knot_lookup_by_name(knot_tsig_alg_names, h);
 		if (alg) {
 			DBG("%s: parsed algorithm '%s'\n", __func__, h);
 			key_params->algorithm = alg->id;
@@ -361,7 +362,8 @@ int params_parse_keyfile(const char *value, knot_key_params_t *key_params)
 	}
 
 	if (key_params->name) {
-		knot_free_key_params(key_params);
+		ERR("Key specified multiple times.\n");
+		return KNOT_EINVAL;
 	}
 
 	int result = knot_load_key_params(value, key_params);

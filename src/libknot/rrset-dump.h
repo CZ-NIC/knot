@@ -39,10 +39,14 @@ typedef struct {
 	bool	show_class;
 	/*!< Show ttl. */
 	bool	show_ttl;
-	/*!< Show additional information using comments. */
+	/*!< Print extra information. */
 	bool	verbose;
-	/*!< Reduce dumping all items in rrset. */
+	/*!< Don't print header for non-first rrset records. */
 	bool	reduce;
+	/*!< Format TTL as DHMS. */
+	bool	human_ttl;
+	/*!< Format timestamp as YYYYMMDDHHmmSS. */
+	bool	human_tmstamp;
 } knot_dump_style_t;
 
 /*! \brief Default dump style. */

@@ -36,25 +36,14 @@
 #include "knot/server/dthreads.h"
 
 /*!
- * \brief Handle single packet.
- *
- * Function processses packet and prepares answer to qbuf,
- * response length is set to resp_len.
- *
- * \param sock
- * \param qbuf
- * \param qbuflen
- * \param resp_len
- * \param addr
- * \param ns
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_ERROR
- * \retval KNOT_ENOMEM
+ * \brief Create UDP handler context.
  */
-int udp_handle(int sock, uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
-	       sockaddr_t* addr, knot_nameserver_t *ns,
-               rrl_table_t *rrl, unsigned *slip);
+void* udp_create_ctx(void);
+
+/*!
+ * \brief Destroy UDP handler context.
+ */
+void udp_free_ctx(void *ctx);
 
 /*!
  * \brief UDP handler thread runnable.

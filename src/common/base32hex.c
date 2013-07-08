@@ -14,7 +14,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "base32hex.h"
+#include "errcode.h"
 
 #include <stdlib.h>			// malloc
 #include <stdint.h>			// uint8_t
@@ -80,9 +82,9 @@ const uint8_t base32hex_dec[256] = {
 };
 
 int32_t base32hex_encode(const uint8_t  *in,
-			 const uint32_t in_len,
-			 uint8_t        *out,
-			 const uint32_t out_len)
+                         const uint32_t in_len,
+                         uint8_t        *out,
+                         const uint32_t out_len)
 {
 	uint8_t		rest_len = in_len % 5;
 	const uint8_t	*data = in;
@@ -91,9 +93,11 @@ int32_t base32hex_encode(const uint8_t  *in,
 	uint8_t		num;
 
 	// Checking inputs.
-	if (in == NULL || out == NULL || in_len > MAX_BIN_DATA_LEN ||
-	    out_len < ((in_len + 4) / 5) * 8) {
-		return -1;
+	if (in == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+	if (in_len > MAX_BIN_DATA_LEN || out_len < ((in_len + 4) / 5) * 8) {
+		return KNOT_ERANGE;
 	}
 
 	// Encoding loop takes 5 bytes and creates 8 characters.
@@ -138,7 +142,7 @@ int32_t base32hex_encode(const uint8_t  *in,
 	// Processing of padding, if any.
 	switch (rest_len) {
 	// Input data has 4-byte last block => 1-char padding.
-        case 4:
+	case 4:
 		// Computing 1. Base32hex character.
 		num = *data >> 3;
 		*text++ = base32hex_enc[num];
@@ -175,7 +179,7 @@ int32_t base32hex_encode(const uint8_t  *in,
 
 		break;
 	// Input data has 3-byte last block => 3-char padding.
-        case 3:
+	case 3:
 		// Computing 1. Base32hex character.
 		num = *data >> 3;
 		*text++ = base32hex_enc[num];
@@ -205,7 +209,7 @@ int32_t base32hex_encode(const uint8_t  *in,
 
 		break;
 	// Input data has 2-byte last block => 4-char padding.
-        case 2:
+	case 2:
 		// Computing 1. Base32hex character.
 		num = *data >> 3;
 		*text++ = base32hex_enc[num];
@@ -231,7 +235,7 @@ int32_t base32hex_encode(const uint8_t  *in,
 
 		break;
 	// Input data has 1-byte last block => 6-char padding.
-        case 1:
+	case 1:
 		// Computing 1. Base32hex character.
 		num = *data >> 3;
 		*text++ = base32hex_enc[num];
@@ -255,40 +259,36 @@ int32_t base32hex_encode(const uint8_t  *in,
 }
 
 int32_t base32hex_encode_alloc(const uint8_t  *in,
-			       const uint32_t in_len,
-			       uint8_t        **out)
+                               const uint32_t in_len,
+                               uint8_t        **out)
 {
-	int32_t  ret;
-	uint32_t out_len = ((in_len + 4) / 5) * 8;
-
-	// Check inputs.
+	// Check input (output is longer).
 	if (in_len > MAX_BIN_DATA_LEN) {
-		return -1;
+		return KNOT_ERANGE;
 	}
+
+	// Compute output buffer length.
+	uint32_t out_len = ((in_len + 4) / 5) * 8;
 
 	// Allocate output buffer.
 	*out = malloc(out_len);
-
 	if (*out == NULL) {
-		return -1;
+		return KNOT_ENOMEM;
 	}
 
 	// Encode data.
-	ret = base32hex_encode(in, in_len, *out, out_len);
-
-	// Check return.
+	int32_t ret = base32hex_encode(in, in_len, *out, out_len);
 	if (ret < 0) {
 		free(*out);
-		return -1;
-	} else {
-		return ret;
 	}
+
+	return ret;
 }
 
 int32_t base32hex_decode(const uint8_t  *in,
-			 const uint32_t in_len,
-			 uint8_t        *out,
-			 const uint32_t out_len)
+                         const uint32_t in_len,
+                         uint8_t        *out,
+                         const uint32_t out_len)
 {
 	const uint8_t	*data = in;
 	const uint8_t	*stop = in + in_len;
@@ -297,9 +297,14 @@ int32_t base32hex_decode(const uint8_t  *in,
 	uint8_t		c1, c2, c3, c4, c5, c6, c7, c8;
 
 	// Checking inputs.
-	if (in == NULL || out == NULL || (in_len % 8) != 0 ||
-	    in_len > INT32_MAX || out_len < ((in_len + 7) / 8) * 5) {
-		return -1;
+	if (in == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+	if (in_len > INT32_MAX || out_len < ((in_len + 7) / 8) * 5) {
+		return KNOT_ERANGE;
+	}
+	if ((in_len % 8) != 0) {
+		return KNOT_BASE32HEX_ESIZE;
 	}
 
 	// Decoding loop takes 8 characters and creates 5 bytes.
@@ -319,7 +324,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 			if (c8 == PD) {
 				pad_len = 1;
 			} else {
-				return -2;
+				return KNOT_BASE32HEX_ECHAR;
 			}
 		}
 
@@ -328,7 +333,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 			if (c7 == PD && c6 == PD) {
 				pad_len = 3;
 			} else {
-				return -2;
+				return KNOT_BASE32HEX_ECHAR;
 			}
 		}
 
@@ -337,7 +342,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 			if (c6 == PD) {
 				pad_len = 3;
 			} else {
-				return -2;
+				return KNOT_BASE32HEX_ECHAR;
 			}
 		}
 
@@ -346,7 +351,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 			if (c5 == PD) {
 				pad_len = 4;
 			} else {
-				return -2;
+				return KNOT_BASE32HEX_ECHAR;
 			}
 		}
 
@@ -355,7 +360,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 			if (c4 == PD && c3 == PD) {
 				pad_len = 6;
 			} else {
-				return -2;
+				return KNOT_BASE32HEX_ECHAR;
 			}
 		}
 
@@ -364,13 +369,13 @@ int32_t base32hex_decode(const uint8_t  *in,
 			if (c3 == PD) {
 				pad_len = 6;
 			} else {
-				return -2;
+				return KNOT_BASE32HEX_ECHAR;
 			}
 		}
 
 		// 1. and 2. chars must not be padding.
 		if (c2 >= PD || c1 >= PD) {
-			return -2;
+			return KNOT_BASE32HEX_ECHAR;
 		}
 
 		// Computing of output data based on padding length.
@@ -412,19 +417,23 @@ int32_t base32hex_decode(const uint8_t  *in,
 }
 
 int32_t base32hex_decode_alloc(const uint8_t  *in,
-			       const uint32_t in_len,
-			       uint8_t        **out)
+                               const uint32_t in_len,
+                               uint8_t        **out)
 {
+	// Compute output buffer length.
 	uint32_t out_len = ((in_len + 7) / 8) * 5;
 
-	// Allocating output buffer.
+	// Allocate output buffer.
 	*out = malloc(out_len);
-
 	if (*out == NULL) {
-		return -1;
+		return KNOT_ENOMEM;
 	}
 
-	// Decoding data.
-	return base32hex_decode(in, in_len, *out, out_len);
-}
+	// Decode data.
+	int32_t ret = base32hex_decode(in, in_len, *out, out_len);
+	if (ret < 0) {
+		free(*out);
+	}
 
+	return ret;
+}

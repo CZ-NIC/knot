@@ -30,42 +30,75 @@
 #ifndef _KNOTD_COMMON_PRINT_H_
 #define _KNOTD_COMMON_PRINT_H_
 
+#include <sys/time.h>
+#include <stdint.h>
+
 typedef int (*printf_t)(const char *fmt, ...);
 
 /*!
- * \brief Prints the given data as hexadecimal characters.
+ * \brief Prints the given data as hexadecimal character string. Each hexa-pair
+ *        contains leading 0x string.
  *
- * \param data Data to print.
- * \param length Size of the \a data array.
+ * \param data		Data to print.
+ * \param length	Size of the \a data array.
  */
-void hex_print(const char *data, int length);
+void hex_print(const uint8_t *data, unsigned length);
 
 /*!
- * \brief Prints the given data as hexadecimal characters using the given
- *        handler.
+ * \brief Prints the given data as hexadecimal character string.
  *
- * \param data Data to print.
- * \param length Size of the \a data array.
- * \param print_handler Handler for printing.
+ * \param data		Data to print.
+ * \param length	Size of the \a data array.
  */
-void hex_printf(const char *data, int length, printf_t print_handler);
+void short_hex_print(const uint8_t *data, unsigned length);
+
+/*!
+ * \brief Prints the given data as text character string. Unprintable characters
+ *        are replaced with a space.
+ *
+ * \param data		Data to print.
+ * \param length	Size of the \a data array.
+ */
+void txt_print(const uint8_t *data, unsigned length);
+
+/*!
+ * \brief Prints the given data array as a specified character string using
+ *        the given handler.
+ *
+ * \param data		Data to print.
+ * \param length	Size of the \a data array.
+ * \param print_handler	Handler for printing.
+ * \param type		Character type ('x': hex, 't': txt, otherwise: 0xXX).
+ */
+void array_printf(const uint8_t *data, const unsigned length,
+                  printf_t print_handler, const char type);
 
 /*!
  * \brief Prints the given data as a bitmap.
  *
- * \param data Data to print.
- * \param length Size of the \a data array.
+ * \param data		Data to print.
+ * \param length	Size of the \a data array.
  */
-void bit_print(const char *data, int length);
+void bit_print(const uint8_t *data, unsigned length);
 
 /*!
  * \brief Prints the given data as a bitmap using the given handler.
  *
- * \param data Data to print.
- * \param length Size of the \a data array.
- * \param print_handler Handler for printing.
+ * \param data		Data to print.
+ * \param length	Size of the \a data array.
+ * \param print_handler	Handler for printing.
  */
-void bit_printf(const char *data, int length, printf_t print_handler);
+void bit_printf(const uint8_t *data, unsigned length, printf_t print_handler);
+
+/*!
+ * \brief Get time diff in miliseconds.
+ *
+ * \param begin
+ * \param end
+ *
+ * \return time diff
+ */
+float time_diff(struct timeval *begin, struct timeval *end);
 
 #endif /* _KNOTD_COMMON_PRINT_H_ */
 

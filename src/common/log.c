@@ -25,7 +25,6 @@
 
 #include "common/log.h"
 #include "common/lists.h"
-#include "knot/common.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */
@@ -210,7 +209,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 
 	// Convert level to mask
 	level = LOG_MASK(level);
-	
+
 	/* Prefix date and time. */
 	char tstr[128] = {0};
 	int tlen = 0;
@@ -219,11 +218,18 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	gettimeofday(&tv, NULL);
 	time_t sec = tv.tv_sec;
 	if (localtime_r(&sec, &lt) != NULL) {
+		bool precise = false;
+
+#ifdef ENABLE_MICROSECONDS_LOG
+		precise = true;
+#endif /* ENABLE_MICROSECONDS_LOG */
+
 		tlen = strftime(tstr, sizeof(tstr),
-				"%Y-%m-%dT%H:%M:%S", &lt);
-		if (tlen > 0) {
+				"%Y-%m-%dT%H:%M:%S ", &lt);
+
+		if (precise && tlen > 0) {
 			char pm = (lt.tm_gmtoff > 0) ? '+' : '-';
-			snprintf(tstr + tlen, sizeof(tstr) - tlen,
+			snprintf(tstr + tlen - 1, sizeof(tstr) - tlen + 1,
 			         ".%.6lu%c%.2u:%.2u ",
 			         (unsigned long)tv.tv_usec, pm,
 			         (unsigned int)lt.tm_gmtoff / 3600,
@@ -278,7 +284,7 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 	case LOG_FATAL:   prefix = "[fatal] "; break;
 	default: break;
 	}
-	
+
 	/* Prepend prefix. */
 	int plen = strlen(prefix);
 	if (plen > buflen) {
@@ -346,7 +352,7 @@ int log_update_privileges(int uid, int gid)
 		if (fchown(fileno(LOG_FDS[i]), uid, gid) < 0) {
 			return KNOT_ERROR;
 		}
-		
+
 	}
 	return KNOT_EOK;
 }

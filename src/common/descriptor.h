@@ -35,13 +35,18 @@
  */
 enum knot_rr_class {
 	KNOT_CLASS_IN   =   1,
-	KNOT_CLASS_CH   =   2,
+	KNOT_CLASS_CH   =   3,
 	KNOT_CLASS_NONE = 254,
-	KNOT_CLASS_ANY  = 255,
+	KNOT_CLASS_ANY  = 255
 };
 
 /*!
  * \brief Resource record type constants.
+ *
+ * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ *
+ * METATYPE: Contains DNS data that can't be in a zone file.
+ * QTYPE: Specifies DNS query type; can't be in a zone file.
  */
 enum knot_rr_type {
 	KNOT_RRTYPE_A          =   1, /*!< An IPv4 host address. */
@@ -89,6 +94,10 @@ enum knot_rr_type {
 
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
+	KNOT_RRTYPE_NID        = 104, /*!< Node identifier. */
+	KNOT_RRTYPE_L32        = 105, /*!< 32-bit network locator. */
+	KNOT_RRTYPE_L64        = 106, /*!< 64-bit network locator. */
+	KNOT_RRTYPE_LP         = 107, /*!< Subnetwork name. */
 	KNOT_RRTYPE_EUI48      = 108, /*!< 48-bit extended unique identifier. */
 	KNOT_RRTYPE_EUI64      = 109, /*!< 64-bit extended unique identifier. */
 
@@ -97,7 +106,7 @@ enum knot_rr_type {
 	KNOT_RRTYPE_IXFR       = 251, /*!< QTYPE. Incremental zone transfer. */
 	KNOT_RRTYPE_AXFR       = 252, /*!< QTYPE. Authoritative zone transfer. */
 
-	KNOT_RRTYPE_ANY        = 255, /*!< QTYPE. Any record. */
+	KNOT_RRTYPE_ANY        = 255  /*!< QTYPE. Any record. */
 };
 
 /*!
@@ -115,42 +124,7 @@ enum knot_rdata_wireformat {
 	/*!< Uninteresting final part of a record. */
 	KNOT_RDATA_WF_REMAINDER,
 	/*!< The last descriptor in array. */
-	KNOT_RDATA_WF_END                =   0,
-};
-
-/*!
- * \brief DNSSEC Algorithm Numbers
- *
- * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
- */
-typedef enum {
-	KNOT_DNSSEC_ALG_RSAMD5			=  1,
-	KNOT_DNSSEC_ALG_DH			=  2,
-	KNOT_DNSSEC_ALG_DSA			=  3,
-
-	KNOT_DNSSEC_ALG_RSASHA1			=  5,
-	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1		=  6,
-	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1	=  7,
-	KNOT_DNSSEC_ALG_RSASHA256		=  8,
-
-	KNOT_DNSSEC_ALG_RSASHA512 		= 10,
-
-	KNOT_DNSSEC_ALG_ECC_GOST 		= 12,
-	KNOT_DNSSEC_ALG_ECDSAP256SHA256 	= 13,
-	KNOT_DNSSEC_ALG_ECDSAP384SHA384 	= 14,
-} knot_dnssec_algorithm_t;
-
-/*! 
- * \brief Constants for DNSSEC algorithm types.
- *
- * Source: http://www.iana.org/assignments/ds-rr-types/ds-rr-types.xml
- */
-enum knot_ds_algorithm
-{
-	KNOT_DS_ALG_SHA1	= 1,
-	KNOT_DS_ALG_SHA256	= 2,
-	KNOT_DS_ALG_GOST	= 3,
-	KNOT_DS_ALG_SHA384	= 4,
+	KNOT_RDATA_WF_END                =   0
 };
 
 /*!
@@ -272,15 +246,6 @@ int descriptor_item_is_remainder(const int item);
  * \retval 0 if NO.
  */
 int knot_rrtype_is_metatype(const uint16_t type);
-
-/*!
- * \brief Returns length of DS digest for given algorithm.
- *
- * \param algorithm Algorithm code to be used.
- *
- * \retval Digest length for given algorithm. 
- */
-size_t knot_ds_digest_length(const uint8_t algorithm);
 
 #endif // _KNOT_DESCRIPTOR_H_
 

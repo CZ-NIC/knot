@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -26,7 +27,7 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-#define DNAME_LFT_MAXLEN 256 /* maximum lookup format length */
+#define DNAME_LFT_MAXLEN 255 /* maximum lookup format length */
 
 /*!
  * \brief Convert domain name from wire to lookup format.
@@ -49,14 +50,16 @@
  * \retval KNOT_ESPACE when not enough memory.
  * \retval KNOT_EINVAL on invalid parameters
  */
-static int dname_lf(char *dst, const knot_dname_t *src, size_t maxlen) {
-	if (!src || !dst) return KNOT_EINVAL;
-	if (src->size > maxlen) return KNOT_ESPACE;
-	*dst = src->size - 1;
-	if (*dst == 0) ++*dst; /* root special case */
+static int dname_lf(uint8_t *dst, const knot_dname_t *src, size_t maxlen) {
+	if (src->size > maxlen)
+		return KNOT_ESPACE;
+	*dst = (uint8_t)src->size;
+	/* need to save last \x00 for root dname */
+	if (*dst > 1)
+		*dst -= 1;
 	*++dst = '\0';
 	uint8_t* l = src->name;
-	uint8_t lstack[127];
+	uint8_t lstack[DNAME_LFT_MAXLEN];
 	uint8_t *sp = lstack;
 	while(*l != 0) { /* build label stack */
 		*sp++ = (l - src->name);
@@ -105,10 +108,10 @@ size_t knot_zone_tree_weight(knot_zone_tree_t* tree)
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 {
 	assert(tree && node && node->owner);
-	char lf[DNAME_LFT_MAXLEN];
+	uint8_t lf[DNAME_LFT_MAXLEN];
 	dname_lf(lf, node->owner, sizeof(lf));
 
-	*hattrie_get(tree, lf+1, *lf) = node;
+	*hattrie_get(tree, (char*)lf+1, *lf) = node;
 	return KNOT_EOK;
 }
 
@@ -120,7 +123,7 @@ int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	if (tree == NULL || owner == NULL || found == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	return knot_zone_tree_get(tree, owner, (knot_node_t **)found);
 }
 
@@ -132,11 +135,11 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 	if (tree == NULL || owner == NULL) {
 		return KNOT_EINVAL;
 	}
-	
-	char lf[DNAME_LFT_MAXLEN];
+
+	uint8_t lf[DNAME_LFT_MAXLEN];
 	dname_lf(lf, owner, sizeof(lf));
 
-	value_t *val = hattrie_tryget(tree, lf+1, *lf);
+	value_t *val = hattrie_tryget(tree, (char*)lf+1, *lf);
 	if (val == NULL) {
 		*found = NULL;
 	} else {
@@ -156,7 +159,7 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
 	if (tree == NULL || owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	knot_node_t *f = NULL, *p = NULL;
 	int ret = knot_zone_tree_get_less_or_equal(tree, owner, &f, &p);
 
@@ -177,12 +180,12 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	    || previous == NULL) {
 		return KNOT_EINVAL;
 	}
-	
-	char lf[DNAME_LFT_MAXLEN];
+
+	uint8_t lf[DNAME_LFT_MAXLEN];
 	dname_lf(lf, owner, sizeof(lf));
 
 	value_t *fval = NULL;
-	int ret = hattrie_find_leq(tree, lf+1, *lf, &fval);
+	int ret = hattrie_find_leq(tree, (char*)lf+1, *lf, &fval);
 	if (fval) *found = (knot_node_t *)(*fval);
 	int exact_match = 0;
 	if (ret == 0) {
@@ -192,10 +195,18 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		*previous = *found;
 		*found = NULL;
 	} else if (ret > 0) {
-		/* node is before first node in the trie */
-		assert(0);
+		/* Previous should be the rightmost node.
+		 * For regular zone it is the node left of apex, but for some
+		 * cases like NSEC3, there is no such sort of thing (name wise).
+		 */
+		/*! \todo We could store rightmost node in zonetree probably. */
+		hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
+		*previous = *(knot_node_t **)hattrie_iter_val(i); /* leftmost */
+		*previous = knot_node_get_previous(*previous); /* rightmost */
+		*found = NULL;
+		hattrie_iter_free(i);
 	}
-	
+
 	/* Check if previous node is not an empty non-terminal. */
 	if (knot_node_rrset_count(*previous) == 0) {
 		*previous = knot_node_get_previous(*previous);
@@ -231,19 +242,19 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 	if (tree == NULL || owner == NULL) {
 		return KNOT_EINVAL;
 	}
-	
-	char lf[DNAME_LFT_MAXLEN];
+
+	uint8_t lf[DNAME_LFT_MAXLEN];
 	dname_lf(lf, owner, sizeof(lf));
 
-	value_t *rval = hattrie_tryget(tree, lf+1, *lf);
+	value_t *rval = hattrie_tryget(tree, (char*)lf+1, *lf);
 	if (rval == NULL) {
 		return KNOT_ENOENT;
 	} else {
 		*removed = (knot_node_t *)(*rval);
 	}
-	
-	
-	hattrie_del(tree, lf+1, *lf);
+
+
+	hattrie_del(tree, (char*)lf+1, *lf);
 	return KNOT_EOK;
 }
 
@@ -279,7 +290,7 @@ int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
 	if (tree == NULL || function == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	hattrie_apply_rev(tree, (void (*)(value_t*,void*))function, data);
 
 	return KNOT_EOK;
@@ -309,7 +320,7 @@ int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
 	if (to == NULL || from == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	*to = hattrie_dup(from, knot_zone_node_copy);
 
 	return KNOT_EOK;
@@ -355,7 +366,7 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
-	
+
 	knot_zone_tree_apply_recursive(*tree, knot_zone_tree_free_node, NULL);
 	knot_zone_tree_free(tree);
 }
@@ -374,7 +385,7 @@ knot_dname_t *hattrie_get_dname(hattrie_t *tr, knot_dname_t *dname)
 	if (tr == NULL || dname == NULL) {
 		return NULL;
 	}
-	
+
 	value_t *val = hattrie_tryget(tr, (char *)dname->name, dname->size);
 	if (val == NULL) {
 		return NULL;

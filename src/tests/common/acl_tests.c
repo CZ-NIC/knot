@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -117,12 +118,12 @@ static int acl_tests_run(int argc, char *argv[])
 	sockaddr_set(&test_pf4, AF_INET, "192.168.1.20", 0);
 	ret = acl_match(acl, &test_pf4, 0);
 	ok(ret == ACL_ACCEPT, "acl: searching address in matching prefix /24");
-	
+
 	// 15. Attempt to search non-matching subnet
 	sockaddr_set(&test_pf4, AF_INET, "192.168.2.20", 0);
 	ret = acl_match(acl, &test_pf4, 0);
 	ok(ret == ACL_DENY, "acl: searching address in non-matching prefix /24");
-	
+
 	// 16. Attempt to match v6 subnet
 	sockaddr_t match_pf6, test_pf6;
 	sockaddr_set(&match_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB00", 0);
@@ -131,12 +132,12 @@ static int acl_tests_run(int argc, char *argv[])
 	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB03", 0);
 	ret = acl_match(acl, &test_pf6, 0);
 	ok(ret == ACL_ACCEPT, "acl: searching v6 address in matching prefix /120");
-	
+
 	// 17. Attempt to search non-matching subnet
 	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:CCCC", 0);
 	ret = acl_match(acl, &test_pf6, 0);
 	ok(ret == ACL_DENY, "acl: searching v6 address in non-matching prefix /120");
-	
+
 	// 18. Add preferred node
 	sockaddr_set(&test_pf4, AF_INET, "192.168.1.20", 0);
 	void *sval = (void*)0x1234;
@@ -158,7 +159,7 @@ static int acl_tests_run(int argc, char *argv[])
 	ret = acl_match(acl, &match_pf4, 0);
 	ok(ret == ACL_ACCEPT, "acl: scenario after truncating");
 	acl_delete(&acl);
-	
+
 	// Return
 	return 0;
 }

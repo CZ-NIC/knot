@@ -93,7 +93,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
  *            pointer to the buffer for wireformat and TSIG data.
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
- * \param use_tsig If TSIG should be used. 
+ * \param use_tsig If TSIG should be used.
  *
  * \todo Parameter use_tsig probably not needed.
  *
@@ -111,7 +111,7 @@ int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
  * \param buffer Buffer to fill the message in.
  * \param size In: available space in the buffer. Out: actual size of the
  *             message in bytes.
- * \param use_tsig If TSIG should be used. 
+ * \param use_tsig If TSIG should be used.
  *
  * \todo Parameter use_tsig probably not needed.
  *
@@ -119,7 +119,7 @@ int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, 
+int xfrin_create_ixfr_query(const knot_zone_contents_t *zone,
                             knot_ns_xfr_t *xfr, size_t *size, int use_tsig);
 
 /*!
@@ -178,7 +178,7 @@ void xfrin_free_changesets(knot_changesets_t **changesets);
 int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr/*const uint8_t *pkt, size_t size,
                               knot_changesets_t **changesets*/);
 
-int xfrin_apply_changesets_to_zone(knot_zone_t *zone, 
+int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
                                    knot_changesets_t *chsets);
 
 int xfrin_apply_changesets(knot_zone_t *zone,
@@ -203,7 +203,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
                            knot_changes_t **changes);
 
 int xfrin_copy_rrset(knot_node_t *node, uint16_t type,
-                     knot_rrset_t **rrset, knot_changes_t *changes, 
+                     knot_rrset_t **rrset, knot_changes_t *changes,
                      int save_new);
 
 int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,

@@ -12,8 +12,9 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
+#include <config.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -97,7 +98,7 @@ static char *path_relative_to(const char *filename, const char *reference)
 
 	int w;
 	w = snprintf(result, result_len, "%.*s/%s", path_len, reference, filename);
-	assert(w + 1 == result_len);
+	assert(w + 1 == (int)result_len);
 
 	return result;
 }

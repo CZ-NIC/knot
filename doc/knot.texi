@@ -1,7 +1,7 @@
 \input texinfo   @c -*-texinfo-*-
 @setfilename knot.info
 @include version.texi
-@documentencoding utf-8
+@documentencoding UTF-8
 @settitle Knot DNS @value{VERSION}
 
 @paragraphindent 0
@@ -59,71 +59,71 @@ This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
 @end ifnottex
 
 @menu
-* Introduction::                
-* Knot DNS Resource Requirements::  
-* Knot DNS Installation::       
-* Knot DNS Configuration::      
-* Running Knot DNS::      
-* Troubleshooting::             
-* Statement Index::             
-* Knot DNS Configuration Reference::  
+* Introduction::
+* Knot DNS Resource Requirements::
+* Knot DNS Installation::
+* Knot DNS Configuration::
+* Running Knot DNS::
+* Troubleshooting::
+* Statement Index::
+* Knot DNS Configuration Reference::
 
 @detailmenu
  --- The Detailed Node Listing ---
 
 Introduction
 
-* What is Knot DNS::            
+* What is Knot DNS::
 * Knot DNS features::
-* Scope of this document::           
+* Scope of this document::
 
 Knot DNS Resource Requirements
 
-* Hardware requirements::       
-* CPU requirements::            
-* Memory requirements::         
-* Supported operating system::  
+* Hardware requirements::
+* CPU requirements::
+* Memory requirements::
+* Supported operating system::
 
 Knot DNS Installation
 
-* Required build environment::  
-* Required libraries::          
-* Installation from the sources::  
-* Installation from packages::  
+* Required build environment::
+* Required libraries::
+* Installation from the sources::
+* Installation from packages::
 
 Required libraries
 
-* Userspace RCU::               
+* Userspace RCU::
 
 Installation from the sources
 
-* Configuring and generating Makefiles::  
-* Compilation::                 
-* Installation::                
+* Configuring and generating Makefiles::
+* Compilation::
+* Installation::
 
 Installation from packages
 
-* Installing Knot DNS packages on Debian::  
-* Installing Knot DNS packages on Ubuntu::  
-* Installing Knot DNS RPMs on Fedora::  
-* Installing Knot DNS from ports on FreeBSD::  
+* Installing Knot DNS packages on Debian::
+* Installing Knot DNS packages on Ubuntu::
+* Installing Knot DNS packages on Fedora::
+* Installing Knot DNS from ports on FreeBSD::
 
 Installing Knot DNS packages on Ubuntu
 
-* Adding official PPA repository for Knot DNS::  
+* Adding official PPA repository for Knot DNS::
 
 Knot DNS Configuration
 
-* Minimal configuration::       
-* Slave configuration::       
-* Master configuration::       
-* Configuring multiple interfaces::        
+* Minimal configuration::
+* Slave configuration::
+* Master configuration::
+* Configuring multiple interfaces::
 
 Sample Configurations
 
-* Minimal configuration::       
-* Slave configuration::       
-* Master configuration::       
+* Minimal configuration::
+* Slave configuration::
+* Master configuration::
 * Configuring multiple interfaces::
 * Enabling zone semantic checks::
 * Creating IXFR differences from zone file changes::
@@ -137,8 +137,8 @@ Running Knot DNS
 Troubleshooting
 
 * Submitting a bugreport::
-* Generating backtrace::  
-* Debug messages::      
+* Generating backtrace::
+* Debug messages::
 
 Debug messages
 
@@ -150,30 +150,31 @@ Enabling debug messages in server
 
 Knot DNS Configuration Reference
 
-* system::                      
-* keys::                        
-* interfaces::                  
-* remotes::                     
+* system::
+* keys::
+* interfaces::
+* remotes::
 * groups::
-* zones::                       
-* log::                         
+* zones::
+* log::
 * include::
 
 @code{system} Statement
 
-* system Syntax::               
-* system Statement Definition and Usage::  
-* system Example::              
+* system Syntax::
+* system Statement Definition and Usage::
+* system Example::
 
 Statement Definition and Usage
 
-* identity::                    
-* version::                     
-* nsid::                        
-* storage::                     
-* pidfile::                     
-* workers::                     
-* user::                        
+* identity::
+* version::
+* nsid::
+* storage::
+* rundir::
+* pidfile::
+* workers::
+* user::
 * max-conn-idle::
 * max-conn-hs::
 * max-conn-reply::
@@ -183,28 +184,28 @@ Statement Definition and Usage
 
 @code{keys} Statement
 
-* keys Syntax::                 
-* keys Statement Definition and Usage::  
-* Example::                     
+* keys Syntax::
+* keys Statement Definition and Usage::
+* Example::
 
 Statement Definition and Usage
 
-* key_id::                      
+* key_id::
 
 interfaces
 
-* interfaces Syntax::           
-* interfaces Statement Definition and Usage::  
-* interfaces Examples::         
+* interfaces Syntax::
+* interfaces Statement Definition and Usage::
+* interfaces Examples::
 
 Statement Definition and Usage
 
-* interface_id::                
+* interface_id::
 
 @code{remotes} Statement
 
-* remotes Syntax::              
-* remotes Statement Definition and Grammar::  
+* remotes Syntax::
+* remotes Statement Definition and Grammar::
 
 @code{groups} Statement
 
@@ -213,14 +214,14 @@ Statement Definition and Usage
 
 @code{zones} Statement
 
-* zones Syntax::                
+* zones Syntax::
 * zones Statement Definition and Grammar::
 * zones List of zone semantic checks::
 
 @code{log} Statement
 
-* log Syntax::                  
-* log Statement Definition and Grammar::  
+* log Syntax::
+* log Statement Definition and Grammar::
 
 @code{include} Statement
 

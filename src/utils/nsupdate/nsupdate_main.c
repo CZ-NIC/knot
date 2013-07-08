@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <stdlib.h>				// EXIT_FAILURE
 
 #include "common/errcode.h"			// KNOT_EOK
@@ -23,10 +24,10 @@
 int main(int argc, char *argv[])
 {
 	int ret = EXIT_SUCCESS;
-	
+
 	nsupdate_params_t params;
 	if (nsupdate_parse(&params, argc, argv) == KNOT_EOK) {
-		if (nsupdate_exec(&params) != KNOT_EOK) {
+		if (!params.stop && nsupdate_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
 	} else {
@@ -36,4 +37,3 @@ int main(int argc, char *argv[])
 	nsupdate_clean(&params);
 	return ret;
 }
-

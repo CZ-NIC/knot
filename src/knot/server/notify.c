@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <assert.h>
 
 #include "knot/server/notify.h"
@@ -33,6 +34,11 @@
 #include "common/evsched.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
+
+
+/* Messages. */
+#define NOTIFY_MSG "NOTIFY of '%s' from %s: "
+#define NOTIFY_XMSG "received serial %u."
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -126,7 +132,7 @@ int notify_create_response(knot_packet_t *request, uint8_t *buffer,
 	if (rc == KNOT_EOK) {
 		rc = knot_response_init_from_query(response, request, 1);
 	}
-	
+
 	/* Aggregated result check. */
 	if (rc != KNOT_EOK) {
 		dbg_notify("%s: failed to init response packet: %s",
@@ -183,25 +189,15 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Check ACL for notify-in. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (from) {
 		if (acl_match(zd->notify_in, from, 0) == ACL_DENY) {
 			/* rfc1996: Ignore request and report incident. */
-			char straddr[SOCKADDR_STRLEN];
-			sockaddr_tostr(from, straddr, sizeof(straddr));
-			log_zone_notice("Unauthorized NOTIFY query "
-			                "from '%s@%d' to zone '%s'.\n",
-			                straddr, sockaddr_portnum(from),
-			                zd->conf->name);
-			return KNOT_ERROR;
-		} else {
-			dbg_notify("notify: authorized NOTIFY query.\n");
+			return KNOT_EDENIED;
 		}
 	}
-
-	/*! \todo Packet may contain updated RRs. */
 
 	/* Cancel REFRESH/RETRY timer. */
 	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
@@ -213,7 +209,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 		/* Set REFRESH timer for now. */
 		evsched_schedule(sched, refresh_ev, 0);
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -268,23 +264,44 @@ int notify_process_request(knot_nameserver_t *ns,
 		return KNOT_EOK;
 	}
 
-	// find the zone
-	rcu_read_lock();
+	/* Process notification. */
+	ret = KNOT_ENOZONE;
+	unsigned serial = 0;
 	const knot_dname_t *qname = knot_packet_qname(notify);
-	const knot_zone_t *z = knot_zonedb_find_zone_for_name(
-			ns->zone_db, qname);
-	if (z == NULL) {
-		rcu_read_unlock();
-		dbg_notify("notify: failed to find zone by name\n");
-		knot_ns_error_response_from_query(ns, notify,
-		                                  KNOT_RCODE_FORMERR, buffer,
-		                                  size);
-		return KNOT_EOK;
+	rcu_read_lock(); /* z */
+	const knot_zone_t *z = knot_zonedb_find_zone_for_name(ns->zone_db, qname);
+	if (z != NULL) {
+		ret = notify_check_and_schedule(ns, z, from);
+		const knot_rrset_t *soa_rr = NULL;
+		soa_rr = knot_packet_answer_rrset(notify, 0);
+		if (soa_rr && knot_rrset_type(soa_rr) == KNOT_RRTYPE_SOA) {
+			serial = knot_rrset_rdata_soa_serial(soa_rr);
+		}
+	}
+	rcu_read_unlock();
+
+	int rcode = KNOT_RCODE_NOERROR;
+	switch (ret) {
+	case KNOT_ENOZONE: rcode = KNOT_RCODE_NOTAUTH; break;
+	case KNOT_EACCES:  rcode = KNOT_RCODE_REFUSED; break;
+	default: break;
 	}
 
-	notify_check_and_schedule(ns, z, from);
-	rcu_read_unlock();
-	return KNOT_EOK;
+	/* Format resulting log message. */
+	char *qstr = knot_dname_to_str(qname);
+	char *fromstr = xfr_remote_str(from, NULL);
+	if (rcode != KNOT_RCODE_NOERROR) {
+		knot_ns_error_response_from_query(ns, notify, KNOT_RCODE_REFUSED,
+		                                  buffer, size);
+		log_server_warning(NOTIFY_MSG "%s\n", qstr, fromstr, knot_strerror(ret));
+		ret = KNOT_EOK; /* Send response. */
+	} else {
+		log_server_info(NOTIFY_MSG NOTIFY_XMSG "\n", qstr, fromstr, serial);
+	}
+	free(qstr);
+	free(fromstr);
+
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -303,4 +320,3 @@ int notify_process_response(knot_packet_t *notify, int msgid)
 
 	return KNOT_EOK;
 }
-

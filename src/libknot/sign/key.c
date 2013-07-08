@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <assert.h>
 #include <ctype.h>
 #include <stddef.h>
@@ -67,7 +68,6 @@ uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len)
 	}
 }
 
-
 /*!
  * \brief Acts like strndup, except it adds a suffix to duplicated string.
  */
@@ -89,6 +89,7 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 
 static void key_scan_noop(const scanner_t *s)
 {
+	UNUSED(s);
 }
 
 /*!
@@ -138,8 +139,8 @@ static int get_key_info_from_public_key(const char *filename,
 	free(buffer);
 
 	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
-						       scanner->r_owner_length,
-						       NULL);
+	                                               scanner->r_owner_length,
+	                                               NULL);
 	if (!owner) {
 		scanner_free(scanner);
 		return KNOT_ENOMEM;
@@ -171,8 +172,8 @@ static int get_key_filenames(const char *input, char **pubname, char **privname)
 	size_t base_length;
 
 	if (name_end && (*(name_end + 1) == '\0' ||
-			 strcmp(name_end, ".key") == 0 ||
-			 strcmp(name_end, ".private") == 0)
+	                 strcmp(name_end, ".key") == 0 ||
+	                 strcmp(name_end, ".private") == 0)
 	) {
 		base_length = name_end - input;
 	} else {
@@ -201,8 +202,7 @@ static int key_param_string(const void *save_to, char *value)
 {
 	char **parameter = (char **)save_to;
 
-	if (*parameter)
-		free(*parameter);
+	free(*parameter);
 	*parameter = strdup(value);
 
 	return *parameter ? KNOT_EOK : KNOT_ENOMEM;
@@ -266,15 +266,15 @@ static const struct key_parameter key_parameters[] = {
 /*!
  * \brief Parse one line of key file.
  *
- * \param key_params Key parameters to write the result into.
- * \param line       Input line pointer.
- * \param length     Input line length.
+ * \param key_params  Key parameters to write the result into.
+ * \param line        Input line pointer.
+ * \param length      Input line length.
  */
 static int parse_keyfile_line(knot_key_params_t *key_params,
                               char *line, size_t length)
 {
 	// discard line termination
-	if (line[length - 1] == '\n') {
+	if (length > 0 && line[length - 1] == '\n') {
 		line[length - 1] = '\0';
 		length -= 1;
 	}
@@ -354,8 +354,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		if (result != KNOT_EOK)
 			break;
 	}
-	if (buffer)
-		free(buffer);
+	free(buffer);
 
 	fclose(fp);
 	free(public_key);
@@ -364,10 +363,65 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	return result;
 }
 
-static void free_string_if_set(char *string)
+static int copy_string_if_set(const char *src, char **dst)
 {
-	if (string)
-		free(string);
+	if (src != NULL) {
+		*dst = strdup(src);
+
+		if (*dst == NULL) {
+			return -1;
+		}
+	} else {
+		*dst = NULL;
+	}
+
+	return 0;
+}
+
+int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
+{
+	if (src == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = 0;
+
+	if (src->name != NULL) {
+		dst->name = knot_dname_deep_copy(src->name);
+		if (dst->name == NULL) {
+			ret += -1;
+		}
+	}
+
+	dst->algorithm = src->algorithm;
+	dst->keytag = src->keytag;
+
+	ret += copy_string_if_set(src->secret, &dst->secret);
+
+	ret += copy_string_if_set(src->modulus, &dst->modulus);
+	ret += copy_string_if_set(src->public_exponent, &dst->public_exponent);
+	ret += copy_string_if_set(src->private_exponent, &dst->private_exponent);
+	ret += copy_string_if_set(src->prime_one, &dst->prime_one);
+	ret += copy_string_if_set(src->prime_two, &dst->prime_two);
+	ret += copy_string_if_set(src->exponent_one, &dst->exponent_one);
+	ret += copy_string_if_set(src->exponent_two, &dst->exponent_two);
+	ret += copy_string_if_set(src->coefficient, &dst->coefficient);
+
+	ret += copy_string_if_set(src->prime, &dst->prime);
+	ret += copy_string_if_set(src->generator, &dst->generator);
+	ret += copy_string_if_set(src->subprime, &dst->subprime);
+	ret += copy_string_if_set(src->base, &dst->base);
+	ret += copy_string_if_set(src->private_value, &dst->private_value);
+	ret += copy_string_if_set(src->public_value, &dst->public_value);
+
+	ret += copy_string_if_set(src->private_key, &dst->private_key);
+
+	if (ret < 0) {
+		knot_free_key_params(dst);
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
 }
 
 /*!
@@ -380,15 +434,25 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	if (key_params->name)
 		knot_dname_release(key_params->name);
 
-	free_string_if_set(key_params->secret);
-	free_string_if_set(key_params->modulus);
-	free_string_if_set(key_params->public_exponent);
-	free_string_if_set(key_params->private_exponent);
-	free_string_if_set(key_params->prime_one);
-	free_string_if_set(key_params->prime_two);
-	free_string_if_set(key_params->exponent_one);
-	free_string_if_set(key_params->exponent_two);
-	free_string_if_set(key_params->coefficient);
+	free(key_params->secret);
+
+	free(key_params->modulus);
+	free(key_params->public_exponent);
+	free(key_params->private_exponent);
+	free(key_params->prime_one);
+	free(key_params->prime_two);
+	free(key_params->exponent_one);
+	free(key_params->exponent_two);
+	free(key_params->coefficient);
+
+	free(key_params->prime);
+	free(key_params->generator);
+	free(key_params->subprime);
+	free(key_params->base);
+	free(key_params->private_value);
+	free(key_params->public_value);
+
+	free(key_params->private_key);
 
 	memset(key_params, '\0', sizeof(knot_key_params_t));
 
@@ -418,10 +482,10 @@ knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params)
 /*!
  * \brief Creates TSIG key from function arguments.
  *
- * \param name		Key name (aka owner name).
- * \param algorithm	Algorithm number.
- * \param b64secret	Shared secret encoded in Base64.
- * \param key		Output TSIG key.
+ * \param name       Key name (aka owner name).
+ * \param algorithm  Algorithm number.
+ * \param b64secret  Shared secret encoded in Base64.
+ * \param key        Output TSIG key.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
@@ -487,7 +551,7 @@ int knot_tsig_key_free(knot_tsig_key_t *key)
 {
 	if (!key)
 		return KNOT_EINVAL;
-	
+
 	knot_dname_release(key->name);
 
 	knot_binary_free(&key->secret);

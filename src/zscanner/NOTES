@@ -1,7 +1,7 @@
 - supported types: A, NS, CNAME, PTR, DNAME, SOA, HINFO, MINFO, MX, AFSDB, RT,
                    KX, TXT, SPF, RP, AAAA, LOC, SRV, NAPTR, CERT, DS, SSHFP,
                    IPSECKEY, RRSIG, NSEC, KEY, DNSKEY, DHCID, NSEC3, NSEC3PARAM,
-                   TLSA, APL, UNKNOWN
+                   TLSA, APL, EUI48, EUI64, NID, L32, L64, LP, UNKNOWN
 - the class IN is supported only (CLASS12345 notation is not supported too)
 - the newline character is appended to each zone file during processing
   (for simplicity)
@@ -18,3 +18,4 @@
 - NSEC3 hash is with padding (but RFC 5155 section 3.3 says "unpadded")
 - date version of timestamp in RRSIG is limited to the end of the year 2105
   (for better checking of 32bit integer)
+- zscanner doesn't make semantic control of parser rdata

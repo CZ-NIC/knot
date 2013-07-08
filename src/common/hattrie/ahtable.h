@@ -34,7 +34,7 @@ typedef unsigned char* slot_t;
 typedef struct ahtable_t_
 {
     /* these fields are reserved for hattrie to fiddle with */
-    uint8_t flag; 
+    uint8_t flag;
     unsigned char c0;
     unsigned char c1;
 
@@ -57,7 +57,7 @@ size_t     ahtable_size   (const ahtable_t*); // Number of stored keys.
 
 
 /** Find the given key in the table, inserting it if it does not exist, and
- * returning a pointer to it's key.
+ * returning a pointer to its key.
  *
  * This pointer is not guaranteed to be valid after additional calls to
  * ahtable_get, ahtable_del, ahtable_clear, or other functions that modifies the
@@ -101,7 +101,7 @@ typedef struct ahtable_iter_t_
         slot_t* xs; // pointers to keys
         slot_t s;           // slot position
     } d;
-    
+
 } ahtable_iter_t;
 
 void            ahtable_iter_begin     (ahtable_t*, ahtable_iter_t*, bool sorted);
@@ -118,4 +118,3 @@ value_t*        ahtable_iter_val       (ahtable_iter_t*);
 #endif
 
 #endif
-

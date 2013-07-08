@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "libknot/rrset-dump.h"
 
 #include <stdlib.h>			// free
@@ -22,6 +23,7 @@
 #include <time.h>			// strftime
 #include <ctype.h>			// isprint
 #include <math.h>			// pow
+#include <inttypes.h>			// PRIu64
 #include <sys/types.h>			// (OpenBSD)
 #include <sys/socket.h>			// AF_INET (BSD)
 #include <netinet/in.h>			// in_addr (BSD)
@@ -31,6 +33,7 @@
 #include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
 #include "common/descriptor.h"		// KNOT_RRTYPE
+#include "libknot/consts.h"		// knot_rcode_names
 #include "libknot/util/utils.h"		// knot_wire_read_u16
 
 #define TAB_WIDTH		8
@@ -41,12 +44,12 @@
 
 typedef struct {
 	const knot_dump_style_t *style;
-	uint8_t *in;
-	size_t  in_max;
-	char    *out;
-	size_t  out_max;
-	size_t  total;
-	int     ret;
+	const uint8_t *in;
+	size_t        in_max;
+	char          *out;
+	size_t        out_max;
+	size_t        total;
+	int           ret;
 } rrset_dump_params_t;
 
 const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
@@ -55,6 +58,8 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.show_ttl = true,
 	.verbose = false,
 	.reduce = true,
+	.human_ttl = false,
+	.human_tmstamp = false
 };
 
 static void dump_string(rrset_dump_params_t *p, const char *str)
@@ -95,7 +100,7 @@ static void wire_num8_to_str(rrset_dump_params_t *p)
 
 	// Write number.
 	int ret = snprintf(p->out, p->out_max, "%u", data);
-	if (ret <= 0 || ret >= p->out_max) {
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	out_len = ret;
@@ -123,13 +128,11 @@ static void wire_num16_to_str(rrset_dump_params_t *p)
 	}
 
 	// Fill in input data.
-	if (memcpy(&data, p->in, in_len) == NULL) {
-		return;
-	}
+	data = knot_wire_read_u16(p->in);
 
 	// Write number.
-	int ret = snprintf(p->out, p->out_max, "%u", ntohs(data));
-	if (ret <= 0 || ret >= p->out_max) {
+	int ret = snprintf(p->out, p->out_max, "%u", data);
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	out_len = ret;
@@ -157,13 +160,43 @@ static void wire_num32_to_str(rrset_dump_params_t *p)
 	}
 
 	// Fill in input data.
-	if (memcpy(&data, p->in, in_len) == NULL) {
+	data = knot_wire_read_u32(p->in);
+
+	// Write number.
+	int ret = snprintf(p->out, p->out_max, "%u", data);
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
+		return;
+	}
+	out_len = ret;
+
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->out += out_len;
+	p->out_max -= out_len;
+	p->total += out_len;
+	p->ret = 0;
+}
+
+static void wire_num48_to_str(rrset_dump_params_t *p)
+{
+	uint64_t data;
+	size_t   in_len = 6;
+	size_t   out_len = 0;
+
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
 		return;
 	}
 
+	// Fill in input data.
+	data = knot_wire_read_u48(p->in);
+
 	// Write number.
-	int ret = snprintf(p->out, p->out_max, "%u", ntohl(data));
-	if (ret <= 0 || ret >= p->out_max) {
+	int ret = snprintf(p->out, p->out_max, "%"PRIu64"", data);
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	out_len = ret;
@@ -269,7 +302,7 @@ static void wire_type_to_str(rrset_dump_params_t *p)
 
 	// Write string.
 	int ret = snprintf(p->out, p->out_max, "%s", type);
-	if (ret <= 0 || ret >= p->out_max) {
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	out_len = ret;
@@ -371,7 +404,7 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 			src_len = (ret - src_begin) < BLOCK_WIDTH ?
 			          (ret - src_begin) : BLOCK_WIDTH;
 
-			if (src_len > p->out_max) {
+			if ((size_t)src_len > p->out_max) {
 				free(buf);
 				return;
 			}
@@ -401,17 +434,65 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 	p->ret = 0;
 }
 
-static void wire_len_data_encode_to_str(rrset_dump_params_t *p, encode_t enc)
+static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
+                                        encode_t            enc,
+                                        const size_t        len_len,
+                                        const bool          print_len,
+                                        const char          *empty_str)
 {
+	size_t in_len;
+
 	p->ret = -1;
 
-	// First byte is data length.
-	if (p->in_max < 1) {
+	// First len_len bytes are data length.
+	if (p->in_max < len_len) {
 		return;
 	}
-	size_t in_len = *(p->in);
-	p->in++;
-	p->in_max--;
+
+	// Read data length.
+	switch (len_len) {
+	case 1:
+		in_len = *(p->in);
+		break;
+	case 2:
+		in_len = knot_wire_read_u16(p->in);
+		break;
+	case 4:
+		in_len = knot_wire_read_u32(p->in);
+		break;
+	default:
+		return;
+	}
+
+	// If required print data length.
+	if (print_len == true) {
+		switch (len_len) {
+		case 1:
+			wire_num8_to_str(p);
+			break;
+		case 2:
+			wire_num16_to_str(p);
+			break;
+		case 4:
+			wire_num32_to_str(p);
+			break;
+		}
+
+		if (p->ret != 0) {
+			return;
+		}
+
+		// If something follows, print one space character.
+		if (in_len > 0 || *empty_str != '\0') {
+			dump_string(p, " ");
+			if (p->ret != 0) {
+				return;
+			}
+		}
+	} else {
+		p->in += len_len;
+		p->in_max -= len_len;
+	}
 
 	if (in_len > 0) {
 		// Encode data directly to the output.
@@ -419,12 +500,10 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p, encode_t enc)
 		if (ret <= 0) {
 			return;
 		}
-		size_t out_len = ret;
-	
-		p->out += out_len;
-		p->out_max -= out_len;
-		p->total += out_len;
-	
+		p->out += ret;
+		p->out_max -= ret;
+		p->total += ret;
+
 		// String termination.
 		if (p->out_max > 0) {
 			*p->out = '\0';
@@ -435,9 +514,8 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p, encode_t enc)
 		// Fill in output.
 		p->in += in_len;
 		p->in_max -= in_len;
-	} else {
-		// Dump "-" if no salt.
-		dump_string(p, "-");
+	} else if (*empty_str != '\0') {
+		dump_string(p, empty_str);
 		if (p->ret != 0) {
 			return;
 		}
@@ -471,9 +549,9 @@ static void wire_text_to_str(rrset_dump_params_t *p)
 
 	// Loop over all characters.
 	for (size_t i = 0; i < in_len; i++) {
-		char ch = (char)(p->in)[i];
+		uint8_t ch = p->in[i];
 
-		if (isprint((unsigned char)(ch)) != 0) {
+		if (isprint(ch) != 0) {
 			// For special character print leading slash.
 			if (ch == '\\' || ch == '"') {
 				dump_string(p, "\\");
@@ -494,7 +572,7 @@ static void wire_text_to_str(rrset_dump_params_t *p)
 		} else {
 			// Unprintable character encode via \ddd notation.
 			int ret = snprintf(p->out, p->out_max,"\\%03u", ch);
-			if (ret <= 0 || ret >= p->out_max) {
+			if (ret <= 0 || (size_t)ret >= p->out_max) {
 				return;
 			}
 
@@ -544,7 +622,7 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 
 	time_t timestamp = ntohl(data);
 
-	if (p->style->verbose) {
+	if (p->style->human_tmstamp) {
 		// Write timestamp in YYYYMMDDhhmmss format.
 		ret = strftime(p->out, p->out_max, "%Y%m%d%H%M%S",
 		               gmtime(&timestamp));
@@ -554,7 +632,7 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 	} else {
 		// Write timestamp only.
 		ret = snprintf(p->out, p->out_max, "%u", ntohl(data));
-		if (ret <= 0 || ret >= p->out_max) {
+		if (ret <= 0 || (size_t)ret >= p->out_max) {
 			return;
 		}
 	}
@@ -582,7 +660,7 @@ static int time_to_human_str(char         *out,
 	if (num > 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%ud", num);
-		if (ret <= 0 || ret >= out_len - total_len) {
+		if (ret <= 0 || (size_t)ret >= out_len - total_len) {
 			return -1;
 		}
 
@@ -595,7 +673,7 @@ static int time_to_human_str(char         *out,
 	if (num > 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%uh", num);
-		if (ret <= 0 || ret >= out_len - total_len) {
+		if (ret <= 0 || (size_t)ret >= out_len - total_len) {
 			return -1;
 		}
 
@@ -608,7 +686,7 @@ static int time_to_human_str(char         *out,
 	if (num > 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%um", num);
-		if (ret <= 0 || ret >= out_len - total_len) {
+		if (ret <= 0 || (size_t)ret >= out_len - total_len) {
 			return -1;
 		}
 
@@ -621,7 +699,7 @@ static int time_to_human_str(char         *out,
 	if (num > 0 || total_len == 0) {
 		ret = snprintf(out + total_len, out_len - total_len,
 		               "%us", num);
-		if (ret <= 0 || ret >= out_len - total_len) {
+		if (ret <= 0 || (size_t)ret >= out_len - total_len) {
 			return -1;
 		}
 
@@ -650,7 +728,7 @@ static void wire_ttl_to_str(rrset_dump_params_t *p)
 		return;
 	}
 
-	if (p->style->verbose) {
+	if (p->style->human_ttl) {
 		// Write time in human readable format.
 		ret = time_to_human_str(p->out, p->out_max, ntohl(data));
 		if (ret <= 0) {
@@ -659,7 +737,7 @@ static void wire_ttl_to_str(rrset_dump_params_t *p)
 	} else {
 		// Write timestamp only.
 		ret = snprintf(p->out, p->out_max, "%u", ntohl(data));
-		if (ret <= 0 || ret >= p->out_max) {
+		if (ret <= 0 || (size_t)ret >= p->out_max) {
 			return;
 		}
 	}
@@ -720,7 +798,7 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 					ret = snprintf(p->out, p->out_max,
 					               "%s", type);
 				}
-				if (ret <= 0 || ret >= p->out_max) {
+				if (ret <= 0 || (size_t)ret >= p->out_max) {
 					return;
 				}
 				out_len += ret;
@@ -778,7 +856,7 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 	knot_dname_release(dname);
 	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
 	free(dname_str);
-	if (ret < 0 || ret >= p->out_max) {
+	if (ret < 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	out_len = ret;
@@ -812,7 +890,7 @@ static void ptr_dname_to_str(rrset_dump_params_t *p)
 	char *dname_str = knot_dname_to_str(dname);
 	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
 	free(dname_str);
-	if (ret < 0 || ret >= p->out_max) {
+	if (ret < 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	out_len = ret;
@@ -858,7 +936,7 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 
 	// Write address family with colon.
 	ret = snprintf(p->out, p->out_max, "%u:", family);
-	if (ret <= 0 || ret >= p->out_max) {
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	p->out += ret;
@@ -914,7 +992,7 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 
 	// Write prefix length with forward slash.
 	ret = snprintf(p->out, p->out_max, "/%u", prefix);
-	if (ret <= 0 || ret >= p->out_max) {
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	p->out += ret;
@@ -982,18 +1060,18 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 		lon = lon_w - LOC_ZERO;
 	} else {
 		lon_mark = 'W';
-		lon = LOC_ZERO - lon_w; 
+		lon = LOC_ZERO - lon_w;
 	}
 
 	uint32_t d2 = lon / 3600000;
 	uint32_t m2 = (lon - 3600000 * d2) / 60000;
 	double s2 = 0.001 * (lon - 3600000 * d2 - 60000 * m2);
 
-	// Write latitude and longitude. 
+	// Write latitude and longitude.
 	ret = snprintf(p->out, p->out_max, "%u %u %.*f %c  %u %u %.*f %c",
 	               d1, m1, (uint32_t)s1 != s1 ? 3 : 0, s1, lat_mark,
 	               d2, m2, (uint32_t)s2 != s2 ? 3 : 0, s2, lon_mark);
-	if (ret <= 0 || ret >= p->out_max) {
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	p->out += ret;
@@ -1028,7 +1106,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	               (uint32_t)size != size ? 2 : 0, size,
 	               (uint32_t)hpre != hpre ? 2 : 0, hpre,
 	               (uint32_t)vpre != vpre ? 2 : 0, vpre);
-	if (ret <= 0 || ret >= p->out_max) {
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	p->out += ret;
@@ -1116,6 +1194,39 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
+static void wire_l64_to_str(rrset_dump_params_t *p)
+{
+	p->ret = -1;
+
+	// Check input size (64-bit identifier).
+	if (p->in_max != 8) {
+		return;
+	}
+
+	// Write identifier (2-byte) labels separated with a colon.
+	while (p->in_max > 0) {
+		int ret = hex_encode(p->in, 2, (uint8_t *)(p->out), p->out_max);
+		if (ret <= 0) {
+			return;
+		}
+		p->in += 2;
+		p->in_max -= 2;
+		p->out += ret;
+		p->out_max -= ret;
+		p->total += ret;
+
+		// Write separation character.
+		if (p->in_max > 0) {
+			dump_string(p, ":");
+			if (p->ret != 0) {
+				return;
+			}
+		}
+	}
+
+	p->ret = 0;
+}
+
 static void wire_eui_to_str(rrset_dump_params_t *p)
 {
 	p->ret = -1;
@@ -1149,6 +1260,40 @@ static void wire_eui_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
+static void wire_rcode_to_str(rrset_dump_params_t *p)
+{
+	uint16_t data;
+	size_t   in_len = sizeof(data);
+	const char *rcode_str = "NULL";
+
+	p->ret = -1;
+
+	// Check input size.
+	if (in_len > p->in_max) {
+		return;
+	}
+
+	// Fill in input data.
+	data = knot_wire_read_u16(p->in);
+
+	// Find RCODE name.
+	knot_lookup_table_t *rcode = knot_lookup_by_id(knot_rcode_names, data);
+	if (rcode != NULL) {
+		rcode_str = rcode->name;
+	}
+
+	// Dump RCODE name.
+	dump_string(p, rcode_str);
+	if (p->ret != 0) {
+		return;
+	}
+
+	// Fill in output.
+	p->in += in_len;
+	p->in_max -= in_len;
+	p->ret = 0;
+}
+
 static void wire_unknown_to_str(rrset_dump_params_t *p)
 {
 	int    ret;
@@ -1163,7 +1308,7 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	} else {
 		ret = snprintf(p->out, p->out_max, "\\# 0");
 	}
-	if (ret <= 0 || ret >= p->out_max) {
+	if (ret <= 0 || (size_t)ret >= p->out_max) {
 		return;
 	}
 	out_len = ret;
@@ -1192,11 +1337,11 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
-#define DUMP_PARAMS	uint8_t *in, const size_t in_len, char *out, \
+#define DUMP_PARAMS	const uint8_t *in, const size_t in_len, char *out, \
 			const size_t out_max, const knot_dump_style_t *style
 #define DUMP_INIT	rrset_dump_params_t p = { .style = style, .in = in, \
 			.in_max = in_len, .out = out, .out_max = out_max };
-#define	DUMP_END	return (p.in_max == 0 ? p.total : KNOT_EPARSEFAIL);
+#define	DUMP_END	return (p.in_max == 0 ? (int)p.total : KNOT_EPARSEFAIL);
 
 #define CHECK_RET(p)	if (p.ret != 0) return -1;
 
@@ -1211,6 +1356,7 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 #define DUMP_NUM8	wire_num8_to_str(&p); CHECK_RET(p);
 #define DUMP_NUM16	wire_num16_to_str(&p); CHECK_RET(p);
 #define DUMP_NUM32	wire_num32_to_str(&p); CHECK_RET(p);
+#define DUMP_NUM48	wire_num48_to_str(&p); CHECK_RET(p);
 #define DUMP_DNAME	ptr_dname_to_str(&p); CHECK_RET(p);
 #define DUMP_TIME	wire_ttl_to_str(&p); CHECK_RET(p);
 #define DUMP_TIMESTAMP	wire_timestamp_to_str(&p); CHECK_RET(p);
@@ -1221,16 +1367,22 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 				&hex_encode_alloc); CHECK_RET(p);
 #define DUMP_BASE64	wire_data_encode_to_str(&p, &base64_encode, \
 				&base64_encode_alloc); CHECK_RET(p);
-#define DUMP_HASH	wire_len_data_encode_to_str(&p, &base32hex_encode); \
-				CHECK_RET(p);
-#define DUMP_SALT	wire_len_data_encode_to_str(&p, &hex_encode); \
-				CHECK_RET(p);
+#define DUMP_HASH	wire_len_data_encode_to_str(&p, &base32hex_encode, \
+				1, false, ""); CHECK_RET(p);
+#define DUMP_SALT	wire_len_data_encode_to_str(&p, &hex_encode, \
+				1, false, "-"); CHECK_RET(p);
+#define DUMP_TSIG_DGST	wire_len_data_encode_to_str(&p, &base64_encode, \
+				2, true, ""); CHECK_RET(p);
+#define DUMP_TSIG_DATA	wire_len_data_encode_to_str(&p, &hex_encode, \
+				2, true, ""); CHECK_RET(p);
 #define DUMP_TEXT	wire_text_to_str(&p); CHECK_RET(p);
 #define DUMP_BITMAP	wire_bitmap_to_str(&p); CHECK_RET(p);
 #define DUMP_APL	wire_apl_to_str(&p); CHECK_RET(p);
 #define DUMP_LOC	wire_loc_to_str(&p); CHECK_RET(p);
 #define DUMP_GATEWAY	wire_gateway_to_str(&p); CHECK_RET(p);
+#define DUMP_L64	wire_l64_to_str(&p); CHECK_RET(p);
 #define DUMP_EUI	wire_eui_to_str(&p); CHECK_RET(p);
+#define DUMP_RCODE	wire_rcode_to_str(&p); CHECK_RET(p);
 #define DUMP_UNKNOWN	wire_unknown_to_str(&p); CHECK_RET(p);
 
 static int dump_a(DUMP_PARAMS)
@@ -1315,7 +1467,7 @@ static int dump_txt(DUMP_PARAMS)
 
 	// Other text strings if any.
 	while (p.in_max > 0) {
-		DUMP_SPACE; DUMP_TEXT; 
+		DUMP_SPACE; DUMP_TEXT;
 	}
 
 	DUMP_END;
@@ -1585,11 +1737,57 @@ static int dump_tlsa(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_l64(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_NUM16; DUMP_SPACE;
+	DUMP_L64;
+
+	DUMP_END;
+}
+
+static int dump_l32(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	DUMP_NUM16; DUMP_SPACE;
+	DUMP_IPV4;
+
+	DUMP_END;
+}
+
 static int dump_eui(DUMP_PARAMS)
 {
 	DUMP_INIT;
 
 	DUMP_EUI;
+
+	DUMP_END;
+}
+
+static int dump_tsig(DUMP_PARAMS)
+{
+	DUMP_INIT;
+
+	if (p.style->wrap) {
+		DUMP_DNAME; DUMP_SPACE;
+		DUMP_NUM48; DUMP_SPACE;
+		DUMP_NUM16; DUMP_SPACE; WRAP_INIT;
+		DUMP_TSIG_DGST; DUMP_SPACE; WRAP_LINE;
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_RCODE; DUMP_SPACE;
+		DUMP_TSIG_DATA;
+		WRAP_END;
+	} else {
+		DUMP_DNAME; DUMP_SPACE;
+		DUMP_NUM48; DUMP_SPACE;
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_TSIG_DGST; DUMP_SPACE;
+		DUMP_NUM16; DUMP_SPACE;
+		DUMP_RCODE; DUMP_SPACE;
+		DUMP_TSIG_DATA;
+	}
 
 	DUMP_END;
 }
@@ -1648,6 +1846,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		case KNOT_RRTYPE_AFSDB:
 		case KNOT_RRTYPE_RT:
 		case KNOT_RRTYPE_KX:
+		case KNOT_RRTYPE_LP:
 			ret = dump_mx(data, data_len, dst, maxlen, style);
 			break;
 		case KNOT_RRTYPE_TXT:
@@ -1703,9 +1902,19 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		case KNOT_RRTYPE_TLSA:
 			ret = dump_tlsa(data, data_len, dst, maxlen, style);
 			break;
+		case KNOT_RRTYPE_NID:
+		case KNOT_RRTYPE_L64:
+			ret = dump_l64(data, data_len, dst, maxlen, style);
+			break;
+		case KNOT_RRTYPE_L32:
+			ret = dump_l32(data, data_len, dst, maxlen, style);
+			break;
 		case KNOT_RRTYPE_EUI48:
 		case KNOT_RRTYPE_EUI64:
 			ret = dump_eui(data, data_len, dst, maxlen, style);
+			break;
+		case KNOT_RRTYPE_TSIG:
+			ret = dump_tsig(data, data_len, dst, maxlen, style);
 			break;
 		default:
 			ret = dump_unknown(data, data_len, dst, maxlen, style);
@@ -1757,7 +1966,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 		}
 	}
 	free(name);
-	if (ret < 0 || ret >= maxlen - len) {
+	if (ret < 0 || (size_t)ret >= maxlen - len) {
 		return KNOT_ESPACE;
 	}
 	len += ret;
@@ -1767,7 +1976,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 
 	// Dump rrset ttl.
 	if (style->show_ttl) {
-		if (style->verbose) {
+		if (style->human_ttl) {
 			// Create human readable ttl string.
 			ret = time_to_human_str(buf, sizeof(buf), rrset->ttl);
 			if (ret < 0) {
@@ -1779,7 +1988,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 			ret = snprintf(dst + len, maxlen - len, "%u%c",
 			               rrset->ttl, sep);
 		}
-		if (ret < 0 || ret >= maxlen - len) {
+		if (ret < 0 || (size_t)ret >= maxlen - len) {
 			return KNOT_ESPACE;
 		}
 		len += ret;
@@ -1792,7 +2001,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 			return KNOT_ESPACE;
 		}
 		ret = snprintf(dst + len, maxlen - len, "%-2s%c", buf, sep);
-		if (ret < 0 || ret >= maxlen - len) {
+		if (ret < 0 || (size_t)ret >= maxlen - len) {
 			return KNOT_ESPACE;
 		}
 		len += ret;
@@ -1803,11 +2012,11 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 		return KNOT_ESPACE;
 	}
 	ret = snprintf(dst + len, maxlen - len, "%s%c", buf, sep);
-	if (ret < 0 || ret >= maxlen - len) {
+	if (ret < 0 || (size_t)ret >= maxlen - len) {
 		return KNOT_ESPACE;
 	}
 	len += ret;
-	
+
 	return len;
 }
 
@@ -1822,6 +2031,24 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 
 	size_t len = 0;
 	int    ret;
+
+	// If the rrset is empty, dump header only.
+	if (rrset->rdata_count == 0) {
+		// Dump rdata owner, class, ttl and type.
+		ret = knot_rrset_txt_dump_header(rrset, 0, dst + len,
+		                                 maxlen - len, style);
+		if (ret < 0) {
+			return KNOT_ESPACE;
+		}
+		len += ret;
+
+		// Terminate line.
+		if (len >= maxlen) {
+			return KNOT_ESPACE;
+		}
+		dst[len++] = '\n';
+		dst[len] = '\0';
+	}
 
 	// Loop over rdata in rrset.
 	for (size_t i = 0; i < rrset->rdata_count; i++) {

@@ -886,8 +886,12 @@ static inline void knot_wire_flags_clear_ra(uint8_t *flags2)
  */
 
 enum knot_wire_pointer_consts {
-	/*! \brief DNS packet pointer designation (first two bits set to 1).  */
-	KNOT_WIRE_PTR = (uint8_t)0xc0U
+	/*! \brief DNS packet pointer designation (first two bits set to 1). */
+	KNOT_WIRE_PTR = (uint8_t)0xC0,
+	/*! \brief DNS packet minimal pointer (KNOT_WIRE_PTR + 1 zero byte). */
+	KNOT_WIRE_PTR_BASE = (uint16_t)0xC000,
+	/*! \brief DNS packet maximal offset (KNOT_WIRE_BASE complement). */
+	KNOT_WIRE_PTR_MAX = (uint16_t)0x3FFF
 };
 
 /*!
@@ -897,28 +901,31 @@ enum knot_wire_pointer_consts {
  * \param ptr Relative position of the item to which the pointer should point in
  *            the wire format of the packet.
  */
-static inline void knot_wire_put_pointer(uint8_t *pos, size_t ptr)
+static inline void knot_wire_put_pointer(uint8_t *pos, uint16_t ptr)
 {
-	uint16_t p = ptr;
-	knot_wire_write_u16(pos, p);
-	assert((pos[0] & KNOT_WIRE_PTR) == 0);
-	pos[0] |= KNOT_WIRE_PTR;
+	knot_wire_write_u16(pos, ptr);		// Write pointer offset.
+	assert((pos[0] & KNOT_WIRE_PTR) == 0);	// Check for maximal offset.
+	pos[0] |= KNOT_WIRE_PTR;		// Add pointer mark.
 }
 
 static inline int knot_wire_is_pointer(const uint8_t *pos)
 {
-	return ((pos[0] & KNOT_WIRE_PTR) != 0);
+	return ((pos[0] & KNOT_WIRE_PTR) == KNOT_WIRE_PTR);
 }
 
-static inline size_t knot_wire_get_pointer(const uint8_t *pos)
+static inline uint16_t knot_wire_get_pointer(const uint8_t *pos)
 {
-	/*! \todo memcpy() is not needed, may be directly assigned. */
-	uint16_t p = 0;
-	memcpy(&p, pos, 2);
-	p &= ~KNOT_WIRE_PTR;
+	assert((pos[0] & KNOT_WIRE_PTR) == KNOT_WIRE_PTR);	// Check pointer.
+	return (knot_wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
+}
 
-	uint16_t p2 = knot_wire_read_u16((uint8_t *)&p);
-	return p2;
+static inline uint8_t *knot_wire_next_label(uint8_t *lp, uint8_t *wire)
+{
+	lp = lp + (lp[0] + sizeof(uint8_t));
+	if (knot_wire_is_pointer(lp)) {
+		lp = wire + knot_wire_get_pointer(lp);
+	}
+	return lp;
 }
 
 #endif /* _KNOT_WIRE_H_ */

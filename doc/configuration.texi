@@ -4,12 +4,12 @@
 In this chapter we provide suggested configurations and explain the meaning of individual configuration options.
 
 @menu
-* Minimal configuration::       
-* Slave configuration::       
-* Master configuration::       
-* Configuring multiple interfaces::       
+* Minimal configuration::
+* Slave configuration::
+* Master configuration::
+* Configuring multiple interfaces::
 * Using DNS UPDATE::
-* Remote control interface::       
+* Remote control interface::
 * Enabling zone semantic checks::
 * Creating IXFR differences from zone file changes::
 * Using Response Rate Limiting::
@@ -43,22 +43,22 @@ log @{
 @}
 
 zones @{
-  example.com @{  
+  example.com @{
     file "/etc/knot/example.com";
   @}
 @}
-	
+
 @end example
 
 @page
 Now let's go step by step through this minimal configuration file:
 
-@enumerate 
+@enumerate
 
 @item
 In @code{system} statement we have configured @code{storage}
-directory where Knot DNS will store compiled zone files, 
-PID file and for slave zone also their journal files. (See @ref{system} and @ref{storage})
+directory where Knot DNS will store slave zones and journal files.
+(See @ref{system} and @ref{storage})
 
 @item
 The @code{interfaces} statement defines interfaces where Knot
@@ -103,11 +103,12 @@ remotes @{
   subnet1 @{ address 192.168.1.0/24; @}
 @}
 zones @{
-  example.com @{  
+  example.com @{
     file "example.com"; # relative to 'storage'
     xfr-in master;      # define 'master' for this zone
     notify-in master;   # also allow NOTIFY from 'master'
-    update-in subnet1;  # accept UPDATE msgs from subnet1 and forward to master
+    update-in subnet1;  # accept UPDATE msgs from subnet1 and forward
+                        # to master
   @}
 @}
 @end example
@@ -127,7 +128,7 @@ remotes @{
   master @{ address 127.0.0.1@@53; key key0; @}
 @}
 zones @{
-  example.com @{  
+  example.com @{
     file "example.com"; # relative to 'storage'
     xfr-in master;      # define 'master' for this zone
     notify-in master;   # also allow NOTIFY from 'master'
@@ -151,7 +152,7 @@ remotes @{
   subnet2 @{ address 192.168.2.0/8; @}
 @}
 zones @{
-  example.com @{  
+  example.com @{
     file "/var/zones/example.com";
     xfr-out subnet1, subnet2; # allow outgoing transfers
     notify-out slave;
@@ -170,7 +171,7 @@ remotes @{
   any @{ address 0.0.0.0/0; key key0; @}
 @}
 zones @{
-  example.com @{  
+  example.com @{
     file "/var/zones/example.com";
     xfr-out any; # uses 'any' remote secured with TSIG key 'key0'
   @}
@@ -195,7 +196,7 @@ interfaces @{
 
 As noted in examples for master and slave, it is possible to accept DNS UPDATE messages.
 When the zone is configured as a slave and DNS UPDATE messages is accepted, server forwards the
-message to its primary master specified by @code{xfr-in} directive. When it receives 
+message to its primary master specified by @code{xfr-in} directive. When it receives
 the response from primary master, it forwards it back to the originator. This finishes the transaction.
 
 However, if the zone is configured as master (i.e. not having any @code{xfr-in} directive), it accepts
@@ -221,29 +222,29 @@ Deleting a last RR also removes its RRSIG.
 @node Remote control interface
 @section Remote control interface
 
-It is possible to control Knot DNS remotely. In order to enable remote control,
-you have to define control interface and an appropriate key. Use of key for
-authentication is strongly recommended. The control protocol is not encrypted,
-and susceptible to replay attack in a short timeframe until message digest expires,
-for that reason, it is recommended to enable remote control only on private networks
-or loopback.
+As of v1.3.0, it is possible to control running daemon using UNIX sockets,
+which is also preferred over internet sockets. You don't need any specific configuration,
+since it is enabled by default and the UNIX socket is placed in the rundir.
+To disable remote control completely, add an empty @code{control} section to the
+configuration like:
 
 @example
-keys @{
-	knotc-key hmac-md5 "Wg==";
-@}
-remotes @{
-	ctl @{ address 127.0.0.1; key knotc-key; @}
-@}
-control @{
-	listen-on @{ address 127.0.0.1; @}
-	allow ctl;
-@} 
+control @{ @}
 @end example
 
-The @code{allow} keyword accepts an ACL list, similar to @code{xfr-in} or @code{xfr-out},
+However you can still use IPv4/IPv6 address, although with several shortcomings.
+You then can use @code{allow} for an ACL list similar to @code{xfr-in} or @code{xfr-out},
 see that for syntax reference. The @code{listen-on} has syntax equal to an interface specification,
-but the default port for remote control protocol is @code{5553}.
+but the default port for remote control protocol is @code{5533}.
+However keep in mind, that the transferred data isn't encrypted and could be
+susceptible to replay attack in a short timeframe.
+
+Example configuration:
+@example
+control @{
+	listen-on @{ address 127.0.0.1@@5533; @}
+@}
+@end example
 
 @node Enabling zone semantic checks
 @section Enabling zone semantic checks
@@ -253,7 +254,7 @@ which checks are enabled by default and which are optional.
 
 @node Creating IXFR differences from zone file changes
 @section Creating IXFR differences from zone file changes
-If Knot is being run as a master server, experimental feature @code{ixfr-from-differences} 
+If Knot is being run as a master server, experimental feature @code{ixfr-from-differences}
 can be enabled to create IXFR differences from changes made to the master zone file.
 See @ref{Controlling running daemon} for more information. For more about @code{zones} statement see @ref{zones}.
 
@@ -280,8 +281,6 @@ Example configuration:
 @example
 system @{
 	rate-limit 200;    # Each flow is allowed to 200 resp. per second
-	rate-limit-slip 2; # Every other response is slipped (default) 
+	rate-limit-slip 2; # Every other response is slipped (default)
 @}
 @end example
-
-

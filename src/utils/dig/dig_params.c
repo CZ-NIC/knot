@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include "utils/dig/dig_params.h"
 
 #include <string.h>			// strncmp
@@ -45,15 +46,16 @@ static const flags_t DEFAULT_FLAGS_DIG = {
 static const style_t DEFAULT_STYLE_DIG = {
 	.format = FORMAT_FULL,
 	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = false, .reduce = false },
-	.show_header = true,
+	           .verbose = false, .reduce = false, .human_ttl = false,
+	           .human_tmstamp = true },
 	.show_query = false,
+	.show_header = true,
 	.show_edns = true,
 	.show_question = true,
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
-	.show_footer = true,
+	.show_footer = true
 };
 
 query_t* query_create(const char *owner, const query_t *conf)
@@ -66,7 +68,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		return NULL;
 	}
 
-	// Set an owner if any.
+	// Set the query owner if any.
 	if (owner != NULL) {
 		if ((query->owner = strdup(owner)) == NULL) {
 			query_free(query);
@@ -79,6 +81,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 
 	// Initialization with defaults or with reference query.
 	if (conf == NULL) {
+		query->local = NULL;
 		query->operation = OPERATION_QUERY;
 		query->ip = IP_ALL;
 		query->protocol = PROTO_ALL;
@@ -86,13 +89,25 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->udp_size = -1;
 		query->retries = DEFAULT_RETRIES_DIG;
 		query->wait = DEFAULT_TIMEOUT_DIG;
-		query->servfail_stop = false;
+		query->ignore_tc = false;
+		query->servfail_stop = true;
 		query->class_num = -1;
 		query->type_num = -1;
 		query->xfr_serial = 0;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
+		query->nsid = false;
 	} else {
+		if (conf->local != NULL) {
+			query->local = server_create(conf->local->name,
+			                             conf->local->service);
+			if (query->local == NULL) {
+				query_free(query);
+				return NULL;
+			}
+		} else {
+			query->local = NULL;
+		}
 		query->operation = conf->operation;
 		query->ip = conf->ip;
 		query->protocol = conf->protocol;
@@ -100,15 +115,23 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->udp_size = conf->udp_size;
 		query->retries = conf->retries;
 		query->wait = conf->wait;
+		query->ignore_tc = conf->ignore_tc;
 		query->servfail_stop = conf->servfail_stop;
 		query->class_num = conf->class_num;
 		query->type_num = conf->type_num;
 		query->xfr_serial = conf->xfr_serial;
 		query->flags = conf->flags;
 		query->style = conf->style;
+		query->nsid = conf->nsid;
+
+		if (knot_copy_key_params(&conf->key_params, &query->key_params)
+		    != KNOT_EOK) {
+			query_free(query);
+			return NULL;
+		}
 	}
 
-	// Check port.
+	// Check dynamic allocation.
 	if (query->port == NULL) {
 		query_free(query);
 		return NULL;
@@ -126,10 +149,19 @@ void query_free(query_t *query)
 		return;
 	}
 
-	// Clean up servers.
+	// Cleanup servers.
 	WALK_LIST_DELSAFE(n, nxt, query->servers) {
 		server_free((server_t *)n);
 	}
+
+	// Cleanup local address.
+	if (query->local != NULL) {
+		server_free(query->local);
+	}
+
+	// Cleanup cryptographic content.
+	free_sign_context(&query->sign_ctx);
+	knot_free_key_params(&query->key_params);
 
 	free(query->owner);
 	free(query->port);
@@ -144,6 +176,8 @@ int dig_init(dig_params_t *params)
 	}
 
 	memset(params, 0, sizeof(*params));
+
+	params->stop = false;
 
 	// Initialize list of queries.
 	init_list(&params->queries);
@@ -192,9 +226,27 @@ static int parse_class(const char *value, query_t *query)
 
 static int parse_keyfile(const char *value, query_t *query)
 {
+	knot_free_key_params(&query->key_params);
+
 	if (params_parse_keyfile(value, &query->key_params) != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
+
+	return KNOT_EOK;
+}
+
+static int parse_local(const char *value, query_t *query)
+{
+	server_t *local = parse_nameserver(value, "0");
+	if (local == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (query->local != NULL) {
+		server_free(query->local);
+	}
+
+	query->local = local;
 
 	return KNOT_EOK;
 }
@@ -292,6 +344,8 @@ static int parse_server(const char *value, dig_params_t *params)
 
 static int parse_tsig(const char *value, query_t *query)
 {
+	knot_free_key_params(&query->key_params);
+
 	if (params_parse_tsig(value, &query->key_params) != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
@@ -412,39 +466,61 @@ void complete_queries(list *queries, const query_t *conf)
 			}
 		}
 
+		// Set zone transfer if any.
+		if (q->type_num == KNOT_RRTYPE_AXFR ||
+		    q->type_num == KNOT_RRTYPE_IXFR) {
+			q->operation = OPERATION_XFR;
+		}
+
+		// No retries for TCP.
+		if (q->protocol == PROTO_TCP) {
+			q->retries = 0;
+		}
+
 		// Complete nameservers list.
 		complete_servers(q, conf);
 	}
 }
 
-static void dig_help()
+static void dig_help(void)
 {
-	printf("Usage: kdig [-4] [-6] [-dh] [-c class] [-p port] [-q name]\n"
-	       "            [-t type] [-x address] name @server\n\n"
-               "       +[no]multiline  Wrap long records to more lines.\n"
-               "       +[no]short      Show record data only.\n"
-               "       +[no]aaflag     Set AA flag.\n"
-               "       +[no]tcflag     Set TC flag.\n"
-               "       +[no]rdflag     Set RD flag.\n"
-               "       +[no]recurse    Same as +[no]rdflag\n"
-               "       +[no]raflag     Set RA flag.\n"
-               "       +[no]zflag      Set zero flag bit.\n"
-               "       +[no]adflag     Set AD flag.\n"
-               "       +[no]cdflag     Set CD flag.\n"
-               "       +[no]dnssec     Set DO flag.\n"
-               "       +[no]all        Show all packet sections.\n"
-               "       +[no]question   Show question section.\n"
-               "       +[no]answer     Show answer section.\n"
-               "       +[no]authority  Show authority section.\n"
-               "       +[no]additional Show additional section.\n"
-               "       +[no]stats      Show trailing packet statistics.\n"
-               "       +[no]cl         Show DNS class.\n"
-               "       +[no]ttl        Show TTL value.\n"
-               "       +time=T         Set wait for reply interval in seconds.\n"
-               "       +retries=N      Set number of retries.\n"
-               "       +bufsize=B      Set EDNS buffer size.\n"
-               "       +[no]tcp        Use TCP protocol.\n"
-               "       +[no]fail       Stop if SERVFAIL.\n");
+	printf("Usage: kdig [-4] [-6] [-dh] [-b address] [-c class] [-p port]\n"
+	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"
+	       "            [-y [algo:]keyname:key] name @server\n"
+	       "\n"
+	       "       +[no]multiline  Wrap long records to more lines.\n"
+	       "       +[no]short      Show record data only.\n"
+	       "       +[no]aaflag     Set AA flag.\n"
+	       "       +[no]tcflag     Set TC flag.\n"
+	       "       +[no]rdflag     Set RD flag.\n"
+	       "       +[no]recurse    Same as +[no]rdflag\n"
+	       "       +[no]rec        Same as +[no]rdflag\n"
+	       "       +[no]raflag     Set RA flag.\n"
+	       "       +[no]zflag      Set zero flag bit.\n"
+	       "       +[no]adflag     Set AD flag.\n"
+	       "       +[no]cdflag     Set CD flag.\n"
+	       "       +[no]dnssec     Set DO flag.\n"
+	       "       +[no]all        Show all packet sections.\n"
+	       "       +[no]qr         Show query packet.\n"
+	       "       +[no]header     Show packet header.\n"
+	       "       +[no]edns       Show EDNS pseudosection.\n"
+	       "       +[no]question   Show question section.\n"
+	       "       +[no]answer     Show answer section.\n"
+	       "       +[no]authority  Show authority section.\n"
+	       "       +[no]additional Show additional section.\n"
+	       "       +[no]stats      Show trailing packet statistics.\n"
+	       "       +[no]cl         Show DNS class.\n"
+	       "       +[no]ttl        Show TTL value.\n"
+	       "       +time=T         Set wait for reply interval in seconds.\n"
+	       "       +retry=N        Set number of retries.\n"
+	       "       +bufsize=B      Set EDNS buffer size.\n"
+	       "       +[no]tcp        Use TCP protocol.\n"
+	       "       +[no]fail       Stop if SERVFAIL.\n"
+	       "       +[no]ignore     Don't use TCP automatically if truncated.\n"
+	       "       +[no]nsid       Request NSID.\n"
+	       "\n"
+	       "       -h, --help      Print help.\n"
+	       "       -v, --version   Print program version.\n");
 }
 
 static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
@@ -485,6 +561,18 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 
 		query->ip = IP_6;
 		break;
+	case 'b':
+		if (val == NULL) {
+			ERR("missing address\n");
+			return KNOT_EINVAL;
+		}
+
+		if (parse_local(val, query) != KNOT_EOK) {
+			ERR("bad address %s\n", val);
+			return KNOT_EINVAL;
+		}
+		*index += add;
+		break;
 	case 'd':
 		msg_enable_debug(1);
 		break;
@@ -495,7 +583,8 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 
 		dig_help();
-		return KNOT_ESTOP;;
+		params->stop = true;
+		break;
 	case 'c':
 		if (val == NULL) {
 			ERR("missing class\n");
@@ -557,6 +646,15 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		}
 		*index += add;
 		break;
+	case 'v':
+		if (len > 1) {
+			ERR("invalid option -%s\n", opt);
+			return KNOT_ENOTSUP;
+		}
+
+		printf(KDIG_VERSION);
+		params->stop = true;
+		break;
 	case 'x':
 		if (val == NULL) {
 			ERR("missing address\n");
@@ -581,6 +679,18 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 		*index += add;
+		break;
+	case '-':
+		if (strcmp(opt, "-help") == 0) {
+			dig_help();
+			params->stop = true;
+		} else if (strcmp(opt, "-version") == 0) {
+			printf(KDIG_VERSION);
+			params->stop = true;
+		} else {
+			ERR("invalid option: -%s\n", opt);
+			return KNOT_ENOTSUP;
+		}
 		break;
 	default:
 		ERR("invalid option: -%s\n", opt);
@@ -609,6 +719,7 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.show_edns = true;
 		query->style.show_footer = true;
 		query->style.style.verbose = true;
+		query->style.style.human_ttl = true;
 	} else if (strcmp(value, "nomultiline") == 0) {
 		query->style.style.wrap = false;
 	}
@@ -633,10 +744,12 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->flags.tc_flag = false;
 	}
 	else if (strcmp(value, "rdflag") == 0 ||
-	         strcmp(value, "recurse") == 0) {
+	         strcmp(value, "recurse") == 0 ||
+	         strcmp(value, "rec") == 0) {
 		query->flags.rd_flag = true;
 	} else if (strcmp(value, "nordflag") == 0 ||
-	           strcmp(value, "norecurse") == 0) {
+	           strcmp(value, "norecurse") == 0 ||
+	           strcmp(value, "norec") == 0) {
 		query->flags.rd_flag = false;
 	}
 	else if (strcmp(value, "raflag") == 0) {
@@ -689,6 +802,16 @@ static int parse_opt2(const char *value, dig_params_t *params)
 	} else if (strcmp(value, "noqr") == 0) {
 		query->style.show_query = false;
 	}
+	else if (strcmp(value, "header") == 0) {
+		query->style.show_header = true;
+	} else if (strcmp(value, "noheader") == 0) {
+		query->style.show_header = false;
+	}
+	else if (strcmp(value, "edns") == 0) {
+		query->style.show_edns = true;
+	} else if (strcmp(value, "noedns") == 0) {
+		query->style.show_edns = false;
+	}
 	else if (strcmp(value, "question") == 0) {
 		query->style.show_question = true;
 	} else if (strcmp(value, "noquestion") == 0) {
@@ -724,14 +847,16 @@ static int parse_opt2(const char *value, dig_params_t *params)
 	} else if (strcmp(value, "nottl") == 0) {
 		query->style.style.show_ttl = false;
 	}
+
+	// Check for query option.
 	else if (strncmp(value, "time=", 5) == 0) {
 		if (params_parse_wait(value + 5, &query->wait)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
 	}
-	else if (strncmp(value, "retries=", 8) == 0) {
-		if (params_parse_num(value + 8, &query->retries)
+	else if (strncmp(value, "retry=", 6) == 0) {
+		if (params_parse_num(value + 6, &query->retries)
 		    != KNOT_EOK) {
 			return KNOT_EINVAL;
 		}
@@ -742,17 +867,26 @@ static int parse_opt2(const char *value, dig_params_t *params)
 			return KNOT_EINVAL;
 		}
 	}
-
-	// Check for connection option.
 	else if (strcmp(value, "tcp") == 0) {
 		query->protocol = PROTO_TCP;
 	} else if (strcmp(value, "notcp") == 0) {
 		query->protocol = PROTO_UDP;
+		query->ignore_tc = true;
 	}
 	else if (strcmp(value, "fail") == 0) {
 		query->servfail_stop = true;
 	} else if (strcmp(value, "nofail") == 0) {
 		query->servfail_stop = false;
+	}
+	else if (strcmp(value, "ignore") == 0) {
+		query->ignore_tc = true;
+	} else if (strcmp(value, "noignore") == 0) {
+		query->ignore_tc = false;
+	}
+	else if (strcmp(value, "nsid") == 0) {
+		query->nsid = true;
+	} else if (strcmp(value, "nonsid") == 0) {
+		query->nsid = false;
 	}
 
 	// Unknown option.
@@ -824,6 +958,9 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 		// Check return.
 		switch (ret) {
 		case KNOT_EOK:
+			if (params->stop) {
+				return KNOT_EOK;
+			}
 			break;
 		case KNOT_ENOTSUP:
 			dig_help();

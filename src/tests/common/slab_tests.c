@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
@@ -21,7 +22,6 @@
 
 #include "tests/common/slab_tests.h"
 #include "common/slab/slab.h"
-#include "knot/common.h"
 
 /*! \brief Type-safe maximum macro. */
 #define SLAB_MAX(a, b) \

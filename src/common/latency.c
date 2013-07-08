@@ -16,6 +16,7 @@
 
 #ifdef PROF_LATENCY
 
+#include <config.h>
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/socket.h>

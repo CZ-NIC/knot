@@ -37,6 +37,7 @@
  * ------
  ***/
 
+#include <config.h>
 #include "heap.h"
 #include <string.h>
 #include <stdlib.h>
@@ -60,7 +61,7 @@ int heap_init(struct heap *h, int (*cmp)(void *, void *), int init_size)
 	h->data = malloc((isize + 1) * sizeof(heap_val_t)); /* Temp element unused. */
 
 	return h->data ? 1 : 0;
-};
+}
 
 static inline void _heap_bubble_down(struct heap *h, int e)
 {
@@ -86,7 +87,7 @@ static inline void _heap_bubble_up(struct heap *h, int e)
 		heap_swap(HELEMENT(h,e),HELEMENT(h,e1));
 		e = e1;
 	}
-		
+
 }
 
 void heap_delmin(struct heap *h)
@@ -142,4 +143,3 @@ void heap_delete(struct heap *h, int e)
 		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t));
 	}
 }
-

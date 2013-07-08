@@ -9,6 +9,7 @@ This file is licensed under the GPL v3
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include "common.h"
 #include "tap.h"
 
 static int expected_tests = NO_PLAN;
@@ -226,6 +227,7 @@ exit_status () {
 
 int
 bail_out (int ignore, const char *fmt, ...) {
+    UNUSED(ignore);
     va_list args;
     va_start(args, fmt);
     printf("Bail out!  ");
@@ -252,6 +254,7 @@ skippy (int n, const char *fmt, ...) {
 
 void
 ctodo (int ignore, const char *fmt, ...) {
+    UNUSED(ignore);
     va_list args;
     va_start(args, fmt);
     todo_mesg = vstrdupf(fmt, args);
@@ -322,4 +325,3 @@ like_at_loc (int for_match, const char *file, int line, const char *got,
     return test;
 }
 #endif
-

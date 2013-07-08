@@ -1,0 +1,34 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	KEY	0	0	0	AA==		; The simplest variant
+@	KEY	65535	255	255	AA==		; Maximal numbers
+@	KEY	0	0	0	Zm8=		; One char padding
+@	KEY	0	0	0	Zm9v		; Without padding
+@	KEY	0	0	0	Zm9vYg==	; Two base64 blocks
+@	KEY	0	0	0	Zm9v YmE=	; Two base64 blocks with blank space between them
+@	TYPE25	\# 5 0000000000				; TYPE + Hexadecimal rdata
+@	TYPE25	0	0	0	AA==		; TYPE
+@	key	0	0	0	AA==		; Type in lower-case
+
+; KO
+@	KEY
+@	KEY						; Empty rdata
+@	KEY	\# 0					; Hex empty rdata
+@	KEY	\#					; Missing hex length
+@	KEY	65536	0	0	AA==		; Type overflow
+@	KEY	0	256	0	AA==		; Key tag overflow
+@	KEY	0	0	256	AA==		; Algorithm overflow
+@	KEY	0	0	0	A		; Continuous block length must be multiple of 4
+@	KEY	0	0	0	AB		; Continuous block length must be multiple of 4
+@	KEY	0	0	0	ABC		; Continuous block length must be multiple of 4
+@	KEY	0	0	0	AA ==		; Continuous block length must be multiple of 4
+@	KEY	0	0	0	A===		; Bad padding
+@	KEY	0	0	0	=		; Bad padding
+@	KEY	0	0	0	==		; Bad padding
+@	KEY	0	0	0	===		; Bad padding
+@	KEY	0	0	0	====		; Bad padding
+@	KEY	0	0	0			; Missing item
+@	KEY	\# 5 000000000000			; Too long rdata
+@	KEY	\# 6 0000000000				; Bad rdata length

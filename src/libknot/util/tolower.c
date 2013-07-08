@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "util/tolower.h"
 
 const uint8_t char_table[CHAR_TABLE_SIZE] = {

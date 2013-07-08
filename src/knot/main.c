@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/stat.h>
 #include <limits.h>
 
 #ifdef HAVE_CAP_NG_H
@@ -27,7 +28,7 @@
 
 #include "common.h"
 #include "common/evqueue.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
@@ -44,6 +45,9 @@ static volatile short sig_req_reload = 0;
 static volatile short sig_req_refresh = 0;
 static volatile short sig_stopping = 0;
 
+// Cleanup handler
+static int do_cleanup(server_t *server, char *configf, char *pidf);
+
 // SIGINT signal handler
 void interrupt_handle(int s)
 {
@@ -52,13 +56,13 @@ void interrupt_handle(int s)
 		sig_req_reload = 1;
 		return;
 	}
-	
+
 	// Refresh
 	if (s == SIGUSR2) {
 		sig_req_refresh = 1;
 		return;
 	}
-	
+
 	// Stop server
 	if (s == SIGINT || s == SIGTERM) {
 		if (sig_stopping == 0) {
@@ -70,7 +74,7 @@ void interrupt_handle(int s)
 	}
 }
 
-void help(int argc, char **argv)
+void help(void)
 {
 	printf("Usage: %sd [parameters]\n",
 	       PACKAGE_NAME);
@@ -89,7 +93,7 @@ int main(int argc, char **argv)
 	int verbose = 0;
 	int daemonize = 0;
 	char* config_fn = NULL;
-	
+
 	/* Long options. */
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
@@ -99,7 +103,7 @@ int main(int argc, char **argv)
 		{"help",      no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
-	
+
 	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
 		switch (c)
 		{
@@ -117,9 +121,12 @@ int main(int argc, char **argv)
 			return 0;
 		case 'h':
 		case '?':
+			free(config_fn);
+			help();
+			return 0;
 		default:
 			free(config_fn);
-			help(argc, argv);
+			help();
 			return 1;
 		}
 	}
@@ -143,9 +150,6 @@ int main(int argc, char **argv)
 	sigaction(SIGALRM, &emptyset, NULL); // Interrupt
 	sigaction(SIGPIPE, &emptyset, NULL); // Mask
 	rcu_register_thread();
-
-	// Setup event queue
-	evqueue_set(evqueue_new());
 
 	// Initialize log
 	log_init();
@@ -179,7 +183,7 @@ int main(int argc, char **argv)
 			config_fn = rpath;
 		}
 	}
-	
+
 	// Create server
 	server_t *server = server_create();
 
@@ -188,33 +192,33 @@ int main(int argc, char **argv)
 	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
 	conf_add_hook(conf(), CONF_ALL, server_conf_hook, server);
 	rcu_read_unlock();
-	
+
 	/* POSIX 1003.1e capabilities. */
 #ifdef HAVE_CAP_NG_H
-	
+
 	/* Drop all capabilities. */
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
 		capng_clear(CAPNG_SELECT_BOTH);
-	
-	
+
+
 		/* Retain ability to set capabilities and FS access. */
 		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
 		capng_update(CAPNG_ADD, tp, CAP_SETPCAP);
 		capng_update(CAPNG_ADD, tp, CAP_DAC_OVERRIDE);
 		capng_update(CAPNG_ADD, tp, CAP_CHOWN); /* Storage ownership. */
-		
+
 		/* Allow binding to privileged ports.
 		 * (Not inheritable)
 		 */
 		capng_update(CAPNG_ADD, tp, CAP_NET_BIND_SERVICE);
-		
+
 		/* Allow setuid/setgid. */
 		capng_update(CAPNG_ADD, tp, CAP_SETUID);
 		capng_update(CAPNG_ADD, tp, CAP_SETGID);
-		
+
 		/* Allow priorities changing. */
 		capng_update(CAPNG_ADD, tp, CAP_SYS_NICE);
-		
+
 		/* Apply */
 		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
 			log_server_error("Couldn't set process capabilities - "
@@ -232,15 +236,12 @@ int main(int argc, char **argv)
 	if (conf_ret != KNOT_EOK) {
 		if (conf_ret == KNOT_ENOENT) {
 			log_server_error("Couldn't open configuration file "
-					 "'%s'.\n", config_fn);
+			                 "'%s'.\n", config_fn);
 		} else {
 			log_server_error("Failed to load configuration '%s'.\n",
-				config_fn);
+			                 config_fn);
 		}
-		server_wait(server);
-		server_destroy(&server);
-		free(config_fn);
-		return 1;
+		return do_cleanup(server, config_fn, NULL);
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",
 				conf()->ifaces_count, conf()->zones_count);
@@ -249,45 +250,35 @@ int main(int argc, char **argv)
 
 	/* Alter privileges. */
 	log_update_privileges(conf()->uid, conf()->gid);
-	proc_update_privileges(conf()->uid, conf()->gid);
-	
+	if (proc_update_privileges(conf()->uid, conf()->gid) != KNOT_EOK)
+		return do_cleanup(server, config_fn, NULL);
+
+	/* Check and create PID file. */
+	long pid = (long)getpid();
+	char *pidf = NULL;
+	char *cwd = NULL;
+	if (daemonize) {
+		if ((pidf = pid_check_and_create()) == NULL)
+			return do_cleanup(server, config_fn, pidf);
+		log_server_info("Server started as a daemon, PID = %ld\n", pid);
+		log_server_info("PID stored in '%s'\n", pidf);
+		if ((cwd = malloc(PATH_MAX)) != NULL)
+			cwd = getcwd(cwd, PATH_MAX);
+		if (chdir("/") != 0)
+			log_server_warning("Server can't change working directory.\n");
+	} else {
+		log_server_info("Server started in foreground, PID = %ld\n", pid);
+		log_server_info("Server running without PID file.\n");
+	}
+
 	/* Load zones and add hook. */
 	zones_ns_conf_hook(conf(), server->nameserver);
 	conf_add_hook(conf(), CONF_ALL, zones_ns_conf_hook, server->nameserver);
 
 	// Run server
 	int res = 0;
-	int has_pid = 0;
-	char* pidfile = pid_filename();
 	log_server_info("Starting server...\n");
 	if ((server_start(server)) == KNOT_EOK) {
-
-		// Save PID
-		has_pid = 1;
-		int rc = pid_write(pidfile);
-		if (rc < 0) {
-			has_pid = 0;
-			log_server_warning("Failed to create "
-					   "PID file '%s' (%s).\n",
-					   pidfile, strerror(errno));
-		}
-
-		// Change directory if daemonized
-		if (daemonize) {
-			log_server_info("Server started as a daemon, "
-					"PID = %ld\n", (long)getpid());
-			if (chdir("/") != 0) {
-				res = 1;
-			}
-		} else {
-			log_server_info("Server started in foreground, "
-					"PID = %ld\n", (long)getpid());
-		}
-		if (has_pid) {
-			log_server_info("PID stored in %s\n", pidfile);
-		} else {
-			log_server_warning("Server running without PID file.\n");
-		}
 		size_t zcount = server->nameserver->zone_db->zone_count;
 		if (!zcount) {
 			log_server_warning("Server started, but no zones served.\n");
@@ -309,23 +300,37 @@ int main(int argc, char **argv)
 		/* Bind to control interface. */
 		uint8_t buf[65535]; /*! \todo #2035 should be on heap */
 		size_t buflen = sizeof(buf);
-		conf_iface_t *ctl_if = conf()->ctl.iface;
 		int remote = -1;
-		if (ctl_if != NULL) {
+		if (conf()->ctl.iface != NULL) {
+			conf_iface_t *ctl_if = conf()->ctl.iface;
+			memset(buf, 0, buflen);
+			if (ctl_if->port)
+				snprintf((char*)buf, buflen, "@%d", ctl_if->port);
+			/* Log control interface description. */
 			log_server_info("Binding remote control interface "
-					"to %s port %d.\n",
-					ctl_if->address, ctl_if->port);
+					"to %s%s\n",
+					ctl_if->address, (char*)buf);
 			remote = remote_bind(ctl_if);
-		} else {
-			remote = evqueue()->fds[EVQUEUE_READFD];
 		}
-		
-		
+
 		/* Run event loop. */
 		for(;;) {
 			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 			int ret = remote_poll(remote);
 			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
+
+			/* Events. */
+			if (ret > 0) {
+				ret = remote_process(server, conf()->ctl.iface,
+				                     remote, buf, buflen);
+				switch(ret) {
+				case KNOT_CTL_STOP:
+					sig_req_stop = 1;
+					break;
+				default:
+					break;
+				}
+			}
 
 			/* Interrupts. */
 			if (sig_req_stop) {
@@ -346,20 +351,19 @@ int main(int argc, char **argv)
 					                 "slave zones - %s",
 					                 knot_strerror(cf_ret));
 				}
-				
-			}
-
-			/* Events. */
-			if (ret > 0) {
-				remote_process(server, remote, buf, buflen);
 
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-		
+
 		/* Close remote control interface */
 		if (remote > -1) {
 			close(remote);
+
+			/* Remove control socket.  */
+			conf_iface_t *ctl_if = conf()->ctl.iface;
+			if (ctl_if && ctl_if->family == AF_UNIX)
+				unlink(conf()->ctl.iface->address);
 		}
 
 		if ((server_wait(server)) != KNOT_EOK) {
@@ -376,31 +380,41 @@ int main(int argc, char **argv)
 		res = 1;
 	}
 
-	// Stop server and close log
-	server_destroy(&server);
-
-	// Remove PID file
-	if (has_pid && pid_remove(pidfile) < 0) {
-		log_server_warning("Failed to remove PID file.\n");
-	}
-
 	log_server_info("Shut down.\n");
 	log_close();
-	free(pidfile);
 
-	// Destroy event loop
-	evqueue_t *q = evqueue();
-	evqueue_free(&q);
-	
-	rcu_unregister_thread();
-
-	// Free default config filename if exists
-	free(config_fn);
+	/* Cleanup. */
+	if (pidf && pid_remove(pidf) < 0)
+		log_server_warning("Failed to remove PID file.\n");
+	do_cleanup(server, config_fn, pidf);
 
 	if (!daemonize) {
 		fflush(stdout);
 		fflush(stderr);
 	}
 
+	/* Return to original working directory. */
+	if (cwd) {
+		if (chdir(cwd) != 0)
+			log_server_warning("Server can't change working directory.\n");
+		free(cwd);
+	}
+
 	return res;
+}
+
+static int do_cleanup(server_t *server, char *configf, char *pidf)
+{
+	/* Free alloc'd variables. */
+	if (server) {
+		server_wait(server);
+		server_destroy(&server);
+	}
+	free(configf);
+	free(pidf);
+
+	/* Unhook from RCU */
+	rcu_unregister_thread();
+
+	return 1;
 }

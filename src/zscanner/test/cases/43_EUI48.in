@@ -1,0 +1,25 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	EUI48	00-00-00-00-00-00	; The simplest case
+@	EUI48	FF-FF-FF-FF-FF-FF	; The maximal case
+@	EUI48	aa-bb-cc-dd-ee-ff	; Lower-case
+@	EUI48	\# 6 000000000000	; Hexadecimal rdata
+@	TYPE108	\# 6 000000000000	; TYPE + Hexadecimal rdata
+@	TYPE108	00-00-00-00-00-00	; TYPE
+@	eui48	00-00-00-00-00-00	; Type in lower-case
+
+; KO
+@	EUI48
+@	EUI48				; Empty rdata
+@	EUI48	\# 0			; Hex empty rdata
+@	EUI48	\#			; Missing hex length
+@	EUI48	00-00-00-00-00		; Too few hex pairs
+@	EUI48	00-00-00-00-00-00-00	; Too many hex pairs
+@	EUI48	00-00-00-00-00-0	; Missing char in a hex pair
+@	EUI48	00:00-00-00-00-00	; Bad separator
+@	EUI48	00-00-00-x0-00-00	; Bad character
+@	EUI48	00-00-00-00-00-00 x	; Unexpected item
+@	EUI48	\# 7 000000000000 00	; Too long rdata
+@	EUI48	\# 7 000000000000	; Bad rdata length

@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
 #include <config.h>
 #include <stdio.h>
@@ -71,7 +71,7 @@ static slab_depot_t _depot_g; /*! \brief Global slab depot. */
  */
 static void* slab_depot_alloc(size_t bufsize)
 {
-    void *page = 0;
+	void *page = 0;
 #ifdef MEM_SLAB_DEPOT
 	if (_depot_g.available) {
 		for (int i = _depot_g.available - 1; i > -1 ; --i) {
@@ -91,12 +91,14 @@ static void* slab_depot_alloc(size_t bufsize)
 
 	}
 #else // MEM_SLAB_DEPOT
-    if(posix_memalign(&page, SLAB_SZ, SLAB_SZ) == 0) {
-	((slab_t*)page)->bufsize = 0;
-    } else {
-	page = 0;
-    }
+	UNUSED(bufsize);
+	if(posix_memalign(&page, SLAB_SZ, SLAB_SZ) == 0) {
+		((slab_t*)page)->bufsize = 0;
+	} else {
+		page = 0;
+	}
 #endif // MEM_SLAB_DEPOT
+	UNUSED(bufsize);
 
 	return page;
 }
@@ -148,14 +150,14 @@ void __attribute__ ((constructor)) slab_init()
 	if (slab_size < 0) {
 		slab_size = SLAB_MINSIZE;
 	}
-	
+
 	// Fetch page size
 	SLAB_SZ = (size_t)slab_size;
 	unsigned slab_logsz = fastlog2(SLAB_SZ);
 
 	// Compute slab page mask
 	SLAB_MASK = 0;
-	for (int i = 0; i < slab_logsz; ++i) {
+	for (unsigned i = 0; i < slab_logsz; ++i) {
 		SLAB_MASK |= 1 << i;
 	}
 	SLAB_MASK = ~SLAB_MASK;
@@ -521,5 +523,3 @@ int slab_cache_reap(slab_cache_t* cache)
 	cache->empty = 0;
 	return count;
 }
-
-

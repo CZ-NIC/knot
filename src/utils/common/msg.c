@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -38,4 +39,3 @@ int msg_debug(const char *fmt, ...)
 	}
 	return n;
 }
-

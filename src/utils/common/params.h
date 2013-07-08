@@ -65,7 +65,7 @@ typedef enum {
 	/*!< Brief host output. */
 	FORMAT_HOST,
 	/*!< Brief nsupdate output. */
-	FORMAT_NSUPDATE,
+	FORMAT_NSUPDATE
 } format_t;
 
 /*! \brief Text output settings. */
@@ -76,10 +76,10 @@ typedef struct {
 	/*!< Style of rrset dump. */
 	knot_dump_style_t	style;
 
-	/*!< Show header info. */
-	bool	show_header;
 	/*!< Show query packet. */
 	bool	show_query;
+	/*!< Show header info. */
+	bool	show_header;
 	/*!< Show EDNS info. */
 	bool	show_edns;
 	/*!< Show QUERY/ZONE section. */

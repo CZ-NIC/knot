@@ -1,3 +1,18 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 /*!
  * \file cf-lex.l
  *
@@ -9,6 +24,7 @@
  */
 %{
 
+#include <config.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -74,6 +90,7 @@ BLANK [ \t\n]
 [\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
 system          { lval.t = yytext; return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
+hostname        { lval.t = yytext; return HOSTNAME; }
 version         { lval.t = yytext; return SVERSION; }
 nsid            { lval.t = yytext; return NSID; }
 storage         { lval.t = yytext; return STORAGE; }
@@ -98,6 +115,7 @@ notify-out      { lval.t = yytext; return NOTIFY_OUT; }
 workers         { lval.t = yytext; return WORKERS; }
 user            { lval.t = yytext; return USER; }
 pidfile         { lval.t = yytext; return PIDFILE; }
+rundir          { lval.t = yytext; return RUNDIR; }
 ixfr-from-differences { lval.t = yytext; return BUILD_DIFFS; }
 max-conn-idle   { lval.t = yytext; return MAX_CONN_IDLE; }
 max-conn-handshake { lval.t = yytext; return MAX_CONN_HS; }
@@ -252,7 +270,7 @@ include BEGIN(include);
        }
     }
   }
-  
+
   return HEXSTR;
 }
 
@@ -324,4 +342,3 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 <include>["][^"\n]*\n cf_error(yyscanner, "Unterminated string.");
 
 %%
-

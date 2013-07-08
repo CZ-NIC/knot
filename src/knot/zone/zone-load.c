@@ -150,11 +150,10 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 }
 
 static knot_node_t *create_node(knot_zone_contents_t *zone,
-	knot_rrset_t *current_rrset,
-	int (*node_add_func)(knot_zone_contents_t *zone, knot_node_t *node,
-	                     int create_parents, uint8_t),
-	knot_node_t *(*node_get_func)(const knot_zone_contents_t *zone,
-					const knot_dname_t *owner))
+                                knot_rrset_t *current_rrset,
+                                int (*node_add_func)(knot_zone_contents_t *zone,
+                                                     knot_node_t *node,
+                                                     int create_parents, uint8_t))
 {
 	dbg_zp_verb("zp: create_node: Creating node using RRSet: %p.\n",
 	            current_rrset);
@@ -162,8 +161,8 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 		knot_node_new(current_rrset->owner, NULL, 0);
 	int ret = node_add_func(zone, node, 1, 0);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Node could not be added (%s).\n",
-		               knot_strerror(ret));
+		log_zone_warning("Node could not be added (%s).\n",
+		                 knot_strerror(ret));
 		return NULL;
 	}
 	
@@ -190,7 +189,7 @@ static void process_rrsigs_in_node(parser_context_t *parser,
 	}
 }
 
-static void process_error(const scanner_t *s)
+void process_error(const scanner_t *s)
 {
 	if (s->stop == true) {
 		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "
@@ -267,7 +266,7 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 dbg_zp_exec_detail(
 			char *name = knot_dname_to_str(dname);
 			dbg_zp_detail("zp: arr_rdata_to_rr: "
-			              "Offset=%d:Adding dname=%s (%p)\n",
+			              "Offset=%zu:Adding dname=%s (%p)\n",
 			              offset, name, dname);
 			free(name);
 );
@@ -397,6 +396,7 @@ static void process_rr(const scanner_t *scanner)
 			} else {
 				log_zone_warning("encountered identical "
 				                 "extra SOA record");
+				knot_rrset_deep_free(&current_rrset, 1, 1);
 				parser->ret = KNOT_EOK;
 				return;
 			}
@@ -452,8 +452,9 @@ static void process_rr(const scanner_t *scanner)
 			if (parser->last_node == NULL) {
 				/* Still NULL, node has to be created. */
 				if ((parser->last_node = create_node(contents,
-				                                     current_rrset, node_add_func,
-				                                     node_get_func)) == NULL) {
+				                                     current_rrset,
+				                                     node_add_func))
+				    == NULL) {
 					knot_rrset_free(&tmp_rrsig);
 					dbg_zp("zp: process_rr: Cannot "
 					       "create new node.\n");
@@ -506,16 +507,16 @@ static void process_rr(const scanner_t *scanner)
 		}
 
 		if ((node = create_node(contents, current_rrset,
-					node_add_func,
-					node_get_func)) == NULL) {
+		                        node_add_func)) == NULL) {
 			dbg_zp("zp: process_rr: Cannot "
 			       "create new node.\n");
-			/*!< \todo consider a new error */
+			char *zone_name = knot_dname_to_str(contents->apex->owner);
 			char *name = knot_dname_to_str(current_rrset->owner);
-			log_zone_error("Cannot create new node owned by %s.\n",
-			               name);
+			log_zone_warning("Zone %s: Cannot create new "
+			                 "node owned by %s, skipping.\n",
+			                 zone_name, name);
 			free(name);
-			parser->ret = KNOT_ERROR;
+			free(zone_name);
 			return;
 		}
 	}
@@ -597,6 +598,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	/* Create trie for DNAME duplicits. */
 	context->lookup_tree = hattrie_create();
 	if (context->lookup_tree == NULL) {
+		free(context);
 		return KNOT_ENOMEM;
 	}
 	
@@ -605,8 +607,8 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	assert(context->origin_from_config);
 	knot_dname_to_lower(context->origin_from_config);
 	/* Add first DNAME to lookup tree. */
-        knot_zone_contents_insert_dname_into_table(&context->origin_from_config,
-	                                           context->lookup_tree);	
+	knot_zone_contents_insert_dname_into_table(&context->origin_from_config,
+	                                           context->lookup_tree);
 	context->last_node = knot_node_new(context->origin_from_config,
 	                                   NULL, 0);
 	knot_dname_release(context->origin_from_config);
@@ -622,10 +624,11 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	                                           context);
 	if (loader == NULL) {
 		dbg_zload("Could not create file loader.\n");
+		hattrie_free(context->lookup_tree);
+		free(context);
 		return KNOT_ERROR;
 	}
 	
-
 	/* Allocate new loader. */
 	zloader_t *zl = xmalloc(sizeof(zloader_t));
 	
@@ -639,8 +642,10 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	/* Log all information for now - possibly more config options. */
 	zl->err_handler = handler_new(1, 1, 1, 1, 1);
 	if (zl->err_handler == NULL) {
-		dbg_zones("zones: zone_load: Could not create semantic "
-		          "checks handler.\n");
+		/* Not a reason to stop. */
+		log_zone_warning("Could not create semantic checks handler. "
+		                 "Semantic check skipped for zone %s\n",
+		                 origin);
 	}
 	
 	context->err_handler = zl->err_handler;
@@ -662,10 +667,13 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	if (c->last_node && c->node_rrsigs) {
 		process_rrsigs_in_node(c, c->current_zone, c->last_node);
 	}
+
 	if (c->ret != KNOT_EOK) {
-		log_zone_error("Zone could not be loaded (%d).", c->ret);
-		/*!< \todo Depending on the error, free stuff. */
+		log_zone_error("Zone could not be loaded (%s).\n",
+		               knot_strerror(c->ret));
 		rrset_list_delete(&c->node_rrsigs);
+		knot_zone_t *zone_to_free = c->current_zone->zone;
+		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 	
@@ -675,9 +683,16 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		               loader->file_loader->scanner->error_counter);
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_contents_deep_free(&c->current_zone);
-		zone_to_free->contents = NULL;
-		knot_zone_free(&zone_to_free);
+		knot_zone_deep_free(&zone_to_free);
+		return NULL;
+	}
+	
+	if (knot_zone_contents_apex(c->current_zone) == NULL ||
+	    knot_node_rrset(knot_zone_contents_apex(c->current_zone), KNOT_RRTYPE_SOA) == NULL) {
+		log_zone_error("No SOA record in the zone file.\n");
+		rrset_list_delete(&c->node_rrsigs);
+		knot_zone_t *zone_to_free = c->current_zone->zone;
+		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 	

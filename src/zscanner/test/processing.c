@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "zscanner/scanner_functions.h"
 
 #include <inttypes.h>			// PRIu64
@@ -78,6 +79,9 @@ const char *error_names[] = {
 	ERROR_CODE_TO_STRING(ZSCANNER_EBAD_ALGORITHM),
 	ERROR_CODE_TO_STRING(ZSCANNER_EBAD_CERT_TYPE),
 	ERROR_CODE_TO_STRING(ZSCANNER_EBAD_EUI_LENGTH),
+	ERROR_CODE_TO_STRING(ZSCANNER_EBAD_L64_LENGTH),
+	ERROR_CODE_TO_STRING(ZSCANNER_EBAD_CHAR_COLON),
+	ERROR_CODE_TO_STRING(ZSCANNER_EBAD_CHAR_DASH),
 };
 #define ERROR_CODE_NAME(code) error_names[code - ZSCANNER_UNCOVERED_STATE]
 
@@ -98,9 +102,10 @@ static void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
 	}
 }
 
-void empty_process_record(const scanner_t *s) { };
-
-void empty_process_error(const scanner_t *s) { };
+void empty_process(const scanner_t *s)
+{
+	(void)s;
+}
 
 void debug_process_error(const scanner_t *s)
 {
@@ -205,4 +210,3 @@ void dump_rdata(const scanner_t *s)
 		}
 	}
 }
-

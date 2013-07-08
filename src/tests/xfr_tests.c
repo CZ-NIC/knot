@@ -21,15 +21,15 @@
  *    binary that an integrity check should be done
 */
 
-#include <time.h>
 #include <config.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <assert.h>
 
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
@@ -65,7 +65,7 @@ void interrupt_handle(int s)
 			exit(1);
 		}
 	}
-	
+
 	// Start zone integrity check
 	if (s == SIGUSR1) {
 		sig_integrity_check = 1;
@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 	int daemonize = 0;
 	char *config_fn = NULL;
 	char *zone = NULL;
-	
+
 	/* Long options. */
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 		{"help",      no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
-	
+
 	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
 		switch (c)
 		{
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 
 	// Now check if we want to daemonize
 	if (daemonize) {
-		if (daemon(1, 0) != 0) { 
+		if (daemon(1, 0) != 0) {
 			free(zone);
 			free(config_fn);
 			fprintf(stderr, "Daemonization failed, "
@@ -156,9 +156,6 @@ int main(int argc, char **argv)
 	sigemptyset(&emptyset.sa_mask);
 	emptyset.sa_flags = 0;
 	sigaction(SIGALRM, &emptyset, NULL); // Interrupt
-
-	// Setup event queue
-	evqueue_set(evqueue_new());
 
 	// Initialize log
 	log_init();
@@ -280,9 +277,10 @@ int main(int argc, char **argv)
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Run event loop. */
+		evqueue_t *evq = evqueue_new();
 		for(;;) {
 			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
-			int ret = evqueue_poll(evqueue(), 0, 0);
+			int ret = evqueue_poll(evq, 0, 0);
 			pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 			/* Interrupts. */
@@ -332,7 +330,7 @@ int main(int argc, char **argv)
 			/* Events. */
 			if (ret > 0) {
 				event_t ev;
-				if (evqueue_get(evqueue(), &ev) == 0) {
+				if (evqueue_get(evq, &ev) == 0) {
 					dbg_server_verb("Event: "
 					                "received new event.\n");
 					if (ev.cb) {
@@ -342,6 +340,7 @@ int main(int argc, char **argv)
 			}
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
+		evqueue_free(&evq);
 
 		if ((res = server_wait(server)) != KNOT_EOK) {
 			log_server_error("An error occured while "
@@ -367,10 +366,6 @@ int main(int argc, char **argv)
 	log_close();
 	free(pidfile);
 
-	// Destroy event loop
-	evqueue_t *q = evqueue();
-	evqueue_free(&q);
-
 	// Free default config filename if exists
 	free(zone);
 	free(config_fn);
@@ -382,4 +377,3 @@ int main(int argc, char **argv)
 
 	return res;
 }
-

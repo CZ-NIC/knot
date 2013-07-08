@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include "utils/common/exec.h"
 
 #include <stdlib.h>			// free
@@ -21,38 +22,14 @@
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
+#include "common/print.h"		// txt_print
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/descriptor.h"		// KNOT_RRTYPE_
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
 
-knot_lookup_table_t opcodes[] = {
-	{ KNOT_OPCODE_QUERY,  "QUERY" },
-	{ KNOT_OPCODE_IQUERY, "IQUERY" },
-	{ KNOT_OPCODE_STATUS, "STATUS" },
-	{ KNOT_OPCODE_NOTIFY, "NOTIFY" },
-	{ KNOT_OPCODE_UPDATE, "UPDATE" },
-	{ KNOT_OPCODE_OFFSET, "OFFSET" },
-	{ 0, NULL }
-};
-
-knot_lookup_table_t rcodes[] = {
-	{ KNOT_RCODE_NOERROR,  "NOERROR" },
-	{ KNOT_RCODE_FORMERR,  "FORMERR" },
-	{ KNOT_RCODE_SERVFAIL, "SERVFAIL" },
-	{ KNOT_RCODE_NXDOMAIN, "NXDOMAIN" },
-	{ KNOT_RCODE_NOTIMPL,  "NOTIMPL" },
-	{ KNOT_RCODE_REFUSED,  "REFUSED" },
-	{ KNOT_RCODE_YXDOMAIN, "YXDOMAIN" },
-	{ KNOT_RCODE_YXRRSET,  "YXRRSET" },
-	{ KNOT_RCODE_NXRRSET,  "NXRRSET" },
-	{ KNOT_RCODE_NOTAUTH,  "NOTAUTH" },
-	{ KNOT_RCODE_NOTZONE,  "NOTZONE" },
-	{ 0, NULL }
-};
-
-knot_lookup_table_t rtypes[] = {
+static knot_lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },
 	{ KNOT_RRTYPE_NS,     "nameserver is" },
 	{ KNOT_RRTYPE_CNAME,  "is an alias for" },
@@ -70,40 +47,26 @@ knot_lookup_table_t rtypes[] = {
 	{ 0, NULL }
 };
 
-knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
-                                   const size_t                      max_size)
-{
-	// Create packet skeleton.
-	knot_packet_t *packet = knot_packet_new(type);
-	if (packet == NULL) {
-		DBG_NULL;
-		return NULL;
-	}
-
-	// Set packet buffer size.
-	knot_packet_set_max_size(packet, max_size);
-
-	// Set random sequence id.
-	knot_packet_set_random_id(packet);
-
-	// Initialize query packet.
-	knot_query_init(packet);
-
-	return packet;
-}
-
 static void print_header(const knot_packet_t *packet, const style_t *style)
 {
 	char    flags[64] = "";
 	uint8_t rcode_id, opcode_id;
+	const char *rcode_str = "NULL";
+	const char *opcode_str = "NULL";
 	knot_lookup_table_t *rcode, *opcode;
 
 	// Get codes.
 	rcode_id = knot_wire_get_rcode(packet->wireformat);
-	opcode_id = knot_wire_get_opcode(packet->wireformat);
+	rcode = knot_lookup_by_id(knot_rcode_names, rcode_id);
+	if (rcode != NULL) {
+		rcode_str = rcode->name;
+	}
 
-	rcode = knot_lookup_by_id(rcodes, rcode_id);
-	opcode = knot_lookup_by_id(opcodes, opcode_id);
+	opcode_id = knot_wire_get_opcode(packet->wireformat);
+	opcode = knot_lookup_by_id(knot_opcode_names, opcode_id);
+	if (opcode != NULL) {
+		opcode_str = opcode->name;
+	}
 
 	// Get flags.
 	if (knot_wire_get_qr(packet->wireformat) != 0) {
@@ -134,21 +97,21 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 	// Print formated info.
 	switch (style->format) {
 	case FORMAT_NSUPDATE:
-		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
-		       ";; Flags:%1s, "
-		       "ZONE: %u, PREREQ: %u, UPDATE: %u, ADDITIONAL: %u\n",
-		       opcode->name, rcode->name, knot_packet_id(packet),
-		       flags, packet->header.qdcount, packet->an_rrsets,
-		       packet->ns_rrsets, packet->ar_rrsets);
+		printf("\n;; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
+		       ";; Flags:%1s; "
+		       "ZONE: %u; PREREQ: %u; UPDATE: %u; ADDITIONAL: %u\n",
+		       opcode_str, rcode_str, knot_packet_id(packet),
+		       flags, packet->header.qdcount, packet->header.ancount,
+		       packet->header.nscount, packet->header.arcount);
 
 		break;
 	default:
-		printf("\n;; ->>HEADER<<- opcode: %s, status: %s, id: %u\n"
-		       ";; Flags:%1s, "
-		       "QUERY: %u, ANSWER: %u, AUTHORITY: %u, ADDITIONAL: %u\n",
-		       opcode->name, rcode->name, knot_packet_id(packet),
-		       flags, packet->header.qdcount, packet->an_rrsets,
-		       packet->ns_rrsets, packet->ar_rrsets);
+		printf("\n;; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
+		       ";; Flags:%1s; "
+		       "QUERY: %u; ANSWER: %u; AUTHORITY: %u; ADDITIONAL: %u\n",
+		       opcode_str, rcode_str, knot_packet_id(packet),
+		       flags, packet->header.qdcount, packet->header.ancount,
+		       packet->header.nscount, packet->header.arcount);
 		break;
 	}
 }
@@ -183,15 +146,15 @@ static void print_footer(const size_t total_len,
 	} else {
 		printf("\n");
 	}
+	// Print date.
+	printf(";; Time %s\n", date);
 
 	// Print connection statistics.
 	if (net != NULL) {
 		if (incoming) {
-			printf(";; From %s#%i over %s",
-			       net->addr, net->port, net->proto);
+			printf(";; From %s", net->remote_str);
 		} else {
-			printf(";; To %s#%i over %s",
-			       net->addr, net->port, net->proto);
+			printf(";; To %s", net->remote_str);
 		}
 
 		if (elapsed >= 0) {
@@ -202,17 +165,28 @@ static void print_footer(const size_t total_len,
 
 		}
 	}
-
-	// Print date.
-	printf(";; On %s\n", date);
 }
 
 static void print_opt_section(const knot_opt_rr_t *rr)
 {
-	printf("Version: %u, flags: %s, UDP size: %u B\n",
+	printf("Version: %u; flags: %s; UDP size: %u B\n",
 	       knot_edns_get_version(rr),
-	       (knot_edns_do(rr) != 0) ? "DO" : "",
+	       (knot_edns_do(rr) != 0) ? "do" : "",
 	       knot_edns_get_payload(rr));
+
+	for (int i = 0; i < rr->option_count; i++) {
+		knot_opt_option_t *opt = &(rr->options[i]);
+
+		if (opt->code == EDNS_OPTION_NSID) {
+			printf(";; NSID: ");
+			short_hex_print(opt->data, opt->length);
+			printf(";;     :  ");
+			txt_print(opt->data, opt->length);
+		} else {
+			printf(";; Option (%u): ", opt->code);
+			short_hex_print(opt->data, opt->length);
+		}
+	}
 }
 
 static void print_section_question(const knot_dname_t *owner,
@@ -221,13 +195,13 @@ static void print_section_question(const knot_dname_t *owner,
                                    const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = malloc(buflen);
+	char   *buf = calloc(buflen, 1);
 
 	knot_rrset_t *question = knot_rrset_new((knot_dname_t *)owner, qtype,
 	                                        qclass, 0);
 
-	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &(style->style))
-	    < 0) {
+	if (knot_rrset_txt_dump_header(question, 0, buf, buflen,
+	    &(style->style)) < 0) {
 		WARN("can't print whole question section\n");
 	}
 
@@ -242,11 +216,16 @@ static void print_section_full(const knot_rrset_t **rrsets,
                                const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = malloc(buflen);
+	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
-	while (knot_rrset_txt_dump(rrsets[i], buf, buflen, &(style->style)) < 0)
-	{
+		if (rrsets[i]->type == KNOT_RRTYPE_OPT) {
+			continue;
+		}
+
+		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
+		                           &(style->style)) < 0)
+		{
 			buflen += 4096;
 			buf = realloc(buf, buflen);
 
@@ -267,7 +246,7 @@ static void print_section_dig(const knot_rrset_t **rrsets,
                               const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = malloc(buflen);
+	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t *rrset = rrsets[i];
@@ -296,7 +275,7 @@ static void print_section_host(const knot_rrset_t **rrsets,
                                const style_t      *style)
 {
 	size_t buflen = 8192;
-	char   *buf = malloc(buflen);
+	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t  *rrset = rrsets[i];
@@ -339,27 +318,51 @@ static void print_section_host(const knot_rrset_t **rrsets,
 static void print_error_host(const uint8_t         code,
                              const knot_question_t *question)
 {
+	const char *rcode_str = "NULL";
 	char type[32] = "NULL";
 	char *owner;
 
 	knot_lookup_table_t *rcode;
 
 	owner = knot_dname_to_str(question->qname);
-	rcode = knot_lookup_by_id(rcodes, code);
+	rcode = knot_lookup_by_id(knot_rcode_names, code);
+	if (rcode != NULL) {
+		rcode_str = rcode->name;
+	}
 	knot_rrtype_to_string(question->qtype, type, sizeof(type));
 
 	if (code == KNOT_RCODE_NOERROR) {
 		printf("Host %s has no %s record\n", owner, type);
-	} else { 
-		printf("Host %s type %s error: %s\n", owner, type, rcode->name);
+	} else {
+		printf("Host %s type %s error: %s\n", owner, type, rcode_str);
 	}
 
 	free(owner);
 }
 
-void print_header_xfr(const char     *owner,
-                      const uint16_t type,
-                      const style_t  *style)
+knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
+                                   const size_t                      max_size)
+{
+	// Create packet skeleton.
+	knot_packet_t *packet = knot_packet_new(type);
+	if (packet == NULL) {
+		DBG_NULL;
+		return NULL;
+	}
+
+	// Set packet buffer size.
+	knot_packet_set_max_size(packet, max_size);
+
+	// Set random sequence id.
+	knot_packet_set_random_id(packet);
+
+	// Initialize query packet.
+	knot_query_init(packet);
+
+	return packet;
+}
+
+void print_header_xfr(const knot_question_t *question, const style_t  *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -368,7 +371,7 @@ void print_header_xfr(const char     *owner,
 
 	char xfr[16] = "AXFR";
 
-	switch (type) {
+	switch (question->qtype) {
 	case KNOT_RRTYPE_AXFR:
 		break;
 	case KNOT_RRTYPE_IXFR:
@@ -379,7 +382,11 @@ void print_header_xfr(const char     *owner,
 	}
 
 	if (style->show_header) {
-		printf(";; %s for %s\n", xfr, owner);
+		char *owner = knot_dname_to_str(question->qname);
+		if (owner != NULL) {
+			printf("\n;; %s for %s\n", xfr, owner);
+			free(owner);
+		}
 	}
 }
 
@@ -393,13 +400,20 @@ void print_data_xfr(const knot_packet_t *packet,
 
 	switch (style->format) {
 	case FORMAT_DIG:
-		print_section_dig(packet->answer, packet->an_rrsets, style);
+		print_section_dig(packet->answer, packet->header.ancount,style);
 		break;
 	case FORMAT_HOST:
-		print_section_host(packet->answer, packet->an_rrsets, style);
+		print_section_host(packet->answer, packet->header.ancount, style);
 		break;
 	case FORMAT_FULL:
-		print_section_full(packet->answer, packet->an_rrsets, style);
+		print_section_full(packet->answer, packet->header.ancount, style);
+
+		// Print TSIG record if any.
+		if (style->show_additional) {
+			print_section_full(packet->additional,
+			                   packet->header.arcount,
+			                   style);
+		}
 		break;
 	default:
 		break;
@@ -435,7 +449,7 @@ void print_packet(const knot_packet_t *packet,
 		return;
 	}
 
-	size_t additional_cnt = packet->ar_rrsets;
+	uint16_t additionals = packet->header.arcount;
 
 	// Print packet information header.
 	if (style->show_header) {
@@ -449,20 +463,20 @@ void print_packet(const knot_packet_t *packet,
 			print_opt_section(&packet->opt_rr);
 		}
 
-		additional_cnt--;
+		additionals--;
 	}
 
 	// Print DNS sections.
 	switch (style->format) {
 	case FORMAT_DIG:
-		if (packet->an_rrsets > 0) {
-			print_section_dig(packet->answer, packet->an_rrsets,
+		if (packet->header.ancount > 0) {
+			print_section_dig(packet->answer, packet->header.ancount,
 			                  style);
 		}
 		break;
 	case FORMAT_HOST:
-		if (packet->an_rrsets > 0) {
-			print_section_host(packet->answer, packet->an_rrsets,
+		if (packet->header.ancount > 0) {
+			print_section_host(packet->answer, packet->header.ancount,
 			                   style);
 		} else {
 			uint8_t rcode = knot_wire_get_rcode(packet->wireformat);
@@ -478,24 +492,24 @@ void print_packet(const knot_packet_t *packet,
 			                       style);
 		}
 
-		if (style->show_answer && packet->an_rrsets > 0) {
+		if (style->show_answer && packet->header.ancount > 0) {
 			printf("\n;; PREREQUISITE SECTION:\n");
 			print_section_full(packet->answer,
-			                   packet->an_rrsets,
+			                   packet->header.ancount,
 			                   style);
 		}
 
-		if (style->show_authority && packet->ns_rrsets > 0) {
+		if (style->show_authority && packet->header.nscount > 0) {
 			printf("\n;; UPDATE SECTION:\n");
 			print_section_full(packet->authority,
-			                   packet->ns_rrsets,
+			                   packet->header.nscount,
 			                   style);
 		}
 
-		if (style->show_additional && additional_cnt > 0) {
+		if (style->show_additional && additionals > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
 			print_section_full(packet->additional,
-			                   additional_cnt,
+			                   packet->header.arcount,
 			                   style);
 		}
 		break;
@@ -508,33 +522,150 @@ void print_packet(const knot_packet_t *packet,
 			                       style);
 		}
 
-		if (style->show_answer && packet->an_rrsets > 0) {
+		if (style->show_answer && packet->header.ancount > 0) {
 			printf("\n;; ANSWER SECTION:\n");
 			print_section_full(packet->answer,
-			                   packet->an_rrsets,
+			                   packet->header.ancount,
 			                   style);
 		}
 
-		if (style->show_authority && packet->ns_rrsets > 0) {
+		if (style->show_authority && packet->header.nscount > 0) {
 			printf("\n;; AUTHORITY SECTION:\n");
 			print_section_full(packet->authority,
-			                   packet->ns_rrsets,
+			                   packet->header.nscount,
 			                   style);
 		}
 
-		if (style->show_additional && additional_cnt > 0) {
+		if (style->show_additional && additionals > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
 				print_section_full(packet->additional,
-				                   additional_cnt,
+				                   packet->header.arcount,
 				                   style);
 		}
 		break;
 	default:
 		break;
 	}
-	
+
 	// Print packet statistics.
 	if (style->show_footer) {
 		print_footer(total_len, 0, 0, net, elapsed, incoming);
+	}
+}
+
+void free_sign_context(sign_context_t *ctx)
+{
+	if (ctx == NULL) {
+		DBG_NULL;
+		return;
+	}
+
+	if (ctx->tsig_key.name) {
+		knot_tsig_key_free(&ctx->tsig_key);
+	}
+
+	if (ctx->dnssec_key.name) {
+		knot_dnssec_key_free(&ctx->dnssec_key);
+	}
+
+	free(ctx->digest);
+
+	memset(ctx, '\0', sizeof(sign_context_t));
+}
+
+int sign_packet(knot_packet_t           *pkt,
+                sign_context_t          *sign_ctx,
+                const knot_key_params_t *key_params)
+{
+	int result;
+
+	if (pkt == NULL || sign_ctx == NULL || key_params == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *wire = pkt->wireformat;
+	size_t  *wire_size = &pkt->size;
+	size_t  max_size = knot_packet_max_size(pkt);
+
+	switch (knot_get_key_type(key_params)) {
+	case KNOT_KEY_TSIG:
+	{
+		result = knot_tsig_key_from_params(key_params,
+		                                   &sign_ctx->tsig_key);
+		if (result != KNOT_EOK) {
+			return result;
+		}
+
+		knot_tsig_key_t *key = &sign_ctx->tsig_key;
+
+		sign_ctx->digest_size = knot_tsig_digest_length(key->algorithm);
+		sign_ctx->digest = malloc(sign_ctx->digest_size);
+
+		size_t tsig_size = tsig_wire_maxsize(key);
+		knot_packet_set_tsig_size(pkt, tsig_size);
+
+		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
+		                        sign_ctx->digest, &sign_ctx->digest_size,
+		                        key, 0, 0);
+
+		return result;
+	}
+	case KNOT_KEY_DNSSEC:
+	{
+		result = knot_dnssec_key_from_params(key_params,
+		                                     &sign_ctx->dnssec_key);
+		if (result != KNOT_EOK) {
+			return result;
+		}
+
+		knot_dnssec_key_t *key = &sign_ctx->dnssec_key;
+		result = knot_sig0_sign(wire, wire_size, max_size, key);
+
+		return result;
+	}
+	default:
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
+}
+
+int verify_packet(const knot_packet_t     *pkt,
+                  const sign_context_t    *sign_ctx,
+                  const knot_key_params_t *key_params)
+{
+	int result;
+
+	if (pkt == NULL || sign_ctx == NULL || key_params == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	const uint8_t *wire = pkt->wireformat;
+	const size_t  *wire_size = &pkt->size;
+
+	switch (knot_get_key_type(key_params)) {
+	case KNOT_KEY_TSIG:
+	{
+		const knot_rrset_t *tsig_rr = knot_packet_tsig(pkt);
+		if (tsig_rr == NULL) {
+			return KNOT_ENOTSIG;
+		}
+
+		result = knot_tsig_client_check(tsig_rr, wire, *wire_size,
+		                                sign_ctx->digest,
+		                                sign_ctx->digest_size,
+		                                &sign_ctx->tsig_key, 0);
+
+		return result;
+	}
+	case KNOT_KEY_DNSSEC:
+	{
+		// Uses public key cryptography, server cannot sign the
+		// response, because the private key should be known only
+		// to the client.
+		return KNOT_EOK;
+	}
+	default:
+		return KNOT_EINVAL;
 	}
 }

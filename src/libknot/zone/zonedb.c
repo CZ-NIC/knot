@@ -46,7 +46,7 @@ knot_zonedb_t *knot_zonedb_new()
 		free(db);
 		return NULL;
 	}
-	
+
 	db->zone_count = 0;
 
 	return db;
@@ -70,6 +70,8 @@ dbg_zonedb_exec(
 		ret = knot_zone_contents_load_nsec3param(
 				knot_zone_get_contents(zone));
 		if (ret != KNOT_EOK) {
+			log_zone_error("NSEC3 signed zone has invalid or no "
+			               "NSEC3PARAM record.\n");
 			return ret;
 		}
 	}
@@ -89,19 +91,19 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
                                      const knot_dname_t *zone_name)
 {
 	/* Fetch if exists. */
+	knot_zone_t *oldzone = knot_zonedb_find_zone(db, zone_name);
+	if (oldzone == NULL) return NULL;
+
+	/* Remove from db. */
 	const char *key = (const char*)knot_dname_name(zone_name);
 	size_t klen = knot_dname_size(zone_name);
-	value_t *val = hattrie_tryget(db->zone_tree, key, klen);
-	if (!val) return NULL;
-	
-	/* Remove from db. */
 	int ret = hattrie_del(db->zone_tree, key, klen);
 	if (ret < 0) {
 		return NULL;
 	}
-	
+
 	--db->zone_count;
-	return (knot_zone_t *)*val;
+	return oldzone;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -125,30 +127,31 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 		return NULL;
 	}
 
-	knot_dname_t *cd = knot_dname_deep_copy(dname);
-	value_t *found = NULL;
+	knot_zone_t *zone = NULL;
+	const char *name = (const char*)dname->name;
+	size_t len = dname->size;
 
-	found = hattrie_tryget(db->zone_tree, (const char*)cd->name, cd->size);
-	while (found == NULL && knot_dname_label_count(cd) > 0) {
-		knot_dname_left_chop_no_copy(cd);
-		found = hattrie_tryget(db->zone_tree, (const char*)cd->name, cd->size);
+	while (len > 0) {
+		value_t *found = hattrie_tryget(db->zone_tree, name, len);
+		if (found) {
+			zone = (knot_zone_t *)*found;
+			break;
+		} else {
+			/* Take label len + 1 and skip it.
+			 * ..from \x04lake\x03com\x00
+			 * ..to           \x03com\x00
+			 */
+			uint8_t to_chop = name[0] + 1;
+			len -= to_chop;
+			name += to_chop;
+		}
 	}
 
-	knot_zone_t *zone = (found) ? (knot_zone_t *)*found : NULL;
-	
 dbg_zonedb_exec(
-	char *name = knot_dname_to_str(dname);
-	dbg_zonedb("Found zone for name %s: %p\n", name, zone);
-	free(name);
+	char *zname = knot_dname_to_str(dname);
+	dbg_zonedb("Found zone for name %s: %p\n", zname, zone);
+	free(zname);
 );
-	if (zone != NULL && zone->contents != NULL
-	    && knot_dname_compare(zone->contents->apex->owner, dname) != 0
-	    && !knot_dname_is_subdomain(dname, zone->contents->apex->owner)) {
-		zone = NULL;
-	}
-
-	knot_dname_free(&cd);
-
 	return zone;
 }
 
@@ -228,7 +231,7 @@ const knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db)
 		hattrie_iter_next(i);
 	}
 	hattrie_iter_free(i);
-	
+
 	assert(db->zone_count == args.count);
 
 	return args.zones;
@@ -250,7 +253,7 @@ static void delete_zone_from_db(value_t *node, void *data)
 	UNUSED(data);
 	assert(node);
 	if (*node == NULL) return;
-	
+
 	knot_zone_t *zone = (knot_zone_t *)(*node);
 	synchronize_rcu();
 	knot_zone_set_flag(zone, KNOT_ZONE_DISCARDED, 1);

@@ -19,9 +19,8 @@
 #define _WITH_GETLINE
 #endif
 
+#include <config.h>
 #include "common/getline.h"
-
-#include "config.h"		// HAVE_
 
 #include <stdio.h>		// getline or fgetln
 #include <stdlib.h>		// free
@@ -51,7 +50,7 @@ ssize_t knot_getline(char **lineptr, size_t *n, FILE *stream)
 		}
 		*lineptr = tmp;
 	}
-		
+
 	memcpy(*lineptr, buffer, length);
 	(*lineptr)[length] = '\0';
 	*n = length;

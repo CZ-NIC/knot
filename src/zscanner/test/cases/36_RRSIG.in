@@ -1,0 +1,48 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	RRSIG	TYPE0	0	0	0	0	0	0	.	AA==	; The simplest variant
+@	RRSIG	A	2	3	4	5	6	7	\008.	CQ==	; Human visual test - block numbering
+@	RRSIG	TYPE65535	255	255	4294967295	4294967295	4294967295	65535	.	AA==	; Maximal numbers
+@	RRSIG	TYPE0	RSAMD5	0	0	0	0	0	.	AA==	; Algorithm mnemonic
+@	RRSIG	A	0	0	0	19700101000000	0	0	.	AA==	; Minimal date format
+@	RRSIG	A	0	0	0	0	21051231235959	0	.	AA==	; Maximal date format (zscanner limit)
+@	RRSIG	TYPE0	0	0	0	0	0	0	\0320\ \\\"\.\@\*.tld.	AA==	; Special chars in domain name
+@	RRSIG	A	0	0	0	0	0	0	.	Zm8=		; One char padding
+@	RRSIG	A	0	0	0	0	0	0	.	Zm9v		; Without padding
+@	RRSIG	A	0	0	0	0	0	0	.	Zm9vYg==	; Two base64 blocks
+@	RRSIG	A	0	0	0	0	0	0	.	Zm9v YmE=	; Two base64 blocks with blank space between them
+@	TYPE46	\# 20 000100000000000000000000000000000000 00 00			; TYPE + Hexadecimal rdata
+@	TYPE46	A       0       0       0       0       0       0       .       AA==	; TYPE
+@	rrsig	A       0       0       0       0       0       0       .       AA==	; Type in lower-case
+
+; KO
+@	RRSIG
+@	RRSIG										; Empty rdata
+@	RRSIG	\# 0									; Hex empty rdata
+@	RRSIG	\#									; Missing hex length
+@	RRSIG	X	0	0	0	0	0	0	.	AA==	; Unknown type
+@	RRSIG	TYPE65536	0	0	0	0	0	0	.	AA==	; Type overflow
+@	RRSIG	A	256	0	0	0	0	0		.	AA==	; Algorithm overflow
+@	RRSIG	A	0	256	0	0	0	0		.	AA==	; Labels overflow
+@	RRSIG	A	0	0	4294967296	0	0	0	.	AA==	; TTL overflow
+@	RRSIG	A	0	0	0	9294967296	0	0	.	AA==	; Sig. exp. overflow
+@	RRSIG	A	0	0	0	0	4294967296	0	.	AA==	; Sig. inc. overflow
+@	RRSIG	A	0	0	0	0	0	65536		.	AA==	; Key tag overflow
+@	RRSIG	A	0	0	0	0	21060101000000	0	.	AA==	; Date overflow
+@	RRSIG	A	0	0	0	0	2106010100000x	0	.	AA==	; Bad timestamp char
+@	RRSIG	A	0	0	0	0	210601010000000	0	.	AA==	; Bad timestamp length
+@	RRSIG	A	0	0	0	0	0	0	a%	AA==	; Bad domain char
+@	RRSIG	A	0	0	0	0	0	0	.	A	; Continuous block length must be multiple of 4
+@	RRSIG	A	0	0	0	0	0	0	.	AB	; Continuous block length must be multiple of 4
+@	RRSIG	A	0	0	0	0	0	0	.	ABC	; Continuous block length must be multiple of 4
+@	RRSIG	A	0	0	0	0	0	0	.	AA ==	; Continuous block length must be multiple of 4
+@	RRSIG	A	0	0	0	0	0	0	.	A===	; Bad padding
+@	RRSIG	A	0	0	0	0	0	0	.	=	; Bad padding
+@	RRSIG	A	0	0	0	0	0	0	.	==	; Bad padding
+@	RRSIG	A	0	0	0	0	0	0	.	===	; Bad padding
+@	RRSIG	A	0	0	0	0	0	0	.	====	; Bad padding
+@	RRSIG	A	0	0	0	0	0	0	.		; Missing item
+@	RRSIG	\# 20 000100000000000000000000000000000000 00 0000			; Too long rdata
+@	RRSIG	\# 21 000100000000000000000000000000000000 00 00			; Bad rdata length

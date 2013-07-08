@@ -1,3 +1,18 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 /*!
  * \file cf-parse.y
  *
@@ -7,6 +22,7 @@
  */
 %{
 /* Headers */
+#include <config.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -90,7 +106,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
          break;
       }
    }
-   
+
    /* Check */
    if (!found) {
       cf_error(scanner, "interface '%s' is not defined", item);
@@ -265,10 +281,10 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
 {
     /* Reset */
     *key = 0;
-    
+
     /* Find in keys */
     knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
-    
+
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
         if (knot_dname_compare(r->k.name, sample) == 0) {
@@ -312,6 +328,13 @@ static void conf_zone_start(void *scanner, char *name) {
       this_zone->name = name; /* Already FQDN */
    }
 
+   /* Initialize ACL lists. */
+   init_list(&this_zone->acl.xfr_in);
+   init_list(&this_zone->acl.xfr_out);
+   init_list(&this_zone->acl.notify_in);
+   init_list(&this_zone->acl.notify_out);
+   init_list(&this_zone->acl.update_in);
+
    /* Check domain name. */
    knot_dname_t *dn = NULL;
    if (this_zone->name != NULL) {
@@ -341,13 +364,6 @@ static void conf_zone_start(void *scanner, char *name) {
      *hattrie_get(new_config->names, (const char*)dn->name, dn->size) = (void *)1;
      ++new_config->zones_count;
      knot_dname_free(&dn);
-
-     /* Initialize ACL lists. */
-     init_list(&this_zone->acl.xfr_in);
-     init_list(&this_zone->acl.xfr_out);
-     init_list(&this_zone->acl.notify_in);
-     init_list(&this_zone->acl.notify_out);
-     init_list(&this_zone->acl.update_in);
    }
 }
 
@@ -372,7 +388,7 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
        char *t;
        long i;
        size_t l;
-       tsig_algorithm_t alg;
+       knot_tsig_algorithm_t alg;
     } tok;
 }
 
@@ -384,10 +400,11 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
 %token <tok> SIZE
 %token <tok> BOOL
 
-%token <tok> SYSTEM IDENTITY SVERSION NSID STORAGE KEY KEYS
+%token <tok> SYSTEM IDENTITY HOSTNAME SVERSION NSID STORAGE KEY KEYS
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> USER
+%token <tok> RUNDIR
 %token <tok> PIDFILE
 
 %token <tok> REMOTES
@@ -509,17 +526,19 @@ system:
    SYSTEM '{'
  | system SVERSION TEXT ';' { new_config->version = $3.t; }
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
+ | system HOSTNAME TEXT ';' { new_config->hostname = $3.t; }
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
+ | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
  | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
 		     "and has no effect.\n");
      free($4.t);
  }
- | system WORKERS NUM ';' { 
-     if ($3.i <= 0) { 
+ | system WORKERS NUM ';' {
+     if ($3.i <= 0) {
         cf_error(scanner, "worker count must be greater than 0\n");
      } else {
         new_config->workers = $3.i;
@@ -543,7 +562,7 @@ system:
      } else {
        cf_error(scanner, "invalid user name '%s'", $3.t);
      }
-     
+
      free($3.t);
  }
  | system MAX_CONN_IDLE INTERVAL ';' { new_config->max_conn_idle = $3.i; }
@@ -560,16 +579,16 @@ keys:
    KEYS '{'
  | keys TEXT TSIG_ALGO_NAME TEXT ';' {
      /* Check algorithm length. */
-     if (tsig_alg_digest_length($3.alg) == 0) {
+     if (knot_tsig_digest_length($3.alg) == 0) {
         cf_error(scanner, "unsupported digest algorithm");
      }
-     
+
      /* Normalize to FQDN */
      char *fqdn = $2.t;
      size_t fqdnl = strlen(fqdn);
      if (fqdn[fqdnl - 1] != '.') {
         fqdnl = ((fqdnl + 2)/4+1)*4; /* '.', '\0' */
-        char* tmpdn = malloc(fqdnl); 
+        char* tmpdn = malloc(fqdnl);
 	if (!tmpdn) {
 	   cf_error(scanner, "out of memory when allocating string");
 	   free(fqdn);
@@ -591,6 +610,7 @@ keys:
 		      fqdn);
 	     free($4.t);
 	 } else {
+             knot_dname_to_lower(dname);
              conf_key_t *k = malloc(sizeof(conf_key_t));
              memset(k, 0, sizeof(conf_key_t));
 
@@ -604,7 +624,7 @@ keys:
      } else {
          free($4.t);
      }
-     
+
      free(fqdn);
 }
 
@@ -978,13 +998,19 @@ ctl_allow_start:
   ;
 
 control:
-   CONTROL '{'
+   CONTROL '{' { new_config->ctl.have = true; }
  | control ctl_listen_start '{' interface '}' {
      if (this_iface->address == 0) {
        cf_error(scanner, "control interface has no defined address");
      } else {
        new_config->ctl.iface = this_iface;
      }
+ }
+ | control ctl_listen_start TEXT ';' {
+     this_iface->address = $3.t;
+     this_iface->family = AF_UNIX;
+     this_iface->port = 0;
+     new_config->ctl.iface = this_iface;
  }
  | control ctl_allow_start '{' zone_acl '}'
  | control ctl_allow_start zone_acl_list
@@ -993,4 +1019,3 @@ control:
 conf: ';' | system '}' | interfaces '}' | keys '}' | remotes '}' | groups '}' | zones '}' | log '}' | control '}';
 
 %%
-

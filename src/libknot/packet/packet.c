@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <assert.h>
 #include <stdlib.h>
 
@@ -46,7 +47,7 @@
 static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 {
 	dbg_packet_detail("Packet pointer: %p\n", pkt);
-	
+
 	char *pos = (char *)pkt + PREALLOC_PACKET;
 
 	// put QNAME directly after the structure
@@ -60,10 +61,6 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	pkt->question.qname->labels = (uint8_t *)pos;
 	pos += PREALLOC_QNAME_LABELS;
 
-	pkt->owner_tmp = (uint8_t *)pos;
-	dbg_packet_detail("Tmp owner: %p\n", pkt->owner_tmp);
-	pos += PREALLOC_RR_OWNER;
-
 	// then answer, authority and additional sections
 	if (DEFAULT_ANCOUNT == 0) {
 		pkt->answer = NULL;
@@ -71,14 +68,14 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 		pkt->answer = (const knot_rrset_t **)pos;
 		pos += DEFAULT_ANCOUNT * sizeof(const knot_rrset_t *);
 	}
-	
+
 	if (DEFAULT_NSCOUNT == 0) {
 		pkt->authority = NULL;
 	} else {
 		pkt->authority = (const knot_rrset_t **)pos;
 		pos += DEFAULT_NSCOUNT * sizeof(const knot_rrset_t *);
 	}
-	
+
 	if (DEFAULT_ARCOUNT == 0) {
 		pkt->additional = NULL;
 	} else {
@@ -93,21 +90,6 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 	pkt->max_an_rrsets = DEFAULT_ANCOUNT;
 	pkt->max_ns_rrsets = DEFAULT_NSCOUNT;
 	pkt->max_ar_rrsets = DEFAULT_ARCOUNT;
-
-	// then domain names for compression and offsets
-	pkt->compression.dnames = (const knot_dname_t **)pos;
-	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(const knot_dname_t *);
-	pkt->compression.offsets = (size_t *)pos;
-	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(size_t);
-	pkt->compression.to_free = (int *)pos;
-	pos += DEFAULT_DOMAINS_IN_RESPONSE * sizeof(int);
-
-	dbg_packet_detail("Compression dnames: %p\n", pkt->compression.dnames);
-	dbg_packet_detail("Compression offsets: %p\n", pkt->compression.offsets);
-	dbg_packet_detail("Compression to_free: %p\n", pkt->compression.to_free);
-
-	pkt->compression.max = DEFAULT_DOMAINS_IN_RESPONSE;
-	pkt->compression.default_count = DEFAULT_DOMAINS_IN_RESPONSE;
 
 	// wildcard nodes and SNAMEs associated with them
 	pkt->wildcard_nodes.nodes = (const knot_node_t **)pos;
@@ -139,7 +121,7 @@ static void knot_packet_init_pointers_response(knot_packet_t *pkt)
 static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 {
 	dbg_packet_detail("Packet pointer: %p\n", pkt);
-	
+
 	char *pos = (char *)pkt + PREALLOC_PACKET;
 
 	// put QNAME directly after the structure
@@ -163,14 +145,14 @@ static void knot_packet_init_pointers_query(knot_packet_t *pkt)
 		pkt->answer = (const knot_rrset_t **)pos;
 		pos += DEFAULT_ANCOUNT_QUERY * sizeof(const knot_rrset_t *);
 	}
-	
+
 	if (DEFAULT_NSCOUNT_QUERY == 0) {
 		pkt->authority = NULL;
 	} else {
 		pkt->authority = (const knot_rrset_t **)pos;
 		pos += DEFAULT_NSCOUNT_QUERY * sizeof(const knot_rrset_t *);
 	}
-	
+
 	if (DEFAULT_ARCOUNT_QUERY == 0) {
 		pkt->additional = NULL;
 	} else {
@@ -357,9 +339,9 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 	if (!rr || !wire || !pos || rdlength == 0) {
 		return KNOT_EINVAL;
 	}
-	
-	
-	
+
+
+
 	/*! \todo As I'm revising it, seems highly inefficient to me.
 	 *        We just need to skim through the packet,
 	 *        check if it is in valid format and store pointers to various
@@ -368,7 +350,7 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 	 *        use use the wireformat for lookup again. Compression could
 	 *        be handled in-situ without additional memory allocs...
 	 */
-	
+
 	int ret = knot_rrset_rdata_from_wire_one(rr, wire, pos, total_size,
 	                                         rdlength);
 	if (ret != KNOT_EOK) {
@@ -376,13 +358,13 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 		           knot_strerror(ret));
 		return ret;
 	}
-	
+
 //	uint8_t* rd = knot_rrset_create_rdata(rr, rdlength);
 //	if (!rd) {
 //		return KNOT_ERROR;
 //	}
 //	uint8_t* np = rd + rdlength;
-	
+
 //	const rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rr));
 //	if (!desc) {
 //		/*! \todo Free rdata mem ? Not essential, but nice. */
@@ -414,7 +396,7 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 //			assert(knot_rrset_type(rr) == KNOT_RRTYPE_NAPTR);
 //			assert(0);
 //		}
-		
+
 //	}
 
 	return KNOT_EOK;
@@ -487,8 +469,8 @@ dbg_packet_exec_verb(
 	if (rdlength == 0) {
 		return rrset;
 	}
-	
-	
+
+
 	// parse RDATA
 	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
 	 *        probably. */
@@ -675,12 +657,6 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 		free(pkt->additional);
 	}
 
-	if (pkt->compression.max > pkt->compression.default_count) {
-		free(pkt->compression.dnames);
-		free(pkt->compression.offsets);
-		free(pkt->compression.to_free);
-	}
-
 	if (pkt->wildcard_nodes.max > pkt->wildcard_nodes.default_count) {
 		free(pkt->wildcard_nodes.nodes);
 		free(pkt->wildcard_nodes.snames);
@@ -781,7 +757,14 @@ static int knot_packet_parse_rr_sections(knot_packet_t *packet, size_t *pos,
 
 knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc)
 {
-	knot_packet_t *pkt;
+	mm_ctx_t mm;
+	mm_ctx_init(&mm);
+	return knot_packet_new_mm(prealloc, &mm);
+}
+
+knot_packet_t *knot_packet_new_mm(knot_packet_prealloc_type_t prealloc, mm_ctx_t *mm)
+{
+	knot_packet_t *pkt = NULL;
 	void (*init_pointers)(knot_packet_t *pkt) = NULL;
 	size_t size = 0;
 
@@ -799,9 +782,10 @@ knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc)
 		break;
 	}
 
-	pkt = (knot_packet_t *)malloc(size);
+	pkt = (knot_packet_t *)mm->alloc(mm->ctx, size);
 	CHECK_ALLOC_LOG(pkt, NULL);
 	memset(pkt, 0, size);
+	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 	if (init_pointers != NULL) {
 		init_pointers(pkt);
 	}
@@ -858,7 +842,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 
 	if (packet->header.qdcount == 1) {
 		if ((err = knot_packet_parse_question(wireformat, &pos, size,
-		             &packet->question, packet->prealloc_type 
+		             &packet->question, packet->prealloc_type
 		                                == KNOT_PACKET_PREALLOC_NONE)
 		     ) != KNOT_EOK) {
 			return err;
@@ -901,7 +885,7 @@ int knot_packet_parse_rest(knot_packet_t *packet, knot_packet_flag_t flags)
 
 	// If there is less data then required, the next function will find out.
 	// If there is more data than required, it also returns EMALF.
-	
+
 	size_t pos = packet->parsed;
 
 	/*! \todo If we already parsed some part of the packet, it is not ok
@@ -935,7 +919,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 	if (packet->parsed_an == packet->header.ancount) {
 		assert(packet->parsed < packet->size);
 		//dbg_packet("Trailing garbage, ignoring...\n");
-		// there may be other data in the packet 
+		// there may be other data in the packet
 		// (authority or additional).
 		return KNOT_EOK;
 	}
@@ -948,7 +932,7 @@ int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
 		dbg_packet_verb("Failed to parse RR!\n");
 		return KNOT_EMALF;
 	}
-	
+
 	dbg_packet_detail("Parsed. Pos: %zu.\n", pos);
 
 	packet->parsed = pos;
@@ -997,7 +981,7 @@ int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
 		dbg_packet_verb("Failed to parse RR!\n");
 		return KNOT_EMALF;
 	}
-	
+
 	dbg_packet_detail("Parsed. Pos: %zu.\n", pos);
 
 	packet->parsed = pos;
@@ -1049,7 +1033,7 @@ int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 	if (packet->max_size < max_size) {
 		// reallocate space for the wire format (and copy anything
 		// that might have been there before
-		uint8_t *wire_new = (uint8_t *)malloc(max_size);
+		uint8_t *wire_new = packet->mm.alloc(packet->mm.ctx, max_size);
 		if (wire_new == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -1060,7 +1044,8 @@ int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
 		packet->wireformat = wire_new;
 
 		if (packet->max_size > 0 && packet->free_wireformat) {
-			free(wire_old);
+			if (packet->mm.free)
+				packet->mm.free(wire_old);
 		}
 
 		packet->free_wireformat = 1;
@@ -1182,7 +1167,7 @@ int knot_packet_rcode(const knot_packet_t *packet)
 	if (packet == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	return knot_wire_flags_get_rcode(packet->header.flags2);
 }
 
@@ -1193,7 +1178,7 @@ int knot_packet_tc(const knot_packet_t *packet)
 	if (packet == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	return knot_wire_flags_get_tc(packet->header.flags1);
 }
 
@@ -1542,32 +1527,22 @@ void knot_packet_free(knot_packet_t **packet)
 	dbg_packet("Freeing tmp RRSets...\n");
 	knot_packet_free_tmp_rrsets(*packet);
 
-	dbg_packet("Freeing copied dnames for compression...\n");
-	for (int i = 0; i < (*packet)->compression.count; ++i) {
-		if ((*packet)->compression.to_free[i]) {
-			knot_dname_release(
-			      (knot_dname_t *)(*packet)->compression.dnames[i]);
-		}
-	}
-
-	/*! \note The above code will free the domain names pointed to by
-	 *        the list of wildcard nodes. It should not matter, however.
-	 */
-
 	// check if some additional space was allocated for the packet
 	dbg_packet("Freeing additional allocated space...\n");
 	knot_packet_free_allocated_space(*packet);
 
 	// free the space for wireformat
 	if ((*packet)->wireformat != NULL && (*packet)->free_wireformat) {
-		free((*packet)->wireformat);
+		if ((*packet)->mm.free)
+			(*packet)->mm.free((*packet)->wireformat);
 	}
 
 	// free EDNS options
 	knot_edns_free_options(&(*packet)->opt_rr);
 
 	dbg_packet("Freeing packet structure\n");
-	free(*packet);
+	if ((*packet)->mm.free)
+		(*packet)->mm.free(*packet);
 	*packet = NULL;
 }
 
@@ -1659,4 +1634,3 @@ int knot_packet_free_rrsets(knot_packet_t *packet)
 	ret += knot_packet_free_section(packet->additional, packet->ar_rrsets);
 	return ret;
 }
-

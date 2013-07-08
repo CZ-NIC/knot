@@ -2,10 +2,10 @@
 @chapter Knot DNS Installation
 
 @menu
-* Required build environment::  
-* Required libraries::          
-* Installation from the sources::  
-* Installation from packages::  
+* Required build environment::
+* Required libraries::
+* Installation from the sources::
+* Installation from packages::
 @end menu
 
 @node Required build environment
@@ -27,6 +27,8 @@ autoconf >= 2.65
 flex >= 2.5.31
 @item
 bison >= 2.3
+@item
+ragel >= 6.7 (only required for fast zone parsing)
 @end itemize
 
 @node Required libraries
@@ -34,7 +36,7 @@ bison >= 2.3
 
 Knot DNS requires few libraries to be compiled:
 
-@itemize 
+@itemize
 
 @item
 OpenSSL, at least 0.9.8
@@ -46,7 +48,7 @@ Userspace RCU, at least 0.5.4
 libcap-ng, at least 0.6.4 (optional library)
 @end itemize
 
-If libcap-ng library is available, Knot DNS will take advantage of 
+If libcap-ng library is available, Knot DNS will take advantage of
 the POSIX 1003.1e capabilites(7) by sandboxing the exposed threads.
 Most rights are stripped from the exposed threads for security reasons.
 
@@ -56,7 +58,7 @@ your system or distribution.  If not, zlib resides at
 @url{http://www.openssl.org}.
 
 @menu
-* Userspace RCU::               
+* Userspace RCU::
 @end menu
 
 @node Userspace RCU
@@ -89,9 +91,9 @@ After unpacking the sources, the compilation and installation is
 a quite straightforward process using autotools.
 
 @menu
-* Configuring and generating Makefiles::  
-* Compilation::                 
-* Installation::                
+* Configuring and generating Makefiles::
+* Compilation::
+* Installation::
 @end menu
 
 @node Configuring and generating Makefiles
@@ -112,6 +114,10 @@ $ ./configure --help
 
 If you have trouble with unknown syscalls under valgrind, disable recvmmsg by
 adding a parameter @command{--enable-recvmmsg=no} to configure.
+
+If you want to load huge zone files quickly, enable fast zone parser by
+adding a parameter @command{--enable-fastparser} to configure. In this case
+Ragel compiler is required.
 
 Knot DNS has also support for link time optimizations.
 You can enable it by the configure parameter @command{./configure --enable-lto=yes}.
@@ -184,10 +190,10 @@ the Knot DNS might already be available in your favourite
 distribution, or in a ports tree.
 
 @menu
-* Installing Knot DNS packages on Debian::  
-* Installing Knot DNS packages on Ubuntu::  
-* Installing Knot DNS RPMs on Fedora::  
-* Installing Knot DNS from ports on FreeBSD::  
+* Installing Knot DNS packages on Debian::
+* Installing Knot DNS packages on Ubuntu::
+* Installing Knot DNS packages on Fedora::
+* Installing Knot DNS from ports on FreeBSD::
 @end menu
 
 @node Installing Knot DNS packages on Debian
@@ -218,7 +224,7 @@ deb-src http://deb.knot-dns.cz/debian/ <codename> main
 EOF
 $ apt-get update
 $ apt-get install knot
-	
+
 @end example
 
 @node Installing Knot DNS packages on Ubuntu
@@ -238,7 +244,7 @@ the time of writing this manual this includes Ubuntu 10.04 LTS, 11.04,
 11.10 and 12.04 LTS.
 
 @menu
-* Adding official PPA repository for Knot DNS::  
+* Adding official PPA repository for Knot DNS::
 @end menu
 
 @node Adding official PPA repository for Knot DNS
@@ -253,7 +259,7 @@ the PPA.
 $ sudo add-apt-repository ppa:cz.nic-labs/knot-dns
 $ sudo apt-get update
 $ sudo apt-get install knot
-	  
+
 @end example
 
 @noindent
@@ -262,28 +268,50 @@ install Knot DNS on your system and keep it up-to-date
 in the future, when new versions are released.
 
 @page
-@node Installing Knot DNS RPMs on Fedora
-@subsection Installing Knot DNS RPMs on Fedora
+@node Installing Knot DNS packages on Fedora
+@subsection Installing Knot DNS packages on Fedora
 
-There are RPM packages for @code{Knot DNS} available for i386 and amd64 targets.
-If you want use the Fedora repository, add a file with the
-following lines into @file{/etc/yum.repos.d/}
+The RPM packages for @code{Knot DNS} are available in official Fedora
+repositories since Fedora@tie{}18 (Spherical Cow). Look for @code{knot}
+package in your package manager. To install the package using Yum, run
+a following command as the root user:
 
 @example
+
+# yum install knot
+
+@end example
+
+Using official distribution repository is highly recommended, however you may
+want to run @code{Knot DNS} on older releases of Fedora. In this case you can
+set up an unofficial repository by creating @file{/etc/yum.repos.d/knot.conf}
+file with the following content:
+
+@example
+
 [knot]
 name=Network.CZ Repository
 baseurl=ftp://repo.network.cz/pub/redhat/
 enabled=1
 gpgcheck=0
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-network.cz
+
 @end example
 
-When you have added a new repository, you can install Knot DNS as a
-regular package.
+After performing this action, you can install @code{knot} package the same way
+as described above. Please note that the unofficial repository contains only
+builds for i686 and x86_64 architecture.
+
+When upgrading to Fedora@tie{}18 or higher, backup the configuration and
+switch to the latest package provided in the official repository by running the
+following command as the root user:
 
 @example
-$ yum install knot
+
+# yum distro-sync knot
+
 @end example
+
 
 @node Installing Knot DNS from ports on FreeBSD
 @subsection Installing Knot DNS from ports on FreeBSD
@@ -291,7 +319,6 @@ $ yum install knot
 Knot DNS is in ports tree under @code{dns/knot}.
 
 @example
-$ cd /usr/ports/dns/knot  
+$ cd /usr/ports/dns/knot
 $ sudo make install
 @end example
-

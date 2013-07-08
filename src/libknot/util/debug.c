@@ -26,45 +26,13 @@
 #include "common/descriptor.h"
 #include "common/print.h"
 
-void knot_rdata_dump(const knot_rrset_t *rrset, size_t rdata_pos)
+#if defined(KNOT_ZONE_DEBUG)
+static void knot_node_dump_from_tree(knot_node_t *node, void *data)
 {
-#if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RDATA_DEBUG)
-#endif
+	UNUSED(data);
+	knot_node_dump(node);
 }
-
-//void knot_rrset_dump(const knot_rrset_t *rrset)
-//{
-//#if defined(KNOT_ZONE_DEBUG) || defined(KNOT_RRSET_DEBUG)
-//	fprintf(stderr, "  ------- RRSET -------\n");
-//	fprintf(stderr, "  %p\n", rrset);
-//	if (!rrset) {
-//		return;
-//	}
-//        char *name = knot_dname_to_str(rrset->owner);
-//        fprintf(stderr, "  owner: %s\n", name);
-//        free(name);
-//	fprintf(stderr, "  type: %u\n", rrset->type);
-//	fprintf(stderr, "  class: %d\n", rrset->rclass);
-//	fprintf(stderr, "  ttl: %d\n", rrset->ttl);
-
-//        fprintf(stderr, "  RRSIGs:\n");
-//        if (rrset->rrsigs != NULL) {
-//                knot_rrset_dump(rrset->rrsigs);
-//        } else {
-//                fprintf(stderr, "  none\n");
-//        }
-
-//	if (rrset->rdata == NULL) {
-//		fprintf(stderr, "  NO RDATA!\n");
-//		fprintf(stderr, "  ------- RRSET -------\n");
-//		return;
-//	}
-	
-//	// TODO dump rdata
-
-//	fprintf(stderr, "  ------- RRSET -------\n");
-//#endif
-//}
+#endif
 
 void knot_node_dump(knot_node_t *node)
 {
@@ -77,7 +45,7 @@ void knot_node_dump(knot_node_t *node)
 	dbg_node_detail("owner: %s\n", name);
 	free(name);
 	dbg_node_detail("labels: ");
-	hex_print((char *)node->owner->labels, node->owner->label_count);
+	hex_print(node->owner->labels, node->owner->label_count);
 	dbg_node_detail("node: %p\n", node);
 	dbg_node_detail("node (in node's owner): %p\n", node->owner->node);
 
@@ -133,13 +101,13 @@ void knot_node_dump(knot_node_t *node)
 		/*! \todo This causes segfault when n	sec3_node was free'd,
 		 *        e.g. when applying changesets.
 		 */
-    		name = knot_dname_to_str(node->nsec3_node->owner);
+		name = knot_dname_to_str(node->nsec3_node->owner);
 		dbg_node_detail("%s\n", name);
 		free(name);
 	} else {
 		dbg_node_detail("none\n");
 	}
-	
+
 	dbg_node_detail("Zone: %p\n", node->zone);
 
 	dbg_node_detail("RRSet count: %d\n", node->rrset_count);
@@ -150,6 +118,8 @@ void knot_node_dump(knot_node_t *node)
 	free(rrsets);
 	//assert(node->owner->node == node);
 	dbg_node_detail("------- NODE --------\n");
+#else
+	UNUSED(node);
 #endif
 }
 
@@ -163,14 +133,18 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone)
 
 	dbg_zone_detail("------- ZONE --------\n");
 
-	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump, NULL);
+	knot_zone_contents_tree_apply_inorder(zone, knot_node_dump_from_tree,
+					      NULL);
 
 	dbg_zone_detail("------- ZONE --------\n");
-	
-	dbg_zone_detail("------- NSEC 3 tree -\n");
-
-	knot_zone_contents_nsec3_apply_inorder(zone, knot_node_dump, NULL);
 
 	dbg_zone_detail("------- NSEC 3 tree -\n");
+
+	knot_zone_contents_nsec3_apply_inorder(zone, knot_node_dump_from_tree,
+					       NULL);
+
+	dbg_zone_detail("------- NSEC 3 tree -\n");
+#else
+	UNUSED(zone);
 #endif
 }

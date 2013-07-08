@@ -24,7 +24,7 @@
 #include <assert.h>
 
 #include "common/prng.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
@@ -117,19 +117,20 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	memset(new_if, 0, sizeof(iface_t));
 
 	/* Create UDP socket. */
-	ret = socket_create(cfg_if->family, SOCK_DGRAM);
+	ret = socket_create(cfg_if->family, SOCK_DGRAM, IPPROTO_UDP);
 	if (ret < 0) {
-		strerror_r(errno, errbuf, sizeof(errbuf));
-		log_server_error("Could not create UDP socket: %s.\n",
-				 errbuf);
+		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0) {
+			log_server_error("Could not create UDP socket: %s.\n",
+					 errbuf);
+		}
 		return ret;
 	} else {
 		sock = ret;
 	}
-	
+
 	/* Set socket options. */
-#ifndef DISABLE_IPV6
 	int flag = 1;
+#ifndef DISABLE_IPV6
 	if (cfg_if->family == AF_INET6) {
 		/* Disable dual-stack for performance reasons. */
 		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
@@ -152,17 +153,18 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	new_if->addr = strdup(cfg_if->address);
 
 	/* Create TCP socket. */
-	ret = socket_create(cfg_if->family, SOCK_STREAM);
+	ret = socket_create(cfg_if->family, SOCK_STREAM, IPPROTO_TCP);
 	if (ret < 0) {
 		socket_close(new_if->fd[IO_UDP]);
-		strerror_r(errno, errbuf, sizeof(errbuf));
-		log_server_error("Could not create TCP socket: %s.\n",
-				 errbuf);
+		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0) {
+			log_server_error("Could not create TCP socket: %s.\n",
+					 errbuf);
+		}
 		return ret;
 	} else {
 		sock = ret;
 	}
-	
+
 	/* Set socket options. */
 #ifndef DISABLE_IPV6
 	if (cfg_if->family == AF_INET6) {
@@ -171,9 +173,9 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		}
 	}
 #endif
-
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
+		free(new_if->addr);
 		socket_close(new_if->fd[IO_UDP]);
 		socket_close(sock);
 		log_server_error("Could not bind to "
@@ -184,6 +186,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 
 	ret = socket_listen(sock, TCP_BACKLOG_SIZE);
 	if (ret < 0) {
+		free(new_if->addr);
 		socket_close(new_if->fd[IO_UDP]);
 		socket_close(sock);
 		log_server_error("Failed to listen on "
@@ -199,7 +202,7 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 static void remove_ifacelist(struct ref_t *p)
 {
 	ifacelist_t *ifaces = (ifacelist_t *)p;
-		
+
 	/* Remove deprecated interfaces. */
 	iface_t *n = NULL, *m = NULL;
 	WALK_LIST_DELSAFE(n, m, ifaces->u) {
@@ -210,7 +213,7 @@ static void remove_ifacelist(struct ref_t *p)
 	WALK_LIST_DELSAFE(n, m, ifaces->l) {
 		free(n);
 	}
-	
+
 	free(ifaces);
 }
 
@@ -237,7 +240,7 @@ static int server_bind_sockets(server_t *s)
 	ref_retain(&newlist->ref);
 	init_list(&newlist->u);
 	init_list(&newlist->l);
-	
+
 
 	/* Duplicate current list. */
 	/*! \note Pointers to addr, handlers etc. will be shared. */
@@ -286,31 +289,32 @@ static int server_bind_sockets(server_t *s)
 
 	/* Publish new list. */
 	ifacelist_t *oldlist = rcu_xchg_pointer(&s->ifaces, newlist);
-	
+
 	/* Unlock configuration. */
 	rcu_read_unlock();
 
 	/* Ensure no one is reading old interfaces. */
 	synchronize_rcu();
-	
-	/* Notify handlers about removed ifaces. */
+
+	/* Update UDP ifacelist (reload all threads). */
 	dt_unit_t *tu = s->h[IO_UDP].unit;
-	for (unsigned j = 0; j < tu->size; ++j) {
+	for (unsigned i = 0; i < tu->size; ++i) {
 		ref_retain((ref_t *)newlist);
-		s->h[IO_UDP].state[j].s |= ServerReload;
+		s->h[IO_UDP].state[i].s |= ServerReload;
 		if (s->state & ServerRunning) {
-			dt_activate(tu->threads[j]);
-			dt_signalize(tu->threads[j], SIGALRM);
+			dt_activate(tu->threads[i]);
+			dt_signalize(tu->threads[i], SIGALRM);
 		}
-		
 	}
+
+	/* Update TCP ifacelist (reload master thread). */
+	tu = s->h[IO_TCP].unit;
+	ref_retain((ref_t *)newlist);
 	s->h[IO_TCP].state[0].s |= ServerReload;
 	if (s->state & ServerRunning) {
-		dthread_t *m_thr = s->h[IO_TCP].unit->threads[0];
-		dt_activate(m_thr);
-		dt_signalize(m_thr, SIGALRM);
+		dt_activate(tu->threads[0]);
+		dt_signalize(tu->threads[0], SIGALRM);
 	}
-	ref_retain((ref_t *)newlist);
 
 	ref_release(&oldlist->ref);
 
@@ -379,17 +383,21 @@ int server_init_handler(iohandler_t * h, server_t *s, dt_unit_t *tu, void *d)
 
 int server_free_handler(iohandler_t *h)
 {
-	/* Wait for dispatcher to finish */
-	if (!h || !h->server) return KNOT_EINVAL;
-	if (h->server->state & ServerRunning) {
+	if (!h || !h->server) {
+		return KNOT_EINVAL;
+	}
+
+	/* Wait for threads to finish */
+	if (h->unit) {
 		dt_stop(h->unit);
-		if (h->interrupt) {
-			h->interrupt(h);
-		}
 		dt_join(h->unit);
 	}
 
-	/* Destroy dispatcher and worker */
+	/* Destroy worker context. */
+	if (h->dtor) {
+		h->dtor(h->data);
+		h->data = NULL;
+	}
 	dt_delete(&h->unit);
 	free(h->state);
 	memset(h, 0, sizeof(iohandler_t));
@@ -407,10 +415,10 @@ int server_start(server_t *s)
 
 	/* Start XFR handler. */
 	xfr_start(s->xfr);
-	
+
 	/* Start evsched handler. */
 	dt_start(s->iosched);
-	
+
 	/* Start I/O handlers. */
 	int ret = KNOT_EOK;
 	s->state |= ServerRunning;
@@ -419,7 +427,7 @@ int server_start(server_t *s)
 			ret = dt_start(s->h[i].unit);
 		}
 	}
-	
+
 
 	dbg_server("server: server started\n");
 
@@ -429,7 +437,7 @@ int server_start(server_t *s)
 int server_wait(server_t *s)
 {
 	if (!s) return KNOT_EINVAL;
-	
+
 	xfr_join(s->xfr);
 	dt_join(s->iosched);
 	if (s->tu_size == 0) {
@@ -451,7 +459,7 @@ int server_refresh(server_t *server)
 	if (server == NULL || server->nameserver == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Lock RCU and fetch zones. */
 	rcu_read_lock();
 	knot_nameserver_t *ns =  server->nameserver;
@@ -461,7 +469,7 @@ int server_refresh(server_t *server)
 		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
-	
+
 	/* REFRESH zones. */
 	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
 		zonedata_t *zd = (zonedata_t *)zones[i]->data;
@@ -476,7 +484,7 @@ int server_refresh(server_t *server)
 			/* Cumulative delay. */
 		}
 	}
-	
+
 	/* Unlock RCU. */
 	rcu_read_unlock();
 	free(zones);
@@ -488,7 +496,7 @@ int server_reload(server_t *server, const char *cf)
 	if (!server || !cf) {
 		return KNOT_EINVAL;
 	}
-	
+
 	log_server_info("Reloading configuration...\n");
 	int cf_ret = conf_open(cf);
 	switch (cf_ret) {
@@ -507,33 +515,23 @@ int server_reload(server_t *server, const char *cf)
 				 "reload failed.\n");
 		break;
 	}
-	
+
 	/*! \todo Close and bind to new remote control. */
 	return cf_ret;
 }
 
 void server_stop(server_t *server)
 {
-	dbg_server("server: stopping server\n");
-	
+	log_server_info("Stopping server...\n");
+
 	/* Send termination event. */
 	evsched_schedule_term(server->sched, 0);
 
 	/* Interrupt XFR handler execution. */
 	xfr_stop(server->xfr);
 
-	/* Notify servers to stop. */
-	log_server_info("Stopping server...\n");
+	/* Clear 'running' flag. */
 	server->state &= ~ServerRunning;
-	iohandler_t *h = server->h;
-	for (unsigned i = 0; i < IO_COUNT; ++i) {
-		dt_stop(h[i].unit);
-
-		/* Call interrupt handler. */
-		if (h[i].interrupt) {
-			h[i].interrupt(h + i);
-		}
-	}
 }
 
 void server_destroy(server_t **server)
@@ -542,9 +540,9 @@ void server_destroy(server_t **server)
 	if (!server || !*server) {
 		return;
 	}
-	
+
 	dbg_server("server: destroying server instance\n");
-	
+
 	/* Free remaining interfaces. */
 	ifacelist_t *ifaces = (*server)->ifaces;
 	iface_t *n = NULL, *m = NULL;
@@ -555,7 +553,7 @@ void server_destroy(server_t **server)
 		free(ifaces);
 		(*server)->ifaces = NULL;
 	}
-	
+
 	xfr_free((*server)->xfr);
 	stat_static_gath_free();
 	knot_ns_destroy(&(*server)->nameserver);
@@ -574,23 +572,25 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	if (!server) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Estimate number of threads/manager. */
 	int ret = KNOT_EOK;
 	int tu_size = conf->workers;
 	if (tu_size < 1) {
 		tu_size = dt_optimal_size();
 	}
-	if (tu_size != server->tu_size) {
+	if ((unsigned)tu_size != server->tu_size) {
 		/* Free old handlers */
 		if (server->tu_size > 0) {
 			for (unsigned i = 0; i < IO_COUNT; ++i) {
 				ret = server_free_handler(server->h + i);
 			}
 		}
-		
+
 		/* Initialize I/O handlers. */
-		dt_unit_t *tu = dt_create_coherent(tu_size, &udp_master, NULL);
+		size_t udp_size = tu_size;
+		if (udp_size < 2) udp_size = 2;
+		dt_unit_t *tu = dt_create_coherent(udp_size, &udp_master, NULL);
 		server_init_handler(server->h + IO_UDP, server, tu, NULL);
 		tu = dt_create(tu_size * 2);
 		server_init_handler(server->h + IO_TCP, server, tu, NULL);
@@ -602,7 +602,7 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		}
 		server->tu_size = tu_size;
 	}
-	
+
 	/* Rate limiting. */
 	if (!server->rrl && conf->rrl > 0) {
 		server->rrl = rrl_create(conf->rrl_size);
@@ -613,13 +613,13 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		}
 	}
 	if (server->rrl) {
-		if (rrl_rate(server->rrl) != conf->rrl) {
+		if (rrl_rate(server->rrl) != (uint32_t)conf->rrl) {
 			rrl_setrate(server->rrl, conf->rrl);
 			log_server_info("Rate limiting set to %u responses/sec.\n",
 			                conf->rrl);
 		} /* At this point, old buckets will converge to new rate. */
 	}
-	
+
 	/* Update bound sockets. */
 	if ((ret = server_bind_sockets(server)) < 0) {
 		log_server_error("Failed to bind configured "
@@ -633,7 +633,7 @@ ref_t *server_set_ifaces(server_t *s, fdset_t **fds, int *count, int type)
 {
 	iface_t *i = NULL;
 	*count = 0;
-	
+
 	rcu_read_lock();
 	fdset_destroy(*fds);
 	*fds = fdset_new();
@@ -642,9 +642,8 @@ ref_t *server_set_ifaces(server_t *s, fdset_t **fds, int *count, int type)
 			fdset_add(*fds, i->fd[type], OS_EV_READ);
 			*count += 1;
 		}
-		
+
 	}
 	rcu_read_unlock();
 	return (ref_t *)s->ifaces;
 }
-

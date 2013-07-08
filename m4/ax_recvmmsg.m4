@@ -37,7 +37,7 @@ AC_DEFUN([AX_MSG_WAITFORONE],
 
 volatile int _intr = 0;
 void sighandle(int s) {
-     _intr = 1;	   
+     _intr = 1;
 }
       ]],[[
 #ifndef MSG_WAITFORONE
@@ -45,7 +45,7 @@ void sighandle(int s) {
 #else
   int port = 35353;
   int fd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (fd < 0) return 1; 
+  if (fd < 0) return 1;
   struct mmsghdr msgs[2];
   struct iovec iovecs[2];
   char bufs[2][64];
@@ -63,7 +63,7 @@ void sighandle(int s) {
   sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   sa.sin_port = htons(port); /* Find free port. */
   while (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
-  if (errno == EADDRINUSE) sa.sin_port = ++port; 
+  if (errno == EADDRINUSE) sa.sin_port = ++port;
   else break;
   }
 
@@ -83,7 +83,7 @@ void sighandle(int s) {
   close(fd);
   if (ret < 0) { /* Completely failed. */
     return 2;
-  } 
+  }
 
   return _intr; /* OK if not interrupted. */
 #endif

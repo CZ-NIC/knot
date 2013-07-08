@@ -51,7 +51,7 @@ typedef struct rrl_item {
 
 /*!
  * \brief RRL hash bucket table.
- * 
+ *
  * Table is fixed size, so collisions may occur and are dealt with
  * in a way, that hashbucket rate is reset and enters slow-start for 1 dt.
  * When a bucket is in a slow-start mode, it cannot reset again for the time
@@ -60,7 +60,7 @@ typedef struct rrl_item {
  * To avoid lock contention, N locks are created and distributed amongst buckets.
  * As of now lock K for bucket N is calculated as K = N % (num_buckets).
  */
- 
+
 typedef struct rrl_table {
 	uint32_t rate;       /* Configured RRL limit */
 	uint32_t seed;       /* Pseudorandom seed for hashing. */
@@ -145,7 +145,7 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 /*!
  * \brief Destroy RRL table.
  * \param rrl RRL table.
- * \return KNOT_EOK 
+ * \return KNOT_EOK
  */
 int rrl_destroy(rrl_table_t *rrl);
 

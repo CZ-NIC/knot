@@ -14,10 +14,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <config.h>
 
 #include "common/evsched.h"
 
@@ -100,20 +100,21 @@ void evsched_delete(evsched_t **s)
 	pthread_mutex_destroy(&(*s)->mx);
 	pthread_cond_destroy(&(*s)->notify);
 
-	while (! EMPTY_HEAP(&(*s)->heap))	/* FIXME: Would be faster to simply walk through the array */
+#ifndef OPENBSD_SLAB_BROKEN
+	/* Free allocator (all events at once). */
+	slab_cache_destroy(&(*s)->cache.alloc);
+#else
+	while (! EMPTY_HEAP(&(*s)->heap))
 	{
 		event_t *e = *((event_t**)(HHEAD(&(*s)->heap)));
 		heap_delmin(&(*s)->heap);
 		evsched_event_free((*s), e);
 	}
-	
+#endif
+
 	free((*s)->heap.data);
 	(*s)->heap.data = NULL;;
 
-#ifndef OPENBSD_SLAB_BROKEN
-	/* Free allocator. */
-	slab_cache_destroy(&(*s)->cache.alloc);
-#endif
 	pthread_mutex_destroy(&(*s)->cache.lock);
 
 	/* Free scheduler. */
@@ -195,7 +196,7 @@ event_t* evsched_next(evsched_t *s)
 					pthread_mutex_lock(&s->mx);
 					continue;
                 }
-				
+
 				return next_ev;
 			}
 
@@ -243,10 +244,10 @@ int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 	/* Update event timer. */
 	evsched_settimer(ev, dt);
 	ev->parent = s;
-	
+
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
-	
+
 	heap_insert(&s->heap, ev);
 
 	/* Unlock calendar. */
@@ -317,7 +318,7 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	if ((found = heap_find(&s->heap, ev))) {
 		heap_delete(&s->heap, found);
 	}
-	
+
 	/* Check if not being processed, invalidate if yes.
 	 * Could happen if next 'cur' was set, but
 	 * the evsched_next() waits until we release rl.
@@ -336,4 +337,3 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 
 	return found;
 }
-

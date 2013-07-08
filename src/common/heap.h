@@ -40,7 +40,7 @@ struct heap {
 #define INITIAL_HEAP_SIZE 512 /* initial heap size */
 #define HEAP_INCREASE_STEP 2  /* multiplier for each inflation, keep conservative */
 #define HEAP_DECREASE_THRESHOLD 2 /* threshold for deflation, keep conservative */
-#define HELEMENT(h,num) ((h)->data + (num)) 
+#define HELEMENT(h,num) ((h)->data + (num))
 #define HHEAD(h) HELEMENT((h),1)
 #define EMPTY_HEAP(h) ((h)->num == 0)			/* h->num == 0 */
 

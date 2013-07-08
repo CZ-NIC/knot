@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include "utils/host/host_params.h"
 
 #include <string.h>			// strncmp
@@ -34,9 +35,10 @@
 static const style_t DEFAULT_STYLE_HOST = {
 	.format = FORMAT_HOST,
 	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = true, .reduce = false },
-	.show_header = false,
+	           .verbose = true, .reduce = false, .human_ttl = false,
+	           .human_tmstamp = true },
 	.show_query = false,
+	.show_header = false,
 	.show_edns = false,
 	.show_question = true,
 	.show_answer = true,
@@ -59,6 +61,7 @@ static int host_init(dig_params_t *params)
 	params->config->port = strdup(DEFAULT_DNS_PORT);
 	params->config->retries = DEFAULT_RETRIES_HOST;
 	params->config->wait = DEFAULT_TIMEOUT_HOST;
+	params->config->servfail_stop = false;
 	params->config->class_num = KNOT_CLASS_IN;
 	params->config->style = DEFAULT_STYLE_HOST;
 
@@ -166,30 +169,31 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 	return KNOT_EOK;
 }
 
-static void host_help(int argc, char *argv[])
+static void host_help(void)
 {
-	printf("Usage: khost [-4] [-6] [-aCdrsTvw] [-c class] [-t type]\n"
+	printf("Usage: khost [-4] [-6] [-adhrsTvVw] [-c class] [-t type]\n"
 	       "             [-R retries] [-W time] name [server]\n\n"
-	       "       -4  Use IPv4 protocol only.\n"
-	       "       -6  Use IPv6 procotol only.\n"
-	       "       -a  Same as -t ANY -v.\n"
-	       "       -C  (NOT YET IMPLEMENTED)\n"
-	       "       -d  Allow debug messages.\n"
-	       "       -r  Set RD flag.\n"
-	       "       -s  Stop if servfail.\n"
-	       "       -T  Use TCP procotol.\n"
-	       "       -v  Verbose output.\n"
-	       "       -w  Wait forever.\n"
-	       "       -c  Set query class.\n"
-	       "       -t  Set query type.\n"
-	       "       -R  Set number of UDP retries.\n"
-	       "       -W  Set wait interval.\n"
+	       "       -4             Use IPv4 protocol only.\n"
+	       "       -6             Use IPv6 procotol only.\n"
+	       "       -a             Same as -t ANY -v.\n"
+	       "       -d             Allow debug messages.\n"
+	       "       -h, --help     Print help.\n"
+	       "       -r             Disable recursion.\n"
+	       "       -s             Stop if SERVFAIL.\n"
+	       "       -T             Use TCP procotol.\n"
+	       "       -v             Verbose output.\n"
+	       "       -V, --version  Print program version.\n"
+	       "       -w             Wait forever.\n"
+	       "       -c             Set query class.\n"
+	       "       -t             Set query type.\n"
+	       "       -R             Set number of UDP retries.\n"
+	       "       -W             Set wait interval.\n"
 	      );
 }
 
 int host_parse(dig_params_t *params, int argc, char *argv[])
 {
-	int opt = 0;
+	int opt = 0, li = 0;
 
 	if (params == NULL || argv == NULL) {
 		DBG_NULL;
@@ -204,8 +208,16 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	uint16_t rclass, rtype;
 	uint32_t serial;
 
+	// Long options.
+	struct option opts[] = {
+		{ "version", no_argument, 0, 'V' },
+		{ "help",    no_argument, 0, 'h' },
+		{ 0,         0,           0, 0 }
+	};
+
 	// Command line options processing.
-	while ((opt = getopt(argc, argv, "46aCdrsTvwc:t:R:W:")) != -1) {
+	while ((opt = getopt_long(argc, argv, "46adhrsTvVwc:t:R:W:", opts, &li))
+	       != -1) {
 		switch (opt) {
 		case '4':
 			conf->ip = IP_4;
@@ -220,13 +232,13 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			conf->style.show_edns = true;
 			conf->style.show_footer = true;
 			break;
-		case 'C':
-			conf->type_num = KNOT_RRTYPE_SOA;
-			conf->operation = OPERATION_LIST_SOA;
-			break;
 		case 'd':
 			msg_enable_debug(1);
 			break;
+		case 'h':
+			host_help();
+			params->stop = false;
+			return KNOT_EOK;
 		case 'r':
 			conf->flags.rd_flag = false;
 			break;
@@ -242,6 +254,10 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			conf->style.show_edns = true;
 			conf->style.show_footer = true;
 			break;
+		case 'V':
+			printf(KHOST_VERSION);
+			params->stop = false;
+			return KNOT_EOK;
 		case 'w':
 			conf->wait = -1;
 			break;
@@ -275,7 +291,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			}
 			break;
 		default:
-			host_help(argc, argv);
+			host_help();
 			return KNOT_ENOTSUP;
 		}
 	}
@@ -295,7 +311,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 		}
 		break;
 	default:
-		host_help(argc, argv);
+		host_help();
 		return KNOT_ENOTSUP;
 	}
 
@@ -304,4 +320,3 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 
 	return KNOT_EOK;
 }
-

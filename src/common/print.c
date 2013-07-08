@@ -14,29 +14,56 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "print.h"
 
-void hex_printf(const char *data, int length, printf_t print_handler)
+void array_printf(const uint8_t *data, const unsigned length,
+                  printf_t print_handler, const char type)
 {
-	int ptr = 0;
-	for (; ptr < length; ptr++) {
-		print_handler("0x%02x ", (unsigned char)*(data + ptr));
+	for (unsigned i = 0; i < length; i++) {
+		uint8_t ch = data[i];
+
+		switch (type) {
+		case 't':
+			if (isprint(ch) != 0) {
+				print_handler("%c  ", ch);
+			} else {
+				print_handler("   ");
+			}
+			break;
+		case 'x':
+			print_handler("%02X ", ch);
+			break;
+		default:
+			print_handler("0x%02X ", ch);
+		}
 	}
 	print_handler("\n");
 }
 
-void hex_print(const char *data, int length)
+void hex_print(const uint8_t *data, unsigned length)
 {
-	hex_printf(data, length, &printf);
+	array_printf(data, length, &printf, 0);
 }
 
-void bit_printf(const char *data, int length, printf_t print_handler)
+void short_hex_print(const uint8_t *data, unsigned length)
+{
+	array_printf(data, length, &printf, 'x');
+}
+
+void txt_print(const uint8_t *data, unsigned length)
+{
+	array_printf(data, length, &printf, 't');
+}
+
+void bit_printf(const uint8_t *data, unsigned length, printf_t print_handler)
 {
 	unsigned char mask = 0x01;
-	int ptr = 0;
+	unsigned ptr;
 	int bit = 0;
-	for (; ptr < length; ptr++) {
+	for (ptr = 0; ptr < length; ptr++) {
 		for (bit = 7; bit >= 0; bit--) {
 			if ((mask << bit) & (unsigned char)*(data + ptr)) {
 				print_handler("1");
@@ -49,7 +76,14 @@ void bit_printf(const char *data, int length, printf_t print_handler)
 	print_handler("\n");
 }
 
-void bit_print(const char *data, int length)
+void bit_print(const uint8_t *data, unsigned length)
 {
 	bit_printf(data, length, &printf);
+}
+
+float time_diff(struct timeval *begin, struct timeval *end)
+{
+	return (end->tv_sec - begin->tv_sec) * 1000 +
+	       (end->tv_usec - begin->tv_usec) / 1000.0;
+
 }

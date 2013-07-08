@@ -43,15 +43,15 @@ Doxygen
 
 Example
 =======
-/*! 
+/*!
  * \brief Some structure.
- * 
+ *
  * Longer description.
  */
  struct some_struct {
     /*!
      * \brief This comment does not fit on the same line as the member
-     *        as it is rather large. 
+     *        as it is rather large.
      */
     int fd;
     int flags; /*!< Flags. */
@@ -61,7 +61,7 @@ Example
  * \brief Brief description of some function.
  *
  * Longer description.
- * 
+ *
  * \note This function is deprecated.
  *
  * \warning Do not use this function!
@@ -69,7 +69,7 @@ Example
  * \param param1 Some parameter.
  * \param param2 Other parameter. This one has rather large comment,
  *               so its next line is indented for better readability.
- * 
+ *
  * \retval 0 on success.
  * \retval -1 if some error occured.
  *

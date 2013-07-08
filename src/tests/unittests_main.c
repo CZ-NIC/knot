@@ -15,12 +15,13 @@
  */
 
 #include <config.h>
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "common/libtap/tap_unit.h"
 
 // Units to test
 #include "tests/common/slab_tests.h"
 #include "tests/common/skiplist_tests.h"
+#include "tests/common/hattrie_tests.h"
 #include "tests/common/events_tests.h"
 #include "tests/common/acl_tests.h"
 #include "tests/common/fdset_tests.h"
@@ -54,6 +55,7 @@ int main(int argc, char *argv[])
 	        &journal_tests_api,	//! Journal unit
 	        &slab_tests_api,	//! SLAB allocator unit
 	        &skiplist_tests_api,	//! Skip list unit
+	        &hattrie_tests_api,	//! HAT trie unit
 	        &dthreads_tests_api,	//! DThreads testing unit
 	        &events_tests_api,	//! Events testing unit
 	        &acl_tests_api,		//! ACLs
@@ -75,7 +77,7 @@ int main(int argc, char *argv[])
 	        &dname_tests_api,
 	        &ztree_tests_api,
 	        &sign_tests_api,	//! Key manipulation.
-		&rrset_tests_api,
+	        &rrset_tests_api,
 
 	        NULL
 	};
@@ -106,4 +108,3 @@ int main(int argc, char *argv[])
 	// Evaluate
 	return exit_status();
 }
-

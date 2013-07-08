@@ -50,10 +50,10 @@ struct knot_rrset {
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
 	uint32_t ttl; /*!< TTL of the RRSet. */
-	
+
 	/* [code-review] It would be fine to better describe the format of this
 	 * array and the meaning of the indices. Maybe even draw some simple
-	 * image :-) 
+	 * image :-)
 	 */
 	uint8_t *rdata; /*!< RDATA array (All RRs). */
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
@@ -116,7 +116,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
 
 /*!
  * \brief Creates RDATA memory and returns a pointer to it.
- *        If the RRSet is not empty, function will return a memory 
+ *        If the RRSet is not empty, function will return a memory
  *        pointing to a beginning of a new RR. (Indices will be handled as well)
  *
  * \param rrset RRSet to add the RDATA to.
@@ -244,11 +244,11 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
 
 /*!
- * \brief Returns the TTL of the RRSet.
+ * \brief Returns the count of RRs in a given RRSet.
  *
- * \param rrset RRSet to get the TTL of.
+ * \param rrset RRSet to get the RRs count from.
  *
- * \return TTL of the given RRSet.
+ * \return Count of the RRs in a given RRSet.
  */
 uint16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
 
@@ -264,26 +264,19 @@ const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset);
 
 knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
 
-int knot_rrset_compare_rdata(const knot_rrset_t *r1, const knot_rrset_t *r2);
 int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
 /*!
- * \brief Compares two RRSets.
- *
- * \note This function does not return 'standard' compare return values, because
- *       there is no way to define which RRSet is 'larger'.
+ * \brief Compares two RRSets for equality.
  *
  * \param r1 First RRSet.
  * \param r2 Second RRSet.
  * \param cmp Type of comparison to perform.
  *
- * \retval <> 0 If RRSets are equal.
+ * \retval 1 if RRSets are equal.
  * \retval 0 if RRSets are not equal.
+ * \retval < 0 if error occured.
  */
-int knot_rrset_compare(const knot_rrset_t *r1,
-                         const knot_rrset_t *r2,
-                         knot_rrset_compare_type_t cmp);
-
 int knot_rrset_equal(const knot_rrset_t *r1,
                      const knot_rrset_t *r2,
                      knot_rrset_compare_type_t cmp);
@@ -357,7 +350,7 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 
 
 /*!
- * \brief Merges two RRSets, but will only merge unique items. 
+ * \brief Merges two RRSets, but will only merge unique items.
  *
  * \param r1 Pointer to RRSet to be merged into.
  * \param r2 Poitner to RRSet to be merged.
@@ -467,8 +460,8 @@ const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrse
  * \param prev_dname Pointer to previous dname.
  * \return next dname or NULL.
  */
-/* [code-review] Emphasize that the 'prev' pointer must point into the RDATA 
- * array of the given RRSet. 
+/* [code-review] Emphasize that the 'prev' pointer must point into the RDATA
+ * array of the given RRSet.
  */
 knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
                                                  knot_dname_t **prev);
@@ -537,7 +530,7 @@ int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
 int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t **, void *),
                        void *data);
 
-int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset, 
+int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength);
 
@@ -545,4 +538,3 @@ int knot_rrset_ds_check(const knot_rrset_t *rrset);
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */
-

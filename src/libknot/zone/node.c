@@ -143,7 +143,7 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 	knot_node_set_parent(ret, parent);
 	ret->rrset_tree = NULL;
 	ret->flags = flags;
-	
+
 	assert(ret->children == 0);
 
 	return ret;
@@ -155,7 +155,7 @@ int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	size_t nlen = (node->rrset_count + 1) * sizeof(knot_rrset_t*);
 	void *p = realloc(node->rrset_tree, nlen);
 	if (p == NULL) {
@@ -187,7 +187,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrset_tree[i]->type == rrset->type) {
 			int merged, deleted_rrs;
@@ -202,7 +202,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 			}
 		}
 	}
-	
+
 	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
@@ -221,14 +221,14 @@ knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type)
 	if (node == NULL) {
 		return NULL;
 	}
-	
+
 	knot_rrset_t **rrs = node->rrset_tree;
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (rrs[i]->type == type) {
 			return rrs[i];
 		}
 	}
-	
+
 	return NULL;
 }
 
@@ -250,13 +250,13 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 			--node->rrset_count;
 		}
 	}
-	
-	/*!< \todo I've added this to fix a leak, but probably this wasn't the cause. Remove once tests are availabe. */	
+
+	/*!< \todo I've added this to fix a leak, but probably this wasn't the cause. Remove once tests are availabe. */
 	void *tmp = realloc(node->rrset_tree,
 	                    node->rrset_count * sizeof(knot_rrset_t *));
 	assert(tmp || node->rrset_count == 0); //Realloc to smaller memory, if it fails, something is really odd.
 	node->rrset_tree = tmp;
-	
+
 	return ret;
 }
 
@@ -298,13 +298,13 @@ knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 	if (node == NULL || node->rrset_count == 0) {
 		return NULL;
 	}
-	
+
 	size_t rrlen = node->rrset_count * sizeof(knot_rrset_t*);
 	knot_rrset_t **cpy = malloc(rrlen);
 	if (cpy != NULL) {
 		memcpy(cpy, node->rrset_tree, rrlen);
 	}
-	
+
 	return cpy;
 }
 
@@ -320,16 +320,16 @@ const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 }
 
 knot_rrset_t **knot_node_get_rrsets_no_copy(const knot_node_t *node)
-{	
+{
 	if (node == NULL) {
 		return NULL;
 	}
-	
+
 	return node->rrset_tree;
 }
 
 const knot_rrset_t **knot_node_rrsets_no_copy(const knot_node_t *node)
-{	
+{
 	return (const knot_rrset_t **)knot_node_get_rrsets_no_copy(node);
 }
 
@@ -370,7 +370,7 @@ void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 	}
 	// set the parent
 	node->parent = parent;
-	
+
 	// increase the count of children of the new parent
 	if (parent != NULL) {
 		++parent->children;
@@ -406,7 +406,7 @@ knot_node_t *knot_node_get_previous(const knot_node_t *node)
 	if (node == NULL) {
 		return NULL;
 	}
-	
+
 	return node->prev;
 }
 
@@ -428,7 +428,7 @@ knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node)
 	if (node == NULL) {
 		return NULL;
 	}
-	
+
 	return node->nsec3_node;
 }
 
@@ -700,7 +700,7 @@ void knot_node_free(knot_node_t **node)
 	if (node == NULL || *node == NULL) {
 		return;
 	}
-	
+
 	dbg_node_detail("Freeing node: %p\n", *node);
 
 	if ((*node)->rrset_tree != NULL) {
@@ -717,8 +717,6 @@ void knot_node_free(knot_node_t **node)
 		knot_dname_set_node((*node)->owner, NULL);
 	}
 
-	dbg_node_detail("Releasing owner %s refcount=%d.\n",
-	                (*node)->owner->name, (*node)->owner->ref.count);
 	knot_dname_release((*node)->owner);
 
 	free(*node);
@@ -749,9 +747,9 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
-	
-	// copy references	
-	// do not use the API function to set parent, so that children count 
+
+	// copy references
+	// do not use the API function to set parent, so that children count
 	// is not changed
 	memcpy(*to, from, sizeof(knot_node_t));
 
@@ -807,11 +805,11 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 //		assert(node->new_node != NULL);
 //		return node->new_node;
 //	}
-	
+
 //	assert((old_gen && knot_node_is_old(node))
 //	       || (new_gen && knot_node_is_new(node))
 //	       || (!old_gen && !new_gen));
-	
+
 //	return node;
 //}
 
@@ -854,4 +852,3 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 //{
 //	knot_node_flags_clear_old(&node->flags);
 //}
-

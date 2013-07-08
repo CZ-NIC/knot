@@ -12,8 +12,9 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+*/
 
+#include <config.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <string.h>
@@ -27,7 +28,7 @@
 #include <urcu.h>
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
-#include "knot/common.h"
+#include "knot/knot.h"
 #include "knot/ctl/remote.h"
 
 /*
@@ -105,7 +106,7 @@ static void conf_parse_begin(conf_t *conf)
 	conf->names = hattrie_create();
 }
 
-static void conf_parse_end(conf_t *conf) 
+static void conf_parse_end(conf_t *conf)
 {
 	if (conf->names) {
 		hattrie_free(conf->names);
@@ -132,6 +133,25 @@ static void conf_update_hooks(conf_t *conf)
 	}
 }
 
+/*! \brief Make relative path absolute to given directory.
+ *  \param basedir Base directory.
+ *  \param file Relative file name.
+ */
+static char* conf_abs_path(const char *basedir, char *file)
+{
+	/* Make path absolute to the directory. */
+	if (file[0] != '/') {
+		char *basepath = strcdup(basedir, "/");
+		char *path = strcdup(basepath, file);
+		free(basepath);
+		free(file);
+		file = path;
+	}
+
+	/* Normalize. */
+	return strcpath(file);
+}
+
 /*!
  * \brief Process parsed configuration.
  *
@@ -145,12 +165,12 @@ static int conf_process(conf_t *conf)
 {
 	// Check
 	if (conf->storage == NULL) {
-		conf->storage = strdup("/var/lib/"PROJECT_EXEC);
+		conf->storage = strdup(STORAGE_DIR);
 		if (conf->storage == NULL) {
 			return KNOT_ENOMEM;
 		}
 	}
-	
+
 	// Normalize paths
 	conf->storage = strcpath(conf->storage);
 
@@ -169,13 +189,13 @@ static int conf_process(conf_t *conf)
 	}
 
 	// Create PID file
-	if (conf->pidfile == NULL) {
-		conf->pidfile = strcdup(conf->storage, "/" PID_FILE);
-		if (conf->pidfile == NULL) {
+	if (conf->rundir == NULL) {
+		conf->rundir = strdup(RUN_DIR);
+		if (conf->rundir == NULL) {
 			return KNOT_ENOMEM;
 		}
 	}
-	
+
 	/* Default TCP/UDP limits. */
 	if (conf->max_conn_idle < 1) {
 		conf->max_conn_idle = CONFIG_IDLE_WD;
@@ -186,7 +206,7 @@ static int conf_process(conf_t *conf)
 	if (conf->max_conn_reply < 1) {
 		conf->max_conn_reply = CONFIG_REPLY_WD;
 	}
-	
+
 	// Postprocess interfaces
 	conf_iface_t *cfg_if = NULL;
 	WALK_LIST(cfg_if, conf->ifaces) {
@@ -194,10 +214,32 @@ static int conf_process(conf_t *conf)
 			cfg_if->port = CONFIG_DEFAULT_PORT;
 		}
 	}
-	if (conf->ctl.iface && conf->ctl.iface->port <= 0) {
-		conf->ctl.iface->port = REMOTE_DPORT;
+
+	/* Default interface. */
+	conf_iface_t *ctl_if = conf->ctl.iface;
+	if (!conf->ctl.have && ctl_if == NULL) {
+		ctl_if = malloc(sizeof(conf_iface_t));
+		memset(ctl_if, 0, sizeof(conf_iface_t));
+		ctl_if->family = AF_UNIX;
+		ctl_if->address = strdup("knot.sock");
+		conf->ctl.iface = ctl_if;
 	}
-	
+
+	/* Control interface. */
+	if (ctl_if) {
+		if (ctl_if->family == AF_UNIX) {
+			ctl_if->address = conf_abs_path(conf->rundir,
+			                                ctl_if->address);
+			/* Check for ACL existence. */
+			if (!EMPTY_LIST(conf->ctl.allow)) {
+				log_server_warning("Control 'allow' statement "
+				                   "does not affect UNIX sockets.\n");
+			}
+		} else if (ctl_if->port <= 0) {
+			ctl_if->port = REMOTE_DPORT;
+		}
+	}
+
 	/* Default RRL limits. */
 	if (conf->rrl_slip < 0) {
 		conf->rrl_slip = CONFIG_RRL_SLIP;
@@ -205,7 +247,7 @@ static int conf_process(conf_t *conf)
 	if (conf->rrl_size == 0) {
 		conf->rrl_size = CONFIG_RRL_SIZE;
 	}
-	
+
 	/* Default parallel transfers. */
 	if (conf->xfers <= 0) conf->xfers = CONFIG_XFERS;
 
@@ -219,7 +261,7 @@ static int conf_process(conf_t *conf)
 		if (zone->dbsync_timeout < 0) {
 			zone->dbsync_timeout = conf->dbsync_timeout;
 		}
-		
+
 		// Default policy for ixfr-from-differences
 		if (zone->build_diffs < 0) {
 			zone->build_diffs = conf->build_diffs;
@@ -229,7 +271,7 @@ static int conf_process(conf_t *conf)
 		if (zone->enable_checks < 0) {
 			zone->enable_checks = conf->zone_checks;
 		}
-		
+
 		// Default policy for disabling ANY type queries for AA
 		if (zone->disable_any < 0) {
 			zone->disable_any = conf->disable_any;
@@ -249,7 +291,7 @@ static int conf_process(conf_t *conf)
 		if (zone->ixfr_fslimit == 0) {
 			zone->ixfr_fslimit = conf->ixfr_fslimit;
 		}
-		
+
 		// Default zone file
 		if (zone->file == NULL) {
 			zone->file = strcdup(zone->name, ".zone");
@@ -258,92 +300,45 @@ static int conf_process(conf_t *conf)
 				continue;
 			}
 		}
-		
-		// Relative zone filenames should be relative to storage
-		if (zone->file[0] != '/') {
-			size_t prefix_len = strlen(conf->storage) + 1; // + '\0'
-			size_t zp_len = strlen(zone->file) + 1;
-			char *ap = malloc(prefix_len + zp_len);
-			if (ap != NULL) {
-				memcpy(ap, conf->storage, prefix_len);
-				ap[prefix_len - 1] = '/';
-				memcpy(ap + prefix_len, zone->file, zp_len);
-				free(zone->file);
-				zone->file = ap;
-			} else {
-				ret = KNOT_ENOMEM;
-				continue;
-			}
-		}
 
-		// Normalize zone filename
-		zone->file = strcpath(zone->file);
+		// Relative zone filenames should be relative to storage
+		zone->file = conf_abs_path(conf->storage, zone->file);
 		if (zone->file == NULL) {
-			zone->db = NULL;
 			ret = KNOT_ENOMEM;
 			continue;
 		}
 
-		// Create zone db filename
+		/* Create journal filename. */
 		size_t zname_len = strlen(zone->name);
 		size_t stor_len = strlen(conf->storage);
-		size_t size = stor_len + zname_len + 4; // /db,\0
+		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
-		if (dest == NULL) {
-			zone->db = NULL; /* Not enough memory. */
-			ret = KNOT_ENOMEM; /* Error report. */
-			continue;
-		}
-		char *dpos = dest;
-		
-		/* Since we have already allocd dest to accomodate
-		 * storage/zname length strcpy is safe. */
-		memcpy(dpos, conf->storage, stor_len + 1);
-		dpos += stor_len;
-		if (*(dpos - 1) != '/') {
-			*(dpos++) = '/';
-			*dpos = '\0';
-		}
-
-		/* Copy origin and remove bad characters. */
-		memcpy(dpos, zone->name, zname_len + 1);
-		for (int i = 0; i < zname_len; ++i) {
-			if (dpos[i] == '/') dpos[i] = '_';
-		}
-		
-		memcpy(dpos + zname_len, "db", 3);
-		zone->db = dest;
-
-		// Create IXFR db filename
-		stor_len = strlen(conf->storage);
-		size = stor_len + zname_len + 9; // /diff.db,\0
-		dest = malloc(size);
 		if (dest == NULL) {
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;
 		}
-		dpos = dest;
+		char *dpos = dest;
 		memcpy(dpos, conf->storage, stor_len + 1);
 		dpos += stor_len;
 		if (conf->storage[stor_len - 1] != '/') {
-			*(dpos++) = '/';	
+			*(dpos++) = '/';
 			*dpos = '\0';
 		}
 
 		const char *dbext = "diff.db";
 		memcpy(dpos, zone->name, zname_len + 1);
-		for (int i = 0; i < zname_len; ++i) {
+		for (size_t i = 0; i < zname_len; ++i) {
 			if (dpos[i] == '/') dpos[i] = '_';
 		}
 		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
 	}
-	
+
 	/* Update UID and GID. */
 	if (conf->uid < 0) conf->uid = getuid();
 	if (conf->gid < 0) conf->gid = getgid();
-	
+
 	/* Build remote control ACL. */
 	sockaddr_t addr;
 	conf_remote_t *r = NULL;
@@ -383,7 +378,7 @@ void __attribute__ ((constructor)) conf_init()
 	++s_config->ifaces_count;
 
 	/* Create default storage. */
-	s_config->storage = strdup("/var/lib/"PROJECT_EXEC);
+	s_config->storage = strdup(STORAGE_DIR);
 
 	/* Create default logs. */
 
@@ -438,7 +433,7 @@ static int conf_fparser(conf_t *conf)
 
 	int ret = KNOT_EOK;
 	pthread_mutex_lock(&_parser_lock);
-	
+
 	// {
 	// Hook new configuration
 	new_config = conf;
@@ -462,7 +457,7 @@ static int conf_fparser(conf_t *conf)
 	fclose(f);
 	// }
 	pthread_mutex_unlock(&_parser_lock);
-	
+
 	return ret;
 }
 
@@ -534,7 +529,7 @@ conf_t *conf_new(const char* path)
 	c->xfers = -1;
 	c->rrl_slip = -1;
 	c->build_diffs = 0; /* Disable by default. */
-	
+
 	/* ACLs. */
 	c->ctl.acl = acl_new(ACL_DENY, "remote_ctl");
 	if (!c->ctl.acl) {
@@ -569,7 +564,7 @@ int conf_parse(conf_t *conf)
 	conf_parse_begin(conf);
 	int ret = conf_fparser(conf);
 	conf_parse_end(conf);
-	
+
 	/* Postprocess config. */
 	if (ret == 0) {
 		ret = conf_process(conf);
@@ -669,6 +664,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->identity);
 		conf->identity = 0;
 	}
+	if (conf->hostname) {
+		free(conf->hostname);
+		conf->hostname = 0;
+	}
 	if (conf->version) {
 		free(conf->version);
 		conf->version = 0;
@@ -676,6 +675,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	if (conf->storage) {
 		free(conf->storage);
 		conf->storage = 0;
+	}
+	if (conf->rundir) {
+		free(conf->rundir);
+		conf->rundir = 0;
 	}
 	if (conf->pidfile) {
 		free(conf->pidfile);
@@ -685,17 +688,17 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->nsid);
 		conf->nsid = 0;
 	}
-	
+
 	/* Free remote control list. */
 	WALK_LIST_DELSAFE(n, nxt, conf->ctl.allow) {
 		conf_free_remote((conf_remote_t*)n);
 	}
 	conf->remotes_count = 0;
 	init_list(&conf->remotes);
-	
+
 	/* Free remote control ACL. */
 	acl_truncate(conf->ctl.acl);
-	
+
 	/* Free remote control iface. */
 	conf_free_iface(conf->ctl.iface);
 }
@@ -708,7 +711,7 @@ void conf_free(conf_t *conf)
 
 	/* Truncate config. */
 	conf_truncate(conf, 1);
-	
+
 	/* Free remote control ACL. */
 	acl_delete(&conf->ctl.acl);
 
@@ -771,7 +774,7 @@ int conf_open(const char* path)
 		/* Postprocess config. */
 		ret = conf_process(nconf);
 	}
-	
+
 	if (ret != KNOT_EOK) {
 		conf_free(nconf);
 		return ret;
@@ -810,7 +813,7 @@ char* strcpath(char *path)
 	if (!path) {
 		return NULL;
 	}
-	
+
 	// Remote trailing slash
 	size_t plen = strlen(path);
 	if (path[plen - 1] == '/') {
@@ -850,7 +853,7 @@ char* strcpath(char *path)
 		npath[0] = '\0';
 		strncpy(npath, path, (size_t)(remainder - path));
 		strncat(npath, tild_exp, tild_len);
-		
+
 		// Append remainder
 		++remainder;
 		strncat(npath, remainder, strlen(remainder));
@@ -878,7 +881,6 @@ void conf_free_zone(conf_zone_t *zone)
 
 	free(zone->name);
 	free(zone->file);
-	free(zone->db);
 	free(zone->ixfr_db);
 	free(zone);
 }
@@ -922,9 +924,7 @@ void conf_free_log(conf_log_t *log)
 		return;
 	}
 
-	if (log->file) {
-		free(log->file);
-	}
+	free(log->file);
 
 	/* Free loglevel mapping. */
 	node *n = 0, *nxt = 0;
@@ -934,4 +934,3 @@ void conf_free_log(conf_log_t *log)
 
 	free(log);
 }
-

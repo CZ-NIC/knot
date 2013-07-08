@@ -1,0 +1,23 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	NAPTR	0	0	""	""	""	@	; The simplest variant
+@	NAPTR	65535	65535	""	""	""	@	; Maximal numbers
+@	NAPTR	65535	65535	""	""	"!^urn:cid:.+@([^\.]+\.)(.*)$!\\2!i"	@	; Regexp example
+@	NAPTR	0	0	""	""	""	\0320\ \\\"\.\@\*.tld.	; Dname with specials
+@	TYPE35	\# 8 00000000000000 00				; TYPE + Hexadecimal rdata
+@	TYPE35	0	0	""	""	""	@	; TYPE
+@	naptr	0	0	""	""	""	@	; Type in lower-case
+
+; KO
+@	NAPTR
+@	NAPTR							; Empty rdata
+@	NAPTR	\# 0						; Hex empty rdata
+@	NAPTR	\#						; Missing hex length
+@	NAPTR	65536	0	""	""	""	@	; Order overflow
+@	NAPTR	0	65536	""	""	""	@	; Preference overflow
+@	NAPTR	0	0	""	""	""	@  x	; Unexpected item
+@	NAPTR	0	0	""	""	""		; Missing item
+@	NAPTR	\# 9 00000000000000 00 00			; Too long rdata
+@	NAPTR	\# 9 00000000000000 00				; Bad rdata length

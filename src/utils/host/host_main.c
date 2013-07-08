@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <stdlib.h>			// EXIT_FAILURE
 
 #include "common/errcode.h"		// KNOT_EOK
@@ -26,7 +27,7 @@ int main(int argc, char *argv[])
 
 	dig_params_t params;
 	if (host_parse(&params, argc, argv) == KNOT_EOK) {
-		if (dig_exec(&params) != KNOT_EOK) {
+		if (!params.stop && dig_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
 	} else {
@@ -36,4 +37,3 @@ int main(int argc, char *argv[])
 	host_clean(&params);
 	return ret;
 }
-

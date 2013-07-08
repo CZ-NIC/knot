@@ -27,6 +27,23 @@
 #ifndef _KNOTD_COMMON_MALLOC_H_
 #define _KNOTD_COMMON_MALLOC_H_
 
+#include <stddef.h>
+
+/* Memory allocation function prototypes. */
+typedef void* (*mm_alloc_t)(void* ctx, size_t len);
+typedef void (*mm_free_t)(void *p);
+typedef void (*mm_flush_t)(void *p);
+
+/* Memory allocation context. */
+typedef struct mm_ctx {
+	void *ctx; /* \note Must be first */
+	mm_alloc_t alloc;
+	mm_free_t free;
+} mm_ctx_t;
+
+/*! \brief Initialize default memory allocation context. */
+void mm_ctx_init(mm_ctx_t *mm);
+
 /*! \brief Allocate memory or die. */
 void* xmalloc(size_t l);
 

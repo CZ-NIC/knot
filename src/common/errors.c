@@ -14,11 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "common/errors.h"
+#include "common/errcode.h"
 
 /*!
  * \brief Looks up the given id in the lookup table.
@@ -65,7 +67,7 @@ int _map_errno(int fallback_value, int arg0, ...)
 		if (c == errno) {
 			/* Return negative value of the code. */
 			va_end(ap);
-			return -abs(c);
+			return err2code(abs(c));
 		}
 	}
 	va_end(ap);

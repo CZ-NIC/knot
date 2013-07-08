@@ -59,7 +59,7 @@ typedef struct zonedata_t
 
 	/*! \brief Zone data lock for exclusive access. */
 	pthread_mutex_t lock;
-	
+
 	/*! \brief Access control lists. */
 	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
 	acl_t *notify_in;  /*!< ACL for notify-in.*/
@@ -170,7 +170,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int zones_process_response(knot_nameserver_t *nameserver, 
+int zones_process_response(knot_nameserver_t *nameserver,
                            int exp_msgid,
                            sockaddr_t *from,
                            knot_packet_t *packet, uint8_t *response_wire,
@@ -302,12 +302,13 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
  * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
  *
  * \param zone Related zone.
+ * \param time Specific time or 0 for default.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_schedule_refresh(knot_zone_t *zone);
+int zones_schedule_refresh(knot_zone_t *zone, unsigned time);
 
 /*!
  * \brief Schedule NOTIFY after zone update.
@@ -339,6 +340,7 @@ int zones_verify_tsig_query(const knot_packet_t *query,
                             const knot_tsig_key_t *key,
                             knot_rcode_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed);
+
 #endif // _KNOTD_ZONES_H_
 
 /*! @} */

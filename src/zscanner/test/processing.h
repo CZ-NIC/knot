@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file test_functions.h
+ * \file processing.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
@@ -29,9 +29,7 @@
 
 #include "zscanner/scanner.h"
 
-void empty_process_record(const scanner_t *scanner);
-
-void empty_process_error(const scanner_t *scanner);
+void empty_process(const scanner_t *scanner);
 
 void debug_process_error(const scanner_t *scanner);
 

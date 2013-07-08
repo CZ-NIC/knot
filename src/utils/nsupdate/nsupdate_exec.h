@@ -18,7 +18,7 @@
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief 
+ * \brief
  *
  * \addtogroup knot_utils
  * @{
@@ -34,4 +34,3 @@ int nsupdate_exec(nsupdate_params_t *params);
 #endif // _NSUPDATE__NSUPDATE_EXEC_H_
 
 /*! @} */
-

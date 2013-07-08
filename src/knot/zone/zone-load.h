@@ -33,9 +33,6 @@
 #include "knot/zone/semantic-check.h"
 #include "zscanner/file_loader.h"
 
-#define MAGIC_LENGTH 8
-#define MAGIC "knotv130"
-
 /* TODO this structure is highly redundant, remove. Maybe use oh-so-great BIRD lists. */
 /*!
  * \brief One-purpose linked list holding pointers to RRSets.
@@ -98,22 +95,13 @@ int knot_zload_open(zloader_t **loader, const char *source, const char *origin,
 knot_zone_t *knot_zload_load(zloader_t *loader);
 
 /*!
- * \brief Checks whether the compiled zone needs a recompilation.
- *
- * \param loader Zone loader instance.
- *
- * \retval 1 is if needs to be recompiled.
- * \retval 0 if it is up to date.
- */
-//TODO will not work, has to look at serials probably
-int knot_zload_needs_update(zloader_t *loader);
-
-/*!
  * \brief Free zone loader.
  *
  * \param loader Zone loader instance.
  */
 void knot_zload_close(zloader_t *loader);
+
+void process_error(const scanner_t *scanner);
 
 #endif /* _KNOTD_ZONELOAD_H_ */
 

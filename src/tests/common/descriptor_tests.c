@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include "tests/common/descriptor_tests.h"
 
 #include <stdlib.h>
@@ -231,4 +232,3 @@ static int descriptor_tests_run(int argc, char *argv[])
 
 	return 0;
 }
-

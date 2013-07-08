@@ -1,18 +1,44 @@
 Dependencies
 ============
+
 Knot DNS has several dependencies:
 * libtool
 * autoconf > 2.65
 * flex >= 2.5.31
 * bison >= 2.3
 * libssl >= 0.9.8
-* liburcu >= 0.5.4 (available as packages or as a sources from http://lttng.org/urcu)
+* liburcu >= 0.5.4
 
 Optional packages:
-* libcap-ng >= 0.6.4 for POSIX 1003.1e capabilites(7)
+* libcap-ng >= 0.6.4 (for POSIX 1003.1e capabilites(7))
+* ragel (for fast zone parsing)
+
+Dependencies for building documentation:
+* texinfo
+
+Knot DNS requires compiler to support atomic intrinsics.
+GCC version at least 4.1 supports legacy atomic builtins, however 4.7
+or newer is preferred.
+Clang supports atomics since version 2.9.
+
+By default Knot DNS is distributed with a slower zone file parser because of
+smaller source file and quick compile time. In most cases it is sufficient.
+If you plan to process large zone files, it is recomended to build Knot DNS
+using ./configure --enable-fastparser. In this case Ragel compiler is required
+and it is normal if the C compiler takes much more time (minutes).
 
 Installation
 ============
+
+Knot DNS may be already included in your operating system distribution and
+therefore can be installed from packages (Linux) or ports (BSD). This is
+always preferred unless you want to test the latest features, contribute to
+Knot development, or you just know what you are doing.
+
+Following sections describe how to build Knot DNS from the source code.
+
+Installation on Debian based distributions
+==========================================
 
 The following steps should work (verified in VirtualBox only)
 on the distribution/architecture/release combinations as listed bellow.
@@ -49,13 +75,45 @@ $ sudo make install
 $ sudo ldconfig
 
 Alternative packages for I386:
-$ # the required version of liburcu is not available in the default package 
+$ # the required version of liburcu is not available in the default package
 $ # sources.
 $
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_i386.deb
 $ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_i386.deb
 $ sudo dpkg -i liburcu0_0.5.4-1_i386.deb
 $ sudo dpkg -i liburcu-dev_0.5.4-1_i386.deb
+
+Installation on Fedora
+======================
+
+Notice: Knot DNS is available in official distribution repositories since
+Fedora 18 (Spherical Cow). Search for 'knot' package.
+
+All commands with the '#' prompt should be run as the root user, commands with
+the '$' prompt should be run as a regular non-root user.
+
+Update the system:
+# yum upgrade
+
+Ensure all base development tools are available:
+# yum install @buildsys-build
+
+Ensure all prerequisites are installed:
+# yum install libtool autoconf flex bison openssl-devel userspace-rcu-devel
+
+You can also install optional packages:
+# yum install libcap-ng-devel ragel
+
+Download the latest source code from Git and compile it:
+$ git clone git://git.nic.cz/knot-dns.git
+$ cd knot
+$ autoreconf -if
+$ ./configure
+$ make
+
+Install Knot DNS into system (run only if you really know what these commands do):
+# make install
+# ldconfig
 
 Installation on BSD
 ===================
@@ -81,6 +139,7 @@ $ sudo make install
 
 Installation on OpenBSD/NetBSD
 ==============================
+
 Also works for OS X, if you don't want to install gcc from ports.
 Prerequisites:
 - liburcu needs patch for absent compiler TLS capability
@@ -91,7 +150,7 @@ Prerequisites:
 
 $ mkdir liburcu && cd liburcu
 $ wget "http://lttng.org/files/urcu/userspace-rcu-0.6.7.tar.bz2"
-$ patch -p1 < ../scripts/urcu-tls-compat.patch 
+$ patch -p1 < ../scripts/urcu-tls-compat.patch
 $ autoconf && ./configure && make && sudo make install
 $ # or follow installation instructions in INSTALL
 
@@ -106,14 +165,16 @@ Not all prerequisites are preinstalled for OS X.
   - liburcu requires gcc-4.6 from MacPorts, as it depends on __thread keyword
   $ CC=gcc-mp-4.6 ARCH=x86_64 ./configure
   $ make && sudo make install
+- liburcu >= 0.7.0 works with supplied compiler, however ARCH must still be set
+  - alternative is to set it with configure parameter --target
 
-Compiling Knot DNS with gcc-mp-4.6 is recommended, but not necessary. 
+Compiling Knot DNS with gcc-mp-4.6 is recommended, but not necessary.
 
 Running
 =======
 
-First, each server needs configuration file. 
-Please see samples/knot.sample.conf for reference. 
+First, each server needs configuration file.
+Please see samples/knot.sample.conf for reference.
 Minimal configuration can be found in samples/knot.min.conf
 Configuration zone has to specify:
 * storage for PID files, compiled zones etc.
@@ -122,19 +183,11 @@ Configuration zone has to specify:
 
 $ cp samples/knot.min.conf myserver.conf
 $ vim myserver.conf # or your favourite text editor
-
-Second, zone files have to be compiled to binary form in order for server to
-load them. Binary 'knotc' (controller) offers functionality for everything from
-zone file management to controlling server instance. Most important parameter 
-is '-c' that specifies config file for our server. Compiled zones are saved to 
-storage defined in 'storage' variable in configuration.
-
 $ knotc -h # see what it can do
 
-Copy zone to the specified directory and compile.
+Prepare working directory.
 
 $ mkdir -p /tmp/knot-minimal/samples; cp samples/example.com.zone /tmp/knot-minimal/samples/
-$ knotc -c myserver.conf compile # compile zone files to binary format
 
 Third, lets load server. You can do this by running 'knotd' directly, or with
 'knotc' as well. Server is able to run in daemonized or interactive mode.
@@ -147,37 +200,10 @@ Running as daemon
 
 Controller runs server in daemonized mode as default. Disadvantage is, that
 it closes stdout/stderr so you need to set up either syslog or logging to
-own files in the configuration. Controller parameter '-w' waits for the 
+own files in the configuration. Controller parameter '-w' waits for the
 operation to finish. Let's test server functionality.
 
 $ knotc -c myserver.conf -w start # start server
 $ dig @$ADDR -p $PORT example.com # issue a query and see result
 $ ...
 $ knotc -c myserver.conf -w stop  # stop server
-
-Also, keep in mind that zone files have to be compiled before they are loaded
-to server. Workflow is as follows:
-
-$ knotc -c myserver.conf -w start
-$ <edit zonefile>
-$ knotc -c myserver.conf compile  # compile zones to binary format
-$ knotc -c myserver.conf reload   # reconfigures server on-the-fly
-$ dig @$ADDR -p $PORT example.com # issue a query and see result
-$ ...
-$ knotc -c myserver.conf stop
-
-Supported features
-==================
-
-DNS functions:
-* AXFR/IXFR (master and slave)
-* EDNS0
-* DNSSEC
-* NSEC3
-* Unknown RR types
-
-Server features:
-* Adding/removing zones on-the-fly
-* Reconfiguring server instance on-the-fly
-* IPv6 support
-* Semantic checks of loaded zone

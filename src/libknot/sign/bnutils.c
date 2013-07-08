@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
@@ -21,6 +22,9 @@
 #include "sign/bnutils.h"
 #include "common/base64.h"
 
+/*!
+ * \brief Convert Base64 encoded number into OpenSSL BIGNUM format.
+ */
 BIGNUM *knot_b64_to_bignum(const char *input)
 {
 	size_t size = strlen(input);
