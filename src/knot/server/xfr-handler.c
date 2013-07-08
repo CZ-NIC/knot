@@ -271,9 +271,10 @@ static int xfr_task_connect(knot_ns_xfr_t *rq)
 			socket_close(fd);
 			return KNOT_ECONNREFUSED;
 		}
-
-		rq->flags |= XFR_FLAG_CONNECTING;
 	}
+
+	/* Set up for UDP as well to trigger 'send query' event. */
+	rq->flags |= XFR_FLAG_CONNECTING;
 
 	/* Store new socket descriptor. */
 	rq->session = fd;
