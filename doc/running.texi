@@ -64,21 +64,30 @@ Actions:
  memstats [zone]            Estimate memory consumption for zone (all if not specified).
 @end example
 
-Also, the server needs to create several files in order to run properly.
-Zones and related data are stored in the directory described by @code{storage} (@pxref{storage}).
+Also, the server needs to create several files in order to run properly. These
+files are stored in the folowing directories.
+
+@code{storage} (@pxref{storage}):
+
 @itemize @bullet
 @item
+@emph{Zone files} - default directory for storing zone files. This can be overriden
+using absolute zone file location. 
+
+@item
 @emph{Journal files} - each zone has a journal file to store differences for IXFR and
-dynamic updates. Journal for zone @code{example.com} will be
-placed in @file{STORAGE/example.com.diff.db}.
+dynamic updates. Journal for zone @code{example.com} will be placed in @file{example.com.diff.db}.
+@end itemize
+
+@code{rundir} (@pxref{rundir}):
+
+@itemize @bullet
+@item
+@emph{PID file} - is created automatically when the server is run in background.
 
 @item
-@emph{PID file} - is created automatically in @code{rundir} (@pxref{rundir}) when
-the server is run in background.
-
-@item
-@emph{Control sockets} - as a default, UNIX sockets are created in @code{rundir} (@pxref{rundir}),
-but can be overriden.
+@emph{Control sockets} - as a default, UNIX sockets are created here,
+but this can be overriden.
 @end itemize
 
 @node Running a slave server

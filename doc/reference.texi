@@ -141,8 +141,7 @@ system @{
 @subsubsection storage
 @vindex storage
 
-The working directory of Knot DNS, it is used to store compiled zone files and
-other persistent data.
+The working directory of Knot DNS, it is used to store zone files and journal files.
 Default: @file{$@{sharedstatedir@}/knot}, configured with @code{--with-storage=path}
 
 @example
