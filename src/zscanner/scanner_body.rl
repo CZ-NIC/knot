@@ -643,7 +643,7 @@
 	}
 
 	action _include_exit {
-		char text_origin[MAX_DNAME_LENGTH];
+		char text_origin[4 * MAX_DNAME_LENGTH]; // Each char as \DDD.
 
 		// Origin conversion from wire to text form.
 		if (s->dname == NULL) { // Use current origin.
@@ -668,8 +668,8 @@
 		// Create new file loader for included zone file.
 		file_loader_t *fl = file_loader_create((char*)(s->buffer),
 		                                       text_origin,
-		                                       DEFAULT_CLASS,
-		                                       DEFAULT_TTL,
+		                                       s->default_class,
+		                                       s->default_ttl,
 		                                       s->process_record,
 		                                       s->process_error,
 		                                       s->data);

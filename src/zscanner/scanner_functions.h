@@ -96,8 +96,8 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp);
  * \param text		Text output.
  */
 void wire_dname_to_str(const uint8_t  *data,
-		       const uint32_t data_len,
-		       char *text);
+                       const uint32_t data_len,
+                       char *text);
 
 /*!
  * \brief Converts unsigned integer to mantisa*10^(exponent).

@@ -39,6 +39,14 @@
 #define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
 
 /*!
+ * \brief Empty function which is called if no callback function is specified.
+ */
+static inline void noop(const scanner_t *s)
+{
+	(void)s;
+}
+
+/*!
  * \brief Writes record type number to r_data.
  *
  * \param type		Type number.
@@ -81,8 +89,16 @@ static inline void window_add_bit(const uint16_t type, scanner_t *s) {
 	write data;
 }%%
 
-scanner_t* scanner_create(const char *file_name)
+scanner_t* scanner_create(const char     *file_name,
+                          const char     *origin,
+                          const uint16_t rclass,
+                          const uint32_t ttl,
+                          void (*process_record)(const scanner_t *),
+                          void (*process_error)(const scanner_t *),
+                          void *data)
 {
+	char settings[1024];
+
 	scanner_t *s = calloc(1, sizeof(scanner_t));
 	if (s == NULL) {
 		return NULL;
@@ -102,13 +118,31 @@ scanner_t* scanner_create(const char *file_name)
 		s->file_name = strdup(file_name);
 	} else {
 		s->path = strdup(".");
-		s->file_name = strdup("");
+		s->file_name = strdup("<NULL>");
 	}
-
-	s->line_counter = 1;
 
 	// Nonzero initial scanner state.
 	s->cs = zone_scanner_start;
+
+	// Disable processing during parsing of settings.
+	s->process_record = &noop;
+	s->process_error = &noop;
+
+	// Create ORIGIN directive and parse it using scanner to set up origin.
+	int ret = snprintf(settings, sizeof(settings), "$ORIGIN %s\n", origin);
+	if (ret <= 0 || (size_t)ret >= sizeof(settings) ||
+	    scanner_process(settings, settings + ret, true, s) != 0) {
+		scanner_free(s);
+		return NULL;
+	}
+
+	// Set scanner defaults.
+	s->default_class = rclass;
+	s->default_ttl = ttl;
+	s->process_record = process_record ? process_record : &noop;
+	s->process_error = process_error ? process_error : &noop;
+	s->data = data;
+	s->line_counter = 1;
 
 	return s;
 }
@@ -123,9 +157,9 @@ void scanner_free(scanner_t *s)
 }
 
 int scanner_process(const char *start,
-		    const char *end,
-		    const bool is_last_block,
-		    scanner_t  *s)
+                    const char *end,
+                    const bool is_complete,
+                    scanner_t  *s)
 {
 	// Necessary scanner variables.
 	const char *p = start;
@@ -138,7 +172,7 @@ int scanner_process(const char *start,
 	struct in6_addr addr6;
 	uint32_t timestamp;
 	int16_t  window;
-	int	 ret;
+	int      ret;
 
 	// Next 2 variables are for better performance.
 	// Restoring r_data pointer to next free space.
@@ -152,7 +186,7 @@ int scanner_process(const char *start,
 	memcpy(stack, s->stack, sizeof(stack));
 
 	// End of file check.
-	if (is_last_block == true) {
+	if (is_complete == true) {
 		eof = (char *)pe;
 	}
 

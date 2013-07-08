@@ -31,7 +31,6 @@ const err_table_t err_msgs[] = {
 	{ FLOADER_EFSTAT, "Fstat error." },
 	{ FLOADER_EDIRECTORY, "Zone file is a directory." },
 	{ FLOADER_EEMPTY, "Empty zone file." },
-	{ FLOADER_EDEFAULTS, "Zone defaults processing error." },
 	{ FLOADER_EMMAP, "Mmap error." },
 	{ FLOADER_EMUNMAP, "Munmap error." },
 	{ FLOADER_ESCANNER, "Zone processing error." },
