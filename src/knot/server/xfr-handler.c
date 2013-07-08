@@ -1078,30 +1078,26 @@ int xfr_worker(dthread_t *thread)
 		fdset_it_t it;
 		fdset_begin(w->pool.fds, &it);
 		while(nfds > 0) {
-
-			/* Find data. */
 			knot_ns_xfr_t *rq = xfr_task_get(w, it.fd);
-			dbg_xfr_verb("xfr: worker=%p processing event on "
-			             "fd=%d data=%p.\n",
-			             w, it.fd, rq);
 			if (rq) {
-				/* Check task state. */
 				if (rq->flags & XFR_FLAG_CONNECTING) {
 					ret = xfr_task_process(w, rq, buf, buflen);
 				} else {
 					ret = xfr_process_event(w, rq);
 				}
 
+				/* Check task state. */
 				if (ret != KNOT_EOK) {
 					xfr_task_remove(w, it.fd);
 					--it.pos; /* Reset iterator */
 				}
 			}
 
-			/* Next fd. */
-			if (fdset_next(w->pool.fds, &it) < 0) {
+			/* Check for cancellation or next active fd. */
+			if (dt_is_cancelled(thread))
 				break;
-			}
+			if (fdset_next(w->pool.fds, &it) < 0)
+				break;
 		}
 
 		/* Sweep inactive. */
