@@ -28,7 +28,9 @@
 #include "zscanner/file_loader.h"
 #include "zscanner/error.h"		// error codes
 
-/*! \brief Mmap block size in bytes. */
+/*! \brief Mmap block size in bytes. This value is then adjusted to the
+ *         multiple of memory pages which fit in.
+ */
 #define BLOCK_SIZE      30000000
 
 /*!
@@ -46,21 +48,10 @@
 static int load_settings(file_loader_t *fl)
 {
 	int		ret;
-	char		*settings_name;
 	scanner_t	*settings_scanner;
 
-	// Creating name for zone defaults.
-	size_t buf_len = strlen(fl->file_name) + 100;
-	settings_name = malloc(buf_len);
-	ret = snprintf(settings_name, buf_len, "ZONE DEFAULTS <%s>",
-		       fl->file_name);
-	if (ret < 0 || (size_t)ret >= buf_len) {
-		free(settings_name);
-		return -1;
-	}
-
 	// Temporary scanner for zone settings.
-	settings_scanner = scanner_create(settings_name);
+	settings_scanner = scanner_create(NULL);
 
 	// Use parent processing functions.
 	settings_scanner->process_record = fl->scanner->process_record;
@@ -85,8 +76,6 @@ static int load_settings(file_loader_t *fl)
 	// Destroying temporary scanner.
 	scanner_free(settings_scanner);
 
-	free(settings_name);
-
 	return ret;
 }
 
@@ -102,7 +91,6 @@ file_loader_t* file_loader_create(const char	 *file_name,
 
 	// Creating zeroed structure.
 	file_loader_t *fl = calloc(1, sizeof(file_loader_t));
-
 	if (fl == NULL) {
 		return NULL;
 	}
@@ -112,7 +100,6 @@ file_loader_t* file_loader_create(const char	 *file_name,
 
 	// Opening zone file.
 	fl->fd = open(fl->file_name, O_RDONLY);
-
 	if (fl->fd == -1) {
 		free(fl->file_name);
 		free(fl);
@@ -121,6 +108,12 @@ file_loader_t* file_loader_create(const char	 *file_name,
 
 	// Creating zone scanner.
 	fl->scanner = scanner_create(file_name);
+	if (fl->scanner == NULL) {
+		close(fl->fd);
+		free(fl->file_name);
+		free(fl);
+		return NULL;
+	}
 
 	// Setting processing functions and data pointer.
 	fl->scanner->process_record = process_record;

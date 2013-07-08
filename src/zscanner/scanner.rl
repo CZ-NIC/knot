@@ -88,7 +88,23 @@ scanner_t* scanner_create(const char *file_name)
 		return NULL;
 	}
 
-	s->file_name = strdup(file_name);
+	if (file_name != NULL) {
+		// Get absolute path of the zone file.
+		if (realpath(file_name, (char*)(s->buffer)) != NULL) {
+			char *full_name = strdup((char*)(s->buffer));
+			s->path = strdup(dirname(full_name));
+			free(full_name);
+		} else {
+			free(s);
+			return NULL;
+		}
+
+		s->file_name = strdup(file_name);
+	} else {
+		s->path = strdup(".");
+		s->file_name = strdup("");
+	}
+
 	s->line_counter = 1;
 
 	// Nonzero initial scanner state.
@@ -101,6 +117,7 @@ void scanner_free(scanner_t *s)
 {
 	if (s != NULL) {
 		free(s->file_name);
+		free(s->path);
 		free(s);
 	}
 }

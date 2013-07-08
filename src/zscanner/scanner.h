@@ -108,7 +108,9 @@ struct scanner {
 	/*! Call stack (Ragel internals). */
 	int	 stack[RAGEL_STACK_SIZE];
 
-	/*! Zone file name. */
+	/*! Absolute path for relative includes. */
+	char     *path;
+	/*! Zone file name, if specified. */
 	char     *file_name;
 	/*! Zone file line counter. */
 	uint64_t line_counter;

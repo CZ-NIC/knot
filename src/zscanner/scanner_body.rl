@@ -649,30 +649,17 @@
 		if (s->dname == NULL) { // Use current origin.
 			wire_dname_to_str(s->zone_origin,
 			                  s->zone_origin_length,
-					  text_origin);
+			                  text_origin);
 		} else { // Use specified origin.
 			wire_dname_to_str(s->r_data,
 			                  s->r_data_length,
-					  text_origin);
+			                  text_origin);
 		}
 
-		if (s->include_filename[0] != '/') { // Relative file path.
-			// Get absolute path of the current zone file.
-			if (realpath(s->file_name, (char*)(s->buffer)) != NULL) {
-				char *full_current_zone_file_name =
-					strdup((char*)(s->buffer));
-
-				// Creating full include file name.
-				snprintf((char*)(s->buffer), sizeof(s->buffer),
-				        "%s/%s",
-				        dirname(full_current_zone_file_name),
-				        s->include_filename);
-
-				free(full_current_zone_file_name);
-			} else {
-				SCANNER_ERROR(ZSCANNER_EUNPROCESSED_INCLUDE);
-				fhold; fgoto err_line;
-			}
+		// Relative file path.
+		if (s->include_filename[0] != '/') {
+			snprintf((char*)(s->buffer), sizeof(s->buffer),
+			         "%s/%s", s->path, s->include_filename);
 		} else {
 			strncpy((char*)(s->buffer), (char*)(s->include_filename),
 			        sizeof(s->buffer));
