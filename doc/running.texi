@@ -37,7 +37,8 @@ Usage: knotc [parameters] <action> [action_args]
 
 Parameters:
  -c [file], --config=[file] Select configuration file.
- -s [server]                Remote UNIX socket/IP address (default $@{rundir@}/knot.sock).
+ -s [server]                Remote UNIX socket/IP address
+                              (default $@{rundir@}/knot.sock).
  -p [port]                  Remote server port (only for IP).
  -y [[hmac:]name:key]       Use key_id specified on the command line.
  -k [file]                  Use key file (as in config section 'keys').
@@ -61,7 +62,8 @@ Actions:
  zonestatus                 Show status of configured zones.
  checkconf                  Check current server configuration.
  checkzone [zone]           Check zone (all if not specified).
- memstats [zone]            Estimate memory consumption for zone (all if not specified).
+ memstats [zone]            Estimate memory consumption for zone
+                              (all if not specified).
 @end example
 
 Also, the server needs to create several files in order to run properly. These
