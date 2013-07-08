@@ -46,11 +46,6 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_footer = false,
 };
 
-static void parse_rr(const scanner_t *s)
-{
-	UNUSED(s);
-}
-
 static void parse_err(const scanner_t *s) {
 	ERR("failed to parse RR, %s\n", knot_strerror(s->error_code));
 }
@@ -69,7 +64,7 @@ static int parser_set_default(scanner_t *s, const char *fmt, ...)
 	}
 
 	/* fmt must contain newline */
-	if (scanner_process(buf, buf + n, 0, s) < 0) {
+	if (scanner_process(buf, buf + n, 1, s) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -87,28 +82,27 @@ static int nsupdate_init(nsupdate_params_t *params)
 
 	/* Default server. */
 	params->server = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
-	if (!params->server) return KNOT_ENOMEM;
+	if (!params->server)
+		return KNOT_ENOMEM;
 
 	/* Default settings. */
 	params->ip = IP_ALL;
 	params->protocol = PROTO_ALL;
-	params->retries = DEFAULT_RETRIES_NSUPDATE;
-	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
 	params->class_num = KNOT_CLASS_IN;
 	params->type_num = KNOT_RRTYPE_SOA;
+	params->ttl = 0;
+	params->retries = DEFAULT_RETRIES_NSUPDATE;
+	params->wait = DEFAULT_TIMEOUT_NSUPDATE;
+	params->zone = strdup(".");
+
+	/* Initialize RR parser. */
+	params->rrp = scanner_create(NULL, ".", params->class_num, 0, NULL,
+	                             parse_err, NULL);
+	if (!params->rrp)
+		return KNOT_ENOMEM;
 
 	/* Default style. */
 	params->style = DEFAULT_STYLE_NSUPDATE;
-
-	/* Initialize RR parser. */
-	params->rrp = scanner_create(".");
-	if (!params->rrp) return KNOT_ENOMEM;
-	params->rrp->process_record = parse_rr;
-	params->rrp->process_error = parse_err;
-	params->rrp->default_class = params->class_num;
-	params->zone = strdup(".");
-	nsupdate_set_ttl(params, 0);
-	nsupdate_set_origin(params, ".");
 
 	return KNOT_EOK;
 }
@@ -121,18 +115,17 @@ void nsupdate_clean(nsupdate_params_t *params)
 		return;
 	}
 
+	/* Free qfiles. */
+	WALK_LIST_DELSAFE(n, nxt, params->qfiles) {
+		free(n);
+	}
+
 	server_free(params->server);
 	server_free(params->srcif);
 	free(params->zone);
 	scanner_free(params->rrp);
 	knot_packet_free(&params->pkt);
 	knot_packet_free(&params->resp);
-
-	/* Free qfiles. */
-	WALK_LIST_DELSAFE(n, nxt, params->qfiles) {
-		free(n);
-	}
-
 	knot_free_key_params(&params->key_params);
 
 	/* Clean up the structure. */

@@ -51,7 +51,7 @@ typedef struct {
 	server_t	*server;
 	/*!< Local interface (optional). */
 	server_t	*srcif;
-	/*!< Operation mode. */
+	/*!< Version of ip protocol to use. */
 	ip_t		ip;
 	/*!< Type (TCP, UDP) protocol to use. */
 	protocol_t	protocol;
