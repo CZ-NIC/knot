@@ -68,7 +68,7 @@ AC_PROG_INSTALL
 # Check for Ragel
 AC_PATH_PROG([RAGEL], [ragel], [true])
 AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "true")
-  
+
 # Set FSM type for Ragel
 AC_SUBST([FSM_TYPE], [-T0])
 AC_ARG_ENABLE([fastparser],
@@ -143,6 +143,11 @@ AC_ARG_ENABLE([recvmmsg],
         recvmmsg=false
     fi
     ])
+
+# Enable integrity check
+AC_ARG_ENABLE([integrity-check],
+    AS_HELP_STRING([--enable-integrity-check], [enable integrity check in knotd via SIGUSR1]),
+    [AC_DEFINE([INTEGRITY_CHECK], [1], [integrity check in knotd])])
 
 # Check for link time optimizations support and predictive commoning
 AC_ARG_ENABLE([lto],
