@@ -171,7 +171,7 @@ AC_ARG_WITH([rundir],
         [run_dir=$withval])
 AC_SUBST(run_dir)
 
-storage_dir="${localstatedir}/knot"
+storage_dir="${localstatedir}/lib/knot"
 AC_ARG_WITH([storage],
         AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=LOCALSTATEDIR/lib/knot]]),
         [storage_dir=$withval])
