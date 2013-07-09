@@ -252,11 +252,6 @@ static int conf_process(conf_t *conf)
 	if (conf->xfers <= 0)
 		conf->xfers = CONFIG_XFERS;
 
-	/* Defaults for DNSSEC. */
-	if (conf->dnssec_enable == CONF_BOOL_DEFAULT) {
-		conf->dnssec_enable = CONF_BOOL_TRUE;
-	}
-
 	// Postprocess zones
 	int ret = KNOT_EOK;
 	node *n = 0;
@@ -342,11 +337,8 @@ static int conf_process(conf_t *conf)
 
 		// DNSSEC
 		if (conf->dnssec_keydir == NULL) {
-			zone->dnssec_enable = CONF_BOOL_FALSE;
-		} else if (zone->dnssec_enable == CONF_BOOL_DEFAULT) {
-			zone->dnssec_enable = conf->dnssec_enable;
+			zone->dnssec_enable = false;
 		}
-		assert(zone->dnssec_enable != CONF_BOOL_DEFAULT);
 	}
 
 	/* Update UID and GID. */
@@ -674,7 +666,8 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	conf->zones_count = 0;
 	init_list(&conf->zones);
 
-	conf->dnssec_enable = false;
+	conf->dnssec_global = false;
+	conf->dnssec_enable = true;
 	free(conf->dnssec_keydir);
 	conf->dnssec_keydir = NULL;
 	free(conf->filename);

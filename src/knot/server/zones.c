@@ -1137,12 +1137,9 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 
 		/* DNSSEC. */
-		if (z->dnssec_enable == CONF_BOOL_TRUE &&
-		     (
-		       !EMPTY_LIST(z->acl.notify_in) ||
-		       !EMPTY_LIST(z->acl.xfr_in)
-		     )
-		   ) {
+		if (z->dnssec_enable && (!EMPTY_LIST(z->acl.notify_in) ||
+		                         !EMPTY_LIST(z->acl.xfr_in))
+		) {
 			log_server_warning("DNSSEC signing enabled for zone "
 			                   "'%s', disabling incoming XFR.\n",
 			                   z->name);

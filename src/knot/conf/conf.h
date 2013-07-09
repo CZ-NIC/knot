@@ -30,6 +30,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
 #include <urcu.h>
 
@@ -53,15 +54,6 @@
 #define CONFIG_RRL_SLIP 1 /*!< Default slip value. */
 #define CONFIG_RRL_SIZE 393241 /*!< Htable default size. */
 #define CONFIG_XFERS 10
-
-/*!
- * \brief Boolean with undefined default value.
- */
-typedef enum {
-	CONF_BOOL_DEFAULT = 0,
-	CONF_BOOL_FALSE,
-	CONF_BOOL_TRUE,
-} conf_bool_t;
 
 /*!
  * \brief Configuration for the interface
@@ -125,7 +117,7 @@ typedef struct conf_zone_t {
 	uint16_t cls;              /*!< Zone class (IN or CH). */
 	char *file;                /*!< Path to a zone file. */
 	char *ixfr_db;             /*!< Path to a IXFR database file. */
-	conf_bool_t dnssec_enable; /*!< DNSSEC: Online signing enabled. */
+	bool dnssec_enable;        /*!< DNSSEC: Online signing enabled. */
 	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
 	int dbsync_timeout;        /*!< Interval between syncing to zonefile.*/
 	int enable_checks;         /*!< Semantic checks for parser.*/
@@ -251,18 +243,19 @@ typedef struct conf_t {
 	/*
 	 * Zones
 	 */
-	list zones;       /*!< List of zones. */
-	int zones_count;  /*!< Count of zones. */
-	int zone_checks;  /*!< Semantic checks for parser.*/
-	int disable_any;  /*!< Disable ANY type queries for AA.*/
-	int notify_retries; /*!< NOTIFY query retries. */
-	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
-	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
+	list zones;          /*!< List of zones. */
+	int zones_count;     /*!< Count of zones. */
+	int zone_checks;     /*!< Semantic checks for parser.*/
+	int disable_any;     /*!< Disable ANY type queries for AA.*/
+	int notify_retries;  /*!< NOTIFY query retries. */
+	int notify_timeout;  /*!< Timeout for NOTIFY response in seconds. */
+	int dbsync_timeout;  /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
-	hattrie_t *names; /*!< Zone tree for duplicate checking. */
-	conf_bool_t dnssec_enable; /*!< DNSSEC: Online signing enabled. */
-	char *dnssec_keydir;       /*!< DNSSEC: Path to key directory. */
+	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
+	bool dnssec_global;  /*!< DNSSEC: Configured for all zones. */
+	bool dnssec_enable;  /*!< DNSSEC: Online signing enabled. */
+	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
 
 	/*
 	 * Remote control interface.

@@ -328,6 +328,12 @@ static void conf_zone_start(void *scanner, char *name) {
       this_zone->name = name; /* Already FQDN */
    }
 
+   // DNSSEC configuration
+   this_zone->dnssec_enable = true;
+   if (new_config->dnssec_global) {
+      this_zone->dnssec_enable = new_config->dnssec_enable;
+   }
+
    /* Initialize ACL lists. */
    init_list(&this_zone->acl.xfr_in);
    init_list(&this_zone->acl.xfr_out);
@@ -873,8 +879,7 @@ zone:
 	   this_zone->notify_timeout = $3.i;
        }
    }
- | zone DNSSEC_ENABLE BOOL ';' { this_zone->dnssec_enable =
-                                 $3.i ? CONF_BOOL_TRUE : CONF_BOOL_FALSE; }
+ | zone DNSSEC_ENABLE BOOL ';' { this_zone->dnssec_enable = $3.i; }
  ;
 
 zones:
@@ -907,8 +912,8 @@ zones:
        }
  }
  | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3.i; }
- | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable =
-                                  $3.i ? CONF_BOOL_TRUE : CONF_BOOL_FALSE; }
+ | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i;
+                                  new_config->dnssec_global = true; }
  | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
  ;
 
