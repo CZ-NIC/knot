@@ -38,7 +38,7 @@
 /*!
  * \brief Key attributes loaded from keyfile.
  */
-struct knot_key_params {
+typedef struct {
 	// common parameters
 	knot_dname_t *name;
 	int algorithm;
@@ -75,18 +75,14 @@ struct knot_key_params {
 	//time_t time_revoke;
 	time_t time_inactive;
 	//time_t time_delete;
-};
+} knot_key_params_t;
 
-typedef struct knot_key_params knot_key_params_t;
-
-enum knot_key_type {
+typedef enum {
 	KNOT_KEY_UNKNOWN = 0,
 	KNOT_KEY_DNSSEC, //!< DNSSEC key. Described in RFC 2535 and RFC 4034.
 	KNOT_KEY_TSIG,   //!< Transaction Signature. Described in RFC 2845.
 	KNOT_KEY_TKEY    //!< Transaction Key. Described in RFC 2930.
-};
-
-typedef enum knot_key_type knot_key_type_t;
+} knot_key_type_t;
 
 /*----------------------------------------------------------------------------*/
 

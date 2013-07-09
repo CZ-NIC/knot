@@ -128,7 +128,7 @@ static int sign_rrset_one(knot_rrset_t *rrsig,
 	assert(rdata);
 
 	// move to caller function, derive from key validity
-	uint32_t sig_incept = (uint32_t)time(NULL); // 1369830271; //(uint32_t)time(NULL);
+	uint32_t sig_incept = (uint32_t)time(NULL);
 	uint32_t sig_expire = sig_incept + 2592000;
 
 	rrsig_write_rdata(rdata, key, owner, covered, sig_incept, sig_expire);
@@ -147,7 +147,7 @@ static int sign_rrset_one(knot_rrset_t *rrsig,
 	knot_dnssec_sign_add(sign_ctx, rdata, 18); // static
 	knot_dnssec_sign_add(sign_ctx, key->name->name, key->name->size);
 
-	// huge blcok of rrsets can be optionally created
+	// huge block of rrsets can be optionally created
 	uint8_t *rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
 	if (!rrwf) {
 		fprintf(stderr, "malloc failed\n");
@@ -241,9 +241,25 @@ static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys)
 	return KNOT_EOK;
 }
 
-static int load_zone_keys(const char *keydir_name, knot_zone_keys_t *keys)
+static bool is_current_key(const knot_key_params_t *key)
+{
+	time_t now = time(NULL);
+
+	if (now < key->time_activate)
+		return false;
+
+	if (key->time_inactive && now > key->time_inactive)
+		return false;
+
+	return true;
+}
+
+static int load_zone_keys(const char *keydir_name,
+			  const knot_dname_t *zone_name,
+			  knot_zone_keys_t *keys)
 {
 	assert(keydir_name);
+	assert(zone_name);
 	assert(keys);
 
 	DIR *keydir = opendir(keydir_name);
@@ -252,7 +268,10 @@ static int load_zone_keys(const char *keydir_name, knot_zone_keys_t *keys)
 
 	struct dirent entry_buf = { 0 };
 	struct dirent *entry = NULL;
-	while (keys->count < MAX_ZONE_KEYS && readdir_r(keydir, &entry_buf, &entry) == 0 && entry != NULL) {
+	while (keys->count < MAX_ZONE_KEYS &&
+	       readdir_r(keydir, &entry_buf, &entry) == 0 &&
+	       entry != NULL
+	) {
 		if (entry->d_name[0] != 'K')
 			continue;
 
@@ -266,9 +285,13 @@ static int load_zone_keys(const char *keydir_name, knot_zone_keys_t *keys)
 		size_t path_len = strlen(keydir_name) + 1
 		                + strlen(entry->d_name) + 1;
 		char *path = malloc(path_len * sizeof(char));
-		assert(path);
+		if (!path) {
+			fprintf(stderr, "failed to alloc key path\n");
+			continue;
+		}
+
 		snprintf(path, path_len, "%s/%s", keydir_name, entry->d_name);
-		fprintf(stderr, "loading key '%s'\n", path);
+		fprintf(stderr, "reading key '%s'\n", path);
 
 		knot_key_params_t params = { 0 };
 		int result = knot_load_key_params(path, &params);
@@ -279,7 +302,20 @@ static int load_zone_keys(const char *keydir_name, knot_zone_keys_t *keys)
 			continue;
 		}
 
-		assert(knot_get_key_type(&params) == KNOT_KEY_DNSSEC);
+		if (knot_dname_compare(zone_name, params.name) != 0) {
+			fprintf(stderr, "key for other zone\n");
+			continue;
+		}
+
+		if (!is_current_key(&params)) {
+			fprintf(stderr, "key is not active\n");
+			continue;
+		}
+
+		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
+			fprintf(stderr, "not a DNSSEC key\n");
+			continue;
+		}
 
 		result = knot_dnssec_key_from_params(&params, &keys->keys[keys->count]);
 		if (result != KNOT_EOK) {
@@ -287,14 +323,16 @@ static int load_zone_keys(const char *keydir_name, knot_zone_keys_t *keys)
 			continue;
 		}
 
-		keys->is_ksk[keys->count] = params.flags & 1;
+		fprintf(stderr, "key is valid\n");
+		fprintf(stderr, "key is %s\n", params.flags & 1 ? "ksk" : "zsk");
 
+		keys->is_ksk[keys->count] = params.flags & 1;
 		keys->count += 1;
 	}
 
 	closedir(keydir);
 
-	return KNOT_EOK;
+	return keys->count > 0 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_KEY;
 }
 
 static void free_sign_contexts(knot_zone_keys_t *keys)
@@ -330,7 +368,7 @@ int knot_zone_sign(const knot_zone_t *zone, const char *keydir)
 	knot_zone_keys_t zone_keys;
 	memset(&zone_keys, '\0', sizeof(zone_keys));
 
-	result = load_zone_keys(keydir, &zone_keys);
+	result = load_zone_keys(keydir, zone->name, &zone_keys);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "load_zone_keys() failed\n");
 		return result;

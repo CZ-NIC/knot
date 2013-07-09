@@ -171,23 +171,41 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 	if (!server || !zone)
 		return KNOT_EINVAL;
 
+	int result = KNOT_EOK;
+
+	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
+	char *zone_name = knot_dname_to_str(zone->name);
+
+	log_server_info("Requested zone resign for '%s'\n", zone_name);
+
+	if (!zone_config->dnssec_enable) {
+		log_server_warning("DNSSEC not enabled for '%s'.\n", zone_name);
+		goto failure;
+	}
+
 	// generate NSEC records
 
-	char *zone_name = knot_dname_to_str(zone->name);
-	log_server_info("performing DNSSEC magic for %s\n", zone_name);
+	result = knot_zone_create_nsec_chain(zone->contents);
+	if (result != KNOT_EOK) {
+		log_server_error("Could not create NSEC chain for '%s' (%s).\n",
+				 zone_name, knot_strerror(result));
+		goto failure;
+	}
+
+	// add missing signatures
+
+	const char *keydir = conf()->dnssec_keydir;
+	assert(keydir);
+
+	result = knot_zone_sign(zone, keydir);
+	if (result != KNOT_EOK) {
+		log_server_error("Could not resing zone '%s' (%s).\n",
+				 zone_name, knot_strerror(result));
+	}
+
+failure:
 	free(zone_name);
-
-	return knot_zone_create_nsec_chain(zone->contents);
-//	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-//	const char *keydir = zd->conf->keydir;
-//
-//	if (!keydir) {
-//		log_server_info("no keys set for %s\n",
-//		                knot_dname_to_str(zone->name));
-//		return KNOT_EOK;
-//	}
-//	knot_zone_sign(zone, keydir);
-
+	return result;
 }
 
 /*!
