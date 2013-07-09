@@ -179,7 +179,7 @@ AC_SUBST(storage_dir)
 
 config_dir="${sysconfdir}/knot"
 AC_ARG_WITH([configdir],
-        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=$(sysconfdir)/knot]]),
+        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=SYSCONFDIR/knot]]),
         [config_dir=$withval])
 AC_SUBST(config_dir)
 
