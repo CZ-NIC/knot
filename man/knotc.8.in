@@ -1,4 +1,4 @@
-.TH knotc "8" "September 2012" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.TH knotc "8" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .B knotc
 \- Knot DNS control utility

@@ -531,11 +531,7 @@ system:
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
- | system PIDFILE TEXT ';' {
-      fprintf(stderr, "warning: Config option 'system.pidfile' is deprecated "
-	         "and has no effect. Use 'rundir' instead.\n");
-      free($3.t);
- }
+ | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
 		     "and has no effect.\n");

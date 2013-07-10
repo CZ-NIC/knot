@@ -1,4 +1,4 @@
-.TH "kdig" "1" "April 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.TH "kdig" "1" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .TP 5
 .B kdig

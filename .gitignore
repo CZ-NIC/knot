@@ -51,7 +51,6 @@
 /m4/lt~obsolete.m4
 # Binaries
 /src/tests/unittests
-/src/tests/unittests_xfr
 /src/zscanner/zscanner-tool
 /src/knotc
 /src/knotd
@@ -73,4 +72,3 @@ src/zscanner/test/cases/06-0_INCLUDE.in
 src/zscanner/test/cases/06-3_INCLUDE.in
 src/zscanner/test/cases/06-4_INCLUDE.in
 src/zscanner/test/run_tests.sh
-/knot-*/

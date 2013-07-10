@@ -402,14 +402,15 @@ int remote_unbind(int r)
 
 int remote_poll(int r)
 {
-	if (r < 0) {
-		return -1;
-	}
-
 	/* Wait for events. */
 	fd_set rfds;
 	FD_ZERO(&rfds);
-	FD_SET(r, &rfds);
+	if (r > -1) {
+		FD_SET(r, &rfds);
+	} else {
+		r = -1; /* Make sure n == r + 1 == 0 */
+	}
+
 	return fdset_pselect(r + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 

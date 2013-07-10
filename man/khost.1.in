@@ -1,4 +1,4 @@
-.TH "khost" "1" "April 2013" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.TH "khost" "1" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .TP 6
 .B khost
