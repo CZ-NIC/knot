@@ -17,6 +17,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "common/fdset.h"
 #include "common.h"
 
@@ -50,12 +51,20 @@ static int fdset_resize(fdset_t *set, unsigned size)
 
 int fdset_init(fdset_t *set, unsigned size)
 {
+	if (set == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	memset(set, 0, sizeof(fdset_t));
 	return fdset_resize(set, size);
 }
 
 int fdset_clear(fdset_t* set)
 {
+	if (set == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	free(set->ctx);
 	free(set->pfd);
 	free(set->tmout);
@@ -79,8 +88,10 @@ int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx)
 	set->pfd[i].events = events;
 	set->pfd[i].revents = 0;
 	set->ctx[i] = ctx;
+	set->tmout[i] = 0;
 
-	return KNOT_EOK;
+	/* Return index to this descriptor. */
+	return i;
 }
 
 int fdset_remove(fdset_t *set, unsigned i)
@@ -94,8 +105,8 @@ int fdset_remove(fdset_t *set, unsigned i)
 
 	/* Nothing else if it is the last one.
 	 * Move last -> i if some remain. */
-	if (set->n > 0) {
-		unsigned last = set->n; /* Already decremented */
+	unsigned last = set->n; /* Already decremented */
+	if (i < last) {
 		set->pfd[i] = set->pfd[last];
 		set->tmout[i] = set->tmout[last];
 		set->ctx[i] = set->ctx[last];

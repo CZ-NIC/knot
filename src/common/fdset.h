@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include <poll.h>
 #include <sys/time.h>
+#include <signal.h>
 
 #define FDSET_INIT_SIZE 256 /* Resize step. */
 

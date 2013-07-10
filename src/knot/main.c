@@ -327,7 +327,7 @@ int main(int argc, char **argv)
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Bind to control interface. */
-		uint8_t buf[65535]; /*! \todo #2035 should be on heap */
+		uint8_t buf[SOCKET_MTU_SZ];
 		size_t buflen = sizeof(buf);
 		int remote = -1;
 		if (conf()->ctl.iface != NULL) {

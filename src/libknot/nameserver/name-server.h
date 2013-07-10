@@ -174,8 +174,8 @@ typedef enum knot_ns_transport {
 typedef enum knot_ns_xfr_type_t {
 	/* DNS events. */
 	XFR_TYPE_AIN = 0, /*!< AXFR-IN request (start transfer). */
-	XFR_TYPE_AOUT,    /*!< AXFR-OUT request (incoming transfer). */
 	XFR_TYPE_IIN,     /*!< IXFR-IN request (start transfer). */
+	XFR_TYPE_AOUT,    /*!< AXFR-OUT request (incoming transfer). */
 	XFR_TYPE_IOUT,    /*!< IXFR-OUT request (incoming transfer). */
 	XFR_TYPE_SOA,     /*!< Pending SOA request. */
 	XFR_TYPE_NOTIFY,  /*!< Pending NOTIFY query. */
