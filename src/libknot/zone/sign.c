@@ -43,10 +43,12 @@ typedef struct {
 	bool is_ksk[MAX_ZONE_KEYS];
 } knot_zone_keys_t;
 
-static knot_rrset_t *create_rrsig_rrset(knot_dname_t *owner,
-					const knot_rrset_t *cover)
+static knot_rrset_t *create_rrsig_rrset(const knot_rrset_t *cover)
 {
-	return knot_rrset_new(owner, KNOT_RRTYPE_RRSIG, cover->rclass, cover->ttl);
+	return knot_rrset_new(cover->owner,
+	                      KNOT_RRTYPE_RRSIG,
+	                      cover->rclass,
+	                      cover->ttl);
 }
 
 // COPIED FROM SIG(0) AND MODIFIED
@@ -118,20 +120,19 @@ static uint8_t *create_rrsig_rdata(knot_rrset_t *rrsig, knot_dnssec_key_t *key)
 	return knot_rrset_create_rdata(rrsig, rdata_size);
 }
 
-static int sign_rrset_one(knot_rrset_t *rrsig,
-			  const knot_dname_t *owner,
+static int sign_rrset_one(knot_rrset_t *rrsigs,
 			  const knot_rrset_t *covered,
 			  knot_dnssec_key_t *key,
 			  knot_dnssec_sign_context_t *sign_ctx)
 {
-	uint8_t *rdata = create_rrsig_rdata(rrsig, key);
+	uint8_t *rdata = create_rrsig_rdata(rrsigs, key);
 	assert(rdata);
 
 	// move to caller function, derive from key validity
 	uint32_t sig_incept = (uint32_t)time(NULL);
 	uint32_t sig_expire = sig_incept + 2592000;
 
-	rrsig_write_rdata(rdata, key, owner, covered, sig_incept, sig_expire);
+	rrsig_write_rdata(rdata, key, covered->owner, covered, sig_incept, sig_expire);
 
 	// RFC 4034
 	// The signature coveres RRSIG RDATA field (excluding the signature)
@@ -179,42 +180,75 @@ static int sign_rrset_one(knot_rrset_t *rrsig,
 	return KNOT_EOK;
 }
 
-static int sign_rrset(knot_dname_t *owner, const knot_rrset_t *covered,
-                      knot_zone_keys_t *zone_keys, knot_rrset_t **out_rrsig)
+static bool signature_exists(const knot_rrset_t *rrsigs,
+			     const knot_dnssec_key_t *key)
 {
-	assert(owner);
+	for (int i = 0; i < rrsigs->rdata_count; i++) {
+		uint16_t keytag = knot_rrset_rdata_rrsig_key_tag(rrsigs, i);
+		if (keytag == key->keytag)
+			return true;
+	}
+
+	return false;
+}
+
+static int add_missing_signatures(const knot_rrset_t *covered,
+                                  knot_rrset_t *rrsigs,
+                                  knot_zone_keys_t *zone_keys)
+{
 	assert(covered);
+	assert(rrsigs);
 	assert(zone_keys);
-	assert(out_rrsig);
-
-	char typestr[10] = "";
-	knot_rrtype_to_string(covered->type, typestr, 10);
-	fprintf(stderr, "signing rrset %s (%s)\n", knot_dname_to_str(owner), typestr);
-
-	knot_rrset_t *rrsig = create_rrsig_rrset(owner, covered);
-	assert(rrsig);
 
 	bool use_ksk = covered->type == KNOT_RRTYPE_DNSKEY;
 
 	for (int i = 0; i < zone_keys->count; i++) {
-		if (zone_keys->is_ksk[i] && !use_ksk)
+		if (use_ksk != zone_keys->is_ksk[i])
 			continue;
 
 		knot_dnssec_key_t *key = &zone_keys->keys[i];
 		knot_dnssec_sign_context_t *ctx = zone_keys->contexts[i];
 
-		fprintf(stderr, "signing with key %d (%s)\n",  key->keytag, zone_keys->is_ksk[i] ? "KSK" : "ZSK");
+		if (signature_exists(rrsigs, key)) {
+			fprintf(stderr, "[key %d] sig exists\n", key->keytag);
+			continue;
+		}
 
-		int r = sign_rrset_one(rrsig, owner, covered, key, ctx);
+		fprintf(stderr, "[key %d] signing with %s\n",  key->keytag, zone_keys->is_ksk[i] ? "KSK" : "ZSK");
+
+		int r = sign_rrset_one(rrsigs, covered, key, ctx);
 		if (r != KNOT_EOK) {
 			fprintf(stderr, "sign_rrset_one() failed %d\n", r);
 			return r;
 		}
 	}
 
-	*out_rrsig = rrsig;
-
 	return KNOT_EOK;
+}
+
+static int copy_valid_signatures(knot_rrset_t *from, knot_rrset_t *to)
+{
+	assert(from);
+	assert(to);
+
+	int result = KNOT_EOK;
+	uint32_t now = (uint32_t)time(NULL);
+	uint32_t expiration;
+
+	for (int i = 0; i < from->rdata_count; i++) {
+		expiration = knot_rrset_rdata_rrsig_sig_expiration(from, i);
+		if (expiration < now || expiration - now < 7200) {
+			fprintf(stderr, "removing expired signature %d %d\n", expiration, now);
+			continue;
+		}
+
+		fprintf(stderr, "keeping signature\n");
+		result = knot_rrset_add_rr_from_rrset(to, from, i);
+		if (result != KNOT_EOK)
+			break;
+	}
+
+	return result;
 }
 
 static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys)
@@ -223,19 +257,32 @@ static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys)
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t *rrset = node->rrset_tree[i];
-		knot_rrset_t *sig_rrset = NULL;
+		knot_rrset_t *rrsigs = rrset->rrsigs;
+		knot_rrset_t *new_rrsigs;
 
-		int r = sign_rrset(node->owner, rrset, zone_keys, &sig_rrset);
-		if (r != KNOT_EOK) {
+		new_rrsigs = create_rrsig_rrset(rrset);
+		if (!new_rrsigs)
+			return KNOT_ENOMEM;
+
+		assert(knot_dname_compare(rrsigs->owner, new_rrsigs->owner) == 0);
+		assert(rrsigs->type == new_rrsigs->type);
+		assert(rrsigs->rclass == new_rrsigs->rclass);
+		assert(rrsigs->ttl == new_rrsigs->ttl);
+
+		int result = copy_valid_signatures(rrsigs, new_rrsigs);
+		if (result != KNOT_EOK) {
+			knot_rrset_free(&new_rrsigs);
+			return result;
+		}
+
+		result = add_missing_signatures(rrset, new_rrsigs, zone_keys);
+		if (result != KNOT_EOK) {
 			fprintf(stderr, "sign_rrset() failed\n");
-			return r;
-		}
-		if (!sig_rrset) {
-			fprintf(stderr, "got empty RRSIG\n");
-			continue;
+			return result;
 		}
 
-		knot_rrset_add_rrsigs(rrset, sig_rrset, KNOT_RRSET_DUPL_REPLACE);
+		knot_rrset_free(&rrsigs);
+		rrset->rrsigs = new_rrsigs;
 	}
 
 	return KNOT_EOK;
