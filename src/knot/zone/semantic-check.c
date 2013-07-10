@@ -606,6 +606,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 			err_handler_handle_error(handler, node,
 					ZC_ERR_NSEC3_UNSECURED_DELEGATION,
 			                         NULL);
+			return KNOT_EOK;
 		} else {
 			/* Unsecured delegation, check whether it is part of
 			 * opt-out span */
