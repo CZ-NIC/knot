@@ -128,6 +128,15 @@ int main(int argc, char **argv)
 		case 'c':
 			config_fn = strdup(optarg);
 			break;
+#ifdef INTEGRITY_CHECK
+		case 'z':
+			if (optarg[strlen(optarg) - 1] != '.') {
+				zone = strcdup(optarg, ".");
+			} else {
+				zone = strdup(optarg);
+			}
+			break;
+#endif /* INTEGRITY_CHECK */
 		case 'd':
 			daemonize = 1;
 			break;
@@ -142,15 +151,6 @@ int main(int argc, char **argv)
 			free(config_fn);
 			help();
 			return 0;
-#ifdef INTEGRITY_CHECK
-		case 'z':
-			if (optarg[strlen(optarg) - 1] != '.') {
-				zone = strcdup(optarg, ".");
-			} else {
-				zone = strdup(optarg);
-			}
-			break;
-#endif /* INTEGRITY_CHECK */
 		default:
 			free(config_fn);
 			help();
@@ -319,6 +319,7 @@ int main(int argc, char **argv)
 		sigaction(SIGINT,  &sa, NULL);
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
+		sigaction(SIGPIPE, &sa, NULL);
 #ifdef INTEGRITY_CHECK
 		sigaction(SIGUSR1, &sa, NULL);
 #endif /* INTEGRITY_CHECK */
@@ -427,6 +428,10 @@ int main(int argc, char **argv)
 	if (pidf && pid_remove(pidf) < 0)
 		log_server_warning("Failed to remove PID file.\n");
 	do_cleanup(server, config_fn, pidf);
+
+#ifdef INTEGRITY_CHECK
+	free(zone);
+#endif /* INTEGRITY_CHECK */
 
 	if (!daemonize) {
 		fflush(stdout);
