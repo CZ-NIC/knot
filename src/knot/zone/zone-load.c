@@ -309,23 +309,23 @@ static void process_rr(const scanner_t *scanner)
 	knot_zone_contents_t *contents = parser->current_zone;
 	knot_dname_t *current_owner = NULL;
 	knot_rrset_t *current_rrset = NULL;
-    	if (parser->last_node &&
-    	    (scanner->r_owner_length == parser->last_node->owner->size) &&
-    	    (strncmp((char *)parser->last_node->owner->name,
-    	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
-    		// no need to create new dname;
-    		current_owner = parser->last_node->owner;
+	if (parser->last_node &&
+	    (scanner->r_owner_length == parser->last_node->owner->size) &&
+	    (strncmp((char *)parser->last_node->owner->name,
+	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
+		// no need to create new dname;
+		current_owner = parser->last_node->owner;
 		knot_dname_retain(current_owner);
-    	} else {
-    		current_owner =
-    			knot_dname_new_from_wire(scanner->r_owner,
-    			                         scanner->r_owner_length,
-    			                         NULL);
-	    	if (current_owner == NULL) {
+	} else {
+		current_owner =
+			knot_dname_new_from_wire(scanner->r_owner,
+			                         scanner->r_owner_length,
+			                         NULL);
+		if (current_owner == NULL) {
 			parser->ret = KNOT_ERROR;
 			return;
 		}
-        	knot_dname_to_lower(current_owner);
+		knot_dname_to_lower(current_owner);
 		/*!< \todo
 		 * If name is already in the table, we might not need to create
 		 * dname object, just compare wires.
