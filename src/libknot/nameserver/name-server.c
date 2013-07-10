@@ -2151,6 +2151,9 @@ search:
 		// We need previous and closest encloser, full search has to be done
 		find_ret = knot_zone_contents_find_dname(zone, qname, &node,
 		                                         &closest_encloser, &previous);
+		if (find_ret == KNOT_EINVAL) {
+			return NS_ERR_SERVFAIL;
+		}
 	}
 
 dbg_ns_exec_verb(
