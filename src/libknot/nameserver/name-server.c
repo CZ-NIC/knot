@@ -1733,6 +1733,7 @@ static inline int ns_referral(const knot_node_t *node,
                               uint16_t qtype)
 {
 	dbg_ns_verb("Referral response.\n");
+	printf("Referal\n");
 
 	while (!knot_node_is_deleg_point(node)) {
 		assert(knot_node_parent(node) != NULL);
@@ -1753,7 +1754,7 @@ static inline int ns_referral(const knot_node_t *node,
 			    && knot_query_dnssec_requested(
 			                        knot_packet_query(resp))) {
 				ret = ns_add_rrsigs(ds_rrset, resp, node->owner,
-				              knot_response_add_rrset_authority,
+				              knot_response_add_rrset_answer,
 				              1);
 			}
 		} else {
