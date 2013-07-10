@@ -1733,7 +1733,6 @@ static inline int ns_referral(const knot_node_t *node,
                               uint16_t qtype)
 {
 	dbg_ns_verb("Referral response.\n");
-	printf("Referal\n");
 
 	while (!knot_node_is_deleg_point(node)) {
 		assert(knot_node_parent(node) != NULL);
