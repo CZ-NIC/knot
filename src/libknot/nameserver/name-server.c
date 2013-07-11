@@ -1919,7 +1919,6 @@ static int ns_answer_from_node(const knot_node_t *node,
 			}
 		}
 	} else {  // else put authority NS
-		assert(previous == NULL);
 		assert(closest_encloser == knot_node_parent(node)
 		      || !knot_dname_is_wildcard(knot_node_owner(node))
 		      || knot_dname_compare(qname, knot_node_owner(node)) == 0);
