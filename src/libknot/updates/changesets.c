@@ -98,6 +98,15 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	return set;
 }
 
+knot_changeset_t *knot_changesets_get_last(knot_changesets_t *chs)
+{
+	if (chs == NULL) {
+		return NULL;
+	}
+
+	return (knot_changeset_t *)(chs->sets.tail);
+}
+
 /*----------------------------------------------------------------------------*/
 
 int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,

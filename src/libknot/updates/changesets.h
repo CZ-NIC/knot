@@ -120,6 +120,7 @@ int knot_changesets_init(knot_changesets_t **changesets,
 knot_changesets_t *knot_changesets_create(uint32_t flags);
 
 knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
+knot_changeset_t *knot_changesets_get_last(knot_changesets_t *ch);
 
 int knot_changeset_add_rrset(knot_changeset_t *chgs,
                              knot_rrset_t *rrset, knot_changeset_part_t part);
