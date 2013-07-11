@@ -168,7 +168,7 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 			char *end;
 
 			// Convert string to serial.
-			unsigned long serial = strtoul(param_str, &end, 10);
+			unsigned long long serial = strtoull(param_str, &end, 10);
 
 			// Check for bad serial string.
 			if (end == param_str || *end != '\0' ||
@@ -217,7 +217,7 @@ int params_parse_wait(const char *value, int32_t *dst)
 	}
 
 	/* Convert string to number. */
-	long num = strtol(value, &end, 10);
+	long long num = strtoll(value, &end, 10);
 
 	/* Check for bad string (empty or incorrect). */
 	if (end == value || *end != '\0') {
@@ -225,11 +225,11 @@ int params_parse_wait(const char *value, int32_t *dst)
 		return KNOT_EINVAL;
 	} else if (num < 1) {
 		num = 1;
-		WARN("time %s is too short, using %ld instead\n", value, num);
+		WARN("time %s is too short, using %lld instead\n", value, num);
 	/* Reduce maximal value. Poll takes signed int in milliseconds. */
 	} else if (num > INT32_MAX) {
 		num = INT32_MAX / 1000;
-		WARN("time %s is too big, using %ld instead\n", value, num);
+		WARN("time %s is too big, using %lld instead\n", value, num);
 	}
 
 	*dst = num;
@@ -247,7 +247,7 @@ int params_parse_num(const char *value, uint32_t *dst)
 	}
 
 	// Convert string to number.
-	unsigned long num = strtoul(value, &end, 10);
+	unsigned long long num = strtoull(value, &end, 10);
 
 	// Check for bad string.
 	if (end == value || *end != '\0') {
@@ -257,7 +257,7 @@ int params_parse_num(const char *value, uint32_t *dst)
 
 	if (num > UINT32_MAX) {
 		num = UINT32_MAX;
-		WARN("number %s is too big, using %lu instead\n", value, num);
+		WARN("number %s is too big, using %llu instead\n", value, num);
 	}
 
 	*dst = num;
@@ -275,7 +275,7 @@ int params_parse_bufsize(const char *value, int32_t *dst)
 	}
 
 	// Convert string to number.
-	unsigned long num = strtoul(value, &end, 10);
+	unsigned long long num = strtoull(value, &end, 10);
 
 	// Check for bad string.
 	if (end == value || *end != '\0') {
@@ -285,7 +285,7 @@ int params_parse_bufsize(const char *value, int32_t *dst)
 
 	if (num > UINT16_MAX) {
 		num = UINT16_MAX;
-		WARN("size %s is too big, using %lu instead\n", value, num);
+		WARN("size %s is too big, using %llu instead\n", value, num);
 	}
 
 	*dst = num;

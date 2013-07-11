@@ -8,8 +8,8 @@ noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
 
 # $(YACC) will generate header file
 AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' \
-	-DSBINDIR='"$(sbindir)"' -DSTORAGE_DIR='"${storage_dir}"' \
-	-DRUN_DIR='"${run_dir}"'
+	-DSBINDIR='"$(sbindir)"' -DCONFIG_DIR='"${config_dir}"' \
+	-DSTORAGE_DIR='"${storage_dir}"' -DRUN_DIR='"${run_dir}"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -316,5 +316,6 @@ zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS
 
 # Create storage and run-time directories
 install-data-hook:
+	$(INSTALL) -d $(DESTDIR)/@config_dir@
 	$(INSTALL) -d $(DESTDIR)/@run_dir@
 	$(INSTALL) -d $(DESTDIR)/@storage_dir@

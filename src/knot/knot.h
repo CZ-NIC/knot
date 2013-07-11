@@ -30,35 +30,19 @@
 #include <signal.h>
 #include <stdint.h>
 
-/*
- * Common types and constants.
- */
-
-#define PROJECT_EXENAME "knotd"
-#define PROJECT_EXEC SBINDIR "/" PROJECT_EXENAME /*!< \brief  Project executable. */
-#define PID_FILE "knot.pid" /*!< \brief Server PID file name. */
-
-/*
- * Server.
- */
+#include "common/print.h"
+#include "common/log.h"
+#include "common/errcode.h"
+#include "knot/other/debug.h"
 
 #define CPU_ESTIMATE_MAGIC 0 /*!< \brief Extra threads to the number of cores.*/
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
-#define TCP_BACKLOG_SIZE 10   /*!< \brief TCP listen backlog size. */
+#define TCP_BACKLOG_SIZE 10  /*!< \brief TCP listen backlog size. */
 #define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */
 #define RECVMMSG_BATCHLEN 64 /*!< \brief Define for recvmmsg() batch size. */
 
 ///*! \brief If defined, the statistics module will be enabled. */
 //#define STAT_COMPILE
-
-/*
- * Common includes.
- */
-
-#include "common/print.h"
-#include "common/log.h"
-#include "common/errcode.h"
-#include "knot/other/debug.h"
 
 /* Workarounds for clock_gettime() not available on some platforms. */
 #ifdef HAVE_CLOCK_GETTIME

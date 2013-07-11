@@ -6,19 +6,86 @@
 #
 
 system {
+  # Identity of the server (see RFC 4892).
   identity "@package@ @version@";
+
+  # User for running server
+  # May also specify user.group (e.g. knot.knot)
+  user knot.knot;
+
+  # This is a default directory to place slave zone files, journals etc.
+  # default: ${localstatedir}/lib/knot, configured with --with-storage
+  # storage "@storage_dir@";
+
+  # Directory for storing run-time data
+  # e.g. PID file and control sockets
+  # default: ${localstatedir}/run/knot, configured with --with-rundir
+  # rundir "@run_dir@";
 }
 
 interfaces {
-  my-iface { address 127.0.0.1@53533; }
-}
-
-zones {
-  example.com {
-    file "@sysconfdir@/example.com.zone";
+  all_ipv4 {
+    address 0.0.0.0;
+    port 53;
+  }
+  all_ipv6 {
+    address [::];
+    port 53;
   }
 }
 
+control {
+  # Specifies interface, syntax is exactly the same as in 'interfaces' section
+  # Default: knot.sock (relative to rundir)
+  listen-on "knot.sock";
+
+  # As an alternative, you can use an IPv4/v6 address and port
+  # listen-on { address 127.0.0.1@5533; }
+
+  # Specifies ACL list for remote control
+  # Same syntax as for ACLs in zones
+  # List of remotes or groups delimited by comma
+  # Notice: keep in mind that ACLs bear no effect with UNIX sockets
+  # allow server0, admins;
+}
+
+#remotes {
+#  master0 {
+#    address 198.51.100.1@53;
+#  }
+#  slave0 {
+#    address 203.0.113.1@53;
+#  }
+#}
+
+zones {
+#  Example master zone
+#  example.com {
+#    file "@config_dir@/example.com.zone";
+#    xfr-out slave0;
+#    notify-out slave0;
+#  }
+#
+#  Example slave zone
+#  example.net {
+#    file "@storage_dir@/example.net.zone
+#    xfr-in master0;
+#    notify-in master0;
+#  }
+}
+
 log {
-  syslog { any info, notice, warning, error; }
+  syslog {
+    # log errors of any category
+    any error;    # for <category> and <severity> see above
+    # log also warnings and notices from category 'zone'
+    zone warning, notice;
+    # log info from server
+    server info;
+  }
+
+  # Log fatal, warnings and errors to stderr
+  stderr {
+    any error, warning;
+  }
 }

@@ -9,6 +9,10 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 
+# Automatically update release date based on configure.ac date
+release_date=`doc/mdate-sh configure.ac`
+AC_SUBST([RELEASE_DATE], $release_date)
+
 # Check SSE, SSE2 and SSE3 support
 AX_EXT
 CFLAGS="$CFLAGS $SIMD_FLAGS"
@@ -64,7 +68,7 @@ AC_PROG_INSTALL
 # Check for Ragel
 AC_PATH_PROG([RAGEL], [ragel], [true])
 AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "true")
-  
+
 # Set FSM type for Ragel
 AC_SUBST([FSM_TYPE], [-T0])
 AC_ARG_ENABLE([fastparser],
@@ -140,6 +144,11 @@ AC_ARG_ENABLE([recvmmsg],
     fi
     ])
 
+# Enable integrity check
+AC_ARG_ENABLE([integrity-check],
+    AS_HELP_STRING([--enable-integrity-check], [enable integrity check in knotd via SIGUSR1]),
+    [AC_DEFINE([INTEGRITY_CHECK], [1], [integrity check in knotd])])
+
 # Check for link time optimizations support and predictive commoning
 AC_ARG_ENABLE([lto],
     AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, enable if not broken for some extra speed [default=no]]),
@@ -163,15 +172,21 @@ AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-alias
 # Default directories
 run_dir="${localstatedir}/run/knot"
 AC_ARG_WITH([rundir],
-        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=`eval echo ${localstatedir}`/run/knot]]),
+        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=LOCALSTATEDIR/run/knot]]),
         [run_dir=$withval])
 AC_SUBST(run_dir)
 
-storage_dir="${sharedstatedir}/knot"
+storage_dir="${localstatedir}/lib/knot"
 AC_ARG_WITH([storage],
-        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=$(sharedstatedir)/knot]]),
+        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=LOCALSTATEDIR/lib/knot]]),
         [storage_dir=$withval])
 AC_SUBST(storage_dir)
+
+config_dir="${sysconfdir}/knot"
+AC_ARG_WITH([configdir],
+        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=SYSCONFDIR/knot]]),
+        [config_dir=$withval])
+AC_SUBST(config_dir)
 
 # Checks for libraries.
 # FIXME: Replace `main' with a function in `-lm':
@@ -310,5 +325,11 @@ AC_CONFIG_FILES([Makefile
 		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
 		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin
 		 src/zscanner/test/cases/06-0_INCLUDE.in:src/zscanner/test/cases/06-0_INCLUDE.inin
+		 man/khost.1
+		 man/knotc.8
+		 man/knotd.8
+		 man/kdig.1
+		 man/knsupdate.1
+		 man/knot.conf.5
 		 ])
 AC_OUTPUT

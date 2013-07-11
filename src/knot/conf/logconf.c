@@ -34,13 +34,15 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 	int ret = 0;
 	UNUSED(data);
 
-	// Check if log declaration exists, otherwise ignore
-	if (conf->logs_count < 1) {
-		return KNOT_EINVAL;
+	// Use defaults if no 'log' section is configured.
+	if (conf->logs_count < 0) {
+		log_close();
+		log_init();
+		return KNOT_EOK;
 	}
 
 	// Find maximum log facility id
-	node *n = 0; size_t files = 0;
+	node *n = NULL; size_t files = 0;
 	WALK_LIST(n, conf->logs) {
 		conf_log_t* log = (conf_log_t*)n;
 		if (log->type == LOGT_FILE) {
@@ -55,8 +57,7 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 	}
 
 	// Setup logs
-	int loaded_sections = 0;
-	n = 0;
+	n = NULL;
 	WALK_LIST(n, conf->logs) {
 
 		// Calculate offset
@@ -71,13 +72,6 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 			}
 		}
 
-		// Auto-assign fatal errors to syslog or stderr
-		if (facility <= LOGT_STDERR) {
-			int mask = LOG_MASK(LOG_FATAL);
-			log_levels_add(facility, LOG_ANY, mask);
-			loaded_sections |= 1 << facility;
-		}
-
 		// Setup sources mapping
 		node *m = 0;
 		WALK_LIST(m, log->map) {
@@ -86,15 +80,6 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 			conf_log_map_t *map = (conf_log_map_t*)m;
 			log_levels_add(facility, map->source, map->prios);
 		}
-	}
-
-	// Load defaults for syslog or stderr
-	int bmask = LOG_MASK(LOG_ERR)|LOG_MASK(LOG_FATAL);
-	if (!(loaded_sections & (1 << LOGT_SYSLOG))) {
-		log_levels_set(LOGT_SYSLOG, LOG_ANY, bmask);
-	}
-	if (!(loaded_sections & (1 << LOGT_STDERR))) {
-		log_levels_set(LOGT_STDERR, LOG_ANY, bmask);
 	}
 
 	return KNOT_EOK;

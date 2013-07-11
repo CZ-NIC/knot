@@ -172,6 +172,7 @@ Statement Definition and Usage
 * nsid::
 * storage::
 * rundir::
+* pidfile::
 * workers::
 * user::
 * max-conn-idle::

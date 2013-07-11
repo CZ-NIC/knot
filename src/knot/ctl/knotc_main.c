@@ -79,7 +79,6 @@ typedef struct knot_cmd {
 
 /* Forward decls. */
 static int cmd_stop(int argc, char *argv[], unsigned flags);
-static int cmd_restart(int argc, char *argv[], unsigned flags);
 static int cmd_reload(int argc, char *argv[], unsigned flags);
 static int cmd_refresh(int argc, char *argv[], unsigned flags);
 static int cmd_flush(int argc, char *argv[], unsigned flags);
@@ -92,7 +91,6 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags);
 /*! \brief Table of remote commands. */
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
-	{&cmd_restart,    0, "restart",    "",       "\tRestart server."},
 	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
 	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified)."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
@@ -406,7 +404,6 @@ int main(int argc, char **argv)
 	char *default_config = conf_find_default();
 
 	/* Remote server descriptor. */
-	int ret = KNOT_EOK;
 	const char *r_addr = NULL;
 	int r_port = -1;
 	knot_tsig_key_t r_key;
@@ -441,23 +438,19 @@ int main(int argc, char **argv)
 			r_port = atoi(optarg);
 			break;
 		case 'y':
-			ret = tsig_parse_str(&r_key, optarg);
-			if (ret != KNOT_EOK) {
+			if (tsig_parse_str(&r_key, optarg) != KNOT_EOK) {
+				rc = 1;
 				log_server_error("Couldn't parse TSIG key '%s' "
 				                 "\n", optarg);
-				knot_tsig_key_free(&r_key);
-				log_close();
-				return 1;
+				goto exit;
 			}
 			break;
 		case 'k':
-			ret = tsig_parse_file(&r_key, optarg);
-			if (ret != KNOT_EOK) {
+			if (tsig_parse_file(&r_key, optarg) != KNOT_EOK) {
+				rc = 1;
 				log_server_error("Couldn't parse TSIG key file "
 				                 "'%s'\n", optarg);
-				knot_tsig_key_free(&r_key);
-				log_close();
-				return 1;
+				goto exit;
 			}
 			break;
 		case 'w':
@@ -591,15 +584,6 @@ static int cmd_stop(int argc, char *argv[], unsigned flags)
 	UNUSED(flags);
 
 	return cmd_remote("stop", KNOT_RRTYPE_TXT, 0, NULL);
-}
-
-static int cmd_restart(int argc, char *argv[], unsigned flags)
-{
-	UNUSED(argc);
-	UNUSED(argv);
-	UNUSED(flags);
-
-	return cmd_remote("restart", KNOT_RRTYPE_TXT, 0, NULL);
 }
 
 static int cmd_reload(int argc, char *argv[], unsigned flags)
@@ -787,24 +771,26 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                                           process_error,
 		                                           &est);
 		if (loader == NULL) {
+			rc = 1;
 			log_zone_error("Could not load zone.\n");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			hattrie_free(est.dname_table);
-			return KNOT_ERROR;
+			break;
 		}
 
 		/* Do a parser run, but do not actually create the zone. */
 		int ret = file_loader_process(loader);
 		if (ret != KNOT_EOK) {
+			rc = 1;
 			log_zone_error("Failed to parse zone.\n");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			hattrie_free(est.dname_table);
 			file_loader_free(loader);
-			return KNOT_ERROR;
+			break;
 		}
 
 		/* Only size of ahtables inside trie's nodes is missing. */
@@ -830,7 +816,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		total_size += zone_size;
 	}
 
-	if (argc == 0) { // for all zones
+	if (rc == 0 && argc == 0) { // for all zones
 		log_zone_info("Estimated memory consumption for all zones is %zuMB.\n", total_size);
 	}
 

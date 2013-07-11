@@ -178,23 +178,6 @@ int evqueue_get(evqueue_t *q, event_t *ev);
  */
 int evqueue_add(evqueue_t *q, const event_t *ev);
 
-/* Singleton event queue pointer. */
-extern evqueue_t *s_evqueue;
-
-/*!
- * \brief Event queue singleton.
- */
-static inline evqueue_t *evqueue() {
-	return s_evqueue;
-}
-
-/*!
- * \brief Set event queue singleton.
- */
-static inline void evqueue_set(evqueue_t *q) {
-	s_evqueue = q;
-}
-
 #endif /* _KNOTD_COMMON_EVQUEUE_H_ */
 
 /*! @} */

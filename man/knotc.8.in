@@ -1,4 +1,4 @@
-.TH knotc "8" "September 2012" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.TH knotc "8" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .B knotc
 \- Knot DNS control utility
@@ -10,15 +10,15 @@
 .HP
 \fB\-c\fR [file], \fB\-\-config\fR=\fI[file]\fR Select configuration file.
 .TP
-\fB\-s\fR [server]\fR Remote UNIX socket/IP address (default @rundir@/knot.sock)
+\fB\-s\fR [server]\fR Remote UNIX socket/IP address (default @run_dir@/knot.sock)
 .TP
 \fB\-p\fR [port]\fR Remote server port (only for IP).
 .TP
 \fB\-y\fR [hmac:]name:key]\fR Use key_id for specified on the command line.
 .TP
 \fB\-k\fR [file]\fR Use key file (as in config section 'keys').
-f.e. echo "knotc-key hmac-md5 Wg==" > knotc.key
-If you omit algorithm, hmac-md5 will be used as default.
+f.e. echo "knotc\-key hmac\-md5 Wg==" > knotc.key
+If you omit algorithm, hmac\-md5 will be used as default.
 .TP
 \fB\-f\fR, \fB\-\-force\fR
 Force operation \- override some checks.
@@ -30,7 +30,7 @@ Verbose mode \- additional runtime information.
 Print knot server version.
 .TP
 \fB\-w\fR, \fB\-\-wait\fR
-Wait for the server to finish start/stop operations.
+Wait for the server to finish stop operation.
 .TP
 \fB\-i\fR, \fB\-\-interactive\fR
 Interactive mode (do not daemonize).
@@ -39,14 +39,8 @@ Interactive mode (do not daemonize).
 Print help and usage.
 .SS "Actions:"
 .TP
-start
-Start knot server daemon (no\-op if running).
-.TP
 stop
 Stop knot server daemon (no\-op if not running).
-.TP
-restart
-Stops and then starts knot server daemon.
 .TP
 reload
 Reload knot configuration and zones.
@@ -76,17 +70,17 @@ Estimate memory consumption for zone files. Useful mainly for big zones.
 .B Setup a keyfile for remote control
 .TP
 1. Generate keys
-dnssec-keygen -a hmac-md5 -b 256 -n HOST knotc-key
+dnssec\-keygen \-a hmac\-md5 \-b 256 \-n HOST knotc\-key
 .TP
 2. Extract secret in base64 format and create keyfile
-echo "knotc-key hmac-md5 <secret>" > knotc.key
+echo "knotc\-key hmac\-md5 <secret>" > knotc.key
 
 Make sure the key can be read/written only by owner for
 security reasons.
 .TP
 
 .B Reload server remotely
-knotc -s 127.0.0.1 -k knotc.key reload
+knotc \-s 127.0.0.1 \-k knotc.key reload
 .SH "SEE ALSO"
 The full documentation for
 .B Knot

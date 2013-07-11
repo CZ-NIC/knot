@@ -59,7 +59,6 @@ typedef struct remote_cmd_t {
 
 /* Forward decls. */
 static int remote_c_stop(server_t *s, remote_cmdargs_t* a);
-static int remote_c_restart(server_t *s, remote_cmdargs_t* a);
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a);
 static int remote_c_refresh(server_t *s, remote_cmdargs_t* a);
 static int remote_c_status(server_t *s, remote_cmdargs_t* a);
@@ -69,7 +68,6 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
 /*! \brief Table of remote commands. */
 struct remote_cmd_t remote_cmd_tbl[] = {
 	{ "stop",      &remote_c_stop },
-	{ "restart",   &remote_c_restart },
 	{ "reload",    &remote_c_reload },
 	{ "refresh",   &remote_c_refresh },
 	{ "status",    &remote_c_status },
@@ -174,18 +172,6 @@ static int remote_c_stop(server_t *s, remote_cmdargs_t* a)
 	UNUSED(a);
 	UNUSED(s);
 	return KNOT_CTL_STOP;
-}
-
-/*!
- * \brief Remote command 'restart' handler.
- *
- * QNAME: restart
- * DATA: NULL
- */
-static int remote_c_restart(server_t *s, remote_cmdargs_t* a)
-{
-	UNUSED(a);
-	return KNOT_CTL_RESTART;
 }
 
 /*!
@@ -416,14 +402,15 @@ int remote_unbind(int r)
 
 int remote_poll(int r)
 {
-	if (r < 0) {
-		return -1;
-	}
-
 	/* Wait for events. */
 	fd_set rfds;
 	FD_ZERO(&rfds);
-	FD_SET(r, &rfds);
+	if (r > -1) {
+		FD_SET(r, &rfds);
+	} else {
+		r = -1; /* Make sure n == r + 1 == 0 */
+	}
+
 	return fdset_pselect(r + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 

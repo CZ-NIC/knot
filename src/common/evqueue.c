@@ -22,9 +22,6 @@
 #include "common/evqueue.h"
 #include "common/fdset.h"
 
-/*! \brief Singleton application-wide event queue. */
-evqueue_t *s_evqueue = 0;
-
 evqueue_t *evqueue_new()
 {
 	evqueue_t* q = malloc(sizeof(evqueue_t));

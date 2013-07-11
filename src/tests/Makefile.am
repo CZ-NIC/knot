@@ -3,8 +3,7 @@ ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -I$(top_srcdir)/src -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
 
 check_PROGRAMS = 			\
-	unittests			\
-	unittests_xfr
+	unittests
 
 TESTS = unittests
 
@@ -63,12 +62,7 @@ unittests_SOURCES =			\
 	libknot/sign_tests.h		\
 	unittests_main.c
 
-unittests_xfr_SOURCES = 		\
-	xfr_tests.c			\
-	xfr_tests.h
-
 unittests_LDADD = ../libknotd.la ../libknots.la @LIBOBJS@
-unittests_xfr_LDADD = ../libknotd.la ../libknot.la ../libknots.la @LIBOBJS@
 
 sample_conf.rc: files/sample_conf
 	$(top_srcdir)/resource.sh $(srcdir)/files/sample_conf >$@

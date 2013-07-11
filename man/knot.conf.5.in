@@ -1,4 +1,4 @@
-.TH "knot.conf" "5" "September 2012" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
+.TH "knot.conf" "5" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH "NAME"
 .LP
 .B knot.conf
@@ -190,7 +190,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
  control {
 
   # Specifies interface, syntax is exactly the same as in 'interfaces' section
-  # Default: OFF
+  # Default: $(run_dir)/knot.sock
   listen-on "knot.sock";
 
   # As an alternative, you can use an IPv4/v6 address and port

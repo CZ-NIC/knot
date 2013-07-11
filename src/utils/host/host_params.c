@@ -179,7 +179,7 @@ static void host_help(void)
 	       "       -d             Allow debug messages.\n"
 	       "       -h, --help     Print help.\n"
 	       "       -r             Disable recursion.\n"
-	       "       -s             Stop if servfail.\n"
+	       "       -s             Stop if SERVFAIL.\n"
 	       "       -T             Use TCP procotol.\n"
 	       "       -v             Verbose output.\n"
 	       "       -V, --version  Print program version.\n"

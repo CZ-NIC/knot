@@ -57,8 +57,8 @@ Now let's go step by step through this minimal configuration file:
 
 @item
 In @code{system} statement we have configured @code{storage}
-directory where Knot DNS will store compiled zone files,
-PID file and for slave zone also their journal files. (See @ref{system} and @ref{storage})
+directory where Knot DNS will store slave zones and journal files.
+(See @ref{system} and @ref{storage})
 
 @item
 The @code{interfaces} statement defines interfaces where Knot
