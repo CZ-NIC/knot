@@ -112,6 +112,11 @@ typedef enum {
 	KNOT_CHANGESET_REMOVE
 } knot_changeset_part_t;
 
+typedef enum {
+	KNOT_CHANGES_OLD,
+	KNOT_CHANGES_NEW
+} knot_changes_part_t;
+
 /*----------------------------------------------------------------------------*/
 
 int knot_changesets_init(knot_changesets_t **changesets,
@@ -145,20 +150,11 @@ int knot_changeset_is_empty(const knot_changeset_t *changeset);
 
 void knot_free_changesets(knot_changesets_t **changesets);
 
-int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
-                                int *count, int *allocated, int to_add);
+int knot_changes_add_rr(knot_changes_t *ch, knot_rrset_t *rrset,
+                        knot_changes_part_t part);
 
-int knot_changes_nodes_reserve(knot_node_t ***nodes,
-                               int *count, int *allocated);
-
-int knot_changes_rdata_reserve(knot_rrset_t ***rdatas,
-                               int count, int *allocated, int to_add);
-
-void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
-                            knot_rrset_t *rrset);
-
-int knot_changes_add_rrsets(const knot_rrset_t **from, size_t count,
-                            knot_rrset_t **to, int proc_sigs);
+int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
+                           knot_changes_part_t part);
 
 #endif /* _KNOT_CHANGESETS_H_ */
 

@@ -200,7 +200,7 @@ void xfrin_cleanup_successful_update(knot_changes_t **changes);
 
 void xfrin_rollback_update(knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents,
-                           knot_changes_t **changes);
+                           knot_changes_t *changes);
 
 int xfrin_copy_rrset(knot_node_t *node, uint16_t type,
                      knot_rrset_t **rrset, knot_changes_t *changes,
