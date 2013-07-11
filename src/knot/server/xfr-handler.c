@@ -75,10 +75,12 @@ static bool xfr_pending_incr(xfrhandler_t *xfr)
 {
 	bool ret = false;
 	pthread_mutex_lock(&xfr->pending_mx);
+	rcu_read_lock();
 	if (xfr->pending < conf()->xfers) {
 		++xfr->pending;
 		ret = true;
 	}
+	rcu_read_unlock();
 	pthread_mutex_unlock(&xfr->pending_mx);
 
 	return ret;
@@ -347,7 +349,7 @@ static int xfr_task_expire(fdset_t *set, int i, knot_ns_xfr_t *rq)
 	case XFR_TYPE_NOTIFY:
 		if ((long)--rq->data > 0) { /* Retries */
 			notify_create_request(contents, rq->wire, &rq->wire_size);
-			fdset_set_tmout(set, i, NOTIFY_TIMEOUT);
+			fdset_set_watchdog(set, i, NOTIFY_TIMEOUT);
 			rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
 			log_zone_info("%s Query issued (serial %u).\n",
 			              rq->msg, knot_zone_serial(contents));
@@ -443,10 +445,10 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 
 static int xfr_task_is_transfer(knot_ns_xfr_t *rq)
 {
-	return rq->type <= XFR_TYPE_IIN;
+	return rq->type == XFR_TYPE_AIN || rq->type == XFR_TYPE_IIN;
 }
 
-static void xfr_async_setbuf(knot_ns_xfr_t* rq, uint8_t *buf, size_t buflen)
+static void xfr_async_setbuf(knot_ns_xfr_t *rq, uint8_t *buf, size_t buflen)
 {
 	/* Update request. */
 	rq->wire = buf;
@@ -460,7 +462,7 @@ static void xfr_async_setbuf(knot_ns_xfr_t* rq, uint8_t *buf, size_t buflen)
 	}
 }
 
-static int xfr_async_start(fdset_t *set, knot_ns_xfr_t* rq)
+static int xfr_async_start(fdset_t *set, knot_ns_xfr_t *rq)
 {
 	/* Update XFR message prefix. */
 	int ret = KNOT_EOK;
@@ -479,7 +481,7 @@ static int xfr_async_start(fdset_t *set, knot_ns_xfr_t* rq)
 		if (next_id >= 0) {
 			/* Set default connection timeout. */
 			rcu_read_lock();
-			fdset_set_tmout(set, next_id, conf()->max_conn_reply);
+			fdset_set_watchdog(set, next_id, conf()->max_conn_reply);
 			rcu_read_unlock();
 		} else {
 			/* Or refuse if failed. */
@@ -490,7 +492,7 @@ static int xfr_async_start(fdset_t *set, knot_ns_xfr_t* rq)
 	return ret;
 }
 
-static int xfr_async_state(knot_ns_xfr_t* rq)
+static int xfr_async_state(knot_ns_xfr_t *rq)
 {
 	/* Check socket status. */
 	int err = EINVAL;
@@ -540,12 +542,17 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 			pthread_mutex_unlock(&zd->lock);
 		}
 		break;
-	case XFR_TYPE_NOTIFY: /* Send on first timeout <0,5>s. */
-		fdset_set_tmout(set, id, (int)(tls_rand() * 5));
+	case XFR_TYPE_NOTIFY:
+		/* This is a bit of a hack to adapt NOTIFY lifetime tracking.
+		 * When NOTIFY event enters handler, it shouldn't be sent immediately.
+		 * To accomodate for this, <0, 5>s random delay is set on
+		 * event startup, so the first query fires when this timer
+		 * expires. */
+		fdset_set_watchdog(set, id, (int)(tls_rand() * 5));
 		return KNOT_EOK;
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_FORWARD:
-		fdset_set_tmout(set, id, conf()->max_conn_reply);
+		fdset_set_watchdog(set, id, conf()->max_conn_reply);
 		break;
 	default:
 		break;
@@ -790,6 +797,10 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 	/* Only for successful xfers. */
 	if (ret > 0) {
 		ret = xfr_task_finalize(w, rq);
+
+		/* EBUSY on incremental transfer has a special meaning and
+		 * is caused by a journal not able to free up space for incoming
+		 * transfer, thus forcing to start a new full zone transfer. */
 		if (ret == KNOT_EBUSY && rq->type == XFR_TYPE_IIN) {
 			return xfr_start_axfr(w, rq, diff_nospace_msg);
 		} else {
@@ -1016,11 +1027,9 @@ int xfr_worker(dthread_t *thread)
 	time_now(&next_sweep);
 	next_sweep.tv_sec += XFR_SWEEP_INTERVAL;
 
-	/* Capacity limits. */
-	rcu_read_lock();
+	/* Approximate thread capacity limits. */
 	unsigned threads = w->master->unit->size;
 	unsigned thread_capacity = XFR_MAX_TASKS / threads;
-	rcu_read_unlock();
 
 	/* Set of connections. */
 	fdset_t set;

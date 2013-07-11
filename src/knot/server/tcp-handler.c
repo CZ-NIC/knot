@@ -327,27 +327,25 @@ tcp_worker_t* tcp_worker_create()
 {
 	tcp_worker_t *w = malloc(sizeof(tcp_worker_t));
 	if (w == NULL)
-		goto cleanup;
+		return NULL;
 
 	/* Create signal pipes. */
 	memset(w, 0, sizeof(tcp_worker_t));
-	if (pipe(w->pipe) < 0)
-		goto cleanup;
+	if (pipe(w->pipe) < 0) {
+		free(w);
+		return NULL;
+	}
 
 	/* Create fdset. */
 	if (fdset_init(&w->set, FDSET_INIT_SIZE) != KNOT_EOK) {
 		close(w->pipe[0]);
 		close(w->pipe[1]);
-		goto cleanup;
+		free(w);
+		return NULL;
 	}
 
 	fdset_add(&w->set, w->pipe[0], POLLIN, NULL);
 	return w;
-
-	/* Cleanup */
-cleanup:
-	free(w);
-	return NULL;
 }
 
 void tcp_worker_free(tcp_worker_t* w)
@@ -606,14 +604,14 @@ int tcp_loop_worker(dthread_t *thread)
 				int client, next_id;
 				if (read(fd, &client, sizeof(int)) == sizeof(int)) {
 					next_id = fdset_add(set, client, POLLIN, NULL);
-					fdset_set_tmout(set, next_id, max_hs);
+					fdset_set_watchdog(set, next_id, max_hs);
 				}
 			} else {
 				/* Process query over TCP. */
 				int ret = tcp_handle(w, fd, qbuf, SOCKET_MTU_SZ);
 				if (ret == KNOT_EOK) {
 					/* Update socket activity timer. */
-					fdset_set_tmout(set, i, max_idle);
+					fdset_set_watchdog(set, i, max_idle);
 				}
 				if (ret == KNOT_ECONNREFUSED) {
 					fdset_remove(set, i);

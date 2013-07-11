@@ -312,7 +312,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_schedule_refresh(knot_zone_t *zone, int time);
+int zones_schedule_refresh(knot_zone_t *zone, int64_t time);
 
 /*!
  * \brief Schedule NOTIFY after zone update.

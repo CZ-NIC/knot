@@ -41,7 +41,7 @@ typedef struct fdset {
 	unsigned size;       /*!< Array size (allocated). */
 	void* *ctx;          /*!< Context for each fd. */
 	struct pollfd *pfd;  /*!< poll state for each fd */
-	time_t *tmout;       /*!< Timeout for each fd (seconds precision). */
+	time_t *timeout;       /*!< Timeout for each fd (seconds precision). */
 } fdset_t;
 
 /*! \brief Mark-and-sweep state. */
@@ -51,7 +51,7 @@ enum fdset_sweep_state {
 };
 
 /*! \brief Sweep callback (set, index, data) */
-typedef enum fdset_sweep_state (*fdset_sweep_f)(fdset_t*, int, void*);
+typedef enum fdset_sweep_state (*fdset_sweep_cb_t)(fdset_t*, int, void*);
 
 /*!
  * \brief Initialize fdset to given size.
@@ -93,18 +93,20 @@ int fdset_remove(fdset_t *set, unsigned i);
 /*!
  * \brief Set file descriptor watchdog interval.
  *
- * Descriptors without activity in given interval
- * can be disposed with fdset_sweep().
+ * Set time (interval from now) after which the associated file descriptor
+ * should be sweeped (see fdset_sweep). Good example is setting a grace period
+ * of N seconds between socket activity. If socket is not active within
+ * <now, now + interval>, it is sweeped and potentially closed.
  *
  * \param set Target set.
  * \param i Index for the file descriptor.
  * \param interval Allowed interval without activity (seconds).
- *                 <0 removes watchdog interval.
+ *                 -1 disables watchdog timer
  *
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int fdset_set_tmout(fdset_t* set, int i, int interval);
+int fdset_set_watchdog(fdset_t* set, int i, int interval);
 
 /*!
  * \brief Sweep file descriptors with exceeding inactivity period.
@@ -113,12 +115,10 @@ int fdset_set_tmout(fdset_t* set, int i, int interval);
  * \param cb Callback for sweeped descriptors.
  * \param data Pointer to extra data.
  *
- * \note See
- *
  * \retval number of sweeped descriptors.
  * \retval -1 on errors.
  */
-int fdset_sweep(fdset_t* set, fdset_sweep_f cb, void *data);
+int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data);
 
 /*!
  * \brief pselect(2) compatibility wrapper.

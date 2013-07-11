@@ -3176,7 +3176,7 @@ int zones_schedule_notify(knot_zone_t *zone)
 	return KNOT_EOK;
 }
 
-int zones_schedule_refresh(knot_zone_t *zone, int time)
+int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 {
 	if (!zone || !zone->data) {
 		return KNOT_EINVAL;

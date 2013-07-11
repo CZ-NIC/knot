@@ -44,7 +44,7 @@ static int fdset_resize(fdset_t *set, unsigned size)
 	void *tmp = NULL;
 	MEM_RESIZE(tmp, set->ctx, size * sizeof(void*));
 	MEM_RESIZE(tmp, set->pfd, size * sizeof(struct pollfd));
-	MEM_RESIZE(tmp, set->tmout, size * sizeof(timev_t));
+	MEM_RESIZE(tmp, set->timeout, size * sizeof(timev_t));
 	set->size = size;
 	return KNOT_EOK;
 }
@@ -67,7 +67,7 @@ int fdset_clear(fdset_t* set)
 
 	free(set->ctx);
 	free(set->pfd);
-	free(set->tmout);
+	free(set->timeout);
 	memset(set, 0, sizeof(fdset_t));
 	return KNOT_EOK;
 }
@@ -88,7 +88,7 @@ int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx)
 	set->pfd[i].events = events;
 	set->pfd[i].revents = 0;
 	set->ctx[i] = ctx;
-	set->tmout[i] = 0;
+	set->timeout[i] = 0;
 
 	/* Return index to this descriptor. */
 	return i;
@@ -108,14 +108,14 @@ int fdset_remove(fdset_t *set, unsigned i)
 	unsigned last = set->n; /* Already decremented */
 	if (i < last) {
 		set->pfd[i] = set->pfd[last];
-		set->tmout[i] = set->tmout[last];
+		set->timeout[i] = set->timeout[last];
 		set->ctx[i] = set->ctx[last];
 	}
 
 	return KNOT_EOK;
 }
 
-int fdset_set_tmout(fdset_t* set, int i, int interval)
+int fdset_set_watchdog(fdset_t* set, int i, int interval)
 {
 	if (set == NULL || i >= set->n) {
 		return KNOT_EINVAL;
@@ -123,7 +123,7 @@ int fdset_set_tmout(fdset_t* set, int i, int interval)
 
 	/* Lift watchdog if interval is negative. */
 	if (interval < 0) {
-		set->tmout[i] = 0;
+		set->timeout[i] = 0;
 		return KNOT_EOK;
 	}
 
@@ -132,11 +132,11 @@ int fdset_set_tmout(fdset_t* set, int i, int interval)
 	if (time_now(&now) < 0)
 		return KNOT_ERROR;
 
-	set->tmout[i] = now.tv_sec + interval; /* Only seconds precision. */
+	set->timeout[i] = now.tv_sec + interval; /* Only seconds precision. */
 	return KNOT_EOK;
 }
 
-int fdset_sweep(fdset_t* set, fdset_sweep_f cb, void *data)
+int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data)
 {
 	if (set == NULL || cb == NULL) {
 		return KNOT_EINVAL;
@@ -152,7 +152,7 @@ int fdset_sweep(fdset_t* set, fdset_sweep_f cb, void *data)
 	while (i < set->n) {
 
 		/* Check sweep state, remove if requested. */
-		if (set->tmout[i] > 0 && set->tmout[i] <= now.tv_sec) {
+		if (set->timeout[i] > 0 && set->timeout[i] <= now.tv_sec) {
 			if (cb(set, i, data) == FDSET_SWEEP) {
 				if (fdset_remove(set, i) == KNOT_EOK)
 					continue; /* Stay on the index. */
