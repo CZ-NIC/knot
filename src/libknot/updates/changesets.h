@@ -1,7 +1,7 @@
 /*!
  * \file changesets.h
  *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Lubos Slovak <lubos.slovak@nic.cz>, Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief Structure for representing IXFR/DDNS changeset and its API.
  *
@@ -29,6 +29,8 @@
 
 #include "rrset.h"
 #include "zone/node.h"
+#include "common/lists.h"
+#include "common/mempattern.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -38,87 +40,69 @@ typedef enum {
 	KNOT_CHANGESET_TYPE_DDNS = 1 << 1
 } knot_changeset_flag_t;
 
-/*! \todo Changeset must be serializable/deserializable, so
- *        all data and pointers have to be changeset-exclusive,
- *        or more advanced structure serialization scheme has to be
- *        implemented.
- *
- * \todo Preallocation of space for changeset.
- */
-typedef struct {
-	knot_rrset_t *soa_from;
-	knot_rrset_t **remove;
-	size_t remove_count;
-	size_t remove_allocated;
 
-	knot_rrset_t *soa_to;
-	knot_rrset_t **add;
-	size_t add_count;
-	size_t add_allocated;
+/*! \brief One changeset received from wire, with parsed RRs. */
+typedef struct knot_changeset {
+	node n; /*!< List node. */
+	mm_ctx_t mem_ctx; /*!< Memory context - pool allocator. */
+	knot_rrset_t *soa_from; /*!< Start SOA. */
+	list remove; /*!< List of RRs to remove. */
 
-	uint8_t *data;
-	size_t size;
-	size_t allocated;
-	uint32_t serial_from;
-	uint32_t serial_to;
+	knot_rrset_t *soa_to; /*!< Destination SOA. */
+	list add; /*!< List of RRs to add. */
 
-	uint32_t flags;  /*!< DDNS / IXFR */
+	uint8_t *data; /*!< Serialized changeset. */
+	size_t size; /*!< Size of serialized changeset. */
+	uint32_t serial_from; /*!< SOA start serial. */
+	uint32_t serial_to; /*!< SOA destination serial. */
+
+	uint32_t flags; /*!< DDNS / IXFR flags. */
 } knot_changeset_t;
 
 /*----------------------------------------------------------------------------*/
 
+/*! \brief Wrapper for oh-so-great BIRD lists. */
+typedef struct knot_rr_node {
+	node n; /*!< List node. */
+	knot_rrset_t *rr; /*!< Actual usable data. */
+} knot_rr_node_t;
+
+/*! \brief Partial changes done to zones - used for update/transfer rollback. */
 typedef struct {
 	/*!
-	 * Deleted (without owners and RDATA) after successful update.
+	 * Memory context. We need a pool allocator since there is a possibility
+	 * of many changes in one transfer/update.
 	 */
-	knot_rrset_t **old_rrsets;
-	int old_rrsets_count;
-	int old_rrsets_allocated;
+	mm_ctx_t mem_ctx;
+	/*!
+	 * Deleted after successful update.
+	 */
+	list old_rrsets;
 
 	/*!
-	 * Deleted after successful update. Contains only relevant RDATA.
+	 * Deleted after failed update.
 	 */
-	knot_rrset_t **old_rdata;
-	int old_rdata_count;
-	int old_rdata_allocated;
-
-	/*!
-	 * \brief Copied RRSets (i.e. modified by the update).
-	 *
-	 * Deleted (without owners and RDATA) after failed update.
-	 */
-	knot_rrset_t **new_rrsets;
-	int new_rrsets_count;
-	int new_rrsets_allocated;
-
-	/*!
-	 * Deleted after failed update. Contains only relevant RDATA.
-	 */
-	knot_rrset_t **new_rdata;
-	int new_rdata_count;
-	int new_rdata_allocated;
+	list new_rrsets;
 
 	/*!
 	 * Deleted (without contents) after successful update.
 	 */
-	knot_node_t **old_nodes;
-	int old_nodes_count;
-	int old_nodes_allocated;
-
-	knot_node_t **old_nsec3;
-	int old_nsec3_count;
-	int old_nsec3_allocated;
+	list old_nodes;
+	/*!
+	 * Deleted (without contents) after successful update.
+	 */
+	list old_nsec3;
 } knot_changes_t;
 
 /*----------------------------------------------------------------------------*/
 
 typedef struct {
-	knot_changeset_t *sets;
-	size_t count;
-	size_t allocated;
-	knot_rrset_t *first_soa;
-	uint32_t flags;
-	knot_changes_t *changes;
+	mm_ctx_t mem_ctx; /*!< Memory context - pool allocator. */
+	list sets; /*!< List of changesets. */
+	size_t count; /*!< Changeset coung. */
+	knot_rrset_t *first_soa; /*!< First received SOA. */
+	uint32_t flags; /*!< DDNS / IXFR flags. */
+	knot_changes_t *changes; /*!< Partial changes. */
 } knot_changesets_t;
 
 /*----------------------------------------------------------------------------*/
@@ -130,22 +114,18 @@ typedef enum {
 
 /*----------------------------------------------------------------------------*/
 
-int knot_changeset_allocate(knot_changesets_t **changesets,
-                            uint32_t flags);
+int knot_changesets_init(knot_changesets_t **changesets,
+                        uint32_t flags);
 
-int knot_changeset_add_rrset(knot_rrset_t ***rrsets,
-                             size_t *count, size_t *allocated,
-                             knot_rrset_t *rrset);
+knot_changesets_t *knot_changesets_create(uint32_t flags);
 
-int knot_changeset_add_rr(knot_rrset_t ***rrsets, size_t *count,
-                          size_t *allocated, knot_rrset_t *rr);
+knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
 
-int knot_changeset_add_new_rr(knot_changeset_t *changeset,
-                              knot_rrset_t *rrset,
-                              knot_changeset_part_t part);
+int knot_changeset_add_rrset(knot_changeset_t *chgs,
+                             knot_rrset_t *rrset, knot_changeset_part_t part);
 
-knot_rrset_t *knot_changeset_remove_rr(knot_rrset_t **rrsets, size_t *count,
-                                       int pos);
+int knot_changeset_add_rr(knot_changeset_t *chgs,
+                          knot_rrset_t *rrset, knot_changeset_part_t part);
 
 void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                               uint32_t *chg_serial, knot_rrset_t *soa);
@@ -162,8 +142,6 @@ uint32_t knot_changeset_flags(knot_changeset_t *changeset);
 
 int knot_changeset_is_empty(const knot_changeset_t *changeset);
 
-void knot_free_changeset(knot_changeset_t **changeset);
-
 void knot_free_changesets(knot_changesets_t **changesets);
 
 int knot_changes_rrsets_reserve(knot_rrset_t ***rrsets,
@@ -178,14 +156,8 @@ int knot_changes_rdata_reserve(knot_rrset_t ***rdatas,
 void knot_changes_add_rdata(knot_rrset_t **rdatas, int *count,
                             knot_rrset_t *rrset);
 
-/*!
- * \note Also processes RRSIGs. May be switched by a parameter later, if needed.
- */
-int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, int count,
-                                knot_changes_t *changes, int add_rdata);
-
-int knot_changes_add_new_rrsets(knot_rrset_t **rrsets, int count,
-                                knot_changes_t *changes, int add_rdata);
+int knot_changes_add_rrsets(const knot_rrset_t **from, size_t count,
+                            knot_rrset_t **to, int proc_sigs);
 
 #endif /* _KNOT_CHANGESETS_H_ */
 

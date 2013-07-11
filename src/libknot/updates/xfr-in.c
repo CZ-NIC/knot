@@ -2511,25 +2511,6 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 		for (int i = 0; i < (*changes)->new_rdata_count; ++i) {
 			dbg_xfrin_detail("Freeing %d. RDATA: %p\n", i,
 					 (*changes)->new_rdata[i]);
-
-			/*
-			 * In some case, the same RDATA may be stored in
-			 * different positions in different RDATA chains, so
-			 * some ivalid reads occur.
-			 *
-			 * More precisely, the same chain is stored multiple
-			 * times, but starting from different RDATA.
-			 *
-			 * We may check every RDATA against every one
-			 * already deleted, but that may be very time-consuming.
-			 */
-
-			/*
-			 * Every RDATA from a chain is stored separately.
-			 * We thus do not follow the RDATA chains and free only
-			 * the first RDATA in each.
-			 */
-
 			knot_rrset_deep_free_no_sig(&(*changes)->new_rdata[i], 1, 1);
 		}
 

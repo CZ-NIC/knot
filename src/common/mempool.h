@@ -127,6 +127,11 @@ void *mp_alloc_internal(struct mempool *pool, unsigned size) LIKE_MALLOC;
 void *mp_alloc(struct mempool *pool, unsigned size);
 
 /**
+ * This function wraps @mp_alloc() to work with mm_ctx_t.
+ **/
+void *mp_alloc_mm_ctx_wrap(void *ctx, size_t size);
+
+/**
  * The same as @mp_alloc(), but the result may be unaligned.
  **/
 void *mp_alloc_noalign(struct mempool *pool, unsigned size);

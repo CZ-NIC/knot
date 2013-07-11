@@ -2858,7 +2858,8 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_ixfr_put_changeset(knot_ns_xfr_t *xfr, const knot_changeset_t *chgset)
+static int ns_ixfr_put_changeset(knot_ns_xfr_t *xfr,
+                                 const knot_changeset_t *chgset)
 {
 	// 1) put origin SOA
 	int res = ns_ixfr_put_rrset(xfr, chgset->soa_from);
@@ -2867,22 +2868,25 @@ static int ns_ixfr_put_changeset(knot_ns_xfr_t *xfr, const knot_changeset_t *chg
 	}
 
 	// 2) put remove RRSets
-	for (int i = 0; i < chgset->remove_count; ++i) {
-		res = ns_ixfr_put_rrset(xfr, chgset->remove[i]);
+	knot_rr_node_t *rr_node = NULL;
+	WALK_LIST(rr_node, chgset->remove) {
+		knot_rrset_t *rr_rem = rr_node->rr;
+		res = ns_ixfr_put_rrset(xfr, rr_rem);
 		if (res != KNOT_EOK) {
 			return res;
 		}
 	}
 
-	// 1) put target SOA
+	// 3) put target SOA
 	res = ns_ixfr_put_rrset(xfr, chgset->soa_to);
 	if (res != KNOT_EOK) {
 		return res;
 	}
 
-	// 2) put remove RRSets
-	for (int i = 0; i < chgset->add_count; ++i) {
-		res = ns_ixfr_put_rrset(xfr, chgset->add[i]);
+	// 4) put add RRSets
+	WALK_LIST(rr_node, chgset->add) {
+		knot_rrset_t *rr_add = rr_node->rr;
+		res = ns_ixfr_put_rrset(xfr, rr_add);
 		if (res != KNOT_EOK) {
 			return res;
 		}
@@ -2925,8 +2929,8 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	}
 
 	// 5) put the changesets into the response while they fit in
-	for (int i = 0; i < chgsets->count; ++i) {
-		knot_changeset_t *chs = chgsets->sets + i;
+	knot_changeset_t *chs = NULL;
+	WALK_LIST(chs, chgsets->sets) {
 		res = ns_ixfr_put_changeset(xfr, chs);
 		if (res != KNOT_EOK) {
 			// answer is sent
@@ -4341,7 +4345,7 @@ int knot_ns_process_update2(const knot_packet_t *query,
 {
 	/*! \todo Implement. */
 	if (query == NULL || old_contents == NULL || chgs == NULL ||
-	    chgs->sets == NULL || new_contents == NULL || rcode == NULL) {
+	    chgs->count == 0 || new_contents == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -4362,8 +4366,10 @@ int knot_ns_process_update2(const knot_packet_t *query,
 
 	/* 2) Apply the UPDATE and create changesets. */
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
-	ret = knot_ddns_process_update2(contents_copy, query, &chgs->sets[0],
+	ret = knot_ddns_process_update2(contents_copy, query,
+	                                (knot_changeset_t *)chgs->sets.head,
 	                                changes, rcode);
+	assert(0); //double check here
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)

@@ -1044,7 +1044,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			knot_rrset_deep_free(&(from_chgset[0]), 1, 1);
 			/* Okay, &(from_chgset[0]) is basically equal to just
 			 * from_chgset, but it's more clear this way that we are
-			 * deleting the first RRSet in the array ;-)
+			 * deleting the first RRSet in the array.
 			 */
 		} else {
 			/* Otherwise copy the removed CNAME and add it
