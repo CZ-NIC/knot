@@ -44,12 +44,6 @@ src/common/evsched.c
 src/common/evsched.h
 src/common/fdset.c
 src/common/fdset.h
-src/common/fdset_epoll.c
-src/common/fdset_epoll.h
-src/common/fdset_kqueue.c
-src/common/fdset_kqueue.h
-src/common/fdset_poll.c
-src/common/fdset_poll.h
 src/common/getline.c
 src/common/getline.h
 src/common/hattrie/ahtable.c

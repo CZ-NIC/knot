@@ -202,12 +202,6 @@ libknots_la_SOURCES =				\
 	common/prng.c				\
 	common/fdset.h				\
 	common/fdset.c				\
-	common/fdset_poll.h			\
-	common/fdset_poll.c			\
-	common/fdset_kqueue.h			\
-	common/fdset_kqueue.c			\
-	common/fdset_epoll.h			\
-	common/fdset_epoll.c			\
 	common/getline.h			\
 	common/getline.c			\
 	common/log.c				\

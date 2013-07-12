@@ -48,11 +48,6 @@ enum xfrstate_t {
  */
 typedef struct xfrworker_t
 {
-	struct {
-		ahtable_t *t;
-		fdset_t   *fds;
-	} pool;
-	unsigned pending;
 	struct xfrhandler_t *master; /*! \brief Worker master. */
 } xfrworker_t;
 
@@ -62,6 +57,8 @@ typedef struct xfrworker_t
 typedef struct xfrhandler_t
 {
 	list queue;
+	unsigned pending; /*!< \brief Pending transfers. */
+	pthread_mutex_t pending_mx;
 	pthread_mutex_t mx; /*!< \brief Tasks synchronisation. */
 	knot_nameserver_t *ns;
 	dt_unit_t       *unit;  /*!< \brief Threading unit. */

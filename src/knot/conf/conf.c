@@ -249,7 +249,8 @@ static int conf_process(conf_t *conf)
 	}
 
 	/* Default parallel transfers. */
-	if (conf->xfers <= 0) conf->xfers = CONFIG_XFERS;
+	if (conf->xfers <= 0)
+		conf->xfers = CONFIG_XFERS;
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
@@ -393,7 +394,7 @@ void __attribute__ ((constructor)) conf_init()
 	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
 	add_tail(&log->map, &map->n);
 	add_tail(&s_config->logs, &log->n);
-	++s_config->logs_count;
+	s_config->logs_count = 1;
 
 	/* Stderr */
 	log = malloc(sizeof(conf_log_t));
@@ -529,6 +530,7 @@ conf_t *conf_new(const char* path)
 	c->xfers = -1;
 	c->rrl_slip = -1;
 	c->build_diffs = 0; /* Disable by default. */
+	c->logs_count = -1;
 
 	/* ACLs. */
 	c->ctl.acl = acl_new(ACL_DENY, "remote_ctl");
@@ -633,7 +635,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	WALK_LIST_DELSAFE(n, nxt, conf->logs) {
 		conf_free_log((conf_log_t*)n);
 	}
-	conf->logs_count = 0;
+	conf->logs_count = -1;
 	init_list(&conf->logs);
 
 	// Free remote interfaces
