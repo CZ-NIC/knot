@@ -96,11 +96,8 @@ typedef enum {
 	KNOT_NODE_FLAGS_DELEG = (uint8_t)0x01,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	KNOT_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
-	/*! \brief Node is old and will be removed (during update). */
-	KNOT_NODE_FLAGS_OLD = (uint8_t)0x04,
-	/*! \brief Node is new and should not be used while zoen is old. */
-	KNOT_NODE_FLAGS_NEW = (uint8_t)0x08,
-	/*! \brief Node is empty and will be deleted after update. */
+	/*! \brief Node is empty and will be deleted after update.
+	 *  \todo Remove after dname refactoring, update description in node. */
 	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10
 } knot_node_flags_t;
 
@@ -398,8 +395,10 @@ void knot_node_clear_new(knot_node_t *node);
 
 void knot_node_clear_old(knot_node_t *node);
 
+//! \todo remove after dname refactoring
 int knot_node_is_empty(const knot_node_t *node);
 
+//! \todo remove after dname refactoring
 void knot_node_set_empty(knot_node_t *node);
 
 /*!
