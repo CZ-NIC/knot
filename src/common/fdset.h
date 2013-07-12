@@ -18,12 +18,7 @@
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief Wrapper for native I/O multiplexing.
- *
- * Selects best implementation according to config.
- * - poll()
- * - epoll()
- * - kqueue()
+ * \brief I/O multiplexing with context and timeouts for each fd.
  *
  * \addtogroup common_lib
  * @{
@@ -32,88 +27,36 @@
 #ifndef _KNOTD_FDSET_H_
 #define _KNOTD_FDSET_H_
 
+#include <config.h>
 #include <stddef.h>
-#ifdef HAVE_SYS_SELECT_H
- #include <sys/select.h>
-#endif
-#ifdef HAVE_SYS_TIME_H
- #include <sys/time.h>
-#endif
-#ifdef HAVE_SIGNAL_H
- #include <signal.h>
-#endif
-#include "skip-list.h"
-#include "mempattern.h"
+#include <poll.h>
+#include <sys/time.h>
+#include <signal.h>
 
-/*! \brief Waiting for completion constants. */
-enum fdset_wait_t {
-	OS_EV_FOREVER = -1, /*!< Wait forever. */
-	OS_EV_NOWAIT  =  0  /*!< Return immediately. */
+#define FDSET_INIT_SIZE 256 /* Resize step. */
+
+/*! \brief Set of filedescriptors with associated context and timeouts. */
+typedef struct fdset {
+	unsigned n;          /*!< Active fds. */
+	unsigned size;       /*!< Array size (allocated). */
+	void* *ctx;          /*!< Context for each fd. */
+	struct pollfd *pfd;  /*!< poll state for each fd */
+	time_t *timeout;       /*!< Timeout for each fd (seconds precision). */
+} fdset_t;
+
+/*! \brief Mark-and-sweep state. */
+enum fdset_sweep_state {
+	FDSET_KEEP,
+	FDSET_SWEEP
 };
 
-/*! \brief Base for implementation-specific fdsets. */
-typedef struct fdset_base_t {
-	skip_list_t *atimes;
-} fdset_base_t;
+/*! \brief Sweep callback (set, index, data) */
+typedef enum fdset_sweep_state (*fdset_sweep_cb_t)(fdset_t*, int, void*);
 
 /*!
- * \brief Opaque pointer to implementation-specific fdset data.
- * \warning Implementation MUST have fdset_base_t member on the first place.
- * Example:
- * struct fdset_t {
- *    fdset_base_t base;
- *    ...other members...
- * }
+ * \brief Initialize fdset to given size.
  */
-typedef struct fdset_t fdset_t;
-
-/*! \brief Unified event types. */
-enum fdset_event_t {
-	OS_EV_READ  = 1 << 0, /*!< Readable event. */
-	OS_EV_WRITE = 1 << 1, /*!< Writeable event. */
-	OS_EV_ERROR = 1 << 2  /*!< Error event. */
-};
-
-/*! \brief File descriptor set iterator. */
-typedef struct fdset_it_t {
-	int fd;     /*!< Current file descriptor. */
-	int events; /*!< Returned events. */
-	size_t pos; /* Internal usage. */
-} fdset_it_t;
-
-/*!
- * \brief File descriptor set implementation backend.
- * \note Functions documentation following.
- * \internal
- */
-struct fdset_backend_t
-{
-	fdset_t* (*fdset_new)();
-	int (*fdset_destroy)(fdset_t*);
-	int (*fdset_add)(fdset_t*, int, int);
-	int (*fdset_remove)(fdset_t*, int);
-	int (*fdset_wait)(fdset_t*, int);
-	int (*fdset_begin)(fdset_t*, fdset_it_t*);
-	int (*fdset_end)(fdset_t*, fdset_it_t*);
-	int (*fdset_next)(fdset_t*, fdset_it_t*);
-	const char* (*fdset_method)();
-};
-
-/*!
- * \brief Selected backend.
- * \internal
- */
-extern struct fdset_backend_t _fdset_backend;
-
-/*!
- * \brief Create new fdset.
- *
- * FDSET implementation depends on system.
- *
- * \retval Pointer to initialized FDSET structure if successful.
- * \retval NULL on error.
- */
-fdset_t *fdset_new();
+int fdset_init(fdset_t *set, unsigned size);
 
 /*!
  * \brief Destroy FDSET.
@@ -121,125 +64,61 @@ fdset_t *fdset_new();
  * \retval 0 if successful.
  * \retval -1 on error.
  */
-int fdset_destroy(fdset_t* fdset);
+int fdset_clear(fdset_t* set);
 
 /*!
  * \brief Add file descriptor to watched set.
  *
- * \param fdset Target set.
+ * \param set Target set.
  * \param fd Added file descriptor.
  * \param events Mask of watched events.
+ * \param ctx Context (optional).
  *
- * \retval 0 if successful.
+ * \retval index of the added fd if successful.
  * \retval -1 on errors.
  */
-static inline int fdset_add(fdset_t *fdset, int fd, int events) {
-	return _fdset_backend.fdset_add(fdset, fd, events);
-}
-
+int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx);
 
 /*!
  * \brief Remove file descriptor from watched set.
  *
- * \param fdset Target set.
- * \param fd File descriptor to be removed.
+ * \param set Target set.
+ * \param i Index of the removed fd.
  *
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int fdset_remove(fdset_t *fdset, int fd);
-
-/*!
- * \brief Poll set for new events.
- *
- * \param fdset Target set.
- * \param timeout Timeout (OS_EV_FOREVER, OS_EV_NOWAIT or value in miliseconds).
- *
- * \retval Number of events if successful.
- * \retval -1 on errors.
- */
-static inline int fdset_wait(fdset_t *fdset, int timeout) {
-	return _fdset_backend.fdset_wait(fdset, timeout);
-}
-
-/*!
- * \brief Set event iterator to the beginning of last polled events.
- *
- * \param fdset Target set.
- * \param it Event iterator.
- *
- * \retval 0 if successful.
- * \retval -1 on errors.
- */
-static inline int fdset_begin(fdset_t *fdset, fdset_it_t *it) {
-	return _fdset_backend.fdset_begin(fdset, it);
-}
-
-/*!
- * \brief Set event iterator to the end of last polled events.
- *
- * \param fdset Target set.
- * \param it Event iterator.
- *
- * \retval 0 if successful.
- * \retval -1 on errors.
- */
-static inline int fdset_end(fdset_t *fdset, fdset_it_t *it) {
-	return _fdset_backend.fdset_end(fdset, it);
-}
-
-/*!
- * \brief Set event iterator to the next event.
- *
- * Event iterator fd will be set to -1 if next event doesn't exist.
- *
- * \param fdset Target set.
- * \param it Event iterator.
- *
- * \retval 0 if successful.
- * \retval -1 on errors.
- */
-static inline int fdset_next(fdset_t *fdset, fdset_it_t *it) {
-	return _fdset_backend.fdset_next(fdset, it);
-}
-
-/*!
- * \brief Returned name of underlying poll method.
- *
- * \retval Name if successful.
- * \retval NULL if no method was loaded (shouldn't happen).
- */
-static inline const char* fdset_method() {
-	return _fdset_backend.fdset_method();
-}
+int fdset_remove(fdset_t *set, unsigned i);
 
 /*!
  * \brief Set file descriptor watchdog interval.
  *
- * Descriptors without activity in given interval
- * can be disposed with fdset_sweep().
+ * Set time (interval from now) after which the associated file descriptor
+ * should be sweeped (see fdset_sweep). Good example is setting a grace period
+ * of N seconds between socket activity. If socket is not active within
+ * <now, now + interval>, it is sweeped and potentially closed.
  *
- * \param fdset Target set.
- * \param fd File descriptor.
+ * \param set Target set.
+ * \param i Index for the file descriptor.
  * \param interval Allowed interval without activity (seconds).
- *                 <0 removes watchdog interval.
+ *                 -1 disables watchdog timer
  *
  * \retval 0 if successful.
  * \retval -1 on errors.
  */
-int fdset_set_watchdog(fdset_t* fdset, int fd, int interval);
+int fdset_set_watchdog(fdset_t* set, int i, int interval);
 
 /*!
  * \brief Sweep file descriptors with exceeding inactivity period.
  *
  * \param fdset Target set.
  * \param cb Callback for sweeped descriptors.
- * \param data Custom data for sweep operation.
+ * \param data Pointer to extra data.
  *
  * \retval number of sweeped descriptors.
  * \retval -1 on errors.
  */
-int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data);
+int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data);
 
 /*!
  * \brief pselect(2) compatibility wrapper.

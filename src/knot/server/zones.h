@@ -46,6 +46,10 @@
 #define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
 #define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Interval between AXFR BS retries. */
 
+enum {
+	REFRESH_DEFAULT = -1 /* Use time value from zone structure. */
+};
+
 /*!
  * \brief Zone-related data.
  */
@@ -302,13 +306,13 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
  * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
  *
  * \param zone Related zone.
- * \param time Specific time or 0 for default.
+ * \param time Specific time or REFRESH_DEFAULT for default.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_schedule_refresh(knot_zone_t *zone, unsigned time);
+int zones_schedule_refresh(knot_zone_t *zone, int64_t time);
 
 /*!
  * \brief Schedule NOTIFY after zone update.

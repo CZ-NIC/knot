@@ -249,7 +249,8 @@ static int conf_process(conf_t *conf)
 	}
 
 	/* Default parallel transfers. */
-	if (conf->xfers <= 0) conf->xfers = CONFIG_XFERS;
+	if (conf->xfers <= 0)
+		conf->xfers = CONFIG_XFERS;
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
