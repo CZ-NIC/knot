@@ -323,6 +323,29 @@ int tcp_accept(int fd)
 	return incoming;
 }
 
+/*! \brief Read a descriptor from the pipe and assign it to given fdset. */
+static int tcp_loop_assign(int pipe, fdset_t *set)
+{
+	/* Read socket descriptor from pipe. */
+	int client, next_id;
+	if (read(pipe, &client, sizeof(int)) != sizeof(int)) {
+		return KNOT_ENOENT;
+	}
+
+	/* Assign to fdset. */
+	next_id = fdset_add(set, client, POLLIN, NULL);
+	if (next_id < 0) {
+		socket_close(client);
+		return next_id; /* Contains errno. */
+	}
+
+	/* Update watchdog timer. */
+	rcu_read_lock();
+	fdset_set_watchdog(set, next_id, conf()->max_conn_hs);
+	rcu_read_unlock();
+	return next_id;
+}
+
 tcp_worker_t* tcp_worker_create()
 {
 	tcp_worker_t *w = malloc(sizeof(tcp_worker_t));
@@ -582,7 +605,6 @@ int tcp_loop_worker(dthread_t *thread)
 		/* Establish timeouts. */
 		rcu_read_lock();
 		int max_idle = conf()->max_conn_idle;
-		int max_hs = conf()->max_conn_hs;
 		rcu_read_unlock();
 
 		/* Process incoming events. */
@@ -598,16 +620,11 @@ int tcp_loop_worker(dthread_t *thread)
 				--nfds;
 			}
 
+			/* Register new TCP client or process a query. */
 			int fd = set->pfd[i].fd;
 			if (fd == w->pipe[0]) {
-				/* Register incoming TCP connection. */
-				int client, next_id;
-				if (read(fd, &client, sizeof(int)) == sizeof(int)) {
-					next_id = fdset_add(set, client, POLLIN, NULL);
-					fdset_set_watchdog(set, next_id, max_hs);
-				}
+				tcp_loop_assign(fd, set);
 			} else {
-				/* Process query over TCP. */
 				int ret = tcp_handle(w, fd, qbuf, SOCKET_MTU_SZ);
 				if (ret == KNOT_EOK) {
 					/* Update socket activity timer. */
