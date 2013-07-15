@@ -155,6 +155,57 @@ int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
 	}
 }
 
+int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
+                           knot_changes_part_t part)
+{
+	if (ch == NULL || rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rr_node_t *rr_node =
+		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_rr_node_t));
+	if (rr_node == NULL) {
+		// This will not happen with mp_alloc, but allocator can change
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
+	rr_node->rr = rrset;
+
+	if (part == KNOT_CHANGES_NEW) {
+		add_tail(&ch->new_rrsets, (node *)rr_node);
+	} else {
+		assert(part == KNOT_CHANGES_OLD);
+		add_tail(&ch->old_rrsets, (node *)rr_node);
+	}
+
+	return KNOT_EOK;
+}
+
+int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
+                          knot_changes_part_t part)
+{
+	if (ch == NULL || kn_node == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Using the same allocator for node and rr's, sizes are equal.
+	knot_node_list_t *list_node =
+		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_node_list_t));
+	if (list_node == NULL) {
+		// This will not happen with mp_alloc, but allocator can change
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
+	list_node->node = kn_node;
+
+	if (part == KNOT_CHANGES_NORMAL_NODE) {
+		add_tail(&ch->old_nodes, (node *)list_node);
+	} else {
+		assert(part == KNOT_CHANGES_NSEC3_NODE);
+		add_tail(&ch->old_nsec3, (node *)list_node);
+	}
+}
+
 /*----------------------------------------------------------------------------*/
 
 void knot_changeset_store_soa(knot_rrset_t **chg_soa,
@@ -224,6 +275,14 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 
 	// Delete binary data
 	free(changeset->data);
+}
+
+void knot_changes_free(knot_changes_t **changes)
+{
+	// Destroy mempool's data
+	mp_delete((struct mempool *)((*changes)->mem_ctx.ctx));
+	free(*changes);
+	*changes = NULL;
 }
 
 /*----------------------------------------------------------------------------*/

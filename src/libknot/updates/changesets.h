@@ -61,11 +61,17 @@ typedef struct knot_changeset {
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Wrapper for oh-so-great BIRD lists. */
+/*! \brief Wrapper for oh-so-great BIRD lists. Storing: RRSet. */
 typedef struct knot_rr_node {
 	node n; /*!< List node. */
 	knot_rrset_t *rr; /*!< Actual usable data. */
 } knot_rr_node_t;
+
+/*! \brief Wrapper for oh-so-great BIRD lists. Storing: Node. */
+typedef struct knot_node_list {
+	node n; /*!< List node. */
+	knot_node_t *node; /*!< Actual usable data. */
+} knot_node_list_t;
 
 /*! \brief Partial changes done to zones - used for update/transfer rollback. */
 typedef struct {
@@ -99,7 +105,7 @@ typedef struct {
 typedef struct {
 	mm_ctx_t mem_ctx; /*!< Memory context - pool allocator. */
 	list sets; /*!< List of changesets. */
-	size_t count; /*!< Changeset coung. */
+	size_t count; /*!< Changeset count. */
 	knot_rrset_t *first_soa; /*!< First received SOA. */
 	uint32_t flags; /*!< DDNS / IXFR flags. */
 	knot_changes_t *changes; /*!< Partial changes. */
@@ -114,7 +120,9 @@ typedef enum {
 
 typedef enum {
 	KNOT_CHANGES_OLD,
-	KNOT_CHANGES_NEW
+	KNOT_CHANGES_NEW,
+	KNOT_CHANGES_NORMAL_NODE,
+	KNOT_CHANGES_NSEC3_NODE
 } knot_changes_part_t;
 
 /*----------------------------------------------------------------------------*/
@@ -150,11 +158,13 @@ int knot_changeset_is_empty(const knot_changeset_t *changeset);
 
 void knot_free_changesets(knot_changesets_t **changesets);
 
-int knot_changes_add_rr(knot_changes_t *ch, knot_rrset_t *rrset,
-                        knot_changes_part_t part);
-
 int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
                            knot_changes_part_t part);
+
+int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
+                          knot_changes_part_t part);
+
+void knot_changes_free(knot_changes_t **changes);
 
 #endif /* _KNOT_CHANGESETS_H_ */
 
