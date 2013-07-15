@@ -34,12 +34,12 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Or hexstring 0x01ab00
   nsid "myserver0";
 
-  # Working directory of the server
-  # Used to store compiled zones and PID file
-  # default: ${sharedstatedir}/knot, configured with --with-storage
+  # This is a default directory to place slave zone files, journals etc.
+  # default: ${localstatedir}/lib/knot, configured with --with-storage
   storage "/var/lib/knot";
 
   # Directory for storing run-time data
+  # e.g. PID file and control sockets
   # default: ${localstatedir}/run/knot, configured with --with-rundir
   rundir "/var/run/knot";
 
