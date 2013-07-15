@@ -260,8 +260,8 @@ int knot_changeset_is_empty(const knot_changeset_t *changeset)
 		return 0;
 	}
 
-	return list_size(&changeset->add) == 0 &&
-	       list_size(&changeset->remove) == 0;
+	return list_is_empty(&changeset->add) &&
+	       list_is_empty(&changeset->remove) == 0;
 }
 
 static void knot_free_changeset(knot_changeset_t *changeset)
