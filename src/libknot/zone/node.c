@@ -192,8 +192,9 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrset_tree[i]->type == rrset->type) {
 			int merged, deleted_rrs;
-			int ret = knot_rrset_merge_no_dupl(node->rrset_tree[i],
-			                                   rrset, &merged, &deleted_rrs);
+			int ret = knot_rrset_merge_sort(node->rrset_tree[i],
+			                                rrset, &merged,
+			                                &deleted_rrs);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else if (merged || deleted_rrs) {
@@ -204,6 +205,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 		}
 	}
 
+	// New RRSet (with one RR)
 	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
@@ -251,12 +253,6 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 			--node->rrset_count;
 		}
 	}
-
-	/*!< \todo I've added this to fix a leak, but probably this wasn't the cause. Remove once tests are availabe. */
-	void *tmp = realloc(node->rrset_tree,
-	                    node->rrset_count * sizeof(knot_rrset_t *));
-	assert(tmp || node->rrset_count == 0); //Realloc to smaller memory, if it fails, something is really odd.
-	node->rrset_tree = tmp;
 
 	return ret;
 }

@@ -76,7 +76,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	int ret;
 	for (int i = 0; i < *count; ++i) {
 		if (knot_rrset_equal(rrset, (*rrsets)[i],
-		                       KNOT_RRSET_COMPARE_HEADER) == 1) {
+		                     KNOT_RRSET_COMPARE_HEADER)) {
 			ret = knot_rrset_merge((*rrsets)[i], rrset);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -1263,8 +1263,8 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 
 	int rdata_in_copy = knot_rrset_rdata_rr_count(*rr_copy);
 	int merged, deleted_rrs;
-	int ret = knot_rrset_merge_no_dupl(node_rrset_copy, *rr_copy, &merged,
-	                                   &deleted_rrs);
+	int ret = knot_rrset_merge_sort(node_rrset_copy, *rr_copy, &merged,
+	                                &deleted_rrs);
 	dbg_ddns_detail("Merge returned: %d\n", ret);
 
 	if (ret != KNOT_EOK) {
@@ -1330,8 +1330,8 @@ static int knot_ddns_add_rr_merge_rrsig(knot_rrset_t *node_rrset_copy,
 
 		int rdata_in_copy = knot_rrset_rdata_rr_count(*rr_copy);
 		int merged, deleted_rrs;
-		ret = knot_rrset_merge_no_dupl(rrsigs_copy, *rr_copy, &merged,
-		                               &deleted_rrs);
+		ret = knot_rrset_merge_sort(rrsigs_copy, *rr_copy, &merged,
+		                            &deleted_rrs);
 		if (ret < 0) {
 			dbg_xfrin("Failed to merge UPDATE RRSIG to copy: %s.\n",
 			          knot_strerror(ret));

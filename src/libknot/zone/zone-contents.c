@@ -859,7 +859,7 @@ dbg_zone_exec_detail(
 		knot_dname_left_chop(knot_node_owner(node));
 	if(chopped == NULL) {
 		/* Root domain and root domain only. */
-		assert(node->owner && *node->owner->name == '\0');
+		assert(node->owner && *node->owner == '\0');
 		return KNOT_EOK;
 	}
 
@@ -978,16 +978,14 @@ dbg_zone_exec_detail(
 );
 
 	// check if the RRSet belongs to the zone
-	if (knot_dname_compare(knot_rrset_owner(rrset),
-				 zone->apex->owner) != 0
-	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
-					  zone->apex->owner)) {
+	if (knot_dname_compare_non_canon(rrset->owner, zone->apex->owner) != 0
+	    && !knot_dname_is_subdomain(rrset->owner, zone->apex->owner)) {
 		return KNOT_EBADZONE;
 	}
 
 	if ((*node) == NULL
 	    && (*node = knot_zone_contents_get_node(zone,
-				    knot_rrset_owner(rrset))) == NULL) {
+	                                            rrset->owner)) == NULL) {
 		return KNOT_ENONODE;
 	}
 
@@ -1367,7 +1365,7 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 		int matched_labels = knot_dname_matched_labels(
 				knot_node_owner((*closest_encloser)), name);
 		while (matched_labels < knot_dname_wire_labels(
-				knot_node_owner((*closest_encloser))->name, NULL)) {
+				knot_node_owner((*closest_encloser)), NULL)) {
 			(*closest_encloser) =
 				knot_node_parent((*closest_encloser));
 			assert(*closest_encloser);
@@ -2144,7 +2142,7 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 	// if direct child
 	if (knot_dname_is_subdomain(node_owner, parent_owner)
 	    && knot_dname_matched_labels(node_owner, parent_owner)
-	       == knot_dname_wire_labels(parent_owner->name, NULL)) {
+	       == knot_dname_wire_labels(parent_owner, NULL)) {
 
 		// check the parent pointer
 		const knot_node_t *parent = knot_node_parent(node);
