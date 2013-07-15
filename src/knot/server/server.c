@@ -629,18 +629,15 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	return ret;
 }
 
-ref_t *server_set_ifaces(server_t *s, fdset_t **fds, int *count, int type)
+ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type)
 {
 	iface_t *i = NULL;
-	*count = 0;
 
 	rcu_read_lock();
-	fdset_destroy(*fds);
-	*fds = fdset_new();
+	fdset_clear(fds);
 	if (s->ifaces) {
 		WALK_LIST(i, s->ifaces->l) {
-			fdset_add(*fds, i->fd[type], OS_EV_READ);
-			*count += 1;
+			fdset_add(fds, i->fd[type], POLLIN, NULL);
 		}
 
 	}

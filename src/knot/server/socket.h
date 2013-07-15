@@ -39,9 +39,7 @@
 #include "common/sockaddr.h"
 
 /*! \brief Socket-related constants. */
-typedef enum {
-	SOCKET_MTU_SZ = 65535,  /*!< Maximum MTU size. */
-} socket_const_t;
+#define SOCKET_MTU_SZ 65535 /*!< Maximum MTU size. */
 
 /*!
  * \brief Create socket.

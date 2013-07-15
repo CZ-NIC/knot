@@ -37,7 +37,7 @@
 
 /*! \brief Default config paths. */
 static const char *DEFAULT_CONFIG[] = {
-	SYSCONFDIR "/" "knot.conf",
+	CONFIG_DIR "/" "knot.conf",
 };
 
 #define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
@@ -249,7 +249,8 @@ static int conf_process(conf_t *conf)
 	}
 
 	/* Default parallel transfers. */
-	if (conf->xfers <= 0) conf->xfers = CONFIG_XFERS;
+	if (conf->xfers <= 0)
+		conf->xfers = CONFIG_XFERS;
 
 	// Postprocess zones
 	int ret = KNOT_EOK;

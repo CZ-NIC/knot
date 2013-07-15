@@ -15,12 +15,11 @@
  */
 
 #include <config.h>
-#include <dlfcn.h>
-#include <string.h>
-#include <stdio.h>
-#include <time.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #include "common/fdset.h"
+#include "common.h"
 
 /* Workarounds for clock_gettime() not available on some platforms. */
 #ifdef HAVE_CLOCK_GETTIME
@@ -34,171 +33,137 @@ typedef struct timeval timev_t;
 #error Neither clock_gettime() nor gettimeofday() found. At least one is required.
 #endif
 
-struct fdset_backend_t _fdset_backend = {
-	NULL
-};
+/* Realloc memory or return error (part of fdset_resize). */
+#define MEM_RESIZE(tmp, p, n) \
+	if ((tmp = realloc((p), (n))) == NULL) \
+		return KNOT_ENOMEM; \
+	(p) = tmp;
 
-/*! \brief Set backend implementation. */
-static void fdset_set_backend(struct fdset_backend_t *backend) {
-	memcpy(&_fdset_backend, backend, sizeof(struct fdset_backend_t));
-}
-
-/* Linux epoll API. */
-#ifdef HAVE_EPOLL_WAIT
-  #include "common/fdset_epoll.h"
-#endif /* HAVE_EPOLL_WAIT */
-
-/* BSD kqueue API */
-#ifdef HAVE_KQUEUE
-  #include "common/fdset_kqueue.h"
-#endif /* HAVE_KQUEUE */
-
-/* POSIX poll API */
-#ifdef HAVE_POLL
-  #include "common/fdset_poll.h"
-#endif /* HAVE_POLL */
-
-/*! \brief Bootstrap polling subsystem (it is called automatically). */
-void __attribute__ ((constructor)) fdset_init()
+static int fdset_resize(fdset_t *set, unsigned size)
 {
-	/* Preference: epoll */
-#ifdef HAVE_EPOLL_WAIT
-	if (dlsym(RTLD_DEFAULT, "epoll_wait") != 0) {
-		fdset_set_backend(&FDSET_EPOLL);
-		return;
-	}
-#endif
-
-	/* Preference: kqueue */
-#ifdef HAVE_KQUEUE
-	if (dlsym(RTLD_DEFAULT, "kqueue") != 0) {
-		fdset_set_backend(&FDSET_KQUEUE);
-		return;
-	}
-#endif
-
-	/* Fallback: poll */
-#ifdef HAVE_POLL
-	if (dlsym(RTLD_DEFAULT, "poll") != 0) {
-		fdset_set_backend(&FDSET_POLL);
-		return;
-	}
-#endif
-
-	/* This shouldn't happen. */
-	fprintf(stderr, "fdset: fatal error - no valid fdset backend found\n");
-	return;
+	void *tmp = NULL;
+	MEM_RESIZE(tmp, set->ctx, size * sizeof(void*));
+	MEM_RESIZE(tmp, set->pfd, size * sizeof(struct pollfd));
+	MEM_RESIZE(tmp, set->timeout, size * sizeof(timev_t));
+	set->size = size;
+	return KNOT_EOK;
 }
 
-/*!
- * \brief Compare file descriptors.
- *
- * \param a File descriptor.
- * \param b File descriptor.
- *
- * \retval -1 if a < b
- * \retval  0 if a == b
- * \retval  1 if a > b
- */
-static inline int fdset_compare(void *a, void *b)
+int fdset_init(fdset_t *set, unsigned size)
 {
-	if (a > b) return 1;
-	if (a < b) return -1;
-	return 0;
-}
-
-fdset_t *fdset_new() {
-	fdset_t* set = _fdset_backend.fdset_new();
-	fdset_base_t *base = (fdset_base_t*)set;
-	if (base != NULL) {
-		/* Create atimes list. */
-		base->atimes = skip_create_list(fdset_compare);
-		if (base->atimes == NULL) {
-			fdset_destroy(set);
-			set = NULL;
-		}
+	if (set == NULL) {
+		return KNOT_EINVAL;
 	}
-	return set;
+
+	memset(set, 0, sizeof(fdset_t));
+	return fdset_resize(set, size);
 }
 
-int fdset_destroy(fdset_t* fdset) {
-	fdset_base_t *base = (fdset_base_t*)fdset;
-	if (base != NULL && base->atimes != NULL) {
-		skip_destroy_list(&base->atimes, NULL, free);
-	}
-	return _fdset_backend.fdset_destroy(fdset);
-}
-
-int fdset_remove(fdset_t *fdset, int fd) {
-	fdset_base_t *base = (fdset_base_t*)fdset;
-	if (base != NULL && base->atimes != NULL) {
-		skip_remove(base->atimes, (void*)((size_t)fd), NULL, free);
-	}
-	return _fdset_backend.fdset_remove(fdset, fd);
-}
-
-int fdset_set_watchdog(fdset_t* fdset, int fd, int interval)
+int fdset_clear(fdset_t* set)
 {
-	fdset_base_t *base = (fdset_base_t*)fdset;
-	if (base == NULL || base->atimes == NULL) {
-		return -1;
+	if (set == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	free(set->ctx);
+	free(set->pfd);
+	free(set->timeout);
+	memset(set, 0, sizeof(fdset_t));
+	return KNOT_EOK;
+}
+
+int fdset_add(fdset_t *set, int fd, unsigned events, void *ctx)
+{
+	if (set == NULL || fd < 0) {
+		return KNOT_EINVAL;
+	}
+
+	/* Realloc needed. */
+	if (set->n == set->size && fdset_resize(set, set->size + FDSET_INIT_SIZE))
+		return KNOT_ENOMEM;
+
+	/* Initialize. */
+	int i = set->n++;
+	set->pfd[i].fd = fd;
+	set->pfd[i].events = events;
+	set->pfd[i].revents = 0;
+	set->ctx[i] = ctx;
+	set->timeout[i] = 0;
+
+	/* Return index to this descriptor. */
+	return i;
+}
+
+int fdset_remove(fdset_t *set, unsigned i)
+{
+	if (set == NULL || i >= set->n) {
+		return KNOT_EINVAL;
+	}
+
+	/* Decrement number of elms. */
+	--set->n;
+
+	/* Nothing else if it is the last one.
+	 * Move last -> i if some remain. */
+	unsigned last = set->n; /* Already decremented */
+	if (i < last) {
+		set->pfd[i] = set->pfd[last];
+		set->timeout[i] = set->timeout[last];
+		set->ctx[i] = set->ctx[last];
+	}
+
+	return KNOT_EOK;
+}
+
+int fdset_set_watchdog(fdset_t* set, int i, int interval)
+{
+	if (set == NULL || i >= set->n) {
+		return KNOT_EINVAL;
 	}
 
 	/* Lift watchdog if interval is negative. */
 	if (interval < 0) {
-		skip_remove(base->atimes, (void*)((size_t)fd), NULL, free);
-		return 0;
-	}
-
-	/* Find if exists. */
-	timev_t *ts = NULL;
-	ts = (timev_t*)skip_find(base->atimes, (void*)((size_t)fd));
-	if (ts == NULL) {
-		ts = malloc(sizeof(timev_t));
-		if (ts == NULL) {
-			return -1;
-		}
-		skip_insert(base->atimes, (void*)((size_t)fd), (void*)ts, NULL);
+		set->timeout[i] = 0;
+		return KNOT_EOK;
 	}
 
 	/* Update clock. */
-	if (time_now(ts) < 0) {
-		return -1;
-	}
+	timev_t now;
+	if (time_now(&now) < 0)
+		return KNOT_ERROR;
 
-	ts->tv_sec += interval; /* Only seconds precision. */
-	return 0;
+	set->timeout[i] = now.tv_sec + interval; /* Only seconds precision. */
+	return KNOT_EOK;
 }
 
-int fdset_sweep(fdset_t* fdset, void(*cb)(fdset_t*, int, void*), void *data)
+int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data)
 {
-	fdset_base_t *base = (fdset_base_t*)fdset;
-	if (base == NULL || base->atimes == NULL) {
-		return -1;
+	if (set == NULL || cb == NULL) {
+		return KNOT_EINVAL;
 	}
 
 	/* Get time threshold. */
 	timev_t now;
 	if (time_now(&now) < 0) {
-		return -1;
+		return KNOT_ERROR;
 	}
 
-	/* Inspect all nodes. */
-	int sweeped = 0;
-	const skip_node_t *n = skip_first(base->atimes);
-	while (n != NULL) {
-		const skip_node_t* pnext = skip_next(n);
+	unsigned i = 0;
+	while (i < set->n) {
 
-		/* Evaluate */
-		timev_t *ts = (timev_t*)n->value;
-		if (ts->tv_sec <= now.tv_sec) {
-			cb(fdset, (int)(((ssize_t)n->key)), data);
-			++sweeped;
+		/* Check sweep state, remove if requested. */
+		if (set->timeout[i] > 0 && set->timeout[i] <= now.tv_sec) {
+			if (cb(set, i, data) == FDSET_SWEEP) {
+				if (fdset_remove(set, i) == KNOT_EOK)
+					continue; /* Stay on the index. */
+			}
 		}
-		n = pnext;
+
+		/* Next descriptor. */
+		++i;
 	}
 
-	return sweeped;
+	return KNOT_EOK;
 }
 
 /* OpenBSD compatibility. */

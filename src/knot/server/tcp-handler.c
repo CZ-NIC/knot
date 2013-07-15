@@ -39,13 +39,10 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/util/wire.h"
 
-/* Defines */
-#define TCP_BUFFER_SIZE 65535 /*! Do not change, as it is used for maximum DNS/TCP packet size. */
-
 /*! \brief TCP worker data. */
 typedef struct tcp_worker_t {
 	iohandler_t *ioh; /*!< Shortcut to I/O handler. */
-	fdset_t *fdset;   /*!< File descriptor set. */
+	fdset_t set;      /*!< File descriptor set. */
 	int pipe[2];      /*!< Master-worker signalization pipes. */
 } tcp_worker_t;
 
@@ -83,17 +80,19 @@ static int tcp_reply(int fd, uint8_t *qbuf, size_t resp_len)
 }
 
 /*! \brief Sweep TCP connection. */
-static void tcp_sweep(fdset_t *set, int fd, void* data)
+static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 {
 	UNUSED(data);
+	assert(set && i < set->n && i >= 0);
 
+	int fd = set->pfd[i].fd;
 	char r_addr[SOCKADDR_STRLEN] = { '\0' };
 	int r_port = 0;
 	struct sockaddr_storage addr;
 	socklen_t len = sizeof(addr);
 	if (getpeername(fd, (struct sockaddr*)&addr, &len) < 0) {
 		dbg_net("tcp: sweep getpeername() on invalid socket=%d\n", fd);
-		return;
+		return FDSET_SWEEP;
 	}
 
 	/* Translate */
@@ -111,8 +110,8 @@ static void tcp_sweep(fdset_t *set, int fd, void* data)
 
 	log_server_notice("Connection with '%s@%d' was terminated due to "
 	                  "inactivity.\n", r_addr, r_port);
-	fdset_remove(set, fd);
 	close(fd);
+	return FDSET_SWEEP;
 }
 
 /*!
@@ -324,13 +323,34 @@ int tcp_accept(int fd)
 	return incoming;
 }
 
+/*! \brief Read a descriptor from the pipe and assign it to given fdset. */
+static int tcp_loop_assign(int pipe, fdset_t *set)
+{
+	/* Read socket descriptor from pipe. */
+	int client, next_id;
+	if (read(pipe, &client, sizeof(int)) != sizeof(int)) {
+		return KNOT_ENOENT;
+	}
+
+	/* Assign to fdset. */
+	next_id = fdset_add(set, client, POLLIN, NULL);
+	if (next_id < 0) {
+		socket_close(client);
+		return next_id; /* Contains errno. */
+	}
+
+	/* Update watchdog timer. */
+	rcu_read_lock();
+	fdset_set_watchdog(set, next_id, conf()->max_conn_hs);
+	rcu_read_unlock();
+	return next_id;
+}
+
 tcp_worker_t* tcp_worker_create()
 {
 	tcp_worker_t *w = malloc(sizeof(tcp_worker_t));
-	if (w == NULL) {
-		dbg_net("tcp: out of memory when creating worker\n");
+	if (w == NULL)
 		return NULL;
-	}
 
 	/* Create signal pipes. */
 	memset(w, 0, sizeof(tcp_worker_t));
@@ -340,16 +360,14 @@ tcp_worker_t* tcp_worker_create()
 	}
 
 	/* Create fdset. */
-	w->fdset = fdset_new();
-	if (!w->fdset) {
+	if (fdset_init(&w->set, FDSET_INIT_SIZE) != KNOT_EOK) {
 		close(w->pipe[0]);
 		close(w->pipe[1]);
 		free(w);
 		return NULL;
 	}
 
-	fdset_add(w->fdset, w->pipe[0], OS_EV_READ);
-
+	fdset_add(&w->set, w->pipe[0], POLLIN, NULL);
 	return w;
 }
 
@@ -359,8 +377,8 @@ void tcp_worker_free(tcp_worker_t* w)
 		return;
 	}
 
-	/* Destroy fdset. */
-	fdset_destroy(w->fdset);
+	/* Clear fdset. */
+	fdset_clear(&w->set);
 
 	/* Close pipe write end and worker. */
 	close(w->pipe[0]);
@@ -394,15 +412,21 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	int uncork = setsockopt(fd, SOL_TCP, TCP_CORK, &cork, sizeof(cork));
 #endif
 
+	/* Flags. */
+	int flags = 0;
+#ifdef MSG_NOSIGNAL
+	flags |= MSG_NOSIGNAL;
+#endif
+
 	/* Send message size. */
 	unsigned short pktsize = htons(msglen);
-	int sent = send(fd, &pktsize, sizeof(pktsize), 0);
+	int sent = send(fd, &pktsize, sizeof(pktsize), flags);
 	if (sent < 0) {
 		return KNOT_ERROR;
 	}
 
 	/* Send message data. */
-	sent = send(fd, msg, msglen, 0);
+	sent = send(fd, msg, msglen, flags);
 	if (sent < 0) {
 		return KNOT_ERROR;
 	}
@@ -421,9 +445,15 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 
 int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 {
+	/* Flags. */
+	int flags = MSG_WAITALL;
+#ifdef MSG_NOSIGNAL
+	flags |= MSG_NOSIGNAL;
+#endif
+
 	/* Receive size. */
 	unsigned short pktsize = 0;
-	int n = recv(fd, &pktsize, sizeof(unsigned short), MSG_WAITALL);
+	int n = recv(fd, &pktsize, sizeof(unsigned short), flags);
 	if (n < 0) {
 		if (errno == EAGAIN) {
 			return KNOT_EAGAIN;
@@ -455,7 +485,7 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 	}
 
 	/* Receive payload. */
-	n = recv(fd, buf, pktsize, MSG_WAITALL);
+	n = recv(fd, buf, pktsize, flags);
 	if (n < 0) {
 		if (errno == EAGAIN) {
 			return KNOT_EAGAIN;
@@ -481,23 +511,22 @@ int tcp_loop_master(dthread_t *thread)
 	tcp_worker_t **workers = h->data;
 
 	/* Prepare structures for bound sockets. */
-	fdset_it_t it;
-	fdset_t *fds = NULL;
 	ref_t *ref = NULL;
-	int if_cnt = 0;
+	fdset_t set;
+	fdset_init(&set, conf()->ifaces_count);
 
 	/* Accept connections. */
-	int id = 0;
-	dbg_net("tcp: created 1 master with %d workers, backend is '%s' \n",
-	        unit->size - 1, fdset_method());
+	int id = 0, ret = 0;
+	dbg_net("tcp: created 1 master with %d workers\n", unit->size - 1);
 	for(;;) {
 
 		/* Check handler state. */
 		if (knot_unlikely(st->s & ServerReload)) {
 			st->s &= ~ServerReload;
 			ref_release(ref);
-			ref = server_set_ifaces(h->server, &fds, &if_cnt, IO_TCP);
-			if (if_cnt == 0) break;
+			ref = server_set_ifaces(h->server, &set, IO_TCP);
+			if (set.n == 0) /* Terminate on zero interfaces. */
+				break;
 		}
 
 		/* Check for cancellation. */
@@ -506,35 +535,34 @@ int tcp_loop_master(dthread_t *thread)
 		}
 
 		/* Wait for events. */
-		int nfds = fdset_wait(fds, OS_EV_FOREVER);
+		int nfds = poll(set.pfd, set.n, -1);
 		if (nfds <= 0) {
-			if (errno == EINTR) continue;
+			if (errno == EINTR)
+				continue;
 			break;
 		}
 
-		fdset_begin(fds, &it);
-		while(nfds > 0) {
-			/* Accept client. */
-			int client = tcp_accept(it.fd);
-			if (client > -1) {
-				/* Add to worker in RR fashion. */
-				if (write(workers[id]->pipe[1], &client, sizeof(int)) < 0) {
-					dbg_net("tcp: failed to register fd=%d to worker=%d\n",
-					        client, id);
-					close(client);
-					continue;
-				}
-				id = get_next_rr(id, unit->size - 1);
-			}
+		for (unsigned i = 0; nfds > 0 && i < set.n; ++i) {
+			/* Skip inactive. */
+			if (!(set.pfd[i].revents & POLLIN))
+				continue;
 
-			if (fdset_next(fds, &it) != 0) {
-				break;
-			}
+			/* Accept client. */
+			--nfds; /* One less active event. */
+			int client = tcp_accept(set.pfd[i].fd);
+			if (client < 0)
+				continue;
+
+			/* Add to worker in RR fashion. */
+			id = get_next_rr(id, unit->size - 1);
+			ret = write(workers[id]->pipe[1], &client, sizeof(int));
+			if (ret < 0)
+				close(client);
 		}
 	}
 
 	dbg_net("tcp: master thread finished\n");
-	fdset_destroy(fds);
+	fdset_clear(&set);
 	ref_release(ref);
 
 	return KNOT_EOK;
@@ -542,18 +570,6 @@ int tcp_loop_master(dthread_t *thread)
 
 int tcp_loop_worker(dthread_t *thread)
 {
-	tcp_worker_t *w = thread->data;
-	if (!w) {
-		return KNOT_EINVAL;
-	}
-
-	/* Allocate buffer for requests. */
-	uint8_t *qbuf = malloc(TCP_BUFFER_SIZE);
-	if (qbuf == NULL) {
-		dbg_net("tcp: failed to allocate buffers for TCP worker\n");
-		return KNOT_EINVAL;
-	}
-
 	/* Drop all capabilities on workers. */
 #ifdef HAVE_CAP_NG_H
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
@@ -562,84 +578,74 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 #endif /* HAVE_CAP_NG_H */
 
-	/* Next sweep time. */
+	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
+	tcp_worker_t *w = thread->data;
+	if (w == NULL || qbuf == NULL) {
+		free(qbuf);
+		return KNOT_EINVAL;
+	}
+
+	/* Accept clients. */
+	dbg_net("tcp: worker %p started\n", w);
+	fdset_t *set = &w->set;
 	timev_t next_sweep;
 	time_now(&next_sweep);
 	next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
-
-	/* Accept clients. */
-	dbg_net_verb("tcp: worker %p started\n", w);
 	for (;;) {
 
 		/* Cancellation point. */
-		if (dt_is_cancelled(thread)) {
+		if (dt_is_cancelled(thread))
 			break;
-		}
 
 		/* Wait for events. */
-		int nfds = fdset_wait(w->fdset, (TCP_SWEEP_INTERVAL * 1000)/2);
-		if (nfds < 0) {
+		int nfds = poll(set->pfd, set->n, TCP_SWEEP_INTERVAL * 1000);
+		if (nfds < 0)
 			continue;
-		}
 
 		/* Establish timeouts. */
 		rcu_read_lock();
 		int max_idle = conf()->max_conn_idle;
-		int max_hs = conf()->max_conn_hs;
 		rcu_read_unlock();
 
 		/* Process incoming events. */
-		dbg_net_verb("tcp: worker %p registered %d events\n",
-		             w, nfds);
-		fdset_it_t it;
-		fdset_begin(w->fdset, &it);
-		while(nfds > 0) {
+		unsigned i = 0;
+		while (nfds > 0 && i < set->n) {
 
-			/* Handle incoming clients. */
-			if (it.fd == w->pipe[0]) {
-				int client = 0;
-				if (read(it.fd, &client, sizeof(int)) < 0) {
-					continue;
-				}
-
-				dbg_net_verb("tcp: worker %p registered "
-				             "client %d\n",
-				             w, client);
-				fdset_add(w->fdset, client, OS_EV_READ);
-				fdset_set_watchdog(w->fdset, client, max_hs);
-				dbg_net("tcp: watchdog for fd=%d set to %ds\n",
-				        client, max_hs);
+			if (!(set->pfd[i].revents & set->pfd[i].events)) {
+				/* Skip inactive. */
+				++i;
+				continue;
 			} else {
-				/* Handle other events. */
-				int ret = tcp_handle(w, it.fd, qbuf,
-				                     TCP_BUFFER_SIZE);
+				/* One less active event. */
+				--nfds;
+			}
+
+			/* Register new TCP client or process a query. */
+			int fd = set->pfd[i].fd;
+			if (fd == w->pipe[0]) {
+				tcp_loop_assign(fd, set);
+			} else {
+				int ret = tcp_handle(w, fd, qbuf, SOCKET_MTU_SZ);
 				if (ret == KNOT_EOK) {
-					fdset_set_watchdog(w->fdset, it.fd,
-					                   max_idle);
-					dbg_net("tcp: watchdog for fd=%d "
-					        "set to %ds\n",
-					        it.fd, max_idle);
+					/* Update socket activity timer. */
+					fdset_set_watchdog(set, i, max_idle);
 				}
-				/*! \todo Refactor to allow erase on iterator.*/
 				if (ret == KNOT_ECONNREFUSED) {
-					fdset_remove(w->fdset, it.fd);
-					close(it.fd);
-					break;
+					fdset_remove(set, i);
+					close(fd);
+					continue; /* Stay on the same index. */
 				}
-
 			}
 
-			/* Check if next exists. */
-			if (fdset_next(w->fdset, &it) != 0) {
-				break;
-			}
+			/* Next active. */
+			++i;
 		}
 
 		/* Sweep inactive. */
 		timev_t now;
 		if (time_now(&now) == 0) {
 			if (now.tv_sec >= next_sweep.tv_sec) {
-				fdset_sweep(w->fdset, &tcp_sweep, NULL);
+				fdset_sweep(set, &tcp_sweep, NULL);
 				memcpy(&next_sweep, &now, sizeof(next_sweep));
 				next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
 			}
@@ -648,7 +654,7 @@ int tcp_loop_worker(dthread_t *thread)
 
 	/* Stop whole unit. */
 	free(qbuf);
-	dbg_net_verb("tcp: worker %p finished\n", w);
+	dbg_net("tcp: worker %p finished\n", w);
 	return KNOT_EOK;
 }
 
