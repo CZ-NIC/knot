@@ -2515,6 +2515,12 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 	data.children = 0;
 	data.contents = contents;
 
+	if (contents == NULL) {
+		log_zone_warning("Zone to be integrity-checked does "
+		                 "not exist. Skipping...\n");
+		return 1;
+	}
+
 	int ret = knot_zone_contents_tree_apply_inorder(
 				(knot_zone_contents_t *)contents,
 				knot_zc_integrity_check_node, (void *)&data);
