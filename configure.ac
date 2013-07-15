@@ -68,7 +68,7 @@ AC_PROG_INSTALL
 # Check for Ragel
 AC_PATH_PROG([RAGEL], [ragel], [true])
 AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "true")
-  
+
 # Set FSM type for Ragel
 AC_SUBST([FSM_TYPE], [-T0])
 AC_ARG_ENABLE([fastparser],
@@ -144,6 +144,11 @@ AC_ARG_ENABLE([recvmmsg],
     fi
     ])
 
+# Enable integrity check
+AC_ARG_ENABLE([integrity-check],
+    AS_HELP_STRING([--enable-integrity-check], [enable integrity check in knotd via SIGUSR1]),
+    [AC_DEFINE([INTEGRITY_CHECK], [1], [integrity check in knotd])])
+
 # Check for link time optimizations support and predictive commoning
 AC_ARG_ENABLE([lto],
     AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, enable if not broken for some extra speed [default=no]]),
@@ -167,19 +172,19 @@ AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-alias
 # Default directories
 run_dir="${localstatedir}/run/knot"
 AC_ARG_WITH([rundir],
-        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=`eval echo ${localstatedir}`/run/knot]]),
+        AC_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=LOCALSTATEDIR/run/knot]]),
         [run_dir=$withval])
 AC_SUBST(run_dir)
 
-storage_dir="${sharedstatedir}/knot"
+storage_dir="${localstatedir}/lib/knot"
 AC_ARG_WITH([storage],
-        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=$(sharedstatedir)/knot]]),
+        AC_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=LOCALSTATEDIR/lib/knot]]),
         [storage_dir=$withval])
 AC_SUBST(storage_dir)
 
 config_dir="${sysconfdir}/knot"
 AC_ARG_WITH([configdir],
-        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=$(sysconfdir)/knot]]),
+        AC_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=SYSCONFDIR/knot]]),
         [config_dir=$withval])
 AC_SUBST(config_dir)
 
@@ -297,7 +302,7 @@ AC_TYPE_SSIZE_T
 AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday epoll_wait fgetln getline kqueue madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select sendmmsg setgroups])
+AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select sendmmsg setgroups])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],

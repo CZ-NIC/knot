@@ -42,8 +42,13 @@
 /* Signal flags. */
 static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
-static volatile short sig_req_refresh = 0;
 static volatile short sig_stopping = 0;
+
+#ifdef INTEGRITY_CHECK
+static volatile short sig_integrity_check = 0;
+int check_iteration = 0;
+char *zone = NULL;
+#endif /* INTEGRITY_CHECK */
 
 // Cleanup handler
 static int do_cleanup(server_t *server, char *configf, char *pidf);
@@ -57,12 +62,6 @@ void interrupt_handle(int s)
 		return;
 	}
 
-	// Refresh
-	if (s == SIGUSR2) {
-		sig_req_refresh = 1;
-		return;
-	}
-
 	// Stop server
 	if (s == SIGINT || s == SIGTERM) {
 		if (sig_stopping == 0) {
@@ -72,6 +71,14 @@ void interrupt_handle(int s)
 			exit(1);
 		}
 	}
+
+#ifdef INTEGRITY_CHECK
+	// Start zone integrity check
+	if (s == SIGUSR1) {
+		sig_integrity_check = 1;
+		return;
+	}
+#endif /* INTEGRITY_CHECK */
 }
 
 void help(void)
@@ -80,6 +87,10 @@ void help(void)
 	       PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c, --config [file] Select configuration file.\n"
+#ifdef INTEGRITY_CHECK
+	       " -z, --zone [zone]   Set zone to check. Send SIGUSR1 to trigger\n"
+	       "                     integrity check.\n"
+#endif /* INTEGRITY_CHECK */
 	       " -d, --daemonize     Run server as a daemon.\n"
 	       " -v, --verbose       Verbose mode - additional runtime information.\n"
 	       " -V, --version       Print version of the server.\n"
@@ -97,6 +108,9 @@ int main(int argc, char **argv)
 	/* Long options. */
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
+#ifdef INTEGRITY_CHECK
+		{"zone",      required_argument, 0, 'z'},
+#endif /* INTEGRITY_CHECK */
 		{"daemonize", no_argument,       0, 'd'},
 		{"verbose",   no_argument,       0, 'v'},
 		{"version",   no_argument,       0, 'V'},
@@ -104,12 +118,25 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
+#ifndef INTEGRITY_CHECK
 	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
+#else
+	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
+#endif /* INTEGRITY_CHECK */
 		switch (c)
 		{
 		case 'c':
 			config_fn = strdup(optarg);
 			break;
+#ifdef INTEGRITY_CHECK
+		case 'z':
+			if (optarg[strlen(optarg) - 1] != '.') {
+				zone = strcdup(optarg, ".");
+			} else {
+				zone = strdup(optarg);
+			}
+			break;
+#endif /* INTEGRITY_CHECK */
 		case 'd':
 			daemonize = 1;
 			break;
@@ -293,12 +320,14 @@ int main(int argc, char **argv)
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
 		sigaction(SIGPIPE, &sa, NULL);
-		sigaction(SIGUSR2, &sa, NULL);
+#ifdef INTEGRITY_CHECK
+		sigaction(SIGUSR1, &sa, NULL);
+#endif /* INTEGRITY_CHECK */
 		sa.sa_flags = 0;
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Bind to control interface. */
-		uint8_t buf[65535]; /*! \todo #2035 should be on heap */
+		uint8_t buf[SOCKET_MTU_SZ];
 		size_t buflen = sizeof(buf);
 		int remote = -1;
 		if (conf()->ctl.iface != NULL) {
@@ -342,17 +371,29 @@ int main(int argc, char **argv)
 				sig_req_reload = 0;
 				server_reload(server, config_fn);
 			}
-			if (sig_req_refresh) {
-				log_server_info("Refreshing slave zones...\n");
-				sig_req_reload = 0;
-				int cf_ret = server_refresh(server);
-				if (cf_ret != KNOT_EOK) {
-					log_server_error("Couldn't refresh "
-					                 "slave zones - %s",
-					                 knot_strerror(cf_ret));
-				}
-
+#ifdef INTEGRITY_CHECK
+			if (zone == NULL)
+				sig_integrity_check = 0;
+			if (sig_integrity_check) {
+				log_server_info("Starting integrity check of "
+				                "zone: %s\n", zone);
+				knot_dname_t *zdn =
+					knot_dname_new_from_str(zone,
+					                        strlen(zone),
+					                        NULL);
+				knot_zone_t *z =
+					knot_zonedb_find_zone(server->nameserver->zone_db,
+					                      zdn);
+				int ic_ret =
+					knot_zone_contents_integrity_check(z->contents);
+				log_server_info("Integrity check: %d errors "
+				                "discovered.\n", ic_ret);
+				knot_dname_free(&zdn);
+				log_server_info("Integrity check %d finished.\n",
+				                check_iteration);
+				++check_iteration;
 			}
+#endif /* INTEGRITY_CHECK */
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
@@ -387,6 +428,10 @@ int main(int argc, char **argv)
 	if (pidf && pid_remove(pidf) < 0)
 		log_server_warning("Failed to remove PID file.\n");
 	do_cleanup(server, config_fn, pidf);
+
+#ifdef INTEGRITY_CHECK
+	free(zone);
+#endif /* INTEGRITY_CHECK */
 
 	if (!daemonize) {
 		fflush(stdout);

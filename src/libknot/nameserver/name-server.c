@@ -1753,7 +1753,7 @@ static inline int ns_referral(const knot_node_t *node,
 			    && knot_query_dnssec_requested(
 			                        knot_packet_query(resp))) {
 				ret = ns_add_rrsigs(ds_rrset, resp, node->owner,
-				              knot_response_add_rrset_authority,
+				              knot_response_add_rrset_answer,
 				              1);
 			}
 		} else {
@@ -1919,7 +1919,6 @@ static int ns_answer_from_node(const knot_node_t *node,
 			}
 		}
 	} else {  // else put authority NS
-		assert(previous == NULL);
 		assert(closest_encloser == knot_node_parent(node)
 		      || !knot_dname_is_wildcard(knot_node_owner(node))
 		      || knot_dname_compare(qname, knot_node_owner(node)) == 0);
@@ -2141,14 +2140,19 @@ static int ns_answer_from_zone(const knot_zone_contents_t *zone,
 	uint16_t qtype = knot_packet_qtype(resp);
 
 search:
-	find_ret = knot_zone_contents_find_dname(zone, qname, &node,
-	                                          &closest_encloser, &previous);
-//	node = knot_node_current(node);
-//	closest_encloser = knot_node_current(closest_encloser);
-//	previous = knot_node_current(previous);
-	previous = NULL; // TODO REVIEW LS
+	// Searching for a name directly is faster than when we need previous dname
+	node = knot_zone_contents_find_node(zone, qname);
+	if (node != NULL) {
+		// If node is found, closest_encloser is equal to node itself
+		closest_encloser = node;
+		find_ret = KNOT_ZONE_NAME_FOUND;
+	} else {
+		// We need previous and closest encloser, full search has to be done
+		find_ret = knot_zone_contents_find_dname(zone, qname, &node,
+		                                         &closest_encloser, &previous);
 		if (find_ret == KNOT_EINVAL) {
-		return NS_ERR_SERVFAIL;
+			return NS_ERR_SERVFAIL;
+		}
 	}
 
 dbg_ns_exec_verb(

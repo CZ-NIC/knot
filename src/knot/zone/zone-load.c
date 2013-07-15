@@ -55,7 +55,7 @@ static int rrset_list_add(rrset_list_t **head, knot_rrset_t *rrsig)
 		tmp->data = rrsig;
 		*head = tmp;
 	}
-	
+
 	dbg_zp_verb("zp: rrset_add: Added RRSIG %p to list.\n", rrsig);
 
 	return KNOT_EOK;
@@ -80,7 +80,7 @@ static void rrset_list_delete(rrset_list_t **head)
 	}
 
 	*head = NULL;
-	
+
 	dbg_zp("zp: list_delete: List deleleted.\n");
 }
 
@@ -121,9 +121,9 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 			return KNOT_ERROR;
 		}
 	}
-	
+
 	assert(tmp_rrset);
-	
+
 	if (tmp_rrset->ttl != rrsig->ttl) {
 		char *name = knot_dname_to_str(tmp_rrset->owner);
 		assert(name);
@@ -165,7 +165,7 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 		                 knot_strerror(ret));
 		return NULL;
 	}
-	
+
 	assert(current_rrset->owner == node->owner);
 
 	return node;
@@ -223,7 +223,7 @@ static size_t calculate_item_size(const knot_rrset_t *rrset,
 			        scanner->r_data_blocks[i];
 		}
 	}
-	
+
 	return size;
 }
 
@@ -233,16 +233,16 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 		dbg_zp("zp: add_rdata_to_rr: No RRSet.\n");
 		return KNOT_EINVAL;
 	}
-	
+
 	parser_context_t *parser = scanner->data;
-	
+
 	const rdata_descriptor_t *desc =
 		get_rdata_descriptor(knot_rrset_type(rrset));
 	assert(desc);
-	
+
 	dbg_zp_detail("zp: add_rdata_to_rr: Adding type %d, RRSet has %d RRs.\n",
 	              rrset->type, rrset->rdata_count);
-	
+
 	size_t rdlen = calculate_item_size(rrset, scanner);
 	size_t offset = 0;
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdlen);
@@ -250,7 +250,7 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 		dbg_zp("zp: create_rdata: Could not create RR.\n");
 		return KNOT_ENOMEM;
 	}
-	
+
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
 		if (descriptor_item_is_dname(item)) {
@@ -293,7 +293,7 @@ dbg_zp_exec_detail(
 			          scanner->r_data_blocks[i];
 		}
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -309,23 +309,23 @@ static void process_rr(const scanner_t *scanner)
 	knot_zone_contents_t *contents = parser->current_zone;
 	knot_dname_t *current_owner = NULL;
 	knot_rrset_t *current_rrset = NULL;
-    	if (parser->last_node &&
-    	    (scanner->r_owner_length == parser->last_node->owner->size) &&
-    	    (strncmp((char *)parser->last_node->owner->name,
-    	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
-    		// no need to create new dname;
-    		current_owner = parser->last_node->owner;
+	if (parser->last_node &&
+	    (scanner->r_owner_length == parser->last_node->owner->size) &&
+	    (strncmp((char *)parser->last_node->owner->name,
+	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
+		// no need to create new dname;
+		current_owner = parser->last_node->owner;
 		knot_dname_retain(current_owner);
-    	} else {
-    		current_owner = 
-    			knot_dname_new_from_wire(scanner->r_owner,
-    			                         scanner->r_owner_length,
-    			                         NULL);
-	    	if (current_owner == NULL) {
+	} else {
+		current_owner =
+			knot_dname_new_from_wire(scanner->r_owner,
+			                         scanner->r_owner_length,
+			                         NULL);
+		if (current_owner == NULL) {
 			parser->ret = KNOT_ERROR;
 			return;
 		}
-        	knot_dname_to_lower(current_owner);
+		knot_dname_to_lower(current_owner);
 		/*!< \todo
 		 * If name is already in the table, we might not need to create
 		 * dname object, just compare wires.
@@ -333,30 +333,30 @@ static void process_rr(const scanner_t *scanner)
 		knot_zone_contents_insert_dname_into_table(&current_owner,
 		                                           parser->lookup_tree);
 	}
-	
+
 	/*!< \todo Do not create RRSet each time - merging needs to be sorted though. */
 	current_rrset = knot_rrset_new(current_owner,
 	               scanner->r_type,
 	               scanner->r_class,
 	               scanner->r_ttl);
 	knot_dname_release(current_owner);
-	
+
 	assert(current_owner);
 	assert(current_rrset);
 	parser->current_rrset = current_rrset;
-	
+
 	int ret = add_rdata_to_rr(current_rrset, scanner);
 	if (ret != KNOT_EOK) {
 		log_zone_error("Cannot add RDATA to zone, load failed.\n");
 		parser->ret = ret;
 		return;
 	}
-	
+
 	dbg_zp_verb("zp: process_rr: Processing type: %d.\n",
 	            parser->current_rrset->type);
 
 	assert(current_rrset->rdata_count);
-	
+
 	/* Node add/get functions. */
 	int (*node_add_func)(knot_zone_contents_t *, knot_node_t *, int,
 	                     uint8_t);
@@ -431,12 +431,12 @@ static void process_rr(const scanner_t *scanner)
 				                       parser->last_node);
 				rrset_list_delete(&parser->node_rrsigs);
 			}
-			
+
 			/* The node might however been created previously. */
 			parser->last_node =
 				knot_zone_contents_get_node(contents,
 					knot_rrset_owner(current_rrset));
-			
+
 			if (parser->last_node == NULL) {
 				/* Try NSEC3 tree. */
 				if (current_rrset->type == KNOT_RRTYPE_NSEC3 ||
@@ -448,7 +448,7 @@ static void process_rr(const scanner_t *scanner)
 								current_rrset));
 				}
 			}
-			
+
 			if (parser->last_node == NULL) {
 				/* Still NULL, node has to be created. */
 				if ((parser->last_node = create_node(contents,
@@ -472,12 +472,12 @@ static void process_rr(const scanner_t *scanner)
 			parser->ret = KNOT_ERROR;
 			return;
 		}
-		
+
 		dbg_zp_verb("zp: process_rr: RRSIG proccesed successfully.\n");
 		parser->ret = KNOT_EOK;
 		return;
 	}
-	
+
 	/*! \todo Move RRSIG and RRSet handling to funtions. */
 	assert(current_rrset->type != KNOT_RRTYPE_RRSIG);
 
@@ -520,13 +520,13 @@ static void process_rr(const scanner_t *scanner)
 			return;
 		}
 	}
-	
+
 	if (current_rrset->type != KNOT_RRTYPE_RRSIG) {
 		/*
 		 * If there's already an RRSet of this type in a node, check
-		 * that TTLs are the same, if not, give warning a change TTL. 
+		 * that TTLs are the same, if not, give warning a change TTL.
 		 */
-		const knot_rrset_t *rrset_in_node =        
+		const knot_rrset_t *rrset_in_node =
 			knot_node_rrset(node, current_rrset->type);
 		if (rrset_in_node &&
 		    current_rrset->ttl != rrset_in_node->ttl) {
@@ -536,7 +536,7 @@ static void process_rr(const scanner_t *scanner)
 			/* Actual change will happen in merge. */
 		}
 	}
-	
+
 	ret = knot_zone_contents_add_rrset(contents, current_rrset,
 	                                   &node,
 	                                   KNOT_RRSET_DUPL_MERGE);
@@ -568,40 +568,40 @@ static void process_rr(const scanner_t *scanner)
 		parser->ret = KNOT_EMALF;
 		return;
 	}
-	
+
 	parser->last_node = node;
-	
+
 	dbg_zp_verb("zp: process_rr: RRSet %p processed successfully.\n",
 	            parser->current_rrset);
 	parser->ret = KNOT_EOK;
 }
 
-int knot_zload_open(zloader_t **dst, const char *source, const char *origin, 
+int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
                     int semantic_checks)
 {
 	if (!dst || !source || !origin) {
 		dbg_zload("zload: open: Bad arguments.\n");
 		return KNOT_EINVAL;
 	}
-	
+
 	*dst = NULL;
-	
+
 	/* Check zone file. */
 	struct stat st;
 	if (stat(source, &st) < 0) {
 		return knot_map_errno(errno);
 	}
-	
+
 	/* Create context. */
 	parser_context_t *context = xmalloc(sizeof(parser_context_t));
-	
+
 	/* Create trie for DNAME duplicits. */
 	context->lookup_tree = hattrie_create();
 	if (context->lookup_tree == NULL) {
 		free(context);
 		return KNOT_ENOMEM;
 	}
-	
+
 	context->origin_from_config =
 		knot_dname_new_from_str(origin, strlen(origin), NULL);
 	assert(context->origin_from_config);
@@ -616,7 +616,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	context->current_zone = knot_zone_get_contents(zone);
 	context->node_rrsigs = NULL;
 	context->ret = KNOT_EOK;
-	
+
 	/* Create file loader. */
 	file_loader_t *loader = file_loader_create(source, origin,
 	                                           KNOT_CLASS_IN, 3600,
@@ -628,17 +628,17 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 		free(context);
 		return KNOT_ERROR;
 	}
-	
+
 	/* Allocate new loader. */
 	zloader_t *zl = xmalloc(sizeof(zloader_t));
-	
+
 	zl->source = strdup(source);
 	zl->origin = strdup(origin);
 	zl->file_loader = loader;
 	zl->context = context;
 	zl->semantic_checks = semantic_checks;
 	*dst = zl;
-	
+
 	/* Log all information for now - possibly more config options. */
 	zl->err_handler = handler_new(1, 1, 1, 1, 1);
 	if (zl->err_handler == NULL) {
@@ -647,9 +647,9 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 		                 "Semantic check skipped for zone %s\n",
 		                 origin);
 	}
-	
+
 	context->err_handler = zl->err_handler;
-	
+
 	return KNOT_EOK;
 }
 
@@ -660,7 +660,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		dbg_zload("zload: load: NULL loader!\n");
 		return NULL;
 	}
-	
+
 	parser_context_t *c = loader->context;
 	assert(c);
 	file_loader_process(loader->file_loader);
@@ -676,7 +676,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
-	
+
 	if (loader->file_loader->scanner->error_counter > 0) {
 		log_zone_error("Zone could not be loaded due to %"PRIu64" errors"
 		               " encountered.\n",
@@ -686,7 +686,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
-	
+
 	if (knot_zone_contents_apex(c->current_zone) == NULL ||
 	    knot_node_rrset(knot_zone_contents_apex(c->current_zone), KNOT_RRTYPE_SOA) == NULL) {
 		log_zone_error("No SOA record in the zone file.\n");
@@ -695,13 +695,13 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
-	
+
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
 	rrset_list_delete(&c->node_rrsigs);
 	knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
 	                          &last_nsec3_node, 0);
-	
+
 	if (loader->semantic_checks) {
 		int check_level = 1;
 		const knot_rrset_t *soa_rr =
@@ -724,7 +724,7 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		log_zone_info("Semantic checks completed for zone=%s\n", zname);
 		free(zname);
 	}
-	
+
 	return c->current_zone->zone;
 }
 
@@ -733,9 +733,9 @@ void knot_zload_close(zloader_t *loader)
 	if (!loader) {
 		return;
 	}
-	
+
 	hattrie_free(loader->context->lookup_tree);
-	
+
 	file_loader_free(loader->file_loader);
 
 	free(loader->source);

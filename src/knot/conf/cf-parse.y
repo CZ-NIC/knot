@@ -985,7 +985,8 @@ log_start:
  | log_start log_file '{' log_src '}'
  ;
 
-log: LOG '{' log_start log_end;
+log: LOG { new_config->logs_count = 0; } '{' log_start log_end
+ ;
 
 ctl_listen_start:
   LISTEN_ON { conf_init_iface(scanner, NULL, -1); }

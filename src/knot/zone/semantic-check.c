@@ -606,6 +606,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 			err_handler_handle_error(handler, node,
 					ZC_ERR_NSEC3_UNSECURED_DELEGATION,
 			                         NULL);
+			return KNOT_EOK;
 		} else {
 			/* Unsecured delegation, check whether it is part of
 			 * opt-out span */
@@ -623,7 +624,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 
 			if (nsec3_node == NULL) {
 				/* Probably should not ever happen */
-				return ZC_ERR_NSEC3_NOT_FOUND;
+				return KNOT_ERROR;
 			}
 
 			assert(nsec3_previous);
@@ -643,6 +644,8 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 				err_handler_handle_error(handler, node,
 					ZC_ERR_NSEC3_UNSECURED_DELEGATION_OPT,
 				                         NULL);
+				/* We cannot continue from here. */
+				return KNOT_EOK;
 			}
 		}
 	}
