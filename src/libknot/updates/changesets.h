@@ -147,8 +147,6 @@ void knot_changeset_store_soa(knot_rrset_t **chg_soa,
 int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
                            knot_changeset_part_t part);
 
-int knot_changesets_check_size(knot_changesets_t *changesets);
-
 void knot_changeset_set_flags(knot_changeset_t *changeset,
                              uint32_t flags);
 

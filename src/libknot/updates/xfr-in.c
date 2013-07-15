@@ -1132,20 +1132,20 @@ dbg_xfrin_exec_verb(
 				return ret;
 			} else {
 				// normal SOA, start new changeset
-				(*chs)->count++;
-				ret = knot_changesets_check_size(*chs);
-
 				/* Check changesets for maximum count (so they fit into journal). */
-				if ((*chs)->count > JOURNAL_NCOUNT)
+				if ((*chs)->count + 1> JOURNAL_NCOUNT)
 					ret = KNOT_ESPACE;
 
 				if (ret != KNOT_EOK) {
-					(*chs)->count--;
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
 				}
 
-				cur = knot_changesets_get_last(*chs);
+				cur = knot_changesets_create_changeset(*chs);
+				if (cur == NULL) {
+					knot_rrset_deep_free(&rr, 1, 1);
+					goto cleanup;
+				}
 				ret = knot_changeset_add_soa(cur, rr,
 							     KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
@@ -1153,6 +1153,7 @@ dbg_xfrin_exec_verb(
 					goto cleanup;
 				}
 
+				(*chs)->count++;
 				// change state to REMOVE
 				state = KNOT_CHANGESET_REMOVE;
 			}

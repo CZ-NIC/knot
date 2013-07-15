@@ -310,10 +310,6 @@ void knot_free_changesets(knot_changesets_t **changesets)
 	*changesets = NULL;
 }
 
-/*----------------------------------------------------------------------------*/
-/* knot_changes_t manipulation                                                */
-/*----------------------------------------------------------------------------*/
-
 int knot_changes_add_old_rrsets(knot_rrset_t **rrsets, size_t count,
                                 knot_changes_t *changes)
 {
