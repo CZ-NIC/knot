@@ -442,15 +442,24 @@ int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir)
 		return KNOT_EOK;
 	}
 
-	knot_zone_tree_t *tree = knot_zone_contents_get_nodes(zone);
 	bool sorted = false;
+	hattrie_iter_t *it;
 
-	hattrie_iter_t *it = hattrie_iter_begin(tree, sorted);
+	it = hattrie_iter_begin(zone->nodes, sorted);
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 		sign_node(node, &zone_keys, &policy);
 		hattrie_iter_next(it);
 	}
+	hattrie_iter_free(it);
+
+	it = hattrie_iter_begin(zone->nsec3_nodes, sorted);
+	while (!hattrie_iter_finished(it)) {
+		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
+		sign_node(node, &zone_keys, &policy);
+		hattrie_iter_next(it);
+	}
+	hattrie_iter_free(it);
 
 	free_sign_contexts(&zone_keys);
 	return KNOT_EOK;
