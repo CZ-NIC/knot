@@ -462,7 +462,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                         info_str);
 	}
 
-	if (knot_rrset_ttl(rrset) != knot_rrset_ttl(rrset)) {
+	if (knot_rrset_ttl(rrset) != knot_rrset_ttl(rrsigs)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_TTL,
 		                         info_str);
