@@ -50,11 +50,14 @@ typedef struct {
 
 #define DEFAULT_DNSSEC_POLICY { .sign_lifetime = 2592000, .sign_refresh = 7200 }
 
+static uint32_t time_now(void)
+{
+	return (uint32_t)time(NULL);
+}
+
 static knot_rrset_t *create_rrsig_rrset(const knot_rrset_t *cover)
 {
-	return knot_rrset_new(cover->owner,
-	                      KNOT_RRTYPE_RRSIG,
-	                      cover->rclass,
+	return knot_rrset_new(cover->owner, KNOT_RRTYPE_RRSIG, cover->rclass,
 	                      cover->ttl);
 }
 
@@ -134,58 +137,50 @@ static int sign_rrset_one(knot_rrset_t *rrsigs,
                           const knot_dnssec_policy_t *policy)
 {
 	uint8_t *rdata = create_rrsig_rdata(rrsigs, key);
-	assert(rdata);
+	if (!rdata)
+		return KNOT_ENOMEM;
 
-	// move to caller function, derive from key validity
-	uint32_t sig_incept = (uint32_t)time(NULL);
+	uint32_t sig_incept = time_now();
 	uint32_t sig_expire = sig_incept + policy->sign_lifetime;
 
 	rrsig_write_rdata(rdata, key, covered->owner, covered, sig_incept, sig_expire);
 
-	// RFC 4034
-	// The signature coveres RRSIG RDATA field (excluding the signature)
-	// and all matching RR records. All domain names are in cannonical
-	// form.
+	// RFC 4034: The signature coveres RRSIG RDATA field (excluding the
+	// signature) and all matching RR records, which are ordered
+	// canonically.
 
-	// new signature context (can be put at the end ... leave it here as it makes more sense in the flow)
-	if (knot_dnssec_sign_new(sign_ctx) != KNOT_EOK) {
-		fprintf(stderr, "dnssec sign new failed\n");
-		return KNOT_ERROR;
-	}
+	int result = knot_dnssec_sign_new(sign_ctx);
+	if (result != KNOT_EOK)
+		return result;
 
 	knot_dnssec_sign_add(sign_ctx, rdata, 18); // static
 	knot_dnssec_sign_add(sign_ctx, key->name->name, key->name->size);
 
 	// huge block of rrsets can be optionally created
 	uint8_t *rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
-	if (!rrwf) {
-		fprintf(stderr, "malloc failed\n");
-		// free free free
+	if (!rrwf)
 		return KNOT_ENOMEM;
-	}
 
 	uint16_t rr_count = knot_rrset_rdata_rr_count(covered);
 	for (uint16_t i = 0; i < rr_count; i++) {
 		size_t rr_size;
-		int result = knot_rrset_to_wire_one(covered, i, rrwf,
-						    MAX_RR_WIREFORMAT_SIZE,
-						    &rr_size, NULL);
+		result = knot_rrset_to_wire_one(covered, i, rrwf,
+		                                MAX_RR_WIREFORMAT_SIZE,
+		                                &rr_size, NULL);
 		if (result != KNOT_EOK) {
-			fprintf(stderr, "rrset_to_wire_one failed\n");
-			// some free
-			return KNOT_ENOMEM;
+			free(rrwf);
+			return result;
 		}
 
 		knot_dnssec_sign_add(sign_ctx, rrwf, rr_size);
 	}
 
-	int r = knot_dnssec_sign_write(sign_ctx, rdata + 18 + sizeof(knot_dname_t *));
-	if (r != KNOT_EOK) {
-		// some frees
-		return KNOT_ENOMEM;
-	}
+	uint8_t *rdata_signature = rdata + 18 + sizeof(knot_dname_t *);
+	result = knot_dnssec_sign_write(sign_ctx, rdata_signature);
 
-	return KNOT_EOK;
+	free(rrwf);
+
+	return result;
 }
 
 static bool signature_exists(const knot_rrset_t *rrsigs,
@@ -238,7 +233,7 @@ static int copy_valid_signatures(knot_rrset_t *from, knot_rrset_t *to,
 	assert(policy);
 
 	int result = KNOT_EOK;
-	uint32_t now = (uint32_t)time(NULL);
+	uint32_t now = time_now();
 	uint32_t refresh = policy->sign_refresh;
 	uint32_t expiration;
 
@@ -285,7 +280,7 @@ static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys,
 
 		result = add_missing_signatures(rrset, new_rrsigs, zone_keys, policy);
 		if (result != KNOT_EOK) {
-			fprintf(stderr, "sign_rrset() failed\n");
+			knot_rrset_free(&new_rrsigs);
 			return result;
 		}
 
