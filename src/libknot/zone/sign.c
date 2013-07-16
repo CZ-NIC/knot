@@ -22,16 +22,16 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "common/hattrie/hat-trie.h"
 #include "common/descriptor.h"
 #include "common/errcode.h"
-#include "sign.h"
-#include "zone.h"
-#include "node.h"
+#include "common/hattrie/hat-trie.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
-#include "libknot/sign/key.h"
 #include "libknot/sign/dnssec.h"
+#include "libknot/sign/key.h"
+#include "node.h"
+#include "sign.h"
+#include "zone-contents.h"
 
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024 * sizeof(uint8_t))
 #define MAX_ZONE_KEYS 8
@@ -405,7 +405,7 @@ static int init_sign_contexts(knot_zone_keys_t *keys)
 	return KNOT_EOK;
 }
 
-int knot_zone_sign(const knot_zone_t *zone, const char *keydir)
+int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir)
 {
 	assert(zone);
 	assert(keydir);
@@ -415,7 +415,7 @@ int knot_zone_sign(const knot_zone_t *zone, const char *keydir)
 	knot_zone_keys_t zone_keys;
 	memset(&zone_keys, '\0', sizeof(zone_keys));
 
-	result = load_zone_keys(keydir, zone->name, &zone_keys);
+	result = load_zone_keys(keydir, zone->apex->owner, &zone_keys);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "load_zone_keys() failed\n");
 		return result;
@@ -432,7 +432,7 @@ int knot_zone_sign(const knot_zone_t *zone, const char *keydir)
 		return KNOT_EOK;
 	}
 
-	knot_zone_tree_t *tree = knot_zone_contents_get_nodes(zone->contents);
+	knot_zone_tree_t *tree = knot_zone_contents_get_nodes(zone);
 	bool sorted = false;
 
 	hattrie_iter_t *it = hattrie_iter_begin(tree, sorted);

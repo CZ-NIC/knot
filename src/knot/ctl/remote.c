@@ -194,10 +194,12 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 
 	// add missing signatures
 
+	rcu_read_lock();
 	const char *keydir = conf()->dnssec_keydir;
+	rcu_read_unlock();
 	assert(keydir);
 
-	result = knot_zone_sign(zone, keydir);
+	result = knot_zone_sign(zone->contents, keydir);
 	if (result != KNOT_EOK) {
 		log_server_error("Could not resing zone '%s' (%s).\n",
 				 zone_name, knot_strerror(result));

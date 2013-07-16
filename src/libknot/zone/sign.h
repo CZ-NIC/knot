@@ -16,8 +16,8 @@
 #ifndef _KNOT_ZONE_SIGN_H_
 #define _KNOT_ZONE_SIGN_H_
 
-#include "zone.h"
+#include "zone-contents.h"
 
-int knot_zone_sign(const knot_zone_t *zone, const char *keydir);
+int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir);
 
 #endif // _KNOT_ZONE_SIGN_H_
