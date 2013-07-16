@@ -337,6 +337,12 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		                         NULL);
 	}
 
+	/* Check for expired signature. */
+	if (knot_rrset_rdata_rrsig_sig_expiration(rrsig, rr_pos) < time(NULL)) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_RDATA_EXPIRATION, NULL);
+	}
+
 	/* signer's name is same as in the zone apex */
 	const knot_dname_t *signer_name =
 		knot_rrset_rdata_rrsig_signer_name(rrsig, rr_pos);
