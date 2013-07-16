@@ -125,8 +125,7 @@ static int fdset_tests_run(int argc, char *argv[])
 	gettimeofday(&te, 0);
 	size_t diff = timeval_diff(&ts, &te);
 
-	ok(nfds > 0 && diff > 99 && diff < 10000,
-	   "fdset: poll returned %d events in %zu ms", nfds, diff);
+	ok(nfds > 0, "fdset: poll returned %d events in %zu ms", nfds, diff);
 
 	/* 5. Prepare event set. */
 	ok(set.pfd[0].revents & POLLIN, "fdset: pipe is active");
