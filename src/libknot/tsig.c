@@ -145,7 +145,7 @@ int tsig_create_rdata(knot_rrset_t *rr, uint16_t maclen, uint16_t tsig_err)
 	return KNOT_EOK;
 }
 
-int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
+int tsig_rdata_set_alg_name(knot_rrset_t *tsig, const knot_dname_t *alg_name)
 {
 	uint8_t *rd = tsig_rdata_seek(tsig, TSIG_ALGNAME_O, TSIG_NAMELEN);
 	if (!rd) {
@@ -153,16 +153,22 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 	}
 
 	memcpy(rd, &alg_name, sizeof(knot_dname_t*));
+#warning Will leak until written directly do RDATA.
+#if 0
 	knot_dname_retain(alg_name);
+#endif
 	return KNOT_EOK;
 }
 
 int tsig_rdata_set_alg(knot_rrset_t *tsig, knot_tsig_algorithm_t alg)
 {
 	const char *s = tsig_alg_to_str(alg);
-	knot_dname_t *alg_name = knot_dname_new_from_str(s, strlen(s));
+	knot_dname_t *alg_name = knot_dname_from_str(s, strlen(s));
 	int ret = tsig_rdata_set_alg_name(tsig, alg_name);
+#warning Will leak until written directly do RDATA.
+#if 0
 	knot_dname_release(alg_name);
+#endif
 	return ret;
 }
 

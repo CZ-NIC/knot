@@ -58,7 +58,7 @@ enum tsig_consts {
  * \note Uses the given domain name, do not deallocate it!
  */
 int tsig_create_rdata(knot_rrset_t *rr,  uint16_t maclen, uint16_t tsig_err);
-int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
+int tsig_rdata_set_alg_name(knot_rrset_t *tsig, const knot_dname_t *alg_name);
 int tsig_rdata_set_alg(knot_rrset_t *tsig, knot_tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
 int tsig_rdata_store_current_time(knot_rrset_t *tsig);

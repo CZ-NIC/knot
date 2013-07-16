@@ -97,11 +97,8 @@ static const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
 	 * records are only present in a parent zone.
 	 */
 	if (qtype == KNOT_RRTYPE_DS) {
-		/*! \todo Optimize, do not deep copy dname. */
-		knot_dname_t *name = knot_dname_left_chop(qname);
-		zone = knot_zonedb_find_zone_for_name(zdb, name);
-		/* Directly discard. */
-		knot_dname_free(&name);
+		const knot_dname_t *parent = knot_wire_next_label(qname, NULL);
+		zone = knot_zonedb_find_zone_for_name(zdb, parent);
 		/* If zone does not exist, search for its parent zone,
 		   this will later result to NODATA answer. */
 		if (zone == NULL) {
@@ -137,9 +134,8 @@ static knot_rrset_t *ns_synth_from_wildcard(
 		return NULL;
 	}
 
-	knot_dname_t *dname_copy = knot_dname_deep_copy(qname);
+	knot_dname_t *dname_copy = knot_dname_copy(qname);
 	knot_rrset_set_owner(rrset, dname_copy);
-	knot_dname_release(dname_copy);
 
 	return rrset;
 }
@@ -941,8 +937,8 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
                                       const knot_dname_t *name)
 {
-	int ce_labels = knot_dname_wire_labels(closest_encloser, NULL);
-	int qname_labels = knot_dname_wire_labels(name, NULL);
+	int ce_labels = knot_dname_labels(closest_encloser, NULL);
+	int qname_labels = knot_dname_labels(name, NULL);
 
 	assert(ce_labels < qname_labels);
 
@@ -951,18 +947,11 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
 	       == ce_labels);
 
 	// chop some labels from the qname
-	knot_dname_t *next_closer = knot_dname_deep_copy(name);
-	if (next_closer == NULL) {
-		return NULL;
-	}
-
 	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
-		knot_dname_t *old_next_closer = next_closer;
-		next_closer = knot_dname_left_chop(next_closer);
-		knot_dname_free(&old_next_closer);
+		name = knot_wire_next_label(name, NULL);
 	}
 
-	return next_closer;
+	return knot_dname_copy(name);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1153,7 +1142,7 @@ dbg_ns_exec_verb(
 );
 		ret = ns_put_covering_nsec3(zone, new_next_closer, resp);
 
-		knot_dname_release(new_next_closer);
+		knot_dname_free(&new_next_closer);
 	} else {
 		ret = ns_put_covering_nsec3(zone, next_closer, resp);
 	}
@@ -1173,16 +1162,14 @@ static knot_dname_t *ns_wildcard_child_name(const knot_dname_t *name)
 {
 	assert(name != NULL);
 
-	knot_dname_t *wildcard = knot_dname_new_from_str("*", 1);
+	knot_dname_t *wildcard = knot_dname_from_str("*", 1);
 	if (wildcard == NULL) {
 		return NULL;
 	}
 
-	if (knot_dname_cat(wildcard, name) == NULL) {
-		/* Directly discard dname. */
-		knot_dname_free(&wildcard);
+	wildcard = knot_dname_cat(wildcard, name);
+	if (wildcard == NULL)
 		return NULL;
-	}
 
 dbg_ns_exec_verb(
 	char *name = knot_dname_to_str(wildcard);
@@ -1373,7 +1360,7 @@ dbg_ns_exec_verb(
 
 	const knot_node_t *prev_new = previous;
 
-	while (knot_dname_compare(knot_node_owner(prev_new),
+	while (knot_dname_cmp(knot_node_owner(prev_new),
 				    wildcard) > 0) {
 dbg_ns_exec_verb(
 		char *name = knot_dname_to_str(knot_node_owner(prev_new));
@@ -1383,7 +1370,7 @@ dbg_ns_exec_verb(
 		assert(prev_new != knot_zone_contents_apex(zone));
 		prev_new = knot_node_previous(prev_new);
 	}
-	assert(knot_dname_compare(knot_node_owner(prev_new),
+	assert(knot_dname_cmp(knot_node_owner(prev_new),
 	                            wildcard) < 0);
 
 dbg_ns_exec_verb(
@@ -1549,7 +1536,7 @@ dbg_ns_exec_verb(
 
 
 	/* Duplicate from ns_next_close(), safe to discard. */
-	knot_dname_release(next_closer);
+	knot_dname_free(&next_closer);
 
 	return ret;
 }
@@ -1680,7 +1667,7 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 	if (DNSSEC_ENABLED
 	    && knot_query_dnssec_requested(knot_packet_query(resp))
 	    && knot_dname_is_wildcard(knot_node_owner(node))
-	    && knot_dname_compare(qname, knot_node_owner(node)) != 0) {
+	    && knot_dname_cmp(qname, knot_node_owner(node)) != 0) {
 		dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
 		if (knot_zone_contents_nsec3_enabled(zone)) {
 			ret = ns_put_nsec3_wildcard(zone, closest_encloser,
@@ -1931,7 +1918,7 @@ static int ns_answer_from_node(const knot_node_t *node,
 	} else {  // else put authority NS
 		assert(closest_encloser == knot_node_parent(node)
 		      || !knot_dname_is_wildcard(knot_node_owner(node))
-		      || knot_dname_compare(qname, knot_node_owner(node)) == 0);
+		      || knot_dname_cmp(qname, knot_node_owner(node)) == 0);
 
 		ret = ns_put_nsec_nsec3_wildcard_answer(node, closest_encloser,
 		                                  previous, zone, qname, resp);
@@ -1963,7 +1950,7 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 
 	// create new CNAME RRSet
 
-	knot_dname_t *owner = knot_dname_deep_copy(qname);
+	knot_dname_t *owner = knot_dname_copy(qname);
 	if (owner == NULL) {
 		return NULL;
 	}
@@ -1974,13 +1961,11 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 		return NULL;
 	}
 
-	/* Release owner, as it's retained in rrset. */
-	knot_dname_release(owner);
-
-	// replace last labels of qname with DNAME
-	knot_dname_t *cname = knot_dname_replace_suffix(qname,
-	      knot_dname_size(knot_rrset_owner(dname_rrset)),
-	      knot_rrset_rdata_dname_target(dname_rrset));
+	/* Replace last labels of qname with DNAME. */
+	const knot_dname_t *dname_wire = knot_rrset_owner(dname_rrset);
+	size_t labels = knot_dname_labels(dname_wire, NULL);
+	const knot_dname_t *dname_tgt = knot_rrset_rdata_dname_target(dname_rrset);
+	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
 	if (cname == NULL) {
 		knot_rrset_free(&cname_rrset);
 		return NULL;
@@ -1995,7 +1980,6 @@ dbg_ns_exec(
 	if (cname_rdata == NULL) {
 		dbg_ns("ns: cname_from_dname: Cannot cerate CNAME RDATA.\n");
 		knot_rrset_free(&cname_rrset);
-		knot_dname_release(cname);
 		return NULL;
 	}
 
@@ -2020,10 +2004,10 @@ static int ns_dname_is_too_long(const knot_rrset_t *rrset,
                                 const knot_dname_t *qname)
 {
 	// TODO: add function for getting DNAME target
-	if (knot_dname_wire_labels(qname, NULL)
-	        - knot_dname_wire_labels(knot_rrset_owner(rrset), NULL)
-	        + knot_dname_wire_labels(knot_rrset_rdata_dname_target(rrset), NULL)
-	        > KNOT_MAX_DNAME_LENGTH) {
+	if (knot_dname_labels(qname, NULL)
+	        - knot_dname_labels(knot_rrset_owner(rrset), NULL)
+	        + knot_dname_labels(knot_rrset_rdata_dname_target(rrset), NULL)
+	        > KNOT_DNAME_MAXLEN) {
 		return 1;
 	} else {
 		return 0;
@@ -2065,7 +2049,7 @@ dbg_ns_exec_verb(
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
+#warning This is probably not correct and doesn't check length. Should be checked on synthesis.
 	if (ns_dname_is_too_long(dname_rrset, *qname)) {
 		knot_response_set_rcode(resp, KNOT_RCODE_YXDOMAIN);
 		return KNOT_EOK;
@@ -2994,7 +2978,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 	// check if XFR QNAME and SOA correspond
 	if (knot_packet_qtype(xfr->query) != KNOT_RRTYPE_IXFR
 	    || knot_rrset_type(soa) != KNOT_RRTYPE_SOA
-	    || knot_dname_compare(qname, knot_rrset_owner(soa)) != 0) {
+	    || knot_dname_cmp(qname, knot_rrset_owner(soa)) != 0) {
 		// malformed packet
 		dbg_ns("IXFR query is malformed.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);

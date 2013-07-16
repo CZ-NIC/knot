@@ -39,7 +39,10 @@ static int rrset_retain_dnames_in_rr(knot_dname_t **dname, void *data)
 		return KNOT_EINVAL;
 	}
 
+#warning This will leak until node compression is reworked.
+#if 0
 	knot_dname_retain(*dname);
+#endif
 	return KNOT_EOK;
 }
 
@@ -50,7 +53,10 @@ static int rrset_release_dnames_in_rr(knot_dname_t **dname, void *data)
 		return KNOT_EINVAL;
 	}
 
+#warning This will leak until node compression is reworked.
+#if 0
 	knot_dname_release(*dname);
+#endif
 	return KNOT_EOK;
 }
 
@@ -188,7 +194,7 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
 			knot_dname_t *dname2 = NULL;
 			memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
-			cmp = knot_dname_compare(dname1, dname2);
+			cmp = knot_dname_cmp(dname1, dname2);
 			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
 			cmp = memcmp(r1 + offset, r2 + offset,
@@ -258,8 +264,8 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 		owner_len = compr->owner.size;
 	// Use rrset owner.
 	} else {
-		owner = knot_dname_name(rrset->owner);
-		owner_len = knot_dname_size(rrset->owner);
+		owner = rrset->owner;
+		owner_len = knot_dname_size(owner);
 	}
 
 	dbg_response("Max size: %zu, compressed owner: %s, owner size: %u\n",
@@ -272,8 +278,7 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 	}
 
 	// Write owner, type, class and ttl to wire.
-	memcpy(*pos, owner, owner_len);
-	*pos += owner_len;
+	*pos += knot_dname_to_wire(*pos, owner, KNOT_DNAME_MAXLEN);
 
 	dbg_rrset_detail("  Type: %u\n", rrset->type);
 	knot_wire_write_u16(*pos, rrset->type);
@@ -354,28 +359,26 @@ dbg_response_exec_detail(
 			offset += sizeof(knot_dname_t *);
 			compr->wire_pos += ret;
 		} else if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname;
+			knot_dname_t *dname = NULL;
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			assert(dname && dname->name);
-			if (size + rdlength + knot_dname_size(dname) > max_size) {
-				dbg_rrset("rr: to_wire: DNAME does not fit into RR.\n");
-				return KNOT_ESPACE;
-			}
+			assert(dname);
 dbg_rrset_exec_detail(
 			char *name = knot_dname_to_str(dname);
 			dbg_rrset_detail("Saving this DNAME=%s\n", name);
 			free(name);
 );
 			// save whole domain name
-			memcpy(*pos, knot_dname_name(dname),
-			       knot_dname_size(dname));
+			size_t maxb = max_size - size - rdlength;
+			int dname_size = knot_dname_to_wire(*pos, dname, maxb);
+			if (dname_size < 0)
+				return KNOT_ESPACE;
 			dbg_rrset_detail("Uncompressed dname size: %d\n",
-			                 knot_dname_size(dname));
-			*pos += knot_dname_size(dname);
-			rdlength += knot_dname_size(dname);
+			                 dname_size);
+			*pos += dname_size;
+			rdlength += dname_size;
 			offset += sizeof(knot_dname_t *);
 			if (compr) {
-				compr->wire_pos += knot_dname_size(dname);
+				compr->wire_pos += dname_size;
 			}
 		} else if (descriptor_item_is_fixed(item)) {
 			dbg_rrset_detail("Saving static chunk, size=%d\n",
@@ -452,12 +455,12 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	assert(*pos != NULL);
 
 	dbg_rrset_detail("Max size: %zu, owner: %p, owner size: %d\n",
-	                 max_size, rrset->owner, rrset->owner->size);
+	                 max_size, rrset, knot_dname_size(rrset->owner));
 
 	knot_compr_t compr_info;
 	if (comp) {
 		dbg_response_detail("Compressing RR owner: %s.\n",
-		                    rrset->owner->name);
+		                    rrset->owner);
 		compr_info.table = comp->compressed_dnames;
 		compr_info.wire = comp->wire;
 		compr_info.wire_pos = comp->wire_pos;
@@ -642,14 +645,10 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 		int item = desc->block_types[i];
 		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname;
-			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			assert(dname);
-			memcpy(stream + *size, &dname->size, 1);
-			*size += 1;
-			memcpy(stream + *size, dname->name, dname->size);
+			knot_dname_t *dname = *((knot_dname_t **)rdata + offset);
 			offset += sizeof(knot_dname_t *);
-			*size += dname->size;
+			assert(dname);
+			*size += knot_dname_to_wire(stream + *size, dname, KNOT_DNAME_MAXLEN);
 		} else if (descriptor_item_is_fixed(item)) {
 			memcpy(stream + *size, rdata + offset, item);
 			offset += item;
@@ -690,20 +689,12 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset, size_t rdata_pos,
 		int item = desc->block_types[i];
 		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
-			/* Read dname size. */
-			uint8_t dname_size = 0;
-			memcpy(&dname_size, stream + stream_offset, 1);
-			stream_offset += 1;
-			knot_dname_t *dname =
-				knot_dname_new_from_wire(stream + stream_offset,
-			                                 dname_size);
-			if (dname == NULL) {
+			knot_dname_t *dname = knot_dname_copy(stream + stream_offset);
+			if (dname == NULL)
 				return KNOT_ERROR;
-			}
-			assert(dname->size == dname_size);
-			memcpy(rdata + rdata_offset, &dname,
-			       sizeof(knot_dname_t *));
-			stream_offset += dname_size;
+
+			memcpy(rdata + rdata_offset, &dname, sizeof(knot_dname_t *));
+			stream_offset += knot_dname_size(dname);
 			rdata_offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_fixed(item)) {
 			memcpy(rdata + rdata_offset, stream + stream_offset, item);
@@ -819,14 +810,13 @@ uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                              uint16_t rclass, uint32_t ttl)
 {
-	knot_rrset_t *ret = xmalloc(sizeof(knot_rrset_t));
+	knot_rrset_t *ret = malloc(sizeof(knot_rrset_t));
+	if (ret == NULL)
+		return NULL;
 
 	ret->rdata = NULL;
 	ret->rdata_count = 0;
 	ret->rdata_indices = NULL;
-
-	// Retain reference to owner.
-	knot_dname_retain(owner);
 
 	ret->owner = owner;
 	ret->type = type;
@@ -987,8 +977,8 @@ int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs)
 int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
                           knot_rrset_dupl_handling_t dupl)
 {
-	if (rrset == NULL || rrsigs == NULL
-	    || knot_dname_compare_non_canon(rrset->owner, rrsigs->owner) != 0) {
+	if (rrset == NULL || rrsigs == NULL ||
+	    !knot_dname_is_equal(rrset->owner, rrsigs->owner)) {
 		return KNOT_EINVAL;
 	}
 
@@ -1034,8 +1024,11 @@ void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t *owner)
 {
 	if (rrset) {
 		/* Retain new owner and release old owner. */
+#warning This will leak until node compression is reworked.
+#if 0
 		knot_dname_retain(owner);
 		knot_dname_release(rrset->owner);
+#endif
 		rrset->owner = owner;
 	}
 }
@@ -1207,7 +1200,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		const int item = desc->block_types[i];
 		if (descriptor_item_is_dname(item)) {
 			pos2 = *pos;
-			knot_dname_t *dname = knot_dname_parse_from_wire(
+			knot_dname_t *dname = knot_dname_parse(
 					wire, &pos2, total_size);
 			if (dname == NULL) {
 				return KNOT_EMALF;
@@ -1324,23 +1317,17 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 		return r1 == r2;
 	}
 
-	int res = knot_dname_compare_non_canon(r1->owner, r2->owner);
-	if (res != 0) {
-		return 0;
-	}
 
-	if (r1->rclass == r2->rclass &&
-	    r1->type == r2->type) {
-		res = 1;
-	} else {
-		res = 0;
-	}
+	if (!knot_dname_is_equal(r1->owner, r2->owner))
+		return false;
 
-	if (cmp == KNOT_RRSET_COMPARE_WHOLE && res == 1) {
-		res = knot_rrset_rdata_equal(r1, r2);
-	}
+	if (r1->rclass != r2->rclass || r1->type != r2->type)
+		return false;
 
-	return res;
+	if (cmp == KNOT_RRSET_COMPARE_WHOLE)
+		return knot_rrset_rdata_equal(r1, r2);
+
+	return true;
 }
 
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
@@ -1355,7 +1342,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 
 	*to = xmalloc(sizeof(knot_rrset_t));
 
-	(*to)->owner = knot_dname_deep_copy(from->owner);
+	(*to)->owner = knot_dname_copy(from->owner);
 	if ((*to)->owner == NULL) {
 		free(*to);
 		*to = NULL;
@@ -1400,7 +1387,7 @@ dbg_rrset_exec_detail(
 			dname_to = (knot_dname_t **)((*to)->rdata + off);
 			/* These pointers have to be the same. */
 			assert(*dname_from == *dname_to);
-			dname_copy = knot_dname_deep_copy(*dname_from);
+			dname_copy = knot_dname_copy(*dname_from);
 			if (dname_copy == NULL) {
 				dbg_rrset("rrset: deep_copy: Cannot copy RDATA"
 				          " dname.\n");
@@ -1431,7 +1418,10 @@ int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	memcpy(*to, from, sizeof(knot_rrset_t));
 
 	/* Retain owner. */
+#warning This will leak until node compression is reworked.
+#if 0
 	knot_dname_retain((*to)->owner);
+#endif
 
 	return KNOT_EOK;
 }
@@ -1452,7 +1442,10 @@ void knot_rrset_free(knot_rrset_t **rrset)
 		return;
 	}
 
+#warning This will leak until node compression is reworked.
+#if 0
 	knot_dname_release((*rrset)->owner);
+#endif
 
 	free(*rrset);
 	*rrset = NULL;
@@ -1461,6 +1454,7 @@ void knot_rrset_free(knot_rrset_t **rrset)
 void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
                           int free_rdata_dnames)
 {
+#warning The number of different frees in rrset is too damn high!
 	if (rrset == NULL || *rrset == NULL) {
 		return;
 	}
@@ -1477,9 +1471,12 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	free((*rrset)->rdata);
 	free((*rrset)->rdata_indices);
 
+#warning This will leak until node compression is reworked.
+#if 0
 	if (free_owner) {
 		knot_dname_release((*rrset)->owner);
 	}
+#endif
 
 	free(*rrset);
 	*rrset = NULL;
@@ -1503,9 +1500,12 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 	free((*rrset)->rdata);
 	free((*rrset)->rdata_indices);
 
+#warning This will leak until node compression is reworked.
+#if 0
 	if (free_owner) {
 		knot_dname_release((*rrset)->owner);
 	}
+#endif
 
 	free(*rrset);
 	*rrset = NULL;
@@ -1561,7 +1561,7 @@ dbg_rrset_exec_detail(
 	free(name);
 );
 
-	if ((knot_dname_compare_non_canon(rrset->owner, rr->owner) != 0)
+	if ((!knot_dname_is_equal(rrset->owner, rr->owner))
 	    || rrset->rclass != rr->rclass
 	    || rrset->type != rr->type) {
 		dbg_rrset("rrset: add_rr_sort: Trying to merge "
@@ -2236,12 +2236,8 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 	memcpy(stream + offset, rrset->rdata_indices,
 	       rrset->rdata_count * sizeof(uint32_t));
 	offset += sizeof(uint32_t) * rrset->rdata_count;
-	/* Save owner. Size first. */
-	memcpy(stream + offset, &rrset->owner->size, 1);
-	++offset;
-	memcpy(stream + offset, knot_dname_name(rrset->owner),
-	       knot_dname_size(rrset->owner));
-	offset += knot_dname_size(rrset->owner);
+	/* Save owner. */
+	offset += knot_dname_to_wire(stream + offset, rrset->owner, rrset_length - offset);
 
 	/* Save static data. */
 	memcpy(stream + offset, &rrset->type, sizeof(uint16_t));
@@ -2317,10 +2313,8 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	       rdata_count * sizeof(uint32_t));
 	offset += rdata_count * sizeof(uint32_t);
 	/* Read owner from the stream. */
-	uint8_t owner_size = *(stream + offset);
-	offset += 1;
-	knot_dname_t *owner = knot_dname_new_from_wire(stream + offset,
-	                                               owner_size);
+	unsigned owner_size = knot_dname_size(stream + offset);
+	knot_dname_t *owner = knot_dname_copy_part(stream + offset, owner_size);
 	assert(owner);
 	offset += owner_size;
 	/* Read type. */
@@ -2339,9 +2333,9 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	/* Create new RRSet. */
 	*rrset = knot_rrset_new(owner, type, rclass, ttl);
 	if (*rrset == NULL) {
+		knot_dname_free(&owner);
 		return KNOT_ENOMEM;
 	}
-	knot_dname_release(owner);
 
 	(*rrset)->rdata_indices = rdata_indices;
 	(*rrset)->rdata_count = rdata_count;
@@ -2363,7 +2357,6 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 		if (ret != KNOT_EOK) {
 			free((*rrset)->rdata);
 			free(rdata_indices);
-			knot_dname_release(owner);
 			return ret;
 		}
 		/* TODO handle malformations. */

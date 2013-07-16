@@ -301,16 +301,6 @@ const knot_dname_t *knot_node_owner(const knot_node_t *node);
 knot_dname_t *knot_node_get_owner(const knot_node_t *node);
 
 /*!
- * \brief Set node owner to specified dname.
- *
- * Previous owner will be replaced if exist.
- *
- * \param node Specified node.
- * \param owner New owner dname.
- */
-void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner);
-
-/*!
  * \brief Returns the wildcard child of the node.
  *
  * \param node Node to get the owner of.

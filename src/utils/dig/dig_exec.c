@@ -80,7 +80,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	}
 
 	// Create QNAME from string.
-	knot_dname_t *qname = knot_dname_new_from_str(query->owner,
+	knot_dname_t *qname = knot_dname_from_str(query->owner,
 	                                              strlen(query->owner));
 	if (qname == NULL) {
 		knot_packet_free(&packet);
@@ -220,8 +220,8 @@ static void check_reply_question(const knot_packet_t *reply,
 		return;
 	}
 
-	int name_diff = knot_dname_compare_cs(knot_packet_qname(reply),
-	                                      knot_packet_qname(query));
+	int name_diff = knot_dname_cmp(knot_packet_qname(reply),
+	                                   knot_packet_qname(query));
 
 	if (knot_packet_qclass(reply) != knot_packet_qclass(query) ||
 	    knot_packet_qtype(reply)  != knot_packet_qtype(query) ||

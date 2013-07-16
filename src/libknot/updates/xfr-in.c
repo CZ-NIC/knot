@@ -507,8 +507,8 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			return KNOT_EOK;
 		}
 
-		if (knot_dname_compare_non_canon(knot_rrset_owner(rr),
-		                                 knot_packet_qname(packet)) != 0) {
+		const knot_dname_t *qname = knot_packet_qname(packet);
+		if (!knot_dname_is_equal(knot_rrset_owner(rr), qname)) {
 dbg_xfrin_exec(
 			char *rr_owner =
 				knot_dname_to_str(knot_rrset_owner(rr));
@@ -601,8 +601,7 @@ dbg_xfrin_exec(
 		/* RR parsed - sort out DNAME duplications. */
 		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
-		if (node != NULL
-		    && knot_dname_compare_non_canon(rr->owner, node->owner) != 0) {
+		if (node != NULL && !knot_dname_is_equal(rr->owner, node->owner)) {
 dbg_xfrin_exec_detail(
 			char *name = knot_dname_to_str(node->owner);
 			dbg_xfrin_detail("Node owner: %s\n", name);
@@ -1410,10 +1409,8 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	int copied = 0;
 
 	if (*rrset
-	    && knot_dname_compare_non_canon(knot_rrset_owner(*rrset),
-					    knot_node_owner(node)) == 0
-	    && knot_rrset_type(*rrset) == knot_rrset_rdata_rrsig_type_covered(
-				remove)) {
+	    && knot_dname_is_equal(knot_rrset_owner(*rrset), knot_node_owner(node))
+	    && knot_rrset_type(*rrset) == knot_rrset_rdata_rrsig_type_covered(remove)) {
 		// this RRSet should be the already copied RRSet so we may
 		// update it right away
 		/*! \todo Does this case even occur? */
@@ -1582,7 +1579,7 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 	// now we have the copy of the node, so lets get the right RRSet
 	// check if we do not already have it
 	if (*rrset
-	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	    && knot_dname_cmp(knot_rrset_owner(*rrset),
 				  knot_node_owner(node)) == 0
 	    && knot_rrset_type(*rrset) == knot_rrset_type(remove)) {
 		/*! \todo Does some other case even occur? */
@@ -2047,7 +2044,7 @@ dbg_xfrin_exec_detail(
 	 *        in such case.
 	 */
 	if (*rrset
-	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	    && knot_dname_cmp(knot_rrset_owner(*rrset),
 				  knot_node_owner(node)) == 0
 	    && knot_rrset_type(*rrset) == knot_rrset_type(add)) {
 		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
@@ -2121,7 +2118,7 @@ dbg_xfrin_exec_detail(
 	 */
 
 	dbg_xfrin_detail("Merging RRSets with owners: %s, %s types: %u, %u\n",
-			 (*rrset)->owner->name, add->owner->name,
+			 (*rrset)->owner, add->owner,
 			 (*rrset)->type,
 			 add->type);
 	dbg_xfrin_detail("RDATA in RRSet1: %p, RDATA in RRSet2: %p\n",
@@ -2195,7 +2192,7 @@ dbg_xfrin_exec_verb(
 	 *        it's a copied one, so it is OK to modify it right away.
 	 */
 	if (*rrset
-	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	    && knot_dname_cmp(knot_rrset_owner(*rrset),
 				  knot_node_owner(node)) == 0
 	    && knot_rrset_type(*rrset) == type) {
 		dbg_xfrin_verb("Using RRSet from previous iteration.\n");

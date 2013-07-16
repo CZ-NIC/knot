@@ -169,7 +169,7 @@ static void create_test_dnames()
 {
 	for (int i = 0; i < TEST_DNAME_COUNT; i++) {
 		test_dnames[i] =
-			knot_dname_new_from_str(test_dname_strings[i],
+			knot_dname_from_str(test_dname_strings[i],
 		                                strlen(test_dname_strings[i]));
 	}
 }
@@ -189,10 +189,8 @@ static void init_test_rdata_with_dname(uint8_t **rdata, uint16_t *rdata_size,
 	}
 	memcpy(*rdata + pos, &dname, sizeof(knot_dname_t *));
 	*rdata_size += sizeof(knot_dname_t *);
-	memcpy(*wire + wire_pos, dname->name, dname->size);
-	*wire_size += dname->size;
-
-	knot_dname_retain(dname);
+	memcpy(*wire + wire_pos, dname, knot_dname_size(dname));
+	*wire_size += knot_dname_size(dname);
 }
 
 static void init_test_rdata_with_binary(uint8_t **rdata, uint16_t *rdata_size,
@@ -225,7 +223,7 @@ static void create_test_rdata()
 	                           &test_rdata_array[TEST_RDATA_NS_LESS].wire,
 	                           &test_rdata_array[TEST_RDATA_NS_LESS].wire_size,
 	                           0, 0, sizeof(knot_dname_t *),
-	                           test_dnames[0]->size, test_dnames[0]);
+	                           knot_dname_size(test_dnames[0]), test_dnames[0]);
 
 	/* NS RDATA DNAME = b.dname.com. */
 	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_NS_GT].rdata,
@@ -233,7 +231,7 @@ static void create_test_rdata()
 	                           &test_rdata_array[TEST_RDATA_NS_GT].wire,
 	                           &test_rdata_array[TEST_RDATA_NS_GT].wire_size,
 	                           0, 0, sizeof(knot_dname_t *),
-	                           test_dnames[1]->size, test_dnames[1]);
+	                           knot_dname_size(test_dnames[1]), test_dnames[1]);
 
 	/* MX RDATA - short = 10 DNAME = a.dname.com. */
 	uint16_t id = htobe16(10);
@@ -242,14 +240,14 @@ static void create_test_rdata()
 	                            &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire,
 	                            &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire_size,
 	                            0, 0, sizeof(knot_dname_t *) + 2,
-	                            test_dnames[1]->size + 2, &id, 2);
+	                            knot_dname_size(test_dnames[1]) + 2, &id, 2);
 
 	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MX_DNAME_LESS].rdata,
 	                           &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].size,
 	                           &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire,
 	                           &test_rdata_array[TEST_RDATA_MX_DNAME_LESS].wire_size,
 	                           2, 2, sizeof(knot_dname_t *),
-	                           test_dnames[1]->size, test_dnames[0]);
+	                           knot_dname_size(test_dnames[1]), test_dnames[0]);
 
 	/* MX RDATA - short = 10 DNAME = b.dname.com. */
 	init_test_rdata_with_binary(&test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata,
@@ -257,17 +255,16 @@ static void create_test_rdata()
 	                            &test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire,
 	                            &test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire_size,
 	                            0, 0, sizeof(knot_dname_t *) + 2,
-	                            test_dnames[1]->size + 2, &id, 2);
+	                            knot_dname_size(test_dnames[1]) + 2, &id, 2);
 
 	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MX_DNAME_GT].rdata,
 	                           &test_rdata_array[TEST_RDATA_MX_DNAME_GT].size,
 	                           &test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire,
 	                           &test_rdata_array[TEST_RDATA_MX_DNAME_GT].wire_size,
 	                           2, 2, sizeof(knot_dname_t *),
-	                           test_dnames[1]->size, test_dnames[1]);
+	                           knot_dname_size(test_dnames[1]), test_dnames[1]);
 
 	test_rdata_array[TEST_RDATA_MX_BIN_LESS] = test_rdata_array[TEST_RDATA_MX_DNAME_LESS];
-	knot_dname_retain(test_dnames[1]);
 
 	/* MX RDATA - short = 20 DNAME = b.dname.com. */
 	id = htobe16(20);
@@ -276,14 +273,14 @@ static void create_test_rdata()
 	                            &test_rdata_array[TEST_RDATA_MX_BIN_GT].wire,
 	                            &test_rdata_array[TEST_RDATA_MX_BIN_GT].wire_size,
 	                            0, 0, sizeof(knot_dname_t *) + 2,
-	                            test_dnames[1]->size + 2, &id, 2);
+	                            knot_dname_size(test_dnames[1]) + 2, &id, 2);
 
 	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MX_BIN_GT].rdata,
 	                           &test_rdata_array[TEST_RDATA_MX_BIN_GT].size,
 	                           &test_rdata_array[TEST_RDATA_MX_BIN_GT].wire,
 	                           &test_rdata_array[TEST_RDATA_MX_BIN_GT].wire_size,
 	                           2, 2, sizeof(knot_dname_t *),
-	                           test_dnames[1]->size, test_dnames[1]);
+	                           knot_dname_size(test_dnames[1]), test_dnames[1]);
 
 	/* MINFO RRs. */
 	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MINFO1].rdata,
@@ -291,32 +288,32 @@ static void create_test_rdata()
 	                           &test_rdata_array[TEST_RDATA_MINFO1].wire,
 	                           &test_rdata_array[TEST_RDATA_MINFO1].wire_size,
 	                           0, 0, sizeof(knot_dname_t *) * 2,
-	                           test_dnames[0]->size + test_dnames[1]->size,
+	                           knot_dname_size(test_dnames[0]) + knot_dname_size(test_dnames[1]),
 	                           test_dnames[0]);
 
 	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MINFO1].rdata,
 	                           &test_rdata_array[TEST_RDATA_MINFO1].size,
 	                           &test_rdata_array[TEST_RDATA_MINFO1].wire,
 	                           &test_rdata_array[TEST_RDATA_MINFO1].wire_size,
-	                           sizeof(knot_dname_t *), test_dnames[0]->size,
+	                           sizeof(knot_dname_t *), knot_dname_size(test_dnames[0]),
 	                           sizeof(knot_dname_t *),
-	                           test_dnames[1]->size, test_dnames[1]);
+	                           knot_dname_size(test_dnames[1]), test_dnames[1]);
 
 	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MINFO2].rdata,
 	                           &test_rdata_array[TEST_RDATA_MINFO2].size,
 	                           &test_rdata_array[TEST_RDATA_MINFO2].wire,
 	                           &test_rdata_array[TEST_RDATA_MINFO2].wire_size,
 	                           0, 0, sizeof(knot_dname_t *) * 2,
-	                           test_dnames[2]->size + test_dnames[3]->size,
+	                           knot_dname_size(test_dnames[2]) + knot_dname_size(test_dnames[3]),
 	                           test_dnames[2]);
 
 	init_test_rdata_with_dname(&test_rdata_array[TEST_RDATA_MINFO2].rdata,
 	                           &test_rdata_array[TEST_RDATA_MINFO2].size,
 	                           &test_rdata_array[TEST_RDATA_MINFO2].wire,
 	                           &test_rdata_array[TEST_RDATA_MINFO2].wire_size,
-	                           sizeof(knot_dname_t *), test_dnames[2]->size,
+	                           sizeof(knot_dname_t *), knot_dname_size(test_dnames[2]),
 	                           sizeof(knot_dname_t *),
-	                           test_dnames[3]->size, test_dnames[3]);
+	                           knot_dname_size(test_dnames[3]), test_dnames[3]);
 }
 
 static void create_test_rrsets()
@@ -330,14 +327,14 @@ static void create_test_rrsets()
 		/* Create wire representation. */
 
 		/* Create header wire. */
-		test_rrset->header_wire_size = test_rrset->rrset.owner->size + 8;
+		test_rrset->header_wire_size = knot_dname_size(test_rrset->rrset.owner) + 8;
 		test_rrset->header_wire =
 			xmalloc(test_rrset->header_wire_size);
 		/* Copy owner wire to header wire. */
-		memcpy(test_rrset->header_wire, test_rrset->rrset.owner->name,
-		       test_rrset->rrset.owner->size);
+		memcpy(test_rrset->header_wire, test_rrset->rrset.owner,
+		       knot_dname_size(test_rrset->rrset.owner));
 		/* Copy type to wire. */
-		size_t offset = test_rrset->rrset.owner->size;
+		size_t offset = knot_dname_size(test_rrset->rrset.owner);
 		knot_wire_write_u16(test_rrset->header_wire + offset,
 		                    test_rrset->rrset.type);
 		offset += sizeof(uint16_t);
@@ -389,7 +386,7 @@ static int check_rrset_values(const knot_rrset_t *rrset,
 {
 	int errors = 0;
 
-	if (knot_dname_compare_non_canon(rrset->owner, dname)) {
+	if (!knot_dname_is_equal(rrset->owner, dname)) {
 		diag("Wrong DNAME in the created RRSet.\n");
 		++errors;
 	}
@@ -1203,7 +1200,7 @@ static int test_rrset_next_dname()
 	knot_dname_t **dname = NULL;
 	int i = 0;
 	while ((dname = knot_rrset_get_next_dname(rrset, dname))) {
-		if (knot_dname_compare_non_canon(extracted_dnames[i], *dname)) {
+		if (!knot_dname_is_equal(extracted_dnames[i], *dname)) {
 			diag("Got wrong DNAME from RDATA. on index %d\n", i);
 			char *ext_name = knot_dname_to_str(extracted_dnames[i]);
 			char *act_name = knot_dname_to_str(*dname);
@@ -1226,7 +1223,7 @@ static int test_rrset_next_dname()
 	rrset = &test_rrset_array[TEST_RRSET_NS_LESS].rrset;
 	dname = NULL;
 	dname = knot_rrset_get_next_dname(rrset, dname);
-	if (dname == NULL || knot_dname_compare_non_canon(*dname, test_dnames[TEST_DNAME_GENERIC])) {
+	if (dname == NULL || !knot_dname_is_equal(*dname, test_dnames[TEST_DNAME_GENERIC])) {
 		diag("Got wrong DNAME from NS RDATA. Was %p, should be %p \n",
 		     dname ? *dname: NULL, test_dnames[TEST_DNAME_GENERIC]);
 		return 0;
@@ -1240,7 +1237,7 @@ static int test_rrset_next_dname()
 	rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
 	dname = NULL;
 	dname = knot_rrset_get_next_dname(rrset, dname);
-	if (dname == NULL || knot_dname_compare_non_canon(*dname, test_dnames[1])) {
+	if (dname == NULL || !knot_dname_is_equal(*dname, test_dnames[1])) {
 		diag("Got wrong DNAME from MX RDATA.\n");
 		return 0;
 	}

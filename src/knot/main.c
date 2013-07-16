@@ -378,7 +378,7 @@ int main(int argc, char **argv)
 				log_server_info("Starting integrity check of "
 				                "zone: %s\n", zone);
 				knot_dname_t *zdn =
-					knot_dname_new_from_str(zone,
+					knot_dname_from_str(zone,
 					                        strlen(zone),
 					                        NULL);
 				knot_zone_t *z =

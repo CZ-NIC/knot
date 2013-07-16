@@ -77,29 +77,25 @@ static int dummy_node_add_type(dummy_node_t *n, uint16_t t)
 
 static size_t dname_memsize(const knot_dname_t *d)
 {
-	size_t d_size = d->size;
-	size_t l_size = d->label_count;
-	if (d->size < MALLOC_MIN) {
+
+	size_t d_size = knot_dname_size(d);
+	if (d_size < MALLOC_MIN) {
 		d_size = MALLOC_MIN;
 	}
-	if (d->label_count < MALLOC_MIN) {
-		l_size = MALLOC_MIN;
-	}
 
-	return (sizeof(knot_dname_t) + d_size + l_size)
-	       * DNAME_MULT + DNAME_ADD;
+	return d_size * DNAME_MULT + DNAME_ADD;
 }
 
 // return: 0 - unique, 1 - duplicate
 static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
                                    dummy_node_t **n)
 {
-	value_t *val = hattrie_tryget(table, (char *)d->name, d->size);
+	value_t *val = hattrie_tryget(table, (char *)d, knot_dname_size(d));
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
 		*n = xmalloc(sizeof(dummy_node_t));
 		init_list(&(*n)->node_list);
-		*hattrie_get(table, (char *)d->name, d->size) = *n;
+		*hattrie_get(table, (char *)d, knot_dname_size(d)) = *n;
 		return 0;
 	} else {
 		// Return previously found dummy node
@@ -119,11 +115,8 @@ static size_t rdata_memsize(zone_estim_t *est, const scanner_t *scanner)
 		if (descriptor_item_is_dname(item)) {
 			size += sizeof(knot_dname_t *);
 			knot_dname_t *dname =
-				knot_dname_new_from_wire(scanner->r_data +
-			                                 scanner->r_data_blocks[i],
-			                                 scanner->r_data_blocks[i + 1] -
-			                                 scanner->r_data_blocks[i],
-			                                 NULL);
+				knot_dname_copy(scanner->r_data +
+			                        scanner->r_data_blocks[i]);
 			if (dname == NULL) {
 				return KNOT_ERROR;
 			}
@@ -152,9 +145,7 @@ static size_t rdata_memsize(zone_estim_t *est, const scanner_t *scanner)
 static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 {
 	// Handle RRSet's owner
-	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
-	                         scanner->r_owner_length,
-	                         NULL);
+	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
 	if (owner == NULL) {
 		return;
 	}

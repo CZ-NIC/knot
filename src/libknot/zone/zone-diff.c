@@ -579,7 +579,7 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 //		return KNOT_EOK;
 //	}
 
-	assert(knot_dname_compare(knot_rrset_owner(rrset1),
+	assert(knot_dname_cmp(knot_rrset_owner(rrset1),
 	                          knot_rrset_owner(rrset2)) == 0);
 	assert(knot_rrset_type(rrset1) == knot_rrset_type(rrset2));
 

@@ -61,8 +61,8 @@ size_t knot_zone_tree_weight(knot_zone_tree_t* tree)
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 {
 	assert(tree && node && node->owner);
-	uint8_t lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, node->owner, sizeof(lf));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, node->owner, NULL);
 
 	*hattrie_get(tree, (char*)lf+1, *lf) = node;
 	return KNOT_EOK;
@@ -89,8 +89,8 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, owner, sizeof(lf));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, owner, NULL);
 
 	value_t *val = hattrie_tryget(tree, (char*)lf+1, *lf);
 	if (val == NULL) {
@@ -134,8 +134,8 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, owner, sizeof(lf));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, owner, NULL);
 
 	value_t *fval = NULL;
 	int ret = hattrie_find_leq(tree, (char*)lf+1, *lf, &fval);
@@ -196,8 +196,8 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, owner, sizeof(lf));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, owner, NULL);
 
 	value_t *rval = hattrie_tryget(tree, (char*)lf+1, *lf);
 	if (rval == NULL) {
@@ -328,8 +328,9 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 
 void hattrie_insert_dname(hattrie_t *tr, knot_dname_t *dname)
 {
-	*hattrie_get(tr, (char *)(dname),
-	             knot_dname_wire_size(dname, NULL)) = dname;
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, dname, NULL);
+	*hattrie_get(tr, (char*)lf+1, *lf) = dname;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -340,8 +341,10 @@ knot_dname_t *hattrie_get_dname(hattrie_t *tr, knot_dname_t *dname)
 		return NULL;
 	}
 
-	value_t *val = hattrie_tryget(tr, (char *)(dname),
-	                              knot_dname_wire_size(dname, NULL));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, dname, NULL);
+
+	value_t *val = hattrie_tryget(tr, (char*)lf+1, *lf);
 	if (val == NULL) {
 		return NULL;
 	} else {

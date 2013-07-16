@@ -525,9 +525,9 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 		return KNOT_EMALF;
 	}
 
-	knot_dname_t *realm = knot_dname_new_from_str(KNOT_CTL_REALM,
+	knot_dname_t *realm = knot_dname_from_str(KNOT_CTL_REALM,
 	                                              KNOT_CTL_REALM_LEN);
-	if (!knot_dname_is_subdomain(qname, realm) != 0) {
+	if (!knot_dname_is_sub(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm);
 		return KNOT_EMALF;
@@ -537,8 +537,8 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	/* Command:
 	 * QNAME: leftmost label of QNAME
 	 */
-	size_t cmd_len = *knot_dname_name(qname);
-	char *cmd = strndup((char*)qname->name + 1, cmd_len);
+	size_t cmd_len = *qname;
+	char *cmd = strndup((char*)qname + 1, cmd_len);
 
 	/* Data:
 	 * NS: TSIG
@@ -691,7 +691,7 @@ knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key)
 
 	/* Question section. */
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);
-	knot_dname_t *dname = knot_dname_new_from_str(qname, strlen(qname));
+	knot_dname_t *dname = knot_dname_from_str(qname, strlen(qname));
 	if (!dname) {
 		knot_packet_free(&qr);
 		free(qname);
@@ -759,14 +759,16 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	}
 
 	/* Assert K is FQDN. */
-	knot_dname_t *key = knot_dname_new_from_str(k, strlen(k));
-	if (!key) {
+	knot_dname_t *key = knot_dname_from_str(k, strlen(k));
+	if (key == NULL) {
 		return NULL;
 	}
 
 	/* Create RRSet. */
 	knot_rrset_t *rr = knot_rrset_new(key, t, KNOT_CLASS_CH, 0);
-	knot_dname_release(key);
+	if (rr == NULL)
+		knot_dname_free(&key);
+
 	return rr;
 }
 
@@ -807,7 +809,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	}
 
 	/* Create dname. */
-	knot_dname_t *dn = knot_dname_new_from_str(d, strlen(d));
+	knot_dname_t *dn = knot_dname_from_str(d, strlen(d));
 	if (!dn) {
 		return KNOT_ERROR;
 	}

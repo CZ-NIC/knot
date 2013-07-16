@@ -74,14 +74,12 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	}
 
 	/* Do not compress small dnames. */
-	const uint8_t *name = dname;
-	unsigned name_labels = knot_dname_wire_labels(name, NULL);
-	uint8_t dname_size = knot_dname_wire_size(name, NULL);
-	if (dname_size <= 2) {
-		if (dname_size > max)
+	unsigned name_labels = knot_dname_labels(dname, NULL);
+	if (*dname == '\0') {
+		if (max < 1)
 			return KNOT_ESPACE;
-		memcpy(dst, name, dname_size);
-		return dname_size;
+		*dst = *dname;
+		return 1;
 	}
 
 	/* Align and compare name and pointer in the compression table. */
@@ -107,15 +105,15 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	/* Write non-matching prefix. */
 	unsigned written = 0;
 	for (unsigned j = match.lbcount; j < name_labels; ++j) {
-		if (written + *name + 1 > max)
+		if (written + *dname + 1 > max)
 			return KNOT_ESPACE;
-		memcpy(dst + written, name, *name + 1);
-		written += *name + 1;
-		name = (uint8_t *)knot_wire_next_label(name, compr->wire);
+		memcpy(dst + written, dname, *dname + 1);
+		written += *dname + 1;
+		dname = (knot_dname_t *)knot_wire_next_label(dname, compr->wire);
 	}
 
 	/* Write out pointer covering suffix. */
-	if (*name != '\0') {
+	if (*dname != '\0') {
 		if (written + sizeof(uint16_t) > max)
 			return KNOT_ESPACE;
 		knot_wire_put_pointer(dst + written, match.off);
@@ -301,7 +299,7 @@ int knot_response_init_from_query(knot_packet_t *response, knot_packet_t *query)
 	/* Insert QNAME into compression table. */
 	uint8_t *qname = response->wireformat + KNOT_WIRE_HEADER_SIZE;
 	response->compression[0].off = KNOT_WIRE_HEADER_SIZE;
-	response->compression[0].lbcount = knot_dname_wire_labels(qname, NULL);
+	response->compression[0].lbcount = knot_dname_labels(qname, NULL);
 
 	/* Update size and flags. */
 	knot_wire_set_qdcount(response->wireformat, 1);

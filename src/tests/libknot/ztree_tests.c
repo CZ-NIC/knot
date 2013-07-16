@@ -24,10 +24,10 @@ static knot_node_t NODE[NCOUNT];
 static knot_dname_t* ORDER[NCOUNT];
 static void ztree_init_data()
 {
-	NAME[0] = knot_dname_new_from_str(".", 1);
-	NAME[1] = knot_dname_new_from_str("master.ac.", 10);
-	NAME[2] = knot_dname_new_from_str("ac.", 3);
-	NAME[3] = knot_dname_new_from_str("ns.", 3);
+	NAME[0] = knot_dname_from_str(".", 1);
+	NAME[1] = knot_dname_from_str("master.ac.", 10);
+	NAME[2] = knot_dname_from_str("ac.", 3);
+	NAME[3] = knot_dname_from_str("ns.", 3);
 
 	knot_dname_t *order[NCOUNT] = {
 	        NAME[0], NAME[2], NAME[1], NAME[3]
@@ -119,7 +119,7 @@ static int ztree_tests_run(int argc, char *argv[])
 	passed = 1;
 	node = NULL;
 	const knot_node_t *prev = NULL;
-	knot_dname_t *tmp_dn = knot_dname_new_from_str("z.ac.", 5);
+	knot_dname_t *tmp_dn = knot_dname_from_str("z.ac.", 5);
 	knot_zone_tree_find_less_or_equal(t, tmp_dn, &node, &prev);
 	knot_dname_free(&tmp_dn);
 	ok(prev == NODE + 1, "ztree: ordered lookup");

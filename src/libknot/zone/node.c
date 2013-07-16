@@ -139,7 +139,6 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 	}
 
 	/* Store reference to owner. */
-	knot_dname_retain(owner);
 	ret->owner = owner;
 	knot_node_set_parent(ret, parent);
 	ret->rrset_tree = NULL;
@@ -471,18 +470,6 @@ knot_dname_t *knot_node_get_owner(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner)
-{
-	if (node) {
-		/* Retain new owner and release old owner. */
-		knot_dname_retain(owner);
-		knot_dname_release(node->owner);
-		node->owner = owner;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
 knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node)
 {
 	if (node == NULL) {
@@ -707,7 +694,10 @@ void knot_node_free(knot_node_t **node)
 		(*node)->rrset_count = 0;
 	}
 
+#warning This will leak until node compression is reworked.
+#if 0
 	knot_dname_release((*node)->owner);
+#endif
 
 	free(*node);
 	*node = NULL;
@@ -721,7 +711,7 @@ int knot_node_compare(knot_node_t *node1, knot_node_t *node2)
 {
 	assert(node1 != NULL && node2 != NULL);
 
-	return knot_dname_compare(node1->owner, node2->owner);
+	return knot_dname_cmp(node1->owner, node2->owner);
 }
 
 /*----------------------------------------------------------------------------*/

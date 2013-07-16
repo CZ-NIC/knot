@@ -34,10 +34,8 @@
 /*!
  * \brief Basic limits for domain names (RFC 1035).
  */
-typedef enum {
-	KNOT_MAX_DNAME_LENGTH = 255, /*!< 1-byte maximum. */
-	KNOT_MAX_DNAME_LABELS = 127  /*!< 1-char labels. */
-} knot_const_t;
+#define KNOT_DNAME_MAXLEN 255     /*!< 1-byte maximum. */
+#define KNOT_DNAME_MAXLABELS 127  /*!< 1-char labels. */
 
 /*!
  * \brief DNS operation codes (OPCODEs).

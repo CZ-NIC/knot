@@ -163,7 +163,7 @@ static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
 	dbg_packet("Parsing RR from position: %zu, total size: %zu\n",
 	           *pos, size);
 
-	knot_dname_t *owner = knot_dname_parse_from_wire(wire, pos, size);
+	knot_dname_t *owner = knot_dname_parse(wire, pos, size);
 	dbg_packet_detail("Created owner: %p, actual position: %zu\n", owner,
 	                  *pos);
 	if (owner == NULL) {
@@ -181,7 +181,7 @@ dbg_packet_exec_verb(
 	if (size - *pos < 10) {
 		dbg_packet("Malformed RR: Not enough data to parse RR"
 		           " header.\n");
-		knot_dname_release(owner);
+		knot_dname_free(&owner);
 		return NULL;
 	}
 
@@ -192,12 +192,8 @@ dbg_packet_exec_verb(
 	uint32_t ttl = knot_wire_read_u32(wire + *pos + 4);
 
 	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, ttl);
-
-	/* Owner is either referenced in rrset or rrset creation failed. */
-	knot_dname_release(owner);
-
-	/* Check rrset allocation. */
 	if (rrset == NULL) {
+		knot_dname_free(&owner);
 		return NULL;
 	}
 
@@ -785,11 +781,7 @@ const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 		return NULL;
 	}
 
-	/*! \todo This will leak until dname API is finished, it's just placeholder
-	 *        to make it compile and work.
-	 */
-	const uint8_t *qname = packet->wireformat + KNOT_WIRE_HEADER_SIZE;
-	return knot_dname_new_from_wire(qname, knot_dname_wire_size(qname, NULL));
+	return packet->wireformat + KNOT_WIRE_HEADER_SIZE;
 }
 
 /*----------------------------------------------------------------------------*/

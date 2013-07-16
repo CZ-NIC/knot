@@ -587,8 +587,8 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	/* Check if loaded origin matches. */
 	const knot_dname_t *dname = knot_zone_name(*dst);
 	knot_dname_t *dname_req = NULL;
-	dname_req = knot_dname_new_from_str(zone_name, strlen(zone_name));
-	if (knot_dname_compare(dname, dname_req) != 0) {
+	dname_req = knot_dname_from_str(zone_name, strlen(zone_name));
+	if (knot_dname_cmp(dname, dname_req) != 0) {
 		log_server_error("Origin of the zone db file is "
 				 "different than '%s'\n",
 				 zone_name);
@@ -1041,7 +1041,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 	/* Convert the zone name into a domain name. */
 	/* Local allocation, will be discarded. */
-	knot_dname_t *dname = knot_dname_new_from_str(z->name, strlen(z->name));
+	knot_dname_t *dname = knot_dname_from_str(z->name, strlen(z->name));
 	if (dname == NULL) {
 		log_server_error("Error creating domain name from zone"
 		                 " name\n");
@@ -1073,7 +1073,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			dbg_zones_verb("zones: loading stub zone '%s' "
 			               "for bootstrap.\n",
 			               z->name);
-			knot_dname_t *owner = knot_dname_deep_copy(dname);
+			knot_dname_t *owner = knot_dname_copy(dname);
 			zone = knot_zone_new_empty(owner);
 			if (zone != NULL) {
 				ret = KNOT_EOK;
@@ -2644,11 +2644,11 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	const char *zonefile = zd->conf->file;
 
 	/* Check if the new zone apex dname matches zone name. */
-	knot_dname_t *cur_name = knot_dname_new_from_str(zd->conf->name,
+	knot_dname_t *cur_name = knot_dname_from_str(zd->conf->name,
 	                                                 strlen(zd->conf->name));
 	const knot_dname_t *new_name = NULL;
 	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
-	int r = knot_dname_compare(cur_name, new_name);
+	int r = knot_dname_cmp(cur_name, new_name);
 	knot_dname_free(&cur_name);
 	if (r != 0) {
 		return KNOT_EINVAL;
@@ -3218,7 +3218,7 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 		                                       zone, time);
 		dbg_zones("zone: REFRESH '%s' set to %u\n",
-		          zd->conf->name, time);
+		          zd->conf->name, (unsigned)time);
 		zd->xfr_in.state = XFR_SCHED;
 	}
 	rcu_read_unlock();
@@ -3288,7 +3288,7 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 	 * 2) Find the particular key used by the TSIG.
 	 *    Check not only name, but also the algorithm.
 	 */
-	if (key && kname && knot_dname_compare(key->name, kname) == 0
+	if (key && kname && knot_dname_cmp(key->name, kname) == 0
 	    && key->algorithm == alg) {
 		dbg_zones_verb("Found claimed TSIG key for comparison\n");
 	} else {

@@ -80,16 +80,17 @@ int knot_query_set_question(knot_packet_t *query,
 
 	assert(query->size == KNOT_WIRE_HEADER_SIZE);
 
-	/* Calculate question size. */
+	/* Copy name wireformat. */
 	uint8_t *dst = query->wireformat + KNOT_WIRE_HEADER_SIZE;
-	size_t qname_len = knot_dname_size(qname);
-	size_t qsize = 2 * sizeof(uint16_t) + qname_len;
-	if (KNOT_WIRE_HEADER_SIZE + qsize > query->max_size) {
-		return KNOT_ESPACE;
-	}
+	int qname_len = knot_dname_to_wire(dst, qname, query->max_size - query->size);
+	assert(qname_len == knot_dname_size(qname));
+	size_t question_len = 2 * sizeof(uint16_t) + qname_len;
 
-	/* Copy name wireformat and TYPE+CLASS. */
-	memcpy(dst, knot_dname_name(qname), qname_len);
+	/* Check size limits. */
+	if (qname_len < 0 || query->size + question_len > query->max_size)
+		return KNOT_ESPACE;
+
+	/* Copy QTYPE & QCLASS */
 	dst += qname_len;
 	knot_wire_write_u16(dst, qtype);
 	dst += sizeof(uint16_t);
@@ -97,7 +98,7 @@ int knot_query_set_question(knot_packet_t *query,
 
 	/* Update question count and sizes. */
 	knot_wire_set_qdcount(query->wireformat, 1);
-	query->size += qsize;
+	query->size += question_len;
 	query->qname_size = qname_len;
 
 	return KNOT_EOK;

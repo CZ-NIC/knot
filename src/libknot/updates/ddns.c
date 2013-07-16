@@ -117,7 +117,7 @@ static int knot_ddns_add_prereq_dname(const knot_dname_t *dname,
 		return ret;
 	}
 
-	knot_dname_t *dname_new = knot_dname_deep_copy(dname);
+	knot_dname_t *dname_new = knot_dname_copy(dname);
 	if (dname_new == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -195,7 +195,7 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
 	for (int i = 0; i < changeset->add_count; ++i) {
 		// Removing RR(s) from this owner
-		if (knot_dname_compare(knot_rrset_owner(rr),
+		if (knot_dname_cmp(knot_rrset_owner(rr),
 		                       knot_rrset_owner(changeset->add[i])) == 0) {
 			// Removing one or all RRSets
 			if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
@@ -319,7 +319,7 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 	assert(knot_rrset_ttl(rrset) == 0);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
 
-	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
+	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EBADZONE;
@@ -352,7 +352,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	assert(knot_rrset_ttl(rrset) == 0);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
 
-	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
+	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EBADZONE;
@@ -372,7 +372,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	} else {
 		// do not have to compare the header, it is already done
 		assert(knot_rrset_type(found) == knot_rrset_type(rrset));
-		assert(knot_dname_compare(knot_rrset_owner(found),
+		assert(knot_dname_cmp(knot_rrset_owner(found),
 		                          knot_rrset_owner(rrset)) == 0);
 		if (knot_rrset_rdata_equal(found, rrset) <= 0) {
 			*rcode = KNOT_RCODE_NXRRSET;
@@ -397,7 +397,7 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	assert(knot_rrset_ttl(rrset) == 0);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_NONE);
 
-	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
+	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EBADZONE;
@@ -428,7 +428,7 @@ static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
 	assert(dname != NULL);
 	assert(rcode != NULL);
 
-	if (!knot_dname_is_subdomain(dname,
+	if (!knot_dname_is_sub(dname,
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EBADZONE;
@@ -458,7 +458,7 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 	assert(dname != NULL);
 	assert(rcode != NULL);
 
-	if (!knot_dname_is_subdomain(dname,
+	if (!knot_dname_is_sub(dname,
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EBADZONE;
@@ -615,8 +615,8 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 	dbg_ddns("Checking UPDATE packet.\n");
 	const knot_dname_t *owner = knot_rrset_owner(rrset);
 	const knot_dname_t *qname = knot_packet_qname(query);
-	int is_sub = knot_dname_is_subdomain(owner, qname);
-	if (!is_sub && knot_dname_compare(owner, qname) != 0) {
+	int is_sub = knot_dname_is_sub(owner, qname);
+	if (!is_sub && knot_dname_cmp(owner, qname) != 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EBADZONE;
 	}
@@ -833,8 +833,7 @@ dbg_ddns_exec_detail(
                                 knot_rrset_type(changeset->add[i]), name);
 		free(name);
 );
-		if (knot_dname_compare_non_canon(knot_rrset_owner(changeset->add[i]),
-		                                 owner) == 0) {
+		if (knot_dname_is_equal(knot_rrset_owner(changeset->add[i]), owner)) {
 			// Removing one or all RRSets
 			if ((knot_rrset_rdata_rr_count(rr) == 0)
 			    && (knot_rrset_type(rr) == knot_rrset_type(changeset->add[i])
