@@ -412,8 +412,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 static int check_rrsig_in_rrset(err_handler_t *handler,
                                 const knot_node_t *node,
                                 const knot_rrset_t *rrset,
-                                const knot_rrset_t *dnskey_rrset,
-                                char nsec3)
+                                const knot_rrset_t *dnskey_rrset)
 {
 	if (handler == NULL || node == NULL || rrset == NULL ||
 	    dnskey_rrset == NULL) {
@@ -987,11 +986,10 @@ int sem_check_node_plain(knot_zone_contents_t *zone,
 }
 
 /*!
- * \brief Run semantic checks for node without DNSSEC-related types.
+ * \brief Run semantic checks for node with DNSSEC-related types.
  *
  * \param zone Current zone.
  * \param node Node to be checked.
- * \param first_node First node in canonical order.
  * \param last_node Last node in canonical order.
  * \param handler Error handler.
  * \param nsec3 NSEC3 used.
@@ -1002,7 +1000,6 @@ int sem_check_node_plain(knot_zone_contents_t *zone,
  */
 static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				  knot_node_t *node,
-				  knot_node_t *first_node,
 				  knot_node_t **last_node,
 				  err_handler_t *handler,
 				  char nsec3)
@@ -1023,8 +1020,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 		const knot_rrset_t *rrset = rrsets[i];
 		if (auth && !deleg &&
 		    (ret = check_rrsig_in_rrset(handler, node,
-		                                rrset, dnskey_rrset,
-						nsec3)) != 0) {
+		                                rrset, dnskey_rrset)) != 0) {
 			err_handler_handle_error(handler, node, ret, NULL);
 		}
 
@@ -1150,7 +1146,6 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 
 	assert(zone);
 
-	knot_node_t *first_node = (knot_node_t *)args->arg4;
 	knot_node_t **last_node = (knot_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
@@ -1172,7 +1167,7 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 	}
 
 	if (do_checks > 1) {
-		semantic_checks_dnssec(zone, node, first_node, last_node,
+		semantic_checks_dnssec(zone, node, last_node,
 				       handler, do_checks == 3);
 	}
 
@@ -1190,7 +1185,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg3 = &do_checks;
-	arguments.arg4 = NULL;
+	arguments.arg4 = NULL; // UNUSED
 	arguments.arg5 = &last_node;
 	arguments.arg6 = handler;
 	int fatal_error = 0;
