@@ -82,7 +82,6 @@ void init_list(list *);
 void insert_node(node *, node *);
 void list_dup(list *dst, list *src, size_t itemsz);
 size_t list_size(const list *);
-int list_is_empty(const list *l);
 
 /*!
  * \brief List item for string lists.

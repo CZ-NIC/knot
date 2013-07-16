@@ -178,19 +178,3 @@ size_t list_size(const list *l)
 	return count;
 }
 
-/**
- * list_is_empty - Checks whether the list is empty
- * @l: list
- *
- * This function returns 1 if list is empty, 0 otherwise.
- */
-int list_is_empty(const list *l)
-{
-	node *n = 0;
-	WALK_LIST(n, *l) {
-		return 0;
-	}
-
-	return 1;
-}
-
