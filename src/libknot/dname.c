@@ -31,60 +31,230 @@
 #include "util/utils.h"
 #include "util/wire.h"
 
-
-/*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-static knot_dname_t *knot_dname_new()
+static int knot_label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
 {
-	knot_dname_t *dname = malloc(sizeof(knot_dname_t));
-
-	dname->name = NULL;
-	dname->count = 1;
-	dname->size = 0;
-
-	return dname;
+	return (*lb1 == *lb2) && memcmp(lb1 + 1, lb2 + 1, *lb1) == 0;
 }
 
-/*!
- * \brief Converts domain name from string representation to wire format.
- *
- * This function also allocates the space for the wire format.
- *
- * \param name Domain name in string representation (presentation format).
- * \param size Size of the given domain name in characters (not counting the
- *             terminating 0 character.
- * \param dname Domain name where to store the wire format.
- *
- * \return Size of the wire format of the domain name in octets. If 0, no
- *         space has been allocated.
- *
- * \todo handle \X and \DDD (RFC 1035 5.1) or it can be handled by the parser?
- */
-static int knot_dname_str_to_wire(const char *name, uint size,
-                                    knot_dname_t *dname)
+/*----------------------------------------------------------------------------*/
+/* API functions                                                              */
+/*----------------------------------------------------------------------------*/
+
+knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 {
-	if (size == 0 || size > KNOT_MAX_DNAME_LENGTH) {
-		return KNOT_EINVAL;
+	const uint8_t *name = pkt + *pos;
+	const uint8_t *endp = pkt + maxpos;
+	int parsed = knot_dname_wire_check(name, endp, pkt);
+	if (parsed < 0)
+		return NULL;
+
+	/* Allocate space for the name. */
+	knot_dname_t *res = malloc(parsed);
+	if (res) {
+		/* Unpack name (expand compression pointers). */
+		if (knot_dname_unpack(res, name, parsed, pkt) > 0) {
+			*pos += parsed;
+		} else {
+			free(res);
+			res = NULL;
+		}
 	}
 
-	unsigned wire_size = size + 1;
-	if (name[0] == '.' && size == 1) {
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_dname_t *knot_dname_copy(const knot_dname_t *name)
+{
+	return knot_dname_copy_part(name, knot_dname_size(name));
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len)
+{
+	assert(name && len > 0);
+	knot_dname_t *dst = malloc(len);
+	if (knot_dname_to_wire(dst, name, len) < 1) {
+		free(dst);
+		return NULL;
+	}
+
+	return dst;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
+{
+	/* Write out non or partially compressed name. */
+	int len = 0;
+	while (*src != '\0' && !knot_wire_is_pointer(src)) {
+		uint8_t lblen = *src + 1;
+		if (len + lblen > maxlen)
+			return KNOT_ESPACE;
+		memcpy(dst + len, src, lblen);
+		len += lblen;
+		src += lblen;
+	}
+
+	/* Terminated either FQDN \x00, or as a pointer. */
+	if (*src == '\0') {
+		if (len + 1> maxlen)
+			return KNOT_ESPACE;
+		*(dst + len) = '\0';
+		len += 1; /* \x00 */
+	} else {
+		if (len + 2 > maxlen)
+			return KNOT_ESPACE;
+		memcpy(dst + len, src, sizeof(uint16_t));
+		len += 2; /* ptr */
+	}
+	return len;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_dname_unpack(uint8_t* dst, const knot_dname_t *src,
+                      size_t maxlen, const uint8_t *pkt)
+{
+	if (dst == NULL || src == NULL)
+		return KNOT_EINVAL;
+
+	/* Seek first real label occurence. */
+	while (knot_wire_is_pointer(src)) {
+		src = knot_wire_next_label(src, pkt);
+	}
+
+	/* Unpack rest of the labels. */
+	int len = 0;
+	while (*src != '\0') {
+		uint8_t lblen = *src + 1;
+		if (len + lblen > maxlen)
+			return KNOT_ESPACE;
+		memcpy(dst + len, src, lblen);
+		len += lblen;
+		src = knot_wire_next_label(src, pkt);
+	}
+
+	/* Terminal label */
+	if (len + 1 > maxlen)
+		return KNOT_EINVAL;
+
+	*(dst + len) = '\0';
+	return len + 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+char *knot_dname_to_str(const knot_dname_t *name)
+{
+	if (name == NULL)
+		return NULL;
+
+	/*! \todo Supply packet. */
+	/*! \todo Write to static buffer? */
+	// Allocate space for dname string + 1 char termination.
+	int dname_size = knot_dname_size(name);
+	size_t alloc_size = dname_size + 1;
+	char *res = malloc(alloc_size);
+	if (res == NULL) {
+		return NULL;
+	}
+
+	uint8_t label_len = 0;
+	size_t  str_len = 0;
+
+	for (uint i = 0; i < dname_size; i++) {
+		uint8_t c = name[i];
+
+		// Read next label size.
+		if (label_len == 0) {
+			label_len = c;
+
+			// Write label separation.
+			if (str_len > 0 || dname_size == 1) {
+				res[str_len++] = '.';
+			}
+
+			continue;
+		}
+
+		if (isalnum(c) != 0 || c == '-' || c == '_' || c == '*' ||
+		    c == '/') {
+			res[str_len++] = c;
+		} else if (ispunct(c) != 0) {
+			// Increase output size for \x format.
+			alloc_size += 1;
+			char *extended = realloc(res, alloc_size);
+			if (extended == NULL) {
+				free(res);
+				return NULL;
+			}
+			res = extended;
+
+			// Write encoded character.
+			res[str_len++] = '\\';
+			res[str_len++] = c;
+		} else {
+			// Increase output size for \DDD format.
+			alloc_size += 3;
+			char *extended = realloc(res, alloc_size);
+			if (extended == NULL) {
+				free(res);
+				return NULL;
+			}
+			res = extended;
+
+			// Write encoded character.
+			int ret = snprintf(res + str_len, alloc_size - str_len,
+			                   "\\%03u", c);
+			if (ret <= 0 || ret >= alloc_size - str_len) {
+				free(res);
+				return NULL;
+			}
+
+			str_len += ret;
+		}
+
+		label_len--;
+	}
+
+	// String_termination.
+	res[str_len] = 0;
+
+	return res;
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_dname_t *knot_dname_from_str(const char *name, unsigned len)
+{
+	if (len == 0 || len > KNOT_DNAME_MAXLEN) {
+		return NULL;
+	}
+
+	/* Estimate wire size for special cases. */
+	unsigned wire_size = len + 1;
+	if (name[0] == '.' && len == 1) {
 		wire_size = 1; /* Root label. */
-		size = 0;      /* Do not parse input. */
-	} else if (name[size - 1] != '.') {
+		len = 0;      /* Do not parse input. */
+	} else if (name[len - 1] != '.') {
 		++wire_size; /* No FQDN, reserve last root label. */
 	}
 
 	/* Create wire. */
 	uint8_t *wire = malloc(wire_size * sizeof(uint8_t));
 	if (wire == NULL)
-		return KNOT_ENOMEM;
+		return NULL;
 	*wire = '\0';
 
+	/* Parse labels. */
 	const uint8_t *ch = (const uint8_t *)name;
-	const uint8_t *np = ch + size;
+	const uint8_t *np = ch + len;
 	uint8_t *label = wire;
 	uint8_t *w = wire + 1; /* Reserve 1 for label len */
 	while (ch != np) {
@@ -92,7 +262,7 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 			/* Zero-length label inside a dname - invalid. */
 			if (*label == 0) {
 				free(wire);
-				return KNOT_EMALF;
+				return NULL;
 			}
 			label = w;
 			*label = '\0';
@@ -109,353 +279,110 @@ static int knot_dname_str_to_wire(const char *name, uint size,
 		*w = '\0';
 	}
 
-	dname->name = wire;
-	dname->size = wire_size;
+	return wire;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_dname_to_lower(knot_dname_t *name)
+{
+	/*! \todo Faster with \xdfdf mask. */
+	while (*name != '\0') {
+		for (uint8_t i = 0; i < *name; ++i)
+			name[1 + i] = knot_tolower(name[1 + i]);
+		name = (uint8_t *)knot_wire_next_label(name, NULL);
+		assert(name); /* Must not be used on compressed names. */
+	}
+
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
+int knot_dname_size(const knot_dname_t *name)
 {
-	return (*lb1 == *lb2) && memcmp(lb1 + 1, lb2 + 1, *lb1) == 0;
-}
-
-/*----------------------------------------------------------------------------*/
-/* API functions                                                              */
-/*----------------------------------------------------------------------------*/
-
-knot_dname_t *knot_dname_new_from_str(const char *name, uint size)
-{
-	if (name == NULL || size == 0) {
-		return NULL;
+	/* Count name size without terminal label. */
+	int len = 0;
+	while (*name != '\0' && !knot_wire_is_pointer(name)) {
+		uint8_t lblen = *name + 1;
+		len += lblen;
+		name += lblen;
 	}
 
-	knot_dname_t *dname = knot_dname_new();
+	/* Compression pointer is 2 octets. */
+	if (knot_wire_is_pointer(name))
+		return len + 2;
 
-	if (dname == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-
-	/*! \todo The function should return error codes. */
-	int ret = knot_dname_str_to_wire(name, size, dname);
-	if (ret != 0) {
-		dbg_dname("Failed to create domain name from string.\n");
-		knot_dname_free(&dname);
-		return NULL;
-	}
-
-	if (dname->size <= 0) {
-		dbg_dname("Could not parse domain name "
-		          "from string: '%.*s'\n", size, name);
-	}
-	assert(dname->name != NULL);
-
-	return dname;
+	return len + 1;
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_new_from_wire(const uint8_t *name, uint size)
+int knot_dname_wire_size(const knot_dname_t *name, const uint8_t *pkt)
 {
-	if (name == NULL) { /* && size != 0) { !OS: Nerozumjaju */
-		dbg_dname("No name given!\n");
-		return NULL;
-	}
-
-	knot_dname_t *dname = knot_dname_new();
-
-	if (dname == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-
-	dname->name = (uint8_t *)malloc(size * sizeof(uint8_t));
-	if (dname->name == NULL) {
-		ERR_ALLOC_FAILED;
-		knot_dname_free(&dname);
-		return NULL;
-	}
-
-	/*! \todo this won't work for non-linear names */
-	memcpy(dname->name, name, size);
-	dname->size = size;
-	return dname;
+	return knot_dname_prefixlen(name, KNOT_DNAME_MAXLABELS, pkt);
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_parse_from_wire(const uint8_t *wire,
-                                         size_t *pos, size_t size)
-{
-	const uint8_t *name = wire + *pos;
-	const uint8_t *endp = wire + size;
-	int parsed = knot_dname_wire_check(name, endp, wire);
-	if (parsed < 0)
-		return NULL;
-
-	knot_dname_t *dname = knot_dname_new_from_wire(name, parsed);
-	if (dname)
-		*pos += parsed;
-
-	return dname;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_dname_t *knot_dname_deep_copy(const knot_dname_t *dname)
-{
-	/* dname_new_from_wire() does not accept non-FQDN dnames, so we
-	 * do the copy by hand. It's faster anyway */
-
-	if (dname == NULL) {
-		return NULL;
-	}
-
-	knot_dname_t *copy = knot_dname_new();
-	CHECK_ALLOC(copy, NULL);
-
-	copy->name = (uint8_t *)(malloc(dname->size));
-	if (copy->name == NULL) {
-		knot_dname_free(&copy);
-		return NULL;
-	}
-
-	memcpy(copy->name, dname->name, dname->size);
-	copy->size = dname->size;
-
-	return copy;
-}
-
-/*----------------------------------------------------------------------------*/
-
-char *knot_dname_to_str(const knot_dname_t *dname)
-{
-	if (!dname || dname->size == 0) {
-		return 0;
-	}
-
-	// Allocate space for dname string + 1 char termination.
-	size_t alloc_size = dname->size + 1;
-	char *name = malloc(alloc_size);
-	if (name == NULL) {
-		return NULL;
-	}
-
-	uint8_t label_len = 0;
-	size_t  str_len = 0;
-
-	for (uint i = 0; i < dname->size; i++) {
-		uint8_t c = dname->name[i];
-
-		// Read next label size.
-		if (label_len == 0) {
-			label_len = c;
-
-			// Write label separation.
-			if (str_len > 0 || dname->size == 1) {
-				name[str_len++] = '.';
-			}
-
-			continue;
-		}
-
-		if (isalnum(c) != 0 || c == '-' || c == '_' || c == '*' ||
-		    c == '/') {
-			name[str_len++] = c;
-		} else if (ispunct(c) != 0) {
-			// Increase output size for \x format.
-			alloc_size += 1;
-			char *extended = realloc(name, alloc_size);
-			if (extended == NULL) {
-				free(name);
-				return NULL;
-			}
-			name = extended;
-
-			// Write encoded character.
-			name[str_len++] = '\\';
-			name[str_len++] = c;
-		} else {
-			// Increase output size for \DDD format.
-			alloc_size += 3;
-			char *extended = realloc(name, alloc_size);
-			if (extended == NULL) {
-				free(name);
-				return NULL;
-			}
-			name = extended;
-
-			// Write encoded character.
-			int ret = snprintf(name + str_len, alloc_size - str_len,
-			                   "\\%03u", c);
-			if (ret <= 0 || ret >= alloc_size - str_len) {
-				free(name);
-				return NULL;
-			}
-
-			str_len += ret;
-		}
-
-		label_len--;
-	}
-
-	// String_termination.
-	name[str_len] = 0;
-
-	return name;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_dname_to_lower(knot_dname_t *dname)
-{
-	return knot_dname_to_lower_copy(dname, (char*)dname->name, dname->size);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_dname_to_lower_copy(const knot_dname_t *dname, char *name,
-                             size_t size)
-{
-	if (dname == NULL || name == NULL || size < dname->size) {
-		return KNOT_EINVAL;
-	}
-
-	for (int i = 0; i < dname->size; ++i) {
-		name[i] = knot_tolower(dname->name[i]);
-	}
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const uint8_t *knot_dname_name(const knot_dname_t *dname)
-{
-	return dname->name;
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint knot_dname_size(const knot_dname_t *dname)
-{
-	return dname->size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_dname_is_fqdn(const knot_dname_t *dname)
-{
-	return (dname->name[dname->size - 1] == '\0');
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_dname_t *knot_dname_left_chop(const knot_dname_t *dname)
-{
-	if (dname == NULL || *knot_dname_name(dname) == '\0') { /* root */
-		return NULL;
-	}
-
-	knot_dname_t *parent = knot_dname_new();
-	if (parent == NULL) {
-		return NULL;
-	}
-
-	parent->size = dname->size - dname->name[0] - 1;
-	parent->name = (uint8_t *)malloc(parent->size);
-	if (parent->name == NULL) {
-		ERR_ALLOC_FAILED;
-		knot_dname_free(&parent);
-		return NULL;
-	}
-
-	memcpy(parent->name, &dname->name[dname->name[0] + 1], parent->size);
-	return parent;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_dname_left_chop_no_copy(knot_dname_t *dname)
-{
-	uint8_t len = *knot_dname_name(dname);
-	if (len == 0)
-		return;
-
-	/*! \todo this will work only with linearized names (as of now) */
-	dname->size -= (len + 1);
-	memmove(dname->name, dname->name + len + 1, dname->size);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_dname_is_subdomain(const knot_dname_t *sub,
-                              const knot_dname_t *domain)
+bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 {
 	if (sub == domain)
-		return 0;
+		return false;
 
 	/* Count labels. */
-	const uint8_t *sub_p = sub->name;
-	const uint8_t *domain_p = domain->name;
-	int sub_l = knot_dname_wire_labels(sub_p, NULL);
-	int domain_l = knot_dname_wire_labels(domain_p, NULL);
+	int sub_l = knot_dname_labels(sub, NULL);
+	int domain_l = knot_dname_labels(domain, NULL);
 
 	/* Subdomain must have more labels as parent. */
 	if (sub_l <= domain_l)
-		return 0;
+		return false;
 
 	/* Align end-to-end to common suffix. */
-	int common = knot_dname_align(&sub_p, sub_l, &domain_p, domain_l, NULL);
+	int common = knot_dname_align(&sub, sub_l, &domain, domain_l, NULL);
 
 	/* Compare common suffix. */
 	while(common > 0) {
 		/* Compare label. */
-		if (!knot_label_is_equal(sub_p, domain_p))
-			return 0;
+		if (!knot_label_is_equal(sub, domain))
+			return false;
 		/* Next label. */
-		sub_p = knot_wire_next_label(sub_p, NULL);
-		domain_p = knot_wire_next_label(domain_p, NULL);
+		sub = knot_wire_next_label(sub, NULL);
+		domain = knot_wire_next_label(domain, NULL);
 		--common;
 	}
-	return 1;
+	return true;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_is_wildcard(const knot_dname_t *dname)
+int knot_dname_is_wildcard(const knot_dname_t *name)
 {
-	return (dname->size >= 2
-		&& dname->name[0] == 1
-		&& dname->name[1] == '*');
+	return name[0] == 1 && name[1] == '*';
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_matched_labels(const knot_dname_t *dname1,
-                                const knot_dname_t *dname2)
+int knot_dname_matched_labels(const knot_dname_t *dname1, const knot_dname_t *dname2)
 {
 	/* Count labels. */
-	const uint8_t *d1 = dname1->name;
-	const uint8_t *d2 = dname2->name;
-	int l1 = knot_dname_wire_labels(d1, NULL);
-	int l2 = knot_dname_wire_labels(d2, NULL);
+	int l1 = knot_dname_labels(dname1, NULL);
+	int l2 = knot_dname_labels(dname2, NULL);
 
 	/* Align end-to-end to common suffix. */
-	int common = knot_dname_align(&d1, l1, &d2, l2, NULL);
+	int common = knot_dname_align(&dname1, l1, &dname2, l2, NULL);
 
 	/* Count longest chain leading to root label. */
 	int matched = 0;
 	while (common > 0) {
-		if (knot_label_is_equal(d1, d2))
+		if (knot_label_is_equal(dname1, dname2))
 			++matched;
 		else
 			matched = 0; /* Broken chain. */
 
 		/* Next label. */
-		d1 = knot_wire_next_label(d1, NULL);
-		d2 = knot_wire_next_label(d2, NULL);
+		dname1 = knot_wire_next_label(dname1, NULL);
+		dname2 = knot_wire_next_label(dname2, NULL);
 		--common;
 	}
 
@@ -464,43 +391,43 @@ int knot_dname_matched_labels(const knot_dname_t *dname1,
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname, int size,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname, unsigned labels,
                                         const knot_dname_t *suffix)
 {
-dbg_dname_exec_verb(
-	char *name = knot_dname_to_str(dname);
-	dbg_dname_verb("Replacing suffix of name %s, size %d with ", name,
-	               size);
-	free(name);
-	name = knot_dname_to_str(suffix);
-	dbg_dname_verb("%s (size %d)\n", name, suffix->size);
-	free(name);
-);
-	knot_dname_t *res = knot_dname_new();
-	CHECK_ALLOC(res, NULL);
 
-	res->size = dname->size - size + suffix->size;
+	/* Calculate prefix and suffix lengths. */
+	int dname_lbs = knot_dname_labels(dname, NULL);
+	unsigned prefix_lbs = dname_lbs - labels;
 
-	dbg_dname_detail("Allocating %d bytes...\n", res->size);
-	res->name = (uint8_t *)malloc(res->size);
-	if (res->name == NULL) {
-		knot_dname_free(&res);
+	/* Trim 1 octet from prefix, as it is measured as FQDN. */
+	int prefix_len = knot_dname_prefixlen(dname, prefix_lbs, NULL) - 1;
+	int suffix_len = knot_dname_size(suffix);
+	if (prefix_len < 0 || suffix_len < 0)
 		return NULL;
+
+	/* Create target name. */
+	int new_len = prefix_len + suffix_len;
+	knot_dname_t *out = malloc(new_len);
+	if (out == NULL)
+		return NULL;
+
+	/* Copy prefix. */
+	uint8_t *dst = out;
+	while (prefix_lbs > 0) {
+		memcpy(dst, dname, *dname + 1);
+		dst += *dname + 1;
+		dname = knot_wire_next_label(dname, NULL);
+		--prefix_lbs;
 	}
 
-	dbg_dname_hex((char *)res->name, res->size);
-
-	dbg_dname_detail("Copying %d bytes from the original name.\n",
-	                 dname->size - size);
-	memcpy(res->name, dname->name, dname->size - size);
-	dbg_dname_hex((char *)res->name, res->size);
-
-	dbg_dname_detail("Copying %d bytes from the suffix.\n", suffix->size);
-	memcpy(res->name + dname->size - size, suffix->name, suffix->size);
-
-	dbg_dname_hex((char *)res->name, res->size);
-
-	return res;
+	/* Copy suffix. */
+	while (*suffix != '\0') {
+		memcpy(dst, suffix, *suffix + 1);
+		dst += *suffix + 1;
+		suffix = knot_wire_next_label(suffix, NULL);
+	}
+	*dst = '\0';
+	return out;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -511,70 +438,63 @@ void knot_dname_free(knot_dname_t **dname)
 		return;
 	}
 
-	free((*dname)->name);
-
-//	slab_free(*dname);
 	free(*dname);
 	*dname = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_compare(const knot_dname_t *d1, const knot_dname_t *d2)
+int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	return knot_dname_wire_cmp(d1, d2, NULL);
+	return knot_dname_cmp_wire(d1, d2, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_compare_cs(const knot_dname_t *d1, const knot_dname_t *d2)
+int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
+                        const uint8_t *pkt)
 {
-	return knot_dname_wire_cmp(d1, d2, NULL);
+	/* Convert to lookup format. */
+	uint8_t d1_lf[KNOT_DNAME_MAXLEN], d2_lf[KNOT_DNAME_MAXLEN];
+	if (knot_dname_lf(d1_lf, d1, pkt) < 0 || knot_dname_lf(d2_lf, d2, pkt) < 0)
+		return KNOT_EINVAL;
+
+	/* Compare common part. */
+	uint8_t common = d1_lf[0];
+	if (common > d2_lf[0])
+		common = d2_lf[0];
+	int ret = memcmp(d1_lf+1, d2_lf+1, common);
+	if (ret != 0)
+		return ret;
+
+	/* If they match, compare lengths. */
+	if (d1_lf[0] < d2_lf[0])
+		return -1;
+	if (d1_lf[0] > d2_lf[0])
+		return 1;
+	return 0;
 }
 
-int knot_dname_compare_non_canon(const knot_dname_t *d1, const knot_dname_t *d2)
+
+/*----------------------------------------------------------------------------*/
+
+int knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	int ret = memcmp(d1->name, d2->name,
-	                 d1->size > d2->size ? d2->size : d1->size);
-	if (d1->size != d2->size && ret == 0) {
-		return d1->size < d2->size ? -1 : 1;
-	} else {
-		return ret;
-	}
+	/*! \todo Could be implemented more efficiently, check profile first. */
+	return (knot_dname_cmp(d1, d2) == 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
 knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 {
-	if (d2->size == 0) {
-		return d1;
-	}
-
-	// allocate new space
-	size_t new_size = d1->size + d2->size - 1; /* Trim the d1 \0 label */
-	uint8_t *new_dname = (uint8_t *)malloc(new_size);
-	CHECK_ALLOC_LOG(new_dname, NULL);
-
-	dbg_dname_detail("1: copying %d bytes from adress %p to %p\n",
-	                 d1->size, d1->name, new_dname);
-
-	memcpy(new_dname, d1->name, d1->size);
-
-	dbg_dname_detail("2: copying %d bytes from adress %p to %p\n",
-	                 d2->size, d2->name, new_dname + d1->size);
-
-	/* Overwrite the d1 \0 label. */
-	memcpy(new_dname + d1->size - 1, d2->name, d2->size);
-
-	uint8_t *old_name = d1->name;
-	d1->name = new_dname;
-	free(old_name);
-
-	d1->size = new_size;
-
-	return d1;
+	/* This is problem equal to replacing last \x00 from d1 with d2. */
+	knot_dname_t *ret = knot_dname_replace_suffix(d1, 0, d2);
+	/* Like if we are reallocating d1. */
+	knot_dname_free(&d1);
+	return ret;
 }
+
 
 int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
                           const uint8_t *pkt)
@@ -594,7 +514,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 			return KNOT_ESPACE;
 
 		/* Reject more labels. */
-		if (labels == KNOT_MAX_DNAME_LABELS - 1)
+		if (labels == KNOT_DNAME_MAXLABELS - 1)
 			return KNOT_EMALF;
 
 		if (knot_wire_is_pointer(name)) {
@@ -618,7 +538,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 				return KNOT_EMALF;
 			/* Check if there's enough space. */
 			int lblen = *name + 1;
-			if (name_len + lblen > KNOT_MAX_DNAME_LENGTH)
+			if (name_len + lblen > KNOT_DNAME_MAXLEN)
 				return KNOT_EMALF;
 			/* Update wire size only for noncompressed part. */
 			name_len += lblen;
@@ -640,10 +560,14 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 	return wire_len;
 }
 
-int knot_dname_wire_size(const uint8_t *name, const uint8_t *pkt)
+int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt)
 {
 	if (!name)
 		return KNOT_EINVAL;
+
+	/* Zero labels means 1 octet \x00 */
+	if (nlabels == 0)
+		return 1;
 
 	/* Seek first real label occurence. */
 	while (knot_wire_is_pointer(name)) {
@@ -654,12 +578,14 @@ int knot_dname_wire_size(const uint8_t *name, const uint8_t *pkt)
 	while (*name != '\0') {
 		len += *name + 1;
 		name = knot_wire_next_label((uint8_t *)name, (uint8_t *)pkt);
+		if (--nlabels == 0) /* Count N first labels only. */
+			break;
 	}
 
 	return len;
 }
 
-int knot_dname_wire_labels(const uint8_t *name, const uint8_t *pkt)
+int knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 {
 	uint8_t count = 0;
 	while (*name != '\0') {
@@ -684,54 +610,30 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
 	return (d1_labels < d2_labels) ? d1_labels : d2_labels;
 }
 
-int knot_dname_wire_cmp(const knot_dname_t *d1, const knot_dname_t *d2,
-                        const uint8_t *pkt)
+int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 {
-	/*! \todo lf conversion should respect packet wire. */
-
-	/* Convert to lookup format. */
-	unsigned buflen = DNAME_LFT_MAXLEN;
-	uint8_t d1_lf[DNAME_LFT_MAXLEN], d2_lf[DNAME_LFT_MAXLEN];
-	if (dname_lf(d1_lf, d1, buflen) < 0 || dname_lf(d2_lf, d2, buflen) < 0)
-		return KNOT_EINVAL;
-
-	/* Compare common part. */
-	uint8_t common = d1_lf[0];
-	if (common > d2_lf[0])
-		common = d2_lf[0];
-	int ret = memcmp(d1_lf+1, d2_lf+1, common);
-	if (ret != 0)
-		return ret;
-
-	/* If they match, compare lengths. */
-	if (d1_lf[0] < d2_lf[0])
-		return -1;
-	if (d1_lf[0] > d2_lf[0])
-		return 1;
-	return 0;
-}
-
-int dname_lf(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
-{
-	if (src->size > maxlen)
-		return KNOT_ESPACE;
-	*dst = (uint8_t)src->size;
-	/* need to save last \x00 for root dname */
-	if (*dst > 1)
-		*dst -= 1;
-	*++dst = '\0';
-	uint8_t* l = src->name;
-	uint8_t lstack[DNAME_LFT_MAXLEN];
-	uint8_t *sp = lstack;
+	uint8_t *len = dst++;
+	*len = '\0';
+	*dst = '\0';
+	const uint8_t* l = src;
+	/*! \todo This could be made as offsets to pkt? */
+	const uint8_t* lstack[KNOT_DNAME_MAXLEN];
+	const uint8_t **sp = lstack;
 	while(*l != 0) { /* build label stack */
-		*sp++ = (l - src->name);
-		l += 1 + *l;
+		*sp++ = l;
+		l = knot_wire_next_label(l, pkt);
 	}
 	while(sp != lstack) {          /* consume stack */
-		l = src->name + *--sp; /* fetch rightmost label */
+		l = *--sp; /* fetch rightmost label */
 		memcpy(dst, l+1, *l);  /* write label */
 		dst += *l;
 		*dst++ = '\0';         /* label separator */
+		*len += *l + 1;
 	}
+
+	/* root label special case */
+	if (*len == 0)
+		*len = 1; /* \x00 */
+
 	return KNOT_EOK;
 }
