@@ -42,6 +42,8 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"RRSIG: Type covered rdata field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_TTL] =
 	"RRSIG: TTL rdata field is wrong!",
+	[-ZC_ERR_RRSIG_RDATA_EXPIRATION] =
+	"RRSIG: Expired signature!",
 	[-ZC_ERR_RRSIG_RDATA_LABELS] =
 	"RRSIG: Labels rdata field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
