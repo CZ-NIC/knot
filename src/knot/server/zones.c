@@ -449,27 +449,33 @@ static int zones_zonefile_sync_ev(event_t *e)
 		return KNOT_EINVAL;
 	}
 
-	/* Execute zonefile sync. */
-	journal_t *j = journal_retain(zd->ixfr_db);
-	int ret = zones_zonefile_sync(zone, j);
-	journal_release(j);
+	/* Only on zones with valid contents (non empty). */
+	int ret = KNOT_EOK;
+	if (knot_zone_contents(zone)) {
+		/* Synchronize journal. */
+		journal_t *j = journal_retain(zd->ixfr_db);
+		ret = zones_zonefile_sync(zone, j);
+		journal_release(j);
 
-	rcu_read_lock();
-	if (ret == KNOT_EOK) {
-		log_zone_info("Applied differences of '%s' to zonefile.\n",
-		              zd->conf->name);
-	} else if (ret != KNOT_ERANGE) {
-		log_zone_warning("Failed to apply differences of '%s' "
-		                 "to zonefile.\n",
-		                 zd->conf->name);
+		rcu_read_lock();
+		if (ret == KNOT_EOK) {
+			log_zone_info("Applied differences of '%s' to zonefile.\n",
+			              zd->conf->name);
+		} else if (ret != KNOT_ERANGE) {
+			log_zone_warning("Failed to apply differences of '%s' "
+			                 "to zonefile.\n", zd->conf->name);
+		}
+		rcu_read_unlock();
 	}
 
 	/* Reschedule. */
-	evsched_schedule(e->parent, e, zd->conf->dbsync_timeout * 1000);
+	rcu_read_lock();
+	int next_timeout = zd->conf->dbsync_timeout * 1000;
 	dbg_zones("zones: next IXFR database SYNC of '%s' in %d seconds\n",
-	          zd->conf->name, zd->conf->dbsync_timeout);
+	          zd->conf->name, next_timeout / 1000);
 	rcu_read_unlock();
 
+	evsched_schedule(e->parent, e, next_timeout);
 	return ret;
 }
 

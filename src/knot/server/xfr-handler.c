@@ -62,11 +62,11 @@ static knot_lookup_table_t xfr_type_table[] = {
         { XFR_TYPE_AIN, NULL }
 };
 static knot_lookup_table_t xfr_result_table[] = {
-        { XFR_TYPE_AIN, "Started" },
-        { XFR_TYPE_IIN, "Started" },
-        { XFR_TYPE_SOA, "Query issued" },
-        { XFR_TYPE_NOTIFY, "Query issued" },
-        { XFR_TYPE_FORWARD, "Forwarded query" },
+        { XFR_TYPE_AIN, "Started." },
+        { XFR_TYPE_IIN, "Started." },
+        { XFR_TYPE_SOA, "Query issued." },
+        { XFR_TYPE_NOTIFY, "Query issued." },
+        { XFR_TYPE_FORWARD, "Forwarded query." },
         { XFR_TYPE_AIN, NULL }
 };
 
@@ -514,6 +514,9 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 		set->pfd[id].events = POLLIN;
 		if (fcntl(set->pfd[id].fd, F_SETFL, 0) < 0)
 			;
+	} else {
+		/* Do not attempt to start on broken connection. */
+		return KNOT_ECONNREFUSED;
 	}
 
 	/* Check if the zone is not discarded. */
@@ -559,9 +562,9 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 	}
 
 	if (ret == KNOT_EOK) {
-		log_server_info("%s %s.\n", rq->msg, msg);
+		log_server_info("%s %s\n", rq->msg, msg);
 	} else {
-		log_server_error("%s %s.\n", rq->msg, msg);
+		log_server_error("%s %s\n", rq->msg, msg);
 	}
 
 	return ret;

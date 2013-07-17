@@ -37,7 +37,7 @@
 
 /*! \brief Default config paths. */
 static const char *DEFAULT_CONFIG[] = {
-	SYSCONFDIR "/" "knot.conf",
+	CONFIG_DIR "/" "knot.conf",
 };
 
 #define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
@@ -295,7 +295,7 @@ static int conf_process(conf_t *conf)
 
 		// Default zone file
 		if (zone->file == NULL) {
-			zone->file = strcdup(zone->name, ".zone");
+			zone->file = strcdup(zone->name, "zone");
 			if (!zone->file) {
 				ret = KNOT_ENOMEM;
 				continue;

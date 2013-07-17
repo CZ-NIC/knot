@@ -1,5 +1,17 @@
 Knot DNS NEWS
 
+v1.3.0-rc4 - Jul 15, 2013
+-------------------------
+Features:
+	* --with-configdir option for default config path
+	* Reintroducted 'pidfile' config option
+Bugfixes:
+	* AXFR/IXFR subsystem performance improvements
+	* Rescheduling of AXFR in some cases
+	* RRSIGs not in the same section for DS records
+	* Log messages leaking to syslog
+	* 'knotc restart' option removed due to several limitations
+
 v1.3.0-rc3 - Jun 28, 2013
 -------------------------
 
