@@ -895,14 +895,6 @@ int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-//	/* Create changeset structure. */
-//	*changeset = malloc(sizeof(knot_changeset_t));
-//	if (*changeset == NULL) {
-//		ERR_ALLOC_FAILED;
-//		return KNOT_ENOMEM;
-//	}
-	memset(changeset, 0, sizeof(knot_changeset_t));
-
 	/* Settle SOAs first. */
 	int ret = knot_zone_diff_load_soas(zone1, zone2, changeset);
 	if (ret != KNOT_EOK) {
