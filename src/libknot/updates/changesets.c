@@ -50,13 +50,13 @@ int knot_changesets_init(knot_changesets_t **changesets, uint32_t flags)
 	// Initialize memory context for changesets (xmalloc'd)
 	struct mempool *chs_pool = mp_new(sizeof(knot_changeset_t));
 	(*changesets)->mmc_chs.ctx = chs_pool;
-	(*changesets)->mmc_chs.alloc = mp_alloc_mm_ctx_wrap;
+	(*changesets)->mmc_chs.alloc = (mm_alloc_t)mp_alloc;
 	(*changesets)->mmc_chs.free = NULL;
 
 	// Initialize memory context for RRs in changesets (xmalloc'd)
 	struct mempool *rr_pool = mp_new(sizeof(knot_rr_node_t));
 	(*changesets)->mmc_rr.ctx = rr_pool;
-	(*changesets)->mmc_rr.alloc = mp_alloc_mm_ctx_wrap;
+	(*changesets)->mmc_rr.alloc = (mm_alloc_t)mp_alloc;
 	(*changesets)->mmc_rr.free = NULL;
 
 	// Init list with changesets
@@ -107,7 +107,7 @@ knot_changeset_t *knot_changesets_get_last(knot_changesets_t *chs)
 		return NULL;
 	}
 
-	return (knot_changeset_t *)(chs->sets.tail);
+	return (knot_changeset_t *)(TAIL(chs->sets));
 }
 
 /*----------------------------------------------------------------------------*/
