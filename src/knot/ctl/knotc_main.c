@@ -544,18 +544,15 @@ int main(int argc, char **argv)
 		if (strchr(r_addr, ':'))
 			ctl_if->family = AF_INET6;
 
-		/* Check if address could be a UNIX socket. */
-		if (strchr(r_addr, '/')) {
-			/* Check if file is really a socket. */
-			struct stat st;
-			if (stat(r_addr, &st) == 0 && !S_ISSOCK(st.st_mode)) {
-				log_server_warning("Address '%s' is not a "
-				                   "UNIX socket.\n", r_addr);
-			}
-
+		/* Is a valid UNIX socket or at least contains slash ? */
+		struct stat st;
+		bool has_slash = strchr(r_addr, '/') != NULL;
+		bool is_file = stat(r_addr, &st) == 0;
+		if (has_slash || (is_file && S_ISSOCK(st.st_mode))) {
 			ctl_if->family = AF_UNIX;
 			r_port = 0; /* Override. */
 		}
+
 	}
 	if (r_port > -1) ctl_if->port = r_port;
 
