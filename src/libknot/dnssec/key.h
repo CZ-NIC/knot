@@ -18,14 +18,14 @@
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
- * \brief Interface for loding of keys.
+ * \brief Interface for loading of DNSSEC keys.
  *
  * \addtogroup dnssec
  * @{
  */
 
-#ifndef _KNOT_SIGN_KEY_H_
-#define _KNOT_SIGN_KEY_H_
+#ifndef _KNOT_DNSSEC_KEY_H_
+#define _KNOT_DNSSEC_KEY_H_
 
 #include <stdint.h>
 #include <time.h>
@@ -173,6 +173,6 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
  */
 int knot_tsig_key_free(knot_tsig_key_t *key);
 
-#endif // _KNOT_SIGN_KEY_H_
+#endif // _KNOT_DNSSEC_KEY_H_
 
 /*! @} */

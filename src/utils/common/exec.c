@@ -28,6 +28,7 @@
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
+#include "libknot/dnssec/sig0.h"
 
 static knot_lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },

@@ -30,7 +30,7 @@
 #include "knot/conf/conf.h"
 #include "libknot/packet/packet.h"
 #include "libknot/rrset.h"
-#include "libknot/sign/key.h"
+#include "libknot/dnssec/key.h"
 #include "knot/server/server.h"
 
 /*! \brief Default remote control tool port. */

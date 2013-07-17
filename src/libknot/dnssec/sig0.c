@@ -15,11 +15,11 @@
 */
 
 #include <config.h>
-#include "sign/dnssec.h"
-#include "sign/sig0.h"
-#include "common/errcode.h"
 #include <assert.h>
 #include <time.h>
+#include "common/errcode.h"
+#include "sig0.h"
+#include "sign.h"
 #include "util/wire.h"
 
 /*!

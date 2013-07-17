@@ -29,7 +29,7 @@
 
 #include "zone/node.h"
 #include "dname.h"
-#include "nsec3.h"
+#include "libknot/dnssec/nsec3.h"
 
 #include "zone-tree.h"
 

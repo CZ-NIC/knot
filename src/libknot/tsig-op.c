@@ -29,7 +29,7 @@
 #include "util/wire.h"
 #include "util/debug.h"
 #include "consts.h"
-#include "sign/key.h"
+#include "libknot/dnssec/key.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
 const uint16_t KNOT_TSIG_FUDGE_DEFAULT = 300;  // default Fudge value

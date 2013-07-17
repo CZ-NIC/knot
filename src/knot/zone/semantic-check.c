@@ -25,7 +25,7 @@
 #include "knot/knot.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
-#include "libknot/sign/key.h"
+#include "libknot/dnssec/key.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
 #include "common/descriptor.h"

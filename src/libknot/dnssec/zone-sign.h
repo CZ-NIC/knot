@@ -13,11 +13,24 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _KNOT_ZONE_SIGN_H_
-#define _KNOT_ZONE_SIGN_H_
+/*!
+ * \file zone-sign.h
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \brief Interface for DNSSEC signing of zones.
+ *
+ * \addtogroup dnssec
+ * @{
+ */
 
-#include "zone-contents.h"
+#ifndef _KNOT_DNSSEC_ZONE_SIGN_H_
+#define _KNOT_DNSSEC_ZONE_SIGN_H_
+
+#include "zone/zone-contents.h"
 
 int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir);
 
-#endif // _KNOT_ZONE_SIGN_H_
+#endif // _KNOT_DNSSEC_ZONE_SIGN_H_
+
+/*! @} */

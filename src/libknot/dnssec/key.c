@@ -30,8 +30,8 @@
 #include "common.h"
 #include "common/getline.h"
 #include "dname.h"
-#include "sign/key.h"
-#include "sign/sig0.h"
+#include "key.h"
+#include "sig0.h"
 #include "tsig.h"
 #include "zscanner/scanner.h"
 

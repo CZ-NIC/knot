@@ -24,11 +24,11 @@
  * @{
  */
 
-#ifndef _KNOT_SIGN_DNSSEC_H_
-#define _KNOT_SIGN_DNSSEC_H_
+#ifndef _KNOT_DNSSEC_SIGN_H_
+#define _KNOT_DNSSEC_SIGN_H_
 
-#include "sign/key.h"
 #include "common/descriptor.h"
+#include "libknot/dnssec/key.h"
 
 /*!
  * \brief Algorithm private key data and algorithm implementation (internal).
@@ -137,6 +137,6 @@ int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context,
  */
 int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context);
 
-#endif // _KNOT_SIGN_DNSSEC_H_
+#endif // _KNOT_DNSSEC_SIGN_H_
 
 /*! @} */

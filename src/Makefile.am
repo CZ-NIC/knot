@@ -137,10 +137,6 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/zone-diff.h		\
 	libknot/zone/zone-diff.c		\
-	libknot/zone/zone-nsec.h		\
-	libknot/zone/zone-nsec.c		\
-	libknot/zone/sign.h			\
-	libknot/zone/sign.c			\
 	libknot/nameserver/name-server.h	\
 	libknot/nameserver/name-server.c	\
 	libknot/nameserver/chaos.h		\
@@ -152,7 +148,6 @@ libknot_la_SOURCES =				\
 	libknot/updates/ddns.h			\
 	libknot/updates/ddns.c			\
 	libknot/dname.c				\
-	libknot/nsec3.c				\
 	libknot/consts.h			\
 	libknot/edns.h				\
 	libknot/edns.c				\
@@ -160,7 +155,6 @@ libknot_la_SOURCES =				\
 	libknot/dname.h				\
 	libknot/rrset.h				\
 	libknot/rrset.c				\
-	libknot/nsec3.h				\
 	libknot/rrset-dump.h			\
 	libknot/rrset-dump.c			\
 	libknot/tsig.h				\
@@ -169,12 +163,18 @@ libknot_la_SOURCES =				\
 	libknot/tsig-op.c			\
 	libknot/binary.h			\
 	libknot/binary.c			\
-	libknot/sign/key.h			\
-	libknot/sign/key.c			\
-	libknot/sign/dnssec.h			\
-	libknot/sign/dnssec.c			\
-	libknot/sign/sig0.h			\
-	libknot/sign/sig0.c
+	libknot/dnssec/key.c			\
+	libknot/dnssec/key.h			\
+	libknot/dnssec/nsec3.c			\
+	libknot/dnssec/nsec3.h			\
+	libknot/dnssec/sig0.c			\
+	libknot/dnssec/sig0.h			\
+	libknot/dnssec/sign.c			\
+	libknot/dnssec/sign.h			\
+	libknot/dnssec/zone-nsec.c		\
+	libknot/dnssec/zone-nsec.h		\
+	libknot/dnssec/zone-sign.c		\
+	libknot/dnssec/zone-sign.h
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\

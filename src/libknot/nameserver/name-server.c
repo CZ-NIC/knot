@@ -37,7 +37,7 @@
 #include "updates/changesets.h"
 #include "updates/ddns.h"
 #include "tsig-op.h"
-#include "zone/zone-nsec.h"
+#include "libknot/dnssec/zone-nsec.h"
 
 /*----------------------------------------------------------------------------*/
 

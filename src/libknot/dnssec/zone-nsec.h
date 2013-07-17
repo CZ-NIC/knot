@@ -13,10 +13,21 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _KNOT_ZONE_NSEC_H_
-#define _KNOT_ZONE_NSEC_H_
+/*!
+ * \file zone-sign.h
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \brief Interface for generating of NSEC/NSEC3 records in zone.
+ *
+ * \addtogroup dnssec
+ * @{
+ */
 
-#include "zone.h"
+#ifndef _KNOT_DNSSEC_ZONE_NSEC_H_
+#define _KNOT_DNSSEC_ZONE_NSEC_H_
+
+#include "zone/zone-contents.h"
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
@@ -40,4 +51,6 @@ int knot_zone_create_nsec_chain(knot_zone_contents_t *zone);
  */
 int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone);
 
-#endif // _KNOT_ZONE_NSEC_H_
+#endif // _KNOT_DNSSEC_ZONE_NSEC_H_
+
+/*! @} */

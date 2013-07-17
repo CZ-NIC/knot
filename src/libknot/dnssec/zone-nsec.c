@@ -25,7 +25,7 @@
 #include "common/descriptor.h"
 #include "nsec3.h"
 #include "util/utils.h"
-#include "zone-contents.h"
+#include "zone/zone-contents.h"
 #include "zone-nsec.h"
 
 /* - RR types bitmap -- RFC 4034 ------------------------------------------- */

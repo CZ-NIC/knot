@@ -18,8 +18,8 @@
 #include "common.h"
 #include "common/descriptor.h"
 #include "common/errcode.h"
-#include "sign/dnssec.h"
-#include "sign/key.h"
+#include "key.h"
+#include "sign.h"
 #include <assert.h>
 #include <openssl/dsa.h>
 #include <openssl/opensslconf.h>

@@ -28,7 +28,7 @@
 #include "packet/packet.h"
 #include "dname.h"
 #include "zone/zone.h"
-#include "zone/zone-nsec.h"
+#include "libknot/dnssec/zone-nsec.h"
 #include "packet/query.h"
 #include "common.h"
 #include "updates/changesets.h"

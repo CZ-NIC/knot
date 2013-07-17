@@ -30,8 +30,8 @@
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
-#include "libknot/zone/zone-nsec.h"
-#include "libknot/zone/sign.h"
+#include "libknot/dnssec/zone-sign.h"
+#include "libknot/dnssec/zone-nsec.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)

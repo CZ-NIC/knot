@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <config.h>
 #include <assert.h>
 #include <dirent.h>
 #include <stdbool.h>
@@ -21,17 +22,16 @@
 #include <stdio.h> // TMP
 #include <sys/types.h>
 #include <time.h>
-
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "common/hattrie/hat-trie.h"
+#include "sign.h"
+#include "key.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
-#include "libknot/sign/dnssec.h"
-#include "libknot/sign/key.h"
-#include "node.h"
+#include "zone/node.h"
 #include "sign.h"
-#include "zone-contents.h"
+#include "zone/zone-contents.h"
 
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024 * sizeof(uint8_t))
 #define MAX_ZONE_KEYS 8

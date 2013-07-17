@@ -22,7 +22,7 @@
 #include "common/errcode.h"
 #include "common/hex.h"
 #include "common/strtonum.h"
-#include "libknot/nsec3.h"
+#include "libknot/dnssec/nsec3.h"
 
 #define PROGRAM_NAME "knsec3hash"
 

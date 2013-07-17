@@ -4,7 +4,7 @@
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
- * \brief Functions for calcularing NSEC3 hashes.
+ * \brief Functions for computation of NSEC3 hashes.
  *
  * \addtogroup libknot
  * @{
@@ -25,8 +25,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_NSEC3_H_
-#define _KNOT_NSEC3_H_
+#ifndef _KNOT_DNSSEC_NSEC3_H_
+#define _KNOT_DNSSEC_NSEC3_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -91,6 +91,6 @@ void knot_nsec3_params_free(knot_nsec3_params_t *params);
 int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
                     size_t size, uint8_t **digest, size_t *digest_size);
 
-#endif // _KNOT_NSEC3_H_
+#endif // _KNOT_DNSSEC_NSEC3_H_
 
 /*! @} */
