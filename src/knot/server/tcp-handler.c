@@ -543,7 +543,16 @@ int tcp_loop_master(dthread_t *thread)
 		}
 
 		for (unsigned i = 0; nfds > 0 && i < set.n; ++i) {
-			/* Skip inactive. */
+
+			/* Error events. */
+			if (set.pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+				socket_close(set.pfd[i].fd);
+				fdset_remove(&set, i);
+				--nfds;   /* Treat error event as activity. */
+				continue; /* Stay on the same index. */
+			}
+
+			/* Accept POLLIN events. */
 			if (!(set.pfd[i].revents & POLLIN))
 				continue;
 
@@ -611,6 +620,15 @@ int tcp_loop_worker(dthread_t *thread)
 		unsigned i = 0;
 		while (nfds > 0 && i < set->n) {
 
+			/* Terminate faulty connections. */
+			int fd = set->pfd[i].fd;
+			if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+				fdset_remove(set, i);
+				close(fd);
+				--nfds;   /* Treat error event as activity. */
+				continue; /* Stay on the same index. */
+			}
+
 			if (!(set->pfd[i].revents & set->pfd[i].events)) {
 				/* Skip inactive. */
 				++i;
@@ -621,7 +639,6 @@ int tcp_loop_worker(dthread_t *thread)
 			}
 
 			/* Register new TCP client or process a query. */
-			int fd = set->pfd[i].fd;
 			if (fd == w->pipe[0]) {
 				tcp_loop_assign(fd, set);
 			} else {
