@@ -95,6 +95,10 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	// Init set's memory context (Allocator from changests structure is used)
 	set->mem_ctx = ch->mmc_rr;
 
+	// Init local lists
+	init_list(&set->add);
+	init_list(&set->remove);
+
 	// Insert into list of sets
 	add_tail(&ch->sets, (node *)set);
 
