@@ -2960,8 +2960,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 		return KNOT_EINVAL;
 	}
 
-	knot_changesets_t *chgsets = (knot_changesets_t *)
-	                               calloc(1, sizeof(knot_changesets_t));
+	knot_changesets_t *chgsets = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
 	CHECK_ALLOC_LOG(chgsets, KNOT_ENOMEM);
 
 	int ret = ns_serial_compare(serial_to, serial_from);
