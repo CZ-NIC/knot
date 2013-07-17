@@ -116,33 +116,19 @@ AC_ARG_ENABLE([debuglevel],
         ;;
     esac], [])
 
-AX_MSG_WAITFORONE
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
 AC_ARG_ENABLE([recvmmsg],
     AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() network API under Linux (kernel support required) (set to 'no' if you have trouble running server under valgrind) [default=yes]]),
     [case "${enableval}" in
       yes)
-	  if test "$ax_cv_have_msg_waitforone" = "yes"; then
-	      AC_DEFINE([ENABLE_RECVMMSG], [1], [recvmmsg enabled])
-	      recvmmsg=true
-	  else
-	      recvmmsg=false
-	  fi
+	  AC_CHECK_FUNCS([recvmmsg sendmmsg])
           ;;
       no)
-          recvmmsg=false
           ;;
       *)
           AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg])
           ;;
-    esac], [
-    if test "$ax_cv_have_msg_waitforone" = "yes"; then
-        AC_DEFINE([ENABLE_RECVMMSG], [1], [recvmmsg enabled])
-        recvmmsg=true
-    else
-        recvmmsg=false
-    fi
-    ])
+    esac], [ AC_CHECK_FUNCS([recvmmsg sendmmsg]) ])
 
 # Enable integrity check
 AC_ARG_ENABLE([integrity-check],
@@ -302,7 +288,7 @@ AC_TYPE_SSIZE_T
 AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select sendmmsg setgroups])
+AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
