@@ -291,9 +291,17 @@ static int check_rrsig_rdata(err_handler_t *handler,
                              const knot_rrset_t *rrset,
                              const knot_rrset_t *dnskey_rrset)
 {
+	/* Prepare additional info string. */
+	char info_str[50];
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %d.",
+	                   knot_rrset_type(rrset));
+	if (ret < 0 || ret >= sizeof(info_str)) {
+		return KNOT_ENOMEM;
+	}
+
 	if (knot_rrset_rdata_rr_count(rrsig) == 0) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
-		                         NULL);
+		                         info_str);
 		return KNOT_EOK;
 	}
 
@@ -304,7 +312,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		 */
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
-		                         NULL);
+		                         info_str);
 	}
 
 	/* label number at the 2nd index should be same as owner's */
@@ -318,12 +326,12 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		if (!knot_dname_is_wildcard(knot_rrset_owner(rrset))) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_RRSIG_RDATA_LABELS,
-			                         NULL);
+			                         info_str);
 		} else {
 			if (abs(tmp) != 1) {
 				err_handler_handle_error(handler, node,
 				             ZC_ERR_RRSIG_RDATA_LABELS,
-				                         NULL);
+				                         info_str);
 			}
 		}
 	}
@@ -334,13 +342,14 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	if (original_ttl != knot_rrset_ttl(rrset)) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_RDATA_TTL,
-		                         NULL);
+		                         info_str);
 	}
 
 	/* Check for expired signature. */
 	if (knot_rrset_rdata_rrsig_sig_expiration(rrsig, rr_pos) < time(NULL)) {
 		err_handler_handle_error(handler, node,
-		                         ZC_ERR_RRSIG_RDATA_EXPIRATION, NULL);
+		                         ZC_ERR_RRSIG_RDATA_EXPIRATION,
+		                         info_str);
 	}
 
 	/* signer's name is same as in the zone apex */
@@ -352,7 +361,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 				 knot_rrset_owner(dnskey_rrset)) != 0) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
-		                         NULL);
+		                         info_str);
 	}
 
 	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
@@ -389,14 +398,6 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 	
 	if (!match) {
-		/* Prepare additional info string. */
-		char info_str[50];
-		int ret = snprintf(info_str, sizeof(info_str),
-		                   "Record type: %d.",
-		                   knot_rrset_type(rrset));
-		if (ret < 0 || ret >= sizeof(info_str)) {
-			return KNOT_ENOMEM;
-		}
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
 		                         info_str);
 	}
