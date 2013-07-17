@@ -103,7 +103,7 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 
 knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *chs)
 {
-	if (chs == NULL) {
+	if (chs == NULL || chs->count == 0) {
 		return NULL;
 	}
 
