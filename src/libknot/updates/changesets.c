@@ -62,6 +62,16 @@ int knot_changesets_init(knot_changesets_t **changesets, uint32_t flags)
 	// Init list with changesets
 	init_list(&(*changesets)->sets);
 
+	// Init changes structure
+	(*changesets)->changes = xmalloc(sizeof(knot_changes_t));
+	// Init changes' allocator (storing RRs)
+	(*changesets)->changes->mem_ctx = (*changesets)->mmc_rr;
+	// Init changes' lists
+	init_list(&(*changesets)->changes->old_nodes);
+	init_list(&(*changesets)->changes->old_nsec3);
+	init_list(&(*changesets)->changes->new_rrsets);
+	init_list(&(*changesets)->changes->old_rrsets);
+
 	return KNOT_EOK;
 }
 
@@ -264,14 +274,6 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 	free(changeset->data);
 }
 
-void knot_changes_free(knot_changes_t **changes)
-{
-	// Destroy mempool's data
-	mp_delete((struct mempool *)((*changes)->mem_ctx.ctx));
-	free(*changes);
-	*changes = NULL;
-}
-
 /*----------------------------------------------------------------------------*/
 
 void knot_changesets_free(knot_changesets_t **changesets)
@@ -294,7 +296,7 @@ void knot_changesets_free(knot_changesets_t **changesets)
 
 	knot_rrset_deep_free(&(*changesets)->first_soa, 1, 1);
 
-	assert((*changesets)->changes == NULL);
+	free((*changesets)->changes);
 
 	free(*changesets);
 	*changesets = NULL;

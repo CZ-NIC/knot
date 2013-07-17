@@ -966,7 +966,6 @@ static int zones_journal_apply(knot_zone_t *zone)
 				xfrin_rollback_update(zone->contents,
 				                      &contents,
 				                      chsets->changes);
-				knot_changes_free(&chsets->changes);
 			} else {
 				/* Switch zone immediately. */
 				log_server_info("Zone '%s' serial %u -> %u.\n",
@@ -991,7 +990,6 @@ static int zones_journal_apply(knot_zone_t *zone)
 					                      &contents,
 					                      chsets->changes);
 				}
-				knot_changes_free(&chsets->changes);
 			}
 		}
 	} else {
@@ -1669,7 +1667,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		log_zone_error("%s %s\n", msg, knot_strerror(ret));
 		xfrin_rollback_update(zone->contents, &new_contents,
 		                      chgsets->changes);
-		knot_changes_free(&chgsets->changes);
 		knot_changesets_free(&chgsets);
 		free(msg);
 		return ret;
@@ -1690,7 +1687,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		                      chgsets->changes);
 
 		/* Free changesets, but not the data. */
-		knot_changes_free(&chgsets->changes);
 		knot_changesets_free(&chgsets);
 		return KNOT_ERROR;
 	}
@@ -1700,7 +1696,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	xfrin_cleanup_successful_update(chgsets->changes);
 
 	/* Free changesets, but not the data. */
-	knot_changes_free(&chgsets->changes);
 	knot_changesets_free(&chgsets);
 	assert(ret == KNOT_EOK);
 	log_zone_info("%s Finished.\n", msg);
@@ -3118,7 +3113,6 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 		                      chs->changes);
 
 		/* Free changesets, but not the data. */
-		knot_changes_free(&chs->changes);
 		knot_changesets_free(&chs);
 		return KNOT_ERROR;
 	}
@@ -3126,7 +3120,6 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	xfrin_cleanup_successful_update(chs->changes);
 
 	/* Free changesets, but not the data. */
-	knot_changes_free(&chs->changes);
 	knot_changesets_free(&chs);
 	assert(ret == KNOT_EOK);
 	return KNOT_EOK;

@@ -2780,7 +2780,6 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 	if (chgs == NULL) {
 		dbg_xfrin("Failed to allocate structure for changes!\n");
 		xfrin_rollback_update(old_contents, &contents_copy, chgs);
-		knot_changes_free(&chgs);
 		return KNOT_ENOMEM;
 	}
 
@@ -2793,7 +2792,6 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Contents copy check failed!\n");
 		xfrin_rollback_update(old_contents, &contents_copy, chgs);
-		knot_changes_free(&chgs);
 		return ret;
 	}
 
@@ -2896,7 +2894,6 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		if (ret != KNOT_EOK) {
 			xfrin_rollback_update(old_contents,
 					       &contents_copy, changes);
-			knot_changes_free(&changes);
 			dbg_xfrin("Failed to apply changesets to zone: "
 				  "%s\n", knot_strerror(ret));
 			return ret;
@@ -2914,7 +2911,6 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));
 		xfrin_rollback_update(old_contents, &contents_copy, changes);
-		knot_changes_free(&changes);
 		return ret;
 	}
 
