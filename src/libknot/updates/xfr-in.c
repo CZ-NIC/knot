@@ -1133,7 +1133,7 @@ dbg_xfrin_exec_verb(
 			} else {
 				// normal SOA, start new changeset
 				/* Check changesets for maximum count (so they fit into journal). */
-				if ((*chs)->count + 1> JOURNAL_NCOUNT)
+				if ((*chs)->count + 1 > JOURNAL_NCOUNT)
 					ret = KNOT_ESPACE;
 
 				if (ret != KNOT_EOK) {

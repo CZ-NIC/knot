@@ -31,6 +31,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "common/evqueue.h"
 #include "common/fdset.h"
+#include "common/skip-list.h"
 #include "common/hattrie/ahtable.h"
 
 struct xfrhandler_t;

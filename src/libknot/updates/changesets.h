@@ -128,12 +128,49 @@ typedef enum {
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Inits changesets structure. Memory allocators are created and have to
+ *        be freed using knot_changesets_free().
+ *
+ * \param changesets Double pointer to changesets structure.
+ * \param flags IXFR / DDNS flag.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval Error code on failure.
+ */
 int knot_changesets_init(knot_changesets_t **changesets,
                         uint32_t flags);
 
+/*!
+ * \brief Creates changesets structure. Memory allocators are created
+ *        and have to be freed using knot_changesets_free().
+ *
+ * \param flags IXFR / DDNS flag.
+ *
+ * \retval Created structure on success.
+ * \retval NULL on failure.
+ */
 knot_changesets_t *knot_changesets_create(uint32_t flags);
 
+/*!
+ * \brief Creates new changeset structure and returns it to caller.
+ *        The structure is also connected to a list of changesets.
+ *
+ * \param ch Changesets structure to create a new changeset in.
+ *
+ * \retval Created structure on success.
+ * \retval NULL on failure.
+ */
 knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
+
+/*!
+ * \brief Gets last changesets from from structure's list.
+ *
+ * \param ch Changesets structure to get a last changeset from.
+ *
+ * \retval Last changeset on success.
+ * \retval NULL on failure.
+ */
 knot_changeset_t *knot_changesets_get_last(knot_changesets_t *ch);
 
 int knot_changeset_add_rrset(knot_changeset_t *chgs,

@@ -153,7 +153,7 @@ struct knot_packet {
 	struct knot_packet *query; /*!< Associated query. */
 
 	knot_packet_prealloc_type_t prealloc_type;
-	
+
 	size_t tsig_size;	/*!< Space to reserve for the TSIG RR. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 	uint16_t flags;         /*!< Packet flags. */

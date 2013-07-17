@@ -293,7 +293,6 @@ void knot_free_changesets(knot_changesets_t **changesets)
 		return;
 	}
 
-	// Free each changeset's mempool
 	knot_changeset_t *chg = NULL;
 	WALK_LIST(chg, (*changesets)->sets) {
 		knot_free_changeset(chg);
