@@ -8,7 +8,7 @@
  * \addtogroup xfr
  * @{
  */
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,15 +47,12 @@ typedef struct knot_changeset {
 	mm_ctx_t mem_ctx; /*!< Memory context - pool allocator. */
 	knot_rrset_t *soa_from; /*!< Start SOA. */
 	list remove; /*!< List of RRs to remove. */
-
 	knot_rrset_t *soa_to; /*!< Destination SOA. */
 	list add; /*!< List of RRs to add. */
-
 	uint8_t *data; /*!< Serialized changeset. */
 	size_t size; /*!< Size of serialized changeset. */
 	uint32_t serial_from; /*!< SOA start serial. */
 	uint32_t serial_to; /*!< SOA destination serial. */
-
 	uint32_t flags; /*!< DDNS / IXFR flags. */
 } knot_changeset_t;
 
@@ -84,12 +81,10 @@ typedef struct {
 	 * Deleted after successful update.
 	 */
 	list old_rrsets;
-
 	/*!
 	 * Deleted after failed update.
 	 */
 	list new_rrsets;
-
 	/*!
 	 * Deleted (without contents) after successful update.
 	 */
@@ -102,6 +97,10 @@ typedef struct {
 
 /*----------------------------------------------------------------------------*/
 
+/*!
+ * \brief Changeset structure (changes recieved by slave server between two
+ *        serial numbers.
+ */
 typedef struct {
 	mm_ctx_t mmc_chs; /*!< Memory context for creating changesets */
 	mm_ctx_t mmc_rr; /*!< Memory context for creating RRs in changesets */
@@ -139,7 +138,7 @@ typedef enum {
  * \retval Error code on failure.
  */
 int knot_changesets_init(knot_changesets_t **changesets,
-                        uint32_t flags);
+                         uint32_t flags);
 
 /*!
  * \brief Creates changesets structure. Memory allocators are created
@@ -171,35 +170,96 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
  * \retval Last changeset on success.
  * \retval NULL on failure.
  */
-knot_changeset_t *knot_changesets_get_last(knot_changesets_t *ch);
+knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *ch);
 
+/*!
+ * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
+ *        'remove' list. Will *not* try to merge with previous RRSets.
+ *
+ * \param chgs Changeset to add RRSet into.
+ * \param rrset RRSet to be added.
+ * \param part Add to 'add' or 'remove'?
+ *
+ * \retval KNOT_EOK on success.
+ * \retval Error code on failure.
+ */
 int knot_changeset_add_rrset(knot_changeset_t *chgs,
                              knot_rrset_t *rrset, knot_changeset_part_t part);
 
+/*!
+ * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
+ *        'remove' list. *Will* try to merge with previous RRSets.
+ *
+ * \param chgs Changeset to add RRSet into.
+ * \param rrset RRSet to be added.
+ * \param part Add to 'add' or 'remove'?
+ *
+ * \retval KNOT_EOK on success.
+ * \retval Error code on failure.
+ */
 int knot_changeset_add_rr(knot_changeset_t *chgs,
                           knot_rrset_t *rrset, knot_changeset_part_t part);
 
-void knot_changeset_store_soa(knot_rrset_t **chg_soa,
-                              uint32_t *chg_serial, knot_rrset_t *soa);
-
-int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
+/*!
+ * \brief Adds a source/destination SOA RRSet to changeset.
+ *
+ * \param changeset Changeset to store SOA to.
+ * \param soa SOA RRSet to be stored to changeset.
+ * \param part To which part we store SOA (from = REMOVE, add = TO)
+ */
+void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
                            knot_changeset_part_t part);
 
-void knot_changeset_set_flags(knot_changeset_t *changeset,
-                             uint32_t flags);
-
-uint32_t knot_changeset_flags(knot_changeset_t *changeset);
-
+/*!
+ * \brief Checks whether changeset is empty.
+ *
+ * \param changeset Changeset to be checked.
+ *
+ * \retval 1 if changeset is empty.
+ * \retval 0 if changeset is not empty.
+ */
 int knot_changeset_is_empty(const knot_changeset_t *changeset);
 
-void knot_free_changesets(knot_changesets_t **changesets);
+/*!
+ * \brief Frees the 'changesets' structure, including its memory allocators.
+ *
+ * \param changesets Double pointer to changesets structure to be freed.
+ */
+void knot_changesets_free(knot_changesets_t **changesets);
 
+/*!
+ * \brief Add RRSet to changes structure.
+ *        RRSet is either inserted to 'old' or to 'new' list.
+ *
+ * \param chgs Change to add RRSet into.
+ * \param rrset RRSet to be added.
+ * \param part Add to 'old' or 'new'?
+ *
+ * \retval KNOT_EOK on success.
+ * \retval Error code on failure.
+ */
 int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
                            knot_changes_part_t part);
 
+/*!
+ * \brief Add Node to changes structure.
+          Node is either inserted to 'normal' or to 'NSEC3' list.
+ *
+ * \param chgs Change to add node into.
+ * \param node RRSet to be added.
+ * \param part Add to 'normal' or 'NSEC3'?
+ *
+ * \retval KNOT_EOK on success.
+ * \retval Error code on failure.
+ */
 int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
                           knot_changes_part_t part);
 
+/*!
+ * \brief Frees changes structure, including its memory allocator.
+ *
+ * \param changes Double pointer of changes structure to be freed.
+ */
 void knot_changes_free(knot_changes_t **changes);
 
 #endif /* _KNOT_CHANGESETS_H_ */

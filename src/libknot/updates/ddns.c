@@ -657,8 +657,8 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 	knot_rrset_t *soa_end = NULL;
 	ret = knot_rrset_deep_copy(soa, &soa_begin, 1);
 	if (ret == KNOT_EOK) {
-		knot_changeset_store_soa(&changeset->soa_from,
-		                         &changeset->serial_from, soa_begin);
+		knot_changeset_add_soa(changeset, soa_begin,
+		                       KNOT_CHANGESET_REMOVE);
 	} else {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
@@ -738,9 +738,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 		knot_rrset_rdata_soa_serial_set(soa_end, sn_new);
 	}
 
-	knot_changeset_store_soa(&changeset->soa_to,
-	                         &changeset->serial_to,
-	                         soa_end);
+	knot_changeset_add_soa(changeset, soa_end, KNOT_CHANGESET_ADD);
 
 	return ret;
 }
@@ -1506,9 +1504,7 @@ static int knot_ddns_final_soa_to_chgset(const knot_rrset_t *soa,
 		return ret;
 	}
 
-	knot_changeset_store_soa(&changeset->soa_to,
-	                         &changeset->serial_to,
-	                         soa_copy);
+	knot_changeset_add_soa(changeset, soa_copy, KNOT_CHANGESET_ADD);
 
 	return KNOT_EOK;
 }
@@ -2316,8 +2312,8 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 	knot_rrset_t *soa_end = NULL;
 	ret = knot_rrset_deep_copy(soa, &soa_begin, 1);
 	if (ret == KNOT_EOK) {
-		knot_changeset_store_soa(&changeset->soa_from,
-		                         &changeset->serial_from, soa_begin);
+		knot_changeset_add_soa(changeset, soa_begin,
+		                       KNOT_CHANGESET_REMOVE);
 	} else {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;

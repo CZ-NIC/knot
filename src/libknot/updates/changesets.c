@@ -101,7 +101,7 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	return set;
 }
 
-knot_changeset_t *knot_changesets_get_last(knot_changesets_t *chs)
+knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *chs)
 {
 	if (chs == NULL) {
 		return NULL;
@@ -211,8 +211,8 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_changeset_store_soa(knot_rrset_t **chg_soa,
-                               uint32_t *chg_serial, knot_rrset_t *soa)
+static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
+                                     uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
 	*chg_serial = knot_rrset_rdata_soa_serial(soa);
@@ -220,8 +220,8 @@ void knot_changeset_store_soa(knot_rrset_t **chg_soa,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
-                           knot_changeset_part_t part)
+void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
+                            knot_changeset_part_t part)
 {
 	switch (part) {
 	case KNOT_CHANGESET_ADD:
@@ -235,27 +235,9 @@ int knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 	default:
 		assert(0);
 	}
-
-	/*! \todo Remove return value? */
-	return KNOT_EOK;
 }
 
 /*---------------------------------------------------------------------------*/
-
-void knot_changeset_set_flags(knot_changeset_t *changeset,
-                             uint32_t flags)
-{
-	changeset->flags = flags;
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint32_t knot_changeset_flags(knot_changeset_t *changeset)
-{
-	return changeset->flags;
-}
-
-/*----------------------------------------------------------------------------*/
 
 int knot_changeset_is_empty(const knot_changeset_t *changeset)
 {
@@ -287,15 +269,17 @@ void knot_changes_free(knot_changes_t **changes)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_free_changesets(knot_changesets_t **changesets)
+void knot_changesets_free(knot_changesets_t **changesets)
 {
 	if (changesets == NULL || *changesets == NULL) {
 		return;
 	}
 
-	knot_changeset_t *chg = NULL;
-	WALK_LIST(chg, (*changesets)->sets) {
-		knot_free_changeset(chg);
+	if (!EMPTY_LIST((*changesets)->sets)) {
+		knot_changeset_t *chg = NULL;
+		WALK_LIST(chg, (*changesets)->sets) {
+			knot_free_changeset(chg);
+		}
 	}
 
 	// Free pool with sets themselves

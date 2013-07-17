@@ -1146,12 +1146,7 @@ dbg_xfrin_exec_verb(
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
 				}
-				ret = knot_changeset_add_soa(cur, rr,
-							     KNOT_CHANGESET_REMOVE);
-				if (ret != KNOT_EOK) {
-					knot_rrset_deep_free(&rr, 1, 1);
-					goto cleanup;
-				}
+				knot_changeset_add_soa(cur, rr, KNOT_CHANGESET_REMOVE);
 
 				(*chs)->count++;
 				// change state to REMOVE
@@ -1165,12 +1160,7 @@ dbg_xfrin_exec_verb(
 				// we should not be here if soa_from is not set
 				assert(cur->soa_from != NULL);
 
-				ret = knot_changeset_add_soa(cur, rr,
-							     KNOT_CHANGESET_ADD);
-				if (ret != KNOT_EOK) {
-					knot_rrset_deep_free(&rr, 1, 1);
-					goto cleanup;
-				}
+				knot_changeset_add_soa(cur, rr, KNOT_CHANGESET_ADD);
 
 				state = KNOT_CHANGESET_ADD;
 			} else {
@@ -1236,7 +1226,7 @@ cleanup:
 	assert(ret < 0);
 
 	dbg_xfrin_detail("Cleanup after processing IXFR/IN packet.\n");
-	knot_free_changesets(chs);
+	knot_changesets_free(chs);
 	knot_packet_free(&packet);
 	xfr->data = 0;
 	return ret;

@@ -4202,7 +4202,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		knot_zone_t *zone = xfr->zone;
 		if (zone == NULL) {
 			dbg_ns("No zone found for incoming IXFR!\n");
-			knot_free_changesets(
+			knot_changesets_free(
 				(knot_changesets_t **)(&xfr->data));
 			return KNOT_ENOZONE;
 		}
@@ -4237,7 +4237,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 					// fallback to AXFR
 					dbg_ns("ns_process_ixfrin: "
 					       "Fallback to AXFR.\n");
-					knot_free_changesets(
+					knot_changesets_free(
 					      (knot_changesets_t **)&xfr->data);
 					knot_packet_free(&xfr->query);
 					return KNOT_ENOIXFR;
@@ -4246,7 +4246,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			} else {
 				// free changesets
 				dbg_ns("No update needed.\n");
-				knot_free_changesets(
+				knot_changesets_free(
 					(knot_changesets_t **)(&xfr->data));
 				return KNOT_ENOXFR;
 			}
