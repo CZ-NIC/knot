@@ -1791,7 +1791,6 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		// The RRSet should not be empty if we were removing NSs from
 		// apex in case of DDNS
 		assert(!is_apex);
-		dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
 		// add the removed RRSet to list of old RRSets
 		ret = knot_changes_add_rrset(changes, rrset_copy,
 		                             KNOT_CHANGES_OLD);
@@ -1800,6 +1799,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 			return ret;
 		}
 		knot_rrset_t *tmp = knot_node_remove_rrset(node, type);
+		dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
 		assert(tmp == rrset_copy);
 	}
 

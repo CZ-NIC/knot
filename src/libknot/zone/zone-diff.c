@@ -986,19 +986,18 @@ static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
 	dbg_zonediff_detail("Changeset TO: %d\n", ch->serial_to);
 	knot_rrset_dump(ch->soa_to);
 	dbg_zonediff_detail("\n");
-	dbg_zonediff_detail("Adding %zu RRs.\n", ch->add_count);
-	dbg_zonediff_detail("Removing %zu RRs.\n", ch->remove_count);
 
 	dbg_zonediff_detail("ADD section:\n");
 	dbg_zonediff_detail("**********************************************\n");
-	for (int i = 0; i < ch->add_count; i++) {
-		knot_rrset_dump(ch->add[i]);
+	knot_rr_node_t *rr_node;
+	WALK_LIST(rr_node, ch->add) {
+		knot_rrset_dump(rr_node->rr);
 		dbg_zonediff_detail("\n");
 	}
 	dbg_zonediff_detail("REMOVE section:\n");
 	dbg_zonediff_detail("**********************************************\n");
-	for (int i = 0; i < ch->remove_count; i++) {
-		knot_rrset_dump(ch->remove[i]);
+	WALK_LIST(rr_node, ch->remove) {
+		knot_rrset_dump(rr_node->rr);
 		dbg_zonediff_detail("\n");
 	}
 }
@@ -1042,7 +1041,7 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 	dbg_zonediff("Changesets created successfully!\n");
 	dbg_zonediff_detail("Changeset dump:\n");
 dbg_zonediff_exec_detail(
-	knot_zone_diff_dump_changeset((*changesets)->sets);
+	knot_zone_diff_dump_changeset(HEAD((*changesets)->sets));
 );
 
 	return KNOT_EOK;
