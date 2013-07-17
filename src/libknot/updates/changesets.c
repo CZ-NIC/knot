@@ -141,7 +141,7 @@ int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
 {
 	// Just check the last RRSet. If the RR belongs to it, merge it,
 	// otherwise just add the RR to the end of the list
-	list *l = part == (KNOT_CHANGESET_ADD) ? &chgs->add : &chgs->remove;
+	list *l = part == KNOT_CHANGESET_ADD ? &(chgs->add) : &(chgs->remove);
 	knot_rrset_t *tail_rr = l ? ((knot_rr_node_t *)(l->tail))->rr : NULL;
 
 	if (tail_rr && knot_changeset_rrsets_match(tail_rr, rr)) {
