@@ -938,8 +938,12 @@ static int zones_journal_apply(knot_zone_t *zone)
 	/* Load all pending changesets. */
 	dbg_zones_verb("zones: loading all changesets of '%s' from SERIAL %u\n",
 	               zd->conf->name, serial);
-	knot_changesets_t* chsets = malloc(sizeof(knot_changesets_t));
-	memset(chsets, 0, sizeof(knot_changesets_t));
+	knot_changesets_t* chsets =
+		knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+	if (chsets == NULL) {
+		return KNOT_ERROR;
+	}
+
 	/*! \todo Check what should be the upper bound. */
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
