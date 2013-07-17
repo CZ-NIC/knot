@@ -502,8 +502,8 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 	if (name == NULL || name == endp)
 		return KNOT_EMALF;
 
-	int wire_len = 0; /* Keep terminal label in advance. */
-	int name_len = 0;
+	int wire_len = 0;
+	int name_len = 1; /* Keep \x00 terminal label in advance. */
 	uint8_t is_compressed = 0;
 	uint8_t labels = 0;
 
