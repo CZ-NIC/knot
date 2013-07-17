@@ -42,6 +42,8 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"RRSIG: Type covered rdata field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_TTL] =
 	"RRSIG: TTL rdata field is wrong!",
+	[-ZC_ERR_RRSIG_RDATA_EXPIRATION] =
+	"RRSIG: Expired signature!",
 	[-ZC_ERR_RRSIG_RDATA_LABELS] =
 	"RRSIG: Labels rdata field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
@@ -289,9 +291,17 @@ static int check_rrsig_rdata(err_handler_t *handler,
                              const knot_rrset_t *rrset,
                              const knot_rrset_t *dnskey_rrset)
 {
+	/* Prepare additional info string. */
+	char info_str[50];
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %d.",
+	                   knot_rrset_type(rrset));
+	if (ret < 0 || ret >= sizeof(info_str)) {
+		return KNOT_ENOMEM;
+	}
+
 	if (knot_rrset_rdata_rr_count(rrsig) == 0) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
-		                         NULL);
+		                         info_str);
 		return KNOT_EOK;
 	}
 
@@ -302,7 +312,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		 */
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
-		                         NULL);
+		                         info_str);
 	}
 
 	/* label number at the 2nd index should be same as owner's */
@@ -316,12 +326,12 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		if (!knot_dname_is_wildcard(knot_rrset_owner(rrset))) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_RRSIG_RDATA_LABELS,
-			                         NULL);
+			                         info_str);
 		} else {
 			if (abs(tmp) != 1) {
 				err_handler_handle_error(handler, node,
 				             ZC_ERR_RRSIG_RDATA_LABELS,
-				                         NULL);
+				                         info_str);
 			}
 		}
 	}
@@ -332,7 +342,14 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	if (original_ttl != knot_rrset_ttl(rrset)) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_RDATA_TTL,
-		                         NULL);
+		                         info_str);
+	}
+
+	/* Check for expired signature. */
+	if (knot_rrset_rdata_rrsig_sig_expiration(rrsig, rr_pos) < time(NULL)) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_RDATA_EXPIRATION,
+		                         info_str);
 	}
 
 	/* signer's name is same as in the zone apex */
@@ -344,7 +361,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 				 knot_rrset_owner(dnskey_rrset)) != 0) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
-		                         NULL);
+		                         info_str);
 	}
 
 	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
@@ -381,14 +398,6 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 	
 	if (!match) {
-		/* Prepare additional info string. */
-		char info_str[50];
-		int ret = snprintf(info_str, sizeof(info_str),
-		                   "Record type: %d.",
-		                   knot_rrset_type(rrset));
-		if (ret < 0 || ret >= sizeof(info_str)) {
-			return KNOT_ENOMEM;
-		}
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
 		                         info_str);
 	}
@@ -410,8 +419,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 static int check_rrsig_in_rrset(err_handler_t *handler,
                                 const knot_node_t *node,
                                 const knot_rrset_t *rrset,
-                                const knot_rrset_t *dnskey_rrset,
-                                char nsec3)
+                                const knot_rrset_t *dnskey_rrset)
 {
 	if (handler == NULL || node == NULL || rrset == NULL ||
 	    dnskey_rrset == NULL) {
@@ -460,7 +468,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                         info_str);
 	}
 
-	if (knot_rrset_ttl(rrset) != knot_rrset_ttl(rrset)) {
+	if (knot_rrset_ttl(rrset) != knot_rrset_ttl(rrsigs)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_TTL,
 		                         info_str);
@@ -985,11 +993,10 @@ int sem_check_node_plain(knot_zone_contents_t *zone,
 }
 
 /*!
- * \brief Run semantic checks for node without DNSSEC-related types.
+ * \brief Run semantic checks for node with DNSSEC-related types.
  *
  * \param zone Current zone.
  * \param node Node to be checked.
- * \param first_node First node in canonical order.
  * \param last_node Last node in canonical order.
  * \param handler Error handler.
  * \param nsec3 NSEC3 used.
@@ -1000,7 +1007,6 @@ int sem_check_node_plain(knot_zone_contents_t *zone,
  */
 static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				  knot_node_t *node,
-				  knot_node_t *first_node,
 				  knot_node_t **last_node,
 				  err_handler_t *handler,
 				  char nsec3)
@@ -1021,8 +1027,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 		const knot_rrset_t *rrset = rrsets[i];
 		if (auth && !deleg &&
 		    (ret = check_rrsig_in_rrset(handler, node,
-		                                rrset, dnskey_rrset,
-						nsec3)) != 0) {
+		                                rrset, dnskey_rrset)) != 0) {
 			err_handler_handle_error(handler, node, ret, NULL);
 		}
 
@@ -1148,7 +1153,6 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 
 	assert(zone);
 
-	knot_node_t *first_node = (knot_node_t *)args->arg4;
 	knot_node_t **last_node = (knot_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
@@ -1170,7 +1174,7 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 	}
 
 	if (do_checks > 1) {
-		semantic_checks_dnssec(zone, node, first_node, last_node,
+		semantic_checks_dnssec(zone, node, last_node,
 				       handler, do_checks == 3);
 	}
 
@@ -1188,7 +1192,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 	arg_t arguments;
 	arguments.arg1 = zone;
 	arguments.arg3 = &do_checks;
-	arguments.arg4 = NULL;
+	arguments.arg4 = NULL; // UNUSED
 	arguments.arg5 = &last_node;
 	arguments.arg6 = handler;
 	int fatal_error = 0;
