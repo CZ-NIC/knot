@@ -232,11 +232,6 @@ mp_alloc(struct mempool *pool, unsigned size)
   return mp_alloc_fast(pool, size);
 }
 
-void *mp_alloc_mm_ctx_wrap(void *ctx, size_t size)
-{
-  return mp_alloc((struct mempool *)ctx, size);
-}
-
 void *
 mp_alloc_noalign(struct mempool *pool, unsigned size)
 {

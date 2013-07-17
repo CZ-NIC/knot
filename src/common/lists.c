@@ -177,4 +177,3 @@ size_t list_size(const list *l)
 
 	return count;
 }
-
