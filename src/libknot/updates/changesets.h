@@ -103,7 +103,8 @@ typedef struct {
 /*----------------------------------------------------------------------------*/
 
 typedef struct {
-	mm_ctx_t mem_ctx; /*!< Memory context - pool allocator. */
+	mm_ctx_t mmc_chs; /*!< Memory context for creating changesets */
+	mm_ctx_t mmc_rr; /*!< Memory context for creating RRs in changesets */
 	list sets; /*!< List of changesets. */
 	size_t count; /*!< Changeset count. */
 	knot_rrset_t *first_soa; /*!< First received SOA. */

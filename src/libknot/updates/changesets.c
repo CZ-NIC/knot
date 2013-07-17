@@ -47,11 +47,17 @@ int knot_changesets_init(knot_changesets_t **changesets, uint32_t flags)
 	memset(*changesets, 0, sizeof(knot_changesets_t));
 	(*changesets)->flags = flags;
 
-	// Initialize memory context (xmalloc'd)
-	struct mempool *pool = mp_new(sizeof(knot_changeset_t));
-	(*changesets)->mem_ctx.ctx = pool;
-	(*changesets)->mem_ctx.alloc = mp_alloc_mm_ctx_wrap;
-	(*changesets)->mem_ctx.free = NULL;
+	// Initialize memory context for changesets (xmalloc'd)
+	struct mempool *chs_pool = mp_new(sizeof(knot_changeset_t));
+	(*changesets)->mmc_chs.ctx = chs_pool;
+	(*changesets)->mmc_chs.alloc = mp_alloc_mm_ctx_wrap;
+	(*changesets)->mmc_chs.free = NULL;
+
+	// Initialize memory context for RRs in changesets (xmalloc'd)
+	struct mempool *rr_pool = mp_new(sizeof(knot_rr_node_t));
+	(*changesets)->mmc_rr.ctx = rr_pool;
+	(*changesets)->mmc_rr.alloc = mp_alloc_mm_ctx_wrap;
+	(*changesets)->mmc_rr.free = NULL;
 
 	// Init list with changesets
 	init_list(&(*changesets)->sets);
@@ -76,8 +82,8 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 		return NULL;
 	}
 
-	// Create set using mempool
-	knot_changeset_t *set = ch->mem_ctx.alloc(ch->mem_ctx.ctx,
+	// Create set changesets' memory allocator
+	knot_changeset_t *set = ch->mmc_chs.alloc(ch->mmc_chs.ctx,
 	                                          sizeof(knot_changeset_t));
 	if (set == NULL) {
 		ERR_ALLOC_FAILED;
@@ -86,11 +92,8 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	memset(set, 0, sizeof(knot_changeset_t));
 	set->flags = ch->flags;
 
-	// Init set's memory context (xmalloc'd)
-	struct mempool *pool = mp_new(sizeof(knot_rrset_t *));
-	set->mem_ctx.ctx = pool;
-	set->mem_ctx.alloc = mp_alloc_mm_ctx_wrap;
-	set->mem_ctx.free = NULL;
+	// Init set's memory context (Allocator from changests structure is used)
+	set->mem_ctx = ch->mmc_rr;
 
 	// Insert into list of sets
 	add_tail(&ch->sets, (node *)set);
@@ -270,9 +273,6 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 		return;
 	}
 
-	// Delete mempool with RRs, cannot be done via, mem_ctx function, sadly.
-	mp_delete(changeset->mem_ctx.ctx);
-
 	// Delete binary data
 	free(changeset->data);
 }
@@ -300,7 +300,9 @@ void knot_free_changesets(knot_changesets_t **changesets)
 	}
 
 	// Free pool with sets themselves
-	mp_delete((*changesets)->mem_ctx.ctx);
+	mp_delete((*changesets)->mmc_chs.ctx);
+	// Free pool with RRs in sets
+	mp_delete((*changesets)->mmc_rr.ctx);
 
 	knot_rrset_deep_free(&(*changesets)->first_soa, 1, 1);
 
