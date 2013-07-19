@@ -1124,6 +1124,9 @@ int xfr_worker(dthread_t *thread)
 				socket_close(set.pfd[i].fd);
 				fdset_remove(&set, i);
 				continue; /* Stay on the same index. */
+			} else {
+				/* Connection is active, update watchdog. */
+				fdset_set_watchdog(&set, i, conf()->max_conn_idle);
 			}
 
 			/* Next active. */

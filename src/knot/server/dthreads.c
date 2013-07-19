@@ -88,7 +88,6 @@ static inline int dt_update_thread(dthread_t *thread, int state)
 		unlock_thread_rw(thread);
 
 		// Notify thread
-		dt_signalize(thread, SIGALRM);
 		pthread_cond_broadcast(&unit->_notify);
 		pthread_mutex_unlock(&unit->_notify_mx);
 	} else {
@@ -134,7 +133,7 @@ static void *thread_ep(void *data)
 	sigaddset(&ignset, SIGHUP);
 	sigaddset(&ignset, SIGPIPE);
 	sigaddset(&ignset, SIGUSR1);
-	pthread_sigmask(SIG_BLOCK, &ignset, 0); /*! \todo Review under BSD (issue #1441). */
+	pthread_sigmask(SIG_BLOCK, &ignset, 0);
 	rcu_register_thread();
 
 	dbg_dt("dthreads: [%p] entered ep\n", thread);
