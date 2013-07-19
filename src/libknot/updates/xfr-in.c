@@ -482,7 +482,8 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 
 	if (!knot_dname_is_subdomain(xfr->zone->name, rr->owner)) {
 		char *owner = knot_dname_to_str(rr->owner);
-		dbg_xfrin("Ignoring out of zone record for %s.\n", owner);
+		log_zone_warning("Ignoring out-of-zone record owned by %s.\n",
+		                 owner);
 		free(owner);
 		knot_packet_free(&packet);
 		knot_rrset_deep_free(&rr, 1, 1);
