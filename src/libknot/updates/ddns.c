@@ -1555,15 +1555,7 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 		                                 &node, knot_ddns_rr_is_nsec3(rr));
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to create new node in zone.\n");
-			ret = xfrin_handle_error(zone->apex ? zone->apex->owner : NULL,
-		                             rr->owner, ret);
-			if (ret == KNOT_EOK) {
-		    	// Recoverable error, continue
-		    	return KNOT_EOK;
-			} else {
-            	// Fatal error, rollback update
-				return ret;
-			}
+			return ret;
 		}
 	}
 
