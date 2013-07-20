@@ -2751,9 +2751,10 @@ dbg_xfrin_exec_detail(
 					                   NULL,
 					                   chset->add[i]->owner,
 					                   ret);
-					if (ret != KNOT_EOK) {
-						return ret;
-					}
+					// Delete from changeset
+					knot_rrset_deep_free(&(chset->add[i]), 1, 1);
+					chset->add[i] = NULL;
+					return ret; // 0 for recoverable, < 0 otherwise
 				}
 			}
 		}
