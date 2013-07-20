@@ -916,16 +916,17 @@ static int knot_ddns_rr_is_nsec3(const knot_rrset_t *rr)
 
 /*----------------------------------------------------------------------------*/
 /*! \note Copied from xfrin_add_new_node(). */
-static knot_node_t *knot_ddns_add_new_node(knot_zone_contents_t *zone,
-                                           knot_dname_t *owner, int is_nsec3)
+static  int knot_ddns_add_new_node(knot_zone_contents_t *zone,
+                                   knot_dname_t *owner,
+                                   knot_node_t **node, int is_nsec3)
 {
 	assert(zone != NULL);
 	assert(owner != NULL);
 
-	knot_node_t *node = knot_node_new(owner, NULL, 0);
-	if (node == NULL) {
+	*node = knot_node_new(owner, NULL, 0);
+	if (*node == NULL) {
 		dbg_xfrin("Failed to create a new node.\n");
-		return NULL;
+		return KNOT_ERROR;
 	}
 
 	int ret = 0;
@@ -933,14 +934,14 @@ static knot_node_t *knot_ddns_add_new_node(knot_zone_contents_t *zone,
 	// insert the node into zone structures and create parents if
 	// necessary
 	if (is_nsec3) {
-		ret = knot_zone_contents_add_nsec3_node(zone, node, 1, 0);
+		ret = knot_zone_contents_add_nsec3_node(zone, *node, 1, 0);
 	} else {
-		ret = knot_zone_contents_add_node(zone, node, 1, 0);
+		ret = knot_zone_contents_add_node(zone, *node, 1, 0);
 	}
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new node to zone contents.\n");
-		knot_node_free(&node);
-		return NULL;
+		knot_node_free(node);
+		return ret;
 	}
 
 	/*!
@@ -949,9 +950,9 @@ static knot_node_t *knot_ddns_add_new_node(knot_zone_contents_t *zone,
 	 */
 	assert(zone->zone != NULL);
 	//knot_node_set_zone(node, zone->zone);
-	assert(node->zone == zone->zone);
+	assert((*node)->zone == zone->zone);
 
-	return node;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1548,14 +1549,21 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	dbg_ddns_verb("Adding RR.\n");
 
 	if (node == NULL) {
-		// create new node, connect it properly to the
-		// zone nodes
+		// create new node, connect it to the zone nodes
 		dbg_ddns_detail("Node not found. Creating new.\n");
-		node = knot_ddns_add_new_node(zone, knot_rrset_get_owner(rr),
-		                              knot_ddns_rr_is_nsec3(rr));
-		if (node == NULL) {
+		int ret = knot_ddns_add_new_node(zone, knot_rrset_get_owner(rr),
+		                                 &node, knot_ddns_rr_is_nsec3(rr));
+		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to create new node in zone.\n");
-			return KNOT_ERROR;
+			ret = xfrin_handle_error(zone->apex ? zone->apex->owner : NULL,
+		                             rr->owner, ret);
+			if (ret == KNOT_EOK) {
+		    	// Recoverable error, continue
+		    	return KNOT_EOK;
+			} else {
+            	// Fatal error, rollback update
+				return ret;
+			}
 		}
 	}
 

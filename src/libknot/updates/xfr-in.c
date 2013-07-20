@@ -321,6 +321,31 @@ static int xfrin_insert_rrset_dnames_to_table(knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
+int xfrin_handle_error(const knot_dname_t *zone_owner,
+                       const knot_dname_t *rr_owner,
+                       int ret)
+{
+	char *zonename = knot_dname_to_str(zone_owner);
+        if (ret == KNOT_EBADZONE) {
+		// Out-of-zone data, ignore
+		char *rrname = knot_dname_to_str(rr_owner);
+		log_zone_warning("Zone %s: Ignoring "
+                                 "out-of-zone RR owned by %s\n",
+                                 zonename, rrname);
+		free(zonename);
+	        free(rrname);
+		return KNOT_EOK;
+        } else {
+	        log_zone_error("Zone %s: Failed to process "
+	                       "incoming RR, transfer "
+	                       "is probably malformed. (Reason: %s)\n",
+	                        knot_strerror(ret));
+	        free(zonename);
+	        return KNOT_ERROR;
+	}
+}
+
+
 void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 {
 	xfrin_orphan_rrsig_t *r = *rrsigs;
@@ -799,14 +824,20 @@ dbg_xfrin_exec_verb(
 			ret = add_node(zone, node, 1, 0);
 			assert(node != NULL);
 			if (ret != KNOT_EOK) {
-				dbg_xfrin("Failed to add node to zone (%s).\n",
-					  knot_strerror(ret));
-				knot_packet_free(&packet);
-				knot_node_free(&node); // ???
-				knot_rrset_deep_free(&rr, 1, 1);
-				return KNOT_ERROR;
+				ret = xfrin_handle_error(xfr->zone->name,
+				                         rr->owner, ret);
+				if (ret == KNOT_EOK) {
+					// Recoverable error, do cleanup
+					knot_node_free_rrsets(node, 1);
+					knot_node_free(&node);
+				} else {
+					// Fatal error, free packet
+					knot_packet_free(&packet);
+					knot_node_free(&node);
+					knot_rrset_deep_free(&rr, 1, 1);
+					return KNOT_ERROR;
+				}
 			}
-
 			in_zone = 1;
 		} else {
 			assert(in_zone);
@@ -822,7 +853,6 @@ dbg_xfrin_exec_verb(
 				// merged, free the RRSet
 				knot_rrset_deep_free(&rr, 1, 0);
 			}
-
 		}
 
 		rr = NULL;
@@ -856,9 +886,19 @@ dbg_xfrin_exec_verb(
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add last node into zone (%s).\n",
 				  knot_strerror(ret));
-			knot_packet_free(&packet);
-			knot_node_free(&node);
-			return KNOT_ERROR;	/*! \todo Other error */
+			ret = xfrin_handle_error(xfr->zone->name, rr->owner,
+			                         ret);
+                        if (ret == KNOT_EOK) {
+				// Recoverable error, do cleanup
+				knot_node_free_rrsets(node, 1);
+				knot_node_free(&node);
+                        } else {
+				// Fatal error, free packet
+				knot_packet_free(&packet);
+				knot_node_free(&node);
+				knot_rrset_deep_free(&rr, 1, 1);
+				return KNOT_ERROR;
+                        }
 		}
 	}
 
@@ -1833,28 +1873,28 @@ dbg_xfrin_exec_verb(
 
 /*----------------------------------------------------------------------------*/
 
-static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
-                                       knot_rrset_t *rrset, int is_nsec3)
+static int xfrin_add_new_node(knot_zone_contents_t *contents,
+                              knot_rrset_t *rrset, knot_node_t **node,
+                              int is_nsec3)
 {
-	knot_node_t *node = knot_node_new(knot_rrset_get_owner(rrset),
-					  NULL, 0);
-	if (node == NULL) {
+	*node = knot_node_new(knot_rrset_get_owner(rrset), NULL, 0);
+	if (*node == NULL) {
 		dbg_xfrin("Failed to create a new node.\n");
-		return NULL;
+		return KNOT_ERROR;
 	}
-
-	int ret = 0;
 
 	// insert the node into zone structures and create parents if
 	// necessary
+	int ret = 0;
 	if (is_nsec3) {
-		ret = knot_zone_contents_add_nsec3_node(contents, node, 1, 0);
+		ret = knot_zone_contents_add_nsec3_node(contents, *node, 1, 0);
 	} else {
-		ret = knot_zone_contents_add_node(contents, node, 1, 0);
+		ret = knot_zone_contents_add_node(contents, *node, 1, 0);
 	}
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new node to zone contents.\n");
-		return NULL;
+		knot_node_free(node);
+		return ret;
 	}
 
 	/*!
@@ -1863,9 +1903,9 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 	 */
 
 	assert(contents->zone != NULL);
-	knot_node_set_zone(node, contents->zone);
+	knot_node_set_zone(*node, contents->zone);
 
-	return node;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2699,13 +2739,21 @@ dbg_xfrin_exec_detail(
 				// zone nodes
 				dbg_xfrin_detail("Node not found. Creating new."
 						 "\n");
-				node = xfrin_add_new_node(contents,
-							  chset->add[i],
-							  is_nsec3);
-				if (node == NULL) {
+				ret = xfrin_add_new_node(contents,
+							 chset->add[i], &node,
+							 is_nsec3);
+				if (ret != KNOT_EOK) {
 					dbg_xfrin("Failed to create new node "
 						  "in zone.\n");
-					return KNOT_ERROR;
+					ret =
+					xfrin_handle_error(contents->apex ? 
+					                   contents->apex->owner :
+					                   NULL,
+					                   chset->add[i]->owner,
+					                   ret);
+					if (ret != KNOT_EOK) {
+						return ret;
+					}
 				}
 			}
 		}
