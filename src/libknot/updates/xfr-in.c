@@ -339,7 +339,7 @@ int xfrin_handle_error(const knot_dname_t *zone_owner,
 	        log_zone_error("Zone %s: Failed to process "
 	                       "incoming RR, transfer "
 	                       "is probably malformed. (Reason: %s)\n",
-	                        knot_strerror(ret));
+	                        zonename, knot_strerror(ret));
 	        free(zonename);
 	        return KNOT_ERROR;
 	}
