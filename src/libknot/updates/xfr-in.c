@@ -479,22 +479,23 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 		/*! \todo Cleanup. */
 		return KNOT_EMALF;
 	}
-
-	if (!knot_dname_is_subdomain(xfr->zone->name, rr->owner)) {
-		char *owner = knot_dname_to_str(rr->owner);
-		log_zone_warning("Ignoring out-of-zone record owned by %s.\n",
-		                 owner);
-		free(owner);
-		knot_packet_free(&packet);
-		knot_rrset_deep_free(&rr, 1, 1);
-		return KNOT_EOK;
-	}
-
+	
 	if (rr == NULL) {
 		dbg_xfrin("No RRs in the packet.\n");
 		knot_packet_free(&packet);
 		/*! \todo Cleanup. */
 		return KNOT_EMALF;
+	}
+
+	if (!knot_dname_is_subdomain(xfr->zone->name, rr->owner) &&
+	    knot_dname_compare_non_canon(xfr->zone->name, rr->owner) != 0) {
+		char *owner = knot_dname_to_str(rr->owner);
+		log_zone_warning("Ignoring out-of-zone record owned by %s\n",
+		                 owner);
+		free(owner);
+		knot_packet_free(&packet);
+		knot_rrset_deep_free(&rr, 1, 1);
+		return KNOT_EOK;
 	}
 
 	/*! \todo We should probably test whether the Question of the first
@@ -535,8 +536,8 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			return KNOT_EOK;
 		}
 
-		if (knot_dname_compare(knot_rrset_owner(rr),
-				       knot_packet_qname(packet)) != 0) {
+		if (knot_dname_compare_non_canon(knot_rrset_owner(rr),
+				                 knot_packet_qname(packet)) != 0) {
 dbg_xfrin_exec(
 			char *rr_owner =
 				knot_dname_to_str(knot_rrset_owner(rr));
