@@ -34,8 +34,9 @@
 
 /*! \brief Changeset flags, stored as first 4 bytes in serialized changeset. */
 typedef enum {
-	KNOT_CHANGESET_TYPE_IXFR = 1 << 0,
-	KNOT_CHANGESET_TYPE_DDNS = 1 << 1
+	KNOT_CHANGESET_TYPE_IXFR   = 1 << 0,
+	KNOT_CHANGESET_TYPE_DDNS   = 1 << 1,
+	KNOT_CHANGESET_TYPE_DNSSEC = 1 << 2
 } knot_changeset_flag_t;
 
 /*! \todo Changeset must be serializable/deserializable, so
