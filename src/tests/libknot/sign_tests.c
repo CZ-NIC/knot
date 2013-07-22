@@ -16,8 +16,8 @@
 
 #include <config.h>
 #include "tests/libknot/sign_tests.h"
-#include "libknot/sign/key.h"
-#include "libknot/sign/key.c" // testing static functions
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/key.c" // testing static functions
 
 static int sign_tests_count(int argc, char *argv[]);
 static int sign_tests_run(int argc, char *argv[]);
