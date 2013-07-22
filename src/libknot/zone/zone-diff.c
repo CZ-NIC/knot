@@ -916,7 +916,7 @@ static int knot_zone_diff_load_content(const knot_zone_contents_t *zone1,
 }
 
 
-int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
+static int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
                             const knot_zone_contents_t *zone2,
                             knot_changeset_t *changeset)
 {
@@ -963,9 +963,10 @@ static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
 #endif
 #endif
 
-int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
-                                     const knot_zone_contents_t *z2,
-                                     knot_changesets_t **changesets)
+int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
+                                   const knot_zone_contents_t *z2,
+                                   knot_changesets_t **changesets,
+                                   uint32_t changesets_flags)
 {
 	if (z1 == NULL || z2 == NULL) {
 		dbg_zonediff("zone_diff: create_changesets: NULL arguments.\n");
@@ -975,7 +976,7 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 	/* Setting type to IXFR - that's the default, DDNS triggers special
 	 * processing when applied. See #2110 and #2111.
 	 */
-	int ret = knot_changeset_allocate(changesets, KNOT_CHANGESET_TYPE_IXFR);
+	int ret = knot_changeset_allocate(changesets, changesets_flags);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not allocate changesets."
@@ -1002,4 +1003,22 @@ dbg_zonediff_exec_detail(
 );
 
 	return KNOT_EOK;
+}
+
+int knot_zone_tree_create_diff(knot_zone_tree_t *t1,
+                               knot_zone_tree_t *t2,
+                               knot_changesets_t **changesets,
+                               uint32_t changesets_flags)
+{
+	if (!t1 || !t1 || !changesets)
+		return KNOT_EINVAL;
+
+	int result = knot_changeset_allocate(changesets, changesets_flags);
+	if (result != KNOT_EOK)
+		return result;
+
+	knot_changeset_t *changeset = (*changesets)->sets;
+	memset(changeset, 0, sizeof(knot_changeset_t));
+
+	return knot_zone_diff_load_trees(t1, t2, changeset);
 }

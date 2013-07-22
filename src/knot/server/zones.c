@@ -3024,9 +3024,10 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 	memset(&xfr, 0, sizeof(xfr));
 	xfr.zone = (knot_zone_t *)old_zone;
 	knot_changesets_t *changesets;
-	int ret = knot_zone_diff_create_changesets(old_zone->contents,
-	                                           new_zone->contents,
-	                                           &changesets);
+	int ret = knot_zone_contents_create_diff(old_zone->contents,
+	                                         new_zone->contents,
+	                                         &changesets,
+	                                         KNOT_CHANGESET_TYPE_IXFR);
 	if (ret != KNOT_EOK) {
 		if (ret == KNOT_ERANGE) {
 			dbg_zones_detail("zones: create_changesets: "

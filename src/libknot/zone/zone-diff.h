@@ -17,12 +17,25 @@
 #ifndef _KNOT_ZONE_DIFF_H_
 #define _KNOT_ZONE_DIFF_H_
 
+#include <stdint.h>
+
 #include "libknot/zone/zone-contents.h"
 #include "libknot/updates/changesets.h"
 
-/*! \brief zone1 -> zone2 */
-int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
-                                     const knot_zone_contents_t *z2,
-                                     knot_changesets_t **changesets);
+/*!
+ * \brief Create diff between two zone trees.
+ * */
+int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
+                                   const knot_zone_contents_t *z2,
+                                   knot_changesets_t **changesets,
+                                   uint32_t changesets_flags);
+
+/*!
+ * \brief Create diff between two zone trees.
+ */
+int knot_zone_tree_create_diff(knot_zone_tree_t *t1,
+                               knot_zone_tree_t *t2,
+                               knot_changesets_t **changesets,
+                               uint32_t changesets_flags);
 
 #endif // _KNOT_ZONE_DIFF_H_
