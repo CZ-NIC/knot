@@ -31,11 +31,9 @@ int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
                                    uint32_t changesets_flags);
 
 /*!
- * \brief Create diff between two zone trees.
+ * \brief Add diff between two zone trees into the changeset.
  */
-int knot_zone_tree_create_diff(knot_zone_tree_t *t1,
-                               knot_zone_tree_t *t2,
-                               knot_changesets_t **changesets,
-                               uint32_t changesets_flags);
+int knot_zone_tree_add_diff(knot_zone_tree_t *t1, knot_zone_tree_t *t2,
+                            knot_changeset_t *changeset);
 
 #endif // _KNOT_ZONE_DIFF_H_

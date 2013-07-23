@@ -27,16 +27,19 @@
 #ifndef _KNOT_DNSSEC_ZONE_NSEC_H_
 #define _KNOT_DNSSEC_ZONE_NSEC_H_
 
-#include "zone/zone-contents.h"
+#include "libknot/updates/changesets.h"
+#include "libknot/zone/zone-contents.h"
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  *
- * \param zone  Zone for which the NSEC(3) chain will be created.
+ * \param zone       Zone for which the NSEC(3) chain will be created.
+ * \param changeset  Changeset into which the changes will be added.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_create_nsec_chain(knot_zone_contents_t *zone);
+int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
+				knot_changeset_t *changeset);
 
 /*!
  * \brief Connect regular and NSEC3 nodes in the zone.

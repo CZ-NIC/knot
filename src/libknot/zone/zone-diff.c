@@ -1005,20 +1005,11 @@ dbg_zonediff_exec_detail(
 	return KNOT_EOK;
 }
 
-int knot_zone_tree_create_diff(knot_zone_tree_t *t1,
-                               knot_zone_tree_t *t2,
-                               knot_changesets_t **changesets,
-                               uint32_t changesets_flags)
+int knot_zone_tree_add_diff(knot_zone_tree_t *t1, knot_zone_tree_t *t2,
+                            knot_changeset_t *changeset)
 {
-	if (!t1 || !t1 || !changesets)
+	if (!t1 || !t1 || !changeset)
 		return KNOT_EINVAL;
-
-	int result = knot_changeset_allocate(changesets, changesets_flags);
-	if (result != KNOT_EOK)
-		return result;
-
-	knot_changeset_t *changeset = (*changesets)->sets;
-	memset(changeset, 0, sizeof(knot_changeset_t));
 
 	return knot_zone_diff_load_trees(t1, t2, changeset);
 }

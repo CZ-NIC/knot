@@ -175,6 +175,7 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	char *zone_name = knot_dname_to_str(zone->name);
+	knot_changesets_t *changesets = NULL;
 
 	log_server_info("Requested zone resign for '%s'\n", zone_name);
 
@@ -183,9 +184,18 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 		goto failure;
 	}
 
+	result = knot_changeset_allocate(&changesets, KNOT_CHANGESET_TYPE_DNSSEC);
+	if (result != KNOT_EOK) {
+		log_server_error("Cannot create new changeset.\n");
+		goto failure;
+	}
+
+	knot_changeset_t *changeset = changesets->sets;
+	assert(changeset);
+
 	// generate NSEC records
 
-	result = knot_zone_create_nsec_chain(zone->contents);
+	result = knot_zone_create_nsec_chain(zone->contents, changeset);
 	if (result != KNOT_EOK) {
 		log_server_error("Could not create NSEC chain for '%s' (%s).\n",
 				 zone_name, knot_strerror(result));
@@ -193,7 +203,7 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 	}
 
 	// add missing signatures
-
+/*
 	rcu_read_lock();
 	const char *keydir = conf()->dnssec_keydir;
 	rcu_read_unlock();
@@ -204,8 +214,13 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 		log_server_error("Could not resing zone '%s' (%s).\n",
 				 zone_name, knot_strerror(result));
 	}
+*/
 
 failure:
+
+	// tmp
+	knot_free_changesets(&changesets);
+
 	free(zone_name);
 	return result;
 }

@@ -28,6 +28,7 @@
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/util/utils.h"
 #include "libknot/zone/zone-contents.h"
+#include "libknot/zone/zone-diff.h"
 
 /* - NSEC chain iteration -------------------------------------------------- */
 
@@ -126,9 +127,9 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 }
 
 /*!
- * \brief Move NSEC3 signatures from the one node to the second one.
+ * \brief Copy NSEC3 signatures from the one node to the second one.
  */
-static void move_signatures(knot_node_t *from, knot_node_t *to)
+static void copy_signature(const knot_node_t *from, knot_node_t *to)
 {
 	assert(valid_nsec3_node(from));
 	assert(valid_nsec3_node(to));
@@ -139,23 +140,15 @@ static void move_signatures(knot_node_t *from, knot_node_t *to)
 	assert(to_rrset->rrsigs == NULL);
 
 	to_rrset->rrsigs = from_rrset->rrsigs;
-	from_rrset->rrsigs = NULL;
 }
 
 /*!
  * \brief Recycle NSEC3 signatatures by moving them from one tree to another.
- *
- * When the zone is loaded, new NSEC3 tree is constructed as the hashes have
- * to be recomputed to be able to connect regular nodes with NSEC3 nodes. Any
- * existing signatures from the NSEC3 tree are the moved to the new tree, if
- * the NSEC3 nodes are matching. The old NSEC3 tree can be then freed.
  */
-static int recycle_signatures(knot_zone_tree_t *from, knot_zone_tree_t *to)
+static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 {
 	assert(to);
-
-	if (!from)
-		return KNOT_EINVAL;
+	assert(from);
 
 	bool sorted = false;
 	hattrie_iter_t *it = hattrie_iter_begin(from, sorted);
@@ -171,12 +164,10 @@ static int recycle_signatures(knot_zone_tree_t *from, knot_zone_tree_t *to)
 		if (!are_nsec3_nodes_equal(node_from, node_to))
 			continue;
 
-		move_signatures(node_from, node_to);
+		copy_signature(node_from, node_to);
 	}
 
 	hattrie_iter_free(it);
-
-	return KNOT_EOK;
 }
 
 /* - NSEC nodes construction ----------------------------------------------- */
@@ -462,7 +453,7 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 /*!
  * \brief Get zone apex as a string.
  */
-static bool get_zone_apex_str(knot_zone_contents_t *zone,
+static bool get_zone_apex_str(const knot_zone_contents_t *zone,
 			      char **apex, size_t *apex_size)
 {
 	assert(zone);
@@ -525,7 +516,7 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int create_nsec3_nodes(knot_zone_contents_t *zone, uint32_t ttl,
+static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
                               knot_zone_tree_t *nsec3_nodes)
 {
 	const knot_nsec3_params_t *params = &zone->nsec3_params;
@@ -566,11 +557,43 @@ static int create_nsec3_nodes(knot_zone_contents_t *zone, uint32_t ttl,
 }
 
 /*!
- * \brief Create new NSEC3 chain and add it into the zone.
+ * \brief Custom NSEC3 tree free function.
+ *
+ * - Leaves RRSIGs, as these are only referenced.
+ * - Deep frees NSEC3 RRs, as these nodes were created.
+ *
  */
-static int create_nsec3_chain(knot_zone_contents_t *zone, uint32_t ttl)
+static void free_new_nsec3_tree(knot_zone_tree_t *nodes)
+{
+	assert(nodes);
+
+	bool sorted = false;
+	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
+	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
+
+		for (int i = 0; i < node->rrset_count; i++) {
+			// referenced RRSIGs from old NSEC3 tree
+			node->rrset_tree[i]->rrsigs = NULL;
+			// newly allocated NSEC3 nodes
+			knot_rrset_deep_free(&node->rrset_tree[i], 1, 1);
+		}
+
+		knot_node_free(&node);
+	}
+
+	hattrie_iter_free(it);
+	knot_zone_tree_free(&nodes);
+}
+
+/*!
+ * \brief Create new NSEC3 chain, add differences from current into a changeset.
+ */
+static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
+			      knot_changeset_t *changeset)
 {
 	assert(zone);
+	assert(changeset);
 
 	int result;
 
@@ -580,47 +603,23 @@ static int create_nsec3_chain(knot_zone_contents_t *zone, uint32_t ttl)
 
 	result = create_nsec3_nodes(zone, ttl, nsec3_nodes);
 	if (result != KNOT_EOK) {
-		knot_zone_tree_free(&nsec3_nodes);
+		free_new_nsec3_tree(nsec3_nodes);
 		return result;
 	}
 
 	result = chain_iterate(nsec3_nodes, connect_nsec3_nodes, NULL);
 	if (result != KNOT_EOK) {
-		knot_zone_tree_free(&nsec3_nodes);
+		free_new_nsec3_tree(nsec3_nodes);
 		return result;
 	}
 
-	/*
-	 * Signatures recyclation:
-	 *
-	 * TODO: rewrite, when we have RDATA reference counting
-	 *
-	 * 1. create shallow copy of the old NSEC3 tree
-	 * 2. steal signatures by setting the pointer in the new tree and
-	 *    setting the original pointer in the copied tree to NULL
-	 * 3. set new NSEC3 tree in the zone
-	 * 4. deep free the copied tree, shallow free the old tree
-	 */
+	copy_signatures(zone->nsec3_nodes, nsec3_nodes);
 
-	knot_zone_tree_t *copy;
-	result = knot_zone_tree_shallow_copy(zone->nsec3_nodes, &copy);
-	if (result != KNOT_EOK) {
-		knot_zone_tree_free(&nsec3_nodes);
-		return result;
-	}
+	result = knot_zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes, changeset);
 
-	result = recycle_signatures(copy, nsec3_nodes);
-	if (result != KNOT_EOK) {
-		knot_zone_tree_free(&nsec3_nodes);
-		knot_zone_tree_free(&copy);
-		return result;
-	}
+	free_new_nsec3_tree(nsec3_nodes);
 
-	knot_zone_tree_deep_free(&copy);
-	knot_zone_tree_free(&zone->nsec3_nodes);
-	zone->nsec3_nodes = nsec3_nodes;
-
-	return KNOT_EOK;
+	return result;
 }
 
 /* - helper functions ------------------------------------------------------ */
@@ -661,9 +660,10 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  */
-int knot_zone_create_nsec_chain(knot_zone_contents_t *zone)
+int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
+				knot_changeset_t *changeset)
 {
-	if (!zone)
+	if (!zone || !changeset)
 		return KNOT_EINVAL;
 
 	uint32_t nsec_ttl = 0;
@@ -671,15 +671,14 @@ int knot_zone_create_nsec_chain(knot_zone_contents_t *zone)
 		return KNOT_ERROR;
 
 	int result;
+
 	if (is_nsec3_enabled(zone))
-		result = create_nsec3_chain(zone, nsec_ttl);
+		result = create_nsec3_chain(zone, nsec_ttl, changeset);
 	else
-		result = create_nsec_chain(zone, nsec_ttl);
+//		result = create_nsec_chain(zone, nsec_ttl, changeset);
+		result = KNOT_ENOTSUP;
 
-	if (result != KNOT_EOK)
-		return result;
-
-	return knot_zone_contents_adjust(zone, NULL, NULL, 0);
+	return result;
 }
 
 /*!
