@@ -326,7 +326,7 @@ int xfrin_handle_error(const knot_dname_t *zone_owner,
                        int ret)
 {
 	char *zonename = knot_dname_to_str(zone_owner);
-        if (ret == KNOT_EBADZONE) {
+        if (ret == KNOT_EOUTOFZONE) {
 		// Out-of-zone data, ignore
 		char *rrname = knot_dname_to_str(rr_owner);
 		log_zone_warning("Zone %s: Ignoring "

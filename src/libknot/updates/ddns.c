@@ -322,7 +322,7 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
@@ -355,7 +355,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
@@ -400,7 +400,7 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
@@ -431,7 +431,7 @@ static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
 	if (!knot_dname_is_subdomain(dname,
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
@@ -461,7 +461,7 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 	if (!knot_dname_is_subdomain(dname,
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
@@ -618,7 +618,7 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 	int is_sub = knot_dname_is_subdomain(owner, qname);
 	if (!is_sub && knot_dname_compare(owner, qname) != 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	if (knot_rrset_class(rrset) == knot_packet_qclass(query)) {

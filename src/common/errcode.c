@@ -52,7 +52,7 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_ECRYPTO, "Error in crypto library." },
 	{ KNOT_ENSEC3PAR, "Missing or wrong NSEC3PARAM record." },
 	{ KNOT_ENSEC3CHAIN, "Missing or wrong NSEC3 chain in the zone." },
-	{ KNOT_EBADZONE, "Name does not belong to the zone." },
+	{ KNOT_EOUTOFZONE, "Name does not belong to the zone." },
 	{ KNOT_EHASH, "Error in hash table." },
 	{ KNOT_EZONEINVAL, "Invalid zone file." },
 	{ KNOT_ENOZONE, "No such zone found." },
