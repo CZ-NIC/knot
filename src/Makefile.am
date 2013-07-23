@@ -165,6 +165,7 @@ libknot_la_SOURCES =				\
 	libknot/binary.c			\
 	libknot/dnssec/key.c			\
 	libknot/dnssec/key.h			\
+	libknot/dnssec/nsec-bitmap.h		\
 	libknot/dnssec/nsec3.c			\
 	libknot/dnssec/nsec3.h			\
 	libknot/dnssec/sig0.c			\

@@ -23,103 +23,11 @@
 
 #include "common/base32hex.c"
 #include "common/descriptor.h"
-#include "nsec3.h"
-#include "util/utils.h"
-#include "zone/zone-contents.h"
-#include "zone-nsec.h"
-
-/* - RR types bitmap -- RFC 4034 ------------------------------------------- */
-
-#define BITMAP_WINDOW_SIZE 256
-#define BITMAP_WINDOW_BYTES (BITMAP_WINDOW_SIZE/CHAR_BIT)
-#define BITMAP_WINDOW_COUNT 256
-
-/*!
- * \brief One window of a bitmap.
- */
-typedef struct {
-	uint8_t used;
-	uint8_t data[BITMAP_WINDOW_BYTES];
-} bitmap_window_t;
-
-/*!
- * \brief Bitmap of RR types.
- */
-typedef struct {
-	int used;
-	bitmap_window_t windows[BITMAP_WINDOW_COUNT];
-} bitmap_t;
-
-/*!
- * \brief Add one RR type into the bitmap.
- */
-static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
-{
-	int win = type / BITMAP_WINDOW_SIZE;
-	int bit = type % BITMAP_WINDOW_SIZE;
-
-	if (bitmap->used <= win)
-		bitmap->used = win + 1;
-
-	int win_byte = bit / CHAR_BIT;
-	int win_bit  = bit % CHAR_BIT;
-
-	bitmap_window_t *window = &bitmap->windows[win];
-	window->data[win_byte] |= 0x80 >> win_bit;
-	if (window->used <= win_byte)
-		window->used = win_byte + 1;
-}
-
-/*!
- * \brief Add all RR types from a RR set into the bitmap.
- */
-static void bitmap_add_rrset(bitmap_t *bitmap, knot_rrset_t *rrset[],
-                             int rrset_count)
-{
-	for (int i = 0; i < rrset_count; i++) {
-		bitmap_add_type(bitmap, rrset[i]->type);
-	}
-}
-
-/*!
- * \brief Compute the size of the bitmap in NSEC RDATA format.
- */
-static size_t bitmap_size(const bitmap_t *bitmap)
-{
-	size_t result = 0;
-
-	for (int i = 0; i < bitmap->used; i++) {
-		int used = bitmap->windows[i].used;
-		if (used == 0)
-			continue;
-
-		result += 2 + used; // windows number, window size, data
-	}
-
-	return result;
-}
-
-/*!
- * \brief Write bitmap in NSEC RDATA format.
- */
-static void bitmap_write(const bitmap_t *bitmap, uint8_t *output)
-{
-	uint8_t *write_ptr = output;
-	for (int win = 0; win < bitmap->used; win++) {
-		int used = bitmap->windows[win].used;
-		if (used == 0)
-			continue;
-
-		*write_ptr = (uint8_t)win;
-		write_ptr += 1;
-
-		*write_ptr = (uint8_t)used;
-		write_ptr += 1;
-
-		memcpy(write_ptr, bitmap->windows[win].data, used);
-		write_ptr += used;
-	}
-}
+#include "libknot/dnssec/nsec-bitmap.h"
+#include "libknot/dnssec/nsec3.h"
+#include "libknot/dnssec/zone-nsec.h"
+#include "libknot/util/utils.h"
+#include "libknot/zone/zone-contents.h"
 
 /* - NSEC chain iteration -------------------------------------------------- */
 
