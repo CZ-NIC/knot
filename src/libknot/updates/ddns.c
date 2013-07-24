@@ -926,7 +926,7 @@ static  int knot_ddns_add_new_node(knot_zone_contents_t *zone,
 	*node = knot_node_new(owner, NULL, 0);
 	if (*node == NULL) {
 		dbg_xfrin("Failed to create a new node.\n");
-		return KNOT_ERROR;
+		return KNOT_ENOMEM;
 	}
 
 	int ret = 0;

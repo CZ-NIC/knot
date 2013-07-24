@@ -214,8 +214,6 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
                                 knot_changes_t *changes,
                                 knot_zone_contents_t *contents);
 
-int xfrin_handle_error(const knot_dname_t *zone_owner, const knot_dname_t *rr_owner, int ret);
-
 #endif /* _KNOTXFR_IN_H_ */
 
 /*! @} */

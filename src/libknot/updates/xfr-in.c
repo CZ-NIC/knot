@@ -321,30 +321,27 @@ static int xfrin_insert_rrset_dnames_to_table(knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
-int xfrin_handle_error(const knot_dname_t *zone_owner,
-                       const knot_dname_t *rr_owner,
-                       int ret)
+static void xfrin_handle_error(const knot_dname_t *zone_owner,
+                               const knot_dname_t *rr_owner,
+                               int ret)
 {
 	char *zonename = knot_dname_to_str(zone_owner);
-        if (ret == KNOT_EOUTOFZONE) {
+	if (ret == KNOT_EOUTOFZONE) {
 		// Out-of-zone data, ignore
 		char *rrname = knot_dname_to_str(rr_owner);
 		log_zone_warning("Zone %s: Ignoring "
-                                 "out-of-zone RR owned by %s\n",
-                                 zonename, rrname);
+		                 "out-of-zone RR owned by %s\n",
+		                 zonename, rrname);
 		free(zonename);
-	        free(rrname);
-		return KNOT_EOK;
-        } else {
+		free(rrname);
+	} else {
 	        log_zone_error("Zone %s: Failed to process "
 	                       "incoming RR, transfer "
 	                       "is probably malformed. (Reason: %s)\n",
 	                        zonename, knot_strerror(ret));
 	        free(zonename);
-	        return KNOT_ERROR;
 	}
 }
-
 
 void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 {
@@ -638,6 +635,15 @@ dbg_xfrin_exec(
 
 	while (ret == KNOT_EOK && rr != NULL) {
 		// process the parsed RR
+		if (!knot_dname_is_subdomain(rr->owner, xfr->zone->name) &&
+		    knot_dname_compare_non_canon(rr->owner, xfr->zone->name) != 0) {
+			// Out-of-zone data
+			xfrin_handle_error(xfr->zone->name, rr->owner,
+			                   KNOT_EOUTOFZONE);
+			knot_rrset_deep_free(&rr, 1, 1);
+			ret = knot_packet_parse_next_rr_answer(packet, &rr);
+			continue;
+		}
 
 		dbg_rrset_detail("\nNext RR:\n\n");
 		knot_rrset_dump(rr);
@@ -824,19 +830,11 @@ dbg_xfrin_exec_verb(
 			ret = add_node(zone, node, 1, 0);
 			assert(node != NULL);
 			if (ret != KNOT_EOK) {
-				ret = xfrin_handle_error(xfr->zone->name,
-				                         rr->owner, ret);
-				if (ret == KNOT_EOK) {
-					// Recoverable error, do cleanup
-					knot_node_free_rrsets(node, 1);
-					knot_node_free(&node);
-				} else {
-					// Fatal error, free packet
-					knot_packet_free(&packet);
-					knot_node_free(&node);
-					knot_rrset_deep_free(&rr, 1, 1);
-					return KNOT_ERROR;
-				}
+				// Fatal error, free packet
+				knot_packet_free(&packet);
+				knot_rrset_deep_free(&rr, 1, 1);
+				knot_node_free(&node);
+				return ret;
 			}
 			in_zone = 1;
 		} else {
@@ -886,19 +884,10 @@ dbg_xfrin_exec_verb(
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add last node into zone (%s).\n",
 				  knot_strerror(ret));
-			ret = xfrin_handle_error(xfr->zone->name, rr->owner,
-			                         ret);
-                        if (ret == KNOT_EOK) {
-				// Recoverable error, do cleanup
-				knot_node_free_rrsets(node, 1);
-				knot_node_free(&node);
-                        } else {
-				// Fatal error, free packet
 				knot_packet_free(&packet);
 				knot_node_free(&node);
 				knot_rrset_deep_free(&rr, 1, 1);
-				return KNOT_ERROR;
-                        }
+				return ret;
 		}
 	}
 
@@ -1136,6 +1125,19 @@ dbg_xfrin_exec_verb(
 				 knot_rrset_type(rr));
 		free(name);
 );
+		if (knot_dname_is_subdomain(rr->owner, xfr->zone->name) &&
+		    knot_dname_compare_non_canon(rr->owner, xfr->zone->name) != 0) {
+			// out-of-zone domain
+			xfrin_handle_error(xfr->zone->name, rr->owner, KNOT_EOUTOFZONE);
+			knot_rrset_deep_free(&rr, 1, 1);
+			// Skip this rr
+			ret = knot_packet_parse_next_rr_answer(packet, &rr);
+			continue;
+		}
+
+		// Handle duplications
+		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
+
 		switch (state) {
 		case -1:
 			// a SOA is expected
@@ -2745,16 +2747,7 @@ dbg_xfrin_exec_detail(
 				if (ret != KNOT_EOK) {
 					dbg_xfrin("Failed to create new node "
 						  "in zone.\n");
-					ret =
-					xfrin_handle_error(contents->apex ? 
-					                   contents->apex->owner :
-					                   NULL,
-					                   chset->add[i]->owner,
-					                   ret);
-					// Delete from changeset
-					knot_rrset_deep_free(&(chset->add[i]), 1, 1);
-					chset->add[i] = NULL;
-					return ret; // 0 for recoverable, < 0 otherwise
+					return ret;
 				}
 			}
 		}
