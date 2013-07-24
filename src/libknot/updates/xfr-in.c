@@ -1125,7 +1125,7 @@ dbg_xfrin_exec_verb(
 				 knot_rrset_type(rr));
 		free(name);
 );
-		if (knot_dname_is_subdomain(rr->owner, xfr->zone->name) &&
+		if (!knot_dname_is_subdomain(rr->owner, xfr->zone->name) &&
 		    knot_dname_compare_non_canon(rr->owner, xfr->zone->name) != 0) {
 			// out-of-zone domain
 			xfrin_handle_error(xfr->zone->name, rr->owner, KNOT_EOUTOFZONE);
