@@ -109,23 +109,19 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 
 	assert(changeset);
 
-	ret = knot_rrset_deep_copy(soa_rrset1, &changeset->soa_from, 1);
+	ret = knot_rrset_deep_copy_no_sig(soa_rrset1, &changeset->soa_from, 1);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
 	}
 
-	/* We MUST NOT save this RRSIG. */
-	knot_rrset_deep_free(&changeset->soa_from->rrsigs, 1, 1);
+	ret = knot_rrset_deep_copy_no_sig(soa_rrset2, &changeset->soa_to, 1);
+	if (ret != KNOT_EOK) {
+		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
+		return ret;
+	}
+
 	assert(changeset->soa_from->rrsigs == NULL);
-
-	ret = knot_rrset_deep_copy(soa_rrset2, &changeset->soa_to, 1);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
-		return ret;
-	}
-
-	knot_rrset_deep_free(&changeset->soa_to->rrsigs, 1, 1);
 	assert(changeset->soa_to->rrsigs == NULL);
 
 	changeset->serial_from = soa_serial1;
@@ -158,13 +154,10 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset);
 
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy(rrset, &rrset_copy, 1);
+	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy, 1);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
 		return ret;
-	}
-	if (rrset_copy->rrsigs != NULL) {
-		knot_rrset_deep_free(&rrset_copy->rrsigs, 1, 1);
 	}
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 
@@ -205,13 +198,10 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset);
 
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy(rrset, &rrset_copy, 1);
+	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy, 1);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
 		return ret;
-	}
-	if (rrset_copy->rrsigs != NULL) {
-		knot_rrset_deep_free(&rrset_copy->rrsigs, 1, 1);
 	}
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 

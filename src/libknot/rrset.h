@@ -285,6 +285,9 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          int copy_rdata_dnames);
 
+int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to,
+                                int copy_rdata_dnames);
+
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
 /*! \brief Does round-robin rotation of the RRSet.

@@ -1359,8 +1359,8 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 	return res;
 }
 
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
-                         int copy_rdata_dnames)
+int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to,
+                                int copy_rdata_dnames)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
@@ -1382,16 +1382,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	(*to)->ttl = from->ttl;
 	(*to)->type = from->type;
 	(*to)->rdata_count = from->rdata_count;
-	if (from->rrsigs != NULL) {
-		int ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs,
-		                           copy_rdata_dnames);
-		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(to, 1, 0);
-			return ret;
-		}
-	} else {
-		(*to)->rrsigs = NULL;
-	}
+	(*to)->rrsigs = NULL;
 
 	/* Just copy arrays - actual data + indices. */
 	(*to)->rdata = xmalloc(rrset_rdata_size_total(from));
@@ -1435,6 +1426,24 @@ dbg_rrset_exec_detail(
 	}
 
 	return KNOT_EOK;
+}
+
+
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
+                         int copy_rdata_dnames)
+{
+	int result = knot_rrset_deep_copy_no_sig(from, to, copy_rdata_dnames);
+
+	if (result == KNOT_EOK && from->rrsigs != NULL) {
+		result = knot_rrset_deep_copy_no_sig(from->rrsigs,
+		                                     &(*to)->rrsigs,
+		                                     copy_rdata_dnames);
+		if (result != KNOT_EOK) {
+			knot_rrset_deep_free(to, 1, 0);
+		}
+	}
+
+	return result;
 }
 
 /*----------------------------------------------------------------------------*/
