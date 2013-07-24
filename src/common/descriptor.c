@@ -136,12 +136,46 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "ANY" },
 };
 
+/*!
+ * \brief Some (OBSOLETE) RR type descriptors.
+ */
+static const rdata_descriptor_t obsolete_rdata_descriptors[] = {
+	[0]                      = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, NULL },
+	[KNOT_RRTYPE_MD]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MD" },
+	[KNOT_RRTYPE_MF]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MF" },
+	[KNOT_RRTYPE_MB]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MB" },
+	[KNOT_RRTYPE_MG]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MG" },
+	[KNOT_RRTYPE_MR]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MR" },
+	[KNOT_RRTYPE_PX]         = { { 2, KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "PX" },
+	[KNOT_RRTYPE_NXT]        = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "NXT" },
+};
+
 const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_ANY && rdata_descriptors[type].type_name != 0) {
 		return &rdata_descriptors[type];
 	} else {
 		return &rdata_descriptors[0];
+	}
+}
+
+const rdata_descriptor_t *get_obsolete_rdata_descriptor(const uint16_t type)
+{
+	if (type <= KNOT_RRTYPE_NXT &&
+	    obsolete_rdata_descriptors[type].type_name != 0) {
+		return &obsolete_rdata_descriptors[type];
+	} else {
+		return &obsolete_rdata_descriptors[0];
 	}
 }
 

@@ -36,7 +36,7 @@ unit_api descriptor_tests_api = {
 
 static int descriptor_tests_count(int argc, char *argv[])
 {
-	return 68;
+	return 81;
 }
 
 static int descriptor_tests_run(int argc, char *argv[])
@@ -229,6 +229,41 @@ static int descriptor_tests_run(int argc, char *argv[])
 	// 29. CLASS65536
 	ret = knot_rrclass_from_string("CLASS65536", &num);
 	cmp_ok(ret, "==", -1, "get CLASS65536 num ret");
+
+	// Get obsolete descriptor:
+	// 30. TYPE0
+	descr = get_obsolete_rdata_descriptor(0);
+	ok(descr->type_name == 0, "get TYPE0 descriptor name");
+	cmp_ok(descr->block_types[0], "==", KNOT_RDATA_WF_REMAINDER,
+	       "get TYPE0 descriptor 1. item type");
+	cmp_ok(descr->block_types[1], "==", KNOT_RDATA_WF_END,
+	       "get TYPE0 descriptor 2. item type");
+
+	// 31. MD
+	descr = get_obsolete_rdata_descriptor(3);
+	ok(strcmp(descr->type_name, "MD") == 0, "get MD descriptor name");
+	cmp_ok(descr->block_types[0], "==", KNOT_RDATA_WF_COMPRESSED_DNAME,
+	       "get A descriptor 1. item type");
+	cmp_ok(descr->block_types[1], "==", KNOT_RDATA_WF_END,
+	       "get A descriptor 2. item type");
+
+	// 32. NXT
+	descr = get_obsolete_rdata_descriptor(30);
+	ok(strcmp(descr->type_name, "NXT") == 0, "get NXT descriptor name");
+	cmp_ok(descr->block_types[0], "==", KNOT_RDATA_WF_COMPRESSED_DNAME,
+	       "get CNAME descriptor 1. item type");
+	cmp_ok(descr->block_types[1], "==", KNOT_RDATA_WF_REMAINDER,
+	       "get CNAME descriptor 2. item type");
+	cmp_ok(descr->block_types[2], "==", KNOT_RDATA_WF_END,
+	       "get CNAME descriptor 3. item type");
+
+	// 33. TYPE38 (A6)
+	descr = get_obsolete_rdata_descriptor(38);
+	ok(descr->type_name == 0, "get TYPE38 descriptor name");
+	cmp_ok(descr->block_types[0], "==", KNOT_RDATA_WF_REMAINDER,
+	       "get TYPE38 descriptor 1. item type");
+	cmp_ok(descr->block_types[1], "==", KNOT_RDATA_WF_END,
+	       "get TYPE38 descriptor 2. item type");
 
 	return 0;
 }
