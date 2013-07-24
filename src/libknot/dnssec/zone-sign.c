@@ -25,13 +25,13 @@
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "common/hattrie/hat-trie.h"
-#include "sign.h"
-#include "key.h"
 #include "libknot/dname.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sign.h"
 #include "libknot/rrset.h"
-#include "zone/node.h"
-#include "sign.h"
-#include "zone/zone-contents.h"
+#include "libknot/updates/changesets.h"
+#include "libknot/zone/node.h"
+#include "libknot/zone/zone-contents.h"
 
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024 * sizeof(uint8_t))
 #define MAX_ZONE_KEYS 8
@@ -457,5 +457,50 @@ int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir)
 	hattrie_iter_free(it);
 
 	free_sign_contexts(&zone_keys);
+	return KNOT_EOK;
+}
+
+int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
+			      knot_changeset_t *changeset)
+{
+	knot_node_t *apex = knot_zone_contents_get_apex(zone);
+	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
+
+	if (soa == NULL || soa->rdata_count != 1)
+		return KNOT_EINVAL;
+
+	uint32_t serial = knot_rrset_rdata_soa_serial(soa);
+	if (serial == UINT32_MAX)
+		return KNOT_EINVAL;
+
+	uint32_t new_serial = serial + 1;
+
+	// create SOA and new SOA with updated serial
+
+	knot_rrset_t *soa_from = NULL;
+	knot_rrset_t *soa_to = NULL;
+	int copy_rdata_dnames = true;
+
+	int result;
+
+	result = knot_rrset_deep_copy_no_sig(soa, &soa_from, copy_rdata_dnames);
+	if (result != KNOT_EOK)
+		return result;
+
+	result = knot_rrset_deep_copy_no_sig(soa, &soa_to, copy_rdata_dnames);
+	if (result != KNOT_EOK) {
+		knot_rrset_deep_free(&soa_from, 1, 1);
+		return result;
+	}
+
+	knot_rrset_rdata_soa_serial_set(soa_to, new_serial);
+
+	// save the result
+
+	changeset->soa_from = soa_from;
+	changeset->soa_to = soa_to;
+	changeset->serial_from = serial;
+	changeset->serial_to = new_serial;
+
 	return KNOT_EOK;
 }

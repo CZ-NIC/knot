@@ -27,9 +27,13 @@
 #ifndef _KNOT_DNSSEC_ZONE_SIGN_H_
 #define _KNOT_DNSSEC_ZONE_SIGN_H_
 
-#include "zone/zone-contents.h"
+#include "libknot/updates/changesets.h"
+#include "libknot/zone/zone-contents.h"
 
 int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir);
+
+int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
+			      knot_changeset_t *changeset);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 
