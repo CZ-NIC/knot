@@ -192,6 +192,7 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 
 	knot_changeset_t *changeset = changesets->sets;
 	assert(changeset);
+	changesets->count = 1;
 
 	// generate NSEC records
 
@@ -215,6 +216,38 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 				 zone_name, knot_strerror(result));
 	}
 */
+
+	// update SOA if there are any changes
+
+	log_server_info("changeset add %zu remove %zu\n", changeset->add_count, changeset->remove_count);
+
+	if (changeset->add_count == 0 || changeset->remove_count == 0) {
+		log_server_info("No changes performed.\n");
+		result = KNOT_EOK;
+		goto failure; // not really a failure
+	}
+
+	result = knot_zone_sign_update_soa(zone->contents, changeset);
+	if (result != KNOT_EOK) {
+		log_server_error("Cannot update SOA record (%s).\n",
+				 knot_strerror(result));
+		goto failure;
+	}
+
+	// apply changeset
+
+	rcu_read_unlock(); // HACK
+	knot_zone_contents_t *new_contents = NULL;
+	result = zones_store_and_apply_chgsets(changesets, zone, &new_contents,
+					       "DNSSEC", XFR_TYPE_UPDATE);
+	rcu_read_lock();
+	if (result != KNOT_EOK) {
+		log_server_error("Cannot apply changeset (%s).\n",
+				 knot_strerror(result));
+		goto failure;
+	}
+
+	changesets = NULL; // freed by apply_chgsets
 
 failure:
 
