@@ -97,10 +97,10 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "SSHFP" },
 	[KNOT_RRTYPE_IPSECKEY]   = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "IPSECKEY" },
-	[KNOT_RRTYPE_RRSIG]      = { { 18, KNOT_RDATA_WF_LITERAL_DNAME,
+	[KNOT_RRTYPE_RRSIG]      = { { 18, KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "RRSIG" },
-	[KNOT_RRTYPE_NSEC]       = { { KNOT_RDATA_WF_LITERAL_DNAME,
+	[KNOT_RRTYPE_NSEC]       = { { KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "NSEC" },
 	[KNOT_RRTYPE_DNSKEY]     = { { KNOT_RDATA_WF_REMAINDER,
@@ -251,8 +251,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 
 int descriptor_item_is_dname(const int item)
 {
-	return item == KNOT_RDATA_WF_LITERAL_DNAME    ||
-	       item == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+	return item == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 	       item == KNOT_RDATA_WF_UNCOMPRESSED_DNAME;
 }
 
