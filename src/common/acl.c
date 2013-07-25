@@ -73,7 +73,7 @@ static uint32_t acl_fill_mask32(short nbits)
 		r |= 1 << (31 - i);
 	}
 
-	/* Make sure the mask has MSB on the leftmost bit. */
+	/* Make sure the mask is in network byte order. */
 	return htonl(r);
 }
 
