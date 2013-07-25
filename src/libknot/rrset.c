@@ -1213,6 +1213,7 @@ dbg_rrset_exec_detail(
 				       knot_dname_name(dname),
 				       knot_dname_size(dname));
 				offset += knot_dname_size(dname);
+				knot_dname_free(&dname);
 			} else {
 				memcpy(rdata_buffer + offset, &dname,
 				       sizeof(knot_dname_t *));
