@@ -15,11 +15,12 @@
  */
 
 #include <config.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <stdio.h>
 #include <inttypes.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "consts.h"
 #include "common.h"
@@ -1062,6 +1063,9 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 	}
 }
 
+/*!
+ * \brief Compare two RR sets, order of RDATA is not significant.
+ */
 int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
 	if (r1 == NULL || r2 == NULL || (r1->type != r2->type) ||
@@ -1069,38 +1073,22 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 		return KNOT_EINVAL;
 	}
 
-	// compare RDATA sets (order is not significant)
+	if (r1->rdata_count != r2->rdata_count) {
+		return 0;
+	}
 
-	/*!
-	 * \todo This is heavily ineffective. What about comparing
-	 * rdata_count and then doing just one comparison loop, instead of
-	 * checking from left and then from the right? That would simplify
-	 * things a little bit.
-	 */
-
-	// find all RDATA from r1 in r2
-	int found = 0;
 	for (uint16_t i = 0; i < r1->rdata_count; i++) {
-		found = 0;
-		for (uint16_t j = 0; j < r2->rdata_count && !found; j++) {
-			found = !rrset_rdata_compare_one(r1, r2, i, j);
+		bool found = false;
+		for (uint16_t j = 0; j < r2->rdata_count; j++) {
+			if (rrset_rdata_compare_one(r1, r2, i, j) == 0) {
+				found = true;
+				break;
+			}
 		}
-	}
 
-	if (!found) {
-		return 0;
-	}
-
-	// other way around
-	for (uint16_t i = 0; i < r2->rdata_count; i++) {
-		found = 0;
-		for (uint16_t j = 0; j < r1->rdata_count && !found; j++) {
-			found = !rrset_rdata_compare_one(r1, r2, j, i);
+		if (!found) {
+			return 0;
 		}
-	}
-
-	if (!found) {
-		return 0;
 	}
 
 	return 1;
