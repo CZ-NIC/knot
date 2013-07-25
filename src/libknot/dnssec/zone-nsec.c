@@ -84,91 +84,6 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	return callback(current, first, data);
 }
 
-/* - RRSIGs recyclation ---------------------------------------------------- */
-
-/*!
- * \brief Perform some basic checks that the node is valid NSEC3 node.
- */
-inline static bool valid_nsec3_node(const knot_node_t *node)
-{
-	if (node->rrset_count != 1)
-		return false;
-
-	if (node->rrset_tree[0]->type != KNOT_RRTYPE_NSEC3)
-		return false;
-
-	if (node->rrset_tree[0]->rdata_count != 1)
-		return false;
-
-	return true;
-}
-
-/*!
- * \brief Check if two NSEC3 nodes contain equal RDATA.
- *
- * \note Much simpler than 'knot_rrset_rdata_equal'.
- */
-static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
-{
-	assert(valid_nsec3_node(a));
-	assert(valid_nsec3_node(b));
-
-	knot_rrset_t *a_rrset = a->rrset_tree[0];
-	knot_rrset_t *b_rrset = b->rrset_tree[0];
-
-	uint32_t rdata_size = rrset_rdata_item_size(a_rrset, 0);
-	if (rdata_size != rrset_rdata_item_size(b_rrset, 0))
-		return false;
-
-	uint8_t *a_rdata = knot_rrset_get_rdata(a_rrset, 0);
-	uint8_t *b_rdata = knot_rrset_get_rdata(b_rrset, 0);
-
-	return memcmp(a_rdata, b_rdata, (size_t)rdata_size) == 0;
-}
-
-/*!
- * \brief Copy NSEC3 signatures from the one node to the second one.
- */
-static void copy_signature(const knot_node_t *from, knot_node_t *to)
-{
-	assert(valid_nsec3_node(from));
-	assert(valid_nsec3_node(to));
-
-	knot_rrset_t *from_rrset = from->rrset_tree[0];
-	knot_rrset_t *to_rrset = to->rrset_tree[0];
-
-	assert(to_rrset->rrsigs == NULL);
-
-	to_rrset->rrsigs = from_rrset->rrsigs;
-}
-
-/*!
- * \brief Recycle NSEC3 signatatures by moving them from one tree to another.
- */
-static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
-{
-	assert(to);
-	assert(from);
-
-	bool sorted = false;
-	hattrie_iter_t *it = hattrie_iter_begin(from, sorted);
-
-	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
-		knot_node_t *node_from = (knot_node_t *)*hattrie_iter_val(it);
-		knot_node_t *node_to = NULL;
-
-		knot_zone_tree_get(to, node_from->owner, &node_to);
-		if (node_to == NULL)
-			continue;
-
-		if (!are_nsec3_nodes_equal(node_from, node_to))
-			continue;
-
-		copy_signature(node_from, node_to);
-	}
-
-	hattrie_iter_free(it);
-}
 
 /* - NSEC nodes construction ----------------------------------------------- */
 
@@ -205,50 +120,211 @@ static knot_rrset_t *create_nsec_rrset(knot_dname_t *owner, knot_dname_t *next,
 }
 
 /*!
- * \brief Connect two nodes by adding a NSEC RR set into the first node.
+ * \brief Add entries required to replace NSEC RR set into a changeset.
  *
- * Callback function, signature chain_iterate_cb.
- *
- * \param a     First node.
- * \param b     Second node (immediate follower of a).
- * \param data  Pointer to uint32_t variable holding TTL for the new NSEC node.
+ * \param old        Old NSEC RR set to be replaced (including RRSIG).
+ * \param new        New NSEC RR set to be added (without RRSIG).
+ * \param changeset  Changeset into the entries will be added.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *data)
+static int changeset_replace_nsec(const knot_rrset_t *old, knot_rrset_t *new,
+				  knot_changeset_t *changeset)
 {
-	uint32_t ttl = *(uint32_t *)data;
+	assert(old);
+	assert(new);
+	assert(changeset);
+
+	int result;
+
+	// extract copy of NSEC and RRSIG
+
+	knot_rrset_t *old_nsec = NULL;
+	knot_rrset_t *old_rrsigs = NULL;
+
+	result = knot_rrset_deep_copy(old, &old_nsec, 1);
+	if (result != KNOT_EOK)
+		return result;
+
+	old_rrsigs = old_nsec->rrsigs;
+	old_nsec->rrsigs = NULL;
+
+	// update changeset
+
+	result = knot_changeset_add_new_rr(changeset, old_nsec, KNOT_CHANGESET_REMOVE);
+	if (result != KNOT_EOK) {
+		knot_rrset_deep_free(&old_nsec, 1, 1);
+		knot_rrset_deep_free(&old_rrsigs, 1, 1);
+		return result;
+	}
+
+	if (old_rrsigs) {
+		result = knot_changeset_add_new_rr(changeset, old_rrsigs,
+						   KNOT_CHANGESET_REMOVE);
+		if (result != KNOT_EOK) {
+			knot_rrset_deep_free(&old_rrsigs, 1, 1);
+			return result;
+		}
+	}
+
+	return knot_changeset_add_new_rr(changeset, new, KNOT_CHANGESET_ADD);
+}
+
+/*!
+ * \brief Parameters to be used in connect_nsec_nodes callback.
+ */
+typedef struct {
+	uint32_t ttl;
+	knot_changeset_t *changeset;
+} nsec_chain_iterate_data_t;
+
+/*!
+ * \brief Connect two nodes by adding a NSEC RR into the first node.
+ *
+ * Callback function, signature chain_iterate_cb.
+ *
+ * \param a  First node.
+ * \param b  Second node (immediate follower of a).
+ * \param d  Pointer to nsec_chain_iterate_data_t holding parameters
+ *           including changeset.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
+{
+	nsec_chain_iterate_data_t *data = (nsec_chain_iterate_data_t *)d;
 
 	bitmap_t rr_types = { 0 };
 	bitmap_add_rrset(&rr_types, a->rrset_tree, a->rrset_count);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 
-	knot_rrset_t *nsec = create_nsec_rrset(a->owner, b->owner, &rr_types, ttl);
-	if (!nsec)
+	knot_rrset_t *new_nsec = create_nsec_rrset(a->owner, b->owner,
+						   &rr_types, data->ttl);
+	if (!new_nsec)
 		return KNOT_ENOMEM;
 
-	return knot_node_add_rrset_no_merge(a, nsec);
+	knot_rrset_t *old_nsec = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC);
+
+	// create new NSEC
+
+	if (old_nsec == NULL) {
+		return knot_changeset_add_new_rr(data->changeset, new_nsec,
+						 KNOT_CHANGESET_ADD);
+	}
+
+	// current NSEC is valid, do nothing
+
+	if (knot_rrset_equal(new_nsec, old_nsec, KNOT_RRSET_COMPARE_WHOLE)) {
+		knot_rrset_deep_free(&new_nsec, 1, 1);
+		return KNOT_EOK;
+	}
+
+	// current NSEC is invalid, replace it and drop RRSIG
+
+	return changeset_replace_nsec(old_nsec, new_nsec, data->changeset);
 }
 
 /*!
- * \brief Add NSEC records into the zone.
+ * \brief Create new NSEC chain, add differences from current into a changeset.
  *
- * \note Expects that no NSEC records are present in the zone.
- *
- * \param zone Zone.
- * \param ttl TTL for created NSEC records.
+ * \param zone       Zone.
+ * \param ttl        TTL for created NSEC records.
+ * \param changeset  Changeset the differences will be put into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int create_nsec_chain(knot_zone_contents_t *zone, uint32_t ttl)
+static int create_nsec_chain(const knot_zone_contents_t *zone, uint32_t ttl,
+			     knot_changeset_t *changeset)
 {
 	assert(zone);
 	assert(zone->nodes);
 
-	return chain_iterate(zone->nodes, connect_nsec_nodes, &ttl);
+	nsec_chain_iterate_data_t data = { ttl, changeset };
+
+	return chain_iterate(zone->nodes, connect_nsec_nodes, &data);
 }
 
+/* - NSEC3 nodes comparison ------------------------------------------------ */
+
+/*!
+ * \brief Perform some basic checks that the node is valid NSEC3 node.
+ */
+inline static bool valid_nsec3_node(const knot_node_t *node)
+{
+	if (node->rrset_count != 1)
+		return false;
+
+	if (node->rrset_tree[0]->type != KNOT_RRTYPE_NSEC3)
+		return false;
+
+	if (node->rrset_tree[0]->rdata_count != 1)
+		return false;
+
+	return true;
+}
+
+/*!
+ * \brief Check if two nodes are equal.
+ */
+static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
+{
+	assert(valid_nsec3_node(a));
+	assert(valid_nsec3_node(b));
+
+	knot_rrset_t *a_rrset = a->rrset_tree[0];
+	knot_rrset_t *b_rrset = b->rrset_tree[0];
+
+	return knot_rrset_equal(a_rrset, b_rrset, KNOT_RRSET_COMPARE_WHOLE);
+}
+
+/* - RRSIGs handling for NSEC3 --------------------------------------------- */
+
+/*!
+ * \brief Shallow copy NSEC3 signatures from the one node to the second one.
+ *
+ * Just sets the pointer, needed only for comparison.
+ */
+static void shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
+{
+	assert(valid_nsec3_node(from));
+	assert(valid_nsec3_node(to));
+
+	knot_rrset_t *from_rrset = from->rrset_tree[0];
+	knot_rrset_t *to_rrset = to->rrset_tree[0];
+
+	assert(to_rrset->rrsigs == NULL);
+
+	to_rrset->rrsigs = from_rrset->rrsigs;
+}
+
+/*!
+ * \brief Reuse signatatures by shallow copying them from one tree to another.
+ */
+static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
+{
+	assert(to);
+	assert(from);
+
+	bool sorted = false;
+	hattrie_iter_t *it = hattrie_iter_begin(from, sorted);
+
+	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		knot_node_t *node_from = (knot_node_t *)*hattrie_iter_val(it);
+		knot_node_t *node_to = NULL;
+
+		knot_zone_tree_get(to, node_from->owner, &node_to);
+		if (node_to == NULL)
+			continue;
+
+		if (!are_nsec3_nodes_equal(node_from, node_to))
+			continue;
+
+		shallow_copy_signature(node_from, node_to);
+	}
+
+	hattrie_iter_free(it);
+}
 
 /* - NSEC3 names conversion ------------------------------------------------ */
 
@@ -375,7 +451,7 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
 }
 
 /*!
- * \brief Create NSEC3 node and add it into the zone.
+ * \brief Create NSEC3 node.
  */
 static knot_node_t *create_nsec3_node(knot_dname_t *owner,
                                       const knot_nsec3_params_t *nsec3_params,
@@ -559,11 +635,11 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 /*!
  * \brief Custom NSEC3 tree free function.
  *
- * - Leaves RRSIGs, as these are only referenced.
+ * - Leaves RRSIGs, as these are only referenced (shallow copied).
  * - Deep frees NSEC3 RRs, as these nodes were created.
  *
  */
-static void free_new_nsec3_tree(knot_zone_tree_t *nodes)
+static void free_nsec3_tree(knot_zone_tree_t *nodes)
 {
 	assert(nodes);
 
@@ -603,13 +679,13 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 
 	result = create_nsec3_nodes(zone, ttl, nsec3_nodes);
 	if (result != KNOT_EOK) {
-		free_new_nsec3_tree(nsec3_nodes);
+		free_nsec3_tree(nsec3_nodes);
 		return result;
 	}
 
 	result = chain_iterate(nsec3_nodes, connect_nsec3_nodes, NULL);
 	if (result != KNOT_EOK) {
-		free_new_nsec3_tree(nsec3_nodes);
+		free_nsec3_tree(nsec3_nodes);
 		return result;
 	}
 
@@ -617,7 +693,7 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 
 	result = knot_zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes, changeset);
 
-	free_new_nsec3_tree(nsec3_nodes);
+	free_nsec3_tree(nsec3_nodes);
 
 	return result;
 }
@@ -675,8 +751,7 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 	if (is_nsec3_enabled(zone))
 		result = create_nsec3_chain(zone, nsec_ttl, changeset);
 	else
-//		result = create_nsec_chain(zone, nsec_ttl, changeset);
-		result = KNOT_ENOTSUP;
+		result = create_nsec_chain(zone, nsec_ttl, changeset);
 
 	return result;
 }
