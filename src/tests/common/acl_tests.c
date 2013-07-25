@@ -145,7 +145,7 @@ static int acl_tests_run(int argc, char *argv[])
 	acl_create(acl, &match_pf4, ACL_ACCEPT, 0, 0); /* Make decoy. */
 	acl_key_t *rval = NULL;
 	ret = acl_match(acl, &test_pf4, &rval);
-	ok(rval->val == sval, "acl: search for preferred node");
+	ok(rval && rval->val == sval, "acl: search for preferred node");
 
 	// 19. Scenario after truncating
 	ok(acl_truncate(acl) == ACL_ACCEPT, "acl: truncate");
