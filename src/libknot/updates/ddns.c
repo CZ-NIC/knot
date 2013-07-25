@@ -897,66 +897,6 @@ static void knot_ddns_check_add_rr(knot_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_rr_is_nsec3(const knot_rrset_t *rr)
-{
-	assert(rr != NULL);
-
-	if ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
-	    || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
-	        && knot_rrset_rdata_rr_count(rr)
-	        && knot_rrset_rdata_rrsig_type_covered(rr)
-	            == KNOT_RRTYPE_NSEC3))
-	{
-		dbg_ddns_detail("This is NSEC3-related RRSet.\n");
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \note Copied from xfrin_add_new_node(). */
-static  int knot_ddns_add_new_node(knot_zone_contents_t *zone,
-                                   knot_dname_t *owner,
-                                   knot_node_t **node, int is_nsec3)
-{
-	assert(zone != NULL);
-	assert(owner != NULL);
-
-	*node = knot_node_new(owner, NULL, 0);
-	if (*node == NULL) {
-		dbg_xfrin("Failed to create a new node.\n");
-		return KNOT_ENOMEM;
-	}
-
-	int ret = 0;
-
-	// insert the node into zone structures and create parents if
-	// necessary
-	if (is_nsec3) {
-		ret = knot_zone_contents_add_nsec3_node(zone, *node, 1, 0);
-	} else {
-		ret = knot_zone_contents_add_node(zone, *node, 1, 0);
-	}
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to add new node to zone contents.\n");
-		knot_node_free(node);
-		return ret;
-	}
-
-	/*!
-	 * \note It is not needed to set the previous node, we will do this
-	 *       in adjusting after the transfer.
-	 */
-	assert(zone->zone != NULL);
-	//knot_node_set_zone(node, zone->zone);
-	assert((*node)->zone == zone->zone);
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
 static knot_node_t *knot_ddns_get_node(knot_zone_contents_t *zone,
                                        const knot_rrset_t *rr)
 {
@@ -967,7 +907,7 @@ static knot_node_t *knot_ddns_get_node(knot_zone_contents_t *zone,
 	knot_dname_t *owner = knot_rrset_get_owner(rr);
 
 	dbg_ddns_detail("Searching for node...\n");
-	if (knot_ddns_rr_is_nsec3(rr)) {
+	if (knot_rrset_is_nsec3rel(rr)) {
 		node = knot_zone_contents_get_nsec3_node(zone, owner);
 	} else {
 		node = knot_zone_contents_get_node(zone, owner);
@@ -1551,8 +1491,7 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	if (node == NULL) {
 		// create new node, connect it to the zone nodes
 		dbg_ddns_detail("Node not found. Creating new.\n");
-		int ret = knot_ddns_add_new_node(zone, knot_rrset_get_owner(rr),
-		                                 &node, knot_ddns_rr_is_nsec3(rr));
+		int ret = knot_zone_contents_create_node(zone, rr, &node);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to create new node in zone.\n");
 			return ret;

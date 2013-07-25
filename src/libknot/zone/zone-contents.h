@@ -118,6 +118,18 @@ int knot_zone_contents_add_node(knot_zone_contents_t *contents,
                                   uint8_t flags);
 
 /*!
+ * \brief Create new node in the zone contents for given RRSet.
+ *
+ * \param contents Zone to add the node into.
+ * \param rr Given RRSet.
+ * \param node Returns created node.
+ * \return
+ */
+int knot_zone_contents_create_node(knot_zone_contents_t *contents,
+                                   const knot_rrset_t *rr,
+                                   knot_node_t **node);
+
+/*!
  * \brief Adds a RRSet to the given zone.
  *
  * Checks if the RRSet belongs to the zone, i.e. if its owner is a subdomain of

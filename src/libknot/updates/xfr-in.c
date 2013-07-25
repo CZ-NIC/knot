@@ -1875,43 +1875,6 @@ dbg_xfrin_exec_verb(
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_add_new_node(knot_zone_contents_t *contents,
-                              knot_rrset_t *rrset, knot_node_t **node,
-                              int is_nsec3)
-{
-	*node = knot_node_new(knot_rrset_get_owner(rrset), NULL, 0);
-	if (*node == NULL) {
-		dbg_xfrin("Failed to create a new node.\n");
-		return KNOT_ERROR;
-	}
-
-	// insert the node into zone structures and create parents if
-	// necessary
-	int ret = 0;
-	if (is_nsec3) {
-		ret = knot_zone_contents_add_nsec3_node(contents, *node, 1, 0);
-	} else {
-		ret = knot_zone_contents_add_node(contents, *node, 1, 0);
-	}
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to add new node to zone contents.\n");
-		knot_node_free(node);
-		return ret;
-	}
-
-	/*!
-	 * \note It is not needed to set the previous node, we will do this
-	 *       in adjusting after the transfer.
-	 */
-
-	assert(contents->zone != NULL);
-	knot_node_set_zone(*node, contents->zone);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int xfrin_replace_rrset_in_node(knot_node_t *node,
                                        knot_rrset_t *rrset_new,
                                        knot_changes_t *changes,
@@ -2605,8 +2568,6 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 	knot_node_t *node = NULL;
 	knot_rrset_t *rrset = NULL, *rrsigs = NULL;
 
-	int is_nsec3 = 0;
-
 	for (int i = 0; i < chset->remove_count; ++i) {
 dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
@@ -2619,17 +2580,8 @@ dbg_xfrin_exec_detail(
 		knot_rrset_dump(chset->remove[i]);
 );
 
-		is_nsec3 = 0;
-
 		// check if the RRSet belongs to the NSEC3 tree
-		if ((knot_rrset_type(chset->remove[i]) == KNOT_RRTYPE_NSEC3)
-		    || (knot_rrset_type(chset->remove[i]) == KNOT_RRTYPE_RRSIG
-			&& knot_rrset_rdata_rrsig_type_covered(chset->remove[i])
-			    == KNOT_RRTYPE_NSEC3))
-		{
-			dbg_xfrin_verb("Removed RRSet belongs to NSEC3 tree.\n");
-			is_nsec3 = 1;
-		}
+		int is_nsec3 = knot_rrset_is_nsec3rel(chset->remove[i]);
 
 		// check if the old node is not the one we should use
 		dbg_xfrin_verb("Node:%p Owner: %p Node owner: %p\n",
@@ -2698,8 +2650,6 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 	knot_rrset_t *rrset = NULL;
 	knot_rrset_t *rrsigs = NULL;
 
-	int is_nsec3 = 0;
-
 	for (int i = 0; i < chset->add_count; ++i) {
 dbg_xfrin_exec_verb(
 		char *name = knot_dname_to_str(
@@ -2712,17 +2662,8 @@ dbg_xfrin_exec_detail(
 		knot_rrset_dump(chset->add[i]);
 );
 
-		is_nsec3 = 0;
-
 		// check if the RRSet belongs to the NSEC3 tree
-		if ((knot_rrset_type(chset->add[i]) == KNOT_RRTYPE_NSEC3)
-		    || (knot_rrset_type(chset->add[i]) == KNOT_RRTYPE_RRSIG
-			&& knot_rrset_rdata_rrsig_type_covered(chset->add[i])
-			    == KNOT_RRTYPE_NSEC3))
-		{
-			dbg_xfrin_detail("This is NSEC3-related RRSet.\n");
-			is_nsec3 = 1;
-		}
+		int is_nsec3 = knot_rrset_is_nsec3rel(chset->add[i]);
 
 		// check if the old node is not the one we should use
 		if (!node || knot_rrset_owner(chset->add[i])
@@ -2741,9 +2682,9 @@ dbg_xfrin_exec_detail(
 				// zone nodes
 				dbg_xfrin_detail("Node not found. Creating new."
 						 "\n");
-				ret = xfrin_add_new_node(contents,
-							 chset->add[i], &node,
-							 is_nsec3);
+				ret = knot_zone_contents_create_node(contents,
+				                                     chset->add[i],
+				                                     &node);
 				if (ret != KNOT_EOK) {
 					dbg_xfrin("Failed to create new node "
 						  "in zone.\n");

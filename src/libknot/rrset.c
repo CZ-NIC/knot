@@ -1605,6 +1605,19 @@ dbg_rrset_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
+bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
+{
+	assert(rr != NULL);
+
+	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
+	return ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
+	        || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
+	            && knot_rrset_rdata_rrsig_type_covered(rr)
+	            == KNOT_RRTYPE_NSEC3));
+}
+
+/*----------------------------------------------------------------------------*/
+
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
