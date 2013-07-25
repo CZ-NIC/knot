@@ -161,6 +161,7 @@ int knot_changeset_add_new_rr(knot_changeset_t *changeset,
 		break;
 	default:
 		assert(0);
+		return KNOT_EINVAL;
 	}
 
 	assert(rrsets != NULL);
