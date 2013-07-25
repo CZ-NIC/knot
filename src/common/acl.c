@@ -74,7 +74,7 @@ static uint32_t acl_fill_mask32(short nbits)
 	}
 
 	/* Make sure the mask has MSB on the leftmost bit. */
-	return htobe32(r);
+	return htonl(r);
 }
 
 static int acl_compare(void *k1, void *k2)
