@@ -1266,12 +1266,17 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 
 	// add the RRSet to the list of new RRSets, RRSIG as well
 	if (save_new) {
-		knot_changes_add_rrset(changes, *copy, KNOT_CHANGES_NEW);
+		ret = knot_changes_add_rrset(changes, *copy, KNOT_CHANGES_NEW);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(copy, 1, 1);
+			return ret;
+		}
 		if ((*copy)->rrsigs != NULL) {
 			assert(old->rrsigs != NULL);
 			ret = knot_changes_add_rrset(changes, (*copy)->rrsigs,
 			      KNOT_CHANGES_NEW);
 			if (ret != KNOT_EOK) {
+				knot_rrset_deep_free(&((*copy)->rrsigs), 1, 1);
 				return ret;
 			}
 		}
@@ -1427,12 +1432,13 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 			  knot_strerror(ret));
 		return 1;
 	}
-	/*!< \todo This RRSet will be created even when nothing was removed. */
+	/* This RRSet will be created even when nothing was removed. */
 	assert(rr_removed);
 
 	// connect the RDATA to the list of old RDATA
 	ret = knot_changes_add_rrset(changes, rr_removed, KNOT_CHANGES_OLD);
 	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(&rr_removed, 1, 1);
 		return ret;
 	}
 
@@ -1680,6 +1686,7 @@ dbg_xfrin_exec_verb(
 		int ret = knot_changes_add_rrset(changes, rrsets[i],
 		                                 KNOT_CHANGES_OLD);
 		if (ret != KNOT_EOK) {
+			free(rrsets);
 			return ret;
 		}
 	}
