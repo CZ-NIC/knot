@@ -50,11 +50,16 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 	if (parsed < 0)
 		return NULL;
 
+	/* Calculate decompressed length. */
+	int decompressed_len = knot_dname_wire_size(name, pkt);
+	if (decompressed_len < parsed)
+		return NULL;
+
 	/* Allocate space for the name. */
-	knot_dname_t *res = malloc(parsed);
+	knot_dname_t *res = malloc(decompressed_len);
 	if (res) {
 		/* Unpack name (expand compression pointers). */
-		if (knot_dname_unpack(res, name, parsed, pkt) > 0) {
+		if (knot_dname_unpack(res, name, decompressed_len, pkt) > 0) {
 			*pos += parsed;
 		} else {
 			free(res);
@@ -125,9 +130,7 @@ int knot_dname_unpack(uint8_t* dst, const knot_dname_t *src,
 		return KNOT_EINVAL;
 
 	/* Seek first real label occurence. */
-	while (knot_wire_is_pointer(src)) {
-		src = knot_wire_next_label(src, pkt);
-	}
+	src = knot_wire_seek_label(src, pkt);
 
 	/* Unpack rest of the labels. */
 	int len = 0;
@@ -570,14 +573,12 @@ int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *p
 		return 1;
 
 	/* Seek first real label occurence. */
-	while (knot_wire_is_pointer(name)) {
-		name = knot_wire_next_label((uint8_t *)name, (uint8_t *)pkt);
-	}
+	name = knot_wire_seek_label(name, pkt);
 
 	int len = 1; /* Terminal label */
 	while (*name != '\0') {
 		len += *name + 1;
-		name = knot_wire_next_label((uint8_t *)name, (uint8_t *)pkt);
+		name = knot_wire_next_label(name, pkt);
 		if (--nlabels == 0) /* Count N first labels only. */
 			break;
 	}
