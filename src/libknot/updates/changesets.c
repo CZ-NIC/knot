@@ -112,12 +112,14 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	// Insert into list of sets
 	add_tail(&ch->sets, (node *)set);
 
+	++ch->count;
+
 	return set;
 }
 
 knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *chs)
 {
-	if (chs == NULL || chs->count == 0) {
+	if (chs == NULL || EMPTY_LIST(chs->sets)) {
 		return NULL;
 	}
 

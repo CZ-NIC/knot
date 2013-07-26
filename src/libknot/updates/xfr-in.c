@@ -1068,7 +1068,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	if (state != -1) {
 		dbg_xfrin_detail("State is not -1, deciding...\n");
 		// there should be at least one started changeset right now
-		if ((*chs)->count <= 0) {
+		if (EMPTY_LIST((*chs)->sets)) {
 			knot_rrset_deep_free(&rr, 1, 1);
 			ret = KNOT_EMALF;
 			goto cleanup;
@@ -1148,7 +1148,6 @@ dbg_xfrin_exec_verb(
 				}
 				knot_changeset_add_soa(cur, rr, KNOT_CHANGESET_REMOVE);
 
-				(*chs)->count++;
 				// change state to REMOVE
 				state = KNOT_CHANGESET_REMOVE;
 			}
@@ -2858,7 +2857,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets,
                            knot_zone_contents_t **new_contents)
 {
-	if (zone == NULL || chsets == NULL || chsets->count == 0
+	if (zone == NULL || chsets == NULL || EMPTY_LIST(chsets->sets)
 	    || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}

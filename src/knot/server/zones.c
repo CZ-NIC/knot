@@ -867,7 +867,6 @@ static int zones_load_changesets(const knot_zone_t *zone,
 
 		/* Next node. */
 		found_to = chs->serial_to;
-		++dst->count;
 		++n;
 
 		/*! \todo Check consistency. */
@@ -947,7 +946,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	/*! \todo Check what should be the upper bound. */
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
-		if (chsets->count > 0) {
+		if (!EMPTY_LIST(chsets->sets)) {
 			/* Apply changesets. */
 			log_server_info("Applying '%zu' changesets from journal "
 			                "to zone '%s'.\n",
@@ -1632,7 +1631,10 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	/* 1) Process the UPDATE packet, apply to zone, create changesets. */
 
 	dbg_zones_verb("Processing UPDATE packet.\n");
-	chgsets->count = 1; /* DU is represented by a single chset. */
+	/* DU is represented by a single chset. */
+	if (knot_changesets_create_changeset(chgsets) == NULL) {
+		return KNOT_ERROR;
+	}
 
 	knot_zone_contents_t *new_contents = NULL;
 	ret = knot_ns_process_update2(knot_packet_query(resp),

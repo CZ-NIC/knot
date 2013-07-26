@@ -2948,7 +2948,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		}
 	}
 
-	if (chgsets->count > 0) {
+	if (!EMPTY_LIST(chgsets->sets)) {
 		res = ns_ixfr_put_rrset(xfr, zone_soa);
 	}
 
@@ -4349,7 +4349,7 @@ int knot_ns_process_update2(const knot_packet_t *query,
 {
 	/*! \todo Implement. */
 	if (query == NULL || old_contents == NULL || chgs == NULL ||
-	    chgs->count == 0 || new_contents == NULL || rcode == NULL) {
+	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
 	}
 

@@ -1755,7 +1755,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 */
 	ret = knot_changes_add_rrset(changes, rr_remove, KNOT_CHANGES_OLD);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rr_remove);
+		knot_rrset_deep_free(&rr_remove, 1, 1);
 		dbg_ddns_detail("Failed to add data to changes.\n");
 		return ret;
 	}
