@@ -411,7 +411,7 @@ static void process_rr(const scanner_t *scanner)
 				"in config! \n");
 			/* Such SOA cannot even be added, because
 			 * it would not be in the zone apex. */
-			parser->ret = KNOT_EBADZONE;
+			parser->ret = KNOT_EOUTOFZONE;
 			return;
 		}
 	}
