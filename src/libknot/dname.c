@@ -74,6 +74,9 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 
 knot_dname_t *knot_dname_copy(const knot_dname_t *name)
 {
+	if (name == NULL)
+		return NULL;
+
 	return knot_dname_copy_part(name, knot_dname_size(name));
 }
 
