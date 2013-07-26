@@ -190,9 +190,9 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  * Previous owner will be replaced if exist.
  *
  * \param rrset Specified RRSet.
- * \param owner New owner dname.
+ * \param owner New owner dname (will be duplicated).
  */
-void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
+int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
 
 /*!
  * \brief Sets rrset TTL to given TTL.

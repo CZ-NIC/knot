@@ -168,27 +168,10 @@ dbg_zone_exec_detail(
 void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
                                                 hattrie_t *lookup_tree)
 {
-	if (lookup_tree == NULL) {
-		/* = Do not check duplicates. */
-		return;
-	}
-	assert(in_dname && *in_dname);
-	/* First thing - make sure dname is not duplicated. */
-	knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
-	if (found_dname != NULL && found_dname != *in_dname) {
-		/* Duplicate. */
-#warning This will leak until node compression is reworked.
-#if 0
-		knot_dname_release(*in_dname);
-		knot_dname_retain(found_dname);
-#endif
-		*in_dname = found_dname;
-	} else if (found_dname == NULL) {
-		/* Into the tree it goes. */
-		hattrie_insert_dname(lookup_tree, *in_dname);
-	} else {
-		assert(found_dname == *in_dname);
-	}
+	/* Disabled dname duplication checks since dnames can't be refcounted.
+	 * This will be replaced with refcounting RDATA, so I'm keeping the API
+	 * intact to ease the transition.
+	 */
 }
 
 /*----------------------------------------------------------------------------*/
@@ -870,13 +853,8 @@ dbg_zone_exec_detail(
 
 			/* Create a new node. */
 			dbg_zone_detail("Creating new node.\n");
-			knot_dname_t *parent_copy = knot_dname_copy(parent);
-			if (parent_copy == NULL)
-				return KNOT_ENOMEM;
-
-			next_node = knot_node_new(parent_copy, NULL, flags);
+			next_node = knot_node_new(parent, NULL, flags);
 			if (next_node == NULL) {
-				free(parent_copy);
 				return KNOT_ENOMEM;
 			}
 

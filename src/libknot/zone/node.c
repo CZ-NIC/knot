@@ -129,7 +129,7 @@ static inline uint8_t knot_node_flags_get_empty(uint8_t flags)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
+knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
                            uint8_t flags)
 {
 	knot_node_t *ret = (knot_node_t *)calloc(1, sizeof(knot_node_t));
@@ -138,8 +138,12 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 		return NULL;
 	}
 
-	/* Store reference to owner. */
-	ret->owner = owner;
+	/* This is a subject to refactoring. Since owner is both at the RRSet
+	 * and node, we need to decide which should have it. Not both. */
+	if (owner) {
+		ret->owner = knot_dname_copy(owner);
+	}
+
 	knot_node_set_parent(ret, parent);
 	ret->rrset_tree = NULL;
 	ret->flags = flags;
@@ -694,10 +698,7 @@ void knot_node_free(knot_node_t **node)
 		(*node)->rrset_count = 0;
 	}
 
-#warning This will leak until node compression is reworked.
-#if 0
-	knot_dname_release((*node)->owner);
-#endif
+	knot_dname_free(&(*node)->owner);
 
 	free(*node);
 	*node = NULL;
@@ -723,15 +724,15 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	}
 
 	// create new node
-	*to = knot_node_new(from->owner, NULL, from->flags);
+	*to = knot_node_new(NULL, NULL, from->flags);
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	// copy references
 	// do not use the API function to set parent, so that children count
 	// is not changed
 	memcpy(*to, from, sizeof(knot_node_t));
+	(*to)->owner = knot_dname_copy(from->owner);
 
 	// copy RRSets
 	size_t rrlen = sizeof(knot_rrset_t*) * from->rrset_count;

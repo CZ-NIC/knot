@@ -867,10 +867,6 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	 */
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
 	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
-#warning Will leak until written directly do RDATA.
-#if 0
-	knot_dname_release(alg_name); /* Already copied in tsig_rdata_set_alg_name() */
-#endif
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));

@@ -118,7 +118,7 @@ typedef enum {
  *
  * \return Newly created node or NULL if an error occured.
  */
-knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
+knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
                                uint8_t flags);
 
 /*!

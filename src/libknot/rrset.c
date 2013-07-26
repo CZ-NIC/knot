@@ -31,6 +31,7 @@
 #include "util/utils.h"
 #include "packet/response.h"
 #include "util/wire.h"
+#include "libknot/dname.h"
 
 static int rrset_retain_dnames_in_rr(knot_dname_t **dname, void *data)
 {
@@ -39,10 +40,7 @@ static int rrset_retain_dnames_in_rr(knot_dname_t **dname, void *data)
 		return KNOT_EINVAL;
 	}
 
-#warning This will leak until node compression is reworked.
-#if 0
-	knot_dname_retain(*dname);
-#endif
+	*dname = knot_dname_copy(*dname);
 	return KNOT_EOK;
 }
 
@@ -53,10 +51,7 @@ static int rrset_release_dnames_in_rr(knot_dname_t **dname, void *data)
 		return KNOT_EINVAL;
 	}
 
-#warning This will leak until node compression is reworked.
-#if 0
-	knot_dname_release(*dname);
-#endif
+	knot_dname_free(dname);
 	return KNOT_EOK;
 }
 
@@ -1021,17 +1016,25 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset)
 	return rrset->owner;
 }
 
-void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t *owner)
+int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner)
 {
-	if (rrset) {
-		/* Retain new owner and release old owner. */
-#warning This will leak until node compression is reworked.
-#if 0
-		knot_dname_retain(owner);
-		knot_dname_release(rrset->owner);
-#endif
-		rrset->owner = owner;
+	if (rrset == NULL) {
+		return KNOT_EINVAL;
 	}
+
+	/* Copy the new owner. */
+	knot_dname_t *owner_copy = NULL;
+	if (owner) {
+		owner_copy = knot_dname_copy(owner);
+		if (owner_copy == NULL) {
+			return KNOT_ENOMEM;
+		}
+	}
+
+	/* Free old owner and assign. */
+	knot_dname_free(&rrset->owner);
+	rrset->owner = owner_copy;
+	return KNOT_EOK;
 }
 
 void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl)
@@ -1419,10 +1422,10 @@ int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	memcpy(*to, from, sizeof(knot_rrset_t));
 
 	/* Retain owner. */
-#warning This will leak until node compression is reworked.
-#if 0
-	knot_dname_retain((*to)->owner);
-#endif
+	(*to)->owner = knot_dname_copy((*to)->owner);
+	if ((*to)->owner == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	return KNOT_EOK;
 }
@@ -1443,10 +1446,7 @@ void knot_rrset_free(knot_rrset_t **rrset)
 		return;
 	}
 
-#warning This will leak until node compression is reworked.
-#if 0
-	knot_dname_release((*rrset)->owner);
-#endif
+	knot_dname_free(&(*rrset)->owner);
 
 	free(*rrset);
 	*rrset = NULL;
@@ -1455,7 +1455,7 @@ void knot_rrset_free(knot_rrset_t **rrset)
 void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
                           int free_rdata_dnames)
 {
-#warning The number of different frees in rrset is too damn high!
+	/*! \bug The number of different frees in rrset is too damn high! */
 	if (rrset == NULL || *rrset == NULL) {
 		return;
 	}
@@ -1472,12 +1472,9 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	free((*rrset)->rdata);
 	free((*rrset)->rdata_indices);
 
-#warning This will leak until node compression is reworked.
-#if 0
 	if (free_owner) {
-		knot_dname_release((*rrset)->owner);
+		knot_dname_free(&(*rrset)->owner);
 	}
-#endif
 
 	free(*rrset);
 	*rrset = NULL;
@@ -1501,12 +1498,9 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 	free((*rrset)->rdata);
 	free((*rrset)->rdata_indices);
 
-#warning This will leak until node compression is reworked.
-#if 0
 	if (free_owner) {
-		knot_dname_release((*rrset)->owner);
+		knot_dname_free(&(*rrset)->owner);
 	}
-#endif
 
 	free(*rrset);
 	*rrset = NULL;

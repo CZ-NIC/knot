@@ -157,16 +157,13 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 {
 	dbg_zp_verb("zp: create_node: Creating node using RRSet: %p.\n",
 	            current_rrset);
-	knot_node_t *node =
-		knot_node_new(current_rrset->owner, NULL, 0);
+	knot_node_t *node = knot_node_new(current_rrset->owner, NULL, 0);
 	int ret = node_add_func(zone, node, 1, 0);
 	if (ret != KNOT_EOK) {
 		log_zone_warning("Node could not be added (%s).\n",
 		                 knot_strerror(ret));
 		return NULL;
 	}
-
-	assert(current_rrset->owner == node->owner);
 
 	return node;
 }
@@ -705,6 +702,8 @@ void knot_zload_close(zloader_t *loader)
 	hattrie_free(loader->context->lookup_tree);
 
 	file_loader_free(loader->file_loader);
+
+	knot_dname_free(&loader->context->origin_from_config);
 
 	free(loader->source);
 	free(loader->origin);

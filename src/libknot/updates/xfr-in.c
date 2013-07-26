@@ -563,10 +563,8 @@ dbg_xfrin_exec(
 		}
 
 		in_zone = 1;
-		assert(node->owner == rr->owner);
 		zone = (*constr)->contents;
 		assert(zone->apex == node);
-		assert(zone->apex->owner == rr->owner);
 		// add the RRSet to the node
 		ret = knot_zone_contents_add_rrset(zone, rr, &node,
 		                                   KNOT_RRSET_DUPL_MERGE);
