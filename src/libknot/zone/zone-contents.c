@@ -240,6 +240,11 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
                                              hattrie_t *lookup_tree,
                                              knot_zone_contents_t *zone)
 {
+	/* Disabled dname duplication checks since dnames can't be refcounted.
+	 * This will be replaced with refcounting RDATA, so I'm keeping the API
+	 * intact to ease the transition.
+	 */
+#if 0
 	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(node);
 	short count = knot_node_rrset_count(node);
 
@@ -249,7 +254,7 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 		assert(rrsets[r] != NULL);
 
 		/* Make sure that RRSet owner is the same as node's. */
-		if (node->owner != rrsets[r]->owner) {
+		if (knot_dname_is_equal(node->owner, rrsets[r]->owner)) {
 			knot_rrset_set_owner(rrsets[r], node->owner);
 		}
 
@@ -275,6 +280,7 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 			}
 		}
 	}
+#endif
 
 	return KNOT_EOK;
 }
