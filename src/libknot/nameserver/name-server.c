@@ -4358,9 +4358,7 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	/* 1) Create zone shallow copy. */
 	dbg_ns_verb("Creating shallow copy of the zone...\n");
 	knot_zone_contents_t *contents_copy = NULL;
-	knot_changes_t *changes = NULL;
-	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy,
-	                                  &changes);
+	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to prepare zone copy: %s\n",
 		          knot_strerror(ret));
@@ -4372,27 +4370,26 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
 	ret = knot_ddns_process_update2(contents_copy, query,
 	                                (knot_changeset_t *)(HEAD(chgs->sets)),
-	                                changes, rcode);
+	                                chgs->changes, rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
 		                                : "No change made.");
-		xfrin_rollback_update(old_contents, &contents_copy, changes);
+		xfrin_rollback_update(old_contents, &contents_copy, chgs->changes);
 		return ret;
 	}
 
 	dbg_ns_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, changes);
+	ret = xfrin_finalize_updated_zone(contents_copy, chgs->changes);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to finalize updated zone: %s\n",
 		       knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, changes);
+		xfrin_rollback_update(old_contents, &contents_copy, chgs->changes);
 		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
 		                             : KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
 
-	chgs->changes = changes;
 	*new_contents = contents_copy;
 
 	return KNOT_EOK;

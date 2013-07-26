@@ -2742,10 +2742,9 @@ static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
 /*----------------------------------------------------------------------------*/
 
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
-                            knot_zone_contents_t **new_contents,
-                            knot_changes_t **changes)
+                            knot_zone_contents_t **new_contents)
 {
-	if (old_contents == NULL || new_contents == NULL || changes == NULL) {
+	if (old_contents == NULL || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -2781,27 +2780,17 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 		return ret;
 	}
 
-	knot_changes_t *chgs = (knot_changes_t *)malloc(
-				sizeof(knot_changes_t));
-	if (chgs == NULL) {
-		dbg_xfrin("Failed to allocate structure for changes!\n");
-		xfrin_rollback_update(old_contents, &contents_copy, chgs);
-		return KNOT_ENOMEM;
-	}
-
-	memset(chgs, 0, sizeof(knot_changes_t));
-
 	/*!
 	 * \todo Check if all nodes have their copy.
 	 */
 	ret = xfrin_check_contents_copy(old_contents);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Contents copy check failed!\n");
-		xfrin_rollback_update(old_contents, &contents_copy, chgs);
+		xfrin_cleanup_failed_update(old_contents, &contents_copy);
 		return ret;
 	}
 
-        assert(knot_zone_contents_apex(contents_copy) != NULL);
+	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	/*
 	 * Fix references to new nodes. Some references in new nodes may point
@@ -2812,7 +2801,6 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	*new_contents = contents_copy;
-	*changes = chgs;
 
 	return KNOT_EOK;
 }
@@ -2879,9 +2867,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 	dbg_xfrin_verb("Creating shallow copy of the zone...\n");
 	knot_zone_contents_t *contents_copy = NULL;
-	knot_changes_t *changes = NULL;
-	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy,
-					  &changes);
+	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to prepare zone copy: %s\n",
 			  knot_strerror(ret));
@@ -2896,10 +2882,10 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		       old_contents->apex, contents_copy->apex);
 	knot_changeset_t *set = NULL;
 	WALK_LIST(set, chsets->sets) {
-		ret = xfrin_apply_changeset(contents_copy, changes, set);
+		ret = xfrin_apply_changeset(contents_copy, chsets->changes, set);
 		if (ret != KNOT_EOK) {
 			xfrin_rollback_update(old_contents,
-					       &contents_copy, changes);
+					       &contents_copy, chsets->changes);
 			dbg_xfrin("Failed to apply changesets to zone: "
 				  "%s\n", knot_strerror(ret));
 			return ret;
@@ -2912,15 +2898,14 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 */
 
 	dbg_xfrin_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, changes);
+	ret = xfrin_finalize_updated_zone(contents_copy, chsets->changes);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, changes);
+		xfrin_rollback_update(old_contents, &contents_copy, chsets->changes);
 		return ret;
 	}
 
-	chsets->changes = changes;
 	*new_contents = contents_copy;
 
 	return KNOT_EOK;
