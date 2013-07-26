@@ -610,7 +610,7 @@ static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
 			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			assert(dname);
 			offset += sizeof(knot_dname_t *);
-			size += knot_dname_size(dname) + 1; // extra 1 - we need a size
+			size += knot_dname_size(dname);
 		} else if (descriptor_item_is_fixed(item)) {
 			offset += item;
 			size += item;
@@ -645,7 +645,8 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 		int item = desc->block_types[i];
 		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname = *((knot_dname_t **)rdata + offset);
+			knot_dname_t *dname;
+			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			offset += sizeof(knot_dname_t *);
 			assert(dname);
 			*size += knot_dname_to_wire(stream + *size, dname, KNOT_DNAME_MAXLEN);
@@ -2202,7 +2203,6 @@ uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 		return 0;
 	}
 	uint64_t size = sizeof(uint64_t) + // size at the beginning
-	              1 + // owner size
 	              knot_dname_size(knot_rrset_owner(rrset)) + // owner data
 	              sizeof(uint16_t) + // type
 	              sizeof(uint16_t) + // class
