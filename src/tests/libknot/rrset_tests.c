@@ -886,7 +886,7 @@ static int test_rrset_merge()
 	return 1;
 }
 
-static int test_rrset_merge_no_dupl()
+static int test_rrset_merge_sort()
 {
 	/* Test that merge of two identical RRSets results in no-op. */
 	knot_rrset_t *merge_to = NULL;
@@ -896,7 +896,7 @@ static int test_rrset_merge_no_dupl()
 	knot_rrset_deep_copy(&test_rrset_array[TEST_RRSET_MERGE_UNIQUE1].rrset,
 	                     &merge_from, 1);
 	int merged, removed_rrs;
-	int ret = knot_rrset_merge_no_dupl(merge_to, merge_from, &merged, &removed_rrs);
+	int ret = knot_rrset_merge_sort(merge_to, merge_from, &merged, &removed_rrs);
 	if (ret != KNOT_EOK) {
 		diag("Merge of identical RRSets failed.\n");
 		return 0;
@@ -925,7 +925,7 @@ static int test_rrset_merge_no_dupl()
 	assert(merge_to);
 	assert(merge_from);
 
-	ret = knot_rrset_merge_no_dupl(merge_to, merge_from, &merged,
+	ret = knot_rrset_merge_sort(merge_to, merge_from, &merged,
 	                               &removed_rrs);
 	if (ret != KNOT_EOK) {
 		diag("Merge of identical RRSets failed.\n");
@@ -957,7 +957,7 @@ static int test_rrset_merge_no_dupl()
 	assert(merge_to);
 	assert(merge_from);
 
-	ret = knot_rrset_merge_no_dupl(merge_to, merge_from, &merged,
+	ret = knot_rrset_merge_sort(merge_to, merge_from, &merged,
 	                               &removed_rrs);
 	if (ret != KNOT_EOK) {
 		diag("Merge of identical RRSets failed.\n");
@@ -1321,7 +1321,11 @@ static int test_rrset_find_pos()
 	/* Add second RR. */
 	knot_rrset_deep_free(&rrset_find_in, 1, 1);
 	knot_rrset_shallow_copy(rrset_source, &rrset_find_in);
-	knot_rrset_rdata_reset(rrset_find_in);
+	/* Reset RRSet. */
+	rrset_find_in->rdata = NULL;
+	rrset_find_in->rdata_indices = NULL;
+	rrset_find_in->rdata_count = 0;
+
 	rdata = knot_rrset_create_rdata(rrset_find_in, 10);
 	memcpy(rdata, mock_data ,10);
 	ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 0, &rr_pos);
@@ -1444,8 +1448,8 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: merge");
 	res_final *= res;
 
-	res = test_rrset_merge_no_dupl();
-	ok(res, "rrset: merge no dupl");
+	res = test_rrset_merge_sort();
+	ok(res, "rrset: merge + sort");
 	res_final *= res;
 
 	res = test_rrset_next_dname();
