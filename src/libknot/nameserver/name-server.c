@@ -3339,35 +3339,25 @@ int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
 
 	size_t max_size = *rsize;
 	uint8_t flags1 = knot_wire_get_flags1(knot_packet_wireformat(query));
+	const size_t question_off = KNOT_WIRE_HEADER_SIZE;
 
 	// prepare the generic error response
 	knot_ns_error_response(nameserver, knot_packet_id(query),
 	                       &flags1, rcode, response_wire,
 	                       rsize);
 
-	if (query->parsed > KNOT_WIRE_HEADER_SIZE
-	                    + KNOT_WIRE_QUESTION_MIN_SIZE) {
-		// in this case the whole question was parsed, append it
-		size_t question_size = knot_packet_question_size(query);
+	if (query->parsed > KNOT_WIRE_HEADER_SIZE + question_off) {
 
-		if (max_size > KNOT_WIRE_HEADER_SIZE + question_size) {
-			/*
-			 * At this point, the wireformat of query may be in the
-			 * same place where the response is assembled. This does
-			 * not matter before this point, although the query
-			 * wireformat is rewritten. Now we just need to copy
-			 * the original Question section. So if the pointers are
-			 * the same, we may just leave it and increase the
-			 * response wire size. Otherwise we must copy the data.
-			 */
+		/* Append question only (do not rewrite header). */
+		size_t question_size = knot_packet_question_size(query);
+		question_size -= question_off;
+		if (max_size >= *rsize + question_size) {
 			if (response_wire != knot_packet_wireformat(query)) {
-				memcpy(response_wire + KNOT_WIRE_HEADER_SIZE,
-				       knot_packet_wireformat(query)
-				       + KNOT_WIRE_HEADER_SIZE, question_size);
+				memcpy(response_wire + question_off,
+				       knot_packet_wireformat(query) + question_off,
+				       question_size);
 			}
 			*rsize += question_size;
-
-			// adjust QDCOUNT
 			knot_wire_set_qdcount(response_wire, 1);
 		}
 	}

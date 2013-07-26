@@ -271,10 +271,12 @@ int knot_response_init(knot_packet_t *response)
 		return KNOT_ESPACE;
 	}
 
-	// set the qr bit to 1
+	/* Empty packet header. */
 	memset(response->wireformat, 0, KNOT_WIRE_HEADER_SIZE);
+	response->size = KNOT_WIRE_HEADER_SIZE;
 
-	uint8_t flags = knot_wire_get_flags1(response->wireformat);
+	/* Set the qr bit to 1. */
+	uint8_t flags = 0;
 	knot_wire_flags_set_qr(&flags);
 	knot_wire_set_flags1(response->wireformat, flags);
 
