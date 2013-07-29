@@ -300,7 +300,6 @@ static int xfrin_insert_rrset_dnames_to_table(knot_rrset_t *rrset,
                                               hattrie_t *lookup_tree)
 {
 	knot_zone_contents_insert_dname_into_table(&rrset->owner, lookup_tree);
-	rrset_dnames_apply(rrset, xfrin_insert_rdata_dnames_to_table, lookup_tree);
 	return KNOT_EOK;
 }
 

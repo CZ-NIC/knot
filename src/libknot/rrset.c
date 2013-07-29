@@ -33,6 +33,8 @@
 #include "util/wire.h"
 #include "libknot/dname.h"
 
+static const unsigned int RR_CHANGE_TOO_BIG = 16;
+
 static int rrset_retain_dnames_in_rr(knot_dname_t **dname, void *data)
 {
 	UNUSED(data);
@@ -163,12 +165,23 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
 	return ret;
 }
 
-/* [code-review] Please document at least parameters & return values. */
+/*!
+ * \brief Compares two RRs in RRSets. Combination of 'memcmp' for binary parts
+ *        and 'knot_dname_cmp' for DNAMEs. We cannot compare the whole block,
+ *        because this function is used in RRSet sorting.
+ * \param rrset1 First RRSet to be compared.
+ * \param rrset2 Second RRSet to be compared.
+ * \param pos1 RR position for first RRSet.
+ * \param pos2 RR position for second RRSet.
+ *
+ * \retval 0 if RRs are equal.
+ * \retval < 0 if first RR is 'bigger' than the second one.
+ * \retval > 0 if second RR is 'bigger' than the first one.
+ */
 static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
                                    const knot_rrset_t *rrset2,
                                    size_t pos1, size_t pos2)
 {
-	/* [code-review] Just to be sure. */
 	assert(rrset1 != NULL);
 	assert(rrset2 != NULL);
 
@@ -296,6 +309,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 {
 	assert(rrset);
 	assert(pos);
+	assert(compr);
 
 	/* Put RR header to wire. */
 	size_t size = 0;
@@ -557,7 +571,7 @@ static int rrset_find_rr_pos_for_pointer(const knot_rrset_t *rrset,
 		return 0;
 	}
 
-	/* [code-review] Added check of 'p' validity - whether it
+	/* Check whether Added check of 'p' validity - whether it
 	 * points to the RDATA array of 'rrset'.
 	 */
 	if ((size_t)p < (size_t)rrset->rdata
@@ -722,15 +736,6 @@ int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 		return KNOT_EINVAL;
 	}
 
-	/* Handle DNAMEs inside RDATA. */
-	int ret = rrset_rr_dnames_apply(rrset, pos, rrset_release_dnames_in_rr,
-	                                NULL);
-	if (ret != KNOT_EOK) {
-		dbg_rrset("rr: remove_rdata_pos: Could not release DNAMEs "
-		          "within RDATA (%s).\n", knot_strerror(ret));
-		return ret;
-	}
-
 	/* Reorganize the actual RDATA array. */
 	uint8_t *rdata_to_remove = rrset_rdata_pointer(rrset, pos);
 	dbg_rrset_detail("rr: remove_rdata_pos: Removing data=%p on "
@@ -752,7 +757,6 @@ int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 	uint32_t removed_size = rrset_rdata_item_size(rrset, pos);
 	uint32_t new_size = rrset_rdata_size_total(rrset) - removed_size;
 
-	/*! \todo Realloc might not be needed. Only if the RRSet is large. */
 	if (new_size == 0) {
 		assert(rrset->rdata_count == 1);
 		free(rrset->rdata);
@@ -760,10 +764,7 @@ int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 		free(rrset->rdata_indices);
 		rrset->rdata_indices = NULL;
 	} else {
-		/* [code-review] Should not be done always - as said in the TODO
-		 *               above. But also, why here and not in the part
-		 *               handling the RDATA array?
-		 */
+		/* Resize RDATA array, the change might be worth reallocation.*/
 		rrset->rdata = xrealloc(rrset->rdata, new_size);
 		/*
 		 * Handle RDATA indices. All indices larger than the removed one
@@ -776,7 +777,7 @@ int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos)
 		/* Save size of the whole RDATA array. Note: probably not needed! */
 		rrset->rdata_indices[rrset->rdata_count - 2] = new_size;
 
-		/* Resize indices, might not be needed, but we'll do it to be proper. */
+		/* Resize indices, not always needed, but we'll do it to be proper. */
 		rrset->rdata_indices =
 			xrealloc(rrset->rdata_indices,
 		                 (rrset->rdata_count - 1) * sizeof(uint32_t));
@@ -1167,7 +1168,9 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength)
 {
-	/* [code-review] Missing parameter checks. */
+	if (rrset == NULL || wire == NULL || pos == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	if (rdlength == 0) {
 		/* Nothing to parse, */
@@ -1339,8 +1342,7 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 	return true;
 }
 
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
-                         int copy_rdata_dnames)
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
@@ -1380,39 +1382,6 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	(*to)->rdata_indices = xmalloc(sizeof(uint32_t) * from->rdata_count);
 	memcpy((*to)->rdata_indices, from->rdata_indices,
 	       sizeof(uint32_t) * from->rdata_count);
-	/* Here comes the hard part. */
-	if (copy_rdata_dnames) {
-		knot_dname_t **dname_from = NULL;
-		knot_dname_t **dname_to = NULL;
-		knot_dname_t *dname_copy = NULL;
-		while ((dname_from = knot_rrset_get_next_dname(from, dname_from))) {
-dbg_rrset_exec_detail(
-			char *name = knot_dname_to_str(*dname_from);
-			dbg_rrset_detail("rrset: deep_copy: copying RDATA DNAME"
-			                 "=%s\n", name);
-			free(name);
-);
-			size_t off = (uint8_t*)dname_from - from->rdata;
-			dname_to = (knot_dname_t **)((*to)->rdata + off);
-			/* These pointers have to be the same. */
-			assert(*dname_from == *dname_to);
-			dname_copy = knot_dname_copy(*dname_from);
-			if (dname_copy == NULL) {
-				dbg_rrset("rrset: deep_copy: Cannot copy RDATA"
-				          " dname.\n");
-				/*! \todo This will leak. Is it worth fixing? */
-				/* [code-review] Why will it leak? */
-				knot_rrset_deep_free(&(*to)->rrsigs, 1,
-				                     copy_rdata_dnames);
-				free((*to)->rdata);
-				free((*to)->rdata_indices);
-				free(*to);
-				return KNOT_ENOMEM;
-			}
-
-			*dname_to = dname_copy;
-		}
-	}
 
 	return KNOT_EOK;
 }
@@ -1470,11 +1439,6 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 		                     free_rdata_dnames);
 	}
 
-//	if (free_rdata_dnames) {
-//		rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
-//	                           NULL);
-//	}
-
 	free((*rrset)->rdata);
 	free((*rrset)->rdata_indices);
 
@@ -1492,14 +1456,6 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 	if (rrset == NULL || *rrset == NULL) {
 		return;
 	}
-
-//	if (free_rdata_dnames) {
-//		int ret = rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
-//		                             NULL);
-//		if (ret != KNOT_EOK) {
-//			dbg_rrset("rr: deep_free: Could not free DNAMEs in RDATA.\n");
-//		}
-//	}
 
 	free((*rrset)->rdata);
 	free((*rrset)->rdata_indices);
@@ -2075,88 +2031,6 @@ const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
 	return rrset_rdata_pointer(rrset, pos) + 5;
 }
 
-knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
-                                            knot_dname_t **prev_dname,
-                                            size_t rr_pos)
-{
-	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
-		return NULL;
-	}
-
-	uint8_t *rdata = rrset_rdata_pointer(rrset, rr_pos);
-	if (rrset_type_multiple_dnames(rrset)) {
-		if (prev_dname == NULL) {
-			/* The very first DNAME. */
-			/* [code-review] How do you know the dname is the first
-			 * item in the RDATA?
-			 */
-			return (knot_dname_t **)rdata;
-		}
-		assert((size_t)prev_dname >= (size_t)rdata);
-		if ((size_t)prev_dname - (size_t)rdata == sizeof(knot_dname_t *)) {
-			/* No DNAMEs left to return. */
-			return NULL;
-		} else {
-			/* Return second DNAME from RR. */
-			assert((size_t)prev_dname == (size_t)rdata);
-			return (knot_dname_t **)(rdata + sizeof(knot_dname_t *));
-		}
-	} else {
-		/*
-		 * Return DNAME from normal RR, if any.
-		 * Find DNAME in blocks. No need to check remainder.
-		 */
-		if (prev_dname) {
-			/* Nothing left to return. */
-			return NULL;
-		}
-		size_t offset = 0;
-		const rdata_descriptor_t *desc =
-			get_rdata_descriptor(rrset->type);
-		for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
-			if (descriptor_item_is_dname(desc->block_types[i])) {
-				return (knot_dname_t **)(rdata + offset);
-			} else if (descriptor_item_is_fixed(desc->block_types[i])) {
-				offset += desc->block_types[i];
-			} else if (!descriptor_item_is_remainder(desc->block_types[i])) {
-				assert(rrset->type == KNOT_RRTYPE_NAPTR);
-				offset +=
-					rrset_rdata_naptr_bin_chunk_size(rrset,
-				                                         rr_pos);
-			}
-		}
-	}
-
-	return NULL;
-}
-
-knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
-                                         knot_dname_t **prev_dname)
-{
-	if (rrset == NULL || rrset->rdata_count == 0) {
-		return NULL;
-	}
-
-	/* 1) Find in which RR is the given dname. */
-	size_t pos = 0;
-	int ret = rrset_find_rr_pos_for_pointer(rrset, prev_dname, &pos);
-	if (ret != KNOT_EOK) {
-		return NULL;
-	}
-
-	/* 2) Try to get next dname from the RR. */
-	knot_dname_t **next =
-		knot_rrset_get_next_rr_dname(rrset, prev_dname, pos);
-
-	/* 3) If not found and there is a next RR to search in, try it. */
-	if (next == NULL && pos < rrset->rdata_count - 1) {
-		// prev_dname = NULL because in this RR we haven't searched yet
-		next = knot_rrset_get_next_rr_dname(rrset, NULL, pos + 1);
-	}
-
-	return next;
-}
-
 void knot_rrset_dump(const knot_rrset_t *rrset)
 {
 dbg_rrset_exec_detail(
@@ -2495,46 +2369,6 @@ static int knot_rrset_rdata_reset(knot_rrset_t *rrset)
 	return KNOT_EOK;
 }
 
-int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
-                          int (*func)(knot_dname_t **, void *), void *data)
-{
-	if (rrset == NULL || rdata_pos >= rrset->rdata_count || func == NULL) {
-		return KNOT_EINVAL;
-	}
-
-
-	knot_dname_t **dname = NULL;
-	while ((dname = knot_rrset_get_next_rr_dname(rrset, dname,
-	                                             rdata_pos))) {
-		assert(dname && *dname);
-		int ret = func(dname, data);
-		if (ret != KNOT_EOK) {
-			dbg_rrset("rr: rr_dnames_apply: Function could not be"
-			          "applied (%s).\n", knot_strerror(ret));
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t **, void *),
-                       void *data)
-{
-	if (rrset == NULL || rrset->rdata_count == 0 || func == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
-		int ret = rrset_rr_dnames_apply(rrset, i, func, data);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos)
 {
@@ -2555,15 +2389,6 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 	/* Copy actual data. */
 	memcpy(rdata, rrset_rdata_pointer(source, rdata_pos), item_size);
 
-	/* Retain DNAMEs inside RDATA. */
-	int ret = rrset_rr_dnames_apply((knot_rrset_t *)source, rdata_pos,
-	                                rrset_retain_dnames_in_rr, NULL);
-	if (ret != KNOT_EOK) {
-		dbg_rrset("rr: add_rr_from_rrset: Could not retain DNAMEs"
-		          " in RR (%s).\n", knot_strerror(ret));
-		return ret;
-	}
-
 	return KNOT_EOK;
 }
 
@@ -2571,7 +2396,9 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
                                      knot_rrset_t **rr_deleted, int ddns_check)
 {
-	/* [code-review] Missing parameter checks. */
+	if (from == NULL || what == NULL || rr_deleted == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	knot_rrset_t *return_rr = NULL;
 	int ret = knot_rrset_shallow_copy(what, &return_rr);

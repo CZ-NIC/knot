@@ -9,7 +9,7 @@
  * \addtogroup libknot
  * @{
  */
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,12 +50,10 @@ struct knot_rrset {
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
 	uint32_t ttl; /*!< TTL of the RRSet. */
-
-	/* [code-review] It would be fine to better describe the format of this
-	 * array and the meaning of the indices. Maybe even draw some simple
-	 * image :-)
+	/*! \brief RDATA array (for all RRs). DNAMEs stored as full,
+	 *         uncompressed wire. Binary data stored in wireformat order.
 	 */
-	uint8_t *rdata; /*!< RDATA array (All RRs). */
+	uint8_t *rdata; /*!< RDATA array (All RRs). DNAMEs stored as full wire. */
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
 	 *         last one holds total length of all RRs together
 	 */
@@ -327,12 +325,9 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *comp_data);
-
-int knot_rrset_add_rr(knot_rrset_t *rrset, const knot_rrset_t *rr);
-int knot_rrset_add_rr_sort(knot_rrset_t *rrset, const knot_rrset_t *rr,
-                           int *merged, int *deleted_rr);
-
+/*! \brief Merges without duplicate check, without sort. */
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
+/*! \brief Merges without with duplicate check, with sort. */
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                           int *merged, int *deleted_rrs);
 
@@ -403,33 +398,6 @@ const knot_dname_t *knot_rrset_rdata_minfo_first_dname(const knot_rrset_t *rrset
                                                        size_t pos);
 const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrset,
                                                         size_t pos);
-
-/*!
- * \brief Find next dname in rrset relative to prev.
- *
- * \param rrset Inspected rrset.
- * \param prev_dname Pointer to previous dname.
- *        This pointer *has* to be obtained by this function or be NULL.
- * \return next dname or NULL.
- */
-/* [code-review] Emphasize that the 'prev' pointer must point into the RDATA
- * array of the given RRSet.
- */
-knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
-                                                 knot_dname_t **prev);
-
-/*!
- * \brief Find next dname in RR relative to previous one.
- *
- * \param rrset Inspected rrset.
- * \param prev_dname Previous dname. This must be a pointer to the rrset's
- *                   RDATA array.
- * \param rr_pos Position of RR.
- * \return Next dname or NULL if there is no other dname in the RR.
- */
-knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
-                                            knot_dname_t **prev_dname,
-                                            size_t rr_pos);
 const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
                                              size_t rdata_pos);
 const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
@@ -453,26 +421,23 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
 int rrset_deserialize(uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset);
 
+/* \brief Adds RR on 'pos' position from 'source' to 'dest' */
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos);
-
+/* \brief Removes RRs contained in 'what' RRSet from 'from' RRSet.
+ *        Deleted RRs are returned in 'rr_deleted' */
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
                                      knot_rrset_t **rr_deleted, int ddns_check);
-
+/* \brief Removes RRs contained in 'what' RRSet from 'from' RRSet. */
 int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
                                          const knot_rrset_t *what);
-
+/* \brief Finds RR at 'pos' position in 'rr_reference' RRSet in 
+         'rr_search_in' RRSet. Position returned in 'pos_out'. */
 int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
                            const knot_rrset_t *rr_reference, size_t pos,
                            size_t *pos_out);
-
-int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
-                          int (*func)(knot_dname_t **, void *), void *data);
-
-int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t **, void *),
-                       void *data);
-
+/* \brief Creates one RR from wire, stores it into 'rrset'. */
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength);
