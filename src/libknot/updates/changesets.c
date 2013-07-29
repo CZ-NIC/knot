@@ -272,6 +272,18 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 		return;
 	}
 
+	// Delete RRSets in lists, in case there are any left
+	knot_rr_node_t *rr_node;
+	WALK_LIST(rr_node, changeset->add) {
+		knot_rrset_deep_free(&rr_node->rr, 1, 1);
+	}
+	WALK_LIST(rr_node, changeset->remove) {
+		knot_rrset_deep_free(&rr_node->rr, 1, 1);
+	}
+	
+	knot_rrset_deep_free(&changeset->soa_from, 1, 1);
+	knot_rrset_deep_free(&changeset->soa_to, 1, 1);
+
 	// Delete binary data
 	free(changeset->data);
 }
@@ -293,13 +305,12 @@ void knot_changesets_free(knot_changesets_t **changesets)
 
 	// Free pool with sets themselves
 	mp_delete((*changesets)->mmc_chs.ctx);
-	// Free pool with RRs in sets
+	// Free pool with RRs in sets / changes
 	mp_delete((*changesets)->mmc_rr.ctx);
 
 	knot_rrset_deep_free(&(*changesets)->first_soa, 1, 1);
 
 	free((*changesets)->changes);
-
 	free(*changesets);
 	*changesets = NULL;
 }
