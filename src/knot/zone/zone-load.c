@@ -368,7 +368,7 @@ static void process_rr(const scanner_t *scanner)
 				return;
 			} else {
 				log_zone_warning("encountered identical "
-				                 "extra SOA record");
+				                 "extra SOA record\n");
 				knot_rrset_deep_free(&current_rrset, 1, 1);
 				parser->ret = KNOT_EOK;
 				return;
@@ -384,7 +384,7 @@ static void process_rr(const scanner_t *scanner)
 				"in config! \n");
 			/* Such SOA cannot even be added, because
 			 * it would not be in the zone apex. */
-			parser->ret = KNOT_EBADZONE;
+			parser->ret = KNOT_EOUTOFZONE;
 			return;
 		}
 	}

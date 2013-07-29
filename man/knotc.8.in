@@ -29,9 +29,6 @@ Verbose mode \- additional runtime information.
 \fB\-V\fR, \fB\-\-version\fR
 Print knot server version.
 .TP
-\fB\-w\fR, \fB\-\-wait\fR
-Wait for the server to finish stop operation.
-.TP
 \fB\-i\fR, \fB\-\-interactive\fR
 Interactive mode (do not daemonize).
 .TP

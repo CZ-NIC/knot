@@ -50,7 +50,7 @@
 #define CONFIG_REPLY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
 #define CONFIG_HANDSHAKE_WD 10 /*!< [secs] for connection to make a request.*/
 #define CONFIG_IDLE_WD  60 /*!< [secs] of allowed inactivity between requests */
-#define CONFIG_RRL_SLIP 2 /*!< Default slip value. */
+#define CONFIG_RRL_SLIP 1 /*!< Default slip value. */
 #define CONFIG_RRL_SIZE 393241 /*!< Htable default size. */
 #define CONFIG_XFERS 10
 

@@ -592,7 +592,10 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		if (udp_size < 2) udp_size = 2;
 		dt_unit_t *tu = dt_create_coherent(udp_size, &udp_master, NULL);
 		server_init_handler(server->h + IO_UDP, server, tu, NULL);
-		tu = dt_create(tu_size * 2);
+
+		/* Create at least CONFIG_XFERS threads for TCP for faster
+		 * processing of massive bootstrap queries. */
+		tu = dt_create(MAX(tu_size * 2, CONFIG_XFERS));
 		server_init_handler(server->h + IO_TCP, server, tu, NULL);
 		tcp_loop_unit(server->h + IO_TCP, tu);
 		if (server->state & ServerRunning) {

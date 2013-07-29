@@ -29,6 +29,7 @@
 #define _KNOT_RRSET_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "dname.h"
 
@@ -164,7 +165,7 @@ int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs);
  */
 //TODO test
 int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
-                         knot_rrset_dupl_handling_t dupl);
+                          knot_rrset_dupl_handling_t dupl);
 
 /*!
  * \brief Returns the Owner of the RRSet.
@@ -190,9 +191,9 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  * Previous owner will be replaced if exist.
  *
  * \param rrset Specified RRSet.
- * \param owner New owner dname (will be duplicated).
+ * \param owner New owner dname.
  */
-int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
+void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
 
 /*!
  * \brief Sets rrset TTL to given TTL.
@@ -328,10 +329,6 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *comp_data);
 
-int knot_rrset_add_rr(knot_rrset_t *rrset, const knot_rrset_t *rr);
-int knot_rrset_add_rr_sort(knot_rrset_t *rrset, const knot_rrset_t *rr,
-                           int *merged, int *deleted_rr);
-
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                           int *merged, int *deleted_rrs);
@@ -351,6 +348,7 @@ uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset);
 uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset);
 uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset);
 uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset);
+/* TODO not all of these need to have rr_pos as a parameter. */
 uint8_t knot_rrset_rdata_rrsig_algorithm(const knot_rrset_t *rrset,
                                          size_t rr_pos);
 uint8_t knot_rrset_rdata_rrsig_labels(const knot_rrset_t *rrset, size_t rr_pos);
@@ -385,6 +383,7 @@ uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
                                            size_t pos);
 uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
                                            size_t pos);
+// TODO same as salt, size and data
 void knot_rrset_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
                                         uint8_t **name, uint8_t *name_size);
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
@@ -430,12 +429,16 @@ knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
 knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
                                             knot_dname_t **prev_dname,
                                             size_t rr_pos);
+
 const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
                                              size_t rdata_pos);
+
 const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
                                              size_t rdata_pos);
+
 const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
                                               size_t rdata_pos);
+
 const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
                                           size_t rdata_pos);
 
