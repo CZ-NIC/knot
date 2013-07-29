@@ -162,7 +162,7 @@ int knot_dname_size(const knot_dname_t *name);
  * \retval size of the domain name
  * \retval KNOT_ERROR
  */
-int knot_dname_wire_size(const knot_dname_t *name, const uint8_t *pkt);
+int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);
 
 /*!
  * \brief Checks if one domain name is a subdomain of other.
@@ -294,7 +294,7 @@ int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *p
 int knot_dname_labels(const uint8_t *name, const uint8_t *pkt);
 
 /*!
- * \brief Align name end-to-end and return common number of suffix labels.
+ * \brief Align name end-to-end and return number of common suffix labels.
  */
 int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
                      const uint8_t **d2, uint8_t d2_labels,

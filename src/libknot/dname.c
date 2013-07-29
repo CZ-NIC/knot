@@ -51,7 +51,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 		return NULL;
 
 	/* Calculate decompressed length. */
-	int decompressed_len = knot_dname_wire_size(name, pkt);
+	int decompressed_len = knot_dname_realsize(name, pkt);
 	if (decompressed_len < parsed)
 		return NULL;
 
@@ -324,7 +324,7 @@ int knot_dname_size(const knot_dname_t *name)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_wire_size(const knot_dname_t *name, const uint8_t *pkt)
+int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt)
 {
 	return knot_dname_prefixlen(name, KNOT_DNAME_MAXLABELS, pkt);
 }
