@@ -2150,7 +2150,10 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 					      zone, resp, resp_wire, &answer_size,
 					      transport == NS_TRANSPORT_UDP);
 				}
-				query->flags = resp->flags; /* Copy markers. */
+
+				/* Copy wildcard markers. */
+				if (resp->flags & KNOT_PF_WILDCARD)
+					query->flags |= KNOT_PF_WILDCARD;
 			}
 
 			dbg_zones_detail("rsize = %zu\n", *rsize);
