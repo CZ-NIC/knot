@@ -201,28 +201,28 @@ void process_error(const scanner_t *s)
 }
 
 // TODO this could be a part of the cycle below, but we'd need a buffer.
-static size_t calculate_item_size(const knot_rrset_t *rrset,
-                               const scanner_t *scanner)
-{
-	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-	assert(desc);
-	size_t size = 0;
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-		int item = desc->block_types[i];
-		if (descriptor_item_is_dname(item)) {
-			size += sizeof(knot_dname_t *);
-		} else if (descriptor_item_is_fixed(item)) {
-			assert(item == scanner->r_data_blocks[i + 1] -
-			       scanner->r_data_blocks[i]);
-			size += item;
-		} else {
-			size += scanner->r_data_blocks[i + 1] -
-			        scanner->r_data_blocks[i];
-		}
-	}
+//static size_t calculate_item_size(const knot_rrset_t *rrset,
+//                               const scanner_t *scanner)
+//{
+//	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+//	assert(desc);
+//	size_t size = 0;
+//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
+//		int item = desc->block_types[i];
+//		if (descriptor_item_is_dname(item)) {
+//			size += sizeof(knot_dname_t *);
+//		} else if (descriptor_item_is_fixed(item)) {
+//			assert(item == scanner->r_data_blocks[i + 1] -
+//			       scanner->r_data_blocks[i]);
+//			size += item;
+//		} else {
+//			size += scanner->r_data_blocks[i + 1] -
+//			        scanner->r_data_blocks[i];
+//		}
+//	}
 
-	return size;
-}
+//	return size;
+//}
 
 static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 {
