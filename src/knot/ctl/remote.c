@@ -204,24 +204,23 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 	}
 
 	// add missing signatures
-/*
-	rcu_read_lock();
-	const char *keydir = conf()->dnssec_keydir;
-	rcu_read_unlock();
-	assert(keydir);
 
-	result = knot_zone_sign(zone->contents, keydir);
+	rcu_read_lock();
+	char *keydir = strdup(conf()->dnssec_keydir);
+	rcu_read_unlock();
+
+	result = knot_zone_sign(zone->contents, keydir, changeset);
+	free(keydir);
 	if (result != KNOT_EOK) {
 		log_server_error("Could not resing zone '%s' (%s).\n",
 				 zone_name, knot_strerror(result));
 	}
-*/
 
 	// update SOA if there are any changes
 
 	log_server_info("changeset add %zu remove %zu\n", changeset->add_count, changeset->remove_count);
 
-	if (changeset->add_count == 0 || changeset->remove_count == 0) {
+	if (changeset->add_count == 0 && changeset->remove_count == 0) {
 		log_server_info("No changes performed.\n");
 		result = KNOT_EOK;
 		goto failure; // not really a failure
@@ -250,8 +249,6 @@ static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
 	changesets = NULL; // freed by apply_chgsets
 
 failure:
-
-	// tmp
 	knot_free_changesets(&changesets);
 
 	free(zone_name);
