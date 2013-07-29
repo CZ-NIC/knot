@@ -316,31 +316,75 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	return KNOT_EOK;
 }
 
+static int sign_rrsets(const knot_rrset_t **rrsets, size_t rrset_count,
+		       knot_zone_keys_t *zone_keys,
+		       const knot_dnssec_policy_t *policy,
+		       knot_changeset_t *changeset)
+{
+	assert(rrsets);
+	assert(zone_keys);
+	assert(policy);
+	assert(changeset);
+
+	int result = KNOT_EOK;
+
+	for (int i = 0; i < rrset_count; i++) {
+		const knot_rrset_t *rrset = rrsets[i];
+		const knot_rrset_t *rrsigs = rrset->rrsigs;
+
+		result = remove_expired_rrsigs(rrsigs, policy, changeset);
+		if (result != KNOT_EOK)
+			break;
+
+		result = add_missing_rrsigs(rrset, rrsigs, zone_keys, policy,
+					    changeset);
+		if (result != KNOT_EOK)
+			break;
+	}
+
+	return result;
+}
 
 static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys,
 		     const knot_dnssec_policy_t *policy,
 		     knot_changeset_t *changeset)
 {
 	assert(node);
+
+	if (node->rrset_tree == NULL)
+		return KNOT_EOK;
+
+	return sign_rrsets(node->rrset_tree, node->rrset_count,
+			   zone_keys, policy, changeset);
+}
+
+static int zone_tree_sign(knot_zone_tree_t *tree, knot_zone_keys_t *zone_keys,
+			  const knot_dnssec_policy_t *policy,
+			  knot_changeset_t *changeset)
+{
+	assert(tree);
 	assert(zone_keys);
 	assert(policy);
 	assert(changeset);
 
-	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t *rrset = node->rrset_tree[i];
-		knot_rrset_t *rrsigs = rrset->rrsigs;
+	int result = KNOT_EOK;
 
-		int result = remove_expired_rrsigs(rrsigs, policy, changeset);
-		if (result != KNOT_EOK)
-			return result;
+	bool sorted = false;
+	hattrie_iter_t *it;
 
-		result = add_missing_rrsigs(rrset, rrsigs, zone_keys, policy,
-					    changeset);
+	it = hattrie_iter_begin(tree, sorted);
+	while (!hattrie_iter_finished(it)) {
+		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
+
+		result = sign_node(node, zone_keys, policy, changeset);
 		if (result != KNOT_EOK)
-			return result;
+			break;
+
+		hattrie_iter_next(it);
 	}
+	hattrie_iter_free(it);
 
-	return KNOT_EOK;
+	return result;
 }
 
 static bool is_current_key(const knot_key_params_t *key)
@@ -460,6 +504,7 @@ static int init_sign_contexts(knot_zone_keys_t *keys)
 	return KNOT_EOK;
 }
 
+
 int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
 		   knot_changeset_t *changeset)
 {
@@ -491,27 +536,16 @@ int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
 		return KNOT_EOK;
 	}
 
-	bool sorted = false;
-	hattrie_iter_t *it;
+	result = zone_tree_sign(zone->nodes, &zone_keys, &policy, changeset);
+	if (!result)
+		return result;
 
-	it = hattrie_iter_begin(zone->nodes, sorted);
-	while (!hattrie_iter_finished(it)) {
-		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-		sign_node(node, &zone_keys, &policy, changeset);
-		hattrie_iter_next(it);
-	}
-	hattrie_iter_free(it);
-
-	it = hattrie_iter_begin(zone->nsec3_nodes, sorted);
-	while (!hattrie_iter_finished(it)) {
-		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-		sign_node(node, &zone_keys, &policy, changeset);
-		hattrie_iter_next(it);
-	}
-	hattrie_iter_free(it);
+	result = zone_tree_sign(zone->nsec3_nodes, &zone_keys, &policy, changeset);
+	if (!result)
+		return result;
 
 	free_sign_contexts(&zone_keys);
-	return KNOT_EOK;
+	return result;
 }
 
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
