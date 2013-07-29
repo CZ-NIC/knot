@@ -102,7 +102,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		dbg_zp("zp: find_rr_for_sig_in_node: Node does not contain "
 		       "RRSet of type %d.\n",
 		       knot_rrset_rdata_rrsig_type_covered(rrsig));
-		tmp_rrset = knot_rrset_new(rrsig->owner,
+		tmp_rrset = knot_rrset_new(knot_dname_copy(rrsig->owner),
 		                           knot_rrset_rdata_rrsig_type_covered(rrsig),
 		                           rrsig->rclass,
 		                           rrsig->ttl);

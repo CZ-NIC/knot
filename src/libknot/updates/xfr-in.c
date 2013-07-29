@@ -2211,10 +2211,12 @@ dbg_xfrin_exec_verb(
 		dbg_xfrin_detail("RRSet to be added not found in zone.\n");
 
 		// create a new RRSet to add the RRSIGs into
-		*rrset = knot_rrset_new(knot_node_get_owner(node), type,
+		knot_dname_t *owner_copy = knot_dname_copy(knot_node_get_owner(node));
+		*rrset = knot_rrset_new(owner_copy, type,
 					knot_rrset_class(add),
 					knot_rrset_ttl(add));
 		if (*rrset == NULL) {
+			knot_dname_free(&owner_copy);
 			dbg_xfrin("Failed to create new RRSet for RRSIGs.\n");
 			return KNOT_ENOMEM;
 		}

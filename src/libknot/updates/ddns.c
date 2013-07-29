@@ -1186,8 +1186,9 @@ static int knot_ddns_add_rr_new_rrsig(knot_node_t *node, knot_rrset_t *rr_copy,
 	dbg_ddns_verb("Adding RRSIG RR.\n");
 
 	/* Create RRSet to be covered by the RRSIG. */
+	knot_dname_t *owner_copy = knot_rrset_get_owner(rr_copy);
 	knot_rrset_t *covered_rrset = knot_rrset_new(
-	                        knot_rrset_get_owner(rr_copy), type_covered,
+	                        owner_copy, type_covered,
 	                        knot_rrset_class(rr_copy),
 	                        knot_rrset_ttl(rr_copy));
 	if (covered_rrset == NULL) {
@@ -2098,9 +2099,11 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	size_t from_chgset_count = 0;
 
 	/* 4 a) Remove redundant RRs from the ADD section of the changeset. */
+	knot_dname_t *owner_copy = knot_dname_copy(rrset->owner);
 	knot_rrset_t *empty_rrset =
 		knot_rrset_new(rrset->owner, type, rrset->rclass, rrset->ttl);
 	if (empty_rrset == NULL) {
+		knot_dname_free(&owner_copy);
 		return KNOT_ENOMEM;
 	}
 	ret = knot_ddns_check_remove_rr2(changeset, knot_node_owner(node),

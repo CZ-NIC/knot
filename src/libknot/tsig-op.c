@@ -564,9 +564,11 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	size_t digest_tmp_len = 0;
 
 	/* Create tmp TSIG. */
-	knot_rrset_t *tmp_tsig =
-		knot_rrset_new(key->name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+	knot_dname_t *owner_copy = knot_dname_copy(key->name);
+	knot_rrset_t *tmp_tsig = knot_rrset_new(owner_copy,
+	                                        KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
 	if (!tmp_tsig) {
+		knot_dname_free(&owner_copy);
 		return KNOT_ENOMEM;
 	}
 
