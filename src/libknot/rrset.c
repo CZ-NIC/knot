@@ -121,8 +121,8 @@ dbg_rrset_exec_detail(
 		int item = desc->block_types[i];
 		const uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
-			knot_dname_t *dname;
-			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
+			knot_dname_t *dname = rdata + offset;
+			//memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			char *name = knot_dname_to_str(dname);
 			if (dname == NULL) {
 				dbg_rrset_detail("DNAME error.\n");
@@ -131,7 +131,7 @@ dbg_rrset_exec_detail(
 			dbg_rrset_detail("block=%d: (%p) DNAME=%s\n",
 			        i, dname, name);
 			free(name);
-			offset += sizeof(knot_dname_t *);
+			offset += knot_dname_size(dname);
 		} else if (descriptor_item_is_fixed(item)) {
 			dbg_rrset_detail("block=%d Raw data (size=%d):\n",
 			        i, item);
@@ -185,12 +185,12 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
-			knot_dname_t *dname1 = NULL;
-			memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
-			knot_dname_t *dname2 = NULL;
-			memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
+			knot_dname_t *dname1 = r1 + offset;
+			//memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
+			knot_dname_t *dname2 = r2 + offset;
+			//memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
 			cmp = knot_dname_cmp(dname1, dname2);
-			offset += sizeof(knot_dname_t *);
+			offset += knot_dname_size(dname1);
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
 			cmp = memcmp(r1 + offset, r2 + offset,
 			             desc->block_types[i]);
@@ -1461,13 +1461,14 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 	}
 
 	if ((*rrset)->rrsigs != NULL) {
-		knot_rrset_deep_free(&(*rrset)->rrsigs, free_owner, free_rdata_dnames);
+		knot_rrset_deep_free(&(*rrset)->rrsigs, free_owner,
+		                     free_rdata_dnames);
 	}
 
-	if (free_rdata_dnames) {
-		rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
-	                           NULL);
-	}
+//	if (free_rdata_dnames) {
+//		rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
+//	                           NULL);
+//	}
 
 	free((*rrset)->rdata);
 	free((*rrset)->rdata_indices);
@@ -1487,13 +1488,13 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 		return;
 	}
 
-	if (free_rdata_dnames) {
-		int ret = rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
-		                             NULL);
-		if (ret != KNOT_EOK) {
-			dbg_rrset("rr: deep_free: Could not free DNAMEs in RDATA.\n");
-		}
-	}
+//	if (free_rdata_dnames) {
+//		int ret = rrset_dnames_apply(*rrset, rrset_release_dnames_in_rr,
+//		                             NULL);
+//		if (ret != KNOT_EOK) {
+//			dbg_rrset("rr: deep_free: Could not free DNAMEs in RDATA.\n");
+//		}
+//	}
 
 	free((*rrset)->rdata);
 	free((*rrset)->rdata_indices);
@@ -1626,8 +1627,8 @@ const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset)
 		return NULL;
 	}
 
-	knot_dname_t *dname;
-	memcpy(&dname, rrset->rdata, sizeof(knot_dname_t *));
+	const knot_dname_t *dname = rrset->rdata;
+//	memcpy(&dname, rrset->rdata, sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -1636,8 +1637,8 @@ const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset)
 	if (rrset == NULL) {
 		return NULL;
 	}
-	knot_dname_t *dname;
-	memcpy(&dname, rrset->rdata, sizeof(knot_dname_t *));
+	const knot_dname_t *dname = rrset->rdata;
+//	memcpy(&dname, rrset->rdata, sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -1646,8 +1647,8 @@ const knot_dname_t *knot_rrset_rdata_soa_primary_ns(const knot_rrset_t *rrset)
 	if (rrset == NULL) {
 		return NULL;
 	}
-	knot_dname_t *dname;
-	memcpy(&dname, rrset->rdata, sizeof(knot_dname_t *));
+	const knot_dname_t *dname = rrset->rdata;
+//	memcpy(&dname, rrset->rdata, sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -1656,9 +1657,10 @@ const knot_dname_t *knot_rrset_rdata_soa_mailbox(const knot_rrset_t *rrset)
 	if (rrset == NULL) {
 		return NULL;
 	}
-	knot_dname_t *dname;
-	memcpy(&dname, rrset->rdata + sizeof(knot_dname_t *),
-	       sizeof(knot_dname_t *));
+	const knot_dname_t *dname = rrset->rdata
+	                            + knot_dname_size(rrset->rdata);
+//	memcpy(&dname, rrset->rdata + sizeof(knot_dname_t *),
+//	       sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -1669,8 +1671,8 @@ const knot_dname_t *knot_rrset_rdata_rp_first_dname(const knot_rrset_t *rrset,
 		return NULL;
 	}
 
-	knot_dname_t *dname;
-	memcpy(&dname, knot_rrset_get_rdata(rrset, pos), sizeof(knot_dname_t *));
+	const knot_dname_t *dname = knot_rrset_get_rdata(rrset, pos);
+//	memcpy(&dname, knot_rrset_get_rdata(rrset, pos), sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -1681,9 +1683,10 @@ const knot_dname_t *knot_rrset_rdata_rp_second_dname(const knot_rrset_t *rrset,
 		return NULL;
 	}
 
-	knot_dname_t *dname;
-	memcpy(&dname, knot_rrset_get_rdata(rrset, pos) + sizeof(knot_dname_t *),
-	       sizeof(knot_dname_t *));
+	const knot_dname_t *dname = knot_rrset_get_rdata(rrset, pos)
+	                            + knot_dname_size(rrset->rdata);
+//	memcpy(&dname, knot_rrset_get_rdata(rrset, pos) + sizeof(knot_dname_t *),
+//	       sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -2177,9 +2180,8 @@ dbg_rrset_exec_detail(
 	        rrset_rdata_size_total(rrset));
 
 	for (uint16_t i = 0; i < rrset->rdata_count; i++) {
-		dbg_rrset_detail("%d=%d ", i, rrset_rdata_offset(rrset, i));
+		dbg_rrset_detail("%d=%d\n", i, rrset_rdata_offset(rrset, i));
 	}
-	dbg_rrset_detail("\n");
 
 	if (knot_rrset_rdata_rr_count(rrset) == 0) {
 		dbg_rrset_detail("NO RDATA\n");
@@ -2376,9 +2378,9 @@ const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
 		return NULL;
 	}
 
-	const knot_dname_t *dname;
-	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos),
-	       sizeof(knot_dname_t *));
+	const knot_dname_t *dname = rrset_rdata_pointer(rrset, rdata_pos);
+//	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos),
+//	       sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -2389,9 +2391,9 @@ const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
 		return NULL;
 	}
 
-	knot_dname_t *dname;
-	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos) + 2,
-	       sizeof(knot_dname_t *));
+	const knot_dname_t *dname = rrset_rdata_pointer(rrset, rdata_pos) + 2;
+//	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos) + 2,
+//	       sizeof(knot_dname_t *));
 	return dname;
 }
 
@@ -2402,9 +2404,9 @@ const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
 		return NULL;
 	}
 
-	knot_dname_t *dname;
-	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos) + 6,
-	       sizeof(knot_dname_t *));
+	const knot_dname_t *dname = rrset_rdata_pointer(rrset, rdata_pos) + 6;
+//	memcpy(&dname, rrset_rdata_pointer(rrset, rdata_pos) + 6,
+//	       sizeof(knot_dname_t *));
 	return dname;
 }
 
