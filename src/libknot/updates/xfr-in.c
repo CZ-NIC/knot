@@ -529,13 +529,8 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			return KNOT_EOK;
 		}
 
-<<<<<<< HEAD
 		const knot_dname_t *qname = knot_packet_qname(packet);
 		if (!knot_dname_is_equal(knot_rrset_owner(rr), qname)) {
-=======
-		if (knot_dname_compare_non_canon(knot_rrset_owner(rr),
-				                 knot_packet_qname(packet)) != 0) {
->>>>>>> master
 dbg_xfrin_exec(
 			char *rr_owner =
 				knot_dname_to_str(knot_rrset_owner(rr));
@@ -620,8 +615,8 @@ dbg_xfrin_exec(
 
 	while (ret == KNOT_EOK && rr != NULL) {
 		// process the parsed RR
-		if (!knot_dname_is_subdomain(rr->owner, xfr->zone->name) &&
-		    knot_dname_compare_non_canon(rr->owner, xfr->zone->name) != 0) {
+		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
+		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// Out-of-zone data
 			xfrin_log_error(xfr->zone->name, rr->owner,
 			                KNOT_EOUTOFZONE);
@@ -1109,8 +1104,8 @@ dbg_xfrin_exec_verb(
 				 knot_rrset_type(rr));
 		free(name);
 );
-		if (!knot_dname_is_subdomain(rr->owner, xfr->zone->name) &&
-		    knot_dname_compare_non_canon(rr->owner, xfr->zone->name) != 0) {
+		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
+		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// out-of-zone domain
 			xfrin_log_error(xfr->zone->name, rr->owner,
 			                KNOT_EOUTOFZONE);

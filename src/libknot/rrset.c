@@ -1196,7 +1196,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
 			if (obsolete) {
-				extra_dname_size += KNOT_MAX_DNAME_LENGTH;
+				extra_dname_size += KNOT_DNAME_MAXLEN;
 			} else {
 				extra_dname_size += sizeof(knot_dname_t *);
 			}
@@ -1235,7 +1235,7 @@ dbg_rrset_exec_detail(
 );
 			if (obsolete) {
 				memcpy(rdata_buffer + offset,
-				       knot_dname_name(dname),
+				       dname,
 				       knot_dname_size(dname));
 				offset += knot_dname_size(dname);
 				knot_dname_free(&dname);

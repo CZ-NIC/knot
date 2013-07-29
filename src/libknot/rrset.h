@@ -193,7 +193,7 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  * \param rrset Specified RRSet.
  * \param owner New owner dname.
  */
-void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
+int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
 
 /*!
  * \brief Sets rrset TTL to given TTL.
@@ -332,6 +332,13 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                           int *merged, int *deleted_rrs);
+
+/*!
+ * \brief Return true if the RRSet is an NSEC3 related type.
+ *
+ * \param rr RRSet.
+ */
+bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
 
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);

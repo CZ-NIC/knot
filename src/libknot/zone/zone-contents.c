@@ -197,72 +197,6 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
                                                   knot_dname_t **in_dname)
 {
 	knot_zone_contents_insert_dname_into_table(in_dname, lookup_tree);
-<<<<<<< HEAD
-=======
-//	assert((*in_dname)->node == old_dname_node || old_dname_node == NULL);
-
-	knot_dname_t *dname = *in_dname;
-	/*
-	 * The case when dname.node is already set is handled here.
-	 * No use to check it later.
-	 */
-	if (knot_dname_node(dname) != NULL
-	    || !knot_dname_is_subdomain(dname, knot_node_owner(
-				      knot_zone_contents_apex(zone)))) {
-		// The name's node is either already set
-		// or the name does not belong to the zone
-		dbg_zone_detail("Name's node either set or the name "
-				"does not belong to the zone (%p).\n",
-				knot_dname_node(dname));
-		return;
-	}
-
-	const knot_node_t *n = NULL;
-	const knot_node_t *closest_encloser = NULL;
-	const knot_node_t *prev = NULL;
-
-	int ret = knot_zone_contents_find_dname(zone, dname, &n,
-					      &closest_encloser, &prev);
-
-	if (ret == KNOT_EINVAL || ret == KNOT_EOUTOFZONE) {
-		// TODO: do some cleanup if needed
-		dbg_zone_detail("Failed to find the name in zone: %s\n",
-				knot_strerror(ret));
-		return;
-	}
-
-	assert(ret != KNOT_ZONE_NAME_FOUND || n == closest_encloser);
-
-	if (ret != KNOT_ZONE_NAME_FOUND && (closest_encloser != NULL)) {
-			/*!
-			 * \note There is no need to set closer encloser to the
-			 *       name. We may find the possible wildcard child
-			 *       right away.
-			 *       Having the closest encloser saved in the dname
-			 *       would disrupt the query processing algorithms
-			 *       anyway.
-			 */
-
-			dbg_zone_verb("Trying to find wildcard child.\n");
-
-			n = knot_zone_contents_find_wildcard_child(zone,
-							      closest_encloser);
-
-			if (n != NULL) {
-				knot_dname_set_node(dname, (knot_node_t *)n);
-				dbg_zone_exec_detail(
-					char *name = knot_dname_to_str(
-							    knot_node_owner(n));
-					char *name2 = knot_dname_to_str(dname);
-					dbg_zone_detail("Set wildcard node %s "
-							"to RDATA dname %s.\n",
-							name, name2);
-					free(name);
-					free(name2);
-				);
-			}
-	}
->>>>>>> master
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1015,17 +949,9 @@ dbg_zone_exec_detail(
 );
 
 	// check if the RRSet belongs to the zone
-<<<<<<< HEAD
 	if (!knot_dname_is_equal(rrset->owner, zone->apex->owner)
 	    && !knot_dname_is_sub(rrset->owner, zone->apex->owner)) {
-		return KNOT_EBADZONE;
-=======
-	if (knot_dname_compare(knot_rrset_owner(rrset),
-				 zone->apex->owner) != 0
-	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
-					  zone->apex->owner)) {
 		return KNOT_EOUTOFZONE;
->>>>>>> master
 	}
 
 	if ((*node) == NULL
