@@ -168,10 +168,13 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/nsec-bitmap.h		\
 	libknot/dnssec/nsec3.c			\
 	libknot/dnssec/nsec3.h			\
+	libknot/dnssec/policy.h			\
 	libknot/dnssec/sig0.c			\
 	libknot/dnssec/sig0.h			\
 	libknot/dnssec/sign.c			\
 	libknot/dnssec/sign.h			\
+	libknot/dnssec/zone-keys.c		\
+	libknot/dnssec/zone-keys.h		\
 	libknot/dnssec/zone-nsec.c		\
 	libknot/dnssec/zone-nsec.h		\
 	libknot/dnssec/zone-sign.c		\

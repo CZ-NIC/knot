@@ -16,7 +16,6 @@
 
 #include <config.h>
 #include <assert.h>
-#include <dirent.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h> // TMP
@@ -27,29 +26,16 @@
 #include "common/hattrie/hat-trie.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
+#include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/sign.h"
+#include "libknot/dnssec/zone-keys.h"
 #include "libknot/rrset.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/node.h"
 #include "libknot/zone/zone-contents.h"
 
+//! \todo Check if defined elsewhere.
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024 * sizeof(uint8_t))
-#define MAX_ZONE_KEYS 8
-
-typedef struct {
-	int count;
-	knot_dnssec_key_t keys[MAX_ZONE_KEYS];
-	knot_dnssec_sign_context_t *contexts[MAX_ZONE_KEYS];
-	bool is_ksk[MAX_ZONE_KEYS];
-} knot_zone_keys_t;
-
-typedef struct {
-	uint32_t now;           //! Current time.
-	uint32_t sign_lifetime; //! Signature life time.
-	uint32_t sign_refresh;  //! Signature refresh time before expiration.
-} knot_dnssec_policy_t;
-
-#define DEFAULT_DNSSEC_POLICY { .now = time_now(), .sign_lifetime = 2592000, .sign_refresh = 7200 }
 
 static uint32_t time_now(void)
 {
@@ -316,7 +302,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	return KNOT_EOK;
 }
 
-static int sign_rrsets(const knot_rrset_t **rrsets, size_t rrset_count,
+static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
 		       knot_zone_keys_t *zone_keys,
 		       const knot_dnssec_policy_t *policy,
 		       knot_changeset_t *changeset)
@@ -387,100 +373,6 @@ static int zone_tree_sign(knot_zone_tree_t *tree, knot_zone_keys_t *zone_keys,
 	return result;
 }
 
-static bool is_current_key(const knot_key_params_t *key)
-{
-	time_t now = time(NULL);
-
-	if (now < key->time_activate)
-		return false;
-
-	if (key->time_inactive && now > key->time_inactive)
-		return false;
-
-	return true;
-}
-
-static int load_zone_keys(const char *keydir_name,
-			  const knot_dname_t *zone_name,
-			  knot_zone_keys_t *keys)
-{
-	assert(keydir_name);
-	assert(zone_name);
-	assert(keys);
-
-	DIR *keydir = opendir(keydir_name);
-	if (!keydir)
-		return KNOT_DNSSEC_EINVALID_KEY;
-
-	struct dirent entry_buf = { 0 };
-	struct dirent *entry = NULL;
-	while (keys->count < MAX_ZONE_KEYS &&
-	       readdir_r(keydir, &entry_buf, &entry) == 0 &&
-	       entry != NULL
-	) {
-		if (entry->d_name[0] != 'K')
-			continue;
-
-		char *suffix = strrchr(entry->d_name, '.');
-		if (!suffix)
-			continue;
-
-		if (strcmp(suffix, ".private") != 0)
-			continue;
-
-		size_t path_len = strlen(keydir_name) + 1
-		                + strlen(entry->d_name) + 1;
-		char *path = malloc(path_len * sizeof(char));
-		if (!path) {
-			fprintf(stderr, "failed to alloc key path\n");
-			continue;
-		}
-
-		snprintf(path, path_len, "%s/%s", keydir_name, entry->d_name);
-		fprintf(stderr, "reading key '%s'\n", path);
-
-		knot_key_params_t params = { 0 };
-		int result = knot_load_key_params(path, &params);
-		free(path);
-
-		if (result != KNOT_EOK) {
-			fprintf(stderr, "failed to load key params\n");
-			continue;
-		}
-
-		if (knot_dname_compare(zone_name, params.name) != 0) {
-			fprintf(stderr, "key for other zone\n");
-			continue;
-		}
-
-		if (!is_current_key(&params)) {
-			fprintf(stderr, "key is not active\n");
-			continue;
-		}
-
-		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
-			fprintf(stderr, "not a DNSSEC key\n");
-			continue;
-		}
-
-		result = knot_dnssec_key_from_params(&params, &keys->keys[keys->count]);
-		if (result != KNOT_EOK) {
-			fprintf(stderr, "cannot create the dnssec key\n");
-			continue;
-		}
-
-		fprintf(stderr, "key is valid\n");
-		fprintf(stderr, "key is %s\n", params.flags & 1 ? "ksk" : "zsk");
-
-		keys->is_ksk[keys->count] = params.flags & 1;
-		keys->count += 1;
-	}
-
-	closedir(keydir);
-
-	return keys->count > 0 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_KEY;
-}
-
 static void free_sign_contexts(knot_zone_keys_t *keys)
 {
 	for (int i = 0; i < keys->count; i++) {
@@ -516,8 +408,7 @@ int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
 
 	knot_dnssec_policy_t policy = DEFAULT_DNSSEC_POLICY;
 
-	knot_zone_keys_t zone_keys;
-	memset(&zone_keys, '\0', sizeof(zone_keys));
+	knot_zone_keys_t zone_keys = { '\0' };
 
 	result = load_zone_keys(keydir, zone->apex->owner, &zone_keys);
 	if (result != KNOT_EOK) {
