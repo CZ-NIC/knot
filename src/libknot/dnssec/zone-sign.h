@@ -30,7 +30,8 @@
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/zone-contents.h"
 
-int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir);
+int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
+		   knot_changeset_t *changeset);
 
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 			      knot_changeset_t *changeset);

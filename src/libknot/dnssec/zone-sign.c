@@ -44,21 +44,16 @@ typedef struct {
 } knot_zone_keys_t;
 
 typedef struct {
+	uint32_t now;           //! Current time.
 	uint32_t sign_lifetime; //! Signature life time.
 	uint32_t sign_refresh;  //! Signature refresh time before expiration.
 } knot_dnssec_policy_t;
 
-#define DEFAULT_DNSSEC_POLICY { .sign_lifetime = 2592000, .sign_refresh = 7200 }
+#define DEFAULT_DNSSEC_POLICY { .now = time_now(), .sign_lifetime = 2592000, .sign_refresh = 7200 }
 
 static uint32_t time_now(void)
 {
 	return (uint32_t)time(NULL);
-}
-
-static knot_rrset_t *create_rrsig_rrset(const knot_rrset_t *cover)
-{
-	return knot_rrset_new(cover->owner, KNOT_RRTYPE_RRSIG, cover->rclass,
-	                      cover->ttl);
 }
 
 // COPIED FROM SIG(0) AND MODIFIED
@@ -140,10 +135,11 @@ static int sign_rrset_one(knot_rrset_t *rrsigs,
 	if (!rdata)
 		return KNOT_ENOMEM;
 
-	uint32_t sig_incept = time_now();
+	uint32_t sig_incept = policy->now;
 	uint32_t sig_expire = sig_incept + policy->sign_lifetime;
 
-	rrsig_write_rdata(rdata, key, covered->owner, covered, sig_incept, sig_expire);
+	rrsig_write_rdata(rdata, key, covered->owner, covered, sig_incept,
+			  sig_expire);
 
 	// RFC 4034: The signature coveres RRSIG RDATA field (excluding the
 	// signature) and all matching RR records, which are ordered
@@ -183,28 +179,106 @@ static int sign_rrset_one(knot_rrset_t *rrsigs,
 	return result;
 }
 
-static bool signature_exists(const knot_rrset_t *rrsigs,
-			     const knot_dnssec_key_t *key)
+static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 {
+	assert(covered);
+
+	return knot_rrset_new(covered->owner, KNOT_RRTYPE_RRSIG,
+			      covered->rclass, covered->ttl);
+}
+
+static bool is_valid_signature(const knot_rrset_t *rrsigs, size_t pos,
+			       const knot_dnssec_policy_t *policy)
+{
+	assert(rrsigs);
+	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
+	assert(policy);
+
+	uint32_t now = policy->now;
+	uint32_t refresh = policy->sign_refresh;
+	uint32_t expiration = knot_rrset_rdata_rrsig_sig_expiration(rrsigs, pos);
+
+	return (expiration - refresh > now);
+}
+
+static bool valid_signature_exists(const knot_rrset_t *rrsigs,
+				   const knot_dnssec_key_t *key,
+				   const knot_dnssec_policy_t *policy)
+{
+	assert(key);
+	assert(policy);
+
+	if (!rrsigs)
+		return false;
+
 	for (int i = 0; i < rrsigs->rdata_count; i++) {
 		uint16_t keytag = knot_rrset_rdata_rrsig_key_tag(rrsigs, i);
-		if (keytag == key->keytag)
-			return true;
+		if (keytag != key->keytag)
+			continue;
+
+		return is_valid_signature(rrsigs, i, policy);
 	}
 
 	return false;
 }
 
-static int add_missing_signatures(const knot_rrset_t *covered,
-                                  knot_rrset_t *rrsigs,
-                                  knot_zone_keys_t *zone_keys,
-                                  const knot_dnssec_policy_t *policy)
+
+static int remove_expired_rrsigs(const knot_rrset_t *rrsigs,
+				 const knot_dnssec_policy_t *policy,
+				 knot_changeset_t *changeset)
+{
+	if (!rrsigs)
+		return KNOT_EOK;
+
+	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
+	assert(policy);
+	assert(changeset);
+
+	knot_rrset_t *to_remove = NULL;
+	int result = KNOT_EOK;
+
+	for (int i = 0; i < rrsigs->rdata_count; i++) {
+		if (is_valid_signature(rrsigs, i, policy))
+			continue;
+
+		if (to_remove == NULL) {
+			to_remove = create_empty_rrsigs_for(rrsigs);
+			if (to_remove == NULL)
+				return KNOT_ENOMEM;
+		}
+
+		result = knot_rrset_add_rr_from_rrset(to_remove, rrsigs, i);
+		if (result != KNOT_EOK)
+			break;
+	}
+
+	if (to_remove != NULL && result == KNOT_EOK) {
+		result = knot_changeset_add_new_rr(changeset, to_remove,
+						   KNOT_CHANGESET_REMOVE);
+	}
+
+	if (to_remove != NULL && result != KNOT_EOK) {
+		int free_owners = true;
+		int free_rdata_dnames = true;
+		knot_rrset_deep_free(&to_remove, free_owners, free_rdata_dnames);
+	}
+
+	return result;
+}
+
+static int add_missing_rrsigs(const knot_rrset_t *covered,
+                              const knot_rrset_t *rrsigs,
+                              knot_zone_keys_t *zone_keys,
+                              const knot_dnssec_policy_t *policy,
+			      knot_changeset_t *changeset)
 {
 	assert(covered);
-	assert(rrsigs);
 	assert(zone_keys);
 	assert(policy);
+	assert(changeset);
 
+	int result = KNOT_EOK;
+	knot_rrset_t *to_add = NULL;
 	bool use_ksk = covered->type == KNOT_RRTYPE_DNSKEY;
 
 	for (int i = 0; i < zone_keys->count; i++) {
@@ -214,78 +288,56 @@ static int add_missing_signatures(const knot_rrset_t *covered,
 		knot_dnssec_key_t *key = &zone_keys->keys[i];
 		knot_dnssec_sign_context_t *ctx = zone_keys->contexts[i];
 
-		if (signature_exists(rrsigs, key))
+		if (valid_signature_exists(rrsigs, key, policy))
 			continue;
 
-		int r = sign_rrset_one(rrsigs, covered, key, ctx, policy);
-		if (r != KNOT_EOK)
-			return r;
+		if (to_add == NULL) {
+			to_add = create_empty_rrsigs_for(covered);
+			if (to_add == NULL)
+				return KNOT_ENOMEM;
+		}
+
+		result = sign_rrset_one(to_add, covered, key, ctx, policy);
+		if (result != KNOT_EOK)
+			break;
+	}
+
+	if (to_add != NULL && result == KNOT_EOK) {
+		result = knot_changeset_add_new_rr(changeset, to_add,
+						   KNOT_CHANGESET_ADD);
+	}
+
+	if (to_add != NULL && result != KNOT_EOK) {
+		int free_owners = true;
+		int free_rdata_dnames = true;
+		knot_rrset_deep_free(&to_add, free_owners, free_rdata_dnames);
 	}
 
 	return KNOT_EOK;
 }
 
-static int copy_valid_signatures(knot_rrset_t *from, knot_rrset_t *to,
-				 const knot_dnssec_policy_t *policy)
-{
-	assert(from);
-	assert(to);
-	assert(policy);
-
-	int result = KNOT_EOK;
-	uint32_t now = time_now();
-	uint32_t refresh = policy->sign_refresh;
-	uint32_t expiration;
-
-	for (int i = 0; i < from->rdata_count; i++) {
-		expiration = knot_rrset_rdata_rrsig_sig_expiration(from, i);
-
-		// skip expired
-		if (expiration < now || expiration - now < refresh)
-			continue;
-
-		// copy valid
-		result = knot_rrset_add_rr_from_rrset(to, from, i);
-		if (result != KNOT_EOK)
-			break;
-	}
-
-	return result;
-}
 
 static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys,
-		     const knot_dnssec_policy_t *policy)
+		     const knot_dnssec_policy_t *policy,
+		     knot_changeset_t *changeset)
 {
 	assert(node);
+	assert(zone_keys);
+	assert(policy);
+	assert(changeset);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t *rrset = node->rrset_tree[i];
 		knot_rrset_t *rrsigs = rrset->rrsigs;
-		knot_rrset_t *new_rrsigs;
 
-		new_rrsigs = create_rrsig_rrset(rrset);
-		if (!new_rrsigs)
-			return KNOT_ENOMEM;
-
-		assert(knot_dname_compare(rrsigs->owner, new_rrsigs->owner) == 0);
-		assert(rrsigs->type == new_rrsigs->type);
-		assert(rrsigs->rclass == new_rrsigs->rclass);
-		assert(rrsigs->ttl == new_rrsigs->ttl);
-
-		int result = copy_valid_signatures(rrsigs, new_rrsigs, policy);
-		if (result != KNOT_EOK) {
-			knot_rrset_free(&new_rrsigs);
+		int result = remove_expired_rrsigs(rrsigs, policy, changeset);
+		if (result != KNOT_EOK)
 			return result;
-		}
 
-		result = add_missing_signatures(rrset, new_rrsigs, zone_keys, policy);
-		if (result != KNOT_EOK) {
-			knot_rrset_free(&new_rrsigs);
+		result = add_missing_rrsigs(rrset, rrsigs, zone_keys, policy,
+					    changeset);
+		if (result != KNOT_EOK)
 			return result;
-		}
-
-		knot_rrset_free(&rrsigs);
-		rrset->rrsigs = new_rrsigs;
 	}
 
 	return KNOT_EOK;
@@ -408,10 +460,12 @@ static int init_sign_contexts(knot_zone_keys_t *keys)
 	return KNOT_EOK;
 }
 
-int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir)
+int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
+		   knot_changeset_t *changeset)
 {
 	assert(zone);
 	assert(keydir);
+	assert(changeset);
 
 	int result;
 
@@ -443,7 +497,7 @@ int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir)
 	it = hattrie_iter_begin(zone->nodes, sorted);
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-		sign_node(node, &zone_keys, &policy);
+		sign_node(node, &zone_keys, &policy, changeset);
 		hattrie_iter_next(it);
 	}
 	hattrie_iter_free(it);
@@ -451,7 +505,7 @@ int knot_zone_sign(knot_zone_contents_t *zone, const char *keydir)
 	it = hattrie_iter_begin(zone->nsec3_nodes, sorted);
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-		sign_node(node, &zone_keys, &policy);
+		sign_node(node, &zone_keys, &policy, changeset);
 		hattrie_iter_next(it);
 	}
 	hattrie_iter_free(it);
