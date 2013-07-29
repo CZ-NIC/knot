@@ -27,8 +27,6 @@
 #include "rrset.h"
 #include "util/debug.h"
 
-/*----------------------------------------------------------------------------*/
-
 static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
                                          const knot_rrset_t *rrset2)
 {
@@ -37,8 +35,6 @@ static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
 	           || knot_rrset_rdata_rrsig_type_covered(rrset1)
 	              == knot_rrset_rdata_rrsig_type_covered(rrset2));
 }
-
-/*----------------------------------------------------------------------------*/
 
 int knot_changesets_init(knot_changesets_t **changesets, uint32_t flags)
 {
@@ -126,8 +122,6 @@ knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *chs)
 	return (knot_changeset_t *)(TAIL(chs->sets));
 }
 
-/*----------------------------------------------------------------------------*/
-
 int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
                              knot_changeset_part_t part)
 {
@@ -149,8 +143,6 @@ int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
 
 	return KNOT_EOK;
 }
-
-/*----------------------------------------------------------------------------*/
 
 int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
                           knot_changeset_part_t part)
@@ -226,16 +218,12 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
 	}
 }
 
-/*----------------------------------------------------------------------------*/
-
 static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                      uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
 	*chg_serial = knot_rrset_rdata_soa_serial(soa);
 }
-
-/*----------------------------------------------------------------------------*/
 
 void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
                             knot_changeset_part_t part)
@@ -253,8 +241,6 @@ void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 		assert(0);
 	}
 }
-
-/*---------------------------------------------------------------------------*/
 
 int knot_changeset_is_empty(const knot_changeset_t *changeset)
 {
@@ -287,8 +273,6 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 	// Delete binary data
 	free(changeset->data);
 }
-
-/*----------------------------------------------------------------------------*/
 
 void knot_changesets_free(knot_changesets_t **changesets)
 {

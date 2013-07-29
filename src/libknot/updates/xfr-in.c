@@ -2490,11 +2490,7 @@ dbg_xfrin_exec_detail(
 				// just delete the add RRSet, but without RDATA
 				// DNAMES as these were merged to the copied RRSet
 				knot_rrset_deep_free(&rr, 1, 0);
-
-				// In this case, the RDATA does not have to be
-				// stored in the list of new RDATA, because
-				// it is joined to the copy of RDATA, that is
-				// already stored there
+				rem_node((node *)rr_node);
 			} else if (ret == 3) {
 				// the RRSet was used and both RRSet and RDATA
 				// were properly stored. Just clear the place
