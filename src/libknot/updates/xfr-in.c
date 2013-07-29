@@ -1166,7 +1166,7 @@ dbg_xfrin_exec_verb(
 				// just add the RR to the REMOVE part and
 				// continue
 				ret = knot_changeset_add_rr(cur, rr,
-								KNOT_CHANGESET_REMOVE);
+				                            KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1, 1);
 					goto cleanup;
@@ -2396,7 +2396,8 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 	int is_nsec3 = 0;
 
 	knot_rr_node_t *rr_node = NULL;
-	WALK_LIST(rr_node, chset->add) {
+	node *tmp_node;
+	WALK_LIST_DELSAFE(rr_node, tmp_node, chset->add) {
 		knot_rrset_t *rr = rr_node->rr;
 		assert(rr); // No malformed changesets should get here
 dbg_xfrin_exec_verb(

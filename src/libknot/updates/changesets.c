@@ -159,7 +159,7 @@ int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
 	// otherwise just add the RR to the end of the list
 	list *l = part == KNOT_CHANGESET_ADD ? &(chgs->add) : &(chgs->remove);
 	knot_rrset_t *tail_rr =
-		!EMPTY_LIST(*l) ? ((knot_rr_node_t *)(TAIL(*l)))->rr : NULL;
+		EMPTY_LIST(*l) ? NULL : ((knot_rr_node_t *)(TAIL(*l)))->rr;
 
 	if (tail_rr && knot_changeset_rrsets_match(tail_rr, rr)) {
 		// Create changesets exactly as they came, with possibly
