@@ -270,7 +270,7 @@ As attacks using DNS/UDP are usually based on a forged source address, an attack
 if all responses would be completely blocked. The idea behind SLIP mechanism is to send each Nth response as truncated, thus allowing
 client to reconnect via TCP for at least some degree of service. It is worth noting, that some responses can't be truncated (f.e. SERVFAIL).
 
-Default value: @kbd{2}
+Default value: @kbd{1}
 
 @node system Example
 @subsection system Example

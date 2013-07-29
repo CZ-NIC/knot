@@ -32,7 +32,7 @@
 #include "sign/key.h"
 #include "sign/sig0.h"
 #include "tsig.h"
-#include "zscanner/scanner.h"
+#include "zscanner/zscanner.h"
 
 /*!
  * \brief Calculates keytag for RSA/MD5 algorithm.
@@ -87,11 +87,6 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 	return result;
 }
 
-static void key_scan_noop(const scanner_t *s)
-{
-	UNUSED(s);
-}
-
 /*!
  * \brief Reads RR in the public key file and retrieves basic key information.
  */
@@ -106,18 +101,12 @@ static int get_key_info_from_public_key(const char *filename,
 	if (!keyfile)
 		return KNOT_KEY_EPUBLIC_KEY_OPEN;
 
-	scanner_t *scanner = scanner_create(filename);
+	scanner_t *scanner = scanner_create(filename, ".", KNOT_CLASS_IN, 0,
+	                                    NULL, NULL, NULL);
 	if (!scanner) {
 		fclose(keyfile);
 		return KNOT_ENOMEM;
 	}
-
-	scanner->process_record = key_scan_noop;
-	scanner->process_error = key_scan_noop;
-	scanner->default_ttl = 0;
-	scanner->default_class = KNOT_CLASS_IN;
-	scanner->zone_origin[0] = '\0';
-	scanner->zone_origin_length = 1;
 
 	char *buffer = NULL;
 	size_t buffer_size;

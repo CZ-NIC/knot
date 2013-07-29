@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.3.0-rc4], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.3.0-rc5], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-bzip2 dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -116,32 +116,26 @@ AC_ARG_ENABLE([debuglevel],
         ;;
     esac], [])
 
-AX_MSG_WAITFORONE
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
+# The check for struct mmsghdr is required when libc doesn't have an API but the function links
 AC_ARG_ENABLE([recvmmsg],
     AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() network API under Linux (kernel support required) (set to 'no' if you have trouble running server under valgrind) [default=yes]]),
     [case "${enableval}" in
       yes)
-	  if test "$ax_cv_have_msg_waitforone" = "yes"; then
-	      AC_DEFINE([ENABLE_RECVMMSG], [1], [recvmmsg enabled])
-	      recvmmsg=true
-	  else
-	      recvmmsg=false
-	  fi
+	  AC_CHECK_FUNCS([sendmmsg])
+          AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
+          [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
           ;;
       no)
-          recvmmsg=false
           ;;
       *)
           AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg])
           ;;
-    esac], [
-    if test "$ax_cv_have_msg_waitforone" = "yes"; then
-        AC_DEFINE([ENABLE_RECVMMSG], [1], [recvmmsg enabled])
-        recvmmsg=true
-    else
-        recvmmsg=false
-    fi
+    esac],
+    [
+      AC_CHECK_FUNCS([sendmmsg])
+      AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
+      [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
     ])
 
 # Enable integrity check
@@ -302,7 +296,7 @@ AC_TYPE_SSIZE_T
 AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select sendmmsg setgroups])
+AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
@@ -316,12 +310,12 @@ gl_VISIBILITY()
 CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 
 AC_CONFIG_FILES([Makefile
-		 samples/Makefile
-		 src/Makefile
-		 src/tests/Makefile
 		 doc/Makefile
 		 man/Makefile
-		 src/zscanner/test/run_tests.sh
+		 src/Makefile
+		 samples/Makefile
+		 src/tests/Makefile
+		 src/zscanner/Makefile
 		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
 		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin
 		 src/zscanner/test/cases/06-0_INCLUDE.in:src/zscanner/test/cases/06-0_INCLUDE.inin
@@ -332,4 +326,7 @@ AC_CONFIG_FILES([Makefile
 		 man/knsupdate.1
 		 man/knot.conf.5
 		 ])
+
+AC_CONFIG_FILES([src/zscanner/test/run_tests.sh], [chmod a+x src/zscanner/test/run_tests.sh])
+
 AC_OUTPUT

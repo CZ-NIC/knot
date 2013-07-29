@@ -86,7 +86,7 @@
 		s->process_error(s);
 
 		// Reset.
-		s->error_code = KNOT_EOK;
+		s->error_code = ZSCANNER_OK;
 		s->multiline = false;
 
 		// In case of serious error, stop scanner.
@@ -459,7 +459,7 @@
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
 			ret = date_to_timestamp(s->buffer, &timestamp);
 
-			if (ret == KNOT_EOK) {
+			if (ret == ZSCANNER_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
 				rdata_tail += 4;
 			} else {
@@ -643,36 +643,23 @@
 	}
 
 	action _include_exit {
-		char text_origin[MAX_DNAME_LENGTH];
+		char text_origin[4 * MAX_DNAME_LENGTH]; // Each char as \DDD.
 
 		// Origin conversion from wire to text form.
 		if (s->dname == NULL) { // Use current origin.
 			wire_dname_to_str(s->zone_origin,
 			                  s->zone_origin_length,
-					  text_origin);
+			                  text_origin);
 		} else { // Use specified origin.
 			wire_dname_to_str(s->r_data,
 			                  s->r_data_length,
-					  text_origin);
+			                  text_origin);
 		}
 
-		if (s->include_filename[0] != '/') { // Relative file path.
-			// Get absolute path of the current zone file.
-			if (realpath(s->file_name, (char*)(s->buffer)) != NULL) {
-				char *full_current_zone_file_name =
-					strdup((char*)(s->buffer));
-
-				// Creating full include file name.
-				snprintf((char*)(s->buffer), sizeof(s->buffer),
-				        "%s/%s",
-				        dirname(full_current_zone_file_name),
-				        s->include_filename);
-
-				free(full_current_zone_file_name);
-			} else {
-				SCANNER_ERROR(ZSCANNER_EUNPROCESSED_INCLUDE);
-				fhold; fgoto err_line;
-			}
+		// Relative file path.
+		if (s->include_filename[0] != '/') {
+			snprintf((char*)(s->buffer), sizeof(s->buffer),
+			         "%s/%s", s->path, s->include_filename);
 		} else {
 			strncpy((char*)(s->buffer), (char*)(s->include_filename),
 			        sizeof(s->buffer));
@@ -681,8 +668,8 @@
 		// Create new file loader for included zone file.
 		file_loader_t *fl = file_loader_create((char*)(s->buffer),
 		                                       text_origin,
-		                                       DEFAULT_CLASS,
-		                                       DEFAULT_TTL,
+		                                       s->default_class,
+		                                       s->default_ttl,
 		                                       s->process_record,
 		                                       s->process_error,
 		                                       s->data);
@@ -923,7 +910,7 @@
 		}
 
 		ret = find_rdata_blocks(s);
-		if (ret != KNOT_EOK) {
+		if (ret != ZSCANNER_OK) {
 			SCANNER_WARNING(ret);
 			fhold; fgoto err_line;
 		}

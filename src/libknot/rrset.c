@@ -1144,6 +1144,8 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength)
 {
+	int obsolete = 0;
+
 	/* [code-review] Missing parameter checks. */
 
 	if (rdlength == 0) {
@@ -1158,15 +1160,24 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	size_t extra_dname_size = 0;
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
-		if (descriptor_item_is_dname(desc->block_types[i])) {
-			extra_dname_size += sizeof(knot_dname_t *) - 1;
+	/* Check for obsolete record. */
+	if (desc->type_name == NULL) {
+		desc = get_obsolete_rdata_descriptor(rrset->type);
+		if (desc->type_name != NULL) {
+			obsolete = 1;
 		}
 	}
 
-	/* [code-review] Isn't this invalid? You cannot do static allocation
-	 * with dynamic data (parameter, local variable).
-	 */
+	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
+		if (descriptor_item_is_dname(desc->block_types[i])) {
+			if (obsolete) {
+				extra_dname_size += KNOT_MAX_DNAME_LENGTH;
+			} else {
+				extra_dname_size += sizeof(knot_dname_t *);
+			}
+		}
+	}
+
 	uint8_t rdata_buffer[rdlength + extra_dname_size];
 	memset(rdata_buffer, 0, rdlength + extra_dname_size);
 	dbg_rrset_detail("rr: parse_rdata_wire: Added %zu bytes to buffer to "
@@ -1188,9 +1199,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 				return KNOT_EMALF;
 			}
 			knot_dname_to_lower(dname);
-			memcpy(rdata_buffer + offset, &dname,
-			       sizeof(knot_dname_t *));
-			parsed += pos2 - *pos;
+
 			dbg_rrset_detail("rr: parse_rdata_wire: Parsed DNAME, "
 			                 "length=%zu.\n", pos2 - *pos);
 dbg_rrset_exec_detail(
@@ -1199,8 +1208,19 @@ dbg_rrset_exec_detail(
 			                 "DNAME=%s\n", name);
 			free(name);
 );
+			if (obsolete) {
+				memcpy(rdata_buffer + offset,
+				       knot_dname_name(dname),
+				       knot_dname_size(dname));
+				offset += knot_dname_size(dname);
+				knot_dname_free(&dname);
+			} else {
+				memcpy(rdata_buffer + offset, &dname,
+				       sizeof(knot_dname_t *));
+				offset += sizeof(knot_dname_t *);
+			}
+			parsed += pos2 - *pos;
 			*pos = pos2;
-			offset += sizeof(knot_dname_t *);
 		} else if (descriptor_item_is_fixed(item)) {
 			dbg_rrset_detail("rr: parse_rdata_wire: Saving static "
 			                 "chunk of size=%u\n", item);
@@ -1601,6 +1621,19 @@ dbg_rrset_exec_detail(
 	}
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
+{
+	assert(rr != NULL);
+
+	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
+	return ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
+	        || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
+	            && knot_rrset_rdata_rrsig_type_covered(rr)
+	            == KNOT_RRTYPE_NSEC3));
 }
 
 /*----------------------------------------------------------------------------*/

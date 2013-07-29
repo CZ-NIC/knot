@@ -1,5 +1,16 @@
 Knot DNS NEWS
 
+v1.3.0-rc5 - Jul 29, 2013
+-------------------------
+Features:
+	* Much faster bootstrap of many zones
+Bugfixes:
+	* Removed deprecated 'knotc -w' option
+	* Slave ignores out-of-zone records in zone
+	* Support for obsolete types in zone transfers
+	* Slave zone file names fixes
+	* Long transfers being randomly dropped
+
 v1.3.0-rc4 - Jul 15, 2013
 -------------------------
 Features:

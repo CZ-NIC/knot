@@ -274,13 +274,12 @@ Setting to a value greater than @code{0} means that every flow is allowed N resp
 It is also possible to configure SLIP interval, which causes every Nth blocked response to be slipped
 as a truncated response. Not that some error responses cannot be truncated and are slipped as-is.
 For more information, refer to @ref{rate-limit-slip}.
-It is advisable to not set slip interval to a value larger than 2, to allow legitimate clients
-get at least some level of service.
+It is advisable to not set slip interval to a value larger than 1.
 
 Example configuration:
 @example
 system @{
 	rate-limit 200;    # Each flow is allowed to 200 resp. per second
-	rate-limit-slip 2; # Every other response is slipped (default)
+	rate-limit-slip 1; # Every response is slipped (default)
 @}
 @end example

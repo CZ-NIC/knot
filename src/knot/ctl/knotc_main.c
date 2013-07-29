@@ -25,12 +25,6 @@
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif
-#ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
-#ifdef HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif
 
 #include "knot/knot.h"
 #include "common/descriptor.h"
@@ -51,9 +45,7 @@ enum knotc_flag_t {
 	F_NULL = 0 << 0,
 	F_FORCE = 1 << 0,
 	F_VERBOSE = 1 << 1,
-	F_WAIT = 1 << 2,
 	F_INTERACTIVE = 1 << 3,
-	F_AUTO = 1 << 4,
 	F_UNPRIVILEGED = 1 << 5,
 	F_NOCONF = 1 << 6,
 	F_DRYRUN = 1 << 7
@@ -415,7 +407,6 @@ int main(int argc, char **argv)
 
 	/* Long options. */
 	struct option opts[] = {
-		{"wait", no_argument, 0, 'w'},
 		{"force", no_argument, 0, 'f'},
 		{"config", required_argument, 0, 'c'},
 		{"verbose", no_argument, 0, 'v'},
@@ -429,7 +420,7 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "s:p:y:k:wfc:viVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "s:p:y:k:fc:viVh", opts, &li)) != -1) {
 		switch (c) {
 		case 's':
 			r_addr = optarg;
@@ -452,9 +443,6 @@ int main(int argc, char **argv)
 				                 "'%s'\n", optarg);
 				goto exit;
 			}
-			break;
-		case 'w':
-			flags |= F_WAIT;
 			break;
 		case 'f':
 			flags |= F_FORCE;

@@ -880,26 +880,6 @@ int cmd_key(const char* lp, nsupdate_params_t *params)
 	return ret;
 }
 
-/*
- *   Not implemented.
- */
-
-int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
-{
-	UNUSED(params);
-	DBG("%s: lp='%s'\n", __func__, lp);
-
-	return KNOT_ENOTSUP;
-}
-
-int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
-{
-	UNUSED(params);
-	DBG("%s: lp='%s'\n", __func__, lp);
-
-	return KNOT_ENOTSUP;
-}
-
 int cmd_origin(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
@@ -918,6 +898,26 @@ int cmd_origin(const char* lp, nsupdate_params_t *params)
 	free(name);
 
 	return ret;
+}
+
+/*
+ *   Not implemented.
+ */
+
+int cmd_gsstsig(const char* lp, nsupdate_params_t *params)
+{
+	UNUSED(params);
+	DBG("%s: lp='%s'\n", __func__, lp);
+
+	return KNOT_ENOTSUP;
+}
+
+int cmd_oldgsstsig(const char* lp, nsupdate_params_t *params)
+{
+	UNUSED(params);
+	DBG("%s: lp='%s'\n", __func__, lp);
+
+	return KNOT_ENOTSUP;
 }
 
 int cmd_realm(const char* lp, nsupdate_params_t *params)

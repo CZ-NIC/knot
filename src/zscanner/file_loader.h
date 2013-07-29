@@ -29,37 +29,25 @@
 
 #include <stdint.h>			// uint32_t
 
-#include "common/descriptor.h"		// KNOT_CLASS_IN
 #include "zscanner/scanner.h"		// scanner_t
-
-/*! \brief Settings block size in bytes. */
-#define SETTINGS_BUFFER_LENGTH		 1024
-/*! \brief Default ttl value. */
-#define DEFAULT_TTL			 3600
-/*! \brief Default class value. */
-#define DEFAULT_CLASS		KNOT_CLASS_IN
 
 /*! \brief Structure for zone file loader (each included file has one). */
 typedef struct {
 	/*!< File descriptor. */
-	int	  fd;
+	int       fd;
 	/*!< Zone file name this loader belongs to. */
-	char	  *file_name;
+	char      *file_name;
 	/*!< Zone scanner context stucture. */
 	scanner_t *scanner;
-	/*!< Zone settings buffer. */
-	char	  settings_buffer[SETTINGS_BUFFER_LENGTH];
-	/*!< Length of zone settings buffer. */
-	uint32_t  settings_length;
 } file_loader_t;
 
 /*!
  * \brief Creates file loader structure.
  *
  * \param file_name		Name of file to process.
- * \param zone_origin		Initial zone origin (used in settings block).
- * \param default_class		Default class value.
- * \param default_ttl		Default ttl value (used in settings block).
+ * \param origin		Initial zone origin.
+ * \param rclass		Zone class value.
+ * \param ttl			Initial ttl value.
  * \param process_record	Processing callback function.
  * \param process_error 	Error callback function.
  * \param data			Arbitrary data useful in callback functions.
@@ -67,13 +55,13 @@ typedef struct {
  * \retval file_loader		if success.
  * \retval 0			if error.
  */
-file_loader_t* file_loader_create(const char	 *file_name,
-				  const char	 *zone_origin,
-				  const uint16_t default_class,
-				  const uint32_t default_ttl,
-				  void (*process_record)(const scanner_t *),
-				  void (*process_error)(const scanner_t *),
-				  void *data);
+file_loader_t* file_loader_create(const char     *file_name,
+                                  const char     *origin,
+                                  const uint16_t rclass,
+                                  const uint32_t ttl,
+                                  void (*process_record)(const scanner_t *),
+                                  void (*process_error)(const scanner_t *),
+                                  void *data);
 
 /*!
  * \brief Destroys file loader structure.
@@ -90,15 +78,14 @@ void file_loader_free(file_loader_t *file_loader);
  * syntax error occures, then process_error callback function is called.
  *
  * \note Zone scanner error code and other information are stored in
- * fl.scanner context.
+ *       fl.scanner context.
  *
  * \param file_loader	File loader structure.
  *
- * \retval KNOT_EOK	if success.
- * \retval error_code   if error.
+ * \retval ZSCANNER_OK	if success.
+ * \retval error_code	if error.
  */
 int file_loader_process(file_loader_t *file_loader);
-
 
 #endif // _ZSCANNER__FILE_LOADER_H_
 
