@@ -216,6 +216,8 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
 		assert(part == KNOT_CHANGES_NSEC3_NODE);
 		add_tail(&ch->old_nsec3, (node *)list_node);
 	}
+	
+	return KNOT_EOK;
 }
 
 static void knot_changeset_store_soa(knot_rrset_t **chg_soa,

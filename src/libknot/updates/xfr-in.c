@@ -2630,13 +2630,11 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_mark_empty_node(knot_node_t *node, void *data,
+static void xfrin_mark_empty_node(knot_node_t *node, knot_changes_t *changes,
                                   knot_changes_part_t part)
 {
 	assert(node != NULL);
-	assert(data != NULL);
-
-	knot_changes_t *changes = (knot_changes_t *)data;
+	assert(changes != NULL);
 
 	if (knot_node_rrset_count(node) == 0
 	    && knot_node_children(node) == 0) {
@@ -2665,12 +2663,14 @@ static void xfrin_mark_empty_node(knot_node_t *node, void *data,
 
 static void xfrin_mark_empty_nsec3(knot_node_t *node, void *data)
 {
-	xfrin_mark_empty_node(node, data, KNOT_CHANGES_NSEC3_NODE);
+	xfrin_mark_empty_node(node,
+	                      (knot_changes_t *)data, KNOT_CHANGES_NSEC3_NODE);
 }
 
 static void xfrin_mark_empty(knot_node_t *node, void *data)
 {
-	xfrin_mark_empty_node(node, data, KNOT_CHANGES_NORMAL_NODE);
+	xfrin_mark_empty_node(node,
+	                      (knot_changes_t *)data, KNOT_CHANGES_NORMAL_NODE);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2684,14 +2684,14 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 
 	// walk through the zone and select nodes to be removed
 	ret = knot_zone_contents_tree_apply_inorder_reverse(contents,
-							    xfrin_mark_empty,
-							    (void *)changes);
+	                                                    xfrin_mark_empty,
+	                                                    changes);
 	assert(ret == KNOT_EOK);
 
 	// Do the same with NSEC3 nodes.
 	ret = knot_zone_contents_nsec3_apply_inorder_reverse(contents,
-							 xfrin_mark_empty_nsec3,
-							 (void *)changes);
+	                                                     xfrin_mark_empty_nsec3,
+	                                                     changes);
 	assert(ret == KNOT_EOK);
 
 	// Remove these nodes from zone tree.
