@@ -78,7 +78,7 @@ static void tree_apply_cb(knot_node_t **node,
  * \retval KNOT_EOK if both arguments are non-NULL and the node belongs to the
  *         zone.
  * \retval KNOT_EINVAL if either of the arguments is NULL.
- * \retval KNOT_EBADZONE if the node does not belong to the zone.
+ * \retval KNOT_EOUTOFZONE if the node does not belong to the zone.
  */
 static int knot_zone_contents_check_node(
 	const knot_zone_contents_t *contents, const knot_node_t *node)
@@ -101,7 +101,7 @@ dbg_zone_exec(
 		free(node_owner);
 		free(apex_owner);
 );
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 	return KNOT_EOK;
 }
@@ -240,7 +240,7 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
 	int ret = knot_zone_contents_find_dname(zone, dname, &n,
 					      &closest_encloser, &prev);
 
-	if (ret == KNOT_EINVAL || ret == KNOT_EBADZONE) {
+	if (ret == KNOT_EINVAL || ret == KNOT_EOUTOFZONE) {
 		// TODO: do some cleanup if needed
 		dbg_zone_detail("Failed to find the name in zone: %s\n",
 				knot_strerror(ret));
@@ -1036,6 +1036,38 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
+int knot_zone_contents_create_node(knot_zone_contents_t *contents,
+                                   const knot_rrset_t *rr,
+                                   knot_node_t **node)
+{
+	if (contents == NULL || rr == NULL || node == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	*node = knot_node_new(rr->owner, NULL, 0);
+	if (*node == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Add to the proper tree. */
+	int ret = KNOT_EOK;
+	if (knot_rrset_is_nsec3rel(rr)) {
+		ret = knot_zone_contents_add_nsec3_node(contents, *node, 1, 0);
+	} else {
+		ret = knot_zone_contents_add_node(contents, *node, 1, 0);
+	}
+
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to add new node to zone contents.\n");
+		knot_node_free(node);
+		return ret;
+	}
+
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
                                  knot_rrset_t *rrset, knot_node_t **node,
                                  knot_rrset_dupl_handling_t dupl)
@@ -1057,7 +1089,7 @@ dbg_zone_exec_detail(
 				 zone->apex->owner) != 0
 	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
 					  zone->apex->owner)) {
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	if ((*node) == NULL
@@ -1121,7 +1153,7 @@ dbg_zone_exec(
 				    zone->apex->owner) != 0
 	    && !knot_dname_is_subdomain(knot_rrset_owner(*rrset),
 					  zone->apex->owner)) {
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	// check if the RRSIGs belong to the RRSet
@@ -1238,7 +1270,7 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 				 zone->apex->owner) != 0
 	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
 					  zone->apex->owner)) {
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	if ((*node) == NULL
@@ -1395,7 +1427,7 @@ dbg_zone_exec_verb(
 	if (!knot_dname_is_subdomain(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	knot_node_t *found = NULL, *prev = NULL;
@@ -1425,7 +1457,7 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 	// there must be at least one node with domain name less or equal to
 	// the searched name if the name belongs to the zone (the root)
 	if (*node == NULL && *previous == NULL) {
-		return KNOT_EBADZONE;
+		return KNOT_EOUTOFZONE;
 	}
 
 	/* This function was quite out of date. The find_in_tree() function

@@ -113,6 +113,25 @@ enum knot_rr_type {
 };
 
 /*!
+ * \brief Some (OBSOLETE) resource record type constants.
+ *
+ * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
+ *
+ * \note These records can contain compressed domain name in rdata so
+ *       it is important to know the position of it during transfers.
+ *       See RFC 3597#4.
+ */
+enum knot_obsolete_rr_type {
+	KNOT_RRTYPE_MD         =   3,
+	KNOT_RRTYPE_MF         =   4,
+	KNOT_RRTYPE_MB         =   7,
+	KNOT_RRTYPE_MG         =   8,
+	KNOT_RRTYPE_MR         =   9,
+	KNOT_RRTYPE_PX         =  26,
+	KNOT_RRTYPE_NXT        =  30
+};
+
+/*!
  * \brief Constants characterising the wire format of RDATA items.
  */
 enum knot_rdata_wireformat {
@@ -120,8 +139,6 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_COMPRESSED_DNAME   = -10,
 	/*!< Uncompressed dname. */
 	KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
-	/*!< Dname with preserved letter cases. */
-	KNOT_RDATA_WF_LITERAL_DNAME,
 	/*!< Initial part of NAPTR record before dname. */
 	KNOT_RDATA_WF_NAPTR_HEADER,
 	/*!< Final part of a record. */
@@ -149,6 +166,16 @@ typedef struct {
  *         unknown type.
  */
 const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type);
+
+/*!
+ * \brief Gets rdata descriptor for given RR name (obsolete version).
+ *
+ * \param name Mnemonic of RR type whose descriptor should be returned.
+ *
+ * \retval RR descriptor for given name, NULL descriptor if
+ *         unknown type.
+ */
+const rdata_descriptor_t *get_obsolete_rdata_descriptor(const uint16_t type);
 
 /*!
  * \brief Converts numeric type representation to mnemonic string.

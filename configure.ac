@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.3.0-rc4], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.3.0-rc5], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-bzip2 dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -117,18 +117,26 @@ AC_ARG_ENABLE([debuglevel],
     esac], [])
 
 # recvmmsg() (valgrind doesn't support it, so disable for debugging)
+# The check for struct mmsghdr is required when libc doesn't have an API but the function links
 AC_ARG_ENABLE([recvmmsg],
     AS_HELP_STRING([--enable-recvmmsg=yes|no], [enable recvmmsg() network API under Linux (kernel support required) (set to 'no' if you have trouble running server under valgrind) [default=yes]]),
     [case "${enableval}" in
       yes)
-	  AC_CHECK_FUNCS([recvmmsg sendmmsg])
+	  AC_CHECK_FUNCS([sendmmsg])
+          AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
+          [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
           ;;
       no)
           ;;
       *)
           AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg])
           ;;
-    esac], [ AC_CHECK_FUNCS([recvmmsg sendmmsg]) ])
+    esac],
+    [
+      AC_CHECK_FUNCS([sendmmsg])
+      AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/socket.h>]], [[struct mmsghdr v; recvmmsg(0,0,0,0,0);]])],
+      [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
+    ])
 
 # Enable integrity check
 AC_ARG_ENABLE([integrity-check],

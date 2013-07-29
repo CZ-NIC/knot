@@ -51,7 +51,11 @@ void* term_thr(void *arg)
 
 static int events_tests_count(int argc, char *argv[])
 {
-	return 9 + 11;
+	int count = 9 + 10;
+#ifdef ENABLE_TIMED_TESTS
+	count += 1;
+#endif
+	return count;
 }
 
 static int events_tests_run(int argc, char *argv[])
@@ -137,6 +141,7 @@ static int events_tests_run(int argc, char *argv[])
 	gettimeofday(&rt, 0);
 	ok(e != 0, "evsched: received valid event");
 
+#ifdef ENABLE_TIMED_TESTS
 	// 4. Check receive time
 	double passed = (rt.tv_sec - st.tv_sec) * 1000;
 	passed += (rt.tv_usec - st.tv_usec) / 1000;
@@ -145,6 +150,7 @@ static int events_tests_run(int argc, char *argv[])
 	int in_bounds = (passed >= lb) && (passed <= ub);
 	ok(in_bounds, "evsched: receive time %.1lfms is in <%.1lf,%.1lf>",
 	   passed, lb, ub);
+#endif
 
 	// 5. Check data
 	ok(e->data == (void*)0xcafe, "evsched: received data is valid");

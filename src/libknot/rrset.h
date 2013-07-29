@@ -29,6 +29,7 @@
 #define _KNOT_RRSET_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "dname.h"
 
@@ -360,6 +361,13 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
  *         Owner, Type, Class or TTL does not match.
  */
 int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, int *merged, int *deleted_rrs);
+
+/*!
+ * \brief Return true if the RRSet is an NSEC3 related type.
+ *
+ * \param rr RRSet.
+ */
+bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
 
 
 //TODO test

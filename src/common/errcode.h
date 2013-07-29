@@ -71,7 +71,7 @@ enum knot_error {
 	KNOT_ECRYPTO,         /*!< Error in crypto library. */
 	KNOT_ENSEC3PAR,       /*!< Missing or wrong NSEC3PARAM record. */
 	KNOT_ENSEC3CHAIN,     /*!< Missing or wrong NSEC3 chain in the zone. */
-	KNOT_EBADZONE,        /*!< Domain name does not belong to the zone. */
+	KNOT_EOUTOFZONE,      /*!< Domain name does not belong to the zone. */
 	KNOT_EHASH,           /*!< Error in hash table. */
 	KNOT_EZONEINVAL,      /*!< Invalid zone file. */
 	KNOT_ENOZONE,         /*!< No such zone found. */

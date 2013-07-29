@@ -48,8 +48,6 @@ Parameters:
  -v, --verbose              Verbose mode - additional runtime
                             information.
  -V, --version              Print knot server version.
- -w, --wait                 Wait for the server to finish stop
-                            operations.
  -i, --interactive          Interactive mode (do not daemonize).
  -h, --help                 Print help and usage.
 

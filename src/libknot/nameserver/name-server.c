@@ -2180,7 +2180,7 @@ dbg_ns_exec_verb(
 		dbg_ns_verb(" and previous node: (nil).\n");
 	}
 );
-	if (find_ret == KNOT_EBADZONE) {
+	if (find_ret == KNOT_EOUTOFZONE) {
 		// possible only if we followed CNAME or DNAME
 		assert(cname != 0);
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
