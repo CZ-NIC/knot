@@ -93,7 +93,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	}
 
 	knot_rrset_t *new_rrset = NULL;
-	ret = knot_rrset_deep_copy(rrset, &new_rrset, 0);
+	ret = knot_rrset_deep_copy(rrset, &new_rrset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -264,7 +264,7 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 	 *        copy.
 	 */
 	*rrset_copy = NULL;
-	ret = knot_rrset_deep_copy(rrset, rrset_copy, 1);
+	ret = knot_rrset_deep_copy(rrset, rrset_copy);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -667,7 +667,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 						  KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_begin = NULL;
 	knot_rrset_t *soa_end = NULL;
-	ret = knot_rrset_deep_copy(soa, &soa_begin, 1);
+	ret = knot_rrset_deep_copy(soa, &soa_begin);
 	if (ret == KNOT_EOK) {
 		knot_changeset_store_soa(&changeset->soa_from,
 		                         &changeset->serial_from, soa_begin);
@@ -741,7 +741,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 	if (soa_end == NULL) {
 		/* If not set */
 		assert(sn_new == (uint32_t)sn + 1);
-		ret = knot_rrset_deep_copy(soa, &soa_end, 1);
+		ret = knot_rrset_deep_copy(soa, &soa_end);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("ddns: Could not copy SOA RRSet (%s).\n ",
 			         knot_strerror(ret));
@@ -1050,8 +1050,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			 * to the REMOVE section.
 			 */
 			knot_rrset_t *removed_copy;
-			ret = knot_rrset_deep_copy(removed,
-			                           &removed_copy, 1);
+			ret = knot_rrset_deep_copy(removed, &removed_copy);
 			if (ret != KNOT_EOK) {
 				dbg_ddns("Failed to copy removed RRSet:"
 				         " %s\n", knot_strerror(ret));
@@ -1390,7 +1389,7 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 
 	/* Copy the RRSet from the packet. */
 	//knot_rrset_t *rr_copy;
-	int ret = knot_rrset_deep_copy(rr, rr_copy, 1);
+	int ret = knot_rrset_deep_copy(rr, rr_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy RR: %s\n", knot_strerror(ret));
 		return ret;
@@ -1480,7 +1479,7 @@ static int knot_ddns_final_soa_to_chgset(const knot_rrset_t *soa,
 	assert(changeset != NULL);
 
 	knot_rrset_t *soa_copy = NULL;
-	int ret = knot_rrset_deep_copy(soa, &soa_copy, 1);
+	int ret = knot_rrset_deep_copy(soa, &soa_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy SOA RR to the changeset: "
 			 "%s\n", knot_strerror(ret));
@@ -1506,7 +1505,7 @@ static int knot_ddns_add_rr_to_chgset(const knot_rrset_t *rr,
 	knot_rrset_t *chgset_rr = NULL;
 	knot_ddns_check_add_rr(changeset, rr, &chgset_rr);
 	if (chgset_rr == NULL) {
-		ret = knot_rrset_deep_copy(rr, &chgset_rr, 1);
+		ret = knot_rrset_deep_copy(rr, &chgset_rr);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy RR to the changeset: "
 				 "%s\n", knot_strerror(ret));
@@ -1846,7 +1845,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 *    and TTL.
 	 */
 	knot_rrset_t *to_chgset = NULL;
-	ret = knot_rrset_deep_copy(rr, &to_chgset, 1);
+	ret = knot_rrset_deep_copy(rr, &to_chgset);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy RRSet from packet to changeset.\n");
 		return ret;
@@ -2075,7 +2074,7 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	}
 
 	for (int i = 0; i < removed_count; ++i) {
-		ret = knot_rrset_deep_copy(removed[i], &to_chgset[i], 1);
+		ret = knot_rrset_deep_copy(removed[i], &to_chgset[i]);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy the removed RRSet: %s.\n",
 			         knot_strerror(ret));
@@ -2308,7 +2307,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 						  KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_begin = NULL;
 	knot_rrset_t *soa_end = NULL;
-	ret = knot_rrset_deep_copy(soa, &soa_begin, 1);
+	ret = knot_rrset_deep_copy(soa, &soa_begin);
 	if (ret == KNOT_EOK) {
 		knot_changeset_store_soa(&changeset->soa_from,
 		                         &changeset->serial_from, soa_begin);
@@ -2414,7 +2413,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 
 		/* If not set, create new SOA. */
 		assert(sn_new == (uint32_t)sn + 1);
-		ret = knot_rrset_deep_copy(soa, &soa_end, 1);
+		ret = knot_rrset_deep_copy(soa, &soa_end);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy ending SOA: %s\n",
 			         knot_strerror(ret));

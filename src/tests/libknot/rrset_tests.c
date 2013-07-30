@@ -696,7 +696,7 @@ static int test_rrset_deep_copy()
 	for (int i = 0; i < TEST_RRSET_COUNT; i++) {
 		knot_rrset_t *rrset_copy = NULL;
 		knot_rrset_t *rrset = &test_rrset_array[i].rrset;
-		int ret = knot_rrset_deep_copy(rrset, &rrset_copy, 1);
+		int ret = knot_rrset_deep_copy(rrset, &rrset_copy);
 		if (ret != KNOT_EOK) {
 			diag("Could not copy RRSet.\n");
 			return 0;

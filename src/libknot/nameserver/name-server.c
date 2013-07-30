@@ -128,7 +128,7 @@ static knot_rrset_t *ns_synth_from_wildcard(
 	const knot_rrset_t *wildcard_rrset, const knot_dname_t *qname)
 {
 	knot_rrset_t *rrset = NULL;
-	int ret = knot_rrset_deep_copy(wildcard_rrset, &rrset, 1);
+	int ret = knot_rrset_deep_copy(wildcard_rrset, &rrset);
 	if (ret != KNOT_EOK) {
 		dbg_ns("ns: ns_synth_from_wildcard: Could not copy RRSet.\n");
 		return NULL;
@@ -889,7 +889,7 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 	uint32_t min = knot_rrset_rdata_soa_minimum(soa_rrset);
 	if (min < knot_rrset_ttl(soa_rrset)) {
 		knot_rrset_t *soa_copy = NULL;
-		ret = knot_rrset_deep_copy(soa_rrset, &soa_copy, 1);
+		ret = knot_rrset_deep_copy(soa_rrset, &soa_copy);
 
 		if (ret != KNOT_EOK) {
 			return ret;

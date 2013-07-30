@@ -484,10 +484,6 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents);
 
 int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents);
 
-const knot_dname_t *knot_zone_contents_find_dname_in_rdata(
-	const knot_zone_contents_t *zone,
-	const knot_dname_t *dname);
-
 /*!
  * \brief Creates a NSEC3 hashed name for the given domain name.
  *
@@ -507,9 +503,6 @@ const knot_dname_t *knot_zone_contents_find_dname_in_rdata(
 int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
                                            const knot_dname_t *name,
                                            knot_dname_t **nsec3_name);
-
-void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
-                                                hattrie_t *lookup_tree);
 
 /*!
  * \brief Fetch zone serial.

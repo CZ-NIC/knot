@@ -1217,13 +1217,13 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 //			       sizeof(knot_dname_t *));
 			int unpacked_size = knot_dname_unpack(
 				rdata_buffer + offset, wire + pos2,
-				KNOT_DNAME_MAX_LEN, wire);
+				KNOT_DNAME_MAXLEN, wire);
 //			parsed += pos2 - *pos;
 			parsed += knot_dname_size(wire + pos2);
 			dbg_rrset_detail("rr: parse_rdata_wire: Parsed DNAME, "
 			                 "length=%zu.\n", pos2 - *pos);
 dbg_rrset_exec_detail(
-			char *name = knot_dname_to_str(dname);
+			char *name = knot_dname_to_str(rdata_buffer + offset);
 			dbg_rrset_detail("rr: parse_rdata_wire: Parsed "
 			                 "DNAME=%s\n", name);
 			free(name);
@@ -1365,8 +1365,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	(*to)->type = from->type;
 	(*to)->rdata_count = from->rdata_count;
 	if (from->rrsigs != NULL) {
-		int ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs,
-		                           copy_rdata_dnames);
+		int ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(to, 1, 0);
 			return ret;

@@ -165,41 +165,8 @@ dbg_zone_exec_detail(
 	}
 }
 
-void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
-                                                hattrie_t *lookup_tree)
-{
-	/* Disabled dname duplication checks since dnames can't be refcounted.
-	 * This will be replaced with refcounting RDATA, so I'm keeping the API
-	 * intact to ease the transition.
-	 */
-}
-
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Adjusts one RDATA item by replacing domain name by one present in the
- *        zone.
- *
- * This function tries to find the domain name in the zone. If the name is not
- * in the zone, it does nothing. If it is there, it destroys the domain name
- * stored in the RDATA item and replaces it by pointer to the domain name from
- * the zone.
- *
- * \warning Call this function only with RDATA items which store domain names,
- *          otherwise the behaviour is undefined.
- *
- * \param rdata RDATA where the item is located.
- * \param zone Zone to which the RDATA belongs.
- * \param pos Position of the RDATA item in the RDATA.
- */
-static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
-                                                  hattrie_t *lookup_tree,
-                                                  knot_node_t *node,
-                                                  knot_dname_t **in_dname)
-{
-	knot_zone_contents_insert_dname_into_table(in_dname, lookup_tree);
-}
 
-/*----------------------------------------------------------------------------*/
 /*!
  * \brief Adjusts all RDATA in the given RRSet by replacing domain names by ones
  *        present in the zone.
@@ -216,13 +183,13 @@ static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
                                                      knot_zone_contents_t *zone,
                                                      knot_node_t *node)
 {
-	knot_dname_t **dn = NULL;
-	while((dn = knot_rrset_get_next_dname(rrset, dn))) {
-		knot_zone_contents_adjust_rdata_dname(zone,
-						      lookup_tree,
-						      node,
-						      dn);
-	}
+	/* Disabled dname duplication checks since dnames can't be refcounted.
+	 * This will be replaced with refcounting RDATA, so I'm keeping the API
+	 * intact to ease the transition.
+	 *
+	 * LS: This function is enough, the subsequent ones dealt only with
+	 *     dnames in RDATA. No need for that now.
+	 */
 }
 
 /*----------------------------------------------------------------------------*/
@@ -311,10 +278,6 @@ static int knot_zone_contents_adjust_node(knot_node_t *node,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
-//	const knot_node_t *old_dname_node = node->owner->node;
-	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
-//	assert(node->owner->node == old_dname_node || old_dname_node == NULL);
 
 	// check if this node is not a wildcard child of its parent
 	if (knot_dname_is_wildcard(knot_node_owner(node))) {
@@ -2375,63 +2338,6 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 	assert(ret == KNOT_EOK);
 
 	return data.errors;
-}
-
-struct dname_lookup_data {
-	const knot_dname_t *dname;
-	const knot_dname_t *found_dname;
-	int stopped;
-};
-
-static void find_dname_in_rdata(knot_node_t **tnode, void *data)
-{
-	struct dname_lookup_data *in_data = (struct dname_lookup_data *)data;
-	if (in_data->stopped) {
-		return;
-	}
-
-	/* For all RRSets in node. */
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(*tnode);
-	if (rrsets == NULL) {
-		return;
-	}
-
-	for (uint16_t i = 0; i < (*tnode)->rrset_count; i++) {
-		knot_dname_t **dname = NULL;
-		while ((dname = knot_rrset_get_next_dname(rrsets[i], dname))) {
-			if (*dname == in_data->dname) {
-				in_data->found_dname = *dname;
-				in_data->stopped = 1;
-				return;
-			} else if (knot_dname_cmp(*dname,
-						      in_data->dname) == 0) {
-				in_data->found_dname = *dname;
-				in_data->stopped = 1;
-				return;
-			}
-		}
-	}
-
-	assert(in_data->stopped == 0);
-}
-
-const knot_dname_t *knot_zone_contents_find_dname_in_rdata(
-	const knot_zone_contents_t *zone,
-	const knot_dname_t *dname)
-{
-	struct dname_lookup_data data;
-	data.stopped = 0;
-	data.dname = dname;
-	data.found_dname = NULL;
-	knot_zone_tree_apply_inorder(zone->nodes,
-					     find_dname_in_rdata, &data);
-	if (data.stopped) {
-		/* Dname found. */
-		return data.found_dname;
-	} else {
-		assert(data.found_dname == NULL);
-		return NULL;
-	}
 }
 
 unsigned knot_zone_serial(const knot_zone_contents_t *zone)

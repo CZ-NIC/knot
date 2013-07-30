@@ -289,20 +289,6 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_insert_rdata_dnames_to_table(knot_dname_t **dname, void *data)
-{
-	hattrie_t *lookup_tree = data;
-	knot_zone_contents_insert_dname_into_table(dname, lookup_tree);
-	return KNOT_EOK;
-}
-
-static int xfrin_insert_rrset_dnames_to_table(knot_rrset_t *rrset,
-                                              hattrie_t *lookup_tree)
-{
-	knot_zone_contents_insert_dname_into_table(&rrset->owner, lookup_tree);
-	return KNOT_EOK;
-}
-
 void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 {
 	xfrin_orphan_rrsig_t *r = *rrsigs;
@@ -473,7 +459,8 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	 */
 
 	/* RR parsed - sort out DNAME duplications. */
-	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
+	/*! \todo Replace with RRSet duplicate checking. */
+//	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 	knot_node_t *node = NULL;
 	int in_zone = 0;
@@ -595,8 +582,8 @@ dbg_xfrin_exec(
 
 		dbg_rrset_detail("\nNext RR:\n\n");
 		knot_rrset_dump(rr);
-		/* RR parsed - sort out DNAME duplications. */
-		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
+		/*! \todo Replace with RRSet duplicate checking. */
+//		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 		if (node != NULL && !knot_dname_is_equal(rr->owner, node->owner)) {
 dbg_xfrin_exec_detail(
@@ -936,7 +923,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		return KNOT_EMALF;
 	}
 
-	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
+	/*! \todo Replace with RRSet duplicate checking. */
+//	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 	if (*chs == NULL) {
 		dbg_xfrin_verb("Changesets empty, creating new.\n");
@@ -1246,7 +1234,7 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 {
 	dbg_xfrin_detail("Copying old RRSet: %p\n", old);
 	// create new RRSet by copying the old one
-	int ret = knot_rrset_deep_copy(old, copy, 1);
+	int ret = knot_rrset_deep_copy(old, copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to create RRSet copy.\n");
 		return KNOT_ENOMEM;
