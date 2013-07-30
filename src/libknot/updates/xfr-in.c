@@ -2138,6 +2138,7 @@ dbg_xfrin_exec_verb(
 
 		ret = knot_changes_add_rrset(changes, *rrset, KNOT_CHANGES_NEW);
 		if (ret != KNOT_EOK) {
+			knot_rrset_free(rrset);
 			return ret;
 		}
 	}
