@@ -83,6 +83,8 @@ typedef struct zonedata_t
 		unsigned state;
 	} xfr_in;
 
+	struct event_t *dnssec_timer;  /*!< Timer for DNSSEC events. */
+
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
 	struct event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
@@ -322,6 +324,14 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time);
  * \retval KNOT_ERROR
  */
 int zones_schedule_notify(knot_zone_t *zone);
+
+/*!
+ * \brief Schedule DNSSEC event.
+ * \param zone Related zone.
+ *
+ * \return Error code, KNOT_OK if successful.
+ */
+int zones_schedule_dnssec(knot_zone_t *zone, int64_t time);
 
 /*!
  * \brief Processes forwarded UPDATE response packet.

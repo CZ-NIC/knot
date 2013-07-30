@@ -42,6 +42,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/zone/zone-diff.h"
 #include "libknot/updates/ddns.h"
+#include "libknot/dnssec/zone-events.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -86,6 +87,14 @@ static int zonedata_destroy(knot_zone_t *zone)
 		evsched_cancel(sch, zd->ixfr_dbsync);
 		evsched_event_free(sch, zd->ixfr_dbsync);
 		zd->ixfr_dbsync = 0;
+	}
+
+	/* Cancel DNSSEC timer. */
+	if (zd->dnssec_timer) {
+		evsched_t *sch = zd->dnssec_timer->parent;
+		evsched_cancel(sch, zd->dnssec_timer);
+		evsched_event_free(sch, zd->dnssec_timer);
+		zd->dnssec_timer = NULL;
 	}
 
 	acl_delete(&zd->xfr_in.acl);
@@ -3241,6 +3250,54 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 
 	return KNOT_EOK;
 }
+
+static int zones_dnssec_ev(event_t *event)
+{
+	assert(event);
+	if (event->data == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	//! \todo RCU or zone locks?
+
+	knot_zone_t *zone = (knot_zone_t *)event->data;
+	zonedata_t *zd = (zonedata_t *)zone->data;
+
+	log_server_info("Performing DNSSEC event.\n");
+
+	int result = knot_dnssec_zone_load(zone);
+	log_server_info("DNSSEC event result %d (%s).\n", result,
+			knot_strerror(result));
+
+	// cleanup
+
+	evsched_event_free(event->parent, event);
+	zd->dnssec_timer = NULL;
+
+	return KNOT_EOK;
+}
+
+int zones_schedule_dnssec(knot_zone_t *zone, int64_t time)
+{
+	if (!zone || !zone->data) {
+		return KNOT_EINVAL;
+	}
+
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	evsched_t *scheduler = zd->server->sched;
+
+	if (zd->dnssec_timer) {
+		evsched_cancel(scheduler, zd->dnssec_timer);
+		evsched_event_free(scheduler, zd->dnssec_timer);
+		zd->dnssec_timer = NULL;
+	}
+
+	zd->dnssec_timer = evsched_schedule_cb(scheduler, zones_dnssec_ev,
+					       zone, time);
+
+	return KNOT_EOK;
+}
+
 
 int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *rsize)
 {

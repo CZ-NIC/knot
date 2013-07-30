@@ -166,93 +166,19 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 }
 
 /*! \brief Sign zone callback. */
-static int remote_sign_zone(server_t *server, const knot_zone_t *zone)
+static int remote_zone_sign(server_t *server, const knot_zone_t *zone)
 {
-	if (!server || !zone)
+	if (!server || !zone) {
 		return KNOT_EINVAL;
+	}
 
-	int result = KNOT_EOK;
-
-	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	char *zone_name = knot_dname_to_str(zone->name);
-	knot_changesets_t *changesets = NULL;
-
-	log_server_info("Requested zone resign for '%s'\n", zone_name);
-
-	if (!zone_config->dnssec_enable) {
-		log_server_warning("DNSSEC not enabled for '%s'.\n", zone_name);
-		goto failure;
-	}
-
-	result = knot_changeset_allocate(&changesets, KNOT_CHANGESET_TYPE_DNSSEC);
-	if (result != KNOT_EOK) {
-		log_server_error("Cannot create new changeset.\n");
-		goto failure;
-	}
-
-	knot_changeset_t *changeset = changesets->sets;
-	assert(changeset);
-	changesets->count = 1;
-
-	// generate NSEC records
-
-	result = knot_zone_create_nsec_chain(zone->contents, changeset);
-	if (result != KNOT_EOK) {
-		log_server_error("Could not create NSEC chain for '%s' (%s).\n",
-				 zone_name, knot_strerror(result));
-		goto failure;
-	}
-
-	// add missing signatures
-
-	rcu_read_lock();
-	char *keydir = strdup(conf()->dnssec_keydir);
-	rcu_read_unlock();
-
-	result = knot_zone_sign(zone->contents, keydir, changeset);
-	free(keydir);
-	if (result != KNOT_EOK) {
-		log_server_error("Could not resing zone '%s' (%s).\n",
-				 zone_name, knot_strerror(result));
-	}
-
-	// update SOA if there are any changes
-
-	log_server_info("changeset add %zu remove %zu\n", changeset->add_count, changeset->remove_count);
-
-	if (changeset->add_count == 0 && changeset->remove_count == 0) {
-		log_server_info("No changes performed.\n");
-		result = KNOT_EOK;
-		goto failure; // not really a failure
-	}
-
-	result = knot_zone_sign_update_soa(zone->contents, changeset);
-	if (result != KNOT_EOK) {
-		log_server_error("Cannot update SOA record (%s).\n",
-				 knot_strerror(result));
-		goto failure;
-	}
-
-	// apply changeset
-
-	rcu_read_unlock(); // HACK
-	knot_zone_contents_t *new_contents = NULL;
-	result = zones_store_and_apply_chgsets(changesets, zone, &new_contents,
-					       "DNSSEC", XFR_TYPE_UPDATE);
-	rcu_read_lock();
-	if (result != KNOT_EOK) {
-		log_server_error("Cannot apply changeset (%s).\n",
-				 knot_strerror(result));
-		goto failure;
-	}
-
-	changesets = NULL; // freed by apply_chgsets
-
-failure:
-	knot_free_changesets(&changesets);
-
+	log_server_info("Requested zone resign for '%s'.\n", zone_name);
 	free(zone_name);
-	return result;
+
+	zones_schedule_dnssec((knot_zone_t *)zone, 0);
+
+	return KNOT_EOK;
 }
 
 /*!
@@ -455,7 +381,7 @@ static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
 		return KNOT_ENOTSUP;
 	}
 
-	return remote_rdata_apply(server, arguments, remote_sign_zone);
+	return remote_rdata_apply(server, arguments, remote_zone_sign);
 }
 
 /*!

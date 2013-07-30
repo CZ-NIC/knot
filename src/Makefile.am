@@ -173,6 +173,8 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/sig0.h			\
 	libknot/dnssec/sign.c			\
 	libknot/dnssec/sign.h			\
+	libknot/dnssec/zone-events.c		\
+	libknot/dnssec/zone-events.h		\
 	libknot/dnssec/zone-keys.c		\
 	libknot/dnssec/zone-keys.h		\
 	libknot/dnssec/zone-nsec.c		\

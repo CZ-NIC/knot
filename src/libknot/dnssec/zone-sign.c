@@ -396,6 +396,7 @@ static int init_sign_contexts(knot_zone_keys_t *keys)
 	return KNOT_EOK;
 }
 
+/*- public API ---------------------------------------------------------------*/
 
 int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
 		   knot_changeset_t *changeset)
