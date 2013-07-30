@@ -573,6 +573,8 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		return KNOT_EINVAL;
 	}
 
+	log_server_info("Knot DNS %s starting.\n", PACKAGE_VERSION);
+
 	/* Estimate number of threads/manager. */
 	int ret = KNOT_EOK;
 	int tu_size = conf->workers;
