@@ -2872,7 +2872,7 @@ static int ns_ixfr_put_changeset(knot_ns_xfr_t *xfr,
 	}
 
 	// 2) put remove RRSets
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chgset->remove) {
 		knot_rrset_t *rr_rem = rr_node->rr;
 		res = ns_ixfr_put_rrset(xfr, rr_rem);

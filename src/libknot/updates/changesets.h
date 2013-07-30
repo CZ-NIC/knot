@@ -58,17 +58,17 @@ typedef struct knot_changeset {
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Wrapper for oh-so-great BIRD lists. Storing: RRSet. */
-typedef struct knot_rr_node {
+/*! \brief Wrapper BIRD lists. Storing: RRSet. */
+typedef struct knot_rr_ln {
 	node n; /*!< List node. */
 	knot_rrset_t *rr; /*!< Actual usable data. */
-} knot_rr_node_t;
+} knot_rr_ln_t;
 
-/*! \brief Wrapper for oh-so-great BIRD lists. Storing: Node. */
-typedef struct knot_node_list {
+/*! \brief Wrapper BIRD lists. Storing: Node. */
+typedef struct knot_node_ln {
 	node n; /*!< List node. */
 	knot_node_t *node; /*!< Actual usable data. */
-} knot_node_list_t;
+} knot_node_ln_t;
 
 /*! \brief Partial changes done to zones - used for update/transfer rollback. */
 typedef struct {

@@ -50,7 +50,7 @@ int knot_changesets_init(knot_changesets_t **changesets, uint32_t flags)
 	(*changesets)->mmc_chs.free = NULL;
 
 	// Initialize memory context for RRs in changesets (xmalloc'd)
-	struct mempool *rr_pool = mp_new(sizeof(knot_rr_node_t));
+	struct mempool *rr_pool = mp_new(sizeof(knot_rr_ln_t));
 	(*changesets)->mmc_rr.ctx = rr_pool;
 	(*changesets)->mmc_rr.alloc = (mm_alloc_t)mp_alloc;
 	(*changesets)->mmc_rr.free = NULL;
@@ -126,8 +126,8 @@ int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
                              knot_changeset_part_t part)
 {
 	// Create wrapper node for list
-	knot_rr_node_t *rr_node =
-		chgs->mem_ctx.alloc(chgs->mem_ctx.ctx, sizeof(knot_rr_node_t));
+	knot_rr_ln_t *rr_node =
+		chgs->mem_ctx.alloc(chgs->mem_ctx.ctx, sizeof(knot_rr_ln_t));
 	if (rr_node == NULL) {
 		// This will not happen with mp_alloc, but allocator can change
 		ERR_ALLOC_FAILED;
@@ -151,7 +151,7 @@ int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
 	// otherwise just add the RR to the end of the list
 	list *l = part == KNOT_CHANGESET_ADD ? &(chgs->add) : &(chgs->remove);
 	knot_rrset_t *tail_rr =
-		EMPTY_LIST(*l) ? NULL : ((knot_rr_node_t *)(TAIL(*l)))->rr;
+		EMPTY_LIST(*l) ? NULL : ((knot_rr_ln_t *)(TAIL(*l)))->rr;
 
 	if (tail_rr && knot_changeset_rrsets_match(tail_rr, rr)) {
 		// Create changesets exactly as they came, with possibly
@@ -174,8 +174,8 @@ int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
 		return KNOT_EINVAL;
 	}
 
-	knot_rr_node_t *rr_node =
-		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_rr_node_t));
+	knot_rr_ln_t *rr_node =
+		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_rr_ln_t));
 	if (rr_node == NULL) {
 		// This will not happen with mp_alloc, but allocator can change
 		ERR_ALLOC_FAILED;
@@ -201,8 +201,8 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
 	}
 
 	// Using the same allocator for node and rr's, sizes are equal.
-	knot_node_list_t *list_node =
-		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_node_list_t));
+	knot_node_ln_t *list_node =
+		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_node_ln_t));
 	if (list_node == NULL) {
 		// This will not happen with mp_alloc, but allocator can change
 		ERR_ALLOC_FAILED;
@@ -261,7 +261,7 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 	}
 
 	// Delete RRSets in lists, in case there are any left
-	knot_rr_node_t *rr_node;
+	knot_rr_ln_t *rr_node;
 	WALK_LIST(rr_node, changeset->add) {
 		knot_rrset_deep_free(&rr_node->rr, 1, 1);
 	}

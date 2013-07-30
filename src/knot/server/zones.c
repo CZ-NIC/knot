@@ -2712,7 +2712,7 @@ int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
 
 	size_t remove_size = 0;
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chgset->remove) {
 		knot_rrset_t *rrset = rr_node->rr;
 		remove_size += rrset_binary_size(rrset);
@@ -2767,7 +2767,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'remove' section. */
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chs->remove) {
 		knot_rrset_t *rrset = rr_node->rr;
 		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);

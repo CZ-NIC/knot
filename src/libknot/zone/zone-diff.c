@@ -981,7 +981,7 @@ static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
 
 	dbg_zonediff_detail("ADD section:\n");
 	dbg_zonediff_detail("**********************************************\n");
-	knot_rr_node_t *rr_node;
+	knot_rr_ln_t *rr_node;
 	WALK_LIST(rr_node, ch->add) {
 		knot_rrset_dump(rr_node->rr);
 		dbg_zonediff_detail("\n");

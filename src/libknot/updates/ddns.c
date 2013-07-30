@@ -193,7 +193,7 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
                                      const knot_rrset_t *rr)
 {
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	node *nxt = NULL;
 	WALK_LIST_DELSAFE(rr_node, nxt, changeset->add) {
 		// Removing RR(s) from this owner
@@ -812,7 +812,7 @@ static int knot_ddns_check_remove_rr2(knot_changeset_t *changeset,
 	 */
 
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	node *nxt = NULL;
 	WALK_LIST_DELSAFE(rr_node, nxt, changeset->add) {
 		knot_rrset_t *rrset = rr_node->rr;
@@ -865,7 +865,7 @@ static void knot_ddns_check_add_rr(knot_changeset_t *changeset,
 	*removed = NULL;
 
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	node *nxt = NULL;
 	WALK_LIST_DELSAFE(rr_node, nxt, changeset->remove) {
 		knot_rrset_t *rrset = rr_node->rr;

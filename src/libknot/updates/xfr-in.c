@@ -2216,14 +2216,14 @@ dbg_xfrin_exec_detail(
 void xfrin_cleanup_successful_update(knot_changes_t *changes)
 {
 	// Free old RRSets
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changes->old_rrsets) {
 		knot_rrset_t *rrset = rr_node->rr;
 		knot_rrset_deep_free_no_sig(&rrset, 1, 1);
 	}
 
 	// Free old nodes
-	knot_node_list_t *n_node = NULL;
+	knot_node_ln_t *n_node = NULL;
 	WALK_LIST(n_node, changes->old_nodes) {
 		knot_node_free(&n_node->node);
 	}
@@ -2332,7 +2332,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 	}
 
 	dbg_xfrin("Rolling back changeset application.\n");
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changes->new_rrsets) {
 		knot_rrset_t *rrset = rr_node->rr;
 		knot_rrset_deep_free_no_sig(&rrset, 1, 1);
@@ -2358,7 +2358,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 	knot_rrset_t *rrsigs = NULL;
 	int is_nsec3 = 0;
 
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chset->remove) {
 		knot_rrset_t *rr = rr_node->rr;
 		assert(rr); // No malformed changesets should get here
@@ -2452,7 +2452,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 	knot_rrset_t *rrsigs = NULL;
 	int is_nsec3 = 0;
 
-	knot_rr_node_t *rr_node = NULL;
+	knot_rr_ln_t *rr_node = NULL;
 	node *tmp_node;
 	WALK_LIST_DELSAFE(rr_node, tmp_node, chset->add) {
 		knot_rrset_t *rr = rr_node->rr;
@@ -2698,7 +2698,7 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
 	// Remove these nodes from zone tree.
 	knot_node_t *zone_node = NULL;
 
-	knot_node_list_t *list_node = NULL;
+	knot_node_ln_t *list_node = NULL;
 	WALK_LIST(list_node, changes->old_nodes) {
 		knot_node_t *node = list_node->node;
 		assert(node);
