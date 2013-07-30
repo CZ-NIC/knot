@@ -128,9 +128,9 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	if (tmp_rrset->ttl != rrsig->ttl) {
 		char *name = knot_dname_to_str(tmp_rrset->owner);
 		assert(name);
-		log_zone_warning("RRSIG owned by: %s (covering type %d) cannot be added to "
-		                 "its RRSet, because their TTLs differ. "
-		                 "Changing TTL=%d to value=%d.\n",
+		log_zone_warning("RRSIG owned by: %s (covering type %d) cannot "
+		                 "be added to its RRSet, because their TTLs "
+		                 "differ. Changing TTL=%d to value=%d.\n",
 		                 name, knot_rdata_rrsig_type_covered(rrsig, 1),
 		                 rrsig->ttl, tmp_rrset->ttl);
 		free(name);
@@ -201,30 +201,6 @@ void process_error(const scanner_t *s)
 	}
 }
 
-// TODO this could be a part of the cycle below, but we'd need a buffer.
-//static size_t calculate_item_size(const knot_rrset_t *rrset,
-//                               const scanner_t *scanner)
-//{
-//	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
-//	assert(desc);
-//	size_t size = 0;
-//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-//		int item = desc->block_types[i];
-//		if (descriptor_item_is_dname(item)) {
-//			size += sizeof(knot_dname_t *);
-//		} else if (descriptor_item_is_fixed(item)) {
-//			assert(item == scanner->r_data_blocks[i + 1] -
-//			       scanner->r_data_blocks[i]);
-//			size += item;
-//		} else {
-//			size += scanner->r_data_blocks[i + 1] -
-//			        scanner->r_data_blocks[i];
-//		}
-//	}
-
-//	return size;
-//}
-
 static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 {
 	if (rrset == NULL) {
@@ -232,63 +208,14 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 		return KNOT_EINVAL;
 	}
 
-//	parser_context_t *parser = scanner->data;
-
-//	const rdata_descriptor_t *desc =
-//		get_rdata_descriptor(knot_rrset_type(rrset));
-//	assert(desc);
-
 	dbg_zp_detail("zp: add_rdata_to_rr: Adding type %d, RRSet has %d RRs.\n",
 	              rrset->type, rrset->rdata_count);
 
-//	size_t rdlen = calculate_item_size(rrset, scanner);
-//	size_t offset = 0;
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, scanner->r_data_length);
 	if (rdata == NULL) {
 		dbg_zp("zp: create_rdata: Could not create RR.\n");
 		return KNOT_ENOMEM;
 	}
-
-/* RRSet refactor: All this is useless now, just copy what is parsed. */
-//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-//		int item = desc->block_types[i];
-//		if (descriptor_item_is_dname(item)) {
-//			knot_dname_t *dname =
-//				knot_dname_copy(scanner->r_data + scanner->r_data_blocks[i]);
-//			if (dname == NULL) {
-//				return KNOT_ERROR;
-//			}
-//			knot_dname_to_lower(dname);
-//dbg_zp_exec_detail(
-//			char *name = knot_dname_to_str(dname);
-//			dbg_zp_detail("zp: arr_rdata_to_rr: "
-//			              "Offset=%zu:Adding dname=%s (%p)\n",
-//			              offset, name, dname);
-//			free(name);
-//);
-//			/* Handle DNAME duplications. */
-//			knot_zone_contents_insert_dname_into_table(&dname,
-//							parser->lookup_tree);
-//			memcpy(rdata + offset, &dname, sizeof(knot_dname_t *));
-//			offset += sizeof(knot_dname_t *);
-//		} else if (descriptor_item_is_fixed(item)) {
-//			//copy the whole thing
-//			// TODO check the size
-//			assert(item == scanner->r_data_blocks[i + 1] -
-//			       scanner->r_data_blocks[i]);
-//			memcpy(rdata + offset,
-//			       scanner->r_data + scanner->r_data_blocks[i],
-//			       item);
-//			offset += item;
-//		} else {
-//			memcpy(rdata + offset,
-//			       scanner->r_data + scanner->r_data_blocks[i],
-//			       scanner->r_data_blocks[i + 1] -
-//			       scanner->r_data_blocks[i]);
-//			offset += scanner->r_data_blocks[i + 1] -
-//			          scanner->r_data_blocks[i];
-//		}
-//	}
 
 	memcpy(rdata, scanner->r_data, scanner->r_data_length);
 
@@ -312,7 +239,9 @@ static void process_rr(const scanner_t *scanner)
 
 	knot_dname_to_lower(current_owner);
 
-	/*!< \todo Do not create RRSet each time - merging needs to be sorted though. */
+	/*!< \todo Do not create RRSet each time - merging needs to be
+	 *         sorted though.
+	 */
 	current_rrset = knot_rrset_new(current_owner,
 	               scanner->r_type,
 	               scanner->r_class,
@@ -401,7 +330,8 @@ static void process_rr(const scanner_t *scanner)
 		knot_rrset_t *tmp_rrsig = current_rrset;
 
 		if (parser->last_node &&
-		    !knot_dname_is_equal(parser->last_node->owner, current_rrset->owner)) {
+		    !knot_dname_is_equal(parser->last_node->owner,
+		                         current_rrset->owner)) {
 			/* RRSIG is first in the node, so we have to create it
 			 * before we return
 			 */
@@ -661,7 +591,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 
 	if (knot_zone_contents_apex(c->current_zone) == NULL ||
-	    knot_node_rrset(knot_zone_contents_apex(c->current_zone), KNOT_RRTYPE_SOA) == NULL) {
+	    knot_node_rrset(knot_zone_contents_apex(c->current_zone),
+	                    KNOT_RRTYPE_SOA) == NULL) {
 		log_zone_error("No SOA record in the zone file.\n");
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
