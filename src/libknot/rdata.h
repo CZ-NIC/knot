@@ -31,8 +31,8 @@
 #include "rrset.h"
 #include "dname.h"
 
-static inline const knot_dname_t *knot_rdata_cname_name(
-                const knot_rrset_t *rrset)
+static inline
+const knot_dname_t *knot_rdata_cname_name(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return NULL;
@@ -41,8 +41,8 @@ static inline const knot_dname_t *knot_rdata_cname_name(
 	return rrset->rdata;
 }
 
-static inline const knot_dname_t *knot_rdata_dname_target(
-                const knot_rrset_t *rrset)
+static inline
+const knot_dname_t *knot_rdata_dname_target(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return NULL;
@@ -51,8 +51,8 @@ static inline const knot_dname_t *knot_rdata_dname_target(
 	return rrset->rdata;
 }
 
-static inline const knot_dname_t *knot_rdata_soa_primary_ns(
-                const knot_rrset_t *rrset)
+static inline
+const knot_dname_t *knot_rdata_soa_primary_ns(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return NULL;
@@ -61,8 +61,8 @@ static inline const knot_dname_t *knot_rdata_soa_primary_ns(
 	return rrset->rdata;
 }
 
-static inline const knot_dname_t *knot_rdata_soa_mailbox(
-                const knot_rrset_t *rrset)
+static inline
+const knot_dname_t *knot_rdata_soa_mailbox(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return NULL;
@@ -71,7 +71,8 @@ static inline const knot_dname_t *knot_rdata_soa_mailbox(
 	return rrset->rdata + knot_dname_size(rrset->rdata);
 }
 
-static inline size_t knot_rrset_rdata_soa_names_len(const knot_rrset_t *rrset)
+static inline
+size_t knot_rrset_rdata_soa_names_len(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return 0;
@@ -81,7 +82,8 @@ static inline size_t knot_rrset_rdata_soa_names_len(const knot_rrset_t *rrset)
 	       + knot_dname_size(knot_rdata_soa_mailbox(rrset));
 }
 
-static inline uint32_t knot_rdata_soa_serial(const knot_rrset_t *rrset)
+static inline
+uint32_t knot_rdata_soa_serial(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return 0;
@@ -91,8 +93,8 @@ static inline uint32_t knot_rdata_soa_serial(const knot_rrset_t *rrset)
 	                          + knot_rrset_rdata_soa_names_len(rrset));
 }
 
-static inline void knot_rdata_soa_serial_set(knot_rrset_t *rrset,
-                                             uint32_t serial)
+static inline
+void knot_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial)
 {
 	if (rrset == NULL) {
 		return;
@@ -103,7 +105,8 @@ static inline void knot_rdata_soa_serial_set(knot_rrset_t *rrset,
 	                    + knot_rrset_rdata_soa_names_len(rrset), serial);
 }
 
-static inline uint32_t knot_rdata_soa_refresh(const knot_rrset_t *rrset)
+static inline
+uint32_t knot_rdata_soa_refresh(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return 0;
@@ -113,7 +116,8 @@ static inline uint32_t knot_rdata_soa_refresh(const knot_rrset_t *rrset)
 	                          + knot_rrset_rdata_soa_names_len(rrset) + 4);
 }
 
-static inline uint32_t knot_rdata_soa_retry(const knot_rrset_t *rrset)
+static inline
+uint32_t knot_rdata_soa_retry(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return 0;
@@ -123,7 +127,8 @@ static inline uint32_t knot_rdata_soa_retry(const knot_rrset_t *rrset)
 	                          + knot_rrset_rdata_soa_names_len(rrset) + 8);
 }
 
-static inline uint32_t knot_rdata_soa_expire(const knot_rrset_t *rrset)
+static inline
+uint32_t knot_rdata_soa_expire(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return 0;
@@ -133,7 +138,8 @@ static inline uint32_t knot_rdata_soa_expire(const knot_rrset_t *rrset)
 	                          + knot_rrset_rdata_soa_names_len(rrset) + 12);
 }
 
-static inline uint32_t knot_rdata_soa_minimum(const knot_rrset_t *rrset)
+static inline
+uint32_t knot_rdata_soa_minimum(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL) {
 		return 0;
@@ -143,8 +149,8 @@ static inline uint32_t knot_rdata_soa_minimum(const knot_rrset_t *rrset)
 	                          + knot_rrset_rdata_soa_names_len(rrset) + 16);
 }
 
-static inline uint16_t knot_rdata_rrsig_type_covered(const knot_rrset_t *rrset,
-                                                     size_t pos)
+static inline
+uint16_t knot_rdata_rrsig_type_covered(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return 0;
@@ -153,8 +159,8 @@ static inline uint16_t knot_rdata_rrsig_type_covered(const knot_rrset_t *rrset,
 	return knot_wire_read_u16(knot_rrset_get_rdata(rrset, pos));
 }
 
-static inline uint8_t knot_rdata_rrsig_algorithm(const knot_rrset_t *rrset,
-                                                 size_t pos)
+static inline
+uint8_t knot_rdata_rrsig_algorithm(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -163,8 +169,8 @@ static inline uint8_t knot_rdata_rrsig_algorithm(const knot_rrset_t *rrset,
 	return *(knot_rrset_get_rdata(rrset, pos) + 2);
 }
 
-static inline uint8_t knot_rdata_rrsig_labels(const knot_rrset_t *rrset,
-                                              size_t pos)
+static inline
+uint8_t knot_rdata_rrsig_labels(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -173,8 +179,8 @@ static inline uint8_t knot_rdata_rrsig_labels(const knot_rrset_t *rrset,
 	return *(knot_rrset_get_rdata(rrset, pos) + 3);
 }
 
-static inline uint32_t knot_rdata_rrsig_original_ttl(const knot_rrset_t *rrset,
-                                                     size_t pos)
+static inline
+uint32_t knot_rdata_rrsig_original_ttl(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -183,8 +189,8 @@ static inline uint32_t knot_rdata_rrsig_original_ttl(const knot_rrset_t *rrset,
 	return knot_wire_read_u32(knot_rrset_get_rdata(rrset, pos) + 4);
 }
 
-static inline uint32_t knot_rdata_rrsig_sig_expiration(const knot_rrset_t *rrset,
-                                                       size_t pos)
+static inline
+uint32_t knot_rdata_rrsig_sig_expiration(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -193,8 +199,8 @@ static inline uint32_t knot_rdata_rrsig_sig_expiration(const knot_rrset_t *rrset
 	return knot_wire_read_u32(knot_rrset_get_rdata(rrset, pos) + 8);
 }
 
-static inline uint32_t knot_rdata_rrsig_sig_inception(const knot_rrset_t *rrset,
-                                                      size_t pos)
+static inline
+uint32_t knot_rdata_rrsig_sig_inception(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -203,8 +209,8 @@ static inline uint32_t knot_rdata_rrsig_sig_inception(const knot_rrset_t *rrset,
 	return knot_wire_read_u32(knot_rrset_get_rdata(rrset, pos) + 12);
 }
 
-static inline uint16_t knot_rdata_rrsig_key_tag(const knot_rrset_t *rrset,
-                                                size_t pos)
+static inline
+uint16_t knot_rdata_rrsig_key_tag(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -213,8 +219,9 @@ static inline uint16_t knot_rdata_rrsig_key_tag(const knot_rrset_t *rrset,
 	return knot_wire_read_u16(knot_rrset_get_rdata(rrset, pos) + 16);
 }
 
-static inline const knot_dname_t *knot_rdata_rrsig_signer_name(
-                const knot_rrset_t *rrset, size_t pos)
+static inline
+const knot_dname_t *knot_rdata_rrsig_signer_name(const knot_rrset_t *rrset,
+                                                 size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return NULL;
@@ -223,8 +230,8 @@ static inline const knot_dname_t *knot_rdata_rrsig_signer_name(
 	return knot_rrset_get_rdata(rrset, pos) + 18;
 }
 
-static inline uint16_t knot_rdata_dnskey_flags(const knot_rrset_t *rrset,
-                                               size_t pos)
+static inline
+uint16_t knot_rdata_dnskey_flags(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -233,8 +240,8 @@ static inline uint16_t knot_rdata_dnskey_flags(const knot_rrset_t *rrset,
 	return knot_wire_read_u16(knot_rrset_get_rdata(rrset, pos));
 }
 
-static inline uint8_t knot_rdata_dnskey_proto(const knot_rrset_t *rrset,
-                                              size_t pos)
+static inline
+uint8_t knot_rdata_dnskey_proto(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -243,8 +250,8 @@ static inline uint8_t knot_rdata_dnskey_proto(const knot_rrset_t *rrset,
 	return *(knot_rrset_get_rdata(rrset, pos) + 2);
 }
 
-static inline uint8_t knot_rdata_dnskey_alg(const knot_rrset_t *rrset,
-                                            size_t pos)
+static inline
+uint8_t knot_rdata_dnskey_alg(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -253,9 +260,9 @@ static inline uint8_t knot_rdata_dnskey_alg(const knot_rrset_t *rrset,
 	return *(knot_rrset_get_rdata(rrset, pos) + 3);
 }
 
-static inline void knot_rdata_dnskey_key(const knot_rrset_t *rrset,
-                                         size_t pos, uint8_t **key,
-                                         uint16_t *key_size)
+static inline
+void knot_rdata_dnskey_key(const knot_rrset_t *rrset, size_t pos, uint8_t **key,
+                           uint16_t *key_size)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return;
@@ -265,8 +272,8 @@ static inline void knot_rdata_dnskey_key(const knot_rrset_t *rrset,
 	*key_size = rrset_rdata_item_size(rrset, pos) - 4;
 }
 
-static inline const knot_dname_t *knot_rdata_nsec_next(const knot_rrset_t *rrset,
-                                                       size_t pos)
+static inline
+const knot_dname_t *knot_rdata_nsec_next(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return NULL;
@@ -275,9 +282,9 @@ static inline const knot_dname_t *knot_rdata_nsec_next(const knot_rrset_t *rrset
 	return rrset_rdata_pointer(rrset, pos);
 }
 
-static inline void knot_rdata_nsec_bitmap(const knot_rrset_t *rrset,
-                                          size_t rr_pos, uint8_t **bitmap,
-                                          uint16_t *size)
+static inline
+void knot_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
+                            uint8_t **bitmap, uint16_t *size)
 {
 	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
 		return;
@@ -290,8 +297,8 @@ static inline void knot_rdata_nsec_bitmap(const knot_rrset_t *rrset,
 	*size = rrset_rdata_item_size(rrset, rr_pos) - next_size;
 }
 
-static inline uint8_t knot_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
-                                                 size_t pos)
+static inline
+uint8_t knot_rdata_nsec3_algorithm(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -300,8 +307,8 @@ static inline uint8_t knot_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
 	return *(rrset_rdata_pointer(rrset, pos));
 }
 
-static inline uint8_t knot_rdata_nsec3_flags(const knot_rrset_t *rrset,
-                                             size_t pos)
+static inline
+uint8_t knot_rdata_nsec3_flags(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -310,8 +317,8 @@ static inline uint8_t knot_rdata_nsec3_flags(const knot_rrset_t *rrset,
 	return *(rrset_rdata_pointer(rrset, pos) + 1);
 }
 
-static inline uint16_t knot_rdata_nsec3_iterations(const knot_rrset_t *rrset,
-                                                   size_t pos)
+static inline
+uint16_t knot_rdata_nsec3_iterations(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -320,8 +327,8 @@ static inline uint16_t knot_rdata_nsec3_iterations(const knot_rrset_t *rrset,
 	return knot_wire_read_u16(rrset_rdata_pointer(rrset, pos) + 2);
 }
 
-static inline uint8_t knot_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
-                                                   size_t pos)
+static inline
+uint8_t knot_rdata_nsec3_salt_length(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return 0;
@@ -330,8 +337,8 @@ static inline uint8_t knot_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
 	return *(rrset_rdata_pointer(rrset, pos) + 4);
 }
 
-static inline const uint8_t *knot_rdata_nsec3_salt(const knot_rrset_t *rrset,
-                                                   size_t pos)
+static inline
+const uint8_t *knot_rdata_nsec3_salt(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return NULL;
@@ -340,9 +347,9 @@ static inline const uint8_t *knot_rdata_nsec3_salt(const knot_rrset_t *rrset,
 	return rrset_rdata_pointer(rrset, pos) + 5;
 }
 
-static inline void knot_rdata_nsec3_next_hashed(const knot_rrset_t *rrset,
-                                                size_t pos, uint8_t **name,
-                                                uint8_t *name_size)
+static inline
+void knot_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
+                                  uint8_t **name, uint8_t *name_size)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return;
@@ -353,9 +360,9 @@ static inline void knot_rdata_nsec3_next_hashed(const knot_rrset_t *rrset,
 	*name = knot_rrset_get_rdata(rrset, pos) + 4 + salt_size + 2;
 }
 
-static inline void knot_rdata_nsec3_bitmap(const knot_rrset_t *rrset,
-                                           size_t pos, uint8_t **bitmap,
-                                           uint16_t *size)
+static inline
+void knot_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t pos,
+                             uint8_t **bitmap, uint16_t *size)
 {
 	if (rrset == NULL || pos >= rrset->rdata_count) {
 		return;
@@ -375,8 +382,8 @@ static inline void knot_rdata_nsec3_bitmap(const knot_rrset_t *rrset,
 	*size = rrset_rdata_item_size(rrset, pos) - offset;
 }
 
-static inline uint8_t knot_rdata_nsec3param_algorithm(const knot_rrset_t *rrset,
-                                                      size_t pos)
+static inline
+uint8_t knot_rdata_nsec3param_algorithm(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return 0;
@@ -385,8 +392,8 @@ static inline uint8_t knot_rdata_nsec3param_algorithm(const knot_rrset_t *rrset,
 	return *(rrset_rdata_pointer(rrset, pos));
 }
 
-static inline uint8_t knot_rdata_nsec3param_flags(const knot_rrset_t *rrset,
-                                                  size_t pos)
+static inline
+uint8_t knot_rdata_nsec3param_flags(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return 0;
@@ -395,8 +402,8 @@ static inline uint8_t knot_rdata_nsec3param_flags(const knot_rrset_t *rrset,
 	return *(rrset_rdata_pointer(rrset, pos) + 1);
 }
 
-static inline uint16_t knot_rdata_nsec3param_iterations(
-                const knot_rrset_t *rrset, size_t pos)
+static inline
+uint16_t knot_rdata_nsec3param_iterations(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return 0;
@@ -405,8 +412,8 @@ static inline uint16_t knot_rdata_nsec3param_iterations(
 	return knot_wire_read_u16(rrset_rdata_pointer(rrset, pos) + 2);
 }
 
-static inline uint8_t knot_rdata_nsec3param_salt_length(
-                const knot_rrset_t *rrset, size_t pos)
+static inline
+uint8_t knot_rdata_nsec3param_salt_length(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return 0;
@@ -415,8 +422,8 @@ static inline uint8_t knot_rdata_nsec3param_salt_length(
 	return *(rrset_rdata_pointer(rrset, pos) + 4);
 }
 
-static inline const uint8_t *knot_rdata_nsec3param_salt(
-                const knot_rrset_t *rrset, size_t pos)
+static inline
+const uint8_t *knot_rdata_nsec3param_salt(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return NULL;
@@ -425,8 +432,8 @@ static inline const uint8_t *knot_rdata_nsec3param_salt(
 	return rrset_rdata_pointer(rrset, pos) + 5;
 }
 
-static inline const knot_dname_t *knot_rdata_ns_name(const knot_rrset_t *rrset,
-                                              size_t pos)
+static inline
+const knot_dname_t *knot_rdata_ns_name(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return NULL;
@@ -435,8 +442,8 @@ static inline const knot_dname_t *knot_rdata_ns_name(const knot_rrset_t *rrset,
 	return rrset_rdata_pointer(rrset, pos);
 }
 
-static inline const knot_dname_t *knot_rdata_mx_name(const knot_rrset_t *rrset,
-                                                     size_t pos)
+static inline
+const knot_dname_t *knot_rdata_mx_name(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return NULL;
@@ -445,8 +452,8 @@ static inline const knot_dname_t *knot_rdata_mx_name(const knot_rrset_t *rrset,
 	return rrset_rdata_pointer(rrset, pos) + 2;
 }
 
-static inline const knot_dname_t *knot_rdata_srv_name(const knot_rrset_t *rrset,
-                                                      size_t pos)
+static inline
+const knot_dname_t *knot_rdata_srv_name(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return NULL;
@@ -455,8 +462,8 @@ static inline const knot_dname_t *knot_rdata_srv_name(const knot_rrset_t *rrset,
 	return rrset_rdata_pointer(rrset, pos) + 6;
 }
 
-static inline const knot_dname_t *knot_rdata_name(const knot_rrset_t *rrset,
-                                                  size_t pos)
+static inline
+const knot_dname_t *knot_rdata_name(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_count <= pos) {
 		return NULL;
