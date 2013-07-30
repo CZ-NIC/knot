@@ -122,7 +122,6 @@ dbg_rrset_exec_detail(
 		const uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
 			knot_dname_t *dname = rdata + offset;
-			//memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
 			char *name = knot_dname_to_str(dname);
 			dbg_rrset_detail("block=%d: (%p) DNAME=%s\n",
 			        i, dname, name);
@@ -192,10 +191,8 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
-			knot_dname_t *dname1 = r1 + offset;
-			//memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
-			knot_dname_t *dname2 = r2 + offset;
-			//memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
+			const knot_dname_t *dname1 = r1 + offset;
+			const knot_dname_t *dname2 = r2 + offset;
 			cmp = knot_dname_cmp(dname1, dname2);
 			offset += knot_dname_size(dname1);
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
@@ -607,8 +604,6 @@ static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
 		if (descriptor_item_is_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
 			int dname_size = knot_dname_size(dname);
-//			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-//			assert(dname);
 			offset += dname_size;
 			size += dname_size;
 		} else if (descriptor_item_is_fixed(item)) {
@@ -646,9 +641,6 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
-//			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-//			offset += knot_dname_size(dname);
-//			assert(dname);
 			*size += knot_dname_to_wire(stream + *size, dname,
 			                            KNOT_DNAME_MAXLEN);
 			offset += *size;
@@ -1197,33 +1189,26 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END &&
 	     parsed < rdlength; ++i) {
-		size_t pos2 = 0; //used for DNAME parsing
 		const int item = desc->block_types[i];
 		if (descriptor_item_is_dname(item)) {
-			pos2 = *pos;
-//			knot_dname_t *dname = knot_dname_parse(
-//					wire, &pos2, total_size);
-//			if (dname == NULL) {
-//				return KNOT_EMALF;
-//			}
-//			knot_dname_to_lower(dname);
-//			memcpy(rdata_buffer + offset, &dname,
-//			       sizeof(knot_dname_t *));
+			int wire_size = knot_dname_size(wire + *pos);
 			int unpacked_size = knot_dname_unpack(
-				rdata_buffer + offset, wire + pos2,
+				rdata_buffer + offset, wire + *pos,
 				KNOT_DNAME_MAXLEN, wire);
-//			parsed += pos2 - *pos;
-			parsed += knot_dname_size(wire + pos2);
-			dbg_rrset_detail("rr: parse_rdata_wire: Parsed DNAME, "
-			                 "length=%zu.\n", pos2 - *pos);
+			if (unpacked_size == KNOT_EINVAL) {
+				return KNOT_ERROR;
+			}
+
+			parsed += wire_size;
 dbg_rrset_exec_detail(
+			dbg_rrset_detail("rr: parse_rdata_wire: Parsed DNAME, "
+			                 "length=%zu.\n", wire_size);
 			char *name = knot_dname_to_str(rdata_buffer + offset);
 			dbg_rrset_detail("rr: parse_rdata_wire: Parsed "
 			                 "DNAME=%s\n", name);
 			free(name);
 );
-			*pos = pos2;
-//			offset += sizeof(knot_dname_t *);
+			*pos += wire_size;
 			offset += unpacked_size;
 		} else if (descriptor_item_is_fixed(item)) {
 			dbg_rrset_detail("rr: parse_rdata_wire: Saving static "
