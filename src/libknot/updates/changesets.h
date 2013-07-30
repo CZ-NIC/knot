@@ -44,7 +44,7 @@ typedef enum {
 /*! \brief One changeset received from wire, with parsed RRs. */
 typedef struct knot_changeset {
 	node n; /*!< List node. */
-	mm_ctx_t mem_ctx; /*!< Memory context - pool allocator. */
+	mm_ctx_t mem_ctx; /*!< Memory context */
 	knot_rrset_t *soa_from; /*!< Start SOA. */
 	list remove; /*!< List of RRs to remove. */
 	knot_rrset_t *soa_to; /*!< Destination SOA. */
@@ -73,7 +73,7 @@ typedef struct knot_node_ln {
 /*! \brief Partial changes done to zones - used for update/transfer rollback. */
 typedef struct {
 	/*!
-	 * Memory context. We need a pool allocator since there is a possibility
+	 * Memory context. Ideally a pool allocator since there is a possibility
 	 * of many changes in one transfer/update.
 	 */
 	mm_ctx_t mem_ctx;
@@ -128,8 +128,8 @@ typedef enum {
 /*----------------------------------------------------------------------------*/
 
 /*!
- * \brief Inits changesets structure. Memory allocators are created and have to
- *        be freed using knot_changesets_free().
+ * \brief Inits changesets structure. The structure has to be freed
+ *        using 'knot_changesets_free()' function.
  *
  * \param changesets Double pointer to changesets structure.
  * \param flags IXFR / DDNS flag.
@@ -141,8 +141,8 @@ int knot_changesets_init(knot_changesets_t **changesets,
                          uint32_t flags);
 
 /*!
- * \brief Creates changesets structure. Memory allocators are created
- *        and have to be freed using knot_changesets_free().
+ * \brief Creates changesets structure. The created structure has to be freed
+ *        using 'knot_changesets_free()' function.
  *
  * \param flags IXFR / DDNS flag.
  *
@@ -221,7 +221,7 @@ void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 int knot_changeset_is_empty(const knot_changeset_t *changeset);
 
 /*!
- * \brief Frees the 'changesets' structure, including its memory allocators.
+ * \brief Frees the 'changesets' structure, including all its internal data.
  *
  * \param changesets Double pointer to changesets structure to be freed.
  */
@@ -256,8 +256,7 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
                           knot_changes_part_t part);
 
 /*!
- * \brief Frees changes structure, including its memory allocator.
- *
+  
  * \param changes Double pointer of changes structure to be freed.
  */
 void knot_changes_free(knot_changes_t **changes);
