@@ -24,6 +24,7 @@
 #include "common/descriptor.h"
 #include "rrset.h"
 #include "util/debug.h"
+#include "rdata.h"
 
 static const size_t KNOT_CHANGESET_COUNT = 5;
 static const size_t KNOT_CHANGESET_STEP = 5;
@@ -66,8 +67,8 @@ static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
 {
 	return knot_rrset_equal(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
 	       && (knot_rrset_type(rrset1) != KNOT_RRTYPE_RRSIG
-	           || knot_rrset_rdata_rrsig_type_covered(rrset1)
-	              == knot_rrset_rdata_rrsig_type_covered(rrset2));
+	           || knot_rdata_rrsig_type_covered(rrset1, 1)
+	              == knot_rdata_rrsig_type_covered(rrset2, 1));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -204,7 +205,7 @@ void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
-	*chg_serial = knot_rrset_rdata_soa_serial(soa);
+	*chg_serial = knot_rdata_soa_serial(soa);
 }
 
 /*----------------------------------------------------------------------------*/

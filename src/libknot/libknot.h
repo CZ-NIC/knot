@@ -46,6 +46,7 @@
 #include "zone/node.h"
 #include "zone/zone.h"
 #include "zone/zonedb.h"
+#include "rdata.h"
 
 #endif
 

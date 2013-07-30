@@ -42,6 +42,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/zone/zone-diff.h"
 #include "libknot/updates/ddns.h"
+#include "libknot/rdata.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
@@ -168,7 +169,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 		soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 					  KNOT_RRTYPE_SOA);
 		assert(soa_rrs != NULL);
-		int64_t serial = knot_rrset_rdata_soa_serial(soa_rrs);
+		int64_t serial = knot_rdata_soa_serial(soa_rrs);
 		zd->zonefile_serial = (uint32_t)serial;
 		if (serial < 0) {
 			return KNOT_EINVAL;
@@ -238,7 +239,7 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
  */
 static uint32_t zones_soa_refresh(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrset_rdata_soa_refresh);
+	return zones_soa_timer(zone, knot_rdata_soa_refresh);
 }
 
 /*!
@@ -249,7 +250,7 @@ static uint32_t zones_soa_refresh(knot_zone_t *zone)
  */
 static uint32_t zones_soa_retry(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrset_rdata_soa_retry);
+	return zones_soa_timer(zone, knot_rdata_soa_retry);
 }
 
 /*!
@@ -260,7 +261,7 @@ static uint32_t zones_soa_retry(knot_zone_t *zone)
  */
 static uint32_t zones_soa_expire(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrset_rdata_soa_expire);
+	return zones_soa_timer(zone, knot_rdata_soa_expire);
 }
 
 /*!
@@ -710,7 +711,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		             knot_rrset_type(rrset));
 		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
 		assert(chs->serial_from ==
-		       knot_rrset_rdata_soa_serial(rrset));
+		       knot_rdata_soa_serial(rrset));
 		knot_changeset_store_soa(&chs->soa_from, &chs->serial_from,
 					 rrset);
 
@@ -945,7 +946,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
-	int64_t serial_ret = knot_rrset_rdata_soa_serial(soa_rrs);
+	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		return KNOT_EINVAL;
@@ -1095,7 +1096,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 					KNOT_RRTYPE_SOA);
 				int64_t sn = 0;
 				if (apex && soa) {
-					sn = knot_rrset_rdata_soa_serial(soa);
+					sn = knot_rdata_soa_serial(soa);
 					if (sn < 0) sn = 0;
 				}
 				log_server_info("Loaded zone '%s' serial %u\n",
@@ -1909,7 +1910,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	                            KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 
-	int64_t serial_ret = knot_rrset_rdata_soa_serial(soa_rrs);
+	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		pthread_mutex_unlock(&zd->lock);

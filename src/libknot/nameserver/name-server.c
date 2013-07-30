@@ -37,6 +37,7 @@
 #include "updates/changesets.h"
 #include "updates/ddns.h"
 #include "tsig-op.h"
+#include "libknot/rdata.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -425,7 +426,7 @@ dbg_ns_exec_verb(
 
 		// get the name from the CNAME RDATA
 		const knot_dname_t *cname =
-			knot_rrset_rdata_cname_name(cname_rrset);
+			knot_rdata_cname_name(cname_rrset);
 		dbg_ns_detail("CNAME name from RDATA: %p\n", cname);
 
 		/* Attempt to find mentioned name in zone. */
@@ -651,7 +652,7 @@ static int ns_put_additional_for_rrset(knot_packet_t *resp,
 	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrset); i++) {
 		dbg_ns_verb("Getting name from RDATA, type %u..\n",
 		            knot_rrset_type(rrset));
-		const knot_dname_t *dname = knot_rrset_rdata_name(rrset, i);
+		const knot_dname_t *dname = knot_rdata_name(rrset, i);
 		assert(dname);
 dbg_ns_exec_detail(
 		char *name = knot_dname_to_str(dname);
@@ -886,7 +887,7 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 
 	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
 	// MINIMUM as TTL
-	uint32_t min = knot_rrset_rdata_soa_minimum(soa_rrset);
+	uint32_t min = knot_rdata_soa_minimum(soa_rrset);
 	if (min < knot_rrset_ttl(soa_rrset)) {
 		knot_rrset_t *soa_copy = NULL;
 		ret = knot_rrset_deep_copy(soa_rrset, &soa_copy);
@@ -1963,7 +1964,7 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 	/* Replace last labels of qname with DNAME. */
 	const knot_dname_t *dname_wire = knot_rrset_owner(dname_rrset);
 	size_t labels = knot_dname_labels(dname_wire, NULL);
-	const knot_dname_t *dname_tgt = knot_rrset_rdata_dname_target(dname_rrset);
+	const knot_dname_t *dname_tgt = knot_rdata_dname_target(dname_rrset);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
 	if (cname == NULL) {
 		knot_rrset_free(&cname_rrset);
@@ -2005,7 +2006,7 @@ static int ns_dname_is_too_long(const knot_rrset_t *rrset,
 	// TODO: add function for getting DNAME target
 	if (knot_dname_labels(qname, NULL)
 	        - knot_dname_labels(knot_rrset_owner(rrset), NULL)
-	        + knot_dname_labels(knot_rrset_rdata_dname_target(rrset), NULL)
+	        + knot_dname_labels(knot_rdata_dname_target(rrset), NULL)
 	        > KNOT_DNAME_MAXLEN) {
 		return 1;
 	} else {
@@ -2071,7 +2072,7 @@ dbg_ns_exec_verb(
 	}
 
 	// get the next SNAME from the CNAME RDATA
-	const knot_dname_t *cname = knot_rrset_rdata_cname_name(synth_cname);
+	const knot_dname_t *cname = knot_rdata_cname_name(synth_cname);
 	dbg_ns_verb("CNAME name from RDATA: %p\n", cname);
 
 	// save the new name which should be used for replacing wildcard
@@ -2932,8 +2933,8 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		} else {
 			log_zone_info("%s Serial %u -> %u.\n",
 			              xfr->msg,
-			              knot_rrset_rdata_soa_serial(chs->soa_from),
-			              knot_rrset_rdata_soa_serial(chs->soa_to));
+			              knot_rdata_soa_serial(chs->soa_from),
+			              knot_rdata_soa_serial(chs->soa_to));
 		}
 	}
 
@@ -3904,9 +3905,9 @@ int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
 	}
 
 	// retrieve origin (xfr) serial and target (zone) serial
-	*serial_to = knot_rrset_rdata_soa_serial(zone_soa);
+	*serial_to = knot_rdata_soa_serial(zone_soa);
 	*serial_from =
-		knot_rrset_rdata_soa_serial(knot_packet_authority_rrset(xfr->query, 0));
+		knot_rdata_soa_serial(knot_packet_authority_rrset(xfr->query, 0));
 
 	return KNOT_EOK;
 }
@@ -4212,8 +4213,8 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			}
 
 			if (ns_serial_compare(
-			      knot_rrset_rdata_soa_serial(chgsets->first_soa),
-			      knot_rrset_rdata_soa_serial(zone_soa))
+			      knot_rdata_soa_serial(chgsets->first_soa),
+			      knot_rdata_soa_serial(zone_soa))
 			    > 0) {
 				if ((xfr->flags & XFR_FLAG_UDP) != 0) {
 					// IXFR over UDP

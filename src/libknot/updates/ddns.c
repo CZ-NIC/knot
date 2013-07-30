@@ -29,6 +29,7 @@
 #include "nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
 #include "updates/xfr-in.h"
 #include "common/descriptor.h"
+#include "rdata.h"
 
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
@@ -677,7 +678,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 	}
 
 	/* Current SERIAL */
-	int64_t sn = knot_rrset_rdata_soa_serial(soa_begin);
+	int64_t sn = knot_rdata_soa_serial(soa_begin);
 	int64_t sn_new;
 	/* Incremented SERIAL
 	 * We must set it now to be able to compare SERIAL from SOAs in the
@@ -730,9 +731,9 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 		 *       RRSet. This should be handled somehow.
 		 */
 		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA
-		    && ns_serial_compare(knot_rrset_rdata_soa_serial(rrset),
+		    && ns_serial_compare(knot_rdata_soa_serial(rrset),
 		                         sn_new) > 0) {
-			sn_new = knot_rrset_rdata_soa_serial(rrset);
+			sn_new = knot_rdata_soa_serial(rrset);
 			soa_end = (knot_rrset_t *)rrset_copy;
 		}
 	}
@@ -747,7 +748,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 			         knot_strerror(ret));
 			return ret;
 		}
-		knot_rrset_rdata_soa_serial_set(soa_end, sn_new);
+		knot_rdata_soa_serial_set(soa_end, sn_new);
 	}
 
 	knot_changeset_store_soa(&changeset->soa_to,
@@ -903,7 +904,7 @@ static int knot_ddns_rr_is_nsec3(const knot_rrset_t *rr)
 	if ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
 	    || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
 	        && knot_rrset_rdata_rr_count(rr)
-	        && knot_rrset_rdata_rrsig_type_covered(rr)
+	        && knot_rdata_rrsig_type_covered(rr, 1)
 	            == KNOT_RRTYPE_NSEC3))
 	{
 		dbg_ddns_detail("This is NSEC3-related RRSet.\n");
@@ -1117,8 +1118,8 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 		}
 
 		/* Check that the serial is indeed larger than the current one*/
-		assert(ns_serial_compare(knot_rrset_rdata_soa_serial(removed),
-		                         knot_rrset_rdata_soa_serial(rr)) < 0);
+		assert(ns_serial_compare(knot_rdata_soa_serial(removed),
+		                         knot_rdata_soa_serial(rr)) < 0);
 
 		/* 1) Store it to 'changes', together with its RRSIGs. */
 		ret = knot_changes_add_old_rrsets(
@@ -1397,7 +1398,7 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 
 	uint16_t type = knot_rrset_type(rr);
 	uint16_t type_covered = (type == KNOT_RRTYPE_RRSIG)
-	                ? knot_rrset_rdata_rrsig_type_covered(rr)
+	                ? knot_rdata_rrsig_type_covered(rr, 1)
 	                : type;
 
 	/* If the RR belongs to a RRSet already present in the node, we must
@@ -1686,7 +1687,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * 1) Copy the RRSet.
 	 */
 	uint16_t type_to_copy = (type != KNOT_RRTYPE_RRSIG) ? type
-	                : knot_rrset_rdata_rrsig_type_covered(rr);
+	                : knot_rdata_rrsig_type_covered(rr, 1);
 	knot_rrset_t *rrset_copy = NULL;
 	int ret = xfrin_copy_rrset(node, type_to_copy, &rrset_copy, changes, 1);
 	if (ret < 0) {
@@ -2317,7 +2318,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 	}
 
 	/* Current SERIAL */
-	int64_t sn = knot_rrset_rdata_soa_serial(soa_begin);
+	int64_t sn = knot_rdata_soa_serial(soa_begin);
 	int64_t sn_new;
 
 	/* Incremented SERIAL
@@ -2369,7 +2370,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA
 		    && (knot_rrset_class(rr) == KNOT_CLASS_NONE
 		        || knot_rrset_class(rr) == KNOT_CLASS_ANY
-		        || ns_serial_compare(knot_rrset_rdata_soa_serial(rr),
+		        || ns_serial_compare(knot_rdata_soa_serial(rr),
 		                             sn_new) < 0)) {
 			// This ignores also SOA removals
 			dbg_ddns_verb("Ignoring SOA...\n");
@@ -2391,7 +2392,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 
 		// we need the RR copy, that's why this code is here
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
-			int64_t sn_rr = knot_rrset_rdata_soa_serial(rr);
+			int64_t sn_rr = knot_rdata_soa_serial(rr);
 			dbg_ddns_verb("Replacing SOA. Old serial: %"PRId64", "
 			              "new serial: %"PRId64"\n", sn_new, sn_rr);
 			assert(ns_serial_compare(sn_rr, sn_new) >= 0);
@@ -2420,7 +2421,7 @@ int knot_ddns_process_update2(knot_zone_contents_t *zone,
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
-		knot_rrset_rdata_soa_serial_set(soa_end, sn_new);
+		knot_rdata_soa_serial_set(soa_end, sn_new);
 
 		/* And replace it in the zone. */
 		ret = xfrin_replace_rrset_in_node(

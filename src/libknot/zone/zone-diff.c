@@ -24,6 +24,7 @@
 #include "zone-diff.h"
 #include "libknot/nameserver/name-server.h"
 #include "common/descriptor.h"
+#include "libknot/rdata.h"
 
 struct zone_diff_param {
 	const knot_zone_contents_t *contents;
@@ -70,13 +71,13 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	}
 
 	int64_t soa_serial1 =
-		knot_rrset_rdata_soa_serial(soa_rrset1);
+		knot_rdata_soa_serial(soa_rrset1);
 	if (soa_serial1 == -1) {
 		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
 	}
 
 	int64_t soa_serial2 =
-		knot_rrset_rdata_soa_serial(soa_rrset2);
+		knot_rdata_soa_serial(soa_rrset2);
 
 	if (soa_serial2 == -1) {
 		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");

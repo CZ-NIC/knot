@@ -330,82 +330,6 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                           int *merged, int *deleted_rrs);
 
-const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
-const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
-void knot_rrset_rdata_set_cname_name(knot_rrset_t *rrset,
-                                     const knot_dname_t *name);
-void knot_rrset_rdata_set_dname_target(knot_rrset_t *rrset,
-                                       const knot_dname_t *target);
-const knot_dname_t *knot_rrset_rdata_soa_primary_ns(const knot_rrset_t *rrset);
-const knot_dname_t *knot_rrset_rdata_soa_mailbox(const knot_rrset_t *rrset);
-uint32_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
-void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial);
-uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset);
-uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset);
-uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset);
-uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset);
-uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset);
-uint8_t knot_rrset_rdata_rrsig_algorithm(const knot_rrset_t *rrset,
-                                         size_t rr_pos);
-uint8_t knot_rrset_rdata_rrsig_labels(const knot_rrset_t *rrset, size_t rr_pos);
-uint32_t knot_rrset_rdata_rrsig_original_ttl(const knot_rrset_t *rrset,
-                                             size_t rr_pos);
-uint32_t knot_rrset_rdata_rrsig_sig_expiration(const knot_rrset_t *rrset,
-                                               size_t rr_pos);
-uint32_t knot_rrset_rdata_rrsig_sig_inception(const knot_rrset_t *rrset,
-                                              size_t rr_pos);
-uint16_t knot_rrset_rdata_rrsig_key_tag(const knot_rrset_t *rrset,
-                                        size_t rr_pos);
-const knot_dname_t *knot_rrset_rdata_rrsig_signer_name(const knot_rrset_t *rrset,
-                                                       size_t rr_pos);
-
-uint16_t knot_rrset_rdata_dnskey_flags(const knot_rrset_t *rrset, size_t rr_pos);
-uint8_t knot_rrset_rdata_dnskey_proto(const knot_rrset_t *rrset, size_t rr_pos);
-uint8_t knot_rrset_rdata_dnskey_alg(const knot_rrset_t *rrset, size_t rr_pos);
-void knot_rrset_rdata_dnskey_key(const knot_rrset_t *rrset, size_t rr_pos,
-                                 uint8_t **key, uint16_t *key_size);
-const knot_dname_t *knot_rrset_rdata_nsec_next(const knot_rrset_t *rrset,
-                                               size_t rr_pos);
-void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
-                                  uint8_t **bitmap, uint16_t *size);
-
-void knot_rrset_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
-                                   uint8_t **bitmap, uint16_t *size);
-uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
-                                         size_t pos);
-uint8_t knot_rrset_rdata_nsec3_flags(const knot_rrset_t *rrset,
-                                     size_t pos);
-uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
-                                           size_t pos);
-uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
-                                           size_t pos);
-void knot_rrset_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
-                                        uint8_t **name, uint8_t *name_size);
-const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
-                                           size_t pos);
-uint8_t knot_rrset_rdata_nsec3param_algorithm(const knot_rrset_t *rrset);
-uint8_t knot_rrset_rdata_nsec3param_flags(const knot_rrset_t *rrset);
-uint16_t knot_rrset_rdata_nsec3param_iterations(const knot_rrset_t *rrset);
-uint8_t knot_rrset_rdata_nsec3param_salt_length(const knot_rrset_t *rrset);
-const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset);
-
-const knot_dname_t *knot_rrset_rdata_rp_first_dname(const knot_rrset_t *rrset,
-                                                    size_t pos);
-const knot_dname_t *knot_rrset_rdata_rp_second_dname(const knot_rrset_t *rrset,
-                                                     size_t pos);
-const knot_dname_t *knot_rrset_rdata_minfo_first_dname(const knot_rrset_t *rrset,
-                                                       size_t pos);
-const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrset,
-                                                        size_t pos);
-const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
-                                             size_t rdata_pos);
-const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
-                                             size_t rdata_pos);
-const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
-                                              size_t rdata_pos);
-const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
-                                          size_t rdata_pos);
-
 void knot_rrset_dump(const knot_rrset_t *rrset);
 
 //TODO test
@@ -442,6 +366,9 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    size_t total_size, size_t rdlength);
 
 int knot_rrset_ds_check(const knot_rrset_t *rrset);
+
+uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset, size_t pos);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

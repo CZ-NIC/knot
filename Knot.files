@@ -153,6 +153,7 @@ src/libknot/packet/query.c
 src/libknot/packet/query.h
 src/libknot/packet/response.c
 src/libknot/packet/response.h
+src/libknot/rdata.h
 src/libknot/rrset-dump.c
 src/libknot/rrset-dump.h
 src/libknot/rrset.c

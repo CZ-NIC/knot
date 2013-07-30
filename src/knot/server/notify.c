@@ -34,6 +34,7 @@
 #include "common/evsched.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
+#include "libknot/rdata.h"
 
 
 /* Messages. */
@@ -266,7 +267,7 @@ int notify_process_request(knot_nameserver_t *ns,
 		const knot_rrset_t *soa_rr = NULL;
 		soa_rr = knot_packet_answer_rrset(notify, 0);
 		if (soa_rr && knot_rrset_type(soa_rr) == KNOT_RRTYPE_SOA) {
-			serial = knot_rrset_rdata_soa_serial(soa_rr);
+			serial = knot_rdata_soa_serial(soa_rr);
 		}
 	}
 	rcu_read_unlock();

@@ -29,6 +29,7 @@
 #include "util/utils.h"
 #include "util/tolower.h"
 #include "util/debug.h"
+#include "rdata.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -42,11 +43,11 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 
 	assert(knot_rrset_type(nsec3param) == KNOT_RRTYPE_NSEC3PARAM);
 
-	params->algorithm = knot_rrset_rdata_nsec3param_algorithm(nsec3param);
-	params->iterations = knot_rrset_rdata_nsec3param_iterations(nsec3param);
-	params->flags = knot_rrset_rdata_nsec3param_flags(nsec3param);
+	params->algorithm = knot_rdata_nsec3param_algorithm(nsec3param, 1);
+	params->iterations = knot_rdata_nsec3param_iterations(nsec3param, 1);
+	params->flags = knot_rdata_nsec3param_flags(nsec3param, 1);
 	params->salt_length =
-		knot_rrset_rdata_nsec3param_salt_length(nsec3param);
+		knot_rdata_nsec3param_salt_length(nsec3param, 1);
 
 	if (params->salt_length > 0) {
 		/* It is called also on reload, so we need to free if exists. */
@@ -57,7 +58,7 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 		params->salt = (uint8_t *)malloc(params->salt_length);
 		CHECK_ALLOC_LOG(params->salt, KNOT_ENOMEM);
 		memcpy(params->salt,
-		       knot_rrset_rdata_nsec3param_salt(nsec3param),
+		       knot_rdata_nsec3param_salt(nsec3param, 1),
 		       params->salt_length);
 	} else {
 		params->salt = NULL;

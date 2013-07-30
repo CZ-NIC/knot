@@ -30,6 +30,7 @@
 #include "common/crc.h"
 #include "common/descriptor.h"
 #include "common/mempattern.h"
+#include "libknot/rdata.h"
 
 #include "semantic-check.h"
 
@@ -295,7 +296,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		return KNOT_EOK;
 	}
 
-	if (knot_rrset_rdata_rrsig_type_covered(rrsig) !=
+	if (knot_rdata_rrsig_type_covered(rrsig, 1) !=
 	    knot_rrset_type(rrset)) {
 		/* zoneparser would not let this happen
 		 * but to be on the safe side
@@ -306,7 +307,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* label number at the 2nd index should be same as owner's */
-	uint8_t labels_rdata = knot_rrset_rdata_rrsig_labels(rrsig, rr_pos);
+	uint8_t labels_rdata = knot_rdata_rrsig_labels(rrsig, rr_pos);
 
 	int tmp = knot_dname_labels(knot_rrset_owner(rrset), NULL) - labels_rdata;
 
@@ -327,7 +328,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	/* check original TTL */
 	uint32_t original_ttl =
-		knot_rrset_rdata_rrsig_original_ttl(rrsig, rr_pos);
+		knot_rdata_rrsig_original_ttl(rrsig, rr_pos);
 
 	if (original_ttl != knot_rrset_ttl(rrset)) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_RDATA_TTL,
@@ -336,7 +337,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	/* signer's name is same as in the zone apex */
 	const knot_dname_t *signer_name =
-		knot_rrset_rdata_rrsig_signer_name(rrsig, rr_pos);
+		knot_rdata_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
 	if (knot_dname_cmp(signer_name,
@@ -351,12 +352,12 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	 * before */
 	
 	int match = 0;
-	uint8_t rrsig_alg = knot_rrset_rdata_rrsig_algorithm(rrsig, rr_pos);
-	uint16_t key_tag_rrsig = knot_rrset_rdata_rrsig_key_tag(rrsig, rr_pos);
+	uint8_t rrsig_alg = knot_rdata_rrsig_algorithm(rrsig, rr_pos);
+	uint16_t key_tag_rrsig = knot_rdata_rrsig_key_tag(rrsig, rr_pos);
 	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(dnskey_rrset) &&
 	     !match; ++i) {
 		uint8_t dnskey_alg =
-			knot_rrset_rdata_dnskey_alg(dnskey_rrset, i);
+			knot_rdata_dnskey_alg(dnskey_rrset, i);
 		if (rrsig_alg != dnskey_alg) {
 			continue;
 		}
@@ -526,9 +527,9 @@ static int rdata_nsec_to_type_array(const knot_rrset_t *rrset, size_t pos,
 	uint8_t *data = NULL;
 	uint16_t rr_bitmap_size = 0;
 	if (rrset->type == KNOT_RRTYPE_NSEC) {
-		knot_rrset_rdata_nsec_bitmap(rrset, pos, &data, &rr_bitmap_size);
+		knot_rdata_nsec_bitmap(rrset, pos, &data, &rr_bitmap_size);
 	} else {
-		knot_rrset_rdata_nsec3_bitmap(rrset, pos, &data, &rr_bitmap_size);
+		knot_rdata_nsec3_bitmap(rrset, pos, &data, &rr_bitmap_size);
 	}
 	if (data == NULL) {
 		return KNOT_EMALF;
@@ -636,7 +637,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 
 			/* check for Opt-Out flag */
 			uint8_t flags =
-				knot_rrset_rdata_nsec3_flags(previous_rrset, 0);
+				knot_rdata_nsec3_flags(previous_rrset, 0);
 			uint8_t opt_out_mask = 1;
 
 			if (!(flags & opt_out_mask)) {
@@ -658,7 +659,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		knot_node_rrset(knot_zone_contents_apex(zone),
 	                        KNOT_RRTYPE_SOA);
 	assert(soa_rrset);
-	uint32_t minimum_ttl = knot_rrset_rdata_soa_minimum(soa_rrset);
+	uint32_t minimum_ttl = knot_rdata_soa_minimum(soa_rrset);
 
 	if (knot_rrset_ttl(nsec3_rrset) != minimum_ttl) {
 			err_handler_handle_error(handler, node,
@@ -669,7 +670,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	uint8_t *next_dname_str = NULL;
 	uint8_t next_dname_size = 0;
 	uint8_t *next_dname_decoded = NULL;
-	knot_rrset_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
+	knot_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
 	                                   &next_dname_size);
 	size_t real_size =
 		base32hex_encode_alloc(next_dname_str,
@@ -880,7 +881,7 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 
 		/* TODO How about multiple RRs? */
 		knot_dname_t *ns_dname =
-			knot_dname_copy(knot_rrset_rdata_ns_name(ns_rrset,
+			knot_dname_copy(knot_rdata_ns_name(ns_rrset,
 		                             0));
 		if (ns_dname == NULL) {
 			return KNOT_ENOMEM;
@@ -1076,7 +1077,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 
 			if (nsec_rrset != NULL) {
 				const knot_dname_t *next_domain =
-					knot_rrset_rdata_nsec_next(nsec_rrset, 0);
+					knot_rdata_nsec_next(nsec_rrset, 0);
 				assert(next_domain);
 
 				if (knot_zone_contents_find_node(zone,
@@ -1219,7 +1220,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		uint8_t *next_dname_str = NULL;
 		uint8_t next_dname_size = 0;
 		uint8_t *next_dname_decoded = NULL;
-		knot_rrset_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
+		knot_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
 		                                   &next_dname_size);
 		size_t real_size =
 			base32hex_encode_alloc(next_dname_str,
@@ -1287,7 +1288,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			}
 
 			const knot_dname_t *next_dname =
-				knot_rrset_rdata_nsec_next(nsec_rrset, 0);
+				knot_rdata_nsec_next(nsec_rrset, 0);
 			assert(next_dname);
 
 			const knot_dname_t *apex_dname =

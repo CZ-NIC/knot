@@ -26,6 +26,7 @@
 #include "libknot/zone/zone-tree.h"
 #include "libknot/util/wire.h"
 #include "consts.h"
+#include "libknot/rdata.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -606,19 +607,19 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 
 	dbg_zone_detail("RDATA algo: %u, iterations: %u, salt length: %u, salt:"
 			" %.*s\n",
-			knot_rrset_rdata_nsec3_algorithm(rrset, rdata_pos),
-			knot_rrset_rdata_nsec3_iterations(rrset, rdata_pos),
-			knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos),
-			knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos),
-			knot_rrset_rdata_nsec3_salt(rrset, rdata_pos));
+			knot_rdata_nsec3_algorithm(rrset, rdata_pos),
+			knot_rdata_nsec3_iterations(rrset, rdata_pos),
+			knot_rdata_nsec3_salt_length(rrset, rdata_pos),
+			knot_rdata_nsec3_salt_length(rrset, rdata_pos),
+			knot_rdata_nsec3_salt(rrset, rdata_pos));
 	dbg_zone_detail("NSEC3PARAM algo: %u, iterations: %u, salt length: %u, "
 			"salt: %.*s\n",  params->algorithm, params->iterations,
 			params->salt_length, params->salt_length, params->salt);
 
-	return (knot_rrset_rdata_nsec3_algorithm(rrset, rdata_pos) == params->algorithm
-		&& knot_rrset_rdata_nsec3_iterations(rrset, rdata_pos) == params->iterations
-		&& knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos) == params->salt_length
-		&& strncmp((const char *)knot_rrset_rdata_nsec3_salt(rrset, rdata_pos),
+	return (knot_rdata_nsec3_algorithm(rrset, rdata_pos) == params->algorithm
+		&& knot_rdata_nsec3_iterations(rrset, rdata_pos) == params->iterations
+		&& knot_rdata_nsec3_salt_length(rrset, rdata_pos) == params->salt_length
+		&& strncmp((const char *)knot_rdata_nsec3_salt(rrset, rdata_pos),
 			   (const char *)params->salt, params->salt_length)
 		   == 0);
 }
@@ -963,7 +964,8 @@ dbg_zone_exec(
 		// find proper node
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
 					   const knot_dname_t *)
-		    = (knot_rrset_rdata_rrsig_type_covered(rrsigs) == KNOT_RRTYPE_NSEC3)
+		    = (knot_rdata_rrsig_type_covered(rrsigs, 1)
+		       == KNOT_RRTYPE_NSEC3)
 		       ? knot_zone_contents_get_nsec3_node
 		       : knot_zone_contents_get_node;
 
@@ -979,9 +981,9 @@ dbg_zone_exec(
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
 		dbg_zone_detail("Finding RRSet for type %d\n",
-				knot_rrset_rdata_rrsig_type_covered(rrsigs));
+				knot_rdata_rrsig_type_covered(rrsigs, 1));
 		*rrset = knot_node_get_rrset(
-			     *node, knot_rrset_rdata_rrsig_type_covered(rrsigs));
+			     *node, knot_rdata_rrsig_type_covered(rrsigs, 1));
 		if (*rrset == NULL) {
 			dbg_zone("Failed to find RRSet for RRSIGs.\n");
 			return KNOT_ENORRSET;
@@ -2345,5 +2347,5 @@ unsigned knot_zone_serial(const knot_zone_contents_t *zone)
 	if (!zone) return 0;
 	const knot_rrset_t *soa = NULL;
 	soa = knot_node_rrset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
-	return knot_rrset_rdata_soa_serial(soa);
+	return knot_rdata_soa_serial(soa);
 }

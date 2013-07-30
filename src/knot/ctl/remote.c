@@ -30,6 +30,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
+#include "libknot/rdata.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
@@ -100,7 +101,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
 			/* Refresh zones. */
 			const knot_dname_t *dn =
-				knot_rrset_rdata_ns_name(rr, i);
+				knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find_zone(ns->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
@@ -228,7 +229,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 			                          KNOT_RRTYPE_SOA);
 			assert(soa_rrs != NULL);
-			serial = knot_rrset_rdata_soa_serial(soa_rrs);
+			serial = knot_rdata_soa_serial(soa_rrs);
 		}
 
 		/* Evalute zone type. */
