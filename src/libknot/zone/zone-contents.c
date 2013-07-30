@@ -355,10 +355,11 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 				return KNOT_EMALF;
 			}
 			/* Check that this node contains an NS RR as well. */
-			if (knot_node_rrset(node, KNOT_RRTYPE_NS) == NULL) {
-				dbg_zone("DS RR without NS record.\n");
-				return KNOT_EMALF;
-			}
+			/*! \todo Enable, causes some differences with BIND. */
+//			if (knot_node_rrset(node, KNOT_RRTYPE_NS) == NULL) {
+//				dbg_zone("DS RR without NS record.\n");
+//				return KNOT_EMALF;
+//			}
 		}
 	}
 
