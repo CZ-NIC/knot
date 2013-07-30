@@ -832,6 +832,7 @@ dbg_ddns_exec_detail(
 				dbg_ddns_detail("Removing one or all RRSets\n");
 				remove = rrset;
 				rem_node((node *)rr_node);
+				(*removed)[(*removed_count)++] = remove;
 			} else if (knot_rrset_type(rr) ==
 			           knot_rrset_type(rrset)) {
 				// Removing specific RR
@@ -842,13 +843,9 @@ dbg_ddns_exec_detail(
 				                           rrset)) {
 					remove = rrset;
 					rem_node((node *)rr_node);
+					(*removed)[(*removed_count)++] = remove;
 				}
 			}
-
-			dbg_ddns_detail("Removed RRSet from chgset:\n");
-			assert(remove);
-			knot_rrset_dump(remove);
-			(*removed)[(*removed_count)++] = remove;
 		}
 	}
 
