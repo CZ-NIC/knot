@@ -38,6 +38,11 @@
 #define KNOT_DNAME_MAXLABELS 127  /*!< 1-char labels. */
 
 /*!
+ * \brief Often used sizes.
+ */
+#define KNOT_RR_HEADER_SIZE 10
+
+/*!
  * \brief DNS operation codes (OPCODEs).
  *
  * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml

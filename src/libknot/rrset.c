@@ -341,9 +341,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
 		if (compr && descriptor_item_is_compr_dname(item)) {
-			knot_dname_t *dname;
-			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-			assert(dname);
+			const knot_dname_t *dname = rdata + offset;
 			int ret = knot_response_compress_dname(dname,
 			            compr, *pos,
 			            max_size - size - rdlength);
@@ -359,12 +357,10 @@ dbg_response_exec_detail(
 );
 			*pos += ret;
 			rdlength += ret;
-			offset += sizeof(knot_dname_t *);
+			offset += knot_dname_size(dname);
 			compr->wire_pos += ret;
 		} else if (descriptor_item_is_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
-//			memcpy(&dname, rdata + offset, sizeof(knot_dname_t *));
-//			assert(dname);
 dbg_rrset_exec_detail(
 			char *name = knot_dname_to_str(dname);
 			dbg_rrset_detail("Saving this DNAME=%s\n", name);
@@ -422,7 +418,7 @@ dbg_rrset_exec_detail(
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			/* Store the binary chunk. */
 			uint16_t chunk_size =
-			rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
+			    rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
 			if (size + rdlength + chunk_size > max_size) {
 				dbg_rrset("rr: to_wire: NAPTR chunk does not "
 				          "fit to wire.\n");
