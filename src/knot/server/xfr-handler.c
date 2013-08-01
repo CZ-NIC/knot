@@ -1114,6 +1114,10 @@ int xfr_worker(dthread_t *thread)
 					ret = xfr_async_finish(&set, i);
 				else
 					ret = xfr_process_event(w, rq);
+			} else {
+				/* Inactive connection. */
+				++i;
+				continue;
 			}
 
 			/* Check task state. */
