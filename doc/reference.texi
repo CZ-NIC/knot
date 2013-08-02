@@ -34,10 +34,9 @@ else.
 
 @example
 @code{system} @code{@{}
-  [ @code{identity} @code{"}@kbd{string}@code{";} ]
-  [ @code{version} @code{"}@kbd{string}@code{";} ]
-  [ @code{hostname} @code{"}@kbd{string}@code{";} ]
-  [ @code{nsid} ( @code{"}@kbd{string}@code{"} | @kbd{hex_string} )@code{;} ]
+  [ @code{identity} ( @code{on} | @code{"}@kbd{string}@code{"} )@code{;} ]
+  [ @code{version} ( @code{on} | @code{"}@kbd{string}@code{"} )@code{;} ]
+  [ @code{nsid} ( @code{on} | @code{"}@kbd{string}@code{"} | @kbd{hex_string} )@code{;} ]
   [ @code{storage} @code{"}@kbd{string}@code{";} ]
   [ @code{rundir} @code{"}@kbd{string}@code{";} ]
   [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
@@ -59,7 +58,6 @@ else.
 @menu
 * identity::
 * version::
-* hostname::
 * nsid::
 * storage::
 * rundir::
@@ -80,14 +78,16 @@ else.
 @vindex identity
 
 Identity of the server returned in a response for the query for TXT record
-@code{id.server.} in the CHAOS class
+@code{id.server.} or @code{hostname.bind.} in the CHAOS class
 (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}).
 
 If not specified or empty, the server returns REFUSED status code.
+If a boolean value of @code{on} is used, FQDN hostname is used as a default.
 
 @example
 system @{
-  identity "Knot DNS";
+  identity "ns01.example.com";
+  identity on;
 @}
 @end example
 
@@ -96,30 +96,16 @@ system @{
 @vindex version
 
 Version of the server software returned in a response for the query for TXT
-record @code{version.server.} in the CHAOS class
+record @code{version.server.} or @code{version.bind.} in the CHAOS class
 (see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}).
 
-If not specified or empty, the server returns REFUSED status code.
+Option allows a boolean value @code{on|off}, if @code{on}, automatic version
+string is set as a default. If not specified or empty, the server returns REFUSED status code.
 
 @example
 system @{
-  version "1.3.0";
-@}
-@end example
-
-@node hostname
-@subsubsection hostname
-@vindex hostname
-
-Host name of the server returned in a response for the query for TXT record
-@code{hostname.server.} in the CHAOS class
-(see @url{http://tools.ietf.org/html/rfc4892,RFC 4892}).
-
-If not specified or empty, the server returns REFUSED status code.
-
-@example
-system @{
-  hostname "a.ns.example.com";
+  version "Knot DNS 1.3.0";
+  version on; # Reports current version
 @}
 @end example
 
@@ -130,10 +116,13 @@ system @{
 DNS Name Server Identifier (see @url{http://tools.ietf.org/html/rfc5001,RFC 5001}).
 
 Use a string format "text" or a hexstring (e.g. 0x01ab00)
+If a boolean value of @code{on} is used, FQDN hostname is used as a default.
 
 @example
 system @{
   nsid 0x00cafe;
+  nsid "cafe";
+  nsid on;
 @}
 @end example
 

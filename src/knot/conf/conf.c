@@ -666,10 +666,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		free(conf->identity);
 		conf->identity = 0;
 	}
-	if (conf->hostname) {
-		free(conf->hostname);
-		conf->hostname = 0;
-	}
 	if (conf->version) {
 		free(conf->version);
 		conf->version = 0;

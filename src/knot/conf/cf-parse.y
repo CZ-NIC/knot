@@ -376,6 +376,41 @@ static int conf_mask(void* scanner, int nval, int prefixlen) {
     return nval;
 }
 
+/*! \brief Replace string value. */
+static void opt_replace(char **opt, char *new_opt, bool val)
+{
+	/* Clear old value. */
+	free(*opt);
+	*opt = NULL;
+	/* Replace if val is True. */
+	if (val) {
+		*opt = new_opt;
+	} else {
+		free(new_opt);
+	}
+}
+
+/*! \brief Generate automatic defaults for server identity, version and NSID. */
+static void ident_auto(int tok, conf_t *conf, bool val)
+{
+	switch(tok) {
+	case SVERSION:
+		opt_replace(&conf->version, strdup("Knot DNS " PACKAGE_VERSION), val);
+		break;
+	case IDENTITY:
+		opt_replace(&conf->identity, sockaddr_hostname(), val);
+		break;
+	case NSID:
+		opt_replace(&conf->nsid, sockaddr_hostname(), val);
+		if (conf->nsid) {
+			conf->nsid_len = strlen(conf->nsid);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 %}
 
 %pure-parser
@@ -525,16 +560,23 @@ interfaces:
 system:
    SYSTEM '{'
  | system SVERSION TEXT ';' { new_config->version = $3.t; }
+ | system SVERSION BOOL ';' { ident_auto(SVERSION, new_config, $3.i); }
  | system IDENTITY TEXT ';' { new_config->identity = $3.t; }
- | system HOSTNAME TEXT ';' { new_config->hostname = $3.t; }
+ | system IDENTITY BOOL ';' { ident_auto(IDENTITY, new_config, $3.i); }
+ | system HOSTNAME TEXT ';' {
+     fprintf(stderr, "warning: Config option 'system.hostname' is deprecated. "
+                     "Use 'system.identity' instead.\n");
+     free($3.t);
+ }
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
+ | system NSID BOOL ';' { ident_auto(NSID, new_config, $3.i); }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
  | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.key' is deprecated "
-		     "and has no effect.\n");
+                     "and has no effect.\n");
      free($4.t);
  }
  | system WORKERS NUM ';' {

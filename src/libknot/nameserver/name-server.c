@@ -3135,7 +3135,6 @@ knot_nameserver_t *knot_ns_create()
 
 	ns->identity = NULL;
 	ns->version = NULL;
-	ns->hostname = NULL;
 
 	knot_packet_free(&err);
 

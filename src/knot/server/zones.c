@@ -2677,7 +2677,6 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	/* Server identification, RFC 4892. */
 	ns->identity = conf->identity;
 	ns->version = conf->version;
-	ns->hostname = conf->hostname;
 
 	knot_zonedb_t *old_db = 0;
 

@@ -31,12 +31,14 @@ static const char *get_txt_response_string(const knot_nameserver_t *nameserver,
 	char *qname_str = knot_dname_to_str(qname);
 	const char *response = NULL;
 
-	if (strcasecmp("id.server.", qname_str) == 0) {
+	/* id.server and hostname.bind should have similar meaning */
+	if (strcasecmp("id.server.",     qname_str) == 0 ||
+	    strcasecmp("hostname.bind.", qname_str) == 0) {
 		response = nameserver->identity;
-	} else if (strcasecmp("version.server.", qname_str) == 0) {
+	/* allow both version version.{server, bind}. for compatibility */
+	} else if (strcasecmp("version.server.", qname_str) == 0 ||
+	           strcasecmp("version.bind.",   qname_str) == 0) {
 		response = nameserver->version;
-	} else if (strcasecmp("hostname.server.", qname_str) == 0) {
-		response = nameserver->hostname;
 	}
 
 	free(qname_str);

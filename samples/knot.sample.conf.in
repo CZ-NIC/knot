@@ -7,7 +7,10 @@
 
 system {
   # Identity of the server (see RFC 4892).
-  identity "@package@ @version@";
+  identity on;
+
+  # Version of the server (see RFC 4892)
+  version on;
 
   # User for running server
   # May also specify user.group (e.g. knot.knot)
