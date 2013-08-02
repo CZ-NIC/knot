@@ -307,7 +307,6 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 {
 	assert(rrset);
 	assert(pos);
-	assert(compr);
 
 	/* Put RR header to wire. */
 	size_t size = 0;
