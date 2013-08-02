@@ -643,9 +643,10 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
 		if (descriptor_item_is_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
-			*size += knot_dname_to_wire(stream + *size, dname,
-			                            KNOT_DNAME_MAXLEN);
-			offset += *size;
+			int dname_len = knot_dname_to_wire(stream + *size, dname,
+			                                   KNOT_DNAME_MAXLEN);
+			*size += dname_len;
+			offset += dname_len;
 		} else if (descriptor_item_is_fixed(item)) {
 			memcpy(stream + *size, rdata + offset, item);
 			offset += item;
