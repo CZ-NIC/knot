@@ -816,12 +816,13 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	}
 
 	/* Build RDATA. */
-	uint8_t *rdata = knot_rrset_create_rdata(rr, sizeof(knot_dname_t *));
+	int dn_size = knot_dname_size(dn);
+	uint8_t *rdata = knot_rrset_create_rdata(rr, dn_size);
 	if (!rdata) {
 		knot_dname_free(&dn);
 		return KNOT_ERROR;
 	}
-	memcpy(rdata, &dn, sizeof(knot_dname_t *));
+	memcpy(rdata, dn, dn_size);
 
 	return KNOT_EOK;
 }

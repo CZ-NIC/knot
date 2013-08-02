@@ -1975,16 +1975,18 @@ dbg_ns_exec(
 	dbg_ns_verb("CNAME canonical name: %s.\n", name);
 	free(name);
 );
-	uint8_t *cname_rdata = knot_rrset_create_rdata(cname_rrset,
-	                                               sizeof(knot_dname_t *));
+	int cname_size = knot_dname_size(cname);
+	uint8_t *cname_rdata = knot_rrset_create_rdata(cname_rrset, cname_size);
 	if (cname_rdata == NULL) {
 		dbg_ns("ns: cname_from_dname: Cannot cerate CNAME RDATA.\n");
 		knot_rrset_free(&cname_rrset);
+		knot_dname_free(&cname);
 		return NULL;
 	}
 
 	/* Store DNAME into RDATA. */
-	memcpy(cname_rdata, &cname, sizeof(knot_dname_t *));
+	memcpy(cname_rdata, cname, cname_size);
+	knot_dname_free(&cname);
 
 	return cname_rrset;
 }
