@@ -61,8 +61,6 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"RRSIG: Class is wrong!",
 	[-ZC_ERR_RRSIG_TTL] =
 	"RRSIG: TTL is wrong!",
-	[-ZC_ERR_RRSIG_NOT_ALL] =
-	"RRSIG: Not all RRs are signed!",
 
 	[-ZC_ERR_NO_NSEC] =
 	"NSEC: Missing NSEC record",
@@ -486,14 +484,6 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 			dbg_semcheck("Could not check RRSIG properly (%s).\n",
 			             knot_strerror(ret));
 		}
-	}
-	
-	int all_signed =
-		knot_rrset_rdata_rr_count(rrset) == knot_rrset_rdata_rr_count(rrsigs);
-	if (!all_signed) {
-		err_handler_handle_error(handler, node,
-		                         ZC_ERR_RRSIG_NOT_ALL,
-		                         info_str);
 	}
 
 	return KNOT_EOK;
