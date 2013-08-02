@@ -174,6 +174,8 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
  * \retval 0 if RRs are equal.
  * \retval < 0 if first RR is 'bigger' than the second one.
  * \retval > 0 if second RR is 'bigger' than the first one.
+ *
+ * \todo Maybe now we could compare the whole block.
  */
 static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
                                    const knot_rrset_t *rrset2,

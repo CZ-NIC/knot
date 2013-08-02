@@ -258,10 +258,6 @@ static void process_rr(const scanner_t *scanner)
 		return;
 	}
 
-	/* [RRSet refactor] Checking RRSet format. */
-	printf("Parsed RR: \n");
-	knot_rrset_dump(current_rrset);
-
 	dbg_zp_verb("zp: process_rr: Processing type: %d.\n",
 	            parser->current_rrset->type);
 
