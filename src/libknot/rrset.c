@@ -1571,7 +1571,7 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
 	return ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
 	        || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
-	            && knot_rdata_rrsig_type_covered(rr, 1)
+	            && knot_rdata_rrsig_type_covered(rr, 0)
 	            == KNOT_RRTYPE_NSEC3));
 }
 

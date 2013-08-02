@@ -266,7 +266,7 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 			char *name = knot_dname_to_str((*last)->rrsig->owner);
 			char type[16];
 			knot_rrtype_to_string(
-			    knot_rdata_rrsig_type_covered((*last)->rrsig, 1),
+			    knot_rdata_rrsig_type_covered((*last)->rrsig, 0),
 			    type, 16);
 
 			log_zone_warning("No RRSet for RRSIG: "
@@ -1436,14 +1436,14 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 
 	if (*rrset
 	    && knot_dname_is_equal(knot_rrset_owner(*rrset), knot_node_owner(node))
-	    && knot_rrset_type(*rrset) == knot_rdata_rrsig_type_covered(remove, 1)) {
+	    && knot_rrset_type(*rrset) == knot_rdata_rrsig_type_covered(remove, 0)) {
 		// this RRSet should be the already copied RRSet so we may
 		// update it right away
 		/*! \todo Does this case even occur? */
 		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
 	} else {
 		// find RRSet based on the Type Covered
-		uint16_t type = knot_rdata_rrsig_type_covered(remove, 1);
+		uint16_t type = knot_rdata_rrsig_type_covered(remove, 0);
 
 		// copy the rrset
 		dbg_xfrin_detail("Copying RRSet that carries the RRSIGs.\n");
@@ -2165,7 +2165,7 @@ static int xfrin_apply_add_rrsig(knot_changes_t *changes,
 
 	int ret;
 
-	uint16_t type = knot_rdata_rrsig_type_covered(add, 1);
+	uint16_t type = knot_rdata_rrsig_type_covered(add, 0);
 
 dbg_xfrin_exec_verb(
 	char *name = knot_dname_to_str(knot_rrset_owner(add));

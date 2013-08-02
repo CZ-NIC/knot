@@ -95,16 +95,16 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 
 	knot_rrset_t *tmp_rrset =
 		knot_node_get_rrset(node,
-	                            knot_rdata_rrsig_type_covered(rrsig, 1));
+	                            knot_rdata_rrsig_type_covered(rrsig, 0));
 
 	int ret;
 
 	if (tmp_rrset == NULL) {
 		dbg_zp("zp: find_rr_for_sig_in_node: Node does not contain "
 		       "RRSet of type %d.\n",
-		       knot_rdata_rrsig_type_covered(rrsig, 1));
+		       knot_rdata_rrsig_type_covered(rrsig, 0));
 		tmp_rrset = knot_rrset_new(knot_dname_copy(rrsig->owner),
-		                           knot_rdata_rrsig_type_covered(rrsig, 1),
+		                           knot_rdata_rrsig_type_covered(rrsig, 0),
 		                           rrsig->rclass,
 		                           rrsig->ttl);
 		if (tmp_rrset == NULL) {
@@ -131,7 +131,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		log_zone_warning("RRSIG owned by: %s (covering type %d) cannot "
 		                 "be added to its RRSet, because their TTLs "
 		                 "differ. Changing TTL=%d to value=%d.\n",
-		                 name, knot_rdata_rrsig_type_covered(rrsig, 1),
+		                 name, knot_rdata_rrsig_type_covered(rrsig, 0),
 		                 rrsig->ttl, tmp_rrset->ttl);
 		free(name);
 	}
@@ -275,7 +275,7 @@ static void process_rr(const scanner_t *scanner)
 	uint16_t type_covered = 0;
 	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
 		type_covered =
-			knot_rdata_rrsig_type_covered(current_rrset, 1);
+			knot_rdata_rrsig_type_covered(current_rrset, 0);
 	}
 
 	if (current_rrset->type != KNOT_RRTYPE_NSEC3 &&

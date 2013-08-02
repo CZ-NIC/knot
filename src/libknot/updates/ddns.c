@@ -1339,7 +1339,7 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 
 	uint16_t type = knot_rrset_type(rr);
 	uint16_t type_covered = (type == KNOT_RRTYPE_RRSIG)
-	                ? knot_rdata_rrsig_type_covered(rr, 1)
+	                ? knot_rdata_rrsig_type_covered(rr, 0)
 	                : type;
 
 	/* If the RR belongs to a RRSet already present in the node, we must
@@ -1626,7 +1626,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * 1) Copy the RRSet.
 	 */
 	uint16_t type_to_copy = (type != KNOT_RRTYPE_RRSIG) ? type
-	                : knot_rdata_rrsig_type_covered(rr, 1);
+	                : knot_rdata_rrsig_type_covered(rr, 0);
 	knot_rrset_t *rrset_copy = NULL;
 	int ret = xfrin_copy_rrset(node, type_to_copy, &rrset_copy, changes, 1);
 	if (ret < 0) {

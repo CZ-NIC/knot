@@ -996,7 +996,7 @@ dbg_zone_exec(
 		// find proper node
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
 					   const knot_dname_t *)
-		    = (knot_rdata_rrsig_type_covered(rrsigs, 1)
+		    = (knot_rdata_rrsig_type_covered(rrsigs, 0)
 		       == KNOT_RRTYPE_NSEC3)
 		       ? knot_zone_contents_get_nsec3_node
 		       : knot_zone_contents_get_node;
@@ -1013,9 +1013,9 @@ dbg_zone_exec(
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
 		dbg_zone_detail("Finding RRSet for type %d\n",
-				knot_rdata_rrsig_type_covered(rrsigs, 1));
+				knot_rdata_rrsig_type_covered(rrsigs, 0));
 		*rrset = knot_node_get_rrset(
-			     *node, knot_rdata_rrsig_type_covered(rrsigs, 1));
+			     *node, knot_rdata_rrsig_type_covered(rrsigs, 0));
 		if (*rrset == NULL) {
 			dbg_zone("Failed to find RRSet for RRSIGs.\n");
 			return KNOT_ENORRSET;

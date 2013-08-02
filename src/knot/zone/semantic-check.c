@@ -306,7 +306,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		return KNOT_EOK;
 	}
 
-	if (knot_rdata_rrsig_type_covered(rrsig, 1) !=
+	if (knot_rdata_rrsig_type_covered(rrsig, 0) !=
 	    knot_rrset_type(rrset)) {
 		/* zoneparser would not let this happen
 		 * but to be on the safe side

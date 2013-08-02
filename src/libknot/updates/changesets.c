@@ -67,8 +67,8 @@ static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
 {
 	return knot_rrset_equal(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
 	       && (knot_rrset_type(rrset1) != KNOT_RRTYPE_RRSIG
-	           || knot_rdata_rrsig_type_covered(rrset1, 1)
-	              == knot_rdata_rrsig_type_covered(rrset2, 1));
+	           || knot_rdata_rrsig_type_covered(rrset1, 0)
+	              == knot_rdata_rrsig_type_covered(rrset2, 0));
 }
 
 /*----------------------------------------------------------------------------*/
