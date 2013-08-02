@@ -318,6 +318,9 @@ void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 	while (r != NULL) {
 		xfrin_orphan_rrsig_t *prev = r;
 		r = r->next;
+		if (prev->rrsig != NULL) {
+			knot_rrset_deep_free(&prev->rrsig, 1, 1);
+		}
 		free(prev);
 	}
 
@@ -661,13 +664,12 @@ dbg_xfrin_exec_detail(
 			// we must now find place for all orphan RRSIGs
 			ret = xfrin_process_orphan_rrsigs(zone,
 							  (*constr)->rrsigs);
+			xfrin_free_orphan_rrsigs(&(*constr)->rrsigs);
+
 			if (ret != KNOT_EOK) {
 				dbg_xfrin("Failed to process orphan RRSIGs\n");
-				/*! \todo Cleanup?? */
 				return ret;
 			}
-
-			xfrin_free_orphan_rrsigs(&(*constr)->rrsigs);
 
 			return 1;
 		}
