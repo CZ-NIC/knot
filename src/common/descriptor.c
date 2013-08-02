@@ -76,12 +76,12 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "KEY" },
 	[KNOT_RRTYPE_AAAA]       = { { 16, KNOT_RDATA_WF_END }, "AAAA" },
 	[KNOT_RRTYPE_LOC]        = { { 16, KNOT_RDATA_WF_END }, "LOC" },
-	[KNOT_RRTYPE_SRV]        = { { 6, KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
+	[KNOT_RRTYPE_SRV]        = { { 6, KNOT_RDATA_WF_COMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_END }, "SRV" },
 	[KNOT_RRTYPE_NAPTR]      = { { KNOT_RDATA_WF_NAPTR_HEADER,
-	                               KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_COMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_END }, "NAPTR" },
-	[KNOT_RRTYPE_KX]         = { { 2, KNOT_RDATA_WF_COMPRESSED_DNAME,
+	[KNOT_RRTYPE_KX]         = { { 2, KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_END }, "KX" },
 	[KNOT_RRTYPE_CERT]       = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "CERT" },
@@ -97,10 +97,10 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "SSHFP" },
 	[KNOT_RRTYPE_IPSECKEY]   = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "IPSECKEY" },
-	[KNOT_RRTYPE_RRSIG]      = { { 18, KNOT_RDATA_WF_LITERAL_DNAME,
+	[KNOT_RRTYPE_RRSIG]      = { { 18, KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "RRSIG" },
-	[KNOT_RRTYPE_NSEC]       = { { KNOT_RDATA_WF_LITERAL_DNAME,
+	[KNOT_RRTYPE_NSEC]       = { { KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 	                               KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "NSEC" },
 	[KNOT_RRTYPE_DNSKEY]     = { { KNOT_RDATA_WF_REMAINDER,
@@ -118,7 +118,7 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	[KNOT_RRTYPE_NID]        = { { 10 }, "NID" },
 	[KNOT_RRTYPE_L32]        = { { 6 }, "L32" },
 	[KNOT_RRTYPE_L64]        = { { 10 }, "L64" },
-	[KNOT_RRTYPE_LP]         = { { 2, KNOT_RDATA_WF_COMPRESSED_DNAME },
+	[KNOT_RRTYPE_LP]         = { { 2, KNOT_RDATA_WF_UNCOMPRESSED_DNAME },
 	                             "LP" },
 	[KNOT_RRTYPE_EUI48]      = { { 6, KNOT_RDATA_WF_END }, "EUI48" },
 	[KNOT_RRTYPE_EUI64]      = { { 8, KNOT_RDATA_WF_END }, "EUI64" },
@@ -136,12 +136,46 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "ANY" },
 };
 
+/*!
+ * \brief Some (OBSOLETE) RR type descriptors.
+ */
+static const rdata_descriptor_t obsolete_rdata_descriptors[] = {
+	[0]                      = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, NULL },
+	[KNOT_RRTYPE_MD]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MD" },
+	[KNOT_RRTYPE_MF]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MF" },
+	[KNOT_RRTYPE_MB]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MB" },
+	[KNOT_RRTYPE_MG]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MG" },
+	[KNOT_RRTYPE_MR]         = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "MR" },
+	[KNOT_RRTYPE_PX]         = { { 2, KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_END }, "PX" },
+	[KNOT_RRTYPE_NXT]        = { { KNOT_RDATA_WF_COMPRESSED_DNAME,
+	                               KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "NXT" },
+};
+
 const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_ANY && rdata_descriptors[type].type_name != 0) {
 		return &rdata_descriptors[type];
 	} else {
 		return &rdata_descriptors[0];
+	}
+}
+
+const rdata_descriptor_t *get_obsolete_rdata_descriptor(const uint16_t type)
+{
+	if (type <= KNOT_RRTYPE_NXT &&
+	    obsolete_rdata_descriptors[type].type_name != 0) {
+		return &obsolete_rdata_descriptors[type];
+	} else {
+		return &obsolete_rdata_descriptors[0];
 	}
 }
 
@@ -251,8 +285,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 
 int descriptor_item_is_dname(const int item)
 {
-	return item == KNOT_RDATA_WF_LITERAL_DNAME    ||
-	       item == KNOT_RDATA_WF_COMPRESSED_DNAME ||
+	return item == KNOT_RDATA_WF_COMPRESSED_DNAME ||
 	       item == KNOT_RDATA_WF_UNCOMPRESSED_DNAME;
 }
 

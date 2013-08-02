@@ -340,7 +340,7 @@ static int udp_recvfrom_send(void *d)
 	return 0;
 }
 
-#ifdef ENABLE_RECVMMSG
+#ifdef HAVE_RECVMMSG
 
 /*! \brief Pointer to selected UDP send implementation. */
 static int (*_send_mmsg)(int, sockaddr_t *, struct mmsghdr *, size_t) = 0;
@@ -370,7 +370,7 @@ static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
 {
 	return syscall(SYS_sendmmsg, fd, mmsg, vlen, flags, NULL);
 }
-#endif
+#endif /* HAVE_SENDMMSG */
 
 /*!
  * \brief Send multiple packets.
@@ -382,7 +382,7 @@ int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
 	UNUSED(_);
 	return sendmmsg(sock, msgs, count, 0);
 }
-#endif
+#endif /* ENABLE_SENDMMSG */
 
 /* UDP recvmmsg() request struct. */
 struct udp_recvmmsg {
@@ -483,7 +483,7 @@ static int udp_recvmmsg_send(void *d)
 	}
 	return rc;
 }
-#endif
+#endif /* HAVE_RECVMMSG */
 
 /*! \brief Initialize UDP master routine on run-time. */
 void __attribute__ ((constructor)) udp_master_init()
@@ -496,7 +496,7 @@ void __attribute__ ((constructor)) udp_master_init()
 	_udp_handle = udp_recvfrom_handle;
 
 	/* Optimized functions. */
-#ifdef ENABLE_RECVMMSG
+#ifdef HAVE_RECVMMSG
 	/* Check for recvmmsg() support. */
 	if (dlsym(RTLD_DEFAULT, "recvmmsg") != 0) {
 		recvmmsg(0, NULL, 0, 0, 0);
@@ -517,7 +517,7 @@ void __attribute__ ((constructor)) udp_master_init()
 		_send_mmsg = udp_sendmmsg;
 	}
 #endif /* ENABLE_SENDMMSG */
-#endif /* ENABLE_RECVMMSG */
+#endif /* HAVE_RECVMMSG */
 }
 
 int udp_reader(iohandler_t *h, dthread_t *thread)

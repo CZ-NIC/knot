@@ -107,7 +107,9 @@ static inline int dt_test_repurpose(dt_unit_t *unit, int id)
 /*! \brief Cancel single thread. */
 static inline int dt_test_cancel(dt_unit_t *unit, int id)
 {
-	return dt_cancel(unit->threads[id]) == 0;
+	int ret = dt_cancel(unit->threads[id]);
+	ret |= dt_signalize(unit->threads[id], SIGALRM);
+	return ret == 0; /* Both succeeded. */
 }
 
 /*! \brief Reanimate dead threads. */

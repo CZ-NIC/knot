@@ -29,6 +29,7 @@
 #define _KNOT_RRSET_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "dname.h"
 
@@ -162,7 +163,7 @@ int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs);
  */
 //TODO test
 int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
-                         knot_rrset_dupl_handling_t dupl);
+                          knot_rrset_dupl_handling_t dupl);
 
 /*!
  * \brief Returns the Owner of the RRSet.
@@ -188,7 +189,7 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  * Previous owner will be replaced if exist.
  *
  * \param rrset Specified RRSet.
- * \param owner New owner dname (will be duplicated).
+ * \param owner New owner dname.
  */
 int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
 
@@ -329,6 +330,13 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 /*! \brief Merges without with duplicate check, with sort. */
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                           int *merged, int *deleted_rrs);
+
+/*!
+ * \brief Return true if the RRSet is an NSEC3 related type.
+ *
+ * \param rr RRSet.
+ */
+bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
 
 void knot_rrset_dump(const knot_rrset_t *rrset);
 

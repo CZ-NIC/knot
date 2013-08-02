@@ -121,12 +121,11 @@ static int fdset_tests_run(int argc, char *argv[])
 	pthread_create(&t, 0, thr_action, &fds[1]);
 
 	/* 4. Watch fdset. */
-	int nfds = poll(set.pfd, set.n, 2000);
+	int nfds = poll(set.pfd, set.n, 60 * 1000);
 	gettimeofday(&te, 0);
 	size_t diff = timeval_diff(&ts, &te);
 
-	ok(nfds > 0 && diff > 99 && diff < 10000,
-	   "fdset: poll returned %d events in %zu ms", nfds, diff);
+	ok(nfds > 0, "fdset: poll returned %d events in %zu ms", nfds, diff);
 
 	/* 5. Prepare event set. */
 	ok(set.pfd[0].revents & POLLIN, "fdset: pipe is active");

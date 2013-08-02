@@ -1101,21 +1101,19 @@ int xfr_worker(dthread_t *thread)
 		unsigned i = 0;
 		while (nfds > 0 && i < set.n && !dt_is_cancelled(thread)) {
 
-			if (!(set.pfd[i].revents & set.pfd[i].events)) {
-				/* Skip inactive. */
-				++i;
-				continue;
-			} else {
+			knot_ns_xfr_t *rq = (knot_ns_xfr_t *)set.ctx[i];
+			if (set.pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+				/* Error events. */
+				--nfds;           /* Treat error event as activity. */
+				ret = KNOT_ECONN; /* Force disconnect */
+			} else if (set.pfd[i].revents & set.pfd[i].events) {
 				/* One less active event. */
 				--nfds;
-			}
-
-			/* Process pending tasks. */
-			knot_ns_xfr_t *rq = (knot_ns_xfr_t *)set.ctx[i];
-			if (rq->flags & XFR_FLAG_CONNECTING) {
-				ret = xfr_async_finish(&set, i);
-			} else {
-				ret = xfr_process_event(w, rq);
+				/* Process pending tasks. */
+				if (rq->flags & XFR_FLAG_CONNECTING)
+					ret = xfr_async_finish(&set, i);
+				else
+					ret = xfr_process_event(w, rq);
 			}
 
 			/* Check task state. */
@@ -1126,6 +1124,9 @@ int xfr_worker(dthread_t *thread)
 				socket_close(set.pfd[i].fd);
 				fdset_remove(&set, i);
 				continue; /* Stay on the same index. */
+			} else {
+				/* Connection is active, update watchdog. */
+				fdset_set_watchdog(&set, i, conf()->max_conn_idle);
 			}
 
 			/* Next active. */

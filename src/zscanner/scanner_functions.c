@@ -920,7 +920,6 @@ static int32_t get_block_length(const uint8_t  *data,
 	switch (type) {
 	case KNOT_RDATA_WF_COMPRESSED_DNAME:
 	case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-	case KNOT_RDATA_WF_LITERAL_DNAME:
 		ret = get_dname_length(data + offset, data_len - offset);
 
 		if (ret > 0) {

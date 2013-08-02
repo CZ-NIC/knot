@@ -32,6 +32,7 @@
 #include "packet/response.h"
 #include "util/wire.h"
 #include "libknot/dname.h"
+#include "libknot/rdata.h"
 
 static const unsigned int RR_CHANGE_TOO_BIG = 16;
 
@@ -1165,11 +1166,20 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		return KNOT_EOK;
 	}
 
+	int obsolete = 0;
 	dbg_rrset_detail("rr: parse_rdata_wire: Parsing RDATA of size=%zu,"
 	                 " wire_size=%zu, type=%d.\n", rdlength, total_size,
 	                 rrset->type);
 
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
+
+	/* Check for obsolete record. */
+	if (desc->type_name == NULL) {
+		desc = get_obsolete_rdata_descriptor(rrset->type);
+		if (desc->type_name != NULL) {
+			obsolete = 1;
+		}
+	}
 
 	/*! \todo This estimate is very rough - just to have enough space for
 	 *        possible unpacked dname. Should be later replaced by exact
@@ -1177,6 +1187,8 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	 */
 	uint8_t rdata_buffer[rdlength + KNOT_DNAME_MAXLEN];
 	memset(rdata_buffer, 0, rdlength + KNOT_DNAME_MAXLEN);
+	dbg_rrset_detail("rr: parse_rdata_wire: Added %zu bytes to buffer to "
+	                 "store RDATA DNAME pointers.\n", extra_dname_size);
 
 	size_t offset = 0; // offset within in-memory RDATA
 	size_t parsed = 0; // actual count of parsed octets
@@ -1202,6 +1214,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 			}
 
 			parsed += wire_size;
+
 dbg_rrset_exec_detail(
 			dbg_rrset_detail("rr: parse_rdata_wire: Parsed DNAME, "
 			                 "length=%zu.\n", wire_size);
@@ -1561,6 +1574,19 @@ int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 
 	return KNOT_EOK;
 }
+
+bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
+{
+	assert(rr != NULL);
+
+	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
+	return ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
+	        || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
+	            && knot_rdata_rrsig_type_covered(rr, 1)
+	            == KNOT_RRTYPE_NSEC3));
+}
+
+/*----------------------------------------------------------------------------*/
 
 void knot_rrset_dump(const knot_rrset_t *rrset)
 {
