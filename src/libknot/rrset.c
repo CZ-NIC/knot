@@ -1171,12 +1171,19 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 
+	/* Check for obsolete record. */
+	if (desc->type_name == NULL) {
+		desc = get_obsolete_rdata_descriptor(rrset->type);
+	}
+
 	/*! \todo This estimate is very rough - just to have enough space for
 	 *        possible unpacked dname. Should be later replaced by exact
 	 *        size counting.
 	 */
 	uint8_t rdata_buffer[rdlength + KNOT_DNAME_MAXLEN];
 	memset(rdata_buffer, 0, rdlength + KNOT_DNAME_MAXLEN);
+	dbg_rrset_detail("rr: parse_rdata_wire: Added %zu bytes to buffer to "
+	                 "store RDATA DNAME pointers.\n", extra_dname_size);
 
 	size_t offset = 0; // offset within in-memory RDATA
 	size_t parsed = 0; // actual count of parsed octets
