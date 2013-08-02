@@ -153,6 +153,13 @@ int sockaddr_family(const sockaddr_t *addr);
  */
 void sockaddr_prep(sockaddr_t *addr);
 
+/*!
+ * \brief Get host FQDN address.
+ * \retval hostname string
+ * \retval NULL on error
+ */
+char *sockaddr_hostname(void);
+
 #endif /* _KNOTD_SOCKADDR_H_ */
 
 /*! @} */
