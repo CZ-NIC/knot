@@ -619,9 +619,16 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 	}
 	if (server->rrl) {
 		if (rrl_rate(server->rrl) != (uint32_t)conf->rrl) {
+			/* We cannot free it, threads may use it.
+			 * Setting it to <1 will disable rate limiting. */
+			if (conf->rrl < 1) {
+				log_server_info("Rate limiting disabled.\n");
+			} else {
+				log_server_info("Rate limiting set to %u "
+				                "responses/sec.\n", conf->rrl);
+			}
 			rrl_setrate(server->rrl, conf->rrl);
-			log_server_info("Rate limiting set to %u responses/sec.\n",
-			                conf->rrl);
+
 		} /* At this point, old buckets will converge to new rate. */
 	}
 
