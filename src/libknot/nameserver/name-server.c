@@ -1257,6 +1257,8 @@ static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 			dbg_ns_detail("Putting the RRSet to Authority\n");
 			ret = knot_response_add_rrset_authority(resp, rrset, 1,
 			                                        0, 1);
+		} else {
+			return KNOT_ENONODE;
 		}
 	} else {
 		dbg_ns_verb("Adding NSEC for NODATA\n");
@@ -1762,7 +1764,15 @@ static inline int ns_referral(const knot_node_t *node,
 
 			dbg_ns_verb("Adding NSEC/NSEC3 for NODATA.\n");
 			ret = ns_put_nsec_nsec3_nodata(zone, node, resp);
-			if (ret != KNOT_EOK) {
+
+			if (ret == KNOT_ENONODE) {
+				// No NSEC3 node => Opt-out
+				const knot_node_t *closest_encloser = node;
+				ret = ns_put_nsec3_closest_encloser_proof(zone,
+				                              &closest_encloser,
+				                              qname, resp);
+
+			} else if (ret != KNOT_EOK) {
 				return ret;
 			}
 
