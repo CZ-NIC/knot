@@ -1741,10 +1741,12 @@ static inline int ns_referral(const knot_node_t *node,
 		node = knot_node_parent(node);
 	}
 
+	int at_deleg = !knot_dname_compare(qname, knot_node_owner(node));
+
 	int ret = KNOT_EOK;
 
 	// Special handling of DS queries
-	if (qtype == KNOT_RRTYPE_DS) {
+	if (qtype == KNOT_RRTYPE_DS && at_deleg) {
 		knot_rrset_t *ds_rrset = knot_node_get_rrset(node,
 		                                             KNOT_RRTYPE_DS);
 
