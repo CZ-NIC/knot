@@ -621,7 +621,8 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		if (result != KNOT_EOK)
 			break;
 
-		node->nsec3_node = nsec3_node;
+		// Caused invalid reads after updating zone w/ changesets
+		//node->nsec3_node = nsec3_node;
 
 		hattrie_iter_next(it);
 	}
