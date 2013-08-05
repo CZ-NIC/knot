@@ -296,7 +296,7 @@ AC_TYPE_SSIZE_T
 AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups])
+AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups initgroups])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
