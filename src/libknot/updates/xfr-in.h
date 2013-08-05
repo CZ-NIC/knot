@@ -186,8 +186,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_zone_contents_t **new_contents);
 
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
-                            knot_zone_contents_t **new_contents,
-                            knot_changes_t **changes);
+                            knot_zone_contents_t **new_contents);
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
                                 knot_changes_t *changes);
@@ -196,11 +195,11 @@ int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int deep_free);
 
-void xfrin_cleanup_successful_update(knot_changes_t **changes);
+void xfrin_cleanup_successful_update(knot_changes_t *changes);
 
 void xfrin_rollback_update(knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents,
-                           knot_changes_t **changes);
+                           knot_changes_t *changes);
 
 int xfrin_copy_rrset(knot_node_t *node, uint16_t type,
                      knot_rrset_t **rrset, knot_changes_t *changes,

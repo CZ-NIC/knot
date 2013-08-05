@@ -293,7 +293,7 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
 		knot_changesets_t *chs = (knot_changesets_t *)rq->data;
-		knot_free_changesets(&chs);
+		knot_changesets_free(&chs);
 		rq->data = NULL;
 		assert(rq->new_contents == NULL);
 	} else if (rq->type == XFR_TYPE_FORWARD) {
@@ -1350,7 +1350,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 
 	/* Cleanup. */
 	knot_packet_free(&rq->response);  /* Free response. */
-	knot_free_changesets((knot_changesets_t **)(&rq->data));
+	knot_changesets_free((knot_changesets_t **)(&rq->data));
 	free(rq->zname);
 
 	/* Free request. */
