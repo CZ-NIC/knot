@@ -9,6 +9,7 @@ Bugfixes:
 	* Transfers randomly cancelled
 	* Disabling RRL on reload
 	* Secondary groups not initialized when dropping privileges
+	* Responding to DS queries for names at or below delegation points
 
 v1.3.0-rc5 - Jul 29, 2013
 -------------------------
