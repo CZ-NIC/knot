@@ -3636,10 +3636,6 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 		return KNOT_ERROR;
 	}
 
-	/* Trim question for DDNS answer. */
-	knot_packet_set_size(query, KNOT_WIRE_HEADER_SIZE);
-	knot_wire_set_qdcount(query->wireformat, 0);
-
 	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
 	            query->parsed, query->size);
 	dbg_ns_detail("Opt RR: version: %d, payload: %d\n",
