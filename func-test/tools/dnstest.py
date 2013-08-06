@@ -140,7 +140,7 @@ class Zone(object):
 class DnsServer(object):
     '''Specification of DNS server'''
 
-    START_WAIT = 1
+    START_WAIT = 2
     STOP_TIMEOUT = 10
     COMPILE_TIMEOUT = 60
 
@@ -148,9 +148,10 @@ class DnsServer(object):
     count = 0
 
     def __init__(self):
+        self.proc = None
+        self.valgrind = []
         self.start_params = None
         self.compile_params = None
-        self.run_prefix = None
 
         self.nsid = None
         self.ident = None
@@ -172,12 +173,37 @@ class DnsServer(object):
         self.ferr = None
         self.conffile = None
 
+    def _check_socket(self, proto, port):
+        if self.ip == 4:
+            iface = "%i%s@%s:%i" % (self.ip, proto, self.addr, port)
+        else:
+            iface = "%i%s@[%s]:%i" % (self.ip, proto, self.addr, port)
+
+        proc = Popen(["lsof", "-t", "-i", iface],
+                     stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        (out, err) = proc.communicate()
+
+        # Create list of pids excluding last empty line.
+        pids = list(filter(None, out.split("\n")))
+
+        # Check for successful bind.
+        if str(self.proc.pid) not in pids:
+            return False
+
+        # More binded processes is not acceptable too.
+        if len(pids) > 1:
+            return False
+
+        return True
+
     def zone_master(self, name, file, slave=None, ddns=False):
         if name in self.zones:
-            self.zones[name].slaves.add(slave)
+            if slave:
+                self.zones[name].slaves.add(slave)
         else:
             z = Zone(name, file, ddns)
-            z.slaves.add(slave)
+            if slave:
+                z.slaves.add(slave)
             self.zones[name] = z
 
     def zone_slave(self, name, file, master):
@@ -208,36 +234,34 @@ class DnsServer(object):
     def compile(self):
         try:
             p = Popen([self.control_bin] + self.compile_params,
-                      stdout=self.fout_, stderr=self.ferr)
+                      stdout=self.fout, stderr=self.ferr)
             p.communicate(timeout=DnsServer.COMPILE_TIMEOUT)
         except:
             print("Compile error")
 
     def start(self):
         try:
-            self.fout = open(self.fout, mode="w")
-            self.ferr = open(self.ferr, mode="w")
+            fout = open(self.fout, mode="w")
+            ferr = open(self.ferr, mode="w")
 
             if self.compile_params:
                 self.compile()
 
-            self.proc = Popen(self.run_prefix + [self.daemon_bin] + self.start_params,
-                              stdout=self.fout, stderr=self.ferr)
+            self.proc = Popen(self.valgrind + [self.daemon_bin] + self.start_params,
+                              stdout=fout, stderr=ferr)
 
             time.sleep(DnsServer.START_WAIT)
         except OSError:
-            print("fout error")
+            print("Server %s start error", self.name)
 
     def stop(self):
-        try:
-            self.proc.terminate()
-            self.proc.wait(DnsServer.STOP_TIMEOUT)
-        except TimeoutError:
-            print("killing")
-            self.proc.kill()
-
-        self.fout.close()
-        self.ferr.close()
+        if self.proc:
+            try:
+                self.proc.terminate()
+                self.proc.wait(DnsServer.STOP_TIMEOUT)
+            except TimeoutError:
+                print("killing")
+                self.proc.kill()
 
     def gen_confile(self):
         f = open(self.confile, "w")
@@ -287,6 +311,11 @@ class Knot(DnsServer):
     def __init__(self):
         super().__init__()
         super().set_paths(knot_vars)
+
+    def running(self):
+        tcp = super()._check_socket("tcp", self.port)
+        udp = super()._check_socket("udp", self.port)
+        return (tcp and udp)
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
@@ -420,35 +449,18 @@ class Nsd(DnsServer):
         self.start_params = ["-c", self.confile, "-d"]
         self.compile_params = ["-c", self.confile, "rebuild"]
 
-def check_socket(ip, proto, addr, port, pid):
-    iface = "%i%s@%s:%i" % (ip, proto, addr, port)
-    proc = Popen(["lsof", "-t", "-i", iface],
-                 stdout=PIPE, stderr=PIPE, universal_newlines=True)
-    (out, err) = proc.communicate()
-
-    # Create list of pids excluding last empty line.
-    pids = list(filter(None, out.split("\n")))
-
-    # Check for successful bind.
-    if str(pid) not in pids:
-        print("x")
-        return False
-
-    # More binded processes is not acceptable too.
-    if len(pids) > 1:
-        return False
-
-    return True
-
-#print(check_socket(4, "tcp", "127.0.0.1", 5354, 7930))
-
 class DnsTest(object):
     '''Specification of DNS test topology'''
 
+    MAX_START_TRIES = 20
     LOCAL_ADDR = {4: "127.0.0.1", 6: "::1"}
+    VALGRIND_CMD = ["valgrind", "--leak-check=full"]
 
     # Value of the last generated port.
     last_port = None
+
+    # Number of unsuccessful starts of servers. Recursion protection.
+    start_tries = 0
 
     def __init__(self, test_dir, out_dir, ip=None, tsig=None):
         if not os.path.exists(out_dir):
@@ -466,7 +478,7 @@ class DnsTest(object):
         if self.ip not in [4, 6]:
             raise Exception("Invalid IP version")
 
-        self.tsig = bool(tsig) if tsig else random.choice([True, False])
+        self.tsig = bool(tsig) if tsig != None else random.choice([True, False])
 
         self.servers = set()
 
@@ -502,7 +514,7 @@ class DnsTest(object):
         DnsTest.last_port = port
         return port
 
-    def server(self, server, nsid=None, ident=None, version=None, prefix=None):
+    def server(self, server, nsid=None, ident=None, version=None, valgrind=None):
         if server == "knot":
             srv = Knot()
         elif server == "bind":
@@ -514,12 +526,8 @@ class DnsTest(object):
 
         type(srv).count += 1
 
-        if prefix:
-            srv.run_prefix = prefix
-        elif server == "knot":
-            srv.run_prefix = ["valgrind", "--leak-check=full"]
-        else:
-            srv.run_prefix = []
+        if valgrind or (valgrind == None and server == "knot"):
+            srv.valgrind = DnsTest.VALGRIND_CMD
 
         srv.nsid = nsid
         srv.ident = ident
@@ -550,6 +558,11 @@ class DnsTest(object):
             server.gen_confile()
 
     def start(self):
+        if self.start_tries > DnsTest.MAX_START_TRIES:
+            raise Exception("Can't start all servers")
+
+        self.start_tries += 1
+
         self._generate_conf()
 
         def srv_sort(server):
@@ -561,14 +574,16 @@ class DnsTest(object):
         # Sort server list by number of masters. I.e. masters are prefered.
         for server in sorted(self.servers, key=srv_sort):
             server.start()
-
-        time.sleep(5)
+            if not server.running():
+                self.stop()
+                self.start()
 
     def stop(self):
         for server in self.servers:
             server.stop()
 
     def end(self):
+        self.stop()
         pass
 
     def zone(self, name, filename):
@@ -604,12 +619,12 @@ class DnsTest(object):
 
     def link(self, zones, master, slave=None, ddns=False):
         for zone in zones:
-            if (master not in self.servers) or \
-               (slave not in self.servers):
+            if master not in self.servers:
                 raise Exception("Uncovered server in test")
-
             master.zone_master(zone, zones[zone], slave, ddns)
 
             if slave:
+                if slave not in self.servers:
+                    raise Exception("Uncovered server in test")
                 slave.zone_slave(zone, zones[zone], master)
 
