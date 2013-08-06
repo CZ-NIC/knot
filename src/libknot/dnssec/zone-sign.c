@@ -389,8 +389,7 @@ static void free_sign_contexts(knot_zone_keys_t *keys)
 static void free_zone_keys(knot_zone_keys_t *keys)
 {
 	for (int i = 0; i < keys->count; i++) {
-		knot_dname_release(keys->keys[i].name);
-		free(keys->keys[i].data);
+		knot_dnssec_key_free(&keys->keys[i]);
 	}
 }
 

@@ -119,13 +119,14 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		knot_dname_release(params.name);
-
 		fprintf(stderr, "key is valid\n");
 		fprintf(stderr, "key is %s\n", params.flags & 1 ? "ksk" : "zsk");
 
 		keys->is_ksk[keys->count] = params.flags & 1;
 		keys->count += 1;
+
+		// Cleanup key parameters
+		knot_free_key_params(&params);
 	}
 
 	closedir(keydir);
