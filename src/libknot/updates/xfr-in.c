@@ -2420,6 +2420,16 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
+static void xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
+{
+	UNUSED(data);
+	assert(node != NULL);
+
+	knot_node_set_new_node(node, NULL);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
                                         knot_zone_contents_t **new_contents)
 {
@@ -2430,6 +2440,17 @@ static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
 	if (*new_contents != NULL) {
 		// destroy the shallow copy of zone
 		xfrin_zone_contents_free2(new_contents);
+	}
+
+	if (old_contents != NULL) {
+		// cleanup old zone tree - reset pointers to new node to NULL
+		knot_zone_contents_tree_apply_inorder(old_contents,
+						      xfrin_cleanup_old_nodes,
+						      NULL);
+
+		knot_zone_contents_nsec3_apply_inorder(old_contents,
+						       xfrin_cleanup_old_nodes,
+						       NULL);
 	}
 }
 

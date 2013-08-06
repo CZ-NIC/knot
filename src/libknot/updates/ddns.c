@@ -1203,7 +1203,7 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 	}
 
 	int rdata_in_copy = knot_rrset_rdata_rr_count(*rr_copy);
-	int merged, deleted_rrs;
+	int merged = 0, deleted_rrs = 0;
 	int ret = knot_rrset_merge_sort(node_rrset_copy, *rr_copy, &merged,
 	                                &deleted_rrs);
 	dbg_ddns_detail("Merge returned: %d\n", ret);
@@ -2040,7 +2040,7 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	/* 4 a) Remove redundant RRs from the ADD section of the changeset. */
 	knot_dname_t *owner_copy = knot_dname_copy(rrset->owner);
 	knot_rrset_t *empty_rrset =
-		knot_rrset_new(rrset->owner, type, rrset->rclass, rrset->ttl);
+		knot_rrset_new(owner_copy, type, rrset->rclass, rrset->ttl);
 	if (empty_rrset == NULL) {
 		knot_dname_free(&owner_copy);
 		return KNOT_ENOMEM;

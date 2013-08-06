@@ -212,7 +212,7 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 	 * This will be replaced with refcounting RDATA, so I'm keeping the API
 	 * intact to ease the transition.
 	 */
-#if 0
+
 	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(node);
 	short count = knot_node_rrset_count(node);
 
@@ -220,11 +220,6 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 
 	for (int r = 0; r < count; ++r) {
 		assert(rrsets[r] != NULL);
-
-		/* Make sure that RRSet owner is the same as node's. */
-		if (knot_dname_is_equal(node->owner, rrsets[r]->owner)) {
-			knot_rrset_set_owner(rrsets[r], node->owner);
-		}
 
 		dbg_zone("Adjusting next RRSet.\n");
 		knot_rrset_dump(rrsets[r]);
@@ -248,7 +243,6 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 			}
 		}
 	}
-#endif
 
 	return KNOT_EOK;
 }
