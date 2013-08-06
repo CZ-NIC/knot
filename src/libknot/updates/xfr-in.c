@@ -397,7 +397,7 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 	if (xfr->tsig_key) {
 		if (tsig_req && tsig == NULL) {
 			// TSIG missing!!
-			return KNOT_EMALF;
+			return KNOT_ENOTSIG;
 		} else if (tsig != NULL) {
 			// TSIG there, either required or not, process
 			if (xfr->packet_nr == 0) {
@@ -894,7 +894,7 @@ dbg_xfrin_exec_verb(
 	/* Now check if there is not a TSIG record at the end of the packet. */
 	ret = xfrin_check_tsig(packet, xfr,
 			       knot_ns_tsig_required(xfr->packet_nr));
-	++xfr->packet_nr;
+	//++xfr->packet_nr;
 
 	knot_packet_free(&packet);
 	dbg_xfrin_verb("Processed one AXFR packet successfully.\n");
