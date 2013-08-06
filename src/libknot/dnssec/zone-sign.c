@@ -319,13 +319,17 @@ static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
 		const knot_rrset_t *rrsigs = rrset->rrsigs;
 
 		result = remove_expired_rrsigs(rrsigs, policy, changeset);
-		if (result != KNOT_EOK)
+		if (result != KNOT_EOK) {
+			fprintf(stderr, "remove_expired_rrsigs() failed\n");
 			break;
+		}
 
 		result = add_missing_rrsigs(rrset, rrsigs, zone_keys, policy,
 					    changeset);
-		if (result != KNOT_EOK)
+		if (result != KNOT_EOK) {
+			fprintf(stderr, "add_missing_rrsigs() failed\n");
 			break;
+		}
 	}
 
 	return result;
@@ -363,8 +367,9 @@ static int zone_tree_sign(knot_zone_tree_t *tree, knot_zone_keys_t *zone_keys,
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
 		result = sign_node(node, zone_keys, policy, changeset);
-		if (result != KNOT_EOK)
+		if (result != KNOT_EOK) {
 			break;
+		}
 
 		hattrie_iter_next(it);
 	}
@@ -378,6 +383,14 @@ static void free_sign_contexts(knot_zone_keys_t *keys)
 	for (int i = 0; i < keys->count; i++) {
 		knot_dnssec_sign_free(keys->contexts[i]);
 		keys->contexts[i] = NULL;
+	}
+}
+
+static void free_zone_keys(knot_zone_keys_t *keys)
+{
+	for (int i = 0; i < keys->count; i++) {
+		knot_dname_release(keys->keys[i].name);
+		free(keys->keys[i].data);
 	}
 }
 
@@ -417,26 +430,38 @@ int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
 		return result;
 	}
 
-	result = init_sign_contexts(&zone_keys);
-	if (result != KNOT_EOK) {
-		fprintf(stderr, "init_sign_contexts() failed\n");
-		return result;
-	}
-
 	if (zone_keys.count == 0) {
 		fprintf(stderr, "no zone keys available\n");
 		return KNOT_EOK;
 	}
 
-	result = zone_tree_sign(zone->nodes, &zone_keys, &policy, changeset);
-	if (!result)
+	result = init_sign_contexts(&zone_keys);
+	if (result != KNOT_EOK) {
+		fprintf(stderr, "init_sign_contexts() failed\n");
+		free_zone_keys(&zone_keys);
 		return result;
+	}
 
-	result = zone_tree_sign(zone->nsec3_nodes, &zone_keys, &policy, changeset);
-	if (!result)
+	result = zone_tree_sign(zone->nodes, &zone_keys, &policy, changeset);
+	if (result != KNOT_EOK) {
+		fprintf(stderr, "zone_tree_sign() on normal nodes failed\n");
+		free_zone_keys(&zone_keys);
+		free_sign_contexts(&zone_keys);
 		return result;
+	}
+
+	result = zone_tree_sign(zone->nsec3_nodes, &zone_keys, &policy,
+	                        changeset);
+	if (result != KNOT_EOK) {
+		fprintf(stderr, "zone_tree_sign() on nsec3 nodes failed\n");
+		free_zone_keys(&zone_keys);
+		free_sign_contexts(&zone_keys);
+		return result;
+	}
 
 	free_sign_contexts(&zone_keys);
+	free_zone_keys(&zone_keys);
+
 	return result;
 }
 

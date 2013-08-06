@@ -63,8 +63,8 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 	result = knot_zone_sign(zone->contents, keydir, changeset);
 	free(keydir);
 	if (result != KNOT_EOK) {
-//		log_server_error("Could not resing zone '%s' (%s).\n",
-//				 zone_name, knot_strerror(result));
+		log_server_error("Could not resign zone (%s).\n",
+				 knot_strerror(result));
 		knot_free_changesets(&changesets);
 		return result;
 	}

@@ -96,24 +96,30 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 		if (knot_dname_compare(zone_name, params.name) != 0) {
 			fprintf(stderr, "key for other zone\n");
+			knot_dname_release(params.name);
 			continue;
 		}
 
 		if (!is_current_key(&params)) {
 			fprintf(stderr, "key is not active\n");
+			knot_dname_release(params.name);
 			continue;
 		}
 
 		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
 			fprintf(stderr, "not a DNSSEC key\n");
+			knot_dname_release(params.name);
 			continue;
 		}
 
-		result = knot_dnssec_key_from_params(&params, &keys->keys[keys->count]);
+		result = knot_dnssec_key_from_params(&params,
+		                                     &keys->keys[keys->count]);
 		if (result != KNOT_EOK) {
 			fprintf(stderr, "cannot create the dnssec key\n");
 			continue;
 		}
+
+		knot_dname_release(params.name);
 
 		fprintf(stderr, "key is valid\n");
 		fprintf(stderr, "key is %s\n", params.flags & 1 ? "ksk" : "zsk");
