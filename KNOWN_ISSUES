@@ -14,3 +14,4 @@ Known bugs
 ==========
 
 * ACL may not always find the best match so it may behave counter-intuitively.
+* Rarely, incremental transfer fails to reschedule
