@@ -283,7 +283,7 @@ static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(knot_tsig_alg_domain_names, h);
+		alg = knot_lookup_by_name(knot_tsig_alg_dnames_str, h);
 		if (alg) {
 			algorithm = alg->id;
 		} else {

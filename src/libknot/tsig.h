@@ -55,23 +55,19 @@ enum tsig_consts {
 };
 
 /*!
- * \note Uses the given domain name, do not deallocate it!
- */
-int tsig_create_rdata(knot_rrset_t *rr,  uint16_t maclen, uint16_t tsig_err);
-
-/*!
- * \brief Set TSIG algorithm name.
+ * \brief Create TSIG RDATA.
  *
- * \param tsig TSIG RR.
- * \param alg_name TSIG name to be assigned.
+ * \param rr TSIG RR to contain created data.
+ * \param alg Algorithm name.
+ * \param maclen Algorithm MAC len (may be set to 0 for empty MAC).
+ * \param tsig_err TSIG error code.
  *
- * \note alg_name is kept and freed with tsig RRSet.
- *
+ * \retval KNOT_EINVAL
  * \retval KNOT_EOK
- * \retval KNOT_ERROR
  */
-int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
-int tsig_rdata_set_alg(knot_rrset_t *tsig, knot_tsig_algorithm_t alg);
+int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg,
+                      uint16_t maclen, uint16_t tsig_err);
+
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);
 int tsig_rdata_store_current_time(knot_rrset_t *tsig);
 int tsig_rdata_set_fudge(knot_rrset_t *tsig, uint16_t fudge);
@@ -107,6 +103,16 @@ int tsig_alg_from_name(const knot_dname_t *name);
  * \retval Empty string if undefined.
  */
 const char* tsig_alg_to_str(knot_tsig_algorithm_t alg);
+
+/*!
+ * \brief Convert TSIG algorithm identifier to domain name.
+ *
+ * \param alg TSIG algorithm identifier.
+ *
+ * \retval TSIG algorithm string name.
+ * \retval Empty string if undefined.
+ */
+const knot_dname_t* tsig_alg_to_dname(knot_tsig_algorithm_t alg);
 
 /*!
  * \brief Return TSIG RRSET maximum wire size for given algorithm.

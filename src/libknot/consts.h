@@ -193,7 +193,12 @@ extern knot_lookup_table_t knot_tsig_alg_names[];
 /*!
  * \brief TSIG key algorithm names in a domain form.
  */
-extern knot_lookup_table_t knot_tsig_alg_domain_names[];
+extern knot_lookup_table_t knot_tsig_alg_dnames_str[];
+
+/*!
+ * \brief TSIG key algorithm domain names.
+ */
+extern knot_lookup_table_t knot_tsig_alg_dnames[];
 
 /*!
  * \brief Returns length of TSIG digest for given algorithm.
