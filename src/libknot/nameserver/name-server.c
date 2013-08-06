@@ -1738,7 +1738,7 @@ static inline int ns_referral(const knot_node_t *node,
 		node = knot_node_parent(node);
 	}
 
-	int at_deleg = !knot_dname_compare(qname, knot_node_owner(node));
+	int at_deleg = knot_dname_is_equal(qname, knot_node_owner(node));
 
 	int ret = KNOT_EOK;
 
