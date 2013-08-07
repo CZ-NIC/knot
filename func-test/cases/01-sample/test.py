@@ -10,8 +10,8 @@ from dnstest import *
 t = DnsTest(test_dir, sys.argv[1])
 
 master1 = t.server("knot", nsid="nsid", ident=True, version="Knot XXX")
-master2 = t.server("knot", ident="ahoj")
-slave = t.server("knot", ident="0xabcd")
+master2 = t.server("bind", ident="ahoj", version="xx")
+slave = t.server("bind", nsid="0xabcd")
 
 #z1 = t.zone_rnd(10)
 

@@ -46,7 +46,8 @@ class Tsig(object):
             label_len = random.randint(1, 63)
 
             # Check for maximal dname length (255 B = max fqdn in wire).
-            if len(self.name) + 1 + label_len >= 255:
+            # 255 = 1 leading byte + 253 + 1 trailing byte.
+            if len(self.name) + 1 + label_len > 253:
                 break
 
             # Add label separator.
@@ -161,6 +162,7 @@ class DnsServer(object):
         self.addr = None
         self.port = None
         self.ctlport = None
+        self.ctlkey = None
         self.tsig = None
 
         self.zones = dict()
@@ -274,18 +276,65 @@ class Bind(DnsServer):
         super().__init__()
         super().set_paths(bind_vars)
 
+    def _str(self, conf, name, value):
+        if value and value != True:
+            conf.item_str(name, value)
+
     def get_config(self):
         s = BindConf()
         s.begin("options")
+        self._str(s, "server-id", self.ident)
+        self._str(s, "version", self.version)
         s.item_str("directory", self.dir)
+        s.item_str("key-directory", self.dir)
+        s.item_str("managed-keys-directory", self.dir)
+        s.item_str("session-keyfile", self.dir + "/session.key")
         s.item_str("pid-file", "bind.pid")
         if self.ip == 4:
             s.item("listen-on port", "%i { %s; }" % (self.port, self.addr))
+            s.item("listen-on-v6", "{ }")
         else:
+            s.item("listen-on", "{ }")
             s.item("listen-on-v6 port", "%i { %s; }" % (self.port, self.addr))
         s.item("auth-nxdomain", "no")
         s.item("recursion", "no")
         s.end()
+
+        s.begin("key", self.ctlkey.name)
+        s.item("algorithm", self.ctlkey.alg)
+        s.item_str("secret", self.ctlkey.key)
+        s.end()
+
+        s.begin("controls")
+        s.item("inet %s port %i allow { %s; } keys { %s; }"
+               % (self.addr, self.ctlport, self.addr, self.ctlkey.name))
+        s.end()
+
+        if self.tsig:
+            t = self.tsig
+            s.begin("key", t.name)
+            s.item("algorithm", t.alg)
+            s.item_str("secret", t.key)
+            s.end()
+
+            keys = set() # Duplicy check.
+            for zone in self.zones:
+                z = self.zones[zone]
+                if z.master and z.master.tsig.name not in keys:
+                    t = z.master.tsig
+                    s.begin("key", t.name)
+                    s.item("algorithm", t.alg)
+                    s.item_str("secret", t.key)
+                    s.end()
+                    keys.add(t.name)
+                for slave in z.slaves:
+                    if slave.tsig and slave.tsig.name not in keys:
+                        t = slave.tsig
+                        s.begin("key", t.name)
+                        s.item("algorithm", t.alg)
+                        s.item_str("secret", t.key)
+                        s.end()
+                        keys.add(t.name)
 
         for zone in self.zones:
             z = self.zones[zone]
@@ -293,13 +342,40 @@ class Bind(DnsServer):
             s.item_str("file", z.filename)
             if z.master:
                 s.item("type", "slave")
+
+                if self.tsig:
+                    s.item("allow-notify", "{ key %s; }" % z.master.tsig.name)
+                    s.item("masters", "{ %s port %i key %s; }" \
+                           % (z.master.addr, z.master.port, z.master.tsig.name))
+                else:
+                    s.item("allow-notify", "{ %s; }" % z.master.addr)
+                    s.item("masters", "{ %s port %i; }" \
+                           % (z.master.addr, z.master.port))
             else:
                 s.item("type", "master")
                 s.item("notify", "explicit")
-            if z.ddns == True:
-                pass
-            elif z.ddns == False:
-                s.item("ixfr-from-differences", "yes")
+                if z.ddns == True:
+                    if self.tsig:
+                        s.item("allow-update", "{ key %s; }" % self.tsig.name)
+                    else:
+                        s.item("allow-update", "{ %s; }" % self.addr)
+                elif z.ddns == False:
+                    s.item("ixfr-from-differences", "yes")
+
+            if z.slaves:
+                slaves = ""
+                for slave in z.slaves:
+                    if self.tsig:
+                        slaves += "%s port %i key %s; " \
+                                  % (slave.addr, slave.port, slave.tsig.name)
+                    else:
+                        slaves += "%s port %i; " % (slave.addr, slave.port)
+                s.item("also-notify", "{ %s}" % slaves)
+
+            if self.tsig:
+                s.item("allow-transfer", "{ key %s; }" % self.tsig.name)
+            else:
+                s.item("allow-transfer", "{ %s; }" % self.addr)
             s.end()
 
         self.start_params = ["-c", self.confile, "-g"]
@@ -350,24 +426,24 @@ class Knot(DnsServer):
         s.end()
         s.end()
 
-        s.begin("keys")
         if self.tsig:
+            s.begin("keys")
             t = self.tsig
             s.item_str("%s %s" % (t.name, t.alg), t.key)
-        # Duplicy check.
-        keys = set()
-        for zone in self.zones:
-            z = self.zones[zone]
-            if z.master and z.master.tsig and z.master.tsig.name not in keys:
-                t = z.master.tsig
-                s.item_str("%s %s" % (t.name, t.alg), t.key)
-                keys.add(t.name)
-            for slave in z.slaves:
-                if slave.tsig and slave.tsig.name not in keys:
-                    t = slave.tsig
+
+            keys = set() # Duplicy check.
+            for zone in self.zones:
+                z = self.zones[zone]
+                if z.master and z.master.tsig.name not in keys:
+                    t = z.master.tsig
                     s.item_str("%s %s" % (t.name, t.alg), t.key)
                     keys.add(t.name)
-        s.end()
+                for slave in z.slaves:
+                    if slave.tsig and slave.tsig.name not in keys:
+                        t = slave.tsig
+                        s.item_str("%s %s" % (t.name, t.alg), t.key)
+                        keys.add(t.name)
+            s.end()
 
         s.begin("remotes")
         s.begin("local")
@@ -375,8 +451,8 @@ class Knot(DnsServer):
         if self.tsig:
             s.item("key", self.tsig.name)
         s.end()
-        # Duplicity check.
-        servers = set()
+
+        servers = set() # Duplicity check.
         for zone in self.zones:
             z = self.zones[zone]
             if z.master and z.master.name not in servers:
@@ -411,11 +487,12 @@ class Knot(DnsServer):
                 s.item("notify-in", z.master.name)
                 s.item("xfr-in", z.master.name)
 
-            slaves = ""
             if z.slaves:
+                slaves = ""
                 for slave in z.slaves:
                     slaves += slave.name + " "
                 s.item("notify-out", slaves.strip())
+
             s.item("xfr-out", "local")
 
             if z.ddns == True:
@@ -537,6 +614,7 @@ class DnsTest(object):
         srv.addr = DnsTest.LOCAL_ADDR[self.ip]
         srv.port = self._gen_port()
         srv.ctlport = self._gen_port()
+        srv.ctlkey = Tsig()
         srv.tsig = Tsig() if self.tsig else None
 
         srv.name = "%s%s" % (server, srv.count)
