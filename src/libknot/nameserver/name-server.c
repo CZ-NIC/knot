@@ -2509,6 +2509,10 @@ typedef struct ns_axfr_params {
 
 int knot_ns_tsig_required(int packet_nr)
 {
+	/*! \bug This can overflow to negative numbers. Proper solution is to
+	 *       count exactly at one place for each incoming/outgoing packet
+	 *       with packet_nr = (packet_nr + 1) % FREQ and require TSIG on 0.
+	 */
 	dbg_ns_verb("ns_tsig_required(%d): %d\n", packet_nr,
 	            (packet_nr % KNOT_NS_TSIG_FREQ == 0));
 	return (packet_nr % KNOT_NS_TSIG_FREQ == 0);
