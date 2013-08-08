@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''
-Usage: zone-generate.py [parameters] origin [rr_count]
+Usage: zone_generate.py [parameters] origin [rr_count]
 Parameters:
     -s, --sign        Generate zone signed with dnssec-signzone.
     -i, --serial=SN   Specify SOA serial.
@@ -477,11 +477,15 @@ def g_unique_names(count):
         if rnd(0,1) < SUB_CHANCE:
             ORIGIN = rnd_dnl()
         o += g_unique() + ' '
-    print(o)
-    return 0
+
+    if __name__ == "__main__":
+        print(o)
+        return 0
+    else:
+        return o
 
 # Main
-def main():
+def main(args):
 
     # Number of generated RRs
     global ORIGIN
@@ -492,10 +496,12 @@ def main():
     UPDATE = None
     sign = 0
     count = 0
+    outfile = None
 
     # Parse parameters
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hsi:u:n:t:', ['help', 'sign', 'serial', 'update', 'names', 'ttl'])
+        opts, args = getopt.getopt(args, 'hsi:u:n:t:o:', ['help', 'sign', 'serial',
+                                   'update', 'names', 'ttl', 'outfile'])
     except getopt.error as msg:
         print(msg)
         print('for help use --help')
@@ -515,7 +521,10 @@ def main():
             return g_unique_names(int(a))
         if o in ('-t', '--ttl') and a != None:
             TTL = int(a)
+        if o in ('-o', '--outfile') and a != None:
+            outfile = a
 
+    ORIGIN = ""
     # Arguments
     if len(args) > 2:
         print('Too many arguments.')
@@ -544,7 +553,7 @@ def main():
 
     # Load DB if updating
     soa = None
-    outf = sys.stdout
+    outf = outfile if outfile else sys.stdout
     if UPDATE != None:
         outf = open(UPDATE, 'r+')
         NAME_EXIST.add(g_fqdn(ORIGIN))
@@ -660,8 +669,8 @@ def main():
         ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-3', '-n', 'ZONE', '-K', sign_dir ]
         k1 = subprocess.check_output(ps + [ORIGIN], stderr=nf)
         k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ORIGIN], stderr=nf)
-        k1 = sign_dir + '/' + k1.rstrip()
-        k2 = sign_dir + '/' + k2.rstrip()
+        k1 = sign_dir + '/' + k1.rstrip().decode('ascii')
+        k2 = sign_dir + '/' + k2.rstrip().decode('ascii')
         nf.close()
 
         # Append to zone
@@ -675,7 +684,9 @@ def main():
         # Sign zone
         if tmp_zfile != outf:
             tmp_zfile.close()
-        ks = subprocess.check_output(["dnssec-signzone", "-u", "-3", "deadbeef", "-k", k2, "-o", ORIGIN, zfname, k1 + ".key"])
+        ks = subprocess.check_output(["dnssec-signzone", "-d", "/tmp", "-P", "-p", "-u", \
+                                      "-3", "deadbeef", "-k", k2, "-r", "/dev/urandom", \
+                                      "-o", ORIGIN, zfname, k1 + ".key"])
         kf = open(zfname + '.signed')
         outf.write(kf.read())
         kf.close()
@@ -688,4 +699,4 @@ def main():
     return ret
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

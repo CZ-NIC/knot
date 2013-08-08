@@ -10,6 +10,8 @@ import sys
 import time
 from subprocess import Popen, PIPE
 
+import zone_generate
+
 knot_vars = [
     ["KNOT_TEST_KNOT",  "knotd"],
     ["KNOT_TEST_KNOTC", "knotc"]
@@ -212,7 +214,7 @@ class DnsServer(object):
         if name in self.zones:
             raise Exception("Can't set zone %s as a slave" % name)
         else:
-            slave_file = self.dir + "/" + name + "slave"
+            slave_file = self.dir + "/__" + name + "slave"
             z = Zone(name, slave_file, ddns=None)
             z.master = master
             self.zones[name] = z
@@ -254,7 +256,7 @@ class DnsServer(object):
 
             time.sleep(DnsServer.START_WAIT)
         except OSError:
-            print("Server %s start error", self.name)
+            print("Server %s start error" % self.name)
 
     def stop(self):
         if self.proc:
@@ -266,7 +268,7 @@ class DnsServer(object):
                 self.proc.kill()
 
     def gen_confile(self):
-        f = open(self.confile, "w")
+        f = open(self.confile, mode="w")
         f.write(self.get_config())
         f.close
 
@@ -685,22 +687,35 @@ class DnsTest(object):
 
         return {zone_name: dst_file}
 
-    '''
-    def zone_rnd(self, number):
-        zone_generate.main()
-        try:
-            file_path = str(self.data_dir + filename)
-            with open(file_path):
-                pass
-        except:
-            raise Exception("Invalid zone file %s" % file_path)
+    def zone_rnd(self, number, dnssec=None):
+        zones = dict()
 
-        zone_name = name
-        if zone_name[-1] != ".":
-            zone_name += "."
+        names = zone_generate.main(["-n", number]).split()
+        for name in names:
+            if dnssec == None:
+                sign = random.choice([True, False])
+            else:
+                sign = True if dnssec else False
+            serial = random.randint(1, 4294967295)
+            records = random.randint(1, 1000)
+            filename = self.zones_dir + name + ".rndzone"
 
-        return {zone_name: file_path}
-    '''
+            try:
+                file = open(filename, mode="w")
+
+                params = ["-i", serial, "-o", file, name, records]
+                if sign:
+                    params = ["-s"] + params
+
+                zone = zone_generate.main(params)
+
+                file.close()
+            except OSError:
+                print("Can't create zone file %s" % filename)
+
+            zones[name + "."] = filename
+
+        return zones
 
     def link(self, zones, master, slave=None, ddns=False):
         for zone in zones:
