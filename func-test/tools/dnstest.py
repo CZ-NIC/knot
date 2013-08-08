@@ -276,6 +276,12 @@ class Bind(DnsServer):
         super().__init__()
         super().set_paths(bind_vars)
 
+    def running(self):
+        tcp = super()._check_socket("tcp", self.port)
+        udp = super()._check_socket("udp", self.port)
+        ctltcp = super()._check_socket("tcp", self.ctlport)
+        return (tcp and udp and ctltcp)
+
     def _str(self, conf, name, value):
         if value and value != True:
             conf.item_str(name, value)
@@ -313,6 +319,7 @@ class Bind(DnsServer):
         if self.tsig:
             t = self.tsig
             s.begin("key", t.name)
+            s.item("# Local key")
             s.item("algorithm", t.alg)
             s.item_str("secret", t.key)
             s.end()
