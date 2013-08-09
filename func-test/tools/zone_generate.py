@@ -395,7 +395,7 @@ def g_apl(rt):
         else:
             ip = rnd_ip6()
         data += '%s%d:%s/%d ' % (choice(['!','']), afi, ip, rnd(2,32))
-    return '%s %s %s' % (rnd_dnl(), g_rtype(rt), g_rdata(rt, data))
+    return '%s %s %s' % (rnd_dnl(), g_rtype(rt), g_rdata(rt, data, chance=0))
 
 def g_hip(rt):
     # TODO: Randomized
