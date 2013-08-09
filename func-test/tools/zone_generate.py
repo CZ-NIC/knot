@@ -693,7 +693,9 @@ def main(args):
         if outf != sys.stdout:
             outf.close()
         ret = 0
-    finally:
+    except:
+        pass
+    else:
         shutil.rmtree(sign_dir)
 
     return ret
