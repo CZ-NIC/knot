@@ -8,7 +8,7 @@ import socket
 import string
 import sys
 import time
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, DEVNULL, check_call
 
 import zone_generate
 
@@ -40,7 +40,7 @@ class Tsig(object):
     vocabulary = string.ascii_uppercase + string.ascii_lowercase + \
                  string.digits
 
-    def __init__(self):
+    def __init__(self, alg=None):
         nlabels = random.randint(1, 10)
 
         self.name = ""
@@ -59,11 +59,26 @@ class Tsig(object):
             self.name += "".join(random.choice(Tsig.vocabulary)
                          for x in range(label_len))
 
-        self.alg = random.choice(list(Tsig.algs.keys()))
+        if alg and alg not in Tsig.algs:
+            raise Exception("Unsupported TSIG algorithm %s" % alg)
+
+        self.alg = alg if alg else random.choice(list(Tsig.algs.keys()))
 
         self.key = base64.b64encode(os.urandom(Tsig.algs[self.alg])).decode('ascii')
 
         self.tsig = self.alg + ":" + self.name + ":" + self.key
+
+    def dump(self, filename):
+        s = BindConf()
+
+        s.begin("key", self.name)
+        s.item("algorithm", self.alg)
+        s.item_str("secret", self.key)
+        s.end()
+
+        file = open(filename, mode="w")
+        file.write(s.conf)
+        file.close()
 
 class KnotConf(object):
     '''Knot server config generator'''
@@ -144,7 +159,8 @@ class DnsServer(object):
     '''Specification of DNS server'''
 
     START_WAIT = 2
-    STOP_TIMEOUT = 10
+    START_WAIT_VALGRIND = 5
+    STOP_TIMEOUT = 60
     COMPILE_TIMEOUT = 60
 
     # Instance counter.
@@ -154,6 +170,8 @@ class DnsServer(object):
         self.proc = None
         self.valgrind = []
         self.start_params = None
+        self.reload_params = None
+        self.flush_params = None
         self.compile_params = None
 
         self.nsid = None
@@ -165,6 +183,7 @@ class DnsServer(object):
         self.port = None
         self.ctlport = None
         self.ctlkey = None
+        self.ctlkeyfile = None
         self.tsig = None
 
         self.zones = dict()
@@ -254,16 +273,36 @@ class DnsServer(object):
             self.proc = Popen(self.valgrind + [self.daemon_bin] + self.start_params,
                               stdout=fout, stderr=ferr)
 
-            time.sleep(DnsServer.START_WAIT)
+            if self.valgrind:
+                time.sleep(DnsServer.START_WAIT_VALGRIND)
+            else:
+                time.sleep(DnsServer.START_WAIT)
         except OSError:
             print("Server %s start error" % self.name)
+
+    def reload(self):
+        try:
+            check_call([self.control_bin] + self.reload_params, \
+                       stdout=DEVNULL, stderr=DEVNULL)
+            time.sleep(DnsServer.START_WAIT)
+        except OSError:
+            print("Server %s reload error" % self.name)
+
+    def flush(self):
+        try:
+            if self.flush_params:
+                check_call([self.control_bin] + self.flush_params, \
+                           stdout=DEVNULL, stderr=DEVNULL)
+                time.sleep(DnsServer.START_WAIT)
+        except OSError:
+            print("Server %s flush error" % self.name)
 
     def stop(self):
         if self.proc:
             try:
                 self.proc.terminate()
                 self.proc.wait(DnsServer.STOP_TIMEOUT)
-            except TimeoutError:
+            except:
                 print("killing")
                 self.proc.kill()
 
@@ -277,6 +316,7 @@ class Bind(DnsServer):
     def __init__(self):
         super().__init__()
         super().set_paths(bind_vars)
+        self.ctlkey = Tsig(alg="hmac-md5")
 
     def running(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -388,6 +428,10 @@ class Bind(DnsServer):
             s.end()
 
         self.start_params = ["-c", self.confile, "-g"]
+        self.reload_params = ["-s", self.addr, "-p", str(self.ctlport), \
+                              "-k", self.ctlkeyfile, "reload"]
+        self.flush_params = ["-s", self.addr, "-p", str(self.ctlport), \
+                             "-k", self.ctlkeyfile, "flush"]
 
         return s.conf
 
@@ -522,6 +566,8 @@ class Knot(DnsServer):
         s.end()
 
         self.start_params = ["-c", self.confile]
+        self.reload_params = ["-c", self.confile, "reload"]
+        self.flush_params = ["-c", self.confile, "flush"]
 
         return s.conf
 
@@ -621,9 +667,6 @@ class DnsTest(object):
 
         srv.ip = self.ip
         srv.addr = DnsTest.LOCAL_ADDR[self.ip]
-        srv.port = self._gen_port()
-        srv.ctlport = self._gen_port()
-        srv.ctlkey = Tsig()
         srv.tsig = Tsig() if self.tsig else None
 
         srv.name = "%s%s" % (server, srv.count)
@@ -637,10 +680,19 @@ class DnsTest(object):
         except:
             raise Exception("Can't create directory %s" % srv.dir)
 
+        if srv.ctlkey:
+            srv.ctlkeyfile = srv.dir + "/%s.ctlkey" % srv.name
+            srv.ctlkey.dump(srv.ctlkeyfile)
+
         self.servers.add(srv)
         return srv
 
     def _generate_conf(self):
+        # Next two loops can't be merged!
+        for server in self.servers:
+            server.port = self._gen_port()
+            server.ctlport = self._gen_port()
+
         for server in self.servers:
             server.gen_confile()
 
