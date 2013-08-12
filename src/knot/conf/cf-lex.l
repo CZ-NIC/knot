@@ -87,7 +87,7 @@ BLANK [ \t\n]
 %%
 \#.*\n          /* Ignore comments */;
 {BLANK}+        /* Ignore whitespace */;
-[\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
+[\=\!\$\%\^\&\*\(\)\/\+\-\@\{\}\;\,] { return yytext[0]; }
 system          { lval.t = yytext; return SYSTEM; }
 identity        { lval.t = yytext; return IDENTITY; }
 hostname        { lval.t = yytext; return HOSTNAME; }

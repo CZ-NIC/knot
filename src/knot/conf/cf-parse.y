@@ -647,26 +647,25 @@ keys:
 
      if (fqdn != NULL && !conf_key_exists(scanner, fqdn)) {
          knot_dname_t *dname = knot_dname_new_from_str(fqdn, fqdnl, 0);
-	 if (!dname) {
+         if (!dname) {
              cf_error(scanner, "key name '%s' not in valid domain name format",
-		      fqdn);
-	     free($4.t);
-	 } else {
+                      fqdn);
+         } else {
              knot_dname_to_lower(dname);
              conf_key_t *k = malloc(sizeof(conf_key_t));
              memset(k, 0, sizeof(conf_key_t));
-
              k->k.name = dname;
              k->k.algorithm = $3.alg;
-             knot_binary_from_base64($4.t, &(k->k.secret));
-	     free($4.t);
-             add_tail(&new_config->keys, &k->n);
-             ++new_config->key_count;
-	 }
-     } else {
-         free($4.t);
+             if (knot_binary_from_base64($4.t, &(k->k.secret)) != 0) {
+                 cf_error(scanner, "invalid key secret '%s'", $4.t);
+             } else {
+                 add_tail(&new_config->keys, &k->n);
+                 ++new_config->key_count;
+             }
+         }
      }
 
+     free($4.t);
      free(fqdn);
 }
 
