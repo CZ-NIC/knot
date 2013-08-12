@@ -13,7 +13,7 @@ system {
 
 keys {
   key0.example.net hmac-md5 "Wg=="; # key special for one remote
-  key1.example.net hmac-md5 "==gW"; # implicit key for whole zone
+  key1.example.net hmac-md5 "ZGFuCg=="; # implicit key for whole zone
 }
 
 remotes {
