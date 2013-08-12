@@ -1,0 +1,10 @@
+Prerequisites:
+
+Python >=3.3
+lsof
+python3-dnspython
+dnssec-keygen
+dnssec-signzone
+Bind 9.9
+
+sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
