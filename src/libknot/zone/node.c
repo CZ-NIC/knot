@@ -31,98 +31,40 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Returns the delegation point flag
+ * \brief Sets the given flag to node's flags.
  *
- * \param flags Flags to retrieve the flag from.
- *
- * \return A byte with only the delegation point flag set if it was set in
- *         \a flags.
+ * \param node Node to set the flag in.
+ * \param flag Flag to set.
  */
-static inline uint8_t knot_node_flags_get_deleg(uint8_t flags)
+static inline void knot_node_flags_set(knot_node_t *node, uint8_t flag)
 {
-	return flags & KNOT_NODE_FLAGS_DELEG;
+	node->flags |= flag;
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Sets the delegation point flag.
+ * \brief Returns the given flag from node's flags.
  *
- * \param flags Flags to set the flag in.
+ * \param node Node to set the flag in.
+ * \param flag Flag to retrieve.
+ *
+ * \return A byte with only the given flag set if it was set in \a node.
  */
-static inline void knot_node_flags_set_deleg(uint8_t *flags)
+static inline uint8_t knot_node_flags_get(const knot_node_t *node, uint8_t flag)
 {
-	*flags |= KNOT_NODE_FLAGS_DELEG;
+	return node->flags & flag;
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Clears the delegation point flag.
+ * \brief Clears the given flag in node's flags.
  *
- * \param flags Flags to clear the flag in.
+ * \param node Node to clear the flag in.
+ * \param flag Flag to clear.
  */
-static inline void knot_node_flags_clear_deleg(uint8_t *flags)
+static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 {
-	*flags &= ~KNOT_NODE_FLAGS_DELEG;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Returns the non-authoritative node flag
- *
- * \param flags Flags to retrieve the flag from.
- *
- * \return A byte with only the non-authoritative node flag set if it was set in
- *         \a flags.
- */
-static inline uint8_t knot_node_flags_get_nonauth(uint8_t flags)
-{
-	return flags & KNOT_NODE_FLAGS_NONAUTH;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the non-authoritative node flag.
- *
- * \param flags Flags to set the flag in.
- */
-static inline void knot_node_flags_set_nonauth(uint8_t *flags)
-{
-	*flags |= KNOT_NODE_FLAGS_NONAUTH;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Clears the non-authoritative node flag.
- *
- * \param flags Flags to clear the flag in.
- */
-static inline void knot_node_flags_clear_nonauth(uint8_t *flags)
-{
-	*flags &= ~KNOT_NODE_FLAGS_NONAUTH;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the empty node flag.
- *
- * \param flags Flags to set the flag in.
- */
-static inline void knot_node_flags_set_empty(uint8_t *flags)
-{
-	*flags |= KNOT_NODE_FLAGS_EMPTY;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Returns the empty node flag
- *
- * \param flags Flags to retrieve the flag from.
- *
- * \return A byte with only the empty node flag set if it was set in \a flags.
- */
-static inline uint8_t knot_node_flags_get_empty(uint8_t flags)
-{
-	return flags & KNOT_NODE_FLAGS_EMPTY;
+	node->flags &= ~flag;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -607,7 +549,7 @@ void knot_node_set_deleg_point(knot_node_t *node)
 		return;
 	}
 
-	knot_node_flags_set_deleg(&node->flags);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_DELEG);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -618,7 +560,7 @@ int knot_node_is_deleg_point(const knot_node_t *node)
 		return KNOT_EINVAL;
 	}
 
-	return knot_node_flags_get_deleg(node->flags);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_DELEG);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -629,7 +571,7 @@ void knot_node_set_non_auth(knot_node_t *node)
 		return;
 	}
 
-	knot_node_flags_set_nonauth(&node->flags);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -640,7 +582,7 @@ int knot_node_is_non_auth(const knot_node_t *node)
 		return KNOT_EINVAL;
 	}
 
-	return knot_node_flags_get_nonauth(node->flags);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -651,8 +593,8 @@ void knot_node_set_auth(knot_node_t *node)
 		return;
 	}
 
-	knot_node_flags_clear_nonauth(&node->flags);
-	knot_node_flags_clear_deleg(&node->flags);
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_NONAUTH);
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_DELEG);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -670,14 +612,35 @@ int knot_node_is_auth(const knot_node_t *node)
 
 int knot_node_is_empty(const knot_node_t *node)
 {
-	return knot_node_flags_get_empty(node->flags);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_EMPTY);
 }
 
 /*----------------------------------------------------------------------------*/
 
 void knot_node_set_empty(knot_node_t *node)
 {
-	knot_node_flags_set_empty(&node->flags);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_EMPTY);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_node_is_replaced_nsec(const knot_node_t *node)
+{
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_node_set_replaced_nsec(knot_node_t *node)
+{
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_node_clear_replaced_nsec(knot_node_t *node)
+{
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
 }
 
 /*----------------------------------------------------------------------------*/
