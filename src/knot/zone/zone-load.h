@@ -31,7 +31,7 @@
 
 #include "libknot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
-#include "zscanner/file_loader.h"
+#include "zscanner/zscanner.h"
 
 /* TODO this structure is highly redundant, remove. Maybe use oh-so-great BIRD lists. */
 /*!

@@ -273,7 +273,6 @@ int main(int argc, char **argv)
 		log_server_info("Configured %d interfaces and %d zones.\n",
 				conf()->ifaces_count, conf()->zones_count);
 	}
-	log_server_info("\n");
 
 	/* Alter privileges. */
 	log_update_privileges(conf()->uid, conf()->gid);

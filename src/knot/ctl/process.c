@@ -27,6 +27,8 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 #include "knot/knot.h"
 #include "knot/ctl/process.h"
@@ -142,8 +144,22 @@ int proc_update_privileges(int uid, int gid)
 			                   " for uid '%d' (%s).\n",
 			                   getuid(), strerror(errno));
 		}
+# ifdef HAVE_INITGROUPS
+		struct passwd *pw;
+		if ((pw = getpwuid(uid)) == NULL) {
+			log_server_warning("Failed to get passwd entry"
+					   " for uid '%d' (%s).\n",
+					   uid, strerror(errno));
+		} else {
+			if (initgroups(pw->pw_name, gid) < 0) {
+				log_server_warning("Failed to set supplementary groups"
+						   " for uid '%d' (%s).\n",
+						   uid, strerror(errno));
+			}
+		}
 	}
-#endif
+# endif /* HAVE_INITGROUPS */
+#endif /* HAVE_SETGROUPS */
 
 	/* Watch uid/gid. */
 	if ((gid_t)gid != getgid()) {

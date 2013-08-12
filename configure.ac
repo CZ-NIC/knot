@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.3.0-rc4], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.3.0], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-bzip2 dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -296,7 +296,7 @@ AC_TYPE_SSIZE_T
 AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups])
+AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups initgroups])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
@@ -310,12 +310,12 @@ gl_VISIBILITY()
 CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 
 AC_CONFIG_FILES([Makefile
-		 samples/Makefile
-		 src/Makefile
-		 src/tests/Makefile
 		 doc/Makefile
 		 man/Makefile
-		 src/zscanner/test/run_tests.sh
+		 src/Makefile
+		 samples/Makefile
+		 src/tests/Makefile
+		 src/zscanner/Makefile
 		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
 		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin
 		 src/zscanner/test/cases/06-0_INCLUDE.in:src/zscanner/test/cases/06-0_INCLUDE.inin
@@ -326,4 +326,7 @@ AC_CONFIG_FILES([Makefile
 		 man/knsupdate.1
 		 man/knot.conf.5
 		 ])
+
+AC_CONFIG_FILES([src/zscanner/test/run_tests.sh], [chmod a+x src/zscanner/test/run_tests.sh])
+
 AC_OUTPUT

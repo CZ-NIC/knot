@@ -2,13 +2,13 @@
 
 TESTS_DIR="@abs_srcdir@/cases"
 OUTS_DIR="@abs_builddir@/.out"
-TEST_BIN="@builddir@/../zscanner-tool -m 2"
+TEST_BIN="@builddir@/zscanner-tool -m 2"
 
 # Delete temporary output directory at exit.
 trap "chmod -R u+rw ${OUTS_DIR} && rm -rf ${OUTS_DIR}" EXIT
 
 # If an argument -> verbose mode (stores result in /tmp).
-if [ $# -eq 0 ]; then
+if [ $# -ne 0 ]; then
 	RESULT_DIR=`mktemp -d /tmp/zscanner_test.XXXX`
 	echo "ZSCANNER TEST ${RESULT_DIR}"
 fi
@@ -31,15 +31,17 @@ for file in $(find "${TESTS_DIR}" -name "*.in" | sort -n); do
 	# Check for differences.
 	if [ $RET -ne 0 ]; then
 		# If verbose print diff.
-		if [ $# -eq 0 ]; then
+		if [ $# -ne 0 ]; then
 			echo "\n=== ${fileout} DIFF ======================"
 			diff "${OUTS_DIR}/${fileout}" "${TESTS_DIR}/${fileout}"
+		else
+			exit $RET
 		fi
 	fi
 done
 
 # Store test result.
-if [ $# -eq 0 ]; then
+if [ $# -ne 0 ]; then
 	cp -a "${OUTS_DIR}/." "${RESULT_DIR}/"
 	echo "\nFINISHED ${RESULT_DIR}"
 fi

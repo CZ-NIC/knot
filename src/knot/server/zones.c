@@ -677,7 +677,6 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 	/*! \todo #1291 Why doesn't this just increment stream ptr? */
 
 	assert(chgsets != NULL);
-	assert(chgsets->allocated >= chgsets->count);
 	/*
 	 * Parses changesets from the binary format stored in chgsets->data
 	 * into the changeset_t structures.
@@ -685,10 +684,9 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 	knot_rrset_t *rrset = 0;
 	int ret = 0;
 
-	for (int i = 0; i < chgsets->count; ++i) {
-
+	knot_changeset_t* chs = NULL;
+	WALK_LIST(chs, chgsets->sets) {
 		/* Read changeset flags. */
-		knot_changeset_t* chs = chgsets->sets + i;
 		size_t remaining = chs->size;
 		memcpy(&chs->flags, chs->data, sizeof(uint32_t));
 		remaining -= sizeof(uint32_t);
@@ -711,9 +709,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
 		assert(chs->serial_from ==
 		       knot_rrset_rdata_soa_serial(rrset));
-		knot_changeset_store_soa(&chs->soa_from, &chs->serial_from,
-					 rrset);
-
+		knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
 		/* Read remaining RRSets */
 		int in_remove_section = 1;
 		while (remaining > 0) {
@@ -734,10 +730,8 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 
 				/* Move to ADD section if in REMOVE. */
 				if (in_remove_section) {
-					knot_changeset_store_soa(
-						&chgsets->sets[i].soa_to,
-						&chgsets->sets[i].serial_to,
-						rrset);
+					knot_changeset_add_soa(chs, rrset,
+					                       KNOT_CHANGESET_ADD);
 					dbg_xfr_verb("xfr: reading RRSets"
 					             " to ADD\n");
 					in_remove_section = 0;
@@ -751,18 +745,13 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 				/* Remove RRSets. */
 				if (in_remove_section) {
 					ret = knot_changeset_add_rrset(
-						&chgsets->sets[i].remove,
-						&chgsets->sets[i].remove_count,
-						&chgsets->sets[i]
-						    .remove_allocated,
-						rrset);
+						chs, rrset,
+						KNOT_CHANGESET_REMOVE);
 				} else {
 				/* Add RRSets. */
 					ret = knot_changeset_add_rrset(
-						&chgsets->sets[i].add,
-						&chgsets->sets[i].add_count,
-						&chgsets->sets[i].add_allocated,
-						rrset);
+						chs, rrset,
+						KNOT_CHANGESET_ADD);
 				}
 
 				/* Check result. */
@@ -838,15 +827,9 @@ static int zones_load_changesets(const knot_zone_t *zone,
 			break;
 		}
 
-		/*! \todo Increment and decrement to reserve +1,
-		 *        but not incremented counter.*/
-		/* Check changesets size if needed. */
-		++dst->count;
-		ret = knot_changesets_check_size(dst);
-		--dst->count;
-		if (ret != KNOT_EOK) {
-			//--dst->count;
-			dbg_xfr("xfr: failed to check changesets size: %s\n",
+		knot_changeset_t *chs = knot_changesets_create_changeset(dst);
+		if (chs == NULL) {
+			dbg_xfr("xfr: failed to create changeset: %s\n",
 			        knot_strerror(ret));
 			journal_release(j);
 			return KNOT_ERROR;
@@ -861,7 +844,6 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		/* Initialize changeset. */
 		dbg_xfr_detail("xfr: reading entry #%zu id=%llu\n",
 		               dst->count, (unsigned long long)n->id);
-		knot_changeset_t *chs = dst->sets + dst->count;
 		chs->serial_from = ixfrdb_key_from(n->id);
 		chs->serial_to = ixfrdb_key_to(n->id);
 		chs->data = malloc(n->len);
@@ -880,11 +862,10 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		}
 
 		/* Update changeset binary size. */
-		chs->size = chs->allocated = n->len;
+		chs->size = n->len;
 
 		/* Next node. */
 		found_to = chs->serial_to;
-		++dst->count;
 		++n;
 
 		/*! \todo Check consistency. */
@@ -955,12 +936,16 @@ static int zones_journal_apply(knot_zone_t *zone)
 	/* Load all pending changesets. */
 	dbg_zones_verb("zones: loading all changesets of '%s' from SERIAL %u\n",
 	               zd->conf->name, serial);
-	knot_changesets_t* chsets = malloc(sizeof(knot_changesets_t));
-	memset(chsets, 0, sizeof(knot_changesets_t));
+	knot_changesets_t* chsets =
+		knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+	if (chsets == NULL) {
+		return KNOT_ERROR;
+	}
+
 	/*! \todo Check what should be the upper bound. */
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
-		if (chsets->count > 0) {
+		if (!EMPTY_LIST(chsets->sets)) {
 			/* Apply changesets. */
 			log_server_info("Applying '%zu' changesets from journal "
 			                "to zone '%s'.\n",
@@ -978,7 +963,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 				// Cleanup old and new contents
 				xfrin_rollback_update(zone->contents,
 				                      &contents,
-				                      &chsets->changes);
+				                      chsets->changes);
 			} else {
 				/* Switch zone immediately. */
 				log_server_info("Zone '%s' serial %u -> %u.\n",
@@ -990,7 +975,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 				rcu_read_lock();
 				if (apply_ret == KNOT_EOK) {
 					xfrin_cleanup_successful_update(
-							&chsets->changes);
+							chsets->changes);
 				} else {
 					log_server_error("Failed to apply "
 					  "changesets to '%s' - Switch failed: "
@@ -1001,7 +986,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 					// Cleanup old and new contents
 					xfrin_rollback_update(zone->contents,
 					                      &contents,
-					                      &chsets->changes);
+					                      chsets->changes);
 				}
 			}
 		}
@@ -1012,7 +997,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 
 	/* Free changesets and return. */
 	rcu_read_unlock();
-	knot_free_changesets(&chsets);
+	knot_changesets_free(&chsets);
 	return ret;
 }
 
@@ -1243,9 +1228,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 		rcu_read_unlock();
 	}
-
-	/* CLEANUP */
-//	knot_zone_contents_dump(knot_zone_get_contents(zone), 1);
 
 	/* Directly discard zone. */
 	knot_dname_free(&dname);
@@ -1632,16 +1614,14 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	/* We must prepare a changesets_t structure even if
 	 * there is only one changeset - because of the API. */
-	knot_changesets_t *chgsets = NULL;
-	ret = knot_changeset_allocate(&chgsets, KNOT_CHANGESET_TYPE_DDNS);
-	if (ret != KNOT_EOK) {
+	knot_changesets_t *chgsets =
+		knot_changesets_create(KNOT_CHANGESET_TYPE_DDNS);
+	if (chgsets == NULL) {
 		*rcode = KNOT_RCODE_SERVFAIL;
-		log_zone_error("%s %s\n", msg, knot_strerror(ret));
+		log_zone_error("%s Cannot create changesets structure.\n", msg);
 		free(msg);
 		return ret;
 	}
-
-	assert(chgsets->allocated >= 1);
 
 	/*
 	 * NEW DDNS PROCESSING -------------------------------------------------
@@ -1649,7 +1629,10 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	/* 1) Process the UPDATE packet, apply to zone, create changesets. */
 
 	dbg_zones_verb("Processing UPDATE packet.\n");
-	chgsets->count = 1; /* DU is represented by a single chset. */
+	/* DU is represented by a single chset. */
+	if (knot_changesets_create_changeset(chgsets) == NULL) {
+		return KNOT_ERROR;
+	}
 
 	knot_zone_contents_t *new_contents = NULL;
 	ret = knot_ns_process_update2(knot_packet_query(resp),
@@ -1673,7 +1656,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			}
 		}
 
-		knot_free_changesets(&chgsets);
+		knot_changesets_free(&chgsets);
 		free(msg);
 		return (ret < 0) ? ret : KNOT_EOK;
 	}
@@ -1683,8 +1666,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s %s\n", msg, knot_strerror(ret));
 		xfrin_rollback_update(zone->contents, &new_contents,
-		                      &chgsets->changes);
-		knot_free_changesets(&chgsets);
+		                      chgsets->changes);
+		knot_changesets_free(&chgsets);
 		free(msg);
 		return ret;
 	}
@@ -1701,19 +1684,19 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		               msg, knot_strerror(ret));
 		// Cleanup old and new contents
 		xfrin_rollback_update(zone->contents, &new_contents,
-		                      &chgsets->changes);
+		                      chgsets->changes);
 
 		/* Free changesets, but not the data. */
-		knot_free_changesets(&chgsets);
+		knot_changesets_free(&chgsets);
 		return KNOT_ERROR;
 	}
 
 	/* 4) Cleanup. */
 
-	xfrin_cleanup_successful_update(&chgsets->changes);
+	xfrin_cleanup_successful_update(chgsets->changes);
 
 	/* Free changesets, but not the data. */
-	knot_free_changesets(&chgsets);
+	knot_changesets_free(&chgsets);
 	assert(ret == KNOT_EOK);
 	log_zone_info("%s Finished.\n", msg);
 
@@ -2590,7 +2573,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	char *new_fname = NULL;
 	int fd = zones_open_free_filename(fname, &new_fname);
 	if (fd < 0) {
-		return FLOADER_EWRITABLE;
+		return KNOT_EWRITABLE;
 	}
 
 	FILE *f = fdopen(fd, "w");
@@ -2677,7 +2660,6 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	/* Server identification, RFC 4892. */
 	ns->identity = conf->identity;
 	ns->version = conf->version;
-	ns->hostname = conf->hostname;
 
 	knot_zonedb_t *old_db = 0;
 
@@ -2729,15 +2711,16 @@ int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
 
 	size_t remove_size = 0;
-	for (int i = 0; i < chgset->remove_count; ++i)
-	{
-		remove_size += rrset_binary_size(chgset->remove[i]);
+	knot_rr_ln_t *rr_node = NULL;
+	WALK_LIST(rr_node, chgset->remove) {
+		knot_rrset_t *rrset = rr_node->rr;
+		remove_size += rrset_binary_size(rrset);
 	}
 
 	size_t add_size = 0;
-	for (int i = 0; i < chgset->add_count; ++i)
-	{
-		add_size += rrset_binary_size(chgset->add[i]);
+	WALK_LIST(rr_node, chgset->add) {
+		knot_rrset_t *rrset = rr_node->rr;
+		add_size += rrset_binary_size(rrset);
 	}
 
 	/*! \todo How is the changeset serialized? Any other parts? */
@@ -2783,8 +2766,10 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'remove' section. */
-	for (int i = 0; i < chs->remove_count; ++i) {
-		ret = zones_rrset_write_to_mem(chs->remove[i], &entry, &max_size);
+	knot_rr_ln_t *rr_node = NULL;
+	WALK_LIST(rr_node, chs->remove) {
+		knot_rrset_t *rrset = rr_node->rr;
+		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
 			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 			          knot_strerror(ret));
@@ -2801,8 +2786,9 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	}
 
 	/* Serialize RRSets from the 'add' section. */
-	for (int i = 0; i < chs->add_count; ++i) {
-		ret = zones_rrset_write_to_mem(chs->add[i], &entry, &max_size);
+	WALK_LIST(rr_node, chs->add) {
+		knot_rrset_t *rrset = rr_node->rr;
+		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
 			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
 			          knot_strerror(ret));
@@ -2936,10 +2922,9 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src)
 	}
 
 	/* Begin writing to journal. */
-	for (unsigned i = 0; i < src->count; ++i) {
+	knot_changeset_t *chs = NULL;
+	WALK_LIST(chs, src->sets) {
 		/* Make key from serials. */
-		knot_changeset_t* chs = src->sets + i;
-
 		ret = zones_store_changeset(chs, j, zone, zd);
 		if (ret != KNOT_EOK)
 			break;
@@ -2970,8 +2955,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 		return KNOT_EINVAL;
 	}
 
-	knot_changesets_t *chgsets = (knot_changesets_t *)
-	                               calloc(1, sizeof(knot_changesets_t));
+	knot_changesets_t *chgsets = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
 	CHECK_ALLOC_LOG(chgsets, KNOT_ENOMEM);
 
 	int ret = ns_serial_compare(serial_to, serial_from);
@@ -2989,7 +2973,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 	if (ret != KNOT_EOK) {
 		dbg_xfr("xfr: failed to load changesets: %s\n",
 		        knot_strerror(ret));
-		knot_free_changesets(&chgsets);
+		knot_changesets_free(&chgsets);
 		return ret;
 	}
 
@@ -3021,19 +3005,19 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 			dbg_zones_detail("zones: create_changesets: "
 			                 "New serial was lower than the old "
 			                 "one.\n");
-			knot_free_changesets(&changesets);
+			knot_changesets_free(&changesets);
 			return KNOT_ERANGE;
 		} else if (ret == KNOT_ENODIFF) {
 			dbg_zones_detail("zones: create_changesets: "
 			                 "New serial was the same as the old "
 			                 "one.\n");
-			knot_free_changesets(&changesets);
+			knot_changesets_free(&changesets);
 			return KNOT_ENODIFF;
 		} else {
 			dbg_zones("zones: create_changesets: "
 			          "Could not create changesets. Reason: %s\n",
 			          knot_strerror(ret));
-			knot_free_changesets(&changesets);
+			knot_changesets_free(&changesets);
 			return KNOT_ERROR;
 		}
 	}
@@ -3065,7 +3049,7 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 		return ret;
 	}
 
-	knot_free_changesets(&changesets);
+	knot_changesets_free(&changesets);
 
 	return KNOT_EOK;
 }
@@ -3094,7 +3078,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 		               "changesets.\n", msgpref);
 		/* Free changesets, but not the data. */
 		zones_store_changesets_rollback(transaction);
-		knot_free_changesets(&chs);
+		knot_changesets_free(&chs);
 		return ret;
 	}
 
@@ -3106,7 +3090,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 
 		/* Free changesets, but not the data. */
 		zones_store_changesets_rollback(transaction);
-		knot_free_changesets(&chs);
+		knot_changesets_free(&chs);
 		return apply_ret;  // propagate the error above
 	}
 
@@ -3115,7 +3099,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	if (ret != KNOT_EOK) {
 		/*! \todo THIS WILL LEAK!! xfrin_rollback_update() needed. */
 		log_zone_error("%s Failed to commit stored changesets.\n", msgpref);
-		knot_free_changesets(&chs);
+		knot_changesets_free(&chs);
 		return ret;
 	}
 
@@ -3126,17 +3110,17 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 		log_zone_error("%s Failed to replace current zone.\n", msgpref);
 		// Cleanup old and new contents
 		xfrin_rollback_update(zone->contents, new_contents,
-		                      &chs->changes);
+		                      chs->changes);
 
 		/* Free changesets, but not the data. */
-		knot_free_changesets(&chs);
+		knot_changesets_free(&chs);
 		return KNOT_ERROR;
 	}
 
-	xfrin_cleanup_successful_update(&chs->changes);
+	xfrin_cleanup_successful_update(chs->changes);
 
 	/* Free changesets, but not the data. */
-	knot_free_changesets(&chs);
+	knot_changesets_free(&chs);
 	assert(ret == KNOT_EOK);
 	return KNOT_EOK;
 }
