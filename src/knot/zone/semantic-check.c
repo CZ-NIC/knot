@@ -357,8 +357,8 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		knot_rrset_rdata_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
-	if (knot_dname_compare(signer_name,
-				 knot_rrset_owner(dnskey_rrset)) != 0) {
+	if (!dnskey_rrset || knot_dname_compare(signer_name,
+	                                 knot_rrset_owner(dnskey_rrset)) != 0) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
 		                         info_str);
@@ -421,8 +421,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
                                 const knot_rrset_t *rrset,
                                 const knot_rrset_t *dnskey_rrset)
 {
-	if (handler == NULL || node == NULL || rrset == NULL ||
-	    dnskey_rrset == NULL) {
+	if (handler == NULL || node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 	
@@ -434,8 +433,6 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		return KNOT_ENOMEM;
 	}
 	
-	assert(dnskey_rrset && rrset);
-
 	const knot_rrset_t *rrsigs = knot_rrset_rrsigs(rrset);
 
 	if (rrsigs == NULL) {
@@ -486,14 +483,6 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 			dbg_semcheck("Could not check RRSIG properly (%s).\n",
 			             knot_strerror(ret));
 		}
-	}
-	
-	int all_signed =
-		knot_rrset_rdata_rr_count(rrset) == knot_rrset_rdata_rr_count(rrsigs);
-	if (!all_signed) {
-		err_handler_handle_error(handler, node,
-		                         ZC_ERR_RRSIG_NOT_ALL,
-		                         info_str);
 	}
 
 	return KNOT_EOK;
