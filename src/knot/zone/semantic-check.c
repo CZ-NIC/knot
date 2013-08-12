@@ -48,6 +48,8 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"RRSIG: Labels rdata field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
 	"RRSIG: Signer name is different than in DNSKEY!",
+	[-ZC_ERR_RRSIG_NO_DNSKEY] =
+	"RRSIG: Missing DNSKEY for RRSIG!",
 	[-ZC_ERR_RRSIG_RDATA_SIGNED_WRONG] =
 	"RRSIG: Key error!",
 	[-ZC_ERR_RRSIG_NO_RRSIG] =
@@ -292,12 +294,8 @@ static int check_rrsig_rdata(err_handler_t *handler,
                              const knot_rrset_t *dnskey_rrset)
 {
 	/* Prepare additional info string. */
-	char info_str[50];
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %d.",
-	                   knot_rrset_type(rrset));
-	if (ret < 0 || ret >= sizeof(info_str)) {
-		return KNOT_ENOMEM;
-	}
+	char info_str[50] = "Record type: ";
+	knot_rrtype_to_string(knot_rrset_type(rrset), info_str + 13, 47);
 
 	if (knot_rrset_rdata_rr_count(rrsig) == 0) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
@@ -352,13 +350,19 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		                         info_str);
 	}
 
+	/* Check if DNSKEY exists. */
+	if (!dnskey_rrset) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_NO_DNSKEY, info_str);
+	}
+
 	/* signer's name is same as in the zone apex */
 	const knot_dname_t *signer_name =
 		knot_rrset_rdata_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
-	if (!dnskey_rrset || knot_dname_compare(signer_name,
-	                                 knot_rrset_owner(dnskey_rrset)) != 0) {
+	if (knot_dname_compare(signer_name,
+	                       knot_rrset_owner(dnskey_rrset)) != 0) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
 		                         info_str);
@@ -398,8 +402,8 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 	
 	if (!match) {
-		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
-		                         info_str);
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_NO_DNSKEY, info_str);
 	}
 
 	return KNOT_EOK;
