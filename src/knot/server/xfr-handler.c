@@ -321,14 +321,17 @@ static int xfr_task_close(knot_ns_xfr_t *rq)
 
 	/* Reschedule failed bootstrap. */
 	if (rq->type == XFR_TYPE_AIN && !knot_zone_contents(rq->zone)) {
-		int tmr_s = AXFR_BOOTSTRAP_RETRY * tls_rand();
+		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
+		zd->xfr_in.bootstrap_retry += AXFR_BOOTSTRAP_RETRY * tls_rand();
+		if (zd->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME)
+			zd->xfr_in.bootstrap_retry = AXFR_RETRY_MAXTIME;
 		event_t *ev = zd->xfr_in.timer;
 		if (ev) {
 			evsched_cancel(ev->parent, ev);
-			evsched_schedule(ev->parent, ev, tmr_s);
+			evsched_schedule(ev->parent, ev, zd->xfr_in.bootstrap_retry);
 		}
 		log_zone_notice("%s Bootstrap failed, next attempt in %d seconds.\n",
-		                rq->msg, tmr_s / 1000);
+		                rq->msg, zd->xfr_in.bootstrap_retry / 1000);
 	}
 
 	/* Close socket and free task. */
@@ -1114,6 +1117,10 @@ int xfr_worker(dthread_t *thread)
 					ret = xfr_async_finish(&set, i);
 				else
 					ret = xfr_process_event(w, rq);
+			} else {
+				/* Inactive connection. */
+				++i;
+				continue;
 			}
 
 			/* Check task state. */

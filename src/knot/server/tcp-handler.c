@@ -523,7 +523,8 @@ int tcp_loop_master(dthread_t *thread)
 			break;
 		}
 
-		for (unsigned i = 0; nfds > 0 && i < set.n; ++i) {
+		unsigned i = 0;
+		while (nfds > 0 && i < set.n && !dt_is_cancelled(thread)) {
 
 			/* Error events. */
 			if (set.pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
@@ -531,23 +532,27 @@ int tcp_loop_master(dthread_t *thread)
 				fdset_remove(&set, i);
 				--nfds;   /* Treat error event as activity. */
 				continue; /* Stay on the same index. */
-			}
-
-			/* Accept POLLIN events. */
-			if (!(set.pfd[i].revents & POLLIN))
+			} else if (!(set.pfd[i].revents & POLLIN)) {
+				/* Inactive sockets. */
+				++i;
 				continue;
+			}
 
 			/* Accept client. */
 			--nfds; /* One less active event. */
 			int client = tcp_accept(set.pfd[i].fd);
-			if (client < 0)
-				continue;
+			if (client >= 0) {
+				/* Add to worker in RR fashion. */
+				id = get_next_rr(id, unit->size - 1);
+				ret = write(workers[id]->pipe[1], &client,
+				            sizeof(int));
+				if (ret < 0) {
+					close(client);
+				}
+			}
 
-			/* Add to worker in RR fashion. */
-			id = get_next_rr(id, unit->size - 1);
-			ret = write(workers[id]->pipe[1], &client, sizeof(int));
-			if (ret < 0)
-				close(client);
+			/* Next socket. */
+			++i;
 		}
 	}
 
@@ -599,7 +604,7 @@ int tcp_loop_worker(dthread_t *thread)
 
 		/* Process incoming events. */
 		unsigned i = 0;
-		while (nfds > 0 && i < set->n) {
+		while (nfds > 0 && i < set->n && !dt_is_cancelled(thread)) {
 
 			/* Terminate faulty connections. */
 			int fd = set->pfd[i].fd;
@@ -608,16 +613,14 @@ int tcp_loop_worker(dthread_t *thread)
 				close(fd);
 				--nfds;   /* Treat error event as activity. */
 				continue; /* Stay on the same index. */
-			}
-
-			if (!(set->pfd[i].revents & set->pfd[i].events)) {
+			} else if (!(set->pfd[i].revents & set->pfd[i].events)) {
 				/* Skip inactive. */
 				++i;
 				continue;
-			} else {
-				/* One less active event. */
-				--nfds;
 			}
+
+			/* One less active event. */
+			--nfds;
 
 			/* Register new TCP client or process a query. */
 			if (fd == w->pipe[0]) {

@@ -21,8 +21,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
 
 #include "common/sockaddr.h"
+#include "libknot/consts.h"
 
 int sockaddr_init(sockaddr_t *addr, int af)
 {
@@ -190,4 +193,42 @@ void sockaddr_prep(sockaddr_t *addr)
 #else
 	addr->len = sizeof(struct sockaddr_in);
 #endif
+}
+
+char *sockaddr_hostname(void)
+{
+	/* Fetch hostname. */
+	char host[KNOT_MAX_DNAME_LENGTH];
+	if (gethostname(host, KNOT_MAX_DNAME_LENGTH) != 0) {
+		return NULL;
+	}
+
+	/* Fetch canonical name for this address/DNS. */
+	int ret = 0;
+	struct addrinfo hints, *info;
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_CANONNAME;
+	if ((ret = getaddrinfo(host, "domain", &hints, &info)) != 0) {
+		return NULL;
+	}
+
+	/* Fetch first valid hostname. */
+	char *hname = NULL;
+	struct addrinfo *p = NULL;
+	for (p = info; p != NULL; p = p->ai_next) {
+		if (p->ai_canonname) {
+			hname = strdup(p->ai_canonname);
+			break;
+		}
+	}
+
+	/* No valid hostname found, resort to gethostname() result */
+	if (hname == NULL) {
+		hname = strdup(host);
+	}
+
+	freeaddrinfo(info);
+	return hname;
 }

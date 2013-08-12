@@ -679,6 +679,25 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	return KNOT_EOK;
 }
 
+int knot_tsig_check_prep(uint8_t* wire, size_t *wire_size, const knot_rrset_t *tsig)
+{
+	if (wire == NULL || wire_size == NULL || tsig == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Trim TSIG from the packet if it contains it. */
+	size_t tsig_len = tsig_wire_actsize(tsig);
+	*wire_size -= tsig_len;
+
+	/* Restore message id. */
+	knot_wire_set_id(wire, tsig_rdata_orig_id(tsig));
+
+	/* Decrease arcount. */
+	knot_wire_set_arcount(wire, knot_wire_get_arcount(wire) - 1);
+	return KNOT_EOK;
+
+}
+
 static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
                                   const uint8_t *wire, size_t size,
                                   const uint8_t *request_mac,
@@ -715,13 +734,6 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	dbg_tsig_verb("TSIG: key validity checked.\n");
 
-	/* Time OK algorithm OK, key name OK - do digest. */
-	/* Calculate the size of TSIG RR. */
-	size_t tsig_len = tsig_wire_actsize(tsig_rr);
-
-	/* Strip the TSIG. */
-	size -= tsig_len;
-
 	uint8_t *wire_to_sign = malloc(sizeof(uint8_t) * size);
 	if (!wire_to_sign) {
 		ERR_ALLOC_FAILED;
@@ -731,23 +743,20 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	memset(wire_to_sign, 0, sizeof(uint8_t) * size);
 	memcpy(wire_to_sign, wire, size);
 
-	/* Restore message id. */
-	knot_wire_set_id(wire_to_sign, tsig_rdata_orig_id(tsig_rr));
-
-	/* Decrease arcount. */
-	knot_wire_set_arcount(wire_to_sign,
-	                      knot_wire_get_arcount(wire_to_sign) - 1);
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
 	assert(tsig_rr->rdata);
 
 	if (use_times) {
+		/* Wire is not a single packet, TSIG RRs must be stripped already. */
 		ret = knot_tsig_create_sign_wire_next(wire_to_sign, size,
 		                                 request_mac, request_mac_len,
 		                                 digest_tmp, &digest_tmp_len,
 		                                 tsig_rr, tsig_key);
 	} else {
+		/* Well, here it isn't. Strip the TSIG. */
+		knot_tsig_check_prep(wire_to_sign, &size, tsig_rr);
 		ret = knot_tsig_create_sign_wire(wire_to_sign, size,
 		                                 request_mac, request_mac_len,
 		                                 digest_tmp, &digest_tmp_len,
