@@ -221,7 +221,9 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	}
 
 	// current NSEC is invalid, replace it and drop RRSIG
+	// mark the node, so later we know this NSEC needs new RRSIGs
 
+	knot_node_set_replaced_nsec(a);
 	return changeset_replace_nsec(old_nsec, new_nsec, data->changeset);
 }
 

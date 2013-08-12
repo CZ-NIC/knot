@@ -303,9 +303,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 }
 
 static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
-		       knot_zone_keys_t *zone_keys,
-		       const knot_dnssec_policy_t *policy,
-		       knot_changeset_t *changeset)
+                       int replaced_nsec, knot_zone_keys_t *zone_keys,
+                       const knot_dnssec_policy_t *policy,
+                       knot_changeset_t *changeset)
 {
 	assert(rrsets);
 	assert(zone_keys);
@@ -318,6 +318,12 @@ static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
 		const knot_rrset_t *rrset = rrsets[i];
 		const knot_rrset_t *rrsigs = rrset->rrsigs;
 
+		if (replaced_nsec
+		    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
+		         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
+			continue;
+		}
+
 		result = remove_expired_rrsigs(rrsigs, policy, changeset);
 		if (result != KNOT_EOK) {
 			fprintf(stderr, "remove_expired_rrsigs() failed\n");
@@ -325,7 +331,7 @@ static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
 		}
 
 		result = add_missing_rrsigs(rrset, rrsigs, zone_keys, policy,
-					    changeset);
+		                            changeset);
 		if (result != KNOT_EOK) {
 			fprintf(stderr, "add_missing_rrsigs() failed\n");
 			break;
@@ -345,7 +351,8 @@ static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys,
 		return KNOT_EOK;
 
 	return sign_rrsets(node->rrset_tree, node->rrset_count,
-			   zone_keys, policy, changeset);
+	                   knot_node_is_replaced_nsec(node),
+	                   zone_keys, policy, changeset);
 }
 
 static int zone_tree_sign(knot_zone_tree_t *tree, knot_zone_keys_t *zone_keys,
@@ -367,6 +374,9 @@ static int zone_tree_sign(knot_zone_tree_t *tree, knot_zone_keys_t *zone_keys,
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
 		result = sign_node(node, zone_keys, policy, changeset);
+		// clear the 'unsigned NSEC' flag in the node
+		knot_node_clear_replaced_nsec(node);
+
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -376,6 +386,35 @@ static int zone_tree_sign(knot_zone_tree_t *tree, knot_zone_keys_t *zone_keys,
 	hattrie_iter_free(it);
 
 	return result;
+}
+
+static int sign_nsec(knot_zone_keys_t *zone_keys,
+                     const knot_dnssec_policy_t *policy,
+                     knot_changeset_t *changeset)
+{
+	assert(zone_keys != NULL);
+	assert(policy != NULL);
+	assert(changeset != NULL);
+
+	const knot_rrset_t *rrset = NULL;
+	int res = KNOT_EOK;
+
+	// Sign each NSEC or NSEC3 in the ADD section of the changeset
+	for (int i = 0; i < changeset->add_count; ++i) {
+		rrset = changeset->add[i];
+		if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC
+		    || knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
+			res = add_missing_rrsigs(rrset, NULL, zone_keys, policy,
+			                         changeset);
+			if (res != KNOT_EOK) {
+				fprintf(stderr, "add_missing_rrsigs() for NSEC"
+				        "failed\n");
+				break;
+			}
+		}
+	}
+
+	return res;
 }
 
 static void free_sign_contexts(knot_zone_keys_t *keys)
@@ -453,6 +492,15 @@ int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
 	                        changeset);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "zone_tree_sign() on nsec3 nodes failed\n");
+		free_zone_keys(&zone_keys);
+		free_sign_contexts(&zone_keys);
+		return result;
+	}
+
+	// sign all NSEC and NSEC3 RRs in changeset
+	result = sign_nsec(&zone_keys, &policy, changeset);
+	if (result != KNOT_EOK) {
+		fprintf(stderr, "sign_nsec() failed\n");
 		free_zone_keys(&zone_keys);
 		free_sign_contexts(&zone_keys);
 		return result;
