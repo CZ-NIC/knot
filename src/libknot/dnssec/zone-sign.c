@@ -105,7 +105,8 @@ static void rrsig_write_rdata(uint8_t *rdata,
 	knot_dname_retain(key->name);
 }
 
-static uint8_t *create_rrsig_rdata(knot_rrset_t *rrsig, knot_dnssec_key_t *key)
+static uint8_t *create_rrsig_rdata(knot_rrset_t *rrsig,
+                                   const knot_dnssec_key_t *key)
 {
 	size_t rdata_size = rrsig_rdata_size(key);
 	return knot_rrset_create_rdata(rrsig, rdata_size);
@@ -113,7 +114,7 @@ static uint8_t *create_rrsig_rdata(knot_rrset_t *rrsig, knot_dnssec_key_t *key)
 
 static int sign_rrset_one(knot_rrset_t *rrsigs,
                           const knot_rrset_t *covered,
-                          knot_dnssec_key_t *key,
+                          const knot_dnssec_key_t *key,
                           knot_dnssec_sign_context_t *sign_ctx,
                           const knot_dnssec_policy_t *policy)
 {
@@ -208,6 +209,26 @@ static bool valid_signature_exists(const knot_rrset_t *rrsigs,
 	return false;
 }
 
+static bool valid_signature_exists_for_keys(const knot_rrset_t *covered,
+                                            const knot_rrset_t *rrsigs,
+                                            const knot_zone_keys_t *zone_keys,
+                                            const knot_dnssec_policy_t *policy)
+{
+	bool use_ksk = covered->type == KNOT_RRTYPE_DNSKEY;
+	for (int i = 0; i < zone_keys->count; i++) {
+		if (use_ksk != zone_keys->is_ksk[i])
+			continue;
+
+		const knot_dnssec_key_t *key = &zone_keys->keys[i];
+		knot_dnssec_sign_context_t *ctx = zone_keys->contexts[i];
+
+		if (valid_signature_exists(rrsigs, key, policy)) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 static int remove_expired_rrsigs(const knot_rrset_t *rrsigs,
 				 const knot_dnssec_policy_t *policy,
@@ -254,9 +275,9 @@ static int remove_expired_rrsigs(const knot_rrset_t *rrsigs,
 
 static int add_missing_rrsigs(const knot_rrset_t *covered,
                               const knot_rrset_t *rrsigs,
-                              knot_zone_keys_t *zone_keys,
+                              const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
-			      knot_changeset_t *changeset)
+                              knot_changeset_t *changeset)
 {
 	assert(covered);
 	assert(zone_keys);
@@ -271,7 +292,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		if (use_ksk != zone_keys->is_ksk[i])
 			continue;
 
-		knot_dnssec_key_t *key = &zone_keys->keys[i];
+		const knot_dnssec_key_t *key = &zone_keys->keys[i];
 		knot_dnssec_sign_context_t *ctx = zone_keys->contexts[i];
 
 		if (valid_signature_exists(rrsigs, key, policy))
@@ -303,7 +324,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 }
 
 static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
-                       int replaced_nsec, knot_zone_keys_t *zone_keys,
+                       int replaced_nsec, const knot_zone_keys_t *zone_keys,
                        const knot_dnssec_policy_t *policy,
                        knot_changeset_t *changeset)
 {
@@ -318,6 +339,10 @@ static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
 		const knot_rrset_t *rrset = rrsets[i];
 		const knot_rrset_t *rrsigs = rrset->rrsigs;
 
+		if (rrset->type == KNOT_RRTYPE_SOA) {
+			continue;
+		}
+
 		if (replaced_nsec
 		    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
 		         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
@@ -331,7 +356,7 @@ static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
 		}
 
 		result = add_missing_rrsigs(rrset, rrsigs, zone_keys, policy,
-		                            changeset);
+					    changeset);
 		if (result != KNOT_EOK) {
 			fprintf(stderr, "add_missing_rrsigs() failed\n");
 			break;
@@ -341,7 +366,7 @@ static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
 	return result;
 }
 
-static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys,
+static int sign_node(const knot_node_t *node, const knot_zone_keys_t *zone_keys,
 		     const knot_dnssec_policy_t *policy,
 		     knot_changeset_t *changeset)
 {
@@ -355,9 +380,10 @@ static int sign_node(const knot_node_t *node, knot_zone_keys_t *zone_keys,
 	                   zone_keys, policy, changeset);
 }
 
-static int zone_tree_sign(knot_zone_tree_t *tree, knot_zone_keys_t *zone_keys,
-			  const knot_dnssec_policy_t *policy,
-			  knot_changeset_t *changeset)
+static int zone_tree_sign(knot_zone_tree_t *tree,
+                          const knot_zone_keys_t *zone_keys,
+                          const knot_dnssec_policy_t *policy,
+                          knot_changeset_t *changeset)
 {
 	assert(tree);
 	assert(zone_keys);
@@ -417,106 +443,87 @@ static int sign_nsec(knot_zone_keys_t *zone_keys,
 	return res;
 }
 
-static void free_sign_contexts(knot_zone_keys_t *keys)
-{
-	for (int i = 0; i < keys->count; i++) {
-		knot_dnssec_sign_free(keys->contexts[i]);
-		keys->contexts[i] = NULL;
-	}
-}
-
-static void free_zone_keys(knot_zone_keys_t *keys)
-{
-	for (int i = 0; i < keys->count; i++) {
-		knot_dnssec_key_free(&keys->keys[i]);
-	}
-}
-
-static int init_sign_contexts(knot_zone_keys_t *keys)
-{
-	assert(keys);
-
-	for (int i = 0; i < keys->count; i++) {
-		keys->contexts[i] = knot_dnssec_sign_init(&keys->keys[i]);
-		if (keys->contexts[i] == NULL) {
-			free_sign_contexts(keys);
-			return KNOT_ENOMEM;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
 /*- public API ---------------------------------------------------------------*/
 
-int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
-		   knot_changeset_t *changeset)
+int knot_zone_sign(const knot_zone_contents_t *zone,
+                   knot_zone_keys_t *zone_keys,
+                   const knot_dnssec_policy_t *policy,
+                   knot_changeset_t *changeset)
 {
 	assert(zone);
-	assert(keydir);
+	assert(zone_keys);
+	assert(policy);
 	assert(changeset);
 
 	int result;
 
-	knot_dnssec_policy_t policy = DEFAULT_DNSSEC_POLICY;
-
-	knot_zone_keys_t zone_keys = { '\0' };
-
-	result = load_zone_keys(keydir, zone->apex->owner, &zone_keys);
-	if (result != KNOT_EOK) {
-		fprintf(stderr, "load_zone_keys() failed\n");
-		return result;
-	}
-
-	if (zone_keys.count == 0) {
-		fprintf(stderr, "no zone keys available\n");
-		return KNOT_EOK;
-	}
-
-	result = init_sign_contexts(&zone_keys);
-	if (result != KNOT_EOK) {
-		fprintf(stderr, "init_sign_contexts() failed\n");
-		free_zone_keys(&zone_keys);
-		return result;
-	}
-
-	result = zone_tree_sign(zone->nodes, &zone_keys, &policy, changeset);
+	result = zone_tree_sign(zone->nodes, zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "zone_tree_sign() on normal nodes failed\n");
-		free_zone_keys(&zone_keys);
-		free_sign_contexts(&zone_keys);
+		free_zone_keys(zone_keys);
+		free_sign_contexts(zone_keys);
 		return result;
 	}
 
-	result = zone_tree_sign(zone->nsec3_nodes, &zone_keys, &policy,
+	result = zone_tree_sign(zone->nsec3_nodes, zone_keys, policy,
 	                        changeset);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "zone_tree_sign() on nsec3 nodes failed\n");
-		free_zone_keys(&zone_keys);
-		free_sign_contexts(&zone_keys);
+		free_zone_keys(zone_keys);
+		free_sign_contexts(zone_keys);
 		return result;
 	}
 
 	// sign all NSEC and NSEC3 RRs in changeset
-	result = sign_nsec(&zone_keys, &policy, changeset);
+	result = sign_nsec(zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "sign_nsec() failed\n");
-		free_zone_keys(&zone_keys);
-		free_sign_contexts(&zone_keys);
+		free_zone_keys(zone_keys);
+		free_sign_contexts(zone_keys);
 		return result;
 	}
-
-	free_sign_contexts(&zone_keys);
-	free_zone_keys(&zone_keys);
 
 	return result;
 }
 
+bool knot_zone_sign_soa_changed(const knot_zone_contents_t *zone,
+                                const knot_zone_keys_t *zone_keys,
+                                const knot_dnssec_policy_t *policy)
+{
+	assert(zone);
+	// Get SOA from zone.
+	const knot_rrset_t *soa_rr =
+		knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	assert(soa_rr);
+
+	return !valid_signature_exists_for_keys(soa_rr, soa_rr->rrsigs, zone_keys,
+	                                        policy);
+}
+
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
+                              const knot_zone_keys_t *zone_keys,
+                              const knot_dnssec_policy_t *policy,
 			      knot_changeset_t *changeset)
 {
 	knot_node_t *apex = knot_zone_contents_get_apex(zone);
 	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
+
+	int result;
+
+	// Remove SOA's old RRSIGs (if there are any)
+	if (soa->rrsigs) {
+		knot_rrset_t *soa_copy = NULL;
+		result = knot_rrset_deep_copy(soa->rrsigs, &soa_copy, 1);
+		if (result != KNOT_EOK) {
+			return result;
+		}
+		result = knot_changeset_add_new_rr(changeset, soa_copy,
+		                                   KNOT_CHANGESET_REMOVE);
+		if (result != KNOT_EOK) {
+			knot_rrset_deep_free(&soa_copy, 1, 1);
+			return result;
+		}
+	}
 
 	if (soa == NULL || soa->rdata_count != 1)
 		return KNOT_EINVAL;
@@ -533,8 +540,6 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 	knot_rrset_t *soa_to = NULL;
 	int copy_rdata_dnames = true;
 
-	int result;
-
 	result = knot_rrset_deep_copy_no_sig(soa, &soa_from, copy_rdata_dnames);
 	if (result != KNOT_EOK)
 		return result;
@@ -546,6 +551,12 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 	}
 
 	knot_rrset_rdata_soa_serial_set(soa_to, new_serial);
+
+	// Create signature for new SOA
+	result = add_missing_rrsigs(soa_to, NULL, zone_keys, policy, changeset);
+	if (result != KNOT_EOK) {
+		return result;
+	}
 
 	// save the result
 

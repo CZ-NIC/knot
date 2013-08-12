@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,12 +29,22 @@
 
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/zone-contents.h"
+#include "libknot/dnssec/zone-keys.h"
+#include "libknot/dnssec/policy.h"
 
-int knot_zone_sign(const knot_zone_contents_t *zone, const char *keydir,
-		   knot_changeset_t *changeset);
+int knot_zone_sign(const knot_zone_contents_t *zone,
+                   const knot_zone_keys_t *zone_keys,
+                   const knot_dnssec_policy_t *policy,
+                   knot_changeset_t *changeset);
 
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
+                              const knot_zone_keys_t *zone_keys,
+                              const knot_dnssec_policy_t *policy,
 			      knot_changeset_t *changeset);
+
+bool knot_zone_sign_soa_changed(const knot_zone_contents_t *zone,
+                                const knot_zone_keys_t *zone_keys,
+                                const knot_dnssec_policy_t *policy);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 

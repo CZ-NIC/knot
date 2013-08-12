@@ -16,12 +16,20 @@
 
 #include <config.h>
 #include <assert.h>
+#include <time.h>
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
 #include "libknot/dnssec/zone-events.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
+#include "libknot/dnssec/zone-keys.h"
+#include "libknot/dnssec/policy.h"
 #include "libknot/zone/zone.h"
+
+static uint32_t time_now(void)
+{
+	return (uint32_t)time(NULL);
+}
 
 int knot_dnssec_zone_load(knot_zone_t *zone)
 {
@@ -60,12 +68,26 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 	char *keydir = strdup(conf()->dnssec_keydir);
 	rcu_read_unlock();
 
-	result = knot_zone_sign(zone->contents, keydir, changeset);
+	// Read zone keys from disk
+	knot_zone_keys_t zone_keys = { '\0' };
+
+	result = load_zone_keys(keydir, zone->contents->apex->owner, &zone_keys);
 	free(keydir);
+	if (result != KNOT_EOK) {
+		fprintf(stderr, "load_zone_keys() failed\n");
+		return result;
+	}
+
+	// Create sign policy
+	knot_dnssec_policy_t policy = DEFAULT_DNSSEC_POLICY;
+
+	result = knot_zone_sign(zone->contents, &zone_keys, &policy, changeset);
 	if (result != KNOT_EOK) {
 		log_server_error("Could not resign zone (%s).\n",
 				 knot_strerror(result));
 		knot_free_changesets(&changesets);
+		free_sign_contexts(&zone_keys);
+		free_zone_keys(&zone_keys);
 		return result;
 	}
 
@@ -73,9 +95,12 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 
 	log_server_info("changeset add %zu remove %zu\n", changeset->add_count, changeset->remove_count);
 
-	if (changeset->add_count == 0 && changeset->remove_count == 0) {
+	if (!knot_zone_sign_soa_changed(zone->contents, &zone_keys, &policy) &&
+	    changeset->add_count == 0 && changeset->remove_count == 0) {
 //		log_server_info("No changes performed.\n");
 		knot_free_changesets(&changesets);
+		free_sign_contexts(&zone_keys);
+		free_zone_keys(&zone_keys);
 		return KNOT_EOK;
 	}
 
@@ -100,10 +125,13 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 //	}
 //	}
 
-	result = knot_zone_sign_update_soa(zone->contents, changeset);
+	result = knot_zone_sign_update_soa(zone->contents, &zone_keys, &policy,
+	                                   changeset);
 	if (result != KNOT_EOK) {
 //		log_server_error("Cannot update SOA record (%s).\n",
 //				 knot_strerror(result));
+		free_sign_contexts(&zone_keys);
+		free_zone_keys(&zone_keys);
 		knot_free_changesets(&changesets);
 		return result;
 	}
@@ -116,11 +144,16 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 	if (result != KNOT_EOK) {
 //		log_server_error("Cannot apply changeset (%s).\n",
 //				 knot_strerror(result));
+		free_sign_contexts(&zone_keys);
+		free_zone_keys(&zone_keys);
 		knot_free_changesets(&changesets);
 		return result;
 	}
 
 	// changesets are freed by zones_store_and_apply_chgsets()
+
+	free_sign_contexts(&zone_keys);
+	free_zone_keys(&zone_keys);
 
 	return KNOT_EOK;
 }

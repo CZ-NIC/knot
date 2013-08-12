@@ -24,6 +24,21 @@
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
 
+static int init_sign_contexts(knot_zone_keys_t *keys)
+{
+	assert(keys);
+
+	for (int i = 0; i < keys->count; i++) {
+		keys->contexts[i] = knot_dnssec_sign_init(&keys->keys[i]);
+		if (keys->contexts[i] == NULL) {
+			free_sign_contexts(keys);
+			return KNOT_ENOMEM;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Check if the key is in active period.
  */
@@ -62,8 +77,7 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	struct dirent *entry = NULL;
 	while (keys->count < KNOT_MAX_ZONE_KEYS &&
 	       readdir_r(keydir, &entry_buf, &entry) == 0 &&
-	       entry != NULL
-	) {
+	       entry != NULL) {
 		if (entry->d_name[0] != 'K')
 			continue;
 
@@ -131,5 +145,32 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 	closedir(keydir);
 
-	return keys->count > 0 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_KEY;
+	if (keys->count == 0) {
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
+
+	int result = init_sign_contexts(keys);
+	if (result != KNOT_EOK) {
+		fprintf(stderr, "init_sign_contexts() failed\n");
+		free_zone_keys(keys);
+		return result;
+	}
+
+	return KNOT_EOK;
 }
+
+void free_sign_contexts(knot_zone_keys_t *keys)
+{
+	for (int i = 0; i < keys->count; i++) {
+		knot_dnssec_sign_free(keys->contexts[i]);
+		keys->contexts[i] = NULL;
+	}
+}
+
+void free_zone_keys(knot_zone_keys_t *keys)
+{
+	for (int i = 0; i < keys->count; i++) {
+		knot_dnssec_key_free(&keys->keys[i]);
+	}
+}
+

@@ -59,7 +59,7 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.verbose = false,
 	.reduce = true,
 	.human_ttl = false,
-	.human_tmstamp = false
+	.human_tmstamp = true
 };
 
 static void dump_string(rrset_dump_params_t *p, const char *str)

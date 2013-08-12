@@ -40,7 +40,7 @@
  * \brief Keys used for zone signing.
  */
 typedef struct {
-	int count;
+	unsigned count;
 	knot_dnssec_key_t keys[KNOT_MAX_ZONE_KEYS];
 	knot_dnssec_sign_context_t *contexts[KNOT_MAX_ZONE_KEYS];
 	bool is_ksk[KNOT_MAX_ZONE_KEYS];
@@ -57,6 +57,9 @@ typedef struct {
  */
 int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		   knot_zone_keys_t *keys);
+
+void free_sign_contexts(knot_zone_keys_t *keys);
+void free_zone_keys(knot_zone_keys_t *keys);
 
 #endif // _KNOT_DNSSEC_ZONE_KEYS_H_
 
