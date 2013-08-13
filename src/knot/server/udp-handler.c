@@ -216,7 +216,7 @@ int udp_handle(struct answer_ctx *ans, int fd,
 	}
 
 	/* Process RRL. */
-	if (knot_unlikely(rrl != NULL)) {
+	if (knot_unlikely(rrl != NULL) && rrl->rate > 0) {
 		rrl_req_t rrl_rq;
 		memset(&rrl_rq, 0, sizeof(rrl_req_t));
 		rrl_rq.w = qbuf; /* Wire */

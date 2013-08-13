@@ -247,8 +247,6 @@ src/tests/libknot/wire_tests.h
 src/tests/libknot/ztree_tests.c
 src/tests/libknot/ztree_tests.h
 src/tests/unittests_main.c
-src/tests/zscanner/zscanner_tests.c
-src/tests/zscanner/zscanner_tests.h
 src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/msg.c
@@ -275,6 +273,9 @@ src/utils/nsupdate/nsupdate_exec.h
 src/utils/nsupdate/nsupdate_main.c
 src/utils/nsupdate/nsupdate_params.c
 src/utils/nsupdate/nsupdate_params.h
+src/zscanner/Makefile.am
+src/zscanner/error.c
+src/zscanner/error.h
 src/zscanner/file_loader.c
 src/zscanner/file_loader.h
 src/zscanner/scanner.c
@@ -288,3 +289,4 @@ src/zscanner/test/processing.h
 src/zscanner/test/tests.c
 src/zscanner/test/tests.h
 src/zscanner/test/zscanner-tool.c
+src/zscanner/zscanner.h

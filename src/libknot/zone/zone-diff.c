@@ -161,8 +161,8 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	}
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 
-	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
-	                                    KNOT_CHANGESET_ADD);
+	ret = knot_changeset_add_rrset(changeset, rrset_copy,
+	                               KNOT_CHANGESET_ADD);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now! */
 		knot_rrset_deep_free(&rrset_copy, 1, 1);
@@ -205,8 +205,8 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	}
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 
-	ret = knot_changeset_add_new_rr(changeset, rrset_copy,
-	                                    KNOT_CHANGESET_REMOVE);
+	ret = knot_changeset_add_rrset(changeset, rrset_copy,
+	                               KNOT_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now. */
 		knot_rrset_deep_free(&rrset_copy, 1, 1);
@@ -934,19 +934,18 @@ static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
 	dbg_zonediff_detail("Changeset TO: %d\n", ch->serial_to);
 	knot_rrset_dump(ch->soa_to);
 	dbg_zonediff_detail("\n");
-	dbg_zonediff_detail("Adding %zu RRs.\n", ch->add_count);
-	dbg_zonediff_detail("Removing %zu RRs.\n", ch->remove_count);
 
 	dbg_zonediff_detail("ADD section:\n");
 	dbg_zonediff_detail("**********************************************\n");
-	for (int i = 0; i < ch->add_count; i++) {
-		knot_rrset_dump(ch->add[i]);
+	knot_rr_ln_t *rr_node;
+	WALK_LIST(rr_node, ch->add) {
+		knot_rrset_dump(rr_node->rr);
 		dbg_zonediff_detail("\n");
 	}
 	dbg_zonediff_detail("REMOVE section:\n");
 	dbg_zonediff_detail("**********************************************\n");
-	for (int i = 0; i < ch->remove_count; i++) {
-		knot_rrset_dump(ch->remove[i]);
+	WALK_LIST(rr_node, ch->remove) {
+		knot_rrset_dump(rr_node->rr);
 		dbg_zonediff_detail("\n");
 	}
 }
@@ -966,7 +965,7 @@ int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
 	/* Setting type to IXFR - that's the default, DDNS triggers special
 	 * processing when applied. See #2110 and #2111.
 	 */
-	int ret = knot_changeset_allocate(changesets, changesets_flags);
+	int ret = knot_changesets_init(changesets, KNOT_CHANGESET_TYPE_IXFR);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not allocate changesets."
@@ -974,9 +973,11 @@ int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
 		return ret;
 	}
 
-	memset((*changesets)->sets, 0, sizeof(knot_changeset_t));
-
-	ret = knot_zone_contents_diff(z1, z2, (*changesets)->sets);
+	knot_changeset_t *change = knot_changesets_create_changeset(*changesets);
+	if (change == NULL) {
+		return KNOT_ERROR;
+	}
+	ret = knot_zone_contents_diff(z1, z2, change);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not diff zones. "
@@ -984,12 +985,10 @@ int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
 		return ret;
 	}
 
-	(*changesets)->count = 1;
-
 	dbg_zonediff("Changesets created successfully!\n");
 	dbg_zonediff_detail("Changeset dump:\n");
 dbg_zonediff_exec_detail(
-	knot_zone_diff_dump_changeset((*changesets)->sets);
+	knot_zone_diff_dump_changeset(HEAD((*changesets)->sets));
 );
 
 	return KNOT_EOK;

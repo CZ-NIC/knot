@@ -20,12 +20,14 @@
 #include <stdlib.h>			// atoi
 #include <getopt.h>			// getopt
 
-#include "common/errcode.h"		// knot_strerror
+#include "zscanner/error.h"		// knot_strerror
 #include "zscanner/file_loader.h"	// file_loader
 #include "zscanner/test/processing.h"	// processing functions
 #include "zscanner/test/tests.h"	// test functions
 
 #define DEFAULT_MODE	1
+#define DEFAULT_CLASS	1
+#define DEFAULT_TTL	0
 
 void help(void)
 {
@@ -52,10 +54,10 @@ int main(int argc, char *argv[])
 
 	// Command line long options.
 	struct option opts[] = {
-		{"mode",	required_argument, 0, 'm'},
-		{"test",	no_argument,	   0, 't'},
-		{"help",	no_argument,	   0, 'h'},
-		{0, 		0, 		   0, 0}
+		{ "mode",	required_argument,	0,	'm' },
+		{ "test",	no_argument,		0,	't' },
+		{ "help",	no_argument,		0,	'h' },
+		{ 0, 		0, 			0,	0 }
 	};
 
 	// Command line options processing.
@@ -67,7 +69,9 @@ int main(int argc, char *argv[])
 		case 't':
 			test = 1;
 			break;
-		case 'h': // Fall through.
+		case 'h':
+			help();
+			return EXIT_SUCCESS;
 		default:
 			help();
 			return EXIT_FAILURE;
@@ -83,37 +87,37 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-		zone_file = argv[optind];
-		origin = argv[optind + 1];
+		origin = argv[optind];
+		zone_file = argv[optind + 1];
 
 		// Create appropriate file loader.
 		switch (mode) {
 		case 0:
-			fl = file_loader_create(origin,
-						zone_file,
-						DEFAULT_CLASS,
-						DEFAULT_TTL,
-						&empty_process,
-						&empty_process,
-						NULL);
+			fl = file_loader_create(zone_file,
+			                        origin,
+			                        DEFAULT_CLASS,
+			                        DEFAULT_TTL,
+			                        NULL,
+			                        NULL,
+			                        NULL);
 			break;
 		case 1:
-			fl = file_loader_create(origin,
-						zone_file,
-						DEFAULT_CLASS,
-						DEFAULT_TTL,
-						&debug_process_record,
-						&debug_process_error,
-						NULL);
+			fl = file_loader_create(zone_file,
+			                        origin,
+			                        DEFAULT_CLASS,
+			                        DEFAULT_TTL,
+			                        &debug_process_record,
+			                        &debug_process_error,
+			                        NULL);
 			break;
 		case 2:
-			fl = file_loader_create(origin,
-						zone_file,
-						DEFAULT_CLASS,
-						DEFAULT_TTL,
-						&test_process_record,
-						&test_process_error,
-						NULL);
+			fl = file_loader_create(zone_file,
+			                        origin,
+			                        DEFAULT_CLASS,
+			                        DEFAULT_TTL,
+			                        &test_process_record,
+			                        &test_process_error,
+			                        NULL);
 			break;
 		default:
 			printf("Bad mode number!\n");
@@ -126,7 +130,7 @@ int main(int argc, char *argv[])
 			ret = file_loader_process(fl);
 
 			switch (ret) {
-			case KNOT_EOK:
+			case ZSCANNER_OK:
 				if (mode == DEFAULT_MODE) {
 					printf("Zone file has been processed "
 					       "successfully\n");
@@ -145,7 +149,7 @@ int main(int argc, char *argv[])
 
 			default:
 				if (mode == DEFAULT_MODE) {
-					printf("%s\n", knot_strerror(ret));
+					printf("%s\n", zscanner_strerror(ret));
 				}
 				file_loader_free(fl);
 				return EXIT_FAILURE;

@@ -102,6 +102,19 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         size_t to_sign_len);
 
 /*!
+ * \brief Strip TSIG and restore message ID on the wire.
+ *
+ * This is required for computing the digest from the wire for
+ * checking signature validity.
+ *
+ * \param wire
+ * \param wire_size
+ * \param tsig
+ * \return
+ */
+int knot_tsig_check_prep(uint8_t* wire, size_t *wire_size, const knot_rrset_t *tsig);
+
+/*!
  * \brief Checks incoming request.
  *
  * \param tsig_rr TSIG extracted from the packet.

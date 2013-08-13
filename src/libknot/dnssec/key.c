@@ -33,7 +33,7 @@
 #include "key.h"
 #include "sig0.h"
 #include "tsig.h"
-#include "zscanner/scanner.h"
+#include "zscanner/zscanner.h"
 
 /*!
  * \brief Calculates keytag for RSA/MD5 algorithm.
@@ -108,7 +108,8 @@ static int get_key_info_from_public_key(const char *filename,
 	if (!keyfile)
 		return KNOT_KEY_EPUBLIC_KEY_OPEN;
 
-	scanner_t *scanner = scanner_create(filename);
+	scanner_t *scanner = scanner_create(filename, ".", KNOT_CLASS_IN, 0,
+	                                    NULL, NULL, NULL);
 	if (!scanner) {
 		fclose(keyfile);
 		return KNOT_ENOMEM;

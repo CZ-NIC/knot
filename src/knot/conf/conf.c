@@ -668,24 +668,38 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 
 	conf->dnssec_global = false;
 	conf->dnssec_enable = true;
-	free(conf->dnssec_keydir);
-	conf->dnssec_keydir = NULL;
-	free(conf->filename);
-	conf->filename = NULL;
-	free(conf->identity);
-	conf->identity = NULL;
-	free(conf->hostname);
-	conf->hostname = NULL;
-	free(conf->version);
-	conf->version = NULL;
-	free(conf->storage);
-	conf->storage = NULL;
-	free(conf->rundir);
-	conf->rundir = NULL;
-	free(conf->pidfile);
-	conf->pidfile = NULL;
-	free(conf->nsid);
-	conf->nsid = NULL;
+	if (conf->filename) {
+		free(conf->filename);
+		conf->filename = 0;
+	}
+	if (conf->identity) {
+		free(conf->identity);
+		conf->identity = 0;
+	}
+	if (conf->hostname) {
+		free(conf->hostname);
+		conf->hostname = 0;
+	}
+	if (conf->version) {
+		free(conf->version);
+		conf->version = 0;
+	}
+	if (conf->storage) {
+		free(conf->storage);
+		conf->storage = 0;
+	}
+	if (conf->rundir) {
+		free(conf->rundir);
+		conf->rundir = 0;
+	}
+	if (conf->pidfile) {
+		free(conf->pidfile);
+		conf->pidfile = 0;
+	}
+	if (conf->nsid) {
+		free(conf->nsid);
+		conf->nsid = 0;
+	}
 
 	/* Free remote control list. */
 	WALK_LIST_DELSAFE(n, nxt, conf->ctl.allow) {
