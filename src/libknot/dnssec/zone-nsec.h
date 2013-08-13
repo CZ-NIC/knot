@@ -17,6 +17,8 @@
  * \file zone-sign.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief Interface for generating of NSEC/NSEC3 records in zone.
  *

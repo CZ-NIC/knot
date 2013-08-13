@@ -209,25 +209,24 @@ static bool valid_signature_exists(const knot_rrset_t *rrsigs,
 	return false;
 }
 
-static bool valid_signature_exists_for_keys(const knot_rrset_t *covered,
-                                            const knot_rrset_t *rrsigs,
-                                            const knot_zone_keys_t *zone_keys,
-                                            const knot_dnssec_policy_t *policy)
+static bool all_signatures_valid(const knot_rrset_t *covered,
+                                 const knot_rrset_t *rrsigs,
+                                 const knot_zone_keys_t *zone_keys,
+                                 const knot_dnssec_policy_t *policy)
 {
 	bool use_ksk = covered->type == KNOT_RRTYPE_DNSKEY;
 	for (int i = 0; i < zone_keys->count; i++) {
-		if (use_ksk != zone_keys->is_ksk[i])
+		if (zone_keys->is_ksk[i] && !use_ksk)
 			continue;
 
 		const knot_dnssec_key_t *key = &zone_keys->keys[i];
-		knot_dnssec_sign_context_t *ctx = zone_keys->contexts[i];
 
-		if (valid_signature_exists(rrsigs, key, policy)) {
-			return true;
+		if (!valid_signature_exists(rrsigs, key, policy)) {
+			return false;
 		}
 	}
 
-	return false;
+	return true;
 }
 
 static int remove_expired_rrsigs(const knot_rrset_t *rrsigs,
@@ -509,7 +508,7 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 	return result;
 }
 
-bool knot_zone_sign_soa_changed(const knot_zone_contents_t *zone,
+bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy)
 {
@@ -519,8 +518,7 @@ bool knot_zone_sign_soa_changed(const knot_zone_contents_t *zone,
 		knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rr);
 
-	return !valid_signature_exists_for_keys(soa_rr, soa_rr->rrsigs, zone_keys,
-	                                        policy);
+	return !all_signatures_valid(soa_rr, soa_rr->rrsigs, zone_keys, policy);
 }
 
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,

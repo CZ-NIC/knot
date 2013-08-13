@@ -17,6 +17,8 @@
  * \file zone-events.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief DNSSEC operations triggered on zone events.
  *

@@ -17,6 +17,8 @@
  * \file zone-sign.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
+ * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief Interface for DNSSEC signing of zones.
  *
@@ -40,9 +42,9 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
-			      knot_changeset_t *changeset);
+                              knot_changeset_t *changeset);
 
-bool knot_zone_sign_soa_changed(const knot_zone_contents_t *zone,
+bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
 

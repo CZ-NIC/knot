@@ -96,8 +96,8 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 
 //	log_server_info("changeset add %zu remove %zu\n", changeset->add_count, changeset->remove_count);
 
-	if (!knot_zone_sign_soa_changed(zone->contents, &zone_keys, &policy)
-	    && knot_changeset_is_empty(changeset)) {
+	if (knot_changeset_is_empty(changeset) &&
+	    !knot_zone_sign_soa_expired(zone->contents, &zone_keys, &policy)) {
 //		log_server_info("No changes performed.\n");
 		knot_changesets_free(&changesets);
 		free_sign_contexts(&zone_keys);
