@@ -3017,6 +3017,10 @@ int zones_create_and_save_changesets(const knot_zone_t *old_zone,
 	memset(&xfr, 0, sizeof(xfr));
 	xfr.zone = (knot_zone_t *)old_zone;
 	knot_changesets_t *changesets;
+
+	/* Setting type to IXFR - that's the default, DDNS triggers special
+	 * processing when applied. See #2110 and #2111.
+	 */
 	int ret = knot_zone_contents_create_diff(old_zone->contents,
 	                                         new_zone->contents,
 	                                         &changesets,
