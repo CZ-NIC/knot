@@ -2874,7 +2874,8 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, knot_rrset_t *rrset)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_ixfr_put_changeset(knot_ns_xfr_t *xfr, const knot_changeset_t *chgset)
+static int ns_ixfr_put_changeset(knot_ns_xfr_t *xfr,
+                                 const knot_changeset_t *chgset)
 {
 	// 1) put origin SOA
 	int res = ns_ixfr_put_rrset(xfr, chgset->soa_from);
@@ -2883,22 +2884,25 @@ static int ns_ixfr_put_changeset(knot_ns_xfr_t *xfr, const knot_changeset_t *chg
 	}
 
 	// 2) put remove RRSets
-	for (int i = 0; i < chgset->remove_count; ++i) {
-		res = ns_ixfr_put_rrset(xfr, chgset->remove[i]);
+	knot_rr_ln_t *rr_node = NULL;
+	WALK_LIST(rr_node, chgset->remove) {
+		knot_rrset_t *rr_rem = rr_node->rr;
+		res = ns_ixfr_put_rrset(xfr, rr_rem);
 		if (res != KNOT_EOK) {
 			return res;
 		}
 	}
 
-	// 1) put target SOA
+	// 3) put target SOA
 	res = ns_ixfr_put_rrset(xfr, chgset->soa_to);
 	if (res != KNOT_EOK) {
 		return res;
 	}
 
-	// 2) put remove RRSets
-	for (int i = 0; i < chgset->add_count; ++i) {
-		res = ns_ixfr_put_rrset(xfr, chgset->add[i]);
+	// 4) put add RRSets
+	WALK_LIST(rr_node, chgset->add) {
+		knot_rrset_t *rr_add = rr_node->rr;
+		res = ns_ixfr_put_rrset(xfr, rr_add);
 		if (res != KNOT_EOK) {
 			return res;
 		}
@@ -2941,8 +2945,8 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	}
 
 	// 5) put the changesets into the response while they fit in
-	for (int i = 0; i < chgsets->count; ++i) {
-		knot_changeset_t *chs = chgsets->sets + i;
+	knot_changeset_t *chs = NULL;
+	WALK_LIST(chs, chgsets->sets) {
 		res = ns_ixfr_put_changeset(xfr, chs);
 		if (res != KNOT_EOK) {
 			// answer is sent
@@ -2956,7 +2960,7 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		}
 	}
 
-	if (chgsets->count > 0) {
+	if (!EMPTY_LIST(chgsets->sets)) {
 		res = ns_ixfr_put_rrset(xfr, zone_soa);
 	}
 
@@ -4202,7 +4206,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		knot_zone_t *zone = xfr->zone;
 		if (zone == NULL) {
 			dbg_ns("No zone found for incoming IXFR!\n");
-			knot_free_changesets(
+			knot_changesets_free(
 				(knot_changesets_t **)(&xfr->data));
 			return KNOT_ENOZONE;
 		}
@@ -4237,7 +4241,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 					// fallback to AXFR
 					dbg_ns("ns_process_ixfrin: "
 					       "Fallback to AXFR.\n");
-					knot_free_changesets(
+					knot_changesets_free(
 					      (knot_changesets_t **)&xfr->data);
 					knot_packet_free(&xfr->query);
 					return KNOT_ENOIXFR;
@@ -4246,7 +4250,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 			} else {
 				// free changesets
 				dbg_ns("No update needed.\n");
-				knot_free_changesets(
+				knot_changesets_free(
 					(knot_changesets_t **)(&xfr->data));
 				return KNOT_ENOXFR;
 			}
@@ -4349,7 +4353,7 @@ int knot_ns_process_update2(const knot_packet_t *query,
 {
 	/*! \todo Implement. */
 	if (query == NULL || old_contents == NULL || chgs == NULL ||
-	    chgs->sets == NULL || new_contents == NULL || rcode == NULL) {
+	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -4358,9 +4362,7 @@ int knot_ns_process_update2(const knot_packet_t *query,
 	/* 1) Create zone shallow copy. */
 	dbg_ns_verb("Creating shallow copy of the zone...\n");
 	knot_zone_contents_t *contents_copy = NULL;
-	knot_changes_t *changes = NULL;
-	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy,
-	                                  &changes);
+	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to prepare zone copy: %s\n",
 		          knot_strerror(ret));
@@ -4370,28 +4372,28 @@ int knot_ns_process_update2(const knot_packet_t *query,
 
 	/* 2) Apply the UPDATE and create changesets. */
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
-	ret = knot_ddns_process_update2(contents_copy, query, &chgs->sets[0],
-	                                changes, rcode);
+	ret = knot_ddns_process_update2(contents_copy, query,
+	                                (knot_changeset_t *)(HEAD(chgs->sets)),
+	                                chgs->changes, rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
 		                                : "No change made.");
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		xfrin_rollback_update(old_contents, &contents_copy, chgs->changes);
 		return ret;
 	}
 
 	dbg_ns_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, changes);
+	ret = xfrin_finalize_updated_zone(contents_copy, chgs->changes);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to finalize updated zone: %s\n",
 		       knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, &changes);
+		xfrin_rollback_update(old_contents, &contents_copy, chgs->changes);
 		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
 		                             : KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
 
-	chgs->changes = changes;
 	*new_contents = contents_copy;
 
 	return KNOT_EOK;

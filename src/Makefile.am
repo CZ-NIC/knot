@@ -1,10 +1,9 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-SUBDIRS = . tests
+SUBDIRS = zscanner . tests
 
 sbin_PROGRAMS = knotc knotd
 bin_PROGRAMS = kdig khost knsupdate
-noinst_PROGRAMS = zscanner-tool
-noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la libzscanner.la
+noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
 
 # $(YACC) will generate header file
 AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' \
@@ -13,12 +12,6 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' \
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
-
-EXTRA_DIST =					\
-	zscanner/scanner.rl			\
-	zscanner/scanner_body.rl		\
-	zscanner/test/run_tests.sh		\
-	zscanner/test/cases
 
 BUILT_SOURCES =					\
 	knot/conf/libknotd_la-cf-lex.c		\
@@ -29,15 +22,6 @@ CLEANFILES =					\
 	knot/conf/libknotd_la-cf-lex.c		\
 	knot/conf/libknotd_la-cf-parse.c	\
 	knot/conf/libknotd_la-cf-parse.h
-
-if HAVE_RAGEL
-BUILT_SOURCES += zscanner/scanner.c
-CLEANFILES += zscanner/scanner.c
-
-zscanner/scanner.c: zscanner/scanner.rl zscanner/scanner_body.rl
-	$(RAGEL) $(FSM_TYPE) -s -o $@ $(srcdir)/zscanner/scanner.rl
-
-endif
 
 knotc_SOURCES =					\
 	knot/ctl/knotc_main.c
@@ -283,30 +267,13 @@ libknotd_la_SOURCES =				\
 	knot/zone/estimator.c			\
 	knot/server/server.h
 
-zscanner_tool_SOURCES =				\
-	zscanner/test/zscanner-tool.c		\
-	zscanner/test/tests.h			\
-	zscanner/test/tests.c			\
-	zscanner/test/processing.h		\
-	zscanner/test/processing.c
-
-libzscanner_la_SOURCES =			\
-	zscanner/file_loader.h			\
-	zscanner/file_loader.c			\
-	zscanner/scanner.h			\
-	zscanner/scanner.c			\
-	zscanner/scanner_functions.h		\
-	zscanner/scanner_functions.c
-
 libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
-libknots_la_LIBADD = libzscanner.la @LIBOBJS@
-libzscanner_la_LIBADD = @LIBOBJS@
+libknots_la_LIBADD = zscanner/libzscanner.la @LIBOBJS@
 knotd_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 knotc_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 kdig_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
 khost_LDADD = libknotd.la libknot.la libknots.la @LIBOBJS@
-knsupdate_LDADD = libknotd.la libknot.la libknots.la libzscanner.la @LIBOBJS@
-zscanner_tool_LDADD = libknots.la libknot.la libknotd.la libzscanner.la @LIBOBJS@
+knsupdate_LDADD = libknotd.la libknot.la libknots.la zscanner/libzscanner.la @LIBOBJS@
 
 # Create storage and run-time directories
 install-data-hook:

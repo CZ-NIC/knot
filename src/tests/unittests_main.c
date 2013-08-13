@@ -33,7 +33,6 @@
 #include "tests/knot/server_tests.h"
 #include "tests/knot/conf_tests.h"
 #include "tests/knot/rrl_tests.h"
-#include "tests/zscanner/zscanner_tests.h"
 #include "tests/libknot/wire_tests.h"
 #include "tests/libknot/dname_tests.h"
 #include "tests/libknot/ztree_tests.h"
@@ -68,9 +67,6 @@ int main(int argc, char *argv[])
 	        &conf_tests_api,	//! Configuration parser tests
 	        &server_tests_api,	//! Server unit
 	        &rrl_tests_api,		//! RRL tests
-
-	        /* Zone scanner. */
-	        &zscanner_tests_api,	//! Wrapper for external unittests
 
 	        /* Libknot library. */
 	        &wire_tests_api,

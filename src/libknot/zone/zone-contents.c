@@ -241,6 +241,12 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 				dbg_zone("DS RDATA check failed: %s\n", knot_strerror(ret));
 				return KNOT_EMALF;
 			}
+			/* Check that this node contains an NS RR as well. */
+			/*! \todo Enable, causes some differences with BIND. */
+//			if (knot_node_rrset(node, KNOT_RRTYPE_NS) == NULL) {
+//				dbg_zone("DS RR without NS record.\n");
+//				return KNOT_EMALF;
+//			}
 		}
 	}
 

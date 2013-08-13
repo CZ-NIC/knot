@@ -48,8 +48,6 @@ unittests_SOURCES =			\
 	knot/server_tests.h		\
 	knot/rrl_tests.h		\
 	knot/rrl_tests.c		\
-	zscanner/zscanner_tests.h	\
-	zscanner/zscanner_tests.c	\
 	libknot/dname_tests.h		\
 	libknot/dname_tests.c		\
 	libknot/ztree_tests.h		\

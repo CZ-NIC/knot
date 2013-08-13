@@ -310,12 +310,12 @@ gl_VISIBILITY()
 CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 
 AC_CONFIG_FILES([Makefile
-		 samples/Makefile
-		 src/Makefile
-		 src/tests/Makefile
 		 doc/Makefile
 		 man/Makefile
-		 src/zscanner/test/run_tests.sh
+		 src/Makefile
+		 samples/Makefile
+		 src/tests/Makefile
+		 src/zscanner/Makefile
 		 src/zscanner/test/cases/06-3_INCLUDE.in:src/zscanner/test/cases/06-3_INCLUDE.inin
 		 src/zscanner/test/cases/06-4_INCLUDE.in:src/zscanner/test/cases/06-4_INCLUDE.inin
 		 src/zscanner/test/cases/06-0_INCLUDE.in:src/zscanner/test/cases/06-0_INCLUDE.inin
@@ -326,4 +326,7 @@ AC_CONFIG_FILES([Makefile
 		 man/knsupdate.1
 		 man/knot.conf.5
 		 ])
+
+AC_CONFIG_FILES([src/zscanner/test/run_tests.sh], [chmod a+x src/zscanner/test/run_tests.sh])
+
 AC_OUTPUT

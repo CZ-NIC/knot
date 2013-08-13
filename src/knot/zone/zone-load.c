@@ -193,11 +193,11 @@ void process_error(const scanner_t *s)
 		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "
 		               "Stopping zone loading.\n",
 		               s->file_name, s->line_counter,
-		               knot_strerror(s->error_code));
+		               zscanner_strerror(s->error_code));
 	} else {
 		log_zone_error("Error in zone file %s:%"PRIu64": %s\n",
 		               s->file_name, s->line_counter,
-		               knot_strerror(s->error_code));
+		               zscanner_strerror(s->error_code));
 	}
 }
 
@@ -562,7 +562,12 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 
 	parser_context_t *c = loader->context;
 	assert(c);
-	file_loader_process(loader->file_loader);
+	int ret = file_loader_process(loader->file_loader);
+	if (ret != ZSCANNER_OK) {
+		log_zone_error("Zone could not be loaded (%s).\n",
+		               zscanner_strerror(ret));
+	}
+
 	if (c->last_node && c->node_rrsigs) {
 		process_rrsigs_in_node(c, c->current_zone, c->last_node);
 	}
