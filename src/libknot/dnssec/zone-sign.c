@@ -482,8 +482,6 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 	result = zone_tree_sign(zone->nodes, zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "zone_tree_sign() on normal nodes failed\n");
-		free_zone_keys(zone_keys);
-		free_sign_contexts(zone_keys);
 		return result;
 	}
 
@@ -491,8 +489,6 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 	                        changeset);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "zone_tree_sign() on nsec3 nodes failed\n");
-		free_zone_keys(zone_keys);
-		free_sign_contexts(zone_keys);
 		return result;
 	}
 
@@ -500,8 +496,6 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 	result = sign_nsec(zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "sign_nsec() failed\n");
-		free_zone_keys(zone_keys);
-		free_sign_contexts(zone_keys);
 		return result;
 	}
 
