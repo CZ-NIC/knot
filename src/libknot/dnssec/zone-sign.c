@@ -289,7 +289,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	bool use_ksk = covered->type == KNOT_RRTYPE_DNSKEY;
 
 	for (int i = 0; i < zone_keys->count; i++) {
-		if (use_ksk != zone_keys->is_ksk[i])
+		// DNSKEY must be signed with both ZSK and KSK
+		// all other records only with ZSK
+		if (zone_keys->is_ksk[i] && !use_ksk)
 			continue;
 
 		const knot_dnssec_key_t *key = &zone_keys->keys[i];
