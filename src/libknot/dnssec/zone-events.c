@@ -42,15 +42,16 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 		return KNOT_EOK;
 	}
 
-	result = knot_changeset_allocate(&changesets, KNOT_CHANGESET_TYPE_DNSSEC);
+	result = knot_changesets_init(&changesets, KNOT_CHANGESET_TYPE_DNSSEC);
 	if (result != KNOT_EOK) {
 //		log_server_error("Cannot create new changeset.\n");
 		return result;
 	}
 
-	knot_changeset_t *changeset = changesets->sets;
+	knot_changeset_t *changeset = knot_changesets_create_changeset(
+	                                                            changesets);
 	assert(changeset);
-	changesets->count = 1;
+//	changesets->count = 1;
 
 	// generate NSEC records
 
@@ -58,7 +59,7 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 	if (result != KNOT_EOK) {
 //		log_server_error("Could not create NSEC chain for '%s' (%s).\n",
 //				 zone_name, knot_strerror(result));
-		knot_free_changesets(&changesets);
+		knot_changesets_free(&changesets);
 		return result;
 	}
 
@@ -85,7 +86,7 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 	if (result != KNOT_EOK) {
 		log_server_error("Could not resign zone (%s).\n",
 				 knot_strerror(result));
-		knot_free_changesets(&changesets);
+		knot_changesets_free(&changesets);
 		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		return result;
@@ -93,12 +94,12 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 
 	// update SOA if there are any changes
 
-	log_server_info("changeset add %zu remove %zu\n", changeset->add_count, changeset->remove_count);
+//	log_server_info("changeset add %zu remove %zu\n", changeset->add_count, changeset->remove_count);
 
-	if (!knot_zone_sign_soa_changed(zone->contents, &zone_keys, &policy) &&
-	    changeset->add_count == 0 && changeset->remove_count == 0) {
+	if (!knot_zone_sign_soa_changed(zone->contents, &zone_keys, &policy)
+	    && knot_changeset_is_empty(changeset)) {
 //		log_server_info("No changes performed.\n");
-		knot_free_changesets(&changesets);
+		knot_changesets_free(&changesets);
 		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		return KNOT_EOK;
@@ -132,7 +133,7 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 //				 knot_strerror(result));
 		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
-		knot_free_changesets(&changesets);
+		knot_changesets_free(&changesets);
 		return result;
 	}
 
@@ -146,7 +147,7 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 //				 knot_strerror(result));
 		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
-		knot_free_changesets(&changesets);
+		knot_changesets_free(&changesets);
 		return result;
 	}
 

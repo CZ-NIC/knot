@@ -883,7 +883,8 @@ static int knot_zone_diff_load_trees(knot_zone_tree_t *nodes1,
 
 	// Some nodes may have been added. Add missing nodes to changeset.
 	param.nodes = nodes1;
-	result = knot_zone_tree_apply(nodes2, knot_zone_diff_add_new_nodes, &param);
+	result = knot_zone_tree_apply(nodes2, knot_zone_diff_add_new_nodes,
+	                              &param);
 
 	return result;
 }

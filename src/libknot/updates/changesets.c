@@ -254,6 +254,41 @@ int knot_changeset_is_empty(const knot_changeset_t *changeset)
 	       EMPTY_LIST(changeset->remove);
 }
 
+int knot_changeset_apply(knot_changeset_t *changeset,
+                         knot_changeset_part_t part,
+                         int (*func)(knot_rrset_t *, void *), void *data)
+{
+	if (changeset == NULL || func == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rr_ln_t *rr_node;
+	int res = KNOT_EOK;
+
+	switch (part) {
+	case KNOT_CHANGESET_ADD:
+		WALK_LIST(rr_node, changeset->add) {
+			res = func(rr_node->rr, data);
+			if (res != KNOT_EOK) {
+				return res;
+			}
+		}
+		break;
+	case KNOT_CHANGESET_REMOVE:
+		WALK_LIST(rr_node, changeset->remove) {
+			res = func(rr_node->rr, data);
+			if (res != KNOT_EOK) {
+				return res;
+			}
+		}
+		break;
+	default:
+		assert(0);
+	}
+
+	return KNOT_EOK;
+}
+
 static void knot_free_changeset(knot_changeset_t *changeset)
 {
 	if (changeset == NULL) {

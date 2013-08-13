@@ -128,11 +128,12 @@ static knot_rrset_t *create_nsec_rrset(knot_dname_t *owner, knot_dname_t *next,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int changeset_replace_nsec(const knot_rrset_t *old, knot_rrset_t *new,
-				  knot_changeset_t *changeset)
+static int changeset_replace_nsec(const knot_rrset_t *oldrr,
+                                  knot_rrset_t *newrr,
+                                  knot_changeset_t *changeset)
 {
-	assert(old);
-	assert(new);
+	assert(oldrr);
+	assert(newrr);
 	assert(changeset);
 
 	int result;
@@ -142,7 +143,7 @@ static int changeset_replace_nsec(const knot_rrset_t *old, knot_rrset_t *new,
 	knot_rrset_t *old_nsec = NULL;
 	knot_rrset_t *old_rrsigs = NULL;
 
-	result = knot_rrset_deep_copy(old, &old_nsec, 1);
+	result = knot_rrset_deep_copy(oldrr, &old_nsec, 1);
 	if (result != KNOT_EOK)
 		return result;
 
@@ -151,7 +152,8 @@ static int changeset_replace_nsec(const knot_rrset_t *old, knot_rrset_t *new,
 
 	// update changeset
 
-	result = knot_changeset_add_new_rr(changeset, old_nsec, KNOT_CHANGESET_REMOVE);
+	result = knot_changeset_add_rrset(changeset, old_nsec,
+	                                  KNOT_CHANGESET_REMOVE);
 	if (result != KNOT_EOK) {
 		knot_rrset_deep_free(&old_nsec, 1, 1);
 		knot_rrset_deep_free(&old_rrsigs, 1, 1);
@@ -159,15 +161,15 @@ static int changeset_replace_nsec(const knot_rrset_t *old, knot_rrset_t *new,
 	}
 
 	if (old_rrsigs) {
-		result = knot_changeset_add_new_rr(changeset, old_rrsigs,
-						   KNOT_CHANGESET_REMOVE);
+		result = knot_changeset_add_rrset(changeset, old_rrsigs,
+		                                  KNOT_CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
 			knot_rrset_deep_free(&old_rrsigs, 1, 1);
 			return result;
 		}
 	}
 
-	return knot_changeset_add_new_rr(changeset, new, KNOT_CHANGESET_ADD);
+	return knot_changeset_add_rrset(changeset, newrr, KNOT_CHANGESET_ADD);
 }
 
 /*!
@@ -209,8 +211,8 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	// create new NSEC
 
 	if (old_nsec == NULL) {
-		return knot_changeset_add_new_rr(data->changeset, new_nsec,
-						 KNOT_CHANGESET_ADD);
+		return knot_changeset_add_rrset(data->changeset, new_nsec,
+		                                KNOT_CHANGESET_ADD);
 	}
 
 	// current NSEC is valid, do nothing
@@ -694,7 +696,8 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 
 	copy_signatures(zone->nsec3_nodes, nsec3_nodes);
 
-	result = knot_zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes, changeset);
+	result = knot_zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes,
+	                                 changeset);
 
 	free_nsec3_tree(nsec3_nodes);
 

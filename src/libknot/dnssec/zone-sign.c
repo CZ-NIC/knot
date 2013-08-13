@@ -260,8 +260,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *rrsigs,
 	}
 
 	if (to_remove != NULL && result == KNOT_EOK) {
-		result = knot_changeset_add_new_rr(changeset, to_remove,
-						   KNOT_CHANGESET_REMOVE);
+		result = knot_changeset_add_rrset(changeset, to_remove,
+		                                  KNOT_CHANGESET_REMOVE);
 	}
 
 	if (to_remove != NULL && result != KNOT_EOK) {
@@ -312,8 +312,8 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	if (to_add != NULL && result == KNOT_EOK) {
-		result = knot_changeset_add_new_rr(changeset, to_add,
-						   KNOT_CHANGESET_ADD);
+		result = knot_changeset_add_rrset(changeset, to_add,
+		                                  KNOT_CHANGESET_ADD);
 	}
 
 	if (to_add != NULL && result != KNOT_EOK) {
@@ -416,6 +416,36 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
 	return result;
 }
 
+typedef struct {
+	knot_zone_keys_t *zone_keys;
+	const knot_dnssec_policy_t *policy;
+	knot_changeset_t *changeset;
+} nsec_signing_data_t;
+
+static int add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data)
+{
+	if (rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int res = KNOT_EOK;
+	nsec_signing_data_t *nsec_data = (nsec_signing_data_t *)data;
+
+	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC
+	    || knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
+		res = add_missing_rrsigs(rrset, NULL, nsec_data->zone_keys,
+		                         nsec_data->policy,
+		                         nsec_data->changeset);
+	}
+
+	if (res != KNOT_EOK) {
+		fprintf(stderr, "add_rrsigs_for_nsec() for NSEC"
+		        "failed\n");
+	}
+
+	return res;
+}
+
 static int sign_nsec(knot_zone_keys_t *zone_keys,
                      const knot_dnssec_policy_t *policy,
                      knot_changeset_t *changeset)
@@ -427,22 +457,13 @@ static int sign_nsec(knot_zone_keys_t *zone_keys,
 	const knot_rrset_t *rrset = NULL;
 	int res = KNOT_EOK;
 
-	// Sign each NSEC or NSEC3 in the ADD section of the changeset
-	for (int i = 0; i < changeset->add_count; ++i) {
-		rrset = changeset->add[i];
-		if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC
-		    || knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
-			res = add_missing_rrsigs(rrset, NULL, zone_keys, policy,
-			                         changeset);
-			if (res != KNOT_EOK) {
-				fprintf(stderr, "add_missing_rrsigs() for NSEC"
-				        "failed\n");
-				break;
-			}
-		}
-	}
+	nsec_signing_data_t data = { .zone_keys = zone_keys,
+	                             .policy = policy,
+	                             .changeset = changeset };
 
-	return res;
+	// Sign each NSEC or NSEC3 in the ADD section of the changeset
+	return knot_changeset_apply(changeset, KNOT_CHANGESET_ADD,
+	                            add_rrsigs_for_nsec, &data);
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -519,8 +540,8 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 		if (result != KNOT_EOK) {
 			return result;
 		}
-		result = knot_changeset_add_new_rr(changeset, soa_copy,
-		                                   KNOT_CHANGESET_REMOVE);
+		result = knot_changeset_add_rrset(changeset, soa_copy,
+		                                  KNOT_CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
 			knot_rrset_deep_free(&soa_copy, 1, 1);
 			return result;

@@ -222,6 +222,26 @@ void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 int knot_changeset_is_empty(const knot_changeset_t *changeset);
 
 /*!
+ * \brief Apply given function to all RRSets in one part of the changeset.
+ *
+ * \param changeset Changeset to apply the function to.
+ * \param part Part of changeset to apply the function to.
+ * \param func Function to apply to RRSets in the changeset. It is required that
+ *             the function returns KNOT_EOK on success.
+ * \param data Data to pass to the applied function.
+ *
+ * If the applied function fails, the application aborts and this function
+ * returns the return value of the applied function.
+ *
+ * \retval KNOT_EOK if OK
+ * \retval KNOT_EINVAL if \a changeset or \a func is NULL.
+ * \retval Other error code if the applied function failed.
+ */
+int knot_changeset_apply(knot_changeset_t *changeset,
+                         knot_changeset_part_t part,
+                         int (*func)(knot_rrset_t *, void *), void *data);
+
+/*!
  * \brief Frees the 'changesets' structure, including all its internal data.
  *
  * \param changesets Double pointer to changesets structure to be freed.
