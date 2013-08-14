@@ -42,6 +42,72 @@ static int knot_label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
+int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
+                          const uint8_t *pkt)
+{
+	if (name == NULL || name == endp)
+		return KNOT_EMALF;
+
+	int wire_len = 0;
+	int name_len = 1; /* Keep \x00 terminal label in advance. */
+	bool is_compressed = false;
+	uint8_t labels = 0;
+
+	while (*name != '\0') {
+
+		/* Check bounds (must have at least 2 octets remaining). */
+		if (name + 2 > endp)
+			return KNOT_ESPACE;
+
+		/* Reject more labels (last label is terminal). */
+		if (labels >= KNOT_DNAME_MAXLABELS - 1)
+			return KNOT_EMALF;
+
+		if (knot_wire_is_pointer(name)) {
+			/* Check that the pointer points backwards
+			 * otherwise it could result in infinite loop
+			 */
+			if (pkt == NULL)
+				return KNOT_EINVAL;
+			uint16_t ptr = knot_wire_get_pointer(name);
+			if (ptr >= (name - pkt))
+				return KNOT_EMALF;
+
+			name = pkt + ptr; /* Hop to compressed label */
+			if (!is_compressed) { /* Measure compressed size only */
+				wire_len += sizeof(uint16_t);
+				is_compressed = true;
+			}
+		} else {
+			/* Check label length (maximum 63 bytes allowed). */
+			if (*name > 63)
+				return KNOT_EMALF;
+			/* Check if there's enough space. */
+			int lblen = *name + 1;
+			if (name_len + lblen > KNOT_DNAME_MAXLEN)
+				return KNOT_EMALF;
+			/* Update wire size only for noncompressed part. */
+			name_len += lblen;
+			if (!is_compressed)
+				wire_len += lblen;
+			/* Hop to next label. */
+			name += lblen;
+			++labels;
+		}
+
+		/* Check bounds (must have at least 1 octet). */
+		if (name + 1 > endp)
+			return KNOT_ESPACE;
+	}
+
+	if (!is_compressed) /* Terminal label. */
+		wire_len += 1;
+
+	return wire_len;
+}
+
+/*----------------------------------------------------------------------------*/
+
 knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 {
 	if (pkt == NULL || pos == NULL)
@@ -532,70 +598,7 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 	return ret;
 }
 
-
-int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
-                          const uint8_t *pkt)
-{
-	if (name == NULL || name == endp)
-		return KNOT_EMALF;
-
-	int wire_len = 0;
-	int name_len = 1; /* Keep \x00 terminal label in advance. */
-	bool is_compressed = false;
-	uint8_t labels = 0;
-
-	while (*name != '\0') {
-
-		/* Check bounds (must have at least 2 octets remaining). */
-		if (name + 2 > endp)
-			return KNOT_ESPACE;
-
-		/* Reject more labels (last label is terminal). */
-		if (labels >= KNOT_DNAME_MAXLABELS - 1)
-			return KNOT_EMALF;
-
-		if (knot_wire_is_pointer(name)) {
-			/* Check that the pointer points backwards
-			 * otherwise it could result in infinite loop
-			 */
-			if (pkt == NULL)
-				return KNOT_EINVAL;
-			uint16_t ptr = knot_wire_get_pointer(name);
-			if (ptr >= (name - pkt))
-				return KNOT_EMALF;
-
-			name = pkt + ptr; /* Hop to compressed label */
-			if (!is_compressed) { /* Measure compressed size only */
-				wire_len += sizeof(uint16_t);
-				is_compressed = true;
-			}
-		} else {
-			/* Check label length (maximum 63 bytes allowed). */
-			if (*name > 63)
-				return KNOT_EMALF;
-			/* Check if there's enough space. */
-			int lblen = *name + 1;
-			if (name_len + lblen > KNOT_DNAME_MAXLEN)
-				return KNOT_EMALF;
-			/* Update wire size only for noncompressed part. */
-			name_len += lblen;
-			if (!is_compressed)
-				wire_len += lblen;
-			/* Hop to next label. */
-			name += lblen;
-			++labels;
-		}
-
-		/* Check bounds (must have at least 1 octet). */
-		if (name + 1 > endp)
-			return KNOT_ESPACE;
-	}
-
-	if (!is_compressed) /* Terminal label. */
-		wire_len += 1;
-
-	return wire_len;
-}
+/*----------------------------------------------------------------------------*/
 
 int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt)
 {
@@ -620,6 +623,8 @@ int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *p
 	return len;
 }
 
+/*----------------------------------------------------------------------------*/
+
 int knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 {
 	if (name == NULL)
@@ -634,6 +639,8 @@ int knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 	}
 	return count;
 }
+
+/*----------------------------------------------------------------------------*/
 
 int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
                      const uint8_t **d2, uint8_t d2_labels,
@@ -650,6 +657,8 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
 
 	return (d1_labels < d2_labels) ? d1_labels : d2_labels;
 }
+
+/*----------------------------------------------------------------------------*/
 
 int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 {
