@@ -51,17 +51,12 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 	int wire_len = 0;
 	int name_len = 1; /* Keep \x00 terminal label in advance. */
 	bool is_compressed = false;
-	uint8_t labels = 0;
 
 	while (*name != '\0') {
 
 		/* Check bounds (must have at least 2 octets remaining). */
 		if (name + 2 > endp)
 			return KNOT_ESPACE;
-
-		/* Reject more labels (last label is terminal). */
-		if (labels >= KNOT_DNAME_MAXLABELS - 1)
-			return KNOT_EMALF;
 
 		if (knot_wire_is_pointer(name)) {
 			/* Check that the pointer points backwards
@@ -92,7 +87,6 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 				wire_len += lblen;
 			/* Hop to next label. */
 			name += lblen;
-			++labels;
 		}
 
 		/* Check bounds (must have at least 1 octet). */
