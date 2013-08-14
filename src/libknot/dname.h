@@ -66,7 +66,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos);
 /*!
  * \brief Duplicates the given domain name.
  *
- * \param dname Domain name to be copied.
+ * \param name Domain name to be copied.
  *
  * \return New domain name which is an exact copy of \a dname.
  */
@@ -75,7 +75,7 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name);
 /*!
  * \brief Duplicates part of the given domain name.
  *
- * \param dname Domain name to be copied.
+ * \param name Domain name to be copied.
  * \param len Part length.
  *
  * \return New domain name which is an partial copy of \a dname.
@@ -99,6 +99,12 @@ int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen);
 /*!
  * \brief Write unpacked name (i.e. compression pointers expanded)
  *
+ * \note The function is very similar to the knot_dname_to_wire(), except
+ *       it expands compression pointers. E.g. you want to use knot_dname_unpack()
+ *       if you copy a dname from incoming packet to some persistent storage.
+ *       And you want to use knot_dname_to_wire() if you know the name is not
+ *       compressed or you want to copy it 1:1.
+ *
  * \param dst Destination wire.
  * \param src Source name.
  * \param maxlen Maximum destination wire size.
@@ -114,7 +120,9 @@ int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
  *
  * \note Allocates new memory, remember to free it.
  *
- * \param dname Domain name to be converted.
+ * \todo The function doesn't process escaped characters like \DDD or \X.
+ *
+ * \param name Domain name to be converted.
  *
  * \return 0-terminated string representing the given domain name in
  *         presentation format.
@@ -149,7 +157,7 @@ int knot_dname_to_lower(knot_dname_t *name);
 /*!
  * \brief Returns size of the given domain name.
  *
- * \param dname Domain name to get the size of.
+ * \param name Domain name to get the size of.
  *
  * \retval size of the domain name
  * \retval KNOT_ERROR
@@ -159,7 +167,7 @@ int knot_dname_size(const knot_dname_t *name);
 /*!
  * \brief Returns wire size of the given domain name (expaned compression ptrs).
  *
- * \param dname Domain name to get the size of.
+ * \param name Domain name to get the size of.
  * \param pkt Related packet (or NULL if unpacked)
  *
  * \retval size of the domain name
@@ -173,45 +181,44 @@ int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);
  * \param sub Domain name to be the possible subdomain.
  * \param domain Domain name to be the possible parent domain.
  *
- * \retval <> 0 if \a sub is a subdomain of \a domain.
- * \retval 0 otherwise.
+ * \retval true \a sub is a subdomain of \a domain.
+ * \retval false otherwise.
  */
 bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain);
 
 /*!
  * \brief Checks if the domain name is a wildcard.
  *
- * \param dname Domain name to check.
+ * \param name Domain name to check.
  *
- * \retval <> 0 if \a dname is a wildcard domain name.
- * \retval 0 otherwise.
+ * \retval true if \a dname is a wildcard domain name.
+ * \retval false otherwise.
  */
-int knot_dname_is_wildcard(const knot_dname_t *name);
+bool knot_dname_is_wildcard(const knot_dname_t *name);
 
 /*!
  * \brief Returns the number of labels common for the two domain names (counted
  *        from the rightmost label.
  *
- * \param dname1 First domain name.
- * \param dname2 Second domain name.
+ * \param d1 First domain name.
+ * \param d2 Second domain name.
  *
  * \return Number of labels common for the two domain names.
  */
-int knot_dname_matched_labels(const knot_dname_t *dname1,
-                              const knot_dname_t *dname2);
+int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
  * \brief Replaces the suffix of given size in one domain name with other domain
  *        name.
  *
- * \param dname Domain name where to replace the suffix.
+ * \param name Domain name where to replace the suffix.
  * \param labels Size of the suffix to be replaced.
  * \param suffix New suffix to be used as a replacement.
  *
  * \return New domain name created by replacing suffix of \a dname of size
  *         \a size with \a suffix.
  */
-knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name,
                                         unsigned labels,
                                         const knot_dname_t *suffix);
 
@@ -224,9 +231,9 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname,
  *
  * Sets the given pointer to NULL.
  *
- * \param dname Domain name to be destroyed.
+ * \param name Domain name to be destroyed.
  */
-void knot_dname_free(knot_dname_t **dname);
+void knot_dname_free(knot_dname_t **name);
 
 /*!
  * \brief Compares two domain names (case insensitive).
@@ -245,10 +252,17 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2);
  *
  * \todo No case insensitivity, flags...
  *
+ * \warning Since it would be hard to catch errors, because negative value
+ *          is also a good result, there are assertions that expect neither
+ *          d1 or d2 to be NULL.
+ *
  * \param d1 Domain name.
  * \param d2 Domain name.
  * \param pkt Packet wire related to names (or NULL).
- * \return
+ *
+ * \retval 0 if they are identical
+ * \retval 1 if d1 > d2
+ * \retval -1 if d1 < d2
  */
 int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
                         const uint8_t *pkt);
@@ -259,16 +273,15 @@ int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
  * \param d1 First domain name.
  * \param d2 Second domain name.
  *
- * \retval < 0 if \a d1 goes before \a d2 in canonical order.
- * \retval > 0 if \a d1 goes after \a d2 in canonical order.
- * \retval 0 if the domain names are identical.
+ * \retval true if the domain names are identical
+ * \retval false if the domain names are NOT identical
  */
-int knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2);
+bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
  * \brief Concatenates two domain names.
  *
-  * \param d1 First domain name (will be modified).
+ * \param d1 First domain name (will be modified).
  * \param d2 Second domain name (will not be modified).
  *
  * \return The concatenated domain name or NULL
@@ -298,6 +311,12 @@ int knot_dname_labels(const uint8_t *name, const uint8_t *pkt);
 
 /*!
  * \brief Align name end-to-end and return number of common suffix labels.
+ *
+ * \param d1 Domain name.
+ * \param d1_labels Number of labels in d1.
+ * \param d2 Domain name.
+ * \param d2_labels Number of labels in d2.
+ * \param wire Packet wire related to names (or NULL).
  */
 int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
                      const uint8_t **d2, uint8_t d2_labels,
@@ -321,7 +340,6 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
  * \param pkt Source name packet (NULL if not any).
  *
  * \retval KNOT_EOK if successful
- * \retval KNOT_ESPACE when not enough memory.
  * \retval KNOT_EINVAL on invalid parameters
  */
 int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt);

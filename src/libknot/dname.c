@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <ctype.h>	// tolower()
+#include <ctype.h>
 #include <inttypes.h>
 
 #include "common.h"
@@ -42,18 +42,83 @@ static int knot_label_is_equal(const uint8_t *lb1, const uint8_t *lb2)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
+int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
+                          const uint8_t *pkt)
+{
+	if (name == NULL || name == endp)
+		return KNOT_EMALF;
+
+	int wire_len = 0;
+	int name_len = 1; /* Keep \x00 terminal label in advance. */
+	bool is_compressed = false;
+
+	while (*name != '\0') {
+
+		/* Check bounds (must have at least 2 octets remaining). */
+		if (name + 2 > endp)
+			return KNOT_ESPACE;
+
+		if (knot_wire_is_pointer(name)) {
+			/* Check that the pointer points backwards
+			 * otherwise it could result in infinite loop
+			 */
+			if (pkt == NULL)
+				return KNOT_EINVAL;
+			uint16_t ptr = knot_wire_get_pointer(name);
+			if (ptr >= (name - pkt))
+				return KNOT_EMALF;
+
+			name = pkt + ptr; /* Hop to compressed label */
+			if (!is_compressed) { /* Measure compressed size only */
+				wire_len += sizeof(uint16_t);
+				is_compressed = true;
+			}
+		} else {
+			/* Check label length (maximum 63 bytes allowed). */
+			if (*name > 63)
+				return KNOT_EMALF;
+			/* Check if there's enough space. */
+			int lblen = *name + 1;
+			if (name_len + lblen > KNOT_DNAME_MAXLEN)
+				return KNOT_EMALF;
+			/* Update wire size only for noncompressed part. */
+			name_len += lblen;
+			if (!is_compressed)
+				wire_len += lblen;
+			/* Hop to next label. */
+			name += lblen;
+		}
+
+		/* Check bounds (must have at least 1 octet). */
+		if (name + 1 > endp)
+			return KNOT_ESPACE;
+	}
+
+	if (!is_compressed) /* Terminal label. */
+		wire_len += 1;
+
+	return wire_len;
+}
+
+/*----------------------------------------------------------------------------*/
+
 knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 {
+	if (pkt == NULL || pos == NULL)
+		return NULL;
+
 	const uint8_t *name = pkt + *pos;
 	const uint8_t *endp = pkt + maxpos;
 	int parsed = knot_dname_wire_check(name, endp, pkt);
-	if (parsed < 0)
+	if (parsed < 0) {
 		return NULL;
+	}
 
 	/* Calculate decompressed length. */
 	int decompressed_len = knot_dname_realsize(name, pkt);
-	if (decompressed_len < parsed)
+	if (decompressed_len < 1) {
 		return NULL;
+	}
 
 	/* Allocate space for the name. */
 	knot_dname_t *res = malloc(decompressed_len);
@@ -84,7 +149,9 @@ knot_dname_t *knot_dname_copy(const knot_dname_t *name)
 
 knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len)
 {
-	assert(name && len > 0);
+	if (name == NULL || len == 0)
+		return NULL;
+
 	knot_dname_t *dst = malloc(len);
 	if (knot_dname_to_wire(dst, name, len) < 1) {
 		free(dst);
@@ -98,6 +165,9 @@ knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len)
 
 int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen)
 {
+	if (dst == NULL || src == NULL)
+		return KNOT_EINVAL;
+
 	/* Write out non or partially compressed name. */
 	int len = 0;
 	while (*src != '\0' && !knot_wire_is_pointer(src)) {
@@ -239,7 +309,7 @@ char *knot_dname_to_str(const knot_dname_t *name)
 
 knot_dname_t *knot_dname_from_str(const char *name, unsigned len)
 {
-	if (len == 0 || len > KNOT_DNAME_MAXLEN) {
+	if (name == NULL || len == 0 || len > KNOT_DNAME_MAXLEN) {
 		return NULL;
 	}
 
@@ -292,6 +362,9 @@ knot_dname_t *knot_dname_from_str(const char *name, unsigned len)
 
 int knot_dname_to_lower(knot_dname_t *name)
 {
+	if (name == NULL)
+		return KNOT_EINVAL;
+
 	/*! \todo Faster with \xdfdf mask. */
 	while (*name != '\0') {
 		for (uint8_t i = 0; i < *name; ++i)
@@ -307,6 +380,9 @@ int knot_dname_to_lower(knot_dname_t *name)
 
 int knot_dname_size(const knot_dname_t *name)
 {
+	if (name == NULL)
+		return KNOT_EINVAL;
+
 	/* Count name size without terminal label. */
 	int len = 0;
 	while (*name != '\0' && !knot_wire_is_pointer(name)) {
@@ -337,6 +413,7 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 		return false;
 
 	/* Count labels. */
+	assert(sub != NULL && domain != NULL);
 	int sub_l = knot_dname_labels(sub, NULL);
 	int domain_l = knot_dname_labels(domain, NULL);
 
@@ -362,33 +439,37 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_is_wildcard(const knot_dname_t *name)
+bool knot_dname_is_wildcard(const knot_dname_t *name)
 {
+	assert(name != NULL);
 	return name[0] == 1 && name[1] == '*';
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_matched_labels(const knot_dname_t *dname1, const knot_dname_t *dname2)
+int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 {
+	if (d1 == NULL || d2 == NULL)
+		return KNOT_EINVAL;
+
 	/* Count labels. */
-	int l1 = knot_dname_labels(dname1, NULL);
-	int l2 = knot_dname_labels(dname2, NULL);
+	int l1 = knot_dname_labels(d1, NULL);
+	int l2 = knot_dname_labels(d2, NULL);
 
 	/* Align end-to-end to common suffix. */
-	int common = knot_dname_align(&dname1, l1, &dname2, l2, NULL);
+	int common = knot_dname_align(&d1, l1, &d2, l2, NULL);
 
 	/* Count longest chain leading to root label. */
 	int matched = 0;
 	while (common > 0) {
-		if (knot_label_is_equal(dname1, dname2))
+		if (knot_label_is_equal(d1, d2))
 			++matched;
 		else
 			matched = 0; /* Broken chain. */
 
 		/* Next label. */
-		dname1 = knot_wire_next_label(dname1, NULL);
-		dname2 = knot_wire_next_label(dname2, NULL);
+		d1 = knot_wire_next_label(d1, NULL);
+		d2 = knot_wire_next_label(d2, NULL);
 		--common;
 	}
 
@@ -397,16 +478,19 @@ int knot_dname_matched_labels(const knot_dname_t *dname1, const knot_dname_t *dn
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname, unsigned labels,
+knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned labels,
                                         const knot_dname_t *suffix)
 {
+	if (name == NULL)
+		return NULL;
 
 	/* Calculate prefix and suffix lengths. */
-	int dname_lbs = knot_dname_labels(dname, NULL);
+	int dname_lbs = knot_dname_labels(name, NULL);
+	assert(dname_lbs >= labels);
 	unsigned prefix_lbs = dname_lbs - labels;
 
 	/* Trim 1 octet from prefix, as it is measured as FQDN. */
-	int prefix_len = knot_dname_prefixlen(dname, prefix_lbs, NULL) - 1;
+	int prefix_len = knot_dname_prefixlen(name, prefix_lbs, NULL) - 1;
 	int suffix_len = knot_dname_size(suffix);
 	if (prefix_len < 0 || suffix_len < 0)
 		return NULL;
@@ -420,9 +504,9 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname, unsigned labe
 	/* Copy prefix. */
 	uint8_t *dst = out;
 	while (prefix_lbs > 0) {
-		memcpy(dst, dname, *dname + 1);
-		dst += *dname + 1;
-		dname = knot_wire_next_label(dname, NULL);
+		memcpy(dst, name, *name + 1);
+		dst += *name + 1;
+		name = knot_wire_next_label(name, NULL);
 		--prefix_lbs;
 	}
 
@@ -438,14 +522,13 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *dname, unsigned labe
 
 /*----------------------------------------------------------------------------*/
 
-void knot_dname_free(knot_dname_t **dname)
+void knot_dname_free(knot_dname_t **name)
 {
-	if (dname == NULL || *dname == NULL) {
+	if (name == NULL || *name == NULL)
 		return;
-	}
 
-	free(*dname);
-	*dname = NULL;
+	free(*name);
+	*name = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -460,10 +543,15 @@ int knot_dname_cmp(const knot_dname_t *d1, const knot_dname_t *d2)
 int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
                         const uint8_t *pkt)
 {
+	/* This would be hard to catch since -1 is a good result, assert instead. */
+	assert(d1 != NULL || d2 != NULL);
+
 	/* Convert to lookup format. */
 	uint8_t d1_lf[KNOT_DNAME_MAXLEN], d2_lf[KNOT_DNAME_MAXLEN];
-	if (knot_dname_lf(d1_lf, d1, pkt) < 0 || knot_dname_lf(d2_lf, d2, pkt) < 0)
+	if (knot_dname_lf(d1_lf, d1, pkt) < 0 || knot_dname_lf(d2_lf, d2, pkt) < 0) {
+		assert(0); /* This must not happend as the d1, d2 are checked. */
 		return KNOT_EINVAL;
+	}
 
 	/* Compare common part. */
 	uint8_t common = d1_lf[0];
@@ -484,7 +572,7 @@ int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
+bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 {
 	/*! \todo Could be implemented more efficiently, check profile first. */
 	return (knot_dname_cmp(d1, d2) == 0);
@@ -494,6 +582,9 @@ int knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 
 knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 {
+	if (d1 == NULL || d2 == NULL)
+		return NULL;
+
 	/* This is problem equal to replacing last \x00 from d1 with d2. */
 	knot_dname_t *ret = knot_dname_replace_suffix(d1, 0, d2);
 	/* Like if we are reallocating d1. */
@@ -501,74 +592,11 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 	return ret;
 }
 
-
-int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
-                          const uint8_t *pkt)
-{
-	if (name == NULL || name == endp)
-		return KNOT_EMALF;
-
-	int wire_len = 0;
-	int name_len = 1; /* Keep \x00 terminal label in advance. */
-	uint8_t is_compressed = 0;
-	uint8_t labels = 0;
-
-	while (*name != '\0') {
-
-		/* Check bounds (must have at least 2 octets remaining). */
-		if (name + 2 > endp)
-			return KNOT_ESPACE;
-
-		/* Reject more labels. */
-		if (labels == KNOT_DNAME_MAXLABELS - 1)
-			return KNOT_EMALF;
-
-		if (knot_wire_is_pointer(name)) {
-			/* Check that the pointer points backwards
-			 * otherwise it could result in infinite loop
-			 */
-			if (pkt == NULL)
-				return KNOT_EINVAL;
-			uint16_t ptr = knot_wire_get_pointer(name);
-			if (ptr >= (name - pkt))
-				return KNOT_EMALF;
-
-			name = pkt + ptr; /* Hop to compressed label */
-			if (!is_compressed) { /* Measure compressed size only */
-				wire_len += sizeof(uint16_t);
-				is_compressed = 1;
-			}
-		} else {
-			/* Check label length (maximum 63 bytes allowed). */
-			if (*name > 63)
-				return KNOT_EMALF;
-			/* Check if there's enough space. */
-			int lblen = *name + 1;
-			if (name_len + lblen > KNOT_DNAME_MAXLEN)
-				return KNOT_EMALF;
-			/* Update wire size only for noncompressed part. */
-			name_len += lblen;
-			if (!is_compressed)
-				wire_len += lblen;
-			/* Hop to next label. */
-			name += lblen;
-			++labels;
-		}
-
-		/* Check bounds (must have at least 1 octet). */
-		if (name + 1 > endp)
-			return KNOT_ESPACE;
-	}
-
-	if (!is_compressed) /* Terminal label. */
-		wire_len += 1;
-
-	return wire_len;
-}
+/*----------------------------------------------------------------------------*/
 
 int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt)
 {
-	if (!name)
+	if (name == NULL)
 		return KNOT_EINVAL;
 
 	/* Zero labels means 1 octet \x00 */
@@ -589,8 +617,13 @@ int knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *p
 	return len;
 }
 
+/*----------------------------------------------------------------------------*/
+
 int knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 {
+	if (name == NULL)
+		return KNOT_EINVAL;
+
 	uint8_t count = 0;
 	while (*name != '\0') {
 		++count;
@@ -601,10 +634,15 @@ int knot_dname_labels(const uint8_t *name, const uint8_t *pkt)
 	return count;
 }
 
+/*----------------------------------------------------------------------------*/
+
 int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
                      const uint8_t **d2, uint8_t d2_labels,
                      uint8_t *wire)
 {
+	if (d1 == NULL || d2 == NULL)
+		return KNOT_EINVAL;
+
 	for (unsigned j = d1_labels; j < d2_labels; ++j)
 		*d2 = knot_wire_next_label(*d2, wire);
 
@@ -614,8 +652,13 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
 	return (d1_labels < d2_labels) ? d1_labels : d2_labels;
 }
 
+/*----------------------------------------------------------------------------*/
+
 int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 {
+	if (dst == NULL || src == NULL)
+		return KNOT_EINVAL;
+
 	uint8_t *len = dst++;
 	*len = '\0';
 	*dst = '\0';
