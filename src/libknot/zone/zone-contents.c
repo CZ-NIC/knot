@@ -1639,9 +1639,14 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 		*last_nsec3_node = adjust_arg.previous_node;
 
 	// adjust normal nodes
-
+	/*! \note This causes problem, as searching for name from RDATA
+	 *        requires the 'previous' pointers in node to be set properly in
+	 *        whole zone. Thus setting the pointers should be done before
+	 *        adjusting RDATA. However, this will no longer be a problem
+	 *        with dnames directly in RDATA, thus leaving it as is for now.
+	 */
 	result = knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
-	                                knot_zone_contents_adjust_normal_node);
+	                                 knot_zone_contents_adjust_normal_node);
 	if (result != KNOT_EOK) {
 		hattrie_free(lookup_tree);
 		return result;
