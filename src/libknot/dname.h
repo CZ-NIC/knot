@@ -96,6 +96,12 @@ int knot_dname_to_wire(uint8_t *dst, const knot_dname_t *src, size_t maxlen);
 /*!
  * \brief Write unpacked name (i.e. compression pointers expanded)
  *
+ * \note The function is very similar to the knot_dname_to_wire(), except
+ *       it expands compression pointers. E.g. you want to use knot_dname_unpack()
+ *       if you copy a dname from incoming packet to some persistent storage.
+ *       And you want to use knot_dname_to_wire() if you know the name is not
+ *       compressed or you want to copy it 1:1.
+ *
  * \param dst Destination wire.
  * \param src Source name.
  * \param maxlen Maximum destination wire size.
@@ -110,6 +116,8 @@ int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
  * \brief Converts the given domain name to string representation.
  *
  * \note Allocates new memory, remember to free it.
+ *
+ * \todo The function doesn't process escaped characters like \DDD or \X.
  *
  * \param dname Domain name to be converted.
  *

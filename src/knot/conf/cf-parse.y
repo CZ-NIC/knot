@@ -361,7 +361,7 @@ static void conf_zone_start(void *scanner, char *name) {
 
      /* Directly discard dname, won't be needed. */
      add_tail(&new_config->zones, &this_zone->n);
-     *hattrie_get(new_config->names, (const char*)dn, knot_dname_size(dn)) = (void *)1;
+     *hattrie_get(new_config->names, (const char *)dn, knot_dname_size(dn)) = (void *)1;
      ++new_config->zones_count;
      knot_dname_free(&dn);
    }

@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <ctype.h>	// tolower()
+#include <ctype.h>
 #include <inttypes.h>
 
 #include "common.h"
@@ -47,13 +47,15 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 	const uint8_t *name = pkt + *pos;
 	const uint8_t *endp = pkt + maxpos;
 	int parsed = knot_dname_wire_check(name, endp, pkt);
-	if (parsed < 0)
+	if (parsed < 0) {
 		return NULL;
+	}
 
 	/* Calculate decompressed length. */
 	int decompressed_len = knot_dname_realsize(name, pkt);
-	if (decompressed_len < parsed)
+	if (decompressed_len < 1) {
 		return NULL;
+	}
 
 	/* Allocate space for the name. */
 	knot_dname_t *res = malloc(decompressed_len);
@@ -510,7 +512,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 
 	int wire_len = 0;
 	int name_len = 1; /* Keep \x00 terminal label in advance. */
-	uint8_t is_compressed = 0;
+	bool is_compressed = false;
 	uint8_t labels = 0;
 
 	while (*name != '\0') {
@@ -519,8 +521,8 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 		if (name + 2 > endp)
 			return KNOT_ESPACE;
 
-		/* Reject more labels. */
-		if (labels == KNOT_DNAME_MAXLABELS - 1)
+		/* Reject more labels (last label is terminal). */
+		if (labels >= KNOT_DNAME_MAXLABELS - 1)
 			return KNOT_EMALF;
 
 		if (knot_wire_is_pointer(name)) {
@@ -536,7 +538,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 			name = pkt + ptr; /* Hop to compressed label */
 			if (!is_compressed) { /* Measure compressed size only */
 				wire_len += sizeof(uint16_t);
-				is_compressed = 1;
+				is_compressed = true;
 			}
 		} else {
 			/* Check label length (maximum 63 bytes allowed). */

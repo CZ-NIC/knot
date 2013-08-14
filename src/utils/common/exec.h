@@ -47,7 +47,7 @@ typedef struct {
  * \retval packet	if success.
  * \retval NULL		if error.
  */
-knot_packet_t* create_empty_packet(const size_t                      max_size);
+knot_packet_t* create_empty_packet(const size_t max_size);
 
 /*!
  * \brief Prints information header for transfer.

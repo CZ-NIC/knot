@@ -526,7 +526,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	}
 
 	knot_dname_t *realm = knot_dname_from_str(KNOT_CTL_REALM,
-	                                              KNOT_CTL_REALM_LEN);
+	                                          KNOT_CTL_REALM_LEN);
 	if (!knot_dname_is_sub(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm);
