@@ -621,7 +621,7 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 {
 	knot_nameserver_t *ns = w->master->ns;
-	knot_packet_t *re = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *re = knot_packet_new();
 	if (re == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -937,7 +937,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 	/* Evaluate configured key for claimed key name.*/
 	key = xfr->tsig_key; /* Expects already set key (check_zone) */
 	xfr->tsig_key = 0;
-	if (key && kname && knot_dname_compare(key->name, kname) == 0) {
+	if (key && kname && knot_dname_cmp(key->name, kname) == 0) {
 		dbg_xfr("xfr: found claimed TSIG key for comparison\n");
 	} else {
 

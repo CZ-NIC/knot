@@ -60,7 +60,6 @@ struct knot_rrset {
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
 	 *         last one holds total length of all RRs together
 	 */
-	/* [code-review] Does this have to be 32b integer? Isn't 16b enough? */
 	uint32_t *rdata_indices; /*!< Indices to beginnings of RRs (without 0)*/
 	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
@@ -194,7 +193,7 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  * \param rrset Specified RRSet.
  * \param owner New owner dname.
  */
-void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
+int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
 
 /*!
  * \brief Sets rrset TTL to given TTL.
@@ -330,37 +329,9 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *comp_data);
 
-/*!
- * \brief Merges two RRSets.
- *
- * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
- * the list of RDATAs in \a r1. You must not
- * destroy the RDATAs in \a r2 as they are now identical to RDATAs in \a r1.
- * (You may use function knot_rrset_free() though, as it does not touch RDATAs).
- *
- * \note Member \a rrsigs is preserved from the first RRSet.
- *
- * \param r1 Pointer to RRSet to be merged into.
- * \param r2 Poitner to RRSet to be merged.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL if the RRSets could not be merged, because their
- *         Owner, Type, Class or TTL does not match.
- */
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
-
-
-/*!
- * \brief Merges two RRSets, but will only merge unique items.
- *
- * \param r1 Pointer to RRSet to be merged into.
- * \param r2 Poitner to RRSet to be merged.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL if the RRSets could not be merged, because their
- *         Owner, Type, Class or TTL does not match.
- */
-int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, int *merged, int *deleted_rrs);
+int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
+                          int *merged, int *deleted_rrs);
 
 /*!
  * \brief Return true if the RRSet is an NSEC3 related type.
@@ -369,33 +340,20 @@ int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, i
  */
 bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
 
-
-//TODO test
 const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
-//TODO test
 const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
-//TODO test
 void knot_rrset_rdata_set_cname_name(knot_rrset_t *rrset,
                                      const knot_dname_t *name);
-//TODO test
 void knot_rrset_rdata_set_dname_target(knot_rrset_t *rrset,
                                        const knot_dname_t *target);
-//TODO test
 const knot_dname_t *knot_rrset_rdata_soa_primary_ns(const knot_rrset_t *rrset);
-//TODO test
 const knot_dname_t *knot_rrset_rdata_soa_mailbox(const knot_rrset_t *rrset);
 uint32_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
-//TODO test
 void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial);
-//TODO test
 uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset);
-//TODO test
 uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset);
-//TODO test
 uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset);
-//TODO test
 uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset);
-//TODO test
 uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset);
 /* TODO not all of these need to have rr_pos as a parameter. */
 uint8_t knot_rrset_rdata_rrsig_algorithm(const knot_rrset_t *rrset,
@@ -424,32 +382,23 @@ void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
 
 void knot_rrset_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
                                    uint8_t **bitmap, uint16_t *size);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
                                          size_t pos);
 uint8_t knot_rrset_rdata_nsec3_flags(const knot_rrset_t *rrset,
                                      size_t pos);
-//TODO test
 uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
                                            size_t pos);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
                                            size_t pos);
 // TODO same as salt, size and data
 void knot_rrset_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
                                         uint8_t **name, uint8_t *name_size);
-//TODO test
 const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
                                            size_t pos);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3param_algorithm(const knot_rrset_t *rrset);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3param_flags(const knot_rrset_t *rrset);
-//TODO test
 uint16_t knot_rrset_rdata_nsec3param_iterations(const knot_rrset_t *rrset);
-//TODO test
 uint8_t knot_rrset_rdata_nsec3param_salt_length(const knot_rrset_t *rrset);
-//TODO test
 const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset);
 
 const knot_dname_t *knot_rrset_rdata_rp_first_dname(const knot_rrset_t *rrset,
@@ -466,6 +415,7 @@ const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrse
  *
  * \param rrset Inspected rrset.
  * \param prev_dname Pointer to previous dname.
+ *        This pointer *has* to be obtained by this function or be NULL.
  * \return next dname or NULL.
  */
 /* [code-review] Emphasize that the 'prev' pointer must point into the RDATA
@@ -512,11 +462,6 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
 //TODO test
 int rrset_deserialize(uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset);
-
-int knot_rrset_remove_rr(knot_rrset_t *dest,
-                         const knot_rrset_t *source, size_t rdata_pos);
-
-int knot_rrset_rdata_reset(knot_rrset_t *rrset);
 
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos);

@@ -207,9 +207,8 @@ static int sign_tests_run(int argc, char *argv[])
 		knot_key_params_t params = { 0 };
 		knot_tsig_key_t tsig_key;
 		const char *owner = "shared.example.com.";
-		knot_dname_t *name = knot_dname_new_from_str(owner,
-							     strlen(owner),
-							     NULL);
+		knot_dname_t *name = knot_dname_from_str(owner,
+							     strlen(owner));
 
 		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,
@@ -236,7 +235,6 @@ static int sign_tests_run(int argc, char *argv[])
 		             sizeof(decoded_secret)) == 0,
 		   "knot_tsig_key_from_params(), secret set properly");
 
-		knot_dname_release(name);
 		knot_tsig_key_free(&tsig_key);
 	}
 

@@ -129,7 +129,7 @@ static inline uint8_t knot_node_flags_get_empty(uint8_t flags)
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
+knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
                            uint8_t flags)
 {
 	knot_node_t *ret = (knot_node_t *)calloc(1, sizeof(knot_node_t));
@@ -138,9 +138,12 @@ knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
 		return NULL;
 	}
 
-	/* Store reference to owner. */
-	knot_dname_retain(owner);
-	ret->owner = owner;
+	/* This is a subject to refactoring. Since owner is both at the RRSet
+	 * and node, we need to decide which should have it. Not both. */
+	if (owner) {
+		ret->owner = knot_dname_copy(owner);
+	}
+
 	knot_node_set_parent(ret, parent);
 	ret->rrset_tree = NULL;
 	ret->flags = flags;
@@ -192,8 +195,9 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrset_tree[i]->type == rrset->type) {
 			int merged, deleted_rrs;
-			int ret = knot_rrset_merge_no_dupl(node->rrset_tree[i],
-			                                   rrset, &merged, &deleted_rrs);
+			int ret = knot_rrset_merge_sort(node->rrset_tree[i],
+			                                rrset, &merged,
+			                                &deleted_rrs);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else if (merged || deleted_rrs) {
@@ -204,6 +208,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 		}
 	}
 
+	// New RRSet (with one RR)
 	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
@@ -251,12 +256,6 @@ knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 			--node->rrset_count;
 		}
 	}
-
-	/*!< \todo I've added this to fix a leak, but probably this wasn't the cause. Remove once tests are availabe. */
-	void *tmp = realloc(node->rrset_tree,
-	                    node->rrset_count * sizeof(knot_rrset_t *));
-	assert(tmp || node->rrset_count == 0); //Realloc to smaller memory, if it fails, something is really odd.
-	node->rrset_tree = tmp;
 
 	return ret;
 }
@@ -471,18 +470,6 @@ const knot_dname_t *knot_node_owner(const knot_node_t *node)
 knot_dname_t *knot_node_get_owner(const knot_node_t *node)
 {
 	return node->owner;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner)
-{
-	if (node) {
-		/* Retain new owner and release old owner. */
-		knot_dname_retain(owner);
-		knot_dname_release(node->owner);
-		node->owner = owner;
-	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -711,14 +698,7 @@ void knot_node_free(knot_node_t **node)
 		(*node)->rrset_count = 0;
 	}
 
-	// set owner's node pointer to NULL, but only if the 'node' does
-	// not point to the owner's node
-	if (node != &(*node)->owner->node
-	    && knot_dname_node(knot_node_owner(*node)) == *node) {
-		knot_dname_set_node((*node)->owner, NULL);
-	}
-
-	knot_dname_release((*node)->owner);
+	knot_dname_free(&(*node)->owner);
 
 	free(*node);
 	*node = NULL;
@@ -732,7 +712,7 @@ int knot_node_compare(knot_node_t *node1, knot_node_t *node2)
 {
 	assert(node1 != NULL && node2 != NULL);
 
-	return knot_dname_compare(node1->owner, node2->owner);
+	return knot_dname_cmp(node1->owner, node2->owner);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -744,15 +724,15 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	}
 
 	// create new node
-	*to = knot_node_new(from->owner, NULL, from->flags);
+	*to = knot_node_new(NULL, NULL, from->flags);
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	// copy references
 	// do not use the API function to set parent, so that children count
 	// is not changed
 	memcpy(*to, from, sizeof(knot_node_t));
+	(*to)->owner = knot_dname_copy(from->owner);
 
 	// copy RRSets
 	size_t rrlen = sizeof(knot_rrset_t*) * from->rrset_count;

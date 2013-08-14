@@ -216,7 +216,7 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
 		assert(part == KNOT_CHANGES_NSEC3_NODE);
 		add_tail(&ch->old_nsec3, (node *)list_node);
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -268,7 +268,7 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 	WALK_LIST(rr_node, changeset->remove) {
 		knot_rrset_deep_free(&rr_node->rr, 1, 1);
 	}
-	
+
 	knot_rrset_deep_free(&changeset->soa_from, 1, 1);
 	knot_rrset_deep_free(&changeset->soa_to, 1, 1);
 
@@ -300,4 +300,3 @@ void knot_changesets_free(knot_changesets_t **changesets)
 	free(*changesets);
 	*changesets = NULL;
 }
-

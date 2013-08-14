@@ -38,50 +38,19 @@
 
 /*----------------------------------------------------------------------------*/
 
+/* How many RRs pointers to alloc in one step. */
+#define RRSET_ALLOC_STEP 8
+
 struct knot_wildcard_nodes {
 	const knot_node_t **nodes; /*!< Wildcard nodes from CNAME processing. */
 	const knot_dname_t **snames;  /*!< SNAMEs related to the nodes. */
 	short count;             /*!< Count of items in the previous arrays. */
 	short max;               /*!< Capacity of the structure (allocated). */
-	short default_count;
 };
 
 typedef struct knot_wildcard_nodes knot_wildcard_nodes_t;
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure representing the DNS packet header.
- */
-struct knot_header {
-	uint16_t id;      /*!< ID stored in host byte order. */
-	uint8_t flags1;   /*!< First octet of header flags. */
-	uint8_t flags2;   /*!< Second octet of header flags. */
-	uint16_t qdcount; /*!< Number of Question RRs, in host byte order. */
-	uint16_t ancount; /*!< Number of Answer RRs, in host byte order. */
-	uint16_t nscount; /*!< Number of Authority RRs, in host byte order. */
-	uint16_t arcount; /*!< Number of Additional RRs, in host byte order. */
-};
-
-typedef struct knot_header knot_header_t;
-
-/*!
- * \brief Structure representing one Question entry in the DNS packet.
- */
-struct knot_question {
-	knot_dname_t *qname;  /*!< Question domain name. */
-	uint16_t qtype;         /*!< Question TYPE. */
-	uint16_t qclass;        /*!< Question CLASS. */
-};
-
-typedef struct knot_question knot_question_t;
-
-enum knot_packet_prealloc_type {
-	KNOT_PACKET_PREALLOC_NONE,
-	KNOT_PACKET_PREALLOC_QUERY,
-	KNOT_PACKET_PREALLOC_RESPONSE
-};
-
-typedef enum knot_packet_prealloc_type knot_packet_prealloc_type_t;
 
 /* Maximum number of compressed names. */
 #define COMPR_MAXLEN 64
@@ -98,21 +67,8 @@ typedef struct {
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing a DNS packet.
- *
- * \note QNAME, Answer, Authority and Additonal sections are by default put to
- *       preallocated space after the structure with default sizes. If the
- *       space is not enough, more space is allocated dynamically.
  */
 struct knot_packet {
-	/*! \brief DNS header. */
-	knot_header_t header;
-
-	/*!
-	 * \brief Question section.
-	 *
-	 * \note Only one Question is supported!
-	 */
-	knot_question_t question;
 
 	const knot_rrset_t **answer;      /*!< Answer RRSets. */
 	const knot_rrset_t **authority;   /*!< Authority RRSets. */
@@ -130,12 +86,12 @@ struct knot_packet {
 
 	uint8_t *wireformat;  /*!< Wire format of the packet. */
 
-	short free_wireformat;
 	size_t parsed;
 	uint16_t parsed_an;
 	uint16_t parsed_ns;
 	uint16_t parsed_ar;
 
+	uint8_t qname_size; /*!< QNAME size. */
 	size_t size;      /*!< Current wire size of the packet. */
 	size_t max_size;  /*!< Maximum allowed size of the packet. */
 
@@ -152,8 +108,6 @@ struct knot_packet {
 
 	struct knot_packet *query; /*!< Associated query. */
 
-	knot_packet_prealloc_type_t prealloc_type;
-
 	size_t tsig_size;	/*!< Space to reserve for the TSIG RR. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 	uint16_t flags;         /*!< Packet flags. */
@@ -169,88 +123,14 @@ typedef struct knot_packet knot_packet_t;
  * \brief Packet flags.
  */
 enum {
-	KNOT_PF_NULL     = 0 << 0, /*!< No flags. */
-	KNOT_PF_QUERY    = 1 << 0, /*!< Packet is query. */
-	KNOT_PF_WILDCARD = 1 << 1, /*!< Query to wildcard name. */
-	KNOT_PF_RESPONSE = 1 << 2  /*!< Packet is response. */
-};
-
-/*!
- * \brief Default sizes for response structure parts and steps for increasing
- *        them.
- */
-enum {
-	DEFAULT_ANCOUNT = 6,         /*!< Default count of Answer RRSets. */
-	DEFAULT_NSCOUNT = 8,         /*!< Default count of Authority RRSets. */
-	DEFAULT_ARCOUNT = 28,        /*!< Default count of Additional RRSets. */
-
-	DEFAULT_ANCOUNT_QUERY = 1,   /*!< Default count of Answer RRSets. */
-	DEFAULT_NSCOUNT_QUERY = 0,   /*!< Default count of Authority RRSets. */
-	DEFAULT_ARCOUNT_QUERY = 1,  /*!< Default count of Additional RRSets. */
-	/*!
-	 * \brief Default count of all domain names in response.
-	 *
-	 * Used for compression table.
-	 */
-	DEFAULT_DOMAINS_IN_RESPONSE = 22,
-
-	/*! \brief Default count of temporary RRSets stored in response. */
-	DEFAULT_TMP_RRSETS = 5,
-
-	/*! \brief Default count of wildcard nodes saved for later processing.*/
-	DEFAULT_WILDCARD_NODES = 1,
-
-	/*! \brief Default count of temporary RRSets stored in query. */
-	DEFAULT_TMP_RRSETS_QUERY = 2,
-
-	STEP_ANCOUNT = 6, /*!< Step for increasing space for Answer RRSets. */
-	STEP_NSCOUNT = 8, /*!< Step for increasing space for Authority RRSets.*/
-	STEP_ARCOUNT = 8,/*!< Step for increasing space for Additional RRSets.*/
-	STEP_DOMAINS = 10,   /*!< Step for resizing compression table. */
-	STEP_TMP_RRSETS = 5,  /*!< Step for increasing temorary RRSets count. */
-	STEP_WILDCARD_NODES = 2
+	KNOT_PF_NULL      = 0 << 0, /*!< No flags. */
+	KNOT_PF_QUERY     = 1 << 0, /*!< Packet is query. */
+	KNOT_PF_WILDCARD  = 1 << 1, /*!< Query to wildcard name. */
+	KNOT_PF_RESPONSE  = 1 << 2, /*!< Packet is response. */
+	KNOT_PF_FREE_WIRE = 1 << 3  /*!< Free wire. */
 };
 
 /*----------------------------------------------------------------------------*/
-#define PREALLOC_RRSETS(count) (count * sizeof(knot_rrset_t *))
-
-/*! \brief Sizes for preallocated space in the response structure. */
-enum {
-	/*! \brief Size of the response structure itself. */
-	PREALLOC_PACKET = sizeof(knot_packet_t),
-	/*! \brief Space for QNAME dname structure. */
-	PREALLOC_QNAME_DNAME = sizeof(knot_dname_t),
-	/*! \brief Space for QNAME name (maximum domain name size). */
-	PREALLOC_QNAME_NAME = 256,
-	/*! \brief Space for QNAME labels (maximum label count). */
-	PREALLOC_QNAME_LABELS = 127,
-	/*! \brief Total space for QNAME. */
-	PREALLOC_QNAME = PREALLOC_QNAME_DNAME
-	                 + PREALLOC_QNAME_NAME
-	                 + PREALLOC_QNAME_LABELS,
-
-	PREALLOC_WC_NODES =
-		DEFAULT_WILDCARD_NODES * sizeof(knot_node_t *),
-	PREALLOC_WC_SNAMES =
-		DEFAULT_WILDCARD_NODES * sizeof(knot_dname_t *),
-	PREALLOC_WC = PREALLOC_WC_NODES + PREALLOC_WC_SNAMES,
-
-	PREALLOC_QUERY = PREALLOC_PACKET
-	                 + PREALLOC_QNAME
-	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT_QUERY)
-	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT_QUERY)
-	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT_QUERY)
-	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS_QUERY),
-
-	/*! \brief Total preallocated size for the response. */
-	PREALLOC_RESPONSE = PREALLOC_PACKET
-	                 + PREALLOC_QNAME
-	                 + PREALLOC_RRSETS(DEFAULT_ANCOUNT)
-	                 + PREALLOC_RRSETS(DEFAULT_NSCOUNT)
-	                 + PREALLOC_RRSETS(DEFAULT_ARCOUNT)
-	                 + PREALLOC_WC
-	                 + PREALLOC_RRSETS(DEFAULT_TMP_RRSETS)
-};
 
 /*! \brief Flags which control packet parsing. */
 typedef enum {
@@ -264,18 +144,14 @@ typedef enum {
 /*!
  * \brief Creates new empty packet structure.
  *
- * \param prealloc What space should be preallocated in the structure.
- *
  * \return New packet structure or NULL if an error occured.
  */
-knot_packet_t *knot_packet_new(knot_packet_prealloc_type_t prealloc);
+knot_packet_t *knot_packet_new();
 
 /*!
  * \brief Memory managed version of new packet create.
- *
- * See knot_packet_new() for info about parameters and output.
  */
-knot_packet_t *knot_packet_new_mm(knot_packet_prealloc_type_t prealloc, mm_ctx_t *mm);
+knot_packet_t *knot_packet_new_mm(mm_ctx_t *mm);
 
 /*!
  * \brief Parses the DNS packet from wire format.
@@ -335,9 +211,9 @@ size_t knot_packet_parsed(const knot_packet_t *packet);
  */
 int knot_packet_set_max_size(knot_packet_t *packet, int max_size);
 
-uint16_t knot_packet_id(const knot_packet_t *packet);
+int knot_packet_set_size(knot_packet_t *packet, int size);
 
-void knot_packet_set_id(knot_packet_t *packet, uint16_t id);
+uint16_t knot_packet_id(const knot_packet_t *packet);
 
 void knot_packet_set_random_id(knot_packet_t *packet);
 
@@ -349,15 +225,6 @@ void knot_packet_set_random_id(knot_packet_t *packet);
  * \return OPCODE stored in the packet.
  */
 uint8_t knot_packet_opcode(const knot_packet_t *packet);
-
-/*!
- * \brief Return question section from the packet.
- *
- * \param packet Packet instance.
- *
- * \return pointer to question section.
- */
-knot_question_t *knot_packet_question(knot_packet_t *packet);
 
 /*!
  * \brief Returns the QNAME from the packet.
@@ -515,19 +382,6 @@ int knot_packet_add_tmp_rrset(knot_packet_t *response,
 
 void knot_packet_free_tmp_rrsets(knot_packet_t *pkt);
 
-/*!
- * \brief Converts the header structure to wire format.
- *
- * \note This function also adjusts the position (\a pos) according to
- *       the size of the converted wire format.
- *
- * \param[in] header DNS header structure to convert.
- * \param[out] pos Position where to put the converted header. The space has
- *                 to be allocated before calling this function.
- * \param[out] size Size of the wire format of the header in bytes.
- */
-void knot_packet_header_to_wire(const knot_header_t *header,
-                                  uint8_t **pos, size_t *size);
 
 int knot_packet_question_to_wire(knot_packet_t *packet);
 
@@ -576,6 +430,13 @@ void knot_packet_dump(const knot_packet_t *packet);
  * \brief Free all rrsets associated with packet.
  */
 int knot_packet_free_rrsets(knot_packet_t *packet);
+
+/*!
+ * \brief (Temporary) realloc RRs array size.
+ */
+int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
+                               short *max_count,
+                               mm_ctx_t *mm);
 
 #endif /* _KNOT_PACKET_H_ */
 

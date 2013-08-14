@@ -845,15 +845,8 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 		p->in_max -= label_len;
 	} while (label_len > 0);
 
-	// Create dname.
-	dname = knot_dname_new_from_wire(p->in - in_len, in_len, NULL);
-	if (dname == NULL) {
-		return;
-	}
-
 	// Write dname string.
-	char *dname_str = knot_dname_to_str(dname);
-	knot_dname_release(dname);
+	char *dname_str = knot_dname_to_str(p->in - in_len);
 	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
 	free(dname_str);
 	if (ret < 0 || (size_t)ret >= p->out_max) {

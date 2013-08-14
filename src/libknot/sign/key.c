@@ -127,9 +127,7 @@ static int get_key_info_from_public_key(const char *filename,
 
 	free(buffer);
 
-	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
-	                                               scanner->r_owner_length,
-	                                               NULL);
+	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
 	if (!owner) {
 		scanner_free(scanner);
 		return KNOT_ENOMEM;
@@ -311,7 +309,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		return result;
 	}
 
-	knot_dname_t *name;
+	knot_dname_t *name = NULL;
 	uint16_t keytag;
 	result = get_key_info_from_public_key(public_key, &name, &keytag);
 	if (result != KNOT_EOK) {
@@ -324,7 +322,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	if (!fp) {
 		free(public_key);
 		free(private_key);
-		knot_dname_release(name);
+		knot_dname_free(&name);
 		return KNOT_KEY_EPRIVATE_KEY_OPEN;
 	}
 
@@ -376,7 +374,7 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 	int ret = 0;
 
 	if (src->name != NULL) {
-		dst->name = knot_dname_deep_copy(src->name);
+		dst->name = knot_dname_copy(src->name);
 		if (dst->name == NULL) {
 			ret += -1;
 		}
@@ -420,8 +418,7 @@ int knot_free_key_params(knot_key_params_t *key_params)
 {
 	assert(key_params);
 
-	if (key_params->name)
-		knot_dname_release(key_params->name);
+	knot_dname_free(&key_params->name);
 
 	free(key_params->secret);
 
@@ -491,8 +488,6 @@ static int knot_tsig_create_key_from_args(knot_dname_t *name, int algorithm,
 	if (result != KNOT_EOK)
 		return result;
 
-	knot_dname_retain(name);
-
 	key->name = name;
 	key->secret = secret;
 	key->algorithm = algorithm;
@@ -506,15 +501,14 @@ static int knot_tsig_create_key_from_args(knot_dname_t *name, int algorithm,
 int knot_tsig_create_key(const char *name, int algorithm,
                          const char *b64secret, knot_tsig_key_t *key)
 {
-	knot_dname_t *dname;
-	dname = knot_dname_new_from_nonfqdn_str(name, strlen(name), NULL);
+	knot_dname_t *dname = knot_dname_from_str(name, strlen(name));
 	if (!dname)
 		return KNOT_ENOMEM;
 
 	int res;
 	res = knot_tsig_create_key_from_args(dname, algorithm, b64secret, key);
-
-	knot_dname_release(dname);
+	if (res != KNOT_EOK)
+		knot_dname_free(&dname);
 
 	return res;
 }
@@ -529,8 +523,13 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
 	if (!params)
 		return KNOT_EINVAL;
 
-	return knot_tsig_create_key_from_args(params->name, params->algorithm,
-					      params->secret, key);
+	knot_dname_t *name_copy = knot_dname_copy(params->name);
+	int res = knot_tsig_create_key_from_args(name_copy, params->algorithm,
+	                                         params->secret, key);
+	if (res != KNOT_EOK)
+		knot_dname_free(&name_copy);
+
+	return res;
 }
 
 /*!
@@ -541,8 +540,7 @@ int knot_tsig_key_free(knot_tsig_key_t *key)
 	if (!key)
 		return KNOT_EINVAL;
 
-	knot_dname_release(key->name);
-
+	knot_dname_free(&key->name);
 	knot_binary_free(&key->secret);
 	memset(key, '\0', sizeof(knot_tsig_key_t));
 

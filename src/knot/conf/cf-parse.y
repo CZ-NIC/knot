@@ -263,10 +263,10 @@ static void conf_acl_item(void *scanner, char *item)
 static int conf_key_exists(void *scanner, char *item)
 {
     /* Find existing node in keys. */
-    knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
+    knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
-        if (knot_dname_compare(r->k.name, sample) == 0) {
+        if (knot_dname_cmp(r->k.name, sample) == 0) {
            cf_error(scanner, "key '%s' is already defined", item);
 	   knot_dname_free(&sample);
            return 1;
@@ -283,11 +283,11 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
     *key = 0;
 
     /* Find in keys */
-    knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
+    knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
 
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
-        if (knot_dname_compare(r->k.name, sample) == 0) {
+        if (knot_dname_cmp(r->k.name, sample) == 0) {
            *key = &r->k;
            knot_dname_free(&sample);
            return 0;
@@ -338,7 +338,7 @@ static void conf_zone_start(void *scanner, char *name) {
    /* Check domain name. */
    knot_dname_t *dn = NULL;
    if (this_zone->name != NULL) {
-      dn = knot_dname_new_from_str(this_zone->name, nlen, 0);
+      dn = knot_dname_from_str(this_zone->name, nlen);
    }
    if (dn == NULL) {
      free(this_zone->name);
@@ -347,7 +347,7 @@ static void conf_zone_start(void *scanner, char *name) {
      cf_error(scanner, "invalid zone origin");
    } else {
      /* Check for duplicates. */
-     if (hattrie_tryget(new_config->names, (const char*)dn->name, dn->size) != NULL) {
+     if (hattrie_tryget(new_config->names, (const char *)dn, knot_dname_size(dn)) != NULL) {
            cf_error(scanner, "zone '%s' is already present, refusing to "
 			     "duplicate", this_zone->name);
            knot_dname_free(&dn);
@@ -361,7 +361,7 @@ static void conf_zone_start(void *scanner, char *name) {
 
      /* Directly discard dname, won't be needed. */
      add_tail(&new_config->zones, &this_zone->n);
-     *hattrie_get(new_config->names, (const char*)dn->name, dn->size) = (void *)1;
+     *hattrie_get(new_config->names, (const char *)dn, knot_dname_size(dn)) = (void *)1;
      ++new_config->zones_count;
      knot_dname_free(&dn);
    }
@@ -646,7 +646,7 @@ keys:
      }
 
      if (fqdn != NULL && !conf_key_exists(scanner, fqdn)) {
-         knot_dname_t *dname = knot_dname_new_from_str(fqdn, fqdnl, 0);
+         knot_dname_t *dname = knot_dname_from_str(fqdn, fqdnl);
 	 if (!dname) {
              cf_error(scanner, "key name '%s' not in valid domain name format",
 		      fqdn);

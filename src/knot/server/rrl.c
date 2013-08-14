@@ -99,8 +99,8 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	}
 
 	/* Check query type for spec. classes. */
-	if (p->qst) {
-		switch(p->qst->qtype) {
+	if (p->query) {
+		switch(knot_packet_qtype(p->query)) {
 		case KNOT_RRTYPE_ANY:      /* ANY spec. class */
 			return CLS_ANY;
 			break;
@@ -128,14 +128,15 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 }
 
 static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
-                       rrl_req_t *p, const knot_zone_t *z)
+                       rrl_req_t *req, const knot_zone_t *zone)
 {
-	const knot_dname_t *dn = NULL;
-	const uint8_t *n = (const uint8_t*)"\x00"; /* Fallback zone (for errors etc.) */
-	int nb = 1;
-	if (z) { /* Found associated zone. */
-		dn = knot_zone_name(z);
-	}
+	/* Fallback zone (for errors etc.) */
+	const knot_dname_t *dn = (const knot_dname_t*)"\x00";
+
+	/* Found associated zone. */
+	if (zone != NULL)
+		dn = knot_zone_name(zone);
+
 	switch (cls) {
 	case CLS_ERROR:    /* Could be a non-existent zone or garbage. */
 	case CLS_NXDOMAIN: /* Queries to non-existent names in zone. */
@@ -143,25 +144,14 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 		dbg_rrl_verb("%s: using zone/fallback name\n", __func__);
 		break;
 	default:
-		if (p->qst) dn = p->qst->qname;
+		/* Use QNAME */
+		if (req->query)
+			dn = knot_packet_qname(req->query);
 		break;
 	}
 
-	if (dn) { /* Check used dname. */
-		assert(dn); /* Should be always set. */
-		n = knot_dname_name(dn);
-		nb = (int)knot_dname_size(dn);
-	}
-
 	/* Write to wire */
-	if ((size_t)nb > maxlen) return KNOT_ESPACE;
-	if (memcpy(dst, n, nb) == NULL) {
-		dbg_rrl("%s: failed to serialize name=%p len=%u\n",
-		        __func__, n, nb);
-		return KNOT_ERROR;
-	}
-
-	return nb;
+	return knot_dname_to_wire((uint8_t *)dst, dn, maxlen);
 }
 
 static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
@@ -191,7 +181,8 @@ static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
 	uint16_t *nlen = (uint16_t*)(dst + blklen);
 	blklen += sizeof(uint16_t);
 	int len = rrl_clsname(dst + blklen, maxlen - blklen, cls, p, z);
-	if (len < 0) return len;
+	if (len < 0)
+		return len;
 	*nlen = len;
 	blklen += len;
 

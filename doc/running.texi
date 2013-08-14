@@ -72,7 +72,7 @@ files are stored in the folowing directories.
 @itemize @bullet
 @item
 @emph{Zone files} - default directory for storing zone files. This can be overriden
-using absolute zone file location. 
+using absolute zone file location.
 
 @item
 @emph{Journal files} - each zone has a journal file to store differences for IXFR and

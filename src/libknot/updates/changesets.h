@@ -256,7 +256,6 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
                           knot_changes_part_t part);
 
 /*!
-  
  * \param changes Double pointer of changes structure to be freed.
  */
 void knot_changes_free(knot_changes_t **changes);

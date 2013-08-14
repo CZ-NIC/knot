@@ -49,6 +49,13 @@ typedef struct tcp_worker_t {
 	int pipe[2];      /*!< Master-worker signalization pipes. */
 } tcp_worker_t;
 
+/*! \brief Buffers .*/
+enum {
+	QBUF   = 0, /* Query buffer ID. */
+	QRBUF  = 1, /* Response buffer ID. */
+	NBUFS  = 2  /* Buffer count. */
+};
+
 /*
  * Forward decls.
  */
@@ -132,7 +139,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
  *       and ensure that in case of good packet the response
  *       is proper.
  */
-static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen)
+static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxlen)
 {
 	if (fd < 0 || !w || !w->ioh) {
 		dbg_net("tcp: tcp_handle(%p, %d) - invalid parameters\n", w, fd);
@@ -149,7 +156,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	sockaddr_prep(&addr);
 
 	/* Receive data. */
-	int n = tcp_recv(fd, qbuf, qbuf_maxlen, &addr);
+	int n = tcp_recv(fd, buf[QBUF], qbuf_maxlen, &addr);
 	if (n <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		if (n == KNOT_EAGAIN) {
@@ -168,27 +175,27 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	/* Parse query. */
 	size_t resp_len = qbuf_maxlen; // 64K
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
-	knot_packet_t *packet = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *packet = knot_packet_new();
 	if (packet == NULL) {
-		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, n,
+		int ret = knot_ns_error_response_from_query_wire(ns, buf[QBUF], n,
 		                                            KNOT_RCODE_SERVFAIL,
-		                                            qbuf, &resp_len);
+		                                            buf[QRBUF], &resp_len);
 
 		if (ret == KNOT_EOK) {
-			tcp_reply(fd, qbuf, resp_len);
+			tcp_reply(fd, buf[QRBUF], resp_len);
 		}
 
 		return KNOT_EOK;
 	}
 
-	int parse_res = knot_ns_parse_packet(qbuf, n, packet, &qtype);
+	int parse_res = knot_ns_parse_packet(buf[QBUF], n, packet, &qtype);
 	if (knot_unlikely(parse_res != KNOT_EOK)) {
 		if (parse_res > 0) { /* Returned RCODE */
 			int ret = knot_ns_error_response_from_query(ns, packet,
-			                            parse_res, qbuf, &resp_len);
+			                          parse_res, buf[QRBUF], &resp_len);
 
 			if (ret == KNOT_EOK) {
-				tcp_reply(fd, qbuf, resp_len);
+				tcp_reply(fd, buf[QRBUF], resp_len);
 			}
 		}
 		knot_packet_free(&packet);
@@ -205,7 +212,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	case KNOT_QUERY_NORMAL:
 		//res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
 		if (zones_normal_query_answer(ns, packet, &addr,
-		                              qbuf, &resp_len,
+		                              buf[QRBUF], &resp_len,
 		                              NS_TRANSPORT_TCP) == KNOT_EOK) {
 			res = KNOT_EOK;
 		}
@@ -223,12 +230,12 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 		if (xfr == NULL) {
 			knot_ns_error_response_from_query(ns, packet,
 			                                  KNOT_RCODE_SERVFAIL,
-			                                  qbuf, &resp_len);
+			                                  buf[QRBUF], &resp_len);
 			res = KNOT_EOK;
 			break;
 		}
 		xfr->session = fd;
-		xfr->wire = qbuf;
+		xfr->wire = buf[QRBUF];
 		xfr->wire_size = qbuf_maxlen;
 		xfr->query = packet;
 		xfr_task_setaddr(xfr, &addr, NULL);
@@ -240,14 +247,14 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 //		knot_ns_error_response_from_query(ns, packet,
 //		                                  KNOT_RCODE_NOTIMPL,
 //		                                  qbuf, &resp_len);
-		res = zones_process_update(ns, packet, &addr, qbuf, &resp_len,
+		res = zones_process_update(ns, packet, &addr, buf[QRBUF], &resp_len,
 		                           fd, NS_TRANSPORT_TCP);
 //		res = KNOT_EOK;
 		break;
 
 	case KNOT_QUERY_NOTIFY:
 		res = notify_process_request(ns, packet, &addr,
-					     qbuf, &resp_len);
+					     buf[QRBUF], &resp_len);
 		break;
 
 	/* Unhandled opcodes. */
@@ -257,7 +264,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	case KNOT_RESPONSE_IXFR:   /*!< Processed in XFR handler. */
 		knot_ns_error_response_from_query(ns, packet,
 		                                  KNOT_RCODE_REFUSED,
-		                                  qbuf, &resp_len);
+		                                  buf[QRBUF], &resp_len);
 		res = KNOT_EOK;
 		break;
 
@@ -265,20 +272,20 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *qbuf, size_t qbuf_maxlen
 	default:
 		knot_ns_error_response_from_query(ns, packet,
 		                                  KNOT_RCODE_FORMERR,
-		                                  qbuf, &resp_len);
+		                                  buf[QRBUF], &resp_len);
 		res = KNOT_EOK;
 		break;
 	}
 
-	knot_packet_free(&packet);
-
 	/* Send answer. */
 	if (res == KNOT_EOK) {
-		tcp_reply(fd, qbuf, resp_len);
+		tcp_reply(fd, buf[QRBUF], resp_len);
 	} else {
 		dbg_net("tcp: failed to respond to query type=%d on fd=%d - %s\n",
 		        qtype, fd, knot_strerror(res));;
 	}
+
+	knot_packet_free(&packet);
 
 	return res;
 }
@@ -573,10 +580,16 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 #endif /* HAVE_CAP_NG_H */
 
-	uint8_t *qbuf = malloc(SOCKET_MTU_SZ);
+	uint8_t *buf[NBUFS];
+	for (unsigned i = 0; i < NBUFS; ++i) {
+		buf[i] = malloc(SOCKET_MTU_SZ);
+	}
+
 	tcp_worker_t *w = thread->data;
-	if (w == NULL || qbuf == NULL) {
-		free(qbuf);
+	if (w == NULL || buf[QBUF] == NULL || buf[QRBUF] == NULL) {
+		for (unsigned i = 0; i < NBUFS; ++i) {
+			free(buf[i]);
+		}
 		return KNOT_EINVAL;
 	}
 
@@ -626,7 +639,7 @@ int tcp_loop_worker(dthread_t *thread)
 			if (fd == w->pipe[0]) {
 				tcp_loop_assign(fd, set);
 			} else {
-				int ret = tcp_handle(w, fd, qbuf, SOCKET_MTU_SZ);
+				int ret = tcp_handle(w, fd, buf, SOCKET_MTU_SZ);
 				if (ret == KNOT_EOK) {
 					/* Update socket activity timer. */
 					fdset_set_watchdog(set, i, max_idle);
@@ -654,7 +667,9 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 	/* Stop whole unit. */
-	free(qbuf);
+	for (unsigned i = 0; i < NBUFS; ++i) {
+		free(buf[i]);
+	}
 	dbg_net("tcp: worker %p finished\n", w);
 	return KNOT_EOK;
 }

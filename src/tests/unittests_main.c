@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	        &dname_tests_api,
 	        &ztree_tests_api,
 	        &sign_tests_api,	//! Key manipulation.
-	        &rrset_tests_api,
+//	        &rrset_tests_api,
 
 	        NULL
 	};

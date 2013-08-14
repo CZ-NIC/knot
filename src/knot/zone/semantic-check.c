@@ -318,8 +318,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* label number at the 2nd index should be same as owner's */
 	uint8_t labels_rdata = knot_rrset_rdata_rrsig_labels(rrsig, rr_pos);
 
-	int tmp = knot_dname_label_count(knot_rrset_owner(rrset)) -
-		  labels_rdata;
+	int tmp = knot_dname_labels(knot_rrset_owner(rrset), NULL) - labels_rdata;
 
 	if (tmp != 0) {
 		/* if name has wildcard, label must not be included */
@@ -357,7 +356,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		knot_rrset_rdata_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
-	if (knot_dname_compare(signer_name,
+	if (knot_dname_cmp(signer_name,
 				 knot_rrset_owner(dnskey_rrset)) != 0) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
@@ -455,7 +454,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 
 	/* Different owner, class, ttl */
 
-	if (knot_dname_compare(knot_rrset_owner(rrset),
+	if (knot_dname_cmp(knot_rrset_owner(rrset),
 				 knot_rrset_owner(rrsigs)) != 0) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_OWNER,
@@ -695,8 +694,8 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	
 	/* Local allocation, will be discarded. */
 	knot_dname_t *next_dname =
-		knot_dname_new_from_str((char *)next_dname_decoded,
-					   real_size, NULL);
+		knot_dname_from_str((char *)next_dname_decoded,
+					   real_size);
 	if (next_dname == NULL) {
 		free(next_dname_decoded);
 		log_zone_warning("Could not create new dname!\n");
@@ -705,11 +704,10 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	
 	free(next_dname_decoded);
 	knot_dname_to_lower(next_dname);
-	
-	if (knot_dname_cat(next_dname,
-		     knot_node_owner(knot_zone_contents_apex(zone))) == NULL) {
+	next_dname = knot_dname_cat(next_dname,
+	                            knot_node_owner(knot_zone_contents_apex(zone)));
+	if (next_dname == NULL) {
 		log_zone_warning("Could not concatenate dnames!\n");
-		knot_dname_free(&next_dname);
 		return KNOT_ERROR;
 
 	}
@@ -890,7 +888,7 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 
 		/* TODO How about multiple RRs? */
 		knot_dname_t *ns_dname =
-			knot_dname_deep_copy(knot_rrset_rdata_ns_name(ns_rrset,
+			knot_dname_copy(knot_rrset_rdata_ns_name(ns_rrset,
 		                             0));
 		if (ns_dname == NULL) {
 			return KNOT_ENOMEM;
@@ -899,26 +897,15 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 		const knot_node_t *glue_node =
 				knot_zone_contents_find_node(zone, ns_dname);
 		
-		if (knot_dname_is_subdomain(ns_dname,
+		if (knot_dname_is_sub(ns_dname,
 			      knot_node_owner(knot_zone_contents_apex(zone)))) {
 			if (glue_node == NULL) {
-				/* Try wildcard. */
-				knot_dname_t *wildcard =
-					knot_dname_new_from_str("*", 1, NULL);
-				if (wildcard == NULL) {
-					knot_dname_free(&ns_dname);
-					return KNOT_ENOMEM;
-				}
-				
-				knot_dname_left_chop_no_copy(ns_dname);
-		
-				if (knot_dname_cat(wildcard,
-				                   ns_dname) == NULL) {
-					knot_dname_free(&ns_dname);
-					knot_dname_free(&wildcard);
-					return KNOT_ENOMEM;
-				}
-				
+				/* Try wildcard ([1]* + suffix). */
+				knot_dname_t wildcard[KNOT_DNAME_MAXLEN];
+				memcpy(wildcard, "\x1""*", 2);
+				knot_dname_to_wire(wildcard + 2,
+				                   knot_wire_next_label(ns_dname, NULL),
+				                   sizeof(wildcard));
 				const knot_node_t *wildcard_node = 
 					knot_zone_contents_find_node(zone,
 				                                     wildcard);
@@ -937,7 +924,6 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 								 NULL);
 					}
 				}	
-				knot_dname_free(&wildcard);
 			} else {
 				if ((knot_node_rrset(glue_node,
 					       KNOT_RRTYPE_A) == NULL) &&
@@ -1106,7 +1092,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 						ZC_ERR_NSEC_RDATA_CHAIN, NULL);
 				}
 
-				if (knot_dname_compare(next_domain,
+				if (knot_dname_cmp(next_domain,
 				    knot_node_owner(knot_zone_contents_apex(zone)))
 					== 0) {
 					/* saving the last node */
@@ -1250,8 +1236,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		/* Local allocation, will be discarded. */
 		knot_dname_t *next_dname =
-			knot_dname_new_from_str((char *)next_dname_decoded,
-						real_size, NULL);
+			knot_dname_from_str((char *)next_dname_decoded,
+						real_size);
 		if (next_dname == NULL) {
 			dbg_semcheck("Could not allocate dname!\n");
 			free(next_dname_decoded);
@@ -1260,14 +1246,13 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		free(next_dname_decoded);
 		knot_dname_to_lower(next_dname);
+		next_dname = knot_dname_cat(next_dname,
+		                            knot_node_owner(knot_zone_contents_apex(zone)));
 
-		if (knot_dname_cat(next_dname,
-			     knot_node_owner(knot_zone_contents_apex(zone))) ==
-		                NULL) {
+		if (next_dname == NULL) {
 			dbg_semcheck("Could not concatenate dnames!\n");
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
-			knot_dname_free(&next_dname);
 			return;
 		}
 
@@ -1280,8 +1265,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 		} else {
 			/* Compare with the actual first NSEC3 node. */
-			if (knot_dname_compare_non_canon(first_nsec3_node->owner,
-			                                 next_dname) != 0) {
+			if (!knot_dname_is_equal(first_nsec3_node->owner, next_dname)) {
 				err_handler_handle_error(handler, last_nsec3_node,
 							 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 			}
@@ -1314,7 +1298,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 				knot_node_owner(knot_zone_contents_apex(zone));
 			assert(apex_dname);
 
-			if (knot_dname_compare(next_dname, apex_dname) !=0) {
+			if (knot_dname_cmp(next_dname, apex_dname) !=0) {
 				err_handler_handle_error(handler, last_node,
 					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 			}

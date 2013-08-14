@@ -90,7 +90,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 {
 	assert(node);
 
-	assert(knot_dname_compare(rrsig->owner, node->owner) == 0);
+	assert(knot_dname_cmp(rrsig->owner, node->owner) == 0);
 
 	knot_rrset_t *tmp_rrset =
 		knot_node_get_rrset(node,
@@ -102,7 +102,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		dbg_zp("zp: find_rr_for_sig_in_node: Node does not contain "
 		       "RRSet of type %d.\n",
 		       knot_rrset_rdata_rrsig_type_covered(rrsig));
-		tmp_rrset = knot_rrset_new(rrsig->owner,
+		tmp_rrset = knot_rrset_new(knot_dname_copy(rrsig->owner),
 		                           knot_rrset_rdata_rrsig_type_covered(rrsig),
 		                           rrsig->rclass,
 		                           rrsig->ttl);
@@ -157,16 +157,13 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 {
 	dbg_zp_verb("zp: create_node: Creating node using RRSet: %p.\n",
 	            current_rrset);
-	knot_node_t *node =
-		knot_node_new(current_rrset->owner, NULL, 0);
+	knot_node_t *node = knot_node_new(current_rrset->owner, NULL, 0);
 	int ret = node_add_func(zone, node, 1, 0);
 	if (ret != KNOT_EOK) {
 		log_zone_warning("Node could not be added (%s).\n",
 		                 knot_strerror(ret));
 		return NULL;
 	}
-
-	assert(current_rrset->owner == node->owner);
 
 	return node;
 }
@@ -255,10 +252,7 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 		int item = desc->block_types[i];
 		if (descriptor_item_is_dname(item)) {
 			knot_dname_t *dname =
-				knot_dname_new_from_wire(scanner->r_data +
-			                                 scanner->r_data_blocks[i],
-			                                 scanner->r_data_blocks[i + 1] - scanner->r_data_blocks[i],
-			                                 NULL);
+				knot_dname_copy(scanner->r_data + scanner->r_data_blocks[i]);
 			if (dname == NULL) {
 				return KNOT_ERROR;
 			}
@@ -306,40 +300,19 @@ static void process_rr(const scanner_t *scanner)
 	if (parser->ret != KNOT_EOK) {
 		return;
 	}
+
 	knot_zone_contents_t *contents = parser->current_zone;
-	knot_dname_t *current_owner = NULL;
+#warning Node/RRSet compression at this level? To avoid duplicate names.
 	knot_rrset_t *current_rrset = NULL;
-	if (parser->last_node &&
-	    (scanner->r_owner_length == parser->last_node->owner->size) &&
-	    (strncmp((char *)parser->last_node->owner->name,
-	            (char *)scanner->r_owner, scanner->r_owner_length) == 0)) {
-		// no need to create new dname;
-		current_owner = parser->last_node->owner;
-		knot_dname_retain(current_owner);
-	} else {
-		current_owner =
-			knot_dname_new_from_wire(scanner->r_owner,
-			                         scanner->r_owner_length,
-			                         NULL);
-		if (current_owner == NULL) {
-			parser->ret = KNOT_ERROR;
-			return;
-		}
-		knot_dname_to_lower(current_owner);
-		/*!< \todo
-		 * If name is already in the table, we might not need to create
-		 * dname object, just compare wires.
-		 */
-		knot_zone_contents_insert_dname_into_table(&current_owner,
-		                                           parser->lookup_tree);
-	}
+	knot_dname_t *current_owner = knot_dname_copy(scanner->r_owner);
+
+	knot_dname_to_lower(current_owner);
 
 	/*!< \todo Do not create RRSet each time - merging needs to be sorted though. */
 	current_rrset = knot_rrset_new(current_owner,
 	               scanner->r_type,
 	               scanner->r_class,
 	               scanner->r_ttl);
-	knot_dname_release(current_owner);
 
 	assert(current_owner);
 	assert(current_rrset);
@@ -404,7 +377,7 @@ static void process_rr(const scanner_t *scanner)
 	}
 
 	if (current_rrset->type == KNOT_RRTYPE_SOA) {
-		if (knot_dname_compare(current_rrset->owner,
+		if (knot_dname_cmp(current_rrset->owner,
 					parser->origin_from_config) != 0) {
 			log_zone_error("SOA record has a different "
 				"owner than the one specified "
@@ -420,8 +393,7 @@ static void process_rr(const scanner_t *scanner)
 		knot_rrset_t *tmp_rrsig = current_rrset;
 
 		if (parser->last_node &&
-		    knot_dname_compare_non_canon(parser->last_node->owner,
-		                                 current_rrset->owner) != 0) {
+		    !knot_dname_is_equal(parser->last_node->owner, current_rrset->owner)) {
 			/* RRSIG is first in the node, so we have to create it
 			 * before we return
 			 */
@@ -484,9 +456,7 @@ static void process_rr(const scanner_t *scanner)
 	knot_node_t *node = NULL;
 	/* \note this could probably be much simpler */
 	if (parser->last_node && current_rrset->type != KNOT_RRTYPE_SOA &&
-	    knot_dname_compare_non_canon(parser->last_node->owner,
-				 current_rrset->owner) ==
-	    0) {
+	    knot_dname_is_equal(parser->last_node->owner, current_rrset->owner)) {
 		node = parser->last_node;
 	} else {
 		if (parser->last_node && parser->node_rrsigs) {
@@ -602,16 +572,11 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 		return KNOT_ENOMEM;
 	}
 
-	context->origin_from_config =
-		knot_dname_new_from_str(origin, strlen(origin), NULL);
+	/* As it's a first node, no need for compression yet. */
+	context->origin_from_config = knot_dname_from_str(origin, strlen(origin));
 	assert(context->origin_from_config);
 	knot_dname_to_lower(context->origin_from_config);
-	/* Add first DNAME to lookup tree. */
-	knot_zone_contents_insert_dname_into_table(&context->origin_from_config,
-	                                           context->lookup_tree);
-	context->last_node = knot_node_new(context->origin_from_config,
-	                                   NULL, 0);
-	knot_dname_release(context->origin_from_config);
+	context->last_node = knot_node_new(context->origin_from_config, NULL, 0);
 	knot_zone_t *zone = knot_zone_new(context->last_node);
 	context->current_zone = knot_zone_get_contents(zone);
 	context->node_rrsigs = NULL;
@@ -742,6 +707,8 @@ void knot_zload_close(zloader_t *loader)
 	hattrie_free(loader->context->lookup_tree);
 
 	file_loader_free(loader->file_loader);
+
+	knot_dname_free(&loader->context->origin_from_config);
 
 	free(loader->source);
 	free(loader->origin);

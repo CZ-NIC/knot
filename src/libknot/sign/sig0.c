@@ -38,11 +38,10 @@
  */
 static knot_rrset_t *sig0_create_rrset(void)
 {
-	knot_dname_t *root = knot_dname_new_from_str(".", 1, NULL);
+	knot_dname_t *root = knot_dname_from_str(".", 1);
 	uint32_t ttl = 0;
 	knot_rrset_t *sig_record = knot_rrset_new(root, KNOT_RRTYPE_SIG,
 	                                          KNOT_CLASS_ANY, ttl);
-	knot_dname_release(root);
 
 	return sig_record;
 }
