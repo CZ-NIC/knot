@@ -499,7 +499,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 	acl_delete(acl);
 
 	/* Create new ACL. */
-	*acl = acl_new(ACL_DENY, 0);
+	*acl = acl_new();
 	if (*acl == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -519,15 +519,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 
 		/* Load rule. */
 		if (ret > 0) {
-			/*! \todo Correct search for the longest prefix match.
-			 *        This just favorizes remotes with TSIG.
-			 *        (issue #1675)
-			 */
-			unsigned flags = 0;
-			if (cfg_if->key != NULL) {
-				flags = ACL_PREFER;
-			}
-			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if, flags);
+			acl_insert(*acl, &addr, cfg_if);
 		}
 	}
 
@@ -1988,8 +1980,8 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 	if (q_opcode == KNOT_OPCODE_UPDATE) {
 		acl_used = zd->update_in;
 	}
-	acl_key_t *match = NULL;
-	if (acl_match(acl_used, addr, &match) == ACL_DENY) {
+	acl_match_t *match = NULL;
+	if ((match = acl_find(acl_used, addr)) == NULL) {
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_EACCES;
 	} else {
@@ -1997,12 +1989,9 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 		          "'%s %s'. match=%p\n", zd->conf->name,
 		          q_opcode == KNOT_OPCODE_UPDATE ? "UPDATE":"XFR/OUT",
 			  match);
-		if (match) {
+		if (match->val) {
 			/* Save configured TSIG key for comparison. */
-			conf_iface_t *iface = (conf_iface_t*)(match->val);
-			dbg_zones_detail("iface=%p, iface->key=%p\n",
-					 iface, iface->key);
-			*tsig_key = iface->key;
+			*tsig_key = ((conf_iface_t*)(match->val))->key;
 		}
 	}
 	return KNOT_EOK;
