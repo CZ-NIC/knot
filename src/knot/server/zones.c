@@ -2671,8 +2671,23 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	dbg_zones_verb("zones: reconfiguring name server.\n");
 
-	/* Set NSID. */
-	knot_ns_set_nsid(ns, conf->nsid, conf->nsid_len);
+	/* Create new OPT RR, old must be freed after RCU sync. */
+	knot_opt_rr_t *opt_rr_old = ns->opt_rr;
+	knot_opt_rr_t *opt_rr = knot_edns_new();
+	if (opt_rr == NULL) {
+		log_server_error("Couldn't create OPT RR, please restart.\n");
+	} else {
+		knot_edns_set_version(opt_rr, EDNS_VERSION);
+		knot_edns_set_payload(opt_rr, EDNS_MAX_UDP_PAYLOAD);
+		if (conf->nsid_len > 0) {
+			knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
+			                     conf->nsid_len,
+			                     (const uint8_t *)conf->nsid);
+		}
+	}
+
+	/* Swap pointers to OPT RR. */
+	ns->opt_rr = opt_rr;
 
 	/* Server identification, RFC 4892. */
 	ns->identity = conf->identity;
@@ -2686,6 +2701,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	}
 	/* Wait until all readers finish with reading the zones. */
 	synchronize_rcu();
+
+	/* Remove old OPT RR. */
+	knot_edns_free(&opt_rr_old);
 
 	dbg_zones_verb("zones: nameserver's zone db: %p, old db: %p\n",
 	               ns->zone_db, old_db);
