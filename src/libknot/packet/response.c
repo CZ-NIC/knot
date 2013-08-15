@@ -495,7 +495,7 @@ int knot_response_add_opt(knot_packet_t *resp,
 		}
 		resp->opt_rr.size = opt_rr->size;
 	} else {
-		resp->opt_rr.size = KNOT_EDNS_MIN_SIZE;
+		resp->opt_rr.size = EDNS_MIN_SIZE;
 	}
 
 	// if max size is set, it means there is some reason to be that way,
