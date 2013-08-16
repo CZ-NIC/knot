@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import re
 import os
 import random
 import shutil
@@ -9,8 +10,7 @@ import string
 import sys
 import time
 from subprocess import Popen, PIPE, DEVNULL, check_call
-
-import zone_generate
+import zone_generate, params
 
 knot_vars = [
     ["KNOT_TEST_KNOT",  "knotd"],
@@ -24,6 +24,13 @@ nsd_vars = [
     ["KNOT_TEST_NSD",  "nsd"],
     ["KNOT_TEST_NSDC", "nsdc"]
 ]
+
+def log(text):
+    time_str = time.strftime("%H:%M:%S", time.localtime())
+    print("%s# %s" % (time_str, text))
+
+def err(text):
+    log("     ERR> %s" % text)
 
 class Tsig(object):
     '''TSIG key generator'''
@@ -260,7 +267,7 @@ class DnsServer(object):
                       stdout=self.fout, stderr=self.ferr)
             p.communicate(timeout=DnsServer.COMPILE_TIMEOUT)
         except:
-            print("Compile error")
+            err("Compile error")
 
     def start(self):
         try:
@@ -278,7 +285,7 @@ class DnsServer(object):
             else:
                 time.sleep(DnsServer.START_WAIT)
         except OSError:
-            print("Server %s start error" % self.name)
+            err("Server %s start error" % self.name)
 
     def reload(self):
         try:
@@ -286,7 +293,7 @@ class DnsServer(object):
                        stdout=DEVNULL, stderr=DEVNULL)
             time.sleep(DnsServer.START_WAIT)
         except OSError:
-            print("Server %s reload error" % self.name)
+            err("Server %s reload error" % self.name)
 
     def flush(self):
         try:
@@ -295,7 +302,39 @@ class DnsServer(object):
                            stdout=DEVNULL, stderr=DEVNULL)
                 time.sleep(DnsServer.START_WAIT)
         except OSError:
-            print("Server %s flush error" % self.name)
+            err("Server %s flush error" % self.name)
+
+    def _valgrind_check(self):
+        if not self.valgrind:
+            return
+
+        errcount = 0
+        reachable = -32
+        lost = 0
+
+        f = open(self.ferr, "r")
+        for line in f:
+            if re.search("Process terminating", line) or \
+               re.search("Invalid read", line) or \
+               re.search("Invalid write", line) or \
+               re.search("Assertion", line):
+                  errcount += 1
+
+            lost_line = re.search("lost:", line)
+            if lost_line:
+                lost += int(line[lost_line.end():].lstrip().\
+                            split(" ")[0].replace(",", ""))
+
+            reach_line = re.search("reachable:", line)
+            if reach_line:
+                reachable += int(line[reach_line.end():].lstrip().\
+                                 split(" ")[0].replace(",", ""))
+        f.close()
+
+        if errcount > 0 or reachable > 0 or lost > 0:
+            params.err = True
+            err("%s memcheck: lost(%i B), reachable(%i B), errcount(%i)" \
+                % (self.name, lost, reachable, errcount))
 
     def stop(self):
         if self.proc:
@@ -303,7 +342,7 @@ class DnsServer(object):
                 self.proc.terminate()
                 self.proc.wait(DnsServer.STOP_TIMEOUT)
             except:
-                print("killing")
+                err("killing")
                 self.proc.kill()
 
     def gen_confile(self):
@@ -346,6 +385,7 @@ class Bind(DnsServer):
             s.item("listen-on-v6 port", "%i { %s; }" % (self.port, self.addr))
         s.item("auth-nxdomain", "no")
         s.item("recursion", "no")
+        s.item("masterfile-format", "text")
         s.end()
 
         s.begin("key", self.ctlkey.name)
@@ -594,12 +634,12 @@ class DnsTest(object):
     # Number of unsuccessful starts of servers. Recursion protection.
     start_tries = 0
 
-    def __init__(self, test_dir, out_dir, ip=None, tsig=None):
-        if not os.path.exists(out_dir):
+    def __init__(self, ip=None, tsig=None):
+        if not os.path.exists(params.out_dir):
             raise Exception("Output directory doesn't exist")
 
-        self.out_dir = str(out_dir)
-        self.data_dir = str(test_dir) + "/data/"
+        self.out_dir = params.out_dir
+        self.data_dir = params.test_dir + "/data/"
         self.zones_dir = self.out_dir + "/zones/"
         try:
             os.mkdir(self.zones_dir)
@@ -717,13 +757,17 @@ class DnsTest(object):
                 self.stop()
                 self.start()
 
+        params.test = self
+
     def stop(self):
         for server in self.servers:
             server.stop()
+        params.test = None
 
     def end(self):
         self.stop()
-        pass
+        for server in self.servers:
+            server._valgrind_check()
 
     def zone(self, name, filename):
         try:
@@ -763,7 +807,7 @@ class DnsTest(object):
 
                 file.close()
             except OSError:
-                print("Can't create zone file %s" % filename)
+                err("Can't create zone file %s" % filename)
 
             zones[name + "."] = filename
 
