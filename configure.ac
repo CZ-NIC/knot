@@ -13,10 +13,6 @@ AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 release_date=`doc/mdate-sh configure.ac`
 AC_SUBST([RELEASE_DATE], $release_date)
 
-# Check SSE, SSE2 and SSE3 support
-AX_EXT
-CFLAGS="$CFLAGS $SIMD_FLAGS"
-
 # Set compiler compatibility flags
 AC_PROG_CC_C99
 AM_PROG_CC_C_O
