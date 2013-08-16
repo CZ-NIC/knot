@@ -193,7 +193,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 	/* Check ACL for notify-in. */
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 	if (from) {
-		if (acl_match(zd->notify_in, from, 0) == ACL_DENY) {
+		if (acl_find(zd->notify_in, from) == NULL) {
 			/* rfc1996: Ignore request and report incident. */
 			return KNOT_EDENIED;
 		}

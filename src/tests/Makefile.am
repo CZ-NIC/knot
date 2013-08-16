@@ -32,8 +32,6 @@ unittests_SOURCES =			\
 	common/events_tests.h		\
 	common/fdset_tests.c		\
 	common/fdset_tests.h		\
-	common/skiplist_tests.c		\
-	common/skiplist_tests.h		\
 	common/hattrie_tests.c		\
 	common/hattrie_tests.h		\
 	common/slab_tests.c		\

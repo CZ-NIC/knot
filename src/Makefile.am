@@ -191,9 +191,7 @@ libknots_la_SOURCES =				\
 	common/heap.c				\
 	common/print.c				\
 	common/print.h				\
-	common/skip-list.c			\
 	common/base32hex.c			\
-	common/skip-list.h			\
 	common/base32hex.h			\
 	common/evqueue.h			\
 	common/evqueue.c			\

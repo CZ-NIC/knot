@@ -29,7 +29,6 @@
 #define _KNOT_NODE_H_
 
 #include "dname.h"
-#include "common/skip-list.h"
 #include "rrset.h"
 
 struct knot_zone;

@@ -20,8 +20,8 @@
  *
  * \brief Access control lists.
  *
- * An access control list is a named structure
- * for efficient IP address and port matching.
+ * Simple access control list is implemented as a linked list, sorted by
+ * prefix length. This way, longest prefix match is always found first.
  *
  * \addtogroup common_lib
  * @{
@@ -30,46 +30,26 @@
 #ifndef _KNOTD_ACL_H_
 #define _KNOTD_ACL_H_
 
-#include "common/skip-list.h"
+#include "common/lists.h"
 #include "common/sockaddr.h"
 
-/*! \brief ACL rules types. */
-typedef enum acl_rule_t {
-	ACL_ERROR  = -1,
-	ACL_DENY   =  0,
-	ACL_ACCEPT =  1
-} acl_rule_t;
-
-/*! \brief ACL flags. */
-enum acl_flag_t {
-	ACL_PREFER = 1 << 0 /* Preferred node. */
-};
-
 /*! \brief ACL structure. */
-typedef struct acl_t {
-	acl_rule_t default_rule; /*!< \brief Default rule. */
-	skip_list_t *rules;      /*!< \brief Data container. */
-	skip_list_t *rules_pref; /*!< \brief Preferred data container. */
-	char name[];       /*!< \brief ACL semantic name. */
-} acl_t;
+typedef list acl_t;
 
-/*! \brief Single ACL value. */
-typedef struct acl_key_t {
+/*! \brief Single ACL match. */
+typedef struct acl_match {
+	node n;
 	sockaddr_t addr; /*!< \brief Address for comparison. */
-	acl_rule_t rule; /*!< \brief Rule for address. */
 	void *val;       /*!< \brief Associated value (or NULL). */
-} acl_key_t;
+} acl_match_t;
 
 /*!
  * \brief Create a new ACL.
  *
- * \param default_rule Default rule for address matching.
- * \param name ACL symbolic name (or NULL).
- *
  * \retval New ACL instance when successful.
  * \retval NULL on errors.
  */
-acl_t *acl_new(acl_rule_t default_rule, const char *name);
+acl_t *acl_new();
 
 /*!
  * \brief Delete ACL structure.
@@ -79,34 +59,28 @@ acl_t *acl_new(acl_rule_t default_rule, const char *name);
 void acl_delete(acl_t **acl);
 
 /*!
- * \brief Create new ACL rule.
- *
- * \todo Support address subnets (issue #1366).
+ * \brief Insert new ACL match.
  *
  * \param acl Pointer to ACL instance.
  * \param addr IP address.
- * \param rule Rule for given address.
  * \param val Value to be stored for given address (or NULL).
- * \param flags Bitfield of ACL flags.
  *
- * \retval ACL_ACCEPT if successful.
- * \retval ACP_ERROR on error.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ENOMEM
  */
-int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val,
-               unsigned flags);
+int acl_insert(acl_t *acl, const sockaddr_t *addr, void *val);
 
 /*!
  * \brief Match address against ACL.
  *
  * \param acl Pointer to ACL instance.
  * \param addr IP address.
- * \param key Set to related key or NULL if not found.
  *
- * \retval Address rule if the address is accepted.
- * \retval Default rule if the address is not accepted.
- * \retval ACP_ERROR on error.
+ * \retval Matching rule instance if found.
+ * \retval NULL if it didn't find a match.
  */
-int acl_match(acl_t *acl, const sockaddr_t* addr, acl_key_t **key);
+acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr);
 
 /*!
  * \brief Truncate ACL.
@@ -114,41 +88,8 @@ int acl_match(acl_t *acl, const sockaddr_t* addr, acl_key_t **key);
  * All but the default rule will be dropped.
  *
  * \param acl Pointer to ACL instance.
- *
- * \retval ACL_ACCEPT if successful.
- * \retval ACP_ERROR on error.
  */
-int acl_truncate(acl_t *acl);
-
-/*!
- * \brief Return ACL name.
- *
- * \param acl Pointer to ACL instance.
- *
- * \retval ACL name.
- */
-static inline const char* acl_name(acl_t *acl) {
-	if (!acl) {
-		return 0;
-	}
-
-	return acl->name;
-}
-
-/*!
- * \brief Return ACL rules.
- *
- * \param acl Pointer to ACL instance.
- *
- * \retval ACL rules skip-list.
- */
-static inline skip_list_t* acl_rules(acl_t *acl) {
-        if (!acl) {
-                return 0;
-        }
-
-        return acl->rules;
-}
+void acl_truncate(acl_t *acl);
 
 #endif /* _KNOTD_ACL_H_ */
 
