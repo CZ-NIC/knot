@@ -658,6 +658,8 @@ keys:
              k->k.algorithm = $3.alg;
              if (knot_binary_from_base64($4.t, &(k->k.secret)) != 0) {
                  cf_error(scanner, "invalid key secret '%s'", $4.t);
+                 knot_dname_free(&dname);
+                 free(k);
              } else {
                  add_tail(&new_config->keys, &k->n);
                  ++new_config->key_count;
