@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
-import importlib, os, sys, tempfile, time
+import argparse, importlib, os, sys, tempfile, time
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/tools")
 from dnstest import log, err
 import params
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-d", "--debug", help="enable exception traceback", action='store_true')
+args = parser.parse_args()
+if args.debug:
+    params.debug = True
 
 outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % int(time.time()))
 tests_dir = "tests"
@@ -42,23 +48,23 @@ for test in sorted(os.listdir("./" + tests_dir)):
 
         try:
             importlib.import_module("%s.%s.%s.test" % (tests_dir, test, case))
-
         except Exception as exc:
             params.err = True
             params.errmsg = format(exc)
-        except KeyboardInterrupt:
-            log("Interrupted by user")
+            if params.debug:
+                traceback.print_exc(exc)
+        except BaseException as exc:
+            log("Interrupted")
+            if params.debug:
+                traceback.print_exc(exc)
             exit(1)
-        except:
-            params.err = True
-            params.errmsg = sys.exc_info()[0]
 
+        # Stop servers if still running.
         if params.err:
             fail_cnt += 1
             if params.errmsg:
                 err(params.errmsg)
 
-        # Stop servers if still running.
         if params.test:
             params.test.stop()
 
@@ -68,3 +74,4 @@ if fail_cnt:
 else:
     log("All test cases passed")
     exit(0)
+
