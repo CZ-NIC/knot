@@ -467,7 +467,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	/* Create rdata for TSIG RR. */
 	uint16_t rdata_rcode = 0;
-	if (rdata_rcode == KNOT_RCODE_BADTIME)
+	if (tsig_rcode == KNOT_RCODE_BADTIME)
 		rdata_rcode = tsig_rcode;
 	tsig_create_rdata(tmp_tsig, tsig_alg_to_dname(key->algorithm),
 	                  knot_tsig_digest_length(key->algorithm), rdata_rcode);

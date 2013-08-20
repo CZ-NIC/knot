@@ -135,6 +135,7 @@ libknot_la_SOURCES =				\
 	libknot/edns.c				\
 	libknot/libknot.h			\
 	libknot/dname.h				\
+	libknot/rdata.h				\
 	libknot/rrset.h				\
 	libknot/rrset.c				\
 	libknot/nsec3.h				\

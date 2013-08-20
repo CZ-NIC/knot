@@ -1,5 +1,5 @@
 /*!
- * \file rrset.h
+ * \file rdata.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
