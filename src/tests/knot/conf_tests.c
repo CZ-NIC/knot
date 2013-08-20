@@ -127,11 +127,11 @@ static int conf_tests_run(int argc, char *argv[])
 
 	// Test 21: Load key dname
 	const char *sample_str = "key0.example.net";
-	knot_dname_t *sample = knot_dname_new_from_str(sample_str,
-	                                               strlen(sample_str), 0);
+	knot_dname_t *sample = knot_dname_from_str(sample_str,
+	                                               strlen(sample_str));
 	if (conf->key_count > 0) {
 		knot_tsig_key_t *k = &((conf_key_t *)HEAD(conf->keys))->k;
-		ok(knot_dname_compare(sample, k->name) == 0,
+		ok(knot_dname_cmp(sample, k->name) == 0,
 		   "TSIG key dname check");
 	} else {
 		ok(0, "TSIG key dname check - NO KEY FOUND");

@@ -116,7 +116,7 @@ typedef enum {
  *
  * \return Newly created node or NULL if an error occured.
  */
-knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
+knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
                                uint8_t flags);
 
 /*!
@@ -297,16 +297,6 @@ const knot_dname_t *knot_node_owner(const knot_node_t *node);
  * \todo Document me.
  */
 knot_dname_t *knot_node_get_owner(const knot_node_t *node);
-
-/*!
- * \brief Set node owner to specified dname.
- *
- * Previous owner will be replaced if exist.
- *
- * \param node Specified node.
- * \param owner New owner dname.
- */
-void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner);
 
 /*!
  * \brief Returns the wildcard child of the node.

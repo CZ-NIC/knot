@@ -341,11 +341,13 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	              knot_rrset_rdata_rr_count(rrset2));
 
 	/* Create fake RRSet, it will be easier to handle. */
-	*changes = knot_rrset_new(knot_rrset_get_owner(rrset1),
+	knot_dname_t *owner_copy = knot_dname_copy(knot_rrset_get_owner(rrset1));
+	*changes = knot_rrset_new(owner_copy,
 	                          knot_rrset_type(rrset1),
 	                          knot_rrset_class(rrset1),
 	                          knot_rrset_ttl(rrset1));
 	if (*changes == NULL) {
+		knot_dname_free(&owner_copy);
 		dbg_zonediff("zone_diff: diff_rdata: "
 		             "Could not create RRSet with changes.\n");
 		return KNOT_ENOMEM;
@@ -568,7 +570,7 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 //		return KNOT_EOK;
 //	}
 
-	assert(knot_dname_compare(knot_rrset_owner(rrset1),
+	assert(knot_dname_cmp(knot_rrset_owner(rrset1),
 	                          knot_rrset_owner(rrset2)) == 0);
 	assert(knot_rrset_type(rrset1) == knot_rrset_type(rrset2));
 

@@ -112,8 +112,8 @@ static knot_rrset_t *create_nsec_rrset(knot_dname_t *owner, knot_dname_t *next,
 		return NULL;
 	}
 
-	knot_dname_retain(next);
-	memcpy(rdata, &next, sizeof(knot_dname_t *));
+	knot_dname_t *next_dname = knot_dname_copy(next);
+	memcpy(rdata, &next_dname, sizeof(knot_dname_t *));
 	bitmap_write(rr_types, rdata + sizeof(knot_dname_t *));
 
 	return rrset;
@@ -358,7 +358,7 @@ static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 	memcpy(name + endp, apex, apex_size);
 	endp += apex_size;
 
-	knot_dname_t *dname = knot_dname_new_from_str(name, endp, NULL);
+	knot_dname_t *dname = knot_dname_from_str(name, endp);
 	knot_dname_to_lower(dname);
 
 	return dname;
@@ -378,12 +378,12 @@ static knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
                                         const knot_nsec3_params_t *params,
                                         const char *apex, size_t apex_size)
 {
-	uint8_t *name = owner->name;
-	size_t name_size = owner->size;
+	size_t name_size = knot_dname_size(owner);
 	uint8_t *hash = NULL;
 	size_t hash_size = 0;
 
-	if (knot_nsec3_hash(params, name, name_size, &hash, &hash_size) != KNOT_EOK)
+	if (knot_nsec3_hash(params, owner, name_size, &hash, &hash_size)
+	    != KNOT_EOK)
 		return NULL;
 
 	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, apex, apex_size);
@@ -582,7 +582,6 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 
 	knot_node_t *nsec3_node;
 	nsec3_node = create_nsec3_node(nsec3_owner, params, apex_node, &rr_types, ttl);
-	knot_dname_release(nsec3_owner);
 
 	return nsec3_node;
 }
@@ -791,21 +790,24 @@ int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone)
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
 		knot_dname_t *nsec3_name;
-		nsec3_name = create_nsec3_owner(node->owner, &zone->nsec3_params, apex, apex_size);
+		nsec3_name = create_nsec3_owner(node->owner,
+		                                &zone->nsec3_params, apex,
+		                                apex_size);
 		if (!nsec3_name) {
 			result = KNOT_ENOMEM;
 			break;
 		}
 
 		knot_node_t *nsec3_node = NULL;
-		result = knot_zone_tree_get(zone->nsec3_nodes, nsec3_name, &nsec3_node);
+		result = knot_zone_tree_get(zone->nsec3_nodes, nsec3_name,
+		                            &nsec3_node);
 		if (result != KNOT_EOK)
 			break;
 
 		if (nsec3_node != NULL)
 			node->nsec3_node = nsec3_node;
 
-		knot_dname_release(nsec3_name);
+		knot_dname_free(&nsec3_name);
 		hattrie_iter_next(it);
 	}
 

@@ -24,6 +24,7 @@
 #include "common/descriptor.h"
 #include "common/hattrie/hat-trie.h"
 #include "libknot/zone/zone-tree.h"
+#include "libknot/util/wire.h"
 #include "consts.h"
 
 /*----------------------------------------------------------------------------*/
@@ -90,7 +91,7 @@ static int knot_zone_contents_check_node(
 	// assert or just check??
 	assert(contents->apex != NULL);
 
-	if (!knot_dname_is_subdomain(node->owner,
+	if (!knot_dname_is_sub(node->owner,
 				       knot_node_owner(contents->apex))) {
 dbg_zone_exec(
 		char *node_owner = knot_dname_to_str(knot_node_owner(node));
@@ -134,17 +135,13 @@ static const knot_node_t *knot_zone_contents_find_wildcard_child(
 	assert(zone != NULL);
 	assert(closest_encloser != NULL);
 
-	knot_dname_t *tmp = knot_dname_new_from_str("*", 1, NULL);
-	CHECK_ALLOC(tmp, NULL);
-
-	knot_dname_t *wildcard = knot_dname_cat(tmp, knot_node_owner(
-							closest_encloser));
-	if (wildcard == NULL) {
-		free(tmp);
+	knot_dname_t *wildcard = knot_dname_from_str("*", 1);
+	if (wildcard == NULL)
 		return NULL;
-	}
 
-	assert(wildcard == tmp);
+	wildcard = knot_dname_cat(wildcard, knot_node_owner(closest_encloser));
+	if (wildcard == NULL)
+		return NULL;
 
 dbg_zone_exec_detail(
 	char *name = knot_dname_to_str(knot_node_owner(closest_encloser));
@@ -171,24 +168,10 @@ dbg_zone_exec_detail(
 void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
                                                 hattrie_t *lookup_tree)
 {
-	if (lookup_tree == NULL) {
-		/* = Do not check duplicates. */
-		return;
-	}
-	assert(in_dname && *in_dname);
-	/* First thing - make sure dname is not duplicated. */
-	knot_dname_t *found_dname = hattrie_get_dname(lookup_tree, *in_dname);
-	if (found_dname != NULL && found_dname != *in_dname) {
-		/* Duplicate. */
-		knot_dname_release(*in_dname);
-		knot_dname_retain(found_dname);
-		*in_dname = found_dname;
-	} else if (found_dname == NULL) {
-		/* Into the tree it goes. */
-		hattrie_insert_dname(lookup_tree, *in_dname);
-	} else {
-		assert(found_dname == *in_dname);
-	}
+	/* Disabled dname duplication checks since dnames can't be refcounted.
+	 * This will be replaced with refcounting RDATA, so I'm keeping the API
+	 * intact to ease the transition.
+	 */
 }
 
 /*----------------------------------------------------------------------------*/
@@ -213,71 +196,7 @@ static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
                                                   knot_node_t *node,
                                                   knot_dname_t **in_dname)
 {
-//	const knot_node_t *old_dname_node = (*in_dname)->node;
 	knot_zone_contents_insert_dname_into_table(in_dname, lookup_tree);
-//	assert((*in_dname)->node == old_dname_node || old_dname_node == NULL);
-
-	knot_dname_t *dname = *in_dname;
-	/*
-	 * The case when dname.node is already set is handled here.
-	 * No use to check it later.
-	 */
-	if (knot_dname_node(dname) != NULL
-	    || !knot_dname_is_subdomain(dname, knot_node_owner(
-				      knot_zone_contents_apex(zone)))) {
-		// The name's node is either already set
-		// or the name does not belong to the zone
-		dbg_zone_detail("Name's node either set or the name "
-				"does not belong to the zone (%p).\n",
-				knot_dname_node(dname));
-		return;
-	}
-
-	const knot_node_t *n = NULL;
-	const knot_node_t *closest_encloser = NULL;
-	const knot_node_t *prev = NULL;
-
-	int ret = knot_zone_contents_find_dname(zone, dname, &n,
-					      &closest_encloser, &prev);
-
-	if (ret == KNOT_EINVAL || ret == KNOT_EOUTOFZONE) {
-		// TODO: do some cleanup if needed
-		dbg_zone_detail("Failed to find the name in zone: %s\n",
-				knot_strerror(ret));
-		return;
-	}
-
-	assert(ret != KNOT_ZONE_NAME_FOUND || n == closest_encloser);
-
-	if (ret != KNOT_ZONE_NAME_FOUND && (closest_encloser != NULL)) {
-			/*!
-			 * \note There is no need to set closer encloser to the
-			 *       name. We may find the possible wildcard child
-			 *       right away.
-			 *       Having the closest encloser saved in the dname
-			 *       would disrupt the query processing algorithms
-			 *       anyway.
-			 */
-
-			dbg_zone_verb("Trying to find wildcard child.\n");
-
-			n = knot_zone_contents_find_wildcard_child(zone,
-							      closest_encloser);
-
-			if (n != NULL) {
-				knot_dname_set_node(dname, (knot_node_t *)n);
-				dbg_zone_exec_detail(
-					char *name = knot_dname_to_str(
-							    knot_node_owner(n));
-					char *name2 = knot_dname_to_str(dname);
-					dbg_zone_detail("Set wildcard node %s "
-							"to RDATA dname %s.\n",
-							name, name2);
-					free(name);
-					free(name2);
-				);
-			}
-	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -319,6 +238,11 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
                                              hattrie_t *lookup_tree,
                                              knot_zone_contents_t *zone)
 {
+	/* Disabled dname duplication checks since dnames can't be refcounted.
+	 * This will be replaced with refcounting RDATA, so I'm keeping the API
+	 * intact to ease the transition.
+	 */
+#if 0
 	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(node);
 	short count = knot_node_rrset_count(node);
 
@@ -328,7 +252,7 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 		assert(rrsets[r] != NULL);
 
 		/* Make sure that RRSet owner is the same as node's. */
-		if (node->owner != rrsets[r]->owner)
+		if (knot_dname_is_equal(node->owner, rrsets[r]->owner)) {
 			knot_rrset_set_owner(rrsets[r], node->owner);
 
 		knot_rrset_dump(rrsets[r]);
@@ -355,6 +279,7 @@ static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
 //			}
 		}
 	}
+#endif
 
 	return KNOT_EOK;
 }
@@ -399,11 +324,6 @@ static void knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 		return;
 
 	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
-
-	// assure that owner has proper node
-
-	if (knot_dname_node(knot_node_owner(node)) == NULL)
-		knot_dname_set_node(knot_node_get_owner(node), node);
 
 	// check if this node is not a wildcard child of its parent
 
@@ -466,11 +386,6 @@ static void knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
 
 	knot_node_set_previous(node, args->previous_node);
 	args->previous_node = node;
-
-	// set the node owner if not set
-
-	if (knot_dname_node(knot_node_owner(node)) == NULL)
-		knot_dname_set_node(knot_node_get_owner(node), node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -492,7 +407,7 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	uint8_t *hashed_name = NULL;
 	size_t hash_size = 0;
 
-	int res = knot_nsec3_hash(nsec3_params, name->name, name->size,
+	int res = knot_nsec3_hash(nsec3_params, name, knot_dname_size(name),
 	                          &hashed_name, &hash_size);
 
 	if (res != 0) {
@@ -521,7 +436,7 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	free(hashed_name);
 
 	/* Will be returned to caller, make sure it is released after use. */
-	*nsec3_name = knot_dname_new_from_str((char *)name_b32, size, NULL);
+	*nsec3_name = knot_dname_from_str((char *)name_b32, size);
 
 	free(name_b32);
 
@@ -534,11 +449,9 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	knot_dname_t *ret = knot_dname_cat(*nsec3_name, zone->apex->owner);
 
 	if (ret == NULL) {
-		knot_dname_release(*nsec3_name);
+		free(*nsec3_name);
 		return KNOT_ERROR;
 	}
-
-	assert(ret == *nsec3_name);
 
 	return KNOT_EOK;
 }
@@ -787,80 +700,45 @@ dbg_zone_exec_detail(
 
 	dbg_zone_detail("Creating parents of the node.\n");
 
-	knot_dname_t *chopped =
-		knot_dname_left_chop(knot_node_owner(node));
-	if(chopped == NULL) {
-		/* Root domain and root domain only. */
-		assert(node->owner && node->owner->labels &&
-		       node->owner->labels[0] == 0);
+	/* No parents for root domain. */
+	if (*node->owner == '\0')
 		return KNOT_EOK;
-	}
 
-	if (knot_dname_compare(knot_node_owner(zone->apex), chopped) == 0) {
+	knot_node_t *next_node = NULL;
+	const uint8_t *parent = knot_wire_next_label(knot_node_owner(node), NULL);
+
+	if (knot_dname_cmp(knot_node_owner(zone->apex), parent) == 0) {
 		dbg_zone_detail("Zone apex is the parent.\n");
 		knot_node_set_parent(node, zone->apex);
 
 		// check if the node is not wildcard child of the parent
-		if (knot_dname_is_wildcard(
-				knot_node_owner(node))) {
+		if (knot_dname_is_wildcard(knot_node_owner(node))) {
 			knot_node_set_wildcard_child(zone->apex, node);
 		}
 	} else {
-		knot_node_t *next_node;
-		while ((next_node
-		      = knot_zone_contents_get_node(zone, chopped)) == NULL &&
-			chopped != NULL) {
-			/* Adding new dname to zone + add to table. */
-			dbg_zone_detail("Creating new node.\n");
+		while (parent != NULL &&
+		       !(next_node = knot_zone_contents_get_node(zone, parent))) {
 
-			assert(chopped);
-			next_node = knot_node_new(chopped, NULL, flags);
+			/* Create a new node. */
+			dbg_zone_detail("Creating new node.\n");
+			next_node = knot_node_new(parent, NULL, flags);
 			if (next_node == NULL) {
-				/* Directly discard. */
-				knot_dname_free(&chopped);
 				return KNOT_ENOMEM;
 			}
-			//TODO possible leak
-//			ret = knot_zone_contents_solve_node_dnames(zone,
-//								   next_node);
-//			if (ret != KNOT_EOK) {
-//				knot_node_free(&next_node);
-//				knot_dname_release(chopped);
-//			}
 
-			if (next_node->owner != chopped) {
-				/* Node owner was in RDATA */
-				knot_dname_release(chopped);
-				knot_dname_retain(next_node->owner);
-				chopped = next_node->owner;
-			}
-
-			assert(knot_zone_contents_find_node(zone, chopped)
-			       == NULL);
-			assert(knot_node_owner(next_node) == chopped);
-
+			/* Insert node to a tree. */
 			dbg_zone_detail("Inserting new node to zone tree.\n");
-
-			ret = knot_zone_tree_insert(zone->nodes,
-						      next_node);
+			assert(knot_zone_contents_find_node(zone, parent) == NULL);
+			ret = knot_zone_tree_insert(zone->nodes, next_node);
 			if (ret != KNOT_EOK) {
-				dbg_zone("Failed to insert new node "
-					 "to zone tree.\n");
-				/*! \todo Delete the node?? */
-				/* Directly discard. */
-				knot_dname_release(chopped);
+				knot_node_free(&next_node);
 				return ret;
 			}
 
-			// set parent
+			/* Update node pointers. */
 			knot_node_set_parent(node, next_node);
-
-			// set zone
 			knot_node_set_zone(next_node, zone->zone);
-
-			// check if the node is not wildcard child of the parent
-			if (knot_dname_is_wildcard(
-					knot_node_owner(node))) {
+			if (knot_dname_is_wildcard(knot_node_owner(node))) {
 				knot_node_set_wildcard_child(next_node, node);
 			}
 
@@ -868,15 +746,9 @@ dbg_zone_exec_detail(
 
 			dbg_zone_detail("Next parent.\n");
 			node = next_node;
-			knot_dname_t *chopped_last = chopped;
-			chopped = knot_dname_left_chop(chopped);
-
-			/* Release last chop, reference is already stored
-			 * in next_node.
-			 */
-			knot_dname_release(chopped_last);
-
+			parent = knot_wire_next_label(parent, NULL);
 		}
+
 		// set the found parent (in the zone) as the parent of the last
 		// inserted node
 		assert(knot_node_parent(node) == NULL);
@@ -884,10 +756,6 @@ dbg_zone_exec_detail(
 
 		dbg_zone_detail("Created all parents.\n");
 	}
-
-	/* Directly discard. */
-	/*! \todo This may be double-release. */
-	knot_dname_release(chopped);
 
 	return KNOT_EOK;
 }
@@ -943,16 +811,14 @@ dbg_zone_exec_detail(
 );
 
 	// check if the RRSet belongs to the zone
-	if (knot_dname_compare(knot_rrset_owner(rrset),
-				 zone->apex->owner) != 0
-	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
-					  zone->apex->owner)) {
+	if (!knot_dname_is_equal(rrset->owner, zone->apex->owner)
+	    && !knot_dname_is_sub(rrset->owner, zone->apex->owner)) {
 		return KNOT_EOUTOFZONE;
 	}
 
 	if ((*node) == NULL
 	    && (*node = knot_zone_contents_get_node(zone,
-				    knot_rrset_owner(rrset))) == NULL) {
+	                                            rrset->owner)) == NULL) {
 		return KNOT_ENONODE;
 	}
 
@@ -1007,16 +873,16 @@ dbg_zone_exec(
 
 	// check if the RRSet belongs to the zone
 	if (*rrset != NULL
-	    && knot_dname_compare(knot_rrset_owner(*rrset),
+	    && knot_dname_cmp(knot_rrset_owner(*rrset),
 				    zone->apex->owner) != 0
-	    && !knot_dname_is_subdomain(knot_rrset_owner(*rrset),
+	    && !knot_dname_is_sub(knot_rrset_owner(*rrset),
 					  zone->apex->owner)) {
 		return KNOT_EOUTOFZONE;
 	}
 
 	// check if the RRSIGs belong to the RRSet
 	if (*rrset != NULL
-	    && (knot_dname_compare(knot_rrset_owner(rrsigs),
+	    && (knot_dname_cmp(knot_rrset_owner(rrsigs),
 				     knot_rrset_owner(*rrset)) != 0)) {
 		dbg_zone("RRSIGs do not belong to the given RRSet.\n");
 		return KNOT_EINVAL;
@@ -1124,9 +990,9 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 	}
 
 	// check if the RRSet belongs to the zone
-	if (knot_dname_compare(knot_rrset_owner(rrset),
+	if (knot_dname_cmp(knot_rrset_owner(rrset),
 				 zone->apex->owner) != 0
-	    && !knot_dname_is_subdomain(knot_rrset_owner(rrset),
+	    && !knot_dname_is_sub(knot_rrset_owner(rrset),
 					  zone->apex->owner)) {
 		return KNOT_EOUTOFZONE;
 	}
@@ -1276,13 +1142,13 @@ dbg_zone_exec_verb(
 	free(zone_str);
 );
 
-	if (knot_dname_compare(name, zone->apex->owner) == 0) {
+	if (knot_dname_cmp(name, zone->apex->owner) == 0) {
 		*node = zone->apex;
 		*closest_encloser = *node;
 		return KNOT_ZONE_NAME_FOUND;
 	}
 
-	if (!knot_dname_is_subdomain(name, zone->apex->owner)) {
+	if (!knot_dname_is_sub(name, zone->apex->owner)) {
 		*node = NULL;
 		*closest_encloser = NULL;
 		return KNOT_EOUTOFZONE;
@@ -1331,8 +1197,8 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 
 		int matched_labels = knot_dname_matched_labels(
 				knot_node_owner((*closest_encloser)), name);
-		while (matched_labels < knot_dname_label_count(
-				knot_node_owner((*closest_encloser)))) {
+		while (matched_labels < knot_dname_labels(
+				knot_node_owner((*closest_encloser)), NULL)) {
 			(*closest_encloser) =
 				knot_node_parent((*closest_encloser));
 			assert(*closest_encloser);
@@ -1435,7 +1301,7 @@ int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
 	// check if the NSEC3 tree is not empty
 	if (knot_zone_tree_weight(zone->nsec3_nodes) == 0) {
 		dbg_zone("NSEC3 tree is empty.\n");
-		knot_dname_release(nsec3_name);
+		knot_dname_free(&nsec3_name);
 		return KNOT_ENSEC3CHAIN;
 	}
 
@@ -1452,7 +1318,7 @@ dbg_zone_exec_verb(
 		zone->nsec3_nodes, nsec3_name, &found, &prev);
 	assert(exact_match >= 0);
 
-	knot_dname_release(nsec3_name);
+	knot_dname_free(&nsec3_name);
 
 dbg_zone_exec_detail(
 	if (found) {
@@ -2021,7 +1887,7 @@ static void knot_zc_integrity_check_flags(const knot_node_t *node,
 
 	// check the flags
 	if (check_data->deleg_point != NULL
-	    && knot_dname_is_subdomain(knot_node_owner(node),
+	    && knot_dname_is_sub(knot_node_owner(node),
 				    knot_node_owner(check_data->deleg_point))) {
 		// this is a non-authoritative node
 		if (!knot_node_is_non_auth(node)) {
@@ -2077,9 +1943,9 @@ static void knot_zc_integrity_check_parent(const knot_node_t *node,
 	char *pname = knot_dname_to_str(parent_owner);
 
 	// if direct child
-	if (knot_dname_is_subdomain(node_owner, parent_owner)
+	if (knot_dname_is_sub(node_owner, parent_owner)
 	    && knot_dname_matched_labels(node_owner, parent_owner)
-	       == knot_dname_label_count(parent_owner)) {
+	       == knot_dname_labels(parent_owner, NULL)) {
 
 		// check the parent pointer
 		const knot_node_t *parent = knot_node_parent(node);
@@ -2134,29 +2000,6 @@ typedef struct find_dname_data {
 
 /*----------------------------------------------------------------------------*/
 
-static void knot_zc_integrity_check_owner(const knot_node_t *node,
-                                          check_data_t *check_data,
-                                          const char *name)
-{
-	// check node stored in owner
-	const knot_node_t *owner_node =
-			knot_dname_node(knot_node_owner(node));
-	if (owner_node != node) {
-		char *name2 = (owner_node != NULL)
-				? knot_dname_to_str(knot_node_owner(owner_node))
-				: "none";
-		fprintf(stderr, "Wrong owner's node: node %s, owner's node %s"
-			"\n", name, name2);
-		if (owner_node != NULL) {
-			free(name2);
-		}
-
-		++check_data->errors;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
 static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
 {
 	assert(node != NULL);
@@ -2176,9 +2019,6 @@ static void knot_zc_integrity_check_node(knot_node_t *node, void *data)
 	// check if the node is child of the saved parent & children count
 	// & wildcard child
 	knot_zc_integrity_check_parent(node, check_data, name);
-
-	// check owner
-	knot_zc_integrity_check_owner(node, check_data, name);
 
 	/*! \todo Check NSEC3 node. */
 
@@ -2208,9 +2048,6 @@ static void knot_zc_integrity_check_nsec3(knot_node_t *node, void *data)
 			name);
 		++check_data->errors;
 	}
-
-	// check owner
-	knot_zc_integrity_check_owner(node, check_data, name);
 
 	free(name);
 }
@@ -2430,7 +2267,7 @@ static void find_dname_in_rdata(knot_node_t **tnode, void *data)
 				in_data->found_dname = *dname;
 				in_data->stopped = 1;
 				return;
-			} else if (knot_dname_compare(*dname,
+			} else if (knot_dname_cmp(*dname,
 						      in_data->dname) == 0) {
 				in_data->found_dname = *dname;
 				in_data->stopped = 1;

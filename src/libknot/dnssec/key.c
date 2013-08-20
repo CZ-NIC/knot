@@ -148,9 +148,9 @@ static int get_key_info_from_public_key(const char *filename,
 		return KNOT_KEY_EPUBLIC_KEY_INVALID;
 	}
 
-	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
-	                                               scanner->r_owner_length,
-	                                               NULL);
+	free(buffer);
+
+	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
 	if (!owner) {
 		scanner_free(scanner);
 		return KNOT_ENOMEM;
@@ -345,7 +345,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 		return result;
 	}
 
-	knot_dname_t *name;
+	knot_dname_t *name = NULL;
 	uint16_t keytag;
 	uint16_t flags;
 	result = get_key_info_from_public_key(public_key, &name, &keytag, &flags);
@@ -359,7 +359,7 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	if (!fp) {
 		free(public_key);
 		free(private_key);
-		knot_dname_release(name);
+		knot_dname_free(&name);
 		return KNOT_KEY_EPRIVATE_KEY_OPEN;
 	}
 
@@ -397,7 +397,7 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 	int ret = 0;
 
 	if (src->name != NULL) {
-		dst->name = knot_dname_deep_copy(src->name);
+		dst->name = knot_dname_copy(src->name);
 		if (dst->name == NULL) {
 			ret += -1;
 		}
@@ -440,8 +440,7 @@ int knot_free_key_params(knot_key_params_t *key_params)
 {
 	assert(key_params);
 
-	if (key_params->name)
-		knot_dname_release(key_params->name);
+	knot_dname_free(&key_params->name);
 
 	knot_binary_free(&key_params->secret);
 
@@ -500,14 +499,14 @@ int knot_tsig_create_key(const char *name, int algorithm,
 		return KNOT_EINVAL;
 
 	knot_dname_t *dname;
-	dname = knot_dname_new_from_nonfqdn_str(name, strlen(name), NULL);
+	dname = knot_dname_from_str(name, strlen(name));
 	if (!dname)
 		return KNOT_ENOMEM;
 
 	knot_binary_t secret;
 	int result = knot_binary_from_base64(b64secret, &secret);
 	if (result != KNOT_EOK) {
-		knot_dname_release(dname);
+		knot_dname_free(&dname);
 		return result;
 	}
 
@@ -531,8 +530,7 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
 	if (result != KNOT_EOK)
 		return result;
 
-	key->name = params->name;
-	knot_dname_retain(params->name);
+	key->name = knot_dname_copy(params->name);
 
 	key->algorithm = params->algorithm;
 
@@ -547,8 +545,7 @@ int knot_tsig_key_free(knot_tsig_key_t *key)
 	if (!key)
 		return KNOT_EINVAL;
 
-	knot_dname_release(key->name);
-
+	knot_dname_free(&key->name);
 	knot_binary_free(&key->secret);
 	memset(key, '\0', sizeof(knot_tsig_key_t));
 

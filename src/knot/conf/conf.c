@@ -353,7 +353,7 @@ static int conf_process(conf_t *conf)
 		sockaddr_init(&addr, -1);
 		sockaddr_set(&addr, i->family, i->address, 0);
 		sockaddr_setprefix(&addr, i->prefix);
-		acl_create(conf->ctl.acl, &addr, ACL_ACCEPT, i, 0);
+		acl_insert(conf->ctl.acl, &addr, i);
 	}
 
 	return ret;
@@ -541,7 +541,7 @@ conf_t *conf_new(const char* path)
 	c->dnssec_enable = true;
 
 	/* ACLs. */
-	c->ctl.acl = acl_new(ACL_DENY, "remote_ctl");
+	c->ctl.acl = acl_new();
 	if (!c->ctl.acl) {
 		free(c->filename);
 		free(c);

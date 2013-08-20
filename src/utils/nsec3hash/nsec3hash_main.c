@@ -102,13 +102,13 @@ int main(int argc, const char *argv[])
 		goto fail;
 	}
 
-	dname = knot_dname_new_from_nonfqdn_str(argv[4], strlen(argv[4]), NULL);
+	dname = knot_dname_from_str(argv[4], strlen(argv[4]));
 	if (dname == NULL) {
 		fprintf(stderr, "Cannot parse domain name.\n");
 		goto fail;
 	}
 
-	result = knot_nsec3_hash(&nsec3_params, dname->name, dname->size,
+	result = knot_nsec3_hash(&nsec3_params, dname, knot_dname_size(dname),
 	                         &digest, &digest_size);
 	if (result != KNOT_EOK) {
 		fprintf(stderr, "Cannot compute hash: %s\n",

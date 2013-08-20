@@ -58,6 +58,18 @@ enum tsig_consts {
  * \note Uses the given domain name, do not deallocate it!
  */
 int tsig_create_rdata(knot_rrset_t *rr,  uint16_t maclen, uint16_t tsig_err);
+
+/*!
+ * \brief Set TSIG algorithm name.
+ *
+ * \param tsig TSIG RR.
+ * \param alg_name TSIG name to be assigned.
+ *
+ * \note alg_name is kept and freed with tsig RRSet.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ERROR
+ */
 int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name);
 int tsig_rdata_set_alg(knot_rrset_t *tsig, knot_tsig_algorithm_t alg);
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time);

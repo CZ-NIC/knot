@@ -72,7 +72,7 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 		return KNOT_EMALF;
 	}
 
-	if (knot_dname_compare(tsig_name, tsig_key->name) != 0) {
+	if (knot_dname_cmp(tsig_name, tsig_key->name) != 0) {
 		/*!< \todo which error. */
 		dbg_tsig("TSIG: unknown key: %s\n", name);
 		free(name);
@@ -204,11 +204,7 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 
 	int offset = 0;
 
-	memcpy(wire + offset, knot_dname_name(tsig_owner),
-	       sizeof(uint8_t) * knot_dname_size(tsig_owner));
-	dbg_tsig_verb("TSIG: write variables: written owner (tsig alg): \n");
-	dbg_tsig_hex_verb((char *)(wire + offset), knot_dname_size(tsig_owner));
-	offset += knot_dname_size(tsig_owner);
+	offset += knot_dname_to_wire(wire + offset, tsig_owner, KNOT_DNAME_MAXLEN);
 
 	/*!< \todo which order? */
 
@@ -233,25 +229,14 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 
-	/* The algorithm name must be in canonical form, i.e. in lowercase. */
-	if (knot_dname_to_lower_copy(alg_name, (char *)(wire + offset),
-	        knot_dname_size(alg_name)) != KNOT_EOK)
-	{
+	/* Te algorithm name must be in canonical form, i.e. in lowercase. */
+	uint8_t *alg_name_wire = wire + offset;
+	offset += knot_dname_to_wire(alg_name_wire, alg_name, KNOT_DNAME_MAXLEN);
+	if (knot_dname_to_lower(alg_name_wire) != KNOT_EOK) {
 		dbg_tsig("TSIG: write variables: cannot convert algorithm "
 		         "to lowercase.\n");
 		return KNOT_EINVAL;
 	}
-
-#if defined(KNOT_TSIG_DEBUG) && defined(DEBUG_ENABLE_VERBOSE)
-//	char *_algstr = knot_dname_to_str(alg_name);
-	dbg_tsig_verb("TSIG: write variables: written alg name: %s\n",
-	              wire + offset);
-//	free(_algstr);
-#endif
-
-//	memcpy(wire + offset, knot_dname_name(alg_name),
-//	       sizeof(uint8_t) * knot_dname_size(alg_name));
-	offset += knot_dname_size(alg_name);
 
 	/* Following data are written in network order. */
 	/* Time signed. */
@@ -465,7 +450,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 		return KNOT_EINVAL;
 	}
 
-	knot_dname_t *key_name_copy = knot_dname_deep_copy(key->name);
+	knot_dname_t *key_name_copy = knot_dname_copy(key->name);
 	if (!key_name_copy) {
 		dbg_tsig("TSIG: key_name_copy = NULL\n");
 		return KNOT_ENOMEM;
@@ -474,10 +459,9 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	knot_rrset_t *tmp_tsig =
 		knot_rrset_new(key_name_copy,
 			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
-	/* Should be retained by rrsig or freed, release. */
-	knot_dname_release(key_name_copy);
 	if (!tmp_tsig) {
 		dbg_tsig("TSIG: tmp_tsig = NULL\n");
+		knot_dname_free(&key_name_copy);
 		return KNOT_ENOMEM;
 	}
 
@@ -580,9 +564,11 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	size_t digest_tmp_len = 0;
 
 	/* Create tmp TSIG. */
-	knot_rrset_t *tmp_tsig =
-		knot_rrset_new(key->name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+	knot_dname_t *owner_copy = knot_dname_copy(key->name);
+	knot_rrset_t *tmp_tsig = knot_rrset_new(owner_copy,
+	                                        KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
 	if (!tmp_tsig) {
+		knot_dname_free(&owner_copy);
 		return KNOT_ENOMEM;
 	}
 
@@ -849,7 +835,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	/*! \todo What key to use, when we do not sign? Does this even work? */
 	knot_dname_t *key_name =
-			knot_dname_deep_copy(knot_rrset_owner(tsig_rr));
+			knot_dname_copy(knot_rrset_owner(tsig_rr));
 	if (key_name == NULL) {
 		dbg_tsig("TSIG: failed to copy owner\n");
 		return KNOT_ERROR;
@@ -863,11 +849,8 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		return KNOT_ENOMEM;
 	}
 
-	/* Already referenced in tmp_tsig, release. */
-	knot_dname_release(key_name);
-
 	knot_dname_t *alg_name =
-			knot_dname_deep_copy(tsig_rdata_alg_name(tsig_rr));
+			knot_dname_copy(tsig_rdata_alg_name(tsig_rr));
 	if (alg_name == NULL) {
 		dbg_tsig("TSIG: failed to copy alg name\n");
 		knot_rrset_deep_free(&tmp_tsig, 1, 1);
@@ -895,7 +878,6 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	 */
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
 	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
-	knot_dname_release(alg_name); /* Already copied in tsig_rdata_set_alg_name() */
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));

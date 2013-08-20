@@ -153,17 +153,14 @@ int tsig_rdata_set_alg_name(knot_rrset_t *tsig, knot_dname_t *alg_name)
 	}
 
 	memcpy(rd, &alg_name, sizeof(knot_dname_t*));
-	knot_dname_retain(alg_name);
 	return KNOT_EOK;
 }
 
 int tsig_rdata_set_alg(knot_rrset_t *tsig, knot_tsig_algorithm_t alg)
 {
 	const char *s = tsig_alg_to_str(alg);
-	knot_dname_t *alg_name = knot_dname_new_from_str(s, strlen(s), NULL);
-	int ret = tsig_rdata_set_alg_name(tsig, alg_name);
-	knot_dname_release(alg_name);
-	return ret;
+	knot_dname_t *alg_name = knot_dname_from_str(s, strlen(s));
+	return tsig_rdata_set_alg_name(tsig, alg_name);
 }
 
 int tsig_rdata_set_time_signed(knot_rrset_t *tsig, uint64_t time)

@@ -508,7 +508,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 	acl_delete(acl);
 
 	/* Create new ACL. */
-	*acl = acl_new(ACL_DENY, 0);
+	*acl = acl_new();
 	if (*acl == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -528,15 +528,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 
 		/* Load rule. */
 		if (ret > 0) {
-			/*! \todo Correct search for the longest prefix match.
-			 *        This just favorizes remotes with TSIG.
-			 *        (issue #1675)
-			 */
-			unsigned flags = 0;
-			if (cfg_if->key != NULL) {
-				flags = ACL_PREFER;
-			}
-			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if, flags);
+			acl_insert(*acl, &addr, cfg_if);
 		}
 	}
 
@@ -596,8 +588,8 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	/* Check if loaded origin matches. */
 	const knot_dname_t *dname = knot_zone_name(*dst);
 	knot_dname_t *dname_req = NULL;
-	dname_req = knot_dname_new_from_str(zone_name, strlen(zone_name), 0);
-	if (knot_dname_compare(dname, dname_req) != 0) {
+	dname_req = knot_dname_from_str(zone_name, strlen(zone_name));
+	if (knot_dname_cmp(dname, dname_req) != 0) {
 		log_server_error("Origin of the zone db file is "
 				 "different than '%s'\n",
 				 zone_name);
@@ -1035,8 +1027,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 	/* Convert the zone name into a domain name. */
 	/* Local allocation, will be discarded. */
-	knot_dname_t *dname = knot_dname_new_from_str(z->name, strlen(z->name),
-	                                              NULL);
+	knot_dname_t *dname = knot_dname_from_str(z->name, strlen(z->name));
 	if (dname == NULL) {
 		log_server_error("Error creating domain name from zone"
 		                 " name\n");
@@ -1068,7 +1059,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			dbg_zones_verb("zones: loading stub zone '%s' "
 			               "for bootstrap.\n",
 			               z->name);
-			knot_dname_t *owner = knot_dname_deep_copy(dname);
+			knot_dname_t *owner = knot_dname_copy(dname);
 			zone = knot_zone_new_empty(owner);
 			if (zone != NULL) {
 				ret = KNOT_EOK;
@@ -1529,7 +1520,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 	rq->packet_nr = (int)knot_packet_id(query);
 
 	/* Duplicate query to keep it in memory during forwarding. */
-	rq->query = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	rq->query = knot_packet_new();
 	if (!rq->query) {
 		xfr_task_free(rq);
 		rcu_read_unlock();
@@ -1543,7 +1534,7 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
-	rq->query->free_wireformat = 1;
+	rq->query->flags |= KNOT_PF_FREE_WIRE;
 	memcpy(rq->query->wireformat, query->wireformat, knot_packet_size(query));
 
 	/* Retain pointer to zone and issue. */
@@ -1991,8 +1982,8 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 	if (q_opcode == KNOT_OPCODE_UPDATE) {
 		acl_used = zd->update_in;
 	}
-	acl_key_t *match = NULL;
-	if (acl_match(acl_used, addr, &match) == ACL_DENY) {
+	acl_match_t *match = NULL;
+	if ((match = acl_find(acl_used, addr)) == NULL) {
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_EACCES;
 	} else {
@@ -2000,12 +1991,9 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 		          "'%s %s'. match=%p\n", zd->conf->name,
 		          q_opcode == KNOT_OPCODE_UPDATE ? "UPDATE":"XFR/OUT",
 			  match);
-		if (match) {
+		if (match->val) {
 			/* Save configured TSIG key for comparison. */
-			conf_iface_t *iface = (conf_iface_t*)(match->val);
-			dbg_zones_detail("iface=%p, iface->key=%p\n",
-					 iface, iface->key);
-			*tsig_key = iface->key;
+			*tsig_key = ((conf_iface_t*)(match->val))->key;
 		}
 	}
 	return KNOT_EOK;
@@ -2059,7 +2047,6 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 	int ret = knot_ns_prep_normal_response(nameserver, query, &resp, &zone,
 	                                       (transport == NS_TRANSPORT_TCP)
 	                                       ? *rsize : 0);
-	query->zone = zone;
 
 	switch (ret) {
 	case KNOT_EOK:
@@ -2155,7 +2142,10 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 					      zone, resp, resp_wire, &answer_size,
 					      transport == NS_TRANSPORT_UDP);
 				}
-				query->flags = resp->flags; /* Copy markers. */
+
+				/* Copy wildcard markers. */
+				if (resp->flags & KNOT_PF_WILDCARD)
+					query->flags |= KNOT_PF_WILDCARD;
 			}
 
 			dbg_zones_detail("rsize = %zu\n", *rsize);
@@ -2649,12 +2639,11 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	const char *zonefile = zd->conf->file;
 
 	/* Check if the new zone apex dname matches zone name. */
-	knot_dname_t *cur_name = knot_dname_new_from_str(zd->conf->name,
-	                                                 strlen(zd->conf->name),
-	                                                 NULL);
+	knot_dname_t *cur_name = knot_dname_from_str(zd->conf->name,
+	                                                 strlen(zd->conf->name));
 	const knot_dname_t *new_name = NULL;
 	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
-	int r = knot_dname_compare(cur_name, new_name);
+	int r = knot_dname_cmp(cur_name, new_name);
 	knot_dname_free(&cur_name);
 	if (r != 0) {
 		return KNOT_EINVAL;
@@ -2674,8 +2663,23 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	dbg_zones_verb("zones: reconfiguring name server.\n");
 
-	/* Set NSID. */
-	knot_ns_set_nsid(ns, conf->nsid, conf->nsid_len);
+	/* Create new OPT RR, old must be freed after RCU sync. */
+	knot_opt_rr_t *opt_rr_old = ns->opt_rr;
+	knot_opt_rr_t *opt_rr = knot_edns_new();
+	if (opt_rr == NULL) {
+		log_server_error("Couldn't create OPT RR, please restart.\n");
+	} else {
+		knot_edns_set_version(opt_rr, EDNS_VERSION);
+		knot_edns_set_payload(opt_rr, EDNS_MAX_UDP_PAYLOAD);
+		if (conf->nsid_len > 0) {
+			knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
+			                     conf->nsid_len,
+			                     (const uint8_t *)conf->nsid);
+		}
+	}
+
+	/* Swap pointers to OPT RR. */
+	ns->opt_rr = opt_rr;
 
 	/* Server identification, RFC 4892. */
 	ns->identity = conf->identity;
@@ -2689,6 +2693,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	}
 	/* Wait until all readers finish with reading the zones. */
 	synchronize_rcu();
+
+	/* Remove old OPT RR. */
+	knot_edns_free(&opt_rr_old);
 
 	dbg_zones_verb("zones: nameserver's zone db: %p, old db: %p\n",
 	               ns->zone_db, old_db);
@@ -3230,7 +3237,7 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 		                                       zone, time);
 		dbg_zones("zone: REFRESH '%s' set to %u\n",
-		          zd->conf->name, time);
+		          zd->conf->name, (unsigned)time);
 		zd->xfr_in.state = XFR_SCHED;
 	}
 	rcu_read_unlock();
@@ -3348,7 +3355,7 @@ int zones_verify_tsig_query(const knot_packet_t *query,
 	 * 2) Find the particular key used by the TSIG.
 	 *    Check not only name, but also the algorithm.
 	 */
-	if (key && kname && knot_dname_compare(key->name, kname) == 0
+	if (key && kname && knot_dname_cmp(key->name, kname) == 0
 	    && key->algorithm == alg) {
 		dbg_zones_verb("Found claimed TSIG key for comparison\n");
 	} else {

@@ -80,7 +80,7 @@ static void rrsig_write_rdata(uint8_t *rdata,
 
 	uint8_t *w = rdata;
 
-	uint8_t owner_labels = knot_dname_label_count(owner);
+	uint8_t owner_labels = knot_dname_labels(owner, NULL);
 	if (knot_dname_is_wildcard(owner))
 		owner_labels -= 1;
 
@@ -101,8 +101,9 @@ static void rrsig_write_rdata(uint8_t *rdata,
 
 	assert(w == rdata + 18);
 
-	memcpy(w, &key->name, sizeof(knot_dname_t *)); // pointer to signer
-	knot_dname_retain(key->name);
+	// dname must be copied, no pointer copying now!
+	knot_dname_t *dname = knot_dname_copy(key->name);
+	memcpy(w, &dname, sizeof(knot_dname_t *)); // pointer to signer
 }
 
 static uint8_t *create_rrsig_rdata(knot_rrset_t *rrsig,
@@ -137,7 +138,7 @@ static int sign_rrset_one(knot_rrset_t *rrsigs,
 		return result;
 
 	knot_dnssec_sign_add(sign_ctx, rdata, 18); // static
-	knot_dnssec_sign_add(sign_ctx, key->name->name, key->name->size);
+	knot_dnssec_sign_add(sign_ctx, key->name, knot_dname_size(key->name));
 
 	// huge block of rrsets can be optionally created
 	uint8_t *rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);

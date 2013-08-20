@@ -139,7 +139,7 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 static int cmd_remote_reply(int c)
 {
 	uint8_t *rwire = malloc(SOCKET_MTU_SZ);
-	knot_packet_t *reply = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *reply = knot_packet_new();
 	if (!rwire || !reply) {
 		free(rwire);
 		knot_packet_free(&reply);

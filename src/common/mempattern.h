@@ -34,6 +34,9 @@ typedef void* (*mm_alloc_t)(void* ctx, size_t len);
 typedef void (*mm_free_t)(void *p);
 typedef void (*mm_flush_t)(void *p);
 
+/* Reusable functions. */
+static inline void mm_nofree(void *p) {}
+
 /* Memory allocation context. */
 typedef struct mm_ctx {
 	void *ctx; /* \note Must be first */

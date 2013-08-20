@@ -78,7 +78,7 @@ typedef struct rrl_req {
 	const uint8_t *w;
 	uint16_t len;
 	unsigned flags;
-	const knot_question_t *qst;
+	knot_packet_t *query;
 } rrl_req_t;
 
 /*!

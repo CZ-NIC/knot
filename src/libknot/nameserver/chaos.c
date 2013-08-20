@@ -62,13 +62,12 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 	if (response_len > 255)
 		response_len = 255;
 
-	knot_dname_t *rowner = knot_dname_deep_copy(owner);
+	knot_dname_t *rowner = knot_dname_copy(owner);
 	if (!rowner)
 		return NULL;
 
 	knot_rrset_t *rrset;
 	rrset = knot_rrset_new(rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH, 0);
-	knot_dname_release(rowner);
 	if (!rrset)
 		return NULL;
 

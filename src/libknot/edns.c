@@ -36,11 +36,10 @@ enum knot_edns_consts {
 
 knot_opt_rr_t *knot_edns_new()
 {
-	knot_opt_rr_t *opt_rr = (knot_opt_rr_t *)malloc(
-	                                               sizeof(knot_opt_rr_t));
+	knot_opt_rr_t *opt_rr = (knot_opt_rr_t *)malloc(sizeof(knot_opt_rr_t));
 	CHECK_ALLOC_LOG(opt_rr, NULL);
 	memset(opt_rr, 0, sizeof(knot_opt_rr_t));
-	opt_rr->size = KNOT_EDNS_MIN_SIZE;
+	opt_rr->size = EDNS_MIN_SIZE;
 	opt_rr->option_count = 0;
 	opt_rr->options_max = 0;
 
@@ -53,90 +52,7 @@ knot_opt_rr_t *knot_edns_new()
 
 /*----------------------------------------------------------------------------*/
 
-int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
-                              size_t max_size)
-{
-	const uint8_t *pos = wire;
-	int parsed = 0;
-
-	if (pos == NULL || max_size == 0 || opt_rr == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if ((int)max_size < KNOT_EDNS_MIN_SIZE) {
-		dbg_edns("Not enough data to parse OPT RR header.\n");
-		return KNOT_EFEWDATA;
-	}
-
-	// owner of EDNS OPT RR must be root (0)
-	if (*pos != 0) {
-		dbg_edns("EDNS packet malformed (expected root "
-		         "domain as owner).\n");
-		return KNOT_EMALF;
-	}
-	pos += 1;
-
-	// check the type of the record (must be OPT)
-	if (knot_wire_read_u16(pos) != KNOT_RRTYPE_OPT) {
-		dbg_edns("EDNS packet malformed (expected OPT type.\n");
-		return KNOT_EMALF;
-	}
-	pos += 2;
-
-	opt_rr->payload = knot_wire_read_u16(pos);
-	dbg_edns_verb("Parsed payload: %u\n", opt_rr->payload);
-
-	pos += 2;
-	opt_rr->ext_rcode = *(pos++);
-	opt_rr->version = *(pos++);
-	opt_rr->flags = knot_wire_read_u16(pos);
-	pos += 2;
-
-	parsed = KNOT_EDNS_MIN_SIZE;
-
-	// ignore RDATA, but move pos behind them
-	uint16_t rdlength = knot_wire_read_u16(pos);
-	pos += 2;
-
-	if (max_size - parsed < rdlength) {
-		dbg_edns("Not enough data to parse OPT RR.\n");
-		return KNOT_EFEWDATA;
-	}
-
-	while (parsed < rdlength + KNOT_EDNS_MIN_SIZE) {
-		if (max_size - parsed < 4) {
-			dbg_edns("Not enough data to parse OPT RR"
-			         " OPTION header.\n");
-			return KNOT_EFEWDATA;
-		}
-		uint16_t code = knot_wire_read_u16(pos);
-		pos += 2;
-		uint16_t length = knot_wire_read_u16(pos);
-		pos += 2;
-		dbg_edns_verb("EDNS OPTION: Code: %u, Length: %u\n",
-		              code, length);
-		if (max_size - parsed - 4 < length) {
-			dbg_edns("Not enough data to parse OPT RR"
-			         " OPTION data.\n");
-			return KNOT_EFEWDATA;
-		}
-		int ret;
-		if ((ret =
-		     knot_edns_add_option(opt_rr, code, length, pos)) != 0) {
-			dbg_edns("Error parsing OPT option field.\n");
-			return ret;
-		}
-		pos += length;
-		parsed += length + 4;
-	}
-
-	return parsed;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
-                            const knot_rrset_t *rrset)
+int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 {
 	if (opt_rr == NULL || rrset == NULL
 	    || knot_rrset_type(rrset) != KNOT_RRTYPE_OPT) {
@@ -355,7 +271,7 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 		return KNOT_EINVAL;
 	}
 
-	assert(KNOT_EDNS_MIN_SIZE <= (int)max_size);
+	assert(EDNS_MIN_SIZE <= (int)max_size);
 
 	if ((int)max_size < opt_rr->size) {
 		dbg_edns("Not enough place for OPT RR wire format.\n");

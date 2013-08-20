@@ -35,7 +35,6 @@ static knot_packet_t* create_query_packet(const query_t *query,
                                           uint8_t       **data,
                                           size_t        *data_len)
 {
-	knot_question_t q;
 	knot_packet_t   *packet;
 
 	// Set packet buffer size.
@@ -52,7 +51,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	}
 
 	// Create packet skeleton.
-	packet = create_empty_packet(KNOT_PACKET_PREALLOC_NONE, max_size);
+	packet = create_empty_packet(max_size);
 	if (packet == NULL) {
 		return NULL;
 	}
@@ -80,20 +79,19 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		knot_wire_set_cd(packet->wireformat);
 	}
 
-	// Fill auxiliary question structure.
-	q.qclass = query->class_num;
-	q.qtype = query->type_num;
-	q.qname = knot_dname_new_from_str(query->owner, strlen(query->owner), 0);
-	if (q.qname == NULL) {
+	// Create QNAME from string.
+	knot_dname_t *qname = knot_dname_from_str(query->owner,
+	                                          strlen(query->owner));
+	if (qname == NULL) {
 		knot_packet_free(&packet);
 		return NULL;
 	}
 
 	// Set packet question.
-	if (knot_query_set_question(packet, &q) != KNOT_EOK) {
-		// It's necessary to release q.qname by hand as it isn't
-		// connected with the packet yet.
-		knot_dname_release(q.qname);
+	int ret = knot_query_set_question(packet, qname,
+	                                  query->class_num, query->type_num);
+	if (ret != KNOT_EOK) {
+		knot_dname_free(&qname);
 		knot_packet_free(&packet);
 		return NULL;
 	}
@@ -103,10 +101,9 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		// SOA rdata in wireformat.
 		uint8_t wire[22] = { 0x0 };
 		size_t  pos = 0;
-		int     ret;
 
 		// Create rrset with SOA record.
-		knot_rrset_t *soa = knot_rrset_new(q.qname,
+		knot_rrset_t *soa = knot_rrset_new(qname,
 		                                   KNOT_RRTYPE_SOA,
 		                                   query->class_num,
 		                                   0);
@@ -217,16 +214,16 @@ static bool check_reply_id(const knot_packet_t *reply,
 static void check_reply_question(const knot_packet_t *reply,
                                  const knot_packet_t *query)
 {
-	if (reply->header.qdcount < 1) {
+	if (knot_wire_get_qdcount(reply->wireformat) < 1) {
 		WARN("response doesn't have question section\n");
 		return;
 	}
 
-	int name_diff = knot_dname_compare_cs(reply->question.qname,
-	                                      query->question.qname);
+	int name_diff = knot_dname_cmp(knot_packet_qname(reply),
+	                               knot_packet_qname(query));
 
-	if (reply->question.qclass != query->question.qclass ||
-	    reply->question.qtype  != query->question.qtype ||
+	if (knot_packet_qclass(reply) != knot_packet_qclass(query) ||
+	    knot_packet_qtype(reply)  != knot_packet_qtype(query) ||
 	    name_diff != 0) {
 		WARN("query/response question sections are different\n");
 		return;
@@ -235,7 +232,7 @@ static void check_reply_question(const knot_packet_t *reply,
 
 static int64_t first_serial_check(const knot_packet_t *reply)
 {
-	if (reply->header.ancount <= 0) {
+	if (knot_wire_get_ancount(reply->wireformat) <= 0) {
 		return -1;
 	}
 
@@ -250,11 +247,11 @@ static int64_t first_serial_check(const knot_packet_t *reply)
 
 static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 {
-	if (reply->header.ancount <= 0) {
+	if (knot_wire_get_ancount(reply->wireformat) <= 0) {
 		return false;
 	}
 
-	const knot_rrset_t *last = *(reply->answer + reply->header.ancount - 1);
+	const knot_rrset_t *last = *(reply->answer + knot_wire_get_ancount(reply->wireformat) - 1);
 
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
@@ -321,7 +318,7 @@ static int process_query_packet(const knot_packet_t     *query,
 		gettimeofday(&t_end, NULL);
 
 		// Create reply packet structure to fill up.
-		reply = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+		reply = knot_packet_new();
 		if (reply == NULL) {
 			net_close(net);
 			return -1;
@@ -527,7 +524,7 @@ static int process_packet_xfr(const knot_packet_t     *query,
 	}
 
 	// Print leading transfer information.
-	print_header_xfr(&query->question, style);
+	print_header_xfr(query, style);
 
 	// Loop over reply messages unless first and last SOA serials differ.
 	while (true) {
@@ -539,7 +536,7 @@ static int process_packet_xfr(const knot_packet_t     *query,
 		}
 
 		// Create reply packet structure to fill up.
-		reply = knot_packet_new(KNOT_PACKET_PREALLOC_NONE);
+		reply = knot_packet_new();
 		if (reply == NULL) {
 			net_close(net);
 			return -1;
@@ -609,7 +606,7 @@ static int process_packet_xfr(const knot_packet_t     *query,
 		}
 
 		msg_count++;
-		rr_count += reply->header.ancount;
+		rr_count += knot_wire_get_ancount(reply->wireformat);
 		total_len += in_len;
 
 		// Print reply packet.

@@ -644,20 +644,20 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	if (!key || !params)
 		return KNOT_EINVAL;
 
-	knot_dname_t *name = knot_dname_deep_copy(params->name);
+	knot_dname_t *name = knot_dname_copy(params->name);
 	if (!name)
 		return KNOT_ENOMEM;
 
 	knot_dnssec_key_data_t *data;
 	data = calloc(1, sizeof(knot_dnssec_key_data_t));
 	if (!data) {
-		knot_dname_release(name);
+		knot_dname_free(&name);
 		return KNOT_ENOMEM;
 	}
 
 	int result = init_algorithm_data(params, data);
 	if (result != KNOT_EOK) {
-		knot_dname_release(name);
+		knot_dname_free(&name);
 		free(data);
 		return result;
 	}
@@ -678,8 +678,7 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 	if (!key)
 		return KNOT_EINVAL;
 
-	if (key->name)
-		knot_dname_release(key->name);
+	knot_dname_free(&key->name);
 
 	if (key->data) {
 		clean_algorithm_data(key->data);

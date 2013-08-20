@@ -344,7 +344,7 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	}
 
 	/* Set key name and secret. */
-	key_params->name = knot_dname_new_from_nonfqdn_str(k, strlen(k), NULL);
+	key_params->name = knot_dname_from_str(k, strlen(k));
 	int r = knot_binary_from_base64(s, &key_params->secret);
 	if (r != KNOT_EOK) {
 		free(h);
