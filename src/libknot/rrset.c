@@ -547,51 +547,6 @@ static int knot_rrset_rdata_store_binary(uint8_t *rdata, size_t *offset,
 	return KNOT_EOK;
 }
 
-static int rrset_type_multiple_dnames(const knot_rrset_t *rrset)
-{
-	if (rrset->type == KNOT_RRTYPE_SOA || rrset->type == KNOT_RRTYPE_MINFO ||
-	    rrset->type == KNOT_RRTYPE_RP) {
-		return 1;
-	} else {
-		return 0;
-	}
-}
-
-static int rrset_find_rr_pos_for_pointer(const knot_rrset_t *rrset,
-                                         knot_dname_t **p, size_t *pos)
-{
-	if (p == NULL) {
-		return 0;
-	}
-
-	/* Check whether Added check of 'p' validity - whether it
-	 * points to the RDATA array of 'rrset'.
-	 */
-	if ((size_t)p < (size_t)rrset->rdata
-	    || (size_t)p > (size_t)rrset->rdata
-	                   + rrset_rdata_size_total(rrset)) {
-		// 'p' is not within the RDATA array
-		return KNOT_ERANGE;
-	}
-
-	size_t offset = (size_t)p - (size_t)rrset->rdata;
-
-	if (offset < rrset_rdata_item_size(rrset, 0)) {
-		return 0;
-	}
-	for (uint16_t i = 0; i < rrset->rdata_count; ++i) {
-		if (rrset_rdata_offset(rrset, i) > offset) {
-			*pos = i - 1;
-			return KNOT_EOK;
-		} else if (rrset_rdata_offset(rrset, i) == offset) {
-			*pos = i;
-			return KNOT_EOK;
-		}
-	}
-	*pos = rrset->rdata_count - 1;
-	return KNOT_EOK;
-}
-
 static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
                                       size_t rdata_pos)
 {
