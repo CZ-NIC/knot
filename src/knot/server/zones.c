@@ -500,7 +500,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 	acl_delete(acl);
 
 	/* Create new ACL. */
-	*acl = acl_new(ACL_DENY, 0);
+	*acl = acl_new();
 	if (*acl == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -520,15 +520,7 @@ static int zones_set_acl(acl_t **acl, list* acl_list)
 
 		/* Load rule. */
 		if (ret > 0) {
-			/*! \todo Correct search for the longest prefix match.
-			 *        This just favorizes remotes with TSIG.
-			 *        (issue #1675)
-			 */
-			unsigned flags = 0;
-			if (cfg_if->key != NULL) {
-				flags = ACL_PREFER;
-			}
-			acl_create(*acl, &addr, ACL_ACCEPT, cfg_if, flags);
+			acl_insert(*acl, &addr, cfg_if);
 		}
 	}
 
@@ -1971,8 +1963,8 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 	if (q_opcode == KNOT_OPCODE_UPDATE) {
 		acl_used = zd->update_in;
 	}
-	acl_key_t *match = NULL;
-	if (acl_match(acl_used, addr, &match) == ACL_DENY) {
+	acl_match_t *match = NULL;
+	if ((match = acl_find(acl_used, addr)) == NULL) {
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_EACCES;
 	} else {
@@ -1980,12 +1972,9 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 		          "'%s %s'. match=%p\n", zd->conf->name,
 		          q_opcode == KNOT_OPCODE_UPDATE ? "UPDATE":"XFR/OUT",
 			  match);
-		if (match) {
+		if (match->val) {
 			/* Save configured TSIG key for comparison. */
-			conf_iface_t *iface = (conf_iface_t*)(match->val);
-			dbg_zones_detail("iface=%p, iface->key=%p\n",
-					 iface, iface->key);
-			*tsig_key = iface->key;
+			*tsig_key = ((conf_iface_t*)(match->val))->key;
 		}
 	}
 	return KNOT_EOK;
@@ -2655,8 +2644,23 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	dbg_zones_verb("zones: reconfiguring name server.\n");
 
-	/* Set NSID. */
-	knot_ns_set_nsid(ns, conf->nsid, conf->nsid_len);
+	/* Create new OPT RR, old must be freed after RCU sync. */
+	knot_opt_rr_t *opt_rr_old = ns->opt_rr;
+	knot_opt_rr_t *opt_rr = knot_edns_new();
+	if (opt_rr == NULL) {
+		log_server_error("Couldn't create OPT RR, please restart.\n");
+	} else {
+		knot_edns_set_version(opt_rr, EDNS_VERSION);
+		knot_edns_set_payload(opt_rr, EDNS_MAX_UDP_PAYLOAD);
+		if (conf->nsid_len > 0) {
+			knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
+			                     conf->nsid_len,
+			                     (const uint8_t *)conf->nsid);
+		}
+	}
+
+	/* Swap pointers to OPT RR. */
+	ns->opt_rr = opt_rr;
 
 	/* Server identification, RFC 4892. */
 	ns->identity = conf->identity;
@@ -2670,6 +2674,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	}
 	/* Wait until all readers finish with reading the zones. */
 	synchronize_rcu();
+
+	/* Remove old OPT RR. */
+	knot_edns_free(&opt_rr_old);
 
 	dbg_zones_verb("zones: nameserver's zone db: %p, old db: %p\n",
 	               ns->zone_db, old_db);
