@@ -324,6 +324,20 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	return KNOT_EOK;
 }
 
+static int remove_standalone_rrsigs(const knot_rrset_t *rrsigs,
+                                    knot_changeset_t *changeset)
+{
+	knot_rrset_t *to_remove = NULL;
+	int res = knot_rrset_deep_copy(rrsigs, &to_remove, 1);
+
+	if (res != KNOT_EOK) {
+		return res;
+	}
+
+	return knot_changeset_add_rrset(changeset, to_remove,
+	                                KNOT_CHANGESET_REMOVE);
+}
+
 static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
                        int replaced_nsec, const knot_zone_keys_t *zone_keys,
                        const knot_dnssec_policy_t *policy,
@@ -348,6 +362,15 @@ static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
 		    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
 		         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
 			continue;
+		}
+
+		// remove standalone RRSIGs (without the RRSet they sign)
+		if (knot_rrset_rdata_rr_count(rrset) == 0
+		    && knot_rrset_rdata_rr_count(rrsigs) != 0) {
+			result = remove_standalone_rrsigs(rrsigs, changeset);
+			if (result != KNOT_EOK) {
+				break;
+			}
 		}
 
 		result = remove_expired_rrsigs(rrsigs, policy, changeset);
