@@ -20,23 +20,25 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <limits.h>
+#include <stdbool.h>
 
+#include "common/errcode.h"
 #include "common/acl.h"
 #include "libknot/util/endian.h"
 
-static inline uint32_t ipv4_chunk(sockaddr_t *a)
+static inline uint32_t ipv4_chunk(const sockaddr_t *a)
 {
 	/* Stored as big end first. */
 	return a->addr4.sin_addr.s_addr;
 }
 
-static inline uint32_t ipv6_chunk(sockaddr_t *a, uint8_t idx)
+static inline uint32_t ipv6_chunk(const sockaddr_t *a, uint8_t idx)
 {
 	/* Is byte array, 4x 32bit value. */
 	return ((uint32_t *)&a->addr6.sin6_addr)[idx];
 }
 
-static inline uint32_t ip_chunk(sockaddr_t *a, uint8_t idx)
+static inline uint32_t ip_chunk(const sockaddr_t *a, uint8_t idx)
 {
 	if (sockaddr_family(a) == AF_INET)
 		return ipv4_chunk(a);
@@ -45,10 +47,11 @@ static inline uint32_t ip_chunk(sockaddr_t *a, uint8_t idx)
 }
 
 /*! \brief Compare chunks using given mask. */
-static int cmp_chunk(sockaddr_t *a, sockaddr_t *b, uint8_t idx, uint32_t mask)
+static int cmp_chunk(const sockaddr_t *a1, const sockaddr_t *a2,
+                     uint8_t idx, uint32_t mask)
 {
-	const uint32_t c1 = ip_chunk(a, idx) & mask;
-	const uint32_t c2 = ip_chunk(b, idx) & mask;
+	const uint32_t c1 = ip_chunk(a1, idx) & mask;
+	const uint32_t c2 = ip_chunk(a2, idx) & mask;
 
 	if (c1 > c2)
 		return  1;
@@ -77,11 +80,9 @@ static uint32_t acl_fill_mask32(short nbits)
 	return htonl(r);
 }
 
-static int acl_compare(void *k1, void *k2)
+static int acl_compare(const sockaddr_t *a1, const sockaddr_t *a2)
 {
 	int ret = 0;
-	sockaddr_t* a1 = (sockaddr_t *)k1;
-	sockaddr_t* a2 = (sockaddr_t *)k2;
 	uint32_t mask = 0xffffffff;
 	short mask_bits = a1->prefix;
 	const short chunk_bits = sizeof(mask) * CHAR_BIT;
@@ -114,128 +115,103 @@ static int acl_compare(void *k1, void *k2)
 	return ret;
 }
 
-acl_t *acl_new(acl_rule_t default_rule, const char *name)
+acl_t *acl_new()
 {
-	/* Trailing '\0' for NULL name. */
-	size_t name_len = 1;
-	if (name) {
-		name_len += strlen(name);
-	} else {
-		name = "";
+	acl_t *acl = malloc(sizeof(acl_t));
+	if (acl == NULL) {
+		return NULL;
 	}
 
-	/* Allocate memory for ACL. */
-	acl_t* acl = malloc(sizeof(acl_t) + name_len);
-	if (!acl) {
-		return 0;
-	}
-
-	/* Initialize skip list. */
-	acl->rules = skip_create_list(acl_compare);
-	if (!acl->rules) {
-		free(acl);
-		return 0;
-	}
-
-	/* Initialize skip list for rules with TSIG. */
-	/*! \todo This needs a better structure to make
-	 *        nodes with TSIG preferred, but for now
-	 *        it will do to sort nodes into two lists.
-	 *        (issue #1675)
-	 */
-	acl->rules_pref = skip_create_list(acl_compare);
-	if (!acl->rules_pref) {
-		skip_destroy_list(&acl->rules, 0, free);
-		free(acl);
-		return 0;
-	}
-
-	/* Initialize. */
-	memcpy(&acl->name, name, name_len);
-	acl->default_rule = default_rule;
+	memset(acl, 0, sizeof(acl_t));
+	init_list(acl);
 	return acl;
 }
 
 void acl_delete(acl_t **acl)
 {
-	if ((acl == NULL) || (*acl == NULL)) {
+	if (acl == NULL || *acl == NULL) {
 		return;
 	}
 
-	/* Truncate rules. */
-	skip_destroy_list(&(*acl)->rules, 0, free);
-	skip_destroy_list(&(*acl)->rules_pref, 0, free);
+	acl_truncate(*acl);
 
 	/* Free ACL. */
 	free(*acl);
 	*acl = 0;
 }
 
-int acl_create(acl_t *acl, const sockaddr_t* addr, acl_rule_t rule, void *val,
-               unsigned flags)
+int acl_insert(acl_t *acl, const sockaddr_t *addr, void *val)
 {
-	if (!acl || !addr) {
-		return ACL_ERROR;
+	if (acl == NULL || addr == NULL) {
+		return KNOT_EINVAL;
 	}
 
-	/* Insert into skip list. */
-	acl_key_t *key = malloc(sizeof(acl_key_t));
+	/* Create new match. */
+	acl_match_t *key = malloc(sizeof(acl_match_t));
 	if (key == NULL) {
-		return ACL_ERROR;
+		return KNOT_ENOMEM;
 	}
 
 	memcpy(&key->addr, addr, sizeof(sockaddr_t));
-	key->rule = rule;
 	key->val = val;
 
-
-	if (flags & ACL_PREFER) {
-		skip_insert(acl->rules_pref, &key->addr, key, 0);
+	/* Sort by prefix length.
+	 * This way the longest prefix match always goes first.
+	 */
+	if (EMPTY_LIST(*acl)) {
+		add_head(acl, &key->n);
 	} else {
-		skip_insert(acl->rules, &key->addr, key, 0);
+		bool inserted = false;
+		acl_match_t *cur = NULL, *prev = NULL;
+		WALK_LIST(cur, *acl) {
+			/* Next node prefix is equal/shorter than current key.
+			 * This means we need to insert before the next node.
+			 */
+			if (cur->addr.prefix < addr->prefix) {
+				if (prev == NULL) { /* First node. */
+					add_head(acl, &key->n);
+				} else {
+					insert_node(&key->n, &prev->n);
+				}
+				inserted = true;
+				break;
+			}
+			prev = cur;
+		}
+
+		/* Didn't find any better fit, insert at the end. */
+		if (!inserted) {
+			add_tail(acl, &key->n);
+		}
 	}
 
-	return ACL_ACCEPT;
+	return KNOT_EOK;
 }
 
-int acl_match(acl_t *acl, const sockaddr_t* addr, acl_key_t **key)
+acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr)
 {
-	if (!acl || !addr) {
-		return ACL_ERROR;
+	if (acl == NULL || addr == NULL) {
+		return NULL;
 	}
 
-	acl_key_t *found = skip_find(acl->rules_pref, (void*)addr);
-	if (found == NULL) {
-		found = skip_find(acl->rules, (void*)addr);
+	acl_match_t *cur = NULL;
+	WALK_LIST(cur, *acl) {
+		/* Since the list is sorted by prefix length, the first match
+		 * is guaranteed to be longest prefix match (most precise).
+		 */
+		if (acl_compare(&cur->addr, addr) == 0) {
+			return cur;
+		}
 	}
 
-	/* Set stored value if exists. */
-	if (key != NULL) {
-		*key = found;
-	}
-
-	/* Return appropriate rule. */
-	if (found == NULL) {
-		return acl->default_rule;
-	}
-
-	return found->rule;
+	return NULL;
 }
 
-int acl_truncate(acl_t *acl)
+void acl_truncate(acl_t *acl)
 {
 	if (acl == NULL) {
-		return ACL_ERROR;
+		return;
 	}
 
-	/* Destroy all rules. */
-	skip_destroy_list(&acl->rules, 0, free);
-	skip_destroy_list(&acl->rules_pref, 0, free);
-	acl->rules = skip_create_list(acl_compare);
-	acl->rules_pref = skip_create_list(acl_compare);
-	if (acl->rules == NULL || acl->rules_pref == NULL) {
-		return ACL_ERROR;
-	}
-
-	return ACL_ACCEPT;
+	WALK_LIST_FREE(*acl);
 }

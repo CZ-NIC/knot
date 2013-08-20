@@ -73,8 +73,6 @@ src/common/prng.c
 src/common/prng.h
 src/common/ref.c
 src/common/ref.h
-src/common/skip-list.c
-src/common/skip-list.h
 src/common/slab/alloc-common.h
 src/common/slab/slab.c
 src/common/slab/slab.h
@@ -210,8 +208,6 @@ src/tests/common/fdset_tests.c
 src/tests/common/fdset_tests.h
 src/tests/common/hattrie_tests.c
 src/tests/common/hattrie_tests.h
-src/tests/common/skiplist_tests.c
-src/tests/common/skiplist_tests.h
 src/tests/common/slab_tests.c
 src/tests/common/slab_tests.h
 src/tests/knot/conf_tests.c

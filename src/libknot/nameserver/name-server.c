@@ -40,30 +40,14 @@
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Maximum UDP payload with EDNS enabled. */
-static const uint16_t MAX_UDP_PAYLOAD_EDNS = 4096;
 /*! \brief Maximum UDP payload with EDNS disabled. */
 static const uint16_t MAX_UDP_PAYLOAD      = 504; // 512 - 8B header
-/*! \brief Maximum size of one AXFR response packet. */
-static const uint16_t MAX_AXFR_PAYLOAD     = 65535;
-/*! \brief Supported EDNS version. */
-static const uint8_t  EDNS_VERSION         = 0;
-/*! \brief Determines whether EDNS is enabled. */
-static const int      EDNS_ENABLED         = 1;
 
 /*! \brief TTL of a CNAME synthetized from a DNAME. */
 static const uint32_t SYNTH_CNAME_TTL      = 0;
 
 /*! \brief Determines whether DNSSEC is enabled. */
 static const int      DNSSEC_ENABLED       = 1;
-
-/*! \brief Determines whether NSID is enabled. */
-static const int      NSID_ENABLED         = 1;
-
-/*! \brief Length of NSID option data. */
-static const uint16_t NSID_LENGTH          = 6;
-/*! \brief NSID option data. */
-static const uint8_t  NSID_DATA[6] = {0x46, 0x6f, 0x6f, 0x42, 0x61, 0x72};
 
 /*! \brief Internal error code to propagate need for SERVFAIL response. */
 static const int      NS_ERR_SERVFAIL      = -999;
@@ -3131,93 +3115,13 @@ knot_nameserver_t *knot_ns_create()
 
 	knot_packet_free(&err);
 
-	if (EDNS_ENABLED) {
-		ns->opt_rr = knot_edns_new();
-		if (ns->opt_rr == NULL) {
-			dbg_ns("Error while preparing OPT RR of the"
-			                 " server.\n");
-			knot_packet_free(&err);
-			free(ns);
-			return NULL;
-		}
-		knot_edns_set_version(ns->opt_rr, EDNS_VERSION);
-		knot_edns_set_payload(ns->opt_rr, MAX_UDP_PAYLOAD_EDNS);
-	} else {
-		ns->opt_rr = NULL;
-	}
-
+	ns->opt_rr = NULL;
 	ns->identity = NULL;
 	ns->version = NULL;
 
 	knot_packet_free(&err);
 
 	return ns;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int knot_ns_replace_nsid(knot_opt_rr_t *opt_rr, const char *nsid,
-                                size_t len)
-{
-	assert(opt_rr != NULL);
-	if (nsid == NULL || len == 0) {
-		return KNOT_EOK;
-	}
-
-	int found = 0;
-	int i = 0;
-
-	while (i < opt_rr->option_count && !found) {
-		if (opt_rr->options[i].code == EDNS_OPTION_NSID) {
-			found = 1;
-		} else {
-			++i;
-		}
-	}
-
-	if (found) {
-		uint8_t *new_data = (uint8_t *)malloc(len);
-		if (new_data == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		memcpy(new_data, nsid, len);
-		uint8_t *old = opt_rr->options[i].data;
-
-		opt_rr->options[i].data = new_data;
-		opt_rr->options[i].length = len;
-
-		free(old);
-
-		return KNOT_EOK;
-	} else {
-		return knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
-		                            len, (const uint8_t *)nsid);
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_ns_set_nsid(knot_nameserver_t *nameserver, const char *nsid, size_t len)
-{
-	if (nameserver == NULL) {
-		dbg_ns("NS: set_nsid: nameserver=NULL.\n");
-		return;
-	}
-
-	if (nsid == NULL) {
-		/* This is fine. */
-		return;
-	}
-
-	int ret = knot_ns_replace_nsid(nameserver->opt_rr, nsid, len);
-
-	if (ret != KNOT_EOK) {
-		dbg_ns("NS: set_nsid: could not add EDNS option.\n");
-		return;
-	}
-
-	dbg_ns_verb("NS: set_nsid: added successfully.\n");
 }
 
 /*----------------------------------------------------------------------------*/

@@ -70,19 +70,15 @@ struct knot_opt_rr {
 typedef struct knot_opt_rr knot_opt_rr_t;
 
 /*----------------------------------------------------------------------------*/
-/*! \brief Constants for supported versions of EDNS. */
-enum knot_edns_versions {
-	EDNS_VERSION_0 = (uint8_t)0,       /*!< EDNS version 0. */
-	EDNS_NOT_SUPPORTED = (uint8_t)255  /*!< EDNS not supported. */
-};
+/*! \brief Constants for EDNS. */
+enum knot_edns_const {
 
-/*! \brief Constants for EDNS option codes. */
-enum knot_edns_option_codes {
-	EDNS_OPTION_NSID = (uint16_t)3 /*!< NSID option code. */
+	EDNS_MAX_UDP_PAYLOAD = 4096, /*!< Maximum UDP payload with EDNS enabled. */
+	EDNS_VERSION         = 0,    /*!< Supported EDNS version. */
+	EDNS_NOT_SUPPORTED   = 255,  /*!< EDNS not supported. */
+	EDNS_OPTION_NSID     = 3,    /*!< NSID option code. */
+	EDNS_MIN_SIZE        = 11    /*!< Minimum size of EDNS OPT RR in wire format. */
 };
-
-/*! \brief Minimum size of EDNS OPT RR in wire format. */
-static const short KNOT_EDNS_MIN_SIZE = 11;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -93,24 +89,16 @@ static const short KNOT_EDNS_MIN_SIZE = 11;
 knot_opt_rr_t *knot_edns_new();
 
 /*!
- * \brief Initializes OPT RR structure from given OPT RR in wire format.
+ * \brief Initializes OPT RR structure from given OPT RRSet.
  *
  * \param opt_rr OPT RR structure to initialize.
- * \param wire Wire format of the OPT RR to parse.
- * \param max_size Maximum size of the wire format in bytes (may be more
- *                 than acutal size of the OPT RR).
+ * \param rrset OPT RRSet to parse.
  *
- * \return Size of the parserd OPT RR in bytes if successful (always > 0).
+ * \retval KNOT_EOK
  * \retval KNOT_EINVAL
- * \retval KNOT_EFEWDATA
  * \retval KNOT_EMALF
- * \retval KNOT_ENOMEM
  */
-int knot_edns_new_from_wire(knot_opt_rr_t *opt_rr, const uint8_t *wire,
-                              size_t max_size);
-
-int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr,
-                            const knot_rrset_t *rrset);
+int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the UDP payload stored in the OPT RR.
