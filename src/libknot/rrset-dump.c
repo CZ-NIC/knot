@@ -819,7 +819,11 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 
 static void wire_dname_to_str(rrset_dump_params_t *p)
 {
-	size_t in_len = knot_dname_size(p->in);
+	int in_len = knot_dname_size(p->in);
+	if (in_len < 0) {
+		return;
+	}
+
 	size_t out_len = 0;
 
 	p->ret = -1;
