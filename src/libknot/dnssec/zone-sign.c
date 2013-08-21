@@ -339,33 +339,41 @@ static int remove_standalone_rrsigs(const knot_rrset_t *rrsigs,
 	                                KNOT_CHANGESET_REMOVE);
 }
 
-static int sign_rrsets(knot_rrset_t **rrsets, size_t rrset_count,
-                       int replaced_nsec, const knot_zone_keys_t *zone_keys,
-                       const knot_dnssec_policy_t *policy,
-                       knot_changeset_t *changeset)
+static int sign_node_rrsets(const knot_node_t *node,
+                            const knot_zone_keys_t *zone_keys,
+                            const knot_dnssec_policy_t *policy,
+                            knot_changeset_t *changeset)
 {
-	assert(rrsets);
+	assert(node);
 	assert(zone_keys);
 	assert(policy);
 	assert(changeset);
 
 	int result = KNOT_EOK;
 
-	for (int i = 0; i < rrset_count; i++) {
-		const knot_rrset_t *rrset = rrsets[i];
+	for (int i = 0; i < node->rrset_count; i++) {
+		const knot_rrset_t *rrset = node->rrset_tree[i];
 		const knot_rrset_t *rrsigs = rrset->rrsigs;
 
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
 
-		if (replaced_nsec
+		// We only want to sign NSEC and DS at delegation points
+		if (knot_node_is_deleg_point(node) &&
+		    (rrset->type != KNOT_RRTYPE_NSEC ||
+		    rrset->type != KNOT_RRTYPE_DS)) {
+			continue;
+		}
+
+		// These nodes have their signatures stored in changeset already
+		if (knot_node_is_replaced_nsec(node)
 		    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
 		         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
 			continue;
 		}
 
-		// remove standalone RRSIGs (without the RRSet they sign)
+		// Remove standalone RRSIGs (without the RRSet they sign)
 		if (knot_rrset_rdata_rr_count(rrset) == 0
 		    && knot_rrset_rdata_rr_count(rrsigs) != 0) {
 			result = remove_standalone_rrsigs(rrsigs, changeset);
@@ -400,9 +408,7 @@ static int sign_node(const knot_node_t *node, const knot_zone_keys_t *zone_keys,
 	if (node->rrset_tree == NULL)
 		return KNOT_EOK;
 
-	return sign_rrsets(node->rrset_tree, node->rrset_count,
-	                   knot_node_is_replaced_nsec(node),
-	                   zone_keys, policy, changeset);
+	return sign_node_rrsets(node, zone_keys, policy, changeset);
 }
 
 static int zone_tree_sign(knot_zone_tree_t *tree,
