@@ -120,20 +120,17 @@ static knot_rrset_t *create_nsec_rrset(knot_dname_t *owner, knot_dname_t *next,
 }
 
 /*!
- * \brief Add entries required to replace NSEC RR set into a changeset.
+ * \brief Add entry for removed NSEC to the changeset..
  *
- * \param old        Old NSEC RR set to be replaced (including RRSIG).
- * \param new        New NSEC RR set to be added (without RRSIG).
- * \param changeset  Changeset into the entries will be added.
+ * \param old        Old NSEC RR set to be removed (including RRSIG).
+  * \param changeset  Changeset into the entries will be added.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int changeset_replace_nsec(const knot_rrset_t *oldrr,
-                                  knot_rrset_t *newrr,
-                                  knot_changeset_t *changeset)
+static int changeset_remove_nsec(const knot_rrset_t *oldrr,
+                                 knot_changeset_t *changeset)
 {
 	assert(oldrr);
-	assert(newrr);
 	assert(changeset);
 
 	int result;
@@ -169,7 +166,7 @@ static int changeset_replace_nsec(const knot_rrset_t *oldrr,
 		}
 	}
 
-	return knot_changeset_add_rrset(changeset, newrr, KNOT_CHANGESET_ADD);
+	return KNOT_EOK;
 }
 
 /*!
@@ -196,37 +193,54 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 {
 	nsec_chain_iterate_data_t *data = (nsec_chain_iterate_data_t *)d;
 
+	knot_rrset_t *old_nsec = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC);
+
+	int ret = 0;
+	// If the node has no other RRSets than NSEC (and possibly RRSIG),
+	// just remove the NSEC and its RRSIG, they are redundant
+	if (old_nsec != NULL
+	    && knot_node_rrset_count(a) == KNOT_NODE_RRSET_COUNT_ONLY_NSEC) {
+		ret = changeset_remove_nsec(old_nsec, data->changeset);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	// types bitmap for new NSEC
 	bitmap_t rr_types = { 0 };
-	bitmap_add_rrset(&rr_types, a->rrset_tree, a->rrset_count);
+	bitmap_add_rrset(&rr_types, knot_node_get_rrsets_no_copy(a),
+	                 knot_node_rrset_count(a));
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 
-	knot_rrset_t *new_nsec = create_nsec_rrset(a->owner, b->owner,
-						   &rr_types, data->ttl);
+	// create new NSEC
+	knot_rrset_t *new_nsec = create_nsec_rrset(knot_node_get_owner(a),
+	                                           knot_node_get_owner(b),
+	                                           &rr_types, data->ttl);
 	if (!new_nsec)
 		return KNOT_ENOMEM;
 
-	knot_rrset_t *old_nsec = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC);
+	if (old_nsec != NULL) {
+		// current NSEC is valid, do nothing
+		if (knot_rrset_equal(new_nsec, old_nsec,
+		                     KNOT_RRSET_COMPARE_WHOLE)) {
+			knot_rrset_deep_free(&new_nsec, 1, 1);
+			return KNOT_EOK;
+		}
 
-	// create new NSEC
-
-	if (old_nsec == NULL) {
-		return knot_changeset_add_rrset(data->changeset, new_nsec,
-		                                KNOT_CHANGESET_ADD);
+		// current NSEC is invalid, replace it and drop RRSIG
+		// mark the node, so later we know this NSEC needs new RRSIGs
+		knot_node_set_replaced_nsec(a);
+		ret = changeset_remove_nsec(old_nsec, data->changeset);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(&new_nsec, 1, 1);
+			return ret;
+		}
 	}
 
-	// current NSEC is valid, do nothing
-
-	if (knot_rrset_equal(new_nsec, old_nsec, KNOT_RRSET_COMPARE_WHOLE)) {
-		knot_rrset_deep_free(&new_nsec, 1, 1);
-		return KNOT_EOK;
-	}
-
-	// current NSEC is invalid, replace it and drop RRSIG
-	// mark the node, so later we know this NSEC needs new RRSIGs
-
-	knot_node_set_replaced_nsec(a);
-	return changeset_replace_nsec(old_nsec, new_nsec, data->changeset);
+	// Add new NSEC to the changeset (no matter if old was removed)
+	return knot_changeset_add_rrset(data->changeset, new_nsec,
+	                                KNOT_CHANGESET_ADD);
 }
 
 /*!

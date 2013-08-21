@@ -453,6 +453,8 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 		return KNOT_ERROR;
 	}
 
+	*nsec3_name = ret;
+
 	return KNOT_EOK;
 }
 

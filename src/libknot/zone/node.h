@@ -33,6 +33,9 @@
 
 struct knot_zone;
 
+/*! \brief RRSet count in node if there is only NSEC (and possibly its RRSIG).*/
+#define KNOT_NODE_RRSET_COUNT_ONLY_NSEC 1
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
