@@ -97,11 +97,13 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
  *
  * \return NSEC RR set, NULL on error.
  */
-static knot_rrset_t *create_nsec_rrset(knot_dname_t *owner, knot_dname_t *next,
-				       const bitmap_t *rr_types, uint32_t ttl)
+static knot_rrset_t *create_nsec_rrset(const knot_dname_t *owner,
+                                       const knot_dname_t *next,
+                                       const bitmap_t *rr_types, uint32_t ttl)
 {
 	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, ttl);
+	knot_dname_t *owner_cpy = knot_dname_copy(owner);
+	rrset = knot_rrset_new(owner_cpy, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, ttl);
 	if (!rrset)
 		return NULL;
 
@@ -214,8 +216,8 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 
 	// create new NSEC
-	knot_rrset_t *new_nsec = create_nsec_rrset(knot_node_get_owner(a),
-	                                           knot_node_get_owner(b),
+	knot_rrset_t *new_nsec = create_nsec_rrset(knot_node_owner(a),
+	                                           knot_node_owner(b),
 	                                           &rr_types, data->ttl);
 	if (!new_nsec)
 		return KNOT_ENOMEM;
@@ -483,7 +485,8 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 		return NULL;
 
 	knot_rrset_t *nsec3_rrset;
-	nsec3_rrset = create_nsec3_rrset(owner, nsec3_params, rr_types, ttl);
+	knot_dname_t *rrowner = knot_dname_copy(rrowner);
+	nsec3_rrset = create_nsec3_rrset(rrowner, nsec3_params, rr_types, ttl);
 	if (!nsec3_rrset) {
 		knot_node_free(&new_node);
 		return NULL;
