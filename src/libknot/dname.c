@@ -569,7 +569,6 @@ int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 	return 0;
 }
 
-
 /*----------------------------------------------------------------------------*/
 
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
