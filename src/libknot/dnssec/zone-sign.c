@@ -126,8 +126,8 @@ static int sign_rrset_one(knot_rrset_t *rrsigs,
 	uint32_t sig_incept = policy->now;
 	uint32_t sig_expire = sig_incept + policy->sign_lifetime;
 
-	rrsig_write_rdata(rdata, key, covered->owner, covered, sig_incept,
-			  sig_expire);
+	rrsig_write_rdata(rdata, key, knot_rrset_owner(covered), covered,
+	                  sig_incept, sig_expire);
 
 	// RFC 4034: The signature coveres RRSIG RDATA field (excluding the
 	// signature) and all matching RR records, which are ordered
@@ -171,8 +171,11 @@ static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 {
 	assert(covered);
 
-	return knot_rrset_new(covered->owner, KNOT_RRTYPE_RRSIG,
-			      covered->rclass, covered->ttl);
+	// Owner must be copied
+	knot_dname_t *owner_copy = knot_dname_copy(knot_rrset_owner(covered));
+	return knot_rrset_new(owner_copy, KNOT_RRTYPE_RRSIG,
+	                      knot_rrset_class(covered),
+	                      knot_rrset_ttl(covered));
 }
 
 static bool is_valid_signature(const knot_rrset_t *rrsigs, size_t pos,
