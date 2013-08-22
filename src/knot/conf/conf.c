@@ -60,7 +60,7 @@ extern void cf_lex_destroy(void *scanner);
 extern void switch_input(const char *str, void *scanner);
 extern char *cf_current_filename(void *scanner);
 
-conf_t *new_config = 0; /*!< \brief Currently parsed config. */
+conf_t *new_config = NULL; /*!< \brief Currently parsed config. */
 static volatile int _parser_res = 0; /*!< \brief Parser result. */
 static pthread_mutex_t _parser_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -123,7 +123,7 @@ static void conf_parse_end(conf_t *conf)
  */
 static void conf_update_hooks(conf_t *conf)
 {
-	node *n = 0;
+	node *n = NULL;
 	conf->_touched = CONF_ALL;
 	WALK_LIST (n, conf->hooks) {
 		conf_hook_t *hook = (conf_hook_t*)n;
@@ -254,7 +254,7 @@ static int conf_process(conf_t *conf)
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
-	node *n = 0;
+	node *n = NULL;
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
 
@@ -363,7 +363,7 @@ static int conf_process(conf_t *conf)
  * Singletion configuration API.
  */
 
-conf_t *s_config = 0; /*! \brief Singleton config instance. */
+conf_t *s_config = NULL; /*! \brief Singleton config instance. */
 
 /*! \brief Singleton config constructor (automatically called on load). */
 void __attribute__ ((constructor)) conf_init()
@@ -391,7 +391,7 @@ void __attribute__ ((constructor)) conf_init()
 	/* Syslog */
 	conf_log_t *log = malloc(sizeof(conf_log_t));
 	log->type = LOGT_SYSLOG;
-	log->file = 0;
+	log->file = NULL;
 	init_list(&log->map);
 
 	conf_log_map_t *map = malloc(sizeof(conf_log_map_t));
@@ -404,7 +404,7 @@ void __attribute__ ((constructor)) conf_init()
 	/* Stderr */
 	log = malloc(sizeof(conf_log_t));
 	log->type = LOGT_STDERR;
-	log->file = 0;
+	log->file = NULL;
 	init_list(&log->map);
 
 	map = malloc(sizeof(conf_log_map_t));
@@ -423,7 +423,7 @@ void __attribute__ ((destructor)) conf_deinit()
 {
 	if (s_config) {
 		conf_free(s_config);
-		s_config = 0;
+		s_config = NULL;
 	}
 }
 
@@ -444,7 +444,7 @@ static int conf_fparser(conf_t *conf)
 	// Hook new configuration
 	new_config = conf;
 	FILE *f = fopen(conf->filename, "r");
-	if (f == 0) {
+	if (f == NULL) {
 		pthread_mutex_unlock(&_parser_lock);
 		return KNOT_ENOENT;
 	}
@@ -615,7 +615,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		return;
 	}
 
-	node *n = 0, *nxt = 0;
+	node *n = NULL, *nxt = NULL;
 
 	// Unload hooks
 	if (unload_hooks) {
@@ -670,31 +670,35 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	conf->dnssec_enable = true;
 	if (conf->filename) {
 		free(conf->filename);
-		conf->filename = 0;
+		conf->filename = NULL;
 	}
 	if (conf->identity) {
 		free(conf->identity);
-		conf->identity = 0;
+		conf->identity = NULL;
 	}
 	if (conf->version) {
 		free(conf->version);
-		conf->version = 0;
+		conf->version = NULL;
 	}
 	if (conf->storage) {
 		free(conf->storage);
-		conf->storage = 0;
+		conf->storage = NULL;
 	}
 	if (conf->rundir) {
 		free(conf->rundir);
-		conf->rundir = 0;
+		conf->rundir = NULL;
 	}
 	if (conf->pidfile) {
 		free(conf->pidfile);
-		conf->pidfile = 0;
+		conf->pidfile = NULL;
 	}
 	if (conf->nsid) {
 		free(conf->nsid);
-		conf->nsid = 0;
+		conf->nsid = NULL;
+	}
+	if (conf->dnssec_keydir) {
+		free(conf->dnssec_keydir);
+		conf->dnssec_keydir = NULL;
 	}
 
 	/* Free remote control list. */
@@ -730,7 +734,7 @@ void conf_free(conf_t *conf)
 char* conf_find_default()
 {
 	/* Try sequentially each default path. */
-	char *path = 0;
+	char *path = NULL;
 	for (int i = 0; i < DEFAULT_CONF_COUNT; ++i) {
 		path = strcpath(strdup(DEFAULT_CONFIG[i]));
 
@@ -746,7 +750,7 @@ char* conf_find_default()
 		/* Keep the last item. */
 		if (i < DEFAULT_CONF_COUNT - 1) {
 			free(path);
-			path = 0;
+			path = NULL;
 		}
 	}
 
@@ -793,7 +797,7 @@ int conf_open(const char* path)
 
 	/* Copy hooks. */
 	if (oldconf) {
-		node *n = 0, *nxt = 0;
+		node *n = NULL, *nxt = NULL;
 		WALK_LIST_DELSAFE (n, nxt, oldconf->hooks) {
 			conf_hook_t *hook = (conf_hook_t*)n;
 			conf_add_hook(nconf, hook->sections,
@@ -935,7 +939,7 @@ void conf_free_log(conf_log_t *log)
 	free(log->file);
 
 	/* Free loglevel mapping. */
-	node *n = 0, *nxt = 0;
+	node *n = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, log->map) {
 		free((conf_log_map_t*)n);
 	}
