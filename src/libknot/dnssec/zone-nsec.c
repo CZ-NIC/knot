@@ -485,8 +485,7 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 		return NULL;
 
 	knot_rrset_t *nsec3_rrset;
-	knot_dname_t *rrowner = knot_dname_copy(rrowner);
-	nsec3_rrset = create_nsec3_rrset(rrowner, nsec3_params, rr_types, ttl);
+	nsec3_rrset = create_nsec3_rrset(owner, nsec3_params, rr_types, ttl);
 	if (!nsec3_rrset) {
 		knot_node_free(&new_node);
 		return NULL;
@@ -503,6 +502,9 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 
 /*!
  * \brief Get position of hash field in NSEC3 rdata.
+ *
+ * \todo Redundant - usage should be replaced by
+ *       knot_rrset_rdata_nsec3_next_hashed().
  */
 static uint8_t *nsec3_rdata_hash(uint8_t *rdata)
 {
@@ -770,10 +772,11 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 
 	int result;
 
-	if (is_nsec3_enabled(zone))
+	if (is_nsec3_enabled(zone)) {
 		result = create_nsec3_chain(zone, nsec_ttl, changeset);
-	else
+	} else {
 		result = create_nsec_chain(zone, nsec_ttl, changeset);
+	}
 
 	return result;
 }

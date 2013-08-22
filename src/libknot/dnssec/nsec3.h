@@ -37,6 +37,10 @@
 
 /*!
  * \brief Length of raw NSEC3 hash in bytes.
+ *
+ * \todo May change later, when other hash algorithms are allowed, thus
+ *       not good as a constant. That's why there's 'hash length' field in
+ *       NSEC3 RDATA.
  */
 #define KNOT_NSEC3_HASH_LENGTH 20
 

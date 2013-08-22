@@ -79,8 +79,11 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
 		return NULL;
 	}
 
-	/* This is a subject to refactoring. Since owner is both at the RRSet
-	 * and node, we need to decide which should have it. Not both. */
+	/*! \todo This is inconsistent: knot_rrset_new() does not copy owner.
+	 *        Either copy in all _new() functions, or in none. I vote for
+	 *        the former, as it should be responsibility of the caller to
+	 *        do the copying (or not if he decides to do so).
+	 */
 	if (owner) {
 		ret->owner = knot_dname_copy(owner);
 	}
