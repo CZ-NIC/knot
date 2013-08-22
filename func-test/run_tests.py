@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
-import argparse, importlib, os, sys, tempfile, time
+import argparse, importlib, os, sys, tempfile, time, traceback
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/tools")
 from dnstest import log, err
 import params
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--debug", help="enable exception traceback", action='store_true')
+parser.add_argument("-d", "--debug", \
+                    help="enable exception traceback on stdout", \
+                    action='store_true')
 args = parser.parse_args()
 if args.debug:
     params.debug = True
@@ -17,6 +19,11 @@ test_cnt = 0
 fail_cnt = 0
 
 log("Starting Knot test suite %s" % outs_dir)
+
+def save_traceback(outdir):
+    file = open(params.out_dir + "/traceback", mode="w")
+    traceback.print_exc(file=file)
+    file.close()
 
 for test in sorted(os.listdir("./" + tests_dir)):
     test_dir = "./%s/%s" % (tests_dir, test)
@@ -51,12 +58,14 @@ for test in sorted(os.listdir("./" + tests_dir)):
         except Exception as exc:
             params.err = True
             params.errmsg = format(exc)
+            save_traceback(params.out_dir)
             if params.debug:
-                traceback.print_exc(exc)
+                traceback.print_exc()
         except BaseException as exc:
             log("Interrupted")
+            save_traceback(params.out_dir)
             if params.debug:
-                traceback.print_exc(exc)
+                traceback.print_exc()
             exit(1)
 
         # Stop servers if still running.

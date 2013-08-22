@@ -9,6 +9,9 @@ import socket
 import string
 import sys
 import time
+import dns.message
+import dns.query
+import dns.tsigkeyring
 from subprocess import Popen, PIPE, DEVNULL, check_call
 import zone_generate, params
 
@@ -71,9 +74,19 @@ class Tsig(object):
 
         self.alg = alg if alg else random.choice(list(Tsig.algs.keys()))
 
-        self.key = base64.b64encode(os.urandom(Tsig.algs[self.alg])).decode('ascii')
+        self.key = base64.b64encode(os.urandom(Tsig.algs[self.alg])). \
+                   decode('ascii')
 
-        self.tsig = self.alg + ":" + self.name + ":" + self.key
+        # TSIG preparation for pythondns utils.
+        if self.alg == "hmac-md5":
+            alg = "hmac-md5.sig-alg.reg.int"
+        else:
+            alg = self.alg
+
+        key = dns.tsigkeyring.from_text({
+            self.name: self.key
+        })
+        self.key_params = dict(keyname=self.name, keyalgorithm=alg, keyring=key)
 
     def dump(self, filename):
         s = BindConf()
@@ -169,6 +182,7 @@ class DnsServer(object):
     START_WAIT_VALGRIND = 5
     STOP_TIMEOUT = 60
     COMPILE_TIMEOUT = 60
+    DIG_TIMEOUT = 5
 
     # Instance counter.
     count = 0
@@ -277,8 +291,8 @@ class DnsServer(object):
             if self.compile_params:
                 self.compile()
 
-            self.proc = Popen(self.valgrind + [self.daemon_bin] + self.start_params,
-                              stdout=fout, stderr=ferr)
+            self.proc = Popen(self.valgrind + [self.daemon_bin] + \
+                              self.start_params, stdout=fout, stderr=ferr)
 
             if self.valgrind:
                 time.sleep(DnsServer.START_WAIT_VALGRIND)
@@ -322,12 +336,12 @@ class DnsServer(object):
 
             lost_line = re.search("lost:", line)
             if lost_line:
-                lost += int(line[lost_line.end():].lstrip().\
+                lost += int(line[lost_line.end():].lstrip(). \
                             split(" ")[0].replace(",", ""))
 
             reach_line = re.search("reachable:", line)
             if reach_line:
-                reachable += int(line[reach_line.end():].lstrip().\
+                reachable += int(line[reach_line.end():].lstrip(). \
                                  split(" ")[0].replace(",", ""))
         f.close()
 
@@ -349,6 +363,52 @@ class DnsServer(object):
         f = open(self.confile, mode="w")
         f.write(self.get_config())
         f.close
+
+    def dig(self, rname, rtype, rclass="IN", use_udp=None, serial=None, \
+            timeout=DIG_TIMEOUT):
+        key_params = self.tsig.key_params if self.tsig else dict()
+
+        try:
+            if rtype.upper() == "AXFR":
+                # Always use TCP.
+                resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
+                                     port=self.port, lifetime=timeout, \
+                                     use_udp=False, **key_params)
+            elif rtype.upper() == "IXFR":
+                # Use TCP if not specified.
+                use_udp = use_udp if use_udp != None else False
+
+                resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
+                                     port=self.port, lifetime=timeout, \
+                                     use_udp=use_udp, serial=serial, \
+                                     **key_params)
+            else:
+                # Use TCP or UDP at random if not specified.
+                use_udp = use_udp if use_udp != None else \
+                          random.choice([True, False])
+
+                query = dns.message.make_query(rname, rtype, rclass)
+
+                if use_udp:
+                    resp = dns.query.udp(query, self.addr, port=self.port, \
+                                         timeout=timeout)
+                else:
+                    resp = dns.query.tcp(query, self.addr, port=self.port, \
+                                         timeout=timeout)
+            return resp
+        except:
+            return None
+
+    def zones_wait(self, zones):
+        for zone in zones:
+            for attempt in range(10):
+                resp = self.dig(zone, "SOA", use_udp=True)
+                if resp and resp.answer:
+                    break
+                time.sleep(DnsServer.DIG_TIMEOUT)
+            else:
+                raise Exception("Can't get %s SOA from %s." % \
+                                (zone, self.name))
 
 class Bind(DnsServer):
 
@@ -686,7 +746,8 @@ class DnsTest(object):
         DnsTest.last_port = port
         return port
 
-    def server(self, server, nsid=None, ident=None, version=None, valgrind=None):
+    def server(self, server, nsid=None, ident=None, version=None, \
+               valgrind=None):
         if server == "knot":
             srv = Knot()
         elif server == "bind":
