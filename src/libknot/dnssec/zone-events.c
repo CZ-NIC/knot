@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,11 +50,13 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 
 	knot_changeset_t *changeset = knot_changesets_create_changeset(
 	                                                            changesets);
-	assert(changeset);
-//	changesets->count = 1;
+	if (changeset == NULL) {
+		log_server_error("Failed to create DNSSEC structures!\n");
+		knot_changesets_free(&changesets);
+		return KNOT_ENOMEM;
+	}
 
 	// generate NSEC records
-
 	result = knot_zone_create_nsec_chain(zone->contents, changeset);
 	if (result != KNOT_EOK) {
 //		log_server_error("Could not create NSEC chain for '%s' (%s).\n",
@@ -64,7 +66,6 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 	}
 
 	// add missing signatures
-
 	rcu_read_lock();
 	char *keydir = strdup(conf()->dnssec_keydir);
 	rcu_read_unlock();
@@ -106,25 +107,6 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 	}
 
 	// dump changeset
-
-//	{
-//	for (size_t i = 0; i < changeset->add_count; i++) {
-//		knot_rrset_t *rrset = changeset->add[i];
-//		char *name = knot_dname_to_str(rrset->owner);
-//
-//		log_server_info("[add %dx] %s type %d class %d ttl %d\n",
-//				rrset->rdata_count,
-//				name, rrset->type, rrset->rclass, rrset->ttl);
-//	}
-//	for (size_t i = 0; i < changeset->remove_count; i++) {
-//		knot_rrset_t *rrset = changeset->remove[i];
-//		char *name = knot_dname_to_str(rrset->owner);
-//
-//		log_server_info("[remove %dx] %s type %d class %d ttl %d\n",
-//				rrset->rdata_count,
-//				name, rrset->type, rrset->rclass, rrset->ttl);
-//	}
-//	}
 
 	result = knot_zone_sign_update_soa(zone->contents, &zone_keys, &policy,
 	                                   changeset);

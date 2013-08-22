@@ -148,8 +148,6 @@ static int get_key_info_from_public_key(const char *filename,
 		return KNOT_KEY_EPUBLIC_KEY_INVALID;
 	}
 
-	free(buffer);
-
 	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
 	if (!owner) {
 		scanner_free(scanner);

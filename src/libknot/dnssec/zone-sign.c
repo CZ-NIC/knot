@@ -366,7 +366,7 @@ static int sign_node_rrsets(const knot_node_t *node,
 			continue;
 		}
 
-		// These nodes have their signatures stored in changeset already
+		// These RRs have their signatures stored in changeset already
 		if (knot_node_is_replaced_nsec(node)
 		    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
 		         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
@@ -399,16 +399,34 @@ static int sign_node_rrsets(const knot_node_t *node,
 	return result;
 }
 
-static int sign_node(const knot_node_t *node, const knot_zone_keys_t *zone_keys,
-		     const knot_dnssec_policy_t *policy,
-		     knot_changeset_t *changeset)
+typedef struct node_sign_args {
+	const knot_zone_keys_t *zone_keys;
+	const knot_dnssec_policy_t *policy;
+	knot_changeset_t *changeset;
+	int ret;
+} node_sign_args_t;
+
+static void sign_node(knot_node_t **node, void *data)
 {
 	assert(node);
+	assert(*node);
+	node_sign_args_t *args = (node_sign_args_t *)data;
+	assert(data);
 
-	if (node->rrset_tree == NULL)
-		return KNOT_EOK;
+	if (args->ret != KNOT_EOK) {
+		return;
+	}
 
-	return sign_node_rrsets(node, zone_keys, policy, changeset);
+	if ((*node)->rrset_count == 0) {
+		return;
+	}
+
+	if (knot_node_is_non_auth(*node)) {
+		return;
+	}
+	args->ret = sign_node_rrsets(*node, args->zone_keys, args->policy,
+	                             args->changeset);
+	knot_node_clear_replaced_nsec(*node);
 }
 
 static int zone_tree_sign(knot_zone_tree_t *tree,
@@ -421,28 +439,10 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
 	assert(policy);
 	assert(changeset);
 
-	int result = KNOT_EOK;
-
-	bool sorted = false;
-	hattrie_iter_t *it;
-
-	it = hattrie_iter_begin(tree, sorted);
-	while (!hattrie_iter_finished(it)) {
-		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-
-		result = sign_node(node, zone_keys, policy, changeset);
-		// clear the 'unsigned NSEC' flag in the node
-		knot_node_clear_replaced_nsec(node);
-
-		if (result != KNOT_EOK) {
-			break;
-		}
-
-		hattrie_iter_next(it);
-	}
-	hattrie_iter_free(it);
-
-	return result;
+	node_sign_args_t args = {.zone_keys = zone_keys, .policy = policy,
+	                         .changeset = changeset, .ret = KNOT_EOK};
+	knot_zone_tree_apply(tree, sign_node, &args);
+	return args.ret;
 }
 
 typedef struct {
