@@ -681,16 +681,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	ret = knot_zone_contents_load_nsec3param(c->current_zone);
-	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to load NSEC3 params: %s\n",
-		               knot_strerror(ret));
-		rrset_list_delete(&c->node_rrsigs);
-		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_deep_free(&zone_to_free);
-		return NULL;
-	}
-
 	ret = knot_zone_connect_nsec_nodes(c->current_zone);
 	if (ret != KNOT_EOK)  {
 		log_zone_error("Failed to connect regular and NSEC3 nodes: %s\n",

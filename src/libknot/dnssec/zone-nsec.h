@@ -53,6 +53,10 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
  * \param zone  Zone for which the operation is performed.
  *
  * \return Error code, KNOT_EOK if successful.
+ *
+ * \todo IMPORTANT: this is called always when zone adjusting is. IMHO it can
+ *       be moved back into zone adjusting as before commit bb795a4. This only
+ *       leads to confusion and duplication of code.
  */
 int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone);
 

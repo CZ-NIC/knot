@@ -1474,6 +1474,13 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	if (zone == NULL)
 		return KNOT_EINVAL;
 
+	int result = knot_zone_contents_load_nsec3param(zone);
+	if (result != KNOT_EOK) {
+		log_zone_error("Failed to load NSEC3 params: %s\n",
+		               knot_strerror(result));
+		return result;
+	}
+
 	// adjusting parameters
 
 	hattrie_t *lookup_tree = NULL;
@@ -1486,8 +1493,6 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	knot_zone_adjust_arg_t adjust_arg = { 0 };
 	adjust_arg.zone = zone;
 	adjust_arg.lookup_tree = lookup_tree;
-
-	int result;
 
 	// adjust NSEC3 nodes
 
