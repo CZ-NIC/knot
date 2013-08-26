@@ -1,5 +1,14 @@
 Knot DNS NEWS
 
+v1.3.1 - Aug 26, 2013
+---------------------
+Bugfixes:
+	* Response with NSID contained extra bytes after reload
+	* List of remotes is scanned for longest prefix match
+	* Multipacket TSIG signatures for transfers
+	* Wrongly parsed TSIG key secret without quotes
+	* Removed autoconf checks for extended instruction sets
+
 v1.3.0 - Aug 5, 2013
 --------------------
 Features:
