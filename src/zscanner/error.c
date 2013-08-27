@@ -90,7 +90,7 @@ const err_table_t err_msgs[] = {
 	ERR_ITEM( ZSCANNER_EBAD_GATEWAY_KEY,
 	          "Bad gateway key." ),
 	ERR_ITEM( ZSCANNER_EBAD_APL,
-	          "Bad adress prefix list." ),
+	          "Bad address prefix list." ),
 	ERR_ITEM( ZSCANNER_EBAD_RDATA,
 	          "Bad record data." ),
 	ERR_ITEM( ZSCANNER_EBAD_HEX_RDATA,
