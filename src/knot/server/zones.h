@@ -222,7 +222,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  * \todo Expects the xfr structure to be initialized in some way.
  * \todo Update documentation!!!
  */
-int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src);
+int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src, journal_t *j);
 
 /*!
  * \brief Begin changesets storing transaction.

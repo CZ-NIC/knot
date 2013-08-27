@@ -149,6 +149,8 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 	int seek_ret = 0;
 
 	/* Increase free segment if on the end of file. */
+	dbg_journal("journal: free.pos = %u free.len = %u\n",
+	            j->free.pos, j->free.len);
 	journal_node_t *n = j->nodes + j->qtail;
 	if (j->free.pos + j->free.len == j->fsize) {
 
@@ -188,7 +190,7 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 		journal_node_t *head = j->nodes + j->qhead;
 
 		/* Check if it has been synced to disk. */
-		if (head->flags & JOURNAL_DIRTY) {
+		if ((head->flags & JOURNAL_DIRTY) && (head->flags & JOURNAL_VALID)) {
 			return KNOT_EBUSY;
 		}
 
@@ -953,18 +955,22 @@ int journal_trans_rollback(journal_t *journal)
 		return KNOT_ENOENT;
 	}
 
-	/* Expand free space and rewind node queue tail. */
-	/*! \note This shouldn't be relied upon and probably shouldn't
-	 *        be written back to file, as crashing anywhere between
-	 *        transaction begin and rollback would result in corrupted
-	 *        journal. Also write function should recognize TRANS nodes.
-	 */
-	//journal->free.pos = journal->nodes[journal->tmark].pos;
-	//journal->free.len = 0;
+	/* Preempt last (failed) node. */
+	journal_node_t *t_end = journal->nodes + journal->qtail;
+	dbg_journal("journal: rollback transaction id=<%hu,%hu> (@%u, l=%u)\n",
+	            journal->tmark, journal->qtail, t_end->pos, t_end->len);
+	journal->free.pos = t_end->pos;
+	journal->free.len = t_end->len;
 
-	dbg_journal("journal: rollback transaction id=<%hu,%hu>\n",
-	            journal->tmark, journal->qtail);
-	//journal->qtail = journal->tmark;
+	/* Best effort free. */
+	t_end->flags = JOURNAL_FREE;
+	(void) journal_update(journal, t_end);
+
+	/* Write back free segment state. */
+	int seek_ret = lseek(journal->fd, JOURNAL_HSIZE, SEEK_SET);
+	if (seek_ret < 0 || !sfwrite(&journal->free, sizeof(journal_node_t), journal->fd)) {
+		return KNOT_ERROR;
+	}
 
 	/* Clear in-transaction flags. */
 	journal->tmark = 0;
