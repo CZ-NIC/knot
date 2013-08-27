@@ -216,10 +216,10 @@ void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
  *
  * \param changeset Changeset to be checked.
  *
- * \retval 1 if changeset is empty.
- * \retval 0 if changeset is not empty.
+ * \retval true if changeset is empty.
+ * \retval false if changeset is not empty.
  */
-int knot_changeset_is_empty(const knot_changeset_t *changeset);
+bool knot_changeset_is_empty(const knot_changeset_t *changeset);
 
 /*!
  * \brief Apply given function to all RRSets in one part of the changeset.
@@ -275,6 +275,18 @@ int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
  */
 int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
                           knot_changes_part_t part);
+
+/*!
+ * \brief Merges two changesets together, second changeset's lists are nilled.
+ *
+ *
+ * \param ch1 Changeset to merge into
+ * \param ch2 Changeset to merge
+ *
+ * \retval KNOT_EOK on success.
+ * \retval Error code on failure.
+ */
+int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2);
 
 /*!
  * \param changes Double pointer of changes structure to be freed.

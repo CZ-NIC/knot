@@ -168,10 +168,9 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
 	return ret;
 }
 
-/* [code-review] Please document at least parameters & return values. */
-static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
-                                   const knot_rrset_t *rrset2,
-                                   size_t pos1, size_t pos2)
+int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
+                            const knot_rrset_t *rrset2,
+                            size_t pos1, size_t pos2)
 {
 	/* [code-review] Just to be sure. */
 	assert(rrset1 != NULL);
@@ -190,8 +189,8 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
 			int size1 = knot_dname_size(dname1);
 			knot_dname_t *dname2 = NULL;
-			int size2 = knot_dname_size(dname2);
 			memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
+			int size2 = knot_dname_size(dname2);
 			cmp = memcmp(dname1, dname2,
 			             size1 <= size2 ? size1 : size2);
 			if (cmp == 0 && size1 != size2) {

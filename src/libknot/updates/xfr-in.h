@@ -193,7 +193,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 
 int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,
-                      int deep_free);
+                      int transfer_type);
 
 void xfrin_cleanup_successful_update(knot_changes_t *changes);
 

@@ -302,6 +302,14 @@ static int conf_process(conf_t *conf)
 			}
 		}
 
+		// Default policy for DNSSEC
+		if (conf->dnssec_keydir == NULL) {
+			zone->dnssec_enable = false;
+		} else if (!zone->build_diffs ) {
+			// Force enable ixfr-from-differences
+			zone->build_diffs = true;
+		}
+
 		// Relative zone filenames should be relative to storage
 		zone->file = conf_abs_path(conf->storage, zone->file);
 		if (zone->file == NULL) {
@@ -334,11 +342,6 @@ static int conf_process(conf_t *conf)
 		}
 		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
-
-		// DNSSEC
-		if (conf->dnssec_keydir == NULL) {
-			zone->dnssec_enable = false;
-		}
 	}
 
 	/* Update UID and GID. */

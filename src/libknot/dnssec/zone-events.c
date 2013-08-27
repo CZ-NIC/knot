@@ -31,41 +31,34 @@ static uint32_t time_now(void)
 	return (uint32_t)time(NULL);
 }
 
-int knot_dnssec_zone_load(knot_zone_t *zone)
+static void init_default_policy(knot_dnssec_policy_t *p)
 {
+	knot_dnssec_policy_t p_image = DEFAULT_DNSSEC_POLICY;
+	memcpy(p, &p_image, sizeof(knot_dnssec_policy_t));
+}
+
+static void init_forced_policy(knot_dnssec_policy_t *p)
+{
+	knot_dnssec_policy_t p_image = FORCED_DNSSEC_POLICY;
+	memcpy(p, &p_image, sizeof(knot_dnssec_policy_t));
+}
+
+static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force)
+{
+		if (zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
-	knot_changesets_t *changesets = NULL;
 	int result = KNOT_EOK;
 
 	if (!zone_config->dnssec_enable) {
-//		log_server_warning("DNSSEC not enabled for '%s'.\n", zone_name);
+		char *zname = knot_dname_to_str(zone->name);
+		log_server_warning("DNSSEC not enabled for '%s'.\n", zname);
+		free(zname);
 		return KNOT_EOK;
 	}
 
-	result = knot_changesets_init(&changesets, KNOT_CHANGESET_TYPE_DNSSEC);
-	if (result != KNOT_EOK) {
-//		log_server_error("Cannot create new changeset.\n");
-		return result;
-	}
-
-	knot_changeset_t *changeset = knot_changesets_create_changeset(
-	                                                            changesets);
-	if (changeset == NULL) {
-		log_server_error("Failed to create DNSSEC structures!\n");
-		knot_changesets_free(&changesets);
-		return KNOT_ENOMEM;
-	}
-
-	// generate NSEC records
-	result = knot_zone_create_nsec_chain(zone->contents, changeset);
-	if (result != KNOT_EOK) {
-//		log_server_error("Could not create NSEC chain for '%s' (%s).\n",
-//				 zone_name, knot_strerror(result));
-		knot_changesets_free(&changesets);
-		return result;
-	}
-
-	// add missing signatures
 	rcu_read_lock();
 	char *keydir = strdup(conf()->dnssec_keydir);
 	rcu_read_unlock();
@@ -76,67 +69,91 @@ int knot_dnssec_zone_load(knot_zone_t *zone)
 	result = load_zone_keys(keydir, zone->contents->apex->owner, &zone_keys);
 	free(keydir);
 	if (result != KNOT_EOK) {
-		fprintf(stderr, "load_zone_keys() failed\n");
-		return result;
-	}
-
-	// Create sign policy
-	knot_dnssec_policy_t policy = DEFAULT_DNSSEC_POLICY;
-
-	result = knot_zone_sign(zone->contents, &zone_keys, &policy, changeset);
-	if (result != KNOT_EOK) {
-		log_server_error("Could not resign zone (%s).\n",
-				 knot_strerror(result));
-		knot_changesets_free(&changesets);
+		char *zname = knot_dname_to_str(zone->name);
+		log_zone_error("DNSSEC keys could not be loaded (%s). "
+		               "Not signing the %s zone!\n",
+		               knot_strerror(result), zname);
+		free(zname);
 		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		return result;
 	}
 
-	// update SOA if there are any changes
+	// Create sign policy
+	knot_dnssec_policy_t policy;
+	if (force) {
+		init_forced_policy(&policy);
+	} else {
+		init_default_policy(&policy);
+	}
 
-//	log_server_info("changeset add %zu remove %zu\n", changeset->add_count, changeset->remove_count);
+	// generate NSEC records
+	result = knot_zone_create_nsec_chain(zone->contents, out_ch);
+	if (result != KNOT_EOK) {
+		char *zname = knot_dname_to_str(zone->name);
+		log_zone_error("Could not create NSEC(3) chain (%s). "
+		               "Not signing the %s zone!\n",
+		               knot_strerror(result), zname);
+		free(zname);
+		free_sign_contexts(&zone_keys);
+		free_zone_keys(&zone_keys);
+		return result;
+	}
 
-	if (knot_changeset_is_empty(changeset) &&
+	// add missing signatures
+	result = knot_zone_sign(zone->contents, &zone_keys, &policy, out_ch);
+	if (result != KNOT_EOK) {
+		char *zname = knot_dname_to_str(zone->name);
+		log_zone_error("Error signing zone %s (%s).\n",
+		               zname, knot_strerror(result));
+		free(zname);
+		free_sign_contexts(&zone_keys);
+		free_zone_keys(&zone_keys);
+		return result;
+	}
+
+	// Check if only SOA changed
+	if (knot_changeset_is_empty(out_ch) &&
 	    !knot_zone_sign_soa_expired(zone->contents, &zone_keys, &policy)) {
-//		log_server_info("No changes performed.\n");
-		knot_changesets_free(&changesets);
+		char *zname = knot_dname_to_str(zone->name);
+		log_server_info("No signing performed, zone %s is valid.\n",
+		                zname);
+		free(zname);
 		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		return KNOT_EOK;
 	}
 
-	// dump changeset
-
+	// update SOA if there were any changes
 	result = knot_zone_sign_update_soa(zone->contents, &zone_keys, &policy,
-	                                   changeset);
+	                                   out_ch);
 	if (result != KNOT_EOK) {
-//		log_server_error("Cannot update SOA record (%s).\n",
-//				 knot_strerror(result));
+		char *zname = knot_dname_to_str(zone->name);
+		log_server_error("Cannot update SOA record (%s)."
+		                 " Not signing the %s zone!\n",
+		                 knot_strerror(result), zname);
+		free(zname);
 		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
-		knot_changesets_free(&changesets);
 		return result;
 	}
-
-	// apply changeset
-
-	knot_zone_contents_t *new_contents = NULL;
-	result = zones_store_and_apply_chgsets(changesets, zone, &new_contents,
-					       "DNSSEC", XFR_TYPE_UPDATE);
-	if (result != KNOT_EOK) {
-//		log_server_error("Cannot apply changeset (%s).\n",
-//				 knot_strerror(result));
-		free_sign_contexts(&zone_keys);
-		free_zone_keys(&zone_keys);
-		knot_changesets_free(&changesets);
-		return result;
-	}
-
-	// changesets are freed by zones_store_and_apply_chgsets()
 
 	free_sign_contexts(&zone_keys);
 	free_zone_keys(&zone_keys);
 
+	printf("%d %d\n", list_size(&out_ch->add), list_size(&out_ch->remove));
+
 	return KNOT_EOK;
+}
+
+int knot_dnssec_zone_sign(knot_zone_t *zone,
+                          knot_changeset_t *out_ch)
+{
+	return zone_sign(zone, out_ch, false);
+}
+
+int knot_dnssec_zone_sign_force(knot_zone_t *zone,
+                                knot_changeset_t *out_ch)
+{
+	return zone_sign(zone, out_ch, true);
 }

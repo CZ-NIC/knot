@@ -31,10 +31,13 @@ typedef struct {
 	uint32_t now;           //! Current time.
 	uint32_t sign_lifetime; //! Signature life time.
 	uint32_t sign_refresh;  //! Signature refresh time before expiration.
+	bool forced_sign;       //! Drop valid signatures as well.
 } knot_dnssec_policy_t;
 
 #define DEFAULT_DNSSEC_POLICY { .now = time_now(), .sign_lifetime = 2592000, \
-				.sign_refresh = 7200 }
+				.sign_refresh = 7200, .forced_sign = false }
+#define FORCED_DNSSEC_POLICY { .now = time_now(), .sign_lifetime = 2592000, \
+				.sign_refresh = 7200, .forced_sign = true }
 
 #endif // _KNOT_DNSSEC_POLICY_H_
 

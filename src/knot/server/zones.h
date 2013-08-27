@@ -211,7 +211,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
 /*!
  * \brief Store changesets in journal.
  *
- * Changesets will be stored on a permanent storage.
+ * Changesets will be stored to a permanent storage.
  * Journal may be compacted, resulting in flattening changeset history.
  *
  * \param zone Zone associated with the changeset.
@@ -295,8 +295,9 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
  * \retval KNOT_ENODIFF when new zone's serial are equal.
  * \retval KNOT_ERROR when there was error creating changesets.
  */
-int zones_create_and_save_changesets(const knot_zone_t *old_zone,
-                                     const knot_zone_t *new_zone);
+int zones_create_changeset(const knot_zone_t *old_zone,
+                           const knot_zone_t *new_zone,
+                           knot_changeset_t *changeset);
 
 int zones_store_and_apply_chgsets(knot_changesets_t *chs,
                                   knot_zone_t *zone,

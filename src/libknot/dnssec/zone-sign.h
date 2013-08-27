@@ -37,7 +37,7 @@
 int knot_zone_sign(const knot_zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
-                   knot_changeset_t *changeset);
+                   knot_changeset_t *out_ch);
 
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
                               const knot_zone_keys_t *zone_keys,

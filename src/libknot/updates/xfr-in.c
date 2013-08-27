@@ -2196,6 +2196,9 @@ dbg_xfrin_exec_detail(
 
 void xfrin_cleanup_successful_update(knot_changes_t *changes)
 {
+	if (changes == NULL) {
+		return;
+	}
 	// Free old RRSets
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changes->old_rrsets) {
