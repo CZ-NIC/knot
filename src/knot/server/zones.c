@@ -1435,6 +1435,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			return ret;
 		}
 
+		knot_zone_diff_dump_changeset(sec_ch);
 		/* Apply DNSSEC changeset. */
 		if (!knot_changeset_is_empty(sec_ch)) {
 			ret = xfrin_apply_changesets(zone, sec_chs,
