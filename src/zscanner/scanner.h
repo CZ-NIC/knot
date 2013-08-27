@@ -204,10 +204,6 @@ struct scanner {
 	uint8_t  r_data[MAX_RDATA_LENGTH];
 	/*! Length of the current rdata. */
 	uint32_t r_data_length;
-	/*! Indexes of the current rdata blocks. */
-	uint16_t r_data_blocks[MAX_RDATA_ITEMS];
-	/*! Number or the current rdata blocks. */
-	uint32_t r_data_blocks_count;
 
 	/*
 	 * Example: a. IN 60 MX 1 b.
@@ -219,8 +215,6 @@ struct scanner {
 	 *          r_type = 15
 	 *          r_data = 0001016200
 	 *          r_data_length = 5
-	 *          r_data_blocks_count = 2
-	 *          r_data_blocks = [0, 2, 5]
 	 */
 };
 

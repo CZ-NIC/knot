@@ -215,14 +215,6 @@
 			fhold; fgoto err_line;
 		}
 	}
-
-	action _separate {
-		s->r_data_blocks[++(s->r_data_blocks_count)] =
-			rdata_tail - s->r_data;
-	}
-
-	# Rdata blocks dividing.
-	blk_sep = zlen >_separate;
 	# END
 
 	# BEGIN - Owner processing
@@ -435,7 +427,7 @@
 
 	time_block = (number . time_unit) >_time_block_init %_time_block_exit;
 
-	# Time is either a number or a sequence of time blocks (1w1h1m)
+	# Time is either a number or a sequence of time blocks (1w1h1m).
 	time = (number . (time_unit . (time_block)*)?) $!_number_error;
 
 	time32 = time %_num32_write;
@@ -906,12 +898,6 @@
 	action _type_data_exit {
 		if ((rdata_tail - s->r_data) != s->r_data_length) {
 			SCANNER_WARNING(ZSCANNER_EBAD_RDATA_LENGTH);
-			fhold; fgoto err_line;
-		}
-
-		ret = find_rdata_blocks(s);
-		if (ret != ZSCANNER_OK) {
-			SCANNER_WARNING(ret);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1521,7 +1507,7 @@
 		}
 	}
 	action _eui_sep_error {
-		SCANNER_WARNING(ZSCANNER_EBAD_CHAR_DASH);                       
+		SCANNER_WARNING(ZSCANNER_EBAD_CHAR_DASH);
 		fhold; fgoto err_line;
 	}
 
@@ -1606,8 +1592,6 @@
 
 	# BEGIN - Rdata processing
 	action _r_data_init {
-		s->r_data_blocks[0] = 0;
-		s->r_data_blocks_count = 0;
 		rdata_tail = s->r_data;
 	}
 	action _r_data_error {
@@ -1624,8 +1608,8 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_soa :=
-		(r_dname . blk_sep .  sep . r_dname . blk_sep .  sep . num32 .
-		 sep . time32 . sep . time32 . sep . time32 . sep . time32)
+		(r_dname . sep . r_dname . sep . num32 . sep . time32 .
+		 sep . time32 . sep . time32 . sep . time32)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_hinfo :=
@@ -1633,11 +1617,11 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_minfo :=
-		(r_dname . blk_sep .  sep . r_dname)
+		(r_dname . sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_mx :=
-		(num16 . blk_sep .  sep . r_dname)
+		(num16 . sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_txt :=
@@ -1653,12 +1637,12 @@
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_srv :=
-		(num16 . sep . num16 . sep . num16 . blk_sep .  sep . r_dname)
+		(num16 . sep . num16 . sep . num16 . sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_naptr :=
 		(num16 . sep . num16 . sep . text_string . sep . text_string .
-		 sep . text_string . blk_sep .  sep . r_dname)
+		 sep . text_string . sep . r_dname)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_cert :=
@@ -1683,12 +1667,12 @@
 
 	r_data_rrsig :=
 		(type_num . sep . dns_alg . sep . num8 . sep . num32 . sep .
-		 timestamp . sep . timestamp . sep . num16 . blk_sep .  sep .
-		 r_dname . blk_sep . sep . base64)
+		 timestamp . sep . timestamp . sep . num16 . sep . r_dname .
+		 sep . base64)
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_nsec :=
-		(r_dname . blk_sep . bitmap)
+		(r_dname . bitmap)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_dnskey :=
@@ -1849,15 +1833,10 @@
 		}
 	}
 
-	action _text_r_data_exit {
-		s->r_data_blocks[++(s->r_data_blocks_count)] =
-			(uint16_t)(rdata_tail - s->r_data);
-	}
-
-	# rdata can be in text or hex format with leading "\#" string
+	# rdata can be in text or hex format with leading "\#" string.
 	r_data =
-		( sep  . ^('\\' | all_wchar)     $_text_r_data %_text_r_data_exit
-		| sep  . '\\' . ^'#' ${ fhold; } $_text_r_data %_text_r_data_exit
+		( sep  . ^('\\' | all_wchar)     $_text_r_data
+		| sep  . '\\' . ^'#' ${ fhold; } $_text_r_data
 		| sep  . '\\' .  '#'             $_hex_r_data   # Hex format.
 		| sep? . end_wchar               $_text_r_data  # Empty rdata.
 		) >_r_data_init $!_r_data_error;
