@@ -40,7 +40,6 @@ $TTL	1
 @	CERT
 @	CERT						; Empty rdata
 @	CERT	\# 0					; Hex empty rdata
-@	CERT	\#					; Missing hex length
 @	CERT	65536	0	0	AA==		; Type overflow
 @	CERT	X	0	0	AA==		; Bad type mnemonic
 @	CERT	0	65536	0	AA==		; Key tag overflow
@@ -55,5 +54,3 @@ $TTL	1
 @	CERT	0	0	0	===		; Bad padding
 @	CERT	0	0	0	====		; Bad padding
 @	CERT	0	0	0			; Missing item
-@	CERT	\# 6 00000000000000			; Too long rdata
-@	CERT	\# 7 000000000000			; Bad rdata length

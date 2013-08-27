@@ -13,7 +13,6 @@ $TTL	1
 @	NSEC3PARAM
 @	NSEC3PARAM						; Empty rdata
 @	NSEC3PARAM	\# 0					; Hex empty rdata
-@	NSEC3PARAM	\#					; Missing hex length
 @	NSEC3PARAM	256	0	0	00		; Algorithm overflow
 @	NSEC3PARAM	0	256	0	00		; Flags overflow
 @	NSEC3PARAM	0	0	65536	00		; Iterations overflow
@@ -22,5 +21,3 @@ $TTL	1
 @	NSEC3PARAM	0	0	0	00 00		; Hex block must not contain blank spaces
 @	NSEC3PARAM	0	0	0	00 x		; Unexpected item
 @	NSEC3PARAM	0	0	0			; Missing item
-@	NSEC3PARAM	\# 5 000000000000			; Too long rdata
-@	NSEC3PARAM	\# 6 0000000000				; Bad rdata length

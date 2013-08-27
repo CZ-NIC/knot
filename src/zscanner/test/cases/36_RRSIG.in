@@ -21,7 +21,6 @@ $TTL	1
 @	RRSIG
 @	RRSIG										; Empty rdata
 @	RRSIG	\# 0									; Hex empty rdata
-@	RRSIG	\#									; Missing hex length
 @	RRSIG	X	0	0	0	0	0	0	.	AA==	; Unknown type
 @	RRSIG	TYPE65536	0	0	0	0	0	0	.	AA==	; Type overflow
 @	RRSIG	A	256	0	0	0	0	0		.	AA==	; Algorithm overflow
@@ -44,5 +43,3 @@ $TTL	1
 @	RRSIG	A	0	0	0	0	0	0	.	===	; Bad padding
 @	RRSIG	A	0	0	0	0	0	0	.	====	; Bad padding
 @	RRSIG	A	0	0	0	0	0	0	.		; Missing item
-@	RRSIG	\# 20 000100000000000000000000000000000000 00 0000			; Too long rdata
-@	RRSIG	\# 21 000100000000000000000000000000000000 00 00			; Bad rdata length

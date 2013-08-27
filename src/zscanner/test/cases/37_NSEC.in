@@ -16,8 +16,5 @@ $TTL	1
 @	NSEC
 @	NSEC						; Empty rdata
 @	NSEC	\# 0					; Hex empty rdata
-@	NSEC	\#					; Missing hex length
 @	NSEC	.	TYPE65536			; Type number overflow
 @	NSEC	.	X				; Unknown type
-@	NSEC	\# 1 0000				; Too long rdata
-@	NSEC	\# 2 00					; Bad rdata length

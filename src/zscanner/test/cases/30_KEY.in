@@ -16,7 +16,6 @@ $TTL	1
 @	KEY
 @	KEY						; Empty rdata
 @	KEY	\# 0					; Hex empty rdata
-@	KEY	\#					; Missing hex length
 @	KEY	65536	0	0	AA==		; Type overflow
 @	KEY	0	256	0	AA==		; Key tag overflow
 @	KEY	0	0	256	AA==		; Algorithm overflow
@@ -30,5 +29,3 @@ $TTL	1
 @	KEY	0	0	0	===		; Bad padding
 @	KEY	0	0	0	====		; Bad padding
 @	KEY	0	0	0			; Missing item
-@	KEY	\# 5 000000000000			; Too long rdata
-@	KEY	\# 6 0000000000				; Bad rdata length

@@ -16,6 +16,3 @@ $TTL	1
 @	MINFO
 @	MINFO				; Empty rdata
 @	MINFO	\# 0			; Hex empty rdata
-@	MINFO	\#			; Missing hex length
-@	MINFO	\# 3 00 0001		; Too long rdata
-@	MINFO	\# 3 00 00		; Bad rdata length

@@ -19,7 +19,6 @@ $TTL	1
 @	IPSECKEY
 @	IPSECKEY							; Empty rdata
 @	IPSECKEY	\# 0						; Hex empty rdata
-@	IPSECKEY	\#						; Missing hex length
 @	IPSECKEY	256	0	0	.			; Precedence overflow
 @	IPSECKEY	0	4	0	.			; Unknown gateway
 @	IPSECKEY	0	0	256	.	AA==		; Algorithm overflow
@@ -28,5 +27,3 @@ $TTL	1
 @	IPSECKEY	0	0	1	.	A		; Continuous block length must be multiple of 4
 @	IPSECKEY	0	0	1	.	=		; Bad padding
 @	IPSECKEY	0	0					; Missing item
-@	IPSECKEY	\# 3 00000000					; Too long rdata
-@	IPSECKEY	\# 4 000000					; Bad rdata length
