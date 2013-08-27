@@ -121,6 +121,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force)
 		free(zname);
 		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
+		assert(knot_changeset_is_empty(out_ch));
 		return KNOT_EOK;
 	}
 
@@ -141,7 +142,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force)
 	free_sign_contexts(&zone_keys);
 	free_zone_keys(&zone_keys);
 
-	printf("%d %d\n", list_size(&out_ch->add), list_size(&out_ch->remove));
+	printf("OK:%d %d\n", list_size(&out_ch->add), list_size(&out_ch->remove));
 
 	return KNOT_EOK;
 }

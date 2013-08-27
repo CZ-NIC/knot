@@ -293,10 +293,6 @@ int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2)
 	add_tail(&ch1->add, HEAD(ch2->add));
 	add_tail(&ch1->remove, HEAD(ch2->remove));
 
-	// Destroy the lists in the second changeset
-	init_list(&ch2->add);
-	init_list(&ch2->remove);
-
 	return KNOT_EOK;
 }
 

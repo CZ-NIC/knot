@@ -123,7 +123,7 @@ static int sign_rrset_one(knot_rrset_t *rrsigs,
 	rrsig_write_rdata(rdata, key, knot_rrset_owner(covered), covered,
 	                  sig_incept, sig_expire);
 
-	// RFC 4034: The signature coveres RRSIG RDATA field (excluding the
+	// RFC 4034: The signature covers RRSIG RDATA field (excluding the
 	// signature) and all matching RR records, which are ordered
 	// canonically.
 
@@ -202,7 +202,10 @@ static bool full_sig_check(const knot_rrset_t *covered,
                            knot_dnssec_sign_context_t *ctx,
                            const knot_dnssec_policy_t *policy)
 {
-	assert(rrsigs && covered && ctx && policy);
+	assert(rrsigs && covered && policy);
+	if (key == NULL || ctx == NULL) {
+		return false;
+	}
 	// Do cheaper check first
 	if (!is_valid_signature(rrsigs, pos, policy)) {
 		return false;
@@ -277,7 +280,30 @@ static bool all_signatures_valid(const knot_rrset_t *covered,
 	return true;
 }
 
-static int remove_expired_rrsigs(const knot_rrset_t *rrsigs,
+static void get_matching_signing_data(const knot_rrset_t *rrsigs,
+				      size_t pos,
+				      const knot_zone_keys_t *keys,
+				      const knot_dnssec_key_t **key,
+				      knot_dnssec_sign_context_t **ctx)
+{
+	uint16_t keytag = knot_rrset_rdata_rrsig_key_tag(rrsigs, pos);
+	for (int i = 0; i < keys->count; i++) {
+		const knot_dnssec_key_t *found_key = &keys->keys[i];
+		if (keytag != found_key->keytag)
+			continue;
+		*ctx = keys->contexts[i];
+		*key = &keys->keys[i];
+		return;
+	}
+
+	*ctx = NULL;
+	*key = NULL;
+	return;
+}
+
+static int remove_expired_rrsigs(const knot_rrset_t *covered,
+				 const knot_rrset_t *rrsigs,
+				 const knot_zone_keys_t *zone_keys,
 				 const knot_dnssec_policy_t *policy,
 				 knot_changeset_t *changeset)
 {
@@ -292,8 +318,13 @@ static int remove_expired_rrsigs(const knot_rrset_t *rrsigs,
 	int result = KNOT_EOK;
 
 	for (int i = 0; i < rrsigs->rdata_count; i++) {
-		if (is_valid_signature(rrsigs, i, policy))
+		// Get key that matches RRSIGs'
+		const knot_dnssec_key_t *key = NULL;
+		knot_dnssec_sign_context_t *ctx = NULL;
+		get_matching_signing_data(rrsigs, i, zone_keys, &key, &ctx);
+		if (full_sig_check(covered, rrsigs, i, key, ctx, policy))
 			continue;
+		assert(key && ctx);
 
 		if (to_remove == NULL) {
 			to_remove = create_empty_rrsigs_for(rrsigs);
@@ -377,7 +408,6 @@ static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
 	assert(rrset && rrset->rrsigs);
 	knot_rrset_t *to_remove = NULL;
 	int res = knot_rrset_deep_copy(rrset->rrsigs, &to_remove, 1);
-
 	if (res != KNOT_EOK) {
 		return res;
 	}
@@ -408,7 +438,8 @@ static int resign_rrset(const knot_rrset_t *rrset,
                         const knot_dnssec_policy_t *policy,
                         knot_changeset_t *ch)
 {
-	int ret = remove_expired_rrsigs(rrset->rrsigs, policy, ch);
+	int ret = remove_expired_rrsigs(rrset, rrset->rrsigs, zone_keys,
+	                                policy, ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

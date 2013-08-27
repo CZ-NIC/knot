@@ -48,6 +48,37 @@ static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
 static const size_t XFRIN_BOOTSTRAP_DELAY = 2000; /*!< AXFR bootstrap avg. delay */
 
+
+#include "libknot/rrset-dump.h"
+
+static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
+{
+	if (ch == NULL) {
+		return;
+	}
+	printf("Changeset FROM: %d\n", ch->serial_from);
+	knot_rrset_dump(ch->soa_from);
+	printf("\n");
+	printf("Changeset TO: %d\n", ch->serial_to);
+	knot_rrset_dump(ch->soa_to);
+	printf("\n");
+
+	printf("ADD section:\n");
+	printf("**********************************************\n");
+	char buf[1024];
+	knot_rr_ln_t *rr_node;
+	WALK_LIST(rr_node, ch->add) {
+		knot_rrset_txt_dump(rr_node->rr, buf, 1024, &KNOT_DUMP_STYLE_DEFAULT);
+		printf("%s\n", buf);
+	}
+	printf("REMOVE section:\n");
+	printf("**********************************************\n");
+	WALK_LIST(rr_node, ch->remove) {
+		knot_rrset_txt_dump(rr_node->rr, buf, 1024, &KNOT_DUMP_STYLE_DEFAULT);
+		printf("%s\n", buf);
+	}
+}
+
 /* Forward declarations. */
 static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
 
@@ -442,6 +473,9 @@ static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
 static int zones_store_changesets_to_disk(knot_zone_t *zone,
                                           knot_changesets_t *chgsets)
 {
+	if (EMPTY_LIST(chgsets->sets)) {
+		return KNOT_EOK;
+	}
 	journal_t *journal = zones_store_changesets_begin(zone);
 	if (journal == NULL) {
 		dbg_zones("zones: create_changesets: "
@@ -1042,9 +1076,14 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 		return KNOT_EOK;
 	}
 	if (diff_chs != NULL && sec_chs == NULL) {
+
+	printf("storing diff:\n");
+	knot_zone_diff_dump_changeset(knot_changesets_get_last(diff_chs));
 		return zones_store_changesets_to_disk(zone, diff_chs);
 	}
 	if (diff_chs == NULL && sec_chs != NULL) {
+	printf("storing sec:\n");
+	knot_zone_diff_dump_changeset(knot_changesets_get_last(sec_chs));
 		return zones_store_changesets_to_disk(zone, sec_chs);
 	}
 
@@ -1052,12 +1091,45 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	 * Merge changesets (only one in each 'changesets_t' structure),
 	 * use serial from diff (it's user supplied).
 	 */
+	printf("storing merge:\n");
 	int ret = knot_changeset_merge(knot_changesets_get_last(diff_chs),
 	                               knot_changesets_get_last(sec_chs));
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
+	/* Rewrite SOAs in 'sec_chs' - we need to use SOAs from 'diff_chs' */
+	/* SOA to */
+	knot_rrset_deep_free(&knot_changesets_get_last(diff_chs)->soa_to, 1, 1);
+	knot_rrset_t *soa_copy = NULL;
+	ret = knot_rrset_deep_copy_no_sig(
+		knot_changesets_get_last(diff_chs)->soa_to, &soa_copy, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_changeset_add_soa(knot_changesets_get_last(sec_chs), soa_copy,
+	                       KNOT_CHANGESET_ADD);
+
+	/* SOA from */
+	knot_rrset_deep_free(&knot_changesets_get_last(diff_chs)->soa_from, 1, 1);
+	ret = knot_rrset_deep_copy_no_sig(
+		knot_changesets_get_last(diff_chs)->soa_from, &soa_copy, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_changeset_add_soa(knot_changesets_get_last(sec_chs), soa_copy,
+	                       KNOT_CHANGESET_REMOVE);
+
+	/* First SOA */
+	knot_rrset_deep_free(&sec_chs->first_soa, 1, 1);
+	ret = knot_rrset_deep_copy_no_sig(sec_chs->first_soa, &soa_copy, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	sec_chs->first_soa = soa_copy;
+	knot_zone_diff_dump_changeset(knot_changesets_get_last(diff_chs));
+
+	/* Store ALL changes to disk. */
 	ret = zones_store_changesets_to_disk(zone, diff_chs);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1323,6 +1395,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 		/* Run DNSSEC signing if enabled (no zone change needed) */
 		knot_changesets_t *sec_chs = NULL;
+		knot_changeset_t *sec_ch = NULL;
 		knot_zone_contents_t *new_contents = NULL;
 		if (z->dnssec_enable) {
 			sec_chs =
@@ -1333,28 +1406,21 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				return KNOT_ENOMEM;
 			}
 			/* Extra changeset is needed. */
-			knot_changeset_t *sec_ch =
-				knot_changesets_create_changeset(sec_chs);
+			sec_ch = knot_changesets_create_changeset(sec_chs);
+			if (sec_ch == NULL) {
+				knot_changesets_free(&diff_chs);
+				knot_changesets_free(&sec_chs);
+				rcu_read_unlock();
+				return KNOT_ENOMEM;
+			}
+
+			/* Sign the zone. */
 			int ret = knot_dnssec_zone_sign(zone, sec_ch);
 			if (ret != KNOT_EOK) {
 				knot_changesets_free(&diff_chs);
 				knot_changesets_free(&sec_chs);
 				rcu_read_unlock();
 				return ret;
-			}
-
-			if (!knot_changeset_is_empty(sec_ch)) {
-				/* Apply DNSSEC changeset. */
-				ret = xfrin_apply_changesets(zone, sec_chs,
-				                             &new_contents);
-				if (ret != KNOT_EOK) {
-					knot_changesets_free(&diff_chs);
-					knot_changesets_free(&sec_chs);
-					rcu_read_unlock();
-					return ret;
-				}
-				/* If server dies now, we have to resign. */
-				assert(new_contents);
 			}
 		}
 
@@ -1368,20 +1434,29 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			rcu_read_unlock();
 			return ret;
 		}
+
+		/* Apply DNSSEC changeset. */
+		if (!knot_changeset_is_empty(sec_ch)) {
+			ret = xfrin_apply_changesets(zone, sec_chs,
+			                             &new_contents);
+			if (ret != KNOT_EOK) {
+				knot_changesets_free(&diff_chs);
+				knot_changesets_free(&sec_chs);
+				rcu_read_unlock();
+				return ret;
+			}
+			assert(new_contents);
+		}
+
 		/* Switch zone contents. */
 		rcu_read_unlock(); // TODO isn't this unlock too soon?
 		if (new_contents) {
 			ret = xfrin_switch_zone(zone, new_contents,
 			                        XFR_TYPE_UPDATE);
 			if (ret != KNOT_EOK) {
-				rcu_read_unlock();
 				return ret;
 			}
 		}
-		knot_changesets_free(&diff_chs);
-		knot_changesets_free(&sec_chs);
-		xfrin_cleanup_successful_update(diff_chs ? diff_chs->changes : NULL);
-		xfrin_cleanup_successful_update(sec_chs ? sec_chs->changes : NULL);
 	}
 
 	knot_dname_free(&dname);
@@ -3297,6 +3372,8 @@ static int zones_dnssec_ev(event_t *event)
 		zd->dnssec_timer = NULL;
 		return ret;
 	}
+
+	knot_zone_diff_dump_changeset(ch);
 
 	knot_zone_contents_t *new_c = NULL;
 	ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",

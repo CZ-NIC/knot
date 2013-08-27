@@ -971,7 +971,7 @@ int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
 	dbg_zonediff("Changesets created successfully!\n");
 	dbg_zonediff_detail("Changeset dump:\n");
 dbg_zonediff_exec_detail(
-	knot_zone_diff_dump_changeset(HEAD((*changeset)->sets));
+	knot_zone_diff_dump_changeset(changeset);
 );
 
 	return KNOT_EOK;

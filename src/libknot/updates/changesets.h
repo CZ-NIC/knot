@@ -277,8 +277,7 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
                           knot_changes_part_t part);
 
 /*!
- * \brief Merges two changesets together, second changeset's lists are nilled.
- *
+ * \brief Merges two changesets together, second changeset's lists are kept.
  *
  * \param ch1 Changeset to merge into
  * \param ch2 Changeset to merge
