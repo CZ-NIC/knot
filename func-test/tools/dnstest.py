@@ -12,6 +12,8 @@ import time
 import dns.message
 import dns.query
 import dns.tsigkeyring
+import dns.update
+import dns.zone
 from subprocess import Popen, PIPE, DEVNULL, check_call
 import zone_generate, params
 
@@ -165,7 +167,7 @@ class BindConf(object):
         self.conf += "%s%s \"%s\";\n" % (self.indent, name, value)
 
 class Zone(object):
-    ''' DNS zone description'''
+    '''DNS zone description'''
 
     def __init__(self, name, filename, ddns=None):
         self.name = name
@@ -174,6 +176,24 @@ class Zone(object):
         self.slaves = set()
         # ddns: True - ddns, False - ixfrFromDiff, None - empty
         self.ddns = ddns
+
+class Update(object):
+    '''DNS update context'''
+
+    def __init__(self, server, upd):
+        self.server = server
+        self.upd = upd
+
+    def add(self, owner, ttl, rtype, rdata):
+        self.upd.add(owner, ttl, rtype, rdata)
+
+    def delete(self, owner, args=dict()):
+        self.upd.delete(owner, **args)
+
+    def send(self):
+        resp = dns.query.tcp(self.upd, self.server.addr, port=self.server.port)
+        if resp.rcode() != 0:
+            raise Exception("Update rcode %i" % resp.rcode())
 
 class DnsServer(object):
     '''Specification of DNS server'''
@@ -409,6 +429,15 @@ class DnsServer(object):
             else:
                 raise Exception("Can't get %s SOA from %s." % \
                                 (zone, self.name))
+
+    def update(self, zone):
+        if len(zone) != 1:
+            raise Exception("One zone required.")
+
+        key_params = self.tsig.key_params if self.tsig else dict()
+        zname = list(zone.keys())[0]
+
+        return Update(self, dns.update.Update(zname, **key_params))
 
 class Bind(DnsServer):
 
@@ -884,4 +913,3 @@ class DnsTest(object):
                 if slave not in self.servers:
                     raise Exception("Uncovered server in test")
                 slave.zone_slave(zone, zones[zone], master)
-

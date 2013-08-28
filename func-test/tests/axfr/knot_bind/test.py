@@ -4,12 +4,11 @@
 
 import dnstest
 
-t = dnstest.DnsTest(tsig=True)
+t = dnstest.DnsTest()
 
 master = t.server("knot")
 slave = t.server("bind")
-#zones = t.zone_rnd(2)
-zones = t.zone("mysqb8.fluid", "mysqb8.fluid.zone")
+zones = t.zone_rnd(2)
 
 t.link(zones, master, slave)
 

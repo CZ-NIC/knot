@@ -21,7 +21,7 @@ fail_cnt = 0
 log("Starting Knot test suite %s" % outs_dir)
 
 def save_traceback(outdir):
-    file = open(params.out_dir + "/traceback", mode="w")
+    file = open(params.out_dir + "/traceback", mode="a")
     traceback.print_exc(file=file)
     file.close()
 
