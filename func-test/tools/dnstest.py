@@ -190,10 +190,11 @@ class Update(object):
     def delete(self, owner, args=dict()):
         self.upd.delete(owner, **args)
 
-    def send(self):
+    def send(self, rcode="NOERROR"):
         resp = dns.query.tcp(self.upd, self.server.addr, port=self.server.port)
-        if resp.rcode() != 0:
-            raise Exception("Update rcode %i" % resp.rcode())
+        if resp.rcode() != dns.rcode.from_text(rcode):
+            raise Exception("Update rcode is %s (expected %s)" \
+                            % (dns.rcode.to_text(resp.rcode()), rcode))
 
 class DnsServer(object):
     '''Specification of DNS server'''
