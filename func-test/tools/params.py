@@ -15,5 +15,3 @@ test = None
 err = False
 # Error message text.
 errmsg = ""
-# Enable exception traceback.
-debug = False
