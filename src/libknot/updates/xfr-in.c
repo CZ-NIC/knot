@@ -2574,6 +2574,7 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 	if (soa == NULL || knot_rrset_rdata_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
+		assert(0);
 		return KNOT_ERROR;
 	}
 
@@ -2961,9 +2962,11 @@ int xfrin_switch_zone(knot_zone_t *zone,
 	// and we do not search for new nodes anymore
 	knot_zone_contents_set_gen_old(new_contents);
 
-	// wait for readers to finish
-	dbg_xfrin_verb("Waiting for readers to finish...\n");
-	synchronize_rcu();
+	if (transfer_type != XFR_TYPE_DNSSEC) {
+		// wait for readers to finish
+		dbg_xfrin_verb("Waiting for readers to finish...\n");
+		synchronize_rcu();
+	}
 	// destroy the old zone
 	dbg_xfrin_verb("Freeing old zone: %p\n", old);
 
@@ -2976,3 +2979,5 @@ int xfrin_switch_zone(knot_zone_t *zone,
 
 	return KNOT_EOK;
 }
+
+

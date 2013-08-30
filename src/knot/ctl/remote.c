@@ -176,7 +176,7 @@ static int remote_zone_sign(server_t *server, const knot_zone_t *zone)
 	log_server_info("Requested zone resign for '%s'.\n", zone_name);
 	free(zone_name);
 
-	zones_schedule_dnssec((knot_zone_t *)zone, 0);
+	zones_schedule_dnssec((knot_zone_t *)zone, 0, true);
 
 	return KNOT_EOK;
 }

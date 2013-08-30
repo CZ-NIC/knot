@@ -330,10 +330,12 @@ int zones_schedule_notify(knot_zone_t *zone);
 /*!
  * \brief Schedule DNSSEC event.
  * \param zone Related zone.
+ * \param time When to schedule
+ * \param force Force sign or not
  *
  * \return Error code, KNOT_OK if successful.
  */
-int zones_schedule_dnssec(knot_zone_t *zone, int64_t time);
+int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force);
 
 /*!
  * \brief Processes forwarded UPDATE response packet.

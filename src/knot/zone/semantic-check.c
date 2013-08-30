@@ -871,7 +871,7 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 	                node) {
 		const knot_rrset_t *ns_rrset =
 				knot_node_rrset(node, KNOT_RRTYPE_NS);
-		if (ns_rrset == NULL) {
+		if (ns_rrset == NULL || ns_rrset->rdata_count == 0) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_MISSING_NS_DEL_POINT,
 			                         NULL);
