@@ -1077,6 +1077,40 @@ static bool zones_changesets_empty(const knot_changesets_t *chs)
 	return knot_changeset_is_empty(HEAD(chs->sets));
 }
 
+static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
+                                         knot_changesets_t *sec_chs)
+{
+	/*
+	 * \todo Merged changesets freeing can be quite complicated, since there 
+	 * are several cases to handle. It might be easier to free the single
+	 * changeset in the changesets structures when there are no changes in it, but
+	 * that would require some extra return codes. Still, probably better than this.
+	 */
+	if (diff_chs == NULL &&
+	    sec_chs == NULL) {
+	} else if (diff_chs == NULL &&
+	    sec_chs != NULL) {
+		knot_changesets_free(&sec_chs);
+	} else if (sec_chs == NULL &&
+	      diff_chs != NULL) {
+		knot_changesets_free(&diff_chs);
+	} else {
+		/* 
+		 * Merged changesets, deep free 'diff_chs',
+		 * shallow free 'sec_chs', unless one of them is empty.
+		 */
+		if (zones_changesets_empty(sec_chs) || zones_changesets_empty(diff_chs)) {
+			knot_changesets_free(&sec_chs);
+			knot_changesets_free(&diff_chs);
+		} else {
+			knot_changesets_free(&diff_chs);
+			// Reset sec_chs' changeset list, else we have double free.
+			init_list(&sec_chs->sets);
+			knot_changesets_free(&sec_chs);
+		}
+	}
+}
+
 static int zones_merge_and_store_changesets(knot_zone_t *zone,
                                             knot_changesets_t *diff_chs,
                                             knot_changesets_t *sec_chs)
@@ -1453,8 +1487,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			ret = xfrin_apply_changesets(zone, sec_chs,
 			                             &new_contents);
 			if (ret != KNOT_EOK) {
-				knot_changesets_free(&diff_chs);
-				knot_changesets_free(&sec_chs);
+				zones_free_merged_changesets(diff_chs, sec_chs);
 				rcu_read_unlock();
 				return ret;
 			}
@@ -1466,8 +1499,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			ret = xfrin_switch_zone(zone, new_contents,
 			                        XFR_TYPE_DNSSEC);
 			if (ret != KNOT_EOK) {
-				knot_changesets_free(&diff_chs);
-				knot_changesets_free(&sec_chs);
+				zones_free_merged_changesets(diff_chs, sec_chs);
 				rcu_read_unlock();
 				return ret;
 			}
@@ -1477,6 +1509,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			ret = KNOT_ENODIFF;
 		}
 
+		zones_free_merged_changesets(diff_chs, sec_chs);
 		rcu_read_unlock();
 	}
 
