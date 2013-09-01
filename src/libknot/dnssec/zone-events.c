@@ -31,19 +31,24 @@ static uint32_t time_now(void)
 	return (uint32_t)time(NULL);
 }
 
-static void init_default_policy(knot_dnssec_policy_t *p)
+static void init_default_policy(knot_dnssec_policy_t *p,
+                                knot_update_serial_t soa_up)
 {
 	knot_dnssec_policy_t p_image = DEFAULT_DNSSEC_POLICY;
 	memcpy(p, &p_image, sizeof(knot_dnssec_policy_t));
+	p->soa_up = soa_up;
 }
 
-static void init_forced_policy(knot_dnssec_policy_t *p)
+static void init_forced_policy(knot_dnssec_policy_t *p,
+                               knot_update_serial_t soa_up)
 {
 	knot_dnssec_policy_t p_image = FORCED_DNSSEC_POLICY;
 	memcpy(p, &p_image, sizeof(knot_dnssec_policy_t));
+	p->soa_up = soa_up;
 }
 
-static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force)
+static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
+                     knot_update_serial_t soa_up)
 {
 		if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -82,9 +87,9 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force)
 	// Create sign policy
 	knot_dnssec_policy_t policy;
 	if (force) {
-		init_forced_policy(&policy);
+		init_forced_policy(&policy, soa_up);
 	} else {
-		init_default_policy(&policy);
+		init_default_policy(&policy, soa_up);
 	}
 
 	// generate NSEC records
@@ -142,19 +147,18 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force)
 	free_sign_contexts(&zone_keys);
 	free_zone_keys(&zone_keys);
 
-	printf("OK:%d %d\n", list_size(&out_ch->add), list_size(&out_ch->remove));
-
 	return KNOT_EOK;
 }
 
 int knot_dnssec_zone_sign(knot_zone_t *zone,
-                          knot_changeset_t *out_ch)
+                          knot_changeset_t *out_ch,
+                          knot_update_serial_t soa_up)
 {
-	return zone_sign(zone, out_ch, false);
+	return zone_sign(zone, out_ch, false, soa_up);
 }
 
 int knot_dnssec_zone_sign_force(knot_zone_t *zone,
                                 knot_changeset_t *out_ch)
 {
-	return zone_sign(zone, out_ch, true);
+	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_INC);
 }

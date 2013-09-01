@@ -48,37 +48,6 @@ static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
 static const size_t XFRIN_CHANGESET_BINARY_STEP = 100;
 static const size_t XFRIN_BOOTSTRAP_DELAY = 2000; /*!< AXFR bootstrap avg. delay */
 
-
-#include "libknot/rrset-dump.h"
-
-static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
-{
-	if (ch == NULL) {
-		return;
-	}
-	printf("Changeset FROM: %d\n", ch->serial_from);
-	knot_rrset_dump(ch->soa_from);
-	printf("\n");
-	printf("Changeset TO: %d\n", ch->serial_to);
-	knot_rrset_dump(ch->soa_to);
-	printf("\n");
-
-	printf("ADD section:\n");
-	printf("**********************************************\n");
-	char buf[1024];
-	knot_rr_ln_t *rr_node;
-	WALK_LIST(rr_node, ch->add) {
-		knot_rrset_txt_dump(rr_node->rr, buf, 1024, &KNOT_DUMP_STYLE_DNSSEC);
-		printf("%s\n", buf);
-	}
-	printf("REMOVE section:\n");
-	printf("**********************************************\n");
-	WALK_LIST(rr_node, ch->remove) {
-		knot_rrset_txt_dump(rr_node->rr, buf, 1024, &KNOT_DUMP_STYLE_DNSSEC);
-		printf("%s\n", buf);
-	}
-}
-
 /* Forward declarations. */
 static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
 
@@ -1089,10 +1058,10 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 	if (diff_chs == NULL &&
 	    sec_chs == NULL) {
 	} else if (diff_chs == NULL &&
-	    sec_chs != NULL) {
+	           sec_chs != NULL) {
 		knot_changesets_free(&sec_chs);
 	} else if (sec_chs == NULL &&
-	      diff_chs != NULL) {
+	           diff_chs != NULL) {
 		knot_changesets_free(&diff_chs);
 	} else {
 		/* 
@@ -1121,12 +1090,10 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	}
 	if (!zones_changesets_empty(diff_chs) &&
 	    zones_changesets_empty(sec_chs)) {
-		knot_zone_diff_dump_changeset(knot_changesets_get_last(diff_chs));
 		return zones_store_changesets_to_disk(zone, diff_chs);
 	}
 	if (zones_changesets_empty(diff_chs) &&
 	    !zones_changesets_empty(sec_chs)) {
-		knot_zone_diff_dump_changeset(knot_changesets_get_last(sec_chs));
 		return zones_store_changesets_to_disk(zone, sec_chs);
 	}
 
@@ -1139,41 +1106,21 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
-	/* Rewrite SOAs in 'sec_chs' - we need to use SOAs from 'diff_chs' */
-	/* SOA to */
-	knot_rrset_deep_free(&knot_changesets_get_last(sec_chs)->soa_to, 1, 1);
-	knot_rrset_t *soa_copy = NULL;
-	ret = knot_rrset_deep_copy_no_sig(
-		knot_changesets_get_last(diff_chs)->soa_to, &soa_copy, 1);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	knot_changeset_add_soa(knot_changesets_get_last(sec_chs), soa_copy,
-	                       KNOT_CHANGESET_ADD);
-	knot_changesets_get_last(sec_chs)->serial_to =
-		knot_changesets_get_last(diff_chs)->serial_to;
-
-	/* SOA from */
-	knot_rrset_deep_free(&knot_changesets_get_last(sec_chs)->soa_from, 1, 1);
-	ret = knot_rrset_deep_copy_no_sig(
-		knot_changesets_get_last(diff_chs)->soa_from, &soa_copy, 1);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	knot_changeset_add_soa(knot_changesets_get_last(sec_chs), soa_copy,
-	                       KNOT_CHANGESET_REMOVE);
-	/* This changeset is not supposed to change serial! */
-	knot_changesets_get_last(sec_chs)->serial_from =
-		knot_changesets_get_last(diff_chs)->serial_to;
-
+	
+	/* SOAs in 'sec_chs' should be the same. */
+	assert(knot_changesets_get_last(sec_chs)->serial_from ==
+	       knot_changesets_get_last(sec_chs)->serial_to);
+	/* And they should be the same as the 'to' from 'diff_chs'. */
+	assert(knot_changesets_get_last(diff_chs)->serial_to ==
+	       knot_changesets_get_last(sec_chs)->serial_to);
 	/* First SOA should not be set. */
 	assert(sec_chs->first_soa == NULL);
-	knot_zone_diff_dump_changeset(knot_changesets_get_last(diff_chs));
 
-	/* Store ALL changes to disk. */
+	/* Store *ALL* changes to disk. (and only apply 'sec_chs', but not here. */
 	ret = zones_store_changesets_to_disk(zone, diff_chs);
 	if (ret != KNOT_EOK) {
+		log_zone_error("Could not store changesets to journal (%s)!",
+		               knot_strerror(ret));
 		return ret;
 	}
 
@@ -1460,8 +1407,11 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				return KNOT_ENOMEM;
 			}
 
-			/* Sign the zone. */
-			int ret = knot_dnssec_zone_sign(zone, sec_ch);
+			/* Sign the zone. Do not incr. serial if diff did that. */
+			knot_update_serial_t soa_up = 
+				zones_changesets_empty(diff_chs) ?
+				KNOT_SOA_SERIAL_INC : KNOT_SOA_SERIAL_KEEP;
+			int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up);
 			if (ret != KNOT_EOK) {
 				knot_changesets_free(&diff_chs);
 				knot_changesets_free(&sec_chs);
@@ -1480,8 +1430,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			rcu_read_unlock();
 			return ret;
 		}
-
-		knot_zone_diff_dump_changeset(sec_ch);
+	
 		/* Apply DNSSEC changeset. */
 		if (!knot_changeset_is_empty(sec_ch)) {
 			ret = xfrin_apply_changesets(zone, sec_chs,
@@ -1507,6 +1456,13 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		           knot_changeset_is_empty(HEAD(diff_chs->sets))) {
 			// No changes
 			ret = KNOT_ENODIFF;
+		}
+		
+		if (!zones_changesets_empty(sec_chs)) {
+			char *zname = knot_dname_to_str(zone->name);
+			log_zone_info("Zone %s was successfully resigned.\n",
+			              zname);
+			free(zname);
 		}
 
 		zones_free_merged_changesets(diff_chs, sec_chs);
@@ -3419,7 +3375,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	if (force) {
 		ret = knot_dnssec_zone_sign_force(zone, ch);
 	} else {
-		ret = knot_dnssec_zone_sign(zone, ch);
+		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_INC);
 	}
 	if (ret != KNOT_EOK) {
 		knot_changesets_free(&chs);
@@ -3427,8 +3383,6 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		zd->dnssec_timer = NULL;
 		return ret;
 	}
-
-	knot_zone_diff_dump_changeset(ch);
 
 	knot_zone_contents_t *new_c = NULL;
 	ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
@@ -3447,6 +3401,10 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	// cleanup
 	evsched_event_free(event->parent, event);
 	zd->dnssec_timer = NULL;
+	
+	char *zname = knot_dname_to_str(zone->name);
+	log_zone_info("Zone %s forced signed successfully.\n", zname);
+	free(zname);
 
 	return KNOT_EOK;
 }

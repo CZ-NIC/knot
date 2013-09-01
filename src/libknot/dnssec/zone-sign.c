@@ -654,7 +654,7 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
-			      knot_changeset_t *changeset)
+                              knot_changeset_t *changeset)
 {
 	knot_node_t *apex = knot_zone_contents_get_apex(zone);
 	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
@@ -684,7 +684,12 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 
 	// TODO: proper increment, no check
-	uint32_t new_serial = serial + 1;
+	uint32_t new_serial = serial;
+	if (policy->soa_up == KNOT_SOA_SERIAL_INC) {
+		new_serial += 1;
+	} else {
+		assert(policy->soa_up == KNOT_SOA_SERIAL_KEEP);
+	}
 
 	// create SOA and new SOA with updated serial
 	knot_rrset_t *soa_from = NULL;
@@ -708,7 +713,7 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 	if (result != KNOT_EOK) {
 		return result;
 	}
-
+	
 	// save the result
 
 	changeset->soa_from = soa_from;

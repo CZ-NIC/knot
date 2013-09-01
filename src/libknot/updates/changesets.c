@@ -290,8 +290,8 @@ int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2)
 	}
 
 	// Connect lists in changesets together
-	add_tail(&ch1->add, HEAD(ch2->add));
-	add_tail(&ch1->remove, HEAD(ch2->remove));
+	add_tail_list(&ch1->add, &ch2->add);
+	add_tail_list(&ch1->remove, &ch2->remove);
 
 	return KNOT_EOK;
 }

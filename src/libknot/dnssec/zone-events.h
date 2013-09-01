@@ -30,8 +30,10 @@
 
 #include "libknot/zone/zone.h"
 #include "libknot/updates/changesets.h"
+#include "libknot/dnssec/policy.h"
 
-int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch);
+int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
+                          knot_update_serial_t soa_up);
 int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch);
 
 #endif // _KNOT_DNSSEC_ZONE_EVENTS_H_

@@ -27,17 +27,25 @@
 #ifndef _KNOT_DNSSEC_POLICY_H_
 #define _KNOT_DNSSEC_POLICY_H_
 
+typedef enum knot_update_serial {
+	KNOT_SOA_SERIAL_INC = 1 << 0,
+	KNOT_SOA_SERIAL_KEEP = 1 << 1
+} knot_update_serial_t;
+
 typedef struct {
-	uint32_t now;           //! Current time.
-	uint32_t sign_lifetime; //! Signature life time.
-	uint32_t sign_refresh;  //! Signature refresh time before expiration.
-	bool forced_sign;       //! Drop valid signatures as well.
+	uint32_t now;               //! Current time.
+	uint32_t sign_lifetime;     //! Signature life time.
+	uint32_t sign_refresh;      //! Sig. refresh time before expiration.
+	bool forced_sign;           //! Drop valid signatures as well.
+	knot_update_serial_t soa_up;//! Policy for serial updating.
 } knot_dnssec_policy_t;
 
 #define DEFAULT_DNSSEC_POLICY { .now = time_now(), .sign_lifetime = 2592000, \
-				.sign_refresh = 7200, .forced_sign = false }
+				.sign_refresh = 7200, .forced_sign = false, \
+				.soa_up = KNOT_SOA_SERIAL_INC }
 #define FORCED_DNSSEC_POLICY { .now = time_now(), .sign_lifetime = 2592000, \
-				.sign_refresh = 7200, .forced_sign = true }
+				.sign_refresh = 7200, .forced_sign = true, \
+				.soa_up = KNOT_SOA_SERIAL_INC }
 
 #endif // _KNOT_DNSSEC_POLICY_H_
 
