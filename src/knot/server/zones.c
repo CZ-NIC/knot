@@ -1436,6 +1436,10 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			ret = xfrin_apply_changesets(zone, sec_chs,
 			                             &new_contents);
 			if (ret != KNOT_EOK) {
+				// Cleanup old and new contents
+				xfrin_rollback_update(zone->contents,
+				                      &new_contents,
+				                      sec_chs->changes);
 				zones_free_merged_changesets(diff_chs, sec_chs);
 				rcu_read_unlock();
 				return ret;
@@ -1448,6 +1452,10 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			ret = xfrin_switch_zone(zone, new_contents,
 			                        XFR_TYPE_DNSSEC);
 			if (ret != KNOT_EOK) {
+				// Cleanup old and new contents
+				xfrin_rollback_update(zone->contents,
+				                      &new_contents,
+				                      sec_chs->changes);
 				zones_free_merged_changesets(diff_chs, sec_chs);
 				rcu_read_unlock();
 				return ret;
@@ -1455,6 +1463,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		} else if (diff_chs == NULL ||
 		           knot_changeset_is_empty(HEAD(diff_chs->sets))) {
 			// No changes
+			/*! \todo Is this really an error? */
 			ret = KNOT_ENODIFF;
 		}
 		
@@ -1465,6 +1474,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			free(zname);
 		}
 
+		xfrin_cleanup_successful_update(sec_chs->changes);
 		zones_free_merged_changesets(diff_chs, sec_chs);
 		rcu_read_unlock();
 	}
