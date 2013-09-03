@@ -203,9 +203,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	if (old_nsec != NULL
 	    && knot_node_rrset_count(a) == KNOT_NODE_RRSET_COUNT_ONLY_NSEC) {
 		ret = changeset_remove_nsec(old_nsec, data->changeset);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+		return ret;
 	}
 
 	// types bitmap for new NSEC
