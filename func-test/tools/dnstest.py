@@ -945,7 +945,7 @@ class DnsTest(object):
 
         return {zone_name: dst_file}
 
-    def zone_rnd(self, number, dnssec=None):
+    def zone_rnd(self, number, dnssec=None, records=None):
         zones = dict()
 
         names = zone_generate.main(["-n", number]).split()
@@ -955,13 +955,13 @@ class DnsTest(object):
             else:
                 sign = True if dnssec else False
             serial = random.randint(1, 4294967295)
-            records = random.randint(1, 1000)
+            items = records if not records else random.randint(1, 1000)
             filename = self.zones_dir + name + ".rndzone"
 
             try:
                 file = open(filename, mode="w")
 
-                params = ["-i", serial, "-o", file, name, records]
+                params = ["-i", serial, "-o", file, name, items]
                 if sign:
                     params = ["-s"] + params
 
