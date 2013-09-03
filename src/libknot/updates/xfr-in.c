@@ -1779,6 +1779,11 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
                                        knot_changes_t *changes,
                                        knot_zone_contents_t *contents)
 {
+	if (node == NULL || rrset_new == NULL || changes == NULL
+	    || contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	uint16_t type = knot_rrset_type(rrset_new);
 	// remove RRSet of the proper type from the node
 	dbg_xfrin_verb("Removing RRSet of type: %u.\n", type);

@@ -1049,7 +1049,7 @@ static bool zones_changesets_empty(const knot_changesets_t *chs)
 static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
                                          knot_changesets_t *sec_chs)
 {
-	/*
+	/*!
 	 * \todo Merged changesets freeing can be quite complicated, since there 
 	 * are several cases to handle. It might be easier to free the single
 	 * changeset in the changesets structures when there are no changes in it, but
@@ -1068,11 +1068,18 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 		 * Merged changesets, deep free 'diff_chs',
 		 * shallow free 'sec_chs', unless one of them is empty.
 		 */
-		if (zones_changesets_empty(sec_chs) || zones_changesets_empty(diff_chs)) {
+		if (zones_changesets_empty(sec_chs)
+		    || zones_changesets_empty(diff_chs)) {
 			knot_changesets_free(&sec_chs);
 			knot_changesets_free(&diff_chs);
 		} else {
 			knot_changesets_free(&diff_chs);
+
+			// the "SOA to" from the second changeset is not used,
+			// thus must be freed
+			knot_rrset_deep_free_no_sig(
+			  &(knot_changesets_get_last(sec_chs)->soa_from), 1, 1);
+
 			// Reset sec_chs' changeset list, else we have double free.
 			init_list(&sec_chs->sets);
 			knot_changesets_free(&sec_chs);
@@ -1106,7 +1113,7 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	
+
 	/* SOAs in 'sec_chs' should be the same. */
 	assert(knot_changesets_get_last(sec_chs)->serial_from ==
 	       knot_changesets_get_last(sec_chs)->serial_to);
