@@ -6,8 +6,8 @@ import dnstest
 
 t = dnstest.DnsTest()
 
-srv = t.server("bind")
-zone = t.zone("example.com.", "example.com.zone")
+srv = t.server("knot")
+zone = t.zone("example.com.")
 
 t.link(zone, srv, ddns=True)
 

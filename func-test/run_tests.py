@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse, importlib, os, re, sys, tempfile, time, traceback
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/tools")
+current_dir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(current_dir + "/tools")
 from dnstest import log, err
 import params
 
@@ -12,6 +13,7 @@ parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                     help="([exclude] | run) specific (test set | [test case])")
 args = parser.parse_args()
 
+params.common_data_dir = current_dir + "/tools/data/"
 outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % int(time.time()))
 tests_dir = "tests"
 test_cnt = 0

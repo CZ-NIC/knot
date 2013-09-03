@@ -926,17 +926,22 @@ class DnsTest(object):
         for server in self.servers:
             server._valgrind_check()
 
-    def zone(self, name, filename):
-        try:
-            src_file = self.data_dir + filename
-            dst_file = self.zones_dir + filename
-            shutil.copyfile(src_file, dst_file)
-        except:
-            raise Exception("Can't use zone file %s" % filename)
-
-        zone_name = name
+    def zone(self, zone_name, file_name=None):
+        # Add trailing dot if missing.
         if zone_name[-1] != ".":
             zone_name += "."
+
+        try:
+            if file_name:
+                src_file = self.data_dir + file_name
+                dst_file = self.zones_dir + file_name
+            else:
+                src_file = params.common_data_dir + zone_name + "zone"
+                dst_file = self.zones_dir + zone_name + "zone"
+
+            shutil.copyfile(src_file, dst_file)
+        except:
+            raise Exception("Can't use zone file %s" % src_file)
 
         return {zone_name: dst_file}
 
