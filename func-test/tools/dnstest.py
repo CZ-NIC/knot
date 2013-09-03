@@ -38,8 +38,13 @@ def err(text):
     log("     ERR> %s" % text)
 
 def compare(value, expected, name):
-    if (value != expected):
+    if value != expected:
         err("%s is (" % name + str(value) + ") != (" + str(expected) + ")")
+        params.err = True
+
+def isset(value, name):
+    if not value:
+        err("%s is False" % name)
         params.err = True
 
 class Tsig(object):
@@ -200,15 +205,29 @@ class Response(object):
         else:
             self.rclass = rclass
 
-    def _check_query(self):
+    def _check_question(self):
         question = self.resp.question.pop()
         compare(question.name, self.rname, "question.name")
         compare(question.rdclass, self.rclass, "question.class")
         compare(question.rdtype, self.rtype, "question.type")
 
-    def check(self, rdata=None, ttl=None, rcode="NOERROR"):
-        # Check question section.
-        self._check_query()
+    def _check_flags(self, flags, no_flags):
+        flag_names = flags.split()
+        for flag in flag_names:
+            flag_val = dns.flags.from_text(flag)
+            isset(self.resp.flags & flag_val, "%s flag" % flag)
+
+        flag_names = no_flags.split()
+        for flag in flag_names:
+            flag_val = dns.flags.from_text(flag)
+            isset(not(self.resp.flags & flag_val), "no %s flag" % flag)
+
+    def check(self, rdata=None, ttl=None, rcode="NOERROR", flags="", \
+              no_flags=""):
+        '''Flags are text strings separated by whitespace character'''
+
+        self._check_flags(flags, no_flags)
+        self._check_question()
 
         # Check rcode.
         if type(rcode) is str:
@@ -240,6 +259,9 @@ class Response(object):
         else:
             err("RDATA (" + str(rdata) + ") not in answer section")
             params.err = True
+
+    def check_edns(self, nsid="", buff_size=None):
+        pass
 
 class Update(object):
     '''DNS update context'''
@@ -453,7 +475,7 @@ class DnsServer(object):
         f.close
 
     def dig(self, rname, rtype, rclass="IN", use_udp=None, serial=None, \
-            timeout=DIG_TIMEOUT, tries=3):
+            timeout=DIG_TIMEOUT, tries=3, use_recursion=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
         for t in range(tries):
@@ -479,6 +501,10 @@ class DnsServer(object):
                               random.choice([True, False])
 
                     query = dns.message.make_query(rname, rtype, rclass)
+
+                    if not use_recursion:
+                        # Remove RD bit which is a default.
+                        query.flags &= ~dns.flags.RD
 
                     if use_udp:
                         resp = dns.query.udp(query, self.addr, port=self.port, \
