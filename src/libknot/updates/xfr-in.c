@@ -2967,11 +2967,10 @@ int xfrin_switch_zone(knot_zone_t *zone,
 	// and we do not search for new nodes anymore
 	knot_zone_contents_set_gen_old(new_contents);
 
-	if (transfer_type != XFR_TYPE_DNSSEC) {
-		// wait for readers to finish
-		dbg_xfrin_verb("Waiting for readers to finish...\n");
-		synchronize_rcu();
-	}
+	// wait for readers to finish
+	dbg_xfrin_verb("Waiting for readers to finish...\n");
+	synchronize_rcu();
+
 	// destroy the old zone
 	dbg_xfrin_verb("Freeing old zone: %p\n", old);
 
