@@ -160,5 +160,5 @@ static int dname_tests_run(int argc, char *argv[])
 	ok(d == NULL, "dname_parse: bad name");
 	cmp_ok(pos, "==", 0, "dname_parse: bad name (parsed length)");
 
-	done_testing();
+	return 0;
 }

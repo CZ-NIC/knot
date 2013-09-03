@@ -30,7 +30,7 @@ unit_api sign_tests_api = {
 
 static int sign_tests_count(int argc, char *argv[])
 {
-	return 25;
+	return 26;
 }
 
 static int sign_tests_run(int argc, char *argv[])
@@ -238,9 +238,7 @@ static int sign_tests_run(int argc, char *argv[])
 		   "knot_tsig_key_from_params(), no shared secret");
 
 		params.name = name;
-		result = knot_binary_from_base64("Ok6NmA==", &params.secret);
-		assert(result == KNOT_EOK);
-
+		knot_binary_from_base64("Ok6NmA==", &params.secret);
 		uint8_t decoded_secret[] = { 0x3a, 0x4e, 0x8d, 0x98 };
 		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EOK
