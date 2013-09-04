@@ -29,6 +29,7 @@
 #include "libknot/util/utils.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/zone/zone-diff.h"
+#include "libknot/util/debug.h"
 
 /* - NSEC chain iteration -------------------------------------------------- */
 
@@ -195,6 +196,9 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 {
 	nsec_chain_iterate_data_t *data = (nsec_chain_iterate_data_t *)d;
 
+	dbg_dnssec_detail("Changeset emtpy during generating NSEC chain: %d\n",
+	        knot_changeset_is_empty(data->changeset));
+
 	knot_rrset_t *old_nsec = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC);
 
 	int ret = 0;
@@ -202,6 +206,12 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	// just remove the NSEC and its RRSIG, they are redundant
 	if (old_nsec != NULL
 	    && knot_node_rrset_count(a) == KNOT_NODE_RRSET_COUNT_ONLY_NSEC) {
+		fprintf(stderr, "foobar\n");
+dbg_dnssec_exec_detail(
+		char *name = knot_dname_to_str(knot_rrset_owner(old_nsec));
+		dbg_dnssec_detail("Removing NSEC at %s.\n", name);
+		free(name);
+);
 		ret = changeset_remove_nsec(old_nsec, data->changeset);
 		return ret;
 	}
@@ -217,17 +227,21 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	knot_rrset_t *new_nsec = create_nsec_rrset(knot_node_owner(a),
 	                                           knot_node_owner(b),
 	                                           &rr_types, data->ttl);
-	if (!new_nsec)
+	if (!new_nsec) {
+		dbg_dnssec_detail("Failed to create new NSEC.\n");
 		return KNOT_ENOMEM;
+	}
 
 	if (old_nsec != NULL) {
 		// current NSEC is valid, do nothing
 		if (knot_rrset_equal(new_nsec, old_nsec,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
+			dbg_dnssec_detail("NSECs equal.\n");
 			knot_rrset_deep_free(&new_nsec, 1, 1);
 			return KNOT_EOK;
 		}
 
+		dbg_dnssec_detail("NSECs not equal, replacing.\n");
 		// current NSEC is invalid, replace it and drop RRSIG
 		// mark the node, so later we know this NSEC needs new RRSIGs
 		knot_node_set_replaced_nsec(a);
@@ -238,6 +252,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 		}
 	}
 
+	dbg_dnssec_detail("Adding new NSEC to changeset.\n");
 	// Add new NSEC to the changeset (no matter if old was removed)
 	return knot_changeset_add_rrset(data->changeset, new_nsec,
 	                                KNOT_CHANGESET_ADD);

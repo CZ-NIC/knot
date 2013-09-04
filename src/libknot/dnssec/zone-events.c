@@ -25,6 +25,7 @@
 #include "libknot/dnssec/zone-keys.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/zone/zone.h"
+#include "libknot/util/debug.h"
 
 static uint32_t time_now(void)
 {
@@ -50,9 +51,12 @@ static void init_forced_policy(knot_dnssec_policy_t *p,
 static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
                      knot_update_serial_t soa_up)
 {
-		if (zone == NULL) {
+	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	dbg_dnssec_verb("Changeset emtpy before generating NSEC chain: %d\n",
+	        knot_changeset_is_empty(out_ch));
 
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	int result = KNOT_EOK;
@@ -104,6 +108,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		free_zone_keys(&zone_keys);
 		return result;
 	}
+	dbg_dnssec_verb("Changeset emtpy after generating NSEC chain: %d\n",
+	        knot_changeset_is_empty(out_ch));
 
 	// add missing signatures
 	result = knot_zone_sign(zone->contents, &zone_keys, &policy, out_ch);
@@ -116,6 +122,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		free_zone_keys(&zone_keys);
 		return result;
 	}
+	dbg_dnssec_verb("Changeset emtpy after signing: %d\n",
+	        knot_changeset_is_empty(out_ch));
 
 	// Check if only SOA changed
 	if (knot_changeset_is_empty(out_ch) &&

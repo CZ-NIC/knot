@@ -1005,6 +1005,8 @@ static int zones_journal_apply(knot_zone_t *zone)
 				log_server_info("Zone '%s' serial %u -> %u.\n",
 				                zd->conf->name,
 				                serial, knot_zone_serial(contents));
+				dbg_zones("Old zone contents: %p, new: %p\n",
+				          zone->contents, contents);
 				rcu_read_unlock();
 				apply_ret = xfrin_switch_zone(zone, contents,
 							      XFR_TYPE_IIN);
@@ -1356,6 +1358,10 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		/* Ensure both new and old have zone contents. */
 		knot_zone_contents_t *zc = knot_zone_get_contents(zone);
 		knot_zone_contents_t *zc_old = knot_zone_get_contents(z_old);
+
+		dbg_zones("Going to calculate diff. Old contents: %p, new: %p\n",
+		          zc_old, zc);
+
 		knot_changesets_t *diff_chs = NULL;
 		if (z->build_diffs && zc && zc_old && zone_changed) {
 			diff_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
@@ -1370,6 +1376,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				rcu_read_unlock();
 				return KNOT_ENOMEM;
 			}
+			dbg_zones(stderr, "Generating diff.\n");
 			int ret = zones_create_changeset(z_old,
 			                                 zone, diff_ch);
 			if (ret == KNOT_ENODIFF) {
@@ -1418,6 +1425,9 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			knot_update_serial_t soa_up = 
 				zones_changesets_empty(diff_chs) ?
 				KNOT_SOA_SERIAL_INC : KNOT_SOA_SERIAL_KEEP;
+
+			dbg_zones(stderr, "Signing zone, serial policy: %d\n",
+			          soa_up);
 			int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up);
 			if (ret != KNOT_EOK) {
 				knot_changesets_free(&diff_chs);

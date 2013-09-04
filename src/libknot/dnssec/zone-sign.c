@@ -574,8 +574,7 @@ static int add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data)
 	}
 
 	if (res != KNOT_EOK) {
-		fprintf(stderr, "add_rrsigs_for_nsec() for NSEC"
-		        "failed\n");
+		dbg_dnssec_detail("add_rrsigs_for_nsec() for NSEC failed\n");
 	}
 
 	return res;
@@ -617,21 +616,21 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 
 	result = zone_tree_sign(zone->nodes, zone_keys, policy, out_ch);
 	if (result != KNOT_EOK) {
-		fprintf(stderr, "zone_tree_sign() on normal nodes failed\n");
+		dbg_dnssec_detail("zone_tree_sign() on normal nodes failed\n");
 		return result;
 	}
 
 	result = zone_tree_sign(zone->nsec3_nodes, zone_keys, policy,
 	                        out_ch);
 	if (result != KNOT_EOK) {
-		fprintf(stderr, "zone_tree_sign() on nsec3 nodes failed\n");
+		dbg_dnssec_detail("zone_tree_sign() on nsec3 nodes failed\n");
 		return result;
 	}
 
 	// sign all NSEC and NSEC3 RRs in changeset
 	result = sign_nsec(zone_keys, policy, out_ch);
 	if (result != KNOT_EOK) {
-		fprintf(stderr, "sign_nsec() failed\n");
+		dbg_dnssec_detail("sign_nsec() failed\n");
 		return result;
 	}
 
@@ -656,6 +655,8 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset)
 {
+	dbg_dnssec_verb("Updating SOA...\n");
+
 	knot_node_t *apex = knot_zone_contents_get_apex(zone);
 	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
 
