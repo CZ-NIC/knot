@@ -1075,10 +1075,16 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 			knot_changesets_free(&sec_chs);
 			knot_changesets_free(&diff_chs);
 		} else {
+			/* Ending SOA from the merged changeset was used in
+			 * zone (same as in DNSSEC changeset). It thus must not
+			 * be freed.
+			 */
+			knot_changesets_get_last(diff_chs)->soa_to = NULL;
 			knot_changesets_free(&diff_chs);
 
-			// the "SOA to" from the second changeset is not used,
-			// thus must be freed
+			/* the "SOA from" from the second changeset is not used,
+			 * thus must be freed
+			 */
 			knot_rrset_deep_free_no_sig(
 			  &(knot_changesets_get_last(sec_chs)->soa_from), 1, 1);
 
@@ -1106,24 +1112,28 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 		return zones_store_changesets_to_disk(zone, sec_chs);
 	}
 
-	/*
-	 * Merge changesets (only one in each 'changesets_t' structure),
-	 * use serial from diff (it's user supplied).
+	knot_changeset_t *diff_ch = knot_changesets_get_last(diff_chs);
+	knot_changeset_t *sec_ch =  knot_changesets_get_last(sec_chs);
+
+	/* SOAs in 'sec_chs' shouldn't be the same. */
+	assert(sec_ch->serial_from != sec_ch->serial_to);
+
+	/* But beginning SOA of second changeset should be equal to ending SOA
+	 * of the first changeset.
 	 */
-	int ret = knot_changeset_merge(knot_changesets_get_last(diff_chs),
-	                               knot_changesets_get_last(sec_chs));
+	assert(diff_ch->serial_to == sec_ch->serial_from);
+
+	int ret = knot_changeset_merge(diff_ch, sec_ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	/* SOAs in 'sec_chs' should be the same. */
-	assert(knot_changesets_get_last(sec_chs)->serial_from ==
-	       knot_changesets_get_last(sec_chs)->serial_to);
-	/* And they should be the same as the 'to' from 'diff_chs'. */
-	assert(knot_changesets_get_last(diff_chs)->serial_to ==
-	       knot_changesets_get_last(sec_chs)->serial_to);
-	/* First SOA should not be set. */
-	assert(sec_chs->first_soa == NULL);
+	/* Now the ending serial of first changeset (the merged one) should be
+	 * equal to the ending serial of second changeset. Also the SOAs should
+	 * be the same.
+	 */
+	assert(diff_ch->serial_to == sec_ch->serial_to);
+	assert(diff_ch->soa_to == sec_ch->soa_to);
 
 	/* Store *ALL* changes to disk. (and only apply 'sec_chs', but not here. */
 	ret = zones_store_changesets_to_disk(zone, diff_chs);
@@ -1421,13 +1431,13 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				return KNOT_ENOMEM;
 			}
 
-			/* Sign the zone. Do not incr. serial if diff did that. */
-			knot_update_serial_t soa_up = 
-				zones_changesets_empty(diff_chs) ?
-				KNOT_SOA_SERIAL_INC : KNOT_SOA_SERIAL_KEEP;
+			/* Increment serial even if diff did that. This way
+			 * it's always possible to flush the changes to zonefile
+			 * and it's also more correct (change in the zone =
+			 * serial increment).
+			 */
+			knot_update_serial_t soa_up =  KNOT_SOA_SERIAL_INC;
 
-			dbg_zones(stderr, "Signing zone, serial policy: %d\n",
-			          soa_up);
 			int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up);
 			if (ret != KNOT_EOK) {
 				knot_changesets_free(&diff_chs);
@@ -1438,9 +1448,9 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 
 		/* Merge changesets created by diff and sign. */
-		int ret = zones_merge_and_store_changesets(zone,
-		                                           diff_chs,
+		int ret = zones_merge_and_store_changesets(zone, diff_chs,
 		                                           sec_chs);
+
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
 			knot_changesets_free(&sec_chs);

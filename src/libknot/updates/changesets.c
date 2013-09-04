@@ -293,6 +293,12 @@ int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2)
 	add_tail_list(&ch1->add, &ch2->add);
 	add_tail_list(&ch1->remove, &ch2->remove);
 
+	// Use soa_to and serial from the second changeset
+	// soa_to from the first changeset is redundant, delete it
+	knot_rrset_deep_free(&ch1->soa_to, 1, 1);
+	ch1->soa_to = ch2->soa_to;
+	ch1->serial_to = ch2->serial_to;
+
 	return KNOT_EOK;
 }
 

@@ -282,6 +282,10 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
  * \param ch1 Changeset to merge into
  * \param ch2 Changeset to merge
  *
+ * Beginning SOA is used from the first changeset, ending SOA from the second.
+ * Ending SOA from first changeset is deleted. SOAs in the second changeset are
+ * left untouched.
+ *
  * \retval KNOT_EOK on success.
  * \retval Error code on failure.
  */
