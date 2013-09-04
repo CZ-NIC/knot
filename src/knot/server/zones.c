@@ -1481,7 +1481,9 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			free(zname);
 		}
 
-		xfrin_cleanup_successful_update(sec_chs->changes);
+		if (sec_chs) {
+			xfrin_cleanup_successful_update(sec_chs->changes);
+		}
 		zones_free_merged_changesets(diff_chs, sec_chs);
 		rcu_read_unlock();
 	}
