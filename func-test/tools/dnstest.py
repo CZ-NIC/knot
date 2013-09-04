@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import base64
+import binascii
 import re
 import os
 import random
@@ -211,22 +212,22 @@ class Response(object):
         compare(question.rdclass, self.rclass, "question.class")
         compare(question.rdtype, self.rtype, "question.type")
 
-    def _check_flags(self, flags, no_flags):
+    def _check_flags(self, flags, noflags):
         flag_names = flags.split()
         for flag in flag_names:
             flag_val = dns.flags.from_text(flag)
             isset(self.resp.flags & flag_val, "%s flag" % flag)
 
-        flag_names = no_flags.split()
+        flag_names = noflags.split()
         for flag in flag_names:
             flag_val = dns.flags.from_text(flag)
             isset(not(self.resp.flags & flag_val), "no %s flag" % flag)
 
     def check(self, rdata=None, ttl=None, rcode="NOERROR", flags="", \
-              no_flags=""):
+              noflags=""):
         '''Flags are text strings separated by whitespace character'''
 
-        self._check_flags(flags, no_flags)
+        self._check_flags(flags, noflags)
         self._check_question()
 
         # Check rcode.
@@ -260,8 +261,20 @@ class Response(object):
             err("RDATA (" + str(rdata) + ") not in answer section")
             params.err = True
 
-    def check_edns(self, nsid="", buff_size=None):
-        pass
+    def check_edns(self, nsid=None, buff_size=None):
+        compare(self.resp.edns, 0, "EDNS version")
+
+        options = 1 if nsid != None else 0
+        compare(len(self.resp.options), options, "number of EDNS0 options")
+
+        if options > 0:
+            option = list(self.resp.options)[0]
+            compare(option.otype, dns.edns.NSID, "option type")
+            if nsid[:2] == "0x":
+                compare(binascii.hexlify(option.data).decode('ascii'), \
+                        nsid[2:], "hex NSID")
+            else:
+                compare(option.data.decode('ascii'), nsid, "txt NSID")
 
 class Update(object):
     '''DNS update context'''
@@ -474,22 +487,21 @@ class DnsServer(object):
         f.write(self.get_config())
         f.close
 
-    def dig(self, rname, rtype, rclass="IN", use_udp=None, serial=None, \
-            timeout=DIG_TIMEOUT, tries=3, use_recursion=False):
+    def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, \
+            timeout=DIG_TIMEOUT, tries=3, recursion=False, buffsize=None, \
+            nsid=False, dnssec=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
         for t in range(tries):
             try:
                 if rtype.upper() == "AXFR":
-                    # Use TCP if not specified. UDP is for testing.
-                    use_udp = use_udp if use_udp != None else False
-
+                    # Always use TCP.
                     resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
                                          port=self.port, lifetime=timeout, \
-                                         use_udp=use_udp, **key_params)
+                                         use_udp=False, **key_params)
                 elif rtype.upper() == "IXFR":
                     # Use TCP if not specified.
-                    use_udp = use_udp if use_udp != None else False
+                    use_udp = udp if udp != None else False
 
                     resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
                                          port=self.port, lifetime=timeout, \
@@ -497,16 +509,31 @@ class DnsServer(object):
                                          **key_params)
                 else:
                     # Use TCP or UDP at random if not specified.
-                    use_udp = use_udp if use_udp != None else \
+                    use_udp = udp if udp != None else \
                               random.choice([True, False])
 
                     query = dns.message.make_query(rname, rtype, rclass)
 
-                    if not use_recursion:
+                    # Set query.
+                    if not recursion:
                         # Remove RD bit which is a default.
                         query.flags &= ~dns.flags.RD
+                    if nsid or buffsize:
+                        class NsidFix(object):
+                            '''Current pythondns doesn't implement this'''
+                            def __init__(self):
+                                self.otype = dns.edns.NSID
+                            def to_wire(self, file=None):
+                                pass
 
-                    if use_udp:
+                        payload = int(buffsize) if buffsize else 1280
+                        options = [NsidFix()] if nsid else None
+                        query.use_edns(edns=0, payload=payload, options=options)
+                    if dnssec:
+                        query.want_dnssec()
+
+                    # Send query.
+                    if udp:
                         resp = dns.query.udp(query, self.addr, port=self.port, \
                                              timeout=timeout)
                     else:
@@ -981,7 +1008,7 @@ class DnsTest(object):
             else:
                 sign = True if dnssec else False
             serial = random.randint(1, 4294967295)
-            items = records if not records else random.randint(1, 1000)
+            items = records if records else random.randint(1, 1000)
             filename = self.zones_dir + name + ".rndzone"
 
             try:

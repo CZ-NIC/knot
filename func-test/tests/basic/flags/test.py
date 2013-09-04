@@ -14,23 +14,23 @@ t.link(zone, knot)
 t.start()
 
 # RD flag preservation.
-resp = knot.dig("flags", "NS", use_recursion=True)
-resp.check(flags="QR AA RD", no_flags="TC RA AD CD")
+resp = knot.dig("flags", "NS", recursion=True)
+resp.check(flags="QR AA RD", noflags="TC RA AD CD")
 
 # NS record for delegated subdomain (not authoritative).
 resp = knot.dig("sub.flags", "NS")
-resp.check(flags="QR", no_flags="AA TC RD RA AD CD")
+resp.check(flags="QR", noflags="AA TC RD RA AD CD")
 
 # Glue record for delegated subdomain (not authoritative).
 resp = knot.dig("ns.sub.flags", "A")
-resp.check(flags="QR", no_flags="AA TC RD RA AD CD")
+resp.check(flags="QR", noflags="AA TC RD RA AD CD")
 
 # TC bit - UDP.
-resp = knot.dig("text.flags", "TXT", use_udp=True)
-resp.check(flags="QR AA TC", no_flags="RD RA AD CD")
+resp = knot.dig("text.flags", "TXT", udp=True)
+resp.check(flags="QR AA TC", noflags="RD RA AD CD")
 
 # No TC bit - TCP.
-resp = knot.dig("text.flags", "TXT", use_udp=False)
-resp.check(flags="QR AA", no_flags="TC RD RA AD CD")
+resp = knot.dig("text.flags", "TXT", udp=False)
+resp.check(flags="QR AA", noflags="TC RD RA AD CD")
 
 t.stop()
