@@ -1447,9 +1447,11 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			rcu_read_unlock();
 			return ret;
 		}
+
+		bool zone_signed = !knot_changeset_is_empty(sec_ch);
 	
 		/* Apply DNSSEC changeset. */
-		if (!knot_changeset_is_empty(sec_ch)) {
+		if (zone_signed) {
 			ret = xfrin_apply_changesets(zone, sec_chs,
 			                             &new_contents);
 			if (ret != KNOT_EOK) {
@@ -1486,7 +1488,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			ret = KNOT_ENODIFF;
 		}
 		
-		if (!zones_changesets_empty(sec_chs)) {
+		if (zone_signed) {
 			char *zname = knot_dname_to_str(zone->name);
 			log_zone_info("Zone %s was successfully resigned.\n",
 			              zname);
