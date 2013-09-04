@@ -1456,8 +1456,10 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 		/* Switch zone contents. */
 		if (new_contents) {
+			rcu_read_unlock();
 			ret = xfrin_switch_zone(zone, new_contents,
 			                        XFR_TYPE_DNSSEC);
+			rcu_read_lock();
 			if (ret != KNOT_EOK) {
 				// Cleanup old and new contents
 				xfrin_rollback_update(zone->contents,
