@@ -474,6 +474,35 @@ static int zones_store_changesets_to_disk(knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
+static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
+                                                  knot_changesets_t *chgsets,
+                                                  journal_t **transaction)
+{
+	assert(zone != NULL);
+	assert(chgsets != NULL);
+
+	if (EMPTY_LIST(chgsets->sets)) {
+		return KNOT_EOK;
+	}
+
+	*transaction = zones_store_changesets_begin(zone);
+	if (*transaction == NULL) {
+		dbg_zones("Could not start journal operation.\n");
+		return KNOT_ERROR;
+	}
+
+	int ret = zones_store_changesets(zone, chgsets);
+	if (ret != KNOT_EOK) {
+		zones_store_changesets_rollback(*transaction);
+		*transaction = NULL;
+		dbg_zones("Could not store in the journal. Reason: %s.\n",
+		          knot_strerror(ret));
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Sync chagnes in zone to zonefile.
  */
@@ -1097,7 +1126,8 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 
 static int zones_merge_and_store_changesets(knot_zone_t *zone,
                                             knot_changesets_t *diff_chs,
-                                            knot_changesets_t *sec_chs)
+                                            knot_changesets_t *sec_chs,
+                                            journal_t **transaction)
 {
 	if (zones_changesets_empty(diff_chs) &&
 	    zones_changesets_empty(sec_chs)) {
@@ -1105,11 +1135,13 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	}
 	if (!zones_changesets_empty(diff_chs) &&
 	    zones_changesets_empty(sec_chs)) {
-		return zones_store_changesets_to_disk(zone, diff_chs);
+		return zones_store_changesets_begin_and_store(zone, diff_chs,
+		                                              transaction);
 	}
 	if (zones_changesets_empty(diff_chs) &&
 	    !zones_changesets_empty(sec_chs)) {
-		return zones_store_changesets_to_disk(zone, sec_chs);
+		return zones_store_changesets_begin_and_store(zone, sec_chs,
+		                                              transaction);
 	}
 
 	knot_changeset_t *diff_ch = knot_changesets_get_last(diff_chs);
@@ -1136,7 +1168,8 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	assert(diff_ch->soa_to == sec_ch->soa_to);
 
 	/* Store *ALL* changes to disk. (and only apply 'sec_chs', but not here. */
-	ret = zones_store_changesets_to_disk(zone, diff_chs);
+	ret = zones_store_changesets_begin_and_store(zone, diff_chs,
+	                                             transaction);
 	if (ret != KNOT_EOK) {
 		log_zone_error("Could not store changesets to journal (%s)!",
 		               knot_strerror(ret));
@@ -1448,8 +1481,10 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 
 		/* Merge changesets created by diff and sign. */
+		journal_t *transaction = NULL;
 		int ret = zones_merge_and_store_changesets(zone, diff_chs,
-		                                           sec_chs);
+		                                           sec_chs,
+		                                           &transaction);
 
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
@@ -1469,11 +1504,26 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				xfrin_rollback_update(zone->contents,
 				                      &new_contents,
 				                      sec_chs->changes);
+				zones_store_changesets_rollback(transaction);
 				zones_free_merged_changesets(diff_chs, sec_chs);
 				rcu_read_unlock();
 				return ret;
 			}
 			assert(new_contents);
+		}
+
+		/* Commit transaction. */
+		ret = zones_store_changesets_commit(transaction);
+		if (ret != KNOT_EOK) {
+			log_zone_error("Failed to commit stored changesets: %s."
+			               "\n", knot_strerror(ret));
+			// Cleanup old and new contents
+			xfrin_rollback_update(zone->contents,
+			                      &new_contents,
+			                      sec_chs->changes);
+			zones_free_merged_changesets(diff_chs, sec_chs);
+			rcu_read_unlock();
+			return ret;
 		}
 
 		/* Switch zone contents. */
@@ -3244,19 +3294,13 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	int apply_ret = KNOT_EOK;
 	int switch_ret = KNOT_EOK;
 
-	/* Serialize and store changesets. */
 	dbg_xfr("xfr: IXFR/IN serializing and saving changesets\n");
-	journal_t *transaction = zones_store_changesets_begin(zone);
-	if (transaction != NULL) {
-		ret = zones_store_changesets(zone, chs);
-	} else {
-		ret = KNOT_ERROR;
-	}
+	journal_t *transaction = NULL;
+	ret = zones_store_changesets_begin_and_store(zone, chs, &transaction);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to serialize and store "
 		               "changesets.\n", msgpref);
 		/* Free changesets, but not the data. */
-		zones_store_changesets_rollback(transaction);
 		knot_changesets_free(&chs);
 		return ret;
 	}
