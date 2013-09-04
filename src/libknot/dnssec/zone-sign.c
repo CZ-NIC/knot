@@ -33,6 +33,7 @@
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/node.h"
 #include "libknot/zone/zone-contents.h"
+#include "libknot/util/debug.h"
 
 //! \todo Check if defined elsewhere.
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024 * sizeof(uint8_t))

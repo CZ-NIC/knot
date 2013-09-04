@@ -206,7 +206,6 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	// just remove the NSEC and its RRSIG, they are redundant
 	if (old_nsec != NULL
 	    && knot_node_rrset_count(a) == KNOT_NODE_RRSET_COUNT_ONLY_NSEC) {
-		fprintf(stderr, "foobar\n");
 dbg_dnssec_exec_detail(
 		char *name = knot_dname_to_str(knot_rrset_owner(old_nsec));
 		dbg_dnssec_detail("Removing NSEC at %s.\n", name);
