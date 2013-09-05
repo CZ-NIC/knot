@@ -56,6 +56,8 @@ struct algorithm_functions {
 	int (*sign_add)(const knot_dnssec_sign_context_t *, const uint8_t *, size_t);
 	//! \brief Callback: finish the signing and write out the signature.
 	int (*sign_write)(const knot_dnssec_sign_context_t *, uint8_t *);
+	//! \brief Callback: finish the signing and validate the signature.
+	int (*sign_verify)(const knot_dnssec_sign_context_t *, const uint8_t *, size_t);
 };
 
 /**
@@ -97,7 +99,7 @@ static int any_sign_add(const knot_dnssec_sign_context_t *context,
 	assert(context);
 	assert(data);
 
-	if (!EVP_SignUpdate(context->digest_context, data, data_size))
+	if (!EVP_DigestUpdate(context->digest_context, data, data_size))
 		return KNOT_DNSSEC_ESIGN;
 
 	return KNOT_EOK;
@@ -114,7 +116,7 @@ static int any_sign_add(const knot_dnssec_sign_context_t *context,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int any_sign_finish(const knot_dnssec_sign_context_t *context,
+static int any_sign_write(const knot_dnssec_sign_context_t *context,
                            uint8_t **signature, size_t *signature_size)
 {
 	assert(context);
@@ -140,6 +142,30 @@ static int any_sign_finish(const knot_dnssec_sign_context_t *context,
 	*signature_size = actual_size;
 
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Verify the DNSSEC signature for supplied data.
+ *
+ * \param context         DNSSEC signature context.
+ * \param signature       Pointer to signature.
+ * \param signature_size  Size of the signature.
+ *
+ * \return Error code.
+ * \retval KNOT_EOK                        The signature is valid.
+ * \retval KNOT_DNSSEC_EINVALID_SIGNATURE  The signature is invalid.
+ */
+static int any_sign_verify(const knot_dnssec_sign_context_t *context,
+                            const uint8_t *signature, size_t signature_size)
+{
+	assert(context);
+	assert(signature);
+
+	int result = EVP_VerifyFinal(context->digest_context,
+	                             signature, signature_size,
+	                             context->key->data->private_key);
+
+	return result == 1 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_SIGNATURE;
 }
 
 /*- RSA specific -------------------------------------------------------------*/
@@ -201,7 +227,7 @@ static int rsa_sign_write(const knot_dnssec_sign_context_t *context,
 	size_t raw_signature_size;
 	const knot_dnssec_key_t *key = context->key;
 
-	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
+	result = any_sign_write(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -270,7 +296,7 @@ static int dsa_sign_write(const knot_dnssec_sign_context_t *context,
 	uint8_t *raw_signature;
 	size_t raw_signature_size;
 
-	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
+	result = any_sign_write(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -380,7 +406,7 @@ static int ecdsa_sign_write(const knot_dnssec_sign_context_t *context,
 	uint8_t *raw_signature;
 	size_t raw_signature_size;
 
-	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
+	result = any_sign_write(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -428,14 +454,16 @@ static const algorithm_functions_t rsa_functions = {
 	rsa_create_pkey,
 	any_sign_size,
 	any_sign_add,
-	rsa_sign_write
+	rsa_sign_write,
+	any_sign_verify
 };
 
 static const algorithm_functions_t dsa_functions = {
 	dsa_create_pkey,
 	dsa_sign_size,
 	any_sign_add,
-	dsa_sign_write
+	dsa_sign_write,
+	any_sign_verify
 };
 
 #ifndef OPENSSL_NO_ECDSA
@@ -443,7 +471,8 @@ static const algorithm_functions_t ecdsa_functions = {
 	ecdsa_create_pkey,
 	ecdsa_sign_size,
 	any_sign_add,
-	ecdsa_sign_write
+	ecdsa_sign_write,
+	any_sign_verify
 };
 #endif
 
@@ -559,7 +588,7 @@ static int create_digest_context(const knot_dnssec_key_t *key,
 	if (!context)
 		return KNOT_ENOMEM;
 
-	if (!EVP_SignInit_ex(context, digest_type, NULL)) {
+	if (!EVP_DigestInit_ex(context, digest_type, NULL)) {
 		EVP_MD_CTX_destroy(context);
 		return KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT;
 	}
@@ -738,19 +767,20 @@ size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key)
 	return key->data->functions->sign_size(key);
 }
 
-/*!
- * \brief Get DNSSEC key used by given signing context.
+/**
+ * \brief Clean DNSSEC signing context to start a new signature.
  */
-const knot_dnssec_key_t *knot_dnssec_sign_key(knot_dnssec_sign_context_t *context)
+int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context)
 {
 	if (!context)
-		return NULL;
+		return KNOT_EINVAL;
 
-	return context->key;
+	destroy_digest_context(&context->digest_context);
+	return create_digest_context(context->key, &context->digest_context);
 }
 
 /*!
- * \brief Add data into DNSSEC signature.
+ * \brief Add data to be covered by DNSSEC signature.
  */
 int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
                          const uint8_t *data, size_t data_size)
@@ -762,7 +792,7 @@ int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
 }
 
 /**
- * \brief Finish DNSSEC signing and write out the signature.
+ * \brief Write down the DNSSEC signature for supplied data.
  */
 int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context, uint8_t *signature)
 {
@@ -773,13 +803,14 @@ int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context, uint8_t *signatu
 }
 
 /**
- * \brief Clean DNSSEC signing context to start a new signature.
+ * \brief Verify the DNSSEC signature for supplied data.
  */
-int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context)
+int knot_dnssec_sign_verify(knot_dnssec_sign_context_t *context,
+			    const uint8_t *signature, size_t signature_size)
 {
-	if (!context)
+	if (!context || !context->key || !signature)
 		return KNOT_EINVAL;
 
-	destroy_digest_context(&context->digest_context);
-	return create_digest_context(context->key, &context->digest_context);
+	return context->key->data->functions->sign_verify(context, signature,
+	                                                  signature_size);
 }
