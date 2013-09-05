@@ -548,7 +548,7 @@ class DnsServer(object):
 
     def zones_wait(self, zones):
         for zone in zones:
-            self.dig(zone, "SOA", use_udp=True)
+            self.dig(zone, "SOA", udp=True)
 
     def update(self, zone):
         if len(zone) != 1:
@@ -1038,3 +1038,37 @@ class DnsTest(object):
                 if slave not in self.servers:
                     raise Exception("Uncovered server in test")
                 slave.zone_slave(zone, zones[zone], master)
+
+    def xfr_diff(self, server1, server2, zones):
+        for zone in zones:
+            z1 = dns.zone.from_xfr(server1.dig(zone, "AXFR").resp)
+            z2 = dns.zone.from_xfr(server2.dig(zone, "AXFR").resp)
+
+            z1_keys = set(z1.nodes.keys())
+            z2_keys = set(z2.nodes.keys())
+
+            z1_diff = sorted(list(z1_keys - z2_keys))
+            z2_diff = sorted(list(z2_keys - z1_keys))
+            z_keys = sorted(list(z1_keys & z2_keys))
+
+            if z1_diff:
+                params.err = True
+                for key in z1_diff:
+                    print(key)
+
+            if z2_diff:
+                params.err = True
+                for key in z2_diff:
+                    print(key)
+
+            if not z_keys:
+                return
+
+            for key in z_keys:
+                if z1.nodes[key] != z2.nodes[key]:
+                    params.err = True
+                    print(z1.nodes[key].to_text(key))
+                    print(z2.nodes[key].to_text(key))
+
+                    err("differences in zone %s between %s and %s" % \
+                        (zone, server1.name, server2.name))
