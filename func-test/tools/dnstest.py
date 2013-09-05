@@ -488,7 +488,7 @@ class DnsServer(object):
         f.close
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, \
-            timeout=DIG_TIMEOUT, tries=3, recursion=False, buffsize=None, \
+            timeout=DIG_TIMEOUT, tries=3, recursion=False, bufsize=None, \
             nsid=False, dnssec=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
@@ -518,7 +518,7 @@ class DnsServer(object):
                     if not recursion:
                         # Remove RD bit which is a default.
                         query.flags &= ~dns.flags.RD
-                    if nsid or buffsize:
+                    if nsid or bufsize:
                         class NsidFix(object):
                             '''Current pythondns doesn't implement this'''
                             def __init__(self):
@@ -526,7 +526,7 @@ class DnsServer(object):
                             def to_wire(self, file=None):
                                 pass
 
-                        payload = int(buffsize) if buffsize else 1280
+                        payload = int(bufsize) if bufsize else 1280
                         options = [NsidFix()] if nsid else None
                         query.use_edns(edns=0, payload=payload, options=options)
                     if dnssec:
