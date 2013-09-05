@@ -325,7 +325,8 @@ static int dsa_sign_write(const knot_dnssec_sign_context_t *context,
 	uint8_t *signature_r = signature + 21 - BN_num_bytes(decoded->r);
 	uint8_t *signature_s = signature + 41 - BN_num_bytes(decoded->s);
 
-	*signature_t = 0x00; //! \todo How to compute T? (Only recommended.)
+	memset(signature, '\0', dsa_sign_size(context->key));
+	*signature_t = 0x00; //! \todo Take from public key. Only recommended.
 	BN_bn2bin(decoded->r, signature_r);
 	BN_bn2bin(decoded->s, signature_s);
 
