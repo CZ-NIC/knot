@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -335,6 +335,58 @@ static int dsa_sign_write(const knot_dnssec_sign_context_t *context,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Verify the DNSSEC signature for supplied data and DSA algorithm.
+ * \see any_sign_verify
+ */
+static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
+                           const uint8_t *signature, size_t signature_size)
+{
+	assert(context);
+	assert(signature);
+
+	if (signature_size != dsa_sign_size(context->key)) {
+		return KNOT_EINVAL;
+	}
+
+	// see dsa_sign_write() or RFC 2536 for details of signature conversion
+
+	// T (1 byte), R (20 bytes), S (20 bytes)
+	const uint8_t *signature_r = signature + 1;
+	const uint8_t *signature_s = signature + 21;
+
+	DSA_SIG *decoded = DSA_SIG_new();
+	if (!decoded) {
+		return KNOT_ENOMEM;
+	}
+
+	decoded->r = BN_bin2bn(signature_r, 20, NULL);
+	decoded->s = BN_bin2bn(signature_s, 20, NULL);
+
+	size_t max_size = EVP_PKEY_size(context->key->data->private_key);
+	uint8_t *raw_signature = malloc(max_size);
+	if (!raw_signature) {
+		DSA_SIG_free(decoded);
+		return KNOT_ENOMEM;
+	}
+
+	uint8_t *raw_write = raw_signature;
+	int raw_size = i2d_DSA_SIG(decoded, &raw_write);
+	if (raw_size < 0) {
+		free(raw_signature);
+		DSA_SIG_free(decoded);
+		return KNOT_DNSSEC_EDECODE_RAW_SIGNATURE;
+	}
+	assert(raw_write == raw_signature + raw_size);
+
+	int result = any_sign_verify(context, raw_signature, raw_size);
+
+	DSA_SIG_free(decoded);
+	free(raw_signature);
+
+	return result;
+}
+
 /*- EC specific --------------------------------------------------------------*/
 
 #ifndef OPENSSL_NO_ECDSA
@@ -447,6 +499,17 @@ static int ecdsa_sign_write(const knot_dnssec_sign_context_t *context,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Verify the DNSSEC signature for supplied data and ECDSA algorithm.
+ * \see any_sign_verify
+ */
+static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
+                             const uint8_t *signature, size_t signature_size)
+{
+	// TODO
+	return KNOT_ENOTSUP;
+}
+
 #endif
 
 /*- Algorithm specifications -------------------------------------------------*/
@@ -464,7 +527,7 @@ static const algorithm_functions_t dsa_functions = {
 	dsa_sign_size,
 	any_sign_add,
 	dsa_sign_write,
-	any_sign_verify
+	dsa_sign_verify
 };
 
 #ifndef OPENSSL_NO_ECDSA
@@ -473,7 +536,7 @@ static const algorithm_functions_t ecdsa_functions = {
 	ecdsa_sign_size,
 	any_sign_add,
 	ecdsa_sign_write,
-	any_sign_verify
+	ecdsa_sign_verify
 };
 #endif
 
