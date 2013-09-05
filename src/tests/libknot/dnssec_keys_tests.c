@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,15 +15,15 @@
  */
 
 #include <config.h>
-#include "tests/libknot/sign_tests.h"
+#include "tests/libknot/dnssec_keys_tests.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/key.c" // testing static functions
 
 static int sign_tests_count(int argc, char *argv[]);
 static int sign_tests_run(int argc, char *argv[]);
 
-unit_api sign_tests_api = {
-	"libknot/sign",
+unit_api dnssec_keys_tests_api = {
+	"libknot/dnssec/sign",
 	&sign_tests_count,
 	&sign_tests_run
 };

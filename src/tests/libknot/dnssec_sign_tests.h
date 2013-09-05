@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,11 +14,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOTD_SIGN_TESTS_
-#define _KNOTD_SIGN_TESTS_
+#ifndef _KNOTD_DNSSEC_SIGN_TESTS_
+#define _KNOTD_DNSSEC_SIGN_TESTS_
 
 #include "common/libtap/tap_unit.h"
 
-unit_api sign_tests_api;
+unit_api dnssec_sign_tests_api;
 
 #endif
