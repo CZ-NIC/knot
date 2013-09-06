@@ -357,7 +357,7 @@ static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
 		return KNOT_EINVAL;
 	}
 
-	// see dsa_sign_write() or RFC 2536 for details of signature conversion
+	// see dsa_sign_write() for conversion details
 
 	// T (1 byte), R (20 bytes), S (20 bytes)
 	const uint8_t *signature_r = signature + 1;
@@ -494,8 +494,10 @@ static int ecdsa_sign_write(const knot_dnssec_sign_context_t *context,
 
 	uint8_t *signature_r;
 	uint8_t *signature_s;
-	size_t param_size = ecdsa_sign_size(context->key) / 2;
+	size_t signature_size = ecdsa_sign_size(context->key);
+	size_t param_size = signature_size / 2;
 
+	memset(signature, '\0', signature_size);
 	signature_r = signature + param_size - BN_num_bytes(decoded->r);
 	signature_s = signature + 2 * param_size - BN_num_bytes(decoded->s);
 
