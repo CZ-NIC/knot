@@ -23,6 +23,12 @@
 static int dnssec_sign_tests_count(int argc, char *argv[]);
 static int dnssec_sign_tests_run(int argc, char *argv[]);
 
+#ifdef OPENSSL_NO_ECDSA
+static const int ecdsa_supported = 0;
+#else
+static const int ecdsa_supported = 1;
+#endif
+
 unit_api dnssec_sign_tests_api = {
 	"libknot/dnssec/sign",
 	&dnssec_sign_tests_count,
@@ -86,7 +92,7 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 
 static int dnssec_sign_tests_count(int argc, char *argv[])
 {
-	return 28;
+	return 42;
 }
 
 static int dnssec_sign_tests_run(int argc, char *argv[])
@@ -124,7 +130,17 @@ static int dnssec_sign_tests_run(int argc, char *argv[])
 
 	// ECDSA
 
-	// todo
+	skip(!ecdsa_supported, 14, "ECDSA: not supported on this system");
+
+	kp.name = knot_dname_from_str("example.com", 12);
+	kp.algorithm = 13;
+	knot_binary_from_base64("1N/PvpB8jZcvv+zr3Q987RKK1cBxDKULzEc5F/nnpSg=", &kp.private_key);
+	//knot_binary_from_base64("fe3oR+S8crl9AwayWFZwJ8wXpDeg1uiXZ/X0MYBvyvj1lfuJDXawUjKuzYKLAPEVH1jt8XbM5nTTlVXUsDebVA==", &kp.public_key);
+
+	test_algorithm("ECDSA", &kp);
+	knot_free_key_params(&kp);
+
+	endskip;
 
 	return 0;
 }

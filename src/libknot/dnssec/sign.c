@@ -516,8 +516,49 @@ static int ecdsa_sign_write(const knot_dnssec_sign_context_t *context,
 static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
                              const uint8_t *signature, size_t signature_size)
 {
-	// TODO
-	return KNOT_ENOTSUP;
+	assert(context);
+	assert(signature);
+
+	if (signature_size != ecdsa_sign_size(context->key)) {
+		return KNOT_EINVAL;
+	}
+
+	// see ecdsa_sign_write() for conversion details
+
+	size_t parameter_size = signature_size / 2;
+	const uint8_t *signature_r = signature;
+	const uint8_t *signature_s = signature + parameter_size;
+
+	ECDSA_SIG *decoded = ECDSA_SIG_new();
+	if (!decoded) {
+		return KNOT_ENOMEM;
+	}
+
+	decoded->r = BN_bin2bn(signature_r, parameter_size, NULL);
+	decoded->s = BN_bin2bn(signature_s, parameter_size, NULL);
+
+	size_t max_size = EVP_PKEY_size(context->key->data->private_key);
+	uint8_t *raw_signature = malloc(max_size);
+	if (!raw_signature) {
+		ECDSA_SIG_free(decoded);
+		return KNOT_ENOMEM;
+	}
+
+	uint8_t *raw_write = raw_signature;
+	int raw_size = i2d_ECDSA_SIG(decoded, &raw_write);
+	if (raw_size < 0) {
+		free(raw_signature);
+		ECDSA_SIG_free(decoded);
+		return KNOT_DNSSEC_EDECODE_RAW_SIGNATURE;
+	}
+	assert(raw_write == raw_signature + raw_size);
+
+	int result = any_sign_verify(context, raw_signature, raw_size);
+
+	ECDSA_SIG_free(decoded);
+	free(raw_signature);
+
+	return result;
 }
 
 #endif
