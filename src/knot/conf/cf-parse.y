@@ -31,6 +31,7 @@
 #include "common/sockaddr.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
+#include "libknot/edns.h"
 #include "knot/conf/conf.h"
 #include "libknotd_la-cf-parse.h" /* Automake generated header. */
 
@@ -436,6 +437,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> BOOL
 
 %token <tok> SYSTEM IDENTITY HOSTNAME SVERSION NSID STORAGE KEY KEYS
+%token <tok> MAX_UDP_PAYLOAD
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
 %token <tok> USER
@@ -571,6 +573,14 @@ system:
  | system NSID HEXSTR ';' { new_config->nsid = $3.t; new_config->nsid_len = $3.l; }
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system NSID BOOL ';' { ident_auto(NSID, new_config, $3.i); }
+ | system MAX_UDP_PAYLOAD NUM ';' {
+     if ($3.i < EDNS_MIN_UDP_PAYLOAD || $3.i > EDNS_MAX_UDP_PAYLOAD) {
+        cf_error(scanner, "maximal UDP payload size is out of range (%u-%u)",
+                 EDNS_MIN_UDP_PAYLOAD, EDNS_MAX_UDP_PAYLOAD);
+     } else {
+        new_config->max_udp_payload = $3.i;
+     }
+ }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
  | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }

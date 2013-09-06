@@ -100,6 +100,9 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # legitimate requests to get a chance to reconnect using TCP
   # Default: 1
   rate-limit-slip 1;
+
+  # Maximum EDNS0 UDP payload size
+  # max-udp-payload 4096;
  }
 
  # Includes can be placed anywhere at any level in the configuration file. The

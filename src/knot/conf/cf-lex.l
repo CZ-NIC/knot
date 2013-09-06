@@ -93,6 +93,7 @@ identity        { lval.t = yytext; return IDENTITY; }
 hostname        { lval.t = yytext; return HOSTNAME; }
 version         { lval.t = yytext; return SVERSION; }
 nsid            { lval.t = yytext; return NSID; }
+max-udp-payload { lval.t = yytext; return MAX_UDP_PAYLOAD; }
 storage         { lval.t = yytext; return STORAGE; }
 key             { lval.t = yytext; return KEY; }
 keys            { lval.t = yytext; return KEYS; }

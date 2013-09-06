@@ -524,6 +524,7 @@ conf_t *conf_new(const char* path)
 	c->notify_retries = CONFIG_NOTIFY_RETRIES;
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
+	c->max_udp_payload = EDNS_MAX_UDP_PAYLOAD;
 	c->ixfr_fslimit = -1;
 	c->uid = -1;
 	c->gid = -1;

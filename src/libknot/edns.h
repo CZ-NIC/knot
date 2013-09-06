@@ -72,8 +72,8 @@ typedef struct knot_opt_rr knot_opt_rr_t;
 /*----------------------------------------------------------------------------*/
 /*! \brief Constants for EDNS. */
 enum knot_edns_const {
-
-	EDNS_MAX_UDP_PAYLOAD = 4096, /*!< Maximum UDP payload with EDNS enabled. */
+	EDNS_MIN_UDP_PAYLOAD = 512,  /*!< Minimal UDP payload with EDNS enabled. */
+	EDNS_MAX_UDP_PAYLOAD = 4096, /*!< Maximal UDP payload with EDNS enabled. */
 	EDNS_VERSION         = 0,    /*!< Supported EDNS version. */
 	EDNS_NOT_SUPPORTED   = 255,  /*!< EDNS not supported. */
 	EDNS_OPTION_NSID     = 3,    /*!< NSID option code. */

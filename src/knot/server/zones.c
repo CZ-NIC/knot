@@ -2667,7 +2667,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 		log_server_error("Couldn't create OPT RR, please restart.\n");
 	} else {
 		knot_edns_set_version(opt_rr, EDNS_VERSION);
-		knot_edns_set_payload(opt_rr, EDNS_MAX_UDP_PAYLOAD);
+		knot_edns_set_payload(opt_rr, conf->max_udp_payload);
 		if (conf->nsid_len > 0) {
 			knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
 			                     conf->nsid_len,
