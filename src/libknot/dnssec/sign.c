@@ -154,6 +154,7 @@ static int any_sign_write(const knot_dnssec_sign_context_t *context,
  * \return Error code.
  * \retval KNOT_EOK                        The signature is valid.
  * \retval KNOT_DNSSEC_EINVALID_SIGNATURE  The signature is invalid.
+ * \retval KNOT_DNSSEC_ESIGN               Some error occured.
  */
 static int any_sign_verify(const knot_dnssec_sign_context_t *context,
                             const uint8_t *signature, size_t signature_size)
@@ -165,7 +166,14 @@ static int any_sign_verify(const knot_dnssec_sign_context_t *context,
 	                             signature, signature_size,
 	                             context->key->data->private_key);
 
-	return result == 1 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_SIGNATURE;
+	switch (result) {
+	case 1:
+		return KNOT_EOK;
+	case 0:
+		return KNOT_DNSSEC_EINVALID_SIGNATURE;
+	default:
+		return KNOT_DNSSEC_ESIGN;
+	};
 }
 
 /*- RSA specific -------------------------------------------------------------*/
