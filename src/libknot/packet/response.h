@@ -131,7 +131,7 @@ void knot_response_clear(knot_packet_t *resp, int clear_question);
  * \note The contents of the OPT RR are copied.
  *
  * \note It is expected that resp.max_size is already set to correct value as
- *       it is impossible to distinguishe TCP scenario in this function.
+ *       it is impossible to distinguish TCP scenario in this function.
  *
  * \param resp Response to set the OPT RR to.
  * \param opt_rr OPT RR to set.
