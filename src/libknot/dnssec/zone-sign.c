@@ -254,45 +254,46 @@ static bool is_valid_signature(const knot_rrset_t *covered,
 		return false;
 	}
 
-	// reconstruct original RRSIG (we need original RDATA headers)
+	// identify fields in the signature being validated
 
-	knot_rrset_t *orig_rrsig = create_empty_rrsigs_for(covered);
-	if (orig_rrsig == NULL) {
+	uint8_t *rdata = knot_rrset_get_rdata(rrsigs, pos);
+	const uint8_t *signer = knot_rrset_rdata_rrsig_signer_name(rrsigs, pos);
+
+	if (!rdata || !signer) {
 		return false;
 	}
-
-	uint32_t sig_incept = knot_rrset_rdata_rrsig_sig_inception(rrsigs, pos);
-	uint32_t sig_expire = knot_rrset_rdata_rrsig_sig_expiration(rrsigs, pos);
-
-	uint8_t *rdata = create_rrsigs_rdata(orig_rrsig, covered, key,
-					     sig_incept, sig_expire);
-	if (!rdata) {
-		knot_rrset_deep_free(&orig_rrsig, 1, 1);
-		return false;
-	}
-
-	int result = knot_dnssec_sign_new(ctx);
-	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&orig_rrsig, 1, 1);
-		return false;
-	}
-
-	result = sign_rrset_ctx_add_data(ctx, key, rdata, covered);
-	knot_rrset_deep_free(&orig_rrsig, 1, 1);
-
-	if (result != KNOT_EOK) {
-		return false;
-	}
-
-	// extract existing signature
 
 	size_t header_size = RRSIG_RDATA_OFFSET + sizeof(knot_dname_t *);
-	uint8_t *sig_data = knot_rrset_get_rdata(rrsigs, pos) + header_size;
-	size_t sig_size = rrset_rdata_item_size(rrsigs, pos) - header_size;
+	uint8_t *signature = rdata + header_size;
+	size_t signature_size = rrset_rdata_item_size(rrsigs, pos) - header_size;
+
+	if (!signature || signature_size == 0) {
+		return false;
+	}
 
 	// perform the validation
 
-	result = knot_dnssec_sign_verify(ctx, sig_data, sig_size);
+	int result = knot_dnssec_sign_new(ctx);
+	if (result != KNOT_EOK) {
+		return false;
+	}
+
+	result = knot_dnssec_sign_add(ctx, rdata, RRSIG_RDATA_OFFSET);
+	if (result != KNOT_EOK) {
+		return false;
+	}
+
+	result = knot_dnssec_sign_add(ctx, signer, knot_dname_size(signer));
+	if (result != KNOT_EOK) {
+		return false;
+	}
+
+	result = sign_rrset_ctx_add_records(ctx, covered);
+	if (result != KNOT_EOK) {
+		return false;
+	}
+
+	result = knot_dnssec_sign_verify(ctx, signature, signature_size);
 
 	return result == KNOT_EOK;
 }
