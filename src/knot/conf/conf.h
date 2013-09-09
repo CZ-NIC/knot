@@ -197,6 +197,7 @@ typedef struct conf_t {
 	char *pidfile;  /*!< PID file location. */
 	char *nsid;     /*!< Server's NSID. */
 	size_t nsid_len;/*!< Server's NSID length. */
+	size_t max_udp_payload; /*!< Maximal UDP payload size. */
 	int   workers;  /*!< Number of workers per interface. */
 	int   uid;      /*!< Specified user id. */
 	int   gid;      /*!< Specified group id. */
