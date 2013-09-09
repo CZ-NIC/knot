@@ -41,7 +41,7 @@
 /*----------------------------------------------------------------------------*/
 
 /*! \brief Maximum UDP payload with EDNS disabled. */
-static const uint16_t MAX_UDP_PAYLOAD      = 504; // 512 - 8B header
+static const uint16_t MAX_UDP_PAYLOAD      = 512;
 
 /*! \brief TTL of a CNAME synthetized from a DNAME. */
 static const uint32_t SYNTH_CNAME_TTL      = 0;
