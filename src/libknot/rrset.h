@@ -136,7 +136,7 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, const uint16_t size);
  * \retval 0 on error.
  * \return Item size on success.
  */
-/* [code-review] Misleading name, maybe remove the word 'item'. */
+/* [code-review] Misleading name, maybe remove the word 'item'. And add knot. */
 uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
                                size_t pos);
 
