@@ -1513,17 +1513,20 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 
 		/* Commit transaction. */
-		ret = zones_store_changesets_commit(transaction);
-		if (ret != KNOT_EOK) {
-			log_zone_error("Failed to commit stored changesets: %s."
-			               "\n", knot_strerror(ret));
-			// Cleanup old and new contents
-			xfrin_rollback_update(zone->contents,
-			                      &new_contents,
-			                      sec_chs->changes);
-			zones_free_merged_changesets(diff_chs, sec_chs);
-			rcu_read_unlock();
-			return ret;
+		if (transaction) {
+			ret = zones_store_changesets_commit(transaction);
+			if (ret != KNOT_EOK) {
+				log_zone_error("Failed to commit stored "
+				               "changesets: %s."
+				               "\n", knot_strerror(ret));
+				// Cleanup old and new contents
+				xfrin_rollback_update(zone->contents,
+				                      &new_contents,
+				                      sec_chs->changes);
+				zones_free_merged_changesets(diff_chs, sec_chs);
+				rcu_read_unlock();
+				return ret;
+			}
 		}
 
 		/* Switch zone contents. */
