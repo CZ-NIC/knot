@@ -449,7 +449,6 @@ void knot_response_clear(knot_packet_t *resp, int clear_question)
 
 int knot_response_add_opt(knot_packet_t *resp,
                           const knot_opt_rr_t *opt_rr,
-                          int override_max_size,
                           int add_nsid)
 {
 	if (resp == NULL || opt_rr == NULL) {
@@ -496,21 +495,6 @@ int knot_response_add_opt(knot_packet_t *resp,
 		resp->opt_rr.size = opt_rr->size;
 	} else {
 		resp->opt_rr.size = EDNS_MIN_SIZE;
-	}
-
-	// if max size is set, it means there is some reason to be that way,
-	// so we can't just set it to higher value
-
-	if (override_max_size && resp->max_size > 0
-	    && resp->max_size < opt_rr->payload) {
-		return KNOT_EOK;
-	}
-
-	// set max size (less is OK)
-	if (override_max_size) {
-		dbg_response("Overriding max size to: %u\n",
-		             resp->opt_rr.payload);
-		return knot_packet_set_max_size(resp, resp->opt_rr.payload);
 	}
 
 	return KNOT_EOK;
