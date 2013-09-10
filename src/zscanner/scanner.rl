@@ -169,6 +169,13 @@ int scanner_process(const char *start,
 		return -1;
 	}
 
+	// Check unclosed multiline record.
+	if (is_last_block && s->multiline) {
+		SCANNER_ERROR(ZSCANNER_UNCLOSED_MULTILINE);
+		s->error_counter++;
+		s->process_error(s);
+	}
+
 	// Storing scanner states.
 	s->cs  = cs;
 	s->top = top;

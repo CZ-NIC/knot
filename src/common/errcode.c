@@ -96,6 +96,7 @@ const error_table_t knot_error_msgs[] = {
 
 	/* Zone scanner errors. */
 	{ ZSCANNER_UNCOVERED_STATE, "General scanner error." },
+	{ ZSCANNER_UNCLOSED_MULTILINE, "Unclosed last multiline block." },
 	{ ZSCANNER_ELEFT_PARENTHESIS, "Too many left parentheses." },
 	{ ZSCANNER_ERIGHT_PARENTHESIS, "Too many right parentheses." },
 	{ ZSCANNER_EUNSUPPORTED_TYPE, "Unsupported record type." },
