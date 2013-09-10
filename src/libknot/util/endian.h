@@ -13,12 +13,24 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <config.h>
 
 #ifndef _KNOT_ENDIAN_H
 #define _KNOT_ENDIAN_H
 
 #if defined(__linux__)
 #	include <endian.h>
+# ifndef HAVE_BE64TOH
+#       include <arpa/inet.h>
+#       define be32toh(x) ntohl(x)
+#       define be16toh(x) ntohs(x)
+#  if BYTE_ORDER == LITTLE_ENDIAN
+#       include <byteswap.h>
+#       define be64toh(x) bswap_64 (x)
+#  else
+#       define be64toh(x) (x)
+#  endif
+# endif
 #elif defined(__FreeBSD__) || defined(__NetBSD__)
 #	include <sys/endian.h>
 #elif defined(__OpenBSD__)
