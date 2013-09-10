@@ -294,6 +294,10 @@ AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 # Checks for library functions.
 AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups initgroups])
 
+# Check for be64toh function
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <endian.h>]], [[return be64toh(0);]])],
+[AC_DEFINE(HAVE_BE64TOH, 1, [Define to 1 if you have the `be64toh' function.])])
+
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
 [AC_DEFINE(HAVE_CPUSET_LINUX, 1, [Define if Linux-like cpu_set_t exists.])])
