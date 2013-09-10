@@ -78,15 +78,15 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	while (keys->count < KNOT_MAX_ZONE_KEYS &&
 	       readdir_r(keydir, &entry_buf, &entry) == 0 &&
 	       entry != NULL) {
-		if (entry->d_name[0] != 'K')
-			continue;
 
 		char *suffix = strrchr(entry->d_name, '.');
-		if (!suffix)
+		if (!suffix) {
 			continue;
+		}
 
-		if (strcmp(suffix, ".private") != 0)
+		if (strcmp(suffix, ".private") != 0) {
 			continue;
+		}
 
 		size_t path_len = strlen(keydir_name) + 1
 		                + strlen(entry->d_name) + 1;
