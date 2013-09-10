@@ -59,6 +59,15 @@ typedef struct {
  */
 int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		   knot_zone_keys_t *keys);
+/*!
+ * \brief Get zone key by a keytag.
+ *
+ * \param keys    Zone keys.
+ * \param keytag  Keytag to lookup a key for.
+ *
+ * \return Pointer to key or NULL if not found.
+ */
+knot_dnssec_key_t *get_zone_key(knot_zone_keys_t *keys, uint16_t keytag);
 
 /*!
  * \brief Free structure with zone keys and associated DNSSEC contexts.

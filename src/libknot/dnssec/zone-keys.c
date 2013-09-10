@@ -65,6 +65,27 @@ static bool is_current_key(const knot_key_params_t *key)
 }
 
 /*!
+ * \brief Get zone key by a keytag.
+ */
+knot_dnssec_key_t *get_zone_key(knot_zone_keys_t *keys, uint16_t keytag)
+{
+	knot_dnssec_key_t *result = NULL;
+
+	if (!keys) {
+		return NULL;
+	}
+
+	for (int i = 0; i < keys->count; i++) {
+		if (keys->keys[i].keytag == keytag) {
+			result = &keys->keys[i];
+			break;
+		}
+	}
+
+	return result;
+}
+
+/*!
  * \brief Load zone keys from a key directory.
  *
  * \todo Remove fprintf()
@@ -132,6 +153,12 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
 			fprintf(stderr, "not a DNSSEC key\n");
+			knot_free_key_params(&params);
+			continue;
+		}
+
+		if (get_zone_key(keys, params.keytag) != NULL) {
+			fprintf(stderr, "key with duplicate keytag\n");
 			knot_free_key_params(&params);
 			continue;
 		}
