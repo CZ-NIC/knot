@@ -70,17 +70,22 @@ static void cf_print_error(void *scanner, const char *msg)
 	int lineno = -1;
 	char *text = "?";
 	char *filename = NULL;
+	conf_include_t *inc = NULL;
+
 	if (scanner) {
 		extra = cf_get_extra(scanner);
 		lineno = cf_get_lineno(scanner);
 		text = cf_get_text(scanner);
-		filename = conf_includes_top(extra->includes);
+		inc = conf_includes_top(extra->includes);
 
 		extra->error = true;
 	}
 
-	if (!filename)
+	if (inc && inc->filename) {
+		filename = inc->filename;
+	} else {
 		filename = new_config->filename;
+	}
 
 	log_server_error("Config error in '%s' (line %d token '%s') - %s\n",
 			 filename, lineno, text, msg);

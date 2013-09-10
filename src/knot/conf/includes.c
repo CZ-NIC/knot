@@ -27,9 +27,9 @@
  * \brief Structure to store names of files included into the config.
  */
 struct conf_includes {
-	int free_index;		//!< First free index in 'names'.
-	int capacity;		//!< Maximal capacity.
-	char *names[0];		//!< Pointers to store file names.
+	int free_index;			//!< First free index in 'names'.
+	int capacity;			//!< Maximal capacity.
+	conf_include_t files[0];	//!< Stored includes.
 };
 
 /*!
@@ -37,13 +37,16 @@ struct conf_includes {
  */
 conf_includes_t *conf_includes_init(int capacity)
 {
-	if (capacity <= 0)
+	if (capacity <= 0) {
 		return NULL;
+	}
 
-	size_t size = sizeof(conf_includes_t) + (capacity * sizeof(char *));
+	size_t size = sizeof(conf_includes_t)
+		      + (capacity * sizeof(conf_include_t *));
 	conf_includes_t *result = calloc(1, size);
-	if (!result)
+	if (!result) {
 		return NULL;
+	}
 
 	result->capacity = capacity;
 	return result;
@@ -54,11 +57,13 @@ conf_includes_t *conf_includes_init(int capacity)
  */
 void conf_includes_free(conf_includes_t *includes)
 {
-	if (!includes)
+	if (!includes) {
 		return;
+	}
 
-	for (int i = 0; i < includes->free_index; i++)
-		free(includes->names[i]);
+	for (int i = 0; i < includes->free_index; i++) {
+		free(includes->files[i].filename);
+	}
 
 	free(includes);
 }
@@ -68,8 +73,9 @@ void conf_includes_free(conf_includes_t *includes)
  */
 bool conf_includes_can_push(conf_includes_t *includes)
 {
-	if (!includes)
+	if (!includes) {
 		return false;
+	}
 
 	return includes->free_index < includes->capacity;
 }
@@ -87,14 +93,16 @@ bool conf_includes_can_push(conf_includes_t *includes)
 static char *path_relative_to(const char *filename, const char *reference)
 {
 	char *path_end = strrchr(reference, '/');
-	if (!path_end)
+	if (!path_end) {
 		return strdup(filename);
+	}
 
 	int path_len = (int)(path_end - reference);
 	size_t result_len = path_len + 1 + strlen(filename) + 1;
 	char *result = malloc(result_len * sizeof(char));
-	if (!result)
+	if (!result) {
 		return NULL;
+	}
 
 	int w;
 	w = snprintf(result, result_len, "%.*s/%s", path_len, reference, filename);
@@ -108,44 +116,54 @@ static char *path_relative_to(const char *filename, const char *reference)
  */
 bool conf_includes_push(conf_includes_t *includes, const char *filename)
 {
-	if (!includes || !filename)
+	if (!includes || !filename) {
 		return false;
+	}
 
-	if (!conf_includes_can_push(includes))
+	if (!conf_includes_can_push(includes)) {
 		return false;
+	}
 
 	char *store = NULL;
 
 	if (includes->free_index == 0 || filename[0] == '/') {
 		store = strdup(filename);
 	} else {
-		char *previous = includes->names[includes->free_index - 1];
-		store = path_relative_to(filename, previous);
+		conf_include_t *previous = &includes->files[includes->free_index - 1];
+		store = path_relative_to(filename, previous->filename);
 	}
 
-	includes->names[includes->free_index++] = store;
+	conf_include_t new_include = {
+		.filename = store,
+		.handle = NULL
+	};
+
+	includes->files[includes->free_index++] = new_include;
+
 	return store != NULL;
 }
 
 /**
- * \brief Returns a file name on the top of the stack.
+ * \brief Returns an include on the top of the stack.
  */
-char *conf_includes_top(conf_includes_t *includes)
+conf_include_t *conf_includes_top(conf_includes_t *includes)
 {
-	if (!includes || includes->free_index == 0)
+	if (!includes || includes->free_index == 0) {
 		return NULL;
+	}
 
-	return includes->names[includes->free_index - 1];
+	return &includes->files[includes->free_index - 1];
 }
 
 /**
- * \brief Returns a file name on the top of the stack and removes it.
+ * \brief Returns an include on the top of the stack and removes it.
  */
-char *conf_includes_pop(conf_includes_t *includes)
+conf_include_t *conf_includes_pop(conf_includes_t *includes)
 {
-	char *result = conf_includes_top(includes);
-	if (result)
+	conf_include_t *result = conf_includes_top(includes);
+	if (result) {
 		includes->free_index -= 1;
+	}
 
 	return result;
 }
