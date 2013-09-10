@@ -83,7 +83,6 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		               "Not signing the %s zone!\n",
 		               knot_strerror(result), zname);
 		free(zname);
-		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		return result;
 	}
@@ -104,7 +103,6 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		               "Not signing the %s zone!\n",
 		               knot_strerror(result), zname);
 		free(zname);
-		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		return result;
 	}
@@ -118,7 +116,6 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		log_zone_error("Error signing zone %s (%s).\n",
 		               zname, knot_strerror(result));
 		free(zname);
-		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		return result;
 	}
@@ -132,7 +129,6 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		log_server_info("No signing performed, zone %s is valid.\n",
 		                zname);
 		free(zname);
-		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		assert(knot_changeset_is_empty(out_ch));
 		return KNOT_EOK;
@@ -147,12 +143,10 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		                 " Not signing the %s zone!\n",
 		                 knot_strerror(result), zname);
 		free(zname);
-		free_sign_contexts(&zone_keys);
 		free_zone_keys(&zone_keys);
 		return result;
 	}
 
-	free_sign_contexts(&zone_keys);
 	free_zone_keys(&zone_keys);
 
 	return KNOT_EOK;

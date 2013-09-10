@@ -60,7 +60,11 @@ typedef struct {
 int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		   knot_zone_keys_t *keys);
 
-void free_sign_contexts(knot_zone_keys_t *keys);
+/*!
+ * \brief Free structure with zone keys and associated DNSSEC contexts.
+ *
+ * \param keys    Zone keys.
+ */
 void free_zone_keys(knot_zone_keys_t *keys);
 
 #endif // _KNOT_DNSSEC_ZONE_KEYS_H_

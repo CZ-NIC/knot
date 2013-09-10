@@ -24,6 +24,15 @@
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
 
+static void free_sign_contexts(knot_zone_keys_t *keys)
+{
+	for (int i = 0; i < keys->count; i++) {
+		knot_dnssec_sign_free(keys->contexts[i]);
+		keys->contexts[i] = NULL;
+	}
+}
+
+
 static int init_sign_contexts(knot_zone_keys_t *keys)
 {
 	assert(keys);
@@ -161,18 +170,11 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	return KNOT_EOK;
 }
 
-void free_sign_contexts(knot_zone_keys_t *keys)
-{
-	for (int i = 0; i < keys->count; i++) {
-		knot_dnssec_sign_free(keys->contexts[i]);
-		keys->contexts[i] = NULL;
-	}
-}
-
 void free_zone_keys(knot_zone_keys_t *keys)
 {
+	free_sign_contexts(keys);
+
 	for (int i = 0; i < keys->count; i++) {
 		knot_dnssec_key_free(&keys->keys[i]);
 	}
 }
-
