@@ -47,6 +47,8 @@ const err_table_t err_msgs[] = {
 	/* Zone scanner errors. */
 	ERR_ITEM( ZSCANNER_UNCOVERED_STATE,
 	          "General scanner error." ),
+	ERR_ITEM( ZSCANNER_UNCLOSED_MULTILINE,
+	          "Unclosed last multiline block." ),
 	ERR_ITEM( ZSCANNER_ELEFT_PARENTHESIS,
 	          "Too many left parentheses." ),
 	ERR_ITEM( ZSCANNER_ERIGHT_PARENTHESIS,

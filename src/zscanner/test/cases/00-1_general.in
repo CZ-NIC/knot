@@ -1,0 +1,7 @@
+$ORIGIN	.
+$TTL	1
+
+; KO
+@			TXT ( "text"	; Unclosed multiline block
+
+;comment
