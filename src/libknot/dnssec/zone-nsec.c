@@ -87,7 +87,7 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 		int result = callback(previous, current, data);
 		if (result == NSEC_NODE_SKIP) {
 			// No NSEC should be created for 'current' node, skip
-			assert(!knot_node_rrset(current, KNOT_RRTYPE_SOA));
+			;
 		} else if (result == KNOT_EOK) {
 			previous = current;
 		} else {
