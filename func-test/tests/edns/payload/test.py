@@ -6,19 +6,23 @@ import dnstest
 
 t = dnstest.DnsTest()
 
-server = t.server("knot")
+knot = t.server("knot")
+bind = t.server("bind")
 zone = t.zone("flags.")
 
-t.link(zone, server)
+t.link(zone, knot)
+t.link(zone, bind)
 
 t.start()
 
 # TC - TXT record doesn't fit into UDP message.
-resp = server.dig("text.flags", "TXT", udp=True)
+resp = knot.dig("513resp.flags", "TXT", udp=True)
 resp.check(flags="TC")
+resp.cmp(bind, authority=False) # Knot puts SOA compared to Bind!
 
 # no TC - UDP message is extended using EDNS0/payload.
-resp = server.dig("text.flags", "TXT", udp=True, bufsize=700)
+resp = knot.dig("513resp.flags", "TXT", udp=True, bufsize=600)
 resp.check(noflags="TC")
+resp.cmp(bind)
 
 t.stop()

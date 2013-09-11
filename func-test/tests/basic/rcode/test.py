@@ -6,23 +6,28 @@ import dnstest
 
 t = dnstest.DnsTest()
 
-server = t.server("knot")
+knot = t.server("knot")
+bind = t.server("bind")
 zone = t.zone("example.com.")
 
-t.link(zone, server)
+t.link(zone, knot)
+t.link(zone, bind)
 
 t.start()
 
 # No error.
-resp = server.dig("example.com", "SOA")
+resp = knot.dig("example.com", "SOA")
 resp.check(rcode="NOERROR")
+resp.cmp(bind)
 
 # Not existent subdomain.
-resp = server.dig("unknown.example.com", "SOA")
+resp = knot.dig("unknown.example.com", "SOA")
 resp.check(rcode="NXDOMAIN")
+resp.cmp(bind)
 
 # Not provided domain.
-resp = server.dig("example.cz", "SOA")
+resp = knot.dig("example.cz", "SOA")
 resp.check(rcode="REFUSED")
+resp.cmp(bind)
 
 t.stop()

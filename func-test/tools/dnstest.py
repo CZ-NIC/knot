@@ -2,6 +2,7 @@
 
 import base64
 import binascii
+import inspect
 import re
 import os
 import random
@@ -36,7 +37,11 @@ def log(text):
     print("%s# %s" % (time_str, text))
 
 def err(text):
-    log("     ERR> %s" % text)
+    frames = inspect.getouterframes(inspect.currentframe())
+    for frame in frames:
+        if params.test_dir == os.path.dirname(frame[1]):
+            log("     ERR> %s" % text)
+            log("          %s#%i" % (params.test_dir, frame[2]))
 
 def compare(value, expected, name):
     if value != expected:
@@ -191,20 +196,21 @@ class Zone(object):
 class Response(object):
     '''Dig output context'''
 
-    def __init__(self, response, rname, rtype, rclass, serial):
+    def __init__(self, response, args):
         self.resp = response
-        self.rname = dns.name.from_text(rname)
-        self.serial = serial
+        self.args = args
 
-        if type(rtype) is str:
-            self.rtype = dns.rdatatype.from_text(rtype)
-        else:
-            self.rtype = rtype
+        self.rname = dns.name.from_text(self.args["rname"])
 
-        if type(rclass) is str:
-            self.rclass = dns.rdataclass.from_text(rclass)
+        if type(self.args["rtype"]) is str:
+            self.rtype = dns.rdatatype.from_text(self.args["rtype"])
         else:
-            self.rclass = rclass
+            self.rtype = self.args["rtype"]
+
+        if type(self.args["rclass"]) is str:
+            self.rclass = dns.rdataclass.from_text(self.args["rclass"])
+        else:
+            self.rclass = self.args["rclass"]
 
     def _check_question(self):
         question = self.resp.question.pop()
@@ -235,7 +241,7 @@ class Response(object):
             rc = dns.rcode.from_text(rcode)
         else:
             rc = rcode
-        compare(self.resp.rcode(), rc, "rcode")
+        compare(self.resp.rcode(), rc, "RCODE")
 
         # Check rdata only if NOERROR.
         if rc != 0 or rdata == None:
@@ -258,7 +264,7 @@ class Response(object):
                         compare(data.ttl, int(ttl), "TTL")
                     return
         else:
-            err("RDATA (" + str(rdata) + ") not in answer section")
+            err("RDATA (" + str(rdata) + ") not in ANSWER section")
             params.err = True
 
     def check_edns(self, nsid=None, buff_size=None):
@@ -275,6 +281,26 @@ class Response(object):
                         nsid[2:], "hex NSID")
             else:
                 compare(option.data.decode('ascii'), nsid, "txt NSID")
+
+    def diff(self, resp, flags=True, answer=True, authority=True, \
+             additional=False):
+        '''Compares specified response sections against another response'''
+
+        if flags and self.resp.flags != resp.resp.flags:
+            err("different FLAGS")
+        if answer and self.resp.answer != resp.resp.answer:
+            err("different ANSWER sections")
+        if authority and self.resp.authority != resp.resp.authority:
+            err("different AUTHORITY sections")
+        if additional and self.resp.additional != resp.resp.additional:
+            err("different ADDITIONAL sections")
+
+    def cmp(self, server, flags=True, answer=True, authority=True, \
+            additional=False):
+        '''Asks server for the same question an compares specified sections'''
+
+        resp = server.dig(**self.args)
+        self.diff(resp, flags, answer, authority, additional)
 
 class Update(object):
     '''DNS update context'''
@@ -492,6 +518,13 @@ class DnsServer(object):
             nsid=False, dnssec=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
+        # Store function arguments for possible comparation.
+        args = dict()
+        params = inspect.getargvalues(inspect.currentframe())
+        for param in params.args:
+            if param != "self":
+                args[param] = params.locals[param]
+
         for t in range(tries):
             try:
                 if rtype.upper() == "AXFR":
@@ -539,7 +572,7 @@ class DnsServer(object):
                     else:
                         resp = dns.query.tcp(query, self.addr, port=self.port, \
                                              timeout=timeout)
-                return Response(resp, rname, rtype, rclass, serial)
+                return Response(resp, args)
             except:
                 time.sleep(timeout)
 
