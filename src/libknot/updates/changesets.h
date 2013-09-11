@@ -59,13 +59,13 @@ typedef struct knot_changeset {
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Wrapper BIRD lists. Storing: RRSet. */
+/*! \brief Wrapper for BIRD lists. Storing: RRSet. */
 typedef struct knot_rr_ln {
 	node n; /*!< List node. */
 	knot_rrset_t *rr; /*!< Actual usable data. */
 } knot_rr_ln_t;
 
-/*! \brief Wrapper BIRD lists. Storing: Node. */
+/*! \brief Wrapper for BIRD lists. Storing: Node. */
 typedef struct knot_node_ln {
 	node n; /*!< List node. */
 	knot_node_t *node; /*!< Actual usable data. */
@@ -173,6 +173,11 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
  */
 knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *ch);
 
+const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
+                                           knot_changeset_part_t part);
+void knot_changeset_remove_last_rr(knot_changeset_t *ch,
+                                   knot_changeset_part_t part);
+
 /*!
  * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
  *        'remove' list. Will *not* try to merge with previous RRSets.
@@ -209,7 +214,7 @@ int knot_changeset_add_rr(knot_changeset_t *chgs,
  * \param part To which part we store SOA (from = REMOVE, add = TO)
  */
 void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
-                           knot_changeset_part_t part);
+                            knot_changeset_part_t part);
 
 /*!
  * \brief Checks whether changeset is empty.

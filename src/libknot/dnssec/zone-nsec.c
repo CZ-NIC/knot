@@ -31,6 +31,15 @@
 #include "libknot/zone/zone-diff.h"
 #include "libknot/util/debug.h"
 
+/*!
+ * \brief Parameters to be used in connect_nsec_nodes callback.
+ */
+typedef struct {
+	uint32_t ttl;
+	knot_changeset_t *changeset;
+	const knot_zone_contents_t *zone;
+} nsec_chain_iterate_data_t;
+
 /* - NSEC chain iteration -------------------------------------------------- */
 
 typedef int (*chain_iterate_cb)(knot_node_t *, knot_node_t *, void *);
@@ -75,7 +84,14 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 		current = (knot_node_t *)*hattrie_iter_val(it);
 
 		int result = callback(previous, current, data);
-		if (result != KNOT_EOK) {
+		if (result == NSEC_NODE_SKIP) {
+			// No NSEC should be created for this node, skip 2 nodes
+			hattrie_iter_next(it);
+			if (hattrie_iter_finished(it)) {
+				break;
+			}
+			current = (knot_node_t *)*hattrie_iter_val(it);
+		} else if (result != KNOT_EOK) {
 			hattrie_iter_free(it);
 			return result;
 		}
@@ -89,6 +105,55 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	return callback(current, first, data);
 }
 
+/*!
+ * \brief Add entry for removed NSEC to the changeset.
+ *
+ * \param oldrr      Old NSEC RR set to be removed (including RRSIG).
+ * \param changeset  Changeset to add the old RR into.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int changeset_remove_nsec(const knot_rrset_t *oldrr,
+                                 knot_changeset_t *changeset)
+{
+	assert(oldrr);
+	assert(changeset);
+
+	int result;
+
+	// extract copy of NSEC and RRSIG
+
+	knot_rrset_t *old_nsec = NULL;
+	knot_rrset_t *old_rrsigs = NULL;
+
+	result = knot_rrset_deep_copy(oldrr, &old_nsec, 1);
+	if (result != KNOT_EOK)
+		return result;
+
+	old_rrsigs = old_nsec->rrsigs;
+	old_nsec->rrsigs = NULL;
+
+	// update changeset
+
+	result = knot_changeset_add_rrset(changeset, old_nsec,
+	                                  KNOT_CHANGESET_REMOVE);
+	if (result != KNOT_EOK) {
+		knot_rrset_deep_free(&old_nsec, 1, 1);
+		knot_rrset_deep_free(&old_rrsigs, 1, 1);
+		return result;
+	}
+
+	if (old_rrsigs) {
+		result = knot_changeset_add_rrset(changeset, old_rrsigs,
+		                                  KNOT_CHANGESET_REMOVE);
+		if (result != KNOT_EOK) {
+			knot_rrset_deep_free(&old_rrsigs, 1, 1);
+			return result;
+		}
+	}
+
+	return KNOT_EOK;
+}
 
 /* - NSEC nodes construction ----------------------------------------------- */
 
@@ -142,6 +207,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	return rrset;
 }
 
+<<<<<<< HEAD
 /*!
  * \brief Add entry for removed NSEC to the changeset..
  *
@@ -179,27 +245,56 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
 		knot_rrset_deep_free(&old_nsec, 1, 1);
 		knot_rrset_deep_free(&old_rrsigs, 1, 1);
 		return result;
-	}
+=======
+static int fix_nsec_chain_for(const knot_node_t *node,
+                              const knot_node_t *to,
+                              const nsec_chain_iterate_data_t *data)
+{
+	assert(node);
+	assert(to);
+	assert(data);
+	/*!
+	 * Previous NSEC can either be in changeset, or in
+	 * zone (we get to it via node->prev), but never in both.
+	 */
+	const knot_rrset_t *last_rr = knot_changeset_last_rr(data->changeset,
+	                                                     KNOT_CHANGESET_ADD);
+	assert(!(knot_node_rrset(node->prev, KNOT_RRTYPE_NSEC) && last_rr &&
+	         last_rr->type == KNOT_RRTYPE_NSEC));
+	const knot_rrset_t *prev_nsec = node->prev ?
+	                                knot_node_rrset(node->prev,
+	                                                KNOT_RRTYPE_NSEC) :
+	                                last_rr;
+	assert(prev_nsec);
+	assert(prev_nsec->type == KNOT_RRTYPE_NSEC);
 
-	if (old_rrsigs) {
-		result = knot_changeset_add_rrset(changeset, old_rrsigs,
-		                                  KNOT_CHANGESET_REMOVE);
-		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&old_rrsigs, 1, 1);
-			return result;
+	if (last_rr) {
+		// Force remove last NSEC from changeset (has bogus next field)
+		knot_changeset_remove_last_rr(data->changeset,
+		                              KNOT_CHANGESET_ADD);
+	} else {
+		// Remove last NSEC from zone (ditto)
+		int ret = changeset_remove_nsec(prev_nsec, data->changeset);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
+>>>>>>> DNSSEC: Initial solution for chain reconnection
 	}
 
-	return KNOT_EOK;
-}
+	// Create new RR pointing to the 'to' node (node after deleted node)
+	const knot_node_t *prev_node =
+		node->prev ? node->prev :
+		knot_zone_contents_find_previous(data->zone, node->owner);
+	assert(prev_node); // This fails for apex, but it should never happen
+	knot_rrset_t *fixed_nsec = create_nsec_rrset(prev_node, to, data->ttl);
+	if (fixed_nsec == NULL) {
+		return KNOT_ENOMEM;
+	}
 
-/*!
- * \brief Parameters to be used in connect_nsec_nodes callback.
- */
-typedef struct {
-	uint32_t ttl;
-	knot_changeset_t *changeset;
-} nsec_chain_iterate_data_t;
+	// Add new NSEC RR to changeset
+	return knot_changeset_add_rrset(data->changeset, fixed_nsec,
+	                                KNOT_CHANGESET_ADD);
+}
 
 /*!
  * \brief Connect two nodes by adding a NSEC RR into the first node.
@@ -215,11 +310,11 @@ typedef struct {
  */
 static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 {
+	if (b->rrset_count == 0 || knot_node_is_non_auth(b)) {
+		return NSEC_NODE_SKIP;
+	}
+
 	nsec_chain_iterate_data_t *data = (nsec_chain_iterate_data_t *)d;
-
-	dbg_dnssec_detail("Changeset emtpy during generating NSEC chain: %d\n",
-	                  knot_changeset_is_empty(data->changeset));
-
 	knot_rrset_t *old_nsec = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC);
 
 	int ret = 0;
@@ -235,7 +330,11 @@ dbg_dnssec_exec_detail(
 		free(name);
 );
 		ret = changeset_remove_nsec(old_nsec, data->changeset);
-		return ret;
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		// Fix NSEC chain
+		return fix_nsec_chain_for(a, b, data);
 	}
 
 	// create new NSEC
@@ -286,7 +385,7 @@ static int create_nsec_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 	assert(zone);
 	assert(zone->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, changeset };
+	nsec_chain_iterate_data_t data = { ttl, changeset, zone };
 
 	return chain_iterate(zone->nodes, connect_nsec_nodes, &data);
 }
@@ -561,11 +660,12 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 	uint8_t *rdata_hash = nsec3_rdata_hash(a->rrset_tree[0]->rdata);
 
 	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str(b->owner);
-	if (!b32_hash)
+	if (!b32_hash) {
 		return KNOT_ENOMEM;
+	}
 
-	int written = base32hex_decode(b32_hash, KNOT_NSEC3_HASH_B32_LENGTH,
-	                               rdata_hash, KNOT_NSEC3_HASH_LENGTH);
+	int32_t written = base32hex_decode(b32_hash, KNOT_NSEC3_HASH_B32_LENGTH,
+	                                   rdata_hash, KNOT_NSEC3_HASH_LENGTH);
 
 	free(b32_hash);
 
@@ -579,7 +679,7 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
  * \brief Get zone apex as a string.
  */
 static bool get_zone_apex_str(const knot_zone_contents_t *zone,
-			      char **apex, size_t *apex_size)
+                              char **apex, size_t *apex_size)
 {
 	assert(zone);
 	assert(zone->apex);
@@ -671,9 +771,6 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		result = knot_zone_tree_insert(nsec3_nodes, nsec3_node);
 		if (result != KNOT_EOK)
 			break;
-
-		// Caused invalid reads after updating zone w/ changesets
-		//node->nsec3_node = nsec3_node;
 
 		hattrie_iter_next(it);
 	}
