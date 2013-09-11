@@ -56,11 +56,13 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	bool sorted = true;
 	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
 
-	if (!it)
+	if (!it) {
 		return KNOT_ENOMEM;
+	}
 
-	if (hattrie_iter_finished(it))
+	if (hattrie_iter_finished(it)) {
 		return KNOT_EINVAL;
+	}
 
 	knot_node_t *first = (knot_node_t *)*hattrie_iter_val(it);
 	knot_node_t *previous = first;
@@ -105,8 +107,9 @@ static knot_rrset_t *create_nsec_rrset(const knot_dname_t *owner,
 	knot_rrset_t *rrset;
 	knot_dname_t *owner_cpy = knot_dname_copy(owner);
 	rrset = knot_rrset_new(owner_cpy, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, ttl);
-	if (!rrset)
+	if (!rrset) {
 		return NULL;
+	}
 
 	size_t rdata_size = sizeof(knot_dname_t *) + bitmap_size(rr_types);
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
@@ -123,10 +126,10 @@ static knot_rrset_t *create_nsec_rrset(const knot_dname_t *owner,
 }
 
 /*!
- * \brief Add entry for removed NSEC to the changeset..
+ * \brief Add entry for removed NSEC to the changeset.
  *
  * \param old        Old NSEC RR set to be removed (including RRSIG).
-  * \param changeset  Changeset into the entries will be added.
+ * \param changeset  Changeset into the entries will be added.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -144,8 +147,9 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
 	knot_rrset_t *old_rrsigs = NULL;
 
 	result = knot_rrset_deep_copy(oldrr, &old_nsec, 1);
-	if (result != KNOT_EOK)
+	if (result != KNOT_EOK) {
 		return result;
+	}
 
 	old_rrsigs = old_nsec->rrsigs;
 	old_nsec->rrsigs = NULL;
@@ -737,14 +741,6 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 /* - helper functions ------------------------------------------------------ */
 
 /*!
- * Check if NSEC3 is enabled for the given zone.
- */
-static bool is_nsec3_enabled(const knot_zone_contents_t *zone)
-{
-	return zone->nsec3_params.salt_length > 0;
-}
-
-/*!
  * \brief Get minimum TTL from zone SOA.
  * \note Value should be used for NSEC records.
  */
@@ -768,6 +764,18 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl
 }
 
 /* - public API ------------------------------------------------------------ */
+
+/*!
+ * Check if NSEC3 is enabled for the given zone.
+ */
+bool is_nsec3_enabled(const knot_zone_contents_t *zone)
+{
+	if (!zone) {
+		return false;
+	}
+
+	return zone->nsec3_params.salt_length > 0;
+}
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.

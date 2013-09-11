@@ -51,14 +51,15 @@ typedef struct {
 /*!
  * \brief Load zone keys from a key directory.
  *
- * \param keydir_name  Name of the directory with DNSSEC keys.
- * \param zone_name    Domain name of the zone.
- * \param keys         Structure with loaded keys.
+ * \param keydir_name    Name of the directory with DNSSEC keys.
+ * \param zone_name      Domain name of the zone.
+ * \param nsec3_enabled  NSEC3 enabled for zone (determines allowed algorithms).
+ * \param keys           Structure with loaded keys.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
-		   knot_zone_keys_t *keys);
+		   bool nsec3_enabled, knot_zone_keys_t *keys);
 /*!
  * \brief Get zone key by a keytag.
  *

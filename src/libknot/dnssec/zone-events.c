@@ -74,8 +74,9 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 
 	// Read zone keys from disk
 	knot_zone_keys_t zone_keys = { '\0' };
-
-	result = load_zone_keys(keydir, zone->contents->apex->owner, &zone_keys);
+	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
+	result = load_zone_keys(keydir, zone->contents->apex->owner,
+	                        nsec3_enabled, &zone_keys);
 	free(keydir);
 	if (result != KNOT_EOK) {
 		char *zname = knot_dname_to_str(zone->name);

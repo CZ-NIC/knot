@@ -28,6 +28,7 @@
 #ifndef _KNOT_DNSSEC_NSEC3_H_
 #define _KNOT_DNSSEC_NSEC3_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -94,6 +95,15 @@ void knot_nsec3_params_free(knot_nsec3_params_t *params);
  */
 int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
                     size_t size, uint8_t **digest, size_t *digest_size);
+
+/*!
+ * \brief Check if the key algorithm is designated for NSEC3.
+ *
+ * \param algorithm  Algorithm number.
+ *
+ * \return Key with given algorithm must be used with NSEC3.
+ */
+bool knot_is_nsec3_algorithm(uint8_t algorithm);
 
 #endif // _KNOT_DNSSEC_NSEC3_H_
 

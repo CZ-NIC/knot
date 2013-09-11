@@ -21,6 +21,7 @@
 #include <stdio.h> // TMP
 #include "common/errcode.h"
 #include "libknot/dname.h"
+#include "libknot/dnssec/nsec3.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
 
@@ -93,15 +94,16 @@ knot_dnssec_key_t *get_zone_key(knot_zone_keys_t *keys, uint16_t keytag)
  * \todo Maybe use dynamic list instead of fixed size array.
  */
 int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
-		   knot_zone_keys_t *keys)
+		   bool nsec3_enabled, knot_zone_keys_t *keys)
 {
 	assert(keydir_name);
 	assert(zone_name);
 	assert(keys);
 
 	DIR *keydir = opendir(keydir_name);
-	if (!keydir)
+	if (!keydir) {
 		return KNOT_DNSSEC_EINVALID_KEY;
+	}
 
 	struct dirent entry_buf = { 0 };
 	struct dirent *entry = NULL;
@@ -153,6 +155,12 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
 			fprintf(stderr, "not a DNSSEC key\n");
+			knot_free_key_params(&params);
+			continue;
+		}
+
+		if (knot_is_nsec3_algorithm(params.algorithm) != nsec3_enabled) {
+			fprintf(stderr, "wrong algorithm for current NSEC\n");
 			knot_free_key_params(&params);
 			continue;
 		}

@@ -29,8 +29,18 @@
 #ifndef _KNOT_DNSSEC_ZONE_NSEC_H_
 #define _KNOT_DNSSEC_ZONE_NSEC_H_
 
+#include <stdbool.h>
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/zone-contents.h"
+
+/*!
+ * Check if NSEC3 is enabled for the given zone.
+ *
+ * \param zone  Zone to be checked.
+ *
+ * \return NSEC3 is enabled.
+ */
+bool is_nsec3_enabled(const knot_zone_contents_t *zone);
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
