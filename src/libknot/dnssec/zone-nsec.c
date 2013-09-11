@@ -67,6 +67,8 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	knot_node_t *first = (knot_node_t *)*hattrie_iter_val(it);
 	knot_node_t *previous = first;
 	knot_node_t *current = first;
+
+	/*!< \todo Remove direct hattrie calls. */
 	hattrie_iter_next(it);
 
 	while (!hattrie_iter_finished(it)) {
@@ -93,43 +95,58 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 /*!
  * \brief Create NSEC RR set.
  *
- * \param owner     Record owner.
- * \param next      Owner of the immeditatelly following node.
- * \param rr_types  Bitmap with RR types of the owning node.
- * \param ttl       Record TTL.
+ * \param from     Node that should contain the new RRSet
+ * \param to       Node that should be pointed to from 'from'
+ * \param ttl      Record TTL (SOA's minimun TTL).
  *
  * \return NSEC RR set, NULL on error.
  */
-static knot_rrset_t *create_nsec_rrset(const knot_dname_t *owner,
-                                       const knot_dname_t *next,
-                                       const bitmap_t *rr_types, uint32_t ttl)
+static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
+                                       const knot_node_t *to,
+                                       uint32_t ttl)
 {
-	knot_rrset_t *rrset;
-	knot_dname_t *owner_cpy = knot_dname_copy(owner);
-	rrset = knot_rrset_new(owner_cpy, KNOT_RRTYPE_NSEC, KNOT_CLASS_IN, ttl);
+	// Create new RRSet
+	knot_dname_t *owner_cpy = knot_dname_copy(from->owner);
+	knot_rrset_t *rrset = knot_rrset_new(owner_cpy,
+	                                     KNOT_RRTYPE_NSEC, KNOT_CLASS_IN,
+	                                     ttl);
 	if (!rrset) {
 		return NULL;
 	}
 
-	size_t rdata_size = sizeof(knot_dname_t *) + bitmap_size(rr_types);
+	// Create bitmap
+	bitmap_t rr_types = { 0 };
+	bitmap_add_node_rrsets(&rr_types, from);
+	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
+	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+
+	// Create RDATA
+	size_t rdata_size = sizeof(knot_dname_t *) + bitmap_size(&rr_types);
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
 	}
 
-	knot_dname_t *next_dname = knot_dname_copy(next);
+	// Copy the 'next' field to RDATA
+	knot_dname_t *next_dname = knot_dname_copy(to->owner);
+	if (!next_dname) {
+		knot_rrset_deep_free(&rrset, 1, 1);
+		return NULL;
+	}
 	memcpy(rdata, &next_dname, sizeof(knot_dname_t *));
-	bitmap_write(rr_types, rdata + sizeof(knot_dname_t *));
+
+	// Copy bitmap to RDATA
+	bitmap_write(&rr_types, rdata + sizeof(knot_dname_t *));
 
 	return rrset;
 }
 
 /*!
- * \brief Add entry for removed NSEC to the changeset.
+ * \brief Add entry for removed NSEC to the changeset..
  *
- * \param old        Old NSEC RR set to be removed (including RRSIG).
- * \param changeset  Changeset into the entries will be added.
+ * \param oldrr      Old NSEC RR set to be removed (including RRSIG).
+ * \param changeset  Changeset to add the old RR into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -201,13 +218,15 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	nsec_chain_iterate_data_t *data = (nsec_chain_iterate_data_t *)d;
 
 	dbg_dnssec_detail("Changeset emtpy during generating NSEC chain: %d\n",
-	        knot_changeset_is_empty(data->changeset));
+	                  knot_changeset_is_empty(data->changeset));
 
 	knot_rrset_t *old_nsec = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC);
 
 	int ret = 0;
-	// If the node has no other RRSets than NSEC (and possibly RRSIG),
-	// just remove the NSEC and its RRSIG, they are redundant
+	/*!
+	 * If the node has no other RRSets than NSEC (and possibly RRSIG),
+	 * just remove the NSEC and its RRSIG, they are redundant
+	 */
 	if (old_nsec != NULL
 	    && knot_node_rrset_count(a) == KNOT_NODE_RRSET_COUNT_ONLY_NSEC) {
 dbg_dnssec_exec_detail(
@@ -219,17 +238,8 @@ dbg_dnssec_exec_detail(
 		return ret;
 	}
 
-	// types bitmap for new NSEC
-	bitmap_t rr_types = { 0 };
-	bitmap_add_rrset(&rr_types, knot_node_get_rrsets_no_copy(a),
-	                 knot_node_rrset_count(a));
-	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
-	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
-
 	// create new NSEC
-	knot_rrset_t *new_nsec = create_nsec_rrset(knot_node_owner(a),
-	                                           knot_node_owner(b),
-	                                           &rr_types, data->ttl);
+	knot_rrset_t *new_nsec = create_nsec_rrset(a, b, data->ttl);
 	if (!new_nsec) {
 		dbg_dnssec_detail("Failed to create new NSEC.\n");
 		return KNOT_ENOMEM;
@@ -607,16 +617,19 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 {
 	knot_dname_t *nsec3_owner;
 	nsec3_owner = create_nsec3_owner(node->owner, params, apex, apex_size);
-	if (!nsec3_owner)
+	if (!nsec3_owner) {
 		return NULL;
+	}
 
 	bitmap_t rr_types = { 0 };
-	bitmap_add_rrset(&rr_types, node->rrset_tree, node->rrset_count);
-	if (node->rrset_count > 0)
+	bitmap_add_node_rrsets(&rr_types, node);
+	if (node->rrset_count > 0) {
 		bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+	}
 
 	knot_node_t *nsec3_node;
-	nsec3_node = create_nsec3_node(nsec3_owner, params, apex_node, &rr_types, ttl);
+	nsec3_node = create_nsec3_node(nsec3_owner, params, apex_node,
+	                               &rr_types, ttl);
 
 	return nsec3_node;
 }

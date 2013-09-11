@@ -813,8 +813,10 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                              uint16_t rclass, uint32_t ttl)
 {
 	knot_rrset_t *ret = malloc(sizeof(knot_rrset_t));
-	if (ret == NULL)
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
 		return NULL;
+	}
 
 	ret->rdata = NULL;
 	ret->rdata_count = 0;

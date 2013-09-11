@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "libknot/zone/node.h"
 #include "libknot/rrset.h"
 
 #define BITMAP_WINDOW_SIZE 256
@@ -72,13 +73,14 @@ inline static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
 }
 
 /*!
- * \brief Add all RR types from a RR set into the bitmap.
+ * \brief Add all RR types from a node into the bitmap.
  */
-inline static void bitmap_add_rrset(bitmap_t *bitmap, knot_rrset_t *rrset[],
-                             int rrset_count)
+inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
+                                          const knot_node_t *node)
 {
-	for (int i = 0; i < rrset_count; i++) {
-		bitmap_add_type(bitmap, rrset[i]->type);
+	knot_rrset_t **node_rrsets = knot_node_get_rrsets_no_copy(node);
+	for (int i = 0; i < node->rrset_count; i++) {
+		bitmap_add_type(bitmap, node_rrsets[i]->type);
 	}
 }
 
