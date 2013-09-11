@@ -752,15 +752,16 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 	return result;
 }
 
-/* - helper functions ------------------------------------------------------ */
-
-/*!
- * Check if NSEC3 is enabled for the given zone.
- */
-static bool is_nsec3_enabled(const knot_zone_contents_t *zone)
+bool is_nsec3_enabled(const knot_zone_contents_t *zone)
 {
+	if (!zone) {
+		return false;
+	}
+
 	return zone->nsec3_params.salt_length > 0;
 }
+
+/* - helper functions ------------------------------------------------------ */
 
 /*!
  * \brief Get minimum TTL from zone SOA.
