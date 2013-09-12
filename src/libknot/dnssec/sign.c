@@ -18,8 +18,9 @@
 #include "common.h"
 #include "common/descriptor.h"
 #include "common/errcode.h"
-#include "key.h"
-#include "sign.h"
+#include "libknot/dnssec/algorithm.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sign.h"
 #include <assert.h>
 #include <openssl/dsa.h>
 #include <openssl/opensslconf.h>

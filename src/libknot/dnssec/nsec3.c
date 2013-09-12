@@ -25,7 +25,8 @@
 #include "common.h"
 #include "common/descriptor.h"
 #include "common/memdup.h"
-#include "nsec3.h"
+#include "libknot/dnssec/algorithm.h"
+#include "libknot/dnssec/nsec3.h"
 #include "util/tolower.h"
 
 /*!

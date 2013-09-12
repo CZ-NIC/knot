@@ -140,6 +140,8 @@ src/libknot/consts.c
 src/libknot/consts.h
 src/libknot/dname.c
 src/libknot/dname.h
+src/libknot/dnssec/algorithm.c
+src/libknot/dnssec/algorithm.h
 src/libknot/dnssec/key.c
 src/libknot/dnssec/key.h
 src/libknot/dnssec/nsec-bitmap.h

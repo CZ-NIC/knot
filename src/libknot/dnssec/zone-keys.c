@@ -21,6 +21,7 @@
 #include <stdio.h> // TMP
 #include "common/errcode.h"
 #include "libknot/dname.h"
+#include "libknot/dnssec/algorithm.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
@@ -159,8 +160,10 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		if (knot_is_nsec3_algorithm(params.algorithm) != nsec3_enabled) {
-			fprintf(stderr, "wrong algorithm for current NSEC\n");
+		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
+		                                       nsec3_enabled)
+		) {
+			fprintf(stderr, "algorithm not allowed for zone signing\n");
 			knot_free_key_params(&params);
 			continue;
 		}

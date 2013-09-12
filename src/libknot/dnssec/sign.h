@@ -28,6 +28,7 @@
 #define _KNOT_DNSSEC_SIGN_H_
 
 #include "common/descriptor.h"
+#include "libknot/dnssec/algorithm.h"
 #include "libknot/dnssec/key.h"
 
 /*!
