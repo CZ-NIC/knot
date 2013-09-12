@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
-import argparse, importlib, os, re, sys, tempfile, time, traceback
+import argparse, importlib, logging, os, re, sys, tempfile, time, traceback
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(current_dir + "/tools")
-from dnstest import log, err
 import params
 
+tests_dir = "tests"
+params.common_data_dir = current_dir + "/tools/data/"
+
+# Parse comman line arguments.
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", dest="debug", action="store_true", \
                     help="enable exception traceback on stdout")
@@ -13,12 +16,7 @@ parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                     help="([exclude] | run) specific (test set | [test case])")
 args = parser.parse_args()
 
-params.common_data_dir = current_dir + "/tools/data/"
-outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % int(time.time()))
-tests_dir = "tests"
-test_cnt = 0
-fail_cnt = 0
-
+# Process tests/cases arguments.
 excluded = dict()
 included = dict()
 for item in args.tests:
@@ -49,24 +47,48 @@ if not included:
         included[i] = list()
 
 def save_traceback(outdir):
-    file = open(params.out_dir + "/traceback", mode="a")
+    file = open(params.out_dir + "/traceback.log", mode="a")
     traceback.print_exc(file=file)
     file.close()
 
-log("Starting Knot test suite %s" % outs_dir)
+def create_log(logger, filename="", level=logging.NOTSET):
+    if filename:
+        handler = logging.FileHandler(filename)
+    else:
+        handler = logging.StreamHandler()
+    handler.setLevel(level)
+    formatter = logging.Formatter('%(asctime)s# %(message)s', "%H:%M:%S")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return handler
 
+timestamp = int(time.time())
+today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
+outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp)
+
+# Set up logging.
+log = logging.getLogger()
+log.setLevel(logging.NOTSET)
+create_log(log)
+create_log(log, outs_dir + "/summary.log", logging.NOTSET)
+
+log.info("KNOT TESTING SUITE %s" % today)
+log.info("Working directory %s" % outs_dir)
+
+case_cnt = 0
+fail_cnt = 0
 for test in sorted(included):
     # Skip excluded test set.
     if test in excluded and not excluded[test]:
         continue
 
     # Check test directory.
-    test_dir = "./%s/%s" % (tests_dir, test)
+    test_dir = "%s/%s/%s" % (current_dir, tests_dir, test)
     if not os.path.isdir(test_dir):
-        log("Invalid test name %s (ignored)" % test)
+        log.error("Invalid test name \'%s\': IGNORED" % test)
         continue
 
-    log("Test \'%s\'" % test)
+    log.info("Test \'%s\'" % test)
 
     # Set test cases to run.
     if not included[test]:
@@ -80,16 +102,14 @@ for test in sorted(included):
         if test in excluded and case in excluded[test]:
             continue
 
-        test_cnt += 1
+        case_cnt += 1
 
         case_dir = test_dir + "/" + case
         test_file = case_dir + "/test.py"
         if not os.path.isfile(test_file):
-            log(" * case \'%s\': NOT EXECUTABLE!" % case)
+            log.error(" * case \'%s\':\tUNEXECUTABLE" % case)
             fail_cnt += 1
             continue
-
-        log(" * case \'%s\'" % case)
 
         try:
             out_dir = outs_dir + "/" + test + "/" + case
@@ -97,40 +117,48 @@ for test in sorted(included):
             params.test_dir = case_dir
             params.out_dir = out_dir
             params.err = False
-            params.errmsg = ""
+            params.case_log = open(out_dir + "/case.log", mode="a")
         except OsError:
             fail_cnt += 1
-            err("Can't create output directory %s" % out_dir)
+            log.error("Can't create output directory %s" % out_dir)
             continue
 
         try:
             importlib.import_module("%s.%s.%s.test" % (tests_dir, test, case))
         except Exception as exc:
             params.err = True
-            params.errmsg = format(exc)
             save_traceback(params.out_dir)
             if args.debug:
                 traceback.print_exc()
+            else:
+                log.error(" EXCEPTION: " + format(exc))
         except BaseException as exc:
-            log("Interrupted")
             save_traceback(params.out_dir)
             if args.debug:
                 traceback.print_exc()
+            else:
+                log.info("INTERRUPTED")
+            # Stop servers if still running.
+            if params.test:
+                params.test.stop()
             exit(1)
 
         # Stop servers if still running.
-        if params.err:
-            fail_cnt += 1
-            if params.errmsg:
-                err(params.errmsg)
-
         if params.test:
             params.test.stop()
 
-log("TEST CASES: %i, FAILED: %i" % (test_cnt, fail_cnt))
+        params.case_log.close()
+
+        if params.err:
+            log.info(" * case \'%s\':\tFAILED" % case)
+            fail_cnt += 1
+        else:
+            log.info(" * case \'%s\':\tOK" % case)
 
 if fail_cnt:
+    log.info("TEST CASES: %i, FAILED: %i" % (case_cnt, fail_cnt))
     exit(1)
 else:
+    log.info("TEST CASES: %i, SUCCESS" % (case_cnt))
     exit(0)
 

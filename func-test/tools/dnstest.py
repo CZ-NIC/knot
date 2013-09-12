@@ -32,16 +32,16 @@ nsd_vars = [
     ["KNOT_TEST_NSDC", "nsdc"]
 ]
 
-def log(text):
-    time_str = time.strftime("%H:%M:%S", time.localtime())
-    print("%s# %s" % (time_str, text))
-
 def err(text):
     frames = inspect.getouterframes(inspect.currentframe())
     for frame in frames:
         if params.test_dir == os.path.dirname(frame[1]):
-            log("     ERR> %s" % text)
-            log("          %s#%i" % (params.test_dir, frame[2]))
+            params.case_log.write("Error in %s#%i:\n" % (params.test_dir, frame[2]))
+            params.case_log.write(text + "\n")
+            params.case_log.write("====================================\n")
+
+def detail(text):
+    params.case_log.write(str(text) + "\n")
 
 def compare(value, expected, name):
     if value != expected:
@@ -896,6 +896,10 @@ class DnsTest(object):
 
         self.servers = set()
 
+        Knot.count = 0
+        Bind.count = 0
+        Nsd.count = 0
+
     def _check_port(self, port):
         if not port:
             return False
@@ -1087,12 +1091,12 @@ class DnsTest(object):
             if z1_diff:
                 params.err = True
                 for key in z1_diff:
-                    print(key)
+                    detail(key)
 
             if z2_diff:
                 params.err = True
                 for key in z2_diff:
-                    print(key)
+                    detail(key)
 
             if not z_keys:
                 return
@@ -1100,8 +1104,8 @@ class DnsTest(object):
             for key in z_keys:
                 if z1.nodes[key] != z2.nodes[key]:
                     params.err = True
-                    print(z1.nodes[key].to_text(key))
-                    print(z2.nodes[key].to_text(key))
+                    detail(z1.nodes[key].to_text(key))
+                    detail(z2.nodes[key].to_text(key))
 
                     err("differences in zone %s between %s and %s" % \
                         (zone, server1.name, server2.name))
