@@ -236,10 +236,12 @@ src/tests/knot/server_tests.c
 src/tests/knot/server_tests.h
 src/tests/libknot/dname_tests.c
 src/tests/libknot/dname_tests.h
+src/tests/libknot/dnssec_keys_tests.c
+src/tests/libknot/dnssec_keys_tests.h
+src/tests/libknot/dnssec_sign_tests.c
+src/tests/libknot/dnssec_sign_tests.h
 src/tests/libknot/rrset_tests.c
 src/tests/libknot/rrset_tests.h
-src/tests/libknot/sign_tests.c
-src/tests/libknot/sign_tests.h
 src/tests/libknot/wire_tests.c
 src/tests/libknot/wire_tests.h
 src/tests/libknot/ztree_tests.c
