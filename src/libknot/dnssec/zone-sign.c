@@ -349,6 +349,7 @@ static void get_matching_signing_data(const knot_rrset_t *rrsigs,
 				      knot_dnssec_sign_context_t **ctx)
 {
 	uint16_t keytag = knot_rrset_rdata_rrsig_key_tag(rrsigs, pos);
+
 	for (int i = 0; i < keys->count; i++) {
 		const knot_dnssec_key_t *found_key = &keys->keys[i];
 		if (keytag != found_key->keytag)
@@ -383,10 +384,10 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		// Get key that matches RRSIGs'
 		const knot_dnssec_key_t *key = NULL;
 		knot_dnssec_sign_context_t *ctx = NULL;
+
 		get_matching_signing_data(rrsigs, i, zone_keys, &key, &ctx);
-		if (is_valid_signature(covered, rrsigs, i, key, ctx, policy))
+		if (key && ctx && is_valid_signature(covered, rrsigs, i, key, ctx, policy))
 			continue;
-		assert(key && ctx);
 
 		if (to_remove == NULL) {
 			to_remove = create_empty_rrsigs_for(rrsigs);
