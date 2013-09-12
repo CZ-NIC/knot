@@ -51,7 +51,7 @@ static void init_forced_policy(knot_dnssec_policy_t *p,
 static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
                      knot_update_serial_t soa_up)
 {
-	if (zone == NULL) {
+	if (zone == NULL || zone->contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
