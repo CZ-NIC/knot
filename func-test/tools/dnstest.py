@@ -559,6 +559,16 @@ class DnsServer(object):
             nsid=False, dnssec=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
+        if rtype.upper() == "AXFR":
+            # Always use TCP.
+            udp = False
+        elif rtype.upper() == "IXFR":
+            # Use TCP if not specified.
+            udp = udp if udp != None else False
+        else:
+            # Use TCP or UDP at random if not specified.
+            udp = udp if udp != None else random.choice([True, False])
+
         # Store function arguments for possible comparation.
         args = dict()
         params = inspect.getargvalues(inspect.currentframe())
@@ -566,26 +576,22 @@ class DnsServer(object):
             if param != "self":
                 args[param] = params.locals[param]
 
+        check_log("DIG %s %s %s @%s -p %i %s" % \
+                  (rname, rtype, rclass, self.addr, self.port, \
+                  "+notcp" if udp else "+tcp"))
+
         for t in range(tries):
             try:
                 if rtype.upper() == "AXFR":
-                    # Always use TCP.
                     resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
                                          port=self.port, lifetime=timeout, \
-                                         use_udp=False, **key_params)
+                                         use_udp=udp, **key_params)
                 elif rtype.upper() == "IXFR":
-                    # Use TCP if not specified.
-                    use_udp = udp if udp != None else False
-
                     resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
                                          port=self.port, lifetime=timeout, \
-                                         use_udp=use_udp, serial=serial, \
+                                         use_udp=udp, serial=serial, \
                                          **key_params)
                 else:
-                    # Use TCP or UDP at random if not specified.
-                    use_udp = udp if udp != None else \
-                              random.choice([True, False])
-
                     query = dns.message.make_query(rname, rtype, rclass)
 
                     # Set query.
