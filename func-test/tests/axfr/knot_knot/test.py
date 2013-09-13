@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-'''Test for AXFR from Knot to Bind'''
+'''Test for AXFR from Knot to Knot'''
 
 import dnstest
 
 t = dnstest.DnsTest()
 
 master = t.server("knot")
-slave = t.server("bind")
+slave = t.server("knot")
 zones = t.zone_rnd(10)
 
 t.link(zones, master, slave)
