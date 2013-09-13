@@ -1,7 +1,7 @@
 Prerequisites:
 
 Python >=3.3
-python3-dnspython >1.11
+python3-dnspython >=1.11.1
 dnssec-keygen
 dnssec-signzone
 Bind 9.9

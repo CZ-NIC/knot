@@ -32,26 +32,61 @@ nsd_vars = [
     ["KNOT_TEST_NSDC", "nsdc"]
 ]
 
-def err(text):
+SEP = "------------------------------------"
+
+def test_info():
+    info = ""
     frames = inspect.getouterframes(inspect.currentframe())
     for frame in frames:
         if params.test_dir == os.path.dirname(frame[1]):
-            params.case_log.write("Error in %s#%i:\n" % (params.test_dir, frame[2]))
-            params.case_log.write(text + "\n")
-            params.case_log.write("====================================\n")
+            info = "%s#%i" % (params.test_dir, frame[2])
+            break
+    parts = info.split("/")
+    return parts[-2] + "/" + parts[-1]
 
-def detail(text):
+def check_log(text):
+    params.case_log.write("%s (%s):\n" % (str(text), test_info()))
+
+def detail_log(text):
     params.case_log.write(str(text) + "\n")
 
-def compare(value, expected, name):
-    if value != expected:
-        err("%s is (" % name + str(value) + ") != (" + str(expected) + ")")
-        params.err = True
+def err(text):
+    check_log("ERROR")
+    detail_log(text)
+    detail_log(SEP)
 
 def isset(value, name):
     if not value:
-        err("%s is False" % name)
         params.err = True
+        check_log("IS SET %s" + name)
+        detail_log("  False")
+        detail_log(SEP)
+
+def compare(value, expected, name):
+    if value != expected:
+        params.err = True
+        check_log("COMPARE " + name)
+        detail_log("  (" + str(value) + ") != (" + str(expected) + ")")
+        detail_log(SEP)
+
+def compare_sections(section1, section2, name):
+    if section1 == section2:
+        return
+
+    params.err = True
+    detail_log("COMPARE %s SECTIONS" % name)
+
+    for rrset in section1:
+        if rrset not in section2:
+            detail_log("Section1 difference:" % rrset)
+            detail_log("  %s" % rrset)
+
+    for rrset in section2:
+        if rrset not in section1:
+            detail_log("Section2 difference:" % rrset)
+            detail_log("  %s" % rrset)
+
+    detail_log(SEP)
 
 class Tsig(object):
     '''TSIG key generator'''
@@ -286,14 +321,20 @@ class Response(object):
              additional=False):
         '''Compares specified response sections against another response'''
 
-        if flags and self.resp.flags != resp.resp.flags:
-            err("different FLAGS")
-        if answer and self.resp.answer != resp.resp.answer:
-            err("different ANSWER sections")
-        if authority and self.resp.authority != resp.resp.authority:
-            err("different AUTHORITY sections")
-        if additional and self.resp.additional != resp.resp.additional:
-            err("different ADDITIONAL sections")
+        if flags:
+            compare(dns.flags.to_text(self.resp.flags), \
+                    dns.flags.to_text(resp.resp.flags), "FLAGS")
+            compare(dns.flags.edns_to_text(self.resp.ednsflags), \
+                    dns.flags.edns_to_text(resp.resp.ednsflags), "EDNS FLAGS")
+        if answer:
+            compare_sections(self.resp.answer, resp.resp.answer, \
+                             "ANSWER")
+        if authority:
+            compare_sections(self.resp.authority, resp.resp.authority, \
+                             "AUTHORITY")
+        if additional:
+            compare_sections(self.resp.additional, resp.resp.additional, \
+                             "ADDITIONAL")
 
     def cmp(self, server, flags=True, answer=True, authority=True, \
             additional=False):
@@ -1077,7 +1118,9 @@ class DnsTest(object):
                 slave.zone_slave(zone, zones[zone], master)
 
     def xfr_diff(self, server1, server2, zones):
+        check_log("CHECK AXFR DIFF")
         for zone in zones:
+            detail_log("Zone %s %s-%s:" % (zone, server1.name, server2.name))
             z1 = dns.zone.from_xfr(server1.dig(zone, "AXFR").resp)
             z2 = dns.zone.from_xfr(server2.dig(zone, "AXFR").resp)
 
@@ -1090,13 +1133,17 @@ class DnsTest(object):
 
             if z1_diff:
                 params.err = True
+                detail_log("Extra records in %s:" % server1.name)
                 for key in z1_diff:
-                    detail(key)
+                    for record in z1.nodes[key]:
+                        detail_log("  %s %s" % (key, str(record)))
 
             if z2_diff:
                 params.err = True
+                detail_log("Extra records in %s:" % server2.name)
                 for key in z2_diff:
-                    detail(key)
+                    for record in z2.nodes[key]:
+                        detail_log("  %s %s" % (key, str(record)))
 
             if not z_keys:
                 return
@@ -1104,8 +1151,12 @@ class DnsTest(object):
             for key in z_keys:
                 if z1.nodes[key] != z2.nodes[key]:
                     params.err = True
-                    detail(z1.nodes[key].to_text(key))
-                    detail(z2.nodes[key].to_text(key))
+                    detail_log("Different nodes:")
+                    detail_log("%s:" % server1.name)
+                    for record in z1.nodes[key]:
+                        detail_log("  " + str(record))
+                    detail_log("%s:" % server2.name)
+                    for record in z2.nodes[key]:
+                        detail_log("  " + str(record))
 
-                    err("differences in zone %s between %s and %s" % \
-                        (zone, server1.name, server2.name))
+            detail_log(SEP)
