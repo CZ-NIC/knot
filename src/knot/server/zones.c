@@ -958,7 +958,18 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
+static bool zones_changesets_empty(const knot_changesets_t *chs)
+{
+	if (chs == NULL) {
+		return true;
+	}
+
+	if (EMPTY_LIST(chs->sets)) {
+		return true;
+	}
+
+	return knot_changeset_is_empty(HEAD(chs->sets));
+}
 
 /*!
  * \brief Apply changesets to zone from journal.
@@ -1010,7 +1021,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	/*! \todo Check what should be the upper bound. */
 	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
-		if (!EMPTY_LIST(chsets->sets)) {
+		if (!zones_changesets_empty(chsets)) {
 			/* Apply changesets. */
 			log_server_info("Applying '%zu' changesets from journal "
 			                "to zone '%s'.\n",
@@ -1056,15 +1067,6 @@ static int zones_journal_apply(knot_zone_t *zone)
 	rcu_read_unlock();
 	knot_changesets_free(&chsets);
 	return ret;
-}
-
-static bool zones_changesets_empty(const knot_changesets_t *chs)
-{
-	if (chs == NULL) {
-		return true;
-	}
-
-	return knot_changeset_is_empty(HEAD(chs->sets));
 }
 
 static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
@@ -1400,12 +1402,14 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			diff_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
 			if (diff_chs == NULL) {
 				rcu_read_unlock();
+				knot_dname_free(&dname);
 				return KNOT_ENOMEM;
 			}
 			knot_changeset_t *diff_ch =
 				knot_changesets_create_changeset(diff_chs);
 			if (diff_ch == NULL) {
 				knot_changesets_free(&diff_chs);
+				knot_dname_free(&dname);
 				rcu_read_unlock();
 				return KNOT_ENOMEM;
 			}
@@ -1426,6 +1430,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			 * we can still sign the zone - inconsistencies may happen. */
 			if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
 				knot_changesets_free(&diff_chs);
+				knot_dname_free(&dname);
 				rcu_read_unlock();
 				return ret;
 			}
@@ -1440,6 +1445,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
 			if (sec_chs == NULL) {
 				knot_changesets_free(&diff_chs);
+				knot_dname_free(&dname);
 				rcu_read_unlock();
 				return KNOT_ENOMEM;
 			}
@@ -1448,6 +1454,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			if (sec_ch == NULL) {
 				knot_changesets_free(&diff_chs);
 				knot_changesets_free(&sec_chs);
+				knot_dname_free(&dname);
 				rcu_read_unlock();
 				return KNOT_ENOMEM;
 			}
@@ -1463,6 +1470,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			if (ret != KNOT_EOK) {
 				knot_changesets_free(&diff_chs);
 				knot_changesets_free(&sec_chs);
+				knot_dname_free(&dname);
 				rcu_read_unlock();
 				return ret;
 			}
@@ -1477,6 +1485,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
 			knot_changesets_free(&sec_chs);
+			knot_dname_free(&dname);
 			rcu_read_unlock();
 			return ret;
 		}
@@ -1494,6 +1503,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				                      sec_chs->changes);
 				zones_store_changesets_rollback(transaction);
 				zones_free_merged_changesets(diff_chs, sec_chs);
+				knot_dname_free(&dname);
 				rcu_read_unlock();
 				return ret;
 			}
@@ -1512,6 +1522,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				                      &new_contents,
 				                      sec_chs->changes);
 				zones_free_merged_changesets(diff_chs, sec_chs);
+				knot_dname_free(&dname);
 				rcu_read_unlock();
 				return ret;
 			}
@@ -1529,6 +1540,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				                      &new_contents,
 				                      sec_chs->changes);
 				zones_free_merged_changesets(diff_chs, sec_chs);
+				knot_dname_free(&dname);
 				rcu_read_unlock();
 				return ret;
 			}
