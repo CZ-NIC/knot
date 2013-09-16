@@ -21,11 +21,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
+static uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
 {
 	uint8_t *result = (uint8_t *)malloc(data_size);
-	if (!result)
+	if (!result) {
 		return NULL;
+	}
 
 	return memcpy(result, data, data_size);
 }
