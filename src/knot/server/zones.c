@@ -1419,7 +1419,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				rcu_read_unlock();
 				return KNOT_ENOMEM;
 			}
-			dbg_zones(stderr, "Generating diff.\n");
 			int ret = zones_create_changeset(z_old,
 			                                 zone, diff_ch);
 			if (ret == KNOT_ENODIFF) {
