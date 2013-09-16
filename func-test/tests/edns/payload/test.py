@@ -25,4 +25,8 @@ resp = knot.dig("513resp.flags", "TXT", udp=True, bufsize=600)
 resp.check(noflags="TC")
 resp.cmp(bind)
 
+# no TC - UDP message is extended using EDNS0/payload just for answer.
+resp = knot.dig("513resp.flags", "TXT", udp=True, bufsize=524)
+resp.check(noflags="TC")
+
 t.stop()
