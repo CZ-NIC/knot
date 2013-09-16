@@ -9,6 +9,9 @@ t = dnstest.DnsTest()
 master = t.server("bind")
 slave = t.server("knot")
 zones = t.zone_rnd(10)
+zones.update(t.zone("."))
+zones.update(t.zone("wild."))
+zones.update(t.zone("cname-loop."))
 
 t.link(zones, master, slave)
 

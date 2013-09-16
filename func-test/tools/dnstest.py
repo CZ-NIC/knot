@@ -45,7 +45,7 @@ def test_info():
     return parts[-2] + "/" + parts[-1]
 
 def check_log(text):
-    params.case_log.write("%s (%s):\n" % (str(text), test_info()))
+    params.case_log.write("%s (%s)\n" % (str(text), test_info()))
 
 def detail_log(text):
     params.case_log.write(str(text) + "\n")
@@ -1071,6 +1071,9 @@ class DnsTest(object):
         for server in self.servers:
             server._valgrind_check()
 
+    def sleep(self, seconds):
+        time.sleep(seconds)
+
     def zone(self, zone_name, file_name=None):
         # Add trailing dot if missing.
         if zone_name[-1] != ".":
@@ -1081,8 +1084,13 @@ class DnsTest(object):
                 src_file = self.data_dir + file_name
                 dst_file = self.zones_dir + file_name
             else:
-                src_file = params.common_data_dir + zone_name + "zone"
-                dst_file = self.zones_dir + zone_name + "zone"
+                if zone_name == ".":
+                    file_name = "rootzone.zone"
+                else:
+                    file_name = zone_name + "zone"
+
+                src_file = params.common_data_dir + file_name
+                dst_file = self.zones_dir + file_name
 
             shutil.copyfile(src_file, dst_file)
         except:
