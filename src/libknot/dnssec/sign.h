@@ -28,6 +28,7 @@
 #define _KNOT_DNSSEC_SIGN_H_
 
 #include "common/descriptor.h"
+#include "libknot/binary.h"
 #include "libknot/dnssec/algorithm.h"
 #include "libknot/dnssec/key.h"
 
@@ -51,6 +52,7 @@ typedef struct {
 	uint16_t keytag;                   //!< Key tag (for fast lookup).
 	knot_dnssec_algorithm_t algorithm; //!< Algorithm identification.
 	knot_dnssec_key_data_t *data;      //!< Private key data.
+	knot_binary_t dnskey_rdata;        //!< DNSKEY RDATA.
 } knot_dnssec_key_t;
 
 /*- DNSSEC private key manipulation ------------------------------------------*/

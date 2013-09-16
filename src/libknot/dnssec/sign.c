@@ -800,10 +800,19 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 		return KNOT_ENOMEM;
 	}
 
-	int result = init_algorithm_data(params, data);
+	knot_binary_t rdata_copy = { 0 };
+	int result = knot_binary_dup(&params->rdata, &rdata_copy);
 	if (result != KNOT_EOK) {
 		knot_dname_free(&name);
 		free(data);
+		return result;
+	}
+
+	result = init_algorithm_data(params, data);
+	if (result != KNOT_EOK) {
+		knot_dname_free(&name);
+		free(data);
+		knot_binary_free(&rdata_copy);
 		return result;
 	}
 
@@ -811,6 +820,7 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	key->keytag = params->keytag;
 	key->algorithm = params->algorithm;
 	key->data = data;
+	key->dnskey_rdata = rdata_copy;
 
 	return KNOT_EOK;
 }
@@ -820,8 +830,9 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
  */
 int knot_dnssec_key_free(knot_dnssec_key_t *key)
 {
-	if (!key)
+	if (!key) {
 		return KNOT_EINVAL;
+	}
 
 	knot_dname_free(&key->name);
 
@@ -829,6 +840,8 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 		clean_algorithm_data(key->data);
 		free(key->data);
 	}
+
+	knot_binary_free(&key->dnskey_rdata);
 
 	memset(key, '\0', sizeof(knot_dnssec_key_t));
 
