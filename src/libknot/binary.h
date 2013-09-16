@@ -43,10 +43,20 @@ typedef struct knot_binary knot_binary_t;
  * \brief Initialize knot_binary_t structure from Base64 encoded string.
  *
  * \param base64  Base64 encoded input data.
- * \param binary  Pointer to structure to write the result into.
+ * \param to      Pointer to structure to write the result into.
  * \return Error code, KNOT_EOK in case of success.
  */
-int knot_binary_from_base64(const char *base64, knot_binary_t *binary);
+int knot_binary_from_base64(const char *base64, knot_binary_t *to);
+
+/*!
+ * \brief Initialize knot_binary_t structure from binary string.
+ *
+ * \param data  Pointer to binary data string.
+ * \param size  Size of the binary data.
+ * \param to    Pointer to structure to write the result into.
+ * \return Error code, KNOT_EOK in case of success.
+ */
+int knot_binary_from_string(const uint8_t *data, size_t size, knot_binary_t *to);
 
 /*!
  * \brief Free content of knot_binary_t structure.
