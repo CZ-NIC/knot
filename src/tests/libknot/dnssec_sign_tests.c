@@ -16,6 +16,8 @@
 
 #include <config.h>
 #include <assert.h>
+#include <openssl/opensslconf.h>
+
 #include "tests/libknot/dnssec_sign_tests.h"
 #include "common/errcode.h"
 #include "libknot/dnssec/sign.h"
