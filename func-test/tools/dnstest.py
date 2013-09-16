@@ -372,7 +372,7 @@ class DnsServer(object):
     START_WAIT_VALGRIND = 5
     STOP_TIMEOUT = 60
     COMPILE_TIMEOUT = 60
-    DIG_TIMEOUT = 5
+    DIG_TIMEOUT = 15
 
     # Instance counter.
     count = 0
@@ -628,7 +628,15 @@ class DnsServer(object):
 
     def zones_wait(self, zones):
         for zone in zones:
-            self.dig(zone, "SOA", udp=True)
+            # Try to get SOA record with NOERROR.
+            for t in range(10):
+                resp = self.dig(zone, "SOA", udp=True)
+                if resp.resp.rcode() == 0:
+                    break
+                time.sleep(2)
+            else:
+                raise Exception("Can't get SOA %s from %s." % \
+                                (zone, self.name))
 
     def update(self, zone):
         if len(zone) != 1:
