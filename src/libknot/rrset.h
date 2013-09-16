@@ -102,6 +102,17 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                                  uint16_t rclass, uint32_t ttl);
 
 /*!
+ * \brief Creates a new RRSet according to given template RRSet.
+ *
+ * OWNER, TYPE, CLASS, and TTL values from template RRSet are used.
+ *
+ * \param tmp  RRSet template.
+ *
+ * \return New RRSet, NULL if an error occured.
+ */
+knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl);
+
+/*!
  * \brief Adds the given RDATA to the RRSet.
  *
  * \param rrset RRSet to add the RDATA to.

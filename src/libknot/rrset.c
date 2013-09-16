@@ -831,6 +831,20 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	return ret;
 }
 
+knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl)
+{
+	if (!tpl) {
+		return NULL;
+	}
+
+	knot_dname_t *owner = knot_dname_copy(tpl->owner);
+	if (!owner) {
+		return NULL;
+	}
+
+	return knot_rrset_new(owner, tpl->type, tpl->rclass, tpl->ttl);
+}
+
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
                          const uint8_t *rdata, uint16_t size)
 {
