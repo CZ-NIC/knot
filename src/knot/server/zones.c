@@ -1024,11 +1024,6 @@ static int zones_journal_apply(knot_zone_t *zone)
 				                 zd->conf->name,
 				                 knot_strerror(apply_ret));
 				ret = KNOT_ERROR;
-
-				// Cleanup old and new contents
-				xfrin_rollback_update(zone->contents,
-				                      &contents,
-				                      chsets->changes);
 			} else {
 				/* Switch zone immediately. */
 				log_server_info("Zone '%s' serial %u -> %u.\n",
@@ -1049,11 +1044,6 @@ static int zones_journal_apply(knot_zone_t *zone)
 					  "%s\n", zd->conf->name,
 					  knot_strerror(apply_ret));
 					ret = KNOT_ERROR;
-
-					// Cleanup old and new contents
-					xfrin_rollback_update(zone->contents,
-					                      &contents,
-					                      chsets->changes);
 				}
 			}
 		}
@@ -1419,8 +1409,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 				rcu_read_unlock();
 				return KNOT_ENOMEM;
 			}
-			int ret = zones_create_changeset(z_old,
-			                                 zone, diff_ch);
+			int ret = zones_create_changeset(z_old, zone, diff_ch);
 			if (ret == KNOT_ENODIFF) {
 				log_zone_warning("Zone file for "
 				                 "'%s' changed, "

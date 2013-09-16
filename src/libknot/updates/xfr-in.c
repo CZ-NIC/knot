@@ -2579,7 +2579,6 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 	if (soa == NULL || knot_rrset_rdata_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
-		assert(0);
 		return KNOT_ERROR;
 	}
 
