@@ -98,15 +98,16 @@ static void key_scan_set_done(const scanner_t *s)
  */
 static int get_key_info_from_public_key(const char *filename,
                                         knot_dname_t **name,
-                                        uint16_t *keytag,
-					uint16_t *flags)
+                                        knot_binary_t *rdata)
 {
-	if (!filename || !name || !keytag || !flags)
+	if (!filename || !name || !rdata) {
 		return KNOT_EINVAL;
+	}
 
 	FILE *keyfile = fopen(filename, "r");
-	if (!keyfile)
+	if (!keyfile) {
 		return KNOT_KEY_EPUBLIC_KEY_OPEN;
+	}
 
 	scanner_t *scanner = scanner_create(filename, ".", KNOT_CLASS_IN, 0,
 	                                    NULL, NULL, NULL);
@@ -154,9 +155,17 @@ static int get_key_info_from_public_key(const char *filename,
 		return KNOT_ENOMEM;
 	}
 
+	knot_binary_t rdata_bin = { 0 };
+	result = knot_binary_from_string(scanner->r_data, scanner->r_data_length,
+	                                 &rdata_bin);
+	if (result != KNOT_EOK) {
+		scanner_free(scanner);
+		knot_dname_free(&owner);
+		return result;
+	}
+
 	*name = owner;
-	*keytag = knot_keytag(scanner->r_data, scanner->r_data_length);
-	*flags = knot_wire_read_u16(scanner->r_data);
+	*rdata = rdata_bin;
 
 	scanner_free(scanner);
 
@@ -344,9 +353,8 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	}
 
 	knot_dname_t *name = NULL;
-	uint16_t keytag;
-	uint16_t flags;
-	result = get_key_info_from_public_key(public_key, &name, &keytag, &flags);
+	knot_binary_t rdata = { 0 };
+	result = get_key_info_from_public_key(public_key, &name, &rdata);
 	if (result != KNOT_EOK) {
 		free(public_key);
 		free(private_key);
@@ -362,8 +370,9 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 	}
 
 	key_params->name = name;
-	key_params->keytag = keytag;
-	key_params->flags = flags;
+	key_params->rdata = rdata;
+	key_params->keytag = knot_keytag(rdata.data, rdata.size);
+	key_params->flags = knot_wire_read_u16(rdata.data);
 
 	char *buffer = NULL;
 	size_t buffer_size = 0;

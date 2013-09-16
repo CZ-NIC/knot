@@ -41,6 +41,7 @@
 typedef struct {
 	// common parameters
 	knot_dname_t *name;
+	knot_binary_t rdata;
 	int algorithm;
 	uint16_t keytag;
 	uint16_t flags;
