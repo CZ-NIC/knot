@@ -661,6 +661,153 @@ static int sign_nsec(knot_zone_keys_t *zone_keys,
 	                            add_rrsigs_for_nsec, &data);
 }
 
+/*- private API - DNSKEY handling --------------------------------------------*/
+
+/*!
+ * \brief Check if a DNSKEY (RDATA given) exist in zone keys database.
+ */
+static bool dnskey_exists_in_keydb(const knot_zone_keys_t *zone_keys,
+                                   const uint8_t *rdata,
+                                   size_t rdata_size)
+{
+	assert(zone_keys);
+	assert(rdata);
+
+	for (int i = 0; i < zone_keys->count; i++) {
+		const knot_dnssec_key_t *key = &zone_keys->keys[i];
+
+		if (key->dnskey_rdata.size == rdata_size &&
+		    memcmp(key->dnskey_rdata.data, rdata, rdata_size) == 0
+		) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*!
+ * \brief Check if DNSKEY (key struct given) exists in zone (apex node given).
+ */
+static bool dnskey_exists_in_zone(const knot_rrset_t *zone_keys,
+                                  const knot_dnssec_key_t *key)
+{
+	for (int i = 0; i < zone_keys->rdata_count; i++) {
+		uint8_t *rdata = knot_rrset_get_rdata(zone_keys, i);
+		size_t rdata_size = rrset_rdata_item_size(zone_keys, i);
+
+		if (rdata_size == key->dnskey_rdata.size &&
+		    memcmp(rdata, key->dnskey_rdata.data, rdata_size) == 0
+		) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static int remove_unknown_dnskeys(const knot_rrset_t *dnskeys,
+                                  knot_zone_keys_t *zone_keys,
+                                  knot_changeset_t *out_ch)
+{
+	knot_rrset_t *to_remove = NULL;
+	int result = KNOT_EOK;
+
+	for (int i = 0; i < dnskeys->rdata_count; i++) {
+		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
+		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
+		if (dnskey_exists_in_keydb(zone_keys, rdata, rdata_size)) {
+			continue;
+		}
+
+		dbg_dnssec_detail("removing DNSKEY with tag %d\n",
+		                  knot_keytag(rdata, rdata_size));
+
+		if (to_remove == NULL) {
+			to_remove = knot_rrset_new_from(dnskeys);
+			if (to_remove == NULL) {
+				result = KNOT_ENOMEM;
+				break;
+			}
+		}
+
+		result = knot_rrset_add_rr_from_rrset(to_remove, dnskeys, i);
+		if (result != KNOT_EOK) {
+			break;
+		}
+	}
+
+	if (to_remove != NULL && result == KNOT_EOK) {
+		result = knot_changeset_add_rrset(out_ch, to_remove,
+		                                  KNOT_CHANGESET_REMOVE);
+	}
+
+	if (to_remove != NULL && result != KNOT_EOK) {
+		knot_rrset_deep_free(&to_remove, 1, 1);
+	}
+
+	return result;
+}
+
+static int add_missing_dnskeys(const knot_rrset_t *dnskeys,
+                               knot_zone_keys_t *zone_keys,
+                               knot_changeset_t *out_ch)
+{
+	knot_rrset_t *to_add = NULL;
+	int result = KNOT_EOK;
+
+	for (int i = 0; i < zone_keys->count; i++) {
+		knot_dnssec_key_t *key = &zone_keys->keys[i];
+		if (dnskey_exists_in_zone(dnskeys, key)) {
+			continue;
+		}
+
+		dbg_dnssec_detail("adding DNSKEY with tag %d\n", key->keytag);
+
+		if (to_add == NULL) {
+			to_add = knot_rrset_new_from(dnskeys);
+			if (to_add == NULL) {
+				return KNOT_ENOMEM;
+			}
+		}
+
+		result = knot_rrset_add_rdata(to_add, key->dnskey_rdata.data,
+		                              key->dnskey_rdata.size);
+		if (result != KNOT_EOK) {
+			break;
+		}
+	}
+
+	if (to_add != NULL && result == KNOT_EOK) {
+		result = knot_changeset_add_rrset(out_ch, to_add,
+		                                  KNOT_CHANGESET_ADD);
+	}
+
+	if (to_add != NULL && result != KNOT_EOK) {
+		knot_rrset_deep_free(&to_add, 1, 1);
+	}
+
+	return result;
+}
+
+static int update_dnskeys(const knot_zone_contents_t *zone,
+                          knot_zone_keys_t *zone_keys,
+                          knot_changeset_t *out_ch)
+{
+	assert(zone);
+	assert(zone->apex);
+
+	const knot_node_t *apex = zone->apex;
+	const knot_rrset_t *dnskeys = knot_node_rrset(apex, KNOT_RRTYPE_DNSKEY);
+
+	int result = remove_unknown_dnskeys(dnskeys, zone_keys, out_ch);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	return add_missing_dnskeys(dnskeys, zone_keys, out_ch);
+}
+
 /*- public API ---------------------------------------------------------------*/
 
 int knot_zone_sign(const knot_zone_contents_t *zone,
@@ -674,6 +821,12 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 	assert(out_ch);
 
 	int result;
+
+	result = update_dnskeys(zone, zone_keys, out_ch);
+	if (result != KNOT_EOK) {
+		dbg_dnssec_detail("update_dnskeys() failed\n");
+		return result;
+	}
 
 	result = zone_tree_sign(zone->nodes, zone_keys, policy, out_ch);
 	if (result != KNOT_EOK) {
