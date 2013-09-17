@@ -307,13 +307,15 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 	assert(key);
 	assert(policy);
 
-	if (!rrsigs)
+	if (!rrsigs) {
 		return false;
+	}
 
 	for (int i = 0; i < rrsigs->rdata_count; i++) {
 		uint16_t keytag = knot_rrset_rdata_rrsig_key_tag(rrsigs, i);
-		if (keytag != key->keytag)
+		if (keytag != key->keytag) {
 			continue;
+		}
 
 		return is_valid_signature(covered, rrsigs, i, key, ctx, policy);
 	}
@@ -321,6 +323,9 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 	return false;
 }
 
+/*!
+ * \todo rename: also fails when the signature doesn't exist
+ */
 static bool all_signatures_valid(const knot_rrset_t *covered,
                                  const knot_rrset_t *rrsigs,
                                  const knot_zone_keys_t *zone_keys,
@@ -432,23 +437,27 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	for (int i = 0; i < zone_keys->count; i++) {
 		// DNSKEY must be signed with both ZSK and KSK
 		// all other records only with ZSK
-		if (zone_keys->is_ksk[i] && !use_ksk)
+		if (zone_keys->is_ksk[i] && !use_ksk) {
 			continue;
+		}
 
 		const knot_dnssec_key_t *key = &zone_keys->keys[i];
 		knot_dnssec_sign_context_t *ctx = zone_keys->contexts[i];
-		if (valid_signature_exists(covered, rrsigs, key, ctx, policy))
+		if (valid_signature_exists(covered, rrsigs, key, ctx, policy)) {
 			continue;
+		}
 
 		if (to_add == NULL) {
 			to_add = create_empty_rrsigs_for(covered);
-			if (to_add == NULL)
+			if (to_add == NULL) {
 				return KNOT_ENOMEM;
+			}
 		}
 
 		result = sign_rrset_one(to_add, covered, key, ctx, policy);
-		if (result != KNOT_EOK)
+		if (result != KNOT_EOK) {
 			break;
+		}
 	}
 
 	if (to_add != NULL && result == KNOT_EOK) {
