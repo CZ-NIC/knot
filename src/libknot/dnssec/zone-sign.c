@@ -692,6 +692,9 @@ static bool dnskey_exists_in_keydb(const knot_zone_keys_t *zone_keys,
 static bool dnskey_exists_in_zone(const knot_rrset_t *zone_keys,
                                   const knot_dnssec_key_t *key)
 {
+	assert(zone_keys);
+	assert(key);
+
 	for (int i = 0; i < zone_keys->rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_get_rdata(zone_keys, i);
 		size_t rdata_size = rrset_rdata_item_size(zone_keys, i);
@@ -706,12 +709,29 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *zone_keys,
 	return false;
 }
 
-static int remove_unknown_dnskeys(const knot_rrset_t *dnskeys,
+static int remove_unknown_dnskeys(const knot_rrset_t *soa,
+                                  const knot_rrset_t *dnskeys,
                                   knot_zone_keys_t *zone_keys,
                                   knot_changeset_t *out_ch)
 {
+	assert(soa);
+	assert(soa->type == KNOT_RRTYPE_SOA);
+	assert(zone_keys);
+	assert(out_ch);
+
+	if (!dnskeys) {
+		return KNOT_EOK;
+	}
+	assert(dnskeys->type == KNOT_RRTYPE_DNSKEY);
+
 	knot_rrset_t *to_remove = NULL;
 	int result = KNOT_EOK;
+
+	if (dnskeys->ttl != soa->ttl) {
+		dbg_dnssec_detail("removing DNSKEYs (SOA TTL differs)\n");
+		result = knot_rrset_deep_copy_no_sig(dnskeys, &to_remove, 1);
+		goto done;
+	}
 
 	for (int i = 0; i < dnskeys->rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
@@ -737,6 +757,8 @@ static int remove_unknown_dnskeys(const knot_rrset_t *dnskeys,
 		}
 	}
 
+done:
+
 	if (to_remove != NULL && result == KNOT_EOK) {
 		result = knot_changeset_add_rrset(out_ch, to_remove,
 		                                  KNOT_CHANGESET_REMOVE);
@@ -749,23 +771,33 @@ static int remove_unknown_dnskeys(const knot_rrset_t *dnskeys,
 	return result;
 }
 
-static int add_missing_dnskeys(const knot_rrset_t *dnskeys,
+static int add_missing_dnskeys(const knot_rrset_t *soa,
+                               const knot_rrset_t *dnskeys,
                                knot_zone_keys_t *zone_keys,
                                knot_changeset_t *out_ch)
 {
+	assert(soa);
+	assert(soa->type == KNOT_RRTYPE_SOA);
+	assert(!dnskeys || dnskeys->type == KNOT_RRTYPE_DNSKEY);
+	assert(zone_keys);
+	assert(out_ch);
+
 	knot_rrset_t *to_add = NULL;
 	int result = KNOT_EOK;
+	bool add_all = dnskeys == NULL || dnskeys->ttl != soa->ttl;
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		knot_dnssec_key_t *key = &zone_keys->keys[i];
-		if (dnskey_exists_in_zone(dnskeys, key)) {
+		if (!add_all && dnskey_exists_in_zone(dnskeys, key)) {
 			continue;
 		}
 
 		dbg_dnssec_detail("adding DNSKEY with tag %d\n", key->keytag);
 
 		if (to_add == NULL) {
-			to_add = knot_rrset_new_from(dnskeys);
+			to_add = knot_rrset_new(knot_dname_copy(soa->owner),
+			                        KNOT_RRTYPE_DNSKEY,
+			                        soa->rclass, soa->ttl);
 			if (to_add == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -799,13 +831,18 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 
 	const knot_node_t *apex = zone->apex;
 	const knot_rrset_t *dnskeys = knot_node_rrset(apex, KNOT_RRTYPE_DNSKEY);
+	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 
-	int result = remove_unknown_dnskeys(dnskeys, zone_keys, out_ch);
+	if (!soa) {
+		return KNOT_EINVAL;
+	}
+
+	int result = remove_unknown_dnskeys(soa, dnskeys, zone_keys, out_ch);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	return add_missing_dnskeys(dnskeys, zone_keys, out_ch);
+	return add_missing_dnskeys(soa, dnskeys, zone_keys, out_ch);
 }
 
 /*- public API ---------------------------------------------------------------*/
