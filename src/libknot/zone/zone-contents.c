@@ -130,44 +130,6 @@ static void knot_zone_contents_destroy_node_rrsets_from_tree(
 
 /*----------------------------------------------------------------------------*/
 
-static const knot_node_t *knot_zone_contents_find_wildcard_child(
-        knot_zone_contents_t *zone, const knot_node_t *closest_encloser)
-{
-	assert(zone != NULL);
-	assert(closest_encloser != NULL);
-
-	knot_dname_t *wildcard = knot_dname_from_str("*", 1);
-	if (wildcard == NULL)
-		return NULL;
-
-	wildcard = knot_dname_cat(wildcard, knot_node_owner(closest_encloser));
-	if (wildcard == NULL)
-		return NULL;
-
-dbg_zone_exec_detail(
-	char *name = knot_dname_to_str(knot_node_owner(closest_encloser));
-	char *name2 = knot_dname_to_str(wildcard);
-	dbg_zone_detail("Searching for wildcard child of %s (%s)\n", name,
-			name2);
-	free(name);
-	free(name2);
-);
-
-	const knot_node_t *found = NULL, *ce = NULL, *prev = NULL;
-	int ret = knot_zone_contents_find_dname(zone, wildcard, &found, &ce,
-						&prev);
-
-	knot_dname_free(&wildcard);
-
-	if (ret != KNOT_ZONE_NAME_FOUND) {
-		return NULL;
-	} else {
-		return found;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Adjusts all RDATA in the given RRSet by replacing domain names by ones
  *        present in the zone.
@@ -428,7 +390,6 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree(
 {
 	assert(data != NULL);
 	assert(tnode != NULL);
-	knot_node_t *node = *tnode;
 
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 

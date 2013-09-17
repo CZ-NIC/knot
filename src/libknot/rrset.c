@@ -36,28 +36,6 @@
 
 static const unsigned int RR_CHANGE_TOO_BIG = 16;
 
-static int rrset_retain_dnames_in_rr(knot_dname_t **dname, void *data)
-{
-	UNUSED(data);
-	if (dname == NULL || *dname == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	*dname = knot_dname_copy(*dname);
-	return KNOT_EOK;
-}
-
-static int rrset_release_dnames_in_rr(knot_dname_t **dname, void *data)
-{
-	UNUSED(data);
-	if (dname == NULL || *dname == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_dname_free(dname);
-	return KNOT_EOK;
-}
-
 static uint32_t rrset_rdata_offset(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_indices == NULL ||

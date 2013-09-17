@@ -81,7 +81,7 @@ void file_loader_free(file_loader_t *fl)
 
 int file_loader_process(file_loader_t *fl)
 {
-	int		ret;
+	int		ret = 0;
 	char		*data;		// Mmaped data.
 	bool		is_last_block;
 	long		page_size;

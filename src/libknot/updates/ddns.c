@@ -1654,13 +1654,10 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * Set some variables needed, according to the modified RR type.
 	 */
 
-	int rdata_count = 0;
 	knot_rrset_t *to_modify;
 	if (type == KNOT_RRTYPE_RRSIG) {
-		rdata_count = knot_rrset_rdata_rr_count(knot_rrset_rrsigs(rrset_copy));
 		to_modify = knot_rrset_get_rrsigs(rrset_copy);
 	} else {
-		rdata_count = knot_rrset_rdata_rr_count(rrset_copy);
 		to_modify = rrset_copy;
 	}
 
