@@ -1603,7 +1603,7 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2)
 }
 
 static int knot_rrset_add_rr_sort_n(knot_rrset_t *rrset, const knot_rrset_t *rr,
-                                    int *merged, int *deleted_rr, size_t pos)
+                                    int *merged, int *deleted, size_t pos)
 {
 	if (rrset == NULL || rr == NULL) {
 		dbg_rrset("rrset: add_rr_sort: NULL arguments.");
@@ -1624,8 +1624,6 @@ dbg_rrset_exec_detail(
 		return KNOT_EINVAL;
 	}
 
-	*deleted_rr = 0;
-	*merged = 0;
 	int found = 0;
 	int duplicated = 0;
 	// Compare RR with all RRs in the first RRSet.
@@ -1658,26 +1656,36 @@ dbg_rrset_exec_detail(
 		}
 	} else {
 		assert(!found);
-		*deleted_rr = 1; // = need to shallow free rr
+		*deleted += 1; // = need to shallow free rr
 	}
 
 	return KNOT_EOK;
 }
 
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
-                          int *merged, int *deleted_rrs)
+                          int *merged_rrs, int *deleted_rrs)
 {
+	int result = KNOT_EOK;
+	int merged = 0;
+	int deleted = 0;
+
 	for (uint16_t i = 0; i < rrset2->rdata_count; ++i) {
-		int deleted = 0;
-		int ret = knot_rrset_add_rr_sort_n(rrset1, rrset2, merged,
+		result = knot_rrset_add_rr_sort_n(rrset1, rrset2, &merged,
 		                                   &deleted, i);
-		if (ret != KNOT_EOK) {
-			return ret;
+		if (result != KNOT_EOK) {
+			break;
 		}
-		*deleted_rrs += deleted ? 1 : 0;
 	}
 
-	return KNOT_EOK;
+	if (merged_rrs) {
+		*merged_rrs = merged;
+	}
+
+	if (deleted_rrs) {
+		*deleted_rrs = deleted;
+	}
+
+	return result;
 }
 
 bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
