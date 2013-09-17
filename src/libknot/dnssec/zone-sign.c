@@ -477,7 +477,12 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
                                knot_changeset_t *changeset)
 {
-	assert(rrset && rrset->rrsigs);
+	assert(rrset);
+
+	if (!rrset->rrsigs) {
+		return KNOT_EOK;
+	}
+
 	knot_rrset_t *to_remove = NULL;
 	int res = knot_rrset_deep_copy(rrset->rrsigs, &to_remove, 1);
 	if (res != KNOT_EOK) {
@@ -534,7 +539,13 @@ static int sign_node_rrsets(const knot_node_t *node,
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		const knot_rrset_t *rrset = node->rrset_tree[i];
+		// SOA entry is maintained separately
 		if (rrset->type == KNOT_RRTYPE_SOA) {
+			continue;
+		}
+
+		// DNSKEYs are maintained separately
+		if (rrset->type == KNOT_RRTYPE_DNSKEY) {
 			continue;
 		}
 
@@ -568,6 +579,7 @@ static int sign_node_rrsets(const knot_node_t *node,
 			result = resign_rrset(rrset, zone_keys, policy,
 			                      changeset);
 		}
+
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -780,6 +792,18 @@ done:
 	return result;
 }
 
+static knot_rrset_t *create_dnskey_rrset_from_soa(const knot_rrset_t *soa)
+{
+	assert(soa);
+
+	knot_dname_t *owner = knot_dname_copy(soa->owner);
+	if (!owner) {
+		return NULL;
+	}
+
+	return knot_rrset_new(owner, KNOT_RRTYPE_DNSKEY, soa->rclass, soa->ttl);
+}
+
 static int add_missing_dnskeys(const knot_rrset_t *soa,
                                const knot_rrset_t *dnskeys,
                                knot_zone_keys_t *zone_keys,
@@ -804,9 +828,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 		dbg_dnssec_detail("adding DNSKEY with tag %d\n", key->keytag);
 
 		if (to_add == NULL) {
-			to_add = knot_rrset_new(knot_dname_copy(soa->owner),
-			                        KNOT_RRTYPE_DNSKEY,
-			                        soa->rclass, soa->ttl);
+			to_add = create_dnskey_rrset_from_soa(soa);
 			if (to_add == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -831,8 +853,60 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	return result;
 }
 
+static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
+                                 const knot_rrset_t *soa,
+                                 knot_zone_keys_t *zone_keys,
+                                 const knot_dnssec_policy_t *policy,
+                                 knot_changeset_t *out_ch)
+{
+	assert(soa);
+	assert(policy);
+	assert(out_ch);
+
+	int result;
+
+	/* We know how the DNSKEYs in zone should look like after applying
+	 * the changeset. RRSIGs can be then built easily. */
+
+	knot_rrset_t *new_dnskeys = create_dnskey_rrset_from_soa(soa);
+	if (!new_dnskeys) {
+		return KNOT_ENOMEM;
+	}
+
+	for (int i = 0; i < zone_keys->count; i++) {
+		knot_dnssec_key_t *key = &zone_keys->keys[i];
+		knot_binary_t *rdata = &key->dnskey_rdata;
+		result = knot_rrset_add_rdata(new_dnskeys, rdata->data,
+		                              rdata->size);
+		if (result != KNOT_EOK) {
+			goto fail;
+		}
+	}
+
+	result = knot_rrset_sort_rdata(new_dnskeys);
+	if (result != KNOT_EOK) {
+		goto fail;
+	}
+
+	result = add_missing_rrsigs(new_dnskeys, NULL, zone_keys, policy, out_ch);
+	if (result != KNOT_EOK) {
+		goto fail;
+	}
+
+	if (dnskeys) {
+		result = remove_rrset_rrsigs(dnskeys, out_ch);
+	}
+
+fail:
+
+	knot_rrset_deep_free(&new_dnskeys, 1, 1);
+
+	return result;
+}
+
 static int update_dnskeys(const knot_zone_contents_t *zone,
                           knot_zone_keys_t *zone_keys,
+                          const knot_dnssec_policy_t *policy,
                           knot_changeset_t *out_ch)
 {
 	assert(zone);
@@ -846,12 +920,29 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	int result = remove_unknown_dnskeys(soa, dnskeys, zone_keys, out_ch);
+	int result;
+	size_t changes_before = knot_changeset_size(out_ch);
+
+	result = remove_unknown_dnskeys(soa, dnskeys, zone_keys, out_ch);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	return add_missing_dnskeys(soa, dnskeys, zone_keys, out_ch);
+	result = add_missing_dnskeys(soa, dnskeys, zone_keys, out_ch);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	bool modified = knot_changeset_size(out_ch) != changes_before;
+
+	if (!modified && all_signatures_valid(dnskeys, dnskeys->rrsigs,
+	                                      zone_keys, policy)
+	) {
+		return KNOT_EOK;
+	}
+
+	dbg_dnssec_detail("Creating new signatures for DNSKEYs\n");
+	return update_dnskeys_rrsigs(dnskeys, soa, zone_keys, policy, out_ch);
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -868,7 +959,7 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 
 	int result;
 
-	result = update_dnskeys(zone, zone_keys, out_ch);
+	result = update_dnskeys(zone, zone_keys, policy, out_ch);
 	if (result != KNOT_EOK) {
 		dbg_dnssec_detail("update_dnskeys() failed\n");
 		return result;
