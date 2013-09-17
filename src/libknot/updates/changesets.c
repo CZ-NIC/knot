@@ -288,6 +288,15 @@ bool knot_changeset_is_empty(const knot_changeset_t *changeset)
 	       EMPTY_LIST(changeset->remove);
 }
 
+size_t knot_changeset_size(const knot_changeset_t *changeset)
+{
+	if (!changeset) {
+		return 0;
+	}
+
+	return list_size(&changeset->add) + list_size(&changeset->remove);
+}
+
 int knot_changeset_apply(knot_changeset_t *changeset,
                          knot_changeset_part_t part,
                          int (*func)(knot_rrset_t *, void *), void *data)

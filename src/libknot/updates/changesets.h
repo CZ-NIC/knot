@@ -227,6 +227,15 @@ void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 bool knot_changeset_is_empty(const knot_changeset_t *changeset);
 
 /*!
+ * \brief Get number of changes (additions and removals) in the changeset.
+ *
+ * \param changeset Changeset to be checked.
+ *
+ * \return Number of changes in the changeset.
+ */
+size_t knot_changeset_size(const knot_changeset_t *changeset);
+
+/*!
  * \brief Apply given function to all RRSets in one part of the changeset.
  *
  * \param changeset Changeset to apply the function to.
