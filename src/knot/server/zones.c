@@ -1189,6 +1189,7 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
                                              bool zone_changed)
 {
 	/* Calculate differences. */
+	rcu_read_lock();
 	knot_zone_t *z_old = knot_zonedb_find_zone(ns->zone_db,
 	                                           origin);
 	/* Ensure both new and old have zone contents. */
@@ -1228,6 +1229,7 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 		}
 		/* Even if there's nothing to create the diff from
 		 * we can still sign the zone - inconsistencies may happen. */
+		// TODO consider returning straight away when serial did not change
 		if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
 			knot_changesets_free(&diff_chs);
 			rcu_read_unlock();
@@ -1290,10 +1292,6 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 		ret = xfrin_apply_changesets(zone, sec_chs,
 		                             &new_contents);
 		if (ret != KNOT_EOK) {
-			// Cleanup old and new contents
-			xfrin_rollback_update(zone->contents,
-			                      &new_contents,
-			                      sec_chs->changes);
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(diff_chs, sec_chs);
 				rcu_read_unlock();
@@ -1309,10 +1307,6 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 			log_zone_error("Failed to commit stored "
 			               "changesets: %s."
 			               "\n", knot_strerror(ret));
-			// Cleanup old and new contents
-			xfrin_rollback_update(zone->contents,
-			                      &new_contents,
-			                      sec_chs->changes);
 			zones_free_merged_changesets(diff_chs, sec_chs);
 			rcu_read_unlock();
 			return ret;
@@ -1320,8 +1314,8 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 	}
 
 	/* Switch zone contents. */
+	rcu_read_unlock();
 	if (new_contents) {
-		rcu_read_unlock();
 		ret = xfrin_switch_zone(zone, new_contents,
 		                        XFR_TYPE_DNSSEC);
 		rcu_read_lock();
@@ -1333,23 +1327,18 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 			zones_free_merged_changesets(diff_chs, sec_chs);
 			return ret;
 		}
-	} else if (diff_chs == NULL || zones_changesets_empty(diff_chs)) {
-		// No changes
-		ret = KNOT_ENODIFF;
 	}
 	
-	if (!zones_changesets_empty(sec_chs)) {
+	if (new_signatures) {
+		xfrin_cleanup_successful_update(sec_chs->changes);
 		char *zname = knot_dname_to_str(zone->name);
 		log_zone_info("Zone %s was successfully signed.\n",
 		              zname);
 		free(zname);
 	}
 	
-	if (sec_chs) {
-		xfrin_cleanup_successful_update(sec_chs->changes);
-	}
 	zones_free_merged_changesets(diff_chs, sec_chs);
-
+	return ret;
 }
 
 /*!
@@ -1572,7 +1561,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		                                        zone_changed);
 	}
 
-	rcu_read_unlock();
 	knot_dname_free(&dname);
 	return ret;
 }
