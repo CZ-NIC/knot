@@ -1688,6 +1688,39 @@ int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 	return result;
 }
 
+/*!
+ * \todo Not optimal, rewrite!
+ */
+int knot_rrset_sort_rdata(knot_rrset_t *rrset)
+{
+	if (!rrset) {
+		return KNOT_EINVAL;
+	}
+
+	// 1. create temporary rrset
+	// 2. sort-merge given rrset into temporary rrset
+	// 3. swap the contents, free the temporary
+
+	knot_rrset_t *sorted = knot_rrset_new(rrset->owner, rrset->type,
+	                                      rrset->rclass, rrset->ttl);
+	if (!sorted) {
+		return KNOT_ENOMEM;
+	}
+
+	int result = knot_rrset_merge_sort(sorted, rrset, NULL, NULL);
+	if (result != KNOT_EOK) {
+		knot_rrset_deep_free(&sorted, 1, 1);
+		return result;
+	}
+
+	*rrset = *sorted;
+
+	sorted->owner = NULL;
+	knot_rrset_free(&sorted);
+
+	return KNOT_EOK;
+}
+
 bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 {
 	assert(rr != NULL);

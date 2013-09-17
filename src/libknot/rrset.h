@@ -372,6 +372,15 @@ int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                           int *merged, int *deleted_rrs);
 
 /*!
+ * \brief Sort RDATA in RRSet to be in caonical order.
+ * \todo Not optimal, rewrite!
+ *
+ * \param rrset  RRSet to be sorted.
+ * \return Error code, KNOT_EOK when successful.
+ */
+int knot_rrset_sort_rdata(knot_rrset_t *rrset);
+
+/*!
  * \brief Return true if the RRSet is an NSEC3 related type.
  *
  * \param rr RRSet.
