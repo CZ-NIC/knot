@@ -892,13 +892,14 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy)
 {
-	assert(zone);
-	// Get SOA from zone.
-	const knot_rrset_t *soa_rr =
-		knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	assert(soa_rr);
+	if (!zone || !zone_keys || !policy) {
+		return KNOT_EINVAL;
+	}
 
-	return !all_signatures_valid(soa_rr, soa_rr->rrsigs, zone_keys, policy);
+	const knot_rrset_t *soa = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	assert(soa);
+
+	return !all_signatures_valid(soa, soa->rrsigs, zone_keys, policy);
 }
 
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
@@ -906,17 +907,23 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset)
 {
-	dbg_dnssec_verb("Updating SOA...\n");
+	if (!zone || !zone_keys || !policy || !changeset) {
+		return KNOT_EINVAL;
+	}
 
-	knot_node_t *apex = knot_zone_contents_get_apex(zone);
-	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	if (soa == NULL || soa->rdata_count != 1) {
+		return KNOT_EINVAL;
+	}
+
+	dbg_dnssec_verb("Updating SOA...\n");
 
 	int result;
 
 	// Remove SOA's old RRSIGs (if there are any)
 	if (soa->rrsigs) {
 		knot_rrset_t *soa_copy = NULL;
-		result = knot_rrset_deep_copy(soa->rrsigs, &soa_copy, 1);
+		result = knot_rrset_deep_copy_no_sig(soa->rrsigs, &soa_copy, 1);
 		if (result != KNOT_EOK) {
 			return result;
 		}
@@ -928,12 +935,10 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 		}
 	}
 
-	if (soa == NULL || soa->rdata_count != 1)
-		return KNOT_EINVAL;
-
 	uint32_t serial = knot_rrset_rdata_soa_serial(soa);
-	if (serial == UINT32_MAX)
+	if (serial == UINT32_MAX) {
 		return KNOT_EINVAL;
+	}
 
 	// TODO: proper increment, no check
 	uint32_t new_serial = serial;
@@ -949,8 +954,9 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 	int copy_rdata_dnames = true;
 
 	result = knot_rrset_deep_copy_no_sig(soa, &soa_from, copy_rdata_dnames);
-	if (result != KNOT_EOK)
+	if (result != KNOT_EOK) {
 		return result;
+	}
 
 	result = knot_rrset_deep_copy_no_sig(soa, &soa_to, copy_rdata_dnames);
 	if (result != KNOT_EOK) {
