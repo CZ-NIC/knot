@@ -37,6 +37,7 @@
 typedef struct {
 	uint32_t ttl;
 	knot_changeset_t *changeset;
+	const knot_zone_contents_t *zone;
 } nsec_chain_iterate_data_t;
 
 #define NSEC_NODE_SKIP 1
@@ -157,15 +158,16 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
 /*!
  * \brief Create NSEC RR set.
  *
- * \param from     Node that should contain the new RRSet
- * \param to       Node that should be pointed to from 'from'
- * \param ttl      Record TTL (SOA's minimun TTL).
+ * \param from       Node that should contain the new RRSet
+ * \param to         Node that should be pointed to from 'from'
+ * \param ttl        Record TTL (SOA's minimun TTL).
+ * \param from_apex  Indicates that 'from' node is zone apex node.
  *
  * \return NSEC RR set, NULL on error.
  */
 static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
                                        const knot_node_t *to,
-                                       uint32_t ttl)
+                                       uint32_t ttl, bool from_apex)
 {
 	// Create new RRSet
 	knot_dname_t *owner_cpy = knot_dname_copy(from->owner);
@@ -181,6 +183,9 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	bitmap_add_node_rrsets(&rr_types, from);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+	if (from_apex) {
+		bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
+	}
 
 	// Create RDATA
 	size_t rdata_size = sizeof(knot_dname_t *) + bitmap_size(&rr_types);
@@ -225,6 +230,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	nsec_chain_iterate_data_t *data = (nsec_chain_iterate_data_t *)d;
 	knot_rrset_t *old_next_nsec = knot_node_get_rrset(b, KNOT_RRTYPE_NSEC);
 	int ret = 0;
+
 	/*!
 	 * If the node has no other RRSets than NSEC (and possibly RRSIG),
 	 * just remove the NSEC and its RRSIG, they are redundant
@@ -240,7 +246,8 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	}
 
 	// create new NSEC
-	knot_rrset_t *new_nsec = create_nsec_rrset(a, b, data->ttl);
+	bool a_is_apex = a == data->zone->apex;
+	knot_rrset_t *new_nsec = create_nsec_rrset(a, b, data->ttl, a_is_apex);
 	if (!new_nsec) {
 		dbg_dnssec_detail("Failed to create new NSEC.\n");
 		return KNOT_ENOMEM;
@@ -288,7 +295,7 @@ static int create_nsec_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 	assert(zone);
 	assert(zone->nodes);
 
-	nsec_chain_iterate_data_t data = { ttl, changeset };
+	nsec_chain_iterate_data_t data = { ttl, changeset, zone };
 
 	return chain_iterate(zone->nodes, connect_nsec_nodes, &data);
 }
@@ -629,6 +636,9 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 	bitmap_add_node_rrsets(&rr_types, node);
 	if (node->rrset_count > 0) {
 		bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+	}
+	if (node == apex_node) {
+		bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
 	}
 
 	knot_node_t *nsec3_node;
