@@ -980,7 +980,7 @@ dbg_zonediff_exec_detail(
 int knot_zone_tree_add_diff(knot_zone_tree_t *t1, knot_zone_tree_t *t2,
                             knot_changeset_t *changeset)
 {
-	if (!t1 || !t1 || !changeset)
+	if (!t1 || !t2 || !changeset)
 		return KNOT_EINVAL;
 
 	return knot_zone_diff_load_trees(t1, t2, changeset);
