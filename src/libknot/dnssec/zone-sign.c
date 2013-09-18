@@ -1069,6 +1069,8 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 	// Create signature for new SOA
 	result = add_missing_rrsigs(soa_to, NULL, zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
+		knot_rrset_deep_free(&soa_from, 1, 1);
+		knot_rrset_deep_free(&soa_to, 1, 1);
 		return result;
 	}
 	
