@@ -420,8 +420,8 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 	if (sub_l < 0 || domain_l < 0)
 		return false;
 
-	assert(sub > 0 && sub_l <= KNOT_DNAME_MAXLABELS);
-	assert(domain_l > 0 && domain_l <= KNOT_DNAME_MAXLABELS);
+	assert(sub >= 0 && sub_l <= KNOT_DNAME_MAXLABELS);
+	assert(domain_l >= 0 && domain_l <= KNOT_DNAME_MAXLABELS);
 
 	/* Subdomain must have more labels as parent. */
 	if (sub_l <= domain_l)
@@ -465,8 +465,8 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 	if (l1 < 0 || l2 < 0)
 		return KNOT_EINVAL;
 
-	assert(l1 > 0 && l1 <= KNOT_DNAME_MAXLABELS);
-	assert(l2 > 0 && l2 <= KNOT_DNAME_MAXLABELS);
+	assert(l1 >= 0 && l1 <= KNOT_DNAME_MAXLABELS);
+	assert(l2 >= 0 && l2 <= KNOT_DNAME_MAXLABELS);
 
 	/* Align end-to-end to common suffix. */
 	int common = knot_dname_align(&d1, l1, &d2, l2, NULL);
