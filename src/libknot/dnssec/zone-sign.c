@@ -935,8 +935,8 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 
 	bool modified = knot_changeset_size(out_ch) != changes_before;
 
-	if (!modified && all_signatures_valid(dnskeys, dnskeys->rrsigs,
-	                                      zone_keys, policy)
+	if (!modified && dnskeys &&
+	    all_signatures_valid(dnskeys, dnskeys->rrsigs, zone_keys, policy)
 	) {
 		return KNOT_EOK;
 	}
