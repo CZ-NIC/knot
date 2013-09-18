@@ -88,7 +88,7 @@ int main(int argc, const char *argv[])
 	uint8_t *digest = NULL;
 	size_t digest_size = 0;
 	uint8_t *b32_digest = NULL;
-	uint32_t b32_length = 0;
+	int32_t b32_length = 0;
 	int result = 0;
 
 	// knsec3hash <salt> <algorithm> <iterations> <domain>
