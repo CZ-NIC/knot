@@ -72,6 +72,7 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	}
 
 	if (hattrie_iter_finished(it)) {
+		hattrie_iter_free(it);
 		return KNOT_EINVAL;
 	}
 
