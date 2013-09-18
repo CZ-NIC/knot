@@ -399,7 +399,7 @@ static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 					 const char *apex, size_t apex_size)
 {
 	char name[KNOT_DNAME_MAX_LENGTH];
-	size_t endp;
+	int32_t endp;
 
 	endp = base32hex_encode(hash, hash_size, (uint8_t *)name, sizeof(name));
 	if (endp <= 0)
