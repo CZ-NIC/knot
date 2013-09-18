@@ -3453,6 +3453,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	}
 	knot_changeset_t *ch = knot_changesets_create_changeset(chs);
 	if (ch == NULL) {
+		knot_changesets_free(&chs);
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
 		return KNOT_ENOMEM;
@@ -3478,7 +3479,6 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		char *zname = knot_dname_to_str(zone->name);
 		log_server_error("Could not sign zone %s (%s).\n",
 		                 zname, knot_strerror(ret));
-		knot_changesets_free(&chs);
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
 		free(zname);
