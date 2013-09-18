@@ -670,21 +670,21 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
 	rrset_list_delete(&c->node_rrsigs);
-	ret = knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
-	                                &last_nsec3_node, 0);
-	if (ret != KNOT_EOK)  {
+	int kret = knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
+	                                     &last_nsec3_node, 0);
+	if (kret != KNOT_EOK)  {
 		log_zone_error("Failed to finalize zone contents: %s\n",
-		               knot_strerror(ret));
+		               knot_strerror(kret));
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 
-	ret = knot_zone_connect_nsec_nodes(c->current_zone);
-	if (ret != KNOT_EOK)  {
+	kret = knot_zone_connect_nsec_nodes(c->current_zone);
+	if (kret != KNOT_EOK)  {
 		log_zone_error("Failed to connect regular and NSEC3 nodes: %s\n",
-		               knot_strerror(ret));
+		               knot_strerror(kret));
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
