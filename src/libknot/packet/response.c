@@ -74,13 +74,18 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	}
 
 	/* Do not compress small dnames. */
-	unsigned name_labels = knot_dname_labels(dname, NULL);
+	int name_labels = knot_dname_labels(dname, NULL);
+	if (name_labels < 0) {
+		return name_labels; // error code
+	}
 	if (*dname == '\0') {
 		if (max < 1)
 			return KNOT_ESPACE;
 		*dst = *dname;
 		return 1;
 	}
+
+	assert(name_labels > 0 && name_labels <= KNOT_DNAME_MAXLABELS);
 
 	/* Align and compare name and pointer in the compression table. */
 	unsigned i = 0;
