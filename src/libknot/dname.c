@@ -586,8 +586,11 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 
 	/* This is problem equal to replacing last \x00 from d1 with d2. */
 	knot_dname_t *ret = knot_dname_replace_suffix(d1, 0, d2);
+
 	/* Like if we are reallocating d1. */
-	knot_dname_free(&d1);
+	if (ret != NULL)
+		knot_dname_free(&d1);
+
 	return ret;
 }
 

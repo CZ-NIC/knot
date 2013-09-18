@@ -401,8 +401,9 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	const knot_nsec3_params_t *nsec3_params =
 		knot_zone_contents_nsec3params(zone);
 
-	if (nsec3_params == NULL)
+	if (nsec3_params == NULL) {
 		return KNOT_ENSEC3PAR;
+	}
 
 	uint8_t *hashed_name = NULL;
 	size_t hash_size = 0;
@@ -440,8 +441,9 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 
 	free(name_b32);
 
-	if (*nsec3_name == NULL)
+	if (*nsec3_name == NULL) {
 		return KNOT_ERROR;
+	}
 
 	knot_dname_to_lower(*nsec3_name);
 
