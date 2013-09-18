@@ -360,8 +360,9 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		knot_rrset_rdata_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
-	if (knot_dname_cmp(signer_name,
-				 knot_rrset_owner(dnskey_rrset)) != 0) {
+	if (dnskey_rrset &&
+	    knot_dname_cmp(signer_name, knot_rrset_owner(dnskey_rrset)) != 0
+	) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
 		                         info_str);
