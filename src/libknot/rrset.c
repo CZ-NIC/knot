@@ -158,18 +158,10 @@ int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
-			knot_dname_t *dname1 = NULL;
-			memcpy(&dname1, r1 + offset, sizeof(knot_dname_t *));
-			int size1 = knot_dname_size(dname1);
-			knot_dname_t *dname2 = NULL;
-			memcpy(&dname2, r2 + offset, sizeof(knot_dname_t *));
-			int size2 = knot_dname_size(dname2);
-			cmp = memcmp(dname1, dname2,
-			             size1 <= size2 ? size1 : size2);
-			if (cmp == 0 && size1 != size2) {
-				cmp = size1 < size2 ? -1 : 1;
-			}
-			offset += sizeof(knot_dname_t *);
+			const knot_dname_t *dname1 = r1 + offset;
+			const knot_dname_t *dname2 = r2 + offset;
+			cmp = knot_dname_cmp(dname1, dname2);
+			offset += knot_dname_size(dname1);
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
 			cmp = memcmp(r1 + offset, r2 + offset,
 			             desc->block_types[i]);
