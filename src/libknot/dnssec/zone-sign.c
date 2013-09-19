@@ -23,6 +23,7 @@
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "common/hattrie/hat-trie.h"
+#include "common/hattrie/ahtable.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
@@ -521,8 +522,70 @@ static int resign_rrset(const knot_rrset_t *rrset,
 		return ret;
 	}
 
-	return add_missing_rrsigs(rrset, rrset->rrsigs, zone_keys, policy,
-				  ch);
+	return add_missing_rrsigs(rrset, rrset->rrsigs, zone_keys, policy, ch);
+}
+
+static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
+{
+	// Create a key = combination of owner and type mnemonic
+	int dname_size = knot_dname_size(rrset->owner);
+	uint8_t key[dname_size + 16];
+	memset(key, 0, dname_size + 16);
+	memcpy(key, rrset->owner, dname_size);
+	int ret = knot_rrtype_to_string(rrset->type, key + dname_size,
+	                                16 - dname_size);
+	if (ret != KNOT_EOK) {
+		return false;
+	}
+	if (ahtable_tryget(t, key, dname_size + 16)) {
+		return true;
+	}
+
+	// If not in the table, insert
+	*ahtable_get(t, key, dname_size + 16) = (value_t *)0x1;
+	return false;
+}
+
+static bool rr_should_be_signed(const knot_node_t *node,
+                                const knot_rrset_t *rrset,
+                                ahtable_t *table)
+{
+	if (rrset == NULL) {
+		return false;
+	}
+
+	// SOA entry is maintained separately
+	if (rrset->type == KNOT_RRTYPE_SOA) {
+		return false;
+	}
+
+	// DNSKEYs are maintained separately
+	if (rrset->type == KNOT_RRTYPE_DNSKEY) {
+		return false;
+	}
+
+	// We only want to sign NSEC and DS at delegation points
+	if (knot_node_is_deleg_point(node) &&
+	    (rrset->type != KNOT_RRTYPE_NSEC ||
+	    rrset->type != KNOT_RRTYPE_DS)) {
+		return false;
+	}
+
+	// These RRs have their signatures stored in changeset already
+	if (knot_node_is_replaced_nsec(node)
+	    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
+	         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
+		return false;
+	}
+
+	// Check for RRSet in the 'already_signed' table
+	if (table) {
+		if (rr_already_signed(rrset, table)) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 static int sign_node_rrsets(const knot_node_t *node,
@@ -539,27 +602,7 @@ static int sign_node_rrsets(const knot_node_t *node,
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		const knot_rrset_t *rrset = node->rrset_tree[i];
-		// SOA entry is maintained separately
-		if (rrset->type == KNOT_RRTYPE_SOA) {
-			continue;
-		}
-
-		// DNSKEYs are maintained separately
-		if (rrset->type == KNOT_RRTYPE_DNSKEY) {
-			continue;
-		}
-
-		// We only want to sign NSEC and DS at delegation points
-		if (knot_node_is_deleg_point(node) &&
-		    (rrset->type != KNOT_RRTYPE_NSEC ||
-		    rrset->type != KNOT_RRTYPE_DS)) {
-			continue;
-		}
-
-		// These RRs have their signatures stored in changeset already
-		if (knot_node_is_replaced_nsec(node)
-		    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
-		         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
+		if (!rr_should_be_signed(node, rrset, NULL)) {
 			continue;
 		}
 
@@ -636,9 +679,10 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
 
 typedef struct {
 	const knot_zone_contents_t *zone;
-	knot_zone_keys_t *zone_keys;
+	const knot_zone_keys_t *zone_keys;
 	const knot_dnssec_policy_t *policy;
 	knot_changeset_t *out_ch;
+	ahtable_t *signed_table;
 } changeset_signing_data_t;
 
 static int add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data)
@@ -1002,17 +1046,12 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 	return !all_signatures_valid(soa, soa->rrsigs, zone_keys, policy);
 }
 
-int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
+int knot_zone_sign_update_soa(const knot_rrset_t *soa,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset)
 {
-	if (!zone || !zone_keys || !policy || !changeset) {
-		return KNOT_EINVAL;
-	}
-
-	knot_rrset_t *soa = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL || soa->rdata_count != 1) {
+	if (!soa || !zone_keys || !policy || !changeset) {
 		return KNOT_EINVAL;
 	}
 
@@ -1081,3 +1120,76 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 
 	return KNOT_EOK;
 }
+
+static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
+{
+	changeset_signing_data_t *args = (changeset_signing_data_t *)data;
+	// Find RR's node in zone, find out if we need to sign this RR
+	const knot_node_t *node =
+		knot_zone_contents_find_node(args->zone, chg_rrset->owner);
+	// If node is not in zone, all its RRSIGs were dropped - no-op
+	if (node) {
+		const knot_rrset_t *zone_rrset =
+			knot_node_rrset(node, chg_rrset->type);
+		if (rr_should_be_signed(node, zone_rrset, args->signed_table)) {
+			return force_resign_rrset(zone_rrset, args->zone_keys,
+			                          args->policy, args->out_ch);
+		} else {
+			/*!
+			 * If RRSet in zone DOES have RRSIGs although we
+			 * should not sign it, DDNS-caused change to node/rr
+			 * occured and we have to drop all RRSIGs.
+			 */
+			if (zone_rrset->rrsigs != NULL) {
+				return remove_rrset_rrsigs(zone_rrset,
+				                           args->out_ch);
+			}
+		}
+	}
+
+}
+
+int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
+                             const knot_changeset_t *in_ch,
+                             knot_changeset_t *out_ch,
+                             const knot_zone_keys_t *zone_keys,
+                             const knot_dnssec_policy_t *policy)
+{
+	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Create args for wrapper function - ahtable for duplicate sigs
+	changeset_signing_data_t args = { .zone = zone, .zone_keys = zone_keys,
+	                                  .policy = policy, .out_ch = out_ch,
+	                                  .signed_table = ahtable_create()};
+
+	// Sign all RRs that are new in changeset
+	int ret = knot_changeset_apply((knot_changeset_t *)in_ch,
+	                               KNOT_CHANGESET_ADD,
+	                               sign_changeset_wrap, &args);
+
+	// Sign all RRs that are removed in changeset
+	if (ret == KNOT_EOK) {
+		ret = knot_changeset_apply((knot_changeset_t *)in_ch,
+		                           KNOT_CHANGESET_REMOVE,
+		                           sign_changeset_wrap, &args);
+	}
+
+	return ret;
+}
+
+int knot_zone_sign_fix_nsec_chain(const knot_zone_contents_t *zone,
+                                  const knot_changeset_t *in_ch,
+                                  knot_changeset_t *out_ch)
+{
+
+}
+
+int knot_zone_sign_fix_nsec3_chain(const knot_zone_contents_t *zone,
+                                   const knot_changeset_t *in_ch,
+                                   knot_changeset_t *out_ch)
+{
+
+}
+

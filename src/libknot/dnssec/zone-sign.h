@@ -20,7 +20,7 @@
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * \brief Interface for DNSSEC signing of zones.
+ * \brief Interface for DNSSEC zone signing.
  *
  * \addtogroup dnssec
  * @{
@@ -39,7 +39,7 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
                    const knot_dnssec_policy_t *policy,
                    knot_changeset_t *out_ch);
 
-int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
+int knot_zone_sign_update_soa(const knot_rrset_t *soa,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset);
@@ -47,6 +47,20 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
+
+int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
+                             const knot_changeset_t *in_ch,
+                             knot_changeset_t *out_ch,
+                             const knot_zone_keys_t *zone_keys,
+                             const knot_dnssec_policy_t *policy);
+
+int knot_zone_sign_fix_nsec_chain(const knot_zone_contents_t *zone,
+                                  const knot_changeset_t *in_ch,
+                                  knot_changeset_t *out_ch);
+
+int knot_zone_sign_fix_nsec3_chain(const knot_zone_contents_t *zone,
+                                   const knot_changeset_t *in_ch,
+                                   knot_changeset_t *out_ch);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 
