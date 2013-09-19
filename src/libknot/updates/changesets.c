@@ -305,7 +305,7 @@ int knot_changeset_apply(knot_changeset_t *changeset,
 		return KNOT_EINVAL;
 	}
 
-	knot_rr_ln_t *rr_node;
+	knot_rr_ln_t *rr_node = NULL;
 	if (part == KNOT_CHANGESET_ADD) {
 		WALK_LIST(rr_node, changeset->add) {
 			int res = func(rr_node->rr, data);
