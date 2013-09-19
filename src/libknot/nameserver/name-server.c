@@ -4181,77 +4181,6 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 /*
- * The given query is already fully parsed. But the parameter contains an
- * already prepared response structure.
- *
- * This function should process the contents, prepare prerequisities, prepare
- * changeset and return to the caller.
- */
-int knot_ns_process_update(const knot_packet_t *query,
-                           const knot_zone_contents_t *zone,
-                           knot_changeset_t *changeset, knot_rcode_t *rcode)
-{
-	assert(knot_packet_is_query(query));
-
-	dbg_ns("Processing Dynamic Update.\n");
-
-	*rcode = KNOT_RCODE_NOERROR;
-
-	// 1) Check zone
-	// Already done
-//	dbg_ns_verb("Checking zone for DDNS.\n");
-//	int ret = knot_ddns_check_zone(zone, query, rcode);
-//	if (ret != KNOT_EOK) {
-//		dbg_ns("Failed to check zone for update: "
-//		       "%s.\n", knot_strerror(ret));
-//		return ret;
-//	}
-
-	// 2) Convert prerequisities
-	// Already done
-//	dbg_ns_verb("Processing prerequisities.\n");
-//	knot_ddns_prereq_t *prereqs = NULL;
-//	int ret = knot_ddns_process_prereqs(query, &prereqs, rcode);
-//	if (ret != KNOT_EOK) {
-//		dbg_ns("Failed to check zone for update: "
-//		       "%s.\n", knot_strerror(ret));
-//		return ret;
-//	}
-
-//	assert(prereqs != NULL);
-
-	// 3) Check prerequisities
-	/*! \todo Somehow ensure the zone will not be changed until the update
-	 *        is finished.
-	 */
-	// Already done
-//	dbg_ns_verb("Checking prerequisities.\n");
-//	ret = knot_ddns_check_prereqs(zone, &prereqs, rcode);
-//	if (ret != KNOT_EOK) {
-//		knot_ddns_prereqs_free(&prereqs);
-//		dbg_ns("Failed to check zone for update: "
-//		       "%s.\n", knot_strerror(ret));
-//		return ret;
-//	}
-
-	// 4) Convert update to changeset
-	dbg_ns_verb("Converting UPDATE packet to changeset.\n");
-	int ret = knot_ddns_process_update(zone, query, changeset, rcode);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to check zone for update: "
-		       "%s.\n", knot_strerror(ret));
-		return ret;
-	}
-
-	assert(changeset != NULL);
-
-	// Done in zones.c
-//	knot_ddns_prereqs_free(&prereqs);
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-/*
  * This function should:
  * 1) Create zone shallow copy and the changes structure.
  * 2) Call knot_ddns_process_update2().
@@ -4267,7 +4196,6 @@ int knot_ns_process_update2(const knot_packet_t *query,
                             knot_zone_contents_t **new_contents,
                             knot_changesets_t *chgs, knot_rcode_t *rcode)
 {
-	/*! \todo Implement. */
 	if (query == NULL || old_contents == NULL || chgs == NULL ||
 	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
@@ -4275,7 +4203,7 @@ int knot_ns_process_update2(const knot_packet_t *query,
 
 	dbg_ns("Applying UPDATE to zone...\n");
 
-	/* 1) Create zone shallow copy. */
+	// 1) Create zone shallow copy.
 	dbg_ns_verb("Creating shallow copy of the zone...\n");
 	knot_zone_contents_t *contents_copy = NULL;
 	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy);
@@ -4286,25 +4214,28 @@ int knot_ns_process_update2(const knot_packet_t *query,
 		return ret;
 	}
 
-	/* 2) Apply the UPDATE and create changesets. */
+	// 2) Apply the UPDATE and create changesets.
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
 	ret = knot_ddns_process_update2(contents_copy, query,
-	                                (knot_changeset_t *)(HEAD(chgs->sets)),
+	                                knot_changesets_get_last(chgs),
 	                                chgs->changes, rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
 		                                : "No change made.");
-		xfrin_rollback_update(old_contents, &contents_copy, chgs->changes);
+		xfrin_rollback_update(old_contents, &contents_copy,
+		                      chgs->changes);
 		return ret;
 	}
 
+	// 3) Finalize zone
 	dbg_ns_verb("Finalizing updated zone...\n");
 	ret = xfrin_finalize_updated_zone(contents_copy, chgs->changes);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to finalize updated zone: %s\n",
 		       knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy, chgs->changes);
+		xfrin_rollback_update(old_contents, &contents_copy,
+		                      chgs->changes);
 		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
 		                             : KNOT_RCODE_SERVFAIL;
 		return ret;
@@ -4342,8 +4273,7 @@ int knot_ns_process_forward_response(const knot_packet_t *response,
                                      uint16_t original_id,
                                      uint8_t *response_wire, size_t *size)
 {
-	// just copy the wireformat of the response and set the original ID
-
+	// copy the wireformat of the response and set the original ID
 	if (knot_packet_size(response) > *size) {
 		return KNOT_ESPACE;
 	}
