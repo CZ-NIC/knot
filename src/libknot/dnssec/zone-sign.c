@@ -57,7 +57,7 @@ static size_t rrsig_rdata_size(const knot_dnssec_key_t *key)
 
 	// variable part
 
-	size += sizeof(knot_dname_t *); // pointer to signer
+	size += knot_dname_size(key->name);
 	size += knot_dnssec_sign_size(key);
 
 	return size;
@@ -77,8 +77,9 @@ static void rrsig_write_rdata(uint8_t *rdata,
 	uint8_t *w = rdata;
 
 	uint8_t owner_labels = knot_dname_labels(owner, NULL);
-	if (knot_dname_is_wildcard(owner))
+	if (knot_dname_is_wildcard(owner)) {
 		owner_labels -= 1;
+	}
 
 	knot_wire_write_u16(w, covered->type);	// type covered
 	w += sizeof(uint16_t);
@@ -97,8 +98,7 @@ static void rrsig_write_rdata(uint8_t *rdata,
 
 	assert(w == rdata + 18);
 
-	knot_dname_t *dname = knot_dname_copy(key->name);
-	memcpy(w, &dname, sizeof(knot_dname_t *)); // pointer to signer
+	memcpy(w, key->name, knot_dname_size(key->name)); // signer
 }
 
 static uint8_t *create_rrsigs_rdata(knot_rrset_t *rrsigs,

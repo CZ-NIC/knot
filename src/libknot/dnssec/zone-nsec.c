@@ -190,23 +190,17 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	}
 
 	// Create RDATA
-	size_t rdata_size = sizeof(knot_dname_t *) + bitmap_size(&rr_types);
+	size_t next_owner_size = knot_dname_size(to->owner);
+	size_t rdata_size = next_owner_size + bitmap_size(&rr_types);
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
 	}
 
-	// Copy the 'next' field to RDATA
-	knot_dname_t *next_dname = knot_dname_copy(to->owner);
-	if (!next_dname) {
-		knot_rrset_deep_free(&rrset, 1, 1);
-		return NULL;
-	}
-	memcpy(rdata, &next_dname, sizeof(knot_dname_t *));
-
-	// Copy bitmap to RDATA
-	bitmap_write(&rr_types, rdata + sizeof(knot_dname_t *));
+	// Fill RDATA
+	memcpy(rdata, to->owner, next_owner_size);
+	bitmap_write(&rr_types, rdata + next_owner_size);
 
 	return rrset;
 }
