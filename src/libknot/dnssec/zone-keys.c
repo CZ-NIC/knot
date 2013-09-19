@@ -210,6 +210,9 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 void free_zone_keys(knot_zone_keys_t *keys)
 {
+	if (keys == NULL) {
+		return;
+	}
 	free_sign_contexts(keys);
 
 	for (int i = 0; i < keys->count; i++) {
