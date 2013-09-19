@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,10 @@
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up);
 int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch);
+int knot_dnssec_sign_changeset(const knot_zone_t *zone,
+                               const knot_changeset_t *in_ch,
+                               knot_changeset_t *out_ch,
+                               knot_update_serial_t soa_up);
 
 #endif // _KNOT_DNSSEC_ZONE_EVENTS_H_
 /*! @} */
