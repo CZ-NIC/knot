@@ -29,7 +29,7 @@
 
 #include "zone/node.h"
 #include "dname.h"
-#include "nsec3.h"
+#include "libknot/dnssec/nsec3.h"
 
 #include "zone-tree.h"
 
@@ -495,26 +495,6 @@ void knot_zone_contents_free(knot_zone_contents_t **contents);
 void knot_zone_contents_deep_free(knot_zone_contents_t **contents);
 
 int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents);
-
-/*!
- * \brief Creates a NSEC3 hashed name for the given domain name.
- *
- * \note The zone's NSEC3PARAM record must be parsed prior to calling this
- *       function (see knot_zone_load_nsec3param()).
- *
- * \param zone Zone from which to take the NSEC3 parameters.
- * \param name Domain name to hash.
- * \param nsec3_name Hashed name.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENSEC3PAR
- * \retval KNOT_ECRYPTO
- * \retval KNOT_ERROR if an error occured while creating a new domain name
- *                      from the hash or concatenating it with the zone name.
- */
-int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
-                                           const knot_dname_t *name,
-                                           knot_dname_t **nsec3_name);
 
 /*!
  * \brief Fetch zone serial.

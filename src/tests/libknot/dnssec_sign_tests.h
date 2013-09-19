@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -12,31 +12,13 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-/*!
- * \file bnutils.h
- *
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- *
- * \brief Conversion between Base64 and OpenSSL BIGNUM formats.
- *
- * \addtogroup dnssec
- * @{
  */
 
-#ifndef _KNOT_SIGN_BNUTILS_H_
-#define _KNOT_SIGN_BNUTILS_H_
+#ifndef _KNOTD_DNSSEC_SIGN_TESTS_
+#define _KNOTD_DNSSEC_SIGN_TESTS_
 
-#include <openssl/bn.h>
+#include "common/libtap/tap_unit.h"
 
-/*!
- * \brief Convert Base64 encoded number into OpenSSL BIGNUM format.
- *
- * \param input  Base64 encoded input number
- * \return Input number represented in OpenSSL BIGNUM format.
- */
-BIGNUM *knot_b64_to_bignum(const char *input);
+unit_api dnssec_sign_tests_api;
 
-#endif // _KNOT_SIGN_BNUTILS_H_
-
-/*! @} */
+#endif

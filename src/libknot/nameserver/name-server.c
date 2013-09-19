@@ -38,6 +38,7 @@
 #include "updates/ddns.h"
 #include "tsig-op.h"
 #include "libknot/rdata.h"
+#include "libknot/dnssec/zone-nsec.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -1297,6 +1298,10 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 		previous = knot_zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
 
+		/*!
+		 * \todo isn't this handled in adjusting?
+		 * knot_zone_contents_adjust_node_in_tree_ptr()
+		 */
 		while (!knot_node_is_auth(previous)) {
 			previous = knot_node_previous(previous);
 		}
@@ -1325,12 +1330,12 @@ dbg_ns_exec_verb(
 	}
 
 	rrset = knot_rrset_get_rrsigs(rrset);
-	assert(rrset != NULL);
+	//assert(rrset != NULL);
 	ret = knot_response_add_rrset_authority(resp, rrset, 1, 0, 1);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to add RRSIGs for NSEC for NXDOMAIN to response:"
 		       "%s\n", knot_strerror(ret));
-		return ret;
+		//return ret;
 	}
 	// 2) NSEC proving that there is no wildcard covering the name
 	// this is only different from 1) if the wildcard would be
@@ -1389,7 +1394,7 @@ dbg_ns_exec_verb(
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add RRSIGs for second NSEC for "
 			       "NXDOMAIN to response: %s\n", knot_strerror(ret));
-			return ret;
+			//return ret;
 		}
 	}
 
@@ -1553,6 +1558,10 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		previous = knot_zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
 
+		/*!
+		 * \todo isn't this handled in adjusting?
+		 * knot_zone_contents_adjust_node_in_tree_ptr()
+		 */
 		while (!knot_node_is_auth(previous)) {
 			previous = knot_node_previous(previous);
 		}
@@ -1569,7 +1578,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		                                        1);
 		if (ret == KNOT_EOK) {
 			rrset = knot_rrset_get_rrsigs(rrset);
-			assert(rrset != NULL);
+			//assert(rrset != NULL);
 			ret = knot_response_add_rrset_authority(resp, rrset, 1,
 			                                        0, 1);
 		}
@@ -2047,7 +2056,7 @@ dbg_ns_exec_verb(
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-#warning This is probably not correct and doesn't check length. Should be checked on synthesis.
+#warning "This is probably not correct and doesn't check length. Should be checked on synthesis."
 	if (ns_dname_is_too_long(dname_rrset, *qname)) {
 		knot_response_set_rcode(resp, KNOT_RCODE_YXDOMAIN);
 		return KNOT_EOK;
@@ -3991,9 +4000,11 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
 		int rc = knot_zone_contents_adjust(zone, NULL, NULL, 0);
-		if (rc != KNOT_EOK) {
+		if (rc != KNOT_EOK)
 			return rc;
-		}
+		rc = knot_zone_connect_nsec_nodes(zone);
+		if (rc != KNOT_EOK)
+			return rc;
 
 		// save the zone contents to the xfr->data
 		xfr->new_contents = zone;

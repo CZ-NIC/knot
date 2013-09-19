@@ -34,6 +34,7 @@
 
 #include "libknot/consts.h"
 
+#define KNOT_DNAME_MAX_LENGTH 255
 typedef uint8_t knot_dname_t;
 
 /*!

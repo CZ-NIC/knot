@@ -27,9 +27,10 @@
 #ifndef _KNOT_RDATA_H_
 #define _KNOT_RDATA_H_
 
-#include "util/utils.h"
-#include "rrset.h"
+#include "common/descriptor.h"
 #include "dname.h"
+#include "rrset.h"
+#include "util/utils.h"
 
 static inline
 const knot_dname_t *knot_rdata_cname_name(const knot_rrset_t *rrset)

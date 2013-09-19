@@ -179,7 +179,8 @@ typedef enum knot_ns_xfr_type_t {
 	XFR_TYPE_SOA,     /*!< Pending SOA request. */
 	XFR_TYPE_NOTIFY,  /*!< Pending NOTIFY query. */
 	XFR_TYPE_UPDATE,  /*!< UPDATE request (incoming UPDATE). */
-	XFR_TYPE_FORWARD  /*!< UPDATE forward request. */
+	XFR_TYPE_FORWARD,  /*!< UPDATE forward request. */
+	XFR_TYPE_DNSSEC   /*!< DNSSEC changes. */
 } knot_ns_xfr_type_t;
 
 /*----------------------------------------------------------------------------*/

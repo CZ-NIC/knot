@@ -52,6 +52,9 @@ typedef struct {
 /*! \brief Default dump style. */
 extern const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT;
 
+/*! \brief DNSSEC-friendly dump style. */
+extern const knot_dump_style_t KNOT_DUMP_STYLE_DNSSEC;
+
 /*!
  * \brief Dumps rrset header.
  *

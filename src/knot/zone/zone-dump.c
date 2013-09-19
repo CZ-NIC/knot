@@ -134,7 +134,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	params.buflen = DUMP_BUF_LEN;
 	params.rr_count = 0;
 	params.origin = knot_node_owner(knot_zone_contents_apex(zone));
-	params.style = &KNOT_DUMP_STYLE_DEFAULT;
+	params.style = &KNOT_DUMP_STYLE_DNSSEC;
 
 	// Dump standard zone records.
 	knot_zone_contents_tree_apply_inorder(zone, node_dump_text, &params);

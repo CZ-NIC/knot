@@ -30,6 +30,8 @@
 #include "utils/common/netio.h"		// net_t
 #include "utils/common/params.h"	// style_t
 #include "libknot/libknot.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sign.h"
 
 /*! \brief Holds data required between signing and signature verification. */
 typedef struct {

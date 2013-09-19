@@ -25,7 +25,7 @@
 #include "knot/knot.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
-#include "libknot/sign/key.h"
+#include "libknot/dnssec/key.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
 #include "common/descriptor.h"
@@ -49,6 +49,8 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"RRSIG: Labels rdata field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
 	"RRSIG: Signer name is different than in DNSKEY!",
+	[-ZC_ERR_RRSIG_NO_DNSKEY] =
+	"RRSIG: Missing DNSKEY for RRSIG!",
 	[-ZC_ERR_RRSIG_RDATA_SIGNED_WRONG] =
 	"RRSIG: Key error!",
 	[-ZC_ERR_RRSIG_NO_RRSIG] =
@@ -291,12 +293,8 @@ static int check_rrsig_rdata(err_handler_t *handler,
                              const knot_rrset_t *dnskey_rrset)
 {
 	/* Prepare additional info string. */
-	char info_str[50];
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %d.",
-	                   knot_rrset_type(rrset));
-	if (ret < 0 || ret >= sizeof(info_str)) {
-		return KNOT_ENOMEM;
-	}
+	char info_str[50] = "Record type: ";
+	knot_rrtype_to_string(knot_rrset_type(rrset), info_str + 13, 47);
 
 	if (knot_rrset_rdata_rr_count(rrsig) == 0) {
 		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
@@ -350,6 +348,12 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		                         info_str);
 	}
 
+	/* Check if DNSKEY exists. */
+	if (!dnskey_rrset) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_NO_DNSKEY, info_str);
+	}
+
 	/* signer's name is same as in the zone apex */
 	const knot_dname_t *signer_name =
 		knot_rdata_rrsig_signer_name(rrsig, rr_pos);
@@ -397,8 +401,8 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 	
 	if (!match) {
-		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
-		                         info_str);
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_NO_DNSKEY, info_str);
 	}
 
 	return KNOT_EOK;
@@ -420,8 +424,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
                                 const knot_rrset_t *rrset,
                                 const knot_rrset_t *dnskey_rrset)
 {
-	if (handler == NULL || node == NULL || rrset == NULL ||
-	    dnskey_rrset == NULL) {
+	if (handler == NULL || node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 	
@@ -433,8 +436,6 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		return KNOT_ENOMEM;
 	}
 	
-	assert(dnskey_rrset && rrset);
-
 	const knot_rrset_t *rrsigs = knot_rrset_rrsigs(rrset);
 
 	if (rrsigs == NULL) {
@@ -870,7 +871,7 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 	                node) {
 		const knot_rrset_t *ns_rrset =
 				knot_node_rrset(node, KNOT_RRTYPE_NS);
-		if (ns_rrset == NULL) {
+		if (ns_rrset == NULL || ns_rrset->rdata_count == 0) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_MISSING_NS_DEL_POINT,
 			                         NULL);

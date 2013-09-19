@@ -33,6 +33,9 @@
 
 struct knot_zone;
 
+/*! \brief RRSet count in node if there is only NSEC (and possibly its RRSIG).*/
+#define KNOT_NODE_RRSET_COUNT_ONLY_NSEC 1
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
@@ -95,12 +98,11 @@ typedef enum {
 	KNOT_NODE_FLAGS_DELEG = (uint8_t)0x01,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	KNOT_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
-	/*! \brief Node is old and will be removed (during update). */
-	KNOT_NODE_FLAGS_OLD = (uint8_t)0x04,
-	/*! \brief Node is new and should not be used while zoen is old. */
-	KNOT_NODE_FLAGS_NEW = (uint8_t)0x08,
-	/*! \brief Node is empty and will be deleted after update. */
-	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10
+	/*! \brief Node is empty and will be deleted after update.
+	 *  \todo Remove after dname refactoring, update description in node. */
+	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10,
+	/*! \brief NSEC in this node needs new RRSIGs. Used for signing. */
+	KNOT_NODE_FLAGS_REPLACED_NSEC = (uint8_t)0x20
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
@@ -375,20 +377,16 @@ void knot_node_set_auth(knot_node_t *node);
 
 int knot_node_is_auth(const knot_node_t *node);
 
-int knot_node_is_new(const knot_node_t *node);
+int knot_node_is_replaced_nsec(const knot_node_t *node);
 
-int knot_node_is_old(const knot_node_t *node);
+void knot_node_set_replaced_nsec(knot_node_t *node);
 
-void knot_node_set_new(knot_node_t *node);
+void knot_node_clear_replaced_nsec(knot_node_t *node);
 
-void knot_node_set_old(knot_node_t *node);
-
-void knot_node_clear_new(knot_node_t *node);
-
-void knot_node_clear_old(knot_node_t *node);
-
+//! \todo remove after dname refactoring
 int knot_node_is_empty(const knot_node_t *node);
 
+//! \todo remove after dname refactoring
 void knot_node_set_empty(knot_node_t *node);
 
 /*!

@@ -123,6 +123,40 @@ knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *chs)
 	return (knot_changeset_t *)(TAIL(chs->sets));
 }
 
+const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
+                                           knot_changeset_part_t part)
+{
+	if (ch == NULL) {
+		return NULL;
+	}
+
+	if (part == KNOT_CHANGESET_ADD) {
+		knot_rr_ln_t *n = TAIL(ch->add);
+		return n ? n->rr : NULL;
+	} else if (part == KNOT_CHANGESET_REMOVE) {
+		knot_rr_ln_t *n = TAIL(ch->remove);
+		return n ? n->rr : NULL;
+	}
+
+	return NULL;
+}
+
+void knot_changeset_remove_last_rr(knot_changeset_t *ch,
+                                   knot_changeset_part_t part)
+{
+	if (ch == NULL) {
+		return;
+	}
+
+	if (part == KNOT_CHANGESET_ADD) {
+		knot_rr_ln_t *n = TAIL(ch->add);
+		rem_node((node *)n);
+	} else if (part == KNOT_CHANGESET_REMOVE) {
+		knot_rr_ln_t *n = TAIL(ch->remove);
+		rem_node((node *)n);
+	}
+}
+
 int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
                              knot_changeset_part_t part)
 {
@@ -245,14 +279,71 @@ void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
 	}
 }
 
-int knot_changeset_is_empty(const knot_changeset_t *changeset)
+bool knot_changeset_is_empty(const knot_changeset_t *changeset)
 {
 	if (changeset == NULL) {
-		return 0;
+		return true;
 	}
 
 	return EMPTY_LIST(changeset->add) &&
 	       EMPTY_LIST(changeset->remove);
+}
+
+size_t knot_changeset_size(const knot_changeset_t *changeset)
+{
+	if (!changeset) {
+		return 0;
+	}
+
+	return list_size(&changeset->add) + list_size(&changeset->remove);
+}
+
+int knot_changeset_apply(knot_changeset_t *changeset,
+                         knot_changeset_part_t part,
+                         int (*func)(knot_rrset_t *, void *), void *data)
+{
+	if (changeset == NULL || func == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rr_ln_t *rr_node;
+	if (part == KNOT_CHANGESET_ADD) {
+		WALK_LIST(rr_node, changeset->add) {
+			int res = func(rr_node->rr, data);
+			if (res != KNOT_EOK) {
+				return res;
+			}
+		}
+	} else if (part == KNOT_CHANGESET_REMOVE) {
+		WALK_LIST(rr_node, changeset->remove) {
+			int res = func(rr_node->rr, data);
+			if (res != KNOT_EOK) {
+				return res;
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2)
+{
+	if (ch1 == NULL || ch2 == NULL || ch1->data != NULL ||
+	    ch2->data != NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Connect lists in changesets together
+	add_tail_list(&ch1->add, &ch2->add);
+	add_tail_list(&ch1->remove, &ch2->remove);
+
+	// Use soa_to and serial from the second changeset
+	// soa_to from the first changeset is redundant, delete it
+	knot_rrset_deep_free(&ch1->soa_to, 1, 1);
+	ch1->soa_to = ch2->soa_to;
+	ch1->serial_to = ch2->serial_to;
+
+	return KNOT_EOK;
 }
 
 static void knot_free_changeset(knot_changeset_t *changeset)

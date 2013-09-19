@@ -27,8 +27,7 @@
 #include "libknot/rdata.h"
 
 struct zone_diff_param {
-	const knot_zone_contents_t *contents;
-	char nsec3;
+	knot_zone_tree_t *nodes;
 	knot_changeset_t *changeset;
 	int ret;
 };
@@ -78,7 +77,6 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 
 	int64_t soa_serial2 =
 		knot_rdata_soa_serial(soa_rrset2);
-
 	if (soa_serial2 == -1) {
 		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
 	}
@@ -111,23 +109,19 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 
 	assert(changeset);
 
-	ret = knot_rrset_deep_copy(soa_rrset1, &changeset->soa_from);
+	ret = knot_rrset_deep_copy_no_sig(soa_rrset1, &changeset->soa_from);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
 	}
 
-	/* We MUST NOT save this RRSIG. */
-	knot_rrset_deep_free(&changeset->soa_from->rrsigs, 1, 1);
+	ret = knot_rrset_deep_copy_no_sig(soa_rrset2, &changeset->soa_to);
+	if (ret != KNOT_EOK) {
+		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
+		return ret;
+	}
+
 	assert(changeset->soa_from->rrsigs == NULL);
-
-	ret = knot_rrset_deep_copy(soa_rrset2, &changeset->soa_to);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
-		return ret;
-	}
-
-	knot_rrset_deep_free(&changeset->soa_to->rrsigs, 1, 1);
 	assert(changeset->soa_to->rrsigs == NULL);
 
 	changeset->serial_from = soa_serial1;
@@ -160,13 +154,10 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset);
 
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy(rrset, &rrset_copy);
+	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
 		return ret;
-	}
-	if (rrset_copy->rrsigs != NULL) {
-		knot_rrset_deep_free(&rrset_copy->rrsigs, 1, 1);
 	}
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 
@@ -207,13 +198,10 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset);
 
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy(rrset, &rrset_copy);
+	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
 		return ret;
-	}
-	if (rrset_copy->rrsigs != NULL) {
-		knot_rrset_deep_free(&rrset_copy->rrsigs, 1, 1);
 	}
 	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 
@@ -602,15 +590,17 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 }
 
 /*!< \todo this could be generic function for adding / removing. */
-static void knot_zone_diff_node(knot_node_t *node, void *data)
+static void knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 {
-	if (node == NULL || data == NULL) {
+	if (node_ptr == NULL || *node_ptr == NULL || data == NULL) {
 		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
 		return;
 	}
 
+	knot_node_t *node = *node_ptr;
+
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
-	if (param->changeset == NULL || param->contents == NULL) {
+	if (param->changeset == NULL || param->nodes == NULL) {
 		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
 		param->ret = KNOT_EINVAL;
 		return;
@@ -630,16 +620,8 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 	const knot_node_t *node_in_second_tree = NULL;
 	const knot_dname_t *node_owner = knot_node_owner(node);
 	assert(node_owner);
-	if (!param->nsec3) {
-		node_in_second_tree =
-			knot_zone_contents_find_node(param->contents,
-			                             node_owner);
-	} else {
-		dbg_zonediff_verb("zone_diff: diff_node: NSEC3 zone.\n");
-		node_in_second_tree =
-			knot_zone_contents_find_nsec3_node(param->contents,
-			                                   node_owner);
-	}
+
+	knot_zone_tree_find(param->nodes, node_owner, &node_in_second_tree);
 
 	if (node_in_second_tree == NULL) {
 		dbg_zonediff_detail("zone_diff: diff_node: Node %s is not "
@@ -830,16 +812,17 @@ static void knot_zone_diff_node(knot_node_t *node, void *data)
 }
 
 /*!< \todo possibly not needed! */
-static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
+static void knot_zone_diff_add_new_nodes(knot_node_t **node_ptr, void *data)
 {
-	assert(node);
-	if (node == NULL || data == NULL) {
+	if (node_ptr == NULL || *node_ptr == NULL || data == NULL) {
 		dbg_zonediff("zone_diff: add_new_nodes: NULL arguments.\n");
 		return;
 	}
 
+	knot_node_t *node = *node_ptr;
+
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
-	if (param->changeset == NULL || param->contents == NULL) {
+	if (param->changeset == NULL || param->nodes == NULL) {
 		dbg_zonediff("zone_diff: add_new_nodes: NULL arguments.\n");
 		param->ret = KNOT_EINVAL;
 		return;
@@ -857,8 +840,6 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 	* and has to be added to changeset. Differencies on the RRSet level are
 	* already handled.
 	*/
-	const knot_zone_contents_t *other_zone = param->contents;
-	assert(other_zone);
 
 	const knot_dname_t *node_owner = knot_node_owner(node);
 	/*
@@ -868,12 +849,7 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 	assert(node_owner);
 
 	knot_node_t *new_node = NULL;
-	if (!param->nsec3) {
-		new_node = knot_zone_contents_get_node(other_zone, node_owner);
-	} else {
-		new_node = knot_zone_contents_get_nsec3_node(other_zone,
-		                                             node_owner);
-	}
+	knot_zone_tree_get(param->nodes, node_owner, &new_node);
 
 	if (!new_node) {
 		assert(node);
@@ -889,86 +865,64 @@ static void knot_zone_diff_add_new_nodes(knot_node_t *node, void *data)
 	assert(param->ret == KNOT_EOK);
 }
 
-int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
+static int knot_zone_diff_load_trees(knot_zone_tree_t *nodes1,
+				     knot_zone_tree_t *nodes2,
+				     knot_changeset_t *changeset)
+{
+	assert(nodes1);
+	assert(nodes2);
+	assert(changeset);
+
+	struct zone_diff_param param = { 0 };
+	param.ret = KNOT_EOK;
+	param.changeset = changeset;
+
+	// Traverse one tree, compare every node, each RRSet with its rdata.
+	param.nodes = nodes2;
+	int result = knot_zone_tree_apply(nodes1, knot_zone_diff_node, &param);
+	if (result != KNOT_EOK)
+		return result;
+
+	// Some nodes may have been added. Add missing nodes to changeset.
+	param.nodes = nodes1;
+	result = knot_zone_tree_apply(nodes2, knot_zone_diff_add_new_nodes,
+	                              &param);
+
+	return result;
+}
+
+
+static int knot_zone_diff_load_content(const knot_zone_contents_t *zone1,
+                                       const knot_zone_contents_t *zone2,
+                                       knot_changeset_t *changeset)
+{
+	int result;
+
+	result = knot_zone_diff_load_trees(zone1->nodes, zone2->nodes, changeset);
+	if (result != KNOT_EOK)
+		return result;
+
+	result = knot_zone_diff_load_trees(zone1->nsec3_nodes, zone2->nsec3_nodes,
+					   changeset);
+
+	return result;
+}
+
+
+static int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
                             const knot_zone_contents_t *zone2,
                             knot_changeset_t *changeset)
 {
 	if (zone1 == NULL || zone2 == NULL) {
-		dbg_zonediff("zone_diff: NULL argument(s).\n");
 		return KNOT_EINVAL;
 	}
 
-	/* Settle SOAs first. */
-	int ret = knot_zone_diff_load_soas(zone1, zone2, changeset);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: loas_SOAs failed with error: %s\n",
-		             knot_strerror(ret));
-		return ret;
+	int result = knot_zone_diff_load_soas(zone1, zone2, changeset);
+	if (result != KNOT_EOK) {
+		return result;
 	}
 
-	dbg_zonediff("zone_diff: SOAs loaded.\n");
-
-	/* Traverse one tree, compare every node, each RRSet with its rdata. */
-	struct zone_diff_param param;
-	param.contents = zone2;
-	param.nsec3 = 0;
-	param.changeset = changeset;
-	param.ret = KNOT_EOK;
-	ret = knot_zone_contents_tree_apply_inorder(
-	                        (knot_zone_contents_t *)zone1,
-	                        knot_zone_diff_node,
-	                        &param);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: Tree traversal failed "
-		             "with error: %s. Error from inner function: %s\n",
-		             knot_strerror(ret),
-		             knot_strerror(param.ret));
-		return ret;
-	}
-
-	/* Do the same for NSEC3 nodes. */
-	param.nsec3 = 1;
-	ret = knot_zone_contents_nsec3_apply_inorder((knot_zone_contents_t *)zone1, knot_zone_diff_node,
-	                                             &param);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: Tree traversal failed "
-		             "with error: %s\n",
-		             knot_strerror(ret));
-		return ret;
-	}
-
-	/*
-	 * Some nodes may have been added. The code above will not notice,
-	 * we have to go through the second tree and add missing nodes to
-	 * changeset.
-	 */
-	param.nsec3 = 0;
-	param.contents = zone1;
-	ret = knot_zone_contents_tree_apply_inorder((knot_zone_contents_t *)zone2,
-		knot_zone_diff_add_new_nodes,
-		&param);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: Tree traversal failed "
-		             "with error: %s. Error from inner function: %s\n",
-		             knot_strerror(ret),
-		             knot_strerror(param.ret));
-		return ret;
-	}
-
-	/* NSEC3 nodes. */
-	param.nsec3 = 1;
-	param.contents = zone1;
-	ret = knot_zone_contents_nsec3_apply_inorder((knot_zone_contents_t *)zone2,
-		knot_zone_diff_add_new_nodes,
-		&param);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: Tree traversal failed "
-		             "with error: %s\n",
-		             knot_strerror(ret));
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return knot_zone_diff_load_content(zone1, zone2, changeset);
 }
 
 #ifdef KNOT_ZONEDIFF_DEBUG
@@ -999,31 +953,15 @@ static void knot_zone_diff_dump_changeset(knot_changeset_t *ch)
 #endif
 #endif
 
-int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
-                                     const knot_zone_contents_t *z2,
-                                     knot_changesets_t **changesets)
+int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
+                                   const knot_zone_contents_t *z2,
+                                   knot_changeset_t *changeset)
 {
 	if (z1 == NULL || z2 == NULL) {
 		dbg_zonediff("zone_diff: create_changesets: NULL arguments.\n");
 		return KNOT_EINVAL;
 	}
-	/* Create changesets. */
-	/* Setting type to IXFR - that's the default, DDNS triggers special
-	 * processing when applied. See #2110 and #2111.
-	 */
-	int ret = knot_changesets_init(changesets, KNOT_CHANGESET_TYPE_IXFR);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: create_changesets: "
-		             "Could not allocate changesets."
-		             "Reason: %s.\n", knot_strerror(ret));
-		return ret;
-	}
-
-	knot_changeset_t *change = knot_changesets_create_changeset(*changesets);
-	if (change == NULL) {
-		return KNOT_ERROR;
-	}
-	ret = knot_zone_contents_diff(z1, z2, change);
+	int ret = knot_zone_contents_diff(z1, z2, changeset);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not diff zones. "
@@ -1034,8 +972,17 @@ int knot_zone_diff_create_changesets(const knot_zone_contents_t *z1,
 	dbg_zonediff("Changesets created successfully!\n");
 	dbg_zonediff_detail("Changeset dump:\n");
 dbg_zonediff_exec_detail(
-	knot_zone_diff_dump_changeset(HEAD((*changesets)->sets));
+	knot_zone_diff_dump_changeset(changeset);
 );
 
 	return KNOT_EOK;
+}
+
+int knot_zone_tree_add_diff(knot_zone_tree_t *t1, knot_zone_tree_t *t2,
+                            knot_changeset_t *changeset)
+{
+	if (!t1 || !t2 || !changeset)
+		return KNOT_EINVAL;
+
+	return knot_zone_diff_load_trees(t1, t2, changeset);
 }

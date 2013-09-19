@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,11 +24,13 @@
  * @{
  */
 
-#ifndef _KNOT_SIGN_DNSSEC_H_
-#define _KNOT_SIGN_DNSSEC_H_
+#ifndef _KNOT_DNSSEC_SIGN_H_
+#define _KNOT_DNSSEC_SIGN_H_
 
-#include "sign/key.h"
 #include "common/descriptor.h"
+#include "libknot/binary.h"
+#include "libknot/dnssec/algorithm.h"
+#include "libknot/dnssec/key.h"
 
 /*!
  * \brief Algorithm private key data and algorithm implementation (internal).
@@ -50,6 +52,7 @@ typedef struct {
 	uint16_t keytag;                   //!< Key tag (for fast lookup).
 	knot_dnssec_algorithm_t algorithm; //!< Algorithm identification.
 	knot_dnssec_key_data_t *data;      //!< Private key data.
+	knot_binary_t dnskey_rdata;        //!< DNSKEY RDATA.
 } knot_dnssec_key_t;
 
 /*- DNSSEC private key manipulation ------------------------------------------*/
@@ -101,10 +104,21 @@ void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context);
  *
  * \return DNSSEC signature size. Zero in case of error.
  */
-size_t knot_dnssec_sign_size(knot_dnssec_key_t *key);
+size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key);
+
+/**
+ * \brief Clean DNSSEC signing context to start a new signature.
+ *
+ * Need not be called after knot_dnssec_sign_init().
+ *
+ * \param context	DNSSEC signing context.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context);
 
 /*!
- * \brief Add data into DNSSEC signature.
+ * \brief Add data to be covered by DNSSEC signature.
  *
  * \param context    DNSSEC signing context.
  * \param data       Pointer to data to be added.
@@ -116,7 +130,7 @@ int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
                          const uint8_t *data, size_t data_size);
 
 /**
- * \brief Finish DNSSEC signing and write out the signature.
+ * \brief Write down the DNSSEC signature for supplied data.
  *
  * \param context    DNSSEC signing context.
  * \param signature  Pointer to signature to be written.
@@ -126,6 +140,20 @@ int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
 int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context,
                            uint8_t *signature);
 
-#endif // _KNOT_SIGN_DNSSEC_H_
+/**
+ * \brief Verify the DNSSEC signature for supplied data.
+ *
+ * \param context         DNSSEC signing context.
+ * \param signature       Signature.
+ * \param signature_size  Size of the signature.
+ *
+ * \return Error code.
+ * \retval KNOT_EOK                        The signature is valid.
+ * \retval KNOT_DNSSEC_EINVALID_SIGNATURE  The signature is not valid.
+ */
+int knot_dnssec_sign_verify(knot_dnssec_sign_context_t *context,
+                            const uint8_t *signature, size_t signature_size);
+
+#endif // _KNOT_DNSSEC_SIGN_H_
 
 /*! @} */

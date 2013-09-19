@@ -41,7 +41,6 @@ typedef struct {
 	knot_node_t *first_node;
 	knot_zone_contents_t *zone;
 	knot_node_t *previous_node;
-	hattrie_t *lookup_tree;
 	int err;
 } knot_zone_adjust_arg_t;
 
@@ -131,163 +130,20 @@ static void knot_zone_contents_destroy_node_rrsets_from_tree(
 /*----------------------------------------------------------------------------*/
 
 /*!
- * \brief Adjusts all RDATA in the given RRSet by replacing domain names by ones
- *        present in the zone.
+ * \brief Adjust normal (non NSEC3) node.
  *
- * This function selects the RDATA items containing a domain name (according to
- * RR type descriptor of the RRSet's type and adjusts the item using
- * knot_zone_adjust_rdata_item().
+ * Set:
+ * - reusable DNAMEs in RDATA
+ * - pointer to node stored in owner dname
+ * - pointer to wildcard childs in parent nodes if applicable
+ * - flags (delegation point, non-authoritative)
+ * - pointer to previous node
  *
- * \param rrset RRSet to adjust RDATA in.
- * \param zone Zone to which the RRSet belongs.
+ * \param tnode  Zone node to adjust.
+ * \param data   Adjusting parameters (knot_zone_adjust_arg_t *).
  */
-static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
-                                                     hattrie_t *lookup_tree,
-                                                     knot_zone_contents_t *zone,
-                                                     knot_node_t *node)
-{
-	/* Disabled dname duplication checks since dnames can't be refcounted.
-	 * This will be replaced with refcounting RDATA, so I'm keeping the API
-	 * intact to ease the transition.
-	 *
-	 * LS: This function is enough, the subsequent ones dealt only with
-	 *     dnames in RDATA. No need for that now.
-	 */
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Adjusts all RRSets in the given node by replacing domain names in
- *        RDATA by ones present in the zone.
- *
- * This function just calls knot_zone_adjust_rdata_in_rrset() for all RRSets
- * in the node (including all RRSIG RRSets).
- *
- * \param node Zone node to adjust the RRSets in.
- * \param zone Zone to which the node belongs.
- */
-static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
-                                             hattrie_t *lookup_tree,
-                                             knot_zone_contents_t *zone)
-{
-	/* Disabled dname duplication checks since dnames can't be refcounted.
-	 * This will be replaced with refcounting RDATA, so I'm keeping the API
-	 * intact to ease the transition.
-	 */
-
-	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(node);
-	short count = knot_node_rrset_count(node);
-
-	assert(count == 0 || rrsets != NULL);
-
-	for (int r = 0; r < count; ++r) {
-		assert(rrsets[r] != NULL);
-
-		dbg_zone("Adjusting next RRSet.\n");
-		knot_rrset_dump(rrsets[r]);
-		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r],
-							 lookup_tree, zone,
-							 node);
-		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
-		if (rrsigs != NULL) {
-			dbg_zone("Adjusting next RRSIGs.\n");
-			knot_rrset_dump(rrsigs);
-			knot_zone_contents_adjust_rdata_in_rrset(rrsigs,
-							 lookup_tree, zone,
-								 node);
-		}
-
-		if (rrsets[r]->type == KNOT_RRTYPE_DS) {
-			int ret = knot_rrset_ds_check(rrsets[r]);
-			if (ret != KNOT_EOK) {
-				dbg_zone("DS RDATA check failed: %s\n", knot_strerror(ret));
-				return KNOT_EMALF;
-			}
-			/* Check that this node contains an NS RR as well. */
-			/*! \todo Enable, causes some differences with BIND. */
-//			if (knot_node_rrset(node, KNOT_RRTYPE_NS) == NULL) {
-//				dbg_zone("DS RR without NS record.\n");
-//				return KNOT_EMALF;
-//			}
-		}
-	}
-
-	return KNOT_EOK;
-}
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Adjusts zone node for faster query processing.
- *
- * - Adjusts RRSets in the node (see knot_zone_adjust_rrsets()).
- * - Marks the node as delegation point or non-authoritative (below a zone cut)
- *   if applicable.
- * - Stores reference to corresponding NSEC3 node if applicable.
- *
- * \param node Zone node to adjust.
- * \param zone Zone the node belongs to.
- *
- * \todo Consider whether this function should replace RRSet owners with
- *       node owner + store this owner to the dname table. This is now done
- *       in the inserting function, though that may not be always used (e.g.
- *       old changeset processing).
- */
-static int knot_zone_contents_adjust_node(knot_node_t *node,
-                                          hattrie_t *lookup_tree,
-                                          knot_zone_contents_t *zone)
-{
-	// adjust domain names in RDATA
-	int ret = knot_zone_contents_adjust_rrsets(node, lookup_tree,
-						   zone);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// check if this node is not a wildcard child of its parent
-	if (knot_dname_is_wildcard(knot_node_owner(node))) {
-		assert(knot_node_parent(node) != NULL);
-		knot_node_set_wildcard_child(knot_node_get_parent(node), node);
-	}
-
-	// NSEC3 node (only if NSEC3 tree is not empty)
-	/*! \todo We need only exact matches, what if node has no nsec3 node? */
-	/* This is faster, as it doesn't need ordered access. */
-	knot_node_t *nsec3 = NULL;
-	knot_dname_t *nsec3_name = NULL;
-	ret = knot_zone_contents_nsec3_name(zone, knot_node_owner(node),
-					    &nsec3_name);
-	if (ret == KNOT_EOK) {
-		assert(nsec3_name);
-		knot_zone_tree_get(zone->nsec3_nodes, nsec3_name, &nsec3);
-		knot_node_set_nsec3_node(node, nsec3);
-	} else if (ret == KNOT_ENSEC3PAR) {
-		knot_node_set_nsec3_node(node, NULL);
-	} else {
-		/* Something could be in DNAME. */
-		knot_dname_free(&nsec3_name);
-		return ret;
-	}
-	knot_dname_free(&nsec3_name);
-
-	dbg_zone_detail("Set flags to the node: \n");
-	dbg_zone_detail("Delegation point: %s\n",
-			knot_node_is_deleg_point(node) ? "yes" : "no");
-	dbg_zone_detail("Non-authoritative: %s\n",
-			knot_node_is_non_auth(node) ? "yes" : "no");
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Adjusts zone node for faster query processing.
- *
- * This function is just a wrapper over knot_zone_adjust_node() to be used
- * in tree-traversing functions.
- *
- * \param node Zone node to adjust.
- * \param data Zone the node belongs to.
- */
-static void knot_zone_contents_adjust_node_in_tree(
-		knot_node_t **tnode, void *data)
+static void knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
+                                                  void *data)
 {
 	assert(data != NULL);
 	assert(tnode != NULL);
@@ -296,59 +152,28 @@ static void knot_zone_contents_adjust_node_in_tree(
 	knot_node_t *node = *tnode;
 
 	if (args->err != KNOT_EOK) {
-		dbg_xfrin_detail("Error during adjusting: %s, skipping node.\n",
-				 knot_strerror(args->err));
 		return;
 	}
 
-dbg_zone_exec_verb(
-	char *name = knot_dname_to_str(node->owner);
-	dbg_zone_verb("----- Adjusting node %s -----\n", name);
-	free(name);
-);
+	// remember first node
 
-	knot_zone_contents_t *zone = args->zone;
-
-	/*
-	 *    Do other adjusting (flags, closest enclosers, wildcard children,
-	 *    etc.).
-	 */
-	args->err = knot_zone_contents_adjust_node(node, args->lookup_tree, zone);
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void knot_zone_contents_adjust_node_in_tree_ptr(
-		knot_node_t **tnode, void *data)
-{
-	assert(data != NULL);
-	assert(tnode != NULL);
-
-	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
-	knot_node_t *node = *tnode;
-
-	dbg_zone_exec_detail(
-	if (knot_node_parent(node)) {
-		char *name = knot_dname_to_str(knot_node_owner(
-				knot_node_parent(node)));
-		dbg_zone_detail("Parent: %s\n", name);
-		dbg_zone_detail("Parent is delegation point: %s\n",
-		       knot_node_is_deleg_point(knot_node_parent(node))
-		       ? "yes" : "no");
-		dbg_zone_detail("Parent is non-authoritative: %s\n",
-		       knot_node_is_non_auth(knot_node_parent(node))
-		       ? "yes" : "no");
-		free(name);
-	} else {
-		dbg_zone_detail("No parent!\n");
+	if (args->first_node == NULL) {
+		args->first_node = node;
 	}
-);
-	/*
-	 * 1) delegation point / non-authoritative node
-	 */
+
+	// check if this node is not a wildcard child of its parent
+
+	if (knot_dname_is_wildcard(knot_node_owner(node))) {
+		assert(knot_node_parent(node) != NULL);
+		knot_node_set_wildcard_child(knot_node_get_parent(node), node);
+	}
+
+	// set flags (delegation point, non-authoritative)
+
 	if (knot_node_parent(node)
 	    && (knot_node_is_deleg_point(knot_node_parent(node))
-		|| knot_node_is_non_auth(knot_node_parent(node)))) {
+		|| knot_node_is_non_auth(knot_node_parent(node)))
+	) {
 		knot_node_set_non_auth(node);
 	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
 		   && node != args->zone->apex) {
@@ -357,61 +182,31 @@ static void knot_zone_contents_adjust_node_in_tree_ptr(
 		knot_node_set_auth(node);
 	}
 
-	/*
-	 * 2) Set previous node pointer.
-	 */
+	// set pointer to previous node
+
 	knot_node_set_previous(node, args->previous_node);
 
-	if (args->first_node == NULL) {
-		args->first_node = node;
-	}
+	// update remembered previous pointer only if authoritative
 
-	/*
-	 * 3) Store previous node depending on the type of this node.
-	 */
-	if (!knot_node_is_non_auth(node)
-	    && knot_node_rrset_count(node) > 0) {
+	if (!knot_node_is_non_auth(node) && knot_node_rrset_count(node) > 0) {
 		args->previous_node = node;
 	}
 }
 
 /*----------------------------------------------------------------------------*/
+
 /*!
- * \brief Adjusts NSEC3 node for faster query processing.
+ * \brief Adjust NSEC3 node.
  *
- * This function is just a wrapper over knot_zone_adjust_nsec3_node() to be
- * used in tree-traversing functions.
+ * Set:
+ * - pointer to previous node
+ * - pointer to node stored in owner dname
  *
- * \param node Zone node to adjust.
- * \param data Zone the node belongs to.
+ * \param tnode  Zone node to adjust.
+ * \param data   Adjusting parameters (knot_zone_adjust_arg_t *).
  */
-static void knot_zone_contents_adjust_nsec3_node_in_tree(
-		knot_node_t **tnode, void *data)
-{
-	assert(data != NULL);
-	assert(tnode != NULL);
-
-	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
-
-	if (args->err != KNOT_EOK) {
-		dbg_xfrin_detail("Error during adjusting: %s, skipping node.\n",
-				 knot_strerror(args->err));
-		return;
-	}
-
-	/*
-	 * We assume, that NSEC3 nodes have none DNAMEs in their RDATA and
-	 * that node owners are all unique. \todo Harmful?
-	 */
-
-	knot_zone_contents_t *zone = args->zone;
-	assert(zone != NULL);
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void knot_zone_contents_adjust_nsec3_node_in_tree_ptr(
-		knot_node_t **tnode, void *data)
+static void knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
+                                                 void *data)
 {
 	assert(data != NULL);
 	assert(tnode != NULL);
@@ -419,22 +214,22 @@ static void knot_zone_contents_adjust_nsec3_node_in_tree_ptr(
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = *tnode;
 
-	// set previous node
-	knot_node_set_previous(node, args->previous_node);
+	// remember first node
 
-	// here is nothing to consider, all nodes are the same
-	args->previous_node = node;
-
-	if (args->first_node == NULL) {
+	if (args->first_node == NULL)
 		args->first_node = node;
-	}
+
+	// set previous node
+
+	knot_node_set_previous(node, args->previous_node);
+	args->previous_node = node;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
-                                           const knot_dname_t *name,
-                                           knot_dname_t **nsec3_name)
+static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
+                                         const knot_dname_t *name,
+                                         knot_dname_t **nsec3_name)
 {
 	assert(nsec3_name != NULL);
 
@@ -444,25 +239,15 @@ int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 		knot_zone_contents_nsec3params(zone);
 
 	if (nsec3_params == NULL) {
-dbg_zone_exec(
-		char *n = knot_dname_to_str(zone->apex->owner);
-		dbg_zone("No NSEC3PARAM for zone %s.\n", n);
-		free(n);
-);
 		return KNOT_ENSEC3PAR;
 	}
 
 	uint8_t *hashed_name = NULL;
 	size_t hash_size = 0;
 
-dbg_zone_exec_verb(
-	char *n = knot_dname_to_str(name);
-	dbg_zone_verb("Hashing name %s.\n", n);
-	free(n);
-);
-
-	int res = knot_nsec3_sha1(nsec3_params, name, knot_dname_size(name),
+	int res = knot_nsec3_hash(nsec3_params, name, knot_dname_size(name),
 	                          &hashed_name, &hash_size);
+
 	if (res != 0) {
 		char *n = knot_dname_to_str(name);
 		dbg_zone("Error while hashing name %s.\n", n);
@@ -480,7 +265,6 @@ dbg_zone_exec_verb(
 
 	if (size == 0) {
 		char *n = knot_dname_to_str(name);
-		dbg_zone("Error while encoding hashed name %s to base32.\n", n);
 		free(n);
 		free(name_b32);
 		return KNOT_ECRYPTO;
@@ -489,32 +273,26 @@ dbg_zone_exec_verb(
 	assert(name_b32 != NULL);
 	free(hashed_name);
 
-dbg_zone_exec_verb(
-	/* name_b32 is not 0-terminated. */
-	char b32_string[hash_size + 1];
-	memset(b32_string, 0, hash_size + 1);
-	memcpy(b32_string, name_b32, hash_size);
-	dbg_zone_verb("Base32-encoded hash: %s\n", b32_string);
-);
-
 	/* Will be returned to caller, make sure it is released after use. */
 	*nsec3_name = knot_dname_from_str((char *)name_b32, size);
 
 	free(name_b32);
 
 	if (*nsec3_name == NULL) {
-		dbg_zone("Error while creating domain name for hashed name.\n");
 		return KNOT_ERROR;
 	}
+
 	knot_dname_to_lower(*nsec3_name);
 
 	assert(zone->apex->owner != NULL);
-	*nsec3_name = knot_dname_cat(*nsec3_name, zone->apex->owner);
-	if (*nsec3_name == NULL) {
-		dbg_zone("Error while creating NSEC3 domain name for "
-			 "hashed name.\n");
+	knot_dname_t *ret = knot_dname_cat(*nsec3_name, zone->apex->owner);
+
+	if (ret == NULL) {
+		free(*nsec3_name);
 		return KNOT_ERROR;
 	}
+
+	*nsec3_name = ret;
 
 	return KNOT_EOK;
 }
@@ -1503,122 +1281,85 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
+typedef void (*adjust_callback_t)(knot_node_t **node, void *data);
+
+static int knot_zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
+                                           knot_zone_adjust_arg_t *adjust_arg,
+                                           adjust_callback_t callback)
+{
+	assert(nodes);
+	assert(adjust_arg);
+	assert(callback);
+
+	adjust_arg->err = KNOT_EOK;
+	adjust_arg->first_node = NULL;
+	adjust_arg->previous_node = NULL;
+
+	hattrie_build_index(nodes);
+	int result = knot_zone_tree_apply_inorder(nodes, callback, adjust_arg);
+	assert(result == KNOT_EOK);
+
+	knot_node_set_previous(adjust_arg->first_node,
+	                       adjust_arg->previous_node);
+
+	return adjust_arg->err;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_zone_contents_adjust(knot_zone_contents_t *zone,
                               knot_node_t **first_nsec3_node,
                               knot_node_t **last_nsec3_node, int dupl_check)
 {
-	if (zone == NULL) {
+	if (zone == NULL)
 		return KNOT_EINVAL;
+
+	int result = knot_zone_contents_load_nsec3param(zone);
+	if (result != KNOT_EOK) {
+		log_zone_error("Failed to load NSEC3 params: %s\n",
+		               knot_strerror(result));
+		return result;
 	}
 
-	/* Heal zone indexes. */
-	hattrie_build_index(zone->nodes);
-	hattrie_build_index(zone->nsec3_nodes);
+	// adjusting parameters
 
-	// load NSEC3PARAM (needed on adjusting function)
-	knot_zone_contents_load_nsec3param(zone);
-
-	hattrie_t *lookup_tree = NULL;
-	if (dupl_check) {
-		lookup_tree = hattrie_create();
-		if (lookup_tree == NULL) {
-			dbg_zone("Failed to create out of zone lookup structure.\n");
-			return KNOT_ERROR;
-		}
-	}
-
-	knot_zone_adjust_arg_t adjust_arg;
+	knot_zone_adjust_arg_t adjust_arg = { 0 };
 	adjust_arg.zone = zone;
-	adjust_arg.first_node = NULL;
-	adjust_arg.previous_node = NULL;
-	adjust_arg.lookup_tree = lookup_tree;
-	adjust_arg.err = KNOT_EOK;
 
-	/*
-	 * First of all we must set node.prev pointers, as these are used in
-	 * the search functions.
-	 */
-	dbg_zone("Setting 'prev' pointers to NSEC3 nodes.\n");
-	int ret = knot_zone_tree_apply_inorder(zone->nsec3_nodes,
-		 knot_zone_contents_adjust_nsec3_node_in_tree_ptr, &adjust_arg);
-	assert(ret == KNOT_EOK);
+	// adjust NSEC3 nodes
 
-	if (adjust_arg.err != KNOT_EOK) {
-		dbg_zone("Failed to set 'prev' pointers to NSEC3 nodes: %s\n",
-			 knot_strerror(adjust_arg.err));
-		hattrie_free(lookup_tree);
-		return adjust_arg.err;
+	result = knot_zone_contents_adjust_nodes(zone->nsec3_nodes, &adjust_arg,
+	                                 knot_zone_contents_adjust_nsec3_node);
+	if (result != KNOT_EOK) {
+		return result;
 	}
 
-	// set the last node as previous of the first node
-	if (adjust_arg.first_node) {
-		knot_node_set_previous(adjust_arg.first_node,
-				       adjust_arg.previous_node);
-	}
+	// optional output for NSEC3 nodes
+
 	if (first_nsec3_node) {
 		*first_nsec3_node = adjust_arg.first_node;
 	}
+
 	if (last_nsec3_node) {
 		*last_nsec3_node = adjust_arg.previous_node;
 	}
-	dbg_zone("Done.\n");
 
-	adjust_arg.first_node = NULL;
-	adjust_arg.previous_node = NULL;
-
-	dbg_zone("Setting 'prev' pointers to normal nodes.\n");
-	ret = knot_zone_tree_apply_inorder(zone->nodes,
-		 knot_zone_contents_adjust_node_in_tree_ptr, &adjust_arg);
-	assert(ret == KNOT_EOK);
-
-	if (adjust_arg.err != KNOT_EOK) {
-		dbg_zone("Failed to set 'prev' pointers to normal nodes: %s\n",
-			 knot_strerror(adjust_arg.err));
-		hattrie_free(lookup_tree);
-		return adjust_arg.err;
-	}
-
-	// set the last node as previous of the first node
-	assert(zone->apex == adjust_arg.first_node);
-	knot_node_set_previous(zone->apex, adjust_arg.previous_node);
-	dbg_zone("Done.\n");
-
-	/*
-	 * Adjust the NSEC3 nodes first.
-	 * There are independent on the normal nodes, but the normal nodes are
-	 * dependent on them.
+	// adjust normal nodes
+	/*! \note This causes problem, as searching for name from RDATA
+	 *        requires the 'previous' pointers in node to be set properly in
+	 *        whole zone. Thus setting the pointers should be done before
+	 *        adjusting RDATA. However, this will no longer be a problem
+	 *        with dnames directly in RDATA, thus leaving it as is for now.
 	 */
-
-	dbg_zone("Adjusting NSEC3 nodes.\n");
-	ret = knot_zone_tree_apply_inorder(zone->nsec3_nodes,
-		     knot_zone_contents_adjust_nsec3_node_in_tree, &adjust_arg);
-	assert(ret == KNOT_EOK);
-
-	if (adjust_arg.err != KNOT_EOK) {
-		dbg_zone("Failed to adjust NSEC3 nodes: %s\n",
-			 knot_strerror(adjust_arg.err));
-		hattrie_free(lookup_tree);
-		return adjust_arg.err;
+	result = knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
+	                                 knot_zone_contents_adjust_normal_node);
+	if (result != KNOT_EOK) {
+		return result;
 	}
 
-	dbg_zone("Adjusting normal nodes.\n");
-	ret = knot_zone_tree_apply_inorder(zone->nodes,
-				knot_zone_contents_adjust_node_in_tree,
-				&adjust_arg);
-	assert(ret == KNOT_EOK);
+	assert(zone->apex == adjust_arg.first_node);
 
-	if (adjust_arg.err != KNOT_EOK) {
-		dbg_zone("Failed to adjust normal nodes: %s\n",
-			 knot_strerror(adjust_arg.err));
-		hattrie_free(lookup_tree);
-		return adjust_arg.err;
-	}
-
-	dbg_zone("Done.\n");
-
-	hattrie_free(lookup_tree);
-
-	return ret;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
