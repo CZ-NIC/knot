@@ -97,7 +97,6 @@ static void rrsig_write_rdata(uint8_t *rdata,
 	w += sizeof(uint16_t);
 
 	assert(w == rdata + 18);
-
 	memcpy(w, key->name, knot_dname_size(key->name)); // signer
 }
 
@@ -206,8 +205,8 @@ static int sign_rrset_one(knot_rrset_t *rrsigs,
 		return result;
 	}
 
-	uint8_t *rdata_signature = rdata + sizeof(knot_dname_t *)
-	                           + RRSIG_RDATA_OFFSET;
+	uint8_t *rdata_signature = rdata + RRSIG_RDATA_OFFSET
+	                           + knot_dname_size(key->name);
 
 	return knot_dnssec_sign_write(sign_ctx, rdata_signature);
 }
@@ -263,7 +262,7 @@ static bool is_valid_signature(const knot_rrset_t *covered,
 		return false;
 	}
 
-	size_t header_size = RRSIG_RDATA_OFFSET + sizeof(knot_dname_t *);
+	size_t header_size = RRSIG_RDATA_OFFSET + knot_dname_size(signer);
 	uint8_t *signature = rdata + header_size;
 	size_t signature_size = rrset_rdata_item_size(rrsigs, pos) - header_size;
 
