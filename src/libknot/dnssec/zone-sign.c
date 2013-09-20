@@ -29,6 +29,7 @@
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
+#include "libknot/dnssec/zone-sign.h"
 #include "libknot/rrset.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/node.h"
@@ -542,7 +543,7 @@ static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
 	}
 
 	// If not in the table, insert
-	*ahtable_get(t, key, dname_size + 16) = (value_t *)0x1;
+	*ahtable_get(t, key, dname_size + 16) = (value_t *)rrset;
 	return false;
 }
 
@@ -677,55 +678,6 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
 	return args.ret;
 }
 
-typedef struct {
-	const knot_zone_contents_t *zone;
-	const knot_zone_keys_t *zone_keys;
-	const knot_dnssec_policy_t *policy;
-	knot_changeset_t *out_ch;
-	ahtable_t *signed_table;
-} changeset_signing_data_t;
-
-static int add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data)
-{
-	if (rrset == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int res = KNOT_EOK;
-	changeset_signing_data_t *nsec_data = (changeset_signing_data_t *)data;
-
-	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC
-	    || knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
-		res = add_missing_rrsigs(rrset, NULL, nsec_data->zone_keys,
-		                         nsec_data->policy,
-		                         nsec_data->out_ch);
-	}
-
-	if (res != KNOT_EOK) {
-		dbg_dnssec_detail("add_rrsigs_for_nsec() for NSEC failed\n");
-	}
-
-	return res;
-}
-
-static int sign_nsec(knot_zone_keys_t *zone_keys,
-                     const knot_dnssec_policy_t *policy,
-                     knot_changeset_t *ch)
-{
-	assert(zone_keys != NULL);
-	assert(policy != NULL);
-	assert(ch != NULL);
-
-	changeset_signing_data_t data = {.zone = NULL,
-	                                 .zone_keys = zone_keys,
-	                                 .policy = policy,
-	                                 .out_ch = ch };
-
-	// Sign each NSEC or NSEC3 in the ADD section of the changeset
-	return knot_changeset_apply(ch, KNOT_CHANGESET_ADD,
-	                            add_rrsigs_for_nsec, &data);
-}
-
 /*- private API - DNSKEY handling --------------------------------------------*/
 
 /*!
@@ -776,7 +728,7 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *zone_keys,
 
 static int remove_unknown_dnskeys(const knot_rrset_t *soa,
                                   const knot_rrset_t *dnskeys,
-                                  knot_zone_keys_t *zone_keys,
+                                  const knot_zone_keys_t *zone_keys,
                                   knot_changeset_t *out_ch)
 {
 	assert(soa);
@@ -850,7 +802,7 @@ static knot_rrset_t *create_dnskey_rrset_from_soa(const knot_rrset_t *soa)
 
 static int add_missing_dnskeys(const knot_rrset_t *soa,
                                const knot_rrset_t *dnskeys,
-                               knot_zone_keys_t *zone_keys,
+                               const knot_zone_keys_t *zone_keys,
                                knot_changeset_t *out_ch)
 {
 	assert(soa);
@@ -864,7 +816,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	bool add_all = dnskeys == NULL || dnskeys->ttl != soa->ttl;
 
 	for (int i = 0; i < zone_keys->count; i++) {
-		knot_dnssec_key_t *key = &zone_keys->keys[i];
+		const knot_dnssec_key_t *key = &zone_keys->keys[i];
 		if (!add_all && dnskey_exists_in_zone(dnskeys, key)) {
 			continue;
 		}
@@ -899,7 +851,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 
 static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
                                  const knot_rrset_t *soa,
-                                 knot_zone_keys_t *zone_keys,
+                                 const knot_zone_keys_t *zone_keys,
                                  const knot_dnssec_policy_t *policy,
                                  knot_changeset_t *out_ch)
 {
@@ -918,8 +870,8 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	}
 
 	for (int i = 0; i < zone_keys->count; i++) {
-		knot_dnssec_key_t *key = &zone_keys->keys[i];
-		knot_binary_t *rdata = &key->dnskey_rdata;
+		const knot_dnssec_key_t *key = &zone_keys->keys[i];
+		const knot_binary_t *rdata = &key->dnskey_rdata;
 		result = knot_rrset_add_rdata(new_dnskeys, rdata->data,
 		                              rdata->size);
 		if (result != KNOT_EOK) {
@@ -949,7 +901,7 @@ fail:
 }
 
 static int update_dnskeys(const knot_zone_contents_t *zone,
-                          knot_zone_keys_t *zone_keys,
+                          const knot_zone_keys_t *zone_keys,
                           const knot_dnssec_policy_t *policy,
                           knot_changeset_t *out_ch)
 {
@@ -992,7 +944,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 /*- public API ---------------------------------------------------------------*/
 
 int knot_zone_sign(const knot_zone_contents_t *zone,
-                   knot_zone_keys_t *zone_keys,
+                   const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
                    knot_changeset_t *out_ch)
 {
@@ -1019,13 +971,6 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 	                        out_ch);
 	if (result != KNOT_EOK) {
 		dbg_dnssec_detail("zone_tree_sign() on nsec3 nodes failed\n");
-		return result;
-	}
-
-	// sign all NSEC and NSEC3 RRs in changeset
-	result = sign_nsec(zone_keys, policy, out_ch);
-	if (result != KNOT_EOK) {
-		dbg_dnssec_detail("sign_nsec() failed\n");
 		return result;
 	}
 
@@ -1138,9 +1083,10 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			/*!
 			 * If RRSet in zone DOES have RRSIGs although we
 			 * should not sign it, DDNS-caused change to node/rr
-			 * occured and we have to drop all RRSIGs.
+			 * occured and we have to drop all RRSIGs. TODO:
+			 * see ddns.c:1916 - needs a fix
 			 */
-			if (zone_rrset->rrsigs != NULL) {
+			if (zone_rrset && zone_rrset->rrsigs != NULL) {
 				return remove_rrset_rrsigs(zone_rrset,
 				                           args->out_ch);
 			}
@@ -1176,20 +1122,31 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		                           sign_changeset_wrap, &args);
 	}
 
+	ahtable_free(args.signed_table);
+
 	return ret;
 }
 
-int knot_zone_sign_fix_nsec_chain(const knot_zone_contents_t *zone,
-                                  const knot_changeset_t *in_ch,
-                                  knot_changeset_t *out_ch)
+int knot_zone_sign_add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data)
 {
+	if (rrset == NULL) {
+		return KNOT_EINVAL;
+	}
 
-}
+	int res = KNOT_EOK;
+	changeset_signing_data_t *nsec_data = data;
 
-int knot_zone_sign_fix_nsec3_chain(const knot_zone_contents_t *zone,
-                                   const knot_changeset_t *in_ch,
-                                   knot_changeset_t *out_ch)
-{
+	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC
+	    || knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
+		res = add_missing_rrsigs(rrset, NULL, nsec_data->zone_keys,
+		                         nsec_data->policy,
+		                         nsec_data->out_ch);
+	}
 
+	if (res != KNOT_EOK) {
+		dbg_dnssec_detail("add_rrsigs_for_nsec() for NSEC failed\n");
+	}
+
+	return res;
 }
 

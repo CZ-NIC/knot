@@ -29,10 +29,19 @@
 #ifndef _KNOT_DNSSEC_ZONE_SIGN_H_
 #define _KNOT_DNSSEC_ZONE_SIGN_H_
 
+#include "common/hattrie/ahtable.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/dnssec/zone-keys.h"
 #include "libknot/dnssec/policy.h"
+
+typedef struct {
+	const knot_zone_contents_t *zone;
+	const knot_zone_keys_t *zone_keys;
+	const knot_dnssec_policy_t *policy;
+	knot_changeset_t *out_ch;
+	ahtable_t *signed_table;
+} changeset_signing_data_t;
 
 int knot_zone_sign(const knot_zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
@@ -61,6 +70,8 @@ int knot_zone_sign_fix_nsec_chain(const knot_zone_contents_t *zone,
 int knot_zone_sign_fix_nsec3_chain(const knot_zone_contents_t *zone,
                                    const knot_changeset_t *in_ch,
                                    knot_changeset_t *out_ch);
+// TODO this should be elsewhere
+int knot_zone_sign_add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 
