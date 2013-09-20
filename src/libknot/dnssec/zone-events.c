@@ -81,6 +81,8 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	} else {
 		init_default_policy(policy, soa_up);
 	}
+
+	return KNOT_EOK;
 }
 
 static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
@@ -113,7 +115,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	}
 
 	// generate NSEC records
-	result = knot_zone_create_nsec_chain(zone->contents, out_ch);
+	result = knot_zone_create_nsec_chain(zone->contents, out_ch,
+	                                     &zone_keys, &policy);
 	if (result != KNOT_EOK) {
 		char *zname = knot_dname_to_str(zone->name);
 		log_zone_error("Could not create NSEC(3) chain (%s). "
@@ -185,42 +188,39 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone,
 	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_INC);
 }
 
-int knot_dnssec_sign_changeset(const knot_zone_t *zone,
+int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up)
 {
+	if (!conf()->dnssec_enable) {
+		return KNOT_EOK;
+	}
 	// Init needed structures
 	knot_zone_keys_t zone_keys = { '\0' };
 	knot_dnssec_policy_t policy = { '\0' };
-	int result = init_dnssec_structs(zone, &zone_keys, &policy, soa_up,
-	                                 false);
-	if (result != KNOT_EOK) {
+	int ret = init_dnssec_structs(zone->zone, &zone_keys, &policy, soa_up,
+	                              false);
+	if (ret != KNOT_EOK) {
 		log_zone_error("Failed to init DNSSEC signer (%s)\n",
-		               knot_strerror(result));
-		return result;
+		               knot_strerror(ret));
+		return ret;
 	}
 
-	// Sign added and removed RRSets in changeset
-	int ret = knot_zone_sign_changeset(zone->contents, in_ch, out_ch,
-	                                   &zone_keys, &policy);
+	// Fix NSEC(3) chain
+	ret = knot_zone_create_nsec_chain(zone, out_ch, &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to sign changeset (%s)\n",
+		log_zone_error("Failed to fix NSEC(3) chain (%s)\n",
 		               knot_strerror(ret));
 		free_zone_keys(&zone_keys);
 		return ret;
 	}
 
-	// Fix NSEC(3) chain
-	if (is_nsec3_enabled(zone->contents)) {
-		ret = knot_zone_sign_fix_nsec3_chain(zone->contents,
-		                                     in_ch, out_ch);
-	} else {
-		ret = knot_zone_sign_fix_nsec_chain(zone->contents,
-		                                    in_ch, out_ch);
-	}
+	// Sign added and removed RRSets in changeset
+	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, &zone_keys,
+	                               &policy);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to fix NSEC(3) chain (%s)\n",
+		log_zone_error("Failed to sign changeset (%s)\n",
 		               knot_strerror(ret));
 		free_zone_keys(&zone_keys);
 		return ret;

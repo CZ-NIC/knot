@@ -35,7 +35,7 @@
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up);
 int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch);
-int knot_dnssec_sign_changeset(const knot_zone_t *zone,
+int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up);
