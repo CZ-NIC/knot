@@ -26,6 +26,7 @@
 #include "libknot/dnssec/nsec-bitmap.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/dnssec/zone-nsec.h"
+#include "libknot/dnssec/zone-sign.h"
 #include "libknot/util/utils.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/zone/zone-diff.h"
@@ -125,8 +126,9 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
 	knot_rrset_t *old_rrsigs = NULL;
 
 	result = knot_rrset_deep_copy(oldrr, &old_nsec, 1);
-	if (result != KNOT_EOK)
+	if (result != KNOT_EOK) {
 		return result;
+	}
 
 	old_rrsigs = old_nsec->rrsigs;
 	old_nsec->rrsigs = NULL;
@@ -802,14 +804,17 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl
  * \brief Create NSEC or NSEC3 chain in the zone.
  */
 int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
-				knot_changeset_t *changeset)
+                                knot_changeset_t *changeset,
+                                const knot_zone_keys_t *zone_keys,
+                                const knot_dnssec_policy_t *policy)
 {
 	if (!zone || !changeset)
 		return KNOT_EINVAL;
 
 	uint32_t nsec_ttl = 0;
-	if (!get_zone_soa_min_ttl(zone, &nsec_ttl))
+	if (!get_zone_soa_min_ttl(zone, &nsec_ttl)) {
 		return KNOT_ERROR;
+	}
 
 	int result;
 
@@ -819,7 +824,19 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 		result = create_nsec_chain(zone, nsec_ttl, changeset);
 	}
 
-	return result;
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	// Sign newly created records right away
+	changeset_signing_data_t data = {.zone = NULL,
+	                                 .zone_keys = zone_keys,
+	                                 .policy = policy,
+	                                 .out_ch = changeset };
+
+	// Sign each NSEC or NSEC3 in the ADD section of the changeset
+	return knot_changeset_apply(changeset, KNOT_CHANGESET_ADD,
+	                            knot_zone_sign_add_rrsigs_for_nsec, &data);
 }
 
 /*!
@@ -877,3 +894,62 @@ int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone)
 
 	return result;
 }
+
+int fix_nsec_chain_for(const knot_node_t *node,
+                       uint32_t ttl, knot_changeset_t *out_ch,
+                       const knot_zone_contents_t *zone)
+{
+	// Will not work without next node, might not be worth doing anyway
+	assert(node);
+	assert(out_ch);
+	assert(zone);
+	/*!
+	 * Previous NSEC can either be in changeset, or in
+	 * zone (we get to it via node->prev), but never in both.
+	 */
+	const knot_rrset_t *last_rr = knot_changeset_last_rr(out_ch,
+	                                                     KNOT_CHANGESET_ADD);
+	assert(!(knot_node_rrset(node->prev, KNOT_RRTYPE_NSEC) && last_rr &&
+	         last_rr->type == KNOT_RRTYPE_NSEC));
+	const knot_rrset_t *prev_nsec = node->prev ?
+	                                knot_node_rrset(node->prev,
+	                                                KNOT_RRTYPE_NSEC) :
+	                                last_rr;
+	assert(prev_nsec);
+	assert(prev_nsec->type == KNOT_RRTYPE_NSEC);
+
+	if (last_rr) { // TODO: does this ever happen?
+		// Force remove last NSEC from changeset (has bogus next field)
+		knot_changeset_remove_last_rr(out_ch, KNOT_CHANGESET_ADD);
+	} else {
+		// Remove last NSEC from zone (ditto)
+		int ret = changeset_remove_nsec(prev_nsec, out_ch);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	// Create new RR pointing to the 'to' node (node after deleted node)
+	const knot_node_t *prev_node =
+		node->prev ? node->prev :
+		knot_zone_contents_find_previous(zone, node->owner);
+	assert(prev_node); // This fails for apex, but that should never happen
+	knot_rrset_t *fixed_nsec = NULL;
+//		create_nsec_rrset(prev_node, to, ttl,
+//		                  knot_zone_contents_apex(zone) == prev_node);
+	if (fixed_nsec == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Add new NSEC RR to changeset
+	return knot_changeset_add_rrset(out_ch, fixed_nsec, KNOT_CHANGESET_ADD);
+}
+
+int fix_nsec3_chain_for(const knot_node_t *node,
+                        const knot_node_t *to, uint32_t ttl,
+                        knot_changeset_t *out_ch,
+                        const knot_zone_contents_t *zone)
+{
+	//TODO implement, might not be so easy without nice way to get next nodes
+}
+
