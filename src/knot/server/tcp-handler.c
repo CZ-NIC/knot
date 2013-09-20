@@ -243,12 +243,8 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxle
 		return res;
 
 	case KNOT_QUERY_UPDATE:
-//		knot_ns_error_response_from_query(ns, packet,
-//		                                  KNOT_RCODE_NOTIMPL,
-//		                                  qbuf, &resp_len);
 		res = zones_process_update(ns, packet, &addr, buf[QRBUF], &resp_len,
 		                           fd, NS_TRANSPORT_TCP);
-//		res = KNOT_EOK;
 		break;
 
 	case KNOT_QUERY_NOTIFY:
