@@ -1083,8 +1083,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			/*!
 			 * If RRSet in zone DOES have RRSIGs although we
 			 * should not sign it, DDNS-caused change to node/rr
-			 * occured and we have to drop all RRSIGs. TODO:
-			 * see ddns.c:1916 - needs a fix
+			 * occured and we have to drop all RRSIGs.
 			 */
 			if (zone_rrset && zone_rrset->rrsigs != NULL) {
 				return remove_rrset_rrsigs(zone_rrset,

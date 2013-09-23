@@ -1913,7 +1913,6 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	/*! \note
 	 * We decided to automatically remove RRSIGs together with the removed
 	 * RRSet as they are no longer valid or required anyway.
-	 * TODO: this has to be changed, or online signing will not create proper changesets!
 	 *
 	 * Also refer to RFC3007, section 4.3:
 	 *   'When the contents of an RRset are updated, the server MAY delete
