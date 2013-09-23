@@ -148,6 +148,8 @@ src/libknot/dnssec/nsec-bitmap.h
 src/libknot/dnssec/nsec3.c
 src/libknot/dnssec/nsec3.h
 src/libknot/dnssec/policy.h
+src/libknot/dnssec/rrset-sign.c
+src/libknot/dnssec/rrset-sign.h
 src/libknot/dnssec/sig0.c
 src/libknot/dnssec/sig0.h
 src/libknot/dnssec/sign.c
