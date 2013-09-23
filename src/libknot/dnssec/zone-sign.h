@@ -29,24 +29,56 @@
 #ifndef _KNOT_DNSSEC_ZONE_SIGN_H_
 #define _KNOT_DNSSEC_ZONE_SIGN_H_
 
+#include "libknot/dnssec/policy.h"
+#include "libknot/dnssec/zone-keys.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/zone-contents.h"
-#include "libknot/dnssec/zone-keys.h"
-#include "libknot/dnssec/policy.h"
 
+/*!
+ * \brief Update zone signatures and store performed changes in changeset.
+ *
+ * Updates RRSIGs, NSEC(3)s, and DNSKEYs.
+ *
+ * \param zone       Zone to be signed.
+ * \param zone_keys  Zone keys.
+ * \param policy     DNSSEC policy.
+ * \param changeset  Changeset to be updated.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_zone_sign(const knot_zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
-                   knot_changeset_t *out_ch);
+                   knot_changeset_t *changeset);
 
+/*!
+ * \brief Check if zone SOA signatures are expired.
+ *
+ * \param zone       Zone to be signed.
+ * \param zone_keys  Zone keys.
+ * \param policy     DNSSEC policy.
+ * \param changeset  Changeset to be updated.
+ *
+ * \return Zone SOA signatures need update.
+ */
+bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
+                                const knot_zone_keys_t *zone_keys,
+                                const knot_dnssec_policy_t *policy);
+
+/*!
+ * \brief Update and sign SOA and store performed changes in changeset.
+ *
+ * \param zone       Zone including SOA to be updated.
+ * \param zone_keys  Zone keys.
+ * \param policy     DNSSEC policy.
+ * \param changeset  Changeset to be updated.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset);
-
-bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
-                                const knot_zone_keys_t *zone_keys,
-                                const knot_dnssec_policy_t *policy);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 
