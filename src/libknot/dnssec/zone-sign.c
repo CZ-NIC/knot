@@ -551,6 +551,7 @@ static bool rr_should_be_signed(const knot_node_t *node,
                                 const knot_rrset_t *rrset,
                                 ahtable_t *table)
 {
+	// TODO make sure this returns 'true' for newly added DSs (not in node)
 	if (rrset == NULL) {
 		return false;
 	}
