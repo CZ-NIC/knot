@@ -830,14 +830,7 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 	}
 
 	// Sign newly created records right away
-	changeset_signing_data_t data = {.zone = NULL,
-	                                 .zone_keys = zone_keys,
-	                                 .policy = policy,
-	                                 .out_ch = changeset };
-
-	// Sign each NSEC or NSEC3 in the ADD section of the changeset
-	return knot_changeset_apply(changeset, KNOT_CHANGESET_ADD,
-	                            knot_zone_sign_add_rrsigs_for_nsec, &data);
+	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
 }
 
 /*!

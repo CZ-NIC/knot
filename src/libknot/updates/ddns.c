@@ -21,6 +21,7 @@
 
 #include "updates/ddns.h"
 #include "updates/changesets.h"
+#include "libknot/rdata.h"
 #include "util/debug.h"
 #include "packet/packet.h"
 #include "common.h"
@@ -93,7 +94,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	}
 
 	knot_rrset_t *new_rrset = NULL;
-	ret = knot_rrset_deep_copy(rrset, &new_rrset, 0);
+	ret = knot_rrset_deep_copy(rrset, &new_rrset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -255,7 +256,7 @@ static int knot_ddns_add_update(knot_changeset_t *changeset,
 	 *        copy.
 	 */
 	*rrset_copy = NULL;
-	ret = knot_rrset_deep_copy(rrset, rrset_copy, 1);
+	ret = knot_rrset_deep_copy(rrset, rrset_copy);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -1150,7 +1151,7 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 
 	/* Copy the RRSet from the packet. */
 	//knot_rrset_t *rr_copy;
-	int ret = knot_rrset_deep_copy(rr, rr_copy, 1);
+	int ret = knot_rrset_deep_copy(rr, rr_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy RR: %s\n", knot_strerror(ret));
 		return ret;

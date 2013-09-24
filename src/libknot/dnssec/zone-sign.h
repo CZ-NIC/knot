@@ -39,7 +39,7 @@ typedef struct {
 	const knot_zone_contents_t *zone;
 	const knot_zone_keys_t *zone_keys;
 	const knot_dnssec_policy_t *policy;
-	knot_changeset_t *out_ch;
+	knot_changeset_t *changeset;
 	ahtable_t *signed_table;
 } changeset_signing_data_t;
 
@@ -83,19 +83,41 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
  * \param policy     DNSSEC policy.
  * \param changeset  Changeset to be updated.
  *
- * \return Zone SOA signatures need update.
+ * \return True if zone SOA signatures need update, false othewise.
  */
 bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
 
+/*!
+ * \brief Sign changeset created by DDNS or zone-diff.
+ *
+ * \param zone Contents of the updated zone (AFTER zone is switched).
+ * \param in_ch Changeset created bvy DDNS or zone-diff
+ * \param out_ch New records will be added to this changeset.
+ * \param zone_keys Keys to use for signing.
+ * \param policy DNSSEC signing policy.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
                              const knot_zone_keys_t *zone_keys,
                              const knot_dnssec_policy_t *policy);
 
-int knot_zone_sign_add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data);
+/*!
+ * \brief Sign NSEC/NSEC3 nodes in changeset and update the changeset.
+ *
+ * \param zone_keys  Zone keys.
+ * \param policy     DNSSEC policy.
+ * \param changeset  Changeset to be updated.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
+                                      const knot_dnssec_policy_t *policy,
+                                      knot_changeset_t *changeset);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 
