@@ -377,8 +377,8 @@ static int resign_rrset(const knot_rrset_t *covered,
  * \brief Checks whether RRSet is not already in the hash table, stores its
  *        pointer to the table if not present.
  *
- * \param rrset RRSet to be checked for.
- * \param table Hash table with already signed RRs.
+ * \param rrset  RRSet to be checked for.
+ * \param table  Hash table with already signed RRs.
  *
  * \return True if RR should is signed already, false otherwise.
  */
@@ -387,7 +387,7 @@ static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
 	assert(rrset && t);
 	// Create a key = combination of owner and type mnemonic
 	int dname_size = knot_dname_size(rrset->owner);
-	uint8_t key[dname_size + 16];
+	char key[dname_size + 16];
 	memset(key, 0, sizeof(key));
 	memcpy(key, rrset->owner, dname_size);
 	int ret = knot_rrtype_to_string(rrset->type, key + dname_size,
@@ -400,16 +400,16 @@ static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
 	}
 
 	// If not in the table, insert
-	*ahtable_get(t, key, sizeof(key)) = (value_t *)rrset;
+	*ahtable_get(t, (char *)key, sizeof(key)) = (value_t *)rrset;
 	return false;
 }
 
 /*!
  * \brief Checks whether RRSet in a node has to be signed.
  *
- * \param node Node containing the RRSet.
- * \param rrset RRSet we are checking for.
- * \param table Optional hash table with already signed RRs.
+ * \param node   Node containing the RRSet.
+ * \param rrset  RRSet we are checking for.
+ * \param table  Optional hash table with already signed RRs.
  *
  * \return True if RR should be signed, false otherwise.
  */
@@ -945,8 +945,8 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
  * \brief Wrapper function for changeset signing - to be used with changeset
  *        apply functions.
  *
- * \param chg_rrset RRSet to be (potentially)
- * \param data Signing data
+ * \param chg_rrset  RRSet to be signed (potentially)
+ * \param data       Signing data
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -975,7 +975,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			}
 		}
 	}
-
+	return KNOT_EOK;
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -1115,6 +1115,9 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Sign changeset created by DDNS or zone-diff.
+ */
 int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
@@ -1148,6 +1151,9 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 	return ret;
 }
 
+/*!
+ * \brief Sign NSEC/NSEC3 nodes in changeset and update the changeset.
+ */
 int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
                                       const knot_dnssec_policy_t *policy,
                                       knot_changeset_t *changeset)

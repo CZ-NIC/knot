@@ -440,41 +440,6 @@ static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
 	return KNOT_EOK;
 }
 
-static int zones_store_changesets_to_disk(knot_zone_t *zone,
-                                          knot_changesets_t *chgsets)
-{
-	if (EMPTY_LIST(chgsets->sets)) {
-		return KNOT_EOK;
-	}
-	journal_t *journal = zones_store_changesets_begin(zone);
-	if (journal == NULL) {
-		dbg_zones("zones: create_changesets: "
-		          "Could not start journal operation.\n");
-		return KNOT_ERROR;
-	}
-
-	int ret = zones_store_changesets(zone, chgsets);
-	if (ret != KNOT_EOK) {
-		zones_store_changesets_rollback(journal);
-		dbg_zones("zones: create_changesets: "
-		          "Could not store in the journal. Reason: %s.\n",
-		          knot_strerror(ret));
-
-		return ret;
-	}
-
-	ret = zones_store_changesets_commit(journal);
-	if (ret != KNOT_EOK) {
-		dbg_zones("zones: create_changesets: "
-		          "Could not commit to journal. Reason: %s.\n",
-		          knot_strerror(ret));
-
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
 static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
                                                   knot_changesets_t *chgsets,
                                                   journal_t **transaction)
@@ -1977,7 +1942,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		return ret;
 	}
 
-	dbg_zones_detail("%s: UPDATE signed (%u changes)\n", msg,
+	dbg_zones_detail("%s: UPDATE signed (%zu changes)\n", msg,
 	                 knot_changeset_size(sec_ch));
 
 	// Merge changesets
