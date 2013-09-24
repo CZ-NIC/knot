@@ -311,12 +311,8 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
                             knot_dnssec_sign_context_t *ctx,
                             const knot_dnssec_policy_t *policy)
 {
-	if (!covered || !rrsigs || !policy) {
+	if (!covered || !rrsigs || !key || !ctx || !policy) {
 		return KNOT_EINVAL;
-	}
-
-	if (key == NULL || ctx == NULL) {
-		return KNOT_DNSSEC_EINVALID_SIGNATURE;
 	}
 
 	if (is_expired_signature(rrsigs, pos, policy)) {

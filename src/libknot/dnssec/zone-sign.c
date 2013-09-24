@@ -69,7 +69,9 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   knot_dnssec_sign_context_t *ctx,
 				   const knot_dnssec_policy_t *policy)
 {
+	assert(covered);
 	assert(key);
+	assert(ctx);
 	assert(policy);
 
 	if (!rrsigs) {
@@ -188,15 +190,16 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		knot_dnssec_sign_context_t *ctx = NULL;
 		get_matching_key_and_ctx(rrsigs, i, zone_keys, &key, &ctx);
 
-		result = knot_is_valid_signature(covered, rrsigs, i, key, ctx,
-		                                 policy);
+		if (key && ctx) {
+			result = knot_is_valid_signature(covered, rrsigs, i,
+			                                 key, ctx, policy);
+			if (result == KNOT_EOK) {
+				continue; // valid signature
+			}
 
-		if (result == KNOT_EOK) {
-			continue; // valid signature
-		}
-
-		if (result != KNOT_DNSSEC_EINVALID_SIGNATURE) {
-			return result;
+			if (result != KNOT_DNSSEC_EINVALID_SIGNATURE) {
+				return result;
+			}
 		}
 
 		if (to_remove == NULL) {
