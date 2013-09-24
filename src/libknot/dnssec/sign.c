@@ -100,8 +100,9 @@ static int any_sign_add(const knot_dnssec_sign_context_t *context,
 	assert(context);
 	assert(data);
 
-	if (!EVP_DigestUpdate(context->digest_context, data, data_size))
+	if (!EVP_DigestUpdate(context->digest_context, data, data_size)) {
 		return KNOT_DNSSEC_ESIGN;
+	}
 
 	return KNOT_EOK;
 }
@@ -126,8 +127,9 @@ static int any_sign_write(const knot_dnssec_sign_context_t *context,
 
 	size_t max_size = (size_t)EVP_PKEY_size(context->key->data->private_key);
 	uint8_t *output = calloc(1, max_size);
-	if (!output)
+	if (!output) {
 		return KNOT_ENOMEM;
+	}
 
 	unsigned int actual_size;
 	int result = EVP_SignFinal(context->digest_context, output,
@@ -189,11 +191,13 @@ static int any_sign_verify(const knot_dnssec_sign_context_t *context,
  */
 static int rsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 {
+	assert(params);
 	assert(key);
 
 	RSA *rsa = RSA_new();
-	if (rsa == NULL)
+	if (rsa == NULL) {
 		return KNOT_ENOMEM;
+	}
 
 	rsa->n    = binary_to_bn(&params->modulus);
 	rsa->e    = binary_to_bn(&params->public_exponent);
@@ -260,11 +264,13 @@ static int rsa_sign_write(const knot_dnssec_sign_context_t *context,
  */
 static int dsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 {
+	assert(params);
 	assert(key);
 
 	DSA *dsa = DSA_new();
-	if (dsa == NULL)
+	if (dsa == NULL) {
 		return KNOT_ENOMEM;
+	}
 
 	dsa->p        = binary_to_bn(&params->prime);
 	dsa->q        = binary_to_bn(&params->subprime);
@@ -406,6 +412,7 @@ static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
  */
 static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 {
+	assert(params);
 	assert(key);
 
 	int curve;
@@ -418,8 +425,9 @@ static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 	}
 
 	EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve);
-	if (ec_key == NULL)
+	if (ec_key == NULL) {
 		return KNOT_ENOMEM;
+	}
 
 	EC_KEY_set_private_key(ec_key, binary_to_bn(&params->private_key));
 
@@ -667,11 +675,14 @@ static int create_pkey(const knot_key_params_t *params,
                        const algorithm_functions_t *functions,
                        EVP_PKEY **result_key)
 {
+	assert(params);
+	assert(functions);
         assert(result_key);
 
 	EVP_PKEY *private_key = EVP_PKEY_new();
-	if (!private_key)
+	if (!private_key) {
 		return KNOT_ENOMEM;
+	}
 
 	int result = functions->create_pkey(params, private_key);
 	if (result != KNOT_EOK) {
@@ -694,15 +705,18 @@ static int create_pkey(const knot_key_params_t *params,
 static int create_digest_context(const knot_dnssec_key_t *key,
                                  EVP_MD_CTX **result_context)
 {
+	assert(key);
 	assert(result_context);
 
 	const EVP_MD *digest_type = get_digest_type(key->algorithm);
-	if (digest_type == NULL)
+	if (digest_type == NULL) {
 		return KNOT_DNSSEC_ENOTSUP;
+	}
 
 	EVP_MD_CTX *context = EVP_MD_CTX_create();
-	if (!context)
+	if (!context) {
 		return KNOT_ENOMEM;
+	}
 
 	if (!EVP_DigestInit_ex(context, digest_type, NULL)) {
 		EVP_MD_CTX_destroy(context);
@@ -766,8 +780,9 @@ static int init_algorithm_data(const knot_key_params_t *params,
 	assert(data);
 
 	data->functions = get_implementation(params->algorithm);
-	if (!data->functions)
+	if (!data->functions) {
 		return KNOT_DNSSEC_ENOTSUP;
+	}
 
 	int result = create_pkey(params, data->functions, &data->private_key);
 	if (result != KNOT_EOK) {
@@ -786,12 +801,14 @@ static int init_algorithm_data(const knot_key_params_t *params,
 int knot_dnssec_key_from_params(const knot_key_params_t *params,
                                 knot_dnssec_key_t *key)
 {
-	if (!key || !params)
+	if (!key || !params) {
 		return KNOT_EINVAL;
+	}
 
 	knot_dname_t *name = knot_dname_copy(params->name);
-	if (!name)
+	if (!name) {
 		return KNOT_ENOMEM;
+	}
 
 	knot_dnssec_key_data_t *data;
 	data = calloc(1, sizeof(knot_dnssec_key_data_t));
@@ -855,12 +872,14 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
  */
 knot_dnssec_sign_context_t *knot_dnssec_sign_init(const knot_dnssec_key_t *key)
 {
-	if (!key)
+	if (!key) {
 		return NULL;
+	}
 
 	knot_dnssec_sign_context_t *context = malloc(sizeof(*context));
-	if (!context)
+	if (!context) {
 		return NULL;
+	}
 
 	context->key = key;
 
@@ -877,8 +896,9 @@ knot_dnssec_sign_context_t *knot_dnssec_sign_init(const knot_dnssec_key_t *key)
  */
 void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context)
 {
-	if (!context)
+	if (!context) {
 		return;
+	}
 
 	context->key = NULL;
 	destroy_digest_context(&context->digest_context);
@@ -890,8 +910,9 @@ void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context)
  */
 size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key)
 {
-	if (!key)
+	if (!key) {
 		return 0;
+	}
 
 	return key->data->functions->sign_size(key);
 }
@@ -901,8 +922,9 @@ size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key)
  */
 int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context)
 {
-	if (!context)
+	if (!context) {
 		return KNOT_EINVAL;
+	}
 
 	destroy_digest_context(&context->digest_context);
 	return create_digest_context(context->key, &context->digest_context);
@@ -914,8 +936,9 @@ int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context)
 int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
                          const uint8_t *data, size_t data_size)
 {
-	if (!context || !context->key || !data)
+	if (!context || !context->key || !data) {
 		return KNOT_EINVAL;
+	}
 
 	return context->key->data->functions->sign_add(context, data, data_size);
 }
@@ -925,8 +948,9 @@ int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
  */
 int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context, uint8_t *signature)
 {
-	if (!context || !context->key || !signature)
+	if (!context || !context->key || !signature) {
 		return KNOT_EINVAL;
+	}
 
 	return context->key->data->functions->sign_write(context, signature);
 }
@@ -937,8 +961,9 @@ int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context, uint8_t *signatu
 int knot_dnssec_sign_verify(knot_dnssec_sign_context_t *context,
 			    const uint8_t *signature, size_t signature_size)
 {
-	if (!context || !context->key || !signature)
+	if (!context || !context->key || !signature) {
 		return KNOT_EINVAL;
+	}
 
 	return context->key->data->functions->sign_verify(context, signature,
 	                                                  signature_size);
