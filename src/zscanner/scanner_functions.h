@@ -112,16 +112,6 @@ void wire_dname_to_str(const uint8_t  *data,
  */
 uint8_t loc64to8(uint64_t number);
 
-/*!
- * \brief Finds rdata blocks according to rdata descriptors.
- *
- * \param s		Zone scanner.
- *
- * \retval ZSCANNER_OK	if success.
- * \retval error_code	if error.
- */
-int find_rdata_blocks(scanner_t *s);
-
 #endif // _ZSCANNER__SCANNER_FUNCTIONS_H_
 
 /*! @} */

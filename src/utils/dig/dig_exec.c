@@ -108,6 +108,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		                                   query->class_num,
 		                                   0);
 		if (soa == NULL) {
+			knot_dname_free(&qname);
 			knot_packet_free(&packet);
 			return NULL;
 		}
@@ -116,21 +117,23 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		ret = knot_rrset_rdata_from_wire_one(soa, wire, &pos,
 		                                    sizeof(wire), sizeof(wire));
 		if (ret != KNOT_EOK) {
-			free(soa);
+			knot_rrset_deep_free(&soa, 1, 1);
 			knot_packet_free(&packet);
 			return NULL;
 		}
 
 		// Set SOA serial.
-		knot_rrset_rdata_soa_serial_set(soa, query->xfr_serial);
+		knot_rdata_soa_serial_set(soa, query->xfr_serial);
 
 		// Add authority section.
 		ret = knot_query_add_rrset_authority(packet, soa);
 		if (ret != KNOT_EOK) {
-			free(soa);
+			knot_rrset_deep_free(&soa, 1, 1);
 			knot_packet_free(&packet);
 			return NULL;
 		}
+	} else {
+		knot_dname_free(&qname);
 	}
 
 	// Create EDNS section if required.
@@ -241,7 +244,7 @@ static int64_t first_serial_check(const knot_packet_t *reply)
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
 	} else {
-		return knot_rrset_rdata_soa_serial(first);
+		return knot_rdata_soa_serial(first);
 	}
 }
 
@@ -256,7 +259,7 @@ static bool last_serial_check(const uint32_t serial, const knot_packet_t *reply)
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
 	} else {
-		int64_t last_serial = knot_rrset_rdata_soa_serial(last);
+		int64_t last_serial = knot_rdata_soa_serial(last);
 
 		if (last_serial == serial) {
 			return true;

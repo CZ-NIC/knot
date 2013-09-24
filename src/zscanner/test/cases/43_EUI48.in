@@ -14,12 +14,9 @@ $TTL	1
 @	EUI48
 @	EUI48				; Empty rdata
 @	EUI48	\# 0			; Hex empty rdata
-@	EUI48	\#			; Missing hex length
 @	EUI48	00-00-00-00-00		; Too few hex pairs
 @	EUI48	00-00-00-00-00-00-00	; Too many hex pairs
 @	EUI48	00-00-00-00-00-0	; Missing char in a hex pair
 @	EUI48	00:00-00-00-00-00	; Bad separator
 @	EUI48	00-00-00-x0-00-00	; Bad character
 @	EUI48	00-00-00-00-00-00 x	; Unexpected item
-@	EUI48	\# 7 000000000000 00	; Too long rdata
-@	EUI48	\# 7 000000000000	; Bad rdata length

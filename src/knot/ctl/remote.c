@@ -30,6 +30,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
+#include "libknot/rdata.h"
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/dnssec/zone-nsec.h"
 
@@ -104,7 +105,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
 			/* Refresh zones. */
 			const knot_dname_t *dn =
-				knot_rrset_rdata_ns_name(rr, i);
+				knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find_zone(ns->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
@@ -248,7 +249,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 			                          KNOT_RRTYPE_SOA);
 			assert(soa_rrs != NULL);
-			serial = knot_rrset_rdata_soa_serial(soa_rrs);
+			serial = knot_rdata_soa_serial(soa_rrs);
 		}
 
 		/* Evalute zone type. */
@@ -273,6 +274,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 				break;
 			}
 			/*! Workaround until proper zone fetching API and locking
+
 			 *  is implemented (ref #31)
 			 */
 			if (dif.tv_sec < 0) {
@@ -851,12 +853,13 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	}
 
 	/* Build RDATA. */
-	uint8_t *rdata = knot_rrset_create_rdata(rr, sizeof(knot_dname_t *));
+	int dn_size = knot_dname_size(dn);
+	uint8_t *rdata = knot_rrset_create_rdata(rr, dn_size);
 	if (!rdata) {
 		knot_dname_free(&dn);
 		return KNOT_ERROR;
 	}
-	memcpy(rdata, &dn, sizeof(knot_dname_t *));
+	memcpy(rdata, dn, dn_size);
 
 	return KNOT_EOK;
 }

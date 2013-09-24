@@ -37,23 +37,30 @@ static uint8_t hex_to_num(int c)
  */
 int hex_decode(const char *input, uint8_t **output, size_t *output_size)
 {
+	if (!input || !output || !output_size) {
+		return KNOT_EINVAL;
+	}
+
 	// input validation (length and content)
 
 	size_t input_size = strlen(input);
-	if (input_size % 2 != 0)
+	if (input_size % 2 != 0) {
 		return KNOT_EINVAL;
+	}
 
 	for (size_t i = 0; i < input_size; i++) {
-		if (!isxdigit(input[i]))
+		if (!isxdigit(input[i])) {
 			return KNOT_EINVAL;
+		}
 	}
 
 	// output allocation
 
 	size_t result_size = input_size / 2;
 	uint8_t *result = malloc(result_size * sizeof(uint8_t));
-	if (!output)
+	if (!result) {
 		return KNOT_ENOMEM;
+	}
 
 	// conversion
 

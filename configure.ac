@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.3.0], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.3.1], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-bzip2 dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -12,10 +12,6 @@ AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 # Automatically update release date based on configure.ac date
 release_date=`doc/mdate-sh configure.ac`
 AC_SUBST([RELEASE_DATE], $release_date)
-
-# Check SSE, SSE2 and SSE3 support
-AX_EXT
-CFLAGS="$CFLAGS $SIMD_FLAGS"
 
 # Set compiler compatibility flags
 AC_PROG_CC_C99

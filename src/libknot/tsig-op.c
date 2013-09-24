@@ -466,11 +466,11 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	}
 
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, knot_tsig_digest_length(key->algorithm),
-	                  (tsig_rcode == KNOT_RCODE_BADTIME)
-	                    ? tsig_rcode
-	                    : 0);
-	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
+	uint16_t rdata_rcode = 0;
+	if (tsig_rcode == KNOT_RCODE_BADTIME)
+		rdata_rcode = tsig_rcode;
+	tsig_create_rdata(tmp_tsig, tsig_alg_to_dname(key->algorithm),
+	                  knot_tsig_digest_length(key->algorithm), rdata_rcode);
 
 	/* Distinguish BADTIME response. */
 	if (tsig_rcode == KNOT_RCODE_BADTIME) {
@@ -573,8 +573,8 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, knot_tsig_digest_length(key->algorithm), 0);
-	tsig_rdata_set_alg(tmp_tsig, key->algorithm);
+	tsig_create_rdata(tmp_tsig, tsig_alg_to_dname(key->algorithm),
+	                  knot_tsig_digest_length(key->algorithm), 0);
 	tsig_rdata_store_current_time(tmp_tsig);
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
 
@@ -849,35 +849,14 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 		return KNOT_ENOMEM;
 	}
 
-	knot_dname_t *alg_name =
-			knot_dname_copy(tsig_rdata_alg_name(tsig_rr));
-	if (alg_name == NULL) {
-		dbg_tsig("TSIG: failed to copy alg name\n");
-		knot_rrset_deep_free(&tmp_tsig, 1, 1);
-		return KNOT_ERROR;
-	}
-
-
-	/* Create rdata for TSIG RR. */
-	knot_tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
-	if (alg == KNOT_TSIG_ALG_NULL) {
-		dbg_tsig("TSIG: refusing to use NULL algorithm\n");
-		knot_rrset_deep_free(&tmp_tsig, 1, 1);
-		knot_dname_free(&alg_name);
-		return KNOT_ERROR;
-	}
-
 	assert(tsig_rcode != KNOT_RCODE_BADTIME);
-	tsig_create_rdata(tmp_tsig, 0, tsig_rcode); /* No digest. */
-
-	tsig_rdata_set_alg_name(tmp_tsig, alg_name);
+	tsig_create_rdata(tmp_tsig, tsig_rdata_alg_name(tsig_rr), 0, tsig_rcode);
 	tsig_rdata_set_time_signed(tmp_tsig, tsig_rdata_time_signed(tsig_rr));
 
 	/* Comparing to BIND it was found out that the Fudge should always be
 	 * set to the server's value.
 	 */
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
-	tsig_rdata_set_mac(tmp_tsig, 0, NULL);
 
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));

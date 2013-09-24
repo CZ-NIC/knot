@@ -71,7 +71,7 @@ static size_t sig0_rdata_size(knot_dnssec_key_t *key)
 
 	// variable part
 
-	size += sizeof(knot_dname_t *); // pointer to signer
+	size += knot_dname_size(key->name); // signer
 	size += knot_dnssec_sign_size(key);
 
 	return size;
@@ -131,7 +131,7 @@ static int sig0_write_rdata(knot_dnssec_key_t *key, uint8_t *rdata)
 	w += sizeof(uint16_t);
 
 	assert(w == rdata + 18);
-	memcpy(w, &key->name, sizeof(knot_dname_t *)); // pointer to signer
+	memcpy(w, key->name, knot_dname_size(key->name)); // signer
 
 	return KNOT_EOK;
 }

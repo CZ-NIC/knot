@@ -830,68 +830,21 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 
 static void wire_dname_to_str(rrset_dump_params_t *p)
 {
-	knot_dname_t *dname;
-	uint8_t label_len;
-	size_t  in_len = 0;
-	size_t  out_len = 0;
-
 	p->ret = -1;
 
-	// Compute dname length.
-	do {
-		// Read label length.
-		if (p->in_max < 1) {
-			return;
-		}
-		label_len = *(p->in);
-		in_len++;
-		p->in++;
-		p->in_max--;
-
-		if (label_len > p->in_max) {
-			return;
-		}
-		in_len += label_len;
-		p->in += label_len;
-		p->in_max -= label_len;
-	} while (label_len > 0);
-
-	// Write dname string.
-	char *dname_str = knot_dname_to_str(p->in - in_len);
-	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
-	free(dname_str);
-	if (ret < 0 || (size_t)ret >= p->out_max) {
+	int in_len = knot_dname_size(p->in);
+	if (in_len < 0) {
 		return;
 	}
-	out_len = ret;
 
-	// Fill in output.
-	p->out += out_len;
-	p->out_max -= out_len;
-	p->total += out_len;
-	p->ret = 0;
-}
-
-static void ptr_dname_to_str(rrset_dump_params_t *p)
-{
-	knot_dname_t *dname;
-	size_t in_len = sizeof(knot_dname_t *);
 	size_t out_len = 0;
 
-	p->ret = -1;
-
-	// Check input size.
 	if (in_len > p->in_max) {
 		return;
 	}
 
-	// Fill in input data.
-	if (memcpy(&dname, p->in, in_len) == NULL) {
-		return;
-	}
-
 	// Write dname string.
-	char *dname_str = knot_dname_to_str(dname);
+	char *dname_str = knot_dname_to_str(p->in);
 	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
 	free(dname_str);
 	if (ret < 0 || (size_t)ret >= p->out_max) {
@@ -1361,7 +1314,7 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 #define DUMP_NUM16	wire_num16_to_str(&p); CHECK_RET(p);
 #define DUMP_NUM32	wire_num32_to_str(&p); CHECK_RET(p);
 #define DUMP_NUM48	wire_num48_to_str(&p); CHECK_RET(p);
-#define DUMP_DNAME	ptr_dname_to_str(&p); CHECK_RET(p);
+#define DUMP_DNAME	wire_dname_to_str(&p); CHECK_RET(p);
 #define DUMP_TIME	wire_ttl_to_str(&p); CHECK_RET(p);
 #define DUMP_TIMESTAMP	wire_timestamp_to_str(&p); CHECK_RET(p);
 #define DUMP_IPV4	wire_ipv4_to_str(&p); CHECK_RET(p);

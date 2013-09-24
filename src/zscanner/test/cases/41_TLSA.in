@@ -13,12 +13,9 @@ $TTL	1
 @	TLSA
 @	TLSA						; Empty rdata
 @	TLSA	\# 0					; Hex empty rdata
-@	TLSA	\#					; Missing hex length
 @	TLSA	256	0	0	00		; Algorithm overflow
 @	TLSA	0	256	0	00		; Flags overflow
 @	TLSA	0	0	256	00		; Iterations overflow
 @	TLSA	0	0	0	0		; Hex block length must be multiple of 2
 @	TLSA	0	0	0	0x		; Bad hex char
 @	TLSA	0	0	0			; Missing item
-@	TLSA	\# 4 0000000000				; Too long rdata
-@	TLSA	\# 5 00000000				; Bad rdata length

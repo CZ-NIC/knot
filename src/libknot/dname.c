@@ -417,6 +417,12 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 	int sub_l = knot_dname_labels(sub, NULL);
 	int domain_l = knot_dname_labels(domain, NULL);
 
+	if (sub_l < 0 || domain_l < 0)
+		return false;
+
+	assert(sub >= 0 && sub_l <= KNOT_DNAME_MAXLABELS);
+	assert(domain_l >= 0 && domain_l <= KNOT_DNAME_MAXLABELS);
+
 	/* Subdomain must have more labels as parent. */
 	if (sub_l <= domain_l)
 		return false;
@@ -455,6 +461,12 @@ int knot_dname_matched_labels(const knot_dname_t *d1, const knot_dname_t *d2)
 	/* Count labels. */
 	int l1 = knot_dname_labels(d1, NULL);
 	int l2 = knot_dname_labels(d2, NULL);
+
+	if (l1 < 0 || l2 < 0)
+		return KNOT_EINVAL;
+
+	assert(l1 >= 0 && l1 <= KNOT_DNAME_MAXLABELS);
+	assert(l2 >= 0 && l2 <= KNOT_DNAME_MAXLABELS);
 
 	/* Align end-to-end to common suffix. */
 	int common = knot_dname_align(&d1, l1, &d2, l2, NULL);
@@ -586,8 +598,11 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 
 	/* This is problem equal to replacing last \x00 from d1 with d2. */
 	knot_dname_t *ret = knot_dname_replace_suffix(d1, 0, d2);
+
 	/* Like if we are reallocating d1. */
-	knot_dname_free(&d1);
+	if (ret != NULL)
+		knot_dname_free(&d1);
+
 	return ret;
 }
 

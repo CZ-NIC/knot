@@ -25,6 +25,3 @@ $TTL	1
 @	APL	2::/0			; Bad ipv6 address
 @	APL	2:0::0/x		; Bad prefix length
 @	APL	1:0.0.0.0/		; Missing prefix length
-@	APL	\#			; Missing hex length
-@	APL	\# 4 0001000000		; Too long rdata
-@	APL	\# 5 00000000		; Bad rdata length

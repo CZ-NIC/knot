@@ -14,10 +14,7 @@ $TTL	1
 @	NAPTR
 @	NAPTR							; Empty rdata
 @	NAPTR	\# 0						; Hex empty rdata
-@	NAPTR	\#						; Missing hex length
 @	NAPTR	65536	0	""	""	""	@	; Order overflow
 @	NAPTR	0	65536	""	""	""	@	; Preference overflow
 @	NAPTR	0	0	""	""	""	@  x	; Unexpected item
 @	NAPTR	0	0	""	""	""		; Missing item
-@	NAPTR	\# 9 00000000000000 00 00			; Too long rdata
-@	NAPTR	\# 9 00000000000000 00				; Bad rdata length

@@ -58,7 +58,7 @@ knot_lookup_table_t knot_tsig_alg_names[] = {
 	{ KNOT_TSIG_ALG_NULL, NULL }
 };
 
-knot_lookup_table_t knot_tsig_alg_domain_names[] = {
+knot_lookup_table_t knot_tsig_alg_dnames_str[] = {
 	{ KNOT_TSIG_ALG_GSS_TSIG,    "gss-tsig." },
 	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5.sig-alg.reg.int." },
 	{ KNOT_TSIG_ALG_HMAC_SHA1,   "hmac-sha1." },
@@ -66,6 +66,17 @@ knot_lookup_table_t knot_tsig_alg_domain_names[] = {
 	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256." },
 	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384." },
 	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512." },
+	{ KNOT_TSIG_ALG_NULL, NULL }
+};
+
+knot_lookup_table_t knot_tsig_alg_dnames[] = {
+        { KNOT_TSIG_ALG_GSS_TSIG,    "\x08" "gss-tsig" },
+        { KNOT_TSIG_ALG_HMAC_MD5,    "\x08" "hmac-md5" "\x07" "sig-alg" "\x03" "reg" "\x03" "int" },
+	{ KNOT_TSIG_ALG_HMAC_SHA1,   "\x09" "hmac-sha1" },
+	{ KNOT_TSIG_ALG_HMAC_SHA224, "\x0B" "hmac-sha224" },
+	{ KNOT_TSIG_ALG_HMAC_SHA256, "\x0B" "hmac-sha256" },
+	{ KNOT_TSIG_ALG_HMAC_SHA384, "\x0B" "hmac-sha384" },
+	{ KNOT_TSIG_ALG_HMAC_SHA512, "\x0B" "hmac-sha512" },
 	{ KNOT_TSIG_ALG_NULL, NULL }
 };
 

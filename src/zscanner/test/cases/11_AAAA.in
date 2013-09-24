@@ -15,10 +15,7 @@ $TTL	1
 @	AAAA
 @	AAAA				; Empty rdata
 @	AAAA	\# 0			; Hex empty rdata
-@	AAAA	\#			; Missing hex length
 @	AAAA	0::FFFFF		; 16bit overflow
 @	AAAA	0:0:0:0:0:0:0		; Short address
 @	AAAA	0:0:0:0:0:0:0:X		; Bad character
 @	AAAA	:: ::			; Unexpected item
-@	AAAA	\# 17 00000000 00000000 00000000 00000000 00	; Too long rdata
-@	AAAA	\# 17 00000000 00000000 00000000 00000000	; Bad rdata length

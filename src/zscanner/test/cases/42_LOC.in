@@ -40,7 +40,6 @@ $TTL	1
 @	LOC
 @	LOC						; Empty rdata
 @	LOC	\# 0					; Hex empty rdata
-@	LOC	\#					; Missing hex length
 @	LOC	91 0 0 N 0 0 0 E 0 0 0 0		; Degree overflow
 @	LOC	0 60 0 N 0 0 0 E 0 0 0 0		; Minute overflow
 @	LOC	0 0 60 0 N 0 0 0 E 0 0 0 0		; Second overflow
@@ -63,5 +62,3 @@ $TTL	1
 @	LOC	1     N 1     x	0			; Bad letter
 @	LOC	1     N 1     E				; Missing altitude
 @	LOC	0 0 0 N 0 0 0 E 0 0 0 0 x		; Unexpected item
-@	LOC	\# 17 00 00 00 00 00000000 00000000 00000000 00	; Too long rdata
-@	LOC	\# 17 00 00 00 00 00000000 00000000 00000000	; Bad rdata length

@@ -137,6 +137,7 @@ libknot_la_SOURCES =				\
 	libknot/edns.c				\
 	libknot/libknot.h			\
 	libknot/dname.h				\
+	libknot/rdata.h				\
 	libknot/rrset.h				\
 	libknot/rrset.c				\
 	libknot/rrset-dump.h			\
@@ -155,6 +156,8 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/nsec3.c			\
 	libknot/dnssec/nsec3.h			\
 	libknot/dnssec/policy.h			\
+	libknot/dnssec/rrset-sign.c		\
+	libknot/dnssec/rrset-sign.h		\
 	libknot/dnssec/sig0.c			\
 	libknot/dnssec/sig0.h			\
 	libknot/dnssec/sign.c			\

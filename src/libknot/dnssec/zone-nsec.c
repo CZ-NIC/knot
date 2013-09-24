@@ -25,6 +25,7 @@
 #include "common/descriptor.h"
 #include "libknot/dnssec/nsec-bitmap.h"
 #include "libknot/dnssec/nsec3.h"
+#include "libknot/rdata.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/util/utils.h"
@@ -73,6 +74,7 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	}
 
 	if (hattrie_iter_finished(it)) {
+		hattrie_iter_free(it);
 		return KNOT_EINVAL;
 	}
 
@@ -125,7 +127,7 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
 	knot_rrset_t *old_nsec = NULL;
 	knot_rrset_t *old_rrsigs = NULL;
 
-	result = knot_rrset_deep_copy(oldrr, &old_nsec, 1);
+	result = knot_rrset_deep_copy(oldrr, &old_nsec);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -190,23 +192,17 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	}
 
 	// Create RDATA
-	size_t rdata_size = sizeof(knot_dname_t *) + bitmap_size(&rr_types);
+	size_t next_owner_size = knot_dname_size(to->owner);
+	size_t rdata_size = next_owner_size + bitmap_size(&rr_types);
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
 	}
 
-	// Copy the 'next' field to RDATA
-	knot_dname_t *next_dname = knot_dname_copy(to->owner);
-	if (!next_dname) {
-		knot_rrset_deep_free(&rrset, 1, 1);
-		return NULL;
-	}
-	memcpy(rdata, &next_dname, sizeof(knot_dname_t *));
-
-	// Copy bitmap to RDATA
-	bitmap_write(&rr_types, rdata + sizeof(knot_dname_t *));
+	// Fill RDATA
+	memcpy(rdata, to->owner, next_owner_size);
+	bitmap_write(&rr_types, rdata + next_owner_size);
 
 	return rrset;
 }
@@ -432,13 +428,18 @@ static knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
                                         const knot_nsec3_params_t *params,
                                         const char *apex, size_t apex_size)
 {
-	size_t name_size = knot_dname_size(owner);
 	uint8_t *hash = NULL;
 	size_t hash_size = 0;
+	int name_size = knot_dname_size(owner);
+
+	if (name_size < 0) {
+		return NULL;
+	}
 
 	if (knot_nsec3_hash(params, owner, name_size, &hash, &hash_size)
-	    != KNOT_EOK)
+	    != KNOT_EOK) {
 		return NULL;
+	}
 
 	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, apex, apex_size);
 	free(hash);
@@ -790,7 +791,7 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl
 	if (!soa)
 		return false;
 
-	uint32_t result =  knot_rrset_rdata_soa_minimum(soa);
+	uint32_t result =  knot_rdata_soa_minimum(soa);
 	if (result == 0)
 		return false;
 

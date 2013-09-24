@@ -26,14 +26,15 @@
 #include "common/mempool.h"
 #include "rrset.h"
 #include "util/debug.h"
+#include "rdata.h"
 
 static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
                                          const knot_rrset_t *rrset2)
 {
 	return knot_rrset_equal(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)
 	       && (knot_rrset_type(rrset1) != KNOT_RRTYPE_RRSIG
-	           || knot_rrset_rdata_rrsig_type_covered(rrset1)
-	              == knot_rrset_rdata_rrsig_type_covered(rrset2));
+	           || knot_rdata_rrsig_type_covered(rrset1, 0)
+	              == knot_rdata_rrsig_type_covered(rrset2, 0));
 }
 
 int knot_changesets_init(knot_changesets_t **changesets, uint32_t flags)
@@ -258,7 +259,7 @@ static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                      uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
-	*chg_serial = knot_rrset_rdata_soa_serial(soa);
+	*chg_serial = knot_rdata_soa_serial(soa);
 }
 
 void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,

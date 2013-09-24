@@ -26,6 +26,7 @@
 #include "libknot/zone/zone-tree.h"
 #include "libknot/util/wire.h"
 #include "consts.h"
+#include "libknot/rdata.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -40,7 +41,6 @@ typedef struct {
 	knot_node_t *first_node;
 	knot_zone_contents_t *zone;
 	knot_node_t *previous_node;
-	hattrie_t *lookup_tree;
 	int err;
 } knot_zone_adjust_arg_t;
 
@@ -129,162 +129,6 @@ static void knot_zone_contents_destroy_node_rrsets_from_tree(
 
 /*----------------------------------------------------------------------------*/
 
-static const knot_node_t *knot_zone_contents_find_wildcard_child(
-        knot_zone_contents_t *zone, const knot_node_t *closest_encloser)
-{
-	assert(zone != NULL);
-	assert(closest_encloser != NULL);
-
-	knot_dname_t *wildcard = knot_dname_from_str("*", 1);
-	if (wildcard == NULL)
-		return NULL;
-
-	wildcard = knot_dname_cat(wildcard, knot_node_owner(closest_encloser));
-	if (wildcard == NULL)
-		return NULL;
-
-dbg_zone_exec_detail(
-	char *name = knot_dname_to_str(knot_node_owner(closest_encloser));
-	char *name2 = knot_dname_to_str(wildcard);
-	dbg_zone_detail("Searching for wildcard child of %s (%s)\n", name,
-			name2);
-	free(name);
-	free(name2);
-);
-
-	const knot_node_t *found = NULL, *ce = NULL, *prev = NULL;
-	int ret = knot_zone_contents_find_dname(zone, wildcard, &found, &ce,
-						&prev);
-
-	knot_dname_free(&wildcard);
-
-	if (ret != KNOT_ZONE_NAME_FOUND) {
-		return NULL;
-	} else {
-		return found;
-	}
-}
-
-void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
-                                                hattrie_t *lookup_tree)
-{
-	/* Disabled dname duplication checks since dnames can't be refcounted.
-	 * This will be replaced with refcounting RDATA, so I'm keeping the API
-	 * intact to ease the transition.
-	 */
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Adjusts one RDATA item by replacing domain name by one present in the
- *        zone.
- *
- * This function tries to find the domain name in the zone. If the name is not
- * in the zone, it does nothing. If it is there, it destroys the domain name
- * stored in the RDATA item and replaces it by pointer to the domain name from
- * the zone.
- *
- * \warning Call this function only with RDATA items which store domain names,
- *          otherwise the behaviour is undefined.
- *
- * \param rdata RDATA where the item is located.
- * \param zone Zone to which the RDATA belongs.
- * \param pos Position of the RDATA item in the RDATA.
- */
-static void knot_zone_contents_adjust_rdata_dname(knot_zone_contents_t *zone,
-                                                  hattrie_t *lookup_tree,
-                                                  knot_node_t *node,
-                                                  knot_dname_t **in_dname)
-{
-	knot_zone_contents_insert_dname_into_table(in_dname, lookup_tree);
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Adjusts all RDATA in the given RRSet by replacing domain names by ones
- *        present in the zone.
- *
- * This function selects the RDATA items containing a domain name (according to
- * RR type descriptor of the RRSet's type and adjusts the item using
- * knot_zone_adjust_rdata_item().
- *
- * \param rrset RRSet to adjust RDATA in.
- * \param zone Zone to which the RRSet belongs.
- */
-static void knot_zone_contents_adjust_rdata_in_rrset(knot_rrset_t *rrset,
-                                                     hattrie_t *lookup_tree,
-                                                     knot_zone_contents_t *zone,
-                                                     knot_node_t *node)
-{
-	knot_dname_t **dn = NULL;
-	while((dn = knot_rrset_get_next_dname(rrset, dn))) {
-		knot_zone_contents_adjust_rdata_dname(zone,
-						      lookup_tree,
-						      node,
-						      dn);
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Adjusts all RRSets in the given node by replacing domain names in
- *        RDATA by ones present in the zone.
- *
- * \param node         Zone node to adjust.
- * \param lookup_tree  Lookup tree for DNAME reuse.
- * \param zone         Source zone.
- */
-static int knot_zone_contents_adjust_rrsets(knot_node_t *node,
-                                             hattrie_t *lookup_tree,
-                                             knot_zone_contents_t *zone)
-{
-	/* Disabled dname duplication checks since dnames can't be refcounted.
-	 * This will be replaced with refcounting RDATA, so I'm keeping the API
-	 * intact to ease the transition.
-	 */
-#if 0
-	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(node);
-	short count = knot_node_rrset_count(node);
-
-	assert(count == 0 || rrsets != NULL);
-
-	for (int r = 0; r < count; ++r) {
-		assert(rrsets[r] != NULL);
-
-		/* Make sure that RRSet owner is the same as node's. */
-		if (knot_dname_is_equal(node->owner, rrsets[r]->owner)) {
-			knot_rrset_set_owner(rrsets[r], node->owner);
-
-		knot_rrset_dump(rrsets[r]);
-		knot_zone_contents_adjust_rdata_in_rrset(rrsets[r],
-		                                         lookup_tree, zone,
-							 node);
-		knot_rrset_t *rrsigs = rrsets[r]->rrsigs;
-		if (rrsigs != NULL) {
-			knot_rrset_dump(rrsigs);
-			knot_zone_contents_adjust_rdata_in_rrset(rrsigs,
-			                                         lookup_tree,
-			                                         zone, node);
-		}
-
-		if (rrsets[r]->type == KNOT_RRTYPE_DS) {
-			int ret = knot_rrset_ds_check(rrsets[r]);
-			if (ret != KNOT_EOK)
-				return KNOT_EMALF;
-			/* Check that this node contains an NS RR as well. */
-			/*! \todo Enable, causes some differences with BIND. */
-//			if (knot_node_rrset(node, KNOT_RRTYPE_NS) == NULL) {
-//				dbg_zone("DS RR without NS record.\n");
-//				return KNOT_EMALF;
-//			}
-		}
-	}
-#endif
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
 /*!
  * \brief Adjust normal (non NSEC3) node.
  *
@@ -306,24 +150,16 @@ static void knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = *tnode;
-	hattrie_t *lookup_tree = args->lookup_tree;
-	knot_zone_contents_t *zone = args->zone;
 
-	if (args->err != KNOT_EOK)
+	if (args->err != KNOT_EOK) {
 		return;
+	}
 
 	// remember first node
 
-	if (args->first_node == NULL)
+	if (args->first_node == NULL) {
 		args->first_node = node;
-
-	// adjust node RR sets (domain names in RDATA)
-
-	args->err = knot_zone_contents_adjust_rrsets(node, lookup_tree, zone);
-	if (args->err != KNOT_EOK)
-		return;
-
-	knot_zone_contents_insert_dname_into_table(&node->owner, lookup_tree);
+	}
 
 	// check if this node is not a wildcard child of its parent
 
@@ -352,8 +188,9 @@ static void knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 
 	// update remembered previous pointer only if authoritative
 
-	if (!knot_node_is_non_auth(node) && knot_node_rrset_count(node) > 0)
+	if (!knot_node_is_non_auth(node) && knot_node_rrset_count(node) > 0) {
 		args->previous_node = node;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -401,8 +238,9 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	const knot_nsec3_params_t *nsec3_params =
 		knot_zone_contents_nsec3params(zone);
 
-	if (nsec3_params == NULL)
+	if (nsec3_params == NULL) {
 		return KNOT_ENSEC3PAR;
+	}
 
 	uint8_t *hashed_name = NULL;
 	size_t hash_size = 0;
@@ -440,8 +278,9 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 
 	free(name_b32);
 
-	if (*nsec3_name == NULL)
+	if (*nsec3_name == NULL) {
 		return KNOT_ERROR;
+	}
 
 	knot_dname_to_lower(*nsec3_name);
 
@@ -507,19 +346,19 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 
 	dbg_zone_detail("RDATA algo: %u, iterations: %u, salt length: %u, salt:"
 			" %.*s\n",
-			knot_rrset_rdata_nsec3_algorithm(rrset, rdata_pos),
-			knot_rrset_rdata_nsec3_iterations(rrset, rdata_pos),
-			knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos),
-			knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos),
-			knot_rrset_rdata_nsec3_salt(rrset, rdata_pos));
+			knot_rdata_nsec3_algorithm(rrset, rdata_pos),
+			knot_rdata_nsec3_iterations(rrset, rdata_pos),
+			knot_rdata_nsec3_salt_length(rrset, rdata_pos),
+			knot_rdata_nsec3_salt_length(rrset, rdata_pos),
+			knot_rdata_nsec3_salt(rrset, rdata_pos));
 	dbg_zone_detail("NSEC3PARAM algo: %u, iterations: %u, salt length: %u, "
 			"salt: %.*s\n",  params->algorithm, params->iterations,
 			params->salt_length, params->salt_length, params->salt);
 
-	return (knot_rrset_rdata_nsec3_algorithm(rrset, rdata_pos) == params->algorithm
-		&& knot_rrset_rdata_nsec3_iterations(rrset, rdata_pos) == params->iterations
-		&& knot_rrset_rdata_nsec3_salt_length(rrset, rdata_pos) == params->salt_length
-		&& strncmp((const char *)knot_rrset_rdata_nsec3_salt(rrset, rdata_pos),
+	return (knot_rdata_nsec3_algorithm(rrset, rdata_pos) == params->algorithm
+		&& knot_rdata_nsec3_iterations(rrset, rdata_pos) == params->iterations
+		&& knot_rdata_nsec3_salt_length(rrset, rdata_pos) == params->salt_length
+		&& strncmp((const char *)knot_rdata_nsec3_salt(rrset, rdata_pos),
 			   (const char *)params->salt, params->salt_length)
 		   == 0);
 }
@@ -896,7 +735,8 @@ dbg_zone_exec(
 		// find proper node
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
 					   const knot_dname_t *)
-		    = (knot_rrset_rdata_rrsig_type_covered(rrsigs) == KNOT_RRTYPE_NSEC3)
+		    = (knot_rdata_rrsig_type_covered(rrsigs, 0)
+		       == KNOT_RRTYPE_NSEC3)
 		       ? knot_zone_contents_get_nsec3_node
 		       : knot_zone_contents_get_node;
 
@@ -912,9 +752,9 @@ dbg_zone_exec(
 		// find the RRSet in the node
 		// take only the first RDATA from the RRSIGs
 		dbg_zone_detail("Finding RRSet for type %d\n",
-				knot_rrset_rdata_rrsig_type_covered(rrsigs));
+				knot_rdata_rrsig_type_covered(rrsigs, 0));
 		*rrset = knot_node_get_rrset(
-			     *node, knot_rrset_rdata_rrsig_type_covered(rrsigs));
+			     *node, knot_rdata_rrsig_type_covered(rrsigs, 0));
 		if (*rrset == NULL) {
 			dbg_zone("Failed to find RRSet for RRSIGs.\n");
 			return KNOT_ENORRSET;
@@ -1483,33 +1323,26 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 
 	// adjusting parameters
 
-	hattrie_t *lookup_tree = NULL;
-	if (dupl_check) {
-		lookup_tree = hattrie_create();
-		if (lookup_tree == NULL)
-			return KNOT_ENOMEM;
-	}
-
 	knot_zone_adjust_arg_t adjust_arg = { 0 };
 	adjust_arg.zone = zone;
-	adjust_arg.lookup_tree = lookup_tree;
 
 	// adjust NSEC3 nodes
 
 	result = knot_zone_contents_adjust_nodes(zone->nsec3_nodes, &adjust_arg,
 	                                 knot_zone_contents_adjust_nsec3_node);
 	if (result != KNOT_EOK) {
-		hattrie_free(lookup_tree);
 		return result;
 	}
 
 	// optional output for NSEC3 nodes
 
-	if (first_nsec3_node)
+	if (first_nsec3_node) {
 		*first_nsec3_node = adjust_arg.first_node;
+	}
 
-	if (last_nsec3_node)
+	if (last_nsec3_node) {
 		*last_nsec3_node = adjust_arg.previous_node;
+	}
 
 	// adjust normal nodes
 	/*! \note This causes problem, as searching for name from RDATA
@@ -1521,15 +1354,10 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	result = knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
 	                                 knot_zone_contents_adjust_normal_node);
 	if (result != KNOT_EOK) {
-		hattrie_free(lookup_tree);
 		return result;
 	}
 
 	assert(zone->apex == adjust_arg.first_node);
-
-	// cleanup
-
-	hattrie_free(lookup_tree);
 
 	return KNOT_EOK;
 }
@@ -2248,67 +2076,10 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 	return data.errors;
 }
 
-struct dname_lookup_data {
-	const knot_dname_t *dname;
-	const knot_dname_t *found_dname;
-	int stopped;
-};
-
-static void find_dname_in_rdata(knot_node_t **tnode, void *data)
-{
-	struct dname_lookup_data *in_data = (struct dname_lookup_data *)data;
-	if (in_data->stopped) {
-		return;
-	}
-
-	/* For all RRSets in node. */
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(*tnode);
-	if (rrsets == NULL) {
-		return;
-	}
-
-	for (uint16_t i = 0; i < (*tnode)->rrset_count; i++) {
-		knot_dname_t **dname = NULL;
-		while ((dname = knot_rrset_get_next_dname(rrsets[i], dname))) {
-			if (*dname == in_data->dname) {
-				in_data->found_dname = *dname;
-				in_data->stopped = 1;
-				return;
-			} else if (knot_dname_cmp(*dname,
-						      in_data->dname) == 0) {
-				in_data->found_dname = *dname;
-				in_data->stopped = 1;
-				return;
-			}
-		}
-	}
-
-	assert(in_data->stopped == 0);
-}
-
-const knot_dname_t *knot_zone_contents_find_dname_in_rdata(
-	const knot_zone_contents_t *zone,
-	const knot_dname_t *dname)
-{
-	struct dname_lookup_data data;
-	data.stopped = 0;
-	data.dname = dname;
-	data.found_dname = NULL;
-	knot_zone_tree_apply_inorder(zone->nodes,
-					     find_dname_in_rdata, &data);
-	if (data.stopped) {
-		/* Dname found. */
-		return data.found_dname;
-	} else {
-		assert(data.found_dname == NULL);
-		return NULL;
-	}
-}
-
 unsigned knot_zone_serial(const knot_zone_contents_t *zone)
 {
 	if (!zone) return 0;
 	const knot_rrset_t *soa = NULL;
 	soa = knot_node_rrset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
-	return knot_rrset_rdata_soa_serial(soa);
+	return knot_rdata_soa_serial(soa);
 }

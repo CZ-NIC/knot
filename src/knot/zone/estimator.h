@@ -38,7 +38,6 @@ static const double ESTIMATE_MAGIC = 1.2;
  */
 typedef struct zone_estim {
 	hattrie_t *node_table; /*!< Same trie is in actual zone. */
-	hattrie_t *dname_table; /*!< RDATA section DNAMEs. */
 	size_t rdata_size; /*!< Estimated RDATA size. */
 	size_t dname_size; /*!< Estimated DNAME size. */
 	size_t node_size; /*!< Estimated node size. */

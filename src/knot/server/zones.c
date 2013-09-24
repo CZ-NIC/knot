@@ -42,6 +42,7 @@
 #include "libknot/packet/response.h"
 #include "libknot/zone/zone-diff.h"
 #include "libknot/updates/ddns.h"
+#include "libknot/rdata.h"
 #include "libknot/dnssec/zone-events.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
@@ -177,7 +178,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 		soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 					  KNOT_RRTYPE_SOA);
 		assert(soa_rrs != NULL);
-		int64_t serial = knot_rrset_rdata_soa_serial(soa_rrs);
+		int64_t serial = knot_rdata_soa_serial(soa_rrs);
 		zd->zonefile_serial = (uint32_t)serial;
 		if (serial < 0) {
 			return KNOT_EINVAL;
@@ -247,7 +248,7 @@ static uint32_t zones_soa_timer(knot_zone_t *zone,
  */
 static uint32_t zones_soa_refresh(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrset_rdata_soa_refresh);
+	return zones_soa_timer(zone, knot_rdata_soa_refresh);
 }
 
 /*!
@@ -258,7 +259,7 @@ static uint32_t zones_soa_refresh(knot_zone_t *zone)
  */
 static uint32_t zones_soa_retry(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrset_rdata_soa_retry);
+	return zones_soa_timer(zone, knot_rdata_soa_retry);
 }
 
 /*!
@@ -269,7 +270,7 @@ static uint32_t zones_soa_retry(knot_zone_t *zone)
  */
 static uint32_t zones_soa_expire(knot_zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrset_rdata_soa_expire);
+	return zones_soa_timer(zone, knot_rdata_soa_expire);
 }
 
 /*!
@@ -294,7 +295,7 @@ static int zones_expire_ev(event_t *e)
 
 	knot_zone_retain(zone); /* Keep a reference. */
 	rcu_read_unlock();
-	
+
 	/* Mark the zone as expired. This will remove the zone contents. */
 	knot_zone_contents_t *contents = knot_zonedb_expire_zone(
 			zd->server->nameserver->zone_db, zone->name);
@@ -302,7 +303,7 @@ static int zones_expire_ev(event_t *e)
 	/* Early finish this event to prevent lockup during cancellation. */
 	dbg_zones("zones: zone expired, removing from database\n");
 	evsched_event_finished(e->parent);
-	
+
 	/* Publish expired zone, must be after evsched_event_finished.
 	 * This is because some other thread may hold rcu_read_lock and
 	 * wait for event cancellation. */
@@ -772,9 +773,9 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		dbg_xfr_verb("xfr: reading RRSets to REMOVE, first RR is %hu\n",
 		             knot_rrset_type(rrset));
 		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
-		assert(chs->serial_from ==
-		       knot_rrset_rdata_soa_serial(rrset));
+		assert(chs->serial_from == knot_rdata_soa_serial(rrset));
 		knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
+
 		/* Read remaining RRSets */
 		int in_remove_section = 1;
 		while (remaining > 0) {
@@ -1002,7 +1003,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 	                            KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
-	int64_t serial_ret = knot_rrset_rdata_soa_serial(soa_rrs);
+	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		return KNOT_EINVAL;
@@ -1083,7 +1084,7 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
                                          knot_changesets_t *sec_chs)
 {
 	/*!
-	 * \todo Merged changesets freeing can be quite complicated, since there 
+	 * \todo Merged changesets freeing can be quite complicated, since there
 	 * are several cases to handle. It might be easier to free the single
 	 * changeset in the changesets structures when there are no changes in it, but
 	 * that would require some extra return codes. Still, probably better than this.
@@ -1097,7 +1098,7 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 	           diff_chs != NULL) {
 		knot_changesets_free(&diff_chs);
 	} else {
-		/* 
+		/*
 		 * Merged changesets, deep free 'diff_chs',
 		 * shallow free 'sec_chs', unless one of them is empty.
 		 */
@@ -1326,7 +1327,7 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 			return ret;
 		}
 	}
-	
+
 	if (new_signatures) {
 		xfrin_cleanup_successful_update(sec_chs->changes);
 		char *zname = knot_dname_to_str(zone->name);
@@ -1334,7 +1335,7 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 		              zname);
 		free(zname);
 	}
-	
+
 	zones_free_merged_changesets(diff_chs, sec_chs);
 	return ret;
 }
@@ -1418,7 +1419,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 					KNOT_RRTYPE_SOA);
 				int64_t sn = 0;
 				if (apex && soa) {
-					sn = knot_rrset_rdata_soa_serial(soa);
+					sn = knot_rdata_soa_serial(soa);
 					if (sn < 0) sn = 0;
 				}
 				log_server_info("Loaded zone '%s' serial %u\n",
@@ -1553,7 +1554,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 			rcu_read_unlock();
 		}
-		
+
 		/* Create and apply changesets (zone-diff and DNSSEC). */
 		ret = zones_create_and_apply_changesets(z, zone, ns, dname,
 		                                        zone_changed);
@@ -2215,7 +2216,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 	                            KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 
-	int64_t serial_ret = knot_rrset_rdata_soa_serial(soa_rrs);
+	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		pthread_mutex_unlock(&zd->lock);
@@ -3528,6 +3529,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	}
 	knot_changeset_t *ch = knot_changesets_create_changeset(chs);
 	if (ch == NULL) {
+		knot_changesets_free(&chs);
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
 		return KNOT_ENOMEM;
@@ -3553,7 +3555,6 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		char *zname = knot_dname_to_str(zone->name);
 		log_server_error("Could not sign zone %s (%s).\n",
 		                 zname, knot_strerror(ret));
-		knot_changesets_free(&chs);
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
 		free(zname);
@@ -3563,7 +3564,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	// cleanup
 	evsched_event_free(event->parent, event);
 	zd->dnssec_timer = NULL;
-	
+
 	char *zname = knot_dname_to_str(zone->name);
 	log_zone_info("Zone %s forced signed successfully.\n", zname);
 	free(zname);

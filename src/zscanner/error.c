@@ -47,6 +47,8 @@ const err_table_t err_msgs[] = {
 	/* Zone scanner errors. */
 	ERR_ITEM( ZSCANNER_UNCOVERED_STATE,
 	          "General scanner error." ),
+	ERR_ITEM( ZSCANNER_UNCLOSED_MULTILINE,
+	          "Unclosed last multiline block." ),
 	ERR_ITEM( ZSCANNER_ELEFT_PARENTHESIS,
 	          "Too many left parentheses." ),
 	ERR_ITEM( ZSCANNER_ERIGHT_PARENTHESIS,
@@ -90,7 +92,7 @@ const err_table_t err_msgs[] = {
 	ERR_ITEM( ZSCANNER_EBAD_GATEWAY_KEY,
 	          "Bad gateway key." ),
 	ERR_ITEM( ZSCANNER_EBAD_APL,
-	          "Bad adress prefix list." ),
+	          "Bad address prefix list." ),
 	ERR_ITEM( ZSCANNER_EBAD_RDATA,
 	          "Bad record data." ),
 	ERR_ITEM( ZSCANNER_EBAD_HEX_RDATA,

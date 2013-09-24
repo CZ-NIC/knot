@@ -285,7 +285,7 @@ static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
 		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(knot_tsig_alg_domain_names, h);
+		alg = knot_lookup_by_name(knot_tsig_alg_dnames_str, h);
 		if (alg) {
 			algorithm = alg->id;
 		} else {
@@ -737,21 +737,10 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		/* Init memory estimation context. */
 		zone_estim_t est = {.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
-		                    .dname_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
 		                    .dname_size = 0, .rrset_size = 0,
 		                    .node_size = 0, .ahtable_size = 0,
 		                    .rdata_size = 0, .record_count = 0 };
 		if (est.node_table == NULL) {
-			if (est.dname_table) {
-				hattrie_free(est.dname_table);
-			}
-			log_server_error("Not enough memory.\n");
-			continue;
-		}
-		if (est.dname_table == NULL) {
-			if (est.node_table) {
-				hattrie_free(est.node_table);
-			}
 			log_server_error("Not enough memory.\n");
 			continue;
 		}
@@ -766,9 +755,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 			rc = 1;
 			log_zone_error("Could not load zone.\n");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
-			hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
-			hattrie_free(est.dname_table);
 			break;
 		}
 
@@ -778,9 +765,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 			rc = 1;
 			log_zone_error("Failed to parse zone.\n");
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
-			hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
-			hattrie_free(est.dname_table);
 			file_loader_free(loader);
 			break;
 		}
@@ -791,9 +776,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		/* Cleanup */
 		hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
-		hattrie_apply_rev(est.dname_table, estimator_free_trie_node, NULL);
 		hattrie_free(est.node_table);
-		hattrie_free(est.dname_table);
 
 		size_t zone_size = (size_t)(((double)(est.rdata_size +
 		                   est.node_size +

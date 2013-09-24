@@ -38,6 +38,11 @@
 #define KNOT_DNAME_MAXLABELS 127  /*!< 1-char labels. */
 
 /*!
+ * \brief Often used sizes.
+ */
+#define KNOT_RR_HEADER_SIZE 10
+
+/*!
  * \brief DNS operation codes (OPCODEs).
  *
  * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
@@ -166,7 +171,12 @@ extern knot_lookup_table_t knot_tsig_alg_names[];
 /*!
  * \brief TSIG key algorithm names in a domain form.
  */
-extern knot_lookup_table_t knot_tsig_alg_domain_names[];
+extern knot_lookup_table_t knot_tsig_alg_dnames_str[];
+
+/*!
+ * \brief TSIG key algorithm domain names.
+ */
+extern knot_lookup_table_t knot_tsig_alg_dnames[];
 
 /*!
  * \brief Returns length of TSIG digest for given algorithm.

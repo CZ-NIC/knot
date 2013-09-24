@@ -17,10 +17,7 @@ $TTL	1
 @	MX
 @	MX				; Empty rdata
 @	MX	\# 0			; Hex empty rdata
-@	MX	\#			; Missing hex length
 @	MX	-1	@		; Negative number
 @	MX	65536	@		; 16bit overflow
 @	MX	1	$		; Bad dname
 @	MX	0	@ x		; Unexpected item
-@	MX	\# 4 0001 0001		; Too long rdata
-@	MX	\# 4 0001 00		; Bad rdata length

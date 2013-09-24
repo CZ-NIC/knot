@@ -20,7 +20,7 @@
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * \brief Interface for DNSSEC zone signing.
+ * \brief Interface for DNSSEC signing of zones.
  *
  * \addtogroup dnssec
  * @{
@@ -43,16 +43,48 @@ typedef struct {
 	ahtable_t *signed_table;
 } changeset_signing_data_t;
 
+/*!
+ * \brief Update zone signatures and store performed changes in changeset.
+ *
+ * Updates RRSIGs, NSEC(3)s, and DNSKEYs.
+ *
+ * \param zone       Zone to be signed.
+ * \param zone_keys  Zone keys.
+ * \param policy     DNSSEC policy.
+ * \param changeset  Changeset to be updated.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_zone_sign(const knot_zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
                    knot_changeset_t *out_ch);
 
+/*!
+ * \brief Update and sign SOA and store performed changes in changeset.
+ *
+ * \param zone       Zone including SOA to be updated.
+ * \param zone_keys  Zone keys.
+ * \param policy     DNSSEC policy.
+ * \param changeset  Changeset to be updated.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_zone_sign_update_soa(const knot_rrset_t *soa,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset);
 
+/*!
+ * \brief Check if zone SOA signatures are expired.
+ *
+ * \param zone       Zone to be signed.
+ * \param zone_keys  Zone keys.
+ * \param policy     DNSSEC policy.
+ * \param changeset  Changeset to be updated.
+ *
+ * \return Zone SOA signatures need update.
+ */
 bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
@@ -63,14 +95,6 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_zone_keys_t *zone_keys,
                              const knot_dnssec_policy_t *policy);
 
-int knot_zone_sign_fix_nsec_chain(const knot_zone_contents_t *zone,
-                                  const knot_changeset_t *in_ch,
-                                  knot_changeset_t *out_ch);
-
-int knot_zone_sign_fix_nsec3_chain(const knot_zone_contents_t *zone,
-                                   const knot_changeset_t *in_ch,
-                                   knot_changeset_t *out_ch);
-// TODO this should be elsewhere
 int knot_zone_sign_add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_

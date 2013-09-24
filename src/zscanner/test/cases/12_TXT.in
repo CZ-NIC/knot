@@ -30,10 +30,7 @@ third						; Second string
 @	TXT
 @	TXT			; Empty rdata
 @	TXT	\# 0		; Hex empty rdata
-@	TXT	\#		; Missing hex length
-@	TXT	\# second	; Hex notation with second text string
 @	TXT	\01		; Missing digit in decimal notation
 @	TXT	\256		; 8bit overflow in decimal notation
-@	TXT	\# 2 ""		; Bad length
 @	TXT	"""		; '"' char without forward slash
 @	TXT	"abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNabcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMN1234\0536"	; Maximal length overflow

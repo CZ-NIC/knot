@@ -112,53 +112,13 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
 		return ret;
 	}
 
-//	uint8_t* rd = knot_rrset_create_rdata(rr, rdlength);
-//	if (!rd) {
-//		return KNOT_ERROR;
-//	}
-//	uint8_t* np = rd + rdlength;
-
-//	const rdata_descriptor_t *desc = get_rdata_descriptor(knot_rrset_type(rr));
-//	if (!desc) {
-//		/*! \todo Free rdata mem ? Not essential, but nice. */
-//		return KNOT_EINVAL;
-//	}
-
-//	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
-//		const int id = desc->block_types[i];
-//		if (descriptor_item_is_dname(id)) {
-//			knot_dname_t *dn = NULL;
-//			dn = knot_dname_parse_from_wire(wire, pos, total_size, NULL, NULL);
-//			if (dn == NULL) {
-//				return KNOT_EMALF;
-//			}
-//			/* Store ptr in rdata. */
-//			*((knot_dname_t**)rd) = dn;
-//			rd += sizeof(knot_dname_t*);
-//		} else if (descriptor_item_is_fixed(id)) {
-//			memcpy(rd, wire + *pos, id);
-//			rd += id; /* Item represents fixed len here */
-//			*pos += id;
-//		} else if (descriptor_item_is_remainder(id)) {
-//			size_t rchunk = np - rd;
-//			memcpy(rd, wire + *pos, rchunk);
-//			rd += rchunk;
-//			*pos += rchunk;
-//		} else {
-//			//NAPTR
-//			assert(knot_rrset_type(rr) == KNOT_RRTYPE_NAPTR);
-//			assert(0);
-//		}
-
-//	}
-
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
-                                              size_t size)
+                                          size_t size)
 {
 	dbg_packet("Parsing RR from position: %zu, total size: %zu\n",
 	           *pos, size);
@@ -177,8 +137,7 @@ dbg_packet_exec_verb(
 	free(name);
 );
 
-	/*! @todo Get rid of the numerical constant. */
-	if (size - *pos < 10) {
+	if (size - *pos < KNOT_RR_HEADER_SIZE) {
 		dbg_packet("Malformed RR: Not enough data to parse RR"
 		           " header.\n");
 		knot_dname_free(&owner);
@@ -203,7 +162,7 @@ dbg_packet_exec_verb(
 	                    "rdlength %u\n", rrset->type, rrset->rclass,
 	                    rrset->ttl, rdlength);
 
-	*pos += 10;
+	*pos += KNOT_RR_HEADER_SIZE;
 
 	if (size - *pos < rdlength) {
 		dbg_packet("Malformed RR: Not enough data to parse RR"
@@ -510,8 +469,8 @@ knot_packet_t *knot_packet_new_mm(mm_ctx_t *mm)
 /*----------------------------------------------------------------------------*/
 
 int knot_packet_parse_from_wire(knot_packet_t *packet,
-                                  const uint8_t *wireformat, size_t size,
-                                  int question_only, knot_packet_flag_t flags)
+                                const uint8_t *wireformat, size_t size,
+                                int question_only, knot_packet_flag_t flags)
 {
 	if (packet == NULL || wireformat == NULL || size < KNOT_WIRE_HEADER_SIZE)
 		return KNOT_EINVAL;
@@ -542,7 +501,6 @@ dbg_packet_exec_detail(
 		return KNOT_EOK;
 	}
 
-	/*! \todo Replace by call to parse_rest()? */
 	err = knot_packet_parse_rest(packet, flags);
 
 dbg_packet_exec_detail(

@@ -24,6 +24,7 @@
 #include "zone-diff.h"
 #include "libknot/nameserver/name-server.h"
 #include "common/descriptor.h"
+#include "libknot/rdata.h"
 
 struct zone_diff_param {
 	knot_zone_tree_t *nodes;
@@ -69,13 +70,13 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	}
 
 	int64_t soa_serial1 =
-		knot_rrset_rdata_soa_serial(soa_rrset1);
+		knot_rdata_soa_serial(soa_rrset1);
 	if (soa_serial1 == -1) {
 		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
 	}
 
 	int64_t soa_serial2 =
-		knot_rrset_rdata_soa_serial(soa_rrset2);
+		knot_rdata_soa_serial(soa_rrset2);
 	if (soa_serial2 == -1) {
 		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
 	}
@@ -108,13 +109,13 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 
 	assert(changeset);
 
-	ret = knot_rrset_deep_copy_no_sig(soa_rrset1, &changeset->soa_from, 1);
+	ret = knot_rrset_deep_copy_no_sig(soa_rrset1, &changeset->soa_from);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
 	}
 
-	ret = knot_rrset_deep_copy_no_sig(soa_rrset2, &changeset->soa_to, 1);
+	ret = knot_rrset_deep_copy_no_sig(soa_rrset2, &changeset->soa_to);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
@@ -153,7 +154,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset);
 
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy, 1);
+	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
 		return ret;
@@ -197,7 +198,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset);
 
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy, 1);
+	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
 		return ret;
@@ -408,7 +409,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		assert(rrset1->type == KNOT_RRTYPE_RRSIG);
 		dbg_zonediff_detail("zone_diff: diff_rdata: RRSIG will be "
 		              "removed.\n");
-		int ret = knot_rrset_deep_copy(rrset1, &to_remove, 1);
+		int ret = knot_rrset_deep_copy(rrset1, &to_remove);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: diff_rdata: Could not copy rrset. "
 			             "Error: %s.\n", knot_strerror(ret));
@@ -446,7 +447,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		 * be copied because TTLs are the same for all of them.
 		 */
 		knot_rrset_free(&to_remove);
-		int ret = knot_rrset_deep_copy(rrset1, &to_remove, 1);
+		int ret = knot_rrset_deep_copy(rrset1, &to_remove);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: diff_rdata: Cannot copy RRSet "
 			             "(%s).\n", knot_strerror(ret));
@@ -472,7 +473,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		assert(rrset2->type == KNOT_RRTYPE_RRSIG);
 		dbg_zonediff_detail("zone_diff: diff_rdata: RRSIG will be "
 		              "added.\n");
-		int ret = knot_rrset_deep_copy(rrset2, &to_add, 1);
+		int ret = knot_rrset_deep_copy(rrset2, &to_add);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: diff_rdata: Could not copy rrset. "
 			             "Error: %s.\n", knot_strerror(ret));
@@ -509,7 +510,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 			 * be copied because TTLs are the same for all of them.
 			 */
 			knot_rrset_free(&to_add);
-			int ret = knot_rrset_deep_copy(rrset1, &to_add, 1);
+			int ret = knot_rrset_deep_copy(rrset1, &to_add);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_rdata: Cannot copy RRSet "
 				             "(%s).\n", knot_strerror(ret));
@@ -980,7 +981,7 @@ dbg_zonediff_exec_detail(
 int knot_zone_tree_add_diff(knot_zone_tree_t *t1, knot_zone_tree_t *t2,
                             knot_changeset_t *changeset)
 {
-	if (!t1 || !t1 || !changeset)
+	if (!t1 || !t2 || !changeset)
 		return KNOT_EINVAL;
 
 	return knot_zone_diff_load_trees(t1, t2, changeset);

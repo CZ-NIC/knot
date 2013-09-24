@@ -36,6 +36,7 @@
 #include "tsig-op.h"
 #include "common/lists.h"
 #include "common/descriptor.h"
+#include "rdata.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -178,7 +179,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 		return KNOT_ERROR;
 	}
 
-	int64_t local_serial = knot_rrset_rdata_soa_serial(soa_rrset);
+	int64_t local_serial = knot_rdata_soa_serial(soa_rrset);
 	if (local_serial < 0) {
 dbg_xfrin_exec(
 		char *name = knot_dname_to_str(knot_rrset_owner(soa_rrset));
@@ -198,7 +199,7 @@ dbg_xfrin_exec(
 		return KNOT_EMALF;
 	}
 
-	int64_t remote_serial = knot_rrset_rdata_soa_serial(soa_rrset);
+	int64_t remote_serial = knot_rdata_soa_serial(soa_rrset);
 	if (remote_serial < 0) {
 		return KNOT_EMALF;	// maybe some other error
 	}
@@ -267,7 +268,7 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 			char *name = knot_dname_to_str((*last)->rrsig->owner);
 			char type[16];
 			knot_rrtype_to_string(
-			    knot_rrset_rdata_rrsig_type_covered((*last)->rrsig),
+			    knot_rdata_rrsig_type_covered((*last)->rrsig, 0),
 			    type, 16);
 
 			log_zone_warning("No RRSet for RRSIG: "
@@ -290,21 +291,6 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 }
 
 /*----------------------------------------------------------------------------*/
-
-static int xfrin_insert_rdata_dnames_to_table(knot_dname_t **dname, void *data)
-{
-	hattrie_t *lookup_tree = data;
-	knot_zone_contents_insert_dname_into_table(dname, lookup_tree);
-	return KNOT_EOK;
-}
-
-static int xfrin_insert_rrset_dnames_to_table(knot_rrset_t *rrset,
-                                              hattrie_t *lookup_tree)
-{
-	knot_zone_contents_insert_dname_into_table(&rrset->owner, lookup_tree);
-	rrset_dnames_apply(rrset, xfrin_insert_rdata_dnames_to_table, lookup_tree);
-	return KNOT_EOK;
-}
 
 static void xfrin_log_error(const knot_dname_t *zone_owner,
                             const knot_dname_t *rr_owner,
@@ -334,6 +320,9 @@ void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 	while (r != NULL) {
 		xfrin_orphan_rrsig_t *prev = r;
 		r = r->next;
+		if (prev->rrsig != NULL) {
+			knot_rrset_deep_free(&prev->rrsig, 1, 1);
+		}
 		free(prev);
 	}
 
@@ -503,7 +492,8 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	 */
 
 	/* RR parsed - sort out DNAME duplications. */
-	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
+	/*! \todo Replace with RRSet duplicate checking. */
+//	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 	knot_node_t *node = NULL;
 	int in_zone = 0;
@@ -634,8 +624,8 @@ dbg_xfrin_exec(
 
 		dbg_rrset_detail("\nNext RR:\n\n");
 		knot_rrset_dump(rr);
-		/* RR parsed - sort out DNAME duplications. */
-		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
+		/*! \todo Replace with RRSet duplicate checking. */
+//		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 		if (node != NULL && !knot_dname_is_equal(rr->owner, node->owner)) {
 dbg_xfrin_exec_detail(
@@ -681,13 +671,12 @@ dbg_xfrin_exec_detail(
 			// we must now find place for all orphan RRSIGs
 			ret = xfrin_process_orphan_rrsigs(zone,
 							  (*constr)->rrsigs);
+			xfrin_free_orphan_rrsigs(&(*constr)->rrsigs);
+
 			if (ret != KNOT_EOK) {
 				dbg_xfrin("Failed to process orphan RRSIGs\n");
-				/*! \todo Cleanup?? */
 				return ret;
 			}
-
-			xfrin_free_orphan_rrsigs(&(*constr)->rrsigs);
 
 			return 1;
 		}
@@ -975,7 +964,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		return KNOT_EMALF;
 	}
 
-	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
+	/*! \todo Replace with RRSet duplicate checking. */
+//	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
 
 	if (*chs == NULL) {
 		dbg_xfrin_verb("Changesets empty, creating new.\n");
@@ -1124,9 +1114,6 @@ dbg_xfrin_exec_verb(
 			continue;
 		}
 
-		// Handle duplications
-		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
-
 		switch (state) {
 		case -1:
 			// a SOA is expected
@@ -1142,8 +1129,8 @@ dbg_xfrin_exec_verb(
 				goto cleanup;
 			}
 
-			if (knot_rrset_rdata_soa_serial(rr)
-			    == knot_rrset_rdata_soa_serial((*chs)->first_soa)) {
+			if (knot_rdata_soa_serial(rr)
+			    == knot_rdata_soa_serial((*chs)->first_soa)) {
 
 				/*! \note [TSIG] Check TSIG, we're at the end of
 				 *               transfer.
@@ -1210,8 +1197,8 @@ dbg_xfrin_exec_verb(
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 				log_zone_info("%s Serial %u -> %u.\n",
 					      xfr->msg,
-					      knot_rrset_rdata_soa_serial(cur->soa_from),
-					      knot_rrset_rdata_soa_serial(cur->soa_to));
+					      knot_rdata_soa_serial(cur->soa_from),
+					      knot_rdata_soa_serial(cur->soa_to));
 				state = -1;
 				continue;
 			} else {
@@ -1289,7 +1276,7 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 {
 	dbg_xfrin_detail("Copying old RRSet: %p\n", old);
 	// create new RRSet by copying the old one
-	int ret = knot_rrset_deep_copy(old, copy, 1);
+	int ret = knot_rrset_deep_copy(old, copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to create RRSet copy.\n");
 		return KNOT_ENOMEM;
@@ -1393,15 +1380,14 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 
 	if (*rrset
 	    && knot_dname_is_equal(knot_rrset_owner(*rrset), knot_node_owner(node))
-	    && knot_rrset_type(*rrset) == knot_rrset_rdata_rrsig_type_covered(remove)) {
+	    && knot_rrset_type(*rrset) == knot_rdata_rrsig_type_covered(remove, 0)) {
 		// this RRSet should be the already copied RRSet so we may
 		// update it right away
 		/*! \todo Does this case even occur? */
 		dbg_xfrin_verb("Using RRSet from previous iteration.\n");
 	} else {
 		// find RRSet based on the Type Covered
-		uint16_t type =
-			knot_rrset_rdata_rrsig_type_covered(remove);
+		uint16_t type = knot_rdata_rrsig_type_covered(remove, 0);
 
 		// copy the rrset
 		dbg_xfrin_detail("Copying RRSet that carries the RRSIGs.\n");
@@ -1833,18 +1819,18 @@ static int xfrin_apply_add_normal_ddns(knot_changes_t *changes,
 		 *    serial is less than the current serial, ignore.
 		 */
 		if (knot_node_rrset(node, KNOT_RRTYPE_SOA) == NULL
-		    || ns_serial_compare(knot_rrset_rdata_soa_serial(
+		    || ns_serial_compare(knot_rdata_soa_serial(
 		       knot_node_rrset(node, KNOT_RRTYPE_SOA)),
-			   knot_rrset_rdata_soa_serial(add) > 0
+			   knot_rdata_soa_serial(add) > 0
 		    )) {
 			dbg_ddns_verb("DDNS: Ignoring SOA.\n");
 			return KNOT_EOK;
 		} else {
 			dbg_ddns_verb("DDNS: replacing SOA (old serial: %u,"
 				      " new serial: %u.\n",
-				      knot_rrset_rdata_soa_serial(knot_node_rrset(node,
+				      knot_rdata_soa_serial(knot_node_rrset(node,
 							  KNOT_RRTYPE_SOA)),
-				      knot_rrset_rdata_soa_serial(add));
+				      knot_rdata_soa_serial(add));
 			/* b) Otherwise, replace the current SOA. */
 			ret = xfrin_replace_rrset_in_node(node, add,
 							      changes,
@@ -2064,7 +2050,7 @@ static int xfrin_apply_add_rrsig(knot_changes_t *changes,
 
 	int ret;
 
-	uint16_t type = knot_rrset_rdata_rrsig_type_covered(add);
+	uint16_t type = knot_rdata_rrsig_type_covered(add, 0);
 
 dbg_xfrin_exec_verb(
 	char *name = knot_dname_to_str(knot_rrset_owner(add));
@@ -2274,6 +2260,16 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
+static void xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
+{
+	UNUSED(data);
+	assert(node != NULL);
+
+	knot_node_set_new_node(node, NULL);
+}
+
+/*----------------------------------------------------------------------------*/
+
 static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
                                         knot_zone_contents_t **new_contents)
 {
@@ -2284,6 +2280,17 @@ static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
 	if (*new_contents != NULL) {
 		// destroy the shallow copy of zone
 		xfrin_zone_contents_free2(new_contents);
+	}
+
+	if (old_contents != NULL) {
+		// cleanup old zone tree - reset pointers to new node to NULL
+		knot_zone_contents_tree_apply_inorder(old_contents,
+						      xfrin_cleanup_old_nodes,
+						      NULL);
+
+		knot_zone_contents_nsec3_apply_inorder(old_contents,
+						       xfrin_cleanup_old_nodes,
+						       NULL);
 	}
 }
 
@@ -2344,7 +2351,7 @@ dbg_xfrin_exec_detail(
 		// check if the RRSet belongs to the NSEC3 tree
 		if ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
 		    || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
-			&& knot_rrset_rdata_rrsig_type_covered(rr)
+			&& knot_rdata_rrsig_type_covered(rr, 0)
 			    == KNOT_RRTYPE_NSEC3))
 		{
 			dbg_xfrin_verb("Removed RRSet belongs to NSEC3 tree.\n");
@@ -2439,7 +2446,7 @@ dbg_xfrin_exec_detail(
 		// check if the RRSet belongs to the NSEC3 tree
 		if ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
 		    || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
-			&& knot_rrset_rdata_rrsig_type_covered(rr)
+			&& knot_rdata_rrsig_type_covered(rr, 0)
 			    == KNOT_RRTYPE_NSEC3))
 		{
 			dbg_xfrin_detail("This is NSEC3-related RRSet.\n");
@@ -2576,7 +2583,7 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 	/*! \todo Only if SOA is present? */
 	const knot_rrset_t *soa = knot_node_rrset(contents->apex,
 						  KNOT_RRTYPE_SOA);
-	if (soa == NULL || knot_rrset_rdata_soa_serial(soa)
+	if (soa == NULL || knot_rdata_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
 		return KNOT_ERROR;
@@ -2982,5 +2989,3 @@ int xfrin_switch_zone(knot_zone_t *zone,
 
 	return KNOT_EOK;
 }
-
-
