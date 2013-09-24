@@ -155,9 +155,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	}
 
 	// update SOA if there were any changes
-	const knot_rrset_t *soa =
-		knot_node_rrset(knot_zone_contents_apex(zone->contents),
-		                KNOT_RRTYPE_SOA);
+	const knot_rrset_t *soa = knot_node_rrset(zone->contents->apex,
+	                                          KNOT_RRTYPE_SOA);
 	assert(soa);
 	result = knot_zone_sign_update_soa(soa, &zone_keys, &policy,
 	                                   out_ch);
@@ -179,12 +178,20 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up)
 {
+	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	return zone_sign(zone, out_ch, false, soa_up);
 }
 
 int knot_dnssec_zone_sign_force(knot_zone_t *zone,
                                 knot_changeset_t *out_ch)
 {
+	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_INC);
 }
 
@@ -196,6 +203,11 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	if (!conf()->dnssec_enable) {
 		return KNOT_EOK;
 	}
+
+	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	// Init needed structures
 	knot_zone_keys_t zone_keys = { '\0' };
 	knot_dnssec_policy_t policy = { '\0' };
