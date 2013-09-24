@@ -963,16 +963,13 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 		if (rr_should_be_signed(node, zone_rrset, args->signed_table)) {
 			return force_resign_rrset(zone_rrset, args->zone_keys,
 			                          args->policy, args->changeset);
-		} else {
+		} else if (zone_rrset && zone_rrset->rrsigs != NULL) {
 			/*!
 			 * If RRSet in zone DOES have RRSIGs although we
 			 * should not sign it, DDNS-caused change to node/rr
 			 * occured and we have to drop all RRSIGs.
 			 */
-			if (zone_rrset && zone_rrset->rrsigs != NULL) {
-				return remove_rrset_rrsigs(zone_rrset,
-				                           args->changeset);
-			}
+			return remove_rrset_rrsigs(zone_rrset, args->changeset);
 		}
 	}
 	return KNOT_EOK;
