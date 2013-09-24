@@ -453,7 +453,8 @@ static knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
 static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
                                const bitmap_t *rr_types)
 {
-	return 6 + params->salt_length + KNOT_NSEC3_HASH_LENGTH
+	return 6 + params->salt_length
+	       + knot_nsec3_hash_length(params->algorithm)
 	       + bitmap_size(rr_types);
 }
 
@@ -465,6 +466,8 @@ static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
 static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
                              const bitmap_t *rr_types, uint32_t ttl)
 {
+	uint8_t hash_length = knot_nsec3_hash_length(params->algorithm);
+
 	*rdata = params->algorithm;                       // hash algorithm
 	rdata += 1;
 	*rdata = 0;                                       // flags
@@ -475,10 +478,10 @@ static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
 	rdata += 1;
 	memcpy(rdata, params->salt, params->salt_length); // salt
 	rdata += params->salt_length;
-	*rdata = KNOT_NSEC3_HASH_LENGTH;                  // hash length
+	*rdata = hash_length;                             // hash length
 	rdata += 1;
-	/*memset(rdata, '\0', KNOT_NSEC3_HASH_LENGTH);*/  // hash (unknown)
-	rdata += KNOT_NSEC3_HASH_LENGTH;
+	/*memset(rdata, '\0', hash_len);*/                // hash (unknown)
+	rdata += hash_length;
 	bitmap_write(rr_types, rdata);                    // RR types bit map
 }
 
@@ -538,22 +541,6 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 }
 
 /*!
- * \brief Get position of hash field in NSEC3 rdata.
- *
- * \todo Redundant - usage should be replaced by
- *       knot_rrset_rdata_nsec3_next_hashed().
- */
-static uint8_t *nsec3_rdata_hash(uint8_t *rdata)
-{
-	rdata += 4;           // algorithm, flags, iterations
-	rdata += 1 + *rdata;  // salt length, salt
-	assert(*rdata == KNOT_NSEC3_HASH_LENGTH);
-	rdata += 1;           // hash length
-
-	return rdata;
-}
-
-/*!
  * \brief Connect two nodes by filling 'hash' field of NSEC3 RDATA of the node.
  *
  * \param a     First node.
@@ -569,20 +556,35 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 	assert(b);
 
 	assert(a->rrset_count == 1);
-	uint8_t *rdata_hash = nsec3_rdata_hash(a->rrset_tree[0]->rdata);
+
+	uint8_t algorithm = knot_rdata_nsec3_algorithm(a->rrset_tree[0], 0);
+	if (algorithm == 0) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *raw_hash = NULL;
+	uint8_t raw_length = 0;
+	knot_rdata_nsec3_next_hashed(a->rrset_tree[0], 0, &raw_hash, &raw_length);
+	if (raw_hash == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	assert(raw_length == knot_nsec3_hash_length(algorithm));
 
 	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str(b->owner);
+	size_t b32_length = knot_nsec3_hash_b32_length(algorithm);
 	if (!b32_hash) {
 		return KNOT_ENOMEM;
 	}
 
-	int32_t written = base32hex_decode(b32_hash, KNOT_NSEC3_HASH_B32_LENGTH,
-	                                   rdata_hash, KNOT_NSEC3_HASH_LENGTH);
+	int32_t written = base32hex_decode(b32_hash, b32_length,
+	                                   raw_hash, raw_length);
 
 	free(b32_hash);
 
-	if (written != KNOT_NSEC3_HASH_LENGTH)
+	if (written != raw_length) {
 		return KNOT_EINVAL;
+	}
 
 	return KNOT_EOK;
 }
