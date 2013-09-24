@@ -25,7 +25,7 @@
 
 int knot_binary_from_base64(const char *base64, knot_binary_t *to)
 {
-	if (!to) {
+	if (!base64 || !to) {
 		return KNOT_EINVAL;
 	}
 

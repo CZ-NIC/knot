@@ -60,16 +60,18 @@ inline static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
 	int win = type / BITMAP_WINDOW_SIZE;
 	int bit = type % BITMAP_WINDOW_SIZE;
 
-	if (bitmap->used <= win)
+	if (bitmap->used <= win) {
 		bitmap->used = win + 1;
+	}
 
 	int win_byte = bit / CHAR_BIT;
 	int win_bit  = bit % CHAR_BIT;
 
 	bitmap_window_t *window = &bitmap->windows[win];
 	window->data[win_byte] |= 0x80 >> win_bit;
-	if (window->used <= win_byte)
+	if (window->used <= win_byte) {
 		window->used = win_byte + 1;
+	}
 }
 
 /*!
@@ -93,8 +95,9 @@ inline static size_t bitmap_size(const bitmap_t *bitmap)
 
 	for (int i = 0; i < bitmap->used; i++) {
 		int used = bitmap->windows[i].used;
-		if (used == 0)
+		if (used == 0) {
 			continue;
+		}
 
 		result += 2 + used; // windows number, window size, data
 	}
@@ -110,8 +113,9 @@ inline static void bitmap_write(const bitmap_t *bitmap, uint8_t *output)
 	uint8_t *write_ptr = output;
 	for (int win = 0; win < bitmap->used; win++) {
 		int used = bitmap->windows[win].used;
-		if (used == 0)
+		if (used == 0) {
 			continue;
+		}
 
 		*write_ptr = (uint8_t)win;
 		write_ptr += 1;
