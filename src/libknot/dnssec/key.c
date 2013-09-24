@@ -158,6 +158,7 @@ static int get_key_info_from_public_key(const char *filename,
 		scanner_free(scanner);
 		return KNOT_ENOMEM;
 	}
+	knot_dname_to_lower(owner);
 
 	knot_binary_t rdata_bin = { 0 };
 	result = knot_binary_from_string(scanner->r_data, scanner->r_data_length,
