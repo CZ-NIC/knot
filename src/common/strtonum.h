@@ -16,7 +16,7 @@
 /*!
  * \file strtonum.h
  *
- * \brief Universal interface for save conversion of strings to numbers.
+ * \brief Universal interface for safe conversion of strings to numbers.
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *

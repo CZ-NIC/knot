@@ -35,14 +35,6 @@
 #include "libknot/dnssec/zone-keys.h"
 #include "libknot/dnssec/policy.h"
 
-typedef struct {
-	const knot_zone_contents_t *zone;
-	const knot_zone_keys_t *zone_keys;
-	const knot_dnssec_policy_t *policy;
-	knot_changeset_t *changeset;
-	ahtable_t *signed_table;
-} changeset_signing_data_t;
-
 /*!
  * \brief Update zone signatures and store performed changes in changeset.
  *

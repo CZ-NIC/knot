@@ -32,23 +32,43 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "libknot/dnssec/algorithm.h"
 #include "rrset.h"
 
 /*---------------------------------------------------------------------------*/
 
-/*!
- * \brief Length of raw NSEC3 hash in bytes.
- *
- * \todo May change later, when other hash algorithms are allowed, thus
- *       not good as a constant. That's why there's 'hash length' field in
- *       NSEC3 RDATA.
- */
-#define KNOT_NSEC3_HASH_LENGTH 20
 
 /*!
- * \brief Length of the a NSEC3 hash encoded in Base32 encoding.
+ * \brief Get length of the raw NSEC3 hash.
+ *
+ * \param algorithm  NSEC3 hash algorithm.
+ *
+ * \return Length of the hash, 0 for unknown hash algorithm.
  */
-#define KNOT_NSEC3_HASH_B32_LENGTH 32
+inline static size_t knot_nsec3_hash_length(uint8_t algorithm)
+{
+	if (algorithm == KNOT_NSEC3_ALGORITHM_SHA1) {
+		return 20;
+	} else {
+		return 0;
+	}
+}
+
+/*!
+ * \brief Get length of the NSEC3 hash encoded in Base32 encoding.
+ *
+ * \param algorithm  NSEC3 hash algorithm.
+ *
+ * \return Length of the hash, 0 for unknown hash algorithm.
+ */
+inline static size_t knot_nsec3_hash_b32_length(uint8_t algorithm)
+{
+	if (algorithm == KNOT_NSEC3_ALGORITHM_SHA1) {
+		return 32;
+	} else {
+		return 0;
+	}
+}
 
 /*---------------------------------------------------------------------------*/
 

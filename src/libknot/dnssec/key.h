@@ -168,6 +168,8 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
 /*!
  * \brief Frees TSIG key.
  *
+ * The structure itself is not freed.
+ *
  * \param key  TSIG key structure to be freed.
  *
  * \return Error code, KNOT_EOK when succeeded.

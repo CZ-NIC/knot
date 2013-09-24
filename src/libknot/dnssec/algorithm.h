@@ -53,6 +53,13 @@ typedef enum {
 } knot_dnssec_algorithm_t;
 
 /*!
+ * \brief NSEC3 hash algorithm numbers.
+ */
+typedef enum {
+	KNOT_NSEC3_ALGORITHM_SHA1 = 1
+} knot_nsec3_hash_algorithm_t;
+
+/*!
  * \brief Check if algorithm is supported for zone signing.
  *
  * \param algorithm      Algorithm identification.

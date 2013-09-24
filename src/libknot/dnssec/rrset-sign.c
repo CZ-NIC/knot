@@ -150,6 +150,8 @@ static uint8_t *create_rrsigs_rdata(knot_rrset_t *rrsigs,
 /*!
  * \brief Add RRSIG RDATA without signature to signing context.
  *
+ * Requires signer name in RDATA in canonical form.
+ *
  * \param ctx   Signing context.
  * \param rdata Pointer to RRSIG RDATA.
  *
@@ -169,6 +171,8 @@ static int sign_ctx_add_self(knot_dnssec_sign_context_t *ctx,
 
 /*!
  * \brief Add covered RRs to signing context.
+ *
+ * Requires all DNAMEs in canonical form and all RRs ordered canonically.
  *
  * \param ctx      Signing context.
  * \param covered  Covered RRs.
@@ -212,6 +216,8 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
  *
  * RFC 4034: The signature covers RRSIG RDATA field (excluding the signature)
  * and all matching RR records, which are ordered canonically.
+ *
+ * Requires all DNAMEs in canonical form and all RRs ordered canonically.
  *
  * \param ctx          Signing context.
  * \param rrsig_rdata  RRSIG RDATA with populated fields except signature.
@@ -305,12 +311,8 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
                             knot_dnssec_sign_context_t *ctx,
                             const knot_dnssec_policy_t *policy)
 {
-	if (!covered || !rrsigs || !policy) {
+	if (!covered || !rrsigs || !key || !ctx || !policy) {
 		return KNOT_EINVAL;
-	}
-
-	if (key == NULL || ctx == NULL) {
-		return KNOT_DNSSEC_EINVALID_SIGNATURE;
 	}
 
 	if (is_expired_signature(rrsigs, pos, policy)) {
@@ -320,7 +322,7 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 	// identify fields in the signature being validated
 
 	uint8_t *rdata = knot_rrset_get_rdata(rrsigs, pos);
-	const uint8_t *signer = knot_rdata_rrsig_signer_name(rrsigs, pos);
+	const knot_dname_t *signer = knot_rdata_rrsig_signer_name(rrsigs, pos);
 
 	if (!rdata || !signer) {
 		return KNOT_EINVAL;
