@@ -388,19 +388,19 @@ static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
 	// Create a key = combination of owner and type mnemonic
 	int dname_size = knot_dname_size(rrset->owner);
 	uint8_t key[dname_size + 16];
-	memset(key, 0, dname_size + 16);
+	memset(key, 0, sizeof(key));
 	memcpy(key, rrset->owner, dname_size);
 	int ret = knot_rrtype_to_string(rrset->type, key + dname_size,
 	                                16 - dname_size);
 	if (ret != KNOT_EOK) {
 		return false;
 	}
-	if (ahtable_tryget(t, key, dname_size + 16)) {
+	if (ahtable_tryget(t, key, sizeof(key))) {
 		return true;
 	}
 
 	// If not in the table, insert
-	*ahtable_get(t, key, dname_size + 16) = (value_t *)rrset;
+	*ahtable_get(t, key, sizeof(key)) = (value_t *)rrset;
 	return false;
 }
 

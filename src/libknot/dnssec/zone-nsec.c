@@ -396,7 +396,7 @@ static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 					 const char *apex, size_t apex_size)
 {
 	char name[KNOT_DNAME_MAX_LENGTH];
-	size_t endp;
+	int32_t endp;
 
 	endp = base32hex_encode(hash, hash_size, (uint8_t *)name, sizeof(name));
 	if (endp <= 0)
@@ -782,7 +782,8 @@ bool is_nsec3_enabled(const knot_zone_contents_t *zone)
  * \brief Get minimum TTL from zone SOA.
  * \note Value should be used for NSEC records.
  */
-static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl)
+static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
+                                 uint32_t *ttl)
 {
 	assert(zone);
 	assert(zone->apex);
@@ -816,7 +817,7 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 
 	uint32_t nsec_ttl = 0;
 	if (!get_zone_soa_min_ttl(zone, &nsec_ttl)) {
-		return KNOT_ERROR;
+		return KNOT_EINVAL;
 	}
 
 	int result;
