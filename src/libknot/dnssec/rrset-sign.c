@@ -150,6 +150,8 @@ static uint8_t *create_rrsigs_rdata(knot_rrset_t *rrsigs,
 /*!
  * \brief Add RRSIG RDATA without signature to signing context.
  *
+ * Requires signer name in RDATA in canonical form.
+ *
  * \param ctx   Signing context.
  * \param rdata Pointer to RRSIG RDATA.
  *
@@ -169,6 +171,8 @@ static int sign_ctx_add_self(knot_dnssec_sign_context_t *ctx,
 
 /*!
  * \brief Add covered RRs to signing context.
+ *
+ * Requires all DNAMEs in canonical form and all RRs ordered canonically.
  *
  * \param ctx      Signing context.
  * \param covered  Covered RRs.
@@ -212,6 +216,8 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
  *
  * RFC 4034: The signature covers RRSIG RDATA field (excluding the signature)
  * and all matching RR records, which are ordered canonically.
+ *
+ * Requires all DNAMEs in canonical form and all RRs ordered canonically.
  *
  * \param ctx          Signing context.
  * \param rrsig_rdata  RRSIG RDATA with populated fields except signature.
