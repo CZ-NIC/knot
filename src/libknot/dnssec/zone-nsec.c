@@ -127,8 +127,9 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
 	knot_rrset_t *old_rrsigs = NULL;
 
 	result = knot_rrset_deep_copy(oldrr, &old_nsec);
-	if (result != KNOT_EOK)
+	if (result != KNOT_EOK) {
 		return result;
+	}
 
 	old_rrsigs = old_nsec->rrsigs;
 	old_nsec->rrsigs = NULL;
@@ -303,14 +304,17 @@ static int create_nsec_chain(const knot_zone_contents_t *zone, uint32_t ttl,
  */
 inline static bool valid_nsec3_node(const knot_node_t *node)
 {
-	if (node->rrset_count != 1)
+	if (node->rrset_count != 1) {
 		return false;
+	}
 
-	if (node->rrset_tree[0]->type != KNOT_RRTYPE_NSEC3)
+	if (node->rrset_tree[0]->type != KNOT_RRTYPE_NSEC3) {
 		return false;
+	}
 
-	if (node->rrset_tree[0]->rdata_count != 1)
+	if (node->rrset_tree[0]->rdata_count != 1) {
 		return false;
+	}
 
 	return true;
 }
@@ -366,11 +370,13 @@ static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 		knot_node_t *node_to = NULL;
 
 		knot_zone_tree_get(to, node_from->owner, &node_to);
-		if (node_to == NULL)
+		if (node_to == NULL) {
 			continue;
+		}
 
-		if (!are_nsec3_nodes_equal(node_from, node_to))
+		if (!are_nsec3_nodes_equal(node_from, node_to)) {
 			continue;
+		}
 
 		shallow_copy_signature(node_from, node_to);
 	}
@@ -397,8 +403,9 @@ static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 	int32_t endp;
 
 	endp = base32hex_encode(hash, hash_size, (uint8_t *)name, sizeof(name));
-	if (endp <= 0)
+	if (endp <= 0) {
 		return NULL;
+	}
 
 	name[endp] = '.';
 	endp += 1;
@@ -495,8 +502,9 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
 {
 	knot_rrset_t *rrset;
 	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl);
-	if (!rrset)
+	if (!rrset) {
 		return NULL;
+	}
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
@@ -521,8 +529,9 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 {
 	uint8_t flags = 0;
 	knot_node_t *new_node = knot_node_new(owner, apex_node, flags);
-	if (!new_node)
+	if (!new_node) {
 		return NULL;
+	}
 
 	knot_rrset_t *nsec3_rrset;
 	nsec3_rrset = create_nsec3_rrset(owner, nsec3_params, rr_types, ttl);
@@ -601,8 +610,9 @@ static bool get_zone_apex_str(const knot_zone_contents_t *zone,
 	assert(apex_size);
 
 	*apex = knot_dname_to_str(zone->apex->owner);
-	if (!*apex)
+	if (!*apex) {
 		return false;
+	}
 
 	*apex_size = strlen(*apex);
 
@@ -667,8 +677,9 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 
 	char *apex = NULL;
 	size_t apex_size;
-	if (!get_zone_apex_str(zone, &apex, &apex_size))
+	if (!get_zone_apex_str(zone, &apex, &apex_size)) {
 		return KNOT_ENOMEM;
+	}
 
 	int result = KNOT_EOK;
 
@@ -686,8 +697,9 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		}
 
 		result = knot_zone_tree_insert(nsec3_nodes, nsec3_node);
-		if (result != KNOT_EOK)
+		if (result != KNOT_EOK) {
 			break;
+		}
 
 		hattrie_iter_next(it);
 	}
@@ -740,8 +752,9 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 	int result;
 
 	knot_zone_tree_t *nsec3_nodes = knot_zone_tree_create();
-	if (!nsec3_nodes)
+	if (!nsec3_nodes) {
 		return KNOT_ENOMEM;
+	}
 
 	result = create_nsec3_nodes(zone, ttl, nsec3_nodes);
 	if (result != KNOT_EOK) {
@@ -788,12 +801,14 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl
 
 	knot_node_t *apex = zone->apex;
 	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
-	if (!soa)
+	if (!soa) {
 		return false;
+	}
 
 	uint32_t result =  knot_rdata_soa_minimum(soa);
-	if (result == 0)
+	if (result == 0) {
 		return false;
+	}
 
 	*ttl = result;
 	return true;
@@ -807,12 +822,14 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl
 int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 				knot_changeset_t *changeset)
 {
-	if (!zone || !changeset)
+	if (!zone || !changeset) {
 		return KNOT_EINVAL;
+	}
 
 	uint32_t nsec_ttl = 0;
-	if (!get_zone_soa_min_ttl(zone, &nsec_ttl))
+	if (!get_zone_soa_min_ttl(zone, &nsec_ttl)) {
 		return KNOT_ERROR;
+	}
 
 	int result;
 
@@ -830,16 +847,19 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
  */
 int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone)
 {
-	if (!zone)
+	if (!zone) {
 		return KNOT_EINVAL;
+	}
 
-	if (!is_nsec3_enabled(zone))
+	if (!is_nsec3_enabled(zone)) {
 		return KNOT_EOK;
+	}
 
 	char *apex;
 	size_t apex_size;
-	if (!get_zone_apex_str(zone, &apex, &apex_size))
+	if (!get_zone_apex_str(zone, &apex, &apex_size)) {
 		return KNOT_ENOMEM;
+	}
 
 	bool sorted = false;
 	hattrie_iter_t *it = hattrie_iter_begin(zone->nodes, sorted);
@@ -865,11 +885,13 @@ int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone)
 		knot_node_t *nsec3_node = NULL;
 		result = knot_zone_tree_get(zone->nsec3_nodes, nsec3_name,
 		                            &nsec3_node);
-		if (result != KNOT_EOK)
+		if (result != KNOT_EOK) {
 			break;
+		}
 
-		if (nsec3_node != NULL)
+		if (nsec3_node != NULL) {
 			node->nsec3_node = nsec3_node;
+		}
 
 		knot_dname_free(&nsec3_name);
 		hattrie_iter_next(it);
