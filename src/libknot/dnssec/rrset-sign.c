@@ -322,17 +322,14 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 	// identify fields in the signature being validated
 
 	uint8_t *rdata = knot_rrset_get_rdata(rrsigs, pos);
-	const knot_dname_t *signer = knot_rdata_rrsig_signer_name(rrsigs, pos);
-
-	if (!rdata || !signer) {
+	if (!rdata) {
 		return KNOT_EINVAL;
 	}
 
-	size_t header_size = RRSIG_RDATA_SIGNER_OFFSET + knot_dname_size(signer);
-	uint8_t *signature = rdata + header_size;
-	size_t signature_size = rrset_rdata_item_size(rrsigs, pos) - header_size;
-
-	if (signature_size == 0) {
+	uint8_t *signature = NULL;
+	size_t signature_size = 0;
+	knot_rdata_rrsig_signature(rrsigs, pos, &signature, &signature_size);
+	if (!signature) {
 		return KNOT_EINVAL;
 	}
 
