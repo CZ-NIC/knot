@@ -4213,9 +4213,9 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	// 2) Apply the UPDATE and create changesets.
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
-	ret = knot_ddns_process_update2(contents_copy, query,
-	                                knot_changesets_get_last(chgs),
-	                                chgs->changes, rcode);
+	ret = knot_ddns_process_update(contents_copy, query,
+	                               knot_changesets_get_last(chgs),
+	                               chgs->changes, rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)

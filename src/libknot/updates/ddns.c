@@ -1729,11 +1729,11 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
  * If anything fails, rollback must be done. The xfrin_rollback_update() may
  * be good for this.
  */
-int knot_ddns_process_update2(knot_zone_contents_t *zone,
-                              const knot_packet_t *query,
-                              knot_changeset_t *changeset,
-                              knot_changes_t *changes,
-                              knot_rcode_t *rcode)
+int knot_ddns_process_update(knot_zone_contents_t *zone,
+                             const knot_packet_t *query,
+                             knot_changeset_t *changeset,
+                             knot_changes_t *changes,
+                             knot_rcode_t *rcode)
 {
 	if (zone == NULL || query == NULL || changeset == NULL || rcode == NULL
 	    || changes == NULL) {
