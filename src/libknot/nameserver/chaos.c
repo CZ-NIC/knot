@@ -73,7 +73,7 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, response_len + 1);
 	if (!rdata) {
-		knot_rrset_deep_free(&rrset, 1, 0);
+		knot_rrset_deep_free(&rrset, 1);
 		return NULL;
 	}
 
@@ -103,17 +103,17 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_packet_t *response,
 
 	int result = knot_response_add_rrset_answer(response, rrset, 1, 0, 0);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&rrset, 1, 0);
+		knot_rrset_deep_free(&rrset, 1);
 		return KNOT_RCODE_SERVFAIL;
 	}
 
 	result = ns_response_to_wire(response, response_wire, response_size);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&rrset, 1, 0);
+		knot_rrset_deep_free(&rrset, 1);
 		return KNOT_RCODE_SERVFAIL;
 	}
 
-	knot_rrset_deep_free(&rrset, 1, 0);
+	knot_rrset_deep_free(&rrset, 1);
 	knot_response_set_rcode(response, KNOT_RCODE_NOERROR);
 
 	return KNOT_RCODE_NOERROR;

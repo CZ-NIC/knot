@@ -222,7 +222,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	if (knot_packet_to_wire(qr, &buf, &buflen) != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1, 1);
+		knot_rrset_deep_free(&rr, 1);
 		knot_packet_free(&qr);
 		return 1;
 	}
@@ -258,7 +258,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Cleanup. */
 	if (rc == 0) printf("\n");
-	knot_rrset_deep_free(&rr, 1, 1);
+	knot_rrset_deep_free(&rr, 1);
 
 	/* Close connection. */
 	socket_close(s);

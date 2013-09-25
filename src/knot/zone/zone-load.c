@@ -144,7 +144,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	} else if (ret > 0) {
 		/* Merged, free data + owner, but not DNAMEs inside RDATA. */
-		knot_rrset_deep_free(&rrsig, 1, 0);
+		knot_rrset_deep_free(&rrsig, 1);
 	}
 	assert(tmp_rrset->rrsigs != NULL);
 
@@ -303,7 +303,7 @@ static void process_rr(const scanner_t *scanner)
 			} else {
 				log_zone_warning("encountered identical "
 				                 "extra SOA record\n");
-				knot_rrset_deep_free(&current_rrset, 1, 1);
+				knot_rrset_deep_free(&current_rrset, 1);
 				parser->ret = KNOT_EOK;
 				return;
 			}
@@ -452,7 +452,7 @@ static void process_rr(const scanner_t *scanner)
 		parser->ret = ret;
 		return;
 	} else if (ret > 0) {
-		knot_rrset_deep_free(&current_rrset, 1, 0);
+		knot_rrset_deep_free(&current_rrset, 1);
 	}
 	assert(parser->current_zone && node);
 	/* Do mandatory semantic checks. */

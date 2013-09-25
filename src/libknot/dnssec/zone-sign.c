@@ -226,8 +226,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 
 	if (to_remove != NULL && result != KNOT_EOK) {
 		int free_owners = true;
-		int free_rdata_dnames = true;
-		knot_rrset_deep_free(&to_remove, free_owners, free_rdata_dnames);
+		knot_rrset_deep_free(&to_remove, free_owners);
 	}
 
 	return result;
@@ -289,8 +288,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 	if (to_add != NULL && result != KNOT_EOK) {
 		int free_owners = true;
-		int free_rdata_dnames = true;
-		knot_rrset_deep_free(&to_add, free_owners, free_rdata_dnames);
+		knot_rrset_deep_free(&to_add, free_owners);
 	}
 
 	return result;
@@ -746,7 +744,7 @@ done:
 	}
 
 	if (to_remove != NULL && result != KNOT_EOK) {
-		knot_rrset_deep_free(&to_remove, 1, 1);
+		knot_rrset_deep_free(&to_remove, 1);
 	}
 
 	return result;
@@ -824,7 +822,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	}
 
 	if (to_add != NULL && result != KNOT_EOK) {
-		knot_rrset_deep_free(&to_add, 1, 1);
+		knot_rrset_deep_free(&to_add, 1);
 	}
 
 	return result;
@@ -887,7 +885,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 
 fail:
 
-	knot_rrset_deep_free(&new_dnskeys, 1, 1);
+	knot_rrset_deep_free(&new_dnskeys, 1);
 
 	return result;
 }
@@ -1073,7 +1071,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 		result = knot_changeset_add_rrset(changeset, soa_copy,
 		                                  KNOT_CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&soa_copy, 1, 1);
+			knot_rrset_deep_free(&soa_copy, 1);
 			return result;
 		}
 	}
@@ -1090,7 +1088,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	result = knot_rrset_deep_copy_no_sig(soa, &soa_to);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&soa_from, 1, 1);
+		knot_rrset_deep_free(&soa_from, 1);
 		return result;
 	}
 
@@ -1100,8 +1098,8 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	result = add_missing_rrsigs(soa_to, NULL, zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&soa_from, 1, 1);
-		knot_rrset_deep_free(&soa_to, 1, 1);
+		knot_rrset_deep_free(&soa_from, 1);
+		knot_rrset_deep_free(&soa_to, 1);
 		return result;
 	}
 

@@ -191,7 +191,7 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 
 	uint8_t *sig_rdata = sig0_create_rdata(sig_rrset, key);
 	if (!sig_rdata) {
-		knot_rrset_deep_free(&sig_rrset, 1, 0);
+		knot_rrset_deep_free(&sig_rrset, 1);
 		return KNOT_ENOMEM;
 	}
 
@@ -207,7 +207,7 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 	int result = knot_rrset_to_wire(sig_rrset, wire_end, &wire_sig_size,
 	                                wire_avail_size, &written_rr_count,
 	                                NULL);
-	knot_rrset_deep_free(&sig_rrset, 1, 0);
+	knot_rrset_deep_free(&sig_rrset, 1);
 	if (result != KNOT_EOK) {
 		return result;
 	}

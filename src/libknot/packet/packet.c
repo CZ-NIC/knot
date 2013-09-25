@@ -167,7 +167,7 @@ dbg_packet_exec_verb(
 	if (size - *pos < rdlength) {
 		dbg_packet("Malformed RR: Not enough data to parse RR"
 		           " RDATA (size: %zu, position: %zu).\n", size, *pos);
-		knot_rrset_deep_free(&rrset, 1, 1);
+		knot_rrset_deep_free(&rrset, 1);
 		return NULL;
 	}
 
@@ -184,7 +184,7 @@ dbg_packet_exec_verb(
 	int ret = knot_packet_parse_rdata(rrset, wire, pos, size, rdlength);
 	if (ret != KNOT_EOK) {
 		dbg_packet("Malformed RR: Could not parse RDATA.\n");
-		knot_rrset_deep_free(&rrset, 1, 1);
+		knot_rrset_deep_free(&rrset, 1);
 		return NULL;
 	}
 
@@ -300,10 +300,10 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 			break;
 		} else if (err == 1) {	// merged, shallow data copy
 			dbg_packet_detail("RRSet merged, freeing.\n");
-			knot_rrset_deep_free(&rrset, 1, 0);
+			knot_rrset_deep_free(&rrset, 1);
 			continue;
 		} else if (err == 2) { // skipped
-			knot_rrset_deep_free(&rrset, 1, 1);
+			knot_rrset_deep_free(&rrset, 1);
 			continue;
 		}
 
@@ -312,7 +312,7 @@ static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
 			// remove the last RRSet from the list of RRSets
 			// - just decrement the count
 			--(*rrset_count);
-			knot_rrset_deep_free(&rrset, 1, 1);
+			knot_rrset_deep_free(&rrset, 1);
 			break;
 		}
 
@@ -1024,7 +1024,7 @@ dbg_packet_exec(
 		// function (for reallocating rrset array)
 		// TODO sort out freeing, this WILL leak.
 		knot_rrset_deep_free(
-			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1, 1);
+			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1);
 	}
 }
 
@@ -1179,7 +1179,7 @@ void knot_packet_dump(const knot_packet_t *packet)
 static int knot_packet_free_section(const knot_rrset_t **s, short count) {
 	/*! \todo The API is really incompatible here. */
 	for (short i = 0; i < count; ++i)
-		knot_rrset_deep_free((knot_rrset_t **)s + i, 1, 1);
+		knot_rrset_deep_free((knot_rrset_t **)s + i, 1);
 	return count;
 }
 

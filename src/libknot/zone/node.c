@@ -642,7 +642,7 @@ void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
 
 	knot_rrset_t **rrs = node->rrset_tree;
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_deep_free(&(rrs[i]), 1, free_rdata_dnames);
+		knot_rrset_deep_free(&(rrs[i]), 1);
 	}
 }
 

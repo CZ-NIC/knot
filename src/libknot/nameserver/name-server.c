@@ -161,7 +161,7 @@ dbg_ns_exec_verb(
 		int ret = knot_packet_add_tmp_rrset(resp, synth_rrset);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add sythetized RRSet to tmp list.\n");
-			knot_rrset_deep_free(&synth_rrset, 1, 1);
+			knot_rrset_deep_free(&synth_rrset, 1);
 			return ret;
 		}
 		*rrset = synth_rrset;
@@ -348,7 +348,7 @@ static int ns_follow_cname(const knot_node_t **node,
 				dbg_ns("Failed to add synthetized RRSet (CNAME "
 				       "follow) to the tmp RRSets in response."
 				       "\n");
-				knot_rrset_deep_free(&rrset, 1, 1);
+				knot_rrset_deep_free(&rrset, 1);
 				cname_chain_free(&cname_chain);
 				return ret;
 			}
@@ -888,7 +888,7 @@ static int ns_put_authority_soa(const knot_zone_contents_t *zone,
 		/* Need to add it as temporary, so it get's freed. */
 		ret = knot_packet_add_tmp_rrset(resp, soa_copy);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&soa_copy, 1, 1);
+			knot_rrset_deep_free(&soa_copy, 1);
 			return ret;
 		}
 	}

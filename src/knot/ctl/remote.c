@@ -533,13 +533,13 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
 	size_t rrlen = rlen;
 	ret = knot_rrset_to_wire(rr, rwire + len, &rrlen, rlen, &rr_count, NULL);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1, 1);
+		knot_rrset_deep_free(&rr, 1);
 		return ret;
 	}
 	knot_wire_set_nscount(rwire, rr_count);
 	len += rrlen;
 	rlen -= rrlen;
-	knot_rrset_deep_free(&rr, 1, 1);
+	knot_rrset_deep_free(&rr, 1);
 
 	if (len > 0) {
 		return tcp_send(c, rwire, len);
