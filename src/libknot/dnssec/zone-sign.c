@@ -379,8 +379,9 @@ static int resign_rrset(const knot_rrset_t *covered,
 }
 
 /*!
- * \brief Checks whether RRSet is not already in the hash table, stores its
- *        pointer to the table if not present.
+ * \brief Checks whether RRSet is not already in the hash table, automatically
+ *        stores its pointer to the table if not found, but returns false in
+ *        that case.
  *
  * \param rrset  RRSet to be checked for.
  * \param table  Hash table with already signed RRs.
@@ -395,8 +396,7 @@ static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
 	char key[dname_size + 16];
 	memset(key, 0, sizeof(key));
 	memcpy(key, rrset->owner, dname_size);
-	int ret = knot_rrtype_to_string(rrset->type, key + dname_size,
-	                                16 - dname_size);
+	int ret = knot_rrtype_to_string(rrset->type, key + dname_size, 16);
 	if (ret != KNOT_EOK) {
 		return false;
 	}
