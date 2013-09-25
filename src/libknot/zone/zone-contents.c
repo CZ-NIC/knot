@@ -23,6 +23,7 @@
 #include "common/base32hex.h"
 #include "common/descriptor.h"
 #include "common/hattrie/hat-trie.h"
+#include "libknot/dnssec/zone-nsec.h"
 #include "libknot/zone/zone-tree.h"
 #include "libknot/util/wire.h"
 #include "consts.h"
@@ -1345,12 +1346,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	}
 
 	// adjust normal nodes
-	/*! \note This causes problem, as searching for name from RDATA
-	 *        requires the 'previous' pointers in node to be set properly in
-	 *        whole zone. Thus setting the pointers should be done before
-	 *        adjusting RDATA. However, this will no longer be a problem
-	 *        with dnames directly in RDATA, thus leaving it as is for now.
-	 */
+
 	result = knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
 	                                 knot_zone_contents_adjust_normal_node);
 	if (result != KNOT_EOK) {
@@ -1359,7 +1355,9 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 
 	assert(zone->apex == adjust_arg.first_node);
 
-	return KNOT_EOK;
+	// connect NSEC3 nodes
+
+	return knot_zone_connect_nsec_nodes(zone);
 }
 
 /*----------------------------------------------------------------------------*/

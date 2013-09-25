@@ -616,16 +616,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
-	kret = knot_zone_connect_nsec_nodes(c->current_zone);
-	if (kret != KNOT_EOK)  {
-		log_zone_error("Failed to connect regular and NSEC3 nodes: %s\n",
-		               knot_strerror(kret));
-		rrset_list_delete(&c->node_rrsigs);
-		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_deep_free(&zone_to_free);
-		return NULL;
-	}
-
 	if (loader->semantic_checks) {
 		int check_level = 1;
 		const knot_rrset_t *soa_rr =

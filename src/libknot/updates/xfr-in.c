@@ -2871,12 +2871,6 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 			  knot_strerror(ret));
 		return ret;
 	}
-	ret = knot_zone_connect_nsec_nodes(contents_copy);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to connect regular and NSEC3 nodes: %s\n",
-			  knot_strerror(ret));
-		return ret;
-	}
 
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
