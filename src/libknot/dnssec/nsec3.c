@@ -51,8 +51,9 @@ static int nsec3_sha1(const uint8_t *salt, uint8_t salt_length,
 	assert(digest);
 	assert(digest_size);
 
-	if (!salt)
+	if (!salt) {
 		return KNOT_EINVAL;
+	}
 
 	EVP_MD_CTX mdctx;
 	EVP_MD_CTX_init(&mdctx);
@@ -110,8 +111,9 @@ static int nsec3_sha1(const uint8_t *salt, uint8_t salt_length,
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
                                 const knot_rrset_t *rrset)
 {
-	if (params == NULL || rrset == NULL || rrset->rdata_count == 0)
+	if (params == NULL || rrset == NULL || rrset->rdata_count == 0) {
 		return KNOT_EINVAL;
+	}
 
 	assert(rrset->type == KNOT_RRTYPE_NSEC3PARAM);
 
@@ -125,8 +127,9 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 	if (result.salt_length > 0) {
 		result.salt = knot_memdup(knot_rdata_nsec3param_salt(rrset, 0),
 		                          result.salt_length);
-		if (!result.salt)
+		if (!result.salt) {
 			return KNOT_ENOMEM;
+		}
 	} else {
 		result.salt = NULL;
 	}
@@ -151,11 +154,13 @@ void knot_nsec3_params_free(knot_nsec3_params_t *params)
 int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
                     size_t data_size, uint8_t **digest, size_t *digest_size)
 {
-	if (!params || !data || !digest || !digest_size)
+	if (!params || !data || !digest || !digest_size) {
 		return KNOT_EINVAL;
+	}
 
-	if (params->algorithm != 1)
+	if (params->algorithm != 1) {
 		return KNOT_ENOTSUP;
+	}
 
 	return nsec3_sha1(params->salt, params->salt_length, params->iterations,
 	                  data, data_size, digest, digest_size);

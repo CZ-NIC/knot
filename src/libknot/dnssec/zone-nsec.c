@@ -172,6 +172,9 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
                                        const knot_node_t *to,
                                        uint32_t ttl, bool from_apex)
 {
+	assert(from);
+	assert(to);
+
 	// Create new RRSet
 	knot_dname_t *owner_cpy = knot_dname_copy(from->owner);
 	knot_rrset_t *rrset = knot_rrset_new(owner_cpy,
@@ -220,6 +223,10 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
  */
 static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 {
+	assert(a);
+	assert(b);
+	assert(d);
+
 	if (b->rrset_count == 0 || knot_node_is_non_auth(b)) {
 		return NSEC_NODE_SKIP;
 	}
@@ -291,6 +298,7 @@ static int create_nsec_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 {
 	assert(zone);
 	assert(zone->nodes);
+	assert(changeset);
 
 	nsec_chain_iterate_data_t data = { ttl, changeset, zone };
 
@@ -304,6 +312,8 @@ static int create_nsec_chain(const knot_zone_contents_t *zone, uint32_t ttl,
  */
 inline static bool valid_nsec3_node(const knot_node_t *node)
 {
+	assert(node);
+
 	if (node->rrset_count != 1) {
 		return false;
 	}
@@ -358,8 +368,8 @@ static void shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
  */
 static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 {
-	assert(to);
 	assert(from);
+	assert(to);
 
 	bool sorted = false;
 	/*! \todo Remove direct hattrie calls */
@@ -399,6 +409,9 @@ static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 					 const char *apex, size_t apex_size)
 {
+	assert(hash);
+	assert(apex);
+
 	char name[KNOT_DNAME_MAX_LENGTH];
 	int32_t endp;
 
@@ -433,6 +446,10 @@ static knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
                                         const knot_nsec3_params_t *params,
                                         const char *apex, size_t apex_size)
 {
+	assert(owner);
+	assert(params);
+	assert(apex);
+
 	uint8_t *hash = NULL;
 	size_t hash_size = 0;
 	int name_size = knot_dname_size(owner);
@@ -460,6 +477,9 @@ static knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
 static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
                                const bitmap_t *rr_types)
 {
+	assert(params);
+	assert(rr_types);
+
 	return 6 + params->salt_length
 	       + knot_nsec3_hash_length(params->algorithm)
 	       + bitmap_size(rr_types);
@@ -473,6 +493,10 @@ static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
 static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
                              const bitmap_t *rr_types, uint32_t ttl)
 {
+	assert(rdata);
+	assert(params);
+	assert(rr_types);
+
 	uint8_t hash_length = knot_nsec3_hash_length(params->algorithm);
 
 	*rdata = params->algorithm;                       // hash algorithm
@@ -500,6 +524,10 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
                                         const bitmap_t *rr_types,
                                         uint32_t ttl)
 {
+	assert(owner);
+	assert(params);
+	assert(rr_types);
+
 	knot_rrset_t *rrset;
 	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl);
 	if (!rrset) {
@@ -527,6 +555,11 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
                                       const bitmap_t *rr_types,
                                       uint32_t ttl)
 {
+	assert(owner);
+	assert(nsec3_params);
+	assert(apex_node);
+	assert(rr_types);
+
 	uint8_t flags = 0;
 	knot_node_t *new_node = knot_node_new(owner, apex_node, flags);
 	if (!new_node) {
@@ -560,9 +593,9 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
  */
 static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 {
-	UNUSED(data);
 	assert(a);
 	assert(b);
+	UNUSED(data);
 
 	assert(a->rrset_count == 1);
 
@@ -639,6 +672,11 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
                                                const knot_nsec3_params_t *params,
                                                uint32_t ttl)
 {
+	assert(node);
+	assert(apex_node);
+	assert(apex);
+	assert(params);
+
 	knot_dname_t *nsec3_owner;
 	nsec3_owner = create_nsec3_owner(node->owner, params, apex, apex_size);
 	if (!nsec3_owner) {
@@ -673,7 +711,12 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
                               knot_zone_tree_t *nsec3_nodes)
 {
+	assert(zone);
+	assert(nsec3_nodes);
+
 	const knot_nsec3_params_t *params = &zone->nsec3_params;
+
+	assert(params);
 
 	char *apex = NULL;
 	size_t apex_size;
