@@ -3328,7 +3328,11 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	}
 
 	/* Switch zone contents. */
+	// Unlock RCU for the switching procedure (would result in deadlock)
+	/*! \todo Maybe the unlocking should go inside the switching function.*/
+	rcu_read_unlock();
 	switch_ret = xfrin_switch_zone(zone, *new_contents, type);
+	rcu_read_lock();
 
 	if (switch_ret != KNOT_EOK) {
 		log_zone_error("%s Failed to replace current zone.\n", msgpref);
@@ -3440,16 +3444,20 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 
 static int zones_dnssec_ev(event_t *event, bool force)
 {
-
-	//! \todo RCU or zone locks?
+	// We will be working with zone, don't want it to change in the meantime
+	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)event->data;
+
 	zonedata_t *zd = (zonedata_t *)zone->data;
+	// Lock the zone data?? Don't know if it's necessary here.
+	pthread_mutex_lock(&zd->lock);
 
 	knot_changesets_t *chs =
 		knot_changesets_create(KNOT_CHANGESET_TYPE_DNSSEC);
 	if (chs == NULL) {
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
+		pthread_mutex_unlock(&zd->lock);
 		return KNOT_ENOMEM;
 	}
 	knot_changeset_t *ch = knot_changesets_create_changeset(chs);
@@ -3457,6 +3465,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		knot_changesets_free(&chs);
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
+		pthread_mutex_unlock(&zd->lock);
 		return KNOT_ENOMEM;
 	}
 
@@ -3470,6 +3479,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		knot_changesets_free(&chs);
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
+		pthread_mutex_unlock(&zd->lock);
 		return ret;
 	}
 
@@ -3482,6 +3492,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		                 zname, knot_strerror(ret));
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
+		pthread_mutex_unlock(&zd->lock);
 		free(zname);
 		return ret;
 	}
@@ -3489,10 +3500,13 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	// cleanup
 	evsched_event_free(event->parent, event);
 	zd->dnssec_timer = NULL;
+	pthread_mutex_unlock(&zd->lock);
 
 	char *zname = knot_dname_to_str(zone->name);
 	log_zone_info("Zone %s forced signed successfully.\n", zname);
 	free(zname);
+
+	rcu_read_unlock();
 
 	return KNOT_EOK;
 }

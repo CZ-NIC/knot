@@ -68,16 +68,12 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		return KNOT_EOK;
 	}
 
-	rcu_read_lock();
-	char *keydir = strdup(conf()->dnssec_keydir);
-	rcu_read_unlock();
-
 	// Read zone keys from disk
 	knot_zone_keys_t zone_keys = { '\0' };
 	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
-	result = load_zone_keys(keydir, zone->contents->apex->owner,
+	result = load_zone_keys(conf()->dnssec_keydir,
+	                        zone->contents->apex->owner,
 	                        nsec3_enabled, &zone_keys);
-	free(keydir);
 	if (result != KNOT_EOK) {
 		char *zname = knot_dname_to_str(zone->name);
 		log_zone_error("DNSSEC keys could not be loaded (%s). "
