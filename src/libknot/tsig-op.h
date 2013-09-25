@@ -31,7 +31,7 @@
 
 #include "tsig.h"
 #include "rrset.h"
-#include "sign/key.h"
+#include "libknot/dnssec/key.h"
 
 /*!
  * \brief Generate TSIG signature of a message.

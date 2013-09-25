@@ -31,6 +31,7 @@
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
 #include "libknot/zone/zone-contents.h"
+#include "libknot/dnssec/zone-nsec.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-load.h"
 #include "zscanner/file_loader.h"
@@ -233,7 +234,7 @@ static void process_rr(const scanner_t *scanner)
 	}
 
 	knot_zone_contents_t *contents = parser->current_zone;
-#warning Node/RRSet compression at this level? To avoid duplicate names.
+#warning "Node/RRSet compression at this level? To avoid duplicate names."
 	knot_rrset_t *current_rrset = NULL;
 	knot_dname_t *current_owner = knot_dname_copy(scanner->r_owner);
 
@@ -604,8 +605,16 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
 	rrset_list_delete(&c->node_rrsigs);
-	knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
-	                          &last_nsec3_node, 0);
+	int kret = knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
+	                                     &last_nsec3_node, 0);
+	if (kret != KNOT_EOK)  {
+		log_zone_error("Failed to finalize zone contents: %s\n",
+		               knot_strerror(kret));
+		rrset_list_delete(&c->node_rrsigs);
+		knot_zone_t *zone_to_free = c->current_zone->zone;
+		knot_zone_deep_free(&zone_to_free);
+		return NULL;
+	}
 
 	if (loader->semantic_checks) {
 		int check_level = 1;

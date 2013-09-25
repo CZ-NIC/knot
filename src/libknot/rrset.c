@@ -15,11 +15,12 @@
  */
 
 #include <config.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <stdio.h>
 #include <inttypes.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "consts.h"
 #include "common.h"
@@ -141,24 +142,9 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
 	return ret;
 }
 
-/*!
- * \brief Compares two RRs in RRSets. Combination of 'memcmp' for binary parts
- *        and 'knot_dname_cmp' for DNAMEs. We cannot compare the whole block,
- *        because this function is used in RRSet sorting.
- * \param rrset1 First RRSet to be compared.
- * \param rrset2 Second RRSet to be compared.
- * \param pos1 RR position for first RRSet.
- * \param pos2 RR position for second RRSet.
- *
- * \retval 0 if RRs are equal.
- * \retval < 0 if first RR is 'bigger' than the second one.
- * \retval > 0 if second RR is 'bigger' than the first one.
- *
- * \todo Maybe now we could compare the whole block.
- */
-static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
-                                   const knot_rrset_t *rrset2,
-                                   size_t pos1, size_t pos2)
+int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
+                            const knot_rrset_t *rrset2,
+                            size_t pos1, size_t pos2)
 {
 	assert(rrset1 != NULL);
 	assert(rrset2 != NULL);
@@ -279,7 +265,7 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 
 /* [code-review] Split to more functions, this one's too long. */
 static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
-                                        size_t rdata_pos, uint8_t **pos,
+                                        uint16_t rdata_pos, uint8_t **pos,
                                         size_t max_size, size_t *rr_size,
                                         knot_compr_t *compr)
 {
@@ -728,8 +714,10 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                              uint16_t rclass, uint32_t ttl)
 {
 	knot_rrset_t *ret = malloc(sizeof(knot_rrset_t));
-	if (ret == NULL)
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
 		return NULL;
+	}
 
 	ret->rdata = NULL;
 	ret->rdata_count = 0;
@@ -742,6 +730,20 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	ret->rrsigs = NULL;
 
 	return ret;
+}
+
+knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl)
+{
+	if (!tpl) {
+		return NULL;
+	}
+
+	knot_dname_t *owner = knot_dname_copy(tpl->owner);
+	if (!owner) {
+		return NULL;
+	}
+
+	return knot_rrset_new(owner, tpl->type, tpl->rclass, tpl->ttl);
 }
 
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
@@ -1012,6 +1014,9 @@ knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
 	}
 }
 
+/*!
+ * \brief Compare two RR sets, order of RDATA is not significant.
+ */
 int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 {
 	if (r1 == NULL || r2 == NULL || (r1->type != r2->type) ||
@@ -1019,31 +1024,22 @@ int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 		return KNOT_EINVAL;
 	}
 
-	// compare RDATA sets (order is not significant)
+	if (r1->rdata_count != r2->rdata_count) {
+		return 0;
+	}
 
-	// find all RDATA from r1 in r2
-	int found = 0;
 	for (uint16_t i = 0; i < r1->rdata_count; i++) {
-		found = 0;
-		for (uint16_t j = 0; j < r2->rdata_count && !found; j++) {
-			found = !rrset_rdata_compare_one(r1, r2, i, j);
+		bool found = false;
+		for (uint16_t j = 0; j < r2->rdata_count; j++) {
+			if (rrset_rdata_compare_one(r1, r2, i, j) == 0) {
+				found = true;
+				break;
+			}
 		}
-	}
 
-	if (!found) {
-		return 0;
-	}
-
-	// other way around
-	for (uint16_t i = 0; i < r2->rdata_count; i++) {
-		found = 0;
-		for (uint16_t j = 0; j < r1->rdata_count && !found; j++) {
-			found = !rrset_rdata_compare_one(r1, r2, j, i);
+		if (!found) {
+			return 0;
 		}
-	}
-
-	if (!found) {
-		return 0;
 	}
 
 	return 1;
@@ -1084,6 +1080,18 @@ dbg_rrset_exec_detail(
 	*rr_count = rrset->rdata_count > 0 ? rrset->rdata_count : 1;
 
 	return KNOT_EOK;
+}
+
+int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
+                           uint8_t *wire, size_t max_size, size_t *outsize,
+                           void *compr)
+{
+	if (!rrset || !wire || !outsize)
+		return KNOT_EINVAL;
+
+	uint8_t *pos = wire;
+	return knot_rrset_rdata_to_wire_one(rrset, rr_number, &pos, max_size,
+					    outsize, (knot_compr_t *)compr);
 }
 
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
@@ -1263,7 +1271,7 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 	return true;
 }
 
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
+int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
@@ -1285,15 +1293,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	(*to)->ttl = from->ttl;
 	(*to)->type = from->type;
 	(*to)->rdata_count = from->rdata_count;
-	if (from->rrsigs != NULL) {
-		int ret = knot_rrset_deep_copy(from->rrsigs, &(*to)->rrsigs);
-		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(to, 1, 0);
-			return ret;
-		}
-	} else {
-		(*to)->rrsigs = NULL;
-	}
+	(*to)->rrsigs = NULL;
 
 	/* Just copy arrays - actual data + indices. */
 	(*to)->rdata = xmalloc(rrset_rdata_size_total(from));
@@ -1304,6 +1304,21 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	       sizeof(uint32_t) * from->rdata_count);
 
 	return KNOT_EOK;
+}
+
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
+{
+	int result = knot_rrset_deep_copy_no_sig(from, to);
+
+	if (result == KNOT_EOK && from->rrsigs != NULL) {
+		result = knot_rrset_deep_copy_no_sig(from->rrsigs,
+		                                     &(*to)->rrsigs);
+		if (result != KNOT_EOK) {
+			knot_rrset_deep_free(to, 1, 0);
+		}
+	}
+
+	return result;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1356,7 +1371,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
 
 	if ((*rrset)->rrsigs != NULL) {
 		knot_rrset_deep_free(&(*rrset)->rrsigs, free_owner,
-		                     free_rdata_dnames);
+		                     0 /* revelation: unused */);
 	}
 
 	free((*rrset)->rdata);
@@ -1425,7 +1440,7 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2)
 }
 
 static int knot_rrset_add_rr_sort_n(knot_rrset_t *rrset, const knot_rrset_t *rr,
-                                    int *merged, int *deleted_rr, size_t pos)
+                                    int *merged, int *deleted, size_t pos)
 {
 	if (rrset == NULL || rr == NULL) {
 		dbg_rrset("rrset: add_rr_sort: NULL arguments.");
@@ -1446,8 +1461,6 @@ dbg_rrset_exec_detail(
 		return KNOT_EINVAL;
 	}
 
-	*deleted_rr = 0;
-	*merged = 0;
 	int found = 0;
 	int duplicated = 0;
 	// Compare RR with all RRs in the first RRSet.
@@ -1480,24 +1493,67 @@ dbg_rrset_exec_detail(
 		}
 	} else {
 		assert(!found);
-		*deleted_rr = 1; // = need to shallow free rr
+		*deleted += 1; // = need to shallow free rr
 	}
 
 	return KNOT_EOK;
 }
 
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
-                          int *merged, int *deleted_rrs)
+                          int *merged_rrs, int *deleted_rrs)
 {
+	int result = KNOT_EOK;
+	int merged = 0;
+	int deleted = 0;
+
 	for (uint16_t i = 0; i < rrset2->rdata_count; ++i) {
-		int deleted = 0;
-		int ret = knot_rrset_add_rr_sort_n(rrset1, rrset2, merged,
+		result = knot_rrset_add_rr_sort_n(rrset1, rrset2, &merged,
 		                                   &deleted, i);
-		if (ret != KNOT_EOK) {
-			return ret;
+		if (result != KNOT_EOK) {
+			break;
 		}
-		*deleted_rrs += deleted ? 1 : 0;
 	}
+
+	if (merged_rrs) {
+		*merged_rrs = merged;
+	}
+
+	if (deleted_rrs) {
+		*deleted_rrs = deleted;
+	}
+
+	return result;
+}
+
+/*!
+ * \todo Not optimal, rewrite!
+ */
+int knot_rrset_sort_rdata(knot_rrset_t *rrset)
+{
+	if (!rrset) {
+		return KNOT_EINVAL;
+	}
+
+	// 1. create temporary rrset
+	// 2. sort-merge given rrset into temporary rrset
+	// 3. swap the contents, free the temporary
+
+	knot_rrset_t *sorted = knot_rrset_new(rrset->owner, rrset->type,
+	                                      rrset->rclass, rrset->ttl);
+	if (!sorted) {
+		return KNOT_ENOMEM;
+	}
+
+	int result = knot_rrset_merge_sort(sorted, rrset, NULL, NULL);
+	if (result != KNOT_EOK) {
+		knot_rrset_deep_free(&sorted, 1, 1);
+		return result;
+	}
+
+	*rrset = *sorted;
+
+	sorted->owner = NULL;
+	knot_rrset_free(&sorted);
 
 	return KNOT_EOK;
 }

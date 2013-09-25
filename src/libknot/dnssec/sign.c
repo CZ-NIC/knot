@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,9 +18,9 @@
 #include "common.h"
 #include "common/descriptor.h"
 #include "common/errcode.h"
-#include "sign/bnutils.h"
-#include "sign/dnssec.h"
-#include "sign/key.h"
+#include "libknot/dnssec/algorithm.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sign.h"
 #include <assert.h>
 #include <openssl/dsa.h>
 #include <openssl/opensslconf.h>
@@ -57,7 +57,17 @@ struct algorithm_functions {
 	int (*sign_add)(const knot_dnssec_sign_context_t *, const uint8_t *, size_t);
 	//! \brief Callback: finish the signing and write out the signature.
 	int (*sign_write)(const knot_dnssec_sign_context_t *, uint8_t *);
+	//! \brief Callback: finish the signing and validate the signature.
+	int (*sign_verify)(const knot_dnssec_sign_context_t *, const uint8_t *, size_t);
 };
+
+/**
+ * \brief Convert binary data to OpenSSL BIGNUM format.
+ */
+static BIGNUM *binary_to_bn(const knot_binary_t *bin)
+{
+	return BN_bin2bn((unsigned char *)bin->data, (int)bin->size, NULL);
+}
 
 /*- Algorithm independent ----------------------------------------------------*/
 
@@ -90,8 +100,9 @@ static int any_sign_add(const knot_dnssec_sign_context_t *context,
 	assert(context);
 	assert(data);
 
-	if (!EVP_SignUpdate(context->digest_context, data, data_size))
+	if (!EVP_DigestUpdate(context->digest_context, data, data_size)) {
 		return KNOT_DNSSEC_ESIGN;
+	}
 
 	return KNOT_EOK;
 }
@@ -107,7 +118,7 @@ static int any_sign_add(const knot_dnssec_sign_context_t *context,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int any_sign_finish(const knot_dnssec_sign_context_t *context,
+static int any_sign_write(const knot_dnssec_sign_context_t *context,
                            uint8_t **signature, size_t *signature_size)
 {
 	assert(context);
@@ -116,8 +127,9 @@ static int any_sign_finish(const knot_dnssec_sign_context_t *context,
 
 	size_t max_size = (size_t)EVP_PKEY_size(context->key->data->private_key);
 	uint8_t *output = calloc(1, max_size);
-	if (!output)
+	if (!output) {
 		return KNOT_ENOMEM;
+	}
 
 	unsigned int actual_size;
 	int result = EVP_SignFinal(context->digest_context, output,
@@ -135,6 +147,38 @@ static int any_sign_finish(const knot_dnssec_sign_context_t *context,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Verify the DNSSEC signature for supplied data.
+ *
+ * \param context         DNSSEC signature context.
+ * \param signature       Pointer to signature.
+ * \param signature_size  Size of the signature.
+ *
+ * \return Error code.
+ * \retval KNOT_EOK                        The signature is valid.
+ * \retval KNOT_DNSSEC_EINVALID_SIGNATURE  The signature is invalid.
+ * \retval KNOT_DNSSEC_ESIGN               Some error occured.
+ */
+static int any_sign_verify(const knot_dnssec_sign_context_t *context,
+                            const uint8_t *signature, size_t signature_size)
+{
+	assert(context);
+	assert(signature);
+
+	int result = EVP_VerifyFinal(context->digest_context,
+	                             signature, signature_size,
+	                             context->key->data->private_key);
+
+	switch (result) {
+	case 1:
+		return KNOT_EOK;
+	case 0:
+		return KNOT_DNSSEC_EINVALID_SIGNATURE;
+	default:
+		return KNOT_DNSSEC_ESIGN;
+	};
+}
+
 /*- RSA specific -------------------------------------------------------------*/
 
 /*!
@@ -147,20 +191,22 @@ static int any_sign_finish(const knot_dnssec_sign_context_t *context,
  */
 static int rsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 {
+	assert(params);
 	assert(key);
 
 	RSA *rsa = RSA_new();
-	if (rsa == NULL)
+	if (rsa == NULL) {
 		return KNOT_ENOMEM;
+	}
 
-	rsa->n    = knot_b64_to_bignum(params->modulus);
-	rsa->e    = knot_b64_to_bignum(params->public_exponent);
-	rsa->d    = knot_b64_to_bignum(params->private_exponent);
-	rsa->p    = knot_b64_to_bignum(params->prime_one);
-	rsa->q    = knot_b64_to_bignum(params->prime_two);
-	rsa->dmp1 = knot_b64_to_bignum(params->exponent_one);
-	rsa->dmq1 = knot_b64_to_bignum(params->exponent_two);
-	rsa->iqmp = knot_b64_to_bignum(params->coefficient);
+	rsa->n    = binary_to_bn(&params->modulus);
+	rsa->e    = binary_to_bn(&params->public_exponent);
+	rsa->d    = binary_to_bn(&params->private_exponent);
+	rsa->p    = binary_to_bn(&params->prime_one);
+	rsa->q    = binary_to_bn(&params->prime_two);
+	rsa->dmp1 = binary_to_bn(&params->exponent_one);
+	rsa->dmq1 = binary_to_bn(&params->exponent_two);
+	rsa->iqmp = binary_to_bn(&params->coefficient);
 
 	if (RSA_check_key(rsa) != 1) {
 		RSA_free(rsa);
@@ -194,7 +240,7 @@ static int rsa_sign_write(const knot_dnssec_sign_context_t *context,
 	size_t raw_signature_size;
 	const knot_dnssec_key_t *key = context->key;
 
-	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
+	result = any_sign_write(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -218,17 +264,19 @@ static int rsa_sign_write(const knot_dnssec_sign_context_t *context,
  */
 static int dsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 {
+	assert(params);
 	assert(key);
 
 	DSA *dsa = DSA_new();
-	if (dsa == NULL)
+	if (dsa == NULL) {
 		return KNOT_ENOMEM;
+	}
 
-	dsa->p        = knot_b64_to_bignum(params->prime);
-	dsa->q        = knot_b64_to_bignum(params->subprime);
-	dsa->g        = knot_b64_to_bignum(params->base);
-	dsa->priv_key = knot_b64_to_bignum(params->private_value);
-	dsa->pub_key  = knot_b64_to_bignum(params->public_value);
+	dsa->p        = binary_to_bn(&params->prime);
+	dsa->q        = binary_to_bn(&params->subprime);
+	dsa->g        = binary_to_bn(&params->base);
+	dsa->priv_key = binary_to_bn(&params->private_value);
+	dsa->pub_key  = binary_to_bn(&params->public_value);
 
 	if (!EVP_PKEY_assign_DSA(key, dsa)) {
 		DSA_free(dsa);
@@ -263,7 +311,7 @@ static int dsa_sign_write(const knot_dnssec_sign_context_t *context,
 	uint8_t *raw_signature;
 	size_t raw_signature_size;
 
-	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
+	result = any_sign_write(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -292,13 +340,66 @@ static int dsa_sign_write(const knot_dnssec_sign_context_t *context,
 	uint8_t *signature_r = signature + 21 - BN_num_bytes(decoded->r);
 	uint8_t *signature_s = signature + 41 - BN_num_bytes(decoded->s);
 
-	*signature_t = 0x00; //! \todo How to compute T? (Only recommended.)
+	memset(signature, '\0', dsa_sign_size(context->key));
+	*signature_t = 0x00; //! \todo Take from public key. Only recommended.
 	BN_bn2bin(decoded->r, signature_r);
 	BN_bn2bin(decoded->s, signature_s);
 
 	DSA_SIG_free(decoded);
 
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Verify the DNSSEC signature for supplied data and DSA algorithm.
+ * \see any_sign_verify
+ */
+static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
+                           const uint8_t *signature, size_t signature_size)
+{
+	assert(context);
+	assert(signature);
+
+	if (signature_size != dsa_sign_size(context->key)) {
+		return KNOT_EINVAL;
+	}
+
+	// see dsa_sign_write() for conversion details
+
+	// T (1 byte), R (20 bytes), S (20 bytes)
+	const uint8_t *signature_r = signature + 1;
+	const uint8_t *signature_s = signature + 21;
+
+	DSA_SIG *decoded = DSA_SIG_new();
+	if (!decoded) {
+		return KNOT_ENOMEM;
+	}
+
+	decoded->r = BN_bin2bn(signature_r, 20, NULL);
+	decoded->s = BN_bin2bn(signature_s, 20, NULL);
+
+	size_t max_size = EVP_PKEY_size(context->key->data->private_key);
+	uint8_t *raw_signature = malloc(max_size);
+	if (!raw_signature) {
+		DSA_SIG_free(decoded);
+		return KNOT_ENOMEM;
+	}
+
+	uint8_t *raw_write = raw_signature;
+	int raw_size = i2d_DSA_SIG(decoded, &raw_write);
+	if (raw_size < 0) {
+		free(raw_signature);
+		DSA_SIG_free(decoded);
+		return KNOT_DNSSEC_EDECODE_RAW_SIGNATURE;
+	}
+	assert(raw_write == raw_signature + raw_size);
+
+	int result = any_sign_verify(context, raw_signature, raw_size);
+
+	DSA_SIG_free(decoded);
+	free(raw_signature);
+
+	return result;
 }
 
 /*- EC specific --------------------------------------------------------------*/
@@ -311,6 +412,7 @@ static int dsa_sign_write(const knot_dnssec_sign_context_t *context,
  */
 static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 {
+	assert(params);
 	assert(key);
 
 	int curve;
@@ -323,10 +425,11 @@ static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 	}
 
 	EC_KEY *ec_key = EC_KEY_new_by_curve_name(curve);
-	if (ec_key == NULL)
+	if (ec_key == NULL) {
 		return KNOT_ENOMEM;
+	}
 
-	EC_KEY_set_private_key(ec_key, knot_b64_to_bignum(params->private_key));
+	EC_KEY_set_private_key(ec_key, binary_to_bn(&params->private_key));
 
 	// EC_KEY_check_key() could be added, but fails without public key
 
@@ -373,7 +476,7 @@ static int ecdsa_sign_write(const knot_dnssec_sign_context_t *context,
 	uint8_t *raw_signature;
 	size_t raw_signature_size;
 
-	result = any_sign_finish(context, &raw_signature, &raw_signature_size);
+	result = any_sign_write(context, &raw_signature, &raw_signature_size);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -400,8 +503,10 @@ static int ecdsa_sign_write(const knot_dnssec_sign_context_t *context,
 
 	uint8_t *signature_r;
 	uint8_t *signature_s;
-	size_t param_size = ecdsa_sign_size(context->key) / 2;
+	size_t signature_size = ecdsa_sign_size(context->key);
+	size_t param_size = signature_size / 2;
 
+	memset(signature, '\0', signature_size);
 	signature_r = signature + param_size - BN_num_bytes(decoded->r);
 	signature_s = signature + 2 * param_size - BN_num_bytes(decoded->s);
 
@@ -413,6 +518,58 @@ static int ecdsa_sign_write(const knot_dnssec_sign_context_t *context,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Verify the DNSSEC signature for supplied data and ECDSA algorithm.
+ * \see any_sign_verify
+ */
+static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
+                             const uint8_t *signature, size_t signature_size)
+{
+	assert(context);
+	assert(signature);
+
+	if (signature_size != ecdsa_sign_size(context->key)) {
+		return KNOT_EINVAL;
+	}
+
+	// see ecdsa_sign_write() for conversion details
+
+	size_t parameter_size = signature_size / 2;
+	const uint8_t *signature_r = signature;
+	const uint8_t *signature_s = signature + parameter_size;
+
+	ECDSA_SIG *decoded = ECDSA_SIG_new();
+	if (!decoded) {
+		return KNOT_ENOMEM;
+	}
+
+	decoded->r = BN_bin2bn(signature_r, parameter_size, NULL);
+	decoded->s = BN_bin2bn(signature_s, parameter_size, NULL);
+
+	size_t max_size = EVP_PKEY_size(context->key->data->private_key);
+	uint8_t *raw_signature = malloc(max_size);
+	if (!raw_signature) {
+		ECDSA_SIG_free(decoded);
+		return KNOT_ENOMEM;
+	}
+
+	uint8_t *raw_write = raw_signature;
+	int raw_size = i2d_ECDSA_SIG(decoded, &raw_write);
+	if (raw_size < 0) {
+		free(raw_signature);
+		ECDSA_SIG_free(decoded);
+		return KNOT_DNSSEC_EDECODE_RAW_SIGNATURE;
+	}
+	assert(raw_write == raw_signature + raw_size);
+
+	int result = any_sign_verify(context, raw_signature, raw_size);
+
+	ECDSA_SIG_free(decoded);
+	free(raw_signature);
+
+	return result;
+}
+
 #endif
 
 /*- Algorithm specifications -------------------------------------------------*/
@@ -421,14 +578,16 @@ static const algorithm_functions_t rsa_functions = {
 	rsa_create_pkey,
 	any_sign_size,
 	any_sign_add,
-	rsa_sign_write
+	rsa_sign_write,
+	any_sign_verify
 };
 
 static const algorithm_functions_t dsa_functions = {
 	dsa_create_pkey,
 	dsa_sign_size,
 	any_sign_add,
-	dsa_sign_write
+	dsa_sign_write,
+	dsa_sign_verify
 };
 
 #ifndef OPENSSL_NO_ECDSA
@@ -436,7 +595,8 @@ static const algorithm_functions_t ecdsa_functions = {
 	ecdsa_create_pkey,
 	ecdsa_sign_size,
 	any_sign_add,
-	ecdsa_sign_write
+	ecdsa_sign_write,
+	ecdsa_sign_verify
 };
 #endif
 
@@ -515,11 +675,14 @@ static int create_pkey(const knot_key_params_t *params,
                        const algorithm_functions_t *functions,
                        EVP_PKEY **result_key)
 {
+	assert(params);
+	assert(functions);
         assert(result_key);
 
 	EVP_PKEY *private_key = EVP_PKEY_new();
-	if (!private_key)
+	if (!private_key) {
 		return KNOT_ENOMEM;
+	}
 
 	int result = functions->create_pkey(params, private_key);
 	if (result != KNOT_EOK) {
@@ -542,17 +705,20 @@ static int create_pkey(const knot_key_params_t *params,
 static int create_digest_context(const knot_dnssec_key_t *key,
                                  EVP_MD_CTX **result_context)
 {
+	assert(key);
 	assert(result_context);
 
 	const EVP_MD *digest_type = get_digest_type(key->algorithm);
-	if (digest_type == NULL)
+	if (digest_type == NULL) {
 		return KNOT_DNSSEC_ENOTSUP;
+	}
 
 	EVP_MD_CTX *context = EVP_MD_CTX_create();
-	if (!context)
+	if (!context) {
 		return KNOT_ENOMEM;
+	}
 
-	if (!EVP_SignInit_ex(context, digest_type, NULL)) {
+	if (!EVP_DigestInit_ex(context, digest_type, NULL)) {
 		EVP_MD_CTX_destroy(context);
 		return KNOT_DNSSEC_ECREATE_DIGEST_CONTEXT;
 	}
@@ -614,8 +780,9 @@ static int init_algorithm_data(const knot_key_params_t *params,
 	assert(data);
 
 	data->functions = get_implementation(params->algorithm);
-	if (!data->functions)
+	if (!data->functions) {
 		return KNOT_DNSSEC_ENOTSUP;
+	}
 
 	int result = create_pkey(params, data->functions, &data->private_key);
 	if (result != KNOT_EOK) {
@@ -634,12 +801,14 @@ static int init_algorithm_data(const knot_key_params_t *params,
 int knot_dnssec_key_from_params(const knot_key_params_t *params,
                                 knot_dnssec_key_t *key)
 {
-	if (!key || !params)
+	if (!key || !params) {
 		return KNOT_EINVAL;
+	}
 
 	knot_dname_t *name = knot_dname_copy(params->name);
-	if (!name)
+	if (!name) {
 		return KNOT_ENOMEM;
+	}
 
 	knot_dnssec_key_data_t *data;
 	data = calloc(1, sizeof(knot_dnssec_key_data_t));
@@ -648,10 +817,19 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 		return KNOT_ENOMEM;
 	}
 
-	int result = init_algorithm_data(params, data);
+	knot_binary_t rdata_copy = { 0 };
+	int result = knot_binary_dup(&params->rdata, &rdata_copy);
 	if (result != KNOT_EOK) {
 		knot_dname_free(&name);
 		free(data);
+		return result;
+	}
+
+	result = init_algorithm_data(params, data);
+	if (result != KNOT_EOK) {
+		knot_dname_free(&name);
+		free(data);
+		knot_binary_free(&rdata_copy);
 		return result;
 	}
 
@@ -659,6 +837,7 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	key->keytag = params->keytag;
 	key->algorithm = params->algorithm;
 	key->data = data;
+	key->dnskey_rdata = rdata_copy;
 
 	return KNOT_EOK;
 }
@@ -668,8 +847,9 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
  */
 int knot_dnssec_key_free(knot_dnssec_key_t *key)
 {
-	if (!key)
+	if (!key) {
 		return KNOT_EINVAL;
+	}
 
 	knot_dname_free(&key->name);
 
@@ -677,6 +857,8 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 		clean_algorithm_data(key->data);
 		free(key->data);
 	}
+
+	knot_binary_free(&key->dnskey_rdata);
 
 	memset(key, '\0', sizeof(knot_dnssec_key_t));
 
@@ -690,12 +872,14 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
  */
 knot_dnssec_sign_context_t *knot_dnssec_sign_init(const knot_dnssec_key_t *key)
 {
-	if (!key)
+	if (!key) {
 		return NULL;
+	}
 
 	knot_dnssec_sign_context_t *context = malloc(sizeof(*context));
-	if (!context)
+	if (!context) {
 		return NULL;
+	}
 
 	context->key = key;
 
@@ -712,8 +896,9 @@ knot_dnssec_sign_context_t *knot_dnssec_sign_init(const knot_dnssec_key_t *key)
  */
 void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context)
 {
-	if (!context)
+	if (!context) {
 		return;
+	}
 
 	context->key = NULL;
 	destroy_digest_context(&context->digest_context);
@@ -723,33 +908,63 @@ void knot_dnssec_sign_free(knot_dnssec_sign_context_t *context)
 /*!
  * \brief Get DNSSEC signature size.
  */
-size_t knot_dnssec_sign_size(knot_dnssec_key_t *key)
+size_t knot_dnssec_sign_size(const knot_dnssec_key_t *key)
 {
-	if (!key)
+	if (!key) {
 		return 0;
+	}
 
 	return key->data->functions->sign_size(key);
 }
 
+/**
+ * \brief Clean DNSSEC signing context to start a new signature.
+ */
+int knot_dnssec_sign_new(knot_dnssec_sign_context_t *context)
+{
+	if (!context) {
+		return KNOT_EINVAL;
+	}
+
+	destroy_digest_context(&context->digest_context);
+	return create_digest_context(context->key, &context->digest_context);
+}
+
 /*!
- * \brief Add data into DNSSEC signature.
+ * \brief Add data to be covered by DNSSEC signature.
  */
 int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
                          const uint8_t *data, size_t data_size)
 {
-	if (!context || !context->key || !data)
+	if (!context || !context->key || !data) {
 		return KNOT_EINVAL;
+	}
 
 	return context->key->data->functions->sign_add(context, data, data_size);
 }
 
 /**
- * \brief Finish DNSSEC signing and write out the signature.
+ * \brief Write down the DNSSEC signature for supplied data.
  */
 int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context, uint8_t *signature)
 {
-	if (!context || !context->key || !signature)
+	if (!context || !context->key || !signature) {
 		return KNOT_EINVAL;
+	}
 
 	return context->key->data->functions->sign_write(context, signature);
+}
+
+/**
+ * \brief Verify the DNSSEC signature for supplied data.
+ */
+int knot_dnssec_sign_verify(knot_dnssec_sign_context_t *context,
+			    const uint8_t *signature, size_t signature_size)
+{
+	if (!context || !context->key || !signature) {
+		return KNOT_EINVAL;
+	}
+
+	return context->key->data->functions->sign_verify(context, signature,
+	                                                  signature_size);
 }

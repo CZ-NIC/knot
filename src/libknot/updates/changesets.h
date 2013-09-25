@@ -36,8 +36,9 @@
 
 /*! \brief Changeset flags, stored as first 4 bytes in serialized changeset. */
 typedef enum {
-	KNOT_CHANGESET_TYPE_IXFR = 1 << 0,
-	KNOT_CHANGESET_TYPE_DDNS = 1 << 1
+	KNOT_CHANGESET_TYPE_IXFR   = 1 << 0,
+	KNOT_CHANGESET_TYPE_DDNS   = 1 << 1,
+	KNOT_CHANGESET_TYPE_DNSSEC = 1 << 2
 } knot_changeset_flag_t;
 
 
@@ -58,13 +59,13 @@ typedef struct knot_changeset {
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Wrapper BIRD lists. Storing: RRSet. */
+/*! \brief Wrapper for BIRD lists. Storing: RRSet. */
 typedef struct knot_rr_ln {
 	node n; /*!< List node. */
 	knot_rrset_t *rr; /*!< Actual usable data. */
 } knot_rr_ln_t;
 
-/*! \brief Wrapper BIRD lists. Storing: Node. */
+/*! \brief Wrapper for BIRD lists. Storing: Node. */
 typedef struct knot_node_ln {
 	node n; /*!< List node. */
 	knot_node_t *node; /*!< Actual usable data. */
@@ -172,6 +173,11 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
  */
 knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *ch);
 
+const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
+                                           knot_changeset_part_t part);
+void knot_changeset_remove_last_rr(knot_changeset_t *ch,
+                                   knot_changeset_part_t part);
+
 /*!
  * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
  *        'remove' list. Will *not* try to merge with previous RRSets.
@@ -208,17 +214,46 @@ int knot_changeset_add_rr(knot_changeset_t *chgs,
  * \param part To which part we store SOA (from = REMOVE, add = TO)
  */
 void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
-                           knot_changeset_part_t part);
+                            knot_changeset_part_t part);
 
 /*!
  * \brief Checks whether changeset is empty.
  *
  * \param changeset Changeset to be checked.
  *
- * \retval 1 if changeset is empty.
- * \retval 0 if changeset is not empty.
+ * \retval true if changeset is empty.
+ * \retval false if changeset is not empty.
  */
-int knot_changeset_is_empty(const knot_changeset_t *changeset);
+bool knot_changeset_is_empty(const knot_changeset_t *changeset);
+
+/*!
+ * \brief Get number of changes (additions and removals) in the changeset.
+ *
+ * \param changeset Changeset to be checked.
+ *
+ * \return Number of changes in the changeset.
+ */
+size_t knot_changeset_size(const knot_changeset_t *changeset);
+
+/*!
+ * \brief Apply given function to all RRSets in one part of the changeset.
+ *
+ * \param changeset Changeset to apply the function to.
+ * \param part Part of changeset to apply the function to.
+ * \param func Function to apply to RRSets in the changeset. It is required that
+ *             the function returns KNOT_EOK on success.
+ * \param data Data to pass to the applied function.
+ *
+ * If the applied function fails, the application aborts and this function
+ * returns the return value of the applied function.
+ *
+ * \retval KNOT_EOK if OK
+ * \retval KNOT_EINVAL if \a changeset or \a func is NULL.
+ * \retval Other error code if the applied function failed.
+ */
+int knot_changeset_apply(knot_changeset_t *changeset,
+                         knot_changeset_part_t part,
+                         int (*func)(knot_rrset_t *, void *), void *data);
 
 /*!
  * \brief Frees the 'changesets' structure, including all its internal data.
@@ -254,6 +289,21 @@ int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
  */
 int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
                           knot_changes_part_t part);
+
+/*!
+ * \brief Merges two changesets together, second changeset's lists are kept.
+ *
+ * \param ch1 Changeset to merge into
+ * \param ch2 Changeset to merge
+ *
+ * Beginning SOA is used from the first changeset, ending SOA from the second.
+ * Ending SOA from first changeset is deleted. SOAs in the second changeset are
+ * left untouched.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval Error code on failure.
+ */
+int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2);
 
 /*!
  * \param changes Double pointer of changes structure to be freed.

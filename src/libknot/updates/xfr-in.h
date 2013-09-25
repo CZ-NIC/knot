@@ -175,8 +175,7 @@ void xfrin_free_changesets(knot_changesets_t **changesets);
  * \retval KNOT_EMALF
  * \retval KNOT_ENOMEM
  */
-int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr/*const uint8_t *pkt, size_t size,
-                              knot_changesets_t **changesets*/);
+int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr);
 
 int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
                                    knot_changesets_t *chsets);
@@ -193,7 +192,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 
 int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,
-                      int deep_free);
+                      int transfer_type);
 
 void xfrin_cleanup_successful_update(knot_changes_t *changes);
 

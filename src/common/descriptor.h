@@ -232,7 +232,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num);
  *
  * \param item Item value.
  *
- * \retval 1 if YES.
+ * \retval > 0 if YES.
  * \retval 0 if NO.
  */
 int descriptor_item_is_dname(const int item);
@@ -242,7 +242,7 @@ int descriptor_item_is_dname(const int item);
  *
  * \param item Item value.
  *
- * \retval 1 if YES.
+ * \retval > 0 if YES.
  * \retval 0 if NO.
  */
 int descriptor_item_is_compr_dname(const int item);
@@ -272,10 +272,20 @@ int descriptor_item_is_remainder(const int item);
  *
  * \param item Item value.
  *
- * \retval 1 if YES.
+ * \retval > 0 if YES.
  * \retval 0 if NO.
  */
 int knot_rrtype_is_metatype(const uint16_t type);
+
+/*!
+ * \brief Checks if given item is one of the types we do not accept via DDNS.
+ *
+ * \param item Item value.
+ *
+ * \retval > 0 if YES.
+ * \retval 0 if NO.
+ */
+int knot_rrtype_is_ddns_forbidenen(const uint16_t type);
 
 #endif // _KNOT_DESCRIPTOR_H_
 

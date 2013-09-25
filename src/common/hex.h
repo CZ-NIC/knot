@@ -12,13 +12,35 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*!
+ * \file hex.h
+ *
+ * \brief Coversion between HEX strings and bytes.
+ *
+ * \author Jan Vcelak <jan.vcelak@nic.cz>
+ *
+ * \addtogroup common_lib
+ * @{
  */
 
-#ifndef _KNOTD_SIGN_TESTS_
-#define _KNOTD_SIGN_TESTS_
+#ifndef _KNOT_COMMON_HEX_H_
+#define _KNOT_COMMON_HEX_H_
 
-#include "common/libtap/tap_unit.h"
+#include <stdint.h>
+#include <stdlib.h>
 
-unit_api sign_tests_api;
+/*!
+ * \brief Convert string encoded in hex to bytes.
+ *
+ * \param input        Hex encoded input string.
+ * \param output       Decoded bytes.
+ * \param output_size  Size of the output.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int hex_decode(const char *input, uint8_t **output, size_t *output_size);
 
-#endif
+#endif // _KNOT_COMMON_HEX_H_
+/*! @} */

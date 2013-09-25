@@ -27,9 +27,10 @@
 #ifndef _KNOT_RDATA_H_
 #define _KNOT_RDATA_H_
 
-#include "util/utils.h"
-#include "rrset.h"
+#include "common/descriptor.h"
 #include "dname.h"
+#include "rrset.h"
+#include "util/utils.h"
 
 static inline
 const knot_dname_t *knot_rdata_cname_name(const knot_rrset_t *rrset)
@@ -228,6 +229,29 @@ const knot_dname_t *knot_rdata_rrsig_signer_name(const knot_rrset_t *rrset,
 	}
 
 	return knot_rrset_get_rdata(rrset, pos) + 18;
+}
+
+static inline
+void knot_rdata_rrsig_signature(const knot_rrset_t *rrset, size_t pos,
+                                uint8_t **signature, size_t *signature_size)
+{
+	if (!signature || !signature_size) {
+		return;
+	}
+
+	if (rrset == NULL || pos >= rrset->rdata_count) {
+		*signature = NULL;
+		*signature_size = 0;
+		return;
+	}
+
+	uint8_t *rdata = knot_rrset_get_rdata(rrset, pos);
+	uint8_t *signer = rdata + 18;
+	size_t total_size = rrset_rdata_item_size(rrset, pos);
+	size_t header_size = 18 + knot_dname_size(signer);
+
+	*signature = rdata + header_size;
+	*signature_size = total_size - header_size;
 }
 
 static inline

@@ -24,10 +24,10 @@
  * @{
  */
 
-#ifndef _KNOT_SIGN_SIG0_H_
-#define _KNOT_SIGN_SIG0_H_
+#ifndef _KNOT_DNSSEC_SIG0_H_
+#define _KNOT_DNSSEC_SIG0_H_
 
-#include "sign/dnssec.h"
+#include "libknot/dnssec/sign.h"
 
 /*!
  * \brief Sign a packet using SIG(0) mechanism.
@@ -42,6 +42,6 @@
 int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
                    knot_dnssec_key_t *key);
 
-#endif // _KNOT_SIGN_SIG0_H_
+#endif // _KNOT_DNSSEC_SIG0_H_
 
 /*! @} */

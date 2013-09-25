@@ -31,7 +31,7 @@
 
 #include "zone/node.h"
 #include "dname.h"
-#include "nsec3.h"
+#include "libknot/dnssec/nsec3.h"
 #include "common/ref.h"
 
 #include "zone-tree.h"

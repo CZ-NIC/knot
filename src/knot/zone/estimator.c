@@ -117,7 +117,7 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 		return;
 	}
 
-	dummy_node_t *n;
+	dummy_node_t *n = NULL;
 	if (insert_dname_into_table(est->node_table, owner, &n) == 0) {
 		// First time we see this name == new node
 		est->node_size += sizeof(knot_node_t) * NODE_MULT + NODE_ADD;

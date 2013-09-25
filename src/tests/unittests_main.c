@@ -35,7 +35,8 @@
 #include "tests/libknot/wire_tests.h"
 #include "tests/libknot/dname_tests.h"
 #include "tests/libknot/ztree_tests.h"
-#include "tests/libknot/sign_tests.h"
+#include "tests/libknot/dnssec_keys_tests.h"
+#include "tests/libknot/dnssec_sign_tests.h"
 #include "tests/libknot/rrset_tests.h"
 
 // Run all loaded units
@@ -70,7 +71,8 @@ int main(int argc, char *argv[])
 	        &wire_tests_api,
 	        &dname_tests_api,
 	        &ztree_tests_api,
-	        &sign_tests_api,	//! Key manipulation.
+	        &dnssec_keys_tests_api,	//! Key manipulation.
+	        &dnssec_sign_tests_api,	//! DNSSEC signing/verification.
 //	        &rrset_tests_api,
 
 	        NULL

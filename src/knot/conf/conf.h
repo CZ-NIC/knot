@@ -30,12 +30,13 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
 #include <urcu.h>
 
 #include "libknot/dname.h"
 #include "libknot/tsig.h"
-#include "libknot/sign/key.h"
+#include "libknot/dnssec/key.h"
 #include "common/lists.h"
 #include "common/log.h"
 #include "common/acl.h"
@@ -112,17 +113,18 @@ typedef struct conf_group_t {
  */
 typedef struct conf_zone_t {
 	node n;
-	char *name;               /*!< Zone name. */
-	uint16_t cls;             /*!< Zone class (IN or CH). */
-	char *file;               /*!< Path to a zone file. */
-	char *ixfr_db;            /*!< Path to a IXFR database file. */
-	size_t ixfr_fslimit;      /*!< File size limit for IXFR journal. */
-	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
-	int enable_checks;        /*!< Semantic checks for parser.*/
-	int disable_any;          /*!< Disable ANY type queries for AA.*/
-	int notify_retries;       /*!< NOTIFY query retries. */
-	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
-	int build_diffs;          /*!< Calculate differences from changes. */
+	char *name;                /*!< Zone name. */
+	uint16_t cls;              /*!< Zone class (IN or CH). */
+	char *file;                /*!< Path to a zone file. */
+	char *ixfr_db;             /*!< Path to a IXFR database file. */
+	bool dnssec_enable;        /*!< DNSSEC: Online signing enabled. */
+	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
+	int dbsync_timeout;        /*!< Interval between syncing to zonefile.*/
+	int enable_checks;         /*!< Semantic checks for parser.*/
+	int disable_any;           /*!< Disable ANY type queries for AA.*/
+	int notify_retries;        /*!< NOTIFY query retries. */
+	int notify_timeout;        /*!< Timeout for NOTIFY response (s). */
+	int build_diffs;           /*!< Calculate differences from changes. */
 	struct {
 		list xfr_in;      /*!< Remotes accepted for for xfr-in.*/
 		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
@@ -240,16 +242,19 @@ typedef struct conf_t {
 	/*
 	 * Zones
 	 */
-	list zones;       /*!< List of zones. */
-	int zones_count;  /*!< Count of zones. */
-	int zone_checks;  /*!< Semantic checks for parser.*/
-	int disable_any;  /*!< Disable ANY type queries for AA.*/
-	int notify_retries; /*!< NOTIFY query retries. */
-	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
-	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
+	list zones;          /*!< List of zones. */
+	int zones_count;     /*!< Count of zones. */
+	int zone_checks;     /*!< Semantic checks for parser.*/
+	int disable_any;     /*!< Disable ANY type queries for AA.*/
+	int notify_retries;  /*!< NOTIFY query retries. */
+	int notify_timeout;  /*!< Timeout for NOTIFY response in seconds. */
+	int dbsync_timeout;  /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
-	hattrie_t *names; /*!< Zone tree for duplicate checking. */
+	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
+	bool dnssec_global;  /*!< DNSSEC: Configured for all zones. */
+	bool dnssec_enable;  /*!< DNSSEC: Online signing enabled. */
+	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
 
 	/*
 	 * Remote control interface.

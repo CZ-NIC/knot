@@ -179,7 +179,8 @@ typedef enum knot_ns_xfr_type_t {
 	XFR_TYPE_SOA,     /*!< Pending SOA request. */
 	XFR_TYPE_NOTIFY,  /*!< Pending NOTIFY query. */
 	XFR_TYPE_UPDATE,  /*!< UPDATE request (incoming UPDATE). */
-	XFR_TYPE_FORWARD  /*!< UPDATE forward request. */
+	XFR_TYPE_FORWARD,  /*!< UPDATE forward request. */
+	XFR_TYPE_DNSSEC   /*!< DNSSEC changes. */
 } knot_ns_xfr_type_t;
 
 /*----------------------------------------------------------------------------*/
@@ -357,10 +358,6 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
                              knot_ns_xfr_t *xfr);
 
 int knot_ns_process_update(const knot_packet_t *query,
-                           const knot_zone_contents_t *zone,
-                           knot_changeset_t *changeset, knot_rcode_t *rcode);
-
-int knot_ns_process_update2(const knot_packet_t *query,
                             knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents,
                             knot_changesets_t *chgs, knot_rcode_t *rcode);

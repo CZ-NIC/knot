@@ -346,7 +346,11 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	/* Set key name and secret. */
 	key_params->name = knot_dname_from_str(k, strlen(k));
 	knot_dname_to_lower(key_params->name);
-	key_params->secret = strdup(s);
+	int r = knot_binary_from_base64(s, &key_params->secret);
+	if (r != KNOT_EOK) {
+		free(h);
+		return r;
+	}
 
 	DBG("%s: parsed name '%s'\n", __func__, k);
 	DBG("%s: parsed secret '%s'\n", __func__, s);

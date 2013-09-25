@@ -28,6 +28,7 @@
 #include "packet/packet.h"
 #include "dname.h"
 #include "zone/zone.h"
+#include "libknot/dnssec/zone-nsec.h"
 #include "packet/query.h"
 #include "common.h"
 #include "updates/changesets.h"
@@ -1764,6 +1765,11 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
                                        knot_changes_t *changes,
                                        knot_zone_contents_t *contents)
 {
+	if (node == NULL || rrset_new == NULL || changes == NULL
+	    || contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	uint16_t type = knot_rrset_type(rrset_new);
 	// remove RRSet of the proper type from the node
 	dbg_xfrin_verb("Removing RRSet of type: %u.\n", type);
@@ -2181,6 +2187,9 @@ dbg_xfrin_exec_detail(
 
 void xfrin_cleanup_successful_update(knot_changes_t *changes)
 {
+	if (changes == NULL) {
+		return;
+	}
 	// Free old RRSets
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changes->old_rrsets) {
@@ -2862,6 +2871,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 			  knot_strerror(ret));
 		return ret;
 	}
+
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	return KNOT_EOK;
@@ -2960,6 +2970,7 @@ int xfrin_switch_zone(knot_zone_t *zone,
 	// wait for readers to finish
 	dbg_xfrin_verb("Waiting for readers to finish...\n");
 	synchronize_rcu();
+
 	// destroy the old zone
 	dbg_xfrin_verb("Freeing old zone: %p\n", old);
 

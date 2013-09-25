@@ -100,6 +100,17 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                                  uint16_t rclass, uint32_t ttl);
 
 /*!
+ * \brief Creates a new RRSet according to given template RRSet.
+ *
+ * OWNER, TYPE, CLASS, and TTL values from template RRSet are used.
+ *
+ * \param tmp  RRSet template.
+ *
+ * \return New RRSet, NULL if an error occured.
+ */
+knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl);
+
+/*!
  * \brief Adds the given RDATA to the RRSet.
  *
  * \param rrset RRSet to add the RDATA to.
@@ -134,7 +145,7 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, const uint16_t size);
  * \retval 0 on error.
  * \return Item size on success.
  */
-/* [code-review] Misleading name, maybe remove the word 'item'. */
+/* [code-review] Misleading name, maybe remove the word 'item'. And add knot. */
 uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
                                size_t pos);
 
@@ -281,6 +292,8 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
+int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to);
+
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
 /*! \brief Does round-robin rotation of the RRSet.
@@ -325,11 +338,44 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
 
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *comp_data);
-/*! \brief Merges without duplicate check, without sort. */
+
+/*!
+ * \brief Write one RR from RRSet.
+ */
+int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
+                           uint8_t *wire, size_t max_size, size_t *outsize,
+                           void *comp_data);
+
+/*!
+ * \brief Merges two RRSets.
+ *
+ * Merges \a r1 into \a r2 by concatenating the list of RDATAs in \a r2 after
+ * the list of RDATAs in \a r1. You must not
+ * destroy the RDATAs in \a r2 as they are now identical to RDATAs in \a r1.
+ * (You may use function knot_rrset_free() though, as it does not touch RDATAs).
+ *
+ * \note Member \a rrsigs is preserved from the first RRSet.
+ *
+ * \param r1 Pointer to RRSet to be merged into.
+ * \param r2 Poitner to RRSet to be merged.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL if the RRSets could not be merged, because their
+ *         Owner, Type, Class or TTL does not match.
+ */
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
 /*! \brief Merges without with duplicate check, with sort. */
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                           int *merged, int *deleted_rrs);
+
+/*!
+ * \brief Sort RDATA in RRSet to be in caonical order.
+ * \todo Not optimal, rewrite!
+ *
+ * \param rrset  RRSet to be sorted.
+ * \return Error code, KNOT_EOK when successful.
+ */
+int knot_rrset_sort_rdata(knot_rrset_t *rrset);
 
 /*!
  * \brief Return true if the RRSet is an NSEC3 related type.
@@ -377,6 +423,9 @@ int knot_rrset_ds_check(const knot_rrset_t *rrset);
 
 uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset, size_t pos);
 
+int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
+                            const knot_rrset_t *rrset2,
+                            size_t pos1, size_t pos2);
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

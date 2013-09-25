@@ -30,98 +30,40 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Returns the delegation point flag
+ * \brief Sets the given flag to node's flags.
  *
- * \param flags Flags to retrieve the flag from.
- *
- * \return A byte with only the delegation point flag set if it was set in
- *         \a flags.
+ * \param node Node to set the flag in.
+ * \param flag Flag to set.
  */
-static inline uint8_t knot_node_flags_get_deleg(uint8_t flags)
+static inline void knot_node_flags_set(knot_node_t *node, uint8_t flag)
 {
-	return flags & KNOT_NODE_FLAGS_DELEG;
+	node->flags |= flag;
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Sets the delegation point flag.
+ * \brief Returns the given flag from node's flags.
  *
- * \param flags Flags to set the flag in.
+ * \param node Node to set the flag in.
+ * \param flag Flag to retrieve.
+ *
+ * \return A byte with only the given flag set if it was set in \a node.
  */
-static inline void knot_node_flags_set_deleg(uint8_t *flags)
+static inline uint8_t knot_node_flags_get(const knot_node_t *node, uint8_t flag)
 {
-	*flags |= KNOT_NODE_FLAGS_DELEG;
+	return node->flags & flag;
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Clears the delegation point flag.
+ * \brief Clears the given flag in node's flags.
  *
- * \param flags Flags to clear the flag in.
+ * \param node Node to clear the flag in.
+ * \param flag Flag to clear.
  */
-static inline void knot_node_flags_clear_deleg(uint8_t *flags)
+static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 {
-	*flags &= ~KNOT_NODE_FLAGS_DELEG;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Returns the non-authoritative node flag
- *
- * \param flags Flags to retrieve the flag from.
- *
- * \return A byte with only the non-authoritative node flag set if it was set in
- *         \a flags.
- */
-static inline uint8_t knot_node_flags_get_nonauth(uint8_t flags)
-{
-	return flags & KNOT_NODE_FLAGS_NONAUTH;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the non-authoritative node flag.
- *
- * \param flags Flags to set the flag in.
- */
-static inline void knot_node_flags_set_nonauth(uint8_t *flags)
-{
-	*flags |= KNOT_NODE_FLAGS_NONAUTH;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Clears the non-authoritative node flag.
- *
- * \param flags Flags to clear the flag in.
- */
-static inline void knot_node_flags_clear_nonauth(uint8_t *flags)
-{
-	*flags &= ~KNOT_NODE_FLAGS_NONAUTH;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the empty node flag.
- *
- * \param flags Flags to set the flag in.
- */
-static inline void knot_node_flags_set_empty(uint8_t *flags)
-{
-	*flags |= KNOT_NODE_FLAGS_EMPTY;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Returns the empty node flag
- *
- * \param flags Flags to retrieve the flag from.
- *
- * \return A byte with only the empty node flag set if it was set in \a flags.
- */
-static inline uint8_t knot_node_flags_get_empty(uint8_t flags)
-{
-	return flags & KNOT_NODE_FLAGS_EMPTY;
+	node->flags &= ~flag;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -137,8 +79,11 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
 		return NULL;
 	}
 
-	/* This is a subject to refactoring. Since owner is both at the RRSet
-	 * and node, we need to decide which should have it. Not both. */
+	/*! \todo This is inconsistent: knot_rrset_new() does not copy owner.
+	 *        Either copy in all _new() functions, or in none. I vote for
+	 *        the former, as it should be responsibility of the caller to
+	 *        do the copying (or not if he decides to do so).
+	 */
 	if (owner) {
 		ret->owner = knot_dname_copy(owner);
 	}
@@ -593,7 +538,7 @@ void knot_node_set_deleg_point(knot_node_t *node)
 		return;
 	}
 
-	knot_node_flags_set_deleg(&node->flags);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_DELEG);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -604,7 +549,7 @@ int knot_node_is_deleg_point(const knot_node_t *node)
 		return KNOT_EINVAL;
 	}
 
-	return knot_node_flags_get_deleg(node->flags);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_DELEG);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -615,7 +560,7 @@ void knot_node_set_non_auth(knot_node_t *node)
 		return;
 	}
 
-	knot_node_flags_set_nonauth(&node->flags);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -626,7 +571,7 @@ int knot_node_is_non_auth(const knot_node_t *node)
 		return KNOT_EINVAL;
 	}
 
-	return knot_node_flags_get_nonauth(node->flags);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_NONAUTH);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -637,8 +582,8 @@ void knot_node_set_auth(knot_node_t *node)
 		return;
 	}
 
-	knot_node_flags_clear_nonauth(&node->flags);
-	knot_node_flags_clear_deleg(&node->flags);
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_NONAUTH);
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_DELEG);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -656,14 +601,35 @@ int knot_node_is_auth(const knot_node_t *node)
 
 int knot_node_is_empty(const knot_node_t *node)
 {
-	return knot_node_flags_get_empty(node->flags);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_EMPTY);
 }
 
 /*----------------------------------------------------------------------------*/
 
 void knot_node_set_empty(knot_node_t *node)
 {
-	knot_node_flags_set_empty(&node->flags);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_EMPTY);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_node_is_replaced_nsec(const knot_node_t *node)
+{
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_node_set_replaced_nsec(knot_node_t *node)
+{
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_node_clear_replaced_nsec(knot_node_t *node)
+{
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -745,90 +711,3 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 
 	return KNOT_EOK;
 }
-
-//const knot_node_t *knot_node_current(const knot_node_t *node)
-//{
-//	if (node == NULL || node->zone == NULL
-//	    || knot_zone_contents(node->zone) == NULL) {
-//		return node;
-//	}
-
-//	int new_gen = knot_node_zone_gen_is_new(node);
-//	int old_gen = knot_node_zone_gen_is_old(node);
-////	short ver = knot_node_zone_generation(node);
-
-//	if (old_gen && knot_node_is_new(node)) {
-//		return NULL;
-//	} else if (new_gen && knot_node_is_old(node)) {
-//		assert(node->new_node != NULL);
-//		return node->new_node;
-//	}
-//	return node;
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//knot_node_t *knot_node_get_current(knot_node_t *node)
-//{
-//	if (node == NULL || node->zone == NULL
-//	    || knot_zone_contents(node->zone) == NULL) {
-//		return node;
-//	}
-
-//	int new_gen = knot_node_zone_gen_is_new(node);
-//	int old_gen = knot_node_zone_gen_is_old(node);
-////	short ver = knot_node_zone_generation(node);
-
-//	if (old_gen && knot_node_is_new(node)) {
-//		return NULL;
-//	} else if (new_gen && knot_node_is_old(node)) {
-//		assert(node->new_node != NULL);
-//		return node->new_node;
-//	}
-
-//	assert((old_gen && knot_node_is_old(node))
-//	       || (new_gen && knot_node_is_new(node))
-//	       || (!old_gen && !new_gen));
-
-//	return node;
-//}
-
-//int knot_node_is_new(const knot_node_t *node)
-//{
-//	return knot_node_flags_get_new(node->flags);
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//int knot_node_is_old(const knot_node_t *node)
-//{
-//	return knot_node_flags_get_old(node->flags);
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//void knot_node_set_new(knot_node_t *node)
-//{
-//	knot_node_flags_set_new(&node->flags);
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//void knot_node_set_old(knot_node_t *node)
-//{
-//	knot_node_flags_set_old(&node->flags);
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//void knot_node_clear_new(knot_node_t *node)
-//{
-//	knot_node_flags_clear_new(&node->flags);
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//void knot_node_clear_old(knot_node_t *node)
-//{
-//	knot_node_flags_clear_old(&node->flags);
-//}

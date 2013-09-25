@@ -84,6 +84,8 @@ typedef struct zonedata_t
 		unsigned state;
 	} xfr_in;
 
+	struct event_t *dnssec_timer;  /*!< Timer for DNSSEC events. */
+
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
 	struct event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
@@ -209,7 +211,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
 /*!
  * \brief Store changesets in journal.
  *
- * Changesets will be stored on a permanent storage.
+ * Changesets will be stored to a permanent storage.
  * Journal may be compacted, resulting in flattening changeset history.
  *
  * \param zone Zone associated with the changeset.
@@ -293,8 +295,9 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
  * \retval KNOT_ENODIFF when new zone's serial are equal.
  * \retval KNOT_ERROR when there was error creating changesets.
  */
-int zones_create_and_save_changesets(const knot_zone_t *old_zone,
-                                     const knot_zone_t *new_zone);
+int zones_create_changeset(const knot_zone_t *old_zone,
+                           const knot_zone_t *new_zone,
+                           knot_changeset_t *changeset);
 
 int zones_store_and_apply_chgsets(knot_changesets_t *chs,
                                   knot_zone_t *zone,
@@ -323,6 +326,16 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time);
  * \retval KNOT_ERROR
  */
 int zones_schedule_notify(knot_zone_t *zone);
+
+/*!
+ * \brief Schedule DNSSEC event.
+ * \param zone Related zone.
+ * \param time When to schedule
+ * \param force Force sign or not
+ *
+ * \return Error code, KNOT_OK if successful.
+ */
+int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force);
 
 /*!
  * \brief Processes forwarded UPDATE response packet.

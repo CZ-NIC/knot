@@ -31,6 +31,8 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
+#include "libknot/dnssec/zone-sign.h"
+#include "libknot/dnssec/zone-nsec.h"
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
@@ -65,6 +67,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a);
 static int remote_c_status(server_t *s, remote_cmdargs_t* a);
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a);
 static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
+static int remote_c_signzone(server_t *s, remote_cmdargs_t* a);
 
 /*! \brief Table of remote commands. */
 struct remote_cmd_t remote_cmd_tbl[] = {
@@ -74,6 +77,7 @@ struct remote_cmd_t remote_cmd_tbl[] = {
 	{ "status",    &remote_c_status },
 	{ "zonestatus",&remote_c_zonestatus },
 	{ "flush",     &remote_c_flush },
+	{ "signzone",  &remote_c_signzone },
 	{ NULL,        NULL }
 };
 
@@ -158,6 +162,22 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 		evsched_schedule(sch, zd->ixfr_dbsync,
 		                 tls_rand() * 1000);
 	}
+
+	return KNOT_EOK;
+}
+
+/*! \brief Sign zone callback. */
+static int remote_zone_sign(server_t *server, const knot_zone_t *zone)
+{
+	if (!server || !zone) {
+		return KNOT_EINVAL;
+	}
+
+	char *zone_name = knot_dname_to_str(zone->name);
+	log_server_info("Requested zone resign for '%s'.\n", zone_name);
+	free(zone_name);
+
+	zones_schedule_dnssec((knot_zone_t *)zone, 0, true);
 
 	return KNOT_EOK;
 }
@@ -254,6 +274,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 				break;
 			}
 			/*! Workaround until proper zone fetching API and locking
+
 			 *  is implemented (ref #31)
 			 */
 			if (dif.tv_sec < 0) {
@@ -346,6 +367,23 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 
 	/* Flush specific zones. */
 	return remote_rdata_apply(s, a, &remote_zone_flush);
+}
+
+/*!
+ * \brief Remote command 'signzone' handler.
+ *
+ */
+static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
+{
+	dbg_server("remote: %s\n", __func__);
+
+	if (arguments->argc == 0) {
+		log_server_error("signzone for all zone was requested\n");
+		// TODO
+		return KNOT_ENOTSUP;
+	}
+
+	return remote_rdata_apply(server, arguments, remote_zone_sign);
 }
 
 /*!

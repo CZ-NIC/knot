@@ -18,17 +18,19 @@
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
- * \brief Interface for loding of keys.
+ * \brief Interface for loading of DNSSEC keys.
  *
  * \addtogroup dnssec
  * @{
  */
 
-#ifndef _KNOT_SIGN_KEY_H_
-#define _KNOT_SIGN_KEY_H_
+#ifndef _KNOT_DNSSEC_KEY_H_
+#define _KNOT_DNSSEC_KEY_H_
 
 #include <stdint.h>
+#include <time.h>
 #include "dname.h"
+#include "binary.h"
 #include "tsig.h"
 
 /*----------------------------------------------------------------------------*/
@@ -36,43 +38,52 @@
 /*!
  * \brief Key attributes loaded from keyfile.
  */
-struct knot_key_params {
+typedef struct {
+	// common parameters
 	knot_dname_t *name;
+	knot_binary_t rdata;
 	int algorithm;
 	uint16_t keytag;
-	// parameters for symmetric cryptography
-	char *secret;
-	// parameters for public key cryptography
+	uint16_t flags;
+
+	// shared key
+	knot_binary_t secret;
+
 	// RSA
-	char *modulus;
-	char *public_exponent;
-	char *private_exponent;
-	char *prime_one;
-	char *prime_two;
-	char *exponent_one;
-	char *exponent_two;
-	char *coefficient;
-	// DH, DSA
-	char *prime;
-	char *generator;
-	char *subprime;
-	char *base;
-	char *private_value;
-	char *public_value;
+	knot_binary_t modulus;
+	knot_binary_t public_exponent;
+	knot_binary_t private_exponent;
+	knot_binary_t prime_one;
+	knot_binary_t prime_two;
+	knot_binary_t exponent_one;
+	knot_binary_t exponent_two;
+	knot_binary_t coefficient;
+
+	// DSA
+	knot_binary_t prime;
+	knot_binary_t subprime;
+	knot_binary_t base;
+	knot_binary_t private_value;
+	knot_binary_t public_value;
+
 	// EC
-	char *private_key;
-};
+	knot_binary_t private_key;
 
-typedef struct knot_key_params knot_key_params_t;
+	// key lifetime
+	//time_t time_created;
+	//time_t time_publish;
+	time_t time_activate;
+	//time_t time_revoke;
+	time_t time_inactive;
+	//time_t time_delete;
+} knot_key_params_t;
 
-enum knot_key_type {
+typedef enum {
 	KNOT_KEY_UNKNOWN = 0,
 	KNOT_KEY_DNSSEC, //!< DNSSEC key. Described in RFC 2535 and RFC 4034.
 	KNOT_KEY_TSIG,   //!< Transaction Signature. Described in RFC 2845.
 	KNOT_KEY_TKEY    //!< Transaction Key. Described in RFC 2930.
-};
-
-typedef enum knot_key_type knot_key_type_t;
+} knot_key_type_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -157,12 +168,14 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
 /*!
  * \brief Frees TSIG key.
  *
+ * The structure itself is not freed.
+ *
  * \param key  TSIG key structure to be freed.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
 int knot_tsig_key_free(knot_tsig_key_t *key);
 
-#endif // _KNOT_SIGN_KEY_H_
+#endif // _KNOT_DNSSEC_KEY_H_
 
 /*! @} */

@@ -873,6 +873,54 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 #define dbg_rrset_exec_detail(cmds)
 #endif
 
+#ifdef KNOT_DNSSEC_DEBUG
+
+/* Brief messages. */
+#ifdef DEBUG_ENABLE_BRIEF
+#define dbg_dnssec(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_dnssec_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_dnssec_exec(cmds) do { cmds } while (0)
+#else
+#define dbg_dnssec(msg...)
+#define dbg_dnssec_hex(data, len)
+#define dbg_dnssec_exec(cmds)
+#endif
+
+/* Verbose messages. */
+#ifdef DEBUG_ENABLE_VERBOSE
+#define dbg_dnssec_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_dnssec_hex_verb(data, len) hex_log(LOG_SERVER, (data), (len))
+#define dbg_dnssec_exec_verb(cmds) do { cmds } while (0)
+#else
+#define dbg_dnssec_verb(msg...)
+#define dbg_dnssec_hex_verb(data, len)
+#define dbg_dnssec_exec_verb(cmds)
+#endif
+
+/* Detail messages. */
+#ifdef DEBUG_ENABLE_DETAILS
+#define dbg_dnssec_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
+#define dbg_dnssec_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
+#define dbg_dnssec_exec_detail(cmds) do { cmds } while (0)
+#else
+#define dbg_dnssec_detail(msg...)
+#define dbg_dnssec_hex_detail(data, len)
+#define dbg_dnssec_exec_detail(cmds)
+#endif
+
+/* No messages. */
+#else
+#define dbg_dnssec(msg...)
+#define dbg_dnssec_hex(data, len)
+#define dbg_dnssec_exec(cmds)
+#define dbg_dnssec_verb(msg...)
+#define dbg_dnssec_hex_verb(data, len)
+#define dbg_dnssec_exec_verb(cmds)
+#define dbg_dnssec_detail(msg...)
+#define dbg_dnssec_hex_detail(data, len)
+#define dbg_dnssec_exec_detail(cmds)
+#endif
+
 /******************************************************************************/
 
 #endif /* _KNOT_DEBUG_H_ */
