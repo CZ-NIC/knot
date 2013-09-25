@@ -1958,29 +1958,25 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		return ret;
 	}
 
-	// Switch zone contents.
-	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
-	rcu_read_unlock();      /* Unlock for switch. */
-	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
-	rcu_read_lock();        /* Relock */
-	knot_zone_release(zone);/* Release held pointer. */
-	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to replace current zone - %s\n",
-		               msg, knot_strerror(ret));
-		// Cleanup old and new contents
-		xfrin_rollback_update(zone->contents, &new_contents,
-		                      chgsets->changes);
-
-		/* Free changesets, but not the data. */
-		zones_free_merged_changesets(chgsets, sec_chs);
-		return KNOT_ERROR;
-	}
-
-	new_contents = NULL;
 	bool new_signatures = !knot_changeset_is_empty(sec_ch);
+	knot_zone_contents_t *dnssec_contents = NULL;
 	// Apply DNSSEC changeset
 	if (new_signatures) {
-		ret = xfrin_apply_changesets(zone, sec_chs, &new_contents);
+		knot_zone_t *fake_zone = knot_zone_new_empty(zone->name);
+		if (fake_zone == NULL) {
+			log_zone_error("%s: Failed to apply changesets (%s)\n",
+			               msg, KNOT_ENOMEM);
+			xfrin_rollback_update(zone->contents, &new_contents,
+			                      chgsets->changes);
+			zones_free_merged_changesets(chgsets, sec_chs);
+			free(msg);
+			return KNOT_ENOMEM;
+		}
+		// Apply changeset to zone created by DDNS processing
+		fake_zone->contents = new_contents;
+		ret = xfrin_apply_changesets(fake_zone, sec_chs,
+		                             &dnssec_contents);
+		knot_zone_free(&fake_zone);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update %s\n",
 			               msg, knot_strerror(ret));
@@ -1988,7 +1984,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			zones_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
-		assert(new_contents);
+		assert(dnssec_contents);
 	}
 
 	dbg_zload_verb("%s: DNSSEC changes applied\n", msg);
@@ -1996,7 +1992,9 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	// Switch zone contents.
 	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
 	rcu_read_unlock();      /* Unlock for switch. */
-	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
+	ret = xfrin_switch_zone(zone,
+	                        dnssec_contents ? dnssec_contents : new_contents,
+	                        XFR_TYPE_UPDATE);
 	rcu_read_lock();        /* Relock */
 	knot_zone_release(zone);/* Release held pointer. */
 	if (ret != KNOT_EOK) {
