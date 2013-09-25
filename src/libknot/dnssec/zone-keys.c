@@ -18,16 +18,21 @@
 #include <assert.h>
 #include <dirent.h>
 #include <stdbool.h>
-#include <stdio.h> // TMP
 #include "common/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/algorithm.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
+#include "libknot/util/debug.h"
 
+/*!
+ * \brief Free DNSSEC signing context for each key.
+ */
 static void free_sign_contexts(knot_zone_keys_t *keys)
 {
+	assert(keys);
+
 	for (int i = 0; i < keys->count; i++) {
 		knot_dnssec_sign_free(keys->contexts[i]);
 		keys->contexts[i] = NULL;
@@ -35,6 +40,9 @@ static void free_sign_contexts(knot_zone_keys_t *keys)
 }
 
 
+/*!
+ * \brief Initialize DNSSEC signing context for each key.
+ */
 static int init_sign_contexts(knot_zone_keys_t *keys)
 {
 	assert(keys);
@@ -55,13 +63,17 @@ static int init_sign_contexts(knot_zone_keys_t *keys)
  */
 static bool is_current_key(const knot_key_params_t *key)
 {
+	assert(key);
+
 	time_t now = time(NULL);
 
-	if (now < key->time_activate)
+	if (now < key->time_activate) {
 		return false;
+	}
 
-	if (key->time_inactive && now > key->time_inactive)
+	if (key->time_inactive && now > key->time_inactive) {
 		return false;
+	}
 
 	return true;
 }
@@ -71,11 +83,11 @@ static bool is_current_key(const knot_key_params_t *key)
  */
 knot_dnssec_key_t *get_zone_key(knot_zone_keys_t *keys, uint16_t keytag)
 {
-	knot_dnssec_key_t *result = NULL;
-
 	if (!keys) {
 		return NULL;
 	}
+
+	knot_dnssec_key_t *result = NULL;
 
 	for (int i = 0; i < keys->count; i++) {
 		if (keys->keys[i].keytag == keytag) {
@@ -90,16 +102,14 @@ knot_dnssec_key_t *get_zone_key(knot_zone_keys_t *keys, uint16_t keytag)
 /*!
  * \brief Load zone keys from a key directory.
  *
- * \todo Remove fprintf()
- * \todo Check for duplicate key tags
  * \todo Maybe use dynamic list instead of fixed size array.
  */
 int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		   bool nsec3_enabled, knot_zone_keys_t *keys)
 {
-	assert(keydir_name);
-	assert(zone_name);
-	assert(keys);
+	if (!keydir_name || !zone_name || !keys) {
+		return KNOT_EINVAL;
+	}
 
 	DIR *keydir = opendir(keydir_name);
 	if (!keydir) {
@@ -125,37 +135,38 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		                + strlen(entry->d_name) + 1;
 		char *path = malloc(path_len * sizeof(char));
 		if (!path) {
-			fprintf(stderr, "failed to alloc key path\n");
+			dbg_dnssec_detail("failed to allocate key path\n");
 			continue;
 		}
 
 		snprintf(path, path_len, "%s/%s", keydir_name, entry->d_name);
-		fprintf(stderr, "reading key '%s'\n", path);
+		dbg_dnssec_detail("loading key '%s'\n", path);
 
 		knot_key_params_t params = { 0 };
 		int result = knot_load_key_params(path, &params);
 		free(path);
 
 		if (result != KNOT_EOK) {
-			fprintf(stderr, "failed to load key params\n");
+			dbg_dnssec_detail("failed to load key parameters (%s)\n",
+			                  knot_strerror(result));
 			knot_free_key_params(&params);
 			continue;
 		}
 
 		if (!knot_dname_is_equal(zone_name, params.name)) {
-			fprintf(stderr, "key for other zone\n");
+			dbg_dnssec_detail("skipping key, different zone name\n");
 			knot_free_key_params(&params);
 			continue;
 		}
 
 		if (!is_current_key(&params)) {
-			fprintf(stderr, "key is not active\n");
+			dbg_dnssec_detail("skipping key, inactive period\n");
 			knot_free_key_params(&params);
 			continue;
 		}
 
 		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
-			fprintf(stderr, "not a DNSSEC key\n");
+			dbg_dnssec_detail("skipping key, different purpose\n");
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -163,13 +174,13 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
 		) {
-			fprintf(stderr, "algorithm not allowed for zone signing\n");
+			dbg_dnssec_detail("skipping key, incompatible algorithm\n");
 			knot_free_key_params(&params);
 			continue;
 		}
 
 		if (get_zone_key(keys, params.keytag) != NULL) {
-			fprintf(stderr, "key with duplicate keytag\n");
+			dbg_dnssec_detail("skipping key, duplicate keytag\n");
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -177,18 +188,18 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		result = knot_dnssec_key_from_params(&params,
 		                                     &keys->keys[keys->count]);
 		if (result != KNOT_EOK) {
-			fprintf(stderr, "cannot create the dnssec key\n");
+			dbg_dnssec_detail("cannot create DNSSEC key (%s)\n",
+			                  knot_strerror(result));
 			knot_free_key_params(&params);
 			continue;
 		}
 
-		fprintf(stderr, "key is valid\n");
-		fprintf(stderr, "key is %s\n", params.flags & 1 ? "ksk" : "zsk");
+		dbg_dnssec_detail("key is valid, tag %d, %s\n", params.keytag,
+		                  (params.flags & 1 ? "KSK" : "ZSK"));
 
 		keys->is_ksk[keys->count] = params.flags & 1;
 		keys->count += 1;
 
-		// Cleanup key parameters
 		knot_free_key_params(&params);
 	}
 
@@ -200,7 +211,8 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 	int result = init_sign_contexts(keys);
 	if (result != KNOT_EOK) {
-		fprintf(stderr, "init_sign_contexts() failed\n");
+		dbg_dnssec_detail("init_sign_contexts() failed (%s)\n",
+		                  knot_strerror(result));
 		free_zone_keys(keys);
 		return result;
 	}
@@ -210,6 +222,10 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 void free_zone_keys(knot_zone_keys_t *keys)
 {
+	if (!keys) {
+		return;
+	}
+
 	free_sign_contexts(keys);
 
 	for (int i = 0; i < keys->count; i++) {
