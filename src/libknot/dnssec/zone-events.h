@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,10 +31,44 @@
 #include "libknot/zone/zone.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/dnssec/policy.h"
-
+/*!
+ * \brief DNSSEC resign zone, store new records into changeset. Valid signatures
+ *        and NSEC(3) records will not be changed.
+ *
+ * \param zone    Zone to be signed.
+ * \param out_ch  New records will be added to this changeset.
+ * \param soa_up  SOA serial update policy.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up);
+
+/*!
+ * \brief DNSSEC sign zone, store new records into changeset. Even valid
+ *        signatures will be dropped.
+ *
+ * \param zone    Zone to be signed.
+ * \param out_ch  New records will be added to this changeset.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
 int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch);
+
+/*!
+ * \brief Sign changeset created by DDNS or zone-diff.
+ *
+ * \param zone    Contents of the updated zone (AFTER zone is switched).
+ * \param in_ch   Changeset created bvy DDNS or zone-diff
+ * \param out_ch  New records will be added to this changeset.
+ * \param soa_up  SOA serial update policy.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
+                               const knot_changeset_t *in_ch,
+                               knot_changeset_t *out_ch,
+                               knot_update_serial_t soa_up);
 
 #endif // _KNOT_DNSSEC_ZONE_EVENTS_H_
 /*! @} */

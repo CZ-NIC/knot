@@ -31,6 +31,8 @@
 
 #include <stdbool.h>
 #include "libknot/updates/changesets.h"
+#include "libknot/dnssec/policy.h"
+#include "libknot/dnssec/zone-keys.h"
 #include "libknot/zone/zone-contents.h"
 
 /*!
@@ -51,7 +53,9 @@ bool is_nsec3_enabled(const knot_zone_contents_t *zone);
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
-				knot_changeset_t *changeset);
+                                knot_changeset_t *changeset,
+                                const knot_zone_keys_t *zone_keys,
+                                const knot_dnssec_policy_t *policy);
 
 /*!
  * \brief Connect regular and NSEC3 nodes in the zone.

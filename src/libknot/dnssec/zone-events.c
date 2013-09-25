@@ -48,6 +48,40 @@ static void init_forced_policy(knot_dnssec_policy_t *p,
 	p->soa_up = soa_up;
 }
 
+static int init_dnssec_structs(const knot_zone_t *zone,
+                               knot_zone_keys_t *zone_keys,
+                               knot_dnssec_policy_t *policy,
+                               knot_update_serial_t soa_up, bool force)
+{
+	assert(zone);
+	assert(zone_keys);
+	assert(policy);
+
+	// Read zone keys from disk
+	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
+	int result = load_zone_keys(conf()->dnssec_keydir,
+	                            zone->contents->apex->owner,
+	                            nsec3_enabled, zone_keys);
+	if (result != KNOT_EOK) {
+		char *zname = knot_dname_to_str(zone->name);
+		log_zone_error("DNSSEC keys could not be loaded (%s). "
+		               "Not signing the %s zone!\n",
+		               knot_strerror(result), zname);
+		free(zname);
+		free_zone_keys(zone_keys);
+		return result;
+	}
+
+	// Init sign policy
+	if (force) {
+		init_forced_policy(policy, soa_up);
+	} else {
+		init_default_policy(policy, soa_up);
+	}
+
+	return KNOT_EOK;
+}
+
 static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
                      knot_update_serial_t soa_up)
 {
@@ -56,11 +90,9 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	assert(out_ch);
 
 	dbg_dnssec_verb("Changeset emtpy before generating NSEC chain: %d\n",
-	        knot_changeset_is_empty(out_ch));
+	                knot_changeset_is_empty(out_ch));
 
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
-	int result = KNOT_EOK;
-
 	if (!zone_config->dnssec_enable) {
 		char *zname = knot_dname_to_str(zone->name);
 		log_server_warning("DNSSEC not enabled for '%s'.\n", zname);
@@ -68,32 +100,20 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		return KNOT_EOK;
 	}
 
-	// Read zone keys from disk
+	// Init needed structs
 	knot_zone_keys_t zone_keys = { '\0' };
-	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
-	result = load_zone_keys(conf()->dnssec_keydir,
-	                        zone->contents->apex->owner,
-	                        nsec3_enabled, &zone_keys);
+	knot_dnssec_policy_t policy = { '\0' };
+	int result = init_dnssec_structs(zone, &zone_keys, &policy, soa_up,
+	                                 force);
 	if (result != KNOT_EOK) {
-		char *zname = knot_dname_to_str(zone->name);
-		log_zone_error("DNSSEC keys could not be loaded (%s). "
-		               "Not signing the %s zone!\n",
-		               knot_strerror(result), zname);
-		free(zname);
-		free_zone_keys(&zone_keys);
+		log_zone_error("Failed to init DNSSEC signer (%s)\n",
+		               knot_strerror(result));
 		return result;
 	}
 
-	// Create sign policy
-	knot_dnssec_policy_t policy;
-	if (force) {
-		init_forced_policy(&policy, soa_up);
-	} else {
-		init_default_policy(&policy, soa_up);
-	}
-
 	// generate NSEC records
-	result = knot_zone_create_nsec_chain(zone->contents, out_ch);
+	result = knot_zone_create_nsec_chain(zone->contents, out_ch,
+	                                     &zone_keys, &policy);
 	if (result != KNOT_EOK) {
 		char *zname = knot_dname_to_str(zone->name);
 		log_zone_error("Could not create NSEC(3) chain (%s). "
@@ -104,7 +124,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		return result;
 	}
 	dbg_dnssec_verb("Changeset emtpy after generating NSEC chain: %d\n",
-	        knot_changeset_is_empty(out_ch));
+	                knot_changeset_is_empty(out_ch));
 
 	// add missing signatures
 	result = knot_zone_sign(zone->contents, &zone_keys, &policy, out_ch);
@@ -117,7 +137,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		return result;
 	}
 	dbg_dnssec_verb("Changeset emtpy after signing: %d\n",
-	        knot_changeset_is_empty(out_ch));
+	                knot_changeset_is_empty(out_ch));
 
 	// Check if only SOA changed
 	if (knot_changeset_is_empty(out_ch) &&
@@ -132,7 +152,10 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	}
 
 	// update SOA if there were any changes
-	result = knot_zone_sign_update_soa(zone->contents, &zone_keys, &policy,
+	const knot_rrset_t *soa = knot_node_rrset(zone->contents->apex,
+	                                          KNOT_RRTYPE_SOA);
+	assert(soa);
+	result = knot_zone_sign_update_soa(soa, &zone_keys, &policy,
 	                                   out_ch);
 	if (result != KNOT_EOK) {
 		char *zname = knot_dname_to_str(zone->name);
@@ -149,15 +172,76 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	return KNOT_EOK;
 }
 
-int knot_dnssec_zone_sign(knot_zone_t *zone,
-                          knot_changeset_t *out_ch,
+int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up)
 {
+	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	return zone_sign(zone, out_ch, false, soa_up);
 }
 
 int knot_dnssec_zone_sign_force(knot_zone_t *zone,
                                 knot_changeset_t *out_ch)
 {
+	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_INC);
+}
+
+int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
+                               const knot_changeset_t *in_ch,
+                               knot_changeset_t *out_ch,
+                               knot_update_serial_t soa_up)
+{
+	if (!conf()->dnssec_enable) {
+		return KNOT_EOK;
+	}
+
+	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Init needed structures
+	knot_zone_keys_t zone_keys = { '\0' };
+	knot_dnssec_policy_t policy = { '\0' };
+	int ret = init_dnssec_structs(zone->zone, &zone_keys, &policy, soa_up,
+	                              false);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Failed to init DNSSEC signer (%s)\n",
+		               knot_strerror(ret));
+		return ret;
+	}
+
+	// Fix NSEC(3) chain
+	ret = knot_zone_create_nsec_chain(zone, out_ch, &zone_keys, &policy);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Failed to fix NSEC(3) chain (%s)\n",
+		               knot_strerror(ret));
+		free_zone_keys(&zone_keys);
+		return ret;
+	}
+
+	// Sign added and removed RRSets in changeset
+	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, &zone_keys,
+	                               &policy);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Failed to sign changeset (%s)\n",
+		               knot_strerror(ret));
+		free_zone_keys(&zone_keys);
+		return ret;
+	}
+
+	// Update SOA RRSIGs
+	ret = knot_zone_sign_update_soa(in_ch->soa_to, &zone_keys, &policy,
+	                                out_ch);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Failed to sign SOA RR (%s)\n",
+		               knot_strerror(ret));
+	}
+	free_zone_keys(&zone_keys);
+	return ret;
 }

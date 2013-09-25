@@ -440,41 +440,6 @@ static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
 	return KNOT_EOK;
 }
 
-static int zones_store_changesets_to_disk(knot_zone_t *zone,
-                                          knot_changesets_t *chgsets)
-{
-	if (EMPTY_LIST(chgsets->sets)) {
-		return KNOT_EOK;
-	}
-	journal_t *journal = zones_store_changesets_begin(zone);
-	if (journal == NULL) {
-		dbg_zones("zones: create_changesets: "
-		          "Could not start journal operation.\n");
-		return KNOT_ERROR;
-	}
-
-	int ret = zones_store_changesets(zone, chgsets);
-	if (ret != KNOT_EOK) {
-		zones_store_changesets_rollback(journal);
-		dbg_zones("zones: create_changesets: "
-		          "Could not store in the journal. Reason: %s.\n",
-		          knot_strerror(ret));
-
-		return ret;
-	}
-
-	ret = zones_store_changesets_commit(journal);
-	if (ret != KNOT_EOK) {
-		dbg_zones("zones: create_changesets: "
-		          "Could not commit to journal. Reason: %s.\n",
-		          knot_strerror(ret));
-
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
 static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
                                                   knot_changesets_t *chgsets,
                                                   journal_t **transaction)
@@ -1150,10 +1115,8 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	knot_changeset_t *diff_ch = knot_changesets_get_last(diff_chs);
 	knot_changeset_t *sec_ch =  knot_changesets_get_last(sec_chs);
 
-	/* SOAs in 'sec_chs' shouldn't be the same. */
-	assert(sec_ch->serial_from != sec_ch->serial_to);
-
-	/* But beginning SOA of second changeset should be equal to ending SOA
+	/*!
+	 * Beginning SOA of second changeset should be equal to ending SOA
 	 * of the first changeset.
 	 */
 	assert(diff_ch->serial_to == sec_ch->serial_from);
@@ -1163,14 +1126,15 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 		return ret;
 	}
 
-	/* Now the ending serial of first changeset (the merged one) should be
+	/*!
+	 * Now the ending serial of first changeset (the merged one) should be
 	 * equal to the ending serial of second changeset. Also the SOAs should
 	 * be the same.
 	 */
 	assert(diff_ch->serial_to == sec_ch->serial_to);
 	assert(diff_ch->soa_to == sec_ch->soa_to);
 
-	/* Store *ALL* changes to disk. (and only apply 'sec_chs', but not here. */
+	// Store *ALL* changes to disk.
 	ret = zones_store_changesets_begin_and_store(zone, diff_chs,
 	                                             transaction);
 	if (ret != KNOT_EOK) {
@@ -1196,7 +1160,8 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 	/* Ensure both new and old have zone contents. */
 	knot_zone_contents_t *zc = knot_zone_get_contents(zone);
 	knot_zone_contents_t *zc_old = knot_zone_get_contents(z_old);
-		dbg_zones("Going to calculate diff. Old contents: %p, new: %p\n",
+		dbg_zones("Going to calculate diff. "
+		          "Old contents: %p, new: %p\n",
 		          zc_old, zc);
 
 	knot_changesets_t *diff_chs = NULL;
@@ -1213,7 +1178,7 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 			rcu_read_unlock();
 			return KNOT_ENOMEM;
 		}
-		dbg_zones(stderr, "Generating diff.\n");
+		dbg_zones("Generating diff.\n");
 		int ret = zones_create_changeset(z_old,
 		                                 zone, diff_ch);
 		if (ret == KNOT_ENODIFF) {
@@ -1258,10 +1223,9 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 			return KNOT_ENOMEM;
 		}
 
-		/* Increment serial even if diff did that. This way
-		 * it's always possible to flush the changes to zonefile
-		 * and it's also more correct (change in the zone =
-		 * serial increment).
+		/*!
+		 * Increment serial even if diff did that. This way it's always
+		 * possible to flush the changes to zonefile.
 		 */
 		knot_update_serial_t soa_up =  KNOT_SOA_SERIAL_INC;
 
@@ -1279,7 +1243,6 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 	int ret = zones_merge_and_store_changesets(zone, diff_chs,
 	                                           sec_chs,
 	                                           &transaction);
-
 	if (ret != KNOT_EOK) {
 		knot_changesets_free(&diff_chs);
 		knot_changesets_free(&sec_chs);
@@ -1295,11 +1258,11 @@ static int zones_create_and_apply_changesets(const conf_zone_t *z,
 		if (ret != KNOT_EOK) {
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(diff_chs, sec_chs);
-				rcu_read_unlock();
-				return ret;
-			}
-			assert(new_contents);
+			rcu_read_unlock();
+			return ret;
 		}
+		assert(new_contents);
+	}
 
 	/* Commit transaction. */
 	if (transaction) {
@@ -1903,15 +1866,16 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	free(keytag);
 	log_zone_info("%s Started.\n", msg);
 
-
 	/* Reserve place for the TSIG */
 	if (tsig_key != NULL) {
 		size_t tsig_max_size = tsig_wire_maxsize(tsig_key);
 		knot_packet_set_tsig_size(resp, tsig_max_size);
 	}
 
-	/* We must prepare a changesets_t structure even if
-	 * there is only one changeset - because of the API. */
+	/*!
+	 * We must prepare a changesets_t structure even though there will
+	 * be only one changeset - because of the API.
+	 */
 	knot_changesets_t *chgsets =
 		knot_changesets_create(KNOT_CHANGESET_TYPE_DDNS);
 	if (chgsets == NULL) {
@@ -1921,20 +1885,16 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		return ret;
 	}
 
-	/* 1) Process the UPDATE packet, apply to zone, create changesets. */
-
+	// Process the UPDATE packet, apply to zone, create changesets.
 	dbg_zones_verb("Processing UPDATE packet.\n");
-	/* DU is represented by a single chset. */
 	if (knot_changesets_create_changeset(chgsets) == NULL) {
-		return KNOT_ERROR;
+		return KNOT_ENOMEM;
 	}
 
 	knot_zone_contents_t *new_contents = NULL;
 	ret = knot_ns_process_update2(knot_packet_query(resp),
 	                              knot_zone_get_contents(zone),
-	                              &new_contents,
-	                              chgsets, rcode);
-
+	                              &new_contents, chgsets, rcode);
 	if (ret != KNOT_EOK) {
 		if (ret < 0) {
 			log_zone_error("%s %s\n", msg, knot_strerror(ret));
@@ -1956,10 +1916,25 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		return (ret < 0) ? ret : KNOT_EOK;
 	}
 
-	/* 2) Store changesets, (TODO: but do not commit???). */
-	ret = zones_store_changesets_to_disk(zone, chgsets);
+	knot_changesets_t *sec_chs =
+		knot_changesets_create(KNOT_CHANGESET_TYPE_DNSSEC);
+	knot_changeset_t *sec_ch = knot_changesets_create_changeset(sec_chs);
+	if (sec_chs == NULL || sec_ch == NULL) {
+		xfrin_rollback_update(zone->contents, &new_contents,
+		                      chgsets->changes);
+		knot_changesets_free(&chgsets);
+		free(msg);
+		return KNOT_ENOMEM;
+	}
+
+	dbg_zones_verb("%s: Signing the UPDATE\n", msg);
+	// Sign the created changeset
+	ret = knot_dnssec_sign_changeset(new_contents,
+	                                 knot_changesets_get_last(chgsets),
+	                                 sec_ch, KNOT_SOA_SERIAL_KEEP);
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s %s\n", msg, knot_strerror(ret));
+		log_zone_error("%s: Failed to sign incoming transfer (%s)\n",
+		               msg, knot_strerror(ret));
 		xfrin_rollback_update(zone->contents, &new_contents,
 		                      chgsets->changes);
 		knot_changesets_free(&chgsets);
@@ -1967,13 +1942,29 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		return ret;
 	}
 
-	/* 3) Switch zone contents. */
+	dbg_zones_detail("%s: UPDATE signed (%zu changes)\n", msg,
+	                 knot_changeset_size(sec_ch));
+
+	// Merge changesets
+	journal_t *transaction = NULL;
+	ret = zones_merge_and_store_changesets(zone, chgsets, sec_chs,
+	                                       &transaction);
+	if (ret != KNOT_EOK) {
+		log_zone_error("%s: Failed to store changesets (%s)\n",
+		               msg, knot_strerror(ret));
+		xfrin_rollback_update(zone->contents, &new_contents,
+		                      chgsets->changes);
+		zones_free_merged_changesets(chgsets, sec_chs);
+		free(msg);
+		return ret;
+	}
+
+	// Switch zone contents.
 	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
 	rcu_read_unlock();      /* Unlock for switch. */
 	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
 	rcu_read_lock();        /* Relock */
 	knot_zone_release(zone);/* Release held pointer. */
-
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to replace current zone - %s\n",
 		               msg, knot_strerror(ret));
@@ -1982,23 +1973,72 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		                      chgsets->changes);
 
 		/* Free changesets, but not the data. */
-		knot_changesets_free(&chgsets);
+		zones_free_merged_changesets(chgsets, sec_chs);
 		return KNOT_ERROR;
 	}
 
-	/* 4) Cleanup. */
+	new_contents = NULL;
+	bool new_signatures = !knot_changeset_is_empty(sec_ch);
+	// Apply DNSSEC changeset
+	if (new_signatures) {
+		ret = xfrin_apply_changesets(zone, sec_chs, &new_contents);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s: Failed to sign incoming update %s\n",
+			               msg, knot_strerror(ret));
+			zones_store_changesets_rollback(transaction);
+			zones_free_merged_changesets(chgsets, sec_chs);
+			return ret;
+		}
+		assert(new_contents);
+	}
 
+	dbg_zload_verb("%s: DNSSEC changes applied\n", msg);
+
+	// Switch zone contents.
+	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
+	rcu_read_unlock();      /* Unlock for switch. */
+	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
+	rcu_read_lock();        /* Relock */
+	knot_zone_release(zone);/* Release held pointer. */
+	if (ret != KNOT_EOK) {
+		log_zone_error("%s Failed to replace current zone - %s\n",
+		               msg, knot_strerror(ret));
+		// Cleanup old and new contents
+		xfrin_rollback_update(zone->contents, &new_contents,
+		                      chgsets->changes);
+
+		/* Free changesets, but not the data. */
+		zones_free_merged_changesets(chgsets, sec_chs);
+		return KNOT_ERROR;
+	}
+
+	// Commit transaction.
+	if (transaction) {
+		ret = zones_store_changesets_commit(transaction);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s: Failed to commit stored "
+			               "changesets: %s."
+			               "\n", msg, knot_strerror(ret));
+			xfrin_rollback_update(zone->contents, &new_contents,
+			                      chgsets->changes);
+			zones_free_merged_changesets(chgsets, sec_chs);
+			free(msg);
+			return ret;
+		}
+	}
+
+	// Cleanup.
 	xfrin_cleanup_successful_update(chgsets->changes);
 
-	/* Free changesets, but not the data. */
-	knot_changesets_free(&chgsets);
+	// Free changesets, but not the data.
+	zones_free_merged_changesets(chgsets, sec_chs);
 	assert(ret == KNOT_EOK);
 	log_zone_info("%s Finished.\n", msg);
 
 	free(msg);
 	msg = NULL;
 
-	/* 5) Prepare DDNS response. */
+	// Prepare DDNS response.
 	assert(*rcode == KNOT_RCODE_NOERROR);
 	dbg_zones_verb("Preparing NOERROR UPDATE response RCODE=%u "
 		       "pkt=%p resp_wire=%p\n", *rcode, resp, resp_wire);
@@ -2011,14 +2051,14 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
 	} else {
-		/* This is strange, but the knot_packet_to_wire() can't write
-		 * to already existing buffer. */
+		/*!
+		 * This is strange, but the knot_packet_to_wire() can't write
+		 * to already existing buffer. TODO: fix API
+		 */
 		memcpy(resp_wire, tmp_wire, *rsize);
 	}
 
 	dbg_zones("DDNS reply rsize = %zu\n", *rsize);
-
-
 	return ret;
 }
 

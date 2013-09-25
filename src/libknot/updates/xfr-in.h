@@ -175,8 +175,7 @@ void xfrin_free_changesets(knot_changesets_t **changesets);
  * \retval KNOT_EMALF
  * \retval KNOT_ENOMEM
  */
-int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr/*const uint8_t *pkt, size_t size,
-                              knot_changesets_t **changesets*/);
+int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr);
 
 int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
                                    knot_changesets_t *chsets);

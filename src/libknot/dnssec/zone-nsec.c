@@ -25,12 +25,13 @@
 #include "common/descriptor.h"
 #include "libknot/dnssec/nsec-bitmap.h"
 #include "libknot/dnssec/nsec3.h"
-#include "libknot/dnssec/zone-nsec.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "libknot/dnssec/zone-nsec.h"
+#include "libknot/dnssec/zone-sign.h"
 #include "libknot/util/utils.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/zone/zone-diff.h"
+#include "libknot/util/debug.h"
 
 /*!
  * \brief Parameters to be used in connect_nsec_nodes callback.
@@ -836,7 +837,8 @@ bool is_nsec3_enabled(const knot_zone_contents_t *zone)
  * \brief Get minimum TTL from zone SOA.
  * \note Value should be used for NSEC records.
  */
-static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl)
+static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
+                                 uint32_t *ttl)
 {
 	assert(zone);
 	assert(zone->apex);
@@ -863,7 +865,9 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone, uint32_t *ttl
  * \brief Create NSEC or NSEC3 chain in the zone.
  */
 int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
-				knot_changeset_t *changeset)
+                                knot_changeset_t *changeset,
+                                const knot_zone_keys_t *zone_keys,
+                                const knot_dnssec_policy_t *policy)
 {
 	if (!zone || !changeset) {
 		return KNOT_EINVAL;
@@ -871,7 +875,7 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 
 	uint32_t nsec_ttl = 0;
 	if (!get_zone_soa_min_ttl(zone, &nsec_ttl)) {
-		return KNOT_ERROR;
+		return KNOT_EINVAL;
 	}
 
 	int result;
@@ -882,7 +886,12 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 		result = create_nsec_chain(zone, nsec_ttl, changeset);
 	}
 
-	return result;
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	// Sign newly created records right away
+	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
 }
 
 /*!
