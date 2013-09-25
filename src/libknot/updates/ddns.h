@@ -66,7 +66,7 @@ int knot_ddns_process_prereqs(const knot_packet_t *query,
 int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
                             knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode);
 
-int knot_ddns_process_update2(knot_zone_contents_t *zone,
+int knot_ddns_process_update(knot_zone_contents_t *zone,
                               const knot_packet_t *query,
                               knot_changeset_t *changeset,
                               knot_changes_t *changes,

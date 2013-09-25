@@ -4180,7 +4180,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 /*
  * This function should:
  * 1) Create zone shallow copy and the changes structure.
- * 2) Call knot_ddns_process_update2().
+ * 2) Call knot_ddns_process_update().
  *    - If something went bad, call xfrin_rollback_update() and return an error.
  *    - If everything went OK, continue.
  * 3) Finalize the updated zone.
@@ -4188,7 +4188,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
  * NOTE: Mostly copied from xfrin_apply_changesets(). Should be refactored in
  *       order to get rid of duplicate code.
  */
-int knot_ns_process_update2(const knot_packet_t *query,
+int knot_ns_process_update(const knot_packet_t *query,
                             knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents,
                             knot_changesets_t *chgs, knot_rcode_t *rcode)
