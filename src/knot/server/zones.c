@@ -440,6 +440,19 @@ static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
 	return KNOT_EOK;
 }
 
+static bool zones_changesets_empty(const knot_changesets_t *chs)
+{
+	if (chs == NULL) {
+		return true;
+	}
+
+	if (EMPTY_LIST(chs->sets)) {
+		return true;
+	}
+
+	return knot_changeset_is_empty(HEAD(chs->sets));
+}
+
 static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
                                                   knot_changesets_t *chgsets,
                                                   journal_t **transaction)
@@ -447,8 +460,8 @@ static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
 	assert(zone != NULL);
 	assert(chgsets != NULL);
 
-	if (EMPTY_LIST(chgsets->sets)) {
-		return KNOT_EOK;
+	if (zones_changesets_empty(chgsets)) {
+		return KNOT_EINVAL;
 	}
 
 	*transaction = zones_store_changesets_begin(zone);
@@ -924,19 +937,6 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
-static bool zones_changesets_empty(const knot_changesets_t *chs)
-{
-	if (chs == NULL) {
-		return true;
-	}
-
-	if (EMPTY_LIST(chs->sets)) {
-		return true;
-	}
-
-	return knot_changeset_is_empty(HEAD(chs->sets));
-}
-
 /*!
  * \brief Apply changesets to zone from journal.
  *
@@ -1049,10 +1049,8 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
                                          knot_changesets_t *sec_chs)
 {
 	/*!
-	 * \todo Merged changesets freeing can be quite complicated, since there
-	 * are several cases to handle. It might be easier to free the single
-	 * changeset in the changesets structures when there are no changes in it, but
-	 * that would require some extra return codes. Still, probably better than this.
+	 * Merged changesets freeing can be quite complicated, since there
+	 * are several cases to handle. (NULL and empty changesets)
 	 */
 	if (diff_chs == NULL &&
 	    sec_chs == NULL) {
@@ -1063,7 +1061,7 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 	           diff_chs != NULL) {
 		knot_changesets_free(&diff_chs);
 	} else {
-		/*
+		/*!
 		 * Merged changesets, deep free 'diff_chs',
 		 * shallow free 'sec_chs', unless one of them is empty.
 		 */
@@ -1072,20 +1070,22 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 			knot_changesets_free(&sec_chs);
 			knot_changesets_free(&diff_chs);
 		} else {
-			/* Ending SOA from the merged changeset was used in
+			/*!
+			 * Ending SOA from the merged changeset was used in
 			 * zone (same as in DNSSEC changeset). It thus must not
 			 * be freed.
 			 */
 			knot_changesets_get_last(diff_chs)->soa_to = NULL;
 			knot_changesets_free(&diff_chs);
 
-			/* the "SOA from" from the second changeset is not used,
+			/*!
+			 * The "SOA from" from the second changeset is not used,
 			 * thus must be freed
 			 */
 			knot_rrset_deep_free_no_sig(
 			  &(knot_changesets_get_last(sec_chs)->soa_from), 1, 1);
 
-			// Reset sec_chs' changeset list, else we have double free.
+			// Reset sec_chs' chngeset list, else we'd double free.
 			init_list(&sec_chs->sets);
 			knot_changesets_free(&sec_chs);
 		}
@@ -1147,11 +1147,11 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 }
 
 /*! \brief Creates diff and DNSSEC changesets and stores them to journal. */
-static int zones_create_and_apply_changesets(const conf_zone_t *z,
-                                             knot_zone_t *zone,
-                                             const knot_nameserver_t *ns,
-                                             const knot_dname_t *origin,
-                                             bool zone_changed)
+static int zones_do_diff_and_sign(const conf_zone_t *z,
+                                  knot_zone_t *zone,
+                                  const knot_nameserver_t *ns,
+                                  const knot_dname_t *origin,
+                                  bool zone_changed)
 {
 	/* Calculate differences. */
 	rcu_read_lock();
@@ -1521,8 +1521,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		}
 
 		/* Create and apply changesets (zone-diff and DNSSEC). */
-		ret = zones_create_and_apply_changesets(z, zone, ns, dname,
-		                                        zone_changed);
+		ret = zones_do_diff_and_sign(z, zone, ns, dname, zone_changed);
 	}
 
 	knot_dname_free(&dname);
@@ -3484,6 +3483,7 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 
 static int zones_dnssec_ev(event_t *event, bool force)
 {
+	assert(conf()->dnssec_enable);
 	// We will be working with zone, don't want it to change in the meantime
 	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)event->data;
@@ -3523,18 +3523,20 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		return ret;
 	}
 
-	knot_zone_contents_t *new_c = NULL;
-	ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
-	                                    XFR_TYPE_UPDATE);
-	if (ret != KNOT_EOK) {
-		char *zname = knot_dname_to_str(zone->name);
-		log_server_error("Could not sign zone %s (%s).\n",
-		                 zname, knot_strerror(ret));
-		evsched_event_free(event->parent, event);
-		zd->dnssec_timer = NULL;
-		pthread_mutex_unlock(&zd->lock);
-		free(zname);
-		return ret;
+	if (!zones_changesets_empty(chs)) {
+		knot_zone_contents_t *new_c = NULL;
+		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
+		                                    XFR_TYPE_UPDATE);
+		if (ret != KNOT_EOK) {
+			char *zname = knot_dname_to_str(zone->name);
+			log_server_error("Could not sign zone %s (%s).\n",
+			                 zname, knot_strerror(ret));
+			evsched_event_free(event->parent, event);
+			zd->dnssec_timer = NULL;
+			pthread_mutex_unlock(&zd->lock);
+			free(zname);
+			return ret;
+		}
 	}
 
 	// cleanup
