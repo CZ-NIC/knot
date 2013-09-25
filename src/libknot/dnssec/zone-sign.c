@@ -69,10 +69,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 				   knot_dnssec_sign_context_t *ctx,
 				   const knot_dnssec_policy_t *policy)
 {
-	assert(covered);
 	assert(key);
-	assert(ctx);
-	assert(policy);
 
 	if (!rrsigs) {
 		return false;
@@ -106,10 +103,14 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
                                  const knot_zone_keys_t *zone_keys,
                                  const knot_dnssec_policy_t *policy)
 {
+	assert(covered);
+	assert(zone_keys);
+
 	bool use_ksk = covered->type == KNOT_RRTYPE_DNSKEY;
 	for (int i = 0; i < zone_keys->count; i++) {
-		if (zone_keys->is_ksk[i] && !use_ksk)
+		if (zone_keys->is_ksk[i] && !use_ksk) {
 			continue;
+		}
 
 		const knot_dnssec_key_t *key = &zone_keys->keys[i];
 		knot_dnssec_sign_context_t *ctx = zone_keys->contexts[i];
@@ -174,13 +175,13 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 				 const knot_dnssec_policy_t *policy,
 				 knot_changeset_t *changeset)
 {
+	assert(changeset);
+
 	if (!rrsigs) {
 		return KNOT_EOK;
 	}
 
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
-	assert(policy);
-	assert(changeset);
 
 	knot_rrset_t *to_remove = NULL;
 	int result = KNOT_EOK;
@@ -248,7 +249,6 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 {
 	assert(covered);
 	assert(zone_keys);
-	assert(policy);
 	assert(changeset);
 
 	int result = KNOT_EOK;
@@ -305,6 +305,7 @@ static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
                                knot_changeset_t *changeset)
 {
 	assert(rrset);
+	assert(changeset);
 
 	if (!rrset->rrsigs) {
 		return KNOT_EOK;
@@ -335,6 +336,8 @@ static int force_resign_rrset(const knot_rrset_t *covered,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset)
 {
+	assert(covered);
+
 	if (covered->rrsigs) {
 		int result = remove_rrset_rrsigs(covered, changeset);
 		if (result != KNOT_EOK) {
@@ -360,6 +363,8 @@ static int resign_rrset(const knot_rrset_t *covered,
                         const knot_dnssec_policy_t *policy,
                         knot_changeset_t *changeset)
 {
+	assert(covered);
+
 	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
 	                                   policy, changeset);
 	if (result != KNOT_EOK) {
@@ -386,9 +391,7 @@ static int sign_node_rrsets(const knot_node_t *node,
                             knot_changeset_t *changeset)
 {
 	assert(node);
-	assert(zone_keys);
 	assert(policy);
-	assert(changeset);
 
 	int result = KNOT_EOK;
 
@@ -460,8 +463,7 @@ typedef struct node_sign_args {
  */
 static void sign_node(knot_node_t **node, void *data)
 {
-	assert(node);
-	assert(*node);
+	assert(node && *node);
 	node_sign_args_t *args = (node_sign_args_t *)data;
 	assert(data);
 
@@ -531,6 +533,8 @@ static int add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data)
 	if (rrset == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	assert(data);
 
 	int result = KNOT_EOK;
 	changeset_signing_data_t *nsec_data = (changeset_signing_data_t *)data;
@@ -652,7 +656,6 @@ static int remove_unknown_dnskeys(const knot_rrset_t *soa,
 {
 	assert(soa);
 	assert(soa->type == KNOT_RRTYPE_SOA);
-	assert(zone_keys);
 	assert(changeset);
 
 	if (!dnskeys) {
@@ -802,8 +805,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
                                  const knot_dnssec_policy_t *policy,
                                  knot_changeset_t *changeset)
 {
-	assert(soa);
-	assert(policy);
+	assert(zone_keys);
 	assert(changeset);
 
 	int result;
@@ -865,6 +867,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 {
 	assert(zone);
 	assert(zone->apex);
+	assert(changeset);
 
 	const knot_node_t *apex = zone->apex;
 	const knot_rrset_t *dnskeys = knot_node_rrset(apex, KNOT_RRTYPE_DNSKEY);
@@ -980,7 +983,7 @@ int knot_zone_sign_update_soa(const knot_zone_contents_t *zone,
 	dbg_dnssec_verb("Updating SOA...\n");
 
 	uint32_t serial = knot_rdata_soa_serial(soa);
-	if (serial == UINT32_MAX) {
+	if (serial == UINT32_MAX && policy->soa_up == KNOT_SOA_SERIAL_INC) {
 		return KNOT_EINVAL;
 	}
 
