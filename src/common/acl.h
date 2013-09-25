@@ -34,11 +34,11 @@
 #include "common/sockaddr.h"
 
 /*! \brief ACL structure. */
-typedef list acl_t;
+typedef list_t acl_t;
 
 /*! \brief Single ACL match. */
 typedef struct acl_match {
-	node n;
+	node_t n;
 	sockaddr_t addr; /*!< \brief Address for comparison. */
 	void *val;       /*!< \brief Associated value (or NULL). */
 } acl_match_t;

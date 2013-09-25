@@ -46,7 +46,7 @@ typedef struct {
 	/*!< Stop processing - just pring help, version,... */
 	bool		stop;
 	/*!< List of files with query data. */
-	list		qfiles;
+	list_t		qfiles;
 	/*!< List of nameservers to query to. */
 	server_t	*server;
 	/*!< Local interface (optional). */

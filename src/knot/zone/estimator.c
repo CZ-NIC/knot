@@ -41,19 +41,19 @@ enum estim_consts {
 };
 
 typedef struct type_list_item {
-	node n;
+	node_t n;
 	uint16_t type;
 } type_list_item_t;
 
 typedef struct dummy_node {
 	// For now only contains list of RR types
-	list node_list;
+	list_t node_list;
 } dummy_node_t;
 
 // return: 0 not present, 1 - present
-static int find_in_list(list *node_list, uint16_t type)
+static int find_in_list(list_t *node_list, uint16_t type)
 {
-	node *n = NULL;
+	node_t *n = NULL;
 	WALK_LIST(n, *node_list) {
 		type_list_item_t *l_entr = (type_list_item_t *)n;
 		assert(l_entr);
@@ -65,7 +65,7 @@ static int find_in_list(list *node_list, uint16_t type)
 	type_list_item_t *new_entry = xmalloc(sizeof(type_list_item_t));
 	new_entry->type = type;
 
-	add_head(node_list, (node *)new_entry);
+	add_head(node_list, (node_t *)new_entry);
 	return 0;
 }
 

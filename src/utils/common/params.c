@@ -189,7 +189,7 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 	return KNOT_EOK;
 }
 
-int params_parse_server(const char *value, list *servers, const char *def_port)
+int params_parse_server(const char *value, list_t *servers, const char *def_port)
 {
 	if (value == NULL || servers == NULL) {
 		DBG_NULL;
@@ -202,7 +202,7 @@ int params_parse_server(const char *value, list *servers, const char *def_port)
 		ERR("bad nameserver %s\n", value);
 		return KNOT_EINVAL;
 	}
-	add_tail(servers, (node *)server);
+	add_tail(servers, (node_t *)server);
 
 	return KNOT_EOK;
 }

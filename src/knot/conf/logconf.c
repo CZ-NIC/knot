@@ -42,7 +42,7 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 	}
 
 	// Find maximum log facility id
-	node *n = NULL; size_t files = 0;
+	node_t *n = NULL; size_t files = 0;
 	WALK_LIST(n, conf->logs) {
 		conf_log_t* log = (conf_log_t*)n;
 		if (log->type == LOGT_FILE) {
@@ -73,7 +73,7 @@ int log_conf_hook(const struct conf_t *conf, void *data)
 		}
 
 		// Setup sources mapping
-		node *m = 0;
+		node_t *m = 0;
 		WALK_LIST(m, log->map) {
 
 			// Assign mapped level

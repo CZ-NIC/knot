@@ -2426,7 +2426,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 	int is_nsec3 = 0;
 
 	knot_rr_ln_t *rr_node = NULL;
-	node *tmp_node;
+	node_t *tmp_node;
 	WALK_LIST_DELSAFE(rr_node, tmp_node, chset->add) {
 		knot_rrset_t *rr = rr_node->rr;
 		assert(rr); // No malformed changesets should get here
@@ -2515,19 +2515,19 @@ dbg_xfrin_exec_detail(
 					return ret;
 				}
 
-				rem_node((node *)rr_node);
+				rem_node((node_t *)rr_node);
 			} else if (ret == 2) {
 				// the copy of the RRSet was used, but it was
 				// already stored in the new RRSets list
 				// just delete the add RRSet, but without RDATA
 				// DNAMES as these were merged to the copied RRSet
 				knot_rrset_deep_free(&rr, 1, 0);
-				rem_node((node *)rr_node);
+				rem_node((node_t *)rr_node);
 			} else if (ret == 3) {
 				// the RRSet was used and both RRSet and RDATA
 				// were properly stored. Just clear the place
 				// in the changeset
-				rem_node((node *)rr_node);
+				rem_node((node_t *)rr_node);
 			} else {
 				assert(0);
 			}

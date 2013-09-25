@@ -123,7 +123,7 @@ static void conf_parse_end(conf_t *conf)
  */
 static void conf_update_hooks(conf_t *conf)
 {
-	node *n = NULL;
+	node_t *n = NULL;
 	conf->_touched = CONF_ALL;
 	WALK_LIST (n, conf->hooks) {
 		conf_hook_t *hook = (conf_hook_t*)n;
@@ -254,7 +254,7 @@ static int conf_process(conf_t *conf)
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
-	node *n = NULL;
+	node_t *n = NULL;
 	WALK_LIST (n, conf->zones) {
 		conf_zone_t *zone = (conf_zone_t*)n;
 
@@ -622,7 +622,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		return;
 	}
 
-	node *n = NULL, *nxt = NULL;
+	node_t *n = NULL, *nxt = NULL;
 
 	// Unload hooks
 	if (unload_hooks) {
@@ -804,7 +804,7 @@ int conf_open(const char* path)
 
 	/* Copy hooks. */
 	if (oldconf) {
-		node *n = NULL, *nxt = NULL;
+		node_t *n = NULL, *nxt = NULL;
 		WALK_LIST_DELSAFE (n, nxt, oldconf->hooks) {
 			conf_hook_t *hook = (conf_hook_t*)n;
 			conf_add_hook(nconf, hook->sections,
@@ -946,7 +946,7 @@ void conf_free_log(conf_log_t *log)
 	free(log->file);
 
 	/* Free loglevel mapping. */
-	node *n = NULL, *nxt = NULL;
+	node_t *n = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, log->map) {
 		free((conf_log_map_t*)n);
 	}

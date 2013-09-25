@@ -398,7 +398,7 @@ static int process_query_packet(const knot_packet_t     *query,
 
 static void process_query(const query_t *query)
 {
-	node          *server = NULL;
+	node_t        *server = NULL;
 	knot_packet_t *out_packet;
 	uint8_t       *out = NULL;
 	size_t        out_len = 0;
@@ -702,7 +702,7 @@ static void process_query_xfr(const query_t *query)
 
 int dig_exec(const dig_params_t *params)
 {
-	node *n = NULL;
+	node_t *n = NULL;
 
 	if (params == NULL) {
 		DBG_NULL;

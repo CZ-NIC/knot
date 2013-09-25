@@ -643,7 +643,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 
 	/* Zone checking */
 	int rc = 0;
-	node *n = 0;
+	node_t *n = 0;
 
 	/* Generate databases for all zones */
 	WALK_LIST(n, conf()->zones) {
@@ -703,7 +703,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 	/* Zone checking */
 	int rc = 0;
-	node *n = 0;
+	node_t *n = 0;
 	size_t total_size = 0;
 
 	/* Generate databases for all zones */

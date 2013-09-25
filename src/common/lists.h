@@ -41,13 +41,13 @@
 
 typedef struct node {
   struct node *next, *prev;
-} node;
+} node_t;
 
 typedef struct list {			/* In fact two overlayed nodes */
   struct node *head, *null, *tail;
-} list;
+} list_t;
 
-#define NODE (node *)
+#define NODE (node_t *)
 #define HEAD(list) ((void *)((list).head))
 #define TAIL(list) ((void *)((list).tail))
 #define WALK_LIST(n,list) for(n=HEAD(list);(NODE (n))->next; \
@@ -67,27 +67,27 @@ typedef struct list {			/* In fact two overlayed nodes */
 /*! \brief Free every node in the list. */
 #define WALK_LIST_FREE(list) \
 	do { \
-	node *n=0,*nxt=0;  \
+	node_t *n=0,*nxt=0;  \
 	WALK_LIST_DELSAFE(n,nxt,list) { \
 	    free(n); \
 	} \
 	init_list(&list); \
 	} while(0)
 
-void add_tail(list *, node *);
-void add_head(list *, node *);
-void rem_node(node *);
-void add_tail_list(list *, list *);
-void init_list(list *);
-void insert_node(node *, node *);
-void list_dup(list *dst, list *src, size_t itemsz);
-size_t list_size(const list *);
+void add_tail(list_t *, node_t *);
+void add_head(list_t *, node_t *);
+void rem_node(node_t *);
+void add_tail_list(list_t *, list_t *);
+void init_list(list_t *);
+void insert_node(node_t *, node_t *);
+void list_dup(list_t *dst, list_t *src, size_t itemsz);
+size_t list_size(const list_t *);
 
 /*!
  * \brief List item for string lists.
  */
 typedef struct strnode_t {
-	node n;
+	node_t n;
 	char *str;
 } strnode_t;
 

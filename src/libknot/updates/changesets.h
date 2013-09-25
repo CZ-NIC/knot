@@ -44,12 +44,12 @@ typedef enum {
 
 /*! \brief One changeset received from wire, with parsed RRs. */
 typedef struct knot_changeset {
-	node n; /*!< List node. */
+	node_t n; /*!< List node. */
 	mm_ctx_t mem_ctx; /*!< Memory context */
 	knot_rrset_t *soa_from; /*!< Start SOA. */
-	list remove; /*!< List of RRs to remove. */
+	list_t remove; /*!< List of RRs to remove. */
 	knot_rrset_t *soa_to; /*!< Destination SOA. */
-	list add; /*!< List of RRs to add. */
+	list_t add; /*!< List of RRs to add. */
 	uint8_t *data; /*!< Serialized changeset. */
 	size_t size; /*!< Size of serialized changeset. */
 	uint32_t serial_from; /*!< SOA start serial. */
@@ -61,13 +61,13 @@ typedef struct knot_changeset {
 
 /*! \brief Wrapper for BIRD lists. Storing: RRSet. */
 typedef struct knot_rr_ln {
-	node n; /*!< List node. */
+	node_t n; /*!< List node. */
 	knot_rrset_t *rr; /*!< Actual usable data. */
 } knot_rr_ln_t;
 
 /*! \brief Wrapper for BIRD lists. Storing: Node. */
 typedef struct knot_node_ln {
-	node n; /*!< List node. */
+	node_t n; /*!< List node. */
 	knot_node_t *node; /*!< Actual usable data. */
 } knot_node_ln_t;
 
@@ -81,19 +81,19 @@ typedef struct {
 	/*!
 	 * Deleted after successful update.
 	 */
-	list old_rrsets;
+	list_t old_rrsets;
 	/*!
 	 * Deleted after failed update.
 	 */
-	list new_rrsets;
+	list_t new_rrsets;
 	/*!
 	 * Deleted (without contents) after successful update.
 	 */
-	list old_nodes;
+	list_t old_nodes;
 	/*!
 	 * Deleted (without contents) after successful update.
 	 */
-	list old_nsec3;
+	list_t old_nsec3;
 } knot_changes_t;
 
 /*----------------------------------------------------------------------------*/
@@ -105,7 +105,7 @@ typedef struct {
 typedef struct {
 	mm_ctx_t mmc_chs; /*!< Memory context for creating changesets */
 	mm_ctx_t mmc_rr; /*!< Memory context for creating RRs in changesets */
-	list sets; /*!< List of changesets. */
+	list_t sets; /*!< List of changesets. */
 	size_t count; /*!< Changeset count. */
 	knot_rrset_t *first_soa; /*!< First received SOA. */
 	uint32_t flags; /*!< DDNS / IXFR flags. */

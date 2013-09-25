@@ -67,11 +67,11 @@ typedef struct {
 /*! \brief Basic parameters for DNS query. */
 typedef struct {
 	/*!< List node (for list container). */
-	node		n;
+	node_t		n;
 	/*!< Name to query on. */
 	char		*owner;
 	/*!< List of nameservers to query to. */
-	list		servers;
+	list_t		servers;
 	/*!< Local interface (optional). */
 	server_t	*local;
 	/*!< Operation mode. */
@@ -115,14 +115,14 @@ typedef struct {
 	/*!< Stop processing - just pring help, version,... */
 	bool	stop;
 	/*!< List of DNS queries to process. */
-	list	queries;
+	list_t	queries;
 	/*!< Default settings for queries. */
 	query_t	*config;
 } dig_params_t;
 
 query_t* query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
-void complete_queries(list *queries, const query_t *conf);
+void complete_queries(list_t *queries, const query_t *conf);
 
 int dig_init(dig_params_t *params);
 int dig_parse(dig_params_t *params, int argc, char *argv[]);

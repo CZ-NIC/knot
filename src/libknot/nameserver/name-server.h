@@ -84,7 +84,7 @@ typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
  * Used for communication with XFR handler.
  */
 typedef struct knot_ns_xfr {
-	node n;
+	node_t n;
 	int type;
 	int flags;
 	sockaddr_t addr, saddr;

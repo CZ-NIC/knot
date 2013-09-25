@@ -55,7 +55,7 @@ typedef struct xfrworker_t
  */
 typedef struct xfrhandler_t
 {
-	list queue;
+	list_t queue;
 	unsigned pending; /*!< \brief Pending transfers. */
 	pthread_mutex_t pending_mx;
 	pthread_mutex_t mx; /*!< \brief Tasks synchronisation. */

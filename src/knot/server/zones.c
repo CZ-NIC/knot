@@ -541,7 +541,7 @@ static int zones_zonefile_sync_ev(event_t *e)
  * \retval KNOT_EINVAL on invalid parameters.
  * \retval KNOT_ENOMEM on failed memory allocation.
  */
-static int zones_set_acl(acl_t **acl, list* acl_list)
+static int zones_set_acl(acl_t **acl, list_t* acl_list)
 {
 	if (!acl || !acl_list) {
 		return KNOT_EINVAL;
@@ -1614,7 +1614,7 @@ static int zonewalker(dthread_t *thread)
  * \return Number of inserted zones.
  */
 static int zones_insert_zones(knot_nameserver_t *ns,
-                              const list *zone_conf,
+                              const list_t *zone_conf,
                               knot_zonedb_t *db_new)
 {
 	int ret = 0;

@@ -249,7 +249,7 @@ static int server_bind_sockets(server_t *s)
 	}
 
 	/* Update bound interfaces. */
-	node *n = 0;
+	node_t *n = 0;
 	WALK_LIST(n, conf()->ifaces) {
 
 		/* Find already matching interface. */
@@ -267,7 +267,7 @@ static int server_bind_sockets(server_t *s)
 
 		/* Found already bound interface. */
 		if (found_match) {
-			rem_node((node *)m);
+			rem_node((node_t *)m);
 		} else {
 			log_server_info("Binding to interface %s port %d.\n",
 			                cfg_if->address, cfg_if->port);
@@ -282,7 +282,7 @@ static int server_bind_sockets(server_t *s)
 
 		/* Move to new list. */
 		if (m) {
-			add_tail(&newlist->l, (node *)m);
+			add_tail(&newlist->l, (node_t *)m);
 			++bound;
 		}
 	}

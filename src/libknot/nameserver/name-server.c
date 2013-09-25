@@ -229,27 +229,27 @@ static int ns_add_rrsigs(knot_rrset_t *rrset, knot_packet_t *resp,
 
 /* Wrapper functions for lists. */
 typedef struct chain_node {
-	node n;
+	node_t n;
 	const knot_node_t *kn_node;
 } chain_node_t;
 
-static int cname_chain_add(list *chain, const knot_node_t *kn_node)
+static int cname_chain_add(list_t *chain, const knot_node_t *kn_node)
 {
 	assert(chain != NULL);
 	chain_node_t *new_node = malloc(sizeof(chain_node_t));
 	CHECK_ALLOC_LOG(new_node, KNOT_ENOMEM);
 
 	new_node->kn_node = kn_node;
-	add_tail(chain, (node *)new_node);
+	add_tail(chain, (node_t *)new_node);
 
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int cname_chain_contains(const list *chain, const knot_node_t *kn_node)
+static int cname_chain_contains(const list_t *chain, const knot_node_t *kn_node)
 {
-	node *n = NULL;
+	node_t *n = NULL;
 	WALK_LIST(n, *chain) {
 		chain_node_t *l_node = (chain_node_t *)n;
 		if (l_node->kn_node == kn_node) {
@@ -262,7 +262,7 @@ static int cname_chain_contains(const list *chain, const knot_node_t *kn_node)
 
 /*----------------------------------------------------------------------------*/
 
-static void cname_chain_free(list *chain)
+static void cname_chain_free(list_t *chain)
 {
 	WALK_LIST_FREE(*chain);
 }
@@ -301,7 +301,7 @@ static int ns_follow_cname(const knot_node_t **node,
 	 */
 	int stop = 0;
 
-	list cname_chain;
+	list_t cname_chain;
 	init_list(&cname_chain);
 
 	while (*node != NULL

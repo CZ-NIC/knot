@@ -107,7 +107,7 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	init_list(&set->remove);
 
 	// Insert into list of sets
-	add_tail(&ch->sets, (node *)set);
+	add_tail(&ch->sets, (node_t *)set);
 
 	++ch->count;
 
@@ -150,10 +150,10 @@ void knot_changeset_remove_last_rr(knot_changeset_t *ch,
 
 	if (part == KNOT_CHANGESET_ADD) {
 		knot_rr_ln_t *n = TAIL(ch->add);
-		rem_node((node *)n);
+		rem_node((node_t *)n);
 	} else if (part == KNOT_CHANGESET_REMOVE) {
 		knot_rr_ln_t *n = TAIL(ch->remove);
-		rem_node((node *)n);
+		rem_node((node_t *)n);
 	}
 }
 
@@ -171,9 +171,9 @@ int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
 	rr_node->rr = rrset;
 
 	if (part == KNOT_CHANGESET_ADD) {
-		add_tail(&chgs->add, (node *)rr_node);
+		add_tail(&chgs->add, (node_t *)rr_node);
 	} else {
-		add_tail(&chgs->remove, (node *)rr_node);
+		add_tail(&chgs->remove, (node_t *)rr_node);
 	}
 
 	return KNOT_EOK;
@@ -184,7 +184,7 @@ int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
 {
 	// Just check the last RRSet. If the RR belongs to it, merge it,
 	// otherwise just add the RR to the end of the list
-	list *l = part == KNOT_CHANGESET_ADD ? &(chgs->add) : &(chgs->remove);
+	list_t *l = part == KNOT_CHANGESET_ADD ? &(chgs->add) : &(chgs->remove);
 	knot_rrset_t *tail_rr =
 		EMPTY_LIST(*l) ? NULL : ((knot_rr_ln_t *)(TAIL(*l)))->rr;
 
@@ -219,10 +219,10 @@ int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
 	rr_node->rr = rrset;
 
 	if (part == KNOT_CHANGES_NEW) {
-		add_tail(&ch->new_rrsets, (node *)rr_node);
+		add_tail(&ch->new_rrsets, (node_t *)rr_node);
 	} else {
 		assert(part == KNOT_CHANGES_OLD);
-		add_tail(&ch->old_rrsets, (node *)rr_node);
+		add_tail(&ch->old_rrsets, (node_t *)rr_node);
 	}
 
 	return KNOT_EOK;
@@ -246,10 +246,10 @@ int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
 	list_node->node = kn_node;
 
 	if (part == KNOT_CHANGES_NORMAL_NODE) {
-		add_tail(&ch->old_nodes, (node *)list_node);
+		add_tail(&ch->old_nodes, (node_t *)list_node);
 	} else {
 		assert(part == KNOT_CHANGES_NSEC3_NODE);
-		add_tail(&ch->old_nsec3, (node *)list_node);
+		add_tail(&ch->old_nsec3, (node_t *)list_node);
 	}
 
 	return KNOT_EOK;

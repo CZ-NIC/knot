@@ -599,7 +599,7 @@ static int knot_ddns_check_remove_rr2(knot_changeset_t *changeset,
 
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
 	knot_rr_ln_t *rr_node = NULL;
-	node *nxt = NULL;
+	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(rr_node, nxt, changeset->add) {
 		knot_rrset_t *rrset = rr_node->rr;
 		// Removing RR(s) from this owner
@@ -616,7 +616,7 @@ dbg_ddns_exec_detail(
 			        || knot_rrset_type(rr) == KNOT_RRTYPE_ANY)) {
 				dbg_ddns_detail("Removing one or all RRSets\n");
 				remove = rrset;
-				rem_node((node *)rr_node);
+				rem_node((node_t *)rr_node);
 				(*removed)[(*removed_count)++] = remove;
 			} else if (knot_rrset_type(rr) ==
 			           knot_rrset_type(rrset)) {
@@ -627,7 +627,7 @@ dbg_ddns_exec_detail(
 				if (knot_rrset_rdata_equal(rr,
 				                           rrset)) {
 					remove = rrset;
-					rem_node((node *)rr_node);
+					rem_node((node_t *)rr_node);
 					(*removed)[(*removed_count)++] = remove;
 				}
 			}
@@ -651,7 +651,7 @@ static void knot_ddns_check_add_rr(knot_changeset_t *changeset,
 
 	dbg_ddns_verb("Removing possible redundant RRs from changeset.\n");
 	knot_rr_ln_t *rr_node = NULL;
-	node *nxt = NULL;
+	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(rr_node, nxt, changeset->remove) {
 		knot_rrset_t *rrset = rr_node->rr;
 		assert(rrset);
@@ -661,7 +661,7 @@ static void knot_ddns_check_add_rr(knot_changeset_t *changeset,
 		if (knot_rrset_equal(rr, rrset,
 		                     KNOT_RRSET_COMPARE_WHOLE) == 1) {
 			*removed = rrset;
-			rem_node((node *)rr_node);
+			rem_node((node_t *)rr_node);
 			dbg_ddns_detail("Removed RRSet from chgset:\n");
 			knot_rrset_dump(rrset);
 			break;

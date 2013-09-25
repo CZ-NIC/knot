@@ -39,11 +39,11 @@
  * add_tail() takes a node @n and appends it at the end of the list @l.
  */
 LIST_INLINE void
-add_tail(list *l, node *n)
+add_tail(list_t *l, node_t *n)
 {
-  node *z = l->tail;
+  node_t *z = l->tail;
 
-  n->next = (node *) &l->null;
+  n->next = (node_t *) &l->null;
   n->prev = z;
   z->next = n;
   l->tail = n;
@@ -57,12 +57,12 @@ add_tail(list *l, node *n)
  * add_head() takes a node @n and prepends it at the start of the list @l.
  */
 LIST_INLINE void
-add_head(list *l, node *n)
+add_head(list_t *l, node_t *n)
 {
-  node *z = l->head;
+  node_t *z = l->head;
 
   n->next = z;
-  n->prev = (node *) &l->head;
+  n->prev = (node_t *) &l->head;
   z->prev = n;
   l->head = n;
 }
@@ -76,9 +76,9 @@ add_head(list *l, node *n)
  * node @after.
  */
 LIST_INLINE void
-insert_node(node *n, node *after)
+insert_node(node_t *n, node_t *after)
 {
-  node *z = after->next;
+  node_t *z = after->next;
 
   n->next = z;
   n->prev = after;
@@ -93,10 +93,10 @@ insert_node(node *n, node *after)
  * Removes a node @n from the list it's linked in.
  */
 LIST_INLINE void
-rem_node(node *n)
+rem_node(node_t *n)
 {
-  node *z = n->prev;
-  node *x = n->next;
+  node_t *z = n->prev;
+  node_t *x = n->next;
 
   z->next = x;
   x->prev = z;
@@ -112,11 +112,11 @@ rem_node(node *n)
  * fields, so that it represents an empty list.
  */
 LIST_INLINE void
-init_list(list *l)
+init_list(list_t *l)
 {
-  l->head = (node *) &l->null;
+  l->head = (node_t *) &l->null;
   l->null = NULL;
-  l->tail = (node *) &l->head;
+  l->tail = (node_t *) &l->head;
 }
 
 /**
@@ -128,15 +128,15 @@ init_list(list *l)
  * the list @to in constant time.
  */
 LIST_INLINE void
-add_tail_list(list *to, list *l)
+add_tail_list(list_t *to, list_t *l)
 {
-  node *p = to->tail;
-  node *q = l->head;
+  node_t *p = to->tail;
+  node_t *q = l->head;
 
   p->next = q;
   q->prev = p;
   q = l->tail;
-  q->next = (node *) &to->null;
+  q->next = (node_t *) &to->null;
   to->tail = q;
 }
 
@@ -150,11 +150,11 @@ add_tail_list(list *to, list *l)
  *
  * This function only works with a homogenous item size.
  */
-void list_dup(list *dst, list *src, size_t itemsz)
+void list_dup(list_t *dst, list_t *src, size_t itemsz)
 {
-	node *n = 0;
+	node_t *n = 0;
 	WALK_LIST(n, *src) {
-		node *i = malloc(itemsz);
+		node_t *i = malloc(itemsz);
 		memcpy(i, n, itemsz);
 		add_tail(dst, i);
 	}
@@ -166,11 +166,11 @@ void list_dup(list *dst, list *src, size_t itemsz)
  *
  * This function counts nodes in list @l and returns this number.
  */
-size_t list_size(const list *l)
+size_t list_size(const list_t *l)
 {
 	size_t count = 0;
 
-	node *n = 0;
+	node_t *n = 0;
 	WALK_LIST(n, *l) {
 		count++;
 	}

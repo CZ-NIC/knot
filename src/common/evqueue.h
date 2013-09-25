@@ -56,7 +56,7 @@ typedef int (*event_cb_t)(struct event_t *);
  * \brief Event structure.
  */
 typedef struct event_t {
-	node n;            /*!< Node for event queue. */
+	node_t n;          /*!< Node for event queue. */
 	int type;          /*!< Event type. */
 	struct timeval tv; /*!< Event scheduled time. */
 	void *data;        /*!< Usable data ptr. */

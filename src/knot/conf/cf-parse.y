@@ -41,7 +41,7 @@ static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
 static conf_zone_t *this_zone = 0;
 static conf_group_t *this_group = 0;
-static list *this_list = 0;
+static list_t *this_list = 0;
 static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
@@ -99,7 +99,7 @@ static void conf_start_remote(void *scanner, char *remote)
 
 static void conf_remote_set_via(void *scanner, char *item) {
    /* Find existing node in interfaces. */
-   node* r = 0; conf_iface_t* found = 0;
+   node_t* r = 0; conf_iface_t* found = 0;
    WALK_LIST (r, new_config->ifaces) {
       if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
          found = (conf_iface_t*)r;
@@ -175,7 +175,7 @@ static void conf_add_member_into_group(void *scanner, char *name)
 	// add the remote into the group while silently ignoring duplicates
 
 	conf_group_remote_t *remote;
-	node *n;
+	node_t *n;
 	WALK_LIST (n, this_group->remotes) {
 		remote = (conf_group_remote_t *)n;
 		if (strcmp(remote->name, name) == 0) {
@@ -843,7 +843,7 @@ zone_acl_list:
 zone_acl:
  | zone_acl TEXT ';' {
       /* Find existing node in remotes. */
-      node* r = 0; conf_iface_t* found = 0;
+      node_t* r = 0; conf_iface_t* found = 0;
       WALK_LIST (r, new_config->remotes) {
 	 if (strcmp(((conf_iface_t*)r)->name, $2.t) == 0) {
 	    found = (conf_iface_t*)r;
@@ -984,7 +984,7 @@ log_src:
 log_dest: LOG_DEST {
   /* Find already existing rule. */
   this_log = 0;
-  node *n = 0;
+  node_t *n = 0;
   WALK_LIST(n, new_config->logs) {
     conf_log_t* log = (conf_log_t*)n;
     if (log->type == $1.i) {
@@ -1007,7 +1007,7 @@ log_dest: LOG_DEST {
 log_file: FILENAME TEXT {
   /* Find already existing rule. */
   this_log = 0;
-  node *n = 0;
+  node_t *n = 0;
   WALK_LIST(n, new_config->logs) {
     conf_log_t* log = (conf_log_t*)n;
     if (log->type == LOGT_FILE) {

@@ -96,7 +96,7 @@ static int conf_tests_run(int argc, char *argv[])
 	ok(!EMPTY_LIST(conf->logs), "log facilities not empty");
 
 	conf_log_t *log = (conf_log_t*)n;
-	node *nm = HEAD(log->map);
+	node_t *nm = HEAD(log->map);
 	conf_log_map_t *m = (conf_log_map_t*)nm;
 	cmp_ok(log->type, "==", LOGT_SYSLOG, "log0 is syslog");
 
