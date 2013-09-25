@@ -305,8 +305,11 @@ static int conf_process(conf_t *conf)
 		// Default policy for DNSSEC
 		if (conf->dnssec_keydir == NULL) {
 			zone->dnssec_enable = false;
-		} else if (!zone->build_diffs ) {
-			// Force enable ixfr-from-differences
+		}
+
+		// Turn zone diff on with DNSSEC enabled
+		if (zone->dnssec_enable && !zone->build_diffs) {
+			// Silent force enable
 			zone->build_diffs = true;
 		}
 
@@ -323,6 +326,7 @@ static int conf_process(conf_t *conf)
 		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
+			ERR_ALLOC_FAILED;
 			zone->ixfr_db = NULL; /* Not enough memory. */
 			ret = KNOT_ENOMEM; /* Error report. */
 			continue;

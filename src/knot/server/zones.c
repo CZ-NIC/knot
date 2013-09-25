@@ -1892,9 +1892,9 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	}
 
 	knot_zone_contents_t *new_contents = NULL;
-	ret = knot_ns_process_update2(knot_packet_query(resp),
-	                              knot_zone_get_contents(zone),
-	                              &new_contents, chgsets, rcode);
+	ret = knot_ns_process_update(knot_packet_query(resp),
+	                             knot_zone_get_contents(zone),
+	                             &new_contents, chgsets, rcode);
 	if (ret != KNOT_EOK) {
 		if (ret < 0) {
 			log_zone_error("%s %s\n", msg, knot_strerror(ret));
