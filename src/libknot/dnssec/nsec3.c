@@ -165,17 +165,3 @@ int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
 	return nsec3_sha1(params->salt, params->salt_length, params->iterations,
 	                  data, data_size, digest, digest_size);
 }
-
-/*!
- * \brief Check if the key algorithm is designated for NSEC3.
- */
-bool knot_is_nsec3_algorithm(uint8_t algorithm)
-{
-	switch (algorithm) {
-	case KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1:
-	case KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1:
-		return true;
-	default:
-		return false;
-	}
-}
