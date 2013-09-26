@@ -1932,7 +1932,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	                                 knot_changesets_get_last(chgsets),
 	                                 sec_ch, KNOT_SOA_SERIAL_KEEP);
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s: Failed to sign incoming transfer (%s)\n",
+		log_zone_error("%s: Failed to sign incoming update (%s)\n",
 		               msg, knot_strerror(ret));
 		xfrin_rollback_update(zone->contents, &new_contents,
 		                      chgsets->changes);
@@ -1974,9 +1974,11 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		}
 		// Apply changeset to zone created by DDNS processing
 		fake_zone->contents = new_contents;
+		// Set zone generation to old, else applying fails
+		knot_zone_contents_set_gen_old(new_contents);
 		ret = xfrin_apply_changesets(fake_zone, sec_chs,
 		                             &dnssec_contents);
-		knot_zone_free(&fake_zone);
+		free(fake_zone);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update %s\n",
 			               msg, knot_strerror(ret));
