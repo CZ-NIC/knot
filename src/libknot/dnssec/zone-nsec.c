@@ -21,17 +21,17 @@
 #include <string.h>
 #include <limits.h>
 
-#include "common/base32hex.c"
+#include "common/base32hex.h"
 #include "common/descriptor.h"
 #include "libknot/dnssec/nsec-bitmap.h"
 #include "libknot/dnssec/nsec3.h"
-#include "libknot/rdata.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
+#include "libknot/rdata.h"
+#include "libknot/util/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/zone/zone-diff.h"
-#include "libknot/util/debug.h"
 
 /*!
  * \brief Parameters to be used in connect_nsec_nodes callback.
