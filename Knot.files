@@ -241,6 +241,8 @@ src/tests/libknot/dname_tests.c
 src/tests/libknot/dname_tests.h
 src/tests/libknot/dnssec_keys_tests.c
 src/tests/libknot/dnssec_keys_tests.h
+src/tests/libknot/dnssec_nsec3_tests.c
+src/tests/libknot/dnssec_nsec3_tests.h
 src/tests/libknot/dnssec_sign_tests.c
 src/tests/libknot/dnssec_sign_tests.h
 src/tests/libknot/rrset_tests.c
