@@ -1965,7 +1965,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		knot_zone_t *fake_zone = knot_zone_new_empty(zone->name);
 		if (fake_zone == NULL) {
 			log_zone_error("%s: Failed to apply changesets (%s)\n",
-			               msg, KNOT_ENOMEM);
+			               msg, knot_strerror(KNOT_ENOMEM));
 			xfrin_rollback_update(zone->contents, &new_contents,
 			                      chgsets->changes);
 			zones_free_merged_changesets(chgsets, sec_chs);
