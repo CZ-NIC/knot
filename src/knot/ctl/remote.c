@@ -222,6 +222,15 @@ static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 	return KNOT_EOK;
 }
 
+static char *dnssec_info(const zonedata_t *zd, char *buf)
+{
+	assert(zd && zd->dnssec_timer);
+	time_t diff_time = zd->dnssec_timer->tv.tv_sec;
+	struct tm *t = localtime(&diff_time);
+	snprintf(buf, 128, "%s", asctime(t));
+	return buf;
+}
+
 /*!
  * \brief Remote command 'zonestatus' handler.
  *
@@ -292,15 +301,19 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		}
 
 		/* Workaround, some platforms ignore 'size' with snprintf() */
-		char buf[256];
+		char buf[512];
+		char *dnssec_buf = xmalloc(128);
 		int n = snprintf(buf, sizeof(buf),
-		                 "%s\ttype=%s | serial=%u | %s %s\n",
+		                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
 		                 zd->conf->name,
 		                 zd->xfr_in.has_master ? "slave" : "master",
 		                 serial,
 		                 state ? state : "",
-		                 when ? when : "");
+		                 when ? when : "",
+		                 zd->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "",
+		                 zd->conf->dnssec_enable ? dnssec_info(zd, dnssec_buf) : "");
 		free(when);
+		free(dnssec_buf);
 		if (n < 0 || (size_t)n > rb) {
 			*dst = '\0';
 			ret = KNOT_ESPACE;

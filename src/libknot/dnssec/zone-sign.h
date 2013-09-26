@@ -40,17 +40,18 @@
  *
  * Updates RRSIGs, NSEC(3)s, and DNSKEYs.
  *
- * \param zone       Zone to be signed.
- * \param zone_keys  Zone keys.
- * \param policy     DNSSEC policy.
- * \param changeset  Changeset to be updated.
+ * \param zone        Zone to be signed.
+ * \param zone_keys   Zone keys.
+ * \param policy      DNSSEC policy.
+ * \param changeset   Changeset to be updated.
+ * \param expires_at  Pointer to expiration time of the oldest signature in zone
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_sign(const knot_zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
-                   knot_changeset_t *out_ch);
+                   knot_changeset_t *out_ch, uint32_t *expires_at);
 
 /*!
  * \brief Update and sign SOA and store performed changes in changeset.

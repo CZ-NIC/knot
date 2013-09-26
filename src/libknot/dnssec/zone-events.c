@@ -83,7 +83,7 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 }
 
 static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
-                     knot_update_serial_t soa_up)
+                     knot_update_serial_t soa_up, uint32_t *expires_at)
 {
 	assert(zone);
 	assert(zone->contents);
@@ -127,7 +127,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	                knot_changeset_is_empty(out_ch));
 
 	// add missing signatures
-	result = knot_zone_sign(zone->contents, &zone_keys, &policy, out_ch);
+	result = knot_zone_sign(zone->contents, &zone_keys, &policy, out_ch,
+	                        expires_at);
 	if (result != KNOT_EOK) {
 		char *zname = knot_dname_to_str(zone->name);
 		log_zone_error("Error signing zone %s (%s).\n",
@@ -173,23 +174,23 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 }
 
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
-                          knot_update_serial_t soa_up)
+                          knot_update_serial_t soa_up, uint32_t *expires_at)
 {
 	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, false, soa_up);
+	return zone_sign(zone, out_ch, false, soa_up, expires_at);
 }
 
 int knot_dnssec_zone_sign_force(knot_zone_t *zone,
-                                knot_changeset_t *out_ch)
+                                knot_changeset_t *out_ch, uint32_t *expires_at)
 {
 	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_INC);
+	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_INC, expires_at);
 }
 
 int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,

@@ -35,14 +35,15 @@
  * \brief DNSSEC resign zone, store new records into changeset. Valid signatures
  *        and NSEC(3) records will not be changed.
  *
- * \param zone    Zone to be signed.
- * \param out_ch  New records will be added to this changeset.
- * \param soa_up  SOA serial update policy.
+ * \param zone        Zone to be signed.
+ * \param out_ch      New records will be added to this changeset.
+ * \param soa_up      SOA serial update policy.
+ * \param expires_at  Expiration time of the oldest signature in zone
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
-                          knot_update_serial_t soa_up);
+                          knot_update_serial_t soa_up, uint32_t *expires_at);
 
 /*!
  * \brief DNSSEC sign zone, store new records into changeset. Even valid
@@ -50,10 +51,12 @@ int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
  *
  * \param zone    Zone to be signed.
  * \param out_ch  New records will be added to this changeset.
+ * \param expires_at  Expiration time of the oldest signature in zone
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch);
+int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch,
+                                uint32_t *expires_at);
 
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.

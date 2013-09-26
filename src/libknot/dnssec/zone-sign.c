@@ -161,6 +161,18 @@ static void get_matching_key_and_ctx(const knot_rrset_t *rrsigs, size_t pos,
 	*key = NULL;
 }
 
+static void update_zone_expiration_with(const knot_rrset_t *rrsig, size_t pos,
+                                        const knot_dnssec_policy_t *policy,
+                                        uint32_t *exp)
+{
+	assert(rrsig && exp);
+	const uint32_t rrsig_exp = knot_rdata_rrsig_sig_expiration(rrsig, pos) -
+	                           policy->sign_refresh;
+	if (rrsig_exp < *exp) {
+		*exp = rrsig_exp;
+	}
+}
+
 /*!
  * \brief Add expired or invalid RRSIGs into the changeset for removal.
  *
@@ -173,10 +185,11 @@ static void get_matching_key_and_ctx(const knot_rrset_t *rrsigs, size_t pos,
  * \return Error code, KNOT_EOK if successful.
  */
 static int remove_expired_rrsigs(const knot_rrset_t *covered,
-				 const knot_rrset_t *rrsigs,
-				 const knot_zone_keys_t *zone_keys,
-				 const knot_dnssec_policy_t *policy,
-				 knot_changeset_t *changeset)
+                                 const knot_rrset_t *rrsigs,
+                                 const knot_zone_keys_t *zone_keys,
+                                 const knot_dnssec_policy_t *policy,
+                                 knot_changeset_t *changeset,
+                                 uint32_t *expires_at)
 {
 	assert(changeset);
 
@@ -198,6 +211,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 			result = knot_is_valid_signature(covered, rrsigs, i,
 			                                 key, ctx, policy);
 			if (result == KNOT_EOK) {
+				update_zone_expiration_with(rrsigs, i, policy,
+				                            expires_at);
 				continue; // valid signature
 			}
 
@@ -362,12 +377,15 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 static int resign_rrset(const knot_rrset_t *covered,
                         const knot_zone_keys_t *zone_keys,
                         const knot_dnssec_policy_t *policy,
-                        knot_changeset_t *changeset)
+                        knot_changeset_t *changeset,
+                        uint32_t *expires_at)
 {
 	assert(covered);
 
+	// TODO this function creates some signatures twice (for checking)
+	// maybe merge the two functions into one
 	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
-	                                   policy, changeset);
+	                                   policy, changeset, expires_at);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -473,7 +491,8 @@ static bool rr_should_be_signed(const knot_node_t *node,
 static int sign_node_rrsets(const knot_node_t *node,
                             const knot_zone_keys_t *zone_keys,
                             const knot_dnssec_policy_t *policy,
-                            knot_changeset_t *changeset)
+                            knot_changeset_t *changeset,
+                            uint32_t *expires_at)
 {
 	assert(node);
 	assert(policy);
@@ -499,7 +518,7 @@ static int sign_node_rrsets(const knot_node_t *node,
 			         changeset);
 		} else {
 			result = resign_rrset(rrset, zone_keys, policy,
-			                      changeset);
+			                      changeset, expires_at);
 		}
 
 		if (result != KNOT_EOK) {
@@ -517,6 +536,7 @@ typedef struct node_sign_args {
 	const knot_zone_keys_t *zone_keys;
 	const knot_dnssec_policy_t *policy;
 	knot_changeset_t *changeset;
+	uint32_t expires_at;
 	int result;
 } node_sign_args_t;
 
@@ -545,24 +565,26 @@ static void sign_node(knot_node_t **node, void *data)
 	}
 
 	args->result = sign_node_rrsets(*node, args->zone_keys, args->policy,
-	                                args->changeset);
+	                                args->changeset, &args->expires_at);
 	knot_node_clear_replaced_nsec(*node);
 }
 
 /*!
  * \brief Update RRSIGs in a given zone tree by updating changeset.
  *
- * \param tree       Zone tree to be signed.
- * \param zone_keys  Zone keys.
- * \param policy     DNSSEC policy.
- * \param changeset  Changeset to be updated.
+ * \param tree        Zone tree to be signed.
+ * \param zone_keys   Zone keys.
+ * \param policy      DNSSEC policy.
+ * \param changeset   Changeset to be updated.
+ * \param expires_at  Expiration time of the oldest signature in zone.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int zone_tree_sign(knot_zone_tree_t *tree,
                           const knot_zone_keys_t *zone_keys,
                           const knot_dnssec_policy_t *policy,
-                          knot_changeset_t *changeset)
+                          knot_changeset_t *changeset,
+                          uint32_t *expires_at)
 {
 	assert(tree);
 	assert(zone_keys);
@@ -570,8 +592,11 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
 	assert(changeset);
 
 	node_sign_args_t args = {.zone_keys = zone_keys, .policy = policy,
-	                         .changeset = changeset, .result = KNOT_EOK};
+	                         .changeset = changeset, .result = KNOT_EOK,
+	                         .expires_at = time(NULL) + (policy->sign_lifetime -
+	                                       policy->sign_refresh)};
 	knot_zone_tree_apply(tree, sign_node, &args);
+	*expires_at = args.expires_at;
 	return args.result;
 }
 
@@ -984,7 +1009,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 int knot_zone_sign(const knot_zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
-                   knot_changeset_t *changeset)
+                   knot_changeset_t *changeset,
+                   uint32_t *expires_at)
 {
 	if (!zone || !zone_keys || !policy || !changeset) {
 		return KNOT_EINVAL;
@@ -998,18 +1024,25 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 		return result;
 	}
 
-	result = zone_tree_sign(zone->nodes, zone_keys, policy, changeset);
+	uint32_t normal_tree_expiration = 0;
+	result = zone_tree_sign(zone->nodes, zone_keys, policy, changeset,
+	                        &normal_tree_expiration);
 	if (result != KNOT_EOK) {
 		dbg_dnssec_detail("zone_tree_sign() on normal nodes failed\n");
 		return result;
 	}
 
+	uint32_t nsec3_tree_expiration = 0;
 	result = zone_tree_sign(zone->nsec3_nodes, zone_keys, policy,
-	                        changeset);
+	                        changeset, &nsec3_tree_expiration);
 	if (result != KNOT_EOK) {
 		dbg_dnssec_detail("zone_tree_sign() on nsec3 nodes failed\n");
 		return result;
 	}
+
+	// We need the earlier value of these two
+	*expires_at = normal_tree_expiration <= nsec3_tree_expiration ?
+	              normal_tree_expiration : nsec3_tree_expiration;
 
 	return KNOT_EOK;
 }

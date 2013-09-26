@@ -1146,6 +1146,17 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
+static int64_t expiration_to_relative(uint32_t exp) {
+	time_t t = time(NULL);
+	/*!
+	 * This assert could happen only if signing itself took more
+	 * than the 'refresh' time and some (or one) signatures would be kept.
+	 */
+	assert(t < exp);
+	// We need the time in miliseconds
+	return (exp - t) * 1000;
+}
+
 /*! \brief Creates diff and DNSSEC changesets and stores them to journal. */
 static int zones_do_diff_and_sign(const conf_zone_t *z,
                                   knot_zone_t *zone,
@@ -1229,7 +1240,20 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 		 */
 		knot_update_serial_t soa_up =  KNOT_SOA_SERIAL_INC;
 
-		int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up);
+		uint32_t expires_at = 0;
+		int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up,
+		                                &expires_at);
+		if (ret != KNOT_EOK) {
+			knot_changesets_free(&diff_chs);
+			knot_changesets_free(&sec_chs);
+			rcu_read_unlock();
+			return ret;
+		}
+
+		// Schedule next zone signing
+		ret = zones_schedule_dnssec(zone,
+		                            expiration_to_relative(expires_at),
+		                            false);
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
 			knot_changesets_free(&sec_chs);
@@ -3510,10 +3534,12 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	}
 
 	int ret = 0;
+	uint32_t expires_at = 0;
 	if (force) {
-		ret = knot_dnssec_zone_sign_force(zone, ch);
+		ret = knot_dnssec_zone_sign_force(zone, ch, &expires_at);
 	} else {
-		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_INC);
+		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_INC,
+		                            &expires_at);
 	}
 	if (ret != KNOT_EOK) {
 		knot_changesets_free(&chs);
@@ -3548,9 +3574,13 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	log_zone_info("Zone %s forced signed successfully.\n", zname);
 	free(zname);
 
+	// Schedule next signing
+	ret = zones_schedule_dnssec(zone, expiration_to_relative(expires_at),
+	                            force);
+
 	rcu_read_unlock();
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static int zones_dnssec_regular_ev(event_t *event)
@@ -3582,20 +3612,23 @@ int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	evsched_t *scheduler = zd->server->sched;
 
+	// Cancel previous event, if any
 	if (zd->dnssec_timer) {
 		evsched_cancel(scheduler, zd->dnssec_timer);
 		evsched_event_free(scheduler, zd->dnssec_timer);
 		zd->dnssec_timer = NULL;
 	}
 
+//	TODO: throw an error if the new signing event is more in the future than the old one
+
 	if (force) {
 		zd->dnssec_timer = evsched_schedule_cb(scheduler,
-						       zones_dnssec_forced_ev,
-						       zone, time);
+		                                       zones_dnssec_forced_ev,
+		                                       zone, time);
 	} else {
 		zd->dnssec_timer = evsched_schedule_cb(scheduler,
-						       zones_dnssec_regular_ev,
-						       zone, time);
+		                                       zones_dnssec_regular_ev,
+		                                       zone, time);
 	}
 
 	return KNOT_EOK;
