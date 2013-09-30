@@ -59,11 +59,7 @@ $ sudo apt-get install git-core autoconf libtool flex bison libssl-dev liburcu-d
 # Install optional packages (POSIX 1003.1e capabilities)
 $ sudo apt-get install libcap-ng-dev
 
-# If the liburcu-dev package is not present, install directly
-$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_amd64.deb
-$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_amd64.deb
-$ sudo dpkg -i liburcu0_0.5.4-1_amd64.deb
-$ sudo dpkg -i liburcu-dev_0.5.4-1_amd64.deb
+# If the liburcu-dev package is not present, install it directly
 
 # Get the source code
 $ git clone git://git.nic.cz/knot-dns.git
@@ -73,15 +69,6 @@ $ ./configure
 $ make
 $ sudo make install
 $ sudo ldconfig
-
-Alternative packages for I386:
-$ # the required version of liburcu is not available in the default package
-$ # sources.
-$
-$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu0_0.5.4-1_i386.deb
-$ wget http://bd.archive.ubuntu.com/ubuntu/pool/universe/libu/liburcu/liburcu-dev_0.5.4-1_i386.deb
-$ sudo dpkg -i liburcu0_0.5.4-1_i386.deb
-$ sudo dpkg -i liburcu-dev_0.5.4-1_i386.deb
 
 Installation on Fedora
 ======================
@@ -142,15 +129,10 @@ Installation on OpenBSD/NetBSD
 
 Also works for OS X, if you don't want to install gcc from ports.
 Prerequisites:
-- liburcu needs patch for absent compiler TLS capability
-  - patch is located in "scripts/urcu-tls-compat.patch"
-- patch compatible with liburcu-0.6.7
-- liburcu >= 0.7.0 works out of the box
 - flex and bison from packages
 
 $ mkdir liburcu && cd liburcu
-$ wget "http://lttng.org/files/urcu/userspace-rcu-0.6.7.tar.bz2"
-$ patch -p1 < ../scripts/urcu-tls-compat.patch
+$ wget "http://lttng.org/files/urcu/userspace-rcu-0.8.0.tar.bz2"
 $ autoconf && ./configure && make && sudo make install
 $ # or follow installation instructions in INSTALL
 
@@ -176,8 +158,8 @@ Running
 First, each server needs configuration file.
 Please see samples/knot.sample.conf for reference.
 Minimal configuration can be found in samples/knot.min.conf
-Configuration zone has to specify:
-* storage for PID files, compiled zones etc.
+Configuration file has to specify:
+* storage for PID files, journal files etc.
 * network interfaces
 * served zones
 
@@ -189,10 +171,13 @@ Prepare working directory.
 
 $ mkdir -p /tmp/knot-minimal/samples; cp samples/example.com.zone /tmp/knot-minimal/samples/
 
-Third, let's start the server. This can be done by running the 'knotd' command. Alternatively, 
-your distribution should have an init script available, if you've installed Knot using a binary package.
+Third, let's start the server. This can be done by running the 'knotd' command.
+Alternatively, your distribution should have an init script available, if you've installed 
+Knot using a binary package.
 
 Lets start our server in foreground to see if it runs:
 
-$ knotd myserver.conf # start server
+$ knotd -c myserver.conf # start server
+
+For more information, refer to the user manual.
 
