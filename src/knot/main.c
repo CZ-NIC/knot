@@ -158,6 +158,12 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// Check for non-option parameters.
+	if (argc - optind > 0) {
+		help();
+		return 1;
+	}
+
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
