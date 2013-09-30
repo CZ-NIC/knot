@@ -73,14 +73,17 @@ static void cf_print_error(void *scanner, const char *msg)
 	if (scanner) {
 		extra = cf_get_extra(scanner);
 		lineno = cf_get_lineno(scanner);
-		text = cf_get_text(scanner);
 		filename = conf_includes_top(extra->includes);
-
 		extra->error = true;
 	}
 
-	if (!filename)
+	if (extra && lineno != 0) {
+		text = cf_get_text(scanner);
+	}
+
+	if (!filename) {
 		filename = new_config->filename;
+	}
 
 	log_server_error("Config error in '%s' (line %d token '%s') - %s\n",
 			 filename, lineno, text, msg);

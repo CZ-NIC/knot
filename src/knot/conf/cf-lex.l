@@ -303,8 +303,10 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 	char *name = conf_includes_pop(yyextra->includes);
 	free(name);
 	yypop_buffer_state(yyscanner);
-	if (!YY_CURRENT_BUFFER)
+
+	if (!YY_CURRENT_BUFFER) {
 		return END;
+	}
 }
 
 <include>{BLANK}+
