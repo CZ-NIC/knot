@@ -29,8 +29,9 @@
 conf_extra_t *conf_extra_init(const char *file, int includes_max_depth)
 {
 	conf_extra_t *extra = calloc(1, sizeof(conf_extra_t));
-	if (!extra)
+	if (!extra) {
 		return NULL;
+	}
 
 	conf_includes_t *includes = conf_includes_init(includes_max_depth);
 	if (!includes) {
