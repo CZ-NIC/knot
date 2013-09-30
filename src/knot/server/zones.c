@@ -470,7 +470,7 @@ static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
 		return KNOT_ERROR;
 	}
 
-	int ret = zones_store_changesets(zone, chgsets);
+	int ret = zones_store_changesets(zone, chgsets, *transaction);
 	if (ret != KNOT_EOK) {
 		zones_store_changesets_rollback(*transaction);
 		*transaction = NULL;
