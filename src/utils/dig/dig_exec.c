@@ -149,7 +149,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		knot_edns_set_version(opt_rr, 0);
 		knot_edns_set_payload(opt_rr, max_size);
 
-		if (knot_response_add_opt(packet, opt_rr, 0, 0) != KNOT_EOK) {
+		if (knot_response_add_opt(packet, opt_rr, 0) != KNOT_EOK) {
 			ERR("can't set EDNS section\n");
 			knot_edns_free(&opt_rr);
 			knot_packet_free(&packet);

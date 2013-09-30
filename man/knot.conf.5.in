@@ -100,6 +100,9 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # legitimate requests to get a chance to reconnect using TCP
   # Default: 1
   rate-limit-slip 1;
+
+  # Maximum EDNS0 UDP payload size
+  # max-udp-payload 4096;
  }
 
  # Includes can be placed anywhere at any level in the configuration file. The
@@ -193,11 +196,11 @@ serves as an example of the configuration for knotc(8) and knotd(8).
  # Section 'control' specifies on which interface to listen for RC commands
  control {
 
-  # Specifies interface, syntax is exactly the same as in 'interfaces' section
   # Default: $(run_dir)/knot.sock
   listen-on "knot.sock";
 
   # As an alternative, you can use an IPv4/v6 address and port
+  # Same syntax as for 'interfaces' items
   # listen-on { address 127.0.0.1@5533; }
 
   # Specifies ACL list for remote control

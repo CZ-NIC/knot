@@ -93,6 +93,7 @@ identity        { lval.t = yytext; return IDENTITY; }
 hostname        { lval.t = yytext; return HOSTNAME; }
 version         { lval.t = yytext; return SVERSION; }
 nsid            { lval.t = yytext; return NSID; }
+max-udp-payload { lval.t = yytext; return MAX_UDP_PAYLOAD; }
 storage         { lval.t = yytext; return STORAGE; }
 key             { lval.t = yytext; return KEY; }
 keys            { lval.t = yytext; return KEYS; }
@@ -300,8 +301,12 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 : /* Optional : in assignments. */;
 
 <<EOF>> {
-	char *name = conf_includes_pop(yyextra->includes);
-	free(name);
+	conf_include_t *inc = conf_includes_pop(yyextra->includes);
+	free(inc->filename);
+	if (inc->handle) {
+		fclose(inc->handle);
+	}
+
 	yypop_buffer_state(yyscanner);
 
 	if (!YY_CURRENT_BUFFER) {
@@ -329,16 +334,17 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 	}
 
 	// retrieved relative to previous config
-	char *filename = conf_includes_top(yyextra->includes);
+	conf_include_t *inc = conf_includes_top(yyextra->includes);
 
-	FILE *included = fopen(filename, "r");
+	FILE *included = fopen(inc->filename, "r");
 	if (!included) {
-		cf_error(yyscanner, "cannot open file '%s'", filename);
+		cf_error(yyscanner, "cannot open file '%s'", inc->filename);
 		conf_includes_pop(yyextra->includes);
-		free(filename);
+		free(inc->filename);
 		return END;
 	}
 
+	inc->handle = included;
 	YY_BUFFER_STATE bs = yy_create_buffer(included, YY_BUF_SIZE, yyscanner);
 	yypush_buffer_state(bs, yyscanner);
 }

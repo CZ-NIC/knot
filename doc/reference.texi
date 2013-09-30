@@ -49,6 +49,7 @@ else.
   [ @code{rate-limit} @kbd{integer}@code{;} ]
   [ @code{rate-limit-size} @kbd{integer}@code{;} ]
   [ @code{rate-limit-slip} @kbd{integer}@code{;} ]
+  [ @code{max-udp-payload} @kbd{integer}@code{;} ]
 @code{@}}
 @end example
 
@@ -71,6 +72,7 @@ else.
 * rate-limit::
 * rate-limit-size::
 * rate-limit-slip::
+* max-udp-payload::
 @end menu
 
 @node identity
@@ -260,6 +262,14 @@ if all responses would be completely blocked. The idea behind SLIP mechanism is 
 client to reconnect via TCP for at least some degree of service. It is worth noting, that some responses can't be truncated (f.e. SERVFAIL).
 
 Default value: @kbd{1}
+
+@node max-udp-payload
+@subsubsection max-udp-payload
+@vindex max-udp-payload
+
+Maximum EDNS0 UDP payload size.
+
+Default value: @kbd{4096}
 
 @node system Example
 @subsection system Example

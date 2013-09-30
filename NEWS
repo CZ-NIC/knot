@@ -1,5 +1,13 @@
 Knot DNS NEWS
 
+v1.3.2 - Sep 30, 2013
+---------------------
+Bugfixes:
+	* Configuration option for EDNS0 max UDP payload.
+	* Max UDP payload from EDNS0 affected TCP responses.
+	* Fixed build on SLE 10.
+	* knotc reload did not close files included from config.
+
 v1.3.1 - Aug 26, 2013
 ---------------------
 Bugfixes:

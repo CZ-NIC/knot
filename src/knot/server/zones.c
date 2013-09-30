@@ -1913,6 +1913,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	if (knot_changesets_create_changeset(chgsets) == NULL) {
 		return KNOT_ENOMEM;
 	}
+	*rcode = KNOT_RCODE_SERVFAIL; /* SERVFAIL unless it applies correctly. */
 
 	knot_zone_contents_t *new_contents = NULL;
 	ret = knot_ns_process_update(knot_packet_query(resp),
@@ -1926,9 +1927,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
 			uint8_t *tmp_wire = NULL;
 			ret = knot_packet_to_wire(resp, &tmp_wire, rsize);
-			if (ret != KNOT_EOK) {
-				*rcode = KNOT_RCODE_SERVFAIL;
-			} else {
+			if (ret == KNOT_EOK) {
 				memcpy(resp_wire, tmp_wire, *rsize);
 				*rcode = KNOT_RCODE_NOERROR;
 			}
@@ -2056,6 +2055,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	// Free changesets, but not the data.
 	zones_free_merged_changesets(chgsets, sec_chs);
 	assert(ret == KNOT_EOK);
+	*rcode = KNOT_RCODE_NOERROR; /* Mark as successful. */
 	log_zone_info("%s Finished.\n", msg);
 
 	free(msg);
@@ -2970,7 +2970,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 		log_server_error("Couldn't create OPT RR, please restart.\n");
 	} else {
 		knot_edns_set_version(opt_rr, EDNS_VERSION);
-		knot_edns_set_payload(opt_rr, EDNS_MAX_UDP_PAYLOAD);
+		knot_edns_set_payload(opt_rr, conf->max_udp_payload);
 		if (conf->nsid_len > 0) {
 			knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
 			                     conf->nsid_len,
@@ -3087,8 +3087,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	/* Serialize SOA 'from'. */
 	int ret = zones_rrset_write_to_mem(chs->soa_from, &entry, &max_size);
 	if (ret != KNOT_EOK) {
-		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
-		          knot_strerror(ret));
+		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
 		return KNOT_ERROR;  /*! \todo Other code? */
 	}
 
@@ -3098,8 +3097,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 		knot_rrset_t *rrset = rr_node->rr;
 		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
-			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
-			          knot_strerror(ret));
+			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
 			return KNOT_ERROR;  /*! \todo Other code? */
 		}
 	}
@@ -3107,8 +3105,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	/* Serialize SOA 'to'. */
 	ret = zones_rrset_write_to_mem(chs->soa_to, &entry, &max_size);
 	if (ret != KNOT_EOK) {
-		dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
-		          knot_strerror(ret));
+		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
 		return KNOT_ERROR;  /*! \todo Other code? */
 	}
 
@@ -3117,8 +3114,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 		knot_rrset_t *rrset = rr_node->rr;
 		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
-			dbg_zones("knot_zdump_rrset_serialize() returned %s\n",
-			          knot_strerror(ret));
+			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
 			return KNOT_ERROR;  /*! \todo Other code? */
 		}
 
@@ -3162,15 +3158,12 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 
 	/* Serialize changeset, saving it bit by bit. */
 	ret = zones_serialize_and_store_chgset(chs, journal_entry, entry_size);
-
-	if (ret != KNOT_EOK) {
-		dbg_xfr("Failed to serialize and store changeset: %s\n",
-		        knot_strerror(ret));
-	}
-
 	/* Unmap the journal entry.
-	   If successfuly written changeset to journal, validate the entry. */
-	ret = journal_unmap(j, k, journal_entry, ret == KNOT_EOK);
+	 * If successfuly written changeset to journal, validate the entry. */
+	int unmap_ret = journal_unmap(j, k, journal_entry, ret == KNOT_EOK);
+	if (ret == KNOT_EOK && unmap_ret != KNOT_EOK) {
+		ret = unmap_ret; /* Propagate the result. */
+	}
 
 	return ret;
 }
@@ -3227,7 +3220,7 @@ int zones_store_changesets_rollback(journal_t *j)
 
 /*----------------------------------------------------------------------------*/
 
-int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src)
+int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src, journal_t *j)
 {
 	if (zone == NULL || src == NULL) {
 		return KNOT_EINVAL;
@@ -3241,12 +3234,6 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src)
 		return KNOT_EINVAL;
 	}
 
-	/* Retain journal for changeset writing. */
-	journal_t *j = journal_retain(zd->ixfr_db);
-	if (j == NULL) {
-		return KNOT_EBUSY;
-	}
-
 	/* Begin writing to journal. */
 	knot_changeset_t *chs = NULL;
 	WALK_LIST(chs, src->sets) {
@@ -3255,9 +3242,6 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src)
 		if (ret != KNOT_EOK)
 			break;
 	}
-
-	/* Release journal. */
-	journal_release(j);
 
 	/* Flush if the journal is full. */
 	event_t *tmr = zd->ixfr_dbsync;

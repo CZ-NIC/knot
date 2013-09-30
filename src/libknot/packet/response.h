@@ -128,6 +128,9 @@ void knot_response_clear(knot_packet_t *resp);
  *
  * \note The contents of the OPT RR are copied.
  *
+ * \note It is expected that resp.max_size is already set to correct value as
+ *       it is impossible to distinguish TCP scenario in this function.
+ *
  * \param resp Response to set the OPT RR to.
  * \param opt_rr OPT RR to set.
  *
@@ -138,9 +141,8 @@ void knot_response_clear(knot_packet_t *resp);
  * \todo Needs test.
  */
 int knot_response_add_opt(knot_packet_t *resp,
-                            const knot_opt_rr_t *opt_rr,
-                            int override_max_size,
-                            int add_nsid);
+                          const knot_opt_rr_t *opt_rr,
+                          int add_nsid);
 
 /*!
  * \brief Adds a RRSet to the Answer section of the response.

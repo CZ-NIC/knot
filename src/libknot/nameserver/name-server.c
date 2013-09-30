@@ -43,7 +43,7 @@
 /*----------------------------------------------------------------------------*/
 
 /*! \brief Maximum UDP payload with EDNS disabled. */
-static const uint16_t MAX_UDP_PAYLOAD      = 504; // 512 - 8B header
+static const uint16_t MAX_UDP_PAYLOAD      = 512;
 
 /*! \brief TTL of a CNAME synthetized from a DNAME. */
 static const uint32_t SYNTH_CNAME_TTL      = 0;
@@ -3423,7 +3423,7 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
-		ret = knot_response_add_opt(*resp, nameserver->opt_rr, 1,
+		ret = knot_response_add_opt(*resp, nameserver->opt_rr,
 		                            knot_query_nsid_requested(query));
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to set OPT RR to the response"
@@ -3570,7 +3570,7 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 
 	// set the OPT RR to the response
 	if (knot_query_edns_supported(query)) {
-		ret = knot_response_add_opt(*resp, nameserver->opt_rr, 1,
+		ret = knot_response_add_opt(*resp, nameserver->opt_rr,
 		                            knot_query_nsid_requested(query));
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to set OPT RR to the response"
