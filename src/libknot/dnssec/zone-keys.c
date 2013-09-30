@@ -131,15 +131,18 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		size_t path_len = strlen(keydir_name) + 1
-		                + strlen(entry->d_name) + 1;
-		char *path = malloc(path_len * sizeof(char));
+		size_t path_len = strlen(keydir_name) + 1 + strlen(entry->d_name);
+		char *path = malloc((path_len + 1) * sizeof(char));
 		if (!path) {
 			dbg_dnssec_detail("failed to allocate key path\n");
 			continue;
 		}
 
-		snprintf(path, path_len, "%s/%s", keydir_name, entry->d_name);
+		int written = snprintf(path, path_len + 1, "%s/%s",
+		                       keydir_name, entry->d_name);
+		UNUSED(written);
+		assert(written == path_len);
+
 		dbg_dnssec_detail("loading key '%s'\n", path);
 
 		knot_key_params_t params = { 0 };
