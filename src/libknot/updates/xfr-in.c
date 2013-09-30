@@ -1744,6 +1744,7 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 	}
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to add new node to zone contents.\n");
+		knot_node_free(&node);
 		return NULL;
 	}
 
