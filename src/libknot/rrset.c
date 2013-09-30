@@ -1325,16 +1325,23 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 {
-	*to = (knot_rrset_t *)malloc(sizeof(knot_rrset_t));
-	CHECK_ALLOC_LOG(*to, KNOT_ENOMEM);
+	if (!from || !to) {
+		return KNOT_EINVAL;
+	}
 
-	memcpy(*to, from, sizeof(knot_rrset_t));
-
-	/* Retain owner. */
-	(*to)->owner = knot_dname_copy((*to)->owner);
-	if ((*to)->owner == NULL) {
+	knot_rrset_t *result = (knot_rrset_t *)malloc(sizeof(knot_rrset_t));
+	if (!result) {
 		return KNOT_ENOMEM;
 	}
+
+	memcpy(result, from, sizeof(knot_rrset_t));
+	result->owner = knot_dname_copy(result->owner);
+	if (!result->owner) {
+		free(result);
+		return KNOT_ENOMEM;
+	}
+
+	*to = result;
 
 	return KNOT_EOK;
 }
