@@ -160,8 +160,8 @@ int knot_dname_to_lower(knot_dname_t *name);
  *
  * \param name Domain name to get the size of.
  *
- * \retval size of the domain name
- * \retval KNOT_ERROR
+ * \retval sze of the domain name.
+ * \retval KNOT_EINVAL
  */
 int knot_dname_size(const knot_dname_t *name);
 
@@ -172,7 +172,7 @@ int knot_dname_size(const knot_dname_t *name);
  * \param pkt Related packet (or NULL if unpacked)
  *
  * \retval size of the domain name
- * \retval KNOT_ERROR
+ * \retval KNOT_EINVAL
  */
 int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);
 

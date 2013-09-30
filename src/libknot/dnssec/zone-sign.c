@@ -406,9 +406,12 @@ static int resign_rrset(const knot_rrset_t *covered,
  */
 static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
 {
-	assert(rrset && t);
+	assert(rrset);
+	assert(t);
+
 	// Create a key = combination of owner and type mnemonic
 	int dname_size = knot_dname_size(rrset->owner);
+	assert(dname_size > 0);
 	char key[dname_size + 16];
 	memset(key, 0, sizeof(key));
 	memcpy(key, rrset->owner, dname_size);
