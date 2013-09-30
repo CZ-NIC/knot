@@ -217,14 +217,15 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 			}
 
 			if (result != KNOT_DNSSEC_EINVALID_SIGNATURE) {
-				return result;
+				break;
 			}
 		}
 
 		if (to_remove == NULL) {
 			to_remove = create_empty_rrsigs_for(rrsigs);
 			if (to_remove == NULL) {
-				return KNOT_ENOMEM;
+				result = KNOT_ENOMEM;
+				break;
 			}
 		}
 
