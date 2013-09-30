@@ -195,6 +195,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	}
 
 	// Create RDATA
+	assert(to->owner);
 	size_t next_owner_size = knot_dname_size(to->owner);
 	size_t rdata_size = next_owner_size + bitmap_size(&rr_types);
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
