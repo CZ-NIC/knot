@@ -1544,6 +1544,7 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	knot_rrset_t *empty_rrset =
 		knot_rrset_new(owner_copy, type, rrset->rclass, rrset->ttl);
 	if (empty_rrset == NULL) {
+		free(to_chgset);
 		knot_dname_free(&owner_copy);
 		return KNOT_ENOMEM;
 	}
