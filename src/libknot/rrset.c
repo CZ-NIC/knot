@@ -1746,6 +1746,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	*rrset = knot_rrset_new(owner, type, rclass, ttl);
 	if (*rrset == NULL) {
 		knot_dname_free(&owner);
+		free(rdata_indices);
 		return KNOT_ENOMEM;
 	}
 
