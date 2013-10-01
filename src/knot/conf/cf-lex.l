@@ -127,6 +127,7 @@ rate-limit-slip { lval.t = yytext; return RATE_LIMIT_SLIP; }
 transfers       { lval.t = yytext; return TRANSFERS; }
 dnssec-enable   { lval.t = yytext; return DNSSEC_ENABLE; }
 dnssec-keydir   { lval.t = yytext; return DNSSEC_KEYDIR; }
+signature-lifetime { lval.t = yytext; return SIGNATURE_LIFETIME; }
 
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }

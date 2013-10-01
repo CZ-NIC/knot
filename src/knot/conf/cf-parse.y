@@ -314,6 +314,7 @@ static void conf_zone_start(void *scanner, char *name) {
    this_zone->dbsync_timeout = -1; // Default policy applies
    this_zone->disable_any = -1; // Default policy applies
    this_zone->build_diffs = -1; // Default policy applies
+   this_zone->sig_lifetime = -1; // Default policy applies
 
    // Append mising dot to ensure FQDN
    size_t nlen = strlen(name);
@@ -475,6 +476,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> TRANSFERS
 %token <tok> DNSSEC_ENABLE
 %token <tok> DNSSEC_KEYDIR
+%token <tok> SIGNATURE_LIFETIME
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -933,6 +935,20 @@ zone:
        }
    }
  | zone DNSSEC_ENABLE BOOL ';' { this_zone->dnssec_enable = $3.i; }
+ | zone SIGNATURE_LIFETIME NUM ';' {
+	if ($3.i <= 7200) {
+	   cf_error(scanner, "signature lifetime must be more than 7200 seconds");
+	} else {
+	   this_zone->sig_lifetime = $3.i;
+	}
+ }
+ | zone SIGNATURE_LIFETIME INTERVAL ';' {
+	 if ($3.i <= 7200) {
+	    cf_error(scanner, "signature lifetime must be more than 7200 seconds");
+	 } else {
+	    this_zone->sig_lifetime = $3.i;
+	 }
+ }
  ;
 
 zones:
@@ -968,6 +984,20 @@ zones:
  | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i;
                                   new_config->dnssec_global = true; }
  | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
+ | zones SIGNATURE_LIFETIME NUM ';' {
+	if ($3.i <= 7200) {
+	   cf_error(scanner, "signature lifetime must be more than 7200 seconds");
+	} else {
+	   new_config->sig_lifetime = $3.i;
+	}
+ }
+ | zones SIGNATURE_LIFETIME INTERVAL ';' {
+	 if ($3.i <= 7200) {
+	    cf_error(scanner, "signature lifetime must be more than 7200 seconds");
+	 } else {
+	    new_config->sig_lifetime = $3.i;
+	 }
+ }
  ;
 
 log_prios_start: {

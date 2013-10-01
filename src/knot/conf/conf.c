@@ -296,8 +296,16 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Default policy for IXFR FSLIMIT
+		/*! \todo In cf-parse.y:313 is this value set to -1, shouldn't
+		 *        it be checked also for negative values?
+		 */
 		if (zone->ixfr_fslimit == 0) {
 			zone->ixfr_fslimit = conf->ixfr_fslimit;
+		}
+
+		// Default policy for DNSSEC signature lifetime
+		if (zone->sig_lifetime <= 0) {
+			zone->sig_lifetime = conf->sig_lifetime;
 		}
 
 		// Default zone file
@@ -544,6 +552,7 @@ conf_t *conf_new(const char* path)
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
 	c->max_udp_payload = EDNS_MAX_UDP_PAYLOAD;
+	c->sig_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME;
 	c->ixfr_fslimit = -1;
 	c->uid = -1;
 	c->gid = -1;

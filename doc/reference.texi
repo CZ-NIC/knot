@@ -752,6 +752,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
   [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
   [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
   [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
+  [ @code{signature-lifetime} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
 @end example
 
 @node zones Statement Definition and Grammar
@@ -773,6 +774,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * zonefile-sync::
 * ixfr-fslimit::
 * dnssec-enable/zone::
+* signature-lifetime::
 @end menu
 
 @node zone_id
@@ -885,6 +887,15 @@ Enable DNSSEC signing for the zone.
 
 Default value: inherited from global value set in @code{zones} section.
 
+@node signature-lifetime
+@subsubsection signature-lifetime
+@vindex signature-lifetime
+
+Specifies how long should the automatically generated DNSSEC signatures be valid. Expiration will thus be set as current time (in the moment of signing) + @code{signature-lifetime}.
+Possible values are from 7201 to INT_MAX. The lower limit is because the server will trigger resign when any of the signatures expires in 7200 seconds or less.
+
+Default value: @kbd{30d} (@kbd{2592000})
+
 @node zones Example
 @subsection zones Example
 
@@ -900,6 +911,7 @@ zones @{
   notify-retries 5;
   zonefile-sync 1h;
   ixfr-fslimit 1G;
+  signature-lifetime 60d;
   example.com @{
     file "samples/example.com.zone";
     ixfr-from-differences off; #experimental
@@ -908,6 +920,7 @@ zones @{
     notify-timeout 60;
     notify-retries 5;
     zonefile-sync 1h;
+    signature-lifetime 30d;
     xfr-in server0;
     xfr-out server0, server1;
     notify-in server0;

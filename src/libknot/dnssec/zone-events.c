@@ -79,6 +79,12 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 		init_default_policy(policy, soa_up);
 	}
 
+	// Override signature lifetime, if set in config
+	int sig_lf = ((zonedata_t *)knot_zone_data(zone))->conf->sig_lifetime;
+	if (sig_lf > 0) {
+		policy->sign_lifetime = sig_lf;
+	}
+
 	return KNOT_EOK;
 }
 

@@ -40,10 +40,14 @@ typedef struct {
 	knot_update_serial_t soa_up;//! Policy for serial updating.
 } knot_dnssec_policy_t;
 
-#define DEFAULT_DNSSEC_POLICY { .now = time_now(), .sign_lifetime = 2592000, \
+#define KNOT_DNSSEC_DEFAULT_LIFETIME 2592000
+
+#define DEFAULT_DNSSEC_POLICY { .now = time_now(), \
+				.sign_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME, \
 				.sign_refresh = 7200, .forced_sign = false, \
 				.soa_up = KNOT_SOA_SERIAL_INC }
-#define FORCED_DNSSEC_POLICY { .now = time_now(), .sign_lifetime = 2592000, \
+#define FORCED_DNSSEC_POLICY {  .now = time_now(), \
+				.sign_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME, \
 				.sign_refresh = 7200, .forced_sign = true, \
 				.soa_up = KNOT_SOA_SERIAL_INC }
 

@@ -37,6 +37,7 @@
 #include "libknot/dname.h"
 #include "libknot/tsig.h"
 #include "libknot/dnssec/key.h"
+#include "libknot/dnssec/policy.h"
 #include "common/lists.h"
 #include "common/log.h"
 #include "common/acl.h"
@@ -119,6 +120,7 @@ typedef struct conf_zone_t {
 	char *ixfr_db;             /*!< Path to a IXFR database file. */
 	bool dnssec_enable;        /*!< DNSSEC: Online signing enabled. */
 	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
+	int sig_lifetime;          /*!< Validity period of DNSSEC signatures. */
 	int dbsync_timeout;        /*!< Interval between syncing to zonefile.*/
 	int enable_checks;         /*!< Semantic checks for parser.*/
 	int disable_any;           /*!< Disable ANY type queries for AA.*/
@@ -256,6 +258,7 @@ typedef struct conf_t {
 	bool dnssec_global;  /*!< DNSSEC: Configured for all zones. */
 	bool dnssec_enable;  /*!< DNSSEC: Online signing enabled. */
 	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
+	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
 
 	/*
 	 * Remote control interface.
