@@ -50,6 +50,8 @@ else.
   [ @code{rate-limit-size} @kbd{integer}@code{;} ]
   [ @code{rate-limit-slip} @kbd{integer}@code{;} ]
   [ @code{max-udp-payload} @kbd{integer}@code{;} ]
+  [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
+  [ @code{dnssec-keydir} @kbd{string}@code{;} ]
 @code{@}}
 @end example
 
@@ -73,6 +75,8 @@ else.
 * rate-limit-size::
 * rate-limit-slip::
 * max-udp-payload::
+* dnssec-enable::
+* dnssec-keydir::
 @end menu
 
 @node identity
@@ -270,6 +274,22 @@ Default value: @kbd{1}
 Maximum EDNS0 UDP payload size.
 
 Default value: @kbd{4096}
+
+@node dnssec-enable
+@subsubsection dnssec-enable
+@vindex dnssec-enable
+
+Enable DNSSEC signing for all zones.
+
+Default value: @code{on} if @code{dnssec-keydir} is set
+
+@node dnssec-keydir
+@subsubsection dnssec-keydir
+@vindex dnssec-keydir
+
+Location with DNSSEC signing keys.
+
+Default value: not set
 
 @node system Example
 @subsection system Example
@@ -731,6 +751,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
   [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
   [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
+  [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
 @end example
 
 @node zones Statement Definition and Grammar
@@ -751,6 +772,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * notify-retries::
 * zonefile-sync::
 * ixfr-fslimit::
+* dnssec-enable/zone::
 @end menu
 
 @node zone_id
@@ -854,6 +876,14 @@ are 1 to INT_MAX and default value is 5.
 @vindex ixfr-fslimit
 
 @code{ixfr-fslimit} sets a maximum file size for zone's journal in bytes. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
+
+@node dnssec-enable/zone
+@subsubsection dnssec-enable
+@vindex dnssec-enable
+
+Enable DNSSEC signing for the zone.
+
+Default value: inherited from global value set in @code{zones} section.
 
 @node zones Example
 @subsection zones Example
