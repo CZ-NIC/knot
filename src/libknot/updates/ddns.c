@@ -506,7 +506,7 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 	if (knot_rrtype_is_ddns_forbidden(rrset->type)) {
 		*rcode = KNOT_RCODE_REFUSED;
 		log_zone_error("Refusing to update DNSSEC-related record!\n");
-		return KNOT_EINVAL;
+		return KNOT_EDENIED;
 	}
 
 	if (knot_rrset_class(rrset) == knot_packet_qclass(query)) {
