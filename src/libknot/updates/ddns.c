@@ -1257,10 +1257,8 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	/*
 	 * 1) Copy the RRSet.
 	 */
-	uint16_t type_to_copy = (type != KNOT_RRTYPE_RRSIG) ? type
-	                : knot_rdata_rrsig_type_covered(rr, 0);
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = xfrin_copy_rrset(node, type_to_copy, &rrset_copy, changes, 1);
+	int ret = xfrin_copy_rrset(node, type, &rrset_copy, changes, 1);
 	if (ret < 0) {
 		dbg_ddns("Failed to copy RRSet for removal: %s\n",
 		         knot_strerror(ret));
@@ -1276,15 +1274,10 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * Set some variables needed, according to the modified RR type.
 	 */
 
-	knot_rrset_t *to_modify;
-	if (type == KNOT_RRTYPE_RRSIG) {
-		to_modify = knot_rrset_get_rrsigs(rrset_copy);
-	} else {
-		to_modify = rrset_copy;
-	}
+	knot_rrset_t *to_modify = rrset_copy;
 
 	/*
-	 * 2) Remove the proper RDATA from the RRSet copy, or its RRSIGs.
+	 * 2) Remove the proper RDATA from the RRSet copy
 	 */
 	knot_rrset_t *rr_remove = NULL;
 	ret = knot_rrset_remove_rr_using_rrset(to_modify, rr, &rr_remove, 0);
@@ -1317,32 +1310,8 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 
 	/*
 	 * 4) If the RRSet is empty, remove it and store in 'changes'.
-	 *    Do this also if the RRSIGs are empty.
-	 *    And if both are empty, remove both.
-	 *    RRSIG handling first,
 	 */
-	if (type == KNOT_RRTYPE_RRSIG &&
-	    knot_rrset_rdata_rr_count(to_modify) == 0) {
-		/* Empty RRSIGs, remove the RRSIG RRSet */
-		knot_rrset_t *rrsig = knot_rrset_get_rrsigs(rrset_copy);
-		dbg_xfrin_detail("Removed RRSIG RRSet (%p).\n", rrsig);
-		assert(rrsig && rrsig == to_modify);
-
-		// add the removed RRSet to list of old RRSets
-		int ret = knot_changes_add_rrset(changes, rrsig,
-		                                 KNOT_CHANGES_OLD);
-		if (ret != KNOT_EOK) {
-			dbg_ddns("Failed to add RRSIGs to changes.\n");
-			return ret;
-		}
-
-		// remove it from the RRSet
-		knot_rrset_set_rrsigs(rrset_copy, NULL);
-	}
-
-	// Remove empty RRSet from node and store to changeset
-	if (type != KNOT_RRTYPE_RRSIG &&
-	    knot_rrset_rdata_rr_count(to_modify) == 0) {
+	if (knot_rrset_rdata_rr_count(to_modify) == 0) {
 		// The RRSet should not be empty if we were removing NSs from
 		// apex in case of DDNS
 //		assert(!is_apex);
@@ -1352,6 +1321,17 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to add RRSet to changes.\n");
 			return ret;
+		}
+		
+		// Do the same with its RRSIGs (automatic drop)
+		if (rrset_copy->rrsigs) {
+			ret = knot_changes_add_rrset(changes,
+			                             rrset_copy->rrsigs,
+			                             KNOT_CHANGES_OLD);
+			if (ret != KNOT_EOK) {
+				dbg_ddns("Failed to add RRSet to changes.\n");
+				return ret;
+			}
 		}
 		knot_rrset_t *tmp = knot_node_remove_rrset(node, type);
 		dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
