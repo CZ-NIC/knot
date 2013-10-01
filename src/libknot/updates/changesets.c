@@ -291,7 +291,7 @@ bool knot_changeset_is_empty(const knot_changeset_t *changeset)
 
 size_t knot_changeset_size(const knot_changeset_t *changeset)
 {
-	if (!changeset) {
+	if (!changeset || knot_changeset_is_empty(changeset)) {
 		return 0;
 	}
 

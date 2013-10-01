@@ -1951,17 +1951,21 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	dbg_zones_verb("%s: Signing the UPDATE\n", msg);
 	// Sign the created changeset
-	ret = knot_dnssec_sign_changeset(new_contents,
-	                                 knot_changesets_get_last(chgsets),
-	                                 sec_ch, KNOT_SOA_SERIAL_KEEP);
-	if (ret != KNOT_EOK) {
-		log_zone_error("%s: Failed to sign incoming update (%s)\n",
-		               msg, knot_strerror(ret));
-		xfrin_rollback_update(zone->contents, &new_contents,
-		                      chgsets->changes);
-		knot_changesets_free(&chgsets);
-		free(msg);
-		return ret;
+	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
+	assert(zone_config);
+	if (zone_config->dnssec_enable) {
+		ret = knot_dnssec_sign_changeset(new_contents,
+		                                 knot_changesets_get_last(chgsets),
+		                                 sec_ch, KNOT_SOA_SERIAL_KEEP);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s: Failed to sign incoming update (%s)\n",
+			               msg, knot_strerror(ret));
+			xfrin_rollback_update(zone->contents, &new_contents,
+			                      chgsets->changes);
+			knot_changesets_free(&chgsets);
+			free(msg);
+			return ret;
+		}
 	}
 
 	dbg_zones_detail("%s: UPDATE signed (%zu changes)\n", msg,
