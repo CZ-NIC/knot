@@ -234,7 +234,12 @@ static void process_rr(const scanner_t *scanner)
 	}
 
 	knot_zone_contents_t *contents = parser->current_zone;
-#warning "Node/RRSet compression at this level? To avoid duplicate names."
+
+	/*!
+	 * \todo Node/RRSet compression at this level? To avoid duplicate
+	 *       names.
+	 */
+
 	knot_rrset_t *current_rrset = NULL;
 	knot_dname_t *current_owner = knot_dname_copy(scanner->r_owner);
 

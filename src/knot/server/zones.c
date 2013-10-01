@@ -3501,7 +3501,6 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	knot_zone_t *zone = (knot_zone_t *)event->data;
 
 	zonedata_t *zd = (zonedata_t *)zone->data;
-	// Lock the zone data?? Don't know if it's necessary here.
 	pthread_mutex_lock(&zd->lock);
 
 	knot_changesets_t *chs =

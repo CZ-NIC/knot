@@ -2056,7 +2056,7 @@ dbg_ns_exec_verb(
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-#warning "This is probably not correct and doesn't check length. Should be checked on synthesis."
+
 	if (ns_dname_is_too_long(dname_rrset, *qname)) {
 		knot_response_set_rcode(resp, KNOT_RCODE_YXDOMAIN);
 		return KNOT_EOK;
