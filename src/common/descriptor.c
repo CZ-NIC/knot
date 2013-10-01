@@ -318,7 +318,7 @@ int knot_rrtype_is_metatype(const uint16_t type)
 	       type == KNOT_RRTYPE_ANY;
 }
 
-int knot_rrtype_is_ddns_forbidenen(const uint16_t type)
+int knot_rrtype_is_ddns_forbidden(const uint16_t type)
 {
 	return type == KNOT_RRTYPE_RRSIG  ||
 	type == KNOT_RRTYPE_DNSKEY  ||

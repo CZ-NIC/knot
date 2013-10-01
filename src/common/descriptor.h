@@ -285,7 +285,7 @@ int knot_rrtype_is_metatype(const uint16_t type);
  * \retval > 0 if YES.
  * \retval 0 if NO.
  */
-int knot_rrtype_is_ddns_forbidenen(const uint16_t type);
+int knot_rrtype_is_ddns_forbidden(const uint16_t type);
 
 #endif // _KNOT_DESCRIPTOR_H_
 
