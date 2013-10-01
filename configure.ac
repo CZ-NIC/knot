@@ -329,7 +329,7 @@ AC_CONFIG_FILES([Makefile
 		 man/kdig.1
 		 man/knsupdate.1
 		 man/knot.conf.5
-		 man/knsec3hash.8
+		 man/knsec3hash.1
 		 ])
 
 AC_CONFIG_FILES([src/zscanner/test/run_tests.sh], [chmod a+x src/zscanner/test/run_tests.sh])
