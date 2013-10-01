@@ -50,8 +50,6 @@ else.
   [ @code{rate-limit-size} @kbd{integer}@code{;} ]
   [ @code{rate-limit-slip} @kbd{integer}@code{;} ]
   [ @code{max-udp-payload} @kbd{integer}@code{;} ]
-  [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
-  [ @code{dnssec-keydir} @kbd{string}@code{;} ]
 @code{@}}
 @end example
 
@@ -75,8 +73,6 @@ else.
 * rate-limit-size::
 * rate-limit-slip::
 * max-udp-payload::
-* dnssec-enable::
-* dnssec-keydir::
 @end menu
 
 @node identity
@@ -275,25 +271,6 @@ Maximum EDNS0 UDP payload size.
 
 Default value: @kbd{4096}
 
-@node dnssec-enable
-@subsubsection dnssec-enable
-@vindex dnssec-enable
-
-Enable DNSSEC signing for all zones.
-
-Default value: @code{on} if @code{dnssec-keydir} is set
-
-@node dnssec-keydir
-@subsubsection dnssec-keydir
-@vindex dnssec-keydir
-
-Location with DNSSEC signing keys.
-
-Default value: not set
-
-@node system Example
-@subsection system Example
-
 @example
 system @{
   identity "Knot DNS @value{VERSION}";
@@ -303,6 +280,7 @@ system @{
   rundir "/var/run/knot";
   workers 16;
   user knot.knot;
+  max-udp-payload 4096;
 @}
 @end example
 
@@ -738,6 +716,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
     [ @code{notify-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{notify-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{update-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{dnssec-keydir} @kbd{string}@code{;} ]
     [ @kbd{zone_options} ]
   @code{@}}
 @code{@}}
@@ -773,7 +752,8 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * notify-retries::
 * zonefile-sync::
 * ixfr-fslimit::
-* dnssec-enable/zone::
+* dnssec-enable::
+* dnssec-keydir::
 * signature-lifetime::
 @end menu
 
@@ -879,13 +859,24 @@ are 1 to INT_MAX and default value is 5.
 
 @code{ixfr-fslimit} sets a maximum file size for zone's journal in bytes. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
 
-@node dnssec-enable/zone
+@node dnssec-enable
 @subsubsection dnssec-enable
 @vindex dnssec-enable
 
-Enable DNSSEC signing for the zone.
+EXPERIMENTAL: Enable DNSSEC signing for the zone.
 
 Default value: inherited from global value set in @code{zones} section.
+
+@node dnssec-keydir
+@subsubsection dnssec-keydir
+@vindex dnssec-keydir
+
+Location of DNSSEC signing keys.
+
+Default value: not set
+
+@node system Example
+@subsection system Example
 
 @node signature-lifetime
 @subsubsection signature-lifetime
@@ -911,6 +902,7 @@ zones @{
   notify-retries 5;
   zonefile-sync 1h;
   ixfr-fslimit 1G;
+  dnssec-enable on;
   signature-lifetime 60d;
   example.com @{
     file "samples/example.com.zone";
@@ -920,6 +912,7 @@ zones @{
     notify-timeout 60;
     notify-retries 5;
     zonefile-sync 1h;
+    dnssec-enable off;
     signature-lifetime 30d;
     xfr-in server0;
     xfr-out server0, server1;

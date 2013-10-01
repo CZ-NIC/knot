@@ -102,7 +102,8 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   rate-limit-slip 1;
 
   # Maximum EDNS0 UDP payload size
-  # max-udp-payload 4096;
+  # Default value: 4096
+  max-udp-payload 4096;
  }
 
  # Includes can be placed anywhere at any level in the configuration file. The
@@ -255,6 +256,15 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # f.e. 1k, 100M, 2G
   ixfr-fslimit 1G;
 
+  # Enable DNSSEC online signing (EXPERIMENTAL)
+  # Possible values: on | off;
+  # Default value: off
+  dnssec-enable off;
+
+  # Location of DNSSEC signing keys.
+  # Default value: not set
+  # dnssec-keydir "some-secure-directory";
+
   # Validity period for DNSSEC signatures
   # Possible values: (7200..INT_MAX> (seconds)
   # Default value: 30d (30 days or 2592000 seconds)
@@ -311,6 +321,15 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # It is also possible to suffix with unit size [k/M/G]
     # f.e. 1k, 100M, 2G
     ixfr-fslimit 1G;
+
+    # Enable DNSSEC online signing (EXPERIMENTAL)
+    # Possible values: on | off;
+    # Default value: off
+    dnssec-enable off;
+
+    # Location of DNSSEC signing keys.
+    # Default value: not set
+    # dnssec-keydir "some-secure-directory";
 
     # Validity period for DNSSEC signatures
     # Possible values: (7200..INT_MAX> (seconds)

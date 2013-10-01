@@ -331,7 +331,7 @@ Keys for all zones must be placed in one directory.
 
 @item
 Algorithms based on RSA, DSA, and ECDSA are supported, support for GOST
-algorithm not finished yet.
+algorithm is not finished yet.
 
 @item
 Only key activation and inactivation time stamps are utilized and defined
@@ -371,11 +371,11 @@ Currently the signing policy is set hard in the server:
 
 @subsection Zone signing
 
-The signing process consists of following steps:
+The signing process consists of the following steps:
 
 @itemize @bullet
 @item
-Fixing @code{NSEC} and @code{NSEC3} records. This is determined by
+Fixing @code{NSEC} or @code{NSEC3} records. This is determined by
 @code{NSEC3PARAM} record presence in unsigned zone.
 
 @item
