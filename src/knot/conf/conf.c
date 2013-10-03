@@ -318,7 +318,10 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Default policy for DNSSEC
-		if (conf->dnssec_keydir == NULL) {
+		if (conf->dnssec_keydir) {
+			conf->dnssec_keydir = conf_abs_path(conf->storage,
+			                                    conf->dnssec_keydir);
+		} else {
 			zone->dnssec_enable = false;
 		}
 
