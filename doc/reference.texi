@@ -906,6 +906,7 @@ zones @{
   zonefile-sync 1h;
   ixfr-fslimit 1G;
   dnssec-enable on;
+  dnssec-keydir "keys";
   signature-lifetime 60d;
   example.com @{
     file "samples/example.com.zone";

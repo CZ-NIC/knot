@@ -258,12 +258,12 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
   # Enable DNSSEC online signing (EXPERIMENTAL)
   # Possible values: on | off;
-  # Default value: off
-  dnssec-enable off;
+  # Default value: on if dnssec-keydir is set; otherwise off
+  dnssec-enable on;
 
-  # Location of DNSSEC signing keys.
+  # Location of DNSSEC signing keys (relative to storage directory).
   # Default value: not set
-  # dnssec-keydir "some-secure-directory";
+  dnssec-keydir "keys";
 
   # Validity period for DNSSEC signatures
   # Possible values: (7200..INT_MAX> (seconds)
@@ -272,7 +272,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
   # The lower limit is because the server will trigger resign when any of the
   # signatures expires in 7200 seconds or less.
-  # signature-lifetime 30d;
+  signature-lifetime 30d;
 
   # Zone entry
   #
@@ -324,12 +324,8 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
     # Enable DNSSEC online signing (EXPERIMENTAL)
     # Possible values: on | off;
-    # Default value: off
+    # Default value: inherited from zones section
     dnssec-enable off;
-
-    # Location of DNSSEC signing keys.
-    # Default value: not set
-    # dnssec-keydir "some-secure-directory";
 
     # Validity period for DNSSEC signatures
     # Possible values: (7200..INT_MAX> (seconds)
@@ -338,7 +334,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
     # The lower limit is because the server will trigger resign when any of the
     # signatures expires in 7200 seconds or less.
-    # signature-lifetime 30d;
+    signature-lifetime 30d;
 
     # XFR master server
     xfr-in server0;

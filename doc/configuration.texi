@@ -362,11 +362,11 @@ $ dnssec-keygen -3 -f KSK example.com
 
 @subsection Signing policy
 
-Currently the signing policy is set hard in the server:
+Currently the signing policy is not configurable, except for signature lifetime.
 
 @itemize @bullet
-@item Signature lifetime is 30 days.
-@item Signature is refreshed 2 hours before expiration.
+@item Signature lifetime can be set in configuration globally for all zones and for each zone in particular. @xref{signature-lifetime}. If not set, the default value is 30 days.
+@item Signature is refreshed 2 hours before expiration. The signature lifetime must thus be set to more than 2 hours.
 @end itemize
 
 @subsection Zone signing
@@ -379,8 +379,7 @@ Fixing @code{NSEC} or @code{NSEC3} records. This is determined by
 @code{NSEC3PARAM} record presence in unsigned zone.
 
 @item
-Updating @code{DNSKEY} records. This also means removing all keys which are
-not present in directory with signing keys.
+Updating @code{DNSKEY} records. This also means adding DNSKEY records for any keys that are present in keydir, but missing in zone file.
 
 @item
 Removing expired signatures, invalid signatures, signatures expiring in a short
