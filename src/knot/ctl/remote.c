@@ -15,6 +15,7 @@
  */
 
 #include <config.h>
+#include <sys/stat.h>
 #include "remote.h"
 #include "common/log.h"
 #include "common/fdset.h"
@@ -35,6 +36,7 @@
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
 #define KNOT_CTL_REALM_LEN 5
 #define CMDARGS_BUFLEN (1024*1024) /* 1M */
+#define KNOT_CTL_SOCKET_UMASK 0007
 
 /*! \brief Remote command structure. */
 typedef struct remote_cmdargs_t {
@@ -378,7 +380,9 @@ int remote_bind(conf_iface_t *desc)
 	}
 
 	/* Bind to interface and start listening. */
+	mode_t old_umask = umask(KNOT_CTL_SOCKET_UMASK);
 	int r = socket_bind(s, desc->family, desc->address, desc->port);
+	umask(old_umask);
 	if (r == KNOT_EOK) {
 		r = socket_listen(s, TCP_BACKLOG_SIZE);
 	}
