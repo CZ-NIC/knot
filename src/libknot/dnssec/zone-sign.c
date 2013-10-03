@@ -652,32 +652,22 @@ static int add_rrsigs_for_nsec(knot_rrset_t *rrset, void *data)
 /*- private API - DNSKEY handling --------------------------------------------*/
 
 /*!
- * \brief Check if a DNSKEY (RDATA given) exist in zone keys database.
+ * \brief Check if DNSKEY RDATA match with DNSSEC key.
  *
- * \param zone_keys   Zone keys.
- * \param rdata       Pointer to DNSKEY RDATA.
- * \param rdata_size  Size of DNSKEY RDATA.
+ * \param key         DNSSEC key.
+ * \param rdata       DNSKEY RDATA.
+ * \param rdata_size  DNSKEY RDATA size.
  *
- * \return DNSKEY exists in the key database.
+ * \return DNSKEY RDATA match with DNSSEC key.
  */
-static bool dnskey_exists_in_keydb(const knot_zone_keys_t *zone_keys,
-                                   const uint8_t *rdata,
-                                   size_t rdata_size)
+static bool dnskey_rdata_match(const knot_dnssec_key_t *key,
+                               const uint8_t *rdata, size_t rdata_size)
 {
-	assert(zone_keys);
+	assert(key);
 	assert(rdata);
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_dnssec_key_t *key = &zone_keys->keys[i];
-
-		if (key->dnskey_rdata.size == rdata_size &&
-		    memcmp(key->dnskey_rdata.data, rdata, rdata_size) == 0
-		) {
-			return true;
-		}
-	}
-
-	return false;
+	return key->dnskey_rdata.size == rdata_size &&
+	       memcmp(key->dnskey_rdata.data, rdata, rdata_size) == 0;
 }
 
 /*!
@@ -698,9 +688,7 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
 		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
 		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
 
-		if (rdata_size == key->dnskey_rdata.size &&
-		    memcmp(rdata, key->dnskey_rdata.data, rdata_size) == 0
-		) {
+		if (dnskey_rdata_match(key, rdata, rdata_size)) {
 			return true;
 		}
 	}
@@ -709,7 +697,10 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
 }
 
 /*!
- * \brief Remove unknown DNSKEYs from the zone by updating the changeset.
+ * \brief Remove invalid DNSKEYs from the zone by updating the changeset.
+ *
+ * Invalid DNSKEY has wrong TTL, or the same keytag as some zone key
+ * but different RDATA.
  *
  * \param soa        RR set with SOA (to get TTL value from).
  * \param dnskeys    RR set with DNSKEYs.
@@ -718,7 +709,7 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int remove_unknown_dnskeys(const knot_rrset_t *soa,
+static int remove_invalid_dnskeys(const knot_rrset_t *soa,
                                   const knot_rrset_t *dnskeys,
                                   const knot_zone_keys_t *zone_keys,
                                   knot_changeset_t *changeset)
@@ -744,12 +735,21 @@ static int remove_unknown_dnskeys(const knot_rrset_t *soa,
 	for (int i = 0; i < dnskeys->rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
 		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
-		if (dnskey_exists_in_keydb(zone_keys, rdata, rdata_size)) {
+		uint16_t keytag = knot_keytag(rdata, rdata_size);
+		const knot_dnssec_key_t *key = get_zone_key(zone_keys, keytag);
+		if (key == NULL) {
+			dbg_dnssec_detail("keeping unknown DNSKEY with tag "
+			                  "%d\n", keytag);
 			continue;
 		}
 
-		dbg_dnssec_detail("removing DNSKEY with tag %d\n",
-		                  knot_keytag(rdata, rdata_size));
+		if (dnskey_rdata_match(key, rdata, rdata_size)) {
+			dbg_dnssec_detail("keeping known DNSKEY with tag "
+			                  "%d\n", keytag);
+			continue;
+		}
+
+		dbg_dnssec_detail("removing DNSKEY with tag %d\n", keytag);
 
 		if (to_remove == NULL) {
 			to_remove = knot_rrset_new_from(dnskeys);
@@ -949,7 +949,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	int result;
 	size_t changes_before = knot_changeset_size(changeset);
 
-	result = remove_unknown_dnskeys(soa, dnskeys, zone_keys, changeset);
+	result = remove_invalid_dnskeys(soa, dnskeys, zone_keys, changeset);
 	if (result != KNOT_EOK) {
 		return result;
 	}

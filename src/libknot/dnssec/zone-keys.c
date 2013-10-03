@@ -81,13 +81,14 @@ static bool is_current_key(const knot_key_params_t *key)
 /*!
  * \brief Get zone key by a keytag.
  */
-knot_dnssec_key_t *get_zone_key(knot_zone_keys_t *keys, uint16_t keytag)
+const knot_dnssec_key_t *get_zone_key(const knot_zone_keys_t *keys,
+                                      uint16_t keytag)
 {
 	if (!keys) {
 		return NULL;
 	}
 
-	knot_dnssec_key_t *result = NULL;
+	const knot_dnssec_key_t *result = NULL;
 
 	for (int i = 0; i < keys->count; i++) {
 		if (keys->keys[i].keytag == keytag) {
