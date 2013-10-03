@@ -271,6 +271,9 @@ Maximum EDNS0 UDP payload size.
 
 Default value: @kbd{4096}
 
+@node system Example
+@subsection system Example
+
 @example
 system @{
   identity "Knot DNS @value{VERSION}";
@@ -716,6 +719,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
     [ @code{notify-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{notify-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{update-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
     [ @code{dnssec-keydir} @kbd{string}@code{;} ]
     [ @kbd{zone_options} ]
   @code{@}}
@@ -874,9 +878,6 @@ Default value: inherited from global value set in @code{zones} section.
 Location of DNSSEC signing keys.
 
 Default value: not set
-
-@node system Example
-@subsection system Example
 
 @node signature-lifetime
 @subsubsection signature-lifetime
