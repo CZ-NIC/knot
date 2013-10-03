@@ -3550,6 +3550,8 @@ static int zones_dnssec_ev(event_t *event, bool force)
 			free(zname);
 			return ret;
 		}
+	} else {
+		knot_changesets_free(&chs);
 	}
 
 	// cleanup
