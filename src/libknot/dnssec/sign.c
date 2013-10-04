@@ -407,6 +407,35 @@ static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
 #ifndef OPENSSL_NO_ECDSA
 
 /*!
+ * \brief Decode ECDSA public key from RDATA and set it into EC key.
+ * \note DNSKEY format for ECDSA is described in RFC 6605 section 4.
+ */
+static int ecdsa_set_public_key(const knot_binary_t *rdata, EC_KEY *ec_key)
+{
+	assert(rdata);
+	assert(ec_key);
+
+	if (rdata->size % 2 != 0) {
+		return KNOT_EINVAL;
+	}
+
+	size_t param_size = rdata->size / 2;
+	uint8_t *x_ptr = rdata->data;
+	uint8_t *y_ptr = rdata->data + param_size;
+
+	BIGNUM *x = BN_bin2bn(x_ptr, param_size, NULL);
+	BIGNUM *y = BN_bin2bn(y_ptr, param_size, NULL);
+
+	if (EC_KEY_set_public_key_affine_coordinates(ec_key, x, y) != 1) {
+		BN_free(x);
+		BN_free(y);
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
  * \brief Create ECDSA private key from key parameters.
  * \see rsa_create_pkey
  */
@@ -429,9 +458,21 @@ static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 		return KNOT_ENOMEM;
 	}
 
-	EC_KEY_set_private_key(ec_key, binary_to_bn(&params->private_key));
+	int result = ecdsa_set_public_key(&params->rdata, ec_key);
+	if (result != KNOT_EOK) {
+		EC_KEY_free(ec_key);
+		return result;
+	}
 
-	// EC_KEY_check_key() could be added, but fails without public key
+	if (EC_KEY_set_private_key(ec_key, binary_to_bn(&params->private_key)) != 1) {
+		EC_KEY_free(ec_key);
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
+
+	if (EC_KEY_check_key(ec_key) != 1) {
+		EC_KEY_free(ec_key);
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
 
 	if (!EVP_PKEY_assign_EC_KEY(key, ec_key)) {
 		EC_KEY_free(ec_key);

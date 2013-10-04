@@ -49,6 +49,8 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 	ctx = knot_dnssec_sign_init(&key);
 	ok(ctx != NULL, "%s: create signing context", alg);
 
+	skip(ctx == NULL, 12, "%s: required test failed", alg);
+
 	size_t sig_size = knot_dnssec_sign_size(&key);
 	ok(sig_size > 0, "%s: get signature size", alg);
 
@@ -87,6 +89,8 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 
 	result = knot_dnssec_sign_verify(ctx, sig, sig_size);
 	ok(result == KNOT_EOK, "%s: verify valid signature", alg);
+
+	endskip;
 
 	knot_dnssec_sign_free(ctx);
 	knot_dnssec_key_free(&key);
@@ -137,7 +141,7 @@ static int dnssec_sign_tests_run(int argc, char *argv[])
 	kp.name = knot_dname_from_str("example.com", 12);
 	kp.algorithm = 13;
 	knot_binary_from_base64("1N/PvpB8jZcvv+zr3Q987RKK1cBxDKULzEc5F/nnpSg=", &kp.private_key);
-	//knot_binary_from_base64("fe3oR+S8crl9AwayWFZwJ8wXpDeg1uiXZ/X0MYBvyvj1lfuJDXawUjKuzYKLAPEVH1jt8XbM5nTTlVXUsDebVA==", &kp.public_key);
+	knot_binary_from_base64("fe3oR+S8crl9AwayWFZwJ8wXpDeg1uiXZ/X0MYBvyvj1lfuJDXawUjKuzYKLAPEVH1jt8XbM5nTTlVXUsDebVA==", &kp.rdata);
 
 	test_algorithm("ECDSA", &kp);
 	knot_free_key_params(&kp);
