@@ -347,10 +347,8 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(rrset != NULL);
 	assert(rcode != NULL);
-	assert(knot_rrset_rdata_rr_count(rrset) == 0);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
 	assert(knot_rrset_ttl(rrset) == 0);
-	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
 
 	if (!knot_dname_is_subdomain(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
