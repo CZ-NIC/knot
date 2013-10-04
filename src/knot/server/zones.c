@@ -981,6 +981,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	knot_changesets_t* chsets =
 		knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
 	if (chsets == NULL) {
+		rcu_read_unlock();
 		return KNOT_ERROR;
 	}
 
@@ -1313,6 +1314,7 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 			                      &new_contents,
 			                      sec_chs->changes);
 			zones_free_merged_changesets(diff_chs, sec_chs);
+			rcu_read_unlock();
 			return ret;
 		}
 	}
@@ -1324,6 +1326,8 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 		              zname);
 		free(zname);
 	}
+
+	rcu_read_unlock();
 
 	zones_free_merged_changesets(diff_chs, sec_chs);
 	return ret;
@@ -3509,6 +3513,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
 		pthread_mutex_unlock(&zd->lock);
+		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
 	knot_changeset_t *ch = knot_changesets_create_changeset(chs);
@@ -3517,6 +3522,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
 		pthread_mutex_unlock(&zd->lock);
+		rcu_read_unlock();
 		return KNOT_ENOMEM;
 	}
 
@@ -3533,6 +3539,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
 		pthread_mutex_unlock(&zd->lock);
+		rcu_read_unlock();
 		return ret;
 	}
 
@@ -3548,6 +3555,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 			zd->dnssec_timer = NULL;
 			pthread_mutex_unlock(&zd->lock);
 			free(zname);
+			rcu_read_unlock();
 			return ret;
 		}
 	} else {
