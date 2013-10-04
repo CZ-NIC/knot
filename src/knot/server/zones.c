@@ -2941,6 +2941,8 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 
 	dbg_xfr("xfr: %s Saving new zone file.\n", xfr->msg);
 
+	rcu_read_lock();
+
 	zonedata_t *zd = (zonedata_t *)knot_zone_data(xfr->zone);
 	knot_zone_contents_t *new_zone = xfr->new_contents;
 
@@ -2961,6 +2963,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 
 	/* dump the zone into text zone file */
 	int ret = zones_dump_zone_text(new_zone, zonefile);
+	rcu_read_unlock();
 	return ret;
 }
 

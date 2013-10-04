@@ -4058,7 +4058,9 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		zone->zone = z;
 	}
 
+	rcu_read_unlock();
 	int ret = xfrin_switch_zone(z, zone, xfr->type);
+	rcu_read_lock();
 
 dbg_ns_exec_verb(
 	dbg_ns_verb("Zone db contents: (zone count: %zu)\n",

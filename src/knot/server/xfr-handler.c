@@ -577,6 +577,7 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 {
 	int ret = KNOT_EINVAL;
+	rcu_read_lock();
 	knot_nameserver_t *ns = w->master->ns;
 
 	if (rq->type == XFR_TYPE_AIN) {
@@ -613,6 +614,8 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 		              time_diff(&rq->t_end, &t_end) / 1000.0);
 		rq->new_contents = NULL; /* Do not free. */
 	}
+
+	rcu_read_unlock();
 
 	return ret;
 }
