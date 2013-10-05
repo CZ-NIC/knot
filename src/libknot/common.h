@@ -38,6 +38,10 @@ typedef unsigned int uint; /*!< \brief Unsigned. */
 #define UINT_DEFINED
 #endif
 
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
 /*! \brief Eliminate compiler warning with unused parameters. */
 #define UNUSED(param) (void)(param)
 
