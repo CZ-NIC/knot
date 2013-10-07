@@ -44,49 +44,55 @@ def test_info():
     parts = info.split("/")
     return parts[-2] + "/" + parts[-1]
 
-def check_log(text):
-    params.case_log.write("%s (%s)\n" % (str(text), test_info()))
+def check_log(text, stdout=False):
+    msg = "%s (%s)" % (str(text), test_info())
+    params.case_log.write(msg + "\n")
+    if stdout:
+        print(msg)
 
-def detail_log(text):
-    params.case_log.write(str(text) + "\n")
+def detail_log(text, stdout=False):
+    msg = str(text)
+    params.case_log.write(msg + "\n")
+    if stdout:
+        print(msg)
 
 def err(text):
-    check_log("ERROR")
-    detail_log(text)
-    detail_log(SEP)
+    check_log("ERROR", True)
+    detail_log(text, True)
+    detail_log(SEP, True)
 
 def isset(value, name):
     if not value:
         params.err = True
-        check_log("IS SET %s" + name)
-        detail_log("  False")
-        detail_log(SEP)
+        check_log("IS SET %s" + name, True)
+        detail_log("  False", True)
+        detail_log(SEP, True)
 
 def compare(value, expected, name):
     if value != expected:
         params.err = True
-        check_log("COMPARE " + name)
-        detail_log("  (" + str(value) + ") != (" + str(expected) + ")")
-        detail_log(SEP)
+        check_log("COMPARE " + name, True)
+        detail_log("  (" + str(value) + ") != (" + str(expected) + ")", True)
+        detail_log(SEP, True)
 
 def compare_sections(section1, section2, name):
     if section1 == section2:
         return
 
     params.err = True
-    detail_log("COMPARE %s SECTIONS" % name)
+    detail_log("COMPARE %s SECTIONS" % name, True)
 
     for rrset in section1:
         if rrset not in section2:
-            detail_log("Section1 difference:" % rrset)
-            detail_log("  %s" % rrset)
+            detail_log("Section1 difference:" % rrset, True)
+            detail_log("  %s" % rrset, True)
 
     for rrset in section2:
         if rrset not in section1:
-            detail_log("Section2 difference:" % rrset)
-            detail_log("  %s" % rrset)
+            detail_log("Section2 difference:" % rrset, True)
+            detail_log("  %s" % rrset, True)
 
-    detail_log(SEP)
+    detail_log(SEP, True)
 
 class Tsig(object):
     '''TSIG key generator'''
@@ -1181,17 +1187,17 @@ class DnsTest(object):
 
             if z1_diff:
                 params.err = True
-                detail_log("Extra records in %s:" % server1.name)
+                detail_log("Extra records in %s:" % server1.name, True)
                 for key in z1_diff:
                     for record in z1.nodes[key]:
-                        detail_log("  %s %s" % (key, str(record)))
+                        detail_log("  %s %s" % (key, str(record)), True)
 
             if z2_diff:
                 params.err = True
-                detail_log("Extra records in %s:" % server2.name)
+                detail_log("Extra records in %s:" % server2.name, True)
                 for key in z2_diff:
                     for record in z2.nodes[key]:
-                        detail_log("  %s %s" % (key, str(record)))
+                        detail_log("  %s %s" % (key, str(record)), True)
 
             if not z_keys:
                 return
@@ -1199,12 +1205,12 @@ class DnsTest(object):
             for key in z_keys:
                 if z1.nodes[key] != z2.nodes[key]:
                     params.err = True
-                    detail_log("Different nodes:")
-                    detail_log("%s:" % server1.name)
+                    detail_log("Different nodes:", True)
+                    detail_log("%s:" % server1.name, True)
                     for record in z1.nodes[key]:
-                        detail_log("  " + str(record))
-                    detail_log("%s:" % server2.name)
+                        detail_log("  " + str(record), True)
+                    detail_log("%s:" % server2.name, True)
                     for record in z2.nodes[key]:
-                        detail_log("  " + str(record))
+                        detail_log("  " + str(record), True)
 
             detail_log(SEP)

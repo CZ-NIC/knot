@@ -65,6 +65,7 @@ def create_log(logger, filename="", level=logging.NOTSET):
 timestamp = int(time.time())
 today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
 outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp)
+params.debug = True if args.debug else False
 
 # Set up logging.
 log = logging.getLogger()

@@ -16,3 +16,5 @@ case_log = None
 test = None
 # Indication for failed test.
 err = False
+# Indication of debug mode (print ERR on stdout).
+debug = False
