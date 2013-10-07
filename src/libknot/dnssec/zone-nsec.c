@@ -944,6 +944,8 @@ int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone)
 
 		if (nsec3_node != NULL) {
 			node->nsec3_node = nsec3_node;
+		} else {
+			node->nsec3_node = NULL;
 		}
 
 		knot_dname_free(&nsec3_name);
