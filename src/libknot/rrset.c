@@ -156,11 +156,19 @@ int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 	int cmp = 0;
 	size_t offset = 0;
 
+	// TODO: this can be much simpler: Get data for memcmp and sizes in ifs
+	// compare only once
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		if (descriptor_item_is_dname(desc->block_types[i])) {
 			const knot_dname_t *dname1 = r1 + offset;
+			int size1 = knot_dname_size(dname1);
 			const knot_dname_t *dname2 = r2 + offset;
-			cmp = knot_dname_cmp(dname1, dname2);
+			int size2 = knot_dname_size(dname2);
+			cmp = memcmp(dname1, dname2,
+			             size1 <= size2 ? size1 : size2);
+			if (cmp == 0 && size1 == size2) {
+				cmp = size1 < size2 ? -1 : 1;
+			}
 			offset += knot_dname_size(dname1);
 		} else if (descriptor_item_is_fixed(desc->block_types[i])) {
 			cmp = memcmp(r1 + offset, r2 + offset,

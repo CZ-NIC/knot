@@ -62,17 +62,6 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.human_tmstamp = true
 };
 
-const knot_dump_style_t KNOT_DUMP_STYLE_DNSSEC = {
-	.wrap = true,
-	.show_class = true,
-	.show_ttl = true,
-	.verbose = true,
-	.reduce = true,
-	.human_ttl = false,
-	.human_tmstamp = false
-};
-
-
 static void dump_string(rrset_dump_params_t *p, const char *str)
 {
 	size_t in_len = strlen(str);

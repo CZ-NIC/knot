@@ -1002,11 +1002,6 @@ static int zones_journal_apply(knot_zone_t *zone)
 				                 zd->conf->name,
 				                 knot_strerror(apply_ret));
 				ret = KNOT_ERROR;
-
-				// Cleanup old and new contents
-				xfrin_rollback_update(zone->contents,
-				                      &contents,
-				                      chsets->changes);
 			} else {
 				/* Switch zone immediately. */
 				log_server_info("Zone '%s' serial %u -> %u.\n",
