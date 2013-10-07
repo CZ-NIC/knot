@@ -265,6 +265,7 @@ static int conf_key_exists(void *scanner, char *item)
 {
     /* Find existing node in keys. */
     knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
+    knot_dname_to_lower(sample);
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
         if (knot_dname_cmp(r->k.name, sample) == 0) {
@@ -285,6 +286,7 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
 
     /* Find in keys */
     knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
+    knot_dname_to_lower(sample);
 
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {

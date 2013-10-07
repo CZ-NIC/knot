@@ -237,7 +237,7 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name,
 void knot_dname_free(knot_dname_t **name);
 
 /*!
- * \brief Compares two domain names (case insensitive).
+ * \brief Compares two domain names (case sensitive).
  *
  * \param d1 First domain name.
  * \param d2 Second domain name.
