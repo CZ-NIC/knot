@@ -1298,8 +1298,8 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 	}
 
 	/* Switch zone contents. */
-	rcu_read_unlock();
 	if (new_contents) {
+		rcu_read_unlock();
 		ret = xfrin_switch_zone(zone, new_contents,
 		                        XFR_TYPE_DNSSEC);
 		rcu_read_lock();
@@ -2951,6 +2951,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	int r = knot_dname_cmp(cur_name, new_name);
 	knot_dname_free(&cur_name);
 	if (r != 0) {
+		rcu_read_unlock();
 		return KNOT_EINVAL;
 	}
 
