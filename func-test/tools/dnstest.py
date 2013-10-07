@@ -220,12 +220,12 @@ class BindConf(object):
 class Zone(object):
     '''DNS zone description'''
 
-    def __init__(self, name, filename, ddns=None):
+    def __init__(self, name, filename, ddns=False):
         self.name = name
         self.filename = filename
         self.master = None
         self.slaves = set()
-        # ddns: True - ddns, False - ixfrFromDiff, None - empty
+        # ddns: True - ddns, False(master) - ixfrFromDiff, False(slave) - empty
         self.ddns = ddns
 
 class Response(object):
@@ -450,12 +450,12 @@ class DnsServer(object):
                 z.slaves.add(slave)
             self.zones[name] = z
 
-    def zone_slave(self, name, file, master):
+    def zone_slave(self, name, file, master, ddns=False):
         if name in self.zones:
             raise Exception("Can't set zone %s as a slave" % name)
         else:
             slave_file = self.dir + "/__" + name + "slave"
-            z = Zone(name, slave_file, ddns=None)
+            z = Zone(name, slave_file, ddns)
             z.master = master
             self.zones[name] = z
 
@@ -752,13 +752,16 @@ class Bind(DnsServer):
             else:
                 s.item("type", "master")
                 s.item("notify", "explicit")
-                if z.ddns == True:
-                    if self.tsig:
-                        s.item("allow-update", "{ key %s; }" % self.tsig.name)
-                    else:
-                        s.item("allow-update", "{ %s; }" % self.addr)
-                elif z.ddns == False:
+
+                if not z.ddns:
                     s.item("ixfr-from-differences", "yes")
+
+            # Init update list with the default local server.
+            slaves_upd = ""
+            if self.tsig:
+                slaves_upd += "key %s; " % self.tsig.name
+            else:
+                slaves_upd += "%s; " % self.addr
 
             if z.slaves:
                 slaves = ""
@@ -766,9 +769,17 @@ class Bind(DnsServer):
                     if self.tsig:
                         slaves += "%s port %i key %s; " \
                                   % (slave.addr, slave.port, slave.tsig.name)
+                        slaves_upd += "key %s; " % slave.tsig.name
                     else:
                         slaves += "%s port %i; " % (slave.addr, slave.port)
+                        slaves_upd += "%s; " % slave.addr
                 s.item("also-notify", "{ %s}" % slaves)
+
+            if z.ddns:
+                if z.master:
+                    s.item("allow-update-forwarding", "{ %s}" % slaves_upd)
+                else:
+                    s.item("allow-update", "{ %s}" % slaves_upd)
 
             if self.tsig:
                 s.item("allow-transfer", "{ key %s; }" % self.tsig.name)
@@ -889,17 +900,20 @@ class Knot(DnsServer):
                 s.item("notify-in", z.master.name)
                 s.item("xfr-in", z.master.name)
 
+            slaves = ""
             if z.slaves:
-                slaves = ""
                 for slave in z.slaves:
-                    slaves += slave.name + " "
-                s.item("notify-out", slaves.strip())
+                    if slaves:
+                        slaves += ", "
+                    slaves += slave.name
+                s.item("notify-out", slaves)
 
             s.item("xfr-out", "local")
 
-            if z.ddns == True:
-                s.item("update-in", "local")
-            elif z.ddns == False:
+            if z.ddns:
+                all_slaves = "local" if not slaves else slaves + ", local"
+                s.item("update-in", all_slaves)
+            elif not z.master:
                 s.item("ixfr-from-differences", "on")
             s.end()
         s.end()
@@ -1149,7 +1163,7 @@ class DnsTest(object):
             if slave:
                 if slave not in self.servers:
                     raise Exception("Uncovered server in test")
-                slave.zone_slave(zone, zones[zone], master)
+                slave.zone_slave(zone, zones[zone], master, ddns)
 
     def xfr_diff(self, server1, server2, zones):
         check_log("CHECK AXFR DIFF")
