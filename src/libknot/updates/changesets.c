@@ -285,8 +285,8 @@ bool knot_changeset_is_empty(const knot_changeset_t *changeset)
 		return true;
 	}
 
-	return EMPTY_LIST(changeset->add) &&
-	       EMPTY_LIST(changeset->remove);
+	return (changeset->soa_from == NULL && changeset->soa_to == NULL) &&
+	       (EMPTY_LIST(changeset->add) && EMPTY_LIST(changeset->remove));
 }
 
 size_t knot_changeset_size(const knot_changeset_t *changeset)
