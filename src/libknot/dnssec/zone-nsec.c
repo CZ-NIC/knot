@@ -786,6 +786,88 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 	return result;
 }
 
+/* - deleting NSEC3 chain -------------------------------------------------- */
+
+typedef struct {
+	knot_changeset_t *changeset;
+	int result;
+} nsec3_chain_delete_data_t;
+
+static int copy_node_and_delete(const knot_rrset_t *rrset,
+                                knot_changeset_t *changeset)
+{
+	knot_rrset_t *copy = NULL;
+	int result = knot_rrset_deep_copy_no_sig(rrset, &copy);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	result = knot_changeset_add_rrset(changeset, copy, KNOT_CHANGESET_REMOVE);
+	if (result != KNOT_EOK) {
+		knot_rrset_deep_free(&copy, 1);
+	}
+
+	return result;
+}
+
+static void delete_nsec3_chain_node_cb(knot_node_t **node_ptr, void *data)
+{
+	assert(node_ptr && *node_ptr);
+	assert(data);
+
+	knot_node_t *node = *node_ptr;
+	nsec3_chain_delete_data_t *params = (nsec3_chain_delete_data_t *)data;
+
+	if (params->result != KNOT_EOK) {
+		return;
+	}
+
+	int result = KNOT_EOK;
+
+	for (int i = 0; i < node->rrset_count; i++) {
+		const knot_rrset_t *rrset = node->rrset_tree[i];
+		result = copy_node_and_delete(rrset, params->changeset);
+		if (result != KNOT_EOK) {
+			break;
+		}
+
+		result = copy_node_and_delete(rrset->rrsigs, params->changeset);
+		if (result != KNOT_EOK) {
+			break;
+		}
+	}
+
+	params->result = result;
+}
+
+static int delete_nsec3_chain(const knot_zone_contents_t *zone,
+                              knot_changeset_t *changeset)
+{
+	assert(zone);
+	assert(changeset);
+
+	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+		return KNOT_EOK;
+	}
+
+	dbg_dnssec_detail("deleting NSEC3 chain\n");
+
+	nsec3_chain_delete_data_t cb_data = {
+		.changeset = changeset,
+		.result = KNOT_EOK
+	};
+
+	knot_zone_tree_apply(zone->nsec3_nodes, delete_nsec3_chain_node_cb,
+			     &cb_data);
+
+	return cb_data.result;
+}
+
+/* - helper functions ------------------------------------------------------ */
+
+/*!
+ * \brief Check if NSEC3 is enabled for given zone.
+ */
 bool is_nsec3_enabled(const knot_zone_contents_t *zone)
 {
 	if (!zone) {
@@ -794,8 +876,6 @@ bool is_nsec3_enabled(const knot_zone_contents_t *zone)
 
 	return zone->nsec3_params.algorithm != 0;
 }
-
-/* - helper functions ------------------------------------------------------ */
 
 /*!
  * \brief Get minimum TTL from zone SOA.
@@ -873,11 +953,16 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 	}
 
 	int result;
+	bool nsec3_enabled = is_nsec3_enabled(zone);
 
-	if (is_nsec3_enabled(zone)) {
+	if (nsec3_enabled) {
 		result = create_nsec3_chain(zone, nsec_ttl, changeset);
 	} else {
 		result = create_nsec_chain(zone, nsec_ttl, changeset);
+	}
+
+	if (result == KNOT_EOK && !nsec3_enabled) {
+		result = delete_nsec3_chain(zone, changeset);
 	}
 
 	if (result != KNOT_EOK) {

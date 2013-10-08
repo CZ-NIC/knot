@@ -56,6 +56,11 @@ size_t knot_zone_tree_weight(knot_zone_tree_t* tree)
 	return hattrie_weight(tree);
 }
 
+int knot_zone_tree_is_empty(knot_zone_tree_t *tree)
+{
+	return knot_zone_tree_weight(tree) == 0;
+}
+
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
