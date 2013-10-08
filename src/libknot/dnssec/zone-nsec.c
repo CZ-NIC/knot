@@ -434,43 +434,6 @@ static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 	return dname;
 }
 
-/*!
- * \brief Create NSEC3 owner name from regular owner name.
- *
- * \param owner      Node owner name.
- * \param params     Params for NSEC3 hashing function.
- * \param apex       Apex size.
- * \param apex_size  Size of the zone apex.
- *
- * \return NSEC3 owner name, NULL in case of error.
- */
-static knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
-                                        const knot_nsec3_params_t *params,
-                                        const char *apex, size_t apex_size)
-{
-	assert(owner);
-	assert(params);
-	assert(apex);
-
-	uint8_t *hash = NULL;
-	size_t hash_size = 0;
-	int name_size = knot_dname_size(owner);
-
-	if (name_size < 0) {
-		return NULL;
-	}
-
-	if (knot_nsec3_hash(params, owner, name_size, &hash, &hash_size)
-	    != KNOT_EOK) {
-		return NULL;
-	}
-
-	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, apex, apex_size);
-	free(hash);
-
-	return result;
-}
-
 /* - NSEC3 nodes construction ---------------------------------------------- */
 
 /*!
@@ -863,6 +826,36 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 /* - public API ------------------------------------------------------------ */
 
 /*!
+ * \brief Create NSEC3 owner name from regular owner name.
+ */
+knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
+                                 const knot_nsec3_params_t *params,
+                                 const char *apex, size_t apex_size)
+{
+	if (owner == NULL || params == NULL || apex == NULL) {
+		return NULL;
+	}
+
+	uint8_t *hash = NULL;
+	size_t hash_size = 0;
+	int name_size = knot_dname_size(owner);
+
+	if (name_size < 0) {
+		return NULL;
+	}
+
+	if (knot_nsec3_hash(params, owner, name_size, &hash, &hash_size)
+	    != KNOT_EOK) {
+		return NULL;
+	}
+
+	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, apex, apex_size);
+	free(hash);
+
+	return result;
+}
+
+/*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  */
 int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
@@ -893,63 +886,4 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 
 	// Sign newly created records right away
 	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
-}
-
-/*!
- * \brief Connect regular and NSEC3 nodes in the zone.
- */
-int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone)
-{
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-
-	if (!is_nsec3_enabled(zone)) {
-		return KNOT_EOK;
-	}
-
-	char *apex;
-	size_t apex_size;
-	if (!get_zone_apex_str(zone, &apex, &apex_size)) {
-		return KNOT_ENOMEM;
-	}
-
-	bool sorted = false;
-	hattrie_iter_t *it = hattrie_iter_begin(zone->nodes, sorted);
-	if (!it) {
-		free(apex);
-		return KNOT_ENOMEM;
-	}
-
-	int result = KNOT_EOK;
-
-	while (!hattrie_iter_finished(it)) {
-		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-
-		knot_dname_t *nsec3_name;
-		nsec3_name = create_nsec3_owner(node->owner,
-		                                &zone->nsec3_params, apex,
-		                                apex_size);
-		if (!nsec3_name) {
-			result = KNOT_ENOMEM;
-			break;
-		}
-
-		knot_node_t *nsec3_node = NULL;
-		result = knot_zone_tree_get(zone->nsec3_nodes, nsec3_name,
-		                            &nsec3_node);
-		if (result != KNOT_EOK) {
-			break;
-		}
-
-		node->nsec3_node = nsec3_node;
-
-		knot_dname_free(&nsec3_name);
-		hattrie_iter_next(it);
-	}
-
-	free(apex);
-	hattrie_iter_free(it);
-
-	return result;
 }

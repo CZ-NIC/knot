@@ -130,6 +130,37 @@ static void knot_zone_contents_destroy_node_rrsets_from_tree(
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
+                                         const knot_dname_t *name,
+                                         knot_dname_t **nsec3_name)
+{
+	assert(nsec3_name != NULL);
+	*nsec3_name = NULL;
+
+	const knot_nsec3_params_t *nsec3_params =
+		knot_zone_contents_nsec3params(zone);
+
+	if (nsec3_params == NULL) {
+		return KNOT_ENSEC3PAR;
+	}
+
+	const knot_dname_t *apex_name = knot_node_owner(
+	                        knot_zone_contents_apex(zone));
+	assert(apex_name);
+
+	*nsec3_name = create_nsec3_owner(name, nsec3_params,
+	                                 (const char *)apex_name,
+	                                 knot_dname_size(apex_name));
+	if (nsec3_name == NULL) {
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
+}
+
+
+/*----------------------------------------------------------------------------*/
+
 /*!
  * \brief Adjust normal (non NSEC3) node.
  *
@@ -192,6 +223,24 @@ static void knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 	if (!knot_node_is_non_auth(node) && knot_node_rrset_count(node) > 0) {
 		args->previous_node = node;
 	}
+
+	// Connect to NSEC3 node (only if NSEC3 tree is not empty)
+	knot_node_t *nsec3 = NULL;
+	knot_dname_t *nsec3_name = NULL;
+	int ret = knot_zone_contents_nsec3_name(args->zone,
+	                                        knot_node_owner(node),
+	                                        &nsec3_name);
+	if (ret == KNOT_EOK) {
+		assert(nsec3_name);
+		knot_zone_tree_get(args->zone->nsec3_nodes, nsec3_name, &nsec3);
+		knot_node_set_nsec3_node(node, nsec3);
+	} else if (ret == KNOT_ENSEC3PAR) {
+		knot_node_set_nsec3_node(node, NULL);
+	} else {
+		args->err = ret;
+	}
+
+	knot_dname_free(&nsec3_name);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -225,79 +274,6 @@ static void knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
 	knot_node_set_previous(node, args->previous_node);
 	args->previous_node = node;
 }
-
-/*----------------------------------------------------------------------------*/
-
-static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
-                                         const knot_dname_t *name,
-                                         knot_dname_t **nsec3_name)
-{
-	assert(nsec3_name != NULL);
-
-	*nsec3_name = NULL;
-
-	const knot_nsec3_params_t *nsec3_params =
-		knot_zone_contents_nsec3params(zone);
-
-	if (nsec3_params == NULL) {
-		return KNOT_ENSEC3PAR;
-	}
-
-	uint8_t *hashed_name = NULL;
-	size_t hash_size = 0;
-
-	int res = knot_nsec3_hash(nsec3_params, name, knot_dname_size(name),
-	                          &hashed_name, &hash_size);
-
-	if (res != 0) {
-		char *n = knot_dname_to_str(name);
-		dbg_zone("Error while hashing name %s.\n", n);
-		free(n);
-		return KNOT_ECRYPTO;
-	}
-
-	dbg_zone("Hash: ");
-	dbg_zone_hex((char *)hashed_name, hash_size);
-	dbg_zone("\n");
-
-	uint8_t *name_b32 = NULL;
-	size_t size = base32hex_encode_alloc(hashed_name, hash_size,
-					     &name_b32);
-
-	if (size == 0) {
-		char *n = knot_dname_to_str(name);
-		free(n);
-		free(name_b32);
-		return KNOT_ECRYPTO;
-	}
-
-	assert(name_b32 != NULL);
-	free(hashed_name);
-
-	/* Will be returned to caller, make sure it is released after use. */
-	*nsec3_name = knot_dname_from_str((char *)name_b32, size);
-
-	free(name_b32);
-
-	if (*nsec3_name == NULL) {
-		return KNOT_ERROR;
-	}
-
-	knot_dname_to_lower(*nsec3_name);
-
-	assert(zone->apex->owner != NULL);
-	knot_dname_t *ret = knot_dname_cat(*nsec3_name, zone->apex->owner);
-
-	if (ret == NULL) {
-		free(*nsec3_name);
-		return KNOT_ERROR;
-	}
-
-	*nsec3_name = ret;
-
-	return KNOT_EOK;
-}
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Tries to find the given domain name in the zone tree.
@@ -1355,9 +1331,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 
 	assert(zone->apex == adjust_arg.first_node);
 
-	// connect NSEC3 nodes
-
-	return knot_zone_connect_nsec_nodes(zone);
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

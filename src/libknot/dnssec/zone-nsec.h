@@ -45,6 +45,20 @@
 bool is_nsec3_enabled(const knot_zone_contents_t *zone);
 
 /*!
+ * \brief Create NSEC3 owner name from regular owner name.
+ *
+ * \param owner      Node owner name.
+ * \param params     Params for NSEC3 hashing function.
+ * \param apex       Apex name.
+ * \param apex_size  Size of the zone apex name.
+ *
+ * \return NSEC3 owner name, NULL in case of error.
+ */
+knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
+                                 const knot_nsec3_params_t *params,
+                                 const char *apex, size_t apex_size);
+
+/*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  *
  * \param zone       Zone for which the NSEC(3) chain will be created.
@@ -56,23 +70,6 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
                                 knot_changeset_t *changeset,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
-
-/*!
- * \brief Connect regular and NSEC3 nodes in the zone.
- *
- * \note No need to call this function after 'knot_zone_create_nsec_chain'.
- * \note Exits succesfully if NSEC3 is not enabled.
- * \note Skips nodes with missing related NSEC3 nodes.
- *
- * \param zone  Zone for which the operation is performed.
- *
- * \return Error code, KNOT_EOK if successful.
- *
- * \todo IMPORTANT: this is called always when zone adjusting is. IMHO it can
- *       be moved back into zone adjusting as before commit bb795a4. This only
- *       leads to confusion and duplication of code.
- */
-int knot_zone_connect_nsec_nodes(knot_zone_contents_t *zone);
 
 #endif // _KNOT_DNSSEC_ZONE_NSEC_H_
 
