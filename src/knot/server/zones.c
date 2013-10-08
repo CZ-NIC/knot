@@ -3353,7 +3353,8 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	ret = zones_store_changesets_begin_and_store(zone, chs, &transaction);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to serialize and store "
-		               "changesets.\n", msgpref);
+		               "changesets: %s.\n", msgpref,
+		               knot_strerror(ret));
 		/* Free changesets, but not the data. */
 		knot_changesets_free(&chs);
 		return ret;

@@ -221,6 +221,9 @@ void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
  *
  * \param changeset Changeset to be checked.
  *
+ * Changeset is considered empty if it has no RRs in REMOVE and ADD sections and
+ * final SOA (soa_to) is not set.
+ *
  * \retval true if changeset is empty.
  * \retval false if changeset is not empty.
  */
