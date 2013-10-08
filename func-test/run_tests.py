@@ -108,7 +108,7 @@ for test in sorted(included):
         case_dir = test_dir + "/" + case
         test_file = case_dir + "/test.py"
         if not os.path.isfile(test_file):
-            log.error(" * case \'%s\':\tUNEXECUTABLE" % case)
+            log.error(" * case \'%s\':\tMISSING" % case)
             fail_cnt += 1
             continue
 

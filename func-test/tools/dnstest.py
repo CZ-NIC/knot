@@ -848,19 +848,19 @@ class Knot(DnsServer):
         if self.tsig:
             s.begin("keys")
             t = self.tsig
-            s.item_str("%s %s" % (t.name, t.alg), t.key)
+            s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
 
             keys = set() # Duplicy check.
             for zone in self.zones:
                 z = self.zones[zone]
                 if z.master and z.master.tsig.name not in keys:
                     t = z.master.tsig
-                    s.item_str("%s %s" % (t.name, t.alg), t.key)
+                    s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
                     keys.add(t.name)
                 for slave in z.slaves:
                     if slave.tsig and slave.tsig.name not in keys:
                         t = slave.tsig
-                        s.item_str("%s %s" % (t.name, t.alg), t.key)
+                        s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
                         keys.add(t.name)
             s.end()
 
@@ -868,7 +868,7 @@ class Knot(DnsServer):
         s.begin("local")
         s.item("address", self.addr)
         if self.tsig:
-            s.item("key", self.tsig.name)
+            s.item_str("key", self.tsig.name)
         s.end()
 
         servers = set() # Duplicity check.
@@ -879,7 +879,7 @@ class Knot(DnsServer):
                 s.item("address", z.master.addr)
                 s.item("port", z.master.port)
                 if z.master.tsig:
-                    s.item("key", z.master.tsig.name)
+                    s.item_str("key", z.master.tsig.name)
                 s.end()
                 servers.add(z.master.name)
             for slave in z.slaves:
@@ -888,7 +888,7 @@ class Knot(DnsServer):
                     s.item("address", slave.addr)
                     s.item("port", slave.port)
                     if slave.tsig:
-                        s.item("key", slave.tsig.name)
+                        s.item_str("key", slave.tsig.name)
                     s.end()
                     servers.add(slave.name)
         s.end()
