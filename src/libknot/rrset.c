@@ -166,7 +166,7 @@ int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 			int size2 = knot_dname_size(dname2);
 			cmp = memcmp(dname1, dname2,
 			             size1 <= size2 ? size1 : size2);
-			if (cmp == 0 && size1 == size2) {
+			if (cmp == 0 && size1 != size2) {
 				cmp = size1 < size2 ? -1 : 1;
 			}
 			offset += knot_dname_size(dname1);
