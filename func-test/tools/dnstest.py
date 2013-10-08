@@ -605,7 +605,7 @@ class DnsServer(object):
                 elif rtype.upper() == "IXFR":
                     resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
                                          port=self.port, lifetime=timeout, \
-                                         use_udp=udp, serial=serial, \
+                                         use_udp=udp, serial=int(serial), \
                                          **key_params)
                 else:
                     query = dns.message.make_query(rname, rtype, rclass)
@@ -664,6 +664,16 @@ class DnsServer(object):
         zname = list(zone.keys())[0]
 
         return Update(self, dns.update.Update(zname, **key_params))
+
+    def soa_serial(self, zone):
+        '''Returns zone SOA serial'''
+
+        if len(zone) != 1:
+            raise Exception("One zone required.")
+
+        zname = list(zone.keys())[0]
+        resp = self.dig(zname, "SOA")
+        return str((resp.resp.answer[0]).to_rdataset()).split()[5]
 
 class Bind(DnsServer):
 
