@@ -49,7 +49,7 @@ int hex_decode(const char *input, uint8_t **output, size_t *output_size)
 	}
 
 	for (size_t i = 0; i < input_size; i++) {
-		if (!isxdigit(input[i])) {
+		if (!isxdigit((unsigned char)input[i])) {
 			return KNOT_EINVAL;
 		}
 	}
@@ -65,8 +65,8 @@ int hex_decode(const char *input, uint8_t **output, size_t *output_size)
 	// conversion
 
 	for (size_t i = 0; i < result_size; i++) {
-		int high_nib = tolower(input[2 * i]);
-		int low_nib  = tolower(input[2 * i + 1]);
+		int high_nib = tolower((unsigned char)input[2 * i]);
+		int low_nib  = tolower((unsigned char)input[2 * i + 1]);
 
 		result[i] = hex_to_num(high_nib) << 4 | hex_to_num(low_nib);
 	}
