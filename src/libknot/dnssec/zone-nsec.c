@@ -403,35 +403,49 @@ static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
  *
  * \param hash       Raw hash.
  * \param hash_size  Size of the hash.
- * \param apex       Zone apex.
- * \param apex_size  Size of the zone apex.
+ * \param zone_apex  Zone apex.
  *
  * \return NSEC3 owner name, NULL in case of error.
  */
 static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
-					 const char *apex, size_t apex_size)
+					 const knot_dname_t *zone_apex)
 {
 	assert(hash);
-	assert(apex);
+	assert(zone_apex);
 
-	char name[KNOT_DNAME_MAX_LENGTH];
-	int32_t endp;
+	// encode raw hash to first label
 
-	endp = base32hex_encode(hash, hash_size, (uint8_t *)name, sizeof(name));
-	if (endp <= 0) {
+	uint8_t label[KNOT_DNAME_MAX_LENGTH];
+	int32_t label_size;
+	label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
+	if (label_size <= 0) {
 		return NULL;
 	}
 
-	name[endp] = '.';
-	endp += 1;
+	// allocate result
 
-	memcpy(name + endp, apex, apex_size);
-	endp += apex_size;
+	size_t zone_apex_size = knot_dname_size(zone_apex);
+	size_t result_size = 1 + label_size + zone_apex_size;
+	knot_dname_t *result = malloc(result_size);
+	if (!result) {
+		return NULL;
+	}
 
-	knot_dname_t *dname = knot_dname_from_str(name, endp);
-	knot_dname_to_lower(dname);
+	// build the result
 
-	return dname;
+	uint8_t *write = result;
+
+	*write = (uint8_t)label_size;
+	write += 1;
+	memcpy(write, label, label_size);
+	write += label_size;
+	memcpy(write, zone_apex, zone_apex_size);
+	write += zone_apex_size;
+
+	assert(write == result + result_size);
+	knot_dname_to_lower(result);
+
+	return result;
 }
 
 /* - NSEC3 nodes construction ---------------------------------------------- */
@@ -597,53 +611,26 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 }
 
 /*!
- * \brief Get zone apex as a string.
- */
-static bool get_zone_apex_str(const knot_zone_contents_t *zone,
-                              char **apex, size_t *apex_size)
-{
-	assert(zone);
-	assert(zone->apex);
-	assert(apex);
-	assert(apex_size);
-
-	*apex = knot_dname_to_str(zone->apex->owner);
-	if (!*apex) {
-		return false;
-	}
-
-	*apex_size = strlen(*apex);
-
-	return true;
-}
-
-/*!
  * \brief Create new NSEC3 node for given regular node.
  *
- * \note Parameters 'apex' and 'apex_size' are added for performace reasons.
- *
  * \param node       Node for which the NSEC3 node is created.
- * \param apex_node  Zone apex node.
- * \param apex       Zone apex.
- * \param apex_size  Size fo zone apex.
+ * \param apex       Zone apex node.
  * \param params     NSEC3 hash function parameters.
  * \param ttl        TTL of the new NSEC3 node.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
-                                               knot_node_t *apex_node,
-                                               char *apex, size_t apex_size,
+                                               knot_node_t *apex,
                                                const knot_nsec3_params_t *params,
                                                uint32_t ttl)
 {
 	assert(node);
-	assert(apex_node);
 	assert(apex);
 	assert(params);
 
 	knot_dname_t *nsec3_owner;
-	nsec3_owner = create_nsec3_owner(node->owner, params, apex, apex_size);
+	nsec3_owner = create_nsec3_owner(node->owner, apex->owner, params);
 	if (!nsec3_owner) {
 		return NULL;
 	}
@@ -653,13 +640,12 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 	if (node->rrset_count > 0) {
 		bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 	}
-	if (node == apex_node) {
+	if (node == apex) {
 		bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
 	}
 
 	knot_node_t *nsec3_node;
-	nsec3_node = create_nsec3_node(nsec3_owner, params, apex_node,
-	                               &rr_types, ttl);
+	nsec3_node = create_nsec3_node(nsec3_owner, params, apex, &rr_types, ttl);
 
 	return nsec3_node;
 }
@@ -683,12 +669,6 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 
 	assert(params);
 
-	char *apex = NULL;
-	size_t apex_size;
-	if (!get_zone_apex_str(zone, &apex, &apex_size)) {
-		return KNOT_ENOMEM;
-	}
-
 	int result = KNOT_EOK;
 
 	int sorted = false;
@@ -697,8 +677,8 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
 		knot_node_t *nsec3_node;
-		nsec3_node = create_nsec3_node_for_node(node, zone->apex, apex,
-		                                        apex_size, params, ttl);
+		nsec3_node = create_nsec3_node_for_node(node, zone->apex,
+		                                        params, ttl);
 		if (!nsec3_node) {
 			result = KNOT_ENOMEM;
 			break;
@@ -713,7 +693,6 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 	}
 
 	hattrie_iter_free(it);
-	free(apex);
 
 	return result;
 }
@@ -857,27 +836,26 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
  * \brief Create NSEC3 owner name from regular owner name.
  */
 knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
-                                 const knot_nsec3_params_t *params,
-                                 const char *apex, size_t apex_size)
+				 const knot_dname_t *zone_apex,
+                                 const knot_nsec3_params_t *params)
 {
-	if (owner == NULL || params == NULL || apex == NULL) {
+	if (owner == NULL || zone_apex == NULL || params == NULL) {
 		return NULL;
 	}
 
 	uint8_t *hash = NULL;
 	size_t hash_size = 0;
-	int name_size = knot_dname_size(owner);
+	int owner_size = knot_dname_size(owner);
 
-	if (name_size < 0) {
+	if (owner_size < 0) {
 		return NULL;
 	}
 
-	if (knot_nsec3_hash(params, owner, name_size, &hash, &hash_size)
-	    != KNOT_EOK) {
+	if (knot_nsec3_hash(params, owner, owner_size, &hash, &hash_size) != KNOT_EOK) {
 		return NULL;
 	}
 
-	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, apex, apex_size);
+	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, zone_apex);
 	free(hash);
 
 	return result;

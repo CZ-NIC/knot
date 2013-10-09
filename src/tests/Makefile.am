@@ -60,6 +60,8 @@ unittests_SOURCES =			\
 	libknot/dnssec_nsec3_tests.h	\
 	libknot/dnssec_sign_tests.c	\
 	libknot/dnssec_sign_tests.h	\
+	libknot/dnssec_zone_nsec_tests.c \
+	libknot/dnssec_zone_nsec_tests.h \
 	unittests_main.c
 
 unittests_LDADD = ../libknotd.la ../libknots.la @LIBOBJS@

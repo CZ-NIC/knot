@@ -48,15 +48,14 @@ bool is_nsec3_enabled(const knot_zone_contents_t *zone);
  * \brief Create NSEC3 owner name from regular owner name.
  *
  * \param owner      Node owner name.
+ * \param zone_apex  Zone apex name.
  * \param params     Params for NSEC3 hashing function.
- * \param apex       Apex name.
- * \param apex_size  Size of the zone apex name.
  *
  * \return NSEC3 owner name, NULL in case of error.
  */
 knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
-                                 const knot_nsec3_params_t *params,
-                                 const char *apex, size_t apex_size);
+                                 const knot_dname_t *zone_apex,
+                                 const knot_nsec3_params_t *params);
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.

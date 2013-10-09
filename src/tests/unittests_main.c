@@ -38,6 +38,7 @@
 #include "tests/libknot/dnssec_keys_tests.h"
 #include "tests/libknot/dnssec_nsec3_tests.h"
 #include "tests/libknot/dnssec_sign_tests.h"
+#include "tests/libknot/dnssec_zone_nsec_tests.h"
 #include "tests/libknot/rrset_tests.h"
 
 // Run all loaded units
@@ -75,6 +76,7 @@ int main(int argc, char *argv[])
 	        &dnssec_keys_tests_api,  //! DNSSEC key manipulation.
 	        &dnssec_nsec3_tests_api, //! DNSSEC NSEC3 operations.
 	        &dnssec_sign_tests_api,  //! DNSSEC signing/verification.
+	        &dnssec_zone_nsec_tests_api, //! Zone NSEC functions.
 //	        &rrset_tests_api,
 
 	        NULL
