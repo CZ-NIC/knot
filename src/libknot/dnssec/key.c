@@ -15,10 +15,11 @@
 */
 
 #include <config.h>
-#include <arpa/inet.h>
 #include <assert.h>
 #include <ctype.h>
+#include <sys/types.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
