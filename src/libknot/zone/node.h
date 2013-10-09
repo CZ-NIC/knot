@@ -30,6 +30,7 @@
 
 #include "dname.h"
 #include "rrset.h"
+#include "common/hattrie/ahtable.h"
 
 struct knot_zone;
 
@@ -428,6 +429,19 @@ void knot_node_free(knot_node_t **node);
 int knot_node_compare(knot_node_t *node1, knot_node_t *node2);
 
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
+
+/*!
+ * \brief Checks whether RRSet in a node has to be signed.
+ *
+ * \param node   Node containing the RRSet.
+ * \param rrset  RRSet we are checking for.
+ * \param table  Optional hash table with already signed RRs.
+ *
+ * \return True if RR should be signed, false otherwise.
+ */
+bool knot_node_rr_should_be_signed(const knot_node_t *node,
+                                   const knot_rrset_t *rrset,
+                                   ahtable_t *table);
 
 #endif /* _KNOT_NODE_H_ */
 
