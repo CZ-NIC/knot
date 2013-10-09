@@ -152,7 +152,7 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	                                 strlen(apex_name));
 	free(apex_name);
 
-	if (nsec3_name == NULL) {
+	if (*nsec3_name == NULL) {
 		return KNOT_ERROR;
 	}
 
