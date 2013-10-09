@@ -145,7 +145,7 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	}
 
 	*nsec3_name = create_nsec3_owner(name, zone->apex->owner, nsec3_params);
-	if (nsec3_name == NULL) {
+	if (*nsec3_name == NULL) {
 		return KNOT_ERROR;
 	}
 
