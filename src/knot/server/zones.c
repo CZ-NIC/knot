@@ -2054,6 +2054,12 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	// Cleanup.
 	xfrin_cleanup_successful_update(chgsets->changes);
+	if (sec_chs) {
+		xfrin_cleanup_successful_update(sec_chs->changes);
+	}
+	if (new_contents && new_signatures) {
+		xfrin_zone_contents_free(&new_contents);
+	}
 
 	// Free changesets, but not the data.
 	zones_free_merged_changesets(chgsets, sec_chs);

@@ -1253,7 +1253,7 @@ cleanup:
 /* Applying changesets to zone                                                */
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
+void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 {
 	/*! \todo This should be all in some API!! */
 
