@@ -1562,10 +1562,15 @@ int knot_rrset_sort_rdata(knot_rrset_t *rrset)
 		return result;
 	}
 
+	/*!
+	 * \todo Pointers to pointers to pointers to pointers FTW!
+	 * Tell me how to rewrite this to use our awesome
+	 * knot_rrset_deep_free() API and I will buy you a beer!
+	 */
+	free(rrset->rdata);
+	free(rrset->rdata_indices);
 	*rrset = *sorted;
-
-	sorted->owner = NULL;
-	knot_rrset_free(&sorted);
+	free(sorted);
 
 	return KNOT_EOK;
 }
