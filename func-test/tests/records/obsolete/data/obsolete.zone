@@ -1,0 +1,27 @@
+$ORIGIN obsolete.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 2010111201 10800 3600 1209600 7200
+	NS	dns1
+	NS	dns2
+	MX	10 mail
+
+dns1	A	192.0.2.1
+	AAAA	2001:DB8::1
+
+dns2	A	192.0.2.2
+	AAAA	2001:DB8::2
+
+mail	A	192.0.2.3
+	AAAA	2001:DB8::3
+
+;obsolete-md	MD	domain-name1.	; Bind doens't support MD type,
+;obsolete-md	TYPE3	\# 0C646F6D61696E2D6E616D653100 ; neither this one
+;obsolete-mf	MF	domain-name2.	; Bind doesn't support MF type,
+;obsolete-mf	TYPE4	\# 0C646F6D61696E2D6E616D653200 ; neither this one
+
+obsolete-mb	MB	domain-name3.
+obsolete-mg	MG	domain-name4.
+obsolete-mr	MR	domain-name5.
+obsolete-px	PX	10 domain-name6. domain-name7.
+obsolete-nxt	NXT	domain-name8. NS KEY SOA
