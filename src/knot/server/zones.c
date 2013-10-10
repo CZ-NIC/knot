@@ -2017,6 +2017,21 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	dbg_zload_verb("%s: DNSSEC changes applied\n", msg);
 
+	// Commit transaction.
+	if (transaction) {
+		ret = zones_store_changesets_commit(transaction);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s: Failed to commit stored "
+			               "changesets: %s."
+			               "\n", msg, knot_strerror(ret));
+			xfrin_rollback_update(zone->contents, &new_contents,
+			                      chgsets->changes);
+			zones_free_merged_changesets(chgsets, sec_chs);
+			free(msg);
+			return ret;
+		}
+	}
+
 	// Switch zone contents.
 	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
 	rcu_read_unlock();      /* Unlock for switch. */
@@ -2035,21 +2050,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		/* Free changesets, but not the data. */
 		zones_free_merged_changesets(chgsets, sec_chs);
 		return KNOT_ERROR;
-	}
-
-	// Commit transaction.
-	if (transaction) {
-		ret = zones_store_changesets_commit(transaction);
-		if (ret != KNOT_EOK) {
-			log_zone_error("%s: Failed to commit stored "
-			               "changesets: %s."
-			               "\n", msg, knot_strerror(ret));
-			xfrin_rollback_update(zone->contents, &new_contents,
-			                      chgsets->changes);
-			zones_free_merged_changesets(chgsets, sec_chs);
-			free(msg);
-			return ret;
-		}
 	}
 
 	// Cleanup.
