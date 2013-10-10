@@ -695,6 +695,11 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
+		if (knot_node_is_non_auth(node)) {
+			hattrie_iter_next(it);
+			continue;
+		}
+
 		knot_node_t *nsec3_node;
 		nsec3_node = create_nsec3_node_for_node(node, zone->apex,
 		                                        params, ttl);
