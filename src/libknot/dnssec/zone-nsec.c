@@ -85,10 +85,11 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 
 	hattrie_iter_next(it);
 
+	int result = KNOT_EOK;
 	while (!hattrie_iter_finished(it)) {
 		current = (knot_node_t *)*hattrie_iter_val(it);
 
-		int result = callback(previous, current, data);
+		result = callback(previous, current, data);
 		if (result == NSEC_NODE_SKIP) {
 			// No NSEC should be created for 'current' node, skip
 			;
@@ -103,7 +104,8 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 
 	hattrie_iter_free(it);
 
-	return callback(current, first, data);
+	return result == NSEC_NODE_SKIP ? callback(previous, first, data) :
+	                                  callback(current, first, data);
 }
 
 /*!
