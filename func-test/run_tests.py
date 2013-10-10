@@ -141,12 +141,12 @@ for test in sorted(included):
                 log.info("INTERRUPTED")
             # Stop servers if still running.
             if params.test:
-                params.test.stop()
+                params.test.end()
             exit(1)
 
         # Stop servers if still running.
         if params.test:
-            params.test.stop()
+            params.test.end()
 
         params.case_log.close()
 
