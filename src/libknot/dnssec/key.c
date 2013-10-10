@@ -148,6 +148,7 @@ static int get_key_info_from_public_key(const char *filename,
 	}
 
 	free(buffer);
+	fclose(keyfile);
 
 	if (scanner->r_type != KNOT_RRTYPE_DNSKEY) {
 		scanner_free(scanner);
