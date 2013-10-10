@@ -47,13 +47,13 @@ def test_info():
 def check_log(text, stdout=False):
     msg = "%s (%s)" % (str(text), test_info())
     params.case_log.write(msg + "\n")
-    if stdout:
+    if stdout and params.debug:
         print(msg)
 
 def detail_log(text, stdout=False):
     msg = str(text)
     params.case_log.write(msg + "\n")
-    if stdout:
+    if stdout and params.debug:
         print(msg)
 
 def err(text):
