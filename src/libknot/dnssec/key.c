@@ -457,6 +457,7 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	}
 
 	knot_dname_free(&key_params->name);
+	knot_binary_free(&key_params->rdata);
 
 	knot_binary_free(&key_params->secret);
 
