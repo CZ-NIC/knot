@@ -8,8 +8,8 @@
 #include <config.h>
 #include <assert.h>
 #include <string.h>
-#include "ahtable.h"
-#include "murmurhash3.h"
+#include "common/hattrie/ahtable.h"
+#include "common/hattrie/murmurhash3.h"
 
 enum {
     AH_SORTED  = 0x01,/* sorted iteration */

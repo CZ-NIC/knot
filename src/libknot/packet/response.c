@@ -18,13 +18,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "packet/response.h"
-#include "util/wire.h"
-#include "common.h"
-#include "util/debug.h"
-#include "rrset.h"
-#include "packet/packet.h"
-#include "edns.h"
+#include "libknot/packet/response.h"
+#include "libknot/util/wire.h"
+#include "libknot/common.h"
+#include "libknot/util/debug.h"
+#include "libknot/rrset.h"
+#include "libknot/packet/packet.h"
+#include "libknot/edns.h"
 
 /*----------------------------------------------------------------------------*/
 

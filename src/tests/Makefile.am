@@ -1,6 +1,7 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 
-AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -I$(top_srcdir)/src -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CPPFLAGS = -I$(top_srcdir)/src \
+	      -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
 
 check_PROGRAMS = 			\
 	unittests

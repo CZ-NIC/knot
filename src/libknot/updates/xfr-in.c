@@ -20,23 +20,23 @@
 
 #include "knot/server/journal.h"
 
-#include "updates/xfr-in.h"
+#include "libknot/updates/xfr-in.h"
 
-#include "nameserver/name-server.h"
-#include "util/wire.h"
-#include "util/debug.h"
-#include "packet/packet.h"
-#include "dname.h"
-#include "zone/zone.h"
+#include "libknot/nameserver/name-server.h"
+#include "libknot/util/wire.h"
+#include "libknot/util/debug.h"
+#include "libknot/packet/packet.h"
+#include "libknot/dname.h"
+#include "libknot/zone/zone.h"
 #include "libknot/dnssec/zone-nsec.h"
-#include "packet/query.h"
-#include "common.h"
-#include "updates/changesets.h"
-#include "tsig.h"
-#include "tsig-op.h"
+#include "libknot/packet/query.h"
+#include "libknot/common.h"
+#include "libknot/updates/changesets.h"
+#include "libknot/tsig.h"
+#include "libknot/tsig-op.h"
 #include "common/lists.h"
 #include "common/descriptor.h"
-#include "rdata.h"
+#include "libknot/rdata.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

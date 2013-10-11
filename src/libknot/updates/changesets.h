@@ -27,8 +27,8 @@
 #ifndef _KNOT_CHANGESETS_H_
 #define _KNOT_CHANGESETS_H_
 
-#include "rrset.h"
-#include "zone/node.h"
+#include "libknot/rrset.h"
+#include "libknot/zone/node.h"
 #include "common/lists.h"
 #include "common/mempattern.h"
 

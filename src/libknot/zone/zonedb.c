@@ -20,12 +20,12 @@
 
 #include <urcu.h>
 
-#include "common.h"
-#include "zone/zone.h"
-#include "zone/zonedb.h"
-#include "dname.h"
-#include "zone/node.h"
-#include "util/debug.h"
+#include "libknot/common.h"
+#include "libknot/zone/zone.h"
+#include "libknot/zone/zonedb.h"
+#include "libknot/dname.h"
+#include "libknot/zone/node.h"
+#include "libknot/util/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

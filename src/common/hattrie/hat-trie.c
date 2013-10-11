@@ -9,8 +9,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
-#include "hat-trie.h"
-#include "ahtable.h"
+#include "common/hattrie/hat-trie.h"
+#include "common/hattrie/ahtable.h"
 
 /* number of child nodes for used alphabet */
 #define NODE_CHILDS (TRIE_MAXCHAR+1)

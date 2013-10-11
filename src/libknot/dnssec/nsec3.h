@@ -33,7 +33,7 @@
 #include <string.h>
 
 #include "libknot/dnssec/algorithm.h"
-#include "rrset.h"
+#include "libknot/rrset.h"
 
 /*---------------------------------------------------------------------------*/
 

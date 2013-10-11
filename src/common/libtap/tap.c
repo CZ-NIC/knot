@@ -9,8 +9,8 @@ This file is licensed under the GPL v3
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include "common.h"
-#include "tap.h"
+#include "libknot/common.h"
+#include "common/libtap/tap.h"
 
 static int expected_tests = NO_PLAN;
 static int failed_tests;

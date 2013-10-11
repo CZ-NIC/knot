@@ -17,7 +17,7 @@
 #include <config.h>
 #include <stdio.h>
 
-#include "ref.h"
+#include "common/ref.h"
 
 void ref_init(ref_t *p, ref_destructor_t dtor)
 {

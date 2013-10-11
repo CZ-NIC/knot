@@ -30,10 +30,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "packet/packet.h"
-#include "dname.h"
-#include "rrset.h"
-#include "edns.h"
+#include "libknot/packet/packet.h"
+#include "libknot/dname.h"
+#include "libknot/rrset.h"
+#include "libknot/edns.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

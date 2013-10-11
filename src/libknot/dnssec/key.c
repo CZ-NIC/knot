@@ -27,13 +27,13 @@
 #include <string.h>
 #include <time.h>
 
-#include "binary.h"
-#include "common.h"
 #include "common/getline.h"
-#include "dname.h"
-#include "key.h"
-#include "sig0.h"
-#include "tsig.h"
+#include "libknot/binary.h"
+#include "libknot/common.h"
+#include "libknot/dname.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sig0.h"
+#include "libknot/tsig.h"
 #include "zscanner/zscanner.h"
 
 /*!

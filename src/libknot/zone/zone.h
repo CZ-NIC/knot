@@ -29,14 +29,14 @@
 
 #include <time.h>
 
-#include "zone/node.h"
-#include "dname.h"
+#include "libknot/zone/node.h"
+#include "libknot/dname.h"
 #include "libknot/dnssec/nsec3.h"
 #include "common/ref.h"
 
-#include "zone-tree.h"
+#include "libknot/zone/zone-tree.h"
 
-#include "zone/zone-contents.h"
+#include "libknot/zone/zone-contents.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

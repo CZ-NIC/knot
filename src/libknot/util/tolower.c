@@ -15,7 +15,7 @@
  */
 
 #include <config.h>
-#include "util/tolower.h"
+#include "libknot/util/tolower.h"
 
 const uint8_t char_table[KNOT_CHAR_TABLE_SIZE] = {
 	'\x00',

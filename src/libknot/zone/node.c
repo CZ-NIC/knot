@@ -21,11 +21,11 @@
 
 #include <urcu.h>
 
-#include "common.h"
-#include "zone/node.h"
-#include "rrset.h"
+#include "libknot/common.h"
+#include "libknot/zone/node.h"
+#include "libknot/rrset.h"
 #include "common/descriptor.h"
-#include "util/debug.h"
+#include "libknot/util/debug.h"
 #include "common/hattrie/ahtable.h"
 
 /*----------------------------------------------------------------------------*/

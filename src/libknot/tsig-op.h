@@ -29,8 +29,8 @@
 
 #include <stdint.h>
 
-#include "tsig.h"
-#include "rrset.h"
+#include "libknot/tsig.h"
+#include "libknot/rrset.h"
 #include "libknot/dnssec/key.h"
 
 /*!

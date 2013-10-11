@@ -16,8 +16,8 @@
 
 #include <config.h>
 #include <stdlib.h>
-#include "packet/query.h"
-#include "util/wire.h"
+#include "libknot/packet/query.h"
+#include "libknot/util/wire.h"
 #include "libknot/common.h"
 
 /*----------------------------------------------------------------------------*/

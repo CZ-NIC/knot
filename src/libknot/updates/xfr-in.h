@@ -30,11 +30,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "dname.h"
-#include "zone/zone.h"
-#include "packet/packet.h"
-#include "nameserver/name-server.h"
-#include "updates/changesets.h"
+#include "libknot/dname.h"
+#include "libknot/zone/zone.h"
+#include "libknot/packet/packet.h"
+#include "libknot/nameserver/name-server.h"
+#include "libknot/updates/changesets.h"
 
 /*----------------------------------------------------------------------------*/
 

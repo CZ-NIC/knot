@@ -26,9 +26,9 @@
 #include <stdlib.h>
 #endif
 
-#include "common.h"
-#include "prng.h"
-#include "dSFMT.h"
+#include "libknot/common.h"
+#include "common/prng.h"
+#include "common/dSFMT.h"
 
 /*! \brief TLS unique key for each thread seed. */
 static pthread_key_t tls_prng_key;

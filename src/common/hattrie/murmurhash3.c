@@ -2,7 +2,7 @@
  * by its author, Austin Appleby. */
 
 #include <config.h>
-#include "murmurhash3.h"
+#include "common/hattrie/murmurhash3.h"
 
 static inline uint32_t fmix(uint32_t h)
 {

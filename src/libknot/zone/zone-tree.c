@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "zone/node.h"
-#include "util/debug.h"
+#include "libknot/zone/node.h"
+#include "libknot/util/debug.h"
 #include "common/hattrie/hat-trie.h"
 
 /*----------------------------------------------------------------------------*/

@@ -20,8 +20,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "util/utils.h"
-#include "util/debug.h"
+#include "libknot/util/utils.h"
+#include "libknot/util/debug.h"
 #include "libknot/rrset.h"
 #include "common/descriptor.h"
 #include "common/print.h"

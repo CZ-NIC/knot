@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "name-server.h"
-#include "packet/packet.h"
+#include "libknot/nameserver/name-server.h"
+#include "libknot/packet/packet.h"
 
 /*!
  * \brief Create a response for a given query in the CHAOS class.

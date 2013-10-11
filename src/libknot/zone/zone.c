@@ -21,13 +21,13 @@
 
 #include <urcu.h>
 
-#include "common.h"
-#include "zone/zone.h"
-#include "zone/node.h"
-#include "dname.h"
-#include "util/debug.h"
-#include "util/utils.h"
-#include "zone/zone-contents.h"
+#include "libknot/common.h"
+#include "libknot/zone/zone.h"
+#include "libknot/zone/node.h"
+#include "libknot/dname.h"
+#include "libknot/util/debug.h"
+#include "libknot/util/utils.h"
+#include "libknot/zone/zone-contents.h"
 
 /*! \brief Adaptor for knot_zone_deep_free() */
 static void knot_zone_dtor(struct ref_t *p) {

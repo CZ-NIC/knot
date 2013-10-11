@@ -17,10 +17,10 @@
 #include <config.h>
 #include <strings.h>
 
-#include "chaos.h"
+#include "libknot/nameserver/chaos.h"
 #include "common/descriptor.h"
-#include "packet/packet.h"
-#include "packet/response.h"
+#include "libknot/packet/packet.h"
+#include "libknot/packet/response.h"
 
 /*!
  * \brief Get a string result for a given TXT query.

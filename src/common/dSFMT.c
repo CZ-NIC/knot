@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "dSFMT-params.h"
+#include "common/dSFMT-params.h"
 
 /** dsfmt internal state vector */
 dsfmt_t dsfmt_global_data;

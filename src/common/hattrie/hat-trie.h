@@ -24,7 +24,7 @@ extern "C" {
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include "common.h"
+#include "libknot/common.h"
 #include "common/mempattern.h"
 
 /* Hat-trie defines. */

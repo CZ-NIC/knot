@@ -22,13 +22,13 @@
 #include <time.h>
 #include <inttypes.h>
 
-#include "common.h"
+#include "libknot/common.h"
 #include "common/descriptor.h"
-#include "tsig.h"
-#include "tsig-op.h"
-#include "util/wire.h"
-#include "util/debug.h"
-#include "consts.h"
+#include "libknot/tsig.h"
+#include "libknot/tsig-op.h"
+#include "libknot/util/wire.h"
+#include "libknot/util/debug.h"
+#include "libknot/consts.h"
 #include "libknot/dnssec/key.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest

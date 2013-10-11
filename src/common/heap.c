@@ -38,7 +38,7 @@
  ***/
 
 #include <config.h>
-#include "heap.h"
+#include "common/heap.h"
 #include <string.h>
 #include <stdlib.h>
 

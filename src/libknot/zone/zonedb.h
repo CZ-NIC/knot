@@ -31,9 +31,9 @@
 #define _KNOT_ZONEDB_H_
 
 #include "common/hattrie/hat-trie.h"
-#include "zone/zone.h"
-#include "zone/node.h"
-#include "dname.h"
+#include "libknot/zone/zone.h"
+#include "libknot/zone/node.h"
+#include "libknot/dname.h"
 
 /*!
  * \brief Zone database structure. Contains all zones managed by the server.

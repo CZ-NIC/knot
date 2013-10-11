@@ -18,9 +18,9 @@
 #include <assert.h>
 #include <time.h>
 #include "common/errcode.h"
-#include "sig0.h"
-#include "sign.h"
-#include "util/wire.h"
+#include "libknot/dnssec/sig0.h"
+#include "libknot/dnssec/sign.h"
+#include "libknot/util/wire.h"
 
 /*!
  * \brief Lifetime fudge of the SIG(0) packets in seconds.

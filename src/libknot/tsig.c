@@ -22,13 +22,13 @@
 #include <assert.h>
 #include <time.h>
 
-#include "tsig.h"
-#include "util/debug.h"
-#include "common.h"
-#include "util/utils.h"
-#include "rrset.h"
-#include "dname.h"
-#include "consts.h"
+#include "libknot/tsig.h"
+#include "libknot/util/debug.h"
+#include "libknot/common.h"
+#include "libknot/util/utils.h"
+#include "libknot/rrset.h"
+#include "libknot/dname.h"
+#include "libknot/consts.h"
 
 /*! \brief TSIG field offsets. */
 typedef enum tsig_off_t {

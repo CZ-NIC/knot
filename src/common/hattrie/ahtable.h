@@ -26,8 +26,8 @@ extern "C" {
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "common.h"
-#include "hat-trie.h"
+#include "libknot/common.h"
+#include "common/hattrie/hat-trie.h"
 
 typedef unsigned char* slot_t;
 

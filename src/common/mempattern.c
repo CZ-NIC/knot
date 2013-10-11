@@ -21,7 +21,7 @@
 #include <sys/resource.h>
 #include <stdarg.h>
 
-#include "mempattern.h"
+#include "common/mempattern.h"
 #include "common/log.h"
 #include "common/slab/alloc-common.h"
 

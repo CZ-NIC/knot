@@ -27,7 +27,7 @@
 #ifndef _KNOT_UTILS_H_
 #define _KNOT_UTILS_H_
 
-#include "util/endian.h"
+#include "libknot/util/endian.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>

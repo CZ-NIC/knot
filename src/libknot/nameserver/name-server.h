@@ -39,14 +39,14 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include "zone/zonedb.h"
-#include "edns.h"
-#include "consts.h"
-#include "tsig.h"
-#include "packet/packet.h"
+#include "libknot/zone/zonedb.h"
+#include "libknot/edns.h"
+#include "libknot/consts.h"
+#include "libknot/tsig.h"
+#include "libknot/packet/packet.h"
 #include "common/sockaddr.h"
 #include "common/lists.h"
-#include "updates/changesets.h"
+#include "libknot/updates/changesets.h"
 
 struct conf_t;
 struct server_t;

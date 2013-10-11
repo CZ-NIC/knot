@@ -19,13 +19,13 @@
 #include <time.h>
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
+#include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/zone-events.h"
+#include "libknot/dnssec/zone-keys.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
-#include "libknot/dnssec/zone-keys.h"
-#include "libknot/dnssec/policy.h"
-#include "libknot/zone/zone.h"
 #include "libknot/util/debug.h"
+#include "libknot/zone/zone.h"
 
 static uint32_t time_now(void)
 {

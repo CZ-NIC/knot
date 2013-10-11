@@ -12,7 +12,7 @@
 
 #undef LOCAL_DEBUG
 
-#include "mempool.h"
+#include "common/mempool.h"
 #include "common/mempattern.h"
 
 #include <string.h>

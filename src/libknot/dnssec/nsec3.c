@@ -22,13 +22,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "common.h"
 #include "common/descriptor.h"
 #include "common/memdup.h"
+#include "libknot/common.h"
 #include "libknot/dnssec/algorithm.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/rdata.h"
-#include "util/tolower.h"
+#include "libknot/util/tolower.h"
 
 /*!
  * \brief Compute NSEC3 SHA1 hash.

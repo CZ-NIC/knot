@@ -73,10 +73,10 @@
 /* KNOT_DNAME_DEBUG -- in configure.ac */
 /* #define KNOT_DDNS_DEBUG -- \todo Use this or delete. */
 
-#include "rrset.h"
-#include "zone/node.h"
-#include "zone/zone.h"
-#include "util/utils.h"
+#include "libknot/rrset.h"
+#include "libknot/zone/node.h"
+#include "libknot/zone/zone.h"
+#include "libknot/util/utils.h"
 #include "common/print.h"
 
 /*!

@@ -19,16 +19,16 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "updates/ddns.h"
-#include "updates/changesets.h"
+#include "libknot/updates/ddns.h"
+#include "libknot/updates/changesets.h"
 #include "libknot/rdata.h"
-#include "util/debug.h"
-#include "packet/packet.h"
-#include "common.h"
-#include "consts.h"
+#include "libknot/util/debug.h"
+#include "libknot/packet/packet.h"
+#include "libknot/common.h"
+#include "libknot/consts.h"
 #include "common/mempattern.h"
-#include "nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
-#include "updates/xfr-in.h"
+#include "libknot/nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
+#include "libknot/updates/xfr-in.h"
 #include "common/descriptor.h"
 
 /*----------------------------------------------------------------------------*/

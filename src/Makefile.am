@@ -6,9 +6,9 @@ bin_PROGRAMS = kdig khost knsupdate knsec3hash
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
 
 # $(YACC) will generate header file
-AM_CPPFLAGS = -I$(top_srcdir)/src/libknot -DSYSCONFDIR='"$(sysconfdir)"' \
-	-DSBINDIR='"$(sbindir)"' -DCONFIG_DIR='"${config_dir}"' \
-	-DSTORAGE_DIR='"${storage_dir}"' -DRUN_DIR='"${run_dir}"'
+AM_CPPFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"' \
+	      -DCONFIG_DIR='"${config_dir}"' -DSTORAGE_DIR='"${storage_dir}"' \
+	      -DRUN_DIR='"${run_dir}"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix

@@ -25,9 +25,9 @@
 #include <sys/mman.h>
 
 #include "common/crc.h"
-#include "common.h"
+#include "libknot/common.h"
 #include "knot/other/debug.h"
-#include "journal.h"
+#include "knot/server/journal.h"
 
 /*! \brief Infinite file size limit. */
 #define FSLIMIT_INF (~((size_t)0))

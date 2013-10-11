@@ -29,9 +29,9 @@
 
 #include <stdint.h>
 #include <time.h>
-#include "dname.h"
-#include "binary.h"
-#include "tsig.h"
+#include "libknot/dname.h"
+#include "libknot/binary.h"
+#include "libknot/tsig.h"
 
 /*----------------------------------------------------------------------------*/
 

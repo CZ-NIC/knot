@@ -16,7 +16,7 @@
 
 #include <config.h>
 #include <sys/stat.h>
-#include "remote.h"
+#include "knot/ctl/remote.h"
 #include "common/log.h"
 #include "common/fdset.h"
 #include "common/prng.h"

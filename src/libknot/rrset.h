@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "dname.h"
+#include "libknot/dname.h"
 
 /*----------------------------------------------------------------------------*/
 /*!

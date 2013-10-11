@@ -18,12 +18,12 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "packet/packet.h"
-#include "util/debug.h"
-#include "common.h"
+#include "libknot/packet/packet.h"
+#include "libknot/util/debug.h"
+#include "libknot/common.h"
 #include "common/descriptor.h"
-#include "util/wire.h"
-#include "tsig.h"
+#include "libknot/util/wire.h"
+#include "libknot/tsig.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

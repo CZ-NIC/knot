@@ -17,8 +17,8 @@
 #include <config.h>
 #include <assert.h>
 
-#include "estimator.h"
-#include "dname.h"
+#include "knot/zone/estimator.h"
+#include "libknot/dname.h"
 #include "common/lists.h"
 #include "libknot/zone/node.h"
 #include "common/hattrie/ahtable.h"

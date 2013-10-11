@@ -32,7 +32,7 @@
 #include "common/mempattern.h"
 #include "libknot/rdata.h"
 
-#include "semantic-check.h"
+#include "knot/zone/semantic-check.h"
 
 static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_MISSING_SOA] = "SOA record missing in zone!",

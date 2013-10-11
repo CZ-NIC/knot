@@ -20,8 +20,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "common.h"
-#include "util/utils.h"
+#include "libknot/common.h"
+#include "libknot/util/utils.h"
 #include "common/prng.h"
 
 /*----------------------------------------------------------------------------*/

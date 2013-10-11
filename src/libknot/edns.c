@@ -19,10 +19,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "edns.h"
-#include "common.h"
+#include "libknot/edns.h"
+#include "libknot/common.h"
 #include "common/descriptor.h"
-#include "util/debug.h"
+#include "libknot/util/debug.h"
 
 /*! \brief Various EDNS constatns. */
 enum knot_edns_consts {

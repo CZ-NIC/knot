@@ -1,7 +1,7 @@
 #ifndef DSFMT_PARAMS_H
 #define DSFMT_PARAMS_H
 
-#include "dSFMT.h"
+#include "common/dSFMT.h"
 
 /*----------------------
   the parameters of DSFMT
@@ -55,7 +55,7 @@
 #endif
 
 #if DSFMT_MEXP == 521
-  #include "dSFMT-params521.h"
+  #include "common/dSFMT-params521.h"
 #elif DSFMT_MEXP == 1279
   #include "dSFMT-params1279.h"
 #elif DSFMT_MEXP == 2203

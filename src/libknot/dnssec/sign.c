@@ -15,12 +15,6 @@
 */
 
 #include <config.h>
-#include "common.h"
-#include "common/descriptor.h"
-#include "common/errcode.h"
-#include "libknot/dnssec/algorithm.h"
-#include "libknot/dnssec/key.h"
-#include "libknot/dnssec/sign.h"
 #include <assert.h>
 #include <openssl/dsa.h>
 #include <openssl/opensslconf.h>
@@ -29,6 +23,12 @@
 #endif
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
+#include "common/descriptor.h"
+#include "common/errcode.h"
+#include "libknot/common.h"
+#include "libknot/dnssec/algorithm.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sign.h"
 
 struct algorithm_functions;
 typedef struct algorithm_functions algorithm_functions_t;

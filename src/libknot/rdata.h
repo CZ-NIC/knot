@@ -28,9 +28,9 @@
 #define _KNOT_RDATA_H_
 
 #include "common/descriptor.h"
-#include "dname.h"
-#include "rrset.h"
-#include "util/utils.h"
+#include "libknot/dname.h"
+#include "libknot/rrset.h"
+#include "libknot/util/utils.h"
 
 static inline
 const knot_dname_t *knot_rdata_cname_name(const knot_rrset_t *rrset)

@@ -26,7 +26,7 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "common.h"
+#include "libknot/common.h"
 #include "common/evqueue.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"

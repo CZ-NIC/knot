@@ -29,8 +29,8 @@
 
 #include <stdint.h>
 
-#include "util/utils.h"
-#include "rrset.h"
+#include "libknot/util/utils.h"
+#include "libknot/rrset.h"
 
 /*----------------------------------------------------------------------------*/
 /*! \brief Structure representing one OPT RR Option. */

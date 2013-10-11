@@ -22,16 +22,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "consts.h"
-#include "common.h"
+#include "libknot/consts.h"
+#include "libknot/common.h"
 #include "common/mempattern.h"
-#include "rrset.h"
+#include "libknot/rrset.h"
 #include "libknot/rrset-dump.h"
 #include "common/descriptor.h"
-#include "util/debug.h"
-#include "util/utils.h"
-#include "packet/response.h"
-#include "util/wire.h"
+#include "libknot/util/debug.h"
+#include "libknot/util/utils.h"
+#include "libknot/packet/response.h"
+#include "libknot/util/wire.h"
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
 

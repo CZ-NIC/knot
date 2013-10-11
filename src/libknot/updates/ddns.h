@@ -27,12 +27,12 @@
 #ifndef _KNOT_DDNS_H_
 #define _KNOT_DDNS_H_
 
-#include "updates/changesets.h"
-#include "zone/zone.h"
-#include "packet/packet.h"
-#include "rrset.h"
-#include "dname.h"
-#include "consts.h"
+#include "libknot/updates/changesets.h"
+#include "libknot/zone/zone.h"
+#include "libknot/packet/packet.h"
+#include "libknot/rrset.h"
+#include "libknot/dname.h"
+#include "libknot/consts.h"
 #include "common/lists.h"
 
 typedef struct knot_ddns_prereq_t {

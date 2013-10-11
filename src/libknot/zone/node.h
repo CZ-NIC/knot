@@ -28,8 +28,8 @@
 #ifndef _KNOT_NODE_H_
 #define _KNOT_NODE_H_
 
-#include "dname.h"
-#include "rrset.h"
+#include "libknot/dname.h"
+#include "libknot/rrset.h"
 #include "common/hattrie/ahtable.h"
 
 struct knot_zone;

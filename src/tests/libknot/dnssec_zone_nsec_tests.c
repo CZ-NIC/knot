@@ -16,7 +16,7 @@
 
 #include <config.h>
 
-#include "dnssec_zone_nsec_tests.h"
+#include "tests/libknot/dnssec_zone_nsec_tests.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/zone-nsec.h"
 

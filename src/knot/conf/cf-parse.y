@@ -33,7 +33,7 @@
 #include "libknot/binary.h"
 #include "libknot/edns.h"
 #include "knot/conf/conf.h"
-#include "libknotd_la-cf-parse.h" /* Automake generated header. */
+#include "knot/conf/libknotd_la-cf-parse.h" /* Automake generated header. */
 
 extern int cf_lex (YYSTYPE *lvalp, void *scanner);
 extern void cf_error(void *scanner, const char *format, ...);

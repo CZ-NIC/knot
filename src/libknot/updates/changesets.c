@@ -19,14 +19,14 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "updates/changesets.h"
+#include "libknot/updates/changesets.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
-#include "rrset.h"
-#include "util/debug.h"
-#include "rdata.h"
+#include "libknot/rrset.h"
+#include "libknot/util/debug.h"
+#include "libknot/rdata.h"
 
 static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
                                          const knot_rrset_t *rrset2)
