@@ -800,6 +800,20 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 		return KNOT_ENOMEM;
 	}
 
+	// add unknown keys from zone
+	for (int i = 0; dnskeys && i < dnskeys->rdata_count; i++) {
+		uint16_t keytag = knot_rdata_rrsig_key_tag(dnskeys, i);
+		if (get_zone_key(zone_keys, keytag) != NULL) {
+			continue;
+		}
+
+		result = knot_rrset_add_rr_from_rrset(new_dnskeys, dnskeys, i);
+		if (result != KNOT_EOK) {
+			goto fail;
+		}
+	}
+
+	// add known keys from key database
 	for (int i = 0; i < zone_keys->count; i++) {
 		const knot_dnssec_key_t *key = &zone_keys->keys[i];
 		const knot_binary_t *rdata = &key->dnskey_rdata;
