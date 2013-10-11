@@ -14,6 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <config.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
