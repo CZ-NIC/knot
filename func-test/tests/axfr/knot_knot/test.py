@@ -21,4 +21,4 @@ master.zones_wait(zones)
 slave.zones_wait(zones)
 t.xfr_diff(master, slave, zones)
 
-t.stop()
+t.end()

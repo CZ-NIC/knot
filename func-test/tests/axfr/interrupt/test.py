@@ -19,4 +19,4 @@ dnstest.check_log("Killing master %s" % master.name)
 master.proc.kill()
 t.sleep(5)
 
-t.stop()
+t.end()

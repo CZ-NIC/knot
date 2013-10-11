@@ -35,4 +35,4 @@ resp.check(rcode="REFUSED")
 t.sleep(2)
 t.xfr_diff(master, slave, zone)
 
-t.stop()
+t.end()

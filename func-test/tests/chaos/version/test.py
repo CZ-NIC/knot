@@ -34,4 +34,4 @@ resp.check(rcode="REFUSED")
 resp = server4.dig("version.server", "TXT", "CH")
 resp.check(rcode="REFUSED")
 
-t.stop()
+t.end()

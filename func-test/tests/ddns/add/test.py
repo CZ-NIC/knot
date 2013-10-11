@@ -28,4 +28,4 @@ update.send()
 resp_a = srv.dig("test2.sub.example.com.", "A")
 resp_a.check("1.2.3.4", 2222)
 
-t.stop()
+t.end()

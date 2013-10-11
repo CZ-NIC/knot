@@ -30,4 +30,4 @@ resp = knot.dig("example.cz", "SOA")
 resp.check(rcode="REFUSED")
 resp.cmp(bind)
 
-t.stop()
+t.end()

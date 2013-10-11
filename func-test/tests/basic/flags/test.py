@@ -45,4 +45,4 @@ resp = knot.dig("513resp.flags", "TXT", udp=False)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD")
 resp.cmp(bind)
 
-t.stop()
+t.end()

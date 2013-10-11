@@ -44,4 +44,4 @@ resp.check_edns()
 resp = server5.dig("example.com", "SOA", nsid=True)
 resp.check_edns(nsid=hex_name)
 
-t.stop()
+t.end()

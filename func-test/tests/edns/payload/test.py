@@ -29,4 +29,4 @@ resp.cmp(bind)
 resp = knot.dig("513resp.flags", "TXT", udp=True, bufsize=524)
 resp.check(noflags="TC")
 
-t.stop()
+t.end()

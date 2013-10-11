@@ -35,6 +35,8 @@ nsd_vars = [
 SEP = "------------------------------------"
 
 def test_info():
+    '''Get current test case name'''
+
     info = ""
     frames = inspect.getouterframes(inspect.currentframe())
     for frame in frames:
@@ -42,33 +44,47 @@ def test_info():
             info = "%s#%i" % (params.test_dir, frame[2])
             break
     parts = info.split("/")
-    return parts[-2] + "/" + parts[-1]
+
+    if len(parts) > 1:
+        return parts[-2] + "/" + parts[-1]
+    else:
+        return "dnstest"
 
 def check_log(text, stdout=False):
+    '''Log message header'''
+
     msg = "%s (%s)" % (str(text), test_info())
     params.case_log.write(msg + "\n")
     if stdout and params.debug:
         print(msg)
 
 def detail_log(text, stdout=False):
+    '''Log message body'''
+
     msg = str(text)
     params.case_log.write(msg + "\n")
     if stdout and params.debug:
         print(msg)
 
 def err(text):
+    '''Log error'''
+
     check_log("ERROR", True)
     detail_log(text, True)
     detail_log(SEP, True)
 
 def isset(value, name):
+    '''Check if value is True'''
+
     if not value:
         params.err = True
-        check_log("IS SET %s" + name, True)
+        check_log("IS SET " + name, True)
         detail_log("  False", True)
         detail_log(SEP, True)
 
 def compare(value, expected, name):
+    '''Compare two values'''
+
     if value != expected:
         params.err = True
         check_log("COMPARE " + name, True)
@@ -76,6 +92,8 @@ def compare(value, expected, name):
         detail_log(SEP, True)
 
 def compare_sections(section1, section2, name):
+    '''Compare two message sections'''
+
     if section1 == section2:
         return
 
@@ -1081,6 +1099,8 @@ class DnsTest(object):
             server.gen_confile()
 
     def start(self):
+        '''Start all test servers'''
+
         if self.start_tries > DnsTest.MAX_START_TRIES:
             raise Exception("Can't start all servers")
 
@@ -1102,13 +1122,18 @@ class DnsTest(object):
                 self.start()
 
         params.test = self
+        self.start_tries = 0
 
     def stop(self):
+        '''Stop all servers'''
+
         for server in self.servers:
             server.stop()
         params.test = None
 
     def end(self):
+        '''Finish testing'''
+
         self.stop()
         for server in self.servers:
             server._valgrind_check()

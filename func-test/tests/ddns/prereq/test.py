@@ -199,4 +199,4 @@ resp.check("text")
 
 srv.flush()
 
-t.stop()
+t.end()

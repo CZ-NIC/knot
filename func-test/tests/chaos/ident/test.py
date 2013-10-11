@@ -35,4 +35,4 @@ resp.check(rcode="REFUSED")
 resp = server4.dig("id.server", "TXT", "CH")
 resp.check(rcode="REFUSED")
 
-t.stop()
+t.end()
