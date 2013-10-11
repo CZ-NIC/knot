@@ -30,6 +30,8 @@
 #include "utils/common/netio.h"		// net_t
 #include "utils/common/params.h"	// style_t
 #include "libknot/libknot.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sign.h"
 
 /*! \brief Holds data required between signing and signature verification. */
 typedef struct {
@@ -42,22 +44,20 @@ typedef struct {
 /*!
  * \brief Allocates empty packet and sets packet size and random id.
  *
- * \param type		Packet preallocation type.
  * \param max_size	Maximal packet size.
  *
  * \retval packet	if success.
  * \retval NULL		if error.
  */
-knot_packet_t* create_empty_packet(const knot_packet_prealloc_type_t type,
-                                   const size_t                      max_size);
+knot_packet_t* create_empty_packet(const size_t max_size);
 
 /*!
  * \brief Prints information header for transfer.
  *
- * \param question	Packet question section.
+ * \param packet	Parsed packet.
  * \param style		Style of the output.
  */
-void print_header_xfr(const knot_question_t *question, const style_t *style);
+void print_header_xfr(const knot_packet_t *packet, const style_t *style);
 
 /*!
  * \brief Prints answer section for 1 transfer message.

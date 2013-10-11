@@ -36,7 +36,7 @@
 /*! \brief Structure containing server information. */
 typedef struct {
 	/*! List node (for list container). */
-	node	n;
+	node_t	n;
 	/*! Name or address of the server. */
 	char	*name;
 	/*! Name or number of the service. */

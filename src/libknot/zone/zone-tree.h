@@ -52,6 +52,15 @@ knot_zone_tree_t* knot_zone_tree_create();
 size_t knot_zone_tree_weight(knot_zone_tree_t* tree);
 
 /*!
+ * \brief Checks if the zone tree is empty.
+ *
+ * \param tree Zone tree to check.
+ *
+ * \return Nonzero if the zone tree is empty.
+ */
+int knot_zone_tree_is_empty(knot_zone_tree_t *tree);
+
+/*!
  * \brief Inserts the given node into the zone tree.
  *
  * \param tree Zone tree to insert the node into.

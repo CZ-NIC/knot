@@ -30,15 +30,19 @@
 
 #include "dname.h"
 #include "rrset.h"
+#include "common/hattrie/ahtable.h"
 
 struct knot_zone;
+
+/*! \brief RRSet count in node if there is only NSEC (and possibly its RRSIG).*/
+#define KNOT_NODE_RRSET_COUNT_ONLY_NSEC 1
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
  *        name in a zone.
  *
- * RRSets are ordered by type and stored in a skip-list to allow fast lookup.
+ * RRSets are stored in an array.
  */
 struct knot_node {
 	knot_dname_t *owner; /*!< Domain name being the owner of this node. */
@@ -95,12 +99,11 @@ typedef enum {
 	KNOT_NODE_FLAGS_DELEG = (uint8_t)0x01,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	KNOT_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
-	/*! \brief Node is old and will be removed (during update). */
-	KNOT_NODE_FLAGS_OLD = (uint8_t)0x04,
-	/*! \brief Node is new and should not be used while zoen is old. */
-	KNOT_NODE_FLAGS_NEW = (uint8_t)0x08,
-	/*! \brief Node is empty and will be deleted after update. */
-	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10
+	/*! \brief Node is empty and will be deleted after update.
+	 *  \todo Remove after dname refactoring, update description in node. */
+	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10,
+	/*! \brief NSEC in this node needs new RRSIGs. Used for signing. */
+	KNOT_NODE_FLAGS_REPLACED_NSEC = (uint8_t)0x20
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
@@ -117,7 +120,7 @@ typedef enum {
  *
  * \return Newly created node or NULL if an error occured.
  */
-knot_node_t *knot_node_new(knot_dname_t *owner, knot_node_t *parent,
+knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
                                uint8_t flags);
 
 /*!
@@ -300,16 +303,6 @@ const knot_dname_t *knot_node_owner(const knot_node_t *node);
 knot_dname_t *knot_node_get_owner(const knot_node_t *node);
 
 /*!
- * \brief Set node owner to specified dname.
- *
- * Previous owner will be replaced if exist.
- *
- * \param node Specified node.
- * \param owner New owner dname.
- */
-void knot_node_set_owner(knot_node_t *node, knot_dname_t* owner);
-
-/*!
  * \brief Returns the wildcard child of the node.
  *
  * \param node Node to get the owner of.
@@ -385,20 +378,16 @@ void knot_node_set_auth(knot_node_t *node);
 
 int knot_node_is_auth(const knot_node_t *node);
 
-int knot_node_is_new(const knot_node_t *node);
+int knot_node_is_replaced_nsec(const knot_node_t *node);
 
-int knot_node_is_old(const knot_node_t *node);
+void knot_node_set_replaced_nsec(knot_node_t *node);
 
-void knot_node_set_new(knot_node_t *node);
+void knot_node_clear_replaced_nsec(knot_node_t *node);
 
-void knot_node_set_old(knot_node_t *node);
-
-void knot_node_clear_new(knot_node_t *node);
-
-void knot_node_clear_old(knot_node_t *node);
-
+//! \todo remove after dname refactoring
 int knot_node_is_empty(const knot_node_t *node);
 
+//! \todo remove after dname refactoring
 void knot_node_set_empty(knot_node_t *node);
 
 /*!
@@ -440,6 +429,19 @@ void knot_node_free(knot_node_t **node);
 int knot_node_compare(knot_node_t *node1, knot_node_t *node2);
 
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
+
+/*!
+ * \brief Checks whether RRSet in a node has to be signed.
+ *
+ * \param node   Node containing the RRSet.
+ * \param rrset  RRSet we are checking for.
+ * \param table  Optional hash table with already signed RRs.
+ *
+ * \return True if RR should be signed, false otherwise.
+ */
+bool knot_node_rr_should_be_signed(const knot_node_t *node,
+                                   const knot_rrset_t *rrset,
+                                   ahtable_t *table);
 
 #endif /* _KNOT_NODE_H_ */
 

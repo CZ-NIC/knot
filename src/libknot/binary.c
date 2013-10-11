@@ -18,33 +18,53 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "binary.h"
 #include "common/base64.h"
 #include "common/errcode.h"
+#include "common/memdup.h"
+#include "libknot/binary.h"
 
-int knot_binary_from_base64(const char *base64, knot_binary_t *binary)
+int knot_binary_from_base64(const char *base64, knot_binary_t *to)
 {
-	if (!binary)
+	if (!base64 || !to) {
 		return KNOT_EINVAL;
+	}
 
 	uint8_t *data;
 	int32_t size;
 
 	size = base64_decode_alloc((uint8_t *)base64, strlen(base64), &data);
 	if (size < 0) {
-		return size;
+		return (int)size;
 	}
 
-	binary->data = data;
-	binary->size = size;
+	to->data = data;
+	to->size = size;
+
+	return KNOT_EOK;
+}
+
+int knot_binary_from_string(const uint8_t *data, size_t size, knot_binary_t *to)
+{
+	if (!data || !to) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *copy = knot_memdup(data, size);
+	if (!copy) {
+		return KNOT_ENOMEM;
+	}
+
+	to->data = copy;
+	to->size = size;
 
 	return KNOT_EOK;
 }
 
 int knot_binary_free(knot_binary_t *binary)
 {
-	if (!binary)
+	if (!binary) {
 		return KNOT_EINVAL;
+	}
 
 	if (binary->data) {
 		free(binary->data);
@@ -52,5 +72,27 @@ int knot_binary_free(knot_binary_t *binary)
 		binary->size = 0;
 	}
 
+	return KNOT_EOK;
+}
+
+int knot_binary_dup(const knot_binary_t *from, knot_binary_t *to)
+{
+	if (!from || !to) {
+		return KNOT_EINVAL;
+	}
+
+	if (from->size == 0) {
+		to->size = 0;
+		to->data = NULL;
+		return KNOT_EOK;
+	}
+
+	to->data = malloc(from->size * sizeof(uint8_t));
+	if (!to->data) {
+		return KNOT_ENOMEM;
+	}
+
+	to->size = from->size;
+	memcpy(to->data, from->data, from->size * sizeof(uint8_t));
 	return KNOT_EOK;
 }

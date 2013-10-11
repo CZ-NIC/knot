@@ -34,10 +34,13 @@
 /*!
  * \brief Basic limits for domain names (RFC 1035).
  */
-typedef enum {
-	KNOT_MAX_DNAME_LENGTH = 255, /*!< 1-byte maximum. */
-	KNOT_MAX_DNAME_LABELS = 127  /*!< 1-char labels. */
-} knot_const_t;
+#define KNOT_DNAME_MAXLEN 255     /*!< 1-byte maximum. */
+#define KNOT_DNAME_MAXLABELS 127  /*!< 1-char labels. */
+
+/*!
+ * \brief Often used sizes.
+ */
+#define KNOT_RR_HEADER_SIZE 10
 
 /*!
  * \brief DNS operation codes (OPCODEs).
@@ -128,28 +131,6 @@ typedef enum {
 } knot_tsig_algorithm_digest_length_t;
 
 /*!
- * \brief DNSSEC algorithm numbers.
- *
- * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
- */
-typedef enum {
-	KNOT_DNSSEC_ALG_RSAMD5             =  1,
-	KNOT_DNSSEC_ALG_DH                 =  2,
-	KNOT_DNSSEC_ALG_DSA                =  3,
-
-	KNOT_DNSSEC_ALG_RSASHA1            =  5,
-	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1     =  6,
-	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1 =  7,
-	KNOT_DNSSEC_ALG_RSASHA256          =  8,
-
-	KNOT_DNSSEC_ALG_RSASHA512          = 10,
-
-	KNOT_DNSSEC_ALG_ECC_GOST           = 12,
-	KNOT_DNSSEC_ALG_ECDSAP256SHA256    = 13,
-	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14
-} knot_dnssec_algorithm_t;
-
-/*!
  * \brief DS digest lengths.
  */
 enum knot_ds_algorithm_len
@@ -190,7 +171,12 @@ extern knot_lookup_table_t knot_tsig_alg_names[];
 /*!
  * \brief TSIG key algorithm names in a domain form.
  */
-extern knot_lookup_table_t knot_tsig_alg_domain_names[];
+extern knot_lookup_table_t knot_tsig_alg_dnames_str[];
+
+/*!
+ * \brief TSIG key algorithm domain names.
+ */
+extern knot_lookup_table_t knot_tsig_alg_dnames[];
 
 /*!
  * \brief Returns length of TSIG digest for given algorithm.

@@ -198,8 +198,8 @@ void sockaddr_prep(sockaddr_t *addr)
 char *sockaddr_hostname(void)
 {
 	/* Fetch hostname. */
-	char host[KNOT_MAX_DNAME_LENGTH];
-	if (gethostname(host, KNOT_MAX_DNAME_LENGTH) != 0) {
+	char host[KNOT_DNAME_MAXLEN];
+	if (gethostname(host, KNOT_DNAME_MAXLEN) != 0) {
 		return NULL;
 	}
 

@@ -293,7 +293,7 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
 		knot_changesets_t *chs = (knot_changesets_t *)rq->data;
-		knot_free_changesets(&chs);
+		knot_changesets_free(&chs);
 		rq->data = NULL;
 		assert(rq->new_contents == NULL);
 	} else if (rq->type == XFR_TYPE_FORWARD) {
@@ -577,6 +577,7 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 {
 	int ret = KNOT_EINVAL;
+	rcu_read_lock();
 	knot_nameserver_t *ns = w->master->ns;
 
 	if (rq->type == XFR_TYPE_AIN) {
@@ -614,6 +615,8 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 		rq->new_contents = NULL; /* Do not free. */
 	}
 
+	rcu_read_unlock();
+
 	return ret;
 }
 
@@ -621,7 +624,7 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 {
 	knot_nameserver_t *ns = w->master->ns;
-	knot_packet_t *re = knot_packet_new(KNOT_PACKET_PREALLOC_RESPONSE);
+	knot_packet_t *re = knot_packet_new();
 	if (re == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -937,7 +940,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 	/* Evaluate configured key for claimed key name.*/
 	key = xfr->tsig_key; /* Expects already set key (check_zone) */
 	xfr->tsig_key = 0;
-	if (key && kname && knot_dname_compare(key->name, kname) == 0) {
+	if (key && kname && knot_dname_cmp(key->name, kname) == 0) {
 		dbg_xfr("xfr: found claimed TSIG key for comparison\n");
 	} else {
 
@@ -1357,7 +1360,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 
 	/* Cleanup. */
 	knot_packet_free(&rq->response);  /* Free response. */
-	knot_free_changesets((knot_changesets_t **)(&rq->data));
+	knot_changesets_free((knot_changesets_t **)(&rq->data));
 	free(rq->zname);
 
 	/* Free request. */

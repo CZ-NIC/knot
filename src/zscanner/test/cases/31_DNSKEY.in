@@ -17,7 +17,6 @@ $TTL	1
 @	DNSKEY
 @	DNSKEY						; Empty rdata
 @	DNSKEY	\# 0					; Hex empty rdata
-@	DNSKEY	\#					; Missing hex length
 @	DNSKEY	65536	0	0	AA==		; Type overflow
 @	DNSKEY	0	256	0	AA==		; Key tag overflow
 @	DNSKEY	0	0	256	AA==		; Algorithm overflow
@@ -31,5 +30,3 @@ $TTL	1
 @	DNSKEY	0	0	0	===		; Bad padding
 @	DNSKEY	0	0	0	====		; Bad padding
 @	DNSKEY	0	0	0			; Missing item
-@	DNSKEY	\# 5 000000000000			; Too long rdata
-@	DNSKEY	\# 6 0000000000				; Bad rdata length

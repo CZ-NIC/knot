@@ -29,7 +29,7 @@
 
 #include "zone/node.h"
 #include "dname.h"
-#include "nsec3.h"
+#include "libknot/dnssec/nsec3.h"
 
 #include "zone-tree.h"
 
@@ -152,9 +152,8 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
  * \retval KNOT_EOUTOFZONE
  */
 int knot_zone_contents_add_rrset(knot_zone_contents_t *contents,
-                          knot_rrset_t *rrset,
-                          knot_node_t **node,
-                          knot_rrset_dupl_handling_t dupl);
+                                 knot_rrset_t *rrset, knot_node_t **node,
+                                 knot_rrset_dupl_handling_t dupl);
 
 int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
                            knot_rrset_t *rrsigs,
@@ -496,33 +495,6 @@ void knot_zone_contents_free(knot_zone_contents_t **contents);
 void knot_zone_contents_deep_free(knot_zone_contents_t **contents);
 
 int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents);
-
-const knot_dname_t *knot_zone_contents_find_dname_in_rdata(
-	const knot_zone_contents_t *zone,
-	const knot_dname_t *dname);
-
-/*!
- * \brief Creates a NSEC3 hashed name for the given domain name.
- *
- * \note The zone's NSEC3PARAM record must be parsed prior to calling this
- *       function (see knot_zone_load_nsec3param()).
- *
- * \param zone Zone from which to take the NSEC3 parameters.
- * \param name Domain name to hash.
- * \param nsec3_name Hashed name.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENSEC3PAR
- * \retval KNOT_ECRYPTO
- * \retval KNOT_ERROR if an error occured while creating a new domain name
- *                      from the hash or concatenating it with the zone name.
- */
-int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
-                                           const knot_dname_t *name,
-                                           knot_dname_t **nsec3_name);
-
-void knot_zone_contents_insert_dname_into_table(knot_dname_t **in_dname,
-                                                hattrie_t *lookup_tree);
 
 /*!
  * \brief Fetch zone serial.

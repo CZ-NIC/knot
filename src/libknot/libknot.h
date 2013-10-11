@@ -30,14 +30,11 @@
 #include "consts.h"
 #include "dname.h"
 #include "edns.h"
-#include "nsec3.h"
 #include "packet/packet.h"
 #include "packet/query.h"
 #include "packet/response.h"
 #include "rrset.h"
 #include "rrset-dump.h"
-#include "sign/key.h"
-#include "sign/sig0.h"
 #include "tsig.h"
 #include "tsig-op.h"
 #include "util/tolower.h"
@@ -46,6 +43,7 @@
 #include "zone/node.h"
 #include "zone/zone.h"
 #include "zone/zonedb.h"
+#include "rdata.h"
 
 #endif
 

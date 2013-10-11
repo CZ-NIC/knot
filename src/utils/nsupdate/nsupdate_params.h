@@ -31,10 +31,10 @@
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
-#include "zscanner/scanner.h"		// scanner_t
+#include "zscanner/zscanner.h"		// scanner_t
 #include "utils/common/netio.h"		// server_t
 #include "utils/common/params.h"	// protocol_t
-#include "libknot/sign/key.h"		// knot_key_params_t
+#include "libknot/dnssec/key.h"		// knot_key_params_t
 
 #define KNSUPDATE_VERSION "knsupdate, version " PACKAGE_VERSION "\n"
 
@@ -46,12 +46,12 @@ typedef struct {
 	/*!< Stop processing - just pring help, version,... */
 	bool		stop;
 	/*!< List of files with query data. */
-	list		qfiles;
+	list_t		qfiles;
 	/*!< List of nameservers to query to. */
 	server_t	*server;
 	/*!< Local interface (optional). */
 	server_t	*srcif;
-	/*!< Operation mode. */
+	/*!< Version of ip protocol to use. */
 	ip_t		ip;
 	/*!< Type (TCP, UDP) protocol to use. */
 	protocol_t	protocol;

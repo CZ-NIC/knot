@@ -27,53 +27,6 @@
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
-#define DNAME_LFT_MAXLEN 255 /* maximum lookup format length */
-
-/*!
- * \brief Convert domain name from wire to lookup format.
- *
- * Formats names from rightmost label to the leftmost, separated by the lowest
- * possible character (\x00). Sorting such formatted names also gives
- * correct canonical order (for NSEC/NSEC3).
- *
- * Example:
- * Name: lake.example.com. Wire: \x04lake\x07example\x03com\x00
- * Lookup format com\x00example\x00lake\x00
- *
- * Maximum length of such a domain name is DNAME_LFT_MAXLEN characters.
- *
- * \param dst Memory to store converted name into.
- * \param maxlen Maximum memory length.
- * \param src Source domain name.
- *
- * \retval KNOT_EOK if successful
- * \retval KNOT_ESPACE when not enough memory.
- * \retval KNOT_EINVAL on invalid parameters
- */
-static int dname_lf(uint8_t *dst, const knot_dname_t *src, size_t maxlen) {
-	if (src->size > maxlen)
-		return KNOT_ESPACE;
-	*dst = (uint8_t)src->size;
-	/* need to save last \x00 for root dname */
-	if (*dst > 1)
-		*dst -= 1;
-	*++dst = '\0';
-	uint8_t* l = src->name;
-	uint8_t lstack[DNAME_LFT_MAXLEN];
-	uint8_t *sp = lstack;
-	while(*l != 0) { /* build label stack */
-		*sp++ = (l - src->name);
-		l += 1 + *l;
-	}
-	while(sp != lstack) {          /* consume stack */
-		l = src->name + *--sp; /* fetch rightmost label */
-		memcpy(dst, l+1, *l);  /* write label */
-		dst += *l;
-		*dst++ = '\0';         /* label separator */
-	}
-	return KNOT_EOK;
-}
-
 static value_t knot_zone_node_copy(value_t v)
 {
 	return v;
@@ -103,13 +56,18 @@ size_t knot_zone_tree_weight(knot_zone_tree_t* tree)
 	return hattrie_weight(tree);
 }
 
+int knot_zone_tree_is_empty(knot_zone_tree_t *tree)
+{
+	return knot_zone_tree_weight(tree) == 0;
+}
+
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 {
 	assert(tree && node && node->owner);
-	uint8_t lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, node->owner, sizeof(lf));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, node->owner, NULL);
 
 	*hattrie_get(tree, (char*)lf+1, *lf) = node;
 	return KNOT_EOK;
@@ -136,8 +94,8 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, owner, sizeof(lf));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, owner, NULL);
 
 	value_t *val = hattrie_tryget(tree, (char*)lf+1, *lf);
 	if (val == NULL) {
@@ -181,8 +139,8 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, owner, sizeof(lf));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, owner, NULL);
 
 	value_t *fval = NULL;
 	int ret = hattrie_find_leq(tree, (char*)lf+1, *lf, &fval);
@@ -243,8 +201,8 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t lf[DNAME_LFT_MAXLEN];
-	dname_lf(lf, owner, sizeof(lf));
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, owner, NULL);
 
 	value_t *rval = hattrie_tryget(tree, (char*)lf+1, *lf);
 	if (rval == NULL) {
@@ -375,7 +333,9 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 
 void hattrie_insert_dname(hattrie_t *tr, knot_dname_t *dname)
 {
-	*hattrie_get(tr, (char *)dname->name, dname->size) = dname;
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, dname, NULL);
+	*hattrie_get(tr, (char*)lf+1, *lf) = dname;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -386,7 +346,10 @@ knot_dname_t *hattrie_get_dname(hattrie_t *tr, knot_dname_t *dname)
 		return NULL;
 	}
 
-	value_t *val = hattrie_tryget(tr, (char *)dname->name, dname->size);
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, dname, NULL);
+
+	value_t *val = hattrie_tryget(tr, (char*)lf+1, *lf);
 	if (val == NULL) {
 		return NULL;
 	} else {

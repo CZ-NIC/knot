@@ -62,31 +62,46 @@ int knot_query_init(knot_packet_t *query)
 	if (query == NULL) {
 		return KNOT_EINVAL;
 	}
-	// set the qr bit to 0
-	knot_wire_flags_clear_qr(&query->header.flags1);
 
-	uint8_t *pos = query->wireformat;
-	knot_packet_header_to_wire(&query->header, &pos, &query->size);
-
+	query->size = KNOT_WIRE_HEADER_SIZE;
+	memset(query->wireformat, 0, query->size);
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int knot_query_set_question(knot_packet_t *query,
-                              const knot_question_t *question)
+                            const knot_dname_t *qname,
+                            uint16_t qclass, uint16_t qtype)
 {
-	if (query == NULL || question == NULL) {
+	if (query == NULL || qname == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	query->question.qname = question->qname;
-	query->question.qclass = question->qclass;
-	query->question.qtype = question->qtype;
-	query->header.qdcount = 1;
+	assert(query->size == KNOT_WIRE_HEADER_SIZE);
 
-	// convert the Question to wire format right away
-	return knot_packet_question_to_wire(query);
+	/* Copy name wireformat. */
+	uint8_t *dst = query->wireformat + KNOT_WIRE_HEADER_SIZE;
+	int qname_len = knot_dname_to_wire(dst, qname, query->max_size - query->size);
+	assert(qname_len == knot_dname_size(qname));
+	size_t question_len = 2 * sizeof(uint16_t) + qname_len;
+
+	/* Check size limits. */
+	if (qname_len < 0 || query->size + question_len > query->max_size)
+		return KNOT_ESPACE;
+
+	/* Copy QTYPE & QCLASS */
+	dst += qname_len;
+	knot_wire_write_u16(dst, qtype);
+	dst += sizeof(uint16_t);
+	knot_wire_write_u16(dst, qclass);
+
+	/* Update question count and sizes. */
+	knot_wire_set_qdcount(query->wireformat, 1);
+	query->size += question_len;
+	query->qname_size = qname_len;
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -96,8 +111,7 @@ int knot_query_set_opcode(knot_packet_t *query, uint8_t opcode)
 	if (query == NULL) {
 		return KNOT_EINVAL;
 	}
-	// set the OPCODE in the structure
-	knot_wire_flags_set_opcode(&query->header.flags1, opcode);
+
 	// set the OPCODE in the wire format
 	knot_wire_set_opcode(query->wireformat, opcode);
 
@@ -151,7 +165,7 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	}
 	query->size += written;
 	++query->ns_rrsets;
-	++query->header.nscount;
+	knot_wire_add_nscount(query->wireformat, 1);
 
 	return KNOT_EOK;
 }

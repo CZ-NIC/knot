@@ -14,7 +14,6 @@ $TTL	1
 @	L64
 @	L64					; Empty rdata
 @	L64	\# 0				; Hex empty rdata
-@	L64	\#				; Missing hex length
 @	L64	65536				; Too big preference
 @	L64	0	0000:0000:0000		; Missing label
 @	L64	0	0000:0000:0000:0000:0000	; Too many labels
@@ -22,5 +21,3 @@ $TTL	1
 @	L64	0	0000:0000:0000-0000	; Bad separator
 @	L64	0	0000:0000:0000:x000	; Bad hex character
 @	L64	0	0000:0000:0000:0000 x	; Unexpected item
-@	L64	\# 11 00000000000000000000 00	; Too long rdata
-@	L64	\# 11 00000000000000000000	; Bad rdata length

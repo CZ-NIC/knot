@@ -34,6 +34,7 @@
 #include "common/evsched.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
+#include "libknot/rdata.h"
 
 
 /* Messages. */
@@ -47,7 +48,7 @@
 static int notify_request(const knot_rrset_t *rrset,
                           uint8_t *buffer, size_t *size)
 {
-	knot_packet_t *pkt = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *pkt = knot_packet_new();
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
 	/*! \todo Get rid of the numeric constant. */
@@ -63,14 +64,7 @@ static int notify_request(const knot_rrset_t *rrset,
 		return KNOT_ERROR;
 	}
 
-	knot_question_t question;
-
-	// this is ugly!!
-	question.qname = rrset->owner;
-	question.qtype = rrset->type;
-	question.qclass = rrset->rclass;
-
-	rc = knot_query_set_question(pkt, &question);
+	rc = knot_query_set_question(pkt, rrset->owner, rrset->rclass, rrset->type);
 	if (rc != KNOT_EOK) {
 		knot_packet_free(&pkt);
 		return KNOT_ERROR;
@@ -78,7 +72,6 @@ static int notify_request(const knot_rrset_t *rrset,
 
 	/* Set random query ID. */
 	knot_packet_set_random_id(pkt);
-	knot_wire_set_id(pkt->wireformat, pkt->header.id);
 
 	/*! \todo add the SOA RR to the Answer section as a hint */
 	/*! \todo this should not use response API!! */
@@ -123,14 +116,13 @@ static int notify_request(const knot_rrset_t *rrset,
 int notify_create_response(knot_packet_t *request, uint8_t *buffer,
                            size_t *size)
 {
-	knot_packet_t *response =
-		knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
+	knot_packet_t *response = knot_packet_new_mm(&request->mm);
 	CHECK_ALLOC_LOG(response, KNOT_ENOMEM);
 
 	/* Set maximum packet size. */
 	int rc = knot_packet_set_max_size(response, *size);
 	if (rc == KNOT_EOK) {
-		rc = knot_response_init_from_query(response, request, 1);
+		rc = knot_response_init_from_query(response, request);
 	}
 
 	/* Aggregated result check. */
@@ -275,7 +267,7 @@ int notify_process_request(knot_nameserver_t *ns,
 		const knot_rrset_t *soa_rr = NULL;
 		soa_rr = knot_packet_answer_rrset(notify, 0);
 		if (soa_rr && knot_rrset_type(soa_rr) == KNOT_RRTYPE_SOA) {
-			serial = knot_rrset_rdata_soa_serial(soa_rr);
+			serial = knot_rdata_soa_serial(soa_rr);
 		}
 	}
 	rcu_read_unlock();

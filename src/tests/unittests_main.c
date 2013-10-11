@@ -32,11 +32,13 @@
 #include "tests/knot/server_tests.h"
 #include "tests/knot/conf_tests.h"
 #include "tests/knot/rrl_tests.h"
-#include "tests/zscanner/zscanner_tests.h"
 #include "tests/libknot/wire_tests.h"
 #include "tests/libknot/dname_tests.h"
 #include "tests/libknot/ztree_tests.h"
-#include "tests/libknot/sign_tests.h"
+#include "tests/libknot/dnssec_keys_tests.h"
+#include "tests/libknot/dnssec_nsec3_tests.h"
+#include "tests/libknot/dnssec_sign_tests.h"
+#include "tests/libknot/dnssec_zone_nsec_tests.h"
 #include "tests/libknot/rrset_tests.h"
 
 // Run all loaded units
@@ -67,15 +69,15 @@ int main(int argc, char *argv[])
 	        &server_tests_api,	//! Server unit
 	        &rrl_tests_api,		//! RRL tests
 
-	        /* Zone scanner. */
-	        &zscanner_tests_api,	//! Wrapper for external unittests
-
 	        /* Libknot library. */
 	        &wire_tests_api,
 	        &dname_tests_api,
 	        &ztree_tests_api,
-	        &sign_tests_api,	//! Key manipulation.
-	        &rrset_tests_api,
+	        &dnssec_keys_tests_api,  //! DNSSEC key manipulation.
+	        &dnssec_nsec3_tests_api, //! DNSSEC NSEC3 operations.
+	        &dnssec_sign_tests_api,  //! DNSSEC signing/verification.
+	        &dnssec_zone_nsec_tests_api, //! Zone NSEC functions.
+//	        &rrset_tests_api,
 
 	        NULL
 	};

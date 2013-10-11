@@ -84,7 +84,7 @@ void host_clean(dig_params_t *params)
 	dig_clean(params);
 }
 
-static int parse_name(const char *value, list *queries, const query_t *conf)
+static int parse_name(const char *value, list_t *queries, const query_t *conf)
 {
 	char	*reverse = get_reverse_name(value);
 	char	*fqd_name = NULL;
@@ -110,7 +110,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 			if (query == NULL) {
 				return KNOT_ENOMEM;
 			}
-			add_tail(queries, (node *)query);
+			add_tail(queries, (node_t *)query);
 		} else {
 			free(reverse);
 
@@ -120,7 +120,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 			if (query == NULL) {
 				return KNOT_ENOMEM;
 			}
-			add_tail(queries, (node *)query);
+			add_tail(queries, (node_t *)query);
 		}
 	// RR type is unknown, use defaults.
 	} else {
@@ -132,7 +132,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 				return KNOT_ENOMEM;
 			}
 			query->type_num = KNOT_RRTYPE_A;
-			add_tail(queries, (node *)query);
+			add_tail(queries, (node_t *)query);
 
 			// Add query for name and type AAAA.
 			query = query_create(fqd_name, conf);
@@ -141,7 +141,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 				return KNOT_ENOMEM;
 			}
 			query->type_num = KNOT_RRTYPE_AAAA;
-			add_tail(queries, (node *)query);
+			add_tail(queries, (node_t *)query);
 
 			// Add query for name and type MX.
 			query = query_create(fqd_name, conf);
@@ -151,7 +151,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 			}
 			free(fqd_name);
 			query->type_num = KNOT_RRTYPE_MX;
-			add_tail(queries, (node *)query);
+			add_tail(queries, (node_t *)query);
 		} else {
 			free(fqd_name);
 
@@ -162,7 +162,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 				return KNOT_ENOMEM;
 			}
 			query->type_num = KNOT_RRTYPE_PTR;
-			add_tail(queries, (node *)query);
+			add_tail(queries, (node_t *)query);
 		}
 	}
 

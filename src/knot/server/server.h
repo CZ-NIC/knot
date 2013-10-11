@@ -99,8 +99,8 @@ enum {
 
 typedef struct ifacelist {
 	ref_t ref;
-	list l;
-	list u;
+	list_t l;
+	list_t u;
 } ifacelist_t;
 
 /*!

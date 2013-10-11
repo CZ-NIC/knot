@@ -9,7 +9,7 @@
  * \addtogroup libknot
  * @{
  */
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,16 +51,13 @@ struct knot_rrset {
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
 	uint32_t ttl; /*!< TTL of the RRSet. */
-
-	/* [code-review] It would be fine to better describe the format of this
-	 * array and the meaning of the indices. Maybe even draw some simple
-	 * image :-)
+	/*! \brief RDATA array (for all RRs). DNAMEs stored as full,
+	 *         uncompressed wire. Binary data stored in wireformat order.
 	 */
-	uint8_t *rdata; /*!< RDATA array (All RRs). */
+	uint8_t *rdata; /*!< RDATA array (All RRs). DNAMEs stored as full wire. */
 	/*! \brief Beginnings of RRs - first one does not contain 0, last
 	 *         last one holds total length of all RRs together
 	 */
-	/* [code-review] Does this have to be 32b integer? Isn't 16b enough? */
 	uint32_t *rdata_indices; /*!< Indices to beginnings of RRs (without 0)*/
 	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
@@ -103,6 +100,17 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                                  uint16_t rclass, uint32_t ttl);
 
 /*!
+ * \brief Creates a new RRSet according to given template RRSet.
+ *
+ * OWNER, TYPE, CLASS, and TTL values from template RRSet are used.
+ *
+ * \param tmp  RRSet template.
+ *
+ * \return New RRSet, NULL if an error occured.
+ */
+knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl);
+
+/*!
  * \brief Adds the given RDATA to the RRSet.
  *
  * \param rrset RRSet to add the RDATA to.
@@ -137,7 +145,7 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, const uint16_t size);
  * \retval 0 on error.
  * \return Item size on success.
  */
-/* [code-review] Misleading name, maybe remove the word 'item'. */
+/* [code-review] Misleading name, maybe remove the word 'item'. And add knot. */
 uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
                                size_t pos);
 
@@ -194,7 +202,7 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  * \param rrset Specified RRSet.
  * \param owner New owner dname.
  */
-void knot_rrset_set_owner(knot_rrset_t *rrset, knot_dname_t* owner);
+int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
 
 /*!
  * \brief Sets rrset TTL to given TTL.
@@ -282,8 +290,9 @@ int knot_rrset_equal(const knot_rrset_t *r1,
                      const knot_rrset_t *r2,
                      knot_rrset_compare_type_t cmp);
 
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
-                         int copy_rdata_dnames);
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to);
+
+int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to);
 
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 
@@ -321,14 +330,19 @@ void knot_rrset_free(knot_rrset_t **rrset);
  *                          present in RDATA. Set to 0 otherwise. (See
  *                          knot_rdata_deep_free().)
  */
-void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner,
-                          int free_rdata_dnames);
+void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner);
 
-void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner,
-                                 int free_rdata_dnames);
+void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner);
 
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, void *comp_data);
+
+/*!
+ * \brief Write one RR from RRSet.
+ */
+int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
+                           uint8_t *wire, size_t max_size, size_t *outsize,
+                           void *comp_data);
 
 /*!
  * \brief Merges two RRSets.
@@ -348,19 +362,18 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
  *         Owner, Type, Class or TTL does not match.
  */
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
-
+/*! \brief Merges without with duplicate check, with sort. */
+int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
+                          int *merged, int *deleted_rrs);
 
 /*!
- * \brief Merges two RRSets, but will only merge unique items.
+ * \brief Sort RDATA in RRSet to be in caonical order.
+ * \todo Not optimal, rewrite!
  *
- * \param r1 Pointer to RRSet to be merged into.
- * \param r2 Poitner to RRSet to be merged.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL if the RRSets could not be merged, because their
- *         Owner, Type, Class or TTL does not match.
+ * \param rrset  RRSet to be sorted.
+ * \return Error code, KNOT_EOK when successful.
  */
-int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, int *merged, int *deleted_rrs);
+int knot_rrset_sort_rdata(knot_rrset_t *rrset);
 
 /*!
  * \brief Return true if the RRSet is an NSEC3 related type.
@@ -368,136 +381,6 @@ int knot_rrset_merge_no_dupl(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, i
  * \param rr RRSet.
  */
 bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
-
-
-//TODO test
-const knot_dname_t *knot_rrset_rdata_cname_name(const knot_rrset_t *rrset);
-//TODO test
-const knot_dname_t *knot_rrset_rdata_dname_target(const knot_rrset_t *rrset);
-//TODO test
-void knot_rrset_rdata_set_cname_name(knot_rrset_t *rrset,
-                                     const knot_dname_t *name);
-//TODO test
-void knot_rrset_rdata_set_dname_target(knot_rrset_t *rrset,
-                                       const knot_dname_t *target);
-//TODO test
-const knot_dname_t *knot_rrset_rdata_soa_primary_ns(const knot_rrset_t *rrset);
-//TODO test
-const knot_dname_t *knot_rrset_rdata_soa_mailbox(const knot_rrset_t *rrset);
-uint32_t knot_rrset_rdata_soa_serial(const knot_rrset_t *rrset);
-//TODO test
-void knot_rrset_rdata_soa_serial_set(knot_rrset_t *rrset, uint32_t serial);
-//TODO test
-uint32_t knot_rrset_rdata_soa_refresh(const knot_rrset_t *rrset);
-//TODO test
-uint32_t knot_rrset_rdata_soa_retry(const knot_rrset_t *rrset);
-//TODO test
-uint32_t knot_rrset_rdata_soa_expire(const knot_rrset_t *rrset);
-//TODO test
-uint32_t knot_rrset_rdata_soa_minimum(const knot_rrset_t *rrset);
-//TODO test
-uint16_t knot_rrset_rdata_rrsig_type_covered(const knot_rrset_t *rrset);
-/* TODO not all of these need to have rr_pos as a parameter. */
-uint8_t knot_rrset_rdata_rrsig_algorithm(const knot_rrset_t *rrset,
-                                         size_t rr_pos);
-uint8_t knot_rrset_rdata_rrsig_labels(const knot_rrset_t *rrset, size_t rr_pos);
-uint32_t knot_rrset_rdata_rrsig_original_ttl(const knot_rrset_t *rrset,
-                                             size_t rr_pos);
-uint32_t knot_rrset_rdata_rrsig_sig_expiration(const knot_rrset_t *rrset,
-                                               size_t rr_pos);
-uint32_t knot_rrset_rdata_rrsig_sig_inception(const knot_rrset_t *rrset,
-                                              size_t rr_pos);
-uint16_t knot_rrset_rdata_rrsig_key_tag(const knot_rrset_t *rrset,
-                                        size_t rr_pos);
-const knot_dname_t *knot_rrset_rdata_rrsig_signer_name(const knot_rrset_t *rrset,
-                                                       size_t rr_pos);
-
-uint16_t knot_rrset_rdata_dnskey_flags(const knot_rrset_t *rrset, size_t rr_pos);
-uint8_t knot_rrset_rdata_dnskey_proto(const knot_rrset_t *rrset, size_t rr_pos);
-uint8_t knot_rrset_rdata_dnskey_alg(const knot_rrset_t *rrset, size_t rr_pos);
-void knot_rrset_rdata_dnskey_key(const knot_rrset_t *rrset, size_t rr_pos,
-                                 uint8_t **key, uint16_t *key_size);
-const knot_dname_t *knot_rrset_rdata_nsec_next(const knot_rrset_t *rrset,
-                                               size_t rr_pos);
-void knot_rrset_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
-                                  uint8_t **bitmap, uint16_t *size);
-
-void knot_rrset_rdata_nsec3_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
-                                   uint8_t **bitmap, uint16_t *size);
-//TODO test
-uint8_t knot_rrset_rdata_nsec3_algorithm(const knot_rrset_t *rrset,
-                                         size_t pos);
-uint8_t knot_rrset_rdata_nsec3_flags(const knot_rrset_t *rrset,
-                                     size_t pos);
-//TODO test
-uint16_t knot_rrset_rdata_nsec3_iterations(const knot_rrset_t *rrset,
-                                           size_t pos);
-//TODO test
-uint8_t knot_rrset_rdata_nsec3_salt_length(const knot_rrset_t *rrset,
-                                           size_t pos);
-// TODO same as salt, size and data
-void knot_rrset_rdata_nsec3_next_hashed(const knot_rrset_t *rrset, size_t pos,
-                                        uint8_t **name, uint8_t *name_size);
-//TODO test
-const uint8_t *knot_rrset_rdata_nsec3_salt(const knot_rrset_t *rrset,
-                                           size_t pos);
-//TODO test
-uint8_t knot_rrset_rdata_nsec3param_algorithm(const knot_rrset_t *rrset);
-//TODO test
-uint8_t knot_rrset_rdata_nsec3param_flags(const knot_rrset_t *rrset);
-//TODO test
-uint16_t knot_rrset_rdata_nsec3param_iterations(const knot_rrset_t *rrset);
-//TODO test
-uint8_t knot_rrset_rdata_nsec3param_salt_length(const knot_rrset_t *rrset);
-//TODO test
-const uint8_t *knot_rrset_rdata_nsec3param_salt(const knot_rrset_t *rrset);
-
-const knot_dname_t *knot_rrset_rdata_rp_first_dname(const knot_rrset_t *rrset,
-                                                    size_t pos);
-const knot_dname_t *knot_rrset_rdata_rp_second_dname(const knot_rrset_t *rrset,
-                                                     size_t pos);
-const knot_dname_t *knot_rrset_rdata_minfo_first_dname(const knot_rrset_t *rrset,
-                                                       size_t pos);
-const knot_dname_t *knot_rrset_rdata_minfo_second_dname(const knot_rrset_t *rrset,
-                                                        size_t pos);
-
-/*!
- * \brief Find next dname in rrset relative to prev.
- *
- * \param rrset Inspected rrset.
- * \param prev_dname Pointer to previous dname.
- * \return next dname or NULL.
- */
-/* [code-review] Emphasize that the 'prev' pointer must point into the RDATA
- * array of the given RRSet.
- */
-knot_dname_t **knot_rrset_get_next_dname(const knot_rrset_t *rrset,
-                                                 knot_dname_t **prev);
-
-/*!
- * \brief Find next dname in RR relative to previous one.
- *
- * \param rrset Inspected rrset.
- * \param prev_dname Previous dname. This must be a pointer to the rrset's
- *                   RDATA array.
- * \param rr_pos Position of RR.
- * \return Next dname or NULL if there is no other dname in the RR.
- */
-knot_dname_t **knot_rrset_get_next_rr_dname(const knot_rrset_t *rrset,
-                                            knot_dname_t **prev_dname,
-                                            size_t rr_pos);
-
-const knot_dname_t *knot_rrset_rdata_ns_name(const knot_rrset_t *rrset,
-                                             size_t rdata_pos);
-
-const knot_dname_t *knot_rrset_rdata_mx_name(const knot_rrset_t *rrset,
-                                             size_t rdata_pos);
-
-const knot_dname_t *knot_rrset_rdata_srv_name(const knot_rrset_t *rrset,
-                                              size_t rdata_pos);
-
-const knot_dname_t *knot_rrset_rdata_name(const knot_rrset_t *rrset,
-                                          size_t rdata_pos);
 
 void knot_rrset_dump(const knot_rrset_t *rrset);
 
@@ -513,36 +396,34 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
 int rrset_deserialize(uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset);
 
-int knot_rrset_remove_rr(knot_rrset_t *dest,
-                         const knot_rrset_t *source, size_t rdata_pos);
-
-int knot_rrset_rdata_reset(knot_rrset_t *rrset);
-
+/* \brief Adds RR on 'pos' position from 'source' to 'dest' */
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos);
-
+/* \brief Removes RRs contained in 'what' RRSet from 'from' RRSet.
+ *        Deleted RRs are returned in 'rr_deleted' */
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
                                      knot_rrset_t **rr_deleted, int ddns_check);
-
+/* \brief Removes RRs contained in 'what' RRSet from 'from' RRSet. */
 int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
                                          const knot_rrset_t *what);
-
+/* \brief Finds RR at 'pos' position in 'rr_reference' RRSet in 
+         'rr_search_in' RRSet. Position returned in 'pos_out'. */
 int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
                            const knot_rrset_t *rr_reference, size_t pos,
                            size_t *pos_out);
-
-int rrset_rr_dnames_apply(knot_rrset_t *rrset, size_t rdata_pos,
-                          int (*func)(knot_dname_t **, void *), void *data);
-
-int rrset_dnames_apply(knot_rrset_t *rrset, int (*func)(knot_dname_t **, void *),
-                       void *data);
-
+/* \brief Creates one RR from wire, stores it into 'rrset'. */
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, size_t rdlength);
 
 int knot_rrset_ds_check(const knot_rrset_t *rrset);
+
+uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset, size_t pos);
+
+int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
+                            const knot_rrset_t *rrset2,
+                            size_t pos1, size_t pos2);
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

@@ -30,12 +30,14 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
 #include <urcu.h>
 
 #include "libknot/dname.h"
 #include "libknot/tsig.h"
-#include "libknot/sign/key.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/policy.h"
 #include "common/lists.h"
 #include "common/log.h"
 #include "common/acl.h"
@@ -62,7 +64,7 @@
  * listening and outgoing function.
  */
 typedef struct conf_iface_t {
-	node n;
+	node_t n;
 	char *name;           /*!< Internal name for the interface. */
 	char *address;        /*!< IP (IPv4/v6) address for this interface */
 	unsigned prefix;      /*!< IP subnet prefix. */
@@ -78,7 +80,7 @@ typedef struct conf_iface_t {
  * Used for zone ACL lists to prevent node duplication.
  */
 typedef struct conf_remote_t {
-	node n;               /*!< List node. */
+	node_t n;             /*!< List node. */
 	conf_iface_t *remote; /*!< Pointer to interface descriptor. */
 } conf_remote_t;
 
@@ -88,7 +90,7 @@ typedef struct conf_remote_t {
  * Holds the name of a remote in the list.
  */
 typedef struct conf_group_remote_t {
-	node n;
+	node_t n;
 	char *name;
 } conf_group_remote_t;
 
@@ -96,9 +98,9 @@ typedef struct conf_group_remote_t {
  * \brief Group of remotes.
  */
 typedef struct conf_group_t {
-	node n;		/*!< List node. */
+	node_t n;	/*!< List node. */
 	char *name;	/*!< Unique name of the group. */
-	list remotes;	/*!< List of remote names. */
+	list_t remotes;	/*!< List of remote names. */
 } conf_group_t;
 
 /*!
@@ -111,24 +113,26 @@ typedef struct conf_group_t {
  * zone transfers.  Same logic applies for the NOTIFY.
  */
 typedef struct conf_zone_t {
-	node n;
-	char *name;               /*!< Zone name. */
-	uint16_t cls;             /*!< Zone class (IN or CH). */
-	char *file;               /*!< Path to a zone file. */
-	char *ixfr_db;            /*!< Path to a IXFR database file. */
-	size_t ixfr_fslimit;      /*!< File size limit for IXFR journal. */
-	int dbsync_timeout;       /*!< Interval between syncing to zonefile.*/
-	int enable_checks;        /*!< Semantic checks for parser.*/
-	int disable_any;          /*!< Disable ANY type queries for AA.*/
-	int notify_retries;       /*!< NOTIFY query retries. */
-	int notify_timeout;       /*!< Timeout for NOTIFY response (s). */
-	int build_diffs;          /*!< Calculate differences from changes. */
+	node_t n;
+	char *name;                /*!< Zone name. */
+	uint16_t cls;              /*!< Zone class (IN or CH). */
+	char *file;                /*!< Path to a zone file. */
+	char *ixfr_db;             /*!< Path to a IXFR database file. */
+	bool dnssec_enable;        /*!< DNSSEC: Online signing enabled. */
+	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
+	int sig_lifetime;          /*!< Validity period of DNSSEC signatures. */
+	int dbsync_timeout;        /*!< Interval between syncing to zonefile.*/
+	int enable_checks;         /*!< Semantic checks for parser.*/
+	int disable_any;           /*!< Disable ANY type queries for AA.*/
+	int notify_retries;        /*!< NOTIFY query retries. */
+	int notify_timeout;        /*!< Timeout for NOTIFY response (s). */
+	int build_diffs;           /*!< Calculate differences from changes. */
 	struct {
-		list xfr_in;      /*!< Remotes accepted for for xfr-in.*/
-		list xfr_out;     /*!< Remotes accepted for xfr-out.*/
-		list notify_in;   /*!< Remotes accepted for notify-in.*/
-		list notify_out;  /*!< Remotes accepted for notify-out.*/
-		list update_in;   /*!< Remotes accepted for DDNS.*/
+		list_t xfr_in;     /*!< Remotes accepted for for xfr-in.*/
+		list_t xfr_out;    /*!< Remotes accepted for xfr-out.*/
+		list_t notify_in;  /*!< Remotes accepted for notify-in.*/
+		list_t notify_out; /*!< Remotes accepted for notify-out.*/
+		list_t update_in;  /*!< Remotes accepted for DDNS.*/
 	} acl;
 } conf_zone_t;
 
@@ -136,7 +140,7 @@ typedef struct conf_zone_t {
  * \brief Mapping of loglevels to message sources.
  */
 typedef struct conf_log_map_t {
-	node n;
+	node_t n;
 	int source; /*!< Log message source mask. */
 	int prios;  /*!< Log priorities mask. */
 } conf_log_map_t;
@@ -145,10 +149,10 @@ typedef struct conf_log_map_t {
  * \brief Log facility descriptor.
  */
 typedef struct conf_log_t {
-	node n;
+	node_t n;
 	logtype_t type;  /*!< Type of the log (SYSLOG/STDERR/FILE). */
 	char *file;      /*!< Filename in case of LOG_FILE, else NULL. */
-	list map;        /*!< Log levels mapping. */
+	list_t map;      /*!< Log levels mapping. */
 } conf_log_t;
 
 /*!
@@ -166,7 +170,7 @@ typedef enum conf_section_t {
  * \brief TSIG key list item.
  */
 typedef struct conf_key_t {
-	node n;
+	node_t n;
 	knot_tsig_key_t k;
 } conf_key_t;
 
@@ -175,7 +179,7 @@ typedef struct conf_key_t {
  */
 typedef struct conf_control_t {
 	conf_iface_t *iface; /*!< Remote control interface. */
-	list allow;          /*!< List of allowed remotes. */
+	list_t allow;        /*!< List of allowed remotes. */
 	acl_t* acl;          /*!< ACL. */
 	bool have;           /*!< Set if configured. */
 } conf_control_t;
@@ -212,45 +216,49 @@ typedef struct conf_t {
 	/*
 	 * Log
 	 */
-	list logs;        /*!< List of logging facilites. */
+	list_t logs;      /*!< List of logging facilites. */
 	int logs_count;   /*!< Count of logging facilities. */
 
 	/*
 	 * Interfaces
 	 */
-	list ifaces;      /*!< List of interfaces. */
+	list_t ifaces;    /*!< List of interfaces. */
 	int ifaces_count; /*!< Count of interfaces. */
 
 	/*
 	 * TSIG keys
 	 */
-	list keys;     /*!< List of TSIG keys. */
+	list_t keys;   /*!< List of TSIG keys. */
 	int key_count; /*!< Count of TSIG keys. */
 
 	/*
 	 * Remotes
 	 */
-	list remotes;     /*!< List of remotes. */
-	int remotes_count;/*!< Count of remotes. */
+	list_t remotes;    /*!< List of remotes. */
+	int remotes_count; /*!< Count of remotes. */
 
 	/*
 	 * Groups of remotes.
 	 */
-	list groups;      /*!< List of groups of remotes. */
+	list_t groups; /*!< List of groups of remotes. */
 
 	/*
 	 * Zones
 	 */
-	list zones;       /*!< List of zones. */
-	int zones_count;  /*!< Count of zones. */
-	int zone_checks;  /*!< Semantic checks for parser.*/
-	int disable_any;  /*!< Disable ANY type queries for AA.*/
-	int notify_retries; /*!< NOTIFY query retries. */
-	int notify_timeout; /*!< Timeout for NOTIFY response in seconds. */
-	int dbsync_timeout; /*!< Default interval between syncing to zonefile.*/
+	list_t zones;        /*!< List of zones. */
+	int zones_count;     /*!< Count of zones. */
+	int zone_checks;     /*!< Semantic checks for parser.*/
+	int disable_any;     /*!< Disable ANY type queries for AA.*/
+	int notify_retries;  /*!< NOTIFY query retries. */
+	int notify_timeout;  /*!< Timeout for NOTIFY response in seconds. */
+	int dbsync_timeout;  /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
-	hattrie_t *names; /*!< Zone tree for duplicate checking. */
+	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
+	bool dnssec_global;  /*!< DNSSEC: Configured for all zones. */
+	bool dnssec_enable;  /*!< DNSSEC: Online signing enabled. */
+	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
+	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
 
 	/*
 	 * Remote control interface.
@@ -260,7 +268,7 @@ typedef struct conf_t {
 	/*
 	 * Implementation specifics
 	 */
-	list hooks;      /*!< List of config hooks. */
+	list_t hooks;    /*!< List of config hooks. */
 	int hooks_count; /*!< Count of config hooks. */
 	int _touched;    /*!< Bitmask of sections touched by last update. */
 } conf_t;
@@ -269,7 +277,7 @@ typedef struct conf_t {
  * \brief Config hook prototype.
  */
 typedef struct conf_hook_t {
-	node n;
+	node_t n;
 	int sections; /*!< Bitmask of watched sections. */
 	int (*update)(const conf_t*, void*); /*!< Function executed on config load. */
 	void *data;

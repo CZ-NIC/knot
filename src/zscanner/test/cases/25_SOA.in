@@ -22,7 +22,6 @@ $TTL	1
 @	SOA
 @	SOA						; Empty rdata
 @	SOA	\# 0					; Hex empty rdata
-@	SOA	\#					; Missing hex length
 @	SOA	@	@	1h	0 0 0 0		; Bad number
 @	SOA	@	@	4294967296 0 0 0 0	; Serial overflow
 @	SOA	@	@	0 4294967296 0 0 0	; Refresh overflow
@@ -30,7 +29,3 @@ $TTL	1
 @	SOA	@	@	0 0 0 4294967296 0	; Expire overflow
 @	SOA	@	@	0 0 0 0 4294967296	; Minimum overflow
 @	SOA	@	@	0 0 0 0 0 x		; Unexpected item
-@	SOA	\# 23 0001 00 0000000000000000000000000000000000000000	; Too long rdata (mname)
-@	SOA	\# 23 00 0001 0000000000000000000000000000000000000000	; Too long rdata (rname)
-@	SOA	\# 23 00 00 000000000000000000000000000000000000000000	; Too long rdata
-@	SOA	\# 23 00 00   0000000000000000000000000000000000000000	; Bad rdata length

@@ -31,36 +31,36 @@
 #include <stdbool.h>			// bool
 
 /*! \brief Maximal length of rdata. */
-#define MAX_RDATA_LENGTH	       65535
+#define MAX_RDATA_LENGTH		65535
 /*! \brief Maximal length of rdata item. */
-#define MAX_ITEM_LENGTH			 255
+#define MAX_ITEM_LENGTH			255
 /*! \brief Maximal length of domain name. */
-#define MAX_DNAME_LENGTH		 255
+#define MAX_DNAME_LENGTH		255
 /*! \brief Maximal length of domain name label. */
-#define MAX_LABEL_LENGTH		  63
+#define MAX_LABEL_LENGTH		63
 /*! \brief Maximal number or rdata items. */
-#define MAX_RDATA_ITEMS			  64
+#define MAX_RDATA_ITEMS			64
 
 /*! \brief Number of bitmap windows. */
-#define BITMAP_WINDOWS			 256
+#define BITMAP_WINDOWS			256
 
 /*! \brief Length of ipv4 address in wire format. */
-#define INET4_ADDR_LENGTH		   4
+#define INET4_ADDR_LENGTH		4
 /*! \brief Length of ipv6 address in wire format. */
-#define INET6_ADDR_LENGTH		  16
+#define INET6_ADDR_LENGTH		16
 
 /*! \brief Ragel call stack size (see Ragel internals). */
-#define RAGEL_STACK_SIZE		  16
+#define RAGEL_STACK_SIZE		16
 
 /*! \brief ASCII value of '0' character. */
-#define ASCII_0				  48
+#define ASCII_0				48
 
 /*! \brief Latitude value for equator (2^31). */
 #define LOC_LAT_ZERO	(uint32_t)2147483648
 /*! \brief Longitude value for meridian (2^31). */
 #define LOC_LONG_ZERO	(uint32_t)2147483648
 /*! \brief Zero level altitude value. */
-#define LOC_ALT_ZERO	  (uint32_t)10000000
+#define LOC_ALT_ZERO	(uint32_t)10000000
 
 /*! \brief Auxiliary structure for storing bitmap window items (see RFC4034). */
 typedef struct {
@@ -86,49 +86,27 @@ typedef struct {
 } loc_t;
 
 /*!
- * \brief Context structure for Ragel scanner.
+ * \brief Context structure for zone scanner.
  *
  * This structure contains folowing items:
- *  - Copies of Ragel internal variables. The scanner is called many times
- *    for each block of zone file. So it is necessary to preserve internal
- *    values between subsequent scanner callings.
+ *  - Copies of Ragel internal variables. The scanner can be called many times
+ *    on smaller parts of zone file/memory. So it is necessary to preserve
+ *    internal values between subsequent scanner callings.
  *  - Auxiliary variables which are used during processing zone data.
- *  - Zone file and error information.
  *  - Pointers to callback functions and pointer to any arbitrary data which
  *    can be used in callback functions.
- *  - Output variables containing all parts of zone record. These data are
- *    usefull during processing via callback function.
+ *  - Zone file and error information.
+ *  - Output variables (r_ prefix) containing all parts of zone record. These
+ *    data are usefull during processing via callback function.
  */
 typedef struct scanner scanner_t; // Forward declaration due to arguments.
 struct scanner {
 	/*! Current state (Ragel internals). */
-	int	 cs;
+	int      cs;
 	/*! Stack top (Ragel internals). */
-	int	 top;
+	int      top;
 	/*! Call stack (Ragel internals). */
-	int	 stack[RAGEL_STACK_SIZE];
-
-	/*! Zone file name. */
-	char     *file_name;
-	/*! Zone file line counter. */
-	uint64_t line_counter;
-
-	/*! Last occured error/warning code. */
-	int      error_code;
-	/*! Errors/warnings counter. */
-	uint64_t error_counter;
-	/*!
-	 * Indicates serious warning which is considered as an error and
-	 * forces zone processing to stop.
-	 */
-	bool     stop;
-
-	/*! Callback function for correct zone record. */
-	void (*process_record)(const scanner_t *);
-	/*! Callback function for wrong situations. */
-	void (*process_error)(const scanner_t *);
-	/*! Arbitrary data useful inside callback functions. */
-	void *data;
+	int      stack[RAGEL_STACK_SIZE];
 
 	/*! Indicates whether current record is multiline. */
 	bool     multiline;
@@ -184,6 +162,29 @@ struct scanner {
 	/*! Value of the current default ttl (TTL directive sets this). */
 	uint32_t default_ttl;
 
+	/*! Callback function for correct zone record. */
+	void (*process_record)(const scanner_t *);
+	/*! Callback function for wrong situations. */
+	void (*process_error)(const scanner_t *);
+	/*! Arbitrary data useful inside callback functions. */
+	void *data;
+
+	/*! Absolute path for relative includes. */
+	char     *path;
+	/*! Zone file name, if specified. */
+	char     *file_name;
+	/*! Zone file line counter. */
+	uint64_t line_counter;
+	/*! Last occured error/warning code. */
+	int      error_code;
+	/*! Errors/warnings counter. */
+	uint64_t error_counter;
+	/*!
+	 * Indicates serious warning which is considered as an error and
+	 * forces zone processing to stop.
+	 */
+	bool     stop;
+
 	/*!
 	 * Owner of the current record.
 	 *
@@ -203,10 +204,6 @@ struct scanner {
 	uint8_t  r_data[MAX_RDATA_LENGTH];
 	/*! Length of the current rdata. */
 	uint32_t r_data_length;
-	/*! Indexes of the current rdata blocks. */
-	uint16_t r_data_blocks[MAX_RDATA_ITEMS];
-	/*! Number or the current rdata blocks. */
-	uint32_t r_data_blocks_count;
 
 	/*
 	 * Example: a. IN 60 MX 1 b.
@@ -218,25 +215,31 @@ struct scanner {
 	 *          r_type = 15
 	 *          r_data = 0001016200
 	 *          r_data_length = 5
-	 *          r_data_blocks_count = 2
-	 *          r_data_blocks = [0, 2, 5]
 	 */
 };
 
 /*!
  * \brief Creates zone scanner structure.
  *
- * \note After creation scanner structure, it is necessary to set next items:
- *       process_record, process_error, default_class, default_ttl, zone_origin.
- *
- * \param file_name	Zone file name. If parsing from memory use arbitrary
- *                      directory name (like "."), because relative includes
- *                      are considered to this file.
+ * \param file_name		Name of file to process (NULL if parsing from
+ * 				memory).
+ * \param origin		Initial zone origin.
+ * \param rclass		Zone class value.
+ * \param ttl			Initial ttl value.
+ * \param process_record	Processing callback function.
+ * \param process_error 	Error callback function.
+ * \param data			Arbitrary data useful in callback functions.
  *
  * \retval scanner	if success.
  * \retval 0		if error.
  */
-scanner_t* scanner_create(const char *file_name);
+scanner_t* scanner_create(const char     *file_name,
+                          const char     *origin,
+                          const uint16_t rclass,
+                          const uint32_t ttl,
+                          void (*process_record)(const scanner_t *),
+                          void (*process_error)(const scanner_t *),
+                          void *data);
 
 /*!
  * \brief Destroys zone scanner structure.
@@ -253,17 +256,17 @@ void scanner_free(scanner_t *scanner);
  *
  * \param start		First byte of the zone data to scan.
  * \param end		Last byte of the zone data to scan.
- * \param is_last_block	Indicates if current block is last.
+ * \param is_complete	Indicates if the current block is complete i.e. the
+ * 			last record line doesn't continue in the next block.
  * \param scanner	Zone scanner structure.
  *
  * \retval  0		if success.
  * \retval -1		if error.
  */
 int scanner_process(const char *start,
-		    const char *end,
-		    const bool is_last_block,
-		    scanner_t  *scanner);
-
+                    const char *end,
+                    const bool is_complete,
+                    scanner_t  *scanner);
 
 #endif // _ZSCANNER__SCANNER_H_
 

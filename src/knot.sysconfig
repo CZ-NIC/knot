@@ -1,3 +1,0 @@
-# Settings for the KNOT DNS daemon.
-# KNOTARGS= :  any extra command-line startup arguments for knot dns
-KNOTARGS=

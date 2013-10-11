@@ -13,6 +13,8 @@
 /src/Makefile.in
 /src/tests/Makefile
 /src/tests/Makefile.in
+/src/zscanner/Makefile
+/src/zscanner/Makefile.in
 /samples/Makefile
 /samples/Makefile.in
 /doc/Makefile
@@ -41,21 +43,21 @@
 /samples/knot.sample.conf
 /src/stamp-*
 /doc/html/
-# Binaries
-/src/tests/unittests
-/src/zscanner-tool
-/src/knotc
-/src/knotd
-/src/knot-zcompile
+/INSTALL
 /m4/libtool.m4
 /m4/ltoptions.m4
 /m4/ltsugar.m4
 /m4/ltversion.m4
 /m4/lt~obsolete.m4
-/INSTALL
+# Binaries
+/src/tests/unittests
+/src/zscanner/zscanner-tool
+/src/knotc
+/src/knotd
 /src/kdig
 /src/khost
 /src/knsupdate
+/src/knsec3hash
 /src/knot/conf/libknotd_la-cf-lex.c
 /src/knot/conf/libknotd_la-cf-parse.c
 /src/knot/conf/libknotd_la-cf-parse.h
@@ -65,8 +67,9 @@
 /src/tests/libknot/raw_data_queries.rc
 /src/tests/libknot/realdata/
 /src/tests/sample_conf.rc
+src/zscanner/descriptor.h
+src/zscanner/descriptor.c
 src/zscanner/test/cases/06-0_INCLUDE.in
 src/zscanner/test/cases/06-3_INCLUDE.in
 src/zscanner/test/cases/06-4_INCLUDE.in
 src/zscanner/test/run_tests.sh
-/knot-*/

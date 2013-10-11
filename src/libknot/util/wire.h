@@ -149,6 +149,15 @@ static inline void knot_wire_set_qdcount(uint8_t *packet, uint16_t qdcount)
 }
 
 /*!
+ * \brief Adds to QDCOUNT.
+ */
+static inline void knot_wire_add_qdcount(uint8_t *packet, int16_t n)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_QDCOUNT,
+	                    knot_wire_get_qdcount(packet) + n);
+}
+
+/*!
  * \brief Returns the ANCOUNT (count of Answer entries) from wire format of
  *        the packet.
  *
@@ -171,6 +180,15 @@ static inline uint16_t knot_wire_get_ancount(const uint8_t *packet)
 static inline void knot_wire_set_ancount(uint8_t *packet, uint16_t ancount)
 {
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT, ancount);
+}
+
+/*!
+ * \brief Adds to ANCOUNT.
+ */
+static inline void knot_wire_add_ancount(uint8_t *packet, int16_t n)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ANCOUNT,
+	                    knot_wire_get_ancount(packet) + n);
 }
 
 /*!
@@ -199,6 +217,15 @@ static inline void knot_wire_set_nscount(uint8_t *packet, uint16_t nscount)
 }
 
 /*!
+ * \brief Adds to NSCOUNT.
+ */
+static inline void knot_wire_add_nscount(uint8_t *packet, int16_t n)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_NSCOUNT,
+	                    knot_wire_get_nscount(packet) + n);
+}
+
+/*!
  * \brief Returns the ARCOUNT (count of Additional entries) from wire format of
  *        the packet.
  *
@@ -221,6 +248,15 @@ static inline uint16_t knot_wire_get_arcount(const uint8_t *packet)
 static inline void knot_wire_set_arcount(uint8_t *packet, uint16_t arcount)
 {
 	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT, arcount);
+}
+
+/*!
+ * \brief Adds to ARCOUNT.
+ */
+static inline void knot_wire_add_arcount(uint8_t *packet, int16_t n)
+{
+	knot_wire_write_u16(packet + KNOT_WIRE_OFFSET_ARCOUNT,
+	                    knot_wire_get_arcount(packet) + n);
 }
 
 /*
@@ -919,13 +955,19 @@ static inline uint16_t knot_wire_get_pointer(const uint8_t *pos)
 	return (knot_wire_read_u16(pos) - KNOT_WIRE_PTR_BASE);	// Return offset.
 }
 
-static inline uint8_t *knot_wire_next_label(uint8_t *lp, uint8_t *wire)
+static inline const uint8_t *knot_wire_seek_label(const uint8_t *lp, const uint8_t *wire)
 {
-	lp = lp + (lp[0] + sizeof(uint8_t));
-	if (knot_wire_is_pointer(lp)) {
+	while (knot_wire_is_pointer(lp)) {
+		if (!wire)
+			return NULL;
 		lp = wire + knot_wire_get_pointer(lp);
 	}
 	return lp;
+}
+
+static inline const uint8_t *knot_wire_next_label(const uint8_t *lp, const uint8_t *wire)
+{
+	return knot_wire_seek_label(lp + (lp[0] + sizeof(uint8_t)), wire);
 }
 
 #endif /* _KNOT_WIRE_H_ */

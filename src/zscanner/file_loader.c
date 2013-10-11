@@ -15,8 +15,6 @@
  */
 
 #include <config.h>
-#include "zscanner/file_loader.h"
-
 #include <inttypes.h>			// PRIu64
 #include <unistd.h>			// sysconf
 #include <stdio.h>			// sprintf
@@ -27,83 +25,24 @@
 #include <sys/stat.h>			// fstat
 #include <sys/mman.h>			// mmap
 
-#include "common/errcode.h"		// error codes
+#include "zscanner/file_loader.h"
+#include "zscanner/error.h"		// error codes
 
-/*! \brief Mmap block size in bytes. */
+/*! \brief Mmap block size in bytes. This value is then adjusted to the
+ *         multiple of memory pages which fit in.
+ */
 #define BLOCK_SIZE      30000000
 
-/*!
- * \brief Processes zone settings block.
- *
- * Before zone file processing via scanner it's necessary to process first
- * settings block using this function. Settings block contains ORIGIN and
- * TTL directive.
- *
- * \param fl		File loader structure.
- *
- * \retval  0		if success.
- * \retval -1		if error.
- */
-static int load_settings(file_loader_t *fl)
+file_loader_t* file_loader_create(const char     *file_name,
+                                  const char     *origin,
+                                  const uint16_t rclass,
+                                  const uint32_t ttl,
+                                  void (*process_record)(const scanner_t *),
+                                  void (*process_error)(const scanner_t *),
+                                  void *data)
 {
-	int		ret;
-	char		*settings_name;
-	scanner_t	*settings_scanner;
-
-	// Creating name for zone defaults.
-	size_t buf_len = strlen(fl->file_name) + 100;
-	settings_name = malloc(buf_len);
-	ret = snprintf(settings_name, buf_len, "ZONE DEFAULTS <%s>",
-		       fl->file_name);
-	if (ret < 0 || (size_t)ret >= buf_len) {
-		free(settings_name);
-		return -1;
-	}
-
-	// Temporary scanner for zone settings.
-	settings_scanner = scanner_create(settings_name);
-
-	// Use parent processing functions.
-	settings_scanner->process_record = fl->scanner->process_record;
-	settings_scanner->process_error  = fl->scanner->process_error;
-
-	// Scanning zone settings.
-	ret = scanner_process(fl->settings_buffer,
-			      fl->settings_buffer + fl->settings_length,
-			      true,
-			      settings_scanner);
-
-	// If no error occured, then copy scanned settings to actual context.
-	if (ret == 0) {
-		memcpy(fl->scanner->zone_origin,
-		       settings_scanner->zone_origin,
-		       settings_scanner->zone_origin_length);
-		fl->scanner->zone_origin_length =
-			settings_scanner->zone_origin_length;
-		fl->scanner->default_ttl = settings_scanner->default_ttl;
-	}
-
-	// Destroying temporary scanner.
-	scanner_free(settings_scanner);
-
-	free(settings_name);
-
-	return ret;
-}
-
-file_loader_t* file_loader_create(const char	 *file_name,
-				  const char	 *zone_origin,
-				  const uint16_t default_class,
-				  const uint32_t default_ttl,
-				  void (*process_record)(const scanner_t *),
-				  void (*process_error)(const scanner_t *),
-				  void *data)
-{
-	int ret;
-
 	// Creating zeroed structure.
 	file_loader_t *fl = calloc(1, sizeof(file_loader_t));
-
 	if (fl == NULL) {
 		return NULL;
 	}
@@ -113,7 +52,6 @@ file_loader_t* file_loader_create(const char	 *file_name,
 
 	// Opening zone file.
 	fl->fd = open(fl->file_name, O_RDONLY);
-
 	if (fl->fd == -1) {
 		free(fl->file_name);
 		free(fl);
@@ -121,28 +59,14 @@ file_loader_t* file_loader_create(const char	 *file_name,
 	}
 
 	// Creating zone scanner.
-	fl->scanner = scanner_create(file_name);
-
-	// Setting processing functions and data pointer.
-	fl->scanner->process_record = process_record;
-	fl->scanner->process_error  = process_error;
-	fl->scanner->data = data;
-
-	// Default class initialization.
-	fl->scanner->default_class = default_class;
-
-	// Filling zone settings buffer.
-	ret = snprintf(fl->settings_buffer,
-		       sizeof(fl->settings_buffer),
-		       "$ORIGIN %s\n"
-		       "$TTL %u\n",
-		       zone_origin, default_ttl);
-	if (ret <= 0 || (size_t)ret >= sizeof(fl->settings_buffer)) {
-		file_loader_free(fl);
+	fl->scanner = scanner_create(fl->file_name, origin, rclass, ttl,
+	                             process_record, process_error, data);
+	if (fl->scanner == NULL) {
+		close(fl->fd);
+		free(fl->file_name);
+		free(fl);
 		return NULL;
 	}
-
-	fl->settings_length = ret;
 
 	return fl;
 }
@@ -157,7 +81,7 @@ void file_loader_free(file_loader_t *fl)
 
 int file_loader_process(file_loader_t *fl)
 {
-	int		ret;
+	int		ret = 0;
 	char		*data;		// Mmaped data.
 	bool		is_last_block;
 	long		page_size;
@@ -195,13 +119,6 @@ int file_loader_process(file_loader_t *fl)
 	// Number of blocks which cover the whole file (ceiling operation).
 	n_blocks = 1 + ((file_stat.st_size - 1) / default_block_size);
 
-	// Process settings using scanner (like initial ORIGIN and TTL).
-	ret = load_settings(fl);
-
-	if (ret != 0) {
-		return FLOADER_EDEFAULTS;
-	}
-
 	// Loop over zone file blocks.
 	for (block_id = 0; block_id < n_blocks; block_id++) {
 		scanner_start = block_id * default_block_size;
@@ -216,28 +133,27 @@ int file_loader_process(file_loader_t *fl)
 
 		// Zone file block mapping.
 		data = mmap(0,
-			    block_size,
-			    PROT_READ,
-			    MAP_SHARED,
-			    fl->fd,
-			    scanner_start);
-
+		            block_size,
+		            PROT_READ,
+		            MAP_SHARED,
+		            fl->fd,
+		            scanner_start);
 		if (data == MAP_FAILED) {
 			return FLOADER_EMMAP;
 		}
 
 		// Scan zone file.
 		ret = scanner_process(data,
-				      data + block_size,
-				      false,
-				      fl->scanner);
+		                      data + block_size,
+		                      false,
+		                      fl->scanner);
 
 		// Artificial last block containing newline char only.
 		if (is_last_block == true && fl->scanner->stop == 0) {
 			ret = scanner_process(zone_termination,
-					      zone_termination + 1,
-					      true,
-					      fl->scanner);
+			                      zone_termination + 1,
+			                      true,
+			                      fl->scanner);
 		}
 
 		// Zone file block unmapping.
@@ -251,5 +167,5 @@ int file_loader_process(file_loader_t *fl)
 		return FLOADER_ESCANNER;
 	}
 
-	return KNOT_EOK;
+	return ZSCANNER_OK;
 }

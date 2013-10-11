@@ -142,7 +142,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 
 void query_free(query_t *query)
 {
-	node *n = NULL, *nxt = NULL;
+	node_t *n = NULL, *nxt = NULL;
 
 	if (query == NULL) {
 		DBG_NULL;
@@ -192,7 +192,7 @@ int dig_init(dig_params_t *params)
 
 void dig_clean(dig_params_t *params)
 {
-	node *n = NULL, *nxt = NULL;
+	node_t *n = NULL, *nxt = NULL;
 
 	if (params == NULL) {
 		DBG_NULL;
@@ -251,7 +251,7 @@ static int parse_local(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
-static int parse_name(const char *value, list *queries, const query_t *conf)
+static int parse_name(const char *value, list_t *queries, const query_t *conf)
 {
 	query_t *query = NULL;
 
@@ -268,7 +268,7 @@ static int parse_name(const char *value, list *queries, const query_t *conf)
 	}
 
 	// Add new query to the queries.
-	add_tail(queries, (node *)query);
+	add_tail(queries, (node_t *)query);
 
 	return KNOT_EOK;
 }
@@ -299,7 +299,7 @@ static int parse_port(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
-static int parse_reverse(const char *value, list *queries, const query_t *conf)
+static int parse_reverse(const char *value, list_t *queries, const query_t *conf)
 {
 	query_t *query = NULL;
 
@@ -323,7 +323,7 @@ static int parse_reverse(const char *value, list *queries, const query_t *conf)
 	query->type_num = KNOT_RRTYPE_PTR;
 
 	// Add new query to the queries.
-	add_tail(queries, (node *)query);
+	add_tail(queries, (node_t *)query);
 
 	return KNOT_EOK;
 }
@@ -370,7 +370,7 @@ static int parse_type(const char *value, query_t *query)
 
 static void complete_servers(query_t *query, const query_t *conf)
 {
-	node *n = NULL;
+	node_t *n = NULL;
 	char *def_port;
 
 	// Decide which default port use.
@@ -414,7 +414,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 				     s->name, s->service);
 				return;
 			}
-			add_tail(&query->servers, (node *)server);
+			add_tail(&query->servers, (node_t *)server);
 		}
 	// Use system specific.
 	} else if (get_nameservers(&query->servers, def_port) <= 0) {
@@ -422,10 +422,10 @@ static void complete_servers(query_t *query, const query_t *conf)
 	}
 }
 
-void complete_queries(list *queries, const query_t *conf)
+void complete_queries(list_t *queries, const query_t *conf)
 {
 	query_t *q = NULL;
-	node    *n = NULL;
+	node_t  *n = NULL;
 
 	if (queries == NULL || conf == NULL) {
 		DBG_NULL;
@@ -441,7 +441,7 @@ void complete_queries(list *queries, const query_t *conf)
 		}
 		q->class_num = KNOT_CLASS_IN;
 		q->type_num = KNOT_RRTYPE_NS;
-		add_tail(queries, (node *)q);
+		add_tail(queries, (node_t *)q);
 	}
 
 	WALK_LIST(n, *queries) {

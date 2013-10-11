@@ -59,12 +59,8 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 	if (db == NULL || zone == NULL) {
 		return KNOT_EINVAL;
 	}
-dbg_zonedb_exec(
-	char *name = knot_dname_to_str(zone->name);
-	dbg_zonedb("Inserting zone %s into zone db.\n", name);
-	free(name);
-);
 
+	/*! \todo Why is this check here? */
 	int ret = KNOT_EOK;
 	if (knot_zone_contents(zone)) {
 		ret = knot_zone_contents_load_nsec3param(
@@ -76,10 +72,11 @@ dbg_zonedb_exec(
 		}
 	}
 
-	/* Ordered lookup is not required, no dname conversion. */
-	const char *key = (const char*)knot_dname_name(zone->name);
-	size_t klen = knot_dname_size(zone->name);
-	*hattrie_get(db->zone_tree, key, klen) = zone;
+	/* Insert new record. */
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, zone->name, NULL);
+	*hattrie_get(db->zone_tree, (char*)lf+1, *lf) = zone;
+
 	db->zone_count++;
 
 	return ret;
@@ -91,19 +88,19 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
                                      const knot_dname_t *zone_name)
 {
 	/* Fetch if exists. */
-	knot_zone_t *oldzone = knot_zonedb_find_zone(db, zone_name);
-	if (oldzone == NULL) return NULL;
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, zone_name, NULL);
+
+	value_t *old_zone = hattrie_tryget(db->zone_tree, (char*)lf+1, *lf);
+	if (old_zone == NULL)
+		return NULL;
 
 	/* Remove from db. */
-	const char *key = (const char*)knot_dname_name(zone_name);
-	size_t klen = knot_dname_size(zone_name);
-	int ret = hattrie_del(db->zone_tree, key, klen);
-	if (ret < 0) {
+	if (hattrie_del(db->zone_tree, (char*)lf+1, *lf) < 0)
 		return NULL;
-	}
 
 	--db->zone_count;
-	return oldzone;
+	return (knot_zone_t *)*old_zone;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -111,11 +108,13 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
 knot_zone_t *knot_zonedb_find_zone(const knot_zonedb_t *db,
                                        const knot_dname_t *zone_name)
 {
-	const char *key = (const char*)knot_dname_name(zone_name);
-	size_t klen = knot_dname_size(zone_name);
-	value_t *val = hattrie_tryget(db->zone_tree, key, klen);
-	if (!val) return NULL;
-	return (knot_zone_t *)*val;
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, zone_name, NULL);
+	value_t *val = hattrie_tryget(db->zone_tree, (char*)lf+1, *lf);
+	if (val)
+		return (knot_zone_t *)*val;
+
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -127,32 +126,21 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 		return NULL;
 	}
 
-	knot_zone_t *zone = NULL;
-	const char *name = (const char*)dname->name;
-	size_t len = dname->size;
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, dname, NULL);
 
-	while (len > 0) {
-		value_t *found = hattrie_tryget(db->zone_tree, name, len);
-		if (found) {
-			zone = (knot_zone_t *)*found;
-			break;
-		} else {
-			/* Take label len + 1 and skip it.
-			 * ..from \x04lake\x03com\x00
-			 * ..to           \x03com\x00
-			 */
-			uint8_t to_chop = name[0] + 1;
-			len -= to_chop;
-			name += to_chop;
-		}
+	/* Attempt to find longest matching prefix.
+	 * as zones are stored as \x00com\x00lake\x00
+	 * the longest matching prefix is essentially a best match,
+	 * as it is guaranteed that inserted names end in \x00
+	 */
+	value_t *val = NULL;
+	int len = hattrie_find_lpr(db->zone_tree, (char*)lf+1, *lf, &val);
+	if (len > -1) {
+		return (const knot_zone_t *)*val;
 	}
 
-dbg_zonedb_exec(
-	char *zname = knot_dname_to_str(dname);
-	dbg_zonedb("Found zone for name %s: %p\n", zname, zone);
-	free(zname);
-);
-	return zone;
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/

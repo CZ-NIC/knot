@@ -283,6 +283,7 @@ system @{
   rundir "/var/run/knot";
   workers 16;
   user knot.knot;
+  max-udp-payload 4096;
 @}
 @end example
 
@@ -718,6 +719,8 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
     [ @code{notify-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{notify-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{update-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
+    [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
+    [ @code{dnssec-keydir} @kbd{string}@code{;} ]
     [ @kbd{zone_options} ]
   @code{@}}
 @code{@}}
@@ -731,6 +734,8 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
   [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
   [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
+  [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
+  [ @code{signature-lifetime} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
 @end example
 
 @node zones Statement Definition and Grammar
@@ -751,6 +756,9 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * notify-retries::
 * zonefile-sync::
 * ixfr-fslimit::
+* dnssec-enable::
+* dnssec-keydir::
+* signature-lifetime::
 @end menu
 
 @node zone_id
@@ -855,6 +863,33 @@ are 1 to INT_MAX and default value is 5.
 
 @code{ixfr-fslimit} sets a maximum file size for zone's journal in bytes. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
 
+@node dnssec-enable
+@subsubsection dnssec-enable
+@vindex dnssec-enable
+
+EXPERIMENTAL: Enable online DNSSEC signing for the zone.
+
+Default value (in @code{zones} section): on if @code{dnssec-keydir} is set
+
+Default value (in @code{zone} config): inherited from @code{zones} section
+
+@node dnssec-keydir
+@subsubsection dnssec-keydir
+@vindex dnssec-keydir
+
+Location of DNSSEC signing keys.
+
+Default value: not set
+
+@node signature-lifetime
+@subsubsection signature-lifetime
+@vindex signature-lifetime
+
+Specifies how long should the automatically generated DNSSEC signatures be valid. Expiration will thus be set as current time (in the moment of signing) + @code{signature-lifetime}.
+Possible values are from 7201 to INT_MAX. The lower limit is because the server will trigger resign when any of the signatures expires in 7200 seconds or less.
+
+Default value: @kbd{30d} (@kbd{2592000})
+
 @node zones Example
 @subsection zones Example
 
@@ -870,6 +905,9 @@ zones @{
   notify-retries 5;
   zonefile-sync 1h;
   ixfr-fslimit 1G;
+  dnssec-enable on;
+  dnssec-keydir "keys";
+  signature-lifetime 60d;
   example.com @{
     file "samples/example.com.zone";
     ixfr-from-differences off; #experimental
@@ -878,6 +916,8 @@ zones @{
     notify-timeout 60;
     notify-retries 5;
     zonefile-sync 1h;
+    dnssec-enable off;
+    signature-lifetime 30d;
     xfr-in server0;
     xfr-out server0, server1;
     notify-in server0;

@@ -41,19 +41,19 @@ enum estim_consts {
 };
 
 typedef struct type_list_item {
-	node n;
+	node_t n;
 	uint16_t type;
 } type_list_item_t;
 
 typedef struct dummy_node {
 	// For now only contains list of RR types
-	list node_list;
+	list_t node_list;
 } dummy_node_t;
 
 // return: 0 not present, 1 - present
-static int find_in_list(list *node_list, uint16_t type)
+static int find_in_list(list_t *node_list, uint16_t type)
 {
-	node *n = NULL;
+	node_t *n = NULL;
 	WALK_LIST(n, *node_list) {
 		type_list_item_t *l_entr = (type_list_item_t *)n;
 		assert(l_entr);
@@ -65,7 +65,7 @@ static int find_in_list(list *node_list, uint16_t type)
 	type_list_item_t *new_entry = xmalloc(sizeof(type_list_item_t));
 	new_entry->type = type;
 
-	add_head(node_list, (node *)new_entry);
+	add_head(node_list, (node_t *)new_entry);
 	return 0;
 }
 
@@ -77,29 +77,30 @@ static int dummy_node_add_type(dummy_node_t *n, uint16_t t)
 
 static size_t dname_memsize(const knot_dname_t *d)
 {
-	size_t d_size = d->size;
-	size_t l_size = d->label_count;
-	if (d->size < MALLOC_MIN) {
+
+	size_t d_size = knot_dname_size(d);
+	if (d_size < MALLOC_MIN) {
 		d_size = MALLOC_MIN;
 	}
-	if (d->label_count < MALLOC_MIN) {
-		l_size = MALLOC_MIN;
-	}
 
-	return (sizeof(knot_dname_t) + d_size + l_size)
-	       * DNAME_MULT + DNAME_ADD;
+	return d_size * DNAME_MULT + DNAME_ADD;
 }
 
 // return: 0 - unique, 1 - duplicate
 static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
                                    dummy_node_t **n)
 {
-	value_t *val = hattrie_tryget(table, (char *)d->name, d->size);
+	int d_size = knot_dname_size(d);
+	if (d_size < 0) {
+		return KNOT_EINVAL;
+	}
+
+	value_t *val = hattrie_tryget(table, (char *)d, d_size);
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
 		*n = xmalloc(sizeof(dummy_node_t));
 		init_list(&(*n)->node_list);
-		*hattrie_get(table, (char *)d->name, d->size) = *n;
+		*hattrie_get(table, (char *)d, d_size) = *n;
 		return 0;
 	} else {
 		// Return previously found dummy node
@@ -108,58 +109,15 @@ static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
 	}
 }
 
-// return: RDATA memsize, minus size of dnames inside
-static size_t rdata_memsize(zone_estim_t *est, const scanner_t *scanner)
-{
-	const rdata_descriptor_t *desc = get_rdata_descriptor(scanner->r_type);
-	size_t size = 0;
-	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
-		// DNAME - pointer in memory
-		int item = desc->block_types[i];
-		if (descriptor_item_is_dname(item)) {
-			size += sizeof(knot_dname_t *);
-			knot_dname_t *dname =
-				knot_dname_new_from_wire(scanner->r_data +
-			                                 scanner->r_data_blocks[i],
-			                                 scanner->r_data_blocks[i + 1] -
-			                                 scanner->r_data_blocks[i],
-			                                 NULL);
-			if (dname == NULL) {
-				return KNOT_ERROR;
-			}
-
-			knot_dname_to_lower(dname);
-			dummy_node_t *n = NULL;
-			if (insert_dname_into_table(est->dname_table,
-			                            dname, &n) == 0) {
-				// First time we see this dname, add size
-				est->dname_size += dname_memsize(dname);
-			}
-			knot_dname_free(&dname);
-		} else if (descriptor_item_is_fixed(item)) {
-		// Fixed length
-			size += item;
-		} else {
-		// Variable length
-			size += scanner->r_data_blocks[i + 1] -
-			        scanner->r_data_blocks[i];
-		}
-	}
-
-	return size * RDATA_MULT + RDATA_ADD;
-}
-
 static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 {
 	// Handle RRSet's owner
-	knot_dname_t *owner = knot_dname_new_from_wire(scanner->r_owner,
-	                         scanner->r_owner_length,
-	                         NULL);
+	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
 	if (owner == NULL) {
 		return;
 	}
 
-	dummy_node_t *n;
+	dummy_node_t *n = NULL;
 	if (insert_dname_into_table(est->node_table, owner, &n) == 0) {
 		// First time we see this name == new node
 		est->node_size += sizeof(knot_node_t) * NODE_MULT + NODE_ADD;
@@ -171,13 +129,12 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 	assert(n);
 
 	// We will always add RDATA
-	size_t rdlen = rdata_memsize(est, scanner);
+	size_t rdlen = scanner->r_data_length;
 	if (rdlen < MALLOC_MIN) {
 		rdlen = MALLOC_MIN;
 	}
-	// DNAME's size not included (handled inside rdata_memsize())
-	est->rdata_size += rdlen;
 
+	est->rdata_size += rdlen;
 	est->record_count++;
 
 	/*

@@ -46,8 +46,6 @@ unittests_SOURCES =			\
 	knot/server_tests.h		\
 	knot/rrl_tests.h		\
 	knot/rrl_tests.c		\
-	zscanner/zscanner_tests.h	\
-	zscanner/zscanner_tests.c	\
 	libknot/dname_tests.h		\
 	libknot/dname_tests.c		\
 	libknot/ztree_tests.h		\
@@ -56,8 +54,14 @@ unittests_SOURCES =			\
 	libknot/wire_tests.c		\
 	libknot/rrset_tests.c		\
 	libknot/rrset_tests.h		\
-	libknot/sign_tests.c		\
-	libknot/sign_tests.h		\
+	libknot/dnssec_keys_tests.c	\
+	libknot/dnssec_keys_tests.h	\
+	libknot/dnssec_nsec3_tests.c	\
+	libknot/dnssec_nsec3_tests.h	\
+	libknot/dnssec_sign_tests.c	\
+	libknot/dnssec_sign_tests.h	\
+	libknot/dnssec_zone_nsec_tests.c \
+	libknot/dnssec_zone_nsec_tests.h \
 	unittests_main.c
 
 unittests_LDADD = ../libknotd.la ../libknots.la @LIBOBJS@

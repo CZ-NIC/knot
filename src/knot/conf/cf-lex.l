@@ -125,6 +125,9 @@ rate-limit      { lval.t = yytext; return RATE_LIMIT; }
 rate-limit-size { lval.t = yytext; return RATE_LIMIT_SIZE; }
 rate-limit-slip { lval.t = yytext; return RATE_LIMIT_SLIP; }
 transfers       { lval.t = yytext; return TRANSFERS; }
+dnssec-enable   { lval.t = yytext; return DNSSEC_ENABLE; }
+dnssec-keydir   { lval.t = yytext; return DNSSEC_KEYDIR; }
+signature-lifetime { lval.t = yytext; return SIGNATURE_LIFETIME; }
 
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }
@@ -306,6 +309,7 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 	}
 
 	yypop_buffer_state(yyscanner);
+
 	if (!YY_CURRENT_BUFFER) {
 		return END;
 	}

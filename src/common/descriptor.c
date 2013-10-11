@@ -15,26 +15,20 @@
  */
 
 #include <config.h>
-#include "common/descriptor.h"
-#include "libknot/util/utils.h"		// knot_lookup_table_t
-
 #include <stdio.h>			// snprintf
 #include <stdlib.h>			// strtoul
+#include <strings.h>			// strcasecmp
 
-/*!
- * \brief The last RR type number in the descriptors table.
- */
-const int KNOT_RRTYPE_LAST = KNOT_RRTYPE_ANY;
+#include <common/descriptor.h>
 
 /*!
  * \brief Table with DNS classes.
  */
-static knot_lookup_table_t dns_classes[] = {
-	{ KNOT_CLASS_IN,	"IN" },
-	{ KNOT_CLASS_CH,	"CH" },
-	{ KNOT_CLASS_NONE,	"NONE" },
-	{ KNOT_CLASS_ANY,	"ANY" },
-	{ 0, NULL }
+static const char* dns_classes[] = {
+	[KNOT_CLASS_IN]   = "IN",
+	[KNOT_CLASS_CH]   = "CH",
+	[KNOT_CLASS_NONE] = "NONE",
+	[KNOT_CLASS_ANY]  = "ANY"
 };
 
 /*!
@@ -133,7 +127,7 @@ static const rdata_descriptor_t rdata_descriptors[] = {
 	[KNOT_RRTYPE_AXFR]       = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "AXFR" },
 	[KNOT_RRTYPE_ANY]        = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "ANY" },
+	                               KNOT_RDATA_WF_END }, "ANY" }
 };
 
 /*!
@@ -162,7 +156,8 @@ static const rdata_descriptor_t obsolete_rdata_descriptors[] = {
 
 const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type)
 {
-	if (type <= KNOT_RRTYPE_ANY && rdata_descriptors[type].type_name != 0) {
+	if (type <= KNOT_RRTYPE_ANY &&
+	    rdata_descriptors[type].type_name != NULL) {
 		return &rdata_descriptors[type];
 	} else {
 		return &rdata_descriptors[0];
@@ -187,7 +182,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 
 	const rdata_descriptor_t *descr = get_rdata_descriptor(rrtype);
 
-	if (descr->type_name != 0) {
+	if (descr->type_name != NULL) {
 		ret = snprintf(out, out_len, "%s", descr->type_name);
 	} else {
 		ret = snprintf(out, out_len, "TYPE%u", rrtype);
@@ -207,8 +202,8 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 	unsigned long n;
 
 	// Try to find name in descriptors table.
-	for (i = 0; i <= KNOT_RRTYPE_LAST; i++) {
-		if (rdata_descriptors[i].type_name != 0 &&
+	for (i = 0; i <= KNOT_RRTYPE_ANY; i++) {
+		if (rdata_descriptors[i].type_name != NULL &&
 		    strcasecmp(rdata_descriptors[i].type_name, name) == 0) {
 			*num = i;
 			return 0;
@@ -238,10 +233,8 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 {
 	int ret;
 
-	knot_lookup_table_t *entry = knot_lookup_by_id(dns_classes, rrclass);
-
-	if (entry != NULL) {
-		ret = snprintf(out, out_len, "%s", entry->name);
+	if (rrclass <= KNOT_CLASS_ANY && dns_classes[rrclass] != NULL) {
+		ret = snprintf(out, out_len, "%s", dns_classes[rrclass]);
 	} else {
 		ret = snprintf(out, out_len, "CLASS%u", rrclass);
 	}
@@ -255,15 +248,17 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 
 int knot_rrclass_from_string(const char *name, uint16_t *num)
 {
+	int i;
 	char *end;
 	unsigned long n;
 
-	// Try to find name in lookup table.
-	knot_lookup_table_t *entry = knot_lookup_by_name(dns_classes, name);
-
-	if (entry != NULL) {
-		*num = entry->id;
-		return 0;
+	// Try to find the name in classes table.
+	for (i = 0; i <= KNOT_CLASS_ANY; i++) {
+		if (dns_classes[i] != NULL &&
+		    strcasecmp(dns_classes[i], name) == 0) {
+			*num = i;
+			return 0;
+		}
 	}
 
 	// Class name must begin with CLASS.
@@ -321,4 +316,13 @@ int knot_rrtype_is_metatype(const uint16_t type)
 	       type == KNOT_RRTYPE_IXFR ||
 	       type == KNOT_RRTYPE_AXFR ||
 	       type == KNOT_RRTYPE_ANY;
+}
+
+int knot_rrtype_is_ddns_forbidden(const uint16_t type)
+{
+	return type == KNOT_RRTYPE_RRSIG      ||
+	       type == KNOT_RRTYPE_DNSKEY     ||
+	       type == KNOT_RRTYPE_NSEC3PARAM ||
+	       type == KNOT_RRTYPE_NSEC       ||
+	       type == KNOT_RRTYPE_NSEC3;
 }

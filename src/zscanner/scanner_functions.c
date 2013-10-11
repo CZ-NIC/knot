@@ -15,14 +15,13 @@
  */
 
 #include <config.h>
-#include "zscanner/scanner_functions.h"
-
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "common/errcode.h"
-#include "common/descriptor.h"
-#include "zscanner/scanner.h"
+#include "zscanner/scanner_functions.h"
+#include "zscanner/error.h"		// error codes
+#include "zscanner/scanner.h"		// scanner_t
+#include "zscanner/descriptor.h"	// KNOT_RDATA_WF_END
 
 const uint8_t digit_to_num[] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,
@@ -766,16 +765,16 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 	}
 
 	*timestamp = hour * 3600 + minute * 60 + second +
-		     (days_across_years[year] +
-		     days_across_months[month] +
-		     day - 1 + leap_day) * 86400;
+	             (days_across_years[year] +
+	             days_across_months[month] +
+	             day - 1 + leap_day) * 86400;
 
-	return KNOT_EOK;
+	return ZSCANNER_OK;
 }
 
 void wire_dname_to_str(const uint8_t  *data,
-		       const uint32_t data_len,
-		       char *text)
+                       const uint32_t data_len,
+                       char           *text)
 {
 	uint32_t i = 0, text_len = 0;
 
@@ -822,163 +821,4 @@ uint8_t loc64to8(uint64_t number)
 	}
 	// First 4 bits are mantisa, second 4 bits are exponent.
 	return ((uint8_t)number << 4) + (exponent & 15);
-}
-
-/*!
- * \brief Returns domain name length in wire-format.
- *
- * \param data		Data array.
- * \param data_len	Length of data array.
- *
- * \retval >0		if success.
- * \retval 0		if error.
- */
-static uint32_t get_dname_length(const uint8_t  *data,
-				 const uint32_t data_len)
-{
-	uint8_t  label_len = data[0];
-	uint32_t dname_len = 0;
-
-	while (label_len > 0) {
-		// Label overflow check.
-		if (label_len > MAX_LABEL_LENGTH) {
-			return 0;
-		}
-
-		dname_len += 1 + label_len;
-
-		// Data overflow check.
-		if (dname_len > data_len) {
-			return 0;
-		}
-
-		label_len = data[dname_len];
-        }
-
-	dname_len++; // Last label length byte.
-
-	// Dname overflow check.
-	if (dname_len <= MAX_DNAME_LENGTH) {
-		return dname_len;
-	} else {
-		return 0;
-	}
-}
-
-/*!
- * \brief Returns length of the leading NAPTR block in wire-format.
- *
- * \param data		Data array.
- * \param data_len	Length of data array.
- *
- * \retval >0		if success.
- * \retval 0		if error.
- */
-static uint32_t get_naptr_header_length(const uint8_t  *data,
-					const uint32_t data_len)
-{
-	uint32_t naptr_len = 0;
-
-	// 2B order + 2B preference.
-	naptr_len += 2 + 2;
-
-	// Flags - text string with forward 1B length.
-	naptr_len += data[naptr_len] + 1;
-
-	// Services - text string with forward 1B length.
-	naptr_len += data[naptr_len] + 1;
-
-	// Regexp - text string with forward 1B length.
-	naptr_len += data[naptr_len] + 1;
-
-	// Data overflow check.
-	if (naptr_len <= data_len) {
-		return naptr_len;
-	} else {
-		return 0;
-	}
-}
-
-/*!
- * \brief Returns block length in wire-format.
- *
- * \param data		Data array.
- * \param data_len	Length of data array.
- * \param offset	Start of the block in data array.
- * \param type		Record type.
- *
- * \retval >=0		if success.
- * \retval <0		if error.
- */
-static int32_t get_block_length(const uint8_t  *data,
-				const uint32_t data_len,
-				const uint32_t offset,
-				const int      type)
-{
-	uint32_t ret;
-
-	switch (type) {
-	case KNOT_RDATA_WF_COMPRESSED_DNAME:
-	case KNOT_RDATA_WF_UNCOMPRESSED_DNAME:
-		ret = get_dname_length(data + offset, data_len - offset);
-
-		if (ret > 0) {
-			return ret;
-		} else {
-			return -1;
-		}
-	case KNOT_RDATA_WF_NAPTR_HEADER:
-		ret = get_naptr_header_length(data + offset, data_len - offset);
-
-                if (ret > 0) {
-                        return ret;
-                } else {
-                        return -1;
-                }
-	case KNOT_RDATA_WF_REMAINDER:
-		return data_len - offset;
-	default:
-		return 0;
-	}
-}
-
-int find_rdata_blocks(scanner_t *s)
-{
-	int32_t  ret;
-	uint32_t position = 0;
-
-	// Initialization of block items.
-	s->r_data_blocks_count = 0;
-	s->r_data_blocks[0] = 0;
-
-	// Getting appropriate descriptor array.
-	const rdata_descriptor_t *descriptor = get_rdata_descriptor(s->r_type);
-	const int *type = descriptor->block_types;
-
-	// Loop over descriptor array.
-	while (*type != KNOT_RDATA_WF_END) {
-		if (*type > KNOT_RDATA_WF_END) {
-			position += *type;
-		} else {
-			ret = get_block_length(s->r_data,
-					       s->r_data_length,
-					       position,
-					       *type);
-			if (ret < 0) {
-				return ZSCANNER_EUNKNOWN_BLOCK;
-			}
-
-			position += ret;
-		}
-		s->r_data_blocks[++(s->r_data_blocks_count)] = position;
-		type++;
-	}
-
-	// Checking processed rdata length.
-	if (s->r_data_blocks[s->r_data_blocks_count] != s->r_data_length) {
-		return ZSCANNER_EBAD_HEX_RDATA;
-	}
-	else {
-		return KNOT_EOK;
-	}
 }

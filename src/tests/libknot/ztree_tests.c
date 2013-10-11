@@ -24,10 +24,10 @@ static knot_node_t NODE[NCOUNT];
 static knot_dname_t* ORDER[NCOUNT];
 static void ztree_init_data()
 {
-	NAME[0] = knot_dname_new_from_str(".", 1, NULL);
-	NAME[1] = knot_dname_new_from_str("master.ac.", 10, NULL);
-	NAME[2] = knot_dname_new_from_str("ac.", 3, NULL);
-	NAME[3] = knot_dname_new_from_str("ns.", 3, NULL);
+	NAME[0] = knot_dname_from_str(".", 1);
+	NAME[1] = knot_dname_from_str("master.ac.", 10);
+	NAME[2] = knot_dname_from_str("ac.", 3);
+	NAME[3] = knot_dname_from_str("ns.", 3);
 
 	knot_dname_t *order[NCOUNT] = {
 	        NAME[0], NAME[2], NAME[1], NAME[3]
@@ -37,7 +37,6 @@ static void ztree_init_data()
 	for (unsigned i = 0; i < NCOUNT; ++i) {
 		memset(NODE + i, 0, sizeof(knot_node_t));
 		NODE[i].owner = NAME[i];
-		NAME[i]->node = NODE + i;
 		NODE[i].prev = NODE + ((NCOUNT + i - 1) % NCOUNT);
 		NODE[i].rrset_count = 1; /* required for ordered search */
 	}
@@ -120,7 +119,7 @@ static int ztree_tests_run(int argc, char *argv[])
 	passed = 1;
 	node = NULL;
 	const knot_node_t *prev = NULL;
-	knot_dname_t *tmp_dn = knot_dname_new_from_str("z.ac.", 5, NULL);
+	knot_dname_t *tmp_dn = knot_dname_from_str("z.ac.", 5);
 	knot_zone_tree_find_less_or_equal(t, tmp_dn, &node, &prev);
 	knot_dname_free(&tmp_dn);
 	ok(prev == NODE + 1, "ztree: ordered lookup");

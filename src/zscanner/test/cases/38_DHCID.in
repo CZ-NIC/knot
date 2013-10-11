@@ -15,7 +15,6 @@ $TTL	1
 @	DHCID
 @	DHCID			; Empty rdata
 @	DHCID	\# 0		; Hex empty rdata
-@	DHCID	\#		; Missing hex length
 @	DHCID	A		; Continuous block length must be multiple of 4
 @	DHCID	AB		; Continuous block length must be multiple of 4
 @	DHCID	ABC		; Continuous block length must be multiple of 4
@@ -25,5 +24,3 @@ $TTL	1
 @	DHCID	==		; Bad padding
 @	DHCID	===		; Bad padding
 @	DHCID	====		; Bad padding
-@	DHCID	\# 1 0000	; Too long rdata
-@	DHCID	\# 2 00		; Bad rdata length

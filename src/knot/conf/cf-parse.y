@@ -42,7 +42,7 @@ static conf_iface_t *this_iface = 0;
 static conf_iface_t *this_remote = 0;
 static conf_zone_t *this_zone = 0;
 static conf_group_t *this_group = 0;
-static list *this_list = 0;
+static list_t *this_list = 0;
 static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
@@ -100,7 +100,7 @@ static void conf_start_remote(void *scanner, char *remote)
 
 static void conf_remote_set_via(void *scanner, char *item) {
    /* Find existing node in interfaces. */
-   node* r = 0; conf_iface_t* found = 0;
+   node_t* r = 0; conf_iface_t* found = 0;
    WALK_LIST (r, new_config->ifaces) {
       if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
          found = (conf_iface_t*)r;
@@ -176,7 +176,7 @@ static void conf_add_member_into_group(void *scanner, char *name)
 	// add the remote into the group while silently ignoring duplicates
 
 	conf_group_remote_t *remote;
-	node *n;
+	node_t *n;
 	WALK_LIST (n, this_group->remotes) {
 		remote = (conf_group_remote_t *)n;
 		if (strcmp(remote->name, name) == 0) {
@@ -264,10 +264,11 @@ static void conf_acl_item(void *scanner, char *item)
 static int conf_key_exists(void *scanner, char *item)
 {
     /* Find existing node in keys. */
-    knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
+    knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
+    knot_dname_to_lower(sample);
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
-        if (knot_dname_compare(r->k.name, sample) == 0) {
+        if (knot_dname_cmp(r->k.name, sample) == 0) {
            cf_error(scanner, "key '%s' is already defined", item);
 	   knot_dname_free(&sample);
            return 1;
@@ -284,11 +285,12 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
     *key = 0;
 
     /* Find in keys */
-    knot_dname_t *sample = knot_dname_new_from_str(item, strlen(item), 0);
+    knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
+    knot_dname_to_lower(sample);
 
     conf_key_t* r = 0;
     WALK_LIST (r, new_config->keys) {
-        if (knot_dname_compare(r->k.name, sample) == 0) {
+        if (knot_dname_cmp(r->k.name, sample) == 0) {
            *key = &r->k;
            knot_dname_free(&sample);
            return 0;
@@ -314,6 +316,7 @@ static void conf_zone_start(void *scanner, char *name) {
    this_zone->dbsync_timeout = -1; // Default policy applies
    this_zone->disable_any = -1; // Default policy applies
    this_zone->build_diffs = -1; // Default policy applies
+   this_zone->sig_lifetime = -1; // Default policy applies
 
    // Append mising dot to ensure FQDN
    size_t nlen = strlen(name);
@@ -329,6 +332,12 @@ static void conf_zone_start(void *scanner, char *name) {
       this_zone->name = name; /* Already FQDN */
    }
 
+   // DNSSEC configuration
+   this_zone->dnssec_enable = true;
+   if (new_config->dnssec_global) {
+      this_zone->dnssec_enable = new_config->dnssec_enable;
+   }
+
    /* Initialize ACL lists. */
    init_list(&this_zone->acl.xfr_in);
    init_list(&this_zone->acl.xfr_out);
@@ -339,7 +348,7 @@ static void conf_zone_start(void *scanner, char *name) {
    /* Check domain name. */
    knot_dname_t *dn = NULL;
    if (this_zone->name != NULL) {
-      dn = knot_dname_new_from_str(this_zone->name, nlen, 0);
+      dn = knot_dname_from_str(this_zone->name, nlen);
    }
    if (dn == NULL) {
      free(this_zone->name);
@@ -348,7 +357,7 @@ static void conf_zone_start(void *scanner, char *name) {
      cf_error(scanner, "invalid zone origin");
    } else {
      /* Check for duplicates. */
-     if (hattrie_tryget(new_config->names, (const char*)dn->name, dn->size) != NULL) {
+     if (hattrie_tryget(new_config->names, (const char *)dn, knot_dname_size(dn)) != NULL) {
            cf_error(scanner, "zone '%s' is already present, refusing to "
 			     "duplicate", this_zone->name);
            knot_dname_free(&dn);
@@ -362,7 +371,7 @@ static void conf_zone_start(void *scanner, char *name) {
 
      /* Directly discard dname, won't be needed. */
      add_tail(&new_config->zones, &this_zone->n);
-     *hattrie_get(new_config->names, (const char*)dn->name, dn->size) = (void *)1;
+     *hattrie_get(new_config->names, (const char *)dn, knot_dname_size(dn)) = (void *)1;
      ++new_config->zones_count;
      knot_dname_free(&dn);
    }
@@ -467,6 +476,9 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> RATE_LIMIT_SIZE
 %token <tok> RATE_LIMIT_SLIP
 %token <tok> TRANSFERS
+%token <tok> DNSSEC_ENABLE
+%token <tok> DNSSEC_KEYDIR
+%token <tok> SIGNATURE_LIFETIME
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -656,8 +668,8 @@ keys:
      }
 
      if (fqdn != NULL && !conf_key_exists(scanner, fqdn)) {
-         knot_dname_t *dname = knot_dname_new_from_str(fqdn, fqdnl, 0);
-         if (!dname) {
+         knot_dname_t *dname = knot_dname_from_str(fqdn, fqdnl);
+	 if (!dname) {
              cf_error(scanner, "key name '%s' not in valid domain name format",
                       fqdn);
          } else {
@@ -845,7 +857,7 @@ zone_acl_list:
 zone_acl:
  | zone_acl TEXT ';' {
       /* Find existing node in remotes. */
-      node* r = 0; conf_iface_t* found = 0;
+      node_t* r = 0; conf_iface_t* found = 0;
       WALK_LIST (r, new_config->remotes) {
 	 if (strcmp(((conf_iface_t*)r)->name, $2.t) == 0) {
 	    found = (conf_iface_t*)r;
@@ -924,6 +936,21 @@ zone:
 	   this_zone->notify_timeout = $3.i;
        }
    }
+ | zone DNSSEC_ENABLE BOOL ';' { this_zone->dnssec_enable = $3.i; }
+ | zone SIGNATURE_LIFETIME NUM ';' {
+	if ($3.i <= 7200) {
+	   cf_error(scanner, "signature lifetime must be more than 7200 seconds");
+	} else {
+	   this_zone->sig_lifetime = $3.i;
+	}
+ }
+ | zone SIGNATURE_LIFETIME INTERVAL ';' {
+	 if ($3.i <= 7200) {
+	    cf_error(scanner, "signature lifetime must be more than 7200 seconds");
+	 } else {
+	    this_zone->sig_lifetime = $3.i;
+	 }
+ }
  ;
 
 zones:
@@ -956,6 +983,23 @@ zones:
        }
  }
  | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3.i; }
+ | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i;
+                                  new_config->dnssec_global = true; }
+ | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
+ | zones SIGNATURE_LIFETIME NUM ';' {
+	if ($3.i <= 7200) {
+	   cf_error(scanner, "signature lifetime must be more than 7200 seconds");
+	} else {
+	   new_config->sig_lifetime = $3.i;
+	}
+ }
+ | zones SIGNATURE_LIFETIME INTERVAL ';' {
+	 if ($3.i <= 7200) {
+	    cf_error(scanner, "signature lifetime must be more than 7200 seconds");
+	 } else {
+	    new_config->sig_lifetime = $3.i;
+	 }
+ }
  ;
 
 log_prios_start: {
@@ -982,7 +1026,7 @@ log_src:
 log_dest: LOG_DEST {
   /* Find already existing rule. */
   this_log = 0;
-  node *n = 0;
+  node_t *n = 0;
   WALK_LIST(n, new_config->logs) {
     conf_log_t* log = (conf_log_t*)n;
     if (log->type == $1.i) {
@@ -1005,7 +1049,7 @@ log_dest: LOG_DEST {
 log_file: FILENAME TEXT {
   /* Find already existing rule. */
   this_log = 0;
-  node *n = 0;
+  node_t *n = 0;
   WALK_LIST(n, new_config->logs) {
     conf_log_t* log = (conf_log_t*)n;
     if (log->type == LOGT_FILE) {

@@ -120,23 +120,21 @@ static int rrl_tests_count(int argc, char *argv[])
 static int rrl_tests_run(int argc, char *argv[])
 {
 	/* Prepare query. */
-	knot_question_t qst;
-	qst.qclass = KNOT_CLASS_IN;
-	qst.qtype = KNOT_RRTYPE_A;
-	qst.qname = knot_dname_new_from_str("beef.", 5, NULL);
-	knot_packet_t *query = knot_packet_new(KNOT_PACKET_PREALLOC_QUERY);
-	knot_query_init(query);
+	knot_packet_t *query = knot_packet_new();
 	if (knot_packet_set_max_size(query, 512) < 0) {
-		knot_dname_free(&qst.qname);
 		knot_packet_free(&query);
 		return KNOT_ERROR; /* Fatal */
 	}
-	int ret = knot_query_set_question(query, &qst);
+	knot_query_init(query);
+
+	knot_dname_t *qname = knot_dname_from_str("beef.", 5);
+	int ret = knot_query_set_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
+	knot_dname_free(&qname);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&qst.qname);
 		knot_packet_free(&query);
 		return KNOT_ERROR; /* Fatal */
 	}
+
 
 	/* Prepare response */
 	knot_nameserver_t *ns = knot_ns_create();
@@ -148,7 +146,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	rrl_req_t rq;
 	rq.w = rbuf;
 	rq.len = rlen;
-	rq.qst = &qst;
+	rq.query = query;
 	rq.flags = 0;
 
 	/* 1. create rrl table */
@@ -165,7 +163,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "rrl: setlocks");
 
 	/* 4. N unlimited requests. */
-	knot_dname_t *apex = knot_dname_new_from_str("rrl.", 4, NULL);
+	knot_dname_t *apex = knot_dname_from_str("rrl.", 4);
 	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0));
 	sockaddr_t addr;
 	sockaddr_t addr6;
@@ -220,8 +218,7 @@ static int rrl_tests_run(int argc, char *argv[])
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
 #endif
 
-	knot_dname_release(qst.qname);
-	knot_dname_release(apex);
+	knot_dname_free(&apex);
 	knot_zone_deep_free(&zone);
 	knot_ns_destroy(&ns);
 	knot_packet_free(&query);

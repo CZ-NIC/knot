@@ -13,6 +13,7 @@ In this chapter we provide suggested configurations and explain the meaning of i
 * Enabling zone semantic checks::
 * Creating IXFR differences from zone file changes::
 * Using Response Rate Limiting::
+* Online DNSSEC signing (experimental)::
 @end menu
 
 @node Minimal configuration
@@ -283,3 +284,119 @@ system @{
 	rate-limit-slip 1; # Every response is slipped (default)
 @}
 @end example
+
+@node Online DNSSEC signing (experimental)
+@section Online DNSSEC signing (experimental)
+
+Knot DNS 1.4 is the first release to include online DNSSEC signing feature.
+Online DNSSEC signing is currently highly experimental and there is a lot of
+issues we are working on and limitations we will try to eliminate. By all
+means, anything in the current implementation can change including
+configuration options. We have no intention to maintain backward compatibility.
+
+@subsection Example configuration
+
+The example configuration enables automatic signing for all zones using
+@ref{dnssec-enable} option in the @code{zones} section, but the signing is
+explicitly disabled for zone @code{example.dev} using the same option directly
+in zone configuration. The location of directory with signing keys is set
+globally by option @ref{dnssec-keydir}.
+
+@sp 1
+
+@example
+zones @{
+  dnssec-enable on;
+  dnssec-keydir "/var/lib/knot/keys";
+
+  example.com @{
+    file "example.com.zone";
+  @}
+
+  example.dev @{
+    file "example.dev.zone";
+    dnssec-enable off;
+  @}
+@}
+@end example
+
+@subsection Signing keys
+
+The signing keys can be generated using ISC @code{dnssec-keygen} tool only
+and there are some limitations:
+
+@itemize @bullet
+@item
+Keys for all zones must be placed in one directory.
+
+@item
+Algorithms based on RSA, DSA, and ECDSA are supported, support for GOST
+algorithm is not finished yet.
+
+@item
+Only key activation and inactivation time stamps are utilized and defined
+times are used both for key publication and signing. Other timestamps are
+ignored.
+
+@item
+It is required, that both @code{.private} and @code{.key} files for each key
+are available in the key directory in order to use the keys (even for
+verification only).
+
+@item
+There cannot be more than eight active keys per zone.
+
+@end itemize
+
+@sp 1
+
+Example how to generate NSEC3 capable zone signing key (ZSK) and key signing
+key (KSK) for zone @code{example.com}:
+
+@sp 1
+@example
+$ cd /var/lib/knot/keys
+$ dnssec-keygen -3 example.com
+$ dnssec-keygen -3 -f KSK example.com
+@end example
+
+@subsection Signing policy
+
+Currently the signing policy is not configurable, except for signature lifetime.
+
+@itemize @bullet
+@item Signature lifetime can be set in configuration globally for all zones and for each zone in particular. @xref{signature-lifetime}. If not set, the default value is 30 days.
+@item Signature is refreshed 2 hours before expiration. The signature lifetime must thus be set to more than 2 hours.
+@end itemize
+
+@subsection Zone signing
+
+The signing process consists of the following steps:
+
+@itemize @bullet
+@item
+Fixing @code{NSEC} or @code{NSEC3} records. This is determined by
+@code{NSEC3PARAM} record presence in unsigned zone.
+
+@item
+Updating @code{DNSKEY} records. This also means adding DNSKEY records for any keys that are present in keydir, but missing in zone file.
+
+@item
+Removing expired signatures, invalid signatures, signatures expiring in a short
+time, and signatures with unknown key.
+
+@item
+Creating any missing signatures. @code{DNSKEY} records are signed by both ZSK
+and KSK keys, other records are signed only by ZSK keys.
+
+@item
+SOA record is updated and resigned if any changes were performed.
+
+@end itemize
+
+@sp 1
+
+The zone signing is performed when the zone is loaded into server, on zone
+reload, before any signature is expiring, and after DDNS update. The signing
+can be also forced using @code{signzone} command issued by @code{knotc}, in
+this case all signatures are recreated.

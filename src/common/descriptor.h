@@ -16,6 +16,7 @@
 /*!
  * \file descriptor.h
  *
+ * \author Daniel Salzman <daniel.salzman@nic.cz>
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \addtogroup common_lib
@@ -32,6 +33,8 @@
 
 /*!
  * \brief Resource record class codes.
+ *
+ * http://www.iana.org/assignments/dns-parameters/dns-parameters.xml
  */
 enum knot_rr_class {
 	KNOT_CLASS_IN   =   1,
@@ -138,7 +141,7 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_UNCOMPRESSED_DNAME,
 	/*!< Initial part of NAPTR record before dname. */
 	KNOT_RDATA_WF_NAPTR_HEADER,
-	/*!< Uninteresting final part of a record. */
+	/*!< Final part of a record. */
 	KNOT_RDATA_WF_REMAINDER,
 	/*!< The last descriptor in array. */
 	KNOT_RDATA_WF_END                =   0
@@ -229,7 +232,7 @@ int knot_rrclass_from_string(const char *name, uint16_t *num);
  *
  * \param item Item value.
  *
- * \retval 1 if YES.
+ * \retval > 0 if YES.
  * \retval 0 if NO.
  */
 int descriptor_item_is_dname(const int item);
@@ -239,7 +242,7 @@ int descriptor_item_is_dname(const int item);
  *
  * \param item Item value.
  *
- * \retval 1 if YES.
+ * \retval > 0 if YES.
  * \retval 0 if NO.
  */
 int descriptor_item_is_compr_dname(const int item);
@@ -269,10 +272,20 @@ int descriptor_item_is_remainder(const int item);
  *
  * \param item Item value.
  *
- * \retval 1 if YES.
+ * \retval > 0 if YES.
  * \retval 0 if NO.
  */
 int knot_rrtype_is_metatype(const uint16_t type);
+
+/*!
+ * \brief Checks if given item is one of the types we do not accept via DDNS.
+ *
+ * \param item Item value.
+ *
+ * \retval > 0 if YES.
+ * \retval 0 if NO.
+ */
+int knot_rrtype_is_ddns_forbidden(const uint16_t type);
 
 #endif // _KNOT_DESCRIPTOR_H_
 

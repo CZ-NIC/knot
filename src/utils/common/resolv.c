@@ -85,7 +85,7 @@ server_t* parse_nameserver(const char *nameserver, const char *def_port)
 	}
 }
 
-static int get_resolv_nameservers(list *servers, const char *def_port)
+static int get_resolv_nameservers(list_t *servers, const char *def_port)
 {
 	char	line[512];
 
@@ -139,7 +139,7 @@ static int get_resolv_nameservers(list *servers, const char *def_port)
 
 			// If value is correct, add nameserver to the list.
 			if (server != NULL) {
-				add_tail(servers, (node *)server);
+				add_tail(servers, (node_t *)server);
 			}
 		}
 
@@ -154,7 +154,7 @@ static int get_resolv_nameservers(list *servers, const char *def_port)
 	return list_size(servers);
 }
 
-int get_nameservers(list *servers, const char *def_port)
+int get_nameservers(list_t *servers, const char *def_port)
 {
 	if (servers == NULL || def_port == NULL) {
 		DBG_NULL;
@@ -178,14 +178,14 @@ int get_nameservers(list *servers, const char *def_port)
 		server = server_create(DEFAULT_IPV6_NAME, def_port);
 
 		if (server != NULL) {
-			add_tail(servers, (node *)server);
+			add_tail(servers, (node_t *)server);
 		}
 
 		// Add default ipv4 nameservers.
 		server = server_create(DEFAULT_IPV4_NAME, def_port);
 
 		if (server != NULL) {
-			add_tail(servers, (node *)server);
+			add_tail(servers, (node_t *)server);
 		}
 
 		return list_size(servers);
