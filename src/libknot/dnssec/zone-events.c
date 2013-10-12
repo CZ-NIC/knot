@@ -243,7 +243,9 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	}
 
 	// Update SOA RRSIGs
-	ret = knot_zone_sign_update_soa(in_ch->soa_to, &zone_keys, &policy,
+	ret = knot_zone_sign_update_soa(knot_node_rrset(zone->apex,
+	                                                KNOT_RRTYPE_SOA),
+	                                &zone_keys, &policy,
 	                                out_ch);
 	if (ret != KNOT_EOK) {
 		log_zone_error("Failed to sign SOA RR (%s)\n",

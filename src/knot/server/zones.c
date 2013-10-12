@@ -1050,6 +1050,7 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 	 */
 	if (diff_chs == NULL &&
 	    sec_chs == NULL) {
+		return;
 	} else if (diff_chs == NULL &&
 	           sec_chs != NULL) {
 		knot_changesets_free(&sec_chs);
@@ -1068,17 +1069,19 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 		} else {
 			/*!
 			 * Ending SOA from the merged changeset was used in
-			 * zone (same as in DNSSEC changeset). It thus must not
+			 * zone (same as in DNSSEC changeset). It must not
 			 * be freed.
 			 */
+			assert(knot_changesets_get_last(diff_chs)->serial_to ==
+			       knot_changesets_get_last(sec_chs)->serial_to);
 			knot_changesets_get_last(diff_chs)->soa_to = NULL;
 			knot_changesets_free(&diff_chs);
 
 			/*!
-			 * The "SOA from" from the second changeset is not used,
-			 * thus must be freed
+			 * From SOAs from the second changeset was not used,
+			 * it must be freed.
 			 */
-			knot_rrset_deep_free_no_sig(
+			knot_rrset_deep_free(
 			  &(knot_changesets_get_last(sec_chs)->soa_from), 1);
 
 			// Reset sec_chs' chngeset list, else we'd double free.

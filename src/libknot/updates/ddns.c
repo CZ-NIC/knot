@@ -1838,7 +1838,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 
 		/* If not set, create new SOA. */
 		assert(sn_new == (uint32_t)sn + 1);
-		ret = knot_rrset_deep_copy(soa, &soa_end);
+		ret = knot_rrset_deep_copy_no_sig(soa, &soa_end);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy ending SOA: %s\n",
 			         knot_strerror(ret));
