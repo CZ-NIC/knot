@@ -20,9 +20,12 @@
 #include "common/errcode.h"			// KNOT_EOK
 #include "utils/nsupdate/nsupdate_params.h"	// params_t
 #include "utils/nsupdate/nsupdate_exec.h"	// host_exec
+#include "libknot/dnssec/cleanup.h"		// knot_dnssec_cleanup
 
 int main(int argc, char *argv[])
 {
+	atexit(knot_dnssec_cleanup);
+
 	int ret = EXIT_SUCCESS;
 
 	nsupdate_params_t params;

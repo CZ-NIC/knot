@@ -561,7 +561,6 @@ void server_destroy(server_t **server)
 	dt_delete(&(*server)->iosched);
 	rrl_destroy((*server)->rrl);
 	free(*server);
-	EVP_cleanup();
 	*server = NULL;
 }
 

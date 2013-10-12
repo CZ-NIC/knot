@@ -23,6 +23,7 @@
 #include "common/errcode.h"
 #include "common/hex.h"
 #include "common/strtonum.h"
+#include "libknot/dnssec/cleanup.h"
 #include "libknot/dnssec/nsec3.h"
 
 #define PROGRAM_NAME "knsec3hash"
@@ -83,6 +84,8 @@ static bool parse_nsec3_params(knot_nsec3_params_t *params, const char *salt,
  */
 int main(int argc, const char *argv[])
 {
+	atexit(knot_dnssec_cleanup);
+
 	int exit_code = 1;
 	knot_nsec3_params_t nsec3_params = { 0 };
 	knot_dname_t *dname = NULL;

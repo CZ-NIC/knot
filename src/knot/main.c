@@ -27,6 +27,7 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "libknot/common.h"
+#include "libknot/dnssec/cleanup.h"
 #include "common/evqueue.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
@@ -99,6 +100,8 @@ void help(void)
 
 int main(int argc, char **argv)
 {
+	atexit(knot_dnssec_cleanup);
+
 	// Parse command line arguments
 	int c = 0, li = 0;
 	int verbose = 0;
