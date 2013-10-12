@@ -802,7 +802,9 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 
 	// add unknown keys from zone
 	for (int i = 0; dnskeys && i < dnskeys->rdata_count; i++) {
-		uint16_t keytag = knot_rdata_rrsig_key_tag(dnskeys, i);
+		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
+		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
+		uint16_t keytag = knot_keytag(rdata, rdata_size);
 		if (get_zone_key(zone_keys, keytag) != NULL) {
 			continue;
 		}
