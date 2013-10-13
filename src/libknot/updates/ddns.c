@@ -1636,10 +1636,13 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 
 	dbg_ddns_verb("Removing all RRSets (count: %d).\n", count);
 	for (int i = 0; i < count; ++i) {
-		// If the node is apex, skip NS and SOA
+		// If the node is apex, skip NS, SOA and DNSSEC records
 		if (is_apex &&
 		    (knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_SOA
-		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS)) {
+		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS
+		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_DNSKEY
+		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NSEC
+		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NSEC3)) {
 			/* Do not remove these RRSets, nor their RRSIGs. */
 			continue;
 		}
