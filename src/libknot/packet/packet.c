@@ -237,11 +237,11 @@ dbg_packet_exec_detail(
 
 			if (knot_rrset_equal((*rrsets)[i], rrset,
 			                     KNOT_RRSET_COMPARE_HEADER)) {
-				/*! \todo Test this!!! */
-				// no duplicate checking here, the packet should
-				// look exactly as it came from wire
+				int merged = 0;
+				int deleted_rrs = 0;
 				int rc =
-					knot_rrset_merge((knot_rrset_t *)(*rrsets)[i], rrset);
+					knot_rrset_merge_sort((knot_rrset_t *)(*rrsets)[i],
+				                              rrset, &merged, &deleted_rrs);
 				if (rc != KNOT_EOK) {
 					return rc;
 				}
