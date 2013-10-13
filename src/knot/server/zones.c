@@ -1064,6 +1064,9 @@ static void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 		 */
 		if (zones_changesets_empty(sec_chs)
 		    || zones_changesets_empty(diff_chs)) {
+			if (knot_changesets_get_last(diff_chs)->soa_to) {
+				knot_changesets_get_last(diff_chs)->soa_to = NULL;
+			}
 			knot_changesets_free(&sec_chs);
 			knot_changesets_free(&diff_chs);
 		} else {
@@ -2018,7 +2021,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		assert(dnssec_contents);
 	}
 
-	dbg_zload_verb("%s: DNSSEC changes applied\n", msg);
+	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
 
 	// Commit transaction.
 	if (transaction) {
@@ -2068,6 +2071,9 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	zones_free_merged_changesets(chgsets, sec_chs);
 	assert(ret == KNOT_EOK);
 	*rcode = KNOT_RCODE_NOERROR; /* Mark as successful. */
+	if (new_signatures) {
+		log_zone_info("%s Signed.\n", msg);
+	}
 	log_zone_info("%s Finished.\n", msg);
 
 	free(msg);
