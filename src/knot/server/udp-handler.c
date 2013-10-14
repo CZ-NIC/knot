@@ -50,6 +50,7 @@
 #include "libknot/packet/packet.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
+#include "libknot/dnssec/cleanup.h"
 
 /* FD_COPY macro compat. */
 #ifndef FD_COPY
@@ -631,4 +632,10 @@ int udp_master(dthread_t *thread)
 	if (!st) return KNOT_EINVAL;
 	iohandler_t *h = st->h;
 	return udp_reader(h, thread);
+}
+
+int udp_master_destruct(dthread_t *thread)
+{
+	knot_dnssec_thread_cleanup();
+	return KNOT_EOK;
 }

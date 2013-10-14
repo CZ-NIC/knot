@@ -43,6 +43,7 @@
 #include "libknot/zone/zone-diff.h"
 #include "libknot/updates/ddns.h"
 #include "libknot/rdata.h"
+#include "libknot/dnssec/cleanup.h"
 #include "libknot/dnssec/zone-events.h"
 
 static const size_t XFRIN_CHANGESET_BINARY_SIZE = 100;
@@ -1627,6 +1628,12 @@ static int zonewalker(dthread_t *thread)
 	return KNOT_EOK;
 }
 
+static int zonewalker_destruct(dthread_t *thread)
+{
+	knot_dnssec_thread_cleanup();
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Fill the new database with zones.
  *
@@ -1676,7 +1683,8 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 	/* Initialize threads. */
 	size_t thrs = dt_optimal_size();
 	if (thrs > zcount) thrs = zcount;
-	dt_unit_t *unit =  dt_create_coherent(thrs, &zonewalker, NULL, zw);
+	dt_unit_t *unit =  dt_create_coherent(thrs, &zonewalker,
+	                                      &zonewalker_destruct, zw);
 	if (unit != NULL) {
 		/* Start loading. */
 		dt_start(unit);

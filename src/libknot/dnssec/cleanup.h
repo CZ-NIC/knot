@@ -27,15 +27,27 @@
 #ifndef _KNOT_DNSSEC_CLEANUP_H_
 #define _KNOT_DNSSEC_CLEANUP_H_
 
+#include <openssl/err.h>
 #include <openssl/evp.h>
 
 /*!
- * \brief Deinitialize library used to backend DNSSEC implementation.
+ * \brief Deinitialize OpenSSL library thread specific data.
  */
-static void knot_dnssec_cleanup(void)
+static inline void knot_dnssec_thread_cleanup(void)
+{
+	ERR_remove_state(0);
+}
+
+/*!
+ * \brief Deinitialize OpenSSL library.
+ */
+static inline void knot_dnssec_cleanup(void)
 {
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
+	ERR_free_strings();
+
+	knot_dnssec_thread_cleanup();
 }
 
 #endif // _KNOT_DNSSEC_CLEANUP_H_
