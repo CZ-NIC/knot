@@ -33,6 +33,7 @@ typedef void* value_t;         /* User pointers as value. */
 #define TRIE_ZEROBUCKETS  0    /* Do not use hash buckets (pure trie). */
 #define TRIE_BUCKET_SIZE  1536 /* Reasonably low for ordered search perf. */
 #define TRIE_MAXCHAR      0xff /* Use 7-bit ASCII alphabet. */
+#define TRIE_EOK          KNOT_EOK
 
 typedef struct hattrie_t_ hattrie_t;
 
@@ -53,8 +54,8 @@ hattrie_t* hattrie_dup (const hattrie_t*, value_t (*nval)(value_t));
  */
 void hattrie_build_index (hattrie_t*);
 
-void hattrie_apply_rev (hattrie_t*, void (*f)(value_t*,void*), void* d);
-void hattrie_apply_rev_ahtable(hattrie_t* T, void (*f)(void*,void*), void* d);
+int hattrie_apply_rev (hattrie_t*, int (*f)(value_t*,void*), void* d);
+int hattrie_apply_rev_ahtable(hattrie_t* T, int (*f)(void*,void*), void* d);
 
 /** Find the given key in the trie, inserting it if it does not exist, and
  * returning a pointer to it's key.

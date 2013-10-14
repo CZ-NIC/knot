@@ -39,7 +39,7 @@ typedef hattrie_t knot_zone_tree_t;
 /*!
  * \brief Signature of callback for zone apply functions.
  */
-typedef void (*knot_zone_tree_apply_cb_t)(knot_node_t **node, void *data);
+typedef int (*knot_zone_tree_apply_cb_t)(knot_node_t **node, void *data);
 
 /*----------------------------------------------------------------------------*/
 /*!
