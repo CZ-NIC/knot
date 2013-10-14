@@ -95,7 +95,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	assert(zone->contents);
 	assert(out_ch);
 
-	dbg_dnssec_verb("Changeset emtpy before generating NSEC chain: %d\n",
+	dbg_dnssec_verb("Changeset empty before generating NSEC chain: %d\n",
 	                knot_changeset_is_empty(out_ch));
 
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
@@ -129,7 +129,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		free_zone_keys(&zone_keys);
 		return result;
 	}
-	dbg_dnssec_verb("Changeset emtpy after generating NSEC chain: %d\n",
+	dbg_dnssec_verb("Changeset empty after generating NSEC chain: %d\n",
 	                knot_changeset_is_empty(out_ch));
 
 	// add missing signatures
@@ -175,6 +175,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	}
 
 	free_zone_keys(&zone_keys);
+	dbg_dnssec_detail("Zone signed: changes=%zu\n",
+	                  knot_changeset_size(out_ch));
 
 	return KNOT_EOK;
 }
@@ -252,5 +254,6 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 		               knot_strerror(ret));
 	}
 	free_zone_keys(&zone_keys);
+
 	return ret;
 }
