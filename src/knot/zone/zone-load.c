@@ -164,6 +164,7 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		log_zone_warning("Node could not be added (%s).\n",
 		                 knot_strerror(ret));
+		knot_node_free(&node);
 		return NULL;
 	}
 
@@ -427,6 +428,7 @@ static void process_rr(const scanner_t *scanner)
 			                 zone_name, name);
 			free(name);
 			free(zone_name);
+			knot_rrset_deep_free(&current_rrset, 1);
 			return;
 		}
 	}
