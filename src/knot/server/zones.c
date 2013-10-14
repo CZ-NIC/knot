@@ -1676,7 +1676,7 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 	/* Initialize threads. */
 	size_t thrs = dt_optimal_size();
 	if (thrs > zcount) thrs = zcount;
-	dt_unit_t *unit =  dt_create_coherent(thrs, &zonewalker, zw);
+	dt_unit_t *unit =  dt_create_coherent(thrs, &zonewalker, NULL, zw);
 	if (unit != NULL) {
 		/* Start loading. */
 		dt_start(unit);

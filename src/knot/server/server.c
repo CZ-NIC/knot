@@ -334,7 +334,7 @@ server_t *server_create()
 	// Create event scheduler
 	dbg_server("server: creating event scheduler\n");
 	server->sched = evsched_new();
-	server->iosched = dt_create_coherent(1, evsched_run, server->sched);
+	server->iosched = dt_create_coherent(1, evsched_run, NULL, server->sched);
 
 	// Create name server
 	dbg_server("server: creating Name Server structure\n");
@@ -593,7 +593,8 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		/* Initialize I/O handlers. */
 		size_t udp_size = tu_size;
 		if (udp_size < 2) udp_size = 2;
-		dt_unit_t *tu = dt_create_coherent(udp_size, &udp_master, NULL);
+		dt_unit_t *tu = dt_create_coherent(udp_size, &udp_master, NULL,
+		                                   NULL);
 		server_init_handler(server->h + IO_UDP, server, tu, NULL);
 
 		/* Create at least CONFIG_XFERS threads for TCP for faster

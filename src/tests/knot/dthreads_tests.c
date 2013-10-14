@@ -255,7 +255,7 @@ static int dt_tests_run(int argc, char *argv[])
 	/* Test 15: Wrong values. */
 	unit = dt_create(-1);
 	ok(unit == 0, "dthreads: create with negative count");
-	unit = dt_create_coherent(dt_optimal_size(), 0, 0);
+	unit = dt_create_coherent(dt_optimal_size(), 0, 0, 0);
 
 	/* Test 16: NULL runnable. */
 	cmp_ok(dt_start(unit), "==", 0, "dthreads: start with NULL runnable");

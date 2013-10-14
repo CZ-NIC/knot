@@ -78,6 +78,7 @@ typedef int (*runnable_t)(struct dthread_t *);
 typedef struct dthread_t {
 	volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
 	runnable_t           run; /*!< Runnable function or 0. */
+	runnable_t      destruct; /*!< Destructor function or 0. */
 	void               *data; /*!< Currently active data */
 	struct dt_unit_t   *unit; /*!< Reference to assigned unit. */
 	void             *_adata; /* Thread-specific data. */
@@ -123,12 +124,14 @@ dt_unit_t *dt_create(int count);
  *
  * \param count Requested thread count.
  * \param runnable Runnable function for all threads.
+ * \param destructor Destructor for all threads.
  * \param data Any data passed onto threads.
  *
  * \retval New instance if successful
  * \retval NULL on error
  */
-dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data);
+dt_unit_t *dt_create_coherent(int count, runnable_t runnable,
+                              runnable_t destructor, void *data);
 
 /*!
  * \brief Free unit.

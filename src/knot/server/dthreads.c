@@ -209,6 +209,13 @@ static void *thread_ep(void *data)
 		}
 	}
 
+	// Thread destructor
+	if (thread->destruct) {
+		dbg_dt("dthreads: [%p] entering destructor\n", thread);
+		thread->destruct(thread);
+		dbg_dt("dthreads: [%p] exited destructor\n", result);
+	}
+
 	// Report thread state change
 	dbg_dt("dthreads: [%p] thread finished\n", thread);
 	unit_signalize_change(unit);
@@ -372,7 +379,8 @@ dt_unit_t *dt_create(int count)
 	return unit;
 }
 
-dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data)
+dt_unit_t *dt_create_coherent(int count, runnable_t runnable,
+                              runnable_t destructor, void *data)
 {
 	// Check count
 	if (count <= 0) {
@@ -393,6 +401,7 @@ dt_unit_t *dt_create_coherent(int count, runnable_t runnable, void *data)
 		dthread_t *thread = unit->threads[i];
 		lock_thread_rw(thread);
 		thread->run = runnable;
+		thread->destruct = destructor;
 		thread->_adata = data;
 		unlock_thread_rw(thread);
 	}
