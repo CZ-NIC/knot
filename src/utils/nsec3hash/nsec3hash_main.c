@@ -16,6 +16,7 @@
 
 #include <config.h>
 #include <assert.h>
+#include <getopt.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -31,11 +32,11 @@
 /*!
  * \brief Print program usage (and example).
  */
-static void usage(void)
+static void usage(FILE *stream)
 {
-	fprintf(stderr, "usage:   " PROGRAM_NAME " "
+	fprintf(stream, "usage:   " PROGRAM_NAME " "
 	                "<salt> <algorithm> <iterations> <domain-name>\n");
-	fprintf(stderr, "example: " PROGRAM_NAME " "
+	fprintf(stream, "example: " PROGRAM_NAME " "
 	                "c01dcafe 1 10 knot-dns.cz\n");
 }
 
@@ -82,8 +83,36 @@ static bool parse_nsec3_params(knot_nsec3_params_t *params, const char *salt,
 /*!
  * \brief Entry point of 'knsec3hash'.
  */
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
+	struct option options[] = {
+		{ "version", no_argument, 0, 'V' },
+		{ "help",    no_argument, 0, 'h' },
+		{ NULL }
+	};
+
+	int opt = 0;
+	int li = 0;
+	while ((opt = getopt_long(argc, argv, "hV", options, &li)) != -1) {
+		switch(opt) {
+		case 'V':
+			printf("%s, version %s\n", PROGRAM_NAME, PACKAGE_VERSION);
+			return 0;
+		case 'h':
+			usage(stdout);
+			return 0;
+		default:
+			usage(stderr);
+			return 1;
+		}
+	}
+
+	// knsec3hash <salt> <algorithm> <iterations> <domain>
+	if (argc != 5) {
+		usage(stderr);
+		return 1;
+	}
+
 	atexit(knot_dnssec_cleanup);
 
 	int exit_code = 1;
@@ -94,13 +123,6 @@ int main(int argc, const char *argv[])
 	uint8_t *b32_digest = NULL;
 	int32_t b32_length = 0;
 	int result = 0;
-
-	// knsec3hash <salt> <algorithm> <iterations> <domain>
-
-	if (argc != 5) {
-		usage();
-		goto fail;
-	}
 
 	if (!parse_nsec3_params(&nsec3_params, argv[1], argv[2], argv[3])) {
 		goto fail;
