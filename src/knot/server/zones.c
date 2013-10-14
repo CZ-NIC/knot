@@ -1943,21 +1943,24 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		return (ret < 0) ? ret : KNOT_EOK;
 	}
 
-	knot_changesets_t *sec_chs =
-		knot_changesets_create(KNOT_CHANGESET_TYPE_DNSSEC);
-	knot_changeset_t *sec_ch = knot_changesets_create_changeset(sec_chs);
-	if (sec_chs == NULL || sec_ch == NULL) {
-		xfrin_rollback_update(zone->contents, &new_contents,
-		                      chgsets->changes);
-		knot_changesets_free(&chgsets);
-		free(msg);
-		return KNOT_ENOMEM;
+	knot_changesets_t *sec_chs = NULL;
+	knot_changeset_t *sec_ch = NULL;
+	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
+	assert(zone_config);
+	if (zone_config->dnssec_enable) {
+		sec_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_DNSSEC);
+		sec_ch = knot_changesets_create_changeset(sec_chs);
+		if (sec_chs == NULL || sec_ch == NULL) {
+			xfrin_rollback_update(zone->contents, &new_contents,
+			                      chgsets->changes);
+			knot_changesets_free(&chgsets);
+			free(msg);
+			return KNOT_ENOMEM;
+		}
 	}
 
 	dbg_zones_verb("%s: Signing the UPDATE\n", msg);
 	// Sign the created changeset
-	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
-	assert(zone_config);
 	if (zone_config->dnssec_enable) {
 		ret = knot_dnssec_sign_changeset(new_contents,
 		                                 knot_changesets_get_last(chgsets),
