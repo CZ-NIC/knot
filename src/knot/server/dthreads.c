@@ -213,7 +213,7 @@ static void *thread_ep(void *data)
 	if (thread->destruct) {
 		dbg_dt("dthreads: [%p] entering destructor\n", thread);
 		thread->destruct(thread);
-		dbg_dt("dthreads: [%p] exited destructor\n", result);
+		dbg_dt("dthreads: [%p] exited destructor\n", thread);
 	}
 
 	// Report thread state change
