@@ -219,8 +219,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
-                                 void (*function)(knot_node_t **node,
-                                                  void *data),
+                                 knot_zone_tree_apply_cb_t function,
                                  void *data)
 {
 	if (tree == NULL || function == NULL) {
@@ -240,10 +239,8 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
-                                           void (*function)(
-                                               knot_node_t **node,
-                                               void *data),
-                                           void *data)
+                                   knot_zone_tree_apply_cb_t function,
+                                   void *data)
 {
 	if (tree == NULL || function == NULL) {
 		return KNOT_EINVAL;
@@ -257,7 +254,7 @@ int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         void (*function)(knot_node_t **node, void *data),
+                         knot_zone_tree_apply_cb_t function,
                          void *data)
 {
 	hattrie_iter_t *i = hattrie_iter_begin(tree, 0);

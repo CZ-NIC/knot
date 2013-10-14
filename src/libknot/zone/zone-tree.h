@@ -36,6 +36,11 @@
 
 typedef hattrie_t knot_zone_tree_t;
 
+/*!
+ * \brief Signature of callback for zone apply functions.
+ */
+typedef void (*knot_zone_tree_apply_cb_t)(knot_node_t **node, void *data);
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates the zone tree.
@@ -185,8 +190,7 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
  * \retval KNOT_EINVAL
  */
 int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
-                                 void (*function)(knot_node_t **node,
-                                                  void *data),
+                                 knot_zone_tree_apply_cb_t function,
                                  void *data);
 
 /*!
@@ -203,10 +207,8 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
  * \retval KNOT_EINVAL
  */
 int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
-                                           void (*function)(
-                                                  knot_node_t **node,
-                                                  void *data),
-                                           void *data);
+                                   knot_zone_tree_apply_cb_t function,
+                                   void *data);
 
 /*!
  * \brief Applies the given function to each node in the zone.
@@ -219,7 +221,7 @@ int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
  * \retval KNOT_EINVAL
  */
 int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         void (*function)(knot_node_t **node, void *data),
+                         knot_zone_tree_apply_cb_t function,
                          void *data);
 
 /*!
