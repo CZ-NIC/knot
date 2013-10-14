@@ -455,6 +455,7 @@ static void process_rr(const scanner_t *scanner)
 		       "add RRSets.\n");
 		/*!< \todo mixed error codes, has to be changed. */
 		parser->ret = ret;
+		knot_rrset_deep_free(&current_rrset, 1);
 		return;
 	} else if (ret > 0) {
 		knot_rrset_deep_free(&current_rrset, 1);
