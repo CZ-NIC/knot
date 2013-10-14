@@ -497,7 +497,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	*dst = NULL;
 
 	/* Check zone file. */
-	if(access(source, F_OK) != -1) {
+	if (access(source, F_OK | R_OK) != 0) {
 		return KNOT_EACCES;
 	}
 
