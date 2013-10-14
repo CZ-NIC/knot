@@ -1482,6 +1482,7 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 			if (ret != KNOT_EOK) {
 				dbg_ddns("Failed to add removed RRSIGs to "
 				         "'changes': %s\n", knot_strerror(ret));
+				free(removed);
 				return ret;
 			}
 			/* Disconnect RRsigs from rrset. */
