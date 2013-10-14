@@ -2495,13 +2495,6 @@ static int ns_error_response_to_wire(knot_packet_t *resp, uint8_t *wire,
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct ns_axfr_params {
-	knot_ns_xfr_t *xfr;
-	int ret;
-} ns_axfr_params_t;
-
-/*----------------------------------------------------------------------------*/
-
 int knot_ns_tsig_required(int packet_nr)
 {
 	/*! \bug This can overflow to negative numbers. Proper solution is to
@@ -2642,19 +2635,12 @@ dbg_ns_exec_verb(
 
 /*----------------------------------------------------------------------------*/
 
-static void ns_axfr_from_node(knot_node_t *node, void *data)
+static int ns_axfr_from_node(knot_node_t *node, void *data)
 {
 	assert(node != NULL);
 	assert(data != NULL);
 
-	ns_axfr_params_t *params = (ns_axfr_params_t *)data;
-
-	if (params->ret != KNOT_EOK) {
-		// just skip (will be called on next node with the same params
-		dbg_ns_detail("Params contain error: %s, skipping node...\n",
-		              knot_strerror(params->ret));
-		return;
-	}
+	knot_ns_xfr_t *xfr = (knot_ns_xfr_t *)data;
 
 	dbg_ns_detail("Params OK, answering AXFR from node %p.\n", node);
 dbg_ns_exec_verb(
@@ -2664,17 +2650,16 @@ dbg_ns_exec_verb(
 );
 
 	if (knot_node_rrset_count(node) == 0) {
-		return;
+		return KNOT_EOK;
 	}
 
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 	if (rrsets == NULL) {
-		params->ret = KNOT_ENOMEM;
-		return;
+		return KNOT_ENOMEM;
 	}
 
 	int i = 0;
-	int ret = 0;
+	int ret = KNOT_EOK;
 	knot_rrset_t *rrset = NULL;
 	while (i < knot_node_rrset_count(node)) {
 		assert(rrsets[i] != NULL);
@@ -2695,24 +2680,24 @@ rrset:
 			goto rrsigs;
 		}
 
-		ret = knot_response_add_rrset_answer(
-				 params->xfr->response, rrset, 0, 0, 0);
+		ret = knot_response_add_rrset_answer(xfr->response, rrset,
+		                                     0, 0, 0);
 
 		if (ret == KNOT_ESPACE) {
 			// TODO: send the packet and clean the structure
 			dbg_ns("Packet full, sending..\n");
-			ret = ns_xfr_send_and_clear(params->xfr,
-				knot_ns_tsig_required(params->xfr->packet_nr));
+			ret = ns_xfr_send_and_clear(xfr,
+				knot_ns_tsig_required(xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
-				params->ret = KNOT_ERROR;
+				ret = KNOT_ERROR;
 				break;
 			}
 			// otherwise try once more with the same RRSet
 			goto rrset;
 		} else if (ret != KNOT_EOK) {
 			// some wierd problem, we should end
-			params->ret = KNOT_ERROR;
+			ret = KNOT_ERROR;
 			break;
 		}
 
@@ -2724,24 +2709,24 @@ rrsigs:
 			continue;
 		}
 
-		ret = knot_response_add_rrset_answer(params->xfr->response,
-		                                        rrset, 0, 0, 0);
+		ret = knot_response_add_rrset_answer(xfr->response, rrset,
+		                                     0, 0, 0);
 
 		if (ret == KNOT_ESPACE) {
 			// TODO: send the packet and clean the structure
 			dbg_ns("Packet full, sending..\n");
-			ret = ns_xfr_send_and_clear(params->xfr,
-				knot_ns_tsig_required(params->xfr->packet_nr));
+			ret = ns_xfr_send_and_clear(xfr,
+				knot_ns_tsig_required(xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
-				params->ret = KNOT_ERROR;
+				ret = KNOT_ERROR;
 				break;
 			}
 			// otherwise try once more with the same RRSet
 			goto rrsigs;
 		} else if (ret != KNOT_EOK) {
 			// some wierd problem, we should end
-			params->ret = KNOT_ERROR;
+			ret = KNOT_ERROR;
 			break;
 		}
 
@@ -2754,6 +2739,7 @@ rrsigs:
 
 	/*! \todo maybe distinguish some error codes. */
 	//params->ret = (ret == 0) ? KNOT_EOK : KNOT_ERROR;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2765,11 +2751,6 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 	assert(xfr->response != NULL);
 	assert(xfr->wire != NULL);
 	assert(xfr->send != NULL);
-
-	ns_axfr_params_t params;
-	memset(&params, 0, sizeof(ns_axfr_params_t));
-	params.xfr = xfr;
-	params.ret = KNOT_EOK;
 
 	xfr->packet_nr = 0;
 
@@ -2803,17 +2784,13 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 		return KNOT_ERROR;
 	}
 
-	knot_zone_contents_tree_apply_inorder(zone, ns_axfr_from_node,
-	                                        &params);
-
-	if (params.ret != KNOT_EOK) {
+	ret = knot_zone_contents_tree_apply_inorder(zone, ns_axfr_from_node, &xfr);
+	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;	// maybe do something with the code
 	}
 
-	knot_zone_contents_nsec3_apply_inorder(zone, ns_axfr_from_node,
-	                                         &params);
-
-	if (params.ret != KNOT_EOK) {
+	ret = knot_zone_contents_nsec3_apply_inorder(zone, ns_axfr_from_node, &xfr);
+	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;	// maybe do something with the code
 	}
 

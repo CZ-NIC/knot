@@ -776,10 +776,12 @@ struct sem_check_param {
  * \param node Node to be counted
  * \param data Count casted to void *
  */
-static void count_nodes_in_tree(knot_node_t *node, void *data)
+static int count_nodes_in_tree(knot_node_t *node, void *data)
 {
 	struct sem_check_param *param = (struct sem_check_param *)data;
 	param->node_count++;
+
+	return KNOT_EOK;
 }
 
 static int zone_is_secure(const knot_zone_contents_t *z)
@@ -1121,7 +1123,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
  * \param node Node to be searched.
  * \param data Arguments.
  */
-static void do_checks_in_tree(knot_node_t *node, void *data)
+static int do_checks_in_tree(knot_node_t *node, void *data)
 {
 	dbg_semcheck_verb("semcheck: do_check_in_tree: Checking node: %s\n",
 	                  knot_dname_to_str(node->owner));
@@ -1154,7 +1156,7 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 		sem_check_node_plain(zone, node, check_level, handler, 1,
 		                      (int *)args->arg7);
 		free(rrsets);
-		return;
+		return KNOT_EOK;
 	}
 
 	if (do_checks > 1) {
@@ -1163,6 +1165,7 @@ static void do_checks_in_tree(knot_node_t *node, void *data)
 	}
 
 	free(rrsets);
+	return KNOT_EOK;
 }
 
 int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,

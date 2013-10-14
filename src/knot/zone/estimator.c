@@ -174,7 +174,7 @@ void estimator_free(void *p)
 	free(p);
 }
 
-static void get_ahtable_size(void *t, void *d)
+static int get_ahtable_size(void *t, void *d)
 {
 	ahtable_t *table = (ahtable_t *)t;
 	size_t *size = (size_t *)d;
@@ -191,6 +191,8 @@ static void get_ahtable_size(void *t, void *d)
 	// slots
 	*size += table->n * sizeof(void *);
 	*size += AHTABLE_ADD;
+
+	return KNOT_EOK;
 }
 
 size_t estimator_trie_ahtable_memsize(hattrie_t *table)
@@ -210,10 +212,12 @@ void estimator_rrset_memsize_wrap(const scanner_t *scanner)
 	rrset_memsize(scanner->data, scanner);
 }
 
-void estimator_free_trie_node(value_t *val, void *data)
+int estimator_free_trie_node(value_t *val, void *data)
 {
 	UNUSED(data);
 	dummy_node_t *trie_n = (dummy_node_t *)(*val);
 	WALK_LIST_FREE(trie_n->node_list);
 	free(trie_n);
+
+	return KNOT_EOK;
 }

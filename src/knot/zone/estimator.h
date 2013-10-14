@@ -83,7 +83,7 @@ void estimator_rrset_memsize_wrap(const scanner_t *scanner);
  *
  * \param p Data to free.
  */
-void estimator_free_trie_node(value_t *val, void *data);
+int estimator_free_trie_node(value_t *val, void *data);
 
 #endif /* _KNOT_ESTIMATOR_H_ */
 

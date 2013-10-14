@@ -316,12 +316,13 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 
 /*----------------------------------------------------------------------------*/
 
-static void knot_zone_tree_free_node(knot_node_t **node, void *data)
+static int knot_zone_tree_free_node(knot_node_t **node, void *data)
 {
 	UNUSED(data);
 	if (node) {
 		knot_node_free(node);
 	}
+	return KNOT_EOK;
 }
 
 void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
