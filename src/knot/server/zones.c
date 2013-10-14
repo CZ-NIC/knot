@@ -603,14 +603,11 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 
 	/* Open zone file for parsing. */
 	switch(knot_zload_open(&zl, source, zone_name, enable_checks)) {
-	case KNOT_EOK: /* OK */ break;
+	case KNOT_EOK: /* OK */
+		break;
 	case KNOT_EACCES:
-		log_server_error("Failed to open zone file '%s' "
-				 "(Permission denied).\n", source);
-		knot_zload_close(zl);
-		return KNOT_EZONEINVAL;
-	case KNOT_ENOENT:
-		log_server_error("Couldn't find zone file '%s'\n", source);
+		log_server_error("No access/permission to zone file '%s'.\n",
+		                 source);
 		knot_zload_close(zl);
 		return KNOT_EZONEINVAL;
 	default:

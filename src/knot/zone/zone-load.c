@@ -497,9 +497,8 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	*dst = NULL;
 
 	/* Check zone file. */
-	struct stat st;
-	if (stat(source, &st) < 0) {
-		return knot_map_errno(errno);
+	if(access(source, F_OK) != -1) {
+		return KNOT_EACCES;
 	}
 
 	/* Create context. */
@@ -528,7 +527,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	                                           process_rr, process_error,
 	                                           context);
 	if (loader == NULL) {
-		dbg_zload("Could not create file loader.\n");
+		dbg_zload("Could not initialize zone parser.\n");
 		hattrie_free(context->lookup_tree);
 		free(context);
 		return KNOT_ERROR;
