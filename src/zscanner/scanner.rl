@@ -34,9 +34,9 @@
 #include "zscanner/descriptor.h"	// KNOT_RRTYPE_A
 
 /*! \brief Shorthand for setting warning data. */
-#define SCANNER_WARNING(code) { s->error_code = code; }
+#define WARN(code) { s->error_code = code; }
 /*! \brief Shorthand for setting error data. */
-#define SCANNER_ERROR(code)   { s->error_code = code; s->stop = true; }
+#define ERR(code)   { s->error_code = code; s->stop = true; }
 
 /*!
  * \brief Empty function which is called if no callback function is specified.
@@ -195,7 +195,7 @@ int scanner_process(const char *start,
 
 	// Check if scanner state machine is in uncovered state.
 	if (cs == zone_scanner_error) {
-		SCANNER_ERROR(ZSCANNER_UNCOVERED_STATE);
+		ERR(ZSCANNER_UNCOVERED_STATE);
 		s->error_counter++;
 
 		// Fill error context data.
@@ -222,7 +222,7 @@ int scanner_process(const char *start,
 
 	// Check unclosed multiline record.
 	if (is_complete && s->multiline) {
-		SCANNER_ERROR(ZSCANNER_UNCLOSED_MULTILINE);
+		ERR(ZSCANNER_UNCLOSED_MULTILINE);
 		s->error_counter++;
 		s->process_error(s);
 	}
