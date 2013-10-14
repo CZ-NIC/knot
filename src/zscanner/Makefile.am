@@ -1,6 +1,5 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-
-AM_CPPFLAGS = -I$(top_srcdir)/src/zscanner -I$(top_srcdir)/src -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"'
+AM_CFLAGS = -I$(top_srcdir)/src
 
 noinst_PROGRAMS = zscanner-tool
 noinst_LTLIBRARIES = libzscanner.la
