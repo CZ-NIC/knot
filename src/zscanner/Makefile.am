@@ -25,10 +25,11 @@ descriptor.c: $(top_srcdir)/src/common/descriptor.c
 
 if HAVE_RAGEL
 BUILT_SOURCES += scanner.c
-CLEANFILES += scanner.c
+CLEANFILES += scanner.c scanner.c.in
 
 scanner.c: scanner.rl scanner_body.rl
-	$(RAGEL) $(FSM_TYPE) -s -o $@ $(srcdir)/scanner.rl
+	$(RAGEL) $(FSM_TYPE) -s -o $@.in $(srcdir)/scanner.rl
+	sed '/#line/d' $@.in > $@
 endif
 
 zscanner_tool_SOURCES =			\

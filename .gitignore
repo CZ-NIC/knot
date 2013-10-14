@@ -69,6 +69,7 @@
 /src/tests/sample_conf.rc
 src/zscanner/descriptor.h
 src/zscanner/descriptor.c
+src/zscanner/scanner.c.in
 src/zscanner/test/cases/06-0_INCLUDE.in
 src/zscanner/test/cases/06-3_INCLUDE.in
 src/zscanner/test/cases/06-4_INCLUDE.in
