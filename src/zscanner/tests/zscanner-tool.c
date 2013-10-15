@@ -20,10 +20,10 @@
 #include <stdlib.h>			// atoi
 #include <getopt.h>			// getopt
 
-#include "zscanner/error.h"		// knot_strerror
-#include "zscanner/file_loader.h"	// file_loader
-#include "zscanner/test/processing.h"	// processing functions
-#include "zscanner/test/tests.h"	// test functions
+#include "error.h"		// knot_strerror
+#include "file_loader.h"	// file_loader
+#include "tests/processing.h"	// processing functions
+#include "tests/tests.h"	// test functions
 
 #define DEFAULT_MODE	1
 #define DEFAULT_CLASS	1

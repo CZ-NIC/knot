@@ -18,10 +18,10 @@
 #include <inttypes.h>			// PRIu64
 #include <stdio.h>			// printf
 
-#include "zscanner/test/processing.h"
-#include "zscanner/error.h"		// zscanner_strerror
-#include "zscanner/scanner.h"		// scanner_t
-#include "zscanner/descriptor.h"	// knot_rrtype_to_string
+#include "tests/processing.h"
+#include "error.h"		// zscanner_strerror
+#include "scanner.h"		// scanner_t
+#include "descriptor.h"	// knot_rrtype_to_string
 
 const char *separator = "------\n";
 

@@ -50,8 +50,9 @@
 /m4/ltversion.m4
 /m4/lt~obsolete.m4
 # Binaries
-/src/tests/unittests
-/src/zscanner/zscanner-tool
+/tests/runtests
+/src/zscanner/tests/runtests
+/src/zscanner/tests/zscanner-tool
 /src/knotc
 /src/knotd
 /src/kdig
@@ -61,16 +62,11 @@
 /src/knot/conf/libknotd_la-cf-lex.c
 /src/knot/conf/libknotd_la-cf-parse.c
 /src/knot/conf/libknotd_la-cf-parse.h
-/src/tests/libknot/parsed_data.rc
-/src/tests/libknot/parsed_data_queries.rc
-/src/tests/libknot/raw_data.rc
-/src/tests/libknot/raw_data_queries.rc
-/src/tests/libknot/realdata/
-/src/tests/sample_conf.rc
-src/zscanner/descriptor.h
-src/zscanner/descriptor.c
-src/zscanner/scanner.c.in
-src/zscanner/test/cases/06-0_INCLUDE.in
-src/zscanner/test/cases/06-3_INCLUDE.in
-src/zscanner/test/cases/06-4_INCLUDE.in
-src/zscanner/test/run_tests.sh
+/tests/sample_conf.rc
+/src/zscanner/descriptor.h
+/src/zscanner/descriptor.c
+/src/zscanner/scanner.c.in
+/src/zscanner/tests/tap/libtap.a
+/tests/tap/libtap.a
+/tests/tmp/
+/src/zscanner/tests/tmp/

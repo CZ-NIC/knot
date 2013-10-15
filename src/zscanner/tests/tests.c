@@ -20,8 +20,8 @@
 #include <stdio.h>			// printf
 #include <time.h>			// mktime
 
-#include "zscanner/test/tests.h"
-#include "zscanner/scanner_functions.h"	// date_to_timestamp
+#include "tests/tests.h"
+#include "scanner_functions.h"	// date_to_timestamp
 
 int test__date_to_timestamp()
 {
