@@ -69,7 +69,7 @@ static int dnssec_nsec3_tests_run(int argc, char *argv[])
 
 	rrset = knot_rrset_new(NULL, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, 0);
 	result = knot_rrset_add_rdata(rrset, rdata, sizeof(rdata));
-	if (result == KNOT_EOK); {
+	if (result == KNOT_EOK) {
 		result = knot_nsec3_params_from_wire(&params, rrset);
 	}
 
