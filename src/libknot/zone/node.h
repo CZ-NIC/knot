@@ -431,7 +431,9 @@ int knot_node_compare(knot_node_t *node1, knot_node_t *node2);
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
 
 /*!
- * \brief Checks whether RRSet in a node has to be signed.
+ * \brief Checks whether RRSet in a node has to be signed. Will not return
+ *        true for all types that should be signed, do not use this as an
+ *        universal function, it is implementation specific.
  *
  * \param node   Node containing the RRSet.
  * \param rrset  RRSet we are checking for.
