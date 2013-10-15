@@ -399,4 +399,6 @@ SOA record is updated and resigned if any changes were performed.
 The zone signing is performed when the zone is loaded into server, on zone
 reload, before any signature is expiring, and after DDNS update. The signing
 can be also forced using @code{signzone} command issued by @code{knotc}, in
-this case all signatures are recreated.
+this case all signatures are recreated. After each zone signing, a new signing
+event is planned. User can view the time of this event by using the
+@code{knotc zonestatus} command.
