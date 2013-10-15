@@ -266,7 +266,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   dnssec-keydir "keys";
 
   # Validity period for DNSSEC signatures
-  # Possible values: (7200..INT_MAX> (seconds)
+  # Possible values: <7201..INT_MAX> (seconds)
   # Default value: 30d (30 days or 2592000 seconds)
   # It is also possible to suffix with unit size [s/m/h/d]
   # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
