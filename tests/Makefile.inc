@@ -34,7 +34,7 @@ tests_runtests_CPPFLAGS = \
 	-DSOURCE='"$(abs_top_srcdir)/tests"' \
 	-DBUILD='"$(abs_top_builddir)/tests"'
 
-tests_tap_libtap_a_CPPFLAGS = -I$(abs_top_srcdir)/t
+tests_tap_libtap_a_CPPFLAGS = -I$(abs_top_srcdir)/tests
 tests_tap_libtap_a_SOURCES = \
 	tests/tap/basic.c tests/tap/basic.h \
 	tests/tap/float.c tests/tap/float.h \
@@ -48,20 +48,13 @@ LDADD = \
 	src/libknotd.la src/libknots.la \
 	@LIBOBJS@
 
-EXTRA_DIST += \
-	tests/data/sample_conf
+tests_conf_SOURCES = tests/conf.c tests/sample_conf.h
+nodist_tests_conf_SOURCES = tests/sample_conf.c
+CLEANFILES = tests/sample_conf.c
 
-BUILT_SOURCES = \
-	tests/sample_conf.rc
+EXTRA_DIST = tests/data tests/TESTS
 
-CLEANFILES = \
-	tests/sample_conf.rc
+dist_check_SCRIPTS = tests/resource.sh
 
-tests_conf_SOURCES = \
-	tests/conf.c
-
-nodist_tests_conf_SOURCES = \
-	tests/sample_conf.rc
-
-tests/sample_conf.rc: tests/data/sample_conf
-	$(top_srcdir)/resource.sh $< >$@
+tests/sample_conf.c: tests/data/sample_conf
+	$(abs_top_srcdir)/tests/resource.sh $< >$@

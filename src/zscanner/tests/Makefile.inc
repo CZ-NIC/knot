@@ -3,6 +3,9 @@ check_PROGRAMS = \
 	tests/runtests \
 	tests/zscanner-tool
 
+dist_check_SCRIPTS = \
+	tests/zscanner
+
 check_LIBRARIES = tests/tap/libtap.a
 
 AM_CPPFLAGS = \
@@ -31,3 +34,9 @@ tests_zscanner_tool_SOURCES =		\
 	tests/processing.c
 
 tests_zscanner_tool_LDADD = libzscanner.la @LIBOBJS@
+
+EXTRA_DIST += 				\
+	tests/TESTS			\
+	tests/zscanner-TESTS		\
+	tests/data			\
+	tests/tap/libtap.sh

@@ -23,8 +23,8 @@ size=$(wc -c "${1}" | awk '{print $1}' 2>/dev/null)
 dump=$(${hd} "${fmt}" "${1}" 2>/dev/null)
 
 # Format file size variable
-echo "static const unsigned ${header}_size = ${size};"
+echo "const unsigned ${header}_size = ${size};"
 
 # Format file content dump
-echo "static const char ${header}[] = { "
+echo "const char ${header}[] = { "
 echo "${dump}0x00 };"
