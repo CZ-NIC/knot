@@ -296,10 +296,7 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Default policy for IXFR FSLIMIT
-		/*! \todo In cf-parse.y:313 is this value set to -1, shouldn't
-		 *        it be checked also for negative values?
-		 */
-		if (zone->ixfr_fslimit == 0) {
+		if (zone->ixfr_fslimit == 0) { /* ixfr_fslimit is unsigned type */
 			zone->ixfr_fslimit = conf->ixfr_fslimit;
 		}
 
@@ -556,7 +553,6 @@ conf_t *conf_new(const char* path)
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
 	c->max_udp_payload = EDNS_MAX_UDP_PAYLOAD;
 	c->sig_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME;
-	c->ixfr_fslimit = -1;
 	c->uid = -1;
 	c->gid = -1;
 	c->xfers = -1;

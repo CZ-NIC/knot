@@ -644,7 +644,7 @@ journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflag
 	if (fslimit == 0) {
 		j->fslimit = FSLIMIT_INF;
 	} else {
-		j->fslimit = (size_t)fslimit;
+		j->fslimit = fslimit;
 	}
 
 	dbg_journal("journal: opened journal size=%u, queue=<%u, %u>, fd=%d\n",

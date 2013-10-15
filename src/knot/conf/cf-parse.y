@@ -312,7 +312,6 @@ static void conf_zone_start(void *scanner, char *name) {
    this_zone->enable_checks = -1; // Default policy applies
    this_zone->notify_timeout = -1; // Default policy applies
    this_zone->notify_retries = 0; // Default policy applies
-   this_zone->ixfr_fslimit = -1; // Default policy applies
    this_zone->dbsync_timeout = -1; // Default policy applies
    this_zone->disable_any = -1; // Default policy applies
    this_zone->build_diffs = -1; // Default policy applies
