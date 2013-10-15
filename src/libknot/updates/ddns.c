@@ -1641,9 +1641,8 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 		if (is_apex &&
 		    (knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_SOA
 		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS
-		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_DNSKEY
-		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NSEC
-		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NSEC3)) {
+		     || knot_rrtype_is_ddns_forbidden(
+		             knot_rrset_type(rrsets[i])))) {
 			/* Do not remove these RRSets, nor their RRSIGs. */
 			continue;
 		}
