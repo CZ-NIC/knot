@@ -712,6 +712,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 @example
 @code{zones} @code{@{}
   [ @kbd{zone_options} ]
+  [ @code{dnssec-keydir} @kbd{string}@code{;} ]
   @kbd{zone_id} @code{@{}
     @code{file} @code{"}@kbd{string}@code{";}
     [ @code{xfr-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
@@ -719,8 +720,6 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
     [ @code{notify-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{notify-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{update-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
-    [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
-    [ @code{dnssec-keydir} @kbd{string}@code{;} ]
     [ @kbd{zone_options} ]
   @code{@}}
 @code{@}}
