@@ -866,7 +866,7 @@ are 1 to INT_MAX and default value is 5.
 @subsubsection dnssec-enable
 @vindex dnssec-enable
 
-EXPERIMENTAL: Enable online DNSSEC signing for the zone.
+EXPERIMENTAL: Enable automatic DNSSEC signing for the zone.
 
 Default value (in @code{zones} section): on if @code{dnssec-keydir} is set
 
