@@ -25,8 +25,6 @@
 #include "knot/server/journal.h"
 #include "knot/knot.h"
 
-static int journal_tests_count(int argc, char *argv[]);
-static int journal_tests_run(int argc, char *argv[]);
 
 /*! \brief Generate random string with given length. */
 static int randstr(char* dst, size_t len)
@@ -67,7 +65,8 @@ int main(int argc, char *argv[])
 	int tmp_fd = mkstemp(jfn_buf);
 	ok(tmp_fd >= 0, "journal: create temporary file");
 	if (tmp_fd < 0) {
-		skip_block(20, "journal: create temporary file failed");
+		skip_block(20, NULL);
+		goto skip_all;
 	}
 	close(tmp_fd);
 
@@ -183,7 +182,7 @@ int main(int argc, char *argv[])
 	ok(j && mptr && ret == 0, "journal: mapped journal entry");
 	if (ret != 0) {
 		skip_block(2, NULL);
-	}
+	} else {
 
 	/* Test 14: Write to mmaped entry and unmap. */
 	memcpy(mptr, chk_buf, sizeof(chk_buf));
@@ -195,6 +194,8 @@ int main(int argc, char *argv[])
 	journal_read(j, 0x12345, NULL, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	ok(j && ret == 0, "journal: mapped entry data integrity check");
+
+	} /* end skip */
 
 	/* Test 16: Make a transaction. */
 	uint64_t tskey = 0x75750000;
@@ -266,6 +267,7 @@ int main(int argc, char *argv[])
 	/* Close journal. */
 	journal_close(j);
 
+skip_all:
 	/* Delete journal. */
 	remove(jfilename);
 

@@ -69,7 +69,7 @@
 #endif
 
 /* Used for unused parameters to silence gcc warnings. */
-#define UNUSED __attribute__((__unused__))
+/* #define UNUSED __attribute__((__unused__)) */
 
 /*
  * BEGIN_DECLS is used at the beginning of declarations so that C++
