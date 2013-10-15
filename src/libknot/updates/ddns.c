@@ -1826,7 +1826,6 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 			assert(ns_serial_compare(sn_rr, sn_new) >= 0);
 			assert(rr_copy != NULL);
 			sn_new = sn_rr;
-			knot_rrset_deep_free(&rr_copy->rrsigs, 1);
 			soa_end = rr_copy;
 		}
 	}
