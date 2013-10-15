@@ -67,6 +67,12 @@ today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
 outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp)
 params.debug = True if args.debug else False
 
+# Set the current knot binaries if not specified.
+if not os.environ.get("KNOT_TEST_KNOT"):
+    os.environ["KNOT_TEST_KNOT"] = current_dir + "/../../src/knotd"
+if not os.environ.get("KNOT_TEST_KNOTC"):
+    os.environ["KNOT_TEST_KNOTC"] = current_dir + "/../../src/knotc"
+
 # Set up logging.
 log = logging.getLogger()
 log.setLevel(logging.NOTSET)

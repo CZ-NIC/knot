@@ -1,5 +1,5 @@
 Prerequisites:
-
+=============
 Python >=3.3
 python3-dnspython >=1.11.1
 dnssec-keygen
@@ -7,4 +7,5 @@ dnssec-signzone
 Bind 9.9
 lsof
 
+Ubuntu - disable apparmor protection for system Bind:
 sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
