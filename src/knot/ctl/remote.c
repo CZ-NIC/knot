@@ -233,8 +233,9 @@ static char *dnssec_info(const zonedata_t *zd, char *buf, size_t buf_size)
 	struct tm *t = localtime(&diff_time);
 
 	int written = snprintf(buf, buf_size, "%s", asctime(t));
-	UNUSED(written);
-	assert(written >= 0);
+	if (written < 0) {
+		return NULL;
+	}
 
 	return buf;
 }
