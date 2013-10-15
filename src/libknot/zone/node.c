@@ -768,7 +768,7 @@ bool knot_node_rr_should_be_signed(const knot_node_t *node,
 		return false;
 	}
 
-	// We only want to sign NSECs and DSs when at delegation points
+	// At delegation points we only want to sign NSECs and DSs
 	if (knot_node_is_deleg_point(node)) {
 		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
 		    rrset->type == KNOT_RRTYPE_DS)) {
