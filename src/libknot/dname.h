@@ -160,7 +160,7 @@ int knot_dname_to_lower(knot_dname_t *name);
  *
  * \param name Domain name to get the size of.
  *
- * \retval sze of the domain name.
+ * \retval size of the domain name.
  * \retval KNOT_EINVAL
  */
 int knot_dname_size(const knot_dname_t *name);
