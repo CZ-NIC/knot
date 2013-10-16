@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 	/* 1. Create fdset. */
 	fdset_t set;
 	int ret = fdset_init(&set, 32);
-	ok(ret == 0, "fdset: init");
+	is_int(0, ret, "fdset: init");
 
 	/* 2. Create pipe. */
 	int fds[2], tmpfds[2];
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 
 	/* 3. Add fd to set. */
 	ret = fdset_add(&set, fds[0], POLLIN, NULL);
-	ok(ret == 0, "fdset: add to set works");
+	is_int(0, ret, "fdset: add to set works");
 	fdset_add(&set, tmpfds[0], POLLIN, NULL);
 
 	/* Schedule write. */
@@ -125,29 +125,27 @@ int main(int argc, char *argv[])
 
 	/* 7-9. Remove from event set. */
 	ret = fdset_remove(&set, 0);
-	ok(ret == 0, "fdset: remove from fdset works");
+	is_int(0, ret, "fdset: remove from fdset works");
 	close(fds[0]);
 	close(fds[1]);
 	ret = fdset_remove(&set, 0);
 	close(tmpfds[1]);
 	close(tmpfds[1]);
-	ok(ret == 0, "fdset: remove from fdset works (2)");
+	is_int(0, ret, "fdset: remove from fdset works (2)");
 	ret = fdset_remove(&set, 0);
 	ok(ret != 0, "fdset: removing nonexistent item");
 
 	/* 10. Crash test. */
-//	lives_ok({
-		fdset_init(0, 0);
-		fdset_add(0, 1, 1, 0);
-		fdset_add(0, 0, 1, 0);
-		fdset_remove(0, 1);
-		fdset_remove(0, 0);
-//	}, "fdset: crash test successful");
+	fdset_init(0, 0);
+	fdset_add(0, 1, 1, 0);
+	fdset_add(0, 0, 1, 0);
+	fdset_remove(0, 1);
+	fdset_remove(0, 0);
 	ok(1, "fdset: crash test successful");
 
 	/* 11. Destroy fdset. */
 	ret = fdset_clear(&set);
-	ok(ret == 0, "fdset: destroyed");
+	is_int(0, ret, "fdset: destroyed");
 
 	/* Cleanup. */
 	pthread_join(t, 0);

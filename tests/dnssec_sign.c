@@ -34,7 +34,7 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 
 	knot_dnssec_key_t key = { 0 };
 	result = knot_dnssec_key_from_params(kp, &key);
-	ok(result == KNOT_EOK, "%s: create key from params", alg);
+	is_int(KNOT_EOK, result, "%s: create key from params", alg);
 
 	knot_dnssec_sign_context_t *ctx;
 	ctx = knot_dnssec_sign_init(&key);
@@ -51,37 +51,37 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 		assert(sig != NULL);
 
 		result = knot_dnssec_sign_add(ctx, (uint8_t *)"test", 4);
-		ok(result == KNOT_EOK, "%s: add data A", alg);
+		is_int(KNOT_EOK, result, "%s: add data A", alg);
 
 		result = knot_dnssec_sign_new(ctx);
-		ok(result == KNOT_EOK, "%s: restart context", alg);
+		is_int(KNOT_EOK, result, "%s: restart context", alg);
 
 		result = knot_dnssec_sign_add(ctx, (uint8_t *)"hello", 5);
-		ok(result == KNOT_EOK, "%s: add data B", alg);
+		is_int(KNOT_EOK, result, "%s: add data B", alg);
 
 		result = knot_dnssec_sign_add(ctx, (uint8_t *)"dns", 3);
-		ok(result == KNOT_EOK, "%s: add data C", alg);
+		is_int(KNOT_EOK, result, "%s: add data C", alg);
 
 		result = knot_dnssec_sign_write(ctx, sig);
-		ok(result == KNOT_EOK, "%s: write signature", alg);
+		is_int(KNOT_EOK, result, "%s: write signature", alg);
 
 		result = knot_dnssec_sign_new(ctx);
-		ok(result == KNOT_EOK, "%s: restart context", alg);
+		is_int(KNOT_EOK, result, "%s: restart context", alg);
 
 		result = knot_dnssec_sign_add(ctx, (uint8_t *)"wrong", 5);
-		ok(result == KNOT_EOK, "%s: add data D", alg);
+		is_int(KNOT_EOK, result, "%s: add data D", alg);
 
 		result = knot_dnssec_sign_verify(ctx, sig, sig_size);
 		ok(result == KNOT_DNSSEC_EINVALID_SIGNATURE, "%s: verify invalid signature", alg);
 
 		result = knot_dnssec_sign_new(ctx);
-		ok(result == KNOT_EOK, "%s: restart context", alg);
+		is_int(KNOT_EOK, result, "%s: restart context", alg);
 
 		result = knot_dnssec_sign_add(ctx, (uint8_t *)"hellodns", 8);
-		ok(result == KNOT_EOK, "%s: add data B + C", alg);
+		is_int(KNOT_EOK, result, "%s: add data B + C", alg);
 
 		result = knot_dnssec_sign_verify(ctx, sig, sig_size);
-		ok(result == KNOT_EOK, "%s: verify valid signature", alg);
+		is_int(KNOT_EOK, result, "%s: verify valid signature", alg);
 	}
 
 	knot_dnssec_sign_free(ctx);

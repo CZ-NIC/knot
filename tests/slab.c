@@ -37,14 +37,14 @@ extern void slab_deinit();
 
 int main(int argc, char *argv[])
 {
-	plan(5);
+	plan(4);
 
 	// 1. Create slab cache
 	srand(time(0));
 	const unsigned pattern = 0xdeadbeef;
 	slab_cache_t cache;
 	int ret = slab_cache_init(&cache, sizeof(int));
-	ok(ret == 0, "slab: created empty cache");
+	is_int(0, ret, "slab: created empty cache");
 
 	// 2. Couple alloc/free
 	bool valid_free = true;
@@ -55,7 +55,6 @@ int main(int argc, char *argv[])
 		if (*data == pattern)
 			valid_free = false;
 	}
-	ok(1, "slab: create and free memory 100 times");
 
 	// 5. Verify freed block
 	ok(valid_free, "slab: freed memory is correctly invalidated");
@@ -72,7 +71,7 @@ int main(int argc, char *argv[])
 	}
 
 	int reaped = slab_cache_reap(&cache);
-	ok(reaped == free_count, "slab: cache reaping works");
+	is_int(reaped, free_count, "slab: cache reaping works");
 
 	// Stress cache
 	int alloc_count = 73521;
@@ -96,7 +95,7 @@ int main(int argc, char *argv[])
 
 	// 5. Delete cache
 	slab_cache_destroy(&cache);
-	ok(cache.bufsize == 0, "slab: freed cache");
+	is_int(0, cache.bufsize, "slab: freed cache");
 
 	return 0;
 }

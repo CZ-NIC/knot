@@ -33,13 +33,13 @@ int main(int argc, char *argv[])
 
 	// lengths of different hashes
 
-	ok(knot_nsec3_hash_length(1) == 20,
+	is_int(20, knot_nsec3_hash_length(1),
 	   "raw hash length for SHA1");
-	ok(knot_nsec3_hash_length(42) == 0,
+	is_int(0, knot_nsec3_hash_length(42),
 	   "raw hash length for unknown algorithm");
-	ok(knot_nsec3_hash_b32_length(1) == 32,
+	is_int(32, knot_nsec3_hash_b32_length(1),
 	   "B32 hash length for SHA1");
-	ok(knot_nsec3_hash_b32_length(42) == 0,
+	is_int(0, knot_nsec3_hash_b32_length(42),
 	   "B32 hash length for unknown algorithm");
 
 	//  parsing NSEC3PARAMs from wire
@@ -60,11 +60,11 @@ int main(int argc, char *argv[])
 		result = knot_nsec3_params_from_wire(&params, rrset);
 	}
 
-	ok(params.algorithm == 1, "parse algorithm from wire");
-	ok(params.flags == 0, "parse flags from wire");
-	ok(params.iterations == 10, "parse iterations from wire");
-	ok(params.salt_length == 4, "parse salt length from wire");
-	ok(memcmp(params.salt, "abcd", 4) == 0, "parse salt from wire");
+	is_int(1, params.algorithm, "parse algorithm from wire");
+	is_int(0, params.flags, "parse flags from wire");
+	is_int(10, params.iterations, "parse iterations from wire");
+	is_int(4, params.salt_length, "parse salt length from wire");
+	is_int(0, memcmp(params.salt, "abcd", 4), "parse salt from wire");
 
 	knot_rrset_deep_free(&rrset, 1);
 	knot_nsec3_params_free(&params);

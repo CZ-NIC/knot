@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	/* 5. ordered traversal */
 	struct ztree_iter it = { KNOT_EOK, 0 };
 	knot_zone_tree_apply_inorder(t, ztree_iter_data, &it);
-	ok (it.ret == KNOT_EOK, "ztree: ordered traversal");
+	is_int(KNOT_EOK, it.ret, "ztree: ordered traversal");
 
 	knot_zone_tree_free(&t);
 	ztree_free_data();

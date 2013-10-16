@@ -54,11 +54,11 @@ int main(int argc, char *argv[])
 	int ret = 0;
 	uint8_t sent = 0xaf, rcvd = 0;
 	ret = evqueue_write(q, &sent, sizeof(uint8_t));
-	ok(ret == sizeof(uint8_t), "evqueue: send byte through");
+	is_int(sizeof(uint8_t), ret, "evqueue: send byte through");
 
 	// 3. Receive byte from event queue
 	ret = evqueue_read(q, &rcvd, sizeof(uint8_t));
-	ok(ret == sizeof(uint8_t), "evqueue: received byte");
+	is_int(sizeof(uint8_t), ret, "evqueue: received byte");
 
 	// 4. Received match
 	ok(sent == rcvd, "evqueue: received byte match");
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	ev.type = 0xfa11;
 	ev.data = (void*)0xceed;
 	ret = evqueue_add(q, &ev);
-	ok(ret == 0, "evqueue: sent event to queue");
+	is_int(0, ret, "evqueue: sent event to queue");
 
 	// 6. Poll for new events
 	struct timespec ts;
@@ -85,22 +85,19 @@ int main(int argc, char *argv[])
 	if (ev.type == rev.type && ev.data == rev.data) {
 		ret = 0;
 	}
-	ok(ret == 0, "evqueue: received event matches sent");
+	is_int(0, ret, "evqueue: received event matches sent");
 
 	// 8. Invalid parameters
-//	lives_ok({
-		 evqueue_free(0);
-		 evqueue_poll(0,0,0);
-		 evqueue_read(0, 0, 0);
-		 evqueue_write(0, 0, 0);
-		 evqueue_read(0, 0, 0);
-		 evqueue_get(0, 0);
-		 evqueue_add(0, 0);
-//	},
+	evqueue_free(0);
+	evqueue_poll(0,0,0);
+	evqueue_read(0, 0, 0);
+	evqueue_write(0, 0, 0);
+	evqueue_read(0, 0, 0);
+	evqueue_get(0, 0);
+	evqueue_add(0, 0);
 	ok(1, "evqueue: won't crash with NULL parameters");
 
 	// 9. Free event queue
-//	lives_ok({evqueue_free(&q);}, "evqueue: delete");
 	evqueue_free(&q);
 	ok(1, "evqueue: delete");
 
@@ -143,7 +140,6 @@ int main(int argc, char *argv[])
 	ok(e->data == (void*)0xcafe, "evsched: received data is valid");
 
 	// 6. Delete event
-	// lives_ok({evsched_event_free(s, e);}, "evsched: deleted event");
 	evsched_event_free(s, e);
 	ok(1, "evsched: deleted event");
 
@@ -168,21 +164,17 @@ int main(int argc, char *argv[])
 	pthread_join(t, 0);
 
 	// 10. Invalid parameters
-//	lives_ok({
-		evsched_delete(0);
-		evsched_event_new(0, 0);
-		evsched_event_free(0, 0);
-		evsched_next(0);
-		evsched_schedule(0, 0, 0);
-		evsched_schedule_cb(0, 0, 0, 0);
-		evsched_schedule_term(0, 0);
-		evsched_cancel(0, 0);
-
-//},
+	evsched_delete(0);
+	evsched_event_new(0, 0);
+	evsched_event_free(0, 0);
+	evsched_next(0);
+	evsched_schedule(0, 0, 0);
+	evsched_schedule_cb(0, 0, 0, 0);
+	evsched_schedule_term(0, 0);
+	evsched_cancel(0, 0);
 	ok(1, "evsched: won't crash with NULL parameters");
 
 	// 11. Delete event scheduler
-	//lives_ok({evsched_delete(&s);}, "evsched: delete");
 	evsched_delete(&s);
 	ok(1, "evsched: delete");
 

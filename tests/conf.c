@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
 	// Test 2: Parse config
 	int ret = conf_parse_str(conf, sample_conf_rc);
-	ok(ret == 0, "parsing configuration file %s", config_fn);
+	is_int(0, ret, "parsing configuration file %s", config_fn);
 	if (ret != 0) {
 		skip_block(19, NULL);
 		goto skip_all;
@@ -52,11 +52,11 @@ int main(int argc, char *argv[])
 	struct node *n = HEAD(conf->ifaces);
 	conf_iface_t *iface = (conf_iface_t*)n;
 	is_string("10.10.1.1", iface->address, "interface0 address check");
-	ok(iface->port == 53531, "interface0 port check");
+	is_int(53531, iface->port, "interface0 port check");
 	n = n->next;
 	iface = (conf_iface_t*)n;
 	is_string("::0", iface->address, "interface1 address check");
-	ok(iface->port == 53, "interface1 default port check");
+	is_int(53, iface->port, "interface1 default port check");
 
 	// Test 9,10: Check server key
 	if(conf->key_count <= 0) {

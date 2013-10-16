@@ -51,7 +51,7 @@ static void interrupt_handle(int s)
 /*! API: run tests. */
 int main(int argc, char *argv[])
 {
-	plan(5);
+	plan(4);
 
 	server_t *server = 0;
 	int ret = 0;
@@ -68,14 +68,9 @@ int main(int argc, char *argv[])
 	ok(server != 0, "server: initialized");
 
 	//! Test server startup
-	ret = 0;
-//	lives_ok( {
-		ret = test_server_start(server);
-//	}, "server: not crashing on runtime");
-	ok(1, "server: not crashing on runtime");
-
-	//! Test server exit code
+	ret = test_server_start(server);
 	ok(ret, "server: started ok");
+
 	if (!ret) {
 	        skip_block(2, "server crashed, skipping deinit and destroy tests");
 	} else {

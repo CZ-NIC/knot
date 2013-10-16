@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 
 	/* Test 5: Compare counter. */
 	int expected = _runnable_cycles * 1;
-	ok(_runnable_i == expected, "dthreads: result ok");
+	is_int(expected, _runnable_i, "dthreads: result ok");
 
 	/* Test 6: Repurpose threads. */
 	_runnable_i = 0;
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 	tv.tv_sec = 0;
 	tv.tv_usec = 4000 + rand() % 1000; // 4-5ms
 	diag("waiting for %dus to let thread do some work ...",
-	     tv.tv_usec);
+	     (long)tv.tv_usec);
 	select(0, 0, 0, 0, &tv);
 	ok(dt_test_repurpose(unit, 0), "dthreads: repurpose on-the-fly");
 
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
 	tv.tv_sec = 0;
 	tv.tv_usec = (250 + rand() % 500) * 1000; // 250-750ms
 	diag("waiting for %dms to let thread pretend blocking I/O ...",
-	     tv.tv_usec / 1000);
+	     (long)(tv.tv_usec / 1000));
 	select(0, 0, 0, 0, &tv);
 	ok(dt_test_cancel(unit, 0), "dthreads: cancel blocking thread");
 
@@ -232,38 +232,36 @@ int main(int argc, char *argv[])
 
 	/* Test 14: Deinitialize */
 	dt_delete(&unit);
-	ok(unit == 0, "dthreads: delete unit");
+	ok(unit == NULL, "dthreads: delete unit");
 
 	/* Test 15: Wrong values. */
 	unit = dt_create(-1);
-	ok(unit == 0, "dthreads: create with negative count");
+	ok(unit == NULL, "dthreads: create with negative count");
 	unit = dt_create_coherent(dt_optimal_size(), 0, 0, 0);
 
 	/* Test 16: NULL runnable. */
-	ok(dt_start(unit) == 0, "dthreads: start with NULL runnable");
+	is_int(0, dt_start(unit), "dthreads: start with NULL runnable");
 
 	/* Test 17: NULL operations crashing. */
 	int op_count = 14;
 	int expected_min = op_count * -1;
 	// All functions must return -1 at least
 	int ret = 0;
-/*	lives_ok( { */
-		ret += dt_activate(0);              // -1
-		ret += dt_cancel(0);                // -1
-		ret += dt_compact(0);               // -1
-		dt_delete(0);                //
-		ret += dt_is_cancelled(0);          // 0
-		ret += dt_join(0);                  // -1
-		ret += dt_repurpose(0, 0, 0);       // -1
-		ret += dt_signalize(0, SIGALRM);    // -1
-		ret += dt_start(0);                 // -1
-		ret += dt_start_id(0);              // -1
-		ret += dt_stop(0);                  // -1
-		ret += dt_stop_id(0);               // -1
-		ret += dt_unit_lock(0);             // -1
-		ret += dt_unit_unlock(0);           // -1
-/*	}, "dthreads: not crashed while executing functions on NULL context"); */
-	ok(1, "dthreads: not crashed while executing functions on NULL context");
+	ret += dt_activate(0);              // -1
+	ret += dt_cancel(0);                // -1
+	ret += dt_compact(0);               // -1
+	dt_delete(0);                //
+	ret += dt_is_cancelled(0);          // 0
+	ret += dt_join(0);                  // -1
+	ret += dt_repurpose(0, 0, 0);       // -1
+	ret += dt_signalize(0, SIGALRM);    // -1
+	ret += dt_start(0);                 // -1
+	ret += dt_start_id(0);              // -1
+	ret += dt_stop(0);                  // -1
+	ret += dt_stop_id(0);               // -1
+	ret += dt_unit_lock(0);             // -1
+	ret += dt_unit_unlock(0);           // -1
+	is_int(-1464, ret, "dthreads: not crashed while executing functions on NULL context");
 
 	/* Test 18: expected results. */
 	ok(ret <= expected_min,

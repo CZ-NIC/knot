@@ -134,11 +134,11 @@ int main(int argc, char *argv[])
 	/* 2. set rate limit */
 	uint32_t rate = 10;
 	rrl_setrate(rrl, rate);
-	ok(rate == rrl_rate(rrl), "rrl: setrate");
+	is_int(rate, rrl_rate(rrl), "rrl: setrate");
 
 	/* 3. setlocks */
 	ret = rrl_setlocks(rrl, RRL_LOCKS);
-	ok(ret == KNOT_EOK, "rrl: setlocks");
+	is_int(KNOT_EOK, ret, "rrl: setlocks");
 
 	/* 4. N unlimited requests. */
 	knot_dname_t *apex = knot_dname_from_str("rrl.", 4);
@@ -155,33 +155,31 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	ok(ret == 0, "rrl: unlimited IPv4/v6 requests");
+	is_int(0, ret, "rrl: unlimited IPv4/v6 requests");
 
 #ifdef ENABLE_TIMED_TESTS
 	/* 5. limited request */
 	ret = rrl_query(rrl, &addr, &rq, zone);
-	ok(ret != 0, "rrl: throttled IPv4 request");
+	is_int(0, ret, "rrl: throttled IPv4 request");
 
 	/* 6. limited IPv6 request */
 	ret = rrl_query(rrl, &addr6, &rq, zone);
-	ok(ret != 0, "rrl: throttled IPv6 request");
+	is_int(0, ret, "rrl: throttled IPv6 request");
 #else
 	skip_block(2, "Timed tests not enabled");
 #endif
 
 	/* 7. invalid values. */
 	ret = 0;
-//	lives_ok( {
-	                  rrl_create(0);            // NULL
-	                  ret += rrl_setrate(0, 0); // 0
-	                  ret += rrl_rate(0);       // 0
-	                  ret += rrl_setlocks(0,0); // -1
-	                  ret += rrl_query(0, 0, 0, 0); // -1
-	                  ret += rrl_query(rrl, 0, 0, 0); // -1
-	                  ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
-	                  ret += rrl_destroy(0); // -1
-//	}, "rrl: not crashed while executing functions on NULL context");
-	ok(1, "rrl: not crashed while executing functions on NULL context");
+	rrl_create(0);            // NULL
+	ret += rrl_setrate(0, 0); // 0
+	ret += rrl_rate(0);       // 0
+	ret += rrl_setlocks(0,0); // -1
+	ret += rrl_query(0, 0, 0, 0); // -1
+	ret += rrl_query(rrl, 0, 0, 0); // -1
+	ret += rrl_query(rrl, (void*)0x1, 0, 0); // -1
+	ret += rrl_destroy(0); // -1
+	is_int(-488, ret, "rrl: not crashed while executing functions on NULL context");
 
 #ifdef ENABLE_TIMED_TESTS
 	/* 8. hopscotch test */
@@ -192,7 +190,7 @@ int main(int argc, char *argv[])
 	ok(rd.passed, "rrl: hashtable is ~ consistent");
 
 	/* 9. reseed */
-	ok(rrl_reseed(rrl) == 0, "rrl: reseed");
+	is_int(0, rrl_reseed(rrl), "rrl: reseed");
 
 	/* 10. hopscotch after reseed. */
 	rrl_hopscotch(&rd);
