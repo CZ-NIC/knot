@@ -40,6 +40,7 @@
 #include "knot/server/zones.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/util/wire.h"
+#include "libknot/dnssec/cleanup.h"
 
 /*! \brief TCP worker data. */
 typedef struct tcp_worker_t {
@@ -669,6 +670,12 @@ int tcp_loop_worker(dthread_t *thread)
 	return KNOT_EOK;
 }
 
+int tcp_handler_destruct(dthread_t *thread)
+{
+	knot_dnssec_thread_cleanup();
+	return KNOT_EOK;
+}
+
 int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 {
 	if (unit->size < 1) {
@@ -710,11 +717,14 @@ int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit)
 
 	/* Repurpose workers. */
 	for (unsigned i = 0; i < allocated; ++i) {
-		dt_repurpose(unit->threads[i + 1], tcp_loop_worker, workers[i]);
+		dthread_t *thread = unit->threads[i + 1];
+		dt_repurpose(thread, tcp_loop_worker, workers[i]);
+		dt_set_desctructor(thread, tcp_handler_destruct);
 	}
 
 	/* Repurpose first thread as master (unit controller). */
 	dt_repurpose(unit->threads[0], tcp_loop_master, ioh->state + 0);
+	dt_set_desctructor(unit->threads[0], tcp_handler_destruct);
 
 	/* Create data destructor. */
 	ioh->dtor = tcp_loop_free;
