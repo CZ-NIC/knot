@@ -623,7 +623,8 @@ static bool node_should_be_signed(const knot_node_t *n)
 {
 	knot_rrset_t **node_rrsets = knot_node_get_rrsets_no_copy(n);
 	for (int i = 0; i < n->rrset_count; i++) {
-		if (knot_node_rr_should_be_signed(n, node_rrsets[i], NULL)) {
+		if (knot_zone_sign_rr_should_be_signed(n, node_rrsets[i],
+		                                       NULL)) {
 			return true;
 		}
 	}

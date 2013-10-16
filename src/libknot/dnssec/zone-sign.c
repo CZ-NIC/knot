@@ -418,7 +418,7 @@ static int sign_node_rrsets(const knot_node_t *node,
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		const knot_rrset_t *rrset = node->rrset_tree[i];
-		if (!knot_node_rr_should_be_signed(node, rrset, NULL)) {
+		if (!knot_zone_sign_rr_should_be_signed(node, rrset, NULL)) {
 			continue;
 		}
 
@@ -919,8 +919,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 	if (node) {
 		const knot_rrset_t *zone_rrset =
 			knot_node_rrset(node, chg_rrset->type);
-		if (knot_node_rr_should_be_signed(node, zone_rrset,
-		                                 args->signed_table)) {
+		if (knot_zone_sign_rr_should_be_signed(node, zone_rrset,
+		                                       args->signed_table)) {
 			return force_resign_rrset(zone_rrset, args->zone_keys,
 			                          args->policy, args->changeset);
 		} else if (zone_rrset && zone_rrset->rrsigs != NULL) {
@@ -933,6 +933,40 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 		}
 	}
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Checks whether RRSet is not already in the hash table, automatically
+ *        stores its pointer to the table if not found, but returns false in
+ *        that case.
+ *
+ * \param rrset  RRSet to be checked for.
+ * \param table  Hash table with already signed RRs.
+ *
+ * \return True if RR should is signed already, false otherwise.
+ */
+static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
+{
+	assert(rrset);
+	assert(t);
+
+	// Create a key = combination of owner and type mnemonic
+	int dname_size = knot_dname_size(rrset->owner);
+	assert(dname_size > 0);
+	char key[dname_size + 16];
+	memset(key, 0, sizeof(key));
+	memcpy(key, rrset->owner, dname_size);
+	int ret = knot_rrtype_to_string(rrset->type, key + dname_size, 16);
+	if (ret != KNOT_EOK) {
+		return false;
+	}
+	if (ahtable_tryget(t, key, sizeof(key))) {
+		return true;
+	}
+
+	// If not in the table, insert
+	*ahtable_get(t, (char *)key, sizeof(key)) = (value_t *)rrset;
+	return false;
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -1135,3 +1169,52 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
 	return knot_changeset_apply(changeset, KNOT_CHANGESET_ADD,
 	                            add_rrsigs_for_nsec, &data);
 }
+
+/*!
+ * \brief Checks whether RRSet in a node has to be signed. Will not return
+ *        true for all types that should be signed, do not use this as an
+ *        universal function, it is implementation specific.
+ */
+bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
+                                        const knot_rrset_t *rrset,
+                                        ahtable_t *table)
+{
+	if (node == NULL || rrset == NULL) {
+		return false;
+	}
+
+	// SOA entry is maintained separately
+	if (rrset->type == KNOT_RRTYPE_SOA) {
+		return false;
+	}
+
+	// DNSKEYs are maintained separately
+	if (rrset->type == KNOT_RRTYPE_DNSKEY) {
+		return false;
+	}
+
+	// At delegation points we only want to sign NSECs and DSs
+	if (knot_node_is_deleg_point(node)) {
+		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
+		    rrset->type == KNOT_RRTYPE_DS)) {
+			return false;
+		}
+	}
+
+	// These RRs have their signatures stored in changeset already
+	if (knot_node_is_replaced_nsec(node)
+	    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
+	         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
+		return false;
+	}
+
+	// Check for RRSet in the 'already_signed' table
+	if (table) {
+		if (rr_already_signed(rrset, table)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+

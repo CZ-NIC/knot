@@ -68,40 +68,6 @@ static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 	node->flags &= ~flag;
 }
 
-/*!
- * \brief Checks whether RRSet is not already in the hash table, automatically
- *        stores its pointer to the table if not found, but returns false in
- *        that case.
- *
- * \param rrset  RRSet to be checked for.
- * \param table  Hash table with already signed RRs.
- *
- * \return True if RR should is signed already, false otherwise.
- */
-static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
-{
-	assert(rrset);
-	assert(t);
-
-	// Create a key = combination of owner and type mnemonic
-	int dname_size = knot_dname_size(rrset->owner);
-	assert(dname_size > 0);
-	char key[dname_size + 16];
-	memset(key, 0, sizeof(key));
-	memcpy(key, rrset->owner, dname_size);
-	int ret = knot_rrtype_to_string(rrset->type, key + dname_size, 16);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-	if (ahtable_tryget(t, key, sizeof(key))) {
-		return true;
-	}
-
-	// If not in the table, insert
-	*ahtable_get(t, (char *)key, sizeof(key)) = (value_t *)rrset;
-	return false;
-}
-
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -748,47 +714,3 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-
-bool knot_node_rr_should_be_signed(const knot_node_t *node,
-                                   const knot_rrset_t *rrset,
-                                   ahtable_t *table)
-{
-	if (node == NULL || rrset == NULL) {
-		return false;
-	}
-
-	// SOA entry is maintained separately
-	if (rrset->type == KNOT_RRTYPE_SOA) {
-		return false;
-	}
-
-	// DNSKEYs are maintained separately
-	if (rrset->type == KNOT_RRTYPE_DNSKEY) {
-		return false;
-	}
-
-	// At delegation points we only want to sign NSECs and DSs
-	if (knot_node_is_deleg_point(node)) {
-		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
-		    rrset->type == KNOT_RRTYPE_DS)) {
-			return false;
-		}
-	}
-
-	// These RRs have their signatures stored in changeset already
-	if (knot_node_is_replaced_nsec(node)
-	    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
-	         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
-		return false;
-	}
-
-	// Check for RRSet in the 'already_signed' table
-	if (table) {
-		if (rr_already_signed(rrset, table)) {
-			return false;
-		}
-	}
-
-	return true;
-}

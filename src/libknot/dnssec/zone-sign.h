@@ -112,6 +112,21 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
                                       const knot_dnssec_policy_t *policy,
                                       knot_changeset_t *changeset);
 
+/*!
+ * \brief Checks whether RRSet in a node has to be signed. Will not return
+ *        true for all types that should be signed, do not use this as an
+ *        universal function, it is implementation specific.
+ *
+ * \param node   Node containing the RRSet.
+ * \param rrset  RRSet we are checking for.
+ * \param table  Optional hash table with already signed RRs.
+ *
+ * \return True if RR should be signed, false otherwise.
+ */
+bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
+                                        const knot_rrset_t *rrset,
+                                        ahtable_t *table);
+
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 
 /*! @} */
