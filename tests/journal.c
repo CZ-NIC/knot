@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
 	/* Test 3: Open journal. */
 	journal_t *journal = journal_open(jfilename, fsize, JOURNAL_LAZY, 0);
-	ok(journal, "journal: open journal '%s'", jfilename);
+	ok(journal != NULL, "journal: open journal '%s'", jfilename);
 
 	/* Retain journal. */
 	journal_t *j = journal_retain(journal);
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "journal: create journal '%s'", jfilename);
 
 	j = journal_open(jfilename, fsize, 0, 0);
-	ok(j, "journal: open journal '%s'", jfilename);
+	ok(j != NULL, "journal: open journal '%s'", jfilename);
 
 	/* Test 10: Write random data. */
 	int chk_key = 0;
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 	memset(tmpbuf, 0, sizeof(tmpbuf));
 	journal_close(j);
 	j = journal_open(jfilename, fsize, 0, 0);
-	ok(j, "journal: open journal '%s'", jfilename);
+	ok(j != NULL, "journal: open journal '%s'", jfilename);
 
 	journal_read(j, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 	journal_close(j);
 	remove(jfilename);
 	j = journal_open(jfilename, fsize, 0, 0);
-	ok(j, "journal: open+create from scratch '%s'", jfilename);
+	ok(j != NULL, "journal: open+create from scratch '%s'", jfilename);
 
 	/* Close journal. */
 	journal_close(j);
