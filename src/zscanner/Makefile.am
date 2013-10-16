@@ -1,16 +1,11 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 AM_CFLAGS = -I$(top_srcdir)/src
 
-noinst_PROGRAMS = zscanner-tool
 noinst_LTLIBRARIES = libzscanner.la
-
-TESTS = test/run_tests.sh
 
 EXTRA_DIST =				\
 	scanner.rl			\
-	scanner_body.rl			\
-	test/run_tests.sh		\
-	test/cases
+	scanner_body.rl
 
 BUILT_SOURCES = descriptor.h descriptor.c
 CLEANFILES = descriptor.h descriptor.c
@@ -31,13 +26,6 @@ scanner.c: scanner.rl scanner_body.rl
 	sed '/#line/d' $@.in > $@
 endif
 
-zscanner_tool_SOURCES =			\
-	test/zscanner-tool.c		\
-	test/tests.h			\
-	test/tests.c			\
-	test/processing.h		\
-	test/processing.c
-
 libzscanner_la_SOURCES =		\
 	zscanner.h			\
 	error.h				\
@@ -50,4 +38,5 @@ libzscanner_la_SOURCES =		\
 	scanner_functions.c
 
 libzscanner_la_LIBADD = @LIBOBJS@
-zscanner_tool_LDADD = libzscanner.la @LIBOBJS@
+
+include $(srcdir)/tests/Makefile.inc

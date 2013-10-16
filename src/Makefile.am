@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-SUBDIRS = zscanner . tests
+SUBDIRS = zscanner .
 
 sbin_PROGRAMS = knotc knotd
 bin_PROGRAMS = kdig khost knsupdate knsec3hash
@@ -176,9 +176,6 @@ libknots_la_SOURCES =				\
 	common/slab/slab.c			\
 	common/slab/slab.h			\
 	common/slab/alloc-common.h		\
-	common/libtap/tap.c			\
-	common/libtap/tap.h			\
-	common/libtap/tap_unit.h		\
 	common/atomic.h				\
 	common/memdup.h				\
 	common/mempattern.h			\
