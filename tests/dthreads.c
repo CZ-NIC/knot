@@ -51,6 +51,20 @@ int runnable(struct dthread_t *thread)
 	return 0;
 }
 
+/* Destructor data. */
+static volatile int _destructor_data;
+static pthread_mutex_t _destructor_mx;
+
+/*! \brief Thread destructor. */
+int destruct(struct dthread_t *thread)
+{
+	pthread_mutex_lock(&_destructor_mx);
+	_destructor_data += 1;
+	pthread_mutex_unlock(&_destructor_mx);
+
+	return 0;
+}
+
 /*! \brief Unit blocking runnable. */
 int runnable_simio(struct dthread_t *thread)
 {
@@ -154,7 +168,7 @@ static void interrupt_handle(int s)
 /*! API: run tests. */
 int main(int argc, char *argv[])
 {
-	plan(18);
+	plan(20);
 
 	// Register service and signal handler
 	struct sigaction sa;
@@ -167,6 +181,7 @@ int main(int argc, char *argv[])
 	srand(time(NULL));
 	struct timeval tv;
 	pthread_mutex_init(&_runnable_mx, NULL);
+	pthread_mutex_init(&_destructor_mx, NULL);
 
 	/* Test 1: Create unit */
 	dt_unit_t *unit = dt_test_create(2);
@@ -268,8 +283,27 @@ int main(int argc, char *argv[])
 	       "dthreads: correct values when passed NULL context "
 	       "(%d, min: %d)", ret, expected_min);
 
+	/* Test 19: Thread destructor. */
+	_destructor_data = 0;
+	unit = dt_create_coherent(2, 0, destruct, 0);
+	dt_start(unit);
+	dt_stop(unit);
+	dt_join(unit);
+	is_int(2, _destructor_data, "dthreads: destructor with dt_create_coherent()");
+	dt_delete(&unit);
+
+	/* Test 20: Thread destructor setter. */
+	unit = dt_create(1);
+	dt_set_desctructor(unit->threads[0], destruct);
+	dt_start(unit);
+	dt_stop(unit);
+	dt_join(unit);
+	is_int(3, _destructor_data, "dthreads: destructor with dt_set_desctructor()");
+	dt_delete(&unit);
+
 skip_all:
 
 	pthread_mutex_destroy(&_runnable_mx);
+	pthread_mutex_destroy(&_destructor_mx);
 	return 0;
 }
