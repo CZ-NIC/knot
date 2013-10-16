@@ -564,7 +564,7 @@ test_file_path(const char *file)
             continue;
         length = strlen(base) + 1 + strlen(file) + 1;
         path = bmalloc(length);
-        sprintf(path, "%s/%s", base, file);
+        snprintf(path, length, "%s/%s", base, file);
         if (access(path, R_OK) == 0)
             break;
         free(path);

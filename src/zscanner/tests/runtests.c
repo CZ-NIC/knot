@@ -1016,11 +1016,14 @@ find_test(const char *name, const char *source, const char *build)
     for (i = 0; i < ARRAY_SIZE(suffixes); i++) {
         suffix = suffixes[i];
         for (j = 0; j < ARRAY_SIZE(bases); j++) {
+            unsigned int path_len;
+
             base = bases[j];
             if (base == NULL)
                 continue;
-            path = xmalloc(strlen(base) + strlen(name) + strlen(suffix) + 2);
-            sprintf(path, "%s/%s%s", base, name, suffix);
+            path_len = strlen(base) + strlen(name) + strlen(suffix) + 2;
+            path = xmalloc(path_len);
+            snprintf(path, path_len, "%s/%s%s", base, name, suffix);
             if (is_valid_test(path))
                 return path;
             free(path);
