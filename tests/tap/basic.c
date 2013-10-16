@@ -297,13 +297,13 @@ skip_block(unsigned long count, const char *reason, ...)
  * if those two numbers match.
  */
 void
-is_int(long wanted, long seen, const char *format, ...)
+is_int(long long wanted, long long seen, const char *format, ...)
 {
     fflush(stderr);
     if (wanted == seen)
         printf("ok %lu", testnum++);
     else {
-        printf("# wanted: %ld\n#   seen: %ld\n", wanted, seen);
+        printf("# wanted: %lld\n#   seen: %lld\n", wanted, seen);
         printf("not ok %lu", testnum++);
         _failed++;
     }
@@ -353,14 +353,16 @@ is_string(const char *wanted, const char *seen, const char *format, ...)
  * test passes if the two numbers match.  Otherwise, reports them in hex.
  */
 void
-is_hex(unsigned long wanted, unsigned long seen, const char *format, ...)
+is_hex(unsigned long long wanted, unsigned long long seen,
+       const char *format, ...)
 {
     fflush(stderr);
     if (wanted == seen)
         printf("ok %lu", testnum++);
     else {
-        printf("# wanted: %lx\n#   seen: %lx\n", (unsigned long) wanted,
-               (unsigned long) seen);
+        printf("# wanted: %llx\n#   seen: %llx\n",
+               (unsigned long long) wanted,
+               (unsigned long long) seen);
         printf("not ok %lu", testnum++);
         _failed++;
     }

@@ -82,11 +82,12 @@ void skip_block(unsigned long count, const char *reason, ...)
     __attribute__((__format__(printf, 2, 3)));
 
 /* Check an expected value against a seen value. */
-void is_int(long wanted, long seen, const char *format, ...)
+void is_int(long long wanted, long long seen, const char *format, ...)
     __attribute__((__format__(printf, 3, 4)));
 void is_string(const char *wanted, const char *seen, const char *format, ...)
     __attribute__((__format__(printf, 3, 4)));
-void is_hex(unsigned long wanted, unsigned long seen, const char *format, ...)
+void is_hex(unsigned long long wanted, unsigned long long seen,
+            const char *format, ...)
     __attribute__((__format__(printf, 3, 4)));
 
 /* Bail out with an error.  sysbail appends strerror(errno). */
