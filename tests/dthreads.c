@@ -200,16 +200,16 @@ int main(int argc, char *argv[])
 	/* Test 8: Repurpose single thread. */
 	tv.tv_sec = 0;
 	tv.tv_usec = 4000 + rand() % 1000; // 4-5ms
-	diag("waiting for %dus to let thread do some work ...",
-	     (long)tv.tv_usec);
+	diag("waiting for %ldus to let thread do some work ...",
+	     tv.tv_usec);
 	select(0, 0, 0, 0, &tv);
 	ok(dt_test_repurpose(unit, 0), "dthreads: repurpose on-the-fly");
 
 	/* Test 9: Cancel blocking thread. */
 	tv.tv_sec = 0;
 	tv.tv_usec = (250 + rand() % 500) * 1000; // 250-750ms
-	diag("waiting for %dms to let thread pretend blocking I/O ...",
-	     (long)(tv.tv_usec / 1000));
+	diag("waiting for %ldms to let thread pretend blocking I/O ...",
+	     (tv.tv_usec / 1000));
 	select(0, 0, 0, 0, &tv);
 	ok(dt_test_cancel(unit, 0), "dthreads: cancel blocking thread");
 
