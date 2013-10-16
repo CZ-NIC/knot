@@ -1341,14 +1341,16 @@ main(int argc, char *argv[])
 
     /* Set SOURCE and BUILD environment variables. */
     if (source != NULL) {
-        source_env = xmalloc(strlen("SOURCE=") + strlen(source) + 1);
-        sprintf(source_env, "SOURCE=%s", source);
+        unsigned int len = strlen("SOURCE=") + strlen(source) + 1;
+        source_env = xmalloc(len);
+        snprintf(source_env, len, "SOURCE=%s", source);
         if (putenv(source_env) != 0)
             sysdie("cannot set SOURCE in the environment");
     }
     if (build != NULL) {
-        build_env = xmalloc(strlen("BUILD=") + strlen(build) + 1);
-        sprintf(build_env, "BUILD=%s", build);
+        unsigned int len = strlen("BUILD=") + strlen(build) + 1;
+        build_env = xmalloc(len);
+        snprintf(build_env, len, "BUILD=%s", build);
         if (putenv(build_env) != 0)
             sysdie("cannot set BUILD in the environment");
     }
