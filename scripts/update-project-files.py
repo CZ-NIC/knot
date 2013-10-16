@@ -14,7 +14,7 @@ SOURCES = [
 
     # sources
     "src/*.c", "src/*.h", "src/*.rl", "src/*.l",
-    "src/*.y",
+    "src/*.y", "tests/*.c", "tests/*.h",
 ]
 
 OUTPUT_FILE = "Knot.files"
