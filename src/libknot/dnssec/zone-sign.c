@@ -385,6 +385,8 @@ static int resign_rrset(const knot_rrset_t *covered,
 
 	// TODO this function creates some signatures twice (for checking)
 	// maybe merge the two functions into one
+	// jvcelak: Not really, maybe for RSA. The digest is computed twice,
+	// but the verification process can differ from signature computation.
 	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
 	                                   policy, changeset, expires_at);
 	if (result != KNOT_EOK) {
@@ -1217,4 +1219,3 @@ bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 
 	return true;
 }
-
