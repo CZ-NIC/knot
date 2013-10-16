@@ -609,7 +609,7 @@ test_tmpdir(void)
         build = ".";
     length = strlen(build) + strlen("/tmp") + 1;
     path = bmalloc(length);
-    sprintf(path, "%s/tmp", build);
+    snprintf(path, length, "%s/tmp", build);
     if (access(path, X_OK) < 0)
         if (mkdir(path, 0777) < 0)
             sysbail("error creating temporary directory %s", path);
