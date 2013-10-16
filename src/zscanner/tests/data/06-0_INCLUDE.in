@@ -19,10 +19,10 @@ $INCLUDE \./includes/include2	_a_.-b-c-./d/.		; Slashed character in file name, 
 $INCLUDE ./includes/include2	\0320\ \\\"\.\@\*.tld.	; Origin with special chars
 5.	NS	@
 
-$INCLUDE @BUILD@/includes/include2		; Absolute path without origin
+$INCLUDE @TMPDIR@/includes/include2		; Absolute path without origin
 6.	NS	@
 
-$INCLUDE @BUILD@/includes/include2	tld.	; Absolute path with origin
+$INCLUDE @TMPDIR@/includes/include2	tld.	; Absolute path with origin
 7.	NS	@
 
 ; KO

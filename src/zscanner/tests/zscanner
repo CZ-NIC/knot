@@ -7,7 +7,7 @@ TMPDIR=$(test_tmpdir)
 TESTS_DIR="$SOURCE"/data
 ZSCANNER_TOOL="$BUILD"/zscanner-tool
 
-plan 65
+plan 68
 
 mkdir -p "$TMPDIR"/includes/
 for a in 1 2 3 4 5 6; do
@@ -20,7 +20,7 @@ for case in $(cat "$SOURCE"/zscanner-TESTS); do
     filein="$TMPDIR"/"$case".in
     fileout="$TMPDIR"/"$case".out
 
-    sed -e "s|@BUILD@|$BUILD|;s|@SOURCE@|$SOURCE|;" < "$casein" > "$filein"
+    sed -e "s|@TMPDIR@|$TMPDIR|;s|@SOURCE@|$SOURCE|;" < "$casein" > "$filein"
     diag $(ls "$filein")
 
     "$ZSCANNER_TOOL" -m 2 . "$filein" > "$fileout"
