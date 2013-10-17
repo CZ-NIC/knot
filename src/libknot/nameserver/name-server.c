@@ -2784,12 +2784,12 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 		return KNOT_ERROR;
 	}
 
-	ret = knot_zone_contents_tree_apply_inorder(zone, ns_axfr_from_node, &xfr);
+	ret = knot_zone_contents_tree_apply_inorder(zone, ns_axfr_from_node, xfr);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;	// maybe do something with the code
 	}
 
-	ret = knot_zone_contents_nsec3_apply_inorder(zone, ns_axfr_from_node, &xfr);
+	ret = knot_zone_contents_nsec3_apply_inorder(zone, ns_axfr_from_node, xfr);
 	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;	// maybe do something with the code
 	}
