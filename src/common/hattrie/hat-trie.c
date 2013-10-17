@@ -373,7 +373,7 @@ static int node_apply(node_ptr node, int (*f)(value_t*,void*), void* d)
                 result = node_apply(node.t->xs[i], f, d);
             }
             if (result == TRIE_EOK && *node.flag & NODE_HAS_VAL) {
-                f(&node.t->val, d);
+                result = f(&node.t->val, d);
             }
             if (result != TRIE_EOK) {
                 break;
