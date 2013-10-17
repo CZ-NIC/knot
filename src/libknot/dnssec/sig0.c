@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <time.h>
 #include "common/errcode.h"
+#include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sig0.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/util/wire.h"
@@ -40,42 +41,23 @@ static knot_rrset_t *sig0_create_rrset(void)
 {
 	knot_dname_t *root = knot_dname_from_str(".", 1);
 	uint32_t ttl = 0;
+
 	knot_rrset_t *sig_record = knot_rrset_new(root, KNOT_RRTYPE_SIG,
 	                                          KNOT_CLASS_ANY, ttl);
 
 	return sig_record;
 }
 
-/*!
- * \brief Get size of SIG(0) RDATA field.
- *
- * \param key  Signing key.
- *
- * \return Size of the SIG(0) record in bytes.
- */
-static size_t sig0_rdata_size(knot_dnssec_key_t *key)
+static void sig0_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key)
 {
-	assert(key);
+	uint32_t incepted = time(NULL) - SIG0_LIFETIME_FUDGE_SECONDS;
+	uint32_t expires = incepted + 2 * SIG0_LIFETIME_FUDGE_SECONDS;
 
-	size_t size;
+	uint16_t type = 0;
+	uint8_t labels = 0;
+	uint32_t ttl = 0;
 
-	// static part
-
-	size = sizeof(uint16_t)  // type covered
-	     + sizeof(uint8_t)   // algorithm
-	     + sizeof(uint8_t)   // labels
-	     + sizeof(uint32_t)  // original TTL
-	     + sizeof(uint32_t)  // signature expiration
-	     + sizeof(uint32_t)  // signature inception
-	     + sizeof(uint16_t); // key tag (footprint)
-
-	// variable part
-
-	assert(key->name);
-	size += knot_dname_size(key->name); // signer
-	size += knot_dnssec_sign_size(key);
-
-	return size;
+	knot_rrsig_write_rdata(rdata, key, type, labels, ttl, incepted, expires);
 }
 
 /*!
@@ -91,51 +73,15 @@ static uint8_t *sig0_create_rdata(knot_rrset_t *rrset, knot_dnssec_key_t *key)
 	assert(rrset);
 	assert(key);
 
-	size_t rdata_size = sig0_rdata_size(key);
+	size_t rdata_size = knot_rrsig_rdata_size(key);
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
-	if (!rdata)
+	if (!rdata) {
 		return NULL;
+	}
 
-	memset(rdata, '\0', rdata_size);
+	sig0_write_rdata(rdata, key);
 
 	return rdata;
-}
-
-/*!
- * \brief Fill SIG(0) RDATA field except the signature part.
- *
- * \param key    Signing key.
- * \param rdata  RDATA to be filled.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int sig0_write_rdata(knot_dnssec_key_t *key, uint8_t *rdata)
-{
-	assert(key);
-	assert(rdata);
-
-	uint32_t incepted = (uint32_t)time(NULL) - SIG0_LIFETIME_FUDGE_SECONDS;
-	uint32_t expires = incepted + 2 * SIG0_LIFETIME_FUDGE_SECONDS;
-
-	uint8_t *w = rdata;
-
-	w += sizeof(uint16_t);               // type covered
-	*w = key->algorithm;                 // algorithm
-	w += sizeof(uint8_t);
-	w += sizeof(uint8_t);                // labels
-	w += sizeof(uint32_t);               // original TTL
-	knot_wire_write_u32(w, expires);     // signature expiration
-	w += sizeof(uint32_t);
-	knot_wire_write_u32(w, incepted);    // signature inception
-	w += sizeof(uint32_t);
-	knot_wire_write_u16(w, key->keytag); // key footprint
-	w += sizeof(uint16_t);
-
-	assert(w == rdata + 18);
-	assert(key->name);
-	memcpy(w, key->name, knot_dname_size(key->name)); // signer
-
-	return KNOT_EOK;
 }
 
 /*!
@@ -191,13 +137,13 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 		return KNOT_ENOMEM;
 	}
 
+	// SIG(0) headers without signature
+
 	uint8_t *sig_rdata = sig0_create_rdata(sig_rrset, key);
 	if (!sig_rdata) {
 		knot_rrset_deep_free(&sig_rrset, 1);
 		return KNOT_ENOMEM;
 	}
-
-	sig0_write_rdata(key, sig_rdata);
 
 	// convert to wire
 

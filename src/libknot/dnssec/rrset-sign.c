@@ -27,26 +27,19 @@
 #include "libknot/rdata.h"
 #include "libknot/rrset.h"
 
-/*!
- * \todo functions rrsig_rdata_size() and rrsig_write_rdata() were copied from
- * SIG(0) implementation and modified; reuse this implementations in SIG(0).
- */
-
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024)
 #define RRSIG_RDATA_SIGNER_OFFSET 18
 
-/*- Creating of RRSIG --------------------------------------------------------*/
+/*- Creating of RRSIGs -------------------------------------------------------*/
 
 /*!
  * \brief Get size of RRSIG RDATA for a given key.
- *
- * \param key  DNSSEC key to be used for creating the signature.
- *
- * \return RRSIG RDATA size in bytes.
  */
-static size_t rrsig_rdata_size(const knot_dnssec_key_t *key)
+size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key)
 {
-	assert(key);
+	if (!key) {
+		return 0;
+	}
 
 	size_t size;
 
@@ -60,6 +53,8 @@ static size_t rrsig_rdata_size(const knot_dnssec_key_t *key)
 	     + sizeof(uint32_t)		// signature inception
 	     + sizeof(uint16_t);	// key tag (footprint)
 
+	assert(size == RRSIG_RDATA_SIGNER_OFFSET);
+
 	// variable part
 
 	assert(key->name);
@@ -70,55 +65,45 @@ static size_t rrsig_rdata_size(const knot_dnssec_key_t *key)
 }
 
 /*!
- * \brief Write RRSIG RDATA except the signature itself.
- *
- * \param rdata         Pointer to RDATA.
- * \param key           Key used for signing.
- * \param covered       RR covered by the signature.
- * \param sig_incepted  Timestamp of signature inception.
- * \param sig_expires   Timestamp of signature expiration.
+ * \brief Write RRSIG RDATA except signature.
  */
-static void rrsig_write_rdata(uint8_t *rdata,
-                              const knot_dnssec_key_t *key,
-                              const knot_rrset_t *covered,
-                              uint32_t sig_incepted,
-                              uint32_t sig_expires)
+int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
+                           uint16_t covered_type, uint8_t owner_labels,
+                           uint32_t owner_ttl,  uint32_t sig_incepted,
+                           uint32_t sig_expires)
 {
-	assert(key);
-	assert(rdata);
-	assert(covered);
-	assert(sig_incepted < sig_expires);
-	assert(covered->owner);
-
-	uint8_t owner_labels = knot_dname_labels(covered->owner, NULL);
-	if (knot_dname_is_wildcard(covered->owner)) {
-		owner_labels -= 1;
+	if (!rdata || !key || sig_incepted >= sig_expires) {
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *w = rdata;
 
-	knot_wire_write_u16(w, covered->type);	// type covered
+	knot_wire_write_u16(w, covered_type);	// type covered
 	w += sizeof(uint16_t);
 	*w = key->algorithm;			// algorithm
 	w += sizeof(uint8_t);
 	*w = owner_labels;			// labels
 	w += sizeof(uint8_t);
-	knot_wire_write_u32(w, covered->ttl);	// original TTL
+	knot_wire_write_u32(w, owner_ttl);	// original TTL
 	w += sizeof(uint32_t);
 	knot_wire_write_u32(w, sig_expires);	// signature expiration
 	w += sizeof(uint32_t);
 	knot_wire_write_u32(w, sig_incepted);	// signature inception
 	w += sizeof(uint32_t);
-	knot_wire_write_u16(w, key->keytag);	// key footprint
+	knot_wire_write_u16(w, key->keytag);	// key fingerprint
 	w += sizeof(uint16_t);
 
 	assert(w == rdata + RRSIG_RDATA_SIGNER_OFFSET);
 	assert(key->name);
 	memcpy(w, key->name, knot_dname_size(key->name)); // signer
+
+	return KNOT_EOK;
 }
 
+/*- Creating of RRSIGs from covered RRs -------------------------------------*/
+
 /*!
- * \brief Create RRSIG RDATA.
+ * \brief Create RRSIG RDATA (all fields except signature are filled).
  *
  * \param rrsigs        RR set with RRSIGS.
  * \param covered       RR covered by the signature.
@@ -126,7 +111,7 @@ static void rrsig_write_rdata(uint8_t *rdata,
  * \param sig_incepted  Timestamp of signature inception.
  * \param sig_expires   Timestamp of signature expiration.
  */
-static uint8_t *create_rrsigs_rdata(knot_rrset_t *rrsigs,
+static uint8_t *rrsigs_create_rdata(knot_rrset_t *rrsigs,
                                     const knot_rrset_t *covered,
                                     const knot_dnssec_key_t *key,
                                     uint32_t sig_incepted,
@@ -137,12 +122,23 @@ static uint8_t *create_rrsigs_rdata(knot_rrset_t *rrsigs,
 	assert(covered);
 	assert(key);
 
-	uint8_t *rdata = knot_rrset_create_rdata(rrsigs, rrsig_rdata_size(key));
+	size_t rdata_size = knot_rrsig_rdata_size(key);
+	assert(rdata_size != 0);
+
+	uint8_t *rdata = knot_rrset_create_rdata(rrsigs, rdata_size);
 	if (!rdata) {
 		return NULL;
 	}
 
-	rrsig_write_rdata(rdata, key, covered, sig_incepted, sig_expires);
+	uint8_t owner_labels = knot_dname_labels(covered->owner, NULL);
+	if (knot_dname_is_wildcard(covered->owner)) {
+		owner_labels -= 1;
+	}
+
+	int res = knot_rrsig_write_rdata(rdata, key, covered->type, owner_labels,
+	                                covered->ttl, sig_incepted, sig_expires);
+	assert(res == KNOT_EOK);
+
 
 	return rdata;
 }
@@ -257,7 +253,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	uint32_t sig_incept = policy->now;
 	uint32_t sig_expire = sig_incept + policy->sign_lifetime;
 
-	uint8_t *rdata = create_rrsigs_rdata(rrsigs, covered, key,
+	uint8_t *rdata = rrsigs_create_rdata(rrsigs, covered, key,
 	                                     sig_incept, sig_expire);
 	if (!rdata) {
 		return KNOT_ENOMEM;
