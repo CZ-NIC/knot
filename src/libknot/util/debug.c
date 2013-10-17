@@ -27,10 +27,12 @@
 #include "common/print.h"
 
 #if defined(KNOT_ZONE_DEBUG)
-static void knot_node_dump_from_tree(knot_node_t *node, void *data)
+static int knot_node_dump_from_tree(knot_node_t *node, void *data)
 {
 	UNUSED(data);
 	knot_node_dump(node);
+
+	return KNOT_EOK;
 }
 #endif
 
