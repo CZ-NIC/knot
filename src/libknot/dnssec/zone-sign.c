@@ -467,7 +467,6 @@ typedef struct node_sign_args {
 	const knot_dnssec_policy_t *policy;
 	knot_changeset_t *changeset;
 	uint32_t expires_at;
-	int result;
 } node_sign_args_t;
 
 /*!
@@ -476,27 +475,26 @@ typedef struct node_sign_args {
  * \param node  Node to be signed.
  * \param data  Callback data, node_sign_args_t.
  */
-static void sign_node(knot_node_t **node, void *data)
+static int sign_node(knot_node_t **node, void *data)
 {
 	assert(node && *node);
-	node_sign_args_t *args = (node_sign_args_t *)data;
 	assert(data);
 
-	if (args->result != KNOT_EOK) {
-		return;
-	}
+	node_sign_args_t *args = (node_sign_args_t *)data;
 
 	if ((*node)->rrset_count == 0) {
-		return;
+		return KNOT_EOK;
 	}
 
 	if (knot_node_is_non_auth(*node)) {
-		return;
+		return KNOT_EOK;
 	}
 
-	args->result = sign_node_rrsets(*node, args->zone_keys, args->policy,
-	                                args->changeset, &args->expires_at);
+	int result = sign_node_rrsets(*node, args->zone_keys, args->policy,
+	                              args->changeset, &args->expires_at);
 	knot_node_clear_replaced_nsec(*node);
+
+	return result;
 }
 
 /*!
@@ -525,12 +523,13 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
 		.zone_keys = zone_keys,
 		.policy = policy,
 		.changeset = changeset,
-		.result = KNOT_EOK,
 		.expires_at = time(NULL) + policy->sign_lifetime
 	};
 
-	knot_zone_tree_apply(tree, sign_node, &args);
-	return args.result;
+	int result = knot_zone_tree_apply(tree, sign_node, &args);
+	*expires_at = args.expires_at;
+
+	return result;
 }
 
 /*- private API - signing of NSEC(3) in changeset ----------------------------*/

@@ -219,55 +219,60 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
-                                 void (*function)(knot_node_t **node,
-                                                  void *data),
+                                 knot_zone_tree_apply_cb_t function,
                                  void *data)
 {
 	if (tree == NULL || function == NULL) {
 		return KNOT_EINVAL;
 	}
 
+	int result = KNOT_EOK;
+
 	hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
 	while(!hattrie_iter_finished(i)) {
-		function((knot_node_t **)hattrie_iter_val(i), data);
+		result = function((knot_node_t **)hattrie_iter_val(i), data);
+		if (result != KNOT_EOK) {
+			break;
+		}
 		hattrie_iter_next(i);
 	}
 	hattrie_iter_free(i);
 
-	return KNOT_EOK;
+	return result;
 }
 
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
-                                           void (*function)(
-                                               knot_node_t **node,
-                                               void *data),
-                                           void *data)
+                                   knot_zone_tree_apply_cb_t function,
+                                   void *data)
 {
 	if (tree == NULL || function == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	hattrie_apply_rev(tree, (void (*)(value_t*,void*))function, data);
-
-	return KNOT_EOK;
+	return hattrie_apply_rev(tree, (int (*)(value_t*,void*))function, data);
 }
 
 /*----------------------------------------------------------------------------*/
 
 int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         void (*function)(knot_node_t **node, void *data),
+                         knot_zone_tree_apply_cb_t function,
                          void *data)
 {
+	int result = KNOT_EOK;
+
 	hattrie_iter_t *i = hattrie_iter_begin(tree, 0);
 	while(!hattrie_iter_finished(i)) {
-		function((knot_node_t **)hattrie_iter_val(i), data);
+		result = function((knot_node_t **)hattrie_iter_val(i), data);
+		if (result != KNOT_EOK) {
+			break;
+		}
 		hattrie_iter_next(i);
 	}
 	hattrie_iter_free(i);
 
-	return KNOT_EOK;
+	return result;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -311,12 +316,13 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 
 /*----------------------------------------------------------------------------*/
 
-static void knot_zone_tree_free_node(knot_node_t **node, void *data)
+static int knot_zone_tree_free_node(knot_node_t **node, void *data)
 {
 	UNUSED(data);
 	if (node) {
 		knot_node_free(node);
 	}
+	return KNOT_EOK;
 }
 
 void knot_zone_tree_deep_free(knot_zone_tree_t **tree)

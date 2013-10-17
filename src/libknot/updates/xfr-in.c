@@ -2214,7 +2214,7 @@ void xfrin_cleanup_successful_update(knot_changes_t *changes)
 /* New changeset applying                                                     */
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_switch_nodes_in_node(knot_node_t *node, void *data)
+static int xfrin_switch_nodes_in_node(knot_node_t *node, void *data)
 {
 	assert(node != NULL);
 	UNUSED(data);
@@ -2222,6 +2222,8 @@ static void xfrin_switch_nodes_in_node(knot_node_t *node, void *data)
 	assert(knot_node_new_node(node) == NULL);
 
 	knot_node_update_refs(node);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2261,12 +2263,14 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
+static int xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
 {
 	UNUSED(data);
 	assert(node != NULL);
 
 	knot_node_set_new_node(node, NULL);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2636,16 +2640,20 @@ static void xfrin_mark_empty_node(knot_node_t *node, knot_changes_t *changes,
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_mark_empty_nsec3(knot_node_t *node, void *data)
+static int xfrin_mark_empty_nsec3(knot_node_t *node, void *data)
 {
 	xfrin_mark_empty_node(node,
 	                      (knot_changes_t *)data, KNOT_CHANGES_NSEC3_NODE);
+
+	return KNOT_EOK;
 }
 
-static void xfrin_mark_empty(knot_node_t *node, void *data)
+static int xfrin_mark_empty(knot_node_t *node, void *data)
 {
 	xfrin_mark_empty_node(node,
 	                      (knot_changes_t *)data, KNOT_CHANGES_NORMAL_NODE);
+
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2727,19 +2735,14 @@ dbg_xfrin_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_check_contents_copy_node(knot_node_t *node, void *data)
+static int xfrin_check_contents_copy_node(knot_node_t *node, void *data)
 {
 	assert(node != NULL);
-	assert(data != NULL);
-
-	int *err = (int *)data;
-
-	if (*err != KNOT_EOK) {
-		return;
-	}
 
 	if (knot_node_new_node(node) == NULL) {
-		*err = KNOT_ENONODE;
+		return KNOT_ENONODE;
+	} else {
+		return KNOT_EOK;
 	}
 }
 
@@ -2747,27 +2750,21 @@ static void xfrin_check_contents_copy_node(knot_node_t *node, void *data)
 
 static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
 {
-	int err = KNOT_EOK;
-
 	int ret = knot_zone_contents_tree_apply_inorder(old_contents,
 						 xfrin_check_contents_copy_node,
-						 &err);
+						 NULL);
 
-	assert(ret == KNOT_EOK);
-
-	if (err == KNOT_EOK) {
+	if (ret == KNOT_EOK) {
 		ret = knot_zone_contents_nsec3_apply_inorder(old_contents,
 						 xfrin_check_contents_copy_node,
-						 &err);
+						 NULL);
 	}
-
-	assert(ret == KNOT_EOK);
 
 	if (knot_node_new_node(knot_zone_contents_apex(old_contents)) == NULL) {
 		return KNOT_ENONODE;
 	}
 
-	return err;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -359,51 +359,76 @@ void hattrie_build_index(hattrie_t *T)
     node_build_index(T->root);
 }
 
-static void node_apply(node_ptr node, void (*f)(value_t*,void*), void* d)
+static int node_apply(node_ptr node, int (*f)(value_t*,void*), void* d)
 {
+    int result = TRIE_EOK;
+
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
         for (i = 0; i < NODE_CHILDS; ++i) {
-            if (i > 0 && node.t->xs[i].t == node.t->xs[i - 1].t) continue;
-            if (node.t->xs[i].t) node_apply(node.t->xs[i], f, d);
-	    if (*node.flag & NODE_HAS_VAL) {
-		    f(&node.t->val, d);
-	    }
+            if (i > 0 && node.t->xs[i].t == node.t->xs[i - 1].t) {
+                continue;
+            }
+            if (node.t->xs[i].t) {
+                result = node_apply(node.t->xs[i], f, d);
+            }
+            if (result == TRIE_EOK && *node.flag & NODE_HAS_VAL) {
+                f(&node.t->val, d);
+            }
+            if (result != TRIE_EOK) {
+                break;
+            }
         }
     }
     else {
-	    ahtable_iter_t i;
-	    ahtable_iter_begin(node.b, &i, false);
-	    while (!ahtable_iter_finished(&i)) {
-		    f(ahtable_iter_val(&i), d);
-		    ahtable_iter_next(&i);
-	    }
-	    ahtable_iter_free(&i);
+        ahtable_iter_t i;
+        ahtable_iter_begin(node.b, &i, false);
+        while (!ahtable_iter_finished(&i)) {
+            result = f(ahtable_iter_val(&i), d);
+            if (result != TRIE_EOK) {
+                break;
+            }
+            ahtable_iter_next(&i);
+        }
+        ahtable_iter_free(&i);
     }
+
+    return result;
 }
 
-static void node_apply_ahtable(node_ptr node, void (*f)(void*,void*), void* d)
+static int node_apply_ahtable(node_ptr node, int (*f)(void*,void*), void* d)
 {
+    int result = TRIE_EOK;
+
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
         for (i = 0; i < NODE_CHILDS; ++i) {
-            if (i > 0 && node.t->xs[i].t == node.t->xs[i - 1].t) continue;
-            if (node.t->xs[i].t) node_apply_ahtable(node.t->xs[i], f, d);
+            if (i > 0 && node.t->xs[i].t == node.t->xs[i - 1].t) {
+                continue;
+            }
+            if (node.t->xs[i].t) {
+                result = node_apply_ahtable(node.t->xs[i], f, d);
+                if (result != TRIE_EOK) {
+                    break;
+                }
+            }
         }
     }
     else {
-	    f(node.b, d);
-	}
+        result = f(node.b, d);
+    }
+
+    return result;
 }
 
-void hattrie_apply_rev(hattrie_t* T, void (*f)(value_t*,void*), void* d)
+int hattrie_apply_rev(hattrie_t* T, int (*f)(value_t*,void*), void* d)
 {
-	node_apply(T->root, f, d);
+    return node_apply(T->root, f, d);
 }
 
-void hattrie_apply_rev_ahtable(hattrie_t* T, void (*f)(void*,void*), void* d)
+int hattrie_apply_rev_ahtable(hattrie_t* T, int (*f)(void*,void*), void* d)
 {
-	node_apply_ahtable(T->root, f, d);
+    return node_apply_ahtable(T->root, f, d);
 }
 
 int hattrie_split_mid(node_ptr node, unsigned *left_m, unsigned *right_m)
