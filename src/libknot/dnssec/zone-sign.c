@@ -1008,7 +1008,7 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 		return result;
 	}
 
-	uint32_t normal_tree_expiration = 0;
+	uint32_t normal_tree_expiration = UINT32_MAX;
 	result = zone_tree_sign(zone->nodes, zone_keys, policy, changeset,
 	                        &normal_tree_expiration);
 	if (result != KNOT_EOK) {
@@ -1016,7 +1016,7 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 		return result;
 	}
 
-	uint32_t nsec3_tree_expiration = 0;
+	uint32_t nsec3_tree_expiration = UINT32_MAX;
 	result = zone_tree_sign(zone->nsec3_nodes, zone_keys, policy,
 	                        changeset, &nsec3_tree_expiration);
 	if (result != KNOT_EOK) {
