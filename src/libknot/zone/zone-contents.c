@@ -226,6 +226,7 @@ static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 		knot_node_set_nsec3_node(node, nsec3);
 	} else if (ret == KNOT_ENSEC3PAR) {
 		knot_node_set_nsec3_node(node, NULL);
+		ret = KNOT_EOK;
 	}
 
 	knot_dname_free(&nsec3_name);
