@@ -236,6 +236,7 @@ int main(int argc, char *argv[])
 		             sizeof(decoded_secret)) == 0,
 		   "knot_tsig_key_from_params(), secret set properly");
 
+		knot_free_key_params(&params);
 		knot_tsig_key_free(&tsig_key);
 	}
 
