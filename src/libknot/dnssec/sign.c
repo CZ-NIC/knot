@@ -426,13 +426,24 @@ static int ecdsa_set_public_key(const knot_binary_t *rdata, EC_KEY *ec_key)
 	BIGNUM *x = BN_bin2bn(x_ptr, param_size, NULL);
 	BIGNUM *y = BN_bin2bn(y_ptr, param_size, NULL);
 
-	if (EC_KEY_set_public_key_affine_coordinates(ec_key, x, y) != 1) {
-		BN_free(x);
-		BN_free(y);
-		return KNOT_DNSSEC_EINVALID_KEY;
-	}
+	int result = EC_KEY_set_public_key_affine_coordinates(ec_key, x, y);
 
-	return KNOT_EOK;
+	BN_free(x);
+	BN_free(y);
+
+	return result == 1 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_KEY;
+}
+
+static int ecdsa_set_private_key(const knot_binary_t *data, EC_KEY *ec_key)
+{
+	assert(data);
+	assert(ec_key);
+
+	BIGNUM *private = binary_to_bn(data);
+	int result = EC_KEY_set_private_key(ec_key, private);
+	BN_free(private);
+
+	return result == 1 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_KEY;
 }
 
 /*!
@@ -464,9 +475,10 @@ static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 		return result;
 	}
 
-	if (EC_KEY_set_private_key(ec_key, binary_to_bn(&params->private_key)) != 1) {
+	result = ecdsa_set_private_key(&params->private_key, ec_key);
+	if (result != KNOT_EOK) {
 		EC_KEY_free(ec_key);
-		return KNOT_DNSSEC_EINVALID_KEY;
+		return result;
 	}
 
 	if (EC_KEY_check_key(ec_key) != 1) {
