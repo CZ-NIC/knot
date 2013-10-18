@@ -5,16 +5,17 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(current_dir + "/tools")
 import params
 
-tests_dir = "tests"
-params.common_data_dir = current_dir + "/tools/data/"
-
-# Parse comman line arguments.
+# Parse command line arguments.
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", dest="debug", action="store_true", \
                     help="enable exception traceback on stdout")
 parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                     help="([exclude] | run) specific (test set | [test case])")
 args = parser.parse_args()
+
+params.debug = True if args.debug else False
+params.common_data_dir = current_dir + "/tools/data/"
+tests_dir = "tests"
 
 # Process tests/cases arguments.
 excluded = dict()
@@ -65,13 +66,6 @@ def create_log(logger, filename="", level=logging.NOTSET):
 timestamp = int(time.time())
 today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
 outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp)
-params.debug = True if args.debug else False
-
-# Set the current knot binaries if not specified.
-if not os.environ.get("KNOT_TEST_KNOT"):
-    os.environ["KNOT_TEST_KNOT"] = current_dir + "/../../src/knotd"
-if not os.environ.get("KNOT_TEST_KNOTC"):
-    os.environ["KNOT_TEST_KNOTC"] = current_dir + "/../../src/knotc"
 
 # Set up logging.
 log = logging.getLogger()
