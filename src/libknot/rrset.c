@@ -1376,6 +1376,23 @@ void knot_rrset_free(knot_rrset_t **rrset)
 	*rrset = NULL;
 }
 
+static void rrset_deep_free_content(knot_rrset_t *rrset, int free_owner)
+{
+	assert(rrset);
+
+	if (rrset->rrsigs) {
+		assert(rrset->rrsigs->rrsigs == NULL);
+		rrset_deep_free_content(rrset->rrsigs, free_owner);
+		free(rrset->rrsigs);
+	}
+
+	free(rrset->rdata);
+	free(rrset->rdata_indices);
+	if (free_owner) {
+		knot_dname_free(&rrset->owner);
+	}
+}
+
 void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner)
 {
 	/*! \bug The number of different frees in rrset is too damn high! */
@@ -1383,16 +1400,7 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner)
 		return;
 	}
 
-	if ((*rrset)->rrsigs != NULL) {
-		knot_rrset_deep_free(&(*rrset)->rrsigs, free_owner);
-	}
-
-	free((*rrset)->rdata);
-	free((*rrset)->rdata_indices);
-
-	if (free_owner) {
-		knot_dname_free(&(*rrset)->owner);
-	}
+	rrset_deep_free_content(*rrset, free_owner);
 
 	free(*rrset);
 	*rrset = NULL;
@@ -1562,13 +1570,7 @@ int knot_rrset_sort_rdata(knot_rrset_t *rrset)
 		return result;
 	}
 
-	/*!
-	 * \todo Pointers to pointers to pointers to pointers FTW!
-	 * Tell me how to rewrite this to use our awesome
-	 * knot_rrset_deep_free() API and I will buy you a beer!
-	 */
-	free(rrset->rdata);
-	free(rrset->rdata_indices);
+	rrset_deep_free_content(rrset, 0);
 	*rrset = *sorted;
 	free(sorted);
 
