@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/time.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/evqueue.h"
 #include "common/evsched.h"

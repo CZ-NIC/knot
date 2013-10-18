@@ -20,7 +20,7 @@
 #include <sys/select.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "knot/server/dthreads.h"
 

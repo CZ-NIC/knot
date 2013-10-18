@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdbool.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/slab/slab.h"
 

@@ -17,7 +17,7 @@
 #include <config.h>
 #include <assert.h>
 #include <openssl/opensslconf.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/errcode.h"
 #include "libknot/dnssec/cleanup.h"

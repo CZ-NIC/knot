@@ -16,7 +16,7 @@
 
 #include <config.h>
 #include <stdio.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "knot/conf/conf.h"
 

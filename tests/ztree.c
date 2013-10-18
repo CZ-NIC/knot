@@ -15,7 +15,7 @@
  */
 
 #include <config.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "libknot/zone/zone-tree.h"
 

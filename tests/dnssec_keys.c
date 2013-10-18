@@ -15,7 +15,7 @@
  */
 
 #include <config.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/key.c" // testing static functions

@@ -17,7 +17,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <string.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/descriptor.h"
 #include "common/errcode.h"

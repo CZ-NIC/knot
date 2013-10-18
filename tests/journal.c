@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <unistd.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "knot/server/journal.h"
 #include "knot/knot.h"

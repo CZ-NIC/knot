@@ -17,7 +17,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/descriptor.h"
 #include "common/errcode.h"
