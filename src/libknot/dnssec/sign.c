@@ -375,8 +375,8 @@ static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
 		return KNOT_ENOMEM;
 	}
 
-	decoded->r = BN_bin2bn(signature_r, 20, NULL);
-	decoded->s = BN_bin2bn(signature_s, 20, NULL);
+	decoded->r = BN_bin2bn(signature_r, 20, decoded->r);
+	decoded->s = BN_bin2bn(signature_s, 20, decoded->s);
 
 	size_t max_size = EVP_PKEY_size(context->key->data->private_key);
 	uint8_t *raw_signature = malloc(max_size);
@@ -596,8 +596,8 @@ static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
 		return KNOT_ENOMEM;
 	}
 
-	decoded->r = BN_bin2bn(signature_r, parameter_size, NULL);
-	decoded->s = BN_bin2bn(signature_s, parameter_size, NULL);
+	decoded->r = BN_bin2bn(signature_r, parameter_size, decoded->r);
+	decoded->s = BN_bin2bn(signature_s, parameter_size, decoded->s);
 
 	size_t max_size = EVP_PKEY_size(context->key->data->private_key);
 	uint8_t *raw_signature = malloc(max_size);
@@ -618,6 +618,7 @@ static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
 	int result = any_sign_verify(context, raw_signature, raw_size);
 
 	ECDSA_SIG_free(decoded);
+
 	free(raw_signature);
 
 	return result;
