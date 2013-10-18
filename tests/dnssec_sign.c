@@ -20,13 +20,14 @@
 #include <tests/tap/basic.h>
 
 #include "common/errcode.h"
-#include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/cleanup.h"
+#include "libknot/dnssec/config.h"
+#include "libknot/dnssec/sign.h"
 
-#ifdef OPENSSL_NO_ECDSA
-static const int ecdsa_supported = 0;
-#else
+#ifdef KNOT_ENABLE_ECDSA
 static const int ecdsa_supported = 1;
+#else
+static const int ecdsa_supported = 0;
 #endif
 
 static void test_algorithm(const char *alg, const knot_key_params_t *kp)

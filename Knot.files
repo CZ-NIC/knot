@@ -138,6 +138,7 @@ src/libknot/dname.h
 src/libknot/dnssec/algorithm.c
 src/libknot/dnssec/algorithm.h
 src/libknot/dnssec/cleanup.h
+src/libknot/dnssec/config.h
 src/libknot/dnssec/key.c
 src/libknot/dnssec/key.h
 src/libknot/dnssec/nsec-bitmap.h
@@ -273,7 +274,6 @@ tests/journal.c
 tests/rrl.c
 tests/rrset.c
 tests/runtests.c
-tests/sample_conf.c
 tests/sample_conf.h
 tests/server.c
 tests/slab.c

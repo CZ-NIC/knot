@@ -6,7 +6,7 @@ Knot DNS has several dependencies:
 * autoconf > 2.65
 * flex >= 2.5.31
 * bison >= 2.3
-* libssl >= 0.9.8
+* libssl >= 0.9.8    (>= 1.0.1 required for ECDSA)
 * liburcu >= 0.5.4
 
 Optional packages:

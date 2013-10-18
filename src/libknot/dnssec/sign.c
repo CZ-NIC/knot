@@ -18,17 +18,19 @@
 #include <assert.h>
 #include <openssl/dsa.h>
 #include <openssl/opensslconf.h>
-#ifndef OPENSSL_NO_ECDSA
-#include <openssl/ecdsa.h>
-#endif
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "libknot/common.h"
 #include "libknot/dnssec/algorithm.h"
+#include "libknot/dnssec/config.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sign.h"
+
+#ifdef KNOT_ENABLE_ECDSA
+#include <openssl/ecdsa.h>
+#endif
 
 struct algorithm_functions;
 typedef struct algorithm_functions algorithm_functions_t;
@@ -404,7 +406,7 @@ static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
 
 /*- EC specific --------------------------------------------------------------*/
 
-#ifndef OPENSSL_NO_ECDSA
+#ifdef KNOT_ENABLE_ECDSA
 
 /*!
  * \brief Decode ECDSA public key from RDATA and set it into EC key.
@@ -644,7 +646,7 @@ static const algorithm_functions_t dsa_functions = {
 	dsa_sign_verify
 };
 
-#ifndef OPENSSL_NO_ECDSA
+#ifdef KNOT_ENABLE_ECDSA
 static const algorithm_functions_t ecdsa_functions = {
 	ecdsa_create_pkey,
 	ecdsa_sign_size,
@@ -675,7 +677,7 @@ static const algorithm_functions_t *get_implementation(int algorithm)
 		return &dsa_functions;
 	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
-#ifndef OPENSSL_NO_ECDSA
+#ifdef KNOT_ENABLE_ECDSA
 		return &ecdsa_functions;
 #endif
 	default:
