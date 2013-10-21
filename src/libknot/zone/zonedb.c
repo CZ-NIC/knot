@@ -236,17 +236,19 @@ void knot_zonedb_free(knot_zonedb_t **db)
 
 /*----------------------------------------------------------------------------*/
 
-static void delete_zone_from_db(value_t *node, void *data)
+static int delete_zone_from_db(value_t *node, void *data)
 {
 	UNUSED(data);
 	assert(node);
-	if (*node == NULL) return;
+	if (*node != NULL) {
+		knot_zone_t *zone = (knot_zone_t *)(*node);
+		synchronize_rcu();
+		knot_zone_set_flag(zone, KNOT_ZONE_DISCARDED, 1);
+		knot_zone_release(zone);
+		*node = NULL;
+	}
 
-	knot_zone_t *zone = (knot_zone_t *)(*node);
-	synchronize_rcu();
-	knot_zone_set_flag(zone, KNOT_ZONE_DISCARDED, 1);
-	knot_zone_release(zone);
-	*node = NULL;
+	return KNOT_EOK;
 }
 
 void knot_zonedb_deep_free(knot_zonedb_t **db)

@@ -15,7 +15,7 @@
 */
 
 #include <config.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "libknot/dname.h"
 #include "libknot/dnssec/zone-nsec.h"

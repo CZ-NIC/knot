@@ -15,7 +15,7 @@
  */
 
 #include <config.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "libknot/zone/zone-tree.h"
 
@@ -49,24 +49,21 @@ static void ztree_free_data()
 		knot_dname_free(NAME + i);
 }
 
-struct ztree_iter {
-	int ret;
-	unsigned i;
-};
-
-static void ztree_iter_data(knot_node_t **node, void *data)
+static int ztree_iter_data(knot_node_t **node, void *data)
 {
-	struct ztree_iter *it = (struct ztree_iter*)data;
+	unsigned *i = (unsigned *)data;
 	knot_dname_t *owner = (*node)->owner;
-	if (owner != ORDER[it->i]) {
-		it->ret = KNOT_ERROR;
-		char *exp_s = knot_dname_to_str(ORDER[it->i]);
+	int result = KNOT_EOK;
+	if (owner != ORDER[*i]) {
+		result = KNOT_ERROR;
+		char *exp_s = knot_dname_to_str(ORDER[*i]);
 		char *owner_s = knot_dname_to_str(owner);
-		diag("ztree: at index: %u expected '%s' got '%s'\n", it->i, exp_s, owner_s);
+		diag("ztree: at index: %u expected '%s' got '%s'\n", *i, exp_s, owner_s);
 		free(exp_s);
 		free(owner_s);
 	}
-	++it->i;
+	++(*i);
+	return result;
 }
 
 int main(int argc, char *argv[])
@@ -114,9 +111,9 @@ int main(int argc, char *argv[])
 	ok(prev == NODE + 1, "ztree: ordered lookup");
 
 	/* 5. ordered traversal */
-	struct ztree_iter it = { KNOT_EOK, 0 };
-	knot_zone_tree_apply_inorder(t, ztree_iter_data, &it);
-	is_int(KNOT_EOK, it.ret, "ztree: ordered traversal");
+	unsigned i = 0;
+	int ret = knot_zone_tree_apply_inorder(t, ztree_iter_data, &i);
+	ok (ret == KNOT_EOK, "ztree: ordered traversal");
 
 	knot_zone_tree_free(&t);
 	ztree_free_data();

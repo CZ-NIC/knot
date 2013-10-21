@@ -17,7 +17,7 @@
 #include <config.h>
 #include <string.h>
 #include <time.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/mempattern.h"
 #include "common/hattrie/hat-trie.h"

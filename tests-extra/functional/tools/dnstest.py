@@ -19,19 +19,6 @@ import dns.zone
 from subprocess import Popen, PIPE, DEVNULL, check_call
 import zone_generate, params
 
-knot_vars = [
-    ["KNOT_TEST_KNOT",  "knotd"],
-    ["KNOT_TEST_KNOTC", "knotc"]
-]
-bind_vars = [
-    ["KNOT_TEST_BIND",  "named"],
-    ["KNOT_TEST_BINDC", "rndc"]
-]
-nsd_vars = [
-    ["KNOT_TEST_NSD",  "nsd"],
-    ["KNOT_TEST_NSDC", "nsdc"]
-]
-
 SEP = "------------------------------------"
 
 def test_info():
@@ -483,22 +470,6 @@ class DnsServer(object):
             z.master = master
             self.zones[name] = z
 
-    def find_binary(self, desc):
-        explicit = os.environ.get(desc[0])
-        if explicit:
-            path = shutil.which(explicit)
-        else:
-            path = shutil.which(desc[1])
-
-        if not path:
-            raise Exception("No binary found")
-
-        return path
-
-    def set_paths(self, vars):
-        self.daemon_bin = self.find_binary(vars[0])
-        self.control_bin = self.find_binary(vars[1])
-
     def compile(self):
         try:
             p = Popen([self.control_bin] + self.compile_params,
@@ -697,7 +668,8 @@ class Bind(DnsServer):
 
     def __init__(self):
         super().__init__()
-        super().set_paths(bind_vars)
+        self.daemon_bin = params.bind_bin
+        self.control_bin = params.bind_ctl
         self.ctlkey = Tsig(alg="hmac-md5")
 
     def running(self):
@@ -833,7 +805,8 @@ class Knot(DnsServer):
 
     def __init__(self):
         super().__init__()
-        super().set_paths(knot_vars)
+        self.daemon_bin = params.knot_bin
+        self.control_bin = params.knot_ctl
 
     def running(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -972,7 +945,8 @@ class Nsd(DnsServer):
 
     def __init__(self):
         super().__init__()
-        super().set_paths(nsd_vars)
+        self.daemon_bin = params.nsd_bin
+        self.control_bin = params.nsd_ctl
 
     def get_config(self):
         self.start_params = ["-c", self.confile, "-d"]
@@ -981,9 +955,8 @@ class Nsd(DnsServer):
 class DnsTest(object):
     '''Specification of DNS test topology'''
 
-    MAX_START_TRIES = 20
+    MAX_START_TRIES = 10
     LOCAL_ADDR = {4: "127.0.0.1", 6: "::1"}
-    VALGRIND_CMD = ["valgrind", "--leak-check=full"]
 
     # Value of the last generated port.
     last_port = None
@@ -1060,8 +1033,9 @@ class DnsTest(object):
 
         type(srv).count += 1
 
-        if valgrind or (valgrind == None and server == "knot"):
-            srv.valgrind = DnsTest.VALGRIND_CMD
+        if params.valgrind_bin and \
+           (valgrind or (valgrind == None and server == "knot")):
+            srv.valgrind = [params.valgrind_bin, params.valgrind_flags]
 
         srv.nsid = nsid
         srv.ident = ident

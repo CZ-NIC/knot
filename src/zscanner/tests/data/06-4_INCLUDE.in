@@ -2,4 +2,4 @@ $ORIGIN .
 $TTL	1
 
 ; KO
-$INCLUDE @BUILD@/zscanner_tests/file-doesnt-exist		; File doesn't exist
+$INCLUDE @TMPDIR@/file-doesnt-exist		; File doesn't exist

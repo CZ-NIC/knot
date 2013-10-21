@@ -18,17 +18,19 @@
 #include <assert.h>
 #include <openssl/dsa.h>
 #include <openssl/opensslconf.h>
-#ifndef OPENSSL_NO_ECDSA
-#include <openssl/ecdsa.h>
-#endif
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "libknot/common.h"
 #include "libknot/dnssec/algorithm.h"
+#include "libknot/dnssec/config.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sign.h"
+
+#ifdef KNOT_ENABLE_ECDSA
+#include <openssl/ecdsa.h>
+#endif
 
 struct algorithm_functions;
 typedef struct algorithm_functions algorithm_functions_t;
@@ -375,8 +377,8 @@ static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
 		return KNOT_ENOMEM;
 	}
 
-	decoded->r = BN_bin2bn(signature_r, 20, NULL);
-	decoded->s = BN_bin2bn(signature_s, 20, NULL);
+	decoded->r = BN_bin2bn(signature_r, 20, decoded->r);
+	decoded->s = BN_bin2bn(signature_s, 20, decoded->s);
 
 	size_t max_size = EVP_PKEY_size(context->key->data->private_key);
 	uint8_t *raw_signature = malloc(max_size);
@@ -404,7 +406,7 @@ static int dsa_sign_verify(const knot_dnssec_sign_context_t *context,
 
 /*- EC specific --------------------------------------------------------------*/
 
-#ifndef OPENSSL_NO_ECDSA
+#ifdef KNOT_ENABLE_ECDSA
 
 /*!
  * \brief Decode ECDSA public key from RDATA and set it into EC key.
@@ -426,13 +428,24 @@ static int ecdsa_set_public_key(const knot_binary_t *rdata, EC_KEY *ec_key)
 	BIGNUM *x = BN_bin2bn(x_ptr, param_size, NULL);
 	BIGNUM *y = BN_bin2bn(y_ptr, param_size, NULL);
 
-	if (EC_KEY_set_public_key_affine_coordinates(ec_key, x, y) != 1) {
-		BN_free(x);
-		BN_free(y);
-		return KNOT_DNSSEC_EINVALID_KEY;
-	}
+	int result = EC_KEY_set_public_key_affine_coordinates(ec_key, x, y);
 
-	return KNOT_EOK;
+	BN_free(x);
+	BN_free(y);
+
+	return result == 1 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_KEY;
+}
+
+static int ecdsa_set_private_key(const knot_binary_t *data, EC_KEY *ec_key)
+{
+	assert(data);
+	assert(ec_key);
+
+	BIGNUM *private = binary_to_bn(data);
+	int result = EC_KEY_set_private_key(ec_key, private);
+	BN_free(private);
+
+	return result == 1 ? KNOT_EOK : KNOT_DNSSEC_EINVALID_KEY;
 }
 
 /*!
@@ -464,9 +477,10 @@ static int ecdsa_create_pkey(const knot_key_params_t *params, EVP_PKEY *key)
 		return result;
 	}
 
-	if (EC_KEY_set_private_key(ec_key, binary_to_bn(&params->private_key)) != 1) {
+	result = ecdsa_set_private_key(&params->private_key, ec_key);
+	if (result != KNOT_EOK) {
 		EC_KEY_free(ec_key);
-		return KNOT_DNSSEC_EINVALID_KEY;
+		return result;
 	}
 
 	if (EC_KEY_check_key(ec_key) != 1) {
@@ -584,8 +598,8 @@ static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
 		return KNOT_ENOMEM;
 	}
 
-	decoded->r = BN_bin2bn(signature_r, parameter_size, NULL);
-	decoded->s = BN_bin2bn(signature_s, parameter_size, NULL);
+	decoded->r = BN_bin2bn(signature_r, parameter_size, decoded->r);
+	decoded->s = BN_bin2bn(signature_s, parameter_size, decoded->s);
 
 	size_t max_size = EVP_PKEY_size(context->key->data->private_key);
 	uint8_t *raw_signature = malloc(max_size);
@@ -606,6 +620,7 @@ static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
 	int result = any_sign_verify(context, raw_signature, raw_size);
 
 	ECDSA_SIG_free(decoded);
+
 	free(raw_signature);
 
 	return result;
@@ -631,7 +646,7 @@ static const algorithm_functions_t dsa_functions = {
 	dsa_sign_verify
 };
 
-#ifndef OPENSSL_NO_ECDSA
+#ifdef KNOT_ENABLE_ECDSA
 static const algorithm_functions_t ecdsa_functions = {
 	ecdsa_create_pkey,
 	ecdsa_sign_size,
@@ -662,7 +677,7 @@ static const algorithm_functions_t *get_implementation(int algorithm)
 		return &dsa_functions;
 	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
-#ifndef OPENSSL_NO_ECDSA
+#ifdef KNOT_ENABLE_ECDSA
 		return &ecdsa_functions;
 #endif
 	default:

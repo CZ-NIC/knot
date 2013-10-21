@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/errcode.h"
 #include "common/base32hex.h"

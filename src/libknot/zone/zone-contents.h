@@ -75,6 +75,11 @@ typedef struct cname_chain {
 	struct cname_chain *next;
 } cname_chain_t;
 
+/*!
+ * \brief Signature of callback for zone contents apply functions.
+ */
+typedef int (*knot_zone_contents_apply_cb_t)(knot_node_t *node, void *data);
+
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
@@ -397,9 +402,9 @@ const knot_nsec3_params_t *knot_zone_contents_nsec3params(
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *contents,
-			      void (*function)(knot_node_t *node, void *data),
-                              void *data);
+int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *zone,
+                                        knot_zone_contents_apply_cb_t function,
+                                        void *data);
 
 /*!
  * \brief Applies the given function to each regular node in the zone.
@@ -415,9 +420,9 @@ int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *contents,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int knot_zone_contents_tree_apply_inorder_reverse(
-	knot_zone_contents_t *contents,
-	void (*function)(knot_node_t *node, void *data), void *data);
+int knot_zone_contents_tree_apply_inorder_reverse(knot_zone_contents_t *zone,
+                                        knot_zone_contents_apply_cb_t function,
+                                        void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
@@ -434,9 +439,9 @@ int knot_zone_contents_tree_apply_inorder_reverse(
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *contents,
-			      void (*function)(knot_node_t *node, void *data),
-                              void *data);
+int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
+                                        knot_zone_contents_apply_cb_t function,
+                                        void *data);
 
 /*!
  * \brief Applies the given function to each NSEC3 node in the zone.
@@ -453,20 +458,15 @@ int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *contents,
  * \param function Function to be applied to each node of the zone.
  * \param data Arbitrary data to be passed to the function.
  */
-int knot_zone_contents_nsec3_apply_inorder_reverse(
-	knot_zone_contents_t *contents,
-	void (*function)(knot_node_t *node, void *data), void *data);
+int knot_zone_contents_nsec3_apply_inorder_reverse(knot_zone_contents_t *zone,
+                                        knot_zone_contents_apply_cb_t function,
+                                        void *data);
 
 knot_zone_tree_t *knot_zone_contents_get_nodes(
 		knot_zone_contents_t *contents);
 
 knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
 		knot_zone_contents_t *contents);
-
-int knot_zone_contents_dname_table_apply(knot_zone_contents_t *contents,
-                                           void (*function)(knot_dname_t *,
-                                                            void *),
-                                           void *data);
 
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).

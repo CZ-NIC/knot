@@ -17,7 +17,7 @@
 #include <config.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/errcode.h"
 #include "common/sockaddr.h"

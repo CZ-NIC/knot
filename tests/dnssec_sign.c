@@ -17,15 +17,17 @@
 #include <config.h>
 #include <assert.h>
 #include <openssl/opensslconf.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "common/errcode.h"
+#include "libknot/dnssec/cleanup.h"
+#include "libknot/dnssec/config.h"
 #include "libknot/dnssec/sign.h"
 
-#ifdef OPENSSL_NO_ECDSA
-static const int ecdsa_supported = 0;
-#else
+#ifdef KNOT_ENABLE_ECDSA
 static const int ecdsa_supported = 1;
+#else
+static const int ecdsa_supported = 0;
 #endif
 
 static void test_algorithm(const char *alg, const knot_key_params_t *kp)
@@ -82,6 +84,8 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 
 		result = knot_dnssec_sign_verify(ctx, sig, sig_size);
 		is_int(KNOT_EOK, result, "%s: verify valid signature", alg);
+
+		free(sig);
 	}
 
 	knot_dnssec_sign_free(ctx);
@@ -136,6 +140,8 @@ int main(int argc, char *argv[])
 		test_algorithm("ECDSA", &kp);
 		knot_free_key_params(&kp);
 	}
+
+	knot_dnssec_cleanup();
 
 	return 0;
 }

@@ -15,7 +15,7 @@
  */
 
 #include <config.h>
-#include <tests/tap/basic.h>
+#include <tap/basic.h>
 
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/key.c" // testing static functions
@@ -236,6 +236,7 @@ int main(int argc, char *argv[])
 		             sizeof(decoded_secret)) == 0,
 		   "knot_tsig_key_from_params(), secret set properly");
 
+		knot_free_key_params(&params);
 		knot_tsig_key_free(&tsig_key);
 	}
 

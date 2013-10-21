@@ -28,10 +28,37 @@
 #define _KNOT_DNSSEC_RRSET_SIGN_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/rrset.h"
+
+/*!
+ * \brief Get size of RRSIG RDATA for a given key.
+ *
+ * \param key  DNSSEC key to be used for creating the signature.
+ *
+ * \return RRSIG RDATA size in bytes.
+ */
+size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key);
+
+/*!
+ * \brief Write RRSIG RDATA except the signature field.
+ *
+ * \note This can be also used for SIG(0) if proper parameters are supplied.
+ *
+ * \param rdata         Pointer to RDATA.
+ * \param key           Key used for signing.
+ * \param covered_type  Type of the covered RR.
+ * \param owner_labels  Number of labels covered by the signature.
+ * \param sig_incepted  Timestamp of signature inception.
+ * \param sig_expires   Timestamp of signature expiration.
+ */
+int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
+                           uint16_t covered_type, uint8_t owner_labels,
+                           uint32_t owner_ttl,  uint32_t sig_incepted,
+                           uint32_t sig_expires);
 
 /*!
  * \brief Create RRSIG RR for given RR set.

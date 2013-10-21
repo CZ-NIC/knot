@@ -27,6 +27,7 @@ check_LIBRARIES = tests/tap/libtap.a
 
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/tests \
 	-DSYSCONFDIR='"$(sysconfdir)"' \
 	-DSBINDIR='"$(sbindir)"'
 
@@ -57,4 +58,4 @@ EXTRA_DIST = tests/data tests/TESTS
 dist_check_SCRIPTS = tests/resource.sh
 
 tests/sample_conf.c: tests/data/sample_conf
-	$(abs_top_srcdir)/tests/resource.sh tests/data/sample_conf >$@
+	$(abs_top_srcdir)/tests/resource.sh $(abs_top_srcdir)/tests/data/sample_conf >$@
