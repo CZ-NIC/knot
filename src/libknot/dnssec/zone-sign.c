@@ -949,6 +949,44 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 	return KNOT_EOK;
 }
 
+typedef struct type_node {
+	node_t n;
+	uint16_t type;
+} type_node_t;
+
+static bool rr_type_in_list(const knot_rrset_t *rr, const list_t *l)
+{
+	if (l == NULL) {
+		return false;
+	}
+	assert(rr);
+
+	node_t *n = NULL;
+	WALK_LIST(n, *l) {
+		type_node_t *type_node = (type_node_t *)n;
+		if (type_node->type == rr->type) {
+			return true;
+		}
+	};
+
+	return false;
+}
+
+static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
+{
+	assert(rr);
+	assert(l);
+
+	type_node_t *n = malloc(sizeof(type_node_t));
+	if (n == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
+
+	add_head(l, (node_t *)n);
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Checks whether RRSet is not already in the hash table, automatically
  *        stores its pointer to the table if not found, but returns false in
@@ -964,22 +1002,46 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 	assert(rrset);
 	assert(t);
 
-	// Create a key = combination of owner and type mnemonic
+	// Create a key = RRSet owner
 	int dname_size = knot_dname_size(rrset->owner);
 	assert(dname_size > 0);
-	char key[dname_size + 16];
+	char key[dname_size];
 	memset(key, 0, sizeof(key));
 	memcpy(key, rrset->owner, dname_size);
-	int ret = knot_rrtype_to_string(rrset->type, key + dname_size, 16);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-	if (hattrie_tryget(t, key, sizeof(key))) {
+	list_t *type_list = (list_t *)hattrie_tryget(t, key, sizeof(key));
+	if (rr_type_in_list(rrset, type_list)) {
 		return true;
 	}
 
-	// If not in the table, insert
-	*hattrie_get(t, (char *)key, sizeof(key)) = (value_t *)rrset;
+	if (type_list == NULL) {
+		// Create new list to insert as a value
+		type_list = malloc(sizeof(list_t));
+		if (type_list == NULL) {
+			ERR_ALLOC_FAILED;
+			return false;
+		}
+		init_list(type_list);
+		// Insert type to list
+		int ret = add_rr_type_to_list(rrset, type_list);
+		if (ret != KNOT_EOK) {
+			free(type_list);
+			return ret;
+		}
+		*hattrie_get(t, (char *)key, sizeof(key)) =
+			(value_t *)type_list;
+	} else {
+		// Check whether the type is in the list already
+		if (rr_type_in_list(rrset, type_list)) {
+			return true;
+		}
+		// Just update the existing list
+		int ret = add_rr_type_to_list(rrset, type_list);
+		if (ret != KNOT_EOK) {
+			free(type_list);
+			return false;
+		}
+	}
+
 	return false;
 }
 
