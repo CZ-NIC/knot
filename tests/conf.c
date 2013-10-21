@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 	int ret = conf_parse_str(conf, sample_conf_rc);
 	is_int(0, ret, "parsing configuration file %s", config_fn);
 	if (ret != 0) {
-		skip_block(19, NULL);
+		skip_block(19, "Parse err");
 		goto skip_all;
 	}
 
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	ok(log->type == LOGT_SYSLOG, "log0 is syslog");
 
 	if (EMPTY_LIST(log->map)) {
-		skip_block(5, NULL);
+		skip_block(5, "Empty list");
 	} else {
 		ok(m->source == LOG_ANY, "syslog first rule is ANY");
 		int mask = LOG_MASK(LOG_NOTICE)|LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 		m = (conf_log_map_t*)nm;
 		ok(m != 0, "syslog has more than 1 rule");
 		if (m == 0) {
-			skip_block(2, NULL);
+			skip_block(2, "No mapping");
 		} else {
 			ok(m->source == LOG_ZONE, "syslog next rule is for zone");
 			ok(m->prios == 0xff, "rule for zone is: any level");
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	log = (conf_log_t*)n;
 	ok(n != 0, "log has next facility");
 	if (n == 0) {
-		skip(NULL);
+		skip("No mapping");
 	} else {
 		is_string("/var/log/knot/server.err", log->file, "log file matches");
 	}

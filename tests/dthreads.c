@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 	dt_unit_t *unit = dt_test_create(2);
 	ok(unit != 0, "dthreads: create unit (optimal size %d)", unit->size);
 	if (unit == 0) {
-		skip_block(17, NULL);
+		skip_block(17, "No dthreads unit");
 		goto skip_all;
 	}
 
