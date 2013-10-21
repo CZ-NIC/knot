@@ -86,7 +86,7 @@ for test in sorted(included):
     # Check test directory.
     test_dir = "%s/%s/%s" % (current_dir, tests_dir, test)
     if not os.path.isdir(test_dir):
-        log.error("Invalid test name \'%s\': IGNORED" % test)
+        log.error("Test \'%s\':\tIGNORED (invalid folder)" % test)
         continue
 
     log.info("Test \'%s\'" % test)
@@ -117,11 +117,14 @@ for test in sorted(included):
             os.makedirs(out_dir, exist_ok=True)
             params.test_dir = case_dir
             params.out_dir = out_dir
-            params.err = False
             params.case_log = open(out_dir + "/case.log", mode="a")
+            params.test = None
+            params.err = False
+            params.err_msg = ""
         except OsError:
             fail_cnt += 1
-            log.error("Can't create output directory %s" % out_dir)
+            log.error(" * case \'%s\':\tEXCEPTION (no dir \'%s\')" %
+                      (case, out_dir))
             continue
 
         try:
@@ -132,7 +135,8 @@ for test in sorted(included):
             if args.debug:
                 traceback.print_exc()
             else:
-                log.error(" EXCEPTION: " + format(exc))
+                log.error(" * case \'%s\':\tEXCEPTION (%s)" %
+                          (case, format(exc)))
         except BaseException as exc:
             save_traceback(params.out_dir)
             if args.debug:
@@ -143,18 +147,19 @@ for test in sorted(included):
             if params.test:
                 params.test.end()
             exit(1)
+        else:
+            if params.err:
+                msg = " (%s)" % params.err_msg if params.err_msg else ""
+                log.info(" * case \'%s\':\tFAILED%s" % (case, msg))
+                fail_cnt += 1
+            else:
+                log.info(" * case \'%s\':\tOK" % case)
 
         # Stop servers if still running.
         if params.test:
             params.test.end()
 
         params.case_log.close()
-
-        if params.err:
-            log.info(" * case \'%s\':\tFAILED" % case)
-            fail_cnt += 1
-        else:
-            log.info(" * case \'%s\':\tOK" % case)
 
 if fail_cnt:
     log.info("TEST CASES: %i, FAILED: %i" % (case_cnt, fail_cnt))

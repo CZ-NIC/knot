@@ -61,4 +61,4 @@ test = None
 # Indication for failed test.
 err = False
 # What is wrong.
-err_culprit = ""
+err_msg = ""
