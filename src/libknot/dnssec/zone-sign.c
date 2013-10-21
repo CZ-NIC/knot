@@ -1059,7 +1059,8 @@ static int clear_helper_trie(hattrie_t *t)
 		list_t *l = (list_t *)hattrie_iter_val(it);
 		assert(l);
 		node_t *n = NULL;
-		WALK_LIST_FIRST(n, *l) {
+		node_t *nxt = NULL;
+		WALK_LIST_DELSAFE(n, nxt, *l) {
 			free(n);
 		}
 
