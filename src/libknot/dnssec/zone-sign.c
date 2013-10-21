@@ -1049,7 +1049,9 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 static int free_list(value_t *val, void *d)
 {
 	UNUSED(d);
-	WALK_LIST_FREE(*((list_t *)val));
+	list_t *l = (list_t *)*val;
+	WALK_LIST_FREE(*l);
+	free(l);
 	return KNOT_EOK;
 }
 
