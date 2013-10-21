@@ -954,6 +954,11 @@ typedef struct type_node {
 	uint16_t type;
 } type_node_t;
 
+typedef struct signed_info {
+	knot_dname_t *dname;
+	list_t *type_list;
+} signed_info_t;
+
 static bool rr_type_in_list(const knot_rrset_t *rr, const list_t *l)
 {
 	if (l == NULL) {
@@ -961,7 +966,7 @@ static bool rr_type_in_list(const knot_rrset_t *rr, const list_t *l)
 	}
 	assert(rr);
 
-	node_t *n = NULL;
+	type_node_t *n = NULL;
 	WALK_LIST(n, *l) {
 		type_node_t *type_node = (type_node_t *)n;
 		if (type_node->type == rr->type) {
@@ -1003,42 +1008,55 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 	assert(rrset);
 	assert(t);
 
-	// Create a key = RRSet owner
-	int dname_size = knot_dname_size(rrset->owner);
-	assert(dname_size > 0);
-	char key[dname_size];
-	memset(key, 0, sizeof(key));
-	memcpy(key, rrset->owner, dname_size);
-	list_t *type_list = (list_t *)hattrie_tryget(t, key, sizeof(key));
+	// Create a key = RRSet owner converted to sortable format
+	uint8_t lf[KNOT_DNAME_MAXLEN];
+	knot_dname_lf(lf, rrset->owner, NULL);
+	signed_info_t *info = (signed_info_t *)hattrie_tryget(t, (char *)lf+1,
+	                                                      *lf);
 	if (rr_type_in_list(rrset, type_list)) {
 		return true;
 	}
 
-	if (type_list == NULL) {
-		// Create new list to insert as a value
-		type_list = malloc(sizeof(list_t));
-		if (type_list == NULL) {
+	if (info == NULL) {
+		// Create new info struct
+		info = malloc(sizeof(signed_info_t));
+		if (info == NULL) {
 			ERR_ALLOC_FAILED;
 			return false;
 		}
-		init_list(type_list);
+		// Store actual dname repr
+		info->dname = knot_dname_copy(rrset->owner);
+		if (info->dname == NULL) {
+			free(info);
+			return false;
+		}
+		// Create new list to insert as a value
+		info->type_list = malloc(sizeof(list_t));
+		if (type_list == NULL) {
+			free(info->dname);
+			free(info);
+			ERR_ALLOC_FAILED;
+			return false;
+		}
+		init_list(*(info->type_list));
 		// Insert type to list
-		int ret = add_rr_type_to_list(rrset, type_list);
+		int ret = add_rr_type_to_list(rrset, info->type_list);
 		if (ret != KNOT_EOK) {
-			free(type_list);
+			free(info->type_list);
+			free(info->dname);
+			free(info);
 			return ret;
 		}
-		*hattrie_get(t, (char *)key, sizeof(key)) =
-			(value_t *)type_list;
+		*hattrie_get(t, (char *)lf+1, *lf) = (value_t *)info;
 	} else {
+		assert(info->type_list);
 		// Check whether the type is in the list already
-		if (rr_type_in_list(rrset, type_list)) {
+		if (rr_type_in_list(rrset, info->type_list)) {
 			return true;
 		}
 		// Just update the existing list
-		int ret = add_rr_type_to_list(rrset, type_list);
+		int ret = add_rr_type_to_list(rrset, info->type_list);
 		if (ret != KNOT_EOK) {
-			free(type_list);
 			return false;
 		}
 	}
@@ -1049,9 +1067,11 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 static int free_list(value_t *val, void *d)
 {
 	UNUSED(d);
-	list_t *l = (list_t *)*val;
-	WALK_LIST_FREE(*l);
-	free(l);
+	signed_info_t *info = (signed_info_t *)*val;
+	WALK_LIST_FREE(*(info->l));
+	free(info->l);
+	knot_dname_free(&info->dname);
+	free(info);
 	return KNOT_EOK;
 }
 

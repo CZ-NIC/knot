@@ -857,6 +857,40 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	return true;
 }
 
+static int update_changes_with_non_terminals(const knot_zone_contents_t *zone,
+                                             hattrie_t *sorted_changes)
+{
+	assert(zone);
+	assert(is_nsec3_enabled(zone));
+	assert(sorted_changes);
+
+	/*!
+	 * Cut labels and look for nodes in zone, if an empty node is found
+	 * add it into trie. There may be multiple nodes. Not all nodes
+	 * have to be checked, but doing that would bloat the code.
+	 */
+
+	const bool sort = false;
+	hattrie_iter_t *it = hattrie_iter_begin(sorted_changes, sort);
+	if (it == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+		signing_info_t *owner = knot_dname_parse(*hattrie_iter_val(it);
+
+		for (int i = 0; i < node->rrset_count; i++) {
+			// referenced RRSIGs from old NSEC3 tree
+			node->rrset_tree[i]->rrsigs = NULL;
+			// newly allocated NSEC3 nodes
+			knot_rrset_deep_free(&node->rrset_tree[i], 1);
+		}
+
+		knot_node_free(&node);
+	}
+
+	hattrie_iter_free(it);
+}
+
 /* - public API ------------------------------------------------------------ */
 
 /*!
@@ -925,3 +959,12 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 	// Sign newly created records right away
 	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
 }
+
+int knot_zone_fix_chain(const knot_zone_contents_t *zone,
+                        hattrie_t *sorted_changes,
+                        const knot_zone_keys_t *zone_keys,
+                        const knot_dnssec_policy_t *policy)
+{
+
+}
+

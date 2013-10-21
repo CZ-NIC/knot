@@ -540,7 +540,6 @@ dbg_zone_exec_detail(
 
 			/* Insert node to a tree. */
 			dbg_zone_detail("Inserting new node to zone tree.\n");
-			assert(knot_zone_contents_find_node(zone, parent) == NULL);
 			ret = knot_zone_tree_insert(zone->nodes, next_node);
 			if (ret != KNOT_EOK) {
 				knot_node_free(&next_node);
