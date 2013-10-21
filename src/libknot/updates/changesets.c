@@ -141,22 +141,6 @@ const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
 	return NULL;
 }
 
-void knot_changeset_remove_last_rr(knot_changeset_t *ch,
-                                   knot_changeset_part_t part)
-{
-	if (ch == NULL) {
-		return;
-	}
-
-	if (part == KNOT_CHANGESET_ADD) {
-		knot_rr_ln_t *n = TAIL(ch->add);
-		rem_node((node_t *)n);
-	} else if (part == KNOT_CHANGESET_REMOVE) {
-		knot_rr_ln_t *n = TAIL(ch->remove);
-		rem_node((node_t *)n);
-	}
-}
-
 int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
                              knot_changeset_part_t part)
 {

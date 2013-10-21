@@ -175,8 +175,6 @@ knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *ch);
 
 const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
                                            knot_changeset_part_t part);
-void knot_changeset_remove_last_rr(knot_changeset_t *ch,
-                                   knot_changeset_part_t part);
 
 /*!
  * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to

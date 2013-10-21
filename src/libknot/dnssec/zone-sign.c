@@ -22,7 +22,6 @@
 #include <time.h>
 #include "common/descriptor.h"
 #include "common/errcode.h"
-#include "common/hattrie/ahtable.h"
 #include "common/hattrie/hat-trie.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
@@ -527,7 +526,7 @@ typedef struct {
 	const knot_zone_keys_t *zone_keys;
 	const knot_dnssec_policy_t *policy;
 	knot_changeset_t *changeset;
-	ahtable_t *signed_table;
+	hattrie_t *signed_tree;
 } changeset_signing_data_t;
 
 /*!
@@ -920,7 +919,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 		const knot_rrset_t *zone_rrset =
 			knot_node_rrset(node, chg_rrset->type);
 		if (knot_zone_sign_rr_should_be_signed(node, zone_rrset,
-		                                       args->signed_table)) {
+		                                       args->signed_tree)) {
 			return force_resign_rrset(zone_rrset, args->zone_keys,
 			                          args->policy, args->changeset);
 		} else if (zone_rrset && zone_rrset->rrsigs != NULL) {
@@ -941,11 +940,11 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
  *        that case.
  *
  * \param rrset  RRSet to be checked for.
- * \param table  Hash table with already signed RRs.
+ * \param tree   Tree with already signed RRs.
  *
  * \return True if RR should is signed already, false otherwise.
  */
-static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
+static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 {
 	assert(rrset);
 	assert(t);
@@ -960,12 +959,12 @@ static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
 	if (ret != KNOT_EOK) {
 		return false;
 	}
-	if (ahtable_tryget(t, key, sizeof(key))) {
+	if (hattrie_tryget(t, key, sizeof(key))) {
 		return true;
 	}
 
 	// If not in the table, insert
-	*ahtable_get(t, (char *)key, sizeof(key)) = (value_t *)rrset;
+	*hattrie_get(t, (char *)key, sizeof(key)) = (value_t *)rrset;
 	return false;
 }
 
@@ -1131,7 +1130,7 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 	changeset_signing_data_t args = { .zone = zone, .zone_keys = zone_keys,
 	                                  .policy = policy,
 	                                  .changeset = out_ch,
-	                                  .signed_table = ahtable_create()};
+	                                  .signed_tree = hattrie_create()};
 
 	// Sign all RRs that are new in changeset
 	int ret = knot_changeset_apply((knot_changeset_t *)in_ch,
@@ -1145,7 +1144,7 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		                           sign_changeset_wrap, &args);
 	}
 
-	ahtable_free(args.signed_table);
+	hattrie_free(args.signed_tree);
 
 	return ret;
 }
@@ -1177,7 +1176,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
  */
 bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
                                         const knot_rrset_t *rrset,
-                                        ahtable_t *table)
+                                        hattrie_t *tree)
 {
 	if (node == NULL || rrset == NULL) {
 		return false;
@@ -1209,8 +1208,8 @@ bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	}
 
 	// Check for RRSet in the 'already_signed' table
-	if (table) {
-		if (rr_already_signed(rrset, table)) {
+	if (tree) {
+		if (rr_already_signed(rrset, tree)) {
 			return false;
 		}
 	}
