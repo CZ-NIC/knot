@@ -982,6 +982,7 @@ static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
+	n->type = rr->type;
 
 	add_head(l, (node_t *)n);
 	return KNOT_EOK;
@@ -1045,29 +1046,16 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 	return false;
 }
 
-static int clear_helper_trie(hattrie_t *t)
+static int free_list(value_t *val, void *d)
 {
-	assert(t);
-	const bool sorted = false;
-	hattrie_iter_t *it = hattrie_iter_begin(t, sorted);
-
-	if (it == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	while (!hattrie_iter_finished(it)) {
-		list_t *l = (list_t *)hattrie_iter_val(it);
-		assert(l);
-		node_t *n = NULL;
-		node_t *nxt = NULL;
-		WALK_LIST_DELSAFE(n, nxt, *l) {
-			free(n);
-		}
-
-		free(l);
-	}
-	hattrie_iter_free(it);
+	UNUSED(d);
+	WALK_LIST_FREE(*((list_t *)val));
 	return KNOT_EOK;
+}
+
+static void clear_helper_trie(hattrie_t *t)
+{
+	hattrie_apply_rev(t, free_list, NULL);
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -1248,10 +1236,7 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		                           sign_changeset_wrap, &args);
 	}
 
-	ret = clear_helper_trie(args.signed_tree);
-	if (ret != KNOT_EOK) {
-		dbg_dnssec("Failed to clear helper HAT trie");
-	}
+	clear_helper_trie(args.signed_tree);
 	hattrie_free(args.signed_tree);
 
 	return ret;
