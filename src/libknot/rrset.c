@@ -1933,6 +1933,7 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 			assert(knot_rrset_type(from) == KNOT_RRTYPE_NS);
 			*rr_deleted = return_rr;
 			return KNOT_EOK;
+			assert(0);
 		}
 
 		ret = knot_rrset_remove_rr(from, what, i);

@@ -1518,6 +1518,7 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 	if ((chflags & KNOT_CHANGESET_TYPE_DDNS) && is_apex
 	    && knot_rrset_type(remove) == KNOT_RRTYPE_SOA) {
 		dbg_xfrin_verb("Ignoring SOA removal in UPDATE.\n");
+		assert(0);
 		return KNOT_EOK;
 	}
 
@@ -1669,6 +1670,7 @@ dbg_xfrin_exec_verb(
 		if (is_apex && (chflags & KNOT_CHANGESET_TYPE_DDNS)) {
 			dbg_xfrin_detail("DDNS: returning SOA and NS to the "
 					 "node.\n");
+			assert(0);
 			for (unsigned i = 0; i < rrsets_count; ++i) {
 				if (knot_rrset_type(rrsets[i])
 				       == KNOT_RRTYPE_SOA
@@ -1691,6 +1693,7 @@ dbg_xfrin_exec_verb(
 		if (is_apex && (chflags & KNOT_CHANGESET_TYPE_DDNS)
 		    && (type == KNOT_RRTYPE_SOA || type == KNOT_RRTYPE_NS)) {
 			dbg_xfrin_detail("DDNS: ignoring SOA or NS removal.\n");
+			assert(0);
 			return KNOT_EOK;
 		}
 
@@ -1903,6 +1906,7 @@ dbg_xfrin_exec_detail(
 
 	/* DDNS special cases. */
 	if (chflags & KNOT_CHANGESET_TYPE_DDNS) {
+		assert(0);
 		ret = xfrin_apply_add_normal_ddns(changes, add, node, contents);
 		/* Continue only if return value is 1. */
 		if (ret != 1) {
