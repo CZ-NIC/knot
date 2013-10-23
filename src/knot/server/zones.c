@@ -1292,8 +1292,7 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 	if (transaction) {
 		ret = zones_store_changesets_commit(transaction);
 		if (ret != KNOT_EOK) {
-			log_zone_error("Failed to commit stored "
-			               "changesets: %s."
+			log_zone_error("Failed to commit stored changesets: %s."
 			               "\n", knot_strerror(ret));
 			zones_free_merged_changesets(diff_chs, sec_chs);
 			rcu_read_unlock();
@@ -1321,8 +1320,7 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 	if (new_signatures) {
 		xfrin_cleanup_successful_update(sec_chs->changes);
 		char *zname = knot_dname_to_str(zone->name);
-		log_zone_info("Zone %s was successfully signed.\n",
-		              zname);
+		log_zone_info("Zone %s was successfully signed.\n", zname);
 		free(zname);
 	}
 
@@ -3591,7 +3589,12 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	pthread_mutex_unlock(&zd->lock);
 
 	char *zname = knot_dname_to_str(zone->name);
-	log_zone_info("Zone %s forced signed successfully.\n", zname);
+	if (force) {
+		log_zone_info("Zone %s - complete resign successful (dropped "
+		              "all previous signatures).\n", zname);
+	} else {
+		log_zone_info("Zone %s - resign successful.\n", zname);
+	}
 	free(zname);
 
 	// Schedule next signing

@@ -95,6 +95,10 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	assert(zone->contents);
 	assert(out_ch);
 
+	char *zname = knot_dname_to_str(zone->name);
+	log_zone_info("Signing of zone %s started...\n", zname);
+	free(zname);
+
 	dbg_dnssec_verb("Changeset empty before generating NSEC chain: %d\n",
 	                knot_changeset_is_empty(out_ch));
 
