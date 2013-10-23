@@ -3595,8 +3595,11 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	free(zname);
 
 	// Schedule next signing
+	/* Next signing should not be 'forced'. May take longer now, but
+	 * when lifetime jitter is implemented, this will be desired behaviour.
+	 */
 	ret = zones_schedule_dnssec(zone, expiration_to_relative(expires_at),
-	                            force);
+	                            false);
 
 	rcu_read_unlock();
 
