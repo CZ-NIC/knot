@@ -122,21 +122,21 @@ for test in sorted(included):
             params.err = False
             params.err_msg = ""
         except OsError:
-            fail_cnt += 1
             log.error(" * case \'%s\':\tEXCEPTION (no dir \'%s\')" %
                       (case, out_dir))
+            fail_cnt += 1
             continue
 
         try:
             importlib.import_module("%s.%s.%s.test" % (tests_dir, test, case))
         except Exception as exc:
-            params.err = True
             save_traceback(params.out_dir)
             if args.debug:
                 traceback.print_exc()
             else:
                 log.error(" * case \'%s\':\tEXCEPTION (%s)" %
                           (case, format(exc)))
+            fail_cnt += 1
         except BaseException as exc:
             save_traceback(params.out_dir)
             if args.debug:
