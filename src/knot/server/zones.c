@@ -1240,6 +1240,9 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 		 */
 		knot_update_serial_t soa_up =  KNOT_SOA_SERIAL_INC;
 
+		log_zone_info("DNSSEC: Zone %s - Signing started...\n",
+		              z->name);
+
 		uint32_t expires_at = 0;
 		int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up,
 		                                &expires_at);
@@ -1319,9 +1322,8 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 
 	if (new_signatures) {
 		xfrin_cleanup_successful_update(sec_chs->changes);
-		char *zname = knot_dname_to_str(zone->name);
-		log_zone_info("Zone %s was successfully signed.\n", zname);
-		free(zname);
+		log_zone_info("DNSSEC: Zone %s - Successfully signed.\n",
+		              z->name);
 	}
 
 	rcu_read_unlock();
@@ -3547,6 +3549,14 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		return KNOT_ENOMEM;
 	}
 
+	char *zname = knot_dname_to_str(knot_zone_name(zone));
+	if (force) {
+		log_zone_info("DNSSEC: Zone %s - Complete resign started "
+		              "(dropping all previous signatures)...\n", zname);
+	} else {
+		log_zone_info("DNSSEC: Zone %s - Signing zone...\n", zname);
+	}
+
 	int ret = 0;
 	uint32_t expires_at = 0;
 	if (force) {
@@ -3561,6 +3571,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		zd->dnssec_timer = NULL;
 		pthread_mutex_unlock(&zd->lock);
 		rcu_read_unlock();
+		free(zname);
 		return ret;
 	}
 
@@ -3569,7 +3580,6 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
 		                                    XFR_TYPE_UPDATE);
 		if (ret != KNOT_EOK) {
-			char *zname = knot_dname_to_str(zone->name);
 			log_server_error("Could not sign zone %s (%s).\n",
 			                 zname, knot_strerror(ret));
 			evsched_event_free(event->parent, event);
@@ -3588,13 +3598,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	zd->dnssec_timer = NULL;
 	pthread_mutex_unlock(&zd->lock);
 
-	char *zname = knot_dname_to_str(zone->name);
-	if (force) {
-		log_zone_info("Zone %s - complete resign successful (dropped "
-		              "all previous signatures).\n", zname);
-	} else {
-		log_zone_info("Zone %s - resign successful.\n", zname);
-	}
+	log_zone_info("DNSSEC: Zone %s - Successfully signed.\n", zname);
 	free(zname);
 
 	// Schedule next signing
