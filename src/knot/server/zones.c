@@ -976,8 +976,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	/* Load all pending changesets. */
 	dbg_zones_verb("zones: loading all changesets of '%s' from SERIAL %u\n",
 	               zd->conf->name, serial);
-	knot_changesets_t* chsets =
-		knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+	knot_changesets_t* chsets = knot_changesets_create();
 	if (chsets == NULL) {
 		rcu_read_unlock();
 		return KNOT_ERROR;
@@ -1177,7 +1176,7 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 
 	knot_changesets_t *diff_chs = NULL;
 	if (z->build_diffs && zc && zc_old && zone_changed) {
-		diff_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+		diff_chs = knot_changesets_create();
 		if (diff_chs == NULL) {
 			rcu_read_unlock();
 			return KNOT_ENOMEM;
@@ -1219,7 +1218,7 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 	knot_changeset_t *sec_ch = NULL;
 	knot_zone_contents_t *new_contents = NULL;
 	if (z->dnssec_enable) {
-		sec_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+		sec_chs = knot_changesets_create();
 		if (sec_chs == NULL) {
 			knot_changesets_free(&diff_chs);
 			rcu_read_unlock();
@@ -1909,8 +1908,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	 * We must prepare a changesets_t structure even though there will
 	 * be only one changeset - because of the API.
 	 */
-	knot_changesets_t *chgsets =
-		knot_changesets_create(KNOT_CHANGESET_TYPE_DDNS);
+	knot_changesets_t *chgsets = knot_changesets_create();
 	if (chgsets == NULL) {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		log_zone_error("%s Cannot create changesets structure.\n", msg);
@@ -1953,7 +1951,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	assert(zone_config);
 	if (zone_config->dnssec_enable) {
-		sec_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_DNSSEC);
+		sec_chs = knot_changesets_create();
 		sec_ch = knot_changesets_create_changeset(sec_chs);
 		if (sec_chs == NULL || sec_ch == NULL) {
 			xfrin_rollback_update(zone->contents, &new_contents,
@@ -3295,7 +3293,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 		return KNOT_EINVAL;
 	}
 
-	knot_changesets_t *chgsets = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+	knot_changesets_t *chgsets = knot_changesets_create();
 	CHECK_ALLOC_LOG(chgsets, KNOT_ENOMEM);
 
 	int ret = ns_serial_compare(serial_to, serial_from);
@@ -3530,8 +3528,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	pthread_mutex_lock(&zd->lock);
 
-	knot_changesets_t *chs =
-		knot_changesets_create(KNOT_CHANGESET_TYPE_DNSSEC);
+	knot_changesets_t *chs = knot_changesets_create();
 	if (chs == NULL) {
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;

@@ -1894,7 +1894,7 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
-                                     knot_rrset_t **rr_deleted, int ddns_check)
+                                     knot_rrset_t **rr_deleted)
 {
 	if (from == NULL || what == NULL || rr_deleted == NULL) {
 		return KNOT_EINVAL;
@@ -1912,30 +1912,6 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	return_rr->rrsigs = NULL;
 
 	for (uint16_t i = 0; i < what->rdata_count; ++i) {
-		/*
-		 * DDNS special handling - last apex NS should remain in the
-		 * zone.
-		 *
-		 * TODO: this is not correct, the last NS from the 'what' RRSet
-		 * may not even be in the zone.
-		 */
-		//TODO REVIEW LS : relevant?
-		/* [code-review] Hm, it seems OK, but the variable should be
-		 *               documented, maybe even named differently.
-		 *               Setting it to 1 means: 'leave the last RR in
-		 *               the RRSet'. Deciding whether to leave the last
-		 *               there is on the caller. Thus the assert() is
-		 *               wrong (it MAY be used in other cases).
-		 *               Also there can be just break; instead of the
-		 *               parameter setting and return.
-		 */
-		if (ddns_check && i == what->rdata_count - 1) {
-			assert(0);
-			assert(knot_rrset_type(from) == KNOT_RRTYPE_NS);
-			*rr_deleted = return_rr;
-			return KNOT_EOK;
-		}
-
 		ret = knot_rrset_remove_rr(from, what, i);
 		if (ret == KNOT_EOK) {
 			/* RR was removed, can be added to 'return' RRSet. */
@@ -1967,7 +1943,7 @@ int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
                                          const knot_rrset_t *what)
 {
 	knot_rrset_t *rr_removed = NULL;
-	int ret = knot_rrset_remove_rr_using_rrset(from, what, &rr_removed, 0);
+	int ret = knot_rrset_remove_rr_using_rrset(from, what, &rr_removed);
 	knot_rrset_deep_free(&rr_removed, 1);
 	return ret;
 	for (uint16_t i = 0; i < what->rdata_count; ++i) {
