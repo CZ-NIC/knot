@@ -936,7 +936,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 		if (knot_zone_sign_rr_should_be_signed(node, zone_rrset,
 		                                       args->signed_tree)) {
 			return force_resign_rrset(zone_rrset, args->zone_keys,
-			                          args->policy, args->changeset);
+			                          args->policy,
+			                          args->changeset);
 		} else if (zone_rrset && zone_rrset->rrsigs != NULL) {
 			/*!
 			 * If RRSet in zone DOES have RRSIGs although we
@@ -948,16 +949,6 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 	}
 	return KNOT_EOK;
 }
-
-typedef struct type_node {
-	node_t n;
-	uint16_t type;
-} type_node_t;
-
-typedef struct signed_info {
-	knot_dname_t *dname;
-	list_t *type_list;
-} signed_info_t;
 
 static bool rr_type_in_list(const knot_rrset_t *rr, const list_t *l)
 {
@@ -1013,7 +1004,8 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 	knot_dname_lf(lf, rrset->owner, NULL);
 	signed_info_t *info = (signed_info_t *)hattrie_tryget(t, (char *)lf+1,
 	                                                      *lf);
-	if (rr_type_in_list(rrset, type_list)) {
+	assert(info);
+	if (rr_type_in_list(rrset, info->type_list)) {
 		return true;
 	}
 
@@ -1032,13 +1024,13 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 		}
 		// Create new list to insert as a value
 		info->type_list = malloc(sizeof(list_t));
-		if (type_list == NULL) {
+		if (info->type_list == NULL) {
 			free(info->dname);
 			free(info);
 			ERR_ALLOC_FAILED;
 			return false;
 		}
-		init_list(*(info->type_list));
+		init_list(info->type_list);
 		// Insert type to list
 		int ret = add_rr_type_to_list(rrset, info->type_list);
 		if (ret != KNOT_EOK) {
@@ -1064,20 +1056,17 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 	return false;
 }
 
-static int free_list(value_t *val, void *d)
+static int free_helper_trie_node(value_t *val, void *d)
 {
 	UNUSED(d);
 	signed_info_t *info = (signed_info_t *)*val;
-	WALK_LIST_FREE(*(info->l));
-	free(info->l);
+	if (info->type_list && !EMPTY_LIST(*(info->type_list))) {
+		WALK_LIST_FREE(*(info->type_list));
+	}
+	free(info->type_list);
 	knot_dname_free(&info->dname);
 	free(info);
 	return KNOT_EOK;
-}
-
-static void clear_helper_trie(hattrie_t *t)
-{
-	hattrie_apply_rev(t, free_list, NULL);
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -1233,6 +1222,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
+                             hattrie_t **sorted_changes,
                              const knot_zone_keys_t *zone_keys,
                              const knot_dnssec_policy_t *policy)
 {
@@ -1256,11 +1246,13 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		ret = knot_changeset_apply((knot_changeset_t *)in_ch,
 		                           KNOT_CHANGESET_REMOVE,
 		                           sign_changeset_wrap, &args);
+	} else {
+		knot_zone_clear_sorted_changes(args.signed_tree);
+		hattrie_free(args.signed_tree);
+		args.signed_tree = NULL;
 	}
 
-	clear_helper_trie(args.signed_tree);
-	hattrie_free(args.signed_tree);
-
+	*sorted_changes = args.signed_tree;
 	return ret;
 }
 
@@ -1330,4 +1322,9 @@ bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	}
 
 	return true;
+}
+
+void knot_zone_clear_sorted_changes(hattrie_t *t)
+{
+	hattrie_apply_rev(t, free_helper_trie_node, NULL);
 }

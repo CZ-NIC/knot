@@ -225,20 +225,24 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 		return ret;
 	}
 
-	// Fix NSEC(3) chain
-	ret = knot_zone_create_nsec_chain(zone, out_ch, &zone_keys, &policy);
+	// Sign added and removed RRSets in changeset
+	hattrie_t *sorted_changes = NULL;
+	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, &sorted_changes,
+	                               &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to fix NSEC(3) chain (%s)\n",
+		log_zone_error("Failed to sign changeset (%s)\n",
 		               knot_strerror(ret));
 		free_zone_keys(&zone_keys);
 		return ret;
 	}
 
-	// Sign added and removed RRSets in changeset
-	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, &zone_keys,
-	                               &policy);
+	// Fix NSEC(3) chain
+	ret = knot_zone_fix_chain(zone, sorted_changes, out_ch, &zone_keys,
+	                          &policy);
+	knot_zone_clear_sorted_changes(sorted_changes);
+	hattrie_free(sorted_changes);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to sign changeset (%s)\n",
+		log_zone_error("Failed to fix NSEC(3) chain (%s)\n",
 		               knot_strerror(ret));
 		free_zone_keys(&zone_keys);
 		return ret;
@@ -247,8 +251,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	// Update SOA RRSIGs
 	ret = knot_zone_sign_update_soa(knot_node_rrset(zone->apex,
 	                                                KNOT_RRTYPE_SOA),
-	                                &zone_keys, &policy,
-	                                out_ch);
+	                                &zone_keys, &policy, out_ch);
 	if (ret != KNOT_EOK) {
 		log_zone_error("Failed to sign SOA RR (%s)\n",
 		               knot_strerror(ret));

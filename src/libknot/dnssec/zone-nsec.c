@@ -30,6 +30,7 @@
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 #include "libknot/util/utils.h"
+#include "libknot/util/wire.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/zone/zone-diff.h"
 
@@ -857,6 +858,50 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	return true;
 }
 
+static int walk_dname_and_store_empty_nonterminals(knot_dname_t *dname,
+	const knot_zone_contents_t *zone, ahtable_t *t)
+{
+	assert(dname);
+	assert(zone);
+	assert(t);
+
+	if (knot_dname_size(dname) == 1) {
+		// Root dname
+		assert(*dname == '\0');
+		return KNOT_EOK;
+	}
+
+	// Start after the first cut
+	const knot_dname_t *cut = knot_wire_next_label(dname, NULL);
+	while (*cut != '\0') {
+		// Search for name in the zone
+		const knot_node_t *n = knot_zone_contents_find_node(zone, cut);
+		if (n == NULL || n->rrset_count == 0) {
+			/*!
+			 * n == NULL:
+			 * This means that RR *removal* caused non-terminal
+			 * deletion - NSEC3 has to be dropped.
+			 *
+			 * n->rrset_count == 0:
+			 * This means that RR *addition* created new empty
+			 * non-terminal - NSEC3 has to be added.
+			 */
+
+			// Convert dname to sortable format
+			uint8_t lf[KNOT_DNAME_MAXLEN];
+			knot_dname_lf(lf, n->owner, NULL);
+			// Store into trie (duplicates 'rewritten')
+			*ahtable_get(t, (char *)lf+1, *lf) = (void *)0x1;
+		}
+		cut = knot_wire_next_label(dname, NULL);
+	}
+	return KNOT_EOK;
+}
+/*!
+ * \brief Cuts labels and looks for nodes in zone, if an empty node is found
+ *        adds it into trie. There may be multiple nodes. Not all nodes
+ *        have to be checked, but doing that would bloat the code.
+ */
 static int update_changes_with_non_terminals(const knot_zone_contents_t *zone,
                                              hattrie_t *sorted_changes)
 {
@@ -865,30 +910,76 @@ static int update_changes_with_non_terminals(const knot_zone_contents_t *zone,
 	assert(sorted_changes);
 
 	/*!
-	 * Cut labels and look for nodes in zone, if an empty node is found
-	 * add it into trie. There may be multiple nodes. Not all nodes
-	 * have to be checked, but doing that would bloat the code.
+	 * Create table with newly created nonterminals, as we cannot
+	 * insert to the trie in the middle of iteration. Also useful
+	 * because it will filter duplicated added nonterminals.
 	 */
+	ahtable_t *nterminal_t = ahtable_create();
+	if (nterminal_t == NULL) {
+		return KNOT_ENOMEM;
+	}
 
+	// Start trie iteration
 	const bool sort = false;
-	hattrie_iter_t *it = hattrie_iter_begin(sorted_changes, sort);
-	if (it == NULL) {
+	hattrie_iter_t *itt = hattrie_iter_begin(sorted_changes, sort);
+	if (itt == NULL) {
 		return KNOT_ERROR;
 	}
-	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
-		signing_info_t *owner = knot_dname_parse(*hattrie_iter_val(it);
-
-		for (int i = 0; i < node->rrset_count; i++) {
-			// referenced RRSIGs from old NSEC3 tree
-			node->rrset_tree[i]->rrsigs = NULL;
-			// newly allocated NSEC3 nodes
-			knot_rrset_deep_free(&node->rrset_tree[i], 1);
+	for (; !hattrie_iter_finished(itt); hattrie_iter_next(itt)) {
+		signed_info_t *info = (signed_info_t *)*hattrie_iter_val(itt);
+		knot_dname_t *node_dname = info->dname;
+		assert(node_dname);
+		int ret = walk_dname_and_store_empty_nonterminals(node_dname,
+		                                                  zone,
+		                                                  nterminal_t);
+		if (ret != KNOT_EOK) {
+			ahtable_free(nterminal_t);
+			return ret;
 		}
+	}
+	hattrie_iter_free(itt);
 
-		knot_node_free(&node);
+	// Reinsert ahtable values into trie (dname already converted)
+	ahtable_iter_t ith = { '\0'};
+	ahtable_iter_begin(nterminal_t, &ith, sort);
+	for (; !ahtable_iter_finished(&ith); ahtable_iter_next(&ith)) {
+		// Store keys from table directly to trie
+		size_t key_size = 0;
+		const char *k = ahtable_iter_key(&ith, &key_size);
+		assert(k && key_size > 0);
+		// Create dummy value
+		signed_info_t *info = malloc(sizeof(signed_info_t));
+		if (info == NULL) {
+			ERR_ALLOC_FAILED;
+			ahtable_free(nterminal_t);
+			ahtable_iter_free(&ith);
+			return KNOT_ENOMEM;
+		}
+		memset(info, 0, sizeof(signed_info_t));
+		*hattrie_get(sorted_changes, k, key_size) = info;
 	}
 
-	hattrie_iter_free(it);
+	ahtable_iter_free(&ith);
+
+	return KNOT_EOK;
+}
+
+static int fix_nsec_chain_using_changes(const knot_zone_contents_t *zone,
+                                        const hattrie_t *sorted_changes,
+                                        knot_changeset_t *out_ch,
+                                        const knot_zone_keys_t *zone_keys,
+                                        const knot_dnssec_policy_t *policy)
+{
+	return KNOT_EOK;
+}
+
+static int fix_nsec3_chain_using_changes(const knot_zone_contents_t *zone,
+                                         const hattrie_t *sorted_changes,
+                                         knot_changeset_t *out_ch,
+                                         const knot_zone_keys_t *zone_keys,
+                                         const knot_dnssec_policy_t *policy)
+{
+	return KNOT_EOK;
 }
 
 /* - public API ------------------------------------------------------------ */
@@ -897,7 +988,7 @@ static int update_changes_with_non_terminals(const knot_zone_contents_t *zone,
  * \brief Create NSEC3 owner name from regular owner name.
  */
 knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
-				 const knot_dname_t *zone_apex,
+                                 const knot_dname_t *zone_apex,
                                  const knot_nsec3_params_t *params)
 {
 	if (owner == NULL || zone_apex == NULL || params == NULL) {
@@ -912,7 +1003,8 @@ knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
 		return NULL;
 	}
 
-	if (knot_nsec3_hash(params, owner, owner_size, &hash, &hash_size) != KNOT_EOK) {
+	if (knot_nsec3_hash(params, owner, owner_size, &hash, &hash_size)
+	    != KNOT_EOK) {
 		return NULL;
 	}
 
@@ -962,9 +1054,28 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 
 int knot_zone_fix_chain(const knot_zone_contents_t *zone,
                         hattrie_t *sorted_changes,
+                        knot_changeset_t *out_ch,
                         const knot_zone_keys_t *zone_keys,
                         const knot_dnssec_policy_t *policy)
 {
+	if (zone == NULL || sorted_changes == NULL || zone_keys == NULL ||
+	    policy == NULL) {
+		return KNOT_EOK;
+	}
 
+	int ret = KNOT_EOK;
+	if (is_nsec3_enabled(zone)) {
+		ret = update_changes_with_non_terminals(zone, sorted_changes);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		ret = fix_nsec3_chain_using_changes(zone, sorted_changes,
+		                                    out_ch, zone_keys, policy);
+	} else {
+		ret = fix_nsec_chain_using_changes(zone, sorted_changes,
+		                                   out_ch, zone_keys, policy);
+	}
+
+	return ret;
 }
 
