@@ -1930,10 +1930,10 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 		 *               parameter setting and return.
 		 */
 		if (ddns_check && i == what->rdata_count - 1) {
+			assert(0);
 			assert(knot_rrset_type(from) == KNOT_RRTYPE_NS);
 			*rr_deleted = return_rr;
 			return KNOT_EOK;
-			assert(0);
 		}
 
 		ret = knot_rrset_remove_rr(from, what, i);
