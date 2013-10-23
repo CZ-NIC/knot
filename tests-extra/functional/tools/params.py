@@ -42,9 +42,9 @@ bind_bin = get_binary("KNOT_TEST_BIND", "named")
 # KNOT_TEST_BINDC - Bind control binary.
 bind_ctl = get_binary("KNOT_TEST_BINDC", "rndc")
 # KNOT_TEST_NSD - Nsd binary.
-nsd_bin = get_binary("KNOT_TEST_NSD", "nsd")
+#nsd_bin = get_binary("KNOT_TEST_NSD", "nsd")
 # KNOT_TEST_NSDC - Nsd control binary.
-nsd_ctl = get_binary("KNOT_TEST_NSDC", "nsdc")
+#nsd_ctl = get_binary("KNOT_TEST_NSDC", "nsdc")
 
 # Common data directory (e.g. zone files).
 common_data_dir = ""
