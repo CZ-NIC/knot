@@ -294,7 +294,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 {
 	/* Prepare additional info string. */
 	char info_str[50] = { '\0' };
-	char type_str[10] = { '\0' };
+	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {

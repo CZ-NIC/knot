@@ -32,6 +32,8 @@
 #include <openssl/ecdsa.h>
 #endif
 
+#define DNSKEY_RDATA_PUBKEY_OFFSET 4
+
 struct algorithm_functions;
 typedef struct algorithm_functions algorithm_functions_t;
 
@@ -417,13 +419,20 @@ static int ecdsa_set_public_key(const knot_binary_t *rdata, EC_KEY *ec_key)
 	assert(rdata);
 	assert(ec_key);
 
-	if (rdata->size % 2 != 0) {
+	if (rdata->size <= DNSKEY_RDATA_PUBKEY_OFFSET) {
 		return KNOT_EINVAL;
 	}
 
-	size_t param_size = rdata->size / 2;
-	uint8_t *x_ptr = rdata->data;
-	uint8_t *y_ptr = rdata->data + param_size;
+	uint8_t *pubkey_data = rdata->data + DNSKEY_RDATA_PUBKEY_OFFSET;
+	size_t pubkey_size = rdata->size - DNSKEY_RDATA_PUBKEY_OFFSET;
+
+	if (pubkey_size % 2 != 0) {
+		return KNOT_EINVAL;
+	}
+
+	size_t param_size = pubkey_size / 2;
+	uint8_t *x_ptr = pubkey_data;
+	uint8_t *y_ptr = pubkey_data + param_size;
 
 	BIGNUM *x = BN_bin2bn(x_ptr, param_size, NULL);
 	BIGNUM *y = BN_bin2bn(y_ptr, param_size, NULL);
