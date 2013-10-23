@@ -41,14 +41,14 @@ int main(int argc, char *argv[])
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "1. test vector - ENC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "1. test vector - ENC output content");
 	}
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "1. test vector - DEC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Decode err");
 	} else {
 		ok(memcmp(out2, in, ret) == 0, "1. test vector - DEC output content");
 	}
@@ -61,14 +61,14 @@ int main(int argc, char *argv[])
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "2. test vector - ENC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "2. test vector - ENC output content");
 	}
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "2. test vector - DEC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Decode err");
 	} else {
 		ok(memcmp(out2, in, ret) == 0, "2. test vector - DEC output content");
 	}
@@ -81,14 +81,14 @@ int main(int argc, char *argv[])
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "3. test vector - ENC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "3. test vector - ENC output content");
 	}
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "3. test vector - DEC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Decode err");
 	} else {
 		ok(memcmp(out2, in, ret) == 0, "3. test vector - DEC output content");
 	}
@@ -101,14 +101,14 @@ int main(int argc, char *argv[])
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "4. test vector - ENC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "4. test vector - ENC output content");
 	}
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "4. test vector - DEC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Decode err");
 	} else {
 		ok(memcmp(out2, in, ret) == 0, "4. test vector - DEC output content");
 	}
@@ -121,14 +121,14 @@ int main(int argc, char *argv[])
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "5. test vector - ENC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "5. test vector - ENC output content");
 	}
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "5. test vector - DEC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Decode err");
 	} else {
 		ok(memcmp(out2, in, ret) == 0, "5. test vector - DEC output content");
 	}
@@ -141,14 +141,14 @@ int main(int argc, char *argv[])
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "6. test vector - ENC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "6. test vector - ENC output content");
 	}
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "6. test vector - DEC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Decode err");
 	} else {
 		ok(memcmp(out2, in, ret) == 0, "6. test vector - DEC output content");
 	}
@@ -161,39 +161,39 @@ int main(int argc, char *argv[])
 	ret = base64_encode(in, in_len, out, BUF_LEN);
 	ok(ret == ref_len, "7. test vector - ENC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Encode err");
 	} else {
 		ok(memcmp(out, ref, ret) == 0, "7. test vector - ENC output content");
 	}
 	ret = base64_decode(out, ret, out2, BUF_LEN);
 	ok(ret == in_len, "7. test vector - DEC output length");
 	if (ret < 0) {
-		skip(NULL);
+		skip("Decode err");
 	} else {
 		ok(memcmp(out2, in, ret) == 0, "7. test vector - DEC output content");
 	}
 
 	// Bad paddings
-        ret = base64_decode((uint8_t *)"A===", 4, out, BUF_LEN);
-        ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 3");
-        ret = base64_decode((uint8_t *)"====", 4, out, BUF_LEN);
-        ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 4");
+	ret = base64_decode((uint8_t *)"A===", 4, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 3");
+	ret = base64_decode((uint8_t *)"====", 4, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 4");
 
 	// Bad data length
-        ret = base64_decode((uint8_t *)"A", 1, out, BUF_LEN);
-        ok(ret == KNOT_BASE64_ESIZE, "Bad data length 1");
-        ret = base64_decode((uint8_t *)"AA", 2, out, BUF_LEN);
-        ok(ret == KNOT_BASE64_ESIZE, "Bad data length 2");
-        ret = base64_decode((uint8_t *)"AAA", 3, out, BUF_LEN);
-        ok(ret == KNOT_BASE64_ESIZE, "Bad data length 3");
-        ret = base64_decode((uint8_t *)"AAAAA", 5, out, BUF_LEN);
-        ok(ret == KNOT_BASE64_ESIZE, "Bad data length 5");
+	ret = base64_decode((uint8_t *)"A", 1, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ESIZE, "Bad data length 1");
+	ret = base64_decode((uint8_t *)"AA", 2, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ESIZE, "Bad data length 2");
+	ret = base64_decode((uint8_t *)"AAA", 3, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ESIZE, "Bad data length 3");
+	ret = base64_decode((uint8_t *)"AAAAA", 5, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ESIZE, "Bad data length 5");
 
 	// Bad data character
-        ret = base64_decode((uint8_t *)"AAA$", 4, out, BUF_LEN);
-        ok(ret == KNOT_BASE64_ECHAR, "Bad data character dollar");
-        ret = base64_decode((uint8_t *)"AAA ", 4, out, BUF_LEN);
-        ok(ret == KNOT_BASE64_ECHAR, "Bad data character space");
+	ret = base64_decode((uint8_t *)"AAA$", 4, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ECHAR, "Bad data character dollar");
+	ret = base64_decode((uint8_t *)"AAA ", 4, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ECHAR, "Bad data character space");
 
 	return 0;
 }

@@ -60,11 +60,18 @@ def err(text):
     detail_log(text, True)
     detail_log(SEP, True)
 
+def set_err(msg):
+    '''Set error state'''
+
+    params.err = True
+    if not params.err_msg:
+        params.err_msg = msg
+
 def isset(value, name):
     '''Check if value is True'''
 
     if not value:
-        params.err = True
+        set_err("IS SET " + name)
         check_log("IS SET " + name, True)
         detail_log("  False", True)
         detail_log(SEP, True)
@@ -73,7 +80,7 @@ def compare(value, expected, name):
     '''Compare two values'''
 
     if value != expected:
-        params.err = True
+        set_err("COMPARE " + name)
         check_log("COMPARE " + name, True)
         detail_log("  (" + str(value) + ") != (" + str(expected) + ")", True)
         detail_log(SEP, True)
@@ -84,7 +91,7 @@ def compare_sections(section1, section2, name):
     if section1 == section2:
         return
 
-    params.err = True
+    set_err("COMPARE section " + name)
     detail_log("COMPARE %s SECTIONS" % name, True)
 
     for rrset in section1:
@@ -311,7 +318,7 @@ class Response(object):
                     return
         else:
             err("RDATA (" + str(rdata) + ") not in ANSWER section")
-            params.err = True
+            set_err("CHECK rdata")
 
     def check_edns(self, nsid=None, buff_size=None):
         compare(self.resp.edns, 0, "EDNS version")
@@ -541,9 +548,9 @@ class DnsServer(object):
         f.close()
 
         if errcount > 0 or reachable > 0 or lost > 0:
-            params.err = True
             err("%s memcheck: lost(%i B), reachable(%i B), errcount(%i)" \
                 % (self.name, lost, reachable, errcount))
+            set_err("VALGRIND")
 
     def stop(self):
         if self.proc:
@@ -1195,14 +1202,14 @@ class DnsTest(object):
             z_keys = sorted(list(z1_keys & z2_keys))
 
             if z1_diff:
-                params.err = True
+                set_err("XFR DIFF")
                 detail_log("Extra records in %s:" % server1.name, True)
                 for key in z1_diff:
                     for record in z1.nodes[key]:
                         detail_log("  %s %s" % (key, str(record)), True)
 
             if z2_diff:
-                params.err = True
+                set_err("XFR DIFF")
                 detail_log("Extra records in %s:" % server2.name, True)
                 for key in z2_diff:
                     for record in z2.nodes[key]:
@@ -1213,7 +1220,7 @@ class DnsTest(object):
 
             for key in z_keys:
                 if z1.nodes[key] != z2.nodes[key]:
-                    params.err = True
+                    set_err("XFR DIFF")
                     detail_log("Different nodes:", True)
                     detail_log("%s:" % server1.name, True)
                     for record in z1.nodes[key]:

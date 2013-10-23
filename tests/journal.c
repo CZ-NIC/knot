@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 	int tmp_fd = mkstemp(jfn_buf);
 	ok(tmp_fd >= 0, "journal: create temporary file");
 	if (tmp_fd < 0) {
-		skip_block(JOURNAL_TEST_COUNT - 1, NULL);
+		skip_block(JOURNAL_TEST_COUNT - 1, "No temporary file");
 		goto skip_all;
 	}
 	close(tmp_fd);
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 	ret = journal_map(j, 0x12345, &mptr, sizeof(chk_buf));
 	ok(mptr && ret == 0, "journal: mapped journal entry");
 	if (ret != 0) {
-		skip_block(2, NULL);
+		skip_block(2, "No mapped journal");
 	} else {
 		/* Write to mmaped entry and unmap. */
 		memcpy(mptr, chk_buf, sizeof(chk_buf));

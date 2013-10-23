@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 		kp.name = knot_dname_from_str("example.com", 12);
 		kp.algorithm = 13;
 		knot_binary_from_base64("1N/PvpB8jZcvv+zr3Q987RKK1cBxDKULzEc5F/nnpSg=", &kp.private_key);
-		knot_binary_from_base64("fe3oR+S8crl9AwayWFZwJ8wXpDeg1uiXZ/X0MYBvyvj1lfuJDXawUjKuzYKLAPEVH1jt8XbM5nTTlVXUsDebVA==", &kp.rdata);
+		knot_binary_from_base64("AAAAAH3t6EfkvHK5fQMGslhWcCfMF6Q3oNbol2f19DGAb8r49ZX7iQ12sFIyrs2CiwDxFR9Y7fF2zOZ005VV1LA3m1Q=", &kp.rdata);
 
 		test_algorithm("ECDSA", &kp);
 		knot_free_key_params(&kp);
