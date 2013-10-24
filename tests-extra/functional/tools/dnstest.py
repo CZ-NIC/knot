@@ -417,6 +417,8 @@ class DnsServer(object):
         self.ident = None
         self.version = None
 
+        self.ratelimit = None
+
         self.ip = None
         self.addr = None
         self.port = None
@@ -653,7 +655,6 @@ class DnsServer(object):
         sent = sock.sendto(bytes(data, 'utf-8'), (self.addr, self.port))
         if sent != len(data):
             raise Exception("Can't send RAW data (%d bytes) to %s." % (len(data), self.name))
-        return 0
 
     def zones_wait(self, zones):
         for zone in zones:
