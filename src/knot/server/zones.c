@@ -17,6 +17,7 @@
 #include <config.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "common/lists.h"
 #include "common/prng.h"
@@ -3510,8 +3511,8 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 		                                       zone, time);
-		dbg_zones("zone: REFRESH '%s' set to %u\n",
-		          zd->conf->name, (unsigned)time);
+		dbg_zones("zone: REFRESH '%s' set to %"PRIi64"\n",
+		          zd->conf->name, time);
 		zd->xfr_in.state = XFR_SCHED;
 	}
 	rcu_read_unlock();
