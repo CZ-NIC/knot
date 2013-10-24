@@ -104,6 +104,10 @@ static bool use_key(const knot_zone_key_t *key, uint16_t covered_type)
 {
 	assert(key);
 
+	if (!key->is_active) {
+		return false;
+	}
+
 	if (covered_type != KNOT_RRTYPE_DNSKEY && key->is_ksk) {
 		return false;
 	}
@@ -217,7 +221,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		const knot_zone_key_t *key;
 		key = get_matching_zone_key(rrsigs, i, zone_keys);
 
-		if (key && key->context) {
+		if (key && key->is_active && key->context) {
 			result = knot_is_valid_signature(covered, rrsigs, i,
 			                                 &key->dnssec_key,
 			                                 key->context, policy);
@@ -686,7 +690,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 			continue;
 		}
 
-		if (dnskey_rdata_match(key, rdata, rdata_size)) {
+		if (dnskey_rdata_match(key, rdata, rdata_size) && key->is_public) {
 			dbg_dnssec_detail("keeping known DNSKEY with tag "
 			                  "%d\n", keytag);
 			continue;
@@ -772,6 +776,11 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 			continue;
 		}
 
+		if (!key->is_public) {
+			dbg_dnssec_detail("not public\n");
+			continue;
+		}
+
 		dbg_dnssec_detail("adding DNSKEY with tag %d\n",
 		                  key->dnssec_key.keytag);
 
@@ -848,6 +857,10 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	// add known keys from key database
 	for (int i = 0; i < zone_keys->count; i++) {
 		const knot_zone_key_t *key = &zone_keys->keys[i];
+		if (!key->is_public) {
+			continue;
+		}
+
 		result = rrset_add_zone_key(new_dnskeys, key);
 		if (result != KNOT_EOK) {
 			goto fail;

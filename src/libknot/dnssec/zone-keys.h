@@ -42,6 +42,7 @@ typedef struct {
 	knot_dnssec_key_t dnssec_key;
 	knot_dnssec_sign_context_t *context;
 	bool is_ksk;                           //!< Is KSK key.
+	bool is_public;                        //!< Currently in zone.
 	bool is_active;                        //!< Currently used for signing.
 } knot_zone_key_t;
 

@@ -97,6 +97,18 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 
 	key->is_active = params->time_activate <= now &&
 	                 (params->time_inactive == 0 || now <= params->time_inactive);
+
+	key->is_public = params->time_publish <= now &&
+	                 (params->time_delete == 0 || now <= params->time_delete);
+}
+
+static bool was_removed(const knot_key_params_t *params)
+{
+	assert(params);
+
+	time_t now = time(NULL);
+
+	return params->time_delete != 0 && now > params->time_delete;
 }
 
 /*!
@@ -166,8 +178,8 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		memset(&key, '\0', sizeof(key));
 		set_zone_key_flags(&params, &key);
 
-		if (!key.is_active) {
-			dbg_dnssec_detail("skipping key, inactive period\n");
+		if (!key.is_active && !key.is_public && !was_removed(&params)) {
+			dbg_dnssec_detail("skipping key, not active or public\n");
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -200,8 +212,11 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		dbg_dnssec_detail("key is valid, tag %d, %s\n", params.keytag,
-		                  (key.is_ksk ? "KSK" : "ZSK"));
+		dbg_dnssec_detail("key is valid, tag %d, %s, %s, %s\n",
+		                  params.keytag,
+		                  key.is_ksk ? "KSK" : "ZSK",
+		                  key.is_active ? "active" : "inactive",
+		                  key.is_public ? "public" : "not-public");
 
 		keys->keys[keys->count] = key;
 		keys->count += 1;
@@ -213,6 +228,8 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 	if (keys->count == 0) {
 		return KNOT_DNSSEC_EINVALID_KEY;
+	} else if (keys->count == KNOT_MAX_ZONE_KEYS) {
+		dbg_dnssec_detail("reached maximum count of zone keys\n");
 	}
 
 	int result = init_sign_contexts(keys);

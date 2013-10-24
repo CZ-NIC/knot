@@ -71,11 +71,11 @@ typedef struct {
 
 	// key lifetime
 	//time_t time_created;
-	//time_t time_publish;
+	time_t time_publish;
 	time_t time_activate;
 	//time_t time_revoke;
 	time_t time_inactive;
-	//time_t time_delete;
+	time_t time_delete;
 } knot_key_params_t;
 
 typedef enum {
