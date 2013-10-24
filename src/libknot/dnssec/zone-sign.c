@@ -1004,11 +1004,6 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 	knot_dname_lf(lf, rrset->owner, NULL);
 	signed_info_t *info = (signed_info_t *)hattrie_tryget(t, (char *)lf+1,
 	                                                      *lf);
-	assert(info);
-	if (rr_type_in_list(rrset, info->type_list)) {
-		return true;
-	}
-
 	if (info == NULL) {
 		// Create new info struct
 		info = malloc(sizeof(signed_info_t));

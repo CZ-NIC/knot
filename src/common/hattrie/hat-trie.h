@@ -82,6 +82,8 @@ int hattrie_find_lpr (hattrie_t*, const char* key, size_t len, value_t** dst);
  */
 int hattrie_del(hattrie_t* T, const char* key, size_t len);
 
+size_t hattrie_size(const hattrie_t *T);
+
 typedef struct hattrie_iter_t_ hattrie_iter_t;
 
 hattrie_iter_t* hattrie_iter_begin     (const hattrie_t*, bool sorted);

@@ -1093,3 +1093,12 @@ value_t* hattrie_iter_val(hattrie_iter_t* i)
 
     return ahtable_iter_val(i->i);
 }
+
+size_t hattrie_size(const hattrie_t *T)
+{
+	if (T == NULL) {
+		return 0;
+	}
+
+	return T->m;
+}

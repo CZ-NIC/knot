@@ -48,6 +48,7 @@ typedef struct {
 /* - NSEC chain iteration -------------------------------------------------- */
 
 typedef int (*chain_iterate_cb)(knot_node_t *, knot_node_t *, void *);
+typedef int (*chain_iterate_nsec_cb)(knot_dname_t *, knot_dname_t *, void *);
 
 /*!
  * \brief Call a function for each piece of the chain formed by sorted nodes.
@@ -107,6 +108,62 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 
 	return result == NSEC_NODE_SKIP ? callback(previous, first, data) :
 	                                  callback(current, first, data);
+}
+
+/*!
+ * \brief Call a function for each piece of the chain formed by sorted nodes.
+ *
+ * \note If the callback function returns anything other than KNOT_EOK, the
+ *       iteration is terminated and the error code is propagated.
+ *
+ * \param nodes     Zone nodes.
+ * \param callback  Callback function.
+ * \param data      Custom data supplied to the callback function.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
+                              void *data)
+{
+	assert(nodes);
+	assert(callback);
+
+	bool sorted = true;
+	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
+
+	if (!it) {
+		return KNOT_ENOMEM;
+	}
+
+	if (hattrie_iter_finished(it)) {
+		hattrie_iter_free(it);
+		return KNOT_EINVAL;
+	}
+
+	knot_dname_t *first = (knot_dname_t *)*hattrie_iter_val(it);
+	knot_dname_t *previous = first;
+	knot_dname_t *current = first;
+
+	hattrie_iter_next(it);
+
+	int result = KNOT_EOK;
+	while (!hattrie_iter_finished(it)) {
+		current = (knot_dname_t *)*hattrie_iter_val(it);
+
+		result = callback(previous, current, data);
+		if (result == KNOT_EOK) {
+			previous = current;
+		} else {
+			hattrie_iter_free(it);
+			return result;
+		}
+		hattrie_iter_next(it);
+	}
+
+	hattrie_iter_free(it);
+
+// TODO do i need this? return callback(current, first, data);
+	return KNOT_EOK;
 }
 
 /*!
@@ -891,7 +948,7 @@ static int walk_dname_and_store_empty_nonterminals(knot_dname_t *dname,
 			uint8_t lf[KNOT_DNAME_MAXLEN];
 			knot_dname_lf(lf, n->owner, NULL);
 			// Store into trie (duplicates 'rewritten')
-			*ahtable_get(t, (char *)lf+1, *lf) = (void *)0x1;
+			*ahtable_get(t, (char *)lf+1, *lf) = n->owner;
 		}
 		cut = knot_wire_next_label(dname, NULL);
 	}
@@ -940,7 +997,7 @@ static int update_changes_with_non_terminals(const knot_zone_contents_t *zone,
 	hattrie_iter_free(itt);
 
 	// Reinsert ahtable values into trie (dname already converted)
-	ahtable_iter_t ith = { '\0'};
+	ahtable_iter_t ith = { '\0' };
 	ahtable_iter_begin(nterminal_t, &ith, sort);
 	for (; !ahtable_iter_finished(&ith); ahtable_iter_next(&ith)) {
 		// Store keys from table directly to trie
@@ -951,35 +1008,161 @@ static int update_changes_with_non_terminals(const knot_zone_contents_t *zone,
 		signed_info_t *info = malloc(sizeof(signed_info_t));
 		if (info == NULL) {
 			ERR_ALLOC_FAILED;
-			ahtable_free(nterminal_t);
 			ahtable_iter_free(&ith);
+			ahtable_free(nterminal_t);
 			return KNOT_ENOMEM;
 		}
 		memset(info, 0, sizeof(signed_info_t));
+		info->dname =
+			knot_dname_copy((knot_dname_t *)(*ahtable_iter_val(&ith)));
+		if (info->dname == NULL) {
+			ahtable_iter_free(&ith);
+			ahtable_free(nterminal_t);
+			return KNOT_ENOMEM;
+		}
 		*hattrie_get(sorted_changes, k, key_size) = info;
 	}
 
 	ahtable_iter_free(&ith);
+	ahtable_free(nterminal_t);
 
 	return KNOT_EOK;
 }
 
-static int fix_nsec_chain_using_changes(const knot_zone_contents_t *zone,
-                                        const hattrie_t *sorted_changes,
-                                        knot_changeset_t *out_ch,
-                                        const knot_zone_keys_t *zone_keys,
-                                        const knot_dnssec_policy_t *policy)
+static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
+                                         const knot_zone_contents_t *zone,
+                                         hattrie_t **out)
 {
+	assert(sorted_changes);
+	assert(hattrie_size(sorted_changes) > 0);
+	*out = hattrie_create();
+	if (*out == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	const bool sort = false;
+	hattrie_iter_t *itt = hattrie_iter_begin(sorted_changes, sort);
+	if (itt == NULL) {
+		return KNOT_ERROR;
+	}
+
+	for (; !hattrie_iter_finished(itt); hattrie_iter_next(itt)) {
+		knot_dname_t *nsec3_name =
+			create_nsec3_owner((knot_dname_t *)*hattrie_iter_val(itt),
+		                           zone->apex->owner,
+		                           &zone->nsec3_params);
+		if (nsec3_name == NULL) {
+			return KNOT_ERROR;
+		}
+		hattrie_insert_dname(*out, nsec3_name);
+	}
+	hattrie_iter_free(itt);
 	return KNOT_EOK;
 }
 
-static int fix_nsec3_chain_using_changes(const knot_zone_contents_t *zone,
-                                         const hattrie_t *sorted_changes,
-                                         knot_changeset_t *out_ch,
-                                         const knot_zone_keys_t *zone_keys,
-                                         const knot_dnssec_policy_t *policy)
+static int update_nsec(const knot_node_t *from, const knot_node_t *to,
+                       knot_changeset_t *out_ch, uint32_t soa_min,
+                       bool is_apex)
 {
+	assert(from && to && out_ch);
+	const knot_rrset_t *nsec_rrset = knot_node_rrset(from,
+	                                                 KNOT_RRTYPE_NSEC);
+	// Create new NSEC
+	knot_rrset_t *new_nsec =
+		create_nsec_rrset(from, to, soa_min, is_apex);
+	if (new_nsec == NULL) {
+		return KNOT_ERROR;
+	}
+	// If node in zone has NSEC record, drop it if needed
+	if (nsec_rrset) {
+		if (!knot_rrset_equal(new_nsec, nsec_rrset,
+		                      KNOT_RRSET_COMPARE_WHOLE)) {
+			// Drop old
+			int ret = changeset_remove_nsec(nsec_rrset,
+			                                out_ch);
+			if (ret != KNOT_EOK) {
+				knot_rrset_deep_free(&new_nsec, 1);
+				return ret;
+			}
+			// Add new
+			ret = knot_changeset_add_rrset(out_ch, new_nsec,
+			                               KNOT_CHANGESET_ADD);
+			if (ret != KNOT_EOK) {
+				knot_rrset_deep_free(&new_nsec, 1);
+				return ret;
+			}
+		} else {
+			// All good, no need to update
+			knot_rrset_deep_free(&new_nsec, 1);
+			return KNOT_EOK;
+		}
+	} else {
+		int ret = knot_changeset_add_rrset(out_ch, new_nsec,
+		                                   KNOT_CHANGESET_ADD);
+		if (ret != KNOT_EOK) {
+			knot_rrset_deep_free(&new_nsec, 1);
+			return ret;
+		}
+	}
 	return KNOT_EOK;
+}
+
+typedef struct chain_fix_data {
+	const knot_zone_contents_t *zone;
+	knot_changeset_t *out_ch;
+	const knot_zone_keys_t *zone_keys;
+	const knot_dnssec_policy_t *policy;
+} chain_fix_data_t;
+
+static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
+{
+	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
+	assert(fix_data);
+
+	// Get previous record from zone tree
+	bool nsec_node_found = false;
+	const knot_node_t *prev_zone_node = NULL;
+	while (!nsec_node_found) {
+		if (knot_dname_is_equal(b, prev_zone_node->owner)) {
+			if (fix_data->zone->apex == prev_zone_node) {
+				// Only one node in zone
+
+			} else {
+				/*!
+				 * Something is really wrong here -
+				 * maybe the zone is unsigned?
+				 */
+				return KNOT_ERROR;
+			}
+		}
+		prev_zone_node =
+			knot_zone_contents_find_previous(fix_data->zone, b);
+		assert(prev_zone_node);
+		nsec_node_found =
+			knot_node_rrset(prev_zone_node, KNOT_RRTYPE_NSEC) ?
+			                true : false;
+	}
+
+	/*!
+	 * Find out whether we should connect the 'b' node to node from zone
+	 * or to node from changeset.
+	 */
+	int dname_cmp = knot_dname_cmp(prev_zone_node->owner, a);
+	assert(dname_cmp != 0);
+	const knot_node_t *prev_node = NULL;
+	if (dname_cmp < 0) {
+		// Node in zone is farther in tree, use changeset node
+		prev_node = knot_zone_contents_find_node(fix_data->zone, a);
+	} else {
+		prev_node = prev_zone_node;
+	}
+
+	assert(prev_node); // NSEC has to be left in the node no matter what
+	int ret = update_nsec(prev_node,
+	                      knot_zone_contents_find_node(fix_data->zone, b),
+	                      fix_data->out_ch,
+	                      3600, prev_node == fix_data->zone->apex);
+	return ret;
 }
 
 /* - public API ------------------------------------------------------------ */
@@ -1060,21 +1243,40 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 {
 	if (zone == NULL || sorted_changes == NULL || zone_keys == NULL ||
 	    policy == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (hattrie_size(sorted_changes) == 0) {
+		// no changes, no fixing
 		return KNOT_EOK;
 	}
 
 	int ret = KNOT_EOK;
+
+	// Prepare data for chain fixing functions
+	chain_fix_data_t fix_data = { .zone = zone,
+	                              .out_ch = out_ch,
+	                              .zone_keys = zone_keys,
+	                              .policy = policy };
 	if (is_nsec3_enabled(zone)) {
 		ret = update_changes_with_non_terminals(zone, sorted_changes);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		ret = fix_nsec3_chain_using_changes(zone, sorted_changes,
-		                                    out_ch, zone_keys, policy);
+
+		// Create and sort NSEC3 hashes
+		hattrie_t *nsec3_names = NULL;
+		ret = create_nsec3_hashes_from_trie(sorted_changes,
+		                                    zone,
+		                                    &nsec3_names);
+		assert(0);
+//		ret = chain_iterate(nsec3_names, fix_nsec3_chain, &fix_data);
 	} else {
-		ret = fix_nsec_chain_using_changes(zone, sorted_changes,
-		                                   out_ch, zone_keys, policy);
+		ret = chain_iterate_nsec(sorted_changes, fix_nsec_chain,
+		                         &fix_data);
 	}
+
+	dbg_dnssec_verb("NSEC(3) chain fixed (%s)", knot_strerror(ret));
 
 	return ret;
 }
