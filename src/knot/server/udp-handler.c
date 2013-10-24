@@ -146,6 +146,13 @@ int udp_handle(struct answer_ctx *ans, int fd,
 	knot_packet_type_t qtype = KNOT_QUERY_INVALID;
 	*resp_len = SOCKET_MTU_SZ;
 
+	/* The packet MUST contain at least DNS header.
+	 * If it doesn't, it's not a DNS packet and we should discard it.
+	 */
+	if (qbuflen < KNOT_WIRE_HEADER_SIZE) {
+		return KNOT_EFEWDATA;
+	}
+
 #ifdef MIRROR_MODE
 	knot_wire_set_qr(qbuf);
 	*resp_len = qbuflen;

@@ -444,9 +444,11 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 
 	pktsize = ntohs(pktsize);
 
-	// Check packet size for NULL
-	if (pktsize == 0) {
-		return KNOT_ERROR;
+	/* The packet MUST contain at least DNS header.
+	 * If it doesn't, it's not a DNS packet and we should discard it.
+	 */
+	if (pktsize < KNOT_WIRE_HEADER_SIZE) {
+		return KNOT_EFEWDATA;
 	}
 
 	dbg_net("tcp: incoming packet size=%hu on fd=%d\n",
