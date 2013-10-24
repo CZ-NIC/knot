@@ -140,7 +140,7 @@ static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
 		return KNOT_EINVAL;
 	}
 
-	knot_dname_t *first = (knot_dname_t *)*hattrie_iter_val(it);
+	knot_dname_t *first = ((signed_info_t *)(*hattrie_iter_val(it)))->dname;
 	knot_dname_t *previous = first;
 	knot_dname_t *current = first;
 
@@ -148,7 +148,7 @@ static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
 
 	int result = KNOT_EOK;
 	while (!hattrie_iter_finished(it)) {
-		current = (knot_dname_t *)*hattrie_iter_val(it);
+		current = ((signed_info_t *)(*hattrie_iter_val(it)))->dname;
 
 		result = callback(previous, current, data);
 		if (result == KNOT_EOK) {
@@ -162,7 +162,7 @@ static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
 
 	hattrie_iter_free(it);
 
-// TODO do i need this? return callback(current, first, data);
+	return callback(current, first, data);
 	return KNOT_EOK;
 }
 
@@ -1077,6 +1077,8 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 	if (nsec_rrset) {
 		if (!knot_rrset_equal(new_nsec, nsec_rrset,
 		                      KNOT_RRSET_COMPARE_WHOLE)) {
+			dbg_dnssec_detail("Creating new NSEC for %s\n",
+			                  knot_dname_to_str(new_nsec->owner));
 			// Drop old
 			int ret = changeset_remove_nsec(nsec_rrset,
 			                                out_ch);
@@ -1123,10 +1125,16 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	bool nsec_node_found = false;
 	const knot_node_t *prev_zone_node = NULL;
 	while (!nsec_node_found) {
+		prev_zone_node =
+			knot_zone_contents_find_previous(fix_data->zone, b);
+		assert(prev_zone_node);
 		if (knot_dname_is_equal(b, prev_zone_node->owner)) {
 			if (fix_data->zone->apex == prev_zone_node) {
-				// Only one node in zone
-
+				// Only one node in zone and changed in DDNS
+				return update_nsec(prev_zone_node,
+				                   knot_zone_contents_find_node(fix_data->zone, b),
+				                   fix_data->out_ch, 3600,
+				                   prev_node == fix_data->zone->apex);
 			} else {
 				/*!
 				 * Something is really wrong here -
@@ -1135,9 +1143,6 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 				return KNOT_ERROR;
 			}
 		}
-		prev_zone_node =
-			knot_zone_contents_find_previous(fix_data->zone, b);
-		assert(prev_zone_node);
 		nsec_node_found =
 			knot_node_rrset(prev_zone_node, KNOT_RRTYPE_NSEC) ?
 			                true : false;
@@ -1158,11 +1163,10 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	}
 
 	assert(prev_node); // NSEC has to be left in the node no matter what
-	int ret = update_nsec(prev_node,
-	                      knot_zone_contents_find_node(fix_data->zone, b),
-	                      fix_data->out_ch,
-	                      3600, prev_node == fix_data->zone->apex);
-	return ret;
+	return update_nsec(prev_node,
+	                   knot_zone_contents_find_node(fix_data->zone, b),
+	                   fix_data->out_ch,
+	                   3600, prev_node == fix_data->zone->apex);
 }
 
 /* - public API ------------------------------------------------------------ */
