@@ -354,7 +354,7 @@ static int zones_refresh_ev(event_t *e)
 	}
 
 	/* Create XFR request. */
-	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_SOA, XFR_FLAG_UDP);
+	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_SOA, XFR_FLAG_TCP);
 	rcu_read_unlock(); /* rq now holds a reference to zone */
 	if (!rq) {
 		return KNOT_EINVAL;
