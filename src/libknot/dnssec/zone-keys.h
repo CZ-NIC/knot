@@ -38,14 +38,19 @@
  */
 #define KNOT_MAX_ZONE_KEYS 8
 
+typedef struct {
+	knot_dnssec_key_t dnssec_key;
+	knot_dnssec_sign_context_t *context;
+	bool is_ksk;                           //!< Is KSK key.
+	bool is_active;                        //!< Currently used for signing.
+} knot_zone_key_t;
+
 /*!
  * \brief Keys used for zone signing.
  */
 typedef struct {
 	unsigned count;
-	knot_dnssec_key_t keys[KNOT_MAX_ZONE_KEYS];
-	knot_dnssec_sign_context_t *contexts[KNOT_MAX_ZONE_KEYS];
-	bool is_ksk[KNOT_MAX_ZONE_KEYS];
+	knot_zone_key_t keys[KNOT_MAX_ZONE_KEYS];
 } knot_zone_keys_t;
 
 /*!
@@ -60,6 +65,7 @@ typedef struct {
  */
 int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		   bool nsec3_enabled, knot_zone_keys_t *keys);
+
 /*!
  * \brief Get zone key by a keytag.
  *
@@ -68,8 +74,8 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
  *
  * \return Pointer to key or NULL if not found.
  */
-const knot_dnssec_key_t *get_zone_key(const knot_zone_keys_t *keys,
-                                      uint16_t keytag);
+const knot_zone_key_t *get_zone_key(const knot_zone_keys_t *keys,
+                                    uint16_t keytag);
 
 /*!
  * \brief Free structure with zone keys and associated DNSSEC contexts.
