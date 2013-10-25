@@ -21,6 +21,10 @@ import zone_generate, params
 
 SEP = "------------------------------------"
 
+class Skip(Exception):
+    """Exception for skipping current case."""
+    pass
+
 def test_info():
     '''Get current test case name'''
 
@@ -691,6 +695,8 @@ class Bind(DnsServer):
 
     def __init__(self):
         super().__init__()
+        if not params.bind_bin:
+            raise Skip("No Bind")
         self.daemon_bin = params.bind_bin
         self.control_bin = params.bind_ctl
         self.ctlkey = Tsig(alg="hmac-md5")
@@ -828,6 +834,8 @@ class Knot(DnsServer):
 
     def __init__(self):
         super().__init__()
+        if not params.knot_bin:
+            raise Skip("No Knot")
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
 
@@ -969,6 +977,8 @@ class Nsd(DnsServer):
 
     def __init__(self):
         super().__init__()
+        if not params.nsd_bin:
+            raise Skip("No NSD")
         self.daemon_bin = params.nsd_bin
         self.control_bin = params.nsd_ctl
 
