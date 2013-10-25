@@ -21,7 +21,7 @@
  * \brief Server configuration structures and API.
  */
 %{
-/* Headers */
+
 #include <config.h>
 #include <limits.h>
 #include <stdio.h>
@@ -64,21 +64,21 @@ static conf_log_map_t *this_logmap = 0;
 
 static void conf_init_iface(void *scanner, char* ifname, int port)
 {
-   this_iface = malloc(sizeof(conf_iface_t));
-   if (this_iface == NULL) {
-      cf_error(scanner, "not enough memory when allocating interface");
-      return;
-   }
-   memset(this_iface, 0, sizeof(conf_iface_t));
-   this_iface->name = ifname;
-   this_iface->port = port;
+	this_iface = malloc(sizeof(conf_iface_t));
+	if (this_iface == NULL) {
+		cf_error(scanner, "not enough memory when allocating interface");
+		return;
+	}
+	memset(this_iface, 0, sizeof(conf_iface_t));
+	this_iface->name = ifname;
+	this_iface->port = port;
 }
 
 static void conf_start_iface(void *scanner, char* ifname)
 {
-   conf_init_iface(scanner, ifname, -1);
-   add_tail(&new_config->ifaces, &this_iface->n);
-   ++new_config->ifaces_count;
+	conf_init_iface(scanner, ifname, -1);
+	add_tail(&new_config->ifaces, &this_iface->n);
+	++new_config->ifaces_count;
 }
 
 static conf_iface_t *conf_get_remote(const char *name)
@@ -95,40 +95,40 @@ static conf_iface_t *conf_get_remote(const char *name)
 
 static void conf_start_remote(void *scanner, char *remote)
 {
-   if (conf_get_remote(remote) != NULL) {
-      cf_error(scanner, "remote '%s' already defined", remote);
-      return;
-   }
+	if (conf_get_remote(remote) != NULL) {
+		cf_error(scanner, "remote '%s' already defined", remote);
+		return;
+	}
 
-   this_remote = malloc(sizeof(conf_iface_t));
-   if (this_remote == NULL) {
-      cf_error(scanner, "not enough memory when allocating remote");
-      return;
-   }
+	this_remote = malloc(sizeof(conf_iface_t));
+	if (this_remote == NULL) {
+		cf_error(scanner, "not enough memory when allocating remote");
+		return;
+	}
 
-   memset(this_remote, 0, sizeof(conf_iface_t));
-   this_remote->name = remote;
-   add_tail(&new_config->remotes, &this_remote->n);
-   sockaddr_init(&this_remote->via, -1);
-   ++new_config->remotes_count;
+	memset(this_remote, 0, sizeof(conf_iface_t));
+	this_remote->name = remote;
+	add_tail(&new_config->remotes, &this_remote->n);
+	sockaddr_init(&this_remote->via, -1);
+	++new_config->remotes_count;
 }
 
 static void conf_remote_set_via(void *scanner, char *item) {
-   /* Find existing node in interfaces. */
-   node_t* r = 0; conf_iface_t* found = 0;
-   WALK_LIST (r, new_config->ifaces) {
-      if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
-         found = (conf_iface_t*)r;
-         break;
-      }
-   }
+	/* Find existing node in interfaces. */
+	node_t* r = 0; conf_iface_t* found = 0;
+	WALK_LIST (r, new_config->ifaces) {
+		if (strcmp(((conf_iface_t*)r)->name, item) == 0) {
+			found = (conf_iface_t*)r;
+			break;
+		}
+	}
 
-   /* Check */
-   if (!found) {
-      cf_error(scanner, "interface '%s' is not defined", item);
-   } else {
-      sockaddr_set(&this_remote->via, found->family, found->address, 0);
-   }
+	/* Check */
+	if (!found) {
+		cf_error(scanner, "interface '%s' is not defined", item);
+	} else {
+		sockaddr_set(&this_remote->via, found->family, found->address, 0);
+	}
 }
 
 static conf_group_t *conf_get_group(const char *name)
@@ -278,117 +278,120 @@ static void conf_acl_item(void *scanner, char *item)
 
 static int conf_key_exists(void *scanner, char *item)
 {
-    /* Find existing node in keys. */
-    knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
-    knot_dname_to_lower(sample);
-    conf_key_t* r = 0;
-    WALK_LIST (r, new_config->keys) {
-        if (knot_dname_cmp(r->k.name, sample) == 0) {
-           cf_error(scanner, "key '%s' is already defined", item);
-	   knot_dname_free(&sample);
-           return 1;
-        }
-    }
+	/* Find existing node in keys. */
+	knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
+	knot_dname_to_lower(sample);
+	conf_key_t* r = 0;
+	WALK_LIST (r, new_config->keys) {
+		if (knot_dname_cmp(r->k.name, sample) == 0) {
+			cf_error(scanner, "key '%s' is already defined", item);
+			knot_dname_free(&sample);
+			return 1;
+		}
+	}
 
-    knot_dname_free(&sample);
-    return 0;
+	knot_dname_free(&sample);
+	return 0;
 }
 
 static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
 {
-    /* Reset */
-    *key = 0;
+	/* Reset */
+	*key = 0;
 
-    /* Find in keys */
-    knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
-    knot_dname_to_lower(sample);
+	/* Find in keys */
+	knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
+	knot_dname_to_lower(sample);
 
-    conf_key_t* r = 0;
-    WALK_LIST (r, new_config->keys) {
-        if (knot_dname_cmp(r->k.name, sample) == 0) {
-           *key = &r->k;
-           knot_dname_free(&sample);
-           return 0;
-        }
-    }
+	conf_key_t* r = 0;
+	WALK_LIST (r, new_config->keys) {
+		if (knot_dname_cmp(r->k.name, sample) == 0) {
+			*key = &r->k;
+			knot_dname_free(&sample);
+			return 0;
+		}
+	}
 
-    cf_error(scanner, "key '%s' is not defined", item);
-    knot_dname_free(&sample);
-    return 1;
+	cf_error(scanner, "key '%s' is not defined", item);
+	knot_dname_free(&sample);
+	return 1;
 }
 
 static void conf_zone_start(void *scanner, char *name) {
-   this_zone = malloc(sizeof(conf_zone_t));
-   if (this_zone == NULL || name == NULL) {
-      cf_error(scanner, "out of memory while allocating zone config");
-      return;
-   }
-   memset(this_zone, 0, sizeof(conf_zone_t));
-   this_zone->enable_checks = -1; // Default policy applies
-   this_zone->notify_timeout = -1; // Default policy applies
-   this_zone->notify_retries = 0; // Default policy applies
-   this_zone->dbsync_timeout = -1; // Default policy applies
-   this_zone->disable_any = -1; // Default policy applies
-   this_zone->build_diffs = -1; // Default policy applies
-   this_zone->sig_lifetime = -1; // Default policy applies
+	this_zone = malloc(sizeof(conf_zone_t));
+	if (this_zone == NULL || name == NULL) {
+		cf_error(scanner, "out of memory while allocating zone config");
+		return;
+	}
+	memset(this_zone, 0, sizeof(conf_zone_t));
+	this_zone->enable_checks = -1; // Default policy applies
+	this_zone->notify_timeout = -1; // Default policy applies
+	this_zone->notify_retries = 0; // Default policy applies
+	this_zone->dbsync_timeout = -1; // Default policy applies
+	this_zone->disable_any = -1; // Default policy applies
+	this_zone->build_diffs = -1; // Default policy applies
+	this_zone->sig_lifetime = -1; // Default policy applies
 
-   // Append mising dot to ensure FQDN
-   size_t nlen = strlen(name);
-   if (name[nlen - 1] != '.') {
-      this_zone->name = malloc(nlen + 2);
-      if (this_zone->name != NULL) {
-	memcpy(this_zone->name, name, nlen);
-	this_zone->name[nlen] = '.';
-	this_zone->name[++nlen] = '\0';
-     }
-     free(name);
-   } else {
-      this_zone->name = name; /* Already FQDN */
-   }
+	// Append mising dot to ensure FQDN
+	size_t nlen = strlen(name);
+	if (name[nlen - 1] != '.') {
+		this_zone->name = malloc(nlen + 2);
+		if (this_zone->name != NULL) {
+			memcpy(this_zone->name, name, nlen);
+			this_zone->name[nlen] = '.';
+			this_zone->name[++nlen] = '\0';
+		}
+		free(name);
+	} else {
+		this_zone->name = name; /* Already FQDN */
+	}
 
-   // DNSSEC configuration
-   this_zone->dnssec_enable = true;
-   if (new_config->dnssec_global) {
-      this_zone->dnssec_enable = new_config->dnssec_enable;
-   }
+	// DNSSEC configuration
+	this_zone->dnssec_enable = true;
+	if (new_config->dnssec_global) {
+		this_zone->dnssec_enable = new_config->dnssec_enable;
+	}
 
-   /* Initialize ACL lists. */
-   init_list(&this_zone->acl.xfr_in);
-   init_list(&this_zone->acl.xfr_out);
-   init_list(&this_zone->acl.notify_in);
-   init_list(&this_zone->acl.notify_out);
-   init_list(&this_zone->acl.update_in);
+	/* Initialize ACL lists. */
+	init_list(&this_zone->acl.xfr_in);
+	init_list(&this_zone->acl.xfr_out);
+	init_list(&this_zone->acl.notify_in);
+	init_list(&this_zone->acl.notify_out);
+	init_list(&this_zone->acl.update_in);
 
-   /* Check domain name. */
-   knot_dname_t *dn = NULL;
-   if (this_zone->name != NULL) {
-      dn = knot_dname_from_str(this_zone->name, nlen);
-   }
-   if (dn == NULL) {
-     free(this_zone->name);
-     free(this_zone);
-     this_zone = NULL;
-     cf_error(scanner, "invalid zone origin");
-   } else {
-     /* Check for duplicates. */
-     if (hattrie_tryget(new_config->names, (const char *)dn, knot_dname_size(dn)) != NULL) {
-           cf_error(scanner, "zone '%s' is already present, refusing to "
-			     "duplicate", this_zone->name);
-           knot_dname_free(&dn);
-           free(this_zone->name);
-           this_zone->name = NULL;
-           /* Must not free, some versions of flex might continue after error and segfault.
-            * free(this_zone); this_zone = NULL;
-            */
-           return;
-     }
+	/* Check domain name. */
+	knot_dname_t *dn = NULL;
+	if (this_zone->name != NULL) {
+		dn = knot_dname_from_str(this_zone->name, nlen);
+	}
+	if (dn == NULL) {
+		free(this_zone->name);
+		free(this_zone);
+		this_zone = NULL;
+		cf_error(scanner, "invalid zone origin");
+	} else {
+	/* Check for duplicates. */
+	if (hattrie_tryget(new_config->names, (const char *)dn,
+	                   knot_dname_size(dn)) != NULL) {
+		cf_error(scanner, "zone '%s' is already present, refusing to "
+		         "duplicate", this_zone->name);
+		knot_dname_free(&dn);
+		free(this_zone->name);
+		this_zone->name = NULL;
+		/* Must not free, some versions of flex might continue after
+		 * error and segfault.
+		 * free(this_zone); this_zone = NULL;
+		 */
+		return;
+	}
 
-     /* Directly discard dname, won't be needed. */
-     add_tail(&new_config->zones, &this_zone->n);
-     *hattrie_get(new_config->names, (const char *)dn, knot_dname_size(dn)) = (void *)1;
-     ++new_config->zones_count;
-     knot_dname_free(&dn);
-   }
+	/* Directly discard dname, won't be needed. */
+	add_tail(&new_config->zones, &this_zone->n);
+	*hattrie_get(new_config->names, (const char *)dn,
+	             knot_dname_size(dn)) = (void *)1;
+	++new_config->zones_count;
+	knot_dname_free(&dn);
+	}
 }
 
 /*! \brief Replace string value. */
@@ -434,12 +437,12 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %name-prefix = "cf_"
 
 %union {
-    struct {
-       char *t;
-       long i;
-       size_t l;
-       knot_tsig_algorithm_t alg;
-    } tok;
+	struct {
+		char *t;
+		long i;
+		size_t l;
+		knot_tsig_algorithm_t alg;
+	} tok;
 }
 
 %token END INVALID_TOKEN
