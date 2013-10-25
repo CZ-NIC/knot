@@ -23,6 +23,7 @@
 %{
 /* Headers */
 #include <config.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -46,6 +47,20 @@ static list_t *this_list = 0;
 static conf_log_t *this_log = 0;
 static conf_log_map_t *this_logmap = 0;
 //#define YYERROR_VERBOSE 1
+
+#define SET_NUM(out, in, min, max, name)				\
+{									\
+	if (in < min || in > max) {					\
+		cf_error(scanner, "'%s' is out of range (%u-%u)",	\
+		         name, min, max);				\
+	} else {							\
+		out = in;						\
+	}								\
+}
+
+#define SET_UINT16(out, in, name) SET_NUM(out, in, 0, UINT16_MAX, name);
+#define SET_INT(out, in, name) SET_NUM(out, in, 0, INT_MAX, name);
+#define SET_SIZE(out, in, name) SET_NUM(out, in, 0, SIZE_MAX, name);
 
 static void conf_init_iface(void *scanner, char* ifname, int port)
 {
@@ -376,15 +391,6 @@ static void conf_zone_start(void *scanner, char *name) {
    }
 }
 
-static int conf_mask(void* scanner, int nval, int prefixlen) {
-    if (nval < 0 || nval > prefixlen) {
-        cf_error(scanner, "IPv%c subnet prefix '%d' is out of range <0,%d>",
-                 prefixlen == IPV4_PREFIXLEN ? '4' : '6', nval, prefixlen);
-        return prefixlen; /* single host */
-    }
-    return nval;
-}
-
 /*! \brief Replace string value. */
 static void opt_replace(char **opt, char *new_opt, bool val)
 {
@@ -514,7 +520,7 @@ interface:
      if (this_iface->port > 0) {
        cf_error(scanner, "only one port definition is allowed in interface section\n");
      } else {
-       this_iface->port = $3.i;
+       SET_UINT16(this_iface->port, $3.i, "port");
      }
    }
  | interface ADDRESS IPA ';' {
@@ -534,7 +540,7 @@ interface:
        if (this_iface->port > 0) {
 	 cf_error(scanner, "only one port definition is allowed in interface section\n");
        } else {
-	 this_iface->port = $5.i;
+         SET_UINT16(this_iface->port, $5.i, "port");
        }
      }
    }
@@ -555,7 +561,7 @@ interface:
        if (this_iface->port > 0) {
           cf_error(scanner, "only one port definition is allowed in interface section\n");
        } else {
-          this_iface->port = $5.i;
+          SET_UINT16(this_iface->port, $5.i, "port");
        }
      }
    }
@@ -585,12 +591,8 @@ system:
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system NSID BOOL ';' { ident_auto(NSID, new_config, $3.i); }
  | system MAX_UDP_PAYLOAD NUM ';' {
-     if ($3.i < EDNS_MIN_UDP_PAYLOAD || $3.i > EDNS_MAX_UDP_PAYLOAD) {
-        cf_error(scanner, "maximal UDP payload size is out of range (%u-%u)",
-                 EDNS_MIN_UDP_PAYLOAD, EDNS_MAX_UDP_PAYLOAD);
-     } else {
-        new_config->max_udp_payload = $3.i;
-     }
+     SET_NUM(new_config->max_udp_payload, $3.i, EDNS_MIN_UDP_PAYLOAD,
+             EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
  }
  | system STORAGE TEXT ';' { new_config->storage = $3.t; }
  | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
@@ -601,11 +603,7 @@ system:
      free($4.t);
  }
  | system WORKERS NUM ';' {
-     if ($3.i <= 0) {
-        cf_error(scanner, "worker count must be greater than 0\n");
-     } else {
-        new_config->workers = $3.i;
-     }
+     SET_NUM(new_config->workers, $3.i, 1, 255, "workers");
  }
  | system USER TEXT ';' {
      new_config->uid = new_config->gid = -1; // Invalidate
@@ -628,14 +626,30 @@ system:
 
      free($3.t);
  }
- | system MAX_CONN_IDLE INTERVAL ';' { new_config->max_conn_idle = $3.i; }
- | system MAX_CONN_HS INTERVAL ';' { new_config->max_conn_hs = $3.i; }
- | system MAX_CONN_REPLY INTERVAL ';' { new_config->max_conn_reply = $3.i; }
- | system RATE_LIMIT NUM ';' { new_config->rrl = $3.i; }
- | system RATE_LIMIT_SIZE SIZE ';' { new_config->rrl_size = $3.l; }
- | system RATE_LIMIT_SIZE NUM ';' { new_config->rrl_size = $3.i; }
- | system RATE_LIMIT_SLIP NUM ';' { new_config->rrl_slip = $3.i; }
- | system TRANSFERS NUM ';' { new_config->xfers = $3.i; }
+ | system MAX_CONN_IDLE INTERVAL ';' {
+	SET_INT(new_config->max_conn_idle, $3.i, "max-conn-idle");
+ }
+ | system MAX_CONN_HS INTERVAL ';' {
+	SET_INT(new_config->max_conn_hs, $3.i, "max-conn-hs");
+ }
+ | system MAX_CONN_REPLY INTERVAL ';' {
+	SET_INT(new_config->max_conn_reply, $3.i, "max-conn-reply");
+ }
+ | system RATE_LIMIT NUM ';' {
+	SET_INT(new_config->rrl, $3.i, "rate-limit");
+ }
+ | system RATE_LIMIT_SIZE SIZE ';' {
+	SET_SIZE(new_config->rrl_size, $3.l, "rate-limit-size");
+ }
+ | system RATE_LIMIT_SIZE NUM ';' {
+	SET_SIZE(new_config->rrl_size, $3.i, "rate-limit-size");
+ }
+ | system RATE_LIMIT_SLIP NUM ';' {
+	SET_INT(new_config->rrl_slip, $3.i, "rate-limit-slip");
+ }
+ | system TRANSFERS NUM ';' {
+	SET_INT(new_config->xfers, $3.i, "transfers");
+ }
  ;
 
 keys:
@@ -705,7 +719,7 @@ remote:
      if (this_remote->port != 0) {
        cf_error(scanner, "only one port definition is allowed in remote section\n");
      } else {
-       this_remote->port = $3.i;
+       SET_UINT16(this_remote->port, $3.i, "port");
      }
    }
  | remote ADDRESS IPA ';' {
@@ -723,7 +737,7 @@ remote:
        } else {
          this_remote->address = $3.t;
          this_remote->family = AF_INET;
-         this_remote->prefix = conf_mask(scanner, $5.i, IPV4_PREFIXLEN);
+         SET_NUM(this_remote->prefix, $5.i, 0, IPV4_PREFIXLEN, "prefix length");
        }
      }
  | remote ADDRESS IPA '@' NUM ';' {
@@ -736,7 +750,7 @@ remote:
        if (this_remote->port != 0) {
 	 cf_error(scanner, "only one port definition is allowed in remote section\n");
        } else {
-	 this_remote->port = $5.i;
+         SET_UINT16(this_remote->port, $5.i, "port");
        }
      }
    }
@@ -755,7 +769,7 @@ remote:
        } else {
          this_remote->address = $3.t;
          this_remote->family = AF_INET6;
-         this_remote->prefix = conf_mask(scanner, $5.i, IPV6_PREFIXLEN);
+         SET_NUM(this_remote->prefix, $5.i, 0, IPV6_PREFIXLEN, "prefix length");
        }
      }
  | remote ADDRESS IPA6 '@' NUM ';' {
@@ -768,7 +782,7 @@ remote:
        if (this_remote->port != 0) {
 	 cf_error(scanner, "only one port definition is allowed in remote section\n");
        } else {
-	 this_remote->port = $5.i;
+         SET_UINT16(this_remote->port, $5.i, "port");
        }
      }
    }
@@ -890,16 +904,15 @@ zone_start:
  | LOG_LEVEL { conf_zone_start(scanner, strdup($1.t)); }
  | CONTROL    { conf_zone_start(scanner, strdup($1.t)); }
  | NUM '/' TEXT {
-    if ($1.i < 0 || $1.i > 255) {
-        cf_error(scanner, "rfc2317 origin prefix '%ld' out of bounds", $1.i);
-    }
+    unsigned prefix_len;
+    SET_NUM(prefix_len, $1.i, 0, 255, "origin prefix length");
     size_t len = 3 + 1 + strlen($3.t) + 1; /* <0,255> '/' rest */
     char *name = malloc(len * sizeof(char));
     if (name == NULL) {
         cf_error(scanner, "out of memory");
     } else {
         name[0] = '\0';
-        if (snprintf(name, len, "%ld/%s", $1.i, $3.t) < 0) {
+        if (snprintf(name, len, "%u/%s", prefix_len, $3.t) < 0) {
             cf_error(scanner,"failed to convert rfc2317 origin to string");
         }
     }
@@ -917,38 +930,30 @@ zone:
  | zone BUILD_DIFFS BOOL ';' { this_zone->build_diffs = $3.i; }
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3.i; }
  | zone DISABLE_ANY BOOL ';' { this_zone->disable_any = $3.i; }
- | zone DBSYNC_TIMEOUT NUM ';' { this_zone->dbsync_timeout = $3.i; }
- | zone DBSYNC_TIMEOUT INTERVAL ';' { this_zone->dbsync_timeout = $3.i; }
- | zone IXFR_FSLIMIT SIZE ';' { new_config->ixfr_fslimit = $3.l; }
- | zone IXFR_FSLIMIT NUM ';' { this_zone->ixfr_fslimit = $3.i; }
+ | zone DBSYNC_TIMEOUT NUM ';' {
+	SET_INT(this_zone->dbsync_timeout, $3.i, "zonefile-sync");
+ }
+ | zone DBSYNC_TIMEOUT INTERVAL ';' {
+	SET_INT(this_zone->dbsync_timeout, $3.i, "zonefile-sync");
+ }
+ | zone IXFR_FSLIMIT SIZE ';' {
+	SET_SIZE(new_config->ixfr_fslimit, $3.l, "ixfr-fslimit");
+ }
+ | zone IXFR_FSLIMIT NUM ';' {
+	SET_SIZE(this_zone->ixfr_fslimit, $3.i, "ixfr-fslimit");
+ }
  | zone NOTIFY_RETRIES NUM ';' {
-       if ($3.i < 1) {
-	   cf_error(scanner, "notify retries must be positive integer");
-       } else {
-	   this_zone->notify_retries = $3.i;
-       }
+	SET_NUM(this_zone->notify_retries, $3.i, 1, INT_MAX, "notify-retries");
    }
  | zone NOTIFY_TIMEOUT NUM ';' {
-	if ($3.i < 1) {
-	   cf_error(scanner, "notify timeout must be positive integer");
-       } else {
-	   this_zone->notify_timeout = $3.i;
-       }
+	SET_NUM(this_zone->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
  | zone DNSSEC_ENABLE BOOL ';' { this_zone->dnssec_enable = $3.i; }
  | zone SIGNATURE_LIFETIME NUM ';' {
-	if ($3.i <= 7200) {
-	   cf_error(scanner, "signature lifetime must be more than 7200 seconds");
-	} else {
-	   this_zone->sig_lifetime = $3.i;
-	}
+	SET_NUM(this_zone->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");
  }
  | zone SIGNATURE_LIFETIME INTERVAL ';' {
-	 if ($3.i <= 7200) {
-	    cf_error(scanner, "signature lifetime must be more than 7200 seconds");
-	 } else {
-	    this_zone->sig_lifetime = $3.i;
-	 }
+	SET_NUM(this_zone->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");
  }
  ;
 
@@ -958,46 +963,32 @@ zones:
  | zones DISABLE_ANY BOOL ';' { new_config->disable_any = $3.i; }
  | zones BUILD_DIFFS BOOL ';' { new_config->build_diffs = $3.i; }
  | zones SEMANTIC_CHECKS BOOL ';' { new_config->zone_checks = $3.i; }
- | zones IXFR_FSLIMIT SIZE ';' { new_config->ixfr_fslimit = $3.l; }
- | zones IXFR_FSLIMIT NUM ';' { new_config->ixfr_fslimit = $3.i; }
+ | zones IXFR_FSLIMIT SIZE ';' {
+	SET_SIZE(new_config->ixfr_fslimit, $3.l, "ixfr-fslimit");
+ }
+ | zones IXFR_FSLIMIT NUM ';' {
+	SET_SIZE(new_config->ixfr_fslimit, $3.i, "ixfr-fslimit");
+ }
  | zones NOTIFY_RETRIES NUM ';' {
-       if ($3.i < 1) {
-	   cf_error(scanner, "notify retries must be positive integer");
-       } else {
-	   new_config->notify_retries = $3.i;
-       }
+	SET_NUM(new_config->notify_retries, $3.i, 1, INT_MAX, "notify-retries");
    }
  | zones NOTIFY_TIMEOUT NUM ';' {
-	if ($3.i < 1) {
-	   cf_error(scanner, "notify timeout must be positive integer");
-       } else {
-	   new_config->notify_timeout = $3.i;
-       }
+	SET_NUM(new_config->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
  | zones DBSYNC_TIMEOUT NUM ';' {
-	if ($3.i < 1) {
-	   cf_error(scanner, "zonefile sync timeout must be positive integer");
-       } else {
-	   new_config->dbsync_timeout = $3.i;
-       }
+	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
  }
- | zones DBSYNC_TIMEOUT INTERVAL ';' { new_config->dbsync_timeout = $3.i; }
+ | zones DBSYNC_TIMEOUT INTERVAL ';' {
+	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
+ }
  | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i;
                                   new_config->dnssec_global = true; }
  | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
  | zones SIGNATURE_LIFETIME NUM ';' {
-	if ($3.i <= 7200) {
-	   cf_error(scanner, "signature lifetime must be more than 7200 seconds");
-	} else {
-	   new_config->sig_lifetime = $3.i;
-	}
+	SET_NUM(new_config->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");
  }
  | zones SIGNATURE_LIFETIME INTERVAL ';' {
-	 if ($3.i <= 7200) {
-	    cf_error(scanner, "signature lifetime must be more than 7200 seconds");
-	 } else {
-	    new_config->sig_lifetime = $3.i;
-	 }
+	SET_NUM(new_config->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");
  }
  ;
 
