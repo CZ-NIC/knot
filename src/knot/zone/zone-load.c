@@ -518,6 +518,8 @@ static void process_rr(const scanner_t *scanner)
 			                 zone_name, name);
 			free(name);
 			free(zone_name);
+			/* This is already deprecated in 1.4, won't create a new API. */
+			hattrie_del(parser->lookup_tree, current_owner->name, current_owner->size);
 			knot_rrset_deep_free(&current_rrset, 1, 1);
 			return;
 		}
