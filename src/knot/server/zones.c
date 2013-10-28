@@ -1855,6 +1855,25 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 
 /*----------------------------------------------------------------------------*/
 
+static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd)
+{
+	int ret = KNOT_EOK;
+	time_t now = time(NULL);
+	pthread_mutex_lock(&zd->lock);
+	if (now + (zd->conf->sig_lifetime - 7200) <
+	    zd->dnssec_timer->tv.tv_sec) {
+		// Drop old event, earlier signing needed
+		evsched_event_free(zd->dnssec_timer->parent, zd->dnssec_timer);
+		zd->dnssec_timer = NULL;
+		ret = zones_schedule_dnssec(zone,
+		                            expiration_to_relative(now +
+		                            	(zd->conf->sig_lifetime - 7200)),
+		                            false);
+	}
+	pthread_mutex_unlock(&zd->lock);
+	return ret;
+}
+
 /*! \brief Process UPDATE query.
  *
  * Functions expects that the query is already authenticated
@@ -2017,6 +2036,18 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			return ret;
 		}
 		assert(dnssec_contents);
+		
+		// Plan zone resign if needed
+		zonedata_t *zd = (zonedata_t *)zone->data;
+		assert(zd && zd->dnssec_timer);
+		ret = replan_zone_sign_after_ddns(zone, zd);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s: Failed to replan zone sign %s\n",
+			               msg, knot_strerror(ret));
+			zones_store_changesets_rollback(transaction);
+			zones_free_merged_changesets(chgsets, sec_chs);
+			return ret;
+		}
 	}
 
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
