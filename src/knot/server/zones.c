@@ -1415,17 +1415,6 @@ dbg_zones_exec(
                                        "from database.\n", name);
 			free(name);
 );
-			/* Invalidate ACLs - since we would need to copy each
-			 * remote data and keep ownership, I think it's no harm
-			 * to drop all ACLs for the discarded zone.
-			 * refs #1976 */
-			zonedata_t *zd = (zonedata_t*)knot_zone_data(old_zone);
-			conf_zone_t *zconf = zd->conf;
-			WALK_LIST_FREE(zconf->acl.xfr_in);
-			WALK_LIST_FREE(zconf->acl.xfr_out);
-			WALK_LIST_FREE(zconf->acl.notify_in);
-			WALK_LIST_FREE(zconf->acl.notify_out);
-			WALK_LIST_FREE(zconf->acl.update_in);
 
 			/* Remove from zone db. */
 			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
