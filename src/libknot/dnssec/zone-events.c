@@ -80,7 +80,10 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	}
 
 	// Override signature lifetime, if set in config
-	int sig_lf = ((zonedata_t *)knot_zone_data(zone))->conf->sig_lifetime;
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	pthread_mutex_lock(&zd->lock);
+	int sig_lf = zd->conf->sig_lifetime;
+	pthread_mutex_unlock(&zd->lock);
 	if (sig_lf > 0) {
 		policy->sign_lifetime = sig_lf;
 	}
