@@ -36,7 +36,7 @@ static char *randstr() {
 
 int main(int argc, char *argv[])
 {
-	plan(6);
+	plan(8);
 
 	/* Interesting intems. */
 	unsigned count = 10;
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 
 	/* Dummy items. */
 	srand(time(NULL));
-	unsigned dummy_count = 10000;
+	unsigned dummy_count = 32768;
 	char **dummy = xmalloc(sizeof(char*) * dummy_count);
 	for (unsigned i = 0; i < dummy_count; ++i) {
 		dummy[i] = randstr();
@@ -131,6 +131,25 @@ int main(int argc, char *argv[])
 	int ret = hattrie_find_lpr(t, false_lpr, strlen(false_lpr), &v);
 	ok(ret != 0 && v == NULL, "hattrie: non-existent prefix lookup");
 
+	/* Unsorted iteration */
+	unsigned counted = 0;
+	hattrie_iter_t *it = hattrie_iter_begin(t, false);
+	while (!hattrie_iter_finished(it)) {
+		++counted;
+		hattrie_iter_next(it);
+	}
+	is_int(hattrie_weight(t), counted, "hattrie: unsorted iteration");
+	hattrie_iter_free(it);
+
+	/* Sorted iteration. */
+	counted = 0;
+	it = hattrie_iter_begin(t, true);
+	while (!hattrie_iter_finished(it)) {
+		++counted;
+		hattrie_iter_next(it);
+	}
+	is_int(hattrie_weight(t), counted, "hattrie: sorted iteration");
+	hattrie_iter_free(it);
 
 	for (unsigned i = 0; i < dummy_count; ++i) {
 		free(dummy[i]);

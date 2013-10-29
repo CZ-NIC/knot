@@ -224,6 +224,8 @@ libknots_la_SOURCES =				\
 	common/log.h				\
 	common/mempool.c			\
 	common/mempool.h			\
+	common/hhash.c				\
+	common/hhash.h				\
 	common/hattrie/ahtable.c		\
 	common/hattrie/ahtable.h		\
 	common/hattrie/hat-trie.c		\

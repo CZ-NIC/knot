@@ -46,6 +46,8 @@ src/common/fdset.c
 src/common/fdset.h
 src/common/getline.c
 src/common/getline.h
+src/common/hhash.c
+src/common/hhash.h
 src/common/hattrie/ahtable.c
 src/common/hattrie/ahtable.h
 src/common/hattrie/hat-trie.c
@@ -271,6 +273,7 @@ tests/dnssec_zone_nsec.c
 tests/dthreads.c
 tests/events.c
 tests/fdset.c
+tests/hhash.c
 tests/hattrie.c
 tests/journal.c
 tests/rrl.c
