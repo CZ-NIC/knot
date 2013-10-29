@@ -22,6 +22,7 @@ static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
 #define HOP_BIT(d) ((hhbitvec_t)1 << (d))
 #define HHVAL_LEN sizeof(value_t)
 #define HHKEY_LEN (HHVAL_LEN + sizeof(uint16_t))
+#define HHSCAN_THRESHOLD 16
 
 /* Data is composed of {value, keylen, key}.
  * Value is fixed size (pointer), so is keylen.
@@ -103,7 +104,34 @@ static bool hhelem_isequal(hhelem_t *elm, const char *key, uint16_t len)
 	if (klen != len) {
 		return false;
 	}
+
 	return memcmp(KEY_STR(elm->d), key, len) == 0;
+}
+
+/*! \brief Binary search index for key. */
+static int hhash_index_binsearch(hhash_t *tbl, int* found, const char* key, uint16_t len)
+{
+	assert(tbl->index != NULL);
+
+	/* the array is T->m size and sorted, use binary search */
+	int r = 0;
+	int a = 0, b = tbl->weight - 1;
+	while (a <= b) {
+		*found = (a + b) / 2;    /* divide interval */
+		void *item = tbl->item [ tbl->index[*found] ].d;
+		r = key_cmp(key, len, KEY_STR(item), key_readlen(item));
+		if (r == 0) {
+			break;
+		} else {
+			if (r < 0) {
+				b = *found - 1;
+			} else {
+				a = *found + 1;
+			}
+		}
+	}
+
+	return r;
 }
 
 /*! \brief Find matching index + offset. */
@@ -257,6 +285,16 @@ void hhash_free(hhash_t *tbl)
 
 value_t *hhash_find(hhash_t* tbl, const char* key, uint16_t len)
 {
+	/* It is faster to scan index using binary search for low fill,
+	 * as it doesn't present constant hashing penalty. */
+	if (tbl->index && tbl->weight < HHSCAN_THRESHOLD) {
+		int indirect_id = 0;
+		int r = hhash_index_binsearch(tbl, &indirect_id, key, len);
+		if (r == 0) {
+			return hhash_indexval(tbl, indirect_id);
+		}
+	}
+
 	return hhash_map(tbl, key, len, 0); /* Don't insert. */
 }
 
@@ -408,26 +446,8 @@ int hhash_find_leq(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 		return 1;
 	}
 
-	assert(tbl->index != NULL);
-
-	/* the array is T->m size and sorted, use binary search */
-	int r = 0;
-	int a = 0, b = tbl->weight - 1, k = 0;
-	while (a <= b) {
-		k = (a + b) / 2;    /* divide interval */
-		void *item = tbl->item [ tbl->index[k] ].d;
-		r = key_cmp(key, len, KEY_STR(item), key_readlen(item));
-		if (r == 0) {
-			break;
-		}
-		if (r < 0) {
-			b = k - 1;
-		} else {
-			a = k + 1;
-		}
-
-	}
-
+	int k = 0;
+	int r = hhash_index_binsearch(tbl, &k, key, len);
 	if (r < 0) {
 		--k;    /* k is after previous node */
 		r = -1;
