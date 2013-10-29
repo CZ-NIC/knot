@@ -17,6 +17,7 @@ check_PROGRAMS = \
 	tests/wire \
 	tests/dname \
 	tests/ztree \
+	tests/zonedb \
 	tests/dnssec_keys \
 	tests/dnssec_nsec3 \
 	tests/dnssec_sign \
