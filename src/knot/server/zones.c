@@ -1556,80 +1556,58 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 	return ret;
 }
 
-/*! \brief Structure for multithreaded zone loading. */
-struct zonewalk_t {
+/*! \brief Context for threaded zone loader. */
+typedef struct {
+	const struct conf_t *config;
 	knot_nameserver_t *ns;
 	knot_zonedb_t *db_new;
 	pthread_mutex_t lock;
-	int inserted;
-	unsigned qhead;
-	unsigned qtail;
-	conf_zone_t *q[];
-
-};
+} zone_loader_ctx_t;
 
 /*! Thread entrypoint for loading zones. */
-static int zonewalker(dthread_t *thread)
+static int zones_loader_thread(dthread_t *thread)
 {
-	if (thread == NULL) {
+	if (thread == NULL || thread->data == NULL) {
 		return KNOT_ERROR;
 	}
 
-	struct zonewalk_t *zw = (struct zonewalk_t *)thread->data;
-	if (zw == NULL) {
-		return KNOT_ERROR;
-	}
-
-	unsigned i = 0;
-	int inserted = 0;
-	knot_zone_t **zones = NULL;
-	size_t allocd = 0;
+	int ret = KNOT_ERROR;
+	knot_zone_t *zone = NULL;
+	conf_zone_t *zone_config = NULL;
+	zone_loader_ctx_t *ctx = (zone_loader_ctx_t *)thread->data;
 	for(;;) {
-		/* Fetch queue head. */
-		pthread_mutex_lock(&zw->lock);
-		i = zw->qhead++;
-		pthread_mutex_unlock(&zw->lock);
-		if (i >= zw->qtail) {
+		/* Fetch zone configuration from the list. */
+		pthread_mutex_lock(&ctx->lock);
+		if (EMPTY_LIST(ctx->config->zones)) {
+			pthread_mutex_unlock(&ctx->lock);
 			break;
 		}
 
-		if (mreserve((char **)&zones, sizeof(knot_zone_t*),
-		             inserted + 1, 32, &allocd) < 0) {
-			dbg_zones("zones: failed to reserve space for "
-			          "loading zones\n");
-			continue;
-		}
+		/* Disconnect from the list and start processing. */
+		zone_config = HEAD(ctx->config->zones);
+		rem_node(&zone_config->n);
+		pthread_mutex_unlock(&ctx->lock);
+		ret = zones_insert_zone(zone_config, &zone, ctx->ns);
 
-		int ret = zones_insert_zone(zw->q[i], zones + inserted, zw->ns);
+		/* Insert into database if properly loaded. */
+		pthread_mutex_lock(&ctx->lock);
 		if (ret == KNOT_EOK) {
-			++inserted;
-		}
-	}
-
-	/* Collect results. */
-	pthread_mutex_lock(&zw->lock);
-	zw->inserted += inserted;
-	for (int i = 0; i < inserted; ++i) {
-		zonedata_t *zd = (zonedata_t *)knot_zone_data(zones[i]);
-		if (knot_zonedb_add_zone(zw->db_new, zones[i]) != KNOT_EOK) {
-			log_server_error("Failed to insert zone '%s' "
-			                 "into database.\n", zd->conf->name);
-			/* Not doing this here would result in memory errors. */
-			rem_node(&zd->conf->n);
-			knot_zone_deep_free(zones + i);
+			if (knot_zonedb_add_zone(ctx->db_new, zone) != KNOT_EOK) {
+				log_server_error("Failed to insert zone '%s' "
+				                 "into database.\n", zone_config->name);
+				knot_zone_deep_free(&zone);
+			}
 		} else {
-			/* Unlink zone config from conf(),
-			 * transferring ownership to zonedata. */
-			rem_node(&zd->conf->n);
+			/* Unable to load, discard configuration. */
+			conf_free_zone(zone_config);
 		}
+		pthread_mutex_unlock(&ctx->lock);
 	}
-	pthread_mutex_unlock(&zw->lock);
-	free(zones);
 
 	return KNOT_EOK;
 }
 
-static int zonewalker_destruct(dthread_t *thread)
+static int zones_loader_destruct(dthread_t *thread)
 {
 	knot_dnssec_thread_cleanup();
 	return KNOT_EOK;
@@ -1642,50 +1620,30 @@ static int zonewalker_destruct(dthread_t *thread)
  * new. New zones are loaded.
  *
  * \param ns Name server instance.
- * \param zone_conf Zone configuration.
- * \param db_new New zone database.
+ * \param conf Server configuration.
  *
  * \return Number of inserted zones.
  */
-static int zones_insert_zones(knot_nameserver_t *ns,
-                              const list_t *zone_conf,
-                              knot_zonedb_t *db_new)
+static knot_zonedb_t *zones_load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
 {
-	int ret = 0;
-	size_t zcount = 0;
-	conf_zone_t *z = NULL;
-	WALK_LIST(z, *zone_conf) {
-		++zcount;
+	/* Initialize threaded loader. */
+	int ret = KNOT_EOK;
+	zone_loader_ctx_t ctx;
+	ctx.ns = ns;
+	ctx.config = conf;
+	ctx.db_new = knot_zonedb_new(conf->zones_count);
+	if (ctx.db_new == NULL) {
+		return NULL;
 	}
-	if (zcount == 0)
-		return 0;
-
-	/* Initialize zonewalker. */
-	size_t zwlen = sizeof(struct zonewalk_t) + zcount * sizeof(conf_zone_t*);
-	struct zonewalk_t *zw = malloc(zwlen);
-	if (zw == NULL) {
-		return KNOT_ENOMEM;
+	if (pthread_mutex_init(&ctx.lock, NULL) < 0) {
+		knot_zonedb_free(&ctx.db_new);
+		return NULL;
 	}
-	memset(zw, 0, zwlen);
-	zw->ns = ns;
-	zw->db_new = db_new;
-	zw->inserted = 0;
-	if (pthread_mutex_init(&zw->lock, NULL) < 0) {
-		free(zw);
-		return KNOT_ENOMEM;
-	}
-	unsigned i = 0;
-	WALK_LIST(z, *zone_conf) {
-		zw->q[i++] = z;
-	}
-	zw->qhead = 0;
-	zw->qtail = zcount;
 
 	/* Initialize threads. */
-	size_t thrs = dt_optimal_size();
-	if (thrs > zcount) thrs = zcount;
-	dt_unit_t *unit =  dt_create_coherent(thrs, &zonewalker,
-	                                      &zonewalker_destruct, zw);
+	size_t thread_count = MIN(conf->zones_count, dt_optimal_size());
+	dt_unit_t *unit = NULL;
+	unit = dt_create_coherent(thread_count, &zones_loader_thread, &zones_loader_destruct, &ctx);
 	if (unit != NULL) {
 		/* Start loading. */
 		dt_start(unit);
@@ -1693,14 +1651,13 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 		dt_delete(&unit);
 
 		/* Collect counts. */
-		ret = zw->inserted;
+		ret = knot_zonedb_zone_count(ctx.db_new);
 	} else {
 		ret = KNOT_ENOMEM;
 	}
 
-	pthread_mutex_destroy(&zw->lock);
-	free(zw);
-	return ret;
+	pthread_mutex_destroy(&ctx.lock);
+	return ctx.db_new;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1719,33 +1676,22 @@ static int zones_insert_zones(knot_nameserver_t *ns,
 static int zones_remove_zones(const knot_zonedb_t *db_new,
                               knot_zonedb_t *db_old)
 {
-	hattrie_iter_t *i = hattrie_iter_begin(db_new->zone_tree, 0);
-	while(!hattrie_iter_finished(i)) {
+	unsigned new_zone_count = db_new->count;
+	const knot_zone_t **new_zones = knot_zonedb_zones(db_new);
+	const knot_zone_t *old_zone = NULL;
+	for (unsigned i = 0; i < new_zone_count; ++i) {
 
 		/* try to find the new zone in the old DB
 		 * if the pointers match, remove the zone from old DB
 		 */
-		/*! \todo Find better way of removing zone with given pointer.*/
-		knot_zone_t *new_zone = (knot_zone_t *)(*hattrie_iter_val(i));
-		knot_zone_t *old_zone = knot_zonedb_find_zone(
-		                        db_old, knot_zone_name(new_zone));
-		if (old_zone == new_zone) {
-dbg_zones_exec(
-			char *name = knot_dname_to_str(knot_zone_name(old_zone));
-			dbg_zones_verb("zones: zone pointers match, removing zone %s "
-                                       "from database.\n", name);
-			free(name);
-);
-
+		old_zone = knot_zonedb_find_zone(db_old, knot_zone_name(new_zones[i]));
+		if (old_zone == new_zones[i]) {
 			/* Remove from zone db. */
 			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
 			                              knot_zone_name(old_zone));
 			assert(rm == old_zone);
 		}
-		hattrie_iter_next(i);
 	}
-
-	hattrie_iter_free(i);
 
 	return KNOT_EOK;
 }
@@ -2125,28 +2071,19 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	}
 	rcu_read_unlock();
 
-	/* Create new zone DB */
-	knot_zonedb_t *db_new = knot_zonedb_new();
-	if (db_new == NULL) {
-		return KNOT_ERROR;
-	}
-
-	log_server_info("Loading %d zones...\n", conf->zones_count);
-
 	/* Insert all required zones to the new zone DB. */
 	/*! \warning RCU must not be locked as some contents switching will
 	             be required. */
-	int inserted = zones_insert_zones(ns, &conf->zones, db_new);
-	if (inserted < 0) {
-		log_server_warning("Failed to load zones - %s\n",
-		                   knot_strerror(inserted));
-		inserted = 0;
-	}
-	log_server_info("Loaded %d out of %d zones.\n", inserted,
-	                conf->zones_count);
-
-	if (inserted != conf->zones_count) {
-		log_server_warning("Not all the zones were loaded.\n");
+	knot_zonedb_t *db_new = zones_load_zonedb(ns, conf);
+	if (db_new == NULL) {
+		log_server_warning("Failed to load zones.\n");
+	} else {
+		size_t loaded = knot_zonedb_zone_count(db_new);
+		log_server_info("Loaded %zu out of %d zones.\n",
+		                loaded, conf->zones_count);
+		if (loaded != conf->zones_count) {
+			log_server_warning("Not all the zones were loaded.\n");
+		}
 	}
 
 	/* Lock RCU to ensure none will deallocate any data under our hands. */
@@ -2172,8 +2109,8 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	 */
 	int ret = zones_remove_zones(db_new, *db_old);
 
-	/* Heal zonedb index. */
-	hattrie_build_index(db_new->zone_tree);
+	/* Rebuild zone database search stack. */
+	knot_zonedb_build_index(db_new);
 
 	/* Unlock RCU, messing with any data will not affect us now */
 	rcu_read_unlock();
@@ -3025,21 +2962,18 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 
 	/* Update events scheduled for zone. */
 	rcu_read_lock();
-	knot_zone_t **zones = (knot_zone_t **)knot_zonedb_zones(ns->zone_db);
-	if (zones == NULL) {
-		rcu_read_unlock();
-		return KNOT_ENOMEM;
-	}
+	knot_zone_t *zone = NULL;
+	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
 
 	/* REFRESH zones. */
 	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
-		zones_schedule_refresh(zones[i], 0); /* Now. */
-		zones_schedule_notify(zones[i]);
+		zone = (knot_zone_t *)zones[i];
+		zones_schedule_refresh(zone, 0); /* Now. */
+		zones_schedule_notify(zone);
 	}
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
-	free(zones);
 
 	return KNOT_EOK;
 }

@@ -335,7 +335,6 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 
 	}
 	rcu_read_unlock();
-	free(zones);
 
 	a->rlen = sizeof(a->resp) - 1 - rb;
 	return ret;
@@ -382,7 +381,6 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 			ret = remote_zone_flush(s, zones[i]);
 		}
 		rcu_read_unlock();
-		free(zones);
 		return ret;
 	}
 

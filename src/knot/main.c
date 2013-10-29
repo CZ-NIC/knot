@@ -314,7 +314,7 @@ int main(int argc, char **argv)
 	int res = 0;
 	log_server_info("Starting server...\n");
 	if ((server_start(server)) == KNOT_EOK) {
-		size_t zcount = server->nameserver->zone_db->zone_count;
+		size_t zcount = server->nameserver->zone_db->count;
 		if (!zcount) {
 			log_server_warning("Server started, but no zones served.\n");
 		}

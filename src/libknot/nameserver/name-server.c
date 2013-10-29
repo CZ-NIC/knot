@@ -3057,7 +3057,7 @@ knot_nameserver_t *knot_ns_create()
 
 	// Create zone database structure
 	dbg_ns("Creating Zone Database structure...\n");
-	ns->zone_db = knot_zonedb_new();
+	ns->zone_db = knot_zonedb_new(0);
 	if (ns->zone_db == NULL) {
 		ERR_ALLOC_FAILED;
 		free(ns);
