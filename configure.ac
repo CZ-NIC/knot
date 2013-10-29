@@ -74,6 +74,7 @@ AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--enable-fastparser], [Generate fast zone parser (requires Ragel!)]),
     [touch src/zscanner/scanner.rl; AC_SUBST([FSM_TYPE], [-G2])],
     [])
+AM_CONDITIONAL([FAST_PARSER], test "$FSM_TYPE" == "-G2")
 
 # Debug modules
 AC_ARG_ENABLE([debug],
