@@ -26,9 +26,9 @@ extern "C" {
 #include <stdbool.h>
 #include "libknot/common.h"
 #include "common/mempattern.h"
+#include "common/hhash.h"
 
 /* Hat-trie defines. */
-typedef void* value_t;         /* User pointers as value. */
 #define AHTABLE_INIT_SIZE 1024
 #define TRIE_ZEROBUCKETS  0    /* Do not use hash buckets (pure trie). */
 #define TRIE_BUCKET_SIZE  1536 /* Reasonably low for ordered search perf. */
