@@ -29,7 +29,6 @@
 #ifndef _KNOT_DNSSEC_ZONE_SIGN_H_
 #define _KNOT_DNSSEC_ZONE_SIGN_H_
 
-#include "common/hattrie/ahtable.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/dnssec/zone-keys.h"
@@ -125,7 +124,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
  */
 bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
                                         const knot_rrset_t *rrset,
-                                        ahtable_t *table);
+                                        hattrie_t *table);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 

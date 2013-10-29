@@ -30,7 +30,6 @@
 
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
-#include "common/hattrie/ahtable.h"
 
 struct knot_zone;
 

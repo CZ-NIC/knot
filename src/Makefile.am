@@ -226,8 +226,6 @@ libknots_la_SOURCES =				\
 	common/mempool.h			\
 	common/hhash.c				\
 	common/hhash.h				\
-	common/hattrie/ahtable.c		\
-	common/hattrie/ahtable.h		\
 	common/hattrie/hat-trie.c		\
 	common/hattrie/hat-trie.h		\
 	common/hattrie/murmurhash3.c		\

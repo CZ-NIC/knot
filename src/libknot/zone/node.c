@@ -26,7 +26,6 @@
 #include "libknot/rrset.h"
 #include "common/descriptor.h"
 #include "libknot/util/debug.h"
-#include "common/hattrie/ahtable.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

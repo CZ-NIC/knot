@@ -48,8 +48,6 @@ src/common/getline.c
 src/common/getline.h
 src/common/hhash.c
 src/common/hhash.h
-src/common/hattrie/ahtable.c
-src/common/hattrie/ahtable.h
 src/common/hattrie/hat-trie.c
 src/common/hattrie/hat-trie.h
 src/common/hattrie/murmurhash3.c
