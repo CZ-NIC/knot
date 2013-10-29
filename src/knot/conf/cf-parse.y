@@ -347,8 +347,7 @@ static void conf_zone_start(void *scanner, char *name) {
 	}
 
 	// DNSSEC configuration
-	this_zone->dnssec_enable = true;
-	if (new_config->dnssec_global) {
+	if (new_config->dnssec_enable) {
 		this_zone->dnssec_enable = new_config->dnssec_enable;
 	}
 
@@ -984,8 +983,7 @@ zones:
  | zones DBSYNC_TIMEOUT INTERVAL ';' {
 	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
  }
- | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i;
-                                  new_config->dnssec_global = true; }
+ | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i; }
  | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
  | zones SIGNATURE_LIFETIME NUM ';' {
 	SET_NUM(new_config->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");

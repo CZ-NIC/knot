@@ -561,7 +561,7 @@ conf_t *conf_new(const char* path)
 	c->logs_count = -1;
 
 	/* DNSSEC. */
-	c->dnssec_enable = true;
+	c->dnssec_enable = false;
 
 	/* ACLs. */
 	c->ctl.acl = acl_new();
@@ -689,8 +689,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	conf->zones_count = 0;
 	init_list(&conf->zones);
 
-	conf->dnssec_global = false;
-	conf->dnssec_enable = true;
+	conf->dnssec_enable = false;
 	if (conf->filename) {
 		free(conf->filename);
 		conf->filename = NULL;
