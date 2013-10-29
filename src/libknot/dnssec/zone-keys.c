@@ -24,6 +24,7 @@
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
+#include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 
 /*!
@@ -93,7 +94,7 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 
 	time_t now = time(NULL);
 
-	key->is_ksk = params->flags & 1;
+	key->is_ksk = params->flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
 
 	key->is_active = params->time_activate <= now &&
 	                 (params->time_inactive == 0 || now <= params->time_inactive);
