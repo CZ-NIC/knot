@@ -165,7 +165,7 @@ static const knot_zone_key_t *get_matching_zone_key(const knot_rrset_t *rrsigs,
 
 	uint16_t keytag = knot_rdata_rrsig_key_tag(rrsigs, pos);
 
-	return get_zone_key(keys, keytag);
+	return knot_get_zone_key(keys, keytag);
 }
 
 /*!
@@ -683,7 +683,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
 		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
 		uint16_t keytag = knot_keytag(rdata, rdata_size);
-		const knot_zone_key_t *key = get_zone_key(zone_keys, keytag);
+		const knot_zone_key_t *key = knot_get_zone_key(zone_keys, keytag);
 		if (key == NULL) {
 			dbg_dnssec_detail("keeping unknown DNSKEY with tag "
 			                  "%d\n", keytag);
@@ -844,7 +844,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
 		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
 		uint16_t keytag = knot_keytag(rdata, rdata_size);
-		if (get_zone_key(zone_keys, keytag) != NULL) {
+		if (knot_get_zone_key(zone_keys, keytag) != NULL) {
 			continue;
 		}
 
