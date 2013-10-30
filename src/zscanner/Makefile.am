@@ -5,7 +5,9 @@ noinst_LTLIBRARIES = libzscanner.la
 
 EXTRA_DIST =				\
 	scanner.rl			\
-	scanner_body.rl
+	scanner_body.rl			\
+	scanner.c.g2			\
+	scanner.c.g0
 
 BUILT_SOURCES = descriptor.h descriptor.c
 CLEANFILES = descriptor.h descriptor.c
@@ -17,14 +19,25 @@ descriptor.h: $(top_srcdir)/src/common/descriptor.h
 descriptor.c: $(top_srcdir)/src/common/descriptor.c
 	cp $(top_srcdir)/src/common/descriptor.c $@
 
-if HAVE_RAGEL
 BUILT_SOURCES += scanner.c
-CLEANFILES += scanner.c scanner.c.in
+CLEANFILES += scanner.c
 
+if HAVE_RAGEL
 scanner.c: scanner.rl scanner_body.rl
-	$(RAGEL) $(FSM_TYPE) -s -o $@.in $(srcdir)/scanner.rl
-	sed '/#line/d' $@.in > $@
+	$(RAGEL) $(FSM_TYPE) -s -o $@ $(srcdir)/scanner.rl
+else
+
+if G2_PARSER
+scanner.c: scanner.c.g2
+	cp $@.g2 $@
 endif
+
+if G0_PARSER
+scanner.c: scanner.c.g0
+	cp $@.g0 $@
+endif
+
+endif #HAVE_RAGEL
 
 libzscanner_la_SOURCES =		\
 	zscanner.h			\

@@ -3,7 +3,7 @@
 import argparse, importlib, logging, os, re, sys, tempfile, time, traceback
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(current_dir + "/tools")
-import params
+import params, dnstest
 
 # Parse command line arguments.
 parser = argparse.ArgumentParser()
@@ -78,6 +78,7 @@ log.info("Working directory %s" % outs_dir)
 
 case_cnt = 0
 fail_cnt = 0
+skip_cnt = 0
 for test in sorted(included):
     # Skip excluded test set.
     if test in excluded and not excluded[test]:
@@ -129,6 +130,9 @@ for test in sorted(included):
 
         try:
             importlib.import_module("%s.%s.%s.test" % (tests_dir, test, case))
+        except dnstest.Skip as exc:
+            log.error(" * case \'%s\':\tSKIPPED (%s)" % (case, format(exc)))
+            skip_cnt += 1
         except Exception as exc:
             save_traceback(params.out_dir)
             if args.debug:
@@ -161,10 +165,12 @@ for test in sorted(included):
 
         params.case_log.close()
 
+msg_cases = "TEST CASES: %i" % case_cnt
+msg_skips = ", SKIPPED: %i" % skip_cnt if skip_cnt > 0 else ""
+msg_res = ", FAILED: %i" % fail_cnt if fail_cnt > 0 else ", SUCCESS"
+log.info(msg_cases + msg_skips + msg_res)
+
 if fail_cnt:
-    log.info("TEST CASES: %i, FAILED: %i" % (case_cnt, fail_cnt))
     exit(1)
 else:
-    log.info("TEST CASES: %i, SUCCESS" % (case_cnt))
     exit(0)
-
