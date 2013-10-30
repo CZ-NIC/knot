@@ -906,7 +906,7 @@ zone_start:
  | LOG_LEVEL { conf_zone_start(scanner, strdup($1.t)); }
  | CONTROL    { conf_zone_start(scanner, strdup($1.t)); }
  | NUM '/' TEXT {
-    unsigned prefix_len;
+    unsigned prefix_len = 0;
     SET_NUM(prefix_len, $1.i, 0, 255, "origin prefix length");
     size_t len = 3 + 1 + strlen($3.t) + 1; /* <0,255> '/' rest */
     char *name = malloc(len * sizeof(char));
