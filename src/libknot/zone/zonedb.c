@@ -193,8 +193,8 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 	knot_zonedb_sort(db->array, db->count);
 	
 	/* Scan the array and group names with the same label count together. */
-	unsigned prev_label_count = 0;
-	unsigned current_label_count = 0;
+	int prev_label_count = -1;
+	int current_label_count = -1;
 	knot_zone_t **endp = db->array + db->count;
 	knot_zonedb_stack_t *stack_top = db->stack - 1; /* Before actual stack. */
 	db->stack_height = 0;
