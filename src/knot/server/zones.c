@@ -1365,6 +1365,16 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		return KNOT_EINVAL;
 	}
 
+	/* DNSSEC prerequisites. */
+	if (z->dnssec_enable && (!EMPTY_LIST(z->acl.notify_in) ||
+				 !EMPTY_LIST(z->acl.xfr_in))) {
+		log_server_warning("DNSSEC signing enabled for zone "
+				   "'%s', disabling incoming XFR.\n",
+				   z->name);
+		WALK_LIST_FREE(z->acl.notify_in);
+		WALK_LIST_FREE(z->acl.xfr_in);
+	}
+
 	/* Try to find the zone in the current zone db, doesn't need RCU. */
 	knot_zone_t *zone = knot_zonedb_find_zone(ns->zone_db, dname);
 
@@ -1428,7 +1438,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 			/* Initialize zone-related data. */
 			zonedata_init(z, zone);
-			*dst = zone;
 		}
 	} else {
 		dbg_zones_verb("zones: found '%s' in old database, "
@@ -1437,7 +1446,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			log_server_info("Zone '%s' is up-to-date, no need "
 			                "for reload.\n", z->name);
 		}
-		*dst = zone;
 		ret = KNOT_EOK;
 	}
 
@@ -1450,16 +1458,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		if (zd->conf != z) {
 			conf_free_zone(zd->conf);
 			zd->conf = z;
-		}
-
-		/* DNSSEC. */
-		if (z->dnssec_enable && (!EMPTY_LIST(z->acl.notify_in) ||
-		                         !EMPTY_LIST(z->acl.xfr_in))) {
-			log_server_warning("DNSSEC signing enabled for zone "
-			                   "'%s', disabling incoming XFR.\n",
-			                   z->name);
-			WALK_LIST_FREE(z->acl.notify_in);
-			WALK_LIST_FREE(z->acl.xfr_in);
 		}
 
 		/* Update ACLs. */
@@ -1550,6 +1548,14 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 		/* Create and apply changesets (zone-diff and DNSSEC). */
 		ret = zones_do_diff_and_sign(z, zone, ns, dname, zone_changed);
+		if (ret != KNOT_EOK) {
+			zd->conf = NULL;
+			knot_zone_deep_free(&zone);
+		}
+	}
+
+	if (ret == KNOT_EOK) {
+		*dst = zone;
 	}
 
 	knot_dname_free(&dname);
