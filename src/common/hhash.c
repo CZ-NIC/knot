@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "common/hhash.h"
+#include "common/binsearch.h"
 #include "common/errcode.h"
 #include "common/hattrie/murmurhash3.h"
 #include "libknot/common.h"
@@ -22,7 +23,7 @@ static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
 #define HOP_BIT(d) ((hhbitvec_t)1 << (d))
 #define HHVAL_LEN sizeof(value_t)
 #define HHKEY_LEN (HHVAL_LEN + sizeof(uint16_t))
-#define HHSCAN_THRESHOLD 16
+#define HHSCAN_THRESHOLD (HOP_LEN / 2)
 
 /* Data is composed of {value, keylen, key}.
  * Value is fixed size (pointer), so is keylen.
@@ -78,7 +79,9 @@ static int key_cmp(const char *k1, uint16_t k1_len, const char *k2, uint16_t k2_
 	}
 
 	/* Key string is equal, compare lengths. */
-	if (k1_len < k2_len) {
+	if (k1_len == k2_len) {
+		return 0;
+	} else if (k1_len < k2_len) {
 		return -1;
 	}
 
@@ -109,30 +112,8 @@ static bool hhelem_isequal(hhelem_t *elm, const char *key, uint16_t len)
 }
 
 /*! \brief Binary search index for key. */
-static int hhash_index_binsearch(hhash_t *tbl, int* found, const char* key, uint16_t len)
-{
-	assert(tbl->index != NULL);
-
-	/* the array is T->m size and sorted, use binary search */
-	int r = 0;
-	int a = 0, b = tbl->weight - 1;
-	while (a <= b) {
-		*found = (a + b) / 2;    /* divide interval */
-		void *item = tbl->item [ tbl->index[*found] ].d;
-		r = key_cmp(key, len, KEY_STR(item), key_readlen(item));
-		if (r == 0) {
-			break;
-		} else {
-			if (r < 0) {
-				b = *found - 1;
-			} else {
-				a = *found + 1;
-			}
-		}
-	}
-
-	return r;
-}
+#define CMP_I2K(t, k) (t)->item[t->index[k]].d
+#define CMP_LE(t,i,x...) (key_cmp(KEY_STR(CMP_I2K(t, i)), key_readlen(CMP_I2K(t, i)), x) <= 0)
 
 /*! \brief Find matching index + offset. */
 static int hhelem_free(hhash_t* tbl, uint32_t id, unsigned dist, value_t *val)
@@ -152,6 +133,12 @@ static int hhelem_free(hhash_t* tbl, uint32_t id, unsigned dist, value_t *val)
 		tbl->mm.free(elm->d);
 	}
 	elm->d = NULL;
+
+	/* Invalidate index. */
+	if (tbl->mm.free) {
+		tbl->mm.free(tbl->index);
+		tbl->index = NULL;
+	}
 
 	/* Update table weight. */
 	--tbl->weight;
@@ -288,11 +275,14 @@ value_t *hhash_find(hhash_t* tbl, const char* key, uint16_t len)
 	/* It is faster to scan index using binary search for low fill,
 	 * as it doesn't present constant hashing penalty. */
 	if (tbl->index && tbl->weight < HHSCAN_THRESHOLD) {
-		int indirect_id = 0;
-		int r = hhash_index_binsearch(tbl, &indirect_id, key, len);
-		if (r == 0) {
-			return hhash_indexval(tbl, indirect_id);
+		int k = BIN_SEARCH_FIRST_GE_CMP(tbl, tbl->weight, CMP_LE, key, len) - 1;
+		if (k > -1) {
+			hhelem_t *found = tbl->item + tbl->index[k];
+			if (hhelem_isequal(found, key, len)) {
+				return (value_t *)KEY_VAL(found->d);
+			}
 		}
+		return NULL; /* Not found. */
 	}
 
 	return hhash_map(tbl, key, len, 0); /* Don't insert. */
@@ -446,19 +436,20 @@ int hhash_find_leq(hhash_t* tbl, const char* key, uint16_t len, value_t** dst)
 		return 1;
 	}
 
-	int k = 0;
-	int r = hhash_index_binsearch(tbl, &k, key, len);
-	if (r < 0) {
-		--k;    /* k is after previous node */
-		r = -1;
-	} else if (r > 0) {
-		r = -1; /* k is previous node */
-	}
+	int k = BIN_SEARCH_FIRST_GE_CMP(tbl, tbl->weight, CMP_LE, key, len) - 1;
 	if (k > -1) {
-		*dst = hhash_indexval(tbl, k);
+		hhelem_t *found = tbl->item + tbl->index[k];
+		*dst = (value_t *)KEY_VAL(found->d);
+		/* Compare if found equal or predecessor. */
+		if (hhelem_isequal(found, key, len)) {
+			return 0; /* Exact match. */
+		} else {
+			return -1; /* Predecessor. */
+		}
 	}
 
-	return r;
+	/* No predecessor. */
+	return 1;
 }
 
 /* Private iterator flags. */
