@@ -106,6 +106,8 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_DNSSEC_EDECODE_RAW_SIGNATURE, "Cannot decode the raw signature." },
 	{ KNOT_DNSSEC_EINVALID_SIGNATURE, "Signature is invalid." },
 	{ KNOT_DNSSEC_ESIGN, "Cannot create the signature." },
+	{ KNOT_DNSSEC_ENOKEY, "No keys for signing." },
+	{ KNOT_DNSSEC_ENOKEYDIR, "Keydir does not exist." },
 
 	/* NSEC3 errors. */
 	{ KNOT_NSEC3_ECOMPUTE_HASH, "Cannot compute NSEC3 hash." },

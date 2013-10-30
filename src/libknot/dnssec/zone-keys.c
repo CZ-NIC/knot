@@ -126,8 +126,10 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 	DIR *keydir = opendir(keydir_name);
 	if (!keydir) {
-		return KNOT_DNSSEC_EINVALID_KEY;
+		return KNOT_DNSSEC_ENOKEYDIR;
 	}
+
+	char *zname = knot_dname_to_str(zone_name);
 
 	struct dirent entry_buf = { 0 };
 	struct dirent *entry = NULL;
@@ -213,11 +215,11 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		dbg_dnssec_detail("key is valid, tag %d, %s, %s, %s\n",
-		                  params.keytag,
-		                  key.is_ksk ? "KSK" : "ZSK",
-		                  key.is_active ? "active" : "inactive",
-		                  key.is_public ? "public" : "not-public");
+		log_zone_info("DNSSEC: Zone %s - key is valid, tag %d, %s, %s, "
+		              "%s\n", zname, params.keytag,
+		              key.is_ksk ? "KSK" : "ZSK",
+		              key.is_active ? "active" : "inactive",
+		              key.is_public ? "public" : "not-public");
 
 		keys->keys[keys->count] = key;
 		keys->count += 1;
@@ -228,15 +230,16 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	closedir(keydir);
 
 	if (keys->count == 0) {
-		return KNOT_DNSSEC_EINVALID_KEY;
+		free(zname);
+		return KNOT_DNSSEC_ENOKEY;
 	} else if (keys->count == KNOT_MAX_ZONE_KEYS) {
-		dbg_dnssec_detail("reached maximum count of zone keys\n");
+		log_zone_notice("DNSSEC: Zone %s - reached maximum count of "
+		                "keys.\n", zname);
 	}
+	free(zname);
 
 	int result = init_sign_contexts(keys);
 	if (result != KNOT_EOK) {
-		dbg_dnssec_detail("init_sign_contexts() failed (%s)\n",
-		                  knot_strerror(result));
 		free_zone_keys(keys);
 		return result;
 	}
