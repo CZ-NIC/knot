@@ -35,8 +35,6 @@ tests_zscanner_tool_SOURCES =		\
 
 tests_zscanner_tool_LDADD = libzscanner.la @LIBOBJS@
 
-BUILT_SOURCES += tests/data/06-0_INCLUDE.out
-CLEANFILES += tests/data/06-0_INCLUDE.out
 EXTRA_DIST += 				\
 	tests/TESTS			\
 	tests/zscanner-TESTS		\
