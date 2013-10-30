@@ -18,7 +18,7 @@
  * Returns the index of the found element or @N if no exists. Uses `ary_lt_x(ary,i,x)` to compare the @i'th element with @x.
  * The time complexity is `O(log(N))`.
  **/
-#define BIN_SEARCH_FIRST_GE_CMP(ary,N,x,ary_lt_x)  ({		\
+#define BIN_SEARCH_FIRST_GE_CMP(ary,N,ary_lt_x, x...)  ({		\
   uns l = 0, r = (N);						\
   while (l < r)							\
     {								\
@@ -31,24 +31,6 @@
   l;								\
 })
 
-/** Find the first element that matches. */
-#define BIN_SEARCH_FIRST_EQ_CMP(ary,N,x,ary_cmp_x)  ({		\
-  int i = -1; uns l = 0, r = (N);				\
-  while (l < r)							\
-    {								\
-      uns m = (l+r)/2;						\
-      int c = ary_cmp_x(ary,m,x);				\
-      if (c < 0) {						\
-        l = m+1;						\
-      } else if(c > 0) {					\
-        r = m; 							\
-      } else {							\
-        i = r = m; 						\
-      }								\
-    }								\
-  i;								\
-})
-
 /**
  * The default comparision macro for @BIN_SEARCH_FIRST_GE_CMP().
  **/
@@ -57,7 +39,7 @@
 /**
  * Same as @BIN_SEARCH_FIRST_GE_CMP(), but uses the default `<` operator for comparisions.
  **/
-#define BIN_SEARCH_FIRST_GE(ary,N,x) BIN_SEARCH_FIRST_GE_CMP(ary,N,x,ARY_LT_NUM)
+#define BIN_SEARCH_FIRST_GE(ary,N,x) BIN_SEARCH_FIRST_GE_CMP(ary,N,ARY_LT_NUM,x)
 
 /**
  * Search the sorted array @ary of @N elements (non-decreasing) for the first occurence of @x.
