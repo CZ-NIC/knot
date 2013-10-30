@@ -70,7 +70,7 @@ AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "true")
 
 # Set FSM type for Ragel
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--disable-fastparser], [Don't generate fast zone parser (requires Ragel!)]),
+    AS_HELP_STRING([--disable-fastparser], [Don't use faster zone parser]),
     [],
     [enable_fastparser=yes])
 

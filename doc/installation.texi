@@ -27,8 +27,6 @@ autoconf >= 2.65
 flex >= 2.5.31
 @item
 bison >= 2.3
-@item
-ragel >= 6.7 (only required for fast zone parsing)
 @end itemize
 
 @node Required libraries
@@ -114,10 +112,6 @@ $ ./configure --help
 
 If you have trouble with unknown syscalls under valgrind, disable recvmmsg by
 adding a parameter @command{--enable-recvmmsg=no} to configure.
-
-If you want to load huge zone files quickly, enable fast zone parser by
-adding a parameter @command{--enable-fastparser} to configure. In this case
-Ragel compiler is required.
 
 Knot DNS has also support for link time optimizations.
 You can enable it by the configure parameter @command{./configure --enable-lto=yes}.
