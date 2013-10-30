@@ -104,10 +104,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	if (!zone_config->dnssec_enable) {
-		char *zname = knot_dname_to_str(zone->name);
 		log_server_warning("DNSSEC: Zone %s - DNSSEC not enabled.\n",
 		                   zname);
-		free(zname);
 		return KNOT_EOK;
 	}
 
