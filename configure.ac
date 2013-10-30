@@ -82,8 +82,8 @@ AS_CASE([$enable_fastparser],
 	    [AC_MSG_ERROR([Ragel is needed to generate different parsers])])
         AC_SUBST([FSM_TYPE], [$enable_fastparser])
     ])
-AM_CONDITIONAL([G2_PARSER], test "$enable_fastparser" != "yes")
-AM_CONDITIONAL([G0_PARSER], test "$enable_fastparser" != "no")
+AM_CONDITIONAL([G2_PARSER], test "$enable_fastparser" = "yes")
+AM_CONDITIONAL([G0_PARSER], test "$enable_fastparser" = "no")
 
 # Debug modules
 AC_ARG_ENABLE([debug],
