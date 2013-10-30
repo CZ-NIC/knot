@@ -1049,11 +1049,16 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 		return result;
 	}
 
-	uint32_t expiration = MIN(normal_tree_expiration, nsec3_tree_expiration);
-
 	// renew the signatures a little earlies
+	uint32_t expiration = MIN(normal_tree_expiration, nsec3_tree_expiration);
 	assert(expiration >= policy->sign_refresh);
-	*expires_at = expiration - policy->sign_refresh;
+	expiration = expiration - policy->sign_refresh;
+
+	// DNSKEY updates
+	uint32_t dnskey_update = knot_get_next_zone_key_event(zone_keys);
+	expiration = MIN(expiration, dnskey_update);
+
+	*expires_at = expiration;
 
 	return KNOT_EOK;
 }
