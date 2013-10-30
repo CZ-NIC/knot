@@ -27,16 +27,18 @@ scanner.c: scanner.rl scanner_body.rl
 	$(RAGEL) $(FSM_TYPE) -s -o $@.in $(srcdir)/scanner.rl
 	sed '/#line/d' $@.in > $@
 else
-  if G2_PARSER
+
+if G2_PARSER
 scanner.c: scanner.c.g2
 	sed '/#line/d' $@.g2 > $@
-  endif
+endif
 
-  if G0_PARSER
+if G0_PARSER
 scanner.c: scanner.c.g0
 	sed '/#line/d' $@.g0 > $@
-  endif
 endif
+
+endif #HAVE_RAGEL
 
 libzscanner_la_SOURCES =		\
 	zscanner.h			\
