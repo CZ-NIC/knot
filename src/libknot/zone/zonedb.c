@@ -67,11 +67,17 @@ static int knot_zonedb_cmp(const knot_dname_t* d1, const knot_dname_t *d2)
 }
 
 /*! \brief Find an equal name in sorted array (binary search). */
-#define ZONEDB_CMP(arr,i,x) knot_zonedb_cmp(((arr)[i])->name, (x))
+#define ZONEDB_LEQ(arr,i,x) (knot_zonedb_cmp(((arr)[i])->name, (x)) <= 0)
 static long knot_zonedb_binsearch(knot_zone_t **arr, unsigned count,
-                               const knot_dname_t *name)
+                                  const knot_dname_t *name)
 {
-	return BIN_SEARCH_FIRST_EQ_CMP(arr, count, name, ZONEDB_CMP);
+	int k = BIN_SEARCH_FIRST_GE_CMP(arr, count, ZONEDB_LEQ, name) - 1;
+	if (k > -1 && knot_dname_is_equal(arr[k]->name, name)) {
+			return k;
+	}
+
+	return -1;
+
 }
 
 /*! \brief Find an equal name in an array (linear search).
