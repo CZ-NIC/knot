@@ -21,6 +21,10 @@ import zone_generate, params
 
 SEP = "------------------------------------"
 
+class Skip(Exception):
+    """Exception for skipping current case."""
+    pass
+
 def test_info():
     '''Get current test case name'''
 
@@ -417,6 +421,8 @@ class DnsServer(object):
         self.ident = None
         self.version = None
 
+        self.ratelimit = None
+
         self.ip = None
         self.addr = None
         self.port = None
@@ -640,6 +646,20 @@ class DnsServer(object):
         raise Exception("Can't query %s for %s %s %s." % \
                         (self.name, rname, rclass, rtype))
 
+
+    def create_sock(self, socket_type):
+        family = socket.AF_INET
+        if self.ip == 6:
+            family = socket.AF_INET6
+        return socket.socket(family, socket_type)
+
+    def send_raw(self, data, sock=None):
+        if sock is None:
+            sock = self.create_sock(socket.SOCK_DGRAM)
+        sent = sock.sendto(bytes(data, 'utf-8'), (self.addr, self.port))
+        if sent != len(data):
+            raise Exception("Can't send RAW data (%d bytes) to %s." % (len(data), self.name))
+
     def zones_wait(self, zones):
         for zone in zones:
             # Try to get SOA record with NOERROR.
@@ -675,6 +695,8 @@ class Bind(DnsServer):
 
     def __init__(self):
         super().__init__()
+        if not params.bind_bin:
+            raise Skip("No Bind")
         self.daemon_bin = params.bind_bin
         self.control_bin = params.bind_ctl
         self.ctlkey = Tsig(alg="hmac-md5")
@@ -812,6 +834,8 @@ class Knot(DnsServer):
 
     def __init__(self):
         super().__init__()
+        if not params.knot_bin:
+            raise Skip("No Knot")
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
 
@@ -824,7 +848,7 @@ class Knot(DnsServer):
         if value == True:
             conf.item(name, "on")
         elif value:
-            if value[:2] == "0x":
+            if isinstance(value, int) or value[:2] == "0x":
                 conf.item(name, value)
             else:
                 conf.item_str(name, value)
@@ -835,6 +859,7 @@ class Knot(DnsServer):
         self._on_str_hex(s, "identity", self.ident)
         self._on_str_hex(s, "version", self.version)
         self._on_str_hex(s, "nsid", self.nsid)
+        self._on_str_hex(s, "rate-limit", self.ratelimit)
         s.item_str("storage", self.dir)
         s.item_str("rundir", self.dir)
         s.end()
@@ -952,6 +977,8 @@ class Nsd(DnsServer):
 
     def __init__(self):
         super().__init__()
+        if not params.nsd_bin:
+            raise Skip("No NSD")
         self.daemon_bin = params.nsd_bin
         self.control_bin = params.nsd_ctl
 

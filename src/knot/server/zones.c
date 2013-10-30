@@ -17,6 +17,7 @@
 #include <config.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "common/lists.h"
 #include "common/prng.h"
@@ -354,7 +355,7 @@ static int zones_refresh_ev(event_t *e)
 	}
 
 	/* Create XFR request. */
-	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_SOA, XFR_FLAG_UDP);
+	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_SOA, XFR_FLAG_TCP);
 	rcu_read_unlock(); /* rq now holds a reference to zone */
 	if (!rq) {
 		return KNOT_EINVAL;
@@ -1735,17 +1736,6 @@ dbg_zones_exec(
                                        "from database.\n", name);
 			free(name);
 );
-			/* Invalidate ACLs - since we would need to copy each
-			 * remote data and keep ownership, I think it's no harm
-			 * to drop all ACLs for the discarded zone.
-			 * refs #1976 */
-			zonedata_t *zd = (zonedata_t*)knot_zone_data(old_zone);
-			conf_zone_t *zconf = zd->conf;
-			WALK_LIST_FREE(zconf->acl.xfr_in);
-			WALK_LIST_FREE(zconf->acl.xfr_out);
-			WALK_LIST_FREE(zconf->acl.notify_in);
-			WALK_LIST_FREE(zconf->acl.notify_out);
-			WALK_LIST_FREE(zconf->acl.update_in);
 
 			/* Remove from zone db. */
 			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
@@ -3510,8 +3500,8 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 
 		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
 		                                       zone, time);
-		dbg_zones("zone: REFRESH '%s' set to %u\n",
-		          zd->conf->name, (unsigned)time);
+		dbg_zones("zone: REFRESH '%s' set to %"PRIi64"\n",
+		          zd->conf->name, time);
 		zd->xfr_in.state = XFR_SCHED;
 	}
 	rcu_read_unlock();

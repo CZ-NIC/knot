@@ -868,7 +868,7 @@ are 1 to INT_MAX and default value is 5.
 
 EXPERIMENTAL: Enable automatic DNSSEC signing for the zone.
 
-Default value (in @code{zones} section): on if @code{dnssec-keydir} is set
+Default value (in @code{zones} section): off
 
 Default value (in @code{zone} config): inherited from @code{zones} section
 
