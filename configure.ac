@@ -69,11 +69,21 @@ AC_PATH_PROG([RAGEL], [ragel], [true])
 AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "true")
 
 # Set FSM type for Ragel
-AC_SUBST([FSM_TYPE], [-T0])
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--enable-fastparser], [Generate fast zone parser (requires Ragel!)]),
-    [touch src/zscanner/scanner.rl; AC_SUBST([FSM_TYPE], [-G2])],
-    [])
+    AS_HELP_STRING([--disable-fastparser], [Don't use faster zone parser]),
+    [],
+    [enable_fastparser=yes])
+
+AS_CASE([$enable_fastparser],
+    [no], [AC_SUBST([FSM_TYPE], [-G0])],
+    [yes], [AC_SUBST([FSM_TYPE], [-G2])],
+    [*], [
+        AS_IF([test "$RAGEL" = "true"],
+	    [AC_MSG_ERROR([Ragel is needed to generate different parsers])])
+        AC_SUBST([FSM_TYPE], [$enable_fastparser])
+    ])
+AM_CONDITIONAL([G2_PARSER], test "$enable_fastparser" = "yes")
+AM_CONDITIONAL([G0_PARSER], test "$enable_fastparser" = "no")
 
 # Debug modules
 AC_ARG_ENABLE([debug],
