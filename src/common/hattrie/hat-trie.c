@@ -15,7 +15,9 @@
 /* number of child nodes for used alphabet */
 #define NODE_CHILDS (TRIE_MAXCHAR+1)
 /* initial nodestack size */
-#define NODESTACK_INIT 512
+#define NODESTACK_INIT 128
+/* hashtable max fill */
+#define HHASH_MAX_FILL 0.8
 
 static const uint8_t NODE_TYPE_TRIE          = 0x1;
 static const uint8_t NODE_TYPE_PURE_BUCKET   = 0x2;
@@ -579,6 +581,28 @@ static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
     hattrie_split_h(parent, node);
 }
 
+/* Perform hattrie split and attempt to fit current key. */
+static value_t *hattrie_split_insert(hattrie_t *T, node_ptr *parent, node_ptr *node,
+                                     const char **key, size_t *len)
+{
+    hattrie_split(T, *parent, *node);
+
+    /* after the split, the node pointer is invalidated, so we search from
+     * the parent again. */
+    *node = hattrie_consume(parent, key, len, 0);
+
+    /* if the key has been consumed on a trie node, use its value */
+    if (*len == 0) {
+        if (*(*node).flag & NODE_TYPE_TRIE) {
+            return hattrie_useval(T, *node);
+        } else if (*(*node).flag & NODE_TYPE_HYBRID_BUCKET) {
+            return hattrie_useval(T, *parent);
+        }
+    }
+
+    return NULL;
+}
+
 value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 {
     node_ptr parent = T->root;
@@ -613,37 +637,28 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
         }
     }
 
-    /* preemptively split the bucket if it is full */
-    while (node.b->weight >= T->bsize*0.8) {
-        hattrie_split(T, parent, node);
+    /* preemptively split the bucket if fill is over threshold */
+    value_t *val = NULL;
+    while (val == NULL && node.b->weight >= node.b->size * HHASH_MAX_FILL) {
+        val = hattrie_split_insert(T, &parent, &node, &key, &len);
+    }
 
-        /* after the split, the node pointer is invalidated, so we search from
-         * the parent again. */
-        node = hattrie_consume(&parent, &key, &len, 0);
+    /* attempt to fit new element and split if it doesn't fit */
+    while (val == NULL) {
+        size_t m_old = node.b->weight;
+        if (*node.flag & NODE_TYPE_PURE_BUCKET) {
+            val = hhash_map(node.b, key + 1, len - 1, HHASH_INSERT);
+        }
+        else {
+            val = hhash_map(node.b, key, len, HHASH_INSERT);
+        }
+        T->m += (node.b->weight - m_old);
 
-        /* if the key has been consumed on a trie node, use its value */
-        if (len == 0) {
-            if (*node.flag & NODE_TYPE_TRIE) {
-                return hattrie_useval(T, node);
-            }
-            else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
-                return hattrie_useval(T, parent);
-            }
+        /* not inserted */
+        if (val == NULL) {
+            val = hattrie_split_insert(T, &parent, &node, &key, &len);
         }
     }
-
-    assert(*node.flag & NODE_TYPE_PURE_BUCKET || *node.flag & NODE_TYPE_HYBRID_BUCKET);
-
-    assert(len > 0);
-    size_t m_old = node.b->weight;
-    value_t* val;
-    if (*node.flag & NODE_TYPE_PURE_BUCKET) {
-        val = hhash_map(node.b, key + 1, len - 1, HHASH_INSERT);
-    }
-    else {
-        val = hhash_map(node.b, key, len, HHASH_INSERT);
-    }
-    T->m += (node.b->weight - m_old);
 
     return val;
 }
