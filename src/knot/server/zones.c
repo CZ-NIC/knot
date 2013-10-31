@@ -1855,22 +1855,21 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 
 /*----------------------------------------------------------------------------*/
 
-static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd)
+static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
+                                       uint32_t used_lifetime,
+                                       uint32_t used_refresh)
 {
 	int ret = KNOT_EOK;
-	time_t now = time(NULL);
-	pthread_mutex_lock(&zd->lock);
-	if (now + (zd->conf->sig_lifetime - 7200) <
-	    zd->dnssec_timer->tv.tv_sec) {
+	uint32_t new_expire = time(NULL) + (used_lifetime - used_refresh);
+	if (new_expire < zd->dnssec_timer->tv.tv_sec) {
 		// Drop old event, earlier signing needed
+		evsched_cancel(zd->dnssec_timer->parent, zd->dnssec_timer);
 		evsched_event_free(zd->dnssec_timer->parent, zd->dnssec_timer);
 		zd->dnssec_timer = NULL;
 		ret = zones_schedule_dnssec(zone,
-		                            expiration_to_relative(now +
-		                            	(zd->conf->sig_lifetime - 7200)),
+		                            expiration_to_relative(new_expire),
 		                            false);
 	}
-	pthread_mutex_unlock(&zd->lock);
 	return ret;
 }
 
@@ -1975,10 +1974,13 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	dbg_zones_verb("%s: Signing the UPDATE\n", msg);
 	// Sign the created changeset
+	uint32_t used_lifetime = 0;
+	uint32_t used_refresh = 0;
 	if (zone_config->dnssec_enable) {
 		ret = knot_dnssec_sign_changeset(new_contents,
 		                                 knot_changesets_get_last(chgsets),
-		                                 sec_ch, KNOT_SOA_SERIAL_KEEP);
+		                                 sec_ch, KNOT_SOA_SERIAL_KEEP,
+		                                 &used_lifetime, &used_refresh);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update (%s)\n",
 			               msg, knot_strerror(ret));
@@ -2040,7 +2042,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		// Plan zone resign if needed
 		zonedata_t *zd = (zonedata_t *)zone->data;
 		assert(zd && zd->dnssec_timer);
-		ret = replan_zone_sign_after_ddns(zone, zd);
+		ret = replan_zone_sign_after_ddns(zone, zd, used_lifetime,
+		                                  used_refresh);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign %s\n",
 			               msg, knot_strerror(ret));
