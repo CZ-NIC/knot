@@ -46,7 +46,7 @@ typedef uint8_t knot_dname_t;
  * \param endp Name boundary.
  * \param pkt Wire.
  *
- * \retval KNOT_EOK
+ * \retval (compressed) size of the domain name.
  * \retval KNOT_EMALF
  * \retval KNOT_ESPACE
  */
@@ -158,6 +158,9 @@ int knot_dname_to_lower(knot_dname_t *name);
 /*!
  * \brief Returns size of the given domain name.
  *
+ * \note If the domain name is compressed, the length of not compressed part
+ *       is returned.
+ *
  * \param name Domain name to get the size of.
  *
  * \retval size of the domain name.
@@ -171,7 +174,7 @@ int knot_dname_size(const knot_dname_t *name);
  * \param name Domain name to get the size of.
  * \param pkt Related packet (or NULL if unpacked)
  *
- * \retval size of the domain name
+ * \retval size of the domain name.
  * \retval KNOT_EINVAL
  */
 int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);

@@ -517,7 +517,8 @@ static int zones_zonefile_sync_ev(event_t *e)
 			              zd->conf->name);
 		} else if (ret != KNOT_ERANGE) {
 			log_zone_warning("Failed to apply differences of '%s' "
-			                 "to zonefile.\n", zd->conf->name);
+			                 "to zonefile (%s).\n", zd->conf->name,
+			                 knot_strerror(ret));
 		}
 		rcu_read_unlock();
 	}
@@ -1241,6 +1242,9 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 		 */
 		knot_update_serial_t soa_up =  KNOT_SOA_SERIAL_INC;
 
+		log_zone_info("DNSSEC: Zone %s - Signing started...\n",
+		              z->name);
+
 		uint32_t expires_at = 0;
 		int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up,
 		                                &expires_at);
@@ -1293,8 +1297,7 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 	if (transaction) {
 		ret = zones_store_changesets_commit(transaction);
 		if (ret != KNOT_EOK) {
-			log_zone_error("Failed to commit stored "
-			               "changesets: %s."
+			log_zone_error("Failed to commit stored changesets: %s."
 			               "\n", knot_strerror(ret));
 			zones_free_merged_changesets(diff_chs, sec_chs);
 			rcu_read_unlock();
@@ -1321,10 +1324,8 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 
 	if (new_signatures) {
 		xfrin_cleanup_successful_update(sec_chs->changes);
-		char *zname = knot_dname_to_str(zone->name);
-		log_zone_info("Zone %s was successfully signed.\n",
-		              zname);
-		free(zname);
+		log_zone_info("DNSSEC: Zone %s - Successfully signed.\n",
+		              z->name);
 	}
 
 	rcu_read_unlock();
@@ -1363,6 +1364,16 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		log_server_error("Error creating domain name from zone"
 		                 " name\n");
 		return KNOT_EINVAL;
+	}
+
+	/* DNSSEC prerequisites. */
+	if (z->dnssec_enable && (!EMPTY_LIST(z->acl.notify_in) ||
+				 !EMPTY_LIST(z->acl.xfr_in))) {
+		log_server_warning("DNSSEC signing enabled for zone "
+				   "'%s', disabling incoming XFR.\n",
+				   z->name);
+		WALK_LIST_FREE(z->acl.notify_in);
+		WALK_LIST_FREE(z->acl.xfr_in);
 	}
 
 	/* Try to find the zone in the current zone db, doesn't need RCU. */
@@ -1428,7 +1439,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 			/* Initialize zone-related data. */
 			zonedata_init(z, zone);
-			*dst = zone;
 		}
 	} else {
 		dbg_zones_verb("zones: found '%s' in old database, "
@@ -1437,7 +1447,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			log_server_info("Zone '%s' is up-to-date, no need "
 			                "for reload.\n", z->name);
 		}
-		*dst = zone;
 		ret = KNOT_EOK;
 	}
 
@@ -1450,16 +1459,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		if (zd->conf != z) {
 			conf_free_zone(zd->conf);
 			zd->conf = z;
-		}
-
-		/* DNSSEC. */
-		if (z->dnssec_enable && (!EMPTY_LIST(z->acl.notify_in) ||
-		                         !EMPTY_LIST(z->acl.xfr_in))) {
-			log_server_warning("DNSSEC signing enabled for zone "
-			                   "'%s', disabling incoming XFR.\n",
-			                   z->name);
-			WALK_LIST_FREE(z->acl.notify_in);
-			WALK_LIST_FREE(z->acl.xfr_in);
 		}
 
 		/* Update ACLs. */
@@ -1550,6 +1549,14 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 		/* Create and apply changesets (zone-diff and DNSSEC). */
 		ret = zones_do_diff_and_sign(z, zone, ns, dname, zone_changed);
+		if (ret != KNOT_EOK) {
+			zd->conf = NULL;
+			knot_zone_deep_free(&zone);
+		}
+	}
+
+	if (ret == KNOT_EOK) {
+		*dst = zone;
 	}
 
 	knot_dname_free(&dname);
@@ -2175,8 +2182,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 		ret = zones_dump_zone_text(contents, zd->conf->file);
 		if (ret != KNOT_EOK) {
 			log_zone_warning("Failed to apply differences "
-			                 "'%s' to '%s'\n",
-			                 zd->conf->name, zd->conf->file);
+			                 "'%s' to '%s (%s)'\n",
+			                 zd->conf->name, zd->conf->file,
+			                 knot_strerror(ret));
 			rcu_read_unlock();
 			pthread_mutex_unlock(&zd->lock);
 			return ret;
@@ -3473,6 +3481,14 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		return KNOT_ENOMEM;
 	}
 
+	char *zname = knot_dname_to_str(knot_zone_name(zone));
+	if (force) {
+		log_zone_info("DNSSEC: Zone %s - Complete resign started "
+		              "(dropping all previous signatures)...\n", zname);
+	} else {
+		log_zone_info("DNSSEC: Zone %s - Signing zone...\n", zname);
+	}
+
 	int ret = 0;
 	uint32_t expires_at = 0;
 	if (force) {
@@ -3487,6 +3503,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		zd->dnssec_timer = NULL;
 		pthread_mutex_unlock(&zd->lock);
 		rcu_read_unlock();
+		free(zname);
 		return ret;
 	}
 
@@ -3495,7 +3512,6 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
 		                                    XFR_TYPE_UPDATE);
 		if (ret != KNOT_EOK) {
-			char *zname = knot_dname_to_str(zone->name);
 			log_server_error("Could not sign zone %s (%s).\n",
 			                 zname, knot_strerror(ret));
 			evsched_event_free(event->parent, event);
@@ -3514,13 +3530,15 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	zd->dnssec_timer = NULL;
 	pthread_mutex_unlock(&zd->lock);
 
-	char *zname = knot_dname_to_str(zone->name);
-	log_zone_info("Zone %s forced signed successfully.\n", zname);
+	log_zone_info("DNSSEC: Zone %s - Successfully signed.\n", zname);
 	free(zname);
 
 	// Schedule next signing
+	/* Next signing should not be 'forced'. May take longer now, but
+	 * when lifetime jitter is implemented, this will be desired behaviour.
+	 */
 	ret = zones_schedule_dnssec(zone, expiration_to_relative(expires_at),
-	                            force);
+	                            false);
 
 	rcu_read_unlock();
 

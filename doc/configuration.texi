@@ -334,9 +334,8 @@ Algorithms based on RSA, DSA, and ECDSA are supported, support for GOST
 algorithm is not finished yet.
 
 @item
-Only key activation and inactivation time stamps are utilized and defined
-times are used both for key publication and signing. Other timestamps are
-ignored.
+Only key publication, activation, inactivation, and removal time stamps
+are utilized. Other time stamps are ignored.
 
 @item
 It is required, that both @code{.private} and @code{.key} files for each key
@@ -344,7 +343,8 @@ are available in the key directory in order to use the keys (even for
 verification only).
 
 @item
-There cannot be more than eight active keys per zone.
+There cannot be more than eight keys per zone. Keys which are not published
+are not included in this number.
 
 @end itemize
 

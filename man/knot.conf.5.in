@@ -258,8 +258,8 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
   # Enable DNSSEC online signing (EXPERIMENTAL)
   # Possible values: on | off;
-  # Default value: on if dnssec-keydir is set; otherwise off
-  dnssec-enable on;
+  # Default value: off
+  dnssec-enable off;
 
   # Location of DNSSEC signing keys (relative to storage directory).
   # Default value: not set
