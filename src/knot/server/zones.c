@@ -517,7 +517,8 @@ static int zones_zonefile_sync_ev(event_t *e)
 			              zd->conf->name);
 		} else if (ret != KNOT_ERANGE) {
 			log_zone_warning("Failed to apply differences of '%s' "
-			                 "to zonefile.\n", zd->conf->name);
+			                 "to zonefile (%s).\n", zd->conf->name,
+			                 knot_strerror(ret));
 		}
 		rcu_read_unlock();
 	}
@@ -2244,8 +2245,9 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 		ret = zones_dump_zone_text(contents, zd->conf->file);
 		if (ret != KNOT_EOK) {
 			log_zone_warning("Failed to apply differences "
-			                 "'%s' to '%s'\n",
-			                 zd->conf->name, zd->conf->file);
+			                 "'%s' to '%s (%s)'\n",
+			                 zd->conf->name, zd->conf->file,
+			                 knot_strerror(ret));
 			rcu_read_unlock();
 			pthread_mutex_unlock(&zd->lock);
 			return ret;
