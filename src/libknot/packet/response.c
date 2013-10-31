@@ -418,8 +418,7 @@ int knot_response_add_opt(knot_packet_t *resp,
 
 int knot_response_add_rrset_answer(knot_packet_t *response,
                                    knot_rrset_t *rrset, int tc,
-                                   int check_duplicates,
-                                   int rotate)
+                                   int check_duplicates)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -455,12 +454,6 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 
 	if (rrs >= 0) {
 		knot_wire_add_ancount(response->wireformat, rrs);
-
-		if (rotate) {
-			// do round-robin rotation of the RRSet
-			knot_rrset_rotate(rrset);
-		}
-
 		return KNOT_EOK;
 	}
 
@@ -471,8 +464,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 
 int knot_response_add_rrset_authority(knot_packet_t *response,
                                       knot_rrset_t *rrset, int tc,
-                                      int check_duplicates,
-                                      int rotate)
+                                      int check_duplicates)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -504,12 +496,6 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 
 	if (rrs >= 0) {
 		knot_wire_add_nscount(response->wireformat, rrs);
-
-		if (rotate) {
-			// do round-robin rotation of the RRSet
-			knot_rrset_rotate(rrset);
-		}
-
 		return KNOT_EOK;
 	}
 
@@ -520,8 +506,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 
 int knot_response_add_rrset_additional(knot_packet_t *response,
                                        knot_rrset_t *rrset, int tc,
-                                       int check_duplicates,
-                                       int rotate)
+                                       int check_duplicates)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -559,12 +544,6 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 
 	if (rrs >= 0) {
 		knot_wire_add_arcount(response->wireformat, rrs);
-
-		if (rotate) {
-			// do round-robin rotation of the RRSet
-			knot_rrset_rotate(rrset);
-		}
-
 		return KNOT_EOK;
 	}
 
