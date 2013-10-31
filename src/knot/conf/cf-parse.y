@@ -632,7 +632,7 @@ system:
 	SET_INT(new_config->max_conn_idle, $3.i, "max-conn-idle");
  }
  | system MAX_CONN_HS INTERVAL ';' {
-	SET_INT(new_config->max_conn_hs, $3.i, "max-conn-hs");
+	SET_INT(new_config->max_conn_hs, $3.i, "max-conn-handshake");
  }
  | system MAX_CONN_REPLY INTERVAL ';' {
 	SET_INT(new_config->max_conn_reply, $3.i, "max-conn-reply");
