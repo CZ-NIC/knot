@@ -1148,12 +1148,17 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	     parsed < rdlength; ++i) {
 		const int item = desc->block_types[i];
 		if (descriptor_item_is_dname(item)) {
-			int wire_size = knot_dname_size(wire + *pos);
+			int wire_size = knot_dname_wire_check(wire + *pos,
+			                                      wire + *pos + rdlength,
+			                                      wire);
+			if (wire_size <= 0) {
+				return KNOT_EMALF;
+			}
 			int unpacked_size = knot_dname_unpack(
 				rdata_buffer + offset, wire + *pos,
 				KNOT_DNAME_MAXLEN, wire);
-			if (unpacked_size == KNOT_EINVAL) {
-				return KNOT_ERROR;
+			if (unpacked_size <= 0) {
+				return KNOT_EMALF;
 			}
 
 			parsed += wire_size;
