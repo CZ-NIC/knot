@@ -32,6 +32,8 @@
 #include "libknot/rrset.h"
 #include "libknot/util/utils.h"
 
+#define KNOT_RDATA_DNSKEY_FLAG_KSK 1
+
 static inline
 const knot_dname_t *knot_rdata_cname_name(const knot_rrset_t *rrset)
 {
