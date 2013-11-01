@@ -215,7 +215,7 @@ dbg_response_exec(
 		dbg_response_verb("RRset added, size: %zu, RRs: %d, total "
 		                  "size of response: %zu\n\n", size, rr_count,
 		                  resp->size);
-	} else if (flags & KNOT_PF_NOTRUNC) {
+	} else if (!(flags & KNOT_PF_NOTRUNC)) {
 		dbg_response_verb("Setting TC bit.\n");
 		knot_wire_set_tc(resp->wireformat);
 	}
