@@ -21,7 +21,7 @@
 #include <inttypes.h>
 #include "common/errcode.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/algorithm.h"
+#include "libknot/consts.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
