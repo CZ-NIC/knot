@@ -48,3 +48,18 @@ bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled)
 		return false;
 	}
 }
+
+knot_lookup_table_t knot_dnssec_alg_names[] = {
+	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
+	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
+	{ KNOT_DNSSEC_ALG_DSA,                "DSA" },
+	{ KNOT_DNSSEC_ALG_RSASHA1,            "RSASHA1" },
+	{ KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1,     "DSA_NSEC3_SHA1" },
+	{ KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1, "RSASHA1_NSEC3_SHA1" },
+	{ KNOT_DNSSEC_ALG_RSASHA256,          "RSASHA256" },
+	{ KNOT_DNSSEC_ALG_RSASHA512,          "RSASHA512" },
+	{ KNOT_DNSSEC_ALG_ECC_GOST,           "ECC_GOST" },
+	{ KNOT_DNSSEC_ALG_ECDSAP256SHA256,    "ECDSAP256SHA256" },
+	{ KNOT_DNSSEC_ALG_ECDSAP384SHA384,    "ECDSAP384SHA384" },
+	{ 0, NULL }
+};

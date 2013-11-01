@@ -30,6 +30,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "libknot/util/utils.h"
+
 /*!
  * \brief DNSSEC algorithm numbers.
  *
@@ -51,6 +53,11 @@ typedef enum {
 	KNOT_DNSSEC_ALG_ECDSAP256SHA256    = 13,
 	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14
 } knot_dnssec_algorithm_t;
+
+/*!
+ * \brief DNSSEC algorithm names.
+ */
+extern knot_lookup_table_t knot_dnssec_alg_names[];
 
 /*!
  * \brief NSEC3 hash algorithm numbers.
