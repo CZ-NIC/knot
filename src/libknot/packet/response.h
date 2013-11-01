@@ -159,8 +159,7 @@ int knot_response_add_opt(knot_packet_t *resp,
  * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_answer(knot_packet_t *response,
-                                   knot_rrset_t *rrset, int tc,
-                                   int check_duplicates);
+                                   knot_rrset_t *rrset, uint32_t flags);
 
 /*!
  * \brief Adds a RRSet to the Authority section of the response.
@@ -177,8 +176,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
  * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_authority(knot_packet_t *response,
-                                      knot_rrset_t *rrset, int tc,
-                                      int check_duplicates);
+                                      knot_rrset_t *rrset, uint32_t flags);
 
 /*!
  * \brief Adds a RRSet to the Additional section of the response.
@@ -195,8 +193,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
  * \retval KNOT_ESPACE
  */
 int knot_response_add_rrset_additional(knot_packet_t *response,
-                                       knot_rrset_t *rrset, int tc,
-                                       int check_duplicates);
+                                       knot_rrset_t *rrset, uint32_t flags);
 
 /*!
  * \brief Sets the RCODE of the response.

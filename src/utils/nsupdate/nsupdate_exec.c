@@ -339,13 +339,13 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	switch(sect) {
 	case UP_ADD:
 	case UP_DEL:
-		ret = knot_response_add_rrset_authority(p->pkt, rr, 0, 0);
+		ret = knot_response_add_rrset_authority(p->pkt, rr, KNOT_PF_NOTRUNC);
 		break;
 	case PQ_NXDOMAIN:
 	case PQ_NXRRSET:
 	case PQ_YXDOMAIN:
 	case PQ_YXRRSET:
-		ret = knot_response_add_rrset_answer(p->pkt, rr, 0, 0);
+		ret = knot_response_add_rrset_answer(p->pkt, rr, KNOT_PF_NOTRUNC);
 		break;
 	default:
 		assert(0); /* Should never happen. */
