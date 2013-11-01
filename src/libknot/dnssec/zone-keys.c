@@ -130,6 +130,11 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	}
 
 	char *zname = knot_dname_to_str(zone_name);
+	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
+	free(zname);
+	if (msgpref == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	struct dirent entry_buf = { 0 };
 	struct dirent *entry = NULL;
@@ -181,14 +186,18 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		memset(&key, '\0', sizeof(key));
 		set_zone_key_flags(&params, &key);
 
-		if (!key.is_active && !key.is_public && !was_removed(&params)) {
-			dbg_dnssec_detail("skipping key, not active or public\n");
+		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
+			dbg_dnssec_detail("skipping key, different purpose\n");
 			knot_free_key_params(&params);
 			continue;
 		}
 
-		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
-			dbg_dnssec_detail("skipping key, different purpose\n");
+		if (!key.is_active && !key.is_public && !was_removed(&params)) {
+			log_zone_notice("%s Ignoring key %d (%s): "
+			                "%s, %s.\n", msgpref, params.keytag,
+			                entry->d_name,
+			                key.is_active ? "active" : "inactive",
+			                key.is_public ? "public" : "not-public");
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -196,27 +205,33 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
 		) {
-			dbg_dnssec_detail("skipping key, incompatible algorithm\n");
+			log_zone_notice("%s Ignoring key %d (%s): unknown "
+			                "algorithm or non-NSEC3 algrorithm when"
+			                "NSEC is requested.\n", msgpref,
+			                params.keytag, entry->d_name);
 			knot_free_key_params(&params);
 			continue;
 		}
 
 		if (get_zone_key(keys, params.keytag) != NULL) {
-			dbg_dnssec_detail("skipping key, duplicate keytag\n");
+			log_zone_notice("%s Ignoring key %d (%s): duplicate "
+			                "keytag.\n", msgpref, params.keytag,
+			                entry->d_name);
 			knot_free_key_params(&params);
 			continue;
 		}
 
 		result = knot_dnssec_key_from_params(&params, &key.dnssec_key);
 		if (result != KNOT_EOK) {
-			dbg_dnssec_detail("cannot create DNSSEC key (%s)\n",
-			                  knot_strerror(result));
+			log_zone_error("%s Failed to process key %d (%s): %s\n",
+			               msgpref, params.keytag, entry->d_name,
+			               knot_strerror(result));
 			knot_free_key_params(&params);
 			continue;
 		}
 
-		log_zone_info("DNSSEC: Zone %s - key is valid, tag %d, %s, %s, "
-		              "%s\n", zname, params.keytag,
+		log_zone_info("%s - Key is valid, tag %d, file %s, %s, %s, %s\n",
+		              msgpref, params.keytag, entry->d_name,
 		              key.is_ksk ? "KSK" : "ZSK",
 		              key.is_active ? "active" : "inactive",
 		              key.is_public ? "public" : "not-public");
@@ -230,13 +245,13 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	closedir(keydir);
 
 	if (keys->count == 0) {
-		free(zname);
+		free(msgpref);
 		return KNOT_DNSSEC_ENOKEY;
 	} else if (keys->count == KNOT_MAX_ZONE_KEYS) {
-		log_zone_notice("DNSSEC: Zone %s - reached maximum count of "
-		                "keys.\n", zname);
+		log_zone_notice("%s - Reached maximum count of keys.\n",
+		                msgpref);
 	}
-	free(zname);
+	free(msgpref);
 
 	int result = init_sign_contexts(keys);
 	if (result != KNOT_EOK) {
