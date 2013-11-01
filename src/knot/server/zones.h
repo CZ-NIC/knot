@@ -330,7 +330,7 @@ int zones_schedule_notify(knot_zone_t *zone);
 /*!
  * \brief Schedule DNSSEC event.
  * \param zone Related zone.
- * \param time When to schedule
+ * \param time When to schedule. Time difference in milliseconds from now.
  * \param force Force sign or not
  *
  * \return Error code, KNOT_OK if successful.
