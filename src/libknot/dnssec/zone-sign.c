@@ -1049,7 +1049,7 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 		return result;
 	}
 
-	// renew the signatures a little earlies
+	// renew the signatures a little earlier
 	uint32_t expiration = MIN(normal_tree_expiration, nsec3_tree_expiration);
 	assert(expiration >= policy->sign_refresh);
 	expiration = expiration - policy->sign_refresh;

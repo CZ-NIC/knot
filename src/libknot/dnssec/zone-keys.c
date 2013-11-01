@@ -293,7 +293,7 @@ void knot_free_zone_keys(knot_zone_keys_t *keys)
  */
 const uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys)
 {
-	int result = UINT32_MAX;
+	uint32_t result = UINT32_MAX;
 
 	for (int i = 0; i < keys->count; i++) {
 		result = MIN(result, keys->keys[i].next_event);
