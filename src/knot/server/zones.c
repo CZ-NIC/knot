@@ -2045,7 +2045,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			return ret;
 		}
 		assert(dnssec_contents);
-		
+
 		// Plan zone resign if needed
 		zonedata_t *zd = (zonedata_t *)zone->data;
 		assert(zd && zd->dnssec_timer);

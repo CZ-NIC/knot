@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <dirent.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include "common/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/algorithm.h"
@@ -63,8 +64,8 @@ static int init_sign_contexts(knot_zone_keys_t *keys)
 /*!
  * \brief Get zone key by a keytag.
  */
-const knot_zone_key_t *get_zone_key(const knot_zone_keys_t *keys,
-                                    uint16_t keytag)
+const knot_zone_key_t *knot_get_zone_key(const knot_zone_keys_t *keys,
+                                         uint16_t keytag)
 {
 	if (!keys) {
 		return NULL;
@@ -92,7 +93,24 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 	assert(params);
 	assert(key);
 
-	time_t now = time(NULL);
+	uint32_t now = time(NULL);
+
+	uint32_t next_event = UINT32_MAX;
+	uint32_t timestamps[4] = {
+		params->time_publish,
+		params->time_activate,
+		params->time_inactive,
+		params->time_delete
+	};
+
+	for (int i = 0; i < 4; i++) {
+		uint32_t ts = timestamps[i];
+		if (ts != 0 && now <= ts && ts < next_event) {
+			next_event = ts;
+		}
+	}
+
+	key->next_event = next_event;
 
 	key->is_ksk = params->flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
 
@@ -103,6 +121,9 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 	                 (params->time_delete == 0 || now <= params->time_delete);
 }
 
+/*!
+ * \brief Check if key should be already removed from the zone.
+ */
 static bool was_removed(const knot_key_params_t *params)
 {
 	assert(params);
@@ -117,8 +138,8 @@ static bool was_removed(const knot_key_params_t *params)
  *
  * \todo Maybe use dynamic list instead of fixed size array.
  */
-int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
-		   bool nsec3_enabled, knot_zone_keys_t *keys)
+int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
+                        bool nsec3_enabled, knot_zone_keys_t *keys)
 {
 	if (!keydir_name || !zone_name || !keys) {
 		return KNOT_EINVAL;
@@ -181,6 +202,8 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		memset(&key, '\0', sizeof(key));
 		set_zone_key_flags(&params, &key);
 
+		dbg_dnssec_detail("next key event %" PRIu32 "\n", key.next_event);
+
 		if (!key.is_active && !key.is_public && !was_removed(&params)) {
 			dbg_dnssec_detail("skipping key, not active or public\n");
 			knot_free_key_params(&params);
@@ -201,7 +224,7 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		if (get_zone_key(keys, params.keytag) != NULL) {
+		if (knot_get_zone_key(keys, params.keytag) != NULL) {
 			dbg_dnssec_detail("skipping key, duplicate keytag\n");
 			knot_free_key_params(&params);
 			continue;
@@ -240,14 +263,17 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 	int result = init_sign_contexts(keys);
 	if (result != KNOT_EOK) {
-		free_zone_keys(keys);
+		knot_free_zone_keys(keys);
 		return result;
 	}
 
 	return KNOT_EOK;
 }
 
-void free_zone_keys(knot_zone_keys_t *keys)
+/*!
+ * \brief Free structure with zone keys and associated DNSSEC contexts.
+ */
+void knot_free_zone_keys(knot_zone_keys_t *keys)
 {
 	if (!keys) {
 		return;
@@ -260,4 +286,18 @@ void free_zone_keys(knot_zone_keys_t *keys)
 	}
 
 	memset(keys, '\0', sizeof(*keys));
+}
+
+/*!
+ * \brief Get timestamp of next key event.
+ */
+const uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys)
+{
+	uint32_t result = UINT32_MAX;
+
+	for (int i = 0; i < keys->count; i++) {
+		result = MIN(result, keys->keys[i].next_event);
+	}
+
+	return result;
 }
