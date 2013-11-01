@@ -1,0 +1,24 @@
+$ORIGIN records.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 2010111201 10800 3600 1209600 7200
+	NS	dns1
+	NS	dns2
+	MX	10 mail
+
+dns1	A	192.0.2.1
+	AAAA	2001:DB8::1
+
+dns2	A	192.0.2.2
+	AAAA	2001:DB8::2
+
+mail	A	192.0.2.3
+	AAAA	2001:DB8::3
+
+; New records
+nid	NID	10 0014:4fff:ff20:ee64
+l32	L32	10 192.0.2.1
+l64	L64	10 2001:0DB8:1140:1000
+lp	LP	10 l64-subnet1.example.com.
+eui48	EUI48	00-00-5e-00-53-2a
+eui64	EUI64	00-00-5e-ef-10-00-00-2a

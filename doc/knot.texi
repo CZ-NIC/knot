@@ -177,7 +177,7 @@ Statement Definition and Usage
 * workers::
 * user::
 * max-conn-idle::
-* max-conn-hs::
+* max-conn-handshake::
 * max-conn-reply::
 * rate-limit::
 * rate-limit-size::

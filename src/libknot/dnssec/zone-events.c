@@ -106,6 +106,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	if (!zone_config->dnssec_enable) {
 		log_server_warning("DNSSEC: Zone %s - DNSSEC not enabled.\n",
 		                   zname);
+		free(zname);
 		return KNOT_EOK;
 	}
 
@@ -202,8 +203,17 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone,
 int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
-                               knot_update_serial_t soa_up)
+                               knot_update_serial_t soa_up,
+                               uint32_t *used_lifetime,
+                               uint32_t *used_refresh)
 {
+	if (!used_lifetime || !used_refresh) {
+		return KNOT_EINVAL;
+	}
+
+	*used_lifetime = 0;
+	*used_refresh = 0;
+
 	if (!conf()->dnssec_enable) {
 		return KNOT_EOK;
 	}
@@ -252,9 +262,16 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		log_zone_error("DNSSEC: Zone %s - Failed to sign SOA RR (%s)\n",
 		               zname, knot_strerror(ret));
+		knot_free_zone_keys(&zone_keys);
+		free(zname);
+		return ret;
 	}
+
 	knot_free_zone_keys(&zone_keys);
 	free(zname);
 
-	return ret;
+	*used_lifetime = policy.sign_lifetime;
+	*used_refresh = policy.sign_refresh;
+
+	return KNOT_EOK;
 }
