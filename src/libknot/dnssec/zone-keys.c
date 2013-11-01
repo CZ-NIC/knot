@@ -154,8 +154,10 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		size_t path_len = strlen(keydir_name) + 1 + strlen(entry->d_name);
 		char *path = malloc((path_len + 1) * sizeof(char));
 		if (!path) {
-			dbg_dnssec_detail("failed to allocate key path\n");
-			continue;
+			ERR_ALLOC_FAILED;
+			closedir(keydir);
+			free(msgpref);
+			return KNOT_ENOMEM;
 		}
 
 		int written = snprintf(path, path_len + 1, "%s/%s",
@@ -170,8 +172,8 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		free(path);
 
 		if (result != KNOT_EOK) {
-			dbg_dnssec_detail("failed to load key parameters (%s)\n",
-			                  knot_strerror(result));
+			log_zone_warning("DNSSEC: Failed to load key %s: %s\n",
+			                  entry->d_name, knot_strerror(result));
 			knot_free_key_params(&params);
 			continue;
 		}
