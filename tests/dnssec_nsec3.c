@@ -22,7 +22,7 @@
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/algorithm.h"
+#include "libknot/consts.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/rrset.h"
 

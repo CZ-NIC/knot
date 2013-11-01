@@ -80,6 +80,21 @@ knot_lookup_table_t knot_tsig_alg_dnames[] = {
 	{ KNOT_TSIG_ALG_NULL, NULL }
 };
 
+knot_lookup_table_t knot_dnssec_alg_names[] = {
+	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
+	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
+	{ KNOT_DNSSEC_ALG_DSA,                "DSA" },
+	{ KNOT_DNSSEC_ALG_RSASHA1,            "RSASHA1" },
+	{ KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1,     "DSA_NSEC3_SHA1" },
+	{ KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1, "RSASHA1_NSEC3_SHA1" },
+	{ KNOT_DNSSEC_ALG_RSASHA256,          "RSASHA256" },
+	{ KNOT_DNSSEC_ALG_RSASHA512,          "RSASHA512" },
+	{ KNOT_DNSSEC_ALG_ECC_GOST,           "ECC_GOST" },
+	{ KNOT_DNSSEC_ALG_ECDSAP256SHA256,    "ECDSAP256SHA256" },
+	{ KNOT_DNSSEC_ALG_ECDSAP384SHA384,    "ECDSAP384SHA384" },
+	{ 0, NULL }
+};
+
 size_t knot_tsig_digest_length(const uint8_t algorithm)
 {
 	switch (algorithm) {
@@ -115,5 +130,32 @@ size_t knot_ds_digest_length(const uint8_t algorithm)
 		return KNOT_DS_DIGEST_LEN_SHA384;
 	default:
 		return 0;
+	}
+}
+
+bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled)
+{
+	switch (algorithm) {
+	// NSEC only
+	case KNOT_DNSSEC_ALG_DSA:
+	case KNOT_DNSSEC_ALG_RSASHA1:
+		return !nsec3_enabled;
+
+	// NSEC3 only
+	case KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1:
+	case KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1:
+		return true; // allow even with NSEC
+
+	// both NSEC and NSEC3
+	case KNOT_DNSSEC_ALG_RSASHA256:
+	case KNOT_DNSSEC_ALG_RSASHA512:
+	case KNOT_DNSSEC_ALG_ECC_GOST:
+	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
+	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
+		return true;
+
+	// unsupported or unknown
+	default:
+		return false;
 	}
 }

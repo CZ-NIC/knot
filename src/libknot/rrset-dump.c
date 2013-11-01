@@ -34,7 +34,6 @@
 #include "common/base32hex.h"		// base32hex
 #include "common/descriptor.h"		// KNOT_RRTYPE
 #include "libknot/dnssec/key.h"		// knot_keytag
-#include "libknot/dnssec/algorithm.h"	// knot_dnssec_alg_names
 #include "libknot/consts.h"		// knot_rcode_names
 #include "libknot/util/utils.h"		// knot_wire_read_u16
 
