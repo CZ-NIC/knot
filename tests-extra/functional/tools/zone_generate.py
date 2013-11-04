@@ -553,7 +553,7 @@ def main(args):
 
     # Load DB if updating
     soa = None
-    outf = outfile if outfile else sys.stdout
+    outf = open(outfile, "w") if outfile else sys.stdout
     if UPDATE != None:
         outf = open(UPDATE, 'r+')
         NAME_EXIST.add(g_fqdn(ORIGIN))

@@ -1187,15 +1187,11 @@ class DnsTest(object):
             filename = self.zones_dir + name + ".rndzone"
 
             try:
-                file = open(filename, mode="w")
-
-                params = ["-i", serial, "-o", file, name, items]
+                params = ["-i", serial, "-o", filename, name, items]
                 if sign:
                     params = ["-s"] + params
 
                 zone = zone_generate.main(params)
-
-                file.close()
             except OSError:
                 err("Can't create zone file %s" % filename)
 
