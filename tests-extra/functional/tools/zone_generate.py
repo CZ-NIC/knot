@@ -500,8 +500,8 @@ def main(args):
 
     # Parse parameters
     try:
-        opts, args = getopt.getopt(args, 'hsi:u:n:t:o:', ['help', 'sign', 'serial',
-                                   'update', 'names', 'ttl', 'outfile'])
+        opts, args = getopt.getopt(args, 'hsi:u:n:t:o:', ['help', 'sign', 'serial=',
+                                   'update=', 'names=', 'ttl=', 'outfile='])
     except getopt.error as msg:
         print(msg)
         print('for help use --help')
