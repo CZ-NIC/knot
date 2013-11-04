@@ -37,12 +37,11 @@ static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
 	              == knot_rdata_rrsig_type_covered(rrset2, 0));
 }
 
-int knot_changesets_init(knot_changesets_t **changesets, uint32_t flags)
+int knot_changesets_init(knot_changesets_t **changesets)
 {
 	// Create new changesets structure
 	*changesets = xmalloc(sizeof(knot_changesets_t));
 	memset(*changesets, 0, sizeof(knot_changesets_t));
-	(*changesets)->flags = flags;
 
 	// Initialize memory context for changesets (xmalloc'd)
 	struct mempool *chs_pool = mp_new(sizeof(knot_changeset_t));
@@ -72,10 +71,10 @@ int knot_changesets_init(knot_changesets_t **changesets, uint32_t flags)
 	return KNOT_EOK;
 }
 
-knot_changesets_t *knot_changesets_create(uint32_t flags)
+knot_changesets_t *knot_changesets_create()
 {
 	knot_changesets_t *ch = NULL;
-	int ret = knot_changesets_init(&ch, flags);
+	int ret = knot_changesets_init(&ch);
 	if (ret != KNOT_EOK) {
 		return NULL;
 	} else {
@@ -97,7 +96,6 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 		return NULL;
 	}
 	memset(set, 0, sizeof(knot_changeset_t));
-	set->flags = ch->flags;
 
 	// Init set's memory context (Allocator from changests structure is used)
 	set->mem_ctx = ch->mmc_rr;
