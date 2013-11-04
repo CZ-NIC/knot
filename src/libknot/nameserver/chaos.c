@@ -101,7 +101,7 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_packet_t *response,
 	if (!rrset)
 		return KNOT_RCODE_SERVFAIL;
 
-	int result = knot_response_add_rrset_answer(response, rrset, 1, 0, 0);
+	int result = knot_response_add_rrset_answer(response, rrset, 0);
 	if (result != KNOT_EOK) {
 		knot_rrset_deep_free(&rrset, 1);
 		return KNOT_RCODE_SERVFAIL;

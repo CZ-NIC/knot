@@ -59,15 +59,15 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 
 	// Read zone keys from disk
 	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
-	int result = load_zone_keys(conf()->dnssec_keydir,
-	                            zone->contents->apex->owner,
-	                            nsec3_enabled, zone_keys);
+	int result = knot_load_zone_keys(conf()->dnssec_keydir,
+	                                 zone->contents->apex->owner,
+	                                 nsec3_enabled, zone_keys);
 	if (result != KNOT_EOK) {
 		char *zname = knot_dname_to_str(zone->name);
 		log_zone_error("DNSSEC: Zone %s - %s\n", zname,
 		               knot_strerror(result));
 		free(zname);
-		free_zone_keys(zone_keys);
+		knot_free_zone_keys(zone_keys);
 		return result;
 	}
 
@@ -127,7 +127,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		log_zone_error("DNSSEC: Zone %s - Could not create NSEC(3) "
 		               "chain (%s).\n", zname, knot_strerror(result));
 		free(zname);
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		return result;
 	}
 	dbg_dnssec_verb("Changeset empty after generating NSEC chain: %d\n",
@@ -140,7 +140,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		log_zone_error("DNSSEC: Zone %s - Error while signing (%s).\n",
 		               zname, knot_strerror(result));
 		free(zname);
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		return result;
 	}
 	dbg_dnssec_verb("Changeset emtpy after signing: %d\n",
@@ -152,7 +152,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		log_server_info("DNSSEC: Zone %s - No signing performed, zone "
 		                "is valid.\n", zname);
 		free(zname);
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		assert(knot_changeset_is_empty(out_ch));
 		return KNOT_EOK;
 	}
@@ -168,11 +168,11 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 		                 "(%s). Not signing the zone!\n", zname,
 		                 knot_strerror(result));
 		free(zname);
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		return result;
 	}
 
-	free_zone_keys(&zone_keys);
+	knot_free_zone_keys(&zone_keys);
 	dbg_dnssec_detail("Zone signed: changes=%zu\n",
 	                  knot_changeset_size(out_ch));
 	free(zname);
@@ -203,8 +203,17 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone,
 int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
-                               knot_update_serial_t soa_up)
+                               knot_update_serial_t soa_up,
+                               uint32_t *used_lifetime,
+                               uint32_t *used_refresh)
 {
+	if (!used_lifetime || !used_refresh) {
+		return KNOT_EINVAL;
+	}
+
+	*used_lifetime = 0;
+	*used_refresh = 0;
+
 	if (!conf()->dnssec_enable) {
 		return KNOT_EOK;
 	}
@@ -229,7 +238,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		log_zone_error("DNSSEC: Zone %s - Failed to fix NSEC(3) chain"
 		               "(%s)\n", zname, knot_strerror(ret));
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		free(zname);
 		return ret;
 	}
@@ -240,7 +249,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		log_zone_error("DNSSEC: Zone %s - Failed to sign changeset (%s)"
 		               "\n", zname, knot_strerror(ret));
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		free(zname);
 		return ret;
 	}
@@ -253,9 +262,16 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		log_zone_error("DNSSEC: Zone %s - Failed to sign SOA RR (%s)\n",
 		               zname, knot_strerror(ret));
+		knot_free_zone_keys(&zone_keys);
+		free(zname);
+		return ret;
 	}
-	free_zone_keys(&zone_keys);
+
+	knot_free_zone_keys(&zone_keys);
 	free(zname);
 
-	return ret;
+	*used_lifetime = policy.sign_lifetime;
+	*used_refresh = policy.sign_refresh;
+
+	return KNOT_EOK;
 }

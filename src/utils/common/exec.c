@@ -293,6 +293,11 @@ static void print_section_host(const knot_rrset_t **rrsets,
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
 		for (size_t j = 0; j < rrset->rdata_count; j++) {
+			if (rrset->type == KNOT_RRTYPE_CNAME &&
+			    style->hide_cname) {
+				continue;
+			}
+
 			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
 			                                &(style->style)) < 0) {
 				buflen += 4096;

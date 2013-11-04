@@ -61,17 +61,21 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch,
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
  *
- * \param zone    Contents of the updated zone (AFTER zone is switched).
- * \param in_ch   Changeset created bvy DDNS or zone-diff
- * \param out_ch  New records will be added to this changeset.
- * \param soa_up  SOA serial update policy.
+ * \param zone           Contents of the updated zone (AFTER zone is switched).
+ * \param in_ch          Changeset created bvy DDNS or zone-diff
+ * \param out_ch         New records will be added to this changeset.
+ * \param soa_up         SOA serial update policy.
+ * \param used_lifetime  Pointer to sig lifetime used to sign the changeset.
+ * \param used_refresh   Pointer to refresh period used to sign the changeset.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
-                               knot_update_serial_t soa_up);
+                               knot_update_serial_t soa_up,
+                               uint32_t *used_lifetime,
+                               uint32_t *used_refresh);
 
 #endif // _KNOT_DNSSEC_ZONE_EVENTS_H_
 /*! @} */

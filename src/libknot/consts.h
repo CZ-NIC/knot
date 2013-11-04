@@ -27,6 +27,7 @@
 #ifndef _KNOT_CONSTS_H_
 #define _KNOT_CONSTS_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "libknot/util/utils.h"
@@ -154,6 +155,35 @@ typedef enum {
 } knot_ds_algorithm_t;
 
 /*!
+ * \brief DNSSEC algorithm numbers.
+ *
+ * http://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xml
+ */
+typedef enum {
+	KNOT_DNSSEC_ALG_RSAMD5             =  1,
+	KNOT_DNSSEC_ALG_DH                 =  2,
+	KNOT_DNSSEC_ALG_DSA                =  3,
+
+	KNOT_DNSSEC_ALG_RSASHA1            =  5,
+	KNOT_DNSSEC_ALG_DSA_NSEC3_SHA1     =  6,
+	KNOT_DNSSEC_ALG_RSASHA1_NSEC3_SHA1 =  7,
+	KNOT_DNSSEC_ALG_RSASHA256          =  8,
+
+	KNOT_DNSSEC_ALG_RSASHA512          = 10,
+
+	KNOT_DNSSEC_ALG_ECC_GOST           = 12,
+	KNOT_DNSSEC_ALG_ECDSAP256SHA256    = 13,
+	KNOT_DNSSEC_ALG_ECDSAP384SHA384    = 14
+} knot_dnssec_algorithm_t;
+
+/*!
+ * \brief NSEC3 hash algorithm numbers.
+ */
+typedef enum {
+	KNOT_NSEC3_ALGORITHM_SHA1 = 1
+} knot_nsec3_hash_algorithm_t;
+
+/*!
  * \brief DNS operation code names.
  */
 extern knot_lookup_table_t knot_opcode_names[];
@@ -179,6 +209,11 @@ extern knot_lookup_table_t knot_tsig_alg_dnames_str[];
 extern knot_lookup_table_t knot_tsig_alg_dnames[];
 
 /*!
+ * \brief DNSSEC algorithm names.
+ */
+extern knot_lookup_table_t knot_dnssec_alg_names[];
+
+/*!
  * \brief Returns length of TSIG digest for given algorithm.
  *
  * \param algorithm Algorithm code to be used.
@@ -195,6 +230,16 @@ size_t knot_tsig_digest_length(const uint8_t algorithm);
  * \retval Digest length for given algorithm.
  */
 size_t knot_ds_digest_length(const uint8_t algorithm);
+
+/*!
+ * \brief Check if algorithm is supported for zone signing.
+ *
+ * \param algorithm      Algorithm identification.
+ * \param nsec3_enabled  NSEC3 enabled for signed zone.
+ *
+ * \return Given algorithm is allowed for zone signing.
+ */
+bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled);
 
 #endif /* _KNOT_CONSTS_H_ */
 
