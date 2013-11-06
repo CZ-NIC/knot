@@ -20,11 +20,13 @@ samples/Makefile.am
 src/Makefile.am
 src/common/acl.c
 src/common/acl.h
+src/common/array-sort.h
 src/common/atomic.h
 src/common/base32hex.c
 src/common/base32hex.h
 src/common/base64.c
 src/common/base64.h
+src/common/binsearch.h
 src/common/crc.h
 src/common/dSFMT-params.h
 src/common/dSFMT-params521.h
@@ -281,3 +283,4 @@ tests/tap/float.h
 tests/tap/macros.h
 tests/wire.c
 tests/ztree.c
+tests/zonedb.c

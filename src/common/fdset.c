@@ -17,6 +17,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <time.h>
 #include "common/fdset.h"
 #include "libknot/common.h"
@@ -206,7 +207,6 @@ int fdset_sweep(fdset_t* set, fdset_sweep_cb_t cb, void *data)
  */
 #include <sys/time.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <signal.h>
 
 static int

@@ -27,7 +27,7 @@ static int test_fw(size_t l, const char *w) {
 
 int main(int argc, char *argv[])
 {
-	plan(23);
+	plan(29);
  
 	knot_dname_t *d = NULL, *d2 = NULL;
 	const char *w = NULL, *t = NULL;
@@ -148,6 +148,31 @@ int main(int argc, char *argv[])
 	d = knot_dname_parse((const uint8_t *)t, &pos, len);
 	ok(d == NULL, "dname_parse: bad name");
 	ok(pos == 0, "dname_parse: bad name (parsed length)");
+
+	/* name equality checks */
+	t = "ab.cd.ef";
+	d = knot_dname_from_str(t, strlen(t));
+	ok(knot_dname_is_equal(d, d), "dname_is_equal: equal names");
+	t = "ab.cd.fe";
+	d2 = knot_dname_from_str(t, strlen(t));
+	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: same label count");
+	knot_dname_free(&d2);
+	t = "ab.cd";
+	d2 = knot_dname_from_str(t, strlen(t));
+	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: len(d1) < len(d2)");
+	knot_dname_free(&d2);
+	t = "ab.cd.ef.gh";
+	d2 = knot_dname_from_str(t, strlen(t));
+	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: len(d1) > len(d2)");
+	knot_dname_free(&d2);
+	t = "ab.cd.efe";
+	d2 = knot_dname_from_str(t, strlen(t));
+	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: last label longer");
+	knot_dname_free(&d2);
+	t = "ab.cd.e";
+	d2 = knot_dname_from_str(t, strlen(t));
+	ok(!knot_dname_is_equal(d, d2), "dname_is_equal: last label shorter");
+	knot_dname_free(&d2);
 
 	return 0;
 }

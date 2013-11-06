@@ -3046,7 +3046,7 @@ knot_nameserver_t *knot_ns_create()
 
 	// Create zone database structure
 	dbg_ns("Creating Zone Database structure...\n");
-	ns->zone_db = knot_zonedb_new();
+	ns->zone_db = knot_zonedb_new(0);
 	if (ns->zone_db == NULL) {
 		ERR_ALLOC_FAILED;
 		free(ns);
@@ -4046,23 +4046,6 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 	rcu_read_unlock();
 	int ret = xfrin_switch_zone(z, zone, xfr->type);
 	rcu_read_lock();
-
-dbg_ns_exec_verb(
-	dbg_ns_verb("Zone db contents: (zone count: %zu)\n",
-	            nameserver->zone_db->zone_count);
-
-	/* Warning: may not show updated zone if updated zone that is already
-	 *          discarded from zone db (reload with pending transfer). */
-	const knot_zone_t **zones = knot_zonedb_zones(nameserver->zone_db);
-	for (int i = 0; i < knot_zonedb_zone_count
-	     (nameserver->zone_db); i++) {
-		dbg_ns_verb("%d. zone: %p\n", i, zones[i]);
-		char *name = knot_dname_to_str(zones[i]->name);
-		dbg_ns_verb("    zone name: %s\n", name);
-		free(name);
-	}
-	free(zones);
-);
 
 	return ret;
 }

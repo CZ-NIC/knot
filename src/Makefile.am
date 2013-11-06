@@ -175,7 +175,9 @@ libknots_la_SOURCES =				\
 	common/slab/slab.c			\
 	common/slab/slab.h			\
 	common/slab/alloc-common.h		\
+	common/array-sort.h			\
 	common/atomic.h				\
+	common/binsearch.h			\
 	common/memdup.h				\
 	common/mempattern.h			\
 	common/mempattern.c			\
