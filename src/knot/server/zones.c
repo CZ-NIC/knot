@@ -1172,9 +1172,9 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 	/* Ensure both new and old have zone contents. */
 	knot_zone_contents_t *zc = knot_zone_get_contents(zone);
 	knot_zone_contents_t *zc_old = knot_zone_get_contents(z_old);
-		dbg_zones("Going to calculate diff. "
-		          "Old contents: %p, new: %p\n",
-		          zc_old, zc);
+
+	dbg_zones("Going to calculate diff. Old contents: %p, new: %p\n",
+	          zc_old, zc);
 
 	knot_changesets_t *diff_chs = NULL;
 	if (z->build_diffs && zc && zc_old && zone_changed) {
@@ -1194,16 +1194,13 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 		int ret = zones_create_changeset(z_old,
 		                                 zone, diff_ch);
 		if (ret == KNOT_ENODIFF) {
-			log_zone_warning("Zone file for "
-			                 "'%s' changed, "
-			                 "but serial didn't - "
-			                 "won't create changesets.\n",
-			                 z->name);
+			log_zone_warning("Zone file for '%s' changed, but "
+			                 "serial didn't - won't create "
+			                 "changesets.\n", z->name);
 		} else if (ret != KNOT_EOK) {
-			log_zone_warning("Failed to calculate "
-			                 "differences from the "
-			                 "zone file update: "
-			                 "%s\n", knot_strerror(ret));
+			log_zone_warning("Failed to calculate differences from "
+			                 "the zone file update: %s\n",
+			                 knot_strerror(ret));
 		}
 		/* Even if there's nothing to create the diff from
 		 * we can still sign the zone - inconsistencies may happen. */
@@ -3579,11 +3576,16 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	}
 
 	char *zname = knot_dname_to_str(knot_zone_name(zone));
+	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
+	free(zname);
+	if (msgpref == NULL) {
+		return KNOT_ENOMEM;
+	}
 	if (force) {
-		log_zone_info("DNSSEC: Zone %s - Complete resign started "
-		              "(dropping all previous signatures)...\n", zname);
+		log_zone_info("%s Complete resign started (dropping all "
+		              "previous signatures)...\n", msgpref);
 	} else {
-		log_zone_info("DNSSEC: Zone %s - Signing zone...\n", zname);
+		log_zone_info("%s Signing zone...\n", msgpref);
 	}
 
 	int ret = 0;
@@ -3600,7 +3602,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		zd->dnssec_timer = NULL;
 		pthread_mutex_unlock(&zd->lock);
 		rcu_read_unlock();
-		free(zname);
+		free(msgpref);
 		return ret;
 	}
 
@@ -3609,12 +3611,12 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
 		                                    XFR_TYPE_UPDATE);
 		if (ret != KNOT_EOK) {
-			log_server_error("Could not sign zone %s (%s).\n",
-			                 zname, knot_strerror(ret));
+			log_server_error("%s Could not sign zone (%s).\n",
+			                 msgpref, knot_strerror(ret));
 			evsched_event_free(event->parent, event);
 			zd->dnssec_timer = NULL;
 			pthread_mutex_unlock(&zd->lock);
-			free(zname);
+			free(msgpref);
 			rcu_read_unlock();
 			return ret;
 		}
@@ -3627,8 +3629,8 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	zd->dnssec_timer = NULL;
 	pthread_mutex_unlock(&zd->lock);
 
-	log_zone_info("DNSSEC: Zone %s - Successfully signed.\n", zname);
-	free(zname);
+	log_zone_info("%s Successfully signed.\n", msgpref);
+	free(msgpref);
 
 	// Schedule next signing
 	/* Next signing should not be 'forced'. May take longer now, but
@@ -3677,6 +3679,12 @@ int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
 		evsched_event_free(scheduler, zd->dnssec_timer);
 		zd->dnssec_timer = NULL;
 	}
+
+	char *zname = knot_dname_to_str(knot_zone_name(zone));
+	log_zone_info("DNSSEC: Zone %s - planning next resign %" PRId64 "s"
+	              "(%" PRId64 "h) from now.\n", zname, time / 1000,
+	              time / 3600000);
+	free(zname);
 
 //	TODO: throw an error if the new signing event is more in the future than the old one
 
