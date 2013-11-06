@@ -978,8 +978,7 @@ static int zones_journal_apply(knot_zone_t *zone)
 	/* Load all pending changesets. */
 	dbg_zones_verb("zones: loading all changesets of '%s' from SERIAL %u\n",
 	               zd->conf->name, serial);
-	knot_changesets_t* chsets =
-		knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+	knot_changesets_t* chsets = knot_changesets_create();
 	if (chsets == NULL) {
 		rcu_read_unlock();
 		return KNOT_ERROR;
@@ -1173,13 +1172,13 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 	/* Ensure both new and old have zone contents. */
 	knot_zone_contents_t *zc = knot_zone_get_contents(zone);
 	knot_zone_contents_t *zc_old = knot_zone_get_contents(z_old);
-		dbg_zones("Going to calculate diff. "
-		          "Old contents: %p, new: %p\n",
-		          zc_old, zc);
+
+	dbg_zones("Going to calculate diff. Old contents: %p, new: %p\n",
+	          zc_old, zc);
 
 	knot_changesets_t *diff_chs = NULL;
 	if (z->build_diffs && zc && zc_old && zone_changed) {
-		diff_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+		diff_chs = knot_changesets_create();
 		if (diff_chs == NULL) {
 			rcu_read_unlock();
 			return KNOT_ENOMEM;
@@ -1195,16 +1194,13 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 		int ret = zones_create_changeset(z_old,
 		                                 zone, diff_ch);
 		if (ret == KNOT_ENODIFF) {
-			log_zone_warning("Zone file for "
-			                 "'%s' changed, "
-			                 "but serial didn't - "
-			                 "won't create changesets.\n",
-			                 z->name);
+			log_zone_warning("Zone file for '%s' changed, but "
+			                 "serial didn't - won't create "
+			                 "changesets.\n", z->name);
 		} else if (ret != KNOT_EOK) {
-			log_zone_warning("Failed to calculate "
-			                 "differences from the "
-			                 "zone file update: "
-			                 "%s\n", knot_strerror(ret));
+			log_zone_warning("Failed to calculate differences from "
+			                 "the zone file update: %s\n",
+			                 knot_strerror(ret));
 		}
 		/* Even if there's nothing to create the diff from
 		 * we can still sign the zone - inconsistencies may happen. */
@@ -1221,7 +1217,7 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 	knot_changeset_t *sec_ch = NULL;
 	knot_zone_contents_t *new_contents = NULL;
 	if (z->dnssec_enable) {
-		sec_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+		sec_chs = knot_changesets_create();
 		if (sec_chs == NULL) {
 			knot_changesets_free(&diff_chs);
 			rcu_read_unlock();
@@ -1808,6 +1804,24 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 
 /*----------------------------------------------------------------------------*/
 
+static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
+                                       uint32_t used_lifetime,
+                                       uint32_t used_refresh)
+{
+	int ret = KNOT_EOK;
+	uint32_t new_expire = time(NULL) + (used_lifetime - used_refresh);
+	if (new_expire < zd->dnssec_timer->tv.tv_sec) {
+		// Drop old event, earlier signing needed
+		evsched_cancel(zd->dnssec_timer->parent, zd->dnssec_timer);
+		evsched_event_free(zd->dnssec_timer->parent, zd->dnssec_timer);
+		zd->dnssec_timer = NULL;
+		ret = zones_schedule_dnssec(zone,
+		                            expiration_to_relative(new_expire),
+		                            false);
+	}
+	return ret;
+}
+
 /*! \brief Process UPDATE query.
  *
  * Functions expects that the query is already authenticated
@@ -1852,8 +1866,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	 * We must prepare a changesets_t structure even though there will
 	 * be only one changeset - because of the API.
 	 */
-	knot_changesets_t *chgsets =
-		knot_changesets_create(KNOT_CHANGESET_TYPE_DDNS);
+	knot_changesets_t *chgsets = knot_changesets_create();
 	if (chgsets == NULL) {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		log_zone_error("%s Cannot create changesets structure.\n", msg);
@@ -1896,7 +1909,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	assert(zone_config);
 	if (zone_config->dnssec_enable) {
-		sec_chs = knot_changesets_create(KNOT_CHANGESET_TYPE_DNSSEC);
+		sec_chs = knot_changesets_create();
 		sec_ch = knot_changesets_create_changeset(sec_chs);
 		if (sec_chs == NULL || sec_ch == NULL) {
 			xfrin_rollback_update(zone->contents, &new_contents,
@@ -1909,10 +1922,13 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	dbg_zones_verb("%s: Signing the UPDATE\n", msg);
 	// Sign the created changeset
+	uint32_t used_lifetime = 0;
+	uint32_t used_refresh = 0;
 	if (zone_config->dnssec_enable) {
 		ret = knot_dnssec_sign_changeset(new_contents,
 		                                 knot_changesets_get_last(chgsets),
-		                                 sec_ch, KNOT_SOA_SERIAL_KEEP);
+		                                 sec_ch, KNOT_SOA_SERIAL_KEEP,
+		                                 &used_lifetime, &used_refresh);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update (%s)\n",
 			               msg, knot_strerror(ret));
@@ -1970,6 +1986,19 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			return ret;
 		}
 		assert(dnssec_contents);
+
+		// Plan zone resign if needed
+		zonedata_t *zd = (zonedata_t *)zone->data;
+		assert(zd && zd->dnssec_timer);
+		ret = replan_zone_sign_after_ddns(zone, zd, used_lifetime,
+		                                  used_refresh);
+		if (ret != KNOT_EOK) {
+			log_zone_error("%s: Failed to replan zone sign %s\n",
+			               msg, knot_strerror(ret));
+			zones_store_changesets_rollback(transaction);
+			zones_free_merged_changesets(chgsets, sec_chs);
+			return ret;
+		}
 	}
 
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
@@ -3227,7 +3256,7 @@ int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
 		return KNOT_EINVAL;
 	}
 
-	knot_changesets_t *chgsets = knot_changesets_create(KNOT_CHANGESET_TYPE_IXFR);
+	knot_changesets_t *chgsets = knot_changesets_create();
 	CHECK_ALLOC_LOG(chgsets, KNOT_ENOMEM);
 
 	int ret = ns_serial_compare(serial_to, serial_from);
@@ -3462,8 +3491,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	pthread_mutex_lock(&zd->lock);
 
-	knot_changesets_t *chs =
-		knot_changesets_create(KNOT_CHANGESET_TYPE_DNSSEC);
+	knot_changesets_t *chs = knot_changesets_create();
 	if (chs == NULL) {
 		evsched_event_free(event->parent, event);
 		zd->dnssec_timer = NULL;
@@ -3482,11 +3510,16 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	}
 
 	char *zname = knot_dname_to_str(knot_zone_name(zone));
+	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
+	free(zname);
+	if (msgpref == NULL) {
+		return KNOT_ENOMEM;
+	}
 	if (force) {
-		log_zone_info("DNSSEC: Zone %s - Complete resign started "
-		              "(dropping all previous signatures)...\n", zname);
+		log_zone_info("%s Complete resign started (dropping all "
+		              "previous signatures)...\n", msgpref);
 	} else {
-		log_zone_info("DNSSEC: Zone %s - Signing zone...\n", zname);
+		log_zone_info("%s Signing zone...\n", msgpref);
 	}
 
 	int ret = 0;
@@ -3503,7 +3536,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		zd->dnssec_timer = NULL;
 		pthread_mutex_unlock(&zd->lock);
 		rcu_read_unlock();
-		free(zname);
+		free(msgpref);
 		return ret;
 	}
 
@@ -3512,12 +3545,12 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
 		                                    XFR_TYPE_UPDATE);
 		if (ret != KNOT_EOK) {
-			log_server_error("Could not sign zone %s (%s).\n",
-			                 zname, knot_strerror(ret));
+			log_server_error("%s Could not sign zone (%s).\n",
+			                 msgpref, knot_strerror(ret));
 			evsched_event_free(event->parent, event);
 			zd->dnssec_timer = NULL;
 			pthread_mutex_unlock(&zd->lock);
-			free(zname);
+			free(msgpref);
 			rcu_read_unlock();
 			return ret;
 		}
@@ -3530,8 +3563,8 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	zd->dnssec_timer = NULL;
 	pthread_mutex_unlock(&zd->lock);
 
-	log_zone_info("DNSSEC: Zone %s - Successfully signed.\n", zname);
-	free(zname);
+	log_zone_info("%s Successfully signed.\n", msgpref);
+	free(msgpref);
 
 	// Schedule next signing
 	/* Next signing should not be 'forced'. May take longer now, but
@@ -3580,6 +3613,12 @@ int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
 		evsched_event_free(scheduler, zd->dnssec_timer);
 		zd->dnssec_timer = NULL;
 	}
+
+	char *zname = knot_dname_to_str(knot_zone_name(zone));
+	log_zone_info("DNSSEC: Zone %s - planning next resign %" PRId64 "s"
+	              "(%" PRId64 "h) from now.\n", zname, time / 1000,
+	              time / 3600000);
+	free(zname);
 
 //	TODO: throw an error if the new signing event is more in the future than the old one
 

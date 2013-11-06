@@ -92,6 +92,9 @@ typedef struct {
 	bool	show_additional;
 	/*!< Show footer info. */
 	bool	show_footer;
+
+	/*!< KHOST - Hide CNAME record in answer (duplicity reduction). */
+	bool	hide_cname;
 } style_t;
 
 char* get_reverse_name(const char *name);

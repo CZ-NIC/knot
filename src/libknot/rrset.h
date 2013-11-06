@@ -403,7 +403,7 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
  *        Deleted RRs are returned in 'rr_deleted' */
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
-                                     knot_rrset_t **rr_deleted, int ddns_check);
+                                     knot_rrset_t **rr_deleted);
 /* \brief Removes RRs contained in 'what' RRSet from 'from' RRSet. */
 int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
                                          const knot_rrset_t *what);

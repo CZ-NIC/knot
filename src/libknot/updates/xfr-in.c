@@ -970,7 +970,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	if (*chs == NULL) {
 		dbg_xfrin_verb("Changesets empty, creating new.\n");
 
-		ret = knot_changesets_init(chs, KNOT_CHANGESET_TYPE_IXFR);
+		ret = knot_changesets_init(chs);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&rr, 1);
 			knot_packet_free(&packet);
@@ -1441,7 +1441,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	// and in 'rrsigs' we have the copy of the RRSIGs
 
 	knot_rrset_t *rr_removed = NULL;
-	ret = knot_rrset_remove_rr_using_rrset(rrsigs, remove, &rr_removed, 0);
+	ret = knot_rrset_remove_rr_using_rrset(rrsigs, remove, &rr_removed);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to remove RDATA from RRSet: %s.\n",
 			  knot_strerror(ret));
@@ -1497,8 +1497,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 static int xfrin_apply_remove_normal(knot_changes_t *changes,
                                      const knot_rrset_t *remove,
                                      knot_node_t *node,
-                                     knot_rrset_t **rrset,
-                                     uint32_t chflags)
+                                     knot_rrset_t **rrset)
 {
 	assert(changes != NULL);
 	assert(remove != NULL);
@@ -1509,17 +1508,6 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 
 	dbg_xfrin_detail("Removing RRSet: \n");
 	knot_rrset_dump(remove);
-
-	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
-
-	/*
-	 * First handle the special case of DDNS - do not remove SOA from apex.
-	 */
-	if ((chflags & KNOT_CHANGESET_TYPE_DDNS) && is_apex
-	    && knot_rrset_type(remove) == KNOT_RRTYPE_SOA) {
-		dbg_xfrin_verb("Ignoring SOA removal in UPDATE.\n");
-		return KNOT_EOK;
-	}
 
 	// now we have the copy of the node, so lets get the right RRSet
 	// check if we do not already have it
@@ -1558,20 +1546,15 @@ dbg_xfrin_exec_detail(
 );
 
 	// remove the specified RRs from the RRSet (de facto difference of sets)
-	int ddns_remove_ns_from_apex =
-			((chflags & KNOT_CHANGESET_TYPE_DDNS) && is_apex
-			 && knot_rrset_type(*rrset) == KNOT_RRTYPE_NS);
 	knot_rrset_t *rr_remove = NULL;
-	ret = knot_rrset_remove_rr_using_rrset(*rrset, remove, &rr_remove,
-				 ddns_remove_ns_from_apex);
+	ret = knot_rrset_remove_rr_using_rrset(*rrset, remove, &rr_remove);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("xfr: remove_normal: Could not remove RR (%s).\n",
 			  knot_strerror(ret));
 		return ret;
 	}
 	/*!< \todo either one of these checks should be enough. */
-	if (knot_rrset_rdata_rr_count(rr_remove) == 0
-	    && !ddns_remove_ns_from_apex) {
+	if (knot_rrset_rdata_rr_count(rr_remove) == 0) {
 		/* No RDATA, no need to deep free. */
 		knot_rrset_free(&rr_remove);
 		dbg_xfrin_verb("Failed to remove RDATA from RRSet\n");
@@ -1595,10 +1578,6 @@ dbg_xfrin_exec_detail(
 	// there; it may be eventually removed when the RRSIGs are removed
 	if (knot_rrset_rdata_rr_count(*rrset) == 0
 	    && knot_rrset_rrsigs(*rrset) == NULL) {
-		// The RRSet should not be empty if we were removing NSs from
-		// apex in case of DDNS
-		assert(!ddns_remove_ns_from_apex);
-
 		knot_rrset_t *tmp = knot_node_remove_rrset(node,
 						     knot_rrset_type(*rrset));
 		dbg_xfrin_detail("Removed whole RRSet (%p). Node rr count=%d\n",
@@ -1616,107 +1595,6 @@ dbg_xfrin_exec_detail(
 			return ret;
 		}
 	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*! \todo Needs review - RRs may not be merged into RRSets. */
-static int xfrin_apply_remove_all_rrsets(knot_changes_t *changes,
-                                         knot_node_t *node, uint16_t type,
-                                         uint32_t chflags)
-{
-	knot_rrset_t **rrsets = NULL;
-	unsigned rrsets_count = 0;
-	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
-
-dbg_xfrin_exec_verb(
-	char *name = knot_dname_to_str(knot_node_owner(node));
-	dbg_xfrin_verb("Removing all RRSets from node %s of type %u. "
-		       "Is apex: %d, changeset flags: %u\n",
-		       name, type, is_apex, chflags);
-	free(name);
-);
-
-	/*! \todo ref #937 is it OK to modify nodes at this point?
-	 * shouldn't it be after the zones are switched? */
-
-	/* Assemble RRSets to remove. */
-	if (type == KNOT_RRTYPE_ANY) {
-		/* Remove all RRSets from the node. */
-		/* If removing from zone apex in an UPDATE, NS and SOA records
-		 * should be left unchanged.
-		 * We might either remove all RRSets and then return SOA and
-		 * NS RRSets to the node. Or find all existing types in the node
-		 * and remove all except NS and SOA. The first approach is
-		 * IMHO faster.
-		 */
-
-		rrsets = knot_node_get_rrsets(node);
-		short rr_count = knot_node_rrset_count(node);
-		if (rr_count > 0) {
-			rrsets_count = (unsigned)rr_count;
-		}
-		knot_node_remove_all_rrsets(node);
-
-		/*
-		 * If apex, return SOA and NS RRSets to the node and remove
-		 * them from the list (so they are not deleted later).
-		 *
-		 * This function is called only when processing DDNS, but one
-		 * never knows, so we'll rather check it
-		 */
-		if (is_apex && (chflags & KNOT_CHANGESET_TYPE_DDNS)) {
-			dbg_xfrin_detail("DDNS: returning SOA and NS to the "
-					 "node.\n");
-			for (unsigned i = 0; i < rrsets_count; ++i) {
-				if (knot_rrset_type(rrsets[i])
-				       == KNOT_RRTYPE_SOA
-				    || knot_rrset_type(rrsets[i])
-				       == KNOT_RRTYPE_NS) {
-					dbg_xfrin_detail("Returning...\n");
-					knot_node_add_rrset_no_merge(node, rrsets[i]);
-					rrsets[i] = NULL;
-				}
-			}
-		}
-	} else {
-		/* Remove only the RRSet with given type. */
-		/* First we must check if we're not removing NS or SOA from
-		 * apex. This change should be ignored.
-		 *
-		 * This function is called only when processing DDNS, but one
-		 * never knows, so we'll rather check it
-		 */
-		if (is_apex && (chflags & KNOT_CHANGESET_TYPE_DDNS)
-		    && (type == KNOT_RRTYPE_SOA || type == KNOT_RRTYPE_NS)) {
-			dbg_xfrin_detail("DDNS: ignoring SOA or NS removal.\n");
-			return KNOT_EOK;
-		}
-
-		rrsets = malloc(sizeof(knot_rrset_t*));
-		if (rrsets) {
-			*rrsets = knot_node_remove_rrset(node, type);
-			rrsets_count = 1;
-		}
-	}
-
-	/* Mark RRsets and RDATA for removal. */
-	for (unsigned i = 0; i < rrsets_count; ++i) {
-		if (rrsets[i] == NULL) {
-			continue;
-		}
-
-		int ret = knot_changes_add_rrset(changes, rrsets[i],
-		                                 KNOT_CHANGES_OLD);
-		if (ret != KNOT_EOK) {
-			free(rrsets);
-			return ret;
-		}
-
-	}
-
-	free(rrsets);
 
 	return KNOT_EOK;
 }
@@ -1808,85 +1686,11 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_add_normal_ddns(knot_changes_t *changes,
-                                       knot_rrset_t *add, knot_node_t *node,
-                                       knot_zone_contents_t *contents)
-{
-	int ret;
-
-	/* 1) Adding SOA. */
-	if (knot_rrset_type(add) == KNOT_RRTYPE_SOA) {
-		/* a) If trying to add SOA to non-apex node, or the
-		 *    serial is less than the current serial, ignore.
-		 */
-		if (knot_node_rrset(node, KNOT_RRTYPE_SOA) == NULL
-		    || ns_serial_compare(knot_rdata_soa_serial(
-		       knot_node_rrset(node, KNOT_RRTYPE_SOA)),
-			   knot_rdata_soa_serial(add) > 0
-		    )) {
-			dbg_ddns_verb("DDNS: Ignoring SOA.\n");
-			return KNOT_EOK;
-		} else {
-			dbg_ddns_verb("DDNS: replacing SOA (old serial: %u,"
-				      " new serial: %u.\n",
-				      knot_rdata_soa_serial(knot_node_rrset(node,
-							  KNOT_RRTYPE_SOA)),
-				      knot_rdata_soa_serial(add));
-			/* b) Otherwise, replace the current SOA. */
-			ret = xfrin_replace_rrset_in_node(node, add,
-							      changes,
-							      contents);
-			/* In this case we must however remove the ADD RRSet
-			 * from the changeset, so that it is not deleted
-			 * afterwards.
-			 */
-			if (ret == KNOT_EOK) {
-				return 3;
-			} else {
-				return ret;
-			}
-		}
-	} else if (knot_rrset_type(add) == KNOT_RRTYPE_CNAME) {
-		/* 2) Adding CNAME... */
-		if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
-			dbg_ddns_verb("DDNS: replacing CNAME.\n");
-			/* a) ... to a CNAME node => replace. */
-			ret = xfrin_replace_rrset_in_node(node, add, changes,
-							  contents);
-			/* In this case we must however remove the ADD RRSet
-			 * from the changeset, so that it is not deleted
-			 * afterwards.
-			 */
-			if (ret == KNOT_EOK) {
-				return 3;
-			} else {
-				return ret;
-			}
-		} else if (knot_node_rrset_count(node) > 0) {
-			dbg_ddns_verb("DDNS: ignoring CNAME (non-empty node)\n");
-			/* b) ... to a non-empty node => ignore. */
-			return KNOT_EOK;
-		}
-		/* c) ... to an empty node => process normally. */
-	} else if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
-		/* 3) Adding other RRSets to CNAME node => ignore. */
-		dbg_ddns_verb("DDNS: ignoring RRSet (CNAME node)\n");
-		// handled in previous case
-		assert(knot_rrset_type(add) != KNOT_RRTYPE_CNAME);
-		return KNOT_EOK;
-	}
-
-	return 1;  // Continue normal processing
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int xfrin_apply_add_normal(knot_changes_t *changes,
                                   knot_rrset_t *add,
                                   knot_node_t *node,
                                   knot_rrset_t **rrset,
-                                  knot_zone_contents_t *contents,
-                                  uint32_t chflags)
+                                  knot_zone_contents_t *contents)
 {
 	assert(changes != NULL);
 	assert(add != NULL);
@@ -1900,15 +1704,6 @@ dbg_xfrin_exec_detail(
 	dbg_xfrin_detail("applying rrset:\n");
 	knot_rrset_dump(add);
 );
-
-	/* DDNS special cases. */
-	if (chflags & KNOT_CHANGESET_TYPE_DDNS) {
-		ret = xfrin_apply_add_normal_ddns(changes, add, node, contents);
-		/* Continue only if return value is 1. */
-		if (ret != 1) {
-			return ret;
-		}
-	}
 
 	int copied = 0;
 	/*! \note Reusing RRSet from previous function caused it not to be
@@ -2386,24 +2181,18 @@ dbg_xfrin_exec_detail(
 
 		assert(last_node != NULL);
 
-		// first check if all RRSets should be removed
+		// The CLASS should not be ANY, we do not accept such chgsets
 		dbg_xfrin_verb("RRSet class to be removed=%u\n",
 			       knot_rrset_class(rr));
-		if (knot_rrset_class(rr) == KNOT_CLASS_ANY) {
-			ret = xfrin_apply_remove_all_rrsets(
-				changes, last_node,
-				knot_rrset_type(rr), chset->flags);
-		} else if (knot_rrset_type(rr)
+		if (knot_rrset_type(rr)
 			   == KNOT_RRTYPE_RRSIG) {
 			// this should work also for UPDATE
-			ret = xfrin_apply_remove_rrsigs(changes, rr,
-							last_node, &rrset, &rrsigs);
+			ret = xfrin_apply_remove_rrsigs(changes, rr, last_node,
+			                                &rrset, &rrsigs);
 		} else {
 			// this should work also for UPDATE
-			ret = xfrin_apply_remove_normal(changes,
-							rr,
-							last_node, &rrset,
-							chset->flags);
+			ret = xfrin_apply_remove_normal(changes, rr, last_node,
+			                                &rrset);
 		}
 
 		dbg_xfrin_detail("xfrin_apply_remove() ret = %d\n", ret);
@@ -2490,13 +2279,11 @@ dbg_xfrin_exec_detail(
 
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG) {
 			ret = xfrin_apply_add_rrsig(changes, rr, last_node,
-			                            &rrset, &rrsigs,
-						    contents);
+			                            &rrset, &rrsigs, contents);
 			assert(ret != KNOT_EOK);
 		} else {
-			ret = xfrin_apply_add_normal(changes, rr,
-						     last_node, &rrset, contents,
-						     chset->flags);
+			ret = xfrin_apply_add_normal(changes, rr, last_node,
+			                             &rrset, contents);
 			assert(ret <= 3);
 		}
 

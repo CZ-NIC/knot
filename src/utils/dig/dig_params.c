@@ -719,7 +719,6 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query->style.show_edns = true;
 		query->style.show_footer = true;
 		query->style.style.verbose = true;
-		query->style.style.human_ttl = true;
 	} else if (strcmp(value, "nomultiline") == 0) {
 		query->style.style.wrap = false;
 	}

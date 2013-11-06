@@ -141,6 +141,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 				return KNOT_ENOMEM;
 			}
 			query->type_num = KNOT_RRTYPE_AAAA;
+			query->style.hide_cname = true;
 			add_tail(queries, (node_t *)query);
 
 			// Add query for name and type MX.
@@ -151,6 +152,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 			}
 			free(fqd_name);
 			query->type_num = KNOT_RRTYPE_MX;
+			query->style.hide_cname = true;
 			add_tail(queries, (node_t *)query);
 		} else {
 			free(fqd_name);

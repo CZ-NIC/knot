@@ -137,8 +137,6 @@ src/libknot/consts.c
 src/libknot/consts.h
 src/libknot/dname.c
 src/libknot/dname.h
-src/libknot/dnssec/algorithm.c
-src/libknot/dnssec/algorithm.h
 src/libknot/dnssec/cleanup.h
 src/libknot/dnssec/config.h
 src/libknot/dnssec/key.c
@@ -240,7 +238,6 @@ src/zscanner/error.c
 src/zscanner/error.h
 src/zscanner/file_loader.c
 src/zscanner/file_loader.h
-src/zscanner/scanner.c
 src/zscanner/scanner.h
 src/zscanner/scanner.rl
 src/zscanner/scanner_body.rl
