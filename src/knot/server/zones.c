@@ -1571,7 +1571,7 @@ typedef struct {
 static int zones_loader_thread(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
-		return KNOT_ERROR;
+		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_ERROR;
@@ -1630,8 +1630,7 @@ static int zones_loader_destruct(dthread_t *thread)
 static knot_zonedb_t *zones_load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
 {
 	/* Initialize threaded loader. */
-	int ret = KNOT_EOK;
-	zone_loader_ctx_t ctx;
+	zone_loader_ctx_t ctx = {0};
 	ctx.ns = ns;
 	ctx.config = conf;
 	ctx.db_new = knot_zonedb_new(conf->zones_count);
@@ -1652,11 +1651,9 @@ static knot_zonedb_t *zones_load_zonedb(knot_nameserver_t *ns, const conf_t *con
 		dt_start(unit);
 		dt_join(unit);
 		dt_delete(&unit);
-
-		/* Collect counts. */
-		ret = knot_zonedb_zone_count(ctx.db_new);
 	} else {
-		ret = KNOT_ENOMEM;
+		knot_zonedb_free(&ctx.db_new);
+		ctx.db_new = NULL;
 	}
 
 	pthread_mutex_destroy(&ctx.lock);
