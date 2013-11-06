@@ -154,6 +154,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
 	free(zname);
 	if (msgpref == NULL) {
+		closedir(keydir);
 		return KNOT_ENOMEM;
 	}
 
