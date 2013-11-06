@@ -3550,37 +3550,35 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 static int zones_dnssec_ev(event_t *event, bool force)
 {
 	assert(conf()->dnssec_enable);
+
 	// We will be working with zone, don't want it to change in the meantime
 	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)event->data;
-
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	pthread_mutex_lock(&zd->lock);
 
+	int ret = KNOT_EOK;
+	char *msgpref = NULL;
+
 	knot_changesets_t *chs = knot_changesets_create();
 	if (chs == NULL) {
-		evsched_event_free(event->parent, event);
-		zd->dnssec_timer = NULL;
-		pthread_mutex_unlock(&zd->lock);
-		rcu_read_unlock();
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto done;
 	}
 	knot_changeset_t *ch = knot_changesets_create_changeset(chs);
 	if (ch == NULL) {
-		knot_changesets_free(&chs);
-		evsched_event_free(event->parent, event);
-		zd->dnssec_timer = NULL;
-		pthread_mutex_unlock(&zd->lock);
-		rcu_read_unlock();
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto done;
 	}
 
 	char *zname = knot_dname_to_str(knot_zone_name(zone));
-	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
+	msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
 	free(zname);
 	if (msgpref == NULL) {
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto done;
 	}
+
 	if (force) {
 		log_zone_info("%s Complete resign started (dropping all "
 		              "previous signatures)...\n", msgpref);
@@ -3588,7 +3586,6 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		log_zone_info("%s Signing zone...\n", msgpref);
 	}
 
-	int ret = 0;
 	uint32_t expires_at = 0;
 	if (force) {
 		ret = knot_dnssec_zone_sign_force(zone, ch, &expires_at);
@@ -3597,40 +3594,22 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		                            &expires_at);
 	}
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&chs);
-		evsched_event_free(event->parent, event);
-		zd->dnssec_timer = NULL;
-		pthread_mutex_unlock(&zd->lock);
-		rcu_read_unlock();
-		free(msgpref);
-		return ret;
+		goto done;
 	}
 
 	if (!zones_changesets_empty(chs)) {
 		knot_zone_contents_t *new_c = NULL;
 		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
 		                                    XFR_TYPE_UPDATE);
+		chs = NULL; // freed by zones_store_and_apply_chgsets()
 		if (ret != KNOT_EOK) {
 			log_server_error("%s Could not sign zone (%s).\n",
 			                 msgpref, knot_strerror(ret));
-			evsched_event_free(event->parent, event);
-			zd->dnssec_timer = NULL;
-			pthread_mutex_unlock(&zd->lock);
-			free(msgpref);
-			rcu_read_unlock();
-			return ret;
+			goto done;
 		}
-	} else {
-		knot_changesets_free(&chs);
 	}
 
-	// cleanup
-	evsched_event_free(event->parent, event);
-	zd->dnssec_timer = NULL;
-	pthread_mutex_unlock(&zd->lock);
-
 	log_zone_info("%s Successfully signed.\n", msgpref);
-	free(msgpref);
 
 	// Schedule next signing
 	/* Next signing should not be 'forced'. May take longer now, but
@@ -3639,6 +3618,13 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	ret = zones_schedule_dnssec(zone, expiration_to_relative(expires_at),
 	                            false);
 
+done:
+	knot_changesets_free(&chs);
+	free(msgpref);
+
+	evsched_event_free(event->parent, event);
+	zd->dnssec_timer = NULL;
+	pthread_mutex_unlock(&zd->lock);
 	rcu_read_unlock();
 
 	return ret;
