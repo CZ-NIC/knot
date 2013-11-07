@@ -276,7 +276,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	}
 
 	knot_free_zone_keys(&zone_keys);
-	free(zname);
+	free(msgpref);
 
 	*used_lifetime = policy.sign_lifetime;
 	*used_refresh = policy.sign_refresh;
