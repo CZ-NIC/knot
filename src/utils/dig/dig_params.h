@@ -73,7 +73,7 @@ typedef struct {
 	/*!< List of nameservers to query to. */
 	list_t		servers;
 	/*!< Local interface (optional). */
-	server_t	*local;
+	srv_info_t	*local;
 	/*!< Operation mode. */
 	operation_t	operation;
 	/*!< Version of ip protocol to use. */

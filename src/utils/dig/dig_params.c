@@ -680,8 +680,8 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->nsid = false;
 	} else {
 		if (conf->local != NULL) {
-			query->local = server_create(conf->local->name,
-			                             conf->local->service);
+			query->local = srv_info_create(conf->local->name,
+			                               conf->local->service);
 			if (query->local == NULL) {
 				query_free(query);
 				return NULL;
@@ -732,12 +732,12 @@ void query_free(query_t *query)
 
 	// Cleanup servers.
 	WALK_LIST_DELSAFE(n, nxt, query->servers) {
-		server_free((server_t *)n);
+		srv_info_free((srv_info_t *)n);
 	}
 
 	// Cleanup local address.
 	if (query->local != NULL) {
-		server_free(query->local);
+		srv_info_free(query->local);
 	}
 
 	// Cleanup cryptographic content.
@@ -818,13 +818,13 @@ static int parse_keyfile(const char *value, query_t *query)
 
 static int parse_local(const char *value, query_t *query)
 {
-	server_t *local = parse_nameserver(value, "0");
+	srv_info_t *local = parse_nameserver(value, "0");
 	if (local == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	if (query->local != NULL) {
-		server_free(query->local);
+		srv_info_free(query->local);
 	}
 
 	query->local = local;
@@ -860,7 +860,7 @@ static int parse_port(const char *value, query_t *query)
 
 	// Set current server port (last or query default).
 	if (list_size(&query->servers) > 0) {
-		server_t *server = TAIL(query->servers);
+		srv_info_t *server = TAIL(query->servers);
 		port = &(server->service);
 	} else {
 		port = &(query->port);
@@ -966,7 +966,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 	// Complete specified nameservers if any.
 	if (list_size(&query->servers) > 0) {
 		WALK_LIST(n, query->servers) {
-			server_t *s = (server_t *)n;
+			srv_info_t *s = (srv_info_t *)n;
 
 			// If the port isn't specified yet use the default one.
 			if (strlen(s->service) == 0) {
@@ -981,7 +981,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 	// Use servers from config if any.
 	} else if (list_size(&conf->servers) > 0) {
 		WALK_LIST(n, conf->servers) {
-			server_t *s = (server_t *)n;
+			srv_info_t *s = (srv_info_t *)n;
 			char     *port = def_port;
 
 			// If the port is already specified, use it.
@@ -989,7 +989,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 				port = s->service;
 			}
 
-			server_t *server = server_create(s->name, port);
+			srv_info_t *server = srv_info_create(s->name, port);
 			if (server == NULL) {
 				WARN("can't set nameserver %s port %s\n",
 				     s->name, s->service);

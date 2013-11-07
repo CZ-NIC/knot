@@ -41,7 +41,7 @@ typedef struct {
 	char	*name;
 	/*! Name or number of the service. */
 	char	*service;
-} server_t;
+} srv_info_t;
 
 typedef struct {
 	/*! Socket descriptor. */
@@ -55,9 +55,9 @@ typedef struct {
 	int	wait;
 
 	/*! Local interface parameters. */
-	const server_t *local;
+	const srv_info_t *local;
 	/*! Remote server parameters. */
-	const server_t *remote;
+	const srv_info_t *remote;
 
 	/*! Local description string (used for logging). */
 	char *local_str;
@@ -86,14 +86,14 @@ typedef struct {
  * \retval server	if success.
  * \retval NULL		if error.
  */
-server_t* server_create(const char *name, const char *service);
+srv_info_t* srv_info_create(const char *name, const char *service);
 
 /*!
  * \brief Destroys server structure.
  *
  * \param server	Server structure to destroy.
  */
-void server_free(server_t *server);
+void srv_info_free(srv_info_t *server);
 
 /*!
  * \brief Translates enum IP version type to int version.
@@ -137,12 +137,12 @@ const char* get_sockname(const int socktype);
  * \retval KNOT_EOK	if success.
  * \retval errcode	if error.
  */
-int net_init(const server_t *local,
-             const server_t *remote,
-             const int      iptype,
-             const int      socktype,
-             const int      wait,
-             net_t          *net);
+int net_init(const srv_info_t *local,
+             const srv_info_t *remote,
+             const int        iptype,
+             const int        socktype,
+             const int        wait,
+             net_t            *net);
 
 /*!
  * \brief Creates socket and connects (if TCP) to remote address specified

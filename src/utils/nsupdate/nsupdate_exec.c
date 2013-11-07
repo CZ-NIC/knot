@@ -252,10 +252,10 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	return ret;
 }
 
-static server_t *parse_host(const char *lp, const char* default_port)
+static srv_info_t *parse_host(const char *lp, const char* default_port)
 {
 	/* Extract server address. */
-	server_t *srv = NULL;
+	srv_info_t *srv = NULL;
 	size_t len = strcspn(lp, SEP_CHARS);
 	char *addr = strndup(lp, len);
 	if (!addr) return NULL;
@@ -264,7 +264,7 @@ static server_t *parse_host(const char *lp, const char* default_port)
 	/* Store port/service if present. */
 	lp = tok_skipspace(lp + len);
 	if (*lp == '\0') {
-		srv = server_create(addr, default_port);
+		srv = srv_info_create(addr, default_port);
 		free(addr);
 		return srv;
 	}
@@ -278,7 +278,7 @@ static server_t *parse_host(const char *lp, const char* default_port)
 	DBG("%s: parsed port: %s\n", __func__, port);
 
 	/* Create server struct. */
-	srv = server_create(addr, port);
+	srv = srv_info_create(addr, port);
 	free(addr);
 	free(port);
 	return srv;
@@ -788,12 +788,12 @@ int cmd_server(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	/* Parse host. */
-	server_t *srv = parse_host(lp, params->server->service);
+	srv_info_t *srv = parse_host(lp, params->server->service);
 
 	/* Enqueue. */
 	if (!srv) return KNOT_ENOMEM;
 
-	server_free(params->server);
+	srv_info_free(params->server);
 	params->server = srv;
 
 	return KNOT_EOK;
@@ -804,12 +804,12 @@ int cmd_local(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	/* Parse host. */
-	server_t *srv = parse_host(lp, "0");
+	srv_info_t *srv = parse_host(lp, "0");
 
 	/* Enqueue. */
 	if (!srv) return KNOT_ENOMEM;
 
-	server_free(params->srcif);
+	srv_info_free(params->srcif);
 	params->srcif = srv;
 
 	return KNOT_EOK;
