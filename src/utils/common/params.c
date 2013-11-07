@@ -34,6 +34,95 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
+/*!
+ * \brief Checks if string is a prefix of reference string.
+ *
+ * \param pref		Prefix string.
+ * \param pref_len	Prefix length.
+ * \param str		Reference string (must have trailing zero).
+ *
+ * \retval -1		\a pref is not a prefix of \a str.
+ * \retval  0<=		number of chars after prefix \a pref in \a str.
+ */
+static int cmp_prefix(const char *pref, const size_t pref_len,
+                      const char *str)
+{
+	size_t i = 0;
+	while (1) {
+		// Different characters => NOT prefix.
+		if (pref[i] != str[i]) {
+			return -1;
+		}
+
+		i++;
+
+		// Pref IS a prefix of pref.
+		if (i == pref_len) {
+			size_t rest = 0;
+			while (str[i + rest] != '\0') {
+				rest++;
+			}
+			return rest;
+		// Pref is longer then ref => NOT prefix.
+		} else if (str[i] == '\0') {
+			return -1;
+		}
+	}
+}
+
+/*!
+ * \brief Find the best parameter match in table based on prefix equality.
+ *
+ * \param str		Parameter name to look up.
+ * \param str_len	Parameter name length.
+ * \param tbl		Parameter table.
+ * \param unique	Indication if output is unique result.
+ *
+ * \retval >=0		looked up parameter position in \a tbl.
+ * \retval err		if error.
+ */
+int best_param(const char *str, const size_t str_len, const param_t *tbl,
+               bool *unique)
+{
+	if (str == NULL || str_len == 0 || tbl == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	int best_pos = -1;
+	int best_match = INT_MAX;
+	size_t matches = 0;
+	for (int i = 0; tbl[i].name != NULL; i++) {
+		int ret = cmp_prefix(str, str_len, tbl[i].name);
+		switch (ret) {
+		case -1:
+			continue;
+		case 0:
+			best_pos = i;
+			best_match = 0;
+			matches = 1;
+			break;
+		default:
+			if (ret < best_match) {
+				best_pos = i;
+				best_match = ret;
+			}
+			matches++;
+		}
+	}
+
+	switch (matches) {
+	case 0:
+		return KNOT_ENOTSUP;
+	case 1:
+		*unique = true;
+		return best_pos;
+	default:
+		*unique = false;
+		return best_pos;
+	}
+}
+
 char* get_reverse_name(const char *name)
 {
 	struct in_addr	addr4;
