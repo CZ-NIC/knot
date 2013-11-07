@@ -327,14 +327,19 @@ static int parse_keyfile_line(knot_key_params_t *key_params,
 	size_t name_length = separator - line;
 	for (int i = 0; key_parameters[i].name != NULL; i++) {
 		const struct key_parameter *current = &key_parameters[i];
-		if (memcmp(current->name, line, name_length) != 0)
+
+		if (strlen(current->name) != name_length ||
+		    memcmp(current->name, line, name_length) != 0
+		) {
 			continue;
+		}
 
 		assert(current->handler);
 
 		char *value = separator + 1;
-		while (isspace((unsigned char)(*value)))
+		while (isspace((unsigned char)(*value))) {
 			value++;
+		}
 
 		void *save_to = (void *)key_params + current->offset;
 		return current->handler(save_to, value);
