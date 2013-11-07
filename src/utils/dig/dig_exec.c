@@ -43,7 +43,8 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		if (get_socktype(query->protocol, query->type_num)
 		    == SOCK_STREAM) {
 			max_size = MAX_PACKET_SIZE;
-		} else if (query->flags.do_flag || query->nsid) {
+		} else if (query->flags.do_flag || query->nsid ||
+		           query->edns > -1) {
 			max_size = DEFAULT_EDNS_SIZE;
 		} else {
 			max_size = DEFAULT_UDP_SIZE;
@@ -137,7 +138,8 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	}
 
 	// Create EDNS section if required.
-	if (query->udp_size > 0 || query->flags.do_flag || query->nsid) {
+	if (query->udp_size > 0 || query->flags.do_flag || query->nsid ||
+	    query->edns > -1) {
 		knot_opt_rr_t *opt_rr = knot_edns_new();
 		if (opt_rr == NULL) {
 			ERR("can't create EDNS section\n");
@@ -146,7 +148,9 @@ static knot_packet_t* create_query_packet(const query_t *query,
 			return NULL;
 		}
 
-		knot_edns_set_version(opt_rr, 0);
+		uint8_t edns_version = query->edns > -1 ? query->edns : 0;
+
+		knot_edns_set_version(opt_rr, edns_version);
 		knot_edns_set_payload(opt_rr, max_size);
 
 		if (knot_response_add_opt(packet, opt_rr, 0) != KNOT_EOK) {

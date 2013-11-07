@@ -530,6 +530,48 @@ static int opt_nonsid(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_edns(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	if (arg == NULL) {
+		q->edns = 0;
+		return KNOT_EOK;
+	} else if (*arg == '\0') {
+		ERR("missing edns version\n");
+		return KNOT_EFEWDATA;
+	} else {
+		char *end;
+		long long num = strtoll(arg, &end, 10);
+		// Check for bad string.
+		if (end == arg || *end != '\0') {
+			ERR("bad +edns=%s\n", arg);
+			return KNOT_EINVAL;
+		}
+
+		if (num < 0 || num > UINT8_MAX) {
+			ERR("+edns=%s is out of range\n", arg);
+			return KNOT_ERANGE;
+		}
+
+		q->edns = num;
+
+		return KNOT_EOK;
+	}
+}
+
+static int opt_noedns(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->edns = -1;
+	q->udp_size = -1;
+	q->flags.do_flag = false;
+	q->nsid = false;
+
+	return KNOT_EOK;
+}
+
 static int opt_time(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -548,7 +590,30 @@ static int opt_bufsize(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	return params_parse_bufsize(arg, &q->udp_size);
+	char *end;
+	long long num = strtoll(arg, &end, 10);
+	// Check for bad string.
+	if (end == arg || *end != '\0') {
+		ERR("bad +bufsize=%s\n", arg);
+		return KNOT_EINVAL;
+	}
+
+	if (num > UINT16_MAX) {
+		num = UINT16_MAX;
+		WARN("+bufsize=%s is too big, using %lld instead\n", arg, num);
+	} else if (num < 0) {
+		num = 0;
+		WARN("+bufsize=%s is too small, using %lld instead\n", arg, num);
+	}
+
+	// Disable EDNS if zero bufsize.
+	if (num == 0) {
+		q->udp_size = -1;
+	} else {
+		q->udp_size = num;
+	}
+
+	return KNOT_EOK;
 }
 
 static const param_t dig_opts2[] = {
@@ -629,6 +694,9 @@ static const param_t dig_opts2[] = {
 
 	{ "nsid",         ARG_NONE,     opt_nsid },
 	{ "nonsid",       ARG_NONE,     opt_nonsid },
+
+	{ "edns",         ARG_OPTIONAL, opt_edns },
+	{ "noedns",       ARG_NONE,     opt_noedns },
 
 	{ "time",         ARG_REQUIRED, opt_time },
 
@@ -1095,6 +1163,7 @@ static void dig_help(void)
 	       "       +[no]fail       Stop if SERVFAIL.\n"
 	       "       +[no]ignore     Don't use TCP automatically if truncated.\n"
 	       "       +[no]nsid       Request NSID.\n"
+	       "       +[no]edns=N     Use EDNS (=version).\n"
 	       "       +time=T         Set wait for reply interval in seconds.\n"
 	       "       +retry=N        Set number of retries.\n"
 	       "       +bufsize=B      Set EDNS buffer size.\n"

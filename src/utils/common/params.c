@@ -336,7 +336,7 @@ int params_parse_num(const char *value, uint32_t *dst)
 	}
 
 	// Convert string to number.
-	unsigned long long num = strtoull(value, &end, 10);
+	long long num = strtoll(value, &end, 10);
 
 	// Check for bad string.
 	if (end == value || *end != '\0') {
@@ -346,35 +346,10 @@ int params_parse_num(const char *value, uint32_t *dst)
 
 	if (num > UINT32_MAX) {
 		num = UINT32_MAX;
-		WARN("number %s is too big, using %llu instead\n", value, num);
-	}
-
-	*dst = num;
-
-	return KNOT_EOK;
-}
-
-int params_parse_bufsize(const char *value, int32_t *dst)
-{
-	char *end;
-
-	if (value == NULL || dst == NULL) {
-		DBG_NULL;
-		return KNOT_EINVAL;
-	}
-
-	// Convert string to number.
-	unsigned long long num = strtoull(value, &end, 10);
-
-	// Check for bad string.
-	if (end == value || *end != '\0') {
-		ERR("bad size %s\n", value);
-		return KNOT_EINVAL;
-	}
-
-	if (num > UINT16_MAX) {
-		num = UINT16_MAX;
-		WARN("size %s is too big, using %llu instead\n", value, num);
+		WARN("number %s is too big, using %lld instead\n", value, num);
+	} else if (num < 0) {
+		num = 0;
+		WARN("number %s is too small, using %lld instead\n", value, num);
 	}
 
 	*dst = num;

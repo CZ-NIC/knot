@@ -159,6 +159,9 @@ Don't use TCP automatically if truncated reply is received.
 .BR + [ no ] nsid
 Request nameserver identifier (NSID).
 .TP
+.BR + [ no ] edns= N
+Use EDNS version (default is 0).
+.TP
 .BI +time= T
 Set wait for reply interval in seconds (default is 5 seconds).
 This timeout applies to each query try.
