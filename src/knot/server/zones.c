@@ -2092,17 +2092,12 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 		return KNOT_EINVAL;
 	}
 
-	/* Lock RCU to ensure none will deallocate any data under our hands. */
-	rcu_read_lock();
-
 	/* Grab a pointer to the old database */
 	if (ns->zone_db == NULL) {
-		rcu_read_unlock();
 		log_server_error("Missing zone database in nameserver structure"
 		                 ".\n");
-		return KNOT_ERROR;
+		return KNOT_ENOENT;
 	}
-	rcu_read_unlock();
 
 	/* Insert all required zones to the new zone DB. */
 	/*! \warning RCU must not be locked as some contents switching will
@@ -2110,6 +2105,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	knot_zonedb_t *db_new = zones_load_zonedb(ns, conf);
 	if (db_new == NULL) {
 		log_server_warning("Failed to load zones.\n");
+		return KNOT_ENOMEM;
 	} else {
 		size_t loaded = knot_zonedb_zone_count(db_new);
 		log_server_info("Loaded %zu out of %d zones.\n",
