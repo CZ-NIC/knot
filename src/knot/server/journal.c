@@ -178,7 +178,6 @@ static int journal_open_file(journal_t *j)
 		                   j->path, efl.l_pid);
 		ret = fcntl(j->fd, F_SETLKW, &j->fl);
 	}
-	j->fl.l_type  = F_UNLCK;
 	dbg_journal("journal: locked journal %s (returned %d)\n", j->path, ret);
 
 	/* Read magic bytes. */
@@ -191,7 +190,8 @@ static int journal_open_file(journal_t *j)
 	}
 	if (memcmp(magic, magic_req, MAGIC_LENGTH) != 0) {
 		log_server_warning("Journal file '%s' version is too old, "
-		                   "it will be flushed.\n", j->path);
+		                   "it will be purged.\n", j->path);
+		j->fl.l_type  = F_UNLCK;
 		fcntl(j->fd, F_SETLK, &j->fl);
 		assert(j->fd > -1);
 		close(j->fd);
@@ -224,7 +224,8 @@ static int journal_open_file(journal_t *j)
 		}
 	} else {
 		log_server_warning("Journal file '%s' CRC error, "
-		                   "it will be flushed.\n", j->path);
+		                   "it will be purged.\n", j->path);
+		j->fl.l_type  = F_UNLCK;
 		fcntl(j->fd, F_SETLK, &j->fl);
 		close(j->fd);
 		j->fd = -1;
@@ -322,13 +323,13 @@ static int journal_open_file(journal_t *j)
 	}
 
 	/* Save file lock and return. */
-	j->fl.l_type = F_WRLCK;
 	return KNOT_EOK;
 
 	/* Unlock and close file and return error. */
 open_file_error:
 	free(j->nodes);
 	j->nodes = NULL;
+	j->fl.l_type  = F_UNLCK;
 	fcntl(j->fd, F_SETLK, &j->fl);
 	close(j->fd);
 	j->fd = -1;
