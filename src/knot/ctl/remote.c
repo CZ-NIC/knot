@@ -313,7 +313,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		char buf[512] = { '\0' };
 		char dnssec_buf[128] = { '\0' };
 		int n = snprintf(buf, sizeof(buf),
-		                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
+		                 "%s\ttype=%s | serial=%u | %s %s | %s %s",
 		                 zd->conf->name,
 		                 zd->xfr_in.has_master ? "slave" : "master",
 		                 serial,
