@@ -43,6 +43,7 @@
 
 #include <stdint.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 /*!
  * \brief Journal entry flags.
@@ -54,14 +55,6 @@ typedef enum journal_flag_t {
 	JOURNAL_DIRTY = 1 << 2, /*!< Journal entry cannot be evicted. */
 	JOURNAL_TRANS = 1 << 3  /*!< Entry is in transaction (uncommited). */
 } journal_flag_t;
-
-/*!
- * \brief Journal mode.
- */
-typedef enum journal_mode_t {
-	JOURNAL_PERSISTENT = 0 << 0, /*!< Persistent mode (open keeps fd). */
-	JOURNAL_LAZY       = 1 << 0  /*!< Lazy mode (open doesn't keep fd). */
-} journal_mode_t;
 
 /*!
  * \brief Journal node structure.
@@ -93,8 +86,8 @@ typedef struct journal_t
 {
 	int fd;
 	struct flock fl;        /*!< File lock. */
+	pthread_mutex_t mutex;  /*!< Synchronization mutex. */
 	char *path;             /*!< Path to journal file. */
-	int refs;               /*!< Number of references. */
 	uint16_t tmark;         /*!< Transaction start mark. */
 	uint16_t max_nodes;     /*!< Number of nodes. */
 	uint16_t qhead;         /*!< Node queue head. */
@@ -103,7 +96,7 @@ typedef struct journal_t
 	size_t fsize;           /*!< Journal file size. */
 	size_t fslimit;         /*!< File size limit. */
 	journal_node_t free;    /*!< Free segment. */
-	journal_node_t nodes[]; /*!< Array of nodes. */
+	journal_node_t *nodes;  /*!< Array of nodes. */
 } journal_t;
 
 /*!
@@ -146,17 +139,19 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
 int journal_create(const char *fn, uint16_t max_nodes);
 
 /*!
- * \brief Open journal file for read/write.
+ * \brief Open journal.
+ *
+ * \warning This doesn't open the file yet, just sets up the structure.
+ *          Call \fn journal_retain before reading/writing the journal.
  *
  * \param fn Journal file name.
  * \param fslimit File size limit (0 for no limit).
- * \param mode Open mode (0 for normal).
  * \param bflags Initial flags for each written node.
  *
  * \retval new journal instance if successful.
  * \retval NULL on error.
  */
-journal_t* journal_open(const char *fn, size_t fslimit, int mode, uint16_t bflags);
+journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags);
 
 /*!
  * \brief Fetch entry node for given identifier.
@@ -345,13 +340,14 @@ int journal_close(journal_t *journal);
 /*!
  * \brief Retain journal for use.
  *
- * Allows to track usage of lazily-opened journals.
- *
  * \param journal Journal.
  *
- * \return Retained journal.
+ * \retval KNOT_EOK
+ * \retval KNOT_EBUSY
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ERROR
  */
-journal_t *journal_retain(journal_t *journal);
+int journal_retain(journal_t *journal);
 
 /*!
  * \brief Release retained journal.
