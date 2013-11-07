@@ -328,6 +328,8 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			break;
 		}
 
+		assert(n <= sizeof(buf));
+
 		memcpy(dst, buf, n);
 		rb -= n;
 		dst += n;
