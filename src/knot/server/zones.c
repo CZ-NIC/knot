@@ -108,7 +108,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 	pthread_mutex_destroy(&zd->lock);
 
 	/* Close IXFR db. */
-	journal_release(zd->ixfr_db);
+	journal_close(zd->ixfr_db);
 
 	/* Free assigned config. */
 	conf_free_zone(zd->conf);
@@ -151,8 +151,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	zd->xfr_in.bootstrap_retry = (XFRIN_BOOTSTRAP_DELAY * tls_rand());
 
 	/* Initialize IXFR database. */
-	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit,
-	                           JOURNAL_LAZY, JOURNAL_DIRTY);
+	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit, JOURNAL_DIRTY);
 
 	if (zd->ixfr_db == NULL) {
 		char ebuf[256] = {0};
@@ -507,9 +506,11 @@ static int zones_zonefile_sync_ev(event_t *e)
 	int ret = KNOT_EOK;
 	if (knot_zone_contents(zone)) {
 		/* Synchronize journal. */
-		journal_t *j = journal_retain(zd->ixfr_db);
-		ret = zones_zonefile_sync(zone, j);
-		journal_release(j);
+		ret = journal_retain(zd->ixfr_db);
+		if (ret == KNOT_EOK) {
+			ret = zones_zonefile_sync(zone, zd->ixfr_db);
+			journal_release(zd->ixfr_db);
+		}
 
 		rcu_read_lock();
 		if (ret == KNOT_EOK) {
@@ -848,23 +849,23 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	rcu_read_unlock();
 
 	/* Retain journal for changeset loading. */
-	journal_t *j = journal_retain(zd->ixfr_db);
-	if (j == NULL) {
-		return KNOT_EBUSY;
+	int ret = journal_retain(zd->ixfr_db);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	/* Read entries from starting serial until finished. */
 	uint32_t found_to = from;
 	journal_node_t *n = 0;
-	int ret = journal_fetch(j, from, ixfrdb_key_from_cmp, &n);
+	ret = journal_fetch(zd->ixfr_db, from, ixfrdb_key_from_cmp, &n);
 	if (ret != KNOT_EOK) {
 		dbg_xfr("xfr: failed to fetch starting changeset: %s\n",
 		        knot_strerror(ret));
-		journal_release(j);
+		journal_release(zd->ixfr_db);
 		return ret;
 	}
 
-	while (n != 0 && n != journal_end(j)) {
+	while (n != 0 && n != journal_end(zd->ixfr_db)) {
 
 		/* Check for history end. */
 		if (to == found_to) {
@@ -875,7 +876,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		if (chs == NULL) {
 			dbg_xfr("xfr: failed to create changeset: %s\n",
 			        knot_strerror(ret));
-			journal_release(j);
+			journal_release(zd->ixfr_db);
 			return KNOT_ERROR;
 		}
 
@@ -892,16 +893,16 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		chs->serial_to = ixfrdb_key_to(n->id);
 		chs->data = malloc(n->len);
 		if (!chs->data) {
-			journal_release(j);
+			journal_release(zd->ixfr_db);
 			return KNOT_ENOMEM;
 		}
 
 		/* Read journal entry. */
-		ret = journal_read_node(j, n, (char*)chs->data);
+		ret = journal_read_node(zd->ixfr_db, n, (char*)chs->data);
 		if (ret != KNOT_EOK) {
 			dbg_xfr("xfr: failed to read data from journal\n");
 			free(chs->data);
-			journal_release(j);
+			journal_release(zd->ixfr_db);
 			return KNOT_ERROR;
 		}
 
@@ -916,7 +917,7 @@ static int zones_load_changesets(const knot_zone_t *zone,
 	}
 
 	dbg_xfr_detail("xfr: finished reading journal entries\n");
-	journal_release(j);
+	journal_release(zd->ixfr_db);
 
 	/* Unpack binary data. */
 	int unpack_ret = zones_changesets_from_binary(dst);
@@ -3167,13 +3168,17 @@ journal_t *zones_store_changesets_begin(knot_zone_t *zone)
 	}
 
 	/* Begin transaction, will be released on commit/rollback. */
-	journal_t *j = journal_retain(zd->ixfr_db);
-	if (journal_trans_begin(j) != KNOT_EOK) {
-		journal_release(j);
-		j = NULL;
+	int ret = journal_retain(zd->ixfr_db);
+	if (ret != KNOT_EOK) {
+		return NULL;
 	}
 
-	return j;
+	if (journal_trans_begin(zd->ixfr_db) != KNOT_EOK) {
+		journal_release(zd->ixfr_db);
+		return NULL;
+	}
+
+	return zd->ixfr_db;
 }
 
 /*----------------------------------------------------------------------------*/

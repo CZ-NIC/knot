@@ -77,20 +77,21 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "journal: create journal '%s'", jfilename);
 
 	/* Open journal. */
-	journal_t *journal = journal_open(jfilename, fsize, JOURNAL_LAZY, 0);
+	journal_t *journal = journal_open(jfilename, fsize, 0);
 	ok(journal != NULL, "journal: open journal '%s'", jfilename);
 
 	/* Retain journal. */
-	journal_t *j = journal_retain(journal);
+	ret = journal_retain(journal);
+	is_int(KNOT_EOK, ret, "journal: retain");
 
 	/* Write entry to log. */
 	const char *sample = "deadbeef";
-	ret = journal_write(j, 0x0a, sample, strlen(sample));
+	ret = journal_write(journal, 0x0a, sample, strlen(sample));
 	is_int(KNOT_EOK, ret, "journal: write");
 
 	/* Read entry from log. */
 	char tmpbuf[64] = {'\0'};
-	ret = journal_read(j, 0x0a, 0, tmpbuf);
+	ret = journal_read(journal, 0x0a, 0, tmpbuf);
 	is_int(KNOT_EOK, ret, "journal: read entry");
 
 	/* Compare read data. */
@@ -98,15 +99,15 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "journal: read data integrity check");
 
 	/* Append several characters. */
-	journal_write(j, 0, "X", 1); /* Dummy */
+	journal_write(journal, 0, "X", 1); /* Dummy */
 	char word[7] =  { 'w', 'o', 'r', 'd', '0', '\0', '\0' };
 	for (int i = 0; i < strlen(word); ++i) {
-		journal_write(j, i, word+i, 1);
+		journal_write(journal, i, word+i, 1);
 	}
 
 	/* Compare journal_walk() result. */
 	_wbi = 0;
-	journal_walk(j, walkchars);
+	journal_walk(journal, walkchars);
 	_walkbuf[_wbi] = '\0';
 	ret = strcmp(word, _walkbuf);
 	is_int(0, ret, "journal: read data integrity check 2 '%s'", _walkbuf);
@@ -114,20 +115,15 @@ int main(int argc, char *argv[])
 
 	/* Change single letter and compare. */
 	word[5] = 'X';
-	journal_write(j, 5, word+5, 1); /* append 'X', shifts out 'w' */
-	journal_walk(j, walkchars);
+	journal_write(journal, 5, word+5, 1); /* append 'X', shifts out 'w' */
+	journal_walk(journal, walkchars);
 	_walkbuf[_wbi] = '\0';
 	ret = strcmp(word + 1, _walkbuf);
 	is_int(0, ret, "journal: read data integrity check 3 '%s'", _walkbuf);
 	_wbi = 0;
 
-	/* Attempt to retain and release. */
-	journal_t *tmp = journal_retain(j);
-	ok(tmp == j, "journal: tested journal retaining");
-	journal_release(tmp);
-
 	/* Release journal. */
-	journal_release(j);
+	journal_release(journal);
 
 	/* Close journal. */
 	journal_close(journal);
@@ -141,8 +137,9 @@ int main(int argc, char *argv[])
 	ret = journal_create(jfilename, jsize);
 	is_int(KNOT_EOK, ret, "journal: create journal '%s'", jfilename);
 
-	j = journal_open(jfilename, fsize, 0, 0);
-	ok(j != NULL, "journal: open journal '%s'", jfilename);
+	journal = journal_open(jfilename, fsize, 0);
+	ok(journal != NULL, "journal: open journal '%s'", jfilename);
+	journal_retain(journal);
 
 	/* Write random data. */
 	int chk_key = 0;
@@ -152,7 +149,7 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < itcount; ++i) {
 		int key = rand() % 65535;
 		randstr(tmpbuf, sizeof(tmpbuf));
-		if (journal_write(j, key, tmpbuf, sizeof(tmpbuf)) != KNOT_EOK) {
+		if (journal_write(journal, key, tmpbuf, sizeof(tmpbuf)) != KNOT_EOK) {
 			ret = -1;
 			break;
 		}
@@ -167,36 +164,38 @@ int main(int argc, char *argv[])
 
 	/* Check data integrity. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
-	journal_read(j, chk_key, 0, tmpbuf);
+	journal_read(journal, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	is_int(0, ret, "journal: read data integrity check");
 
 	/* Reopen log and re-read value. */
 	memset(tmpbuf, 0, sizeof(tmpbuf));
-	journal_close(j);
-	j = journal_open(jfilename, fsize, 0, 0);
-	ok(j != NULL, "journal: open journal '%s'", jfilename);
+	journal_release(journal);
+	journal_close(journal);
+	journal = journal_open(jfilename, fsize, 0);
+	ok(journal != NULL, "journal: open journal '%s'", jfilename);
+	journal_retain(journal);
 
-	journal_read(j, chk_key, 0, tmpbuf);
+	journal_read(journal, chk_key, 0, tmpbuf);
 	ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 	is_int(0, ret, "journal: read data integrity check after close/open");
 
 	/* Map journal entry. */
 	char *mptr = NULL;
 	memset(chk_buf, 0xde, sizeof(chk_buf));
-	ret = journal_map(j, 0x12345, &mptr, sizeof(chk_buf));
+	ret = journal_map(journal, 0x12345, &mptr, sizeof(chk_buf));
 	ok(mptr && ret == 0, "journal: mapped journal entry");
 	if (ret != 0) {
 		skip_block(2, "No mapped journal");
 	} else {
 		/* Write to mmaped entry and unmap. */
 		memcpy(mptr, chk_buf, sizeof(chk_buf));
-		ret = journal_unmap(j, 0x12345, mptr, 1);
+		ret = journal_unmap(journal, 0x12345, mptr, 1);
 		ok(mptr && ret == 0, "journal: written to mapped entry and finished");
 
 		/* Compare mmaped entry. */
 		memset(tmpbuf, 0, sizeof(tmpbuf));
-		journal_read(j, 0x12345, NULL, tmpbuf);
+		journal_read(journal, 0x12345, NULL, tmpbuf);
 		ret = strncmp(chk_buf, tmpbuf, sizeof(chk_buf));
 		ok(ret == 0, "journal: mapped entry data integrity check");
 
@@ -204,31 +203,31 @@ int main(int argc, char *argv[])
 
 	/* Make a transaction. */
 	uint64_t tskey = 0x75750000;
-	ret = journal_trans_begin(j);
+	ret = journal_trans_begin(journal);
 	is_int(0, ret, "journal: TRANS begin");
 	for (int i = 0; i < 16; ++i) {
 		memset(tmpbuf, i, sizeof(tmpbuf));
-		journal_write(j, tskey + i, tmpbuf, sizeof(tmpbuf));
+		journal_write(journal, tskey + i, tmpbuf, sizeof(tmpbuf));
 	}
 
 	/* Check if uncommited node exists. */
-	ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ret = journal_read(journal, tskey + rand() % 16, NULL, chk_buf);
 	ok(ret != 0, "journal: check for uncommited node");
 
 	/* Commit transaction. */
-	ret = journal_trans_commit(j);
-	int read_ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ret = journal_trans_commit(journal);
+	int read_ret = journal_read(journal, tskey + rand() % 16, NULL, chk_buf);
 	ok(ret == 0 && read_ret == 0, "journal: transaction commit");
 
 	/* Rollback transaction. */
 	tskey = 0x6B6B0000;
-	journal_trans_begin(j);
+	journal_trans_begin(journal);
 	for (int i = 0; i < 16; ++i) {
 		memset(tmpbuf, i, sizeof(tmpbuf));
-		journal_write(j, tskey + i, tmpbuf, sizeof(tmpbuf));
+		journal_write(journal, tskey + i, tmpbuf, sizeof(tmpbuf));
 	}
-	ret = journal_trans_rollback(j);
-	read_ret = journal_read(j, tskey + rand() % 16, NULL, chk_buf);
+	ret = journal_trans_rollback(journal);
+	read_ret = journal_read(journal, tskey + rand() % 16, NULL, chk_buf);
 	ok(ret == 0 && read_ret != 0, "journal: transaction rollback");
 
 	/*  Write random data. */
@@ -236,20 +235,20 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < 512; ++i) {
 		int key = i;
 		randstr(tmpbuf, sizeof(tmpbuf));
-		ret = journal_map(j, key, &mptr, sizeof(tmpbuf));
+		ret = journal_map(journal, key, &mptr, sizeof(tmpbuf));
 		if (ret != KNOT_EOK) {
 			diag("journal_map failed: %s", knot_strerror(ret));
 			break;
 		}
 		memcpy(mptr, tmpbuf, sizeof(tmpbuf));
-		if ((ret = journal_unmap(j, key, mptr, 1)) != KNOT_EOK) {
+		if ((ret = journal_unmap(journal, key, mptr, 1)) != KNOT_EOK) {
 			diag("journal_unmap failed: %s", knot_strerror(ret));
 			break;
 		}
 
 		/* Store some key on the end. */
 		memset(chk_buf, 0, sizeof(chk_buf));
-		ret = journal_read(j, key, 0, chk_buf);
+		ret = journal_read(journal, key, 0, chk_buf);
 		if (ret != 0) {
 			diag("journal_map integrity check failed %s",
 			     knot_strerror(ret));
@@ -264,13 +263,14 @@ int main(int argc, char *argv[])
 	is_int(0, ret, "journal: sustained mmap r/w");
 
 	/* Open + create journal. */
-	journal_close(j);
+	journal_release(journal);
+	journal_close(journal);
 	remove(jfilename);
-	j = journal_open(jfilename, fsize, 0, 0);
-	ok(j != NULL, "journal: open+create from scratch '%s'", jfilename);
+	journal = journal_open(jfilename, fsize, 0);
+	ok(journal != NULL, "journal: open+create from scratch '%s'", jfilename);
 
 	/* Close journal. */
-	journal_close(j);
+	journal_close(journal);
 
 	/* Delete journal. */
 	remove(jfilename);
