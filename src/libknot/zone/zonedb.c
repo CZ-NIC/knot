@@ -187,6 +187,10 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
 
 int knot_zonedb_build_index(knot_zonedb_t *db)
 {
+	if (!db) {
+		return KNOT_EINVAL;
+	}
+
 	/* First, sort all zones based on the label count first and lexicographic
 	 * order second. The name with most labels goes first. 
 	 * i.e. {a, a.b, a.c, b } -> {a.b, a.c, a, b} */
