@@ -232,8 +232,8 @@ static char *dnssec_info(const zonedata_t *zd, char *buf, size_t buf_size)
 	time_t diff_time = zd->dnssec_timer->tv.tv_sec;
 	struct tm *t = localtime(&diff_time);
 
-	int written = snprintf(buf, buf_size, "%s", asctime(t));
-	if (written < 0) {
+	size_t written = strftime(buf, buf_size, "%c", t);
+	if (written == 0) {
 		return NULL;
 	}
 
@@ -313,7 +313,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		char buf[512] = { '\0' };
 		char dnssec_buf[128] = { '\0' };
 		int n = snprintf(buf, sizeof(buf),
-		                 "%s\ttype=%s | serial=%u | %s %s | %s %s",
+		                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
 		                 zd->conf->name,
 		                 zd->xfr_in.has_master ? "slave" : "master",
 		                 serial,
