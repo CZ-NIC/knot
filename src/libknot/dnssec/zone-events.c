@@ -153,8 +153,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	// Check if only SOA changed
 	if (knot_changeset_is_empty(out_ch) &&
 	    !knot_zone_sign_soa_expired(zone->contents, &zone_keys, &policy)) {
-		log_server_info("%s No signing performed, zone is valid.\n",
-		                msgpref);
+		log_zone_info("%s No signing performed, zone is valid.\n",
+		              msgpref);
 		free(msgpref);
 		knot_free_zone_keys(&zone_keys);
 		assert(knot_changeset_is_empty(out_ch));
@@ -168,8 +168,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	result = knot_zone_sign_update_soa(soa, &zone_keys, &policy,
 	                                   out_ch);
 	if (result != KNOT_EOK) {
-		log_server_error("%s Cannot update SOA record (%s). Not signing"
-		                 "the zone!\n", msgpref, knot_strerror(result));
+		log_zone_error("%s Cannot update SOA record (%s). Not signing"
+		               "the zone!\n", msgpref, knot_strerror(result));
 		free(msgpref);
 		knot_free_zone_keys(&zone_keys);
 		return result;

@@ -3535,8 +3535,8 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		                                    XFR_TYPE_UPDATE);
 		chs = NULL; // freed by zones_store_and_apply_chgsets()
 		if (ret != KNOT_EOK) {
-			log_server_error("%s Could not sign zone (%s).\n",
-			                 msgpref, knot_strerror(ret));
+			log_zone_error("%s Could not sign zone (%s).\n",
+			               msgpref, knot_strerror(ret));
 			goto done;
 		}
 	}
