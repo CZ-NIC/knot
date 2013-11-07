@@ -188,6 +188,8 @@ Options \fB\-f\fR and \fB\-m\fR and query options:
 .BR + [ no ] topdown ,\  + [ no ] nssearch ,\  + [ no ] trace.
 .TP
 Per-user file configuration via ${HOME}/.digrc.
+.TP
+Internationalized domain name (IDN) is not supported.
 .SS Differences with regard to ISC dig
 Optional port specification has a form of [address]:port instead of address#port.
 .TP
