@@ -2291,7 +2291,7 @@ dbg_ns_exec_verb(
 		// otherwise search for the new name
 		if (node == NULL) {
 			goto search;
-		} else if (knot_node_owner(node) != act_name) {
+		} else if (!knot_dname_is_equal(node->owner, act_name)) {
 			if(knot_dname_is_wildcard(knot_node_owner(node))) {
 				// we must set the closest encloser to the
 				// parent of the node, to be right
