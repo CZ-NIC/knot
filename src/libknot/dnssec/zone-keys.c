@@ -309,7 +309,7 @@ void knot_free_zone_keys(knot_zone_keys_t *keys)
 /*!
  * \brief Get timestamp of next key event.
  */
-const uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys)
+uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys)
 {
 	uint32_t result = UINT32_MAX;
 
