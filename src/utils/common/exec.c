@@ -98,7 +98,7 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 	// Print formated info.
 	switch (style->format) {
 	case FORMAT_NSUPDATE:
-		printf("\n;; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
+		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
 		       ";; Flags:%1s; "
 		       "ZONE: %u; PREREQ: %u; UPDATE: %u; ADDITIONAL: %u\n",
 		       opcode_str, rcode_str, knot_packet_id(packet),
@@ -109,7 +109,7 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 
 		break;
 	default:
-		printf("\n;; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
+		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
 		       ";; Flags:%1s; "
 		       "QUERY: %u; ANSWER: %u; AUTHORITY: %u; ADDITIONAL: %u\n",
 		       opcode_str, rcode_str, knot_packet_id(packet),
@@ -394,7 +394,7 @@ void print_header_xfr(const knot_packet_t *packet, const style_t  *style)
 	if (style->show_header) {
 		char *owner = knot_dname_to_str(knot_packet_qname(packet));
 		if (owner != NULL) {
-			printf("\n;; %s for %s\n", xfr, owner);
+			printf(";; %s for %s\n", xfr, owner);
 			free(owner);
 		}
 	}
