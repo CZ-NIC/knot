@@ -9,9 +9,7 @@ dist_check_SCRIPTS = \
 check_LIBRARIES = tests/tap/libtap.a
 
 AM_CPPFLAGS = \
-	-I$(top_srcdir)/src \
-	-DSYSCONFDIR='"$(sysconfdir)"' \
-	-DSBINDIR='"$(sbindir)"'
+	-I$(top_srcdir)/src
 
 tests_runtests_CPPFLAGS = \
 	-DSOURCE='"$(abs_srcdir)/tests"' \
