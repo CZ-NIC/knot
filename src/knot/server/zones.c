@@ -1363,16 +1363,6 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		return KNOT_EINVAL;
 	}
 
-	/* DNSSEC prerequisites. */
-	if (z->dnssec_enable && (!EMPTY_LIST(z->acl.notify_in) ||
-				 !EMPTY_LIST(z->acl.xfr_in))) {
-		log_server_warning("DNSSEC signing enabled for zone "
-				   "'%s', disabling incoming XFR.\n",
-				   z->name);
-		WALK_LIST_FREE(z->acl.notify_in);
-		WALK_LIST_FREE(z->acl.xfr_in);
-	}
-
 	/* Try to find the zone in the current zone db, doesn't need RCU. */
 	knot_zone_t *zone = knot_zonedb_find_zone(ns->zone_db, dname);
 
