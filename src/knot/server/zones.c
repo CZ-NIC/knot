@@ -3633,12 +3633,11 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 
 static int zones_dnssec_ev(event_t *event, bool force)
 {
-	assert(conf()->dnssec_enable);
-
 	// We will be working with zone, don't want it to change in the meantime
 	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)event->data;
 	zonedata_t *zd = (zonedata_t *)zone->data;
+	assert(zd->conf->dnssec_enable);
 	pthread_mutex_lock(&zd->lock);
 
 	int ret = KNOT_EOK;
