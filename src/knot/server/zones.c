@@ -1378,6 +1378,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 
 	/* Attempt to bootstrap if db or source does not exist. */
 	int ret = KNOT_ERROR;
+	int zone_created = 0;
 	int zone_changed = 0;
 	struct stat st_zone;
 	int stat_ret = stat(z->file, &st_zone);
@@ -1433,6 +1434,7 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 			dbg_zones_verb("zones: inserted '%s' into "
 			               "database, initializing data\n",
 			               z->name);
+			zone_created = 1;
 
 			/* Initialize zone-related data. */
 			zonedata_init(z, zone);
@@ -1548,7 +1550,9 @@ static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
 		ret = zones_do_diff_and_sign(z, zone, ns, dname, zone_changed);
 		if (ret != KNOT_EOK) {
 			zd->conf = NULL;
-			knot_zone_deep_free(&zone);
+			if (zone_created) {
+				knot_zone_deep_free(&zone);
+			}
 		}
 	}
 
