@@ -363,11 +363,11 @@ knot_packet_t* create_empty_packet(const size_t max_size)
 	// Set packet buffer size.
 	knot_packet_set_max_size(packet, max_size);
 
-	// Set random sequence id.
-	knot_packet_set_random_id(packet);
-
 	// Initialize query packet.
 	knot_query_init(packet);
+
+	// Set random sequence id.
+	knot_packet_set_random_id(packet);
 
 	return packet;
 }
