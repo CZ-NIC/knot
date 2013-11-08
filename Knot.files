@@ -282,5 +282,5 @@ tests/tap/float.c
 tests/tap/float.h
 tests/tap/macros.h
 tests/wire.c
-tests/ztree.c
 tests/zonedb.c
+tests/ztree.c
