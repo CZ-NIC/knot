@@ -144,6 +144,15 @@ char *knot_dname_to_str(const knot_dname_t *name);
 knot_dname_t *knot_dname_from_str(const char *name, unsigned len);
 
 /*!
+ * \brief Create a dname structure from domain name given as a C string.
+ *
+ * \param name DNAME in presentation format as a C string.
+ *
+ * \return New name or NULL.
+ */
+knot_dname_t *knot_dname_from_cstr(const char *name);
+
+/*!
  * \brief Convert name to lowercase.
  *
  * \note Name must not be compressed.

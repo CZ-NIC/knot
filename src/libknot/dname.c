@@ -360,6 +360,17 @@ knot_dname_t *knot_dname_from_str(const char *name, unsigned len)
 
 /*----------------------------------------------------------------------------*/
 
+knot_dname_t *knot_dname_from_cstr(const char *name)
+{
+	if (!name) {
+		return NULL;
+	}
+
+	return knot_dname_from_str(name, strlen(name));
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_dname_to_lower(knot_dname_t *name)
 {
 	if (name == NULL)
