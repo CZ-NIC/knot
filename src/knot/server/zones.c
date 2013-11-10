@@ -286,7 +286,7 @@ static int zones_expire_ev(event_t *e)
 
 	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)e->data;
-	zonedata_t *zd = (zonedata_t *)zone->data;
+	zonedata_t *zd = zone->data;
 
 	/* Check if zone is not discarded. */
 	if (knot_zone_flags(zone) & KNOT_ZONE_DISCARDED) {
@@ -497,7 +497,7 @@ static int zones_zonefile_sync_ev(event_t *e)
 	}
 
 	/* Fetch zone data. */
-	zonedata_t *zd = (zonedata_t *)zone->data;
+	zonedata_t *zd = zone->data;
 	if (!zd) {
 		return KNOT_EINVAL;
 	}
@@ -594,7 +594,7 @@ static int zones_set_acl(acl_t **acl, list_t* acl_list)
  * \retval KNOT_EZONEINVAL
  */
 static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
-			   const char *source, int enable_checks)
+                           const char *source, int enable_checks)
 {
 	if (dst == NULL || zone_name == NULL || source == NULL) {
 		return KNOT_EINVAL;
@@ -1163,13 +1163,12 @@ static int64_t expiration_to_relative(uint32_t exp) {
 static int zones_do_diff_and_sign(const conf_zone_t *z,
                                   knot_zone_t *zone,
                                   const knot_nameserver_t *ns,
-                                  const knot_dname_t *origin,
                                   bool zone_changed)
 {
 	/* Calculate differences. */
 	rcu_read_lock();
 	knot_zone_t *z_old = knot_zonedb_find_zone(ns->zone_db,
-	                                           origin);
+	                                           zone->name);
 	/* Ensure both new and old have zone contents. */
 	knot_zone_contents_t *zc = knot_zone_get_contents(zone);
 	knot_zone_contents_t *zc_old = knot_zone_get_contents(z_old);
@@ -1332,226 +1331,363 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 }
 
 /*!
- * \brief Insert new zone to the database.
+ * \brief Update zone data from new configuration.
  *
- * Zones that should be retained are just added from the old database to the
- * new. New zones are loaded.
- *
- * \param z Zone configuration.
- * \param dst Used for returning new/updated zone.
- * \param ns Name server instance.
- * \param db_old Old zone database.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOENT if zone has no contents.
- * \retval KNOT_ERROR on unspecified error.
+ * \param zone  Zone to be updated.
+ * \param conf  New zone configuration.
+ * \param ns    Server data structure.
  */
-static int zones_insert_zone(conf_zone_t *z, knot_zone_t **dst,
+static void update_zone_data(knot_zone_t *zone, conf_zone_t *conf,
                              knot_nameserver_t *ns)
 {
-	if (z == NULL || dst == NULL || ns == NULL) {
-		return KNOT_EINVAL;
+	assert(zone);
+	assert(conf);
+	assert(ns);
+	assert(ns->data);
+
+	zonedata_t *zd = zone->data;
+	assert(zd);
+
+	// data pointers
+
+	if (zd->conf != conf) {
+		conf_free_zone(zd->conf);
+		zd->conf = conf;
 	}
 
-	/* Convert the zone name into a domain name. */
-	/* Local allocation, will be discarded. */
-	knot_dname_t *dname = knot_dname_from_str(z->name, strlen(z->name));
-	if (dname == NULL) {
-		log_server_error("Error creating domain name from zone"
-		                 " name\n");
-		return KNOT_EINVAL;
+	zd->server = (server_t *)ns->data;
+
+	// cancel IXFR sync timer
+
+	if (zd->ixfr_dbsync) {
+		assert(zd->server->sched);
+		evsched_t *scheduler = zd->server->sched;
+
+		evsched_cancel(scheduler, zd->ixfr_dbsync);
+		evsched_event_free(scheduler, zd->ixfr_dbsync);
+		zd->ixfr_dbsync = NULL;
 	}
 
-	/* Try to find the zone in the current zone db, doesn't need RCU. */
-	knot_zone_t *zone = knot_zonedb_find_zone(ns->zone_db, dname);
+	// ACLs
 
-	/* Attempt to bootstrap if db or source does not exist. */
-	int ret = KNOT_ERROR;
-	int zone_created = 0;
-	int zone_changed = 0;
-	struct stat st_zone;
-	int stat_ret = stat(z->file, &st_zone);
-	if (zone != NULL) {
-		if (stat_ret == 0 && knot_zone_version(zone) < st_zone.st_mtime) {
-			zone_changed = 1;
+	zones_set_acl(&zd->xfr_in.acl, &conf->acl.xfr_in);
+	zones_set_acl(&zd->xfr_out,    &conf->acl.xfr_out);
+	zones_set_acl(&zd->notify_in,  &conf->acl.notify_in);
+	zones_set_acl(&zd->notify_out, &conf->acl.notify_out);
+	zones_set_acl(&zd->update_in,  &conf->acl.update_in);
+
+	// clear incoming XFRs master
+
+	zd->xfr_in.has_master = 0;
+	memset(&zd->xfr_in.tsig_key, 0, sizeof(knot_tsig_key_t));
+	sockaddr_init(&zd->xfr_in.master, -1);
+	sockaddr_init(&zd->xfr_in.via, -1);
+
+	// set incoming XFRs master
+
+	if (!EMPTY_LIST(conf->acl.xfr_in)) {
+		zd->xfr_in.has_master = 1;
+
+		conf_remote_t *master = HEAD(conf->acl.xfr_in);
+		conf_iface_t *master_if = master->remote;
+		sockaddr_set(&zd->xfr_in.master, master_if->family,
+		             master_if->address, master_if->port);
+
+		if (sockaddr_isvalid(&master_if->via)) {
+			sockaddr_copy(&zd->xfr_in.via, &master_if->via);
 		}
-	} else {
-		zone_changed = 1;
+
+		if (master_if->key) {
+			memcpy(&zd->xfr_in.tsig_key, master_if->key,
+			       sizeof(knot_tsig_key_t));
+		}
 	}
 
-	/* Reload zone file. */
-	if (zone_changed) {
-		/* Zone file not exists and has master set. */
-		if (stat_ret < 0 && !EMPTY_LIST(z->acl.xfr_in)) {
+	// ANY queries policy
 
-			/* Create stub database. */
-			dbg_zones_verb("zones: loading stub zone '%s' "
-			               "for bootstrap.\n",
-			               z->name);
-			knot_dname_t *owner = knot_dname_copy(dname);
-			zone = knot_zone_new_empty(owner);
-			if (zone != NULL) {
-				ret = KNOT_EOK;
-			} else {
-				dbg_zones("zones: failed to create "
-				          "stub zone '%s'.\n", z->name);
-				ret = KNOT_ERROR;
-			}
+	if (conf->disable_any) {
+
+		//! \todo Review: from original code, what about enabling?
+
+		//! \todo Review: Updating zone contents. Is locking OK?
+
+		rcu_read_lock();
+		knot_zone_contents_t *contents = zone->contents;
+		if (contents) {
+			knot_zone_contents_disable_any(contents);
+		}
+		rcu_read_unlock();
+	}
+
+}
+
+/*!
+ * \brief Zone file status.
+ */
+typedef enum {
+	ZONE_STATUS_NOT_FOUND = 0,  //!< Zone file does not exist.
+	ZONE_STATUS_FOUND_NEW,      //!< Zone file exists, not loaded yet.
+	ZONE_STATUS_FOUND_CURRENT,  //!< Zone file exists, same as loaded.
+	ZONE_STATUS_FOUND_UPDATED,  //!< Zone file exists, newer than loaded.
+} zone_status_t;
+
+/*!
+ * \brief Check zone file status.
+ *
+ * \param zone      Previous instance of the zone (can be NULL).
+ * \param filename  File name of zone file.
+ *
+ * \return Zone status.
+ */
+static zone_status_t zone_file_status(const knot_zone_t *zone,
+                                      const char *filename)
+{
+	struct stat zf_stat = { 0 };
+	int result = stat(filename, &zf_stat);
+
+	if (result == -1) {
+		return ZONE_STATUS_NOT_FOUND;
+	} else if (zone == NULL) {
+		return ZONE_STATUS_FOUND_NEW;
+	} else if (knot_zone_version(zone) == zf_stat.st_mtime) {
+		return ZONE_STATUS_FOUND_CURRENT;
+	} else {
+		return ZONE_STATUS_FOUND_UPDATED;
+	}
+}
+
+/*!
+ * \brief Create zone stub for zone bootstrapping.
+ *
+ * \param apex  Zone name.
+ *
+ * \return New zone, NULL in case of allocation error.
+ */
+static knot_zone_t *create_bootstrap_zone(const knot_dname_t *apex)
+{
+	knot_dname_t *owner = knot_dname_copy(apex);
+	knot_zone_t *result = knot_zone_new_empty(owner);
+
+	if (result == NULL) {
+		knot_dname_free(&owner);
+	}
+
+	return result;
+}
+
+static int handle_not_found_zone(knot_zone_t **zone, const knot_dname_t *apex,
+                                 conf_zone_t *conf, knot_nameserver_t *ns)
+{
+	assert(zone);
+	assert(apex);
+	assert(conf);
+	assert(ns);
+
+	bool bootstrap = !EMPTY_LIST(conf->acl.xfr_in);
+
+	if (*zone == NULL) {
+		if (bootstrap) {
+			*zone = create_bootstrap_zone(apex);
+			zonedata_init(conf, *zone);
+			return zone ? KNOT_EOK : KNOT_ENOMEM;
 		} else {
-			dbg_zones_verb("zones: loading zone '%s'\n", z->name);
-			ret = zones_load_zone(&zone, z->name, z->file,
-			                      z->enable_checks);
-			const knot_node_t *apex = NULL;
-			const knot_rrset_t *soa = NULL;
-			if (ret == KNOT_EOK) {
-				apex = knot_zone_contents_apex(
-					knot_zone_contents(zone));
-				soa = knot_node_rrset(apex,
-					KNOT_RRTYPE_SOA);
-				int64_t sn = 0;
-				if (apex && soa) {
-					sn = knot_rdata_soa_serial(soa);
-					if (sn < 0) sn = 0;
-				}
-				log_server_info("Loaded zone '%s' serial %u\n",
-				                z->name, (uint32_t)sn);
-			}
-		}
-
-		/* Evaluate. */
-		if (ret == KNOT_EOK && zone != NULL) {
-			dbg_zones_verb("zones: inserted '%s' into "
-			               "database, initializing data\n",
-			               z->name);
-			zone_created = 1;
-
-			/* Initialize zone-related data. */
-			zonedata_init(z, zone);
+			return KNOT_EZONENOENT;
 		}
 	} else {
-		dbg_zones_verb("zones: found '%s' in old database, "
-		               "copying to new.\n", z->name);
-		if (stat_ret == 0) {
-			log_server_info("Zone '%s' is up-to-date, no need "
-			                "for reload.\n", z->name);
-		}
-		ret = KNOT_EOK;
-	}
+		if (bootstrap) {
+			return KNOT_EOK;
+		} else {
+			// XFR disabled meantime
 
-	/* Update zone data. */
-	if (zone != NULL) {
-		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-		assert(zd != NULL);
+			knot_zone_t *removed;
+			removed = knot_zonedb_remove_zone(ns->zone_db, apex);
+			assert(removed == *zone); UNUSED(removed);
+			knot_zone_deep_free(zone);
 
-		/* Update refs. */
-		if (zd->conf != z) {
-			conf_free_zone(zd->conf);
-			zd->conf = z;
-		}
-
-		/* Update ACLs. */
-		dbg_zones("Updating zone ACLs.\n");
-		zones_set_acl(&zd->xfr_in.acl, &z->acl.xfr_in);
-		zones_set_acl(&zd->xfr_out, &z->acl.xfr_out);
-		zones_set_acl(&zd->notify_in, &z->acl.notify_in);
-		zones_set_acl(&zd->notify_out, &z->acl.notify_out);
-		zones_set_acl(&zd->update_in, &z->acl.update_in);
-
-		/* Update server pointer. */
-		zd->server = (server_t *)knot_ns_get_data(ns);
-
-		/* Update master server address. */
-		zd->xfr_in.has_master = 0;
-		memset(&zd->xfr_in.tsig_key, 0, sizeof(knot_tsig_key_t));
-		sockaddr_init(&zd->xfr_in.master, -1);
-		sockaddr_init(&zd->xfr_in.via, -1);
-		if (!EMPTY_LIST(z->acl.xfr_in)) {
-			conf_remote_t *r = HEAD(z->acl.xfr_in);
-			conf_iface_t *cfg_if = r->remote;
-			sockaddr_set(&zd->xfr_in.master,
-				     cfg_if->family,
-				     cfg_if->address,
-				     cfg_if->port);
-			if (sockaddr_isvalid(&cfg_if->via)) {
-				sockaddr_copy(&zd->xfr_in.via,
-				              &cfg_if->via);
-			}
-			zd->xfr_in.has_master = 1;
-
-			if (cfg_if->key) {
-				memcpy(&zd->xfr_in.tsig_key,
-				       cfg_if->key,
-				       sizeof(knot_tsig_key_t));
-			}
-
-			dbg_zones("zones: using '%s@%d' as XFR master "
-			          "for '%s'\n",
-			          cfg_if->address,
-			          cfg_if->port,
-			          z->name);
-		}
-
-		/* Apply changesets from journal. */
-		int ar = zones_journal_apply(zone);
-		if (ar != KNOT_EOK && ar != KNOT_ERANGE && ar != KNOT_ENOENT) {
-			log_server_warning("Failed to apply changesets "
-			                   "for zone '%s': %s\n",
-			                   z->name, knot_strerror(ar));
-		}
-
-		/* Schedule IXFR database syncing. */
-		/*! \note This has to remain separate as it must not be
-		 *        triggered by a zone update or SOA response.
-		 */
-		/* Fetch zone data. */
-		evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
-		int sync_tmr = z->dbsync_timeout * 1000; /* s -> ms. */
-		if (zd->ixfr_dbsync != NULL) {
-			evsched_cancel(sch, zd->ixfr_dbsync);
-			evsched_event_free(sch, zd->ixfr_dbsync);
-			zd->ixfr_dbsync = NULL;
-		}
-		if (zd->ixfr_db != NULL) {
-			zd->ixfr_dbsync = evsched_schedule_cb(
-			                    sch, zones_zonefile_sync_ev,
-			                    zone, sync_tmr);
-			dbg_zones("zone: journal sync of '%s' "
-			          "set to %d\n", z->name, sync_tmr);
-		}
-
-		/* Update ANY queries policy */
-		if (zd->conf->disable_any) {
-			rcu_read_lock();
-			knot_zone_contents_t *contents =
-			                knot_zone_get_contents(zone);
-
-			/*! \todo This is actually updating zone contents.
-			 *        It should be done in thread-safe way.
-			 */
-			if (contents) {
-				knot_zone_contents_disable_any(contents);
-			}
-
-			rcu_read_unlock();
-		}
-
-		/* Create and apply changesets (zone-diff and DNSSEC). */
-		ret = zones_do_diff_and_sign(z, zone, ns, dname, zone_changed);
-		if (ret != KNOT_EOK) {
-			zd->conf = NULL;
-			if (zone_created) {
-				knot_zone_deep_free(&zone);
-			}
+			return KNOT_EZONENOENT;
 		}
 	}
+}
 
-	if (ret == KNOT_EOK) {
+/*!
+ * \brief Log message about loaded zone (name, status, serial).
+ *
+ * \param zone       Zone structure.
+ * \param zone_name  Printable name of the zone.
+ * \param status     Zone file status.
+ */
+static void log_zone_load_info(const knot_zone_t *zone, const char *zone_name,
+                               zone_status_t status)
+{
+	const char *action = NULL;
+
+	if (status == ZONE_STATUS_NOT_FOUND) {
+		action = "bootstrapped";
+	} else if (status == ZONE_STATUS_FOUND_NEW) {
+		action = "loaded";
+	} else if (status == ZONE_STATUS_FOUND_CURRENT) {
+		action = "is up-to-date";
+	} else if (status == ZONE_STATUS_FOUND_UPDATED) {
+		action = "reloaded";
+	}
+	assert(action);
+
+	int64_t serial = 0;
+	if (zone->contents && zone->contents->apex) {
+		const knot_rrset_t *soa = knot_node_rrset(zone->contents->apex,
+		                                          KNOT_RRTYPE_SOA);
+		serial = knot_rdata_soa_serial(soa);
+	}
+
+	log_server_info("zone '%s' %s (serial %" PRId64 ")\n",
+	                zone_name, action, serial);
+}
+
+/*!
+ * \brief Load or reload the zone and get it's status.
+ *
+ * \param[out] dst     Pointer to succesfully loaded zone.
+ * \param[in]  conf    Zone configuration.
+ * \param[in]  ns      Name server structure.
+ * \param[out] status  Pointer to loaded zone status.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int zones_get_zone(knot_zone_t **dst, conf_zone_t *conf,
+                          knot_nameserver_t *ns, zone_status_t *status)
+{
+	assert(conf);
+	assert(dst);
+	assert(ns);
+	assert(status);
+
+	knot_dname_t *apex = knot_dname_from_cstr(conf->name);
+	if (!apex) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_zone_t *zone = knot_zonedb_find_zone(ns->zone_db, apex);
+	zone_status_t zstatus = zone_file_status(zone, conf->file);
+
+	// zone loading
+
+	int result;
+	if (zstatus == ZONE_STATUS_NOT_FOUND) {
+		result = handle_not_found_zone(&zone, apex, conf, ns);
+	} else if (zstatus == ZONE_STATUS_FOUND_NEW ||
+	           zstatus == ZONE_STATUS_FOUND_UPDATED
+	) {
+		result = zones_load_zone(&zone, conf->name, conf->file,
+		                         conf->enable_checks);
+		zonedata_init(conf, zone);
+	} else {
+		assert(zstatus == ZONE_STATUS_FOUND_CURRENT);
+		assert(zone);
+
+		result = KNOT_EOK;
+	}
+
+	knot_dname_free(&apex);
+
+	if (result != KNOT_EOK) {
+		log_server_error("zone '%s' not loaded: %s\n", conf->name,
+		                 knot_strerror(result));
+		return result;
+	}
+
+	// loading successful (must not fail after this point)
+
+	log_zone_load_info(zone, conf->name, zstatus);
+	update_zone_data(zone, conf, ns);
+
+	*dst = zone;
+	*status = zstatus;
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Schedule IXFR sync for given zone.
+ *
+ * \param zone            Zone to scheduler IXFR sync for.
+ * \param dbsync_timeout  Sync time in seconds.
+ */
+static void schedule_ixfr_sync(knot_zone_t *zone, int dbsync_timeout)
+{
+	assert(zone);
+
+	assert(zone->data);
+	zonedata_t *zd = zone->data;
+
+	if (zd->ixfr_db != NULL) {
+		assert(zd->ixfr_dbsync == NULL);
+
+		assert(zd->server && zd->server->iosched);
+		evsched_t *scheduler = zd->server->sched;
+
+		zd->ixfr_dbsync = evsched_schedule_cb(scheduler,
+		                                      zones_zonefile_sync_ev,
+		                                      zone,
+		                                      dbsync_timeout * 1000);
+	}
+}
+
+/*!
+ * \brief Load/reload the zone, apply journal, sign it and schedule XFR sync.
+ *
+ * \param[out] dst   Pointer to successfully loaded zone.
+ * \param[in]  conf  Zone configuration.
+ * \param[in]  ns    Name server structure.
+ *
+ * \return Error code, KNOT_EOK if sucessful.
+ */
+static int zones_update_zone(knot_zone_t **dst, conf_zone_t *conf,
+                             knot_nameserver_t *ns)
+{
+	assert(dst);
+	assert(conf);
+	assert(ns);
+
+	int result = KNOT_EOK;
+
+	knot_zone_t *zone = NULL;
+	zone_status_t status = 0;
+	result = zones_get_zone(&zone, conf, ns, &status);
+	if (result != KNOT_EOK) {
+		goto fail;
+	}
+
+	result = zones_journal_apply(zone);
+	if (result != KNOT_EOK && result != KNOT_ERANGE && result != KNOT_ENOENT) {
+		log_server_error("zone '%s', failed to apply changes from "
+		                 "journal: %s\n",
+		                 conf->name, knot_strerror(result));
+		goto fail;
+	}
+
+	bool modified = status != ZONE_STATUS_FOUND_CURRENT;
+	result = zones_do_diff_and_sign(conf, zone, ns, modified);
+	if (result != KNOT_EOK) {
+		log_server_error("zone '%s', failed to sign the zone: %s\n",
+		                 conf->name, knot_strerror(result));
+		goto fail;
+	}
+
+	schedule_ixfr_sync(zone, conf->dbsync_timeout);
+
+fail:
+	if (result == KNOT_EOK) {
 		*dst = zone;
+	} else {
+		if (zone && status == ZONE_STATUS_NOT_FOUND) {
+			// zone was bootstrapped, release config and free
+			zonedata_t *zone_data = zone->data;
+			zone_data->conf = NULL;
+			knot_zone_deep_free(&zone);
+		}
 	}
 
-	knot_dname_free(&dname);
-	return ret;
+	return result;
 }
 
 /*! \brief Context for threaded zone loader. */
@@ -1585,7 +1721,9 @@ static int zones_loader_thread(dthread_t *thread)
 		zone_config = HEAD(ctx->config->zones);
 		rem_node(&zone_config->n);
 		pthread_mutex_unlock(&ctx->lock);
-		ret = zones_insert_zone(zone_config, &zone, ctx->ns);
+
+		/* Update the zone. */
+		ret = zones_update_zone(&zone, zone_config, ctx->ns);
 
 		/* Insert into database if properly loaded. */
 		pthread_mutex_lock(&ctx->lock);
