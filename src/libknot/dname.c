@@ -307,9 +307,14 @@ char *knot_dname_to_str(const knot_dname_t *name)
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_from_str(const char *name, unsigned len)
+knot_dname_t *knot_dname_from_str(const char *name)
 {
-	if (name == NULL || len == 0 || len > KNOT_DNAME_MAXLEN) {
+	if (name == NULL) {
+		return NULL;
+	}
+
+	unsigned len = strlen(name);
+	if (len > KNOT_DNAME_MAXLEN) {
 		return NULL;
 	}
 
@@ -356,17 +361,6 @@ knot_dname_t *knot_dname_from_str(const char *name, unsigned len)
 	}
 
 	return wire;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_dname_t *knot_dname_from_cstr(const char *name)
-{
-	if (!name) {
-		return NULL;
-	}
-
-	return knot_dname_from_str(name, strlen(name));
 }
 
 /*----------------------------------------------------------------------------*/

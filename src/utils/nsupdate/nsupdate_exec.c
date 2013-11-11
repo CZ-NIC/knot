@@ -128,7 +128,7 @@ enum {
 };
 
 static int dname_isvalid(const char *lp, size_t len) {
-	knot_dname_t *dn = knot_dname_from_str(lp, len);
+	knot_dname_t *dn = knot_dname_from_str(lp);
 	if (dn == NULL) {
 		return 0;
 	}
@@ -164,7 +164,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Extract owner. */
 	size_t len = strcspn(lp, SEP_CHARS);
-	knot_dname_t *owner = knot_dname_from_str(lp, len);
+	knot_dname_t *owner = knot_dname_from_str(lp);
 	if (owner == NULL) {
 		return KNOT_EPARSEFAIL;
 	}
@@ -292,7 +292,7 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	scanner_t *s = p->rrp;
 	if (!p->pkt) {
 		p->pkt = create_empty_packet(MAX_PACKET_SIZE);
-		qname = knot_dname_from_str(p->zone, strlen(p->zone));
+		qname = knot_dname_from_str(p->zone);
 		ret = knot_query_set_question(p->pkt, qname, p->class_num, p->type_num);
 		knot_dname_free(&qname);
 		if (ret != KNOT_EOK)

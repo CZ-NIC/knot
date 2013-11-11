@@ -632,7 +632,7 @@ static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
 	/* Check if loaded origin matches. */
 	const knot_dname_t *dname = knot_zone_name(*dst);
 	knot_dname_t *dname_req = NULL;
-	dname_req = knot_dname_from_str(zone_name, strlen(zone_name));
+	dname_req = knot_dname_from_str(zone_name);
 	if (knot_dname_cmp(dname, dname_req) != 0) {
 		log_server_error("Origin of the zone db file is "
 				 "different than '%s'\n",
@@ -1573,7 +1573,7 @@ static int zones_get_zone(knot_zone_t **dst, conf_zone_t *conf,
 	assert(ns);
 	assert(status);
 
-	knot_dname_t *apex = knot_dname_from_cstr(conf->name);
+	knot_dname_t *apex = knot_dname_from_str(conf->name);
 	if (!apex) {
 		return KNOT_ENOMEM;
 	}
@@ -3069,8 +3069,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	const char *zonefile = zd->conf->file;
 
 	/* Check if the new zone apex dname matches zone name. */
-	knot_dname_t *cur_name = knot_dname_from_str(zd->conf->name,
-	                                                 strlen(zd->conf->name));
+	knot_dname_t *cur_name = knot_dname_from_str(zd->conf->name);
 	const knot_dname_t *new_name = NULL;
 	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
 	int r = knot_dname_cmp(cur_name, new_name);

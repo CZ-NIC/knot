@@ -136,21 +136,12 @@ char *knot_dname_to_str(const knot_dname_t *name);
  *
  * The resulting FQDN is stored in the wire format.
  *
- * \param name Domain name in presentation format (labels separated by dots).
- * \param len Size of the domain name (count of characters with all dots).
+ * \param name Domain name in presentation format (labels separated by dots,
+ *             '\0' terminated).
  *
- * \return new name or NULL
+ * \return New name or NULL
  */
-knot_dname_t *knot_dname_from_str(const char *name, unsigned len);
-
-/*!
- * \brief Create a dname structure from domain name given as a C string.
- *
- * \param name DNAME in presentation format as a C string.
- *
- * \return New name or NULL.
- */
-knot_dname_t *knot_dname_from_cstr(const char *name);
+knot_dname_t *knot_dname_from_str(const char *name);
 
 /*!
  * \brief Convert name to lowercase.

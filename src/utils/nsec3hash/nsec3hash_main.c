@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	dname = knot_dname_from_str(argv[4], strlen(argv[4]));
+	dname = knot_dname_from_str(argv[4]);
 	if (dname == NULL) {
 		fprintf(stderr, "Cannot parse domain name.\n");
 		goto fail;

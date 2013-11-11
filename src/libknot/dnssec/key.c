@@ -527,7 +527,7 @@ int knot_tsig_create_key(const char *name, int algorithm,
 	}
 
 	knot_dname_t *dname;
-	dname = knot_dname_from_str(name, strlen(name));
+	dname = knot_dname_from_str(name);
 	if (!dname) {
 		return KNOT_ENOMEM;
 	}
