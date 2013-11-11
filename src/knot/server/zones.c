@@ -1405,20 +1405,16 @@ static void update_zone_data(knot_zone_t *zone, conf_zone_t *conf,
 
 	// ANY queries policy
 
+	/*! \todo Zone contents settings can be replaced by other async
+	          operation, like transfer processing. */
+
+	rcu_read_lock();
 	if (conf->disable_any) {
-
-		//! \todo Review: from original code, what about enabling?
-
-		//! \todo Review: Updating zone contents. Is locking OK?
-
-		rcu_read_lock();
-		knot_zone_contents_t *contents = zone->contents;
-		if (contents) {
-			knot_zone_contents_disable_any(contents);
-		}
-		rcu_read_unlock();
+		knot_zone_contents_disable_any(zone->contents);
+	} else {
+		knot_zone_contents_enable_any(zone->contents);
 	}
-
+	rcu_read_unlock();
 }
 
 /*!
