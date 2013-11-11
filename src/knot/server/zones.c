@@ -1671,8 +1671,6 @@ static int zones_update_zone(knot_zone_t **dst, conf_zone_t *conf,
 	zone_status_t status = 0;
 	result = zones_get_zone(&zone, conf, ns, &status);
 	if (result != KNOT_EOK) {
-		zonedata_t *zone_data = zone->data;
-		conf_free_zone(zone_data->conf);
 		goto fail;
 	}
 
