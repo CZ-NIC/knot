@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
 		strcpy(buf, prefix);
 		if (strcmp(zone_list[i], ".") != 0) {
-			strcat(buf, zone_list[i]);
+			strncat(buf, zone_list[i], strlen(zone_list[i]));
 		}
 		dname = knot_dname_from_str(buf, strlen(buf));
 		if (knot_zonedb_find_zone_for_name(db, dname) == zones[i]) {
