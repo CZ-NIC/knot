@@ -1261,6 +1261,8 @@ static int zones_do_diff_and_sign(const conf_zone_t *z,
 			rcu_read_unlock();
 			return ret;
 		}
+	} else {
+		zones_cancel_dnssec(zone);
 	}
 
 	/* Merge changesets created by diff and sign. */
@@ -3733,21 +3735,34 @@ static int zones_dnssec_forced_ev(event_t *event)
 	return zones_dnssec_ev(event, true);
 }
 
+int zones_cancel_dnssec(knot_zone_t *zone)
+{
+	if (!zone || !zone->data) {
+		return KNOT_EINVAL;
+	}
+
+	zonedata_t *zd = zone->data;
+	evsched_t *scheduler = zd->server->sched;
+
+	if (zd->dnssec_timer) {
+		evsched_cancel(scheduler, zd->dnssec_timer);
+		evsched_event_free(scheduler, zd->dnssec_timer);
+		zd->dnssec_timer = NULL;
+	}
+
+	return KNOT_EOK;
+}
+
 int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
 {
 	if (!zone || !zone->data) {
 		return KNOT_EINVAL;
 	}
 
+	zones_cancel_dnssec(zone);
+
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	evsched_t *scheduler = zd->server->sched;
-
-	// Cancel previous event, if any
-	if (zd->dnssec_timer) {
-		evsched_cancel(scheduler, zd->dnssec_timer);
-		evsched_event_free(scheduler, zd->dnssec_timer);
-		zd->dnssec_timer = NULL;
-	}
 
 	char *zname = knot_dname_to_str(knot_zone_name(zone));
 	log_zone_info("DNSSEC: Zone %s - planning next resign %" PRId64 "s"
