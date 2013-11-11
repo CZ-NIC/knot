@@ -417,6 +417,8 @@ class DnsServer(object):
         self.flush_params = None
         self.compile_params = None
 
+        self.data_dir = None
+
         self.nsid = None
         self.ident = None
         self.version = None
@@ -658,38 +660,60 @@ class DnsServer(object):
             sock = self.create_sock(socket.SOCK_DGRAM)
         sent = sock.sendto(bytes(data, 'utf-8'), (self.addr, self.port))
         if sent != len(data):
-            raise Exception("Can't send RAW data (%d bytes) to %s." % (len(data), self.name))
+            raise Exception("Can't send RAW data (%d bytes) to %s." % \
+                            (len(data), self.name))
+
+    def zone_wait(self, zone, serial=None):
+        '''Try to get SOA record with serial higher then specified'''
+
+        if len(zone) != 1:
+            raise Exception("One zone required.")
+        zname = list(zone.keys())[0]
+
+        _serial = 0
+
+        for t in range(20):
+            resp = self.dig(zname, "SOA", udp=True, tries=1)
+            if resp.resp.rcode() == 0:
+                soa = str((resp.resp.answer[0]).to_rdataset())
+                _serial = int(soa.split()[5])
+                if serial:
+                    if serial < _serial:
+                        break
+                else:
+                    break
+            time.sleep(2)
+        else:
+            raise Exception("Can't get %s SOA%s from %s." % \
+                            (zone, ">%i" % serial if serial else "", self.name))
+
+        return _serial
 
     def zones_wait(self, zones):
         for zone in zones:
-            # Try to get SOA record with NOERROR.
-            for t in range(10):
-                resp = self.dig(zone, "SOA", udp=True)
-                if resp.resp.rcode() == 0:
-                    break
-                time.sleep(2)
-            else:
-                raise Exception("Can't get SOA %s from %s." % \
-                                (zone, self.name))
+            self.zone_wait(zone)
 
     def update(self, zone):
         if len(zone) != 1:
             raise Exception("One zone required.")
+        zname = list(zone.keys())[0]
 
         key_params = self.tsig.key_params if self.tsig else dict()
-        zname = list(zone.keys())[0]
 
         return Update(self, dns.update.Update(zname, **key_params))
 
-    def soa_serial(self, zone):
-        '''Returns zone SOA serial'''
+    def zone_update(self, zone_name, file_name):
+        # Add trailing dot if missing.
+        if zone_name[-1] != ".":
+            zone_name += "."
 
-        if len(zone) != 1:
-            raise Exception("One zone required.")
+        src_file = self.data_dir + file_name
+        dst_file = self.zones[zone_name].filename
 
-        zname = list(zone.keys())[0]
-        resp = self.dig(zname, "SOA")
-        return str((resp.resp.answer[0]).to_rdataset()).split()[5]
+        try:
+            shutil.copyfile(src_file, dst_file)
+        except:
+            raise Exception("Can't use zone file %s" % src_file)
 
 class Bind(DnsServer):
 
@@ -1071,6 +1095,8 @@ class DnsTest(object):
            (valgrind or (valgrind == None and server == "knot")):
             srv.valgrind = [params.valgrind_bin, params.valgrind_flags]
 
+        srv.data_dir = self.data_dir
+
         srv.nsid = nsid
         srv.ident = ident
         srv.version = version
@@ -1154,19 +1180,19 @@ class DnsTest(object):
         if zone_name[-1] != ".":
             zone_name += "."
 
-        try:
-            if file_name:
-                src_file = self.data_dir + file_name
-                dst_file = self.zones_dir + file_name
+        if file_name:
+            src_file = self.data_dir + file_name
+            dst_file = self.zones_dir + file_name
+        else:
+            if zone_name == ".":
+                file_name = "rootzone.zone"
             else:
-                if zone_name == ".":
-                    file_name = "rootzone.zone"
-                else:
-                    file_name = zone_name + "zone"
+                file_name = zone_name + "zone"
 
-                src_file = params.common_data_dir + file_name
-                dst_file = self.zones_dir + file_name
+            src_file = params.common_data_dir + file_name
+            dst_file = self.zones_dir + file_name
 
+        try:
             shutil.copyfile(src_file, dst_file)
         except:
             raise Exception("Can't use zone file %s" % src_file)
