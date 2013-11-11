@@ -1479,8 +1479,8 @@ static knot_zone_t *create_bootstrap_zone(const knot_dname_t *apex)
  * \param conf  New configuration for given zone.
  * \param ns    Name server structure.
  *
- * \retval KNOT_EOK     Zone was bootstrapped.
- * \retval KNOT_ENOMEM  Failed to bootstrap the zone.
+ * \retval KNOT_EOK         Zone was bootstrapped.
+ * \retval KNOT_ENOMEM      Failed to bootstrap the zone.
  * \retval KNOT_EZONENOENT  Zone file does not exist and zone is not slave.
  */
 static int handle_not_found_zone(knot_zone_t **zone, const knot_dname_t *apex,
@@ -1492,29 +1492,18 @@ static int handle_not_found_zone(knot_zone_t **zone, const knot_dname_t *apex,
 	assert(ns);
 
 	bool bootstrap = !EMPTY_LIST(conf->acl.xfr_in);
-
-	if (*zone == NULL) {
-		if (bootstrap) {
-			*zone = create_bootstrap_zone(apex);
-			zonedata_init(conf, *zone);
-			return zone ? KNOT_EOK : KNOT_ENOMEM;
-		} else {
-			return KNOT_EZONENOENT;
-		}
-	} else {
-		if (bootstrap) {
-			return KNOT_EOK;
-		} else {
-			// XFR disabled before reload
-
-			knot_zone_t *removed;
-			removed = knot_zonedb_remove_zone(ns->zone_db, apex);
-			assert(removed == *zone); UNUSED(removed);
-			knot_zone_deep_free(zone);
-
-			return KNOT_EZONENOENT;
-		}
+	if (!bootstrap) {
+		return KNOT_EZONENOENT;
 	}
+
+	if (*zone) {
+		return KNOT_EOK;
+	}
+
+	*zone = create_bootstrap_zone(apex);
+	zonedata_init(conf, *zone);
+
+	return zone ? KNOT_EOK : KNOT_ENOMEM;
 }
 
 /*!
