@@ -1427,6 +1427,15 @@ typedef enum {
 	ZONE_STATUS_FOUND_UPDATED,  //!< Zone file exists, newer than loaded.
 } zone_status_t;
 
+static bool zone_was_allocated(const knot_zone_t *zone, zone_status_t status)
+{
+	if (!zone) {
+		return false;
+	}
+
+	return status == ZONE_STATUS_FOUND_NEW || status == ZONE_STATUS_NOT_FOUND;
+}
+
 /*!
  * \brief Check zone file status.
  *
@@ -1676,8 +1685,7 @@ fail:
 	if (result == KNOT_EOK) {
 		*dst = zone;
 	} else {
-		if (zone && status == ZONE_STATUS_NOT_FOUND) {
-			// zone was bootstrapped, release config and free
+		if (zone_was_allocated(zone, status)) {
 			zonedata_t *zone_data = zone->data;
 			zone_data->conf = NULL;
 			knot_zone_deep_free(&zone);
