@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 	
 	/* Populate. */
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
-		dname = knot_dname_from_str(zone_list[i], strlen(zone_list[i]));
+		dname = knot_dname_from_str(zone_list[i]);
 		zones[i] = knot_zone_new_empty(dname);
 		if (zones[i] == NULL) {
 			knot_dname_free(&dname);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	/* Lookup of exact names. */
 	nr_passed = 0;
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
-		dname = knot_dname_from_str(zone_list[i], strlen(zone_list[i]));
+		dname = knot_dname_from_str(zone_list[i]);
 		if (knot_zonedb_find_zone(db, dname) == zones[i]) {
 			++nr_passed;
 		} else {
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 		if (strcmp(zone_list[i], ".") != 0) {
 			strcat(buf, zone_list[i]);
 		}
-		dname = knot_dname_from_str(buf, strlen(buf));
+		dname = knot_dname_from_str(buf);
 		if (knot_zonedb_find_zone_for_name(db, dname) == zones[i]) {
 			++nr_passed;
 		} else {
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	/* Remove all zones. */
 	nr_passed = 0;
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
-		dname = knot_dname_from_str(zone_list[i], strlen(zone_list[i]));
+		dname = knot_dname_from_str(zone_list[i]);
 		zone = knot_zonedb_remove_zone(db, dname);
 		if (zone == zones[i]) {
 			knot_zone_free(&zone);
