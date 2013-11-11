@@ -1551,7 +1551,7 @@ static void log_zone_load_info(const knot_zone_t *zone, const char *zone_name,
 		serial = knot_rdata_soa_serial(soa);
 	}
 
-	log_server_info("zone '%s' %s (serial %" PRId64 ")\n",
+	log_server_info("Zone '%s' %s (serial %" PRId64 ")\n",
 	                zone_name, action, serial);
 }
 
@@ -1610,7 +1610,7 @@ static int zones_get_zone(knot_zone_t **dst, conf_zone_t *conf,
 	}
 
 	if (result != KNOT_EOK) {
-		log_server_error("zone '%s' not loaded: %s\n", conf->name,
+		log_server_error("Zone '%s' not loaded: %s\n", conf->name,
 		                 knot_strerror(result));
 		return result;
 	}
@@ -1680,7 +1680,7 @@ static int zones_update_zone(knot_zone_t **dst, conf_zone_t *conf,
 
 	result = zones_journal_apply(zone);
 	if (result != KNOT_EOK && result != KNOT_ERANGE && result != KNOT_ENOENT) {
-		log_server_error("zone '%s', failed to apply changes from "
+		log_server_error("Zone '%s', failed to apply changes from "
 		                 "journal: %s\n",
 		                 conf->name, knot_strerror(result));
 		goto fail;
@@ -1689,7 +1689,7 @@ static int zones_update_zone(knot_zone_t **dst, conf_zone_t *conf,
 	bool modified = (status != ZONE_STATUS_FOUND_CURRENT);
 	result = zones_do_diff_and_sign(conf, zone, ns, modified);
 	if (result != KNOT_EOK) {
-		log_server_error("zone '%s', failed to sign the zone: %s\n",
+		log_server_error("Zone '%s', failed to sign the zone: %s\n",
 		                 conf->name, knot_strerror(result));
 		goto fail;
 	}
