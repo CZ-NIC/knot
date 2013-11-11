@@ -1673,7 +1673,7 @@ static int zones_update_zone(knot_zone_t **dst, conf_zone_t *conf,
 		goto fail;
 	}
 
-	bool modified = status != ZONE_STATUS_FOUND_CURRENT;
+	bool modified = (status != ZONE_STATUS_FOUND_CURRENT);
 	result = zones_do_diff_and_sign(conf, zone, ns, modified);
 	if (result != KNOT_EOK) {
 		log_server_error("zone '%s', failed to sign the zone: %s\n",
