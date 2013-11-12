@@ -191,9 +191,6 @@ static int journal_open_file(journal_t *j)
 	if (memcmp(magic, magic_req, MAGIC_LENGTH) != 0) {
 		log_server_warning("Journal file '%s' version is too old, "
 		                   "it will be purged.\n", j->path);
-		j->fl.l_type  = F_UNLCK;
-		fcntl(j->fd, F_SETLK, &j->fl);
-		assert(j->fd > -1);
 		close(j->fd);
 		j->fd = -1;
 		ret = journal_create(j->path, JOURNAL_NCOUNT);
@@ -225,8 +222,6 @@ static int journal_open_file(journal_t *j)
 	} else {
 		log_server_warning("Journal file '%s' CRC error, "
 		                   "it will be purged.\n", j->path);
-		j->fl.l_type  = F_UNLCK;
-		fcntl(j->fd, F_SETLK, &j->fl);
 		close(j->fd);
 		j->fd = -1;
 		ret = journal_create(j->path, JOURNAL_NCOUNT);
@@ -282,7 +277,7 @@ static int journal_open_file(journal_t *j)
 	}
 
 	/* Check head + tail */
-	if (j->qtail > j->max_nodes || j->qhead > j->max_nodes) {
+	if (j->qtail >= j->max_nodes || j->qhead >= j->max_nodes) {
 		dbg_journal_verb("journal: queue pointers corrupted\n");
 		goto open_file_error;
 	}
@@ -329,8 +324,6 @@ static int journal_open_file(journal_t *j)
 open_file_error:
 	free(j->nodes);
 	j->nodes = NULL;
-	j->fl.l_type  = F_UNLCK;
-	fcntl(j->fd, F_SETLK, &j->fl);
 	close(j->fd);
 	j->fd = -1;
 	return KNOT_ERROR;
@@ -346,11 +339,6 @@ static int journal_close_file(journal_t *journal)
 
 	/* Recalculate CRC. */
 	int ret = journal_update_crc(journal->fd);
-
-	/* Unlock journal file. */
-	journal->fl.l_type = F_UNLCK;
-	fcntl(journal->fd, F_SETLK, &journal->fl);
-	dbg_journal("journal: unlocked journal %p\n", journal);
 
 	/* Close file. */
 	close(journal->fd);
@@ -573,26 +561,22 @@ int journal_create(const char *fn, uint16_t max_nodes)
 
 	/* Lock. */
 	fcntl(fd, F_SETLKW, &fl);
-	fl.l_type  = F_UNLCK;
 
 	/* Create journal header. */
 	dbg_journal("journal: creating header\n");
 	const char magic[MAGIC_LENGTH] = JOURNAL_MAGIC;
 	if (!sfwrite(magic, MAGIC_LENGTH, fd)) {
-		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		remove(fn);
 		return KNOT_ERROR;
 	}
 	crc_t crc = crc_init();
 	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
-		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		remove(fn);
 		return KNOT_ERROR;
 	}
 	if (!sfwrite(&max_nodes, sizeof(uint16_t), fd)) {
-		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		remove(fn);
 		return KNOT_ERROR;
@@ -605,14 +589,12 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	 */
 	uint16_t zval = 0;
 	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
-		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		remove(fn);
 		return KNOT_ERROR;
 	}
 
 	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
-		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		remove(fn);
 		return KNOT_ERROR;
@@ -628,7 +610,6 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	jn.pos = JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t);
 	jn.len = 0;
 	if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
-		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		remove(fn);
 		return KNOT_ERROR;
@@ -639,7 +620,6 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	memset(&jn, 0, sizeof(journal_node_t));
 	for(uint16_t i = 0; i < max_nodes; ++i) {
 		if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
-			fcntl(fd, F_SETLK, &fl);
 			close(fd);
 			if (remove(fn) < 0) {
 				dbg_journal("journal: failed to remove journal file after error\n");
@@ -650,7 +630,6 @@ int journal_create(const char *fn, uint16_t max_nodes)
 
 	/* Recalculate CRC. */
 	if (journal_update_crc(fd) != KNOT_EOK) {
-		fcntl(fd, F_SETLK, &fl);
 		close(fd);
 		if(remove(fn) < 0) {
 			dbg_journal("journal: failed to remove journal file after error\n");
@@ -659,7 +638,6 @@ int journal_create(const char *fn, uint16_t max_nodes)
 	}
 
 	/* Unlock and close. */
-	fcntl(fd, F_SETLK, &fl);
 	close(fd);
 
 	/* Journal file created. */
