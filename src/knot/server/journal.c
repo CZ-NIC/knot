@@ -169,9 +169,9 @@ static int journal_open_file(journal_t *j)
 
 	/* Lock. */
 	if (ret < 0) {
-		struct flock efl;
+		struct flock efl = {0};
 		memcpy(&efl, &j->fl, sizeof(struct flock));
-		fcntl(j->fd, F_GETLK, &efl);
+		(void) fcntl(j->fd, F_GETLK, &efl);
 		log_server_warning("Journal file '%s' is locked by process "
 		                   "PID=%d, waiting for process to "
 		                   "release lock.\n",
@@ -248,8 +248,8 @@ static int journal_open_file(journal_t *j)
 	}
 
 	/* Check max_nodes, but this is riddiculous. */
-	if (j->max_nodes == 0) {
-		dbg_journal_verb("journal: max_nodes can't be zero\n");
+	if (j->max_nodes < (uint16_t)1) {
+		dbg_journal_verb("journal: invalid max_nodes\n");
 		goto open_file_error;
 	}
 
