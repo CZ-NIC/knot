@@ -279,7 +279,7 @@ static void conf_acl_item(void *scanner, char *item)
 static int conf_key_exists(void *scanner, char *item)
 {
 	/* Find existing node in keys. */
-	knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
+	knot_dname_t *sample = knot_dname_from_str(item);
 	knot_dname_to_lower(sample);
 	conf_key_t* r = 0;
 	WALK_LIST (r, new_config->keys) {
@@ -300,7 +300,7 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
 	*key = 0;
 
 	/* Find in keys */
-	knot_dname_t *sample = knot_dname_from_str(item, strlen(item));
+	knot_dname_t *sample = knot_dname_from_str(item);
 	knot_dname_to_lower(sample);
 
 	conf_key_t* r = 0;
@@ -361,7 +361,7 @@ static void conf_zone_start(void *scanner, char *name) {
 	/* Check domain name. */
 	knot_dname_t *dn = NULL;
 	if (this_zone->name != NULL) {
-		dn = knot_dname_from_str(this_zone->name, nlen);
+		dn = knot_dname_from_str(this_zone->name);
 	}
 	if (dn == NULL) {
 		free(this_zone->name);
@@ -683,7 +683,7 @@ keys:
      }
 
      if (fqdn != NULL && !conf_key_exists(scanner, fqdn)) {
-         knot_dname_t *dname = knot_dname_from_str(fqdn, fqdnl);
+         knot_dname_t *dname = knot_dname_from_str(fqdn);
 	 if (!dname) {
              cf_error(scanner, "key name '%s' not in valid domain name format",
                       fqdn);

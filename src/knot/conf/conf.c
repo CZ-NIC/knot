@@ -259,6 +259,12 @@ static int conf_process(conf_t *conf)
 	if (conf->xfers <= 0)
 		conf->xfers = CONFIG_XFERS;
 
+	/* DNSSEC global configuration. */
+	if (conf->dnssec_keydir) {
+		conf->dnssec_keydir = conf_abs_path(conf->storage,
+		                                    conf->dnssec_keydir);
+	}
+
 	// Postprocess zones
 	int ret = KNOT_EOK;
 	node_t *n = NULL;
@@ -315,17 +321,27 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Default policy for DNSSEC
-		if (conf->dnssec_keydir) {
-			conf->dnssec_keydir = conf_abs_path(conf->storage,
-			                                    conf->dnssec_keydir);
-		} else {
+		if (!conf->dnssec_keydir) {
 			zone->dnssec_enable = false;
 		}
 
-		// Turn zone diff on with DNSSEC enabled
-		if (zone->dnssec_enable && !zone->build_diffs) {
-			// Silent force enable
+		// DNSSEC required settings
+		if (zone->dnssec_enable) {
+			// Enable zone diffs (silently)
 			zone->build_diffs = true;
+
+			// Disable incoming XFRs
+			if (!EMPTY_LIST(zone->acl.notify_in) ||
+			    !EMPTY_LIST(zone->acl.xfr_in)
+			) {
+				log_server_warning("Automatic DNSSEC signing "
+				                   "for zone '%s', disabling "
+				                   "incoming XFRs.\n",
+				                   zone->name);
+
+				WALK_LIST_FREE(zone->acl.notify_in);
+				WALK_LIST_FREE(zone->acl.xfr_in);
+			}
 		}
 
 		// Relative zone filenames should be relative to storage

@@ -229,6 +229,10 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 knot_zone_t *knot_zonedb_find_zone(knot_zonedb_t *db,
                                        const knot_dname_t *zone_name)
 {
+	if (!db || !zone_name) {
+		return NULL;
+	}
+
 	int pos = knot_zonedb_array_search(db->array, db->count, zone_name);
 	if (pos < 0) {
 		return NULL;
