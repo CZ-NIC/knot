@@ -842,7 +842,6 @@ knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
 knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
                                        const knot_dname_t *zone_apex)
 {
-	assert(hash);
 	assert(zone_apex);
 
 	// encode raw hash to first label
