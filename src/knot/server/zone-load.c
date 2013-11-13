@@ -590,7 +590,7 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 		goto fail;
 	}
 
-	bool modified = old_zone != new_zone;
+	bool modified = (old_zone != new_zone);
 	result = zones_do_diff_and_sign(conf, new_zone, ns, modified);
 	if (result != KNOT_EOK) {
 		log_server_error("Zone '%s', failed to sign the zone: %s\n",
@@ -630,7 +630,7 @@ typedef struct {
 } zone_loader_ctx_t;
 
 /*! Thread entrypoint for loading zones. */
-static int loader_thread(dthread_t *thread)
+static int zone_loader_thread(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
 		return KNOT_EINVAL;
@@ -674,7 +674,7 @@ static int loader_thread(dthread_t *thread)
 	return KNOT_EOK;
 }
 
-static int loader_destruct(dthread_t *thread)
+static int zone_loader_destruct(dthread_t *thread)
 {
 	knot_dnssec_thread_cleanup();
 	return KNOT_EOK;
@@ -714,7 +714,8 @@ static knot_zonedb_t *load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
 	/* Initialize threads. */
 	size_t thread_count = MIN(conf->zones_count, dt_optimal_size());
 	dt_unit_t *unit = NULL;
-	unit = dt_create_coherent(thread_count, &loader_thread, &loader_destruct, &ctx);
+	unit = dt_create_coherent(thread_count, &zone_loader_thread,
+	                          &zone_loader_destruct, &ctx);
 	if (unit != NULL) {
 		/* Start loading. */
 		dt_start(unit);
