@@ -117,7 +117,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	memset(zd, 0, sizeof(zonedata_t));
 
 	/* Link to config. */
-	zd->conf = NULL;
+	zd->conf = cfg;
 	zd->server = 0;
 
 	/* Initialize mutex. */
@@ -185,7 +185,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
  * \retval KNOT_EINVAL on invalid parameters.
  * \retval KNOT_ENOMEM on failed memory allocation.
  */
-static int zones_set_acl(acl_t **acl, list_t* acl_list)
+static int set_acl(acl_t **acl, list_t* acl_list)
 {
 	if (!acl || !acl_list) {
 		return KNOT_EINVAL;
@@ -242,8 +242,10 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 
 	// data pointers
 
-	assert(zd->conf == NULL);
-	zd->conf = conf;
+	if (zd->conf != conf) {
+		conf_free_zone(zd->conf);
+		zd->conf = conf;
+	}
 
 	zd->server = (server_t *)ns->data;
 
@@ -260,11 +262,11 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 
 	// ACLs
 
-	zones_set_acl(&zd->xfr_in.acl, &conf->acl.xfr_in);
-	zones_set_acl(&zd->xfr_out,    &conf->acl.xfr_out);
-	zones_set_acl(&zd->notify_in,  &conf->acl.notify_in);
-	zones_set_acl(&zd->notify_out, &conf->acl.notify_out);
-	zones_set_acl(&zd->update_in,  &conf->acl.update_in);
+	set_acl(&zd->xfr_in.acl, &conf->acl.xfr_in);
+	set_acl(&zd->xfr_out,    &conf->acl.xfr_out);
+	set_acl(&zd->notify_in,  &conf->acl.notify_in);
+	set_acl(&zd->notify_out, &conf->acl.notify_out);
+	set_acl(&zd->update_in,  &conf->acl.update_in);
 
 	// clear incoming XFRs master
 
@@ -368,110 +370,106 @@ static knot_zone_t *create_bootstrap_zone(const knot_dname_t *apex)
 /*!
  * \brief Handle retrieval of zone if zone file does not exist.
  *
- * \param zone  Pointer to zone to be bootstrapped/freed.
- * \param apex  Zone name.
- * \param conf  New configuration for given zone.
- * \param ns    Name server structure.
+ * \param old_zone  Old loaded zone (can be NULL).
+ * \param apex      Zone name.
+ * \param conf      New configuration for given zone.
+ * \param ns        Name server structure.
  *
- * \retval KNOT_EOK         Zone was bootstrapped.
- * \retval KNOT_ENOMEM      Failed to bootstrap the zone.
- * \retval KNOT_EZONENOENT  Zone file does not exist and zone is not slave.
+ * \return New zone, NULL if bootstrap not possible.
  */
-static int handle_not_found_zone(knot_zone_t **zone, const knot_dname_t *apex,
-                                 conf_zone_t *conf, knot_nameserver_t *ns)
+knot_zone_t *get_not_found_zone(knot_zone_t *old_zone, const knot_dname_t *apex,
+                                conf_zone_t *conf, knot_nameserver_t *ns)
 {
-	assert(zone);
 	assert(apex);
 	assert(conf);
 	assert(ns);
 
 	bool bootstrap = !EMPTY_LIST(conf->acl.xfr_in);
 	if (!bootstrap) {
-		return KNOT_EZONENOENT;
+		return NULL;
 	}
 
-	if (*zone) {
-		return KNOT_EOK;
+	if (old_zone) {
+		return old_zone;
 	}
 
-	*zone = create_bootstrap_zone(apex);
-	zonedata_init(conf, *zone);
+	knot_zone_t *new_zone = create_bootstrap_zone(apex);
+	zonedata_init(conf, new_zone);
+	if (!new_zone) {
+		log_server_error("Bootstrap of zone '%s' failed: %s\n",
+		                 conf->name, knot_strerror(KNOT_ENOMEM));
+		return NULL;
+	}
 
-	return zone ? KNOT_EOK : KNOT_ENOMEM;
+	return new_zone;
 }
 
 /*!
- * \brief Load zone to zone database.
+ * \brief Load zone.
  *
- * \param dst Loaded zone will be returned in this parameter.
- * \param zone_name Zone name (owner of the apex node).
- * \param source Path to zone file source.
+ * \param conf Zone configuration.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EZONEINVAL
+ * \return Loaded zone, NULL in case of error.
  */
-static int zones_load_zone(knot_zone_t **dst, const char *zone_name,
-                           const char *source, int enable_checks)
+static knot_zone_t *load_zone(conf_zone_t *conf)
 {
-	if (dst == NULL || zone_name == NULL || source == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(conf);
 
-
-	int ret = KNOT_EOK;
 	zloader_t *zl = NULL;
-	*dst = NULL;
+	knot_zone_t *zone = NULL;
 
 	/* Open zone file for parsing. */
-	switch(knot_zload_open(&zl, source, zone_name, enable_checks)) {
-	case KNOT_EOK: /* OK */
+	switch (knot_zload_open(&zl, conf->file, conf->name, conf->enable_checks)) {
+	case KNOT_EOK:
 		break;
 	case KNOT_EACCES:
 		log_server_error("No access/permission to zone file '%s'.\n",
-		                 source);
+		                 conf->file);
 		knot_zload_close(zl);
-		return KNOT_EZONEINVAL;
+		return NULL;
 	default:
-		log_server_error("Failed to load zone file '%s'\n", source);
+		log_server_error("Failed to load zone file '%s'\n", conf->file);
 		knot_zload_close(zl);
-		return KNOT_EZONEINVAL;
+		return NULL;
 	}
 
 	/* Check the source file */
 	assert(zl != NULL);
-	*dst = knot_zload_load(zl);
-	if (*dst == NULL) {
-		log_zone_error("Zone %s could not be loaded.\n", zone_name);
+	zone = knot_zload_load(zl);
+	if (!zone) {
+		log_zone_error("Zone '%s' could not be loaded.\n", conf->name);
 		knot_zload_close(zl);
-		return KNOT_ERROR;
+		return NULL;
 	}
 
 	/* Check if loaded origin matches. */
-	const knot_dname_t *dname = knot_zone_name(*dst);
+	const knot_dname_t *dname = knot_zone_name(zone);
 	knot_dname_t *dname_req = NULL;
-	dname_req = knot_dname_from_str(zone_name);
+	dname_req = knot_dname_from_str(conf->name);
 	if (knot_dname_cmp(dname, dname_req) != 0) {
 		log_server_error("Origin of the zone db file is "
 				 "different than '%s'\n",
-				 zone_name);
-		knot_zone_deep_free(dst);
-		ret = KNOT_EZONEINVAL;
+				 conf->name);
+		knot_zone_deep_free(&zone);
+		return NULL;
 	} else {
 		/* Save the timestamp from the zone db file. */
 		struct stat st;
-		if (stat(source, &st) < 0) {
+		if (stat(conf->file, &st) < 0) {
 			dbg_zones("zones: failed to stat() zone db, "
 				  "something is seriously wrong\n");
-			knot_zone_deep_free(dst);
-			ret = KNOT_EZONEINVAL;
+			knot_zone_deep_free(&zone);
+			return NULL;
 		} else {
-			knot_zone_set_version(*dst, st.st_mtime);
+			knot_zone_set_version(zone, st.st_mtime);
 		}
 	}
 	knot_dname_free(&dname_req);
 	knot_zload_close(zl);
-	return ret;
+
+	zonedata_init(conf, zone);
+
+	return zone;
 }
 
 /*!
@@ -486,14 +484,11 @@ static void log_zone_load_info(const knot_zone_t *zone, const char *zone_name,
 {
 	const char *action = NULL;
 
-	if (status == ZONE_STATUS_NOT_FOUND) {
-		action = "bootstrapped";
-	} else if (status == ZONE_STATUS_FOUND_NEW) {
-		action = "loaded";
-	} else if (status == ZONE_STATUS_FOUND_CURRENT) {
-		action = "is up-to-date";
-	} else if (status == ZONE_STATUS_FOUND_UPDATED) {
-		action = "reloaded";
+	switch (status) {
+	case ZONE_STATUS_NOT_FOUND:     action = "bootstrapped";  break;
+	case ZONE_STATUS_FOUND_NEW:     action = "loaded";        break;
+	case ZONE_STATUS_FOUND_CURRENT: action = "is up-to-date"; break;
+	case ZONE_STATUS_FOUND_UPDATED: action = "reloaded";      break;
 	}
 	assert(action);
 
@@ -509,76 +504,49 @@ static void log_zone_load_info(const knot_zone_t *zone, const char *zone_name,
 }
 
 /*!
- * \brief Load or reload the zone and get it's status.
+ * \brief Load or reload the zone.
  *
- * \note The old zone configuration in zone data is always freed and unset.
- *
- * \param[out] dst             Pointer to succesfully loaded zone.
- * \param[in]  conf            Zone configuration.
- * \param[in]  ns              Name server structure.
- * \param[out] status          Pointer to loaded zone status.
- * \param[out] zone_allocated  Zone written into *dst was allocated.
+ * \param old_zone  Already loaded zone (can be NULL).
+ * \param apex      Zone apex.
+ * \param conf      Zone configuration.
+ * \param ns        Name server structure.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int zones_get_zone(knot_zone_t **dst, conf_zone_t *conf,
-                          knot_nameserver_t *ns, zone_status_t *status,
-                          bool *zone_allocated)
+knot_zone_t *get_zone(knot_zone_t *old_zone, const knot_dname_t *apex,
+                      conf_zone_t *conf, knot_nameserver_t *ns)
 {
+	assert(apex);
 	assert(conf);
-	assert(dst);
 	assert(ns);
-	assert(status);
-	assert(zone_allocated);
 
-	knot_dname_t *apex = knot_dname_from_str(conf->name);
-	if (!apex) {
-		return KNOT_ENOMEM;
+	zone_status_t zstatus = zone_file_status(old_zone, conf->file);
+	knot_zone_t *new_zone = NULL;
+
+	switch (zstatus) {
+	case ZONE_STATUS_NOT_FOUND:
+		new_zone = get_not_found_zone(old_zone, apex, conf, ns);
+		break;
+	case ZONE_STATUS_FOUND_NEW:
+	case ZONE_STATUS_FOUND_UPDATED:
+		new_zone = load_zone(conf);
+		break;
+	case ZONE_STATUS_FOUND_CURRENT:
+		assert(old_zone);
+		new_zone = old_zone;
+		break;
+	default:
+		assert(0);
 	}
 
-	knot_zone_t *zone = knot_zonedb_find_zone(ns->zone_db, apex);
-	knot_zone_t *zone_old = zone;
-	zone_status_t zstatus = zone_file_status(zone, conf->file);
-
-	// zone loading
-
-	int result;
-	if (zstatus == ZONE_STATUS_NOT_FOUND) {
-		result = handle_not_found_zone(&zone, apex, conf, ns);
-	} else if (zstatus == ZONE_STATUS_FOUND_NEW ||
-	           zstatus == ZONE_STATUS_FOUND_UPDATED
-	) {
-		result = zones_load_zone(&zone, conf->name, conf->file,
-		                         conf->enable_checks);
-		zonedata_init(conf, zone);
-	} else {
-		assert(zstatus == ZONE_STATUS_FOUND_CURRENT);
-		assert(zone);
-
-		result = KNOT_EOK;
+	if (!new_zone) {
+		log_server_error("Failed to load zone '%s'.\n", conf->name);
+		return NULL;
 	}
 
-	knot_dname_free(&apex);
+	log_zone_load_info(new_zone, conf->name, zstatus);
 
-	if (zone) {
-		zonedata_t *zone_data = zone->data;
-		conf_free_zone(zone_data->conf);
-		zone_data->conf = NULL;
-	}
-
-	if (result != KNOT_EOK) {
-		log_server_error("Zone '%s' not loaded: %s\n", conf->name,
-		                 knot_strerror(result));
-		return result;
-	}
-
-	log_zone_load_info(zone, conf->name, zstatus);
-
-	*dst = zone;
-	*status = zstatus;
-	*zone_allocated = zone != zone_old;
-
-	return KNOT_EOK;
+	return new_zone;
 }
 
 /*!
@@ -590,26 +558,31 @@ static int zones_get_zone(knot_zone_t **dst, conf_zone_t *conf,
  *
  * \return Error code, KNOT_EOK if sucessful.
  */
-static int zones_update_zone(knot_zone_t **dst, conf_zone_t *conf,
-                             knot_nameserver_t *ns)
+static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *ns)
 {
 	assert(dst);
 	assert(conf);
 	assert(ns);
 
-	int result = KNOT_EOK;
+	int result = KNOT_ERROR;
 
-	knot_zone_t *zone = NULL;
-	zone_status_t status = 0;
-	bool free_zone_on_error = false;
-	result = zones_get_zone(&zone, conf, ns, &status, &free_zone_on_error);
-	if (result != KNOT_EOK) {
-		goto fail;
+	knot_dname_t *apex = knot_dname_from_str(conf->name);
+	if (!apex) {
+		return KNOT_ENOMEM;
 	}
 
-	zonedata_update(zone, conf, ns);
+	knot_zone_t *old_zone = knot_zonedb_find_zone(ns->zone_db, apex);
+	knot_zone_t *new_zone = get_zone(old_zone, apex, conf, ns);
 
-	result = zones_journal_apply(zone);
+	knot_dname_free(&apex);
+
+	if (!new_zone) {
+		return KNOT_EZONENOENT;
+	}
+
+	zonedata_update(new_zone, conf, ns);
+
+	result = zones_journal_apply(new_zone);
 	if (result != KNOT_EOK && result != KNOT_ERANGE && result != KNOT_ENOENT) {
 		log_server_error("Zone '%s', failed to apply changes from "
 		                 "journal: %s\n",
@@ -617,33 +590,36 @@ static int zones_update_zone(knot_zone_t **dst, conf_zone_t *conf,
 		goto fail;
 	}
 
-	bool modified = (status != ZONE_STATUS_FOUND_CURRENT);
-	result = zones_do_diff_and_sign(conf, zone, ns, modified);
+	bool modified = old_zone != new_zone;
+	result = zones_do_diff_and_sign(conf, new_zone, ns, modified);
 	if (result != KNOT_EOK) {
 		log_server_error("Zone '%s', failed to sign the zone: %s\n",
 		                 conf->name, knot_strerror(result));
 		goto fail;
 	}
 
-	zones_schedule_ixfr_sync(zone, conf->dbsync_timeout);
+	zones_schedule_ixfr_sync(new_zone, conf->dbsync_timeout);
 
 fail:
+	assert(new_zone);
+
 	if (result == KNOT_EOK) {
-		*dst = zone;
+		*dst = new_zone;
 	} else {
-		if (zone) {
-			zonedata_t *zone_data = zone->data;
+		// unbind configuration from zone, which failed to load
+		zonedata_t *zone_data = new_zone->data;
+		if (zone_data->conf == conf) {
 			zone_data->conf = NULL;
 		}
 
-		if (zone && free_zone_on_error) {
-			knot_zone_deep_free(&zone);
+		// free zone, unless we were refreshing old one
+		if (new_zone != old_zone) {
+			knot_zone_deep_free(&new_zone);
 		}
 	}
 
 	return result;
 }
-
 
 /*! \brief Context for threaded zone loader. */
 typedef struct {
@@ -654,7 +630,7 @@ typedef struct {
 } zone_loader_ctx_t;
 
 /*! Thread entrypoint for loading zones. */
-static int zones_loader_thread(dthread_t *thread)
+static int loader_thread(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
 		return KNOT_EINVAL;
@@ -678,7 +654,7 @@ static int zones_loader_thread(dthread_t *thread)
 		pthread_mutex_unlock(&ctx->lock);
 
 		/* Update the zone. */
-		ret = zones_update_zone(&zone, zone_config, ctx->ns);
+		ret = update_zone(&zone, zone_config, ctx->ns);
 
 		/* Insert into database if properly loaded. */
 		pthread_mutex_lock(&ctx->lock);
@@ -698,7 +674,7 @@ static int zones_loader_thread(dthread_t *thread)
 	return KNOT_EOK;
 }
 
-static int zones_loader_destruct(dthread_t *thread)
+static int loader_destruct(dthread_t *thread)
 {
 	knot_dnssec_thread_cleanup();
 	return KNOT_EOK;
@@ -715,7 +691,7 @@ static int zones_loader_destruct(dthread_t *thread)
  *
  * \return Number of inserted zones.
  */
-static knot_zonedb_t *zones_load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
+static knot_zonedb_t *load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
 {
 	/* Initialize threaded loader. */
 	zone_loader_ctx_t ctx = {0};
@@ -738,7 +714,7 @@ static knot_zonedb_t *zones_load_zonedb(knot_nameserver_t *ns, const conf_t *con
 	/* Initialize threads. */
 	size_t thread_count = MIN(conf->zones_count, dt_optimal_size());
 	dt_unit_t *unit = NULL;
-	unit = dt_create_coherent(thread_count, &zones_loader_thread, &zones_loader_destruct, &ctx);
+	unit = dt_create_coherent(thread_count, &loader_thread, &loader_destruct, &ctx);
 	if (unit != NULL) {
 		/* Start loading. */
 		dt_start(unit);
@@ -765,7 +741,7 @@ static knot_zonedb_t *zones_load_zonedb(knot_nameserver_t *ns, const conf_t *con
  * \retval KNOT_EOK
  * \retval KNOT_ERROR
  */
-static int zones_remove_zones(const knot_zonedb_t *db_new,
+static int remove_zones(const knot_zonedb_t *db_new,
                               knot_zonedb_t *db_old)
 {
 	unsigned new_zone_count = db_new->count;
@@ -811,7 +787,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	/* Insert all required zones to the new zone DB. */
 	/*! \warning RCU must not be locked as some contents switching will
 	             be required. */
-	knot_zonedb_t *db_new = zones_load_zonedb(ns, conf);
+	knot_zonedb_t *db_new = load_zonedb(ns, conf);
 	if (db_new == NULL) {
 		log_server_warning("Failed to load zones.\n");
 		return KNOT_ENOMEM;
@@ -848,7 +824,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	 * Beware - only the exact same zones (same pointer) may be removed.
 	 * All other have been loaded again so that the old must be destroyed.
 	 */
-	int ret = zones_remove_zones(db_new, *db_old);
+	int ret = remove_zones(db_new, *db_old);
 
 	/* Unlock RCU, messing with any data will not affect us now */
 	rcu_read_unlock();
