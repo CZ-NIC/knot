@@ -725,6 +725,11 @@ static knot_zonedb_t *zones_load_zonedb(knot_nameserver_t *ns, const conf_t *con
 	if (ctx.db_new == NULL) {
 		return NULL;
 	}
+
+	if (conf->zones_count == 0) {
+		return ctx.db_new;
+	}
+
 	if (pthread_mutex_init(&ctx.lock, NULL) < 0) {
 		knot_zonedb_free(&ctx.db_new);
 		return NULL;

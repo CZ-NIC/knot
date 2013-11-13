@@ -1980,8 +1980,18 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	dbg_zones_verb("zones: reconfiguring name server.\n");
 
-	/* Create new OPT RR, old must be freed after RCU sync. */
-	knot_opt_rr_t *opt_rr_old = ns->opt_rr;
+	knot_zonedb_t *old_db = NULL;
+	int ret = zones_update_db_from_config(conf, ns, &old_db);
+	if (ret != KNOT_EOK) {
+		synchronize_rcu();
+		return ret;
+	}
+
+	/* Server identification, RFC 4892. */
+	ns->identity = conf->identity;
+	ns->version = conf->version;
+
+	/* New OPT RR: keep the old pointer and free it after RCU sync. */
 	knot_opt_rr_t *opt_rr = knot_edns_new();
 	if (opt_rr == NULL) {
 		log_server_error("Couldn't create OPT RR, please restart.\n");
@@ -1995,23 +2005,11 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 		}
 	}
 
-	/* Swap pointers to OPT RR. */
+	knot_opt_rr_t *opt_rr_old = ns->opt_rr;
 	ns->opt_rr = opt_rr;
 
-	/* Server identification, RFC 4892. */
-	ns->identity = conf->identity;
-	ns->version = conf->version;
-
-	knot_zonedb_t *old_db = 0;
-
-	int ret = zones_update_db_from_config(conf, ns, &old_db);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	/* Wait until all readers finish with reading the zones. */
 	synchronize_rcu();
 
-	/* Remove old OPT RR. */
 	knot_edns_free(&opt_rr_old);
 
 	dbg_zones_verb("zones: nameserver's zone db: %p, old db: %p\n",
@@ -2021,7 +2019,6 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_zonedb_deep_free(&old_db);
 
 	/* Update events scheduled for zone. */
-	rcu_read_lock();
 	knot_zone_t *zone = NULL;
 	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
 
@@ -2031,9 +2028,6 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 		zones_schedule_refresh(zone, 0); /* Now. */
 		zones_schedule_notify(zone);
 	}
-
-	/* Unlock RCU. */
-	rcu_read_unlock();
 
 	return KNOT_EOK;
 }
