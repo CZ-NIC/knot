@@ -129,7 +129,14 @@ scanner_t* scanner_create(const char     *file_name,
 	s->process_error = &noop;
 
 	// Create ORIGIN directive and parse it using scanner to set up origin.
-	int ret = snprintf(settings, sizeof(settings), "$ORIGIN %s\n", origin);
+	const char *format;
+	size_t origin_len = strlen(origin);
+	if (origin_len > 0 && origin[origin_len - 1] != '.') {
+		format = "$ORIGIN %s.\n";
+	} else {
+		format = "$ORIGIN %s\n";
+	}
+	int ret = snprintf(settings, sizeof(settings), format, origin);
 	if (ret <= 0 || (size_t)ret >= sizeof(settings) ||
 	    scanner_process(settings, settings + ret, true, s) != 0) {
 		scanner_free(s);
