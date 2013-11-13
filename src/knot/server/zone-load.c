@@ -344,24 +344,6 @@ static zone_status_t zone_file_status(const knot_zone_t *zone,
 	}
 }
 
-/*!
- * \brief Check if zone was allocated.
- *
- * \param zone    Zone.
- * \param status  Zone file status.
- *
- * \return Zone was allocated.
- */
-static bool zone_was_allocated(const knot_zone_t *zone, zone_status_t status)
-{
-	if (!zone) {
-		return false;
-	}
-
-	return status == ZONE_STATUS_FOUND_NEW ||
-	       status == ZONE_STATUS_NOT_FOUND;
-}
-
 /*- zone loading/updating ---------------------------------------------------*/
 
 /*!
@@ -531,20 +513,23 @@ static void log_zone_load_info(const knot_zone_t *zone, const char *zone_name,
  *
  * \note The old zone configuration in zone data is always freed and unset.
  *
- * \param[out] dst     Pointer to succesfully loaded zone.
- * \param[in]  conf    Zone configuration.
- * \param[in]  ns      Name server structure.
- * \param[out] status  Pointer to loaded zone status.
+ * \param[out] dst             Pointer to succesfully loaded zone.
+ * \param[in]  conf            Zone configuration.
+ * \param[in]  ns              Name server structure.
+ * \param[out] status          Pointer to loaded zone status.
+ * \param[out] zone_allocated  Zone written into *dst was allocated.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int zones_get_zone(knot_zone_t **dst, conf_zone_t *conf,
-                          knot_nameserver_t *ns, zone_status_t *status)
+                          knot_nameserver_t *ns, zone_status_t *status,
+                          bool *zone_allocated)
 {
 	assert(conf);
 	assert(dst);
 	assert(ns);
 	assert(status);
+	assert(zone_allocated);
 
 	knot_dname_t *apex = knot_dname_from_str(conf->name);
 	if (!apex) {
@@ -552,6 +537,7 @@ static int zones_get_zone(knot_zone_t **dst, conf_zone_t *conf,
 	}
 
 	knot_zone_t *zone = knot_zonedb_find_zone(ns->zone_db, apex);
+	knot_zone_t *zone_old = zone;
 	zone_status_t zstatus = zone_file_status(zone, conf->file);
 
 	// zone loading
@@ -590,6 +576,7 @@ static int zones_get_zone(knot_zone_t **dst, conf_zone_t *conf,
 
 	*dst = zone;
 	*status = zstatus;
+	*zone_allocated = zone != zone_old;
 
 	return KNOT_EOK;
 }
@@ -614,7 +601,8 @@ static int zones_update_zone(knot_zone_t **dst, conf_zone_t *conf,
 
 	knot_zone_t *zone = NULL;
 	zone_status_t status = 0;
-	result = zones_get_zone(&zone, conf, ns, &status);
+	bool free_zone_on_error = false;
+	result = zones_get_zone(&zone, conf, ns, &status, &free_zone_on_error);
 	if (result != KNOT_EOK) {
 		goto fail;
 	}
@@ -648,7 +636,7 @@ fail:
 			zone_data->conf = NULL;
 		}
 
-		if (zone_was_allocated(zone, status)) {
+		if (zone && free_zone_on_error) {
 			knot_zone_deep_free(&zone);
 		}
 	}
