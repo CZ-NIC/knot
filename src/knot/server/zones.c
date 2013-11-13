@@ -2507,8 +2507,9 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)event->data;
 	zonedata_t *zd = (zonedata_t *)zone->data;
-	assert(zd->conf->dnssec_enable);
 	pthread_mutex_lock(&zd->lock);
+	assert(zd->conf->dnssec_enable);
+	pthread_mutex_unlock(&zd->lock);
 
 	int ret = KNOT_EOK;
 	char *msgpref = NULL;
@@ -2564,21 +2565,19 @@ static int zones_dnssec_ev(event_t *event, bool force)
 
 	log_zone_info("%s Successfully signed.\n", msgpref);
 
-	// Schedule next signing
-	/* Next signing should not be 'forced'. May take longer now, but
-	 * when lifetime jitter is implemented, this will be desired behaviour.
-	 */
-	ret = zones_schedule_dnssec(zone, expiration_to_relative(expires_at),
-	                            false);
-
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
 
 	evsched_event_free(event->parent, event);
+	pthread_mutex_lock(&zd->lock);
 	zd->dnssec_timer = NULL;
 	pthread_mutex_unlock(&zd->lock);
+	// Schedule next signing
+	ret = zones_schedule_dnssec(zone, expiration_to_relative(expires_at),
+	                            false);
 	rcu_read_unlock();
+
 
 	return ret;
 }
@@ -2630,6 +2629,7 @@ int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
 	zones_cancel_dnssec(zone);
 
 	zonedata_t *zd = (zonedata_t *)zone->data;
+	pthread_mutex_lock(&zd->lock);
 	evsched_t *scheduler = zd->server->sched;
 
 	char *zname = knot_dname_to_str(knot_zone_name(zone));
@@ -2649,6 +2649,7 @@ int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
 		                                       zones_dnssec_regular_ev,
 		                                       zone, time);
 	}
+	pthread_mutex_unlock(&zd->lock);
 
 	return KNOT_EOK;
 }
