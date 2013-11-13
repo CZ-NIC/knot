@@ -1983,7 +1983,6 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_zonedb_t *old_db = NULL;
 	int ret = zones_update_db_from_config(conf, ns, &old_db);
 	if (ret != KNOT_EOK) {
-		synchronize_rcu();
 		return ret;
 	}
 
