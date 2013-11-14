@@ -20,7 +20,7 @@
 #include "common/mempool.h"
 #include "libknot/rrset.h"
 #include "libknot/rdata.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 
 #define TTL 7200
 #define NAMECOUNT 3

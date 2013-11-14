@@ -23,7 +23,7 @@
 #include "common/errcode.h"
 #include "common/print.h"
 #include "libknot/rrset.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "common/mempattern.h"
 
 #if 0

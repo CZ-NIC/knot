@@ -22,8 +22,6 @@
 #include "knot/server/rrl.h"
 #include "knot/server/dthreads.h"
 #include "knot/knot.h"
-#include "libknot/packet/response.h"
-#include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
 #include "common/descriptor.h"
 #include "common/prng.h"
@@ -98,18 +96,16 @@ int main(int argc, char *argv[])
 	plan(10);
 
 	/* Prepare query. */
-	knot_packet_t *query = knot_packet_new();
-	if (knot_packet_set_max_size(query, 512) < 0) {
-		knot_packet_free(&query);
+	knot_pkt_t *query = knot_pkt_new(NULL, 512, NULL);
+	if (query == NULL) {
 		return KNOT_ERROR; /* Fatal */
 	}
-	knot_query_init(query);
 
 	knot_dname_t *qname = knot_dname_from_str("beef.");
-	int ret = knot_query_set_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
+	int ret = knot_pkt_put_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
 	knot_dname_free(&qname);
 	if (ret != KNOT_EOK) {
-		knot_packet_free(&query);
+		knot_pkt_free(&query);
 		return KNOT_ERROR; /* Fatal */
 	}
 
@@ -202,7 +198,7 @@ int main(int argc, char *argv[])
 	knot_dname_free(&apex);
 	knot_zone_deep_free(&zone);
 	knot_ns_destroy(&ns);
-	knot_packet_free(&query);
+	knot_pkt_free(&query);
 	rrl_destroy(rrl);
 	return 0;
 }
