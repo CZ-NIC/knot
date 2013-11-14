@@ -70,9 +70,9 @@ typedef struct {
 	/*!< RR parser. */
 	scanner_t	*rrp;
 	/*!< Current packet. */
-	knot_packet_t	*pkt;
+	knot_pkt_t	*pkt;
 	/*!< Current response. */
-	knot_packet_t	*resp;
+	knot_pkt_t	*resp;
 	/*!< Buffer for response. */
 	uint8_t		rwire[MAX_PACKET_SIZE];
 	/*!< Key parameters. */

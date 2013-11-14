@@ -124,8 +124,8 @@ void nsupdate_clean(nsupdate_params_t *params)
 	srv_info_free(params->srcif);
 	free(params->zone);
 	scanner_free(params->rrp);
-	knot_packet_free(&params->pkt);
-	knot_packet_free(&params->resp);
+	knot_pkt_free(&params->pkt);
+	knot_pkt_free(&params->resp);
 	knot_free_key_params(&params->key_params);
 
 	/* Clean up the structure. */

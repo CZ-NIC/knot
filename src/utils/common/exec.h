@@ -49,7 +49,7 @@ typedef struct {
  * \retval packet	if success.
  * \retval NULL		if error.
  */
-knot_packet_t* create_empty_packet(const size_t max_size);
+knot_pkt_t* create_empty_packet(const size_t max_size);
 
 /*!
  * \brief Prints information header for transfer.
@@ -57,7 +57,7 @@ knot_packet_t* create_empty_packet(const size_t max_size);
  * \param packet	Parsed packet.
  * \param style		Style of the output.
  */
-void print_header_xfr(const knot_packet_t *packet, const style_t *style);
+void print_header_xfr(const knot_pkt_t *packet, const style_t *style);
 
 /*!
  * \brief Prints answer section for 1 transfer message.
@@ -65,7 +65,7 @@ void print_header_xfr(const knot_packet_t *packet, const style_t *style);
  * \param packet	Response packet.
  * \param style		Style of the output.
  */
-void print_data_xfr(const knot_packet_t *packet,
+void print_data_xfr(const knot_pkt_t *packet,
                     const style_t       *style);
 
 /*!
@@ -95,8 +95,7 @@ void print_footer_xfr(const size_t   total_len,
  * \param incoming	Indicates if the packet is input.
  * \param style		Style of the otput.
  */
-void print_packet(const knot_packet_t *packet,
-                  const size_t        total_len,
+void print_packet(const knot_pkt_t *packet,
                   const net_t         *net,
                   const float         elapsed,
                   const bool          incoming,
@@ -119,7 +118,7 @@ void free_sign_context(sign_context_t *ctx);
  * \retval KNOT_EOK	if success.
  * \retval error code	if error.
  */
-int sign_packet(knot_packet_t           *pkt,
+int sign_packet(knot_pkt_t           *pkt,
                 sign_context_t          *sign_ctx,
                 const knot_key_params_t *key_params);
 
@@ -133,7 +132,7 @@ int sign_packet(knot_packet_t           *pkt,
  * \retval KNOT_EOK	if success.
  * \retval error code	if error.
  */
-int verify_packet(const knot_packet_t     *pkt,
+int verify_packet(const knot_pkt_t     *pkt,
                   const sign_context_t    *sign_ctx,
                   const knot_key_params_t *key_params);
 
