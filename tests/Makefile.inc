@@ -22,7 +22,8 @@ check_PROGRAMS = \
 	tests/dnssec_nsec3 \
 	tests/dnssec_sign \
 	tests/dnssec_zone_nsec \
-	tests/rrset
+	tests/rrset \
+	tests/pkt 
 
 check_LIBRARIES = tests/tap/libtap.a
 
