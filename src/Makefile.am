@@ -100,14 +100,12 @@ libknot_la_SOURCES =				\
 	libknot/util/utils.h			\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
-	libknot/util/wire.h			\
 	libknot/util/endian.h			\
-	libknot/packet/query.c			\
-	libknot/packet/response.c		\
-	libknot/packet/packet.c			\
-	libknot/packet/packet.h			\
-	libknot/packet/query.h			\
-	libknot/packet/response.h		\
+	libknot/packet/pkt.c			\
+	libknot/packet/pkt.h			\
+	libknot/packet/compr.c			\
+	libknot/packet/compr.h			\
+	libknot/packet/wire.h			\
 	libknot/zone/zone.c			\
 	libknot/zone/zone-contents.c		\
 	libknot/zone/zone-tree.c		\

@@ -168,12 +168,11 @@ src/libknot/nameserver/chaos.c
 src/libknot/nameserver/chaos.h
 src/libknot/nameserver/name-server.c
 src/libknot/nameserver/name-server.h
-src/libknot/packet/packet.c
-src/libknot/packet/packet.h
-src/libknot/packet/query.c
-src/libknot/packet/query.h
-src/libknot/packet/response.c
-src/libknot/packet/response.h
+src/libknot/packet/compr.c
+src/libknot/packet/compr.h
+src/libknot/packet/pkt.c
+src/libknot/packet/pkt.h
+src/libknot/packet/wire.h
 src/libknot/rdata.h
 src/libknot/rrset-dump.c
 src/libknot/rrset-dump.h
@@ -286,3 +285,5 @@ tests/tap/macros.h
 tests/wire.c
 tests/zonedb.c
 tests/ztree.c
+tests/pkt.c
+tests/ns.c
