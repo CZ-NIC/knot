@@ -126,7 +126,7 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
  * \todo Document me.
  */
 int zones_normal_query_answer(knot_nameserver_t *nameserver,
-                              knot_packet_t *query, const sockaddr_t *addr,
+                              knot_pkt_t *query, const sockaddr_t *addr,
                               uint8_t *response_wire, size_t *rsize,
                               knot_ns_transport_t transport);
 
@@ -134,7 +134,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
  * \todo Document me.
  */
 int zones_process_update(knot_nameserver_t *nameserver,
-                         knot_packet_t *query, const sockaddr_t *addr,
+                         knot_pkt_t *query, const sockaddr_t *addr,
                          uint8_t *resp_wire, size_t *rsize,
                          int fd, knot_ns_transport_t transport);
 
@@ -155,7 +155,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 int zones_process_response(knot_nameserver_t *nameserver,
                            int exp_msgid,
                            sockaddr_t *from,
-                           knot_packet_t *packet, uint8_t *response_wire,
+                           knot_pkt_t *packet, uint8_t *response_wire,
                            size_t *rsize);
 
 /*!
@@ -346,7 +346,7 @@ int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *r
  *
  * \return KNOT_EOK if verified or error if not.
  */
-int zones_verify_tsig_query(const knot_packet_t *query,
+int zones_verify_tsig_query(const knot_pkt_t *query,
                             const knot_tsig_key_t *key,
                             knot_rcode_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed);

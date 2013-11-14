@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include "common/sockaddr.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/zone/zone.h"
 
 /* Defaults */
@@ -78,7 +78,7 @@ typedef struct rrl_req {
 	const uint8_t *w;
 	uint16_t len;
 	unsigned flags;
-	knot_packet_t *query;
+	knot_pkt_t *query;
 } rrl_req_t;
 
 /*!

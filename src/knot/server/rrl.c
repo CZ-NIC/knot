@@ -24,7 +24,7 @@
 #include "knot/server/rrl.h"
 #include "knot/knot.h"
 #include "libknot/consts.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "common/hattrie/murmurhash3.h"
 #include "common/prng.h"
 #include "common/descriptor.h"
@@ -100,7 +100,7 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 
 	/* Check query type for spec. classes. */
 	if (p->query) {
-		switch(knot_packet_qtype(p->query)) {
+		switch(knot_pkt_qtype(p->query)) {
 		case KNOT_RRTYPE_ANY:      /* ANY spec. class */
 			return CLS_ANY;
 			break;
@@ -146,7 +146,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 	default:
 		/* Use QNAME */
 		if (req->query)
-			dn = knot_packet_qname(req->query);
+			dn = knot_pkt_qname(req->query);
 		break;
 	}
 

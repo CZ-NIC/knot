@@ -31,7 +31,7 @@
 #include <string.h>
 
 #include "libknot/zone/zone.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/zone/zonedb.h"
 #include "common/lists.h"
 #include "common/sockaddr.h"
@@ -88,7 +88,7 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
  * \retval KNOT_ERROR
  */
 int notify_process_request(knot_nameserver_t *nameserver,
-                           knot_packet_t *notify,
+                           knot_pkt_t *notify,
                            sockaddr_t *from,
                            uint8_t *buffer, size_t *size);
 
@@ -102,7 +102,7 @@ int notify_process_request(knot_nameserver_t *nameserver,
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_ERROR on message ID mismatch
  */
-int notify_process_response(knot_packet_t *notify, int msgid);
+int notify_process_response(knot_pkt_t *notify, int msgid);
 
 #endif /* _KNOTD_NOTIFY_H_ */
 

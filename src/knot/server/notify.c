@@ -21,14 +21,12 @@
 
 #include "libknot/dname.h"
 #include "common/descriptor.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
-#include "libknot/packet/response.h"
-#include "libknot/packet/query.h"
 #include "libknot/consts.h"
 #include "libknot/zone/zonedb.h"
 #include "libknot/common.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "knot/server/zones.h"
 #include "common/acl.h"
 #include "common/evsched.h"
@@ -48,112 +46,41 @@
 static int notify_request(const knot_rrset_t *rrset,
                           uint8_t *buffer, size_t *size)
 {
-	knot_packet_t *pkt = knot_packet_new();
+	knot_pkt_t *pkt = knot_pkt_new(buffer, *size, NULL);
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
-	/*! \todo Get rid of the numeric constant. */
-	int rc = knot_packet_set_max_size(pkt, 512);
-	if (rc != KNOT_EOK) {
-		knot_packet_free(&pkt);
+	knot_pkt_clear(pkt);
+	knot_wire_set_id(pkt->wire, knot_random_id());
+	knot_wire_set_aa(pkt->wire);
+	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
+
+	int ret = knot_pkt_put_question(pkt, rrset->owner, rrset->rclass, rrset->type);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&pkt);
 		return KNOT_ERROR;
 	}
 
-	rc = knot_query_init(pkt);
-	if (rc != KNOT_EOK) {
-		knot_packet_free(&pkt);
-		return KNOT_ERROR;
-	}
+	/* Write back size, #10 crappy API. */
+	*size = pkt->size;
 
-	rc = knot_query_set_question(pkt, rrset->owner, rrset->rclass, rrset->type);
-	if (rc != KNOT_EOK) {
-		knot_packet_free(&pkt);
-		return KNOT_ERROR;
-	}
-
-	/* Set random query ID. */
-	knot_packet_set_random_id(pkt);
-
-	/*! \todo add the SOA RR to the Answer section as a hint */
-	/*! \todo this should not use response API!! */
-//	rc = knot_response_add_rrset_answer(pkt, rrset, 0, 0, 0);
-//	if (rc != KNOT_EOK) {
-//		knot_packet_free(&pkt);
-//		return rc;
-//	}
-
-	/*! \todo this should not use response API!! */
-	knot_response_set_aa(pkt);
-
-	knot_query_set_opcode(pkt, KNOT_OPCODE_NOTIFY);
-
-	/*! \todo OPT RR ?? */
-
-	uint8_t *wire = NULL;
-	size_t wire_size = 0;
-	rc = knot_packet_to_wire(pkt, &wire, &wire_size);
-	if (rc != KNOT_EOK) {
-		knot_packet_free(&pkt);
-		return KNOT_ERROR;
-	}
-
-	if (wire_size > *size) {
-		knot_packet_free(&pkt);
-		return KNOT_ESPACE;
-	}
-
-	memcpy(buffer, wire, wire_size);
-	*size = wire_size;
-
-	knot_packet_dump(pkt);
-
-	knot_packet_free(&pkt);
-
+	knot_pkt_free(&pkt);
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int notify_create_response(knot_packet_t *request, uint8_t *buffer,
-                           size_t *size)
+int notify_create_response(knot_pkt_t *request, uint8_t *buffer, size_t *size)
 {
-	knot_packet_t *response = knot_packet_new_mm(&request->mm);
+	knot_pkt_t *response = knot_pkt_new(buffer, *size, NULL);
 	CHECK_ALLOC_LOG(response, KNOT_ENOMEM);
 
-	/* Set maximum packet size. */
-	int rc = knot_packet_set_max_size(response, *size);
-	if (rc == KNOT_EOK) {
-		rc = knot_response_init_from_query(response, request);
-	}
+	/* Initialize response. */
+	int ret = knot_pkt_init_response(response, request);
 
-	/* Aggregated result check. */
-	if (rc != KNOT_EOK) {
-		dbg_notify("%s: failed to init response packet: %s",
-			   "notify_create_response", knot_strerror(rc));
-		knot_packet_free(&response);
-		return KNOT_EINVAL;
-	}
+	/* Free the packet, buffer is already written. */
+	knot_pkt_free(&response);
 
-	// TODO: copy the SOA in Answer section
-	uint8_t *wire = NULL;
-	size_t wire_size = 0;
-	rc = knot_packet_to_wire(response, &wire, &wire_size);
-	if (rc != KNOT_EOK) {
-		knot_packet_free(&response);
-		return rc;
-	}
-
-	if (wire_size > *size) {
-		knot_packet_free(&response);
-		return KNOT_ESPACE;
-	}
-
-	memcpy(buffer, wire, wire_size);
-	*size = wire_size;
-
-	knot_packet_dump(response);
-	knot_packet_free(&response);
-
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -208,7 +135,7 @@ static int notify_check_and_schedule(knot_nameserver_t *nameserver,
 /*----------------------------------------------------------------------------*/
 
 int notify_process_request(knot_nameserver_t *ns,
-                           knot_packet_t *notify,
+                           knot_pkt_t *notify,
                            sockaddr_t *from,
                            uint8_t *buffer, size_t *size)
 {
@@ -227,7 +154,7 @@ int notify_process_request(knot_nameserver_t *ns,
 
 	dbg_notify("notify: parsing rest of the packet\n");
 	if (notify->parsed < notify->size) {
-		if (knot_packet_parse_rest(notify, 0) != KNOT_EOK) {
+		if (knot_pkt_parse_payload(notify, 0) != KNOT_EOK) {
 			dbg_notify("notify: failed to parse NOTIFY query\n");
 			knot_ns_error_response_from_query(ns, notify,
 			                                  KNOT_RCODE_FORMERR,
@@ -237,7 +164,7 @@ int notify_process_request(knot_nameserver_t *ns,
 	}
 
 	// check if it makes sense - if the QTYPE is SOA
-	if (knot_packet_qtype(notify) != KNOT_RRTYPE_SOA) {
+	if (knot_pkt_qtype(notify) != KNOT_RRTYPE_SOA) {
 		// send back FORMERR
 		knot_ns_error_response_from_query(ns, notify,
 		                                  KNOT_RCODE_FORMERR, buffer,
@@ -259,13 +186,14 @@ int notify_process_request(knot_nameserver_t *ns,
 	/* Process notification. */
 	ret = KNOT_ENOZONE;
 	unsigned serial = 0;
-	const knot_dname_t *qname = knot_packet_qname(notify);
+	const knot_dname_t *qname = knot_pkt_qname(notify);
 	rcu_read_lock(); /* z */
 	const knot_zone_t *z = knot_zonedb_find_zone_for_name(ns->zone_db, qname);
+	const knot_pktsection_t *answer = knot_pkt_section(notify, KNOT_ANSWER);
 	if (z != NULL) {
 		ret = notify_check_and_schedule(ns, z, from);
 		const knot_rrset_t *soa_rr = NULL;
-		soa_rr = knot_packet_answer_rrset(notify, 0);
+		soa_rr = answer->rr[0];
 		if (soa_rr && knot_rrset_type(soa_rr) == KNOT_RRTYPE_SOA) {
 			serial = knot_rdata_soa_serial(soa_rr);
 		}
@@ -298,15 +226,14 @@ int notify_process_request(knot_nameserver_t *ns,
 
 /*----------------------------------------------------------------------------*/
 
-int notify_process_response(knot_packet_t *notify, int msgid)
+int notify_process_response(knot_pkt_t *notify, int msgid)
 {
 	if (!notify) {
 		return KNOT_EINVAL;
 	}
 
 	/* Match ID against awaited. */
-	uint16_t pkt_id = knot_packet_id(notify);
-	if (pkt_id != msgid) {
+	if (knot_wire_get_id(notify->wire) != msgid) {
 		return KNOT_ERROR;
 	}
 

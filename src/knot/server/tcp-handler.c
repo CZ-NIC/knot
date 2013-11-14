@@ -39,7 +39,7 @@
 #include "knot/server/xfr-handler.h"
 #include "knot/server/zones.h"
 #include "libknot/nameserver/name-server.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/dnssec/cleanup.h"
 
 /*! \brief TCP worker data. */
@@ -175,7 +175,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxle
 	/* Parse query. */
 	size_t resp_len = qbuf_maxlen; // 64K
 	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
-	knot_packet_t *packet = knot_packet_new();
+	knot_pkt_t *packet = knot_pkt_new(buf[QBUF], n, NULL);
 	if (packet == NULL) {
 		int ret = knot_ns_error_response_from_query_wire(ns, buf[QBUF], n,
 		                                            KNOT_RCODE_SERVFAIL,
@@ -188,7 +188,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxle
 		return KNOT_EOK;
 	}
 
-	int parse_res = knot_ns_parse_packet(buf[QBUF], n, packet, &qtype);
+	int parse_res = knot_ns_parse_packet(packet, &qtype);
 	if (knot_unlikely(parse_res != KNOT_EOK)) {
 		if (parse_res > 0) { /* Returned RCODE */
 			int ret = knot_ns_error_response_from_query(ns, packet,
@@ -198,7 +198,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxle
 				tcp_reply(fd, buf[QRBUF], resp_len);
 			}
 		}
-		knot_packet_free(&packet);
+		knot_pkt_free(&packet);
 		return KNOT_EOK;
 	}
 
@@ -240,7 +240,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxle
 		xfr->query = packet;
 		xfr_task_setaddr(xfr, &addr, NULL);
 		res = xfr_answer(ns, xfr);
-		knot_packet_free(&packet);
+		knot_pkt_free(&packet);
 		return res;
 
 	case KNOT_QUERY_UPDATE:
@@ -281,7 +281,7 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxle
 		        qtype, fd, knot_strerror(res));;
 	}
 
-	knot_packet_free(&packet);
+	knot_pkt_free(&packet);
 
 	return res;
 }

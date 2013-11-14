@@ -35,7 +35,7 @@
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/updates/xfr-in.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "knot/server/zones.h"
 #include "libknot/tsig-op.h"
 #include "common/evsched.h"
@@ -297,7 +297,7 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 		rq->data = NULL;
 		assert(rq->new_contents == NULL);
 	} else if (rq->type == XFR_TYPE_FORWARD) {
-		knot_packet_free(&rq->query);
+		knot_pkt_free(&rq->query);
 	}
 
 	/* Cleanup other data - so that the structure may be reused. */
@@ -397,13 +397,13 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 	/* Create XFR query. */
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
-		ret = xfrin_create_axfr_query(zone->name, rq, &rq->wire_size, add_tsig);
+		ret = xfrin_create_axfr_query(zone->name, rq);
 		break;
 	case XFR_TYPE_IIN:
-		ret = xfrin_create_ixfr_query(contents, rq, &rq->wire_size, add_tsig);
+		ret = xfrin_create_ixfr_query(contents, rq);
 		break;
 	case XFR_TYPE_SOA:
-		ret = xfrin_create_soa_query(zone->name, rq, &rq->wire_size);
+		ret = xfrin_create_soa_query(zone->name, rq);
 		break;
 	case XFR_TYPE_NOTIFY:
 		rq->wire_size = 0;
@@ -624,15 +624,15 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 {
 	knot_nameserver_t *ns = w->master->ns;
-	knot_packet_t *re = knot_packet_new();
+	knot_pkt_t *re = knot_pkt_new(rq->wire, rq->wire_size, NULL);
 	if (re == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	knot_packet_type_t rt = KNOT_RESPONSE_NORMAL;
-	int ret = knot_ns_parse_packet(rq->wire, rq->wire_size, re, &rt);
+	int ret = knot_ns_parse_packet(re, &rt);
 	if (ret != KNOT_EOK) {
-		knot_packet_free(&re);
+		knot_pkt_free(&re);
 		return KNOT_EOK; /* Ignore */
 	}
 
@@ -643,18 +643,18 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 	case KNOT_RESPONSE_UPDATE:
 		break;
 	default:
-		knot_packet_free(&re);
+		knot_pkt_free(&re);
 		return KNOT_EOK; /* Ignore */
 	}
 
-	ret = knot_packet_parse_rest(re, 0);
+	ret = knot_pkt_parse_payload(re, 0);
 	if (ret != KNOT_EOK) {
-		knot_packet_free(&re);
+		knot_pkt_free(&re);
 		return KNOT_EOK; /* Ignore */
 	}
 
 	/* Check TSIG. */
-	const knot_rrset_t * tsig_rr = knot_packet_tsig(re);
+	const knot_rrset_t * tsig_rr = re->tsig_rr;
 	if (rq->tsig_key != NULL) {
 		/*! \todo Not sure about prev_time_signed, but this is the first
 		 *        reply and we should pass query sign time as the time
@@ -665,7 +665,7 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 		                             rq->tsig_key, 0);
 		if (ret != KNOT_EOK) {
 			log_server_error("%s %s\n", rq->msg, knot_strerror(ret));
-			knot_packet_free(&re);
+			knot_pkt_free(&re);
 			return KNOT_ECONNREFUSED;
 		}
 
@@ -692,7 +692,7 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 		break;
 	}
 
-	knot_packet_free(&re);
+	knot_pkt_free(&re);
 	if (ret == KNOT_EUPTODATE) {  /* Check up-to-date zone. */
 		log_server_info("%s %s (serial %u)\n", rq->msg,
 		                knot_strerror(ret),
@@ -733,7 +733,7 @@ static int xfr_fallback_axfr(knot_ns_xfr_t *rq)
 {
 	log_server_notice("%s Retrying with AXFR.\n", rq->msg);
 	rq->wire_size = rq->wire_maxlen; /* Reset maximum bufsize */
-	int ret = xfrin_create_axfr_query(rq->zone->name, rq, &rq->wire_size, 1);
+	int ret = xfrin_create_axfr_query(rq->zone->name, rq);
 	/* Send AXFR/IN query. */
 	if (ret == KNOT_EOK) {
 		ret = rq->send(rq->session, &rq->addr,
@@ -894,37 +894,24 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 {
 	/* Parse rest of the packet. */
 	int ret = KNOT_EOK;
-	knot_packet_t *qry = xfr->query;
+	knot_pkt_t *qry = xfr->query;
 	knot_tsig_key_t *key = 0;
-	const knot_rrset_t *tsig_rr = 0;
+	const knot_rrset_t *tsig_rr = qry->tsig_rr;
 
 	/* Find TSIG key name from query. */
-	const knot_dname_t* kname = 0;
-	int tsig_pos = knot_packet_additional_rrset_count(qry) - 1;
-	if (tsig_pos >= 0) {
-		tsig_rr = knot_packet_additional_rrset(qry, tsig_pos);
-		if (knot_rrset_type(tsig_rr) == KNOT_RRTYPE_TSIG) {
-			dbg_xfr("xfr: found TSIG in AR\n");
-			kname = knot_rrset_owner(tsig_rr);
-			if (tag) {
-				*tag = knot_dname_to_str(kname);
-
-			}
-		} else {
-			tsig_rr = 0;
+	const knot_dname_t* kname = NULL;
+	if (tsig_rr) {
+		kname = knot_rrset_owner(tsig_rr);
+		if (tag) {
+			*tag = knot_dname_to_str(kname);
 		}
-	}
-	if (!kname) {
-		dbg_xfr("xfr: TSIG not found in AR\n");
-		char *name = knot_dname_to_str(
-		                        knot_zone_name(xfr->zone));
-		free(name);
-
+	} else {
 		// return REFUSED
-		xfr->tsig_key = 0;
+		xfr->tsig_key = NULL;
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_EDENIED;
 	}
+
 	if (tsig_rr) {
 		knot_tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
 		if (knot_tsig_digest_length(alg) == 0) {
@@ -975,8 +962,8 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 			/* Check query TSIG. */
 			ret = knot_tsig_server_check(
 			                        tsig_rr,
-			                        knot_packet_wireformat(qry),
-			                        knot_packet_size(qry),
+			                        qry->wire,
+			                        qry->size,
 			                        key);
 			dbg_xfr("knot_tsig_server_check() returned %s\n",
 			        knot_strerror(ret));
@@ -1280,7 +1267,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	rcu_read_unlock(); /* Now, the zone is either refcounted or NULL. */
 	
 	/* Use the QNAME as the zone name. */
-	const knot_dname_t *qname = knot_packet_qname(rq->query);
+	const knot_dname_t *qname = knot_pkt_qname(rq->query);
 	if (qname != NULL) {
 		rq->zname = knot_dname_to_str(qname);
 	} else {
@@ -1359,7 +1346,7 @@ int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq)
 	}
 
 	/* Cleanup. */
-	knot_packet_free(&rq->response);  /* Free response. */
+	knot_pkt_free(&rq->response);  /* Free response. */
 	knot_changesets_free((knot_changesets_t **)(&rq->data));
 	free(rq->zname);
 
