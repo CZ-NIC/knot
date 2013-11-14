@@ -33,6 +33,8 @@
 
 #include "libknot/dname.h"
 
+struct knot_compr;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure for representing an RRSet.
@@ -335,14 +337,14 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner);
 void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner);
 
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
-                       size_t max_size, uint16_t *rr_count, void *comp_data);
+                       size_t max_size, uint16_t *rr_count, struct knot_compr *compr);
 
 /*!
  * \brief Write one RR from RRSet.
  */
 int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
                            uint8_t *wire, size_t max_size, size_t *outsize,
-                           void *comp_data);
+                           struct knot_compr *compr);
 
 /*!
  * \brief Merges two RRSets.

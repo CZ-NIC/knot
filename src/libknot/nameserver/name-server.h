@@ -43,7 +43,7 @@
 #include "libknot/edns.h"
 #include "libknot/consts.h"
 #include "libknot/tsig.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "common/sockaddr.h"
 #include "common/lists.h"
 #include "libknot/updates/changesets.h"
@@ -64,8 +64,7 @@ typedef struct knot_nameserver {
 	 *        queries.
 	 */
 	knot_zonedb_t *zone_db;
-	uint8_t *err_response;    /*!< Prepared generic error response. */
-	size_t err_resp_size;     /*!< Size of the prepared error response. */
+	knot_pkt_t *err_response;    /*!< Prepared generic error response. */
 	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
 
 	const char *identity; //!< RFC 4892, server identity (id.server, hostname.bind).
@@ -88,8 +87,8 @@ typedef struct knot_ns_xfr {
 	int type;
 	int flags;
 	sockaddr_t addr, saddr;
-	knot_packet_t *query;
-	knot_packet_t *response;
+	knot_pkt_t *query;
+	knot_pkt_t *response;
 	knot_rcode_t rcode;
 	xfr_callback_t send;
 	xfr_callback_t recv;
@@ -200,8 +199,6 @@ knot_nameserver_t *knot_ns_create();
  * to decide what to do with the query, the knot_query_t type is used for this
  * purpose.
  *
- * \param query_wire Wire format of the query.
- * \param qsize Size of the query in octets.
  * \param packet Packet structure to be filled with the parsed query.
  * \param type Type of the query.
  *
@@ -219,8 +216,7 @@ knot_nameserver_t *knot_ns_create();
  *                              ns_error_response() with \a rcode set to this
  *                              value to get proper error response.
  */
-int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
-                    knot_packet_t *packet, knot_packet_type_t *type);
+int knot_ns_parse_packet(knot_pkt_t *packet, knot_packet_type_t *type);
 
 int knot_ns_error_response_from_query_wire(const knot_nameserver_t *nameserver,
                                       const uint8_t *query, size_t size,
@@ -228,20 +224,20 @@ int knot_ns_error_response_from_query_wire(const knot_nameserver_t *nameserver,
                                       size_t *rsize);
 
 int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
-                                      const knot_packet_t *query,
+                                      const knot_pkt_t *query,
                                       uint8_t rcode, uint8_t *response_wire,
                                       size_t *rsize);
 
 void knot_ns_error_response_full(knot_nameserver_t *nameserver,
-                                 knot_packet_t *response, uint8_t rcode,
+                                 knot_pkt_t *response, uint8_t rcode,
                                  uint8_t *response_wire, size_t *rsize);
 
 int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
-                                 knot_packet_t *query, knot_packet_t **resp,
+                                 knot_pkt_t *query, knot_pkt_t *resp,
                                  const knot_zone_t **zone, size_t max_size);
 
 int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
-                                 knot_packet_t *query, knot_packet_t **resp,
+                                 knot_pkt_t *query, knot_pkt_t **resp,
                                  knot_zone_t **zone, size_t max_size);
 
 /*!
@@ -258,11 +254,11 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
 int knot_ns_answer_normal(knot_nameserver_t *nameserver,
-                          const knot_zone_t *zone, knot_packet_t *resp,
+                          const knot_zone_t *zone, knot_pkt_t *resp,
                           uint8_t *response_wire, size_t *rsize, int check_any);
 
 int knot_ns_answer_ixfr_udp(knot_nameserver_t *nameserver,
-                            const knot_zone_t *zone, knot_packet_t *resp,
+                            const knot_zone_t *zone, knot_pkt_t *resp,
                             uint8_t *response_wire, size_t *rsize);
 
 int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
@@ -357,15 +353,15 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
                              knot_ns_xfr_t *xfr);
 
-int knot_ns_process_update(const knot_packet_t *query,
+int knot_ns_process_update(const knot_pkt_t *query,
                             knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents,
                             knot_changesets_t *chgs, knot_rcode_t *rcode);
 
-int knot_ns_create_forward_query(const knot_packet_t *query,
+int knot_ns_create_forward_query(const knot_pkt_t *query,
                                  uint8_t *query_wire, size_t *size);
 
-int knot_ns_process_forward_response(const knot_packet_t *response,
+int knot_ns_process_forward_response(const knot_pkt_t *response,
                                      uint16_t original_id,
                                      uint8_t *response_wire, size_t *size);
 
@@ -388,7 +384,7 @@ int knot_ns_tsig_required(int packet_nr);
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
+int ns_response_to_wire(knot_pkt_t *resp, uint8_t *wire,
                         size_t *wire_size);
 
 /*!
@@ -397,7 +393,6 @@ int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
  * \param nameserver Nameserver to destroy.
  */
 void knot_ns_destroy(knot_nameserver_t **nameserver);
-
 
 #endif /* _KNOTNAME_SERVER_H_ */
 

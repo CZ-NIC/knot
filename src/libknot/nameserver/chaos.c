@@ -19,8 +19,7 @@
 
 #include "libknot/nameserver/chaos.h"
 #include "common/descriptor.h"
-#include "libknot/packet/packet.h"
-#include "libknot/packet/response.h"
+#include "libknot/packet/pkt.h"
 
 /*!
  * \brief Get a string result for a given TXT query.
@@ -89,10 +88,10 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
  * \param return KNOT_RCODE_NOERROR if the response was succesfully created,
  *               otherwise an RCODE representing the failure.
  */
-static int answer_txt(knot_nameserver_t *nameserver, knot_packet_t *response,
+static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response,
                       uint8_t *response_wire, size_t *response_size)
 {
-	const knot_dname_t *qname = knot_packet_qname(response);
+	const knot_dname_t *qname = knot_pkt_qname(response);
 	const char *response_str = get_txt_response_string(nameserver, qname);
 	if (response_str == NULL || response_str[0] == '\0')
 		return KNOT_RCODE_REFUSED;
@@ -101,7 +100,8 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_packet_t *response,
 	if (!rrset)
 		return KNOT_RCODE_SERVFAIL;
 
-	int result = knot_response_add_rrset_answer(response, rrset, 0);
+	assert(KNOT_PKT_IN_AN(response)) /* #10 */;
+	int result = knot_pkt_put(response, 0, rrset, KNOT_PF_FREE);
 	if (result != KNOT_EOK) {
 		knot_rrset_deep_free(&rrset, 1);
 		return KNOT_RCODE_SERVFAIL;
@@ -109,12 +109,10 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_packet_t *response,
 
 	result = ns_response_to_wire(response, response_wire, response_size);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&rrset, 1);
 		return KNOT_RCODE_SERVFAIL;
 	}
 
-	knot_rrset_deep_free(&rrset, 1);
-	knot_response_set_rcode(response, KNOT_RCODE_NOERROR);
+	knot_wire_set_rcode(response->wire, KNOT_RCODE_NOERROR);
 
 	return KNOT_RCODE_NOERROR;
 }
@@ -122,12 +120,12 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_packet_t *response,
 /*!
  * \brief Create a response for a given query in the CHAOS class.
  */
-int knot_ns_answer_chaos(knot_nameserver_t *nameserver, knot_packet_t *resp,
+int knot_ns_answer_chaos(knot_nameserver_t *nameserver, knot_pkt_t *resp,
                          uint8_t *resp_wire, size_t *resp_size)
 {
 	int rcode = KNOT_RCODE_REFUSED;
 
-	if (knot_packet_qtype(resp) == KNOT_RRTYPE_TXT) {
+	if (knot_pkt_qtype(resp) == KNOT_RRTYPE_TXT) {
 		rcode = answer_txt(nameserver, resp, resp_wire, resp_size);
 	}
 

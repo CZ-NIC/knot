@@ -32,6 +32,8 @@
 #include "libknot/util/utils.h"
 #include "libknot/rrset.h"
 
+struct knot_packet;
+
 /*----------------------------------------------------------------------------*/
 /*! \brief Structure representing one OPT RR Option. */
 struct knot_opt_option {
@@ -78,6 +80,13 @@ enum knot_edns_const {
 	EDNS_NOT_SUPPORTED   = 255,  /*!< EDNS not supported. */
 	EDNS_OPTION_NSID     = 3,    /*!< NSID option code. */
 	EDNS_MIN_SIZE        = 11    /*!< Minimum size of EDNS OPT RR in wire format. */
+};
+
+enum {
+	KNOT_PKT_EDNS_PAYLOAD = 0,
+	KNOT_PKT_EDNS_VERSION = 1,
+	KNOT_PKT_EDNS_RCODE   = 2,
+	KNOT_PKT_EDNS_NSID    = 3
 };
 
 /*----------------------------------------------------------------------------*/
@@ -229,6 +238,7 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
  * \retval 0 otherwise.
  */
 int knot_edns_has_option(const knot_opt_rr_t *opt_rr, uint16_t code);
+
 
 /*!
  * \brief Converts the given OPT RR into wire format.

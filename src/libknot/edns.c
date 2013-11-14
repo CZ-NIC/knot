@@ -274,7 +274,7 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 	assert(EDNS_MIN_SIZE <= (int)max_size);
 
 	if ((int)max_size < opt_rr->size) {
-		dbg_edns("Not enough place for OPT RR wire format.\n");
+		printf("Not enough place for OPT RR wire format.\n");
 		return KNOT_ESPACE;
 	}
 

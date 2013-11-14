@@ -18,7 +18,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/util/debug.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
@@ -692,8 +692,8 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	}
 	*pos += KNOT_RR_HEADER_SIZE;
 
-	dbg_packet_verbose("%s: read type %u, class %u, ttl %u, rdlength %u\n",
-	                   __func__, rrset->type, rrset->rclass, rrset->ttl, rdlength);
+	dbg_packet_verb("%s: read type %u, class %u, ttl %u, rdlength %u\n",
+	                __func__, rrset->type, rrset->rclass, rrset->ttl, rdlength);
 
 	if (rdlength == 0) {
 		return rrset;

@@ -25,7 +25,7 @@
 #include "common/hattrie/hat-trie.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/zone/zone-tree.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/consts.h"
 #include "libknot/rdata.h"
 

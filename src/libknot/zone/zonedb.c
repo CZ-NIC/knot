@@ -25,7 +25,7 @@
 #include "libknot/zone/zone.h"
 #include "libknot/zone/zonedb.h"
 #include "libknot/dname.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/zone/node.h"
 #include "libknot/util/debug.h"
 

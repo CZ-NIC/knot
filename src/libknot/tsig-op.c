@@ -26,7 +26,7 @@
 #include "common/descriptor.h"
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/util/debug.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/key.h"
