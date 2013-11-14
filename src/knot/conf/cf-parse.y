@@ -276,16 +276,21 @@ static void conf_acl_item(void *scanner, char *item)
 	free(item);
 }
 
-static int conf_key_exists(void *scanner, knot_dname_t *sample)
+static int conf_key_exists(void *scanner, char *item)
 {
 	/* Find existing node in keys. */
+	knot_dname_t *sample = knot_dname_from_str(item);
+	knot_dname_to_lower(sample);
 	conf_key_t* r = 0;
 	WALK_LIST (r, new_config->keys) {
 		if (knot_dname_cmp(r->k.name, sample) == 0) {
+			cf_error(scanner, "key '%s' is already defined", item);
+			knot_dname_free(&sample);
 			return 1;
 		}
 	}
 
+	knot_dname_free(&sample);
 	return 0;
 }
 
@@ -327,12 +332,19 @@ static void conf_zone_start(void *scanner, char *name) {
 	this_zone->build_diffs = -1; // Default policy applies
 	this_zone->sig_lifetime = -1; // Default policy applies
 
-	// Do not terminate with '.' unless root zone.
+	// Append mising dot to ensure FQDN
 	size_t nlen = strlen(name);
-	if (nlen > 1 && name[nlen - 1] == '.') {
-                name[nlen - 1] = '\0';
-        }
-	this_zone->name = name;
+	if (name[nlen - 1] != '.') {
+		this_zone->name = malloc(nlen + 2);
+		if (this_zone->name != NULL) {
+			memcpy(this_zone->name, name, nlen);
+			this_zone->name[nlen] = '.';
+			this_zone->name[++nlen] = '\0';
+		}
+		free(name);
+	} else {
+		this_zone->name = name; /* Already FQDN */
+	}
 
 	// DNSSEC configuration
 	if (new_config->dnssec_enable) {
@@ -650,15 +662,33 @@ keys:
         cf_error(scanner, "unsupported digest algorithm");
      }
 
-     knot_dname_t *dname = knot_dname_from_str($2.t);
-     if (!dname) {
-         cf_error(scanner, "out of memory when allocating string");
-     } else {
-         knot_dname_to_lower(dname);
-         if (conf_key_exists(scanner, dname)) {
-            cf_error(scanner, "key '%s' is already defined", $2.t);
-            knot_dname_free(&dname);
+     /* Normalize to FQDN */
+     char *fqdn = $2.t;
+     size_t fqdnl = strlen(fqdn);
+     if (fqdn[fqdnl - 1] != '.') {
+        fqdnl = ((fqdnl + 2)/4+1)*4; /* '.', '\0' */
+        char* tmpdn = malloc(fqdnl);
+	if (!tmpdn) {
+	   cf_error(scanner, "out of memory when allocating string");
+	   free(fqdn);
+	   fqdn = NULL;
+	   fqdnl = 0;
+	} else {
+	   strncpy(tmpdn, fqdn, fqdnl);
+	   strncat(tmpdn, ".", 1);
+	   free(fqdn);
+	   fqdn = tmpdn;
+	   fqdnl = strlen(fqdn);
+	}
+     }
+
+     if (fqdn != NULL && !conf_key_exists(scanner, fqdn)) {
+         knot_dname_t *dname = knot_dname_from_str(fqdn);
+	 if (!dname) {
+             cf_error(scanner, "key name '%s' not in valid domain name format",
+                      fqdn);
          } else {
+             knot_dname_to_lower(dname);
              conf_key_t *k = malloc(sizeof(conf_key_t));
              memset(k, 0, sizeof(conf_key_t));
              k->k.name = dname;
@@ -674,8 +704,8 @@ keys:
          }
      }
 
-     free($2.t);
      free($4.t);
+     free(fqdn);
 }
 
 remote_start:
