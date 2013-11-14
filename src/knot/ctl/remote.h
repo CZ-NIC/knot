@@ -28,7 +28,7 @@
 #define _KNOTD_REMOTE_H_
 
 #include "knot/conf/conf.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
 #include "libknot/dnssec/key.h"
 #include "knot/server/server.h"
@@ -81,14 +81,12 @@ int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen);
 /*!
  * \brief Parse a RC command.
  *
- * \param pkt Dst structure for parsed command.
- * \param buf Remote command in wire format.
- * \param buflen Wire format length.
+ * \param pkt Query packet.
  *
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen);
+int remote_parse(knot_pkt_t* pkt);
 
 /*!
  * \brief Execute command and prepare answer for client.
@@ -102,7 +100,7 @@ int remote_parse(knot_packet_t* pkt, const uint8_t* buf, size_t buflen);
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t rlen);
+int remote_answer(int fd, server_t *s, knot_pkt_t *pkt);
 
 /*!
  * \brief Accept new client, receive command, process it and send response.
@@ -134,18 +132,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key);
-
-/*!
- * \brief Append extra data to RC command packet.
- *
- * \param qry RC packet.
- * \param data Extra data in form of a RR set.
- *
- * \retval KNOT_EOK on success.
- * \retval knot_error else.
- */
-int remote_query_append(knot_packet_t *qry, knot_rrset_t *data);
+knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key);
 
 /*!
  * \brief Sign a RC command packet using TSIG key.
