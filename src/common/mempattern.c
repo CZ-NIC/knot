@@ -24,6 +24,7 @@
 #include "common/mempattern.h"
 #include "common/log.h"
 #include "common/slab/alloc-common.h"
+#include "common/mempool.h"
 
 static void *mm_malloc(void *ctx, size_t n)
 {
@@ -36,6 +37,13 @@ void mm_ctx_init(mm_ctx_t *mm)
 	mm->ctx = NULL;
 	mm->alloc = mm_malloc;
 	mm->free = free;
+}
+
+void mm_ctx_mempool(mm_ctx_t *mm, size_t chunk_size)
+{
+	mm->ctx = mp_new(chunk_size);
+	mm->alloc = (mm_alloc_t)mp_alloc;
+	mm->free = mm_nofree;
 }
 
 void* xmalloc(size_t l)
