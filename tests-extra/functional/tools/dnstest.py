@@ -501,8 +501,9 @@ class DnsServer(object):
             if self.compile_params:
                 self.compile()
 
-            self.proc = Popen(self.valgrind + [self.daemon_bin] + \
-                              self.start_params, stdout=fout, stderr=ferr)
+            if self.daemon_bin != None:
+                self.proc = Popen(self.valgrind + [self.daemon_bin] + \
+                                  self.start_params, stdout=fout, stderr=ferr)
 
             if self.valgrind:
                 time.sleep(DnsServer.START_WAIT_VALGRIND)
@@ -1010,6 +1011,23 @@ class Nsd(DnsServer):
         self.start_params = ["-c", self.confile, "-d"]
         self.compile_params = ["-c", self.confile, "rebuild"]
 
+class Dummy(DnsServer):
+    ''' Dummy name server. '''
+
+    def __init__(self):
+        super().__init__()
+        self.daemon_bin = None
+        self.control_bin = None
+
+    def get_config(self):
+        return '' 
+
+    def start(self):
+        return True
+
+    def running(self):
+        return True # Fake running
+
 class DnsTest(object):
     '''Specification of DNS test topology'''
 
@@ -1045,6 +1063,7 @@ class DnsTest(object):
         Knot.count = 0
         Bind.count = 0
         Nsd.count = 0
+        Dummy.count = 0
 
     def _check_port(self, port):
         if not port:
@@ -1086,6 +1105,8 @@ class DnsTest(object):
             srv = Bind()
         elif server == "nsd":
             srv = Nsd()
+        elif server == "dummy":
+            srv = Dummy()
         else:
             raise Exception("Usupported server %s" % server)
 
@@ -1175,7 +1196,7 @@ class DnsTest(object):
     def sleep(self, seconds):
         time.sleep(seconds)
 
-    def zone(self, zone_name, file_name=None):
+    def zone(self, zone_name, file_name=None, exists=True):
         # Add trailing dot if missing.
         if zone_name[-1] != ".":
             zone_name += "."
@@ -1193,7 +1214,8 @@ class DnsTest(object):
             dst_file = self.zones_dir + file_name
 
         try:
-            shutil.copyfile(src_file, dst_file)
+            if exists is True:
+                shutil.copyfile(src_file, dst_file)
         except:
             raise Exception("Can't use zone file %s" % src_file)
 
