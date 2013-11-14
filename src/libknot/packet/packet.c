@@ -22,928 +22,13 @@
 #include "libknot/util/debug.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/tsig.h"
-
-/*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
+#include "libknot/tsig-op.h"
 
 /*----------------------------------------------------------------------------*/
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Processes DNS Question entry from the wire format.
- */
-static int knot_packet_parse_question(knot_packet_t *pkt)
-{
-	assert(pkt != NULL);
-
-	dbg_packet("Parsing Question starting on position %zu.\n", pkt->parsed);
-
-	/* Process question. */
-	int len = knot_dname_wire_check(pkt->wireformat + pkt->parsed,
-	                                pkt->wireformat + pkt->size,
-	                                pkt->wireformat);
-	if (len <= 0)
-		return KNOT_EMALF;
-
-	/*! \todo Question case should be preserved. */
-	/* knot_dname_to_lower(question->qname); */
-	pkt->parsed += len + 2 * sizeof(uint16_t); /* Class + Type */
-	pkt->qname_size = len;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Reallocate space for RRSets.
- *
- * \param rrsets Space for RRSets.
- * \param max_count Size of the space available for the RRSets.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- */
-int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
-                                      short *max_count,
-                                      mm_ctx_t *mm)
-{
-	short new_max_count = *max_count + RRSET_ALLOC_STEP;
-	const knot_rrset_t **new_rrsets = mm->alloc(mm->ctx,
-		new_max_count * sizeof(knot_rrset_t *));
-	CHECK_ALLOC_LOG(new_rrsets, KNOT_ENOMEM);
-	memcpy(new_rrsets, *rrsets, (*max_count) * sizeof(knot_rrset_t *));
-
-	mm->free(*rrsets);
-	*rrsets = new_rrsets;
-	*max_count = new_max_count;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
-                                   size_t *pos, size_t total_size,
-                                   size_t rdlength)
-{
-	if (!rr || !wire || !pos || rdlength == 0) {
-		return KNOT_EINVAL;
-	}
-
-
-
-	/*! \todo As I'm revising it, seems highly inefficient to me.
-	 *        We just need to skim through the packet,
-	 *        check if it is in valid format and store pointers to various
-	 *        parts in rdata instead of copying memory blocks and
-	 *        parsing domain names (with additional allocation) and then
-	 *        use use the wireformat for lookup again. Compression could
-	 *        be handled in-situ without additional memory allocs...
-	 */
-
-	int ret = knot_rrset_rdata_from_wire_one(rr, wire, pos, total_size,
-	                                         rdlength);
-	if (ret != KNOT_EOK) {
-		dbg_packet("packet: parse_rdata: Failed to parse RDATA (%s).\n",
-		           knot_strerror(ret));
-		return ret;
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static knot_rrset_t *knot_packet_parse_rr(const uint8_t *wire, size_t *pos,
-                                          size_t size)
-{
-	dbg_packet("Parsing RR from position: %zu, total size: %zu\n",
-	           *pos, size);
-
-	knot_dname_t *owner = knot_dname_parse(wire, pos, size);
-	dbg_packet_detail("Created owner: %p, actual position: %zu\n", owner,
-	                  *pos);
-	if (owner == NULL) {
-		return NULL;
-	}
-	knot_dname_to_lower(owner);
-
-dbg_packet_exec_verb(
-	char *name = knot_dname_to_str(owner);
-	dbg_packet_verb("Parsed name: %s\n", name);
-	free(name);
-);
-
-	if (size - *pos < KNOT_RR_HEADER_SIZE) {
-		dbg_packet("Malformed RR: Not enough data to parse RR"
-		           " header.\n");
-		knot_dname_free(&owner);
-		return NULL;
-	}
-
-	dbg_packet_detail("Reading type from position %zu\n", *pos);
-
-	uint16_t type = knot_wire_read_u16(wire + *pos);
-	uint16_t rclass = knot_wire_read_u16(wire + *pos + 2);
-	uint32_t ttl = knot_wire_read_u32(wire + *pos + 4);
-
-	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, ttl);
-	if (rrset == NULL) {
-		knot_dname_free(&owner);
-		return NULL;
-	}
-
-	uint16_t rdlength = knot_wire_read_u16(wire + *pos + 8);
-
-	dbg_packet_detail("Read RR header: type %u, class %u, ttl %u, "
-	                    "rdlength %u\n", rrset->type, rrset->rclass,
-	                    rrset->ttl, rdlength);
-
-	*pos += KNOT_RR_HEADER_SIZE;
-
-	if (size - *pos < rdlength) {
-		dbg_packet("Malformed RR: Not enough data to parse RR"
-		           " RDATA (size: %zu, position: %zu).\n", size, *pos);
-		knot_rrset_deep_free(&rrset, 1);
-		return NULL;
-	}
-
-	rrset->rrsigs = NULL;
-
-	if (rdlength == 0) {
-		return rrset;
-	}
-
-
-	// parse RDATA
-	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
-	 *        probably. */
-	int ret = knot_packet_parse_rdata(rrset, wire, pos, size, rdlength);
-	if (ret != KNOT_EOK) {
-		dbg_packet("Malformed RR: Could not parse RDATA.\n");
-		knot_rrset_deep_free(&rrset, 1);
-		return NULL;
-	}
-
-	return rrset;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int knot_packet_add_rrset(knot_rrset_t *rrset,
-                                 const knot_rrset_t ***rrsets,
-                                 short *rrset_count,
-                                 short *max_rrsets,
-                                 knot_packet_t *packet,
-                                 knot_packet_flag_t flags)
-{
-	assert(rrset != NULL);
-	assert(rrsets != NULL);
-	assert(rrset_count != NULL);
-	assert(max_rrsets != NULL);
-
-dbg_packet_exec_verb(
-	char *name = knot_dname_to_str(rrset->owner);
-	dbg_packet_verb("packet_add_rrset(), owner: %s, type: %u\n",
-	                name, rrset->type);
-	free(name);
-);
-
-	if (*rrset_count == *max_rrsets
-	    && knot_packet_realloc_rrsets(rrsets, max_rrsets,
-	                                  &packet->mm) != KNOT_EOK) {
-		return KNOT_ENOMEM;
-	}
-
-	if ((flags & KNOT_PACKET_DUPL_SKIP) &&
-	    knot_packet_contains(packet, rrset, KNOT_RRSET_COMPARE_PTR)) {
-		return 2;
-	}
-
-	// Try to merge rdata to rrset if flag NO_MERGE isn't set.
-    if ((flags & KNOT_PACKET_DUPL_NO_MERGE) == 0) {
-		// try to find the RRSet in this array of RRSets
-		for (int i = 0; i < *rrset_count; ++i) {
-dbg_packet_exec_detail(
-			char *name = knot_dname_to_str((*rrsets)[i]->owner);
-			dbg_packet_detail("Comparing to RRSet: owner: %s, "
-			                  "type: %u\n", name,
-			                  (*rrsets)[i]->type);
-			free(name);
-);
-
-			if (knot_rrset_equal((*rrsets)[i], rrset,
-			                     KNOT_RRSET_COMPARE_HEADER)) {
-				int merged = 0;
-				int deleted_rrs = 0;
-				int rc =
-					knot_rrset_merge_sort((knot_rrset_t *)(*rrsets)[i],
-				                              rrset, &merged, &deleted_rrs);
-				if (rc != KNOT_EOK) {
-					return rc;
-				}
-				return 1;
-			}
-		}
-	}
-
-	(*rrsets)[*rrset_count] = rrset;
-	++(*rrset_count);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int knot_packet_parse_rrs(const uint8_t *wire, size_t *pos,
-                                 size_t size, uint16_t rr_count,
-                                 uint16_t *parsed_rrs,
-                                 const knot_rrset_t ***rrsets,
-                                 short *rrset_count, short *max_rrsets,
-                                 knot_packet_t *packet,
-                                 knot_packet_flag_t flags)
-{
-	assert(pos != NULL);
-	assert(wire != NULL);
-	assert(rrsets != NULL);
-	assert(rrset_count != NULL);
-	assert(max_rrsets != NULL);
-	assert(packet != NULL);
-
-	dbg_packet("Parsing RRSets starting on position: %zu\n", *pos);
-
-	/*
-	 * The RRs from one RRSet may be scattered in the current section.
-	 * We must parse all RRs separately and try to add them to already
-	 * parsed RRSets.
-	 */
-	int err = KNOT_EOK;
-	knot_rrset_t *rrset = NULL;
-
-	/* Start parsing from the first RR not parsed. */
-	for (int i = *parsed_rrs; i < rr_count; ++i) {
-		rrset = knot_packet_parse_rr(wire, pos, size);
-		if (rrset == NULL) {
-			dbg_packet("Failed to parse RR!\n");
-			err = KNOT_EMALF;
-			break;
-		}
-
-		++(*parsed_rrs);
-
-		err = knot_packet_add_rrset(rrset, rrsets, rrset_count,
-		                            max_rrsets, packet, flags);
-		if (err < 0) {
-			break;
-		} else if (err == 1) {	// merged, shallow data copy
-			dbg_packet_detail("RRSet merged, freeing.\n");
-			knot_rrset_deep_free(&rrset, 1);
-			continue;
-		} else if (err == 2) { // skipped
-			knot_rrset_deep_free(&rrset, 1);
-			continue;
-		}
-
-		err = knot_packet_add_tmp_rrset(packet, rrset);
-		if (err != KNOT_EOK) {
-			// remove the last RRSet from the list of RRSets
-			// - just decrement the count
-			--(*rrset_count);
-			knot_rrset_deep_free(&rrset, 1);
-			break;
-		}
-
-		if (knot_rrset_type(rrset) == KNOT_RRTYPE_TSIG) {
-			// if there is some TSIG already, treat as malformed
-			if (knot_packet_tsig(packet) != NULL) {
-				err = KNOT_EMALF;
-				break;
-			}
-
-			// First check the format of the TSIG RR
-			if (!tsig_rdata_is_ok(rrset)) {
-				err = KNOT_EMALF;
-				break;
-			}
-
-			// store the TSIG into the packet
-			knot_packet_set_tsig(packet, rrset);
-		}
-	}
-
-	return (err < 0) ? err : KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Deallocates all space which was allocated additionally to the
- *        pre-allocated space of the response structure.
- *
- * \param resp Response structure that holds pointers to the allocated space.
- */
-static void knot_packet_free_allocated_space(knot_packet_t *pkt)
-{
-	dbg_packet_verb("Freeing additional space in packet.\n");
-
-	pkt->mm.free(pkt->answer);
-	pkt->mm.free(pkt->authority);
-	pkt->mm.free(pkt->additional);
-	pkt->mm.free(pkt->wildcard_nodes.nodes);
-	pkt->mm.free(pkt->wildcard_nodes.snames);
-	pkt->mm.free(pkt->tmp_rrsets);
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int knot_packet_parse_rr_sections(knot_packet_t *packet, size_t *pos,
-                                         knot_packet_flag_t flags)
-{
-	assert(packet != NULL);
-	assert(packet->wireformat != NULL);
-	assert(packet->size > 0);
-	assert(pos != NULL);
-	assert(*pos > 0);
-
-	int err;
-
-	assert(packet->tsig_rr == NULL);
-
-	dbg_packet_verb("Parsing Answer RRs...\n");
-	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, knot_wire_get_ancount(packet->wireformat), &packet->parsed_an,
-	   &packet->answer, &packet->an_rrsets, &packet->max_an_rrsets,
-	                                 packet, flags)) != KNOT_EOK) {
-		return err;
-	}
-
-	if (packet->tsig_rr != NULL) {
-		dbg_packet("TSIG in Answer section.\n");
-		return KNOT_EMALF;
-	}
-
-	dbg_packet_verb("Parsing Authority RRs...\n");
-	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, knot_wire_get_nscount(packet->wireformat), &packet->parsed_ns,
-	   &packet->authority, &packet->ns_rrsets, &packet->max_ns_rrsets,
-	   packet, flags)) != KNOT_EOK) {
-		return err;
-	}
-
-	if (packet->tsig_rr != NULL) {
-		dbg_packet("TSIG in Authority section.\n");
-		return KNOT_EMALF;
-	}
-
-	dbg_packet_verb("Parsing Additional RRs...\n");
-	if ((err = knot_packet_parse_rrs(packet->wireformat, pos,
-	   packet->size, knot_wire_get_arcount(packet->wireformat), &packet->parsed_ar,
-	   &packet->additional, &packet->ar_rrsets, &packet->max_ar_rrsets,
-	   packet, flags)) != KNOT_EOK) {
-		return err;
-	}
-
-	// If TSIG is not the last record
-	if (packet->tsig_rr != NULL
-	    && packet->ar_rrsets[packet->additional - 1] != packet->tsig_rr) {
-		dbg_packet("TSIG in Additonal section but not last.\n");
-		return KNOT_EMALF;
-	}
-
-	dbg_packet_verb("Trying to find OPT RR in the packet.\n");
-
-	for (int i = 0; i < packet->ar_rrsets; ++i) {
-		assert(packet->additional[i] != NULL);
-		if (knot_rrset_type(packet->additional[i]) == KNOT_RRTYPE_OPT) {
-			dbg_packet_detail("Found OPT RR, filling.\n");
-			err = knot_edns_new_from_rr(&packet->opt_rr,
-			                              packet->additional[i]);
-			if (err != KNOT_EOK) {
-				return err;
-			}
-			break;
-		}
-	}
-
-	packet->parsed = *pos;
-
-	if (*pos < packet->size) {
-		// If there is some trailing garbage, treat the packet as
-		// malformed
-		dbg_packet_verb("Packet: %zu bytes of trailing garbage "
-		                "in packet.\n", packet->size - (*pos));
-		return KNOT_EMALF;
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/* API functions                                                              */
-/*----------------------------------------------------------------------------*/
-
-knot_packet_t *knot_packet_new()
-{
-	mm_ctx_t mm;
-	mm_ctx_init(&mm);
-	return knot_packet_new_mm(&mm);
-}
-
-knot_packet_t *knot_packet_new_mm(mm_ctx_t *mm)
-{
-	knot_packet_t *pkt = NULL;
-
-	pkt = (knot_packet_t *)mm->alloc(mm->ctx, sizeof(knot_packet_t));
-	CHECK_ALLOC_LOG(pkt, NULL);
-	memset(pkt, 0, sizeof(knot_packet_t));
-	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
-
-	// set EDNS version to not supported
-	pkt->opt_rr.version = EDNS_NOT_SUPPORTED;
-
-	return pkt;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_parse_from_wire(knot_packet_t *packet,
-                                const uint8_t *wireformat, size_t size,
-                                int question_only, knot_packet_flag_t flags)
-{
-	if (packet == NULL || wireformat == NULL || size < KNOT_WIRE_HEADER_SIZE)
-		return KNOT_EINVAL;
-
-
-	int err = KNOT_EOK;
-
-	assert(packet->wireformat == NULL);
-	packet->wireformat = (uint8_t*)wireformat;
-	packet->size = size;
-	packet->flags &= ~KNOT_PF_FREE_WIRE;
-	packet->parsed = KNOT_WIRE_HEADER_SIZE;
-
-	uint16_t qdcount = knot_wire_get_qdcount(packet->wireformat);
-	if (qdcount == 1) {
-		if ((err = knot_packet_parse_question(packet)) != KNOT_EOK)
-			return err;
-	} else if (qdcount > 1) {
-		dbg_packet("QDCOUNT larger than 1, FORMERR.\n");
-		return KNOT_EMALF;
-	}
-
-dbg_packet_exec_detail(
-	knot_packet_dump(packet);
-);
-
-	if (question_only) {
-		return KNOT_EOK;
-	}
-
-	err = knot_packet_parse_rest(packet, flags);
-
-dbg_packet_exec_detail(
-	knot_packet_dump(packet);
-);
-
-	return err;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_parse_rest(knot_packet_t *packet, knot_packet_flag_t flags)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (knot_wire_get_ancount(packet->wireformat) == packet->parsed_an
-	    && knot_wire_get_nscount(packet->wireformat) == packet->parsed_ns
-	    && knot_wire_get_arcount(packet->wireformat) == packet->parsed_ar
-	    && packet->parsed == packet->size) {
-		return KNOT_EOK;
-	}
-
-	// If there is less data then required, the next function will find out.
-	// If there is more data than required, it also returns EMALF.
-
-	size_t pos = packet->parsed;
-
-	/*! \todo If we already parsed some part of the packet, it is not ok
-	 *        to begin parsing from the Answer section.
-	 */
-	return knot_packet_parse_rr_sections(packet, &pos, flags);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
-                                       knot_rrset_t **rr)
-{
-	if (packet == NULL || rr == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	*rr = NULL;
-
-	if (packet->parsed >= packet->size) {
-		assert(packet->an_rrsets <= knot_wire_get_ancount(packet->wireformat));
-		if (packet->parsed_an != knot_wire_get_ancount(packet->wireformat)) {
-			dbg_packet("Parsed less RRs than expected.\n");
-			return KNOT_EMALF;
-		} else {
-			dbg_packet_detail("Whole packet parsed\n");
-			return KNOT_EOK;
-		}
-	}
-
-	if (packet->parsed_an == knot_wire_get_ancount(packet->wireformat)) {
-		assert(packet->parsed < packet->size);
-		//dbg_packet("Trailing garbage, ignoring...\n");
-		// there may be other data in the packet
-		// (authority or additional).
-		return KNOT_EOK;
-	}
-
-	size_t pos = packet->parsed;
-
-	dbg_packet_verb("Parsing next Answer RR (pos: %zu)...\n", pos);
-	*rr = knot_packet_parse_rr(packet->wireformat, &pos, packet->size);
-	if (*rr == NULL) {
-		dbg_packet_verb("Failed to parse RR!\n");
-		return KNOT_EMALF;
-	}
-
-	dbg_packet_detail("Parsed. Pos: %zu.\n", pos);
-
-	packet->parsed = pos;
-	// increment the number of answer RRSets, though there are no saved
-	// in the packet; it is OK, because packet->answer is NULL
-	++packet->an_rrsets;
-	++packet->parsed_an;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
-                                         knot_rrset_t **rr)
-{
-	/*! \todo Implement. */
-	if (packet == NULL || rr == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	*rr = NULL;
-
-	if (packet->parsed >= packet->size) {
-		assert(packet->ar_rrsets <= knot_wire_get_arcount(packet->wireformat));
-		if (packet->parsed_ar != knot_wire_get_arcount(packet->wireformat)) {
-			dbg_packet("Parsed less RRs than expected.\n");
-			return KNOT_EMALF;
-		} else {
-			dbg_packet_detail("Whole packet parsed\n");
-			return KNOT_EOK;
-		}
-	}
-
-	if (packet->parsed_ar == knot_wire_get_arcount(packet->wireformat)) {
-		assert(packet->parsed < packet->size);
-		dbg_packet_verb("Trailing garbage, treating as malformed...\n");
-		return KNOT_EMALF;
-	}
-
-	size_t pos = packet->parsed;
-
-	dbg_packet_verb("Parsing next Additional RR (pos: %zu)...\n", pos);
-	*rr = knot_packet_parse_rr(packet->wireformat, &pos, packet->size);
-	if (*rr == NULL) {
-		dbg_packet_verb("Failed to parse RR!\n");
-		return KNOT_EMALF;
-	}
-
-	dbg_packet_detail("Parsed. Pos: %zu.\n", pos);
-
-	packet->parsed = pos;
-	// increment the number of answer RRSets, though there are no saved
-	// in the packet; it is OK, because packet->answer is NULL
-	++packet->ar_rrsets;
-	++packet->parsed_ar;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-size_t knot_packet_size(const knot_packet_t *packet)
-{
-	return packet->size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-size_t knot_packet_max_size(const knot_packet_t *packet)
-{
-	return packet->max_size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-size_t knot_packet_question_size(const knot_packet_t *packet)
-{
-	return KNOT_WIRE_HEADER_SIZE + packet->qname_size + 2 * sizeof(uint16_t);
-}
-
-/*----------------------------------------------------------------------------*/
-
-size_t knot_packet_parsed(const knot_packet_t *packet)
-{
-	return packet->parsed;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_set_size(knot_packet_t *packet, int size)
-{
-	if (packet == NULL || size > packet->max_size)
-		return KNOT_EINVAL;
-
-	return packet->size = size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_set_max_size(knot_packet_t *packet, int max_size)
-{
-	if (packet == NULL || max_size <= 0) {
-		return KNOT_EINVAL;
-	}
-
-	if (packet->max_size < max_size) {
-		// reallocate space for the wire format (and copy anything
-		// that might have been there before
-		uint8_t *wire_new = packet->mm.alloc(packet->mm.ctx, max_size);
-		if (wire_new == NULL) {
-			return KNOT_ENOMEM;
-		}
-
-		if (packet->max_size > 0) {
-			memcpy(wire_new, packet->wireformat, packet->max_size);
-			if (packet->flags & KNOT_PF_FREE_WIRE)
-				packet->mm.free(packet->wireformat);
-		}
-
-		packet->wireformat = wire_new;
-		packet->max_size = max_size;
-		packet->flags |= KNOT_PF_FREE_WIRE;
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint16_t knot_packet_id(const knot_packet_t *packet)
-{
-	assert(packet != NULL);
-	return knot_wire_get_id(packet->wireformat);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_packet_set_random_id(knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return;
-	}
-
-	knot_wire_set_id(packet->wireformat, knot_random_id());
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint8_t knot_packet_opcode(const knot_packet_t *packet)
-{
-	assert(packet != NULL);
-	uint8_t flags = knot_wire_get_flags1(packet->wireformat);
-	return knot_wire_flags_get_opcode(flags);
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return NULL;
-	}
-
-	return packet->wireformat + KNOT_WIRE_HEADER_SIZE;
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint16_t knot_packet_qtype(const knot_packet_t *packet)
-{
-	assert(packet != NULL);
-	unsigned off = KNOT_WIRE_HEADER_SIZE + packet->qname_size;
-	return knot_wire_read_u16(packet->wireformat + off);
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint16_t knot_packet_qclass(const knot_packet_t *packet)
-{
-	assert(packet != NULL);
-	unsigned off = KNOT_WIRE_HEADER_SIZE + packet->qname_size + sizeof(uint16_t);
-	return knot_wire_read_u16(packet->wireformat + off);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_is_query(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	uint8_t flags = knot_wire_get_flags1(packet->wireformat);
-	return (knot_wire_flags_get_qr(flags) == 0);
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_packet_t *knot_packet_query(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return NULL;
-	}
-
-	return packet->query;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_rcode(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	uint8_t flags = knot_wire_get_flags2(packet->wireformat);
-	return knot_wire_flags_get_rcode(flags);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_tc(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	uint8_t flags = knot_wire_get_flags1(packet->wireformat);
-	return knot_wire_flags_get_tc(flags);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_qdcount(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return knot_wire_get_qdcount(packet->wireformat);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_ancount(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return knot_wire_get_ancount(packet->wireformat);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_nscount(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return knot_wire_get_nscount(packet->wireformat);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_arcount(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return knot_wire_get_arcount(packet->wireformat);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_packet_set_tsig_size(knot_packet_t *packet, size_t tsig_size)
-{
-	packet->tsig_size = tsig_size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_rrset_t *knot_packet_tsig(const knot_packet_t *packet)
-{
-	return packet->tsig_rr;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_packet_set_tsig(knot_packet_t *packet, const knot_rrset_t *tsig_rr)
-{
-	packet->tsig_rr = (knot_rrset_t *)tsig_rr;
-}
-
-/*----------------------------------------------------------------------------*/
-
-short knot_packet_answer_rrset_count(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return packet->an_rrsets;
-}
-
-/*----------------------------------------------------------------------------*/
-
-short knot_packet_authority_rrset_count(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return packet->ns_rrsets;
-}
-
-/*----------------------------------------------------------------------------*/
-
-short knot_packet_additional_rrset_count(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return packet->ar_rrsets;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_rrset_t *knot_packet_answer_rrset(
-	const knot_packet_t *packet, short pos)
-{
-	if (packet == NULL || pos >= packet->an_rrsets) {
-		return NULL;
-	}
-
-	return packet->answer[pos];
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_rrset_t *knot_packet_authority_rrset(
-	const knot_packet_t *packet, short pos)
-{
-	if (packet == NULL || pos >= packet->ns_rrsets) {
-		return NULL;
-	}
-
-	return packet->authority[pos];
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_rrset_t *knot_packet_additional_rrset(
-    const knot_packet_t *packet, short pos)
-{
-	if (packet == NULL || pos >= packet->ar_rrsets) {
-		return NULL;
-	}
-
-	return packet->additional[pos];
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_contains(const knot_packet_t *packet,
+static int pkt_contains(const knot_pkt_t *packet,
                            const knot_rrset_t *rrset,
                            knot_rrset_compare_type_t cmp)
 {
@@ -951,20 +36,8 @@ int knot_packet_contains(const knot_packet_t *packet,
 		return KNOT_EINVAL;
 	}
 
-	for (int i = 0; i < packet->an_rrsets; ++i) {
-		if (knot_rrset_equal(packet->answer[i], rrset, cmp)) {
-			return 1;
-		}
-	}
-
-	for (int i = 0; i < packet->ns_rrsets; ++i) {
-		if (knot_rrset_equal(packet->authority[i], rrset, cmp)) {
-			return 1;
-		}
-	}
-
-	for (int i = 0; i < packet->ar_rrsets; ++i) {
-		if (knot_rrset_equal(packet->additional[i], rrset, cmp)) {
+	for (int i = 0; i < packet->rrset_count; ++i) {
+		if (knot_rrset_equal(packet->rr[i], rrset, cmp)) {
 			return 1;
 		}
 	}
@@ -974,128 +47,191 @@ int knot_packet_contains(const knot_packet_t *packet,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_packet_add_tmp_rrset(knot_packet_t *packet,
-                                knot_rrset_t *tmp_rrset)
+static void pkt_free_data(knot_pkt_t *pkt)
 {
-	if (packet == NULL || tmp_rrset == NULL) {
-		return KNOT_EINVAL;
+	/* Free RRSets if applicable. */
+	knot_rrset_t *rr  = NULL;
+	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
+		if (pkt->rr_info[i].flags & KNOT_PF_FREE) {
+			rr = (knot_rrset_t *)pkt->rr[i];
+			knot_rrset_deep_free(&rr, 1);
+		}
 	}
 
-	if (packet->tmp_rrsets_count == packet->tmp_rrsets_max) {
-		int ret = knot_packet_realloc_rrsets(&packet->tmp_rrsets,
-		                                     &packet->tmp_rrsets_max,
-		                                     &packet->mm);
-		if (ret != KNOT_EOK)
-			return ret;
+	/* Reset RR count. */
+	pkt->rrset_count = 0;
+}
+
+static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
+{
+	pkt->wire = pkt->mm.alloc(pkt->mm.ctx, len);
+	if (pkt->wire == NULL) {
+		return KNOT_ENOMEM;
 	}
 
-	packet->tmp_rrsets[packet->tmp_rrsets_count++] = tmp_rrset;
-	dbg_packet_detail("Current tmp RRSets count: %d, max count: %d\n",
-	                  packet->tmp_rrsets_count, packet->tmp_rrsets_max);
-
+	pkt->flags |= KNOT_PF_FREE;
+	pkt->max_size = len;
+	knot_pkt_clear(pkt);
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Frees all temporary RRSets stored in the response structure.
- *
- * \param resp Response structure to free the temporary RRSets from.
- */
-void knot_packet_free_tmp_rrsets(knot_packet_t *pkt)
+static void pkt_wire_set(knot_pkt_t *pkt, void *wire, uint16_t len)
 {
+	pkt->wire = wire;
+	pkt->size = pkt->max_size = len;
+	pkt->parsed = 0;
+}
+
+static uint16_t pkt_remaining(knot_pkt_t *pkt)
+{
+	return pkt->max_size - pkt->size - pkt->opt_rr.size - pkt->tsig_size;
+}
+
+/*! \brief Return RR count for given section (from wire xxCOUNT in header). */
+static uint16_t pkt_rr_wirecount(knot_pkt_t *pkt, knot_section_t section_id)
+{
+	assert(pkt);
+	switch (section_id) {
+	case KNOT_ANSWER:     return knot_wire_get_ancount(pkt->wire);
+	case KNOT_AUTHORITY:  return knot_wire_get_nscount(pkt->wire);
+	case KNOT_ADDITIONAL: return knot_wire_get_arcount(pkt->wire);
+	}
+}
+
+/*! \brief Update RR count for given section (wire xxCOUNT in header). */
+static void pkt_rr_wirecount_add(knot_pkt_t *pkt, knot_section_t section_id,
+                                 int16_t val)
+{
+	assert(pkt);
+	switch (section_id) {
+	case KNOT_ANSWER:     return knot_wire_add_ancount(pkt->wire, val);
+	case KNOT_AUTHORITY:  return knot_wire_add_nscount(pkt->wire, val);
+	case KNOT_ADDITIONAL: return knot_wire_add_arcount(pkt->wire, val);
+	}
+}
+
+static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
+{
+	knot_pkt_t *pkt = mm->alloc(mm->ctx, sizeof(knot_pkt_t));
+	if (pkt == NULL) {
+		return NULL;
+	}
+
+	/* NULL everything up to 'sections' (not the large data fields). */
+	memset(pkt, 0, (size_t)&((knot_pkt_t*)NULL)->sections);
+	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
+
+	/* Initialize OPT RR defaults. */
+	pkt->opt_rr.version = EDNS_NOT_SUPPORTED;
+	pkt->opt_rr.size = EDNS_MIN_SIZE;
+
+	/* Initialize wire. */
+	if (wire == NULL) {
+		if (pkt_wire_alloc(pkt, len) == KNOT_ENOMEM) {
+			mm->free(pkt);
+			return NULL;
+		}
+	} else {
+		pkt_wire_set(pkt, wire, len);
+	}
+
+	return pkt;
+}
+
+knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
+{
+	/* Default memory allocator if NULL. */
+	dbg_packet("%s(%p, %hu, %p)\n", __func__, wire, len, mm);
+	mm_ctx_t _mm;
+	if (mm == NULL) {
+		mm_ctx_init(&_mm);
+		mm = &_mm;
+	}
+
+	return pkt_new_mm(wire, len, mm);
+}
+
+
+int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
+{
+	dbg_packet("%s(%p, %p)\n", __func__, pkt, query);
+	if (pkt == NULL || query == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Header + question size. */
+	size_t question_size = knot_pkt_question_size(query);
+	if (question_size > pkt->max_size) {
+		return KNOT_ESPACE;
+	}
+	pkt->query = query;
+	pkt->size = question_size;
+	pkt->qname_size = query->qname_size;
+	memcpy(pkt->wire, query->wire, question_size);
+
+	/* Update size and flags. */
+	knot_wire_set_qdcount(pkt->wire, 1);
+	knot_wire_set_qr(pkt->wire);
+	knot_wire_clear_tc(pkt->wire);
+	knot_wire_clear_ad(pkt->wire);
+	knot_wire_clear_ra(pkt->wire);
+
+	/* Clear payload. */
+	knot_pkt_clear_payload(pkt);
+	return KNOT_EOK;
+}
+
+void knot_pkt_clear(knot_pkt_t *pkt)
+{
+	dbg_packet("%s(%p)\n", __func__, pkt);
 	if (pkt == NULL) {
 		return;
 	}
 
-	for (int i = 0; i < pkt->tmp_rrsets_count; ++i) {
-dbg_packet_exec(
-		char *name = knot_dname_to_str(
-			(((knot_rrset_t **)(pkt->tmp_rrsets))[i])->owner);
-		dbg_packet_verb("Freeing tmp RRSet on ptr: %p (ptr to ptr:"
-		       " %p, type: %u, owner: %s)\n",
-		       (((knot_rrset_t **)(pkt->tmp_rrsets))[i]),
-		       &(((knot_rrset_t **)(pkt->tmp_rrsets))[i]),
-		       (((knot_rrset_t **)(pkt->tmp_rrsets))[i])->type,
-		       name);
-		free(name);
-);
-		// TODO: this is quite ugly, but better than copying whole
-		// function (for reallocating rrset array)
-		// TODO sort out freeing, this WILL leak.
-		knot_rrset_deep_free(
-			&(((knot_rrset_t **)(pkt->tmp_rrsets))[i]), 1);
-	}
+	/* Clear payload. */
+	knot_pkt_clear_payload(pkt);
+
+	/* Reset to header size. */
+	pkt->size = KNOT_WIRE_HEADER_SIZE;
+	memset(pkt->wire, 0, pkt->size);
 }
 
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_edns_to_wire(knot_packet_t *packet)
+void knot_pkt_clear_payload(knot_pkt_t *pkt)
 {
-	if (packet == NULL) {
-		return KNOT_EINVAL;
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	if (pkt == NULL) {
+		return;
 	}
 
-	packet->size += knot_edns_to_wire(&packet->opt_rr,
-	                                  packet->wireformat + packet->size,
-	                                  packet->max_size - packet->size);
+	/* Keep question. */
+	pkt->parsed = 0;
+	pkt->size = knot_pkt_question_size(pkt);
+	knot_wire_set_ancount(pkt->wire, 0);
+	knot_wire_set_nscount(pkt->wire, 0);
+	knot_wire_set_arcount(pkt->wire, 0);
 
-	knot_wire_add_arcount(packet->wireformat, 1);
+	/* Free RRSets if applicable. */
+	pkt_free_data(pkt);
 
-	return KNOT_EOK;
+	/* Reset section. */
+	pkt->current = KNOT_ANSWER;
+	pkt->sections[pkt->current].rr = pkt->rr;
 }
 
-/*----------------------------------------------------------------------------*/
-
-int knot_packet_to_wire(knot_packet_t *packet,
-                          uint8_t **wire, size_t *wire_size)
+void knot_pkt_free(knot_pkt_t **packet)
 {
-	if (packet == NULL || wire == NULL || wire_size == NULL
-	    || *wire != NULL) {
-		return KNOT_EINVAL;
-	}
-
-	assert(packet->size <= packet->max_size);
-
-	// if there are no additional RRSets, add EDNS OPT RR
-	if (knot_wire_get_arcount(packet->wireformat) == 0
-	    && packet->opt_rr.version != EDNS_NOT_SUPPORTED) {
-	    knot_packet_edns_to_wire(packet);
-	}
-
-	//assert(response->size == size);
-	*wire = packet->wireformat;
-	*wire_size = packet->size;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const uint8_t *knot_packet_wireformat(const knot_packet_t *packet)
-{
-	return packet->wireformat;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_packet_free(knot_packet_t **packet)
-{
+	dbg_packet("%s(%p)\n", __func__, pkt);
 	if (packet == NULL || *packet == NULL) {
 		return;
 	}
 
-	// free temporary domain names
-	dbg_packet("Freeing tmp RRSets...\n");
-	knot_packet_free_tmp_rrsets(*packet);
-
-	// check if some additional space was allocated for the packet
-	dbg_packet("Freeing additional allocated space...\n");
-	knot_packet_free_allocated_space(*packet);
+	/* Free temporary RRSets. */
+	pkt_free_data(*packet);
 
 	// free the space for wireformat
-	if ((*packet)->flags & KNOT_PF_FREE_WIRE)
-		(*packet)->mm.free((*packet)->wireformat);
+	if ((*packet)->flags & KNOT_PF_FREE) {
+		(*packet)->mm.free((*packet)->wire);
+	}
 
 	// free EDNS options
 	knot_edns_free_options(&(*packet)->opt_rr);
@@ -1106,88 +242,726 @@ void knot_packet_free(knot_packet_t **packet)
 }
 
 /*----------------------------------------------------------------------------*/
-#ifdef KNOT_PACKET_DEBUG
-static void knot_packet_dump_rrsets(const knot_rrset_t **rrsets,
-                                      int count)
+
+uint16_t knot_pkt_type(const knot_pkt_t *packet)
 {
-	assert((rrsets != NULL && *rrsets != NULL) || count < 1);
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	bool is_query = (knot_wire_get_qr(packet->wire) == 0);
+	uint16_t ret = KNOT_QUERY_INVALID;
+	uint8_t opcode = knot_wire_get_opcode(packet->wire);
+	uint8_t query_type = knot_pkt_qtype(packet);
 
-	for (int i = 0; i < count; ++i) {
-		knot_rrset_dump(rrsets[i]);
-	}
-}
-#endif
-/*----------------------------------------------------------------------------*/
-
-void knot_packet_dump(const knot_packet_t *packet)
-{
-	if (packet == NULL) {
-		return;
-	}
-
-#ifdef KNOT_PACKET_DEBUG
-	uint8_t flags1 = knot_wire_get_flags1(packet->wireformat);
-	uint8_t flags2 = knot_wire_get_flags2(packet->wireformat);
-	dbg_packet("DNS packet:\n-----------------------------\n");
-
-	dbg_packet("\nHeader:\n");
-	dbg_packet("  ID: %u\n", knot_wire_get_id(packet->wireformat));
-	dbg_packet("  FLAGS: %s %s %s %s %s %s %s\n",
-	       knot_wire_flags_get_qr(flags1) ? "qr" : "",
-	       knot_wire_flags_get_aa(flags1) ? "aa" : "",
-	       knot_wire_flags_get_tc(flags1) ? "tc" : "",
-	       knot_wire_flags_get_rd(flags1) ? "rd" : "",
-	       knot_wire_flags_get_ra(flags2) ? "ra" : "",
-	       knot_wire_flags_get_ad(flags2) ? "ad" : "",
-	       knot_wire_flags_get_cd(flags2) ? "cd" : "");
-	dbg_packet("  RCODE: %u\n", knot_wire_flags_get_rcode(flags2));
-	dbg_packet("  OPCODE: %u\n", knot_wire_flags_get_opcode(flags1));
-	dbg_packet("  QDCOUNT: %u\n", knot_wire_get_qdcount(packet->wireformat));
-	dbg_packet("  ANCOUNT: %u\n", knot_wire_get_ancount(packet->wireformat));
-	dbg_packet("  NSCOUNT: %u\n", knot_wire_get_nscount(packet->wireformat));
-	dbg_packet("  ARCOUNT: %u\n", knot_wire_get_arcount(packet->wireformat));
-
-	if (knot_packet_qdcount(packet) > 0) {
-		dbg_packet("\nQuestion:\n");
-		char *qname = knot_dname_to_str(knot_packet_qname(packet));
-		dbg_packet("  QNAME: %s\n", qname);
-		free(qname);
-		dbg_packet("  QTYPE: %u\n", knot_packet_qtype(packet));
-		dbg_packet("  QCLASS: %u\n", knot_packet_qclass(packet));
+	switch (opcode) {
+	case KNOT_OPCODE_QUERY:
+		switch (query_type) {
+		case 0 /* RESERVED */: /* INVALID */ break;
+		case KNOT_RRTYPE_AXFR: ret = KNOT_QUERY_AXFR; break;
+		case KNOT_RRTYPE_IXFR: ret = KNOT_QUERY_IXFR; break;
+		default:               ret = KNOT_QUERY_NORMAL; break;
+		}
+		break;
+	case KNOT_OPCODE_NOTIFY: ret = KNOT_QUERY_NOTIFY; break;
+	case KNOT_OPCODE_UPDATE: ret = KNOT_QUERY_UPDATE; break;
+	default: break;
 	}
 
-	dbg_packet("\nAnswer RRSets:\n");
-	knot_packet_dump_rrsets(packet->answer, packet->an_rrsets);
-	dbg_packet("\nAuthority RRSets:\n");
-	knot_packet_dump_rrsets(packet->authority, packet->ns_rrsets);
-	dbg_packet("\nAdditional RRSets:\n");
-	knot_packet_dump_rrsets(packet->additional, packet->ar_rrsets);
+	if (!is_query) {
+		ret = ret|KNOT_RESPONSE;
+	}
 
-	/*! \todo Dumping of Answer, Authority and Additional sections. */
-
-	dbg_packet("\nEDNS:\n");
-	dbg_packet("  Version: %u\n", packet->opt_rr.version);
-	dbg_packet("  Payload: %u\n", packet->opt_rr.payload);
-	dbg_packet("  Extended RCODE: %u\n",
-	                      packet->opt_rr.ext_rcode);
-
-	dbg_packet("\nPacket size: %zu\n", packet->size);
-	dbg_packet("\n-----------------------------\n");
-#endif
-}
-
-static int knot_packet_free_section(const knot_rrset_t **s, short count) {
-	/*! \todo The API is really incompatible here. */
-	for (short i = 0; i < count; ++i)
-		knot_rrset_deep_free((knot_rrset_t **)s + i, 1);
-	return count;
-}
-
-int knot_packet_free_rrsets(knot_packet_t *packet)
-{
-	int ret = 0;
-	ret += knot_packet_free_section(packet->answer, packet->an_rrsets);
-	ret += knot_packet_free_section(packet->authority, packet->ns_rrsets);
-	ret += knot_packet_free_section(packet->additional, packet->ar_rrsets);
 	return ret;
 }
+
+/*----------------------------------------------------------------------------*/
+
+uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
+{
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	uint16_t ret = KNOT_WIRE_HEADER_SIZE;
+	if (pkt->qname_size > 0) {
+		ret += pkt->qname_size + 2 * sizeof(uint16_t);
+	}
+	return ret;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_dname_t *knot_pkt_qname(const knot_pkt_t *packet)
+{
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	if (packet == NULL) {
+		return NULL;
+	}
+
+	return packet->wire + KNOT_WIRE_HEADER_SIZE;
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint16_t knot_pkt_qtype(const knot_pkt_t *packet)
+{
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	if (packet == NULL || packet->qname_size == 0) {
+		return 0;
+	}
+
+	unsigned off = KNOT_WIRE_HEADER_SIZE + packet->qname_size;
+	return knot_wire_read_u16(packet->wire + off);
+}
+
+/*----------------------------------------------------------------------------*/
+
+uint16_t knot_pkt_qclass(const knot_pkt_t *packet)
+{
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	if (packet == NULL || packet->qname_size == 0) {
+		return 0;
+	}
+
+	unsigned off = KNOT_WIRE_HEADER_SIZE + packet->qname_size + sizeof(uint16_t);
+	return knot_wire_read_u16(packet->wire + off);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len)
+{
+	dbg_packet("%s(%p, %u, %p, %hu)\n", __func__, pkt, opt, data, len);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_opt_rr_t *rr = &pkt->opt_rr;
+
+	switch (opt) {
+	case KNOT_PKT_EDNS_PAYLOAD:
+		knot_edns_set_payload(rr, *(uint16_t *)data);
+		break;
+	case KNOT_PKT_EDNS_RCODE:
+		knot_edns_set_ext_rcode(rr, *(uint8_t *)data);
+		break;;
+	case KNOT_PKT_EDNS_VERSION:
+		knot_edns_set_version(rr, *(uint8_t *)data);
+		break;
+	case KNOT_PKT_EDNS_NSID:
+		return knot_edns_add_option(rr, EDNS_OPTION_NSID, len, data);
+	default:
+		return KNOT_ENOTSUP;
+	}
+
+	return KNOT_EOK;
+}
+
+int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key)
+{
+	dbg_packet("%s(%p, %p)\n", __func__, pkt, tsig_key);
+	pkt->tsig_key = tsig_key;
+	pkt->tsig_size = tsig_wire_maxsize(tsig_key);
+	return KNOT_EOK;
+}
+
+
+
+int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
+{
+	/* Cannot step to lower section. */
+	dbg_packet("%s(%p, %u)\n", __func__, pkt, section_id);
+	assert(section_id >= pkt->current);
+	pkt->current = section_id;
+
+	/* Remember watermark. */
+	pkt->sections[section_id].rr = pkt->rr + pkt->rrset_count;
+	return KNOT_EOK;
+}
+
+int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t qclass, uint16_t qtype)
+{
+	dbg_packet("%s(%p, %p, %hu, %hu)\n", __func__, pkt, qname, qclass, qtype);
+	if (pkt == NULL || qname == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	assert(pkt->size == KNOT_WIRE_HEADER_SIZE);
+	assert(pkt->rrset_count == 0);
+
+	/* Copy name wireformat. */
+	uint8_t *dst = pkt->wire + KNOT_WIRE_HEADER_SIZE;
+	int qname_len = knot_dname_to_wire(dst, qname, pkt->max_size - pkt->size);
+	assert(qname_len == knot_dname_size(qname));
+	size_t question_len = 2 * sizeof(uint16_t) + qname_len;
+
+	/* Check size limits. */
+	if (qname_len < 0 || pkt->size + question_len > pkt->max_size)
+		return KNOT_ESPACE;
+
+	/* Copy QTYPE & QCLASS */
+	dst += qname_len;
+	knot_wire_write_u16(dst, qtype);
+	dst += sizeof(uint16_t);
+	knot_wire_write_u16(dst, qclass);
+
+	/* Update question count and sizes. */
+	knot_wire_set_qdcount(pkt->wire, 1);
+	pkt->size += question_len;
+	pkt->qname_size = qname_len;
+
+	/* Start writing ANSWER. */
+	return knot_pkt_begin(pkt, KNOT_ANSWER);
+}
+
+/*! \brief Helper for \fn knot_pkt_put_dname, writes label(s) with size checks. */
+#define WRITE_LABEL(dst, written, label, max, len) \
+	if ((written) + (len) > (max)) { \
+		return KNOT_ESPACE; \
+	} else { \
+		memcpy((dst) + (written), (label), (len)); \
+		written += (len); \
+	}
+
+int knot_pkt_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, knot_compr_t *compr)
+{
+	/* Write uncompressible names directly. */
+	dbg_packet("%s(%p,%p,%u,%p)\n", __func__, dname, dst, max, compr);
+	if (compr == NULL || *dname == '\0') {
+		dbg_packet("%s: uncompressible, writing full name\n", __func__);
+		return knot_dname_to_wire(dst, dname, max);
+	}
+
+	int name_labels = knot_dname_labels(dname, NULL);
+	if (name_labels < 0) {
+		return name_labels;
+	}
+
+	/* Suffix must not be longer than whole name. */
+	const knot_dname_t *suffix = compr->wire + compr->suffix.pos;
+	int suffix_labels = compr->suffix.labels;
+	while (suffix_labels > name_labels) {
+		suffix = knot_wire_next_label(suffix, compr->wire);
+		--suffix_labels;
+	}
+
+	/* Suffix is shorter than name, write labels until aligned. */
+	uint16_t written = 0;
+	while (name_labels > suffix_labels) {
+		WRITE_LABEL(dst, written, dname, max, (*dname + 1));
+		dname = knot_wire_next_label(dname, NULL);
+		--name_labels;
+	}
+
+	/* Label count is now equal. */
+	const knot_dname_t *match_begin = dname;
+	const knot_dname_t *compr_ptr = suffix;
+	while (dname[0] != '\0') {
+
+		/* Next labels. */
+		const knot_dname_t *next_dname = knot_wire_next_label(dname, NULL);
+		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
+
+		/* Two labels match, extend suffix length. */
+		if (dname[0] != suffix[0] || memcmp(dname + 1, suffix + 1, dname[0]) != 0) {
+			/* If they don't match, write unmatched labels. */
+			uint16_t mismatch_len = (dname - match_begin) + (*dname + 1);
+			WRITE_LABEL(dst, written, match_begin, max, mismatch_len);
+			/* Start new potential match. */
+			match_begin = next_dname;
+			compr_ptr = next_suffix;
+		}
+
+		/* Jump to next labels. */
+		dname = next_dname;
+		suffix = next_suffix;
+	}
+
+	/* If match begins at the end of the name, write '\0' label. */
+	if (match_begin == dname) {
+		WRITE_LABEL(dst, written, dname, max, 1);
+	} else {
+		/* Match covers >0 labels, write out compression pointer. */
+		if (written + sizeof(uint16_t) > max) {
+			return KNOT_ESPACE;
+		}
+		knot_wire_put_pointer(dst + written, compr_ptr - compr->wire);
+		written += sizeof(uint16_t);
+	}
+
+	/* #10 store longer match < KNOT_PTR_MAX */
+	dbg_packet("%s: compressed name to %u bytes\n", __func__, written);
+	return written;
+}
+
+int knot_pkt_put_opt(knot_pkt_t *pkt)
+{
+	if (pkt->opt_rr.version == EDNS_NOT_SUPPORTED) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = knot_edns_to_wire(&pkt->opt_rr,
+	                            pkt->wire + pkt->size,
+	                            pkt->max_size - pkt->size);
+	if (ret <= 0) {
+		return ret;
+	}
+
+	pkt_rr_wirecount_add(pkt, pkt->current, 1);
+	pkt->size += ret;
+
+	return KNOT_EOK;
+}
+
+int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uint32_t flags)
+{
+	dbg_packet("%s(%p, %u, %p, %u)\n", __func__, pkt, compress, rr, flags);
+
+	knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count];
+	memset(rrinfo, 0, sizeof(knot_rrinfo_t));
+	rrinfo->pos = pkt->size;
+	rrinfo->flags = flags;
+	rrinfo->compress_ptr[0] = compress;
+	pkt->rr[pkt->rrset_count] = rr;
+
+	/*! #10 can this even happen? */
+	if (pkt_contains(pkt, rr, KNOT_RRSET_COMPARE_PTR)) {
+		assert(0);
+		return KNOT_EOK;
+	}
+
+	uint8_t *pos = pkt->wire + pkt->size;
+	uint16_t rr_added = 0;
+	size_t maxlen = pkt_remaining(pkt);
+	size_t len = maxlen;
+
+	/* #10 can hack this, can hack this */
+	knot_compr_t compr;
+	compr.wire = pkt->wire;
+	compr.wire_pos = pkt->size;
+	compr.rrinfo = rrinfo;
+	compr.suffix.pos = KNOT_WIRE_HEADER_SIZE;
+	compr.suffix.labels = knot_dname_labels(compr.wire + compr.suffix.pos,
+	                                        compr.wire);
+
+	int ret = knot_rrset_to_wire(rr, pos, &len, maxlen, &rr_added, &compr);
+	if (ret != KNOT_EOK) {
+		dbg_packet("%s: rr->wire = %s\n,", __func__, knot_strerror(ret));
+
+		/* Truncate packet if required. */
+		if ( ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC) ) {
+				dbg_packet("%s: set TC=1\n", __func__);
+				knot_wire_set_tc(pkt->wire);
+		}
+		return ret;
+	}
+
+	if (rr_added > 0) {
+		++pkt->rrset_count;
+		pkt->size += len;
+		pkt_rr_wirecount_add(pkt, pkt->current, rr_added);
+	}
+
+	dbg_packet("%s: added %u RRs (@%zu, len=%zu), pktsize=%zu\n",
+	           __func__, rr_added, pkt->size - len, len, pkt->size);
+
+	return KNOT_EOK;
+}
+
+const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t section_id)
+{
+	dbg_packet("%s(%p, %u)\n", __func__, pkt, section_id);
+	if (pkt == NULL) {
+		return NULL;
+	}
+
+	return &pkt->sections[section_id];
+}
+
+const knot_rrset_t *knot_pkt_get_last(const knot_pkt_t *pkt)
+{
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	if (pkt && pkt->rrset_count > 0) {
+		return pkt->rr[pkt->rrset_count - 1];
+	} else {
+		return NULL;
+	}
+}
+
+int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
+{
+	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = knot_pkt_parse_question(pkt);
+	if (ret == KNOT_EOK) {
+		ret = knot_pkt_parse_payload(pkt, flags);
+	}
+
+	return ret;
+}
+
+int knot_pkt_parse_question(knot_pkt_t *pkt)
+{
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	assert(pkt != NULL);
+
+	/* Check QD count. */
+	uint16_t qd = knot_wire_get_qdcount(pkt->wire);
+	if (qd > 1) {
+		dbg_packet("%s: QD(%u) > 1, FORMERR\n", __func__, qd);
+		return KNOT_EMALF;
+	}
+
+	pkt->parsed = KNOT_WIRE_HEADER_SIZE;
+
+	/* No question. */
+	if (qd == 0) {
+		pkt->qname_size = 0;
+		return KNOT_EOK;
+	}
+
+	/* Process question. */
+	int len = knot_dname_wire_check(pkt->wire + pkt->parsed,
+	                                pkt->wire + pkt->size,
+	                                pkt->wire);
+	if (len <= 0) {
+		return KNOT_EMALF;
+	}
+
+	pkt->parsed += len + 2 * sizeof(uint16_t); /* Class + Type */
+	pkt->qname_size = len;
+
+	return KNOT_EOK;
+}
+
+static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
+{
+	dbg_packet("%s(%p, %p, %u)\n", __func__, pkt, rr, flags);
+
+	/* Don't want to merge, okay. */
+	if (flags & KNOT_PACKET_DUPL_NO_MERGE) {
+		return KNOT_ENOENT;
+	}
+
+	// try to find the RRSet in this array of RRSets
+	for (int i = 0; i < pkt->rrset_count; ++i) {
+
+		if (knot_rrset_equal(pkt->rr[i], rr, KNOT_RRSET_COMPARE_HEADER)) {
+			int merged = 0;
+			int deleted_rrs = 0;
+			int rc = knot_rrset_merge_sort((knot_rrset_t *)pkt->rr[i],
+			                               rr, &merged, &deleted_rrs);
+			if (rc != KNOT_EOK) {
+				return rc;
+			}
+			knot_rrset_deep_free(&rr, 1);
+			dbg_packet("%s: merged RR %p\n", __func__, rr);
+			return KNOT_EOK;
+		}
+	}
+
+
+	return KNOT_ENOENT;
+}
+
+/* #10 deprecated */
+/* #10 use packet memory allocator */
+static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
+                                           size_t size)
+{
+	dbg_packet("%s(%p, %zu, %zu)\n", __func__, wire, *pos, size);
+	knot_dname_t *owner = knot_dname_parse(wire, pos, size);
+	if (owner == NULL) {
+		return NULL;
+	}
+	knot_dname_to_lower(owner);
+
+	if (size - *pos < KNOT_RR_HEADER_SIZE) {
+		dbg_packet("%s: not enough data to parse RR HEADER\n", __func__);
+		knot_dname_free(&owner);
+		return NULL;
+	}
+
+	uint16_t type = knot_wire_read_u16(wire + *pos);
+	uint16_t rclass = knot_wire_read_u16(wire + *pos + sizeof(uint16_t));
+	uint32_t ttl = knot_wire_read_u32(wire + *pos + 2 * sizeof(uint16_t));
+	uint16_t rdlength = knot_wire_read_u16(wire + *pos + 4 * sizeof(uint16_t));
+
+	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, ttl);
+	if (rrset == NULL) {
+		knot_dname_free(&owner);
+		return NULL;
+	}
+	*pos += KNOT_RR_HEADER_SIZE;
+
+	dbg_packet_verbose("%s: read type %u, class %u, ttl %u, rdlength %u\n",
+	                   __func__, rrset->type, rrset->rclass, rrset->ttl, rdlength);
+
+	if (rdlength == 0) {
+		return rrset;
+	} else if (size - *pos < rdlength) {
+		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
+		knot_rrset_deep_free(&rrset, 1);
+		return NULL;
+	}
+
+	// parse RDATA
+	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
+	 *        probably. */
+	int ret = knot_rrset_rdata_from_wire_one(rrset, wire, pos, size, rdlength);
+	if (ret != KNOT_EOK) {
+		dbg_packet("%s: couldn't parse RDATA (%d)\n", __func__, ret);
+		knot_rrset_deep_free(&rrset, 1);
+		return NULL;
+	}
+
+	return rrset;
+}
+
+int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
+{
+	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
+	if (pkt->parsed >= pkt->size) {
+		dbg_packet("%s: parsed %zu/%zu data\n", __func__, pkt->parsed, pkt->size);
+		return KNOT_EFEWDATA;
+	}
+
+	/* Initialize RR info. */
+	int ret = KNOT_EOK;
+	memset(&pkt->rr_info[pkt->rrset_count], 0, sizeof(knot_rrinfo_t));
+	pkt->rr_info[pkt->rrset_count].pos = pkt->parsed;
+	pkt->rr_info[pkt->rrset_count].flags = KNOT_PF_FREE;
+
+	/* Parse wire format. */
+	knot_rrset_t *rr = NULL;
+	rr = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size);
+	if (rr == NULL) {
+		dbg_packet("%s: failed to parse RR\n", __func__);
+		return KNOT_EMALF;
+	}
+
+	/* Append to RR list if couldn't merge with existing RRSet. */
+	if (knot_pkt_merge_rr(pkt, rr, flags) != KNOT_EOK) {
+
+		/* Append to RR list. */
+		pkt->rr[pkt->rrset_count] = rr;
+		++pkt->rrset_count;
+
+		/* Update section RRSet count. */
+		++pkt->sections[pkt->current].count;
+
+		/* Check RR constraints. */
+		switch(knot_rrset_type(rr)) {
+		case KNOT_RRTYPE_TSIG:
+			// if there is some TSIG already, treat as malformed
+			if (pkt->tsig_rr != NULL) {
+				dbg_packet("%s: found 2nd TSIG\n", __func__);
+				return KNOT_EMALF;
+			} else if (!tsig_rdata_is_ok(rr)) {
+				dbg_packet("%s: bad TSIG RDATA\n", __func__);
+				return KNOT_EMALF;
+			}
+
+			pkt->tsig_rr = rr;
+			break;
+		case KNOT_RRTYPE_OPT:
+			ret = knot_edns_new_from_rr(&pkt->opt_rr, rr);
+			if (ret != KNOT_EOK) {
+				dbg_packet("%s: couldn't parse OPT RR = %d\n",
+				           __func__, ret);
+				return ret;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
+}
+
+int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags)
+{
+	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
+
+	int ret = KNOT_EOK;
+	uint16_t rr_parsed = 0;
+	uint16_t rr_count = pkt_rr_wirecount(pkt, pkt->current);
+
+	/* Parse all RRs belonging to the section. */
+	for (rr_parsed = 0; rr_parsed < rr_count; ++rr_parsed) {
+		ret = knot_pkt_parse_rr(pkt, flags);
+		if (ret != KNOT_EOK) {
+			dbg_packet("%s: couldn't parse RR %u/%u = %d\n",
+			           __func__, rr_parsed, rr_count, ret);
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
+{
+	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
+	assert(pkt != NULL);
+	assert(pkt->wire != NULL);
+	assert(pkt->size > 0);
+
+	int ret = KNOT_ERROR;
+
+	for (knot_section_t i = KNOT_ANSWER; i <= KNOT_ADDITIONAL; ++i) {
+		ret = knot_pkt_begin(pkt, i);
+		if (ret != KNOT_EOK) {
+			dbg_packet("%s: couldn't begin section %u = %d\n",
+			           __func__, i, ret);
+			return ret;
+		}
+		ret = knot_pkt_parse_section(pkt, flags);
+		if (ret != KNOT_EOK) {
+			dbg_packet("%s: couldn't parse section %u = %d\n",
+			           __func__, i, ret);
+			return ret;
+		}
+	}
+
+	/* TSIG must be last record of AR if present. */
+	const knot_pktsection_t *ar = knot_pkt_section(pkt, KNOT_ADDITIONAL);
+	if (pkt->tsig_rr != NULL) {
+		if (ar->count > 0 && pkt->tsig_rr != ar->rr[ar->count - 1]) {
+			dbg_packet("%s: TSIG not last RR in AR.\n", __func__);
+			return KNOT_EMALF;
+		}
+	}
+
+	/* Check for trailing garbage. */
+	if (pkt->parsed < pkt->size) {
+		dbg_packet("%s: %zu bytes of trailing garbage\n",
+		           __func__, pkt->size - pkt->parsed);
+		return KNOT_EMALF;
+	}
+
+	return KNOT_EOK;
+}
+
+/*** <<< #10 DEPRECATED */
+/*----------------------------------------------------------------------------*/
+
+/*!
+ * \brief Reallocate space for Wildcard nodes.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
+ */
+static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
+                                          const knot_dname_t ***snames,
+                                          short *max_count,
+                                          mm_ctx_t *mm)
+{
+
+	short new_max_count = *max_count + 8;
+
+	const knot_node_t **new_nodes = mm->alloc(mm->ctx,
+		new_max_count * sizeof(knot_node_t *));
+	CHECK_ALLOC_LOG(new_nodes, KNOT_ENOMEM);
+
+	const knot_dname_t **new_snames = mm->alloc(mm->ctx,
+	                        new_max_count * sizeof(knot_dname_t *));
+	if (new_snames == NULL) {
+		mm->free(new_nodes);
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(new_nodes, *nodes, (*max_count) * sizeof(knot_node_t *));
+	memcpy(new_snames, *snames, (*max_count) * sizeof(knot_dname_t *));
+
+	mm->free(*nodes);
+	mm->free(*snames);
+
+	*nodes = new_nodes;
+	*snames = new_snames;
+	*max_count = new_max_count;
+
+	return KNOT_EOK;
+}
+
+int knot_pkt_add_opt(knot_pkt_t *resp,
+                          const knot_opt_rr_t *opt_rr,
+                          int add_nsid)
+{
+	if (resp == NULL || opt_rr == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// copy the OPT RR
+
+	/*! \todo Change the way OPT RR is handled in response.
+	 *        Pointer to nameserver->opt_rr should be enough.
+	 */
+
+	resp->opt_rr.version = opt_rr->version;
+	resp->opt_rr.ext_rcode = opt_rr->ext_rcode;
+	resp->opt_rr.payload = opt_rr->payload;
+
+	/*
+	 * Add options only if NSID is requested.
+	 *
+	 * This is a bit hack and should be resolved in other way before some
+	 * other options are supported.
+	 */
+
+	if (add_nsid) {
+		resp->opt_rr.option_count = opt_rr->option_count;
+		assert(resp->opt_rr.options == NULL);
+		resp->opt_rr.options = (knot_opt_option_t *)malloc(
+				 resp->opt_rr.option_count * sizeof(knot_opt_option_t));
+		CHECK_ALLOC_LOG(resp->opt_rr.options, KNOT_ENOMEM);
+
+		memcpy(resp->opt_rr.options, opt_rr->options,
+		       resp->opt_rr.option_count * sizeof(knot_opt_option_t));
+
+		// copy all data
+		for (int i = 0; i < opt_rr->option_count; i++) {
+			resp->opt_rr.options[i].data = (uint8_t *)malloc(
+						resp->opt_rr.options[i].length);
+			CHECK_ALLOC_LOG(resp->opt_rr.options[i].data, KNOT_ENOMEM);
+
+			memcpy(resp->opt_rr.options[i].data,
+			       opt_rr->options[i].data,
+			       resp->opt_rr.options[i].length);
+		}
+		resp->opt_rr.size = opt_rr->size;
+	} else {
+		resp->opt_rr.size = EDNS_MIN_SIZE;
+	}
+
+	return KNOT_EOK;
+}
+
+int knot_pkt_add_wildcard_node(knot_pkt_t *response,
+                                    const knot_node_t *node,
+                                    const knot_dname_t *sname)
+{
+	if (response == NULL || node == NULL || sname == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (response->wildcard_nodes.count == response->wildcard_nodes.max
+	    && knot_response_realloc_wc_nodes(&response->wildcard_nodes.nodes,
+	                                      &response->wildcard_nodes.snames,
+	                                      &response->wildcard_nodes.max,
+	                                      &response->mm) != KNOT_EOK) {
+		return KNOT_ENOMEM;
+	}
+
+	response->wildcard_nodes.nodes[response->wildcard_nodes.count] = node;
+	response->wildcard_nodes.snames[response->wildcard_nodes.count] = sname;
+	++response->wildcard_nodes.count;
+
+	dbg_response_verb("Current wildcard nodes count: %d, max count: %d\n",
+	             response->wildcard_nodes.count,
+	             response->wildcard_nodes.max);
+
+	return KNOT_EOK;
+}
+
+/*** >>> #10 DEPRECATED */
+/*----------------------------------------------------------------------------*/

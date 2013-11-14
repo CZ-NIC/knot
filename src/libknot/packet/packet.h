@@ -35,11 +35,12 @@
 #include "libknot/edns.h"
 #include "libknot/zone/node.h"
 #include "libknot/zone/zone.h"
+#include "libknot/packet/wire.h"
+#include "libknot/tsig.h"
+#include "libknot/packet/compr.h"
 
+/*** <<< #10 DEPRECATED */
 /*----------------------------------------------------------------------------*/
-
-/* How many RRs pointers to alloc in one step. */
-#define RRSET_ALLOC_STEP 8
 
 struct knot_wildcard_nodes {
 	const knot_node_t **nodes; /*!< Wildcard nodes from CNAME processing. */
@@ -50,74 +51,18 @@ struct knot_wildcard_nodes {
 
 typedef struct knot_wildcard_nodes knot_wildcard_nodes_t;
 
-/*----------------------------------------------------------------------------*/
-
-/* Maximum number of compressed names. */
-#define COMPR_MAXLEN 64
-/* Volatile portion of the compression table. */
-#define COMPR_VOLATILE (COMPR_MAXLEN / 4)
-#define COMPR_FIXEDLEN (COMPR_MAXLEN - COMPR_VOLATILE)
-
-/* Compression table pointer. */
-typedef struct {
-	uint16_t off;		/*!< Packet data offset. */
-	uint8_t lbcount;	/*!< Dname label count. */
-} knot_compr_ptr_t;
+#define KNOT_PKT_IN_AN(pkt) ((pkt)->current == KNOT_ANSWER)
+#define KNOT_PKT_IN_NS(pkt) ((pkt)->current == KNOT_AUTHORITY)
+#define KNOT_PKT_IN_AR(pkt) ((pkt)->current == KNOT_ADDITIONAL)
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Structure representing a DNS packet.
- */
-struct knot_packet {
+/*** >>> #10 DEPRECATED */
 
-	const knot_rrset_t **answer;      /*!< Answer RRSets. */
-	const knot_rrset_t **authority;   /*!< Authority RRSets. */
-	const knot_rrset_t **additional;  /*!< Additional RRSets. */
+/* Number of packet sections. */
+#define KNOT_PKT_SECTIONS 3
 
-	short an_rrsets;     /*!< Count of Answer RRSets in the response. */
-	short ns_rrsets;     /*!< Count of Authority RRSets in the response. */
-	short ar_rrsets;     /*!< Count of Additional RRSets in the response. */
-
-	short max_an_rrsets; /*!< Allocated space for Answer RRsets. */
-	short max_ns_rrsets; /*!< Allocated space for Authority RRsets. */
-	short max_ar_rrsets; /*!< Allocated space for Additional RRsets. */
-
-	knot_opt_rr_t opt_rr;     /*!< OPT RR included in the packet. */
-
-	uint8_t *wireformat;  /*!< Wire format of the packet. */
-
-	size_t parsed;
-	uint16_t parsed_an;
-	uint16_t parsed_ns;
-	uint16_t parsed_ar;
-
-	uint8_t qname_size; /*!< QNAME size. */
-	size_t size;      /*!< Current wire size of the packet. */
-	size_t max_size;  /*!< Maximum allowed size of the packet. */
-
-	/*! \brief Information needed for compressing domain names in packet. */
-	knot_compr_ptr_t compression[COMPR_MAXLEN];
-
-	/*! \brief Wildcard nodes to be processed for NSEC/NSEC3. */
-	knot_wildcard_nodes_t wildcard_nodes;
-
-	/*! \brief RRSets to be destroyed with the packet structure. */
-	const knot_rrset_t **tmp_rrsets;
-	short tmp_rrsets_count;  /*!< Count of temporary RRSets. */
-	short tmp_rrsets_max;    /*!< Allocated space for temporary RRSets. */
-
-	struct knot_packet *query; /*!< Associated query. */
-
-	size_t tsig_size;	/*!< Space to reserve for the TSIG RR. */
-	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
-	uint16_t flags;         /*!< Packet flags. */
-	const knot_zone_t *zone; /*!< Associated zone. */
-	mm_ctx_t mm; /*!< Memory allocation context. */
-};
-
-typedef struct knot_packet knot_packet_t;
-
-/*----------------------------------------------------------------------------*/
+/* Number of maximum RRs in packet. */
+#define KNOT_PKT_MAX_RRS (KNOT_WIRE_MAX_PAYLOAD / KNOT_WIRE_RR_MIN_SIZE)
 
 /*!
  * \brief Packet flags.
@@ -125,83 +70,129 @@ typedef struct knot_packet knot_packet_t;
 enum {
 	KNOT_PF_NULL      = 0 << 0, /*!< No flags. */
 	KNOT_PF_WILDCARD  = 1 << 1, /*!< Query to wildcard name. */
-	KNOT_PF_FREE_WIRE = 1 << 2, /*!< Free wire. */
+	KNOT_PF_FREE      = 1 << 2, /*!< Free with packet. */
 	KNOT_PF_NOTRUNC   = 1 << 3, /*!< Don't truncate. */
-	KNOT_PF_CHECKDUP  = 1 << 4  /*!< Check for duplicates. */
+	KNOT_PF_CHECKDUP  = 1 << 4,  /*!< Check for duplicates. */
+	KNOT_PACKET_DUPL_NO_MERGE = 1 << 5 /* Don't add duplicate rdata to rrset. */
 };
 
+/*!
+ * \brief Packet section.
+ */
+typedef struct {
+	const knot_rrset_t **rr;
+	uint16_t count;
+} knot_pktsection_t;
+
+/*!
+ * \brief Structure representing a DNS packet.
+ */
+typedef struct knot_pkt {
+
+	uint8_t *wire;  /*!< Wire format of the packet. */
+
+	size_t size;      /*!< Current wire size of the packet. */
+	size_t max_size;  /*!< Maximum allowed size of the packet. */
+	size_t parsed;
+
+	uint16_t qname_size; /*!< QNAME size. */
+	uint16_t tsig_size;	/*!< Space to reserve for the TSIG RR. */
+	uint16_t rrset_count;
+	uint16_t flags;
+
+	knot_opt_rr_t opt_rr;   /*!< OPT RR included in the packet. */
+	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
+
+	/* #10 <<< SHOULD BE IN ANSWERING CONTEXT */
+	const knot_tsig_key_t *tsig_key;
+	const knot_zone_t *zone; /*!< Associated zone. */
+	const struct knot_pkt *query; /*!< Associated query. */
+
+	/*! \brief Wildcard nodes to be processed for NSEC/NSEC3. */
+	knot_wildcard_nodes_t wildcard_nodes;
+	/* #10 >>> SHOULD BE IN ANSWERING CONTEXT */
+
+	knot_section_t current;
+	knot_pktsection_t sections[KNOT_PKT_SECTIONS];
+	knot_rrinfo_t rr_info[KNOT_PKT_MAX_RRS];
+	const knot_rrset_t *rr[KNOT_PKT_MAX_RRS];
+
+	mm_ctx_t mm; /*!< Memory allocation context. */
+} knot_pkt_t;
+
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Flags which control packet parsing. */
-typedef enum {
-	// Don't add duplicate rdata to rrset.
-	KNOT_PACKET_DUPL_NO_MERGE = 1,
-	// Skip RR if RRSet is not empty
-	KNOT_PACKET_DUPL_SKIP     = 2
-} knot_packet_flag_t;
+knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm);
+int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query);
+void knot_pkt_clear(knot_pkt_t *pkt);
+void knot_pkt_clear_payload(knot_pkt_t *pkt);
+void knot_pkt_free(knot_pkt_t **packet);
 
+uint16_t knot_pkt_type(const knot_pkt_t *packet);
+uint16_t knot_pkt_question_size(const knot_pkt_t *pkt);
+const knot_dname_t *knot_pkt_qname(const knot_pkt_t *packet);
+uint16_t knot_pkt_qtype(const knot_pkt_t *packet);
+uint16_t knot_pkt_qclass(const knot_pkt_t *packet);
+
+int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id);
+int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len);
+int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key); /* #10 sign context */
+int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t qclass, uint16_t qtype);
+int knot_pkt_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, knot_compr_t *compr);
+int knot_pkt_put_opt(knot_pkt_t *pkt);
+int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uint32_t flags);
+
+const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t section_id);
+const knot_rrset_t *knot_pkt_get_last(const knot_pkt_t *pkt);
+
+int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags);
+int knot_pkt_parse_question(knot_pkt_t *pkt);
+int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags);
+int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags);
+int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
+
+/*!
+ * \brief Checks if EDNS is supported (i.e. has EDNS VERSION != UNSUPPORTED).
+ */
+static inline bool knot_pkt_have_edns(const knot_pkt_t *pkt)
+{
+	return pkt && (knot_edns_get_version(&pkt->opt_rr) != EDNS_NOT_SUPPORTED);
+}
+
+/*!
+ * \brief Checks if DNSSEC was requested (i.e. the DO bit was set).
+ */
+static inline bool knot_pkt_have_dnssec(const knot_pkt_t *pkt)
+{
+	return knot_pkt_have_edns(pkt) && knot_edns_do(&pkt->opt_rr);
+}
+
+/*!
+ * \brief Checks if NSID was requested (i.e. the NSID option was
+ *        present in the query OPT RR).
+ */
+static inline bool knot_pkt_have_nsid(const knot_pkt_t *pkt)
+{
+	return knot_pkt_have_edns(pkt)
+	       && knot_edns_has_option(&pkt->opt_rr, EDNS_OPTION_NSID);
+}
+
+/*** <<< #10 DEPRECATED */
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Creates new empty packet structure.
+ * \brief Sets the OPT RR of the response.
  *
- * \return New packet structure or NULL if an error occured.
- */
-knot_packet_t *knot_packet_new();
-
-/*!
- * \brief Memory managed version of new packet create.
- */
-knot_packet_t *knot_packet_new_mm(mm_ctx_t *mm);
-
-/*!
- * \brief Parses the DNS packet from wire format.
+ * This function also allocates space for the wireformat of the response, if
+ * the payload in the OPT RR is larger than the current maximum size of the
+ * response and copies the current wireformat over to the new space.
  *
- * \param packet Packet structure to parse into.
- * \param wireformat Wire format of the DNS packet.
- * \param size Size of the wire format in bytes.
- * \param question_only Set to <> 0 if you do not want to parse the whole
- *                      packet. In such case the parsing will end after the
- *                      Question section. Set to 0 to parse the whole packet.
- * \param flags Can control packet processing.
+ * \note The contents of the OPT RR are copied.
  *
- * \retval KNOT_EOK
- */
-int knot_packet_parse_from_wire(knot_packet_t *packet,
-                                  const uint8_t *wireformat, size_t size,
-                                  int question_only, knot_packet_flag_t flags);
-
-int knot_packet_parse_rest(knot_packet_t *packet, knot_packet_flag_t flags);
-
-int knot_packet_parse_next_rr_answer(knot_packet_t *packet,
-                                       knot_rrset_t **rr);
-
-int knot_packet_parse_next_rr_additional(knot_packet_t *packet,
-                                         knot_rrset_t **rr);
-
-size_t knot_packet_size(const knot_packet_t *packet);
-
-size_t knot_packet_max_size(const knot_packet_t *packet);
-
-/*! \brief Returns size of the wireformat of Header and Question sections. */
-size_t knot_packet_question_size(const knot_packet_t *packet);
-
-size_t knot_packet_parsed(const knot_packet_t *packet);
-
-/*!
- * \brief Sets the maximum size of the packet and allocates space for wire
- *        format (if needed).
+ * \note It is expected that resp.max_size is already set to correct value as
+ *       it is impossible to distinguish TCP scenario in this function.
  *
- * This function also allocates space for the wireformat of the packet, if
- * the given max size is larger than the current maximum size of the packet
- * and copies the current wireformat over to the new space.
- *
- * \warning Do not call this function if you are not completely sure that the
- *          current wire format of the packet fits into the new space.
- *          It does not update the current size of the wire format, so the
- *          produced packet may be larger than the given max size.
- *
- * \param packet Packet to set the maximum size of.
- * \param max_size Maximum size of the packet in bytes.
+ * \param resp Response to set the OPT RR to.
+ * \param opt_rr OPT RR to set.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
@@ -209,234 +200,18 @@ size_t knot_packet_parsed(const knot_packet_t *packet);
  *
  * \todo Needs test.
  */
-int knot_packet_set_max_size(knot_packet_t *packet, int max_size);
-
-int knot_packet_set_size(knot_packet_t *packet, int size);
-
-uint16_t knot_packet_id(const knot_packet_t *packet);
-
-void knot_packet_set_random_id(knot_packet_t *packet);
-
-/*!
- * \brief Returns the OPCODE of the packet.
- *
- * \param packet Packet (with parsed query) to get the OPCODE from.
- *
- * \return OPCODE stored in the packet.
- */
-uint8_t knot_packet_opcode(const knot_packet_t *packet);
-
-/*!
- * \brief Returns the QNAME from the packet.
- *
- * \param packet Packet (with parsed query) to get the QNAME from.
- *
- * \return QNAME stored in the packet.
- */
-const knot_dname_t *knot_packet_qname(const knot_packet_t *packet);
-
-/*!
- * \brief Returns the QTYPE from the packet.
- *
- * \param packet Packet (with parsed query) to get the QTYPE from.
- *
- * \return QTYPE stored in the packet.
- */
-uint16_t knot_packet_qtype(const knot_packet_t *packet);
-
-/*!
- * \brief Set the QTYPE of the packet.
- *
- * \param packet Packet containing question.
- * \param qtype New QTYPE for question.
- */
-void knot_packet_set_qtype(knot_packet_t *packet, uint16_t qtype);
+int knot_pkt_add_opt(knot_pkt_t *resp,
+                          const knot_opt_rr_t *opt_rr,
+                          int add_nsid);
 
 
-/*!
- * \brief Returns the QCLASS from the packet.
- *
- * \param response Packet (with parsed query) to get the QCLASS from.
- *
- * \return QCLASS stored in the packet.
- */
-uint16_t knot_packet_qclass(const knot_packet_t *packet);
+int knot_pkt_add_wildcard_node(knot_pkt_t *response,
+                                    const knot_node_t *node,
+                                    const knot_dname_t *sname);
 
-int knot_packet_is_query(const knot_packet_t *packet);
+/*----------------------------------------------------------------------------*/
+/*** >>> #10 DEPRECATED */
 
-const knot_packet_t *knot_packet_query(const knot_packet_t *packet);
-
-int knot_packet_rcode(const knot_packet_t *packet);
-
-int knot_packet_tc(const knot_packet_t *packet);
-
-int knot_packet_qdcount(const knot_packet_t *packet);
-
-int knot_packet_ancount(const knot_packet_t *packet);
-
-int knot_packet_nscount(const knot_packet_t *packet);
-
-int knot_packet_arcount(const knot_packet_t *packet);
-
-void knot_packet_set_tsig_size(knot_packet_t *packet, size_t tsig_size);
-
-const knot_rrset_t *knot_packet_tsig(const knot_packet_t *packet);
-
-void knot_packet_set_tsig(knot_packet_t *packet, const knot_rrset_t *tsig_rr);
-
-/*!
- * \brief Returns number of RRSets in Answer section of the packet.
- *
- * \param response Packet to get the Answer RRSet count from.
- */
-short knot_packet_answer_rrset_count(const knot_packet_t *packet);
-
-/*!
- * \brief Returns number of RRSets in Authority section of the packet.
- *
- * \param response Packet to get the Authority RRSet count from.
- */
-short knot_packet_authority_rrset_count(const knot_packet_t *packet);
-
-/*!
- * \brief Returns number of RRSets in Additional section of the packet.
- *
- * \param response Packet to get the Additional RRSet count from.
- */
-short knot_packet_additional_rrset_count(const knot_packet_t *packet);
-
-/*!
- * \brief Returns the requested Answer RRset.
- *
- * \param packet Packet to get the RRSet from.
- * \param pos Position of the RRSet in the Answer section (RRSets are stored
- *            in the order they were added to the response or parsed from the
- *            query).
- *
- * \return The RRSet on position \a pos in the Answer section of \a packet
- *         or NULL if there is no such RRSet.
- */
-const knot_rrset_t *knot_packet_answer_rrset(
-	const knot_packet_t *packet, short pos);
-
-/*!
- * \brief Returns the requested Authority RRset.
- *
- * \param packet Packet to get the RRSet from.
- * \param pos Position of the RRSet in the Authority section (RRSets are stored
- *            in the order they were added to the response or parsed from the
- *            query).
- *
- * \return The RRSet on position \a pos in the Authority section of \a packet
- *         or NULL if there is no such RRSet.
- */
-const knot_rrset_t *knot_packet_authority_rrset(
-	const knot_packet_t *packet, short pos);
-
-/*!
- * \brief Returns the requested Additional RRset.
- *
- * \param packet Packet to get the RRSet from.
- * \param pos Position of the RRSet in the Additional section (RRSets are stored
- *            in the order they were added to the response or parsed from the
- *            query).
- *
- * \return The RRSet on position \a pos in the Additional section of \a packet
- *         or NULL if there is no such RRSet.
- */
-const knot_rrset_t *knot_packet_additional_rrset(
-	const knot_packet_t *packet, short pos);
-
-/*!
- * \brief Checks if the packet already contains the given RRSet.
- *
- * It searches for the RRSet in the three lists of RRSets corresponding to
- * Answer, Authority and Additional sections of the packet.
- *
- * \note Only pointers are compared, i.e. two instances of knot_rrset_t with
- * the same data will be considered different.
- *
- * \param packet Packet to look for the RRSet in.
- * \param rrset RRSet to look for.
- *
- * \retval 0 if \a resp does not contain \a rrset.
- * \retval <> 0 if \a resp does contain \a rrset.
- */
-int knot_packet_contains(const knot_packet_t *packet,
-                           const knot_rrset_t *rrset,
-                           knot_rrset_compare_type_t cmp);
-
-/*!
- * \brief Adds RRSet to the list of temporary RRSets.
- *
- * Temporary RRSets are fully freed when the response structure is destroyed.
- *
- * \param response Response to which the temporary RRSet should be added.
- * \param tmp_rrset Temporary RRSet to be stored in the response.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- */
-int knot_packet_add_tmp_rrset(knot_packet_t *response,
-                                knot_rrset_t *tmp_rrset);
-
-void knot_packet_free_tmp_rrsets(knot_packet_t *pkt);
-
-
-int knot_packet_question_to_wire(knot_packet_t *packet);
-
-/*!
- * \brief Converts the stored response OPT RR to wire format and adds it to
- *        the response wire format.
- *
- * \param resp Response structure.
- */
-int knot_packet_edns_to_wire(knot_packet_t *packet);
-
-/*!
- * \brief Converts the packet to wire format.
- *
- * \param packet Packet to be converted to wire format.
- * \param wire Here the wire format of the packet will be stored.
- *             Space for the packet will be allocated. *resp_wire must
- *             be set to NULL (to avoid leaks).
- * \param wire_size The size of the packet in wire format will be stored here.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- */
-int knot_packet_to_wire(knot_packet_t *packet, uint8_t **wire,
-                          size_t *wire_size);
-
-const uint8_t *knot_packet_wireformat(const knot_packet_t *packet);
-
-/*!
- * \brief Properly destroys the packet structure.
- *
- * \param response Packet to be destroyed.
- */
-void knot_packet_free(knot_packet_t **packet);
-
-/*!
- * \brief Dumps the whole packet in human-readable form.
- *
- * \note This function is empty unless KNOT_PACKET_DEBUG is defined.
- *
- * \param resp Packet to dump.
- */
-void knot_packet_dump(const knot_packet_t *packet);
-
-/*!
- * \brief Free all rrsets associated with packet.
- */
-int knot_packet_free_rrsets(knot_packet_t *packet);
-
-/*!
- * \brief (Temporary) realloc RRs array size.
- */
-int knot_packet_realloc_rrsets(const knot_rrset_t ***rrsets,
-                               short *max_count,
-                               mm_ctx_t *mm);
 
 #endif /* _KNOT_PACKET_H_ */
 
