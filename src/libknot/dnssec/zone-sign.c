@@ -800,6 +800,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	if (to_add != NULL && result == KNOT_EOK) {
 		result = knot_rrset_sort_rdata(to_add);
 		if (result != KNOT_EOK) {
+			knot_rrset_deep_free(&to_add, 1);
 			return result;
 		}
 		result = knot_changeset_add_rrset(changeset, to_add,
