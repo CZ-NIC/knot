@@ -798,6 +798,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	}
 
 	if (to_add != NULL && result == KNOT_EOK) {
+		//! \todo Sorting should be handled by changesets application.
 		result = knot_rrset_sort_rdata(to_add);
 		if (result != KNOT_EOK) {
 			knot_rrset_deep_free(&to_add, 1);
