@@ -907,9 +907,7 @@ static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
 	uint32_t new_expire = time(NULL) + (used_lifetime - used_refresh);
 	if (new_expire < zd->dnssec_timer->tv.tv_sec) {
 		// Drop old event, earlier signing needed
-		evsched_cancel(zd->dnssec_timer->parent, zd->dnssec_timer);
-		evsched_event_free(zd->dnssec_timer->parent, zd->dnssec_timer);
-		zd->dnssec_timer = NULL;
+		zones_cancel_dnssec(zone);
 		ret = zones_schedule_dnssec(zone,
 		                            expiration_to_relative(new_expire),
 		                            false);
@@ -2504,11 +2502,10 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 static int zones_dnssec_ev(event_t *event, bool force)
 {
 	// We will be working with zone, don't want it to change in the meantime
-	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)event->data;
 	zonedata_t *zd = (zonedata_t *)zone->data;
+	rcu_read_lock();
 	assert(zd->conf->dnssec_enable);
-	pthread_mutex_lock(&zd->lock);
 
 	int ret = KNOT_EOK;
 	char *msgpref = NULL;
@@ -2564,20 +2561,15 @@ static int zones_dnssec_ev(event_t *event, bool force)
 
 	log_zone_info("%s Successfully signed.\n", msgpref);
 
-	// Schedule next signing
-	/* Next signing should not be 'forced'. May take longer now, but
-	 * when lifetime jitter is implemented, this will be desired behaviour.
-	 */
-	ret = zones_schedule_dnssec(zone, expiration_to_relative(expires_at),
-	                            false);
-
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
 
 	evsched_event_free(event->parent, event);
 	zd->dnssec_timer = NULL;
-	pthread_mutex_unlock(&zd->lock);
+	// Schedule next signing
+	ret = zones_schedule_dnssec(zone, expiration_to_relative(expires_at),
+	                            false);
 	rcu_read_unlock();
 
 	return ret;
@@ -2626,8 +2618,6 @@ int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
 	if (!zone || !zone->data) {
 		return KNOT_EINVAL;
 	}
-
-	zones_cancel_dnssec(zone);
 
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	evsched_t *scheduler = zd->server->sched;
@@ -3002,6 +2992,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 		}
 
 		// Schedule next zone signing
+		zones_cancel_dnssec(zone);
 		ret = zones_schedule_dnssec(zone,
 		                            expiration_to_relative(expires_at),
 		                            false);
