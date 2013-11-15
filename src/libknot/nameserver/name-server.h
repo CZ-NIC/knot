@@ -394,6 +394,50 @@ int ns_response_to_wire(knot_pkt_t *resp, uint8_t *wire,
  */
 void knot_ns_destroy(knot_nameserver_t **nameserver);
 
+const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
+                                                  const knot_dname_t *qname,
+                                                  uint16_t qtype);
+
+/* #10 <<< Next-gen API. */
+
+enum ns_proc_state {
+	NS_PROC_NOOP = 0,
+	NS_PROC_MORE = 1 << 0,
+	NS_PROC_FULL = 1 << 1,
+	NS_PROC_FINISH  = 1 << 2,
+	NS_PROC_FAIL = 1 << 3,
+};
+
+struct ns_proc_module;
+
+typedef struct ns_proc_context
+{
+	mm_ctx_t mm;
+	uint16_t type;
+	void *data;
+
+	int state;
+	knot_nameserver_t *ns;
+	const struct ns_proc_module *module;
+
+} ns_proc_context_t;
+
+typedef struct ns_proc_module {
+	int (*begin)(ns_proc_context_t *ctx);
+	int (*reset)(ns_proc_context_t *ctx);
+	int (*finish)(ns_proc_context_t *ctx);
+	int (*in)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+	int (*out)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+	int (*err)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+} ns_proc_module_t;
+
+int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module);
+int ns_proc_reset(ns_proc_context_t *ctx);
+int ns_proc_finish(ns_proc_context_t *ctx);
+int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx);
+int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx);
+
+/* #10 >>> Next-gen API. */
 #endif /* _KNOTNAME_SERVER_H_ */
 
 /*! @} */

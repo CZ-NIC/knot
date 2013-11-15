@@ -68,7 +68,7 @@ static const int      NS_ERR_SERVFAIL      = -999;
  * \return Zone to which QNAME belongs (according to QTYPE), or NULL if no such
  *         zone was found.
  */
-static const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
+const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
                                                   const knot_dname_t *qname,
                                                   uint16_t qtype)
 {
@@ -4070,3 +4070,54 @@ void knot_ns_destroy(knot_nameserver_t **nameserver)
 	free(*nameserver);
 	*nameserver = NULL;
 }
+
+/* #10 <<< Next-gen API. */
+
+
+int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module)
+{
+	/* #10 implement */
+	ctx->module = module;
+	ctx->state = module->begin(ctx);
+	return ctx->state;
+}
+
+int ns_proc_reset(ns_proc_context_t *ctx)
+{
+	/* #10 implement */
+	ctx->state = ctx->module->reset(ctx);
+	return ctx->state;
+}
+
+int ns_proc_finish(ns_proc_context_t *ctx)
+{
+	/* #10 implement */
+	ctx->state = ctx->module->finish(ctx);
+	return ctx->state;
+}
+
+int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx)
+{
+	/* #10 implement */
+	knot_pkt_t *pkt = knot_pkt_new((uint8_t *)wire, wire_len, &ctx->mm);
+	knot_pkt_parse(pkt, 0);
+	ctx->state = ctx->module->in(pkt, ctx);
+	return ctx->state;
+}
+
+int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
+{
+	/* #10 implement */
+	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, &ctx->mm);
+
+	switch(ctx->state) {
+	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;
+	case NS_PROC_FAIL: ctx->state = ctx->module->err(pkt, ctx); break;
+	default:           return NS_PROC_NOOP;
+	}
+
+	*wire_len = pkt->size;
+	return ctx->state;
+}
+
+/* #10 >>> Next-gen API. */

@@ -21,3 +21,4 @@ dnssec_sign
 dnssec_zone_nsec
 rrset
 pkt
+ns
