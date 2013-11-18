@@ -667,14 +667,10 @@ class DnsServer(object):
     def zone_wait(self, zone, serial=None):
         '''Try to get SOA record with serial higher then specified'''
 
-        if len(zone) != 1:
-            raise Exception("One zone required.")
-        zname = list(zone.keys())[0]
-
         _serial = 0
 
         for t in range(20):
-            resp = self.dig(zname, "SOA", udp=True, tries=1)
+            resp = self.dig(zone, "SOA", udp=True, tries=1)
             if resp.resp.rcode() == 0:
                 soa = str((resp.resp.answer[0]).to_rdataset())
                 _serial = int(soa.split()[5])
