@@ -248,7 +248,7 @@ static int journal_open_file(journal_t *j)
 	}
 
 	/* Check max_nodes, but this is riddiculous. */
-	if (j->max_nodes == 0 || j->max_nodes > UINT16_MAX) {
+	if (j->max_nodes == 0) {
 		dbg_journal_verb("journal: invalid max_nodes\n");
 		goto open_file_error;
 	}
