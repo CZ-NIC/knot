@@ -18,6 +18,7 @@
 #include <tap/basic.h>
 
 #include "common/mempool.h"
+#include "common/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/nameserver/ns_proc_query.h"
@@ -38,8 +39,22 @@ static const uint8_t CH_QUERY[CH_QUERY_LEN] = {
 	0x65, 0x72, 0x00, 0x00, 0x10, 0x00, 0x03
 };
 
+/* SOA RDATA. */
+#define SOA_RDLEN 30
+static const uint8_t SOA_RDATA[SOA_RDLEN] = {
+        0x02, 0x6e, 0x73, 0x00,        /* ns. */
+        0x04, 'm', 'a', 'i', 'l', 0x00,/* mail. */
+        0x77, 0xdf, 0x1e, 0x63,        /* serial */
+        0x00, 0x01, 0x51, 0x80,        /* refresh */
+        0x00, 0x00, 0x1c, 0x20,        /* retry */
+        0x00, 0x0a, 0x8c, 0x00,        /* expire */
+        0x00, 0x00, 0x0e, 0x10         /* min ttl */
+};
+
+#include "common/log.h"
 int main(int argc, char *argv[])
 {
+	log_init();
 	plan(12);
 
 	/* Prepare. */
@@ -49,6 +64,24 @@ int main(int argc, char *argv[])
 
 	/* Create fake name server. */
 	knot_nameserver_t *ns = knot_ns_create();
+	ns->opt_rr = knot_edns_new();
+	knot_edns_set_version(ns->opt_rr, EDNS_VERSION); 
+	knot_edns_set_payload(ns->opt_rr, 4096);
+
+	/* Insert root zone. */
+	knot_dname_t *root_name = knot_dname_from_str(".");
+	knot_node_t *apex = knot_node_new(root_name, NULL, 0);
+	knot_rrset_t *soa_rrset = knot_rrset_new(root_name,
+	                                         KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
+	                                         7200);
+	knot_rrset_add_rdata(soa_rrset, SOA_RDATA, SOA_RDLEN);
+	knot_node_add_rrset(apex, soa_rrset);
+	knot_zone_t *root = knot_zone_new(apex);
+	knot_zonedb_free(&ns->zone_db);
+	ns->zone_db = knot_zonedb_new(1);
+	knot_zonedb_add_zone(ns->zone_db, root);
+	knot_zonedb_build_index(ns->zone_db);
+	assert(knot_zonedb_find_zone_for_name(ns->zone_db, root_name));
 
 	/* Create processing context. */
 	ns_proc_context_t query_ctx;
