@@ -250,8 +250,9 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 	assert(zd);
 
 	// data pointers
-	conf_zone_t *old_conf = zd->conf;
-	if (old_conf != conf) {
+	conf_zone_t *old_conf = NULL;
+	if (zd->conf != conf) {
+		old_conf = zd->conf;
 		zd->conf = conf;
 	}
 
