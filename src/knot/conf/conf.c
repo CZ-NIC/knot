@@ -833,11 +833,6 @@ int conf_open(const char* path)
 	/* Replace current config. */
 	conf_t *oldconf = rcu_xchg_pointer(&s_config, nconf);
 
-	/* Copy hooks. */
-	if (oldconf) {
-
-	}
-
 	/* Synchronize. */
 	synchronize_rcu();
 
