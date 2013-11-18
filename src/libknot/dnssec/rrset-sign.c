@@ -181,18 +181,18 @@ static int sign_ctx_add_self(knot_dnssec_sign_context_t *ctx,
 static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
                                 const knot_rrset_t *covered)
 {
+	// huge block of rrsets can be optionally created
+	uint8_t *rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
+	if (!rrwf) {
+		return KNOT_ENOMEM;
+	}
+
 #ifndef NDEBUG
 	// cannonical ordering of RRs is cheked in debug mode
 	uint8_t *prev_rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
 	size_t prev_rr_size = 0;
 	size_t rdata_offset = 0;
 #endif
-
-	// huge block of rrsets can be optionally created
-	uint8_t *rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
-	if (!rrwf) {
-		return KNOT_ENOMEM;
-	}
 
 	int result = KNOT_EOK;
 
@@ -228,7 +228,7 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
 		}
 	}
 
-#if NDEBUG
+#ifndef NDEBUG
 	free(prev_rrwf);
 #endif
 	free(rrwf);
