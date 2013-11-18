@@ -271,10 +271,12 @@ class Server(object):
         f.close
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, \
-            timeout=DIG_TIMEOUT, tries=3, recursion=False, bufsize=None, \
+            timeout=None, tries=3, recursion=False, bufsize=None, \
             nsid=False, dnssec=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
+        if timeout is None:
+            timeout = self.DIG_TIMEOUT
         if rtype.upper() == "AXFR":
             # Always use TCP.
             udp = False
