@@ -279,8 +279,7 @@ enum {
 	HIT,
 	MISS,
 	DELEG,
-	CNAME,
-	DNAME,
+	FOLLOW,
 	ERROR
 };
 
@@ -368,7 +367,7 @@ static int in_zone_name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 		}
 		// (out-of-bailiwick), just in the current zone if it
 		// belongs there*/
-		return DNAME;
+		return FOLLOW;
 	}
 
 	dbg_ns("%s: name not found in zone %p\n", __func__, *name);
@@ -389,7 +388,7 @@ static int in_zone_process_name(int state, const knot_dname_t **name,
 	case KNOT_ZONE_NAME_NOT_FOUND:
 		return in_zone_name_not_found(pkt, name, qdata);
 	case KNOT_EOUTOFZONE:
-		assert(state == CNAME || state == DNAME);
+		assert(state == FOLLOW); /* CNAME/DNAME chain only. */
 		return HIT;
 	default:
 		return ERROR;
@@ -410,16 +409,16 @@ static int in_zone_answer(knot_pkt_t *resp, struct query_data *qdata)
 	int ret = KNOT_EOK;
 	int state = in_zone_process_name(BEGIN, &qname, resp, qdata);
 
-	/* Is authoritative unless referral.
-	 * Before we chase the CNAME chain. */
+	/* Is authoritative answer unless referral.
+	 * Must check before we chase the CNAME chain. */
 	if (state != DELEG) {
 		knot_wire_set_aa(resp->wire);
 	}
 
-	/* Additional resolving for CNAME/DNAME. */
-	while (state == CNAME || state == DNAME) {
+	/* Additional resolving for CNAME/DNAME chain. */
+	while (state == FOLLOW) {
 		state = in_zone_process_name(state, &qname, resp, qdata);
-		/* Resolved CNAME chain lead to NXDOMAIN, this is okay since
+		/* Chain lead to NXDOMAIN, this is okay since
 		 * the first CNAME/DNAME is a valid answer. */
 		if (state == MISS) {
 			state = HIT;
@@ -470,10 +469,19 @@ static int in_zone_answer(knot_pkt_t *resp, struct query_data *qdata)
 	}
 
 	/* Resolve ADDITIONAL. */
-	/*! \todo no ADDITIONAL for referral response */
 	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, resp);
 	knot_pkt_begin(resp, KNOT_ADDITIONAL);
-	ns_put_additional(resp);
+
+	/* No ADDITIONAL for referral response. */
+	if (state != DELEG) {
+		ret = ns_put_additional(resp);
+	}
+
+	/* Check errors after ADDITIONAL processing. */
+	if (ret != KNOT_EOK) {
+		return NS_PROC_FAIL;
+
+	}
 
 	/* Write RCODE. */
 	knot_wire_set_rcode(resp->wire, qdata->rcode);
