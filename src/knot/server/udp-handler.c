@@ -70,6 +70,12 @@ enum {
 /* PPS measurement. */
 /* #define MEASURE_PPS 1 */
 
+/* Next-gen packet processing API. */
+#define PACKET_NG
+#ifdef PACKET_NG
+#include "libknot/nameserver/ns_proc_query.h"
+#endif
+
 /* PPS measurement */
 #ifdef MEASURE_PPS
 
@@ -145,6 +151,27 @@ int udp_handle(struct answer_ctx *ans, int fd, sockaddr_t *addr,
 	dbg_net("udp: received %zd bytes from '%s@%d'.\n", rx->iov_len,
 	        strfrom, sockaddr_portnum(addr));
 #endif
+
+#ifdef PACKET_NG
+	ns_proc_context_t query_ctx = {0};
+	memcpy(&query_ctx.mm, ans->mm, sizeof(mm_ctx_t));
+	query_ctx.ns = ans->srv->nameserver;
+
+	uint16_t tx_len = tx->iov_len;
+	ns_proc_begin(&query_ctx, NS_PROC_QUERY);
+	int state = ns_proc_in(rx->iov_base, rx->iov_len, &query_ctx);
+	if (state == NS_PROC_FULL) {
+		state = ns_proc_out(tx->iov_base, &tx_len, &query_ctx);
+	}
+	if (state == NS_PROC_FAIL) {
+		state = ns_proc_out(tx->iov_base, &tx_len, &query_ctx);
+	}
+	if (state == NS_PROC_FINISH) {
+		tx->iov_len = tx_len;
+	}
+	ns_proc_finish(&query_ctx);
+	return KNOT_EOK;
+#else
 
 	int res = KNOT_EOK;
 	int rcode = KNOT_RCODE_NOERROR;
@@ -251,6 +278,7 @@ int udp_handle(struct answer_ctx *ans, int fd, sockaddr_t *addr,
 	knot_pkt_free(&query);
 
 	return res;
+#endif /* PACKET_NG */
 }
 
 /* Check for sendmmsg syscall. */
