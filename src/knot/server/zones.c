@@ -2509,6 +2509,7 @@ static int zones_dnssec_ev(event_t *event, bool force)
 
 	int ret = KNOT_EOK;
 	char *msgpref = NULL;
+	uint32_t expires_at = 0;
 
 	knot_changesets_t *chs = knot_changesets_create();
 	if (chs == NULL) {
@@ -2536,7 +2537,6 @@ static int zones_dnssec_ev(event_t *event, bool force)
 		log_zone_info("%s Signing zone...\n", msgpref);
 	}
 
-	uint32_t expires_at = 0;
 	if (force) {
 		ret = knot_dnssec_zone_sign_force(zone, ch, &expires_at);
 	} else {
