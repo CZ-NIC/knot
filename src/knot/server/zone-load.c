@@ -191,12 +191,10 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 		return KNOT_EINVAL;
 	}
 
-	/* Truncate old ACL. */
-	acl_delete(acl);
-
 	/* Create new ACL. */
-	*acl = acl_new();
-	if (*acl == NULL) {
+	acl_t *old_acl = *acl;
+	acl_t *new_acl = acl_new();
+	if (new_acl == NULL) {
 		return KNOT_ENOMEM;
 	}
 
@@ -215,9 +213,20 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 
 		/* Load rule. */
 		if (ret > 0) {
-			acl_insert(*acl, &addr, cfg_if);
+			acl_insert(new_acl, &addr, cfg_if);
 		}
 	}
+
+	/* Synchronize and free old pointers. */
+	*acl = new_acl;
+	synchronize_rcu();
+
+	/*! \note This is temporary solution.
+	 *        Proper solution is to cancel/wait transfers and events
+	 *        before zone starts reloading. This guarantess that nobody is
+	 *        accessing the old zone configuration.
+	 */
+	acl_delete(&old_acl);
 
 	return KNOT_EOK;
 }
@@ -241,9 +250,8 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 	assert(zd);
 
 	// data pointers
-
-	if (zd->conf != conf) {
-		conf_free_zone(zd->conf);
+	conf_zone_t *old_conf = zd->conf;
+	if (old_conf != conf) {
 		zd->conf = conf;
 	}
 
@@ -307,6 +315,16 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 		knot_zone_contents_enable_any(zone->contents);
 	}
 	rcu_read_unlock();
+
+	/* Synchronize and free old pointers. */
+	synchronize_rcu();
+
+	/*! \note This is temporary solution.
+	 *        Proper solution is to cancel/wait transfers and events
+	 *        before zone starts reloading. This guarantess that nobody is
+	 *        accessing the old zone configuration.
+	 */
+	conf_free_zone(old_conf);
 }
 
 /*- zone file status --------------------------------------------------------*/
