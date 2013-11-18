@@ -118,7 +118,7 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 	}
 
 	/* NULL everything up to 'sections' (not the large data fields). */
-	memset(pkt, 0, (size_t)&((knot_pkt_t*)NULL)->sections);
+	memset(pkt, 0, (size_t)&((knot_pkt_t*)NULL)->rr_info);
 	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 
 	/* Initialize OPT RR defaults. */
@@ -521,7 +521,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 
 	/*! #10 can this even happen? */
 	if (pkt_contains(pkt, rr, KNOT_RRSET_COMPARE_PTR)) {
-		assert(0);
+//		assert(0);
 		return KNOT_EOK;
 	}
 
