@@ -436,7 +436,7 @@ dbg_ns_exec_verb(
  *
  * \return Number of RRSets added.
  */
-static int ns_put_answer(const knot_node_t *node,
+int ns_put_answer(const knot_node_t *node,
                          const knot_zone_contents_t *zone,
                          const knot_dname_t *name,
                          uint16_t type, knot_pkt_t *resp, int *added,
@@ -766,7 +766,7 @@ static int ns_additional_needed(uint16_t qtype)
  *
  * \param resp Response to process.
  */
-static int ns_put_additional(knot_pkt_t *resp)
+int ns_put_additional(knot_pkt_t *resp)
 {
 	dbg_ns_verb("ADDITIONAL SECTION PROCESSING\n");
 
@@ -796,8 +796,8 @@ static int ns_put_additional(knot_pkt_t *resp)
  * \param zone Zone to take the authority NS RRSet from.
  * \param resp Response where to add the RRSet.
  */
-static int ns_put_authority_ns(const knot_zone_contents_t *zone,
-                                knot_pkt_t *resp)
+int ns_put_authority_ns(const knot_zone_contents_t *zone,
+                        knot_pkt_t *resp)
 {
 	dbg_ns_verb("PUTTING AUTHORITY NS\n");
 	assert(KNOT_PKT_IN_NS(resp));
@@ -835,7 +835,7 @@ static int ns_put_authority_ns(const knot_zone_contents_t *zone,
  * \param zone Zone to take the SOA RRSet from.
  * \param resp Response where to add the RRSet.
  */
-static int ns_put_authority_soa(const knot_zone_contents_t *zone,
+int ns_put_authority_soa(const knot_zone_contents_t *zone,
                                  knot_pkt_t *resp)
 {
 	assert(KNOT_PKT_IN_NS(resp));
@@ -1654,7 +1654,7 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_put_nsec_nsec3_wildcard_nodes(knot_pkt_t *response,
+int ns_put_nsec_nsec3_wildcard_nodes(knot_pkt_t *response,
                                             const knot_zone_contents_t *zone)
 {
 	assert(response != NULL);
@@ -1696,7 +1696,7 @@ static int ns_put_nsec_nsec3_wildcard_nodes(knot_pkt_t *response,
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static inline int ns_referral(const knot_node_t *node,
+int ns_referral(const knot_node_t *node,
                               const knot_zone_contents_t *zone,
                               const knot_dname_t *qname,
                               knot_pkt_t *resp,

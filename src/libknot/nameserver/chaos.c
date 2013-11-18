@@ -88,8 +88,7 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
  * \param return KNOT_RCODE_NOERROR if the response was succesfully created,
  *               otherwise an RCODE representing the failure.
  */
-static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response,
-                      uint8_t *response_wire, size_t *response_size)
+static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response)
 {
 	const knot_dname_t *qname = knot_pkt_qname(response);
 	const char *response_str = get_txt_response_string(nameserver, qname);
@@ -107,13 +106,6 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response,
 		return KNOT_RCODE_SERVFAIL;
 	}
 
-	result = ns_response_to_wire(response, response_wire, response_size);
-	if (result != KNOT_EOK) {
-		return KNOT_RCODE_SERVFAIL;
-	}
-
-	knot_wire_set_rcode(response->wire, KNOT_RCODE_NOERROR);
-
 	return KNOT_RCODE_NOERROR;
 }
 
@@ -123,10 +115,18 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response,
 int knot_ns_answer_chaos(knot_nameserver_t *nameserver, knot_pkt_t *resp,
                          uint8_t *resp_wire, size_t *resp_size)
 {
+	int ret = KNOT_EOK;
 	int rcode = KNOT_RCODE_REFUSED;
 
 	if (knot_pkt_qtype(resp) == KNOT_RRTYPE_TXT) {
-		rcode = answer_txt(nameserver, resp, resp_wire, resp_size);
+		rcode = answer_txt(nameserver, resp);
+		ret = ns_response_to_wire(resp, resp_wire, resp_size);
+		if (ret != KNOT_EOK) {
+			rcode = KNOT_RCODE_SERVFAIL;
+		} else {
+			knot_wire_set_rcode(resp_wire, KNOT_RCODE_NOERROR);
+		}
+
 	}
 
 	if (rcode != KNOT_RCODE_NOERROR) {
@@ -134,5 +134,14 @@ int knot_ns_answer_chaos(knot_nameserver_t *nameserver, knot_pkt_t *resp,
 		                            resp_wire, resp_size);
 	}
 
-	return KNOT_EOK;
+	return ret;
+}
+
+int knot_chaos_answer(knot_pkt_t *pkt, knot_nameserver_t *ns)
+{
+	if (knot_pkt_qtype(pkt) != KNOT_RRTYPE_TXT) {
+		return KNOT_RCODE_REFUSED;
+	}
+
+	return answer_txt(ns, pkt);
 }

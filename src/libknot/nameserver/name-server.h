@@ -394,9 +394,31 @@ int ns_response_to_wire(knot_pkt_t *resp, uint8_t *wire,
  */
 void knot_ns_destroy(knot_nameserver_t **nameserver);
 
+
+/* #10 <<< Exposed API. */
 const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
                                                   const knot_dname_t *qname,
                                                   uint16_t qtype);
+
+int ns_put_additional(knot_pkt_t *resp);
+int ns_put_nsec_nsec3_wildcard_nodes(knot_pkt_t *response,
+                                            const knot_zone_contents_t *zone);
+int ns_put_authority_soa(const knot_zone_contents_t *zone,
+                                 knot_pkt_t *resp);
+int ns_put_answer(const knot_node_t *node,
+                         const knot_zone_contents_t *zone,
+                         const knot_dname_t *name,
+                         uint16_t type, knot_pkt_t *resp, int *added,
+                         int check_any);
+int ns_put_authority_ns(const knot_zone_contents_t *zone,
+                        knot_pkt_t *resp);
+int ns_referral(const knot_node_t *node,
+                              const knot_zone_contents_t *zone,
+                              const knot_dname_t *qname,
+                              knot_pkt_t *resp,
+                              uint16_t qtype);
+
+/* #10 >>> Exposed API. */
 
 /* #10 <<< Next-gen API. */
 

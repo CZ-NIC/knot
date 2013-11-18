@@ -43,8 +43,9 @@
  * \return Always KNOT_EOK.
  */
 int knot_ns_answer_chaos(knot_nameserver_t *nameserver, knot_pkt_t *response,
-                         uint8_t *response_wire, size_t *response_size);
+                         uint8_t *response_wire, size_t *response_size) __attribute__ ((deprecated));
 
+int knot_chaos_answer(knot_pkt_t *pkt, knot_nameserver_t *ns);
 #endif // _KNOT_CHAOS_H_
 
 /*! @} */
