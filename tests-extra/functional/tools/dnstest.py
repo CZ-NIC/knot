@@ -89,23 +89,23 @@ def compare(value, expected, name):
         detail_log("  (" + str(value) + ") != (" + str(expected) + ")", True)
         detail_log(SEP, True)
 
-def compare_sections(section1, section2, name):
+def compare_sections(section1, srv1name, section2, srv2name, name):
     '''Compare two message sections'''
 
     if section1 == section2:
         return
 
-    set_err("COMPARE section " + name)
-    detail_log("COMPARE %s SECTIONS" % name, True)
+    set_err("COMPARE sections " + name)
+    check_log("COMPARE %s SECTIONS" % name, True)
 
     for rrset in section1:
         if rrset not in section2:
-            detail_log("Section1 difference:" % rrset, True)
+            detail_log("%s has extra rrset:" % srv1name, True)
             detail_log("  %s" % rrset, True)
 
     for rrset in section2:
         if rrset not in section1:
-            detail_log("Section2 difference:" % rrset, True)
+            detail_log("%s has extra rrset:" % srv2name, True)
             detail_log("  %s" % rrset, True)
 
     detail_log(SEP, True)
@@ -253,9 +253,10 @@ class Zone(object):
 class Response(object):
     '''Dig output context'''
 
-    def __init__(self, response, args):
+    def __init__(self, server, response, args):
         self.resp = response
         self.args = args
+        self.srv = server
 
         self.rname = dns.name.from_text(self.args["rname"])
 
@@ -349,13 +350,16 @@ class Response(object):
             compare(dns.flags.edns_to_text(self.resp.ednsflags), \
                     dns.flags.edns_to_text(resp.resp.ednsflags), "EDNS FLAGS")
         if answer:
-            compare_sections(self.resp.answer, resp.resp.answer, \
+            compare_sections(self.resp.answer, self.srv.name, \
+                             resp.resp.answer, resp.srv.name, \
                              "ANSWER")
         if authority:
-            compare_sections(self.resp.authority, resp.resp.authority, \
+            compare_sections(self.resp.answer, self.srv.name, \
+                             resp.resp.answer, resp.srv.name, \
                              "AUTHORITY")
         if additional:
-            compare_sections(self.resp.additional, resp.resp.additional, \
+            compare_sections(self.resp.answer, self.srv.name, \
+                             resp.resp.answer, resp.srv.name, \
                              "ADDITIONAL")
 
     def cmp(self, server, flags=True, answer=True, authority=True, \
@@ -642,7 +646,7 @@ class DnsServer(object):
                                              timeout=timeout)
 
                 detail_log(SEP)
-                return Response(resp, args)
+                return Response(self, resp, args)
             except:
                 time.sleep(timeout)
 
