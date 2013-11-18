@@ -835,24 +835,30 @@ int conf_open(const char* path)
 
 	/* Copy hooks. */
 	if (oldconf) {
-		node_t *n = NULL, *nxt = NULL;
-		WALK_LIST_DELSAFE (n, nxt, oldconf->hooks) {
-			conf_hook_t *hook = (conf_hook_t*)n;
-			conf_add_hook(nconf, hook->sections,
-			              hook->update, hook->data);
-		}
+
 	}
 
 	/* Synchronize. */
 	synchronize_rcu();
 
-	/* Free old config. */
 	if (oldconf) {
+
+		/* Copy hooks. */
+		node_t *n = NULL;
+		WALK_LIST (n, oldconf->hooks) {
+			conf_hook_t *hook = (conf_hook_t*)n;
+			conf_add_hook(nconf, hook->sections,
+			              hook->update, hook->data);
+		}
+
+		/* Update hooks. */
+		conf_update_hooks(nconf);
+
+		/* Free old config. */
 		conf_free(oldconf);
 	}
 
-	/* Update hooks. */
-	conf_update_hooks(nconf);
+
 
 	return KNOT_EOK;
 }
