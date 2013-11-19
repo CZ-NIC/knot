@@ -44,8 +44,7 @@
 
 static inline int sfread(void *dst, size_t len, int fd)
 {
-	ssize_t ret = read(fd, dst, len);
-	return ret >= 0 && ret == len;
+	return read(fd, dst, len) == len;
 }
 
 static inline int sfwrite(const void *src, size_t len, int fd)
