@@ -1967,7 +1967,7 @@ static knot_rrset_t *ns_cname_from_dname(const knot_rrset_t *dname_rrset,
 	}
 
 	knot_rrset_t *cname_rrset = knot_rrset_new(
-		owner, KNOT_RRTYPE_CNAME, KNOT_CLASS_IN, SYNTH_CNAME_TTL);
+		owner, KNOT_RRTYPE_CNAME, KNOT_CLASS_IN, dname_rrset->ttl);
 	if (cname_rrset == NULL) {
 		return NULL;
 	}
@@ -2040,7 +2040,7 @@ static int ns_dname_is_too_long(const knot_rrset_t *rrset,
  * \param qname Searched name.
  * \param resp Response.
  */
-static int ns_process_dname(knot_rrset_t *dname_rrset,
+int ns_process_dname(knot_rrset_t *dname_rrset,
                              const knot_dname_t **qname,
                              knot_pkt_t *resp)
 {
