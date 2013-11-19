@@ -415,10 +415,11 @@ static int in_zone_name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	    && knot_pkt_have_dnssec(pkt->query)
 	    && qdata->node == knot_zone_contents_apex(pkt->zone->contents)
 	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
-		qdata->rcode = KNOT_RCODE_NOTIMPL;
-		return ERROR;
-		assert(0); /*! \todo Implement DNSKEY */
-		/*ret = ns_add_dnskey(node, resp);*/
+		ret = ns_add_dnskey(qdata->node, pkt);
+		if (ret != KNOT_EOK) {
+			qdata->rcode = KNOT_RCODE_SERVFAIL;
+			return ERROR;
+		}
 	}
 
 	/* Check for NODATA. */

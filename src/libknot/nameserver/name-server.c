@@ -1658,7 +1658,7 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
+int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
                                           const knot_node_t *closest_encloser,
                                           const knot_node_t *previous,
                                           const knot_zone_contents_t *zone,
@@ -1685,7 +1685,7 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-int ns_put_nsec_nsec3_wildcard_nodes(knot_pkt_t *response,
+static int ns_put_nsec_nsec3_wildcard_nodes(knot_pkt_t *response,
                                             const knot_zone_contents_t *zone)
 {
 	assert(response != NULL);
@@ -2095,7 +2095,7 @@ dbg_ns_exec_verb(
  * \param apex Zone apex node.
  * \param resp Response.
  */
-static int ns_add_dnskey(const knot_node_t *apex, knot_pkt_t *resp)
+int ns_add_dnskey(const knot_node_t *apex, knot_pkt_t *resp)
 {
 	knot_rrset_t *rrset =
 		knot_node_get_rrset(apex, KNOT_RRTYPE_DNSKEY);
