@@ -6,15 +6,17 @@
 #include "common/descriptor.h"
 #include "libknot/common.h"
 #include "libknot/consts.h"
+#include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 #include "libknot/nameserver/chaos.h"
 
 struct query_data {
-	int state;
 	uint16_t rcode;
 	uint16_t rcode_tsig;
 	knot_pkt_t *pkt;
 	const knot_node_t *node, *encloser, *previous;
+	list_t wildcards;
+	mm_ctx_t *mm;
 };
 
 /* Forward decls. */
@@ -44,7 +46,13 @@ int ns_proc_query_begin(ns_proc_context_t *ctx)
 	assert(ctx);
 	ctx->type = NS_PROC_QUERY_ID;
 	ctx->data = ctx->mm.alloc(ctx->mm.ctx, sizeof(struct query_data));
-	memset(ctx->data, 0, sizeof(struct query_data));
+
+	struct query_data *data = QUERY_DATA(ctx);
+	memset(data, 0, sizeof(struct query_data));
+	data->mm = &ctx->mm;
+
+	/* Initialize list. */
+	init_list(&data->wildcards);
 
 	/* Await packet. */
 	return NS_PROC_MORE;
@@ -56,7 +64,12 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	assert(ctx);
 	struct query_data *data = QUERY_DATA(ctx);
 	knot_pkt_free(&data->pkt);
-	memset(data, 0, sizeof(struct query_data));
+	data->rcode = KNOT_RCODE_NOERROR;
+	data->rcode_tsig = 0;
+	data->node = data->encloser = data->previous = NULL;
+
+	/* Free wildcard list. */
+	ptrlist_free(&data->wildcards, data->mm);
 
 	/* Await packet. */
 	return NS_PROC_MORE;
@@ -283,6 +296,90 @@ enum {
 	ERROR
 };
 
+int in_zone_name_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query_data *qdata)
+{
+	dbg_ns("%s(%p, %p, %p)\n", __func__, name, pkt, qdata);
+
+	const knot_node_t *cname_node = qdata->node;
+	knot_rrset_t *cname_rr = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_CNAME);
+	knot_rrset_t *rr_to_add = cname_rr;
+	unsigned flags = 0;
+	int ret = KNOT_EOK;
+
+	assert(cname_rr != NULL);
+
+	/* Is node a wildcard? */
+	if (knot_dname_is_wildcard(cname_node->owner)) {
+
+		/* Check if is not in wildcard nodes (loop). */
+		dbg_ns("%s: CNAME node %p is wildcard\n", __func__, cname_node);
+		if (ptrlist_contains(&qdata->wildcards, cname_node)) {
+			dbg_ns("%s: node %p already visited => CNAME loop\n",
+			       __func__, cname_node);
+			return HIT;
+		}
+
+		/* Put to wildcard node list. */
+		if (ptrlist_add(&qdata->wildcards, cname_node, qdata->mm) == NULL) {
+			qdata->rcode = KNOT_RCODE_SERVFAIL;
+			return ERROR;
+		}
+
+		/* Synthetic RRSet. */
+		rr_to_add = ns_synth_from_wildcard(cname_rr, *name);
+
+		/* Free RRSet with packet. */
+		flags |= KNOT_PF_FREE;
+
+	} else {
+		/* Normal CNAME name, check for duplicate. */
+		flags |= KNOT_PF_CHECKDUP;
+	}
+
+	/* Now, try to put CNAME to answer. */
+	ret = knot_pkt_put(pkt, 0, rr_to_add, flags);
+	if (ret != KNOT_EOK) {
+		/* Free if synthetized. */
+		if (rr_to_add != cname_rr) {
+			knot_rrset_deep_free(&rr_to_add, 1);
+		}
+		/* Duplicate found, end resolving chain. */
+		if (ret == KNOT_ENORRSET) {
+			dbg_ns("%s: RR %p already inserted => CNAME loop\n",
+			       __func__, rr_to_add);
+			return HIT;
+		} else {
+			qdata->rcode = KNOT_RCODE_SERVFAIL;
+			return ERROR;
+		}
+	}
+
+	/* Add RR signatures (from original RR). */
+	ret = ns_add_rrsigs(cname_rr, pkt, *name, 0);
+	if (ret != KNOT_EOK) {
+		dbg_ns("%s: couldn't add rrsigs for CNAME RRSet %p\n",
+		       __func__, cname_rr);
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+		return ERROR;
+	}
+
+	/* Now follow the next CNAME TARGET. */
+	*name = knot_rdata_cname_name(cname_rr);
+
+#ifdef KNOT_NS_DEBUG
+	char *cname_str = knot_dname_to_str(cname_node->owner);
+	char *target_str = knot_dname_to_str(*name);
+	dbg_ns("%s: FOLLOW '%s' -> '%s'\n", __func__, cname_str, target_str);
+	free(cname_str);
+	free(target_str);
+#endif /* KNOT_NS_DEBUG */
+
+	/* Invalidate current node. */
+	qdata->node = qdata->encloser = qdata->previous = NULL;
+
+	return FOLLOW;
+}
+
 static int in_zone_name_found(knot_pkt_t *pkt, const knot_dname_t **name,
                               struct query_data *qdata)
 {
@@ -292,9 +389,7 @@ static int in_zone_name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	if (knot_node_rrset(qdata->node, KNOT_RRTYPE_CNAME) != NULL
 	    && qtype != KNOT_RRTYPE_CNAME && qtype != KNOT_RRTYPE_RRSIG) {
 		dbg_ns("%s: solving CNAME\n", __func__);
-		qdata->rcode = KNOT_RCODE_NOTIMPL;
-		return ERROR;
-		assert(0); /*! \todo Implement CNAME solving. */
+		return in_zone_name_cname(pkt, name, qdata);
 	}
 
 	// now we have the node for answering

@@ -108,7 +108,7 @@ const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
  * \return The synthetized RRSet (this is a newly created RRSet, remember to
  *         free it).
  */
-static knot_rrset_t *ns_synth_from_wildcard(
+knot_rrset_t *ns_synth_from_wildcard(
 	const knot_rrset_t *wildcard_rrset, const knot_dname_t *qname)
 {
 	knot_rrset_t *rrset = NULL;
@@ -184,7 +184,7 @@ dbg_ns_exec_verb(
  * \return KNOT_ENOMEM
  * \return KNOT_ESPACE
  */
-static int ns_add_rrsigs(knot_rrset_t *rrset, knot_pkt_t *resp,
+int ns_add_rrsigs(knot_rrset_t *rrset, knot_pkt_t *resp,
                          const knot_dname_t *name,
                          uint32_t flags)
 {
@@ -203,13 +203,16 @@ static int ns_add_rrsigs(knot_rrset_t *rrset, knot_pkt_t *resp,
 	        || knot_pkt_qtype(resp) == KNOT_RRTYPE_ANY)
 	    && (rrsigs = knot_rrset_get_rrsigs(rrset)) != NULL) {
 		if (name != NULL) {
+			knot_rrset_t *rrsigs_orig = rrsigs;
 			int ret = ns_check_wildcard(name, resp, &rrsigs);
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to process wildcard: %s\n",
 				       knot_strerror(ret));
 				return ret;
 			}
-			/* #10 will leak if synthetized new */
+			if (rrsigs != rrsigs_orig) {
+				flags |= KNOT_PF_FREE;
+			}
 		}
 		return knot_pkt_put(resp, 0, rrsigs, flags|KNOT_PF_CHECKDUP);
 	}
@@ -476,14 +479,20 @@ dbg_ns_exec_verb(
 			if (knot_rrset_rdata_rr_count(rrset) > 0
 			    || knot_rrset_type(rrset) == KNOT_RRTYPE_APL) {
 
+				knot_rrset_t *rrset_orig = rrset;
 				ret = ns_check_wildcard(name, resp, &rrset);
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to process wildcard.\n");
 					break;
 				}
 
+				unsigned flags = 0;
+				if (rrset != rrset_orig) {
+					flags |= KNOT_PF_FREE;
+				}
+
 				assert(KNOT_PKT_IN_AN(resp));
-				ret = knot_pkt_put(resp, 0, rrset, 0);
+				ret = knot_pkt_put(resp, 0, rrset, flags);
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed add Answer RRSet: %s\n",
 					       knot_strerror(ret));
@@ -526,14 +535,20 @@ dbg_ns_exec_verb(
 				continue;
 			}
 
+			knot_rrset_t *rrset_orig = rrset;
 			ret = ns_check_wildcard(name, resp, &rrset);
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to process wildcard.\n");
 				break;
 			}
 
+			unsigned flags = 0;
+			if (rrset != rrset_orig) {
+				flags |= KNOT_PF_FREE;
+			}
+
 			assert(KNOT_PKT_IN_AN(resp));
-			ret = knot_pkt_put(resp, 0, rrset, 0);
+			ret = knot_pkt_put(resp, 0, rrset, flags);
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed add Answer RRSet: %s\n",
 				       knot_strerror(ret));
@@ -553,14 +568,20 @@ dbg_ns_exec_verb(
 		if (rrset != NULL && knot_rrset_rdata_rr_count(rrset)) {
 			dbg_ns_verb("Found RRSet of type %u\n", type);
 
+			knot_rrset_t *rrset2_orig = rrset2;
 			ret = ns_check_wildcard(name, resp, &rrset2);
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed to process wildcard.\n");
 				break;
 			}
 
+			unsigned flags = 0;
+			if (rrset2 != rrset2_orig) {
+				flags |= KNOT_PF_FREE;
+			}
+
 			assert(KNOT_PKT_IN_AN(resp));
-			ret = knot_pkt_put(resp, 0, rrset2, 0);
+			ret = knot_pkt_put(resp, 0, rrset2, flags);
 			if (ret != KNOT_EOK) {
 				dbg_ns("Failed add Answer RRSet: %s\n",
 				       knot_strerror(ret));
@@ -674,9 +695,14 @@ dbg_ns_exec(
 					return ret;
 				}
 
+				unsigned flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
+				if (rrset_add2 != rrset_add) {
+					flags |= KNOT_PF_FREE;
+				}
+
 				assert(KNOT_PKT_IN_AR(resp));
 				ret = knot_pkt_put(
-					resp, compr_hint, rrset_add2, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
+					resp, compr_hint, rrset_add2, flags);
 
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to add A RRSet to "
@@ -711,9 +737,14 @@ dbg_ns_exec(
 					return ret;
 				}
 
+				unsigned flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
+				if (rrset_add2 != rrset_add) {
+					flags |= KNOT_PF_FREE;
+				}
+
 				assert(KNOT_PKT_IN_AR(resp));
 				ret = knot_pkt_put(
-					resp, compr_hint, rrset_add2, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
+					resp, compr_hint, rrset_add2, flags);
 
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to add AAAA RRSet to "
@@ -4117,6 +4148,10 @@ int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 	}
 
 	*wire_len = pkt->size;
+
+	/* Free packet. */
+	knot_pkt_free(&pkt);
+
 	return ctx->state;
 }
 

@@ -418,6 +418,11 @@ int ns_referral(const knot_node_t *node,
                               knot_pkt_t *resp,
                               uint16_t qtype);
 
+knot_rrset_t *ns_synth_from_wildcard(const knot_rrset_t *wildcard_rrset, const knot_dname_t *qname);
+
+int ns_add_rrsigs(knot_rrset_t *rrset, knot_pkt_t *resp,
+                         const knot_dname_t *name,
+                         uint32_t flags);
 /* #10 >>> Exposed API. */
 
 /* #10 <<< Next-gen API. */
