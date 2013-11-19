@@ -786,15 +786,14 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 static uint32_t expiration_to_relative(uint32_t exp,
                                        const knot_zone_t *zone) {
 	time_t t = time(NULL);
-	int64_t rel = exp - t;
-	if (rel > 0) {
-		return rel * 1000;
-	} else {
+	if (t >= exp) {
 		char *zname = knot_dname_to_str(zone->name);
 		log_zone_warning("DNSSEC: Zone %s: Signature lifetime too low, "
 		                 "set higher value in configuration!\n", zname);
 		free(zname);
 		return 0;
+	} else {
+		return (exp - t) * 1000;
 	}
 }
 
