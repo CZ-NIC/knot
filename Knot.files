@@ -115,6 +115,8 @@ src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/xfr-handler.c
 src/knot/server/xfr-handler.h
+src/knot/server/zone-load.c
+src/knot/server/zone-load.h
 src/knot/server/zones.c
 src/knot/server/zones.h
 src/knot/stat/gatherer.c
