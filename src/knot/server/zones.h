@@ -319,7 +319,7 @@ int zones_cancel_dnssec(knot_zone_t *zone);
  *
  * \return Error code, KNOT_OK if successful.
  */
-int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force);
+int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time, bool force);
 
 /*!
  * \brief Schedule IXFR sync for given zone.
