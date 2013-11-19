@@ -783,17 +783,19 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
-static int64_t expiration_to_relative(uint32_t exp,
-                                      const knot_zone_t *zone) {
+static uint32_t expiration_to_relative(uint32_t exp,
+                                       const knot_zone_t *zone) {
 	time_t t = time(NULL);
-	if (t >= exp) {
+	int64_t rel = exp - t;
+	if (rel > 0) {
+		return rel * 1000;
+	} else {
 		char *zname = knot_dname_to_str(zone->name);
 		log_zone_warning("DNSSEC: Zone %s: Signature lifetime too low, "
 		                 "set higher value in configuration!\n", zname);
 		free(zname);
+		return 0;
 	}
-	// We need the time in miliseconds
-	return (exp - t) * 1000;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2619,7 +2621,7 @@ int zones_cancel_dnssec(knot_zone_t *zone)
 	return KNOT_EOK;
 }
 
-int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
+int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time, bool force)
 {
 	if (!zone || !zone->data) {
 		return KNOT_EINVAL;
@@ -2629,8 +2631,8 @@ int zones_schedule_dnssec(knot_zone_t *zone, int64_t time, bool force)
 	evsched_t *scheduler = zd->server->sched;
 
 	char *zname = knot_dname_to_str(knot_zone_name(zone));
-	log_zone_info("DNSSEC: Zone %s - planning next resign %" PRId64 "s"
-	              "(%" PRId64 "h) from now.\n", zname, time / 1000,
+	log_zone_info("DNSSEC: Zone %s - planning next resign %" PRIu32 "s"
+	              "(%" PRIu32 "h) from now.\n", zname, time / 1000,
 	              time / 3600000);
 	free(zname);
 
