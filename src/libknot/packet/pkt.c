@@ -519,10 +519,10 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 	rrinfo->compress_ptr[0] = compress;
 	pkt->rr[pkt->rrset_count] = rr;
 
-	/*! #10 can this even happen? */
-	if (pkt_contains(pkt, rr, KNOT_RRSET_COMPARE_PTR)) {
-//		assert(0);
-		return KNOT_EOK;
+	/* Check for double insertion. */
+	if ((flags & KNOT_PF_CHECKDUP) &&
+	    pkt_contains(pkt, rr, KNOT_RRSET_COMPARE_PTR)) {
+		return KNOT_ENORRSET;
 	}
 
 	uint8_t *pos = pkt->wire + pkt->size;
