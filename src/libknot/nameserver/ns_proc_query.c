@@ -336,21 +336,23 @@ int in_zone_name_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query_
 	}
 
 	/* Now, try to put CNAME to answer. */
+	uint16_t rr_count_before = pkt->rrset_count;
 	ret = knot_pkt_put(pkt, 0, rr_to_add, flags);
 	if (ret != KNOT_EOK) {
 		/* Free if synthetized. */
 		if (rr_to_add != cname_rr) {
 			knot_rrset_deep_free(&rr_to_add, 1);
 		}
-		/* Duplicate found, end resolving chain. */
-		if (ret == KNOT_ENORRSET) {
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+		return ERROR;
+	} else {
+		/* Check if RR count increased. */
+		if (pkt->rrset_count <= rr_count_before) {
 			dbg_ns("%s: RR %p already inserted => CNAME loop\n",
 			       __func__, rr_to_add);
 			return HIT;
-		} else {
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
-			return ERROR;
 		}
+
 	}
 
 	/* Add RR signatures (from original RR). */
@@ -383,7 +385,9 @@ static int in_zone_name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	dbg_ns("%s(%p, %p, %p)\n", __func__, pkt, name, qdata);
 
 	if (knot_node_rrset(qdata->node, KNOT_RRTYPE_CNAME) != NULL
-	    && qtype != KNOT_RRTYPE_CNAME && qtype != KNOT_RRTYPE_RRSIG) {
+	    && qtype != KNOT_RRTYPE_CNAME
+	    && qtype != KNOT_RRTYPE_RRSIG
+	    && qtype != KNOT_RRTYPE_ANY) {
 		dbg_ns("%s: solving CNAME\n", __func__);
 		return in_zone_name_cname(pkt, name, qdata);
 	}

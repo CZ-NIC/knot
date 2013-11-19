@@ -522,7 +522,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 	/* Check for double insertion. */
 	if ((flags & KNOT_PF_CHECKDUP) &&
 	    pkt_contains(pkt, rr, KNOT_RRSET_COMPARE_PTR)) {
-		return KNOT_ENORRSET;
+		return KNOT_EOK; /*! \todo return rather a number of added RRs */
 	}
 
 	uint8_t *pos = pkt->wire + pkt->size;
