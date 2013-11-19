@@ -783,13 +783,15 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
-static int64_t expiration_to_relative(uint32_t exp) {
+static int64_t expiration_to_relative(uint32_t exp,
+                                      const knot_zone_t *zone) {
 	time_t t = time(NULL);
-	/*!
-	 * This assert could happen only if signing itself took more
-	 * than the 'refresh' time and some (or one) signatures would be kept.
-	 */
-	assert(t < exp);
+	if (t >= exp) {
+		char *zname = knot_dname_to_str(zone->name);
+		log_zone_warning("DNSSEC: Zone %s: Signature lifetime too low, "
+		                 "set higher value in configuration!\n", zname);
+		free(zname);
+	}
 	// We need the time in miliseconds
 	return (exp - t) * 1000;
 }
@@ -909,7 +911,8 @@ static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
 		// Drop old event, earlier signing needed
 		zones_cancel_dnssec(zone);
 		ret = zones_schedule_dnssec(zone,
-		                            expiration_to_relative(new_expire),
+		                            expiration_to_relative(new_expire,
+		                                                   zone),
 		                            false);
 	}
 	return ret;
@@ -2569,7 +2572,8 @@ done:
 	zd->dnssec_timer = NULL;
 	if (expires_at != 0) {
 		ret = zones_schedule_dnssec(zone,
-		                            expiration_to_relative(expires_at),
+		                            expiration_to_relative(expires_at,
+		                                                   zone),
 		                            false);
 	}
 	rcu_read_unlock();
@@ -2996,7 +3000,8 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 		// Schedule next zone signing
 		zones_cancel_dnssec(zone);
 		ret = zones_schedule_dnssec(zone,
-		                            expiration_to_relative(expires_at),
+		                            expiration_to_relative(expires_at,
+		                                                   zone),
 		                            false);
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
