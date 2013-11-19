@@ -471,16 +471,17 @@ int nsupdate_exec(nsupdate_params_t *params)
 	}
 
 	/* Read from each specified file. */
-	strnode_t *n = NULL;
+	ptrnode_t *n = NULL;
 	WALK_LIST(n, params->qfiles) {
-		if (strcmp(n->str, "-") == 0) {
+		const char *filename = (const char*)n->d;
+		if (strcmp(filename, "-") == 0) {
 			ret = nsupdate_process(params, stdin);
 			continue;
 		}
-		FILE *fp = fopen(n->str, "r");
+		FILE *fp = fopen(filename, "r");
 		if (!fp) {
 			ERR("could not open '%s': %s\n",
-			    n->str, strerror(errno));
+			    filename, strerror(errno));
 			return KNOT_ERROR;
 		}
 		ret = nsupdate_process(params, fp);
