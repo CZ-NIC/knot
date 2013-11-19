@@ -92,8 +92,9 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response)
 {
 	const knot_dname_t *qname = knot_pkt_qname(response);
 	const char *response_str = get_txt_response_string(nameserver, qname);
-	if (response_str == NULL || response_str[0] == '\0')
+	if (response_str == NULL || response_str[0] == '\0') {
 		return KNOT_RCODE_REFUSED;
+	}
 
 	knot_rrset_t *rrset = create_txt_rrset(qname, response_str);
 	if (!rrset)

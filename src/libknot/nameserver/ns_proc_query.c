@@ -127,8 +127,8 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	int ret = prepare_answer(data->pkt, pkt, ctx->ns);
 	if (ret != KNOT_EOK) {
 		data->rcode = KNOT_RCODE_SERVFAIL;
-		next_state = NS_PROC_FAIL;
-		goto finish;
+		rcu_read_unlock();
+		return NS_PROC_FAIL;
 	} else {
 		data->rcode = KNOT_RCODE_NOERROR;
 	}
@@ -147,8 +147,6 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		next_state = NS_PROC_FAIL;
 		break;
 	}
-
-finish:
 
 	rcu_read_unlock();
 	return next_state;
@@ -208,6 +206,7 @@ int answer_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 
 	data->rcode = knot_chaos_answer(pkt, ctx->ns);
 	if (data->rcode != KNOT_RCODE_NOERROR) {
+		dbg_ns("%s: failed with RCODE=%d\n", __func__, data->rcode);
 		return NS_PROC_FAIL;
 	}
 

@@ -67,6 +67,8 @@ int main(int argc, char *argv[])
 	ns->opt_rr = knot_edns_new();
 	knot_edns_set_version(ns->opt_rr, EDNS_VERSION); 
 	knot_edns_set_payload(ns->opt_rr, 4096);
+	ns->identity = "bogus.ns";
+	ns->version = "0.11";
 
 	/* Insert root zone. */
 	knot_dname_t *root_name = knot_dname_from_str(".");
@@ -105,7 +107,7 @@ int main(int argc, char *argv[])
 	ok(state & NS_PROC_FULL, "ns: process CH query");
 	wire_len = sizeof(wire);
 	state = ns_proc_out(wire, &wire_len, &query_ctx);
-	ok(state & NS_PROC_FINISH, "ns: answer CH query");
+	is_int(NS_PROC_FINISH, state, "ns: answer CH query");
 	/* Brief response check. */
 	ok(wire_len > KNOT_WIRE_HEADER_SIZE, "ns: CH response > DNS header");
 	ok(knot_wire_get_qr(wire), "ns: CH response has QR=1");
