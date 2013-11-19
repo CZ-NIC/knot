@@ -2,9 +2,9 @@
 
 '''Test for AXFR from Knot to Knot'''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")

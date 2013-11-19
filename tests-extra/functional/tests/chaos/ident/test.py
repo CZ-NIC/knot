@@ -2,10 +2,10 @@
 
 '''Test for server identification over CH/TXT'''
 
-import dnstest
+from dnstest.test import Test
 import socket
 
-t = dnstest.DnsTest()
+t = Test()
 
 name = "Knot DNS server name"
 server1 = t.server("knot", ident=name)

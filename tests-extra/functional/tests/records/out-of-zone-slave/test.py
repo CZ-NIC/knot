@@ -2,9 +2,9 @@
 
 '''Test for dropping of out of zone records during incoming XFR'''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 
 master = t.server("bind")
 slave = t.server("knot")

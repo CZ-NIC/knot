@@ -2,9 +2,9 @@
 
 '''Test for DDNS forwarding'''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 
 master = t.server("bind")
 slave = t.server("knot")

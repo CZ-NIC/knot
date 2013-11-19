@@ -3,9 +3,9 @@
 '''DNS packet header parsing tests. '''
 
 import socket
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 knot = t.server("knot")
 zone = t.zone("example.com.")
 t.link(zone, knot)

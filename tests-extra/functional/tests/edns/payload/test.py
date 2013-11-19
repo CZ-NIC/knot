@@ -2,9 +2,9 @@
 
 '''Test for EDNS0 UDP payload size'''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 
 knot = t.server("knot")
 bind = t.server("bind")

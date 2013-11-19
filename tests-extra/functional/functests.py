@@ -3,7 +3,8 @@
 import argparse, importlib, logging, os, re, sys, tempfile, time, traceback
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(current_dir + "/tools")
-import params, dnstest
+import dnstest.params as params
+import dnstest.utils
 
 TESTS_DIR = "tests"
 COMMON_DATA_DIR = "data"
@@ -137,7 +138,7 @@ def main(args):
 
             try:
                 importlib.import_module("%s.%s.%s.test" % (TESTS_DIR, test, case))
-            except dnstest.Skip as exc:
+            except dnstest.utils.Skip as exc:
                 log.error(" * case \'%s\':\tSKIPPED (%s)" % (case, format(exc)))
                 skip_cnt += 1
             except Exception as exc:

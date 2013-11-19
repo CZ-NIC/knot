@@ -2,9 +2,9 @@
 
 '''Test for DDNS prerequisites'''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 
 srv = t.server("knot")
 zone = t.zone("ddns.", "ddns.zone")

@@ -2,10 +2,10 @@
 
 '''Test for EDNS0/NSID identification'''
 
-import dnstest
+from dnstest.test import Test
 import socket
 
-t = dnstest.DnsTest()
+t = Test()
 
 name = "Knot DNS server"
 hex_name = "0x01020304"

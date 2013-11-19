@@ -2,9 +2,9 @@
 
 '''Test for server version over CH/TXT'''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 
 ver = "ver. 1.3.1-p3"
 server1 = t.server("knot", version=ver)

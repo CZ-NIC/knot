@@ -2,9 +2,10 @@
 
 '''Test for Knot clean-up after interruption of AXFR from Bind'''
 
-import dnstest
+from dnstest.test import Test
+from dnstest.utils import *
 
-t = dnstest.DnsTest()
+t = Test()
 
 master = t.server("bind")
 slave = t.server("knot")
@@ -15,7 +16,7 @@ t.link(zones, master, slave)
 t.start()
 
 t.sleep(2)
-dnstest.check_log("Killing master %s" % master.name)
+check_log("Killing master %s" % master.name)
 master.proc.kill()
 t.sleep(5)
 

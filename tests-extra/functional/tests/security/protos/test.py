@@ -3,9 +3,9 @@
 '''DNS packet header parsing tests. '''
 
 import shutil
-from subprocess import check_call 
-import dnstest
-from params import get_binary
+from subprocess import check_call
+from dnstest.test import Test
+from dnstest.params import get_binary
 
 # Find PROTOS binaries
 protos_java_bin = get_binary("PROTOS_JAVA_BIN", "java")
@@ -14,10 +14,10 @@ protos_zonetransfer_bin = get_binary("PROTOS_ZONETRANSFER_BIN", "c09-dns-zonetra
 if not protos_java_bin:
     raise Exception("Java not found, skipping test.")
 
-t = dnstest.DnsTest(ip = 4) # PROTOS works on IPv4
+t = Test(ip = 4) # PROTOS works on IPv4
 master = t.server("dummy")
 slave = t.server("knot")
-zone = t.zone("protos.invalid.", exists=False) 
+zone = t.zone("protos.invalid.", exists=False)
 t.link(zone, master, slave)
 
 # Update configuration

@@ -4,17 +4,19 @@
 Check if DNSKEY lifetime timestamps are proccessed correctly by Knot.
 """
 
-import dnstest
-import dns
-
 import collections
 import os
 import re
 import shutil
 import sys
+import dns
+
+from dnstest.utils import *
+from dnstest.test import Test
+import dnstest.server
 
 # patched Knot class, enabling DNSSEC
-class DnssecEnabledKnot(dnstest.Knot):
+class DnssecEnabledKnot(dnstest.server.Knot):
     @property
     def keydir(self):
         return os.path.join(self.dir, "keys")
@@ -66,17 +68,17 @@ def check_zone(server, expect_dnskey, expect_rrsig):
     expect_dnskeys = 2 if expect_dnskey else 1
     expect_rrsigs = 2 if expect_rrsig else 1
 
-    dnstest.detail_log("DNSKEYs: %d (expected %d) RRSIGs: %d (expected %d)" % (
+    detail_log("DNSKEYs: %d (expected %d) RRSIGs: %d (expected %d)" % (
                        found_dnskeys, expect_dnskeys, found_rrsigs, expect_rrsigs));
 
     if found_dnskeys != expect_dnskeys or found_rrsigs != expect_rrsigs:
-        dnstest.err("Expectations do not match.")
-        dnstest.set_err("DNSKEYs not published and activated as expected.")
+        err("Expectations do not match.")
+        set_err("DNSKEYs not published and activated as expected.")
 
 # Ugly Monkey patch
-dnstest.Knot = DnssecEnabledKnot
+dnstest.server.Knot = DnssecEnabledKnot
 
-t = dnstest.DnsTest()
+t = Test()
 
 knot = t.server("knot")
 zone = t.zone("example.com.", "example.com.zone")
