@@ -396,7 +396,6 @@ static int in_zone_name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 		return DELEG;
 	}
 
-	/*! \todo Implement normal answer. */
 	int added = 0; /*! \todo useless */
 	int ret = ns_put_answer(qdata->node, pkt->zone->contents, *name, qtype, pkt, &added, 0 /*! \todo check from pkt */);
 
@@ -435,7 +434,7 @@ static int in_zone_name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 {
 	dbg_ns("%s(%p, %p, %p)\n", __func__, pkt, name, qdata);
 
-	// else check for a wildcard child
+	/* Name is covered by wildcard. */
 	const knot_node_t *wildcard_node = knot_node_wildcard_child(qdata->encloser);
 	if (wildcard_node) {
 		dbg_ns("%s: name %p covered by wildcard\n", __func__, *name);
@@ -445,7 +444,7 @@ static int in_zone_name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 		return in_zone_name_found(pkt, name, qdata);
 	}
 
-	// DNAME?
+	/* Name is under DNAME, use it for substitution. */
 	knot_rrset_t *dname_rrset = knot_node_get_rrset(qdata->encloser, KNOT_RRTYPE_DNAME);
 	if (dname_rrset != NULL
 	    && knot_rrset_rdata_rr_count(dname_rrset) > 0) {
@@ -463,7 +462,7 @@ static int in_zone_name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	return MISS;
 }
 
-static int in_zone_process_name(int state, const knot_dname_t **name,
+static int in_zone_solve_name(int state, const knot_dname_t **name,
                                 knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%d, %p, %p, %p)\n", __func__, state, name, pkt, qdata);
@@ -484,6 +483,65 @@ static int in_zone_process_name(int state, const knot_dname_t **name,
 	}
 }
 
+static int in_zone_solve_answer(const knot_dname_t **qname,
+                                    knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* Get answer to QNAME. */
+	int state = in_zone_solve_name(BEGIN, qname, pkt, qdata);
+
+	/* Is authoritative answer unless referral.
+	 * Must check before we chase the CNAME chain. */
+	if (state != DELEG) {
+		knot_wire_set_aa(pkt->wire);
+	}
+
+	/* Additional resolving for CNAME/DNAME chain. */
+	while (state == FOLLOW) {
+		state = in_zone_solve_name(state, qname, pkt, qdata);
+		/* Chain lead to NXDOMAIN, this is okay since
+		 * the first CNAME/DNAME is a valid answer. */
+		if (state == MISS) {
+			state = HIT;
+		}
+	}
+
+	return state;
+}
+
+static int in_zone_solve_authority(int state, const knot_dname_t **qname,
+                                   knot_pkt_t *pkt, struct query_data *qdata)
+{
+	int ret = KNOT_ERROR;
+
+	switch (state) {
+	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */
+		ret = ns_put_authority_ns(pkt->zone->contents, pkt);
+		dbg_ns("%s: putting authority NS = %d\n", __func__, ret);
+		break;
+	case MISS:   /* MISS, set NXDOMAIN RCODE. */
+		qdata->rcode = KNOT_RCODE_NXDOMAIN;
+		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
+	case NODATA: /* NODATA or NXDOMAIN, append AUTHORITY SOA. */
+		ret = ns_put_authority_soa(pkt->zone->contents, pkt);
+		dbg_ns("%s: putting authority SOA = %d\n", __func__, ret);
+		break;
+	case DELEG:  /* Referral response. */ /*! \todo DS + NS */
+		ret = ns_referral(qdata->node, pkt->zone->contents, *qname, pkt, knot_pkt_qtype(pkt));
+		break;
+	case ERROR:
+		dbg_ns("%s: failed to resolve qname\n", __func__);
+		break;
+	default:
+		dbg_ns("%s: invalid state after qname processing = %d\n",
+		       __func__, state);
+		assert(0);
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+		break;
+	}
+
+	return ret;
+}
+
 static int in_zone_answer(knot_pkt_t *resp, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, resp, qdata);
@@ -495,57 +553,12 @@ static int in_zone_answer(knot_pkt_t *resp, struct query_data *qdata)
 	const knot_dname_t *qname = knot_pkt_qname(resp);
 
 	/* Get answer to QNAME. */
-	int ret = KNOT_EOK;
-	int state = in_zone_process_name(BEGIN, &qname, resp, qdata);
-
-	/* Is authoritative answer unless referral.
-	 * Must check before we chase the CNAME chain. */
-	if (state != DELEG) {
-		knot_wire_set_aa(resp->wire);
-	}
-
-	/* Additional resolving for CNAME/DNAME chain. */
-	while (state == FOLLOW) {
-		state = in_zone_process_name(state, &qname, resp, qdata);
-		/* Chain lead to NXDOMAIN, this is okay since
-		 * the first CNAME/DNAME is a valid answer. */
-		if (state == MISS) {
-			state = HIT;
-		}
-	}
+	int state = in_zone_solve_answer(&qname, resp, qdata);
 
 	/* Resolve AUTHORITY. */
 	dbg_ns("%s: writing %p AUTHORITY\n", __func__, resp);
 	knot_pkt_begin(resp, KNOT_AUTHORITY);
-	switch (state) {
-	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */
-		ret = ns_put_authority_ns(resp->zone->contents, resp);
-		dbg_ns("%s: putting authority NS = %d\n", __func__, ret);
-		break;
-	case MISS:   /* MISS, set NXDOMAIN RCODE. */
-		qdata->rcode = KNOT_RCODE_NXDOMAIN;
-		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
-	case NODATA: /* NODATA or NXDOMAIN, append AUTHORITY SOA. */
-		ret = ns_put_authority_soa(resp->zone->contents, resp);
-		dbg_ns("%s: putting authority SOA = %d\n", __func__, ret);
-		break;
-	case DELEG:  /* Referral response. */ /*! \todo DS + NS */
-		ret = ns_referral(qdata->node, resp->zone->contents, qname, resp, knot_pkt_qtype(resp));
-		break;
-	case ERROR:
-		dbg_ns("%s: failed to resolve qname\n", __func__);
-		ret = KNOT_ERROR;
-		break;
-	default:
-		dbg_ns("%s: invalid state after qname processing = %d\n",
-		       __func__, state);
-		assert(0);
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
-		ret = KNOT_ERROR;
-		break;
-	}
-
-	/* Check errors after AUTHORITY processing. */
+	int ret = in_zone_solve_authority(state, &qname, resp, qdata);
 	if (ret != KNOT_EOK) {
 		return NS_PROC_FAIL;
 
@@ -553,20 +566,11 @@ static int in_zone_answer(knot_pkt_t *resp, struct query_data *qdata)
 
 	// add all missing NSECs/NSEC3s for wildcard nodes
 	/*! \todo Make function accept query_data with zone+wcnodes */
-	if (ns_put_nsec_nsec3_wildcard_nodes(resp, resp->zone->contents) != KNOT_EOK) {
-		return NS_PROC_FAIL;
-	}
 
 	/* Resolve ADDITIONAL. */
 	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, resp);
 	knot_pkt_begin(resp, KNOT_ADDITIONAL);
-
-	/* No ADDITIONAL for referral response. */
-	if (state != DELEG) {
-		ret = ns_put_additional(resp);
-	}
-
-	/* Check errors after ADDITIONAL processing. */
+	ret = ns_put_additional(resp);
 	if (ret != KNOT_EOK) {
 		return NS_PROC_FAIL;
 
