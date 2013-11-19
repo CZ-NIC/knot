@@ -423,6 +423,10 @@ knot_rrset_t *ns_synth_from_wildcard(const knot_rrset_t *wildcard_rrset, const k
 int ns_add_rrsigs(knot_rrset_t *rrset, knot_pkt_t *resp,
                          const knot_dname_t *name,
                          uint32_t flags);
+
+int ns_process_dname(knot_rrset_t *dname_rrset,
+                             const knot_dname_t **qname,
+                             knot_pkt_t *resp);
 /* #10 >>> Exposed API. */
 
 /* #10 <<< Next-gen API. */

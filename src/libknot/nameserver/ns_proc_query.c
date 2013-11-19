@@ -374,9 +374,6 @@ int in_zone_name_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query_
 	free(target_str);
 #endif /* KNOT_NS_DEBUG */
 
-	/* Invalidate current node. */
-	qdata->node = qdata->encloser = qdata->previous = NULL;
-
 	return FOLLOW;
 }
 
@@ -451,17 +448,13 @@ static int in_zone_name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	knot_rrset_t *dname_rrset = knot_node_get_rrset(qdata->encloser, KNOT_RRTYPE_DNAME);
 	if (dname_rrset != NULL
 	    && knot_rrset_rdata_rr_count(dname_rrset) > 0) {
-		/*! \todo Implement DNAME processing */
 		dbg_ns("%s: solving DNAME for name %p\n", __func__, *name);
-		qdata->rcode = KNOT_RCODE_NOTIMPL;
-		return ERROR;
-		/*
 		int ret = ns_process_dname(dname_rrset, name, pkt);
 		if (ret != KNOT_EOK) {
+			qdata->rcode = KNOT_RCODE_SERVFAIL;
 			return ERROR;
 		}
-		// (out-of-bailiwick), just in the current zone if it
-		// belongs there*/
+
 		return FOLLOW;
 	}
 
