@@ -1210,7 +1210,7 @@ class DnsTest(object):
             else:
                 file_name = zone_name + "zone"
 
-            src_file = params.common_data_dir + file_name
+            src_file = params.common_data_dir + '/' + file_name
             dst_file = self.zones_dir + file_name
 
         try:
