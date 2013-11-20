@@ -84,7 +84,11 @@ static void pkt_wire_set(knot_pkt_t *pkt, void *wire, uint16_t len)
 
 static uint16_t pkt_remaining(knot_pkt_t *pkt)
 {
-	return pkt->max_size - pkt->size - pkt->opt_rr.size - pkt->tsig_size;
+	uint16_t remaining = pkt->max_size - pkt->size - pkt->tsig_size;
+	if (knot_pkt_have_edns(pkt)) {
+		remaining -= pkt->opt_rr.size;
+	}
+	return remaining;
 }
 
 /*! \brief Return RR count for given section (from wire xxCOUNT in header). */
