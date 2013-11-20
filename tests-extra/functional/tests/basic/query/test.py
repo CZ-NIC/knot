@@ -2,10 +2,9 @@
 
 ''' For various query processing states. '''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
-
+t = Test()
 knot = t.server("knot")
 knot.DIG_TIMEOUT = 2 
 
