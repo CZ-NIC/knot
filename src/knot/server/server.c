@@ -352,8 +352,6 @@ server_t *server_create()
 		return NULL;
 	}
 	knot_ns_set_data(server->nameserver, server);
-	dbg_server("server: initializing crypto backend\n");
-	knot_crypto_init();
 
 	// Create XFR handler
 	server->xfr = xfr_create(XFR_THREADS_COUNT, server->nameserver);
