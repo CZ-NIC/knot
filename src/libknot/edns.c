@@ -62,6 +62,11 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 	dbg_edns_verb("Parsing payload.\n");
 	opt_rr->payload = knot_rrset_class(rrset);
 
+	/* RFC6891, 6.2.5 Value < 512B should be treated as 512. */
+	if (opt_rr->payload < EDNS_MIN_UDP_PAYLOAD) {
+		opt_rr->payload = EDNS_MIN_UDP_PAYLOAD;
+	}
+
 	// the TTL has switched bytes
 	uint32_t ttl;
 	dbg_edns_detail("TTL: %u\n", knot_rrset_ttl(rrset));
@@ -187,7 +192,6 @@ int knot_edns_do(const knot_opt_rr_t *opt_rr)
 		return KNOT_EINVAL;
 	}
 
-	dbg_edns("Flags: %u\n", opt_rr->flags);
 	return (opt_rr->flags & KNOT_EDNS_DO_MASK);
 }
 
