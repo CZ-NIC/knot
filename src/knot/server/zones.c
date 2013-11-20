@@ -470,6 +470,9 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 	knot_changeset_t* chs = NULL;
 	WALK_LIST(chs, chgsets->sets) {
 		/* Read changeset flags. */
+		if (chs->data == NULL) {
+			return KNOT_EMALF;
+		}
 		size_t remaining = chs->size;
 		memcpy(&chs->flags, chs->data, sizeof(uint32_t));
 		remaining -= sizeof(uint32_t);
