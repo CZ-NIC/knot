@@ -26,7 +26,7 @@
 #include "knot/server/zones.h"
 #include "knot/zone/zone-load.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/cleanup.h"
+#include "libknot/dnssec/crypto.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/rdata.h"
 #include "libknot/zone/zone.h"
@@ -695,7 +695,7 @@ static int zone_loader_thread(dthread_t *thread)
 
 static int zone_loader_destruct(dthread_t *thread)
 {
-	knot_dnssec_thread_cleanup();
+	knot_crypto_cleanup_thread();
 	return KNOT_EOK;
 }
 
