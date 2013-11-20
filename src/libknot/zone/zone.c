@@ -271,3 +271,15 @@ void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on)
 		}
 	}
 }
+
+int knot_zone_state(const knot_zone_t *zone)
+{
+	if (zone == NULL) {
+		dbg_ns("%s: zone not found\n", __func__);
+		return KNOT_ENOENT;
+	} else if (zone->contents == NULL) {
+		dbg_ns("%s: zone expired or stub\n", __func__);
+		return KNOT_ENOZONE;
+	}
+	return KNOT_EOK;
+}

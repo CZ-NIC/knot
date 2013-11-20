@@ -447,12 +447,18 @@ enum ns_proc_state {
 	NS_PROC_FAIL = 1 << 3,
 };
 
+enum ns_proc_flag {
+	NS_NOFLAG          = 0,
+	NS_PKTSIZE_NOLIMIT = 1 << 0, /* Don't limit packet size (for TCP). */
+};
+
 struct ns_proc_module;
 
 typedef struct ns_proc_context
 {
 	mm_ctx_t mm;
 	uint16_t type;
+	uint16_t flags;
 	void *data;
 
 	int state;

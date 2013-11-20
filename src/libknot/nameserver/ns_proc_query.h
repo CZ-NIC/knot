@@ -3,9 +3,9 @@
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief Normal query processor.
+ * \brief Query processor.
  *
- * \addtogroup libknot
+ * \addtogroup query_processing
  * @{
  */
 /*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
@@ -24,14 +24,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_NS_PROC_QUERY_H
-#define _KNOT_NS_PROC_QUERY_H
+#ifndef _KNOT_NS_PROC_QUERY_H_
+#define _KNOT_NS_PROC_QUERY_H_
 
 #include "libknot/nameserver/name-server.h"
 
 extern const ns_proc_module_t _ns_proc_query;
 #define NS_PROC_QUERY (&_ns_proc_query)
 #define NS_PROC_QUERY_ID 1
+
+struct query_data {
+	uint16_t rcode;
+	uint16_t rcode_tsig;
+	knot_pkt_t *pkt;
+	const knot_node_t *node, *encloser, *previous;
+	list_t wildcards;
+	mm_ctx_t *mm;
+};
 
 int ns_proc_query_begin(ns_proc_context_t *ctx);
 int ns_proc_query_reset(ns_proc_context_t *ctx);
@@ -40,6 +49,6 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 
-#endif /* _KNOT_NS_PROC_QUERY_H */
+#endif /* _KNOT_NS_PROC_QUERY_H_ */
 
 /*! @} */
