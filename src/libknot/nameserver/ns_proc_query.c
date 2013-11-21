@@ -5,10 +5,15 @@
 #include "libknot/nameserver/ns_proc_query.h"
 #include "libknot/consts.h"
 #include "libknot/util/debug.h"
-#include "libknot/nameserver/chaos.h"
-#include "libknot/nameserver/internet.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
+
+/*! \todo Move close to server when done. */
+#include "libknot/nameserver/chaos.h"
+#include "libknot/nameserver/internet.h"
+#include "libknot/nameserver/axfr.h"
+#include "libknot/nameserver/ixfr.h"
+#include "libknot/nameserver/update.h"
 
 /* Forward decls. */
 static int tsig_check(knot_pkt_t *pkt);
@@ -52,7 +57,7 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	/* Clear */
 	assert(ctx);
 	struct query_data *data = QUERY_DATA(ctx);
-	knot_pkt_free(&data->pkt);
+	data->pkt = NULL;
 	data->rcode = KNOT_RCODE_NOERROR;
 	data->rcode_tsig = 0;
 	data->node = data->encloser = data->previous = NULL;
@@ -81,9 +86,12 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	switch(query_type) {
 	case KNOT_QUERY_NORMAL:
 	case KNOT_QUERY_NOTIFY:
+	case KNOT_QUERY_AXFR:
+	case KNOT_QUERY_IXFR:
+	case KNOT_QUERY_UPDATE:
 		break; /* Supported. */
 	default:
-		dbg_ns("%s: query_type(%hu) NOT SUPPORTED", __func__, query_type);
+		dbg_ns("%s: query_type(%hu) NOT SUPPORTED\n", __func__, query_type);
 		return NS_PROC_NOOP; /* Refuse to process. */
 	}
 
@@ -187,6 +195,26 @@ int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	case KNOT_QUERY_NOTIFY:
 		next_state = internet_notify(pkt, ctx->ns, data);
 		break;
+	case KNOT_QUERY_AXFR:
+		if (ctx->flags & NS_QUERY_NO_AXFR) {
+			/* AXFR disabled, respond with NOTIMPL. */
+			data->rcode = KNOT_RCODE_NOTIMPL;
+			next_state = NS_PROC_FAIL;
+		} else {
+			next_state = axfr_answer(pkt, ctx->ns, data);
+		}
+		break;
+	case KNOT_QUERY_IXFR:
+		if (ctx->flags & NS_QUERY_NO_IXFR) {
+			/* IXFR disabled, respond with SOA. */
+			next_state = ixfr_answer_soa(pkt, ctx->ns, data);
+		} else {
+			next_state = ixfr_answer(pkt, ctx->ns, data);
+		}
+		break;
+	case KNOT_QUERY_UPDATE:
+		next_state = update_answer(pkt, ctx->ns, data);
+		break;
 	default:
 		assert(0); /* Should be caught earlier. */
 		data->rcode = KNOT_RCODE_SERVFAIL;
@@ -271,7 +299,7 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t
 	/* Copy DO bit if set (DNSSEC requested). */
 	if (knot_pkt_have_dnssec(query)) {
 		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
-		knot_edns_set_do(&(resp)->opt_rr);
+		knot_edns_set_do(&resp->opt_rr);
 	}
 	/* Set minimal supported size from EDNS(0). */
 	if (!(ctx->flags & NS_PKTSIZE_NOLIMIT)) {

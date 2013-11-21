@@ -168,6 +168,12 @@ src/libknot/nameserver/chaos.c
 src/libknot/nameserver/chaos.h
 src/libknot/nameserver/internet.c
 src/libknot/nameserver/internet.h
+src/libknot/nameserver/axfr.c
+src/libknot/nameserver/axfr.h
+src/libknot/nameserver/ixfr.c
+src/libknot/nameserver/ixfr.h
+src/libknot/nameserver/update.c
+src/libknot/nameserver/update.h
 src/libknot/nameserver/name-server.c
 src/libknot/nameserver/name-server.h
 src/libknot/nameserver/ns_proc_query.c

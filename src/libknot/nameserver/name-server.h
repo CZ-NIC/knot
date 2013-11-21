@@ -448,8 +448,10 @@ enum ns_proc_state {
 };
 
 enum ns_proc_flag {
-	NS_NOFLAG          = 0,
+	/* Common flags. */
 	NS_PKTSIZE_NOLIMIT = 1 << 0, /* Don't limit packet size (for TCP). */
+	/* Module-specific flags. */
+	NS_PROCFLAG        = 1 << 8
 };
 
 struct ns_proc_module;
@@ -460,6 +462,7 @@ typedef struct ns_proc_context
 	uint16_t type;
 	uint16_t flags;
 	void *data;
+	knot_pkt_t *in, *out;
 
 	int state;
 	knot_nameserver_t *ns;

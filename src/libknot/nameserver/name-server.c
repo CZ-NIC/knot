@@ -4110,6 +4110,8 @@ int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module)
 	/* #10 implement */
 	ctx->module = module;
 	ctx->state = module->begin(ctx);
+
+	dbg_ns("%s -> %d\n", __func__, ctx->state);
 	return ctx->state;
 }
 
@@ -4117,6 +4119,8 @@ int ns_proc_reset(ns_proc_context_t *ctx)
 {
 	/* #10 implement */
 	ctx->state = ctx->module->reset(ctx);
+
+	dbg_ns("%s -> %d\n", __func__, ctx->state);
 	return ctx->state;
 }
 
@@ -4124,13 +4128,25 @@ int ns_proc_finish(ns_proc_context_t *ctx)
 {
 	/* #10 implement */
 	ctx->state = ctx->module->finish(ctx);
+
+	/* Free packet buffers. */
+	knot_pkt_free(&ctx->in);
+	knot_pkt_free(&ctx->out);
+
+	dbg_ns("%s -> %d\n", __func__, ctx->state);
 	return ctx->state;
 }
 
 int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx)
 {
 	/* #10 implement */
-	knot_pkt_t *pkt = knot_pkt_new((uint8_t *)wire, wire_len, &ctx->mm);
+	if (ctx->in == NULL) {
+		ctx->in = knot_pkt_new((uint8_t *)wire, wire_len, &ctx->mm);
+	} else {
+		knot_pkt_reset(ctx->in, (uint8_t *)wire, wire_len);
+	}
+
+	knot_pkt_t *pkt = ctx->in;
 	knot_pkt_parse(pkt, 0);
 
 	switch(ctx->state) {
@@ -4140,13 +4156,20 @@ int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx)
 		return NS_PROC_NOOP;
 	}
 
+	dbg_ns("%s -> %d\n", __func__, ctx->state);
 	return ctx->state;
 }
 
 int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 {
 	/* #10 implement */
-	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, &ctx->mm);
+	if (ctx->out == NULL) {
+		ctx->out = knot_pkt_new(wire, *wire_len, &ctx->mm);
+	} else {
+		knot_pkt_reset(ctx->out, wire, *wire_len);
+	}
+
+	knot_pkt_t *pkt = ctx->out;
 
 	switch(ctx->state) {
 	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;
@@ -4158,9 +4181,7 @@ int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 
 	*wire_len = pkt->size;
 
-	/* Free packet. */
-	knot_pkt_free(&pkt);
-
+	dbg_ns("%s -> %d\n", __func__, ctx->state);
 	return ctx->state;
 }
 

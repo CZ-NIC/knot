@@ -29,9 +29,16 @@
 
 #include "libknot/nameserver/name-server.h"
 
+/* Query processing module implementation. */
 extern const ns_proc_module_t _ns_proc_query;
 #define NS_PROC_QUERY (&_ns_proc_query)
 #define NS_PROC_QUERY_ID 1
+
+/* Query processing flags. */
+enum ns_proc_query_flag {
+	NS_QUERY_NO_AXFR = NS_PROCFLAG << 1, /* Don't process AXFR */
+	NS_QUERY_NO_IXFR = NS_PROCFLAG << 2  /* Don't process IXFR */
+};
 
 struct query_data {
 	uint16_t rcode;
