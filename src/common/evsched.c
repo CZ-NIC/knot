@@ -325,7 +325,7 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 	 */
 	if (s->cur == ev) {
 		s->cur = NULL; /* Invalidate */
-        found = 1; /* Mark as found (although not in heap). */
+		found = -1; /* Return error, since the event is running again */
 	}
 
 	/* Unlock calendar. */
