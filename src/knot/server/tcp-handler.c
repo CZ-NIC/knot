@@ -34,6 +34,7 @@
 
 #include "common/sockaddr.h"
 #include "common/fdset.h"
+#include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
@@ -41,6 +42,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
 #include "libknot/dnssec/cleanup.h"
+#include "libknot/nameserver/ns_proc_query.h"
 
 /*! \brief TCP worker data. */
 typedef struct tcp_worker_t {
@@ -66,27 +68,6 @@ enum {
 static inline int tcp_throttle() {
 	//(TCP_THROTTLE_LO + (int)(tls_rand() * TCP_THROTTLE_HI));
 	return (rand() % TCP_THROTTLE_HI) + TCP_THROTTLE_LO;
-}
-
-/*! \brief Send reply. */
-static int tcp_reply(int fd, uint8_t *qbuf, size_t resp_len)
-{
-	dbg_net("tcp: got answer of size %zd.\n",
-		resp_len);
-
-	int res = 0;
-	if (resp_len > 0) {
-		res = tcp_send(fd, qbuf, resp_len);
-	}
-
-	/* Check result. */
-	if (res < 0 || (size_t)res != resp_len) {
-		dbg_net("tcp: %s: failed: %d - %d.\n",
-			  "socket_send()",
-			  res, errno);
-	}
-
-	return res;
 }
 
 /*! \brief Sweep TCP connection. */
@@ -139,27 +120,18 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
  *       and ensure that in case of good packet the response
  *       is proper.
  */
-static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxlen)
+static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
+                      struct iovec *rx, struct iovec *tx)
 {
-	if (fd < 0 || !w || !w->ioh) {
-		dbg_net("tcp: tcp_handle(%p, %d) - invalid parameters\n", w, fd);
-		return KNOT_EINVAL;
-	}
-
-	dbg_net("tcp: handling TCP event on fd=%d in thread %p.\n",
-	        fd, (void*)pthread_self());
-
-	knot_nameserver_t *ns = w->ioh->server->nameserver;
-
 	/* Check address type. */
 	sockaddr_t addr;
 	sockaddr_prep(&addr);
 
 	/* Receive data. */
-	int n = tcp_recv(fd, buf[QBUF], qbuf_maxlen, &addr);
-	if (n <= 0) {
+	int ret = tcp_recv(fd, rx->iov_base, rx->iov_len, &addr);
+	if (ret <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
-		if (n == KNOT_EAGAIN) {
+		if (ret == KNOT_EAGAIN) {
 			char r_addr[SOCKADDR_STRLEN];
 			sockaddr_tostr(&addr, r_addr, sizeof(r_addr));
 			int r_port = sockaddr_portnum(&addr);
@@ -170,120 +142,32 @@ static int tcp_handle(tcp_worker_t *w, int fd, uint8_t *buf[], size_t qbuf_maxle
 			rcu_read_unlock();
 		}
 		return KNOT_ECONNREFUSED;
-	}
-
-	/* Parse query. */
-	size_t resp_len = qbuf_maxlen; // 64K
-	knot_packet_type_t qtype = KNOT_QUERY_NORMAL;
-	knot_pkt_t *packet = knot_pkt_new(buf[QBUF], n, NULL);
-	if (packet == NULL) {
-		int ret = knot_ns_error_response_from_query_wire(ns, buf[QBUF], n,
-		                                            KNOT_RCODE_SERVFAIL,
-		                                            buf[QRBUF], &resp_len);
-
-		if (ret == KNOT_EOK) {
-			tcp_reply(fd, buf[QRBUF], resp_len);
-		}
-
-		return KNOT_EOK;
-	}
-
-	int parse_res = knot_ns_parse_packet(packet, &qtype);
-	if (knot_unlikely(parse_res != KNOT_EOK)) {
-		if (parse_res > 0) { /* Returned RCODE */
-			int ret = knot_ns_error_response_from_query(ns, packet,
-			                          parse_res, buf[QRBUF], &resp_len);
-
-			if (ret == KNOT_EOK) {
-				tcp_reply(fd, buf[QRBUF], resp_len);
-			}
-		}
-		knot_pkt_free(&packet);
-		return KNOT_EOK;
-	}
-
-	/* Handle query. */
-	int xfrt = -1;
-	knot_ns_xfr_t *xfr = NULL;
-	int res = KNOT_ERROR;
-	switch(qtype) {
-
-	/* Query types. */
-	case KNOT_QUERY_NORMAL:
-		//res = knot_ns_answer_normal(ns, packet, qbuf, &resp_len);
-		if (zones_normal_query_answer(ns, packet, &addr,
-		                              buf[QRBUF], &resp_len,
-		                              NS_TRANSPORT_TCP) == KNOT_EOK) {
-			res = KNOT_EOK;
-		}
-		break;
-	case KNOT_QUERY_AXFR:
-	case KNOT_QUERY_IXFR:
-		if (qtype == KNOT_QUERY_IXFR) {
-			xfrt = XFR_TYPE_IOUT;
-		} else {
-			xfrt = XFR_TYPE_AOUT;
-		}
-
-		/* Answer from query. */
-		xfr = xfr_task_create(NULL, xfrt, XFR_FLAG_TCP);
-		if (xfr == NULL) {
-			knot_ns_error_response_from_query(ns, packet,
-			                                  KNOT_RCODE_SERVFAIL,
-			                                  buf[QRBUF], &resp_len);
-			res = KNOT_EOK;
-			break;
-		}
-		xfr->session = fd;
-		xfr->wire = buf[QRBUF];
-		xfr->wire_size = qbuf_maxlen;
-		xfr->query = packet;
-		xfr_task_setaddr(xfr, &addr, NULL);
-		res = xfr_answer(ns, xfr);
-		knot_pkt_free(&packet);
-		return res;
-
-	case KNOT_QUERY_UPDATE:
-		res = zones_process_update(ns, packet, &addr, buf[QRBUF], &resp_len,
-		                           fd, NS_TRANSPORT_TCP);
-		break;
-
-	case KNOT_QUERY_NOTIFY:
-		res = notify_process_request(ns, packet, &addr,
-					     buf[QRBUF], &resp_len);
-		break;
-
-	/* Unhandled opcodes. */
-	case KNOT_RESPONSE_NOTIFY: /*!< Only in UDP. */
-	case KNOT_RESPONSE_NORMAL: /*!< TCP handler doesn't send queries. */
-	case KNOT_RESPONSE_AXFR:   /*!< Processed in XFR handler. */
-	case KNOT_RESPONSE_IXFR:   /*!< Processed in XFR handler. */
-		knot_ns_error_response_from_query(ns, packet,
-		                                  KNOT_RCODE_REFUSED,
-		                                  buf[QRBUF], &resp_len);
-		res = KNOT_EOK;
-		break;
-
-	/* Unknown opcodes. */
-	default:
-		knot_ns_error_response_from_query(ns, packet,
-		                                  KNOT_RCODE_FORMERR,
-		                                  buf[QRBUF], &resp_len);
-		res = KNOT_EOK;
-		break;
-	}
-
-	/* Send answer. */
-	if (res == KNOT_EOK) {
-		tcp_reply(fd, buf[QRBUF], resp_len);
 	} else {
-		dbg_net("tcp: failed to respond to query type=%d on fd=%d - %s\n",
-		        qtype, fd, knot_strerror(res));;
+		rx->iov_len = ret;
 	}
 
-	knot_pkt_free(&packet);
+	/* Reset context. */
+	uint16_t tx_len = tx->iov_len;
+	ns_proc_reset(query_ctx);
 
-	return res;
+	/* Input packet. */
+	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
+
+	/* Resolve until NOOP or finished. */
+	while (state == NS_PROC_FULL || state == NS_PROC_FAIL) {
+		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
+
+		/* If it has response, send it. */
+		if (state == NS_PROC_FINISH || state == NS_PROC_FULL) {
+			if (tcp_send(fd, tx->iov_base, tx_len) != tx_len) {
+				ret = KNOT_ECONN;
+				break;
+			}
+			tx_len = tx->iov_len; /* Reset size. */
+		}
+	}
+
+	return ret;
 }
 
 int tcp_accept(int fd)
@@ -578,18 +462,31 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 #endif /* HAVE_CAP_NG_H */
 
-	uint8_t *buf[NBUFS];
-	for (unsigned i = 0; i < NBUFS; ++i) {
-		buf[i] = malloc(SOCKET_MTU_SZ);
+	/* Create TCP answering context. */
+	tcp_worker_t *w = thread->data;
+	int ret = KNOT_EOK;
+	ns_proc_context_t query_ctx;
+	memset(&query_ctx, 0, sizeof(query_ctx));
+	query_ctx.ns = w->ioh->server->nameserver;
+	mm_ctx_mempool(&query_ctx.mm, 2 * sizeof(knot_pkt_t));
+
+	/* Packet size not limited by EDNS. */
+	query_ctx.flags |= NS_PKTSIZE_NOLIMIT;
+
+	/* Create iovec abstraction. */
+	mm_ctx_t *mm = &query_ctx.mm;
+	struct iovec bufs[2];
+	for (unsigned i = 0; i < 2; ++i) {
+		bufs[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		bufs[i].iov_base = mm->alloc(mm->ctx, bufs[i].iov_len);
+		if (bufs[i].iov_base == NULL) {
+			ret = KNOT_ENOMEM;
+			goto finish;
+		}
 	}
 
-	tcp_worker_t *w = thread->data;
-	if (w == NULL || buf[QBUF] == NULL || buf[QRBUF] == NULL) {
-		for (unsigned i = 0; i < NBUFS; ++i) {
-			free(buf[i]);
-		}
-		return KNOT_EINVAL;
-	}
+	/* Create query processing context. */
+	ns_proc_begin(&query_ctx, NS_PROC_QUERY);
 
 	/* Accept clients. */
 	dbg_net("tcp: worker %p started\n", w);
@@ -637,7 +534,7 @@ int tcp_loop_worker(dthread_t *thread)
 			if (fd == w->pipe[0]) {
 				tcp_loop_assign(fd, set);
 			} else {
-				int ret = tcp_handle(w, fd, buf, SOCKET_MTU_SZ);
+				int ret = tcp_handle(&query_ctx, fd, &bufs[0], &bufs[1]);
 				if (ret == KNOT_EOK) {
 					/* Update socket activity timer. */
 					fdset_set_watchdog(set, i, max_idle);
@@ -664,12 +561,9 @@ int tcp_loop_worker(dthread_t *thread)
 		}
 	}
 
-	/* Stop whole unit. */
-	for (unsigned i = 0; i < NBUFS; ++i) {
-		free(buf[i]);
-	}
-	dbg_net("tcp: worker %p finished\n", w);
-	return KNOT_EOK;
+finish:
+	mp_delete(mm->ctx);
+	return ret;
 }
 
 int tcp_handler_destruct(dthread_t *thread)

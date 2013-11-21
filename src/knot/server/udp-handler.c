@@ -105,15 +105,6 @@ static inline void udp_pps_begin() {}
 static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 #endif
 
-
-/* Answering context. */
-struct answer_ctx
-{
-	server_t *srv;
-	mm_ctx_t *mm;
-	unsigned slip;
-};
-
 /*! \brief RRL reject procedure. */
 static size_t udp_rrl_reject(const knot_nameserver_t *ns,
                              const knot_pkt_t *packet,
@@ -141,7 +132,7 @@ static size_t udp_rrl_reject(const knot_nameserver_t *ns,
 	return 0; /* Discard response. */
 }
 
-int udp_handle(struct answer_ctx *ans, int fd, sockaddr_t *addr,
+int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
                struct iovec *rx, struct iovec *tx)
 {
 #ifdef DEBUG_ENABLE_BRIEF
@@ -152,138 +143,51 @@ int udp_handle(struct answer_ctx *ans, int fd, sockaddr_t *addr,
 	        strfrom, sockaddr_portnum(addr));
 #endif
 
-#ifdef PACKET_NG
-	ns_proc_context_t query_ctx = {0};
-	memcpy(&query_ctx.mm, ans->mm, sizeof(mm_ctx_t));
-	query_ctx.ns = ans->srv->nameserver;
-
+	/* Reset context. */
 	uint16_t tx_len = tx->iov_len;
-	ns_proc_begin(&query_ctx, NS_PROC_QUERY);
-	int state = ns_proc_in(rx->iov_base, rx->iov_len, &query_ctx);
+	ns_proc_reset(query_ctx);
+
+	/* Input packet. */
+	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
+
+	/* Process answer. */
 	if (state == NS_PROC_FULL) {
-		state = ns_proc_out(tx->iov_base, &tx_len, &query_ctx);
+		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
 	}
+
+	/* Process error response (if failed). */
 	if (state == NS_PROC_FAIL) {
-		state = ns_proc_out(tx->iov_base, &tx_len, &query_ctx);
+		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
 	}
+
+	/* Send response only if finished successfuly. */
 	if (state == NS_PROC_FINISH) {
 		tx->iov_len = tx_len;
-	}
-
-	/*! \todo IXFR query */
-	/*! \todo NOTIFY query */
-	/*! \todo UPDATE */
-
-	ns_proc_finish(&query_ctx);
-	return KNOT_EOK;
-#else
-
-	int res = KNOT_EOK;
-	int rcode = KNOT_RCODE_NOERROR;
-	knot_nameserver_t *ns = ans->srv->nameserver;
-	rrl_table_t *rrl = ans->srv->rrl;
-	knot_packet_type_t qtype = KNOT_QUERY_INVALID;
-
-	/* The packet MUST contain at least DNS header.
-	 * If it doesn't, it's not a DNS packet and we should discard it.
-	 */
-	if (rx->iov_len < KNOT_WIRE_HEADER_SIZE) {
-		return KNOT_EFEWDATA;
-	}
-
-#ifdef MIRROR_MODE
-	memcpy(tx->iov_base, rx->iov_base, rx->iov_len);
-	knot_wire_set_qr(tx->iov_base);
-	tx->iov_len = rx->iov_len;
-	return KNOT_EOK;
-#endif
-
-	knot_pkt_t *query = knot_pkt_new(rx->iov_base, rx->iov_len, ans->mm);
-	if (query == NULL) {
-		dbg_net("udp: failed to create packet\n");
-		int ret = knot_ns_error_response_from_query_wire(ns, rx->iov_base, rx->iov_len,
-		                                            KNOT_RCODE_SERVFAIL,
-		                                            tx->iov_base, &tx->iov_len);
-		return ret;
-	}
-
-	/* Parse query. */
-	rcode = knot_ns_parse_packet(query, &qtype);
-	if (rcode < KNOT_RCODE_NOERROR) {
-		dbg_net("udp: failed to parse packet\n");
-		rcode = KNOT_RCODE_SERVFAIL;
-	}
-
-	/* Handle query. */
-	switch(qtype) {
-	case KNOT_QUERY_NORMAL:
-		res = zones_normal_query_answer(ns, query, addr, tx->iov_base,
-		                                &tx->iov_len, NS_TRANSPORT_UDP);
-		break;
-	case KNOT_QUERY_AXFR:
-		/* RFC1034, p.28 requires reliable transfer protocol.
-		 * Bind responds with FORMERR.
-		 */
-		res = knot_ns_error_response_from_query(ns, query,
-		                                        KNOT_RCODE_FORMERR, tx->iov_base,
-		                                        &tx->iov_len);
-		break;
-	case KNOT_QUERY_IXFR:
-		/* According to RFC1035, respond with SOA. */
-		res = zones_normal_query_answer(ns, query, addr,
-		                                tx->iov_base, &tx->iov_len,
-		                                NS_TRANSPORT_UDP);
-		break;
-	case KNOT_QUERY_NOTIFY:
-		res = notify_process_request(ns, query, addr,
-		                             tx->iov_base, &tx->iov_len);
-		break;
-
-	case KNOT_QUERY_UPDATE:
-		res = zones_process_update(ns, query, addr, tx->iov_base, &tx->iov_len,
-		                           fd, NS_TRANSPORT_UDP);
-		break;
-
-	/* Do not issue response to incoming response to avoid loops. */
-	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
-	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
-	case KNOT_RESPONSE_NORMAL:
-	case KNOT_RESPONSE_NOTIFY:
-	case KNOT_RESPONSE_UPDATE:
-		res = KNOT_EOK;
+	} else {
 		tx->iov_len = 0;
-		break;
-	/* Unknown opcodes */
-	default:
-		res = knot_ns_error_response_from_query(ns, query,
-		                                        rcode, tx->iov_base,
-		                                        &tx->iov_len);
-		break;
 	}
 
-	/* Process RRL. */
-	if (knot_unlikely(rrl != NULL) && rrl->rate > 0) {
-		rrl_req_t rrl_rq;
-		memset(&rrl_rq, 0, sizeof(rrl_req_t));
-		rrl_rq.w = tx->iov_base; /* Wire */
-		rrl_rq.query = query;
+	return KNOT_EOK;
 
-		rcu_read_lock();
-		rrl_rq.flags = query->flags;
-		if (rrl_query(rrl, addr, &rrl_rq, query->zone) != KNOT_EOK) {
-			tx->iov_len = udp_rrl_reject(ns, query, tx->iov_base,
-			                           	KNOT_WIRE_MAX_PKTSIZE,
-			                           	knot_wire_get_rcode(query->wire),
-			                           	&ans->slip);
-		}
-		rcu_read_unlock();
-	}
+	/*! \todo Move RRL to IN processing. */
+//	rrl_table_t *rrl = ans->srv->rrl;
+//	/* Process RRL. */
+//	if (knot_unlikely(rrl != NULL) && rrl->rate > 0) {
+//		rrl_req_t rrl_rq;
+//		memset(&rrl_rq, 0, sizeof(rrl_req_t));
+//		rrl_rq.w = tx->iov_base; /* Wire */
+//		rrl_rq.query = query;
 
-
-	knot_pkt_free(&query);
-
-	return res;
-#endif /* PACKET_NG */
+//		rcu_read_lock();
+//		rrl_rq.flags = query->flags;
+//		if (rrl_query(rrl, addr, &rrl_rq, query->zone) != KNOT_EOK) {
+//			tx->iov_len = udp_rrl_reject(ns, query, tx->iov_base,
+//			                           	KNOT_WIRE_MAX_PKTSIZE,
+//			                           	knot_wire_get_rcode(query->wire),
+//			                           	&ans->slip);
+//		}
+//		rcu_read_unlock();
+//	}
 }
 
 /* Check for sendmmsg syscall. */
@@ -299,7 +203,7 @@ int udp_handle(struct answer_ctx *ans, int fd, sockaddr_t *addr,
 static void* (*_udp_init)(void) = 0;
 static int (*_udp_deinit)(void *) = 0;
 static int (*_udp_recv)(int, void *) = 0;
-static int (*_udp_handle)(struct answer_ctx *, void *) = 0;
+static int (*_udp_handle)(ns_proc_context_t *, void *) = 0;
 static int (*_udp_send)(void *) = 0;
 
 /* UDP recvfrom() request struct. */
@@ -354,7 +258,7 @@ static int udp_recvfrom_recv(int fd, void *d)
 	return 0;
 }
 
-static int udp_recvfrom_handle(struct answer_ctx *ans, void *d)
+static int udp_recvfrom_handle(ns_proc_context_t *ctx, void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 
@@ -364,7 +268,7 @@ static int udp_recvfrom_handle(struct answer_ctx *ans, void *d)
 	rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Process received pkt. */
-	int ret = udp_handle(ans, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
+	int ret = udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
 	if (ret != KNOT_EOK) {
 		rq->iov[TX].iov_len = 0;
 	}
@@ -505,7 +409,7 @@ static int udp_recvmmsg_recv(int fd, void *d)
 	return n;
 }
 
-static int udp_recvmmsg_handle(struct answer_ctx *st, void *d)
+static int udp_recvmmsg_handle(ns_proc_context_t *ctx, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
@@ -517,7 +421,7 @@ static int udp_recvmmsg_handle(struct answer_ctx *st, void *d)
 		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
 		rq->addrs[i].len = rq->msgs[RX][i].msg_hdr.msg_namelen;
 
-		ret = udp_handle(st, rq->fd, rq->addrs + i, rx, tx);
+		ret = udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
 		if (ret != KNOT_EOK) { /* Do not send. */
 			tx->iov_len = 0;
 		}
@@ -593,15 +497,18 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 	void *rq = _udp_init();
 	ifacelist_t *ref = NULL;
 
-	/* Create memory pool context. */
-	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, 2 * sizeof(knot_pkt_t));
-
 	/* Create UDP answering context. */
-	struct answer_ctx ans_ctx;
-	ans_ctx.srv = h->server;
-	ans_ctx.slip = 0;
-	ans_ctx.mm = &mm;
+	ns_proc_context_t query_ctx;
+	memset(&query_ctx, 0, sizeof(query_ctx));
+	query_ctx.ns = h->server->nameserver;
+	mm_ctx_mempool(&query_ctx.mm, 2 * sizeof(knot_pkt_t));
+
+	/* Disable transfers over UDP. */
+	query_ctx.flags |= NS_QUERY_NO_AXFR;
+	query_ctx.flags |= NS_QUERY_NO_IXFR;
+
+	/* Create query processing context. */
+	ns_proc_begin(&query_ctx, NS_PROC_QUERY);
 
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */
@@ -654,18 +561,20 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 		for (unsigned fd = minfd; fd <= maxfd; ++fd) {
 			if (FD_ISSET(fd, &rfds)) {
 				while ((rcvd = _udp_recv(fd, rq)) > 0) {
-					_udp_handle(&ans_ctx, rq);
+					_udp_handle(&query_ctx, rq);
 					_udp_send(rq);
-					mp_flush(mm.ctx);
 					udp_pps_sample(rcvd, thr_id);
 				}
 			}
 		}
 	}
 
+	/* Close query processing context. */
+	ns_proc_finish(&query_ctx);
+
 	_udp_deinit(rq);
 	ref_release((ref_t *)ref);
-	mp_delete(mm.ctx);
+	mp_delete(query_ctx.mm.ctx);
 	return KNOT_EOK;
 }
 
