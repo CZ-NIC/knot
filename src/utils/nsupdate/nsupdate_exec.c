@@ -128,7 +128,7 @@ enum {
 };
 
 static int dname_isvalid(const char *lp, size_t len) {
-	knot_dname_t *dn = knot_dname_from_str(lp, len);
+	knot_dname_t *dn = knot_dname_from_str(lp);
 	if (dn == NULL) {
 		return 0;
 	}
@@ -164,7 +164,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Extract owner. */
 	size_t len = strcspn(lp, SEP_CHARS);
-	knot_dname_t *owner = knot_dname_from_str(lp, len);
+	knot_dname_t *owner = knot_dname_from_str(lp);
 	if (owner == NULL) {
 		return KNOT_EPARSEFAIL;
 	}
@@ -252,10 +252,10 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	return ret;
 }
 
-static server_t *parse_host(const char *lp, const char* default_port)
+static srv_info_t *parse_host(const char *lp, const char* default_port)
 {
 	/* Extract server address. */
-	server_t *srv = NULL;
+	srv_info_t *srv = NULL;
 	size_t len = strcspn(lp, SEP_CHARS);
 	char *addr = strndup(lp, len);
 	if (!addr) return NULL;
@@ -264,7 +264,7 @@ static server_t *parse_host(const char *lp, const char* default_port)
 	/* Store port/service if present. */
 	lp = tok_skipspace(lp + len);
 	if (*lp == '\0') {
-		srv = server_create(addr, default_port);
+		srv = srv_info_create(addr, default_port);
 		free(addr);
 		return srv;
 	}
@@ -278,7 +278,7 @@ static server_t *parse_host(const char *lp, const char* default_port)
 	DBG("%s: parsed port: %s\n", __func__, port);
 
 	/* Create server struct. */
-	srv = server_create(addr, port);
+	srv = srv_info_create(addr, port);
 	free(addr);
 	free(port);
 	return srv;
@@ -292,7 +292,7 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	scanner_t *s = p->rrp;
 	if (!p->pkt) {
 		p->pkt = create_empty_packet(MAX_PACKET_SIZE);
-		qname = knot_dname_from_str(p->zone, strlen(p->zone));
+		qname = knot_dname_from_str(p->zone);
 		ret = knot_query_set_question(p->pkt, qname, p->class_num, p->type_num);
 		knot_dname_free(&qname);
 		if (ret != KNOT_EOK)
@@ -339,13 +339,13 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	switch(sect) {
 	case UP_ADD:
 	case UP_DEL:
-		ret = knot_response_add_rrset_authority(p->pkt, rr, 0, 0, 0);
+		ret = knot_response_add_rrset_authority(p->pkt, rr, KNOT_PF_NOTRUNC);
 		break;
 	case PQ_NXDOMAIN:
 	case PQ_NXRRSET:
 	case PQ_YXDOMAIN:
 	case PQ_YXRRSET:
-		ret = knot_response_add_rrset_answer(p->pkt, rr, 0, 0, 0);
+		ret = knot_response_add_rrset_answer(p->pkt, rr, KNOT_PF_NOTRUNC);
 		break;
 	default:
 		assert(0); /* Should never happen. */
@@ -788,12 +788,12 @@ int cmd_server(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	/* Parse host. */
-	server_t *srv = parse_host(lp, params->server->service);
+	srv_info_t *srv = parse_host(lp, params->server->service);
 
 	/* Enqueue. */
 	if (!srv) return KNOT_ENOMEM;
 
-	server_free(params->server);
+	srv_info_free(params->server);
 	params->server = srv;
 
 	return KNOT_EOK;
@@ -804,12 +804,12 @@ int cmd_local(const char* lp, nsupdate_params_t *params)
 	DBG("%s: lp='%s'\n", __func__, lp);
 
 	/* Parse host. */
-	server_t *srv = parse_host(lp, "0");
+	srv_info_t *srv = parse_host(lp, "0");
 
 	/* Enqueue. */
 	if (!srv) return KNOT_ENOMEM;
 
-	server_free(params->srcif);
+	srv_info_free(params->srcif);
 	params->srcif = srv;
 
 	return KNOT_EOK;

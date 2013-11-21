@@ -124,10 +124,10 @@ typedef struct knot_packet knot_packet_t;
  */
 enum {
 	KNOT_PF_NULL      = 0 << 0, /*!< No flags. */
-	KNOT_PF_QUERY     = 1 << 0, /*!< Packet is query. */
 	KNOT_PF_WILDCARD  = 1 << 1, /*!< Query to wildcard name. */
-	KNOT_PF_RESPONSE  = 1 << 2, /*!< Packet is response. */
-	KNOT_PF_FREE_WIRE = 1 << 3  /*!< Free wire. */
+	KNOT_PF_FREE_WIRE = 1 << 2, /*!< Free wire. */
+	KNOT_PF_NOTRUNC   = 1 << 3, /*!< Don't truncate. */
+	KNOT_PF_CHECKDUP  = 1 << 4  /*!< Check for duplicates. */
 };
 
 /*----------------------------------------------------------------------------*/

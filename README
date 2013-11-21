@@ -11,16 +11,9 @@ Knot DNS has several dependencies:
 
 Optional packages:
 * libcap-ng >= 0.6.4 (for POSIX 1003.1e capabilites(7))
-* ragel (for fast zone parsing)
 
 Dependencies for building documentation:
 * texinfo
-
-By default Knot DNS is distributed with a slower zone file parser because of
-smaller source file and quick compile time. In most cases it is sufficient.
-If you plan to process large zone files, we recommend to build Knot DNS
-using ./configure --enable-fastparser. In this case Ragel compiler is required
-and it is normal if the C compiler takes much more time (minutes).
 
 Installation
 ============
@@ -45,7 +38,6 @@ $ sudo apt-get install git-core libtool autoconf flex bison libssl-dev liburcu-d
 
 Install optional packages:
 ($ sudo apt-get install libcap-ng-dev)
-($ sudo apt-get install ragel)
 
 If the liburcu-dev package is not present, install it from the source code
 (http://lttng.org/urcu)
@@ -63,7 +55,6 @@ $ yum install libtool autoconf flex bison openssl-devel userspace-rcu-devel
 
 Install optional packages:
 ($ yum install libcap-ng-devel)
-($ yum install ragel)
 
 OS X
 ----
@@ -97,6 +88,8 @@ $ make
 Install Knot DNS into system:
 $ sudo make install
 $ sudo ldconfig
+
+NOTE: If you want to reduce zscanner compile time, use configure option --disable-fastparser.
 
 Running
 =======

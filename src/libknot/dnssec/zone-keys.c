@@ -18,12 +18,14 @@
 #include <assert.h>
 #include <dirent.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include "common/errcode.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/algorithm.h"
+#include "libknot/consts.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/dnssec/zone-keys.h"
+#include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 
 /*!
@@ -34,8 +36,8 @@ static void free_sign_contexts(knot_zone_keys_t *keys)
 	assert(keys);
 
 	for (int i = 0; i < keys->count; i++) {
-		knot_dnssec_sign_free(keys->contexts[i]);
-		keys->contexts[i] = NULL;
+		knot_dnssec_sign_free(keys->keys[i].context);
+		keys->keys[i].context = NULL;
 	}
 }
 
@@ -48,8 +50,9 @@ static int init_sign_contexts(knot_zone_keys_t *keys)
 	assert(keys);
 
 	for (int i = 0; i < keys->count; i++) {
-		keys->contexts[i] = knot_dnssec_sign_init(&keys->keys[i]);
-		if (keys->contexts[i] == NULL) {
+		knot_zone_key_t *key = &keys->keys[i];
+		key->context = knot_dnssec_sign_init(&key->dnssec_key);
+		if (key->context == NULL) {
 			free_sign_contexts(keys);
 			return KNOT_ENOMEM;
 		}
@@ -59,40 +62,21 @@ static int init_sign_contexts(knot_zone_keys_t *keys)
 }
 
 /*!
- * \brief Check if the key is in active period.
- */
-static bool is_current_key(const knot_key_params_t *key)
-{
-	assert(key);
-
-	time_t now = time(NULL);
-
-	if (now < key->time_activate) {
-		return false;
-	}
-
-	if (key->time_inactive && now > key->time_inactive) {
-		return false;
-	}
-
-	return true;
-}
-
-/*!
  * \brief Get zone key by a keytag.
  */
-const knot_dnssec_key_t *get_zone_key(const knot_zone_keys_t *keys,
-                                      uint16_t keytag)
+const knot_zone_key_t *knot_get_zone_key(const knot_zone_keys_t *keys,
+                                         uint16_t keytag)
 {
 	if (!keys) {
 		return NULL;
 	}
 
-	const knot_dnssec_key_t *result = NULL;
+	const knot_zone_key_t *result = NULL;
 
 	for (int i = 0; i < keys->count; i++) {
-		if (keys->keys[i].keytag == keytag) {
-			result = &keys->keys[i];
+		const knot_zone_key_t *key = &keys->keys[i];
+		if (key->dnssec_key.keytag == keytag) {
+			result = key;
 			break;
 		}
 	}
@@ -101,12 +85,61 @@ const knot_dnssec_key_t *get_zone_key(const knot_zone_keys_t *keys,
 }
 
 /*!
+ * \brief Get key feature flags from key parameters.
+ */
+static void set_zone_key_flags(const knot_key_params_t *params,
+                               knot_zone_key_t *key)
+{
+	assert(params);
+	assert(key);
+
+	uint32_t now = time(NULL);
+
+	uint32_t next_event = UINT32_MAX;
+	uint32_t timestamps[4] = {
+		params->time_publish,
+		params->time_activate,
+		params->time_inactive,
+		params->time_delete
+	};
+
+	for (int i = 0; i < 4; i++) {
+		uint32_t ts = timestamps[i];
+		if (ts != 0 && now <= ts && ts < next_event) {
+			next_event = ts;
+		}
+	}
+
+	key->next_event = next_event;
+
+	key->is_ksk = params->flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
+
+	key->is_active = params->time_activate <= now &&
+	                 (params->time_inactive == 0 || now <= params->time_inactive);
+
+	key->is_public = params->time_publish <= now &&
+	                 (params->time_delete == 0 || now <= params->time_delete);
+}
+
+/*!
+ * \brief Check if key should be already removed from the zone.
+ */
+static bool was_removed(const knot_key_params_t *params)
+{
+	assert(params);
+
+	time_t now = time(NULL);
+
+	return params->time_delete != 0 && now > params->time_delete;
+}
+
+/*!
  * \brief Load zone keys from a key directory.
  *
  * \todo Maybe use dynamic list instead of fixed size array.
  */
-int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
-		   bool nsec3_enabled, knot_zone_keys_t *keys)
+int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
+                        bool nsec3_enabled, knot_zone_keys_t *keys)
 {
 	if (!keydir_name || !zone_name || !keys) {
 		return KNOT_EINVAL;
@@ -114,7 +147,15 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 
 	DIR *keydir = opendir(keydir_name);
 	if (!keydir) {
-		return KNOT_DNSSEC_EINVALID_KEY;
+		return KNOT_DNSSEC_ENOKEYDIR;
+	}
+
+	char *zname = knot_dname_to_str(zone_name);
+	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
+	free(zname);
+	if (msgpref == NULL) {
+		closedir(keydir);
+		return KNOT_ENOMEM;
 	}
 
 	struct dirent entry_buf = { 0 };
@@ -135,8 +176,10 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		size_t path_len = strlen(keydir_name) + 1 + strlen(entry->d_name);
 		char *path = malloc((path_len + 1) * sizeof(char));
 		if (!path) {
-			dbg_dnssec_detail("failed to allocate key path\n");
-			continue;
+			ERR_ALLOC_FAILED;
+			closedir(keydir);
+			free(msgpref);
+			return KNOT_ENOMEM;
 		}
 
 		int written = snprintf(path, path_len + 1, "%s/%s",
@@ -151,8 +194,8 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		free(path);
 
 		if (result != KNOT_EOK) {
-			dbg_dnssec_detail("failed to load key parameters (%s)\n",
-			                  knot_strerror(result));
+			log_zone_warning("DNSSEC: Failed to load key %s: %s\n",
+			                  entry->d_name, knot_strerror(result));
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -163,14 +206,24 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		if (!is_current_key(&params)) {
-			dbg_dnssec_detail("skipping key, inactive period\n");
+		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
+			dbg_dnssec_detail("skipping key, different purpose\n");
 			knot_free_key_params(&params);
 			continue;
 		}
 
-		if (knot_get_key_type(&params) != KNOT_KEY_DNSSEC) {
-			dbg_dnssec_detail("skipping key, different purpose\n");
+		knot_zone_key_t key;
+		memset(&key, '\0', sizeof(key));
+		set_zone_key_flags(&params, &key);
+
+		dbg_dnssec_detail("next key event %" PRIu32 "\n", key.next_event);
+
+		if (!key.is_active && !key.is_public && !was_removed(&params)) {
+			log_zone_notice("%s Ignoring key %d (%s): "
+			                "%s, %s.\n", msgpref, params.keytag,
+			                entry->d_name,
+			                key.is_active ? "active" : "inactive",
+			                key.is_public ? "public" : "not-public");
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -178,30 +231,38 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
 		) {
-			dbg_dnssec_detail("skipping key, incompatible algorithm\n");
+			log_zone_notice("%s Ignoring key %d (%s): unknown "
+			                "algorithm or non-NSEC3 algrorithm when"
+			                "NSEC is requested.\n", msgpref,
+			                params.keytag, entry->d_name);
 			knot_free_key_params(&params);
 			continue;
 		}
 
-		if (get_zone_key(keys, params.keytag) != NULL) {
-			dbg_dnssec_detail("skipping key, duplicate keytag\n");
+		if (knot_get_zone_key(keys, params.keytag) != NULL) {
+			log_zone_notice("%s Ignoring key %d (%s): duplicate "
+			                "keytag.\n", msgpref, params.keytag,
+			                entry->d_name);
 			knot_free_key_params(&params);
 			continue;
 		}
 
-		result = knot_dnssec_key_from_params(&params,
-		                                     &keys->keys[keys->count]);
+		result = knot_dnssec_key_from_params(&params, &key.dnssec_key);
 		if (result != KNOT_EOK) {
-			dbg_dnssec_detail("cannot create DNSSEC key (%s)\n",
-			                  knot_strerror(result));
+			log_zone_error("%s Failed to process key %d (%s): %s\n",
+			               msgpref, params.keytag, entry->d_name,
+			               knot_strerror(result));
 			knot_free_key_params(&params);
 			continue;
 		}
 
-		dbg_dnssec_detail("key is valid, tag %d, %s\n", params.keytag,
-		                  (params.flags & 1 ? "KSK" : "ZSK"));
+		log_zone_info("%s - Key is valid, tag %d, file %s, %s, %s, %s\n",
+		              msgpref, params.keytag, entry->d_name,
+		              key.is_ksk ? "KSK" : "ZSK",
+		              key.is_active ? "active" : "inactive",
+		              key.is_public ? "public" : "not-public");
 
-		keys->is_ksk[keys->count] = params.flags & 1;
+		keys->keys[keys->count] = key;
 		keys->count += 1;
 
 		knot_free_key_params(&params);
@@ -210,21 +271,27 @@ int load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 	closedir(keydir);
 
 	if (keys->count == 0) {
-		return KNOT_DNSSEC_EINVALID_KEY;
+		free(msgpref);
+		return KNOT_DNSSEC_ENOKEY;
+	} else if (keys->count == KNOT_MAX_ZONE_KEYS) {
+		log_zone_notice("%s - Reached maximum count of keys.\n",
+		                msgpref);
 	}
+	free(msgpref);
 
 	int result = init_sign_contexts(keys);
 	if (result != KNOT_EOK) {
-		dbg_dnssec_detail("init_sign_contexts() failed (%s)\n",
-		                  knot_strerror(result));
-		free_zone_keys(keys);
+		knot_free_zone_keys(keys);
 		return result;
 	}
 
 	return KNOT_EOK;
 }
 
-void free_zone_keys(knot_zone_keys_t *keys)
+/*!
+ * \brief Free structure with zone keys and associated DNSSEC contexts.
+ */
+void knot_free_zone_keys(knot_zone_keys_t *keys)
 {
 	if (!keys) {
 		return;
@@ -233,6 +300,22 @@ void free_zone_keys(knot_zone_keys_t *keys)
 	free_sign_contexts(keys);
 
 	for (int i = 0; i < keys->count; i++) {
-		knot_dnssec_key_free(&keys->keys[i]);
+		knot_dnssec_key_free(&keys->keys[i].dnssec_key);
 	}
+
+	memset(keys, '\0', sizeof(*keys));
+}
+
+/*!
+ * \brief Get timestamp of next key event.
+ */
+uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys)
+{
+	uint32_t result = UINT32_MAX;
+
+	for (int i = 0; i < keys->count; i++) {
+		result = MIN(result, keys->keys[i].next_event);
+	}
+
+	return result;
 }

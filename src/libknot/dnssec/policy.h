@@ -41,14 +41,17 @@ typedef struct {
 } knot_dnssec_policy_t;
 
 #define KNOT_DNSSEC_DEFAULT_LIFETIME 2592000
+#define KNOT_DNSSEC_DEFAULT_REFRESH 7200
 
 #define DEFAULT_DNSSEC_POLICY { .now = time_now(), \
 				.sign_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME, \
-				.sign_refresh = 7200, .forced_sign = false, \
+				.sign_refresh = KNOT_DNSSEC_DEFAULT_REFRESH, \
+				.forced_sign = false, \
 				.soa_up = KNOT_SOA_SERIAL_INC }
 #define FORCED_DNSSEC_POLICY {  .now = time_now(), \
 				.sign_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME, \
-				.sign_refresh = 7200, .forced_sign = true, \
+				.sign_refresh = KNOT_DNSSEC_DEFAULT_REFRESH, \
+				.forced_sign = true, \
 				.soa_up = KNOT_SOA_SERIAL_INC }
 
 #endif // _KNOT_DNSSEC_POLICY_H_

@@ -451,6 +451,10 @@ int knot_zone_contents_any_disabled(const knot_zone_contents_t *contents)
 
 void knot_zone_contents_disable_any(knot_zone_contents_t *contents)
 {
+	if (contents == NULL) {
+		return;
+	}
+
 	contents->flags |= KNOT_ZONE_FLAGS_ANY;
 }
 
@@ -458,6 +462,10 @@ void knot_zone_contents_disable_any(knot_zone_contents_t *contents)
 
 void knot_zone_contents_enable_any(knot_zone_contents_t *contents)
 {
+	if (contents == NULL) {
+		return;
+	}
+
 	contents->flags &= ~KNOT_ZONE_FLAGS_ANY_MASK;
 }
 

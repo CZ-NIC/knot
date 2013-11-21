@@ -20,34 +20,108 @@
 
 #include <urcu.h>
 
+#include "common/binsearch.h"
 #include "libknot/common.h"
 #include "libknot/zone/zone.h"
 #include "libknot/zone/zonedb.h"
 #include "libknot/dname.h"
+#include "libknot/util/wire.h"
 #include "libknot/zone/node.h"
 #include "libknot/util/debug.h"
+
+/* Array sorter generator. */
+static int knot_zonedb_cmp(const knot_dname_t* d1, const knot_dname_t *d2);
+#define ASORT_PREFIX(X) knot_zonedb_##X
+#define ASORT_KEY_TYPE knot_zone_t* 
+#define ASORT_LT(x, y) (knot_zonedb_cmp((x)->name, (y)->name) < 0)
+#include "common/array-sort.h"
+
+/* Defines */
+#define BSEARCH_THRESHOLD 8 /* >= N for which binary search is favoured */
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
+/*! \brief Discard zone in zone database. */
+static void delete_zone_from_db(knot_zone_t *zone)
+{
+	synchronize_rcu();
+	knot_zone_set_flag(zone, KNOT_ZONE_DISCARDED, 1);
+	knot_zone_release(zone);
+}
+
+/*! \brief Zone database zone name compare function. */
+static int knot_zonedb_cmp(const knot_dname_t* d1, const knot_dname_t *d2)
+{
+	int a_labels = knot_dname_labels(d1, NULL);
+	int b_labels = knot_dname_labels(d2, NULL);
+	
+	/* Lexicographic order. */
+	if (a_labels == b_labels) {
+		return knot_dname_cmp(d1, d2);
+	}
+	
+	/* Name with more labels goes first. */
+	return b_labels - a_labels;
+}
+
+/*! \brief Find an equal name in sorted array (binary search). */
+#define ZONEDB_LEQ(arr,i,x) (knot_zonedb_cmp(((arr)[i])->name, (x)) <= 0)
+static long knot_zonedb_binsearch(knot_zone_t **arr, unsigned count,
+                                  const knot_dname_t *name)
+{
+	int k = BIN_SEARCH_FIRST_GE_CMP(arr, count, ZONEDB_LEQ, name) - 1;
+	if (k > -1 && knot_dname_is_equal(arr[k]->name, name)) {
+			return k;
+	}
+
+	return -1;
+
+}
+
+/*! \brief Find an equal name in an array (linear search).
+ *  \note Linear search uses simple name equality test which could be
+ *        faster than canonical compare and therefore more efficient for
+ *        smaller arrays.
+ */
+static long knot_zonedb_linear_search(knot_zone_t **arr, unsigned count,
+                               const knot_dname_t *name) {
+	for (unsigned i = 0; i < count; ++i) {
+		if (knot_dname_is_equal(arr[i]->name, name)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+/*! \brief Zone array search. */
+static long knot_zonedb_array_search(knot_zone_t **arr, unsigned count,
+                               const knot_dname_t *name)
+{
+	if (count < BSEARCH_THRESHOLD) {
+		return knot_zonedb_linear_search(arr, count, name);
+	} else {
+		return knot_zonedb_binsearch(arr, count, name);
+	}
+}
+
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_zonedb_t *knot_zonedb_new()
+knot_zonedb_t *knot_zonedb_new(unsigned size)
 {
-	knot_zonedb_t *db =
-		(knot_zonedb_t *)malloc(sizeof(knot_zonedb_t));
+	knot_zonedb_t *db = malloc(sizeof(knot_zonedb_t));
 	CHECK_ALLOC_LOG(db, NULL);
 
-	db->zone_tree = hattrie_create();
-	if (db->zone_tree == NULL) {
+	memset(db, 0, sizeof(knot_zonedb_t));
+	db->reserved = size;
+	db->array = malloc(size * sizeof(knot_zone_t*));
+	if (db->array == NULL) {
 		free(db);
 		return NULL;
 	}
-
-	db->zone_count = 0;
 
 	return db;
 }
@@ -72,12 +146,12 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 		}
 	}
 
-	/* Insert new record. */
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, zone->name, NULL);
-	*hattrie_get(db->zone_tree, (char*)lf+1, *lf) = zone;
+	/* Invalidate search index. */
+	db->stack_height = 0;
 
-	db->zone_count++;
+	/* Create new record. */
+	assert(db->count < db->reserved); /* Should be already checked. */
+	db->array[db->count++] = zone;
 
 	return ret;
 }
@@ -87,57 +161,115 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
                                      const knot_dname_t *zone_name)
 {
-	/* Fetch if exists. */
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, zone_name, NULL);
-
-	value_t *old_zone = hattrie_tryget(db->zone_tree, (char*)lf+1, *lf);
-	if (old_zone == NULL)
+	if (db == NULL || zone_name == NULL) {
 		return NULL;
-
-	/* Remove from db. */
-	if (hattrie_del(db->zone_tree, (char*)lf+1, *lf) < 0)
-		return NULL;
-
-	--db->zone_count;
-	return (knot_zone_t *)*old_zone;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_zone_t *knot_zonedb_find_zone(const knot_zonedb_t *db,
-                                       const knot_dname_t *zone_name)
-{
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, zone_name, NULL);
-	value_t *val = hattrie_tryget(db->zone_tree, (char*)lf+1, *lf);
-	if (val)
-		return (knot_zone_t *)*val;
-
-	return NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
-                                                    const knot_dname_t *dname)
-{
-	if (db == NULL || dname == NULL) {
+	}
+	
+	/* Find the possible zone to remove. */
+	int pos = knot_zonedb_array_search(db->array, db->count, zone_name);
+	if (pos < 0) {
 		return NULL;
 	}
 
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, dname, NULL);
+	/* Invalidate search index. */
+	db->stack_height = 0;
+	
+	/* Move rest of the array to not break the ordering. */
+	knot_zone_t *removed_zone = db->array[pos];
+	unsigned remainder = (db->count - (pos + 1)) * sizeof(knot_zone_t*);
+	memmove(db->array + pos, db->array + pos + 1, remainder);
+	--db->count;
+	
+	return removed_zone;
+}
 
-	/* Attempt to find longest matching prefix.
-	 * as zones are stored as \x00com\x00lake\x00
-	 * the longest matching prefix is essentially a best match,
-	 * as it is guaranteed that inserted names end in \x00
-	 */
-	value_t *val = NULL;
-	int len = hattrie_find_lpr(db->zone_tree, (char*)lf+1, *lf, &val);
-	if (len > -1) {
-		return (const knot_zone_t *)*val;
+/*----------------------------------------------------------------------------*/
+
+int knot_zonedb_build_index(knot_zonedb_t *db)
+{
+	if (!db) {
+		return KNOT_EINVAL;
+	}
+
+	/* First, sort all zones based on the label count first and lexicographic
+	 * order second. The name with most labels goes first. 
+	 * i.e. {a, a.b, a.c, b } -> {a.b, a.c, a, b} */
+	knot_zonedb_sort(db->array, db->count);
+	
+	/* Scan the array and group names with the same label count together. */
+	int prev_label_count = -1;
+	int current_label_count = -1;
+	knot_zone_t **endp = db->array + db->count;
+	knot_zonedb_stack_t *stack_top = db->stack - 1; /* Before actual stack. */
+	db->stack_height = 0;
+	
+	for (knot_zone_t **zone = db->array; zone != endp; ++zone) {
+		/* Insert into current label count group. */
+		current_label_count = knot_dname_labels((*zone)->name, NULL);
+		if (current_label_count == prev_label_count) {
+			++stack_top->count;
+			continue;
+		}
+		
+		/* Begin new label count group. */
+		++stack_top;
+		++db->stack_height;
+		stack_top->count = 1;
+		stack_top->labels = current_label_count;
+		stack_top->array = zone;
+		prev_label_count = current_label_count;
+		
+	}
+	
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_zone_t *knot_zonedb_find_zone(knot_zonedb_t *db,
+                                       const knot_dname_t *zone_name)
+{
+	if (!db || !zone_name) {
+		return NULL;
+	}
+
+	int pos = knot_zonedb_array_search(db->array, db->count, zone_name);
+	if (pos < 0) {
+		return NULL;
+	}
+
+	return db->array[pos];
+}
+
+/*----------------------------------------------------------------------------*/
+
+knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
+                                            const knot_dname_t *dname)
+{
+	int zone_labels = knot_dname_labels(dname, NULL);
+	if (db == NULL || zone_labels < 0) {
+		return NULL;
+	}
+	
+	/* Walk down the stack, from the most labels to least. */
+	knot_zonedb_stack_t *sp = db->stack, *endp = db->stack + db->stack_height;
+	for (; sp != endp; ++sp) {
+		/* Inspect only zones with <= labels than zone_labels. */
+		if (sp->labels > zone_labels) {
+			continue;
+		}
+
+		/* Skip non-matched labels. */
+		while (sp->labels < zone_labels) {
+			dname = knot_wire_next_label(dname, NULL);
+			--zone_labels;
+		}
+
+		/* Possible candidate, search the array. */
+		int k = knot_zonedb_array_search(sp->array, sp->count, dname);
+		if (k > -1) {
+			return sp->array[k];
+		}
 	}
 
 	return NULL;
@@ -148,6 +280,7 @@ const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
                                               const knot_dname_t *zone_name)
 {
+	
 	if (db == NULL || zone_name == NULL) {
 		return NULL;
 	}
@@ -164,98 +297,39 @@ knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
 
 /*----------------------------------------------------------------------------*/
 
-knot_zonedb_t *knot_zonedb_copy(const knot_zonedb_t *db)
-{
-	knot_zonedb_t *db_new =
-		(knot_zonedb_t *)malloc(sizeof(knot_zonedb_t));
-	CHECK_ALLOC_LOG(db_new, NULL);
-
-	db_new->zone_tree = hattrie_dup(db->zone_tree, NULL);
-	if (db_new->zone_tree == NULL) {
-		free(db_new);
-		return NULL;
-	}
-
-	return db_new;
-}
-
-/*----------------------------------------------------------------------------*/
-
 size_t knot_zonedb_zone_count(const knot_zonedb_t *db)
 {
-	return db->zone_count;
-}
-
-/*----------------------------------------------------------------------------*/
-
-struct knot_zone_db_tree_arg {
-	const knot_zone_t **zones;
-	size_t count;
-};
-
-/*----------------------------------------------------------------------------*/
-
-static void save_zone_to_array(void *node, void *data)
-{
-	knot_zone_t *zone = (knot_zone_t *)node;
-	struct knot_zone_db_tree_arg *args =
-		(struct knot_zone_db_tree_arg *)data;
-	assert(data);
-	args->zones[args->count++] = zone;
+	return db->count;
 }
 
 /*----------------------------------------------------------------------------*/
 
 const knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db)
 {
-	struct knot_zone_db_tree_arg args;
-	args.zones = malloc(sizeof(knot_zone_t *) * db->zone_count);
-	args.count = 0;
-	CHECK_ALLOC_LOG(args.zones, NULL);
-
-	hattrie_iter_t *i = hattrie_iter_begin(db->zone_tree, 1);
-	while(!hattrie_iter_finished(i)) {
-		save_zone_to_array(*hattrie_iter_val(i), &args);
-		hattrie_iter_next(i);
+	if (db == NULL) {
+		return NULL;
 	}
-	hattrie_iter_free(i);
-
-	assert(db->zone_count == args.count);
-
-	return args.zones;
+	
+	return (const knot_zone_t **)db->array;
 }
 
 /*----------------------------------------------------------------------------*/
 
 void knot_zonedb_free(knot_zonedb_t **db)
 {
-	hattrie_free((*db)->zone_tree);
+	free((*db)->array);
 	free(*db);
 	*db = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int delete_zone_from_db(value_t *node, void *data)
-{
-	UNUSED(data);
-	assert(node);
-	if (*node != NULL) {
-		knot_zone_t *zone = (knot_zone_t *)(*node);
-		synchronize_rcu();
-		knot_zone_set_flag(zone, KNOT_ZONE_DISCARDED, 1);
-		knot_zone_release(zone);
-		*node = NULL;
-	}
-
-	return KNOT_EOK;
-}
-
 void knot_zonedb_deep_free(knot_zonedb_t **db)
 {
 	dbg_zonedb("Deleting zone db (%p).\n", *db);
-	hattrie_apply_rev((*db)->zone_tree, delete_zone_from_db, NULL);
-	hattrie_free((*db)->zone_tree);
-	free(*db);
-	*db = NULL;
+	for (unsigned i = 0; i < (*db)->count; ++i) {
+		delete_zone_from_db((*db)->array[i]);
+	}
+
+	knot_zonedb_free(db);
 }

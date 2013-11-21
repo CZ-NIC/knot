@@ -206,8 +206,7 @@ int main(int argc, char *argv[])
 		knot_key_params_t params = { 0 };
 		knot_tsig_key_t tsig_key = { 0 };
 		const char *owner = "shared.example.com.";
-		knot_dname_t *name = knot_dname_from_str(owner,
-							     strlen(owner));
+		knot_dname_t *name = knot_dname_from_str(owner);
 
 		result = knot_tsig_key_from_params(&params, &tsig_key);
 		ok(result == KNOT_EINVAL,

@@ -58,7 +58,7 @@
 /tests/sample_conf.c
 /src/zscanner/descriptor.h
 /src/zscanner/descriptor.c
-/src/zscanner/scanner.c.in
+/src/zscanner/scanner.c
 /src/zscanner/tests/tap/libtap.a
 /tests/tap/libtap.a
 /tests/tmp/
@@ -94,4 +94,5 @@
 /tests/server
 /tests/slab
 /tests/wire
+/tests/zonedb
 /tests/ztree

@@ -59,16 +59,15 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 
 	// Read zone keys from disk
 	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
-	int result = load_zone_keys(conf()->dnssec_keydir,
-	                            zone->contents->apex->owner,
-	                            nsec3_enabled, zone_keys);
+	int result = knot_load_zone_keys(conf()->dnssec_keydir,
+	                                 zone->contents->apex->owner,
+	                                 nsec3_enabled, zone_keys);
 	if (result != KNOT_EOK) {
 		char *zname = knot_dname_to_str(zone->name);
-		log_zone_error("DNSSEC keys could not be loaded (%s). "
-		               "Not signing the %s zone!\n",
-		               knot_strerror(result), zname);
+		log_zone_error("DNSSEC: Zone %s - %s\n", zname,
+		               knot_strerror(result));
 		free(zname);
-		free_zone_keys(zone_keys);
+		knot_free_zone_keys(zone_keys);
 		return result;
 	}
 
@@ -80,7 +79,8 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	}
 
 	// Override signature lifetime, if set in config
-	int sig_lf = ((zonedata_t *)knot_zone_data(zone))->conf->sig_lifetime;
+	zonedata_t *zd = (zonedata_t *)zone->data;
+	int sig_lf = zd->conf->sig_lifetime;
 	if (sig_lf > 0) {
 		policy->sign_lifetime = sig_lf;
 	}
@@ -95,14 +95,20 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	assert(zone->contents);
 	assert(out_ch);
 
+	char *zname = knot_dname_to_str(zone->name);
+	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
+	free(zname);
+	if (msgpref == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	dbg_dnssec_verb("Changeset empty before generating NSEC chain: %d\n",
 	                knot_changeset_is_empty(out_ch));
 
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	if (!zone_config->dnssec_enable) {
-		char *zname = knot_dname_to_str(zone->name);
-		log_server_warning("DNSSEC not enabled for '%s'.\n", zname);
-		free(zname);
+		log_server_warning("%s DNSSEC not enabled.\n", msgpref);
+		free(msgpref);
 		return KNOT_EOK;
 	}
 
@@ -112,8 +118,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	int result = init_dnssec_structs(zone, &zone_keys, &policy, soa_up,
 	                                 force);
 	if (result != KNOT_EOK) {
-		log_zone_error("Failed to init DNSSEC signer (%s)\n",
-		               knot_strerror(result));
+		free(msgpref);
 		return result;
 	}
 
@@ -121,12 +126,10 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	result = knot_zone_create_nsec_chain(zone->contents, out_ch,
 	                                     &zone_keys, &policy);
 	if (result != KNOT_EOK) {
-		char *zname = knot_dname_to_str(zone->name);
-		log_zone_error("Could not create NSEC(3) chain (%s). "
-		               "Not signing the %s zone!\n",
-		               knot_strerror(result), zname);
-		free(zname);
-		free_zone_keys(&zone_keys);
+		log_zone_error("%s Could not create NSEC(3) chain (%s).\n",
+		               msgpref, knot_strerror(result));
+		free(msgpref);
+		knot_free_zone_keys(&zone_keys);
 		return result;
 	}
 	dbg_dnssec_verb("Changeset empty after generating NSEC chain: %d\n",
@@ -136,11 +139,10 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	result = knot_zone_sign(zone->contents, &zone_keys, &policy, out_ch,
 	                        expires_at);
 	if (result != KNOT_EOK) {
-		char *zname = knot_dname_to_str(zone->name);
-		log_zone_error("Error signing zone %s (%s).\n",
-		               zname, knot_strerror(result));
-		free(zname);
-		free_zone_keys(&zone_keys);
+		log_zone_error("%s Error while signing (%s).\n",
+		               msgpref, knot_strerror(result));
+		free(msgpref);
+		knot_free_zone_keys(&zone_keys);
 		return result;
 	}
 	dbg_dnssec_verb("Changeset emtpy after signing: %d\n",
@@ -149,11 +151,10 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	// Check if only SOA changed
 	if (knot_changeset_is_empty(out_ch) &&
 	    !knot_zone_sign_soa_expired(zone->contents, &zone_keys, &policy)) {
-		char *zname = knot_dname_to_str(zone->name);
-		log_server_info("No signing performed, zone %s is valid.\n",
-		                zname);
-		free(zname);
-		free_zone_keys(&zone_keys);
+		log_zone_info("%s No signing performed, zone is valid.\n",
+		              msgpref);
+		free(msgpref);
+		knot_free_zone_keys(&zone_keys);
 		assert(knot_changeset_is_empty(out_ch));
 		return KNOT_EOK;
 	}
@@ -165,18 +166,17 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	result = knot_zone_sign_update_soa(soa, &zone_keys, &policy,
 	                                   out_ch);
 	if (result != KNOT_EOK) {
-		char *zname = knot_dname_to_str(zone->name);
-		log_server_error("Cannot update SOA record (%s)."
-		                 " Not signing the %s zone!\n",
-		                 knot_strerror(result), zname);
-		free(zname);
-		free_zone_keys(&zone_keys);
+		log_zone_error("%s Cannot update SOA record (%s). Not signing"
+		               "the zone!\n", msgpref, knot_strerror(result));
+		free(msgpref);
+		knot_free_zone_keys(&zone_keys);
 		return result;
 	}
 
-	free_zone_keys(&zone_keys);
+	knot_free_zone_keys(&zone_keys);
 	dbg_dnssec_detail("Zone signed: changes=%zu\n",
 	                  knot_changeset_size(out_ch));
+	free(msgpref);
 
 	return KNOT_EOK;
 }
@@ -204,8 +204,17 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone,
 int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
-                               knot_update_serial_t soa_up)
+                               knot_update_serial_t soa_up,
+                               uint32_t *used_lifetime,
+                               uint32_t *used_refresh)
 {
+	if (!used_lifetime || !used_refresh) {
+		return KNOT_EINVAL;
+	}
+
+	*used_lifetime = 0;
+	*used_refresh = 0;
+
 	if (!conf()->dnssec_enable) {
 		return KNOT_EOK;
 	}
@@ -220,9 +229,14 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	int ret = init_dnssec_structs(zone->zone, &zone_keys, &policy, soa_up,
 	                              false);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to init DNSSEC signer (%s)\n",
-		               knot_strerror(ret));
 		return ret;
+	}
+
+	char *zname = knot_dname_to_str(knot_zone_name(zone->zone));
+	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
+	free(zname);
+	if (msgpref == NULL) {
+		return KNOT_ENOMEM;
 	}
 
 	// Sign added and removed RRSets in changeset
@@ -230,9 +244,9 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, &sorted_changes,
 	                               &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to sign changeset (%s)\n",
+		log_zone_error("%s Failed to sign changeset (%s)\n", msgpref,
 		               knot_strerror(ret));
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		return ret;
 	}
 
@@ -244,7 +258,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		log_zone_error("Failed to fix NSEC(3) chain (%s)\n",
 		               knot_strerror(ret));
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		return ret;
 	}
 
@@ -252,21 +266,25 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	ret = knot_zone_sign_nsecs_in_changeset(&zone_keys, &policy,
 	                                        out_ch);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to sign NSEC(3) chain (%s)\n",
+		log_zone_error("Failed to sign changeset (%s)\n",
 		               knot_strerror(ret));
-		free_zone_keys(&zone_keys);
+		knot_free_zone_keys(&zone_keys);
 		return ret;
 	}
 
 	// Update SOA RRSIGs
 	ret = knot_zone_sign_update_soa(knot_node_rrset(zone->apex,
 	                                                KNOT_RRTYPE_SOA),
-	                                &zone_keys, &policy, out_ch);
+	                                &zone_keys, &policy,
+	                                out_ch);
 	if (ret != KNOT_EOK) {
 		log_zone_error("Failed to sign SOA RR (%s)\n",
 		               knot_strerror(ret));
 	}
-	free_zone_keys(&zone_keys);
+	knot_free_zone_keys(&zone_keys);
+
+	*used_lifetime = policy.sign_lifetime;
+	*used_refresh = policy.sign_refresh;
 
 	return ret;
 }

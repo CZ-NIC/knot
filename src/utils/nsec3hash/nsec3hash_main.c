@@ -50,25 +50,27 @@ static bool parse_nsec3_params(knot_nsec3_params_t *params, const char *salt,
 
 	result = knot_str2uint8t(algorithm, &params->algorithm);
 	if (result != KNOT_EOK) {
-		fprintf(stderr, "Could not parse algorithm number.\n");
+		fprintf(stderr, "Invalid algorithm number.\n");
 		return false;
 	}
 
 	result = knot_str2uint16t(iterations, &params->iterations);
 	if (result != KNOT_EOK) {
-		fprintf(stderr, "Could not parse iteration count.\n");
+		fprintf(stderr, "Invalid iteration count: %s\n",
+		        knot_strerror(result));
 		return false;
 	}
 
 	size_t salt_length;
 	result = hex_decode(salt, &params->salt, &salt_length);
 	if (result != KNOT_EOK) {
-		fprintf(stderr, "Could not parse hex encoded salt.\n");
+		fprintf(stderr, "Invalid salt: %s\n",
+		        knot_strerror(result));
 		return false;
 	}
 
 	if (salt_length > UINT8_MAX) {
-		fprintf(stderr, "Decoded salt is longer than %d bytes.\n",
+		fprintf(stderr, "Invalid salt: Maximal length is %d bytes.\n",
 		        UINT8_MAX);
 		free(params->salt);
 		memset(params, '\0', sizeof(*params));
@@ -128,7 +130,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	dname = knot_dname_from_str(argv[4], strlen(argv[4]));
+	dname = knot_dname_from_str(argv[4]);
 	if (dname == NULL) {
 		fprintf(stderr, "Cannot parse domain name.\n");
 		goto fail;

@@ -184,7 +184,7 @@ static int knot_response_try_add_rrset(const knot_rrset_t **rrsets,
                                         short *rrset_count,
                                         knot_packet_t *resp,
                                         size_t max_size,
-                                        const knot_rrset_t *rrset, int tc)
+                                        const knot_rrset_t *rrset, uint32_t flags)
 {
 	//short size = knot_response_rrset_size(rrset, &resp->compression);
 
@@ -215,7 +215,7 @@ dbg_response_exec(
 		dbg_response_verb("RRset added, size: %zu, RRs: %d, total "
 		                  "size of response: %zu\n\n", size, rr_count,
 		                  resp->size);
-	} else if (tc) {
+	} else if (!(flags & KNOT_PF_NOTRUNC)) {
 		dbg_response_verb("Setting TC bit.\n");
 		knot_wire_set_tc(resp->wireformat);
 	}
@@ -417,9 +417,7 @@ int knot_response_add_opt(knot_packet_t *resp,
 /*----------------------------------------------------------------------------*/
 
 int knot_response_add_rrset_answer(knot_packet_t *response,
-                                   knot_rrset_t *rrset, int tc,
-                                   int check_duplicates,
-                                   int rotate)
+                                   knot_rrset_t *rrset, uint32_t flags)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -436,7 +434,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 		return KNOT_ENOMEM;
 	}
 
-	if (check_duplicates && knot_packet_contains(response, rrset,
+	if ((flags & KNOT_PF_CHECKDUP) && knot_packet_contains(response, rrset,
 	                                            KNOT_RRSET_COMPARE_PTR)) {
 		return KNOT_EOK;
 	}
@@ -451,16 +449,10 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 	                                        - response->size
 	                                        - response->opt_rr.size
 	                                        - response->tsig_size,
-	                                        rrset, tc);
+	                                      rrset, flags);
 
 	if (rrs >= 0) {
 		knot_wire_add_ancount(response->wireformat, rrs);
-
-		if (rotate) {
-			// do round-robin rotation of the RRSet
-			knot_rrset_rotate(rrset);
-		}
-
 		return KNOT_EOK;
 	}
 
@@ -470,9 +462,7 @@ int knot_response_add_rrset_answer(knot_packet_t *response,
 /*----------------------------------------------------------------------------*/
 
 int knot_response_add_rrset_authority(knot_packet_t *response,
-                                      knot_rrset_t *rrset, int tc,
-                                      int check_duplicates,
-                                      int rotate)
+                                      knot_rrset_t *rrset, uint32_t flags)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -487,7 +477,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 		return KNOT_ENOMEM;
 	}
 
-	if (check_duplicates && knot_packet_contains(response, rrset,
+	if ((flags & KNOT_PF_CHECKDUP) && knot_packet_contains(response, rrset,
 	                                           KNOT_RRSET_COMPARE_PTR)) {
 		return KNOT_EOK;
 	}
@@ -500,16 +490,10 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 	                                        - response->size
 	                                        - response->opt_rr.size
 	                                        - response->tsig_size,
-	                                        rrset, tc);
+	                                        rrset, flags);
 
 	if (rrs >= 0) {
 		knot_wire_add_nscount(response->wireformat, rrs);
-
-		if (rotate) {
-			// do round-robin rotation of the RRSet
-			knot_rrset_rotate(rrset);
-		}
-
 		return KNOT_EOK;
 	}
 
@@ -519,9 +503,7 @@ int knot_response_add_rrset_authority(knot_packet_t *response,
 /*----------------------------------------------------------------------------*/
 
 int knot_response_add_rrset_additional(knot_packet_t *response,
-                                       knot_rrset_t *rrset, int tc,
-                                       int check_duplicates,
-                                       int rotate)
+                                       knot_rrset_t *rrset, uint32_t flags)
 {
 	if (response == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -543,7 +525,7 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 		return KNOT_ENOMEM;
 	}
 
-	if (check_duplicates && knot_packet_contains(response, rrset,
+	if ((flags & KNOT_PF_CHECKDUP) && knot_packet_contains(response, rrset,
 	                                            KNOT_RRSET_COMPARE_PTR)) {
 		return KNOT_EOK;
 	}
@@ -555,16 +537,10 @@ int knot_response_add_rrset_additional(knot_packet_t *response,
 	                                        response->max_size
 	                                        - response->size
 	                                        - response->tsig_size, rrset,
-	                                        tc);
+	                                        flags);
 
 	if (rrs >= 0) {
 		knot_wire_add_arcount(response->wireformat, rrs);
-
-		if (rotate) {
-			// do round-robin rotation of the RRSet
-			knot_rrset_rotate(rrset);
-		}
-
 		return KNOT_EOK;
 	}
 

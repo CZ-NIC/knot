@@ -58,6 +58,18 @@ knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
                                  const knot_nsec3_params_t *params);
 
 /*!
+ * \brief Create NSEC3 owner name from hash and zone apex.
+ *
+ * \param hash       Raw hash.
+ * \param hash_size  Size of the hash.
+ * \param zone_apex  Zone apex.
+ *
+ * \return NSEC3 owner name, NULL in case of error.
+ */
+knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
+                                       const knot_dname_t *zone_apex);
+
+/*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  *
  * \param zone       Zone for which the NSEC(3) chain will be created.

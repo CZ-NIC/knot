@@ -43,7 +43,7 @@ else.
   [ @code{workers} @kbd{integer}@code{;} ]
   [ @code{user} @kbd{string}[@code{.}@kbd{string}]@code{;} ]
   [ @code{max-conn-idle} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
-  [ @code{max-conn-hs} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{max-conn-handshake} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{max-conn-reply} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{transfers} @kbd{integer}@code{;} ]
   [ @code{rate-limit} @kbd{integer}@code{;} ]
@@ -66,7 +66,7 @@ else.
 * workers::
 * user::
 * max-conn-idle::
-* max-conn-hs::
+* max-conn-handshake::
 * max-conn-reply::
 * transfers::
 * rate-limit::
@@ -207,9 +207,9 @@ system @{
 Maximum idle time between requests on a TCP connection.
 This also limits receiving of a single query, each query must be received in this time limit.
 
-@node max-conn-hs
-@subsubsection max-conn-hs
-@vindex max-conn-hs
+@node max-conn-handshake
+@subsubsection max-conn-handshake
+@vindex max-conn-handshake
 
 Maximum time between newly accepted TCP connection and first query.
 This is useful to disconnect inactive connections faster, than connection
@@ -868,7 +868,7 @@ are 1 to INT_MAX and default value is 5.
 
 EXPERIMENTAL: Enable automatic DNSSEC signing for the zone.
 
-Default value (in @code{zones} section): on if @code{dnssec-keydir} is set
+Default value (in @code{zones} section): off
 
 Default value (in @code{zone} config): inherited from @code{zones} section
 

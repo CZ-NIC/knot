@@ -14,8 +14,10 @@ def get_binary(env_name, default):
     # Use new or default value.
     name = env if env else default
     path = shutil.which(name)
-    if not path:
-        raise Exception("Binary %s not found" % name)
+    # Notify user that he set wrong binary
+    if env and not path:
+        print("Binary \'%s\' not found" % name)
+        exit(1)
     return path
 
 def get_param(env_name, default):

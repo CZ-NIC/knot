@@ -27,7 +27,7 @@
 
 #define RESOLV_FILE	"/etc/resolv.conf"
 
-server_t* parse_nameserver(const char *nameserver, const char *def_port)
+srv_info_t* parse_nameserver(const char *nameserver, const char *def_port)
 {
 	if (nameserver == NULL || def_port == NULL) {
 		DBG_NULL;
@@ -74,14 +74,14 @@ server_t* parse_nameserver(const char *nameserver, const char *def_port)
 		}
 
 		// Create server structure.
-		server_t *server = server_create(addr, port);
+		srv_info_t *server = srv_info_create(addr, port);
 
 		free(addr);
 		free(port);
 
 		return server;
 	} else {
-		return server_create(nameserver, def_port);
+		return srv_info_create(nameserver, def_port);
 	}
 }
 
@@ -133,7 +133,7 @@ static int get_resolv_nameservers(list_t *servers, const char *def_port)
 
 		// Process value with respect to option name.
 		if (strncmp(option, "nameserver", strlen("nameserver")) == 0) {
-			server_t *server;
+			srv_info_t *server;
 
 			server = parse_nameserver(value, def_port);
 
@@ -172,17 +172,17 @@ int get_nameservers(list_t *servers, const char *def_port)
 		return ret;
 	// If no nameservers.
 	} else {
-		server_t *server;
+		srv_info_t *server;
 
 		// Add default ipv6 nameservers.
-		server = server_create(DEFAULT_IPV6_NAME, def_port);
+		server = srv_info_create(DEFAULT_IPV6_NAME, def_port);
 
 		if (server != NULL) {
 			add_tail(servers, (node_t *)server);
 		}
 
 		// Add default ipv4 nameservers.
-		server = server_create(DEFAULT_IPV4_NAME, def_port);
+		server = srv_info_create(DEFAULT_IPV4_NAME, def_port);
 
 		if (server != NULL) {
 			add_tail(servers, (node_t *)server);

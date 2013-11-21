@@ -30,20 +30,43 @@
 #ifndef _KNOT_ZONEDB_H_
 #define _KNOT_ZONEDB_H_
 
-#include "common/hattrie/hat-trie.h"
 #include "libknot/zone/zone.h"
 #include "libknot/zone/node.h"
 #include "libknot/dname.h"
 
-/*!
- * \brief Zone database structure. Contains all zones managed by the server.
+/*
+ * Zone DB represents a list of managed zones.
+ * Hashing should be avoided as it is expensive when only a small number of
+ * zones is present (TLD case). Linear run-length algorithms or worse should
+ * be avoided as well, as the number of zones may be large.
+ *
+ * Use of string-based algorithms for suffix search is viable, but would require
+ * transformation each time a name is searched. That again would be a
+ * constant cost even if the number of zones would be small.
+ *
+ * Zone database structure is a stack of zones grouped by label count in
+ * descending order (root label not counted), therefore first match is the longest.
+ * Each stack level is sorted for convenient binary search.
+ * example:
+ *  {3 labels, 2 items} => [ 'a.b.c', 'b.b.c' ]
+ *  {2 labels, 1 items} => [ 'x.z' ]
+ *  {1 labels, 2 items} => [ 'y', 'w' ]
+ *
+ * Stack is built on top of the sorted array of zones for direct access and
+ * less memory requirements.
  */
-struct knot_zonedb {
-	hattrie_t *zone_tree; /*!< AVL tree of zones. */
-	size_t zone_count;
-};
+typedef struct {
+	unsigned labels;
+	unsigned count;
+	knot_zone_t** array;
+} knot_zonedb_stack_t;
 
-typedef struct knot_zonedb knot_zonedb_t;
+typedef struct {
+	unsigned count, reserved;
+	knot_zone_t **array;
+	unsigned stack_height;
+	knot_zonedb_stack_t stack[KNOT_DNAME_MAXLABELS];
+} knot_zonedb_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -53,7 +76,7 @@ typedef struct knot_zonedb knot_zonedb_t;
  * \return Pointer to the created zone database structure or NULL if an error
  *         occured.
  */
-knot_zonedb_t *knot_zonedb_new();
+knot_zonedb_t *knot_zonedb_new(unsigned size);
 
 /*!
  * \brief Adds new zone to the database.
@@ -69,21 +92,26 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
 /*!
  * \brief Removes the given zone from the database if it exists.
  *
- * \note Assumes that the zone was adjusted using knot_zone_adjust_dnames().
- *       If it was not, it may leak some memory due to checks used in
- *       knot_rdata_deep_free().
- *
  * \param db Zone database to remove from.
  * \param zone_name Name of the zone to be removed.
- * \param destroy_zone Set to <> 0 if you do want the function to destroy the
- *                     zone after removing from zone database. Set to 0
- *                     otherwise.
  *
  * \retval KNOT_EOK
  * \retval KNOT_ENOZONE
  */
 knot_zone_t * knot_zonedb_remove_zone(knot_zonedb_t *db,
                                       const knot_dname_t *zone_name);
+
+/*!
+ * \brief Build zone stack for faster lookup.
+ *
+ * Zone stack structure is described in the knot_zonedb_t struct.
+ *
+ * \param db Zone database.
+ * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
+ * \retval KNOT_EINVAL
+ */
+int knot_zonedb_build_index(knot_zonedb_t *db);
 
 /*!
  * \brief Finds zone exactly matching the given zone name.
@@ -94,8 +122,8 @@ knot_zone_t * knot_zonedb_remove_zone(knot_zonedb_t *db,
  * \return Zone with \a zone_name being the owner of the zone apex or NULL if
  *         not found.
  */
-knot_zone_t *knot_zonedb_find_zone(const knot_zonedb_t *db,
-                                       const knot_dname_t *zone_name);
+knot_zone_t *knot_zonedb_find_zone(knot_zonedb_t *db,
+                                   const knot_dname_t *zone_name);
 
 
 /*!
@@ -107,8 +135,8 @@ knot_zone_t *knot_zonedb_find_zone(const knot_zonedb_t *db,
  * \retval Zone in which the domain name should be present or NULL if no such
  *         zone is found.
  */
-const knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
-                                                   const knot_dname_t *dname);
+knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
+                                            const knot_dname_t *dname);
 
 knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
                                               const knot_dname_t *zone_name);
@@ -126,10 +154,6 @@ void knot_zonedb_free(knot_zonedb_t **db);
 
 /*!
  * \brief Destroys and deallocates the whole zone database including the zones.
- *
- * \note Assumes that the zone was adjusted using knot_zone_adjust_dnames().
- *       If it was not, it may leak some memory due to checks used in
- *       knot_rdata_deep_free().
  *
  * \param db Zone database to be destroyed.
  */

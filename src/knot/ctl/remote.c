@@ -37,7 +37,6 @@
 
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
-#define KNOT_CTL_REALM_LEN 5
 #define CMDARGS_BUFLEN (1024*1024) /* 1M */
 #define KNOT_CTL_SOCKET_UMASK 0007
 
@@ -232,8 +231,8 @@ static char *dnssec_info(const zonedata_t *zd, char *buf, size_t buf_size)
 	time_t diff_time = zd->dnssec_timer->tv.tv_sec;
 	struct tm *t = localtime(&diff_time);
 
-	int written = snprintf(buf, buf_size, "%s", asctime(t));
-	if (written < 0) {
+	size_t written = strftime(buf, buf_size, "%c", t);
+	if (written == 0) {
 		return NULL;
 	}
 
@@ -328,6 +327,8 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			break;
 		}
 
+		assert(n <= sizeof(buf));
+
 		memcpy(dst, buf, n);
 		rb -= n;
 		dst += n;
@@ -335,7 +336,6 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 
 	}
 	rcu_read_unlock();
-	free(zones);
 
 	a->rlen = sizeof(a->resp) - 1 - rb;
 	return ret;
@@ -382,7 +382,6 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 			ret = remote_zone_flush(s, zones[i]);
 		}
 		rcu_read_unlock();
-		free(zones);
 		return ret;
 	}
 
@@ -587,8 +586,7 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 		return KNOT_EMALF;
 	}
 
-	knot_dname_t *realm = knot_dname_from_str(KNOT_CTL_REALM,
-	                                          KNOT_CTL_REALM_LEN);
+	knot_dname_t *realm = knot_dname_from_str(KNOT_CTL_REALM);
 	if (!knot_dname_is_sub(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
 		knot_dname_free(&realm);
@@ -752,7 +750,7 @@ knot_packet_t* remote_query(const char *query, const knot_tsig_key_t *key)
 
 	/* Question section. */
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);
-	knot_dname_t *dname = knot_dname_from_str(qname, strlen(qname));
+	knot_dname_t *dname = knot_dname_from_str(qname);
 	if (!dname) {
 		knot_packet_free(&qr);
 		free(qname);
@@ -820,7 +818,7 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	}
 
 	/* Assert K is FQDN. */
-	knot_dname_t *key = knot_dname_from_str(k, strlen(k));
+	knot_dname_t *key = knot_dname_from_str(k);
 	if (key == NULL) {
 		return NULL;
 	}
@@ -870,7 +868,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	}
 
 	/* Create dname. */
-	knot_dname_t *dn = knot_dname_from_str(d, strlen(d));
+	knot_dname_t *dn = knot_dname_from_str(d);
 	if (!dn) {
 		return KNOT_ERROR;
 	}

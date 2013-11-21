@@ -81,7 +81,7 @@ static int nsupdate_init(nsupdate_params_t *params)
 	init_list(&params->qfiles);
 
 	/* Default server. */
-	params->server = server_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
+	params->server = srv_info_create(DEFAULT_IPV4_NAME, DEFAULT_DNS_PORT);
 	if (!params->server)
 		return KNOT_ENOMEM;
 
@@ -120,8 +120,8 @@ void nsupdate_clean(nsupdate_params_t *params)
 		free(n);
 	}
 
-	server_free(params->server);
-	server_free(params->srcif);
+	srv_info_free(params->server);
+	srv_info_free(params->srcif);
 	free(params->zone);
 	scanner_free(params->rrp);
 	knot_packet_free(&params->pkt);

@@ -2,9 +2,9 @@
 
 '''Test for AXFR from Knot to Bind'''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 
 master = t.server("knot")
 slave = t.server("bind")
@@ -12,6 +12,7 @@ zones = t.zone_rnd(10)
 zones.update(t.zone("."))
 zones.update(t.zone("wild."))
 zones.update(t.zone("cname-loop."))
+zones.update(t.zone("records."))
 
 t.link(zones, master, slave)
 

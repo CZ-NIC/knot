@@ -30,7 +30,7 @@
 #include "common/lists.h"		// list
 #include "utils/common/netio.h"		// server_t
 
-server_t* parse_nameserver(const char *nameserver, const char *def_port);
+srv_info_t* parse_nameserver(const char *nameserver, const char *def_port);
 
 int get_nameservers(list_t *servers, const char *def_port);
 

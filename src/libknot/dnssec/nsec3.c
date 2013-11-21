@@ -25,7 +25,7 @@
 #include "common/descriptor.h"
 #include "common/memdup.h"
 #include "libknot/common.h"
-#include "libknot/dnssec/algorithm.h"
+#include "libknot/consts.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/rdata.h"
 #include "libknot/util/tolower.h"
@@ -159,7 +159,7 @@ int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
 	}
 
 	if (params->algorithm != 1) {
-		return KNOT_ENOTSUP;
+		return KNOT_DNSSEC_ENOTSUP;
 	}
 
 	return nsec3_sha1(params->salt, params->salt_length, params->iterations,

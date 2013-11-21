@@ -259,6 +259,12 @@ static int conf_process(conf_t *conf)
 	if (conf->xfers <= 0)
 		conf->xfers = CONFIG_XFERS;
 
+	/* DNSSEC global configuration. */
+	if (conf->dnssec_keydir) {
+		conf->dnssec_keydir = conf_abs_path(conf->storage,
+		                                    conf->dnssec_keydir);
+	}
+
 	// Postprocess zones
 	int ret = KNOT_EOK;
 	node_t *n = NULL;
@@ -315,17 +321,27 @@ static int conf_process(conf_t *conf)
 		}
 
 		// Default policy for DNSSEC
-		if (conf->dnssec_keydir) {
-			conf->dnssec_keydir = conf_abs_path(conf->storage,
-			                                    conf->dnssec_keydir);
-		} else {
+		if (!conf->dnssec_keydir) {
 			zone->dnssec_enable = false;
 		}
 
-		// Turn zone diff on with DNSSEC enabled
-		if (zone->dnssec_enable && !zone->build_diffs) {
-			// Silent force enable
+		// DNSSEC required settings
+		if (zone->dnssec_enable) {
+			// Enable zone diffs (silently)
 			zone->build_diffs = true;
+
+			// Disable incoming XFRs
+			if (!EMPTY_LIST(zone->acl.notify_in) ||
+			    !EMPTY_LIST(zone->acl.xfr_in)
+			) {
+				log_server_warning("Automatic DNSSEC signing "
+				                   "for zone '%s', disabling "
+				                   "incoming XFRs.\n",
+				                   zone->name);
+
+				WALK_LIST_FREE(zone->acl.notify_in);
+				WALK_LIST_FREE(zone->acl.xfr_in);
+			}
 		}
 
 		// Relative zone filenames should be relative to storage
@@ -561,7 +577,7 @@ conf_t *conf_new(const char* path)
 	c->logs_count = -1;
 
 	/* DNSSEC. */
-	c->dnssec_enable = true;
+	c->dnssec_enable = false;
 
 	/* ACLs. */
 	c->ctl.acl = acl_new();
@@ -689,8 +705,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	conf->zones_count = 0;
 	init_list(&conf->zones);
 
-	conf->dnssec_global = false;
-	conf->dnssec_enable = true;
+	conf->dnssec_enable = false;
 	if (conf->filename) {
 		free(conf->filename);
 		conf->filename = NULL;
@@ -818,26 +833,27 @@ int conf_open(const char* path)
 	/* Replace current config. */
 	conf_t *oldconf = rcu_xchg_pointer(&s_config, nconf);
 
-	/* Copy hooks. */
+	/* Synchronize. */
+	synchronize_rcu();
+
 	if (oldconf) {
-		node_t *n = NULL, *nxt = NULL;
-		WALK_LIST_DELSAFE (n, nxt, oldconf->hooks) {
+
+		/* Copy hooks. */
+		node_t *n = NULL;
+		WALK_LIST (n, oldconf->hooks) {
 			conf_hook_t *hook = (conf_hook_t*)n;
 			conf_add_hook(nconf, hook->sections,
 			              hook->update, hook->data);
 		}
-	}
 
-	/* Synchronize. */
-	synchronize_rcu();
+		/* Update hooks. */
+		conf_update_hooks(nconf);
 
-	/* Free old config. */
-	if (oldconf) {
+		/* Free old config. */
 		conf_free(oldconf);
 	}
 
-	/* Update hooks. */
-	conf_update_hooks(nconf);
+
 
 	return KNOT_EOK;
 }

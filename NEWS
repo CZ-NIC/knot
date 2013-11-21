@@ -1,7 +1,34 @@
 Knot DNS NEWS
 
-v1.4.0-alpha - ??
-------------
+v1.4.0-rc1 - Nov 20, 2013
+-------------------------
+
+Features:
+	* Better logging of automatic DNSSEC events
+	* Support for DNSSEC key pre-publication
+Bugfixes:
+	* Refactored zone loading
+	* Improved journal locking and fixed some race conditions
+	* Various fixes in client utilities
+	* Fixed memory errors in automatic DNSSEC signing
+	* 'dnssec-keydir' doesn't auto-enable signing
+	* Fixed rescheduling of zone resigns
+
+v1.4.0-beta - Oct 28, 2013
+--------------------------
+Features:
+	* Experimental automatic DNSSEC signing
+	* Reduced memory usage
+
+v1.3.3 - Oct 28, 2013
+---------------------
+Bugfixes:
+	* Improved zone loading error messages
+	* Correct control socket permissions
+	* Improved log syntax documentation 
+	* Fixed wrong assertions in DDNS prerequisites checking
+	* Fixed processing of some malformed DNS packets 
+	* Fixed notify messages being ignored in some cases
 
 v1.3.2 - Sep 30, 2013
 ---------------------

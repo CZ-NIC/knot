@@ -515,7 +515,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	}
 
 	/* As it's a first node, no need for compression yet. */
-	context->origin_from_config = knot_dname_from_str(origin, strlen(origin));
+	context->origin_from_config = knot_dname_from_str(origin);
 	assert(context->origin_from_config);
 	knot_dname_to_lower(context->origin_from_config);
 	context->last_node = knot_node_new(context->origin_from_config, NULL, 0);

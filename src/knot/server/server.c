@@ -474,10 +474,6 @@ int server_refresh(server_t *server)
 	knot_nameserver_t *ns =  server->nameserver;
 	evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
 	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
-	if (zones == NULL) {
-		rcu_read_unlock();
-		return KNOT_ENOMEM;
-	}
 
 	/* REFRESH zones. */
 	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
@@ -496,7 +492,6 @@ int server_refresh(server_t *server)
 
 	/* Unlock RCU. */
 	rcu_read_unlock();
-	free(zones);
 	return KNOT_EOK;
 }
 
@@ -535,6 +530,7 @@ void server_stop(server_t *server)
 
 	/* Send termination event. */
 	evsched_schedule_term(server->sched, 0);
+	dt_stop(server->iosched);
 
 	/* Interrupt XFR handler execution. */
 	xfr_stop(server->xfr);

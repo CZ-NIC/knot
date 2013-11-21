@@ -255,7 +255,6 @@ typedef struct conf_t {
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
-	bool dnssec_global;  /*!< DNSSEC: Configured for all zones. */
 	bool dnssec_enable;  /*!< DNSSEC: Online signing enabled. */
 	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */

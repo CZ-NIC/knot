@@ -6,8 +6,7 @@ bin_PROGRAMS = kdig khost knsupdate knsec3hash
 noinst_LTLIBRARIES = libknot.la libknotd.la libknots.la
 
 # $(YACC) will generate header file
-AM_CPPFLAGS = -DSYSCONFDIR='"$(sysconfdir)"' -DSBINDIR='"$(sbindir)"' \
-	      -DCONFIG_DIR='"${config_dir}"' -DSTORAGE_DIR='"${storage_dir}"' \
+AM_CPPFLAGS = -DCONFIG_DIR='"${config_dir}"' -DSTORAGE_DIR='"${storage_dir}"' \
 	      -DRUN_DIR='"${run_dir}"'
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
@@ -148,8 +147,6 @@ libknot_la_SOURCES =				\
 	libknot/tsig-op.c			\
 	libknot/binary.h			\
 	libknot/binary.c			\
-	libknot/dnssec/algorithm.c		\
-	libknot/dnssec/algorithm.h		\
 	libknot/dnssec/cleanup.h		\
 	libknot/dnssec/config.h			\
 	libknot/dnssec/key.c			\
@@ -177,7 +174,9 @@ libknots_la_SOURCES =				\
 	common/slab/slab.c			\
 	common/slab/slab.h			\
 	common/slab/alloc-common.h		\
+	common/array-sort.h			\
 	common/atomic.h				\
+	common/binsearch.h			\
 	common/memdup.h				\
 	common/mempattern.h			\
 	common/mempattern.c			\
@@ -233,13 +232,6 @@ libknots_la_SOURCES =				\
 	common/strtonum.h
 
 libknotd_la_SOURCES =				\
-	knot/stat/gatherer.c			\
-	knot/stat/stat.c			\
-	knot/stat/gatherer.h			\
-	knot/stat/stat.h			\
-	knot/stat/stat-common.h			\
-	knot/knot.h				\
-	knot/other/debug.h			\
 	knot/conf/cf-lex.l			\
 	knot/conf/cf-parse.y			\
 	knot/conf/conf.c			\
@@ -254,35 +246,43 @@ libknotd_la_SOURCES =				\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
 	knot/ctl/remote.h			\
+	knot/knot.h				\
+	knot/other/debug.h			\
 	knot/server/dthreads.c			\
-	knot/server/journal.c			\
-	knot/server/socket.c			\
-	knot/server/server.c			\
-	knot/server/udp-handler.c		\
-	knot/server/tcp-handler.c		\
-	knot/server/xfr-handler.c		\
-	knot/server/zones.c			\
-	knot/server/socket.h			\
-	knot/server/udp-handler.h		\
-	knot/server/tcp-handler.h		\
-	knot/server/xfr-handler.h		\
 	knot/server/dthreads.h			\
+	knot/server/journal.c			\
 	knot/server/journal.h			\
-	knot/server/zones.h			\
-	knot/server/notify.h			\
 	knot/server/notify.c			\
-	knot/server/zones.h			\
-	knot/server/rrl.h			\
+	knot/server/notify.h			\
 	knot/server/rrl.c			\
+	knot/server/rrl.h			\
+	knot/server/server.c			\
+	knot/server/server.h			\
+	knot/server/socket.c			\
+	knot/server/socket.h			\
+	knot/server/tcp-handler.c		\
+	knot/server/tcp-handler.h		\
+	knot/server/udp-handler.c		\
+	knot/server/udp-handler.h		\
+	knot/server/xfr-handler.c		\
+	knot/server/xfr-handler.h		\
+	knot/server/zone-load.c			\
+	knot/server/zone-load.h			\
+	knot/server/zones.c			\
+	knot/server/zones.h			\
+	knot/stat/gatherer.c			\
+	knot/stat/gatherer.h			\
+	knot/stat/stat-common.h			\
+	knot/stat/stat.c			\
+	knot/stat/stat.h			\
+	knot/zone/estimator.c			\
+	knot/zone/estimator.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
-	knot/zone/zone-dump.h			\
 	knot/zone/zone-dump.c			\
-	knot/zone/zone-load.h			\
+	knot/zone/zone-dump.h			\
 	knot/zone/zone-load.c			\
-	knot/zone/estimator.h			\
-	knot/zone/estimator.c			\
-	knot/server/server.h
+	knot/zone/zone-load.h
 
 libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = zscanner/libzscanner.la @LIBOBJS@

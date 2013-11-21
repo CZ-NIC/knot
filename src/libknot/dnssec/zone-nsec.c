@@ -452,58 +452,6 @@ static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 	hattrie_iter_free(it);
 }
 
-/* - NSEC3 names conversion ------------------------------------------------ */
-
-/*!
- * \brief Create NSEC3 owner name from hash and zone apex.
- *
- * \param hash       Raw hash.
- * \param hash_size  Size of the hash.
- * \param zone_apex  Zone apex.
- *
- * \return NSEC3 owner name, NULL in case of error.
- */
-static knot_dname_t *nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
-					 const knot_dname_t *zone_apex)
-{
-	assert(hash);
-	assert(zone_apex);
-
-	// encode raw hash to first label
-
-	uint8_t label[KNOT_DNAME_MAX_LENGTH];
-	int32_t label_size;
-	label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
-	if (label_size <= 0) {
-		return NULL;
-	}
-
-	// allocate result
-
-	size_t zone_apex_size = knot_dname_size(zone_apex);
-	size_t result_size = 1 + label_size + zone_apex_size;
-	knot_dname_t *result = malloc(result_size);
-	if (!result) {
-		return NULL;
-	}
-
-	// build the result
-
-	uint8_t *write = result;
-
-	*write = (uint8_t)label_size;
-	write += 1;
-	memcpy(write, label, label_size);
-	write += label_size;
-	memcpy(write, zone_apex, zone_apex_size);
-	write += zone_apex_size;
-
-	assert(write == result + result_size);
-	knot_dname_to_lower(result);
-
-	return result;
-}
-
 /* - NSEC3 nodes construction ---------------------------------------------- */
 
 /*!
@@ -1183,10 +1131,10 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	} else {
 		if (fix_data->next_dname) {
 			printf("FIX next %s %s\n", a ? knot_dname_to_str(a) : knot_dname_to_str(b), knot_dname_to_str(fix_data->next_dname));
-			update_nsec(knot_zone_contents_find_node(fix_data->zone, a ? a : b),
-			            knot_zone_contents_find_node(fix_data->zone, fix_data->next_dname),
-			            fix_data->out_ch,
-			            3600, prev_zone_node == fix_data->zone->apex);
+			return update_nsec(knot_zone_contents_find_node(fix_data->zone, a ? a : b),
+			                   knot_zone_contents_find_node(fix_data->zone, fix_data->next_dname),
+			                   fix_data->out_ch,
+			                   3600, prev_zone_node == fix_data->zone->apex);
 		}
 		// Previous node was not changed in DDNS, it has to have NSEC
 		const knot_rrset_t *nsec_rrset =
@@ -1245,8 +1193,51 @@ knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
 		return NULL;
 	}
 
-	knot_dname_t *result = nsec3_hash_to_dname(hash, hash_size, zone_apex);
+	knot_dname_t *result = knot_nsec3_hash_to_dname(hash, hash_size, zone_apex);
 	free(hash);
+
+	return result;
+}
+
+/*!
+ * \brief Create NSEC3 owner name from hash and zone apex.
+ */
+knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
+                                       const knot_dname_t *zone_apex)
+{
+	assert(zone_apex);
+
+	// encode raw hash to first label
+
+	uint8_t label[KNOT_DNAME_MAX_LENGTH];
+	int32_t label_size;
+	label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
+	if (label_size <= 0) {
+		return NULL;
+	}
+
+	// allocate result
+
+	size_t zone_apex_size = knot_dname_size(zone_apex);
+	size_t result_size = 1 + label_size + zone_apex_size;
+	knot_dname_t *result = malloc(result_size);
+	if (!result) {
+		return NULL;
+	}
+
+	// build the result
+
+	uint8_t *write = result;
+
+	*write = (uint8_t)label_size;
+	write += 1;
+	memcpy(write, label, label_size);
+	write += label_size;
+	memcpy(write, zone_apex, zone_apex_size);
+	write += zone_apex_size;
+
+	assert(write == result + result_size);
+	knot_dname_to_lower(result);
 
 	return result;
 }

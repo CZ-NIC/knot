@@ -2,9 +2,9 @@
 
 '''Test for response rcodes'''
 
-import dnstest
+from dnstest.test import Test
 
-t = dnstest.DnsTest()
+t = Test()
 
 knot = t.server("knot")
 bind = t.server("bind")

@@ -500,8 +500,8 @@ def main(args):
 
     # Parse parameters
     try:
-        opts, args = getopt.getopt(args, 'hsi:u:n:t:o:', ['help', 'sign', 'serial',
-                                   'update', 'names', 'ttl', 'outfile'])
+        opts, args = getopt.getopt(args, 'hsi:u:n:t:o:', ['help', 'sign', 'serial=',
+                                   'update=', 'names=', 'ttl=', 'outfile='])
     except getopt.error as msg:
         print(msg)
         print('for help use --help')
@@ -553,7 +553,7 @@ def main(args):
 
     # Load DB if updating
     soa = None
-    outf = outfile if outfile else sys.stdout
+    outf = open(outfile, "w") if outfile else sys.stdout
     if UPDATE != None:
         outf = open(UPDATE, 'r+')
         NAME_EXIST.add(g_fqdn(ORIGIN))

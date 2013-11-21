@@ -1278,7 +1278,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * 2) Remove the proper RDATA from the RRSet copy
 	 */
 	knot_rrset_t *rr_remove = NULL;
-	ret = knot_rrset_remove_rr_using_rrset(to_modify, rr, &rr_remove, 0);
+	ret = knot_rrset_remove_rr_using_rrset(to_modify, rr, &rr_remove);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("ddns: proces_rem_rr: Could not remove RDATA from"
 		         " RRSet (%s).\n", knot_strerror(ret));

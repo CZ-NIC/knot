@@ -4,14 +4,12 @@ check_PROGRAMS = \
 	tests/zscanner-tool
 
 dist_check_SCRIPTS = \
-	tests/zscanner
+	tests/zscanner.sh
 
 check_LIBRARIES = tests/tap/libtap.a
 
 AM_CPPFLAGS = \
-	-I$(top_srcdir)/src \
-	-DSYSCONFDIR='"$(sysconfdir)"' \
-	-DSBINDIR='"$(sbindir)"'
+	-I$(top_srcdir)/src
 
 tests_runtests_CPPFLAGS = \
 	-DSOURCE='"$(abs_srcdir)/tests"' \

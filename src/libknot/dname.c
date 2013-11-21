@@ -307,9 +307,14 @@ char *knot_dname_to_str(const knot_dname_t *name)
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_from_str(const char *name, unsigned len)
+knot_dname_t *knot_dname_from_str(const char *name)
 {
-	if (name == NULL || len == 0 || len > KNOT_DNAME_MAXLEN) {
+	if (name == NULL) {
+		return NULL;
+	}
+
+	unsigned len = strlen(name);
+	if (len > KNOT_DNAME_MAXLEN) {
 		return NULL;
 	}
 
@@ -585,8 +590,16 @@ int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	/*! \todo Could be implemented more efficiently, check profile first. */
-	return (knot_dname_cmp(d1, d2) == 0);
+	while(*d1 != '\0' || *d2 != '\0') {
+		if (knot_label_is_equal(d1, d2)) {
+			d1 = knot_wire_next_label(d1, NULL);
+			d2 = knot_wire_next_label(d2, NULL);
+		} else {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 /*----------------------------------------------------------------------------*/

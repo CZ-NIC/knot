@@ -46,7 +46,7 @@ typedef uint8_t knot_dname_t;
  * \param endp Name boundary.
  * \param pkt Wire.
  *
- * \retval KNOT_EOK
+ * \retval (compressed) size of the domain name.
  * \retval KNOT_EMALF
  * \retval KNOT_ESPACE
  */
@@ -136,12 +136,12 @@ char *knot_dname_to_str(const knot_dname_t *name);
  *
  * The resulting FQDN is stored in the wire format.
  *
- * \param name Domain name in presentation format (labels separated by dots).
- * \param len Size of the domain name (count of characters with all dots).
+ * \param name Domain name in presentation format (labels separated by dots,
+ *             '\0' terminated).
  *
- * \return new name or NULL
+ * \return New name or NULL
  */
-knot_dname_t *knot_dname_from_str(const char *name, unsigned len);
+knot_dname_t *knot_dname_from_str(const char *name);
 
 /*!
  * \brief Convert name to lowercase.
@@ -158,6 +158,9 @@ int knot_dname_to_lower(knot_dname_t *name);
 /*!
  * \brief Returns size of the given domain name.
  *
+ * \note If the domain name is compressed, the length of not compressed part
+ *       is returned.
+ *
  * \param name Domain name to get the size of.
  *
  * \retval size of the domain name.
@@ -171,7 +174,7 @@ int knot_dname_size(const knot_dname_t *name);
  * \param name Domain name to get the size of.
  * \param pkt Related packet (or NULL if unpacked)
  *
- * \retval size of the domain name
+ * \retval size of the domain name.
  * \retval KNOT_EINVAL
  */
 int knot_dname_realsize(const knot_dname_t *name, const uint8_t *pkt);

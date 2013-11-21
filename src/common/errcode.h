@@ -74,6 +74,7 @@ enum knot_error {
 	KNOT_EOUTOFZONE,      /*!< Domain name does not belong to the zone. */
 	KNOT_EHASH,           /*!< Error in hash table. */
 	KNOT_EZONEINVAL,      /*!< Invalid zone file. */
+	KNOT_EZONENOENT,      /*!< Zone file not found. */
 	KNOT_ENOZONE,         /*!< No such zone found. */
 	KNOT_ENONODE,         /*!< No such node in zone found. */
 	KNOT_ENORRSET,        /*!< No such RRSet found. */
@@ -125,6 +126,8 @@ enum knot_error {
 	KNOT_DNSSEC_EDECODE_RAW_SIGNATURE,
 	KNOT_DNSSEC_EINVALID_SIGNATURE,
 	KNOT_DNSSEC_ESIGN,
+	KNOT_DNSSEC_ENOKEY,
+	KNOT_DNSSEC_ENOKEYDIR,
 
 	/* NSEC3 errors. */
 	KNOT_NSEC3_ECOMPUTE_HASH

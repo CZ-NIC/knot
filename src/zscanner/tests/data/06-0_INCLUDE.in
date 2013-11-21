@@ -25,5 +25,5 @@ $INCLUDE @TMPDIR@/includes/include2		; Absolute path without origin
 $INCLUDE @TMPDIR@/includes/include2	tld.	; Absolute path with origin
 7.	NS	@
 
-; KO
-$INCLUDE						; Empty parameters
+; KO (DISABLED - different results)
+;$INCLUDE						; Empty parameters
