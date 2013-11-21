@@ -42,11 +42,23 @@ class Response(object):
             flag_val = dns.flags.from_text(flag)
             isset(not(self.resp.flags & flag_val), "no %s flag" % flag)
 
+    def _check_eflags(self, eflags, noeflags):
+        eflag_names = eflags.split()
+        for flag in eflag_names:
+            flag_val = dns.flags.edns_from_text(flag)
+            isset(self.resp.ednsflags & flag_val, "%s flag" % flag)
+
+        eflag_names = noeflags.split()
+        for flag in eflag_names:
+            flag_val = dns.flags.edns_from_text(flag)
+            isset(not(self.resp.ednsflags & flag_val), "no %s flag" % flag)
+
     def check(self, rdata=None, ttl=None, rcode="NOERROR", flags="", \
-              noflags=""):
+              noflags="", eflags="", noeflags=""):
         '''Flags are text strings separated by whitespace character'''
 
         self._check_flags(flags, noflags)
+        self._check_eflags(eflags, noeflags)
         self._check_question()
 
         # Check rcode.
