@@ -490,6 +490,7 @@ class Bind(Server):
             z = self.zones[zone]
             s.begin("zone", z.name)
             s.item_str("file", z.filename)
+            s.item("check-names", "warn")
             if z.master:
                 s.item("type", "slave")
 
