@@ -57,7 +57,7 @@ def parse_args(cmd_args):
         test = parts[0]
 
         if test in storage:
-            storage[test].append(case)
+            storage[test].extend(case)
         else:
             storage[test] = case
 
