@@ -169,6 +169,11 @@ int udp_handle(struct answer_ctx *ans, int fd, sockaddr_t *addr,
 	if (state == NS_PROC_FINISH) {
 		tx->iov_len = tx_len;
 	}
+
+	/*! \todo IXFR query */
+	/*! \todo NOTIFY query */
+	/*! \todo UPDATE */
+
 	ns_proc_finish(&query_ctx);
 	return KNOT_EOK;
 #else

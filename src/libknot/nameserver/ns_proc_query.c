@@ -78,8 +78,12 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 
 	/* Check query type. */
 	uint16_t query_type = knot_pkt_type(pkt);
-	if (query_type != KNOT_QUERY_NORMAL) {
-		dbg_ns("%s: query_type(%hu) != NORMAL_QUERY\n", __func__, query_type);
+	switch(query_type) {
+	case KNOT_QUERY_NORMAL:
+	case KNOT_QUERY_NOTIFY:
+		break; /* Supported. */
+	default:
+		dbg_ns("%s: query_type(%hu) NOT SUPPORTED", __func__, query_type);
 		return NS_PROC_NOOP; /* Refuse to process. */
 	}
 
@@ -168,18 +172,26 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 }
 
 /*!
- * \brief Create a response for a given query in the CHAOS class.
+ * \brief Create a response for a given query in the INTERNET class.
  */
 int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
 	int next_state = NS_PROC_FAIL;
+	uint16_t query_type = knot_pkt_type(data->pkt);
 
-	/* Check zone validity. */
-	switch(knot_zone_state(pkt->zone)) {
-	case KNOT_EOK:     next_state = internet_answer(pkt, data); break;
-	case KNOT_ENOENT:  data->rcode = KNOT_RCODE_REFUSED; break;
-	default:           data->rcode = KNOT_RCODE_SERVFAIL; break;
+	switch(query_type) {
+	case KNOT_QUERY_NORMAL:
+		next_state = internet_answer(pkt, data);
+		break;
+	case KNOT_QUERY_NOTIFY:
+		next_state = internet_notify(pkt, ctx->ns, data);
+		break;
+	default:
+		assert(0); /* Should be caught earlier. */
+		data->rcode = KNOT_RCODE_SERVFAIL;
+		next_state = KNOT_ERROR;
+		break;
 	}
 
 	return next_state;

@@ -90,7 +90,7 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
 int notify_process_request(knot_nameserver_t *nameserver,
                            knot_pkt_t *notify,
                            sockaddr_t *from,
-                           uint8_t *buffer, size_t *size);
+                           uint8_t *buffer, size_t *size) __attribute__ ((deprecated));
 
 /*!
  * \brief Processes NOTIFY response packet.

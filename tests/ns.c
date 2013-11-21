@@ -22,6 +22,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/nameserver/ns_proc_query.h"
+#include "knot/server/zones.h"
 
 /* root zone query */
 #define IN_QUERY_LEN 28
@@ -55,12 +56,12 @@ static const uint8_t SOA_RDATA[SOA_RDLEN] = {
 int main(int argc, char *argv[])
 {
 	log_init();
-	plan(12);
+	plan(18);
 
 	/* Prepare. */
 	int state = NS_PROC_FAIL;
-	uint8_t wire[KNOT_WIRE_MAX_PKTSIZE];
-	uint16_t wire_len = KNOT_WIRE_MAX_PKTSIZE;
+	uint8_t wire[KNOT_WIRE_MAX_PKTSIZE], src[KNOT_WIRE_MAX_PKTSIZE];
+	uint16_t wire_len = KNOT_WIRE_MAX_PKTSIZE, src_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Create fake name server. */
 	knot_nameserver_t *ns = knot_ns_create();
@@ -79,6 +80,11 @@ int main(int argc, char *argv[])
 	knot_rrset_add_rdata(soa_rrset, SOA_RDATA, SOA_RDLEN);
 	knot_node_add_rrset(apex, soa_rrset);
 	knot_zone_t *root = knot_zone_new(apex);
+
+	/* Stub data. */
+	root->data = malloc(sizeof(zonedata_t));
+	memset(root->data, 0, sizeof(zonedata_t));
+
 	knot_zonedb_free(&ns->zone_db);
 	ns->zone_db = knot_zonedb_new(1);
 	knot_zonedb_add_zone(ns->zone_db, root);
@@ -118,10 +124,21 @@ int main(int argc, char *argv[])
 	ns_proc_reset(&query_ctx);
 	state = ns_proc_in(IN_QUERY, IN_QUERY_LEN - 1, &query_ctx);
 	ok(state & NS_PROC_FAIL, "ns: process malformed SOA query" );
-	state = ns_proc_finish(&query_ctx);
-	ok(state & NS_PROC_FINISH, "ns: processing end" );
 
-	/* #10 Process NOTIFY query. */
+	/* Forge NOTIFY query from SOA query. */
+	memcpy(src, IN_QUERY, IN_QUERY_LEN);
+	src_len = IN_QUERY_LEN;
+	wire_len = sizeof(wire);
+	knot_wire_set_opcode(src, KNOT_OPCODE_NOTIFY);
+	ns_proc_reset(&query_ctx);
+	state = ns_proc_in(src, src_len, &query_ctx);
+	ok(state & NS_PROC_FULL, "ns: parsed NOTIFY");
+	state = ns_proc_out(wire, &wire_len, &query_ctx);
+	ok(state & NS_PROC_FINISH, "ns: answered NOTIFY");
+	ok(knot_wire_get_qr(wire), "ns: NOTIFY response has QR=1");
+	is_int(KNOT_OPCODE_NOTIFY, knot_wire_get_opcode(wire), "ns: is NOTIFY response");
+	is_int(knot_wire_get_id(src), knot_wire_get_id(wire), "ns: NOTIFY MsgId match");
+	is_int(KNOT_RCODE_NOERROR, knot_wire_get_rcode(wire), "ns: NOTIFY RCODE=0");
 
 	/* #10 Process AXFR query. */
 
@@ -133,7 +150,12 @@ int main(int argc, char *argv[])
 
 	/* #10 Process IXFR client. */
 
+	/* Finish. */
+	state = ns_proc_finish(&query_ctx);
+	ok(state & NS_PROC_FINISH, "ns: processing end" );
+
 	/* Cleanup. */
+	free(root->data);
 	mp_delete((struct mempool *)query_ctx.mm.ctx);
 	knot_ns_destroy(&ns);
 
