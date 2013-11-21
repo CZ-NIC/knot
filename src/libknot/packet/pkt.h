@@ -123,6 +123,7 @@ typedef struct knot_pkt {
 /*----------------------------------------------------------------------------*/
 
 knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm);
+int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len);
 int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query);
 void knot_pkt_clear(knot_pkt_t *pkt);
 void knot_pkt_clear_payload(knot_pkt_t *pkt);

@@ -121,22 +121,14 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 		return NULL;
 	}
 
-	/* NULL everything up to 'sections' (not the large data fields). */
-	memset(pkt, 0, (size_t)&((knot_pkt_t*)NULL)->rr_info);
+	/* No data to free, set memory context. */
+	pkt->rrset_count = 0;
 	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
 
-	/* Initialize OPT RR defaults. */
-	pkt->opt_rr.version = EDNS_NOT_SUPPORTED;
-	pkt->opt_rr.size = EDNS_MIN_SIZE;
-
-	/* Initialize wire. */
-	if (wire == NULL) {
-		if (pkt_wire_alloc(pkt, len) == KNOT_ENOMEM) {
-			mm->free(pkt);
-			return NULL;
-		}
-	} else {
-		pkt_wire_set(pkt, wire, len);
+	/* Initialize. */
+	if (knot_pkt_reset(pkt, wire, len) != KNOT_EOK) {
+		mm->free(pkt);
+		return NULL;
 	}
 
 	return pkt;
@@ -155,6 +147,34 @@ knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
 	return pkt_new_mm(wire, len, mm);
 }
 
+int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
+{
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Free allocated data. */
+	pkt_free_data(pkt);
+
+	/* NULL everything up to 'sections' (not the large data fields). */
+	int ret = KNOT_EOK;
+	mm_ctx_t mm = pkt->mm;
+	memset(pkt, 0, (size_t)&((knot_pkt_t*)NULL)->rr_info);
+	pkt->mm = mm;
+
+	/* Initialize OPT RR defaults. */
+	pkt->opt_rr.version = EDNS_NOT_SUPPORTED;
+	pkt->opt_rr.size = EDNS_MIN_SIZE;
+
+	/* Initialize wire. */
+	if (wire == NULL) {
+		ret = pkt_wire_alloc(pkt, len);
+	} else {
+		pkt_wire_set(pkt, wire, len);
+	}
+
+	return ret;
+}
 
 int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 {
@@ -545,7 +565,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 
 	int ret = knot_rrset_to_wire(rr, pos, &len, maxlen, &rr_added, &compr);
 	if (ret != KNOT_EOK) {
-		dbg_packet("%s: rr->wire = %s\n,", __func__, knot_strerror(ret));
+		dbg_packet("%s: rr_to_wire = %s\n,", __func__, knot_strerror(ret));
 
 		/* Truncate packet if required. */
 		if ( ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC) ) {
