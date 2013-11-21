@@ -4132,7 +4132,14 @@ int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx)
 	/* #10 implement */
 	knot_pkt_t *pkt = knot_pkt_new((uint8_t *)wire, wire_len, &ctx->mm);
 	knot_pkt_parse(pkt, 0);
-	ctx->state = ctx->module->in(pkt, ctx);
+
+	switch(ctx->state) {
+	case NS_PROC_MORE: ctx->state = ctx->module->in(pkt, ctx); break;
+	default:
+		assert(0); /* Improper use. */
+		return NS_PROC_NOOP;
+	}
+
 	return ctx->state;
 }
 
@@ -4144,7 +4151,9 @@ int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 	switch(ctx->state) {
 	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;
 	case NS_PROC_FAIL: ctx->state = ctx->module->err(pkt, ctx); break;
-	default:           return NS_PROC_NOOP;
+	default:
+		assert(0); /* Improper use. */
+		return NS_PROC_NOOP;
 	}
 
 	*wire_len = pkt->size;
