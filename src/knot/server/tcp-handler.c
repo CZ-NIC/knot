@@ -40,7 +40,7 @@
 #include "knot/server/zones.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/util/wire.h"
-#include "libknot/dnssec/cleanup.h"
+#include "libknot/dnssec/crypto.h"
 
 /*! \brief TCP worker data. */
 typedef struct tcp_worker_t {
@@ -674,7 +674,7 @@ int tcp_loop_worker(dthread_t *thread)
 
 int tcp_handler_destruct(dthread_t *thread)
 {
-	knot_dnssec_thread_cleanup();
+	knot_crypto_cleanup_thread();
 	return KNOT_EOK;
 }
 
