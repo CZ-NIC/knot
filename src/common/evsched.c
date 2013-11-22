@@ -337,3 +337,17 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 
 	return found;
 }
+
+int evsched_cancel_child(evsched_t *s, event_t *ev)
+{
+	if (!s || !ev) {
+		return -1;
+	}
+
+	int ret = 0;
+	while (((ret = evsched_cancel(s, ev)) < 0) && s && ev) {
+		;
+	}
+
+	return ret;
+}

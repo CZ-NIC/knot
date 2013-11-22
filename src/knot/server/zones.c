@@ -2613,9 +2613,7 @@ int zones_cancel_dnssec(knot_zone_t *zone)
 	evsched_t *scheduler = zd->server->sched;
 
 	if (zd->dnssec_timer) {
-		while (evsched_cancel(scheduler, zd->dnssec_timer) < 0) {
-			;
-		}
+		evsched_cancel_child(scheduler, zd->dnssec_timer);
 	}
 
 	return KNOT_EOK;
