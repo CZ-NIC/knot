@@ -6,7 +6,7 @@ from dnstest.test import Test
 
 t = Test()
 knot = t.server("knot")
-knot.DIG_TIMEOUT = 2 
+knot.DIG_TIMEOUT = 2
 
 bind = t.server("bind")
 zone = t.zone("flags.")
@@ -32,7 +32,7 @@ resp.cmp(bind)
 resp = knot.dig("dns1.flags", "A", udp=True)
 resp.cmp(bind)
 
-# Positive (NODATA) 
+# Positive (NODATA)
 resp = knot.dig("dns1.flags", "TXT", udp=True)
 resp.cmp(bind)
 
@@ -46,23 +46,23 @@ resp.cmp(bind)
 
 ''' ANY query type. '''
 
-# ANY to SOA record 
+# ANY to SOA record
 resp = knot.dig("flags", "ANY", udp=True)
 resp.cmp(bind)
 
-# ANY to A record 
+# ANY to A record
 resp = knot.dig("dns1.flags", "ANY", udp=True)
 resp.cmp(bind)
 
-# ANY to delegation point 
+# ANY to delegation point
 resp = knot.dig("sub.flags", "ANY", udp=True)
 resp.cmp(bind)
 
-# ANY to CNAME record 
+# ANY to CNAME record
 resp = knot.dig("cname.flags", "ANY", udp=True)
 resp.cmp(bind)
 
-# ANY to DNAME record 
+# ANY to DNAME record
 resp = knot.dig("dname.flags", "ANY", udp=True)
 resp.cmp(bind)
 
@@ -89,7 +89,7 @@ resp.cmp(bind)
 resp = knot.dig("a.cname-ns.flags", "A", udp=True)
 resp.cmp(bind)
 
-# CNAME leading out 
+# CNAME leading out
 resp = knot.dig("cname-out.flags", "A", udp=True)
 resp.cmp(bind)
 
@@ -117,7 +117,7 @@ resp.cmp(bind)
 resp = knot.dig("wildcard.flags", "A", udp=True)
 resp.cmp(bind)
 
-# Wildcard leading to A 
+# Wildcard leading to A
 resp = knot.dig("a.wildcard.flags", "A", udp=True)
 resp.cmp(bind)
 
@@ -125,7 +125,35 @@ resp.cmp(bind)
 resp = knot.dig("a.wildcard.flags", "TXT", udp=True)
 resp.cmp(bind)
 
-# Wildcard under DNAME subtree 
+# Deeper wildcard usage
+resp = knot.dig("a.a.a.wildcard.flags", "A", udp=True)
+resp.cmp(bind)
+
+# Asterisk label
+resp = knot.dig("sub.*.wildcard.flags", "A", udp=True)
+resp.cmp(bind)
+
+# Asterisk label (NODATA)
+resp = knot.dig("sub.*.wildcard.flags", "TXT", udp=True)
+resp.cmp(bind)
+
+# Wildcard node under asterisk label
+resp = knot.dig("*.*.wildcard.flags", "A", udp=True)
+resp.cmp(bind)
+
+# Wildcard node under asterisk label (NODATA)
+resp = knot.dig("*.*.wildcard.flags", "TXT", udp=True)
+resp.cmp(bind)
+
+# Wildcard under asterisk label
+resp = knot.dig("a.*.wildcard.flags", "A", udp=True)
+resp.cmp(bind)
+
+# Wildcard under asterisk label (NODATA)
+resp = knot.dig("a.*.wildcard.flags", "TXT", udp=True)
+resp.cmp(bind)
+
+# Wildcard under DNAME subtree
 resp = knot.dig("wildcard.dname.flags", "A", udp=True)
 resp.cmp(bind)
 
@@ -133,15 +161,15 @@ resp.cmp(bind)
 resp = knot.dig("wildcard.dname.flags", "TXT", udp=True)
 resp.cmp(bind)
 
-# Wildcard chain to A 
+# Wildcard chain to A
 resp = knot.dig("a.wildcard-cname.flags", "A", udp=True)
 resp.cmp(bind)
 
-# Wildcard chain to A (NODATA) 
+# Wildcard chain to A (NODATA)
 resp = knot.dig("a.wildcard-cname.flags", "TXT", udp=True)
 resp.cmp(bind)
 
-# Wildcard chain to NS 
+# Wildcard chain to NS
 resp = knot.dig("a.wildcard-deleg.flags", "NS", udp=True)
 resp.cmp(bind)
 
