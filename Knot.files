@@ -115,6 +115,8 @@ src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/xfr-handler.c
 src/knot/server/xfr-handler.h
+src/knot/server/zone-load.c
+src/knot/server/zone-load.h
 src/knot/server/zones.c
 src/knot/server/zones.h
 src/knot/stat/gatherer.c
@@ -137,8 +139,6 @@ src/libknot/consts.c
 src/libknot/consts.h
 src/libknot/dname.c
 src/libknot/dname.h
-src/libknot/dnssec/algorithm.c
-src/libknot/dnssec/algorithm.h
 src/libknot/dnssec/cleanup.h
 src/libknot/dnssec/config.h
 src/libknot/dnssec/key.c
@@ -240,7 +240,6 @@ src/zscanner/error.c
 src/zscanner/error.h
 src/zscanner/file_loader.c
 src/zscanner/file_loader.h
-src/zscanner/scanner.c
 src/zscanner/scanner.h
 src/zscanner/scanner.rl
 src/zscanner/scanner_body.rl
@@ -286,5 +285,5 @@ tests/tap/float.c
 tests/tap/float.h
 tests/tap/macros.h
 tests/wire.c
-tests/ztree.c
 tests/zonedb.c
+tests/ztree.c

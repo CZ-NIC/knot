@@ -19,6 +19,47 @@ mail	A	192.0.2.3
 sub	NS	ns.sub
 ns.sub	A	192.0.2.4
 
+; CNAME to A record
+cname	CNAME	dns1
+
+; CNAME to delegation
+cname-ns	CNAME	sub
+
+; CNAME to out
+cname-out	CNAME	another.world.
+
+; DNAME subtree
+dname		DNAME	dname-tree
+dname-tree	A	1.2.3.4
+a.dname-tree	A	5.6.7.8
+
+; Fourth level domain with A record
+fourth.third.second A	1.1.1.1
+
+; Delegated fourth level domain with A record
+fourth.third.sub A	2.2.2.2
+
+; Wildcard
+*.wildcard	A	4.3.2.1
+
+; Asterisk label
+sub.*.wildcard	A	6.7.8.9
+
+; Wildcard under asterisk label
+*.*.wildcard	A	9.8.7.6
+
+; Wildcard under DNAME subtree
+*.dname-tree	A	8.7.6.5
+
+; Wildcard to CNAME
+*.wildcard-cname CNAME	cname
+
+; Wildcard to delegation
+*.wildcard-deleg CNAME	cname-ns
+
+; Wildcard leading out
+*.wildcard-out CNAME	another.world.
+
 ; Text record which doesn't fit into answer section in 512 B UDP message
 513resp	TXT	( "12345678901234567890123456789012345678901234567890"
 		  "12345678901234567890123456789012345678901234567890"

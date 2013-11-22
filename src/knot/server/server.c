@@ -530,6 +530,7 @@ void server_stop(server_t *server)
 
 	/* Send termination event. */
 	evsched_schedule_term(server->sched, 0);
+	dt_stop(server->iosched);
 
 	/* Interrupt XFR handler execution. */
 	xfr_stop(server->xfr);

@@ -48,9 +48,9 @@ typedef struct {
 	/*!< List of files with query data. */
 	list_t		qfiles;
 	/*!< List of nameservers to query to. */
-	server_t	*server;
+	srv_info_t	*server;
 	/*!< Local interface (optional). */
-	server_t	*srcif;
+	srv_info_t	*srcif;
 	/*!< Version of ip protocol to use. */
 	ip_t		ip;
 	/*!< Type (TCP, UDP) protocol to use. */

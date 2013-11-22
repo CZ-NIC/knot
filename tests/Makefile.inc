@@ -29,9 +29,7 @@ check_LIBRARIES = tests/tap/libtap.a
 
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src \
-	-I$(top_srcdir)/tests \
-	-DSYSCONFDIR='"$(sysconfdir)"' \
-	-DSBINDIR='"$(sbindir)"'
+	-I$(top_srcdir)/tests
 
 tests_runtests_CPPFLAGS = \
 	-DSOURCE='"$(abs_top_srcdir)/tests"' \

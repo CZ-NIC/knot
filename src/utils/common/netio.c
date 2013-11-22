@@ -33,7 +33,7 @@
 #include "common/descriptor.h"		// KNOT_CLASS_IN
 #include "common/errcode.h"		// KNOT_E
 
-server_t* server_create(const char *name, const char *service)
+srv_info_t* srv_info_create(const char *name, const char *service)
 {
 	if (name == NULL || service == NULL) {
 		DBG_NULL;
@@ -41,7 +41,7 @@ server_t* server_create(const char *name, const char *service)
 	}
 
 	// Create output structure.
-	server_t *server = calloc(1, sizeof(server_t));
+	srv_info_t *server = calloc(1, sizeof(srv_info_t));
 
 	// Check output.
 	if (server == NULL) {
@@ -53,7 +53,7 @@ server_t* server_create(const char *name, const char *service)
 	server->service = strdup(service);
 
 	if (server->name == NULL || server->service == NULL) {
-		server_free(server);
+		srv_info_free(server);
 		return NULL;
 	}
 
@@ -61,7 +61,7 @@ server_t* server_create(const char *name, const char *service)
 	return server;
 }
 
-void server_free(server_t *server)
+void srv_info_free(srv_info_t *server)
 {
 	if (server == NULL) {
 		DBG_NULL;
@@ -120,10 +120,10 @@ const char* get_sockname(const int socktype)
 	return proto;
 }
 
-static int get_addr(const server_t  *server,
-                    const int       iptype,
-                    const int       socktype,
-                    struct addrinfo **info)
+static int get_addr(const srv_info_t *server,
+                    const int        iptype,
+                    const int        socktype,
+                    struct addrinfo  **info)
 {
 	struct addrinfo hints;
 
@@ -175,12 +175,12 @@ static void get_addr_str(const struct sockaddr_storage *ss,
 	}
 }
 
-int net_init(const server_t *local,
-             const server_t *remote,
-             const int      iptype,
-             const int      socktype,
-             const int      wait,
-             net_t          *net)
+int net_init(const srv_info_t *local,
+             const srv_info_t *remote,
+             const int        iptype,
+             const int        socktype,
+             const int        wait,
+             net_t            *net)
 {
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;

@@ -58,6 +58,655 @@ static const style_t DEFAULT_STYLE_DIG = {
 	.show_footer = true
 };
 
+static int opt_multiline(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.wrap = true;
+	q->style.format = FORMAT_FULL;
+	q->style.show_header = true;
+	q->style.show_edns = true;
+	q->style.show_footer = true;
+	q->style.style.verbose = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nomultiline(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.wrap = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_short(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.format = FORMAT_DIG;
+	q->style.show_header = false;
+	q->style.show_edns = false;
+	q->style.show_footer = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_noshort(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.format = FORMAT_FULL;
+
+	return KNOT_EOK;
+}
+
+static int opt_aaflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.aa_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noaaflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.aa_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_tcflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.tc_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_notcflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.tc_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_rdflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.rd_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nordflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.rd_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_raflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.ra_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noraflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.ra_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_zflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.z_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nozflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.z_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_adflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.ad_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noadflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.ad_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_cdflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.cd_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nocdflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.cd_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_doflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.do_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nodoflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.do_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_all(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_header = true;
+	q->style.show_edns = true;
+	q->style.show_question = true;
+	q->style.show_answer = true;
+	q->style.show_authority = true;
+	q->style.show_additional = true;
+	q->style.show_footer = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noall(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_header = false;
+	q->style.show_edns = false;
+	q->style.show_query = false;
+	q->style.show_question = false;
+	q->style.show_answer = false;
+	q->style.show_authority = false;
+	q->style.show_additional = false;
+	q->style.show_footer = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_qr(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_query = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noqr(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_query = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_header(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_header = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noheader(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_header = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_opt(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_edns = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noopt(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_edns = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_question(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_question = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noquestion(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_question = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_answer(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_answer = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noanswer(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_answer = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_authority(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_authority = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noauthority(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_authority = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_additional(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_additional = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noadditional(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_additional = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_stats(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_footer = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nostats(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_footer = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_class(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.show_class = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noclass(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.show_class = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_ttl(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.show_ttl = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nottl(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.show_ttl = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_tcp(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->protocol = PROTO_TCP;
+
+	return KNOT_EOK;
+}
+
+static int opt_notcp(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->protocol = PROTO_UDP;
+	q->ignore_tc = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_fail(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->servfail_stop = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nofail(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->servfail_stop = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_ignore(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->ignore_tc = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noignore(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->ignore_tc = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_nsid(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->nsid = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nonsid(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->nsid = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_edns(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	if (arg == NULL) {
+		q->edns = 0;
+		return KNOT_EOK;
+	} else if (*arg == '\0') {
+		ERR("missing edns version\n");
+		return KNOT_EFEWDATA;
+	} else {
+		char *end;
+		long long num = strtoll(arg, &end, 10);
+		// Check for bad string.
+		if (end == arg || *end != '\0') {
+			ERR("bad +edns=%s\n", arg);
+			return KNOT_EINVAL;
+		}
+
+		if (num < 0 || num > UINT8_MAX) {
+			ERR("+edns=%s is out of range\n", arg);
+			return KNOT_ERANGE;
+		}
+
+		q->edns = num;
+
+		return KNOT_EOK;
+	}
+}
+
+static int opt_noedns(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->edns = -1;
+	q->udp_size = -1;
+	q->flags.do_flag = false;
+	q->nsid = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_time(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	return params_parse_wait(arg, &q->wait);
+}
+
+static int opt_retry(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	return params_parse_num(arg, &q->retries);
+}
+
+static int opt_bufsize(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	char *end;
+	long long num = strtoll(arg, &end, 10);
+	// Check for bad string.
+	if (end == arg || *end != '\0') {
+		ERR("bad +bufsize=%s\n", arg);
+		return KNOT_EINVAL;
+	}
+
+	if (num > UINT16_MAX) {
+		num = UINT16_MAX;
+		WARN("+bufsize=%s is too big, using %lld instead\n", arg, num);
+	} else if (num < 0) {
+		num = 0;
+		WARN("+bufsize=%s is too small, using %lld instead\n", arg, num);
+	}
+
+	// Disable EDNS if zero bufsize.
+	if (num == 0) {
+		q->udp_size = -1;
+	} else {
+		q->udp_size = num;
+	}
+
+	return KNOT_EOK;
+}
+
+static const param_t dig_opts2[] = {
+	{ "multiline",    ARG_NONE,     opt_multiline },
+	{ "nomultiline",  ARG_NONE,     opt_nomultiline },
+
+	{ "short",        ARG_NONE,     opt_short },
+	{ "noshort",      ARG_NONE,     opt_noshort },
+
+	{ "aaflag",       ARG_NONE,     opt_aaflag },
+	{ "noaaflag",     ARG_NONE,     opt_noaaflag },
+
+	{ "tcflag",       ARG_NONE,     opt_tcflag },
+	{ "notcflag",     ARG_NONE,     opt_notcflag },
+
+	{ "rdflag",       ARG_NONE,     opt_rdflag },
+	{ "nordflag",     ARG_NONE,     opt_nordflag },
+
+	{ "recurse",      ARG_NONE,     opt_rdflag },
+	{ "norecurse",    ARG_NONE,     opt_nordflag },
+
+	{ "raflag",       ARG_NONE,     opt_raflag },
+	{ "noraflag",     ARG_NONE,     opt_noraflag },
+
+	{ "zflag",        ARG_NONE,     opt_zflag },
+	{ "nozflag",      ARG_NONE,     opt_nozflag },
+
+	{ "adflag",       ARG_NONE,     opt_adflag },
+	{ "noadflag",     ARG_NONE,     opt_noadflag },
+
+	{ "cdflag",       ARG_NONE,     opt_cdflag },
+	{ "nocdflag",     ARG_NONE,     opt_nocdflag },
+
+	{ "dnssec",       ARG_NONE,     opt_doflag },
+	{ "nodnssec",     ARG_NONE,     opt_nodoflag },
+
+	{ "all",          ARG_NONE,     opt_all },
+	{ "noall",        ARG_NONE,     opt_noall },
+
+	{ "qr",           ARG_NONE,     opt_qr },
+	{ "noqr",         ARG_NONE,     opt_noqr },
+
+	{ "header",       ARG_NONE,     opt_header },
+	{ "noheader",     ARG_NONE,     opt_noheader },
+
+	{ "opt",          ARG_NONE,     opt_opt },
+	{ "noopt",        ARG_NONE,     opt_noopt },
+
+	{ "question",     ARG_NONE,     opt_question },
+	{ "noquestion",   ARG_NONE,     opt_noquestion },
+
+	{ "answer",       ARG_NONE,     opt_answer },
+	{ "noanswer",     ARG_NONE,     opt_noanswer },
+
+	{ "authority",    ARG_NONE,     opt_authority },
+	{ "noauthority",  ARG_NONE,     opt_noauthority },
+
+	{ "additional",   ARG_NONE,     opt_additional },
+	{ "noadditional", ARG_NONE,     opt_noadditional },
+
+	{ "stats",        ARG_NONE,     opt_stats },
+	{ "nostats",      ARG_NONE,     opt_nostats },
+
+	{ "class",        ARG_NONE,     opt_class },
+	{ "noclass",      ARG_NONE,     opt_noclass },
+
+	{ "ttl",          ARG_NONE,     opt_ttl },
+	{ "nottl",        ARG_NONE,     opt_nottl },
+
+	{ "tcp",          ARG_NONE,     opt_tcp },
+	{ "notcp",        ARG_NONE,     opt_notcp },
+
+	{ "fail",         ARG_NONE,     opt_fail },
+	{ "nofail",       ARG_NONE,     opt_nofail },
+
+	{ "ignore",       ARG_NONE,     opt_ignore },
+	{ "noignore",     ARG_NONE,     opt_noignore },
+
+	{ "nsid",         ARG_NONE,     opt_nsid },
+	{ "nonsid",       ARG_NONE,     opt_nonsid },
+
+	{ "edns",         ARG_OPTIONAL, opt_edns },
+	{ "noedns",       ARG_NONE,     opt_noedns },
+
+	{ "time",         ARG_REQUIRED, opt_time },
+
+	{ "retry",        ARG_REQUIRED, opt_retry },
+
+	{ "bufsize",      ARG_REQUIRED, opt_bufsize },
+
+	{ NULL }
+};
+
 query_t* query_create(const char *owner, const query_t *conf)
 {
 	// Create output structure.
@@ -99,8 +748,8 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->nsid = false;
 	} else {
 		if (conf->local != NULL) {
-			query->local = server_create(conf->local->name,
-			                             conf->local->service);
+			query->local = srv_info_create(conf->local->name,
+			                               conf->local->service);
 			if (query->local == NULL) {
 				query_free(query);
 				return NULL;
@@ -151,12 +800,12 @@ void query_free(query_t *query)
 
 	// Cleanup servers.
 	WALK_LIST_DELSAFE(n, nxt, query->servers) {
-		server_free((server_t *)n);
+		srv_info_free((srv_info_t *)n);
 	}
 
 	// Cleanup local address.
 	if (query->local != NULL) {
-		server_free(query->local);
+		srv_info_free(query->local);
 	}
 
 	// Cleanup cryptographic content.
@@ -237,13 +886,13 @@ static int parse_keyfile(const char *value, query_t *query)
 
 static int parse_local(const char *value, query_t *query)
 {
-	server_t *local = parse_nameserver(value, "0");
+	srv_info_t *local = parse_nameserver(value, "0");
 	if (local == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	if (query->local != NULL) {
-		server_free(query->local);
+		srv_info_free(query->local);
 	}
 
 	query->local = local;
@@ -279,7 +928,7 @@ static int parse_port(const char *value, query_t *query)
 
 	// Set current server port (last or query default).
 	if (list_size(&query->servers) > 0) {
-		server_t *server = TAIL(query->servers);
+		srv_info_t *server = TAIL(query->servers);
 		port = &(server->service);
 	} else {
 		port = &(query->port);
@@ -385,7 +1034,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 	// Complete specified nameservers if any.
 	if (list_size(&query->servers) > 0) {
 		WALK_LIST(n, query->servers) {
-			server_t *s = (server_t *)n;
+			srv_info_t *s = (srv_info_t *)n;
 
 			// If the port isn't specified yet use the default one.
 			if (strlen(s->service) == 0) {
@@ -400,7 +1049,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 	// Use servers from config if any.
 	} else if (list_size(&conf->servers) > 0) {
 		WALK_LIST(n, conf->servers) {
-			server_t *s = (server_t *)n;
+			srv_info_t *s = (srv_info_t *)n;
 			char     *port = def_port;
 
 			// If the port is already specified, use it.
@@ -408,7 +1057,7 @@ static void complete_servers(query_t *query, const query_t *conf)
 				port = s->service;
 			}
 
-			server_t *server = server_create(s->name, port);
+			srv_info_t *server = srv_info_create(s->name, port);
 			if (server == NULL) {
 				WARN("can't set nameserver %s port %s\n",
 				     s->name, s->service);
@@ -494,7 +1143,6 @@ static void dig_help(void)
 	       "       +[no]tcflag     Set TC flag.\n"
 	       "       +[no]rdflag     Set RD flag.\n"
 	       "       +[no]recurse    Same as +[no]rdflag\n"
-	       "       +[no]rec        Same as +[no]rdflag\n"
 	       "       +[no]raflag     Set RA flag.\n"
 	       "       +[no]zflag      Set zero flag bit.\n"
 	       "       +[no]adflag     Set AD flag.\n"
@@ -503,21 +1151,22 @@ static void dig_help(void)
 	       "       +[no]all        Show all packet sections.\n"
 	       "       +[no]qr         Show query packet.\n"
 	       "       +[no]header     Show packet header.\n"
-	       "       +[no]edns       Show EDNS pseudosection.\n"
+	       "       +[no]opt        Show EDNS pseudosection.\n"
 	       "       +[no]question   Show question section.\n"
 	       "       +[no]answer     Show answer section.\n"
 	       "       +[no]authority  Show authority section.\n"
 	       "       +[no]additional Show additional section.\n"
 	       "       +[no]stats      Show trailing packet statistics.\n"
-	       "       +[no]cl         Show DNS class.\n"
+	       "       +[no]class      Show DNS class.\n"
 	       "       +[no]ttl        Show TTL value.\n"
-	       "       +time=T         Set wait for reply interval in seconds.\n"
-	       "       +retry=N        Set number of retries.\n"
-	       "       +bufsize=B      Set EDNS buffer size.\n"
 	       "       +[no]tcp        Use TCP protocol.\n"
 	       "       +[no]fail       Stop if SERVFAIL.\n"
 	       "       +[no]ignore     Don't use TCP automatically if truncated.\n"
 	       "       +[no]nsid       Request NSID.\n"
+	       "       +[no]edns=N     Use EDNS (=version).\n"
+	       "       +time=T         Set wait for reply interval in seconds.\n"
+	       "       +retry=N        Set number of retries.\n"
+	       "       +bufsize=B      Set EDNS buffer size.\n"
 	       "\n"
 	       "       -h, --help      Print help.\n"
 	       "       -v, --version   Print program version.\n");
@@ -711,191 +1360,55 @@ static int parse_opt2(const char *value, dig_params_t *params)
 		query = params->config;
 	}
 
-	// Check for format option.
-	if (strcmp(value, "multiline") == 0) {
-		query->style.style.wrap = true;
-		query->style.format = FORMAT_FULL;
-		query->style.show_header = true;
-		query->style.show_edns = true;
-		query->style.show_footer = true;
-		query->style.style.verbose = true;
-		query->style.style.human_ttl = true;
-	} else if (strcmp(value, "nomultiline") == 0) {
-		query->style.style.wrap = false;
-	}
-	else if (strcmp(value, "short") == 0) {
-		query->style.format = FORMAT_DIG;
-		query->style.show_header = false;
-		query->style.show_edns = false;
-		query->style.show_footer = false;
-	} else if (strcmp(value, "noshort") == 0) {
-		query->style.format = FORMAT_FULL;
-	}
-
-	// Check for flag option.
-	else if (strcmp(value, "aaflag") == 0) {
-		query->flags.aa_flag = true;
-	} else if (strcmp(value, "noaaflag") == 0) {
-		query->flags.aa_flag = false;
-	}
-	else if (strcmp(value, "tcflag") == 0) {
-		query->flags.tc_flag = true;
-	} else if (strcmp(value, "notcflag") == 0) {
-		query->flags.tc_flag = false;
-	}
-	else if (strcmp(value, "rdflag") == 0 ||
-	         strcmp(value, "recurse") == 0 ||
-	         strcmp(value, "rec") == 0) {
-		query->flags.rd_flag = true;
-	} else if (strcmp(value, "nordflag") == 0 ||
-	           strcmp(value, "norecurse") == 0 ||
-	           strcmp(value, "norec") == 0) {
-		query->flags.rd_flag = false;
-	}
-	else if (strcmp(value, "raflag") == 0) {
-		query->flags.ra_flag = true;
-	} else if (strcmp(value, "noraflag") == 0) {
-		query->flags.ra_flag = false;
-	}
-	else if (strcmp(value, "zflag") == 0) {
-		query->flags.z_flag = true;
-	} else if (strcmp(value, "nozflag") == 0) {
-		query->flags.z_flag = false;
-	}
-	else if (strcmp(value, "adflag") == 0) {
-		query->flags.ad_flag = true;
-	} else if (strcmp(value, "noadflag") == 0) {
-		query->flags.ad_flag = false;
-	}
-	else if (strcmp(value, "cdflag") == 0) {
-		query->flags.cd_flag = true;
-	} else if (strcmp(value, "nocdflag") == 0) {
-		query->flags.cd_flag = false;
-	}
-	else if (strcmp(value, "dnssec") == 0) {
-		query->flags.do_flag = true;
-	} else if (strcmp(value, "nodnssec") == 0) {
-		query->flags.do_flag = false;
-	}
-
-	// Check for display option.
-	else if (strcmp(value, "all") == 0) {
-		query->style.show_header = true;
-		query->style.show_edns = true;
-		query->style.show_question = true;
-		query->style.show_answer = true;
-		query->style.show_authority = true;
-		query->style.show_additional = true;
-		query->style.show_footer = true;
-	} else if (strcmp(value, "noall") == 0) {
-		query->style.show_header = false;
-		query->style.show_edns = false;
-		query->style.show_query = false;
-		query->style.show_question = false;
-		query->style.show_answer = false;
-		query->style.show_authority = false;
-		query->style.show_additional = false;
-		query->style.show_footer = false;
-	}
-	else if (strcmp(value, "qr") == 0) {
-		query->style.show_query = true;
-	} else if (strcmp(value, "noqr") == 0) {
-		query->style.show_query = false;
-	}
-	else if (strcmp(value, "header") == 0) {
-		query->style.show_header = true;
-	} else if (strcmp(value, "noheader") == 0) {
-		query->style.show_header = false;
-	}
-	else if (strcmp(value, "edns") == 0) {
-		query->style.show_edns = true;
-	} else if (strcmp(value, "noedns") == 0) {
-		query->style.show_edns = false;
-	}
-	else if (strcmp(value, "question") == 0) {
-		query->style.show_question = true;
-	} else if (strcmp(value, "noquestion") == 0) {
-		query->style.show_question = false;
-	}
-	else if (strcmp(value, "answer") == 0) {
-		query->style.show_answer = true;
-	} else if (strcmp(value, "noanswer") == 0) {
-		query->style.show_answer = false;
-	}
-	else if (strcmp(value, "authority") == 0) {
-		query->style.show_authority = true;
-	} else if (strcmp(value, "noauthority") == 0) {
-		query->style.show_authority = false;
-	}
-	else if (strcmp(value, "additional") == 0) {
-		query->style.show_additional = true;
-	} else if (strcmp(value, "noadditional") == 0) {
-		query->style.show_additional = false;
-	}
-	else if (strcmp(value, "stats") == 0) {
-		query->style.show_footer = true;
-	} else if (strcmp(value, "nostats") == 0) {
-		query->style.show_footer = false;
-	}
-	else if (strcmp(value, "cl") == 0) {
-		query->style.style.show_class = true;
-	} else if (strcmp(value, "nocl") == 0) {
-		query->style.style.show_class = false;
-	}
-	else if (strcmp(value, "ttl") == 0) {
-		query->style.style.show_ttl = true;
-	} else if (strcmp(value, "nottl") == 0) {
-		query->style.style.show_ttl = false;
-	}
-
-	// Check for query option.
-	else if (strncmp(value, "time=", 5) == 0) {
-		if (params_parse_wait(value + 5, &query->wait)
-		    != KNOT_EOK) {
-			return KNOT_EINVAL;
-		}
-	}
-	else if (strncmp(value, "retry=", 6) == 0) {
-		if (params_parse_num(value + 6, &query->retries)
-		    != KNOT_EOK) {
-			return KNOT_EINVAL;
-		}
-	}
-	else if (strncmp(value, "bufsize=", 8) == 0) {
-		if (params_parse_bufsize(value + 8, &query->udp_size)
-		    != KNOT_EOK) {
-			return KNOT_EINVAL;
-		}
-	}
-	else if (strcmp(value, "tcp") == 0) {
-		query->protocol = PROTO_TCP;
-	} else if (strcmp(value, "notcp") == 0) {
-		query->protocol = PROTO_UDP;
-		query->ignore_tc = true;
-	}
-	else if (strcmp(value, "fail") == 0) {
-		query->servfail_stop = true;
-	} else if (strcmp(value, "nofail") == 0) {
-		query->servfail_stop = false;
-	}
-	else if (strcmp(value, "ignore") == 0) {
-		query->ignore_tc = true;
-	} else if (strcmp(value, "noignore") == 0) {
-		query->ignore_tc = false;
-	}
-	else if (strcmp(value, "nsid") == 0) {
-		query->nsid = true;
-	} else if (strcmp(value, "nonsid") == 0) {
-		query->nsid = false;
-	}
-
-	// Unknown option.
-	else {
+	// Get option name.
+	const char *arg_sep = "=";
+	size_t opt_len = strcspn(value, arg_sep);
+	if (opt_len < 1) {
 		ERR("invalid option: +%s\n", value);
 		return KNOT_ENOTSUP;
 	}
 
-	return KNOT_EOK;
+	// Get option argument if any.
+	const char *arg = NULL;
+	const char *rest = value + opt_len;
+	if (strlen(rest) > 0) {
+		arg = rest + strspn(rest, arg_sep);
+	}
+
+	// Check if the given option is supported.
+	bool unique;
+	int ret = best_param(value, opt_len, dig_opts2, &unique);
+	if (ret < 0) {
+		ERR("invalid option: +%s\n", value);
+		return KNOT_ENOTSUP;
+	} else if (!unique) {
+		ERR("ambiguous option: +%s\n", value);
+		return KNOT_ENOTSUP;
+	}
+
+	// Check argument presence.
+	switch (dig_opts2[ret].arg) {
+	case ARG_NONE:
+		if (arg != NULL) {
+			ERR("superfluous option argument: +%s\n", value);
+			return KNOT_ENOTSUP;
+		}
+		break;
+	case ARG_REQUIRED:
+		if (arg == NULL) {
+			ERR("missing argument: +%s\n", value);
+			return KNOT_EFEWDATA;
+		} else if (*arg == '\0') {
+			ERR("empty argument: +%s\n", value);
+			return KNOT_EFEWDATA;
+		}
+		break;
+	case ARG_OPTIONAL:
+		break;
+	}
+
+	// Call option handler.
+	return dig_opts2[ret].handler(arg, query);
 }
 
 static int parse_token(const char *value, dig_params_t *params)

@@ -138,8 +138,7 @@ typedef enum {
  * \retval KNOT_EOK on success.
  * \retval Error code on failure.
  */
-int knot_changesets_init(knot_changesets_t **changesets,
-                         uint32_t flags);
+int knot_changesets_init(knot_changesets_t **changesets);
 
 /*!
  * \brief Creates changesets structure. The created structure has to be freed
@@ -150,7 +149,7 @@ int knot_changesets_init(knot_changesets_t **changesets,
  * \retval Created structure on success.
  * \retval NULL on failure.
  */
-knot_changesets_t *knot_changesets_create(uint32_t flags);
+knot_changesets_t *knot_changesets_create();
 
 /*!
  * \brief Creates new changeset structure and returns it to caller.

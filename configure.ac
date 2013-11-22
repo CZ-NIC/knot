@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.4.0-beta], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.4.0-rc1], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-bzip2 dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -75,7 +75,7 @@ AC_ARG_ENABLE([fastparser],
     [enable_fastparser=yes])
 
 AS_CASE([$enable_fastparser],
-    [no], [AC_SUBST([FSM_TYPE], [-G0])],
+    [no], [AC_SUBST([FSM_TYPE], [-T0])],
     [yes], [AC_SUBST([FSM_TYPE], [-G2])],
     [*], [
         AS_IF([test "$RAGEL" = "true"],
@@ -83,7 +83,7 @@ AS_CASE([$enable_fastparser],
         AC_SUBST([FSM_TYPE], [$enable_fastparser])
     ])
 AM_CONDITIONAL([G2_PARSER], test "$enable_fastparser" = "yes")
-AM_CONDITIONAL([G0_PARSER], test "$enable_fastparser" = "no")
+AM_CONDITIONAL([T0_PARSER], test "$enable_fastparser" = "no")
 
 # Debug modules
 AC_ARG_ENABLE([debug],

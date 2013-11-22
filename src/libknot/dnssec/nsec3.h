@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libknot/dnssec/algorithm.h"
+#include "libknot/consts.h"
 #include "libknot/rrset.h"
 
 /*---------------------------------------------------------------------------*/

@@ -98,7 +98,7 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 	// Print formated info.
 	switch (style->format) {
 	case FORMAT_NSUPDATE:
-		printf("\n;; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
+		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
 		       ";; Flags:%1s; "
 		       "ZONE: %u; PREREQ: %u; UPDATE: %u; ADDITIONAL: %u\n",
 		       opcode_str, rcode_str, knot_packet_id(packet),
@@ -109,7 +109,7 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 
 		break;
 	default:
-		printf("\n;; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
+		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
 		       ";; Flags:%1s; "
 		       "QUERY: %u; ANSWER: %u; AUTHORITY: %u; ADDITIONAL: %u\n",
 		       opcode_str, rcode_str, knot_packet_id(packet),
@@ -293,6 +293,11 @@ static void print_section_host(const knot_rrset_t **rrsets,
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
 		for (size_t j = 0; j < rrset->rdata_count; j++) {
+			if (rrset->type == KNOT_RRTYPE_CNAME &&
+			    style->hide_cname) {
+				continue;
+			}
+
 			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
 			                                &(style->style)) < 0) {
 				buflen += 4096;
@@ -358,11 +363,11 @@ knot_packet_t* create_empty_packet(const size_t max_size)
 	// Set packet buffer size.
 	knot_packet_set_max_size(packet, max_size);
 
-	// Set random sequence id.
-	knot_packet_set_random_id(packet);
-
 	// Initialize query packet.
 	knot_query_init(packet);
+
+	// Set random sequence id.
+	knot_packet_set_random_id(packet);
 
 	return packet;
 }
@@ -389,7 +394,7 @@ void print_header_xfr(const knot_packet_t *packet, const style_t  *style)
 	if (style->show_header) {
 		char *owner = knot_dname_to_str(knot_packet_qname(packet));
 		if (owner != NULL) {
-			printf("\n;; %s for %s\n", xfr, owner);
+			printf(";; %s for %s\n", xfr, owner);
 			free(owner);
 		}
 	}

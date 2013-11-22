@@ -73,7 +73,7 @@ typedef struct {
 	/*!< List of nameservers to query to. */
 	list_t		servers;
 	/*!< Local interface (optional). */
-	server_t	*local;
+	srv_info_t	*local;
 	/*!< Operation mode. */
 	operation_t	operation;
 	/*!< Version of ip protocol to use. */
@@ -104,6 +104,8 @@ typedef struct {
 	style_t		style;
 	/*!< Query for NSID. */
 	bool		nsid;
+	/*!< EDNS version (8unsigned + -1 uninitialized). */
+	int16_t		edns;
 	/*!< Key parameters. */
 	knot_key_params_t key_params;
 	/*!< Context for operations with signatures. */

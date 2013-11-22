@@ -5,12 +5,9 @@ Here is a list of the most notable features that are not supported in the
 current version of Knot.
 
 * Other DNS classes than IN, partially CH (CS, HS)
-* Dynamic updates with signed zones have following limitations:
-  - Knot DNS doesn't automatically sign incoming RRs
-  - Removing of RRSIG without covered type specification
-  - Deleting a last RR also removes its RRSIG
 
 Known bugs
 ==========
 
 * Rarely, incremental transfer fails to reschedule
+* Rarely when DNSSEC is enabled, Knot crashes in OpenSSL code

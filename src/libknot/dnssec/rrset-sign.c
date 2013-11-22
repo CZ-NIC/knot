@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "common/errcode.h"
+#include "libknot/common.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
@@ -186,6 +187,13 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
 		return KNOT_ENOMEM;
 	}
 
+#ifndef NDEBUG
+	// cannonical ordering of RRs is cheked in debug mode
+	uint8_t *prev_rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
+	size_t prev_rr_size = 0;
+	size_t rdata_offset = 0;
+#endif
+
 	int result = KNOT_EOK;
 
 	uint16_t rr_count = covered->rdata_count;
@@ -198,12 +206,31 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
 			break;
 		}
 
+#ifndef NDEBUG
+		if (i == 0) {
+			rdata_offset = knot_dname_size(covered->owner);
+			rdata_offset += 10; // type, class, ttl, rdlength
+		} else {
+			size_t cmp_size = MIN(prev_rr_size, rr_size);
+			int cmp = memcmp(prev_rrwf + rdata_offset,
+			                 rrwf + rdata_offset,
+			                 cmp_size - rdata_offset);
+			assert(cmp < 0 || (cmp == 0 && prev_rr_size <= rr_size));
+		}
+
+		memcpy(prev_rrwf, rrwf, rr_size);
+		prev_rr_size = rr_size;
+#endif
+
 		result = knot_dnssec_sign_add(ctx, rrwf, rr_size);
 		if (result != KNOT_EOK) {
 			break;
 		}
 	}
 
+#ifndef NDEBUG
+	free(prev_rrwf);
+#endif
 	free(rrwf);
 
 	return result;

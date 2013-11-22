@@ -46,12 +46,12 @@ int hex_decode(const char *input, uint8_t **output, size_t *output_size)
 
 	size_t input_size = strlen(input);
 	if (input_size % 2 != 0) {
-		return KNOT_EINVAL;
+		return KNOT_EMALF;
 	}
 
 	for (size_t i = 0; i < input_size; i++) {
 		if (!isxdigit((unsigned char)input[i])) {
-			return KNOT_EINVAL;
+			return KNOT_EMALF;
 		}
 	}
 

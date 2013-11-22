@@ -99,9 +99,6 @@ Set RD flag.
 .BR + [ no ] recurse
 .RB "Same as " + [ no ] rdflag
 .TP
-.BR + [ no ] rec
-.RB "Same as " + [ no ] rdflag
-.TP
 .BR + [ no ] raflag
 Set RA flag.
 .TP
@@ -126,7 +123,7 @@ Show query packet.
 .BR + [ no ] header
 Show packet header.
 .TP
-.BR + [ no ] edns
+.BR + [ no ] opt
 Show EDNS pseudosection.
 .TP
 .BR + [ no ] question
@@ -144,21 +141,11 @@ Show additional section.
 .BR + [ no ] stats
 Show trailing packet statistics.
 .TP
-.BR + [ no ] cl
+.BR + [ no ] class
 Show DNS class.
 .TP
 .BR + [ no ] ttl
 Show TTL value.
-.TP
-.BI +time= T
-Set wait for reply interval in seconds (default is 5 seconds).
-This timeout applies to each query try.
-.TP
-.BI +retry= N
-Set number (>=0) of UDP retries (default is 2). This doesn't apply to AXFR/IXFR.
-.TP
-.BI +bufsize= B
-Set EDNS buffer size in bytes (default is 512 bytes).
 .TP
 .BR + [ no ] tcp
 Use TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
@@ -171,6 +158,19 @@ Don't use TCP automatically if truncated reply is received.
 .TP
 .BR + [ no ] nsid
 Request nameserver identifier (NSID).
+.TP
+.BR + [ no ] edns= N
+Use EDNS version (default is 0).
+.TP
+.BI +time= T
+Set wait for reply interval in seconds (default is 5 seconds).
+This timeout applies to each query try.
+.TP
+.BI +retry= N
+Set number (>=0) of UDP retries (default is 2). This doesn't apply to AXFR/IXFR.
+.TP
+.BI +bufsize= B
+Set EDNS buffer size in bytes (default is 512 bytes).
 .SH NOTE
 Options \fB\-k\fR and \fB\-y\fR cannot be used mutually.
 .SS Missing features with regard to ISC dig
@@ -191,10 +191,10 @@ Options \fB\-f\fR and \fB\-m\fR and query options:
 .BR + [ no ] topdown ,\  + [ no ] nssearch ,\  + [ no ] trace.
 .TP
 Per-user file configuration via ${HOME}/.digrc.
+.TP
+Internationalized domain name (IDN) is not supported.
 .SS Differences with regard to ISC dig
 Optional port specification has a form of [address]:port instead of address#port.
-.TP
-.BR + [ no ] ttl " instead of " + [ no ] ttlid
 .TP
 Trailing information is formatted slightly different.
 .SH EXAMPLES

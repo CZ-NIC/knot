@@ -22,7 +22,7 @@
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/algorithm.h"
+#include "libknot/consts.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/rrset.h"
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	params.salt = (uint8_t *)strdup("happywithnsec3");
 
 	const char *dname_str = "knot-dns.cz.";
-	knot_dname_t *dname = knot_dname_from_str(dname_str, strlen(dname_str));
+	knot_dname_t *dname = knot_dname_from_str(dname_str);
 
 	size_t digest_size = 0;
 	uint8_t *digest = NULL;

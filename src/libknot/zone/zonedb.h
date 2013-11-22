@@ -136,7 +136,7 @@ knot_zone_t *knot_zonedb_find_zone(knot_zonedb_t *db,
  *         zone is found.
  */
 knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
-                                                  const knot_dname_t *zone_name);
+                                            const knot_dname_t *dname);
 
 knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
                                               const knot_dname_t *zone_name);

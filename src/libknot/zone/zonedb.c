@@ -187,6 +187,10 @@ knot_zone_t *knot_zonedb_remove_zone(knot_zonedb_t *db,
 
 int knot_zonedb_build_index(knot_zonedb_t *db)
 {
+	if (!db) {
+		return KNOT_EINVAL;
+	}
+
 	/* First, sort all zones based on the label count first and lexicographic
 	 * order second. The name with most labels goes first. 
 	 * i.e. {a, a.b, a.c, b } -> {a.b, a.c, a, b} */
@@ -225,6 +229,10 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 knot_zone_t *knot_zonedb_find_zone(knot_zonedb_t *db,
                                        const knot_dname_t *zone_name)
 {
+	if (!db || !zone_name) {
+		return NULL;
+	}
+
 	int pos = knot_zonedb_array_search(db->array, db->count, zone_name);
 	if (pos < 0) {
 		return NULL;
@@ -236,9 +244,9 @@ knot_zone_t *knot_zonedb_find_zone(knot_zonedb_t *db,
 /*----------------------------------------------------------------------------*/
 
 knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
-                                                  const knot_dname_t *zone_name)
+                                            const knot_dname_t *dname)
 {
-	int zone_labels = knot_dname_labels(zone_name, NULL);
+	int zone_labels = knot_dname_labels(dname, NULL);
 	if (db == NULL || zone_labels < 0) {
 		return NULL;
 	}
@@ -253,12 +261,12 @@ knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
 
 		/* Skip non-matched labels. */
 		while (sp->labels < zone_labels) {
-			zone_name = knot_wire_next_label(zone_name, NULL);
+			dname = knot_wire_next_label(dname, NULL);
 			--zone_labels;
 		}
 
 		/* Possible candidate, search the array. */
-		int k = knot_zonedb_array_search(sp->array, sp->count, zone_name);
+		int k = knot_zonedb_array_search(sp->array, sp->count, dname);
 		if (k > -1) {
 			return sp->array[k];
 		}

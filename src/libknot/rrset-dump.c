@@ -33,6 +33,7 @@
 #include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
 #include "common/descriptor.h"		// KNOT_RRTYPE
+#include "libknot/dnssec/key.h"		// knot_keytag
 #include "libknot/consts.h"		// knot_rcode_names
 #include "libknot/util/utils.h"		// knot_wire_read_u16
 
@@ -1283,6 +1284,26 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
+static void dnskey_info(const uint8_t *rdata,
+                        const size_t  rdata_len,
+                        char          *out,
+                        const size_t  out_len)
+{
+	const uint8_t  sep = *(rdata + 1) & 0x01;
+	const uint16_t key_tag = knot_keytag(rdata, rdata_len);
+
+	knot_lookup_table_t *alg = NULL;
+	alg = knot_lookup_by_id(knot_dnssec_alg_names, *(rdata + 3));
+
+	int ret = snprintf(out, out_len, "%s, alg = %s, id = %u ",
+	                   sep ? "KSK" : "ZSK",
+	                   alg ? alg->name : "UNKNOWN",
+	                   key_tag );
+	if (ret <= 0) {	// Truncated return is acceptable. Just check for errors.
+		out = "";
+	}
+}
+
 #define DUMP_PARAMS	const uint8_t *in, const size_t in_len, char *out, \
 			const size_t out_max, const knot_dump_style_t *style
 #define DUMP_INIT	rrset_dump_params_t p = { .style = style, .in = in, \
@@ -1295,8 +1316,10 @@ static void wire_unknown_to_str(rrset_dump_params_t *p)
 #define WRAP_END	dump_string(&p, BLOCK_INDENT ")"); CHECK_RET(p);
 #define WRAP_LINE	dump_string(&p, BLOCK_INDENT); CHECK_RET(p);
 
-#define COMMENT(s)	if (p.style->verbose) { dump_string(&p, "\t; " s); \
-			CHECK_RET(p); }
+#define COMMENT(s)	if (p.style->verbose) { \
+			    dump_string(&p, " ; "); CHECK_RET(p); \
+			    dump_string(&p, s); CHECK_RET(p); \
+			}
 
 #define DUMP_SPACE	dump_string(&p, " "); CHECK_RET(p);
 #define DUMP_NUM8	wire_num8_to_str(&p); CHECK_RET(p);
@@ -1424,11 +1447,14 @@ static int dump_dnskey(DUMP_PARAMS)
 	DUMP_INIT;
 
 	if (p.style->wrap) {
+		char info[512] = "";
+		dnskey_info(in, in_len, info, sizeof(info));
+
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE; WRAP_INIT;
 		DUMP_BASE64;
-		WRAP_END;
+		WRAP_END; COMMENT(info);
 	} else {
 		DUMP_NUM16; DUMP_SPACE;
 		DUMP_NUM8;  DUMP_SPACE;

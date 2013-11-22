@@ -31,6 +31,7 @@
 #include "common/descriptor.h"
 #include "common/mempattern.h"
 #include "libknot/rdata.h"
+#include "libknot/dnssec/zone-nsec.h"
 
 #include "knot/zone/semantic-check.h"
 
@@ -671,43 +672,18 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 						 ZC_ERR_NSEC3_RDATA_TTL, NULL);
 	}
 
-	/* check that next dname is in the zone */
+	/* Result is a dname, it can't be larger */
+	const knot_node_t *apex = knot_zone_contents_apex(zone);
 	uint8_t *next_dname_str = NULL;
 	uint8_t next_dname_size = 0;
-	uint8_t *next_dname_decoded = NULL;
 	knot_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
-	                                   &next_dname_size);
-	size_t real_size =
-		base32hex_encode_alloc(next_dname_str,
-	                               next_dname_size, &next_dname_decoded);
-	if (real_size <= 0 || next_dname_decoded == NULL) {
-		dbg_semcheck("Could not encode base32 string!\n");
-		free(next_dname_decoded);
-		return KNOT_ERROR;
-	}
-
-	/* This is why we allocate maximum length of decoded string + 1 */
-//	memmove(next_dname_decoded + 1, next_dname_decoded, real_size);
-//	next_dname_decoded[0] = real_size;
-	
-	/* Local allocation, will be discarded. */
-	knot_dname_t *next_dname =
-		knot_dname_from_str((char *)next_dname_decoded,
-					   real_size);
+	                             &next_dname_size);
+	knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
+	                                                    next_dname_size,
+	                                                    apex->owner);
 	if (next_dname == NULL) {
-		free(next_dname_decoded);
 		log_zone_warning("Could not create new dname!\n");
 		return KNOT_ERROR;
-	}
-	
-	free(next_dname_decoded);
-	knot_dname_to_lower(next_dname);
-	next_dname = knot_dname_cat(next_dname,
-	                            knot_node_owner(knot_zone_contents_apex(zone)));
-	if (next_dname == NULL) {
-		log_zone_warning("Could not concatenate dnames!\n");
-		return KNOT_ERROR;
-
 	}
 
 	if (knot_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
@@ -1220,40 +1196,17 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			return;
 		}
 
-		/* check that next dname is in the zone */
+		/* Result is a dname, it can't be larger */
+		const knot_node_t *apex = knot_zone_contents_apex(zone);
 		uint8_t *next_dname_str = NULL;
 		uint8_t next_dname_size = 0;
-		uint8_t *next_dname_decoded = NULL;
 		knot_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
-		                                   &next_dname_size);
-		size_t real_size =
-			base32hex_encode_alloc(next_dname_str,
-		                               next_dname_size, &next_dname_decoded);
-		if (real_size <= 0 || next_dname_decoded == NULL) {
-			dbg_semcheck("Could not encode base32 string!\n");
-			free(next_dname_decoded);
-			return;
-		}
-
-		/* Local allocation, will be discarded. */
-		knot_dname_t *next_dname =
-			knot_dname_from_str((char *)next_dname_decoded,
-						real_size);
+		                             &next_dname_size);
+		knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
+		                                                    next_dname_size,
+		                                                    apex->owner);
 		if (next_dname == NULL) {
-			dbg_semcheck("Could not allocate dname!\n");
-			free(next_dname_decoded);
-			return;
-		}
-
-		free(next_dname_decoded);
-		knot_dname_to_lower(next_dname);
-		next_dname = knot_dname_cat(next_dname,
-		                            knot_node_owner(knot_zone_contents_apex(zone)));
-
-		if (next_dname == NULL) {
-			dbg_semcheck("Could not concatenate dnames!\n");
-			err_handler_handle_error(handler, last_nsec3_node,
-						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
+			log_zone_warning("Could not create new dname!\n");
 			return;
 		}
 

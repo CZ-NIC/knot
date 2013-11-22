@@ -43,7 +43,8 @@ static knot_packet_t* create_query_packet(const query_t *query,
 		if (get_socktype(query->protocol, query->type_num)
 		    == SOCK_STREAM) {
 			max_size = MAX_PACKET_SIZE;
-		} else if (query->flags.do_flag || query->nsid) {
+		} else if (query->flags.do_flag || query->nsid ||
+		           query->edns > -1) {
 			max_size = DEFAULT_EDNS_SIZE;
 		} else {
 			max_size = DEFAULT_UDP_SIZE;
@@ -80,8 +81,7 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	}
 
 	// Create QNAME from string.
-	knot_dname_t *qname = knot_dname_from_str(query->owner,
-	                                          strlen(query->owner));
+	knot_dname_t *qname = knot_dname_from_str(query->owner);
 	if (qname == NULL) {
 		knot_packet_free(&packet);
 		return NULL;
@@ -137,7 +137,8 @@ static knot_packet_t* create_query_packet(const query_t *query,
 	}
 
 	// Create EDNS section if required.
-	if (query->udp_size > 0 || query->flags.do_flag || query->nsid) {
+	if (query->udp_size > 0 || query->flags.do_flag || query->nsid ||
+	    query->edns > -1) {
 		knot_opt_rr_t *opt_rr = knot_edns_new();
 		if (opt_rr == NULL) {
 			ERR("can't create EDNS section\n");
@@ -146,7 +147,9 @@ static knot_packet_t* create_query_packet(const query_t *query,
 			return NULL;
 		}
 
-		knot_edns_set_version(opt_rr, 0);
+		uint8_t edns_version = query->edns > -1 ? query->edns : 0;
+
+		knot_edns_set_version(opt_rr, edns_version);
 		knot_edns_set_payload(opt_rr, max_size);
 
 		if (knot_response_add_opt(packet, opt_rr, 0) != KNOT_EOK) {
@@ -423,7 +426,7 @@ static void process_query(const query_t *query)
 
 	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
-		server_t *remote = (server_t *)server;
+		srv_info_t *remote = (srv_info_t *)server;
 
 		DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
 		    "port(%s), protocol(%s)\n", query->owner, query->class_num,
@@ -661,7 +664,7 @@ static void process_query_xfr(const query_t *query)
 	int socktype = get_socktype(query->protocol, query->type_num);
 
 	// Use the first nameserver from the list.
-	server_t *remote = HEAD(query->servers);
+	srv_info_t *remote = HEAD(query->servers);
 
 	DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
 	    "port(%s), protocol(%s)\n", query->owner, query->class_num,

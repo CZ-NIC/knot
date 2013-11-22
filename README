@@ -89,6 +89,8 @@ Install Knot DNS into system:
 $ sudo make install
 $ sudo ldconfig
 
+NOTE: If you want to reduce zscanner compile time, use configure option --disable-fastparser.
+
 Running
 =======
 
