@@ -148,22 +148,6 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode);
  */
 int hhash_del(hhash_t* tbl, const char* key, uint16_t len);
 
-/*!
- * \brief Evict first element colliding with key.
- *
- * \note This function is very specific, but it is needed in a case where you
- *       want to accept that the table is full, but still forcifully create a
- *       vacant space for a new insertion.
- *
- * \param tbl Hash table.
- * \param key Key.
- * \param len Key length.
- * \param val Removed element value is stored in val.
- *
- * \return KNOT_EOK
- */
-int hhash_evict(hhash_t* tbl, const char* key, uint16_t len, value_t *val);
-
 /*
  * Hash table allows to build order index for extra memory costs.
  * This is not required, but useful if the table is small and insertions

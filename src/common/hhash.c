@@ -131,8 +131,8 @@ static int hhelem_free(hhash_t* tbl, uint32_t id, unsigned dist, value_t *val)
 	/* Erase data from target element. */
 	if (tbl->mm.free) {
 		tbl->mm.free(elm->d);
+		elm->d = NULL;
 	}
-	elm->d = NULL;
 
 	/* Invalidate index. */
 	if (tbl->mm.free) {
@@ -143,17 +143,6 @@ static int hhelem_free(hhash_t* tbl, uint32_t id, unsigned dist, value_t *val)
 	/* Update table weight. */
 	--tbl->weight;
 	return KNOT_EOK;
-}
-
-/*! \brief Find first . */
-static unsigned force_vacate(hhash_t *tbl, uint32_t idx)
-{
-	hhbitvec_t match = tbl->item[idx].hop;
-	if (match == 0) { /* Nothing to vacate. */
-		return HOP_LEN + 1;
-	}
-
-	return HOP_NEXT(match);
 }
 
 /*! \brief Find first free element from id. */
@@ -366,23 +355,6 @@ int hhash_del(hhash_t* tbl, const char* key, uint16_t len)
 	}
 
 	return hhelem_free(tbl, idx, dist, NULL);
-}
-
-int hhash_evict(hhash_t* tbl, const char* key, uint16_t len, value_t *val)
-{
-	if (tbl == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Find first occupied position for given key. */
-	uint32_t id = hash(key, len) % tbl->size;
-	unsigned dist = force_vacate(tbl, id);
-	if (dist > 0) { /* Table is full & current node is unusable. */
-		return KNOT_ESPACE;
-	}
-
-	/* Evict occupied element and return it's value. */
-	return hhelem_free(tbl, id, dist, val);
 }
 
 value_t *hhash_indexval(hhash_t* tbl, unsigned i)
