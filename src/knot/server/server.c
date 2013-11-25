@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <openssl/evp.h>
 #include <assert.h>
 
 #include "common/prng.h"
@@ -35,7 +34,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/zone/zonedb.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/cleanup.h"
+#include "libknot/dnssec/crypto.h"
 
 /*! \brief Event scheduler loop. */
 static int evsched_run(dthread_t *thread)
@@ -77,7 +76,7 @@ static int evsched_run(dthread_t *thread)
 /*! \brief Event scheduler thread destructor. */
 static int evsched_destruct(dthread_t *thread)
 {
-	knot_dnssec_thread_cleanup();
+	knot_crypto_cleanup_thread();
 	return KNOT_EOK;
 }
 
@@ -353,8 +352,6 @@ server_t *server_create()
 		return NULL;
 	}
 	knot_ns_set_data(server->nameserver, server);
-	dbg_server("server: initializing OpenSSL\n");
-	OpenSSL_add_all_digests();
 
 	// Create XFR handler
 	server->xfr = xfr_create(XFR_THREADS_COUNT, server->nameserver);

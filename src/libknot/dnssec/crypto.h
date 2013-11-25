@@ -14,42 +14,46 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file cleanup.h
+ * \file crypto.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
- * \brief DNSSEC deinitialization
+ * \brief Cryptographic backend initialization and clean up.
  *
  * \addtogroup dnssec
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_CLEANUP_H_
-#define _KNOT_DNSSEC_CLEANUP_H_
-
-#include <openssl/err.h>
-#include <openssl/evp.h>
+#ifndef _KNOT_DNSSEC_CRYPTO_H_
+#define _KNOT_DNSSEC_CRYPTO_H_
 
 /*!
- * \brief Deinitialize OpenSSL library thread specific data.
+ * \brief Initialize cryptographic backend.
  */
-static inline void knot_dnssec_thread_cleanup(void)
-{
-	ERR_remove_state(0);
-}
+void knot_crypto_init(void);
 
 /*!
- * \brief Deinitialize OpenSSL library.
+ * \brief Clean up data allocated by cryptographic backend.
  */
-static inline void knot_dnssec_cleanup(void)
-{
-	EVP_cleanup();
-	CRYPTO_cleanup_all_ex_data();
-	ERR_free_strings();
+void knot_crypto_cleanup(void);
 
-	knot_dnssec_thread_cleanup();
-}
+/*!
+ * \brief Clean up thread specific data allocated by cryptographic backend.
+ */
+void knot_crypto_cleanup_thread(void);
 
-#endif // _KNOT_DNSSEC_CLEANUP_H_
+/*!
+ * \brief Initialize data required for thread-safety of cryptographic backend.
+ *
+ * \note Does not include actions performed by knot_crypto_init().
+ */
+void knot_crypto_init_threads(void);
+
+/*!
+ * \brief Clean up allocated data required for thread-safety of crypto backend.
+ */
+void knot_crypto_cleanup_threads(void);
+
+#endif // _KNOT_DNSSEC_CRYPTO_H_
 
 /*! @} */

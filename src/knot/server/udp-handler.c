@@ -50,7 +50,7 @@
 #include "libknot/packet/pkt.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
-#include "libknot/dnssec/cleanup.h"
+#include "libknot/dnssec/crypto.h"
 
 /* Buffer identifiers. */
 enum {
@@ -604,6 +604,6 @@ int udp_master(dthread_t *thread)
 
 int udp_master_destruct(dthread_t *thread)
 {
-	knot_dnssec_thread_cleanup();
+	knot_crypto_cleanup_thread();
 	return KNOT_EOK;
 }

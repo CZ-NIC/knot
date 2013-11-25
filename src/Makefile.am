@@ -155,8 +155,9 @@ libknot_la_SOURCES =				\
 	libknot/tsig-op.c			\
 	libknot/binary.h			\
 	libknot/binary.c			\
-	libknot/dnssec/cleanup.h		\
 	libknot/dnssec/config.h			\
+	libknot/dnssec/crypto.c			\
+	libknot/dnssec/crypto.h			\
 	libknot/dnssec/key.c			\
 	libknot/dnssec/key.h			\
 	libknot/dnssec/nsec-bitmap.h		\

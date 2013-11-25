@@ -20,8 +20,8 @@
 #include <tap/basic.h>
 
 #include "common/errcode.h"
-#include "libknot/dnssec/cleanup.h"
 #include "libknot/dnssec/config.h"
+#include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/sign.h"
 
 #ifdef KNOT_ENABLE_ECDSA
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 		knot_free_key_params(&kp);
 	}
 
-	knot_dnssec_cleanup();
+	knot_crypto_cleanup();
 
 	return 0;
 }
