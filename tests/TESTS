@@ -1,6 +1,7 @@
 journal
 slab
 hattrie
+hhash
 dthreads
 events
 acl
