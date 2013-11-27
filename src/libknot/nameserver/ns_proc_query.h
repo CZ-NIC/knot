@@ -47,6 +47,7 @@ struct query_data {
 	const knot_node_t *node, *encloser, *previous;
 	list_t wildcards;
 	mm_ctx_t *mm;
+	void *ext;
 };
 
 int ns_proc_query_begin(ns_proc_context_t *ctx);

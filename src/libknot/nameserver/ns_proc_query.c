@@ -17,8 +17,8 @@
 
 /* Forward decls. */
 static int tsig_check(knot_pkt_t *pkt);
-static const knot_zone_t *answer_zone_find(knot_pkt_t *pkt, knot_zonedb_t *zonedb);
-static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t *ctx);
+static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t *zonedb);
+static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t *ctx);
 int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 
@@ -57,7 +57,7 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	/* Clear */
 	assert(ctx);
 	struct query_data *data = QUERY_DATA(ctx);
-	data->pkt = NULL;
+	knot_pkt_free(&data->pkt);
 	data->rcode = KNOT_RCODE_NOERROR;
 	data->rcode_tsig = 0;
 	data->node = data->encloser = data->previous = NULL;
@@ -74,7 +74,7 @@ int ns_proc_query_finish(ns_proc_context_t *ctx)
 	ctx->mm.free(ctx->data);
 	ctx->data = NULL;
 
-	return NS_PROC_FINISH;
+	return NS_PROC_NOOP;
 }
 int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 {
@@ -92,6 +92,7 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		break; /* Supported. */
 	default:
 		dbg_ns("%s: query_type(%hu) NOT SUPPORTED\n", __func__, query_type);
+		knot_pkt_free(&pkt);
 		return NS_PROC_NOOP; /* Refuse to process. */
 	}
 
@@ -252,7 +253,7 @@ static int tsig_check(knot_pkt_t *pkt)
 	return KNOT_EOK;
 }
 
-static const knot_zone_t *answer_zone_find(knot_pkt_t *pkt, knot_zonedb_t *zonedb)
+static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t *zonedb)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
 	uint16_t qclass = knot_pkt_qclass(pkt);
@@ -267,7 +268,7 @@ static const knot_zone_t *answer_zone_find(knot_pkt_t *pkt, knot_zonedb_t *zoned
 	return ns_get_zone_for_qname(zonedb, qname, qtype);
 }
 
-static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t *ctx)
+static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t *ctx)
 {
 	dbg_ns("%s(%p, %p, %p)\n", __func__, query, resp, ctx);
 

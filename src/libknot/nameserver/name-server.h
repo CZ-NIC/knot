@@ -462,7 +462,6 @@ typedef struct ns_proc_context
 	uint16_t type;
 	uint16_t flags;
 	void *data;
-	knot_pkt_t *in, *out;
 
 	int state;
 	knot_nameserver_t *ns;

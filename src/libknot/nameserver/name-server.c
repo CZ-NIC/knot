@@ -4107,7 +4107,11 @@ void knot_ns_destroy(knot_nameserver_t **nameserver)
 
 int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module)
 {
-	/* #10 implement */
+	/* Only in inoperable state. */
+	if (ctx->state != NS_PROC_NOOP) {
+		return NS_PROC_NOOP;
+	}
+
 	ctx->module = module;
 	ctx->state = module->begin(ctx);
 
@@ -4117,6 +4121,11 @@ int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module)
 
 int ns_proc_reset(ns_proc_context_t *ctx)
 {
+	/* Only in operable state. */
+	if (ctx->state == NS_PROC_NOOP) {
+		return NS_PROC_NOOP;
+	}
+
 	/* #10 implement */
 	ctx->state = ctx->module->reset(ctx);
 
@@ -4126,12 +4135,13 @@ int ns_proc_reset(ns_proc_context_t *ctx)
 
 int ns_proc_finish(ns_proc_context_t *ctx)
 {
+	/* Only in operable state. */
+	if (ctx->state == NS_PROC_NOOP) {
+		return NS_PROC_NOOP;
+	}
+
 	/* #10 implement */
 	ctx->state = ctx->module->finish(ctx);
-
-	/* Free packet buffers. */
-	knot_pkt_free(&ctx->in);
-	knot_pkt_free(&ctx->out);
 
 	dbg_ns("%s -> %d\n", __func__, ctx->state);
 	return ctx->state;
@@ -4139,22 +4149,15 @@ int ns_proc_finish(ns_proc_context_t *ctx)
 
 int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx)
 {
-	/* #10 implement */
-	if (ctx->in == NULL) {
-		ctx->in = knot_pkt_new((uint8_t *)wire, wire_len, &ctx->mm);
-	} else {
-		knot_pkt_reset(ctx->in, (uint8_t *)wire, wire_len);
-	}
-
-	knot_pkt_t *pkt = ctx->in;
-	knot_pkt_parse(pkt, 0);
-
-	switch(ctx->state) {
-	case NS_PROC_MORE: ctx->state = ctx->module->in(pkt, ctx); break;
-	default:
-		assert(0); /* Improper use. */
+	/* Only if expecting data. */
+	if (ctx->state != NS_PROC_MORE) {
 		return NS_PROC_NOOP;
 	}
+
+	knot_pkt_t *pkt = knot_pkt_new((uint8_t *)wire, wire_len, &ctx->mm);
+	knot_pkt_parse(pkt, 0);
+
+	ctx->state = ctx->module->in(pkt, ctx);
 
 	dbg_ns("%s -> %d\n", __func__, ctx->state);
 	return ctx->state;
@@ -4162,24 +4165,20 @@ int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx)
 
 int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 {
-	/* #10 implement */
-	if (ctx->out == NULL) {
-		ctx->out = knot_pkt_new(wire, *wire_len, &ctx->mm);
-	} else {
-		knot_pkt_reset(ctx->out, wire, *wire_len);
-	}
-
-	knot_pkt_t *pkt = ctx->out;
+	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, &ctx->mm);
+	dbg_ns("%s: new TX packet %p\n", __func__, pkt);
 
 	switch(ctx->state) {
 	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;
 	case NS_PROC_FAIL: ctx->state = ctx->module->err(pkt, ctx); break;
 	default:
 		assert(0); /* Improper use. */
+		knot_pkt_free(&pkt);
 		return NS_PROC_NOOP;
 	}
 
 	*wire_len = pkt->size;
+	knot_pkt_free(&pkt);
 
 	dbg_ns("%s -> %d\n", __func__, ctx->state);
 	return ctx->state;
