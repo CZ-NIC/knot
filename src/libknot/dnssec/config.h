@@ -36,6 +36,12 @@
   #undef KNOT_ENABLE_ECDSA
 #endif
 
+#if !defined(OPENSSL_NO_GOST)
+  #define KNOT_ENABLE_GOST 1
+#else
+  #undef KNOT_ENABLE_GOST
+#endif
+
 #endif // _KNOT_DNSSEC_CONFIG_H_
 
 /*! @} */

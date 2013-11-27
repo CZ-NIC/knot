@@ -16,12 +16,16 @@
 
 #include <assert.h>
 #include <openssl/crypto.h>
+#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <pthread.h>
 
 #include "libknot/common.h"
+#include "libknot/dnssec/config.h"
 #include "libknot/dnssec/crypto.h"
+
+/*- thread safety -----------------------------------------------------------*/
 
 /*!
  * \brief Mutexes to be used by OpenSSL.
@@ -107,6 +111,45 @@ static void openssl_threadid_cb(CRYPTO_THREADID *openssl_id)
 	CRYPTO_THREADID_set_pointer(openssl_id, (void *)id);
 }
 
+/*- pluggable engines -------------------------------------------------------*/
+
+#if KNOT_ENABLE_GOST
+
+static ENGINE *gost_engine = NULL;
+
+static void init_gost_engine(void)
+{
+	assert(gost_engine == NULL);
+
+#ifndef OPENSSL_NO_STATIC_ENGINE
+	ENGINE_load_gost();
+#else
+	ENGINE_load_dynamic();
+#endif
+
+	gost_engine = ENGINE_by_id("gost");
+	if (!gost_engine) {
+		return;
+	}
+
+	ENGINE_init(gost_engine);
+	ENGINE_register_pkey_asn1_meths(gost_engine);
+	ENGINE_ctrl_cmd_string(gost_engine, "CRYPT_PARAMS",
+	                       "id-Gost28147-89-CryptoPro-A-ParamSet", 0);
+}
+
+static void deinit_gost_engine(void)
+{
+	assert(gost_engine);
+
+	ENGINE_finish(gost_engine);
+	ENGINE_free(gost_engine);
+
+	gost_engine = NULL;
+}
+
+#endif
+
 /*- public API --------------------------------------------------------------*/
 
 void knot_crypto_init(void)
@@ -116,6 +159,8 @@ void knot_crypto_init(void)
 
 void knot_crypto_cleanup(void)
 {
+	knot_crypto_unload_engines();
+
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
 	ERR_free_strings();
@@ -144,4 +189,22 @@ void knot_crypto_cleanup_threads(void)
 	if (openssl_mutex) {
 		openssl_mutexes_destroy();
 	}
+}
+
+void knot_crypto_load_engines(void)
+{
+#if KNOT_ENABLE_GOST
+	if (!gost_engine) {
+		init_gost_engine();
+	}
+#endif
+}
+
+void knot_crypto_unload_engines(void)
+{
+#if KNOT_ENABLE_GOST
+	if (gost_engine) {
+		deinit_gost_engine();
+	}
+#endif
 }
