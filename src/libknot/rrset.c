@@ -237,7 +237,7 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 		owner_len = sizeof(uint16_t);
 	} else {
 		owner = rrset->owner;
-		owner_len = 0;
+		owner_len = knot_dname_size(owner);
 	}
 
 	dbg_packet("%s: max size: %zu, compressed owner: %s, owner size: %u\n",

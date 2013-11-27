@@ -563,6 +563,8 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 finish:
+	mm->free(bufs[0].iov_base);
+	mm->free(bufs[1].iov_base);
 	ns_proc_finish(&query_ctx);
 	return ret;
 }
