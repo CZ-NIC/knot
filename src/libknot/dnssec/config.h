@@ -28,6 +28,11 @@
 #define _KNOT_DNSSEC_CONFIG_H_
 
 #include <openssl/opensslconf.h>
+#include <openssl/opensslv.h>
+
+#ifndef OPENSSL_VERSION_NUMBER
+#error "OpenSSL version is not defined."
+#endif
 
 // ECDSA support requires OpenSSL version >= 1.0.1
 #if !defined(OPENSSL_NO_ECDSA) && OPENSSL_VERSION_NUMBER >= 0x10001000
