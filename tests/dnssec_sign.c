@@ -24,12 +24,6 @@
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/sign.h"
 
-#ifdef KNOT_ENABLE_ECDSA
-static const int ecdsa_supported = 1;
-#else
-static const int ecdsa_supported = 0;
-#endif
-
 static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 {
 	int result;
@@ -94,7 +88,7 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 
 int main(int argc, char *argv[])
 {
-	plan(42);
+	plan(4 * 14);
 
 	knot_key_params_t kp = { 0 };
 
@@ -129,17 +123,29 @@ int main(int argc, char *argv[])
 
 	// ECDSA
 
-	if (!ecdsa_supported) {
-		skip_block(14, "ECDSA: not supported on this system");
-	} else {
-		kp.name = knot_dname_from_str("example.com");
-		kp.algorithm = 13;
-		knot_binary_from_base64("1N/PvpB8jZcvv+zr3Q987RKK1cBxDKULzEc5F/nnpSg=", &kp.private_key);
-		knot_binary_from_base64("AAAAAH3t6EfkvHK5fQMGslhWcCfMF6Q3oNbol2f19DGAb8r49ZX7iQ12sFIyrs2CiwDxFR9Y7fF2zOZ005VV1LA3m1Q=", &kp.rdata);
+#ifdef KNOT_ENABLE_ECDSA
+	kp.name = knot_dname_from_str("example.com");
+	kp.algorithm = 13;
+	knot_binary_from_base64("1N/PvpB8jZcvv+zr3Q987RKK1cBxDKULzEc5F/nnpSg=", &kp.private_key);
+	knot_binary_from_base64("AAAAAH3t6EfkvHK5fQMGslhWcCfMF6Q3oNbol2f19DGAb8r49ZX7iQ12sFIyrs2CiwDxFR9Y7fF2zOZ005VV1LA3m1Q=", &kp.rdata);
 
-		test_algorithm("ECDSA", &kp);
-		knot_free_key_params(&kp);
-	}
+	test_algorithm("ECDSA", &kp);
+	knot_free_key_params(&kp);
+#else
+	skip_block(14, "ECDSA: not supported on this system");
+#endif
+
+#if KNOT_ENABLE_GOST
+	kp.name = knot_dname_from_str("example.com");
+	kp.algorithm = 12;
+	knot_binary_from_base64("MEUCAQAwHAYGKoUDAgITMBIGByqFAwICIwEGByqFAwICHgEEIgIgN2CMRL538HmFM9+GHYM54rEDYO+tLDV3q7AtK1nZ4iA=", &kp.private_key);
+	knot_binary_from_base64("eHh4eOJ4YHvlasoDRc4ZnvRzldoTUgwWSW0bPv7r9xJ074Dn8KzM4yU9fJgTwIT1TsaHmejYopDnVdjxZyrKNra8Keo=", &kp.rdata);
+
+	test_algorithm("GOST", &kp);
+	knot_free_key_params(&kp);
+#else
+	skip_block(14, "GOST: not supported on this system");
+#endif
 
 	knot_crypto_cleanup();
 
