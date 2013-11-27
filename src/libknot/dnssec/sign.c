@@ -17,8 +17,8 @@
 #include <config.h>
 #include <assert.h>
 #include <openssl/dsa.h>
-#include <openssl/opensslconf.h>
 #include <openssl/evp.h>
+#include <openssl/opensslconf.h>
 #include <openssl/rsa.h>
 #include "common/descriptor.h"
 #include "common/errcode.h"
@@ -53,6 +53,8 @@ struct knot_dnssec_sign_context {
  * \brief Algorithm implementation specific functions.
  */
 struct algorithm_functions {
+	//! \brief Callback: function called before creating any keys/contexts
+	int (*algorithm_init)(void);
 	//! \brief Callback: create private key from key parameters.
 	int (*create_pkey)(const knot_key_params_t *, EVP_PKEY *);
 	//! \brief Callback: get signature size in bytes.
@@ -74,6 +76,14 @@ static BIGNUM *binary_to_bn(const knot_binary_t *bin)
 }
 
 /*- Algorithm independent ----------------------------------------------------*/
+
+/*!
+ * \brief Initialize algorithm.
+ */
+static int any_algorithm_init(void)
+{
+	return KNOT_EOK;
+}
 
 /*!
  * \brief Get size of the resulting signature.
@@ -640,6 +650,7 @@ static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
 /*- Algorithm specifications -------------------------------------------------*/
 
 static const algorithm_functions_t rsa_functions = {
+	any_algorithm_init,
 	rsa_create_pkey,
 	any_sign_size,
 	any_sign_add,
@@ -648,6 +659,7 @@ static const algorithm_functions_t rsa_functions = {
 };
 
 static const algorithm_functions_t dsa_functions = {
+	any_algorithm_init,
 	dsa_create_pkey,
 	dsa_sign_size,
 	any_sign_add,
@@ -657,6 +669,7 @@ static const algorithm_functions_t dsa_functions = {
 
 #ifdef KNOT_ENABLE_ECDSA
 static const algorithm_functions_t ecdsa_functions = {
+	any_algorithm_init,
 	ecdsa_create_pkey,
 	ecdsa_sign_size,
 	any_sign_add,
@@ -812,6 +825,21 @@ static int destroy_digest_context(EVP_MD_CTX **context)
 }
 
 /*!
+ * \brief Initialize algorithm.
+ *
+ * \param functions  Algorithm specific callbacks.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+static int init_algorithm(const algorithm_functions_t *functions)
+{
+	assert(functions);
+	assert(functions->algorithm_init);
+
+	return functions->algorithm_init();
+}
+
+/*!
  * \brief Free algorithm data.
  *
  * \param data  Algorithm context.
@@ -826,6 +854,8 @@ static int clean_algorithm_data(knot_dnssec_key_data_t *data)
 		EVP_PKEY_free(data->private_key);
 		data->private_key = NULL;
 	}
+
+	memset(data, '\0', sizeof(*data));
 
 	return KNOT_EOK;
 }
@@ -844,16 +874,24 @@ static int init_algorithm_data(const knot_key_params_t *params,
 	assert(params);
 	assert(data);
 
-	data->functions = get_implementation(params->algorithm);
-	if (!data->functions) {
+	knot_dnssec_key_data_t result = { '\0' };
+
+	result.functions = get_implementation(params->algorithm);
+	if (!result.functions) {
 		return KNOT_DNSSEC_ENOTSUP;
 	}
 
-	int result = create_pkey(params, data->functions, &data->private_key);
-	if (result != KNOT_EOK) {
-		clean_algorithm_data(data);
-		return result;
+	int error = init_algorithm(result.functions);
+	if (error != KNOT_EOK) {
+		return error;
 	}
+
+	error = create_pkey(params, result.functions, &result.private_key);
+	if (error != KNOT_EOK) {
+		return error;
+	}
+
+	*data = result;
 
 	return KNOT_EOK;
 }
