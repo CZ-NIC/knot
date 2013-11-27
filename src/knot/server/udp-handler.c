@@ -143,11 +143,8 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	        strfrom, sockaddr_portnum(addr));
 #endif
 
-	/* Reset context. */
-	uint16_t tx_len = tx->iov_len;
-	ns_proc_reset(query_ctx);
-
 	/* Input packet. */
+	uint16_t tx_len = tx->iov_len;
 	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
 
 	/* Process answer. */
@@ -166,6 +163,9 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	} else {
 		tx->iov_len = 0;
 	}
+
+	/* Reset context. */
+	ns_proc_reset(query_ctx);
 
 	return KNOT_EOK;
 
@@ -501,7 +501,7 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 	ns_proc_context_t query_ctx;
 	memset(&query_ctx, 0, sizeof(query_ctx));
 	query_ctx.ns = h->server->nameserver;
-	mm_ctx_mempool(&query_ctx.mm, 2 * sizeof(knot_pkt_t));
+	mm_ctx_mempool(&query_ctx.mm, sizeof(knot_pkt_t));
 
 	/* Disable transfers over UDP. */
 	query_ctx.flags |= NS_QUERY_NO_AXFR;
@@ -562,6 +562,8 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 			if (FD_ISSET(fd, &rfds)) {
 				while ((rcvd = _udp_recv(fd, rq)) > 0) {
 					_udp_handle(&query_ctx, rq);
+					/* Flush allocated memory. */
+					mp_flush(query_ctx.mm.ctx);
 					_udp_send(rq);
 					udp_pps_sample(rcvd, thr_id);
 				}

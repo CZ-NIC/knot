@@ -146,11 +146,8 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 		rx->iov_len = ret;
 	}
 
-	/* Reset context. */
-	uint16_t tx_len = tx->iov_len;
-	ns_proc_reset(query_ctx);
-
 	/* Input packet. */
+	uint16_t tx_len = tx->iov_len;
 	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
 
 	/* Resolve until NOOP or finished. */
@@ -166,6 +163,9 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 			tx_len = tx->iov_len; /* Reset size. */
 		}
 	}
+
+	/* Reset after processing. */
+	ns_proc_reset(query_ctx);
 
 	return ret;
 }
@@ -467,11 +467,15 @@ int tcp_loop_worker(dthread_t *thread)
 	int ret = KNOT_EOK;
 	ns_proc_context_t query_ctx;
 	memset(&query_ctx, 0, sizeof(query_ctx));
+	mm_ctx_init(&query_ctx.mm);
 	query_ctx.ns = w->ioh->server->nameserver;
-	mm_ctx_mempool(&query_ctx.mm, 2 * sizeof(knot_pkt_t));
+
 
 	/* Packet size not limited by EDNS. */
 	query_ctx.flags |= NS_PKTSIZE_NOLIMIT;
+
+	/* Create query processing context. */
+	ns_proc_begin(&query_ctx, NS_PROC_QUERY);
 
 	/* Create iovec abstraction. */
 	mm_ctx_t *mm = &query_ctx.mm;
@@ -484,9 +488,6 @@ int tcp_loop_worker(dthread_t *thread)
 			goto finish;
 		}
 	}
-
-	/* Create query processing context. */
-	ns_proc_begin(&query_ctx, NS_PROC_QUERY);
 
 	/* Accept clients. */
 	dbg_net("tcp: worker %p started\n", w);
@@ -562,7 +563,7 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 finish:
-	mp_delete(mm->ctx);
+	ns_proc_finish(&query_ctx);
 	return ret;
 }
 
