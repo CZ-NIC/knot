@@ -645,6 +645,7 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 
     /* attempt to fit new element and split if it doesn't fit */
     while (val == NULL) {
+		assert(len > 0);
         size_t m_old = node.b->weight;
         if (*node.flag & NODE_TYPE_PURE_BUCKET) {
             val = hhash_map(node.b, key + 1, len - 1, HHASH_INSERT);
