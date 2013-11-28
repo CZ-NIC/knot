@@ -26,6 +26,7 @@
 
 /* Test defines. */
 #define ELEM_COUNT 65535
+#define KEY_LEN(x) (strlen(x)+1)
 
 /* Random key string generator for tests. */
 static const char *alphabet = "0123abcdABCDwxyzWXYZ.-_";
@@ -47,7 +48,8 @@ static bool str_check_sort(const char *prev, const char *cur)
 		return true;
 	}
 
-	int l1 = strlen(prev), l2 = strlen(cur);
+	int l1 = strlen(prev);
+	int l2 = strlen(cur);
 	int res = memcmp(prev, cur, MIN(l1, l2));
 	if (res == 0) { /* Keys may be equal. */
 		if (l1 > l2) { /* 'prev' is longer, breaks ordering. */
@@ -91,21 +93,21 @@ int main(int argc, char *argv[])
 	}
 
 	/* Insert single element. */
-	ret = hhash_insert(tbl, key, strlen(key), val);
+	ret = hhash_insert(tbl, key, KEY_LEN(key), val);
 	ok(ret == KNOT_EOK, "hhash: insert single element");
 
 	/* Retrieve nonexistent element. */
 	cur = "nokey";
-	rval = hhash_find(tbl, cur, strlen(cur));
+	rval = hhash_find(tbl, cur, KEY_LEN(cur));
 	ok(rval == NULL, "hhash: find non-existent element");
 
 	/* Retrieve single element. */
-	rval = hhash_find(tbl, key, strlen(key));
+	rval = hhash_find(tbl, key, KEY_LEN(key));
 	ok(rval != NULL, "hhash: find existing element");
 
 	/* Fill the table. */
 	for (unsigned i = 0; i < ELEM_COUNT; ++i) {
-		ret = hhash_insert(tbl, keys[i], strlen(keys[i]), keys[i]);
+		ret = hhash_insert(tbl, keys[i], KEY_LEN(keys[i]), keys[i]);
 		if (ret != KNOT_EOK) {
 			nfilled = i;
 			ret = KNOT_EOK;
@@ -116,8 +118,8 @@ int main(int argc, char *argv[])
 	/* Check all keys integrity. */
 	unsigned nfound = 0;
 	for (unsigned i = 0; i < nfilled; ++i) {
-		rval = hhash_find(tbl, keys[i], strlen(keys[i]));
-		if (!rval || memcmp(*rval, keys[i], strlen(keys[i])) != 0) {
+		rval = hhash_find(tbl, keys[i], KEY_LEN(keys[i]));
+		if (!rval || memcmp(*rval, keys[i], KEY_LEN(keys[i])) != 0) {
 			break; /* Mismatch */
 		}
 		++nfound;
@@ -133,6 +135,8 @@ int main(int argc, char *argv[])
 			break;
 		}
 		prev = cur;
+		int strl = strlen(cur);
+		assert(strl + 1 == len);
 		hhash_iter_next(&it);
 	}
 	ok(hhash_iter_finished(&it), "hhash: passed order index checks");
@@ -154,13 +158,13 @@ int main(int argc, char *argv[])
 
 	/* Test find less or equal. */
 	prev = "mykey0"; /* mykey should precede it */
-	hhash_find_leq(tbl, prev, strlen(prev), &rval);
+	hhash_find_leq(tbl, prev, KEY_LEN(prev), &rval);
 	ok(rval && *rval == val, "hhash: find less or equal");
 
 	/* Delete key and retrieve it. */
-	ret = hhash_del(tbl, key, strlen(key));
+	ret = hhash_del(tbl, key, KEY_LEN(key));
 	ok(ret == KNOT_EOK, "hhash: remove key");
-	rval = hhash_find(tbl, key, strlen(key));
+	rval = hhash_find(tbl, key, KEY_LEN(key));
 	ok(rval == NULL, "hhash: find removed element");
 
 	/* Free all memory. */
