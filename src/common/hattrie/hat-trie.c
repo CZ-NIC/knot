@@ -16,8 +16,8 @@
 #define NODE_CHILDS (TRIE_MAXCHAR+1)
 /* initial nodestack size */
 #define NODESTACK_INIT 128
-/* hashtable max fill */
-#define HHASH_MAX_FILL 0.8
+/* hashtable max fill (undefine to maximize) */
+#define HHASH_MAX_FILL 0.9
 
 static const uint8_t NODE_TYPE_TRIE          = 0x1;
 static const uint8_t NODE_TYPE_PURE_BUCKET   = 0x2;
@@ -471,50 +471,35 @@ int hattrie_split_mid(node_ptr node, unsigned *left_m, unsigned *right_m)
     return j;
 }
 
-static void hattrie_split_fill(node_ptr src, node_ptr left, node_ptr right, uint8_t split)
-{
-    /* right should be most of the time hybrid */
+static value_t *find_below(hattrie_t *T, node_ptr parent,
+                          const char *key, size_t len);
 
-    /* keep or distribute keys to the new right node */
-    value_t* u;
-    const char* key;
-    uint16_t len;
+static void hashnode_split_reinsert(hattrie_t *T, node_ptr parent, node_ptr src)
+{
+    value_t* u = NULL;
+    const char* key = NULL;
+    uint16_t len = 0;
     hhash_iter_t i;
+
     hhash_iter_begin(src.b, &i, false);
     while (!hhash_iter_finished(&i)) {
         key = hhash_iter_key(&i, &len);
         u   = hhash_iter_val(&i);
-        assert(len > 0);
 
-        /* first char > split_point, move to the right */
-        if ((unsigned char) key[0] > split) {
-            /* insert to right (new bucket) */
-            if (*right.flag & NODE_TYPE_PURE_BUCKET) {
-                ++key;
-                --len;
-            }
-            hhash_insert(right.b, key, len, *u);
-        } else {
-            /* insert to left (new bucket) */
-            if (*left.flag & NODE_TYPE_PURE_BUCKET) {
-                ++key;
-                --len;
-            }
-            hhash_insert(left.b, key, len, *u);
-        }
+        *find_below(T, parent, key, len) = *u;
 
         hhash_iter_next(&i);
     }
+    hhash_free(src.b);
 }
 
-/* Split hybrid node - this is similar operation to burst. */
-static void hattrie_split_h(node_ptr parent, node_ptr node)
+static void hashnode_split(hattrie_t *T, node_ptr parent, node_ptr node)
 {
     /* Find split point. */
     unsigned left_m, right_m;
     unsigned char j = hattrie_split_mid(node, &left_m, &right_m);
 
-    /* now split into two node cooresponding to ranges [0, j] and
+    /* now split into two nodes corresponding to ranges [0, j] and
      * [j + 1, TRIE_MAXCHAR], respectively. */
 
     /* create new left and right nodes
@@ -543,13 +528,12 @@ static void hattrie_split_h(node_ptr parent, node_ptr node)
 
 
     /* fill new tables */
-    hattrie_split_fill(node, left, right, j);
-    hhash_free(node.b);
+    hashnode_split_reinsert(T, parent, node);
 }
 
 /* Perform one split operation on the given node with the given parent.
  */
-static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
+static void node_split(hattrie_t* T, node_ptr parent, node_ptr node)
 {
     /* only buckets may be split */
     assert(*node.flag & NODE_TYPE_PURE_BUCKET ||
@@ -578,87 +562,67 @@ static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
     }
 
     /* This is a hybrid bucket. Perform a proper split. */
-    hattrie_split_h(parent, node);
+    hashnode_split(T, parent, node);
 }
 
-/* Perform hattrie split and attempt to fit current key. */
-static value_t *hattrie_split_insert(hattrie_t *T, node_ptr *parent, node_ptr *node,
-                                     const char **key, size_t *len)
+static value_t *find_below(hattrie_t *T, node_ptr parent, const char *key, size_t len)
 {
-    hattrie_split(T, *parent, *node);
-
-    /* after the split, the node pointer is invalidated, so we search from
-     * the parent again. */
-    *node = hattrie_consume(parent, key, len, 0);
-
-    /* if the key has been consumed on a trie node, use its value */
-    if (*len == 0) {
-        if (*(*node).flag & NODE_TYPE_TRIE) {
-            return hattrie_useval(T, *node);
-        } else if (*(*node).flag & NODE_TYPE_HYBRID_BUCKET) {
-            return hattrie_useval(T, *parent);
-        }
-    }
-
-    return NULL;
-}
-
-value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
-{
-    node_ptr parent = T->root;
-    assert(*parent.flag & NODE_TYPE_TRIE);
-
-    if (len == 0) return &parent.t->val;
-
     /* consume all trie nodes, now parent must be trie and child anything */
     node_ptr node = hattrie_consume(&parent, &key, &len, 0);
     assert(*parent.flag & NODE_TYPE_TRIE);
-
-    /* key wasn't consumed and using pure tries */
-    if (T->bsize == 0) {
-        node.t = parent.t;
-        while (len > 0) {
-            node.t->xs[(unsigned char) *key].t = alloc_empty_node(T);
-            node = node.t->xs[(unsigned char) *key];
-            ++key;
-            --len;
-        }
-
-        return hattrie_useval(T, node);
-    }
 
     /* if the key has been consumed on a trie node, use its value */
     if (len == 0) {
         if (*node.flag & NODE_TYPE_TRIE) {
             return hattrie_useval(T, node);
-        }
-        else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
+        } else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
             return hattrie_useval(T, parent);
         }
     }
 
+#ifdef HHASH_MAX_FILL
     /* preemptively split the bucket if fill is over threshold */
-    value_t *val = NULL;
-    while (val == NULL && node.b->weight >= node.b->size * HHASH_MAX_FILL) {
-        val = hattrie_split_insert(T, &parent, &node, &key, &len);
+    if (node.b->weight >= node.b->size * HHASH_MAX_FILL) {
+        node_split(T, parent, node);
+        return find_below(T, parent, key, len);
     }
+#endif
 
     /* attempt to fit new element and split if it doesn't fit */
-    while (val == NULL) {
-		assert(len > 0);
-        size_t m_old = node.b->weight;
-        if (*node.flag & NODE_TYPE_PURE_BUCKET) {
-            val = hhash_map(node.b, key + 1, len - 1, HHASH_INSERT);
-        }
-        else {
-            val = hhash_map(node.b, key, len, HHASH_INSERT);
-        }
-        T->m += (node.b->weight - m_old);
+    value_t *val = NULL;
+    assert(len > 0);
+    if (*node.flag & NODE_TYPE_PURE_BUCKET) {
+        val = hhash_map(node.b, key + 1, len - 1, HHASH_INSERT);
+    }
+    else {
+        val = hhash_map(node.b, key, len, HHASH_INSERT);
+    }
 
-        /* not inserted */
-        if (val == NULL) {
-            val = hattrie_split_insert(T, &parent, &node, &key, &len);
-        }
+    /* not inserted, recursively split */
+    if (val == NULL) {
+        node_split(T, parent, node);
+        val = find_below(T, parent, key, len);
+    }
+
+    return val;
+}
+
+value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
+{
+    node_ptr parent = T->root;
+    value_t *val = NULL;
+    assert(*parent.flag & NODE_TYPE_TRIE);
+
+    /* Find value below root node if not empty string. */
+    if (len == 0) {
+        val = &parent.t->val;
+    } else {
+        val = find_below(T, parent, key, len);
+    }
+
+    /* Count insertions. */
+    if (val && *val == NULL) {
+        ++T->m;
     }
 
     return val;

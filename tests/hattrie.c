@@ -51,21 +51,21 @@ static bool str_check_sort(const char *prev, const char *cur, size_t l1, size_t 
 
 int main(int argc, char *argv[])
 {
-	plan(8);
+	plan(9);
 
 	/* Interesting intems. */
 	unsigned count = 10;
 	const char *items[] = {
-	        "abcd",
-	        "abc",
-	        "ab",
-	        "a",
-	        "abcdefghijklmnopqrstuvw",
-	        "abAcd",
-	        "abcA",
-	        "abA",
-	        "Aab",
-	        "A"
+		"abcd",
+		"abc",
+		"ab",
+		"a",
+		"abcdefghijklmnopqrstuvw",
+		"abAcd",
+		"abcA",
+		"abA",
+		"Aab",
+		"A"
 	};
 
 	/* Dummy items. */
@@ -83,12 +83,16 @@ int main(int argc, char *argv[])
 	ok(t != NULL, "hattrie: create");
 
 	/* Test 2: Insert */
+	unsigned really_inserted = 0;
 	passed = 1;
 	for (unsigned i = 0; i < count; ++i) {
 		v = hattrie_get(t, items[i], strlen(items[i]));
 		if (!v) {
 			passed = 0;
 			break;
+		}
+		if (*v == NULL) {
+			++really_inserted;
 		}
 		*v = (value_t)items[i];
 	}
@@ -104,6 +108,7 @@ int main(int argc, char *argv[])
 		}
 		if (*v == NULL) {
 			*v = dummy[i];
+			++really_inserted;
 		}
 	}
 	ok(passed, "hattrie: dummy insert");
@@ -123,11 +128,11 @@ int main(int argc, char *argv[])
 	/* Test 5: LPR lookup */
 	unsigned lpr_count = 5;
 	const char *lpr[] = {
-	        "abcdZ",
-	        "abcZ",
-	        "abZ",
-	        "aZ",
-	        "abcdefghijklmnopqrstuvw"
+		"abcdZ",
+		"abcZ",
+		"abZ",
+		"aZ",
+		"abcdefghijklmnopqrstuvw"
 	};
 	passed = 1;
 	for (unsigned i = 0; i < lpr_count; ++i) {
@@ -146,6 +151,9 @@ int main(int argc, char *argv[])
 	int ret = hattrie_find_lpr(t, false_lpr, strlen(false_lpr), &v);
 	ok(ret != 0 && v == NULL, "hattrie: non-existent prefix lookup");
 
+	/* Check total insertions against trie weight. */
+	is_int(hattrie_weight(t), really_inserted, "hattrie: trie weight matches insertions");
+
 	/* Unsorted iteration */
 	unsigned counted = 0;
 	hattrie_iter_t *it = hattrie_iter_begin(t, false);
@@ -153,7 +161,7 @@ int main(int argc, char *argv[])
 		++counted;
 		hattrie_iter_next(it);
 	}
-	is_int(hattrie_weight(t), counted, "hattrie: unsorted iteration");
+	is_int(really_inserted, counted, "hattrie: unsorted iteration");
 	hattrie_iter_free(it);
 
 	/* Sorted iteration. */
@@ -178,7 +186,7 @@ int main(int argc, char *argv[])
 		hattrie_iter_next(it);
 	}
 	free(prev);
-	is_int(hattrie_weight(t), counted, "hattrie: sorted iteration");
+	is_int(really_inserted, counted, "hattrie: sorted iteration");
 	hattrie_iter_free(it);
 
 	for (unsigned i = 0; i < dummy_count; ++i) {
