@@ -2009,14 +2009,14 @@ void xfrin_cleanup_successful_update(knot_changes_t *changes)
 /* New changeset applying                                                     */
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_switch_nodes_in_node(knot_node_t *node, void *data)
+static int xfrin_switch_nodes_in_node(knot_node_t **node, void *data)
 {
-	assert(node != NULL);
 	UNUSED(data);
 
-	assert(knot_node_new_node(node) == NULL);
+	assert(node && *node);
+	assert(knot_node_new_node(*node) == NULL);
 
-	knot_node_update_refs(node);
+	knot_node_update_refs(*node);
 
 	return KNOT_EOK;
 }
@@ -2029,11 +2029,9 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 
 	// Traverse the trees and for each node check every reference
 	// stored in that node. The node itself should be new.
-	knot_zone_contents_tree_apply_inorder(contents_copy,
-					      xfrin_switch_nodes_in_node, NULL);
+	knot_zone_tree_apply(contents_copy->nodes, xfrin_switch_nodes_in_node, NULL);
+	knot_zone_tree_apply(contents_copy->nsec3_nodes, xfrin_switch_nodes_in_node, NULL);
 
-	knot_zone_contents_nsec3_apply_inorder(contents_copy,
-					      xfrin_switch_nodes_in_node, NULL);
 	return KNOT_EOK;
 }
 

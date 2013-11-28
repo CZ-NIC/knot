@@ -526,6 +526,9 @@ void hhash_iter_begin(hhash_t* tbl, hhash_iter_t* i, bool sorted)
 	i->tbl = tbl;
 	if (sorted) {
 		i->flags |= HH_SORTED;
+		if (!hhash_iter_finished(i)) {
+			assert(tbl->index);
+		}
 	} else {
 		hhash_unsorted_iter_begin(i);
 	}
