@@ -32,13 +32,11 @@ static char *randstr() {
 	s[len - 1] = '\0';
 	return s;
 }
-static bool str_check_sort(const char *prev, const char *cur)
+static bool str_check_sort(const char *prev, const char *cur, size_t l1, size_t l2)
 {
 	if (prev == NULL) {
 		return true;
 	}
-	int l1 = strlen(prev);
-	int l2 = strlen(cur);
 	int res = memcmp(prev, cur, MIN(l1, l2));
 	if (res == 0) { /* Keys may be equal. */
 		if (l1 > l2) { /* 'prev' is longer, breaks ordering. */
@@ -159,20 +157,27 @@ int main(int argc, char *argv[])
 	hattrie_iter_free(it);
 
 	/* Sorted iteration. */
-	size_t len = 0;
-	const char *cur = NULL, *prev = NULL;
+	size_t len = 0, prev_len = 0;
+	const char *cur = NULL;
+	char *prev = NULL;
 	counted = 0;
 	hattrie_build_index(t);
 	it = hattrie_iter_begin(t, true);
 	while (!hattrie_iter_finished(it)) {
 		cur = hattrie_iter_key(it, &len);
-		if (!str_check_sort(prev, cur)) {
+		if (!str_check_sort(prev, cur, prev_len, len)) {
+			diag("(%zu)'%s' < (%zu)'%s' FAIL\n",
+			     prev_len, prev, len, cur);
 			break;
 		}
 		++counted;
-		prev = cur;
+		free(prev);
+		prev = xmalloc(len);
+		memcpy(prev, cur, len);
+		prev_len = len;
 		hattrie_iter_next(it);
 	}
+	free(prev);
 	is_int(hattrie_weight(t), counted, "hattrie: sorted iteration");
 	hattrie_iter_free(it);
 
