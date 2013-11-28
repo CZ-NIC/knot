@@ -22,7 +22,7 @@
 #include "common/mempattern.h"
 #include "common/hattrie/hat-trie.h"
 
-static const char *alphabet = "abcdefghijklmn";
+static const char *alphabet = "abcdefghijklmn.0123456789-";
 static char *randstr() {
 	unsigned len = (1 + rand() % 64) + 1; /* (1-64) + '\0' */
 	char *s = xmalloc(len * sizeof(char));
@@ -31,6 +31,23 @@ static char *randstr() {
 	}
 	s[len - 1] = '\0';
 	return s;
+}
+static bool str_check_sort(const char *prev, const char *cur)
+{
+	if (prev == NULL) {
+		return true;
+	}
+	int l1 = strlen(prev);
+	int l2 = strlen(cur);
+	int res = memcmp(prev, cur, MIN(l1, l2));
+	if (res == 0) { /* Keys may be equal. */
+		if (l1 > l2) { /* 'prev' is longer, breaks ordering. */
+			return false;
+		}
+	} else if (res > 0){
+		return false; /* Broken lexicographical order */
+	}
+	return true;
 }
 
 
@@ -55,7 +72,7 @@ int main(int argc, char *argv[])
 
 	/* Dummy items. */
 	srand(time(NULL));
-	unsigned dummy_count = 32768;
+	unsigned dummy_count = 65535;
 	char **dummy = xmalloc(sizeof(char*) * dummy_count);
 	for (unsigned i = 0; i < dummy_count; ++i) {
 		dummy[i] = randstr();
@@ -142,10 +159,18 @@ int main(int argc, char *argv[])
 	hattrie_iter_free(it);
 
 	/* Sorted iteration. */
+	size_t len = 0;
+	const char *cur = NULL, *prev = NULL;
 	counted = 0;
+	hattrie_build_index(t);
 	it = hattrie_iter_begin(t, true);
 	while (!hattrie_iter_finished(it)) {
+		cur = hattrie_iter_key(it, &len);
+		if (!str_check_sort(prev, cur)) {
+			break;
+		}
 		++counted;
+		prev = cur;
 		hattrie_iter_next(it);
 	}
 	is_int(hattrie_weight(t), counted, "hattrie: sorted iteration");
