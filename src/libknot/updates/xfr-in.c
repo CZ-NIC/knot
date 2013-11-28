@@ -2520,11 +2520,12 @@ dbg_xfrin_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_check_contents_copy_node(knot_node_t *node, void *data)
+static int xfrin_check_contents_copy_node(knot_node_t **node, void *data)
 {
-	assert(node != NULL);
+	UNUSED(data);
+	assert(node && *node);
 
-	if (knot_node_new_node(node) == NULL) {
+	if (knot_node_new_node(*node) == NULL) {
 		return KNOT_ENONODE;
 	} else {
 		return KNOT_EOK;
@@ -2535,14 +2536,12 @@ static int xfrin_check_contents_copy_node(knot_node_t *node, void *data)
 
 static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
 {
-	int ret = knot_zone_contents_tree_apply_inorder(old_contents,
-						 xfrin_check_contents_copy_node,
-						 NULL);
+	int ret = knot_zone_tree_apply(old_contents->nodes,
+				       xfrin_check_contents_copy_node, NULL);
 
 	if (ret == KNOT_EOK) {
-		ret = knot_zone_contents_nsec3_apply_inorder(old_contents,
-						 xfrin_check_contents_copy_node,
-						 NULL);
+		ret = knot_zone_tree_apply(old_contents->nsec3_nodes,
+					   xfrin_check_contents_copy_node, NULL);
 	}
 
 	if (knot_node_new_node(knot_zone_contents_apex(old_contents)) == NULL) {
