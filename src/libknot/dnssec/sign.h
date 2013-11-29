@@ -132,13 +132,14 @@ int knot_dnssec_sign_add(knot_dnssec_sign_context_t *context,
 /**
  * \brief Write down the DNSSEC signature for supplied data.
  *
- * \param context    DNSSEC signing context.
- * \param signature  Pointer to signature to be written.
+ * \param context         DNSSEC signing context.
+ * \param signature       Pointer to signature to be written.
+ * \param signature_size  Allocated size for the signature.
  *
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_sign_write(knot_dnssec_sign_context_t *context,
-                           uint8_t *signature);
+                           uint8_t *signature, size_t signature_size);
 
 /**
  * \brief Verify the DNSSEC signature for supplied data.
