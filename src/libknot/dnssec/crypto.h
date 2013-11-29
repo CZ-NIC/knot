@@ -54,6 +54,16 @@ void knot_crypto_init_threads(void);
  */
 void knot_crypto_cleanup_threads(void);
 
+/*!
+ * \brief Load pluggable crypto engines.
+ */
+void knot_crypto_load_engines(void);
+
+/*!
+ * \brief Unload pluggable crypto engines.
+ */
+void knot_crypto_unload_engines(void);
+
 #endif // _KNOT_DNSSEC_CRYPTO_H_
 
 /*! @} */

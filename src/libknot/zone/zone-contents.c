@@ -350,7 +350,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 
 	contents->apex = apex;
 	contents->zone = zone;
-	knot_node_set_zone(apex, contents->zone);
 	contents->node_count = 1;
 
 	dbg_zone_verb("Creating tree for normal nodes.\n");
@@ -510,8 +509,6 @@ dbg_zone_exec_detail(
 		return ret;
 	}
 
-	knot_node_set_zone(node, zone->zone);
-
 	++zone->node_count;
 
 	if (!create_parents) {
@@ -557,7 +554,6 @@ dbg_zone_exec_detail(
 
 			/* Update node pointers. */
 			knot_node_set_parent(node, next_node);
-			knot_node_set_zone(next_node, zone->zone);
 			if (knot_dname_is_wildcard(knot_node_owner(node))) {
 				knot_node_set_wildcard_child(next_node, node);
 			}
@@ -789,9 +785,6 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 	// no parents to be created, the only parent is the zone apex
 	// set the apex as the parent of the node
 	knot_node_set_parent(node, zone->apex);
-
-	// set the zone to the node
-	knot_node_set_zone(node, zone->zone);
 
 	// cannot be wildcard child, so nothing to be done
 
@@ -1587,7 +1580,9 @@ void knot_zone_contents_free(knot_zone_contents_t **contents)
 	}
 
 	// free the zone tree, but only the structure
+	dbg_zone("Destroying zone tree.\n");
 	knot_zone_tree_free(&(*contents)->nodes);
+	dbg_zone("Destroying NSEC3 zone tree.\n");
 	knot_zone_tree_free(&(*contents)->nsec3_nodes);
 
 	knot_nsec3_params_free(&(*contents)->nsec3_params);
@@ -1619,19 +1614,9 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 			(*contents)->nodes,
 			knot_zone_contents_destroy_node_rrsets_from_tree,
 			(void*)1);
-
-		// free the zone tree, but only the structure
-		// (nodes are already destroyed)
-		dbg_zone("Destroying zone tree.\n");
-		knot_zone_tree_free(&(*contents)->nodes);
-		dbg_zone("Destroying NSEC3 zone tree.\n");
-		knot_zone_tree_free(&(*contents)->nsec3_nodes);
-
-		knot_nsec3_params_free(&(*contents)->nsec3_params);
 	}
 
-	free((*contents));
-	*contents = NULL;
+	knot_zone_contents_free(contents);
 }
 
 /*----------------------------------------------------------------------------*/
