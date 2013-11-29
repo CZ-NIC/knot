@@ -66,7 +66,7 @@ typedef struct {
 	knot_binary_t private_value;
 	knot_binary_t public_value;
 
-	// EC
+	// EC/GOST
 	knot_binary_t private_key;
 
 	// key lifetime

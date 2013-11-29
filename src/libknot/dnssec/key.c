@@ -295,6 +295,7 @@ static const struct key_parameter key_parameters[] = {
 	{ "Private_value(x)",key_offset(private_value),    key_param_base64 },
 	{ "Public_value(y)", key_offset(public_value),     key_param_base64 },
 	{ "PrivateKey",      key_offset(private_key),      key_param_base64 },
+	{ "GostAsn1",        key_offset(private_key),      key_param_base64 },
 	{ "Publish",         key_offset(time_publish),     key_param_time },
 	{ "Activate",        key_offset(time_activate),    key_param_time },
 	{ "Inactive",        key_offset(time_inactive),    key_param_time },

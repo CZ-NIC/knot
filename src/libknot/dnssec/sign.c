@@ -20,16 +20,21 @@
 #include <openssl/evp.h>
 #include <openssl/opensslconf.h>
 #include <openssl/rsa.h>
+#include <pthread.h>
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/config.h"
+#include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sign.h"
 
 #ifdef KNOT_ENABLE_ECDSA
 #include <openssl/ecdsa.h>
+#endif
+#ifdef KNOT_ENABLE_GOST
+#include <openssl/x509.h>
 #endif
 
 #define DNSKEY_RDATA_PUBKEY_OFFSET 4
@@ -715,6 +720,123 @@ static int ecdsa_sign_verify(const knot_dnssec_sign_context_t *context,
 
 #endif
 
+/*- GOST specific ------------------------------------------------------------*/
+
+#ifdef KNOT_ENABLE_GOST
+
+static pthread_once_t gost_init_control = PTHREAD_ONCE_INIT;
+
+static void gost_algorithm_init_once(void)
+{
+	knot_crypto_load_engines();
+}
+
+/*!
+ * \brief Initialize GOST algorithm.
+ * \see any_algorithm_init
+ */
+static int gost_algorithm_init(void)
+{
+	pthread_once(&gost_init_control, gost_algorithm_init_once);
+
+	return KNOT_EOK;
+}
+
+// future feature (disabled now)
+#if 0
+/*!
+ * Prefix for GOST public keys allowing to load them using X.509 API functions.
+ *
+ * GOST keys in X.509 PKI start with prefix which identifies key algorithm.
+ * GOST public keys in DNS do not contain this prefix. We have to add it as
+ * OpenSSL supports GOST using dynamic engine and has no GOST specific API.
+ *
+ * RFC 5933 (GOST in DNSSEC, specifies this prefix), RFC 4491 (GOST in X.509)
+ */
+static const uint8_t gost_x509_pubkey_prefix[] = {
+	0x30, 0x63, 0x30, 0x1c, 0x06, 0x06, 0x2a, 0x85, 0x03, 0x02,
+	0x02, 0x13, 0x30, 0x12, 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02,
+	0x02, 0x23, 0x01, 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02,
+	0x1e, 0x01, 0x03, 0x43, 0x00, 0x04, 0x40
+};
+
+#define GOST_DNSSEC_PUBKEY_SIZE 64
+#define GOST_X509_PUBKEY_PREFIX_SIZE sizeof(gost_x509_pubkey_prefix)
+#define GOST_X509_PUBKEY_SIZE (GOST_X509_PUBKEY_PREFIX_SIZE + GOST_DNSSEC_PUBKEY_SIZE)
+
+static int gost_get_public_key(const knot_binary_t *dnskey_rdata, EVP_PKEY **key)
+{
+	assert(dnskey_rdata);
+	assert(key);
+
+	const uint8_t *pubkey_data = NULL;
+	size_t pubkey_size = 0;
+	if (!any_dnskey_get_pubkey(dnskey_rdata, &pubkey_data, &pubkey_size)) {
+		return KNOT_EINVAL;
+	}
+
+	if (pubkey_size != GOST_DNSSEC_PUBKEY_SIZE) {
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
+
+	// construct X.509 public key
+
+	uint8_t x509_pubkey[GOST_X509_PUBKEY_SIZE] = { '\0' };
+	uint8_t *prefix = x509_pubkey;
+	uint8_t *keydata = x509_pubkey + GOST_X509_PUBKEY_PREFIX_SIZE;
+
+	memcpy(prefix, gost_x509_pubkey_prefix, GOST_X509_PUBKEY_PREFIX_SIZE);
+	memcpy(keydata, pubkey_data, pubkey_size);
+
+	// construct EVP_PKEY
+
+	const unsigned char **parse = (const unsigned char **)&prefix;
+	EVP_PKEY *result = d2i_PUBKEY(NULL, parse, GOST_X509_PUBKEY_SIZE);
+	if (!result) {
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
+
+	*key = result;
+
+	return KNOT_EOK;
+}
+#endif
+
+static int gost_set_private_key(const knot_binary_t *private, EVP_PKEY **key)
+{
+	assert(private);
+	assert(key && *key);
+
+	const unsigned char *parse = private->data;
+	EVP_PKEY *result = d2i_PrivateKey(NID_id_GostR3410_2001, key,
+	                                  &parse, private->size);
+
+	if (result != *key) {
+		return KNOT_DNSSEC_EINVALID_KEY;
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Create GOST private key from key parameters.
+ * \see rsa_create_pkey
+ */
+static int gost_create_pkey(const knot_key_params_t *params, EVP_PKEY * key)
+{
+	assert(params);
+	assert(key);
+
+	int result = gost_set_private_key(&params->private_key, &key);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	return KNOT_EOK;
+}
+
+#endif
+
 /*- Algorithm specifications -------------------------------------------------*/
 
 static const algorithm_functions_t rsa_functions = {
@@ -746,6 +868,17 @@ static const algorithm_functions_t ecdsa_functions = {
 };
 #endif
 
+#ifdef KNOT_ENABLE_GOST
+static const algorithm_functions_t gost_functions = {
+	gost_algorithm_init,
+	gost_create_pkey,
+	any_sign_size,
+	any_sign_add,
+	any_sign_write,
+	any_sign_verify
+};
+#endif
+
 /*!
  * \brief Get implementation specific callbacks for a given algorithm.
  *
@@ -769,6 +902,10 @@ static const algorithm_functions_t *get_implementation(int algorithm)
 	case KNOT_DNSSEC_ALG_ECDSAP256SHA256:
 	case KNOT_DNSSEC_ALG_ECDSAP384SHA384:
 		return &ecdsa_functions;
+#endif
+#ifdef KNOT_ENABLE_GOST
+	case KNOT_DNSSEC_ALG_ECC_GOST:
+		return &gost_functions;
 #endif
 	default:
 		return NULL;
@@ -801,6 +938,10 @@ static const EVP_MD *get_digest_type(knot_dnssec_algorithm_t algorithm)
 		return EVP_sha384();
 	case KNOT_DNSSEC_ALG_RSASHA512:
 		return EVP_sha512();
+#if KNOT_ENABLE_GOST
+	case KNOT_DNSSEC_ALG_ECC_GOST:
+		return EVP_get_digestbyname(SN_id_GostR3411_94);
+#endif
 	default:
 		return NULL;
 	}
