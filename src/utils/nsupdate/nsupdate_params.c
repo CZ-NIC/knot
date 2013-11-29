@@ -33,9 +33,14 @@
 
 static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.format = FORMAT_NSUPDATE,
-	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = false, .reduce = false, .human_ttl = false,
-	           .human_tmstamp = true },
+	.style = {
+		.wrap = false,
+		.show_class = true,
+		.show_ttl = true,
+		.verbose = false,
+		.human_ttl = false,
+		.human_tmstamp = true
+	},
 	.show_query = false,
 	.show_header = true,
 	.show_edns = false,

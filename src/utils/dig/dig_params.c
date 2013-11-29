@@ -45,9 +45,14 @@ static const flags_t DEFAULT_FLAGS_DIG = {
 
 static const style_t DEFAULT_STYLE_DIG = {
 	.format = FORMAT_FULL,
-	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = false, .reduce = false, .human_ttl = false,
-	           .human_tmstamp = true },
+	.style = {
+		.wrap = false,
+		.show_class = true,
+		.show_ttl = true,
+		.verbose = false,
+		.human_ttl = false,
+		.human_tmstamp = true
+	},
 	.show_query = false,
 	.show_header = true,
 	.show_edns = true,

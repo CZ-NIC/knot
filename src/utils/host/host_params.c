@@ -34,9 +34,14 @@
 
 static const style_t DEFAULT_STYLE_HOST = {
 	.format = FORMAT_HOST,
-	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = true, .reduce = false, .human_ttl = false,
-	           .human_tmstamp = true },
+	.style = {
+		.wrap = false,
+		.show_class = true,
+		.show_ttl = true,
+		.verbose = false,
+		.human_ttl = false,
+		.human_tmstamp = true
+	},
 	.show_query = false,
 	.show_header = false,
 	.show_edns = false,
