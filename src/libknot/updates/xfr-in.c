@@ -2082,10 +2082,10 @@ static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
 
 	if (old_contents != NULL) {
 		// cleanup old zone tree - reset pointers to new node to NULL
-		knot_zone_tree_apply(old_contents, xfrin_cleanup_old_nodes,
+		knot_zone_tree_apply(old_contents->nodes, xfrin_cleanup_old_nodes,
 				     NULL);
 
-		knot_zone_tree_apply(old_contents, xfrin_cleanup_old_nodes,
+		knot_zone_tree_apply(old_contents->nsec3_nodes, xfrin_cleanup_old_nodes,
 				     NULL);
 	}
 }
