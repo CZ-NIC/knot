@@ -1626,14 +1626,6 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 		return NULL;
 	}
 
-	/*!
-	 * \note It is not needed to set the previous node, we will do this
-	 *       in adjusting after the transfer.
-	 */
-
-	assert(contents->zone != NULL);
-	knot_node_set_zone(node, contents->zone);
-
 	return node;
 }
 
