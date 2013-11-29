@@ -58,7 +58,7 @@ static void test_algorithm(const char *alg, const knot_key_params_t *kp)
 		result = knot_dnssec_sign_add(ctx, (uint8_t *)"dns", 3);
 		is_int(KNOT_EOK, result, "%s: add data C", alg);
 
-		result = knot_dnssec_sign_write(ctx, sig);
+		result = knot_dnssec_sign_write(ctx, sig, sig_size);
 		is_int(KNOT_EOK, result, "%s: write signature", alg);
 
 		result = knot_dnssec_sign_new(ctx);
