@@ -150,6 +150,11 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		break;
 	}
 
+	/* Default RCODE is SERVFAIL if not specified otherwise. */
+	if (next_state == NS_PROC_FAIL && data->rcode == KNOT_RCODE_NOERROR) {
+		data->rcode = KNOT_RCODE_SERVFAIL;
+	}
+
 	rcu_read_unlock();
 	return next_state;
 }
@@ -218,8 +223,6 @@ int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		break;
 	default:
 		assert(0); /* Should be caught earlier. */
-		data->rcode = KNOT_RCODE_SERVFAIL;
-		next_state = KNOT_ERROR;
 		break;
 	}
 

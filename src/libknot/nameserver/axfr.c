@@ -54,8 +54,9 @@ static int answer_put_nodes(knot_pkt_t *pkt, struct axfr_proc *state)
 {
 	/* Put responses. */
 	int ret = KNOT_EOK;
+	knot_node_t *node = NULL;
 	while(!hattrie_iter_finished(state->i)) {
-		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(state->i);
+		node = (knot_node_t *)*hattrie_iter_val(state->i);
 		ret = put_rrsets(pkt, node, state);
 		if (ret != KNOT_EOK) {
 			break;
@@ -142,7 +143,6 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
 		return NS_PROC_FAIL;
 	default:
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return NS_PROC_FAIL;
 	}
 
@@ -155,7 +155,6 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		break;
 	default:          /* Generic error. */
 		dbg_ns("%s: answered with ret = %s\n", __func__, knot_strerror(ret));
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return NS_PROC_FAIL;
 	}
 

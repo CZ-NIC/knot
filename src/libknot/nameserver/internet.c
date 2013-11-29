@@ -51,7 +51,6 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 
 		/* Put to wildcard node list. */
 		if (ptrlist_add(&qdata->wildcards, cname_node, qdata->mm) == NULL) {
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
 			return ERROR;
 		}
 
@@ -74,7 +73,6 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 		if (rr_to_add != cname_rr) {
 			knot_rrset_deep_free(&rr_to_add, 1);
 		}
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return ERROR;
 	} else {
 		/* Check if RR count increased. */
@@ -91,7 +89,6 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: couldn't add rrsigs for CNAME RRSet %p\n",
 		       __func__, cname_rr);
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return ERROR;
 	}
 
@@ -150,7 +147,6 @@ static int name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
 		ret = ns_add_dnskey(qdata->node, pkt);
 		if (ret != KNOT_EOK) {
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
 			return ERROR;
 		}
 	}
@@ -185,7 +181,6 @@ static int name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 		dbg_ns("%s: solving DNAME for name %p\n", __func__, *name);
 		int ret = ns_process_dname(dname_rrset, name, pkt);
 		if (ret != KNOT_EOK) {
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
 			return ERROR;
 		}
 
@@ -272,7 +267,6 @@ static int solve_authority(int state, const knot_dname_t **qname,
 		dbg_ns("%s: invalid state after qname processing = %d\n",
 		       __func__, state);
 		assert(0);
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		break;
 	}
 
@@ -294,7 +288,6 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 		qdata->rcode = KNOT_RCODE_REFUSED;
 		return NS_PROC_FAIL;
 	default:
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return NS_PROC_FAIL;
 	}
 
@@ -395,7 +388,6 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 		qdata->rcode = KNOT_RCODE_NOTAUTH;
 		return NS_PROC_FAIL;
 	default:
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return NS_PROC_FAIL;
 	}
 
