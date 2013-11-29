@@ -1895,9 +1895,10 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 	return ret;
 }
 
-#define SNPRINTF_CHECK(ret, max_len)	if (ret < 0 || (size_t)ret >= max_len) { \
-						return KNOT_ESPACE; \
-					}
+#define SNPRINTF_CHECK(ret, max_len)			\
+	if ((ret) < 0 || (size_t)(ret) >= (max_len)) {	\
+		return KNOT_ESPACE;			\
+	}
 
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
                                char                    *dst,
@@ -1964,6 +1965,8 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         char                    *dst,
                         const size_t            maxlen,
+                        const bool              dump_rdata,
+                        const bool              dump_rrsig,
                         const knot_dump_style_t *style)
 {
 	if (rrset == NULL || dst == NULL || style == NULL) {
@@ -1973,55 +1976,57 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	size_t len = 0;
 	int    ret;
 
-	// Only APL RR may have empty RDATA, in this case, dump only header
-	if (rrset->rdata_count == 0
-	    && knot_rrset_type(rrset) == KNOT_RRTYPE_APL) {
-		// Dump rdata owner, class, ttl and type.
-		ret = knot_rrset_txt_dump_header(rrset, dst + len,
-		                                 maxlen - len, style);
-		if (ret < 0) {
-			return KNOT_ESPACE;
-		}
-		len += ret;
+	if (dump_rdata) {
+		// APL RR may have empty RDATA, in this case, dump only header.
+		if (rrset->rdata_count == 0
+		    && knot_rrset_type(rrset) == KNOT_RRTYPE_APL) {
+			// Dump rdata owner, class, ttl and type.
+			ret = knot_rrset_txt_dump_header(rrset, dst + len,
+			                                 maxlen - len, style);
+			if (ret < 0) {
+				return KNOT_ESPACE;
+			}
+			len += ret;
 
-		// Terminate line.
-		if (len >= maxlen) {
-			return KNOT_ESPACE;
+			// Terminate line.
+			if (len >= maxlen) {
+				return KNOT_ESPACE;
+			}
+			dst[len++] = '\n';
+			dst[len] = '\0';
 		}
-		dst[len++] = '\n';
-		dst[len] = '\0';
-	}
 
-	// Loop over rdata in rrset.
-	for (size_t i = 0; i < rrset->rdata_count; i++) {
-		// Dump rdata owner, class, ttl and type.
-		ret = knot_rrset_txt_dump_header(rrset, dst + len,
-		                                 maxlen - len, style);
-		if (ret < 0) {
-			return KNOT_ESPACE;
-		}
-		len += ret;
+		// Loop over rdata in rrset.
+		for (size_t i = 0; i < rrset->rdata_count; i++) {
+			// Dump rdata owner, class, ttl and type.
+			ret = knot_rrset_txt_dump_header(rrset, dst + len,
+			                                 maxlen - len, style);
+			if (ret < 0) {
+				return KNOT_ESPACE;
+			}
+			len += ret;
 
-		// Dump rdata as such.
-		ret = knot_rrset_txt_dump_data(rrset, i, dst + len,
-		                               maxlen - len, style);
-		if (ret < 0) {
-			return KNOT_ESPACE;
-		}
-		len += ret;
+			// Dump rdata as such.
+			ret = knot_rrset_txt_dump_data(rrset, i, dst + len,
+			                               maxlen - len, style);
+			if (ret < 0) {
+				return KNOT_ESPACE;
+			}
+			len += ret;
 
-		// Terminate line.
-		if (len >= maxlen) {
-			return KNOT_ESPACE;
+			// Terminate line.
+			if (len >= maxlen) {
+				return KNOT_ESPACE;
+			}
+			dst[len++] = '\n';
+			dst[len] = '\0';
 		}
-		dst[len++] = '\n';
-		dst[len] = '\0';
 	}
 
 	// Dump RRSIG records if any via recursion call.
-	if (rrset->rrsigs != NULL) {
+	if (dump_rrsig && rrset->rrsigs != NULL) {
 		ret = knot_rrset_txt_dump(rrset->rrsigs, dst + len,
-		                          maxlen - len, style);
+		                          maxlen - len, true, false, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;
 		}

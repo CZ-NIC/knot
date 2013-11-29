@@ -230,6 +230,7 @@ static void print_section_full(const knot_rrset_t **rrsets,
 		}
 
 		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
+		                           true, true,
 		                           &(style->style)) < 0)
 		{
 			buflen += 4096;
