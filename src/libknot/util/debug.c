@@ -39,11 +39,8 @@ static int knot_node_dump_from_tree(knot_node_t *node, void *data)
 void knot_node_dump(knot_node_t *node)
 {
 #if defined(KNOT_ZONE_DEBUG) || defined(KNOT_NODE_DEBUG)
-	//char loaded_zone = *((char*) data);
-	char *name;
-
 	dbg_node_detail("------- NODE --------\n");
-	name = knot_dname_to_str(node->owner);
+	char *name = knot_dname_to_str(node->owner);
 	dbg_node_detail("owner: %s\n", name);
 	free(name);
 	dbg_node_detail("node: %p\n", node);
@@ -107,15 +104,13 @@ void knot_node_dump(knot_node_t *node)
 		dbg_node_detail("none\n");
 	}
 
-	dbg_node_detail("Zone: %p\n", node->zone);
-
 	dbg_node_detail("RRSet count: %d\n", node->rrset_count);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_dump(rrsets[i]);
 	}
 	free(rrsets);
-	//assert(node->owner->node == node);
+
 	dbg_node_detail("------- NODE --------\n");
 #else
 	UNUSED(node);
