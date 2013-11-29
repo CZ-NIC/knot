@@ -22,7 +22,6 @@
 #include <time.h>
 #include "common/descriptor.h"
 #include "common/errcode.h"
-#include "common/hattrie/ahtable.h"
 #include "common/hattrie/hat-trie.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
@@ -548,7 +547,7 @@ typedef struct {
 	const knot_zone_keys_t *zone_keys;
 	const knot_dnssec_policy_t *policy;
 	knot_changeset_t *changeset;
-	ahtable_t *signed_table;
+	hattrie_t *signed_table;
 } changeset_signing_data_t;
 
 /*!
@@ -992,7 +991,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
  *
  * \return True if RR should is signed already, false otherwise.
  */
-static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
+static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 {
 	assert(rrset);
 	assert(t);
@@ -1007,12 +1006,12 @@ static bool rr_already_signed(const knot_rrset_t *rrset, ahtable_t *t)
 	if (ret != KNOT_EOK) {
 		return false;
 	}
-	if (ahtable_tryget(t, key, sizeof(key))) {
+	if (hattrie_tryget(t, key, sizeof(key))) {
 		return true;
 	}
 
 	// If not in the table, insert
-	*ahtable_get(t, (char *)key, sizeof(key)) = (value_t *)rrset;
+	*hattrie_get(t, (char *)key, sizeof(key)) = (value_t *)rrset;
 	return false;
 }
 
@@ -1181,11 +1180,11 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	// Create args for wrapper function - ahtable for duplicate sigs
+	// Create args for wrapper function - hattrie for duplicate sigs
 	changeset_signing_data_t args = { .zone = zone, .zone_keys = zone_keys,
 	                                  .policy = policy,
 	                                  .changeset = out_ch,
-	                                  .signed_table = ahtable_create()};
+	                                  .signed_table = hattrie_create()};
 
 	// Sign all RRs that are new in changeset
 	int ret = knot_changeset_apply((knot_changeset_t *)in_ch,
@@ -1199,7 +1198,7 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		                           sign_changeset_wrap, &args);
 	}
 
-	ahtable_free(args.signed_table);
+	hattrie_free(args.signed_table);
 
 	return ret;
 }
@@ -1231,7 +1230,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
  */
 bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
                                         const knot_rrset_t *rrset,
-                                        ahtable_t *table)
+                                        hattrie_t *table)
 {
 	if (node == NULL || rrset == NULL) {
 		return false;

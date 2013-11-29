@@ -1968,6 +1968,8 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	assert(ret == KNOT_EOK);
 	if (nodes_copy == NULL) {
 		return 1;
+	} else {
+		hattrie_build_index(nodes_copy);
 	}
 
 	// set children count of all nodes to 0

@@ -104,7 +104,7 @@ static void openssl_mutexes_destroy(void)
 static void openssl_threadid_cb(CRYPTO_THREADID *openssl_id)
 {
 	pthread_t id = pthread_self();
-	CRYPTO_THREADID_set_numeric(openssl_id, id);
+	CRYPTO_THREADID_set_pointer(openssl_id, (void *)id);
 }
 
 /*- public API --------------------------------------------------------------*/

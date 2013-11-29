@@ -4,6 +4,7 @@ check_PROGRAMS = \
 	tests/journal \
 	tests/slab \
 	tests/hattrie \
+	tests/hhash \
 	tests/dthreads \
 	tests/events \
 	tests/acl \

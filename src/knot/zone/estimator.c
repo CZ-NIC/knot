@@ -21,7 +21,6 @@
 #include "libknot/dname.h"
 #include "common/lists.h"
 #include "libknot/zone/node.h"
-#include "common/hattrie/ahtable.h"
 #include "zscanner/scanner.h"
 #include "common/descriptor.h"
 
@@ -176,21 +175,21 @@ void estimator_free(void *p)
 
 static int get_ahtable_size(void *t, void *d)
 {
-	ahtable_t *table = (ahtable_t *)t;
+	hhash_t *table = (hhash_t *)t;
 	size_t *size = (size_t *)d;
-	// info about allocated chunks starts at table->n-th index
-	for (size_t i = table->n; i < table->n * 2; ++i) {
-		// add actual slot size (= allocated for slot)
-		*size += table->slot_sizes[i];
-		// each non-empty slot means allocation overhead
-		*size += table->slot_sizes[i] ? MALLOC_OVER : 0;
+
+	/* Size of the empty table. */
+	*size += sizeof(hhash_t) + table->size*sizeof(hhelem_t);
+
+	/* Allocated keys. */
+	uint16_t key_len = 0;
+	hhash_iter_t it;
+	hhash_iter_begin(table, &it, false);
+	while (!hhash_iter_finished(&it)) {
+		(void)hhash_iter_key(&it, &key_len);
+		*size += sizeof(value_t) + sizeof(uint16_t) + key_len;
+		hhash_iter_next(&it);
 	}
-	*size += sizeof(ahtable_t);
-	// slot sizes + allocated sizes
-	*size += (table->n * 2) * sizeof(uint32_t);
-	// slots
-	*size += table->n * sizeof(void *);
-	*size += AHTABLE_ADD;
 
 	return KNOT_EOK;
 }

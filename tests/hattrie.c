@@ -22,7 +22,7 @@
 #include "common/mempattern.h"
 #include "common/hattrie/hat-trie.h"
 
-static const char *alphabet = "abcdefghijklmn";
+static const char *alphabet = "abcdefghijklmn.0123456789-";
 static char *randstr() {
 	unsigned len = (1 + rand() % 64) + 1; /* (1-64) + '\0' */
 	char *s = xmalloc(len * sizeof(char));
@@ -32,30 +32,45 @@ static char *randstr() {
 	s[len - 1] = '\0';
 	return s;
 }
+static bool str_check_sort(const char *prev, const char *cur, size_t l1, size_t l2)
+{
+	if (prev == NULL) {
+		return true;
+	}
+	int res = memcmp(prev, cur, MIN(l1, l2));
+	if (res == 0) { /* Keys may be equal. */
+		if (l1 > l2) { /* 'prev' is longer, breaks ordering. */
+			return false;
+		}
+	} else if (res > 0){
+		return false; /* Broken lexicographical order */
+	}
+	return true;
+}
 
 
 int main(int argc, char *argv[])
 {
-	plan(6);
+	plan(9);
 
 	/* Interesting intems. */
 	unsigned count = 10;
 	const char *items[] = {
-	        "abcd",
-	        "abc",
-	        "ab",
-	        "a",
-	        "abcdefghijklmnopqrstuvw",
-	        "abAcd",
-	        "abcA",
-	        "abA",
-	        "Aab",
-	        "A"
+		"abcd",
+		"abc",
+		"ab",
+		"a",
+		"abcdefghijklmnopqrstuvw",
+		"abAcd",
+		"abcA",
+		"abA",
+		"Aab",
+		"A"
 	};
 
 	/* Dummy items. */
 	srand(time(NULL));
-	unsigned dummy_count = 10000;
+	unsigned dummy_count = 65535;
 	char **dummy = xmalloc(sizeof(char*) * dummy_count);
 	for (unsigned i = 0; i < dummy_count; ++i) {
 		dummy[i] = randstr();
@@ -68,12 +83,16 @@ int main(int argc, char *argv[])
 	ok(t != NULL, "hattrie: create");
 
 	/* Test 2: Insert */
+	unsigned really_inserted = 0;
 	passed = 1;
 	for (unsigned i = 0; i < count; ++i) {
 		v = hattrie_get(t, items[i], strlen(items[i]));
 		if (!v) {
 			passed = 0;
 			break;
+		}
+		if (*v == NULL) {
+			++really_inserted;
 		}
 		*v = (value_t)items[i];
 	}
@@ -89,6 +108,7 @@ int main(int argc, char *argv[])
 		}
 		if (*v == NULL) {
 			*v = dummy[i];
+			++really_inserted;
 		}
 	}
 	ok(passed, "hattrie: dummy insert");
@@ -108,11 +128,11 @@ int main(int argc, char *argv[])
 	/* Test 5: LPR lookup */
 	unsigned lpr_count = 5;
 	const char *lpr[] = {
-	        "abcdZ",
-	        "abcZ",
-	        "abZ",
-	        "aZ",
-	        "abcdefghijklmnopqrstuvw"
+		"abcdZ",
+		"abcZ",
+		"abZ",
+		"aZ",
+		"abcdefghijklmnopqrstuvw"
 	};
 	passed = 1;
 	for (unsigned i = 0; i < lpr_count; ++i) {
@@ -131,6 +151,43 @@ int main(int argc, char *argv[])
 	int ret = hattrie_find_lpr(t, false_lpr, strlen(false_lpr), &v);
 	ok(ret != 0 && v == NULL, "hattrie: non-existent prefix lookup");
 
+	/* Check total insertions against trie weight. */
+	is_int(hattrie_weight(t), really_inserted, "hattrie: trie weight matches insertions");
+
+	/* Unsorted iteration */
+	unsigned counted = 0;
+	hattrie_iter_t *it = hattrie_iter_begin(t, false);
+	while (!hattrie_iter_finished(it)) {
+		++counted;
+		hattrie_iter_next(it);
+	}
+	is_int(really_inserted, counted, "hattrie: unsorted iteration");
+	hattrie_iter_free(it);
+
+	/* Sorted iteration. */
+	size_t len = 0, prev_len = 0;
+	const char *cur = NULL;
+	char *prev = NULL;
+	counted = 0;
+	hattrie_build_index(t);
+	it = hattrie_iter_begin(t, true);
+	while (!hattrie_iter_finished(it)) {
+		cur = hattrie_iter_key(it, &len);
+		if (!str_check_sort(prev, cur, prev_len, len)) {
+			diag("(%zu)'%s' < (%zu)'%s' FAIL\n",
+			     prev_len, prev, len, cur);
+			break;
+		}
+		++counted;
+		free(prev);
+		prev = xmalloc(len);
+		memcpy(prev, cur, len);
+		prev_len = len;
+		hattrie_iter_next(it);
+	}
+	free(prev);
+	is_int(really_inserted, counted, "hattrie: sorted iteration");
+	hattrie_iter_free(it);
 
 	for (unsigned i = 0; i < dummy_count; ++i) {
 		free(dummy[i]);

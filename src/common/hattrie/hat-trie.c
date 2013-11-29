@@ -10,12 +10,14 @@
 #include <assert.h>
 #include <string.h>
 #include "common/hattrie/hat-trie.h"
-#include "common/hattrie/ahtable.h"
+#include "common/hhash.h"
 
 /* number of child nodes for used alphabet */
 #define NODE_CHILDS (TRIE_MAXCHAR+1)
 /* initial nodestack size */
-#define NODESTACK_INIT 512
+#define NODESTACK_INIT 128
+/* hashtable max fill (undefine to maximize) */
+#define HHASH_MAX_FILL 0.9
 
 static const uint8_t NODE_TYPE_TRIE          = 0x1;
 static const uint8_t NODE_TYPE_PURE_BUCKET   = 0x2;
@@ -29,7 +31,7 @@ struct trie_node_t_;
  * non-specific pointer. */
 typedef union node_ptr_
 {
-    ahtable_t*           b;
+    hhash_t*           b;
     struct trie_node_t_* t;
     uint8_t*             flag;
 } node_ptr;
@@ -42,7 +44,7 @@ typedef struct trie_node_t_
     /* the value for the key that is consumed on a trie node */
     value_t val;
 
-    /* Map a character to either a trie_node_t or a ahtable_t. The first byte
+    /* Map a character to either a trie_node_t or a hhash_t. The first byte
      * must be examined to determine which. */
     node_ptr xs[NODE_CHILDS];
 
@@ -173,13 +175,13 @@ static value_t* hattrie_find_rightmost(node_ptr node)
         return NULL;
     }
 
-    /* node is ahtable */
-    if (node.b->m == 0) {
+    /* node is hashtable */
+    if (node.b->weight == 0) {
         return NULL;
     }
     /* return rightmost value */
     assert(node.b->index);
-    return ahtable_indexval(node.b, node.b->m - 1);
+    return hhash_indexval(node.b, node.b->weight - 1);
 }
 
 /* find node in trie and keep node stack (if slen > 0) */
@@ -231,7 +233,7 @@ static void hattrie_initroot(hattrie_t *T)
 {
     node_ptr node;
     if (T->bsize > 0) {
-        node.b = ahtable_create();
+        node.b = hhash_create(TRIE_BUCKET_SIZE);
         node.b->flag = NODE_TYPE_HYBRID_BUCKET;
         node.b->c0 = 0x00;
         node.b->c1 = TRIE_MAXCHAR;
@@ -259,7 +261,7 @@ static void hattrie_free_node(node_ptr node, mm_free_t free_cb)
             free_cb(node.t);
     }
     else {
-        ahtable_free(node.b);
+        hhash_free(node.b);
     }
 }
 
@@ -341,7 +343,7 @@ hattrie_t* hattrie_create_n(unsigned bucket_size, const mm_ctx_t *mm)
 
 static void node_build_index(node_ptr node)
 {
-    /* build index on all ahtable nodes */
+    /* build index on all hashtable nodes */
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
         for (i = 0; i < NODE_CHILDS; ++i) {
@@ -350,7 +352,7 @@ static void node_build_index(node_ptr node)
         }
     }
     else {
-        ahtable_build_index(node.b);
+        hhash_build_index(node.b);
     }
 }
 
@@ -381,16 +383,15 @@ static int node_apply(node_ptr node, int (*f)(value_t*,void*), void* d)
         }
     }
     else {
-        ahtable_iter_t i;
-        ahtable_iter_begin(node.b, &i, false);
-        while (!ahtable_iter_finished(&i)) {
-            result = f(ahtable_iter_val(&i), d);
+        hhash_iter_t i;
+        hhash_iter_begin(node.b, &i, false);
+        while (!hhash_iter_finished(&i)) {
+            result = f(hhash_iter_val(&i), d);
             if (result != TRIE_EOK) {
                 break;
             }
-            ahtable_iter_next(&i);
+            hhash_iter_next(&i);
         }
-        ahtable_iter_free(&i);
     }
 
     return result;
@@ -436,24 +437,23 @@ int hattrie_split_mid(node_ptr node, unsigned *left_m, unsigned *right_m)
     /* count the number of occourances of every leading character */
     unsigned int cs[NODE_CHILDS]; // occurance count for leading chars
     memset(cs, 0, NODE_CHILDS * sizeof(unsigned int));
-    size_t len;
+    uint16_t len;
     const char* key;
 
     /*! \todo expensive, maybe some heuristics or precalc would be better */
-    ahtable_iter_t i;
-    ahtable_iter_begin(node.b, &i, false);
-    while (!ahtable_iter_finished(&i)) {
-        key = ahtable_iter_key(&i, &len);
+    hhash_iter_t i;
+    hhash_iter_begin(node.b, &i, false);
+    while (!hhash_iter_finished(&i)) {
+        key = hhash_iter_key(&i, &len);
         assert(len > 0);
         cs[(unsigned char) key[0]] += 1;
-        ahtable_iter_next(&i);
+        hhash_iter_next(&i);
     }
-    ahtable_iter_free(&i);
 
     /* choose a split point */
     unsigned int all_m;
     unsigned char j = node.b->c0;
-    all_m   = ahtable_size(node.b);
+    all_m   = node.b->weight;
     *left_m  = cs[j];
     *right_m = all_m - *left_m;
     int d;
@@ -471,68 +471,35 @@ int hattrie_split_mid(node_ptr node, unsigned *left_m, unsigned *right_m)
     return j;
 }
 
-static void hattrie_split_fill(node_ptr src, node_ptr left, node_ptr right, uint8_t split)
+static value_t *find_below(hattrie_t *T, node_ptr parent,
+                          const char *key, size_t len);
+
+static void hashnode_split_reinsert(hattrie_t *T, node_ptr parent, node_ptr src)
 {
-    /* right should be most of the time hybrid */
+    value_t* u = NULL;
+    const char* key = NULL;
+    uint16_t len = 0;
+    hhash_iter_t i;
 
-    /* keep or distribute keys to the new right node */
-    value_t* u;
-    const char* key;
-    size_t len;
-    ahtable_iter_t i;
-    ahtable_iter_begin(src.b, &i, false);
-    while (!ahtable_iter_finished(&i)) {
-        key = ahtable_iter_key(&i, &len);
-        u   = ahtable_iter_val(&i);
-        assert(len > 0);
+    hhash_iter_begin(src.b, &i, false);
+    while (!hhash_iter_finished(&i)) {
+        key = hhash_iter_key(&i, &len);
+        u   = hhash_iter_val(&i);
 
-        /* first char > split_point, move to the right */
-        if ((unsigned char) key[0] > split) {
-            if (src.b != right.b) {
-                /* insert to right (new bucket) */
-                if (*right.flag & NODE_TYPE_PURE_BUCKET) {
-                    ahtable_insert(right.b, key + 1, len - 1, *u);
-                }
-                else {
-                    ahtable_insert(right.b, key, len, *u);
-                }
-                /* transferred to right (from reused) */
-                if (src.b == left.b) {
-                    ahtable_iter_del(&i);
-                    continue;
-                }
-            }   /* keep the node in right */
-        } else {
-            if (src.b != left.b) {
-                /* insert to left (new bucket) */
-                if (*left.flag & NODE_TYPE_PURE_BUCKET) {
-                    ahtable_insert(left.b, key + 1, len - 1, *u);
-                }
-                else {
-                    ahtable_insert(left.b, key, len, *u);
-                }
-                /* transferred to left (from reused) */
-                if (src.b == right.b) {
-                    ahtable_iter_del(&i);
-                    continue;
-                }
-            }   /* keep the node in left */
-        }
+        *find_below(T, parent, key, len) = *u;
 
-        ahtable_iter_next(&i);
+        hhash_iter_next(&i);
     }
-
-    ahtable_iter_free(&i);
+    hhash_free(src.b);
 }
 
-/* Split hybrid node - this is similar operation to burst. */
-static void hattrie_split_h(node_ptr parent, node_ptr node)
+static void hashnode_split(hattrie_t *T, node_ptr parent, node_ptr node)
 {
     /* Find split point. */
     unsigned left_m, right_m;
     unsigned char j = hattrie_split_mid(node, &left_m, &right_m);
 
-    /* now split into two node cooresponding to ranges [0, j] and
+    /* now split into two nodes corresponding to ranges [0, j] and
      * [j + 1, TRIE_MAXCHAR], respectively. */
 
     /* create new left and right nodes
@@ -541,17 +508,8 @@ static void hattrie_split_h(node_ptr parent, node_ptr node)
      */
     unsigned char c0 = node.b->c0, c1 = node.b->c1;
     node_ptr left, right;
-    if (j + 1 == c1) { /* right will be pure */
-        right.b = ahtable_create();
-        if (j == c0) { /* left will be pure as well */
-            left.b = ahtable_create();
-        } else {       /* left will be hybrid */
-            left.b = node.b;
-        }
-    } else {           /* right will be hybrid */
-        right.b = node.b;
-        left.b = ahtable_create();
-    }
+    right.b = hhash_create(TRIE_BUCKET_SIZE);
+    left.b = hhash_create(TRIE_BUCKET_SIZE);
 
     /* setup created nodes */
     left.b->c0    = c0;
@@ -570,15 +528,12 @@ static void hattrie_split_h(node_ptr parent, node_ptr node)
 
 
     /* fill new tables */
-    hattrie_split_fill(node, left, right, j);
-    if (node.b != left.b && node.b != right.b) {
-        ahtable_free(node.b);
-    }
+    hashnode_split_reinsert(T, parent, node);
 }
 
 /* Perform one split operation on the given node with the given parent.
  */
-static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
+static void node_split(hattrie_t* T, node_ptr parent, node_ptr node)
 {
     /* only buckets may be split */
     assert(*node.flag & NODE_TYPE_PURE_BUCKET ||
@@ -591,12 +546,12 @@ static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
         parent.t->xs[node.b->c0].t = alloc_trie_node(T, node);
 
         /* if the bucket had an empty key, move it to the new trie node */
-        value_t* val = ahtable_tryget(node.b, NULL, 0);
+        value_t* val = hhash_find(node.b, NULL, 0);
         if (val) {
             parent.t->xs[node.b->c0].t->val     = *val;
             parent.t->xs[node.b->c0].t->flag |= NODE_HAS_VAL;
             *val = 0;
-            ahtable_del(node.b, NULL, 0);
+            hhash_del(node.b, NULL, 0);
         }
 
         node.b->c0   = 0x00;
@@ -607,74 +562,68 @@ static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
     }
 
     /* This is a hybrid bucket. Perform a proper split. */
-    hattrie_split_h(parent, node);
+    hashnode_split(T, parent, node);
 }
 
-value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
+static value_t *find_below(hattrie_t *T, node_ptr parent, const char *key, size_t len)
 {
-    node_ptr parent = T->root;
-    assert(*parent.flag & NODE_TYPE_TRIE);
-
-    if (len == 0) return &parent.t->val;
-
     /* consume all trie nodes, now parent must be trie and child anything */
     node_ptr node = hattrie_consume(&parent, &key, &len, 0);
     assert(*parent.flag & NODE_TYPE_TRIE);
-
-    /* key wasn't consumed and using pure tries */
-    if (T->bsize == 0) {
-        node.t = parent.t;
-        while (len > 0) {
-            node.t->xs[(unsigned char) *key].t = alloc_empty_node(T);
-            node = node.t->xs[(unsigned char) *key];
-            ++key;
-            --len;
-        }
-
-        return hattrie_useval(T, node);
-    }
 
     /* if the key has been consumed on a trie node, use its value */
     if (len == 0) {
         if (*node.flag & NODE_TYPE_TRIE) {
             return hattrie_useval(T, node);
-        }
-        else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
+        } else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
             return hattrie_useval(T, parent);
         }
     }
 
-    /* preemptively split the bucket if it is full */
-    while (ahtable_size(node.b) >= T->bsize) {
-        hattrie_split(T, parent, node);
-
-        /* after the split, the node pointer is invalidated, so we search from
-         * the parent again. */
-        node = hattrie_consume(&parent, &key, &len, 0);
-
-        /* if the key has been consumed on a trie node, use its value */
-        if (len == 0) {
-            if (*node.flag & NODE_TYPE_TRIE) {
-                return hattrie_useval(T, node);
-            }
-            else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
-                return hattrie_useval(T, parent);
-            }
-        }
+#ifdef HHASH_MAX_FILL
+    /* preemptively split the bucket if fill is over threshold */
+    if (node.b->weight >= node.b->size * HHASH_MAX_FILL) {
+        node_split(T, parent, node);
+        return find_below(T, parent, key, len);
     }
+#endif
 
-    assert(*node.flag & NODE_TYPE_PURE_BUCKET || *node.flag & NODE_TYPE_HYBRID_BUCKET);
-
+    /* attempt to fit new element and split if it doesn't fit */
+    value_t *val = NULL;
     assert(len > 0);
-    size_t m_old = node.b->m;
-    value_t* val;
     if (*node.flag & NODE_TYPE_PURE_BUCKET) {
-        val = ahtable_get(node.b, key + 1, len - 1);
+        val = hhash_map(node.b, key + 1, len - 1, HHASH_INSERT);
     }
     else {
-        val = ahtable_get(node.b, key, len);
+        val = hhash_map(node.b, key, len, HHASH_INSERT);
     }
-    T->m += (node.b->m - m_old);
+
+    /* not inserted, recursively split */
+    if (val == NULL) {
+        node_split(T, parent, node);
+        val = find_below(T, parent, key, len);
+    }
+
+    return val;
+}
+
+value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
+{
+    node_ptr parent = T->root;
+    value_t *val = NULL;
+    assert(*parent.flag & NODE_TYPE_TRIE);
+
+    /* Find value below root node if not empty string. */
+    if (len == 0) {
+        val = &parent.t->val;
+    } else {
+        val = find_below(T, parent, key, len);
+    }
+
+    /* Count insertions. */
+    if (val && *val == NULL) {
+        ++T->m;
+    }
 
     return val;
 }
@@ -694,7 +643,7 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
         return &node.t->val;
     }
 
-    return ahtable_tryget(node.b, key, len);
+    return hhash_find(node.b, key, len);
 }
 
 static value_t* hattrie_walk(node_ptr* s, size_t sp,
@@ -758,15 +707,15 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
         *dst = &node.t->val;
         ret = 0;     /* found exact match */
     } else {
-        *dst = ahtable_tryget(node.b, key, len);
+        *dst = hhash_find(node.b, key, len);
         if (*dst) {
             ret = 0; /* found exact match */
-        } else {     /* look for previous in ahtable */
-            ret = ahtable_find_leq(node.b, key, len, dst);
+        } else {     /* look for previous in hashtable */
+            ret = hhash_find_leq(node.b, key, len, dst);
         }
     }
 
-    /* return if found equal or left in ahtable */
+    /* return if found equal or left in hashtable */
     if (*dst == 0) {
         *dst = hattrie_walk(ns, sp, key, hattrie_find_rightmost);
         if (*dst) {
@@ -805,8 +754,8 @@ int hattrie_find_lpr (hattrie_t* T, const char* key, size_t len, value_t** dst)
     if (*node.flag & NODE_TYPE_TRIE) {
         *dst = &node.t->val; /* use current trie node value */
     } else {
-        while (*dst == NULL) { /* find remainder in current ahtable */
-            *dst = ahtable_tryget(node.b, key, suffix);
+        while (*dst == NULL) { /* find remainder in current hashtable */
+            *dst = hhash_find(node.b, key, suffix);
             if (suffix == 0)
                 break;
             --suffix;
@@ -849,9 +798,9 @@ int hattrie_del(hattrie_t* T, const char* key, size_t len)
     }
 
     /* remove from bucket */
-    size_t m_old = ahtable_size(node.b);
-    int ret =  ahtable_del(node.b, key, len);
-    T->m -= (m_old - ahtable_size(node.b));
+    size_t m_old = node.b->weight;
+    int ret =  hhash_del(node.b, key, len);
+    T->m -= (m_old - node.b->weight);
 
     /* merge empty buckets */
     /*! \todo */
@@ -889,7 +838,7 @@ struct hattrie_iter_t_
 
     const hattrie_t* T;
     bool sorted;
-    ahtable_iter_t* i;
+    hhash_iter_t* i;
     hattrie_node_stack_t* stack;
 };
 
@@ -959,8 +908,8 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
             i->level = level - 1;
         }
 
-        i->i = malloc(sizeof(ahtable_iter_t));
-        ahtable_iter_begin(node.b, i->i, i->sorted);
+        i->i = malloc(sizeof(hhash_iter_t));
+        hhash_iter_begin(node.b, i->i, i->sorted);
     }
 }
 
@@ -984,17 +933,15 @@ hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
     i->stack->level  = 0;
 
 
-    while (((i->i == NULL || ahtable_iter_finished(i->i)) && !i->has_nil_key) &&
+    while (((i->i == NULL || hhash_iter_finished(i->i)) && !i->has_nil_key) &&
            i->stack != NULL ) {
 
-        ahtable_iter_free(i->i);
         free(i->i);
         i->i = NULL;
         hattrie_iter_nextnode(i);
     }
 
-    if (i->i != NULL && ahtable_iter_finished(i->i)) {
-        ahtable_iter_free(i->i);
+    if (i->i != NULL && hhash_iter_finished(i->i)) {
         free(i->i);
         i->i = NULL;
     }
@@ -1007,8 +954,8 @@ void hattrie_iter_next(hattrie_iter_t* i)
 {
     if (hattrie_iter_finished(i)) return;
 
-    if (i->i != NULL && !ahtable_iter_finished(i->i)) {
-        ahtable_iter_next(i->i);
+    if (i->i != NULL && !hhash_iter_finished(i->i)) {
+        hhash_iter_next(i->i);
     }
     else if (i->has_nil_key) {
         i->has_nil_key = false;
@@ -1016,17 +963,15 @@ void hattrie_iter_next(hattrie_iter_t* i)
         hattrie_iter_nextnode(i);
     }
 
-    while (((i->i == NULL || ahtable_iter_finished(i->i)) && !i->has_nil_key) &&
+    while (((i->i == NULL || hhash_iter_finished(i->i)) && !i->has_nil_key) &&
            i->stack != NULL ) {
 
-        ahtable_iter_free(i->i);
         free(i->i);
         i->i = NULL;
         hattrie_iter_nextnode(i);
     }
 
-    if (i->i != NULL && ahtable_iter_finished(i->i)) {
-        ahtable_iter_free(i->i);
+    if (i->i != NULL && hhash_iter_finished(i->i)) {
         free(i->i);
         i->i = NULL;
     }
@@ -1043,7 +988,6 @@ void hattrie_iter_free(hattrie_iter_t* i)
 {
     if (i == NULL) return;
     if (i->i) {
-        ahtable_iter_free(i->i);
         free(i->i);
     }
 
@@ -1063,14 +1007,14 @@ const char* hattrie_iter_key(hattrie_iter_t* i, size_t* len)
 {
     if (hattrie_iter_finished(i)) return NULL;
 
-    size_t sublen;
+    uint16_t sublen;
     const char* subkey;
 
     if (i->has_nil_key) {
         subkey = NULL;
         sublen = 0;
     }
-    else subkey = ahtable_iter_key(i->i, &sublen);
+    else subkey = hhash_iter_key(i->i, &sublen);
 
     if (i->keysize < i->level + sublen + 1) {
         while (i->keysize < i->level + sublen + 1) i->keysize *= 2;
@@ -1091,5 +1035,5 @@ value_t* hattrie_iter_val(hattrie_iter_t* i)
 
     if (hattrie_iter_finished(i)) return NULL;
 
-    return ahtable_iter_val(i->i);
+    return hhash_iter_val(i->i);
 }

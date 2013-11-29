@@ -46,8 +46,6 @@ src/common/fdset.c
 src/common/fdset.h
 src/common/getline.c
 src/common/getline.h
-src/common/hattrie/ahtable.c
-src/common/hattrie/ahtable.h
 src/common/hattrie/hat-trie.c
 src/common/hattrie/hat-trie.h
 src/common/hattrie/murmurhash3.c
@@ -56,6 +54,8 @@ src/common/heap.c
 src/common/heap.h
 src/common/hex.c
 src/common/hex.h
+src/common/hhash.c
+src/common/hhash.h
 src/common/latency.c
 src/common/latency.h
 src/common/lists.c
@@ -280,6 +280,7 @@ tests/dthreads.c
 tests/events.c
 tests/fdset.c
 tests/hattrie.c
+tests/hhash.c
 tests/journal.c
 tests/rrl.c
 tests/rrset.c

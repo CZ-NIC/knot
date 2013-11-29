@@ -669,6 +669,9 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 
 	hattrie_iter_free(it);
 
+	/* Rebuild index over nsec3 nodes. */
+	hattrie_build_index(nsec3_nodes);
+
 	return result;
 }
 
