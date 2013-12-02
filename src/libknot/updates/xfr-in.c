@@ -49,6 +49,7 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
 	/* Set random query ID. */
+	knot_pkt_clear(pkt);
 	knot_wire_set_id(pkt->wire, knot_random_id());
 	int ret = knot_pkt_put_question(pkt, qname, qclass, qtype);
 	if (ret != KNOT_EOK) {
