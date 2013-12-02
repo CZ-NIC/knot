@@ -1,18 +1,19 @@
 #include <config.h>
 
 #include "libknot/nameserver/axfr.h"
+#include "libknot/nameserver/internet.h"
 #include "libknot/nameserver/ns_proc_query.h"
 #include "libknot/util/debug.h"
 #include "common/descriptor.h"
 #include "common/lists.h"
 
 struct axfr_proc {
+	struct xfr_proc proc;
 	hattrie_iter_t *i;
 	unsigned cur_rrset;
-	list_t nodes;
 };
 
-static int axfr_put(knot_pkt_t *pkt, const knot_rrset_t *rrset)
+static int put_rrset_and_rrsig(knot_pkt_t *pkt, const knot_rrset_t *rrset)
 {
 	const unsigned flags = KNOT_PF_NOTRUNC;
 	int ret = knot_pkt_put(pkt, 0, rrset, flags);
@@ -39,7 +40,7 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 		}
 
 		/* Put into packet. */
-		ret = axfr_put(pkt, rrset[i]);
+		ret = put_rrset_and_rrsig(pkt, rrset[i]);
 		if (ret != KNOT_EOK) { /* Keep for continuing. */
 			state->cur_rrset = i;
 			return ret;
@@ -50,80 +51,95 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	return ret;
 }
 
-static int answer_put_nodes(knot_pkt_t *pkt, struct axfr_proc *state)
+static int axfr_process_item(knot_pkt_t *pkt, const void *item, struct xfr_proc *state)
 {
+	struct axfr_proc *axfr = (struct axfr_proc*)state;
+
+	if (axfr->i == NULL) {
+		axfr->i = hattrie_iter_begin(item, true);
+	}
+
 	/* Put responses. */
 	int ret = KNOT_EOK;
 	knot_node_t *node = NULL;
-	while(!hattrie_iter_finished(state->i)) {
-		node = (knot_node_t *)*hattrie_iter_val(state->i);
-		ret = put_rrsets(pkt, node, state);
+	while(!hattrie_iter_finished(axfr->i)) {
+		node = (knot_node_t *)*hattrie_iter_val(axfr->i);
+		ret = put_rrsets(pkt, node, axfr);
 		if (ret != KNOT_EOK) {
 			break;
 		}
-		hattrie_iter_next(state->i);
+		hattrie_iter_next(axfr->i);
 	}
 
 	/* Finished all nodes. */
+	if (ret == KNOT_EOK) {
+		hattrie_iter_free(axfr->i);
+		axfr->i = NULL;
+	}
 	return ret;
 }
 
-static int answer_pkt(knot_pkt_t *pkt, struct query_data *qdata)
+static int axfr_answer_init(struct query_data *qdata)
+{
+	assert(qdata);
+
+	/* Check zone state. */
+	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+
+	/* Begin zone iterator. */
+	mm_ctx_t *mm = qdata->mm;
+	knot_zone_contents_t *zone = qdata->zone->contents;
+	struct xfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
+	if (xfer == NULL) {
+		return KNOT_ENOMEM;
+	}
+	memset(xfer, 0, sizeof(struct axfr_proc));
+	init_list(&xfer->nodes);
+	qdata->ext = xfer;
+
+	/* Put data to process. */
+	ptrlist_add(&xfer->nodes, zone->nodes, mm);
+	ptrlist_add(&xfer->nodes, zone->nsec3_nodes, mm);
+	return KNOT_EOK;
+}
+
+int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data *qdata)
 {
 
 	int ret = KNOT_EOK;
 	mm_ctx_t *mm = qdata->mm;
-	struct axfr_proc *state = qdata->ext;
-	knot_zone_contents_t *zone = pkt->zone->contents;
+	struct xfr_proc *xfer = qdata->ext;
+	knot_zone_contents_t *zone = qdata->zone->contents;
 	knot_rrset_t *soa_rr = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
 
 	/* Prepend SOA on first packet. */
-	if (state == NULL) {
-		ret = axfr_put(pkt, soa_rr);
+	if (xfer->npkts == 0) {
+		ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_NOTRUNC);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		/* Begin zone iterator. */
-		state = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
-		if (state == NULL) {
-			return KNOT_ENOMEM;
-		}
-		
-		memset(state, 0, sizeof(struct axfr_proc));
-		init_list(&state->nodes);
-		ptrlist_add(&state->nodes, zone->nodes, mm);
-		ptrlist_add(&state->nodes, zone->nsec3_nodes, mm);
-		qdata->ext = state;
-	} 
+	}
 
-	/* Put zone contents and then NSEC3-related contents. */
-	while (!EMPTY_LIST(state->nodes)) {
-		ptrnode_t *head = HEAD(state->nodes);
-		if (state->i == NULL) {
-			state->i = hattrie_iter_begin(head->d, true);
-		}
-		ret = answer_put_nodes(pkt, state);
+	/* Process all items in the list. */
+	while (!EMPTY_LIST(xfer->nodes)) {
+		ptrnode_t *head = HEAD(xfer->nodes);
+		ret = process_item(pkt, head->d, xfer);
 		if (ret == KNOT_EOK) { /* Finished. */
-			hattrie_iter_free(state->i);
-			state->i = NULL;
 			rem_node((node_t *)head);
 			mm->free(head);
-		} else { /* Packet full or error. */
+		} else { /* Packet full or other error. */
 			break;
 		}
 	}	
 
 	/* Append SOA on last packet. */
 	if (ret == KNOT_EOK) {
-		ret = axfr_put(pkt, soa_rr);
+		ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_NOTRUNC);
 	}
-	/* Check if finished or not. */
-	if (ret != KNOT_ESPACE) {
-		/* Finished successfuly or fatal error. */
-		ptrlist_free(&state->nodes, mm);
-		mm->free(state);
-		qdata->ext = NULL;
-	}
+
+	/* Update counters. */
+	xfer->npkts  += 1;
+	xfer->nbytes += pkt->size;
 
 	return ret;
 }
@@ -134,29 +150,40 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	assert(ns);
 	assert(qdata);
 
+	int ret = KNOT_EOK;
+	mm_ctx_t *mm = qdata->mm;
 
-	/* Check zone state. */
-	switch(knot_zone_state(pkt->zone)) {
-	case KNOT_EOK:
-		break;
-	case KNOT_ENOENT:
-		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		return NS_PROC_FAIL;
-	default:
-		return NS_PROC_FAIL;
+	/* Initialize on first call. */
+	if (qdata->ext == NULL) {
+		ret = axfr_answer_init(qdata);
+		dbg_ns("%s: init => %s\n", __func__, knot_strerror(ret));
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
 	}
 
 	/* Answer current packet (or continue). */
-	int ret = answer_pkt(pkt, qdata);
+	struct xfr_proc *xfer = qdata->ext;
+	ret = xfr_process_list(pkt, &axfr_process_item, qdata);
 	switch(ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
+		dbg_ns("%s: finished AXFR, %u pkts, ~%.01fkB\n", __func__,
+		       xfer->npkts, xfer->nbytes/1024.0);
+		ret = NS_PROC_FINISH;
 		break;
 	default:          /* Generic error. */
 		dbg_ns("%s: answered with ret = %s\n", __func__, knot_strerror(ret));
-		return NS_PROC_FAIL;
+		ret = NS_PROC_FAIL;
+		break;
 	}
 
-	return NS_PROC_FINISH;
+	/* Finished successfuly or fatal error. */
+	ptrlist_free(&xfer->nodes, mm);
+	mm->free(xfer);
+	qdata->ext = NULL;
+
+	return ret;
 }

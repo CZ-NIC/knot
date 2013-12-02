@@ -33,6 +33,29 @@
 
 struct query_data;
 
+/*! \brief Generic transfer processing state. */
+struct xfr_proc {
+	list_t nodes;    /* Items to process (ptrnode_t). */
+	unsigned npkts;  /* Packets processed. */
+	unsigned nbytes; /* Bytes processed. */
+};
+
+/*! \brief Generic transfer processing.
+ */
+typedef int (*xfr_put_cb)(knot_pkt_t *pkt, const void *item, struct xfr_proc *xfer);
+
+/*! \brief Put all items from xfr_proc.nodes to packet using a callback function.
+ *  \note qdata->ext points to struct xfr_proc* (this is xfer-specific context)
+ */
+int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
+
+/*!
+ * \brief AXFR query processing module.
+ *
+ * \retval NS_PROC_FULL if it has an answer, but not yet finished.
+ * \retval NS_PROC_FAIL if it encountered an error.
+ * \retval NS_PROC_EOK  if finished.
+ */
 int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
 
 #endif /* _KNOT_AXFR_H_ */
