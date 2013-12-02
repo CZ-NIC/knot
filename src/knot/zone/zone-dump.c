@@ -41,7 +41,7 @@ typedef struct {
 
 static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 {
-	knot_rrset_t *soa = knot_node_get_rrset(node, KNOT_RRTYPE_SOA);
+	const knot_rrset_t *soa = knot_node_rrset(node, KNOT_RRTYPE_SOA);
 
 	// Dump SOA record as a first.
 	if (knot_rrset_txt_dump(soa, params->buf, params->buflen,
@@ -58,7 +58,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 	fprintf(params->file, "%s", params->buf);
 	params->buf[0] = '\0';
 
-	knot_rrset_t **rrsets = node->rrset_tree;
+	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
 
 	// Dump other records.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
@@ -94,7 +94,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t **rrsets = node->rrset_tree;
+	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
 
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
