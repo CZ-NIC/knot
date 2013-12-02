@@ -24,7 +24,7 @@
 #include "common/errcode.h"
 #include "common/hex.h"
 #include "common/strtonum.h"
-#include "libknot/dnssec/cleanup.h"
+#include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/nsec3.h"
 
 #define PROGRAM_NAME "knsec3hash"
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	atexit(knot_dnssec_cleanup);
+	atexit(knot_crypto_cleanup);
 
 	int exit_code = 1;
 	knot_nsec3_params_t nsec3_params = { 0 };

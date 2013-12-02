@@ -30,7 +30,6 @@
 
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
-#include "common/hattrie/ahtable.h"
 
 struct knot_zone;
 
@@ -70,8 +69,6 @@ struct knot_node {
 	 * node prepended as a single label to the zone name.
 	 */
 	struct knot_node *nsec3_node;
-
-	const struct knot_zone *zone;
 
 	struct knot_node *new_node;
 
@@ -331,10 +328,6 @@ const knot_node_t *knot_node_new_node(const knot_node_t *node);
 knot_node_t *knot_node_get_new_node(const knot_node_t *node);
 
 void knot_node_set_new_node(knot_node_t *node, knot_node_t *new_node);
-
-void knot_node_set_zone(knot_node_t *node, const struct knot_zone *zone);
-
-const struct knot_zone *knot_node_zone(const knot_node_t *node);
 
 void knot_node_update_ref(knot_node_t **ref);
 

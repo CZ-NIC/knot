@@ -106,29 +106,35 @@ int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
 /*!
  * \brief Create RRSIG RDATA (all fields except signature are filled).
  *
- * \param rrsigs        RR set with RRSIGS.
- * \param covered       RR covered by the signature.
- * \param key           Key used for signing.
- * \param sig_incepted  Timestamp of signature inception.
- * \param sig_expires   Timestamp of signature expiration.
+ * \param[in]  rrsigs        RR set with RRSIGS.
+ * \param[in]  covered       RR covered by the signature.
+ * \param[in]  key           Key used for signing.
+ * \param[in]  sig_incepted  Timestamp of signature inception.
+ * \param[in]  sig_expires   Timestamp of signature expiration.
+ * \param[out] rdata         Created RDATA.
+ * \param[out] rdata_size    Size of created RDATA.
+ *
+ * \return Error code, KNOT_EOK if succesful.
  */
-static uint8_t *rrsigs_create_rdata(knot_rrset_t *rrsigs,
-                                    const knot_rrset_t *covered,
-                                    const knot_dnssec_key_t *key,
-                                    uint32_t sig_incepted,
-                                    uint32_t sig_expires)
+static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
+                               const knot_rrset_t *covered,
+                               const knot_dnssec_key_t *key,
+			       uint32_t sig_incepted, uint32_t sig_expires,
+                               uint8_t **rdata, size_t *rdata_size)
 {
 	assert(rrsigs);
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(covered);
 	assert(key);
+	assert(rdata);
+	assert(rdata_size);
 
-	size_t rdata_size = knot_rrsig_rdata_size(key);
-	assert(rdata_size != 0);
+	size_t size = knot_rrsig_rdata_size(key);
+	assert(size != 0);
 
-	uint8_t *rdata = knot_rrset_create_rdata(rrsigs, rdata_size);
-	if (!rdata) {
-		return NULL;
+	uint8_t *result = knot_rrset_create_rdata(rrsigs, size);
+	if (!result) {
+		return KNOT_ENOMEM;
 	}
 
 	uint8_t owner_labels = knot_dname_labels(covered->owner, NULL);
@@ -136,12 +142,16 @@ static uint8_t *rrsigs_create_rdata(knot_rrset_t *rrsigs,
 		owner_labels -= 1;
 	}
 
-	int res = knot_rrsig_write_rdata(rdata, key, covered->type, owner_labels,
-	                                covered->ttl, sig_incepted, sig_expires);
+	int res = knot_rrsig_write_rdata(result, key, covered->type, owner_labels,
+	                                 covered->ttl, sig_incepted, sig_expires);
+
 	assert(res == KNOT_EOK);
+	UNUSED(res);
 
+	*rdata = result;
+	*rdata_size = size;
 
-	return rdata;
+	return KNOT_EOK;
 }
 
 /*- Computation of signatures ------------------------------------------------*/
@@ -280,13 +290,16 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	uint32_t sig_incept = policy->now;
 	uint32_t sig_expire = sig_incept + policy->sign_lifetime;
 
-	uint8_t *rdata = rrsigs_create_rdata(rrsigs, covered, key,
-	                                     sig_incept, sig_expire);
-	if (!rdata) {
-		return KNOT_ENOMEM;
+	uint8_t *rdata = NULL;
+	size_t rdata_size = 0;
+
+	int result = rrsigs_create_rdata(rrsigs, covered, key, sig_incept,
+	                                 sig_expire, &rdata, &rdata_size);
+	if (result != KNOT_EOK) {
+		return result;
 	}
 
-	int result = knot_dnssec_sign_new(sign_ctx);
+	result = knot_dnssec_sign_new(sign_ctx);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -296,10 +309,11 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 		return result;
 	}
 
-	uint8_t *rdata_signature = rdata + RRSIG_RDATA_SIGNER_OFFSET
-	                           + knot_dname_size(key->name);
+	size_t signature_offset = RRSIG_RDATA_SIGNER_OFFSET + knot_dname_size(key->name);
+	uint8_t *signature = rdata + signature_offset;
+	size_t signature_size = rdata_size - signature_offset;
 
-	return knot_dnssec_sign_write(sign_ctx, rdata_signature);
+	return knot_dnssec_sign_write(sign_ctx, signature, signature_size);
 }
 
 /*- Verification of signatures -----------------------------------------------*/

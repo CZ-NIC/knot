@@ -29,7 +29,6 @@
 #ifndef _KNOT_DNSSEC_ZONE_SIGN_H_
 #define _KNOT_DNSSEC_ZONE_SIGN_H_
 
-#include "common/hattrie/ahtable.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/dnssec/zone-keys.h"

@@ -1267,7 +1267,7 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	// Create args for wrapper function - ahtable for duplicate sigs
+	// Create args for wrapper function - hattrie for duplicate sigs
 	changeset_signing_data_t args = { .zone = zone, .zone_keys = zone_keys,
 	                                  .policy = policy,
 	                                  .changeset = out_ch,

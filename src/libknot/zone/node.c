@@ -26,7 +26,6 @@
 #include "libknot/rrset.h"
 #include "common/descriptor.h"
 #include "libknot/util/debug.h"
-#include "common/hattrie/ahtable.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -485,28 +484,6 @@ void knot_node_set_new_node(knot_node_t *node,
 	}
 
 	node->new_node = new_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_zone(knot_node_t *node, const knot_zone_t *zone)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	node->zone = zone;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_zone_t *knot_node_zone(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->zone;
 }
 
 /*----------------------------------------------------------------------------*/

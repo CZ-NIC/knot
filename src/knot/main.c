@@ -27,7 +27,7 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "libknot/common.h"
-#include "libknot/dnssec/cleanup.h"
+#include "libknot/dnssec/crypto.h"
 #include "common/evqueue.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
@@ -53,6 +53,13 @@ char *zone = NULL;
 
 // Cleanup handler
 static int do_cleanup(server_t *server, char *configf, char *pidf);
+
+// atexit() handler for server code
+static void deinit(void)
+{
+	knot_crypto_cleanup();
+	knot_crypto_cleanup_threads();
+}
 
 // SIGINT signal handler
 void interrupt_handle(int s)
@@ -100,7 +107,7 @@ void help(void)
 
 int main(int argc, char **argv)
 {
-	atexit(knot_dnssec_cleanup);
+	atexit(deinit);
 
 	// Parse command line arguments
 	int c = 0, li = 0;
@@ -166,6 +173,10 @@ int main(int argc, char **argv)
 		help();
 		return 1;
 	}
+
+	// Initialize cryptographic backend
+	knot_crypto_init();
+	knot_crypto_init_threads();
 
 	// Now check if we want to daemonize
 	if (daemonize) {

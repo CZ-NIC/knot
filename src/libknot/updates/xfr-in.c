@@ -1626,14 +1626,6 @@ static knot_node_t *xfrin_add_new_node(knot_zone_contents_t *contents,
 		return NULL;
 	}
 
-	/*!
-	 * \note It is not needed to set the previous node, we will do this
-	 *       in adjusting after the transfer.
-	 */
-
-	assert(contents->zone != NULL);
-	knot_node_set_zone(node, contents->zone);
-
 	return node;
 }
 
@@ -2009,14 +2001,14 @@ void xfrin_cleanup_successful_update(knot_changes_t *changes)
 /* New changeset applying                                                     */
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_switch_nodes_in_node(knot_node_t *node, void *data)
+static int xfrin_switch_nodes_in_node(knot_node_t **node, void *data)
 {
-	assert(node != NULL);
 	UNUSED(data);
 
-	assert(knot_node_new_node(node) == NULL);
+	assert(node && *node);
+	assert(knot_node_new_node(*node) == NULL);
 
-	knot_node_update_refs(node);
+	knot_node_update_refs(*node);
 
 	return KNOT_EOK;
 }
@@ -2029,11 +2021,9 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 
 	// Traverse the trees and for each node check every reference
 	// stored in that node. The node itself should be new.
-	knot_zone_contents_tree_apply_inorder(contents_copy,
-					      xfrin_switch_nodes_in_node, NULL);
+	knot_zone_tree_apply(contents_copy->nodes, xfrin_switch_nodes_in_node, NULL);
+	knot_zone_tree_apply(contents_copy->nsec3_nodes, xfrin_switch_nodes_in_node, NULL);
 
-	knot_zone_contents_nsec3_apply_inorder(contents_copy,
-					      xfrin_switch_nodes_in_node, NULL);
 	return KNOT_EOK;
 }
 
@@ -2058,12 +2048,12 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_cleanup_old_nodes(knot_node_t *node, void *data)
+static int xfrin_cleanup_old_nodes(knot_node_t **node, void *data)
 {
 	UNUSED(data);
-	assert(node != NULL);
+	assert(node && *node);
 
-	knot_node_set_new_node(node, NULL);
+	knot_node_set_new_node(*node, NULL);
 
 	return KNOT_EOK;
 }
@@ -2084,13 +2074,11 @@ static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
 
 	if (old_contents != NULL) {
 		// cleanup old zone tree - reset pointers to new node to NULL
-		knot_zone_contents_tree_apply_inorder(old_contents,
-						      xfrin_cleanup_old_nodes,
-						      NULL);
+		knot_zone_tree_apply(old_contents->nodes, xfrin_cleanup_old_nodes,
+				     NULL);
 
-		knot_zone_contents_nsec3_apply_inorder(old_contents,
-						       xfrin_cleanup_old_nodes,
-						       NULL);
+		knot_zone_tree_apply(old_contents->nsec3_nodes, xfrin_cleanup_old_nodes,
+				     NULL);
 	}
 }
 
@@ -2522,11 +2510,12 @@ dbg_xfrin_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_check_contents_copy_node(knot_node_t *node, void *data)
+static int xfrin_check_contents_copy_node(knot_node_t **node, void *data)
 {
-	assert(node != NULL);
+	UNUSED(data);
+	assert(node && *node);
 
-	if (knot_node_new_node(node) == NULL) {
+	if (knot_node_new_node(*node) == NULL) {
 		return KNOT_ENONODE;
 	} else {
 		return KNOT_EOK;
@@ -2537,14 +2526,12 @@ static int xfrin_check_contents_copy_node(knot_node_t *node, void *data)
 
 static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
 {
-	int ret = knot_zone_contents_tree_apply_inorder(old_contents,
-						 xfrin_check_contents_copy_node,
-						 NULL);
+	int ret = knot_zone_tree_apply(old_contents->nodes,
+				       xfrin_check_contents_copy_node, NULL);
 
 	if (ret == KNOT_EOK) {
-		ret = knot_zone_contents_nsec3_apply_inorder(old_contents,
-						 xfrin_check_contents_copy_node,
-						 NULL);
+		ret = knot_zone_tree_apply(old_contents->nsec3_nodes,
+					   xfrin_check_contents_copy_node, NULL);
 	}
 
 	if (knot_node_new_node(knot_zone_contents_apex(old_contents)) == NULL) {

@@ -88,6 +88,7 @@
 /tests/events
 /tests/fdset
 /tests/hattrie
+/tests/hhash
 /tests/journal
 /tests/rrl
 /tests/rrset
