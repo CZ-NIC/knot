@@ -1951,18 +1951,6 @@ int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
 	int ret = knot_rrset_remove_rr_using_rrset(from, what, &rr_removed);
 	knot_rrset_deep_free(&rr_removed, 1);
 	return ret;
-	for (uint16_t i = 0; i < what->rdata_count; ++i) {
-		int ret = knot_rrset_remove_rr(from, what, i);
-		if (ret != KNOT_ENOENT || ret != KNOT_EOK) {
-			/* NOENT is OK, but other errors are not. */
-			dbg_rrset("rrset: remove_rr_using_rrset: "
-			          "RRSet removal failed (%s).\n",
-			          knot_strerror(ret));
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
 }
 
 void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
