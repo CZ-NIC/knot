@@ -44,6 +44,7 @@ struct query_data {
 	uint16_t rcode;
 	uint16_t rcode_tsig;
 	knot_pkt_t *pkt;
+	const knot_zone_t *zone; /*!< Associated zone. */
 	const knot_node_t *node, *encloser, *previous;
 	list_t wildcards;
 	mm_ctx_t *mm;

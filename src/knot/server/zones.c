@@ -554,7 +554,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_load_changesets(const knot_zone_t *zone,
+int zones_load_changesets(const knot_zone_t *zone,
                                  knot_changesets_t *dst,
                                  uint32_t from, uint32_t to)
 {
@@ -1313,6 +1313,8 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode)
 	                              rcode);
 }
 
+/*! \todo #10 leaving it here for TSIG later on */
+#if 0
 /*----------------------------------------------------------------------------*/
 /*! \todo This function is here only because TSIG key is associated with the
  *        zone via zonedata. If it was in the zone structure (which would be
@@ -1554,6 +1556,7 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 
 	return KNOT_EOK;
 }
+#endif
 
 /*----------------------------------------------------------------------------*/
 

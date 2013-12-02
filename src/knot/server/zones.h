@@ -125,14 +125,6 @@ int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
 /*!
  * \todo Document me.
  */
-int zones_normal_query_answer(knot_nameserver_t *nameserver,
-                              knot_pkt_t *query, const sockaddr_t *addr,
-                              uint8_t *response_wire, size_t *rsize,
-                              knot_ns_transport_t transport);
-
-/*!
- * \todo Document me.
- */
 int zones_process_update(knot_nameserver_t *nameserver,
                          knot_pkt_t *query, const sockaddr_t *addr,
                          uint8_t *resp_wire, size_t *rsize,
@@ -255,6 +247,10 @@ int zones_changesets_to_binary(knot_changesets_t *chgsets);
  */
 int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
                               uint32_t serial_to);
+
+int zones_load_changesets(const knot_zone_t *zone,
+			  knot_changesets_t *dst,
+			  uint32_t from, uint32_t to) __attribute__((deprecated));
 
 /*!
  * \brief Creates changesets from zones difference.

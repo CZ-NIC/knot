@@ -105,7 +105,6 @@ typedef struct knot_pkt {
 
 	/* #10 <<< SHOULD BE IN ANSWERING CONTEXT */
 	const knot_tsig_key_t *tsig_key;
-	const knot_zone_t *zone; /*!< Associated zone. */
 	const struct knot_pkt *query; /*!< Associated query. */
 
 	/*! \brief Wildcard nodes to be processed for NSEC/NSEC3. */

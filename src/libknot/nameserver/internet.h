@@ -48,6 +48,33 @@ int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
  */
 int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
 
+
+/*! \brief Require given QUERY TYPE or return error code. */
+#define NS_NEED_QTYPE(qdata, qtype_want, error_rcode) \
+	if (knot_pkt_qtype((qdata)->pkt) != (qtype_want)) { \
+		qdata->rcode = (error_rcode); \
+		return NS_PROC_FAIL; \
+	}
+
+/*! \brief Require given QUERY NAME or return error code. */
+#define NS_NEED_QNAME(qdata, qname_want, error_rcode) \
+	if (!knot_dname_is_equal(knot_pkt_qname((qdata)->pkt), (qname_want))) { \
+		qdata->rcode = (error_rcode); \
+		return NS_PROC_FAIL; \
+	}
+
+/*! \brief Require valid zone or return error code. */
+#define NS_NEED_VALID_ZONE(qdata, error_rcode) \
+	switch(knot_zone_state((qdata)->zone)) { \
+	case KNOT_EOK: \
+		break; \
+	case KNOT_ENOENT: \
+		qdata->rcode = (error_rcode); \
+		return NS_PROC_FAIL; \
+	default: \
+		return NS_PROC_FAIL; \
+	}
+
 #endif /* _KNOT_INTERNET_H_ */
 
 /*! @} */

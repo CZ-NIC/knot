@@ -128,7 +128,7 @@ static int name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	}
 
 	int added = 0; /*! \todo useless */
-	int ret = ns_put_answer(qdata->node, pkt->zone->contents, *name, qtype, pkt, &added, 0 /*! \todo check from pkt */);
+	int ret = ns_put_answer(qdata->node, qdata->zone->contents, *name, qtype, pkt, &added, 0 /*! \todo check from pkt */);
 
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: failed answer from node %p (%d)\n", __func__, qdata->node, ret);
@@ -143,7 +143,7 @@ static int name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	// or NS records in Answer section
 	if (knot_wire_get_tc(pkt->wire) == 0
 	    && knot_pkt_have_dnssec(pkt->query)
-	    && qdata->node == knot_zone_contents_apex(pkt->zone->contents)
+	    && qdata->node == knot_zone_contents_apex(qdata->zone->contents)
 	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
 		ret = ns_add_dnskey(qdata->node, pkt);
 		if (ret != KNOT_EOK) {
@@ -195,7 +195,7 @@ static int solve_name(int state, const knot_dname_t **name,
                       knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%d, %p, %p, %p)\n", __func__, state, name, pkt, qdata);
-	int ret = knot_zone_contents_find_dname(pkt->zone->contents, *name,
+	int ret = knot_zone_contents_find_dname(qdata->zone->contents, *name,
 	                                        &qdata->node, &qdata->encloser,
 	                                        &qdata->previous);
 
@@ -241,10 +241,11 @@ static int solve_authority(int state, const knot_dname_t **qname,
                            knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = KNOT_ERROR;
+	const knot_zone_contents_t *zone_contents = qdata->zone->contents;
 
 	switch (state) {
 	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */
-		ret = ns_put_authority_ns(pkt->zone->contents, pkt);
+		ret = ns_put_authority_ns(zone_contents, pkt);
 		dbg_ns("%s: putting authority NS = %d\n", __func__, ret);
 		if (ret == KNOT_ESPACE) { /* Optional. */
 			ret = KNOT_EOK;
@@ -254,11 +255,11 @@ static int solve_authority(int state, const knot_dname_t **qname,
 		qdata->rcode = KNOT_RCODE_NXDOMAIN;
 		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
 	case NODATA: /* NODATA or NXDOMAIN, append AUTHORITY SOA. */
-		ret = ns_put_authority_soa(pkt->zone->contents, pkt);
+		ret = ns_put_authority_soa(zone_contents, pkt);
 		dbg_ns("%s: putting authority SOA = %d\n", __func__, ret);
 		break;
 	case DELEG:  /* Referral response. */ /*! \todo DS + NS */
-		ret = ns_referral(qdata->node, pkt->zone->contents, *qname, pkt, knot_pkt_qtype(pkt));
+		ret = ns_referral(qdata->node, zone_contents, *qname, pkt, knot_pkt_qtype(pkt));
 		break;
 	case ERROR:
 		dbg_ns("%s: failed to resolve qname\n", __func__);
@@ -280,16 +281,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 		return NS_PROC_FAIL;
 	}
 
-	/* Check zone state. */
-	switch(knot_zone_state(response->zone)) {
-	case KNOT_EOK:
-		break;
-	case KNOT_ENOENT:
-		qdata->rcode = KNOT_RCODE_REFUSED;
-		return NS_PROC_FAIL;
-	default:
-		return NS_PROC_FAIL;
-	}
+	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
 
 	/* Write answer RRs for QNAME. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
@@ -315,7 +307,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	/* Resolve ADDITIONAL. */
 	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ADDITIONAL);
-	ret = ns_put_additional(response);
+	ret = ns_put_additional(qdata->zone, response);
 	if (ret != KNOT_EOK) {
 		return NS_PROC_FAIL;
 
@@ -372,28 +364,10 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	}
 
 	/* RFC1996 require SOA question. */
-	if (knot_pkt_qtype(qdata->pkt) != KNOT_RRTYPE_SOA) {
-		dbg_ns("%s: NOTIFY query_type != SOA\n", __func__);
-		qdata->rcode = KNOT_RCODE_FORMERR;
-		return NS_PROC_FAIL;
-	}
-
-	/* Check zone state. */
-	switch(knot_zone_state(pkt->zone)) {
-	case KNOT_EOK:
-		break;
-	case KNOT_ENOENT:
-		/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
-		 *        Most servers use NOTAUTH from RFC2136. */
-		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		return NS_PROC_FAIL;
-	default:
-		return NS_PROC_FAIL;
-	}
-
-
-	/* Process notification. */
-	assert(pkt->zone != NULL); /* Should be checked. */
+	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
+	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
+	 *        Most servers use NOTAUTH from RFC2136. */
+	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
 	/* SOA RR in answer may be included, recover serial. */
 	unsigned serial = 0;
@@ -409,7 +383,7 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	}
 
 	int next_state = NS_PROC_FAIL;
-	int ret = notify_reschedule(ns, pkt->zone, NULL /*! \todo API */);
+	int ret = notify_reschedule(ns, qdata->zone, NULL /*! \todo API */);
 
 	/* Format resulting log message. */
 	char *qname_str = knot_dname_to_str(knot_pkt_qname(pkt));

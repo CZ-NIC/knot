@@ -80,6 +80,7 @@ static void pkt_wire_set(knot_pkt_t *pkt, void *wire, uint16_t len)
 	pkt->wire = wire;
 	pkt->size = pkt->max_size = len;
 	pkt->parsed = 0;
+	/*! \todo Merge ->size and ->parsed */
 }
 
 static uint16_t pkt_remaining(knot_pkt_t *pkt)

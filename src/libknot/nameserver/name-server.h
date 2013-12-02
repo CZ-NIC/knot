@@ -232,10 +232,6 @@ void knot_ns_error_response_full(knot_nameserver_t *nameserver,
                                  knot_pkt_t *response, uint8_t rcode,
                                  uint8_t *response_wire, size_t *rsize);
 
-int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
-                                 knot_pkt_t *query, knot_pkt_t *resp,
-                                 const knot_zone_t **zone, size_t max_size);
-
 int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
                                  knot_pkt_t *query, knot_pkt_t **resp,
                                  knot_zone_t **zone, size_t max_size);
@@ -400,7 +396,7 @@ const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
                                                   const knot_dname_t *qname,
                                                   uint16_t qtype);
 
-int ns_put_additional(knot_pkt_t *resp);
+int ns_put_additional(const knot_zone_t *zone, knot_pkt_t *resp);
 int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
                                           const knot_node_t *closest_encloser,
                                           const knot_node_t *previous,

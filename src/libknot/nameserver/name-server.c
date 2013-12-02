@@ -276,6 +276,7 @@ static void cname_chain_free(list_t *chain)
 static int ns_follow_cname(const knot_node_t **node,
                             const knot_dname_t **qname,
                             knot_pkt_t *resp,
+			   const knot_zone_t *zone,
                             int flags)
 {
 	dbg_ns_verb("Resolving CNAME chain...\n");
@@ -394,7 +395,6 @@ dbg_ns_exec_verb(
 
 		/* Attempt to find mentioned name in zone. */
 		rcu_read_lock();
-		const knot_zone_t *zone = resp->zone;
 		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 		const knot_node_t *encloser = NULL, *prev = NULL;
 		knot_zone_contents_find_dname(contents, cname, node, &encloser, &prev);
@@ -625,7 +625,7 @@ dbg_ns_exec_verb(
  * \param resp Response where to add the Additional data.
  * \param rrset RRSet to get the Additional data for.
  */
-static int ns_put_additional_for_rrset(knot_pkt_t *resp, uint16_t rr_id)
+static int ns_put_additional_for_rrset(const knot_zone_t *zone, knot_pkt_t *resp, uint16_t rr_id)
 {
 	assert(KNOT_PKT_IN_AR(resp));
 	assert(rr_id < resp->rrset_count);
@@ -652,7 +652,6 @@ dbg_ns_exec_detail(
 
 		/* Attempt to find mentioned name in zone. */
 		rcu_read_lock();
-		const knot_zone_t *zone = resp->zone;
 		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 		knot_zone_contents_find_dname(contents, dname, &node, &encloser, &prev);
 		if (node == NULL && encloser && encloser->wildcard_child)
@@ -673,7 +672,7 @@ dbg_ns_exec(
 				const knot_dname_t *dname
 						= knot_node_owner(node);
 				assert(KNOT_PKT_IN_AR(resp));
-				ret = ns_follow_cname(&node, &dname, resp, 0);
+				ret = ns_follow_cname(&node, &dname, resp, zone, 0);
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to follow CNAME.\n");
 					return ret;
@@ -797,7 +796,7 @@ static int ns_additional_needed(uint16_t qtype)
  *
  * \param resp Response to process.
  */
-int ns_put_additional(knot_pkt_t *resp)
+int ns_put_additional(const knot_zone_t *zone, knot_pkt_t *resp)
 {
 	dbg_ns_verb("ADDITIONAL SECTION PROCESSING\n");
 
@@ -810,7 +809,7 @@ int ns_put_additional(knot_pkt_t *resp)
 	uint16_t rr_count = resp->rrset_count;
 	for (uint16_t i = 0; i < rr_count; ++i) {
 		if (ns_additional_needed(knot_rrset_type(resp->rr[i]))) {
-			ret = ns_put_additional_for_rrset(resp, i);
+			ret = ns_put_additional_for_rrset(zone, resp, i);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -1853,98 +1852,6 @@ int ns_referral(const knot_node_t *node,
 /*----------------------------------------------------------------------------*/
 
 /*!
- * \brief Tries to answer the query from the given node.
- *
- * Tries to put RRSets of requested type (\a qtype) to the Answer section of the
- * response. If successful, it also adds authority NS RRSet to the Authority
- * section and it may add NSEC or NSEC3s in case of a wildcard answer (\a node
- * is a wildcard node). If not successful (there are no such RRSets), it adds
- * the SOA record to the Authority section and may add NSEC or NSEC3s according
- * to the type of the response (NXDOMAIN if \a node is an empty non-terminal,
- * NODATA if it is a regular node). It also adds any additional data that may
- * be required.
- *
- * \param node Node to answer from.
- * \param closest_encloser Closest encloser of \a qname in the zone.
- * \param previous Previous domain name of \a qname in canonical order.
- * \param zone Zone used for answering.
- * \param qname Searched domain name.
- * \param qtype Searched RR type.
- * \param resp Response.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-static int ns_answer_from_node(const knot_node_t *node,
-                               const knot_node_t *closest_encloser,
-                               const knot_node_t *previous,
-                               const knot_zone_contents_t *zone,
-                               const knot_dname_t *qname, uint16_t qtype,
-                               knot_pkt_t *resp, int check_any)
-{
-	dbg_ns_verb("Putting answers from found node to the response...\n");
-	int answers = 0;
-
-	int ret = ns_put_answer(node, zone, qname, qtype, resp, &answers,
-	                        check_any);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* ANSWER complete, proceed with AUTHORITY. */
-	knot_pkt_begin(resp, KNOT_AUTHORITY);
-
-	assert(ret == KNOT_EOK);
-
-	if (answers == 0) {  // if NODATA response, put SOA
-		ret = ns_put_authority_soa(zone, resp);
-		if (knot_node_rrset_count(node) == 0
-		    && !knot_zone_contents_nsec3_enabled(zone)) {
-			// node is an empty non-terminal => NSEC for NXDOMAIN
-			//assert(knot_node_rrset_count(closest_encloser) > 0);
-			dbg_ns_verb("Adding NSEC/NSEC3 for NXDOMAIN.\n");
-			ret = ns_put_nsec_nsec3_nxdomain(zone,
-				knot_node_previous(node), closest_encloser,
-				qname, resp);
-		} else {
-			dbg_ns_verb("Adding NSEC/NSEC3 for NODATA.\n");
-			ret = ns_put_nsec_nsec3_nodata(zone, node, resp);
-			if (ret != KNOT_EOK) {
-				dbg_ns("Failed adding NSEC/NSEC3 for NODATA: %s"
-				       "\n", knot_strerror(ret));
-				return ret;
-			}
-
-			if (knot_dname_is_wildcard(node->owner)) {
-				dbg_ns_verb("Putting NSEC/NSEC3 for wildcard"
-				            " NODATA\n");
-				ret = ns_put_nsec_nsec3_wildcard_nodata(node,
-					closest_encloser, previous, zone, qname,
-					resp);
-				if (ret != KNOT_EOK) {
-					return ret;
-				}
-			}
-		}
-	} else {  // else put authority NS
-		assert(closest_encloser == knot_node_parent(node)
-		      || !knot_dname_is_wildcard(knot_node_owner(node))
-		      || knot_dname_cmp(qname, knot_node_owner(node)) == 0);
-
-		ret = ns_put_nsec_nsec3_wildcard_answer(node, closest_encloser,
-		                                  previous, zone, qname, resp);
-
-		if (ret == KNOT_EOK) {
-			ret = ns_put_authority_ns(zone, resp);
-		}
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-/*!
  * \brief Synthetizes a CNAME RR from a DNAME.
  *
  * \param dname_rrset DNAME RRSet to synthetize from (only the first RR is
@@ -2113,297 +2020,6 @@ int ns_add_dnskey(const knot_node_t *apex, knot_pkt_t *resp)
 	return ret;
 }
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Answers the query from the given zone.
- *
- * This function performs the actual answering logic.
- *
- * \param zone Zone to use for answering.
- * \param qname QNAME from the query.
- * \param qtype QTYPE from the query.
- * \param resp Response to fill in.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- *
- * \todo Describe the answering logic in detail.
- */
-static int ns_answer_from_zone(const knot_zone_contents_t *zone,
-                               knot_pkt_t *resp, int check_any)
-{
-	const knot_node_t *node = NULL, *closest_encloser = NULL,
-	                    *previous = NULL;
-	int cname = 0, auth_soa = 0, ret = 0, find_ret = 0;
-
-	const knot_dname_t *qname = knot_pkt_qname(resp);
-	uint16_t qtype = knot_pkt_qtype(resp);
-
-search:
-	// Searching for a name directly is faster than when we need previous dname
-	node = knot_zone_contents_find_node(zone, qname);
-	if (node != NULL) {
-		// If node is found, closest_encloser is equal to node itself
-		closest_encloser = node;
-		find_ret = KNOT_ZONE_NAME_FOUND;
-	} else {
-		// We need previous and closest encloser, full search has to be done
-		find_ret = knot_zone_contents_find_dname(zone, qname, &node,
-		                                         &closest_encloser, &previous);
-		if (find_ret == KNOT_EINVAL) {
-			return NS_ERR_SERVFAIL;
-		}
-	}
-
-dbg_ns_exec_verb(
-	char *name;
-	if (node) {
-		name = knot_dname_to_str(node->owner);
-		dbg_ns_verb("zone_find_dname() returned node %s \n", name);
-		free(name);
-	} else {
-		dbg_ns_verb("zone_find_dname() returned no node,\n");
-	}
-
-	if (closest_encloser != NULL) {
-		name = knot_dname_to_str(closest_encloser->owner);
-		dbg_ns_verb(" closest encloser %s.\n", name);
-		free(name);
-	} else {
-		dbg_ns_verb(" closest encloser (nil).\n");
-	}
-	if (previous != NULL) {
-		name = knot_dname_to_str(previous->owner);
-		dbg_ns_verb(" and previous node: %s.\n", name);
-		free(name);
-	} else {
-		dbg_ns_verb(" and previous node: (nil).\n");
-	}
-);
-	if (find_ret == KNOT_EOUTOFZONE) {
-		// possible only if we followed CNAME or DNAME
-		assert(cname != 0);
-		knot_wire_set_rcode(resp->wire, KNOT_RCODE_NOERROR);
-		auth_soa = 1;
-		knot_wire_set_aa(resp->wire);
-		goto finalize;
-	}
-
-have_node:
-	dbg_ns_verb("Closest encloser is deleg. point? %s\n",
-		 (knot_node_is_deleg_point(closest_encloser)) ? "yes" : "no");
-
-	dbg_ns_verb("Closest encloser is non authoritative? %s\n",
-		 (knot_node_is_non_auth(closest_encloser)) ? "yes" : "no");
-
-	if (knot_node_is_deleg_point(closest_encloser)
-	    || knot_node_is_non_auth(closest_encloser)) {
-		ret = ns_referral(closest_encloser, zone, qname, resp, qtype);
-		goto finalize;
-	}
-
-	if (find_ret == KNOT_ZONE_NAME_NOT_FOUND) {
-		// DNAME?
-		knot_rrset_t *dname_rrset = knot_node_get_rrset(
-		                         closest_encloser, KNOT_RRTYPE_DNAME);
-		if (dname_rrset != NULL
-		    && knot_rrset_rdata_rr_count(dname_rrset) > 0) {
-			ret = ns_process_dname(dname_rrset, &qname, resp);
-
-			knot_wire_set_aa(resp->wire);
-
-			if (ret != KNOT_EOK) {
-				goto finalize;
-			}
-
-			// do not search for the name in new zone
-			// (out-of-bailiwick), just in the current zone if it
-			// belongs there
-
-			cname = 1;
-			goto search;
-		}
-		// else check for a wildcard child
-		const knot_node_t *wildcard_node =
-			knot_node_wildcard_child(closest_encloser);
-
-		if (wildcard_node == NULL) {
-			dbg_ns_verb("No wildcard node. (cname: %d)\n",
-			            cname);
-			auth_soa = 1;
-			if (cname == 0) {
-				dbg_ns_detail("Setting NXDOMAIN RCODE.\n");
-				// return NXDOMAIN
-				knot_wire_set_rcode(resp->wire,
-					KNOT_RCODE_NXDOMAIN);
-			} else {
-				knot_wire_set_rcode(resp->wire,
-					KNOT_RCODE_NOERROR);
-			}
-
-			if (ns_put_nsec_nsec3_nxdomain(zone, previous,
-				closest_encloser, qname, resp) != 0) {
-				return NS_ERR_SERVFAIL;
-			}
-			knot_wire_set_aa(resp->wire);
-			goto finalize;
-		}
-		// else set the node from which to take the answers to wild.node
-		node = wildcard_node;
-	}
-
-	// now we have the node for answering
-	if (knot_node_is_deleg_point(node) || knot_node_is_non_auth(node)) {
-		ret = ns_referral(node, zone, qname, resp, qtype);
-		goto finalize;
-	}
-
-	if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL
-	    && qtype != KNOT_RRTYPE_CNAME && qtype != KNOT_RRTYPE_RRSIG) {
-dbg_ns_exec(
-		char *name = knot_dname_to_str(node->owner);
-		dbg_ns("Node %s has CNAME record, resolving...\n", name);
-		free(name);
-);
-		assert(KNOT_PKT_IN_AN(resp));
-		const knot_dname_t *act_name = qname;
-		ret = ns_follow_cname(&node, &act_name, resp, 1);
-
-		/*! \todo IS OK??? */
-		knot_wire_set_aa(resp->wire);
-
-		if (ret != KNOT_EOK) {
-			// KNOT_ESPACE case is handled there
-			goto finalize;
-		}
-dbg_ns_exec_verb(
-		char *name = (node != NULL) ? knot_dname_to_str(node->owner)
-			: "(nil)";
-		char *name2 = knot_dname_to_str(act_name);
-		dbg_ns_verb("Canonical name: %s (%p), node found: %p\n",
-		            name2, act_name, node);
-		dbg_ns_verb("The node's owner: %s (%p)\n", name, (node != NULL)
-		                  ? node->owner : NULL);
-		if (node != NULL) {
-			free(name);
-		}
-		free(name2);
-);
-		qname = act_name;
-		cname = 1;
-
-		// otherwise search for the new name
-		if (node == NULL) {
-			goto search;
-		} else if (!knot_dname_is_equal(node->owner, act_name)) {
-			if(knot_dname_is_wildcard(knot_node_owner(node))) {
-				// we must set the closest encloser to the
-				// parent of the node, to be right
-				closest_encloser = knot_node_parent(node);
-				assert(closest_encloser != NULL);
-			} else {
-				// the stored node is closest encloser
-				find_ret = KNOT_ZONE_NAME_NOT_FOUND;
-				closest_encloser = node;
-				node = NULL;
-				goto have_node;
-			}
-		}
-	}
-
-	ret = ns_answer_from_node(node, closest_encloser, previous, zone, qname,
-	                          qtype, resp, check_any);
-	if (ret == NS_ERR_SERVFAIL) {
-		// in this case we should drop the response and send an error
-		// for now, just send the error code with a non-complete answer
-		return ret;
-	} else if (ret != KNOT_EOK) {
-		/*! \todo Handle RCODE return values!!! */
-		// In case ret == KNOT_ESPACE, this is later converted to EOK
-		// so it does not cause error response
-		knot_wire_set_aa(resp->wire);
-		goto finalize;
-	}
-	knot_wire_set_aa(resp->wire);
-	knot_wire_set_rcode(resp->wire, KNOT_RCODE_NOERROR);
-
-	// this is the only case when the servers answers from
-	// particular node, i.e. the only case when it may return SOA
-	// or NS records in Answer section
-	if (knot_wire_get_tc(resp->wire) == 0 && DNSSEC_ENABLED
-	    && knot_pkt_have_dnssec(resp->query)
-	    && node == knot_zone_contents_apex(zone)
-	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
-		ret = ns_add_dnskey(node, resp);
-	}
-
-finalize:
-	knot_pkt_begin(resp, KNOT_AUTHORITY); /* #10 this is just plain wrong, this function is so _____
-					    that it jumps back and forth and we don't know when AN ends
-					    and NS starts. */
-	if (ret == KNOT_EOK && knot_wire_get_tc(resp->wire) == 0 && auth_soa) {
-		ret = ns_put_authority_soa(zone, resp);
-	}
-
-	if (ret == KNOT_ESPACE) {
-		knot_wire_set_rcode(resp->wire, KNOT_RCODE_NOERROR);
-		ret = KNOT_EOK;
-	}
-
-	// add all missing NSECs/NSEC3s for wildcard nodes
-	ret = ns_put_nsec_nsec3_wildcard_nodes(resp, zone);
-
-	/* Finished AUTHORITY, continue with ADDITIONALS. */
-	knot_pkt_begin(resp, KNOT_ADDITIONAL);
-
-	if (ret == KNOT_EOK) {
-		ns_put_additional(resp);
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Answers the query from the given zone database.
- *
- * First it searches for a zone to answer from. If there is none, it sets
- * RCODE REFUSED to the response and ends. Otherwise it tries to answer the
- * query using the found zone (see ns_answer_from_zone()).
- *
- * \param db Zone database to use for answering.
- * \param resp Response that holds the parsed query.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-static int ns_answer(const knot_zone_t *zone, knot_pkt_t *resp,
-                     int check_any)
-{
-	const knot_zone_contents_t *contents = knot_zone_contents(zone);
-
-	// if no zone found, return REFUSED
-	if (zone == NULL) {
-		dbg_ns("No zone found.\n");
-		knot_wire_set_rcode(resp->wire, KNOT_RCODE_REFUSED);
-		//knot_dname_free(&qname);
-		return KNOT_EOK;
-	} else if (contents == NULL) {
-		dbg_ns("Zone expired or not bootstrapped. Reply SERVFAIL.\n");
-		knot_wire_set_rcode(resp->wire, KNOT_RCODE_SERVFAIL);
-		return KNOT_EOK;
-	}
-
-dbg_ns_exec(
-	char *name_str2 = knot_dname_to_str(zone->contents->apex->owner);
-	dbg_ns("Found zone for QNAME %s\n", name_str2);
-	free(name_str2);
-);
-
-	// take the zone contents and use only them for answering
-
-	return ns_answer_from_zone(contents, resp, check_any);
-}
 
 /*----------------------------------------------------------------------------*/
 
@@ -3148,144 +2764,6 @@ void knot_ns_error_response_full(knot_nameserver_t *nameserver,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
-                                 knot_pkt_t *query, knot_pkt_t *resp,
-                                 const knot_zone_t **zone, size_t max_size)
-{
-	dbg_ns_verb("knot_ns_prep_normal_response()\n");
-
-	if (nameserver == NULL || query == NULL || resp == NULL
-	    || zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// first, parse the rest of the packet
-	int ret = knot_pkt_parse_payload(query, 0);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to parse rest of the query: %s.\n",
-		       knot_strerror(ret));
-		return ret;
-	}
-
-	/*
-	 * Semantic checks - if ANCOUNT > 0 or NSCOUNT > 0, return FORMERR.
-	 */
-	if (knot_pkt_qtype(query) != KNOT_RRTYPE_IXFR &&
-	    (knot_wire_get_ancount(query->wire) > 0 || knot_wire_get_nscount(query->wire) > 0)) {
-		dbg_ns("ANCOUNT or NSCOUNT not 0 in query, Reply FORMERR.\n");
-		return KNOT_EMALF;
-	}
-
-	/* #10 move all semantic checks to pkt parsing? */
-
-	/*
-	 * Check what is in the Additional section. Only OPT and TSIG are
-	 * allowed. TSIG must be the last record if present.
-	 */
-	bool ar_check = false;
-	const knot_pktsection_t *additional = knot_pkt_section(query, KNOT_ADDITIONAL);
-
-	switch(additional->count) {
-	case 0: /* OK */
-		ar_check = true;
-		break;
-	case 1: /* TSIG or OPT */
-		ar_check = (knot_rrset_type(additional->rr[0]) == KNOT_RRTYPE_OPT
-		           || knot_rrset_type(additional->rr[0]) == KNOT_RRTYPE_TSIG);
-		break;
-	case 2: /* OPT, TSIG */
-		ar_check = (knot_rrset_type(additional->rr[0]) == KNOT_RRTYPE_OPT
-		           && knot_rrset_type(additional->rr[1]) == KNOT_RRTYPE_TSIG);
-		break;
-	default: /* INVALID combination */
-		break;
-	}
-
-	if (!ar_check) {
-		dbg_ns("Additional section malformed. Reply FORMERR\n");
-		return KNOT_EMALF;
-	}
-
-	size_t resp_max_size = 0;
-
-	if (max_size > 0) {
-		// if TCP is used, buffer size is the only constraint
-		assert(max_size > 0);
-		resp_max_size = max_size;
-	} else if (knot_pkt_have_edns(query)) {
-		assert(max_size == 0);
-		if (knot_edns_get_payload(&query->opt_rr) <
-		    knot_edns_get_payload(nameserver->opt_rr)) {
-			resp_max_size = knot_edns_get_payload(&query->opt_rr);
-		} else {
-			resp_max_size = knot_edns_get_payload(
-						nameserver->opt_rr);
-		}
-	}
-
-	if (resp_max_size < MAX_UDP_PAYLOAD) {
-		resp_max_size = MAX_UDP_PAYLOAD;
-	}
-
-	resp->max_size = resp_max_size;
-
-	ret = knot_pkt_init_response(resp, query);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to init response structure.\n");
-		return ret;
-	}
-
-	dbg_ns_verb("Query - parsed: %zu, total wire size: %zu\n",
-	            query->parsed, query->size);
-	dbg_ns_detail("Opt RR: version: %d, payload: %d\n",
-	              query->opt_rr.version, query->opt_rr.payload);
-	dbg_ns_detail("EDNS supported in query: %d\n",
-	              knot_pkt_have_edns(query));
-
-	// set the OPT RR to the response
-	if (knot_pkt_have_edns(query)) {
-		ret = knot_pkt_add_opt(resp, nameserver->opt_rr,
-		                            knot_pkt_have_nsid(query));
-		if (ret != KNOT_EOK) {
-			dbg_ns("Failed to set OPT RR to the response"
-			       ": %s\n", knot_strerror(ret));
-		} else {
-			// copy the DO bit from the query
-			if (knot_pkt_have_dnssec(query)) {
-				knot_edns_set_do(&(resp)->opt_rr);
-			}
-		}
-	}
-
-	dbg_ns_verb("Response max size: %zu\n", (resp)->max_size);
-
-	// search for zone only for IN and ANY classes
-	uint16_t qclass = knot_pkt_qclass(resp);
-	if (qclass != KNOT_CLASS_IN && qclass != KNOT_CLASS_ANY)
-		return KNOT_EOK;
-
-	const knot_dname_t *qname = knot_pkt_qname(resp);
-	assert(qname != NULL);
-
-	uint16_t qtype = knot_pkt_qtype(resp);
-dbg_ns_exec_verb(
-	char *name_str = knot_dname_to_str(qname);
-	dbg_ns_verb("Trying to find zone for QNAME %s\n", name_str);
-	free(name_str);
-);
-	// find zone in which to search for the name
-	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
-	*zone = ns_get_zone_for_qname(zonedb, qname, qtype);
-
-	/* Assign zone to packets. */
-	query->zone = *zone;
-	(resp)->zone = *zone;
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
                                  knot_pkt_t *query, knot_pkt_t **resp,
                                  knot_zone_t **zone, size_t max_size)
@@ -3410,38 +2888,6 @@ dbg_ns_exec_verb(
 );
 	// find zone
 	*zone = knot_zonedb_find_zone(zonedb, qname);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_ns_answer_normal(knot_nameserver_t *nameserver,
-                          const knot_zone_t *zone, knot_pkt_t *resp,
-                          uint8_t *response_wire, size_t *rsize, int check_any)
-{
-	dbg_ns_verb("ns_answer_normal()\n");
-
-	int ret = ns_answer(zone, resp, check_any);
-
-	if (ret != 0) {
-		// now only one type of error (SERVFAIL), later maybe more
-		knot_ns_error_response_full(nameserver, resp,
-		                            KNOT_RCODE_SERVFAIL,
-		                            response_wire, rsize);
-	} else {
-		dbg_ns_verb("Created response packet.\n");
-
-		// 4) Transform the packet into wire format
-		if (ns_response_to_wire(resp, response_wire, rsize) != 0) {
-			// send back SERVFAIL (as this is our problem)
-			knot_ns_error_response_full(nameserver, resp,
-			                            KNOT_RCODE_SERVFAIL,
-			                            response_wire, rsize);
-		}
-	}
-
-	dbg_ns_verb("Returning response with wire size %zu\n", *rsize);
 
 	return KNOT_EOK;
 }

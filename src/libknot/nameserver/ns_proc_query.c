@@ -282,7 +282,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 	}
 
 	// find zone for qname
-	resp->zone = answer_zone_find(query, ctx->ns->zone_db);
+	QUERY_DATA(ctx)->zone = answer_zone_find(query, ctx->ns->zone_db);
 
 	/* Update maximal answer size. */
 	if (!(ctx->flags & NS_PKTSIZE_NOLIMIT)) {
