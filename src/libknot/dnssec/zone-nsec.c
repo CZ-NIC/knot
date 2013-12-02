@@ -1297,7 +1297,8 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
-	int ret = KNOT_EOK;
+	// Build hattrie index for sorted iterations
+	hattrie_build_index(sorted_changes);
 
 	// Prepare data for chain fixing functions
 	chain_fix_data_t fix_data = { .zone = zone,
@@ -1305,6 +1306,7 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 	                              .zone_keys = zone_keys,
 	                              .policy = policy,
 	                              .next_dname = NULL };
+	int ret = KNOT_EOK;
 	if (is_nsec3_enabled(zone)) {
 		ret = update_changes_with_non_terminals(zone, sorted_changes);
 		if (ret != KNOT_EOK) {
