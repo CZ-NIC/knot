@@ -206,7 +206,7 @@ static void print_section_question(const knot_dname_t *owner,
 	knot_rrset_t *question = knot_rrset_new(owner_copy, qtype,
 	                                        qclass, 0);
 
-	if (knot_rrset_txt_dump_header(question, 0, buf, buflen,
+	if (knot_rrset_txt_dump_header(question, buf, buflen,
 	    &(style->style)) < 0) {
 		WARN("can't print whole question section\n");
 	}
@@ -230,6 +230,7 @@ static void print_section_full(const knot_rrset_t **rrsets,
 		}
 
 		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
+		                           true, true,
 		                           &(style->style)) < 0)
 		{
 			buflen += 4096;
