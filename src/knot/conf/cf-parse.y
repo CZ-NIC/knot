@@ -347,9 +347,7 @@ static void conf_zone_start(void *scanner, char *name) {
 	}
 
 	// DNSSEC configuration
-	if (new_config->dnssec_enable) {
-		this_zone->dnssec_enable = new_config->dnssec_enable;
-	}
+	this_zone->dnssec_enable = -1;
 
 	/* Initialize ACL lists. */
 	init_list(&this_zone->acl.xfr_in);
