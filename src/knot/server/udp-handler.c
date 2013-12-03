@@ -143,6 +143,9 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	        strfrom, sockaddr_portnum(addr));
 #endif
 
+	/* Create query processing context. */
+	ns_proc_begin(query_ctx, NS_PROC_QUERY);
+
 	/* Input packet. */
 	uint16_t tx_len = tx->iov_len;
 	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
@@ -165,7 +168,7 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	}
 
 	/* Reset context. */
-	ns_proc_reset(query_ctx);
+	ns_proc_finish(query_ctx);
 
 	return KNOT_EOK;
 
@@ -507,9 +510,6 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 	query_ctx.flags |= NS_QUERY_NO_AXFR;
 	query_ctx.flags |= NS_QUERY_NO_IXFR;
 
-	/* Create query processing context. */
-	ns_proc_begin(&query_ctx, NS_PROC_QUERY);
-
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */
 	fd_set fds;
@@ -570,9 +570,6 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 			}
 		}
 	}
-
-	/* Close query processing context. */
-	ns_proc_finish(&query_ctx);
 
 	_udp_deinit(rq);
 	ref_release((ref_t *)ref);
