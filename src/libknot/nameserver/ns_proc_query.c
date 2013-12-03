@@ -173,8 +173,7 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 
 	/* Copy MsgId, opcode and RD bit. Set RCODE. */
 	knot_pkt_t *query = data->pkt;
-	knot_wire_set_id(pkt->wire, knot_wire_get_id(query->wire));
-	knot_wire_set_opcode(pkt->wire, knot_wire_get_opcode(query->wire));
+	memcpy(pkt->wire, query->wire, knot_pkt_question_size(query));
 	knot_wire_set_qr(pkt->wire);
 	knot_wire_set_rcode(pkt->wire, data->rcode);
 	if (knot_wire_get_rd(query->wire)) {
