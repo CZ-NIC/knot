@@ -15,6 +15,13 @@
  */
 #include "knot/server/zones.h"
 
+/* Visited wildcard node list. */
+struct wildcard_hit {
+	node_t n;
+	const knot_node_t *node;
+	const knot_dname_t *sname;
+};
+
 /*! \brief Query processing states. */
 enum {
 	BEGIN,   /* Begin name resolution. */
@@ -25,6 +32,53 @@ enum {
 	FOLLOW,  /* Resolution not complete (CNAME/DNAME chain). */
 	ERROR    /* Resolution failed. */
 };
+
+/*! \brief Check if given node was already visited. */
+static int wildcard_has_visited(struct query_data *qdata, const knot_node_t *node)
+{
+	struct wildcard_hit *item = NULL;
+	WALK_LIST(item, qdata->wildcards) {
+		if (item->node == node) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/*! \brief Mark given node as visited. */
+static int wildcard_visit(struct query_data *qdata, const knot_node_t *node, const knot_dname_t *sname)
+{
+	assert(qdata);
+	assert(node);
+
+	mm_ctx_t *mm = qdata->mm;
+	struct wildcard_hit *item = mm->alloc(mm->ctx, sizeof(struct wildcard_hit));
+	item->node = node;
+	item->sname = sname;
+	add_tail(&qdata->wildcards, (node_t *)item);
+	return KNOT_EOK;
+}
+
+/*! \brief Put all covering records for wildcard list. */
+static int wildcard_list_cover(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	int ret = KNOT_EOK;
+	struct wildcard_hit *item = NULL;
+
+	WALK_LIST(item, qdata->wildcards) {
+		ret = ns_put_nsec_nsec3_wildcard_answer(
+					item->node,
+					knot_node_parent(item->node),
+					NULL, qdata->zone->contents,
+					item->sname,
+					pkt);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+	}
+
+	return ret;
+}
 
 static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query_data *qdata)
 {
@@ -43,14 +97,14 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 
 		/* Check if is not in wildcard nodes (loop). */
 		dbg_ns("%s: CNAME node %p is wildcard\n", __func__, cname_node);
-		if (ptrlist_contains(&qdata->wildcards, cname_node)) {
+		if (wildcard_has_visited(qdata, cname_node)) {
 			dbg_ns("%s: node %p already visited => CNAME loop\n",
 			       __func__, cname_node);
 			return HIT;
 		}
 
 		/* Put to wildcard node list. */
-		if (ptrlist_add(&qdata->wildcards, cname_node, qdata->mm) == NULL) {
+		if (wildcard_visit(qdata, cname_node, *name) != KNOT_EOK) {
 			return ERROR;
 		}
 
@@ -169,8 +223,14 @@ static int name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	if (wildcard_node) {
 		dbg_ns("%s: name %p covered by wildcard\n", __func__, *name);
 		qdata->node = wildcard_node;
-		qdata->encloser = wildcard_node;
+		/* keep encloser */
 		qdata->previous = NULL;
+
+		/* Put to wildcard node list. */
+		if (wildcard_visit(qdata, qdata->encloser, *name) != KNOT_EOK) {
+			return ERROR;
+		}
+
 		return name_found(pkt, name, qdata);
 	}
 
@@ -185,6 +245,13 @@ static int name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 		}
 
 		return FOLLOW;
+	}
+
+	/* Name is below delegation. */
+	if (knot_node_is_deleg_point(qdata->encloser)) {
+		dbg_ns("%s: name below delegation point %p\n", __func__, *name);
+		qdata->node = qdata->encloser;
+		return DELEG;
 	}
 
 	dbg_ns("%s: name not found in zone %p\n", __func__, *name);
@@ -245,18 +312,43 @@ static int solve_authority(int state, const knot_dname_t **qname,
 
 	switch (state) {
 	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */
+		dbg_ns("%s: answer is POSITIVE\n", __func__);
 		ret = ns_put_authority_ns(zone_contents, pkt);
-		dbg_ns("%s: putting authority NS = %d\n", __func__, ret);
 		if (ret == KNOT_ESPACE) { /* Optional. */
 			ret = KNOT_EOK;
 		}
+		/* Put NSEC/NSEC3 Wildcard proof if answered from wildcard. */
+		if (ret == KNOT_EOK && knot_pkt_have_dnssec(qdata->pkt)) {
+			ret = wildcard_list_cover(pkt, qdata);
+		}
 		break;
 	case MISS:   /* MISS, set NXDOMAIN RCODE. */
-		qdata->rcode = KNOT_RCODE_NXDOMAIN;
 		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
-	case NODATA: /* NODATA or NXDOMAIN, append AUTHORITY SOA. */
+		qdata->rcode = KNOT_RCODE_NXDOMAIN;
 		ret = ns_put_authority_soa(zone_contents, pkt);
-		dbg_ns("%s: putting authority SOA = %d\n", __func__, ret);
+		if (ret == KNOT_EOK && knot_pkt_have_dnssec(qdata->pkt)) {
+			ret = ns_put_nsec_nsec3_nxdomain(zone_contents,
+							 qdata->previous,
+							 qdata->encloser,
+							 *qname, pkt);
+		}
+		break;
+	case NODATA: /* NODATA append AUTHORITY SOA + NSEC/NSEC3. */
+		dbg_ns("%s: answer is NODATA\n", __func__);
+		ret = ns_put_authority_soa(zone_contents, pkt);
+		if (ret == KNOT_EOK && knot_pkt_have_dnssec(qdata->pkt)) {
+			if (knot_dname_is_wildcard(qdata->node->owner)) {
+				ret = ns_put_nsec_nsec3_wildcard_nodata(qdata->node,
+									qdata->encloser,
+									qdata->previous,
+									qdata->zone->contents,
+									*qname, pkt);
+			} else {
+				ret = ns_put_nsec_nsec3_nodata(zone_contents,
+							       qdata->node,
+							       pkt);
+			}
+		}
 		break;
 	case DELEG:  /* Referral response. */ /*! \todo DS + NS */
 		ret = ns_referral(qdata->node, zone_contents, *qname, pkt, knot_pkt_qtype(pkt));

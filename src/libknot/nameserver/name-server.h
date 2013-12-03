@@ -397,12 +397,6 @@ const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
                                                   uint16_t qtype);
 
 int ns_put_additional(const knot_zone_t *zone, knot_pkt_t *resp);
-int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
-                                          const knot_node_t *closest_encloser,
-                                          const knot_node_t *previous,
-                                          const knot_zone_contents_t *zone,
-                                          const knot_dname_t *qname,
-                                          knot_pkt_t *resp);
 
 int ns_put_authority_soa(const knot_zone_contents_t *zone,
                                  knot_pkt_t *resp);
@@ -430,6 +424,30 @@ int ns_process_dname(knot_rrset_t *dname_rrset,
                              knot_pkt_t *resp);
 
 int ns_add_dnskey(const knot_node_t *apex, knot_pkt_t *resp);
+
+int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
+				    const knot_node_t *node,
+				    knot_pkt_t *resp);
+
+int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,
+				      const knot_node_t *previous,
+				      const knot_node_t *closest_encloser,
+				      const knot_dname_t *qname,
+				      knot_pkt_t *resp);
+
+int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
+				      const knot_node_t *closest_encloser,
+				      const knot_node_t *previous,
+				      const knot_zone_contents_t *zone,
+				      const knot_dname_t *qname,
+				      knot_pkt_t *resp);
+
+int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
+				      const knot_node_t *closest_encloser,
+				      const knot_node_t *previous,
+				      const knot_zone_contents_t *zone,
+				      const knot_dname_t *qname,
+				      knot_pkt_t *resp);
 
 /* #10 >>> Exposed API. */
 

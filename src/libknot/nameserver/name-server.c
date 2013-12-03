@@ -829,7 +829,7 @@ int ns_put_additional(const knot_zone_t *zone, knot_pkt_t *resp)
 int ns_put_authority_ns(const knot_zone_contents_t *zone,
                         knot_pkt_t *resp)
 {
-	dbg_ns_verb("PUTTING AUTHORITY NS\n");
+	dbg_ns("%s: putting authority NS\n", __func__);
 	assert(KNOT_PKT_IN_NS(resp));
 
 	knot_rrset_t *ns_rrset = knot_node_get_rrset(
@@ -869,7 +869,7 @@ int ns_put_authority_soa(const knot_zone_contents_t *zone,
                                  knot_pkt_t *resp)
 {
 	assert(KNOT_PKT_IN_NS(resp));
-	dbg_ns_verb("PUTTING AUTHORITY SOA\n");
+	dbg_ns("%s: putting authority SOA\n", __func__);
 
 	int ret;
 
@@ -1219,9 +1219,9 @@ static int ns_put_nsec3_no_wildcard_child(const knot_zone_contents_t *zone,
  *             RRSets of the requested type).
  * \param resp Response where to add the NSECs or NSEC3s.
  */
-static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
-                                    const knot_node_t *node,
-                                    knot_pkt_t *resp)
+int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
+				    const knot_node_t *node,
+				    knot_pkt_t *resp)
 {
 	if (!DNSSEC_ENABLED ||
 	    !knot_pkt_have_dnssec(resp->query)) {
@@ -1235,8 +1235,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 
 	if (knot_zone_contents_nsec3_enabled(zone)) {
 		knot_node_t *nsec3_node = knot_node_get_nsec3_node(node);
-		dbg_ns_verb("Adding NSEC3 for NODATA, NSEC3 node: %p\n",
-		            nsec3_node);
+		dbg_ns("%s: adding NSEC3 NODATA\n", __func__);
 
 		if (nsec3_node != NULL
 		    && (rrset = knot_node_get_rrset(nsec3_node,
@@ -1249,7 +1248,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 			return KNOT_ENONODE;
 		}
 	} else {
-		dbg_ns_verb("Adding NSEC for NODATA\n");
+		dbg_ns("%s: adding NSEC NODATA\n", __func__);
 		if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC))
 		    != NULL
 		    && knot_rrset_rdata_rr_count(rrset)) {
@@ -1464,7 +1463,7 @@ static int ns_put_nsec3_nxdomain(const knot_zone_contents_t *zone,
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,
+int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,
                                       const knot_node_t *previous,
                                       const knot_node_t *closest_encloser,
                                       const knot_dname_t *qname,
@@ -1612,25 +1611,25 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
-                                          const knot_node_t *closest_encloser,
-                                          const knot_node_t *previous,
-                                          const knot_zone_contents_t *zone,
-                                          const knot_dname_t *qname,
-                                          knot_pkt_t *resp)
+int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
+					  const knot_node_t *closest_encloser,
+					  const knot_node_t *previous,
+					  const knot_zone_contents_t *zone,
+					  const knot_dname_t *qname,
+					  knot_pkt_t *resp)
 {
 	int ret = KNOT_EOK;
 	if (DNSSEC_ENABLED
 	    && knot_pkt_have_dnssec(resp->query)) {
 		if (knot_zone_contents_nsec3_enabled(zone)) {
 			ret = ns_put_nsec3_closest_encloser_proof(zone,
-			                                      &closest_encloser,
-			                                      qname, resp);
+							      &closest_encloser,
+							      qname, resp);
 
 			const knot_node_t *nsec3_node;
 			if (ret == KNOT_EOK
 			    && (nsec3_node = knot_node_nsec3_node(node))
-			        != NULL) {
+				!= NULL) {
 				ret = ns_put_nsec3_from_node(nsec3_node, resp);
 			}
 		} else {
@@ -1684,29 +1683,7 @@ int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_put_nsec_nsec3_wildcard_nodes(knot_pkt_t *response,
-                                            const knot_zone_contents_t *zone)
-{
-	assert(response != NULL);
-	assert(zone != NULL);
 
-	int ret = 0;
-
-	for (int i = 0; i < response->wildcard_nodes.count; ++i) {
-		ret = ns_put_nsec_nsec3_wildcard_answer(
-		                        response->wildcard_nodes.nodes[i],
-		                        knot_node_parent(
-		                            response->wildcard_nodes.nodes[i]),
-		                        NULL, zone,
-		                        response->wildcard_nodes.snames[i],
-		                        response);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -2171,11 +2148,6 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 	} else {
 		knot_pkt_tsig_set(xfr->response, NULL);
 	}
-
-dbg_ns_exec_verb(
-	dbg_ns_verb("Response structure after clearing:\n");
-	knot_pkt_dump(xfr->response);
-);
 
 	return KNOT_EOK;
 }
@@ -2966,11 +2938,6 @@ int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		return ret;
 	}
 
-dbg_ns_exec_verb(
-	dbg_ns_verb("Parsed XFR query:\n");
-	knot_pkt_dump(xfr->query);
-);
-
 	knot_zonedb_t *zonedb = rcu_dereference(nameserver->zone_db);
 	const knot_dname_t *qname = knot_pkt_qname(xfr->query);
 
@@ -3557,6 +3524,16 @@ int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module)
 	if (ctx->state != NS_PROC_NOOP) {
 		return NS_PROC_NOOP;
 	}
+
+#ifdef KNOT_NS_DEBUG
+	/* Check module API. */
+	assert(module->begin);
+	assert(module->in);
+	assert(module->out);
+	assert(module->err);
+	assert(module->reset);
+	assert(module->finish);
+#endif /* KNOT_NS_DEBUG */
 
 	ctx->module = module;
 	ctx->state = module->begin(ctx);
