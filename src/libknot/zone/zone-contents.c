@@ -2045,10 +2045,21 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents)
 	return data.errors;
 }
 
-unsigned knot_zone_serial(const knot_zone_contents_t *zone)
+uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
 {
 	if (!zone) return 0;
 	const knot_rrset_t *soa = NULL;
 	soa = knot_node_rrset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	return knot_rdata_soa_serial(soa);
+}
+
+bool knot_zone_contents_is_signed(const knot_zone_contents_t *zone)
+{
+	const knot_rrset_t *soa = NULL;
+	if (zone->apex) {
+		/* Returns true if SOA has a RRSIG (basic check). */
+		soa = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+		return soa && soa->rrsigs;
+	}
+	return false;
 }

@@ -1944,12 +1944,6 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	dbg_zones_verb("zones: reconfiguring name server.\n");
 
-	knot_zonedb_t *old_db = NULL;
-	int ret = zones_update_db_from_config(conf, ns, &old_db);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	/* Server identification, RFC 4892. */
 	ns->identity = conf->identity;
 	ns->version = conf->version;
@@ -1970,6 +1964,12 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 
 	knot_opt_rr_t *opt_rr_old = ns->opt_rr;
 	ns->opt_rr = opt_rr;
+
+	knot_zonedb_t *old_db = NULL;
+	int ret = zones_update_db_from_config(conf, ns, &old_db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	synchronize_rcu();
 
