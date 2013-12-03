@@ -55,7 +55,7 @@ typedef struct {
 
 const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.wrap = false,
-	.show_class = true,
+	.show_class = false,
 	.show_ttl = true,
 	.verbose = false,
 	.human_ttl = false,

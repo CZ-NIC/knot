@@ -43,10 +43,15 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 {
 	const knot_rrset_t *soa = knot_node_rrset(node, KNOT_RRTYPE_SOA);
 
+	knot_dump_style_t soa_style = *params->style;
+
 	// Dump SOA record as a first.
+	if (params->dump_rdata) {
+		soa_style.show_class = true;
+	}
 	if (knot_rrset_txt_dump(soa, params->buf, params->buflen,
 	                        params->dump_rdata, params->dump_rrsig,
-	                        params->style) < 0) {
+	                        &soa_style) < 0) {
 		return KNOT_ENOMEM;
 	}
 	if (params->dump_rdata) {
