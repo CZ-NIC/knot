@@ -503,7 +503,12 @@ int knot_zone_contents_integrity_check(const knot_zone_contents_t *contents);
  *
  * \return serial or 0
  */
-unsigned knot_zone_serial(const knot_zone_contents_t *zone);
+uint32_t knot_zone_serial(const knot_zone_contents_t *zone);
+
+/*!
+ * \brief Return true if zone is signed.
+ */
+bool knot_zone_contents_is_signed(const knot_zone_contents_t *zone);
 
 #endif
 
