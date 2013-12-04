@@ -533,7 +533,7 @@ static int rdata_nsec_to_type_array(const knot_rrset_t *rrset, size_t pos,
 	uint8_t *data = NULL;
 	uint16_t rr_bitmap_size = 0;
 	if (rrset->type == KNOT_RRTYPE_NSEC) {
-		knot_rdata_nsec_bitmap(rrset, pos, &data, &rr_bitmap_size);
+		knot_rdata_nsec_bitmap(rrset, &data, &rr_bitmap_size);
 	} else {
 		knot_rdata_nsec3_bitmap(rrset, pos, &data, &rr_bitmap_size);
 	}
@@ -1057,7 +1057,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 
 			if (nsec_rrset != NULL) {
 				const knot_dname_t *next_domain =
-					knot_rdata_nsec_next(nsec_rrset, 0);
+					knot_rdata_nsec_next(nsec_rrset);
 				assert(next_domain);
 
 				if (knot_zone_contents_find_node(zone,
@@ -1245,7 +1245,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			}
 
 			const knot_dname_t *next_dname =
-				knot_rdata_nsec_next(nsec_rrset, 0);
+				knot_rdata_nsec_next(nsec_rrset);
 			assert(next_dname);
 
 			const knot_dname_t *apex_dname =
