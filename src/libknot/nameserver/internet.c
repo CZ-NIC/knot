@@ -192,19 +192,6 @@ static int name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 		dbg_ns("%s: answered, %d added\n", __func__, added);
 	}
 
-	// this is the only case when the servers answers from
-	// particular node, i.e. the only case when it may return SOA
-	// or NS records in Answer section
-	if (knot_wire_get_tc(pkt->wire) == 0
-	    && knot_pkt_have_dnssec(pkt->query)
-	    && qdata->node == knot_zone_contents_apex(qdata->zone->contents)
-	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
-		ret = ns_add_dnskey(qdata->node, pkt);
-		if (ret != KNOT_EOK) {
-			return ERROR;
-		}
-	}
-
 	/* Check for NODATA. */
 	if (added == 0) {
 		return NODATA;
@@ -313,8 +300,12 @@ static int solve_authority(int state, const knot_dname_t **qname,
 	switch (state) {
 	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */
 		dbg_ns("%s: answer is POSITIVE\n", __func__);
-		/* DS response is a referral, do not add authority. */
-		if (knot_pkt_qtype(qdata->pkt) != KNOT_RRTYPE_DS) {
+		/* DS/DNSKEY queries are not referrals => auth. NS is optional.
+		 * But taking response size into consideration, DS/DNSKEY RRs
+		 * are rather large and may trigger fragmentation or even TCP
+		 * recovery. */
+		if (knot_pkt_qtype(qdata->pkt) != KNOT_RRTYPE_DS &&
+		    knot_pkt_qtype(qdata->pkt) != KNOT_RRTYPE_DNSKEY) {
 			ret = ns_put_authority_ns(zone_contents, pkt);
 			if (ret == KNOT_ESPACE) { /* Optional. */
 				ret = KNOT_EOK;
