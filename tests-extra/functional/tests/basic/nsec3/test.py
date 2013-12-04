@@ -56,4 +56,14 @@ resp = knot.dig("example", "DS", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
+# B9. DS query at delegation 
+resp = knot.dig("a.example", "DS", dnssec=True)
+resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
+resp.cmp(bind)
+
+# B10. DS query at delegation (insecure)
+resp = knot.dig("b.example", "DS", dnssec=True)
+resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
+resp.cmp(bind)
+
 t.end()

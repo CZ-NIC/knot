@@ -427,6 +427,7 @@ int ns_add_dnskey(const knot_node_t *apex, knot_pkt_t *resp);
 
 int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 				    const knot_node_t *node,
+			     const knot_dname_t *qname,
 				    knot_pkt_t *resp);
 
 int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,

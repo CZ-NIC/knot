@@ -1220,8 +1220,9 @@ static int ns_put_nsec3_no_wildcard_child(const knot_zone_contents_t *zone,
  * \param resp Response where to add the NSECs or NSEC3s.
  */
 int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
-				    const knot_node_t *node,
-				    knot_pkt_t *resp)
+			     const knot_node_t *node,
+			     const knot_dname_t *qname,
+			     knot_pkt_t *resp)
 {
 	if (!DNSSEC_ENABLED ||
 	    !knot_pkt_have_dnssec(resp->query)) {
@@ -1245,7 +1246,11 @@ int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
 			assert(KNOT_PKT_IN_NS(resp));
 			ret = knot_pkt_put(resp, 0, rrset, 0);
 		} else {
-			return KNOT_ENONODE;
+			// No NSEC3 node => Opt-out
+			return ns_put_nsec3_closest_encloser_proof(zone,
+								   &node,
+								   qname, resp);
+
 		}
 	} else {
 		dbg_ns("%s: adding NSEC NODATA\n", __func__);
@@ -1716,49 +1721,8 @@ int ns_referral(const knot_node_t *node,
 		node = knot_node_parent(node);
 	}
 
-	int at_deleg = knot_dname_is_equal(qname, knot_node_owner(node));
 
 	int ret = KNOT_EOK;
-
-	// Special handling of DS queries
-	if (qtype == KNOT_RRTYPE_DS && at_deleg) {
-		knot_rrset_t *ds_rrset = knot_node_get_rrset(node,
-		                                             KNOT_RRTYPE_DS);
-
-		if (ds_rrset && knot_rrset_rdata_rr_count(ds_rrset) > 0) {
-			assert(KNOT_PKT_IN_AN(resp));
-			ret = knot_pkt_put(resp, 0, ds_rrset, 0);
-			if (ret == KNOT_EOK && DNSSEC_ENABLED
-			    && knot_pkt_have_dnssec(
-			                        resp->query)) {
-				ret = ns_add_rrsigs(ds_rrset, resp, node->owner, 0);
-			}
-		} else {
-			// normal NODATA response
-			/*! \todo Handle in some generic way. */
-			knot_pkt_begin(resp, KNOT_AUTHORITY);
-			dbg_ns_verb("Adding NSEC/NSEC3 for NODATA.\n");
-			ret = ns_put_nsec_nsec3_nodata(zone, node, resp);
-
-			if (ret == KNOT_ENONODE) {
-				// No NSEC3 node => Opt-out
-				const knot_node_t *closest_encloser = node;
-				ret = ns_put_nsec3_closest_encloser_proof(zone,
-				                              &closest_encloser,
-				                              qname, resp);
-
-			} else if (ret != KNOT_EOK) {
-				return ret;
-			}
-
-			ret = ns_put_authority_soa(zone, resp);
-		}
-
-		// This is an authoritative answer, set AA bit
-		knot_wire_set_aa(resp->wire);
-
-		return ret;
-	}
 
 	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NS);
 	assert(rrset != NULL);
@@ -1814,13 +1778,6 @@ int ns_referral(const knot_node_t *node,
 				}
 			}
 		}
-	}
-
-	if (ret == KNOT_ESPACE) {
-		knot_wire_set_rcode(resp->wire, KNOT_RCODE_NOERROR);
-		ret = KNOT_EOK;
-	} else if (ret == KNOT_EOK) {
-		knot_wire_set_rcode(resp->wire, KNOT_RCODE_NOERROR);
 	}
 
 	return ret;

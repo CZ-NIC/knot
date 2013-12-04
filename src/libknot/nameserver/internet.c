@@ -313,8 +313,13 @@ static int solve_authority(int state, const knot_dname_t **qname,
 	switch (state) {
 	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */
 		dbg_ns("%s: answer is POSITIVE\n", __func__);
-		ret = ns_put_authority_ns(zone_contents, pkt);
-		if (ret == KNOT_ESPACE) { /* Optional. */
+		/* DS response is a referral, do not add authority. */
+		if (knot_pkt_qtype(qdata->pkt) != KNOT_RRTYPE_DS) {
+			ret = ns_put_authority_ns(zone_contents, pkt);
+			if (ret == KNOT_ESPACE) { /* Optional. */
+				ret = KNOT_EOK;
+			}
+		} else {
 			ret = KNOT_EOK;
 		}
 		/* Put NSEC/NSEC3 Wildcard proof if answered from wildcard. */
@@ -346,7 +351,7 @@ static int solve_authority(int state, const knot_dname_t **qname,
 			} else {
 				ret = ns_put_nsec_nsec3_nodata(zone_contents,
 							       qdata->node,
-							       pkt);
+							       *qname, pkt);
 			}
 		}
 		break;
