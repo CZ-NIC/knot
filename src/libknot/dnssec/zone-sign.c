@@ -948,7 +948,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 
 static bool rr_type_in_list(const knot_rrset_t *rr, const list_t *l)
 {
-	if (l == NULL) {
+	if (l == NULL || EMPTY_LIST(*l)) {
 		return false;
 	}
 	assert(rr);
@@ -1029,7 +1029,7 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 			free(info);
 			return ret;
 		}
-		*hattrie_get(t, (char *)lf+1, *lf) = (value_t *)info;
+		*hattrie_get(t, (char *)lf+1, *lf) = info;
 	} else {
 		assert(info->type_list);
 		// Check whether the type is in the list already
