@@ -504,7 +504,9 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 	ns_proc_context_t query_ctx;
 	memset(&query_ctx, 0, sizeof(query_ctx));
 	query_ctx.ns = h->server->nameserver;
-	mm_ctx_mempool(&query_ctx.mm, sizeof(knot_pkt_t));
+
+	/* Create big enough memory cushion. */
+	mm_ctx_mempool(&query_ctx.mm, 4 * sizeof(knot_pkt_t));
 
 	/* Disable transfers over UDP. */
 	query_ctx.flags |= NS_QUERY_NO_AXFR;

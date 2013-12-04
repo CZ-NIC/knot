@@ -502,7 +502,6 @@ int ns_put_additional(knot_pkt_t *resp)
 {
 	/* Begin AR section. */
 	int ret = KNOT_EOK;
-	knot_pkt_begin(resp, KNOT_ADDITIONAL);
 	knot_pkt_put_opt(resp);
 
 	/* Scan all RRs in AN+NS. */

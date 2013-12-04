@@ -851,8 +851,8 @@ int dt_online_cpus()
 int dt_optimal_size()
 {
 	int ret = dt_online_cpus();
-	if (ret > 0) {
-		return ret + CPU_ESTIMATE_MAGIC;
+	if (ret > 1) {
+		return ret - 1;
 	}
 
 	dbg_dt("dthreads: failed to fetch the number of online CPUs.");

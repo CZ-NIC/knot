@@ -389,9 +389,6 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 
 	}
 
-	// add all missing NSECs/NSEC3s for wildcard nodes
-	/*! \todo Make function accept query_data with zone+wcnodes */
-
 	/* Resolve ADDITIONAL. */
 	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ADDITIONAL);

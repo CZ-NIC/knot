@@ -594,7 +594,6 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 
 		/* Initialize I/O handlers. */
 		size_t udp_size = tu_size;
-		if (udp_size < 2) udp_size = 2;
 		dt_unit_t *tu = dt_create_coherent(udp_size, &udp_master,
 		                                   &udp_master_destruct, NULL);
 		server_init_handler(server->h + IO_UDP, server, tu, NULL);
