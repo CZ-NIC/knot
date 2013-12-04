@@ -1309,6 +1309,8 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
+	printf("FIX: fixing %d changes\n", hattrie_size(sorted_changes));
+
 	// Build hattrie index for sorted iterations
 	hattrie_build_index(sorted_changes);
 

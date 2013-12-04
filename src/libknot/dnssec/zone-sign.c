@@ -997,11 +997,11 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 	// Create a key = RRSet owner converted to sortable format
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, rrset->owner, NULL);
-	signed_info_t *info = (signed_info_t *)hattrie_tryget(t, (char *)lf+1,
+	value_t stored_info = (signed_info_t *)hattrie_tryget(t, (char *)lf+1,
 	                                                      *lf);
-	if (info == NULL) {
+	if (stored_info == NULL) {
 		// Create new info struct
-		info = malloc(sizeof(signed_info_t));
+		signed_info_t *info = malloc(sizeof(signed_info_t));
 		if (info == NULL) {
 			ERR_ALLOC_FAILED;
 			return false;
@@ -1031,6 +1031,7 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 		}
 		*hattrie_get(t, (char *)lf+1, *lf) = info;
 	} else {
+		signed_info_t *info = *((signed_info_t **)stored_info);
 		assert(info->type_list);
 		// Check whether the type is in the list already
 		if (rr_type_in_list(rrset, info->type_list)) {
@@ -1077,8 +1078,11 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			 * occured and we have to drop all RRSIGs.
 			 */
 			return remove_rrset_rrsigs(zone_rrset, args->changeset);
-		} else if (zone_rrset == NULL ){
-			// RRSet dropped from zone using update
+		} else {
+			/*!
+			 * RRSet dropped from zone using update, or should not
+			 * be signed, but it could create a new node
+			 */
 			rr_already_signed(chg_rrset, args->signed_tree);
 		}
 	} else {
