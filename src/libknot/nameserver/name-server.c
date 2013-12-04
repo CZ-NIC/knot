@@ -220,212 +220,6 @@ int ns_add_rrsigs(knot_rrset_t *rrset, knot_pkt_t *resp,
 	return KNOT_EOK;
 }
 
-/* Wrapper functions for lists. */
-typedef struct chain_node {
-	node_t n;
-	const knot_node_t *kn_node;
-} chain_node_t;
-
-static int cname_chain_add(list_t *chain, const knot_node_t *kn_node)
-{
-	assert(chain != NULL);
-	chain_node_t *new_node = malloc(sizeof(chain_node_t));
-	CHECK_ALLOC_LOG(new_node, KNOT_ENOMEM);
-
-	new_node->kn_node = kn_node;
-	add_tail(chain, (node_t *)new_node);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int cname_chain_contains(const list_t *chain, const knot_node_t *kn_node)
-{
-	node_t *n = NULL;
-	WALK_LIST(n, *chain) {
-		chain_node_t *l_node = (chain_node_t *)n;
-		if (l_node->kn_node == kn_node) {
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void cname_chain_free(list_t *chain)
-{
-	WALK_LIST_FREE(*chain);
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Resolves CNAME chain starting in \a node, stores all the CNAMEs in the
- *        response and updates \a node and \a qname to the last node in the
- *        chain.
- *
- * \param node Node (possibly) containing a CNAME RR.
- * \param qname Searched name. Will be updated to the canonical name.
- * \param resp Response where to add the CNAME RRs.
- * \param add_rrset_to_resp Function for adding the CNAME RRs to the response.
- * \param tc Set to 1 if omitting the RRSIG RRSet should result in setting the
- *           TC bit in the response.
- */
-static int ns_follow_cname(const knot_node_t **node,
-                            const knot_dname_t **qname,
-                            knot_pkt_t *resp,
-			   const knot_zone_t *zone,
-                            int flags)
-{
-	dbg_ns_verb("Resolving CNAME chain...\n");
-	knot_rrset_t *cname_rrset;
-
-	int ret = 0;
-	int wc = 0;
-
-	/*
-	 * If stop == 1, cycle was detected, but one last entry has to be put
-	 * in the packet (because of wildcard).
-	 * If stop == 2, we should quit right away.
-	 */
-	int stop = 0;
-
-	list_t cname_chain;
-	init_list(&cname_chain);
-
-	while (*node != NULL
-	       && stop != 2
-	       && (cname_rrset = knot_node_get_rrset(*node, KNOT_RRTYPE_CNAME))
-	          != NULL
-	       && (knot_rrset_rdata_rr_count(cname_rrset))) {
-		/*
-		 * Store node to chain list to sort out duplicates and cycles.
-		 * Even if we follow wildcard, the result is always the same.
-		 * so duplicate check does not need synthesized DNAMEs.
-		 */
-		if (cname_chain_add(&cname_chain, *node) != KNOT_EOK) {
-			dbg_ns("Failed to add node to CNAME chain\n");
-			cname_chain_free(&cname_chain);
-			return KNOT_ENOMEM;
-		}
-
-		/* put the CNAME record to answer, but replace the possible
-		   wildcard name with qname */
-
-		assert(cname_rrset != NULL);
-
-		dbg_ns_detail("CNAME RRSet: %p, owner: %p\n", cname_rrset,
-		              cname_rrset->owner);
-
-		knot_rrset_t *rrset = cname_rrset;
-
-		// ignoring other than the first record
-		if (knot_dname_is_wildcard(knot_node_owner(*node))) {
-			wc = 1;
-			/* if wildcard node, we must copy the RRSet and
-			   replace its owner */
-			rrset = ns_synth_from_wildcard(cname_rrset, *qname);
-			if (rrset == NULL) {
-				dbg_ns("Failed to synthetize RRSet from "
-				       "wildcard RRSet followed from CNAME.\n");
-				cname_chain_free(&cname_chain);
-				return KNOT_ERROR; /*! \todo Better error. */
-			}
-
-			ret = knot_pkt_put(resp, 0, rrset, flags|KNOT_PF_FREE);
-			if (ret != KNOT_EOK) {
-				dbg_ns("Failed to add synthetized RRSet (CNAME "
-				       "follow) to the response.\n");
-				cname_chain_free(&cname_chain);
-				return ret;
-			}
-
-			ret = ns_add_rrsigs(cname_rrset, resp, *qname, flags);
-			if (ret != KNOT_EOK) {
-				dbg_ns("Failed to add RRSIG for the synthetized"
-				       "RRSet (CNAME follow) to the response."
-				       "\n");
-				cname_chain_free(&cname_chain);
-				return ret;
-			}
-
-			int ret = knot_pkt_add_wildcard_node(
-			                        resp, *node, *qname);
-			if (ret != KNOT_EOK) {
-				dbg_ns("Failed to add wildcard node for later "
-				       "processing.\n");
-				cname_chain_free(&cname_chain);
-				return ret;
-			}
-		} else {
-			ret = knot_pkt_put(resp, 0, rrset, flags);
-
-			if (ret != KNOT_EOK) {
-				dbg_ns("Failed to add followed RRSet into"
-				       "the response.\n");
-				cname_chain_free(&cname_chain);
-				return ret;
-			}
-
-			ret = ns_add_rrsigs(rrset, resp, *qname, flags);
-
-			if (ret != KNOT_EOK) {
-				dbg_ns("Failed to add RRSIG for followed RRSet "
-				       "into the response.\n");
-				cname_chain_free(&cname_chain);
-				return ret;
-			}
-		}
-
-		dbg_ns_detail("Using RRSet: %p, owner: %p\n", rrset,
-		              rrset->owner);
-
-dbg_ns_exec_verb(
-		char *name = knot_dname_to_str(knot_rrset_owner(rrset));
-		dbg_ns("CNAME record for owner %s put to response.\n", name);
-		free(name);
-);
-
-		// get the name from the CNAME RDATA
-		const knot_dname_t *cname =
-			knot_rdata_cname_name(cname_rrset);
-		dbg_ns_detail("CNAME name from RDATA: %p\n", cname);
-
-		/* Attempt to find mentioned name in zone. */
-		rcu_read_lock();
-		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
-		const knot_node_t *encloser = NULL, *prev = NULL;
-		knot_zone_contents_find_dname(contents, cname, node, &encloser, &prev);
-		if (*node == NULL && encloser && encloser->wildcard_child)
-			*node = encloser->wildcard_child;
-		rcu_read_unlock();
-		dbg_ns_detail("This name's node: %p\n", *node);
-
-		// save the new name which should be used for replacing wildcard
-		*qname = cname;
-
-		// Decide if we stop or not
-		if (stop == 1) {
-			// Exit loop
-			stop = 2;
-		} else if (cname_chain_contains(&cname_chain, *node)) {
-			if (wc) {
-				// Do one more loop
-				stop = 1;
-			} else {
-				// No wc, exit right away
-				stop = 2;
-			}
-		}
-	}
-
-	cname_chain_free(&cname_chain);
-
-	return KNOT_EOK;
-}
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Retrieves RRSet(s) of given type from the given node and adds them to
@@ -608,6 +402,36 @@ dbg_ns_exec_verb(
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int ns_put_additional_rrset(knot_pkt_t *pkt, uint16_t compr_hint,
+				   const knot_node_t *node, uint16_t rrtype)
+{
+	knot_rrset_t *rrset_add = knot_node_get_rrset(node, rrtype);
+	if (rrset_add == NULL) {
+		return KNOT_EOK;
+	}
+
+
+	/* \note Not processing wildcards as it's only optional. */
+	if (knot_dname_is_wildcard(node->owner)) {
+		return KNOT_EOK;
+	}
+
+	dbg_ns("%s: putting additional TYPE%hu %p\n", __func__, rrtype, rrset_add);
+
+	/* Don't truncate if it doesn't fit. */
+	unsigned flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
+	int ret = knot_pkt_put(pkt, compr_hint, rrset_add, flags);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* RRSIGs are also optional. */
+	ret = ns_add_rrsigs(rrset_add, pkt, node->owner, flags);
+
+	return ret;
+}
+
 /*!
  * \brief Adds RRSets to Additional section of the response.
  *
@@ -625,166 +449,44 @@ dbg_ns_exec_verb(
  * \param resp Response where to add the Additional data.
  * \param rrset RRSet to get the Additional data for.
  */
-static int ns_put_additional_for_rrset(const knot_zone_t *zone, knot_pkt_t *resp, uint16_t rr_id)
+static int ns_put_additional_for_rrset(knot_pkt_t *resp, uint16_t rr_id)
 {
-	assert(KNOT_PKT_IN_AR(resp));
 	assert(rr_id < resp->rrset_count);
 	const knot_rrset_t *rrset = resp->rr[rr_id];
 	knot_rrinfo_t *rrinfo = &resp->rr_info[rr_id];
-	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
+	const knot_node_t *node = NULL;
 
-	int ret = 0;
+	int ret = KNOT_EOK;
 
-	// for all RRs in the RRset
-	/* TODO all dnames, or only the ones returned by rdata_get_name? */
+	/* All RRs should have additional node cached or NULL. */
 	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrset); i++) {
-		dbg_ns_verb("Getting name from RDATA, type %u..\n",
-		            knot_rrset_type(rrset));
-		uint16_t compr_hint = knot_pkt_compr_hint(rrinfo, COMPR_HINT_RDATA + i);
-		const knot_dname_t *dname = knot_rdata_name(rrset, i);
-		assert(dname);
-dbg_ns_exec_detail(
-		char *name = knot_dname_to_str(dname);
-		dbg_ns_detail("Name: %s\n", name);
-		free(name);
-);
-		assert(dname != NULL);
+		uint16_t hint = knot_pkt_compr_hint(rrinfo, COMPR_HINT_RDATA + i);
+		node = rrset->additional[i];
 
-		/* Attempt to find mentioned name in zone. */
-		rcu_read_lock();
-		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
-		knot_zone_contents_find_dname(contents, dname, &node, &encloser, &prev);
-		if (node == NULL && encloser && encloser->wildcard_child)
-			node = encloser->wildcard_child;
-		rcu_read_unlock();
+		/* \note Not resolving CNAMEs as it doesn't pay off much. */
 
-		knot_rrset_t *rrset_add;
-
-		if (node != NULL) {
-dbg_ns_exec(
-			char *name = knot_dname_to_str(node->owner);
-			dbg_ns_verb("Putting additional from node %s\n", name);
-			free(name);
-);
-			dbg_ns_detail("Checking CNAMEs...\n");
-			if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
-				dbg_ns_detail("Found CNAME in node.\n");
-				const knot_dname_t *dname
-						= knot_node_owner(node);
-				assert(KNOT_PKT_IN_AR(resp));
-				ret = ns_follow_cname(&node, &dname, resp, zone, 0);
-				if (ret != KNOT_EOK) {
-					dbg_ns("Failed to follow CNAME.\n");
-					return ret;
-				}
-			}
-
-			// A RRSet
-			dbg_ns_detail("A RRSets...\n");
-			rrset_add = knot_node_get_rrset(node, KNOT_RRTYPE_A);
-			if (rrset_add != NULL) {
-				dbg_ns_detail("Found A RRsets.\n");
-				knot_rrset_t *rrset_add2 = rrset_add;
-				ret = ns_check_wildcard(dname, resp,
-				                        &rrset_add2);
-				if (ret != KNOT_EOK) {
-					dbg_ns("Failed to process wildcard for"
-					       "Additional section: %s.\n",
-					       knot_strerror(ret));
-					return ret;
-				}
-
-				unsigned flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
-				if (rrset_add2 != rrset_add) {
-					flags |= KNOT_PF_FREE;
-				}
-
-				assert(KNOT_PKT_IN_AR(resp));
-				ret = knot_pkt_put(
-					resp, compr_hint, rrset_add2, flags);
-
-				if (ret != KNOT_EOK) {
-					dbg_ns("Failed to add A RRSet to "
-					       "Additional section: %s.\n",
-					       knot_strerror(ret));
-					return ret;
-				}
-
-				assert(KNOT_PKT_IN_AR(resp));
-				ret = ns_add_rrsigs(rrset_add, resp, dname, 0);
-
-				if (ret != KNOT_EOK) {
-					dbg_ns("Failed to add RRSIGs for A RR"
-					       "Set to Additional section: %s."
-					       "\n", knot_strerror(ret));
-					return ret;
-				}
-			}
-
-			// AAAA RRSet
-			dbg_ns_detail("AAAA RRSets...\n");
-			rrset_add = knot_node_get_rrset(node, KNOT_RRTYPE_AAAA);
-			if (rrset_add != NULL) {
-				dbg_ns_detail("Found AAAA RRsets.\n");
-				knot_rrset_t *rrset_add2 = rrset_add;
-				ret =  ns_check_wildcard(dname, resp,
-				                         &rrset_add2);
-				if (ret != KNOT_EOK) {
-					dbg_ns("Failed to process wildcard for"
-					       "Additional section: %s.\n",
-					       knot_strerror(ret));
-					return ret;
-				}
-
-				unsigned flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
-				if (rrset_add2 != rrset_add) {
-					flags |= KNOT_PF_FREE;
-				}
-
-				assert(KNOT_PKT_IN_AR(resp));
-				ret = knot_pkt_put(
-					resp, compr_hint, rrset_add2, flags);
-
-				if (ret != KNOT_EOK) {
-					dbg_ns("Failed to add AAAA RRSet to "
-					       "Additional section.\n");
-					return ret;
-				}
-
-				assert(KNOT_PKT_IN_AR(resp));
-				ret = ns_add_rrsigs(rrset_add, resp, dname, 0);
-
-				if (ret != KNOT_EOK) {
-					dbg_ns("Failed to add RRSIG for AAAA RR"
-					       "Set to Additional section.\n");
-					return ret;
-				}
-			}
+		/* A records */
+		ret = ns_put_additional_rrset(resp, hint, node, KNOT_RRTYPE_A);
+		if (ret != KNOT_EOK) {
+			break;
 		}
 
-		assert(rrset != NULL);
+		/* AAAA records */
+		ret = ns_put_additional_rrset(resp, hint, node, KNOT_RRTYPE_AAAA);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+
 	}
 
-	return KNOT_EOK;
+	/* Truncation is okay. */
+	if (ret == KNOT_ESPACE) {
+		ret = KNOT_EOK;
+	}
+
+	return ret;
 }
 
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Checks whether the given type requires additional processing.
- *
- * Only MX, NS and SRV types require additional processing.
- *
- * \param qtype Type to check.
- *
- * \retval <> 0 if additional processing is needed for \a qtype.
- * \retval 0 otherwise.
- */
-static int ns_additional_needed(uint16_t qtype)
-{
-	return (qtype == KNOT_RRTYPE_MX ||
-	        qtype == KNOT_RRTYPE_NS ||
-		qtype == KNOT_RRTYPE_SRV);
-}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -796,10 +498,8 @@ static int ns_additional_needed(uint16_t qtype)
  *
  * \param resp Response to process.
  */
-int ns_put_additional(const knot_zone_t *zone, knot_pkt_t *resp)
+int ns_put_additional(knot_pkt_t *resp)
 {
-	dbg_ns_verb("ADDITIONAL SECTION PROCESSING\n");
-
 	/* Begin AR section. */
 	int ret = KNOT_EOK;
 	knot_pkt_begin(resp, KNOT_ADDITIONAL);
@@ -808,8 +508,8 @@ int ns_put_additional(const knot_zone_t *zone, knot_pkt_t *resp)
 	/* Scan all RRs in AN+NS. */
 	uint16_t rr_count = resp->rrset_count;
 	for (uint16_t i = 0; i < rr_count; ++i) {
-		if (ns_additional_needed(knot_rrset_type(resp->rr[i]))) {
-			ret = ns_put_additional_for_rrset(zone, resp, i);
+		if (rrset_additional_needed(knot_rrset_type(resp->rr[i]))) {
+			ret = ns_put_additional_for_rrset(resp, i);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -1943,7 +1643,6 @@ int ns_add_dnskey(const knot_node_t *apex, knot_pkt_t *resp)
 
 	int ret = KNOT_EOK;
 
-	assert(KNOT_PKT_IN_AR(resp));
 	if (rrset != NULL) {
 		ret = knot_pkt_put(resp, 0, rrset, KNOT_PF_NOTRUNC);
 		if (ret == KNOT_EOK) {

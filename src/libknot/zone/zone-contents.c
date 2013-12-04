@@ -152,6 +152,38 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
+/*! \brief Link pointers to additional nodes for this RRSet. */
+static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
+{
+	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
+	const knot_dname_t *dname = NULL;
+
+	/* Free old additional nodes. */
+	if (rr->additional != NULL) {
+		free(rr->additional);
+	}
+
+	/* Create new additional nodes. */
+	uint16_t rdcount = knot_rrset_rdata_rr_count(rr);
+	rr->additional = malloc(rdcount * sizeof(knot_node_t));
+	if (rr->additional == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	for (uint16_t i = 0; i < rdcount; i++) {
+
+		/* Resolve and connect. */
+		dname = knot_rdata_name(rr, i);
+		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
+		if (node == NULL && encloser && encloser->wildcard_child) {
+			node = encloser->wildcard_child;
+		}
+
+		rr->additional[i] = (knot_node_t *)node;
+	}
+
+	return KNOT_EOK;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -230,6 +262,17 @@ static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 	}
 
 	knot_dname_free(&nsec3_name);
+
+	/* Lookup additional records for specific nodes. */
+	knot_rrset_t **rrset = node->rrset_tree;
+	for(uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (rrset_additional_needed(rrset[i]->type)) {
+			ret = discover_additionals(rrset[i], args->zone);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
+	}
 
 	return ret;
 }

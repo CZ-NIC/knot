@@ -396,7 +396,7 @@ const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
                                                   const knot_dname_t *qname,
                                                   uint16_t qtype);
 
-int ns_put_additional(const knot_zone_t *zone, knot_pkt_t *resp);
+int ns_put_additional(knot_pkt_t *resp);
 
 int ns_put_authority_soa(const knot_zone_contents_t *zone,
                                  knot_pkt_t *resp);

@@ -395,7 +395,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	/* Resolve ADDITIONAL. */
 	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ADDITIONAL);
-	ret = ns_put_additional(qdata->zone, response);
+	ret = ns_put_additional(response);
 	if (ret != KNOT_EOK) {
 		return NS_PROC_FAIL;
 

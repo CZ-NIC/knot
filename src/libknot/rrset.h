@@ -34,6 +34,7 @@
 #include "libknot/dname.h"
 
 struct knot_compr;
+struct knot_node;
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -63,6 +64,10 @@ struct knot_rrset {
 	uint32_t *rdata_indices; /*!< Indices to beginnings of RRs (without 0)*/
 	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
+
+	/* Optional fields. */
+
+	struct knot_node **additional; /* Additional records. */
 };
 
 typedef struct knot_rrset knot_rrset_t;
@@ -426,6 +431,19 @@ uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset, size_t pos);
 int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
                             const knot_rrset_t *rrset2,
                             size_t pos1, size_t pos2);
+
+/*!
+ * \brief Checks whether the given type requires additional processing.
+ *
+ * Only MX, NS and SRV types require additional processing.
+ *
+ * \param rrtype Type to check.
+ *
+ * \retval <> 0 if additional processing is needed for \a qtype.
+ * \retval 0 otherwise.
+ */
+int rrset_additional_needed(uint16_t rrtype);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

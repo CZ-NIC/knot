@@ -737,6 +737,8 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	ret->ttl = ttl;
 	ret->rrsigs = NULL;
 
+	ret->additional = NULL;
+
 	return ret;
 }
 
@@ -1307,6 +1309,8 @@ int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to)
 	(*to)->rdata_count = from->rdata_count;
 	(*to)->rrsigs = NULL;
 
+	(*to)->additional = NULL; /* Never copy. */
+
 	/* Just copy arrays - actual data + indices. */
 	(*to)->rdata = xmalloc(rrset_rdata_size_total(from));
 	memcpy((*to)->rdata, from->rdata, rrset_rdata_size_total(from));
@@ -1347,6 +1351,7 @@ int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
 	}
 
 	memcpy(result, from, sizeof(knot_rrset_t));
+	result->additional = NULL; /* Never share between copies. */
 	result->owner = knot_dname_copy(result->owner);
 	if (!result->owner) {
 		free(result);
@@ -1375,6 +1380,10 @@ void knot_rrset_free(knot_rrset_t **rrset)
 	}
 
 	knot_dname_free(&(*rrset)->owner);
+
+	if (rrset_additional_needed((*rrset)->type)) {
+		free((*rrset)->additional);
+	}
 
 	free(*rrset);
 	*rrset = NULL;
@@ -1406,6 +1415,10 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner)
 
 	rrset_deep_free_content(*rrset, free_owner);
 
+	if (rrset_additional_needed((*rrset)->type)) {
+		free((*rrset)->additional);
+	}
+
 	free(*rrset);
 	*rrset = NULL;
 }
@@ -1421,6 +1434,10 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner)
 
 	if (free_owner) {
 		knot_dname_free(&(*rrset)->owner);
+	}
+
+	if (rrset_additional_needed((*rrset)->type)) {
+		free((*rrset)->additional);
 	}
 
 	free(*rrset);
@@ -1992,4 +2009,11 @@ int knot_rrset_ds_check(const knot_rrset_t *rrset)
 		}
 	}
 	return KNOT_EOK;
+}
+
+int rrset_additional_needed(uint16_t rrtype)
+{
+	return (rrtype == KNOT_RRTYPE_MX ||
+		rrtype == KNOT_RRTYPE_NS ||
+		rrtype == KNOT_RRTYPE_SRV);
 }
