@@ -313,17 +313,10 @@ static bool zones_changesets_empty(const knot_changesets_t *chs)
 	return knot_changeset_is_empty(HEAD(chs->sets));
 }
 
-static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
-                                                  knot_changesets_t *chgsets,
-                                                  journal_t **transaction)
+static int zones_store_chgsets_try_store(knot_zone_t *zone,
+                                         knot_changesets_t *chgsets,
+                                         journal_t **transaction)
 {
-	assert(zone != NULL);
-	assert(chgsets != NULL);
-
-	if (zones_changesets_empty(chgsets)) {
-		return KNOT_EINVAL;
-	}
-
 	*transaction = zones_store_changesets_begin(zone);
 	if (*transaction == NULL) {
 		dbg_zones("Could not start journal operation.\n");
@@ -331,6 +324,8 @@ static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
 	}
 
 	int ret = zones_store_changesets(zone, chgsets, *transaction);
+
+	/* In any case, rollback the transaction. */
 	if (ret != KNOT_EOK) {
 		zones_store_changesets_rollback(*transaction);
 		*transaction = NULL;
@@ -391,6 +386,49 @@ static int zones_zonefile_sync_ev(event_t *e)
 	rcu_read_unlock();
 
 	evsched_schedule(e->parent, e, next_timeout);
+	return ret;
+}
+
+static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
+                                                  knot_changesets_t *chgsets,
+                                                  journal_t **transaction)
+{
+	assert(zone != NULL);
+	assert(chgsets != NULL);
+
+	if (zones_changesets_empty(chgsets)) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = zones_store_chgsets_try_store(zone, chgsets, transaction);
+
+	/* If the journal was full (KNOT_EBUSY), we must flush it by hand and
+	 * try to save the changesets once again. If this fails, the changesets
+	 * are larger than max journal size, so return error.
+	 */
+	if (ret == KNOT_EBUSY) {
+		/* Fetch zone-specific data. */
+		zonedata_t *zd = (zonedata_t *)zone->data;
+		/* Get the sync event. */
+		event_t *tmr = zd->ixfr_dbsync;
+		if (tmr == NULL) {
+			log_server_error("Failed to sync journal to zone file."
+			                 "\n");
+			return ret;
+		}
+
+		/* Transaction rolled back, journal released, we may flush. */
+		ret = zones_zonefile_sync_ev(tmr);
+		if (ret != KNOT_EOK) {
+			log_server_error("Failed to sync journal to zone file."
+			                 "\n");
+			return ret;
+		}
+
+		/* Begin the transaction anew. */
+		ret = zones_store_chgsets_try_store(zone, chgsets, transaction);
+	}
+
 	return ret;
 }
 
@@ -2262,7 +2300,7 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src, journal_t 
 		log_server_notice("Journal for '%s' is full, flushing.\n",
 		                  zd->conf->name);
 		evsched_cancel(tmr->parent, tmr);
-		evsched_schedule(tmr->parent, tmr, 0);
+		// Do not plan the flush, do it by hand in the caller
 	}
 
 	/* Written changesets to journal. */
