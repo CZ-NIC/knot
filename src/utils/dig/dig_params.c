@@ -790,6 +790,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->idn = false;
 #endif
 		query->nsid = false;
+		query->edns = -1;
 	} else {
 		if (conf->local != NULL) {
 			query->local = srv_info_create(conf->local->name,
@@ -817,6 +818,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->style = conf->style;
 		query->idn = conf->idn;
 		query->nsid = conf->nsid;
+		query->edns = conf->edns;
 
 		if (knot_copy_key_params(&conf->key_params, &query->key_params)
 		    != KNOT_EOK) {
