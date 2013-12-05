@@ -150,11 +150,15 @@ static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
 		current = ((signed_info_t *)(*hattrie_iter_val(it)))->dname;
 
 		result = callback(previous, current, data);
-		if (result != KNOT_EOK) {
+		if (result == NSEC_NODE_SKIP) {
+			// No NSEC should be created for 'current' node, skip
+			;
+		} else if (result == KNOT_EOK) {
+			previous = current;
+		} else {
 			hattrie_iter_free(it);
 			return result;
 		}
-		previous = current;
 		hattrie_iter_next(it);
 	}
 
@@ -1118,7 +1122,7 @@ static const knot_node_t *find_prev_nsec_node(const knot_zone_contents_t *z,
 		}
 		printf("FIX: prev %s\n",
 		       knot_dname_to_str(prev_zone_node->owner));
-		nsec_node_found = node_should_be_signed(prev_zone_node) &&
+		nsec_node_found = !knot_node_is_non_auth(prev_zone_node) &&
 		                  !only_nsec_in_node(prev_zone_node);
 	}
 	assert(nsec_node_found);
@@ -1130,23 +1134,22 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	assert(b);
 	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
 	assert(fix_data);
+	printf("FIX: a=%s b=%s next=%s\n", knot_dname_to_str(a), knot_dname_to_str(b),
+	       knot_dname_to_str(fix_data->next_dname));
 	// Get changed nodes from zone
 	const knot_node_t *a_node = knot_zone_contents_find_node(fix_data->zone,
 	                                                         a);
 	const knot_node_t *b_node = knot_zone_contents_find_node(fix_data->zone,
 	                                                         b);
-	if (b_node == NULL) {
+	if (b_node == NULL || knot_node_is_non_auth(b_node)) {
 		// Nothing to fix in this node
-		return KNOT_EOK;
+		return NSEC_NODE_SKIP;
 	}
-	printf("FIX: a=%s b=%s next=%s\n", knot_dname_to_str(a), knot_dname_to_str(b),
-	       knot_dname_to_str(fix_data->next_dname));
 	// Handle removals
 	bool node_deleted = only_nsec_in_node(b_node);
-	const knot_rrset_t *old_nsec = NULL;
 	if (node_deleted) {
 		printf("FIX: Node deleted\n");
-		old_nsec = knot_node_rrset(b_node, KNOT_RRTYPE_NSEC);
+		const knot_rrset_t *old_nsec = knot_node_rrset(b_node, KNOT_RRTYPE_NSEC);
 		assert(old_nsec);
 		return changeset_remove_nsec(old_nsec, fix_data->out_ch);
 	}
@@ -1158,9 +1161,11 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	}
 
 	// Find out whether the previous node is also part of the changeset.
+	printf("cOPmparing %s %s\n", knot_dname_to_str(prev_zone_node->owner),
+	       knot_dname_to_str(a));
 	bool dname_equal =
 		a ? knot_dname_is_equal(prev_zone_node->owner, a) : false;
-	if (dname_equal && !node_deleted) {
+	if (dname_equal) {
 		// No valid data for the previous node, create the forward NSEC
 		printf("FIX OP: changeset: %s %s\n", knot_dname_to_str(a),
 		       knot_dname_to_str(b));
