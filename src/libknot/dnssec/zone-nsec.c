@@ -1090,16 +1090,53 @@ typedef struct chain_fix_data {
 	const knot_dname_t *next_dname;
 } chain_fix_data_t;
 
+static const knot_node_t *find_prev_nsec_node(const knot_zone_contents_t *z,
+                                              const knot_node_t *n)
+{
+	// Find previous node for the node
+	bool nsec_node_found = false;
+	const knot_node_t *prev_zone_node = n;
+	while (!nsec_node_found) {
+		// Get previous node from zone tree
+		prev_zone_node =
+			knot_zone_contents_find_previous(z,
+		                                         prev_zone_node->owner);
+		assert(prev_zone_node);
+		// Sanity check
+		if (knot_dname_is_equal(n->owner, prev_zone_node->owner)) {
+			if (z->apex == prev_zone_node) {
+				// Only apex in zone and changed in DDNS
+				assert(hattrie_size(z->nodes) == 1);
+				return prev_zone_node;
+			} else {
+				/*!
+				 * Something is really wrong here -
+				 * maybe the zone is unsigned?
+				 */
+				return NULL;
+			}
+		}
+		printf("FIX: prev %s\n",
+		       knot_dname_to_str(prev_zone_node->owner));
+		nsec_node_found = node_should_be_signed(prev_zone_node) &&
+		                  !only_nsec_in_node(prev_zone_node);
+	}
+	assert(nsec_node_found);
+	return prev_zone_node;
+}
+
 static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 {
 	assert(b);
 	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
 	assert(fix_data);
+	// Get changed nodes from zone
 	const knot_node_t *a_node = knot_zone_contents_find_node(fix_data->zone,
 	                                                         a);
 	const knot_node_t *b_node = knot_zone_contents_find_node(fix_data->zone,
 	                                                         b);
 	if (b_node == NULL) {
+		// Nothing to fix in this node
 		return KNOT_EOK;
 	}
 	printf("FIX: a=%s b=%s next=%s\n", knot_dname_to_str(a), knot_dname_to_str(b),
@@ -1111,58 +1148,34 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 		printf("FIX: Node deleted\n");
 		old_nsec = knot_node_rrset(b_node, KNOT_RRTYPE_NSEC);
 		assert(old_nsec);
-		int ret = changeset_remove_nsec(old_nsec, fix_data->out_ch);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+		return changeset_remove_nsec(old_nsec, fix_data->out_ch);
 	}
-	bool nsec_node_found = false;
-	const knot_node_t *prev_zone_node = b_node;
-	while (!nsec_node_found) {
-		// Get previous node from zone tree
-		prev_zone_node =
-			knot_zone_contents_find_previous(fix_data->zone,
-		                                         prev_zone_node->owner);
-		assert(prev_zone_node);
-		// Sanity check
-		if (knot_dname_is_equal(b, prev_zone_node->owner)) {
-			if (fix_data->zone->apex == prev_zone_node) {
-				// Only apex in zone and changed in DDNS
-				assert(hattrie_size(fix_data->zone->nodes) == 1);
-				return update_nsec(prev_zone_node,
-				                   prev_zone_node,
-				                   fix_data->out_ch, 3600,
-				                   true);
-			} else {
-				/*!
-				 * Something is really wrong here -
-				 * maybe the zone is unsigned?
-				 */
-				return KNOT_ERROR;
-			}
-		}
-		printf("FIX: prev %s\n",
-		       knot_dname_to_str(prev_zone_node->owner));
-		nsec_node_found = node_should_be_signed(prev_zone_node) &&
-		                  !only_nsec_in_node(prev_zone_node);
+
+	const knot_node_t *prev_zone_node = find_prev_nsec_node(fix_data->zone,
+	                                                        b_node);
+	if (prev_zone_node == NULL) {
+		return KNOT_ERROR;
 	}
 
 	// Find out whether the previous node is also part of the changeset.
 	bool dname_equal =
 		a ? knot_dname_is_equal(prev_zone_node->owner, a) : false;
 	if (dname_equal && !node_deleted) {
+		// No valid data for the previous node, create the forward NSEC
 		printf("FIX OP: changeset: %s %s\n", knot_dname_to_str(a),
 		       knot_dname_to_str(b));
 		return update_nsec(a_node, b_node, fix_data->out_ch, 3600,
 		                   prev_zone_node == fix_data->zone->apex);
 	} else {
-		if (fix_data->next_dname &&
-		    !knot_dname_is_equal(fix_data->next_dname, b) && !node_deleted) {
+		bool use_next = fix_data->next_dname &&
+		                !knot_dname_is_equal(fix_data->next_dname, b);
+		if (use_next) {
 			printf("FIX OP: next %s next = %s\n", a ? knot_dname_to_str(a) : knot_dname_to_str(b), knot_dname_to_str(fix_data->next_dname));
+			const knot_node_t *next_node =
+				knot_zone_contents_find_node(fix_data->zone,
+				                             fix_data->next_dname);
 			int ret = update_nsec(a ? a_node : b_node,
-			                      knot_zone_contents_find_node(fix_data->zone,
-			                                                   fix_data->next_dname),
-			                      fix_data->out_ch,
+			                      next_node, fix_data->out_ch,
 			                      3600, false);
 			fix_data->next_dname = NULL;
 			return ret;
@@ -1171,10 +1184,11 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 		const knot_rrset_t *nsec_rrset =
 			knot_node_rrset(prev_zone_node, KNOT_RRTYPE_NSEC);
 		assert(nsec_rrset);
+		// Store next node for next iterations
 		fix_data->next_dname = knot_rdata_nsec_next(nsec_rrset);
 		printf("FIX next_dname storing %s\n", knot_dname_to_str(fix_data->next_dname));
 		// Fix NSEC
-		const knot_node_t *next_node = node_deleted || knot_dname_is_equal(b, fix_data->next_dname) ? knot_zone_contents_find_node(fix_data->zone, knot_rdata_nsec_next(knot_node_rrset(b_node, KNOT_RRTYPE_NSEC))) : b_node;
+		const knot_node_t *next_node = b_node;
 		printf("FIX OP: zone %s %s\n",
 		       knot_dname_to_str(prev_zone_node->owner),
 		       knot_dname_to_str(next_node->owner));
