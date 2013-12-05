@@ -1497,7 +1497,7 @@ static int parse_token(const char *value, dig_params_t *params)
 	}
 
 	ERR("invalid parameter: %s\n", value);
-	return KNOT_ENOTSUP;
+	return KNOT_EINVAL;
 }
 
 int dig_parse(dig_params_t *params, int argc, char *argv[])
