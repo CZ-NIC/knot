@@ -1156,7 +1156,8 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	                                                         a);
 	const knot_node_t *b_node = knot_zone_contents_find_node(fix_data->zone,
 	                                                         b);
-	if (b_node == NULL || knot_node_is_non_auth(b_node)) {
+	assert(b_node);
+	if (knot_node_is_non_auth(b_node)) {
 		// Nothing to fix in this node
 		return NSEC_NODE_SKIP;
 	}

@@ -247,6 +247,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 		log_zone_error("%s Failed to sign changeset (%s)\n", msgpref,
 		               knot_strerror(ret));
 		knot_free_zone_keys(&zone_keys);
+		free(msgpref);
 		return ret;
 	}
 
@@ -256,9 +257,10 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	knot_zone_clear_sorted_changes(sorted_changes);
 	hattrie_free(sorted_changes);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to fix NSEC(3) chain (%s)\n",
+		log_zone_error("%s Failed to fix NSEC(3) chain (%s)\n", msgpref,
 		               knot_strerror(ret));
 		knot_free_zone_keys(&zone_keys);
+		free(msgpref);
 		return ret;
 	}
 
@@ -266,9 +268,10 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	ret = knot_zone_sign_nsecs_in_changeset(&zone_keys, &policy,
 	                                        out_ch);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to sign changeset (%s)\n",
+		log_zone_error("%s Failed to sign changeset (%s)\n", msgpref,
 		               knot_strerror(ret));
 		knot_free_zone_keys(&zone_keys);
+		free(msgpref);
 		return ret;
 	}
 
@@ -278,10 +281,11 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	                                &zone_keys, &policy,
 	                                out_ch);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to sign SOA RR (%s)\n",
+		log_zone_error("%s Failed to sign SOA RR (%s)\n", msgpref,
 		               knot_strerror(ret));
 	}
 	knot_free_zone_keys(&zone_keys);
+	free(msgpref);
 
 	*used_lifetime = policy.sign_lifetime;
 	*used_refresh = policy.sign_refresh;
