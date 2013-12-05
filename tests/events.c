@@ -22,6 +22,7 @@
 
 #include "common/evqueue.h"
 #include "common/evsched.h"
+#include "common/errcode.h"
 
 void* term_thr(void *arg)
 {
@@ -146,7 +147,7 @@ int main(int argc, char *argv[])
 	// 7. Insert and immediately cancel an event
 	e = evsched_schedule_cb(s, 0, (void*)0xdead, 1000);
 	ret = evsched_cancel(s, e);
-	ok(ret >= 0, "evsched: inserted and cancelled an event");
+	ok(ret == KNOT_EOK, "evsched: inserted and cancelled an event");
 	if (e) {
 		evsched_event_free(s, e);
 	}
