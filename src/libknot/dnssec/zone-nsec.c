@@ -164,7 +164,8 @@ static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
 
 	hattrie_iter_free(it);
 
-	return callback(NULL, current, data);
+	return result == NSEC_NODE_SKIP ? callback(NULL, previous, data) :
+	                                  callback(NULL, current, data);
 }
 
 /*!
