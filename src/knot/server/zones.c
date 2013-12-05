@@ -3067,17 +3067,15 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 
 	rcu_read_unlock();
 
+	zones_free_merged_changesets(diff_chs, sec_chs);
+
 	// Schedule next zone signing
-	ret = zones_schedule_dnssec(zone,
-	                            expiration_to_relative(expires_at,
-	                                                   zone),
-	                            false);
-	if (ret != KNOT_EOK) {
-		knot_changesets_free(&diff_chs);
-		knot_changesets_free(&sec_chs);
-		return ret;
+	if (z->dnssec_enable) {
+		ret = zones_schedule_dnssec(zone,
+					    expiration_to_relative(expires_at,
+								   zone),
+					    false);
 	}
 
-	zones_free_merged_changesets(diff_chs, sec_chs);
 	return ret;
 }
