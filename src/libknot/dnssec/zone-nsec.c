@@ -1173,8 +1173,9 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 		return update_nsec(a_node, b_node, fix_data->out_ch, 3600,
 		                   prev_zone_node == fix_data->zone->apex);
 	} else {
-		bool use_next = fix_data->next_dname &&
-		                !knot_dname_is_equal(fix_data->next_dname, b);
+		bool next_dname_equal = fix_data->next_dname &&
+		                        knot_dname_is_equal(fix_data->next_dname, b);
+		bool use_next = fix_data->next_dname && !next_dname_equal;
 		if (use_next) {
 			printf("FIX OP: next %s next = %s\n", a ? knot_dname_to_str(a) : knot_dname_to_str(b), knot_dname_to_str(fix_data->next_dname));
 			const knot_node_t *next_node =
@@ -1186,15 +1187,28 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 			fix_data->next_dname = NULL;
 			return ret;
 		}
-		// Previous node was not changed in DDNS, it has to have NSEC
-		const knot_rrset_t *nsec_rrset =
-			knot_node_rrset(prev_zone_node, KNOT_RRTYPE_NSEC);
-		assert(nsec_rrset);
+
+		const knot_rrset_t *nsec_rrset = NULL;
+		const knot_node_t *next_node = NULL;
+		if (next_dname_equal) {
+			// Updating node, extract next
+			nsec_rrset = knot_node_rrset(b_node, KNOT_RRTYPE_NSEC);
+			prev_zone_node = b_node;
+			next_node = knot_zone_contents_find_node(fix_data->zone,
+			                                         knot_rdata_nsec_next(nsec_rrset));
+			assert(nsec_rrset);
+		} else {
+			// Previous node was not changed in DDNS, it has to have NSEC
+			nsec_rrset = knot_node_rrset(prev_zone_node,
+			                             KNOT_RRTYPE_NSEC);
+			next_node = b_node;
+			assert(nsec_rrset);
+		}
+
 		// Store next node for next iterations
 		fix_data->next_dname = knot_rdata_nsec_next(nsec_rrset);
 		printf("FIX next_dname storing %s\n", knot_dname_to_str(fix_data->next_dname));
 		// Fix NSEC
-		const knot_node_t *next_node = b_node;
 		printf("FIX OP: zone %s %s\n",
 		       knot_dname_to_str(prev_zone_node->owner),
 		       knot_dname_to_str(next_node->owner));
