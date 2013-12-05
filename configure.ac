@@ -296,6 +296,8 @@ if test "$libidn" != "no"; then
     AC_CHECK_HEADER(idna.h, AC_CHECK_LIB(idn, stringprep_check_version,
                                  [libidn=yes LIBS="${LIBS} -lidn"], libidn=no),
                     libidn=no)
+fi
+if test "$libidn" != "no" ; then
     AC_DEFINE(LIBIDN, 1, [Define to 1 if you want IDN support.])
 fi
 
