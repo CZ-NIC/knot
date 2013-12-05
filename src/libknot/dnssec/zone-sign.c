@@ -1081,7 +1081,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 		} else {
 			/*!
 			 * RRSet dropped from zone using update, or should not
-			 * be signed, but it could create a new node
+			 * be signed, but it could create a new node, so we
+			 * have to mark the change.
 			 */
 			rr_already_signed(chg_rrset, args->signed_tree);
 		}

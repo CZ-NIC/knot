@@ -1016,6 +1016,10 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
                        bool is_apex)
 {
 	assert(from && to && out_ch);
+	if (knot_node_is_non_auth(from) || knot_node_is_non_auth(to)) {
+		printf("FIX TODO do not call this function with non auth nodes\n");
+		return KNOT_EOK;
+	}
 	const knot_rrset_t *nsec_rrset = knot_node_rrset(from,
 	                                                 KNOT_RRTYPE_NSEC);
 	// Create new NSEC
@@ -1038,6 +1042,7 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 			dbg_dnssec_detail("Creating new NSEC for %s\n",
 			                  knot_dname_to_str(new_nsec->owner));
 			// Drop old
+			printf("FIX removing1 %s\n", knot_dname_to_str(nsec_rrset->owner));
 			int ret = changeset_remove_nsec(nsec_rrset,
 			                                out_ch);
 			if (ret != KNOT_EOK) {
@@ -1066,6 +1071,7 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 		}
 	} else {
 		// Drop old, no longer needed
+		printf("FIX removing2 %s\n", knot_dname_to_str(nsec_rrset->owner));
 		int ret = changeset_remove_nsec(nsec_rrset,
 		                                out_ch);
 		if (ret != KNOT_EOK) {
@@ -1142,14 +1148,14 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	bool dname_equal =
 		a ? knot_dname_is_equal(prev_zone_node->owner, a) : false;
 	if (dname_equal && !node_deleted) {
-		printf("FIX v changesetu: %s %s\n", knot_dname_to_str(a),
+		printf("FIX OP: changeset: %s %s\n", knot_dname_to_str(a),
 		       knot_dname_to_str(b));
 		return update_nsec(a_node, b_node, fix_data->out_ch, 3600,
 		                   prev_zone_node == fix_data->zone->apex);
 	} else {
 		if (fix_data->next_dname &&
 		    !knot_dname_is_equal(fix_data->next_dname, b) && !node_deleted) {
-			printf("FIX next %s next = %s\n", a ? knot_dname_to_str(a) : knot_dname_to_str(b), knot_dname_to_str(fix_data->next_dname));
+			printf("FIX OP: next %s next = %s\n", a ? knot_dname_to_str(a) : knot_dname_to_str(b), knot_dname_to_str(fix_data->next_dname));
 			int ret = update_nsec(a ? a_node : b_node,
 			                      knot_zone_contents_find_node(fix_data->zone,
 			                                                   fix_data->next_dname),
@@ -1165,10 +1171,11 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 		fix_data->next_dname = knot_rdata_nsec_next(nsec_rrset);
 		printf("FIX next_dname storing %s\n", knot_dname_to_str(fix_data->next_dname));
 		// Fix NSEC
-		printf("FIX zona %s %s\n",
+		const knot_node_t *next_node = node_deleted ? knot_zone_contents_find_node(fix_data->zone, knot_rdata_nsec_next(old_nsec)) : b_node;
+		printf("FIX OP: zone %s %s\n",
 		       knot_dname_to_str(prev_zone_node->owner),
-		       knot_dname_to_str(b));
-		return update_nsec(prev_zone_node, node_deleted ? knot_zone_contents_find_node(fix_data->zone, knot_rdata_nsec_next(old_nsec)) : b_node, fix_data->out_ch,
+		       knot_dname_to_str(next_node->owner));
+		return update_nsec(prev_zone_node, next_node, fix_data->out_ch,
 		                   3600, prev_zone_node == fix_data->zone->apex);
 	}
 
