@@ -34,6 +34,34 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
+#ifdef LIBIDN
+#include <idna.h>
+
+char* name_from_idn(const char* idn_name) {
+	char *name;
+
+	int rc = idna_to_ascii_lz(idn_name, &name, 0);
+	if (rc != IDNA_SUCCESS) {
+		ERR("IDNA (%s)\n", idna_strerror(rc));
+		return NULL;
+	}
+
+	return name;
+}
+
+char* name_to_idn(const char* name) {
+	char *idn_name;
+
+	int rc = idna_to_unicode_8zlz(name, &idn_name, 0);
+	if (rc != IDNA_SUCCESS) {
+		ERR("IDNA (%s)\n", idna_strerror(rc));
+		return strdup(name);
+	}
+
+	return idn_name;
+}
+#endif
+
 /*!
  * \brief Checks if string is a prefix of reference string.
  *

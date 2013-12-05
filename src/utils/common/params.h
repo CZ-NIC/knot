@@ -115,6 +115,29 @@ typedef struct {
 	param_handle_f handler;
 } param_t;
 
+#ifdef LIBIDN
+#include <idna.h>
+
+/*!
+ * \brief Transforms localized IDN string to ASCII punycode.
+ *
+ * \param idn_name	IDN name to transform.
+ *
+ * \retval NULL		if transformation fails.
+ * \retval string	if ok.
+ */
+char* name_from_idn(const char* idn_name);
+
+/*!
+ * \brief Transforms ASCII punycode to localized IDN string.
+ *
+ * \param idn_name	ASCII name to transform.
+ *
+ * \retval string	transformed string or idn_name if error.
+ */
+char* name_to_idn(const char* name);
+#endif
+
 int best_param(const char *str, const size_t str_len, const param_t *tbl,
                bool *unique);
 

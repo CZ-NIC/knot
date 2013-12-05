@@ -159,6 +159,9 @@ Don't use TCP automatically if truncated reply is received.
 .BR + [ no ] nsid
 Request nameserver identifier (NSID).
 .TP
+.BR + [ no ] idn
+Enable IDN transformation to ASCII and vice versa. IDN support depends on libidn availability during project building!
+.TP
 .BR + [ no ] edns= N
 Use EDNS version (default is 0).
 .TP
@@ -191,8 +194,6 @@ Options \fB\-f\fR and \fB\-m\fR and query options:
 .BR + [ no ] topdown ,\  + [ no ] nssearch ,\  + [ no ] trace.
 .TP
 Per-user file configuration via ${HOME}/.digrc.
-.TP
-Internationalized domain name (IDN) is not supported.
 .SS Differences with regard to ISC dig
 Optional port specification has a form of [address]:port instead of address#port.
 .TP

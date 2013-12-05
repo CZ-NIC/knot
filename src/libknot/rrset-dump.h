@@ -45,6 +45,8 @@ typedef struct {
 	bool	human_ttl;
 	/*!< Format timestamp as YYYYMMDDHHmmSS. */
 	bool	human_tmstamp;
+	/*!< Dname to string callback. */
+	char *(*dname_to_str)(const char *dname);
 } knot_dump_style_t;
 
 /*! \brief Default dump style. */

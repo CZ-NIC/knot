@@ -59,7 +59,8 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.show_ttl = true,
 	.verbose = false,
 	.human_ttl = false,
-	.human_tmstamp = true
+	.human_tmstamp = true,
+	.dname_to_str = NULL
 };
 
 static void dump_string(rrset_dump_params_t *p, const char *str)
@@ -834,6 +835,11 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 
 	// Write dname string.
 	char *dname_str = knot_dname_to_str(p->in);
+	if (p->style->dname_to_str != NULL) {
+		char *idn = p->style->dname_to_str(dname_str);
+		free(dname_str);
+		dname_str = idn;
+	}
 	int ret = snprintf(p->out, p->out_max, "%s", dname_str);
 	free(dname_str);
 	if (ret < 0 || (size_t)ret >= p->out_max) {
@@ -1915,6 +1921,11 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 
 	// Dump rrset owner.
 	char *name = knot_dname_to_str(rrset->owner);
+	if (style->dname_to_str != NULL) {
+		char *idn = style->dname_to_str(name);
+		free(name);
+		name = idn;
+	}
 	char sep = strlen(name) < 4 * TAB_WIDTH ? '\t' : ' ';
 	ret = snprintf(dst + len, maxlen - len, "%-20s%c", name, sep);
 	free(name);

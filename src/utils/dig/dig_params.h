@@ -102,6 +102,8 @@ typedef struct {
 	flags_t		flags;
 	/*!< Output settings. */
 	style_t		style;
+	/*!< IDN conversion. */
+	bool		idn;
 	/*!< Query for NSID. */
 	bool		nsid;
 	/*!< EDNS version (8unsigned + -1 uninitialized). */

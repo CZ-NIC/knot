@@ -291,6 +291,11 @@ static void print_section_host(const knot_rrset_t **rrsets,
 		char                *owner;
 
 		owner = knot_dname_to_str(rrset->owner);
+		if (style->style.dname_to_str != NULL) {
+			char *idn = style->style.dname_to_str(owner);
+			free(owner);
+			owner = idn;
+		}
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
 		for (size_t j = 0; j < rrset->rdata_count; j++) {
@@ -328,7 +333,8 @@ static void print_section_host(const knot_rrset_t **rrsets,
 }
 
 static void print_error_host(const uint8_t         code,
-                             const knot_packet_t   *packet)
+                             const knot_packet_t   *packet,
+                             const style_t         *style)
 {
 	const char *rcode_str = "NULL";
 	char type[32] = "NULL";
@@ -337,6 +343,11 @@ static void print_error_host(const uint8_t         code,
 	knot_lookup_table_t *rcode;
 
 	owner = knot_dname_to_str(knot_packet_qname(packet));
+	if (style->style.dname_to_str != NULL) {
+		char *idn = style->style.dname_to_str(owner);
+		free(owner);
+		owner = idn;
+	}
 	rcode = knot_lookup_by_id(knot_rcode_names, code);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
@@ -394,6 +405,11 @@ void print_header_xfr(const knot_packet_t *packet, const style_t  *style)
 
 	if (style->show_header) {
 		char *owner = knot_dname_to_str(knot_packet_qname(packet));
+		if (style->style.dname_to_str != NULL) {
+			char *idn = style->style.dname_to_str(owner);
+			free(owner);
+			owner = idn;
+		}
 		if (owner != NULL) {
 			printf(";; %s for %s\n", xfr, owner);
 			free(owner);
@@ -495,7 +511,7 @@ void print_packet(const knot_packet_t *packet,
 			print_section_host(packet->answer, ancount,
 			                   style);
 		} else {
-			print_error_host(rcode, packet);
+			print_error_host(rcode, packet, style);
 		}
 		break;
 	case FORMAT_NSUPDATE:

@@ -20,6 +20,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#ifdef LIBIDN
+#include <locale.h>
+#endif
+
+#include "utils/common/params.h"
 #include "common/base32hex.h"
 #include "common/errcode.h"
 #include "common/hex.h"
@@ -93,6 +98,15 @@ int main(int argc, char *argv[])
 		{ NULL }
 	};
 
+#ifdef LIBIDN
+	bool enable_idn = false;
+
+	// Set up localization.
+	if (setlocale(LC_CTYPE, "") != NULL) {
+		enable_idn = true;
+	}
+#endif
+
 	int opt = 0;
 	int li = 0;
 	while ((opt = getopt_long(argc, argv, "hV", options, &li)) != -1) {
@@ -130,7 +144,19 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
+#ifdef LIBIDN
+	if (enable_idn) {
+		char *ascii_name = name_from_idn(argv[4]);
+		if (ascii_name == NULL) {
+			fprintf(stderr, "Cannot transform IDN domain name.\n");
+			goto fail;
+		}
+		dname = knot_dname_from_str(ascii_name);
+		free(ascii_name);
+	}
+#else
 	dname = knot_dname_from_str(argv[4]);
+#endif
 	if (dname == NULL) {
 		fprintf(stderr, "Cannot parse domain name.\n");
 		goto fail;
