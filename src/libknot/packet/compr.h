@@ -38,7 +38,7 @@ enum {
 enum {
 	COMPR_HINT_OWNER = 0,
 	COMPR_HINT_RDATA = 1,
-	COMPR_HINT_COUNT = 4
+	COMPR_HINT_COUNT = 16
 };
 
 typedef struct {

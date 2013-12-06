@@ -466,6 +466,7 @@ int knot_pkt_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, kn
 	}
 
 	/* Suffix is shorter than name, write labels until aligned. */
+	uint8_t orig_labels = name_labels;
 	uint16_t written = 0;
 	while (name_labels > suffix_labels) {
 		WRITE_LABEL(dst, written, dname, max, (*dname + 1));
@@ -509,8 +510,13 @@ int knot_pkt_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, kn
 		written += sizeof(uint16_t);
 	}
 
-	/* #10 store longer match < KNOT_PTR_MAX */
-	dbg_packet("%s: compressed name to %u bytes\n", __func__, written);
+	/* Heuristics - expect similar names are grouped together. */
+	if (compr->wire_pos < KNOT_WIRE_PTR_MAX) {
+		compr->suffix.pos = compr->wire_pos;
+		compr->suffix.labels = orig_labels;
+	}
+	dbg_packet("%s: compressed to %u bytes (match=%zu,@%hu)\n",
+		   __func__, written, dname - match_begin, compr->wire_pos);
 	return written;
 }
 
