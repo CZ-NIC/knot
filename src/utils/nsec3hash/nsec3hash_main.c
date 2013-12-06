@@ -90,6 +90,8 @@ static bool parse_nsec3_params(knot_nsec3_params_t *params, const char *salt,
  */
 int main(int argc, char *argv[])
 {
+	bool enable_idn = false;
+
 	struct option options[] = {
 		{ "version", no_argument, 0, 'V' },
 		{ "help",    no_argument, 0, 'h' },
@@ -97,8 +99,6 @@ int main(int argc, char *argv[])
 	};
 
 #ifdef LIBIDN
-	bool enable_idn = false;
-
 	// Set up localization.
 	if (setlocale(LC_CTYPE, "") != NULL) {
 		enable_idn = true;
