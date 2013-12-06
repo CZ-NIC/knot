@@ -999,18 +999,6 @@ dbg_zone_exec_verb(
 	free(zone_str);
 );
 
-	if (knot_dname_cmp(name, zone->apex->owner) == 0) {
-		*node = zone->apex;
-		*closest_encloser = *node;
-		return KNOT_ZONE_NAME_FOUND;
-	}
-
-	if (!knot_dname_is_sub(name, zone->apex->owner)) {
-		*node = NULL;
-		*closest_encloser = NULL;
-		return KNOT_EOUTOFZONE;
-	}
-
 	knot_node_t *found = NULL, *prev = NULL;
 
 	int exact_match = knot_zone_contents_find_in_tree(zone->nodes, name,
@@ -1049,6 +1037,12 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 	if (exact_match) {
 		*closest_encloser = *node;
 	} else {
+		if (!knot_dname_is_sub(name, zone->apex->owner)) {
+			*node = NULL;
+			*closest_encloser = NULL;
+			return KNOT_EOUTOFZONE;
+		}
+
 		*closest_encloser = *previous;
 		assert(*closest_encloser != NULL);
 
