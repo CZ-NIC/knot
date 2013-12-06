@@ -162,6 +162,10 @@ Request nameserver identifier (NSID).
 .BR + [ no ] edns= N
 Use EDNS version (default is 0).
 .TP
+.BR +noidn
+Disable IDN transformation to ASCII and vice versa.
+IDN support depends on libidn availability during project building!
+.TP
 .BI +time= T
 Set wait for reply interval in seconds (default is 5 seconds).
 This timeout applies to each query try.
@@ -191,8 +195,6 @@ Options \fB\-f\fR and \fB\-m\fR and query options:
 .BR + [ no ] topdown ,\  + [ no ] nssearch ,\  + [ no ] trace.
 .TP
 Per-user file configuration via ${HOME}/.digrc.
-.TP
-Internationalized domain name (IDN) is not supported.
 .SS Differences with regard to ISC dig
 Optional port specification has a form of [address]:port instead of address#port.
 .TP
