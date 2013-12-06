@@ -337,25 +337,8 @@ static int zones_store_chgsets_try_store(knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Sync chagnes in zone to zonefile.
- */
-static int zones_zonefile_sync_ev(event_t *e)
+static int zones_zonefile_sync_from_ev(knot_zone_t *zone, zonedata_t *zd)
 {
-	dbg_zones("zones: IXFR database SYNC timer event\n");
-
-	/* Fetch zone. */
-	knot_zone_t *zone = (knot_zone_t *)e->data;
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-
-	/* Fetch zone data. */
-	zonedata_t *zd = zone->data;
-	if (!zd) {
-		return KNOT_EINVAL;
-	}
-
 	/* Only on zones with valid contents (non empty). */
 	int ret = KNOT_EOK;
 	if (knot_zone_contents(zone)) {
@@ -377,6 +360,30 @@ static int zones_zonefile_sync_ev(event_t *e)
 		}
 		rcu_read_unlock();
 	}
+
+	return ret;
+}
+
+/*!
+ * \brief Sync chagnes in zone to zonefile.
+ */
+static int zones_zonefile_sync_ev(event_t *e)
+{
+	dbg_zones("zones: IXFR database SYNC timer event\n");
+
+	/* Fetch zone. */
+	knot_zone_t *zone = (knot_zone_t *)e->data;
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+
+	/* Fetch zone data. */
+	zonedata_t *zd = zone->data;
+	if (!zd) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = zones_zonefile_sync_from_ev(zone, zd);
 
 	/* Reschedule. */
 	rcu_read_lock();
@@ -409,16 +416,11 @@ static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
 	if (ret == KNOT_EBUSY) {
 		/* Fetch zone-specific data. */
 		zonedata_t *zd = (zonedata_t *)zone->data;
-		/* Get the sync event. */
-		event_t *tmr = zd->ixfr_dbsync;
-		if (tmr == NULL) {
-			log_server_error("Failed to sync journal to zone file."
-			                 "\n");
-			return ret;
-		}
+
+		assert(*transaction == NULL);
 
 		/* Transaction rolled back, journal released, we may flush. */
-		ret = zones_zonefile_sync_ev(tmr);
+		ret = zones_zonefile_sync_from_ev(zone, zd);
 		if (ret != KNOT_EOK) {
 			log_server_error("Failed to sync journal to zone file."
 			                 "\n");
@@ -2298,12 +2300,13 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src, journal_t 
 	}
 
 	/* Flush if the journal is full. */
-	event_t *tmr = zd->ixfr_dbsync;
-	if (ret == KNOT_EBUSY && tmr) {
+	if (ret == KNOT_EBUSY) {
 		log_server_notice("Journal for '%s' is full, flushing.\n",
 		                  zd->conf->name);
-		evsched_cancel(tmr->parent, tmr);
-		// Do not plan the flush, do it by hand in the caller
+		/* Don't worry about sync event. It can't happen while this
+		 * event (signing) is not finished. We may thus do the sync
+		 * by hand and leave the planned one there to be executed
+		 * later. */
 	}
 
 	/* Written changesets to journal. */
