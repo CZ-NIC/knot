@@ -330,9 +330,9 @@ static void print_section_host(const knot_rrset_t **rrsets,
 	free(buf);
 }
 
-static void print_error_host(const uint8_t         code,
-                             const knot_packet_t   *packet,
-                             const style_t         *style)
+static void print_error_host(const uint8_t       code,
+                             const knot_packet_t *packet,
+                             const style_t       *style)
 {
 	const char *rcode_str = "NULL";
 	char type[32] = "NULL";
@@ -380,7 +380,7 @@ knot_packet_t* create_empty_packet(const size_t max_size)
 	return packet;
 }
 
-void print_header_xfr(const knot_packet_t *packet, const style_t  *style)
+void print_header_xfr(const knot_packet_t *packet, const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -442,12 +442,12 @@ void print_data_xfr(const knot_packet_t *packet,
 	}
 }
 
-void print_footer_xfr(const size_t   total_len,
-                      const size_t   msg_count,
-                      const size_t   rr_count,
-                      const net_t    *net,
-                      const float    elapsed,
-                      const style_t  *style)
+void print_footer_xfr(const size_t  total_len,
+                      const size_t  msg_count,
+                      const size_t  rr_count,
+                      const net_t   *net,
+                      const float   elapsed,
+                      const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;

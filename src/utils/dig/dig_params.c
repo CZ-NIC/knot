@@ -519,16 +519,6 @@ static int opt_noignore(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_idn(const char *arg, void *query)
-{
-	query_t *q = query;
-
-	q->idn = true;
-	q->style.style.ascii_to_idn = name_to_idn;
-
-	return KNOT_EOK;
-}
-
 static int opt_noidn(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -719,7 +709,7 @@ static const param_t dig_opts2[] = {
 	{ "ignore",       ARG_NONE,     opt_ignore },
 	{ "noignore",     ARG_NONE,     opt_noignore },
 
-	{ "idn",          ARG_NONE,     opt_idn },
+	/* "idn" doesn't work since it must be called before query creation. */
 	{ "noidn",        ARG_NONE,     opt_noidn },
 
 	{ "nsid",         ARG_NONE,     opt_nsid },
@@ -1208,9 +1198,9 @@ static void dig_help(void)
 	       "       +[no]tcp        Use TCP protocol.\n"
 	       "       +[no]fail       Stop if SERVFAIL.\n"
 	       "       +[no]ignore     Don't use TCP automatically if truncated.\n"
-	       "       +[no]idn        Enable IDN transformation.\n"
 	       "       +[no]nsid       Request NSID.\n"
 	       "       +[no]edns=N     Use EDNS (=version).\n"
+	       "       +noidn          Disable IDN transformation.\n"
 	       "       +time=T         Set wait for reply interval in seconds.\n"
 	       "       +retry=N        Set number of retries.\n"
 	       "       +bufsize=B      Set EDNS buffer size.\n"
