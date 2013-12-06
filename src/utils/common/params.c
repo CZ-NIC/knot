@@ -23,6 +23,10 @@
 #include <arpa/inet.h>			// inet_pton
 #include <sys/socket.h>			// AF_INET (BSD)
 
+#ifdef LIBIDN
+#include <idna.h>
+#endif
+
 #include "libknot/libknot.h"
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/mempattern.h"		// strcdup
@@ -34,11 +38,9 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
+char* name_from_idn(const char *idn_name) {
 #ifdef LIBIDN
-#include <idna.h>
-
-char* name_from_idn(const char* idn_name) {
-	char *name;
+	char *name = NULL;
 
 	int rc = idna_to_ascii_lz(idn_name, &name, 0);
 	if (rc != IDNA_SUCCESS) {
@@ -47,20 +49,24 @@ char* name_from_idn(const char* idn_name) {
 	}
 
 	return name;
+#endif
+	return strdup(idn_name);
 }
 
-char* name_to_idn(const char* name) {
-	char *idn_name;
+void name_to_idn(char **name) {
+#ifdef LIBIDN
+	char *idn_name = NULL;
 
-	int rc = idna_to_unicode_8zlz(name, &idn_name, 0);
+	int rc = idna_to_unicode_8zlz(*name, &idn_name, 0);
 	if (rc != IDNA_SUCCESS) {
-		ERR("IDNA (%s)\n", idna_strerror(rc));
-		return strdup(name);
+		return;
 	}
 
-	return idn_name;
-}
+	free(*name);
+	*name = idn_name;
 #endif
+	return;
+}
 
 /*!
  * \brief Checks if string is a prefix of reference string.

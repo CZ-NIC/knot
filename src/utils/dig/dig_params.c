@@ -21,10 +21,7 @@
 #include <stdio.h>			// printf
 #include <getopt.h>			// getopt
 #include <stdlib.h>			// free
-
-#ifdef LIBIDN
-#include <locale.h>
-#endif
+#include <locale.h>			// setlocale
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
@@ -56,11 +53,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 		.verbose = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
-#ifdef LIBIDN
-		.dname_to_str = name_to_idn
-#else
-		.dname_to_str = NULL
-#endif
+		.ascii_to_idn = name_to_idn
 	},
 	.show_query = false,
 	.show_header = true,
@@ -531,9 +524,7 @@ static int opt_idn(const char *arg, void *query)
 	query_t *q = query;
 
 	q->idn = true;
-#ifdef LIBIDN
-	q->style.style.dname_to_str = name_to_idn;
-#endif
+	q->style.style.ascii_to_idn = name_to_idn;
 
 	return KNOT_EOK;
 }
@@ -543,7 +534,7 @@ static int opt_noidn(const char *arg, void *query)
 	query_t *q = query;
 
 	q->idn = false;
-	q->style.style.dname_to_str = NULL;
+	q->style.style.ascii_to_idn = NULL;
 
 	return KNOT_EOK;
 }
@@ -784,11 +775,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->xfr_serial = 0;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
-#ifdef LIBIDN
 		query->idn = true;
-#else
-		query->idn = false;
-#endif
 		query->nsid = false;
 		query->edns = -1;
 	} else {
@@ -952,23 +939,19 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 	query_t	*query = NULL;
 	char	*ascii_name = (char *)value;
 
-#ifdef LIBIDN
 	if (conf->idn) {
 		ascii_name = name_from_idn(value);
 		if (ascii_name == NULL) {
 			return KNOT_EINVAL;
 		}
 	}
-#endif
 
 	// If name is not FQDN, append trailing dot.
 	char *fqd_name = get_fqd_name(ascii_name);
 
-#ifdef LIBIDN
 	if (conf->idn) {
 		free(ascii_name);
 	}
-#endif
 
 	// Create new query.
 	query = query_create(fqd_name, conf);
@@ -1517,7 +1500,7 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 	if (setlocale(LC_CTYPE, "") == NULL) {
 		WARN("can't setlocale, disabling IDN\n");
 		params->config->idn = false;
-		params->config->style.style.dname_to_str = NULL;
+		params->config->style.style.ascii_to_idn = NULL;
 	}
 #endif
 

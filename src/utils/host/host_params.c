@@ -21,10 +21,7 @@
 #include <stdio.h>			// printf
 #include <getopt.h>			// getopt
 #include <stdlib.h>			// free
-
-#ifdef LIBIDN
-#include <locale.h>
-#endif
+#include <locale.h>			// setlocale
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
@@ -46,11 +43,7 @@ static const style_t DEFAULT_STYLE_HOST = {
 		.verbose = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
-#ifdef LIBIDN
-		.dname_to_str = name_to_idn
-#else
-		.dname_to_str = NULL
-#endif
+		.ascii_to_idn = name_to_idn
 	},
 	.show_query = false,
 	.show_header = false,
@@ -79,11 +72,7 @@ static int host_init(dig_params_t *params)
 	params->config->servfail_stop = false;
 	params->config->class_num = KNOT_CLASS_IN;
 	params->config->style = DEFAULT_STYLE_HOST;
-#ifdef LIBIDN
 	params->config->idn = true;
-#else
-	params->config->idn = false;
-#endif
 
 	// Check port.
 	if (params->config->port == NULL) {
@@ -110,23 +99,19 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 	char	*ascii_name = (char *)value;
 	query_t	*query;
 
-#ifdef LIBIDN
 	if (conf->idn) {
 		ascii_name = name_from_idn(value);
 		if (ascii_name == NULL) {
 			return KNOT_EINVAL;
 		}
 	}
-#endif
 
 	// If name is not FQDN, append trailing dot.
 	char *fqd_name = get_fqd_name(ascii_name);
 
-#ifdef LIBIDN
 	if (conf->idn) {
 		free(ascii_name);
 	}
-#endif
 
 	// RR type is known.
 	if (conf->type_num >= 0) {
@@ -245,7 +230,6 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	// Set up localization.
 	if (setlocale(LC_CTYPE, "") == NULL) {
 		params->config->idn = false;
-		params->config->style.style.dname_to_str = NULL;
 	}
 #endif
 

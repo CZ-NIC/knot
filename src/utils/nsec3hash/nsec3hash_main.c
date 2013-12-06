@@ -20,9 +20,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#ifdef LIBIDN
 #include <locale.h>
-#endif
 
 #include "utils/common/params.h"
 #include "common/base32hex.h"
@@ -144,7 +142,6 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-#ifdef LIBIDN
 	if (enable_idn) {
 		char *ascii_name = name_from_idn(argv[4]);
 		if (ascii_name == NULL) {
@@ -153,10 +150,9 @@ int main(int argc, char *argv[])
 		}
 		dname = knot_dname_from_str(ascii_name);
 		free(ascii_name);
+	} else {
+		dname = knot_dname_from_str(argv[4]);
 	}
-#else
-	dname = knot_dname_from_str(argv[4]);
-#endif
 	if (dname == NULL) {
 		fprintf(stderr, "Cannot parse domain name.\n");
 		goto fail;
