@@ -322,8 +322,12 @@ static int conf_process(conf_t *conf)
 
 		// Default policy for DNSSEC
 		if (!conf->dnssec_keydir) {
-			zone->dnssec_enable = false;
+			zone->dnssec_enable = 0;
+		} else if (zone->dnssec_enable < 0) {
+			zone->dnssec_enable = conf->dnssec_enable;
 		}
+
+		assert(zone->dnssec_enable == 0 || zone->dnssec_enable == 1);
 
 		// DNSSEC required settings
 		if (zone->dnssec_enable) {
@@ -577,7 +581,7 @@ conf_t *conf_new(const char* path)
 	c->logs_count = -1;
 
 	/* DNSSEC. */
-	c->dnssec_enable = false;
+	c->dnssec_enable = 0;
 
 	/* ACLs. */
 	c->ctl.acl = acl_new();
@@ -705,7 +709,7 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	conf->zones_count = 0;
 	init_list(&conf->zones);
 
-	conf->dnssec_enable = false;
+	conf->dnssec_enable = -1;
 	if (conf->filename) {
 		free(conf->filename);
 		conf->filename = NULL;

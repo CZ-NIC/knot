@@ -619,6 +619,26 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 
 	zones_schedule_ixfr_sync(new_zone, conf->dbsync_timeout);
 
+	knot_zone_contents_t *new_contents = new_zone->contents;
+	if (new_contents) {
+		/* Check NSEC3PARAM state if present. */
+		result = knot_zone_contents_load_nsec3param(new_contents);
+		if (result != KNOT_EOK) {
+			log_zone_error("NSEC3 signed zone has invalid or no "
+				       "NSEC3PARAM record.\n");
+			goto fail;
+		}
+		/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
+		if (knot_zone_contents_is_signed(new_contents)) {
+			unsigned edns_dnssec_min = EDNS_MIN_DNSSEC_PAYLOAD;
+			if (knot_edns_get_payload(ns->opt_rr) < edns_dnssec_min) {
+				log_zone_warning("EDNS payload lower than %uB for "
+						 "DNSSEC-enabled zone '%s'.\n",
+						 edns_dnssec_min, conf->name);
+			}
+		}
+	}
+
 fail:
 	assert(new_zone);
 

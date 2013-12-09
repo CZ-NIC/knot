@@ -41,13 +41,13 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	                "delegation point!",
 
 	[-ZC_ERR_RRSIG_RDATA_TYPE_COVERED] =
-	"RRSIG: Type covered rdata field is wrong!",
+	"RRSIG: Type covered RDATA field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_TTL] =
-	"RRSIG: TTL rdata field is wrong!",
+	"RRSIG: TTL RDATA field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_EXPIRATION] =
 	"RRSIG: Expired signature!",
 	[-ZC_ERR_RRSIG_RDATA_LABELS] =
-	"RRSIG: Labels rdata field is wrong!",
+	"RRSIG: Labels RDATA field is wrong!",
 	[-ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER] =
 	"RRSIG: Signer name is different than in DNSKEY!",
 	[-ZC_ERR_RRSIG_NO_DNSKEY] =
@@ -59,7 +59,7 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_RRSIG_SIGNED] =
 	"RRSIG: Signed RRSIG!",
 	[-ZC_ERR_RRSIG_OWNER] =
-	"RRSIG: Owner name rdata field is wrong!",
+	"RRSIG: Owner name RDATA field is wrong!",
 	[-ZC_ERR_RRSIG_CLASS] =
 	"RRSIG: Class is wrong!",
 	[-ZC_ERR_RRSIG_TTL] =
@@ -84,7 +84,7 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"NSEC3: Unsecured delegation is not part "
 	"of the Opt-Out span!",
 	[-ZC_ERR_NSEC3_RDATA_TTL] =
-	"NSEC3: Original TTL rdata field is wrong!",
+	"NSEC3: Original TTL RDATA field is wrong!",
 	[-ZC_ERR_NSEC3_RDATA_CHAIN] =
 	"NSEC3: NSEC3 chain is not coherent!",
 	[-ZC_ERR_NSEC3_RDATA_BITMAP] =
@@ -119,8 +119,6 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	[-ZC_ERR_GLUE_RECORD] =
 	"GLUE: Record with glue address missing!",
 };
-
-static const uint MAX_CNAME_CYCLE_DEPTH = 15;
 
 err_handler_t *handler_new(int log_cname, int log_glue, int log_rrsigs,
                            int log_nsec, int log_nsec3)
@@ -1161,10 +1159,12 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 	int fatal_error = 0;
 	arguments.arg7 = (void *)&fatal_error;
 
-	knot_zone_contents_tree_apply_inorder(zone,
-			   do_checks_in_tree,
-			   (void *)&arguments);
-	
+	int ret = knot_zone_contents_tree_apply_inorder(zone,
+	                                                do_checks_in_tree,
+	                                                &arguments);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	if (fatal_error) {
 		return KNOT_ERROR;
 	}

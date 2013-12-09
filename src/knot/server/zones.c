@@ -470,6 +470,9 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 	knot_changeset_t* chs = NULL;
 	WALK_LIST(chs, chgsets->sets) {
 		/* Read changeset flags. */
+		if (chs->data == NULL) {
+			return KNOT_EMALF;
+		}
 		size_t remaining = chs->size;
 		memcpy(&chs->flags, chs->data, sizeof(uint32_t));
 		remaining -= sizeof(uint32_t);
@@ -1983,12 +1986,6 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	dbg_zones_verb("zones: reconfiguring name server.\n");
 
-	knot_zonedb_t *old_db = NULL;
-	int ret = zones_update_db_from_config(conf, ns, &old_db);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
 	/* Server identification, RFC 4892. */
 	ns->identity = conf->identity;
 	ns->version = conf->version;
@@ -2009,6 +2006,12 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 
 	knot_opt_rr_t *opt_rr_old = ns->opt_rr;
 	ns->opt_rr = opt_rr;
+
+	knot_zonedb_t *old_db = NULL;
+	int ret = zones_update_db_from_config(conf, ns, &old_db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	synchronize_rcu();
 
@@ -2570,8 +2573,6 @@ done:
 	knot_changesets_free(&chs);
 	free(msgpref);
 
-	evsched_event_free(event->parent, event);
-	zd->dnssec_timer = NULL;
 	if (expires_at != 0) {
 		ret = zones_schedule_dnssec(zone,
 		                            expiration_to_relative(expires_at,
@@ -2614,8 +2615,6 @@ int zones_cancel_dnssec(knot_zone_t *zone)
 
 	if (zd->dnssec_timer) {
 		evsched_cancel(scheduler, zd->dnssec_timer);
-		evsched_event_free(scheduler, zd->dnssec_timer);
-		zd->dnssec_timer = NULL;
 	}
 
 	return KNOT_EOK;
@@ -2636,16 +2635,20 @@ int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time, bool force)
 	              time / 3600000);
 	free(zname);
 
-//	TODO: throw an error if the new signing event is more in the future than the old one
-
-	if (force) {
-		zd->dnssec_timer = evsched_schedule_cb(scheduler,
-		                                       zones_dnssec_forced_ev,
-		                                       zone, time);
+	if (zd->dnssec_timer) {
+		// Event created already, just reschedule
+		evsched_schedule(scheduler, zd->dnssec_timer, time);
 	} else {
-		zd->dnssec_timer = evsched_schedule_cb(scheduler,
-		                                       zones_dnssec_regular_ev,
-		                                       zone, time);
+		// Create new event
+		if (force) {
+			zd->dnssec_timer = evsched_schedule_cb(scheduler,
+			                                       zones_dnssec_forced_ev,
+			                                       zone, time);
+		} else {
+			zd->dnssec_timer = evsched_schedule_cb(scheduler,
+			                                       zones_dnssec_regular_ev,
+			                                       zone, time);
+		}
 	}
 
 	return KNOT_EOK;
@@ -2913,6 +2916,8 @@ int zones_journal_apply(knot_zone_t *zone)
 int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
                            const knot_nameserver_t *ns, bool zone_changed)
 {
+	/* Cancel possibly running signing event. */
+	zones_cancel_dnssec(zone);
 	/* Calculate differences. */
 	rcu_read_lock();
 	knot_zone_t *z_old = knot_zonedb_find_zone(ns->zone_db,
@@ -2964,6 +2969,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 	knot_changesets_t *sec_chs = NULL;
 	knot_changeset_t *sec_ch = NULL;
 	knot_zone_contents_t *new_contents = NULL;
+	uint32_t expires_at = 0;
 	if (z->dnssec_enable) {
 		sec_chs = knot_changesets_create();
 		if (sec_chs == NULL) {
@@ -2989,7 +2995,6 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 		log_zone_info("DNSSEC: Zone %s - Signing started...\n",
 		              z->name);
 
-		uint32_t expires_at = 0;
 		int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up,
 		                                &expires_at);
 		if (ret != KNOT_EOK) {
@@ -2998,21 +3003,6 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 			rcu_read_unlock();
 			return ret;
 		}
-
-		// Schedule next zone signing
-		zones_cancel_dnssec(zone);
-		ret = zones_schedule_dnssec(zone,
-		                            expiration_to_relative(expires_at,
-		                                                   zone),
-		                            false);
-		if (ret != KNOT_EOK) {
-			knot_changesets_free(&diff_chs);
-			knot_changesets_free(&sec_chs);
-			rcu_read_unlock();
-			return ret;
-		}
-	} else {
-		zones_cancel_dnssec(zone);
 	}
 
 	/* Merge changesets created by diff and sign. */
@@ -3079,5 +3069,14 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 	rcu_read_unlock();
 
 	zones_free_merged_changesets(diff_chs, sec_chs);
+
+	// Schedule next zone signing
+	if (z->dnssec_enable) {
+		ret = zones_schedule_dnssec(zone,
+					    expiration_to_relative(expires_at,
+								   zone),
+					    false);
+	}
+
 	return ret;
 }

@@ -21,6 +21,7 @@
 #include <stdio.h>			// printf
 #include <getopt.h>			// getopt
 #include <stdlib.h>			// free
+#include <locale.h>			// setlocale
 
 #include "common/lists.h"		// list
 #include "common/errcode.h"		// KNOT_EOK
@@ -45,9 +46,15 @@ static const flags_t DEFAULT_FLAGS_DIG = {
 
 static const style_t DEFAULT_STYLE_DIG = {
 	.format = FORMAT_FULL,
-	.style = { .wrap = false, .show_class = true, .show_ttl = true,
-	           .verbose = false, .reduce = false, .human_ttl = false,
-	           .human_tmstamp = true },
+	.style = {
+		.wrap = false,
+		.show_class = true,
+		.show_ttl = true,
+		.verbose = false,
+		.human_ttl = false,
+		.human_tmstamp = true,
+		.ascii_to_idn = name_to_idn
+	},
 	.show_query = false,
 	.show_header = true,
 	.show_edns = true,
@@ -512,6 +519,16 @@ static int opt_noignore(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_noidn(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->idn = false;
+	q->style.style.ascii_to_idn = NULL;
+
+	return KNOT_EOK;
+}
+
 static int opt_nsid(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -692,6 +709,9 @@ static const param_t dig_opts2[] = {
 	{ "ignore",       ARG_NONE,     opt_ignore },
 	{ "noignore",     ARG_NONE,     opt_noignore },
 
+	/* "idn" doesn't work since it must be called before query creation. */
+	{ "noidn",        ARG_NONE,     opt_noidn },
+
 	{ "nsid",         ARG_NONE,     opt_nsid },
 	{ "nonsid",       ARG_NONE,     opt_nonsid },
 
@@ -745,7 +765,9 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->xfr_serial = 0;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
+		query->idn = true;
 		query->nsid = false;
+		query->edns = -1;
 	} else {
 		if (conf->local != NULL) {
 			query->local = srv_info_create(conf->local->name,
@@ -771,7 +793,9 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->xfr_serial = conf->xfr_serial;
 		query->flags = conf->flags;
 		query->style = conf->style;
+		query->idn = conf->idn;
 		query->nsid = conf->nsid;
+		query->edns = conf->edns;
 
 		if (knot_copy_key_params(&conf->key_params, &query->key_params)
 		    != KNOT_EOK) {
@@ -902,10 +926,22 @@ static int parse_local(const char *value, query_t *query)
 
 static int parse_name(const char *value, list_t *queries, const query_t *conf)
 {
-	query_t *query = NULL;
+	query_t	*query = NULL;
+	char	*ascii_name = (char *)value;
+
+	if (conf->idn) {
+		ascii_name = name_from_idn(value);
+		if (ascii_name == NULL) {
+			return KNOT_EINVAL;
+		}
+	}
 
 	// If name is not FQDN, append trailing dot.
-	char *fqd_name = get_fqd_name(value);
+	char *fqd_name = get_fqd_name(ascii_name);
+
+	if (conf->idn) {
+		free(ascii_name);
+	}
 
 	// Create new query.
 	query = query_create(fqd_name, conf);
@@ -1164,6 +1200,7 @@ static void dig_help(void)
 	       "       +[no]ignore     Don't use TCP automatically if truncated.\n"
 	       "       +[no]nsid       Request NSID.\n"
 	       "       +[no]edns=N     Use EDNS (=version).\n"
+	       "       +noidn          Disable IDN transformation.\n"
 	       "       +time=T         Set wait for reply interval in seconds.\n"
 	       "       +retry=N        Set number of retries.\n"
 	       "       +bufsize=B      Set EDNS buffer size.\n"
@@ -1433,7 +1470,7 @@ static int parse_token(const char *value, dig_params_t *params)
 	}
 
 	ERR("invalid parameter: %s\n", value);
-	return KNOT_ENOTSUP;
+	return KNOT_EINVAL;
 }
 
 int dig_parse(dig_params_t *params, int argc, char *argv[])
@@ -1447,6 +1484,15 @@ int dig_parse(dig_params_t *params, int argc, char *argv[])
 	if (dig_init(params) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
+
+#ifdef LIBIDN
+	// Set up localization.
+	if (setlocale(LC_CTYPE, "") == NULL) {
+		WARN("can't setlocale, disabling IDN\n");
+		params->config->idn = false;
+		params->config->style.style.ascii_to_idn = NULL;
+	}
+#endif
 
 	// Command line parameters processing.
 	for (int i = 1; i < argc; i++) {

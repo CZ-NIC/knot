@@ -134,18 +134,6 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	/*! \todo Why is this check here? */
-	int ret = KNOT_EOK;
-	if (knot_zone_contents(zone)) {
-		ret = knot_zone_contents_load_nsec3param(
-				knot_zone_get_contents(zone));
-		if (ret != KNOT_EOK) {
-			log_zone_error("NSEC3 signed zone has invalid or no "
-			               "NSEC3PARAM record.\n");
-			return ret;
-		}
-	}
-
 	/* Invalidate search index. */
 	db->stack_height = 0;
 
@@ -153,7 +141,7 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone)
 	assert(db->count < db->reserved); /* Should be already checked. */
 	db->array[db->count++] = zone;
 
-	return ret;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

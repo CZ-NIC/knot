@@ -206,7 +206,7 @@ static void print_section_question(const knot_dname_t *owner,
 	knot_rrset_t *question = knot_rrset_new(owner_copy, qtype,
 	                                        qclass, 0);
 
-	if (knot_rrset_txt_dump_header(question, 0, buf, buflen,
+	if (knot_rrset_txt_dump_header(question, buf, buflen,
 	    &(style->style)) < 0) {
 		WARN("can't print whole question section\n");
 	}
@@ -230,6 +230,7 @@ static void print_section_full(const knot_rrset_t **rrsets,
 		}
 
 		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
+		                           true, true,
 		                           &(style->style)) < 0)
 		{
 			buflen += 4096;
@@ -290,6 +291,9 @@ static void print_section_host(const knot_rrset_t **rrsets,
 		char                *owner;
 
 		owner = knot_dname_to_str(rrset->owner);
+		if (style->style.ascii_to_idn != NULL) {
+			style->style.ascii_to_idn(&owner);
+		}
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
 		for (size_t j = 0; j < rrset->rdata_count; j++) {
@@ -326,8 +330,9 @@ static void print_section_host(const knot_rrset_t **rrsets,
 	free(buf);
 }
 
-static void print_error_host(const uint8_t         code,
-                             const knot_packet_t   *packet)
+static void print_error_host(const uint8_t       code,
+                             const knot_packet_t *packet,
+                             const style_t       *style)
 {
 	const char *rcode_str = "NULL";
 	char type[32] = "NULL";
@@ -336,6 +341,9 @@ static void print_error_host(const uint8_t         code,
 	knot_lookup_table_t *rcode;
 
 	owner = knot_dname_to_str(knot_packet_qname(packet));
+	if (style->style.ascii_to_idn != NULL) {
+		style->style.ascii_to_idn(&owner);
+	}
 	rcode = knot_lookup_by_id(knot_rcode_names, code);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
@@ -372,7 +380,7 @@ knot_packet_t* create_empty_packet(const size_t max_size)
 	return packet;
 }
 
-void print_header_xfr(const knot_packet_t *packet, const style_t  *style)
+void print_header_xfr(const knot_packet_t *packet, const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -393,6 +401,9 @@ void print_header_xfr(const knot_packet_t *packet, const style_t  *style)
 
 	if (style->show_header) {
 		char *owner = knot_dname_to_str(knot_packet_qname(packet));
+		if (style->style.ascii_to_idn != NULL) {
+			style->style.ascii_to_idn(&owner);
+		}
 		if (owner != NULL) {
 			printf(";; %s for %s\n", xfr, owner);
 			free(owner);
@@ -431,12 +442,12 @@ void print_data_xfr(const knot_packet_t *packet,
 	}
 }
 
-void print_footer_xfr(const size_t   total_len,
-                      const size_t   msg_count,
-                      const size_t   rr_count,
-                      const net_t    *net,
-                      const float    elapsed,
-                      const style_t  *style)
+void print_footer_xfr(const size_t  total_len,
+                      const size_t  msg_count,
+                      const size_t  rr_count,
+                      const net_t   *net,
+                      const float   elapsed,
+                      const style_t *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -494,7 +505,7 @@ void print_packet(const knot_packet_t *packet,
 			print_section_host(packet->answer, ancount,
 			                   style);
 		} else {
-			print_error_host(rcode, packet);
+			print_error_host(rcode, packet, style);
 		}
 		break;
 	case FORMAT_NSUPDATE:

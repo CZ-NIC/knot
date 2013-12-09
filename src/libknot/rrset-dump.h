@@ -41,25 +41,21 @@ typedef struct {
 	bool	show_ttl;
 	/*!< Print extra information. */
 	bool	verbose;
-	/*!< Don't print header for non-first rrset records. */
-	bool	reduce;
 	/*!< Format TTL as DHMS. */
 	bool	human_ttl;
 	/*!< Format timestamp as YYYYMMDDHHmmSS. */
 	bool	human_tmstamp;
+	/*!< ASCII string to IDN string transformation callback. */
+	void (*ascii_to_idn)(char **name);
 } knot_dump_style_t;
 
 /*! \brief Default dump style. */
 extern const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT;
 
-/*! \brief DNSSEC-friendly dump style. */
-extern const knot_dump_style_t KNOT_DUMP_STYLE_DNSSEC;
-
 /*!
  * \brief Dumps rrset header.
  *
  * \param rrset		RRset to dump.
- * \param pos		Position of the record to dump.
  * \param dst		Output buffer.
  * \param maxlen	Otuput buffer size.
  * \param style		Output style.
@@ -68,7 +64,6 @@ extern const knot_dump_style_t KNOT_DUMP_STYLE_DNSSEC;
  * \retval < 0			if error.
  */
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
-                               const size_t            pos,
                                char                    *dst,
                                const size_t            maxlen,
                                const knot_dump_style_t *style);
@@ -97,6 +92,8 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
  * \param rrset		RRset to dump.
  * \param dst		Output buffer.
  * \param maxlen	Otuput buffer size.
+ * \param dump_rdata	Dump rrset records.
+ * \param dump_rrsig	Dump rrset rrsig record.
  * \param style		Output style.
  *
  * \retval output length	if success.
@@ -105,6 +102,8 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         char                    *dst,
                         const size_t            maxlen,
+                        const bool              dump_rdata,
+                        const bool              dump_rrsig,
                         const knot_dump_style_t *style);
 
 #endif // _KNOT_RRSETDUMP_H_
