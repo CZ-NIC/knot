@@ -950,10 +950,10 @@ zone:
    }
  | zone DNSSEC_ENABLE BOOL ';' { this_zone->dnssec_enable = $3.i; }
  | zone SIGNATURE_LIFETIME NUM ';' {
-	SET_NUM(this_zone->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");
+	SET_NUM(this_zone->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
  }
  | zone SIGNATURE_LIFETIME INTERVAL ';' {
-	SET_NUM(this_zone->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");
+	SET_NUM(this_zone->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
  }
  ;
 
@@ -984,10 +984,10 @@ zones:
  | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i; }
  | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
  | zones SIGNATURE_LIFETIME NUM ';' {
-	SET_NUM(new_config->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");
+	SET_NUM(new_config->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
  }
  | zones SIGNATURE_LIFETIME INTERVAL ';' {
-	SET_NUM(new_config->sig_lifetime, $3.i, 7200, INT_MAX, "signature-lifetime");
+	SET_NUM(new_config->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
  }
  ;
 
