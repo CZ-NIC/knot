@@ -1102,6 +1102,7 @@ static int free_helper_trie_node(value_t *val, void *d)
 	}
 	free(info->type_list);
 	knot_dname_free(&info->dname);
+	knot_dname_free(&info->hashed_dname);
 	free(info);
 	return KNOT_EOK;
 }

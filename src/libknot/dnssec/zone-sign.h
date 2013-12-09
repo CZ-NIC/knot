@@ -41,6 +41,7 @@ typedef struct type_node {
 
 typedef struct signed_info {
 	knot_dname_t *dname;
+	knot_dname_t *hashed_dname;
 	list_t *type_list;
 } signed_info_t;
 
