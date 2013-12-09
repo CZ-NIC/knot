@@ -511,7 +511,7 @@ int knot_pkt_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, kn
 	}
 
 	/* Heuristics - expect similar names are grouped together. */
-	if (compr->wire_pos < KNOT_WIRE_PTR_MAX) {
+	if (written > sizeof(uint16_t) && compr->wire_pos < KNOT_WIRE_PTR_MAX) {
 		compr->suffix.pos = compr->wire_pos;
 		compr->suffix.labels = orig_labels;
 	}
