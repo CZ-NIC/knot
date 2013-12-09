@@ -355,3 +355,18 @@ AC_CONFIG_FILES([Makefile
 		 ])
 
 AC_OUTPUT
+
+echo "
+  Version: ${PACKAGE_VERSION}
+  Prefix: ${prefix}
+  Run dir: ${run_dir}
+  Storage dir: ${storage_dir}
+  Config dir: ${config_dir}
+  Compiler: ${CC}
+  CFlags: ${CFLAGS} ${CPPFLAGS}
+  LDFlags: ${LDFLAGS}
+  Libs: ${LIBS}
+  Ragel: ${RAGEL} ${FSM_TYPE}
+  Utils with IDN: ${libidn}
+
+  Continue with 'make' command"
