@@ -590,7 +590,7 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 		return KNOT_ENOMEM;
 	}
 
-	knot_zone_t *old_zone = knot_zonedb_find_zone(ns->zone_db, apex);
+	knot_zone_t *old_zone = knot_zonedb_find(ns->zone_db, apex);
 	knot_zone_t *new_zone = get_zone(old_zone, apex, conf, ns);
 
 	knot_dname_free(&apex);
@@ -698,7 +698,7 @@ static int zone_loader_thread(dthread_t *thread)
 		/* Insert into database if properly loaded. */
 		pthread_mutex_lock(&ctx->lock);
 		if (ret == KNOT_EOK) {
-			if (knot_zonedb_add_zone(ctx->db_new, zone) != KNOT_EOK) {
+			if (knot_zonedb_insert(ctx->db_new, zone) != KNOT_EOK) {
 				log_server_error("Failed to insert zone '%s' "
 				                 "into database.\n", zone_config->name);
 				knot_zone_deep_free(&zone);
@@ -784,21 +784,22 @@ static knot_zonedb_t *load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
 static int remove_zones(const knot_zonedb_t *db_new,
                               knot_zonedb_t *db_old)
 {
-	unsigned new_zone_count = db_new->count;
-	const knot_zone_t **new_zones = knot_zonedb_zones(db_new);
-	const knot_zone_t *old_zone = NULL;
-	for (unsigned i = 0; i < new_zone_count; ++i) {
+	knot_zonedb_iter_t it;
+	knot_zonedb_iter_begin(db_new, &it);
+	while(!knot_zonedb_iter_finished(&it)) {
+		const knot_zone_t *old_zone = NULL;
+		const knot_zone_t *new_zone = knot_zonedb_iter_val(&it);
+		const knot_dname_t *zone_name = new_zone->name;
 
 		/* try to find the new zone in the old DB
 		 * if the pointers match, remove the zone from old DB
 		 */
-		old_zone = knot_zonedb_find_zone(db_old, knot_zone_name(new_zones[i]));
-		if (old_zone == new_zones[i]) {
-			/* Remove from zone db. */
-			knot_zone_t * rm = knot_zonedb_remove_zone(db_old,
-			                              knot_zone_name(old_zone));
-			assert(rm == old_zone);
+		old_zone = knot_zonedb_find(db_old, zone_name);
+		if (old_zone == new_zone) {
+			knot_zonedb_del(db_old, zone_name);
 		}
+
+		knot_zonedb_iter_next(&it);
 	}
 
 	return KNOT_EOK;
@@ -832,7 +833,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 		log_server_warning("Failed to load zones.\n");
 		return KNOT_ENOMEM;
 	} else {
-		size_t loaded = knot_zonedb_zone_count(db_new);
+		size_t loaded = knot_zonedb_size(db_new);
 		log_server_info("Loaded %zu out of %d zones.\n",
 		                loaded, conf->zones_count);
 		if (loaded != conf->zones_count) {

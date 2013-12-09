@@ -108,7 +108,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 			const knot_dname_t *dn =
 				knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
-			zone = knot_zonedb_find_zone(ns->zone_db, dn);
+			zone = knot_zonedb_find(ns->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
@@ -254,14 +254,16 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 	int ret = KNOT_EOK;
 	rcu_read_lock();
 	knot_nameserver_t *ns =  s->nameserver;
-	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
-	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
-		zonedata_t *zd = (zonedata_t *)zones[i]->data;
+	knot_zonedb_iter_t it;
+	knot_zonedb_iter_begin(ns->zone_db, &it);
+	while(!knot_zonedb_iter_finished(&it)) {
+		const knot_zone_t *zone = knot_zonedb_iter_val(&it);
+		zonedata_t *zd = (zonedata_t *)zone->data;
 
 		/* Fetch latest serial. */
 		const knot_rrset_t *soa_rrs = 0;
 		uint32_t serial = 0;
-		knot_zone_contents_t *contents = knot_zone_get_contents(zones[i]);
+		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
 		if (contents) {
 			soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
 			                          KNOT_RRTYPE_SOA);
@@ -333,7 +335,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		rb -= n;
 		dst += n;
 
-
+		knot_zonedb_iter_next(&it);
 	}
 	rcu_read_unlock();
 
@@ -377,9 +379,11 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 		dbg_server_verb("remote: flushing all zones\n");
 		rcu_read_lock();
 		knot_nameserver_t *ns =  s->nameserver;
-		const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
-		for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
-			ret = remote_zone_flush(s, zones[i]);
+		knot_zonedb_iter_t it;
+		knot_zonedb_iter_begin(ns->zone_db, &it);
+		while(!knot_zonedb_iter_finished(&it)) {
+			ret = remote_zone_flush(s, knot_zonedb_iter_val(&it));
+			knot_zonedb_iter_next(&it);
 		}
 		rcu_read_unlock();
 		return ret;

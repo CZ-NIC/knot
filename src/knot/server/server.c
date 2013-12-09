@@ -470,21 +470,23 @@ int server_refresh(server_t *server)
 	rcu_read_lock();
 	knot_nameserver_t *ns =  server->nameserver;
 	evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
-	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
+	knot_zonedb_iter_t it;
+	knot_zonedb_iter_begin(ns->zone_db, &it);
+	unsigned count = 0;
+	while(!knot_zonedb_iter_finished(&it)) {
+		const knot_zone_t *zone = knot_zonedb_iter_val(&it);
+		zonedata_t *zd = (zonedata_t *)zone->data;
 
-	/* REFRESH zones. */
-	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
-		zonedata_t *zd = (zonedata_t *)zones[i]->data;
-		if (zd == NULL) {
-			continue;
-		}
 		/* Expire REFRESH timer. */
-		if (zd->xfr_in.timer) {
+		if (zd && zd->xfr_in.timer) {
 			evsched_cancel(sch, zd->xfr_in.timer);
 			evsched_schedule(sch, zd->xfr_in.timer,
-			                 tls_rand() * 500 + i/2);
+					 tls_rand() * 500 + count/2);
 			/* Cumulative delay. */
+			++count;
 		}
+
+		knot_zonedb_iter_next(&it);
 	}
 
 	/* Unlock RCU. */

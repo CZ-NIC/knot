@@ -261,7 +261,7 @@ int notify_process_request(knot_nameserver_t *ns,
 	unsigned serial = 0;
 	const knot_dname_t *qname = knot_packet_qname(notify);
 	rcu_read_lock(); /* z */
-	const knot_zone_t *z = knot_zonedb_find_zone_for_name(ns->zone_db, qname);
+	const knot_zone_t *z = knot_zonedb_find_suffix(ns->zone_db, qname);
 	if (z != NULL) {
 		ret = notify_check_and_schedule(ns, z, from);
 		const knot_rrset_t *soa_rr = NULL;

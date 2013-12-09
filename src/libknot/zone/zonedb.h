@@ -33,40 +33,31 @@
 #include "libknot/zone/zone.h"
 #include "libknot/zone/node.h"
 #include "libknot/dname.h"
+#include "common/hhash.h"
 
 /*
  * Zone DB represents a list of managed zones.
  * Hashing should be avoided as it is expensive when only a small number of
- * zones is present (TLD case). Linear run-length algorithms or worse should
- * be avoided as well, as the number of zones may be large.
- *
- * Use of string-based algorithms for suffix search is viable, but would require
- * transformation each time a name is searched. That again would be a
- * constant cost even if the number of zones would be small.
- *
- * Zone database structure is a stack of zones grouped by label count in
- * descending order (root label not counted), therefore first match is the longest.
- * Each stack level is sorted for convenient binary search.
- * example:
- *  {3 labels, 2 items} => [ 'a.b.c', 'b.b.c' ]
- *  {2 labels, 1 items} => [ 'x.z' ]
- *  {1 labels, 2 items} => [ 'y', 'w' ]
- *
- * Stack is built on top of the sorted array of zones for direct access and
- * less memory requirements.
+ * zones is present (TLD case). Fortunately hhash is able to do linear scan if
+ * it has only a handful of names present. Furthermore, we track the name with
+ * the most labels in the database. So if we have for example a 'a.b.' in the
+ * database and search for 'c.d.a.b.' we can trim the 'c.d.' and search for
+ * the suffix as we now there can't be a closer match.
  */
 typedef struct {
-	unsigned labels;
-	unsigned count;
-	knot_zone_t** array;
-} knot_zonedb_stack_t;
-
-typedef struct {
-	unsigned count, reserved;
-	knot_zone_t **array;
-	unsigned stack_height;
-	knot_zonedb_stack_t stack[KNOT_DNAME_MAXLABELS];
+	uint16_t maxlabels;
+	hhash_t *hash;
+	mm_ctx_t mm;
 } knot_zonedb_t;
+
+/*
+ * Mapping of iterators to internal data structure.
+ */
+typedef hhash_iter_t knot_zonedb_iter_t;
+#define knot_zonedb_iter_begin(db, it) hhash_iter_begin((db)->hash, it, true)
+#define knot_zonedb_iter_finished(it) hhash_iter_finished(it)
+#define knot_zonedb_iter_next(it) hhash_iter_next(it)
+#define knot_zonedb_iter_val(it) *hhash_iter_val(it)
 
 /*----------------------------------------------------------------------------*/
 
@@ -76,7 +67,7 @@ typedef struct {
  * \return Pointer to the created zone database structure or NULL if an error
  *         occured.
  */
-knot_zonedb_t *knot_zonedb_new(unsigned size);
+knot_zonedb_t *knot_zonedb_new(uint32_t size);
 
 /*!
  * \brief Adds new zone to the database.
@@ -87,7 +78,7 @@ knot_zonedb_t *knot_zonedb_new(unsigned size);
  * \retval KNOT_EOK
  * \retval KNOT_EZONEIN
  */
-int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
+int knot_zonedb_insert(knot_zonedb_t *db, knot_zone_t *zone);
 
 /*!
  * \brief Removes the given zone from the database if it exists.
@@ -98,18 +89,10 @@ int knot_zonedb_add_zone(knot_zonedb_t *db, knot_zone_t *zone);
  * \retval KNOT_EOK
  * \retval KNOT_ENOZONE
  */
-knot_zone_t * knot_zonedb_remove_zone(knot_zonedb_t *db,
-                                      const knot_dname_t *zone_name);
+int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name);
 
 /*!
  * \brief Build zone stack for faster lookup.
- *
- * Zone stack structure is described in the knot_zonedb_t struct.
- *
- * \param db Zone database.
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- * \retval KNOT_EINVAL
  */
 int knot_zonedb_build_index(knot_zonedb_t *db);
 
@@ -122,8 +105,7 @@ int knot_zonedb_build_index(knot_zonedb_t *db);
  * \return Zone with \a zone_name being the owner of the zone apex or NULL if
  *         not found.
  */
-knot_zone_t *knot_zonedb_find_zone(knot_zonedb_t *db,
-                                   const knot_dname_t *zone_name);
+knot_zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name);
 
 
 /*!
@@ -135,14 +117,12 @@ knot_zone_t *knot_zonedb_find_zone(knot_zonedb_t *db,
  * \retval Zone in which the domain name should be present or NULL if no such
  *         zone is found.
  */
-knot_zone_t *knot_zonedb_find_zone_for_name(knot_zonedb_t *db,
-                                            const knot_dname_t *dname);
+knot_zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname);
 
 knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
                                               const knot_dname_t *zone_name);
 
-size_t knot_zonedb_zone_count(const knot_zonedb_t *db);
-const knot_zone_t **knot_zonedb_zones(const knot_zonedb_t *db);
+size_t knot_zonedb_size(const knot_zonedb_t *db);
 
 /*!
  * \brief Destroys and deallocates the zone database structure (but not the
@@ -159,7 +139,6 @@ void knot_zonedb_free(knot_zonedb_t **db);
  */
 void knot_zonedb_deep_free(knot_zonedb_t **db);
 
-/*----------------------------------------------------------------------------*/
 
 #endif /* _KNOT_ZONEDB_H_ */
 

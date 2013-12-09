@@ -1780,7 +1780,7 @@ int zones_process_response(knot_nameserver_t *nameserver,
 		rcu_read_lock();
 		const knot_dname_t *zone_name = knot_packet_qname(packet);
 		/*! \todo Change the access to the zone db. */
-		knot_zone_t *zone = knot_zonedb_find_zone(
+		knot_zone_t *zone = knot_zonedb_find(
 		                        nameserver->zone_db,
 		                        zone_name);
 
@@ -2023,14 +2023,13 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_zonedb_deep_free(&old_db);
 
 	/* Update events scheduled for zone. */
-	knot_zone_t *zone = NULL;
-	const knot_zone_t **zones = knot_zonedb_zones(ns->zone_db);
-
-	/* REFRESH zones. */
-	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
-		zone = (knot_zone_t *)zones[i];
+	knot_zonedb_iter_t it;
+	knot_zonedb_iter_begin(ns->zone_db, &it);
+	while(!knot_zonedb_iter_finished(&it)) {
+		knot_zone_t *zone = knot_zonedb_iter_val(&it);
 		zones_schedule_refresh(zone, 0); /* Now. */
 		zones_schedule_notify(zone);
+		knot_zonedb_iter_next(&it);
 	}
 
 	return KNOT_EOK;
@@ -2919,7 +2918,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 	zones_cancel_dnssec(zone);
 	/* Calculate differences. */
 	rcu_read_lock();
-	knot_zone_t *z_old = knot_zonedb_find_zone(ns->zone_db,
+	knot_zone_t *z_old = knot_zonedb_find(ns->zone_db,
 	                                           zone->name);
 	/* Ensure both new and old have zone contents. */
 	knot_zone_contents_t *zc = knot_zone_get_contents(zone);

@@ -84,14 +84,14 @@ static const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
 	 */
 	if (qtype == KNOT_RRTYPE_DS) {
 		const knot_dname_t *parent = knot_wire_next_label(qname, NULL);
-		zone = knot_zonedb_find_zone_for_name(zdb, parent);
+		zone = knot_zonedb_find_suffix(zdb, parent);
 		/* If zone does not exist, search for its parent zone,
 		   this will later result to NODATA answer. */
 		if (zone == NULL) {
-			zone = knot_zonedb_find_zone_for_name(zdb, qname);
+			zone = knot_zonedb_find_suffix(zdb, qname);
 		}
 	} else {
-		zone = knot_zonedb_find_zone_for_name(zdb, qname);
+		zone = knot_zonedb_find_suffix(zdb, qname);
 	}
 
 	return zone;
@@ -3580,7 +3580,7 @@ dbg_ns_exec_verb(
 	free(name_str);
 );
 	// find zone
-	*zone = knot_zonedb_find_zone(zonedb, qname);
+	*zone = knot_zonedb_find(zonedb, qname);
 
 	return KNOT_EOK;
 }
@@ -3707,7 +3707,7 @@ dbg_ns_exec_verb(
 	free(name_str);
 );
 	// find zone in which to search for the name
-	knot_zone_t *zone = knot_zonedb_find_zone(zonedb, qname);
+	knot_zone_t *zone = knot_zonedb_find(zonedb, qname);
 
 	// if no zone found, return NotAuth
 	if (zone == NULL) {
