@@ -118,14 +118,21 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 
 /*----------------------------------------------------------------------------*/
 
+static value_t *find_name(knot_zonedb_t *db, const knot_dname_t *dname, uint16_t size)
+{
+	return hhash_find(db->hash, (const char*)dname, size);
+}
+
+/*----------------------------------------------------------------------------*/
+
 knot_zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 {
-	if (!db || !zone_name) {
+	int name_size = knot_dname_size(zone_name);
+	if (!db || name_size < 1) {
 		return NULL;
 	}
 
-	int name_size = knot_dname_size(zone_name);
-	value_t *ret = hhash_find(db->hash, (const char*)zone_name, name_size);
+	value_t *ret = find_name(db, zone_name, name_size);
 	if (ret == NULL) {
 		return NULL;
 	}
@@ -150,17 +157,20 @@ knot_zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dnam
 	}
 
 	/* Compare possible suffixes. */
-	knot_zone_t *ret = NULL;
-	while (zone_labels > -1) { /* Include root label. */
-		ret = knot_zonedb_find(db, dname);
-		if (ret != NULL) {
-			break;
+	value_t *val = NULL;
+	int name_size = knot_dname_size(dname);
+	while (name_size > 0) { /* Include root label. */
+		val = find_name(db, dname, name_size);
+		if (val != NULL) {
+			return *val;
 		}
+
+		/* Next label */
+		name_size -= (dname[0] + 1);
 		dname = knot_wire_next_label(dname, NULL);
-		--zone_labels;
 	}
 
-	return ret;
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/

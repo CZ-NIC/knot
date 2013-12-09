@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 		if (knot_zonedb_find_suffix(db, dname) == zones[i]) {
 			++nr_passed;
 		} else {
-			diag("knot_zonedb_find_zone(%s) failed", buf);
+			diag("knot_zonedb_find_suffix(%s) failed", buf);
 		}
 		knot_dname_free(&dname);
 	}
