@@ -157,6 +157,7 @@ knot_zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dnam
 			break;
 		}
 		dname = knot_wire_next_label(dname, NULL);
+		--zone_labels;
 	}
 
 	return ret;
