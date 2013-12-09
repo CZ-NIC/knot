@@ -87,9 +87,9 @@ int main(int argc, char *argv[])
 
 	knot_zonedb_free(&ns->zone_db);
 	ns->zone_db = knot_zonedb_new(1);
-	knot_zonedb_add_zone(ns->zone_db, root);
+	knot_zonedb_insert(ns->zone_db, root);
 	knot_zonedb_build_index(ns->zone_db);
-	assert(knot_zonedb_find_zone_for_name(ns->zone_db, root_name));
+	assert(knot_zonedb_find(ns->zone_db, root_name));
 
 	/* Create processing context. */
 	ns_proc_context_t query_ctx;
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 
 	/* Finish. */
 	state = ns_proc_finish(&query_ctx);
-	ok(state & NS_PROC_FINISH, "ns: processing end" );
+	ok(state & NS_PROC_NOOP, "ns: processing end" );
 
 	/* Cleanup. */
 	free(root->data);

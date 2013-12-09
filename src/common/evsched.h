@@ -155,8 +155,9 @@ event_t* evsched_next(evsched_t *s);
  *
  * \param s Event scheduler.
  *
- * \retval 0 if successful.
- * \retval -1 on errors.
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ENOTRUNNING
  */
 int evsched_event_finished(evsched_t *s);
 
@@ -167,8 +168,8 @@ int evsched_event_finished(evsched_t *s);
  * \param ev Prepared event.
  * \param dt Time difference in milliseconds from now (dt is relative).
  *
- * \retval 0 on success.
- * \retval <0 on error.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL
  */
 int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt);
 
@@ -212,9 +213,8 @@ event_t* evsched_schedule_term(evsched_t *s, uint32_t dt);
  * \param s Event scheduler.
  * \param ev Scheduled event.
  *
- * \retval 0 if already ran.
- * \retval 1 if found and cancelled.
- * \retval <0 on error.
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
  */
 int evsched_cancel(evsched_t *s, event_t *ev);
 

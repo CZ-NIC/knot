@@ -139,8 +139,9 @@ src/libknot/consts.c
 src/libknot/consts.h
 src/libknot/dname.c
 src/libknot/dname.h
-src/libknot/dnssec/cleanup.h
 src/libknot/dnssec/config.h
+src/libknot/dnssec/crypto.c
+src/libknot/dnssec/crypto.h
 src/libknot/dnssec/key.c
 src/libknot/dnssec/key.h
 src/libknot/dnssec/nsec-bitmap.h

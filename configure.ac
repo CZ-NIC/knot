@@ -19,7 +19,7 @@ AM_PROG_CC_C_O
 AC_PROG_CPP_WERROR
 
 # Default compiler flags
-CFLAGS="$CFLAGS -Wall"
+CFLAGS="$CFLAGS -Wall -Werror=format-security"
 
 # Checks for programs.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
@@ -284,6 +284,22 @@ AS_IF([test "$with_openssl" != "no"],[
     ])
   ])
 ])
+
+AC_ARG_WITH(libidn, AC_HELP_STRING([--with-libidn=[DIR]],
+    [Support IDN (needs GNU Libidn)]),
+    libidn=$withval, libidn=yes)
+if test "$libidn" != "no"; then
+    if test "$libidn" != "yes"; then
+        LDFLAGS="${LDFLAGS} -L$libidn/lib"
+        CPPFLAGS="${CPPFLAGS} -I$libidn/include"
+    fi
+    AC_CHECK_HEADER(idna.h, AC_CHECK_LIB(idn, stringprep_check_version,
+                                 [libidn=yes LIBS="${LIBS} -lidn"], libidn=no),
+                    libidn=no)
+fi
+if test "$libidn" != "no" ; then
+    AC_DEFINE(LIBIDN, 1, [Define to 1 if you want IDN support.])
+fi
 
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])

@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 			knot_dname_free(&dname);
 			goto cleanup;
 		}
-		if (knot_zonedb_add_zone(db, zones[i]) == KNOT_EOK) {
+		if (knot_zonedb_insert(db, zones[i]) == KNOT_EOK) {
 			++nr_passed;
 		} else {
 			diag("knot_zonedb_add_zone(%s) failed", zone_list[i]);
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	nr_passed = 0;
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
 		dname = knot_dname_from_str(zone_list[i]);
-		if (knot_zonedb_find_zone(db, dname) == zones[i]) {
+		if (knot_zonedb_find(db, dname) == zones[i]) {
 			++nr_passed;
 		} else {
 			diag("knot_zonedb_find_zone(%s) failed", zone_list[i]);
@@ -88,10 +88,10 @@ int main(int argc, char *argv[])
 			strncat(buf, zone_list[i], strlen(zone_list[i]));
 		}
 		dname = knot_dname_from_str(buf);
-		if (knot_zonedb_find_zone_for_name(db, dname) == zones[i]) {
+		if (knot_zonedb_find_suffix(db, dname) == zones[i]) {
 			++nr_passed;
 		} else {
-			diag("knot_zonedb_find_zone(%s) failed", buf);
+			diag("knot_zonedb_find_suffix(%s) failed", buf);
 		}
 		knot_dname_free(&dname);
 	}
@@ -101,8 +101,7 @@ int main(int argc, char *argv[])
 	nr_passed = 0;
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
 		dname = knot_dname_from_str(zone_list[i]);
-		zone = knot_zonedb_remove_zone(db, dname);
-		if (zone == zones[i]) {
+		if (knot_zonedb_del(db, dname) == KNOT_EOK) {
 			knot_zone_free(&zone);
 			++nr_passed;
 		} else {

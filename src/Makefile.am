@@ -88,6 +88,14 @@ knsupdate_SOURCES =				\
 	utils/nsupdate/nsupdate_exec.c
 
 knsec3hash_SOURCES =				\
+	utils/common/msg.h			\
+	utils/common/msg.c			\
+	utils/common/netio.h			\
+	utils/common/netio.c			\
+	utils/common/resolv.h			\
+	utils/common/resolv.c			\
+	utils/common/params.h			\
+	utils/common/params.c			\
 	utils/nsec3hash/nsec3hash_main.c
 
 libknot_la_SOURCES =				\

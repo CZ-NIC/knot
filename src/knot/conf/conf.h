@@ -118,7 +118,7 @@ typedef struct conf_zone_t {
 	uint16_t cls;              /*!< Zone class (IN or CH). */
 	char *file;                /*!< Path to a zone file. */
 	char *ixfr_db;             /*!< Path to a IXFR database file. */
-	bool dnssec_enable;        /*!< DNSSEC: Online signing enabled. */
+	int dnssec_enable;         /*!< DNSSEC: Online signing enabled. */
 	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
 	int sig_lifetime;          /*!< Validity period of DNSSEC signatures. */
 	int dbsync_timeout;        /*!< Interval between syncing to zonefile.*/
@@ -255,7 +255,7 @@ typedef struct conf_t {
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
-	bool dnssec_enable;  /*!< DNSSEC: Online signing enabled. */
+	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
 	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
 
