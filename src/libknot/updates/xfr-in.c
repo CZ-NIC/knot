@@ -2006,7 +2006,8 @@ static int xfrin_switch_nodes_in_node(knot_node_t **node, void *data)
 	UNUSED(data);
 
 	assert(node && *node);
-	assert(knot_node_new_node(*node) == NULL);
+#warning("falala\n");
+//	assert(knot_node_new_node(*node) == NULL);
 
 	knot_node_update_refs(*node);
 

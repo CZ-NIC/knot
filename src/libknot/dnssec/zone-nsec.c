@@ -945,7 +945,7 @@ static int walk_dname_and_store_empty_nonterminals(knot_dname_t *dname,
 
 	// Start after the first cut
 	const knot_dname_t *cut = knot_wire_next_label(dname, NULL);
-	while (*cut != '\0') {
+	while (*cut != '\0' && !knot_dname_is_equal(cut, zone->apex->owner)) {
 		// Search for name in the zone
 		const knot_node_t *n = knot_zone_contents_find_node(zone, cut);
 		if (n == NULL || n->rrset_count == 0) {
@@ -961,11 +961,11 @@ static int walk_dname_and_store_empty_nonterminals(knot_dname_t *dname,
 
 			// Convert dname to sortable format
 			uint8_t lf[KNOT_DNAME_MAXLEN];
-			knot_dname_lf(lf, n->owner, NULL);
-			// Store into trie (duplicates 'rewritten')
-			hhash_insert(t, (char *)lf+1, *lf, n->owner);
+			knot_dname_lf(lf, cut, NULL);
+			// Store into table (duplicates 'rewritten')
+			hhash_insert(t, (char *)lf+1, *lf, (value_t *)cut);
 		}
-		cut = knot_wire_next_label(dname, NULL);
+		cut = knot_wire_next_label(cut, NULL);
 	}
 	return KNOT_EOK;
 }
@@ -1226,10 +1226,13 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		return KNOT_EOK;
 	} else {
 		// Drop old
-		int ret = changeset_remove_nsec(old_nsec3, out_ch);
-		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&gen_nsec3, 1);
-			return ret;
+		int ret = KNOT_EOK;
+		if (old_nsec3) {
+			ret = changeset_remove_nsec(old_nsec3, out_ch);
+			if (ret != KNOT_EOK) {
+				knot_rrset_deep_free(&gen_nsec3, 1);
+				return ret;
+			}
 		}
 
 		// Add new
@@ -1408,7 +1411,7 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 
 		const knot_rrset_t *nsec_rrset = NULL;
 		const knot_node_t *next_node = NULL;
-		if (next_dname_equal || node_deleted) {
+		if (next_dname_equal) {
 			// Updating node, extract next
 			nsec_rrset = knot_node_rrset(b_node, KNOT_RRTYPE_NSEC);
 			prev_zone_node = b_node;
@@ -1439,13 +1442,24 @@ static const knot_dname_t *next_dname_from_nsec3_rrset(const knot_rrset_t *rr,
 	uint8_t *next_hashed = NULL;
 	uint8_t hashed_size = 0;
 	knot_rdata_nsec3_next_hashed(rr, 0, &next_hashed, &hashed_size);
-	uint8_t catted_hash[hashed_size + knot_dname_size(zone_apex)];
-	memcpy(catted_hash, next_hashed, hashed_size);
-	memcpy(catted_hash + hashed_size, zone_apex, knot_dname_size(zone_apex));
+	uint8_t *encoded = NULL;
+	int32_t encoded_size = base32hex_encode_alloc(next_hashed, hashed_size,
+	                                              &encoded);
+	if (encoded_size < 0) {
+		return NULL;
+	}
+
+	uint8_t catted_hash[encoded_size + knot_dname_size(zone_apex)];
+	*catted_hash = encoded_size;
+	memcpy(catted_hash + 1, encoded, encoded_size);
+	free(encoded);
+	memcpy(catted_hash + 1 + encoded_size,
+	       zone_apex, knot_dname_size(zone_apex));
 	assert(knot_dname_wire_check(catted_hash,
-	                             catted_hash + hashed_size +
+	                             catted_hash + encoded_size +
 	                             knot_dname_size(zone_apex), NULL));
 	knot_dname_t *next_dname = knot_dname_copy(catted_hash);
+	knot_dname_to_lower(next_dname);
 	return next_dname;
 }
 
@@ -1456,6 +1470,8 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 	assert(b && b_hash);
 	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
 	assert(fix_data);
+	printf("FIX: a=%s a_hash=%s b=%s b_hash=%s\n",
+	       knot_dname_to_str(a), knot_dname_to_str(a_hash), knot_dname_to_str(b),knot_dname_to_str(b_hash));
 	// Get changed nodes from zone
 	const knot_node_t *a_node = knot_zone_contents_find_node(fix_data->zone,
 	                                                         a);
@@ -1479,9 +1495,10 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 	}
 
 	// Find out whether the previous node is also part of the changeset.
-	bool dname_equal =
-		a ? knot_dname_is_equal(prev_nsec3_node->owner, a_hash) : false;
-	if (dname_equal || knot_dname_cmp(a_hash, prev_nsec3_node->owner) > 0) {
+	bool use_prev_from_chgs =
+		a ? knot_dname_is_equal(prev_nsec3_node->owner, a_hash) ||
+		    knot_dname_cmp(a_hash, prev_nsec3_node->owner) > 0 : false;
+	if (use_prev_from_chgs > 0) {
 		// No valid data for the previous node, create the forward NSEC
 		return update_nsec3(a_hash, b_hash, a_node, fix_data->out_ch,
 		                    fix_data->zone, 3600);
@@ -1490,11 +1507,8 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		                        knot_dname_is_equal(fix_data->next_dname, b_hash);
 		bool use_next = fix_data->next_dname && !next_dname_equal;
 		if (use_next) {
-			const knot_node_t *next_node =
-				knot_zone_contents_find_nsec3_node(fix_data->zone,
-				                                   fix_data->next_dname);
 			int ret = update_nsec3(a_hash ? a_hash : b_hash,
-			                       next_node->owner, a_node,
+			                       fix_data->next_dname, a_node ? a_node : b_node,
 			                       fix_data->out_ch,
 			                       fix_data->zone, 3600);
 			fix_data->next_dname = NULL;
@@ -1502,34 +1516,33 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		}
 
 		const knot_rrset_t *nsec3_rrset = NULL;
-		const knot_node_t *next_node = NULL;
-		if (next_dname_equal || node_deleted) {
+		if (next_dname_equal) {
 			// Updating node, extract next
 			nsec3_rrset = knot_node_rrset(b_nsec3_node, KNOT_RRTYPE_NSEC3);
 			assert(nsec3_rrset);
 			prev_nsec3_node = b_nsec3_node;
-			const knot_dname_t *next_dname = next_dname_from_nsec3_rrset(nsec3_rrset,
-			                                                             fix_data->zone->apex->owner);
-			if (next_dname == NULL) {
-				return KNOT_ENOMEM;
-			}
-			next_node = knot_zone_contents_find_nsec3_node(fix_data->zone,
-			                                               next_dname);
+			return update_nsec3(prev_nsec3_node->owner,
+			                    next_dname_from_nsec3_rrset(nsec3_rrset, fix_data->zone->apex->owner),
+			                    NULL, fix_data->out_ch, fix_data->zone, 3600);
 		} else {
-			// Previous node was not changed in DDNS, it has to have NSEC
+			// Previous node was not changed in DDNS TODO really?
 			nsec3_rrset = knot_node_rrset(prev_nsec3_node,
 			                              KNOT_RRTYPE_NSEC3);
-			next_node = b_node;
-			assert(nsec3_rrset);
+			if (nsec3_rrset == NULL) {
+				fix_data->next_dname = b_hash;
+			} else {
+				fix_data->next_dname =
+					next_dname_from_nsec3_rrset(nsec3_rrset,
+					                            fix_data->zone->apex->owner);
+			}
+		printf("FIX: Zone %s %s\n",
+		       knot_dname_to_str(prev_nsec3_node->owner),
+		       knot_dname_to_str(b_hash));
+			return update_nsec3(prev_nsec3_node->owner, b_hash,
+			                    NULL, fix_data->out_ch, fix_data->zone, 3600);
 		}
-
-		// Store next node for next iterations
-		fix_data->next_dname = next_dname_from_nsec3_rrset(nsec3_rrset,
-		                                                   fix_data->zone->apex->owner);
-		// Fix NSEC
-		return update_nsec3(prev_nsec3_node->owner, next_node->owner,
-		                    NULL, fix_data->out_ch, fix_data->zone, 3600);
 	}
+
 
 	return KNOT_EOK;
 }
@@ -1684,6 +1697,8 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 		ret = create_nsec3_hashes_from_trie(sorted_changes,
 		                                    zone,
 		                                    &nsec3_names);
+		hattrie_build_index(nsec3_names);
+		fix_data.sorted_changes = nsec3_names;
 		// TODO finalize
 		ret = chain_iterate_nsec3(nsec3_names, fix_nsec3_chain,
 		                          &fix_data);

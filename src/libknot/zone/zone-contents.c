@@ -1081,7 +1081,7 @@ knot_node_t *knot_zone_contents_get_previous_nsec3(
 const knot_node_t *knot_zone_contents_find_previous_nsec3(
 	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
-	return knot_zone_contents_get_previous(zone, name);
+	return knot_zone_contents_get_previous_nsec3(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
