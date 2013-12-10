@@ -138,6 +138,8 @@ static uint32_t zones_soa_expire(knot_zone_t *zone)
  */
 static int zones_expire_ev(event_t *e)
 {
+	assert(e);
+
 	dbg_zones("zones: EXPIRE timer event\n");
 	if (e->data == NULL) {
 		return KNOT_EINVAL;
@@ -197,6 +199,8 @@ static int zones_expire_ev(event_t *e)
  */
 static int zones_refresh_ev(event_t *e)
 {
+	assert(e);
+
 	dbg_zones("zones: REFRESH or RETRY timer event\n");
 	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)e->data;
@@ -287,6 +291,9 @@ static int zones_refresh_ev(event_t *e)
 /*! \brief Function for marking nodes as synced and updated. */
 static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
 {
+	assert(j);
+	assert(n);
+
 	/* Check for dirty bit (not synced to permanent storage). */
 	if (n->flags & JOURNAL_DIRTY) {
 
@@ -317,6 +324,10 @@ static int zones_store_chgsets_try_store(knot_zone_t *zone,
                                          knot_changesets_t *chgsets,
                                          journal_t **transaction)
 {
+	assert(zone);
+	assert(changesets);
+	assert(transaction);
+
 	*transaction = zones_store_changesets_begin(zone);
 	if (*transaction == NULL) {
 		dbg_zones("Could not start journal operation.\n");
@@ -339,6 +350,9 @@ static int zones_store_chgsets_try_store(knot_zone_t *zone,
 
 static int zones_zonefile_sync_from_ev(knot_zone_t *zone, zonedata_t *zd)
 {
+	assert(zone);
+	assert(zd);
+
 	/* Only on zones with valid contents (non empty). */
 	int ret = KNOT_EOK;
 	if (knot_zone_contents(zone)) {
@@ -369,6 +383,7 @@ static int zones_zonefile_sync_from_ev(knot_zone_t *zone, zonedata_t *zd)
  */
 static int zones_zonefile_sync_ev(event_t *e)
 {
+	assert(e);
 	dbg_zones("zones: IXFR database SYNC timer event\n");
 
 	/* Fetch zone. */
@@ -414,6 +429,13 @@ static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
 	 * are larger than max journal size, so return error.
 	 */
 	if (ret == KNOT_EBUSY) {
+		log_server_notice("Journal for '%s' is full, flushing.\n",
+		                  zd->conf->name);
+		/* Don't worry about sync event. It can't happen while this
+		 * event (signing) is not finished. We may thus do the sync
+		 * by hand and leave the planned one there to be executed
+		 * later. */
+
 		/* Fetch zone-specific data. */
 		zonedata_t *zd = (zonedata_t *)zone->data;
 
@@ -777,6 +799,9 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
                                             knot_changesets_t *sec_chs,
                                             journal_t **transaction)
 {
+	assert(zone);
+	assert(transaction);
+
 	if (zones_changesets_empty(diff_chs) &&
 	    zones_changesets_empty(sec_chs)) {
 		return KNOT_EOK;
@@ -893,6 +918,10 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
                                 knot_zone_t *zone, const sockaddr_t *from,
                                 knot_packet_t *query, size_t qsize)
 {
+	assert(zone);
+	assert(from);
+	assert(query);
+
 	rcu_read_lock();
 
 	/* Check transport type. */
@@ -949,6 +978,9 @@ static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
                                        uint32_t used_lifetime,
                                        uint32_t used_refresh)
 {
+	assert(zone);
+	assert(zd);
+
 	int ret = KNOT_EOK;
 	uint32_t new_expire = time(NULL) + (used_lifetime - used_refresh);
 	if (new_expire < zd->dnssec_timer->tv.tv_sec) {
@@ -980,6 +1012,14 @@ static int zones_process_update_auth(knot_zone_t *zone,
                                      const sockaddr_t *addr,
                                      knot_tsig_key_t *tsig_key)
 {
+	assert(zone);
+	assert(resp);
+	assert(resp_wire);
+	assert(rsize);
+	assert(rcode);
+	assert(addr);
+	assert(tsig_key);
+
 	int ret = KNOT_EOK;
 	dbg_zones_verb("TSIG check successful. Answering query.\n");
 
@@ -2299,15 +2339,7 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src, journal_t 
 			break;
 	}
 
-	/* Flush if the journal is full. */
-	if (ret == KNOT_EBUSY) {
-		log_server_notice("Journal for '%s' is full, flushing.\n",
-		                  zd->conf->name);
-		/* Don't worry about sync event. It can't happen while this
-		 * event (signing) is not finished. We may thus do the sync
-		 * by hand and leave the planned one there to be executed
-		 * later. */
-	}
+	/*! @note If the journal is full, this function returns KNOT_EBUSY. */
 
 	/* Written changesets to journal. */
 	return ret;
