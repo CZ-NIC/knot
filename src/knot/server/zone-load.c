@@ -57,7 +57,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 		evsched_t *sch = zd->xfr_in.timer->parent;
 		evsched_cancel(sch, zd->xfr_in.timer);
 		evsched_event_free(sch, zd->xfr_in.timer);
-		zd->xfr_in.timer = 0;
+		zd->xfr_in.timer = NULL;
 	}
 
 	/* Cancel EXPIRE timer. */
@@ -65,7 +65,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 		evsched_t *sch = zd->xfr_in.expire->parent;
 		evsched_cancel(sch, zd->xfr_in.expire);
 		evsched_event_free(sch, zd->xfr_in.expire);
-		zd->xfr_in.expire = 0;
+		zd->xfr_in.expire = NULL;
 	}
 
 	/* Cancel IXFR DB sync timer. */
@@ -73,7 +73,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 		evsched_t *sch = zd->ixfr_dbsync->parent;
 		evsched_cancel(sch, zd->ixfr_dbsync);
 		evsched_event_free(sch, zd->ixfr_dbsync);
-		zd->ixfr_dbsync = 0;
+		zd->ixfr_dbsync = NULL;
 	}
 
 	/* Cancel DNSSEC timer. */
@@ -118,25 +118,16 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Link to config. */
 	zd->conf = cfg;
-	zd->server = 0;
 
 	/* Initialize mutex. */
 	pthread_mutex_init(&zd->lock, 0);
 
-	/* Initialize ACLs. */
-	zd->xfr_out = NULL;
-	zd->notify_in = NULL;
-	zd->notify_out = NULL;
-	zd->update_in = NULL;
-
 	/* Initialize XFR-IN. */
 	sockaddr_init(&zd->xfr_in.master, -1);
-	zd->xfr_in.acl = 0;
 	zd->xfr_in.bootstrap_retry = (XFRIN_BOOTSTRAP_DELAY * tls_rand());
 
 	/* Initialize IXFR database. */
 	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit, JOURNAL_DIRTY);
-
 	if (zd->ixfr_db == NULL) {
 		char ebuf[256] = {0};
 		if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
@@ -145,12 +136,6 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 			                   "IXFR. (%s)\n", cfg->name, ebuf);
 		}
 	}
-
-	/* Create NULL events. */
-	zd->ixfr_dbsync = NULL;
-	zd->xfr_in.timer = NULL;
-	zd->xfr_in.expire = NULL;
-	zd->dnssec_timer = NULL;
 
 	/* Set and install destructor. */
 	zone->data = zd;

@@ -141,6 +141,7 @@ event_t *evsched_event_new(evsched_t *s, int type)
 	/* Initialize. */
 	memset(e, 0, sizeof(event_t));
 	e->type = type;
+	e->parent = s;
 	return e;
 }
 
