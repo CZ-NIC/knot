@@ -117,6 +117,8 @@ typedef struct conf_zone_t {
 	char *name;                /*!< Zone name. */
 	uint16_t cls;              /*!< Zone class (IN or CH). */
 	char *file;                /*!< Path to a zone file. */
+	char *storage;             /*!< Path to a storage dir. */
+	char *dnssec_keydir;       /*!< Path to a DNSSEC key dir. */
 	char *ixfr_db;             /*!< Path to a IXFR database file. */
 	int dnssec_enable;         /*!< DNSSEC: Online signing enabled. */
 	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */

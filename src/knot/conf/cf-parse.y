@@ -929,6 +929,8 @@ zone:
  | zone FILENAME TEXT ';' { this_zone->file = $3.t; }
  | zone BUILD_DIFFS BOOL ';' { this_zone->build_diffs = $3.i; }
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3.i; }
+ | zone STORAGE TEXT ';' { this_zone->storage = $3.t; }
+ | zone DNSSEC_KEYDIR TEXT ';' { this_zone->dnssec_keydir = $3.t; }
  | zone DISABLE_ANY BOOL ';' { this_zone->disable_any = $3.i; }
  | zone DBSYNC_TIMEOUT NUM ';' {
 	SET_INT(this_zone->dbsync_timeout, $3.i, "zonefile-sync");

@@ -140,14 +140,23 @@ static void conf_update_hooks(conf_t *conf)
 	}
 }
 
-/*! \brief Make relative path absolute to given directory.
- *  \param basedir Base directory.
- *  \param file Relative file name.
+/*!
+ * \brief Make relative path absolute to given directory.
+ *
+ * If basedir is not provided, only normalization is performed.
+ * If file is not provided, returns NULL.
+ *
+ * \param basedir Base directory.
+ * \param file Relative file name.
  */
 static char* conf_abs_path(const char *basedir, char *file)
 {
+	if (!file) {
+		return NULL;
+	}
+
 	/* Make path absolute to the directory. */
-	if (file[0] != '/') {
+	if (basedir && file[0] != '/') {
 		char *basepath = strcdup(basedir, "/");
 		char *path = strcdup(basepath, file);
 		free(basepath);
@@ -320,8 +329,16 @@ static int conf_process(conf_t *conf)
 			}
 		}
 
+		// Default data directories
+		if (!zone->storage && conf->storage) {
+			zone->storage = strdup(conf->storage);
+		}
+		if (!zone->dnssec_keydir && conf->dnssec_keydir) {
+			zone->dnssec_keydir = strdup(conf->dnssec_keydir);
+		}
+
 		// Default policy for DNSSEC
-		if (!conf->dnssec_keydir) {
+		if (!zone->dnssec_keydir) {
 			zone->dnssec_enable = 0;
 		} else if (zone->dnssec_enable < 0) {
 			zone->dnssec_enable = conf->dnssec_enable;
@@ -348,16 +365,31 @@ static int conf_process(conf_t *conf)
 			}
 		}
 
-		// Relative zone filenames should be relative to storage
-		zone->file = conf_abs_path(conf->storage, zone->file);
-		if (zone->file == NULL) {
+		// Resolve relative paths everywhere
+		zone->storage = conf_abs_path(conf->storage, zone->storage);
+		zone->file = conf_abs_path(zone->storage, zone->file);
+		if (zone->dnssec_enable) {
+			zone->dnssec_keydir = conf_abs_path(zone->storage,
+			                                    zone->dnssec_keydir);
+		}
+
+		if (!zone->storage || !zone->file) {
+			free(zone->storage);
+			free(zone->file);
 			ret = KNOT_ENOMEM;
+			continue;
+		}
+
+		// Check DNSSEC keydir setting presence
+		if (zone->dnssec_enable && !zone->dnssec_keydir) {
+			log_server_error("Option 'dnssec-keydir' not set.\n");
+			ret = KNOT_EINVAL;
 			continue;
 		}
 
 		/* Create journal filename. */
 		size_t zname_len = strlen(zone->name);
-		size_t stor_len = strlen(conf->storage);
+		size_t stor_len = strlen(zone->storage);
 		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
@@ -367,9 +399,9 @@ static int conf_process(conf_t *conf)
 			continue;
 		}
 		char *dpos = dest;
-		memcpy(dpos, conf->storage, stor_len + 1);
+		memcpy(dpos, zone->storage, stor_len + 1);
 		dpos += stor_len;
-		if (conf->storage[stor_len - 1] != '/') {
+		if (zone->storage[stor_len - 1] != '/') {
 			*(dpos++) = '/';
 			*dpos = '\0';
 		}
@@ -937,6 +969,8 @@ void conf_free_zone(conf_zone_t *zone)
 	free(zone->name);
 	free(zone->file);
 	free(zone->ixfr_db);
+	free(zone->dnssec_keydir);
+	free(zone->storage);
 	free(zone);
 }
 
