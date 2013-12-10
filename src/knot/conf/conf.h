@@ -48,7 +48,7 @@
 #define CONFIG_DEFAULT_PORT 53
 #define CONFIG_NOTIFY_RETRIES 5  /*!< 5 retries (suggested in RFC1996) */
 #define CONFIG_NOTIFY_TIMEOUT 60 /*!< 60s (suggested in RFC1996) */
-#define CONFIG_DBSYNC_TIMEOUT (60*60) /*!< 1 hour. */
+#define CONFIG_DBSYNC_TIMEOUT 0 /*!< Sync immediately. */
 #define CONFIG_REPLY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
 #define CONFIG_HANDSHAKE_WD 10 /*!< [secs] for connection to make a request.*/
 #define CONFIG_IDLE_WD  60 /*!< [secs] of allowed inactivity between requests */

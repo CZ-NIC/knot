@@ -976,10 +976,10 @@ zones:
 	SET_NUM(new_config->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
  | zones DBSYNC_TIMEOUT NUM ';' {
-	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
+	SET_NUM(new_config->dbsync_timeout, $3.i, 0, INT_MAX, "zonefile-sync");
  }
  | zones DBSYNC_TIMEOUT INTERVAL ';' {
-	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
+	SET_NUM(new_config->dbsync_timeout, $3.i, 0, INT_MAX, "zonefile-sync");
  }
  | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i; }
  | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
