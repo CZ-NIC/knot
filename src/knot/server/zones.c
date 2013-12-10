@@ -325,7 +325,7 @@ static int zones_store_chgsets_try_store(knot_zone_t *zone,
                                          journal_t **transaction)
 {
 	assert(zone);
-	assert(changesets);
+	assert(chgsets);
 	assert(transaction);
 
 	*transaction = zones_store_changesets_begin(zone);
@@ -429,15 +429,15 @@ static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
 	 * are larger than max journal size, so return error.
 	 */
 	if (ret == KNOT_EBUSY) {
+		/* Fetch zone-specific data. */
+		zonedata_t *zd = (zonedata_t *)zone->data;
+
 		log_server_notice("Journal for '%s' is full, flushing.\n",
 		                  zd->conf->name);
 		/* Don't worry about sync event. It can't happen while this
 		 * event (signing) is not finished. We may thus do the sync
 		 * by hand and leave the planned one there to be executed
 		 * later. */
-
-		/* Fetch zone-specific data. */
-		zonedata_t *zd = (zonedata_t *)zone->data;
 
 		assert(*transaction == NULL);
 
