@@ -16,10 +16,6 @@ system {
   # May also specify user.group (e.g. knot.knot)
   user knot.knot;
 
-  # This is a default directory to place slave zone files, journals etc.
-  # default: ${localstatedir}/lib/knot, configured with --with-storage
-  # storage "@storage_dir@";
-
   # Directory for storing run-time data
   # e.g. PID file and control sockets
   # default: ${localstatedir}/run/knot, configured with --with-rundir
@@ -62,6 +58,10 @@ control {
 #}
 
 zones {
+#  This is a default directory to place slave zone files, journals etc.
+#  default: ${localstatedir}/lib/knot, configured with --with-storage
+#  storage "@storage_dir@";
+#
 #  Example master zone
 #  example.com {
 #    file "@config_dir@/example.com.zone";
