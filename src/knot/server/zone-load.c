@@ -131,8 +131,6 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Initialize XFR-IN. */
 	sockaddr_init(&zd->xfr_in.master, -1);
-	zd->xfr_in.timer = 0;
-	zd->xfr_in.expire = 0;
 	zd->xfr_in.acl = 0;
 	zd->xfr_in.bootstrap_retry = (XFRIN_BOOTSTRAP_DELAY * tls_rand());
 
@@ -148,8 +146,11 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 		}
 	}
 
-	/* Initialize IXFR database syncing event. */
-	zd->ixfr_dbsync = 0;
+	/* Create NULL events. */
+	zd->ixfr_dbsync = NULL;
+	zd->xfr_in.timer = NULL;
+	zd->xfr_in.expire = NULL;
+	zd->dnssec_timer = NULL;
 
 	/* Set and install destructor. */
 	zone->data = zd;
@@ -231,6 +232,17 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 	return KNOT_EOK;
 }
 
+/*! \brief Create timer if not exists, cancel if running. */
+static void timer_reset(evsched_t *sched, event_t **ev,
+			event_cb_t cb, knot_zone_t *zone)
+{
+	if (*ev == NULL) {
+		*ev = evsched_event_new_cb(sched, cb, zone);
+	} else {
+		evsched_cancel(sched, *ev);
+	}
+}
+
 /*!
  * \brief Update zone data from new configuration.
  *
@@ -258,16 +270,19 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 
 	zd->server = (server_t *)ns->data;
 
-	// cancel IXFR sync timer
+	/* Create or cancel existing events. They must not be freed during their
+	 * lifetime since they are referenced from numerous places.
+	 * So each reload does following:
+	 *  1. all events are cancelled on zonedata update, but initialized
+	 *  2. all events may be scheduled (without changing the callback)
+	 *  3. events may be freed _ONLY_ on zone teardown
+	 */
 
-	if (zd->ixfr_dbsync) {
-		assert(zd->server->sched);
-		evsched_t *scheduler = zd->server->sched;
-
-		evsched_cancel(scheduler, zd->ixfr_dbsync);
-		evsched_event_free(scheduler, zd->ixfr_dbsync);
-		zd->ixfr_dbsync = NULL;
-	}
+	evsched_t *scheduler = zd->server->sched;
+	timer_reset(scheduler, &zd->ixfr_dbsync, zones_flush_ev, zone);
+	timer_reset(scheduler, &zd->xfr_in.timer, zones_refresh_ev, zone);
+	timer_reset(scheduler, &zd->xfr_in.expire, zones_expire_ev, zone);
+	timer_reset(scheduler, &zd->dnssec_timer, zones_dnssec_ev, zone);
 
 	// ACLs
 

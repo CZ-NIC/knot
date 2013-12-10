@@ -144,6 +144,17 @@ event_t *evsched_event_new(evsched_t *s, int type)
 	return e;
 }
 
+event_t *evsched_event_new_cb(evsched_t *s, event_cb_t cb, void *data)
+{
+	/* Create event. */
+	event_t *e = evsched_event_new(s, EVSCHED_CB);
+	if (e != NULL) {
+		e->cb = cb;
+		e->data = data;
+	}
+	return e;
+}
+
 void evsched_event_free(evsched_t *s, event_t *ev)
 {
 	if (!s || !ev) {
@@ -184,7 +195,7 @@ event_t* evsched_next(evsched_t *s)
 			/* Immediately return. */
 			if (timercmp_ge(&dt, &next_ev->tv)) {
 				s->cur = next_ev;
-                heap_delmin(&s->heap);
+				heap_delmin(&s->heap);
 				pthread_mutex_unlock(&s->mx);
 				pthread_mutex_lock(&s->rl);
 
@@ -262,12 +273,10 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, uint32_t d
 	}
 
 	/* Create event. */
-	event_t *e = evsched_event_new(s, EVSCHED_CB);
+	event_t *e = evsched_event_new_cb(s, cb, data);
 	if (!e) {
 		return NULL;
 	}
-	e->cb = cb;
-	e->data = data;
 
 	/* Schedule. */
 	if (evsched_schedule(s, e, dt) != 0) {

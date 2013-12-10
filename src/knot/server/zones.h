@@ -319,7 +319,7 @@ int zones_cancel_dnssec(knot_zone_t *zone);
  *
  * \return Error code, KNOT_OK if successful.
  */
-int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time, bool force);
+int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time);
 
 /*!
  * \brief Schedule IXFR sync for given zone.
@@ -376,6 +376,17 @@ int zones_journal_apply(knot_zone_t *zone);
 int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
                            const knot_nameserver_t *ns, bool zone_changed);
 
+/*! \brief Just sign current zone. */
+int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at);
+
+/*
+ * Event callbacks.
+ */
+
+int zones_expire_ev(event_t *e);
+int zones_refresh_ev(event_t *e);
+int zones_flush_ev(event_t *e);
+int zones_dnssec_ev(event_t *event);
 
 #endif // _KNOTD_ZONES_H_
 
