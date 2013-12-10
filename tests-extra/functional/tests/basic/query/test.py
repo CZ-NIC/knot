@@ -18,10 +18,6 @@ t.start()
 
 ''' Negative answers. '''
 
-# Negative (REFUSED)
-resp = knot.dig("another.world", "SOA", udp=True)
-resp.cmp(bind)
-
 # Negative (NXDOMAIN)
 resp = knot.dig("nxdomain.flags", "A", udp=True)
 resp.cmp(bind)
