@@ -876,44 +876,6 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 /*** <<< #10 DEPRECATED */
 /*----------------------------------------------------------------------------*/
 
-/*!
- * \brief Reallocate space for Wildcard nodes.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- */
-static int knot_response_realloc_wc_nodes(const knot_node_t ***nodes,
-                                          const knot_dname_t ***snames,
-                                          short *max_count,
-                                          mm_ctx_t *mm)
-{
-
-	short new_max_count = *max_count + 8;
-
-	const knot_node_t **new_nodes = mm->alloc(mm->ctx,
-		new_max_count * sizeof(knot_node_t *));
-	CHECK_ALLOC_LOG(new_nodes, KNOT_ENOMEM);
-
-	const knot_dname_t **new_snames = mm->alloc(mm->ctx,
-	                        new_max_count * sizeof(knot_dname_t *));
-	if (new_snames == NULL) {
-		mm->free(new_nodes);
-		return KNOT_ENOMEM;
-	}
-
-	memcpy(new_nodes, *nodes, (*max_count) * sizeof(knot_node_t *));
-	memcpy(new_snames, *snames, (*max_count) * sizeof(knot_dname_t *));
-
-	mm->free(*nodes);
-	mm->free(*snames);
-
-	*nodes = new_nodes;
-	*snames = new_snames;
-	*max_count = new_max_count;
-
-	return KNOT_EOK;
-}
-
 int knot_pkt_add_opt(knot_pkt_t *resp,
                           const knot_opt_rr_t *opt_rr,
                           int add_nsid)
@@ -963,33 +925,6 @@ int knot_pkt_add_opt(knot_pkt_t *resp,
 	} else {
 		resp->opt_rr.size = EDNS_MIN_SIZE;
 	}
-
-	return KNOT_EOK;
-}
-
-int knot_pkt_add_wildcard_node(knot_pkt_t *response,
-                                    const knot_node_t *node,
-                                    const knot_dname_t *sname)
-{
-	if (response == NULL || node == NULL || sname == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (response->wildcard_nodes.count == response->wildcard_nodes.max
-	    && knot_response_realloc_wc_nodes(&response->wildcard_nodes.nodes,
-	                                      &response->wildcard_nodes.snames,
-	                                      &response->wildcard_nodes.max,
-	                                      &response->mm) != KNOT_EOK) {
-		return KNOT_ENOMEM;
-	}
-
-	response->wildcard_nodes.nodes[response->wildcard_nodes.count] = node;
-	response->wildcard_nodes.snames[response->wildcard_nodes.count] = sname;
-	++response->wildcard_nodes.count;
-
-	dbg_response_verb("Current wildcard nodes count: %d, max count: %d\n",
-	             response->wildcard_nodes.count,
-	             response->wildcard_nodes.max);
 
 	return KNOT_EOK;
 }

@@ -42,15 +42,6 @@
 /*** <<< #10 DEPRECATED */
 /*----------------------------------------------------------------------------*/
 
-struct knot_wildcard_nodes {
-	const knot_node_t **nodes; /*!< Wildcard nodes from CNAME processing. */
-	const knot_dname_t **snames;  /*!< SNAMEs related to the nodes. */
-	short count;             /*!< Count of items in the previous arrays. */
-	short max;               /*!< Capacity of the structure (allocated). */
-};
-
-typedef struct knot_wildcard_nodes knot_wildcard_nodes_t;
-
 #define KNOT_PKT_IN_AN(pkt) ((pkt)->current == KNOT_ANSWER)
 #define KNOT_PKT_IN_NS(pkt) ((pkt)->current == KNOT_AUTHORITY)
 #define KNOT_PKT_IN_AR(pkt) ((pkt)->current == KNOT_ADDITIONAL)
@@ -106,9 +97,6 @@ typedef struct knot_pkt {
 	/* #10 <<< SHOULD BE IN ANSWERING CONTEXT */
 	const knot_tsig_key_t *tsig_key;
 	const struct knot_pkt *query; /*!< Associated query. */
-
-	/*! \brief Wildcard nodes to be processed for NSEC/NSEC3. */
-	knot_wildcard_nodes_t wildcard_nodes;
 	/* #10 >>> SHOULD BE IN ANSWERING CONTEXT */
 
 	knot_section_t current;
@@ -203,11 +191,6 @@ static inline bool knot_pkt_have_nsid(const knot_pkt_t *pkt)
 int knot_pkt_add_opt(knot_pkt_t *resp,
                           const knot_opt_rr_t *opt_rr,
                           int add_nsid);
-
-
-int knot_pkt_add_wildcard_node(knot_pkt_t *response,
-                                    const knot_node_t *node,
-                                    const knot_dname_t *sname);
 
 /*----------------------------------------------------------------------------*/
 /*** >>> #10 DEPRECATED */
