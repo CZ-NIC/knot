@@ -169,6 +169,26 @@ static char* conf_abs_path(const char *basedir, char *file)
 }
 
 /*!
+ * \brief Check if given path is an existing directory.
+ *
+ * \param path  Path to be checked.
+ *
+ * \return Given path is a directory.
+ */
+static bool is_existing_dir(const char *path)
+{
+	assert(path);
+
+	struct stat st;
+
+	if (stat(path, &st) == -1) {
+		return false;
+	}
+
+	return S_ISDIR(st.st_mode);
+}
+
+/*!
  * \brief Process parsed configuration.
  *
  * This functions is called automatically after config parsing.
@@ -179,31 +199,6 @@ static char* conf_abs_path(const char *basedir, char *file)
  */
 static int conf_process(conf_t *conf)
 {
-	// Check
-	if (conf->storage == NULL) {
-		conf->storage = strdup(STORAGE_DIR);
-		if (conf->storage == NULL) {
-			return KNOT_ENOMEM;
-		}
-	}
-
-	// Normalize paths
-	conf->storage = strcpath(conf->storage);
-
-	// Storage directory exists?
-	struct stat st;
-	if (stat(conf->storage, &st) == -1) {
-		log_server_error("Could not open storage directory '%s'\n", conf->storage);
-		// I assume that conf->* is freed elsewhere
-		return KNOT_EINVAL;
-	}
-
-	// Storage directory is a directory?
-	if (S_ISDIR(st.st_mode) == 0) {
-		log_server_error("Configured storage '%s' not a directory\n", conf->storage);
-		return KNOT_EINVAL;
-	}
-
 	// Create PID file
 	if (conf->rundir == NULL) {
 		conf->rundir = strdup(RUN_DIR);
@@ -268,7 +263,12 @@ static int conf_process(conf_t *conf)
 	if (conf->xfers <= 0)
 		conf->xfers = CONFIG_XFERS;
 
-	/* DNSSEC global configuration. */
+
+	/* Zones global configuration. */
+	if (conf->storage == NULL) {
+		conf->storage = strdup(STORAGE_DIR);
+	}
+	conf->storage = strcpath(conf->storage);
 	if (conf->dnssec_keydir) {
 		conf->dnssec_keydir = conf_abs_path(conf->storage,
 		                                    conf->dnssec_keydir);
@@ -373,18 +373,30 @@ static int conf_process(conf_t *conf)
 			                                    zone->dnssec_keydir);
 		}
 
-		if (!zone->storage || !zone->file) {
+		if (zone->storage == NULL ||
+		    zone->file == NULL ||
+		    (zone->dnssec_enable && zone->dnssec_keydir == NULL)
+		) {
 			free(zone->storage);
 			free(zone->file);
+			free(zone->dnssec_keydir);
 			ret = KNOT_ENOMEM;
 			continue;
 		}
 
-		// Check DNSSEC keydir setting presence
-		if (zone->dnssec_enable && !zone->dnssec_keydir) {
-			log_server_error("Option 'dnssec-keydir' not set.\n");
+		/* Check paths existence. */
+		if (!is_existing_dir(zone->storage)) {
+			log_server_error("Storage dir '%s' does not exist.\n",
+			                 zone->storage);
 			ret = KNOT_EINVAL;
 			continue;
+		}
+		if (zone->dnssec_enable && !is_existing_dir(zone->dnssec_keydir)) {
+			log_server_error("DNSSEC key dir '%s' does not exist.\n",
+			                 zone->dnssec_keydir);
+			ret = KNOT_EINVAL;
+			continue;
+
 		}
 
 		/* Create journal filename. */
