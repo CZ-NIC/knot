@@ -60,6 +60,7 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	knot_pkt_free(&data->pkt);
 	data->rcode = KNOT_RCODE_NOERROR;
 	data->rcode_tsig = 0;
+	data->flags = 0;
 	data->node = data->encloser = data->previous = NULL;
 
 	/* Free wildcard list. */
@@ -82,8 +83,8 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	struct query_data *data = QUERY_DATA(ctx);
 
 	/* Check query type. */
-	uint16_t query_type = knot_pkt_type(pkt);
-	switch(query_type) {
+	uint16_t pkt_type = knot_pkt_type(pkt);
+	switch(pkt_type) {
 	case KNOT_QUERY_NORMAL:
 	case KNOT_QUERY_NOTIFY:
 	case KNOT_QUERY_AXFR:
@@ -91,7 +92,7 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	case KNOT_QUERY_UPDATE:
 		break; /* Supported. */
 	default:
-		dbg_ns("%s: query_type(%hu) NOT SUPPORTED\n", __func__, query_type);
+		dbg_ns("%s: query_type(%hu) NOT SUPPORTED\n", __func__, pkt_type);
 		knot_pkt_free(&pkt);
 		return NS_PROC_NOOP; /* Refuse to process. */
 	}

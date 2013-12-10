@@ -400,11 +400,7 @@ int ns_put_additional(knot_pkt_t *resp);
 
 int ns_put_authority_soa(const knot_zone_contents_t *zone,
                                  knot_pkt_t *resp);
-int ns_put_answer(const knot_node_t *node,
-                         const knot_zone_contents_t *zone,
-                         const knot_dname_t *name,
-                         uint16_t type, knot_pkt_t *resp, int *added,
-                         int check_any);
+
 int ns_put_authority_ns(const knot_zone_contents_t *zone,
                         knot_pkt_t *resp);
 int ns_referral(const knot_node_t *node,

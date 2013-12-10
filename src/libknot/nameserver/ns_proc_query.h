@@ -43,6 +43,7 @@ enum ns_proc_query_flag {
 struct query_data {
 	uint16_t rcode;
 	uint16_t rcode_tsig;
+	uint16_t flags;
 	knot_pkt_t *pkt;
 	const knot_zone_t *zone; /*!< Associated zone. */
 	const knot_node_t *node, *encloser, *previous;

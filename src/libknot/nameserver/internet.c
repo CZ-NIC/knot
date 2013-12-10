@@ -30,7 +30,13 @@ enum {
 	MISS,    /* Negative result. */
 	DELEG,   /* Result is delegation. */
 	FOLLOW,  /* Resolution not complete (CNAME/DNAME chain). */
-	ERROR    /* Resolution failed. */
+	ERROR,   /* Resolution failed. */
+	TRUNC    /* Finished, but truncated. */
+};
+
+/*! \brief Features. */
+enum {
+	HAVE_DNSSEC = 1 << 0 /* DNSSEC both requested and supported. */
 };
 
 /*! \brief Check if given node was already visited. */
@@ -75,6 +81,94 @@ static int wildcard_list_cover(knot_pkt_t *pkt, struct query_data *qdata)
 		if (ret != KNOT_EOK) {
 			break;
 		}
+	}
+
+	return ret;
+}
+
+/*! \brief DNSSEC both requested & available. */
+static bool have_dnssec(struct query_data *qdata)
+{
+	return qdata->flags & HAVE_DNSSEC;
+}
+
+/*! \brief Put RRSet and its RRSIG (if applicable) to packet. */
+static int put_answer_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
+			 const knot_dname_t *qname, struct query_data *qdata)
+{
+	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
+	if (knot_rrset_rdata_rr_count(rr) < 1 &&
+	    knot_rrset_type(rr) != KNOT_RRTYPE_APL) {
+		return KNOT_EMALF;
+	}
+
+	uint16_t flags = 0;
+	uint16_t compr_hint = COMPR_HINT_NONE;
+
+	/* Wildcard expansion or exact match, either way RRSet owner is
+	 * is QNAME. We can fake name synthesis by setting compression hint to
+	 * QNAME position. Just need to check if we're answering QNAME and not
+	 * a CNAME target.
+	 */
+	if (pkt->rrset_count == 0) { /* Guaranteed first answer. */
+		compr_hint = COMPR_HINT_QNAME;
+	} else {
+		if (knot_dname_is_wildcard(rr->owner)) {
+			rr = ns_synth_from_wildcard(rr, qname);
+			flags |= KNOT_PF_FREE;
+		}
+	}
+
+	/*! \todo I don't like this much, RRSIGS could be added to whole section
+	 *        after processing I think. */
+	int ret = knot_pkt_put(pkt, compr_hint, rr, flags);
+	if (ret == KNOT_EOK && rr->rrsigs && have_dnssec(qdata)) {
+		ret = put_answer_rr(pkt, rr->rrsigs, qname, qdata);
+	}
+
+	return ret;
+}
+
+/*! \brief This is a wildcard-covered or any other terminal node for QNAME.
+ *         e.g. positive answer.
+ */
+static int put_answer_node(knot_pkt_t *pkt, uint16_t type,
+			   const knot_dname_t *qname, struct query_data *qdata)
+{
+	const knot_rrset_t *rrset = NULL;
+	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(qdata->node);
+
+	int ret = KNOT_EOK;
+	switch (type) {
+	case KNOT_RRTYPE_ANY: /* Append all RRSets. */
+		/* If ANY not allowed, set TC bit. */
+		if (knot_zone_contents_any_disabled(qdata->zone->contents)) {
+			knot_wire_set_tc(pkt->wire);
+			return KNOT_EOK;
+		}
+		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
+			ret = put_answer_rr(pkt, rrsets[i], qname, qdata);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
+		break;
+	case KNOT_RRTYPE_RRSIG: /* Append all RRSIGs. */
+		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
+			if (rrsets[i]->rrsigs) {
+				ret = put_answer_rr(pkt, rrsets[i]->rrsigs, qname, qdata);
+				if (ret != KNOT_EOK) {
+					break;
+				}
+			}
+		}
+		break;
+	default: /* Single RRSet of given type. */
+		rrset = knot_node_get_rrset(qdata->node, type);
+		if (rrset) {
+			ret = put_answer_rr(pkt, rrset, qname, qdata);
+		}
+		break;
 	}
 
 	return ret;
@@ -127,7 +221,11 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 		if (rr_to_add != cname_rr) {
 			knot_rrset_deep_free(&rr_to_add, 1);
 		}
-		return ERROR;
+		if (ret == KNOT_ESPACE) {
+			return TRUNC;
+		} else {
+			return ERROR;
+		}
 	} else {
 		/* Check if RR count increased. */
 		if (pkt->rrset_count <= rr_count_before) {
@@ -135,7 +233,6 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 			       __func__, rr_to_add);
 			return HIT;
 		}
-
 	}
 
 	/* Add RR signatures (from original RR). */
@@ -143,7 +240,11 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: couldn't add rrsigs for CNAME RRSet %p\n",
 		       __func__, cname_rr);
-		return ERROR;
+		if (ret == KNOT_ESPACE) {
+			return TRUNC;
+		} else {
+			return ERROR;
+		}
 	}
 
 	/* Now follow the next CNAME TARGET. */
@@ -181,19 +282,20 @@ static int name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 		return DELEG;
 	}
 
-	int added = 0; /*! \todo useless */
-	int ret = ns_put_answer(qdata->node, qdata->zone->contents, *name, qtype, pkt, &added, 0 /*! \todo check from pkt */);
-
+	uint16_t old_rrcount = pkt->rrset_count;
+	int ret = put_answer_node(pkt, qtype, *name, qdata);
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: failed answer from node %p (%d)\n", __func__, qdata->node, ret);
-		/*! \todo set rcode */
-		return ERROR;
-	} else {
-		dbg_ns("%s: answered, %d added\n", __func__, added);
+		dbg_ns("%s: failed answer from node %p (%s)\n",
+		       __func__, qdata->node, knot_strerror(ret));
+		if (ret == KNOT_ESPACE) {
+			return TRUNC;
+		} else {
+			return ERROR;
+		}
 	}
 
-	/* Check for NODATA. */
-	if (added == 0) {
+	/* Check for NODATA (=0 RRs added). */
+	if (old_rrcount == pkt->rrset_count) {
 		return NODATA;
 	} else {
 		return HIT;
@@ -228,7 +330,11 @@ static int name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
 		dbg_ns("%s: solving DNAME for name %p\n", __func__, *name);
 		int ret = ns_process_dname(dname_rrset, name, pkt);
 		if (ret != KNOT_EOK) {
-			return ERROR;
+			if (ret == KNOT_ESPACE) {
+				return TRUNC;
+			} else {
+				return ERROR;
+			}
 		}
 
 		return FOLLOW;
@@ -295,6 +401,7 @@ static int solve_authority(int state, const knot_dname_t **qname,
                            knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = KNOT_ERROR;
+	uint16_t qtype = knot_pkt_type(pkt);
 	const knot_zone_contents_t *zone_contents = qdata->zone->contents;
 
 	switch (state) {
@@ -304,8 +411,7 @@ static int solve_authority(int state, const knot_dname_t **qname,
 		 * But taking response size into consideration, DS/DNSKEY RRs
 		 * are rather large and may trigger fragmentation or even TCP
 		 * recovery. */
-		if (knot_pkt_qtype(qdata->pkt) != KNOT_RRTYPE_DS &&
-		    knot_pkt_qtype(qdata->pkt) != KNOT_RRTYPE_DNSKEY) {
+		if (qtype != KNOT_RRTYPE_DS && qtype != KNOT_RRTYPE_DNSKEY) {
 			ret = ns_put_authority_ns(zone_contents, pkt);
 			if (ret == KNOT_ESPACE) { /* Optional. */
 				ret = KNOT_EOK;
@@ -314,7 +420,7 @@ static int solve_authority(int state, const knot_dname_t **qname,
 			ret = KNOT_EOK;
 		}
 		/* Put NSEC/NSEC3 Wildcard proof if answered from wildcard. */
-		if (ret == KNOT_EOK && knot_pkt_have_dnssec(qdata->pkt)) {
+		if (ret == KNOT_EOK && have_dnssec(qdata)) {
 			ret = wildcard_list_cover(pkt, qdata);
 		}
 		break;
@@ -322,7 +428,7 @@ static int solve_authority(int state, const knot_dname_t **qname,
 		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
 		qdata->rcode = KNOT_RCODE_NXDOMAIN;
 		ret = ns_put_authority_soa(zone_contents, pkt);
-		if (ret == KNOT_EOK && knot_pkt_have_dnssec(qdata->pkt)) {
+		if (ret == KNOT_EOK && have_dnssec(qdata)) {
 			ret = ns_put_nsec_nsec3_nxdomain(zone_contents,
 							 qdata->previous,
 							 qdata->encloser,
@@ -332,7 +438,7 @@ static int solve_authority(int state, const knot_dname_t **qname,
 	case NODATA: /* NODATA append AUTHORITY SOA + NSEC/NSEC3. */
 		dbg_ns("%s: answer is NODATA\n", __func__);
 		ret = ns_put_authority_soa(zone_contents, pkt);
-		if (ret == KNOT_EOK && knot_pkt_have_dnssec(qdata->pkt)) {
+		if (ret == KNOT_EOK && have_dnssec(qdata)) {
 			if (knot_dname_is_wildcard(qdata->node->owner)) {
 				ret = ns_put_nsec_nsec3_wildcard_nodata(qdata->node,
 									qdata->encloser,
@@ -346,11 +452,13 @@ static int solve_authority(int state, const knot_dname_t **qname,
 			}
 		}
 		break;
-	case DELEG:  /* Referral response. */ /*! \todo DS + NS */
-		ret = ns_referral(qdata->node, zone_contents, *qname, pkt, knot_pkt_qtype(pkt));
+	case DELEG:  /* Referral response. */
+		ret = ns_referral(qdata->node, zone_contents, *qname, pkt, qtype);
 		break;
-	case ERROR:
-		dbg_ns("%s: failed to resolve qname\n", __func__);
+	case TRUNC:  /* Truncated ANSWER. */
+		ret = KNOT_ESPACE;
+		break;
+	case ERROR:  /* Error resolving ANSWER. */
 		break;
 	default:
 		dbg_ns("%s: invalid state after qname processing = %d\n",
@@ -371,6 +479,12 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
 
+	/* Check features - DNSSEC. */
+	if (knot_pkt_have_dnssec(qdata->pkt) &&
+	    knot_zone_contents_is_signed(qdata->zone->contents)) {
+		qdata->flags |= HAVE_DNSSEC;
+	}
+
 	/* Write answer RRs for QNAME. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ANSWER);
@@ -385,7 +499,12 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	knot_pkt_begin(response, KNOT_AUTHORITY);
 	int ret = solve_authority(state, &qname, response, qdata);
 	if (ret != KNOT_EOK) {
-		return NS_PROC_FAIL;
+		/* Truncated. */
+		if (ret == KNOT_ESPACE) {
+			return NS_PROC_FINISH;
+		} else {
+			return NS_PROC_FAIL;
+		}
 
 	}
 
@@ -393,7 +512,8 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ADDITIONAL);
 	ret = ns_put_additional(response);
-	if (ret != KNOT_EOK) {
+	/* Optional section. */
+	if (ret != KNOT_EOK && ret != KNOT_ESPACE) {
 		return NS_PROC_FAIL;
 
 	}
