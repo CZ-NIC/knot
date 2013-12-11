@@ -342,10 +342,13 @@ static int evsched_try_cancel(evsched_t *s, event_t *ev)
 
 	/* Enable running events. */
 	pthread_mutex_unlock(&s->rl);
-	if (found) {
+	if (found > 0) { /* Event canceled. */
 		return KNOT_EOK;
+	} else if (found < 0) {
+		return found; /* Error */
 	}
 
+	/* Not found. */
 	return KNOT_ENOENT;
 }
 
@@ -361,6 +364,6 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 		ret = evsched_try_cancel(s, ev);
 	}
 
-	/* Now we're sure event is cancelled or finished. */
+	/* Now we're sure event is canceled or finished. */
 	return KNOT_EOK;
 }

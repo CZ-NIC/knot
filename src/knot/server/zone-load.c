@@ -53,8 +53,8 @@ static int zonedata_destroy(knot_zone_t *zone)
 	}
 
 	/* Cancel REFRESH timer. */
+	evsched_t *sch = zd->server->sched;
 	if (zd->xfr_in.timer) {
-		evsched_t *sch = zd->xfr_in.timer->parent;
 		evsched_cancel(sch, zd->xfr_in.timer);
 		evsched_event_free(sch, zd->xfr_in.timer);
 		zd->xfr_in.timer = NULL;
@@ -62,7 +62,6 @@ static int zonedata_destroy(knot_zone_t *zone)
 
 	/* Cancel EXPIRE timer. */
 	if (zd->xfr_in.expire) {
-		evsched_t *sch = zd->xfr_in.expire->parent;
 		evsched_cancel(sch, zd->xfr_in.expire);
 		evsched_event_free(sch, zd->xfr_in.expire);
 		zd->xfr_in.expire = NULL;
@@ -70,7 +69,6 @@ static int zonedata_destroy(knot_zone_t *zone)
 
 	/* Cancel IXFR DB sync timer. */
 	if (zd->ixfr_dbsync) {
-		evsched_t *sch = zd->ixfr_dbsync->parent;
 		evsched_cancel(sch, zd->ixfr_dbsync);
 		evsched_event_free(sch, zd->ixfr_dbsync);
 		zd->ixfr_dbsync = NULL;
@@ -78,7 +76,6 @@ static int zonedata_destroy(knot_zone_t *zone)
 
 	/* Cancel DNSSEC timer. */
 	if (zd->dnssec_timer) {
-		evsched_t *sch = zd->dnssec_timer->parent;
 		evsched_cancel(sch, zd->dnssec_timer);
 		evsched_event_free(sch, zd->dnssec_timer);
 		zd->dnssec_timer = NULL;
