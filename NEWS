@@ -7,10 +7,14 @@ Features:
 	* IDN support in Knot utilities
 	* Pretty zone file output (DNSSEC-related data separately)
 	* Lower memory consumption
+	* DNSSEC: support for GOST algorithm
+	* config: option 'dnssec-keydir' can be set per zone
+	* config: option 'storage' can be set per zone
 Bugfixes:
 	* Crash in particular additionals processing
 	* Race condition in event cancelation
 	* Journal corruption after failed transactions
+	* DNSSEC: fixed detection of ECDSA support
 
 v1.4.0-rc1 - Nov 20, 2013
 -------------------------
