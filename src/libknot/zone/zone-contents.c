@@ -841,20 +841,35 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 	const knot_node_t *node, knot_node_t **removed_tree)
 {
-	if (contents == NULL || node == NULL) {
+	if (contents == NULL || node == NULL || removed_tree == NULL) {
 		return KNOT_EINVAL;
+	}
+	*removed_tree = NULL;
+
+	/*!
+	 * Remove all the empty non-terminal ancestors this node might have had.
+	 * This might be needed in a scenario where zone is not adjusted, so
+	 * we cannot use node->parent pointers.
+	 */
+	const knot_dname_t *cutted = knot_wire_next_label(node->owner, NULL);
+	knot_node_t *parent = knot_zone_contents_get_node(contents, cutted);
+	assert(parent || node == contents->apex);
+	bool parent_empty = parent && parent->rrset_count == 0;
+	while (parent_empty) {
+		knot_node_t *empty_node = NULL;
+		int ret = knot_zone_tree_remove(contents->nodes, parent->owner,
+		                                &empty_node);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		assert(empty_node && empty_node->rrset_count == 0);
+		cutted = knot_wire_next_label(cutted, NULL);
+		parent = knot_zone_contents_get_node(contents, cutted);
+		knot_node_free(&empty_node);
+		parent_empty = parent && parent->rrset_count == 0;
 	}
 
 	const knot_dname_t *owner = knot_node_owner(node);
-
-dbg_zone_exec_verb(
-	char *name = knot_dname_to_str(owner);
-	dbg_zone_verb("Removing zone node: %s\n", name);
-	free(name);
-);
-
-	// 2) remove the node from the zone tree
-	*removed_tree = NULL;
 	int ret = knot_zone_tree_remove(contents->nodes, owner, removed_tree);
 	if (ret != KNOT_EOK) {
 		return KNOT_ENONODE;
