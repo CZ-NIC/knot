@@ -9,7 +9,7 @@ Features:
 	* Lower memory consumption
 Bugfixes:
 	* Crash in particular additionals processing
-	* Race condition in even cancelation
+	* Race condition in event cancelation
 	* Journal corruption after failed transactions
 
 v1.4.0-rc1 - Nov 20, 2013
