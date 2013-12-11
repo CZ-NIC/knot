@@ -1385,6 +1385,7 @@ static int handle_deleted_node(const knot_node_t *node,
 			fix_data->next_dname = knot_rdata_nsec_next(old_nsec);
 		}
 	}
+	assert(fix_data->next_dname);
 
 	return NSEC_NODE_SKIP;
 }
@@ -1518,6 +1519,10 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		}
 		return handle_deleted_node(b_nsec3_node, fix_data);
 	}
+	if (knot_node_is_non_auth(b_node)) {
+		// Nothing to fix in this node
+		return NSEC_NODE_SKIP;
+	}
 
 	// Find out whether the previous node is also part of the changeset.
 	bool use_prev_from_chgs =
@@ -1541,6 +1546,8 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 			                       a_node ? a_node : b_node,
 			                       fix_data->out_ch,
 			                       fix_data->zone, 3600);
+			printf("%s %s\n", a_hash ? a_hash : b_hash,
+			       fix_data->next_dname);
 			fix_data->next_dname = NULL;
 			return ret;
 		}
@@ -1579,7 +1586,11 @@ static int chain_finalize_nsec3(void *d)
 {
 	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
 	assert(fix_data);
-	assert(fix_data->last_used_dname && fix_data->next_dname);
+	assert(fix_data->last_used_dname);
+	if (fix_data->next_dname == NULL) {
+		// Nothing to fix
+		return KNOT_EOK;
+	}
 	if (knot_dname_is_equal(fix_data->last_used_dname, fix_data->zone->apex->nsec3_node->owner)) {
 		// Special case where all nodes but the apex is deleted. TODO - better solution
 		return update_nsec3(fix_data->last_used_dname,
