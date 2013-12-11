@@ -415,10 +415,6 @@ int ns_add_rrsigs(knot_rrset_t *rrset, knot_pkt_t *resp,
                          const knot_dname_t *name,
                          uint32_t flags);
 
-int ns_process_dname(knot_rrset_t *dname_rrset,
-                             const knot_dname_t **qname,
-                             knot_pkt_t *resp);
-
 int ns_add_dnskey(const knot_node_t *apex, knot_pkt_t *resp);
 
 int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,

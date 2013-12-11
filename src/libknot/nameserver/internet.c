@@ -86,15 +86,72 @@ static int wildcard_list_cover(knot_pkt_t *pkt, struct query_data *qdata)
 	return ret;
 }
 
+
+/*! \brief Synthetizes a CNAME RR from a DNAME. */
+static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr, const knot_dname_t *qname)
+{
+	dbg_ns("%s(%p, %p)\n", __func__, dname_rr, qname);
+	knot_dname_t *owner = knot_dname_copy(qname);
+	if (owner == NULL) {
+		return NULL;
+	}
+
+	knot_rrset_t *cname_rrset = knot_rrset_new(
+		owner, KNOT_RRTYPE_CNAME, KNOT_CLASS_IN, dname_rr->ttl);
+	if (cname_rrset == NULL) {
+		knot_dname_free(&owner);
+		return NULL;
+	}
+
+	/* Replace last labels of qname with DNAME. */
+	const knot_dname_t *dname_wire = knot_rrset_owner(dname_rr);
+	const knot_dname_t *dname_tgt = knot_rdata_dname_target(dname_rr);
+	int labels = knot_dname_labels(dname_wire, NULL);
+	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
+	if (cname == NULL) {
+		knot_rrset_free(&cname_rrset);
+		return NULL;
+	}
+
+	/* Store DNAME into RDATA. */
+	int cname_size = knot_dname_size(cname);
+	uint8_t *cname_rdata = knot_rrset_create_rdata(cname_rrset, cname_size);
+	if (cname_rdata == NULL) {
+		knot_rrset_free(&cname_rrset);
+		knot_dname_free(&cname);
+		return NULL;
+	}
+	memcpy(cname_rdata, cname, cname_size);
+	knot_dname_free(&cname);
+
+	return cname_rrset;
+}
+
+/*!
+ * \brief Checks if the name created by replacing the owner of \a dname_rrset
+ *        in the \a qname by the DNAME's target would be longer than allowed.
+ */
+static bool dname_cname_can_synth(const knot_rrset_t *rrset, const knot_dname_t *qname)
+{
+	if (knot_dname_labels(qname, NULL)
+		- knot_dname_labels(knot_rrset_owner(rrset), NULL)
+		+ knot_dname_labels(knot_rdata_dname_target(rrset), NULL)
+		> KNOT_DNAME_MAXLEN) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 /*! \brief DNSSEC both requested & available. */
 static bool have_dnssec(struct query_data *qdata)
 {
 	return qdata->flags & HAVE_DNSSEC;
 }
 
-/*! \brief Put RRSet and its RRSIG (if applicable) to packet. */
-static int put_answer_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
-			 const knot_dname_t *qname, struct query_data *qdata)
+/*! \brief Put RR into packet, expand wildcards. */
+static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
+		  uint16_t flags, struct query_data *qdata)
 {
 	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
 	if (knot_rrset_rdata_rr_count(rr) < 1 &&
@@ -102,41 +159,39 @@ static int put_answer_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		return KNOT_EMALF;
 	}
 
-	uint16_t flags = 0;
-	uint16_t compr_hint = COMPR_HINT_NONE;
+	/* If we already have compressed name on the wire and compression hint,
+	 * we can just insert RRSet and fake synthesis by using compression
+	 * hint. */
+	if (compr_hint == COMPR_HINT_NONE && knot_dname_is_wildcard(rr->owner)) {
+		int ret = knot_rrset_deep_copy(rr, (knot_rrset_t **)&rr);
+		if (ret != KNOT_EOK) {
+			return KNOT_ENOMEM;
+		}
+
+		knot_rrset_set_owner(rr, qdata->name);
+		flags |= KNOT_PF_FREE;
+	}
+
+	return knot_pkt_put(pkt, compr_hint, rr, flags);
+}
+
+/*! \brief This is a wildcard-covered or any other terminal node for QNAME.
+ *         e.g. positive answer.
+ */
+static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
+{
+	const knot_rrset_t *rrset = NULL;
+	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(qdata->node);
 
 	/* Wildcard expansion or exact match, either way RRSet owner is
 	 * is QNAME. We can fake name synthesis by setting compression hint to
 	 * QNAME position. Just need to check if we're answering QNAME and not
 	 * a CNAME target.
 	 */
+	uint16_t compr_hint = COMPR_HINT_NONE;
 	if (pkt->rrset_count == 0) { /* Guaranteed first answer. */
 		compr_hint = COMPR_HINT_QNAME;
-	} else {
-		if (knot_dname_is_wildcard(rr->owner)) {
-			rr = ns_synth_from_wildcard(rr, qname);
-			flags |= KNOT_PF_FREE;
-		}
 	}
-
-	/*! \todo I don't like this much, RRSIGS could be added to whole section
-	 *        after processing I think. */
-	int ret = knot_pkt_put(pkt, compr_hint, rr, flags);
-	if (ret == KNOT_EOK && rr->rrsigs && have_dnssec(qdata)) {
-		ret = put_answer_rr(pkt, rr->rrsigs, qname, qdata);
-	}
-
-	return ret;
-}
-
-/*! \brief This is a wildcard-covered or any other terminal node for QNAME.
- *         e.g. positive answer.
- */
-static int put_answer_node(knot_pkt_t *pkt, uint16_t type,
-			   const knot_dname_t *qname, struct query_data *qdata)
-{
-	const knot_rrset_t *rrset = NULL;
-	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(qdata->node);
 
 	int ret = KNOT_EOK;
 	switch (type) {
@@ -147,7 +202,7 @@ static int put_answer_node(knot_pkt_t *pkt, uint16_t type,
 			return KNOT_EOK;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
-			ret = put_answer_rr(pkt, rrsets[i], qname, qdata);
+			ret = put_rr(pkt, rrsets[i], compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -156,7 +211,7 @@ static int put_answer_node(knot_pkt_t *pkt, uint16_t type,
 	case KNOT_RRTYPE_RRSIG: /* Append all RRSIGs. */
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
 			if (rrsets[i]->rrsigs) {
-				ret = put_answer_rr(pkt, rrsets[i]->rrsigs, qname, qdata);
+				ret = put_rr(pkt, rrsets[i]->rrsigs, compr_hint, 0, qdata);
 				if (ret != KNOT_EOK) {
 					break;
 				}
@@ -166,7 +221,7 @@ static int put_answer_node(knot_pkt_t *pkt, uint16_t type,
 	default: /* Single RRSet of given type. */
 		rrset = knot_node_get_rrset(qdata->node, type);
 		if (rrset) {
-			ret = put_answer_rr(pkt, rrset, qname, qdata);
+			ret = put_rr(pkt, rrset, compr_hint, 0, qdata);
 		}
 		break;
 	}
@@ -174,15 +229,14 @@ static int put_answer_node(knot_pkt_t *pkt, uint16_t type,
 	return ret;
 }
 
-static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query_data *qdata)
+static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qdata)
 {
-	dbg_ns("%s(%p, %p, %p)\n", __func__, name, pkt, qdata);
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	const knot_node_t *cname_node = qdata->node;
-	knot_rrset_t *cname_rr = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_CNAME);
-	knot_rrset_t *rr_to_add = cname_rr;
-	unsigned flags = 0;
+	knot_rrset_t *cname_rr = knot_node_get_rrset(qdata->node, rrtype);
 	int ret = KNOT_EOK;
+	unsigned flags = 0;
 
 	assert(cname_rr != NULL);
 
@@ -198,15 +252,9 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 		}
 
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, cname_node, *name) != KNOT_EOK) {
+		if (wildcard_visit(qdata, cname_node, qdata->name) != KNOT_EOK) {
 			return ERROR;
 		}
-
-		/* Synthetic RRSet. */
-		rr_to_add = ns_synth_from_wildcard(cname_rr, *name);
-
-		/* Free RRSet with packet. */
-		flags |= KNOT_PF_FREE;
 
 	} else {
 		/* Normal CNAME name, check for duplicate. */
@@ -215,12 +263,8 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 
 	/* Now, try to put CNAME to answer. */
 	uint16_t rr_count_before = pkt->rrset_count;
-	ret = knot_pkt_put(pkt, 0, rr_to_add, flags);
+	ret = put_rr(pkt, cname_rr, 0, flags, qdata);
 	if (ret != KNOT_EOK) {
-		/* Free if synthetized. */
-		if (rr_to_add != cname_rr) {
-			knot_rrset_deep_free(&rr_to_add, 1);
-		}
 		if (ret == KNOT_ESPACE) {
 			return TRUNC;
 		} else {
@@ -230,29 +274,32 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 		/* Check if RR count increased. */
 		if (pkt->rrset_count <= rr_count_before) {
 			dbg_ns("%s: RR %p already inserted => CNAME loop\n",
-			       __func__, rr_to_add);
+			       __func__, cname_rr);
 			return HIT;
 		}
 	}
 
-	/* Add RR signatures (from original RR). */
-	ret = ns_add_rrsigs(cname_rr, pkt, *name, 0);
-	if (ret != KNOT_EOK) {
-		dbg_ns("%s: couldn't add rrsigs for CNAME RRSet %p\n",
-		       __func__, cname_rr);
+	/* Synthesize CNAME if followed DNAME. */
+	if (rrtype == KNOT_RRTYPE_DNAME) {
+		if (dname_cname_can_synth(cname_rr, qdata->name)) {
+			qdata->rcode = KNOT_RCODE_YXDOMAIN;
+			return ERROR;
+		}
+		knot_rrset_t *synth_cname = dname_cname_synth(cname_rr, qdata->name);
+		ret = put_rr(pkt, synth_cname, 0, KNOT_PF_FREE, qdata);
 		if (ret == KNOT_ESPACE) {
 			return TRUNC;
-		} else {
+		} else if (ret != KNOT_EOK) {
 			return ERROR;
 		}
 	}
 
 	/* Now follow the next CNAME TARGET. */
-	*name = knot_rdata_cname_name(cname_rr);
+	qdata->name = knot_rdata_cname_name(cname_rr);
 
 #ifdef KNOT_NS_DEBUG
 	char *cname_str = knot_dname_to_str(cname_node->owner);
-	char *target_str = knot_dname_to_str(*name);
+	char *target_str = knot_dname_to_str(qdata->name);
 	dbg_ns("%s: FOLLOW '%s' -> '%s'\n", __func__, cname_str, target_str);
 	free(cname_str);
 	free(target_str);
@@ -261,18 +308,17 @@ static int follow_cname(knot_pkt_t *pkt, const knot_dname_t **name, struct query
 	return FOLLOW;
 }
 
-static int name_found(knot_pkt_t *pkt, const knot_dname_t **name,
-                      struct query_data *qdata)
+static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
-	dbg_ns("%s(%p, %p, %p)\n", __func__, pkt, name, qdata);
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	if (knot_node_rrset(qdata->node, KNOT_RRTYPE_CNAME) != NULL
 	    && qtype != KNOT_RRTYPE_CNAME
 	    && qtype != KNOT_RRTYPE_RRSIG
 	    && qtype != KNOT_RRTYPE_ANY) {
 		dbg_ns("%s: solving CNAME\n", __func__);
-		return follow_cname(pkt, name, qdata);
+		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
 	}
 
 	// now we have the node for answering
@@ -283,7 +329,7 @@ static int name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	}
 
 	uint16_t old_rrcount = pkt->rrset_count;
-	int ret = put_answer_node(pkt, qtype, *name, qdata);
+	int ret = put_answer(pkt, qtype, qdata);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: failed answer from node %p (%s)\n",
 		       __func__, qdata->node, knot_strerror(ret));
@@ -302,68 +348,58 @@ static int name_found(knot_pkt_t *pkt, const knot_dname_t **name,
 	}
 }
 
-static int name_not_found(knot_pkt_t *pkt, const knot_dname_t **name,
-                          struct query_data *qdata)
+static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	dbg_ns("%s(%p, %p, %p)\n", __func__, pkt, name, qdata);
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	/* Name is covered by wildcard. */
 	const knot_node_t *wildcard_node = knot_node_wildcard_child(qdata->encloser);
 	if (wildcard_node) {
-		dbg_ns("%s: name %p covered by wildcard\n", __func__, *name);
+		dbg_ns("%s: name %p covered by wildcard\n", __func__, qdata->name);
 		qdata->node = wildcard_node;
 		/* keep encloser */
 		qdata->previous = NULL;
 
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, qdata->encloser, *name) != KNOT_EOK) {
+		if (wildcard_visit(qdata, qdata->encloser, qdata->name) != KNOT_EOK) {
 			return ERROR;
 		}
 
-		return name_found(pkt, name, qdata);
+		return name_found(pkt, qdata);
 	}
 
 	/* Name is under DNAME, use it for substitution. */
 	knot_rrset_t *dname_rrset = knot_node_get_rrset(qdata->encloser, KNOT_RRTYPE_DNAME);
 	if (dname_rrset != NULL
 	    && knot_rrset_rdata_rr_count(dname_rrset) > 0) {
-		dbg_ns("%s: solving DNAME for name %p\n", __func__, *name);
-		int ret = ns_process_dname(dname_rrset, name, pkt);
-		if (ret != KNOT_EOK) {
-			if (ret == KNOT_ESPACE) {
-				return TRUNC;
-			} else {
-				return ERROR;
-			}
-		}
-
-		return FOLLOW;
+		dbg_ns("%s: solving DNAME for name %p\n", __func__, qdata->name);
+		qdata->node = qdata->encloser; /* Follow encloser as new node. */
+		return follow_cname(pkt, KNOT_RRTYPE_DNAME, qdata);
 	}
 
 	/* Name is below delegation. */
 	if (knot_node_is_deleg_point(qdata->encloser)) {
-		dbg_ns("%s: name below delegation point %p\n", __func__, *name);
+		dbg_ns("%s: name below delegation point %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser;
 		return DELEG;
 	}
 
-	dbg_ns("%s: name not found in zone %p\n", __func__, *name);
+	dbg_ns("%s: name not found in zone %p\n", __func__, qdata->name);
 	return MISS;
 }
 
-static int solve_name(int state, const knot_dname_t **name,
-                      knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
-	dbg_ns("%s(%d, %p, %p, %p)\n", __func__, state, name, pkt, qdata);
-	int ret = knot_zone_contents_find_dname(qdata->zone->contents, *name,
+	dbg_ns("%s(%d, %p, %p)\n", __func__, state, pkt, qdata);
+	int ret = knot_zone_contents_find_dname(qdata->zone->contents, qdata->name,
 	                                        &qdata->node, &qdata->encloser,
 	                                        &qdata->previous);
 
 	switch(ret) {
 	case KNOT_ZONE_NAME_FOUND:
-		return name_found(pkt, name, qdata);
+		return name_found(pkt, qdata);
 	case KNOT_ZONE_NAME_NOT_FOUND:
-		return name_not_found(pkt, name, qdata);
+		return name_not_found(pkt, qdata);
 	case KNOT_EOUTOFZONE:
 		assert(state == FOLLOW); /* CNAME/DNAME chain only. */
 		return HIT;
@@ -372,11 +408,10 @@ static int solve_name(int state, const knot_dname_t **name,
 	}
 }
 
-static int solve_answer_section(const knot_dname_t **qname,
-                                knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_answer_section(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* Get answer to QNAME. */
-	int state = solve_name(BEGIN, qname, pkt, qdata);
+	int state = solve_name(BEGIN, pkt, qdata);
 
 	/* Is authoritative answer unless referral.
 	 * Must check before we chase the CNAME chain. */
@@ -386,7 +421,7 @@ static int solve_answer_section(const knot_dname_t **qname,
 
 	/* Additional resolving for CNAME/DNAME chain. */
 	while (state == FOLLOW) {
-		state = solve_name(state, qname, pkt, qdata);
+		state = solve_name(state, pkt, qdata);
 		/* Chain lead to NXDOMAIN, this is okay since
 		 * the first CNAME/DNAME is a valid answer. */
 		if (state == MISS) {
@@ -397,8 +432,7 @@ static int solve_answer_section(const knot_dname_t **qname,
 	return state;
 }
 
-static int solve_authority(int state, const knot_dname_t **qname,
-                           knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = KNOT_ERROR;
 	uint16_t qtype = knot_pkt_type(pkt);
@@ -432,7 +466,7 @@ static int solve_authority(int state, const knot_dname_t **qname,
 			ret = ns_put_nsec_nsec3_nxdomain(zone_contents,
 							 qdata->previous,
 							 qdata->encloser,
-							 *qname, pkt);
+							 qdata->name, pkt);
 		}
 		break;
 	case NODATA: /* NODATA append AUTHORITY SOA + NSEC/NSEC3. */
@@ -444,16 +478,16 @@ static int solve_authority(int state, const knot_dname_t **qname,
 									qdata->encloser,
 									qdata->previous,
 									qdata->zone->contents,
-									*qname, pkt);
+									qdata->name, pkt);
 			} else {
 				ret = ns_put_nsec_nsec3_nodata(zone_contents,
 							       qdata->node,
-							       *qname, pkt);
+							       qdata->name, pkt);
 			}
 		}
 		break;
 	case DELEG:  /* Referral response. */
-		ret = ns_referral(qdata->node, zone_contents, *qname, pkt, qtype);
+		ret = ns_referral(qdata->node, zone_contents, qdata->name, pkt, qtype);
 		break;
 	case TRUNC:  /* Truncated ANSWER. */
 		ret = KNOT_ESPACE;
@@ -489,15 +523,16 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ANSWER);
 
-	const knot_dname_t *qname = knot_pkt_qname(response);
+
 
 	/* Get answer to QNAME. */
-	int state = solve_answer_section(&qname, response, qdata);
+	qdata->name = knot_pkt_qname(response);
+	int state = solve_answer_section(response, qdata);
 
 	/* Resolve AUTHORITY. */
 	dbg_ns("%s: writing %p AUTHORITY\n", __func__, response);
 	knot_pkt_begin(response, KNOT_AUTHORITY);
-	int ret = solve_authority(state, &qname, response, qdata);
+	int ret = solve_authority(state, response, qdata);
 	if (ret != KNOT_EOK) {
 		/* Truncated. */
 		if (ret == KNOT_ESPACE) {

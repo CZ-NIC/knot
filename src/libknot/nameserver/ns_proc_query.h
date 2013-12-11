@@ -47,6 +47,7 @@ struct query_data {
 	knot_pkt_t *pkt;
 	const knot_zone_t *zone; /*!< Associated zone. */
 	const knot_node_t *node, *encloser, *previous;
+	const knot_dname_t *name;
 	list_t wildcards;
 	mm_ctx_t *mm;
 	void *ext;
