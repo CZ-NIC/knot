@@ -1184,7 +1184,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		// Use bitmap from given node
 		bitmap_t bm = { '\0' };
 		bitmap_add_node_rrsets(&bm, covered_node);
-		if (covered_node->rrset_count != 0) {
+		if (node_should_be_signed(covered_node)) {
 			bitmap_add_type(&bm, KNOT_RRTYPE_RRSIG);
 		}
 		// Create owner
