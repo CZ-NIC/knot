@@ -643,13 +643,6 @@ dbg_ns_exec_detail(
 		node = knot_dname_node(dname);
 
 		dbg_ns_detail("Node saved in RDATA dname: %p\n", node);
-		if (node != NULL && node->owner != dname) {
-			// the stored node should be the wildcard covering the
-			// name
-			dbg_ns_detail("Node is wildcard.\n");
-			assert(knot_dname_is_wildcard(knot_node_owner(node)));
-		}
-
 		knot_rrset_t *rrset_add;
 
 		if (node != NULL) {
