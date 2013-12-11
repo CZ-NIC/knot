@@ -97,7 +97,7 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr, const knot_
 	}
 
 	knot_rrset_t *cname_rrset = knot_rrset_new(
-		owner, KNOT_RRTYPE_CNAME, KNOT_CLASS_IN, dname_rr->ttl);
+					    owner, KNOT_RRTYPE_CNAME, KNOT_CLASS_IN, dname_rr->ttl);
 	if (cname_rrset == NULL) {
 		knot_dname_free(&owner);
 		return NULL;
@@ -151,7 +151,7 @@ static bool have_dnssec(struct query_data *qdata)
 
 /*! \brief Put RR into packet, expand wildcards. */
 static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
-		  uint16_t flags, struct query_data *qdata)
+		  uint32_t flags, struct query_data *qdata)
 {
 	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
 	if (knot_rrset_rdata_rr_count(rr) < 1 &&
@@ -168,11 +168,26 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
 			return KNOT_ENOMEM;
 		}
 
-		knot_rrset_set_owner(rr, qdata->name);
+		knot_rrset_set_owner((knot_rrset_t *)rr, qdata->name);
 		flags |= KNOT_PF_FREE;
 	}
 
 	return knot_pkt_put(pkt, compr_hint, rr, flags);
+}
+
+/*! \brief Put RR into packet, but don't truncate if it doesn't fit. */
+static int put_rr_optional(knot_pkt_t *pkt, const knot_rrset_t *rr, uint32_t flags)
+{
+	if (rr == NULL) {
+		return KNOT_ENOENT;
+	}
+
+	int ret = knot_pkt_put(pkt, 0, rr, flags|KNOT_PF_NOTRUNC);
+	if (ret == KNOT_ESPACE) {
+		ret = KNOT_EOK;
+	}
+
+	return ret;
 }
 
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
@@ -227,6 +242,73 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	}
 
 	return ret;
+}
+
+/*! \brief Puts optional NS RRSet to the Authority section of the response. */
+static int put_authority_ns(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
+{
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
+	return put_rr_optional(pkt, knot_node_rrset(zone->apex, KNOT_RRTYPE_NS), 0);
+}
+
+/*! \brief Puts optional SOA RRSet to the Authority section of the response. */
+static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
+{
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
+	knot_rrset_t *soa_rrset = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	assert(soa_rrset);
+
+	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
+	// MINIMUM as TTL
+	int ret = KNOT_EOK;
+	uint32_t flags = 0;
+	uint32_t min = knot_rdata_soa_minimum(soa_rrset);
+	if (min < knot_rrset_ttl(soa_rrset)) {
+		ret = knot_rrset_deep_copy(soa_rrset, &soa_rrset);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		knot_rrset_set_ttl(soa_rrset, min);
+		flags |= KNOT_PF_FREE;
+	}
+
+	return put_rr_optional(pkt, soa_rrset, flags);
+}
+
+/*! \brief Put the delegation NS RRSet to the Authority section. */
+static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* Find closest delegation point. */
+	while (!knot_node_is_deleg_point(qdata->node)) {
+		qdata->node = knot_node_parent(qdata->node);
+	}
+
+	/* Insert NS record. */
+	const knot_rrset_t *rrset = knot_node_rrset(qdata->node, KNOT_RRTYPE_NS);
+	int ret = knot_pkt_put(pkt, 0, rrset, 0);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return ret;
+}
+
+/*! \brief Put DS RRset or NSEC/NSEC3 proof if it doesn't exist. */
+static int put_delegation_dnssec(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* Add DS record if present. */
+	knot_rrset_t *rrset = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_DS);
+	if (rrset != NULL) {
+		return knot_pkt_put(pkt, 0, rrset, 0);
+	}
+
+	/* DS doesn't exist => NODATA proof. */
+	return ns_put_nsec_nsec3_nodata(qdata->node,
+	                                qdata->encloser,
+	                                qdata->previous,
+	                                qdata->zone->contents,
+	                                qdata->name, pkt);
 }
 
 static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qdata)
@@ -321,8 +403,9 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
 	}
 
-	// now we have the node for answering
-	if (qtype != KNOT_RRTYPE_DS && // DS query is answered normally
+	/* DS query is answered normally, but everything else at/below DP
+	 * triggers referral response. */
+	if (qtype != KNOT_RRTYPE_DS &&
 	    (knot_node_is_deleg_point(qdata->node) || knot_node_is_non_auth(qdata->node))) {
 		dbg_ns("%s: solving REFERRAL\n", __func__);
 		return DELEG;
@@ -408,10 +491,10 @@ static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	}
 }
 
-static int solve_answer_section(knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_answer_section(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* Get answer to QNAME. */
-	int state = solve_name(BEGIN, pkt, qdata);
+	state = solve_name(state, pkt, qdata);
 
 	/* Is authoritative answer unless referral.
 	 * Must check before we chase the CNAME chain. */
@@ -432,6 +515,55 @@ static int solve_answer_section(knot_pkt_t *pkt, struct query_data *qdata)
 	return state;
 }
 
+static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* \todo write RRSIGs. */
+	return state;
+}
+
+static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* \todo write RRSIGs. */
+
+	int ret = KNOT_ERROR;
+	const knot_zone_contents_t *zone_contents = qdata->zone->contents;
+
+	switch (state) {
+	case HIT:
+		/* Put NSEC/NSEC3 Wildcard proof if answered from wildcard. */
+		ret = wildcard_list_cover(pkt, qdata);
+		break;
+	case MISS:
+		ret = ns_put_nsec_nsec3_nxdomain(zone_contents,
+		                                 qdata->previous,
+		                                 qdata->encloser,
+		                                 qdata->name, pkt);
+		break;
+	case NODATA:
+		ret = ns_put_nsec_nsec3_nodata(qdata->node,
+		                               qdata->encloser,
+		                               qdata->previous,
+		                               qdata->zone->contents,
+		                               qdata->name, pkt);
+		break;
+	case DELEG:
+		ret = put_delegation_dnssec(pkt, qdata);
+		break;
+	case TRUNC:  /* Truncated ANSWER. */
+		ret = KNOT_ESPACE;
+		break;
+	case ERROR:  /* Error resolving ANSWER. */
+		break;
+	default:
+		dbg_ns("%s: invalid state after qname processing = %d\n",
+		       __func__, state);
+		assert(0);
+		break;
+	}
+
+	return ret;
+}
+
 static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = KNOT_ERROR;
@@ -446,48 +578,23 @@ static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 		 * are rather large and may trigger fragmentation or even TCP
 		 * recovery. */
 		if (qtype != KNOT_RRTYPE_DS && qtype != KNOT_RRTYPE_DNSKEY) {
-			ret = ns_put_authority_ns(zone_contents, pkt);
-			if (ret == KNOT_ESPACE) { /* Optional. */
-				ret = KNOT_EOK;
-			}
+			ret = put_authority_ns(pkt, zone_contents);
+
 		} else {
 			ret = KNOT_EOK;
-		}
-		/* Put NSEC/NSEC3 Wildcard proof if answered from wildcard. */
-		if (ret == KNOT_EOK && have_dnssec(qdata)) {
-			ret = wildcard_list_cover(pkt, qdata);
 		}
 		break;
 	case MISS:   /* MISS, set NXDOMAIN RCODE. */
 		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
 		qdata->rcode = KNOT_RCODE_NXDOMAIN;
-		ret = ns_put_authority_soa(zone_contents, pkt);
-		if (ret == KNOT_EOK && have_dnssec(qdata)) {
-			ret = ns_put_nsec_nsec3_nxdomain(zone_contents,
-							 qdata->previous,
-							 qdata->encloser,
-							 qdata->name, pkt);
-		}
+		ret = put_authority_soa(pkt, zone_contents);
 		break;
-	case NODATA: /* NODATA append AUTHORITY SOA + NSEC/NSEC3. */
+	case NODATA: /* NODATA append AUTHORITY SOA. */
 		dbg_ns("%s: answer is NODATA\n", __func__);
-		ret = ns_put_authority_soa(zone_contents, pkt);
-		if (ret == KNOT_EOK && have_dnssec(qdata)) {
-			if (knot_dname_is_wildcard(qdata->node->owner)) {
-				ret = ns_put_nsec_nsec3_wildcard_nodata(qdata->node,
-									qdata->encloser,
-									qdata->previous,
-									qdata->zone->contents,
-									qdata->name, pkt);
-			} else {
-				ret = ns_put_nsec_nsec3_nodata(zone_contents,
-							       qdata->node,
-							       qdata->name, pkt);
-			}
-		}
+		ret = put_authority_soa(pkt, zone_contents);
 		break;
 	case DELEG:  /* Referral response. */
-		ret = ns_referral(qdata->node, zone_contents, qdata->name, pkt, qtype);
+		ret = put_delegation(pkt, qdata);
 		break;
 	case TRUNC:  /* Truncated ANSWER. */
 		ret = KNOT_ESPACE;
@@ -523,24 +630,33 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ANSWER);
 
-
-
 	/* Get answer to QNAME. */
 	qdata->name = knot_pkt_qname(response);
-	int state = solve_answer_section(response, qdata);
+	int state = solve_answer_section(BEGIN, response, qdata);
+
+	/* Solve DNSSEC for ANSWER. */
+	state = solve_answer_dnssec(state, response, qdata);
 
 	/* Resolve AUTHORITY. */
 	dbg_ns("%s: writing %p AUTHORITY\n", __func__, response);
 	knot_pkt_begin(response, KNOT_AUTHORITY);
 	int ret = solve_authority(state, response, qdata);
 	if (ret != KNOT_EOK) {
-		/* Truncated. */
 		if (ret == KNOT_ESPACE) {
 			return NS_PROC_FINISH;
 		} else {
 			return NS_PROC_FAIL;
 		}
+	}
 
+	/* Resolve DNSSEC for AUTHORITY. */
+	if (have_dnssec(qdata)) {
+		ret = solve_authority_dnssec(state, response, qdata);
+		if (ret == KNOT_ESPACE) {
+			return NS_PROC_FINISH;
+		} else {
+			return NS_PROC_FAIL;
+		}
 	}
 
 	/* Resolve ADDITIONAL. */

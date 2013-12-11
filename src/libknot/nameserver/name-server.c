@@ -339,98 +339,6 @@ int ns_put_additional(knot_pkt_t *resp)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Puts authority NS RRSet to the Auhority section of the response.
- *
- * \param zone Zone to take the authority NS RRSet from.
- * \param resp Response where to add the RRSet.
- */
-int ns_put_authority_ns(const knot_zone_contents_t *zone,
-                        knot_pkt_t *resp)
-{
-	dbg_ns("%s: putting authority NS\n", __func__);
-	assert(KNOT_PKT_IN_NS(resp));
-
-	knot_rrset_t *ns_rrset = knot_node_get_rrset(
-			knot_zone_contents_apex(zone), KNOT_RRTYPE_NS);
-
-	if (ns_rrset != NULL) {
-		int ret = knot_pkt_put(resp, 0, ns_rrset, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
-
-		if (ret != KNOT_EOK) {
-			dbg_ns("Failed to add Authority NSs to response.\n");
-			return ret;
-		}
-
-		/*! \bug This is strange, it should either fit both NS+RRSIG or
-		 *       nothing. This would leave the last NS without RRSIG. */
-		ret = ns_add_rrsigs(ns_rrset, resp, knot_node_owner(
-		              knot_zone_contents_apex(zone)), 0);
-
-		if (ret != KNOT_EOK) {
-			dbg_ns("Failed to add RRSIGs for Authority NSs to "
-			       "response.\n");
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Puts SOA RRSet to the Auhority section of the response.
- *
- * \param zone Zone to take the SOA RRSet from.
- * \param resp Response where to add the RRSet.
- */
-int ns_put_authority_soa(const knot_zone_contents_t *zone,
-                                 knot_pkt_t *resp)
-{
-	assert(KNOT_PKT_IN_NS(resp));
-	dbg_ns("%s: putting authority SOA\n", __func__);
-
-	int ret;
-
-	knot_rrset_t *soa_rrset = knot_node_get_rrset(
-			knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
-	assert(soa_rrset != NULL);
-
-	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
-	// MINIMUM as TTL
-	uint32_t flags = KNOT_PF_NOTRUNC;
-	uint32_t min = knot_rdata_soa_minimum(soa_rrset);
-	if (min < knot_rrset_ttl(soa_rrset)) {
-		knot_rrset_t *soa_copy = NULL;
-		ret = knot_rrset_deep_copy(soa_rrset, &soa_copy);
-
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
-		CHECK_ALLOC_LOG(soa_copy, KNOT_ENOMEM);
-
-		knot_rrset_set_ttl(soa_copy, min);
-		soa_rrset = soa_copy;
-		/* Need to add it as temporary, so it get's freed. */
-		flags |= KNOT_PF_FREE;
-	}
-
-	assert(soa_rrset != NULL);
-	assert(KNOT_PKT_IN_NS(resp));
-	ret = knot_pkt_put(resp, 0, soa_rrset, flags);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	ret = ns_add_rrsigs(soa_rrset, resp,
-			    knot_node_owner(knot_zone_contents_apex(zone)),
-			    0);
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief Creates a 'next closer name' to the given domain name.
  *
  * For definition of 'next closer name', see RFC5155, Page 6.
@@ -725,6 +633,14 @@ static int ns_put_nsec3_no_wildcard_child(const knot_zone_contents_t *zone,
 	return ret;
 }
 /*----------------------------------------------------------------------------*/
+
+static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
+					  const knot_node_t *closest_encloser,
+					  const knot_node_t *previous,
+					  const knot_zone_contents_t *zone,
+					  const knot_dname_t *qname,
+					  knot_pkt_t *resp);
+
 /*!
  * \brief Puts NSECs or NSEC3s for NODATA error (and their associated RRSIGs)
  *        to the response.
@@ -737,14 +653,22 @@ static int ns_put_nsec3_no_wildcard_child(const knot_zone_contents_t *zone,
  *             RRSets of the requested type).
  * \param resp Response where to add the NSECs or NSEC3s.
  */
-int ns_put_nsec_nsec3_nodata(const knot_zone_contents_t *zone,
-			     const knot_node_t *node,
+int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
+			     const knot_node_t *closest_encloser,
+			     const knot_node_t *previous,
+			     const knot_zone_contents_t *zone,
 			     const knot_dname_t *qname,
 			     knot_pkt_t *resp)
 {
 	if (!DNSSEC_ENABLED ||
 	    !knot_pkt_have_dnssec(resp->query)) {
 		return KNOT_EOK;
+	}
+
+	if (knot_dname_is_wildcard(node->owner)) {
+		return ns_put_nsec_nsec3_wildcard_nodata(node, closest_encloser,
+							 previous, zone, qname,
+							 resp);
 	}
 
 	/*! \todo Maybe distinguish different errors. */
@@ -1134,7 +1058,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
+static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
 					  const knot_node_t *closest_encloser,
 					  const knot_node_t *previous,
 					  const knot_zone_contents_t *zone,
@@ -1203,128 +1127,6 @@ int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 	}
 	return ret;
 }
-
-/*----------------------------------------------------------------------------*/
-
-
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Creates a referral response.
- *
- * This function puts the delegation NS RRSet to the Authority section of the
- * response, possibly adds DS and their associated RRSIGs (if DNSSEC is enabled
- * and requested by the query) and adds any available additional data (A and
- * AAAA RRSets for the names in the NS RRs) with their associated RRSIGs
- * to the Additional section.
- *
- * \param node Delegation point node.
- * \param zone Parent zone (the one from which the response is generated).
- * \param qname Searched name (which caused the referral).
- * \param resp Response.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-int ns_referral(const knot_node_t *node,
-                              const knot_zone_contents_t *zone,
-                              const knot_dname_t *qname,
-                              knot_pkt_t *resp,
-                              uint16_t qtype)
-{
-	dbg_ns_verb("Referral response.\n");
-
-	while (!knot_node_is_deleg_point(node)) {
-		assert(knot_node_parent(node) != NULL);
-		node = knot_node_parent(node);
-	}
-
-
-	int ret = KNOT_EOK;
-
-	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NS);
-	assert(rrset != NULL);
-
-	assert(KNOT_PKT_IN_NS(resp));
-	ret = knot_pkt_put(resp, 0, rrset, 0);
-	if (ret == KNOT_EOK) {
-		ret = ns_add_rrsigs(rrset, resp, node->owner, 0);
-	}
-
-	// add DS records
-	dbg_ns_verb("DNSSEC requested: %d\n",
-		 knot_pkt_have_dnssec(resp->query));
-	dbg_ns_verb("DS records: %p\n", knot_node_rrset(node, KNOT_RRTYPE_DS));
-	if (ret == KNOT_EOK && DNSSEC_ENABLED
-	    && knot_pkt_have_dnssec(resp->query)) {
-		rrset = knot_node_get_rrset(node, KNOT_RRTYPE_DS);
-		if (rrset != NULL) {
-			ret = knot_pkt_put(resp, 0, rrset, 0);
-			if (ret == KNOT_EOK) {
-				ret = ns_add_rrsigs(rrset, resp, node->owner, 0);
-			}
-		} else {
-			// no DS, add NSEC3 or NSEC
-			// if NSEC3 enabled, search for NSEC3
-			if (knot_zone_contents_nsec3_enabled(zone)) {
-				const knot_node_t *nsec3_node =
-					knot_node_nsec3_node(node);
-				dbg_ns_detail("There is no DS, putting NSEC3s."
-				              "\n");
-				if (nsec3_node != NULL) {
-					dbg_ns_detail("Putting NSEC3s from the node.\n");
-					ret = ns_put_nsec3_from_node(nsec3_node,
-					                             resp);
-				} else {
-					dbg_ns_detail("Putting Opt-Out NSEC3s."
-					              "\n");
-					// no NSEC3 (probably Opt-Out)
-					// TODO: check if the zone is Opt-Out
-					ret = ns_put_nsec3_closest_encloser_proof(zone,
-						&node, qname, resp);
-				}
-			} else {
-				knot_rrset_t *nsec = knot_node_get_rrset(
-					node, KNOT_RRTYPE_NSEC);
-				if (nsec) {
-					/*! \todo Check return value? */
-					ret = knot_pkt_put(resp, 0, nsec, KNOT_PF_CHECKDUP);
-					if (ret == KNOT_EOK &&
-					    (nsec = knot_rrset_get_rrsigs(nsec)) != NULL) {
-						ret = knot_pkt_put(resp, 0, nsec, KNOT_PF_CHECKDUP);
-					}
-				}
-			}
-		}
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Adds DNSKEY RRSet from the apex of a zone to the response.
- *
- * \param apex Zone apex node.
- * \param resp Response.
- */
-int ns_add_dnskey(const knot_node_t *apex, knot_pkt_t *resp)
-{
-	knot_rrset_t *rrset =
-		knot_node_get_rrset(apex, KNOT_RRTYPE_DNSKEY);
-
-	int ret = KNOT_EOK;
-
-	if (rrset != NULL) {
-		ret = knot_pkt_put(resp, 0, rrset, KNOT_PF_NOTRUNC);
-		if (ret == KNOT_EOK) {
-			ret = ns_add_rrsigs(rrset, resp, apex->owner, 0);
-		}
-	}
-
-	return ret;
-}
-
 
 /*----------------------------------------------------------------------------*/
 
