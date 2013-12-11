@@ -6,6 +6,7 @@ Features:
 	* ./configure prints build configuration summary
 	* IDN support in Knot utilities
 	* Pretty zone file output (DNSSEC-related data separately)
+	* Lower memory consumption
 Bugfixes:
 	* Crash in particular additionals processing
 	* Race condition in even cancelation
