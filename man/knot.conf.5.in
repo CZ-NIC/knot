@@ -327,7 +327,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # f.e. 1k, 100M, 2G
     ixfr-fslimit 1G;
 
-    # Location of DNSSEC signing keys (relative storage directory in zone).
+    # Location of DNSSEC signing keys (relative to storage directory in zone).
     # Default value: inherited from zones section
     dnssec-keydir "keys";
 

@@ -799,13 +799,13 @@ Remotes are defined in @code{remotes} section of configuration file (@pxref{remo
 @subsubsection storage
 @vindex storage
 
-The working directory of Knot DNS, it is used to store zone files and journal files.
+Data directory for zones. It is used to store zone files and journal files.
 
-If it is set in an invidiual @code{zone} config section, it can be specified as a relative path to @code{storage}.
+Value of @code{storage} set in @code{zone} section is relative to @code{storage} in @code{zones} section.
 
 Default value (in @code{zones} section): @file{$@{localstatedir@}/lib/knot}, configured with @code{--with-storage=path}
 
-Default value (in @code{zone} config): inherited from @code{zones} section.
+Default value (in @code{zone} config): inherited from @code{zones} section
 
 @example
 zones @{
@@ -884,7 +884,7 @@ Default value (in @code{zone} config): inherited from @code{zones} section
 @subsubsection dnssec-keydir
 @vindex dnssec-keydir
 
-Location of DNSSEC signing keys. Can be specified as a relative path to @code{storage}.
+Location of DNSSEC signing keys, relative to @code{storage}.
 
 Default value: not set
 
