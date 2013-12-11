@@ -1,5 +1,16 @@
 Knot DNS NEWS
 
+v1.4.0-rc2 - Dec 13, 2013
+-------------------------
+Features:
+	* ./configure prints build configuration summary
+	* IDN support in Knot utilities
+	* Pretty zone file output (DNSSEC-related data separately)
+Bugfixes:
+	* Crash in particular additionals processing
+	* Race condition in even cancelation
+	* Journal corruption after failed transactions
+
 v1.4.0-rc1 - Nov 20, 2013
 -------------------------
 
