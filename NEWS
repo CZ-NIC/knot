@@ -1,7 +1,14 @@
 Knot DNS NEWS
 
+v1.3.4 - Dec 13, 2013
+---------------------
+Bugfixes:
+	* Crash in particular additionals processing
+	* Race condition in event cancelation
+	* Journal corruption after failed transactions
+
 v1.3.3 - Oct 28, 2013
---------------------------
+---------------------
 Bugfixes:
 	* Improved zone loading error messages
 	* Correct control socket permissions
