@@ -136,7 +136,7 @@ static uint32_t zones_soa_expire(knot_zone_t *zone)
 /*!
  * \brief XFR/IN expire event handler.
  */
-static int zones_expire_ev(event_t *e)
+int zones_expire_ev(event_t *e)
 {
 	assert(e);
 
@@ -177,14 +177,6 @@ static int zones_expire_ev(event_t *e)
 	/* Cancel REFRESH timer. */
 	if (zd->xfr_in.timer) {
 		evsched_cancel(e->parent, zd->xfr_in.timer);
-		evsched_event_free(e->parent, zd->xfr_in.timer);
-		zd->xfr_in.timer = 0;
-	}
-
-	/* Free EXPIRE timer. */
-	if (zd->xfr_in.expire) {
-		evsched_event_free(e->parent, zd->xfr_in.expire);
-		zd->xfr_in.expire = 0;
 	}
 
 	knot_zone_contents_deep_free(&contents);
@@ -197,7 +189,7 @@ static int zones_expire_ev(event_t *e)
 /*!
  * \brief Zone REFRESH or RETRY event.
  */
-static int zones_refresh_ev(event_t *e)
+int zones_refresh_ev(event_t *e)
 {
 	assert(e);
 
@@ -381,7 +373,7 @@ static int zones_zonefile_sync_from_ev(knot_zone_t *zone, zonedata_t *zd)
 /*!
  * \brief Sync chagnes in zone to zonefile.
  */
-static int zones_zonefile_sync_ev(event_t *e)
+int zones_flush_ev(event_t *e)
 {
 	assert(e);
 	dbg_zones("zones: IXFR database SYNC timer event\n");
@@ -988,8 +980,7 @@ static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
 		zones_cancel_dnssec(zone);
 		ret = zones_schedule_dnssec(zone,
 		                            expiration_to_relative(new_expire,
-		                                                   zone),
-		                            false);
+								   zone));
 	}
 	return ret;
 }
@@ -2541,15 +2532,11 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 	evsched_t *sch = zd->server->sched;
 	if (zd->xfr_in.timer) {
 		evsched_cancel(sch, zd->xfr_in.timer);
-		evsched_event_free(sch, zd->xfr_in.timer);
-		zd->xfr_in.timer = 0;
 	}
 
 	/* Cancel EXPIRE timer. */
 	if (zd->xfr_in.expire) {
 		evsched_cancel(sch, zd->xfr_in.expire);
-		evsched_event_free(sch, zd->xfr_in.expire);
-		zd->xfr_in.expire = 0;
 	}
 
 	/* Check XFR/IN master server. */
@@ -2566,8 +2553,7 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 				time = zd->xfr_in.bootstrap_retry;
 		}
 
-		zd->xfr_in.timer = evsched_schedule_cb(sch, zones_refresh_ev,
-		                                       zone, time);
+		evsched_schedule(sch, zd->xfr_in.timer, time);
 		dbg_zones("zone: REFRESH '%s' set to %"PRIi64"\n",
 		          zd->conf->name, time);
 		zd->xfr_in.state = XFR_SCHED;
@@ -2578,17 +2564,11 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 	return KNOT_EOK;
 }
 
-static int zones_dnssec_ev(event_t *event, bool force)
+int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at)
 {
-	// We will be working with zone, don't want it to change in the meantime
-	knot_zone_t *zone = (knot_zone_t *)event->data;
-	zonedata_t *zd = (zonedata_t *)zone->data;
-	rcu_read_lock();
-	assert(zd->conf->dnssec_enable);
-
 	int ret = KNOT_EOK;
 	char *msgpref = NULL;
-	uint32_t expires_at = 0;
+	*expires_at = 0;
 
 	knot_changesets_t *chs = knot_changesets_create();
 	if (chs == NULL) {
@@ -2611,16 +2591,16 @@ static int zones_dnssec_ev(event_t *event, bool force)
 
 	if (force) {
 		log_zone_info("%s Complete resign started (dropping all "
-		              "previous signatures)...\n", msgpref);
+			      "previous signatures)...\n", msgpref);
 	} else {
 		log_zone_info("%s Signing zone...\n", msgpref);
 	}
 
 	if (force) {
-		ret = knot_dnssec_zone_sign_force(zone, ch, &expires_at);
+		ret = knot_dnssec_zone_sign_force(zone, ch, expires_at);
 	} else {
 		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_INC,
-		                            &expires_at);
+					    expires_at);
 	}
 	if (ret != KNOT_EOK) {
 		goto done;
@@ -2629,11 +2609,11 @@ static int zones_dnssec_ev(event_t *event, bool force)
 	if (!zones_changesets_empty(chs)) {
 		knot_zone_contents_t *new_c = NULL;
 		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
-		                                    XFR_TYPE_UPDATE);
+						    XFR_TYPE_UPDATE);
 		chs = NULL; // freed by zones_store_and_apply_chgsets()
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
-			               msgpref, knot_strerror(ret));
+				       msgpref, knot_strerror(ret));
 			goto done;
 		}
 	}
@@ -2643,36 +2623,25 @@ static int zones_dnssec_ev(event_t *event, bool force)
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
+	return ret;
+}
 
+int zones_dnssec_ev(event_t *event)
+{
+	// We will be working with zone, don't want it to change in the meantime
+	rcu_read_lock();
+	knot_zone_t *zone = (knot_zone_t *)event->data;
+	uint32_t expires_at = 0;
+
+	int ret = zones_dnssec_sign(zone, false, &expires_at);
 	if (expires_at != 0) {
 		ret = zones_schedule_dnssec(zone,
 		                            expiration_to_relative(expires_at,
-		                                                   zone),
-		                            false);
+								   zone));
 	}
 	rcu_read_unlock();
 
 	return ret;
-}
-
-static int zones_dnssec_regular_ev(event_t *event)
-{
-	assert(event);
-	if (event->data == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return zones_dnssec_ev(event, false);
-}
-
-static int zones_dnssec_forced_ev(event_t *event)
-{
-	assert(event);
-	if (event->data == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return zones_dnssec_ev(event, true);
 }
 
 int zones_cancel_dnssec(knot_zone_t *zone)
@@ -2691,7 +2660,7 @@ int zones_cancel_dnssec(knot_zone_t *zone)
 	return KNOT_EOK;
 }
 
-int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time, bool force)
+int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time)
 {
 	if (!zone || !zone->data) {
 		return KNOT_EINVAL;
@@ -2709,17 +2678,6 @@ int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time, bool force)
 	if (zd->dnssec_timer) {
 		// Event created already, just reschedule
 		evsched_schedule(scheduler, zd->dnssec_timer, time);
-	} else {
-		// Create new event
-		if (force) {
-			zd->dnssec_timer = evsched_schedule_cb(scheduler,
-			                                       zones_dnssec_forced_ev,
-			                                       zone, time);
-		} else {
-			zd->dnssec_timer = evsched_schedule_cb(scheduler,
-			                                       zones_dnssec_regular_ev,
-			                                       zone, time);
-		}
 	}
 
 	return KNOT_EOK;
@@ -2732,20 +2690,12 @@ int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time, bool force)
 void zones_schedule_ixfr_sync(knot_zone_t *zone, int dbsync_timeout)
 {
 	assert(zone);
-
 	assert(zone->data);
 	zonedata_t *zd = zone->data;
+	evsched_t *scheduler = zd->server->sched;
 
-	if (zd->ixfr_db != NULL) {
-		assert(zd->ixfr_dbsync == NULL);
-
-		assert(zd->server && zd->server->iosched);
-		evsched_t *scheduler = zd->server->sched;
-
-		zd->ixfr_dbsync = evsched_schedule_cb(scheduler,
-		                                      zones_zonefile_sync_ev,
-		                                      zone,
-		                                      dbsync_timeout * 1000);
+	if (zd->ixfr_dbsync != NULL) {
+		evsched_schedule(scheduler, zd->ixfr_dbsync, dbsync_timeout * 1000);
 	}
 }
 
@@ -2987,8 +2937,6 @@ int zones_journal_apply(knot_zone_t *zone)
 int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
                            const knot_nameserver_t *ns, bool zone_changed)
 {
-	/* Cancel possibly running signing event. */
-	zones_cancel_dnssec(zone);
 	/* Calculate differences. */
 	rcu_read_lock();
 	knot_zone_t *z_old = knot_zonedb_find_zone(ns->zone_db,
@@ -3145,8 +3093,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 	if (z->dnssec_enable) {
 		ret = zones_schedule_dnssec(zone,
 					    expiration_to_relative(expires_at,
-								   zone),
-					    false);
+								   zone));
 	}
 
 	return ret;

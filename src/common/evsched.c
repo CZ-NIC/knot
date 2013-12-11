@@ -141,6 +141,18 @@ event_t *evsched_event_new(evsched_t *s, int type)
 	/* Initialize. */
 	memset(e, 0, sizeof(event_t));
 	e->type = type;
+	e->parent = s;
+	return e;
+}
+
+event_t *evsched_event_new_cb(evsched_t *s, event_cb_t cb, void *data)
+{
+	/* Create event. */
+	event_t *e = evsched_event_new(s, EVSCHED_CB);
+	if (e != NULL) {
+		e->cb = cb;
+		e->data = data;
+	}
 	return e;
 }
 
@@ -184,7 +196,7 @@ event_t* evsched_next(evsched_t *s)
 			/* Immediately return. */
 			if (timercmp_ge(&dt, &next_ev->tv)) {
 				s->cur = next_ev;
-                heap_delmin(&s->heap);
+				heap_delmin(&s->heap);
 				pthread_mutex_unlock(&s->mx);
 				pthread_mutex_lock(&s->rl);
 
@@ -262,12 +274,10 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, uint32_t d
 	}
 
 	/* Create event. */
-	event_t *e = evsched_event_new(s, EVSCHED_CB);
+	event_t *e = evsched_event_new_cb(s, cb, data);
 	if (!e) {
 		return NULL;
 	}
-	e->cb = cb;
-	e->data = data;
 
 	/* Schedule. */
 	if (evsched_schedule(s, e, dt) != 0) {
@@ -332,10 +342,13 @@ static int evsched_try_cancel(evsched_t *s, event_t *ev)
 
 	/* Enable running events. */
 	pthread_mutex_unlock(&s->rl);
-	if (found) {
+	if (found > 0) { /* Event canceled. */
 		return KNOT_EOK;
+	} else if (found < 0) {
+		return found; /* Error */
 	}
 
+	/* Not found. */
 	return KNOT_ENOENT;
 }
 
@@ -351,6 +364,6 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 		ret = evsched_try_cancel(s, ev);
 	}
 
-	/* Now we're sure event is cancelled or finished. */
+	/* Now we're sure event is canceled or finished. */
 	return KNOT_EOK;
 }

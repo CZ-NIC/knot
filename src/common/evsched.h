@@ -126,6 +126,17 @@ void evsched_delete(evsched_t **s);
 event_t *evsched_event_new(evsched_t *s, int type);
 
 /*!
+ * \brief Create a callback event.
+ *
+ * \param s Pointer to event scheduler instance.
+ * \param cb Callback handler.
+ * \param data Data for callback.
+ * \retval New instance on success.
+ * \retval NULL on error.
+ */
+event_t *evsched_event_new_cb(evsched_t *s, event_cb_t cb, void *data);
+
+/*!
  * \brief Dispose event instance.
  *
  * \param s Pointer to event scheduler instance.
