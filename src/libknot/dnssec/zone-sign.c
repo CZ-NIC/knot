@@ -1006,6 +1006,7 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 			ERR_ALLOC_FAILED;
 			return false;
 		}
+		memset(info, 0, sizeof(signed_info_t));
 		// Store actual dname repr
 		info->dname = knot_dname_copy(rrset->owner);
 		if (info->dname == NULL) {
