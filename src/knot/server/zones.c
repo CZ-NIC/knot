@@ -1018,7 +1018,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	assert(rsize);
 	assert(rcode);
 	assert(addr);
-	assert(tsig_key);
 
 	int ret = KNOT_EOK;
 	dbg_zones_verb("TSIG check successful. Answering query.\n");
