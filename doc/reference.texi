@@ -870,6 +870,14 @@ are 1 to INT_MAX and default value is 5.
 
 @code{ixfr-fslimit} sets a maximum file size for zone's journal in bytes. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
 
+@node dnssec-keydir
+@subsubsection dnssec-keydir
+@vindex dnssec-keydir
+
+Location of DNSSEC signing keys, relative to @code{storage}.
+
+Default value: not set
+
 @node dnssec-enable
 @subsubsection dnssec-enable
 @vindex dnssec-enable
@@ -879,14 +887,6 @@ EXPERIMENTAL: Enable automatic DNSSEC signing for the zone.
 Default value (in @code{zones} section): off
 
 Default value (in @code{zone} config): inherited from @code{zones} section
-
-@node dnssec-keydir
-@subsubsection dnssec-keydir
-@vindex dnssec-keydir
-
-Location of DNSSEC signing keys, relative to @code{storage}.
-
-Default value: not set
 
 @node signature-lifetime
 @subsubsection signature-lifetime
