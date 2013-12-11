@@ -37,6 +37,8 @@
 #include "common/sockaddr.h"
 #include "libknot/nameserver/name-server.h"
 
+struct query_data;
+
 #define NOTIFY_TIMEOUT 3 /*!< Interval between NOTIFY retries. */
 
 /*!
@@ -52,45 +54,7 @@
  * \retval KNOT_ERROR
  */
 int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
-                          size_t *size);
-
-/*!
- * \brief Creates a response for NOTIFY query.
- *
- * Valid NOTIFY query expires REFRESH timer for received qname.
- *
- * \see RFC1996 for query and response format.
- *
- * \param nameserver Name server structure to provide the needed data.
- * \param query Response structure with parsed query.
- * \param response_wire Place for the response in wire format.
- * \param rsize Input: maximum acceptable size of the response. Output: real
- *              size of the response.
- *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EACCES sender is not authorized to request NOTIFY.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
- */
-/*!
- * \brief Evaluates incoming NOTIFY request and produces a reply.
- *
- * \param notify (Partially) parsed packet with the NOTIFY request.
- * \param zonedb Zone database of the server.
- * \param zone Zone which is probably out-of-date or NULL if there either is no
- *             zone corresponding to the request or if the zone is up-to-date.
- * \param buffer Buffer to fill the message in.
- * \param size In: available space in the buffer. Out: actual size of the
- *             response message in bytes.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EMALF
- * \retval KNOT_ERROR
- */
-int notify_process_request(knot_nameserver_t *nameserver,
-                           knot_pkt_t *notify,
-                           sockaddr_t *from,
-                           uint8_t *buffer, size_t *size) __attribute__ ((deprecated));
+			  size_t *size) __attribute__ ((deprecated));
 
 /*!
  * \brief Processes NOTIFY response packet.
@@ -102,7 +66,17 @@ int notify_process_request(knot_nameserver_t *nameserver,
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_ERROR on message ID mismatch
  */
-int notify_process_response(knot_pkt_t *notify, int msgid);
+int notify_process_response(knot_pkt_t *notify, int msgid) __attribute__ ((deprecated));
+
+/*!
+ * \brief Answer IN class zone NOTIFY message (RFC1996).
+ * \param response
+ * \param ns
+ * \param qdata
+ * \return
+ */
+int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
+
 
 #endif /* _KNOTD_NOTIFY_H_ */
 

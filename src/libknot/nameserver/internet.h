@@ -39,16 +39,6 @@ struct query_data;
  */
 int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 
-/*!
- * \brief Answer IN class zone NOTIFY message (RFC1996).
- * \param response
- * \param ns
- * \param qdata
- * \return
- */
-int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
-
-
 /*! \brief Require given QUERY TYPE or return error code. */
 #define NS_NEED_QTYPE(qdata, qtype_want, error_rcode) \
 	if (knot_pkt_qtype((qdata)->pkt) != (qtype_want)) { \

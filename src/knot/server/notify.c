@@ -33,6 +33,9 @@
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
 #include "libknot/rdata.h"
+#include "libknot/nameserver/internet.h"
+#include "libknot/util/debug.h"
+#include "libknot/nameserver/ns_proc_query.h"
 
 
 /* Messages. */
@@ -68,22 +71,6 @@ static int notify_request(const knot_rrset_t *rrset,
 }
 
 /*----------------------------------------------------------------------------*/
-
-int notify_create_response(knot_pkt_t *request, uint8_t *buffer, size_t *size)
-{
-	knot_pkt_t *response = knot_pkt_new(buffer, *size, NULL);
-	CHECK_ALLOC_LOG(response, KNOT_ENOMEM);
-
-	/* Initialize response. */
-	int ret = knot_pkt_init_response(response, request);
-
-	/* Free the packet, buffer is already written. */
-	knot_pkt_free(&response);
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -99,133 +86,6 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
 	return notify_request(soa_rrset, buffer, size);
 }
 
-/*----------------------------------------------------------------------------*/
-
-static int notify_check_and_schedule(knot_nameserver_t *nameserver,
-                                     const knot_zone_t *zone,
-                                     sockaddr_t *from)
-{
-	if (zone == NULL || from == NULL || knot_zone_data(zone) == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Check ACL for notify-in. */
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	if (from) {
-		if (acl_find(zd->notify_in, from) == NULL) {
-			/* rfc1996: Ignore request and report incident. */
-			return KNOT_EDENIED;
-		}
-	}
-
-	/* Cancel REFRESH/RETRY timer. */
-	evsched_t *sched = ((server_t *)knot_ns_get_data(nameserver))->sched;
-	event_t *refresh_ev = zd->xfr_in.timer;
-	if (refresh_ev) {
-		dbg_notify("notify: expiring REFRESH timer\n");
-		evsched_cancel(sched, refresh_ev);
-
-		/* Set REFRESH timer for now. */
-		evsched_schedule(sched, refresh_ev, 0);
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int notify_process_request(knot_nameserver_t *ns,
-                           knot_pkt_t *notify,
-                           sockaddr_t *from,
-                           uint8_t *buffer, size_t *size)
-{
-	/*! \todo Most of this function is identical to xfrin_transfer_needed()
-	 *        - it will be fine to merge the code somehow.
-	 */
-
-	if (notify == NULL || ns == NULL || buffer == NULL
-	    || size == NULL || from == NULL) {
-		dbg_notify("notify: invalid parameters for %s()\n",
-		           "notify_process_request");
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_EOK;
-
-	dbg_notify("notify: parsing rest of the packet\n");
-	if (notify->parsed < notify->size) {
-		if (knot_pkt_parse_payload(notify, 0) != KNOT_EOK) {
-			dbg_notify("notify: failed to parse NOTIFY query\n");
-			knot_ns_error_response_from_query(ns, notify,
-			                                  KNOT_RCODE_FORMERR,
-			                                  buffer, size);
-			return KNOT_EOK;
-		}
-	}
-
-	// check if it makes sense - if the QTYPE is SOA
-	if (knot_pkt_qtype(notify) != KNOT_RRTYPE_SOA) {
-		// send back FORMERR
-		knot_ns_error_response_from_query(ns, notify,
-		                                  KNOT_RCODE_FORMERR, buffer,
-		                                  size);
-		return KNOT_EOK;
-	}
-
-	// create NOTIFY response
-	dbg_notify("notify: creating response\n");
-	ret = notify_create_response(notify, buffer, size);
-	if (ret != KNOT_EOK) {
-		dbg_notify("notify: failed to create NOTIFY response\n");
-		knot_ns_error_response_from_query(ns, notify,
-		                                  KNOT_RCODE_SERVFAIL, buffer,
-		                                  size);
-		return KNOT_EOK;
-	}
-
-	/* Process notification. */
-	ret = KNOT_ENOZONE;
-	unsigned serial = 0;
-	const knot_dname_t *qname = knot_pkt_qname(notify);
-	rcu_read_lock(); /* z */
-	const knot_zone_t *z = knot_zonedb_find_suffix(ns->zone_db, qname);
-	const knot_pktsection_t *answer = knot_pkt_section(notify, KNOT_ANSWER);
-	if (z != NULL) {
-		ret = notify_check_and_schedule(ns, z, from);
-		const knot_rrset_t *soa_rr = NULL;
-		soa_rr = answer->rr[0];
-		if (soa_rr && knot_rrset_type(soa_rr) == KNOT_RRTYPE_SOA) {
-			serial = knot_rdata_soa_serial(soa_rr);
-		}
-	}
-	rcu_read_unlock();
-
-	int rcode = KNOT_RCODE_NOERROR;
-	switch (ret) {
-	case KNOT_ENOZONE: rcode = KNOT_RCODE_NOTAUTH; break;
-	case KNOT_EACCES:  rcode = KNOT_RCODE_REFUSED; break;
-	default: break;
-	}
-
-	/* Format resulting log message. */
-	char *qstr = knot_dname_to_str(qname);
-	char *fromstr = xfr_remote_str(from, NULL);
-	if (rcode != KNOT_RCODE_NOERROR) {
-		knot_ns_error_response_from_query(ns, notify, KNOT_RCODE_REFUSED,
-		                                  buffer, size);
-		log_server_warning(NOTIFY_MSG "%s\n", qstr, fromstr, knot_strerror(ret));
-		ret = KNOT_EOK; /* Send response. */
-	} else {
-		log_server_info(NOTIFY_MSG NOTIFY_XMSG "\n", qstr, fromstr, serial);
-	}
-	free(qstr);
-	free(fromstr);
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int notify_process_response(knot_pkt_t *notify, int msgid)
 {
 	if (!notify) {
@@ -238,4 +98,81 @@ int notify_process_response(knot_pkt_t *notify, int msgid)
 	}
 
 	return KNOT_EOK;
+}
+
+static int notify_reschedule(knot_nameserver_t *ns,
+			     const knot_zone_t *zone,
+			     sockaddr_t *from)
+{
+	dbg_ns("%s(%p, %p, %p)\n", __func__, ns, zone, from);
+	if (ns == NULL || zone == NULL || zone->data == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Check ACL for notify-in. */
+	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(zone);
+	if (from) {
+		if (acl_find(zone_data->notify_in, from) == NULL) {
+			return KNOT_EDENIED;
+		}
+	} else {
+		dbg_ns("%s: no zone data/address, can't do ACL check\n", __func__);
+	}
+
+	/* Cancel REFRESH/RETRY timer. */
+	server_t *server = ns->data;
+	event_t *refresh_ev = zone_data->xfr_in.timer;
+	if (refresh_ev && server) {
+		dbg_ns("%s: expiring REFRESH timer\n", __func__);
+		evsched_cancel(server->sched, refresh_ev);
+		evsched_schedule(server->sched, refresh_ev, 0);
+	} else {
+		dbg_ns("%s: no REFRESH timer to expire\n", __func__);
+	}
+
+	return KNOT_EOK;
+}
+
+int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
+{
+	if (pkt == NULL || ns == NULL || qdata == NULL) {
+		return NS_PROC_FAIL;
+	}
+
+	/* RFC1996 require SOA question. */
+	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
+	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
+	 *        Most servers use NOTAUTH from RFC2136. */
+	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+
+	/* SOA RR in answer may be included, recover serial. */
+	unsigned serial = 0;
+	const knot_pktsection_t *answer = knot_pkt_section(qdata->pkt, KNOT_ANSWER);
+	if (answer->count > 0) {
+		const knot_rrset_t *soa = answer->rr[0];
+		if (knot_rrset_type(soa) == KNOT_RRTYPE_SOA) {
+			serial = knot_rdata_soa_serial(soa);
+			dbg_ns("%s: received serial %u\n", __func__, serial);
+		} else { /* Ignore */
+			dbg_ns("%s: NOTIFY answer != SOA_RR\n", __func__);
+		}
+	}
+
+	int next_state = NS_PROC_FAIL;
+	int ret = notify_reschedule(ns, qdata->zone, NULL /*! \todo API */);
+
+	/* Format resulting log message. */
+	char *qname_str = knot_dname_to_str(knot_pkt_qname(pkt));
+	char *addr_str = strdup("(noaddr)"); /* xfr_remote_str(from, NULL); */ /*! \todo API */
+	if (ret != KNOT_EOK) {
+		next_state = NS_PROC_NOOP; /* RFC1996: Ignore. */
+		log_server_warning(NOTIFY_MSG "%s\n", qname_str, addr_str, knot_strerror(ret));
+	} else {
+		next_state = NS_PROC_FINISH;
+		log_server_info(NOTIFY_MSG NOTIFY_XMSG "\n", qname_str, addr_str, serial);
+	}
+	free(qname_str);
+	free(addr_str);
+
+	return next_state;
 }

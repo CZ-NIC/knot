@@ -14,6 +14,7 @@
 #include "libknot/nameserver/axfr.h"
 #include "libknot/nameserver/ixfr.h"
 #include "libknot/nameserver/update.h"
+#include "knot/server/notify.h"
 
 /* Forward decls. */
 static int tsig_check(knot_pkt_t *pkt);
