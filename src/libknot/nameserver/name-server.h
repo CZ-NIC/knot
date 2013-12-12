@@ -269,45 +269,6 @@ int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
  */
 int ns_serial_compare(uint32_t s1, uint32_t s2);
 
-int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
-                         uint32_t *serial_to);
-
-int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
-                           knot_ns_xfr_t *xfr, knot_rcode_t rcode);
-
-/*!
- * \brief Processes an AXFR query.
- *
- * This function sequentially creates DNS packets to be sent as a response
- * to the AXFR query and sends each packet using the given callback (\a
- * send_packet).
- *
- * \param nameserver Name server structure to provide the data for answering.
- * \param xfr Persistent transfer-specific data.
- *
- * \note Currently only a stub which sends one error response using the given
- *       callback.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOMEM
- * \retval KNOT_ERROR
- *
- * \todo Maybe the place for the wire format should be passed in as in
- *       the ns_answer_request() function...?
- */
-int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
-
-/*!
- * \brief Processes an IXFR query.
- *
- * \param nameserver Name server structure to provide the data for answering.
- * \param xfr Persistent transfer-specific data.
- *
- * \todo Document properly.
- */
-int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
-
 /*!
  * \brief Processes an AXFR-IN packet.
  *

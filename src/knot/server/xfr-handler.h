@@ -135,18 +135,6 @@ int xfr_join(xfrhandler_t *xfr);
 int xfr_enqueue(xfrhandler_t *xfr, knot_ns_xfr_t *rq);
 
 /*!
- * \brief Answer XFR query.
- *
- * \param ns Nameserver instance.
- * \param req XFR request.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on NULL handler or request.
- * \retval KNOT_ERROR on error.
- */
-int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq);
-
-/*!
  * \brief Prepare XFR request.
  *
  * \param z Related zone.

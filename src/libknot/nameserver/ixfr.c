@@ -164,6 +164,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	knot_changesets_t *chgsets = NULL;
 	int ret = ixfr_load_chsets(&chgsets, qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
+		/*! \todo AXFR fallback. */
 		return ret;
 	}
 
@@ -219,6 +220,8 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	int ret = KNOT_EOK;
 	mm_ctx_t *mm = qdata->mm;
+	
+	/*! \todo Log messages. */
 
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
