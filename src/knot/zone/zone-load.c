@@ -298,6 +298,23 @@ dbg_zp_exec_detail(
 	return KNOT_EOK;
 }
 
+static int delete_rdata_names_from_trie (knot_dname_t **dname, void *d)
+{
+	hattrie_t *trie = (hattrie_t *)d;
+	assert(trie);
+	hattrie_del(trie, (char *)(*dname)->name, (*dname)->size);
+	return KNOT_EOK;
+}
+
+static void delete_rrset_names_from_trie(const knot_rrset_t *rr,
+                                         hattrie_t *t)
+{
+	// Delete owner
+	hattrie_del(t, (char *)rr->owner->name, rr->owner->size);
+	// Delete RDATA DNAMEs
+	rrset_dnames_apply((knot_rrset_t *)rr, delete_rdata_names_from_trie, t);
+}
+
 static void process_rr(const scanner_t *scanner)
 {
 	/*!< \todo Refactor, too long. */
@@ -518,8 +535,8 @@ static void process_rr(const scanner_t *scanner)
 			                 zone_name, name);
 			free(name);
 			free(zone_name);
-			/* This is already deprecated in 1.4, won't create a new API. */
-			hattrie_del(parser->lookup_tree, current_owner->name, current_owner->size);
+			delete_rrset_names_from_trie(current_rrset,
+			                             parser->lookup_tree);
 			knot_rrset_deep_free(&current_rrset, 1, 1);
 			return;
 		}

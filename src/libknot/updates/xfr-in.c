@@ -459,6 +459,23 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 
 /*----------------------------------------------------------------------------*/
 
+static int delete_rdata_names_from_trie (knot_dname_t **dname, void *d)
+{
+	hattrie_t *trie = (hattrie_t *)d;
+	assert(trie);
+	hattrie_del(trie, (char *)(*dname)->name, (*dname)->size);
+	return KNOT_EOK;
+}
+
+static void delete_rrset_names_from_trie(const knot_rrset_t *rr,
+                                         hattrie_t *t)
+{
+	// Delete owner
+	hattrie_del(t, (char *)rr->owner->name, rr->owner->size);
+	// Delete RDATA DNAMEs
+	rrset_dnames_apply((knot_rrset_t *)rr, delete_rdata_names_from_trie, t);
+}
+
 int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 {
 	const uint8_t *pkt = xfr->wire;
@@ -645,6 +662,7 @@ dbg_xfrin_exec(
 			// Out-of-zone data
 			xfrin_log_error(xfr->zone->name, rr->owner,
 			                KNOT_EOUTOFZONE);
+			delete_rrset_names_from_trie(rr, xfr->lookup_tree);
 			knot_rrset_deep_free(&rr, 1, 1);
 			ret = knot_packet_parse_next_rr_answer(packet, &rr);
 			continue;
@@ -1135,6 +1153,7 @@ dbg_xfrin_exec_verb(
 			// out-of-zone domain
 			xfrin_log_error(xfr->zone->name, rr->owner,
 			                KNOT_EOUTOFZONE);
+			delete_rrset_names_from_trie(rr, xfr->lookup_tree);
 			knot_rrset_deep_free(&rr, 1, 1);
 			// Skip this rr
 			ret = knot_packet_parse_next_rr_answer(packet, &rr);
