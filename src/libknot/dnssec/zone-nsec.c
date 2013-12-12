@@ -1262,6 +1262,7 @@ typedef struct chain_fix_data {
 	const knot_node_t *last_used_node;    // Last covered node used in chain
 	knot_dname_t *next_dname;             // Used to reconnect broken chain
 	const hattrie_t *sorted_changes;      // Iterated trie
+	uint32_t ttl;                         // TTL for NSEC(3) records
 } chain_fix_data_t;
 
 static const knot_node_t *find_prev_nsec_node(const knot_zone_contents_t *z,
@@ -1448,7 +1449,8 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	if (dname_equal) {
 		// No valid data for the previous node, create the forward link
 		update_last_used(fix_data, b_node->owner, b_node);
-		return update_nsec(a_node, b_node, fix_data->out_ch, 3600,
+		return update_nsec(a_node, b_node, fix_data->out_ch,
+		                   fix_data->ttl,
 		                   prev_zone_node == fix_data->zone->apex);
 	} else {
 		bool next_dname_equal = fix_data->next_dname &&
@@ -1463,7 +1465,7 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 			update_last_used(fix_data, next_node->owner, next_node);
 			int ret = update_nsec(a ? a_node : b_node,
 			                      next_node, fix_data->out_ch,
-			                      3600, false);
+			                      fix_data->ttl, false);
 			fix_data->next_dname = NULL;
 			return ret;
 		}
@@ -1480,7 +1482,8 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 		update_last_used(fix_data, next_node->owner, next_node);
 		// Fix NSEC
 		return update_nsec(prev_zone_node, next_node, fix_data->out_ch,
-		                   3600, prev_zone_node == fix_data->zone->apex);
+		                   fix_data->ttl,
+		                   prev_zone_node == fix_data->zone->apex);
 	}
 
 	return KNOT_EOK;
@@ -1548,7 +1551,7 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		assert(a_hash);
 		update_last_used(fix_data, b_hash, b_node);
 		return update_nsec3(a_hash, b_hash, a_node, fix_data->out_ch,
-		                    fix_data->zone, 3600);
+		                    fix_data->zone, fix_data->ttl);
 	} else {
 		bool next_dname_equal =
 			fix_data->next_dname &&
@@ -1561,7 +1564,7 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 			                       fix_data->next_dname,
 			                       a_node ? a_node : b_node,
 			                       fix_data->out_ch,
-			                       fix_data->zone, 3600);
+			                       fix_data->zone, fix_data->ttl);
 			update_next_nsec3_dname(fix_data, NULL);
 			return ret;
 		}
@@ -1573,7 +1576,8 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		update_next_nsec3_dname(fix_data, nsec3_rrset);
 		update_last_used(fix_data, b_hash, b_node);
 		return update_nsec3(prev_nsec3_node->owner, b_hash,
-		                    NULL, fix_data->out_ch, fix_data->zone, 3600);
+		                    NULL, fix_data->out_ch, fix_data->zone,
+		                    fix_data->ttl);
 	}
 
 	return KNOT_EOK;
@@ -1605,7 +1609,7 @@ static int chain_finalize_nsec(void *d)
 	}
 	assert(to);
 	return update_nsec(from, to, fix_data->out_ch,
-	                   3600, from == fix_data->zone->apex);
+	                   fix_data->ttl, from == fix_data->zone->apex);
 }
 
 static int chain_finalize_nsec3(void *d)
@@ -1641,7 +1645,8 @@ static int chain_finalize_nsec3(void *d)
 		}
 		// We have to call update here, since different name should be freed
 		int ret = update_nsec3(from, next, fix_data->last_used_node,
-		                       fix_data->out_ch, fix_data->zone, 3600);
+		                       fix_data->out_ch, fix_data->zone,
+		                       fix_data->ttl);
 		knot_dname_free(&next);
 		return ret;
 	} else {
@@ -1650,7 +1655,7 @@ static int chain_finalize_nsec3(void *d)
 	}
 	assert(to);
 	int ret = update_nsec3(from, to, fix_data->last_used_node,
-	                       fix_data->out_ch, fix_data->zone, 3600);
+	                       fix_data->out_ch, fix_data->zone, fix_data->ttl);
 	knot_dname_free(&fix_data->next_dname);
 	return ret;
 }
@@ -1790,6 +1795,7 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 	                              .next_dname = NULL,
 	                              .last_used_dname = NULL,
 	                              .last_used_node = NULL};
+	get_zone_soa_min_ttl(zone, &fix_data.ttl);
 	int ret = KNOT_EOK;
 	if (is_nsec3_enabled(zone)) {
 		// Empty non-terminals are not in the changes, update
