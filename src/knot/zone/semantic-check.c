@@ -1101,17 +1101,10 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 {
 	dbg_semcheck_verb("semcheck: do_check_in_tree: Checking node: %s\n",
 	                  knot_dname_to_str(node->owner));
-	assert(data != NULL);
+
 	arg_t *args = (arg_t *)data;
 
-	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-	short count = knot_node_rrset_count(node);
-
-	assert(count == 0 || rrsets != NULL);
-
 	knot_zone_contents_t *zone = (knot_zone_contents_t *)args->arg1;
-
-	assert(zone);
 
 	knot_node_t **last_node = (knot_node_t **)args->arg5;
 
@@ -1129,7 +1122,6 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 		int check_level = 1 + (zone_is_secure(zone) ? 1 : 0);
 		sem_check_node_plain(zone, node, check_level, handler, 1,
 		                      (int *)args->arg7);
-		free(rrsets);
 		return KNOT_EOK;
 	}
 
@@ -1138,7 +1130,6 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 				       handler, do_checks == 3);
 	}
 
-	free(rrsets);
 	return KNOT_EOK;
 }
 
@@ -1146,7 +1137,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
                        err_handler_t *handler, knot_node_t *first_nsec3_node,
                        knot_node_t *last_nsec3_node)
 {
-	if (!handler) {
+	if (!zone || !handler) {
 		return KNOT_EINVAL;
 	}
 	knot_node_t *last_node = NULL;

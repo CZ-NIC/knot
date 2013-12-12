@@ -57,9 +57,15 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	assert(zone_keys);
 	assert(policy);
 
+	zonedata_t *zone_data = zone->data;
+	assert(zone_data);
+
+	conf_zone_t *config = zone_data->conf;
+	assert(config);
+
 	// Read zone keys from disk
 	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
-	int result = knot_load_zone_keys(conf()->dnssec_keydir,
+	int result = knot_load_zone_keys(config->dnssec_keydir,
 	                                 zone->contents->apex->owner,
 	                                 nsec3_enabled, zone_keys);
 	if (result != KNOT_EOK) {
@@ -79,8 +85,7 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	}
 
 	// Override signature lifetime, if set in config
-	zonedata_t *zd = (zonedata_t *)zone->data;
-	int sig_lf = zd->conf->sig_lifetime;
+	int sig_lf = config->sig_lifetime;
 	if (sig_lf > 0) {
 		policy->sign_lifetime = sig_lf;
 	}
