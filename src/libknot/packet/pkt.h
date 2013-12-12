@@ -72,6 +72,7 @@ enum {
  */
 typedef struct {
 	const knot_rrset_t **rr;
+	const knot_rrinfo_t *rrinfo;
 	uint16_t count;
 } knot_pktsection_t;
 

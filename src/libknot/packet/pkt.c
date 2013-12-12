@@ -241,6 +241,7 @@ void knot_pkt_clear_payload(knot_pkt_t *pkt)
 	/* Reset section. */
 	pkt->current = KNOT_ANSWER;
 	pkt->sections[pkt->current].rr = pkt->rr;
+	pkt->sections[pkt->current].rrinfo = pkt->rr_info;
 }
 
 void knot_pkt_free(knot_pkt_t **packet)
@@ -396,6 +397,7 @@ int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 
 	/* Remember watermark. */
 	pkt->sections[section_id].rr = pkt->rr + pkt->rrset_count;
+	pkt->sections[section_id].rrinfo = pkt->rr_info + pkt->rrset_count;
 	return KNOT_EOK;
 }
 
