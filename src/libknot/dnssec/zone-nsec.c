@@ -1190,6 +1190,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		// Create owner
 		knot_dname_t *owner = knot_dname_copy(from);
 		if (owner == NULL) {
+			free(binary_next);
 			return KNOT_ENOMEM;
 		}
 
@@ -1197,15 +1198,16 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		gen_nsec3 = create_nsec3_rrset(owner, &zone->nsec3_params,
 		                               &bm, binary_next, soa_min);
 		if (gen_nsec3 == NULL) {
+			free(binary_next);
 			knot_dname_free(&owner);
 			return KNOT_ERROR;
 		}
-
 	} else {
 		assert(old_nsec3);
 		// Reuse bitmap and data from old NSEC3
 		int ret = knot_rrset_deep_copy_no_sig(old_nsec3, &gen_nsec3);
 		if (ret != KNOT_EOK) {
+			free(binary_next);
 			return ret;
 		}
 		uint8_t *next_hashed = NULL;
@@ -1213,9 +1215,15 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		knot_rdata_nsec3_next_hashed(gen_nsec3, 0, &next_hashed,
 		                             &next_hashed_size);
 		assert(next_hashed);
-		// Works only for one algo...
+		if (next_hashed_size != written) {
+			// Possible algo mismatch
+			free(binary_next);
+			knot_rrset_deep_free(&gen_nsec3, 1);
+			return KNOT_ERROR;
+		}
 		memcpy(next_hashed, binary_next, next_hashed_size);
 	}
+	free(binary_next);
 
 	if (old_nsec3 && knot_rrset_equal(old_nsec3, gen_nsec3,
 	                                  KNOT_RRSET_COMPARE_WHOLE)) {
