@@ -61,7 +61,6 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	knot_pkt_free(&data->pkt);
 	data->rcode = KNOT_RCODE_NOERROR;
 	data->rcode_tsig = 0;
-	data->flags = 0;
 	data->node = data->encloser = data->previous = NULL;
 
 	/* Free wildcard list. */
