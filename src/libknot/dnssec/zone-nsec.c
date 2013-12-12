@@ -1566,13 +1566,9 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 			// Previous node was not changed in DDNS TODO really?
 			nsec3_rrset = knot_node_rrset(prev_nsec3_node,
 			                              KNOT_RRTYPE_NSEC3);
-			if (nsec3_rrset == NULL) {
-				fix_data->next_dname = b_hash;
-			} else {
-				fix_data->next_dname =
-					next_dname_from_nsec3_rrset(nsec3_rrset,
-					                            fix_data->zone->apex->owner);
-			}
+			fix_data->next_dname =
+				next_dname_from_nsec3_rrset(nsec3_rrset,
+				                            fix_data->zone->apex->owner);
 			update_last_used(fix_data, b_hash, b_node);
 			return update_nsec3(prev_nsec3_node->owner, b_hash,
 			                    NULL, fix_data->out_ch, fix_data->zone, 3600);
@@ -1597,6 +1593,20 @@ static int chain_finalize_nsec3(void *d)
 		                    fix_data->last_used_dname, fix_data->zone->apex,
 		                    fix_data->out_ch, fix_data->zone,
 		                    3600);
+	}
+
+	if (knot_dname_is_equal(fix_data->last_used_dname, fix_data->next_dname)) {
+		const knot_node_t *nsec3_node = knot_zone_contents_find_nsec3_node(fix_data->zone,
+		                                                                   fix_data->next_dname);
+		assert(nsec3_node);
+		const knot_rrset_t *nsec3_rrset =
+			knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
+		assert(nsec3_rrset);
+		return update_nsec3(fix_data->last_used_dname,
+		                    next_dname_from_nsec3_rrset(nsec3_rrset,
+		                                                fix_data->zone->apex->owner),
+		                    fix_data->last_used_node,
+		                    fix_data->out_ch, fix_data->zone, 3600);
 	}
 
 	return update_nsec3(fix_data->last_used_dname, fix_data->next_dname,
