@@ -1513,7 +1513,12 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 	// Handle possible node removal
 	bool node_deleted = b_node == NULL;
 	if (node_deleted) {
-		assert(b_nsec3_node);
+		if (b_nsec3_node == NULL) {
+			// This node was deleted and used to be non-auth
+			assert(knot_node_is_non_auth(b_node));
+			return NSEC_NODE_SKIP;
+		}
+		// The deleted node might have been authoritative, but not anymore
 		if (fix_data->last_used_dname == NULL) {
 			update_last_used(fix_data, prev_nsec3_node->owner, NULL);
 		}
@@ -1552,27 +1557,16 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 			return ret;
 		}
 
-		const knot_rrset_t *nsec3_rrset = NULL;
-		if (next_dname_equal) {
-			assert(0);
-			// Updating node, extract next
-			nsec3_rrset = knot_node_rrset(b_nsec3_node, KNOT_RRTYPE_NSEC3);
-			assert(nsec3_rrset);
-			prev_nsec3_node = b_nsec3_node;
-			return update_nsec3(prev_nsec3_node->owner,
-			                    next_dname_from_nsec3_rrset(nsec3_rrset, fix_data->zone->apex->owner),
-			                    NULL, fix_data->out_ch, fix_data->zone, 3600);
-		} else {
-			// Previous node was not changed in DDNS TODO really?
-			nsec3_rrset = knot_node_rrset(prev_nsec3_node,
-			                              KNOT_RRTYPE_NSEC3);
-			fix_data->next_dname =
-				next_dname_from_nsec3_rrset(nsec3_rrset,
-				                            fix_data->zone->apex->owner);
-			update_last_used(fix_data, b_hash, b_node);
-			return update_nsec3(prev_nsec3_node->owner, b_hash,
-			                    NULL, fix_data->out_ch, fix_data->zone, 3600);
-		}
+		// Previous node was not changed in DDNS TODO really?
+		const knot_rrset_t *nsec3_rrset =
+			knot_node_rrset(prev_nsec3_node, KNOT_RRTYPE_NSEC3);
+		assert(nsec3_rrset);
+		fix_data->next_dname =
+			next_dname_from_nsec3_rrset(nsec3_rrset,
+			                            fix_data->zone->apex->owner);
+		update_last_used(fix_data, b_hash, b_node);
+		return update_nsec3(prev_nsec3_node->owner, b_hash,
+		                    NULL, fix_data->out_ch, fix_data->zone, 3600);
 	}
 
 	return KNOT_EOK;
@@ -1621,9 +1615,16 @@ static int chain_finalize_nsec(void *d)
 	assert(fix_data->last_used_dname && fix_data->next_dname);
 	const knot_node_t *from = fix_data->last_used_node;
 	assert(from);
-	const knot_node_t *to =
-		knot_zone_contents_find_node(fix_data->zone,
-		                             fix_data->next_dname);
+	const knot_node_t *to = NULL;
+	if (knot_dname_is_equal(fix_data->last_used_dname, fix_data->next_dname)) {
+		const knot_rrset_t *nsec_rrset =
+			knot_node_rrset(from, KNOT_RRTYPE_NSEC);
+		to = knot_zone_contents_find_node(fix_data->zone,
+		                                  knot_rdata_nsec_next(nsec_rrset));
+	} else {
+		to = knot_zone_contents_find_node(fix_data->zone,
+		                                  fix_data->next_dname);
+	}
 	assert(to);
 	return update_nsec(from, to, fix_data->out_ch,
 	                   3600, from == fix_data->zone->apex);
