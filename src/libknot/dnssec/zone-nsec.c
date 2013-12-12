@@ -1054,6 +1054,7 @@ static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
 	const bool sort = false;
 	hattrie_iter_t *itt = hattrie_iter_begin(sorted_changes, sort);
 	if (itt == NULL) {
+		hattrie_free(*out);
 		return KNOT_ERROR;
 	}
 
@@ -1065,6 +1066,7 @@ static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
 		                           zone->apex->owner,
 		                           &zone->nsec3_params);
 		if (nsec3_name == NULL) {
+			hattrie_free(*out);
 			return KNOT_ERROR;
 		}
 		val->hashed_dname = nsec3_name;
@@ -1254,12 +1256,12 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 }
 
 typedef struct chain_fix_data {
-	const knot_zone_contents_t *zone; // Zone to fix
-	knot_changeset_t *out_ch; // Outgoing changes
-	const knot_dname_t *last_used_dname; // Last dname used in chain
-	const knot_node_t *last_used_node; // Last covered node used in chain
-	const knot_dname_t *next_dname; // Used to reconnect broken chain
-	const hattrie_t *sorted_changes; // Iterated trie
+	const knot_zone_contents_t *zone;     // Zone to fix
+	knot_changeset_t *out_ch;             // Outgoing changes
+	const knot_dname_t *last_used_dname;  // Last dname used in chain
+	const knot_node_t *last_used_node;    // Last covered node used in chain
+	knot_dname_t *next_dname;             // Used to reconnect broken chain
+	const hattrie_t *sorted_changes;      // Iterated trie
 } chain_fix_data_t;
 
 static const knot_node_t *find_prev_nsec_node(const knot_zone_contents_t *z,
@@ -1340,8 +1342,8 @@ static const knot_node_t *find_prev_nsec3_node(const knot_zone_contents_t *z,
 	return prev_nsec3_node;
 }
 
-static const knot_dname_t *next_dname_from_nsec3_rrset(const knot_rrset_t *rr,
-                                                       const knot_dname_t *zone_apex)
+static knot_dname_t *next_dname_from_nsec3_rrset(const knot_rrset_t *rr,
+                                                 const knot_dname_t *zone_apex)
 {
 	uint8_t *next_hashed = NULL;
 	uint8_t hashed_size = 0;
@@ -1390,7 +1392,8 @@ static int handle_deleted_node(const knot_node_t *node,
 			fix_data->next_dname = next_dname_from_nsec3_rrset(old_nsec,
 			                                                   fix_data->zone->apex->owner);
 		} else {
-			fix_data->next_dname = knot_rdata_nsec_next(old_nsec);
+			fix_data->next_dname =
+				(knot_dname_t *)knot_rdata_nsec_next(old_nsec);
 		}
 	}
 	assert(fix_data->next_dname);
@@ -1465,26 +1468,15 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 			return ret;
 		}
 
-		const knot_rrset_t *nsec_rrset = NULL;
-		const knot_node_t *next_node = NULL;
-		if (next_dname_equal) {
-			assert(0);
-			// Updating node, extract next
-			nsec_rrset = knot_node_rrset(b_node, KNOT_RRTYPE_NSEC);
-			prev_zone_node = b_node;
-			next_node = knot_zone_contents_find_node(fix_data->zone,
-			                                         knot_rdata_nsec_next(nsec_rrset));
-			assert(nsec_rrset);
-		} else {
-			// Previous node was not changed in DDNS, it has to have NSEC
-			nsec_rrset = knot_node_rrset(prev_zone_node,
-			                             KNOT_RRTYPE_NSEC);
-			next_node = b_node;
-			assert(nsec_rrset);
-		}
+		// Previous node was not changed in DDNS, it has to have NSEC
+		const knot_rrset_t *nsec_rrset =
+			knot_node_rrset(prev_zone_node, KNOT_RRTYPE_NSEC);
+		assert(nsec_rrset);
+		const knot_node_t *next_node = b_node;
 
 		// Store next node for next iterations
-		fix_data->next_dname = knot_rdata_nsec_next(nsec_rrset);
+		fix_data->next_dname =
+			(knot_dname_t *)knot_rdata_nsec_next(nsec_rrset);
 		update_last_used(fix_data, next_node->owner, next_node);
 		// Fix NSEC
 		return update_nsec(prev_zone_node, next_node, fix_data->out_ch,
@@ -1492,6 +1484,14 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	}
 
 	return KNOT_EOK;
+}
+
+static void update_next_nsec3_dname(chain_fix_data_t *fix_data,
+                                    const knot_rrset_t *nsec3)
+{
+	knot_dname_free(&fix_data->next_dname);
+	fix_data->next_dname =
+		next_dname_from_nsec3_rrset(nsec3, fix_data->zone->apex->owner);
 }
 
 static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
@@ -1548,9 +1548,10 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		return update_nsec3(a_hash, b_hash, a_node, fix_data->out_ch,
 		                    fix_data->zone, 3600);
 	} else {
-		bool next_dname_equal = fix_data->next_dname &&
-		                        knot_dname_is_equal(fix_data->next_dname, b_hash);
-		bool use_next = fix_data->next_dname && !next_dname_equal;
+		bool next_dname_equal =
+			fix_data->next_dname &&
+			knot_dname_is_equal(fix_data->next_dname, b_hash);
+		bool use_next = !next_dname_equal;
 		if (use_next) {
 			update_last_used(fix_data, fix_data->next_dname,
 			                 NULL);
@@ -1559,19 +1560,15 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 			                       a_node ? a_node : b_node,
 			                       fix_data->out_ch,
 			                       fix_data->zone, 3600);
-			printf("%s %s\n", a_hash ? a_hash : b_hash,
-			       fix_data->next_dname);
 			fix_data->next_dname = NULL;
 			return ret;
 		}
 
-		// Previous node was not changed in DDNS TODO really?
+		// Previous node was not changed in DDNS,NSEC3 has to be present
 		const knot_rrset_t *nsec3_rrset =
 			knot_node_rrset(prev_nsec3_node, KNOT_RRTYPE_NSEC3);
 		assert(nsec3_rrset);
-		fix_data->next_dname =
-			next_dname_from_nsec3_rrset(nsec3_rrset,
-			                            fix_data->zone->apex->owner);
+		update_next_nsec3_dname(fix_data, nsec3_rrset);
 		update_last_used(fix_data, b_hash, b_node);
 		return update_nsec3(prev_nsec3_node->owner, b_hash,
 		                    NULL, fix_data->out_ch, fix_data->zone, 3600);
@@ -1633,15 +1630,27 @@ static int chain_finalize_nsec3(void *d)
 		const knot_rrset_t *nsec3_rrset =
 			knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
 		assert(nsec3_rrset);
-		to = next_dname_from_nsec3_rrset(nsec3_rrset,
-		                                 fix_data->zone->apex->owner);
+		knot_dname_free(&fix_data->next_dname);
+		knot_dname_t *next =
+			next_dname_from_nsec3_rrset(nsec3_rrset,
+			                            fix_data->zone->apex->owner);
+		if (next == NULL) {
+			return KNOT_ENOMEM;
+		}
+		// We have to call update here, since different name should be freed
+		int ret = update_nsec3(from, next, fix_data->last_used_node,
+		                       fix_data->out_ch, fix_data->zone, 3600);
+		knot_dname_free(&next);
+		return ret;
 	} else {
 		// Normal case
 		to = fix_data->next_dname;
 	}
 	assert(to);
-	return update_nsec3(from, to, fix_data->last_used_node,
-	                    fix_data->out_ch, fix_data->zone, 3600);
+	int ret = update_nsec3(from, to, fix_data->last_used_node,
+	                       fix_data->out_ch, fix_data->zone, 3600);
+	knot_dname_free(&fix_data->next_dname);
+	return ret;
 }
 
 /* - public API ------------------------------------------------------------ */
@@ -1782,7 +1791,8 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 	int ret = KNOT_EOK;
 	if (is_nsec3_enabled(zone)) {
 		// Empty non-terminals are not in the changes, update
-		ret = update_changes_with_empty_non_terminals(zone, sorted_changes);
+		ret = update_changes_with_empty_non_terminals(zone,
+		                                              sorted_changes);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -1791,15 +1801,19 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 		ret = create_nsec3_hashes_from_trie(sorted_changes,
 		                                    zone,
 		                                    &nsec3_names);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		hattrie_build_index(nsec3_names);
 		fix_data.sorted_changes = nsec3_names;
 
 		ret = chain_iterate_nsec3(nsec3_names, fix_nsec3_chain,
 		                          chain_finalize_nsec3,
 		                          &fix_data);
+		hattrie_free(nsec3_names);
 	} else {
-		// Build hattrie index for sorted iterations
 		hattrie_build_index(sorted_changes);
+
 		ret = chain_iterate_nsec(sorted_changes, fix_nsec_chain,
 		                         chain_finalize_nsec,
 		                         &fix_data);

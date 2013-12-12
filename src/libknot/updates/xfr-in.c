@@ -2006,7 +2006,7 @@ static int xfrin_switch_nodes_in_node(knot_node_t **node, void *data)
 	UNUSED(data);
 
 	assert(node && *node);
-#warning("falala\n");
+#warning("This assert fails after DDNS with NSEC3, fix before release!\n");
 //	assert(knot_node_new_node(*node) == NULL);
 
 	knot_node_update_refs(*node);

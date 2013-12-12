@@ -911,7 +911,6 @@ static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
 {
 	int ret = KNOT_EOK;
 	uint32_t new_expire = time(NULL) + (used_lifetime - used_refresh);
-	printf("FIX: lifetime %d refresh %d\n", used_lifetime, used_refresh);
 	if (new_expire < zd->dnssec_timer->tv.tv_sec) {
 		// Drop old event, earlier signing needed
 		zones_cancel_dnssec(zone);
