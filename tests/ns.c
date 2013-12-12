@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 
 	/* Finish. */
 	state = ns_proc_finish(&query_ctx);
-	ok(state & NS_PROC_NOOP, "ns: processing end" );
+	ok(state == NS_PROC_NOOP, "ns: processing end" );
 
 	/* Cleanup. */
 	free(root->data);

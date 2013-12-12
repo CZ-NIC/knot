@@ -194,7 +194,12 @@ static int put_authority_ns(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
 	const knot_rrset_t *ns_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_NS);
-	return knot_pkt_put(pkt, 0, ns_rrset, KNOT_PF_NOTRUNC);
+	if (ns_rrset) {
+		return knot_pkt_put(pkt, 0, ns_rrset, KNOT_PF_NOTRUNC);
+	} else {
+		dbg_ns("%s: no NS RRSets in this zone, fishy...\n", __func__);
+	}
+	return KNOT_EOK;
 }
 
 /*! \brief Puts optional SOA RRSet to the Authority section of the response. */
