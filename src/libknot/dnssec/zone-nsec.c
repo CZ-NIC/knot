@@ -1551,7 +1551,7 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		bool next_dname_equal =
 			fix_data->next_dname &&
 			knot_dname_is_equal(fix_data->next_dname, b_hash);
-		bool use_next = !next_dname_equal;
+		bool use_next = fix_data->next_dname && !next_dname_equal;
 		if (use_next) {
 			update_last_used(fix_data, fix_data->next_dname,
 			                 NULL);
