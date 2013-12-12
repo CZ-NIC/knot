@@ -396,35 +396,6 @@ const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
                                                   const knot_dname_t *qname,
                                                   uint16_t qtype);
 
-int ns_put_additional(knot_pkt_t *resp);
-
-knot_rrset_t *ns_synth_from_wildcard(const knot_rrset_t *wildcard_rrset, const knot_dname_t *qname);
-
-int ns_add_rrsigs(knot_rrset_t *rrset, knot_pkt_t *resp,
-                         const knot_dname_t *name,
-                         uint32_t flags);
-
-int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
-			     const knot_node_t *closest_encloser,
-			     const knot_node_t *previous,
-			     const knot_zone_contents_t *zone,
-			     const knot_dname_t *qname,
-			     knot_pkt_t *resp);
-
-int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,
-				      const knot_node_t *previous,
-				      const knot_node_t *closest_encloser,
-				      const knot_dname_t *qname,
-				      knot_pkt_t *resp);
-
-int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
-				      const knot_node_t *closest_encloser,
-				      const knot_node_t *previous,
-				      const knot_zone_contents_t *zone,
-				      const knot_dname_t *qname,
-				      knot_pkt_t *resp);
-
-
 /* #10 >>> Exposed API. */
 
 /* #10 <<< Next-gen API. */

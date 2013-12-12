@@ -126,6 +126,8 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/zone-diff.h		\
 	libknot/zone/zone-diff.c		\
+	libknot/nameserver/nsec_proofs.h	\
+	libknot/nameserver/nsec_proofs.c	\
 	libknot/nameserver/name-server.h	\
 	libknot/nameserver/name-server.c	\
 	libknot/nameserver/chaos.h		\

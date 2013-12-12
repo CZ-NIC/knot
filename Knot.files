@@ -165,6 +165,8 @@ src/libknot/dnssec/zone-sign.h
 src/libknot/edns.c
 src/libknot/edns.h
 src/libknot/libknot.h
+src/libknot/nameserver/nsec_proofs.c
+src/libknot/nameserver/nsec_proofs.h
 src/libknot/nameserver/chaos.c
 src/libknot/nameserver/chaos.h
 src/libknot/nameserver/internet.c
