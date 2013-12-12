@@ -1572,42 +1572,6 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 	return KNOT_EOK;
 }
 
-static int chain_finalize_nsec3(void *d)
-{
-	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
-	assert(fix_data);
-	assert(fix_data->last_used_dname);
-	if (fix_data->next_dname == NULL) {
-		// Nothing to fix
-		return KNOT_EOK;
-	}
-	if (knot_dname_is_equal(fix_data->last_used_dname, fix_data->zone->apex->nsec3_node->owner)) {
-		// Special case where all nodes but the apex is deleted. TODO - better solution
-		return update_nsec3(fix_data->last_used_dname,
-		                    fix_data->last_used_dname, fix_data->zone->apex,
-		                    fix_data->out_ch, fix_data->zone,
-		                    3600);
-	}
-
-	if (knot_dname_is_equal(fix_data->last_used_dname, fix_data->next_dname)) {
-		const knot_node_t *nsec3_node = knot_zone_contents_find_nsec3_node(fix_data->zone,
-		                                                                   fix_data->next_dname);
-		assert(nsec3_node);
-		const knot_rrset_t *nsec3_rrset =
-			knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
-		assert(nsec3_rrset);
-		return update_nsec3(fix_data->last_used_dname,
-		                    next_dname_from_nsec3_rrset(nsec3_rrset,
-		                                                fix_data->zone->apex->owner),
-		                    fix_data->last_used_node,
-		                    fix_data->out_ch, fix_data->zone, 3600);
-	}
-
-	return update_nsec3(fix_data->last_used_dname, fix_data->next_dname,
-	                    fix_data->last_used_node, fix_data->out_ch,
-	                    fix_data->zone, 3600);
-}
-
 static int chain_finalize_nsec(void *d)
 {
 	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
@@ -1616,22 +1580,60 @@ static int chain_finalize_nsec(void *d)
 	const knot_node_t *from = fix_data->last_used_node;
 	assert(from);
 	const knot_node_t *to = NULL;
-	if (knot_dname_is_equal(fix_data->last_used_dname, fix_data->next_dname)) {
+	if (knot_dname_is_equal(fix_data->last_used_dname,
+	                        fix_data->zone->apex->owner)) {
+		// Everything but the apex deleted
+		to = fix_data->zone->apex;
+	} else if (knot_dname_is_equal(fix_data->last_used_dname,
+	                               fix_data->next_dname)) {
+		// NSEC cannot point to itself (except for the case above)
 		const knot_rrset_t *nsec_rrset =
 			knot_node_rrset(from, KNOT_RRTYPE_NSEC);
 		to = knot_zone_contents_find_node(fix_data->zone,
 		                                  knot_rdata_nsec_next(nsec_rrset));
-	} else if (knot_dname_is_equal(fix_data->last_used_dname,
-	                               fix_data->zone->apex->owner)) {
-		to = knot_zone_contents_find_node(fix_data->zone,
-		                                  fix_data->last_used_dname);
 	} else {
+		// Normal case
 		to = knot_zone_contents_find_node(fix_data->zone,
 		                                  fix_data->next_dname);
 	}
 	assert(to);
 	return update_nsec(from, to, fix_data->out_ch,
 	                   3600, from == fix_data->zone->apex);
+}
+
+static int chain_finalize_nsec3(void *d)
+{
+	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
+	assert(fix_data);
+	if (fix_data->next_dname == NULL) {
+		// Nothing to fix
+		return KNOT_EOK;
+	}
+	const knot_dname_t *from = fix_data->last_used_dname;
+	assert(from);
+	const knot_dname_t *to = NULL;
+	if (knot_dname_is_equal(from,
+	                        fix_data->zone->apex->nsec3_node->owner)) {
+		// Special case where all nodes but the apex are deleted
+		to = fix_data->last_used_dname;
+	} else if (knot_dname_is_equal(from, fix_data->next_dname)) {
+		// We do not want to point it to itself, extract next
+		const knot_node_t *nsec3_node =
+			knot_zone_contents_find_nsec3_node(fix_data->zone,
+			                                   from);
+		assert(nsec3_node);
+		const knot_rrset_t *nsec3_rrset =
+			knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
+		assert(nsec3_rrset);
+		to = next_dname_from_nsec3_rrset(nsec3_rrset,
+		                                 fix_data->zone->apex->owner);
+	} else {
+		// Normal case
+		to = fix_data->next_dname;
+	}
+	assert(to);
+	return update_nsec3(from, to, fix_data->last_used_node,
+	                    fix_data->out_ch, fix_data->zone, 3600);
 }
 
 /* - public API ------------------------------------------------------------ */
