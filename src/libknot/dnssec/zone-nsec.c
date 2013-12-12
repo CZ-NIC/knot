@@ -1491,7 +1491,9 @@ static void update_next_nsec3_dname(chain_fix_data_t *fix_data,
 {
 	knot_dname_free(&fix_data->next_dname);
 	fix_data->next_dname =
-		next_dname_from_nsec3_rrset(nsec3, fix_data->zone->apex->owner);
+		nsec3 ? next_dname_from_nsec3_rrset(nsec3,
+		                                   fix_data->zone->apex->owner) :
+		        NULL;
 }
 
 static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
@@ -1560,7 +1562,7 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 			                       a_node ? a_node : b_node,
 			                       fix_data->out_ch,
 			                       fix_data->zone, 3600);
-			fix_data->next_dname = NULL;
+			update_next_nsec3_dname(fix_data, NULL);
 			return ret;
 		}
 
