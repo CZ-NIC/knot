@@ -1621,6 +1621,10 @@ static int chain_finalize_nsec(void *d)
 			knot_node_rrset(from, KNOT_RRTYPE_NSEC);
 		to = knot_zone_contents_find_node(fix_data->zone,
 		                                  knot_rdata_nsec_next(nsec_rrset));
+	} else if (knot_dname_is_equal(fix_data->last_used_dname,
+	                               fix_data->zone->apex->owner)) {
+		to = knot_zone_contents_find_node(fix_data->zone,
+		                                  fix_data->last_used_dname);
 	} else {
 		to = knot_zone_contents_find_node(fix_data->zone,
 		                                  fix_data->next_dname);
