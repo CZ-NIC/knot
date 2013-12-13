@@ -1318,6 +1318,22 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 			return ret;
 		}
 
+		/* Update zone version. */
+		struct stat st;
+		if (stat(zd->conf->file, &st) < 0) {
+			dbg_zones("zones: failed to stat() zone db, "
+				  "something is seriously wrong\n");
+			log_zone_warning("Failed to apply differences "
+			                 "'%s' to '%s (%s)'\n",
+			                 zd->conf->name, zd->conf->file,
+			                 knot_strerror(ret));
+			rcu_read_unlock();
+			pthread_mutex_unlock(&zd->lock);
+			return KNOT_ERROR;
+		} else {
+			knot_zone_set_version(zone, st.st_mtime);
+		}
+
 		/* Update journal entries. */
 		dbg_zones_verb("zones: unmarking all dirty nodes "
 		               "in '%s' journal\n",
