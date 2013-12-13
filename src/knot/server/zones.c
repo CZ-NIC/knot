@@ -1321,8 +1321,6 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 		/* Update zone version. */
 		struct stat st;
 		if (stat(zd->conf->file, &st) < 0) {
-			dbg_zones("zones: failed to stat() zone db, "
-				  "something is seriously wrong\n");
 			log_zone_warning("Failed to apply differences "
 			                 "'%s' to '%s (%s)'\n",
 			                 zd->conf->name, zd->conf->file,
