@@ -143,9 +143,8 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const knot_zone_t *zone
 	return ret;
 }
 
-static int ixfr_answer_init(struct query_data *qdata)
+static int ixfr_query_check(struct query_data *qdata)
 {
-
 	/* Check zone state. */
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	/* Need IXFR query type. */
@@ -159,12 +158,22 @@ static int ixfr_answer_init(struct query_data *qdata)
 	}
 	/* SOA needs to match QNAME. */
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
+	return NS_PROC_FINISH;
+}
 
+static int ixfr_answer_init(struct query_data *qdata)
+{
+	/* Check query. */
+	int state = ixfr_query_check(qdata);
+	if (state == NS_PROC_FAIL) {
+		return KNOT_EMALF; /* Malformed query. */
+	}
 	/* Compare serials. */
+	const knot_rrset_t *their_soa = knot_pkt_section(qdata->pkt, KNOT_AUTHORITY)->rr[0];
 	knot_changesets_t *chgsets = NULL;
 	int ret = ixfr_load_chsets(&chgsets, qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
-		/*! \todo AXFR fallback. */
+		dbg_ns("%s: failed to load changesets => %d\n", __func__, ret);
 		return ret;
 	}
 

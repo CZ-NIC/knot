@@ -26,9 +26,11 @@
 
 /* root zone query */
 #define IN_QUERY_LEN 28
+#define IN_QUERY_QTYPE_POS (KNOT_WIRE_HEADER_SIZE + 1)
 static const uint8_t IN_QUERY[IN_QUERY_LEN] = {
 	0xac, 0x77, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x01, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00, 0x29,
+	0x00, 0x01, /* header */
+        0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00, 0x29,
 	0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
@@ -36,7 +38,8 @@ static const uint8_t IN_QUERY[IN_QUERY_LEN] = {
 #define CH_QUERY_LEN 27
 static const uint8_t CH_QUERY[CH_QUERY_LEN] = {
 	0xa0, 0xa2, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x02, 0x69, 0x64, 0x06, 0x73, 0x65, 0x72, 0x76,
+	0x00, 0x00, /* header */
+        0x02, 0x69, 0x64, 0x06, 0x73, 0x65, 0x72, 0x76,
 	0x65, 0x72, 0x00, 0x00, 0x10, 0x00, 0x03
 };
 
@@ -52,11 +55,36 @@ static const uint8_t SOA_RDATA[SOA_RDLEN] = {
         0x00, 0x00, 0x0e, 0x10         /* min ttl */
 };
 
-#include "common/log.h"
+/* Basic response check (4 checks). */
+static void answer_sanity_check(const uint8_t *query, const uint8_t *ans,
+                                uint16_t ans_len, int exp_rcode, const char *name)
+{
+	ok(ans_len > KNOT_WIRE_HEADER_SIZE, "ns: len(%s answer) > DNS header", name);
+	ok(knot_wire_get_qr(ans), "ns: %s answer has QR=1", name);
+	is_int(exp_rcode, knot_wire_get_rcode(ans), "ns: %s answer RCODE=%d", name, exp_rcode);
+	is_int(knot_wire_get_id(query), knot_wire_get_id(ans), "ns: %s MSGID match", name);
+}
+
+/* Resolve query and check answer for sanity. */
+static void do_query(ns_proc_context_t *query_ctx, const char *name,
+                     const uint8_t *query, uint16_t query_len,
+                     uint8_t *ans, int exp_rcode)
+{
+	int state = ns_proc_in(query, query_len, query_ctx);
+	ok(state == NS_PROC_FULL || state == NS_PROC_FAIL, "ns: process %s query", name);
+	uint16_t ans_len = KNOT_WIRE_MAX_PKTSIZE;
+	state = ns_proc_out(ans, &ans_len, query_ctx);
+	if (state == NS_PROC_FAIL) { /* Allow 1 generic error response. */
+		state = ns_proc_out(ans, &ans_len, query_ctx);
+	}
+	ok(state == NS_PROC_FINISH, "ns: answer %s query", name);
+	answer_sanity_check(query, ans, ans_len, exp_rcode, name);
+}
+
 int main(int argc, char *argv[])
 {
 	log_init();
-	plan(18);
+	plan(6*6 + 1);
 
 	/* Prepare. */
 	int state = NS_PROC_FAIL;
@@ -84,6 +112,10 @@ int main(int argc, char *argv[])
 	/* Stub data. */
 	root->data = malloc(sizeof(zonedata_t));
 	memset(root->data, 0, sizeof(zonedata_t));
+	
+	/* Bake the zone. */
+	knot_node_t *first_nsec3 = NULL, *last_nsec3 = NULL;
+	knot_zone_contents_adjust(root->contents, &first_nsec3, &last_nsec3, false);
 
 	knot_zonedb_free(&ns->zone_db);
 	ns->zone_db = knot_zonedb_new(1);
@@ -99,50 +131,39 @@ int main(int argc, char *argv[])
 
 	/* Query processor (valid input). */
 	state = ns_proc_begin(&query_ctx, NS_PROC_QUERY);
-	ok(state & NS_PROC_MORE, "ns: init QUERY processor");
-	state = ns_proc_in(IN_QUERY, IN_QUERY_LEN, &query_ctx);
-	ok(state & NS_PROC_FULL, "ns: process IN query" );
-	wire_len = sizeof(wire);
-	state = ns_proc_out(wire, &wire_len, &query_ctx);
-	ok(state & NS_PROC_FINISH, "ns: answer IN query" );
+	do_query(&query_ctx, "IN/root", IN_QUERY, IN_QUERY_LEN, wire, KNOT_RCODE_NOERROR);
 
 	/* Query processor (CH zone) */
 	state = ns_proc_reset(&query_ctx);
-	ok(state & NS_PROC_MORE, "ns: reset processing context" );
-	state = ns_proc_in(CH_QUERY, CH_QUERY_LEN, &query_ctx);
-	ok(state & NS_PROC_FULL, "ns: process CH query");
-	wire_len = sizeof(wire);
-	state = ns_proc_out(wire, &wire_len, &query_ctx);
-	is_int(NS_PROC_FINISH, state, "ns: answer CH query");
-	/* Brief response check. */
-	ok(wire_len > KNOT_WIRE_HEADER_SIZE, "ns: CH response > DNS header");
-	ok(knot_wire_get_qr(wire), "ns: CH response has QR=1");
-	is_int(KNOT_RCODE_NOERROR, knot_wire_get_rcode(wire), "ns: CH response RCODE=0");
-	is_int(knot_wire_get_id(CH_QUERY), knot_wire_get_id(wire), "ns: CH MsgId match");
-
+	do_query(&query_ctx, "CH TXT", CH_QUERY, CH_QUERY_LEN, wire, KNOT_RCODE_NOERROR);
+	
 	/* Query processor (invalid input). */
-	ns_proc_reset(&query_ctx);
-	state = ns_proc_in(IN_QUERY, IN_QUERY_LEN - 1, &query_ctx);
-	ok(state & NS_PROC_FAIL, "ns: process malformed SOA query" );
+	state = ns_proc_reset(&query_ctx);
+	do_query(&query_ctx, "IN/formerr", IN_QUERY, IN_QUERY_LEN - 1, wire, KNOT_RCODE_FORMERR);
 
 	/* Forge NOTIFY query from SOA query. */
+	state = ns_proc_reset(&query_ctx);
 	memcpy(src, IN_QUERY, IN_QUERY_LEN);
 	src_len = IN_QUERY_LEN;
 	wire_len = sizeof(wire);
 	knot_wire_set_opcode(src, KNOT_OPCODE_NOTIFY);
+	do_query(&query_ctx, "IN/notify", src, src_len, wire, KNOT_RCODE_NOERROR);
+	
+	/* Forge AXFR query. */
 	ns_proc_reset(&query_ctx);
-	state = ns_proc_in(src, src_len, &query_ctx);
-	ok(state & NS_PROC_FULL, "ns: parsed NOTIFY");
-	state = ns_proc_out(wire, &wire_len, &query_ctx);
-	ok(state & NS_PROC_FINISH, "ns: answered NOTIFY");
-	ok(knot_wire_get_qr(wire), "ns: NOTIFY response has QR=1");
-	is_int(KNOT_OPCODE_NOTIFY, knot_wire_get_opcode(wire), "ns: is NOTIFY response");
-	is_int(knot_wire_get_id(src), knot_wire_get_id(wire), "ns: NOTIFY MsgId match");
-	is_int(KNOT_RCODE_NOERROR, knot_wire_get_rcode(wire), "ns: NOTIFY RCODE=0");
-
-	/* #10 Process AXFR query. */
-
-	/* #10 Process IXFR query. */
+	memcpy(src, IN_QUERY, IN_QUERY_LEN);
+	src_len = IN_QUERY_LEN;
+	wire_len = sizeof(wire);
+	knot_wire_write_u16(src + IN_QUERY_QTYPE_POS, KNOT_RRTYPE_AXFR);
+	do_query(&query_ctx, "IN/axfr", src, src_len, wire, KNOT_RCODE_NOERROR);
+	
+	/* Forge IXFR query (badly formed, no SOA in NS). */
+	ns_proc_reset(&query_ctx);
+	memcpy(src, IN_QUERY, IN_QUERY_LEN);
+	src_len = IN_QUERY_LEN;
+	wire_len = sizeof(wire);
+	knot_wire_write_u16(src + IN_QUERY_QTYPE_POS, KNOT_RRTYPE_IXFR);
+	do_query(&query_ctx, "IN/ixfr-formerr", src, src_len, wire, KNOT_RCODE_FORMERR);
 
 	/* #10 Process UPDATE query. */
 
