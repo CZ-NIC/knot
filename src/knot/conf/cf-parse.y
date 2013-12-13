@@ -484,6 +484,8 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> DNSSEC_ENABLE
 %token <tok> DNSSEC_KEYDIR
 %token <tok> SIGNATURE_LIFETIME
+%token <tok> SERIAL_POLICY
+%token <tok> SERIAL_POLICY_VAL
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -955,6 +957,9 @@ zone:
  | zone SIGNATURE_LIFETIME INTERVAL ';' {
 	SET_NUM(this_zone->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
  }
+ | zone SERIAL_POLICY SERIAL_POLICY_VAL ';' {
+	this_zone->serial_policy = $3.i;
+ }
  ;
 
 zones:
@@ -988,6 +993,9 @@ zones:
  }
  | zones SIGNATURE_LIFETIME INTERVAL ';' {
 	SET_NUM(new_config->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
+ }
+ | zones SERIAL_POLICY SERIAL_POLICY_VAL ';' {
+	new_config->serial_policy = $3.i;
  }
  ;
 

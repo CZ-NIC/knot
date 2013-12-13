@@ -854,7 +854,7 @@ are 1 to INT_MAX and default value is 5.
 @subsubsection zonefile-sync
 @vindex zonefile-sync
 
-@code{zonefile-sync} specifies a time in seconds after which current zone in memory will be synced to zone file on the disk (as set in @ref{file}). Knot DNS will serve the latest zone even after restart, but zone file on a disk will only be synced after @code{zonefile-sync} time has expired (or synced manually via @code{knotc flush} - see @ref{Running Knot DNS}}. This is applicable when the zone is updated via IXFR, DDNS or automatic DNSSEC signing. Possible values are 0 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day with default value set to @emph{0s}.
+@code{zonefile-sync} specifies a time in seconds after which current zone in memory will be synced to zone file on the disk (as set in @ref{file}). Knot DNS will serve the latest zone even after restart, but zone file on a disk will only be synced after @code{zonefile-sync} time has expired (or synced manually via @code{knotc flush} - see @ref{Running Knot DNS}). This is applicable when the zone is updated via IXFR, DDNS or automatic DNSSEC signing. Possible values are 0 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day with default value set to @emph{0s}.
 
 @b{Important note:} If you are serving large zones with frequent updates where the immediate sync to zone file is not desirable, set this value in the configuration file to other value.
 

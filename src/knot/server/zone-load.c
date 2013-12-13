@@ -488,6 +488,10 @@ static knot_zone_t *load_zone(conf_zone_t *conf)
 
 	zonedata_init(conf, zone);
 
+	fprintf(stderr, "Zone serial policy: %s\n",
+	        conf->serial_policy == CONF_SERIAL_INCREMENT ? "increment"
+	                                                     : "unixtime");
+
 	return zone;
 }
 
