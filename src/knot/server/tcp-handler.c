@@ -64,7 +64,7 @@ enum {
 
 /*! \brief Calculate TCP throttle time (random). */
 static inline int tcp_throttle() {
-	//(TCP_THROTTLE_LO + (int)(tls_rand() * TCP_THROTTLE_HI));
+	//(TCP_THROTTLE_LO + knot_random_int() % TCP_THROTTLE_HI;
 	return (rand() % TCP_THROTTLE_HI) + TCP_THROTTLE_LO;
 }
 
