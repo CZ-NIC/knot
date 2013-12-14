@@ -431,7 +431,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %pure-parser
 %parse-param{void *scanner}
 %lex-param{void *scanner}
-%name-prefix = "cf_"
+%name-prefix "cf_"
 
 %union {
 	struct {
