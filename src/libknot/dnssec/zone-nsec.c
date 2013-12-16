@@ -1736,6 +1736,9 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 	if (new_chain_start) {
 		assert(a == NULL); // This has to be the first change
 		// New chain started by this change
+		update_last_used(fix_data, prev_nsec3_node->owner,
+		                 fetch_covered_node(fix_data,
+		                                    prev_nsec3_node->owner));
 		update_chain_start(fix_data, b_hash);
 		return KNOT_EOK;
 	} else if (fix_data->next_dname) {
