@@ -156,14 +156,17 @@ static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
 		result = callback(previous, current, data);
 		if (result == NSEC_NODE_SKIP) {
 			// No NSEC should be created for 'current' node, skip
-			;
+			hattrie_iter_next(it);
+		} else if (result == NSEC_NODE_RESET) {
+			// Used previous node, call once again so that we don't loose this current
+			previous = NULL;
 		} else if (result == KNOT_EOK) {
 			previous = current;
+			hattrie_iter_next(it);
 		} else {
 			hattrie_iter_free(it);
 			return result;
 		}
-		hattrie_iter_next(it);
 	}
 
 	hattrie_iter_free(it);
@@ -1555,6 +1558,7 @@ static const knot_node_t *fetch_covered_node(chain_fix_data_t *fix_data,
 	value_t *val = hattrie_tryget((hattrie_t *)fix_data->sorted_changes,
 	                              (char *)lf+1, *lf);
 	if (val == NULL) {
+		// No change, old bitmap can be reused
 		return NULL;
 	} else {
 		signed_info_t *info = (signed_info_t *)*val;
@@ -1587,7 +1591,10 @@ static int connect_to_old_start(chain_fix_data_t *fix_data,
 		return ret;
 	}
 
-	return update_nsec3(zone_prev_node->owner, b_hash, NULL,
+	update_last_used(fix_data, b_hash,
+	                 fetch_covered_node(fix_data, b_hash));
+	return update_nsec3(zone_prev_node->owner, b_hash,
+	                    fetch_covered_node(fix_data, zone_prev_node->owner),
 	                    fix_data->out_ch, fix_data->zone, fix_data->ttl);
 }
 
@@ -1809,7 +1816,6 @@ static int chain_finalize_nsec3(void *d)
 		 * New chain start has to be closed - get last dname
 		 * in the chain from zone or changeset.
 		 */
-		assert(fix_data->last_used_dname);
 		const knot_node_t *last_node =
 			zone_last_nsec3_node(fix_data->zone);
 		if (last_node == NULL) {
