@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include <inttypes.h>
 
-#include "common/prng.h"
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
 #include "knot/server/zone-load.h"
@@ -27,6 +26,7 @@
 #include "knot/zone/zone-load.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/rdata.h"
 #include "libknot/zone/zone.h"
@@ -121,7 +121,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Initialize XFR-IN. */
 	sockaddr_init(&zd->xfr_in.master, -1);
-	zd->xfr_in.bootstrap_retry = (XFRIN_BOOTSTRAP_DELAY * tls_rand());
+	zd->xfr_in.bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
 
 	/* Initialize IXFR database. */
 	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit, JOURNAL_DIRTY);

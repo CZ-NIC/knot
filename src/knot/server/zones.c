@@ -21,7 +21,6 @@
 
 #include "common/lists.h"
 #include "common/log.h"
-#include "common/prng.h"
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
@@ -30,6 +29,7 @@
 #include "knot/server/zones.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/dname.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-events.h"
 #include "libknot/nameserver/chaos.h"
 #include "libknot/packet/response.h"
@@ -58,7 +58,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
  */
 static uint32_t zones_jitter(uint32_t interval)
 {
-	return (interval * (100 - (tls_rand() * ZONES_JITTER_PCT))) / 100;
+	return (interval * (100 - (knot_random_uint32_t() % ZONES_JITTER_PCT))) / 100;
 }
 
 /*!

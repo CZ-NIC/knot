@@ -26,7 +26,7 @@
 #include "libknot/packet/query.h"
 #include "libknot/nameserver/name-server.h"
 #include "common/descriptor.h"
-#include "common/prng.h"
+#include "libknot/dnssec/random.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
@@ -62,7 +62,7 @@ static void* rrl_runnable(void *arg)
 	uint32_t now = time(NULL);
 	struct bucketmap_t *m = malloc(RRL_INSERTS * sizeof(struct bucketmap_t));
 	for (unsigned i = 0; i < RRL_INSERTS; ++i) {
-		m[i].i = tls_rand() * UINT32_MAX;
+		m[i].i = knot_random_uint32_t(UINT32_MAX);
 		addr.addr4.sin_addr.s_addr = m[i].i;
 		rrl_item_t *b =  rrl_hash(d->rrl, &addr, d->rq, d->zone, now, &lock);
 		rrl_unlock(d->rrl, lock);
