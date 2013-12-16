@@ -1412,12 +1412,6 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	 *   'When the contents of an RRset are updated, the server MAY delete
 	 *    all associated SIG records, since they will no longer be valid.'
 	 *
-	 * (Although we are compliant with this RFC only selectively. The next
-	 * section says: 'If any changes are made, the server MUST, if
-	 * necessary, generate a new SOA record and new NXT records, and sign
-	 * these with the appropriate zone keys.' and we are definitely not
-	 * doing this...
-	 *
 	 * \todo Document!!
 	 */
 
