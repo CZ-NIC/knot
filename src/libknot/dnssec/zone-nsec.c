@@ -1288,19 +1288,9 @@ static const knot_node_t *find_prev_nsec_node(const knot_zone_contents_t *z,
 			knot_zone_contents_find_previous(z,
 		                                         prev_zone_node->owner);
 		assert(prev_zone_node);
-		// Sanity check
+		// Infinite loop check
 		if (knot_dname_is_equal(d, prev_zone_node->owner)) {
-			if (z->apex == prev_zone_node) {
-				// Only apex in zone and changed in DDNS
-				assert(hattrie_size(z->nodes) == 1);
 				return prev_zone_node;
-			} else {
-				/*!
-				 * Something is really wrong here -
-				 * maybe the zone is unsigned?
-				 */
-				return NULL;
-			}
 		}
 		nsec_node_found = !knot_node_is_non_auth(prev_zone_node) &&
 		                  !only_nsec_in_node(prev_zone_node);
@@ -1434,6 +1424,39 @@ static void update_chain_start(chain_fix_data_t *data, const knot_dname_t *d)
 	data->chain_start = d;
 }
 
+static int handle_nsec_next_dname(chain_fix_data_t *fix_data,
+                                  const knot_dname_t *a,
+                                  const knot_node_t *a_node)
+{
+	assert(fix_data && fix_data->next_dname && a && a_node);
+	const bool is_apex = a_node == fix_data->zone->apex;
+	int ret = KNOT_EOK;
+	if (knot_dname_is_equal(fix_data->next_dname, a)) {
+		// We cannot point to the same record here, extract next->next
+		const knot_rrset_t *nsec_rrset = knot_node_rrset(a_node,
+		                                                 KNOT_RRTYPE_NSEC);
+		assert(nsec_rrset);
+		const knot_node_t *next_node =
+			knot_zone_contents_find_node(fix_data->zone,
+			                             knot_rdata_nsec_next(nsec_rrset));
+		assert(next_node);
+		update_last_used(fix_data, next_node->owner, next_node);
+		ret = update_nsec(a_node, next_node, fix_data->out_ch,
+		                  fix_data->ttl, is_apex);
+	} else {
+		// We have no immediate previous node, connect broken chain
+		const knot_node_t *next_node =
+			knot_zone_contents_find_node(fix_data->zone,
+			                             fix_data->next_dname);
+		assert(next_node);
+		update_last_used(fix_data, next_node->owner, next_node);
+		ret = update_nsec(a_node, next_node, fix_data->out_ch,
+		                  fix_data->ttl, is_apex);
+	}
+	fix_data->next_dname = NULL;
+	return ret == KNOT_EOK ? NSEC_NODE_RESET : ret;
+}
+
 static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 {
 	assert(b);
@@ -1478,21 +1501,9 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 		                   fix_data->ttl,
 		                   prev_zone_node == fix_data->zone->apex);
 	} else {
-		bool next_dname_equal = fix_data->next_dname &&
-		                        knot_dname_is_equal(fix_data->next_dname, b);
-		bool use_next = fix_data->next_dname && !next_dname_equal;
-		if (use_next) {
-			// We have no immediate previous node, connect broken chain
-			const knot_node_t *next_node =
-				knot_zone_contents_find_node(fix_data->zone,
-				                             fix_data->next_dname);
-			assert(next_node);
-			update_last_used(fix_data, next_node->owner, next_node);
-			int ret = update_nsec(a ? a_node : b_node,
-			                      next_node, fix_data->out_ch,
-			                      fix_data->ttl, false);
-			fix_data->next_dname = NULL;
-			return ret;
+		// Use data from zone or next_dname
+		if (fix_data->next_dname) {
+			return handle_nsec_next_dname(fix_data, a, a_node);
 		}
 
 		// Previous node was not changed in DDNS, it has to have NSEC
