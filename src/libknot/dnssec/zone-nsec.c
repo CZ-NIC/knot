@@ -1736,9 +1736,7 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 	if (new_chain_start) {
 		assert(a == NULL); // This has to be the first change
 		// New chain started by this change
-		update_last_used(fix_data, prev_nsec3_node->owner,
-		                 fetch_covered_node(fix_data,
-		                                    prev_nsec3_node->owner));
+		update_last_used(fix_data, b_hash, b_node);
 		update_chain_start(fix_data, b_hash);
 		return KNOT_EOK;
 	} else if (fix_data->next_dname) {
@@ -1787,17 +1785,25 @@ static int chain_finalize_nsec(void *d)
 	                   fix_data->ttl, from == fix_data->zone->apex);
 }
 
-static const knot_node_t *zone_last_nsec3_node(const knot_zone_contents_t *z)
+static const knot_node_t *zone_first_nsec3_node(const knot_zone_contents_t *z)
 {
 	assert(z && hattrie_size(z->nsec3_nodes) > 0);
-	// Get first node
 	hattrie_iter_t *i = hattrie_iter_begin(z->nsec3_nodes, true);
 	if (i == NULL) {
 		return NULL;
 	}
 	knot_node_t *first_node = (knot_node_t *)*hattrie_iter_val(i);
-	hattrie_iter_free(i);
 	assert(first_node);
+	return first_node;
+}
+
+static const knot_node_t *zone_last_nsec3_node(const knot_zone_contents_t *z)
+{
+	// Get first node
+	const knot_node_t *first_node = zone_first_nsec3_node(z);
+	if (first_node == NULL) {
+		return NULL;
+	}
 	// Get node previous to first = last node
 	return knot_zone_contents_find_previous_nsec3(z, first_node->owner);
 }
@@ -1811,8 +1817,8 @@ static int chain_finalize_nsec3(void *d)
 		return KNOT_EOK;
 	}
 	const knot_dname_t *from = fix_data->last_used_dname;
-	const knot_node_t *from_node = fix_data->last_used_node;
 	assert(from);
+	const knot_node_t *from_node = fix_data->last_used_node;
 	const knot_dname_t *to = NULL;
 	if (fix_data->chain_start) {
 		/*!
@@ -1824,13 +1830,34 @@ static int chain_finalize_nsec3(void *d)
 		if (last_node == NULL) {
 			return KNOT_ENOMEM;
 		}
+		if (!fix_data->old_connected) {
+			/*!
+			 * New chain was started, but not connected to
+			 * the old one.
+			 */
+			const knot_node_t *first_nsec3 =
+				zone_first_nsec3_node(fix_data->zone);
+			if (first_nsec3 == NULL) {
+				return KNOT_ENOMEM;
+			}
+
+			int ret = update_nsec3(fix_data->last_used_dname,
+			                       first_nsec3->owner,
+			                       fix_data->last_used_node,
+			                       fix_data->out_ch,
+			                       fix_data->zone, fix_data->ttl);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+		// Close the chain
+		to = fix_data->chain_start;
 		if (knot_dname_cmp(last_node->owner,
 		                   fix_data->last_used_dname) > 0) {
 			// Use last zone node to close the chain
 			from = last_node->owner;
-			from_node = NULL;
+			from_node = NULL; // Was not changed
 		}
-		to = fix_data->chain_start;
 	} else if (knot_dname_is_equal(from,
 	                               fix_data->zone->apex->nsec3_node->owner)) {
 		// Special case where all nodes but the apex are deleted
