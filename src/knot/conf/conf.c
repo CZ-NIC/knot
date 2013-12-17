@@ -140,14 +140,23 @@ static void conf_update_hooks(conf_t *conf)
 	}
 }
 
-/*! \brief Make relative path absolute to given directory.
- *  \param basedir Base directory.
- *  \param file Relative file name.
+/*!
+ * \brief Make relative path absolute to given directory.
+ *
+ * If basedir is not provided, only normalization is performed.
+ * If file is not provided, returns NULL.
+ *
+ * \param basedir Base directory.
+ * \param file Relative file name.
  */
 static char* conf_abs_path(const char *basedir, char *file)
 {
+	if (!file) {
+		return NULL;
+	}
+
 	/* Make path absolute to the directory. */
-	if (file[0] != '/') {
+	if (basedir && file[0] != '/') {
 		char *basepath = strcdup(basedir, "/");
 		char *path = strcdup(basepath, file);
 		free(basepath);
@@ -157,6 +166,26 @@ static char* conf_abs_path(const char *basedir, char *file)
 
 	/* Normalize. */
 	return strcpath(file);
+}
+
+/*!
+ * \brief Check if given path is an existing directory.
+ *
+ * \param path  Path to be checked.
+ *
+ * \return Given path is a directory.
+ */
+static bool is_existing_dir(const char *path)
+{
+	assert(path);
+
+	struct stat st;
+
+	if (stat(path, &st) == -1) {
+		return false;
+	}
+
+	return S_ISDIR(st.st_mode);
 }
 
 /*!
@@ -170,31 +199,6 @@ static char* conf_abs_path(const char *basedir, char *file)
  */
 static int conf_process(conf_t *conf)
 {
-	// Check
-	if (conf->storage == NULL) {
-		conf->storage = strdup(STORAGE_DIR);
-		if (conf->storage == NULL) {
-			return KNOT_ENOMEM;
-		}
-	}
-
-	// Normalize paths
-	conf->storage = strcpath(conf->storage);
-
-	// Storage directory exists?
-	struct stat st;
-	if (stat(conf->storage, &st) == -1) {
-		log_server_error("Could not open storage directory '%s'\n", conf->storage);
-		// I assume that conf->* is freed elsewhere
-		return KNOT_EINVAL;
-	}
-
-	// Storage directory is a directory?
-	if (S_ISDIR(st.st_mode) == 0) {
-		log_server_error("Configured storage '%s' not a directory\n", conf->storage);
-		return KNOT_EINVAL;
-	}
-
 	// Create PID file
 	if (conf->rundir == NULL) {
 		conf->rundir = strdup(RUN_DIR);
@@ -259,7 +263,12 @@ static int conf_process(conf_t *conf)
 	if (conf->xfers <= 0)
 		conf->xfers = CONFIG_XFERS;
 
-	/* DNSSEC global configuration. */
+
+	/* Zones global configuration. */
+	if (conf->storage == NULL) {
+		conf->storage = strdup(STORAGE_DIR);
+	}
+	conf->storage = strcpath(conf->storage);
 	if (conf->dnssec_keydir) {
 		conf->dnssec_keydir = conf_abs_path(conf->storage,
 		                                    conf->dnssec_keydir);
@@ -324,8 +333,16 @@ static int conf_process(conf_t *conf)
 			}
 		}
 
+		// Default data directories
+		if (!zone->storage && conf->storage) {
+			zone->storage = strdup(conf->storage);
+		}
+		if (!zone->dnssec_keydir && conf->dnssec_keydir) {
+			zone->dnssec_keydir = strdup(conf->dnssec_keydir);
+		}
+
 		// Default policy for DNSSEC
-		if (!conf->dnssec_keydir) {
+		if (!zone->dnssec_keydir) {
 			zone->dnssec_enable = 0;
 		} else if (zone->dnssec_enable < 0) {
 			zone->dnssec_enable = conf->dnssec_enable;
@@ -352,16 +369,43 @@ static int conf_process(conf_t *conf)
 			}
 		}
 
-		// Relative zone filenames should be relative to storage
-		zone->file = conf_abs_path(conf->storage, zone->file);
-		if (zone->file == NULL) {
+		// Resolve relative paths everywhere
+		zone->storage = conf_abs_path(conf->storage, zone->storage);
+		zone->file = conf_abs_path(zone->storage, zone->file);
+		if (zone->dnssec_enable) {
+			zone->dnssec_keydir = conf_abs_path(zone->storage,
+			                                    zone->dnssec_keydir);
+		}
+
+		if (zone->storage == NULL ||
+		    zone->file == NULL ||
+		    (zone->dnssec_enable && zone->dnssec_keydir == NULL)
+		) {
+			free(zone->storage);
+			free(zone->file);
+			free(zone->dnssec_keydir);
 			ret = KNOT_ENOMEM;
 			continue;
 		}
 
+		/* Check paths existence. */
+		if (!is_existing_dir(zone->storage)) {
+			log_server_error("Storage dir '%s' does not exist.\n",
+			                 zone->storage);
+			ret = KNOT_EINVAL;
+			continue;
+		}
+		if (zone->dnssec_enable && !is_existing_dir(zone->dnssec_keydir)) {
+			log_server_error("DNSSEC key dir '%s' does not exist.\n",
+			                 zone->dnssec_keydir);
+			ret = KNOT_EINVAL;
+			continue;
+
+		}
+
 		/* Create journal filename. */
 		size_t zname_len = strlen(zone->name);
-		size_t stor_len = strlen(conf->storage);
+		size_t stor_len = strlen(zone->storage);
 		size_t size = stor_len + zname_len + 9; // /diff.db,\0
 		char *dest = malloc(size);
 		if (dest == NULL) {
@@ -371,9 +415,9 @@ static int conf_process(conf_t *conf)
 			continue;
 		}
 		char *dpos = dest;
-		memcpy(dpos, conf->storage, stor_len + 1);
+		memcpy(dpos, zone->storage, stor_len + 1);
 		dpos += stor_len;
-		if (conf->storage[stor_len - 1] != '/') {
+		if (zone->storage[stor_len - 1] != '/') {
 			*(dpos++) = '/';
 			*dpos = '\0';
 		}
@@ -942,6 +986,8 @@ void conf_free_zone(conf_zone_t *zone)
 	free(zone->name);
 	free(zone->file);
 	free(zone->ixfr_db);
+	free(zone->dnssec_keydir);
+	free(zone->storage);
 	free(zone);
 }
 

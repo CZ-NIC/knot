@@ -118,6 +118,8 @@ typedef struct conf_zone_t {
 	char *name;                /*!< Zone name. */
 	uint16_t cls;              /*!< Zone class (IN or CH). */
 	char *file;                /*!< Path to a zone file. */
+	char *storage;             /*!< Path to a storage dir. */
+	char *dnssec_keydir;       /*!< Path to a DNSSEC key dir. */
 	char *ixfr_db;             /*!< Path to a IXFR database file. */
 	int dnssec_enable;         /*!< DNSSEC: Online signing enabled. */
 	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
@@ -206,7 +208,6 @@ typedef struct conf_t {
 	char *filename; /*!< Name of the config file. */
 	char *identity; /*!< Identity to return on CH TXT id.server. or hostname.bind. */
 	char *version;  /*!< Version for CH TXT version.{bind|server}. */
-	char *storage;  /*!< Persistent storage path for databases and such. */
 	char *rundir;   /*!< Run-time directory path. */
 	char *pidfile;  /*!< PID file location. */
 	char *nsid;     /*!< Server's NSID. */
@@ -265,8 +266,9 @@ typedef struct conf_t {
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
-	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
+	char *storage;       /*!< Storage dir. */
 	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
+	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
 	int serial_policy;   /*!< Serial policy when updating zone. */
 

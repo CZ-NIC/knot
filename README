@@ -11,6 +11,7 @@ Knot DNS has several dependencies:
 
 Optional packages:
 * libcap-ng >= 0.6.4 (for POSIX 1003.1e capabilites(7))
+* libidn             (for IDNA2003 support in Knot utilities)
 
 Dependencies for building documentation:
 * texinfo

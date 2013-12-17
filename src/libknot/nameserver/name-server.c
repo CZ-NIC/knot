@@ -38,6 +38,7 @@
 #include "libknot/updates/ddns.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-nsec.h"
 
 /*----------------------------------------------------------------------------*/
@@ -4230,7 +4231,7 @@ int knot_ns_create_forward_query(const knot_packet_t *query,
 	memcpy(query_wire, knot_packet_wireformat(query),
 	       knot_packet_size(query));
 	*size = knot_packet_size(query);
-	knot_wire_set_id(query_wire, knot_random_id());
+	knot_wire_set_id(query_wire, knot_random_uint16_t());
 
 	return ret;
 }

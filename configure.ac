@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.4.0-rc1], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.4.0-rc2], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-bzip2 dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -317,9 +317,6 @@ AC_C_INLINE
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
-
-# Set PRNG parameters
-AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
 AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups initgroups])

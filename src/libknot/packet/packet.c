@@ -21,6 +21,7 @@
 #include "libknot/packet/packet.h"
 #include "libknot/util/debug.h"
 #include "libknot/common.h"
+#include "libknot/dnssec/random.h"
 #include "common/descriptor.h"
 #include "libknot/util/wire.h"
 #include "libknot/tsig.h"
@@ -719,7 +720,7 @@ void knot_packet_set_random_id(knot_packet_t *packet)
 		return;
 	}
 
-	knot_wire_set_id(packet->wireformat, knot_random_id());
+	knot_wire_set_id(packet->wireformat, knot_random_uint16_t());
 }
 
 /*----------------------------------------------------------------------------*/
