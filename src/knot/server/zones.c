@@ -1101,6 +1101,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		}
 	}
 
+	#warning(Partial adjustment missing here!);
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
 
 	// Commit transaction.
