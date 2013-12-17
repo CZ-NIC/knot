@@ -1091,6 +1091,7 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 int knot_zone_sign_update_soa(const knot_rrset_t *soa,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
+                              uint32_t new_serial,
                               knot_changeset_t *changeset)
 {
 	if (!soa || !zone_keys || !policy || !changeset) {
@@ -1105,11 +1106,11 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t new_serial = serial;
 	if (policy->soa_up == KNOT_SOA_SERIAL_INC) {
-		new_serial += 1;
+		assert(new_serial >= 0);
 	} else {
 		assert(policy->soa_up == KNOT_SOA_SERIAL_KEEP);
+		new_serial = serial;
 	}
 
 	int result;
