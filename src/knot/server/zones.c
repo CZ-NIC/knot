@@ -2654,11 +2654,11 @@ int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at)
 	                        zones_serial_policy(zone));
 
 	if (force) {
-		ret = knot_dnssec_zone_sign_force(zone, ch, &expires_at,
+		ret = knot_dnssec_zone_sign_force(zone, ch, expires_at,
 		                                  new_serial);
 	} else {
 		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_INC,
-		                            &expires_at, new_serial);
+		                            expires_at, new_serial);
 	}
 	if (ret != KNOT_EOK) {
 		goto done;
