@@ -58,7 +58,7 @@ static int rrset_list_add(rrset_list_t **head, knot_rrset_t *rrsig)
 		*head = tmp;
 	}
 
-	dbg_zp_verb("zp: rrset_add: Added RRSIG %p to list.\n", rrsig);
+	dbg_zload_verb("zp: rrset_add: Added RRSIG %p to list.\n", rrsig);
 
 	return KNOT_EOK;
 }
@@ -83,7 +83,7 @@ static void rrset_list_delete(rrset_list_t **head)
 
 	*head = NULL;
 
-	dbg_zp("zp: list_delete: List deleleted.\n");
+	dbg_zload("zp: list_delete: List deleleted.\n");
 }
 
 static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
@@ -101,7 +101,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	int ret;
 
 	if (tmp_rrset == NULL) {
-		dbg_zp("zp: find_rr_for_sig_in_node: Node does not contain "
+		dbg_zload("zp: find_rr_for_sig_in_node: Node does not contain "
 		       "RRSet of type %d.\n",
 		       knot_rdata_rrsig_type_covered(rrsig, 0));
 		tmp_rrset = knot_rrset_new(knot_dname_copy(rrsig->owner),
@@ -109,7 +109,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		                           rrsig->rclass,
 		                           rrsig->ttl);
 		if (tmp_rrset == NULL) {
-			dbg_zp("zp: find_rr_for_sig_in_node: Cannot create "
+			dbg_zload("zp: find_rr_for_sig_in_node: Cannot create "
 			       "dummy RRSet.\n");
 			return KNOT_ERROR;
 		}
@@ -118,7 +118,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		                                   KNOT_RRSET_DUPL_MERGE);
 		assert(ret <= 0);
 		if (ret < 0) {
-			dbg_zp("zp: Failed to add new dummy RRSet to the zone."
+			dbg_zload("zp: Failed to add new dummy RRSet to the zone."
 			       "\n");
 			return KNOT_ERROR;
 		}
@@ -140,7 +140,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 	ret = knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
 			                    KNOT_RRSET_DUPL_MERGE);
 	if (ret < 0) {
-		dbg_zp("zp: find_rr_for_sig: Cannot add RRSIG.\n");
+		dbg_zload("zp: find_rr_for_sig: Cannot add RRSIG.\n");
 		return KNOT_EINVAL;
 	} else if (ret > 0) {
 		/* Merged, free data + owner, but not DNAMEs inside RDATA. */
@@ -157,7 +157,7 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
                                                      knot_node_t *node,
                                                      int create_parents, uint8_t))
 {
-	dbg_zp_verb("zp: create_node: Creating node using RRSet: %p.\n",
+	dbg_zload_verb("zp: create_node: Creating node using RRSet: %p.\n",
 	            current_rrset);
 	knot_node_t *node = knot_node_new(current_rrset->owner, NULL, 0);
 	int ret = node_add_func(zone, node, 1, 0);
@@ -175,7 +175,7 @@ static void process_rrsigs_in_node(parser_context_t *parser,
                                    knot_zone_contents_t *zone,
                                    knot_node_t *node)
 {
-	dbg_zp_verb("zp: process_rrsigs: Processing RRSIGS in node: %p.\n",
+	dbg_zload_verb("zp: process_rrsigs: Processing RRSIGS in node: %p.\n",
 	            node);
 	rrset_list_t *tmp = parser->node_rrsigs;
 	while (tmp != NULL) {
@@ -206,16 +206,16 @@ void process_error(const scanner_t *s)
 static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 {
 	if (rrset == NULL) {
-		dbg_zp("zp: add_rdata_to_rr: No RRSet.\n");
+		dbg_zload("zp: add_rdata_to_rr: No RRSet.\n");
 		return KNOT_EINVAL;
 	}
 
-	dbg_zp_detail("zp: add_rdata_to_rr: Adding type %d, RRSet has %d RRs.\n",
+	dbg_zload_detail("zp: add_rdata_to_rr: Adding type %d, RRSet has %d RRs.\n",
 	              rrset->type, rrset->rdata_count);
 
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, scanner->r_data_length);
 	if (rdata == NULL) {
-		dbg_zp("zp: create_rdata: Could not create RR.\n");
+		dbg_zload("zp: create_rdata: Could not create RR.\n");
 		return KNOT_ENOMEM;
 	}
 
@@ -227,7 +227,7 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 static void process_rr(const scanner_t *scanner)
 {
 	/*!< \todo Refactor, too long. */
-	dbg_zp_detail("Owner from parser=%s\n",
+	dbg_zload_detail("Owner from parser=%s\n",
 	              scanner->r_owner);
 	parser_context_t *parser = scanner->data;
 	if (parser->ret != KNOT_EOK) {
@@ -265,7 +265,7 @@ static void process_rr(const scanner_t *scanner)
 		return;
 	}
 
-	dbg_zp_verb("zp: process_rr: Processing type: %d.\n",
+	dbg_zload_verb("zp: process_rr: Processing type: %d.\n",
 	            parser->current_rrset->type);
 
 	assert(current_rrset->rdata_count);
@@ -369,7 +369,7 @@ static void process_rr(const scanner_t *scanner)
 				                                     node_add_func))
 				    == NULL) {
 					knot_rrset_free(&tmp_rrsig);
-					dbg_zp("zp: process_rr: Cannot "
+					dbg_zload("zp: process_rr: Cannot "
 					       "create new node.\n");
 					log_zone_error("None cannot be created.\n");
 					/*!< \todo consider a new error */
@@ -380,13 +380,13 @@ static void process_rr(const scanner_t *scanner)
 		}
 
 		if (rrset_list_add(&parser->node_rrsigs, tmp_rrsig) != 0) {
-			dbg_zp("zp: process_rr: Cannot "
+			dbg_zload("zp: process_rr: Cannot "
 			       "create new node.\n");
 			parser->ret = KNOT_ERROR;
 			return;
 		}
 
-		dbg_zp_verb("zp: process_rr: RRSIG proccesed successfully.\n");
+		dbg_zload_verb("zp: process_rr: RRSIG proccesed successfully.\n");
 		parser->ret = KNOT_EOK;
 		return;
 	}
@@ -419,7 +419,7 @@ static void process_rr(const scanner_t *scanner)
 
 		if ((node = create_node(contents, current_rrset,
 		                        node_add_func)) == NULL) {
-			dbg_zp("zp: process_rr: Cannot "
+			dbg_zload("zp: process_rr: Cannot "
 			       "create new node.\n");
 			char *zone_name = knot_dname_to_str(contents->apex->owner);
 			char *name = knot_dname_to_str(current_rrset->owner);
@@ -453,7 +453,7 @@ static void process_rr(const scanner_t *scanner)
 	                                   &node,
 	                                   KNOT_RRSET_DUPL_MERGE);
 	if (ret < 0) {
-		dbg_zp("zp: process_rr: Cannot "
+		dbg_zload("zp: process_rr: Cannot "
 		       "add RRSets.\n");
 		/*!< \todo mixed error codes, has to be changed. */
 		parser->ret = ret;
@@ -484,7 +484,7 @@ static void process_rr(const scanner_t *scanner)
 
 	parser->last_node = node;
 
-	dbg_zp_verb("zp: process_rr: RRSet %p processed successfully.\n",
+	dbg_zload_verb("zp: process_rr: RRSet %p processed successfully.\n",
 	            parser->current_rrset);
 	parser->ret = KNOT_EOK;
 }

@@ -49,19 +49,12 @@
   #define KNOT_NSEC3_DEBUG
 #endif
 
-/* define KNOT_PACKET_DEBUG -- in configure.ac */
 #ifdef KNOT_PACKET_DEBUG
   #define KNOT_RESPONSE_DEBUG
 #endif
 
 #ifdef KNOT_RR_DEBUG
   #define KNOT_RRSET_DEBUG
-  #define KNOT_RDATA_DEBUG
-#endif
-
-#ifdef KNOT_HASH_DEBUG
-  #define CUCKOO_DEBUG
-  #define CUCKOO_DEBUG_HASH
 #endif
 
 #ifdef KNOT_XFR_DEBUG
@@ -70,26 +63,11 @@
   #define KNOT_DDNS_DEBUG
 #endif
 
-/* KNOT_DNAME_DEBUG -- in configure.ac */
-/* #define KNOT_DDNS_DEBUG -- \todo Use this or delete. */
-
 #include "libknot/rrset.h"
 #include "libknot/zone/node.h"
 #include "libknot/zone/zone.h"
 #include "libknot/util/utils.h"
 #include "common/print.h"
-
-/*!
- * \brief Dumps RRSet.
- *
- * This function is empty if neither KNOT_ZONE_DEBUG nor KNOT_RRSET_DEBUG
- * is defined.
- *
- * \param rrset RRSet to dump.
- * \param loaded_zone Set to <> 0 if the RRSet is part of a zone loaded into
- *                    the server. Set to 0 otherwise.
- */
-void knot_rrset_dump(const knot_rrset_t *rrset);
 
 /*!
  * \brief Dumps zone node.
@@ -162,56 +140,6 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 #define dbg_ns_detail(msg...)
 #define dbg_ns_hex_detail(data, len)
 #define dbg_ns_exec_detail(cmds)
-#endif
-
-/******************************************************************************/
-
-#ifdef KNOT_DNAME_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_dname(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_dname_hex(data, len)  hex_log(LOG_ZONE, (data), (len))
-#define dbg_dname_exec(cmds) do { cmds } while (0)
-#else
-#define dbg_dname(msg...)
-#define dbg_dname_hex(data, len)
-#define dbg_dname_exec(cmds)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_dname_verb(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_dname_hex_verb(data, len)  hex_log(LOG_ZONE, (data), (len))
-#define dbg_dname_exec_verb(cmds) do { cmds } while (0)
-#else
-#define dbg_dname_verb(msg...)
-#define dbg_dname_hex_verb(data, len)
-#define dbg_dname_exec_verb(cmds)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_dname_detail(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#define dbg_dname_hex_detail(data, len)  hex_log(LOG_ZONE, (data), (len))
-#define dbg_dname_exec_detail(cmds) do { cmds } while (0)
-#else
-#define dbg_dname_detail(msg...)
-#define dbg_dname_hex_detail(data, len)
-#define dbg_dname_exec_detail(cmds)
-#endif
-
-/* No messages. */
-#else
-#define dbg_dname(msg...)
-#define dbg_dname_hex(data, len)
-#define dbg_dname_exec(cmds)
-#define dbg_dname_verb(msg...)
-#define dbg_dname_hex_verb(data, len)
-#define dbg_dname_exec_verb(cmds)
-#define dbg_dname_detail(msg...)
-#define dbg_dname_hex_detail(data, len)
-#define dbg_dname_exec_detail(cmds)
 #endif
 
 /******************************************************************************/
@@ -354,6 +282,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 #define dbg_zonedb_hex_detail(data, len)
 #define dbg_zonedb_exec_detail(cmds)
 #endif
+
+/******************************************************************************/
 
 #ifdef KNOT_ZONEDIFF_DEBUG
 
@@ -581,113 +511,6 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 
 /******************************************************************************/
 
-#ifdef CUCKOO_DEBUG
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_ck(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ck_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
-#define dbg_ck_exec(cmds) do { cmds } while (0)
-#else
-#define dbg_ck(msg...)
-#define dbg_ck_hex(data, len)
-#define dbg_ck_exec(cmds)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_ck_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ck_hex_verb(data, len)  hex_log(LOG_SERVER, (data), (len))
-#define dbg_ck_exec_verb(cmds) do { cmds } while (0)
-#else
-#define dbg_ck_verb(msg...)
-#define dbg_ck_hex_verb(data, len)
-#define dbg_ck_exec_verb(cmds)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_ck_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ck_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
-#define dbg_ck_exec_detail(cmds) do { cmds } while (0)
-#else
-#define dbg_ck_detail(msg...)
-#define dbg_ck_hex_detail(data, len)
-#define dbg_ck_exec_detail(cmds)
-#endif
-
-/* No messages. */
-#else
-#define dbg_ck(msg...)
-#define dbg_ck_hex(data, len)
-#define dbg_ck_exec(cmds)
-#define dbg_ck_verb(msg...)
-#define dbg_ck_hex_verb(data, len)
-#define dbg_ck_exec_verb(cmds)
-#define dbg_ck_detail(msg...)
-#define dbg_ck_hex_detail(data, len)
-#define dbg_ck_exec_detail(cmds)
-#endif
-
-/******************************************************************************/
-
-#ifdef CUCKOO_DEBUG_HASH
-
-/* Brief messages. */
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_ck_hash(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ck_hash_hex(data, len)  hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_ck_hash(msg...)
-#define dbg_ck_rehash(msg...)
-#define dbg_ck_hash_hex(data, len)
-#endif
-
-/* Verbose messages. */
-#ifdef DEBUG_ENABLE_VERBOSE
-#define dbg_ck_hash_verb(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ck_hash_hex_verb(data, len)  hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_ck_hash_verb(msg...)
-#define dbg_ck_hash_hex_verb(data, len)
-#endif
-
-/* Detail messages. */
-#ifdef DEBUG_ENABLE_DETAILS
-#define dbg_ck_hash_detail(msg...) log_msg(LOG_SERVER, LOG_DEBUG, msg)
-#define dbg_ck_hash_hex_detail(data, len)  hex_log(LOG_SERVER, (data), (len))
-#else
-#define dbg_ck_hash_detail(msg...)
-#define dbg_ck_hash_hex_detail(data, len)
-#endif
-
-/* No messages. */
-#else
-#define dbg_ck_hash(msg...)
-#define dbg_ck_hash_hex(data, len)
-#define dbg_ck_hash_verb(msg...)
-#define dbg_ck_hash_hex_verb(data, len)
-#define dbg_ck_hash_detail(msg...)
-#define dbg_ck_hash_hex_detail(data, len)
-#endif
-
-/******************************************************************************/
-
-#ifdef KNOT_STASH_DEBUG
-
-#ifdef DEBUG_ENABLE_BRIEF
-#define dbg_stash(msg...) log_msg(LOG_ZONE, LOG_DEBUG, msg)
-#else
-#define dbg_stash(msg...)
-#endif
-
-#else
-#define dbg_stash(msg...)
-#endif
-
-
-/******************************************************************************/
-
 #ifdef KNOT_XFRIN_DEBUG
 
 /* Brief messages. */
@@ -786,6 +609,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 #define dbg_ddns_exec_detail(cmds)
 #endif
 
+/******************************************************************************/
+
 #ifdef KNOT_TSIG_DEBUG
 
 /* Brief messages. */
@@ -824,6 +649,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 #define dbg_tsig_detail(msg...)
 #define dbg_tsig_hex_detail(data, len)
 #endif
+
+/******************************************************************************/
 
 #ifdef KNOT_RRSET_DEBUG
 
@@ -872,6 +699,8 @@ void knot_zone_contents_dump(knot_zone_contents_t *zone);
 #define dbg_rrset_hex_detail(data, len)
 #define dbg_rrset_exec_detail(cmds)
 #endif
+
+/******************************************************************************/
 
 #ifdef KNOT_DNSSEC_DEBUG
 
