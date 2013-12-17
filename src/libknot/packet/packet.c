@@ -1127,22 +1127,20 @@ void knot_packet_dump(const knot_packet_t *packet)
 	}
 
 #ifdef KNOT_PACKET_DEBUG
-	uint8_t flags1 = knot_wire_get_flags1(packet->wireformat);
-	uint8_t flags2 = knot_wire_get_flags2(packet->wireformat);
 	dbg_packet("DNS packet:\n-----------------------------\n");
 
 	dbg_packet("\nHeader:\n");
 	dbg_packet("  ID: %u\n", knot_wire_get_id(packet->wireformat));
 	dbg_packet("  FLAGS: %s %s %s %s %s %s %s\n",
-	       knot_wire_flags_get_qr(flags1) ? "qr" : "",
-	       knot_wire_flags_get_aa(flags1) ? "aa" : "",
-	       knot_wire_flags_get_tc(flags1) ? "tc" : "",
-	       knot_wire_flags_get_rd(flags1) ? "rd" : "",
-	       knot_wire_flags_get_ra(flags2) ? "ra" : "",
-	       knot_wire_flags_get_ad(flags2) ? "ad" : "",
-	       knot_wire_flags_get_cd(flags2) ? "cd" : "");
-	dbg_packet("  RCODE: %u\n", knot_wire_flags_get_rcode(flags2));
-	dbg_packet("  OPCODE: %u\n", knot_wire_flags_get_opcode(flags1));
+	       knot_wire_get_qr(packet->wireformat) ? "qr" : "",
+	       knot_wire_get_aa(packet->wireformat) ? "aa" : "",
+	       knot_wire_get_tc(packet->wireformat) ? "tc" : "",
+	       knot_wire_get_rd(packet->wireformat) ? "rd" : "",
+	       knot_wire_get_ra(packet->wireformat) ? "ra" : "",
+	       knot_wire_get_ad(packet->wireformat) ? "ad" : "",
+	       knot_wire_get_cd(packet->wireformat) ? "cd" : "");
+	dbg_packet("  RCODE: %u\n", knot_wire_get_rcode(packet->wireformat));
+	dbg_packet("  OPCODE: %u\n", knot_wire_get_opcode(packet->wireformat));
 	dbg_packet("  QDCOUNT: %u\n", knot_wire_get_qdcount(packet->wireformat));
 	dbg_packet("  ANCOUNT: %u\n", knot_wire_get_ancount(packet->wireformat));
 	dbg_packet("  NSCOUNT: %u\n", knot_wire_get_nscount(packet->wireformat));
