@@ -1324,7 +1324,7 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 			log_zone_warning("Failed to apply differences "
 			                 "'%s' to '%s (%s)'\n",
 			                 zd->conf->name, zd->conf->file,
-			                 knot_strerror(ret));
+			                 knot_strerror(KNOT_EACCES));
 			rcu_read_unlock();
 			pthread_mutex_unlock(&zd->lock);
 			return KNOT_ERROR;
