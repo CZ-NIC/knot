@@ -387,11 +387,8 @@ void knot_node_set_empty(knot_node_t *node);
  * \brief Destroys the RRSets within the node structure.
  *
  * \param node Node to be destroyed.
- * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
- *                          present in RDATA. Set to 0 otherwise. (See
- *                          knot_rdata_deep_free().)
  */
-void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames);
+void knot_node_free_rrsets(knot_node_t *node);
 
 /*!
  * \brief Destroys the node structure.
