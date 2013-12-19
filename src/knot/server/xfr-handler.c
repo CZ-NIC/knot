@@ -969,6 +969,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 			        "maximum size %zu\n",
 			        mac_len, xfr->digest_max_size);
 		} else {
+			assert(xfr->digest);
 			memcpy(xfr->digest, mac, mac_len);
 			xfr->digest_size = mac_len;
 
