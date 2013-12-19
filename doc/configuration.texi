@@ -263,9 +263,9 @@ system @{
 @section Automatic DNSSEC signing
 
 Knot DNS 1.4 is the first release to include automatic DNSSEC signing feature.
-Automatic DNSSEC signing is currently technical preview and there are some
+Automatic DNSSEC signing is currently a technical preview and there are some
 limitations we will try to eliminate. The concept of key management and
-configuration is likely to change in future without maintaining backward
+configuration is likely to change in the future without maintaining backward
 compatibility.
 
 @subsection Example configuration
