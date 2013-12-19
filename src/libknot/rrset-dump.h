@@ -45,6 +45,8 @@ typedef struct {
 	bool	human_ttl;
 	/*!< Format timestamp as YYYYMMDDHHmmSS. */
 	bool	human_tmstamp;
+	/*!< ASCII string to IDN string transformation callback. */
+	void (*ascii_to_idn)(char **name);
 } knot_dump_style_t;
 
 /*! \brief Default dump style. */

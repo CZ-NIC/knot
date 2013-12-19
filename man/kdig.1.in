@@ -24,8 +24,8 @@ Is a domain name that is to be looked up.
 .TP
 .I server
 Is a domain name or an IPv4 or IPv6 address of the nameserver to send a query to.
-The address can be specified using [address]:port notation. If no server is specified,
-the servers from \fB/etc/resolv.conf\fR are used.
+An additional port can be specified using address:port ([address]:port for IPv6 address)
+or address#port notation. If no server is specified, the servers from \fB/etc/resolv.conf\fR are used.
 .TP
 If no arguments are provided, \fBkdig\fR sends \fINS\fR query for the root zone.
 .SH OPTIONS
@@ -162,6 +162,10 @@ Request nameserver identifier (NSID).
 .BR + [ no ] edns= N
 Use EDNS version (default is 0).
 .TP
+.BR +noidn
+Disable IDN transformation to ASCII and vice versa.
+IDNA2003 support depends on libidn availability during project building!
+.TP
 .BI +time= T
 Set wait for reply interval in seconds (default is 5 seconds).
 This timeout applies to each query try.
@@ -175,28 +179,22 @@ Set EDNS buffer size in bytes (default is 512 bytes).
 Options \fB\-k\fR and \fB\-y\fR cannot be used mutually.
 .SS Missing features with regard to ISC dig
 Options \fB\-f\fR and \fB\-m\fR and query options:
-.br
+.BR
 .BR +split=\fIW\fR ,\  +tries=\fIT\fR ,\  +ndots=\fID\fR ,
-.br
+.BR
 .BR +domain=\fIsomename\fR , +trusted\-key=\fI####\fR ,
-.br
+.BR
 .BR + [ no ] vc ,\  + [ no ] search ,\  + [ no ] showsearch ,
-.br
+.BR
 .BR + [ no ] defname ,\  + [ no ] aaonly ,\  + [ no ] cmd ,
-.br
+.BR
 .BR + [ no ] identify ,\  + [ no ] comments ,\  + [ no ] rrcomments ,
-.br
+.BR
 .BR + [ no ] onesoa ,\  + [ no ] besteffort ,\  + [ no ] sigchase ,
-.br
+.BR
 .BR + [ no ] topdown ,\  + [ no ] nssearch ,\  + [ no ] trace.
 .TP
 Per-user file configuration via ${HOME}/.digrc.
-.TP
-Internationalized domain name (IDN) is not supported.
-.SS Differences with regard to ISC dig
-Optional port specification has a form of [address]:port instead of address#port.
-.TP
-Trailing information is formatted slightly different.
 .SH EXAMPLES
 .B Example 1. Get A record for example.com:
 .TP
@@ -206,7 +204,7 @@ Trailing information is formatted slightly different.
 .TP
 # kdig example.com \-t AXFR @192.0.2.1
 .TP
-.B Example 3. Send one A query for example.com from 192.0.2.1 and one reverse \
+.B Example 3. Get A record for example.com from 192.0.2.1 and reverse \
 lookup for address 2001:DB8::1 from 192.0.2.2. Both using TCP protocol:
 .TP
 # kdig +tcp example.com \-t A @192.0.2.1 \-x 2001:DB8::1 @192.0.2.2

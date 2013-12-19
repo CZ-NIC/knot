@@ -613,7 +613,7 @@ void knot_node_clear_replaced_nsec(knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_free_rrsets(knot_node_t *node, int free_rdata_dnames)
+void knot_node_free_rrsets(knot_node_t *node)
 {
 	if (node == NULL) {
 		return;

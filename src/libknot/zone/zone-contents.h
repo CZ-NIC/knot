@@ -190,10 +190,10 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
                                          knot_rrset_dupl_handling_t dupl);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
-	const knot_node_t *node, knot_node_t **removed_tree);
+	const knot_dname_t *owner);
 
 int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
-	const knot_node_t *node, knot_node_t **removed);
+	const knot_dname_t *owner);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
@@ -407,24 +407,6 @@ int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *zone,
                                         void *data);
 
 /*!
- * \brief Applies the given function to each regular node in the zone.
- *
- * This function uses in-order depth-first reverse traversal, i.e. the function
- * is first recursively applied to right subtree, then to the root and then to
- * the left subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param zone Nodes of this zone will be used as parameters for the function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- */
-int knot_zone_contents_tree_apply_inorder_reverse(knot_zone_contents_t *zone,
-                                        knot_zone_contents_apply_cb_t function,
-                                        void *data);
-
-/*!
  * \brief Applies the given function to each NSEC3 node in the zone.
  *
  * This function uses in-order depth-first forward traversal, i.e. the function
@@ -440,25 +422,6 @@ int knot_zone_contents_tree_apply_inorder_reverse(knot_zone_contents_t *zone,
  * \param data Arbitrary data to be passed to the function.
  */
 int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
-                                        knot_zone_contents_apply_cb_t function,
-                                        void *data);
-
-/*!
- * \brief Applies the given function to each NSEC3 node in the zone.
- *
- * This function uses in-order depth-first reverse traversal, i.e. the function
- * is first recursively applied to right subtree, then to the root and then to
- * the left subtree.
- *
- * \note This implies that the zone is stored in a binary tree. Is there a way
- *       to make this traversal independent on the underlying structure?
- *
- * \param zone NSEC3 nodes of this zone will be used as parameters for the
- *             function.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- */
-int knot_zone_contents_nsec3_apply_inorder_reverse(knot_zone_contents_t *zone,
                                         knot_zone_contents_apply_cb_t function,
                                         void *data);
 
@@ -486,9 +449,6 @@ knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
  */
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
                                     knot_zone_contents_t **to);
-
-int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
-                                     knot_zone_contents_t **to);
 
 void knot_zone_contents_free(knot_zone_contents_t **contents);
 

@@ -28,10 +28,6 @@ src/common/base64.c
 src/common/base64.h
 src/common/binsearch.h
 src/common/crc.h
-src/common/dSFMT-params.h
-src/common/dSFMT-params521.h
-src/common/dSFMT.c
-src/common/dSFMT.h
 src/common/descriptor.c
 src/common/descriptor.h
 src/common/errcode.c
@@ -69,8 +65,6 @@ src/common/mempool.c
 src/common/mempool.h
 src/common/print.c
 src/common/print.h
-src/common/prng.c
-src/common/prng.h
 src/common/ref.c
 src/common/ref.h
 src/common/slab/alloc-common.h
@@ -139,14 +133,16 @@ src/libknot/consts.c
 src/libknot/consts.h
 src/libknot/dname.c
 src/libknot/dname.h
-src/libknot/dnssec/cleanup.h
 src/libknot/dnssec/config.h
+src/libknot/dnssec/crypto.c
+src/libknot/dnssec/crypto.h
 src/libknot/dnssec/key.c
 src/libknot/dnssec/key.h
 src/libknot/dnssec/nsec-bitmap.h
 src/libknot/dnssec/nsec3.c
 src/libknot/dnssec/nsec3.h
 src/libknot/dnssec/policy.h
+src/libknot/dnssec/random.h
 src/libknot/dnssec/rrset-sign.c
 src/libknot/dnssec/rrset-sign.h
 src/libknot/dnssec/sig0.c

@@ -1625,6 +1625,7 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 	 * \todo Should document this!!
 	 */
 	int ret = 0;
+	// The copy of rrsets is important here.
 	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 	int count = knot_node_rrset_count(node);
 
@@ -1658,7 +1659,6 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 	}
 
 	free(rrsets);
-
 	return KNOT_EOK;
 }
 

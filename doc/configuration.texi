@@ -30,10 +30,6 @@ file which can be used as a base for your Knot DNS setup.
 # in the source directory.
 #
 
-system @{
-  storage "/var/lib/knot";
-@}
-
 interfaces @{
   my_interface @{ address 127.0.0.1@@53; @}
   second_int @{ address ::1; @}
@@ -55,11 +51,6 @@ zones @{
 Now let's go step by step through this minimal configuration file:
 
 @enumerate
-
-@item
-In @code{system} statement we have configured @code{storage}
-directory where Knot DNS will store slave zones and journal files.
-(See @ref{system} and @ref{storage})
 
 @item
 The @code{interfaces} statement defines interfaces where Knot

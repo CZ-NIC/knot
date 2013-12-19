@@ -194,24 +194,8 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
                                  void *data);
 
 /*!
- * \brief Applies the given function to each node in the zone.
- *
- * This function visits leafe nodes before their parents.
- * But doesn't maintain any specific ordering.
- *
- * \param tree Zone tree to apply the function to.
- * \param function Function to be applied to each node of the zone.
- * \param data Arbitrary data to be passed to the function.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- */
-int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
-                                   knot_zone_tree_apply_cb_t function,
-                                   void *data);
-
-/*!
- * \brief Applies the given function to each node in the zone.
+ * \brief Applies the given function to each node in the zone. No
+ *        specific order is maintained.
  *
  * \param tree Zone tree to apply the function to.
  * \param function Function to be applied to each node of the zone.
@@ -221,8 +205,7 @@ int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
  * \retval KNOT_EINVAL
  */
 int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         knot_zone_tree_apply_cb_t function,
-                         void *data);
+                         knot_zone_tree_apply_cb_t function, void *data);
 
 /*!
  * \brief Copies the whole zone tree structure (but not the data contained

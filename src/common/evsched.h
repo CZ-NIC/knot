@@ -67,6 +67,7 @@
 #define _KNOTD_COMMON_EVSCHED_H_
 
 #include <pthread.h>
+#include <stdbool.h>
 #include "common/slab/slab.h"
 #include "common/heap.h"
 #include "common/evqueue.h"
@@ -88,10 +89,11 @@ typedef enum evsched_ev_t {
  * Scheduler is terminated with a special EVSCHED_TERM event type.
  */
 typedef struct {
-	pthread_mutex_t rl;      /*!< Event running lock. */
-	volatile event_t *cur;   /*!< Current running event. */
-	pthread_mutex_t mx;      /*!< Event queue locking. */
-	pthread_cond_t notify;   /*!< Event queue notification. */
+	pthread_mutex_t rl;        /*!< Event running lock. */
+	volatile bool running;
+	volatile event_t *last_ev; /*!< Last running event. */
+	pthread_mutex_t mx;        /*!< Event queue locking. */
+	pthread_cond_t notify;     /*!< Event queue notification. */
 	struct heap heap;
 	struct {
 		slab_cache_t alloc;   /*!< Events SLAB cache. */
@@ -126,6 +128,17 @@ void evsched_delete(evsched_t **s);
 event_t *evsched_event_new(evsched_t *s, int type);
 
 /*!
+ * \brief Create a callback event.
+ *
+ * \param s Pointer to event scheduler instance.
+ * \param cb Callback handler.
+ * \param data Data for callback.
+ * \retval New instance on success.
+ * \retval NULL on error.
+ */
+event_t *evsched_event_new_cb(evsched_t *s, event_cb_t cb, void *data);
+
+/*!
  * \brief Dispose event instance.
  *
  * \param s Pointer to event scheduler instance.
@@ -152,6 +165,9 @@ event_t* evsched_next(evsched_t *s);
  * \brief Mark running event as finished.
  *
  * Need to call this after each event returned by evsched_next() is finished.
+ *
+ * \note Must not be called from outside event scheduler, only from events or
+ *       event processing.
  *
  * \param s Event scheduler.
  *

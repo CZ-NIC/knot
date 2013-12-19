@@ -39,7 +39,8 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 		.show_ttl = true,
 		.verbose = false,
 		.human_ttl = false,
-		.human_tmstamp = true
+		.human_tmstamp = true,
+		.ascii_to_idn = NULL
 	},
 	.show_query = false,
 	.show_header = true,

@@ -88,6 +88,14 @@ knsupdate_SOURCES =				\
 	utils/nsupdate/nsupdate_exec.c
 
 knsec3hash_SOURCES =				\
+	utils/common/msg.h			\
+	utils/common/msg.c			\
+	utils/common/netio.h			\
+	utils/common/netio.c			\
+	utils/common/resolv.h			\
+	utils/common/resolv.c			\
+	utils/common/params.h			\
+	utils/common/params.c			\
 	utils/nsec3hash/nsec3hash_main.c
 
 libknot_la_SOURCES =				\
@@ -156,6 +164,7 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/nsec3.c			\
 	libknot/dnssec/nsec3.h			\
 	libknot/dnssec/policy.h			\
+	libknot/dnssec/random.h			\
 	libknot/dnssec/rrset-sign.c		\
 	libknot/dnssec/rrset-sign.h		\
 	libknot/dnssec/sig0.c			\
@@ -208,12 +217,6 @@ libknots_la_SOURCES =				\
 	common/errors.c				\
 	common/errcode.h			\
 	common/errcode.c			\
-	common/dSFMT.h				\
-	common/dSFMT-params.h			\
-	common/dSFMT-params521.h		\
-	common/dSFMT.c				\
-	common/prng.h				\
-	common/prng.c				\
 	common/fdset.h				\
 	common/fdset.c				\
 	common/getline.h			\

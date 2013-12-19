@@ -37,7 +37,6 @@ else.
   [ @code{identity} ( @code{on} | @code{"}@kbd{string}@code{"} )@code{;} ]
   [ @code{version} ( @code{on} | @code{"}@kbd{string}@code{"} )@code{;} ]
   [ @code{nsid} ( @code{on} | @code{"}@kbd{string}@code{"} | @kbd{hex_string} )@code{;} ]
-  [ @code{storage} @code{"}@kbd{string}@code{";} ]
   [ @code{rundir} @code{"}@kbd{string}@code{";} ]
   [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
   [ @code{workers} @kbd{integer}@code{;} ]
@@ -60,7 +59,6 @@ else.
 * identity::
 * version::
 * nsid::
-* storage::
 * rundir::
 * pidfile::
 * workers::
@@ -125,19 +123,6 @@ system @{
   nsid 0x00cafe;
   nsid "cafe";
   nsid on;
-@}
-@end example
-
-@node storage
-@subsubsection storage
-@vindex storage
-
-The working directory of Knot DNS, it is used to store zone files and journal files.
-Default: @file{$@{localstatedir@}/lib/knot}, configured with @code{--with-storage=path}
-
-@example
-system @{
-  storage "/var/lib/knot";
 @}
 @end example
 
@@ -279,7 +264,6 @@ system @{
   identity "Knot DNS @value{VERSION}";
   version "@value{VERSION}";
   nsid    "amaterasu";
-  storage "/var/lib/knot";
   rundir "/var/run/knot";
   workers 16;
   user knot.knot;
@@ -712,7 +696,6 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 @example
 @code{zones} @code{@{}
   [ @kbd{zone_options} ]
-  [ @code{dnssec-keydir} @code{"}@kbd{string}@code{"}@code{;} ]
   @kbd{zone_id} @code{@{}
     @code{file} @code{"}@kbd{string}@code{";}
     [ @code{xfr-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
@@ -725,6 +708,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 @code{@}}
 
 @kbd{zone_options} :=
+  [ @code{storage} @code{"}@kbd{string}@code{";} ]
   [ @code{semantic-checks} @kbd{boolean}@code{;} ]
   [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
   [ @code{disable-any} @kbd{boolean}@code{;} ]
@@ -733,6 +717,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
   [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
   [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
+  [ @code{dnssec-keydir} @code{"}@kbd{string}@code{"}@code{;} ]
   [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
   [ @code{signature-lifetime} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
 @end example
@@ -748,6 +733,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * notify-in::
 * notify-out::
 * update-in::
+* storage::
 * semantic-checks::
 * ixfr-from-differences::
 * disable-any::
@@ -755,8 +741,8 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * notify-retries::
 * zonefile-sync::
 * ixfr-fslimit::
-* dnssec-enable::
 * dnssec-keydir::
+* dnssec-enable::
 * signature-lifetime::
 @end menu
 
@@ -808,6 +794,28 @@ Remotes are defined in @code{remotes} section of configuration file (@pxref{remo
 
 In @code{update-in} statement user specifies which remotes will be permitted to perform a DNS UPDATE.
 Remotes are defined in @code{remotes} section of configuration file (@pxref{remotes}).
+
+@node storage
+@subsubsection storage
+@vindex storage
+
+Data directory for zones. It is used to store zone files and journal files.
+
+Value of @code{storage} set in @code{zone} section is relative to @code{storage} in @code{zones} section.
+
+Default value (in @code{zones} section): @file{$@{localstatedir@}/lib/knot}, configured with @code{--with-storage=path}
+
+Default value (in @code{zone} config): inherited from @code{zones} section
+
+@example
+zones @{
+  storage "/var/lib/knot";
+  example.com @{
+    storage "com";
+    file "example.com"; # /var/lib/knot/com/example.com
+  @}
+@}
+@end example
 
 @node semantic-checks
 @subsubsection semantic-checks
@@ -862,6 +870,14 @@ are 1 to INT_MAX and default value is 5.
 
 @code{ixfr-fslimit} sets a maximum file size for zone's journal in bytes. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
 
+@node dnssec-keydir
+@subsubsection dnssec-keydir
+@vindex dnssec-keydir
+
+Location of DNSSEC signing keys, relative to @code{storage}.
+
+Default value: not set
+
 @node dnssec-enable
 @subsubsection dnssec-enable
 @vindex dnssec-enable
@@ -872,21 +888,19 @@ Default value (in @code{zones} section): off
 
 Default value (in @code{zone} config): inherited from @code{zones} section
 
-@node dnssec-keydir
-@subsubsection dnssec-keydir
-@vindex dnssec-keydir
-
-Location of DNSSEC signing keys.
-
-Default value: not set
-
 @node signature-lifetime
 @subsubsection signature-lifetime
 @vindex signature-lifetime
 
-Specifies how long should the automatically generated DNSSEC signatures be valid. Expiration will thus be set as current time (in the moment of signing) + @code{signature-lifetime}.
-Possible values are from 7201 to INT_MAX. The lower limit is because the server will trigger resign when any of the signatures expires in 7200 seconds or less. For information about zone 
-expiration date, invoke the @code{knotc zonestatus} command.
+Specifies how long should the automatically generated DNSSEC signatures be valid.
+Expiration will thus be set as current time (in the moment of signing)
++ @code{signature-lifetime}.
+Possible values are from 10801 to INT_MAX. The lower limit is because the server
+will trigger resign when any of the signatures expires in 7200 seconds or less
+and it was chosen as a reasonable value with regard to signing overhead. Setting
+the signature lifetime to minimum value will result in re-signing the zone each
+hour. For information about zone expiration date, invoke the
+@code{knotc zonestatus} command.
 
 Default value: @kbd{30d} (@kbd{2592000})
 
@@ -898,6 +912,7 @@ Default value: @kbd{30d} (@kbd{2592000})
 zones @{
 
   # Shared options for all listed zones
+  storage "/var/lib/knot";
   ixfr-from-differences off;
   semantic-checks off;
   disable-any off;
@@ -909,13 +924,15 @@ zones @{
   dnssec-keydir "keys";
   signature-lifetime 60d;
   example.com @{
-    file "samples/example.com.zone";
+    storage "samples";
+    file "example.com.zone";
     ixfr-from-differences off; #experimental
     disable-any off;
     semantic-checks on;
     notify-timeout 60;
     notify-retries 5;
     zonefile-sync 1h;
+    dnssec-keydir "keys";
     dnssec-enable off;
     signature-lifetime 30d;
     xfr-in server0;
