@@ -1,10 +1,135 @@
 #include <config.h>
 
 #include "libknot/nameserver/update.h"
+#include "libknot/nameserver/internet.h"
 #include "libknot/nameserver/ns_proc_query.h"
+#include "libknot/nameserver/name-server.h"
+#include "libknot/util/debug.h"
+#include "libknot/dnssec/zone-events.h"
+#include "libknot/updates/ddns.h"
+#include "common/descriptor.h"
+#include "knot/server/zones.h"
+
+
+static int update_forward(struct query_data *qdata)
+{
+	/*! \todo Not implemented. */
+#if 0
+	const knot_zone_t* zone = qdata->zone;
+	knot_pkt_t *query = qdata->pkt;
+	const sockaddr_t *from = &qdata->param->query_source;
+
+	rcu_read_lock();
+
+	/* Check transport type. */
+	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
+	unsigned flags = XFR_FLAG_UDP;
+	if (ttype == NS_TRANSPORT_TCP) {
+		flags = XFR_FLAG_TCP;
+	}
+
+	/* Prepare task. */
+	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_FORWARD, flags);
+	if (!rq) {
+		rcu_read_unlock();
+		return KNOT_ENOMEM;
+	}
+	xfr_task_setaddr(rq, &zd->xfr_in.master, &zd->xfr_in.via);
+
+	/* Copy query originator data. */
+	rq->fwd_src_fd = fd;
+	memcpy(&rq->fwd_addr, from, sizeof(sockaddr_t));
+	rq->packet_nr = knot_wire_get_id(query->wire);
+
+	/* Duplicate query to keep it in memory during forwarding. */
+	rq->query = knot_pkt_new(NULL, query->size, NULL);
+	if (!rq->query) {
+		xfr_task_free(rq);
+		rcu_read_unlock();
+		return KNOT_ENOMEM;
+	}
+	memcpy(rq->query->wire, query->wire, query->size);
+
+	/* Retain pointer to zone and issue. */
+	rcu_read_unlock();
+	int ret = xfr_enqueue(zd->server->xfr, rq);
+	if (ret != KNOT_EOK) {
+		xfr_task_free(rq);
+	}
+#endif
+
+	qdata->rcode = KNOT_RCODE_NOTIMPL;
+	return NS_PROC_FAIL;
+}
+
+
+static int update_process(knot_pkt_t *resp, struct query_data *qdata)
+{
+	/*! \todo Reusing the API for compatibility reasons. */
+	rcu_read_lock();
+	knot_rcode_t rcode = qdata->rcode;
+	int ret = zones_process_update_auth((knot_zone_t *)qdata->zone, qdata->pkt,
+	                                    &rcode,
+	                                    &qdata->param->query_source,
+	                                    qdata->sign.tsig_key);
+	qdata->rcode = rcode;
+	rcu_read_unlock();
+	return ret;
+}
+
+static int update_prereq_check(struct query_data *qdata)
+{
+	knot_pkt_t *query = qdata->pkt;
+	const knot_zone_contents_t *contents = knot_zone_contents(qdata->zone);
+
+	/*
+	 * 2) DDNS Prerequisities Section processing (RFC2136, Section 3.2).
+	 *
+	 * \note Permissions section means probably policies and fine grained
+	 *       access control, not transaction security.
+	 */
+	knot_rcode_t rcode = KNOT_RCODE_NOERROR;
+	knot_ddns_prereq_t *prereqs = NULL;
+	int ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
+	if (ret == KNOT_EOK) {
+		ret = knot_ddns_check_prereqs(contents, &prereqs, &rcode);
+		knot_ddns_prereqs_free(&prereqs);
+	}
+	qdata->rcode = rcode;
+
+	return ret;
+}
 
 int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
 {
-	qdata->rcode = KNOT_RCODE_NOTIMPL;
-	return NS_PROC_FAIL;
+	/* RFC1996 require SOA question. */
+	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
+
+	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
+	 *        Most servers use NOTAUTH from RFC2136. */
+	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	
+	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
+	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
+	if (zone_data->xfr_in.has_master) {
+		return update_forward(qdata);
+	}
+
+	/* Need valid transaction security. */
+	NS_NEED_AUTH(zone_data->update_in, qdata);
+	
+	/* Reserve space for TSIG. */
+	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
+	
+	/* Check prerequisites. */
+	if (update_prereq_check(qdata) != KNOT_EOK) {
+		return NS_PROC_FAIL;
+	}
+	
+	/* Process UPDATE. */
+	if (update_process(pkt, qdata) != KNOT_EOK) {
+		return NS_PROC_FAIL;
+	}
+	
+	return NS_PROC_FINISH;
 }

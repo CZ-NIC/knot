@@ -391,10 +391,6 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
 int knot_ddns_process_prereqs(const knot_pkt_t *query,
                               knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode)
 {
-	/*! \todo Consider not parsing the whole packet at once, but
-	 *        parsing one RR at a time - could save some memory and time.
-	 */
-
 	if (query == NULL || prereqs == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
 	}

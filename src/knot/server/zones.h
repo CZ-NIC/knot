@@ -113,22 +113,11 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal);
 /*!
  * \todo Document me.
  */
-int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
-                           const sockaddr_t *addr, knot_tsig_key_t **tsig_key,
-                           knot_rcode_t *rcode);
-
-/*!
- * \todo Document me.
- */
-int zones_xfr_check_zone(knot_ns_xfr_t *xfr, knot_rcode_t *rcode);
-
-/*!
- * \todo Document me.
- */
-int zones_process_update(knot_nameserver_t *nameserver,
-                         knot_pkt_t *query, const sockaddr_t *addr,
-                         uint8_t *resp_wire, size_t *rsize,
-                         int fd, knot_ns_transport_t transport);
+int zones_process_update_auth(knot_zone_t *zone,
+                                     knot_pkt_t *query,
+                                     knot_rcode_t *rcode,
+                                     const sockaddr_t *addr,
+                                     knot_tsig_key_t *tsig_key);
 
 /*!
  * \brief Processes normal response packet.
@@ -225,28 +214,6 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets);
 /*! \todo Document me. */
 int zones_changesets_to_binary(knot_changesets_t *chgsets);
 
-/*!
- * \brief Load changesets from journal.
- *
- * Changesets will be stored on a permanent storage.
- * Journal may be compacted, resulting in flattening changeset history.
- *
- * In case of KNOT_ERANGE error, whole zone content should be sent instead,
- * as the changeset history cannot be recovered.
- *
- * \param zone Zone containing a changeset journal.
- * \param dst Container to be loaded.
- * \param from Starting SOA serial (oldest).
- * \param to Ending SOA serial (newest).
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ERANGE when changeset history cannot be reconstructed.
- *
- * \todo Expects the xfr structure to be initialized in some way.
- */
-int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
-                              uint32_t serial_to);
 
 int zones_load_changesets(const knot_zone_t *zone,
 			  knot_changesets_t *dst,

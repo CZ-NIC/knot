@@ -7,6 +7,7 @@
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 #include "common/descriptor.h"
+#include "knot/server/zones.h"
 
 /*! \brief Query processing states. */
 enum {
@@ -617,9 +618,9 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_have_tsig(qdata->pkt)) {
-		qdata->rcode = KNOT_RCODE_NOTAUTH;
-		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
-		return NS_PROC_FAIL;
+		/* We have been challenged... */
+		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
+		NS_NEED_AUTH(zone_data->xfr_out, qdata);
 	}
 
 	/* Write answer RRs for QNAME. */
