@@ -21,7 +21,6 @@
 
 #include "common/lists.h"
 #include "common/log.h"
-#include "common/prng.h"
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
@@ -30,6 +29,7 @@
 #include "knot/server/zones.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/dname.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-events.h"
 #include "libknot/nameserver/chaos.h"
 #include "libknot/rdata.h"
@@ -57,7 +57,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
  */
 static uint32_t zones_jitter(uint32_t interval)
 {
-	return (interval * (100 - (tls_rand() * ZONES_JITTER_PCT))) / 100;
+	return (interval * (100 - (knot_random_uint32_t() % ZONES_JITTER_PCT))) / 100;
 }
 
 /*!
@@ -1172,6 +1172,20 @@ int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal)
 			rcu_read_unlock();
 			pthread_mutex_unlock(&zd->lock);
 			return ret;
+		}
+
+		/* Update zone version. */
+		struct stat st;
+		if (stat(zd->conf->file, &st) < 0) {
+			log_zone_warning("Failed to apply differences "
+			                 "'%s' to '%s (%s)'\n",
+			                 zd->conf->name, zd->conf->file,
+			                 knot_strerror(KNOT_EACCES));
+			rcu_read_unlock();
+			pthread_mutex_unlock(&zd->lock);
+			return KNOT_ERROR;
+		} else {
+			knot_zone_set_version(zone, st.st_mtime);
 		}
 
 		/* Update journal entries. */

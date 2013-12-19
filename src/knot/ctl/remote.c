@@ -19,7 +19,6 @@
 #include "knot/ctl/remote.h"
 #include "common/log.h"
 #include "common/fdset.h"
-#include "common/prng.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
 #include "knot/server/socket.h"
@@ -30,6 +29,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/dnssec/zone-nsec.h"
 
@@ -135,7 +135,7 @@ static int remote_zone_refresh(server_t *s, const knot_zone_t *z)
 	if (zd->xfr_in.timer) {
 		evsched_cancel(sch, zd->xfr_in.timer);
 		evsched_schedule(sch, zd->xfr_in.timer,
-		                 tls_rand() * 1000);
+		                 knot_random_uint32_t() % 1000);
 	}
 
 	return KNOT_EOK;
@@ -159,7 +159,7 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 	if (zd->ixfr_dbsync) {
 		evsched_cancel(sch, zd->ixfr_dbsync);
 		evsched_schedule(sch, zd->ixfr_dbsync,
-		                 tls_rand() * 1000);
+		                 knot_random_uint32_t() % 1000);
 	}
 
 	return KNOT_EOK;
@@ -715,7 +715,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 		return NULL;
 	}
 
-	knot_wire_set_id(pkt->wire, knot_random_id());
+	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 	knot_pkt_tsig_set(pkt, key);
 
 	/* Question section. */

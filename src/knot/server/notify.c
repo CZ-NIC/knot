@@ -36,6 +36,7 @@
 #include "libknot/nameserver/internet.h"
 #include "libknot/util/debug.h"
 #include "libknot/nameserver/ns_proc_query.h"
+#include "libknot/dnssec/random.h"
 
 
 /* Messages. */
@@ -53,7 +54,7 @@ static int notify_request(const knot_rrset_t *rrset,
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
 	knot_pkt_clear(pkt);
-	knot_wire_set_id(pkt->wire, knot_random_id());
+	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 	knot_wire_set_aa(pkt->wire);
 	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
 

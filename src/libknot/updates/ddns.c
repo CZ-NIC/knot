@@ -1621,7 +1621,8 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 	 * \todo Should document this!!
 	 */
 	int ret = 0;
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
+	// The copy of rrsets is important here.
+	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
 	int count = knot_node_rrset_count(node);
 
 	if (rrsets == NULL && count != 0) {
@@ -1648,10 +1649,12 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to remove RRSet: %s\n",
 			         knot_strerror(ret));
+			free(rrsets);
 			return ret;
 		}
 	}
 
+	free(rrsets);
 	return KNOT_EOK;
 }
 

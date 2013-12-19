@@ -27,62 +27,82 @@
 
 #define RESOLV_FILE	"/etc/resolv.conf"
 
-srv_info_t* parse_nameserver(const char *nameserver, const char *def_port)
+srv_info_t* parse_nameserver(const char *str, const char *def_port)
 {
-	if (nameserver == NULL || def_port == NULL) {
+	char *host = NULL, *port = NULL;
+	const char *addr = NULL, *sep = NULL;
+	size_t addr_len = 0;
+	char separator = ':';
+
+	if (str == NULL || def_port == NULL) {
 		DBG_NULL;
 		return NULL;
 	}
 
-	// OpenBSD notation: nameserver [address]:port
-	if (nameserver[0] == '[') {
-		char *addr, *port;
+	const size_t str_len = strlen(str);
+	const char *str_end = str + str_len;
 
-		char   *start = (char *)nameserver + 1;
-		char   *end = index(nameserver, ']');
-		size_t addr_len = end - start;
-
+	// [address]:port notation.
+	if (*str == '[') {
+		addr = str + 1;
+		const char *addr_end = index(addr, ']');
 		// Missing closing bracket -> stop processing.
-		if (end == NULL) {
+		if (addr_end == NULL) {
+			return NULL;
+		}
+		addr_len = addr_end - addr;
+		str += 1 + addr_len + 1;
+	// Address#port notation.
+	} else if ((sep = index(str, '#')) != NULL) {
+		addr = str;
+		addr_len = sep - addr;
+		str += addr_len;
+		separator = '#';
+	// IPv4:port notation.
+	} else if ((sep = index(str, ':')) != NULL) {
+		addr = str;
+		// Not IPv4 address -> no port.
+		if (index(sep + 1, ':') != NULL) {
+			addr_len = str_len;
+			str = str_end;
+		} else {
+			addr_len = sep - addr;
+			str += addr_len;
+		}
+	// No port specified.
+	} else {
+		addr = str;
+		addr_len = str_len;
+		str = str_end;
+	}
+
+	// Process port.
+	if (str < str_end) {
+		// Check port separator.
+		if (*str != separator) {
+			return NULL;
+		}
+		str++;
+
+		// Check for missing port.
+		if (str >= str_end) {
 			return NULL;
 		}
 
-		// Fill enclosed address.
-		addr = strndup(start, addr_len);
-
-		// Find possible port.
-		start += addr_len + 1;
-		if (strlen(start) > 0) {
-			// Check for colon separation.
-			if (*start != ':') {
-				free(addr);
-				return NULL;
-			}
-
-			size_t port_len = strlen(++start);
-
-			// Check port string length.
-			if (port_len == 0 || port_len >= sizeof(port)) {
-				free(addr);
-				return NULL;
-			}
-
-			// Fill port part.
-			port = strdup(start);
-		} else {
-			port = strdup(def_port);
-		}
-
-		// Create server structure.
-		srv_info_t *server = srv_info_create(addr, port);
-
-		free(addr);
-		free(port);
-
-		return server;
+		port = strdup(str);
 	} else {
-		return srv_info_create(nameserver, def_port);
+		port = strdup(def_port);
 	}
+
+	host = strndup(addr, addr_len);
+
+	// Create server structure.
+	srv_info_t *server = srv_info_create(host, port);
+
+	free(host);
+	free(port);
+
+	return server;
 }
 
 static int get_resolv_nameservers(list_t *servers, const char *def_port)

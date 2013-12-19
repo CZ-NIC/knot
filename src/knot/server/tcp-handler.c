@@ -43,6 +43,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/nameserver/ns_proc_query.h"
 #include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/random.h"
 
 /*! \brief TCP worker data. */
 typedef struct tcp_worker_t {
@@ -59,8 +60,7 @@ typedef struct tcp_worker_t {
 
 /*! \brief Calculate TCP throttle time (random). */
 static inline int tcp_throttle() {
-	//(TCP_THROTTLE_LO + (int)(tls_rand() * TCP_THROTTLE_HI));
-	return (rand() % TCP_THROTTLE_HI) + TCP_THROTTLE_LO;
+	return TCP_THROTTLE_LO + (knot_random_int() % TCP_THROTTLE_HI);
 }
 
 /*! \brief Sweep TCP connection. */

@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <assert.h>
 
-#include "common/prng.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
@@ -35,6 +34,7 @@
 #include "libknot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/random.h"
 
 /*! \brief Event scheduler loop. */
 static int evsched_run(dthread_t *thread)
@@ -481,7 +481,7 @@ int server_refresh(server_t *server)
 		if (zd && zd->xfr_in.timer) {
 			evsched_cancel(sch, zd->xfr_in.timer);
 			evsched_schedule(sch, zd->xfr_in.timer,
-					 tls_rand() * 500 + count/2);
+			                 knot_random_int() % 500 + count/2);
 			/* Cumulative delay. */
 			++count;
 		}
