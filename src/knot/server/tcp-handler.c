@@ -51,13 +51,6 @@ typedef struct tcp_worker_t {
 	int pipe[2];      /*!< Master-worker signalization pipes. */
 } tcp_worker_t;
 
-/*! \brief Buffers .*/
-enum {
-	QBUF   = 0, /* Query buffer ID. */
-	QRBUF  = 1, /* Response buffer ID. */
-	NBUFS  = 2  /* Buffer count. */
-};
-
 /*
  * Forward decls.
  */
@@ -107,34 +100,22 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 
 /*!
  * \brief TCP event handler function.
- *
- * Handle single TCP event.
- *
- * \param w Associated I/O event.
- * \param revents Returned events.
- *
- * \note We do not know if the packet makes sense or if it is
- *       a bunch of random bytes. There is no way to find out
- *       without parsing. However, it is irrelevant if we copy
- *       these random bytes to the response, so we may do it
- *       and ensure that in case of good packet the response
- *       is proper.
  */
 static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
                       struct iovec *rx, struct iovec *tx)
 {
-	/* Check address type. */
-	sockaddr_t addr;
-	sockaddr_prep(&addr);
-
+	/* Create query processing parameter. */
+	struct ns_proc_query_param param;
+	sockaddr_prep(&param.query_source);
+	
 	/* Receive data. */
-	int ret = tcp_recv(fd, rx->iov_base, rx->iov_len, &addr);
+	int ret = tcp_recv(fd, rx->iov_base, rx->iov_len, &param.query_source);
 	if (ret <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		if (ret == KNOT_EAGAIN) {
 			char r_addr[SOCKADDR_STRLEN];
-			sockaddr_tostr(&addr, r_addr, sizeof(r_addr));
-			int r_port = sockaddr_portnum(&addr);
+			sockaddr_tostr(&param.query_source, r_addr, sizeof(r_addr));
+			int r_port = sockaddr_portnum(&param.query_source);
 			rcu_read_lock();
 			log_server_warning("Couldn't receive query from '%s@%d'"
 			                  " within the time limit of %ds.\n",
@@ -145,7 +126,10 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 	} else {
 		rx->iov_len = ret;
 	}
-
+	
+	/* Create query processing context. */
+	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
+	
 	/* Input packet. */
 	uint16_t tx_len = tx->iov_len;
 	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
@@ -165,7 +149,7 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 	}
 
 	/* Reset after processing. */
-	ns_proc_reset(query_ctx);
+	ns_proc_finish(query_ctx);
 
 	return ret;
 }
@@ -462,28 +446,26 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 #endif /* HAVE_CAP_NG_H */
 
-	/* Create TCP answering context. */
-	tcp_worker_t *w = thread->data;
 	int ret = KNOT_EOK;
+	tcp_worker_t *w = thread->data;
+	
+	/* Create TCP answering context. */
 	ns_proc_context_t query_ctx;
 	memset(&query_ctx, 0, sizeof(query_ctx));
-	mm_ctx_init(&query_ctx.mm);
 	query_ctx.ns = w->ioh->server->nameserver;
-
+	
+	/* Create big enough memory cushion. */
+	mm_ctx_mempool(&query_ctx.mm, 4 * sizeof(knot_pkt_t));
 
 	/* Packet size not limited by EDNS. */
 	query_ctx.flags |= NS_PKTSIZE_NOLIMIT;
 
-	/* Create query processing context. */
-	ns_proc_begin(&query_ctx, NS_PROC_QUERY);
-
 	/* Create iovec abstraction. */
-	mm_ctx_t *mm = &query_ctx.mm;
-	struct iovec bufs[2];
+	struct iovec iov[2];
 	for (unsigned i = 0; i < 2; ++i) {
-		bufs[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
-		bufs[i].iov_base = mm->alloc(mm->ctx, bufs[i].iov_len);
-		if (bufs[i].iov_base == NULL) {
+		iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		iov[i].iov_base = malloc(iov[i].iov_len);
+		if (iov[i].iov_base == NULL) {
 			ret = KNOT_ENOMEM;
 			goto finish;
 		}
@@ -535,7 +517,11 @@ int tcp_loop_worker(dthread_t *thread)
 			if (fd == w->pipe[0]) {
 				tcp_loop_assign(fd, set);
 			} else {
-				int ret = tcp_handle(&query_ctx, fd, &bufs[0], &bufs[1]);
+				int ret = tcp_handle(&query_ctx, fd, &iov[0], &iov[1]);
+				
+				/* Flush per-query memory. */
+				mp_flush(query_ctx.mm.ctx);
+				
 				if (ret == KNOT_EOK) {
 					/* Update socket activity timer. */
 					fdset_set_watchdog(set, i, max_idle);
@@ -563,9 +549,9 @@ int tcp_loop_worker(dthread_t *thread)
 	}
 
 finish:
-	mm->free(bufs[0].iov_base);
-	mm->free(bufs[1].iov_base);
-	ns_proc_finish(&query_ctx);
+	free(iov[0].iov_base);
+	free(iov[1].iov_base);
+	mp_delete(query_ctx.mm.ctx);
 	return ret;
 }
 

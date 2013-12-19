@@ -377,6 +377,7 @@ enum ns_proc_flag {
 };
 
 struct ns_proc_module;
+struct ns_sign_context;
 
 typedef struct ns_proc_context
 {
@@ -392,7 +393,7 @@ typedef struct ns_proc_context
 } ns_proc_context_t;
 
 typedef struct ns_proc_module {
-	int (*begin)(ns_proc_context_t *ctx);
+	int (*begin)(ns_proc_context_t *ctx, void *module_param);
 	int (*reset)(ns_proc_context_t *ctx);
 	int (*finish)(ns_proc_context_t *ctx);
 	int (*in)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
@@ -400,7 +401,18 @@ typedef struct ns_proc_module {
 	int (*err)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 } ns_proc_module_t;
 
-int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module);
+typedef struct ns_sign_context {
+	knot_tsig_key_t *tsig_key; 
+	uint8_t *tsig_buf;
+	uint8_t *tsig_digest;
+	size_t tsig_buflen;
+	size_t tsig_digestlen;
+	uint8_t tsig_runlen;
+	uint64_t tsig_time_signed;
+	size_t pkt_count;
+} ns_sign_context_t;
+
+int ns_proc_begin(ns_proc_context_t *ctx, void *module_param, const ns_proc_module_t *module);
 int ns_proc_reset(ns_proc_context_t *ctx);
 int ns_proc_finish(ns_proc_context_t *ctx);
 int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx);

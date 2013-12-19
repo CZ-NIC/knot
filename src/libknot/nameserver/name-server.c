@@ -134,123 +134,6 @@ int knot_ns_tsig_required(int packet_nr)
 
 /*----------------------------------------------------------------------------*/
 
-static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
-{
-	assert(xfr != NULL);
-	assert(xfr->query != NULL);
-	assert(xfr->response != NULL);
-	assert(xfr->wire != NULL);
-	assert(xfr->send != NULL);
-
-	// Transform the packet into wire format
-	dbg_ns_verb("Converting response to wire format..\n");
-	size_t real_size = xfr->wire_size;
-	if (ns_response_to_wire(xfr->response, xfr->wire, &real_size) != 0) {
-		return NS_ERR_SERVFAIL;
-	}
-
-	int res = 0;
-
-	size_t digest_real_size = xfr->digest_max_size;
-
-	dbg_ns_detail("xfr->tsig_key=%p\n", xfr->tsig_key);
-	dbg_ns_detail("xfr->tsig_rcode=%d\n", xfr->tsig_rcode);
-
-	if (xfr->tsig_key) {
-		// add the data to TSIG data
-		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
-		       >= xfr->wire_size);
-		memcpy(xfr->tsig_data + xfr->tsig_data_size,
-		       xfr->wire, real_size);
-		xfr->tsig_data_size += real_size;
-	}
-
-	if (xfr->tsig_key && add_tsig) {
-		if (xfr->packet_nr == 0) {
-			/* Add key, digest and digest length. */
-			dbg_ns_detail("Calling tsig_sign(): %p, %zu, %zu, "
-			              "%p, %zu, %p, %zu, %p\n",
-			              xfr->wire, real_size, xfr->wire_size,
-			              xfr->digest, xfr->digest_size, xfr->digest,
-			              digest_real_size, xfr->tsig_key);
-			res = knot_tsig_sign(xfr->wire, &real_size,
-			               xfr->wire_size, xfr->digest,
-			               xfr->digest_size, xfr->digest,
-			               &digest_real_size,
-			               xfr->tsig_key, xfr->tsig_rcode,
-			               xfr->tsig_prev_time_signed);
-		} else {
-			/* Add key, digest and digest length. */
-			dbg_ns_detail("Calling tsig_sign_next()\n");
-			res = knot_tsig_sign_next(xfr->wire, &real_size,
-			                          xfr->wire_size,
-			                          xfr->digest,
-			                          xfr->digest_size,
-			                          xfr->digest,
-			                          &digest_real_size,
-			                          xfr->tsig_key, xfr->tsig_data,
-			                          xfr->tsig_data_size);
-		}
-
-		dbg_ns_verb("Sign function returned: %s\n", knot_strerror(res));
-		dbg_ns_detail("Real size of digest: %zu\n", digest_real_size);
-
-		if (res != KNOT_EOK) {
-			return res;
-		}
-
-		assert(digest_real_size > 0);
-		// save the new previous digest size
-		xfr->digest_size = digest_real_size;
-
-		// clear the TSIG data
-		xfr->tsig_data_size = 0;
-
-	} else if (xfr->tsig_rcode != 0) {
-		dbg_ns_verb("Adding TSIG without signing, TSIG RCODE: %d.\n",
-		            xfr->tsig_rcode);
-		assert(xfr->tsig_rcode != KNOT_RCODE_BADTIME);
-		// add TSIG without signing
-		assert(xfr->query != NULL);
-
-		const knot_rrset_t *tsig = xfr->query->tsig_rr;
-		res = knot_tsig_add(xfr->wire, &real_size, xfr->wire_size,
-		                    xfr->tsig_rcode, tsig);
-		if (res != KNOT_EOK) {
-			return res;
-		}
-	}
-
-	// Send the response
-	dbg_ns("Sending response (size %zu)..\n", real_size);
-	//dbg_ns_hex((const char *)xfr->wire, real_size);
-	res = xfr->send(xfr->session, &xfr->addr, xfr->wire, real_size);
-	if (res < 0) {
-		dbg_ns("Send returned %d\n", res);
-		return res;
-	} else if (res != real_size) {
-		dbg_ns("AXFR did not send right amount of bytes."
-		       " Transfer size: %zu, sent: %d\n", real_size, res);
-	}
-
-	// Clean the response structure
-	dbg_ns_verb("Clearing response structure..\n");
-	knot_pkt_clear_payload(xfr->response);
-
-	// increment the packet number
-	++xfr->packet_nr;
-	if ((xfr->tsig_key && knot_ns_tsig_required(xfr->packet_nr))
-	     || xfr->tsig_rcode != 0) {
-		knot_pkt_tsig_set(xfr->response, xfr->tsig_key);
-	} else {
-		knot_pkt_tsig_set(xfr->response, NULL);
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int knot_ns_prepare_response(knot_pkt_t *query, knot_pkt_t **resp,
                                     size_t max_size)
 {
@@ -1086,9 +969,16 @@ void knot_ns_destroy(knot_nameserver_t **nameserver)
 }
 
 /* #10 <<< Next-gen API. */
+static const char* _state_table[] = {
+        [NS_PROC_NOOP] = "N/A",
+        [NS_PROC_MORE] = "MORE",
+        [NS_PROC_FULL] = "FULL",
+        [NS_PROC_FINISH] = "FINISHED",
+        [NS_PROC_FAIL] = "FAIL"
+};
+#define NS_STATE_STR(x) _state_table[x]
 
-
-int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module)
+int ns_proc_begin(ns_proc_context_t *ctx, void *module_param, const ns_proc_module_t *module)
 {
 	/* Only in inoperable state. */
 	if (ctx->state != NS_PROC_NOOP) {
@@ -1106,9 +996,9 @@ int ns_proc_begin(ns_proc_context_t *ctx, const ns_proc_module_t *module)
 #endif /* KNOT_NS_DEBUG */
 
 	ctx->module = module;
-	ctx->state = module->begin(ctx);
+	ctx->state = module->begin(ctx, module_param);
 
-	dbg_ns("%s -> %d\n", __func__, ctx->state);
+	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -1122,7 +1012,7 @@ int ns_proc_reset(ns_proc_context_t *ctx)
 	/* #10 implement */
 	ctx->state = ctx->module->reset(ctx);
 
-	dbg_ns("%s -> %d\n", __func__, ctx->state);
+	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -1136,7 +1026,7 @@ int ns_proc_finish(ns_proc_context_t *ctx)
 	/* #10 implement */
 	ctx->state = ctx->module->finish(ctx);
 
-	dbg_ns("%s -> %d\n", __func__, ctx->state);
+	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
@@ -1152,14 +1042,13 @@ int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx)
 
 	ctx->state = ctx->module->in(pkt, ctx);
 
-	dbg_ns("%s -> %d\n", __func__, ctx->state);
+	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }
 
 int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 {
 	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, &ctx->mm);
-	dbg_ns("%s: new TX packet %p\n", __func__, pkt);
 
 	switch(ctx->state) {
 	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;
@@ -1170,10 +1059,14 @@ int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 		return NS_PROC_NOOP;
 	}
 
-	*wire_len = pkt->size;
+	/* Accept only finished result. */
+	if (ctx->state == NS_PROC_FINISH) {
+		*wire_len = pkt->size;
+	}
+	
 	knot_pkt_free(&pkt);
 
-	dbg_ns("%s -> %d\n", __func__, ctx->state);
+	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }
 

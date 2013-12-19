@@ -109,18 +109,9 @@ static int notify_reschedule(knot_nameserver_t *ns,
 		return KNOT_EINVAL;
 	}
 
-	/* Check ACL for notify-in. */
-	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(zone);
-	if (from) {
-		if (acl_find(zone_data->notify_in, from) == NULL) {
-			return KNOT_EDENIED;
-		}
-	} else {
-		dbg_ns("%s: no zone data/address, can't do ACL check\n", __func__);
-	}
-
 	/* Cancel REFRESH/RETRY timer. */
 	server_t *server = ns->data;
+	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(zone);
 	event_t *refresh_ev = zone_data->xfr_in.timer;
 	if (refresh_ev && server) {
 		dbg_ns("%s: expiring REFRESH timer\n", __func__);
@@ -141,10 +132,18 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
+
 	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
 	 *        Most servers use NOTAUTH from RFC2136. */
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
+	/* Need valid transaction security. */
+	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
+	NS_NEED_AUTH(zone_data->notify_in, qdata);
+	
+	/* Reserve space for TSIG. */
+	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
+	
 	/* SOA RR in answer may be included, recover serial. */
 	unsigned serial = 0;
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->pkt, KNOT_ANSWER);

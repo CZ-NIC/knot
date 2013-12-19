@@ -143,8 +143,12 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	        strfrom, sockaddr_portnum(addr));
 #endif
 
+	/* Create query processing parameter. */
+	struct ns_proc_query_param param;
+	sockaddr_copy(&param.query_source, addr);
+	
 	/* Create query processing context. */
-	ns_proc_begin(query_ctx, NS_PROC_QUERY);
+	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
 
 	/* Input packet. */
 	uint16_t tx_len = tx->iov_len;

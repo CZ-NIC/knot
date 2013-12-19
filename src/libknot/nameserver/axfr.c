@@ -6,6 +6,7 @@
 #include "libknot/util/debug.h"
 #include "common/descriptor.h"
 #include "common/lists.h"
+#include "knot/server/zones.h"
 
 struct axfr_proc {
 	struct xfr_proc proc;
@@ -83,9 +84,6 @@ static int axfr_answer_init(struct query_data *qdata)
 {
 	assert(qdata);
 
-	/* Check zone state. */
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-
 	/* Begin zone iterator. */
 	mm_ctx_t *mm = qdata->mm;
 	knot_zone_contents_t *zone = qdata->zone->contents;
@@ -157,13 +155,23 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
+
+		/* Check zone state. */
+		NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+		
+		/* Need valid transaction security. */
+		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
+		NS_NEED_AUTH(zone_data->xfr_out, qdata);
+		
 		ret = axfr_answer_init(qdata);
-		dbg_ns("%s: init => %s\n", __func__, knot_strerror(ret));
 		if (ret != KNOT_EOK) {
+			dbg_ns("%s: init => %s\n", __func__, knot_strerror(ret));
 			return ret;
 		}
-
 	}
+	
+	/* Reserve space for TSIG. */
+	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
 
 	/* Answer current packet (or continue). */
 	struct xfr_proc *xfer = qdata->ext;

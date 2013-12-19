@@ -28,6 +28,7 @@
 #define _KNOT_NS_PROC_QUERY_H_
 
 #include "libknot/nameserver/name-server.h"
+#include "common/acl.h"
 
 /* Query processing module implementation. */
 extern const ns_proc_module_t _ns_proc_query;
@@ -40,14 +41,12 @@ enum ns_proc_query_flag {
 	NS_QUERY_NO_IXFR = NS_PROCFLAG << 2  /* Don't process IXFR */
 };
 
-/* Visited wildcard node list. */
-struct wildcard_hit {
-	node_t n;
-	const knot_node_t *node;
-	const knot_dname_t *sname;
+/* Module load parameters. */
+struct ns_proc_query_param {
+	sockaddr_t query_source;
 };
 
-
+/* Per-query data. */
 struct query_data {
 	uint16_t rcode;
 	uint16_t rcode_tsig;
@@ -56,16 +55,29 @@ struct query_data {
 	const knot_node_t *node, *encloser, *previous;
 	const knot_dname_t *name;
 	list_t wildcards;
+	ns_sign_context_t sign;
+	struct ns_proc_query_param *param;
 	mm_ctx_t *mm;
 	void *ext;
 };
 
-int ns_proc_query_begin(ns_proc_context_t *ctx);
+/* Visited wildcard node list. */
+struct wildcard_hit {
+	node_t n;
+	const knot_node_t *node;
+	const knot_dname_t *sname;
+};
+
+int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param);
 int ns_proc_query_reset(ns_proc_context_t *ctx);
 int ns_proc_query_finish(ns_proc_context_t *ctx);
 int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+
+bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata);
+int ns_proc_query_verify(struct query_data *qdata);
+int ns_proc_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata);
 
 #endif /* _KNOT_NS_PROC_QUERY_H_ */
 

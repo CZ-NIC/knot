@@ -606,6 +606,8 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 		 *        reply and we should pass query sign time as the time
 		 *        may be different. Leaving to 0.
 		 */
+		memcpy(rq->tsig_data, rq->wire, rq->wire_size);
+		rq->tsig_data_size = rq->wire_size;
 		ret = knot_tsig_client_check(tsig_rr, rq->wire, rq->wire_size,
 		                             rq->digest, rq->digest_size,
 		                             rq->tsig_key, 0);
@@ -833,121 +835,6 @@ static enum fdset_sweep_state xfr_sweep(fdset_t *set, int i, void *data)
 	}
 
 	return FDSET_KEEP;
-}
-
-/*! \brief Check TSIG if exists. */
-static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
-{
-	/* Parse rest of the packet. */
-	int ret = KNOT_EOK;
-	knot_pkt_t *qry = xfr->query;
-	knot_tsig_key_t *key = 0;
-	const knot_rrset_t *tsig_rr = qry->tsig_rr;
-
-	/* Find TSIG key name from query. */
-	const knot_dname_t* kname = NULL;
-	if (tsig_rr) {
-		kname = knot_rrset_owner(tsig_rr);
-		if (tag) {
-			*tag = knot_dname_to_str(kname);
-		}
-	} else {
-		// return REFUSED
-		xfr->tsig_key = NULL;
-		*rcode = KNOT_RCODE_REFUSED;
-		return KNOT_EDENIED;
-	}
-
-	if (tsig_rr) {
-		knot_tsig_algorithm_t alg = tsig_rdata_alg(tsig_rr);
-		if (knot_tsig_digest_length(alg) == 0) {
-			*rcode = KNOT_RCODE_NOTAUTH;
-			xfr->tsig_key = NULL;
-			xfr->tsig_rcode = KNOT_RCODE_BADKEY;
-			xfr->tsig_prev_time_signed =
-			                tsig_rdata_time_signed(tsig_rr);
-			return KNOT_TSIG_EBADKEY;
-		}
-	}
-
-	/* Evaluate configured key for claimed key name.*/
-	key = xfr->tsig_key; /* Expects already set key (check_zone) */
-	xfr->tsig_key = 0;
-	if (key && kname && knot_dname_cmp(key->name, kname) == 0) {
-		dbg_xfr("xfr: found claimed TSIG key for comparison\n");
-	} else {
-
-		/* TSIG is mandatory if configured for interface. */
-		/* Configured, but doesn't match. */
-		dbg_xfr("xfr: no claimed key configured or not received"
-		        ", treating as bad key\n");
-		*rcode = KNOT_RCODE_NOTAUTH;
-		ret = KNOT_TSIG_EBADKEY;
-		xfr->tsig_rcode = KNOT_RCODE_BADKEY;
-		key = NULL; /* Invalidate, ret already set to BADKEY */
-	}
-
-	/* Validate with TSIG. */
-	if (key) {
-		/* Prepare variables for TSIG */
-		xfr_task_setsig(xfr, key);
-
-		/* Copy MAC from query. */
-		dbg_xfr("xfr: validating TSIG from query\n");
-		const uint8_t* mac = tsig_rdata_mac(tsig_rr);
-		size_t mac_len = tsig_rdata_mac_length(tsig_rr);
-		if (mac_len > xfr->digest_max_size) {
-			ret = KNOT_EMALF;
-			dbg_xfr("xfr: MAC length %zu exceeds digest "
-			        "maximum size %zu\n",
-			        mac_len, xfr->digest_max_size);
-		} else {
-			memcpy(xfr->digest, mac, mac_len);
-			xfr->digest_size = mac_len;
-
-			/* Check query TSIG. */
-			ret = knot_tsig_server_check(
-			                        tsig_rr,
-			                        qry->wire,
-			                        qry->size,
-			                        key);
-			dbg_xfr("knot_tsig_server_check() returned %s\n",
-			        knot_strerror(ret));
-		}
-
-		/* Evaluate TSIG check results. */
-		switch(ret) {
-		case KNOT_EOK:
-			*rcode = KNOT_RCODE_NOERROR;
-			break;
-		case KNOT_TSIG_EBADKEY:
-			xfr->tsig_rcode = KNOT_RCODE_BADKEY;
-			xfr->tsig_key = NULL;
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_TSIG_EBADSIG:
-			xfr->tsig_rcode = KNOT_RCODE_BADSIG;
-			xfr->tsig_key = NULL;
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_TSIG_EBADTIME:
-			xfr->tsig_rcode = KNOT_RCODE_BADTIME;
-			// store the time signed from the query
-			assert(tsig_rr != NULL);
-			xfr->tsig_prev_time_signed =
-			                tsig_rdata_time_signed(tsig_rr);
-			*rcode = KNOT_RCODE_NOTAUTH;
-			break;
-		case KNOT_EMALF:
-			*rcode = KNOT_RCODE_FORMERR;
-			break;
-		default:
-			*rcode = KNOT_RCODE_SERVFAIL;
-		}
-	}
-
-
-	return ret;
 }
 
 int xfr_worker(dthread_t *thread)

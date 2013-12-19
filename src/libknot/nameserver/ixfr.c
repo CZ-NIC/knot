@@ -158,6 +158,11 @@ static int ixfr_query_check(struct query_data *qdata)
 	}
 	/* SOA needs to match QNAME. */
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
+	
+	/* Need valid transaction security. */
+	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
+	NS_NEED_AUTH(zone_data->xfr_out, qdata);
+
 	return NS_PROC_FINISH;
 }
 
@@ -206,8 +211,14 @@ int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 		return NS_PROC_FAIL;
 	}
 
-	/* Check zone state. */
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	/* Check query. */
+	int state = ixfr_query_check(qdata);
+	if (state == NS_PROC_FAIL) {
+		return state; /* Malformed query. */
+	}
+	
+	/* Reserve space for TSIG. */
+	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);	
 
 	/* Guaranteed to have zone contents. */
 	const knot_node_t *apex = qdata->zone->contents->apex;
@@ -235,19 +246,24 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 		ret = ixfr_answer_init(qdata);
-		dbg_ns("%s: init => %s\n", __func__, knot_strerror(ret));
 		switch(ret) {
 		case KNOT_EOK:      /* OK */
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
+			dbg_ns("%s: nothing new => SOA response\n", __func__);
 			return ixfr_answer_soa(pkt, ns, qdata);
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
+			dbg_ns("%s: not enough history => AXFR answer\n", __func__);
 			return axfr_answer(pkt, ns, qdata);
 		default:            /* Server errors. */
+			dbg_ns("%s: init => %s\n", __func__, knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 	}
+	
+	/* Reserve space for TSIG. */
+	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
 
 	/* Answer current packet (or continue). */
 	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;

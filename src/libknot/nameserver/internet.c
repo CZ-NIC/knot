@@ -614,6 +614,13 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	}
 
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
+	
+	/* No applicable ACL, refuse transaction security. */
+	if (knot_pkt_have_tsig(qdata->pkt)) {
+		qdata->rcode = KNOT_RCODE_NOTAUTH;
+		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
+		return NS_PROC_FAIL;
+	}
 
 	/* Write answer RRs for QNAME. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
