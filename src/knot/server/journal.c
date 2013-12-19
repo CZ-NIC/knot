@@ -178,6 +178,7 @@ static int journal_open_file(journal_t *j)
 		                   j->path, efl.l_pid);
 		ret = fcntl(j->fd, F_SETLKW, &j->fl);
 	}
+	UNUSED(ret);
 	dbg_journal("journal: locked journal %s (returned %d)\n", j->path, ret);
 
 	/* Read magic bytes. */

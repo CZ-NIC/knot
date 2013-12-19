@@ -377,10 +377,15 @@ static int pkt_sendrecv(nsupdate_params_t *params,
 	               get_socktype(params->protocol, KNOT_RRTYPE_SOA),
 	               params->wait,
 	               &net);
+	if (ret != KNOT_EOK) {
+		return -1;
+	}
 
 	ret = net_connect(&net);
 	DBG("%s: send_msg = %d\n", __func__, net.sockfd);
-	if (ret != KNOT_EOK) return -1;
+	if (ret != KNOT_EOK) {
+		return -1;
+	}
 
 	ret = net_send(&net, qwire, qlen);
 	if (ret != KNOT_EOK) {
