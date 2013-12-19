@@ -149,6 +149,14 @@ static inline bool knot_pkt_have_edns(const knot_pkt_t *pkt)
 }
 
 /*!
+ * \brief Checks if EDNS is supported (i.e. has EDNS VERSION != UNSUPPORTED).
+ */
+static inline bool knot_pkt_have_tsig(const knot_pkt_t *pkt)
+{
+	return pkt && pkt->tsig_rr;
+}
+
+/*!
  * \brief Checks if DNSSEC was requested (i.e. the DO bit was set).
  */
 static inline bool knot_pkt_have_dnssec(const knot_pkt_t *pkt)

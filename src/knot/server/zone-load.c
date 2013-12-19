@@ -196,7 +196,7 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 
 		/* Load rule. */
 		if (ret > 0) {
-			acl_insert(new_acl, &addr, cfg_if);
+			acl_insert(new_acl, &addr, cfg_if->key);
 		}
 	}
 

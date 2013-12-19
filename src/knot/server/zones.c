@@ -1343,7 +1343,8 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 		acl_used = zd->update_in;
 	}
 	acl_match_t *match = NULL;
-	if ((match = acl_find(acl_used, addr)) == NULL) {
+#warning This check is not wrong since it doesn't provide key from TSIG RR.
+	if ((match = acl_find(acl_used, addr, NULL)) == NULL) {
 		*rcode = KNOT_RCODE_REFUSED;
 		return KNOT_EACCES;
 	} else {
@@ -1351,9 +1352,9 @@ int zones_query_check_zone(const knot_zone_t *zone, uint8_t q_opcode,
 		          "'%s %s'. match=%p\n", zd->conf->name,
 		          q_opcode == KNOT_OPCODE_UPDATE ? "UPDATE":"XFR/OUT",
 			  match);
-		if (match->val) {
+		if (match->key) {
 			/* Save configured TSIG key for comparison. */
-			*tsig_key = ((conf_iface_t*)(match->val))->key;
+			*tsig_key = match->key;
 		}
 	}
 	return KNOT_EOK;

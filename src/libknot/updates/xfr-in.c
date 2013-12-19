@@ -309,11 +309,6 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 		uint8_t *wire_buf = xfr->tsig_data + xfr->tsig_data_size;
 		memcpy(wire_buf, xfr->wire, xfr->wire_size);
 		xfr->tsig_data_size += xfr->wire_size;
-
-		/* Strip TSIG RR from wire and restore message ID. */
-		if (packet->tsig_rr) {
-			knot_tsig_check_prep(wire_buf, &xfr->tsig_data_size, packet->tsig_rr);
-		}
 	}
 
 	if (xfr->tsig_key) {
@@ -324,7 +319,7 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 			// TSIG there, either required or not, process
 			if (xfr->packet_nr == 0) {
 				ret = knot_tsig_client_check(packet->tsig_rr,
-					xfr->wire, xfr->wire_size,
+					xfr->tsig_data, xfr->tsig_data_size,
 					xfr->digest, xfr->digest_size,
 					xfr->tsig_key,
 					xfr->tsig_prev_time_signed);

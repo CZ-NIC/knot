@@ -382,7 +382,9 @@ int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key)
 {
 	dbg_packet("%s(%p, %p)\n", __func__, pkt, tsig_key);
 	pkt->tsig_key = tsig_key;
-	pkt->tsig_size = tsig_wire_maxsize(tsig_key);
+	if (tsig_key) {
+		pkt->tsig_size = tsig_wire_maxsize(tsig_key);
+	}
 	return KNOT_EOK;
 }
 
@@ -764,12 +766,16 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	pkt->rr_info[pkt->rrset_count].flags = KNOT_PF_FREE;
 
 	/* Parse wire format. */
+	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = NULL;
 	rr = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size);
 	if (rr == NULL) {
 		dbg_packet("%s: failed to parse RR\n", __func__);
 		return KNOT_EMALF;
 	}
+	
+	/* Calculate parsed RR size from before/after parsing. */
+	rr_size = (pkt->parsed - rr_size);
 
 	/* Append to RR list if couldn't merge with existing RRSet. */
 	if (knot_pkt_merge_rr(pkt, rr, flags) != KNOT_EOK) {
@@ -793,6 +799,13 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 				return KNOT_EMALF;
 			}
 
+			/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
+			pkt->parsed -= rr_size;
+			pkt->size -= rr_size;
+			knot_wire_set_id(pkt->wire, tsig_rdata_orig_id(rr));
+			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
+			
+			/* Remember TSIG RR. */
 			pkt->tsig_rr = rr;
 			break;
 		case KNOT_RRTYPE_OPT:
