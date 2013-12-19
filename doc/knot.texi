@@ -68,6 +68,7 @@ This manual is for Knot DNS (version @value{VERSION}, @value{UPDATED}).
 * Troubleshooting::
 * Statement Index::
 * Knot DNS Configuration Reference::
+* Migration from other DNS servers::
 
 @detailmenu
  --- The Detailed Node Listing ---
@@ -245,5 +246,6 @@ Statement Definition and Usage
 
 @c appendixes
 @include reference.texi
+@include migration.texi
 
 @bye

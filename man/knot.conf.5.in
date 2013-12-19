@@ -217,7 +217,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # default: ${localstatedir}/lib/knot, configured with --with-storage
   storage "/var/lib/knot";
 
-  # Build differences from zone file changes. EXPERIMENTAL feature.
+  # Build differences from zone file changes
   # Possible values: on|off
   # Default value: off
   ixfr-from-differences off;
@@ -256,7 +256,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # f.e. 1k, 100M, 2G
   ixfr-fslimit 1G;
 
-  # Enable DNSSEC online signing (EXPERIMENTAL)
+  # Enable DNSSEC online signing (technical preview)
   # Possible values: on | off;
   # Default value: off
   dnssec-enable off;
@@ -331,7 +331,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # Default value: inherited from zones section
     dnssec-keydir "keys";
 
-    # Enable DNSSEC online signing (EXPERIMENTAL)
+    # Enable DNSSEC online signing (technical preview)
     # Possible values: on | off;
     # Default value: inherited from zones section
     dnssec-enable off;
