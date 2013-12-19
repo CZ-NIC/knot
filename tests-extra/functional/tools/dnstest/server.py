@@ -261,6 +261,8 @@ class Server(object):
             try:
                 self.proc.terminate()
                 self.proc.wait(Server.STOP_TIMEOUT)
+            except ProcessLookupError:
+                pass
             except:
                 err("killing")
                 self.proc.kill()
