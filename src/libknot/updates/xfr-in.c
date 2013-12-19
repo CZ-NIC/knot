@@ -2400,8 +2400,8 @@ static int xfrin_mark_empty(knot_node_t **node_p, void *data)
 	if (node->rrset_count == 0 && node->children == 0 &&
 	    !knot_node_is_empty(node)) {
 		/*!
-		 * Mark this node and all parent nodes that have 0 RRSets
-		 * for removal.
+		 * Mark this node and all parent nodes that have 0 RRSets and
+		 * no children for removal.
 		 */
 		int ret = add_node_to_list(node, l);
 		if (ret != KNOT_EOK) {
@@ -2440,7 +2440,10 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *z)
 	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, l) {
 		knot_node_ln_t *list_node = (knot_node_ln_t *)n;
-		knot_zone_contents_remove_node(z, list_node->node->owner);
+		ret = knot_zone_contents_remove_node(z, list_node->node->owner);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		knot_node_free(&list_node->node);
 		free(n);
 	}
@@ -2455,7 +2458,10 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *z)
 
 	WALK_LIST_DELSAFE(n, nxt, l) {
 		knot_node_ln_t *list_node = (knot_node_ln_t *)n;
-		knot_zone_contents_remove_nsec3_node(z, list_node->node->owner);
+		ret = knot_zone_contents_remove_nsec3_node(z, list_node->node->owner);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		knot_node_free(&list_node->node);
 		free(n);
 	}

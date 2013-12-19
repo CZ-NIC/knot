@@ -856,6 +856,7 @@ dbg_zone_exec_verb(
 	if (ret != KNOT_EOK) {
 		return KNOT_ENONODE;
 	}
+	assert(removed_node);
 
 	return KNOT_EOK;
 }
@@ -876,6 +877,7 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 	if (ret != KNOT_EOK) {
 		return KNOT_ENONODE;
 	}
+	assert(removed_node);
 
 	return KNOT_EOK;
 }
