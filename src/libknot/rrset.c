@@ -1973,7 +1973,7 @@ int knot_rrset_ds_check(const knot_rrset_t *rrset)
 			return KNOT_EMALF;
 		}
 		uint16_t len = rrset_rdata_item_size(rrset, i) - 4;
-		uint8_t type = *(rrset_rdata_pointer(rrset, i) + 3);
+		uint8_t type = rrset_rdata_pointer(rrset, i)[3];
 		if (type == 0 || len == 0) {
 			return KNOT_EINVAL;
 		} else if (len != knot_ds_digest_length(type)) {

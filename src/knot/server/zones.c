@@ -3050,7 +3050,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 		return ret;
 	}
 
-	bool new_signatures = !knot_changeset_is_empty(sec_ch);
+	bool new_signatures = sec_ch && !knot_changeset_is_empty(sec_ch);
 	/* Apply DNSSEC changeset. */
 	if (new_signatures) {
 		ret = xfrin_apply_changesets(zone, sec_chs,
