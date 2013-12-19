@@ -40,8 +40,8 @@ created one.
 @item
 Add the zone into the Knot DNS configuration file. Zone configuration should
 contain at least specification of the zone file (option @code{file}), key
-directory (option @code{dnssec-keydir}), and enabling of automatic DNSSEC
-signing (option @code{dnssec-enabled}).
+directory (option @code{dnssec-keydir}), and enable automatic DNSSEC signing
+(option @code{dnssec-enable}).
 
 You can follow this example:
 
