@@ -72,9 +72,10 @@ static inline uint16_t knot_pkt_compr_hint(const knot_rrinfo_t *info, uint16_t h
 	}
 }
 
-static inline void knot_pkt_compr_hint_set(knot_rrinfo_t *info, uint16_t hint_id, uint16_t val)
+static inline void knot_pkt_compr_hint_set(knot_rrinfo_t *info, uint16_t hint_id,
+                                           uint16_t val, uint16_t len)
 {
-	if (hint_id < COMPR_HINT_COUNT && val < KNOT_WIRE_PTR_MAX) {
+	if ((hint_id < COMPR_HINT_COUNT) && (val + len < KNOT_WIRE_PTR_MAX)) {
 		info->compress_ptr[hint_id] = val;
 	}
 }

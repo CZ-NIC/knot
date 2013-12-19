@@ -265,7 +265,7 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 		/* Store first dname compression hint. */
 		if (compr) {
 			knot_pkt_compr_hint_set(compr->rrinfo, COMPR_HINT_OWNER,
-						compr->wire_pos);
+						compr->wire_pos, ret);
 		}
 	}
 
@@ -341,7 +341,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			}
 			/* Store first dname compression hint. */
 			if (compr && !knot_pkt_compr_hint(compr->rrinfo, hint_id)) {
-				knot_pkt_compr_hint_set(compr->rrinfo, hint_id, compr->wire_pos);
+				knot_pkt_compr_hint_set(compr->rrinfo, hint_id, compr->wire_pos, ret);
 			}
 			assert(ret + size + rdlength <= max_size);
 dbg_response_exec_detail(
@@ -369,7 +369,7 @@ dbg_rrset_exec_detail(
 				return KNOT_ESPACE;
 			/* Store first dname compression hint. */
 			if (compr && !knot_pkt_compr_hint(compr->rrinfo, hint_id)) {
-				knot_pkt_compr_hint_set(compr->rrinfo, hint_id, compr->wire_pos);
+				knot_pkt_compr_hint_set(compr->rrinfo, hint_id, compr->wire_pos, dname_size);
 			}
 			dbg_rrset_detail("Uncompressed dname size: %d\n",
 			                 dname_size);
