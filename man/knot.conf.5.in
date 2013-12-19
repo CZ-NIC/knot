@@ -274,6 +274,11 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # signatures expires in 7200 seconds or less and it was chosen as a 
   # reasonable value with regard to signing overhead.
   signature-lifetime 30d;
+  
+  # Serial policy after DDNS and automatic DNSSEC signing.
+  # Possible values: increment | unixtime
+  # Default value: increment
+  serial-policy increment;
 
   # Zone entry
   #
@@ -345,6 +350,11 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # signatures expires in 7200 seconds or less and it was chosen as a
     # reasonable value with regard to signing overhead.
     signature-lifetime 30d;
+
+    # Serial policy after DDNS and automatic DNSSEC signing.
+    # Possible values: increment | unixtime
+    # Default value: increment
+    serial-policy increment;
 
     # XFR master server
     xfr-in server0;

@@ -720,6 +720,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
   [ @code{dnssec-keydir} @code{"}@kbd{string}@code{"}@code{;} ]
   [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
   [ @code{signature-lifetime} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{serial-policy} ( increment | unixtime ); ]
 @end example
 
 @node zones Statement Definition and Grammar
@@ -744,6 +745,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * dnssec-keydir::
 * dnssec-enable::
 * signature-lifetime::
+* serial-policy::
 @end menu
 
 @node zone_id
@@ -906,6 +908,26 @@ hour. For information about zone expiration date, invoke the
 
 Default value: @kbd{30d} (@kbd{2592000})
 
+@node serial-policy
+@subsubsection serial-policy
+@vindex serial-policy
+
+Specifies how the zone serial is updated after DDNS (dynamic update) and
+automatic DNSSEC signing. If the serial is changed by the dynamic update, no
+change is made.
+
+increment - After update or signing, the serial is automatically incremented
+(according to serial number arithmetic).
+
+unixtime - After update or signing, serial is set to the current unix time.
+
+@strong{Warning:} If your serial was in other than unix time format, be careful with
+transition to unix time. It may happen that the new serial will be 'lower' than
+the old one. If this is the case, the transition should be done by hand (consult:
+ http://www.zytrax.com/books/dns/ch9/serial.html).
+
+Default value: increment
+
 @node zones Example
 @subsection zones Example
 
@@ -925,6 +947,7 @@ zones @{
   dnssec-enable on;
   dnssec-keydir "keys";
   signature-lifetime 60d;
+  serial-policy increment;
   example.com @{
     storage "samples";
     file "example.com.zone";
@@ -937,6 +960,7 @@ zones @{
     dnssec-keydir "keys";
     dnssec-enable off;
     signature-lifetime 30d;
+    serial-policy increment;
     xfr-in server0;
     xfr-out server0, server1;
     notify-in server0;
