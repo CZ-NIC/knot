@@ -1,4 +1,4 @@
-@node Migration from other DNS servers, Knot DNS Configuration Reference, , Top
+@node Migration from other DNS servers, , Knot DNS Configuration Reference, Top
 @appendix Migration from other DNS servers
 
 @menu
