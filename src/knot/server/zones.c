@@ -1169,6 +1169,18 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			zones_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
+	} else {
+		// Set NSEC3 nodes if no new signatures were created
+		ret = knot_zone_contents_adjust_nsec3_pointers(new_contents);
+		if (ret != KNOT_EOK) {
+			zones_store_changesets_rollback(transaction);
+			zones_free_merged_changesets(chgsets, sec_chs);
+			xfrin_rollback_update(zone->contents, &new_contents,
+			                      chgsets->changes);
+			knot_changesets_free(&chgsets);
+			free(msg);
+			return KNOT_ENOMEM;
+		}
 	}
 
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);

@@ -3985,7 +3985,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		              knot_zone_serial(zone));
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
-		int rc = knot_zone_contents_adjust(zone, NULL, NULL, 0);
+		int rc = knot_zone_contents_adjust_full(zone, NULL, NULL);
 		if (rc != KNOT_EOK) {
 			return rc;
 		}
@@ -4198,7 +4198,7 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	// 3) Finalize zone
 	dbg_ns_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, chgs->changes);
+	ret = xfrin_finalize_updated_zone(contents_copy, chgs->changes, false);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to finalize updated zone: %s\n",
 		       knot_strerror(ret));

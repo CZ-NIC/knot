@@ -2610,7 +2610,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                knot_changes_t *changes)
+                                knot_changes_t *changes, bool set_nsec3)
 {
 	if (contents_copy == NULL || changes == NULL) {
 		return KNOT_EINVAL;
@@ -2637,7 +2637,11 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	}
 
 	dbg_xfrin("Adjusting zone contents.\n");
-	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL, 1);
+	if (set_nsec3) {
+		ret = knot_zone_contents_adjust_full(contents_copy, NULL, NULL);
+	} else {
+		ret = knot_zone_contents_adjust_pointers(contents_copy);
+	}
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 			  knot_strerror(ret));
@@ -2701,7 +2705,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 */
 
 	dbg_xfrin_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, chsets->changes);
+	ret = xfrin_finalize_updated_zone(contents_copy, chsets->changes, true);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));

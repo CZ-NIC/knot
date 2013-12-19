@@ -155,25 +155,10 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-/*!
- * \brief Adjust normal (non NSEC3) node.
- *
- * Set:
- * - reusable DNAMEs in RDATA
- * - pointer to node stored in owner dname
- * - pointer to wildcard childs in parent nodes if applicable
- * - flags (delegation point, non-authoritative)
- * - pointer to previous node
- *
- * \param tnode  Zone node to adjust.
- * \param data   Adjusting parameters (knot_zone_adjust_arg_t *).
- */
-static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
-                                                 void *data)
+static int adjust_pointers(knot_node_t **tnode, void *data)
 {
 	assert(data != NULL);
 	assert(tnode != NULL);
-
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = *tnode;
 
@@ -214,6 +199,15 @@ static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 		args->previous_node = node;
 	}
 
+	return KNOT_EOK;
+}
+
+static int adjust_nsec3_pointers(knot_node_t **tnode, void *data)
+{
+	assert(data != NULL);
+	assert(tnode != NULL);
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = *tnode;
 	// Connect to NSEC3 node (only if NSEC3 tree is not empty)
 	knot_node_t *nsec3 = NULL;
 	knot_dname_t *nsec3_name = NULL;
@@ -230,8 +224,34 @@ static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 	}
 
 	knot_dname_free(&nsec3_name);
-
 	return ret;
+}
+
+/*!
+ * \brief Adjust normal (non NSEC3) node.
+ *
+ * Set:
+ * - pointer to wildcard childs in parent nodes if applicable
+ * - flags (delegation point, non-authoritative)
+ * - pointer to previous node
+ * - parent pointers
+ *
+ * \param tnode  Zone node to adjust.
+ * \param data   Adjusting parameters (knot_zone_adjust_arg_t *).
+ */
+static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
+                                                 void *data)
+{
+	assert(data != NULL);
+	assert(tnode != NULL && *tnode);
+	// Do cheap operations first
+	int ret = adjust_pointers(tnode, data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Connect nodes to their NSEC3 nodes
+	return adjust_nsec3_pointers(tnode, data);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1275,9 +1295,55 @@ static int knot_zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_adjust(knot_zone_contents_t *zone,
-                              knot_node_t **first_nsec3_node,
-                              knot_node_t **last_nsec3_node, int dupl_check)
+int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents)
+{
+	// adjusting parameters
+	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
+	                                      .previous_node = NULL,
+	                                      .zone = contents };
+	int ret =  knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	                                           adjust_pointers);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	return knot_zone_contents_adjust_nsec3_pointers(contents);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_adjust_nsec3_pointers(knot_zone_contents_t *contents)
+{
+	if (contents->nsec3_nodes == NULL) {
+		return KNOT_EOK;
+	}
+	// adjusting parameters
+	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
+	                                      .previous_node = NULL,
+	                                      .zone = contents };
+	return knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	                                       adjust_nsec3_pointers);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
+{
+	if (contents->nsec3_nodes == NULL) {
+		return KNOT_EOK;
+	}
+	// adjusting parameters
+	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
+	                                      .previous_node = NULL,
+	                                      .zone = contents };
+	return knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	                                       knot_zone_contents_adjust_nsec3_node);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
+                                   knot_node_t **first_nsec3_node,
+                                   knot_node_t **last_nsec3_node)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -1447,22 +1513,6 @@ int knot_zone_contents_nsec3_apply_inorder_reverse(knot_zone_contents_t *zone,
 
 	return knot_zone_tree_apply_recursive(zone->nsec3_nodes,
 	                                      tree_apply_cb, &f);
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_zone_tree_t *knot_zone_contents_get_nodes(
-		knot_zone_contents_t *contents)
-{
-	return contents->nodes;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
-		knot_zone_contents_t *contents)
-{
-	return contents->nsec3_nodes;
 }
 
 /*----------------------------------------------------------------------------*/
