@@ -1085,9 +1085,16 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	}
 	*rcode = KNOT_RCODE_SERVFAIL; /* SERVFAIL unless it applies correctly. */
 
-	uint32_t new_serial = zones_next_serial(
-	                        knot_zone_serial(knot_zone_contents(zone)),
+	uint32_t old_serial = knot_zone_serial(knot_zone_contents(zone));
+	uint32_t new_serial = zones_next_serial(old_serial,
 	                        zones_serial_policy(zone));
+
+	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
+	if (ns_serial_compare(old_serial, new_serial) >= 0) {
+		log_zone_warning("New serial after update will be lower than "
+		                 "the current one. Old: %u, new: %u.\n",
+		                 old_serial, new_serial);
+	}
 
 	knot_zone_contents_t *new_contents = NULL;
 	ret = knot_ns_process_update(knot_packet_query(resp),
@@ -2649,9 +2656,16 @@ int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at)
 		log_zone_info("%s Signing zone...\n", msgpref);
 	}
 
-	uint32_t new_serial = zones_next_serial(
-	                        knot_zone_serial(knot_zone_contents(zone)),
-	                        zones_serial_policy(zone));
+	uint32_t old_serial = knot_zone_serial(knot_zone_contents(zone));
+	uint32_t new_serial = zones_next_serial(old_serial,
+	                                        zones_serial_policy(zone));
+
+	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
+	if (ns_serial_compare(old_serial, new_serial) >= 0) {
+		log_zone_warning("New serial after signing will be lower than "
+		                 "the current one. Old: %u, new: %u.\n",
+		                 old_serial, new_serial);
+	}
 
 	if (force) {
 		ret = knot_dnssec_zone_sign_force(zone, ch, expires_at,
@@ -3066,9 +3080,16 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 		log_zone_info("DNSSEC: Zone %s - Signing started...\n",
 		              z->name);
 
-		uint32_t new_serial = zones_next_serial(
-		                          knot_zone_serial(zc),
-		                          zones_serial_policy(zone));
+		uint32_t old_serial = knot_zone_serial(zc);
+		uint32_t new_serial = zones_next_serial(old_serial,
+		                                     zones_serial_policy(zone));
+
+		/* If the new serial is 'lower' or equal than the new one, warn the user.*/
+		if (ns_serial_compare(old_serial, new_serial) >= 0) {
+			log_zone_warning("New serial after signing will be "
+			                 "lower than the current one. Old: %u, "
+			                 "new: %u.\n", old_serial, new_serial);
+		}
 
 		/*!
 		 * Increment serial even if diff did that. This way it's always
