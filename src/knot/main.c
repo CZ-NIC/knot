@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 	int c = 0, li = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	char* config_fn = NULL;
+	char *config_fn = NULL;
 
 	/* Long options. */
 	struct option opts[] = {
@@ -136,6 +136,7 @@ int main(int argc, char **argv)
 		switch (c)
 		{
 		case 'c':
+			free(config_fn);
 			config_fn = strdup(optarg);
 			break;
 #ifdef INTEGRITY_CHECK
@@ -171,6 +172,7 @@ int main(int argc, char **argv)
 
 	// Check for non-option parameters.
 	if (argc - optind > 0) {
+		free(config_fn);
 		help();
 		return 1;
 	}
