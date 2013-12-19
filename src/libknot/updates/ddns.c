@@ -1141,6 +1141,12 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	} else if (type == KNOT_RRTYPE_SOA) {
 		/* 2) SOA */
 		ret = knot_ddns_process_add_soa(node, rr, changes);
+	} else if (type == KNOT_RRTYPE_NSEC3PARAM
+	           && knot_node_rrset(node, KNOT_RRTYPE_NSEC3PARAM)) {
+		/* 3) NSEC3PARAM - ignore if there is one already in the node.*/
+		log_zone_warning("NSEC3PARAM already present in the zone. "
+		                 "Ignoring NSEC3PARAM from the UPDATE.\n");
+		return KNOT_EOK;
 	} else if (knot_node_rrset(node, KNOT_RRTYPE_CNAME) != NULL) {
 		/*
 		 * Adding RR to CNAME node. Ignore the UPDATE RR.
