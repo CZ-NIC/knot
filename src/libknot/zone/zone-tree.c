@@ -243,36 +243,15 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_apply_recursive(knot_zone_tree_t *tree,
-                                   knot_zone_tree_apply_cb_t function,
-                                   void *data)
+int knot_zone_tree_apply(knot_zone_tree_t *tree,
+                         knot_zone_tree_apply_cb_t function,
+                         void *data)
 {
 	if (tree == NULL || function == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	return hattrie_apply_rev(tree, (int (*)(value_t*,void*))function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         knot_zone_tree_apply_cb_t function,
-                         void *data)
-{
-	int result = KNOT_EOK;
-
-	hattrie_iter_t *i = hattrie_iter_begin(tree, 0);
-	while(!hattrie_iter_finished(i)) {
-		result = function((knot_node_t **)hattrie_iter_val(i), data);
-		if (result != KNOT_EOK) {
-			break;
-		}
-		hattrie_iter_next(i);
-	}
-	hattrie_iter_free(i);
-
-	return result;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -331,7 +310,7 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 		return;
 	}
 
-	knot_zone_tree_apply_recursive(*tree, knot_zone_tree_free_node, NULL);
+	knot_zone_tree_apply(*tree, knot_zone_tree_free_node, NULL);
 	knot_zone_tree_free(tree);
 }
 

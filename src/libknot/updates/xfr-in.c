@@ -1984,17 +1984,6 @@ void xfrin_cleanup_successful_update(knot_changes_t *changes)
 		knot_rrset_t *rrset = rr_node->rr;
 		knot_rrset_deep_free_no_sig(&rrset, 1);
 	}
-
-	// Free old nodes
-	knot_node_ln_t *n_node = NULL;
-	WALK_LIST(n_node, changes->old_nodes) {
-		knot_node_free(&n_node->node);
-	}
-
-	// Free old NSEC3 nodes
-	WALK_LIST(n_node, changes->old_nsec3) {
-		knot_node_free(&n_node->node);
-	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2384,161 +2373,100 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static void xfrin_mark_empty_node(knot_node_t *node, knot_changes_t *changes,
-                                  knot_changes_part_t part)
+/*! \brief Wrapper for BIRD lists. Storing: Node. */
+typedef struct knot_node_ln {
+	node_t n; /*!< List node. */
+	knot_node_t *node; /*!< Actual usable data. */
+} knot_node_ln_t;
+
+static int add_node_to_list(knot_node_t *node, list_t *l)
 {
-	assert(node != NULL);
-	assert(changes != NULL);
+	assert(node && l);
+	knot_node_ln_t *data = malloc(sizeof(knot_node_ln_t));
+	if (data == NULL) {
+		return KNOT_ENOMEM;
+	}
+	data->node = node;
+	add_head(l, (node_t *)data);
+	return KNOT_EOK;
+}
 
-	if (knot_node_rrset_count(node) == 0
-	    && knot_node_children(node) == 0) {
-		// Add node to changes.
-		int ret = knot_changes_add_node(changes, node, part);
+static int xfrin_mark_empty(knot_node_t **node_p, void *data)
+{
+	assert(node_p && *node_p);
+	knot_node_t *node = *node_p;
+	list_t *l = (list_t *)data;
+	assert(data);
+	if (node->rrset_count == 0 && node->children == 0 &&
+	    !knot_node_is_empty(node)) {
+		/*!
+		 * Mark this node and all parent nodes that have 0 RRSets and
+		 * no children for removal.
+		 */
+		int ret = add_node_to_list(node, l);
 		if (ret != KNOT_EOK) {
-			/*! \todo Stop on error? */
-			return;
+			return ret;
 		}
-
-		// Mark the node as empty.
 		knot_node_set_empty(node);
-
-		if (node->parent != NULL) {
-			assert(node->parent->children > 0);
-			--node->parent->children;
+		if (node->parent) {
 			if (node->parent->wildcard_child == node) {
 				node->parent->wildcard_child = NULL;
 			}
-			node->parent = NULL;
+			node->parent->children--;
+			// Recurse using the parent node
+			return xfrin_mark_empty(&node->parent, data);
 		}
 	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_mark_empty_nsec3(knot_node_t *node, void *data)
-{
-	xfrin_mark_empty_node(node,
-	                      (knot_changes_t *)data, KNOT_CHANGES_NSEC3_NODE);
-
-	return KNOT_EOK;
-}
-
-static int xfrin_mark_empty(knot_node_t *node, void *data)
-{
-	xfrin_mark_empty_node(node,
-	                      (knot_changes_t *)data, KNOT_CHANGES_NORMAL_NODE);
 
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_remove_empty_nodes(knot_zone_contents_t *contents,
-                                    knot_changes_t *changes)
+static int xfrin_remove_empty_nodes(knot_zone_contents_t *z)
 {
-	int ret;
-
 	dbg_xfrin("Removing empty nodes from zone.\n");
 
+	list_t l;
+	init_list(&l);
 	// walk through the zone and select nodes to be removed
-	ret = knot_zone_contents_tree_apply_inorder_reverse(contents,
-	                                                    xfrin_mark_empty,
-	                                                    changes);
-	assert(ret == KNOT_EOK);
-
-	// Do the same with NSEC3 nodes.
-	ret = knot_zone_contents_nsec3_apply_inorder_reverse(contents,
-	                                                     xfrin_mark_empty_nsec3,
-	                                                     changes);
-	assert(ret == KNOT_EOK);
-
-	// Remove these nodes from zone tree.
-	knot_node_t *zone_node = NULL;
-
-	knot_node_ln_t *list_node = NULL;
-	WALK_LIST(list_node, changes->old_nodes) {
-		knot_node_t *node = list_node->node;
-		assert(node);
-		zone_node = NULL;
-
-dbg_xfrin_exec_detail(
-		char *name = knot_dname_to_str(knot_node_owner(node));
-		dbg_xfrin_detail("Old node: %p, %s\n",node, name);
-		free(name);
-);
-
-		ret = knot_zone_contents_remove_node(
-			contents, node, &zone_node);
-
-		if (ret == KNOT_ENONODE) {
-			assert(knot_node_rrset_count(node) == 1);
-			assert(knot_node_rrset(node,
-			                       KNOT_RRTYPE_RRSIG));
-			char *name = knot_dname_to_str(node->owner);
-			log_zone_warning("Ignoring extra RRSIG for %s!\n",
-			                 name);
-			free(name);
-		} else if (ret != KNOT_EOK) {
-			dbg_xfrin("Failed to remove node from zone!\n");
-			return ret;
-		}
-		assert(node == zone_node);
+	int ret = knot_zone_tree_apply(z->nodes,
+	                               xfrin_mark_empty, &l);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	// remove NSEC3 nodes
-	WALK_LIST(list_node, changes->old_nsec3) {
-		knot_node_t *node = list_node->node;
-		assert(node);
-		zone_node = NULL;
-
-		char *name = knot_dname_to_str(knot_node_owner(node));
-		dbg_xfrin_detail("Old NSEC3 node: %p, %s\n", node, name);
-		free(name);
-
-		ret = knot_zone_contents_remove_nsec3_node(
-			contents, node, &zone_node);
-
+	node_t *n = NULL;
+	node_t *nxt = NULL;
+	WALK_LIST_DELSAFE(n, nxt, l) {
+		knot_node_ln_t *list_node = (knot_node_ln_t *)n;
+		ret = knot_zone_contents_remove_node(z, list_node->node->owner);
 		if (ret != KNOT_EOK) {
-			dbg_xfrin("Failed to remove NSEC3 node from zone!\n");
-			return KNOT_ENONODE;
+			return ret;
 		}
-		assert(node == zone_node);
+		knot_node_free(&list_node->node);
+		free(n);
+	}
+
+	init_list(&l);
+	// Do the same with NSEC3 nodes.
+	ret = knot_zone_tree_apply(z->nsec3_nodes,
+	                           xfrin_mark_empty, &l);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	WALK_LIST_DELSAFE(n, nxt, l) {
+		knot_node_ln_t *list_node = (knot_node_ln_t *)n;
+		ret = knot_zone_contents_remove_nsec3_node(z, list_node->node->owner);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		knot_node_free(&list_node->node);
+		free(n);
 	}
 
 	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_check_contents_copy_node(knot_node_t **node, void *data)
-{
-	UNUSED(data);
-	assert(node && *node);
-
-	if (knot_node_new_node(*node) == NULL) {
-		return KNOT_ENONODE;
-	} else {
-		return KNOT_EOK;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_check_contents_copy(knot_zone_contents_t *old_contents)
-{
-	int ret = knot_zone_tree_apply(old_contents->nodes,
-				       xfrin_check_contents_copy_node, NULL);
-
-	if (ret == KNOT_EOK) {
-		ret = knot_zone_tree_apply(old_contents->nsec3_nodes,
-					   xfrin_check_contents_copy_node, NULL);
-	}
-
-	if (knot_node_new_node(knot_zone_contents_apex(old_contents)) == NULL) {
-		return KNOT_ENONODE;
-	}
-
-	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2574,21 +2502,10 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 	knot_zone_contents_t *contents_copy = NULL;
 
 	dbg_xfrin("Copying zone contents.\n");
-	int ret = knot_zone_contents_shallow_copy2(old_contents,
-						   &contents_copy);
+	int ret = knot_zone_contents_shallow_copy(old_contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to create shallow copy of zone: %s\n",
 			  knot_strerror(ret));
-		return ret;
-	}
-
-	/*!
-	 * \todo Check if all nodes have their copy.
-	 */
-	ret = xfrin_check_contents_copy(old_contents);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Contents copy check failed!\n");
-		xfrin_cleanup_failed_update(old_contents, &contents_copy);
 		return ret;
 	}
 
@@ -2629,7 +2546,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	 * Select and remove empty nodes from zone trees. Do not free them right
 	 * away as they may be referenced by some domain names.
 	 */
-	int ret = xfrin_remove_empty_nodes(contents_copy, changes);
+	int ret = xfrin_remove_empty_nodes(contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to remove empty nodes: %s\n",
 			  knot_strerror(ret));
