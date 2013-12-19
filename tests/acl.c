@@ -26,7 +26,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(19);
+	plan(18);
 
 	// 1. Create an ACL
 	acl_match_t *match = NULL;
@@ -60,27 +60,27 @@ int main(int argc, char *argv[])
 	// 7. Attempt to match unmatching address
 	sockaddr_t unmatch_v4;
 	sockaddr_set(&unmatch_v4, AF_INET, "10.10.10.10", 24424);
-	match = acl_find(acl, &unmatch_v4);
+	match = acl_find(acl, &unmatch_v4, NULL);
 	ok(match == NULL, "acl: matching non-existing address");
 
 	// 8. Attempt to match unmatching IPv6 address
 	sockaddr_t unmatch_v6;
 	sockaddr_set(&unmatch_v6, AF_INET6, "2001:db8::1428:57ab", 24424);
-	match = acl_find(acl, &unmatch_v6);
+	match = acl_find(acl, &unmatch_v6, NULL);
 	ok(match == NULL, "acl: matching non-existing IPv6 address");
 
 	// 9. Attempt to match matching address
-	match = acl_find(acl, &test_v4);
+	match = acl_find(acl, &test_v4, NULL);
 	ok(match != NULL, "acl: matching existing address");
 
 	// 10. Attempt to match matching address
-	match = acl_find(acl, &test_v6);
+	match = acl_find(acl, &test_v6, NULL);
 	ok(match != NULL, "acl: matching existing IPv6 address");
 
 	// 11. Attempt to match matching 'any port' address
 	sockaddr_t match_v4a;
 	sockaddr_set(&match_v4a, AF_INET, "20.20.20.20", 24424);
-	match = acl_find(acl, &match_v4a);
+	match = acl_find(acl, &match_v4a, NULL);
 	ok(match != NULL, "acl: matching existing IPv4 'any port' address");
 
 	// 12. Attempt to match matching address without matching port
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 //	lives_ok({
 		acl_delete(0);
 		acl_insert(0, 0, NULL);
-		acl_find(0, 0);
+		acl_find(0, 0, NULL);
 		acl_truncate(0);
 //	}, "acl: won't crash with NULL parameters");
 		ok(1, "acl: won't crash with NULL parameters");
@@ -105,12 +105,12 @@ int main(int argc, char *argv[])
 	sockaddr_setprefix(&match_pf4, 24);
 	acl_insert(acl, &match_pf4, NULL);
 	sockaddr_set(&test_pf4, AF_INET, "192.168.1.20", 0);
-	match = acl_find(acl, &test_pf4);
+	match = acl_find(acl, &test_pf4, NULL);
 	ok(match != NULL, "acl: searching address in matching prefix /24");
 
 	// 15. Attempt to search non-matching subnet
 	sockaddr_set(&test_pf4, AF_INET, "192.168.2.20", 0);
-	match = acl_find(acl, &test_pf4);
+	match = acl_find(acl, &test_pf4, NULL);
 	ok(match == NULL, "acl: searching address in non-matching prefix /24");
 
 	// 16. Attempt to match v6 subnet
@@ -119,25 +119,15 @@ int main(int argc, char *argv[])
 	sockaddr_setprefix(&match_pf6, 120);
 	acl_insert(acl, &match_pf6, NULL);
 	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB03", 0);
-	match = acl_find(acl, &test_pf6);
+	match = acl_find(acl, &test_pf6, NULL);
 	ok(match != NULL, "acl: searching v6 address in matching prefix /120");
 
 	// 17. Attempt to search non-matching subnet
 	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:CCCC", 0);
-	match = acl_find(acl, &test_pf6);
+	match = acl_find(acl, &test_pf6, NULL);
 	ok(match == NULL, "acl: searching v6 address in non-matching prefix /120");
 
-	// 18. Add preferred node
-	sockaddr_set(&test_pf4, AF_INET, "192.168.0.0", 0);
-	sockaddr_setprefix(&test_pf4, 16);
-	acl_insert(acl, &test_pf4, NULL);
-	sockaddr_set(&match_pf4, AF_INET, "192.168.1.20", 0);
-	void *sval = (void*)0x1234;
-	acl_insert(acl, &match_pf4, sval);
-	match = acl_find(acl, &match_pf4);
-	ok(match && match->val == sval, "acl: search for preferred node");
-
-	// 19. Scenario after truncating
+	// 18. Scenario after truncating
 	acl_truncate(acl);
 	sockaddr_set(&test_pf6, AF_INET6, "2001:a1b0:e11e:50d1::3:300", 0);
 	acl_insert(acl, &test_pf6, NULL);
@@ -146,7 +136,7 @@ int main(int argc, char *argv[])
 	sockaddr_set(&test_pf4, AF_INET, "82.87.48.136", 0);
 	acl_insert(acl, &test_pf4, NULL);
 	sockaddr_set(&match_pf4, AF_INET, "82.87.48.136", 12345);
-	match = acl_find(acl, &match_pf4);
+	match = acl_find(acl, &match_pf4, NULL);
 	ok(match != NULL, "acl: scenario after truncating");
 	acl_delete(&acl);
 

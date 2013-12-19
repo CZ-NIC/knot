@@ -439,7 +439,7 @@ static int conf_process(conf_t *conf)
 		sockaddr_init(&addr, -1);
 		sockaddr_set(&addr, i->family, i->address, 0);
 		sockaddr_setprefix(&addr, i->prefix);
-		acl_insert(conf->ctl.acl, &addr, i);
+		acl_insert(conf->ctl.acl, &addr, i->key);
 	}
 
 	return ret;

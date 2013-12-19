@@ -649,11 +649,15 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
 		sockaddr_tostr(&a, straddr, sizeof(straddr));
 		int rport = sockaddr_portnum(&a);
 		knot_tsig_key_t *tsig_key = NULL;
+		const knot_dname_t *tsig_name = NULL;
+		if (pkt->tsig_rr) {
+			tsig_name = pkt->tsig_rr->owner;
+		}
 		acl_match_t *m = NULL;
 		knot_rcode_t ts_rc = 0;
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
-		if ((m = acl_find(conf()->ctl.acl, &a)) == NULL) {
+		if ((m = acl_find(conf()->ctl.acl, &a, tsig_name)) == NULL) {
 			knot_pkt_free(&pkt);
 			log_server_warning("Denied remote control for '%s@%d' "
 			                   "(doesn't match ACL).\n",
@@ -661,8 +665,8 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
 			remote_senderr(c, buf, wire_len);
 			socket_close(c);
 			return KNOT_EACCES;
-		} else if (m->val) {
-			tsig_key = ((conf_iface_t *)m->val)->key;
+		} else {
+			tsig_key = m->key;
 		}
 
 		/* Check TSIG. */

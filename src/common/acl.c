@@ -26,6 +26,7 @@
 #include "common/errcode.h"
 #include "common/acl.h"
 #include "libknot/util/endian.h"
+#include "libknot/tsig.h"
 
 static inline uint32_t ipv4_chunk(const sockaddr_t *a)
 {
@@ -81,7 +82,7 @@ static uint32_t acl_fill_mask32(short nbits)
 	return htonl(r);
 }
 
-static int acl_compare(const sockaddr_t *a1, const sockaddr_t *a2)
+static int addr_match(const sockaddr_t *a1, const sockaddr_t *a2)
 {
 	int ret = 0;
 	uint32_t mask = 0xffffffff;
@@ -141,55 +142,26 @@ void acl_delete(acl_t **acl)
 	*acl = 0;
 }
 
-int acl_insert(acl_t *acl, const sockaddr_t *addr, void *val)
+int acl_insert(acl_t *acl, const sockaddr_t *addr, knot_tsig_key_t *key)
 {
 	if (acl == NULL || addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	/* Create new match. */
-	acl_match_t *key = malloc(sizeof(acl_match_t));
-	if (key == NULL) {
+	acl_match_t *match = malloc(sizeof(acl_match_t));
+	if (match == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(&key->addr, addr, sizeof(sockaddr_t));
-	key->val = val;
-
-	/* Sort by prefix length.
-	 * This way the longest prefix match always goes first.
-	 */
-	if (EMPTY_LIST(*acl)) {
-		add_head(acl, &key->n);
-	} else {
-		bool inserted = false;
-		acl_match_t *cur = NULL, *prev = NULL;
-		WALK_LIST(cur, *acl) {
-			/* Next node prefix is equal/shorter than current key.
-			 * This means we need to insert before the next node.
-			 */
-			if (cur->addr.prefix < addr->prefix) {
-				if (prev == NULL) { /* First node. */
-					add_head(acl, &key->n);
-				} else {
-					insert_node(&key->n, &prev->n);
-				}
-				inserted = true;
-				break;
-			}
-			prev = cur;
-		}
-
-		/* Didn't find any better fit, insert at the end. */
-		if (!inserted) {
-			add_tail(acl, &key->n);
-		}
-	}
+	memcpy(&match->addr, addr, sizeof(sockaddr_t));
+	match->key = key;
+	add_tail(acl, &match->n);
 
 	return KNOT_EOK;
 }
 
-acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr)
+acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr, const knot_dname_t *key_name)
 {
 	if (acl == NULL || addr == NULL) {
 		return NULL;
@@ -197,11 +169,19 @@ acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr)
 
 	acl_match_t *cur = NULL;
 	WALK_LIST(cur, *acl) {
-		/* Since the list is sorted by prefix length, the first match
-		 * is guaranteed to be longest prefix match (most precise).
-		 */
-		if (acl_compare(&cur->addr, addr) == 0) {
-			return cur;
+		if (addr_match(&cur->addr, addr) == 0) {
+			/* NOKEY entry. */
+			if (cur->key == NULL) {
+				if (key_name == NULL) {
+					return cur;
+				}
+				/* NOKEY entry, but key provided. */
+				continue;
+			}
+			/* Key name match. */
+			if (knot_dname_is_equal(cur->key->name, key_name)) {
+				return cur;
+			}
 		}
 	}
 
