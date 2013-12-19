@@ -34,18 +34,9 @@
 
 /*!
  * \brief Create a response for a given query in the CHAOS class.
- *
- * \param nameserver     Name server structure.
- * \param response       Response structure with parsed query.
- * \param response_wire  Output for response in wire format.
- * \param response_size  IN: maximum acceptable size of input, OUT: real size.
- *
- * \return Always KNOT_EOK.
  */
-int knot_ns_answer_chaos(knot_nameserver_t *nameserver, knot_pkt_t *response,
-                         uint8_t *response_wire, size_t *response_size) __attribute__ ((deprecated));
-
 int knot_chaos_answer(knot_pkt_t *pkt, knot_nameserver_t *ns);
+
 #endif // _KNOT_CHAOS_H_
 
 /*! @} */

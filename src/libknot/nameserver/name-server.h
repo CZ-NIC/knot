@@ -227,39 +227,6 @@ int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
                                       const knot_pkt_t *query,
                                       uint8_t rcode, uint8_t *response_wire,
                                       size_t *rsize);
-
-void knot_ns_error_response_full(knot_nameserver_t *nameserver,
-                                 knot_pkt_t *response, uint8_t rcode,
-                                 uint8_t *response_wire, size_t *rsize);
-
-int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
-                                 knot_pkt_t *query, knot_pkt_t **resp,
-                                 knot_zone_t **zone, size_t max_size);
-
-/*!
- * \brief Creates a response for the given normal query using the data of the
- *        nameserver.
- *
- * \param nameserver Name server structure to provide the needed data.
- * \param resp Response structure with parsed query.
- * \param response_wire Place for the response in wire format.
- * \param rsize Input: maximum acceptable size of the response. Output: real
- *              size of the response.
- *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
- */
-int knot_ns_answer_normal(knot_nameserver_t *nameserver,
-                          const knot_zone_t *zone, knot_pkt_t *resp,
-                          uint8_t *response_wire, size_t *rsize, int check_any);
-
-int knot_ns_answer_ixfr_udp(knot_nameserver_t *nameserver,
-                            const knot_zone_t *zone, knot_pkt_t *resp,
-                            uint8_t *response_wire, size_t *rsize);
-
-int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
-int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
-
 /*!
  * \brief Compares two zone serials.
  *
@@ -329,20 +296,6 @@ void *knot_ns_get_data(knot_nameserver_t *nameserver);
 void knot_ns_set_data(knot_nameserver_t *nameserver, void *data);
 
 int knot_ns_tsig_required(int packet_nr);
-
-/*!
- * \brief Converts the response to wire format.
- *
- * \param resp Response to convert.
- * \param wire Place for the wire format of the response.
- * \param wire_size In: space available for the wire format in bytes.
- *                  Out: actual size of the wire format in bytes.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-int ns_response_to_wire(knot_pkt_t *resp, uint8_t *wire,
-                        size_t *wire_size);
 
 /*!
  * \brief Properly destroys the name server structure.

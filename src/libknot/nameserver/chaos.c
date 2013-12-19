@@ -110,33 +110,6 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response)
 	return KNOT_RCODE_NOERROR;
 }
 
-/*!
- * \brief Create a response for a given query in the CHAOS class.
- */
-int knot_ns_answer_chaos(knot_nameserver_t *nameserver, knot_pkt_t *resp,
-                         uint8_t *resp_wire, size_t *resp_size)
-{
-	int ret = KNOT_EOK;
-	int rcode = KNOT_RCODE_REFUSED;
-
-	if (knot_pkt_qtype(resp) == KNOT_RRTYPE_TXT) {
-		rcode = answer_txt(nameserver, resp);
-		ret = ns_response_to_wire(resp, resp_wire, resp_size);
-		if (ret != KNOT_EOK) {
-			rcode = KNOT_RCODE_SERVFAIL;
-		} else {
-			knot_wire_set_rcode(resp_wire, KNOT_RCODE_NOERROR);
-		}
-
-	}
-
-	if (rcode != KNOT_RCODE_NOERROR) {
-		knot_ns_error_response_full(nameserver, resp, rcode,
-		                            resp_wire, resp_size);
-	}
-
-	return ret;
-}
 
 int knot_chaos_answer(knot_pkt_t *pkt, knot_nameserver_t *ns)
 {
