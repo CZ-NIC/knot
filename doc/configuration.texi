@@ -13,7 +13,7 @@ In this chapter we provide suggested configurations and explain the meaning of i
 * Enabling zone semantic checks::
 * Creating IXFR differences from zone file changes::
 * Using Response Rate Limiting::
-* Automatic DNSSEC signing (experimental)::
+* Automatic DNSSEC signing::
 @end menu
 
 @node Minimal configuration
@@ -192,24 +192,7 @@ message to its primary master specified by @code{xfr-in} directive. When it rece
 the response from primary master, it forwards it back to the originator. This finishes the transaction.
 
 However, if the zone is configured as master (i.e. not having any @code{xfr-in} directive), it accepts
-such an UPDATE and processes it. As of 1.2, there are a few limitations with DNSSEC signed zones described below. Other than that, UPDATE of unsigned zones works as expected without any limitations.
-
-@itemize @bullet
-@item
-Knot DNS doesn't automatically sign incoming RR if the zone is signed.
-As a workaround, it accepts DNSSEC-related records. However, it may prove challenging
-to create such an UPDATE that it correctly adds/replaces signed RRs, so this
-feature should be treated as experimental until correct signing is implemented.
-
-@item
-As for the reason in a previous point, removing RRSIG with no specified rdata makes it impossible
-to determine whether the user meant a RRSIG for an NSEC3 record or other one.
-Since they are stored separately, it is advisable to always specify RRSIG along with at least the types it covers.
-
-@item
-Deleting a last RR also removes its RRSIG.
-
-@end itemize
+such an UPDATE and processes it.
 
 @node Remote control interface
 @section Remote control interface
@@ -246,7 +229,7 @@ which checks are enabled by default and which are optional.
 
 @node Creating IXFR differences from zone file changes
 @section Creating IXFR differences from zone file changes
-If Knot is being run as a master server, experimental feature @code{ixfr-from-differences}
+If Knot is being run as a master server, feature @code{ixfr-from-differences}
 can be enabled to create IXFR differences from changes made to the master zone file.
 See @ref{Controlling running daemon} for more information. For more about @code{zones} statement see @ref{zones}.
 
@@ -276,14 +259,14 @@ system @{
 @}
 @end example
 
-@node Automatic DNSSEC signing (experimental)
-@section Automatic DNSSEC signing (experimental)
+@node Automatic DNSSEC signing
+@section Automatic DNSSEC signing
 
 Knot DNS 1.4 is the first release to include automatic DNSSEC signing feature.
-Automatic DNSSEC signing is currently highly experimental and there is a lot of
-issues we are working on and limitations we will try to eliminate. By all
-means, anything in the current implementation can change including
-configuration options. We have no intention to maintain backward compatibility.
+Automatic DNSSEC signing is currently technical preview and there are some
+limitations we will try to eliminate. The concept of key management and
+configuration is likely to change in future without maintaining backward
+compatibility.
 
 @subsection Example configuration
 

@@ -831,7 +831,7 @@ Most checks are disabled by default.
 @subsubsection ixfr-from-differences
 @vindex ixfr-from-differences
 
-EXPERIMENTAL: option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
+Option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
 By turning the feature on you tell Knot to create differences from changes you made to a zone file upon server reload.
 See @ref{Controlling running daemon} for more information.
 
@@ -882,7 +882,7 @@ Default value: not set
 @subsubsection dnssec-enable
 @vindex dnssec-enable
 
-EXPERIMENTAL: Enable automatic DNSSEC signing for the zone.
+PREVIEW: Enable automatic DNSSEC signing for the zone.
 
 Default value (in @code{zones} section): off
 
@@ -926,7 +926,7 @@ zones @{
   example.com @{
     storage "samples";
     file "example.com.zone";
-    ixfr-from-differences off; #experimental
+    ixfr-from-differences off;
     disable-any off;
     semantic-checks on;
     notify-timeout 60;

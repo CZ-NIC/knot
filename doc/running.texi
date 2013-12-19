@@ -155,9 +155,7 @@ $ knotc -c master.conf reload  # reconfigure and load updated zones
 
 If you want @emph{IXFR-out} differences created from changes you make to a zone file, enable @ref{ixfr-from-differences}
 in @code{zones} statement, then reload your server as seen above.
-If @emph{SOA}'s @emph{serial} is not changed no differences will be created. Please note
-that this feature is in @emph{experimental} stage and should be used with care.
-If you encounter a bug using this feature, please send it to Knot developers (@pxref{Submitting a bugreport}).
+If @emph{SOA}'s @emph{serial} is not changed no differences will be created.
 
 If you want to force refresh the slave zones, you can do this with the @code{knotc refresh} action.
 @example
