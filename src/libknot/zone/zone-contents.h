@@ -328,19 +328,33 @@ knot_node_t *knot_zone_contents_get_apex(
 	const knot_zone_contents_t *contents);
 
 /*!
- * \brief Optimizes zone by replacing domain names in RDATA with references to
- *        domain names present in zone (as node owners).
+ * \brief Sets parent and previous pointers and node flags. (cheap operation)
+ */
+int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents);
+
+/*!
+ * \brief Sets NSEC3 nodes for normal nodes. (costly operation)
+ */
+int knot_zone_contents_adjust_nsec3_pointers(knot_zone_contents_t *);
+
+/*!
+ * \brief Sets parent and previous pointers and node flags. (cheap operation)
+ */
+int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *);
+
+/*!
+ * \brief Sets parent and previous pointers, sets node flags and NSEC3 links.
+ *        This has to be called before the zone can be served.
+ *
  * \param first_nsec3_node First node in NSEC3 tree - needed in sem. checks.
  *        Will not be saved if set to NULL.
  * \param last_nsec3_node Last node in NSEC3 tree - needed in sem. checks.
  *        Will not be saved if set to NULL.
  * \param zone Zone to adjust domain names in.
  */
-int knot_zone_contents_adjust(knot_zone_contents_t *contents,
-                              knot_node_t **first_nsec3_node,
-                              knot_node_t **last_nsec3_node, int dupl_check);
-
-int knot_zone_contents_check_loops(knot_zone_contents_t *zone);
+int knot_zone_contents_adjust_full(knot_zone_contents_t *contents,
+                                   knot_node_t **first_nsec3_node,
+                                   knot_node_t **last_nsec3_node);
 
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.
@@ -425,11 +439,6 @@ int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
                                         knot_zone_contents_apply_cb_t function,
                                         void *data);
 
-knot_zone_tree_t *knot_zone_contents_get_nodes(
-		knot_zone_contents_t *contents);
-
-knot_zone_tree_t *knot_zone_contents_get_nsec3_nodes(
-		knot_zone_contents_t *contents);
 
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).
