@@ -2010,10 +2010,14 @@ static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
 
 	// Traverse the trees and for each node check every reference
 	// stored in that node. The node itself should be new.
-	knot_zone_tree_apply(contents_copy->nodes, xfrin_switch_nodes_in_node, NULL);
-	knot_zone_tree_apply(contents_copy->nsec3_nodes, xfrin_switch_nodes_in_node, NULL);
+	int ret = knot_zone_tree_apply(contents_copy->nodes,
+	                               xfrin_switch_nodes_in_node, NULL);
+	if (ret == KNOT_EOK) {
+		ret = knot_zone_tree_apply(contents_copy->nsec3_nodes,
+		                           xfrin_switch_nodes_in_node, NULL);
+	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2517,6 +2521,10 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 	 */
 	dbg_xfrin("Switching ptrs pointing to old nodes to the new nodes.\n");
 	ret = xfrin_switch_nodes(contents_copy);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to switch pointers in nodes.\n");
+		return ret;
+	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	*new_contents = contents_copy;

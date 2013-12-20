@@ -995,8 +995,12 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 	 * This code is more or less copied from xfr-in.c.
 	 */
 	knot_rrset_t *node_rrset_copy = NULL;
-	ret = xfrin_copy_rrset(node, rr->type, &node_rrset_copy, changes,
-	                       0);
+	ret = xfrin_copy_rrset(node, rr->type, &node_rrset_copy, changes, 0);
+	if (ret < 0) {
+		dbg_ddns("Failed to copy RRSet: %s\n", knot_strerror(ret));
+		knot_rrset_deep_free(rr_copy, 1);
+		return ret;
+	}
 
 	if (node_rrset_copy == NULL) {
 		/* No such RRSet in the node. Add the whole UPDATE RRSet. */
