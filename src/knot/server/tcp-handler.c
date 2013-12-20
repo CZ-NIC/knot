@@ -100,6 +100,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	int r_port = 0;
 	struct sockaddr_storage addr;
 	socklen_t len = sizeof(addr);
+	memset(&addr, 0, len);
 	if (getpeername(fd, (struct sockaddr*)&addr, &len) < 0) {
 		dbg_net("tcp: sweep getpeername() on invalid socket=%d\n", fd);
 		return FDSET_SWEEP;

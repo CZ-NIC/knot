@@ -168,11 +168,10 @@ static void log_error_from_node(err_handler_t *handler,
 			offset += snprintf(buffer + offset, 1024 - offset,
 			                   "%s", error_messages[-error]);
 			if (data == NULL) {
-				offset += snprintf(buffer + offset,
-				                   1024 - offset, "\n");
+				snprintf(buffer + offset, 1024 - offset, "\n");
 			} else {
-				offset += snprintf(buffer + offset,
-				                   1024 - offset, " %s\n", data);
+				snprintf(buffer + offset, 1024 - offset,
+				         " %s\n", data);
 			}
 			log_zone_warning("%s", buffer);
 		} else {
