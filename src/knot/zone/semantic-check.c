@@ -155,35 +155,25 @@ static void log_error_from_node(err_handler_t *handler,
 		return;
 	}
 	
-	char buffer[1024] = {0};
-	size_t offset = 0;
-	
-	if (node != NULL) {
-		handler->error_count++;
-		char *name =
-			knot_dname_to_str(knot_node_owner(node));
-		offset += snprintf(buffer, 1024,
-		                   "Semantic warning in node: %s: ", name);
-		if (error_messages[-error] != NULL) {
-			offset += snprintf(buffer + offset, 1024 - offset,
-			                   "%s", error_messages[-error]);
-			if (data == NULL) {
-				offset += snprintf(buffer + offset,
-				                   1024 - offset, "\n");
-			} else {
-				offset += snprintf(buffer + offset,
-				                   1024 - offset, " %s\n", data);
-			}
-			log_zone_warning("%s", buffer);
-		} else {
-			log_zone_warning("Unknown error (%d).\n", error);
-		}
-		free(name);
-	} else {
-		log_zone_warning("Total number of warnings is: %d for error: %s",
-			handler->errors[-error],
-			error_messages[-error]);
+	if (node == NULL) {
+		log_zone_warning("Total number of warnings is: %d for error: %s\n",
+		                 handler->errors[-error], error_messages[-error]);
+		return;
 	}
+
+	handler->error_count++;
+
+	char *name = knot_dname_to_str(knot_node_owner(node));
+	const char *errmsg = error_messages[-error];
+
+	log_zone_warning("Semantic warning in node: %s: %s %d.%s%s.\n",
+	                 name,
+			 errmsg ? errmsg : "Unknown error.",
+			 error,
+			 data ? " " : "",
+			 data ? data : "");
+
+	free(name);
 }
 
 int err_handler_handle_error(err_handler_t *handler, const knot_node_t *node,

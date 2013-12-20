@@ -966,6 +966,49 @@ static int zones_update_forward(int fd, knot_ns_transport_t ttype,
 
 /*----------------------------------------------------------------------------*/
 
+static int zones_serial_policy(const knot_zone_t *zone)
+{
+	assert(zone != NULL);
+
+	zonedata_t *data = (zonedata_t *)knot_zone_data(zone);
+	if (data == NULL) {
+		return KNOT_ERROR;
+	}
+
+	return data->conf->serial_policy;
+}
+
+static uint32_t zones_next_serial(knot_zone_t *zone)
+{
+	assert(zone);
+
+	uint32_t old_serial = knot_zone_serial(knot_zone_contents(zone));
+	assert(old_serial >= 0);
+	uint32_t new_serial;
+
+	switch (zones_serial_policy(zone)) {
+	case CONF_SERIAL_INCREMENT:
+		new_serial = (uint32_t)old_serial + 1;
+		break;
+	case CONF_SERIAL_UNIXTIME:
+		new_serial = (uint32_t)time(NULL);
+		break;
+	default:
+		assert(0);
+	}
+
+	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
+	if (ns_serial_compare(old_serial, new_serial) >= 0) {
+		log_zone_warning("New serial will be lower than "
+		                 "the current one. Old: %u, new: %u.\n",
+		                 old_serial, new_serial);
+	}
+
+	return new_serial;
+}
+
+/*----------------------------------------------------------------------------*/
+
 static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
                                        uint32_t expires_at)
 {
@@ -1071,10 +1114,12 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	}
 	*rcode = KNOT_RCODE_SERVFAIL; /* SERVFAIL unless it applies correctly. */
 
+	uint32_t new_serial = zones_next_serial(zone);
+
 	knot_zone_contents_t *new_contents = NULL;
 	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
 	ret = knot_ns_process_update(knot_packet_query(resp), old_contents,
-	                             &new_contents, chgsets, rcode);
+	                             &new_contents, chgsets, rcode, new_serial);
 	if (ret != KNOT_EOK) {
 		if (ret < 0) {
 			log_zone_error("%s %s\n", msg, knot_strerror(ret));
@@ -1143,7 +1188,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			ret = knot_dnssec_sign_changeset(new_contents,
 			                      knot_changesets_get_last(chgsets),
 			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
-			                      &used_lifetime, &used_refresh);
+			                      &used_lifetime, &used_refresh,
+					      new_serial);
 
 			expires_at = used_lifetime - used_refresh;
 		}
@@ -1871,7 +1917,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	knot_packet_free(&resp);
 	rcu_read_unlock();
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2651,11 +2697,14 @@ int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at)
 		log_zone_info("%s Signing zone...\n", msgpref);
 	}
 
+	uint32_t new_serial = zones_next_serial(zone);
+
 	if (force) {
-		ret = knot_dnssec_zone_sign_force(zone, ch, expires_at);
+		ret = knot_dnssec_zone_sign_force(zone, ch, expires_at,
+		                                  new_serial);
 	} else {
-		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_INC,
-					    expires_at);
+		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_UPDATE,
+		                            expires_at, new_serial);
 	}
 	if (ret != KNOT_EOK) {
 		goto done;
@@ -3060,17 +3109,18 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 			return KNOT_ENOMEM;
 		}
 
-		/*!
-		 * Increment serial even if diff did that. This way it's always
-		 * possible to flush the changes to zonefile.
-		 */
-		knot_update_serial_t soa_up =  KNOT_SOA_SERIAL_INC;
-
 		log_zone_info("DNSSEC: Zone %s - Signing started...\n",
 		              z->name);
 
-		int ret = knot_dnssec_zone_sign(zone, sec_ch, soa_up,
-		                                &expires_at);
+		uint32_t new_serial = zones_next_serial(zone);
+
+		/*!
+		 * Update serial even if diff did that. This way it's always
+		 * possible to flush the changes to zonefile.
+		 */
+		int ret = knot_dnssec_zone_sign(zone, sec_ch,
+		                                KNOT_SOA_SERIAL_UPDATE,
+		                                &expires_at, new_serial);
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
 			knot_changesets_free(&sec_chs);
@@ -3091,7 +3141,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 		return ret;
 	}
 
-	bool new_signatures = !knot_changeset_is_empty(sec_ch);
+	bool new_signatures = sec_ch && !knot_changeset_is_empty(sec_ch);
 	/* Apply DNSSEC changeset. */
 	if (new_signatures) {
 		ret = xfrin_apply_changesets(zone, sec_chs,

@@ -114,6 +114,8 @@ class Server(object):
 
         self.data_dir = None
 
+        self.dnssec_enable = None
+
         self.nsid = None
         self.ident = None
         self.version = None
@@ -559,6 +561,10 @@ class Knot(Server):
         self.daemon_bin = params.knot_bin
         self.control_bin = params.knot_ctl
 
+    @property
+    def keydir(self):
+        return os.path.join(self.dir, "keys")
+
     def running(self):
         tcp = super()._check_socket("tcp", self.port)
         udp = super()._check_socket("udp", self.port)
@@ -580,7 +586,6 @@ class Knot(Server):
         self._on_str_hex(s, "version", self.version)
         self._on_str_hex(s, "nsid", self.nsid)
         self._on_str_hex(s, "rate-limit", self.ratelimit)
-        s.item_str("storage", self.dir)
         s.item_str("rundir", self.dir)
         s.end()
 
@@ -647,9 +652,13 @@ class Knot(Server):
         s.end()
 
         s.begin("zones")
+        s.item_str("storage", self.dir)
         s.item("zonefile-sync", "5s")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
+        if self.dnssec_enable:
+            s.item_str("dnssec-keydir", self.keydir)
+            s.item("dnssec-enable", "on")
         for zone in self.zones:
             z = self.zones[zone]
             s.begin(z.name)
@@ -715,7 +724,7 @@ class Dummy(Server):
         self.control_bin = None
 
     def get_config(self):
-        return '' 
+        return ''
 
     def start(self):
         return True

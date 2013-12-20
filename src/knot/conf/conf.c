@@ -320,6 +320,10 @@ static int conf_process(conf_t *conf)
 			zone->sig_lifetime = conf->sig_lifetime;
 		}
 
+		if (zone->serial_policy == 0) {
+			zone->serial_policy = conf->serial_policy;
+		}
+
 		// Default zone file
 		if (zone->file == NULL) {
 			zone->file = strcdup(zone->name, "zone");
@@ -617,6 +621,7 @@ conf_t *conf_new(const char* path)
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
 	c->max_udp_payload = EDNS_MAX_UDP_PAYLOAD;
 	c->sig_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME;
+	c->serial_policy = CONFIG_SERIAL_DEFAULT;
 	c->uid = -1;
 	c->gid = -1;
 	c->xfers = -1;
