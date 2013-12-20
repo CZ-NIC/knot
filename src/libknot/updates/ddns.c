@@ -1147,7 +1147,11 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 		ret = knot_ddns_process_add_soa(node, rr, changes);
 	} else if (type == KNOT_RRTYPE_NSEC3PARAM
 	           && knot_node_rrset(node, KNOT_RRTYPE_NSEC3PARAM)) {
-		/* 3) NSEC3PARAM - ignore if there is one already in the node.*/
+		if (!knot_dname_is_equal(node->owner, zone->apex->owner)) {
+			log_zone_error("NSEC3PARAM RR may be added under apex name only!\n");
+			return KNOT_EMALF;
+		}
+		/* 3) NSEC3PARAM - ignore if there is one already in the zone.*/
 		log_zone_warning("NSEC3PARAM already present in the zone. "
 		                 "Ignoring NSEC3PARAM from the UPDATE.\n");
 		return KNOT_EOK;

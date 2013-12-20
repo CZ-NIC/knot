@@ -282,6 +282,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	assert(covered);
 	assert(zone_keys);
 	assert(changeset);
+	if (covered->rdata_count == 0) {
+		return KNOT_EOK;
+	}
 
 	int result = KNOT_EOK;
 	knot_rrset_t *to_add = NULL;
@@ -402,6 +405,8 @@ static int resign_rrset(const knot_rrset_t *covered,
 	// maybe merge the two functions into one
 	// jvcelak: Not really, maybe for RSA. The digest is computed twice,
 	// but the verification process can differ from signature computation.
+	// TODO reuse digest for RSA then, RSA is the most used algo family,
+	// and we create all the signatures twice, that is not cool I think.
 	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
 	                                   policy, changeset, expires_at);
 	if (result != KNOT_EOK) {
@@ -441,7 +446,8 @@ static int sign_node_rrsets(const knot_node_t *node,
 		}
 
 		// Remove standalone RRSIGs (without the RRSet they sign)
-		if (rrset->rdata_count == 0 && rrset->rrsigs->rdata_count != 0) {
+		if (rrset->rdata_count == 0 && rrset->rrsigs) {
+			assert(rrset->rrsigs->rdata_count > 0);
 			result = remove_rrset_rrsigs(rrset, changeset);
 			if (result != KNOT_EOK) {
 				break;

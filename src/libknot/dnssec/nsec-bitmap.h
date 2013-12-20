@@ -81,27 +81,14 @@ inline static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
 inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
                                           const knot_node_t *node)
 {
-	knot_rrset_t **node_rrsets = knot_node_get_rrsets_no_copy(node);
+	const knot_rrset_t **node_rrsets = knot_node_rrsets_no_copy(node);
 	for (int i = 0; i < node->rrset_count; i++) {
-		bitmap_add_type(bitmap, node_rrsets[i]->type);
-	}
-}
-
-/*!
- * \brief Add all RR types from a node into the bitmap.
- */
-inline static void bitmap_add_node_rrsets_no_nsec(bitmap_t *bitmap,
-                                                  const knot_node_t *node)
-{
-	knot_rrset_t **node_rrsets = knot_node_get_rrsets_no_copy(node);
-	for (int i = 0; i < node->rrset_count; i++) {
-		if (node_rrsets[i]->type != KNOT_RRTYPE_NSEC) {
+		const knot_rrset_t *rr = node_rrsets[i];
+		if (rr->type != KNOT_RRTYPE_NSEC && rr->rdata_count > 0) {
 			bitmap_add_type(bitmap, node_rrsets[i]->type);
 		}
 	}
 }
-
-
 
 /*!
  * \brief Compute the size of the bitmap in NSEC RDATA format.

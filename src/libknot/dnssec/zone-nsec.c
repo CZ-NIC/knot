@@ -338,6 +338,9 @@ inline static bool valid_nsec3_node(const knot_node_t *node)
  */
 static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 {
+	if (!(valid_nsec3_node(a) && valid_nsec3_node(b))) {
+		return false;
+	}
 	assert(valid_nsec3_node(a));
 	assert(valid_nsec3_node(b));
 
@@ -606,7 +609,7 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 	}
 
 	bitmap_t rr_types = { 0 };
-	bitmap_add_node_rrsets_no_nsec(&rr_types, node);
+	bitmap_add_node_rrsets(&rr_types, node);
 	if (node->rrset_count > 0 && node_should_be_signed(node)) {
 		bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 	}

@@ -1000,7 +1000,8 @@ static uint32_t zones_next_serial(knot_zone_t *zone)
 	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
 	if (ns_serial_compare(old_serial, new_serial) >= 0) {
 		log_zone_warning("New serial will be lower than "
-		                 "the current one. Old: %u, new: %u.\n",
+		                 "the current one. Old: %"PRIu32" "
+		                 "new: %"PRIu32".\n",
 		                 old_serial, new_serial);
 	}
 
@@ -1045,6 +1046,18 @@ static int zones_dnskey_changed(const knot_zone_contents_t *old_contents,
 	                                               KNOT_RRTYPE_DNSKEY);
 
 	return !knot_rrset_equal(old_keys, new_keys, KNOT_RRSET_COMPARE_WHOLE);
+}
+
+static bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
+                                     const knot_zone_contents_t *new_contents)
+{
+	const knot_rrset_t *old_param =
+		knot_node_rrset(old_contents->apex, KNOT_RRTYPE_NSEC3PARAM);
+	const knot_rrset_t *new_param =
+		knot_node_rrset(new_contents->apex, KNOT_RRTYPE_NSEC3PARAM);
+	return !(old_param && new_param && knot_rrset_equal(old_param,
+	                                                    new_param,
+	                                                    KNOT_RRSET_COMPARE_WHOLE));
 }
 
 
@@ -1170,13 +1183,17 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	// Apply changeset to zone created by DDNS processing
 	fake_zone->contents = new_contents;
 	fake_zone->data = zone->data;
+	new_contents->zone = fake_zone;
 
 	if (zone_config->dnssec_enable) {
 		dbg_zones_verb("%s: Signing the UPDATE\n", msg);
-		/* Check if the UPDATE changed DNSKEYs. If yes, resign the whole
+		/*!
+		 * Check if the UPDATE changed DNSKEYs. If yes, resign the whole
 		 * zone, if not, sign only the changeset.
+		 * Do the same if NSEC3PARAM changed.
 		 */
-		if (zones_dnskey_changed(old_contents, new_contents)) {
+		if (zones_dnskey_changed(old_contents, new_contents) ||
+		    zones_nsec3param_changed(old_contents, new_contents)) {
 			ret = knot_dnssec_zone_sign(fake_zone, sec_ch,
 			                            KNOT_SOA_SERIAL_KEEP,
 			                            &expires_at, new_serial);
@@ -1185,11 +1202,12 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			uint32_t used_lifetime = 0;
 			uint32_t used_refresh = 0;
 
-			ret = knot_dnssec_sign_changeset(new_contents,
+			knot_zone_contents_load_nsec3param(new_contents);
+			ret = knot_dnssec_sign_changeset(fake_zone,
 			                      knot_changesets_get_last(chgsets),
 			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
 			                      &used_lifetime, &used_refresh,
-					      new_serial);
+			                      new_serial);
 
 			expires_at = used_lifetime - used_refresh;
 		}
