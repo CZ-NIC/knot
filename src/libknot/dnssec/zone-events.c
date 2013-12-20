@@ -206,7 +206,7 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_INC, expires_at,
+	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_UPDATE, expires_at,
 	                 new_serial);
 }
 
