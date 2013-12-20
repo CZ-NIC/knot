@@ -2681,7 +2681,7 @@ rrset:
 				knot_ns_tsig_required(xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
-				ret = KNOT_ERROR;
+				ret = KNOT_ECONN;
 				break;
 			}
 			// otherwise try once more with the same RRSet
@@ -2710,7 +2710,7 @@ rrsigs:
 				knot_ns_tsig_required(xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
-				ret = KNOT_ERROR;
+				ret = KNOT_ECONN;
 				break;
 			}
 			// otherwise try once more with the same RRSet
@@ -2799,7 +2799,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 		ret = ns_xfr_send_and_clear(xfr,
 			knot_ns_tsig_required(xfr->packet_nr));
 		if (ret != KNOT_EOK) {
-			return ret;
+			return KNOT_ECONN;
 		}
 
 		ret = knot_response_add_rrset_answer(xfr->response,
@@ -2833,7 +2833,10 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, knot_rrset_t *rrset)
 	if (res == KNOT_ESPACE) {
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOERROR);
 		/*! \todo Probably rename the function. */
-		ns_xfr_send_and_clear(xfr, knot_ns_tsig_required(xfr->packet_nr));
+		if (ns_xfr_send_and_clear(xfr,
+		    knot_ns_tsig_required(xfr->packet_nr)) != KNOT_EOK) {
+			return KNOT_ECONN;
+		}
 
 		res = knot_response_add_rrset_answer(xfr->response,
 		                                     rrset, KNOT_PF_NOTRUNC);
@@ -2845,7 +2848,9 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, knot_rrset_t *rrset)
 		/*! \todo Probably send back AXFR instead. */
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
-		ns_xfr_send_and_clear(xfr, 1);
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
+			return KNOT_ECONN;
+		}
 		return res;
 	}
 
@@ -2918,7 +2923,10 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		       knot_strerror(res));
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
-		ns_xfr_send_and_clear(xfr, 1);
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
+			rcu_read_unlock();
+			res = KNOT_ECONN;
+		}
 		rcu_read_unlock();
 		return res;
 	}
@@ -2944,12 +2952,15 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	}
 
 	if (res == KNOT_EOK) {
-		ns_xfr_send_and_clear(xfr, 1);
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
+			rcu_read_unlock();
+			res = KNOT_ECONN;
+		}
 	}
 
 	rcu_read_unlock();
 
-	return KNOT_EOK;
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2966,7 +2977,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		// malformed packet
 		dbg_ns("IXFR query does not contain authority record.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
-		if (ns_xfr_send_and_clear(xfr, 1) == KNOT_ECONN) {
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
 			return KNOT_ECONN;
 		}
 		//socket_close(xfr->session);
@@ -2983,7 +2994,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		// malformed packet
 		dbg_ns("IXFR query is malformed.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
-		if (ns_xfr_send_and_clear(xfr, 1) == KNOT_ECONN) {
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
 			return KNOT_ECONN;
 		}
 		return KNOT_EMALF;
