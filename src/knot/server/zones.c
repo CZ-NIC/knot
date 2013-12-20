@@ -1124,6 +1124,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	}
 	// Apply changeset to zone created by DDNS processing
 	fake_zone->contents = new_contents;
+	fake_zone->data = zone->data;
 
 	if (zone_config->dnssec_enable) {
 		dbg_zones_verb("%s: Signing the UPDATE\n", msg);
