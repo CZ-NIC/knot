@@ -3074,10 +3074,11 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 		uint32_t new_serial = zones_next_serial(zone);
 
 		/*!
-		 * Increment serial even if diff did that. This way it's always
+		 * Update serial even if diff did that. This way it's always
 		 * possible to flush the changes to zonefile.
 		 */
-		int ret = knot_dnssec_zone_sign(zone, sec_ch, KNOT_SOA_SERIAL_UPDATE,
+		int ret = knot_dnssec_zone_sign(zone, sec_ch,
+		                                KNOT_SOA_SERIAL_UPDATE,
 		                                &expires_at, new_serial);
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
