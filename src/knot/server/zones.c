@@ -1830,7 +1830,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	knot_packet_free(&resp);
 	rcu_read_unlock();
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

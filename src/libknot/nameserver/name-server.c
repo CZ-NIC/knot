@@ -1762,7 +1762,9 @@ static inline int ns_referral(const knot_node_t *node,
 				                              &closest_encloser,
 				                              qname, resp);
 
-			} else if (ret != KNOT_EOK) {
+			}
+
+			if (ret != KNOT_EOK) {
 				return ret;
 			}
 
@@ -1889,6 +1891,9 @@ static int ns_answer_from_node(const knot_node_t *node,
 
 	if (answers == 0) {  // if NODATA response, put SOA
 		ret = ns_put_authority_soa(zone, resp);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		if (knot_node_rrset_count(node) == 0
 		    && !knot_zone_contents_nsec3_enabled(zone)) {
 			// node is an empty non-terminal => NSEC for NXDOMAIN
@@ -2341,7 +2346,6 @@ finalize:
 
 	if (ret == KNOT_ESPACE) {
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
-		ret = KNOT_EOK;
 	}
 
 	// add all missing NSECs/NSEC3s for wildcard nodes
