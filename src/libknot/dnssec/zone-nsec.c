@@ -341,8 +341,6 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 	if (!(valid_nsec3_node(a) && valid_nsec3_node(b))) {
 		return false;
 	}
-	assert(valid_nsec3_node(a));
-	assert(valid_nsec3_node(b));
 
 	knot_rrset_t *a_rrset = a->rrset_tree[0];
 	knot_rrset_t *b_rrset = b->rrset_tree[0];
