@@ -630,7 +630,6 @@ static int remove_nsec_from_node(const knot_node_t *node,
 	if (nsec == NULL) {
 		return KNOT_EOK;
 	}
-	assert(knot_rrset_rdata_rr_count(nsec) <= 1);
 
 	return changeset_remove_nsec(nsec, chgset);
 }
