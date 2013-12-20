@@ -198,7 +198,6 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 	}
 
 	int ret = 0;
-	FILE *stream = stdout;
 	uint8_t *f = facility_at(LOGT_SYSLOG);
 
 	// Syslog
@@ -245,6 +244,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 		if (facility_levels(f, src) & level) {
 
 			// Select stream
+			FILE *stream;
 			switch(i) {
 			case LOGT_STDERR: stream = stderr; break;
 			case LOGT_STDOUT: stream = stdout; break;

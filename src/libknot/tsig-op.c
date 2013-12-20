@@ -293,7 +293,7 @@ static int knot_tsig_wire_write_timers(uint8_t *wire,
 }
 
 static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
-				      /*size_t msg_max_len, */const uint8_t *request_mac,
+				      const uint8_t *request_mac,
 		                      size_t request_mac_len,
 		                      uint8_t *digest, size_t *digest_len,
 				      const knot_rrset_t *tmp_tsig,
@@ -333,9 +333,9 @@ static int knot_tsig_create_sign_wire(const uint8_t *msg, size_t msg_len,
 		dbg_tsig_verb("Copying request MAC size\n");
 		knot_wire_write_u16(pos, request_mac_len);
 		pos += 2;
+		dbg_tsig_verb("Copying request mac.\n");
+		memcpy(pos, request_mac, sizeof(uint8_t) * request_mac_len);
 	}
-	dbg_tsig_verb("Copying request mac.\n");
-	memcpy(pos, request_mac, sizeof(uint8_t) * request_mac_len);
 	dbg_tsig_detail("TSIG: create wire: request mac:\n");
 	dbg_tsig_hex_detail((char *)pos, request_mac_len);
 	pos += request_mac_len;

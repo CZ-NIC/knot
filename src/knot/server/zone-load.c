@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include <inttypes.h>
 
-#include "common/prng.h"
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
 #include "knot/server/zone-load.h"
@@ -27,6 +26,7 @@
 #include "knot/zone/zone-load.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/rdata.h"
 #include "libknot/zone/zone.h"
@@ -53,32 +53,29 @@ static int zonedata_destroy(knot_zone_t *zone)
 	}
 
 	/* Cancel REFRESH timer. */
+	evsched_t *sch = zd->server->sched;
 	if (zd->xfr_in.timer) {
-		evsched_t *sch = zd->xfr_in.timer->parent;
 		evsched_cancel(sch, zd->xfr_in.timer);
 		evsched_event_free(sch, zd->xfr_in.timer);
-		zd->xfr_in.timer = 0;
+		zd->xfr_in.timer = NULL;
 	}
 
 	/* Cancel EXPIRE timer. */
 	if (zd->xfr_in.expire) {
-		evsched_t *sch = zd->xfr_in.expire->parent;
 		evsched_cancel(sch, zd->xfr_in.expire);
 		evsched_event_free(sch, zd->xfr_in.expire);
-		zd->xfr_in.expire = 0;
+		zd->xfr_in.expire = NULL;
 	}
 
 	/* Cancel IXFR DB sync timer. */
 	if (zd->ixfr_dbsync) {
-		evsched_t *sch = zd->ixfr_dbsync->parent;
 		evsched_cancel(sch, zd->ixfr_dbsync);
 		evsched_event_free(sch, zd->ixfr_dbsync);
-		zd->ixfr_dbsync = 0;
+		zd->ixfr_dbsync = NULL;
 	}
 
 	/* Cancel DNSSEC timer. */
 	if (zd->dnssec_timer) {
-		evsched_t *sch = zd->dnssec_timer->parent;
 		evsched_cancel(sch, zd->dnssec_timer);
 		evsched_event_free(sch, zd->dnssec_timer);
 		zd->dnssec_timer = NULL;
@@ -118,27 +115,16 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 
 	/* Link to config. */
 	zd->conf = cfg;
-	zd->server = 0;
 
 	/* Initialize mutex. */
 	pthread_mutex_init(&zd->lock, 0);
 
-	/* Initialize ACLs. */
-	zd->xfr_out = NULL;
-	zd->notify_in = NULL;
-	zd->notify_out = NULL;
-	zd->update_in = NULL;
-
 	/* Initialize XFR-IN. */
 	sockaddr_init(&zd->xfr_in.master, -1);
-	zd->xfr_in.timer = 0;
-	zd->xfr_in.expire = 0;
-	zd->xfr_in.acl = 0;
-	zd->xfr_in.bootstrap_retry = (XFRIN_BOOTSTRAP_DELAY * tls_rand());
+	zd->xfr_in.bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
 
 	/* Initialize IXFR database. */
 	zd->ixfr_db = journal_open(cfg->ixfr_db, cfg->ixfr_fslimit, JOURNAL_DIRTY);
-
 	if (zd->ixfr_db == NULL) {
 		char ebuf[256] = {0};
 		if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
@@ -147,9 +133,6 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 			                   "IXFR. (%s)\n", cfg->name, ebuf);
 		}
 	}
-
-	/* Initialize IXFR database syncing event. */
-	zd->ixfr_dbsync = 0;
 
 	/* Set and install destructor. */
 	zone->data = zd;
@@ -231,6 +214,37 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 	return KNOT_EOK;
 }
 
+/*! \brief Create timer if not exists, cancel if running. */
+static void timer_reset(evsched_t *sched, event_t **ev,
+			event_cb_t cb, knot_zone_t *zone)
+{
+	if (*ev == NULL) {
+		*ev = evsched_event_new_cb(sched, cb, zone);
+	} else {
+		evsched_cancel(sched, *ev);
+	}
+}
+
+/*! \brief Reset zone data timers. */
+static void zonedata_reset_timers(knot_zone_t *zone)
+{
+	zonedata_t *zd = zone->data;
+	
+	/* Create or cancel existing events. They must not be freed during their
+	 * lifetime since they are referenced from numerous places.
+	 * So each reload does following:
+	 *  1. all events are cancelled on zonedata update, but initialized
+	 *  2. all events may be scheduled (without changing the callback)
+	 *  3. events may be freed _ONLY_ on zone teardown
+	 */
+
+	evsched_t *scheduler = zd->server->sched;
+	timer_reset(scheduler, &zd->ixfr_dbsync, zones_flush_ev, zone);
+	timer_reset(scheduler, &zd->xfr_in.timer, zones_refresh_ev, zone);
+	timer_reset(scheduler, &zd->xfr_in.expire, zones_expire_ev, zone);
+	timer_reset(scheduler, &zd->dnssec_timer, zones_dnssec_ev, zone);	
+}
+
 /*!
  * \brief Update zone data from new configuration.
  *
@@ -258,16 +272,8 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 
 	zd->server = (server_t *)ns->data;
 
-	// cancel IXFR sync timer
-
-	if (zd->ixfr_dbsync) {
-		assert(zd->server->sched);
-		evsched_t *scheduler = zd->server->sched;
-
-		evsched_cancel(scheduler, zd->ixfr_dbsync);
-		evsched_event_free(scheduler, zd->ixfr_dbsync);
-		zd->ixfr_dbsync = NULL;
-	}
+	/* Reset event timers. */
+	zonedata_reset_timers(zone);
 
 	// ACLs
 
@@ -326,6 +332,32 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 	 *        accessing the old zone configuration.
 	 */
 	conf_free_zone(old_conf);
+}
+
+/*! \brief Freeze the zone data to prevent any further transfers or
+ *         events manipulation.
+ */
+static void zonedata_freeze(knot_zone_t *zone)
+{
+	zonedata_t *zone_data = zone->data;
+	
+	/*! \todo NOTIFY, xfers and updates now MUST NOT trigger reschedule. */
+	/*! \todo No new xfers or updates should be processed. */
+	/*! \todo Raise some kind of flag. */
+	
+	/* Wait for readers to notice the change. */
+	synchronize_rcu();
+
+	/* Cancel all pending timers. */
+	zonedata_reset_timers(zone);
+	
+	/* Now some transfers may already be running, we need to wait for them. */
+	/*! \todo This should be done somehow. */
+	
+	/* Reacquire journal to ensure all operations on it are finished. */
+	if (journal_retain(zone_data->ixfr_db) == KNOT_EOK) {
+		journal_release(zone_data->ixfr_db);
+	}
 }
 
 /*- zone file status --------------------------------------------------------*/
@@ -597,6 +629,21 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 
 	if (!new_zone) {
 		return KNOT_EZONENOENT;
+	}
+	
+	/*! \todo What should be done as part of the #26
+	 *  - Zone MUST BE created anew every time, content may be refcounted.
+	 *    (or at least zone->data and it must be updated in a RCU safe way)
+	 *  - Zone about the be obsoleted should be frozen (see more info in zonedata_freeze)
+	 *  - Refcounting on zone can be removed then, because freeze
+	 *    guarantees that zone is not and won't be participating on further
+	 *    transfers, updates or events.
+	 */
+	
+	/* Freeze the old zone blocks any further transfers or events,
+	 * as it will be deleted later on. */
+	if (old_zone && new_zone != old_zone) {
+		zonedata_freeze(old_zone);
 	}
 
 	zonedata_update(new_zone, conf, ns);

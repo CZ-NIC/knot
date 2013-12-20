@@ -48,13 +48,14 @@
 #define CONFIG_DEFAULT_PORT 53
 #define CONFIG_NOTIFY_RETRIES 5  /*!< 5 retries (suggested in RFC1996) */
 #define CONFIG_NOTIFY_TIMEOUT 60 /*!< 60s (suggested in RFC1996) */
-#define CONFIG_DBSYNC_TIMEOUT (60*60) /*!< 1 hour. */
+#define CONFIG_DBSYNC_TIMEOUT 0 /*!< Sync immediately. */
 #define CONFIG_REPLY_WD 10 /*!< SOA/NOTIFY query timeout [s]. */
 #define CONFIG_HANDSHAKE_WD 10 /*!< [secs] for connection to make a request.*/
 #define CONFIG_IDLE_WD  60 /*!< [secs] of allowed inactivity between requests */
 #define CONFIG_RRL_SLIP 1 /*!< Default slip value. */
 #define CONFIG_RRL_SIZE 393241 /*!< Htable default size. */
 #define CONFIG_XFERS 10
+#define CONFIG_SERIAL_DEFAULT CONF_SERIAL_INCREMENT /*!< Default serial policy: increment. */
 
 /*!
  * \brief Configuration for the interface
@@ -117,6 +118,8 @@ typedef struct conf_zone_t {
 	char *name;                /*!< Zone name. */
 	uint16_t cls;              /*!< Zone class (IN or CH). */
 	char *file;                /*!< Path to a zone file. */
+	char *storage;             /*!< Path to a storage dir. */
+	char *dnssec_keydir;       /*!< Path to a DNSSEC key dir. */
 	char *ixfr_db;             /*!< Path to a IXFR database file. */
 	int dnssec_enable;         /*!< DNSSEC: Online signing enabled. */
 	size_t ixfr_fslimit;       /*!< File size limit for IXFR journal. */
@@ -127,6 +130,7 @@ typedef struct conf_zone_t {
 	int notify_retries;        /*!< NOTIFY query retries. */
 	int notify_timeout;        /*!< Timeout for NOTIFY response (s). */
 	int build_diffs;           /*!< Calculate differences from changes. */
+	int serial_policy;         /*!< Serial policy when updating zone. */
 	struct {
 		list_t xfr_in;     /*!< Remotes accepted for for xfr-in.*/
 		list_t xfr_out;    /*!< Remotes accepted for xfr-out.*/
@@ -135,6 +139,14 @@ typedef struct conf_zone_t {
 		list_t update_in;  /*!< Remotes accepted for DDNS.*/
 	} acl;
 } conf_zone_t;
+
+/*!
+ * \brief Serial policy options.
+ */
+typedef enum conf_serial_policy_t {
+	CONF_SERIAL_INCREMENT	= 1 << 0,
+	CONF_SERIAL_UNIXTIME	= 1 << 1
+} conf_serial_policy_t;
 
 /*!
  * \brief Mapping of loglevels to message sources.
@@ -196,7 +208,6 @@ typedef struct conf_t {
 	char *filename; /*!< Name of the config file. */
 	char *identity; /*!< Identity to return on CH TXT id.server. or hostname.bind. */
 	char *version;  /*!< Version for CH TXT version.{bind|server}. */
-	char *storage;  /*!< Persistent storage path for databases and such. */
 	char *rundir;   /*!< Run-time directory path. */
 	char *pidfile;  /*!< PID file location. */
 	char *nsid;     /*!< Server's NSID. */
@@ -255,9 +266,11 @@ typedef struct conf_t {
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
 	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
-	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
+	char *storage;       /*!< Storage dir. */
 	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
+	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
+	int serial_policy;   /*!< Serial policy when updating zone. */
 
 	/*
 	 * Remote control interface.

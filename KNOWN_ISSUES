@@ -10,4 +10,3 @@ Known bugs
 ==========
 
 * Rarely, incremental transfer fails to reschedule
-* Rarely when DNSSEC is enabled, Knot crashes in OpenSSL code

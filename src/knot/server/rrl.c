@@ -26,7 +26,7 @@
 #include "libknot/consts.h"
 #include "libknot/util/wire.h"
 #include "common/hattrie/murmurhash3.h"
-#include "common/prng.h"
+#include "libknot/dnssec/random.h"
 #include "common/descriptor.h"
 #include "common/errors.h"
 
@@ -508,7 +508,7 @@ int rrl_reseed(rrl_table_t *rrl)
 	}
 
 	memset(rrl->arr, 0, rrl->size * sizeof(rrl_item_t));
-	rrl->seed = (uint32_t)(tls_rand() * (double)UINT32_MAX);
+	rrl->seed = knot_random_uint32_t();
 	dbg_rrl("%s: reseed to '%u'\n", __func__, rrl->seed);
 
 	if (rrl->lk_count > 0) {

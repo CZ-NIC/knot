@@ -39,9 +39,9 @@
 #include "knot/server/zones.h"
 #include "libknot/tsig-op.h"
 #include "common/evsched.h"
-#include "common/prng.h"
 #include "common/descriptor.h"
 #include "libknot/rrset.h"
+#include "libknot/dnssec/random.h"
 
 /* Constants */
 #define XFR_MAX_TASKS 1024 /*! Maximum pending tasks. */
@@ -322,7 +322,7 @@ static int xfr_task_close(knot_ns_xfr_t *rq)
 	/* Reschedule failed bootstrap. */
 	if (rq->type == XFR_TYPE_AIN && !knot_zone_contents(rq->zone)) {
 		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
-		zd->xfr_in.bootstrap_retry += AXFR_BOOTSTRAP_RETRY * tls_rand();
+		zd->xfr_in.bootstrap_retry += knot_random_uint32_t() % AXFR_BOOTSTRAP_RETRY;
 		if (zd->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME)
 			zd->xfr_in.bootstrap_retry = AXFR_RETRY_MAXTIME;
 		event_t *ev = zd->xfr_in.timer;
@@ -554,7 +554,7 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 		 * To accomodate for this, <0, 5>s random delay is set on
 		 * event startup, so the first query fires when this timer
 		 * expires. */
-		fdset_set_watchdog(set, id, (int)(tls_rand() * 5));
+		fdset_set_watchdog(set, id, knot_random_int() % 6);
 		return KNOT_EOK;
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_FORWARD:
@@ -969,6 +969,7 @@ static int xfr_check_tsig(knot_ns_xfr_t *xfr, knot_rcode_t *rcode, char **tag)
 			        "maximum size %zu\n",
 			        mac_len, xfr->digest_max_size);
 		} else {
+			assert(xfr->digest);
 			memcpy(xfr->digest, mac, mac_len);
 			xfr->digest_size = mac_len;
 

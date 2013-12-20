@@ -178,6 +178,7 @@ static int journal_open_file(journal_t *j)
 		                   j->path, efl.l_pid);
 		ret = fcntl(j->fd, F_SETLKW, &j->fl);
 	}
+	UNUSED(ret);
 	dbg_journal("journal: locked journal %s (returned %d)\n", j->path, ret);
 
 	/* Read magic bytes. */
@@ -956,23 +957,6 @@ int journal_trans_rollback(journal_t *journal)
 	}
 	if ((journal->bflags & JOURNAL_TRANS) == 0) {
 		return KNOT_ENOENT;
-	}
-
-	/* Preempt last (failed) node. */
-	journal_node_t *t_end = journal->nodes + journal->qtail;
-	dbg_journal("journal: rollback transaction id=<%hu,%hu> (@%u, l=%u)\n",
-	            journal->tmark, journal->qtail, t_end->pos, t_end->len);
-	journal->free.pos = t_end->pos;
-	journal->free.len = t_end->len;
-
-	/* Best effort free. */
-	t_end->flags = JOURNAL_FREE;
-	(void) journal_update(journal, t_end);
-
-	/* Write back free segment state. */
-	int seek_ret = lseek(journal->fd, JOURNAL_HSIZE, SEEK_SET);
-	if (seek_ret < 0 || !sfwrite(&journal->free, sizeof(journal_node_t), journal->fd)) {
-		return KNOT_ERROR;
 	}
 
 	/* Clear in-transaction flags. */

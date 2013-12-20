@@ -141,6 +141,18 @@ event_t *evsched_event_new(evsched_t *s, int type)
 	/* Initialize. */
 	memset(e, 0, sizeof(event_t));
 	e->type = type;
+	e->parent = s;
+	return e;
+}
+
+event_t *evsched_event_new_cb(evsched_t *s, event_cb_t cb, void *data)
+{
+	/* Create event. */
+	event_t *e = evsched_event_new(s, EVSCHED_CB);
+	if (e != NULL) {
+		e->cb = cb;
+		e->data = data;
+	}
 	return e;
 }
 
@@ -183,18 +195,11 @@ event_t* evsched_next(evsched_t *s)
 
 			/* Immediately return. */
 			if (timercmp_ge(&dt, &next_ev->tv)) {
-				s->cur = next_ev;
-                heap_delmin(&s->heap);
+				s->last_ev = next_ev;
+				s->running = true;
+				heap_delmin(&s->heap);
 				pthread_mutex_unlock(&s->mx);
 				pthread_mutex_lock(&s->rl);
-
-				/* Check back for late cancellation. */
-				if (s->cur == NULL) {
-					pthread_mutex_unlock(&s->rl);
-					pthread_mutex_lock(&s->mx);
-					continue;
-                }
-
 				return next_ev;
 			}
 
@@ -213,7 +218,6 @@ event_t* evsched_next(evsched_t *s)
 	/* Unlock calendar, this shouldn't happen. */
 	pthread_mutex_unlock(&s->mx);
 	return NULL;
-
 }
 
 int evsched_event_finished(evsched_t *s)
@@ -222,15 +226,17 @@ int evsched_event_finished(evsched_t *s)
 		return KNOT_EINVAL;
 	}
 
-	/* Mark as finished. */
-	if (s->cur) {
-		s->cur = NULL;
-		pthread_mutex_unlock(&s->rl);
-		return KNOT_EOK;
+	/* \note This enables event cancellation & running on next event. */
+	if(s->running) {
+		if (pthread_mutex_unlock(&s->rl) != 0) {
+			return KNOT_ERROR;
+		}
+		s->running = false; /* Mark as not running. */
+	} else {
+		return KNOT_ENOTRUNNING;
 	}
 
-	/* No event running. */
-	return KNOT_ENOTRUNNING;
+	return KNOT_EOK;
 }
 
 int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
@@ -262,12 +268,10 @@ event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, uint32_t d
 	}
 
 	/* Create event. */
-	event_t *e = evsched_event_new(s, EVSCHED_CB);
+	event_t *e = evsched_event_new_cb(s, cb, data);
 	if (!e) {
 		return NULL;
 	}
-	e->cb = cb;
-	e->data = data;
 
 	/* Schedule. */
 	if (evsched_schedule(s, e, dt) != 0) {
@@ -306,37 +310,39 @@ static int evsched_try_cancel(evsched_t *s, event_t *ev)
 	if (!s || !ev) {
 		return KNOT_EINVAL;
 	}
-
-	/* Make sure not running. */
+	
+	/* Make sure not running. If an event is starting, we race for this lock
+	 * and either win or lose. If we lose, we may find it in heap because
+	 * it rescheduled itself. Either way, it will be marked as last running. */
 	pthread_mutex_lock(&s->rl);
-
+	
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
-
+	
 	if ((found = heap_find(&s->heap, ev))) {
 		heap_delete(&s->heap, found);
 	}
 
-	/* Check if not being processed, invalidate if yes.
-	 * Could happen if next 'cur' was set, but
-	 * the evsched_next() waits until we release rl.
-	 */
-	if (s->cur == ev) {
-		s->cur = NULL; /* Invalidate */
-		found = KNOT_EAGAIN; /* Already ran, try again. */
+	/* Last running event was (probably) the one we're trying to cancel. */
+	if (s->last_ev == ev) {
+		s->last_ev = NULL;   /* Invalidate it. */
+		found = KNOT_EAGAIN; /* Let's try again if it didn't reschedule itself. */
 	}
 
 	/* Unlock calendar. */
 	pthread_cond_broadcast(&s->notify);
 	pthread_mutex_unlock(&s->mx);
-
+	
 	/* Enable running events. */
 	pthread_mutex_unlock(&s->rl);
-	if (found) {
+
+	if (found > 0) {        /* Event canceled. */
 		return KNOT_EOK;
+	} else if (found < 0) { /* Error */
+		return found;
 	}
 
-	return KNOT_ENOENT;
+	return KNOT_ENOENT;     /* Not found. */
 }
 
 int evsched_cancel(evsched_t *s, event_t *ev)
@@ -351,6 +357,6 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 		ret = evsched_try_cancel(s, ev);
 	}
 
-	/* Now we're sure event is cancelled or finished. */
+	/* Now we're sure event is canceled or finished. */
 	return KNOT_EOK;
 }

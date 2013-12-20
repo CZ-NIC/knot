@@ -1,5 +1,24 @@
 Knot DNS NEWS
 
+v1.4.0-rc2 - Dec 13, 2013
+-------------------------
+Features:
+	* IDN support in Knot utilities
+	* DNSSEC: support for GOST algorithm
+
+Bugfixes:
+	* Crash in particular additionals processing
+	* Race condition in event cancelation
+	* Journal corruption after failed transactions
+	* DNSSEC: fixed detection of ECDSA support
+
+Other improvements:
+	* ./configure prints build configuration summary
+	* Pretty zone file output (DNSSEC-related data separately)
+	* Lower memory consumption
+	* config: option 'dnssec-keydir' can be set per zone
+	* config: option 'storage' can be set per zone
+
 v1.4.0-rc1 - Nov 20, 2013
 -------------------------
 

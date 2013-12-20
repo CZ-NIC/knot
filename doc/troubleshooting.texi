@@ -105,12 +105,11 @@ listed, separated by commas:
       timers, high-level journal management.
 @item @code{xfr} - AXFR, IXFR and NOTIFY handling.
 @item @code{packet} - Packet parsing and response creation.
-@item @code{dname} - Parsing, comparing and other operations on domain names.
 @item @code{rr} - Details of processed resource records.
 @item @code{ns} - Query processing, high-level handling of all requests
       (transfers, NOTIFY, normal queries).
-@item @code{hash} - Details of hash table (the main data structure) operation.
-@item @code{compiler} - Zone file compilation.
+@item @code{loader} - Zone loading and semantic checks.
+@item @code{dnssec} - DNSSEC operations.
 @end itemize
 
 @item

@@ -176,11 +176,6 @@ static inline void knot_wire_write_u64(uint8_t *pos, uint64_t data)
 }
 
 /*!
- * \brief Get random packet id.
- */
-uint16_t knot_random_id();
-
-/*!
  * \brief Helper function for simple locking.
  *
  * \param type Type of lock.

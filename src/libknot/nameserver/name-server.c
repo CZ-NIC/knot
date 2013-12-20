@@ -38,6 +38,7 @@
 #include "libknot/updates/ddns.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-nsec.h"
 
 /*----------------------------------------------------------------------------*/
@@ -1761,7 +1762,9 @@ static inline int ns_referral(const knot_node_t *node,
 				                              &closest_encloser,
 				                              qname, resp);
 
-			} else if (ret != KNOT_EOK) {
+			}
+
+			if (ret != KNOT_EOK) {
 				return ret;
 			}
 
@@ -1888,6 +1891,9 @@ static int ns_answer_from_node(const knot_node_t *node,
 
 	if (answers == 0) {  // if NODATA response, put SOA
 		ret = ns_put_authority_soa(zone, resp);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 		if (knot_node_rrset_count(node) == 0
 		    && !knot_zone_contents_nsec3_enabled(zone)) {
 			// node is an empty non-terminal => NSEC for NXDOMAIN
@@ -2340,7 +2346,6 @@ finalize:
 
 	if (ret == KNOT_ESPACE) {
 		knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
-		ret = KNOT_EOK;
 	}
 
 	// add all missing NSECs/NSEC3s for wildcard nodes
@@ -2680,7 +2685,7 @@ rrset:
 				knot_ns_tsig_required(xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
-				ret = KNOT_ERROR;
+				ret = KNOT_ECONN;
 				break;
 			}
 			// otherwise try once more with the same RRSet
@@ -2709,7 +2714,7 @@ rrsigs:
 				knot_ns_tsig_required(xfr->packet_nr));
 			if (ret != KNOT_EOK) {
 				// some wierd problem, we should end
-				ret = KNOT_ERROR;
+				ret = KNOT_ECONN;
 				break;
 			}
 			// otherwise try once more with the same RRSet
@@ -2798,7 +2803,7 @@ static int ns_axfr_from_zone(knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 		ret = ns_xfr_send_and_clear(xfr,
 			knot_ns_tsig_required(xfr->packet_nr));
 		if (ret != KNOT_EOK) {
-			return ret;
+			return KNOT_ECONN;
 		}
 
 		ret = knot_response_add_rrset_answer(xfr->response,
@@ -2832,7 +2837,10 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, knot_rrset_t *rrset)
 	if (res == KNOT_ESPACE) {
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_NOERROR);
 		/*! \todo Probably rename the function. */
-		ns_xfr_send_and_clear(xfr, knot_ns_tsig_required(xfr->packet_nr));
+		if (ns_xfr_send_and_clear(xfr,
+		    knot_ns_tsig_required(xfr->packet_nr)) != KNOT_EOK) {
+			return KNOT_ECONN;
+		}
 
 		res = knot_response_add_rrset_answer(xfr->response,
 		                                     rrset, KNOT_PF_NOTRUNC);
@@ -2844,7 +2852,9 @@ static int ns_ixfr_put_rrset(knot_ns_xfr_t *xfr, knot_rrset_t *rrset)
 		/*! \todo Probably send back AXFR instead. */
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
-		ns_xfr_send_and_clear(xfr, 1);
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
+			return KNOT_ECONN;
+		}
 		return res;
 	}
 
@@ -2917,7 +2927,9 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		       knot_strerror(res));
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
-		ns_xfr_send_and_clear(xfr, 1);
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
+			res = KNOT_ECONN;
+		}
 		rcu_read_unlock();
 		return res;
 	}
@@ -2943,12 +2955,14 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 	}
 
 	if (res == KNOT_EOK) {
-		ns_xfr_send_and_clear(xfr, 1);
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
+			res = KNOT_ECONN;
+		}
 	}
 
 	rcu_read_unlock();
 
-	return KNOT_EOK;
+	return res;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2965,7 +2979,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		// malformed packet
 		dbg_ns("IXFR query does not contain authority record.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
-		if (ns_xfr_send_and_clear(xfr, 1) == KNOT_ECONN) {
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
 			return KNOT_ECONN;
 		}
 		//socket_close(xfr->session);
@@ -2982,7 +2996,7 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		// malformed packet
 		dbg_ns("IXFR query is malformed.\n");
 		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
-		if (ns_xfr_send_and_clear(xfr, 1) == KNOT_ECONN) {
+		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
 			return KNOT_ECONN;
 		}
 		return KNOT_EMALF;
@@ -4159,9 +4173,10 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
  *       order to get rid of duplicate code.
  */
 int knot_ns_process_update(const knot_packet_t *query,
-                            knot_zone_contents_t *old_contents,
-                            knot_zone_contents_t **new_contents,
-                            knot_changesets_t *chgs, knot_rcode_t *rcode)
+                           knot_zone_contents_t *old_contents,
+                           knot_zone_contents_t **new_contents,
+                           knot_changesets_t *chgs, knot_rcode_t *rcode,
+                           uint32_t new_serial)
 {
 	if (query == NULL || old_contents == NULL || chgs == NULL ||
 	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
@@ -4185,7 +4200,7 @@ int knot_ns_process_update(const knot_packet_t *query,
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
 	ret = knot_ddns_process_update(contents_copy, query,
 	                               knot_changesets_get_last(chgs),
-	                               chgs->changes, rcode);
+	                               chgs->changes, rcode, new_serial);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
@@ -4229,7 +4244,7 @@ int knot_ns_create_forward_query(const knot_packet_t *query,
 	memcpy(query_wire, knot_packet_wireformat(query),
 	       knot_packet_size(query));
 	*size = knot_packet_size(query);
-	knot_wire_set_id(query_wire, knot_random_id());
+	knot_wire_set_id(query_wire, knot_random_uint16_t());
 
 	return ret;
 }

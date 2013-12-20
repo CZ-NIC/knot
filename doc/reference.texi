@@ -1,4 +1,4 @@
-@node Knot DNS Configuration Reference, , Statement Index, Top
+@node Knot DNS Configuration Reference, Migration from other DNS servers, Statement Index, Top
 @appendix Knot DNS Configuration Reference
 
 This reference describes every configuration option in Knot DNS server.
@@ -37,7 +37,6 @@ else.
   [ @code{identity} ( @code{on} | @code{"}@kbd{string}@code{"} )@code{;} ]
   [ @code{version} ( @code{on} | @code{"}@kbd{string}@code{"} )@code{;} ]
   [ @code{nsid} ( @code{on} | @code{"}@kbd{string}@code{"} | @kbd{hex_string} )@code{;} ]
-  [ @code{storage} @code{"}@kbd{string}@code{";} ]
   [ @code{rundir} @code{"}@kbd{string}@code{";} ]
   [ @code{pidfile} @code{"}@kbd{string}@code{";} ]
   [ @code{workers} @kbd{integer}@code{;} ]
@@ -60,7 +59,6 @@ else.
 * identity::
 * version::
 * nsid::
-* storage::
 * rundir::
 * pidfile::
 * workers::
@@ -125,19 +123,6 @@ system @{
   nsid 0x00cafe;
   nsid "cafe";
   nsid on;
-@}
-@end example
-
-@node storage
-@subsubsection storage
-@vindex storage
-
-The working directory of Knot DNS, it is used to store zone files and journal files.
-Default: @file{$@{localstatedir@}/lib/knot}, configured with @code{--with-storage=path}
-
-@example
-system @{
-  storage "/var/lib/knot";
 @}
 @end example
 
@@ -279,7 +264,6 @@ system @{
   identity "Knot DNS @value{VERSION}";
   version "@value{VERSION}";
   nsid    "amaterasu";
-  storage "/var/lib/knot";
   rundir "/var/run/knot";
   workers 16;
   user knot.knot;
@@ -712,7 +696,6 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 @example
 @code{zones} @code{@{}
   [ @kbd{zone_options} ]
-  [ @code{dnssec-keydir} @code{"}@kbd{string}@code{"}@code{;} ]
   @kbd{zone_id} @code{@{}
     @code{file} @code{"}@kbd{string}@code{";}
     [ @code{xfr-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
@@ -725,6 +708,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 @code{@}}
 
 @kbd{zone_options} :=
+  [ @code{storage} @code{"}@kbd{string}@code{";} ]
   [ @code{semantic-checks} @kbd{boolean}@code{;} ]
   [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
   [ @code{disable-any} @kbd{boolean}@code{;} ]
@@ -733,8 +717,10 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
   [ @code{zonefile-sync} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
   [ @code{ixfr-fslimit} ( @kbd{integer} | @kbd{integer}(@code{k} | @code{M} | @code{G}) )@code{;} ]
   [ @code{ixfr-from-differences} @kbd{boolean}@code{;} ]
+  [ @code{dnssec-keydir} @code{"}@kbd{string}@code{"}@code{;} ]
   [ @code{dnssec-enable} ( @code{on} | @code{off} )@code{;} ]
   [ @code{signature-lifetime} ( @kbd{integer} | @kbd{integer}(@code{s} | @code{m} | @code{h} | @code{d})@code{;} ) ]
+  [ @code{serial-policy} ( increment | unixtime ); ]
 @end example
 
 @node zones Statement Definition and Grammar
@@ -748,6 +734,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * notify-in::
 * notify-out::
 * update-in::
+* storage::
 * semantic-checks::
 * ixfr-from-differences::
 * disable-any::
@@ -755,9 +742,10 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * notify-retries::
 * zonefile-sync::
 * ixfr-fslimit::
-* dnssec-enable::
 * dnssec-keydir::
+* dnssec-enable::
 * signature-lifetime::
+* serial-policy::
 @end menu
 
 @node zone_id
@@ -809,6 +797,28 @@ Remotes are defined in @code{remotes} section of configuration file (@pxref{remo
 In @code{update-in} statement user specifies which remotes will be permitted to perform a DNS UPDATE.
 Remotes are defined in @code{remotes} section of configuration file (@pxref{remotes}).
 
+@node storage
+@subsubsection storage
+@vindex storage
+
+Data directory for zones. It is used to store zone files and journal files.
+
+Value of @code{storage} set in @code{zone} section is relative to @code{storage} in @code{zones} section.
+
+Default value (in @code{zones} section): @file{$@{localstatedir@}/lib/knot}, configured with @code{--with-storage=path}
+
+Default value (in @code{zone} config): inherited from @code{zones} section
+
+@example
+zones @{
+  storage "/var/lib/knot";
+  example.com @{
+    storage "com";
+    file "example.com"; # /var/lib/knot/com/example.com
+  @}
+@}
+@end example
+
 @node semantic-checks
 @subsubsection semantic-checks
 @vindex semantic-checks
@@ -823,7 +833,7 @@ Most checks are disabled by default.
 @subsubsection ixfr-from-differences
 @vindex ixfr-from-differences
 
-EXPERIMENTAL: option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
+Option @code{ixfr-from-differences} is only relevant if you are running Knot DNS as a master for this zone.
 By turning the feature on you tell Knot to create differences from changes you made to a zone file upon server reload.
 See @ref{Controlling running daemon} for more information.
 
@@ -854,7 +864,9 @@ are 1 to INT_MAX and default value is 5.
 @subsubsection zonefile-sync
 @vindex zonefile-sync
 
-@code{zonefile-sync} is only relevant in a slave server scenario and only after receiving IXFR. It is a time in seconds after which current zone in memory will be synced to its file on a disk (as set in @ref{file}). Knot DNS will serve the latest zone even after restart, but zone file on a disk will only be synced after @code{zonefile-sync} time has expired. Possible values are 1 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day with default value set to @emph{1h}.
+@code{zonefile-sync} specifies a time in seconds after which current zone in memory will be synced to zone file on the disk (as set in @ref{file}). Knot DNS will serve the latest zone even after restart, but zone file on a disk will only be synced after @code{zonefile-sync} time has expired (or synced manually via @code{knotc flush} - see @ref{Running Knot DNS}). This is applicable when the zone is updated via IXFR, DDNS or automatic DNSSEC signing. Possible values are 0 to INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day with default value set to @emph{0s}.
+
+@b{Important note:} If you are serving large zones with frequent updates where the immediate sync to zone file is not desirable, set this value in the configuration file to other value.
 
 @node ixfr-fslimit
 @subsubsection ixfr-fslimit
@@ -862,23 +874,23 @@ are 1 to INT_MAX and default value is 5.
 
 @code{ixfr-fslimit} sets a maximum file size for zone's journal in bytes. Possible values are 1 to INT_MAX, with optional suffixes k, m and G. I.e. @emph{1k}, @emph{1m} and @emph{1G} with default value not being set, meaning that journal file can grow without limitations.
 
-@node dnssec-enable
-@subsubsection dnssec-enable
-@vindex dnssec-enable
-
-EXPERIMENTAL: Enable automatic DNSSEC signing for the zone.
-
-Default value (in @code{zones} section): off
-
-Default value (in @code{zone} config): inherited from @code{zones} section
-
 @node dnssec-keydir
 @subsubsection dnssec-keydir
 @vindex dnssec-keydir
 
-Location of DNSSEC signing keys.
+Location of DNSSEC signing keys, relative to @code{storage}.
 
 Default value: not set
+
+@node dnssec-enable
+@subsubsection dnssec-enable
+@vindex dnssec-enable
+
+PREVIEW: Enable automatic DNSSEC signing for the zone.
+
+Default value (in @code{zones} section): off
+
+Default value (in @code{zone} config): inherited from @code{zones} section
 
 @node signature-lifetime
 @subsubsection signature-lifetime
@@ -896,6 +908,26 @@ hour. For information about zone expiration date, invoke the
 
 Default value: @kbd{30d} (@kbd{2592000})
 
+@node serial-policy
+@subsubsection serial-policy
+@vindex serial-policy
+
+Specifies how the zone serial is updated after DDNS (dynamic update) and
+automatic DNSSEC signing. If the serial is changed by the dynamic update, no
+change is made.
+
+increment - After update or signing, the serial is automatically incremented
+(according to serial number arithmetic).
+
+unixtime - After update or signing, serial is set to the current unix time.
+
+@strong{Warning:} If your serial was in other than unix time format, be careful with
+transition to unix time. It may happen that the new serial will be 'lower' than
+the old one. If this is the case, the transition should be done by hand (consult:
+ http://www.zytrax.com/books/dns/ch9/serial.html).
+
+Default value: increment
+
 @node zones Example
 @subsection zones Example
 
@@ -904,26 +936,31 @@ Default value: @kbd{30d} (@kbd{2592000})
 zones @{
 
   # Shared options for all listed zones
+  storage "/var/lib/knot";
   ixfr-from-differences off;
   semantic-checks off;
   disable-any off;
   notify-timeout 60;
   notify-retries 5;
-  zonefile-sync 1h;
+  zonefile-sync 0;
   ixfr-fslimit 1G;
   dnssec-enable on;
   dnssec-keydir "keys";
   signature-lifetime 60d;
+  serial-policy increment;
   example.com @{
-    file "samples/example.com.zone";
-    ixfr-from-differences off; #experimental
+    storage "samples";
+    file "example.com.zone";
+    ixfr-from-differences off;
     disable-any off;
     semantic-checks on;
     notify-timeout 60;
     notify-retries 5;
-    zonefile-sync 1h;
+    zonefile-sync 0;
+    dnssec-keydir "keys";
     dnssec-enable off;
     signature-lifetime 30d;
+    serial-policy increment;
     xfr-in server0;
     xfr-out server0, server1;
     notify-in server0;

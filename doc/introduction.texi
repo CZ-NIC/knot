@@ -29,8 +29,7 @@ Knot DNS supports the following DNS features:
 
 @itemize
 @item TCP/UDP protocols
-@item AXFR - master, slave
-@item IXFR - master (primary master experimental), slave
+@item AXFR, IXFR - master, slave
 @item TSIG
 @item ENDS0
 @item DNSSEC, including NSEC3

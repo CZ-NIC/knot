@@ -155,35 +155,25 @@ static void log_error_from_node(err_handler_t *handler,
 		return;
 	}
 	
-	char buffer[1024] = {0};
-	size_t offset = 0;
-	
-	if (node != NULL) {
-		handler->error_count++;
-		char *name =
-			knot_dname_to_str(knot_node_owner(node));
-		offset += snprintf(buffer, 1024,
-		                   "Semantic warning in node: %s: ", name);
-		if (error_messages[-error] != NULL) {
-			offset += snprintf(buffer + offset, 1024 - offset,
-			                   "%s", error_messages[-error]);
-			if (data == NULL) {
-				offset += snprintf(buffer + offset,
-				                   1024 - offset, "\n");
-			} else {
-				offset += snprintf(buffer + offset,
-				                   1024 - offset, " %s\n", data);
-			}
-			log_zone_warning("%s", buffer);
-		} else {
-			log_zone_warning("Unknown error (%d).\n", error);
-		}
-		free(name);
-	} else {
-		log_zone_warning("Total number of warnings is: %d for error: %s",
-			handler->errors[-error],
-			error_messages[-error]);
+	if (node == NULL) {
+		log_zone_warning("Total number of warnings is: %d for error: %s\n",
+		                 handler->errors[-error], error_messages[-error]);
+		return;
 	}
+
+	handler->error_count++;
+
+	char *name = knot_dname_to_str(knot_node_owner(node));
+	const char *errmsg = error_messages[-error];
+
+	log_zone_warning("Semantic warning in node: %s: %s %d.%s%s.\n",
+	                 name,
+			 errmsg ? errmsg : "Unknown error.",
+			 error,
+			 data ? " " : "",
+			 data ? data : "");
+
+	free(name);
 }
 
 int err_handler_handle_error(err_handler_t *handler, const knot_node_t *node,
@@ -1101,17 +1091,10 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 {
 	dbg_semcheck_verb("semcheck: do_check_in_tree: Checking node: %s\n",
 	                  knot_dname_to_str(node->owner));
-	assert(data != NULL);
+
 	arg_t *args = (arg_t *)data;
 
-	knot_rrset_t **rrsets = knot_node_get_rrsets(node);
-	short count = knot_node_rrset_count(node);
-
-	assert(count == 0 || rrsets != NULL);
-
 	knot_zone_contents_t *zone = (knot_zone_contents_t *)args->arg1;
-
-	assert(zone);
 
 	knot_node_t **last_node = (knot_node_t **)args->arg5;
 
@@ -1129,7 +1112,6 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 		int check_level = 1 + (zone_is_secure(zone) ? 1 : 0);
 		sem_check_node_plain(zone, node, check_level, handler, 1,
 		                      (int *)args->arg7);
-		free(rrsets);
 		return KNOT_EOK;
 	}
 
@@ -1138,7 +1120,6 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 				       handler, do_checks == 3);
 	}
 
-	free(rrsets);
 	return KNOT_EOK;
 }
 
@@ -1146,7 +1127,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
                        err_handler_t *handler, knot_node_t *first_nsec3_node,
                        knot_node_t *last_nsec3_node)
 {
-	if (!handler) {
+	if (!zone || !handler) {
 		return KNOT_EINVAL;
 	}
 	knot_node_t *last_node = NULL;

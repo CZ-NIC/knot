@@ -3,11 +3,15 @@
 '''
 Usage: zone_generate.py [parameters] origin [rr_count]
 Parameters:
-    -s, --sign        Generate zone signed with dnssec-signzone.
-    -i, --serial=SN   Specify SOA serial.
-    -u, --update=file Update zone file (no extra SOA).
-    -n, --names=N     Generate unique zone names.
+    -h, --help         This help.
+    -s, --sign         Generate zone signed with dnssec-signzone.
+    -i, --serial=num   Specify SOA serial.
+    -u, --update=file  Update zone file (no extra SOA).
+    -n, --names=num    Generate unique zone names.
+    -t, --ttl=sec      Specify default TTL.
+    -o, --outfile=file Specify output file name.
 '''
+
 import random
 import getopt
 import sys
@@ -22,9 +26,9 @@ import dns.rdatatype
 import dns.rdata
 
 # Word databases
-ORIGIN = ''   # Zone origin (default=com)
-RORIGIN = None  # Domain for reverse zones
-RPREFIX = None  # Zone is RPREFIX classless-type
+ORIGIN = '' # Zone origin (default=com)
+RORIGIN = None # Domain for reverse zones
+RPREFIX = None # Zone is RPREFIX classless-type
 WORD_MRATE = 1.0 # 0.0 - 1.0, percentage of mangled words
 RR_EXISTS = 1.0 # 0.0 - 1.0, percentage of CNAME/DNAME... pointing to existing name
 SUB_CHANCE = 0.0 # 0.0 - 1.0, chance of dname bing a subdomain
@@ -39,44 +43,31 @@ SERIAL = '2007120713'
 SERVICES = [ 'sip', 'xmpp', 'ldap' ]
 PROTOCOLS = [ 'udp', 'tcp' ]
 
-# Obsolete - MAILA MD MF
-# Notimpl - NINFO MAILB MG NULL-(not allowed)
-# Experimental - A6
-# Not in current use - HINFO, RP, X25, ISDN, RT, NSAP, NSAP-PTR, PX, EID, NIMLOC, ATMA, APL
 RRTYPES = [ \
-    [ 'A',     'g_a',     1.00, 1 ],  [ 'AAAA',  'g_aaaa',  1.0, 28 ],  \
-    [ 'NS',    'g_dname', 0.25, 2 ], [ 'MX',    'g_mx',    0.25, 15 ], \
-    [ 'DNAME', 'g_dname', 0.25, 39 ], [ 'CNAME', 'g_dname', 0.25, 5 ], \
-    [ 'TXT',   'g_txt',   0.15, 16 ], \
-    [ 'SPF',   'g_spf',   0.15, 99 ], # TODO: Not working ATM \
-    [ 'SRV',   'g_srv',   0.25, 33 ], [ 'LOC',   'g_loc',   0.15, 29 ], \
-    #[ 'WKS',   'g_wks',   0.10, 11 ], \
-    [ 'PTR',   'g_ptr',   0.50, 12 ], \
-    [ 'HINFO', 'g_hinfo', 0.05, 13 ], \
-    [ 'RP',    'g_rp',    0.02, 17 ], [ 'AFSDB', 'g_mx',    0.02, 18 ], \
-    #[ 'X25',   'g_x25',   0.02, 19 ], [ 'ISDN',  'g_isdn',  0.02, 20 ], \
-    #[ 'RT',    'g_mx',    0.02, 21 ], [ 'NSAP',  'g_nsap',  0.02, 22 ], \
-    #[ 'PX',    'g_px',    0.01, 26 ], [ 'KX',    'g_mx',    0.02, 36 ], \
-    #[ 'CERT',  'g_cert',  0.05, 37 ], [ 'KEY',   'g_key',   0.01, 25 ], \
-    [ 'DHCID', 'g_dhcid', 0.01, 49 ], \
-    [ 'APL',   'g_apl',   0.05, 42 ], \
-    [ 'SSHFP', 'g_sshfp', 0.10, 44 ], \
-    # DEPRECATED (specified in rfc883)
-    #[ 'MB',    'g_dname', 0.01, 7 ], [ 'MR',    'g_dname', 0.01, 9 ], \
-    #[ 'MINFO', 'g_minfo', 0.02, 14 ], \
-    #TODO: prints warning, experimental
-    #[ 'DLV',   'g_ds',    0.05, 32769 ], \
-    #[ 'HIP',   'g_hip',   0.05, 55 ], \ #TODO: fix, not supported
-    #[ 'EID',   'g_eid',   0.05, 31 ], [ 'NIMLOC',  'g_eid',  0.05, 32], \  # Not supported
-    #[ 'TA',    'g_ds',    0.05, 32768 ], [ 'SIG',   'g_rrsig', 0.10, 24 ], \  # Not supported
-    [ 'IPSECKEY',   'g_ipseckey',   0.05, 45 ], \
-
-    #TODO: Following not enabled, signing is done via dnssec-signzone
-    #[ 'DS',    'g_ds',    0.05 ], [ 'DNSKEY', 'g_key',  0.01 ], \
-    #[ 'RRSIG',  'g_rrsig', 0.15], \
-    #[ 'NSEC',  'g_nsec',  0.10 ], [ 'NSEC3',  'g_nsec3', 0.10], \
-    #[ 'NSEC3PARAM', 'g_nsec3param', 0.10 ], \
-    [ 'CUSTOM', 'g_customrr', 0.025, 0 ] \
+#   [ typename, generator, probability, typeid ]
+    [ 'A',        'g_a',        1.00,   1 ], \
+    [ 'NS',       'g_dname',    0.25,   2 ], \
+    [ 'CNAME',    'g_dname',    0.25,   5 ], \
+    [ 'PTR',      'g_ptr',      0.50,  12 ], \
+    [ 'HINFO',    'g_hinfo',    0.05,  13 ], \
+    [ 'MX',       'g_mx',       0.25,  15 ], \
+    [ 'TXT',      'g_txt',      0.15,  16 ], \
+    [ 'RP',       'g_rp',       0.02,  17 ], \
+    [ 'AFSDB',    'g_mx',       0.02,  18 ], \
+    [ 'RT',       'g_mx',       0.02,  21 ], \
+    [ 'AAAA',     'g_aaaa',     1.00,  28 ], \
+    [ 'LOC',      'g_loc',      0.15,  29 ], \
+    [ 'SRV',      'g_srv',      0.25,  33 ], \
+    [ 'KX',       'g_mx',       0.02,  36 ], \
+    [ 'CERT',     'g_cert',     0.05,  37 ], \
+    [ 'DNAME',    'g_dname',    0.25,  39 ], \
+    [ 'APL',      'g_apl',      0.05,  42 ], \
+    [ 'SSHFP',    'g_sshfp',    0.10,  44 ], \
+    [ 'IPSECKEY', 'g_ipseckey', 0.05,  45 ], \
+    [ 'DNSKEY',   'g_key',      0.01,  48 ], \
+    [ 'DHCID',    'g_dhcid',    0.01,  49 ], \
+    [ 'SPF',      'g_spf',      0.15,  99 ], \
+    [ 'CUSTOM',   'g_customrr', 0.03,   0 ]  \
 ]
 
 WORDS = [
@@ -276,17 +267,6 @@ def g_spf(rt):
     rd = g_rdata(rt, '"v=spf1 %s -all"' % random.choice(choices))
     return '@ IN %s %s' % (g_rtype(rt), rd)
 
-def g_wks(rt):
-    services = []
-    proto = 'tcp' #rnd_proto()
-    if proto is 'tcp':
-        services = [ 'telnet', 'smtp', 'ftp', 'time']
-    else:
-        services = [ ]
-    rd = g_rdata(rt, '%s %s %s' % \
-           (rnd_ip4(), proto, ' '.join(random.sample(services, 2))))
-    return '%s %s %s' %(rnd_dnl(), g_rtype(rt), rd)
-
 def g_ptr(rt):
     return '%s %s %s' % (rnd_ip4(), g_rtype(rt), rnd_dname())
 
@@ -295,31 +275,10 @@ def g_hinfo(rt):
     os = '%s %d.%d' % (random.choice(['Linux', 'BSD']), rnd(1,9), rnd(1,9))
     return '%s %s %s "%s"' % (rnd_dnl(), g_rtype(rt), pf, os)
 
-def g_minfo(rt):
-    # name ttl class rr admin-mbox [err-mbox]
-    mbox = rnd_dnl()
-    return '%s %s %s %s' % (mbox, g_rtype(rt), rnd_dname(), rnd_dname())
-
 def g_rp(rt):
     # name ttl class rr email-addr
     return '%s %s %s %s' % \
            (rnd_dnl(), g_rtype(rt), g_fqdn('admin.'+rnd_str()), g_fqdn('sysadmins.'+rnd_str()))
-
-def g_x25(rt):
-    # TODO: Generate X.25 types according to ITU-T X.121
-    num = list('31105060845')
-    random.shuffle(num)
-    num = ''.join(num)
-    return '%s %s %s' % (rnd_dnl(), g_rtype(rt), g_rdata(rt, num))
-
-def g_isdn(rt):
-    num = ''
-    for i in range(0, 14):
-        num += random.choice('0123456789')
-    extra = ''
-    if rnd_fl(0,1) < 0.3:
-        extra = ' 004'
-    return '%s %s %s' % (rnd_dnl(), g_rtype(rt), g_rdata(rt, '%s%s' % (num, extra)))
 
 def g_nsap(rt):
     # name ttl class rr nsap-address
@@ -331,12 +290,6 @@ def g_dhcid(rt):
     # TODO: bogus data, described in RFC4701 as DNS Binary RR format
     return '%s %s %s' % \
            (rnd_dnl(), g_rtype(rt), g_rdata(rt, 'VGhpcyBzaG9ydCBzbmlwcGV0IG9mIHRleHQgaXMgc2FkIGFuZCBtZWFuaW5nbGVzcy4K'))
-
-def g_px(rt):
-    # name ttl class rr pref 822-domain x.400-name
-    dname = g_fqdn(rnd_dnl())
-    rd = g_rdata(rt, '%d %s prmd-%s' % (rnd(1,20), dname, rnd_dname()))
-    return '%s %s %s' % (dname, g_rtype(rt), rd)
 
 def g_cert(rt):
     # name ttl class rr type key-tag algorithm cert-crl
@@ -352,13 +305,6 @@ def g_key(rt):
     rd = g_rdata(rt, '%d 3 %d %s' % \
            (256, rnd(1,5), 'VGhpcyBzaG9ydCBzbmlwcGV0IG9mIHRleHQgaXMgc2FkIGFuZCBtZWFuaW5nbGVzcy4K'))
     return '%s %s %s' % (rnd_dnl(), g_rtype(rt), rd)
-
-def g_eid(rt):
-    data = ''
-    chunks = rnd(2,4)
-    for i in range(0, chunks):
-        data += '%s ' % (rnd_hex(choice([2,4,6])))
-    return '%s %s %s' % (rnd_dnl(), g_rtype(rt), g_rdata(rt, data))
 
 def g_sshfp(rt):
     key = shuffle_str('123456789abcdef67890123456789abcdef67890')
@@ -391,22 +337,11 @@ def g_apl(rt):
         afi = choice([1, 2])
         ip = ''
         if afi is 1:
-            ip = rnd_ip4() # Need to check range?
+            ip = rnd_ip4()
         else:
             ip = rnd_ip6()
         data += '%s%d:%s/%d ' % (choice(['!','']), afi, ip, rnd(2,32))
-    return '%s %s %s' % (rnd_dnl(), g_rtype(rt), g_rdata(rt, data, chance=0))
-
-def g_hip(rt):
-    # TODO: Randomized
-    # rfc5205 | pk-algo b16-hit b64-pubkey
-    hit = '200100107B1A74DF365639CC39F1D578'
-    pkey = 'AwEAAbdxyhNuSutc5EMzxTs9LBPCIkOFH8cIvM4p9+LrV4e19WzK00+'
-    pkey += 'CI6zBCQTdtWsuxKbWIy87UOoJTwkUs7lBu+Upr1gsNrut79ryra+'
-    pkey += 'bSRGQb1slImA8YVJyuIDsj7kwzG7jnERNqnWxZ48AWkskmdHaVDP4BcelrTI3rMXdXF5D'
-    rd = g_rdata(rt, '%d %s %s' % (rnd(1,2), hit, pkey))
-    return '%s %s %s' % (rnd_dnl(), g_rtype(rt), rd)
-
+    return '%s %s %s' % (rnd_dnl(), g_rtype(rt), g_rdata(rt, data))
 
 # Generate RR
 def gen_rr():
@@ -423,7 +358,6 @@ def gen_rr():
 # @TODO non-RFC2317 reverse zones
 def gen_rr_rev(dn):
     return '%s\tPTR\t%s' % (dn, g_fqdn(rnd_dnl()))
-
 
 # Generate SOA
 def gen_soa(origin, serial, auth = None):
@@ -484,10 +418,7 @@ def g_unique_names(count):
     else:
         return o
 
-# Main
 def main(args):
-
-    # Number of generated RRs
     global ORIGIN
     global SERIAL
     global TTL
@@ -506,7 +437,7 @@ def main(args):
         print(msg)
         print('for help use --help')
         sys.exit(2)
-    # Options
+
     for o, a in opts:
         if o in ('-h', '--help'):
             print(__doc__)

@@ -450,7 +450,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> SIZE
 %token <tok> BOOL
 
-%token <tok> SYSTEM IDENTITY HOSTNAME SVERSION NSID STORAGE KEY KEYS
+%token <tok> SYSTEM IDENTITY HOSTNAME SVERSION NSID KEY KEYS
 %token <tok> MAX_UDP_PAYLOAD
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
@@ -481,9 +481,12 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> RATE_LIMIT_SIZE
 %token <tok> RATE_LIMIT_SLIP
 %token <tok> TRANSFERS
+%token <TOK> STORAGE
 %token <tok> DNSSEC_ENABLE
 %token <tok> DNSSEC_KEYDIR
 %token <tok> SIGNATURE_LIFETIME
+%token <tok> SERIAL_POLICY
+%token <tok> SERIAL_POLICY_VAL
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -594,7 +597,11 @@ system:
      SET_NUM(new_config->max_udp_payload, $3.i, EDNS_MIN_UDP_PAYLOAD,
              EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
  }
- | system STORAGE TEXT ';' { new_config->storage = $3.t; }
+ | system STORAGE TEXT ';' {
+     fprintf(stderr, "warning: Config option 'system.storage' was relocated. "
+                     "Use 'zones.storage' instead.\n");
+     new_config->storage = $3.t;
+ }
  | system RUNDIR TEXT ';' { new_config->rundir = $3.t; }
  | system PIDFILE TEXT ';' { new_config->pidfile = $3.t; }
  | system KEY TSIG_ALGO_NAME TEXT ';' {
@@ -929,6 +936,8 @@ zone:
  | zone FILENAME TEXT ';' { this_zone->file = $3.t; }
  | zone BUILD_DIFFS BOOL ';' { this_zone->build_diffs = $3.i; }
  | zone SEMANTIC_CHECKS BOOL ';' { this_zone->enable_checks = $3.i; }
+ | zone STORAGE TEXT ';' { this_zone->storage = $3.t; }
+ | zone DNSSEC_KEYDIR TEXT ';' { this_zone->dnssec_keydir = $3.t; }
  | zone DISABLE_ANY BOOL ';' { this_zone->disable_any = $3.i; }
  | zone DBSYNC_TIMEOUT NUM ';' {
 	SET_INT(this_zone->dbsync_timeout, $3.i, "zonefile-sync");
@@ -955,6 +964,9 @@ zone:
  | zone SIGNATURE_LIFETIME INTERVAL ';' {
 	SET_NUM(this_zone->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
  }
+ | zone SERIAL_POLICY SERIAL_POLICY_VAL ';' {
+	this_zone->serial_policy = $3.i;
+ }
  ;
 
 zones:
@@ -976,11 +988,12 @@ zones:
 	SET_NUM(new_config->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
  | zones DBSYNC_TIMEOUT NUM ';' {
-	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
+	SET_NUM(new_config->dbsync_timeout, $3.i, 0, INT_MAX, "zonefile-sync");
  }
  | zones DBSYNC_TIMEOUT INTERVAL ';' {
-	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
+	SET_NUM(new_config->dbsync_timeout, $3.i, 0, INT_MAX, "zonefile-sync");
  }
+ | zones STORAGE TEXT ';' { new_config->storage = $3.t; }
  | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i; }
  | zones DNSSEC_KEYDIR TEXT ';' { new_config->dnssec_keydir = $3.t; }
  | zones SIGNATURE_LIFETIME NUM ';' {
@@ -988,6 +1001,9 @@ zones:
  }
  | zones SIGNATURE_LIFETIME INTERVAL ';' {
 	SET_NUM(new_config->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
+ }
+ | zones SERIAL_POLICY SERIAL_POLICY_VAL ';' {
+	new_config->serial_policy = $3.i;
  }
  ;
 

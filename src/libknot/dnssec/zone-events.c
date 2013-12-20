@@ -57,9 +57,15 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	assert(zone_keys);
 	assert(policy);
 
+	zonedata_t *zone_data = zone->data;
+	assert(zone_data);
+
+	conf_zone_t *config = zone_data->conf;
+	assert(config);
+
 	// Read zone keys from disk
 	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
-	int result = knot_load_zone_keys(conf()->dnssec_keydir,
+	int result = knot_load_zone_keys(config->dnssec_keydir,
 	                                 zone->contents->apex->owner,
 	                                 nsec3_enabled, zone_keys);
 	if (result != KNOT_EOK) {
@@ -79,8 +85,7 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	}
 
 	// Override signature lifetime, if set in config
-	zonedata_t *zd = (zonedata_t *)zone->data;
-	int sig_lf = zd->conf->sig_lifetime;
+	int sig_lf = config->sig_lifetime;
 	if (sig_lf > 0) {
 		policy->sign_lifetime = sig_lf;
 	}
@@ -89,7 +94,8 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 }
 
 static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
-                     knot_update_serial_t soa_up, uint32_t *expires_at)
+                     knot_update_serial_t soa_up, uint32_t *expires_at,
+                     uint32_t new_serial)
 {
 	assert(zone);
 	assert(zone->contents);
@@ -164,7 +170,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	                                          KNOT_RRTYPE_SOA);
 	assert(soa);
 	result = knot_zone_sign_update_soa(soa, &zone_keys, &policy,
-	                                   out_ch);
+	                                   new_serial, out_ch);
 	if (result != KNOT_EOK) {
 		log_zone_error("%s Cannot update SOA record (%s). Not signing"
 		               "the zone!\n", msgpref, knot_strerror(result));
@@ -182,23 +188,26 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 }
 
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
-                          knot_update_serial_t soa_up, uint32_t *expires_at)
+                          knot_update_serial_t soa_up, uint32_t *expires_at,
+                          uint32_t new_serial)
 {
 	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, false, soa_up, expires_at);
+	return zone_sign(zone, out_ch, false, soa_up, expires_at, new_serial);
 }
 
 int knot_dnssec_zone_sign_force(knot_zone_t *zone,
-                                knot_changeset_t *out_ch, uint32_t *expires_at)
+                                knot_changeset_t *out_ch, uint32_t *expires_at,
+                                uint32_t new_serial)
 {
 	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_INC, expires_at);
+	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_UPDATE, expires_at,
+	                 new_serial);
 }
 
 int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
@@ -206,7 +215,8 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
                                uint32_t *used_lifetime,
-                               uint32_t *used_refresh)
+                               uint32_t *used_refresh,
+                               uint32_t new_serial)
 {
 	if (!used_lifetime || !used_refresh) {
 		return KNOT_EINVAL;
@@ -278,7 +288,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	// Update SOA RRSIGs
 	ret = knot_zone_sign_update_soa(knot_node_rrset(zone->apex,
 	                                                KNOT_RRTYPE_SOA),
-	                                &zone_keys, &policy,
+	                                &zone_keys, &policy, new_serial,
 	                                out_ch);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to sign SOA RR (%s)\n", msgpref,

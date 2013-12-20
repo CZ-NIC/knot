@@ -179,19 +179,25 @@ int proc_update_privileges(int uid, int gid)
 
 	/* Check storage writeability. */
 	int ret = KNOT_EOK;
-	char *lfile = strcdup(conf()->storage, "/knot.lock");
-	assert(lfile != NULL);
-	FILE* fp = fopen(lfile, "w");
-	if (fp == NULL) {
-		log_server_warning("Storage directory '%s' is not writeable.\n",
-		                   conf()->storage);
-		ret = KNOT_EACCES;
-	} else {
-		fclose(fp);
-		unlink(lfile);
-	}
+	conf_zone_t *zone;
+	WALK_LIST(zone, conf()->zones) {
+		char *lfile = strcdup(zone->storage, "/knot.lock");
+		assert(lfile != NULL);
+		FILE* fp = fopen(lfile, "w");
+		if (fp == NULL) {
+			log_server_warning("Storage directory '%s' is not "
+			                   "writeable.\n", zone->storage);
+			ret = KNOT_EACCES;
+		} else {
+			fclose(fp);
+			unlink(lfile);
+		}
+		free(lfile);
 
-	free(lfile);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+	}
 	return ret;
 }
 

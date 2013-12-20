@@ -19,7 +19,6 @@
 #include "knot/ctl/remote.h"
 #include "common/log.h"
 #include "common/fdset.h"
-#include "common/prng.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
 #include "knot/server/socket.h"
@@ -32,6 +31,7 @@
 #include "libknot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/dnssec/zone-nsec.h"
 
@@ -137,7 +137,7 @@ static int remote_zone_refresh(server_t *s, const knot_zone_t *z)
 	if (zd->xfr_in.timer) {
 		evsched_cancel(sch, zd->xfr_in.timer);
 		evsched_schedule(sch, zd->xfr_in.timer,
-		                 tls_rand() * 1000);
+		                 knot_random_uint32_t() % 1000);
 	}
 
 	return KNOT_EOK;
@@ -161,7 +161,7 @@ static int remote_zone_flush(server_t *s, const knot_zone_t *z)
 	if (zd->ixfr_dbsync) {
 		evsched_cancel(sch, zd->ixfr_dbsync);
 		evsched_schedule(sch, zd->ixfr_dbsync,
-		                 tls_rand() * 1000);
+		                 knot_random_uint32_t() % 1000);
 	}
 
 	return KNOT_EOK;
@@ -178,7 +178,12 @@ static int remote_zone_sign(server_t *server, const knot_zone_t *zone)
 	log_server_info("Requested zone resign for '%s'.\n", zone_name);
 	free(zone_name);
 
-	zones_schedule_dnssec((knot_zone_t *)zone, 0, true);
+	uint32_t expires_at = 0;
+	zones_cancel_dnssec((knot_zone_t *)zone);
+	rcu_read_lock();
+	zones_dnssec_sign((knot_zone_t *)zone, true, &expires_at);
+	rcu_read_unlock();
+	zones_schedule_dnssec((knot_zone_t *)zone, expires_at);
 
 	return KNOT_EOK;
 }
@@ -560,7 +565,6 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
 	}
 	knot_wire_set_nscount(rwire, rr_count);
 	len += rrlen;
-	rlen -= rrlen;
 	knot_rrset_deep_free(&rr, 1);
 
 	if (len > 0) {
@@ -855,7 +859,6 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 	if (r > 0) {
 		*(raw++) = (uint8_t)r;
 		memcpy(raw, v+p, r);
-		raw += K;
 	}
 
 	return KNOT_EOK;

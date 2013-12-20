@@ -150,11 +150,6 @@ int knot_query_add_rrset_authority(knot_packet_t *query,
 	uint8_t *endp = query->wireformat + query->max_size;
 
 	assert(endp - startp > query->opt_rr.size + query->tsig_size);
-	// reserve space for OPT RR
-	/*! \todo Why here??? */
-	endp -= query->opt_rr.size;
-	/* Reserve space for TSIG RR */
-	endp -= query->tsig_size;
 
 	size_t written = 0;
 	uint16_t rr_count = 0;

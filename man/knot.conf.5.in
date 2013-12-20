@@ -38,10 +38,6 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Or on|off. When 'on', FQDN hostname will be used as default.
   nsid off;
 
-  # This is a default directory to place slave zone files, journals etc.
-  # default: ${localstatedir}/lib/knot, configured with --with-storage
-  storage "/var/lib/knot";
-
   # Directory for storing run-time data
   # e.g. PID file and control sockets
   # default: ${localstatedir}/run/knot, configured with --with-rundir
@@ -217,7 +213,11 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Shared options for all listed zones
   #
 
-  # Build differences from zone file changes. EXPERIMENTAL feature.
+  # This is a default directory to place slave zone files, journals etc.
+  # default: ${localstatedir}/lib/knot, configured with --with-storage
+  storage "/var/lib/knot";
+
+  # Build differences from zone file changes
   # Possible values: on|off
   # Default value: off
   ixfr-from-differences off;
@@ -256,7 +256,7 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # f.e. 1k, 100M, 2G
   ixfr-fslimit 1G;
 
-  # Enable DNSSEC online signing (EXPERIMENTAL)
+  # Enable DNSSEC online signing (technical preview)
   # Possible values: on | off;
   # Default value: off
   dnssec-enable off;
@@ -274,11 +274,20 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # signatures expires in 7200 seconds or less and it was chosen as a 
   # reasonable value with regard to signing overhead.
   signature-lifetime 30d;
+  
+  # Serial policy after DDNS and automatic DNSSEC signing.
+  # Possible values: increment | unixtime
+  # Default value: increment
+  serial-policy increment;
 
   # Zone entry
   #
   # Format: <zone-name> { file "<path-to-zone-file>"; }
   example.com {  # <zone-name> is the DNS name of the zone (zone root)
+    # Zone specific storage directory (relative to storage in zones section).
+    # default: inherited from zones section
+    storage "example.com";
+
     # <path-to-zone-file> may be either absolute or relative, in which case
     #   it is considered relative to the current directory from which the server
     #   was started.
@@ -323,7 +332,11 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # f.e. 1k, 100M, 2G
     ixfr-fslimit 1G;
 
-    # Enable DNSSEC online signing (EXPERIMENTAL)
+    # Location of DNSSEC signing keys (relative to storage directory in zone).
+    # Default value: inherited from zones section
+    dnssec-keydir "keys";
+
+    # Enable DNSSEC online signing (technical preview)
     # Possible values: on | off;
     # Default value: inherited from zones section
     dnssec-enable off;
@@ -337,6 +350,11 @@ serves as an example of the configuration for knotc(8) and knotd(8).
     # signatures expires in 7200 seconds or less and it was chosen as a
     # reasonable value with regard to signing overhead.
     signature-lifetime 30d;
+
+    # Serial policy after DDNS and automatic DNSSEC signing.
+    # Possible values: increment | unixtime
+    # Default value: increment
+    serial-policy increment;
 
     # XFR master server
     xfr-in server0;

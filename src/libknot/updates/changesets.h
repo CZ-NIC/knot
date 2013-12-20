@@ -65,12 +65,6 @@ typedef struct knot_rr_ln {
 	knot_rrset_t *rr; /*!< Actual usable data. */
 } knot_rr_ln_t;
 
-/*! \brief Wrapper for BIRD lists. Storing: Node. */
-typedef struct knot_node_ln {
-	node_t n; /*!< List node. */
-	knot_node_t *node; /*!< Actual usable data. */
-} knot_node_ln_t;
-
 /*! \brief Partial changes done to zones - used for update/transfer rollback. */
 typedef struct {
 	/*!
@@ -86,14 +80,6 @@ typedef struct {
 	 * Deleted after failed update.
 	 */
 	list_t new_rrsets;
-	/*!
-	 * Deleted (without contents) after successful update.
-	 */
-	list_t old_nodes;
-	/*!
-	 * Deleted (without contents) after successful update.
-	 */
-	list_t old_nsec3;
 } knot_changes_t;
 
 /*----------------------------------------------------------------------------*/
@@ -122,8 +108,6 @@ typedef enum {
 typedef enum {
 	KNOT_CHANGES_OLD,
 	KNOT_CHANGES_NEW,
-	KNOT_CHANGES_NORMAL_NODE,
-	KNOT_CHANGES_NSEC3_NODE
 } knot_changes_part_t;
 
 /*----------------------------------------------------------------------------*/
@@ -275,20 +259,6 @@ void knot_changesets_free(knot_changesets_t **changesets);
  */
 int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
                            knot_changes_part_t part);
-
-/*!
- * \brief Add Node to changes structure.
-          Node is either inserted to 'normal' or to 'NSEC3' list.
- *
- * \param chgs Change to add node into.
- * \param node RRSet to be added.
- * \param part Add to 'normal' or 'NSEC3'?
- *
- * \retval KNOT_EOK on success.
- * \retval Error code on failure.
- */
-int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
-                          knot_changes_part_t part);
 
 /*!
  * \brief Merges two changesets together, second changeset's lists are kept.
