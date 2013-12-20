@@ -1112,13 +1112,26 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		}
 	}
 
+	knot_zone_t *fake_zone = knot_zone_new_empty(zone->name);
+	if (fake_zone == NULL) {
+		log_zone_error("%s: Failed to apply changesets (%s)\n",
+		               msg, knot_strerror(KNOT_ENOMEM));
+		xfrin_rollback_update(zone->contents, &new_contents,
+		                      chgsets->changes);
+		knot_changesets_free(&chgsets);
+		free(msg);
+		return KNOT_ENOMEM;
+	}
+	// Apply changeset to zone created by DDNS processing
+	fake_zone->contents = new_contents;
+
 	if (zone_config->dnssec_enable) {
 		dbg_zones_verb("%s: Signing the UPDATE\n", msg);
 		/* Check if the UPDATE changed DNSKEYs. If yes, resign the whole
 		 * zone, if not, sign only the changeset.
 		 */
 		if (zones_dnskey_changed(old_contents, new_contents)) {
-			ret = knot_dnssec_zone_sign(zone, sec_ch,
+			ret = knot_dnssec_zone_sign(fake_zone, sec_ch,
 			                            KNOT_SOA_SERIAL_KEEP,
 			                            &expires_at);
 		} else {
@@ -1140,7 +1153,9 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			xfrin_rollback_update(zone->contents, &new_contents,
 					      chgsets->changes);
 			knot_changesets_free(&chgsets);
+			knot_changesets_free(&sec_chs);
 			free(msg);
+			free(fake_zone);
 			return ret;
 		}
 
@@ -1159,6 +1174,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		                      chgsets->changes);
 		zones_free_merged_changesets(chgsets, sec_chs);
 		free(msg);
+		free(fake_zone);
 		return ret;
 	}
 
@@ -1166,18 +1182,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	knot_zone_contents_t *dnssec_contents = NULL;
 	// Apply DNSSEC changeset
 	if (new_signatures) {
-		knot_zone_t *fake_zone = knot_zone_new_empty(zone->name);
-		if (fake_zone == NULL) {
-			log_zone_error("%s: Failed to apply changesets (%s)\n",
-			               msg, knot_strerror(KNOT_ENOMEM));
-			xfrin_rollback_update(zone->contents, &new_contents,
-			                      chgsets->changes);
-			zones_free_merged_changesets(chgsets, sec_chs);
-			free(msg);
-			return KNOT_ENOMEM;
-		}
-		// Apply changeset to zone created by DDNS processing
-		fake_zone->contents = new_contents;
 		// Set zone generation to old, else applying fails
 		knot_zone_contents_set_gen_old(new_contents);
 		ret = xfrin_apply_changesets(fake_zone, sec_chs,
@@ -1203,6 +1207,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			zones_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
+	} else {
+		free(fake_zone);
 	}
 
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
