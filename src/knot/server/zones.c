@@ -1179,7 +1179,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		if (zones_dnskey_changed(old_contents, new_contents)) {
 			ret = knot_dnssec_zone_sign(fake_zone, sec_ch,
 			                            KNOT_SOA_SERIAL_KEEP,
-			                            &expires_at);
+			                            &expires_at, new_serial);
 		} else {
 			// Sign the created changeset
 			uint32_t used_lifetime = 0;
