@@ -2924,7 +2924,6 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 		knot_response_set_rcode(xfr->response,
 		                           KNOT_RCODE_SERVFAIL);
 		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
-			rcu_read_unlock();
 			res = KNOT_ECONN;
 		}
 		rcu_read_unlock();
@@ -2953,7 +2952,6 @@ static int ns_ixfr_from_zone(knot_ns_xfr_t *xfr)
 
 	if (res == KNOT_EOK) {
 		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
-			rcu_read_unlock();
 			res = KNOT_ECONN;
 		}
 	}
