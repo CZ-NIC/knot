@@ -999,7 +999,7 @@ static uint32_t zones_next_serial(knot_zone_t *zone)
 
 	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
 	if (ns_serial_compare(old_serial, new_serial) >= 0) {
-		log_zone_warning("New serial after signing will be lower than "
+		log_zone_warning("New serial will be lower than "
 		                 "the current one. Old: %u, new: %u.\n",
 		                 old_serial, new_serial);
 	}
