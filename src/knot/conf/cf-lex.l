@@ -312,7 +312,7 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 }
 
 <include>{BLANK}+
-<include>["][^"\n]*["] {
+<include>["][^"\n]*["][;]{0,1} {
 	BEGIN(INITIAL);
 
 	// silently skip includes if there was a former error
@@ -320,6 +320,10 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 		return END;
 	}
 
+	// remove optional semicolon
+	if (yytext[yyleng - 1] == ';') {
+		yyleng -= 1; 
+	}
 	// remove quotes
 	yytext += 1;
 	yyleng -= 2;
