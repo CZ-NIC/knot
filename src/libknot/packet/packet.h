@@ -91,6 +91,7 @@ struct knot_packet {
 	uint16_t parsed_ns;
 	uint16_t parsed_ar;
 
+	uint8_t *qname;
 	uint8_t qname_size; /*!< QNAME size. */
 	size_t size;      /*!< Current wire size of the packet. */
 	size_t max_size;  /*!< Maximum allowed size of the packet. */

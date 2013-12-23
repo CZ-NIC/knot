@@ -1113,7 +1113,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	}
 
 	if (policy->soa_up == KNOT_SOA_SERIAL_UPDATE) {
-		assert(new_serial >= 0);
+		;
 	} else {
 		assert(policy->soa_up == KNOT_SOA_SERIAL_KEEP);
 		new_serial = serial;

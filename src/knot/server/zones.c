@@ -983,7 +983,6 @@ static uint32_t zones_next_serial(knot_zone_t *zone)
 	assert(zone);
 
 	uint32_t old_serial = knot_zone_serial(knot_zone_contents(zone));
-	assert(old_serial >= 0);
 	uint32_t new_serial;
 
 	switch (zones_serial_policy(zone)) {

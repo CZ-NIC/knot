@@ -855,8 +855,7 @@ dbg_xfrin_exec_verb(
 	assert(rr == NULL);
 
 	// if the last node is not yet in the zone, insert
-	if (!in_zone) {
-		assert(node != NULL);
+	if (!in_zone && node) {
 		ret = knot_zone_contents_add_node(zone, node, 1, 0);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add last node into zone (%s).\n",
@@ -1349,6 +1348,7 @@ dbg_xfrin_exec_detail(
 	// replace the RRSet in the node copy by the new one
 	ret = knot_node_add_rrset_replace(node, *rrset);
 	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(rrset, 1);
 		dbg_xfrin("Failed to add RRSet copy to node\n");
 		return KNOT_ERROR;
 	}
