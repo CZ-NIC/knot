@@ -641,6 +641,7 @@ static int remove_nsec_from_node(const knot_node_t *node,
  * \param zone         Zone.
  * \param ttl          TTL for the created NSEC records.
  * \param nsec3_nodes  Tree whereto new NSEC3 nodes will be added.
+ * \param chgset       Changeset used for possible NSEC removals
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -650,6 +651,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 {
 	assert(zone);
 	assert(nsec3_nodes);
+	assert(chgset);
 
 	const knot_nsec3_params_t *params = &zone->nsec3_params;
 
