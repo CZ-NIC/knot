@@ -999,7 +999,8 @@ static uint32_t zones_next_serial(knot_zone_t *zone)
 	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
 	if (ns_serial_compare(old_serial, new_serial) >= 0) {
 		log_zone_warning("New serial will be lower than "
-		                 "the current one. Old: %u, new: %u.\n",
+		                 "the current one. Old: %"PRIu32" "
+		                 "new: %"PRIu32".\n",
 		                 old_serial, new_serial);
 	}
 
@@ -1009,14 +1010,13 @@ static uint32_t zones_next_serial(knot_zone_t *zone)
 /*----------------------------------------------------------------------------*/
 
 static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
-                                       uint32_t used_lifetime,
-                                       uint32_t used_refresh)
+                                       uint32_t expires_at)
 {
 	assert(zone);
 	assert(zd);
 
 	int ret = KNOT_EOK;
-	uint32_t new_expire = time(NULL) + (used_lifetime - used_refresh);
+	uint32_t new_expire = time(NULL) + expires_at;
 	if (new_expire < zd->dnssec_timer->tv.tv_sec) {
 		// Drop old event, earlier signing needed
 		zones_cancel_dnssec(zone);
@@ -1026,6 +1026,33 @@ static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
 	}
 	return ret;
 }
+
+static bool apex_rr_changed(const knot_zone_contents_t *old_contents,
+                            const knot_zone_contents_t *new_contents,
+                            uint16_t type)
+{
+	const knot_rrset_t *old_rr = knot_node_rrset(old_contents->apex, type);
+	const knot_rrset_t *new_rr = knot_node_rrset(new_contents->apex, type);
+	if (old_rr== NULL) {
+		return new_rr != NULL;
+	} else if (new_rr == NULL) {
+		return old_rr != NULL;
+	}
+	return !knot_rrset_equal(old_rr, new_rr, KNOT_RRSET_COMPARE_WHOLE);
+}
+
+static bool zones_dnskey_changed(const knot_zone_contents_t *old_contents,
+                                 const knot_zone_contents_t *new_contents)
+{
+	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_DNSKEY);
+}
+
+static bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
+                                     const knot_zone_contents_t *new_contents)
+{
+	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM);
+}
+
 
 /*! \brief Process UPDATE query.
  *
@@ -1096,8 +1123,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	uint32_t new_serial = zones_next_serial(zone);
 
 	knot_zone_contents_t *new_contents = NULL;
-	ret = knot_ns_process_update(knot_packet_query(resp),
-	                             knot_zone_get_contents(zone),
+	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
+	ret = knot_ns_process_update(knot_packet_query(resp), old_contents,
 	                             &new_contents, chgsets, rcode, new_serial);
 	if (ret != KNOT_EOK) {
 		if (ret < 0) {
@@ -1120,6 +1147,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	knot_changesets_t *sec_chs = NULL;
 	knot_changeset_t *sec_ch = NULL;
+	uint32_t expires_at = 0;
+
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	assert(zone_config);
 	if (zone_config->dnssec_enable) {
@@ -1134,29 +1163,63 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		}
 	}
 
-	dbg_zones_verb("%s: Signing the UPDATE\n", msg);
-	// Sign the created changeset
-	uint32_t used_lifetime = 0;
-	uint32_t used_refresh = 0;
+	knot_zone_t *fake_zone = knot_zone_new_empty(zone->name);
+	if (fake_zone == NULL) {
+		log_zone_error("%s: Failed to apply changesets (%s)\n",
+		               msg, knot_strerror(KNOT_ENOMEM));
+		xfrin_rollback_update(zone->contents, &new_contents,
+		                      chgsets->changes);
+		knot_changesets_free(&chgsets);
+		free(msg);
+		return KNOT_ENOMEM;
+	}
+	// Apply changeset to zone created by DDNS processing
+	fake_zone->contents = new_contents;
+	fake_zone->data = zone->data;
+	new_contents->zone = fake_zone;
+
 	if (zone_config->dnssec_enable) {
-		ret = knot_dnssec_sign_changeset(new_contents,
-		                                 knot_changesets_get_last(chgsets),
-		                                 sec_ch, KNOT_SOA_SERIAL_KEEP,
-		                                 &used_lifetime, &used_refresh,
-		                                 new_serial);
+		dbg_zones_verb("%s: Signing the UPDATE\n", msg);
+		/*!
+		 * Check if the UPDATE changed DNSKEYs. If yes, resign the whole
+		 * zone, if not, sign only the changeset.
+		 * Do the same if NSEC3PARAM changed.
+		 */
+		if (zones_dnskey_changed(old_contents, new_contents) ||
+		    zones_nsec3param_changed(old_contents, new_contents)) {
+			ret = knot_dnssec_zone_sign(fake_zone, sec_ch,
+			                            KNOT_SOA_SERIAL_KEEP,
+			                            &expires_at, new_serial);
+		} else {
+			// Sign the created changeset
+			uint32_t used_lifetime = 0;
+			uint32_t used_refresh = 0;
+
+			knot_zone_contents_load_nsec3param(new_contents);
+			ret = knot_dnssec_sign_changeset(fake_zone,
+			                      knot_changesets_get_last(chgsets),
+			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
+			                      &used_lifetime, &used_refresh,
+			                      new_serial);
+
+			expires_at = used_lifetime - used_refresh;
+		}
+
 		if (ret != KNOT_EOK) {
-			log_zone_error("%s: Failed to sign incoming update (%s)\n",
-			               msg, knot_strerror(ret));
+			log_zone_error("%s: Failed to sign incoming update (%s)"
+			               "\n", msg, knot_strerror(ret));
 			xfrin_rollback_update(zone->contents, &new_contents,
-			                      chgsets->changes);
+					      chgsets->changes);
 			knot_changesets_free(&chgsets);
+			knot_changesets_free(&sec_chs);
 			free(msg);
+			free(fake_zone);
 			return ret;
 		}
-	}
 
-	dbg_zones_detail("%s: UPDATE signed (%zu changes)\n", msg,
-	                 knot_changeset_size(sec_ch));
+		dbg_zones_detail("%s: UPDATE signed (%zu changes)\n", msg,
+		                 knot_changeset_size(sec_ch));
+	}
 
 	// Merge changesets
 	journal_t *transaction = NULL;
@@ -1169,6 +1232,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		                      chgsets->changes);
 		zones_free_merged_changesets(chgsets, sec_chs);
 		free(msg);
+		free(fake_zone);
 		return ret;
 	}
 
@@ -1176,18 +1240,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	knot_zone_contents_t *dnssec_contents = NULL;
 	// Apply DNSSEC changeset
 	if (new_signatures) {
-		knot_zone_t *fake_zone = knot_zone_new_empty(zone->name);
-		if (fake_zone == NULL) {
-			log_zone_error("%s: Failed to apply changesets (%s)\n",
-			               msg, knot_strerror(KNOT_ENOMEM));
-			xfrin_rollback_update(zone->contents, &new_contents,
-			                      chgsets->changes);
-			zones_free_merged_changesets(chgsets, sec_chs);
-			free(msg);
-			return KNOT_ENOMEM;
-		}
-		// Apply changeset to zone created by DDNS processing
-		fake_zone->contents = new_contents;
 		// Set zone generation to old, else applying fails
 		knot_zone_contents_set_gen_old(new_contents);
 		ret = xfrin_apply_changesets(fake_zone, sec_chs,
@@ -1205,8 +1257,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		// Plan zone resign if needed
 		zonedata_t *zd = (zonedata_t *)zone->data;
 		assert(zd && zd->dnssec_timer);
-		ret = replan_zone_sign_after_ddns(zone, zd, used_lifetime,
-		                                  used_refresh);
+		ret = replan_zone_sign_after_ddns(zone, zd, expires_at);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign %s\n",
 			               msg, knot_strerror(ret));
@@ -1214,6 +1265,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			zones_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
+	} else {
+		free(fake_zone);
 	}
 
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
