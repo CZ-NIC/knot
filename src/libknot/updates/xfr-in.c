@@ -2523,6 +2523,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 	ret = xfrin_switch_nodes(contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to switch pointers in nodes.\n");
+		knot_zone_contents_free(&contents_copy);
 		return ret;
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);

@@ -20,28 +20,34 @@ t.start()
 
 # Negative (REFUSED)
 resp = knot.dig("another.world", "SOA", udp=True)
+resp.check(rcode="REFUSED")
 resp.cmp(bind)
 
 # Negative (NXDOMAIN)
 resp = knot.dig("nxdomain.flags", "A", udp=True)
+resp.check(rcode="NXDOMAIN")
 resp.cmp(bind)
 
 ''' Positive answers. '''
 
 # Positive (DATA)
 resp = knot.dig("dns1.flags", "A", udp=True)
+resp.check(rcode="NOERROR")
 resp.cmp(bind)
 
 # Positive (NODATA)
 resp = knot.dig("dns1.flags", "TXT", udp=True)
+resp.check(rcode="NOERROR")
 resp.cmp(bind)
 
 # Positive (REFERRAL)
 resp = knot.dig("sub.flags", "NS", udp=True)
+resp.check(rcode="NOERROR")
 resp.cmp(bind)
 
 # Positive (REFERRAL, below delegation)
 resp = knot.dig("ns.sub.flags", "A", udp=True)
+resp.check(rcode="NOERROR")
 resp.cmp(bind)
 
 ''' ANY query type. '''
@@ -175,6 +181,23 @@ resp.cmp(bind)
 
 # Wildcard leading out
 resp = knot.dig("a.wildcard-out.flags", "A", udp=True)
+resp.cmp(bind)
+
+''' Varied case tests. '''
+
+# Negative (case preservation in question)
+resp = knot.dig("ANOTHER.world", "SOA", udp=True)
+resp.check(rcode="REFUSED")
+resp.cmp(bind)
+
+# Positive (varied name in zone) 
+resp = knot.dig("dNS1.flags", "A", udp=True)
+resp.check(rcode="NOERROR")
+resp.cmp(bind)
+
+# Positive (varied zone name)
+resp = knot.dig("dns1.flAGs", "A", udp=True)
+resp.check(rcode="NOERROR")
 resp.cmp(bind)
 
 t.end()

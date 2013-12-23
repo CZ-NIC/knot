@@ -817,6 +817,14 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 			/* Passed, schedule NOTIFYs. */
 			zones_schedule_notify(rq->zone);
 		}
+		
+		/* Sync zonefile immediately if configured. */
+		zonedata_t *zone_data = (zonedata_t *)rq->zone->data;
+		conf_zone_t *zone_conf = zone_data->conf;
+		if (rq->type == XFR_TYPE_IIN && zone_conf->dbsync_timeout == 0) {
+			dbg_zones("%s: syncing zone immediately\n", __func__);
+			zones_schedule_ixfr_sync(rq->zone, 0);
+		}
 
 		/* Update REFRESH/RETRY */
 		zones_schedule_refresh(rq->zone, REFRESH_DEFAULT);
