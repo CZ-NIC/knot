@@ -2631,7 +2631,7 @@ int zones_schedule_notify(knot_zone_t *zone)
 		sockaddr_t addr;
 		sockaddr_set(&addr, cfg_if->family, cfg_if->address, cfg_if->port);
 		xfr_task_setaddr(rq, &addr, &cfg_if->via);
-		rq->data = (void *)((long)cfg->notify_retries + 1);
+		rq->data = (void *)((long)cfg->notify_retries);
 		if (xfr_enqueue(zd->server->xfr, rq) != KNOT_EOK) {
 			log_server_error("Failed to enqueue NOTIFY for '%s'.",
 			                 cfg->name);
