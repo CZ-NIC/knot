@@ -166,7 +166,7 @@ static void log_error_from_node(err_handler_t *handler,
 	char *name = knot_dname_to_str(knot_node_owner(node));
 	const char *errmsg = error_messages[-error];
 
-	log_zone_warning("Semantic warning in node: %s: %s%s%s\n",
+	log_zone_warning("Semantic warning in node: %s: %s.%s%s.\n",
 	                 name,
 			 errmsg ? errmsg : "Unknown error.",
 			 data ? " " : "",
@@ -284,7 +284,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}

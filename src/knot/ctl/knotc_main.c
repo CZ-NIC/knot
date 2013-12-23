@@ -753,7 +753,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		                                           &est);
 		if (loader == NULL) {
 			rc = 1;
-			log_zone_error("Could not load zone.\n");
+			log_zone_error("Could not load zone %s\n", zone->name);
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			break;
@@ -763,7 +763,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		int ret = file_loader_process(loader);
 		if (ret != KNOT_EOK) {
 			rc = 1;
-			log_zone_error("Failed to parse zone.\n");
+			log_zone_error("Failed to parse zone %s.\n", zone->name);
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			file_loader_free(loader);
