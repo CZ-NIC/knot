@@ -1844,13 +1844,13 @@ int zones_process_update(knot_nameserver_t *nameserver,
 					     &tsig_prev_time_signed);
 	}
 
+	zonedata_t *zd = zone ? (zonedata_t *)knot_zone_data(zone) : false;
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
 	if (zone && (ret == KNOT_EOK || (ret == KNOT_TSIG_EBADKEY && !tsig_key_zone))) {
 		/* Transaction is authenticated (or unprotected)
 		 * and zone has primary master set,
 		 * proceed to forward the query to the next hop.
 		 */
-		zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
 		if (zd->xfr_in.has_master) {
 			ret = zones_update_forward(fd, transport, zone, addr,
 			                           query, *rsize);
@@ -1860,9 +1860,26 @@ int zones_process_update(knot_nameserver_t *nameserver,
 			return ret;
 		}
 	}
+	
+	/*
+	 * Check if UPDATE not running already.
+	 */
+	bool busy = false;
+	if (zone) {
+		if (pthread_mutex_trylock(&zd->ddns_lock) != 0) {
+			busy = true;
+			rcode = KNOT_RCODE_SERVFAIL;
+			ret = KNOT_EBUSY;
+			char *zname = knot_dname_to_str(zone->name);
+			log_zone_error("Failed to process UPDATE for "
+			               "zone %s: Another UPDATE in progress.\n",
+			               zname);
+			free(zname);
+		}
+	}
 
 	/*
-	 * 1) DDNS Zone Section check (RFC2136, Section 3.1).
+	 * DDNS Zone Section check (RFC2136, Section 3.1).
 	 */
 	if (ret == KNOT_EOK) {
 		ret = knot_ddns_check_zone(contents, query, &rcode);
@@ -1870,7 +1887,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	}
 
 	/*
-	 * 2) DDNS Prerequisities Section processing (RFC2136, Section 3.2).
+	 * DDNS Prerequisities Section processing (RFC2136, Section 3.2).
 	 *
 	 * \note Permissions section means probably policies and fine grained
 	 *       access control, not transaction security.
@@ -1888,7 +1905,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	}
 
 	/*
-	 * 3) Process query.
+	 * Process query.
 	 */
 	if (ret == KNOT_EOK) {
 		/*! \note This function expects RCU locked. */
@@ -1908,6 +1925,9 @@ int zones_process_update(knot_nameserver_t *nameserver,
 	if (*rsize == 0 || !tsig_rr || rcode == KNOT_RCODE_FORMERR) {
 		knot_packet_free(&resp);
 		rcu_read_unlock();
+		if (!busy && zone) {
+			pthread_mutex_unlock(&zd->ddns_lock);
+		}
 		return ret;
 	}
 
@@ -1923,6 +1943,9 @@ int zones_process_update(knot_nameserver_t *nameserver,
 		if (digest == NULL) {
 			knot_packet_free(&resp);
 			rcu_read_unlock();
+			if (!busy && zone) {
+				pthread_mutex_unlock(&zd->ddns_lock);
+			}
 			return KNOT_ENOMEM;
 		}
 		ret = knot_tsig_sign(resp_wire,
@@ -1936,6 +1959,9 @@ int zones_process_update(knot_nameserver_t *nameserver,
 
 	knot_packet_free(&resp);
 	rcu_read_unlock();
+	if (!busy && zone) {
+		pthread_mutex_unlock(&zd->ddns_lock);
+	}
 
 	return ret;
 }
