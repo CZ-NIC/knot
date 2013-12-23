@@ -1044,6 +1044,11 @@ static int zones_dnskey_changed(const knot_zone_contents_t *old_contents,
 	                                               KNOT_RRTYPE_DNSKEY);
 	const knot_rrset_t *new_keys = knot_node_rrset(new_apex,
 	                                               KNOT_RRTYPE_DNSKEY);
+	if (old_keys == NULL) {
+		return new_keys != NULL;
+	} else {
+		return old_keys != NULL;
+	}
 
 	return !knot_rrset_equal(old_keys, new_keys, KNOT_RRSET_COMPARE_WHOLE);
 }
