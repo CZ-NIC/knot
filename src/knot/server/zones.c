@@ -1844,7 +1844,7 @@ int zones_process_update(knot_nameserver_t *nameserver,
 					     &tsig_prev_time_signed);
 	}
 
-	zonedata_t *zd = zone ? (zonedata_t *)knot_zone_data(zone) : false;
+	zonedata_t *zd = zone ? (zonedata_t *)knot_zone_data(zone) : NULL;
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
 	if (zone && (ret == KNOT_EOK || (ret == KNOT_TSIG_EBADKEY && !tsig_key_zone))) {
 		/* Transaction is authenticated (or unprotected)
