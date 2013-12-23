@@ -1027,34 +1027,30 @@ static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
 	return ret;
 }
 
+static bool apex_rr_changed(const knot_zone_contents_t *old_contents,
+                            const knot_zone_contents_t *new_contents,
+                            uint16_t type)
+{
+	const knot_rrset_t *old_rr = knot_node_rrset(old_contents->apex, type);
+	const knot_rrset_t *new_rr = knot_node_rrset(new_contents->apex, type);
+	if (old_rr== NULL) {
+		return new_rr != NULL;
+	} else if (new_rr == NULL) {
+		return old_rr != NULL;
+	}
+	return !knot_rrset_equal(old_rr, new_rr, KNOT_RRSET_COMPARE_WHOLE);
+}
+
 static bool zones_dnskey_changed(const knot_zone_contents_t *old_contents,
                                  const knot_zone_contents_t *new_contents)
 {
-	const knot_rrset_t *old_keys = knot_node_rrset(old_contents->apex,
-	                                               KNOT_RRTYPE_DNSKEY);
-	const knot_rrset_t *new_keys = knot_node_rrset(new_contents->apex,
-	                                               KNOT_RRTYPE_DNSKEY);
-	if (old_keys == NULL) {
-		return new_keys != NULL;
-	} else if (new_keys == NULL) {
-		return old_keys != NULL;
-	}
-	return !knot_rrset_equal(old_keys, new_keys, KNOT_RRSET_COMPARE_WHOLE);
+	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_DNSKEY);
 }
 
 static bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
                                      const knot_zone_contents_t *new_contents)
 {
-	const knot_rrset_t *old_param =
-		knot_node_rrset(old_contents->apex, KNOT_RRTYPE_NSEC3PARAM);
-	const knot_rrset_t *new_param =
-		knot_node_rrset(new_contents->apex, KNOT_RRTYPE_NSEC3PARAM);
-	if (old_param == NULL) {
-		return new_param != NULL;
-	} else if (new_param == NULL) {
-		return old_param != NULL;
-	}
-	return !knot_rrset_equal(old_param, new_param, KNOT_RRSET_COMPARE_WHOLE);
+	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM);
 }
 
 
