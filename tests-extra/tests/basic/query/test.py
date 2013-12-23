@@ -31,7 +31,7 @@ resp.cmp(bind)
 ''' Positive answers. '''
 
 # Positive (DATA)
-resp = knot.dig("DNs1.fLAgs", "A", udp=True)
+resp = knot.dig("dns1.flags", "A", udp=True)
 resp.check(rcode="NOERROR")
 resp.cmp(bind)
 
@@ -186,6 +186,22 @@ resp.cmp(bind)
 
 # Wildcard leading out
 resp = knot.dig("a.wildcard-out.flags", "A", udp=True)
+resp.cmp(bind)
+
+''' Varied case tests. '''
+
+# Negative (case preservation in question)
+resp = knot.dig("ANOTHER.world", "SOA", udp=True)
+resp.cmp(bind)
+
+# Positive (varied name in zone) 
+resp = knot.dig("dNS1.flags", "A", udp=True)
+resp.check(rcode="NOERROR")
+resp.cmp(bind)
+
+# Positive (varied zone name)
+resp = knot.dig("dns1.flAGs", "A", udp=True)
+resp.check(rcode="NOERROR")
 resp.cmp(bind)
 
 t.end()
