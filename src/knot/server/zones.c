@@ -1028,28 +1028,18 @@ static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
 	return ret;
 }
 
-static int zones_dnskey_changed(const knot_zone_contents_t *old_contents,
-                                const knot_zone_contents_t *new_contents)
+static bool zones_dnskey_changed(const knot_zone_contents_t *old_contents,
+                                 const knot_zone_contents_t *new_contents)
 {
-	assert(old_contents);
-	assert(new_contents);
-
-	const knot_node_t *old_apex = knot_zone_contents_apex(old_contents);
-	const knot_node_t *new_apex = knot_zone_contents_apex(new_contents);
-
-	assert(old_apex);
-	assert(new_apex);
-
-	const knot_rrset_t *old_keys = knot_node_rrset(old_apex,
+	const knot_rrset_t *old_keys = knot_node_rrset(old_contents->apex,
 	                                               KNOT_RRTYPE_DNSKEY);
-	const knot_rrset_t *new_keys = knot_node_rrset(new_apex,
+	const knot_rrset_t *new_keys = knot_node_rrset(new_contents->apex,
 	                                               KNOT_RRTYPE_DNSKEY);
 	if (old_keys == NULL) {
 		return new_keys != NULL;
 	} else {
 		return old_keys != NULL;
 	}
-
 	return !knot_rrset_equal(old_keys, new_keys, KNOT_RRSET_COMPARE_WHOLE);
 }
 
@@ -1060,9 +1050,12 @@ static bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
 		knot_node_rrset(old_contents->apex, KNOT_RRTYPE_NSEC3PARAM);
 	const knot_rrset_t *new_param =
 		knot_node_rrset(new_contents->apex, KNOT_RRTYPE_NSEC3PARAM);
-	return !(old_param && new_param && knot_rrset_equal(old_param,
-	                                                    new_param,
-	                                                    KNOT_RRSET_COMPARE_WHOLE));
+	if (old_param == NULL) {
+		return new_param != NULL;
+	} else {
+		return old_param != NULL;
+	}
+	return !knot_rrset_equal(old_param, new_param, KNOT_RRSET_COMPARE_WHOLE);
 }
 
 
