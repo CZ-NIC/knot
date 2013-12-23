@@ -35,11 +35,6 @@ resp = knot.dig("dns1.flags", "A", udp=True)
 resp.check(rcode="NOERROR")
 resp.cmp(bind)
 
-# Positive (DATA)
-resp = knot.dig("dns1.flags", "A", udp=True)
-resp.check(rcode="NOERROR")
-resp.cmp(bind)
-
 # Positive (NODATA)
 resp = knot.dig("dns1.flags", "TXT", udp=True)
 resp.check(rcode="NOERROR")
@@ -192,6 +187,7 @@ resp.cmp(bind)
 
 # Negative (case preservation in question)
 resp = knot.dig("ANOTHER.world", "SOA", udp=True)
+resp.check(rcode="REFUSED")
 resp.cmp(bind)
 
 # Positive (varied name in zone) 
