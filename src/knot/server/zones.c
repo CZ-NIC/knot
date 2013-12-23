@@ -395,11 +395,12 @@ int zones_flush_ev(event_t *e)
 	/* Reschedule. */
 	rcu_read_lock();
 	int next_timeout = zd->conf->dbsync_timeout * 1000;
-	dbg_zones("zones: next IXFR database SYNC of '%s' in %d seconds\n",
-	          zd->conf->name, next_timeout / 1000);
+	if (next_timeout > 0) {
+		dbg_zones("%s: next zonefile sync of '%s' in %d seconds\n",
+		          __func__, zd->conf->name, next_timeout / 1000);
+		evsched_schedule(e->parent, e, next_timeout);
+	}
 	rcu_read_unlock();
-
-	evsched_schedule(e->parent, e, next_timeout);
 	return ret;
 }
 
@@ -1326,6 +1327,14 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	free(msg);
 	msg = NULL;
+
+	/* Sync zonefile immediately if configured. */
+	zonedata_t *zone_data = (zonedata_t *)zone->data;
+	int sync_timeout = zone_data->conf->dbsync_timeout;
+	if (sync_timeout == 0) {
+		dbg_zones("%s: syncing zone immediately\n", __func__);
+		zones_schedule_ixfr_sync(zone, 0);
+	}
 
 	// Prepare DDNS response.
 	assert(*rcode == KNOT_RCODE_NOERROR);
