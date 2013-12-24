@@ -134,18 +134,18 @@ struct err_handler {
 typedef struct err_handler err_handler_t;
 
 /*!
- * \brief Creates new semantic error handler.
+ * \brief Inits semantic error handler. No optional events will be logged.
  *
- * \param log_cname If true, log all CNAME related events.
- * \param log_glue If true, log all Glue related events.
- * \param log_rrsigs If true, log all RRSIGs related events.
- * \param log_nsec If true, log all NSEC related events.
- * \param log_nsec3 If true, log all NSEC3 related events.
+ * \param handler Variable to be initialized.
+ */
+void err_handler_init(err_handler_t *err_handler);
+
+/*!
+ * \brief Creates new semantic error handler.
  *
  * \return err_handler_t * Created error handler.
  */
-err_handler_t *handler_new(int log_cname, int log_glue, int log_rrsigs,
-                           int log_nsec, int log_nsec3);
+err_handler_t *err_handler_new();
 
 /*!
  * \brief Called when error has been encountered in node. Will either log error
@@ -200,8 +200,8 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
                        err_handler_t *handler, knot_node_t *first_nsec3_node,
                        knot_node_t *last_nsec3_node);
 
-int sem_check_node_plain(knot_zone_contents_t *zone,
-                         knot_node_t *node,
+int sem_check_node_plain(const knot_zone_contents_t *zone,
+                         const knot_node_t *node,
                          int do_checks,
                          err_handler_t *handler,
                          int only_mandatory,

@@ -120,19 +120,27 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	"GLUE: Record with glue address missing!",
 };
 
-err_handler_t *handler_new(int log_cname, int log_glue, int log_rrsigs,
-                           int log_nsec, int log_nsec3)
+void err_handler_init(err_handler_t *h)
 {
-	err_handler_t *handler = xmalloc(sizeof(err_handler_t));
+	memset(h, 0, sizeof(err_handler_t));
+	memset(h->errors, 0, sizeof(uint) * (-ZC_ERR_UNKNOWN + 1));
+	h->options.log_cname = 0;
+	h->options.log_glue = 0;
+	h->options.log_rrsigs = 0;
+	h->options.log_nsec = 0;
+	h->options.log_nsec3 = 0;
+}
 
-	memset(handler->errors, 0, sizeof(uint) * (-ZC_ERR_UNKNOWN + 1));
-	
-	handler->error_count = 0;
-	handler->options.log_cname = log_cname;
-	handler->options.log_glue = log_glue;
-	handler->options.log_rrsigs = log_rrsigs;
-	handler->options.log_nsec = log_nsec;
-	handler->options.log_nsec3 = log_nsec3;
+err_handler_t *err_handler_new()
+{
+	err_handler_t *handler= xmalloc(sizeof(err_handler_t));
+	err_handler_init(handler);
+
+	handler->options.log_cname = 1;
+	handler->options.log_glue = 1;
+	handler->options.log_rrsigs = 1;
+	handler->options.log_nsec = 1;
+	handler->options.log_nsec3 = 1;
 
 	return handler;
 }
@@ -755,8 +763,8 @@ static int zone_is_secure(const knot_zone_contents_t *z)
 	return (soa_rr && soa_rr->rrsigs ? 1 : 0);
 }
 
-static int sem_check_node_mandatory(knot_zone_contents_t *zone,
-                                    knot_node_t *node, int level,
+static int sem_check_node_mandatory(const knot_zone_contents_t *zone,
+                                    const knot_node_t *node, int level,
                                     err_handler_t *handler, int *fatal_error)
 {
 	const knot_rrset_t *cname_rrset =
@@ -790,7 +798,7 @@ static int sem_check_node_mandatory(knot_zone_contents_t *zone,
 	const knot_rrset_t *dname_rrset =
 		knot_node_rrset(node, KNOT_RRTYPE_DNAME);
 	if (dname_rrset != NULL) {
-		if (knot_node_rrset(node, KNOT_RRTYPE_CNAME)) {
+		if (cname_rrset) {
 			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_EXTRA_RECORDS,
@@ -807,7 +815,8 @@ static int sem_check_node_mandatory(knot_zone_contents_t *zone,
 			struct sem_check_param param;
 			param.node_count = 0;
 			int ret_apply =
-				knot_zone_contents_nsec3_apply_inorder(zone,
+				knot_zone_contents_nsec3_apply_inorder(
+				(knot_zone_contents_t *)zone,
 				count_nodes_in_tree,
 				&param);
 			if (ret_apply != KNOT_EOK || param.node_count != 1) {
@@ -834,8 +843,9 @@ static int sem_check_node_mandatory(knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-static int sem_check_node_optional(knot_zone_contents_t *zone,
-                                   knot_node_t *node, err_handler_t *handler)
+static int sem_check_node_optional(const knot_zone_contents_t *zone,
+                                   const knot_node_t *node,
+                                   err_handler_t *handler)
 {
 	if (knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
 	                node) {
@@ -847,7 +857,6 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
 			                         NULL);
 			return KNOT_EOK;
 		}
-		//FIXME this should be an error as well ! (i guess)
 
 		/* TODO How about multiple RRs? */
 		knot_dname_t *ns_dname =
@@ -915,8 +924,8 @@ static int sem_check_node_optional(knot_zone_contents_t *zone,
  *
  * \return Appropriate error code if error was found.
  */
-int sem_check_node_plain(knot_zone_contents_t *zone,
-                         knot_node_t *node,
+int sem_check_node_plain(const knot_zone_contents_t *zone,
+                         const knot_node_t *node,
                          int do_checks,
                          err_handler_t *handler,
                          int only_mandatory,

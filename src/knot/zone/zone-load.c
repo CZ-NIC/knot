@@ -546,8 +546,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	zl->semantic_checks = semantic_checks;
 	*dst = zl;
 
-	/* Log all information for now - possibly more config options. */
-	zl->err_handler = handler_new(1, 1, 1, 1, 1);
+	zl->err_handler = err_handler_new();
 	if (zl->err_handler == NULL) {
 		/* Not a reason to stop. */
 		log_zone_warning("Could not create semantic checks handler. "
