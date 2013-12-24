@@ -166,7 +166,7 @@ static void log_error_from_node(err_handler_t *handler,
 	char *name = knot_dname_to_str(knot_node_owner(node));
 	const char *errmsg = error_messages[-error];
 
-	log_zone_warning("Semantic warning in node: %s: %s.%s%s.\n",
+	log_zone_warning("Semantic warning in node: %s: %s%s%s\n",
 	                 name,
 			 errmsg ? errmsg : "Unknown error.",
 			 data ? " " : "",
