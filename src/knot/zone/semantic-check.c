@@ -284,7 +284,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s", type_str);
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
@@ -389,7 +389,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		} else {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_RRSIG_RDATA_SIGNED_WRONG,
-			                         "DNSKEY RDATA not matching");
+			                         "DNSKEY RDATA not matching.");
 		}
 	}
 	
@@ -420,11 +420,12 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	if (handler == NULL || node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
-	
 	/* Prepare additional info string. */
-	char info_str[50];
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %d.",
-	                   knot_rrset_type(rrset));
+	char info_str[50] = { '\0' };
+	char type_str[16] = { '\0' };
+	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.",
+	                   type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
