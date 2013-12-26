@@ -94,15 +94,15 @@ void help(void)
 	printf("Usage: %sd [parameters]\n",
 	       PACKAGE_NAME);
 	printf("\nParameters:\n"
-	       " -c, --config [file] Select configuration file.\n"
+	       " -c, --config [file]     Select configuration file.\n"
 #ifdef INTEGRITY_CHECK
-	       " -z, --zone [zone]   Set zone to check. Send SIGUSR1 to trigger\n"
-	       "                     integrity check.\n"
+	       " -z, --zone [zone]       Set zone to check. Send SIGUSR1 to trigger\n"
+	       "                         integrity check.\n"
 #endif /* INTEGRITY_CHECK */
-	       " -d, --daemonize     Run server as a daemon.\n"
-	       " -v, --verbose       Verbose mode - additional runtime information.\n"
-	       " -V, --version       Print version of the server.\n"
-	       " -h, --help          Print help and usage.\n");
+	       " -d, --daemonize [root]  Run server as a daemon.\n"
+	       " -v, --verbose           Verbose mode - additional runtime information.\n"
+	       " -V, --version           Print version of the server.\n"
+	       " -h, --help              Print help and usage.\n");
 }
 
 int main(int argc, char **argv)
@@ -114,6 +114,7 @@ int main(int argc, char **argv)
 	int verbose = 0;
 	int daemonize = 0;
 	char* config_fn = NULL;
+	char* daemon_root = NULL;
 
 	/* Long options. */
 	struct option opts[] = {
@@ -121,7 +122,7 @@ int main(int argc, char **argv)
 #ifdef INTEGRITY_CHECK
 		{"zone",      required_argument, 0, 'z'},
 #endif /* INTEGRITY_CHECK */
-		{"daemonize", no_argument,       0, 'd'},
+		{"daemonize", optional_argument,  0, 'd'},
 		{"verbose",   no_argument,       0, 'v'},
 		{"version",   no_argument,       0, 'V'},
 		{"help",      no_argument,       0, 'h'},
@@ -129,9 +130,9 @@ int main(int argc, char **argv)
 	};
 
 #ifndef INTEGRITY_CHECK
-	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:d::vVh", opts, &li)) != -1) {
 #else
-	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:z:d::vVh", opts, &li)) != -1) {
 #endif /* INTEGRITY_CHECK */
 		switch (c)
 		{
@@ -149,6 +150,9 @@ int main(int argc, char **argv)
 #endif /* INTEGRITY_CHECK */
 		case 'd':
 			daemonize = 1;
+			if (optarg) {
+				daemon_root = strdup(optarg);
+			}
 			break;
 		case 'v':
 			verbose = 1;
@@ -310,8 +314,13 @@ int main(int argc, char **argv)
 		log_server_info("PID stored in '%s'\n", pidf);
 		if ((cwd = malloc(PATH_MAX)) != NULL)
 			cwd = getcwd(cwd, PATH_MAX);
-		if (chdir("/") != 0)
-			log_server_warning("Server can't change working directory.\n");
+		if (!daemon_root) {
+			daemon_root = "/";
+		}
+		if (chdir(daemon_root) != 0)
+			log_server_warning("Server can't change working directory to %s.\n", daemon_root);
+		else
+			log_server_info("Server changed directory to %s.\n", daemon_root);
 	} else {
 		log_server_info("Server started in foreground, PID = %ld\n", pid);
 		log_server_info("Server running without PID file.\n");
