@@ -203,8 +203,8 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
 int sem_check_node_plain(const knot_zone_contents_t *zone,
                          const knot_node_t *node,
                          err_handler_t *handler,
-                         int only_mandatory,
-                         int *fatal_error);
+                         bool only_mandatory,
+                         bool *fatal_error);
 
 #endif // _KNOT_SEMANTIC_CHECK_H_
 

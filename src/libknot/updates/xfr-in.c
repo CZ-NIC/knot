@@ -306,7 +306,7 @@ static void xfrin_log_error(const knot_dname_t *zone_owner,
 		                 zonename, rrname);
 	} if (ret == KNOT_EMALF) {
 		// Fatal semantic error
-		char rrstr[16];
+		char rrstr[16] = { '\0' };
 		knot_rrtype_to_string(rr->type, rrstr, 16);
 		log_zone_error("Zone %s: Semantic error for RR owned by %s, "
 		               "type %s.\n", zonename, rrname, rrstr);
@@ -444,8 +444,8 @@ static bool semantic_check_passed(const knot_zone_contents_t *z,
 	assert(node && z);
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
-	int fatal = 0;
-	sem_check_node_plain(z, node, &err_handler, 1, &fatal);
+	bool fatal = false;
+	sem_check_node_plain(z, node, &err_handler, true, &fatal);
 	return !fatal;
 }
 
