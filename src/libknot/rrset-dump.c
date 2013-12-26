@@ -1303,7 +1303,7 @@ static void dnskey_info(const uint8_t *rdata,
 	                   alg ? alg->name : "UNKNOWN",
 	                   key_tag );
 	if (ret <= 0) {	// Truncated return is acceptable. Just check for errors.
-		out = "";
+		out[0] = '\0';
 	}
 }
 

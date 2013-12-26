@@ -21,6 +21,7 @@
 #include "libknot/packet/packet.h"
 #include "libknot/util/debug.h"
 #include "libknot/common.h"
+#include "libknot/dnssec/random.h"
 #include "common/descriptor.h"
 #include "libknot/util/wire.h"
 #include "libknot/tsig.h"
@@ -48,8 +49,6 @@ static int knot_packet_parse_question(knot_packet_t *pkt)
 	if (len <= 0)
 		return KNOT_EMALF;
 
-	/*! \todo Question case should be preserved. */
-	/* knot_dname_to_lower(question->qname); */
 	pkt->parsed += len + 2 * sizeof(uint16_t); /* Class + Type */
 	pkt->qname_size = len;
 
@@ -348,6 +347,7 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 {
 	dbg_packet_verb("Freeing additional space in packet.\n");
 
+	pkt->mm.free(pkt->qname);
 	pkt->mm.free(pkt->answer);
 	pkt->mm.free(pkt->authority);
 	pkt->mm.free(pkt->additional);
@@ -719,7 +719,7 @@ void knot_packet_set_random_id(knot_packet_t *packet)
 		return;
 	}
 
-	knot_wire_set_id(packet->wireformat, knot_random_id());
+	knot_wire_set_id(packet->wireformat, knot_random_uint16_t());
 }
 
 /*----------------------------------------------------------------------------*/
@@ -738,8 +738,18 @@ const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 	if (packet == NULL) {
 		return NULL;
 	}
+	if (packet->qname == NULL) {
+		/* Copy dname for lowercase conversion. */
+		knot_dname_t **qname = &((knot_packet_t *)packet)->qname;
+		*qname = packet->mm.alloc(packet->mm.ctx, packet->qname_size);
+		if (*qname == NULL) {
+			return NULL;
+		}
+		memcpy(*qname, packet->wireformat + KNOT_WIRE_HEADER_SIZE, packet->qname_size);
+		knot_dname_to_lower(*qname);
+	}
 
-	return packet->wireformat + KNOT_WIRE_HEADER_SIZE;
+	return packet->qname;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1126,22 +1136,20 @@ void knot_packet_dump(const knot_packet_t *packet)
 	}
 
 #ifdef KNOT_PACKET_DEBUG
-	uint8_t flags1 = knot_wire_get_flags1(packet->wireformat);
-	uint8_t flags2 = knot_wire_get_flags2(packet->wireformat);
 	dbg_packet("DNS packet:\n-----------------------------\n");
 
 	dbg_packet("\nHeader:\n");
 	dbg_packet("  ID: %u\n", knot_wire_get_id(packet->wireformat));
 	dbg_packet("  FLAGS: %s %s %s %s %s %s %s\n",
-	       knot_wire_flags_get_qr(flags1) ? "qr" : "",
-	       knot_wire_flags_get_aa(flags1) ? "aa" : "",
-	       knot_wire_flags_get_tc(flags1) ? "tc" : "",
-	       knot_wire_flags_get_rd(flags1) ? "rd" : "",
-	       knot_wire_flags_get_ra(flags2) ? "ra" : "",
-	       knot_wire_flags_get_ad(flags2) ? "ad" : "",
-	       knot_wire_flags_get_cd(flags2) ? "cd" : "");
-	dbg_packet("  RCODE: %u\n", knot_wire_flags_get_rcode(flags2));
-	dbg_packet("  OPCODE: %u\n", knot_wire_flags_get_opcode(flags1));
+	       knot_wire_get_qr(packet->wireformat) ? "qr" : "",
+	       knot_wire_get_aa(packet->wireformat) ? "aa" : "",
+	       knot_wire_get_tc(packet->wireformat) ? "tc" : "",
+	       knot_wire_get_rd(packet->wireformat) ? "rd" : "",
+	       knot_wire_get_ra(packet->wireformat) ? "ra" : "",
+	       knot_wire_get_ad(packet->wireformat) ? "ad" : "",
+	       knot_wire_get_cd(packet->wireformat) ? "cd" : "");
+	dbg_packet("  RCODE: %u\n", knot_wire_get_rcode(packet->wireformat));
+	dbg_packet("  OPCODE: %u\n", knot_wire_get_opcode(packet->wireformat));
 	dbg_packet("  QDCOUNT: %u\n", knot_wire_get_qdcount(packet->wireformat));
 	dbg_packet("  ANCOUNT: %u\n", knot_wire_get_ancount(packet->wireformat));
 	dbg_packet("  NSCOUNT: %u\n", knot_wire_get_nscount(packet->wireformat));

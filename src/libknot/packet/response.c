@@ -20,13 +20,31 @@
 
 #include "libknot/packet/response.h"
 #include "libknot/util/wire.h"
+#include "libknot/util/tolower.h"
 #include "libknot/common.h"
 #include "libknot/util/debug.h"
 #include "libknot/rrset.h"
 #include "libknot/packet/packet.h"
 #include "libknot/edns.h"
+#include "libknot/dnssec/random.h"
 
 /*----------------------------------------------------------------------------*/
+
+static bool compr_label_match(const uint8_t *n, const uint8_t *p)
+{
+		if (*n != *p) {
+			return false;
+		}
+
+		uint8_t len = *n;
+		for (uint8_t i = 0; i < len; ++i) {
+			if (knot_tolower(n[1 + i]) != knot_tolower(p[1 + i])) {
+				return false;
+			}
+		}
+
+		return true;
+}
 
 /*!
  * \brief Compare suffixes and calculate score (number of matching labels).
@@ -44,7 +62,7 @@ static bool knot_response_compr_score(const uint8_t *n, const uint8_t *p,
 		if (score + labels <= match->lbcount)
 			return false; /* Early cut. */
 		/* Keep track of contiguous matches. */
-		if (*n == *p && memcmp(n + 1, p + 1, *n) == 0) {
+		if (compr_label_match(n, p)) {
 			if (score == 0)
 				off = (p - wire);
 			++score;
@@ -146,7 +164,7 @@ int knot_response_compress_dname(const knot_dname_t *dname, knot_compr_t *compr,
 	/* If table is full, elect name from the lower 1/4 of the table
 	 * and replace it. */
 	if (i == COMPR_MAXLEN) {
-		i = COMPR_FIXEDLEN + rand() % COMPR_VOLATILE;
+		i = COMPR_FIXEDLEN + knot_random_int() % COMPR_VOLATILE;
 		compr->table[i].off = 0;
 	}
 

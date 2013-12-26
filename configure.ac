@@ -87,22 +87,19 @@ AM_CONDITIONAL([T0_PARSER], test "$enable_fastparser" = "no")
 
 # Debug modules
 AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,dname,rr,ns,hash,compiler,stash],
+    AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,rr,ns,loader,dnssec],
     [compile selected debug modules [default=none]]),
     [
     echo ${enableval}|tr "," "\n"|while read val; do
         case "${val}" in
-          server) AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.]) ;;
-          zones) AC_DEFINE([KNOT_ZONES_DEBUG], [1], [Zones debug.]) ;;
-          xfr) AC_DEFINE([KNOT_XFR_DEBUG], [1], [XFR debug.]) ;;
-          packet) AC_DEFINE([KNOT_PACKET_DEBUG], [1], [Packet debug.]) ;;
-          dname) AC_DEFINE([KNOT_DNAME_DEBUG], [1], [Domain names debug.]) ;;
-          rr) AC_DEFINE([KNOT_RR_DEBUG], [1], [RR debug.]) ;;
-          ns) AC_DEFINE([KNOT_NS_DEBUG], [1], [Nameserver debug.]) ;;
-          hash) AC_DEFINE([KNOT_HASH_DEBUG], [1], [Hashtable debug.]) ;;
-          compiler) AC_DEFINE([KNOT_COMPILER_DEBUG], [1], [Zone compiler debug.]) ;;
-          stash) AC_DEFINE([KNOT_STASH_DEBUG], [1], [Hash table stash debug.]) ;;
-	  dnssec) AC_DEFINE([KNOT_DNSSEC_DEBUG], [1], [DNSSEC debug.]) ;;
+            server) AC_DEFINE([KNOTD_SERVER_DEBUG], [1], [Server debug.]) ;;
+            zones) AC_DEFINE([KNOT_ZONES_DEBUG], [1], [Zones debug.]) ;;
+            xfr) AC_DEFINE([KNOT_XFR_DEBUG], [1], [XFR debug.]) ;;
+            packet) AC_DEFINE([KNOT_PACKET_DEBUG], [1], [Packet debug.]) ;;
+            rr) AC_DEFINE([KNOT_RR_DEBUG], [1], [RR debug.]) ;;
+            ns) AC_DEFINE([KNOT_NS_DEBUG], [1], [Nameserver debug.]) ;;
+            loader) AC_DEFINE([KNOT_LOADER_DEBUG], [1], [Zone loading debug.]) ;;
+            dnssec) AC_DEFINE([KNOT_DNSSEC_DEBUG], [1], [DNSSEC debug.]) ;;
         esac
     done
     ], [])
@@ -317,9 +314,6 @@ AC_C_INLINE
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
-
-# Set PRNG parameters
-AC_DEFINE([DSFMT_MEXP], [521], [DSFMT parameters])
 
 # Checks for library functions.
 AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups initgroups])

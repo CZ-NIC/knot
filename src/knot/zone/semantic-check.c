@@ -155,35 +155,24 @@ static void log_error_from_node(err_handler_t *handler,
 		return;
 	}
 	
-	char buffer[1024] = {0};
-	size_t offset = 0;
-	
-	if (node != NULL) {
-		handler->error_count++;
-		char *name =
-			knot_dname_to_str(knot_node_owner(node));
-		offset += snprintf(buffer, 1024,
-		                   "Semantic warning in node: %s: ", name);
-		if (error_messages[-error] != NULL) {
-			offset += snprintf(buffer + offset, 1024 - offset,
-			                   "%s", error_messages[-error]);
-			if (data == NULL) {
-				offset += snprintf(buffer + offset,
-				                   1024 - offset, "\n");
-			} else {
-				offset += snprintf(buffer + offset,
-				                   1024 - offset, " %s\n", data);
-			}
-			log_zone_warning("%s", buffer);
-		} else {
-			log_zone_warning("Unknown error (%d).\n", error);
-		}
-		free(name);
-	} else {
-		log_zone_warning("Total number of warnings is: %d for error: %s",
-			handler->errors[-error],
-			error_messages[-error]);
+	if (node == NULL) {
+		log_zone_warning("Total number of warnings is: %d for error: %s\n",
+		                 handler->errors[-error], error_messages[-error]);
+		return;
 	}
+
+	handler->error_count++;
+
+	char *name = knot_dname_to_str(knot_node_owner(node));
+	const char *errmsg = error_messages[-error];
+
+	log_zone_warning("Semantic warning in node: %s: %s%s%s\n",
+	                 name,
+			 errmsg ? errmsg : "Unknown error.",
+			 data ? " " : "",
+			 data ? data : "");
+
+	free(name);
 }
 
 int err_handler_handle_error(err_handler_t *handler, const knot_node_t *node,
@@ -295,7 +284,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s", type_str);
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
@@ -400,7 +389,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		} else {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_RRSIG_RDATA_SIGNED_WRONG,
-			                         "DNSKEY RDATA not matching");
+			                         "DNSKEY RDATA not matching.");
 		}
 	}
 	
@@ -431,11 +420,12 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	if (handler == NULL || node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
-	
 	/* Prepare additional info string. */
-	char info_str[50];
-	int ret = snprintf(info_str, sizeof(info_str), "Record type: %d.",
-	                   knot_rrset_type(rrset));
+	char info_str[50] = { '\0' };
+	char type_str[16] = { '\0' };
+	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.",
+	                   type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}

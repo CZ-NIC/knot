@@ -485,6 +485,8 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> DNSSEC_ENABLE
 %token <tok> DNSSEC_KEYDIR
 %token <tok> SIGNATURE_LIFETIME
+%token <tok> SERIAL_POLICY
+%token <tok> SERIAL_POLICY_VAL
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -962,6 +964,9 @@ zone:
  | zone SIGNATURE_LIFETIME INTERVAL ';' {
 	SET_NUM(this_zone->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
  }
+ | zone SERIAL_POLICY SERIAL_POLICY_VAL ';' {
+	this_zone->serial_policy = $3.i;
+ }
  ;
 
 zones:
@@ -983,10 +988,10 @@ zones:
 	SET_NUM(new_config->notify_timeout, $3.i, 1, INT_MAX, "notify-timeout");
    }
  | zones DBSYNC_TIMEOUT NUM ';' {
-	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
+	SET_NUM(new_config->dbsync_timeout, $3.i, 0, INT_MAX, "zonefile-sync");
  }
  | zones DBSYNC_TIMEOUT INTERVAL ';' {
-	SET_NUM(new_config->dbsync_timeout, $3.i, 1, INT_MAX, "zonefile-sync");
+	SET_NUM(new_config->dbsync_timeout, $3.i, 0, INT_MAX, "zonefile-sync");
  }
  | zones STORAGE TEXT ';' { new_config->storage = $3.t; }
  | zones DNSSEC_ENABLE BOOL ';' { new_config->dnssec_enable = $3.i; }
@@ -996,6 +1001,9 @@ zones:
  }
  | zones SIGNATURE_LIFETIME INTERVAL ';' {
 	SET_NUM(new_config->sig_lifetime, $3.i, 10800, INT_MAX, "signature-lifetime");
+ }
+ | zones SERIAL_POLICY SERIAL_POLICY_VAL ';' {
+	new_config->serial_policy = $3.i;
  }
  ;
 

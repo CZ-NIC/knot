@@ -164,6 +164,7 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/nsec3.c			\
 	libknot/dnssec/nsec3.h			\
 	libknot/dnssec/policy.h			\
+	libknot/dnssec/random.h			\
 	libknot/dnssec/rrset-sign.c		\
 	libknot/dnssec/rrset-sign.h		\
 	libknot/dnssec/sig0.c			\
@@ -216,12 +217,6 @@ libknots_la_SOURCES =				\
 	common/errors.c				\
 	common/errcode.h			\
 	common/errcode.c			\
-	common/dSFMT.h				\
-	common/dSFMT-params.h			\
-	common/dSFMT-params521.h		\
-	common/dSFMT.c				\
-	common/prng.h				\
-	common/prng.c				\
 	common/fdset.h				\
 	common/fdset.c				\
 	common/getline.h			\

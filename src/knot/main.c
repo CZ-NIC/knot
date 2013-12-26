@@ -130,13 +130,14 @@ int main(int argc, char **argv)
 	};
 
 #ifndef INTEGRITY_CHECK
-	while ((c = getopt_long(argc, argv, "c:d::vVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
 #else
-	while ((c = getopt_long(argc, argv, "c:z:d::vVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
 #endif /* INTEGRITY_CHECK */
 		switch (c)
 		{
 		case 'c':
+			free(config_fn);
 			config_fn = strdup(optarg);
 			break;
 #ifdef INTEGRITY_CHECK
@@ -158,6 +159,7 @@ int main(int argc, char **argv)
 			verbose = 1;
 			break;
 		case 'V':
+			free(config_fn);
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return 0;
 		case 'h':
@@ -174,6 +176,7 @@ int main(int argc, char **argv)
 
 	// Check for non-option parameters.
 	if (argc - optind > 0) {
+		free(config_fn);
 		help();
 		return 1;
 	}
@@ -312,15 +315,20 @@ int main(int argc, char **argv)
 			return do_cleanup(server, config_fn, pidf);
 		log_server_info("Server started as a daemon, PID = %ld\n", pid);
 		log_server_info("PID stored in '%s'\n", pidf);
-		if ((cwd = malloc(PATH_MAX)) != NULL)
-			cwd = getcwd(cwd, PATH_MAX);
+		if ((cwd = malloc(PATH_MAX)) != NULL) {
+			if (getcwd(cwd, PATH_MAX) == NULL) {
+				log_server_info("Cannot get current working directory.\n");
+				cwd[0] = '\0';
+			}
+		}
 		if (!daemon_root) {
 			daemon_root = "/";
 		}
-		if (chdir(daemon_root) != 0)
+		if (chdir(daemon_root) != 0) {
 			log_server_warning("Server can't change working directory to %s.\n", daemon_root);
-		else
+		} else {
 			log_server_info("Server changed directory to %s.\n", daemon_root);
+		}
 	} else {
 		log_server_info("Server started in foreground, PID = %ld\n", pid);
 		log_server_info("Server running without PID file.\n");

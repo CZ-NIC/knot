@@ -358,9 +358,10 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
                              knot_ns_xfr_t *xfr);
 
 int knot_ns_process_update(const knot_packet_t *query,
-                            knot_zone_contents_t *old_contents,
-                            knot_zone_contents_t **new_contents,
-                            knot_changesets_t *chgs, knot_rcode_t *rcode);
+                           knot_zone_contents_t *old_contents,
+                           knot_zone_contents_t **new_contents,
+                           knot_changesets_t *chgs, knot_rcode_t *rcode,
+                           uint32_t new_serial);
 
 int knot_ns_create_forward_query(const knot_packet_t *query,
                                  uint8_t *query_wire, size_t *size);

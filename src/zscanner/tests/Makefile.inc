@@ -21,6 +21,8 @@ tests_tap_libtap_a_SOURCES = \
 	tests/tap/float.c tests/tap/float.h \
 	tests/tap/macros.h
 
+check-compile-only: $(check_PROGRAMS)
+
 check-local: $(check_PROGRAMS)
 	cd tests && ./runtests -l $(abs_srcdir)/tests/TESTS
 
