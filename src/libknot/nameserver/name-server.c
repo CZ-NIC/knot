@@ -4018,8 +4018,6 @@ dbg_ns_exec_verb(
 );
 	}
 
-	/*! \todo In case of error, shouldn't the zone be destroyed here? */
-
 	return ret;
 }
 

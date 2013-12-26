@@ -202,7 +202,6 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
 
 int sem_check_node_plain(const knot_zone_contents_t *zone,
                          const knot_node_t *node,
-                         int do_checks,
                          err_handler_t *handler,
                          int only_mandatory,
                          int *fatal_error);

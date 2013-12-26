@@ -687,7 +687,6 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 					 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 	}
 
-	/* Directly discard. */
 	knot_dname_free(&next_dname);
 	
 	size_t arr_size;
@@ -738,51 +737,16 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-struct sem_check_param {
-	int node_count;
-};
-
-/*!
- * \brief Used only to count number of nodes in zone tree.
- *
- * \param node Node to be counted
- * \param data Count casted to void *
- */
-static int count_nodes_in_tree(knot_node_t *node, void *data)
-{
-	struct sem_check_param *param = (struct sem_check_param *)data;
-	param->node_count++;
-
-	return KNOT_EOK;
-}
-
-static int zone_is_secure(const knot_zone_contents_t *z)
-{
-	const knot_rrset_t *soa_rr =
-		knot_node_rrset(knot_zone_contents_apex(z),
-	                        KNOT_RRTYPE_SOA);
-	return (soa_rr && soa_rr->rrsigs ? 1 : 0);
-}
-
-static int sem_check_node_mandatory(const knot_zone_contents_t *zone,
-                                    const knot_node_t *node, int level,
+static int sem_check_node_mandatory(const knot_node_t *node,
                                     err_handler_t *handler, int *fatal_error)
 {
 	const knot_rrset_t *cname_rrset =
 			knot_node_rrset(node, KNOT_RRTYPE_CNAME);
-	if (cname_rrset != NULL) {
-		/* No DNSSEC and yet there is more than one rrset in node */
-		if (level == 1 &&
-		                knot_node_rrset_count(node) != 1) {
-			*fatal_error = 1;
-			err_handler_handle_error(handler, node,
-			                         ZC_ERR_CNAME_EXTRA_RECORDS,
-			                         NULL);
-		} else if (knot_node_rrset_count(node) != 1) {
-			/* With DNSSEC node can contain RRSIG or NSEC */
-			if (!(knot_node_rrset(node, KNOT_RRTYPE_RRSIG) ||
-			      knot_node_rrset(node, KNOT_RRTYPE_NSEC)) ||
-			    knot_node_rrset_count(node) > 3) {
+	if (cname_rrset) {
+		if (knot_node_rrset_count(node) != 1) {
+			/* With DNSSEC node can contain RRSIGs or NSEC */
+			if (!knot_node_rrset(node, KNOT_RRTYPE_NSEC) ||
+			    knot_node_rrset_count(node) > 2) {
 				*fatal_error = 1;
 				err_handler_handle_error(handler, node,
 				ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC, NULL);
@@ -798,47 +762,27 @@ static int sem_check_node_mandatory(const knot_zone_contents_t *zone,
 
 	const knot_rrset_t *dname_rrset =
 		knot_node_rrset(node, KNOT_RRTYPE_DNAME);
-	if (dname_rrset != NULL) {
+	if (dname_rrset) {
 		if (cname_rrset) {
 			*fatal_error = 1;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_EXTRA_RECORDS,
 			                         NULL);
 		}
-		
+	
 		if (node->children != 0) {
-			/*
-			 * With DNSSEC and node being zone apex,
-			 * NSEC3 and its RRSIG can be present.
-			 */
-			
-			/* The NSEC3 tree can thus only have one node. */
-			struct sem_check_param param;
-			param.node_count = 0;
-			int ret_apply =
-				knot_zone_contents_nsec3_apply_inorder(
-				(knot_zone_contents_t *)zone,
-				count_nodes_in_tree,
-				&param);
-			if (ret_apply != KNOT_EOK || param.node_count != 1) {
-				*fatal_error = 1;
-				err_handler_handle_error(handler, node,
-				                         ZC_ERR_DNAME_CHILDREN,
-				                         NULL);
-				/*
-				 * Valid case: Node is apex, it has NSEC3 node
-				 * and that node has only one RRSet.
-				 */
-			} else if (!((knot_zone_contents_apex(zone) == node) &&
-			           knot_node_nsec3_node(node) &&
-			           knot_node_rrset_count(knot_node_nsec3_node(
-			                                 node)) == 1)) {
-				*fatal_error = 1;
-				err_handler_handle_error(handler, node,
-				                         ZC_ERR_DNAME_CHILDREN,
-				                         NULL);
-			}
+			*fatal_error = 1;
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_DNAME_CHILDREN,
+			                         "Error triggered by parent node.");
 		}
+	}
+	
+	if (node->parent && knot_node_rrset(node->parent, KNOT_RRTYPE_DNAME)) {
+		*fatal_error = 1;
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_DNAME_CHILDREN,
+		                         "Error triggered by child node.");
 	}
 	
 	return KNOT_EOK;
@@ -927,20 +871,14 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
  */
 int sem_check_node_plain(const knot_zone_contents_t *zone,
                          const knot_node_t *node,
-                         int do_checks,
                          err_handler_t *handler,
                          int only_mandatory,
                          int *fatal_error)
 {
 	assert(handler);
-	if (do_checks == -1) {
-		/* Determine level for our own. */
-		do_checks = (zone_is_secure(zone) ? 2 : 1);
-	}
-	
 	if (only_mandatory == 1) {
 		/* Check CNAME and DNAME, else no-op. */
-		return sem_check_node_mandatory(zone, node, do_checks, handler,
+		return sem_check_node_mandatory(node, handler,
 		                                fatal_error);
 	} else {
 		/*
@@ -1112,14 +1050,13 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 	char do_checks = *((char *)(args->arg3));
 
 	if (do_checks) {
-		sem_check_node_plain(zone, node, do_checks, handler, 0,
+		sem_check_node_plain(zone, node, handler, 0,
 		                      (int *)args->arg7);
 	} else {
 		assert(handler);
 		/* All CNAME/DNAME checks are mandatory. */
 		handler->options.log_cname = 1;
-		int check_level = 1 + (zone_is_secure(zone) ? 1 : 0);
-		sem_check_node_plain(zone, node, check_level, handler, 1,
+		sem_check_node_plain(zone, node, handler, 1,
 		                      (int *)args->arg7);
 		return KNOT_EOK;
 	}

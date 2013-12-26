@@ -305,11 +305,11 @@ static void xfrin_log_error(const knot_dname_t *zone_owner,
 		                 "out-of-zone RR owned by %s\n",
 		                 zonename, rrname);
 	} if (ret == KNOT_EMALF) {
-		// Semantic error
+		// Fatal semantic error
 		char rrstr[16];
 		knot_rrtype_to_string(rr->type, rrstr, 16);
-		log_zone_warning("Zone %s: Ignoring RR owned by %s, type %s, due"
-		                 "to semantic error.\n", zonename, rrname, rrstr);
+		log_zone_error("Zone %s: Semantic error for RR owned by %s, "
+		               "type %s.\n", zonename, rrname, rrstr);
 	} else {
 	        log_zone_error("Zone %s: Failed to process "
 	                       "incoming RR, Transfer failed (Reason: %s)\n",
@@ -438,38 +438,15 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 
 /*----------------------------------------------------------------------------*/
 
-static int rr_semantic_check(const knot_zone_contents_t *z,
-                             err_handler_t *err_handler,
-                             const knot_node_t *node, const knot_rrset_t *rr,
-                             bool *usable)
+static bool semantic_check_passed(const knot_zone_contents_t *z,
+                                  const knot_node_t *node)
 {
-	if (!node) {
-		// New RR
-		return true;
-	}
-	
-	// Make a copy of node and check if the node passes semantic checks
-	knot_node_t *node_copy = NULL;
-	int ret = knot_node_shallow_copy(node, &node_copy);
-	if (ret != KNOT_EOK) {
-		return KNOT_ENOMEM;
-	}
-	const int check_level_auto = -1;
-	ret = knot_node_add_rrset(node_copy, (knot_rrset_t *)rr);
-	if (ret != KNOT_EOK) {
-		knot_node_free(&node_copy);
-	}
-	
+	assert(node && z);
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
 	int fatal = 0;
-	ret = sem_check_node_plain(z, node, check_level_auto,
-	                           err_handler, 1, &fatal);
-	knot_node_free(&node_copy);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	
-	*usable = !fatal;
-	return KNOT_EOK;
+	sem_check_node_plain(z, node, &err_handler, 1, &fatal);
+	return !fatal;
 }
 
 int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
@@ -836,7 +813,7 @@ dbg_xfrin_exec_verb(
 				dbg_xfrin("Failed to add RRSet to node (%s)\n",
 					  knot_strerror(ret));
 				knot_packet_free(&packet);
-				knot_node_free(&node); // ???
+				knot_node_free(&node);
 				knot_rrset_deep_free(&rr, 1);
 				return KNOT_ERROR;
 			} else if (ret > 0) {
@@ -846,7 +823,6 @@ dbg_xfrin_exec_verb(
 
 			// insert the node into the zone
 			ret = add_node(zone, node, 1, 0);
-			assert(node != NULL);
 			if (ret != KNOT_EOK) {
 				// Fatal error, free packet
 				knot_packet_free(&packet);
@@ -854,26 +830,19 @@ dbg_xfrin_exec_verb(
 				knot_node_free(&node);
 				return ret;
 			}
+			
+			if (!semantic_check_passed(zone, node)) {
+				xfrin_log_error(xfr->zone->name,
+				                rr,
+				                KNOT_EMALF);
+				knot_packet_free(&packet);
+				return KNOT_EMALF;
+			}
 
 			in_zone = 1;
 		} else {
 			assert(in_zone);
-			
-			bool rr_usable = false;
-			ret = rr_semantic_check(zone, &err_handler, node, rr,
-			                        &rr_usable);
-			if (ret != KNOT_EOK) {
-				knot_packet_free(&packet);
-				return ret;
-			}
-			if (!rr_usable) {
-				xfrin_log_error(xfr->zone->name, rr, KNOT_EMALF);
-				knot_rrset_deep_free(&rr, true);
-				ret = knot_packet_parse_next_rr_answer(packet,
-				                                       &rr);
-				continue;
-			}
-
+			const uint16_t rrtype = rr->type;
 			ret = knot_zone_contents_add_rrset(zone, rr, &node,
 						    KNOT_RRSET_DUPL_MERGE);
 			if (ret < 0) {
@@ -885,7 +854,13 @@ dbg_xfrin_exec_verb(
 				// merged, free the RRSet
 				knot_rrset_deep_free(&rr, 1);
 			}
-
+			if (!semantic_check_passed(zone, node)) {
+				xfrin_log_error(xfr->zone->name,
+				                knot_node_rrset(node, rrtype),
+				                KNOT_EMALF);
+				knot_packet_free(&packet);
+				return KNOT_EMALF;
+			}
 		}
 
 		rr = NULL;

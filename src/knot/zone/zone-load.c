@@ -465,7 +465,7 @@ static void process_rr(const scanner_t *scanner)
 	assert(parser->current_zone && node);
 	/* Do mandatory semantic checks. */
 	int sem_fatal_error = 0;
-	ret = sem_check_node_plain(parser->current_zone, node, -1,
+	ret = sem_check_node_plain(parser->current_zone, node,
 	                           parser->err_handler, 1,
 	                           &sem_fatal_error);
 	if (ret != KNOT_EOK) {
