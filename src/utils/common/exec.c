@@ -494,14 +494,12 @@ void print_packet(const knot_packet_t *packet,
 	switch (style->format) {
 	case FORMAT_DIG:
 		if (ancount > 0) {
-			print_section_dig(packet->answer, ancount,
-			                  style);
+			print_section_dig(packet->answer, ancount, style);
 		}
 		break;
 	case FORMAT_HOST:
 		if (ancount > 0) {
-			print_section_host(packet->answer, ancount,
-			                   style);
+			print_section_host(packet->answer, ancount, style);
 		} else {
 			print_error_host(rcode, packet, style);
 		}
@@ -561,9 +559,9 @@ void print_packet(const knot_packet_t *packet,
 
 		if (style->show_additional && arcount > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-				print_section_full(packet->additional,
-				                   arcount,
-				                   style);
+			print_section_full(packet->additional,
+			                   arcount,
+			                   style);
 		}
 		break;
 	default:
