@@ -140,9 +140,9 @@ static void print_footer(const size_t total_len,
 
 	// Print messages statistics.
 	if (incoming) {
-		printf("\n;; Received %zu B", total_len);
+		printf(";; Received %zu B", total_len);
 	} else {
-		printf("\n;; Sent %zu B", total_len);
+		printf(";; Sent %zu B", total_len);
 	}
 
 	// If multimessage (XFR) print additional statistics.
@@ -164,10 +164,8 @@ static void print_footer(const size_t total_len,
 
 		if (elapsed >= 0) {
 			printf(" in %.1f ms\n", elapsed);
-
 		} else {
 			printf("\n");
-
 		}
 	}
 }
@@ -574,6 +572,7 @@ void print_packet(const knot_packet_t *packet,
 
 	// Print packet statistics.
 	if (style->show_footer) {
+		printf("\n");
 		print_footer(total_len, 0, 0, net, elapsed, incoming);
 	}
 }
