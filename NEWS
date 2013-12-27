@@ -1,5 +1,17 @@
 Knot DNS NEWS
 
+v1.4.0 - Dec 27, 2013
+---------------------
+Features:
+	* Zone SERIAL policies (INCREMENT, UNIXTIME)
+Bugfixes:
+	* AXFR crash with specific packet 
+	* QNAME case-sensitive since 1.4.0-rc0
+	* DNSSEC records over DDNS
+	* Semantic check fail in AXFR is only soft-error
+	* Journal race condition
+	* Notifies are sent immediately
+
 v1.4.0-rc2 - Dec 13, 2013
 -------------------------
 Features:
