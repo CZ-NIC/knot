@@ -14,11 +14,11 @@ there are no differences and you can control it just the same way.
 Usage: knotd [parameters]
 
 Parameters:
- -c, --config [file] Select configuration file.
- -d, --daemonize     Run server as a daemon.
- -v, --verbose       Verbose mode - additional runtime information.
- -V, --version       Print version of the server.
- -h, --help          Print help and usage.
+ -c, --config [file]    Select configuration file.
+ -d, --daemonize [dir]  Run server as a daemon. Working directory may be set.
+ -v, --verbose          Verbose mode - additional runtime information.
+ -V, --version          Print version of the server.
+ -h, --help             Print help and usage.
 @end example
 
 Use knotc tool for convenience when working with the server daemon.
@@ -28,8 +28,7 @@ with the server much more user friendly.
 $ knotc -c knot.conf reload
 @end example
 
-The tool @code{knotc} is designed as a front-end for user, making it easier
-to do everything from server startup to state checking of a running server daemon.
+The tool @code{knotc} is designed as a front-end for user, making it easier to control running server daemon.
 If you want to control the daemon directly, use @code{SIGINT} to quit the process or @code{SIGHUP} to reload configuration.
 
 @example

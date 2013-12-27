@@ -776,6 +776,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 
 	/* IXFR refused, try again with AXFR. */
 	const char *diff_nospace_msg = "Can't fit the differences in the journal.";
+	const char *diff_invalid_msg = "IXFR packet processed, but invalid parameters.";
 	if (rq->type == XFR_TYPE_IIN) {
 		switch(ret) {
 		case KNOT_ESPACE: /* Fallthrough */
@@ -801,8 +802,18 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 		/* EBUSY on incremental transfer has a special meaning and
 		 * is caused by a journal not able to free up space for incoming
 		 * transfer, thus forcing to start a new full zone transfer. */
+
+		/* Some bad incremental transfer packets seem to get further
+		 * than they should.  This has been seen when the master has
+		 * logged the fact that it is falling back to AXFR.
+		 * In this case, chs->count == 0, so we end up here with
+		 * EINVAL.  To work around this problem, force a new full
+		 * zone transfer in this case. */
+
 		if (ret == KNOT_EBUSY && rq->type == XFR_TYPE_IIN) {
 			return xfr_start_axfr(w, rq, diff_nospace_msg);
+		} else if (ret == KNOT_EINVAL && rq->type == XFR_TYPE_IIN) {
+			return xfr_start_axfr(w, rq, diff_invalid_msg);
 		} else {
 
 			/* Passed, schedule NOTIFYs. */
