@@ -1962,7 +1962,11 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
 		return KNOT_ESPACE;
 	}
-	ret = snprintf(dst + len, maxlen - len, "%s%c", buf, sep);
+	if (rrset->rdata_count > 0) {
+		ret = snprintf(dst + len, maxlen - len, "%s%c", buf, sep);
+	} else {
+		ret = snprintf(dst + len, maxlen - len, "%s", buf);
+	}
 	SNPRINTF_CHECK(ret, maxlen - len);
 	len += ret;
 
