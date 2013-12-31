@@ -57,7 +57,7 @@ test_dir = ""
 out_dir = ""
 # Current case log file.
 case_log = None
-# Current test object (for controling test from other modules).
+# Current test object (for stopping it from the main script).
 test = None
 
 # Indication for failed test.
