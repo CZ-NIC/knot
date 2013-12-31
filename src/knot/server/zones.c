@@ -1315,7 +1315,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	if (sec_chs) {
 		xfrin_cleanup_successful_update(sec_chs->changes);
 	}
-	if (new_contents && new_signatures) {
+	if (new_signatures) {
 		xfrin_zone_contents_free(&new_contents);
 	}
 
