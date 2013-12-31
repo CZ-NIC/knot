@@ -91,7 +91,7 @@ knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
 	{&cmd_checkconf,  1, "checkconf",  "",       "\tCheck current server configuration."},
 	{&cmd_checkzone,  1, "checkzone",  "[zone]", "Check zone (all if not specified)."},
-	{&cmd_memstats,  1, "memstats",  "[zone]", "Estimate memory use for zone (all if not specified)."},
+	{&cmd_memstats,   1, "memstats",   "[zone]", "Estimate memory use for zone (all if not specified)."},
 	{&cmd_signzone,   0, "signzone",   "[zone]", "Sign all zones with available DNSSEC keys."},
 	{NULL, 0, NULL, NULL, NULL}
 };
@@ -101,17 +101,16 @@ void help(void)
 {
 	printf("Usage: %sc [parameters] <action>\n", PACKAGE_NAME);
 	printf("\nParameters:\n"
-	       " -c [file], --config=[file]\tSelect configuration file.\n"
-	       " -s [server]               \tRemote UNIX socket/IP address (default %s).\n"
-	       " -p [port]                 \tRemote server port (only for IP).\n"
-	       " -y [[hmac:]name:key]      \tUse key_id specified on the command line.\n"
-	       " -k [file]                 \tUse key file (as in config section 'keys').\n"
-	       "                           \t  Example: echo \"knotc-key hmac-md5 Wg==\" > knotc.key\n"
-	       " -f, --force               \tForce operation - override some checks.\n"
-	       " -v, --verbose             \tVerbose mode - additional runtime information.\n"
-	       " -V, --version             \tPrint %s server version.\n"
-	       " -i, --interactive         \tInteractive mode (do not daemonize).\n"
-	       " -h, --help                \tPrint help and usage.\n",
+	       " -c, --config <file>    \tSelect configuration file.\n"
+	       " -s <server>            \tRemote UNIX socket/IP address (default %s).\n"
+	       " -p <port>              \tRemote server port (only for IP).\n"
+	       " -y <[hmac:]name:key>   \tUse key specified on the command line.\n"
+	       " -k <file>              \tUse key file (as in config section 'keys').\n"
+	       " -f, --force            \tForce operation - override some checks.\n"
+	       " -v, --verbose          \tVerbose mode - additional runtime information.\n"
+	       " -V, --version          \tPrint %s server version.\n"
+	       " -i, --interactive      \tInteractive mode (do not daemonize).\n"
+	       " -h, --help             \tPrint help and usage.\n",
 	       RUN_DIR "/knot.sock", PACKAGE_NAME);
 	printf("\nActions:\n");
 	knot_cmd_t *c = knot_cmd_tbl;

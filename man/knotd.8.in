@@ -1,17 +1,18 @@
 .TH "knotd" "8" "@RELEASE_DATE@" "CZ.NIC Labs" "Knot DNS, version @VERSION@"
 .SH NAME
 .B knotd
-\- Knot DNS daemon
+\- Knot DNS server daemon
 .SH SYNOPSIS
 .B knotd
 [\fIparameters\fR]
 .SH DESCRIPTION
 .SS "Parameters:"
-.HP
-\fB\-c\fR, \fB\-\-config\fR [file] Select configuration file.
 .TP
-\fB\-d\fR, \fB\-\-daemonize\fR
-Run server as a daemon.
+\fB\-c\fR, \fB\-\-config\fR \fIfile\fR
+Select configuration file.
+.TP
+\fB\-d\fR, \fB\-\-daemonize\fR=[\fIdir\fR]
+Run server as a daemon. Working directory may be set.
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
 Verbose mode \- additional runtime information.
@@ -22,14 +23,9 @@ Print version of the server.
 \fB\-h\fR, \fB\-\-help\fR
 Print help and usage.
 .SH "SEE ALSO"
-The full documentation for
-.B Knot
-is maintained as a Texinfo manual.  If the
-.B info
-and
-.B Knot
-programs are properly installed at your site, the command
-.IP
-.B info Knot
-.PP
-should give you access to the complete manual.
+.BR knotc (8)
+.SH NOTE
+The full documentation for \fBKnot DNS\fR is maintained
+as a Texinfo manual. If the \fBinfo\fR program is properly
+installed at your site, the \fBinfo\ Knot\fR command should
+give you an access to the complete manual.

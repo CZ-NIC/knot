@@ -14,8 +14,9 @@ there are no differences and you can control it just the same way.
 Usage: knotd [parameters]
 
 Parameters:
- -c, --config [file]    Select configuration file.
- -d, --daemonize [dir]  Run server as a daemon. Working directory may be set.
+ -c, --config <file>    Select configuration file.
+ -d, --daemonize=[dir]  Run server as a daemon. Working directory may
+                        be set.
  -v, --verbose          Verbose mode - additional runtime information.
  -V, --version          Print version of the server.
  -h, --help             Print help and usage.
@@ -35,32 +36,29 @@ If you want to control the daemon directly, use @code{SIGINT} to quit the proces
 Usage: knotc [parameters] <action> [action_args]
 
 Parameters:
- -c [file], --config=[file] Select configuration file.
- -s [server]                Remote UNIX socket/IP address
-                              (default $@{rundir@}/knot.sock).
- -p [port]                  Remote server port (only for IP).
- -y [[hmac:]name:key]       Use key_id specified on the command line.
- -k [file]                  Use key file (as in config section 'keys').
-                              Example:
-                              echo "knotc-key hmac-md5 Wg==" > knotc.key
- -f, --force                Force operation - override some checks.
- -v, --verbose              Verbose mode - additional runtime
-                            information.
- -V, --version              Print knot server version.
- -i, --interactive          Interactive mode (do not daemonize).
- -h, --help                 Print help and usage.
+ -c, --config <file>    Select configuration file.
+ -s <server>            Remote UNIX socket/IP address (default
+                        $@{rundir@}/knot.sock).
+ -p <port>              Remote server port (only for IP).
+ -y <[hmac:]name:key>   Use key specified on the command line.
+ -k <file>              Use key file (as in config section 'keys').
+ -f, --force            Force operation - override some checks.
+ -v, --verbose          Verbose mode - additional runtime information.
+ -V, --version          Print knot server version.
+ -i, --interactive      Interactive mode (do not daemonize).
+ -h, --help             Print help and usage.
 
 Actions:
- stop                       Stop server.
- reload                     Reload configuration and changed zones.
- refresh [zone]             Refresh slave zone (all if not specified).
- flush                      Flush journal and update zone files.
- status                     Check if server is running.
- zonestatus                 Show status of configured zones.
- checkconf                  Check current server configuration.
- checkzone [zone]           Check zone (all if not specified).
- memstats [zone]            Estimate memory consumption for zone
-                              (all if not specified).
+ stop                   Stop server.
+ reload                 Reload configuration and changed zones.
+ refresh [zone]         Refresh slave zone (all if not specified).
+ flush                  Flush journal and update zone files.
+ status                 Check if server is running.
+ zonestatus             Show status of configured zones.
+ checkconf              Check current server configuration.
+ checkzone [zone]       Check zone (all if not specified).
+ memstats [zone]        Estimate memory consumption for zone (all if not
+                        specified).
 @end example
 
 Also, the server needs to create several files in order to run properly. These
