@@ -18,11 +18,10 @@ Remote UNIX socket/IP address (default @run_dir@/knot.sock).
 Remote server port (only for IP).
 .TP
 \fB\-y\fR [\fIhmac\fR:]\fIname\fR:\fIkey\fR
-Use key specified on the command line.
+Use key specified on the command line (default algorithm is hmac\-md5).
 .TP
 \fB\-k\fR \fIfile\fR
 Use key file (as in config section 'keys').
-(default algorithm is hmac\-md5).
 .TP
 \fB\-f\fR, \fB\-\-force\fR
 Force operation \- override some checks.

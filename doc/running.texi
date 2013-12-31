@@ -40,7 +40,8 @@ Parameters:
  -s <server>            Remote UNIX socket/IP address (default
                         $@{rundir@}/knot.sock).
  -p <port>              Remote server port (only for IP).
- -y <[hmac:]name:key>   Use key specified on the command line.
+ -y <[hmac:]name:key>   Use key specified on the command line
+                        (default algorithm is hmac-md5).
  -k <file>              Use key file (as in config section 'keys').
  -f, --force            Force operation - override some checks.
  -v, --verbose          Verbose mode - additional runtime information.
