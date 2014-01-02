@@ -5,5 +5,6 @@ __all__ = [
     "server",
     "test",
     "update",
-    "utils"
+    "utils",
+    "zonefile"
 ]
