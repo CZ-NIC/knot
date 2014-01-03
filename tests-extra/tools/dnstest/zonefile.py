@@ -40,7 +40,7 @@ class ZoneFile(object):
             self.name = zone_generate.main(["-n", 1]).strip()
 
     def set_file(self, file_name=None, storage=None, dnssec=None, serial=None,
-                 empty=False):
+                 exists=True):
         '''Make a copy of an existing zone file. If no file name is specified,
            the file name is constructed from the zone name (zname.zone).
            The storage is a directory containg the zone file.'''
@@ -54,7 +54,7 @@ class ZoneFile(object):
         else:
             src_file = os.path.join(storage, self.file_name)
 
-        if empty:
+        if not exists:
             return
 
         try:
@@ -110,11 +110,12 @@ class ZoneFile(object):
 
         detail_log(SEP)
 
-    def clone(self, file_dir, empty=False):
+    def clone(self, file_dir, exists=True):
         '''Make a copy of the zone file'''
 
         new = ZoneFile(file_dir)
         new.set_name(self.name)
         new.set_file(file_name=self.path, dnssec=self.dnssec,
-                     serial=self.serial, empty=empty)
+                     serial=self.serial,
+                     exists=exists and os.path.isfile(self.path))
         return new
