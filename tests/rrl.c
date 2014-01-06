@@ -114,8 +114,8 @@ int main(int argc, char *argv[])
 	knot_nameserver_t *ns = knot_ns_create();
 	uint8_t rbuf[65535];
 	size_t rlen = sizeof(rbuf);
-	memset(rbuf, 0, sizeof(rbuf));
-	knot_ns_error_response_from_query(ns, query, KNOT_RCODE_NOERROR, rbuf, &rlen);
+	memcpy(rbuf, query->wire, query->size);
+	knot_wire_flags_set_qr(rbuf);
 
 	rrl_req_t rq;
 	rq.w = rbuf;

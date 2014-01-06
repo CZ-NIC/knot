@@ -70,7 +70,10 @@ static void do_query(ns_proc_context_t *query_ctx, const char *name,
                      const uint8_t *query, uint16_t query_len,
                      uint8_t *ans, int exp_rcode)
 {
-	int state = ns_proc_in(query, query_len, query_ctx);
+	uint8_t wire[KNOT_WIRE_MAX_PKTSIZE];
+	memcpy(wire, query, query_len);
+	
+	int state = ns_proc_in(wire, query_len, query_ctx);
 	ok(state == NS_PROC_FULL || state == NS_PROC_FAIL, "ns: process %s query", name);
 	uint16_t ans_len = KNOT_WIRE_MAX_PKTSIZE;
 	state = ns_proc_out(ans, &ans_len, query_ctx);
@@ -128,9 +131,13 @@ int main(int argc, char *argv[])
 	memset(&query_ctx, 0, sizeof(ns_proc_context_t));
 	mm_ctx_mempool(&query_ctx.mm, sizeof(knot_pkt_t));
 	query_ctx.ns = ns;
+	
+	/* Create query processing parameter. */
+	struct ns_proc_query_param param;
+	sockaddr_set(&param.query_source, AF_INET, "127.0.0.1", 53);
 
 	/* Query processor (valid input). */
-	state = ns_proc_begin(&query_ctx, NS_PROC_QUERY);
+	state = ns_proc_begin(&query_ctx, &param, NS_PROC_QUERY);
 	do_query(&query_ctx, "IN/root", IN_QUERY, IN_QUERY_LEN, wire, KNOT_RCODE_NOERROR);
 
 	/* Query processor (CH zone) */
@@ -147,7 +154,7 @@ int main(int argc, char *argv[])
 	src_len = IN_QUERY_LEN;
 	wire_len = sizeof(wire);
 	knot_wire_set_opcode(src, KNOT_OPCODE_NOTIFY);
-	do_query(&query_ctx, "IN/notify", src, src_len, wire, KNOT_RCODE_NOERROR);
+	do_query(&query_ctx, "IN/notify", src, src_len, wire, KNOT_RCODE_NOTAUTH);
 	
 	/* Forge AXFR query. */
 	ns_proc_reset(&query_ctx);
@@ -155,7 +162,7 @@ int main(int argc, char *argv[])
 	src_len = IN_QUERY_LEN;
 	wire_len = sizeof(wire);
 	knot_wire_write_u16(src + IN_QUERY_QTYPE_POS, KNOT_RRTYPE_AXFR);
-	do_query(&query_ctx, "IN/axfr", src, src_len, wire, KNOT_RCODE_NOERROR);
+	do_query(&query_ctx, "IN/axfr", src, src_len, wire, KNOT_RCODE_NOTAUTH);
 	
 	/* Forge IXFR query (badly formed, no SOA in NS). */
 	ns_proc_reset(&query_ctx);
