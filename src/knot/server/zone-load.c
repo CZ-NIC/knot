@@ -666,10 +666,8 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 		goto fail;
 	}
 
-	/* Don't schedule when immediate syncing is used. */
-	if (conf->dbsync_timeout > 0) {
-		zones_schedule_ixfr_sync(new_zone, conf->dbsync_timeout);
-	}
+	/* Schedule zonefile flush. */
+	zones_schedule_ixfr_sync(new_zone, conf->dbsync_timeout);
 
 	knot_zone_contents_t *new_contents = new_zone->contents;
 	if (new_contents) {
