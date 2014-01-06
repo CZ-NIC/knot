@@ -114,6 +114,18 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 	if (zone_data->xfr_in.has_master) {
 		return update_forward(qdata);
 	}
+	
+	/*
+	 * Check if UPDATE not running already.
+	 */
+	if (pthread_mutex_trylock(&zone_data->ddns_lock) != 0) {
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+		log_zone_error("Failed to process UPDATE for "
+		               "zone %s: Another UPDATE in progress.\n",
+		               zone_data->conf->name);
+		return NS_PROC_FAIL;
+	}
+	
 
 	/* Need valid transaction security. */
 	NS_NEED_AUTH(zone_data->update_in, qdata);
@@ -123,13 +135,16 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 	
 	/* Check prerequisites. */
 	if (update_prereq_check(qdata) != KNOT_EOK) {
+		pthread_mutex_unlock(&zone_data->ddns_lock);
 		return NS_PROC_FAIL;
 	}
 	
 	/* Process UPDATE. */
 	if (update_process(pkt, qdata) != KNOT_EOK) {
+		pthread_mutex_unlock(&zone_data->ddns_lock);
 		return NS_PROC_FAIL;
 	}
 	
+	pthread_mutex_unlock(&zone_data->ddns_lock);
 	return NS_PROC_FINISH;
 }

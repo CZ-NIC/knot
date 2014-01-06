@@ -822,7 +822,6 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 	if (r > 0) {
 		*(raw++) = (uint8_t)r;
 		memcpy(raw, v+p, r);
-		raw += K;
 	}
 
 	return KNOT_EOK;

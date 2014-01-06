@@ -338,8 +338,9 @@ inline static bool valid_nsec3_node(const knot_node_t *node)
  */
 static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 {
-	assert(valid_nsec3_node(a));
-	assert(valid_nsec3_node(b));
+	if (!(valid_nsec3_node(a) && valid_nsec3_node(b))) {
+		return false;
+	}
 
 	knot_rrset_t *a_rrset = a->rrset_tree[0];
 	knot_rrset_t *b_rrset = b->rrset_tree[0];
@@ -620,20 +621,37 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 	return nsec3_node;
 }
 
+static int remove_nsec_from_node(const knot_node_t *node,
+                                 knot_changeset_t *chgset)
+{
+	assert(node);
+	assert(chgset);
+
+	const knot_rrset_t *nsec = knot_node_rrset(node, KNOT_RRTYPE_NSEC);
+	if (nsec == NULL) {
+		return KNOT_EOK;
+	}
+
+	return changeset_remove_nsec(nsec, chgset);
+}
+
 /*!
  * \brief Create NSEC3 node for each regular node in the zone.
  *
  * \param zone         Zone.
  * \param ttl          TTL for the created NSEC records.
  * \param nsec3_nodes  Tree whereto new NSEC3 nodes will be added.
+ * \param chgset       Changeset used for possible NSEC removals
  *
  * \return Error code, KNOT_EOK if successful.
  */
 static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
-                              knot_zone_tree_t *nsec3_nodes)
+                              knot_zone_tree_t *nsec3_nodes,
+                              knot_changeset_t *chgset)
 {
 	assert(zone);
 	assert(nsec3_nodes);
+	assert(chgset);
 
 	const knot_nsec3_params_t *params = &zone->nsec3_params;
 
@@ -660,6 +678,14 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		}
 
 		result = knot_zone_tree_insert(nsec3_nodes, nsec3_node);
+		if (result != KNOT_EOK) {
+			break;
+		}
+
+		/* Remove possible NSEC from the node. (Do not allow both NSEC
+		 * and NSEC3 in the zone at once.)
+		 */
+		result = remove_nsec_from_node(node, chgset);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -721,7 +747,7 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 		return KNOT_ENOMEM;
 	}
 
-	result = create_nsec3_nodes(zone, ttl, nsec3_nodes);
+	result = create_nsec3_nodes(zone, ttl, nsec3_nodes, changeset);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;

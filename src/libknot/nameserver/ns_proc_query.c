@@ -204,7 +204,7 @@ bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
 		acl_match_t *match = acl_find(acl, query_source, key_name);
 		
 		/* Did not authenticate, no fitting rule found. */
-		if (match == NULL || match->key->algorithm != key_alg) {
+		if (match == NULL || (match->key && match->key->algorithm != key_alg)) {
 			qdata->rcode = KNOT_RCODE_NOTAUTH;
 			qdata->rcode_tsig = KNOT_RCODE_BADKEY;
 			return false;
@@ -398,6 +398,13 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 	int ret = knot_pkt_init_response(resp, query);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't init response pkt (%d)\n", __func__, ret);
+		return ret;
+	}
+	
+	/* Convert query QNAME to lowercase. */
+	ret = knot_dname_to_lower(knot_pkt_qname(query));
+	if (ret != KNOT_EOK) {
+		dbg_ns("%s: can't convert QNAME to lowercase (%d)\n", __func__, ret);
 		return ret;
 	}
 

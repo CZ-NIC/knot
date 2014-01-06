@@ -51,7 +51,7 @@ static int nsec3_sha1(const uint8_t *salt, uint8_t salt_length,
 	assert(digest);
 	assert(digest_size);
 
-	if (!salt) {
+	if (salt_length > 0 && !salt) {
 		return KNOT_EINVAL;
 	}
 

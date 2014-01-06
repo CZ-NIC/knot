@@ -366,8 +366,6 @@ dbg_ns_exec_verb(
 );
 	}
 
-	/*! \todo In case of error, shouldn't the zone be destroyed here? */
-
 	return ret;
 }
 
@@ -519,9 +517,10 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
  *       order to get rid of duplicate code.
  */
 int knot_ns_process_update(const knot_pkt_t *query,
-                            knot_zone_contents_t *old_contents,
-                            knot_zone_contents_t **new_contents,
-                            knot_changesets_t *chgs, knot_rcode_t *rcode)
+                           knot_zone_contents_t *old_contents,
+                           knot_zone_contents_t **new_contents,
+                           knot_changesets_t *chgs, knot_rcode_t *rcode,
+                           uint32_t new_serial)
 {
 	if (query == NULL || old_contents == NULL || chgs == NULL ||
 	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
@@ -545,7 +544,7 @@ int knot_ns_process_update(const knot_pkt_t *query,
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
 	ret = knot_ddns_process_update(contents_copy, query,
 	                               knot_changesets_get_last(chgs),
-	                               chgs->changes, rcode);
+	                               chgs->changes, rcode, new_serial);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
@@ -745,8 +744,10 @@ int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 	}
 
 	/* Accept only finished result. */
-	if (ctx->state == NS_PROC_FINISH) {
+	if (ctx->state != NS_PROC_FAIL) {
 		*wire_len = pkt->size;
+	} else {
+		*wire_len = 0;
 	}
 	
 	knot_pkt_free(&pkt);

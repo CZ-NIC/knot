@@ -70,7 +70,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
                               const knot_pkt_t *query,
                               knot_changeset_t *changeset,
                               knot_changes_t *changes,
-                              knot_rcode_t *rcode);
+                              knot_rcode_t *rcode, uint32_t new_serial);
 
 void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq);
 

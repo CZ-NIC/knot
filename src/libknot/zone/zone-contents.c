@@ -1371,7 +1371,7 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 	const knot_rrset_t *rrset = knot_node_rrset(zone->apex,
 						    KNOT_RRTYPE_NSEC3PARAM);
 
-	if (rrset != NULL) {
+	if (rrset != NULL && rrset->rdata_count > 0) {
 		int r = knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
 		if (r != KNOT_EOK) {
 			dbg_zone("Failed to load NSEC3PARAM (%s).\n",

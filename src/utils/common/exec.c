@@ -141,9 +141,9 @@ static void print_footer(const size_t total_len,
 
 	// Print messages statistics.
 	if (incoming) {
-		printf("\n;; Received %zu B", total_len);
+		printf(";; Received %zu B", total_len);
 	} else {
-		printf("\n;; Sent %zu B", total_len);
+		printf(";; Sent %zu B", total_len);
 	}
 
 	// If multimessage (XFR) print additional statistics.
@@ -165,10 +165,8 @@ static void print_footer(const size_t total_len,
 
 		if (elapsed >= 0) {
 			printf(" in %.1f ms\n", elapsed);
-
 		} else {
 			printf("\n");
-
 		}
 	}
 }
@@ -473,6 +471,7 @@ void print_packet(const knot_pkt_t *packet,
 	uint8_t rcode = knot_wire_get_rcode(packet->wire);
 	uint16_t qdcount = knot_wire_get_qdcount(packet->wire);
 	uint16_t arcount = additional->count;
+	uint16_t ancount = answers->count;
 
 
 	// Print packet information header.
@@ -493,13 +492,13 @@ void print_packet(const knot_pkt_t *packet,
 	// Print DNS sections.
 	switch (style->format) {
 	case FORMAT_DIG:
-		if (answers->count > 0) {
-			print_section_dig(answers->rr, answers->count, style);
+		if (ancount > 0) {
+			print_section_dig(answers->rr, ancount, style);
 		}
 		break;
 	case FORMAT_HOST:
-		if (answers->count > 0) {
-			print_section_host(answers->rr, answers->count, style);
+		if (ancount > 0) {
+			print_section_host(answers->rr, ancount, style);
 		} else {
 			print_error_host(rcode, packet, style);
 		}
@@ -559,9 +558,9 @@ void print_packet(const knot_pkt_t *packet,
 
 		if (style->show_additional && additional->count > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-				print_section_full(additional->rr,
-				                   additional->count,
-				                   style);
+			print_section_full(additional->rr,
+			                   arcount,
+			                   style);
 		}
 		break;
 	default:
@@ -570,6 +569,7 @@ void print_packet(const knot_pkt_t *packet,
 
 	// Print packet statistics.
 	if (style->show_footer) {
+		printf("\n");
 		print_footer(packet->size, 0, 0, net, elapsed, incoming);
 	}
 }

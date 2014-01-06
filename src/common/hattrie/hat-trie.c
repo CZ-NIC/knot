@@ -1021,7 +1021,9 @@ const char* hattrie_iter_key(hattrie_iter_t* i, size_t* len)
         i->key = realloc(i->key, i->keysize * sizeof(char));
     }
 
-    memcpy(i->key + i->level, subkey, sublen);
+    if (sublen > 0) {
+        memcpy(i->key + i->level, subkey, sublen);
+    }
     i->key[i->level + sublen] = '\0';
 
     *len = i->level + sublen;

@@ -43,7 +43,8 @@
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
-                          knot_update_serial_t soa_up, uint32_t *expires_at);
+                          knot_update_serial_t soa_up, uint32_t *expires_at,
+                          uint32_t new_serial);
 
 /*!
  * \brief DNSSEC sign zone, store new records into changeset. Even valid
@@ -56,12 +57,12 @@ int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch,
-                                uint32_t *expires_at);
+                                uint32_t *expires_at, uint32_t new_serial);
 
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
  *
- * \param zone           Contents of the updated zone (AFTER zone is switched).
+ * \param zone           Updated zone (AFTER DDNS has been applied to it).
  * \param in_ch          Changeset created bvy DDNS or zone-diff
  * \param out_ch         New records will be added to this changeset.
  * \param soa_up         SOA serial update policy.
@@ -70,12 +71,12 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
+int knot_dnssec_sign_changeset(const knot_zone_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
                                uint32_t *used_lifetime,
-                               uint32_t *used_refresh);
+                               uint32_t *used_refresh, uint32_t new_serial);
 
 #endif // _KNOT_DNSSEC_ZONE_EVENTS_H_
 /*! @} */

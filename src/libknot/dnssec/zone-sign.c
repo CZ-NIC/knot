@@ -282,6 +282,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	assert(covered);
 	assert(zone_keys);
 	assert(changeset);
+	if (covered->rdata_count == 0) {
+		return KNOT_EOK;
+	}
 
 	int result = KNOT_EOK;
 	knot_rrset_t *to_add = NULL;
@@ -402,6 +405,8 @@ static int resign_rrset(const knot_rrset_t *covered,
 	// maybe merge the two functions into one
 	// jvcelak: Not really, maybe for RSA. The digest is computed twice,
 	// but the verification process can differ from signature computation.
+	// TODO reuse digest for RSA then, RSA is the most used algo family,
+	// and we create all the signatures twice, that is not cool I think.
 	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
 	                                   policy, changeset, expires_at);
 	if (result != KNOT_EOK) {
@@ -441,7 +446,8 @@ static int sign_node_rrsets(const knot_node_t *node,
 		}
 
 		// Remove standalone RRSIGs (without the RRSet they sign)
-		if (rrset->rdata_count == 0 && rrset->rrsigs->rdata_count != 0) {
+		if (rrset->rdata_count == 0 && rrset->rrsigs) {
+			assert(rrset->rrsigs->rdata_count > 0);
 			result = remove_rrset_rrsigs(rrset, changeset);
 			if (result != KNOT_EOK) {
 				break;
@@ -1091,6 +1097,7 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 int knot_zone_sign_update_soa(const knot_rrset_t *soa,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
+                              uint32_t new_serial,
                               knot_changeset_t *changeset)
 {
 	if (!soa || !zone_keys || !policy || !changeset) {
@@ -1100,16 +1107,16 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	dbg_dnssec_verb("Updating SOA...\n");
 
 	uint32_t serial = knot_rdata_soa_serial(soa);
-	if (serial == UINT32_MAX && policy->soa_up == KNOT_SOA_SERIAL_INC) {
+	if (serial == UINT32_MAX && policy->soa_up == KNOT_SOA_SERIAL_UPDATE) {
 		// TODO: this is wrong, the value should be 'rewound' to 0 in this case
 		return KNOT_EINVAL;
 	}
 
-	uint32_t new_serial = serial;
-	if (policy->soa_up == KNOT_SOA_SERIAL_INC) {
-		new_serial += 1;
+	if (policy->soa_up == KNOT_SOA_SERIAL_UPDATE) {
+		;
 	} else {
 		assert(policy->soa_up == KNOT_SOA_SERIAL_KEEP);
+		new_serial = serial;
 	}
 
 	int result;

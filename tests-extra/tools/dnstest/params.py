@@ -36,9 +36,9 @@ valgrind_bin = get_binary("KNOT_TEST_VALGRIND", "valgrind")
 # KNOT_TEST_VALGRIND_FLAGS - valgrind flags.
 valgrind_flags = get_param("KNOT_TEST_VALGRIND_FLAGS", "--leak-check=full")
 # KNOT_TEST_KNOT - Knot binary.
-knot_bin = get_binary("KNOT_TEST_KNOT", "../../src/knotd")
+knot_bin = get_binary("KNOT_TEST_KNOT", "../src/knotd")
 # KNOT_TEST_KNOTC - Knot control binary.
-knot_ctl = get_binary("KNOT_TEST_KNOTC", "../../src/knotc")
+knot_ctl = get_binary("KNOT_TEST_KNOTC", "../src/knotc")
 # KNOT_TEST_BIND - Bind binary.
 bind_bin = get_binary("KNOT_TEST_BIND", "named")
 # KNOT_TEST_BINDC - Bind control binary.

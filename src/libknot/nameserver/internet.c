@@ -628,7 +628,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	knot_pkt_begin(response, KNOT_ANSWER);
 
 	/* Get answer to QNAME. */
-	qdata->name = knot_pkt_qname(response);
+	qdata->name = knot_pkt_qname(qdata->pkt);
 	int state = solve_answer_section(BEGIN, response, qdata);
 
 	/* Resolve DNSSEC for ANSWER. */

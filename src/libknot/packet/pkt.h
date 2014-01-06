@@ -119,7 +119,7 @@ void knot_pkt_free(knot_pkt_t **packet);
 
 uint16_t knot_pkt_type(const knot_pkt_t *packet);
 uint16_t knot_pkt_question_size(const knot_pkt_t *pkt);
-const knot_dname_t *knot_pkt_qname(const knot_pkt_t *packet);
+knot_dname_t *knot_pkt_qname(const knot_pkt_t *packet);
 uint16_t knot_pkt_qtype(const knot_pkt_t *packet);
 uint16_t knot_pkt_qclass(const knot_pkt_t *packet);
 

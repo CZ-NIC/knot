@@ -14,11 +14,12 @@ there are no differences and you can control it just the same way.
 Usage: knotd [parameters]
 
 Parameters:
- -c, --config [file] Select configuration file.
- -d, --daemonize     Run server as a daemon.
- -v, --verbose       Verbose mode - additional runtime information.
- -V, --version       Print version of the server.
- -h, --help          Print help and usage.
+ -c, --config <file>    Select configuration file.
+ -d, --daemonize=[dir]  Run server as a daemon. Working directory may
+                        be set.
+ -v, --verbose          Verbose mode - additional runtime information.
+ -V, --version          Print version of the server.
+ -h, --help             Print help and usage.
 @end example
 
 Use knotc tool for convenience when working with the server daemon.
@@ -28,40 +29,37 @@ with the server much more user friendly.
 $ knotc -c knot.conf reload
 @end example
 
-The tool @code{knotc} is designed as a front-end for user, making it easier
-to do everything from server startup to state checking of a running server daemon.
+The tool @code{knotc} is designed as a front-end for user, making it easier to control running server daemon.
 If you want to control the daemon directly, use @code{SIGINT} to quit the process or @code{SIGHUP} to reload configuration.
 
 @example
 Usage: knotc [parameters] <action> [action_args]
 
 Parameters:
- -c [file], --config=[file] Select configuration file.
- -s [server]                Remote UNIX socket/IP address
-                              (default $@{rundir@}/knot.sock).
- -p [port]                  Remote server port (only for IP).
- -y [[hmac:]name:key]       Use key_id specified on the command line.
- -k [file]                  Use key file (as in config section 'keys').
-                              Example:
-                              echo "knotc-key hmac-md5 Wg==" > knotc.key
- -f, --force                Force operation - override some checks.
- -v, --verbose              Verbose mode - additional runtime
-                            information.
- -V, --version              Print knot server version.
- -i, --interactive          Interactive mode (do not daemonize).
- -h, --help                 Print help and usage.
+ -c, --config <file>    Select configuration file.
+ -s <server>            Remote UNIX socket/IP address (default
+                        $@{rundir@}/knot.sock).
+ -p <port>              Remote server port (only for IP).
+ -y <[hmac:]name:key>   Use key specified on the command line
+                        (default algorithm is hmac-md5).
+ -k <file>              Use key file (as in config section 'keys').
+ -f, --force            Force operation - override some checks.
+ -v, --verbose          Verbose mode - additional runtime information.
+ -V, --version          Print knot server version.
+ -i, --interactive      Interactive mode (do not daemonize).
+ -h, --help             Print help and usage.
 
 Actions:
- stop                       Stop server.
- reload                     Reload configuration and changed zones.
- refresh [zone]             Refresh slave zone (all if not specified).
- flush                      Flush journal and update zone files.
- status                     Check if server is running.
- zonestatus                 Show status of configured zones.
- checkconf                  Check current server configuration.
- checkzone [zone]           Check zone (all if not specified).
- memstats [zone]            Estimate memory consumption for zone
-                              (all if not specified).
+ stop                   Stop server.
+ reload                 Reload configuration and changed zones.
+ refresh [zone]         Refresh slave zone (all if not specified).
+ flush                  Flush journal and update zone files.
+ status                 Check if server is running.
+ zonestatus             Show status of configured zones.
+ checkconf              Check current server configuration.
+ checkzone [zone]       Check zone (all if not specified).
+ memstats [zone]        Estimate memory consumption for zone (all if not
+                        specified).
 @end example
 
 Also, the server needs to create several files in order to run properly. These
@@ -155,9 +153,7 @@ $ knotc -c master.conf reload  # reconfigure and load updated zones
 
 If you want @emph{IXFR-out} differences created from changes you make to a zone file, enable @ref{ixfr-from-differences}
 in @code{zones} statement, then reload your server as seen above.
-If @emph{SOA}'s @emph{serial} is not changed no differences will be created. Please note
-that this feature is in @emph{experimental} stage and should be used with care.
-If you encounter a bug using this feature, please send it to Knot developers (@pxref{Submitting a bugreport}).
+If @emph{SOA}'s @emph{serial} is not changed no differences will be created.
 
 If you want to force refresh the slave zones, you can do this with the @code{knotc refresh} action.
 @example

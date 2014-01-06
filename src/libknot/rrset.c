@@ -568,6 +568,7 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
 		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		assert(rdata);
 		if (descriptor_item_is_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
 			int dname_len = knot_dname_to_wire(stream + *size, dname,
@@ -1989,7 +1990,7 @@ int knot_rrset_ds_check(const knot_rrset_t *rrset)
 			return KNOT_EMALF;
 		}
 		uint16_t len = rrset_rdata_item_size(rrset, i) - 4;
-		uint8_t type = *(rrset_rdata_pointer(rrset, i) + 3);
+		uint8_t type = rrset_rdata_pointer(rrset, i)[3];
 		if (type == 0 || len == 0) {
 			return KNOT_EINVAL;
 		} else if (len != knot_ds_digest_length(type)) {

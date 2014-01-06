@@ -25,6 +25,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
+#include "libknot/util/tolower.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -312,7 +313,7 @@ uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_dname_t *knot_pkt_qname(const knot_pkt_t *packet)
+knot_dname_t *knot_pkt_qname(const knot_pkt_t *packet)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
 	if (packet == NULL) {
@@ -438,6 +439,23 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	return knot_pkt_begin(pkt, KNOT_ANSWER);
 }
 
+/*! \brief Case insensitive label compare for compression. */
+static bool compr_label_match(const uint8_t *n, const uint8_t *p)
+{
+               if (*n != *p) {
+                       return false;
+               }
+
+               uint8_t len = *n;
+               for (uint8_t i = 0; i < len; ++i) {
+                       if (knot_tolower(n[1 + i]) != knot_tolower(p[1 + i])) {
+                               return false;
+                       }
+               }
+
+               return true;
+}
+
 /*! \brief Helper for \fn knot_pkt_put_dname, writes label(s) with size checks. */
 #define WRITE_LABEL(dst, written, label, max, len) \
 	if ((written) + (len) > (max)) { \
@@ -488,7 +506,7 @@ int knot_pkt_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, kn
 		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
 
 		/* Two labels match, extend suffix length. */
-		if (dname[0] != suffix[0] || memcmp(dname + 1, suffix + 1, dname[0]) != 0) {
+		if (dname[0] != suffix[0] || !compr_label_match(dname, suffix)) {
 			/* If they don't match, write unmatched labels. */
 			uint16_t mismatch_len = (dname - match_begin) + (*dname + 1);
 			WRITE_LABEL(dst, written, match_begin, max, mismatch_len);

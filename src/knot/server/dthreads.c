@@ -336,7 +336,7 @@ dt_unit_t *dt_create(int count)
 	unit->size = count;
 
 	// Alloc threads
-	unit->threads = malloc(count * sizeof(dthread_t *));
+	unit->threads = calloc(count, sizeof(dthread_t *));
 	if (unit->threads == 0) {
 		pthread_cond_destroy(&unit->_notify);
 		pthread_cond_destroy(&unit->_report);

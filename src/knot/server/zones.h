@@ -43,7 +43,6 @@
 
 /* Constants. */
 #define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
-#define IXFR_DBSYNC_TIMEOUT (60*1000) /*!< Database sync timeout = 60s. */
 #define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Interval between AXFR BS retries. */
 #define AXFR_RETRY_MAXTIME (10*60*1000) /*!< Maximum interval 10mins */
 
@@ -64,6 +63,8 @@ typedef struct zonedata_t
 
 	/*! \brief Zone data lock for exclusive access. */
 	pthread_mutex_t lock;
+	/*! \brief Zone lock for DDNS. */
+	pthread_mutex_t ddns_lock;
 
 	/*! \brief Access control lists. */
 	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
