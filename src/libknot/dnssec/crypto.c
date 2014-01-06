@@ -105,11 +105,20 @@ static void openssl_mutexes_destroy(void)
  *
  * \param openssl_id  Thread identifier in OpenSSL.
  */
+#if OPENSSL_VERSION_NUMBER >= 0x1000001fL
 static void openssl_threadid_cb(CRYPTO_THREADID *openssl_id)
 {
 	pthread_t id = pthread_self();
 	CRYPTO_THREADID_set_pointer(openssl_id, (void *)id);
 }
+#else
+static unsigned long openssl_threadid_cb(void)
+{
+	unsigned long ret;
+	ret = (unsigned long)pthread_self();
+	return(ret);
+}
+#endif
 
 /*- pluggable engines -------------------------------------------------------*/
 
@@ -181,7 +190,11 @@ void knot_crypto_init_threads(void)
 	}
 
 	// thread identification
+#if OPENSSL_VERSION_NUMBER >= 0x1000001fL
 	CRYPTO_THREADID_set_callback(openssl_threadid_cb);
+#else
+        CRYPTO_set_id_callback((unsigned long (*)())openssl_threadid_cb);
+#endif
 }
 
 void knot_crypto_cleanup_threads(void)
