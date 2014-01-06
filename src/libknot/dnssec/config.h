@@ -35,13 +35,13 @@
 #endif
 
 // ECDSA support requires OpenSSL version >= 1.0.1
-#if !defined(OPENSSL_NO_ECDSA) && OPENSSL_VERSION_NUMBER >= 0x10001000
+#if !defined(OPENSSL_NO_ECDSA) && OPENSSL_VERSION_NUMBER >= 0x10001000L
   #define KNOT_ENABLE_ECDSA 1
 #else
   #undef KNOT_ENABLE_ECDSA
 #endif
 
-#if !defined(OPENSSL_NO_GOST)
+#if !defined(OPENSSL_NO_GOST) && OPENSSL_VERSION_NUMBER >= 0x1000001fL
   #define KNOT_ENABLE_GOST 1
 #else
   #undef KNOT_ENABLE_GOST

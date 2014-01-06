@@ -232,7 +232,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		                                       nsec3_enabled)
 		) {
 			log_zone_notice("%s Ignoring key %d (%s): unknown "
-			                "algorithm or non-NSEC3 algrorithm when"
+			                "algorithm or non-NSEC3 algorithm when"
 			                " NSEC3 is requested.\n", msgpref,
 			                params.keytag, entry->d_name);
 			knot_free_key_params(&params);
