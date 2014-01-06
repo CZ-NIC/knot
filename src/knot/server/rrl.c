@@ -482,6 +482,18 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 	return ret;
 }
 
+bool rrl_slip_roll(int n_slip)
+{
+	/* Now n_slip means every Nth answer slips.
+	 * That represents a chance of 1/N that answer slips.
+	 * Therefore, on average, from 100 answers 100/N will slip. */
+	int threshold = RRL_SLIP_MAX / n_slip;
+	int roll = knot_random_uint16_t() % RRL_SLIP_MAX;
+	int ret =  (roll < threshold);
+	printf("slip chance %d < %d roll result = %d\n", roll, threshold, ret);
+	return ret;
+}
+
 int rrl_destroy(rrl_table_t *rrl)
 {
 	if (rrl) {

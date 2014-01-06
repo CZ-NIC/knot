@@ -17,12 +17,16 @@
 #include "libknot/nameserver/ixfr.h"
 #include "libknot/nameserver/update.h"
 #include "knot/server/notify.h"
+#include "knot/server/server.h"
+#include "knot/server/rrl.h"
+#include "knot/conf/conf.h"
 
 /* Forward decls. */
 static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t *zonedb);
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t *ctx);
 static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 static int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx);
 
 /*! \brief Module implementation. */
 const ns_proc_module_t _ns_proc_query = {
@@ -103,12 +107,6 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	/* Store for processing. */
 	qdata->pkt = pkt;
 
-	/* Check parse state. */
-	if (pkt->parsed < pkt->size) {
-		qdata->rcode = KNOT_RCODE_FORMERR;
-		return NS_PROC_FAIL;
-	}
-
 	/* Declare having response. */
 	return NS_PROC_FULL;
 }
@@ -119,14 +117,23 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	struct query_data *qdata = QUERY_DATA(ctx);
 
 	rcu_read_lock();
+	
+	/* Check parse state. */
+	knot_pkt_t *query = qdata->pkt;
+	int next_state = NS_PROC_FINISH;
+	if (query->parsed < query->size) {
+		dbg_ns("%s: query is FORMERR\n", __func__);
+		qdata->rcode = KNOT_RCODE_FORMERR;
+		next_state = NS_PROC_FAIL;
+		goto finish;
+	}
 
 	/* Prepare answer. */
-	int next_state = NS_PROC_FINISH;
-	int ret = prepare_answer(qdata->pkt, pkt, ctx);
+	int ret = prepare_answer(query, pkt, ctx);
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
-		rcu_read_unlock();
-		return NS_PROC_FAIL;
+		next_state = NS_PROC_FAIL;
+		goto finish;
 	} else {
 		qdata->rcode = KNOT_RCODE_NOERROR;
 	}
@@ -158,6 +165,11 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		}
 	}
 
+finish:
+	/* Apply rate limits for positive answers. */
+	if (ctx->flags & NS_QUERY_RATELIMIT) {
+		next_state = ratelimit_apply(next_state, pkt, ctx);
+	}
 	rcu_read_unlock();
 	return next_state;
 }
@@ -185,7 +197,11 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	}
 	
 	/* Transaction security (if applicable). */
-	return ns_proc_query_sign_response(pkt, qdata);
+	if (ns_proc_query_sign_response(pkt, qdata) != KNOT_EOK) {
+		return NS_PROC_FAIL;
+	}
+	
+	return NS_PROC_FINISH;
 }
 
 bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
@@ -359,6 +375,46 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	}
 
 	return next_state;
+}
+
+/*!
+ * \brief Apply rate limit.
+ */
+static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
+{
+	/* Check if rate limiting applies. */
+	printf("rate limit\n");
+	struct query_data *qdata = QUERY_DATA(ctx);
+	server_t *server = (server_t *)ctx->ns->data;
+	if (server->rrl == NULL) {
+		return state;
+	}
+	
+	rrl_req_t rrl_rq = {0};
+	rrl_rq.w = pkt->wire;
+	rrl_rq.query = qdata->pkt;
+	rrl_rq.flags = pkt->flags;
+	if (rrl_query(server->rrl, &qdata->param->query_source,
+	              &rrl_rq, qdata->zone) == KNOT_EOK) {
+		/* Rate limiting not applied. */
+		return state;
+	}
+	
+	/* Now it is slip or drop. */
+	if (rrl_slip_roll(conf()->rrl_slip)) {
+		/* Answer slips. */
+		printf("answer slipped\n");
+		if (ns_proc_query_err(pkt, ctx) != KNOT_EOK) {
+			return NS_PROC_FAIL;
+		}
+		knot_wire_set_tc(pkt->wire);
+	} else {
+		printf("answer dropped\n");
+		/* Drop answer. */
+		pkt->size = 0;
+	}
+	
+	return NS_PROC_FINISH;
 }
 
 /*!

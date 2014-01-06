@@ -105,33 +105,6 @@ static inline void udp_pps_begin() {}
 static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 #endif
 
-/*! \brief RRL reject procedure. */
-static size_t udp_rrl_reject(const knot_nameserver_t *ns,
-                             const knot_pkt_t *packet,
-                             uint8_t* resp, size_t rlen,
-                             uint8_t rcode, unsigned *slip)
-{
-	int n_slip = conf()->rrl_slip; /* Check SLIP. */
-	if (n_slip > 0 && n_slip == ++*slip) {
-		knot_ns_error_response_from_query(ns, packet, rcode, resp, &rlen);
-		switch(rcode) { /* Do not set TC=1 to some RCODEs. */
-		case KNOT_RCODE_FORMERR:
-		case KNOT_RCODE_REFUSED:
-		case KNOT_RCODE_SERVFAIL:
-		case KNOT_RCODE_NOTIMPL:
-			break;
-		default:
-			knot_wire_set_tc(resp); /* Set TC=1 */
-			break;
-		}
-
-		*slip = 0; /* Restart SLIP interval. */
-		return rlen;
-	}
-
-	return 0; /* Discard response. */
-}
-
 int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
                struct iovec *rx, struct iovec *tx)
 {
@@ -142,6 +115,14 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	dbg_net("udp: received %zd bytes from '%s@%d'.\n", rx->iov_len,
 	        strfrom, sockaddr_portnum(addr));
 #endif
+	
+	/* Rate limit is applied? */
+	server_t *server = (server_t *)query_ctx->ns->data;
+	if (knot_unlikely(server->rrl != NULL) && server->rrl->rate > 0) {
+		query_ctx->flags |= NS_QUERY_RATELIMIT;
+	} else {
+		query_ctx->flags &= ~NS_QUERY_RATELIMIT;
+	}
 
 	/* Create query processing parameter. */
 	struct ns_proc_query_param param;
@@ -173,28 +154,7 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 
 	/* Reset context. */
 	ns_proc_finish(query_ctx);
-
 	return KNOT_EOK;
-
-	/*! \todo Move RRL to IN processing. */
-//	rrl_table_t *rrl = ans->srv->rrl;
-//	/* Process RRL. */
-//	if (knot_unlikely(rrl != NULL) && rrl->rate > 0) {
-//		rrl_req_t rrl_rq;
-//		memset(&rrl_rq, 0, sizeof(rrl_req_t));
-//		rrl_rq.w = tx->iov_base; /* Wire */
-//		rrl_rq.query = query;
-
-//		rcu_read_lock();
-//		rrl_rq.flags = query->flags;
-//		if (rrl_query(rrl, addr, &rrl_rq, query->zone) != KNOT_EOK) {
-//			tx->iov_len = udp_rrl_reject(ns, query, tx->iov_base,
-//			                           	KNOT_WIRE_MAX_PKTSIZE,
-//			                           	knot_wire_get_rcode(query->wire),
-//			                           	&ans->slip);
-//		}
-//		rcu_read_unlock();
-//	}
 }
 
 /* Check for sendmmsg syscall. */

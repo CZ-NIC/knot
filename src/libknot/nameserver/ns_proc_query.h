@@ -37,8 +37,9 @@ extern const ns_proc_module_t _ns_proc_query;
 
 /* Query processing flags. */
 enum ns_proc_query_flag {
-	NS_QUERY_NO_AXFR = NS_PROCFLAG << 1, /* Don't process AXFR */
-	NS_QUERY_NO_IXFR = NS_PROCFLAG << 2  /* Don't process IXFR */
+	NS_QUERY_NO_AXFR   = NS_PROCFLAG << 1, /* Don't process AXFR */
+	NS_QUERY_NO_IXFR   = NS_PROCFLAG << 2, /* Don't process IXFR */
+	NS_QUERY_RATELIMIT = NS_PROCFLAG << 3  /* Apply rate limits. */
 };
 
 /* Module load parameters. */

@@ -60,7 +60,7 @@ typedef struct tcp_worker_t {
 
 /*! \brief Calculate TCP throttle time (random). */
 static inline int tcp_throttle() {
-	return TCP_THROTTLE_LO + (knot_random_int() % TCP_THROTTLE_HI);
+	return TCP_THROTTLE_LO + (knot_random_uint16_t() % TCP_THROTTLE_HI);
 }
 
 /*! \brief Sweep TCP connection. */

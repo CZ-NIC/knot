@@ -481,7 +481,7 @@ int server_refresh(server_t *server)
 		if (zd && zd->xfr_in.timer) {
 			evsched_cancel(sch, zd->xfr_in.timer);
 			evsched_schedule(sch, zd->xfr_in.timer,
-			                 knot_random_int() % 500 + count/2);
+			                 knot_random_uint16_t() % 500 + count/2);
 			/* Cumulative delay. */
 			++count;
 		}

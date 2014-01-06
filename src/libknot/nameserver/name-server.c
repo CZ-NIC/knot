@@ -187,121 +187,6 @@ int knot_ns_parse_packet(knot_pkt_t *packet, knot_packet_type_t *type)
 
 /*----------------------------------------------------------------------------*/
 
-static void knot_ns_error_response(const knot_nameserver_t *ns,
-                                   uint16_t query_id, uint8_t *flags1_query,
-                                   uint8_t rcode, uint8_t *response_wire,
-                                   size_t *rsize)
-{
-	memcpy(response_wire, ns->err_response->wire, ns->err_response->size);
-
-	// copy only the ID of the query
-	knot_wire_set_id(response_wire, query_id);
-
-	if (flags1_query != NULL) {
-		if (knot_wire_flags_get_rd(*flags1_query) != 0) {
-			knot_wire_set_rd(response_wire);
-		}
-		knot_wire_set_opcode(response_wire,
-		                     knot_wire_flags_get_opcode(*flags1_query));
-	}
-
-	// set the RCODE
-	knot_wire_set_rcode(response_wire, rcode);
-	*rsize = ns->err_response->size;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_ns_error_response_from_query_wire(const knot_nameserver_t *nameserver,
-                                          const uint8_t *query, size_t size,
-                                          uint8_t rcode,
-                                          uint8_t *response_wire, size_t *rsize)
-{
-	if (size < 2) {
-		// ignore packet
-		return KNOT_EFEWDATA;
-	}
-
-	uint16_t pkt_id = knot_wire_get_id(query);
-
-	uint8_t *flags1_ptr = NULL;
-	uint8_t flags1;
-
-	if (size > KNOT_WIRE_OFFSET_FLAGS1) {
-		flags1 = knot_wire_get_flags1(query);
-		flags1_ptr = &flags1;
-	}
-	knot_ns_error_response(nameserver, pkt_id, flags1_ptr,
-	                       rcode, response_wire, rsize);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
-                                      const knot_pkt_t *query,
-                                      uint8_t rcode, uint8_t *response_wire,
-                                      size_t *rsize)
-{
-	if (query->parsed < 2) {
-		// ignore packet
-		return KNOT_EFEWDATA;
-	}
-
-	if (query->parsed < KNOT_WIRE_HEADER_SIZE) {
-		return knot_ns_error_response_from_query_wire(nameserver,
-			query->wire, query->size, rcode, response_wire,
-			rsize);
-	}
-
-	size_t max_size = *rsize;
-	uint8_t flags1 = knot_wire_get_flags1(query->wire);
-
-	// prepare the generic error response
-	knot_ns_error_response(nameserver, knot_wire_get_id(query->wire),
-	                       &flags1, rcode, response_wire,
-	                       rsize);
-
-	/* Append question if parsed. */
-	uint16_t header_len = KNOT_WIRE_HEADER_SIZE;
-	uint16_t question_len = knot_pkt_question_size(query);
-	if (question_len > header_len && question_len <= max_size) {
-
-		/* Append question only (do not rewrite header). */
-		uint16_t to_copy = question_len - header_len;
-		if (response_wire != query->wire) {
-			memcpy(response_wire + header_len,
-			       query->wire + header_len,
-			       to_copy);
-		}
-		*rsize += to_copy;
-		knot_wire_set_qdcount(response_wire, 1);
-
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_ns_error_response_full(knot_nameserver_t *nameserver,
-                                 knot_pkt_t *response, uint8_t rcode,
-                                 uint8_t *response_wire, size_t *rsize)
-{
-	knot_wire_set_rcode(response->wire, rcode);
-	knot_ns_error_response_from_query(nameserver,
-	                                  response->query,
-	                                  KNOT_RCODE_SERVFAIL,
-	                                  response_wire, rsize);
-
-}
-
-/*----------------------------------------------------------------------------*/
-
-
-/*----------------------------------------------------------------------------*/
-
 int ns_serial_compare(uint32_t s1, uint32_t s2)
 {
 	int32_t diff = ns_serial_difference(s1, s2);
@@ -688,11 +573,6 @@ int ns_proc_begin(ns_proc_context_t *ctx, void *module_param, const ns_proc_modu
 
 int ns_proc_reset(ns_proc_context_t *ctx)
 {
-	/* Only in operable state. */
-	if (ctx->state == NS_PROC_NOOP) {
-		return NS_PROC_NOOP;
-	}
-
 	/* #10 implement */
 	ctx->state = ctx->module->reset(ctx);
 
