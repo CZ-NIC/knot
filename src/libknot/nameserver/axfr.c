@@ -8,6 +8,7 @@
 #include "common/lists.h"
 #include "knot/server/zones.h"
 
+/* AXFR context. */
 struct axfr_proc {
 	struct xfr_proc proc;
 	hattrie_iter_t *i;
@@ -93,6 +94,7 @@ static int axfr_answer_init(struct query_data *qdata)
 	}
 	memset(xfer, 0, sizeof(struct axfr_proc));
 	init_list(&xfer->nodes);
+	gettimeofday(&xfer->tstamp, NULL);
 	qdata->ext = xfer;
 
 	/* Put data to process. */
@@ -123,6 +125,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 		ptrnode_t *head = HEAD(xfer->nodes);
 		ret = process_item(pkt, head->d, xfer);
 		if (ret == KNOT_EOK) { /* Finished. */
+			/* Complete change set. */
 			rem_node((node_t *)head);
 			mm->free(head);
 		} else { /* Packet full or other error. */
@@ -142,6 +145,10 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 	return ret;
 }
 
+/* AXFR-specific logging (internal, expects 'qdata' variable set). */
+#define AXFR_LOG(severity, msg...) \
+	XFER_LOG(severity, qdata, "Outgoing AXFR", msg)
+
 int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
 {
 	assert(pkt);
@@ -150,8 +157,8 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	int ret = KNOT_EOK;
 	mm_ctx_t *mm = qdata->mm;
+	struct timeval now = {0};
 	
-	/*! \todo Log messages. */
 
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
@@ -165,8 +172,10 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		
 		ret = axfr_answer_init(qdata);
 		if (ret != KNOT_EOK) {
-			dbg_ns("%s: init => %s\n", __func__, knot_strerror(ret));
+			AXFR_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
 			return ret;
+		} else {
+			AXFR_LOG(LOG_INFO, "Started (serial %u).", knot_zone_serial(qdata->zone->contents));
 		}
 	}
 	
@@ -180,12 +189,14 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
-		dbg_ns("%s: finished AXFR, %u pkts, ~%.01fkB\n", __func__,
-		       xfer->npkts, xfer->nbytes/1024.0);
+		gettimeofday(&now, NULL);
+		AXFR_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
+		         time_diff(&xfer->tstamp, &now) / 1000.0,
+		         xfer->npkts, xfer->nbytes / 1024.0);
 		ret = NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
-		dbg_ns("%s: answered with ret = %s\n", __func__, knot_strerror(ret));
+		AXFR_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		ret = NS_PROC_FAIL;
 		break;
 	}
@@ -197,3 +208,5 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	return ret;
 }
+
+#undef AXFR_LOG

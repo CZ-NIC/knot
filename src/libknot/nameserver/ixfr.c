@@ -23,7 +23,12 @@ struct ixfr_proc {
 	node_t *cur;
 	unsigned state;
 	knot_changesets_t *changesets;
+	struct query_data *qdata;
 };
+
+/* IXFR-specific logging (internal, expects 'qdata' variable set). */
+#define IXFR_LOG(severity, msg...) \
+	XFER_LOG(severity, qdata, "Outgoing IXFR", msg)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -107,6 +112,10 @@ static int ixfr_process_item(knot_pkt_t *pkt, const void *item, struct xfr_proc 
 		dbg_ns("%s: put 'ADD' RRs\n", __func__);
 		ixfr->state = SOA_REMOVE;
 	}
+	
+	/* Finished change set. */
+	struct query_data *qdata = ixfr->qdata;
+	IXFR_LOG(LOG_INFO, "Serial %u -> %u.", chgset->serial_from, chgset->serial_to);
 
 	return ret;
 }
@@ -190,8 +199,10 @@ static int ixfr_answer_init(struct query_data *qdata)
 		return KNOT_ENOMEM;
 	}
 	memset(xfer, 0, sizeof(struct ixfr_proc));
+	gettimeofday(&xfer->proc.tstamp, NULL);
 	init_list(&xfer->proc.nodes);
 	qdata->ext = xfer;
+	xfer->qdata = qdata;
 
 	/* Put all changesets to process. */
 	xfer->changesets = chgsets;
@@ -240,24 +251,29 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	int ret = KNOT_EOK;
 	mm_ctx_t *mm = qdata->mm;
-	
-	/*! \todo Log messages. */
+	struct timeval now = {0};
+	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
+	const knot_rrset_t *their_soa = authority->rr[0];
 
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 		ret = ixfr_answer_init(qdata);
 		switch(ret) {
 		case KNOT_EOK:      /* OK */
+			IXFR_LOG(LOG_INFO, "Started (serial %u -> %u).",
+			         knot_rdata_soa_serial(their_soa),
+			         knot_zone_serial(qdata->zone->contents));
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
-			dbg_ns("%s: nothing new => SOA response\n", __func__);
+			IXFR_LOG(LOG_INFO, "Zone is up-to-date.");
 			return ixfr_answer_soa(pkt, ns, qdata);
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
-			dbg_ns("%s: not enough history => AXFR answer\n", __func__);
+			IXFR_LOG(LOG_INFO, "Incomplete history, fallback to AXFR.");
+			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
 			return axfr_answer(pkt, ns, qdata);
 		default:            /* Server errors. */
-			dbg_ns("%s: init => %s\n", __func__, knot_strerror(ret));
+			IXFR_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 	}
@@ -272,12 +288,14 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
-		dbg_ns("%s: finished IXFR, %u pkts, %.01fkB\n", __func__,
-		       ixfr->proc.npkts, ixfr->proc.nbytes/1024.0);
+		gettimeofday(&now, NULL);
+		IXFR_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
+		         time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
+		         ixfr->proc.npkts, ixfr->proc.nbytes / 1024.0);
 		ret = NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
-		dbg_ns("%s: answered with ret = %s\n", __func__, knot_strerror(ret));
+		IXFR_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		ret = NS_PROC_FAIL;
 		break;
 	}
@@ -290,3 +308,5 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	return ret;
 }
+
+#undef IXFR_LOG
