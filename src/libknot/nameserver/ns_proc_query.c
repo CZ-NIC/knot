@@ -109,6 +109,7 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 
 	/* Store for processing. */
 	qdata->query = pkt;
+	qdata->packet_type = pkt_type;
 
 	/* Declare having response. */
 	return NS_PROC_FULL;
@@ -359,9 +360,8 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
 	int next_state = NS_PROC_FAIL;
-	uint16_t query_type = knot_pkt_type(data->query);
 
-	switch(query_type) {
+	switch(data->packet_type) {
 	case KNOT_QUERY_NORMAL:
 		next_state = internet_answer(pkt, data);
 		break;

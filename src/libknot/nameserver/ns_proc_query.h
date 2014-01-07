@@ -51,6 +51,7 @@ struct ns_proc_query_param {
 struct query_data {
 	uint16_t rcode;          /*!< Resulting RCODE. */
 	uint16_t rcode_tsig;     /*!< Resulting TSIG RCODE. */
+	uint16_t packet_type;    /*!< Resolved packet type. */
 	knot_pkt_t *query;       /*!< Query to be solved. */
 	const knot_zone_t *zone; /*!< Zone from which is answered. */
 	list_t wildcards;        /*!< Visited wildcards. */
