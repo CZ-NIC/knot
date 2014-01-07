@@ -25,7 +25,7 @@ class ZoneFile(object):
 
     @property
     def path(self):
-        '''Get absolute path of the zone file'''
+        '''Get absolute path of the zone file.'''
 
         return os.path.join(self.file_dir, self.file_name)
 
@@ -74,7 +74,7 @@ class ZoneFile(object):
                       serial=serial)
 
     def gen_file(self, dnssec=None, records=None, serial=None):
-        '''Generate zone file'''
+        '''Generate zone file.'''
 
         if dnssec == None:
             dnssec = random.choice([True, False])
@@ -111,7 +111,7 @@ class ZoneFile(object):
         detail_log(SEP)
 
     def clone(self, file_dir, exists=True):
-        '''Make a copy of the zone file'''
+        '''Make a copy of the zone file.'''
 
         new = ZoneFile(file_dir)
         new.set_name(self.name)
@@ -119,3 +119,21 @@ class ZoneFile(object):
                      serial=self.serial,
                      exists=exists and os.path.isfile(self.path))
         return new
+
+    def enable_nsec3(self, salt="abcdef", iters=2):
+        '''Insert NSEC3PARAM record to the zone file.'''
+
+        with open(self.path, "a") as file:
+            file.write("@ 0 NSEC3PARAM 1 0 %i %s" % (iters, salt))
+
+    def disable_nsec3(self):
+        '''Remove NSEC3PARAM record if any.'''
+
+        old_name = self.path + ".old"
+        os.rename(self.path, old_name)
+
+        with open(old_name) as old_file, open(self.path, 'w') as new_file:
+            for line in old_file:
+                if not "NSEC3PARAM" in line:
+                    new_file.write(line)
+

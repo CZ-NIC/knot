@@ -286,6 +286,12 @@ class Server(object):
             nsid=False, dnssec=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
+        # Convert one item zone list to zone name.
+        if isinstance(rname, list):
+            if len(rname) != 1:
+                raise Exception("One zone required.")
+            rname = rname[0].name
+
         if timeout is None:
             timeout = self.DIG_TIMEOUT
         if rtype.upper() == "AXFR":
@@ -374,6 +380,12 @@ class Server(object):
     def zone_wait(self, zone, serial=None):
         '''Try to get SOA record with serial higher then specified'''
 
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
         _serial = 0
 
         for t in range(20):
@@ -393,18 +405,66 @@ class Server(object):
 
         return _serial
 
-    def zones_wait(self, zones):
-        for zone in zones:
+    def zones_wait(self, zone_list):
+        for zone in zone_list:
             self.zone_wait(zone)
 
+    def zone_verify(self, zone):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.dnssec_verify()
+
     def update(self, zone):
-        if len(zone) != 1:
-            raise Exception("One zone required.")
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
 
         key_params = self.tsig.key_params if self.tsig else dict()
 
-        return dnstest.update.Update(self, dns.update.Update(zone[0].name,
+        return dnstest.update.Update(self, dns.update.Update(zone.name,
                                                              **key_params))
+
+    def gen_key(self, zone, **args):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        try:
+            os.makedirs(self.keydir)
+        except OSError:
+            if not os.path.isdir(self.keydir):
+                raise Exception("Can't create key directory %s" % self.keydir)
+
+        key = dnstest.keys.Key(self.keydir, zone.name, **args)
+        key.generate()
+
+        return key
+
+    def enable_nsec3(self, zone, **args):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.enable_nsec3(**args)
+
+    def disable_nsec3(self, zone):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.disable_nsec3()
 
 class Bind(Server):
 
