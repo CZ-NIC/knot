@@ -464,9 +464,9 @@ static void process_rr(const scanner_t *scanner)
 	}
 	assert(parser->current_zone && node);
 	/* Do mandatory semantic checks. */
-	int sem_fatal_error = 0;
-	ret = sem_check_node_plain(parser->current_zone, node, -1,
-	                           parser->err_handler, 1,
+	bool sem_fatal_error = false;
+	ret = sem_check_node_plain(parser->current_zone, node,
+	                           parser->err_handler, true,
 	                           &sem_fatal_error);
 	if (ret != KNOT_EOK) {
 		log_zone_error("Semantic check failed to run (%s)\n",
@@ -546,8 +546,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	zl->semantic_checks = semantic_checks;
 	*dst = zl;
 
-	/* Log all information for now - possibly more config options. */
-	zl->err_handler = handler_new(1, 1, 1, 1, 1);
+	zl->err_handler = err_handler_new();
 	if (zl->err_handler == NULL) {
 		/* Not a reason to stop. */
 		log_zone_warning("Could not create semantic checks handler. "

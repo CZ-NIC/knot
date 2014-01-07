@@ -87,6 +87,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 	acl_delete(&zd->notify_out);
 	acl_delete(&zd->update_in);
 	pthread_mutex_destroy(&zd->lock);
+	pthread_mutex_destroy(&zd->ddns_lock);
 
 	/* Close IXFR db. */
 	journal_close(zd->ixfr_db);
@@ -116,8 +117,9 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	/* Link to config. */
 	zd->conf = cfg;
 
-	/* Initialize mutex. */
+	/* Initialize mutexes. */
 	pthread_mutex_init(&zd->lock, 0);
+	pthread_mutex_init(&zd->ddns_lock, 0);
 
 	/* Initialize XFR-IN. */
 	sockaddr_init(&zd->xfr_in.master, -1);
@@ -664,6 +666,7 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 		goto fail;
 	}
 
+	/* Schedule zonefile flush. */
 	zones_schedule_ixfr_sync(new_zone, conf->dbsync_timeout);
 
 	knot_zone_contents_t *new_contents = new_zone->contents;

@@ -4,21 +4,24 @@
 \- Knot DNS control utility
 .SH SYNOPSIS
 .B knotc
-[\fIparameters\fR] \fI<action>\fR [\fIaction_args\fR]
+[\fIparameters\fR] \fIaction\fR [\fIaction_args\fR]
 .SH DESCRIPTION
 .SS "Parameters:"
-.HP
-\fB\-c\fR [file], \fB\-\-config\fR=\fI[file]\fR Select configuration file.
 .TP
-\fB\-s\fR [server]\fR Remote UNIX socket/IP address (default @run_dir@/knot.sock)
+\fB\-c\fR, \fB\-\-config\fR \fIfile\fR
+Select configuration file.
 .TP
-\fB\-p\fR [port]\fR Remote server port (only for IP).
+\fB\-s\fR \fIserver\fR
+Remote UNIX socket/IP address (default @run_dir@/knot.sock).
 .TP
-\fB\-y\fR [hmac:]name:key]\fR Use key_id for specified on the command line.
+\fB\-p\fR \fIport\fR
+Remote server port (only for IP).
 .TP
-\fB\-k\fR [file]\fR Use key file (as in config section 'keys').
-f.e. echo "knotc\-key hmac\-md5 Wg==" > knotc.key
-If you omit algorithm, hmac\-md5 will be used as default.
+\fB\-y\fR [\fIhmac\fR:]\fIname\fR:\fIkey\fR
+Use key specified on the command line (default algorithm is hmac\-md5).
+.TP
+\fB\-k\fR \fIfile\fR
+Use key file (as in config section 'keys').
 .TP
 \fB\-f\fR, \fB\-\-force\fR
 Force operation \- override some checks.
@@ -27,7 +30,7 @@ Force operation \- override some checks.
 Verbose mode \- additional runtime information.
 .TP
 \fB\-V\fR, \fB\-\-version\fR
-Print knot server version.
+Print version of the server.
 .TP
 \fB\-i\fR, \fB\-\-interactive\fR
 Interactive mode (do not daemonize).
@@ -36,57 +39,53 @@ Interactive mode (do not daemonize).
 Print help and usage.
 .SS "Actions:"
 .TP
-stop
-Stop knot server daemon (no\-op if not running).
+\fBstop\fR
+Stop server (no\-op if not running).
 .TP
-reload
-Reload knot configuration and zones.
+\fBreload\fR
+Reload configuration and changed zones.
 .TP
-flush
+\fBflush\fR
 Flush journal and update zone files.
 .TP
-status
+\fBstatus\fR
 Check if server is running.
 .TP
-zonestatus
+\fBzonestatus\fR
 Show status of configured zones.
 .TP
-refresh
+\fBrefresh\fR [\fIzone\fR]...
 Refresh slave zones (all if not specified).
 .TP
-checkconf
-Check server configuration.
+\fBcheckconf\fR
+Check current server configuration.
 .TP
-checkzone
-Check zones before compiling (accepts specific zones, f.e. 'knotc checkzone example1.com example2.com').
+\fBcheckzone\fR [\fIzone\fR]...
+Check zone (all if not specified).
 .TP
-memstats
-Estimate memory consumption for zone files. Useful mainly for big zones.
-.SS "EXAMPLES"
+\fBmemstats\fR [\fIzone\fR]...
+Estimate memory consumption for zone (all if not specified).
+.SH EXAMPLES
 .TP
 .B Setup a keyfile for remote control
 .TP
-1. Generate keys
-dnssec\-keygen \-a hmac\-md5 \-b 256 \-n HOST knotc\-key
+1. Generate key:
 .TP
-2. Extract secret in base64 format and create keyfile
-echo "knotc\-key hmac\-md5 <secret>" > knotc.key
-
-Make sure the key can be read/written only by owner for
-security reasons.
+# dnssec\-keygen \-a hmac\-md5 \-b 256 \-n HOST knotc\-key
 .TP
-
+2. Extract secret in base64 format and create keyfile:
+.TP
+# echo "knotc\-key hmac\-md5 <secret>" > knotc.key
+.TP
+Make sure the key can be read/written only by the owner for security reasons.
+.TP
 .B Reload server remotely
-knotc \-s 127.0.0.1 \-k knotc.key reload
+.TP
+# knotc \-s 127.0.0.1 \-k knotc.key reload
 .SH "SEE ALSO"
-The full documentation for
-.B Knot
-is maintained as a Texinfo manual.  If the
-.B info
-and
-.B Knot
-programs are properly installed at your site, the command
-.IP
-.B info Knot
-.PP
-should give you access to the complete manual.
+.BR knotd (8)
+.SH NOTE
+The full documentation for \fBKnot DNS\fR is maintained
+as a Texinfo manual. If the \fBinfo\fR program is properly
+installed at your site, the \fBinfo\ Knot\fR command should
+give you an access to the complete manual.

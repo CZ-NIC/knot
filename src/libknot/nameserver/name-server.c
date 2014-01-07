@@ -541,7 +541,6 @@ dbg_ns_exec_verb(
 			break;
 		}
 		int i = 0;
-		int ret = 0;
 		knot_rrset_t *rrset;
 		while (i < knot_node_rrset_count(node)) {
 			assert(rrsets[i] != NULL);
@@ -572,7 +571,6 @@ dbg_ns_exec_verb(
 		break;
 	}
 	default: {
-		int ret = 0;
 		knot_rrset_t *rrset = knot_node_get_rrset(node, type);
 		knot_rrset_t *rrset2 = rrset;
 		if (rrset != NULL && knot_rrset_rdata_rr_count(rrset)) {
@@ -4019,8 +4017,6 @@ dbg_ns_exec_verb(
 		dbg_ns_verb("Zone integrity check: %d errors.\n", errs);
 );
 	}
-
-	/*! \todo In case of error, shouldn't the zone be destroyed here? */
 
 	return ret;
 }

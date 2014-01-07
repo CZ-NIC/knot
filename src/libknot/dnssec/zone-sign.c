@@ -282,6 +282,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	assert(covered);
 	assert(zone_keys);
 	assert(changeset);
+	if (covered->rdata_count == 0) {
+		return KNOT_EOK;
+	}
 
 	int result = KNOT_EOK;
 	knot_rrset_t *to_add = NULL;
@@ -402,6 +405,8 @@ static int resign_rrset(const knot_rrset_t *covered,
 	// maybe merge the two functions into one
 	// jvcelak: Not really, maybe for RSA. The digest is computed twice,
 	// but the verification process can differ from signature computation.
+	// TODO reuse digest for RSA then, RSA is the most used algo family,
+	// and we create all the signatures twice, that is not cool I think.
 	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
 	                                   policy, changeset, expires_at);
 	if (result != KNOT_EOK) {
@@ -441,7 +446,8 @@ static int sign_node_rrsets(const knot_node_t *node,
 		}
 
 		// Remove standalone RRSIGs (without the RRSet they sign)
-		if (rrset->rdata_count == 0 && rrset->rrsigs->rdata_count != 0) {
+		if (rrset->rdata_count == 0 && rrset->rrsigs) {
+			assert(rrset->rrsigs->rdata_count > 0);
 			result = remove_rrset_rrsigs(rrset, changeset);
 			if (result != KNOT_EOK) {
 				break;
@@ -1264,7 +1270,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
  */
-int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
+int knot_zone_sign_changeset(const knot_zone_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
                              hattrie_t **sorted_changes,
@@ -1276,7 +1282,8 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 	}
 
 	// Create args for wrapper function - hattrie for duplicate sigs
-	changeset_signing_data_t args = { .zone = zone, .zone_keys = zone_keys,
+	changeset_signing_data_t args = { .zone = zone->contents,
+	                                  .zone_keys = zone_keys,
 	                                  .policy = policy,
 	                                  .changeset = out_ch,
 	                                  .signed_tree = hattrie_create()};

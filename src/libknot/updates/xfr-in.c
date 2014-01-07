@@ -34,6 +34,7 @@
 #include "libknot/updates/changesets.h"
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
+#include "knot/zone/semantic-check.h"
 #include "common/lists.h"
 #include "common/descriptor.h"
 #include "libknot/rdata.h"
@@ -293,25 +294,29 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 static void xfrin_log_error(const knot_dname_t *zone_owner,
-                            const knot_dname_t *rr_owner,
+                            const knot_rrset_t *rr,
                             int ret)
 {
 	char *zonename = knot_dname_to_str(zone_owner);
+	char *rrname = knot_dname_to_str(rr->owner);
 	if (ret == KNOT_EOUTOFZONE) {
 		// Out-of-zone data, ignore
-		char *rrname = knot_dname_to_str(rr_owner);
 		log_zone_warning("Zone %s: Ignoring "
 		                 "out-of-zone RR owned by %s\n",
 		                 zonename, rrname);
-		free(zonename);
-		free(rrname);
+	} if (ret == KNOT_EMALF) {
+		// Fatal semantic error
+		char rrstr[16] = { '\0' };
+		knot_rrtype_to_string(rr->type, rrstr, 16);
+		log_zone_error("Zone %s: Semantic error for RR owned by %s, "
+		               "type %s.\n", zonename, rrname, rrstr);
 	} else {
 	        log_zone_error("Zone %s: Failed to process "
-	                       "incoming RR, transfer "
-	                       "is probably malformed. (Reason: %s)\n",
+	                       "incoming RR, Transfer failed (Reason: %s)\n",
 	                        zonename, knot_strerror(ret));
-	        free(zonename);
 	}
+	free(rrname);
+	free(zonename);
 }
 
 void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
@@ -433,6 +438,17 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 
 /*----------------------------------------------------------------------------*/
 
+static bool semantic_check_passed(const knot_zone_contents_t *z,
+                                  const knot_node_t *node)
+{
+	assert(node && z);
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
+	bool fatal = false;
+	sem_check_node_plain(z, node, &err_handler, true, &fatal);
+	return !fatal;
+}
+
 int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 {
 	const uint8_t *pkt = xfr->wire;
@@ -443,6 +459,10 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	if (pkt == NULL || constr == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	/* Init semantic error handler - used for CNAME/DNAME checks. */
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
 
 	dbg_xfrin_verb("Processing AXFR packet of size %zu.\n", size);
 
@@ -615,12 +635,12 @@ dbg_xfrin_exec(
 		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// Out-of-zone data
-			xfrin_log_error(xfr->zone->name, rr->owner,
+			xfrin_log_error(xfr->zone->name, rr,
 			                KNOT_EOUTOFZONE);
 			knot_rrset_deep_free(&rr, 1);
 			ret = knot_packet_parse_next_rr_answer(packet, &rr);
 			continue;
-		}
+		}		
 
 		dbg_rrset_detail("\nNext RR:\n\n");
 		knot_rrset_dump(rr);
@@ -754,7 +774,7 @@ dbg_xfrin_exec_verb(
 			knot_rrset_deep_free(&rr, 1);
 			return KNOT_EMALF;
 		}
-
+		
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
 					 const knot_dname_t *) = NULL;
 		int (*add_node)(knot_zone_contents_t *, knot_node_t *, int,
@@ -793,7 +813,7 @@ dbg_xfrin_exec_verb(
 				dbg_xfrin("Failed to add RRSet to node (%s)\n",
 					  knot_strerror(ret));
 				knot_packet_free(&packet);
-				knot_node_free(&node); // ???
+				knot_node_free(&node);
 				knot_rrset_deep_free(&rr, 1);
 				return KNOT_ERROR;
 			} else if (ret > 0) {
@@ -803,7 +823,6 @@ dbg_xfrin_exec_verb(
 
 			// insert the node into the zone
 			ret = add_node(zone, node, 1, 0);
-			assert(node != NULL);
 			if (ret != KNOT_EOK) {
 				// Fatal error, free packet
 				knot_packet_free(&packet);
@@ -811,11 +830,19 @@ dbg_xfrin_exec_verb(
 				knot_node_free(&node);
 				return ret;
 			}
+			
+			if (!semantic_check_passed(zone, node)) {
+				xfrin_log_error(xfr->zone->name,
+				                rr,
+				                KNOT_EMALF);
+				knot_packet_free(&packet);
+				return KNOT_EMALF;
+			}
 
 			in_zone = 1;
 		} else {
 			assert(in_zone);
-
+			const uint16_t rrtype = rr->type;
 			ret = knot_zone_contents_add_rrset(zone, rr, &node,
 						    KNOT_RRSET_DUPL_MERGE);
 			if (ret < 0) {
@@ -827,7 +854,13 @@ dbg_xfrin_exec_verb(
 				// merged, free the RRSet
 				knot_rrset_deep_free(&rr, 1);
 			}
-
+			if (!semantic_check_passed(zone, node)) {
+				xfrin_log_error(xfr->zone->name,
+				                knot_node_rrset(node, rrtype),
+				                KNOT_EMALF);
+				knot_packet_free(&packet);
+				return KNOT_EMALF;
+			}
 		}
 
 		rr = NULL;
@@ -855,8 +888,7 @@ dbg_xfrin_exec_verb(
 	assert(rr == NULL);
 
 	// if the last node is not yet in the zone, insert
-	if (!in_zone) {
-		assert(node != NULL);
+	if (!in_zone && node) {
 		ret = knot_zone_contents_add_node(zone, node, 1, 0);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add last node into zone (%s).\n",
@@ -1106,14 +1138,13 @@ dbg_xfrin_exec_verb(
 		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// out-of-zone domain
-			xfrin_log_error(xfr->zone->name, rr->owner,
-			                KNOT_EOUTOFZONE);
+			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
 			knot_rrset_deep_free(&rr, 1);
 			// Skip this rr
 			ret = knot_packet_parse_next_rr_answer(packet, &rr);
 			continue;
 		}
-
+		
 		switch (state) {
 		case -1:
 			// a SOA is expected
@@ -2524,6 +2555,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 	ret = xfrin_switch_nodes(contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to switch pointers in nodes.\n");
+		knot_zone_contents_free(&contents_copy);
 		return ret;
 	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
