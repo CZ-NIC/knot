@@ -6,14 +6,10 @@ Check if DNSKEY lifetime timestamps are proccessed correctly by Knot.
 
 import collections
 import os
-import re
 import shutil
-import sys
-import dns
 
 from dnstest.utils import *
 from dnstest.test import Test
-import dnstest.server
 
 # change timestamps in DNSSEC key file
 def key_settime(filename, **new_values):
@@ -32,21 +28,13 @@ def key_settime(filename, **new_values):
             if value is not None:
                 keyfile.write("%s: %s\n" % (key, value))
 
-# check number of records of given type in DNS answer
-def answer_count(response, rrtype):
-    for rrset in response.answer:
-        if rrset.rdtype == rrtype:
-            return len(rrset)
-    else:
-        return 0
-
 # check zone if keys are present and used for signing
 def check_zone(server, expect_dnskey, expect_rrsig):
     dnskeys = server.dig("example.com", "DNSKEY")
     soa = server.dig("example.com", "SOA", dnssec=True)
 
-    found_dnskeys = answer_count(dnskeys.resp, dns.rdatatype.DNSKEY)
-    found_rrsigs = answer_count(soa.resp, dns.rdatatype.RRSIG)
+    found_dnskeys = dnskeys.answer_count("DNSKEY")
+    found_rrsigs = soa.answer_count("RRSIG")
 
     expect_dnskeys = 2 if expect_dnskey else 1
     expect_rrsigs = 2 if expect_rrsig else 1
@@ -62,7 +50,7 @@ t = Test()
 
 knot = t.server("knot")
 knot.dnssec_enable = True
-zone = t.zone("example.com.", "example.com.zone")
+zone = t.zone("example.com.")
 t.link(zone, knot)
 
 # install keys (one always enabled, one for testing)

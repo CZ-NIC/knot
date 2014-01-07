@@ -10,7 +10,6 @@ import dns.message
 import dns.query
 import dns.update
 from subprocess import Popen, PIPE, DEVNULL, check_call
-
 from dnstest.utils import *
 import dnstest.params as params
 import dnstest.keys
@@ -84,13 +83,16 @@ class BindConf(object):
 class Zone(object):
     '''DNS zone description'''
 
-    def __init__(self, name, filename, ddns=False):
-        self.name = name
-        self.filename = filename
+    def __init__(self, zone_file=None, ddns=False):
+        self.zfile = zone_file
         self.master = None
         self.slaves = set()
-        # ddns: True - ddns, False(master) - ixfrFromDiff, False(slave) - empty
+        # True: DDNS, False on master: ixfrFromDiff, False on slave: empty
         self.ddns = ddns
+
+    @property
+    def name(self):
+        return self.zfile.name
 
 class Server(object):
     '''Specification of DNS server'''
@@ -163,24 +165,29 @@ class Server(object):
 
         return True
 
-    def zone_master(self, name, file, slave=None, ddns=False):
-        if name in self.zones:
-            if slave:
-                self.zones[name].slaves.add(slave)
-        else:
-            z = Zone(name, file, ddns)
-            if slave:
-                z.slaves.add(slave)
-            self.zones[name] = z
+    def set_master(self, zone, slave=None, ddns=False):
+        '''Set the server as a master for the zone'''
 
-    def zone_slave(self, name, file, master, ddns=False):
-        if name in self.zones:
-            raise Exception("Can't set zone %s as a slave" % name)
+        if zone.name not in self.zones:
+            master_file = zone.clone(self.dir + "/master")
+            z = Zone(master_file, ddns)
+            self.zones[zone.name] = z
         else:
-            slave_file = self.dir + "/__" + name + "slave"
-            z = Zone(name, slave_file, ddns)
-            z.master = master
-            self.zones[name] = z
+            z = self.zones[zone.name]
+
+        if slave:
+            z.slaves.add(slave)
+
+    def set_slave(self, zone, master, ddns=False):
+        '''Set the server as a slave for the zone'''
+
+        if zone.name in self.zones:
+            raise Exception("Can't set zone %s as a slave" % name)
+
+        slave_file = zone.clone(self.dir + "/slave", exists=False)
+        z = Zone(slave_file, ddns)
+        z.master = master
+        self.zones[zone.name] = z
 
     def compile(self):
         try:
@@ -279,6 +286,12 @@ class Server(object):
             nsid=False, dnssec=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
+        # Convert one item zone list to zone name.
+        if isinstance(rname, list):
+            if len(rname) != 1:
+                raise Exception("One zone required.")
+            rname = rname[0].name
+
         if timeout is None:
             timeout = self.DIG_TIMEOUT
         if rtype.upper() == "AXFR":
@@ -367,10 +380,16 @@ class Server(object):
     def zone_wait(self, zone, serial=None):
         '''Try to get SOA record with serial higher then specified'''
 
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
         _serial = 0
 
         for t in range(20):
-            resp = self.dig(zone, "SOA", udp=True, tries=1)
+            resp = self.dig(zone.name, "SOA", udp=True, tries=1)
             if resp.resp.rcode() == 0:
                 soa = str((resp.resp.answer[0]).to_rdataset())
                 _serial = int(soa.split()[5])
@@ -381,36 +400,71 @@ class Server(object):
                     break
             time.sleep(2)
         else:
-            raise Exception("Can't get %s SOA%s from %s." % \
-                            (zone, ">%i" % serial if serial else "", self.name))
+            raise Exception("Can't get %s SOA%s from %s." % (zone.name,
+                            ">%i" % serial if serial else "", self.name))
 
         return _serial
 
-    def zones_wait(self, zones):
-        for zone in zones:
+    def zones_wait(self, zone_list):
+        for zone in zone_list:
             self.zone_wait(zone)
 
+    def zone_verify(self, zone):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.dnssec_verify()
+
     def update(self, zone):
-        if len(zone) != 1:
-            raise Exception("One zone required.")
-        zname = list(zone.keys())[0]
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
 
         key_params = self.tsig.key_params if self.tsig else dict()
 
-        return dnstest.update.Update(self, dns.update.Update(zname, **key_params))
+        return dnstest.update.Update(self, dns.update.Update(zone.name,
+                                                             **key_params))
 
-    def zone_update(self, zone_name, file_name):
-        # Add trailing dot if missing.
-        if zone_name[-1] != ".":
-            zone_name += "."
-
-        src_file = self.data_dir + file_name
-        dst_file = self.zones[zone_name].filename
+    def gen_key(self, zone, **args):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
 
         try:
-            shutil.copyfile(src_file, dst_file)
-        except:
-            raise Exception("Can't use zone file %s" % src_file)
+            os.makedirs(self.keydir)
+        except OSError:
+            if not os.path.isdir(self.keydir):
+                raise Exception("Can't create key directory %s" % self.keydir)
+
+        key = dnstest.keys.Key(self.keydir, zone.name, **args)
+        key.generate()
+
+        return key
+
+    def enable_nsec3(self, zone, **args):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.enable_nsec3(**args)
+
+    def disable_nsec3(self, zone):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.disable_nsec3()
 
 class Bind(Server):
 
@@ -472,7 +526,7 @@ class Bind(Server):
             s.end()
 
             keys = set() # Duplicy check.
-            for zone in self.zones:
+            for zone in sorted(self.zones):
                 z = self.zones[zone]
                 if z.master and z.master.tsig.name not in keys:
                     t = z.master.tsig
@@ -490,10 +544,10 @@ class Bind(Server):
                         s.end()
                         keys.add(t.name)
 
-        for zone in self.zones:
+        for zone in sorted(self.zones):
             z = self.zones[zone]
             s.begin("zone", z.name)
-            s.item_str("file", z.filename)
+            s.item_str("file", z.zfile.path)
             s.item("check-names", "warn")
             if z.master:
                 s.item("type", "slave")
@@ -609,7 +663,7 @@ class Knot(Server):
             s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
 
             keys = set() # Duplicy check.
-            for zone in self.zones:
+            for zone in sorted(self.zones):
                 z = self.zones[zone]
                 if z.master and z.master.tsig.name not in keys:
                     t = z.master.tsig
@@ -630,7 +684,7 @@ class Knot(Server):
         s.end()
 
         servers = set() # Duplicity check.
-        for zone in self.zones:
+        for zone in sorted(self.zones):
             z = self.zones[zone]
             if z.master and z.master.name not in servers:
                 s.begin(z.master.name)
@@ -659,10 +713,10 @@ class Knot(Server):
         if self.dnssec_enable:
             s.item_str("dnssec-keydir", self.keydir)
             s.item("dnssec-enable", "on")
-        for zone in self.zones:
+        for zone in sorted(self.zones):
             z = self.zones[zone]
             s.begin(z.name)
-            s.item_str("file", z.filename)
+            s.item_str("file", z.zfile.path)
 
             if z.master:
                 s.item("notify-in", z.master.name)

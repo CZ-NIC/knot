@@ -1248,7 +1248,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		knot_zone_contents_set_gen_old(new_contents);
 		ret = xfrin_apply_changesets(fake_zone, sec_chs,
 		                             &dnssec_contents);
-		free(fake_zone);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update %s\n",
 			               msg, knot_strerror(ret));
@@ -1269,10 +1268,10 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			zones_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
-	} else {
-		free(fake_zone);
 	}
 
+	new_contents->zone = zone;
+	free(fake_zone);
 
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
 
