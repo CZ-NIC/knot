@@ -146,7 +146,7 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	}
 
 	/* Send response only if finished successfuly. */
-	if (state == NS_PROC_FINISH) {
+	if (state == NS_PROC_DONE) {
 		tx->iov_len = tx_len;
 	} else {
 		tx->iov_len = 0;

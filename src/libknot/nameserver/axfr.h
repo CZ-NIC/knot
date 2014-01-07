@@ -40,7 +40,7 @@ struct xfr_proc {
 	unsigned nbytes; /* Bytes processed. */
 };
 
-/*! \brief Generic transfer processing.
+/*! \brief Generic transfer processing (reused for IXFR).
  */
 typedef int (*xfr_put_cb)(knot_pkt_t *pkt, const void *item, struct xfr_proc *xfer);
 
@@ -52,9 +52,9 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
 /*!
  * \brief AXFR query processing module.
  *
- * \retval NS_PROC_FULL if it has an answer, but not yet finished.
- * \retval NS_PROC_FAIL if it encountered an error.
- * \retval NS_PROC_EOK  if finished.
+ * \retval FULL if it has an answer, but not yet finished.
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
  */
 int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
 

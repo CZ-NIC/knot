@@ -140,7 +140,7 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
 
 		/* If it has response, send it. */
-		if (state == NS_PROC_FINISH || state == NS_PROC_FULL) {
+		if (state == NS_PROC_DONE || state == NS_PROC_FULL) {
 			if (tcp_send(fd, tx->iov_base, tx_len) != tx_len) {
 				ret = KNOT_ECONN;
 				break;

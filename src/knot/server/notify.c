@@ -147,7 +147,7 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	
 	/* SOA RR in answer may be included, recover serial. */
 	unsigned serial = 0;
-	const knot_pktsection_t *answer = knot_pkt_section(qdata->pkt, KNOT_ANSWER);
+	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
 	if (answer->count > 0) {
 		const knot_rrset_t *soa = answer->rr[0];
 		if (knot_rrset_type(soa) == KNOT_RRTYPE_SOA) {
@@ -168,7 +168,7 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 		next_state = NS_PROC_NOOP; /* RFC1996: Ignore. */
 		log_server_warning(NOTIFY_MSG "%s\n", qname_str, addr_str, knot_strerror(ret));
 	} else {
-		next_state = NS_PROC_FINISH;
+		next_state = NS_PROC_DONE;
 		log_server_info(NOTIFY_MSG NOTIFY_XMSG "\n", qname_str, addr_str, serial);
 	}
 	free(qname_str);

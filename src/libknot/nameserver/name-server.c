@@ -40,61 +40,8 @@
 #include "libknot/dnssec/zone-nsec.h"
 
 /*----------------------------------------------------------------------------*/
-
-/*! \brief Maximum UDP payload with EDNS disabled. */
-static const uint16_t MAX_UDP_PAYLOAD      = 512;
-
-/*! \brief TTL of a CNAME synthetized from a DNAME. */
-static const uint32_t SYNTH_CNAME_TTL      = 0;
-
-/*! \brief Determines whether DNSSEC is enabled. */
-static const int      DNSSEC_ENABLED       = 1;
-
-/*! \brief Internal error code to propagate need for SERVFAIL response. */
-static const int      NS_ERR_SERVFAIL      = -999;
-
-/*----------------------------------------------------------------------------*/
 /* Private functions                                                          */
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Finds zone where to search for the QNAME.
- *
- * \note As QTYPE DS requires special handling, this function finds a zone for
- *       a direct predecessor of QNAME in such case.
- *
- * \param zdb Zone database where to search for the proper zone.
- * \param qname QNAME.
- * \param qtype QTYPE.
- *
- * \return Zone to which QNAME belongs (according to QTYPE), or NULL if no such
- *         zone was found.
- */
-const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
-                                                  const knot_dname_t *qname,
-                                                  uint16_t qtype)
-{
-	const knot_zone_t *zone;
-	/*
-	 * Find a zone in which to search.
-	 *
-	 * In case of DS query, we strip the leftmost label when searching for
-	 * the zone (but use whole qname in search for the record), as the DS
-	 * records are only present in a parent zone.
-	 */
-	if (qtype == KNOT_RRTYPE_DS) {
-		const knot_dname_t *parent = knot_wire_next_label(qname, NULL);
-		zone = knot_zonedb_find_suffix(zdb, parent);
-		/* If zone does not exist, search for its parent zone,
-		   this will later result to NODATA answer. */
-		if (zone == NULL) {
-			zone = knot_zonedb_find_suffix(zdb, qname);
-		}
-	} else {
-		zone = knot_zonedb_find_suffix(zdb, qname);
-	}
-
-	return zone;
-}
 
 /*----------------------------------------------------------------------------*/
 
@@ -537,15 +484,15 @@ void knot_ns_destroy(knot_nameserver_t **nameserver)
 	*nameserver = NULL;
 }
 
-/* #10 <<< Next-gen API. */
+/* State -> string translation table. */
+#define NS_STATE_STR(x) _state_table[x]
 static const char* _state_table[] = {
-        [NS_PROC_NOOP] = "N/A",
+        [NS_PROC_NOOP] = "NOOP",
         [NS_PROC_MORE] = "MORE",
         [NS_PROC_FULL] = "FULL",
-        [NS_PROC_FINISH] = "FINISHED",
+        [NS_PROC_DONE] = "DONE",
         [NS_PROC_FAIL] = "FAIL"
 };
-#define NS_STATE_STR(x) _state_table[x]
 
 int ns_proc_begin(ns_proc_context_t *ctx, void *module_param, const ns_proc_module_t *module)
 {
@@ -573,9 +520,7 @@ int ns_proc_begin(ns_proc_context_t *ctx, void *module_param, const ns_proc_modu
 
 int ns_proc_reset(ns_proc_context_t *ctx)
 {
-	/* #10 implement */
 	ctx->state = ctx->module->reset(ctx);
-
 	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }
@@ -587,9 +532,7 @@ int ns_proc_finish(ns_proc_context_t *ctx)
 		return NS_PROC_NOOP;
 	}
 
-	/* #10 implement */
 	ctx->state = ctx->module->finish(ctx);
-
 	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }
@@ -605,7 +548,6 @@ int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx)
 	knot_pkt_parse(pkt, 0);
 
 	ctx->state = ctx->module->in(pkt, ctx);
-
 	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }

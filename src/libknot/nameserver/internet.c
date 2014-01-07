@@ -106,7 +106,7 @@ static bool dname_cname_can_synth(const knot_rrset_t *rrset, const knot_dname_t 
 /*! \brief DNSSEC both requested & available. */
 static bool have_dnssec(struct query_data *qdata)
 {
-	return knot_pkt_have_dnssec(qdata->pkt) &&
+	return knot_pkt_have_dnssec(qdata->query) &&
 	       knot_zone_contents_is_signed(qdata->zone->contents);
 }
 
@@ -487,6 +487,10 @@ static int solve_answer_section(int state, knot_pkt_t *pkt, struct query_data *q
 
 static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
+	if (!have_dnssec(qdata)) {
+		return state; /* DNSSEC not supported. */
+	}
+
 	/* RFC4035, section 3.1 RRSIGs for RRs in ANSWER are mandatory. */
 	int ret = nsec_append_rrsigs(pkt, false);
 	switch(ret) {
@@ -548,6 +552,10 @@ static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 
 static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
+	if (!have_dnssec(qdata)) {
+		return state; /* DNSSEC not supported. */
+	}
+	
 	int ret = KNOT_ERROR;
 
 	switch (state) {
@@ -580,7 +588,7 @@ static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata
 	/* Put OPT RR. */
 	int ret = knot_pkt_put_opt(pkt);
 	
-	/* Scan all RRs in AN+NS. */
+	/* Scan all RRs in ANSWER/AUTHORITY. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
 		/* Skip types for which it doesn't apply. */
 		if (!rrset_additional_needed(pkt->rr[i]->type)) {
@@ -598,6 +606,10 @@ static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata
 
 static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
+	if (!have_dnssec(qdata)) {
+		return state; /* DNSSEC not supported. */
+	}
+
 	/* RFC4035, section 3.1 RRSIGs for RRs in ADDITIONAL are optional. */
 	int ret = nsec_append_rrsigs(pkt, true);
 	switch(ret) {
@@ -606,6 +618,15 @@ static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data
 	default:          return ERROR;
 	}
 }
+
+/*! \brief Helper for internet_answer repetitive code. */
+#define SOLVE_STEP(solver, state) \
+	state = solver(state, response, qdata); \
+	if (state == TRUNC) { \
+		return NS_PROC_DONE; \
+	} else if (state == ERROR) { \
+		return NS_PROC_FAIL; \
+	}
 
 int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 {
@@ -617,73 +638,39 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
 	
 	/* No applicable ACL, refuse transaction security. */
-	if (knot_pkt_have_tsig(qdata->pkt)) {
+	if (knot_pkt_have_tsig(qdata->query)) {
 		/* We have been challenged... */
 		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
 		NS_NEED_AUTH(zone_data->xfr_out, qdata);
 	}
 
-	/* Write answer RRs for QNAME. */
+	/* Get answer to QNAME. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ANSWER);
-
-	/* Get answer to QNAME. */
-	qdata->name = knot_pkt_qname(qdata->pkt);
-	int state = solve_answer_section(BEGIN, response, qdata);
-
-	/* Resolve DNSSEC for ANSWER. */
-	if (have_dnssec(qdata)) {
-		state = solve_answer_dnssec(state, response, qdata);
-		if (state == TRUNC) {
-			return NS_PROC_FINISH;
-		} else if (state == ERROR) {
-			return NS_PROC_FAIL;
-		}
-	}
+	qdata->name = knot_pkt_qname(qdata->query);
+	
+	/* Begin processing. */
+	int state = BEGIN;
+	SOLVE_STEP(solve_answer_section, state);
+	SOLVE_STEP(solve_answer_dnssec, state);
 
 	/* Resolve AUTHORITY. */
 	dbg_ns("%s: writing %p AUTHORITY\n", __func__, response);
 	knot_pkt_begin(response, KNOT_AUTHORITY);
-	state = solve_authority(state, response, qdata);
-	if (state == TRUNC) {
-		return NS_PROC_FINISH;
-	} else if (state == ERROR) {
-		return NS_PROC_FAIL;
-	}
-
-	/* Resolve DNSSEC for AUTHORITY. */
-	if (have_dnssec(qdata)) {
-		state = solve_authority_dnssec(state, response, qdata);
-		if (state == TRUNC) {
-			return NS_PROC_FINISH;
-		} else if (state == ERROR) {
-			return NS_PROC_FAIL;
-		}
-	}
+	SOLVE_STEP(solve_authority, state);
+	SOLVE_STEP(solve_authority_dnssec, state);
 
 	/* Resolve ADDITIONAL. */
 	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ADDITIONAL);
-	state = solve_additional(state, response, qdata);
-	if (state == TRUNC) {
-		return NS_PROC_FINISH;
-	} else if (state == ERROR) {
-		return NS_PROC_FAIL;
-	}
-	
-	/* Resolve DNSSEC for ADDITIONAL. */
-	if (have_dnssec(qdata)) {
-		state = solve_additional_dnssec(state, response, qdata);
-		if (state == TRUNC) {
-			return NS_PROC_FINISH;
-		} else if (state == ERROR) {
-			return NS_PROC_FAIL;
-		}
-	}
+	SOLVE_STEP(solve_additional, state);
+	SOLVE_STEP(solve_additional_dnssec, state);
 
-	/* Write RCODE. */
+	/* Write resulting RCODE. */
 	knot_wire_set_rcode(response->wire, qdata->rcode);
 
 	/* Complete response. */
-	return NS_PROC_FINISH;
+	return NS_PROC_DONE;
 }
+
+#undef SOLVE_STEP

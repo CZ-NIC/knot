@@ -57,6 +57,7 @@ struct server_t;
  *        supported DNS functions.
  *
  * Currently only holds pointer to the zone database for answering queries.
+ * \todo Merge this with server_t
  */
 typedef struct knot_nameserver {
 	/*!
@@ -296,47 +297,50 @@ int knot_ns_tsig_required(int packet_nr);
  */
 void knot_ns_destroy(knot_nameserver_t **nameserver);
 
+/* ^^^
+ * NG processing API below, everything upwards should be slowly moved to appropriate
+ * files or removed.
+ */
 
-/* #10 <<< Exposed API. */
-const knot_zone_t *ns_get_zone_for_qname(knot_zonedb_t *zdb,
-                                                  const knot_dname_t *qname,
-                                                  uint16_t qtype);
-
-/* #10 >>> Exposed API. */
-
-/* #10 <<< Next-gen API. */
-
+/*! \brief Main packet processing states.
+ *         Each state describes the current machine processing step
+ *         and determines readiness for next action.
+ */
 enum ns_proc_state {
-	NS_PROC_NOOP = 0,
-	NS_PROC_MORE = 1 << 0,
-	NS_PROC_FULL = 1 << 1,
-	NS_PROC_FINISH  = 1 << 2,
-	NS_PROC_FAIL = 1 << 3,
+	NS_PROC_NOOP = 0,      /* N/A */
+	NS_PROC_MORE = 1 << 0, /* More input data. */
+	NS_PROC_FULL = 1 << 1, /* Has output data. */
+	NS_PROC_DONE = 1 << 2, /* Finished. */
+	NS_PROC_FAIL = 1 << 3  /* Error. */
 };
 
+/*! \brief Packet processing flags. */
 enum ns_proc_flag {
 	/* Common flags. */
 	NS_PKTSIZE_NOLIMIT = 1 << 0, /* Don't limit packet size (for TCP). */
+
 	/* Module-specific flags. */
 	NS_PROCFLAG        = 1 << 8
 };
 
+/* Forward declarations. */
 struct ns_proc_module;
-struct ns_sign_context;
 
+/*! \brief Packte processing context. */
 typedef struct ns_proc_context
 {
+	int state;
 	mm_ctx_t mm;
 	uint16_t type;
 	uint16_t flags;
-	void *data;
-
-	int state;
 	knot_nameserver_t *ns;
+	void *data;
+	
+	/* Module implementation. */
 	const struct ns_proc_module *module;
-
 } ns_proc_context_t;
 
+/*! \brief Packet processing module API. */
 typedef struct ns_proc_module {
 	int (*begin)(ns_proc_context_t *ctx, void *module_param);
 	int (*reset)(ns_proc_context_t *ctx);
@@ -346,6 +350,8 @@ typedef struct ns_proc_module {
 	int (*err)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 } ns_proc_module_t;
 
+/*! \brief Packet signing context.
+ *  \todo This should be later moved to TSIG files when refactoring. */
 typedef struct ns_sign_context {
 	knot_tsig_key_t *tsig_key; 
 	uint8_t *tsig_buf;
@@ -357,13 +363,59 @@ typedef struct ns_sign_context {
 	size_t pkt_count;
 } ns_sign_context_t;
 
+/*!
+ * \brief Initialize packet processing context.
+ *
+ * Allowed from states: NOOP
+ *
+ * \param ctx Context.
+ * \param module_param Parameters for given module.
+ * \param module Module API.
+ * \return (module specific state)
+ */
 int ns_proc_begin(ns_proc_context_t *ctx, void *module_param, const ns_proc_module_t *module);
+
+/*!
+ * \brief Reset current packet processing context.
+ * \param ctx Context.
+ * \return (module specific state)
+ */
 int ns_proc_reset(ns_proc_context_t *ctx);
+
+/*!
+ * \brief Finish and close packet processing context.
+ *
+ * Allowed from states: MORE, FULL, DONE, FAIL
+ *
+ * \param ctx Context.
+ * \return (module specific state)
+ */
 int ns_proc_finish(ns_proc_context_t *ctx);
+
+/*!
+ * \brief Input more data into packet processing.
+ *
+ * Allowed from states: MORE
+ *
+ * \param wire Source data.
+ * \param wire_len Source data length.
+ * \param ctx Context.
+ * \return (module specific state)
+ */
 int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx);
+
+/*!
+ * \brief Write out output from packet processing.
+ *
+ * Allowed from states: FULL, FAIL
+ *
+ * \param wire Destination.
+ * \param wire_len Destination length.
+ * \param ctx Context.
+ * \return (module specific state)
+ */
 int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx);
 
-/* #10 >>> Next-gen API. */
 #endif /* _KNOTNAME_SERVER_H_ */
 
 /*! @} */

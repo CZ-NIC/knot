@@ -58,8 +58,8 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 {
 	// truncate response to one TXT label
 	size_t response_len = strlen(response);
-	if (response_len > 255)
-		response_len = 255;
+	if (response_len > KNOT_DNAME_MAXLEN)
+		response_len = KNOT_DNAME_MAXLEN;
 
 	knot_dname_t *rowner = knot_dname_copy(owner);
 	if (!rowner)

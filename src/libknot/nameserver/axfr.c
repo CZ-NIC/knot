@@ -182,7 +182,7 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	case KNOT_EOK:    /* Last response. */
 		dbg_ns("%s: finished AXFR, %u pkts, ~%.01fkB\n", __func__,
 		       xfer->npkts, xfer->nbytes/1024.0);
-		ret = NS_PROC_FINISH;
+		ret = NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
 		dbg_ns("%s: answered with ret = %s\n", __func__, knot_strerror(ret));

@@ -13,7 +13,8 @@
 
 static int update_forward(struct query_data *qdata)
 {
-	/*! \todo Not implemented. */
+	/*! \todo This will be implemented when RESPONSE and REQUEST processors
+	 *        are written. */
 #if 0
 	const knot_zone_t* zone = qdata->zone;
 	knot_pkt_t *query = qdata->pkt;
@@ -68,7 +69,7 @@ static int update_process(knot_pkt_t *resp, struct query_data *qdata)
 	/*! \todo Reusing the API for compatibility reasons. */
 	rcu_read_lock();
 	knot_rcode_t rcode = qdata->rcode;
-	int ret = zones_process_update_auth((knot_zone_t *)qdata->zone, qdata->pkt,
+	int ret = zones_process_update_auth((knot_zone_t *)qdata->zone, qdata->query,
 	                                    &rcode,
 	                                    &qdata->param->query_source,
 	                                    qdata->sign.tsig_key);
@@ -79,7 +80,7 @@ static int update_process(knot_pkt_t *resp, struct query_data *qdata)
 
 static int update_prereq_check(struct query_data *qdata)
 {
-	knot_pkt_t *query = qdata->pkt;
+	knot_pkt_t *query = qdata->query;
 	const knot_zone_contents_t *contents = knot_zone_contents(qdata->zone);
 
 	/*
@@ -146,5 +147,5 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 	}
 	
 	pthread_mutex_unlock(&zone_data->ddns_lock);
-	return NS_PROC_FINISH;
+	return NS_PROC_DONE;
 }

@@ -54,7 +54,7 @@ struct query_data;
  * \retval KNOT_ERROR
  */
 int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
-			  size_t *size) __attribute__ ((deprecated));
+			  size_t *size);
 
 /*!
  * \brief Processes NOTIFY response packet.
@@ -66,7 +66,7 @@ int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_ERROR on message ID mismatch
  */
-int notify_process_response(knot_pkt_t *notify, int msgid) __attribute__ ((deprecated));
+int notify_process_response(knot_pkt_t *notify, int msgid);
 
 /*!
  * \brief Answer IN class zone NOTIFY message (RFC1996).

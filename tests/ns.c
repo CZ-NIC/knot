@@ -80,7 +80,7 @@ static void do_query(ns_proc_context_t *query_ctx, const char *name,
 	if (state == NS_PROC_FAIL) { /* Allow 1 generic error response. */
 		state = ns_proc_out(ans, &ans_len, query_ctx);
 	}
-	ok(state == NS_PROC_FINISH, "ns: answer %s query", name);
+	ok(state == NS_PROC_DONE, "ns: answer %s query", name);
 	answer_sanity_check(query, ans, ans_len, exp_rcode, name);
 }
 

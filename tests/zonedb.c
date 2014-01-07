@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	plan(6);
 	
 	/* Create database. */
-	char buf[KNOT_DNAME_MAX_LENGTH];
+	char buf[KNOT_DNAME_MAXLEN];
 	const char *prefix = "zzz.";
 	size_t nr_passed = 0;
 	knot_dname_t *dname = NULL;

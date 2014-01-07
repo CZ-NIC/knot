@@ -150,7 +150,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	/* Need IXFR query type. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_IXFR, KNOT_RCODE_FORMERR);
 	/* Need SOA authority record. */
-	const knot_pktsection_t *authority = knot_pkt_section(qdata->pkt, KNOT_AUTHORITY);
+	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
 	const knot_rrset_t *their_soa = authority->rr[0];
 	if (authority->count < 1 || knot_rrset_type(their_soa) != KNOT_RRTYPE_SOA) {
 		qdata->rcode = KNOT_RCODE_FORMERR;
@@ -163,7 +163,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
 	NS_NEED_AUTH(zone_data->xfr_out, qdata);
 
-	return NS_PROC_FINISH;
+	return NS_PROC_DONE;
 }
 
 static int ixfr_answer_init(struct query_data *qdata)
@@ -174,7 +174,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 		return KNOT_EMALF; /* Malformed query. */
 	}
 	/* Compare serials. */
-	const knot_rrset_t *their_soa = knot_pkt_section(qdata->pkt, KNOT_AUTHORITY)->rr[0];
+	const knot_rrset_t *their_soa = knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
 	knot_changesets_t *chgsets = NULL;
 	int ret = ixfr_load_chsets(&chgsets, qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
@@ -229,7 +229,7 @@ int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 		return NS_PROC_FAIL;
 	}
 
-	return NS_PROC_FINISH;
+	return NS_PROC_DONE;
 }
 
 int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
@@ -274,7 +274,7 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	case KNOT_EOK:    /* Last response. */
 		dbg_ns("%s: finished IXFR, %u pkts, %.01fkB\n", __func__,
 		       ixfr->proc.npkts, ixfr->proc.nbytes/1024.0);
-		ret = NS_PROC_FINISH;
+		ret = NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
 		dbg_ns("%s: answered with ret = %s\n", __func__, knot_strerror(ret));

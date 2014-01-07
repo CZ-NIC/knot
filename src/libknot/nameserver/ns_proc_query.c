@@ -38,6 +38,7 @@ const ns_proc_module_t _ns_proc_query = {
   &ns_proc_query_err
 };
 
+/*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
 
 int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param)
@@ -64,7 +65,7 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	/* Clear */
 	assert(ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
-	knot_pkt_free(&qdata->pkt);
+	knot_pkt_free(&qdata->query);
 	qdata->rcode = KNOT_RCODE_NOERROR;
 	qdata->rcode_tsig = 0;
 	qdata->node = qdata->encloser = qdata->previous = NULL;
@@ -107,7 +108,7 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	}
 
 	/* Store for processing. */
-	qdata->pkt = pkt;
+	qdata->query = pkt;
 
 	/* Declare having response. */
 	return NS_PROC_FULL;
@@ -121,8 +122,8 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	rcu_read_lock();
 	
 	/* Check parse state. */
-	knot_pkt_t *query = qdata->pkt;
-	int next_state = NS_PROC_FINISH;
+	knot_pkt_t *query = qdata->query;
+	int next_state = NS_PROC_DONE;
 	if (query->parsed < query->size) {
 		dbg_ns("%s: query is FORMERR\n", __func__);
 		qdata->rcode = KNOT_RCODE_FORMERR;
@@ -130,7 +131,10 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		goto finish;
 	}
 
-	/* Prepare answer. */
+	/*
+	 * Preprocessing
+	 */
+
 	int ret = prepare_answer(query, pkt, ctx);
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
@@ -154,6 +158,10 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		next_state = NS_PROC_FAIL;
 		break;
 	}
+	
+	/*
+	 * Postprocessing.
+	 */
 
 	/* Default RCODE is SERVFAIL if not specified otherwise. */
 	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR) {
@@ -161,7 +169,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	}
 	
 	/* Transaction security for positive answer. */
-	if (next_state == NS_PROC_FINISH || next_state == NS_PROC_FULL) {
+	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
 		if (ns_proc_query_sign_response(pkt, qdata) != KNOT_EOK) {
 			next_state = NS_PROC_FAIL;
 		}
@@ -185,7 +193,7 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 
 	/* Initialize response from query packet. */
 	knot_pkt_clear(pkt);
-	knot_pkt_t *query = qdata->pkt;
+	knot_pkt_t *query = qdata->query;
 	pkt->size = knot_pkt_question_size(query);
 	
 	/* If original QNAME is empty, Query is either unparsed or for root domain.
@@ -212,12 +220,12 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		return NS_PROC_FAIL;
 	}
 	
-	return NS_PROC_FINISH;
+	return NS_PROC_DONE;
 }
 
 bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
 {
-	knot_pkt_t *query = qdata->pkt;
+	knot_pkt_t *query = qdata->query;
 	const sockaddr_t *query_source = &qdata->param->query_source;
 	const knot_dname_t *key_name = NULL;
 	knot_tsig_algorithm_t key_alg = KNOT_TSIG_ALG_NULL;
@@ -245,7 +253,7 @@ bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
 
 int ns_proc_query_verify(struct query_data *qdata)
 {
-	knot_pkt_t *query = qdata->pkt;
+	knot_pkt_t *query = qdata->query;
 	ns_sign_context_t *ctx = &qdata->sign;
 	
 	/* NOKEY => no verification. */
@@ -294,7 +302,7 @@ int ns_proc_query_verify(struct query_data *qdata)
 int ns_proc_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = KNOT_EOK;
-	knot_pkt_t *query = qdata->pkt;
+	knot_pkt_t *query = qdata->query;
 	ns_sign_context_t *ctx = &qdata->sign;
 	
 	
@@ -351,7 +359,7 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
 	int next_state = NS_PROC_FAIL;
-	uint16_t query_type = knot_pkt_type(data->pkt);
+	uint16_t query_type = knot_pkt_type(data->query);
 
 	switch(query_type) {
 	case KNOT_QUERY_NORMAL:
@@ -402,7 +410,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	
 	rrl_req_t rrl_rq = {0};
 	rrl_rq.w = pkt->wire;
-	rrl_rq.query = qdata->pkt;
+	rrl_rq.query = qdata->query;
 	rrl_rq.flags = pkt->flags;
 	if (rrl_query(server->rrl, &qdata->param->query_source,
 	              &rrl_rq, qdata->zone) == KNOT_EOK) {
@@ -422,7 +430,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		pkt->size = 0;
 	}
 	
-	return NS_PROC_FINISH;
+	return NS_PROC_DONE;
 }
 
 /*!
@@ -439,7 +447,7 @@ static int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		return NS_PROC_FAIL;
 	}
 
-	return NS_PROC_FINISH;
+	return NS_PROC_DONE;
 }
 
 /*! \brief Find zone for given question. */
@@ -448,14 +456,32 @@ static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t 
 	uint16_t qtype = knot_pkt_qtype(pkt);
 	uint16_t qclass = knot_pkt_qclass(pkt);
 	const knot_dname_t *qname = knot_pkt_qname(pkt);
+	const knot_zone_t *zone = NULL;
 
 	// search for zone only for IN and ANY classes
 	if (qclass != KNOT_CLASS_IN && qclass != KNOT_CLASS_ANY) {
 		return NULL;
 	}
 
-	// find zone in which to search for the name
-	return ns_get_zone_for_qname(zonedb, qname, qtype);
+	/* In case of DS query, we strip the leftmost label when searching for
+	 * the zone (but use whole qname in search for the record), as the DS
+	 * records are only present in a parent zone.
+	 */
+	if (qtype == KNOT_RRTYPE_DS) {
+		const knot_dname_t *parent = knot_wire_next_label(qname, NULL);
+		zone = knot_zonedb_find_suffix(zonedb, parent);
+		/* If zone does not exist, search for its parent zone,
+		   this will later result to NODATA answer. */
+		/*! \note This is not 100% right, it may lead to DS name for example
+		 *        when following a CNAME chain, that should also be answered
+		 *        from the parent zone (if it exists).
+		 */
+	}
+	if (zone == NULL) {
+		zone = knot_zonedb_find_suffix(zonedb, qname);
+	}
+	
+	return zone;
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */

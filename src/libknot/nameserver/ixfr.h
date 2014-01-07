@@ -33,8 +33,21 @@
 
 struct query_data;
 
+/*!
+ * \brief IXFR query processing module.
+ *
+ * \retval FULL if it has an answer, but not yet finished.
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
+ */
 int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
 
+/*!
+ * \brief Respond to IXFR with SOA only.
+ *
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
+ */
 int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
 
 #endif /* _KNOT_IXFR_H_ */
