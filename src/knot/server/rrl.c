@@ -489,9 +489,7 @@ bool rrl_slip_roll(int n_slip)
 	 * Therefore, on average, from 100 answers 100/N will slip. */
 	int threshold = RRL_SLIP_MAX / n_slip;
 	int roll = knot_random_uint16_t() % RRL_SLIP_MAX;
-	int ret =  (roll < threshold);
-	printf("slip chance %d < %d roll result = %d\n", roll, threshold, ret);
-	return ret;
+	return (roll < threshold);
 }
 
 int rrl_destroy(rrl_table_t *rrl)

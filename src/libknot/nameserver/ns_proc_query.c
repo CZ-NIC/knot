@@ -68,6 +68,8 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	qdata->rcode = KNOT_RCODE_NOERROR;
 	qdata->rcode_tsig = 0;
 	qdata->node = qdata->encloser = qdata->previous = NULL;
+	qdata->name = NULL;
+	qdata->orig_qname[0] = '\0';
 
 	/* Free wildcard list. */
 	ptrlist_free(&qdata->wildcards, qdata->mm);
@@ -181,17 +183,26 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	dbg_ns("%s: making error response, rcode = %d (TSIG rcode = %d)\n",
 	       __func__, qdata->rcode, qdata->rcode_tsig);
 
-	/*! \todo Prettier error response. */
-
-	/* Clear packet. */
+	/* Initialize response from query packet. */
 	knot_pkt_clear(pkt);
-
-	/* Copy MsgId, opcode and RD bit. Set RCODE. */
 	knot_pkt_t *query = qdata->pkt;
 	pkt->size = knot_pkt_question_size(query);
-	memcpy(pkt->wire, query->wire, pkt->size);
+	
+	/* If original QNAME is empty, Query is either unparsed or for root domain.
+	 * Either way, letter case doesn't matter. */
+	if (qdata->orig_qname[0] == '\0') {
+		memcpy(pkt->wire, query->wire, pkt->size);
+	} else {
+		/* Copy header and QNAME with original case. */
+		memcpy(pkt->wire, query->wire, KNOT_WIRE_HEADER_SIZE);
+		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE, qdata->orig_qname, query->qname_size);
+	}
+	
+	/* Set QR=1 and RCODE. */
 	knot_wire_set_qr(pkt->wire);
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
+	
+	/* Copy RD bit. */
 	if (knot_wire_get_rd(query->wire)) {
 		knot_wire_set_rd(pkt->wire);
 	}
@@ -383,7 +394,6 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 {
 	/* Check if rate limiting applies. */
-	printf("rate limit\n");
 	struct query_data *qdata = QUERY_DATA(ctx);
 	server_t *server = (server_t *)ctx->ns->data;
 	if (server->rrl == NULL) {
@@ -403,13 +413,11 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	/* Now it is slip or drop. */
 	if (rrl_slip_roll(conf()->rrl_slip)) {
 		/* Answer slips. */
-		printf("answer slipped\n");
 		if (ns_proc_query_err(pkt, ctx) != KNOT_EOK) {
 			return NS_PROC_FAIL;
 		}
 		knot_wire_set_tc(pkt->wire);
 	} else {
-		printf("answer dropped\n");
 		/* Drop answer. */
 		pkt->size = 0;
 	}
@@ -434,6 +442,7 @@ static int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	return NS_PROC_FINISH;
 }
 
+/*! \brief Find zone for given question. */
 static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t *zonedb)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
@@ -449,6 +458,7 @@ static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t 
 	return ns_get_zone_for_qname(zonedb, qname, qtype);
 }
 
+/*! \brief Initialize response, sizes and find zone from which we're going to answer. */
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t *ctx)
 {
 	int ret = knot_pkt_init_response(resp, query);
@@ -457,15 +467,20 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 		return ret;
 	}
 	
-	/* Convert query QNAME to lowercase. */
-	ret = knot_dname_to_lower(knot_pkt_qname(query));
+	/* Convert query QNAME to lowercase, but keep original QNAME case.
+ 	 * Already checked for absence of compression and length.
+	 */
+	struct query_data *qdata = QUERY_DATA(ctx);
+	const knot_dname_t *qname = knot_pkt_qname(query);
+	memcpy(qdata->orig_qname, qname, query->qname_size);
+	ret = knot_dname_to_lower((knot_dname_t *)qname);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't convert QNAME to lowercase (%d)\n", __func__, ret);
 		return ret;
 	}
 
 	/* Find zone for QNAME. */
-	QUERY_DATA(ctx)->zone = answer_zone_find(query, ctx->ns->zone_db);
+	qdata->zone = answer_zone_find(query, ctx->ns->zone_db);
 
 	/* Update maximal answer size. */
 	if (!(ctx->flags & NS_PKTSIZE_NOLIMIT)) {

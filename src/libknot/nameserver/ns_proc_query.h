@@ -55,6 +55,7 @@ struct query_data {
 	const knot_zone_t *zone; /*!< Associated zone. */
 	const knot_node_t *node, *encloser, *previous;
 	const knot_dname_t *name;
+	uint8_t orig_qname[KNOT_DNAME_MAXLEN];
 	list_t wildcards;
 	ns_sign_context_t sign;
 	struct ns_proc_query_param *param;
