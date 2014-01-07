@@ -25,10 +25,8 @@
 #include "libknot/packet/wire.h"
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
-#include "libknot/util/tolower.h"
 
-/*----------------------------------------------------------------------------*/
-
+/*! \brief Scan packet for RRSet existence. */
 static int pkt_contains(const knot_pkt_t *packet,
                            const knot_rrset_t *rrset,
                            knot_rrset_compare_type_t cmp)
@@ -46,8 +44,8 @@ static int pkt_contains(const knot_pkt_t *packet,
 	return 0;
 }
 
-/*----------------------------------------------------------------------------*/
 
+/*! \brief Free all RRSets and reset RRSet count. */
 static void pkt_free_data(knot_pkt_t *pkt)
 {
 	/* Free RRSets if applicable. */
@@ -63,6 +61,7 @@ static void pkt_free_data(knot_pkt_t *pkt)
 	pkt->rrset_count = 0;
 }
 
+/*! \brief Allocate new wireformat of given length. */
 static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 {
 	pkt->wire = pkt->mm.alloc(pkt->mm.ctx, len);
@@ -76,14 +75,15 @@ static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 	return KNOT_EOK;
 }
 
+/*! \brief Set packet wireformat to an existing memory. */
 static void pkt_wire_set(knot_pkt_t *pkt, void *wire, uint16_t len)
 {
 	pkt->wire = wire;
 	pkt->size = pkt->max_size = len;
 	pkt->parsed = 0;
-	/*! \todo Merge ->size and ->parsed */
 }
 
+/*! \brief Calculate remaining size in the packet. */
 static uint16_t pkt_remaining(knot_pkt_t *pkt)
 {
 	uint16_t remaining = pkt->max_size - pkt->size - pkt->tsig_size;
@@ -116,40 +116,8 @@ static void pkt_rr_wirecount_add(knot_pkt_t *pkt, knot_section_t section_id,
 	}
 }
 
-static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
-{
-	knot_pkt_t *pkt = mm->alloc(mm->ctx, sizeof(knot_pkt_t));
-	if (pkt == NULL) {
-		return NULL;
-	}
-
-	/* No data to free, set memory context. */
-	pkt->rrset_count = 0;
-	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
-
-	/* Initialize. */
-	if (knot_pkt_reset(pkt, wire, len) != KNOT_EOK) {
-		mm->free(pkt);
-		return NULL;
-	}
-
-	return pkt;
-}
-
-knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
-{
-	/* Default memory allocator if NULL. */
-	dbg_packet("%s(%p, %hu, %p)\n", __func__, wire, len, mm);
-	mm_ctx_t _mm;
-	if (mm == NULL) {
-		mm_ctx_init(&_mm);
-		mm = &_mm;
-	}
-
-	return pkt_new_mm(wire, len, mm);
-}
-
-int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
+/*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
+static int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 {
 	if (pkt == NULL) {
 		return KNOT_EINVAL;
@@ -176,6 +144,62 @@ int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 	}
 
 	return ret;
+}
+
+/*! \brief Clear packet payload and free allocated data. */
+static void knot_pkt_clear_payload(knot_pkt_t *pkt)
+{
+	dbg_packet("%s(%p)\n", __func__, pkt);
+	if (pkt == NULL) {
+		return;
+	}
+
+	/* Keep question. */
+	pkt->parsed = 0;
+	pkt->size = knot_pkt_question_size(pkt);
+	knot_wire_set_ancount(pkt->wire, 0);
+	knot_wire_set_nscount(pkt->wire, 0);
+	knot_wire_set_arcount(pkt->wire, 0);
+
+	/* Free RRSets if applicable. */
+	pkt_free_data(pkt);
+
+	/* Reset section. */
+	pkt->current = KNOT_ANSWER;
+	pkt->sections[pkt->current].rr = pkt->rr;
+	pkt->sections[pkt->current].rrinfo = pkt->rr_info;
+}
+
+/*! \brief Allocate new packet using memory context. */
+static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
+{
+	knot_pkt_t *pkt = mm->alloc(mm->ctx, sizeof(knot_pkt_t));
+	if (pkt == NULL) {
+		return NULL;
+	}
+
+	/* No data to free, set memory context. */
+	pkt->rrset_count = 0;
+	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
+	if (knot_pkt_reset(pkt, wire, len) != KNOT_EOK) {
+		mm->free(pkt);
+		return NULL;
+	}
+
+	return pkt;
+}
+
+knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
+{
+	/* Default memory allocator if NULL. */
+	dbg_packet("%s(%p, %hu, %p)\n", __func__, wire, len, mm);
+	mm_ctx_t _mm;
+	if (mm == NULL) {
+		mm_ctx_init(&_mm);
+		mm = &_mm;
+	}
+
+	return pkt_new_mm(wire, len, mm);
 }
 
 int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
@@ -222,61 +246,38 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 	memset(pkt->wire, 0, pkt->size);
 }
 
-void knot_pkt_clear_payload(knot_pkt_t *pkt)
+void knot_pkt_free(knot_pkt_t **pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (pkt == NULL) {
-		return;
-	}
-
-	/* Keep question. */
-	pkt->parsed = 0;
-	pkt->size = knot_pkt_question_size(pkt);
-	knot_wire_set_ancount(pkt->wire, 0);
-	knot_wire_set_nscount(pkt->wire, 0);
-	knot_wire_set_arcount(pkt->wire, 0);
-
-	/* Free RRSets if applicable. */
-	pkt_free_data(pkt);
-
-	/* Reset section. */
-	pkt->current = KNOT_ANSWER;
-	pkt->sections[pkt->current].rr = pkt->rr;
-	pkt->sections[pkt->current].rrinfo = pkt->rr_info;
-}
-
-void knot_pkt_free(knot_pkt_t **packet)
-{
-	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (packet == NULL || *packet == NULL) {
+	if (pkt == NULL || *pkt == NULL) {
 		return;
 	}
 
 	/* Free temporary RRSets. */
-	pkt_free_data(*packet);
+	pkt_free_data(*pkt);
 
 	// free the space for wireformat
-	if ((*packet)->flags & KNOT_PF_FREE) {
-		(*packet)->mm.free((*packet)->wire);
+	if ((*pkt)->flags & KNOT_PF_FREE) {
+		(*pkt)->mm.free((*pkt)->wire);
 	}
 
 	// free EDNS options
-	knot_edns_free_options(&(*packet)->opt_rr);
+	knot_edns_free_options(&(*pkt)->opt_rr);
 
 	dbg_packet("Freeing packet structure\n");
-	(*packet)->mm.free(*packet);
-	*packet = NULL;
+	(*pkt)->mm.free(*pkt);
+	*pkt = NULL;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint16_t knot_pkt_type(const knot_pkt_t *packet)
+uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	bool is_query = (knot_wire_get_qr(packet->wire) == 0);
+	bool is_query = (knot_wire_get_qr(pkt->wire) == 0);
 	uint16_t ret = KNOT_QUERY_INVALID;
-	uint8_t opcode = knot_wire_get_opcode(packet->wire);
-	uint8_t query_type = knot_pkt_qtype(packet);
+	uint8_t opcode = knot_wire_get_opcode(pkt->wire);
+	uint8_t query_type = knot_pkt_qtype(pkt);
 
 	switch (opcode) {
 	case KNOT_OPCODE_QUERY:
@@ -313,40 +314,40 @@ uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_pkt_qname(const knot_pkt_t *packet)
+const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (packet == NULL) {
+	if (pkt == NULL) {
 		return NULL;
 	}
 
-	return packet->wire + KNOT_WIRE_HEADER_SIZE;
+	return pkt->wire + KNOT_WIRE_HEADER_SIZE;
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint16_t knot_pkt_qtype(const knot_pkt_t *packet)
+uint16_t knot_pkt_qtype(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (packet == NULL || packet->qname_size == 0) {
+	if (pkt == NULL || pkt->qname_size == 0) {
 		return 0;
 	}
 
-	unsigned off = KNOT_WIRE_HEADER_SIZE + packet->qname_size;
-	return knot_wire_read_u16(packet->wire + off);
+	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size;
+	return knot_wire_read_u16(pkt->wire + off);
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint16_t knot_pkt_qclass(const knot_pkt_t *packet)
+uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (packet == NULL || packet->qname_size == 0) {
+	if (pkt == NULL || pkt->qname_size == 0) {
 		return 0;
 	}
 
-	unsigned off = KNOT_WIRE_HEADER_SIZE + packet->qname_size + sizeof(uint16_t);
-	return knot_wire_read_u16(packet->wire + off);
+	unsigned off = KNOT_WIRE_HEADER_SIZE + pkt->qname_size + sizeof(uint16_t);
+	return knot_wire_read_u16(pkt->wire + off);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -439,109 +440,6 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	return knot_pkt_begin(pkt, KNOT_ANSWER);
 }
 
-/*! \brief Case insensitive label compare for compression. */
-static bool compr_label_match(const uint8_t *n, const uint8_t *p)
-{
-               if (*n != *p) {
-                       return false;
-               }
-
-               uint8_t len = *n;
-               for (uint8_t i = 0; i < len; ++i) {
-                       if (knot_tolower(n[1 + i]) != knot_tolower(p[1 + i])) {
-                               return false;
-                       }
-               }
-
-               return true;
-}
-
-/*! \brief Helper for \fn knot_pkt_put_dname, writes label(s) with size checks. */
-#define WRITE_LABEL(dst, written, label, max, len) \
-	if ((written) + (len) > (max)) { \
-		return KNOT_ESPACE; \
-	} else { \
-		memcpy((dst) + (written), (label), (len)); \
-		written += (len); \
-	}
-
-int knot_pkt_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, knot_compr_t *compr)
-{
-	/* Write uncompressible names directly. */
-	dbg_packet("%s(%p,%p,%u,%p)\n", __func__, dname, dst, max, compr);
-	if (compr == NULL || *dname == '\0') {
-		dbg_packet("%s: uncompressible, writing full name\n", __func__);
-		return knot_dname_to_wire(dst, dname, max);
-	}
-
-	int name_labels = knot_dname_labels(dname, NULL);
-	if (name_labels < 0) {
-		return name_labels;
-	}
-
-	/* Suffix must not be longer than whole name. */
-	const knot_dname_t *suffix = compr->wire + compr->suffix.pos;
-	int suffix_labels = compr->suffix.labels;
-	while (suffix_labels > name_labels) {
-		suffix = knot_wire_next_label(suffix, compr->wire);
-		--suffix_labels;
-	}
-
-	/* Suffix is shorter than name, write labels until aligned. */
-	uint8_t orig_labels = name_labels;
-	uint16_t written = 0;
-	while (name_labels > suffix_labels) {
-		WRITE_LABEL(dst, written, dname, max, (*dname + 1));
-		dname = knot_wire_next_label(dname, NULL);
-		--name_labels;
-	}
-
-	/* Label count is now equal. */
-	const knot_dname_t *match_begin = dname;
-	const knot_dname_t *compr_ptr = suffix;
-	while (dname[0] != '\0') {
-
-		/* Next labels. */
-		const knot_dname_t *next_dname = knot_wire_next_label(dname, NULL);
-		const knot_dname_t *next_suffix = knot_wire_next_label(suffix, compr->wire);
-
-		/* Two labels match, extend suffix length. */
-		if (dname[0] != suffix[0] || !compr_label_match(dname, suffix)) {
-			/* If they don't match, write unmatched labels. */
-			uint16_t mismatch_len = (dname - match_begin) + (*dname + 1);
-			WRITE_LABEL(dst, written, match_begin, max, mismatch_len);
-			/* Start new potential match. */
-			match_begin = next_dname;
-			compr_ptr = next_suffix;
-		}
-
-		/* Jump to next labels. */
-		dname = next_dname;
-		suffix = next_suffix;
-	}
-
-	/* If match begins at the end of the name, write '\0' label. */
-	if (match_begin == dname) {
-		WRITE_LABEL(dst, written, dname, max, 1);
-	} else {
-		/* Match covers >0 labels, write out compression pointer. */
-		if (written + sizeof(uint16_t) > max) {
-			return KNOT_ESPACE;
-		}
-		knot_wire_put_pointer(dst + written, compr_ptr - compr->wire);
-		written += sizeof(uint16_t);
-	}
-
-	/* Heuristics - expect similar names are grouped together. */
-	if (written > sizeof(uint16_t) && compr->wire_pos + written < KNOT_WIRE_PTR_MAX) {
-		compr->suffix.pos = compr->wire_pos;
-		compr->suffix.labels = orig_labels;
-	}
-	dbg_packet("%s: compressed to %u bytes (match=%zu,@%hu)\n",
-		   __func__, written, dname - match_begin, compr->wire_pos);
-	return written;
-}
-
 int knot_pkt_put_opt(knot_pkt_t *pkt)
 {
 	if (pkt->opt_rr.version == EDNS_NOT_SUPPORTED) {
@@ -583,7 +481,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 	size_t maxlen = pkt_remaining(pkt);
 	size_t len = maxlen;
 
-	/* #10 can hack this, can hack this */
+	/* Create compression context. */
 	knot_compr_t compr;
 	compr.wire = pkt->wire;
 	compr.wire_pos = pkt->size;
@@ -592,6 +490,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 	compr.suffix.labels = knot_dname_labels(compr.wire + compr.suffix.pos,
 	                                        compr.wire);
 
+	/* Write RRSet to wireformat. */
 	int ret = knot_rrset_to_wire(rr, pos, &len, maxlen, &rr_added, &compr);
 	if (ret != KNOT_EOK) {
 		dbg_packet("%s: rr_to_wire = %s\n,", __func__, knot_strerror(ret));
@@ -715,8 +614,10 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 	return KNOT_ENOENT;
 }
 
-/* #10 deprecated */
-/* #10 use packet memory allocator */
+/*! \note Legacy code, mainly for transfers and updates.
+ *        RRSets should use packet memory context for allocation and
+ *        should be copied if they are supposed to be stored in zone permanently.
+ */
 static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
                                            size_t size)
 {

@@ -4,7 +4,7 @@
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
- * \brief IN zone lookup.
+ * \brief NSEC/NSEC3 proofs for various states.
  *
  * \addtogroup query_processing
  * @{

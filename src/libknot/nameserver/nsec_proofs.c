@@ -809,9 +809,9 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 
 int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 {
-    return ns_put_nsec_nsec3_nodata(qdata->node, qdata->encloser,
-                                    qdata->previous, qdata->zone->contents,
-                                    qdata->name, pkt);
+	return ns_put_nsec_nsec3_nodata(qdata->node, qdata->encloser,
+	                                qdata->previous, qdata->zone->contents,
+	                                qdata->name, pkt);
 }
 
 int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata)
@@ -838,7 +838,6 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 	                                qdata->name, pkt);
 }
 
-
 int nsec_append_rrsigs(knot_pkt_t *pkt, bool optional)
 {
 	dbg_ns("%s(%p, optional=%d)\n", __func__, pkt, optional);
@@ -854,7 +853,6 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, bool optional)
 		rr = section->rr[i];
 		compr_hint = section->rrinfo[i].compress_ptr[0];
 		if (rr->rrsigs) {
-			
 			ret = knot_pkt_put(pkt, compr_hint, rr->rrsigs, flags);
 			if (ret != KNOT_EOK) {
 				break;

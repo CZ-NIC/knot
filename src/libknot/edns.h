@@ -83,7 +83,8 @@ enum knot_edns_const {
 	EDNS_MIN_SIZE        = 11    /*!< Minimum size of EDNS OPT RR in wire format. */
 };
 
-enum {
+/*! \brief Enumeration of named options. */
+enum knot_edns_option {
 	KNOT_PKT_EDNS_PAYLOAD = 0,
 	KNOT_PKT_EDNS_VERSION = 1,
 	KNOT_PKT_EDNS_RCODE   = 2,

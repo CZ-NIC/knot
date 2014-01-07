@@ -255,7 +255,7 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset,
 		*pos += owner_len;
 	} else {
 		/* Write owner, type, class and ttl to wire. */
-		int ret =  knot_pkt_put_dname(owner, *pos, KNOT_DNAME_MAXLEN, compr);
+		int ret =  knot_compr_put_dname(owner, *pos, KNOT_DNAME_MAXLEN, compr);
 		if (ret < 0) {
 			return ret;
 		} else {
@@ -333,7 +333,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 		if (compr && descriptor_item_is_compr_dname(item)) {
 			dbg_packet("%s: putting compressed name\n", __func__);
 			const knot_dname_t *dname = rdata + offset;
-			int ret = knot_pkt_put_dname(dname, *pos,
+			int ret = knot_compr_put_dname(dname, *pos,
 			                             max_size - size - rdlength,
 			                             compr);
 			if (ret < 0) {

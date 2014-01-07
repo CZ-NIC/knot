@@ -411,7 +411,9 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	rrl_req_t rrl_rq = {0};
 	rrl_rq.w = pkt->wire;
 	rrl_rq.query = qdata->query;
-	rrl_rq.flags = pkt->flags;
+	if (!EMPTY_LIST(qdata->wildcards)) {
+		rrl_rq.flags = KNOT_PF_WILDCARD;
+	}
 	if (rrl_query(server->rrl, &qdata->param->query_source,
 	              &rrl_rq, qdata->zone) == KNOT_EOK) {
 		/* Rate limiting not applied. */
