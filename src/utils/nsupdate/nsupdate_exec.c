@@ -339,14 +339,12 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	switch(sect) {
 	case UP_ADD:
 	case UP_DEL:
-		assert(KNOT_PKT_IN_NS(p->pkt));
 		ret = knot_pkt_put(p->pkt, 0, rr, KNOT_PF_NOTRUNC);
 		break;
 	case PQ_NXDOMAIN:
 	case PQ_NXRRSET:
 	case PQ_YXDOMAIN:
 	case PQ_YXRRSET:
-		assert(KNOT_PKT_IN_AN(p->pkt));
 		ret = knot_pkt_put(p->pkt, 0, rr, KNOT_PF_NOTRUNC);
 		break;
 	default:

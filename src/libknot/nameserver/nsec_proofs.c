@@ -66,13 +66,11 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 
 	int res = KNOT_EOK;
 	if (knot_rrset_rdata_rr_count(rrset)) {
-		assert(KNOT_PKT_IN_NS(resp));
 		res = knot_pkt_put(resp, 0, rrset, KNOT_PF_CHECKDUP);
 	}
 	// add RRSIG for the RRSet
 	if (res == KNOT_EOK && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL
 	    && knot_rrset_rdata_rr_count(rrset)) {
-		assert(KNOT_PKT_IN_NS(resp));
 		res = knot_pkt_put(resp, 0, rrset, 0);
 	}
 
@@ -312,7 +310,6 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 
 	if (rrset != NULL && knot_rrset_rdata_rr_count(rrset)) {
 		// NSEC proving that there is no node with the searched name
-		assert(KNOT_PKT_IN_NS(resp));
 		ret = knot_pkt_put(resp, 0, rrset, 0);
 		if (ret == KNOT_EOK) {
 			rrset = knot_rrset_get_rrsigs(rrset);
@@ -563,7 +560,6 @@ dbg_ns_exec_verb(
 
 	}
 
-	assert(KNOT_PKT_IN_NS(resp));
 	int ret = knot_pkt_put(resp, 0, rrset, 0);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to add NSEC for NXDOMAIN to response: %s\n",
@@ -621,7 +617,6 @@ dbg_ns_exec_verb(
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
-		assert(KNOT_PKT_IN_NS(resp));
 		ret = knot_pkt_put(resp, 0, rrset, 0);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add second NSEC for NXDOMAIN to "
@@ -633,7 +628,6 @@ dbg_ns_exec_verb(
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
-		assert(KNOT_PKT_IN_NS(resp));
 		ret = knot_pkt_put(resp, 0, rrset, 0);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add RRSIGs for second NSEC for "
@@ -763,7 +757,6 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		                                  KNOT_RRTYPE_NSEC3)) != NULL
 		    && knot_rrset_rdata_rr_count(rrset)) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
-			assert(KNOT_PKT_IN_NS(resp));
 			ret = knot_pkt_put(resp, 0, rrset, 0);
 		} else {
 			// No NSEC3 node => Opt-out
@@ -778,7 +771,6 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		    != NULL
 		    && knot_rrset_rdata_rr_count(rrset)) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
-			assert(KNOT_PKT_IN_NS(resp));
 			ret = knot_pkt_put(resp, 0, rrset, 0);
 		}
 	}
@@ -789,7 +781,6 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 
 	dbg_ns_detail("Putting RRSet's RRSIGs to Authority\n");
 	if (rrset != NULL && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
-		assert(KNOT_PKT_IN_NS(resp));
 		ret = knot_pkt_put(resp, 0, rrset, 0);
 	}
 

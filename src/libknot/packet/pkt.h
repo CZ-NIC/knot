@@ -39,16 +39,6 @@
 #include "libknot/tsig.h"
 #include "libknot/packet/compr.h"
 
-/*** <<< #10 DEPRECATED */
-/*----------------------------------------------------------------------------*/
-
-#define KNOT_PKT_IN_AN(pkt) ((pkt)->current == KNOT_ANSWER)
-#define KNOT_PKT_IN_NS(pkt) ((pkt)->current == KNOT_AUTHORITY)
-#define KNOT_PKT_IN_AR(pkt) ((pkt)->current == KNOT_ADDITIONAL)
-
-/*----------------------------------------------------------------------------*/
-/*** >>> #10 DEPRECATED */
-
 /* Number of packet sections. */
 #define KNOT_PKT_SECTIONS 3
 
@@ -96,6 +86,8 @@ typedef struct knot_pkt {
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
 	/* #10 <<< SHOULD BE IN ANSWERING CONTEXT */
+	/*! \todo Could be removed after NSEC proof port to packet processing,
+	 *        and request processing module. */
 	const knot_tsig_key_t *tsig_key;
 	const struct knot_pkt *query; /*!< Associated query. */
 	/* #10 >>> SHOULD BE IN ANSWERING CONTEXT */
