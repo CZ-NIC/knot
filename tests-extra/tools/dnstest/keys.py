@@ -5,6 +5,7 @@ import os
 import random
 import string
 import dns.tsigkeyring
+from subprocess import DEVNULL, PIPE, Popen
 
 import dnstest.server
 
@@ -72,3 +73,28 @@ class Tsig(object):
         file = open(filename, mode="w")
         file.write(s.conf)
         file.close()
+
+class Key(object):
+    '''DNSSEC key generator'''
+
+    def __init__(self, key_dir, zone_name, ksk=False, alg="NSEC3RSASHA1", \
+                 key_len="512", type="ZONE"):
+        self.dir = key_dir
+        self.zone_name = zone_name
+        self.alg = alg
+        self.len = key_len
+        self.type = type
+        self.flags = ["-f", "KSK"] if ksk else []
+        self.name = None
+
+    def generate(self):
+        cmd = Popen(["dnssec-keygen", "-r", "/dev/urandom", "-n", self.type, \
+                     "-a", self.alg, "-b", self.len, "-K", self.dir, \
+                     "-q"] + self.flags + [self.zone_name],
+                     stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        (out, err) = cmd.communicate()
+
+        self.name = out.strip()
+        if cmd.returncode != 0 or self.name[0] != "K":
+            raise Exception("Can't generate key for %s zone" % self.zone_name)
+

@@ -7,11 +7,11 @@ import socket
 import time
 import dns.zone
 import zone_generate
-
 from dnstest.utils import *
 import dnstest.params as params
 import dnstest.server
 import dnstest.keys
+import dnstest.zonefile
 
 class Test(object):
     '''Specification of DNS test topology'''
@@ -32,10 +32,6 @@ class Test(object):
         self.out_dir = params.out_dir
         self.data_dir = params.test_dir + "/data/"
         self.zones_dir = self.out_dir + "/zones/"
-        try:
-            os.mkdir(self.zones_dir)
-        except:
-            raise Exception("Can't create directory %s" % self.zones_dir)
 
         self.ip = ip if ip else random.choice([4, 6])
         if self.ip not in [4, 6]:
@@ -181,74 +177,52 @@ class Test(object):
     def sleep(self, seconds):
         time.sleep(seconds)
 
-    def zone(self, zone_name, file_name=None, exists=True):
-        # Add trailing dot if missing.
-        if zone_name[-1] != ".":
-            zone_name += "."
+    def zone(self, name, file_name=None, local=False, dnssec=None, serial=None,
+             exists=True):
 
-        if file_name:
-            src_file = self.data_dir + file_name
-            dst_file = self.zones_dir + file_name
+        zone = dnstest.zonefile.ZoneFile(self.zones_dir)
+        zone.set_name(name)
+
+        if local:
+            src_dir = self.data_dir
         else:
-            if zone_name == ".":
-                file_name = "rootzone.zone"
-            else:
-                file_name = zone_name + "zone"
+            src_dir = params.common_data_dir
 
-            src_file = params.common_data_dir + '/' + file_name
-            dst_file = self.zones_dir + file_name
+        zone.set_file(file_name=file_name, storage=src_dir, dnssec=dnssec,
+                      exists=exists)
 
-        try:
-            if exists is True:
-                shutil.copyfile(src_file, dst_file)
-        except:
-            raise Exception("Can't use zone file %s" % src_file)
+        return [zone]
 
-        return {zone_name: dst_file}
+    def zone_rnd(self, number, dnssec=None, records=None, serial=None):
+        zones = list()
 
-    def zone_rnd(self, number, dnssec=None, records=None):
-        zones = dict()
-
+        # Generate unique zone names.
         names = zone_generate.main(["-n", number]).split()
         for name in names:
-            if dnssec == None:
-                sign = random.choice([True, False])
-            else:
-                sign = True if dnssec else False
-            serial = random.randint(1, 4294967295)
-            items = records if records else random.randint(1, 1000)
-            filename = self.zones_dir + name + ".rndzone"
-
-            try:
-                params = ["-i", serial, "-o", filename, name, items]
-                if sign:
-                    params = ["-s"] + params
-
-                zone = zone_generate.main(params)
-            except OSError:
-                err("Can't create zone file %s" % filename)
-
-            zones[name + "."] = filename
+            zone = dnstest.zonefile.ZoneFile(self.zones_dir)
+            zone.set_name(name)
+            zone.gen_file(dnssec=dnssec, records=records, serial=serial)
+            zones.append(zone)
 
         return zones
 
     def link(self, zones, master, slave=None, ddns=False):
         for zone in zones:
             if master not in self.servers:
-                raise Exception("Uncovered server in test")
-            master.zone_master(zone, zones[zone], slave, ddns)
+                raise Exception("Server is out of testing scope")
+            master.set_master(zone, slave, ddns)
 
             if slave:
                 if slave not in self.servers:
-                    raise Exception("Uncovered server in test")
-                slave.zone_slave(zone, zones[zone], master, ddns)
+                    raise Exception("Server is out of testing scope")
+                slave.set_slave(zone, master, ddns)
 
     def xfr_diff(self, server1, server2, zones):
         check_log("CHECK AXFR DIFF")
         for zone in zones:
-            detail_log("Zone %s %s-%s:" % (zone, server1.name, server2.name))
-            z1 = dns.zone.from_xfr(server1.dig(zone, "AXFR").resp)
-            z2 = dns.zone.from_xfr(server2.dig(zone, "AXFR").resp)
+            detail_log("Zone %s %s-%s:" % (zone.name, server1.name, server2.name))
+            z1 = dns.zone.from_xfr(server1.dig(zone.name, "AXFR").resp)
+            z2 = dns.zone.from_xfr(server2.dig(zone.name, "AXFR").resp)
 
             z1_keys = set(z1.nodes.keys())
             z2_keys = set(z2.nodes.keys())
