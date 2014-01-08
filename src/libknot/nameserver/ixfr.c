@@ -52,9 +52,8 @@ static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list
 	/* Now iterate until it hits the last one,
 	 * this is done without for() loop because we can
 	 * rejoin the iteration at any point. */
-	knot_rr_ln_t *rr_item = NULL;
-	while(ixfr->cur != NULL) {
-		rr_item = (knot_rr_ln_t *)ixfr->cur;
+	while(ixfr->cur->next) {
+		knot_rr_ln_t *rr_item = (knot_rr_ln_t *)(ixfr->cur);
 		if (knot_rrset_rdata_rr_count(rr_item->rr) > 0) {
 			IXFR_SAFE_PUT(pkt, rr_item->rr);
 		} else {
@@ -63,6 +62,8 @@ static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list
 
 		ixfr->cur = ixfr->cur->next;
 	}
+
+	ixfr->cur = NULL;
 	return ret;
 }
 
