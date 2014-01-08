@@ -143,7 +143,7 @@ static int cmd_remote_reply(int c)
 	/* Read response packet. */
 	int n = tcp_recv(c, pkt->wire, pkt->max_size, NULL);
 	if (n <= 0) {
-		dbg_server("remote: couldn't receive response = %d\n", n);
+		dbg_server("remote: couldn't receive response = %s\n", knot_strerror(n));
 		knot_pkt_free(&pkt);
 		return KNOT_ECONN;
 	} else {
@@ -218,6 +218,8 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	if (r->key) {
 		remote_query_sign(pkt->wire, &pkt->size, pkt->max_size, r->key);
 	}
+	
+	dbg_server("%s: sending query size %zu\n", __func__, pkt->size);
 
 	/* Send query. */
 	int s = socket_create(r->family, SOCK_STREAM, 0);

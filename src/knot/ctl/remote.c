@@ -504,12 +504,7 @@ int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen)
 
 int remote_parse(knot_pkt_t* pkt)
 {
-	int ret = knot_pkt_parse_question(pkt);
-	if (ret == KNOT_EOK) {
-		ret = knot_pkt_parse_payload(pkt, 0);
-	}
-
-	return ret;
+	return knot_pkt_parse(pkt, KNOT_PACKET_DUPL_NO_MERGE);
 }
 
 static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t len)
@@ -617,7 +612,7 @@ int remote_answer(int fd, server_t *s, knot_pkt_t *pkt)
 	return ret;
 }
 
-int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
+int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
                    uint8_t* buf, size_t buflen)
 {
 	knot_pkt_t *pkt =  knot_pkt_new(buf, buflen, NULL);
@@ -626,18 +621,17 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
 	}
 
 	/* Initialize remote party address. */
-	sockaddr_t a;
-	sockaddr_prep(&a);
+	sockaddr_t addr;
+	sockaddr_prep(&addr);
 
 	/* Accept incoming connection and read packet. */
-	size_t wire_len = pkt->max_size;
-	int c = remote_recv(r, &a, pkt->wire, &wire_len);
-	if (c < 0) {
-		dbg_server("remote: couldn't receive query = %d\n", c);
+	int client = remote_recv(sock, &addr, pkt->wire, &buflen);
+	if (client < 0) {
+		dbg_server("remote: couldn't receive query = %d\n", client);
 		knot_pkt_free(&pkt);
-		return c;
+		return client;
 	} else {
-		pkt->size = c;
+		pkt->size = buflen;
 	}
 
 	/* Parse packet and answer if OK. */
@@ -646,27 +640,26 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
 
 		/* Check ACL list. */
 		char straddr[SOCKADDR_STRLEN];
-		sockaddr_tostr(&a, straddr, sizeof(straddr));
-		int rport = sockaddr_portnum(&a);
+		sockaddr_tostr(&addr, straddr, sizeof(straddr));
+		int rport = sockaddr_portnum(&addr);
 		knot_tsig_key_t *tsig_key = NULL;
 		const knot_dname_t *tsig_name = NULL;
 		if (pkt->tsig_rr) {
 			tsig_name = pkt->tsig_rr->owner;
 		}
-		acl_match_t *m = NULL;
+		acl_match_t *match = acl_find(conf()->ctl.acl, &addr, tsig_name);
 		knot_rcode_t ts_rc = 0;
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
-		if ((m = acl_find(conf()->ctl.acl, &a, tsig_name)) == NULL) {
-			knot_pkt_free(&pkt);
+		if (match == NULL) {
 			log_server_warning("Denied remote control for '%s@%d' "
 			                   "(doesn't match ACL).\n",
 			                   straddr, rport);
-			remote_senderr(c, buf, wire_len);
-			socket_close(c);
-			return KNOT_EACCES;
+			remote_senderr(client, pkt->wire, pkt->size);
+			ret = KNOT_EACCES;
+			goto finish;
 		} else {
-			tsig_key = m->key;
+			tsig_key = match->key;
 		}
 
 		/* Check TSIG. */
@@ -675,10 +668,9 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
 				log_server_warning("Denied remote control for '%s@%d' "
 				                   "(key required).\n",
 				                   straddr, rport);
-				knot_pkt_free(&pkt);
-				remote_senderr(c, buf, wire_len);
-				socket_close(c);
-				return KNOT_EACCES;
+				remote_senderr(client, pkt->wire, pkt->size);
+				ret = KNOT_EACCES;
+				goto finish;
 			}
 			ret = zones_verify_tsig_query(pkt, tsig_key, &ts_rc,
 			                              &ts_trc, &ts_tmsigned);
@@ -686,21 +678,21 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
 				log_server_warning("Denied remote control for '%s@%d' "
 				                   "(key verification failed).\n",
 				                   straddr, rport);
-				knot_pkt_free(&pkt);
-				remote_senderr(c, buf, wire_len);
-				socket_close(c);
-				return KNOT_EACCES;
+				remote_senderr(client, pkt->wire, pkt->size);
+				ret = KNOT_EACCES;
+				goto finish;
 			}
 		}
 	}
 
 	/* Answer packet. */
 	if (ret == KNOT_EOK) {
-		ret = remote_answer(c, s, pkt);
+		ret = remote_answer(client, s, pkt);
 	}
 
+finish:
 	knot_pkt_free(&pkt);
-	socket_close(c);
+	socket_close(client);
 	return ret;
 }
 
@@ -710,7 +702,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 		return NULL;
 	}
 
-	knot_pkt_t *pkt = knot_pkt_new(NULL, 512, NULL);
+	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	if (!pkt) {
 		return NULL;
 	}

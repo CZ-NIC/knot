@@ -109,14 +109,14 @@ int remote_answer(int fd, server_t *s, knot_pkt_t *pkt);
  *
  * \param s Server instance.
  * \param ctl_if Control interface.
- * \param r RC interface socket.
+ * \param sock RC interface socket.
  * \param buf Buffer for commands/responses.
  * \param buflen Maximum buffer size.
  *
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_process(server_t *s, conf_iface_t *ctl_if, int r,
+int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
                    uint8_t* buf, size_t buflen);
 
 /* Functions for creating RC packets. */
