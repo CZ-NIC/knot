@@ -1479,63 +1479,8 @@ int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-/*----------------------------------------------------------------------------*/
-
 int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
                                     knot_zone_contents_t **to)
-{
-	if (from == NULL || to == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Copy to same destination as source. */
-	if (from == *to) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_EOK;
-
-	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
-					     1, sizeof(knot_zone_contents_t));
-	if (contents == NULL) {
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	}
-
-	contents->apex = from->apex;
-
-	contents->node_count = from->node_count;
-	contents->flags = from->flags;
-
-	contents->zone = from->zone;
-
-	/* Initialize NSEC3 params */
-	memcpy(&contents->nsec3_params, &from->nsec3_params,
-	       sizeof(knot_nsec3_params_t));
-
-	if ((ret = knot_zone_tree_shallow_copy(from->nodes,
-					 &contents->nodes)) != KNOT_EOK
-	    || (ret = knot_zone_tree_shallow_copy(from->nsec3_nodes,
-					&contents->nsec3_nodes)) != KNOT_EOK) {
-		goto cleanup;
-	}
-
-	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
-
-	*to = contents;
-	return KNOT_EOK;
-
-cleanup:
-	knot_zone_tree_free(&contents->nodes);
-	knot_zone_tree_free(&contents->nsec3_nodes);
-	free(contents);
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_shallow_copy2(const knot_zone_contents_t *from,
-                                     knot_zone_contents_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
