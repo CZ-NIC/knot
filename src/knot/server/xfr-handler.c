@@ -593,13 +593,7 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 	/* Check TSIG. */
 	const knot_rrset_t * tsig_rr = re->tsig_rr;
 	if (rq->tsig_key != NULL) {
-		/*! \todo Not sure about prev_time_signed, but this is the first
-		 *        reply and we should pass query sign time as the time
-		 *        may be different. Leaving to 0.
-		 */
-		memcpy(rq->tsig_data, rq->wire, rq->wire_size);
-		rq->tsig_data_size = rq->wire_size;
-		ret = knot_tsig_client_check(tsig_rr, rq->wire, rq->wire_size,
+		ret = knot_tsig_client_check(tsig_rr, re->wire, re->size,
 		                             rq->digest, rq->digest_size,
 		                             rq->tsig_key, 0);
 		if (ret != KNOT_EOK) {
