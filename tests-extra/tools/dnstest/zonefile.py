@@ -22,6 +22,7 @@ class ZoneFile(object):
         self.name = ""
         self.serial = None
         self.dnssec = None
+        self.nsec3 = None
 
     @property
     def path(self):
@@ -73,11 +74,13 @@ class ZoneFile(object):
         self.set_file(file_name=file_name, storage=storage, dnssec=dnssec,
                       serial=serial)
 
-    def gen_file(self, dnssec=None, records=None, serial=None):
+    def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None):
         '''Generate zone file.'''
 
         if dnssec == None:
             dnssec = random.choice([True, False])
+        if nsec3 == None:
+            nsec3 = random.choice([True, False])
         if not records:
             records = random.randint(1, 1000)
         if not serial:
@@ -86,11 +89,12 @@ class ZoneFile(object):
         self.file_name = self.name + "rndzone"
         self.serial = int(serial)
         self.dnssec = dnssec
+        self.nsec3 = nsec3
 
         try:
             params = ["-i", self.serial, "-o", self.path, self.name, records]
             if self.dnssec:
-                params = ["-s"] + params
+                params = ["-s", "-3", "y" if self.nsec3 else "n"] + params
             zone_generate.main(params)
         except OSError:
             err("Can't create zone file %s" % self.path)
