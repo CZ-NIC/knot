@@ -584,7 +584,7 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 		return KNOT_EOK; /* Ignore */
 	}
 
-	ret = knot_pkt_parse_payload(re, 0);
+	ret = knot_pkt_parse_payload(re, KNOT_PACKET_DUPL_NO_MERGE);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&re);
 		return KNOT_EOK; /* Ignore */

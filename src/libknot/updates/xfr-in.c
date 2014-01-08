@@ -373,19 +373,20 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_parse_first_rr(knot_pkt_t **dst, uint8_t *wire,
-                                size_t wire_size, knot_rrset_t **rr)
+static int xfrin_parse(knot_pkt_t **dst, uint8_t *wire, size_t wire_size)
 {
 	assert(dst != NULL);
-	assert(rr != NULL);
-
+	
+	int ret = KNOT_EOK;
 	knot_pkt_t *pkt = knot_pkt_new(wire, wire_size, NULL);
 	if (pkt == NULL) {
 		knot_pkt_free(&pkt);
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_pkt_parse_question(pkt);
+	/* This is important, don't merge RRs together. The SOAs are ordered
+	 * in a special way for a reason. */
+	ret = knot_pkt_parse(pkt, KNOT_PACKET_DUPL_NO_MERGE);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&pkt);
 		return ret;

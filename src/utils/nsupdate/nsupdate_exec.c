@@ -733,7 +733,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 		free_sign_context(&sign_ctx);
 		return KNOT_ENOMEM;
 	}
-	ret = knot_pkt_parse(params->resp, 0);
+	ret = knot_pkt_parse(params->resp, KNOT_PACKET_DUPL_NO_MERGE);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response, %s\n", knot_strerror(ret));
 		free_sign_context(&sign_ctx);
