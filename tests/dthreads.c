@@ -65,14 +65,6 @@ int destruct(struct dthread_t *thread)
 	return 0;
 }
 
-/*! \brief Unit blocking runnable. */
-int runnable_simio(struct dthread_t *thread)
-{
-	// Infinite blocking, must be interrupted
-	select(0, 0, 0, 0, 0);
-	return 0;
-}
-
 /*! \brief Create unit. */
 static inline dt_unit_t *dt_test_create(int size)
 {
@@ -93,52 +85,6 @@ static inline int dt_test_coherent(dt_unit_t *unit)
 		ret += dt_repurpose(unit->threads[i], &runnable, NULL);
 	}
 
-	return ret == 0;
-}
-
-/*! \brief Repurpose single thread. */
-static inline int dt_test_repurpose(dt_unit_t *unit, int id)
-{
-	return dt_repurpose(unit->threads[id], &runnable_simio, NULL) == 0;
-}
-
-/*! \brief Cancel single thread. */
-static inline int dt_test_cancel(dt_unit_t *unit, int id)
-{
-	int ret = dt_cancel(unit->threads[id]);
-	ret |= dt_signalize(unit->threads[id], SIGALRM);
-	return ret == 0; /* Both succeeded. */
-}
-
-/*! \brief Reanimate dead threads. */
-static inline int dt_test_reanimate(dt_unit_t *unit)
-{
-	// Compact all threads
-	int ret = 0;
-	ret += dt_compact(unit);
-
-	// Remove purpose from all
-	for (int i = 0; i < unit->size; ++i) {
-		ret += dt_repurpose(unit->threads[i], 0, 0);
-	}
-
-	// Set single thread to purpose
-	ret += dt_repurpose(unit->threads[0], &runnable, 0);
-
-	// Restart
-	_runnable_i = 0;
-	ret += dt_start(unit);
-
-	// Wait for finish
-	ret += dt_join(unit);
-
-	// Verify
-	int expected = 1 * _runnable_cycles;
-	if (_runnable_i != expected) {
-		return 0;
-	}
-
-	// Check return codes
 	return ret == 0;
 }
 
@@ -168,7 +114,7 @@ static void interrupt_handle(int s)
 /*! API: run tests. */
 int main(int argc, char *argv[])
 {
-	plan(20);
+	plan(15);
 
 	// Register service and signal handler
 	struct sigaction sa;
@@ -179,7 +125,6 @@ int main(int argc, char *argv[])
 
 	/* Initialize */
 	srand(time(NULL));
-	struct timeval tv;
 	pthread_mutex_init(&_runnable_mx, NULL);
 	pthread_mutex_init(&_destructor_mx, NULL);
 
@@ -212,52 +157,22 @@ int main(int argc, char *argv[])
 	/* Test 7: Restart threads. */
 	ok(dt_test_start(unit), "dthreads: start coherent unit");
 
-	/* Test 8: Repurpose single thread. */
-	tv.tv_sec = 0;
-	tv.tv_usec = 4000 + rand() % 1000; // 4-5ms
-	diag("waiting for %dus to let thread do some work ...",
-	     (int)tv.tv_usec);
-	select(0, 0, 0, 0, &tv);
-	ok(dt_test_repurpose(unit, 0), "dthreads: repurpose on-the-fly");
-
-	/* Test 9: Cancel blocking thread. */
-	tv.tv_sec = 0;
-	tv.tv_usec = (250 + rand() % 500) * 1000; // 250-750ms
-	diag("waiting for %dms to let thread pretend blocking I/O ...",
-	     (int)(tv.tv_usec / 1000));
-	select(0, 0, 0, 0, &tv);
-	ok(dt_test_cancel(unit, 0), "dthreads: cancel blocking thread");
-
-	/* Test 10: Wait for tasks. */
+	/* Test 8: Wait for tasks. */
 	ok(dt_test_join(unit), "dthreads: join threads");
-
-	/* Test 11: Compare counter. */
-	int expected_lo = _runnable_cycles * (unit->size - 1);
-	ok(_runnable_i >= expected_lo,
-	       "dthreads: result %d is => %d", _runnable_i, expected_lo);
-
-	/* Test 12: Compare counter #2. */
-	/*! \note repurpose could trigger next run of the unit if both finished */
-	int expected_hi = _runnable_cycles * (unit->size + unit->size - 1);
-	ok(_runnable_i <= expected_hi,
-	       "dthreads: result %d is <= %d", _runnable_i, expected_hi);
-
-	/* Test 13: Reanimate dead threads. */
-	ok(dt_test_reanimate(unit), "dthreads: reanimate dead threads");
-
-	/* Test 14: Deinitialize */
+	
+	/* Test 9: Deinitialize */
 	dt_delete(&unit);
 	ok(unit == NULL, "dthreads: delete unit");
 
-	/* Test 15: Wrong values. */
+	/* Test 10: Wrong values. */
 	unit = dt_create(-1);
 	ok(unit == NULL, "dthreads: create with negative count");
 	unit = dt_create_coherent(dt_optimal_size(), 0, 0, 0);
 
-	/* Test 16: NULL runnable. */
+	/* Test 11: NULL runnable. */
 	is_int(0, dt_start(unit), "dthreads: start with NULL runnable");
 
-	/* Test 17: NULL operations crashing. */
+	/* Test 12: NULL operations crashing. */
 	int op_count = 14;
 	int expected_min = op_count * -1;
 	// All functions must return -1 at least
@@ -278,12 +193,12 @@ int main(int argc, char *argv[])
 	ret += dt_unit_unlock(0);           // -1
 	is_int(-1464, ret, "dthreads: not crashed while executing functions on NULL context");
 
-	/* Test 18: expected results. */
+	/* Test 13: expected results. */
 	ok(ret <= expected_min,
 	       "dthreads: correct values when passed NULL context "
 	       "(%d, min: %d)", ret, expected_min);
 
-	/* Test 19: Thread destructor. */
+	/* Test 14: Thread destructor. */
 	_destructor_data = 0;
 	unit = dt_create_coherent(2, 0, destruct, 0);
 	dt_start(unit);
@@ -292,7 +207,7 @@ int main(int argc, char *argv[])
 	is_int(2, _destructor_data, "dthreads: destructor with dt_create_coherent()");
 	dt_delete(&unit);
 
-	/* Test 20: Thread destructor setter. */
+	/* Test 15: Thread destructor setter. */
 	unit = dt_create(1);
 	dt_set_desctructor(unit->threads[0], destruct);
 	dt_start(unit);
