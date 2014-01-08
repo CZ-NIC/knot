@@ -38,11 +38,6 @@
 #include "libknot/nameserver/ns_proc_query.h"
 #include "libknot/dnssec/random.h"
 
-
-/* Messages. */
-#define NOTIFY_MSG "NOTIFY of '%s' from %s: "
-#define NOTIFY_XMSG "received serial %u."
-
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
@@ -125,6 +120,10 @@ static int notify_reschedule(knot_nameserver_t *ns,
 	return KNOT_EOK;
 }
 
+/* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
+#define NOTIFY_LOG(severity, msg...) \
+	QUERY_LOG(severity, qdata, "NOTIFY", msg)
+
 int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
 {
 	if (pkt == NULL || ns == NULL || qdata == NULL) {
@@ -162,17 +161,13 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	int ret = notify_reschedule(ns, qdata->zone, NULL /*! \todo API */);
 
 	/* Format resulting log message. */
-	char *qname_str = knot_dname_to_str(knot_pkt_qname(pkt));
-	char *addr_str = strdup("(noaddr)"); /* xfr_remote_str(from, NULL); */ /*! \todo API */
 	if (ret != KNOT_EOK) {
 		next_state = NS_PROC_NOOP; /* RFC1996: Ignore. */
-		log_server_warning(NOTIFY_MSG "%s\n", qname_str, addr_str, knot_strerror(ret));
+		NOTIFY_LOG(LOG_ERR, "%s", knot_strerror(ret));
 	} else {
 		next_state = NS_PROC_DONE;
-		log_server_info(NOTIFY_MSG NOTIFY_XMSG "\n", qname_str, addr_str, serial);
+		NOTIFY_LOG(LOG_ERR, "received serial %u.", serial);
 	}
-	free(qname_str);
-	free(addr_str);
 
 	return next_state;
 }

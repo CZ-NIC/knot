@@ -590,13 +590,6 @@ int knot_dname_cmp_wire(const knot_dname_t *d1, const knot_dname_t *d2,
 
 bool knot_dname_is_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 {
-	if (d1 == d2) {
-		return true;
-	}
-	if (d1 == NULL || d1 == NULL) {
-		return false;
-	}
-
 	while(*d1 != '\0' || *d2 != '\0') {
 		if (knot_label_is_equal(d1, d2)) {
 			d1 = knot_wire_next_label(d1, NULL);

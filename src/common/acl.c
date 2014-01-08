@@ -154,8 +154,9 @@ int acl_insert(acl_t *acl, const sockaddr_t *addr, knot_tsig_key_t *key)
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(&match->addr, addr, sizeof(sockaddr_t));
+	sockaddr_copy(&match->addr, addr);
 	match->key = key;
+
 	add_tail(acl, &match->n);
 
 	return KNOT_EOK;

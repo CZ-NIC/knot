@@ -147,7 +147,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 
 /* AXFR-specific logging (internal, expects 'qdata' variable set). */
 #define AXFR_LOG(severity, msg...) \
-	XFER_LOG(severity, qdata, "Outgoing AXFR", msg)
+	ANSWER_LOG(severity, qdata, "Outgoing AXFR", msg)
 
 int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
 {

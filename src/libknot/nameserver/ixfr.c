@@ -24,11 +24,12 @@ struct ixfr_proc {
 	unsigned state;
 	knot_changesets_t *changesets;
 	struct query_data *qdata;
+	const knot_rrset_t *soa_from, *soa_to;
 };
 
 /* IXFR-specific logging (internal, expects 'qdata' variable set). */
 #define IXFR_LOG(severity, msg...) \
-	XFER_LOG(severity, qdata, "Outgoing IXFR", msg)
+	ANSWER_LOG(severity, qdata, "Outgoing IXFR", msg)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -114,7 +115,7 @@ static int ixfr_process_item(knot_pkt_t *pkt, const void *item, struct xfr_proc 
 	}
 	
 	/* Finished change set. */
-	struct query_data *qdata = ixfr->qdata;
+	struct query_data *qdata = ixfr->qdata; /*< Required for IXFR_LOG() */
 	IXFR_LOG(LOG_INFO, "Serial %u -> %u.", chgset->serial_from, chgset->serial_to);
 
 	return ret;
@@ -211,6 +212,12 @@ static int ixfr_answer_init(struct query_data *qdata)
 		ptrlist_add(&xfer->proc.nodes, chs, mm);
 		dbg_ns("%s: preparing %u -> %u\n", __func__, chs->serial_from, chs->serial_to);
 	}
+	
+	/* Keep first and last serial. */
+	chs = HEAD(chgsets->sets);
+	xfer->soa_from = chs->soa_from;
+	chs = TAIL(chgsets->sets);
+	xfer->soa_to = chs->soa_to;
 
 	return KNOT_EOK;
 }
@@ -252,17 +259,17 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	int ret = KNOT_EOK;
 	mm_ctx_t *mm = qdata->mm;
 	struct timeval now = {0};
-	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
-	const knot_rrset_t *their_soa = authority->rr[0];
+	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;
 
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 		ret = ixfr_answer_init(qdata);
 		switch(ret) {
 		case KNOT_EOK:      /* OK */
+			ixfr = (struct ixfr_proc*)qdata->ext;
 			IXFR_LOG(LOG_INFO, "Started (serial %u -> %u).",
-			         knot_rdata_soa_serial(their_soa),
-			         knot_zone_serial(qdata->zone->contents));
+			         knot_rdata_soa_serial(ixfr->soa_from),
+			         knot_rdata_soa_serial(ixfr->soa_to));
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
 			IXFR_LOG(LOG_INFO, "Zone is up-to-date.");
@@ -282,7 +289,6 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
 
 	/* Answer current packet (or continue). */
-	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;
 	ret = xfr_process_list(pkt, &ixfr_process_item, qdata);
 	switch(ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */

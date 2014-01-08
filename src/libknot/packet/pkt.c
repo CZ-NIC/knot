@@ -602,10 +602,12 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 			int rc = knot_rrset_merge_sort((knot_rrset_t *)pkt->rr[i],
 			                               rr, &merged, &deleted_rrs);
 			if (rc != KNOT_EOK) {
+				dbg_packet("%s: failed to merge RR %p (%d)\n", __func__, rr, rc);
 				return rc;
 			}
-			knot_rrset_deep_free(&rr, 1);
+
 			dbg_packet("%s: merged RR %p\n", __func__, rr);
+			knot_rrset_deep_free(&rr, 1);
 			return KNOT_EOK;
 		}
 	}

@@ -33,17 +33,6 @@
 
 struct query_data;
 
-/*! \brief Transfers logging common base. */
-#define XFER_LOG(severity, qdata, what, msg, ...) do { \
-	zonedata_t *zone_data = (zonedata_t *)knot_zone_data((qdata)->zone); \
-	sockaddr_t *addr = &(qdata)->param->query_source; \
-	char addr_str[SOCKADDR_STRLEN]; \
-	sockaddr_tostr(addr, addr_str, sizeof(addr_str)); \
-	log_msg(LOG_SERVER, severity, what " of '%s' to '%s:%d': " msg "\n", \
-	                zone_data->conf->name, addr_str, sockaddr_portnum(addr), \
-	                ##__VA_ARGS__); \
-	} while (0)
-
 /*! \brief Generic transfer processing state. */
 struct xfr_proc {
 	list_t nodes;    /* Items to process (ptrnode_t). */
