@@ -290,18 +290,15 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 	 * If we are not expecting it (i.e. xfr->prev_digest_size <= 0) and
 	 * it is there => it should probably be considered an error
 	 */
-	int ret = knot_pkt_parse_rr(packet, 0);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
 
+	int ret = KNOT_EOK;
 	if (xfr->tsig_key) {
 		// just append the wireformat to the TSIG data
 		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
 		       >= xfr->wire_size);
 		uint8_t *wire_buf = xfr->tsig_data + xfr->tsig_data_size;
-		memcpy(wire_buf, xfr->wire, xfr->wire_size);
-		xfr->tsig_data_size += xfr->wire_size;
+		memcpy(wire_buf, packet->wire, packet->size);
+		xfr->tsig_data_size += packet->size;
 	}
 
 	if (xfr->tsig_key) {
