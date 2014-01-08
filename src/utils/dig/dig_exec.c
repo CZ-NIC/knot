@@ -571,10 +571,10 @@ static int process_packet_xfr(const knot_packet_t     *query,
 			knot_lookup_table_t *rcode =
 				knot_lookup_by_id(knot_rcode_names, rcode_id);
 			if (rcode != NULL) {
-				ERR("server %s respond %s\n",
+				ERR("server %s responded %s\n",
 				    net->remote_str, rcode->name);
 			} else {
-				ERR("server %s respond %i\n",
+				ERR("server %s responded %i\n",
 				    net->remote_str, rcode_id);
 			}
 

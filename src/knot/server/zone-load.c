@@ -87,6 +87,7 @@ static int zonedata_destroy(knot_zone_t *zone)
 	acl_delete(&zd->notify_out);
 	acl_delete(&zd->update_in);
 	pthread_mutex_destroy(&zd->lock);
+	pthread_mutex_destroy(&zd->ddns_lock);
 
 	/* Close IXFR db. */
 	journal_close(zd->ixfr_db);
@@ -116,8 +117,9 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	/* Link to config. */
 	zd->conf = cfg;
 
-	/* Initialize mutex. */
+	/* Initialize mutexes. */
 	pthread_mutex_init(&zd->lock, 0);
+	pthread_mutex_init(&zd->ddns_lock, 0);
 
 	/* Initialize XFR-IN. */
 	sockaddr_init(&zd->xfr_in.master, -1);
@@ -225,6 +227,26 @@ static void timer_reset(evsched_t *sched, event_t **ev,
 	}
 }
 
+/*! \brief Reset zone data timers. */
+static void zonedata_reset_timers(knot_zone_t *zone)
+{
+	zonedata_t *zd = zone->data;
+	
+	/* Create or cancel existing events. They must not be freed during their
+	 * lifetime since they are referenced from numerous places.
+	 * So each reload does following:
+	 *  1. all events are cancelled on zonedata update, but initialized
+	 *  2. all events may be scheduled (without changing the callback)
+	 *  3. events may be freed _ONLY_ on zone teardown
+	 */
+
+	evsched_t *scheduler = zd->server->sched;
+	timer_reset(scheduler, &zd->ixfr_dbsync, zones_flush_ev, zone);
+	timer_reset(scheduler, &zd->xfr_in.timer, zones_refresh_ev, zone);
+	timer_reset(scheduler, &zd->xfr_in.expire, zones_expire_ev, zone);
+	timer_reset(scheduler, &zd->dnssec_timer, zones_dnssec_ev, zone);	
+}
+
 /*!
  * \brief Update zone data from new configuration.
  *
@@ -252,19 +274,8 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 
 	zd->server = (server_t *)ns->data;
 
-	/* Create or cancel existing events. They must not be freed during their
-	 * lifetime since they are referenced from numerous places.
-	 * So each reload does following:
-	 *  1. all events are cancelled on zonedata update, but initialized
-	 *  2. all events may be scheduled (without changing the callback)
-	 *  3. events may be freed _ONLY_ on zone teardown
-	 */
-
-	evsched_t *scheduler = zd->server->sched;
-	timer_reset(scheduler, &zd->ixfr_dbsync, zones_flush_ev, zone);
-	timer_reset(scheduler, &zd->xfr_in.timer, zones_refresh_ev, zone);
-	timer_reset(scheduler, &zd->xfr_in.expire, zones_expire_ev, zone);
-	timer_reset(scheduler, &zd->dnssec_timer, zones_dnssec_ev, zone);
+	/* Reset event timers. */
+	zonedata_reset_timers(zone);
 
 	// ACLs
 
@@ -323,6 +334,32 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 	 *        accessing the old zone configuration.
 	 */
 	conf_free_zone(old_conf);
+}
+
+/*! \brief Freeze the zone data to prevent any further transfers or
+ *         events manipulation.
+ */
+static void zonedata_freeze(knot_zone_t *zone)
+{
+	zonedata_t *zone_data = zone->data;
+	
+	/*! \todo NOTIFY, xfers and updates now MUST NOT trigger reschedule. */
+	/*! \todo No new xfers or updates should be processed. */
+	/*! \todo Raise some kind of flag. */
+	
+	/* Wait for readers to notice the change. */
+	synchronize_rcu();
+
+	/* Cancel all pending timers. */
+	zonedata_reset_timers(zone);
+	
+	/* Now some transfers may already be running, we need to wait for them. */
+	/*! \todo This should be done somehow. */
+	
+	/* Reacquire journal to ensure all operations on it are finished. */
+	if (journal_retain(zone_data->ixfr_db) == KNOT_EOK) {
+		journal_release(zone_data->ixfr_db);
+	}
 }
 
 /*- zone file status --------------------------------------------------------*/
@@ -595,6 +632,21 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 	if (!new_zone) {
 		return KNOT_EZONENOENT;
 	}
+	
+	/*! \todo What should be done as part of the #26
+	 *  - Zone MUST BE created anew every time, content may be refcounted.
+	 *    (or at least zone->data and it must be updated in a RCU safe way)
+	 *  - Zone about the be obsoleted should be frozen (see more info in zonedata_freeze)
+	 *  - Refcounting on zone can be removed then, because freeze
+	 *    guarantees that zone is not and won't be participating on further
+	 *    transfers, updates or events.
+	 */
+	
+	/* Freeze the old zone blocks any further transfers or events,
+	 * as it will be deleted later on. */
+	if (old_zone && new_zone != old_zone) {
+		zonedata_freeze(old_zone);
+	}
 
 	zonedata_update(new_zone, conf, ns);
 
@@ -614,6 +666,7 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 		goto fail;
 	}
 
+	/* Schedule zonefile flush. */
 	zones_schedule_ixfr_sync(new_zone, conf->dbsync_timeout);
 
 	knot_zone_contents_t *new_contents = new_zone->contents;

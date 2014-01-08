@@ -396,6 +396,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 		return total;
 	} else {
 		struct sockaddr_storage from;
+		memset(&from, '\0', sizeof(from));
 
 		// Receive replies unless correct reply or timeout.
 		while (true) {

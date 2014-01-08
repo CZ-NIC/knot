@@ -49,8 +49,6 @@ static int knot_packet_parse_question(knot_packet_t *pkt)
 	if (len <= 0)
 		return KNOT_EMALF;
 
-	/*! \todo Question case should be preserved. */
-	/* knot_dname_to_lower(question->qname); */
 	pkt->parsed += len + 2 * sizeof(uint16_t); /* Class + Type */
 	pkt->qname_size = len;
 
@@ -90,7 +88,7 @@ static int knot_packet_parse_rdata(knot_rrset_t *rr, const uint8_t *wire,
                                    size_t *pos, size_t total_size,
                                    size_t rdlength)
 {
-	if (!rr || !wire || !pos || rdlength == 0) {
+	if (!rr || !wire || !pos) {
 		return KNOT_EINVAL;
 	}
 
@@ -173,11 +171,6 @@ dbg_packet_exec_verb(
 	}
 
 	rrset->rrsigs = NULL;
-
-	if (rdlength == 0) {
-		return rrset;
-	}
-
 
 	// parse RDATA
 	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
@@ -349,6 +342,7 @@ static void knot_packet_free_allocated_space(knot_packet_t *pkt)
 {
 	dbg_packet_verb("Freeing additional space in packet.\n");
 
+	pkt->mm.free(pkt->qname);
 	pkt->mm.free(pkt->answer);
 	pkt->mm.free(pkt->authority);
 	pkt->mm.free(pkt->additional);
@@ -739,8 +733,18 @@ const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 	if (packet == NULL) {
 		return NULL;
 	}
+	if (packet->qname == NULL) {
+		/* Copy dname for lowercase conversion. */
+		knot_dname_t **qname = &((knot_packet_t *)packet)->qname;
+		*qname = packet->mm.alloc(packet->mm.ctx, packet->qname_size);
+		if (*qname == NULL) {
+			return NULL;
+		}
+		memcpy(*qname, packet->wireformat + KNOT_WIRE_HEADER_SIZE, packet->qname_size);
+		knot_dname_to_lower(*qname);
+	}
 
-	return packet->wireformat + KNOT_WIRE_HEADER_SIZE;
+	return packet->qname;
 }
 
 /*----------------------------------------------------------------------------*/

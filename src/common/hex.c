@@ -15,6 +15,7 @@
 */
 
 #include <config.h>
+#include <assert.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -27,10 +28,11 @@
  */
 static uint8_t hex_to_num(int c)
 {
-	if (c >= '0' && c <= '9')
+	if (c >= '0' && c <= '9') {
 		return c - '0';
-	else
+	} else {
 		return c - 'a' + 10;
+	}
 }
 
 /*!
@@ -38,7 +40,7 @@ static uint8_t hex_to_num(int c)
  */
 int hex_decode(const char *input, uint8_t **output, size_t *output_size)
 {
-	if (!input || !output || !output_size) {
+	if (!input || input[0] == '\0' || !output || !output_size) {
 		return KNOT_EINVAL;
 	}
 
@@ -58,7 +60,8 @@ int hex_decode(const char *input, uint8_t **output, size_t *output_size)
 	// output allocation
 
 	size_t result_size = input_size / 2;
-	uint8_t *result = malloc(result_size * sizeof(uint8_t));
+	assert(result_size > 0);
+	uint8_t *result = malloc(result_size);
 	if (!result) {
 		return KNOT_ENOMEM;
 	}

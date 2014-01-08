@@ -28,7 +28,7 @@
 #define _KNOT_DNSSEC_POLICY_H_
 
 typedef enum knot_update_serial {
-	KNOT_SOA_SERIAL_INC = 1 << 0,
+	KNOT_SOA_SERIAL_UPDATE = 1 << 0,
 	KNOT_SOA_SERIAL_KEEP = 1 << 1
 } knot_update_serial_t;
 
@@ -47,12 +47,12 @@ typedef struct {
 				.sign_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME, \
 				.sign_refresh = KNOT_DNSSEC_DEFAULT_REFRESH, \
 				.forced_sign = false, \
-				.soa_up = KNOT_SOA_SERIAL_INC }
+				.soa_up = KNOT_SOA_SERIAL_UPDATE }
 #define FORCED_DNSSEC_POLICY {  .now = time_now(), \
 				.sign_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME, \
 				.sign_refresh = KNOT_DNSSEC_DEFAULT_REFRESH, \
 				.forced_sign = true, \
-				.soa_up = KNOT_SOA_SERIAL_INC }
+				.soa_up = KNOT_SOA_SERIAL_UPDATE }
 
 #endif // _KNOT_DNSSEC_POLICY_H_
 

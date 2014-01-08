@@ -565,7 +565,6 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
 	}
 	knot_wire_set_nscount(rwire, rr_count);
 	len += rrlen;
-	rlen -= rrlen;
 	knot_rrset_deep_free(&rr, 1);
 
 	if (len > 0) {
@@ -860,7 +859,6 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 	if (r > 0) {
 		*(raw++) = (uint8_t)r;
 		memcpy(raw, v+p, r);
-		raw += K;
 	}
 
 	return KNOT_EOK;

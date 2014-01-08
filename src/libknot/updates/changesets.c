@@ -63,8 +63,6 @@ int knot_changesets_init(knot_changesets_t **changesets)
 	// Init changes' allocator (storing RRs)
 	(*changesets)->changes->mem_ctx = (*changesets)->mmc_rr;
 	// Init changes' lists
-	init_list(&(*changesets)->changes->old_nodes);
-	init_list(&(*changesets)->changes->old_nsec3);
 	init_list(&(*changesets)->changes->new_rrsets);
 	init_list(&(*changesets)->changes->old_rrsets);
 
@@ -221,33 +219,6 @@ int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
 	} else {
 		assert(part == KNOT_CHANGES_OLD);
 		add_tail(&ch->old_rrsets, (node_t *)rr_node);
-	}
-
-	return KNOT_EOK;
-}
-
-int knot_changes_add_node(knot_changes_t *ch, knot_node_t *kn_node,
-                          knot_changes_part_t part)
-{
-	if (ch == NULL || kn_node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// Using the same allocator for node and rr's, sizes are equal.
-	knot_node_ln_t *list_node =
-		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_node_ln_t));
-	if (list_node == NULL) {
-		// This will not happen with mp_alloc, but allocator can change
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	}
-	list_node->node = kn_node;
-
-	if (part == KNOT_CHANGES_NORMAL_NODE) {
-		add_tail(&ch->old_nodes, (node_t *)list_node);
-	} else {
-		assert(part == KNOT_CHANGES_NSEC3_NODE);
-		add_tail(&ch->old_nsec3, (node_t *)list_node);
 	}
 
 	return KNOT_EOK;

@@ -35,8 +35,6 @@
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
 
-static const unsigned int RR_CHANGE_TOO_BIG = 16;
-
 static uint32_t rrset_rdata_offset(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_indices == NULL ||
@@ -135,8 +133,6 @@ dbg_rrset_exec_detail(
 static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
                                          size_t offset, size_t pos)
 {
-	assert(rrset_rdata_item_size(rrset, pos) != 0);
-
 	size_t ret = rrset_rdata_item_size(rrset, pos) - offset;
 	assert(ret <= rrset_rdata_size_total(rrset));
 	return ret;
@@ -568,6 +564,7 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
 		uint8_t *rdata = rrset_rdata_pointer(rrset, rdata_pos);
+		assert(rdata);
 		if (descriptor_item_is_dname(item)) {
 			const knot_dname_t *dname = rdata + offset;
 			int dname_len = knot_dname_to_wire(stream + *size, dname,
@@ -770,7 +767,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
 static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
                                                size_t pos, uint16_t size)
 {
-	if (rrset == NULL || size == 0 || pos > rrset->rdata_count) {
+	if (rrset == NULL || pos > rrset->rdata_count) {
 		return NULL;
 	}
 	if (pos == rrset->rdata_count) {
@@ -821,10 +818,10 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 	return old_pointer;
 }
 
-int knot_rrset_add_rdata_at_pos(knot_rrset_t *rrset, size_t pos,
-                                const uint8_t *rdata, uint16_t size)
+static int knot_rrset_add_rdata_at_pos(knot_rrset_t *rrset, size_t pos,
+                                       const uint8_t *rdata, uint16_t size)
 {
-	if (rrset == NULL || rdata == NULL || size == 0) {
+	if (rrset == NULL || rdata == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -841,7 +838,7 @@ int knot_rrset_add_rdata_at_pos(knot_rrset_t *rrset, size_t pos,
 
 uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size)
 {
-	if (rrset == NULL || size == 0) {
+	if (rrset == NULL) {
 		return NULL;
 	}
 
@@ -1111,8 +1108,14 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
-		/* Nothing to parse, */
-		return KNOT_EOK;
+		/* Nothing to parse, APLs can have 0 RDLENGTH, but only APLs. */
+		if (rrset->type == KNOT_RRTYPE_APL) {
+			// Add empty RDATA
+			return knot_rrset_create_rdata(rrset, 0) == NULL ?
+			       KNOT_ENOMEM : KNOT_EOK;
+		} else {
+			return KNOT_EOK;
+		}
 	}
 
 	dbg_rrset_detail("rr: parse_rdata_wire: Parsing RDATA of size=%zu,"
@@ -1973,7 +1976,7 @@ int knot_rrset_ds_check(const knot_rrset_t *rrset)
 			return KNOT_EMALF;
 		}
 		uint16_t len = rrset_rdata_item_size(rrset, i) - 4;
-		uint8_t type = *(rrset_rdata_pointer(rrset, i) + 3);
+		uint8_t type = rrset_rdata_pointer(rrset, i)[3];
 		if (type == 0 || len == 0) {
 			return KNOT_EINVAL;
 		} else if (len != knot_ds_digest_length(type)) {
