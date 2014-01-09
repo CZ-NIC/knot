@@ -68,11 +68,6 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 	if (knot_rrset_rdata_rr_count(rrset)) {
 		res = knot_pkt_put(resp, 0, rrset, KNOT_PF_CHECKDUP);
 	}
-	// add RRSIG for the RRSet
-	if (res == KNOT_EOK && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL
-	    && knot_rrset_rdata_rr_count(rrset)) {
-		res = knot_pkt_put(resp, 0, rrset, 0);
-	}
 
 	/*! \note TC bit is already set, if something went wrong. */
 
@@ -311,11 +306,6 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 	if (rrset != NULL && knot_rrset_rdata_rr_count(rrset)) {
 		// NSEC proving that there is no node with the searched name
 		ret = knot_pkt_put(resp, 0, rrset, 0);
-		if (ret == KNOT_EOK) {
-			rrset = knot_rrset_get_rrsigs(rrset);
-			//assert(rrset != NULL);
-			ret = knot_pkt_put(resp, 0, rrset, 0);
-		}
 	}
 
 	return ret;
@@ -567,14 +557,6 @@ dbg_ns_exec_verb(
 		return ret;
 	}
 
-	rrset = knot_rrset_get_rrsigs(rrset);
-	//assert(rrset != NULL);
-	ret = knot_pkt_put(resp, 0, rrset, 0);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to add RRSIGs for NSEC for NXDOMAIN to response:"
-		       "%s\n", knot_strerror(ret));
-		//return ret;
-	}
 	// 2) NSEC proving that there is no wildcard covering the name
 	// this is only different from 1) if the wildcard would be
 	// before 'previous' in canonical order, i.e. we can
@@ -622,17 +604,6 @@ dbg_ns_exec_verb(
 			dbg_ns("Failed to add second NSEC for NXDOMAIN to "
 			       "response: %s\n", knot_strerror(ret));
 			return ret;
-		}
-		rrset = knot_rrset_get_rrsigs(rrset);
-		if (rrset == NULL || knot_rrset_rdata_rr_count(rrset) == 0) {
-			// bad zone, ignore
-			return KNOT_EOK;
-		}
-		ret = knot_pkt_put(resp, 0, rrset, 0);
-		if (ret != KNOT_EOK) {
-			dbg_ns("Failed to add RRSIGs for second NSEC for "
-			       "NXDOMAIN to response: %s\n", knot_strerror(ret));
-			//return ret;
 		}
 	}
 
@@ -777,11 +748,6 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 
 	if (ret != KNOT_EOK) {
 		return ret;
-	}
-
-	dbg_ns_detail("Putting RRSet's RRSIGs to Authority\n");
-	if (rrset != NULL && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL) {
-		ret = knot_pkt_put(resp, 0, rrset, 0);
 	}
 
 	return ret;
