@@ -228,17 +228,20 @@ static void print_section_full(const knot_rrset_t **rrsets,
 		}
 
 		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
-		                           true, true,
-		                           &(style->style)) < 0)
-		{
+		                           true, true, &(style->style)) < 0) {
 			buflen += 4096;
-			buf = realloc(buf, buflen);
-
 			// Oversize protection.
 			if (buflen > 1000000) {
 				WARN("can't print whole section\n");
 				break;
 			}
+
+			char *newbuf = realloc(buf, buflen);
+			if (newbuf == NULL) {
+				WARN("can't print whole section\n");
+				break;
+			}
+			buf = newbuf;
 		}
 		printf("%s", buf);
 	}
@@ -260,13 +263,18 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
 			                                &(style->style)) < 0) {
 				buflen += 4096;
-				buf = realloc(buf, buflen);
-
 				// Oversize protection.
 				if (buflen > 1000000) {
 					WARN("can't print whole section\n");
 					break;
 				}
+
+				char *newbuf = realloc(buf, buflen);
+				if (newbuf == NULL) {
+					WARN("can't print whole section\n");
+					break;
+				}
+				buf = newbuf;
 			}
 			printf("%s\n", buf);
 		}
@@ -303,13 +311,18 @@ static void print_section_host(const knot_rrset_t **rrsets,
 			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
 			                                &(style->style)) < 0) {
 				buflen += 4096;
-				buf = realloc(buf, buflen);
-
 				// Oversize protection.
 				if (buflen > 1000000) {
-					WARN("can't print whole RR set\n");
+					WARN("can't print whole section\n");
 					break;
 				}
+
+				char *newbuf = realloc(buf, buflen);
+				if (newbuf == NULL) {
+					WARN("can't print whole section\n");
+					break;
+				}
+				buf = newbuf;
 			}
 
 			if (descr != NULL) {
