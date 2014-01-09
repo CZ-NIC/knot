@@ -554,6 +554,12 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
 	assert(pkt != NULL);
+	
+	/* Check at least header size. */
+	if (pkt->size < KNOT_WIRE_HEADER_SIZE) {
+		dbg_packet("%s: smaller than DNS header, FORMERR\n", __func__);
+		return KNOT_EMALF;
+	}
 
 	/* Check QD count. */
 	uint16_t qd = knot_wire_get_qdcount(pkt->wire);
@@ -577,8 +583,15 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	if (len <= 0) {
 		return KNOT_EMALF;
 	}
+	
+	/* Check QCLASS/QTYPE size. */
+	uint16_t question_size = len + 2 * sizeof(uint16_t); /* QCLASS + QTYPE */
+	if (pkt->parsed + question_size > pkt->size) {
+		dbg_packet("%s: missing QCLASS/QTYPE, FORMERR\n", __func__);
+		return KNOT_EMALF;
+	}
 
-	pkt->parsed += len + 2 * sizeof(uint16_t); /* Class + Type */
+	pkt->parsed += question_size; 
 	pkt->qname_size = len;
 
 	return KNOT_EOK;

@@ -37,13 +37,13 @@ extern const ns_proc_module_t _ns_proc_query;
 
 /*! \brief Query processing logging common base. */
 #define NS_PROC_LOG(severity, qdata, what, msg, ...) do { \
-	zonedata_t *zone_data = (zonedata_t *)knot_zone_data((qdata)->zone); \
 	sockaddr_t *addr = &(qdata)->param->query_source; \
 	char addr_str[SOCKADDR_STRLEN]; \
 	sockaddr_tostr(addr, addr_str, sizeof(addr_str)); \
+	zonedata_t *zone_data = (zonedata_t *)knot_zone_data((qdata)->zone); \
 	log_msg(LOG_SERVER, severity, what msg "\n", \
-	                zone_data->conf->name, addr_str, sockaddr_portnum(addr), \
-	                ##__VA_ARGS__); \
+	                zone_data->conf ? zone_data->conf->name : NULL, \
+	                addr_str, sockaddr_portnum(addr), ##__VA_ARGS__); \
 	} while (0)
 
 /*! \brief Query logging common base. */

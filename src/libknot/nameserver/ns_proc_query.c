@@ -30,12 +30,12 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx);
 
 /*! \brief Module implementation. */
 const ns_proc_module_t _ns_proc_query = {
-  &ns_proc_query_begin,
-  &ns_proc_query_reset,
-  &ns_proc_query_finish,
-  &ns_proc_query_in,
-  &ns_proc_query_out,
-  &ns_proc_query_err
+        &ns_proc_query_begin,
+        &ns_proc_query_reset,
+        &ns_proc_query_finish,
+        &ns_proc_query_in,
+        &ns_proc_query_out,
+        &ns_proc_query_err
 };
 
 /*! \brief Accessor to query-specific data. */
@@ -91,25 +91,21 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
 
-	/* Check query type. */
-	uint16_t pkt_type = knot_pkt_type(pkt);
-	switch(pkt_type) {
-	case KNOT_QUERY_NORMAL:
-		break; /* Supported. */
-	case KNOT_QUERY_NOTIFY:
-	case KNOT_QUERY_AXFR:
-	case KNOT_QUERY_IXFR:
-	case KNOT_QUERY_UPDATE:
-		break; /* Supported (transaction security). */
-	default:
-		dbg_ns("%s: query_type(%hu) NOT SUPPORTED\n", __func__, pkt_type);
+	/* Check if at least header is parsed. */
+	if (pkt->parsed < KNOT_WIRE_HEADER_SIZE) {
 		knot_pkt_free(&pkt);
-		return NS_PROC_NOOP; /* Refuse to process. */
+		return NS_PROC_NOOP; /* Ignore. */
+	}
+	
+	/* Accept only queries. */
+	if (knot_wire_get_qr(pkt->wire)) {
+		knot_pkt_free(&pkt);
+		return NS_PROC_NOOP; /* Ignore. */
 	}
 
 	/* Store for processing. */
 	qdata->query = pkt;
-	qdata->packet_type = pkt_type;
+	qdata->packet_type = knot_pkt_type(pkt);
 
 	/* Declare having response. */
 	return NS_PROC_FULL;
@@ -126,7 +122,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	knot_pkt_t *query = qdata->query;
 	int next_state = NS_PROC_DONE;
 	if (query->parsed < query->size) {
-		dbg_ns("%s: query is FORMERR\n", __func__);
+		dbg_ns("%s: incompletely parsed query, FORMERR\n", __func__);
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		next_state = NS_PROC_FAIL;
 		goto finish;
@@ -389,7 +385,9 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		next_state = update_answer(pkt, ctx->ns, data);
 		break;
 	default:
-		assert(0); /* Should be caught earlier. */
+		/* Nothing else is supported. */
+		data->rcode = KNOT_RCODE_NOTIMPL;
+		next_state = NS_PROC_FAIL;
 		break;
 	}
 
@@ -442,6 +440,12 @@ static int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, ctx);
 	struct query_data *data = QUERY_DATA(ctx);
+	
+	/* Nothing except normal queries is supported. */
+	if (data->packet_type != KNOT_QUERY_NORMAL) {
+		data->rcode = KNOT_RCODE_NOTIMPL;
+		return NS_PROC_FAIL;
+	}
 
 	data->rcode = knot_chaos_answer(pkt, ctx->ns);
 	if (data->rcode != KNOT_RCODE_NOERROR) {
