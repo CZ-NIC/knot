@@ -391,10 +391,8 @@ static int xfrin_parse(knot_pkt_t **dst, uint8_t *wire, size_t wire_size)
 	return KNOT_EOK;
 }
 
-static int xfrin_take_rr(knot_pkt_t *pkt, knot_rrset_t **rr, uint16_t *cur)
+static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uint16_t *cur)
 {
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-
 	int ret = KNOT_EOK;
 	if (*cur < answer->count) {
 		ret = knot_rrset_deep_copy(answer->rr[*cur], rr);
@@ -442,7 +440,8 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	
 	uint16_t rr_id = 0;
 	knot_rrset_t *rr = NULL;
-	ret = xfrin_take_rr(packet, &rr, &rr_id);
+	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
+	ret = xfrin_take_rr(answer, &rr, &rr_id);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&packet);
 		return ret;
@@ -562,7 +561,7 @@ dbg_xfrin_exec(
 		
 
 		// take next RR
-		ret = xfrin_take_rr(packet, &rr, &rr_id);
+		ret = xfrin_take_rr(answer, &rr, &rr_id);
 	} else {
 		zone = (*constr)->contents;
 		++xfr->packet_nr;
@@ -578,7 +577,7 @@ dbg_xfrin_exec(
 			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
 			knot_rrset_deep_free(&rr, 1);
 			// take next RR
-			ret = xfrin_take_rr(packet, &rr, &rr_id);
+			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
 		}
 
@@ -700,7 +699,7 @@ dbg_xfrin_exec_verb(
 			}
 
 			// take next RR
-			ret = xfrin_take_rr(packet, &rr, &rr_id);
+			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
 		}
 		
@@ -785,25 +784,9 @@ dbg_xfrin_exec_verb(
 		}
 
 		// take next RR
-		ret = xfrin_take_rr(packet, &rr, &rr_id);
+		ret = xfrin_take_rr(answer, &rr, &rr_id);
 	}
 
-	assert(ret != KNOT_EOK || rr == NULL);
-
-	if (ret < 0) {
-		// some error in parsing
-		dbg_xfrin("Could not parse next RR: %s.\n", knot_strerror(ret));
-		knot_pkt_free(&packet);
-
-		if (!in_zone) {
-			knot_node_free(&node);
-		}
-
-		knot_rrset_deep_free(&rr, 1);
-		return KNOT_EMALF;
-	}
-
-	assert(ret == KNOT_EOK);
 	assert(rr == NULL);
 
 	// if the last node is not yet in the zone, insert
@@ -853,7 +836,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	
 	uint16_t rr_id = 0;
 	knot_rrset_t *rr = NULL;
-	ret = xfrin_take_rr(packet, &rr, &rr_id);
+	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
+	ret = xfrin_take_rr(answer, &rr, &rr_id);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&packet);
 		return ret;
@@ -891,7 +875,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		dbg_xfrin_verb("First SOA of IXFR saved, state set to -1.\n");
 
 		// take next RR
-		ret = xfrin_take_rr(packet, &rr, &rr_id);
+		ret = xfrin_take_rr(answer, &rr, &rr_id);
 
 		/*
 		 * If there is no other records in the response than the SOA, it
@@ -1004,7 +988,7 @@ dbg_xfrin_exec_verb(
 			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
 			knot_rrset_deep_free(&rr, 1);
 			// take next RR
-			ret = xfrin_take_rr(packet, &rr, &rr_id);
+			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
 		}
 
@@ -1109,7 +1093,7 @@ dbg_xfrin_exec_verb(
 		}
 
 		// take next RR
-		ret = xfrin_take_rr(packet, &rr, &rr_id);
+		ret = xfrin_take_rr(answer, &rr, &rr_id);
 	}
 
 	/*! \note Check TSIG, we're at the end of packet. It may not be
