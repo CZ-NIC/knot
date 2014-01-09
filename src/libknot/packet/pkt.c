@@ -504,13 +504,15 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 	}
 
 	if (rr_added > 0) {
-		++pkt->rrset_count;
+		pkt->rrset_count += 1;
+		pkt->sections[pkt->current].count += 1;
 		pkt->size += len;
 		pkt_rr_wirecount_add(pkt, pkt->current, rr_added);
 	}
 
-	dbg_packet("%s: added %u RRs (@%zu, len=%zu), pktsize=%zu\n",
-	           __func__, rr_added, pkt->size - len, len, pkt->size);
+	dbg_packet("%s: added %u RRs (@%zu, len=%zu), pktsize=%zu (%s)\n",
+	           __func__, rr_added, pkt->size - len, len, pkt->size,
+	           rr->rrsigs ? "signed" : "unsigned");
 
 	return KNOT_EOK;
 }
