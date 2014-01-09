@@ -262,12 +262,14 @@ static int server_bind_sockets(server_t *s)
 		/* Find already matching interface. */
 		int found_match = 0;
 		conf_iface_t *cfg_if = (conf_iface_t*)n;
-		if (s->ifaces) WALK_LIST(m, s->ifaces->u) {
-			/* Matching port and address. */
-			if (cfg_if->port == m->port) {
-				if (strcmp(cfg_if->address, m->addr) == 0) {
-					found_match = 1;
-					break;
+		if (s->ifaces) {
+			WALK_LIST(m, s->ifaces->u) {
+				/* Matching port and address. */
+				if (cfg_if->port == m->port) {
+					if (strcmp(cfg_if->address, m->addr) == 0) {
+						found_match = 1;
+						break;
+					}
 				}
 			}
 		}

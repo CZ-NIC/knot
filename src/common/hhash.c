@@ -30,7 +30,7 @@ static int universal_cmp(uint32_t k1, uint32_t k2, hhash_t *tbl);
  * Key is variable-sized string. */
 #define KEY_VAL(p) (p)
 #define KEY_LEN(p) ((p) + HHVAL_LEN)
-#define KEY_STR(p) ((p) + HHKEY_LEN)
+#define KEY_STR(p) ((char*)(p) + HHKEY_LEN)
 
 /*! \brief Helper function to read key length. */
 static inline uint16_t key_readlen(const void *k)

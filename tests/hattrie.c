@@ -77,14 +77,13 @@ int main(int argc, char *argv[])
 	}
 
 	/* Test 1: Create */
-	unsigned passed = 1;
 	value_t *v = NULL;
 	hattrie_t *t = hattrie_create();
 	ok(t != NULL, "hattrie: create");
 
 	/* Test 2: Insert */
+	unsigned passed = 1;
 	unsigned really_inserted = 0;
-	passed = 1;
 	for (unsigned i = 0; i < count; ++i) {
 		v = hattrie_get(t, items[i], strlen(items[i]));
 		if (!v) {
@@ -166,13 +165,12 @@ int main(int argc, char *argv[])
 
 	/* Sorted iteration. */
 	size_t len = 0, prev_len = 0;
-	const char *cur = NULL;
 	char *prev = NULL;
 	counted = 0;
 	hattrie_build_index(t);
 	it = hattrie_iter_begin(t, true);
 	while (!hattrie_iter_finished(it)) {
-		cur = hattrie_iter_key(it, &len);
+		const char *cur = hattrie_iter_key(it, &len);
 		if (!str_check_sort(prev, cur, prev_len, len)) {
 			diag("(%zu)'%s' < (%zu)'%s' FAIL\n",
 			     prev_len, prev, len, cur);

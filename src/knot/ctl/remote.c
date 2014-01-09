@@ -301,10 +301,10 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			 */
 			if (dif.tv_sec < 0) {
 				memcpy(when, "busy", 5);
-			} else if (snprintf(when, 64, "in %luh%lum%lus",
-			             dif.tv_sec/3600,
-			             (dif.tv_sec % 3600)/60,
-			             dif.tv_sec % 60) < 0) {
+			} else if (snprintf(when, 64, "in %uh%um%us",
+			                    (unsigned int)dif.tv_sec / 3600,
+			                    (unsigned int)(dif.tv_sec % 3600) / 60,
+			                    (unsigned int)dif.tv_sec % 60) < 0) {
 				free(when);
 				ret = KNOT_ESPACE;
 				break;

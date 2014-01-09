@@ -562,16 +562,20 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 }
 
 /*!
- * \brief Check whether at least one RR type in node should be signed
+ * \brief Check whether at least one RR type in node should be signed,
+ *        used when signing with NSEC3.
  *
  * \param node  Node for which the check is done.
  *
  * \return true/false.
  */
-static bool node_should_be_signed(const knot_node_t *n)
+static bool node_should_be_signed_nsec3(const knot_node_t *n)
 {
 	knot_rrset_t **node_rrsets = knot_node_get_rrsets_no_copy(n);
 	for (int i = 0; i < n->rrset_count; i++) {
+		if (node_rrsets[i]->type == KNOT_RRTYPE_NSEC) {
+			continue;
+		}
 		if (knot_zone_sign_rr_should_be_signed(n, node_rrsets[i],
 		                                       NULL)) {
 			return true;
@@ -608,7 +612,7 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 
 	bitmap_t rr_types = { 0 };
 	bitmap_add_node_rrsets(&rr_types, node);
-	if (node->rrset_count > 0 && node_should_be_signed(node)) {
+	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
 		bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
 	}
 	if (node == apex) {
