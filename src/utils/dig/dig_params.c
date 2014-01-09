@@ -1109,7 +1109,6 @@ static void complete_servers(query_t *query, const query_t *conf)
 
 void complete_queries(list_t *queries, const query_t *conf)
 {
-	query_t *q = NULL;
 	node_t  *n = NULL;
 
 	if (queries == NULL || conf == NULL) {
@@ -1119,7 +1118,7 @@ void complete_queries(list_t *queries, const query_t *conf)
 
 	// If there is no query, add default query: NS to ".".
 	if (list_size(queries) == 0) {
-		q = query_create(".", conf);
+		query_t *q = query_create(".", conf);
 		if (q == NULL) {
 			WARN("can't create query . NS IN\n");
 			return;
