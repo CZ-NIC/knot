@@ -24,6 +24,8 @@ class ZoneFile(object):
         self.dnssec = None
         self.nsec3 = None
 
+        self.backup_num = 1
+
     @property
     def path(self):
         '''Get absolute path of the zone file.'''
@@ -141,3 +143,13 @@ class ZoneFile(object):
                 if not "NSEC3PARAM" in line:
                     new_file.write(line)
 
+        os.remove(old_name)
+
+    def backup(self):
+        '''Make a backup copy of the actual zone file.'''
+
+        try:
+            shutil.copyfile(self.path, self.path + ".back" + str(self.backup_num))
+            self.backup_num += 1
+        except:
+            raise Exception("Can't make a copy of zone file %s" % self.path)
