@@ -337,8 +337,8 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 			qdata->rcode = KNOT_RCODE_YXDOMAIN;
 			return ERROR;
 		}
-		knot_rrset_t *synth_cname = dname_cname_synth(cname_rr, qdata->name);
-		ret = put_rr(pkt, synth_cname, 0, KNOT_PF_FREE, qdata);
+		cname_rr = dname_cname_synth(cname_rr, qdata->name);
+		ret = put_rr(pkt, cname_rr, 0, KNOT_PF_FREE, qdata);
 		if (ret == KNOT_ESPACE) {
 			return TRUNC;
 		} else if (ret != KNOT_EOK) {
