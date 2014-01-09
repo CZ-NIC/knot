@@ -84,7 +84,7 @@ void* thr_action(void *arg)
 
 int main(int argc, char *argv[])
 {
-	plan(11);
+	plan(12);
 
 	/* 1. Create fdset. */
 	fdset_t set;
@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
 	ret = pipe(fds);
 	ok(ret >= 0, "fdset: pipe() works");
 	ret = pipe(tmpfds);
+	ok(ret >= 0, "fdset: 2nd pipe() works");
 
 	/* 3. Add fd to set. */
 	ret = fdset_add(&set, fds[0], POLLIN, NULL);

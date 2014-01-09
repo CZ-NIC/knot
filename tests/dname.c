@@ -120,7 +120,6 @@ int main(int argc, char *argv[])
 
 	/* 18-19. dname cat (valid) */
 	w = "\x03""cat";
-	len = 5;
 	d = knot_dname_copy((const uint8_t *)w);
 	t = "*";
 	d2 = knot_dname_from_str(t);

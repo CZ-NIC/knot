@@ -374,7 +374,7 @@ static int tsig_parse_file(knot_tsig_key_t *k, const char *f)
 				ret = KNOT_EMALF;
 				break;
 			}
-			line[llen++] = '\0';
+			line[llen] = '\0';
 			ret = tsig_parse_line(k, line);
 			llen = 0;
 		} else {

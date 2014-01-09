@@ -118,12 +118,11 @@ int sockaddr_tostr(const sockaddr_t *addr, char *dst, size_t size)
 		return -1;
 	}
 
-	/* Minimum length. */
-	size_t minlen = INET_ADDRSTRLEN;
-
 	/* Check unsupported IPv6. */
 #ifndef DISABLE_IPV6
-	minlen = INET6_ADDRSTRLEN;
+	size_t minlen = INET6_ADDRSTRLEN;
+#else
+	size_t minlen = INET_ADDRSTRLEN;
 #endif
 
 	/* Check minimum length. */
