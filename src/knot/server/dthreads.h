@@ -226,14 +226,6 @@ int dt_stop(dt_unit_t *unit);
 int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count);
 
 /*!
- * \brief Set thread destructor to be called before physical thread termination.
- *
- * \param thread Target thread instance
- * \param destructor Destructor callback.
- */
-int dt_set_desctructor(dthread_t *thread, runnable_t destructor);
-
-/*!
  * \brief Set thread to execute another runnable.
  *
  * \param thread Target thread instance.

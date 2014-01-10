@@ -305,24 +305,17 @@ static int server_bind_sockets(server_t *s)
 	/* Ensure no one is reading old interfaces. */
 	synchronize_rcu();
 
-	/* Update UDP ifacelist (reload all threads). */
-	dt_unit_t *tu = s->h[IO_UDP].unit;
-	for (unsigned i = 0; i < tu->size; ++i) {
-		ref_retain((ref_t *)newlist);
-		s->h[IO_UDP].state[i].s |= ServerReload;
-		if (s->state & ServerRunning) {
-			dt_activate(tu->threads[i]);
-			dt_signalize(tu->threads[i], SIGALRM);
+	/* Update TCP+UDP ifacelist (reload all threads). */
+	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
+		dt_unit_t *tu = s->h[proto].unit;
+		for (unsigned i = 0; i < tu->size; ++i) {
+			ref_retain((ref_t *)newlist);
+			s->h[proto].state[i].s |= ServerReload;
+			if (s->state & ServerRunning) {
+				dt_activate(tu->threads[i]);
+				dt_signalize(tu->threads[i], SIGALRM);
+			}
 		}
-	}
-
-	/* Update TCP ifacelist (reload master thread). */
-	tu = s->h[IO_TCP].unit;
-	ref_retain((ref_t *)newlist);
-	s->h[IO_TCP].state[0].s |= ServerReload;
-	if (s->state & ServerRunning) {
-		dt_activate(tu->threads[0]);
-		dt_signalize(tu->threads[0], SIGALRM);
 	}
 
 	ref_release(&oldlist->ref);
@@ -597,16 +590,17 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		}
 
 		/* Initialize I/O handlers. */
-		size_t udp_size = tu_size;
-		dt_unit_t *tu = dt_create_coherent(udp_size, &udp_master,
+		dt_unit_t *tu = dt_create_coherent(tu_size, &udp_master,
 		                                   &udp_master_destruct, NULL);
 		server_init_handler(server->h + IO_UDP, server, tu, NULL);
 
 		/* Create at least CONFIG_XFERS threads for TCP for faster
 		 * processing of massive bootstrap queries. */
-		tu = dt_create(MAX(tu_size * 2, CONFIG_XFERS));
+		tu = dt_create_coherent(MAX(tu_size * 2, CONFIG_XFERS),
+		                        &tcp_master, &tcp_master_destruct, NULL);
 		server_init_handler(server->h + IO_TCP, server, tu, NULL);
-		tcp_loop_unit(server->h + IO_TCP, tu);
+
+		/* Start if server is running. */
 		if (server->state & ServerRunning) {
 			for (unsigned i = 0; i < IO_COUNT; ++i) {
 				ret = dt_start(server->h[i].unit);

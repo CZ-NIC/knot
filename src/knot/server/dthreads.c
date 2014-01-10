@@ -704,23 +704,6 @@ int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Set thread destructor to be called before physical thread termination.
- *
- * \param thread Target thread instance
- * \param destructor Destructor callback.
- */
-int dt_set_desctructor(dthread_t *thread, runnable_t destructor)
-{
-	if (thread == 0) {
-		return KNOT_EINVAL;
-	}
-
-	thread->destruct = destructor;
-
-	return KNOT_EOK;
-}
-
 int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data)
 {
 	// Check
