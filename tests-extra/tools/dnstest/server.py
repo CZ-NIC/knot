@@ -199,8 +199,8 @@ class Server(object):
 
     def start(self):
         try:
-            fout = open(self.fout, mode="w")
-            ferr = open(self.ferr, mode="w")
+            fout = open(self.fout, mode="a")
+            ferr = open(self.ferr, mode="a")
 
             if self.compile_params:
                 self.compile()
@@ -237,33 +237,48 @@ class Server(object):
         if not self.valgrind:
             return
 
-        errcount = 0
-        reachable = -32
+        check_log("VALGRIND CHECK %s" % self.name)
+
+        lock = False
         lost = 0
+        reachable = -32
+        errcount = 0
 
         f = open(self.ferr, "r")
         for line in f:
-            if re.search("Process terminating", line) or \
-               re.search("Invalid read", line) or \
-               re.search("Invalid write", line) or \
-               re.search("Assertion", line):
-                  errcount += 1
+            if re.search("LEAK SUMMARY", line):
+                lock = True
+                lost = 0
+                reachable = -32
+                errcount = 0
+                continue
 
-            lost_line = re.search("lost:", line)
-            if lost_line:
-                lost += int(line[lost_line.end():].lstrip(). \
-                            split(" ")[0].replace(",", ""))
+            if lock:
+                lost_line = re.search("lost:", line)
+                if lost_line:
+                    lost += int(line[lost_line.end():].lstrip(). \
+                                split(" ")[0].replace(",", ""))
+                    continue
 
-            reach_line = re.search("reachable:", line)
-            if reach_line:
-                reachable += int(line[reach_line.end():].lstrip(). \
-                                 split(" ")[0].replace(",", ""))
+                reach_line = re.search("reachable:", line)
+                if reach_line:
+                    reachable += int(line[reach_line.end():].lstrip(). \
+                                     split(" ")[0].replace(",", ""))
+                    continue
+
+                err_line = re.search("ERROR SUMMARY:", line)
+                if err_line:
+                    errcount += int(line[err_line.end():].lstrip(). \
+                                    split(" ")[0].replace(",", ""))
+
+                    if lost > 0 or reachable > 0 or errcount > 0:
+                        err("%s memcheck: lost(%i B), reachable(%i B), errcount(%i)" \
+                            % (self.name, lost, reachable, errcount))
+                        set_err("VALGRIND")
+
+                    lock = False
+                    continue
         f.close()
-
-        if errcount > 0 or reachable > 0 or lost > 0:
-            err("%s memcheck: lost(%i B), reachable(%i B), errcount(%i)" \
-                % (self.name, lost, reachable, errcount))
-            set_err("VALGRIND")
 
     def stop(self):
         if self.proc:
