@@ -485,6 +485,7 @@ void knot_ns_destroy(knot_nameserver_t **nameserver)
 }
 
 /* State -> string translation table. */
+#ifdef KNOT_NS_DEBUG
 #define NS_STATE_STR(x) _state_table[x]
 static const char* _state_table[] = {
         [NS_PROC_NOOP] = "NOOP",
@@ -493,6 +494,7 @@ static const char* _state_table[] = {
         [NS_PROC_DONE] = "DONE",
         [NS_PROC_FAIL] = "FAIL"
 };
+#endif /* KNOT_NS_DEBUG */
 
 int ns_proc_begin(ns_proc_context_t *ctx, void *module_param, const ns_proc_module_t *module)
 {

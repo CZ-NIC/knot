@@ -189,34 +189,24 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	       __func__, qdata->rcode, qdata->rcode_tsig);
 
 	/* Initialize response from query packet. */
-	knot_pkt_clear(pkt);
 	knot_pkt_t *query = qdata->query;
-	pkt->size = knot_pkt_question_size(query);
-	
+	knot_pkt_init_response(pkt, query);
+
 	/* If original QNAME is empty, Query is either unparsed or for root domain.
 	 * Either way, letter case doesn't matter. */
-	if (qdata->orig_qname[0] == '\0') {
-		memcpy(pkt->wire, query->wire, pkt->size);
-	} else {
-		/* Copy header and QNAME with original case. */
-		memcpy(pkt->wire, query->wire, KNOT_WIRE_HEADER_SIZE);
-		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE, qdata->orig_qname, query->qname_size);
+	if (qdata->orig_qname[0] != '\0') {
+		memcpy(pkt->wire + KNOT_WIRE_HEADER_SIZE,
+		       qdata->orig_qname, query->qname_size);
 	}
-	
-	/* Set QR=1 and RCODE. */
-	knot_wire_set_qr(pkt->wire);
+
+	/* Set RCODE. */
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
-	
-	/* Copy RD bit. */
-	if (knot_wire_get_rd(query->wire)) {
-		knot_wire_set_rd(pkt->wire);
-	}
 	
 	/* Transaction security (if applicable). */
 	if (ns_proc_query_sign_response(pkt, qdata) != KNOT_EOK) {
 		return NS_PROC_FAIL;
 	}
-	
+
 	return NS_PROC_DONE;
 }
 
@@ -237,6 +227,7 @@ bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
 		
 		/* Did not authenticate, no fitting rule found. */
 		if (match == NULL || (match->key && match->key->algorithm != key_alg)) {
+			dbg_ns("%s: no ACL match => NOTAUTH\n", __func__);
 			qdata->rcode = KNOT_RCODE_NOTAUTH;
 			qdata->rcode_tsig = KNOT_RCODE_BADKEY;
 			return false;
@@ -267,6 +258,8 @@ int ns_proc_query_verify(struct query_data *qdata)
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
 	                                 query->size, ctx->tsig_key);
 	
+	dbg_ns("%s: QUERY TSIG check result = %s\n", __func__, knot_strerror(ret));
+
 	/* Evaluate TSIG check results. */
 	switch(ret) {
 	case KNOT_EOK:
@@ -356,6 +349,7 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
 	int next_state = NS_PROC_FAIL;
+	dbg_ns("%s(%p, %p, pkt_type=%u)\n", __func__, pkt, ctx, data->packet_type);
 
 	switch(data->packet_type) {
 	case KNOT_QUERY_NORMAL:

@@ -212,6 +212,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	/* Header + question size. */
 	size_t question_size = knot_pkt_question_size(query);
 	if (question_size > pkt->max_size) {
+		dbg_packet("%s: pkt max size < HEADER size\n", __func__);
 		return KNOT_ESPACE;
 	}
 	pkt->query = query;
@@ -220,7 +221,6 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	memcpy(pkt->wire, query->wire, question_size);
 
 	/* Update size and flags. */
-	knot_wire_set_qdcount(pkt->wire, 1);
 	knot_wire_set_qr(pkt->wire);
 	knot_wire_clear_tc(pkt->wire);
 	knot_wire_clear_ad(pkt->wire);

@@ -132,16 +132,17 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
 
 	/* Input packet. */
-	uint16_t tx_len = tx->iov_len;
 	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
 
 	/* Process answer. */
+	uint16_t tx_len = tx->iov_len;
 	if (state == NS_PROC_FULL) {
 		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
 	}
 
 	/* Process error response (if failed). */
 	if (state == NS_PROC_FAIL) {
+		tx_len = tx->iov_len; /* Reset size. */
 		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
 	}
 

@@ -132,21 +132,20 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
 	
 	/* Input packet. */
-	uint16_t tx_len = tx->iov_len;
 	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
-	while (state == NS_PROC_FULL || state == NS_PROC_FAIL) {
+	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
+		uint16_t tx_len = tx->iov_len;
 		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
 
 		/* If it has response, send it. */
-		if (state == NS_PROC_DONE || state == NS_PROC_FULL) {
+		if (tx_len > 0) {
 			if (tcp_send(fd, tx->iov_base, tx_len) != tx_len) {
 				ret = KNOT_ECONNREFUSED;
 				break;
 			}
-			tx_len = tx->iov_len; /* Reset size. */
 		}
 	}
 

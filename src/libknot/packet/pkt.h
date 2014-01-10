@@ -64,7 +64,7 @@ enum {
  */
 typedef struct {
 	const knot_rrset_t **rr;     /*!< Array of RRSets for this section. */
-	const knot_rrinfo_t *rrinfo; /*!< Compression info for each RRSet. */
+	knot_rrinfo_t *rrinfo; /*!< Compression info for each RRSet. */
 	uint16_t count;              /*!< Number of RRSets in this section. */
 } knot_pktsection_t;
 
