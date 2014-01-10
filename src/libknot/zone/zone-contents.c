@@ -1305,7 +1305,7 @@ int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	return knot_zone_contents_adjust_nsec3_pointers(contents);
+	return knot_zone_contents_adjust_nsec3_tree(contents);
 }
 
 /*----------------------------------------------------------------------------*/

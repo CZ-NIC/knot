@@ -1270,7 +1270,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		}
 	} else {
 		// Set NSEC3 nodes if no new signatures were created (or auto DNSSEC is off)
-		ret = knot_zone_contents_adjust_nsec3_pointers(new_contents);
+		ret = knot_zone_contents_adjust_nsec3_tree(new_contents);
 		if (ret != KNOT_EOK) {
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
