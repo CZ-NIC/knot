@@ -595,7 +595,7 @@ int tcp_loop_worker(dthread_t *thread)
 	/* Accept clients. */
 	dbg_net("tcp: worker %p started\n", w);
 	fdset_t *set = &w->set;
-	timev_t next_sweep;
+	timev_t next_sweep, last_poll_time;
 	time_now(&next_sweep);
 	next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
 	for (;;) {
@@ -608,6 +608,9 @@ int tcp_loop_worker(dthread_t *thread)
 		int nfds = poll(set->pfd, set->n, TCP_SWEEP_INTERVAL * 1000);
 		if (nfds < 0)
 			continue;
+
+		/* Mark the time of the last poll. */
+		time_now(&last_poll_time);
 
 		/* Establish timeouts. */
 		rcu_read_lock();
@@ -655,14 +658,12 @@ int tcp_loop_worker(dthread_t *thread)
 		}
 
 		/* Sweep inactive. */
-		timev_t now;
-		if (time_now(&now) == 0) {
-			if (now.tv_sec >= next_sweep.tv_sec) {
-				fdset_sweep(set, &tcp_sweep, NULL);
-				memcpy(&next_sweep, &now, sizeof(next_sweep));
-				next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
-			}
+		if (last_poll_time.tv_sec >= next_sweep.tv_sec) {
+			fdset_sweep(set, &tcp_sweep, NULL);
+			time_now(&next_sweep);
+			next_sweep.tv_sec += TCP_SWEEP_INTERVAL;
 		}
+
 	}
 
 	/* Stop whole unit. */
