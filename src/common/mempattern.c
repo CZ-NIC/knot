@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <stdarg.h>
+#include <malloc.h>
 
 #include "common/mempattern.h"
 #include "common/log.h"
@@ -171,4 +172,12 @@ void usage_dump()
 	        usage.ru_nvcsw,
 	        usage.ru_nivcsw);
 	fprintf(stderr, "==================\n");
+}
+
+/*! \brief Trim excess heap memory. */
+void mem_trim(void)
+{
+#ifdef HAVE_MALLOC_TRIM
+	malloc_trim(0);
+#endif
 }
