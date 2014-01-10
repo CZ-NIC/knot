@@ -1334,7 +1334,8 @@ int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
 	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
 	                                      .previous_node = NULL,
 	                                      .zone = contents };
-	return knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	return knot_zone_contents_adjust_nodes(contents->nsec3_nodes,
+	                                       &adjust_arg,
 	                                       knot_zone_contents_adjust_nsec3_node);
 }
 
