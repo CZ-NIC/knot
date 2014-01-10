@@ -1204,6 +1204,9 @@ int zones_process_update_auth(knot_zone_t *zone,
 	free(msg);
 	msg = NULL;
 
+	/* Trim extra heap. */
+	mem_trim();
+
 	/* Sync zonefile immediately if configured. */
 	zonedata_t *zone_data = (zonedata_t *)zone->data;
 	int sync_timeout = zone_data->conf->dbsync_timeout;
@@ -1591,6 +1594,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 
 	/* Delete all deprecated zones and delete the old database. */
 	knot_zonedb_deep_free(&old_db);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	/* Update events scheduled for zone. */
 	knot_zonedb_iter_t it;

@@ -276,11 +276,20 @@ AS_IF([test "$with_openssl" != "no"],[
       LIBS="$save_LIBS"
     done
 
-    AS_IF([test "$with_openssl" = "no"],[
-      AC_MSG_ERROR([libcrypto (part of OpenSSL) is required])
-    ])
   ])
 ])
+
+AS_IF([test "$with_openssl" = "no"],[
+  AC_MSG_ERROR([OpenSSL library is required.])
+])
+
+AC_EGREP_CPP(openssl_version_ok,
+  [#include <openssl/crypto.h>
+   #if (OPENSSL_VERSION_NUMBER >= 0x1000000fL)
+   openssl_version_ok
+   #endif
+  ],[],[AC_MSG_ERROR([OpenSSL library version >= 1.0.0 is required.])]
+)
 
 AC_ARG_WITH(libidn, AC_HELP_STRING([--with-libidn=[DIR]],
     [Support IDN (needs GNU Libidn)]),
@@ -316,7 +325,7 @@ AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 
 # Checks for library functions.
-AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups initgroups])
+AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim poll posix_memalign pselect pthread_setaffinity_np regcomp select setgroups initgroups])
 
 # Check for be64toh function
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <endian.h>]], [[return be64toh(0);]])],

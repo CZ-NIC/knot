@@ -466,6 +466,15 @@ class Server(object):
 
         self.zones[zone.name].zfile.disable_nsec3()
 
+    def backup_zone(self, zone):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.backup()
+
 class Bind(Server):
 
     def __init__(self):
