@@ -624,7 +624,7 @@ static void wire_timestamp_to_str(rrset_dump_params_t *p)
 	time_t timestamp = ntohl(data);
 
 	if (p->style->human_tmstamp) {
-        struct tm result;
+		struct tm result;
 		// Write timestamp in YYYYMMDDhhmmss format.
 		ret = strftime(p->out, p->out_max, "%Y%m%d%H%M%S",
 		               gmtime_r(&timestamp, &result));
