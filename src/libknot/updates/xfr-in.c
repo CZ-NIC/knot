@@ -805,10 +805,8 @@ dbg_xfrin_exec_verb(
 	/* Now check if there is not a TSIG record at the end of the packet. */
 	ret = xfrin_check_tsig(packet, xfr,
 			       knot_ns_tsig_required(xfr->packet_nr));
-	//++xfr->packet_nr;
 
 	knot_pkt_free(&packet);
-	dbg_xfrin_verb("Processed one AXFR packet successfully.\n");
 
 	/* TSIG errors are propagated and reported in a standard
 	 * manner, as we're in response processing, no further error response

@@ -166,7 +166,7 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 		NOTIFY_LOG(LOG_ERR, "%s", knot_strerror(ret));
 	} else {
 		next_state = NS_PROC_DONE;
-		NOTIFY_LOG(LOG_ERR, "received serial %u.", serial);
+		NOTIFY_LOG(LOG_INFO, "received serial %u.", serial);
 	}
 
 	return next_state;

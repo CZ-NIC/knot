@@ -713,9 +713,6 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 		ret = knot_ns_process_axfrin(ns, rq);
 	}
 
-	/* Check return code for errors. */
-	dbg_xfr_verb("xfr: processed XFR pkt (%s)\n", knot_strerror(ret));
-
 	/* IXFR refused, try again with AXFR. */
 	const char *diff_nospace_msg = "Can't fit the differences in the journal.";
 	const char *diff_invalid_msg = "IXFR packet processed, but invalid parameters.";
