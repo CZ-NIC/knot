@@ -373,7 +373,7 @@ static int zones_zonefile_sync_from_ev(knot_zone_t *zone, zonedata_t *zd)
 }
 
 /*!
- * \brief Sync chagnes in zone to zonefile.
+ * \brief Sync changes in zone to zonefile.
  */
 int zones_flush_ev(event_t *e)
 {
@@ -1124,11 +1124,14 @@ int zones_process_update_auth(knot_zone_t *zone,
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update %s\n",
 			               msg, knot_strerror(ret));
+			new_contents->zone = zone;
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
+			free(fake_zone);
 			return ret;
 		}
 		assert(dnssec_contents);
+		dnssec_contents->zone = zone;
 
 		// Plan zone resign if needed
 		zonedata_t *zd = (zonedata_t *)zone->data;
@@ -1137,8 +1140,10 @@ int zones_process_update_auth(knot_zone_t *zone,
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign %s\n",
 			               msg, knot_strerror(ret));
+			new_contents->zone = zone;
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
+			free(fake_zone);
 			return ret;
 		}
 	}

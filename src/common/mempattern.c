@@ -20,7 +20,9 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <stdarg.h>
-#include <malloc.h>
+#ifdef HAVE_MALLOC_TRIM
+ #include <malloc.h>
+#endif /* HAVE_MALLOC_TRIM */
 
 #include "common/mempattern.h"
 #include "common/log.h"

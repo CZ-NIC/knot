@@ -286,7 +286,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		char *when = NULL;
 		if (zd->xfr_in.state == XFR_PENDING) {
 			when = strdup("pending");
-		} else if (zd->xfr_in.timer) {
+		} else if (zd->xfr_in.timer && zd->xfr_in.timer->tv.tv_sec != 0) {
 			struct timeval now, dif;
 			gettimeofday(&now, 0);
 			timersub(&zd->xfr_in.timer->tv, &now, &dif);
@@ -296,7 +296,6 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 				break;
 			}
 			/*! Workaround until proper zone fetching API and locking
-
 			 *  is implemented (ref #31)
 			 */
 			if (dif.tv_sec < 0) {

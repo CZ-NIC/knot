@@ -358,6 +358,8 @@ int evsched_cancel(evsched_t *s, event_t *ev)
 		ret = evsched_try_cancel(s, ev);
 	}
 
+	/* Reset event timer. */
+	memset(&ev->tv, 0, sizeof(struct timeval));
 	/* Now we're sure event is canceled or finished. */
 	return KNOT_EOK;
 }
