@@ -395,7 +395,11 @@ static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uin
 {
 	int ret = KNOT_EOK;
 	if (*cur < answer->count) {
-		ret = knot_rrset_deep_copy(answer->rr[*cur], rr);
+		/*! \note For now, the RRSets are allocated using malloc(),
+		 *        clearing the KNOT_PF_FREE flags takes their ownership.
+		 */
+		*rr = (knot_rrset_t *)answer->rr[*cur];
+		answer->rrinfo[*cur].flags &= ~KNOT_PF_FREE;
 		*cur += 1;
 	} else {
 		*rr = NULL;
