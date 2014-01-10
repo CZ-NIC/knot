@@ -281,6 +281,8 @@ static int knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
 		args->first_node = node;
 	}
 
+	assert(knot_node_rrset(node, KNOT_RRTYPE_NSEC3));
+
 	// set previous node
 
 	knot_node_set_previous(node, args->previous_node);
