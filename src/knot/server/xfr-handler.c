@@ -1425,6 +1425,10 @@ int xfr_task_free(knot_ns_xfr_t *rq)
 	free(rq->msg);
 	rq->msg = NULL;
 	free(rq);
+
+	/* Trim extra heap. */
+	mem_trim();
+
 	return KNOT_EOK;
 }
 

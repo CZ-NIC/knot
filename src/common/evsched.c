@@ -22,10 +22,11 @@
 #include "common/errcode.h"
 #include "common/evsched.h"
 
-/*! \todo Fix properly (issue #1581). */
-#ifndef HAVE_PSELECT
+/*! \bug #187: Disabled SLAB for events (testing reasons). */
+//#ifndef HAVE_PSELECT
 #define OPENBSD_SLAB_BROKEN
-#endif
+//#endif
+
 
 /*! \brief Some implementations of timercmp >= are broken, this is for compat.*/
 static inline int timercmp_ge(struct timeval *a, struct timeval *b) {

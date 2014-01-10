@@ -28,6 +28,7 @@
 #define _KNOTD_COMMON_MALLOC_H_
 
 #include <stddef.h>
+#include <malloc.h>
 
 /* Memory allocation function prototypes. */
 typedef void* (*mm_alloc_t)(void* ctx, size_t len);
@@ -109,6 +110,12 @@ char* strcdup(const char *s1, const char *s2);
  *           consult manual page for getrusage(2).
  */
 void usage_dump();
+
+/*! \brief Trim excess heap memory. */
+static inline void mem_trim(void)
+{
+	malloc_trim(0);
+}
 
 #endif // _KNOTD_COMMON_MALLOC_H_
 
