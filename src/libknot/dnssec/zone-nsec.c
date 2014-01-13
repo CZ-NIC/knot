@@ -1820,6 +1820,7 @@ static const knot_node_t *zone_first_nsec3_node(const knot_zone_contents_t *z)
 	}
 	knot_node_t *first_node = (knot_node_t *)*hattrie_iter_val(i);
 	assert(first_node);
+	hattrie_iter_free(i);
 	return first_node;
 }
 
