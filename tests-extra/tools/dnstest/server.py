@@ -296,8 +296,8 @@ class Server(object):
         f.write(self.get_config())
         f.close
 
-    def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, \
-            timeout=None, tries=3, recursion=False, bufsize=None, \
+    def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
+            timeout=None, tries=3, recursion=False, bufsize=None,
             nsid=False, dnssec=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
@@ -307,17 +307,70 @@ class Server(object):
                 raise Exception("One zone required.")
             rname = rname[0].name
 
-        if timeout is None:
-            timeout = self.DIG_TIMEOUT
+        rtype_str = rtype.upper()
+
+        # Set port type.
         if rtype.upper() == "AXFR":
             # Always use TCP.
             udp = False
         elif rtype.upper() == "IXFR":
             # Use TCP if not specified.
             udp = udp if udp != None else False
+            rtype_str += "=%i" % int(serial)
         else:
             # Use TCP or UDP at random if not specified.
             udp = udp if udp != None else random.choice([True, False])
+
+        if udp:
+            dig_flags = "+notcp"
+        else:
+            dig_flags = "+tcp"
+
+        dig_flags += " +tries=%i" % tries
+
+        # Set timeout.
+        if timeout is None:
+            timeout = self.DIG_TIMEOUT
+        dig_flags += " +time=%i" % timeout
+
+        # Prepare query (useless for XFR).
+        query = dns.message.make_query(rname, rtype, rclass)
+
+        # Set recursion.
+        if recursion:
+            query.flags |= dns.flags.RD
+            dig_flags += " +rec"
+        else:
+            query.flags &= ~dns.flags.RD
+            dig_flags += " +norec"
+
+        # Set EDNS.
+        if nsid or bufsize:
+            class NsidFix(object):
+                '''Current pythondns doesn't implement NSID option.'''
+                def __init__(self):
+                    self.otype = dns.edns.NSID
+                def to_wire(self, file=None):
+                    pass
+
+            if bufsize:
+                payload = int(bufsize)
+            else:
+                payload = 1280
+            dig_flags += " +bufsize=%i" % payload
+
+            if nsid:
+                options = [NsidFix()]
+                dig_flags += " +nsid"
+            else:
+                options = None
+
+            query.use_edns(edns=0, payload=payload, options=options)
+
+        # Set DO flag.
+        if dnssec:
+            query.want_dnssec()
+            dig_flags += " +dnssec +bufsize=%i" % query.payload
 
         # Store function arguments for possible comparation.
         args = dict()
@@ -326,49 +379,28 @@ class Server(object):
             if param != "self":
                 args[param] = params.locals[param]
 
-        check_log("DIG %s %s %s @%s -p %i %s" % \
-                  (rname, rtype, rclass, self.addr, self.port, \
-                  "+notcp" if udp else "+tcp"))
+        check_log("DIG %s %s %s @%s -p %i %s" %
+                  (rname, rtype_str, rclass, self.addr, self.port, dig_flags))
+        if key_params:
+            detail_log("%s:%s:%s" % (self.tsig.alg, self.tsig.name, self.tsig.key))
 
         for t in range(tries):
             try:
                 if rtype.upper() == "AXFR":
-                    resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
-                                         port=self.port, lifetime=timeout, \
+                    resp = dns.query.xfr(self.addr, rname, rtype, rclass,
+                                         port=self.port, lifetime=timeout,
                                          use_udp=udp, **key_params)
                 elif rtype.upper() == "IXFR":
-                    resp = dns.query.xfr(self.addr, rname, rtype, rclass, \
-                                         port=self.port, lifetime=timeout, \
-                                         use_udp=udp, serial=int(serial), \
+                    resp = dns.query.xfr(self.addr, rname, rtype, rclass,
+                                         port=self.port, lifetime=timeout,
+                                         use_udp=udp, serial=int(serial),
                                          **key_params)
+                elif udp:
+                    resp = dns.query.udp(query, self.addr, port=self.port,
+                                         timeout=timeout)
                 else:
-                    query = dns.message.make_query(rname, rtype, rclass)
-
-                    # Set query.
-                    if not recursion:
-                        # Remove RD bit which is a default.
-                        query.flags &= ~dns.flags.RD
-                    if nsid or bufsize:
-                        class NsidFix(object):
-                            '''Current pythondns doesn't implement this'''
-                            def __init__(self):
-                                self.otype = dns.edns.NSID
-                            def to_wire(self, file=None):
-                                pass
-
-                        payload = int(bufsize) if bufsize else 1280
-                        options = [NsidFix()] if nsid else None
-                        query.use_edns(edns=0, payload=payload, options=options)
-                    if dnssec:
-                        query.want_dnssec()
-
-                    # Send query.
-                    if udp:
-                        resp = dns.query.udp(query, self.addr, port=self.port, \
-                                             timeout=timeout)
-                    else:
-                        resp = dns.query.tcp(query, self.addr, port=self.port, \
-                                             timeout=timeout)
+                    resp = dns.query.tcp(query, self.addr, port=self.port,
+                                         timeout=timeout)
 
                 detail_log(SEP)
                 return dnstest.response.Response(self, resp, args)
