@@ -1081,7 +1081,7 @@ static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
                                          hattrie_t **out)
 {
 	assert(sorted_changes);
-	assert(hattrie_size(sorted_changes) > 0);
+	assert(hattrie_weight(sorted_changes) > 0);
 	*out = hattrie_create();
 	if (*out == NULL) {
 		return KNOT_ENOMEM;
@@ -1813,7 +1813,7 @@ static int chain_finalize_nsec(void *d)
 
 static const knot_node_t *zone_first_nsec3_node(const knot_zone_contents_t *z)
 {
-	assert(z && hattrie_size(z->nsec3_nodes) > 0);
+	assert(z && hattrie_weight(z->nsec3_nodes) > 0);
 	hattrie_iter_t *i = hattrie_iter_begin(z->nsec3_nodes, true);
 	if (i == NULL) {
 		return NULL;
@@ -2045,7 +2045,7 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	if (hattrie_size(sorted_changes) == 0) {
+	if (hattrie_weight(sorted_changes) == 0) {
 		// no changes, no fixing
 		return KNOT_EOK;
 	}
