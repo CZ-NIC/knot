@@ -3158,6 +3158,12 @@ int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
 		return KNOT_RCODE_FORMERR;
 	}
 
+	// 2) queries need to have 1 question
+	if (knot_wire_get_qdcount(packet->wireformat) != 1) {
+		dbg_ns("Missing question section, FORMERR\n");
+		return KNOT_RCODE_FORMERR;
+	}
+
 	dbg_ns_verb("Parsed packet header and Question:\n");
 	knot_packet_dump(packet);
 

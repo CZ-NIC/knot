@@ -483,8 +483,8 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 	if (qdcount == 1) {
 		if ((err = knot_packet_parse_question(packet)) != KNOT_EOK)
 			return err;
-	} else {
-		dbg_packet("QDCOUNT != 1, FORMERR.\n");
+	} else if (qdcount > 1) {
+		dbg_packet("QDCOUNT > 1, FORMERR.\n");
 		return KNOT_EMALF;
 	}
 
