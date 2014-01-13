@@ -987,7 +987,7 @@ static uint32_t zones_next_serial(knot_zone_t *zone)
 	assert(zone);
 
 	uint32_t old_serial = knot_zone_serial(knot_zone_contents(zone));
-	uint32_t new_serial;
+	uint32_t new_serial = 0;
 
 	switch (zones_serial_policy(zone)) {
 	case CONF_SERIAL_INCREMENT:
