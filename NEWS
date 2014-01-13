@@ -1,6 +1,6 @@
 Knot DNS NEWS
 
-v1.4.1 - Jan 13, 2013
+v1.4.1 - Jan 13, 2014
 ---------------------
 Bugfixes:
 	* Empty APL record support
@@ -8,7 +8,7 @@ Bugfixes:
 	* Immediate zone syncing after reload
 	* Race condition writing time values to zone file
 
-v1.4.0 - Dec 27, 2013
+v1.4.0 - Jan 6, 2014
 ---------------------
 Features:
 	* Zone SERIAL policies (INCREMENT, UNIXTIME)
