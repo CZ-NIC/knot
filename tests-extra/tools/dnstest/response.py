@@ -62,11 +62,11 @@ class Response(object):
         self._check_question()
 
         # Check rcode.
-        if type(rcode) is str:
-            rc = dns.rcode.from_text(rcode)
+        if type(rcode) is not str:
+            rc = dns.rcode.to_text(rcode)
         else:
             rc = rcode
-        compare(self.resp.rcode(), rc, "RCODE")
+        compare(dns.rcode.to_text(self.resp.rcode()), rc, "RCODE")
 
         # Check rdata only if NOERROR.
         if rc != 0 or rdata == None:
