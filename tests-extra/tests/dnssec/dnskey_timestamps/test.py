@@ -46,6 +46,8 @@ def check_zone(server, expect_dnskey, expect_rrsig):
         err("Expectations do not match.")
         set_err("DNSKEYs not published and activated as expected.")
 
+    detail_log(SEP)
+
 t = Test()
 
 knot = t.server("knot")

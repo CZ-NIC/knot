@@ -272,12 +272,15 @@ class Server(object):
                                     split(" ")[0].replace(",", ""))
 
                     if lost > 0 or reachable > 0 or errcount > 0:
-                        err("%s memcheck: lost(%i B), reachable(%i B), errcount(%i)" \
-                            % (self.name, lost, reachable, errcount))
                         set_err("VALGRIND")
+                        detail_log("%s memcheck: lost(%i B), reachable(%i B), " \
+                                   "errcount(%i)" \
+                                   % (self.name, lost, reachable, errcount))
 
                     lock = False
                     continue
+
+        detail_log(SEP)
         f.close()
 
     def stop(self):
