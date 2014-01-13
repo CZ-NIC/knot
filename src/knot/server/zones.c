@@ -2127,6 +2127,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	char *new_fname = NULL;
 	int fd = zones_open_free_filename(fname, &new_fname);
 	if (fd < 0) {
+		free(new_fname);
 		return KNOT_EWRITABLE;
 	}
 
