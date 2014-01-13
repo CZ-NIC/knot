@@ -1604,8 +1604,6 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 			rcu_read_unlock();
 			return KNOT_EOK;
 		}
-		knot_ns_error_response_full(nameserver, resp, rcode, resp_wire,
-		                            rsize);
 	} else {
 		/*
 		 * Now we have zone. Verify TSIG if it is in the packet.
