@@ -307,10 +307,10 @@ static int server_bind_sockets(server_t *s)
 
 	/* Update TCP+UDP ifacelist (reload all threads). */
 	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
-		dt_unit_t *tu = s->h[proto].unit;
+		dt_unit_t *tu = s->handler[proto].unit;
 		for (unsigned i = 0; i < tu->size; ++i) {
 			ref_retain((ref_t *)newlist);
-			s->h[proto].state[i].s |= ServerReload;
+			s->handler[proto].thread_state[i] |= ServerReload;
 			if (s->state & ServerRunning) {
 				dt_activate(tu->threads[i]);
 				dt_signalize(tu->threads[i], SIGALRM);
@@ -336,7 +336,7 @@ server_t *server_create()
 	// Create event scheduler
 	dbg_server("server: creating event scheduler\n");
 	server->sched = evsched_new();
-	server->iosched = dt_create_coherent(1, evsched_run, evsched_destruct,
+	server->iosched = dt_create(1, evsched_run, evsched_destruct,
 	                                     server->sched);
 
 	// Create name server
@@ -360,29 +360,29 @@ server_t *server_create()
 	return server;
 }
 
-int server_init_handler(iohandler_t * h, server_t *s, dt_unit_t *tu, void *d)
+static int server_init_handler(server_t *server, int index, int thread_count,
+                               runnable_t runnable, runnable_t destructor)
 {
 	/* Initialize */
+	iohandler_t *h = &server->handler[index];
 	memset(h, 0, sizeof(iohandler_t));
-	h->server = s;
-	h->unit = tu;
-	h->data = d;
-	h->state = malloc(tu->size * sizeof(iostate_t));
-
-	/* Update unit data object */
-	for (int i = 0; i < tu->size; ++i) {
-		dthread_t *thread = tu->threads[i];
-		h->state[i].h = h;
-		h->state[i].s = 0;
-		if (thread->run) {
-			dt_repurpose(thread, thread->run, h->state + i);
-		}
+	h->server = server;
+	h->unit = dt_create(thread_count, runnable, destructor, h);
+	if (h->unit == NULL) {
+		return KNOT_ENOMEM;
 	}
 
+	h->thread_state = malloc(thread_count * sizeof(unsigned));
+	if (h->thread_state == NULL) {
+		dt_delete(&h->unit);
+		return KNOT_ENOMEM;
+	}
+
+	memset(h->thread_state, 0, thread_count * sizeof(unsigned));
 	return KNOT_EOK;
 }
 
-int server_free_handler(iohandler_t *h)
+static int server_free_handler(iohandler_t *h)
 {
 	if (!h || !h->server) {
 		return KNOT_EINVAL;
@@ -395,12 +395,8 @@ int server_free_handler(iohandler_t *h)
 	}
 
 	/* Destroy worker context. */
-	if (h->dtor) {
-		h->dtor(h->data);
-		h->data = NULL;
-	}
 	dt_delete(&h->unit);
-	free(h->state);
+	free(h->thread_state);
 	memset(h, 0, sizeof(iohandler_t));
 	return KNOT_EOK;
 }
@@ -425,7 +421,7 @@ int server_start(server_t *s)
 	s->state |= ServerRunning;
 	if (s->tu_size > 0) {
 		for (unsigned i = 0; i < IO_COUNT; ++i) {
-			ret = dt_start(s->h[i].unit);
+			ret = dt_start(s->handler[i].unit);
 		}
 	}
 
@@ -447,7 +443,7 @@ int server_wait(server_t *s)
 
 	int ret = KNOT_EOK;
 	for (unsigned i = 0; i < IO_COUNT; ++i) {
-		if ((ret = server_free_handler(s->h + i)) != KNOT_EOK) {
+		if ((ret = server_free_handler(s->handler + i)) != KNOT_EOK) {
 			break;
 		}
 	}
@@ -585,25 +581,34 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		/* Free old handlers */
 		if (server->tu_size > 0) {
 			for (unsigned i = 0; i < IO_COUNT; ++i) {
-				ret = server_free_handler(server->h + i);
+				ret = server_free_handler(server->handler + i);
 			}
 		}
 
 		/* Initialize I/O handlers. */
-		dt_unit_t *tu = dt_create_coherent(tu_size, &udp_master,
-		                                   &udp_master_destruct, NULL);
-		server_init_handler(server->h + IO_UDP, server, tu, NULL);
+		ret = server_init_handler(server, IO_UDP, tu_size,
+		                          &udp_master, &udp_master_destruct);
+		if (ret != KNOT_EOK) {
+			log_server_error("Failed to create UDP threads: %s\n",
+			                 knot_strerror(ret));
+			return ret;
+		}
 
 		/* Create at least CONFIG_XFERS threads for TCP for faster
 		 * processing of massive bootstrap queries. */
-		tu = dt_create_coherent(MAX(tu_size * 2, CONFIG_XFERS),
-		                        &tcp_master, &tcp_master_destruct, NULL);
-		server_init_handler(server->h + IO_TCP, server, tu, NULL);
+		ret = server_init_handler(server, IO_TCP, MAX(tu_size * 2, CONFIG_XFERS),
+		                          &tcp_master, &tcp_master_destruct);
+		if (ret != KNOT_EOK) {
+			log_server_error("Failed to create TCP threads: %s\n",
+			                 knot_strerror(ret));
+			return ret;
+		}
+
 
 		/* Start if server is running. */
 		if (server->state & ServerRunning) {
 			for (unsigned i = 0; i < IO_COUNT; ++i) {
-				ret = dt_start(server->h[i].unit);
+				ret = dt_start(server->handler[i].unit);
 			}
 		}
 		server->tu_size = tu_size;

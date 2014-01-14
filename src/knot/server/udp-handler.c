@@ -455,20 +455,35 @@ void __attribute__ ((constructor)) udp_master_init()
 #endif /* HAVE_RECVMMSG */
 }
 
-int udp_reader(iohandler_t *h, dthread_t *thread)
+int udp_master(dthread_t *thread)
 {
+	unsigned cpu = dt_online_cpus();
+	if (cpu > 1) {
+		unsigned cpu_mask[2];
+		cpu_mask[0] = dt_get_id(thread) % cpu;
+		cpu_mask[1] = (cpu_mask[0] + 2) % cpu;
+		dt_setaffinity(thread, cpu_mask, 2);
+	}
 
-	iostate_t *st = (iostate_t *)thread->data;
+	/* Drop all capabilities on all workers. */
+#ifdef HAVE_CAP_NG_H
+        if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+                capng_clear(CAPNG_SELECT_BOTH);
+                capng_apply(CAPNG_SELECT_BOTH);
+        }
+#endif /* HAVE_CAP_NG_H */
 
 	/* Prepare structures for bound sockets. */
 	unsigned thr_id = dt_get_id(thread);
+	iohandler_t *handler = (iohandler_t *)thread->data;
+	unsigned *iostate = &handler->thread_state[thr_id];
 	void *rq = _udp_init();
 	ifacelist_t *ref = NULL;
 
 	/* Create UDP answering context. */
 	ns_proc_context_t query_ctx;
 	memset(&query_ctx, 0, sizeof(query_ctx));
-	query_ctx.ns = h->server->nameserver;
+	query_ctx.ns = handler->server->nameserver;
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&query_ctx.mm, 4 * sizeof(knot_pkt_t));
@@ -490,15 +505,15 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 	for (;;) {
 
 		/* Check handler state. */
-		if (knot_unlikely(st->s & ServerReload)) {
-			st->s &= ~ServerReload;
+		if (knot_unlikely(*iostate & ServerReload)) {
+			*iostate &= ~ServerReload;
 			maxfd = 0;
 			minfd = INT_MAX;
 			FD_ZERO(&fds);
 
 			rcu_read_lock();
 			ref_release((ref_t *)ref);
-			ref = h->server->ifaces;
+			ref = handler->server->ifaces;
 			if (ref) {
 				iface_t *i = NULL;
 				WALK_LIST(i, ref->l) {
@@ -542,30 +557,6 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 	ref_release((ref_t *)ref);
 	mp_delete(query_ctx.mm.ctx);
 	return KNOT_EOK;
-}
-
-int udp_master(dthread_t *thread)
-{
-	unsigned cpu = dt_online_cpus();
-	if (cpu > 1) {
-		unsigned cpu_mask[2];
-		cpu_mask[0] = dt_get_id(thread) % cpu;
-		cpu_mask[1] = (cpu_mask[0] + 2) % cpu;
-		dt_setaffinity(thread, cpu_mask, 2);
-	}
-
-	/* Drop all capabilities on all workers. */
-#ifdef HAVE_CAP_NG_H
-        if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
-                capng_clear(CAPNG_SELECT_BOTH);
-                capng_apply(CAPNG_SELECT_BOTH);
-        }
-#endif /* HAVE_CAP_NG_H */
-
-	iostate_t *st = (iostate_t *)thread->data;
-	if (!st) return KNOT_EINVAL;
-	iohandler_t *h = st->h;
-	return udp_reader(h, thread);
 }
 
 int udp_master_destruct(dthread_t *thread)

@@ -42,14 +42,6 @@ enum xfrstate_t {
 };
 
 /*!
- * \brief XFR worker structure.
- */
-typedef struct xfrworker_t
-{
-	struct xfrhandler_t *master; /*! \brief Worker master. */
-} xfrworker_t;
-
-/*!
  * \brief XFR handler structure.
  */
 typedef struct xfrhandler_t
@@ -60,7 +52,6 @@ typedef struct xfrhandler_t
 	pthread_mutex_t mx; /*!< \brief Tasks synchronisation. */
 	knot_nameserver_t *ns;
 	dt_unit_t       *unit;  /*!< \brief Threading unit. */
-	xfrworker_t workers[];  /*!< \brief Workers. */
 } xfrhandler_t;
 
 /*!

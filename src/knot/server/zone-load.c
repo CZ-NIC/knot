@@ -803,7 +803,7 @@ static knot_zonedb_t *load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
 	/* Initialize threads. */
 	size_t thread_count = MIN(conf->zones_count, dt_optimal_size());
 	dt_unit_t *unit = NULL;
-	unit = dt_create_coherent(thread_count, &zone_loader_thread,
+	unit = dt_create(thread_count, &zone_loader_thread,
 	                          &zone_loader_destruct, &ctx);
 	if (unit != NULL) {
 		/* Start loading. */

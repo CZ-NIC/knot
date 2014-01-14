@@ -511,11 +511,11 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 }
 
 /*! \brief Finalize XFR/IN transfer. */
-static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
+static int xfr_task_finalize(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 {
 	int ret = KNOT_EINVAL;
 	rcu_read_lock();
-	knot_nameserver_t *ns = w->master->ns;
+	knot_nameserver_t *ns = xfr->ns;
 
 	if (rq->type == XFR_TYPE_AIN) {
 		ret = zones_save_zone(rq);
@@ -558,9 +558,9 @@ static int xfr_task_finalize(xfrworker_t *w, knot_ns_xfr_t *rq)
 }
 
 /*! \brief Query response event handler function. */
-static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
+static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 {
-	knot_nameserver_t *ns = w->master->ns;
+	knot_nameserver_t *ns = xfr->ns;
 	knot_pkt_t *re = knot_pkt_new(rq->wire, rq->wire_size, NULL);
 	if (re == NULL) {
 		return KNOT_ENOMEM;
@@ -641,7 +641,7 @@ static int xfr_task_resp(xfrworker_t *w, knot_ns_xfr_t *rq)
 /*! \brief This will fall back to AXFR on active connection.
  *  \note The active connection is expected to be force shut.
  */
-static int xfr_start_axfr(xfrworker_t *w, knot_ns_xfr_t *rq, const char *reason)
+static int xfr_start_axfr(xfrhandler_t *xfr, knot_ns_xfr_t *rq, const char *reason)
 {
 	log_zone_notice("%s %s\n", rq->msg, reason);
 
@@ -657,7 +657,7 @@ static int xfr_start_axfr(xfrworker_t *w, knot_ns_xfr_t *rq, const char *reason)
 
 	/* Enqueue new request and close the original. */
 	log_server_notice("%s Retrying with AXFR.\n", rq->msg);
-	xfr_enqueue(w->master, axfr);
+	xfr_enqueue(xfr, axfr);
 	return KNOT_ECONNREFUSED;
 }
 
@@ -685,11 +685,11 @@ static int xfr_fallback_axfr(knot_ns_xfr_t *rq)
 	return ret;
 }
 
-static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
+static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 {
 	/* Process incoming packet. */
 	int ret = KNOT_EOK;
-	knot_nameserver_t *ns = w->master->ns;
+	knot_nameserver_t *ns = xfr->ns;
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
 		ret = knot_ns_process_axfrin(ns, rq);
@@ -719,7 +719,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 	if (rq->type == XFR_TYPE_IIN) {
 		switch(ret) {
 		case KNOT_ESPACE: /* Fallthrough */
-			return xfr_start_axfr(w, rq, diff_nospace_msg);
+			return xfr_start_axfr(xfr, rq, diff_nospace_msg);
 		case KNOT_EXFRREFUSED:
 			return xfr_fallback_axfr(rq);
 		default:
@@ -736,7 +736,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 
 	/* Only for successful xfers. */
 	if (ret > 0) {
-		ret = xfr_task_finalize(w, rq);
+		ret = xfr_task_finalize(xfr, rq);
 
 		/* EBUSY on incremental transfer has a special meaning and
 		 * is caused by a journal not able to free up space for incoming
@@ -750,9 +750,9 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 		 * zone transfer in this case. */
 
 		if (ret == KNOT_EBUSY && rq->type == XFR_TYPE_IIN) {
-			return xfr_start_axfr(w, rq, diff_nospace_msg);
+			return xfr_start_axfr(xfr, rq, diff_nospace_msg);
 		} else if (ret == KNOT_EINVAL && rq->type == XFR_TYPE_IIN) {
-			return xfr_start_axfr(w, rq, diff_invalid_msg);
+			return xfr_start_axfr(xfr, rq, diff_invalid_msg);
 		} else {
 
 			/* Passed, schedule NOTIFYs. */
@@ -776,7 +776,7 @@ static int xfr_task_xfer(xfrworker_t *w, knot_ns_xfr_t *rq)
 }
 
 /*! \brief Incoming packet handling function. */
-static int xfr_process_event(xfrworker_t *w, knot_ns_xfr_t *rq)
+static int xfr_process_event(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 {
 	/* Check if zone is valid. */
 	if (knot_zone_flags(rq->zone) & KNOT_ZONE_DISCARDED) {
@@ -800,9 +800,9 @@ static int xfr_process_event(xfrworker_t *w, knot_ns_xfr_t *rq)
 	case XFR_TYPE_NOTIFY:
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_FORWARD:
-		return xfr_task_resp(w, rq);
+		return xfr_task_resp(xfr, rq);
 	default:
-		return xfr_task_xfer(w, rq);
+		return xfr_task_xfer(xfr, rq);
 	}
 }
 
@@ -841,8 +841,7 @@ static enum fdset_sweep_state xfr_sweep(fdset_t *set, int i, void *data)
 int xfr_worker(dthread_t *thread)
 {
 	assert(thread != NULL && thread->data != NULL);
-	xfrworker_t *w = (xfrworker_t *)thread->data;
-	xfrhandler_t *xfr = w->master;
+	xfrhandler_t *xfr = (xfrhandler_t *)thread->data;
 
 	/* Buffer for answering. */
 	size_t buflen = SOCKET_MTU_SZ;
@@ -858,7 +857,7 @@ int xfr_worker(dthread_t *thread)
 	next_sweep.tv_sec += XFR_SWEEP_INTERVAL;
 
 	/* Approximate thread capacity limits. */
-	unsigned threads = w->master->unit->size;
+	unsigned threads = xfr->unit->size;
 	unsigned thread_capacity = XFR_MAX_TASKS / threads;
 
 	/* Set of connections. */
@@ -940,7 +939,7 @@ int xfr_worker(dthread_t *thread)
 				if (rq->flags & XFR_FLAG_CONNECTING)
 					ret = xfr_async_finish(&set, i);
 				else
-					ret = xfr_process_event(w, rq);
+					ret = xfr_process_event(xfr, rq);
 			} else {
 				/* Inactive connection. */
 				++i;
@@ -1001,37 +1000,24 @@ int xfr_worker(dthread_t *thread)
 xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns)
 {
 	/* Create XFR handler data. */
-	const size_t total_size = sizeof(xfrhandler_t) + thrcount * sizeof(xfrworker_t);
-	xfrhandler_t *xfr = malloc(total_size);
+	xfrhandler_t *xfr = malloc(sizeof(xfrhandler_t));
 	if (xfr == NULL) {
 		return NULL;
 	}
-	memset(xfr, 0, total_size);
+	memset(xfr, 0, sizeof(xfrhandler_t));
 	xfr->ns = ns;
 
 	/* Create threading unit. */
-	xfr->unit = dt_create(thrcount);
+	xfr->unit = dt_create(thrcount, xfr_worker, NULL, xfr);
 	if (xfr->unit == NULL) {
 		free(xfr);
 		return NULL;
-	}
-
-	/* Create worker threads. */
-	for (unsigned i = 0; i < thrcount; ++i) {
-		xfrworker_t *w = xfr->workers + i;
-		w->master = xfr;
 	}
 
 	/* Create tasks structure and mutex. */
 	pthread_mutex_init(&xfr->mx, 0);
 	pthread_mutex_init(&xfr->pending_mx, 0);
 	init_list(&xfr->queue);
-
-	/* Assign worker threads. */
-	dthread_t **threads = xfr->unit->threads;
-	for (unsigned i = 0; i < thrcount; ++i) {
-		dt_repurpose(threads[i], xfr_worker, xfr->workers + i);
-	}
 
 	return xfr;
 }

@@ -50,20 +50,13 @@ struct iface_t;
 struct server_t;
 struct conf_t;
 
-typedef struct iostate {
-	volatile unsigned s;
-	struct iohandler* h;
-} iostate_t;
-
 /*! \brief I/O handler structure.
   */
 typedef struct iohandler {
 	struct node        n;
-	dt_unit_t          *unit;   /*!< Threading unit */
 	struct server_t    *server; /*!< Reference to server */
-	void               *data;   /*!< Persistent data for I/O handler. */
-	iostate_t          *state;
-	void (*dtor)(void *data); /*!< Data destructor. */
+	dt_unit_t          *unit;   /*!< Threading unit */
+	unsigned           *thread_state; /*< Thread state */
 } iohandler_t;
 
 /*! \brief Round-robin mechanism of switching.
@@ -119,7 +112,7 @@ typedef struct server_t {
 	/*! \brief I/O handlers. */
 	unsigned tu_size;
 	xfrhandler_t *xfr;
-	iohandler_t h[IO_COUNT];
+	iohandler_t handler[IO_COUNT];
 
 	/*! \brief Event scheduler. */
 	dt_unit_t *iosched;
@@ -142,29 +135,6 @@ typedef struct server_t {
  * \retval NULL If an error occured.
  */
 server_t *server_create();
-
-/*!
- * \brief Create I/O handler.
- *
- * \param h Initialized handler.
- * \param s Server structure to be used for operation.
- * \param u Threading unit to serve given filedescriptor.
- * \param d Handler data.
- *
- * \retval Handler instance if successful.
- * \retval NULL If an error occured.
- */
-int server_init_handler(iohandler_t * h, server_t *s, dt_unit_t *u, void *d);
-
-/*!
- * \brief Delete handler.
- *
-  * \param ref I/O handler instance.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- */
-int server_free_handler(iohandler_t *h);
 
 /*!
  * \brief Starts the server.

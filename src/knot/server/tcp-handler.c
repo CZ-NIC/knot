@@ -366,16 +366,17 @@ int tcp_master(dthread_t *thread)
 		return KNOT_EINVAL;
 	}
 
+	iohandler_t *handler = (iohandler_t *)thread->data;
+	unsigned *iostate = &handler->thread_state[dt_get_id(thread)];
+
 	int ret = KNOT_EOK;
-	iostate_t *st = (iostate_t *)thread->data;
-	server_t *server = st->h->server;
 	ref_t *ref = NULL;
 	tcp_context_t tcp;
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
 	/* Create TCP answering context. */
 	memset(&tcp.query_ctx, 0, sizeof(tcp.query_ctx));
-	tcp.query_ctx.ns = server->nameserver;
+	tcp.query_ctx.ns = handler->server->nameserver;
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&tcp.query_ctx.mm, 4 * sizeof(knot_pkt_t));
@@ -404,8 +405,8 @@ int tcp_master(dthread_t *thread)
 	for(;;) {
 
 		/* Check handler state. */
-		if (knot_unlikely(st->s & ServerReload)) {
-			st->s &= ~ServerReload;
+		if (knot_unlikely(*iostate & ServerReload)) {
+			*iostate &= ~ServerReload;
 
 			/* Cancel client connections. */
 			for (unsigned i = tcp.client_threshold; i < tcp.set.n; ++i) {
@@ -413,7 +414,7 @@ int tcp_master(dthread_t *thread)
 			}
 
 			ref_release(ref);
-			ref = server_set_ifaces(server, &tcp.set, IO_TCP);
+			ref = server_set_ifaces(handler->server, &tcp.set, IO_TCP);
 			if (tcp.set.n == 0) {
 				break; /* Terminate on zero interfaces. */
 			}
