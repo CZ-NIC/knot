@@ -67,14 +67,12 @@ static int update_forward(struct query_data *qdata)
 static int update_process(knot_pkt_t *resp, struct query_data *qdata)
 {
 	/*! \todo Reusing the API for compatibility reasons. */
-	rcu_read_lock();
 	knot_rcode_t rcode = qdata->rcode;
 	int ret = zones_process_update_auth((knot_zone_t *)qdata->zone, qdata->query,
 	                                    &rcode,
 	                                    &qdata->param->query_source,
 	                                    qdata->sign.tsig_key);
 	qdata->rcode = rcode;
-	rcu_read_unlock();
 	return ret;
 }
 
