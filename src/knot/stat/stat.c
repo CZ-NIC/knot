@@ -125,6 +125,7 @@ static int stat_gatherer_add_data(stat_t *stat)
 		}
 		tmp->addr = malloc(sizeof(char) * 24);
 		if (tmp->addr == NULL) {
+			free(tmp)
 			ERR_ALLOC_FAILED;
 			return -1;
 		}
