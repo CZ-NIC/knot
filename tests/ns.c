@@ -70,9 +70,14 @@ static void answer_sanity_check(const uint8_t *query,
                                 uint8_t expected_rcode, const char *name)
 {
 	ok(answer_len >= KNOT_WIRE_HEADER_SIZE, "ns: len(%s answer) >= DNS header", name);
-	ok(knot_wire_get_qr(answer), "ns: %s answer has QR=1", name);
-	is_int(expected_rcode, knot_wire_get_rcode(answer), "ns: %s answer RCODE=%d", name, expected_rcode);
-	is_int(knot_wire_get_id(query), knot_wire_get_id(answer), "ns: %s MSGID match", name);
+	if (answer_len >= KNOT_WIRE_HEADER_SIZE) {
+		ok(knot_wire_get_qr(answer), "ns: %s answer has QR=1", name);
+		is_int(expected_rcode, knot_wire_get_rcode(answer), "ns: %s answer RCODE=%d", name, expected_rcode);
+		is_int(knot_wire_get_id(query), knot_wire_get_id(answer), "ns: %s MSGID match", name);
+	} else {
+		skip_block(3, "ns: can't check DNS header");
+	}
+
 }
 
 /* Resolve query and check answer for sanity (2 TAP tests). */
@@ -92,6 +97,7 @@ static void exec_query(ns_proc_context_t *query_ctx, const char *name,
 	state = ns_proc_out(answer, &answer_len, query_ctx);
 	if (state & NS_PROC_FAIL) {
 		/* Allow 1 generic error response. */
+		answer_len = KNOT_WIRE_MAX_PKTSIZE;
 		state = ns_proc_out(answer, &answer_len, query_ctx);
 	}
 
