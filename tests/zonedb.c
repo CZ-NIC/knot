@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 		if (knot_zonedb_find(db, dname) == zones[i]) {
 			++nr_passed;
 		} else {
-			diag("knot_zonedb_find_zone(%s) failed", zone_list[i]);
+			diag("knot_zonedb_find(%s) failed", zone_list[i]);
 		}
 		knot_dname_free(&dname);
 	}

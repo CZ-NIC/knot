@@ -418,7 +418,7 @@ int main(int argc, char **argv)
 				knot_dname_t *zdn =
 					knot_dname_from_str(zone);
 				knot_zone_t *z =
-					knot_zonedb_find_zone(server->nameserver->zone_db,
+					knot_zonedb_find(server->nameserver->zone_db,
 					                      zdn);
 				int ic_ret =
 					knot_zone_contents_integrity_check(z->contents);

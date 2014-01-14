@@ -869,7 +869,6 @@ int xfr_worker(dthread_t *thread)
 	}
 
 	/* Accept requests. */
-	dbg_xfr_verb("xfr: worker=%p starting\n", w);
 	for (;;) {
 
 		/* Populate pool with new requests. */
@@ -987,7 +986,6 @@ int xfr_worker(dthread_t *thread)
 		xfr_task_free(rq);
 	}
 
-	dbg_xfr_verb("xfr: worker=%p finished.\n", w);
 	fdset_clear(&set);
 	free(buf);
 	return KNOT_EOK;

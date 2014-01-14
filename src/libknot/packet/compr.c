@@ -101,7 +101,7 @@ int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, 
 		compr->suffix.pos = compr->wire_pos;
 		compr->suffix.labels = orig_labels;
 	}
-	dbg_packet("%s: compressed to %u bytes (match=%zu,@%hu)\n",
+	dbg_packet("%s: compressed to %u bytes (match=%zu,@%zu)\n",
 		   __func__, written, dname - match_begin, compr->wire_pos);
 	return written;
 }
