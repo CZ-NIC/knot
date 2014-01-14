@@ -9,6 +9,13 @@
 
 #define DNSSEC_ENABLED 1
 
+/*! \note #191 There is a lot of duplicate and legacy code here. I have just
+ *             divided the API into 3 + 1 basic proofs used and separated the
+ *             code to its own file. Still, it should be cleaned up and
+ *             each proof should be very briefly documented (what proves what)
+ *             with hints to the RFC, as it's not so complicated as it looks here.
+ */
+
 
 /*----------------------------------------------------------------------------*/
 /*!

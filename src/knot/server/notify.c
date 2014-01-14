@@ -59,7 +59,7 @@ static int notify_request(const knot_rrset_t *rrset,
 		return KNOT_ERROR;
 	}
 
-	/* Write back size, #10 crappy API. */
+	/* Write back size, #189 crappy API. */
 	*size = pkt->size;
 
 	knot_pkt_free(&pkt);

@@ -194,9 +194,9 @@ int main(int argc, char *argv[])
 	exec_query(&query_ctx, "IN/ixfr", query->wire, query->size, KNOT_RCODE_NOTAUTH);
 	
 	/* \note Tests below are not possible without proper zone and zone data. */
-	/* #10 Process UPDATE query. */
-	/* #10 Process AXFR client. */
-	/* #10 Process IXFR client. */
+	/* #189 Process UPDATE query. */
+	/* #189 Process AXFR client. */
+	/* #189 Process IXFR client. */
 	
 	/* Query processor (smaller than DNS header, ignore). */
 	state = ns_proc_reset(&query_ctx);

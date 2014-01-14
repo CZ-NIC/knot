@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 	ok(knot_dname_is_equal(knot_pkt_qname(out),
 	                       knot_pkt_qname(in)), "pkt: equal qname");
 
-	/* #10 check counts */
+	/* Check counts */
 	is_int(knot_wire_get_qdcount(out->wire),
 	       knot_wire_get_qdcount(in->wire), "pkt: QD match");
 	is_int(knot_wire_get_ancount(out->wire),
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 	is_int(knot_wire_get_arcount(out->wire),
 	       knot_wire_get_arcount(in->wire), "pkt: AR match");
 
-	/* #10 check RRs */
+	/* Check RRs */
 	int rr_matched = 0;
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
 		if (knot_rrset_equal(out->rr[i], in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
@@ -162,8 +162,6 @@ int main(int argc, char *argv[])
 		}
 	}
 	is_int(NAMECOUNT, rr_matched, "pkt: RR content match");
-
-	/* #10 check signature */
 
 	/* Free packets. */
 	knot_pkt_free(&out);

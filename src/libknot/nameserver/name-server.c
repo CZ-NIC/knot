@@ -579,5 +579,3 @@ int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));
 	return ctx->state;
 }
-
-/* #10 >>> Next-gen API. */

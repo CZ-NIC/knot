@@ -86,12 +86,12 @@ typedef struct knot_pkt {
 	knot_opt_rr_t opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
-	/* #10 <<< SHOULD BE IN ANSWERING CONTEXT */
+	/* #189 <<< SHOULD BE IN ANSWERING CONTEXT */
 	/*! \todo Could be removed after NSEC proof port to packet processing,
 	 *        and request processing module. */
 	const knot_tsig_key_t *tsig_key;
 	const struct knot_pkt *query; /*!< Associated query. */
-	/* #10 >>> SHOULD BE IN ANSWERING CONTEXT */
+	/* #189 >>> SHOULD BE IN ANSWERING CONTEXT */
 
 	/* Packet sections. */
 	knot_section_t current;
@@ -298,7 +298,7 @@ static inline bool knot_pkt_have_nsid(const knot_pkt_t *pkt)
 	       && knot_edns_has_option(&pkt->opt_rr, EDNS_OPTION_NSID);
 }
 
-/*** <<< #10 DEPRECATED */
+/*** <<< #190 DEPRECATED */
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Sets the OPT RR of the response.
@@ -326,7 +326,7 @@ int knot_pkt_add_opt(knot_pkt_t *resp,
                           int add_nsid);
 
 /*----------------------------------------------------------------------------*/
-/*** >>> #10 DEPRECATED */
+/*** >>> #190 DEPRECATED */
 
 
 #endif /* _KNOT_PACKET_H_ */

@@ -822,7 +822,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	return KNOT_EOK;
 }
 
-/*** <<< #10 DEPRECATED */
+/*** <<< #8 DEPRECATED */
 /*----------------------------------------------------------------------------*/
 
 int knot_pkt_add_opt(knot_pkt_t *resp,
@@ -878,5 +878,5 @@ int knot_pkt_add_opt(knot_pkt_t *resp,
 	return KNOT_EOK;
 }
 
-/*** >>> #10 DEPRECATED */
+/*** >>> #8 DEPRECATED */
 /*----------------------------------------------------------------------------*/
