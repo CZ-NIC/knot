@@ -19,6 +19,7 @@
 #include <stdio.h>			// printf
 #include <stdlib.h>			// atoi
 #include <getopt.h>			// getopt
+#include <pthread.h>			// pthread_t
 
 #include "error.h"		// knot_strerror
 #include "file_loader.h"	// file_loader
@@ -29,7 +30,14 @@
 #define DEFAULT_CLASS	1
 #define DEFAULT_TTL	0
 
-void help(void)
+static void *timestamp_worker(void *data)
+{
+	int *ret = (int *)data;
+	*ret = test__date_to_timestamp();
+	return NULL;
+}
+
+static void help(void)
 {
 	printf("\nZone scanner testing tool.\n"
 	       "Usage: zscanner-tool [parameters] origin zonefile\n"
@@ -79,7 +87,20 @@ int main(int argc, char *argv[])
 	}
 
 	if (test == 1) {
-		test__date_to_timestamp();
+		pthread_t t1, t2, t3;
+		int ret1, ret2, ret3;
+
+		pthread_create(&t1, NULL, timestamp_worker, &ret1);
+		pthread_create(&t2, NULL, timestamp_worker, &ret2);
+		pthread_create(&t3, NULL, timestamp_worker, &ret3);
+
+		pthread_join(t1, NULL);
+		pthread_join(t2, NULL);
+		pthread_join(t3, NULL);
+
+		if (ret1 != 0 || ret2 != 0 || ret3 != 0) {
+			return EXIT_FAILURE;
+		}
 	} else {
 		// Check if there are 2 remaining non-options.
 		if (argc - optind != 2) {

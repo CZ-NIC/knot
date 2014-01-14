@@ -42,10 +42,11 @@ int test__date_to_timestamp()
 	// Testing loop over whole input interval.
 	for (ref_timestamp = 0;
 	     ref_timestamp < max_timestamp;
-	     ref_timestamp += 30) {
+	     ref_timestamp += 1) {
+		struct tm result;
 		// Get reference (correct) timestamp.
 		strftime((char*)buffer, sizeof(buffer), "%Y%m%d%H%M%S",
-			 gmtime(&ref_timestamp));
+			 gmtime_r(&ref_timestamp, &result));
 
 		// Get testing timestamp.
 		date_to_timestamp(buffer, &test_timestamp);

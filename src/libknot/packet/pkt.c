@@ -850,7 +850,7 @@ int knot_pkt_add_opt(knot_pkt_t *resp,
 	 * other options are supported.
 	 */
 
-	if (add_nsid) {
+	if (add_nsid && opt_rr->option_count > 0) {
 		resp->opt_rr.option_count = opt_rr->option_count;
 		assert(resp->opt_rr.options == NULL);
 		resp->opt_rr.options = (knot_opt_option_t *)malloc(
