@@ -153,7 +153,7 @@ static int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 }
 
 /*! \brief Clear packet payload and free allocated data. */
-static void knot_pkt_clear_payload(knot_pkt_t *pkt)
+static void pkt_clear_payload(knot_pkt_t *pkt)
 {
 	assert(pkt);
 	dbg_packet("%s(%p)\n", __func__, pkt);
@@ -233,7 +233,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	knot_wire_clear_ra(pkt->wire);
 
 	/* Clear payload. */
-	knot_pkt_clear_payload(pkt);
+	pkt_clear_payload(pkt);
 	return KNOT_EOK;
 }
 
@@ -245,7 +245,7 @@ void knot_pkt_clear(knot_pkt_t *pkt)
 	}
 
 	/* Clear payload. */
-	knot_pkt_clear_payload(pkt);
+	pkt_clear_payload(pkt);
 
 	/* Reset to header size. */
 	pkt->size = KNOT_WIRE_HEADER_SIZE;
