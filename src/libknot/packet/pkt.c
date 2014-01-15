@@ -155,8 +155,8 @@ static int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 /*! \brief Clear packet payload and free allocated data. */
 static void pkt_clear_payload(knot_pkt_t *pkt)
 {
-	assert(pkt);
 	dbg_packet("%s(%p)\n", __func__, pkt);
+	assert(pkt);
 
 	/* Keep question. */
 	pkt->parsed = 0;
@@ -280,6 +280,10 @@ void knot_pkt_free(knot_pkt_t **pkt)
 uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
+	if (pkt == NULL) {
+		return 0;
+	}
+
 	bool is_query = (knot_wire_get_qr(pkt->wire) == 0);
 	uint16_t ret = KNOT_QUERY_INVALID;
 	uint8_t opcode = knot_wire_get_opcode(pkt->wire);
@@ -311,6 +315,10 @@ uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
+	if (pkt == NULL) {
+		return 0;
+	}
+
 	uint16_t ret = KNOT_WIRE_HEADER_SIZE;
 	if (pkt->qname_size > 0) {
 		ret += pkt->qname_size + 2 * sizeof(uint16_t);
@@ -389,6 +397,10 @@ int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t l
 int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key)
 {
 	dbg_packet("%s(%p, %p)\n", __func__, pkt, tsig_key);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	pkt->tsig_key = tsig_key;
 	if (tsig_key) {
 		pkt->tsig_size = tsig_wire_maxsize(tsig_key);
@@ -398,6 +410,10 @@ int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key)
 
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 {
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Cannot step to lower section. */
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, section_id);
 	assert(section_id >= pkt->current);
@@ -446,7 +462,7 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 
 int knot_pkt_put_opt(knot_pkt_t *pkt)
 {
-	if (pkt->opt_rr.version == EDNS_NOT_SUPPORTED) {
+	if (pkt == NULL || pkt->opt_rr.version == EDNS_NOT_SUPPORTED) {
 		return KNOT_EINVAL;
 	}
 
@@ -562,7 +578,9 @@ int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 int knot_pkt_parse_question(knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	assert(pkt != NULL);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
 	
 	/* Check at least header size. */
 	if (pkt->size < KNOT_WIRE_HEADER_SIZE) {
@@ -609,6 +627,8 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 {
 	dbg_packet("%s(%p, %p, %u)\n", __func__, pkt, rr, flags);
+	assert(pkt);
+	assert(rr);
 
 	/* Don't want to merge, okay. */
 	if (flags & KNOT_PACKET_DUPL_NO_MERGE) {
@@ -646,6 +666,9 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
                                            size_t size)
 {
 	dbg_packet("%s(%p, %zu, %zu)\n", __func__, wire, *pos, size);
+	assert(wire);
+	assert(pos);
+
 	knot_dname_t *owner = knot_dname_parse(wire, pos, size);
 	if (owner == NULL) {
 		return NULL;
@@ -695,6 +718,10 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	if (pkt->parsed >= pkt->size) {
 		dbg_packet("%s: parsed %zu/%zu data\n", __func__, pkt->parsed, pkt->size);
 		return KNOT_EFEWDATA;
@@ -768,6 +795,9 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	int ret = KNOT_EOK;
 	uint16_t rr_parsed = 0;
@@ -789,7 +819,10 @@ int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags)
 int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);
-	assert(pkt != NULL);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	assert(pkt->wire != NULL);
 	assert(pkt->size > 0);
 
@@ -832,9 +865,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 /*** <<< #8 DEPRECATED */
 /*----------------------------------------------------------------------------*/
 
-int knot_pkt_add_opt(knot_pkt_t *resp,
-                          const knot_opt_rr_t *opt_rr,
-                          int add_nsid)
+int knot_pkt_add_opt(knot_pkt_t *resp, const knot_opt_rr_t *opt_rr, int add_nsid)
 {
 	if (resp == NULL || opt_rr == NULL) {
 		return KNOT_EINVAL;
