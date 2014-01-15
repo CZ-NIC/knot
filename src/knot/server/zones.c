@@ -31,6 +31,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-events.h"
+#include "libknot/dnssec/zone-sign.h"
 #include "libknot/nameserver/chaos.h"
 #include "libknot/packet/response.h"
 #include "libknot/rdata.h"
@@ -1181,6 +1182,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	fake_zone->contents = new_contents;
 	fake_zone->data = zone->data;
 	new_contents->zone = fake_zone;
+	hattrie_t *sorted_changes = NULL;
 
 	if (zone_config->dnssec_enable) {
 		dbg_zones_verb("%s: Signing the UPDATE\n", msg);
@@ -1204,7 +1206,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			                      knot_changesets_get_last(chgsets),
 			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
 			                      &used_lifetime, &used_refresh,
-			                      new_serial);
+			                      new_serial, &sorted_changes);
 
 			expires_at = used_lifetime - used_refresh;
 		}
@@ -1247,7 +1249,10 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		// Set zone generation to old, else applying fails
 		knot_zone_contents_set_gen_old(new_contents);
 		ret = xfrin_apply_changesets(fake_zone, sec_chs,
-		                             &dnssec_contents, false);
+		                             &dnssec_contents, false,
+		                             sorted_changes);
+		knot_zone_clear_sorted_changes(sorted_changes);
+		hattrie_free(sorted_changes);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update %s\n",
 			               msg, knot_strerror(ret));
@@ -2594,7 +2599,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	}
 
 	/* Now, try to apply the changesets to the zone. */
-	apply_ret = xfrin_apply_changesets(zone, chs, new_contents, true);
+	apply_ret = xfrin_apply_changesets(zone, chs, new_contents, true, NULL);
 
 	if (apply_ret != KNOT_EOK) {
 		log_zone_error("%s Failed to apply changesets.\n", msgpref);
@@ -3049,7 +3054,8 @@ int zones_journal_apply(knot_zone_t *zone)
 			                chsets->count, zd->conf->name);
 			knot_zone_contents_t *contents = NULL;
 			int apply_ret = xfrin_apply_changesets(zone, chsets,
-			                                       &contents, true);
+			                                       &contents, true,
+			                                       NULL);
 			if (apply_ret != KNOT_EOK) {
 				log_server_error("Failed to apply changesets to"
 				                 " '%s' - Apply failed: %s\n",
@@ -3205,7 +3211,8 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 	/* Apply DNSSEC changeset. */
 	if (new_signatures) {
 		ret = xfrin_apply_changesets(zone, sec_chs,
-		                             &new_contents, true);
+		                             &new_contents, true,
+		                             NULL);
 		if (ret != KNOT_EOK) {
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(diff_chs, sec_chs);

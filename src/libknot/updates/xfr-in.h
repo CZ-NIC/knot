@@ -182,13 +182,15 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 
 int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets,
-                           knot_zone_contents_t **new_contents, bool full_adjust);
+                           knot_zone_contents_t **new_contents,
+                           bool full_adjust, const hattrie_t *sorted_changes);
 
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents);
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                knot_changes_t *changes, bool set_nsec3);
+                                knot_changes_t *changes, bool set_nsec3,
+                                const hattrie_t *sorted_changes);
 
 int xfrin_switch_zone(knot_zone_t *zone,
                       knot_zone_contents_t *new_contents,

@@ -337,6 +337,9 @@ int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents);
  */
 int knot_zone_contents_adjust_nsec3_pointers(knot_zone_contents_t *);
 
+int knot_zone_contents_adjust_nsec3_changes(knot_zone_contents_t *contents,
+                                            void *data);
+
 /*!
  * \brief Sets parent and previous pointers and node flags. (cheap operation)
  */

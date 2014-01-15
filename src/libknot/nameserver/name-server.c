@@ -4208,7 +4208,8 @@ int knot_ns_process_update(const knot_packet_t *query,
 
 	// 3) Finalize zone
 	dbg_ns_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, chgs->changes, false);
+	ret = xfrin_finalize_updated_zone(contents_copy, chgs->changes, false,
+	                                  NULL);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to finalize updated zone: %s\n",
 		       knot_strerror(ret));

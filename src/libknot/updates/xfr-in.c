@@ -2568,7 +2568,8 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                knot_changes_t *changes, bool set_nsec3)
+                                knot_changes_t *changes, bool set_nsec3,
+                                const hattrie_t *sorted_changes)
 {
 	if (contents_copy == NULL || changes == NULL) {
 		return KNOT_EINVAL;
@@ -2596,7 +2597,14 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 
 	dbg_xfrin("Adjusting zone contents.\n");
 	if (set_nsec3) {
-		ret = knot_zone_contents_adjust_full(contents_copy, NULL, NULL);
+		if (sorted_changes) {
+			ret = knot_zone_contents_adjust_pointers(contents_copy);
+			ret = knot_zone_contents_adjust_nsec3_changes(contents_copy,
+			                                              (void *)sorted_changes);
+		} else {
+			ret = knot_zone_contents_adjust_full(contents_copy,
+			                                     NULL, NULL);
+		}
 	} else {
 		ret = knot_zone_contents_adjust_pointers(contents_copy);
 	}
@@ -2616,7 +2624,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets,
                            knot_zone_contents_t **new_contents,
-                           bool full_adjust)
+                           bool full_adjust, const hattrie_t *sorted_changes)
 {
 	if (zone == NULL || chsets == NULL || EMPTY_LIST(chsets->sets)
 	    || new_contents == NULL) {
@@ -2664,7 +2672,8 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 */
 
 	dbg_xfrin_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, chsets->changes, true);
+	ret = xfrin_finalize_updated_zone(contents_copy, chsets->changes,
+	                                  full_adjust, sorted_changes);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));

@@ -216,7 +216,8 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
                                knot_update_serial_t soa_up,
                                uint32_t *used_lifetime,
                                uint32_t *used_refresh,
-                               uint32_t new_serial)
+                               uint32_t new_serial,
+                               hattrie_t **sorted_changes)
 {
 	if (!used_lifetime || !used_refresh) {
 		return KNOT_EINVAL;
@@ -250,8 +251,7 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 	}
 
 	// Sign added and removed RRSets in changeset
-	hattrie_t *sorted_changes = NULL;
-	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, &sorted_changes,
+	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, sorted_changes,
 	                               &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to sign changeset (%s)\n", msgpref,
@@ -264,8 +264,6 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 	// Fix NSEC(3) chain
 	ret = knot_zone_fix_chain(zone->contents,
 	                          sorted_changes, out_ch, &zone_keys, &policy);
-	knot_zone_clear_sorted_changes(sorted_changes);
-	hattrie_free(sorted_changes);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to fix NSEC(3) chain (%s)\n",
 		               msgpref, knot_strerror(ret));
