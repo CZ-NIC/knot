@@ -261,9 +261,10 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 		return ret;
 	}
 
+	assert(sorted_changes);
 	// Fix NSEC(3) chain
 	ret = knot_zone_fix_chain(zone->contents,
-	                          sorted_changes, out_ch, &zone_keys, &policy);
+	                          *sorted_changes, out_ch, &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to fix NSEC(3) chain (%s)\n",
 		               msgpref, knot_strerror(ret));
