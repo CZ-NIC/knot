@@ -479,9 +479,9 @@ int knot_pkt_put_opt(knot_pkt_t *pkt)
 	return KNOT_EOK;
 }
 
-int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uint16_t flags)
+int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, uint16_t flags)
 {
-	dbg_packet("%s(%p, %u, %p, %u)\n", __func__, pkt, compress, rr, flags);
+	dbg_packet("%s(%p, %u, %p, %u)\n", __func__, pkt, compr_hint, rr, flags);
 	if (pkt == NULL || rr == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -490,7 +490,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 	memset(rrinfo, 0, sizeof(knot_rrinfo_t));
 	rrinfo->pos = pkt->size;
 	rrinfo->flags = flags;
-	rrinfo->compress_ptr[0] = compress;
+	rrinfo->compress_ptr[0] = compr_hint;
 	pkt->rr[pkt->rrset_count] = rr;
 
 	/* Check for double insertion. */
