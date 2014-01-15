@@ -226,7 +226,7 @@ static void check_reply_question(const knot_pkt_t *reply,
 	}
 }
 
-static int64_t first_serial_check(knot_pkt_t *reply)
+static int64_t first_serial_check(const knot_pkt_t *reply)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(reply, KNOT_ANSWER);
 
@@ -243,7 +243,7 @@ static int64_t first_serial_check(knot_pkt_t *reply)
 	}
 }
 
-static bool last_serial_check(const uint32_t serial, knot_pkt_t *reply)
+static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 {
 	const knot_pktsection_t *answer = knot_pkt_section(reply, KNOT_ANSWER);
 	if (answer->count <= 0) {
