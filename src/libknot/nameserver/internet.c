@@ -293,30 +293,11 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	const knot_node_t *cname_node = qdata->node;
 	knot_rrset_t *cname_rr = knot_node_get_rrset(qdata->node, rrtype);
 	int ret = KNOT_EOK;
-	unsigned flags = 0;
 
 	assert(cname_rr != NULL);
 
-	/* Is node a wildcard? */
-	if (knot_dname_is_wildcard(cname_node->owner)) {
-
-		/* Check if is not in wildcard nodes (loop). */
-		dbg_ns("%s: CNAME node %p is wildcard\n", __func__, cname_node);
-		if (wildcard_has_visited(qdata, cname_node)) {
-			dbg_ns("%s: node %p already visited => CNAME loop\n",
-			       __func__, cname_node);
-			return HIT;
-		}
-
-		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, cname_node, qdata->name) != KNOT_EOK) {
-			return ERROR;
-		}
-
-	} else {
-		/* Normal CNAME name, check for duplicate. */
-		flags |= KNOT_PF_CHECKDUP;
-	}
+	/* Check whether RR is already in the packet. */
+	uint16_t flags = KNOT_PF_CHECKDUP;
 
 	/* Now, try to put CNAME to answer. */
 	uint16_t rr_count_before = pkt->rrset_count;
@@ -347,6 +328,24 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 		if (ret == KNOT_ESPACE) {
 			return TRUNC;
 		} else if (ret != KNOT_EOK) {
+			return ERROR;
+		}
+	}
+
+	/* If node is a wildcard, follow only if we didn't visit the same node
+	 * earlier, as that would mean a CNAME loop. */
+	if (knot_dname_is_wildcard(cname_node->owner)) {
+
+		/* Check if is not in wildcard nodes (loop). */
+		dbg_ns("%s: CNAME node %p is wildcard\n", __func__, cname_node);
+		if (wildcard_has_visited(qdata, cname_node)) {
+			dbg_ns("%s: node %p already visited => CNAME loop\n",
+			       __func__, cname_node);
+			return HIT;
+		}
+
+		/* Put to wildcard node list. */
+		if (wildcard_visit(qdata, cname_node, qdata->name) != KNOT_EOK) {
 			return ERROR;
 		}
 	}

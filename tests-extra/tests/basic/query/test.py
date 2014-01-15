@@ -183,6 +183,10 @@ resp.cmp(bind)
 resp = knot.dig("a.wildcard-out.flags", "A", udp=True)
 resp.cmp(bind)
 
+# Wildcard leading to CNAME loop
+resp = knot.dig("test.loop-entry.flags", "A", udp=True)
+resp.cmp(bind)
+
 ''' Varied case tests. '''
 
 # Negative (case preservation in question)
