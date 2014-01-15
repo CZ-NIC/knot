@@ -225,12 +225,6 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 /*! \brief Get description of the given packet section. */
 const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t section_id);
 
-/*!
- * \brief Get last parsed RR.
- * \note Legacy API, used only for incoming transfers.
- */
-const knot_rrset_t *knot_pkt_get_last(const knot_pkt_t *pkt);
-
 /*
  * Packet parsing API.
  */

@@ -550,16 +550,6 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t 
 	return &pkt->sections[section_id];
 }
 
-const knot_rrset_t *knot_pkt_get_last(const knot_pkt_t *pkt)
-{
-	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (pkt && pkt->rrset_count > 0) {
-		return pkt->rr[pkt->rrset_count - 1];
-	} else {
-		return NULL;
-	}
-}
-
 int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags)
 {
 	dbg_packet("%s(%p, %u)\n", __func__, pkt, flags);

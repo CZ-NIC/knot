@@ -1847,41 +1847,6 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src, journal_t 
 
 /*----------------------------------------------------------------------------*/
 
-int zones_xfr_load_changesets(knot_ns_xfr_t *xfr, uint32_t serial_from,
-                              uint32_t serial_to)
-{
-	if (!xfr || !xfr->zone || !knot_zone_contents(xfr->zone)) {
-		return KNOT_EINVAL;
-	}
-
-	knot_changesets_t *chgsets = knot_changesets_create();
-	CHECK_ALLOC_LOG(chgsets, KNOT_ENOMEM);
-
-	int ret = ns_serial_compare(serial_to, serial_from);
-	dbg_zones_verb("Compared serials, result: %d\n", ret);
-
-	/* if serial_to is not larger than serial_from, do not load anything */
-	if (ret <= 0) {
-		xfr->data = chgsets;
-		return KNOT_EOK;
-	}
-
-	dbg_xfr_verb("xfr: loading changesets\n");
-	ret = zones_load_changesets(xfr->zone, chgsets,
-	                                serial_from, serial_to);
-	if (ret != KNOT_EOK) {
-		dbg_xfr("xfr: failed to load changesets: %s\n",
-		        knot_strerror(ret));
-		knot_changesets_free(&chgsets);
-		return ret;
-	}
-
-	xfr->data = chgsets;
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int zones_create_changeset(const knot_zone_t *old_zone,
                            const knot_zone_t *new_zone,
                            knot_changeset_t *changeset)
