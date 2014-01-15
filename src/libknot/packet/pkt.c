@@ -31,9 +31,8 @@ static int pkt_contains(const knot_pkt_t *packet,
                            const knot_rrset_t *rrset,
                            knot_rrset_compare_type_t cmp)
 {
-	if (packet == NULL || rrset == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(packet);
+	assert(rrset);
 
 	for (int i = 0; i < packet->rrset_count; ++i) {
 		if (knot_rrset_equal(packet->rr[i], rrset, cmp)) {
@@ -48,6 +47,8 @@ static int pkt_contains(const knot_pkt_t *packet,
 /*! \brief Free all RRSets and reset RRSet count. */
 static void pkt_free_data(knot_pkt_t *pkt)
 {
+	assert(pkt);
+
 	/* Free RRSets if applicable. */
 	knot_rrset_t *rr  = NULL;
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
@@ -64,6 +65,8 @@ static void pkt_free_data(knot_pkt_t *pkt)
 /*! \brief Allocate new wireformat of given length. */
 static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 {
+	assert(pkt);
+
 	pkt->wire = pkt->mm.alloc(pkt->mm.ctx, len);
 	if (pkt->wire == NULL) {
 		return KNOT_ENOMEM;
@@ -78,6 +81,8 @@ static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 /*! \brief Set packet wireformat to an existing memory. */
 static void pkt_wire_set(knot_pkt_t *pkt, void *wire, uint16_t len)
 {
+	assert(pkt);
+
 	pkt->wire = wire;
 	pkt->size = pkt->max_size = len;
 	pkt->parsed = 0;
@@ -86,6 +91,8 @@ static void pkt_wire_set(knot_pkt_t *pkt, void *wire, uint16_t len)
 /*! \brief Calculate remaining size in the packet. */
 static uint16_t pkt_remaining(knot_pkt_t *pkt)
 {
+	assert(pkt);
+
 	uint16_t remaining = pkt->max_size - pkt->size - pkt->tsig_size;
 	if (knot_pkt_have_edns(pkt)) {
 		remaining -= pkt->opt_rr.size;
@@ -119,9 +126,7 @@ static void pkt_rr_wirecount_add(knot_pkt_t *pkt, knot_section_t section_id,
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
 static int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 {
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(pkt);
 
 	/* Free allocated data. */
 	pkt_free_data(pkt);
@@ -149,10 +154,8 @@ static int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 /*! \brief Clear packet payload and free allocated data. */
 static void knot_pkt_clear_payload(knot_pkt_t *pkt)
 {
+	assert(pkt);
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (pkt == NULL) {
-		return;
-	}
 
 	/* Keep question. */
 	pkt->parsed = 0;
@@ -173,6 +176,8 @@ static void knot_pkt_clear_payload(knot_pkt_t *pkt)
 /*! \brief Allocate new packet using memory context. */
 static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 {
+	assert(mm);
+
 	knot_pkt_t *pkt = mm->alloc(mm->ctx, sizeof(knot_pkt_t));
 	if (pkt == NULL) {
 		return NULL;
@@ -390,8 +395,6 @@ int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key)
 	return KNOT_EOK;
 }
 
-
-
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 {
 	/* Cannot step to lower section. */
@@ -462,6 +465,9 @@ int knot_pkt_put_opt(knot_pkt_t *pkt)
 int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uint32_t flags)
 {
 	dbg_packet("%s(%p, %u, %p, %u)\n", __func__, pkt, compress, rr, flags);
+	if (pkt == NULL || rr == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count];
 	memset(rrinfo, 0, sizeof(knot_rrinfo_t));
