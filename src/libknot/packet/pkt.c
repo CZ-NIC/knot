@@ -135,7 +135,7 @@ static int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 	/* NULL everything up to 'sections' (not the large data fields). */
 	int ret = KNOT_EOK;
 	mm_ctx_t mm = pkt->mm;
-	memset(pkt, 0, (size_t)&((knot_pkt_t*)NULL)->rr_info);
+	memset(pkt, 0, offsetof(knot_pkt_t, rr_info));
 	pkt->mm = mm;
 
 	/* Initialize OPT RR defaults. */
