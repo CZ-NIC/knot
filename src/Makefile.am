@@ -132,14 +132,14 @@ libknot_la_SOURCES =				\
 	libknot/nameserver/name-server.c	\
 	libknot/nameserver/chaos.h		\
 	libknot/nameserver/chaos.c		\
-	libknot/nameserver/internet.h	\
-	libknot/nameserver/internet.c	\
-	libknot/nameserver/axfr.h	\
-	libknot/nameserver/axfr.c	\
-	libknot/nameserver/ixfr.h	\
-	libknot/nameserver/ixfr.c	\
-	libknot/nameserver/update.h	\
-	libknot/nameserver/update.c	\
+	libknot/nameserver/internet.h		\
+	libknot/nameserver/internet.c		\
+	libknot/nameserver/axfr.h		\
+	libknot/nameserver/axfr.c		\
+	libknot/nameserver/ixfr.h		\
+	libknot/nameserver/ixfr.c		\
+	libknot/nameserver/update.h		\
+	libknot/nameserver/update.c		\
 	libknot/nameserver/ns_proc_query.h	\
 	libknot/nameserver/ns_proc_query.c	\
 	libknot/updates/changesets.h		\

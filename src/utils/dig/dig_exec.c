@@ -265,7 +265,7 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 	}
 }
 
-static int process_query_packet(const knot_pkt_t     *query,
+static int process_query_packet(const knot_pkt_t        *query,
                                 net_t                   *net,
                                 const bool              ignore_tc,
                                 const sign_context_t    *sign_ctx,
@@ -392,12 +392,12 @@ static int process_query_packet(const knot_pkt_t     *query,
 
 static void process_query(const query_t *query)
 {
-	node_t        *server = NULL;
+	node_t     *server = NULL;
 	knot_pkt_t *out_packet;
-	uint8_t       *out = NULL;
-	size_t        out_len = 0;
-	net_t         net;
-	int           ret;
+	uint8_t    *out = NULL;
+	size_t     out_len = 0;
+	net_t      net;
+	int        ret;
 
 	if (query == NULL) {
 		DBG_NULL;
@@ -487,7 +487,7 @@ static int process_packet_xfr(const knot_pkt_t     *query,
                               const style_t           *style)
 {
 	struct timeval t_start, t_query, t_end;
-	knot_pkt_t  *reply;
+	knot_pkt_t     *reply;
 	uint8_t        in[MAX_PACKET_SIZE];
 	int            in_len;
 	int            ret;
@@ -634,10 +634,10 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 static void process_query_xfr(const query_t *query)
 {
 	knot_pkt_t *out_packet;
-	uint8_t       *out = NULL;
-	size_t        out_len = 0;
-	net_t         net;
-	int           ret;
+	uint8_t    *out = NULL;
+	size_t     out_len = 0;
+	net_t      net;
+	int        ret;
 
 	if (query == NULL) {
 		DBG_NULL;

@@ -342,9 +342,9 @@ static void print_section_host(const knot_rrset_t **rrsets,
 	free(buf);
 }
 
-static void print_error_host(const uint8_t       code,
-                             const knot_pkt_t    *packet,
-                             const style_t       *style)
+static void print_error_host(const uint8_t    code,
+                             const knot_pkt_t *packet,
+                             const style_t    *style)
 {
 	const char *rcode_str = "NULL";
 	char type[32] = "NULL";
@@ -418,7 +418,7 @@ void print_header_xfr(const knot_pkt_t *packet, const style_t  *style)
 }
 
 void print_data_xfr(const knot_pkt_t *packet,
-                    const style_t       *style)
+                    const style_t    *style)
 {
 	if (packet == NULL || style == NULL) {
 		DBG_NULL;
@@ -467,10 +467,10 @@ void print_footer_xfr(const size_t  total_len,
 }
 
 void print_packet(const knot_pkt_t *packet,
-                  const net_t         *net,
-                  const float         elapsed,
-                  const bool          incoming,
-                  const style_t       *style)
+                  const net_t      *net,
+                  const float      elapsed,
+                  const bool       incoming,
+                  const style_t    *style)
 {
 	if (packet == NULL || style == NULL) {
 		DBG_NULL;
@@ -607,7 +607,7 @@ void free_sign_context(sign_context_t *ctx)
 	memset(ctx, '\0', sizeof(sign_context_t));
 }
 
-int sign_packet(knot_pkt_t           *pkt,
+int sign_packet(knot_pkt_t              *pkt,
                 sign_context_t          *sign_ctx,
                 const knot_key_params_t *key_params)
 {
@@ -619,7 +619,7 @@ int sign_packet(knot_pkt_t           *pkt,
 	}
 
 	uint8_t *wire = pkt->wire;
-	size_t *wire_size = &pkt->size;
+	size_t  *wire_size = &pkt->size;
 	size_t  max_size = pkt->max_size;
 
 	switch (knot_get_key_type(key_params)) {
@@ -662,7 +662,7 @@ int sign_packet(knot_pkt_t           *pkt,
 	}
 }
 
-int verify_packet(const knot_pkt_t     *pkt,
+int verify_packet(const knot_pkt_t        *pkt,
                   const sign_context_t    *sign_ctx,
                   const knot_key_params_t *key_params)
 {

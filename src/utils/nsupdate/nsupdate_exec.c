@@ -832,7 +832,7 @@ int cmd_answer(const char* lp, nsupdate_params_t *params)
 	/* Show current answer. */
 	if (!params->resp) return KNOT_EOK;
 	printf("\nAnswer:\n");
-	print_packet(params->resp,  NULL, -1, true, &params->style);
+	print_packet(params->resp, NULL, -1, true, &params->style);
 	return KNOT_EOK;
 }
 
