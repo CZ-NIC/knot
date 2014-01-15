@@ -64,7 +64,7 @@ enum {
  */
 typedef struct {
 	const knot_rrset_t **rr;     /*!< Array of RRSets for this section. */
-	knot_rrinfo_t *rrinfo; /*!< Compression info for each RRSet. */
+	knot_rrinfo_t *rrinfo;       /*!< Compression info for each RRSet. */
 	uint16_t count;              /*!< Number of RRSets in this section. */
 } knot_pktsection_t;
 
@@ -154,7 +154,7 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt);
  */
 
 /*!
- * \brief Begin writing packet section.
+ * \brief Begin reading/writing packet section.
  * 
  * \note You must proceed in the natural order (ANSWER, AUTHORITY, ADDITIONAL).
  *
@@ -193,6 +193,7 @@ int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key);
  * \brief Put QUESTION in the packet.
  *
  * \note Since we support QD=1 only, QUESTION is a special type of packet section.
+ * \note Must not be used after puting RRsets into the packet.
  *
  * \param pkt
  * \param qname
@@ -216,7 +217,7 @@ int knot_pkt_put_opt(knot_pkt_t *pkt);
  * \param pkt
  * \param compress Compression hint, see enum knot_compr_hint or absolute position.
  * \param rr Given RRSet.
- * \param flags RRSet flags (set PF_FREE if you want RRSet to be freed with the packet.
+ * \param flags RRSet flags (set PF_FREE if you want RRSet to be freed with the packet).
  * \return KNOT_EOK, KNOT_ESPACE, various errors
  */
 int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uint32_t flags);
