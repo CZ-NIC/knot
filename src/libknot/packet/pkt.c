@@ -331,7 +331,7 @@ uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 const knot_dname_t *knot_pkt_qname(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (pkt == NULL) {
+	if (pkt == NULL || pkt->qname_size == 0) {
 		return NULL;
 	}
 

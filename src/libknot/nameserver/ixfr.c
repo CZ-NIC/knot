@@ -189,11 +189,16 @@ static void ixfr_answer_cleanup(struct query_data *qdata)
 
 static int ixfr_answer_init(struct query_data *qdata)
 {
-	/* Check query. */
+	/* Check IXFR query validity. */
 	int state = ixfr_query_check(qdata);
 	if (state == NS_PROC_FAIL) {
-		return KNOT_EMALF; /* Malformed query. */
+		if (qdata->rcode == KNOT_RCODE_FORMERR) {
+			return KNOT_EMALF;
+		} else {
+			return KNOT_EDENIED;
+		}
 	}
+
 	/* Compare serials. */
 	const knot_rrset_t *their_soa = knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
 	knot_changesets_t *chgsets = NULL;

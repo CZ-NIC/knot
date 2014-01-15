@@ -898,14 +898,14 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	dbg_zones_detail("zones: old db in nameserver: %p, old db stored: %p, "
 	                 "new db: %p\n", ns->zone_db, *db_old, db_new);
 
+	/* Rebuild zone database search stack. */
+	knot_zonedb_build_index(db_new);
+
 	/* Switch the databases. */
 	UNUSED(rcu_xchg_pointer(&ns->zone_db, db_new));
 
 	dbg_zones_detail("db in nameserver: %p, old db stored: %p, new db: %p\n",
 	                 ns->zone_db, *db_old, db_new);
-
-	/* Rebuild zone database search stack. */
-	knot_zonedb_build_index(db_new);
 
 	/*
 	 * Remove all zones present in the new DB from the old DB.

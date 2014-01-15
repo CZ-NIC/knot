@@ -103,8 +103,8 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		return NS_PROC_NOOP; /* Ignore. */
 	}
 	
-	/* Accept only queries. */
-	if (knot_wire_get_qr(pkt->wire)) {
+	/* Accept only queries with QD=1. */
+	if (knot_wire_get_qr(pkt->wire) || knot_wire_get_qdcount(pkt->wire) != 1) {
 		knot_pkt_free(&pkt);
 		return NS_PROC_NOOP; /* Ignore. */
 	}

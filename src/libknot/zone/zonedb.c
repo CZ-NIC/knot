@@ -49,10 +49,8 @@ static void delete_zone_from_db(knot_zone_t *zone)
 knot_zonedb_t *knot_zonedb_new(uint32_t size)
 {
 	/* Create memory pool context. */
-	mm_ctx_t mm;
-	mm.ctx = mp_new(4096);
-	mm.alloc = (mm_alloc_t)mp_alloc;
-	mm.free = mm_nofree;
+	mm_ctx_t mm = {0};
+	mm_ctx_mempool(&mm, 4096);
 	knot_zonedb_t *db = mm.alloc(mm.ctx, sizeof(knot_zonedb_t));
 	if (db == NULL) {
 		return NULL;
