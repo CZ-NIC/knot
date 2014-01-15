@@ -260,6 +260,11 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
 		node = rr->additional[i];
 
+		/* No additional node for this record. */
+		if (node == NULL) {
+			break;
+		}
+
 		/* \note Not processing wildcards as it's only optional. */
 		if (knot_dname_is_wildcard(node->owner)) {
 			continue;
