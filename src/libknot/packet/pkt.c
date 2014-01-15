@@ -463,7 +463,7 @@ int knot_pkt_put_opt(knot_pkt_t *pkt)
 	return KNOT_EOK;
 }
 
-int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uint32_t flags)
+int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uint16_t flags)
 {
 	dbg_packet("%s(%p, %u, %p, %u)\n", __func__, pkt, compress, rr, flags);
 	if (pkt == NULL || rr == NULL) {
