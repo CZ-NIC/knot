@@ -1096,7 +1096,7 @@ static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
 
 	for (; !hattrie_iter_finished(itt); hattrie_iter_next(itt)) {
 		signed_info_t *val = (signed_info_t *)(*hattrie_iter_val(itt));
-		knot_dname_t *original_dname = val->dname;
+		const knot_dname_t *original_dname = val->dname;
 		knot_dname_t *nsec3_name =
 			create_nsec3_owner(original_dname,
 		                           zone->apex->owner,

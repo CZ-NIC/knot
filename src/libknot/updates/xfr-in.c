@@ -2615,7 +2615,8 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 
 int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets,
-                           knot_zone_contents_t **new_contents)
+                           knot_zone_contents_t **new_contents,
+                           bool full_adjust)
 {
 	if (zone == NULL || chsets == NULL || EMPTY_LIST(chsets->sets)
 	    || new_contents == NULL) {

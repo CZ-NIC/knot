@@ -182,7 +182,7 @@ int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
 
 int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets,
-                           knot_zone_contents_t **new_contents);
+                           knot_zone_contents_t **new_contents, bool full_adjust);
 
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents);
