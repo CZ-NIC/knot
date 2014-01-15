@@ -17,6 +17,7 @@
 #include <config.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "libknot/packet/pkt.h"
 #include "libknot/util/debug.h"
@@ -27,20 +28,20 @@
 #include "libknot/tsig-op.h"
 
 /*! \brief Scan packet for RRSet existence. */
-static int pkt_contains(const knot_pkt_t *packet,
-                           const knot_rrset_t *rrset,
-                           knot_rrset_compare_type_t cmp)
+static bool pkt_contains(const knot_pkt_t *packet,
+			 const knot_rrset_t *rrset,
+			 knot_rrset_compare_type_t cmp)
 {
 	assert(packet);
 	assert(rrset);
 
 	for (int i = 0; i < packet->rrset_count; ++i) {
 		if (knot_rrset_equal(packet->rr[i], rrset, cmp)) {
-			return 1;
+			return true;
 		}
 	}
 
-	return 0;
+	return false;
 }
 
 
