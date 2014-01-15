@@ -1346,12 +1346,13 @@ int knot_zone_contents_adjust_nsec3_changes(knot_zone_contents_t *contents,
 			if (nsec3_node) {
 				knot_node_t *normal_node =
 					knot_zone_contents_get_node(contents,
-				                                    dname);
+					                            dname);
 				if (normal_node) {
 					normal_node->nsec3_node = nsec3_node;
 				}
 			}
 		}
+		hattrie_iter_next(itt);
 	}
 
 	hattrie_iter_free(itt);

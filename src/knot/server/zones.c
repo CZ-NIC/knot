@@ -1249,7 +1249,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		// Set zone generation to old, else applying fails
 		knot_zone_contents_set_gen_old(new_contents);
 		ret = xfrin_apply_changesets(fake_zone, sec_chs,
-		                             &dnssec_contents, false,
+		                             &dnssec_contents, true,
 		                             sorted_changes);
 		knot_zone_clear_sorted_changes(sorted_changes);
 		hattrie_free(sorted_changes);
