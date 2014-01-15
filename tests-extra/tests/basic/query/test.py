@@ -187,6 +187,10 @@ resp.cmp(bind)
 resp = knot.dig("test.loop-entry.flags", "A", udp=True)
 resp.cmp(bind)
 
+# Wildcard-covered additional record discovery
+resp = knot.dig("mx-additional.flags", "MX", udp=True)
+resp.cmp(bind)
+
 ''' Varied case tests. '''
 
 # Negative (case preservation in question)

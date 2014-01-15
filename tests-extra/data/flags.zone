@@ -88,3 +88,7 @@ sub.*.wildcard	A	6.7.8.9
 ; CNAME loop
 *.loop-entry CNAME jump.loop-target
 *.loop-target CNAME jump.loop-entry
+
+; MX record with name leading to wildcard-covered additional record
+mx-additional MX 10 jump.wildcard-additional
+*.wildcard-additional A 1.2.3.4

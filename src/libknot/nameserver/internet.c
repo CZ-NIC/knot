@@ -250,7 +250,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 	static const uint16_t ar_type_list[] = {KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA};
 
 	int ret = KNOT_EOK;
-	uint32_t flags = KNOT_PF_NOTRUNC;
+	uint32_t flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
 	uint16_t hint = COMPR_HINT_NONE;
 	const knot_node_t *node = NULL;
 	const knot_rrset_t *additional = NULL;
@@ -263,11 +263,6 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 		/* No additional node for this record. */
 		if (node == NULL) {
 			break;
-		}
-
-		/* \note Not processing wildcards as it's only optional. */
-		if (knot_dname_is_wildcard(node->owner)) {
-			continue;
 		}
 
 		for (uint16_t k = 0; k < AR_TYPE_COUNT; ++k) {

@@ -172,7 +172,7 @@ static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
 
 	for (uint16_t i = 0; i < rdcount; i++) {
 
-		/* Resolve and connect. */
+		/* Try to find node for the dname in the RDATA. */
 		dname = knot_rdata_name(rr, i);
 		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
 		if (node == NULL && encloser && encloser->wildcard_child) {
@@ -263,17 +263,6 @@ static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
 
 	knot_dname_free(&nsec3_name);
 
-	/* Lookup additional records for specific nodes. */
-	knot_rrset_t **rrset = node->rrset_tree;
-	for(uint16_t i = 0; i < node->rrset_count; ++i) {
-		if (rrset_additional_needed(rrset[i]->type)) {
-			ret = discover_additionals(rrset[i], args->zone);
-			if (ret != KNOT_EOK) {
-				break;
-			}
-		}
-	}
-
 	return ret;
 }
 
@@ -311,6 +300,31 @@ static int knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
 
 	return KNOT_EOK;
 }
+
+/*! \brief Discover additional records for affected nodes. */
+static int knot_zone_contents_discover_additional(knot_node_t **tnode, void *data)
+{
+	assert(data != NULL);
+	assert(tnode != NULL);
+
+	int ret = KNOT_EOK;
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = *tnode;
+	knot_rrset_t **rrset = node->rrset_tree;
+
+	/* Lookup additional records for specific nodes. */
+	for(uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (rrset_additional_needed(rrset[i]->type)) {
+			ret = discover_additionals(rrset[i], args->zone);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
+	}
+
+	return ret;
+}
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Tries to find the given domain name in the zone tree.
@@ -1356,6 +1370,16 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	}
 
 	assert(zone->apex == adjust_arg.first_node);
+
+	/* Discover additional records.
+	 * \note This MUST be done after node adjusting because it needs to
+	 *       do full lookup to see through wildcards. */
+
+	result = knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
+	                                 knot_zone_contents_discover_additional);
+	if (result != KNOT_EOK) {
+		return result;
+	}
 
 	return KNOT_EOK;
 }
