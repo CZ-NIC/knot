@@ -1,3 +1,20 @@
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <assert.h>
 #include "libknot/packet/compr.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/util/debug.h"
@@ -6,6 +23,9 @@
 /*! \brief Case insensitive label compare for compression. */
 static bool compr_label_match(const uint8_t *n, const uint8_t *p)
 {
+	assert(n);
+	assert(p);
+
 	if (*n != *p) {
 		return false;
 	}
@@ -29,10 +49,14 @@ static bool compr_label_match(const uint8_t *n, const uint8_t *p)
 		written += (len); \
 	}
 
-int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, knot_compr_t *compr)
+int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
+                         knot_compr_t *compr)
 {
 	/* Write uncompressible names directly. */
 	dbg_packet("%s(%p,%p,%u,%p)\n", __func__, dname, dst, max, compr);
+	if (dname == NULL || dst == NULL) {
+		return KNOT_EINVAL;
+	}
 	if (compr == NULL || *dname == '\0') {
 		dbg_packet("%s: uncompressible, writing full name\n", __func__);
 		return knot_dname_to_wire(dst, dname, max);
@@ -61,6 +85,7 @@ int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, 
 	}
 
 	/* Label count is now equal. */
+	assert(name_labels == suffix_labels);
 	const knot_dname_t *match_begin = dname;
 	const knot_dname_t *compr_ptr = suffix;
 	while (dname[0] != '\0') {

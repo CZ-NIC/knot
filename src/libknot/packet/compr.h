@@ -86,7 +86,8 @@ typedef struct knot_compr {
  * \param compr Compression context (NULL for no compression)
  * \return Number of written bytes or an error.
  */
-int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max, knot_compr_t *compr);
+int knot_compr_put_dname(const knot_dname_t *dname, uint8_t *dst, uint16_t max,
+                         knot_compr_t *compr);
 
 /*! \brief Retrieve compression hint from given offset. */
 static inline uint16_t knot_pkt_compr_hint(const knot_rrinfo_t *info, uint16_t hint_id)
