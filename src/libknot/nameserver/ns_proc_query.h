@@ -87,6 +87,7 @@ struct query_data {
 	struct ns_proc_query_param *param; /*!< Module parameters. */
 	mm_ctx_t *mm;                      /*!< Memory context. */
 	void *ext;                         /*!< Extensions. */
+	void (*ext_cleanup)(struct query_data*); /*!< Extensions cleanup callback. */
 };
 
 /*! \brief Visited wildcard node list. */

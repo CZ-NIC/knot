@@ -75,6 +75,12 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	/* Free wildcard list. */
 	ptrlist_free(&qdata->wildcards, qdata->mm);
 
+	/* Clear extensions. */
+	if (qdata->ext_cleanup != NULL) {
+		qdata->ext_cleanup(qdata);
+	}
+	qdata->ext = qdata->ext_cleanup = NULL;
+
 	/* Await packet. */
 	return NS_PROC_MORE;
 }

@@ -83,11 +83,20 @@ static int axfr_process_item(knot_pkt_t *pkt, const void *item, struct xfr_proc 
 	return ret;
 }
 
+static void axfr_answer_cleanup(struct query_data *qdata)
+{
+	struct xfr_proc *axfr = (struct xfr_proc *)qdata->ext;
+	mm_ctx_t *mm = qdata->mm;
+
+	ptrlist_free(&axfr->nodes, mm);
+	mm->free(axfr);
+}
+
 static int axfr_answer_init(struct query_data *qdata)
 {
 	assert(qdata);
 
-	/* Begin zone iterator. */
+	/* Create transfer processing context. */
 	mm_ctx_t *mm = qdata->mm;
 	knot_zone_contents_t *zone = qdata->zone->contents;
 	struct xfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
@@ -96,12 +105,15 @@ static int axfr_answer_init(struct query_data *qdata)
 	}
 	memset(xfer, 0, sizeof(struct axfr_proc));
 	init_list(&xfer->nodes);
-	gettimeofday(&xfer->tstamp, NULL);
-	qdata->ext = xfer;
 
 	/* Put data to process. */
+	gettimeofday(&xfer->tstamp, NULL);
 	ptrlist_add(&xfer->nodes, zone->nodes, mm);
 	ptrlist_add(&xfer->nodes, zone->nsec3_nodes, mm);
+
+	/* Set up cleanup callback. */
+	qdata->ext = xfer;
+	qdata->ext_cleanup = &axfr_answer_cleanup;
 	return KNOT_EOK;
 }
 
@@ -158,7 +170,6 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	assert(qdata);
 
 	int ret = KNOT_EOK;
-	mm_ctx_t *mm = qdata->mm;
 	struct timeval now = {0};
 	
 
@@ -195,20 +206,12 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		AXFR_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
 		         time_diff(&xfer->tstamp, &now) / 1000.0,
 		         xfer->npkts, xfer->nbytes / 1024.0);
-		ret = NS_PROC_DONE;
+		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
 		AXFR_LOG(LOG_ERR, "%s", knot_strerror(ret));
-		ret = NS_PROC_FAIL;
-		break;
+		return NS_PROC_FAIL;
 	}
-
-	/* Finished successfuly or fatal error. */
-	ptrlist_free(&xfer->nodes, mm);
-	mm->free(xfer);
-	qdata->ext = NULL;
-
-	return ret;
 }
 
 #undef AXFR_LOG

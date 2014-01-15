@@ -177,6 +177,16 @@ static int ixfr_query_check(struct query_data *qdata)
 	return NS_PROC_DONE;
 }
 
+static void ixfr_answer_cleanup(struct query_data *qdata)
+{
+	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->ext;
+	mm_ctx_t *mm = qdata->mm;
+
+	ptrlist_free(&ixfr->proc.nodes, mm);
+	knot_changesets_free(&ixfr->changesets);
+	mm->free(qdata->ext);
+}
+
 static int ixfr_answer_init(struct query_data *qdata)
 {
 	/* Check query. */
@@ -203,10 +213,9 @@ static int ixfr_answer_init(struct query_data *qdata)
 	memset(xfer, 0, sizeof(struct ixfr_proc));
 	gettimeofday(&xfer->proc.tstamp, NULL);
 	init_list(&xfer->proc.nodes);
-	qdata->ext = xfer;
 	xfer->qdata = qdata;
 
-	/* Put all changesets to process. */
+	/* Put all changesets to processing queue. */
 	xfer->changesets = chgsets;
 	knot_changeset_t *chs = NULL;
 	WALK_LIST(chs, chgsets->sets) {
@@ -219,6 +228,10 @@ static int ixfr_answer_init(struct query_data *qdata)
 	xfer->soa_from = chs->soa_from;
 	chs = TAIL(chgsets->sets);
 	xfer->soa_to = chs->soa_to;
+
+	/* Set up cleanup callback. */
+	qdata->ext = xfer;
+	qdata->ext_cleanup = &ixfr_answer_cleanup;
 
 	return KNOT_EOK;
 }
@@ -258,7 +271,6 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	}
 
 	int ret = KNOT_EOK;
-	mm_ctx_t *mm = qdata->mm;
 	struct timeval now = {0};
 	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;
 
@@ -306,12 +318,6 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		ret = NS_PROC_FAIL;
 		break;
 	}
-
-	/* Finished successfuly or fatal error. */
-	ptrlist_free(&ixfr->proc.nodes, mm);
-	knot_changesets_free(&ixfr->changesets);
-	mm->free(qdata->ext);
-	qdata->ext = NULL;
 
 	return ret;
 }
