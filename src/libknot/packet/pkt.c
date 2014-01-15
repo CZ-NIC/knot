@@ -718,48 +718,48 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	/* Calculate parsed RR size from before/after parsing. */
 	rr_size = (pkt->parsed - rr_size);
 
-	/* Append to RR list if couldn't merge with existing RRSet. */
-	if (knot_pkt_merge_rr(pkt, rr, flags) != KNOT_EOK) {
+	/* Merge with existing RRSet if possible, otherwise add new RR set. */
+	if (knot_pkt_merge_rr(pkt, rr, flags) == KNOT_EOK) {
+		return KNOT_EOK;
+	}
 
-		/* Append to RR list. */
-		pkt->rr[pkt->rrset_count] = rr;
-		++pkt->rrset_count;
+	/* Append to RR list. */
+	pkt->rr[pkt->rrset_count] = rr;
+	++pkt->rrset_count;
 
-		/* Update section RRSet count. */
-		++pkt->sections[pkt->current].count;
+	/* Update section RRSet count. */
+	++pkt->sections[pkt->current].count;
 
-		/* Check RR constraints. */
-		switch(knot_rrset_type(rr)) {
-		case KNOT_RRTYPE_TSIG:
-			// if there is some TSIG already, treat as malformed
-			if (pkt->tsig_rr != NULL) {
-				dbg_packet("%s: found 2nd TSIG\n", __func__);
-				return KNOT_EMALF;
-			} else if (!tsig_rdata_is_ok(rr)) {
-				dbg_packet("%s: bad TSIG RDATA\n", __func__);
-				return KNOT_EMALF;
-			}
-
-			/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
-			pkt->parsed -= rr_size;
-			pkt->size -= rr_size;
-			knot_wire_set_id(pkt->wire, tsig_rdata_orig_id(rr));
-			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
-			
-			/* Remember TSIG RR. */
-			pkt->tsig_rr = rr;
-			break;
-		case KNOT_RRTYPE_OPT:
-			ret = knot_edns_new_from_rr(&pkt->opt_rr, rr);
-			if (ret != KNOT_EOK) {
-				dbg_packet("%s: couldn't parse OPT RR = %d\n",
-				           __func__, ret);
-				return ret;
-			}
-			break;
-		default:
-			break;
+	/* Check RR constraints. */
+	switch(knot_rrset_type(rr)) {
+	case KNOT_RRTYPE_TSIG:
+		// if there is some TSIG already, treat as malformed
+		if (pkt->tsig_rr != NULL) {
+			dbg_packet("%s: found 2nd TSIG\n", __func__);
+			return KNOT_EMALF;
+		} else if (!tsig_rdata_is_ok(rr)) {
+			dbg_packet("%s: bad TSIG RDATA\n", __func__);
+			return KNOT_EMALF;
 		}
+
+		/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
+		pkt->parsed -= rr_size;
+		pkt->size -= rr_size;
+		knot_wire_set_id(pkt->wire, tsig_rdata_orig_id(rr));
+		knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
+
+		/* Remember TSIG RR. */
+		pkt->tsig_rr = rr;
+		break;
+	case KNOT_RRTYPE_OPT:
+		ret = knot_edns_new_from_rr(&pkt->opt_rr, rr);
+		if (ret != KNOT_EOK) {
+			dbg_packet("%s: couldn't parse OPT RR = %d\n",
+				   __func__, ret);
+		}
+		break;
+	default:
+		break;
 	}
 
 	return ret;
