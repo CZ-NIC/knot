@@ -503,7 +503,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compress, const knot_rrset_t *rr, uin
 		dbg_packet("%s: rr_to_wire = %s\n,", __func__, knot_strerror(ret));
 
 		/* Truncate packet if required. */
-		if ( ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC) ) {
+		if (ret == KNOT_ESPACE && !(flags & KNOT_PF_NOTRUNC)) {
 				dbg_packet("%s: set TC=1\n", __func__);
 				knot_wire_set_tc(pkt->wire);
 		}
