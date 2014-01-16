@@ -125,8 +125,8 @@ int main(int argc, char **argv)
 	int c = 0, li = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	char* config_fn = NULL;
-	char* daemon_root = NULL;
+	char *config_fn = NULL;
+	char *daemon_root = NULL;
 
 	/* Long options. */
 	struct option opts[] = {
@@ -156,15 +156,18 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			free(config_fn);
+			free(daemon_root);
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return 0;
 		case 'h':
 		case '?':
 			free(config_fn);
+			free(daemon_root);
 			help();
 			return 0;
 		default:
 			free(config_fn);
+			free(daemon_root);
 			help();
 			return 1;
 		}
@@ -173,6 +176,7 @@ int main(int argc, char **argv)
 	// Check for non-option parameters.
 	if (argc - optind > 0) {
 		free(config_fn);
+		free(daemon_root);
 		help();
 		return 1;
 	}
@@ -185,6 +189,7 @@ int main(int argc, char **argv)
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
 			free(config_fn);
+			free(daemon_root);
 			fprintf(stderr, "Daemonization failed, "
 					"shutting down...\n");
 			return 1;
@@ -227,6 +232,7 @@ int main(int argc, char **argv)
 			log_server_error("Couldn't get absolute path for configuration file '%s' - "
 			                 "%s.\n", config_fn, strerror(errno));
 			free(config_fn);
+			free(daemon_root);
 			return 1;
 		} else {
 			free(config_fn);
