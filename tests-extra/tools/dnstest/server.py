@@ -199,10 +199,13 @@ class Server(object):
         except:
             err("Compile error")
 
-    def start(self):
+    def start(self, clean=False):
+
+        mode = "w" if clean else "a"
+
         try:
-            fout = open(self.fout, mode="a")
-            ferr = open(self.ferr, mode="a")
+            fout = open(self.fout, mode=mode)
+            ferr = open(self.ferr, mode=mode)
 
             if self.compile_params:
                 self.compile()
@@ -285,7 +288,7 @@ class Server(object):
         detail_log(SEP)
         f.close()
 
-    def stop(self):
+    def stop(self, check=True):
         if self.proc:
             try:
                 self.proc.terminate()
@@ -295,6 +298,8 @@ class Server(object):
             except:
                 err("killing")
                 self.proc.kill()
+        if check:
+            self._valgrind_check()
 
     def gen_confile(self):
         f = open(self.confile, mode="w")
@@ -844,7 +849,7 @@ class Dummy(Server):
     def get_config(self):
         return ''
 
-    def start(self):
+    def start(self, clean=None):
         return True
 
     def running(self):

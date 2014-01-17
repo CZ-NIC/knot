@@ -46,6 +46,8 @@ class Test(object):
         dnstest.server.Nsd.count = 0
         dnstest.server.Dummy.count = 0
 
+        params.test = self
+
     def _check_port(self, port):
         if not port:
             return False
@@ -125,7 +127,18 @@ class Test(object):
         self.servers.add(srv)
         return srv
 
-    def _generate_conf(self):
+    def server_remove(self, server=None):
+        # Remove server/servers from the test.
+
+        if server:
+            server.stop()
+            self.servers.discard(server)
+            return
+
+        for server in self.servers:
+            self.server_remove(server)
+
+    def generate_conf(self):
         # Next two loops can't be merged!
         for server in self.servers:
             server.port = self._gen_port()
@@ -142,7 +155,7 @@ class Test(object):
 
         self.start_tries += 1
 
-        self._generate_conf()
+        self.generate_conf()
 
         def srv_sort(server):
             masters = 0
@@ -150,29 +163,26 @@ class Test(object):
                 if server.zones[z].master: masters += 1
             return masters
 
-        # Sort server list by number of masters. I.e. masters are prefered.
+        # Sort server list by number of masters. I.e. masters are preferred.
         for server in sorted(self.servers, key=srv_sort):
-            server.start()
+            server.start(clean=True)
             if not server.running():
-                self.stop()
+                self.stop(check=False)
                 self.start()
 
-        params.test = self
         self.start_tries = 0
 
-    def stop(self):
+    def stop(self, check=True):
         '''Stop all servers'''
 
         for server in self.servers:
-            server.stop()
-        params.test = None
+            server.stop(check=check)
 
     def end(self):
         '''Finish testing'''
 
-        self.stop()
-        for server in self.servers:
-            server._valgrind_check()
+        self.stop(check=True)
+        params.test = None
 
     def sleep(self, seconds):
         time.sleep(seconds)
