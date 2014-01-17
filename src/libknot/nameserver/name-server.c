@@ -3276,16 +3276,16 @@ int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
 
 	size_t max_size = *rsize;
 	uint8_t flags1 = knot_wire_get_flags1(knot_packet_wireformat(query));
-	const size_t question_off = KNOT_WIRE_HEADER_SIZE;
 
 	// prepare the generic error response
 	knot_ns_error_response(nameserver, knot_packet_id(query),
 	                       &flags1, rcode, response_wire,
 	                       rsize);
 
-	if (query->parsed > KNOT_WIRE_HEADER_SIZE + question_off) {
+	if (query->parsed > KNOT_WIRE_HEADER_SIZE && query->qname_size > 0) {
 
 		/* Append question only (do not rewrite header). */
+		const size_t question_off = KNOT_WIRE_HEADER_SIZE;
 		size_t question_size = knot_packet_question_size(query);
 		question_size -= question_off;
 		if (max_size >= *rsize + question_size) {
