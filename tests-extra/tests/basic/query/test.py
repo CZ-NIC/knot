@@ -30,6 +30,11 @@ resp.cmp(bind)
 
 ''' Positive answers. '''
 
+# Positive (SOA)
+resp = knot.dig("flags", "SOA", udp=True)
+resp.check(rcode="NOERROR")
+resp.cmp(bind)
+
 # Positive (DATA)
 resp = knot.dig("dns1.flags", "A", udp=True)
 resp.check(rcode="NOERROR")

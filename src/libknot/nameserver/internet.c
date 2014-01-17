@@ -117,6 +117,7 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
 	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
 	if (knot_rrset_rdata_rr_count(rr) < 1 &&
 	    knot_rrset_type(rr) != KNOT_RRTYPE_APL) {
+		dbg_ns("%s: refusing to put empty RR of type %u\n", __func__, knot_rrset_type(rr));
 		return KNOT_EMALF;
 	}
 
@@ -191,12 +192,26 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 }
 
 /*! \brief Puts optional NS RRSet to the Authority section of the response. */
-static int put_authority_ns(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
+static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
+	const knot_zone_contents_t *zone = qdata->zone->contents;
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+
+	/* DS/DNSKEY queries are not referrals. NS is optional.
+	 * But taking response size into consideration, DS/DNSKEY RRs
+	 * are rather large and may trigger fragmentation or even TCP
+	 * recovery. */
+	uint16_t query_type = knot_pkt_qtype(pkt);
+	if (query_type == KNOT_RRTYPE_DS     || /* Too large response */
+	    query_type == KNOT_RRTYPE_DNSKEY || /* Too large response */
+	    qdata->node == NULL /* CNAME leading to non-existent name.*/ ) {
+		dbg_ns("%s: not adding AUTHORITY NS for this response\n", __func__);
+		return KNOT_EOK;
+	}
+
 	const knot_rrset_t *ns_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_NS);
 	if (ns_rrset) {
-		return knot_pkt_put(pkt, 0, ns_rrset, KNOT_PF_NOTRUNC);
+		return knot_pkt_put(pkt, 0, ns_rrset, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
 	} else {
 		dbg_ns("%s: no NS RRSets in this zone, fishy...\n", __func__);
 	}
@@ -262,7 +277,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 
 		/* No additional node for this record. */
 		if (node == NULL) {
-			break;
+			continue;
 		}
 
 		for (uint16_t k = 0; k < AR_TYPE_COUNT; ++k) {
@@ -308,6 +323,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 		if (pkt->rrset_count <= rr_count_before) {
 			dbg_ns("%s: RR %p already inserted => CNAME loop\n",
 			       __func__, cname_rr);
+			qdata->node = NULL; /* Act is if the name leads to nowhere. */
 			return HIT;
 		}
 	}
@@ -336,6 +352,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 		if (wildcard_has_visited(qdata, cname_node)) {
 			dbg_ns("%s: node %p already visited => CNAME loop\n",
 			       __func__, cname_node);
+			qdata->node = NULL; /* Act is if the name leads to nowhere. */
 			return HIT;
 		}
 
@@ -502,22 +519,12 @@ static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qd
 static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = KNOT_ERROR;
-	uint16_t qtype = knot_pkt_type(pkt);
 	const knot_zone_contents_t *zone_contents = qdata->zone->contents;
 
 	switch (state) {
 	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */
 		dbg_ns("%s: answer is POSITIVE\n", __func__);
-		/* DS/DNSKEY queries are not referrals => auth. NS is optional.
-		 * But taking response size into consideration, DS/DNSKEY RRs
-		 * are rather large and may trigger fragmentation or even TCP
-		 * recovery. */
-		if (qtype != KNOT_RRTYPE_DS && qtype != KNOT_RRTYPE_DNSKEY) {
-			ret = put_authority_ns(pkt, zone_contents);
-
-		} else {
-			ret = KNOT_EOK;
-		}
+		ret = put_authority_ns(pkt, qdata);
 		break;
 	case MISS:   /* MISS, set NXDOMAIN RCODE. */
 		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
