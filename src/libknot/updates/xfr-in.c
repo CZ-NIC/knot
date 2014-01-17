@@ -2385,9 +2385,8 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 		  chset->serial_from, chset->serial_to);
 
 	// check if serial matches
-	/*! \todo Only if SOA is present? */
 	const knot_rrset_t *soa = knot_node_rrset(contents->apex,
-						  KNOT_RRTYPE_SOA);
+	                                          KNOT_RRTYPE_SOA);
 	if (soa == NULL || knot_rdata_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
@@ -2626,7 +2625,6 @@ int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
                                   knot_zone_contents_t *z_new,
                                   knot_changesets_t *sec_chsets,
                                   knot_changesets_t *chsets,
-                                  bool full_adjust,
                                   const hattrie_t *sorted_changes)
 {
 	if (z_old == NULL || z_new == NULL ||
@@ -2639,9 +2637,9 @@ int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
 
 	/* Apply changes. */
 	knot_changeset_t *set = NULL;
-	WALK_LIST(set, chsets->sets) {
+	WALK_LIST(set, sec_chsets->sets) {
 		int ret = xfrin_apply_changeset(z_new,
-		                                chsets->changes, set);
+		                                sec_chsets->changes, set);
 		if (ret != KNOT_EOK) {
 			xfrin_rollback_update(z_old, &z_new, chsets->changes);
 			dbg_xfrin("Failed to apply changesets to zone: "
@@ -2650,8 +2648,9 @@ int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
 		}
 	}
 
-	int ret = xfrin_finalize_updated_zone(z_new,
-	                                      full_adjust, sorted_changes);
+	const bool handle_nsec3 = true;
+	int ret = xfrin_finalize_updated_zone(z_new, handle_nsec3,
+	                                      sorted_changes);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 		          knot_strerror(ret));

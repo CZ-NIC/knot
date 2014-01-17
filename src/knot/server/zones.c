@@ -1249,7 +1249,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		                                    new_contents,
 		                                    sec_chs,
 		                                    chgsets,
-		                                    true,
 		                                    sorted_changes);
 		knot_zone_clear_sorted_changes(sorted_changes);
 		hattrie_free(sorted_changes);
@@ -1327,9 +1326,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	xfrin_cleanup_successful_update(chgsets->changes);
 	if (sec_chs) {
 		xfrin_cleanup_successful_update(sec_chs->changes);
-	}
-	if (new_signatures) {
-		xfrin_zone_contents_free(&new_contents);
 	}
 
 	// Free changesets, but not the data.

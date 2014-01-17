@@ -2091,7 +2091,7 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 		                         &fix_data);
 	}
 
-	dbg_dnssec_verb("NSEC(3) chain fixed (%s)", knot_strerror(ret));
+	dbg_dnssec_verb("NSEC(3) chain fixed (%s)\n", knot_strerror(ret));
 
 	return ret;
 }

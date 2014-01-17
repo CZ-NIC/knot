@@ -187,7 +187,6 @@ int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
                                   knot_zone_contents_t *z_new,
                                   knot_changesets_t *sec_chsets,
                                   knot_changesets_t *chsets,
-                                  bool full_adjust,
                                   const hattrie_t *sorted_changes);
 
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
