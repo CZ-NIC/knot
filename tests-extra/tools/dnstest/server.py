@@ -83,12 +83,13 @@ class BindConf(object):
 class Zone(object):
     '''DNS zone description'''
 
-    def __init__(self, zone_file=None, ddns=False):
+    def __init__(self, zone_file=None, ddns=False, ixfr=False):
         self.zfile = zone_file
         self.master = None
         self.slaves = set()
-        # True: DDNS, False on master: ixfrFromDiff, False on slave: empty
         self.ddns = ddns
+        # ixfr from differences
+        self.ixfr = ixfr
 
     @property
     def name(self):
@@ -166,12 +167,12 @@ class Server(object):
 
         return True
 
-    def set_master(self, zone, slave=None, ddns=False):
+    def set_master(self, zone, slave=None, ddns=False, ixfr=False):
         '''Set the server as a master for the zone'''
 
         if zone.name not in self.zones:
             master_file = zone.clone(self.dir + "/master")
-            z = Zone(master_file, ddns)
+            z = Zone(master_file, ddns, ixfr)
             self.zones[zone.name] = z
         else:
             z = self.zones[zone.name]
@@ -179,14 +180,14 @@ class Server(object):
         if slave:
             z.slaves.add(slave)
 
-    def set_slave(self, zone, master, ddns=False):
+    def set_slave(self, zone, master, ddns=False, ixfr=False):
         '''Set the server as a slave for the zone'''
 
         if zone.name in self.zones:
             raise Exception("Can't set zone %s as a slave" % name)
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
-        z = Zone(slave_file, ddns)
+        z = Zone(slave_file, ddns, ixfr)
         z.master = master
         self.zones[zone.name] = z
 
@@ -624,7 +625,7 @@ class Bind(Server):
                 s.item("type", "master")
                 s.item("notify", "explicit")
 
-                if not z.ddns:
+                if z.ixfr and not z.ddns:
                     s.item("ixfr-from-differences", "yes")
 
             # Init update list with the default local server.
@@ -797,7 +798,8 @@ class Knot(Server):
             if z.ddns:
                 all_slaves = "local" if not slaves else slaves + ", local"
                 s.item("update-in", all_slaves)
-            elif not z.master:
+
+            if z.ixfr and not z.master:
                 s.item("ixfr-from-differences", "on")
             s.end()
         s.end()

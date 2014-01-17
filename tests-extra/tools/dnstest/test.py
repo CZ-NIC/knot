@@ -206,16 +206,16 @@ class Test(object):
 
         return zones
 
-    def link(self, zones, master, slave=None, ddns=False):
+    def link(self, zones, master, slave=None, ddns=False, ixfr=False):
         for zone in zones:
             if master not in self.servers:
                 raise Exception("Server is out of testing scope")
-            master.set_master(zone, slave, ddns)
+            master.set_master(zone, slave, ddns, ixfr)
 
             if slave:
                 if slave not in self.servers:
                     raise Exception("Server is out of testing scope")
-                slave.set_slave(zone, master, ddns)
+                slave.set_slave(zone, master, ddns, ixfr)
 
     def xfr_diff(self, server1, server2, zones):
         check_log("CHECK AXFR DIFF")
