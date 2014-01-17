@@ -177,20 +177,24 @@ void xfrin_free_changesets(knot_changesets_t **changesets);
  */
 int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr);
 
-int xfrin_apply_changesets_to_zone(knot_zone_t *zone,
-                                   knot_changesets_t *chsets);
-
 int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets,
                            knot_zone_contents_t **new_contents,
                            bool full_adjust,
                            const hattrie_t *sorted_changes);
 
+int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
+                                  knot_zone_contents_t *z_new,
+                                  knot_changesets_t *sec_chsets,
+                                  knot_changesets_t *chsets,
+                                  bool full_adjust,
+                                  const hattrie_t *sorted_changes);
+
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents);
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                knot_changes_t *changes, bool set_nsec3,
+                                bool set_nsec3,
                                 const hattrie_t *sorted_changes);
 
 int xfrin_switch_zone(knot_zone_t *zone,
