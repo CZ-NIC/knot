@@ -94,11 +94,7 @@ static uint16_t pkt_remaining(knot_pkt_t *pkt)
 {
 	assert(pkt);
 
-	uint16_t remaining = pkt->max_size - pkt->size - pkt->tsig_size;
-	if (knot_pkt_have_edns(pkt)) {
-		remaining -= pkt->opt_rr.size;
-	}
-	return remaining;
+	return pkt->max_size - pkt->size - pkt->reserved;
 }
 
 /*! \brief Return RR count for given section (from wire xxCOUNT in header). */
@@ -403,7 +399,7 @@ int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key)
 
 	pkt->tsig_key = tsig_key;
 	if (tsig_key) {
-		pkt->tsig_size = tsig_wire_maxsize(tsig_key);
+		pkt->reserved += tsig_wire_maxsize(tsig_key);
 	}
 	return KNOT_EOK;
 }
@@ -462,8 +458,13 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 
 int knot_pkt_put_opt(knot_pkt_t *pkt)
 {
-	if (pkt == NULL || pkt->opt_rr.version == EDNS_NOT_SUPPORTED) {
+	if (pkt == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	/* \note #190, not going to be pretty until then */
+	if (pkt->opt_rr.version == EDNS_NOT_SUPPORTED) {
+		return KNOT_EOK;
 	}
 
 	int ret = knot_edns_to_wire(&pkt->opt_rr,
@@ -475,6 +476,9 @@ int knot_pkt_put_opt(knot_pkt_t *pkt)
 
 	pkt_rr_wirecount_add(pkt, pkt->current, 1);
 	pkt->size += ret;
+	pkt->reserved -= ret;
+
+	dbg_packet("%s: OPT RR written, new packet size %zu\n", __func__, pkt->size);
 
 	return KNOT_EOK;
 }
@@ -902,6 +906,8 @@ int knot_pkt_add_opt(knot_pkt_t *resp, const knot_opt_rr_t *opt_rr, int add_nsid
 	} else {
 		resp->opt_rr.size = EDNS_MIN_SIZE;
 	}
+
+	resp->reserved += resp->opt_rr.size;
 
 	return KNOT_EOK;
 }

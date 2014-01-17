@@ -287,7 +287,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 			}
 			ret = knot_pkt_put(pkt, hint, additional, flags);
 			if (ret != KNOT_EOK) {
-				return ret;
+				break;
 			}
 		}
 	}
@@ -607,7 +607,12 @@ static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata
 		}
 	}
 
-	return ret;
+	/* Evaluate final state. */
+	switch (ret) {
+	case KNOT_EOK:    return state; /* Keep current state. */
+	case KNOT_ESPACE: return TRUNC; /* Truncated. */
+	default:          return ERROR; /* Error. */
+	}
 }
 
 static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)

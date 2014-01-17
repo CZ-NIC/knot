@@ -277,16 +277,12 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 
 	assert(EDNS_MIN_SIZE <= (int)max_size);
 
-	if ((int)max_size < opt_rr->size) {
-		printf("Not enough space for OPT RR wire format.\n");
+	if (max_size < opt_rr->size) {
+		dbg_packet("%s: not enough space for OPT RR\n", __func__);
 		return KNOT_ESPACE;
 	}
 
 	uint8_t *pos = wire;
-
-	dbg_edns_verb("Putting OPT RR to the wire format. Size: %d, "
-	              "position: %zu\n",
-	              opt_rr->size, (size_t)(pos - wire));
 
 	*(pos++) = 0;
 	knot_wire_write_u16(pos, KNOT_RRTYPE_OPT);
@@ -297,9 +293,6 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 	*(pos++) = opt_rr->version;
 	knot_wire_write_u16(pos, opt_rr->flags);
 	pos += 2;
-
-	dbg_edns_detail("Leaving space for RDLENGTH at pos %zu\n",
-	                (size_t)(pos - wire));
 
 	uint8_t *rdlen = pos;
 	uint16_t len = 0;
@@ -317,8 +310,6 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 		pos += opt_rr->options[i].length;
 		len += 4 + opt_rr->options[i].length;
 	}
-
-	dbg_edns_detail("Final pos %zu\n", (size_t)(pos - wire));
 
 	knot_wire_write_u16(rdlen, len);
 

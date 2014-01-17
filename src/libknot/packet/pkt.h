@@ -77,8 +77,8 @@ typedef struct knot_pkt {
 	size_t size;           /*!< Current wire size of the packet. */
 	size_t max_size;       /*!< Maximum allowed size of the packet. */
 	size_t parsed;         /*!< Parsed size. */
+	uint16_t reserved;     /*!< Reserved space. */
 	uint16_t qname_size;   /*!< QNAME size. */
-	uint16_t tsig_size;    /*!< Space to reserve for the TSIG RR. */
 	uint16_t rrset_count;  /*!< Packet RRSet count. */
 	uint16_t flags;        /*!< Packet flags. */
 

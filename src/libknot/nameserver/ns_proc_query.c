@@ -534,11 +534,15 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
 		knot_edns_set_do(&resp->opt_rr);
 	}
+
 	/* Set minimal supported size from EDNS(0). */
+	uint16_t client_maxlen = knot_edns_get_payload(&query->opt_rr);
+	uint16_t server_maxlen = knot_edns_get_payload(&resp->opt_rr);
+	resp->opt_rr.payload = MIN(client_maxlen, server_maxlen);
+
+	/* Update packet size limit. */
 	if (!(ctx->flags & NS_PKTSIZE_NOLIMIT)) {
-		uint16_t client_maxlen = knot_edns_get_payload(&query->opt_rr);
-		uint16_t server_maxlen = knot_edns_get_payload(&resp->opt_rr);
-		resp->max_size = MAX(resp->max_size, MIN(client_maxlen, server_maxlen));
+		resp->max_size =  MAX(resp->max_size, resp->opt_rr.payload);
 		dbg_ns("%s: packet size limit <= %zuB\n", __func__, resp->max_size);
 	}
 
