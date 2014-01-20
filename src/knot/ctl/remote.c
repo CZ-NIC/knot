@@ -514,23 +514,39 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 	}
 
 	/* Initialize response. */
-	int ret = KNOT_ERROR;
-	knot_pkt_init_response(resp, query);
+	int ret = knot_pkt_init_response(resp, query);
+	if (ret != KNOT_EOK) {
+		goto failed;
+	}
 
 	/* Write to NS section. */
-	knot_pkt_begin(resp, KNOT_AUTHORITY);
+	ret = knot_pkt_begin(resp, KNOT_AUTHORITY);
+	assert(ret == KNOT_EOK);
 
 	/* Create TXT RR with result. */
 	knot_rrset_t *rr = remote_build_rr("result.", KNOT_RRTYPE_TXT);
-	remote_create_txt(rr, d, len);
-	if (knot_pkt_put(resp, 0, rr, KNOT_PF_FREE) == KNOT_EOK) {
-		ret = tcp_send(c, resp->wire, resp->size);
+	if (rr == NULL) {
+		ret = KNOT_ENOMEM;
+		goto failed;
 	}
+
+	ret = remote_create_txt(rr, d, len);
+	assert(ret == KNOT_EOK);
+
+	ret = knot_pkt_put(resp, 0, rr, KNOT_PF_FREE);
+	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(&rr, 1);
+		goto failed;
+	}
+
+	ret = tcp_send(c, resp->wire, resp->size);
+
+failed:
 
 	/* Free packet. */
 	knot_pkt_free(&resp);
 
-	return len;
+	return ret;
 }
 
 int remote_answer(int fd, server_t *s, knot_pkt_t *pkt)

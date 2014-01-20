@@ -214,13 +214,24 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 				break;
 			}
 		}
-		knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE);
+		int res = knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE);
+		if (res != KNOT_EOK) {
+			log_server_error("Couldn't create the query.\n");
+			knot_rrset_deep_free(&rr, 1);
+			knot_pkt_free(&pkt);
+			return 1;
+		}
 	}
 
 	if (r->key) {
-		remote_query_sign(pkt->wire, &pkt->size, pkt->max_size, r->key);
+		int res = remote_query_sign(pkt->wire, &pkt->size, pkt->max_size, r->key);
+		if (res != KNOT_EOK) {
+			log_server_error("Couldn't sign the packet.\n");
+			knot_pkt_free(&pkt);
+			return 1;
+		}
 	}
-	
+
 	dbg_server("%s: sending query size %zu\n", __func__, pkt->size);
 
 	/* Send query. */
