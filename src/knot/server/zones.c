@@ -31,6 +31,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-events.h"
+#include "libknot/dnssec/zone-sign.h"
 #include "libknot/nameserver/chaos.h"
 #include "libknot/packet/response.h"
 #include "libknot/rdata.h"
@@ -1182,6 +1183,8 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	fake_zone->data = zone->data;
 	new_contents->zone = fake_zone;
 
+	hattrie_t *sorted_changes = NULL;
+
 	if (zone_config->dnssec_enable) {
 		dbg_zones_verb("%s: Signing the UPDATE\n", msg);
 		/*!
@@ -1204,7 +1207,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			                      knot_changesets_get_last(chgsets),
 			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
 			                      &used_lifetime, &used_refresh,
-			                      new_serial);
+			                      new_serial, &sorted_changes);
 
 			expires_at = used_lifetime - used_refresh;
 		}
