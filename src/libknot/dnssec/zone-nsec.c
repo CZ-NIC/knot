@@ -912,7 +912,7 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 
 static int walk_dname_and_store_empty_nonterminals(const knot_dname_t *dname,
                                                    const knot_zone_contents_t *zone,
-                                                   hhash_t *t)
+                                                   hattrie_t *t)
 {
 	assert(dname);
 	assert(zone);
@@ -943,11 +943,7 @@ static int walk_dname_and_store_empty_nonterminals(const knot_dname_t *dname,
 			 * This means that RR *addition* created new empty
 			 * non-terminal - NSEC3 has to be added.
 			 */
-			// Convert dname to sortable format
-			uint8_t lf[KNOT_DNAME_MAXLEN];
-			knot_dname_lf(lf, cut, NULL);
-			// Store into table (duplicates 'rewritten')
-			*hhash_map(t, (const char *)lf+1, *lf, HHASH_INSERT) = (value_t)cut;
+			hattrie_insert_dname(t, (knot_dname_t *)cut);
 		}
 		cut = knot_wire_next_label(cut, NULL);
 	}
@@ -966,19 +962,17 @@ static int update_changes_with_empty_non_terminals(const knot_zone_contents_t *z
 	assert(sorted_changes);
 
 	/*!
-	 * Create table with newly created nonterminals, as we cannot
-	 * insert to the trie in the middle of iteration. Also useful
-	 * because it will filter duplicated added nonterminals.
+	 * Create trie with newly created nonterminals, as we cannot (probably)
+	 * insert to the trie in the middle of iteration.
 	 */
-	const size_t max_label_count = 128;
-	hhash_t *nterminal_t = hhash_create(max_label_count);
+	hattrie_t *nterminal_t = hattrie_create();
 	if (nterminal_t == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	// Start trie iteration
-	const bool sort = false;
-	hattrie_iter_t *itt = hattrie_iter_begin(sorted_changes, sort);
+	const bool sorted = false;
+	hattrie_iter_t *itt = hattrie_iter_begin(sorted_changes, sorted);
 	if (itt == NULL) {
 		return KNOT_ERROR;
 	}
@@ -990,38 +984,43 @@ static int update_changes_with_empty_non_terminals(const knot_zone_contents_t *z
 		                                                  zone,
 		                                                  nterminal_t);
 		if (ret != KNOT_EOK) {
-			hhash_free(nterminal_t);
+			hattrie_free(nterminal_t);
 			return ret;
 		}
 	}
 	hattrie_iter_free(itt);
 
-	// Reinsert ahtable values into trie (dname already converted)
-	hhash_iter_t ith = { '\0' };
-	hhash_iter_begin(nterminal_t, &ith, sort);
-	for (; !hhash_iter_finished(&ith); hhash_iter_next(&ith)) {
+	// Reinsert updated nonterminals into trie (dname already converted)
+	itt = hattrie_iter_begin(nterminal_t, sorted);
+	if (itt == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(itt); hattrie_iter_next(itt)) {
 		// Store keys from table directly to trie
-		uint16_t key_size = 0;
-		const char *k = hhash_iter_key(&ith, &key_size);
+		size_t key_size = 0;
+		const char *k = hattrie_iter_key(itt, &key_size);
 		assert(k && key_size > 0);
 		// Create dummy value
 		signed_info_t *info = malloc(sizeof(signed_info_t));
 		if (info == NULL) {
 			ERR_ALLOC_FAILED;
-			hhash_free(nterminal_t);
+			hattrie_iter_free(itt);
+			hattrie_free(nterminal_t);
 			return KNOT_ENOMEM;
 		}
 		memset(info, 0, sizeof(signed_info_t));
 		info->dname =
-			knot_dname_copy((knot_dname_t *)(*hhash_iter_val(&ith)));
+			knot_dname_copy((knot_dname_t *)(*hattrie_iter_val(itt)));
 		if (info->dname == NULL) {
-			hhash_free(nterminal_t);
+			hattrie_iter_free(itt);
+			hattrie_free(nterminal_t);
 			return KNOT_ENOMEM;
 		}
 		*hattrie_get(sorted_changes, k, key_size) = info;
 	}
 
-	hhash_free(nterminal_t);
+	hattrie_iter_free(itt);
+	hattrie_free(nterminal_t);
 
 	return KNOT_EOK;
 }
