@@ -44,8 +44,10 @@ typedef struct {
 	const knot_zone_contents_t *zone;
 } nsec_chain_iterate_data_t;
 
-#define NSEC_NODE_SKIP 1
-#define NSEC_NODE_RESET 2
+enum {
+	NSEC_NODE_SKIP = 1,
+	NSEC_NODE_RESET = 2
+};
 
 /* - NSEC chain iteration -------------------------------------------------- */
 
@@ -909,7 +911,8 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 }
 
 static int walk_dname_and_store_empty_nonterminals(const knot_dname_t *dname,
-	const knot_zone_contents_t *zone, hhash_t *t)
+                                                   const knot_zone_contents_t *zone,
+                                                   hhash_t *t)
 {
 	assert(dname);
 	assert(zone);
@@ -1374,14 +1377,18 @@ static int handle_deleted_node(const knot_node_t *node,
 	 */
 	if (fix_data->next_dname == NULL) {
 		if (nsec3) {
-			fix_data->next_dname = next_dname_from_nsec3_rrset(old_nsec,
-			                                                   fix_data->zone->apex->owner);
+			fix_data->next_dname =
+				next_dname_from_nsec3_rrset(old_nsec,
+				                            fix_data->zone->apex->owner);
+			if (fix_data->next_dname == NULL) {
+				return KNOT_ENOMEM;
+			}
 		} else {
 			fix_data->next_dname =
 				(knot_dname_t *)knot_rdata_nsec_next(old_nsec);
+			assert(fix_data->next_dname);
 		}
 	}
-	assert(fix_data->next_dname);
 
 	return NSEC_NODE_SKIP;
 }
@@ -1469,7 +1476,7 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 
 	// Find out whether the previous node is also part of the changeset.
 	bool dname_equal =
-		a ? knot_dname_is_equal(prev_zone_node->owner, a) : false;
+		a && knot_dname_is_equal(prev_zone_node->owner, a);
 	if (dname_equal) {
 		// No valid data for the previous node, create the forward link
 		update_last_used(fix_data, b_node->owner, b_node);
@@ -1655,10 +1662,8 @@ static void fetch_nodes_from_zone(const knot_zone_contents_t *z,
 {
 	*a_node = knot_zone_contents_find_node(z, a);
 	*b_node = knot_zone_contents_find_node(z, b);
-	*a_nsec3_node =
-		knot_zone_contents_find_nsec3_node(z, a_hash);
-	*b_nsec3_node =
-		knot_zone_contents_find_nsec3_node(z, b_hash);
+	*a_nsec3_node = knot_zone_contents_find_nsec3_node(z, a_hash);
+	*b_nsec3_node = knot_zone_contents_find_nsec3_node(z, b_hash);
 }
 
 static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,

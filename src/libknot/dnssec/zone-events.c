@@ -219,7 +219,7 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
                                uint32_t new_serial,
                                hattrie_t **sorted_changes)
 {
-	if (!used_lifetime || !used_refresh) {
+	if (!used_lifetime || !used_refresh || !sorted_changes) {
 		return KNOT_EINVAL;
 	}
 

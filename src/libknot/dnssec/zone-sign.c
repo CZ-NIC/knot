@@ -999,7 +999,7 @@ static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
  *
  * \param rrset      RRSet to be checked for.
  * \param tree       Tree with already signed RRs.
- * \param rr_signed  Set to true if RR should is signed already, false otherwise.
+ * \param rr_signed  Set to true if RR is signed already, false otherwise.
  *
  * \return KNOT_E*
  */
@@ -1306,7 +1306,8 @@ int knot_zone_sign_changeset(const knot_zone_t *zone,
                              const knot_zone_keys_t *zone_keys,
                              const knot_dnssec_policy_t *policy)
 {
-	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
+	if (zone == NULL || in_ch == NULL || out_ch == NULL ||
+	    sorted_changes == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1316,6 +1317,9 @@ int knot_zone_sign_changeset(const knot_zone_t *zone,
 	                                  .policy = policy,
 	                                  .changeset = out_ch,
 	                                  .signed_tree = hattrie_create()};
+	if (args.signed_tree == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	// Sign all RRs that are new in changeset
 	int ret = knot_changeset_apply((knot_changeset_t *)in_ch,

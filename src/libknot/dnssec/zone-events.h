@@ -68,6 +68,7 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch,
  * \param soa_up          SOA serial update policy.
  * \param used_lifetime   Pointer to sig lifetime used to sign the changeset.
  * \param used_refresh    Pointer to refresh period used to sign the changeset.
+ * \param new_serial      SOA Serial to be set.
  * \param sorted_changes  Info about made changes, used for partial adjustment.
  *
  * \return Error code, KNOT_EOK if successful.
