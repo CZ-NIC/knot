@@ -152,26 +152,28 @@ static int cmd_remote_reply(int c)
 
 	/* Parse packet and check response. */
 	int ret = remote_parse(pkt);
-	if (ret == KNOT_EOK) {
-		/* Check RCODE */
-		const knot_pktsection_t *authority = knot_pkt_section(pkt, KNOT_AUTHORITY);
-		ret = knot_wire_get_rcode(pkt->wire);
-		switch(ret) {
-		case KNOT_RCODE_NOERROR:
-			if (authority->count > 0) {
-				ret = cmd_remote_print_reply(authority->rr[0]);
-			}
-			break;
-		case KNOT_RCODE_REFUSED:
-			ret = KNOT_EDENIED;
-			break;
-		default:
-			ret = KNOT_ERROR;
-			break;
-		}
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&pkt);
+		return ret;
 	}
 
-	/* Response cleanup. */
+	/* Check RCODE */
+	const knot_pktsection_t *authority = knot_pkt_section(pkt, KNOT_AUTHORITY);
+	ret = knot_wire_get_rcode(pkt->wire);
+	switch(ret) {
+	case KNOT_RCODE_NOERROR:
+		if (authority->count > 0) {
+			ret = cmd_remote_print_reply(authority->rr[0]);
+		}
+		break;
+	case KNOT_RCODE_REFUSED:
+		ret = KNOT_EDENIED;
+		break;
+	default:
+		ret = KNOT_ERROR;
+		break;
+	}
+
 	knot_pkt_free(&pkt);
 	return ret;
 }
