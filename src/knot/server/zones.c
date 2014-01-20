@@ -1591,6 +1591,8 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 			break;
 		default:
 			rcode = KNOT_RCODE_REFUSED;
+			ret = KNOT_ENOTSUP;
+			break;
 		}
 	}
 
@@ -1783,12 +1785,12 @@ int zones_normal_query_answer(knot_nameserver_t *nameserver,
 			// in other case the RCODE is set and ret != KNOT_EOK
 			// and a normal error is returned below
 		}
+	}
 
-		if (ret != KNOT_EOK) {
-			knot_ns_error_response_full(nameserver, resp,
-			                            rcode, resp_wire,
-			                            rsize);
-		}
+	if (ret != KNOT_EOK) {
+		knot_ns_error_response_full(nameserver, resp,
+		                            rcode, resp_wire,
+		                            rsize);
 	}
 
 	knot_packet_free(&resp);

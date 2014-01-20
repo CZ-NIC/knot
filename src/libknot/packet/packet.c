@@ -45,7 +45,7 @@ static int knot_packet_parse_question(knot_packet_t *pkt)
 	/* Process question. */
 	int len = knot_dname_wire_check(pkt->wireformat + pkt->parsed,
 	                                pkt->wireformat + pkt->size,
-	                                pkt->wireformat);
+	                                NULL /* No compression allowed. */);
 	if (len <= 0)
 		return KNOT_EMALF;
 
@@ -653,7 +653,11 @@ size_t knot_packet_max_size(const knot_packet_t *packet)
 
 size_t knot_packet_question_size(const knot_packet_t *packet)
 {
-	return KNOT_WIRE_HEADER_SIZE + packet->qname_size + 2 * sizeof(uint16_t);
+	if (packet->qname_size > 0) {
+		return KNOT_WIRE_HEADER_SIZE + packet->qname_size + 2 * sizeof(uint16_t);
+	} else {
+		return KNOT_WIRE_HEADER_SIZE;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -735,7 +739,7 @@ uint8_t knot_packet_opcode(const knot_packet_t *packet)
 
 const knot_dname_t *knot_packet_qname(const knot_packet_t *packet)
 {
-	if (packet == NULL) {
+	if (packet == NULL || packet->qname_size == 0) {
 		return NULL;
 	}
 	if (packet->qname == NULL) {
