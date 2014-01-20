@@ -50,10 +50,8 @@ typedef struct {
 /* - NSEC chain iteration -------------------------------------------------- */
 
 typedef int (*chain_iterate_cb)(knot_node_t *, knot_node_t *, void *);
-typedef int (*chain_iterate_nsec_cb)(knot_dname_t *, knot_dname_t *, void *);
-typedef int (*chain_iterate_nsec3_cb)(knot_dname_t *, knot_dname_t *,
-                                      knot_dname_t *, knot_dname_t *,
-                                      void *);
+typedef int (*chain_iterate_nsec_cb)(knot_dname_t *, knot_dname_t *,
+                                     knot_dname_t *, knot_dname_t *, void *);
 typedef int (*chain_finalize_cb)(void *);
 
 /*!
@@ -115,68 +113,9 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	                 callback(current, first, data);
 }
 
-/*!
- * \brief Call a function for each piece of the chain formed by sorted nodes.
- *
- * \note If the callback function returns anything other than KNOT_EOK, the
- *       iteration is terminated and the error code is propagated.
- *
- * \param nodes     Zone nodes.
- * \param callback  Callback function.
- * \param data      Custom data supplied to the callback function.
- *
- * \return Error code, KNOT_EOK if successful.
- */
 static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
                               chain_finalize_cb finalize,
                               void *data)
-{
-	assert(nodes);
-	assert(callback);
-
-	bool sorted = true;
-	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
-
-	if (!it) {
-		return KNOT_ENOMEM;
-	}
-
-	if (hattrie_iter_finished(it)) {
-		hattrie_iter_free(it);
-		return KNOT_EINVAL;
-	}
-
-	knot_dname_t *previous = NULL;
-	knot_dname_t *current = NULL;
-
-	int result = KNOT_EOK;
-	while (!hattrie_iter_finished(it)) {
-		current = ((signed_info_t *)(*hattrie_iter_val(it)))->dname;
-
-		result = callback(previous, current, data);
-		if (result == NSEC_NODE_SKIP) {
-			// No NSEC should be created for 'current' node, skip
-			hattrie_iter_next(it);
-		} else if (result == NSEC_NODE_RESET) {
-			// Used previous node, call once again so that we don't loose this current
-			previous = NULL;
-		} else if (result == KNOT_EOK) {
-			previous = current;
-			hattrie_iter_next(it);
-		} else {
-			hattrie_iter_free(it);
-			return result;
-		}
-	}
-
-	hattrie_iter_free(it);
-
-	return finalize(data);
-}
-
-static int chain_iterate_nsec3(hattrie_t *nodes, chain_iterate_nsec3_cb callback,
-                               chain_finalize_cb finalize,
-                               void *data)
 {
 	assert(nodes);
 	assert(callback);
@@ -1562,6 +1501,16 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	return KNOT_EOK;
 }
 
+static int fix_nsec_chain_wrap(knot_dname_t *a, knot_dname_t *a_hash,
+                               knot_dname_t *b, knot_dname_t *b_hash,
+                               void *d)
+{
+	UNUSED(a_hash);
+	UNUSED(b_hash);
+	return fix_nsec_chain(a, b, d);
+}
+
+
 static void update_next_nsec3_dname(chain_fix_data_t *fix_data,
                                     const knot_dname_t *d)
 
@@ -2087,14 +2036,14 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 		hattrie_build_index(nsec3_names);
 		fix_data.sorted_changes = nsec3_names;
 
-		ret = chain_iterate_nsec3(nsec3_names, fix_nsec3_chain,
-		                          chain_finalize_nsec3,
-		                          &fix_data);
+		ret = chain_iterate_nsec(nsec3_names, fix_nsec3_chain,
+		                         chain_finalize_nsec3,
+		                         &fix_data);
 		hattrie_free(nsec3_names);
 	} else {
 		hattrie_build_index(sorted_changes);
 
-		ret = chain_iterate_nsec(sorted_changes, fix_nsec_chain,
+		ret = chain_iterate_nsec(sorted_changes, fix_nsec_chain_wrap,
 		                         chain_finalize_nsec,
 		                         &fix_data);
 	}
