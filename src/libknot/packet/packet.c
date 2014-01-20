@@ -1159,7 +1159,7 @@ void knot_packet_dump(const knot_packet_t *packet)
 	dbg_packet("  NSCOUNT: %u\n", knot_wire_get_nscount(packet->wireformat));
 	dbg_packet("  ARCOUNT: %u\n", knot_wire_get_arcount(packet->wireformat));
 
-	if (knot_packet_qdcount(packet) > 0) {
+	if (knot_packet_qdcount(packet) > 0 && knot_packet_qname(packet)) {
 		dbg_packet("\nQuestion:\n");
 		char *qname = knot_dname_to_str(knot_packet_qname(packet));
 		dbg_packet("  QNAME: %s\n", qname);

@@ -536,37 +536,6 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			return KNOT_EMALF;
 		}
 
-
-		/* Check for SOA name and type. */
-		if (knot_packet_qname(packet) == NULL) {
-			dbg_xfrin("Invalid packet in sequence, ignoring.\n");
-			knot_packet_free(&packet);
-			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1);
-			return KNOT_EOK;
-		}
-
-		const knot_dname_t *qname = knot_packet_qname(packet);
-		if (!knot_dname_is_equal(knot_rrset_owner(rr), qname)) {
-dbg_xfrin_exec(
-			char *rr_owner =
-				knot_dname_to_str(knot_rrset_owner(rr));
-			char *qname = knot_dname_to_str(
-				knot_packet_qname(packet));
-
-			dbg_xfrin("Owner of the first SOA RR (%s) does not"
-				  " match QNAME (%s).\n", rr_owner, qname);
-
-			free(rr_owner);
-			free(qname);
-);
-			/*! \todo Cleanup. */
-			knot_packet_free(&packet);
-			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1);
-			return KNOT_EMALF;
-		}
-
 		node = knot_node_new(rr->owner, NULL, 0);
 		if (node == NULL) {
 			dbg_xfrin("Failed to create new node.\n");
@@ -575,7 +544,6 @@ dbg_xfrin_exec(
 			return KNOT_ENOMEM;
 		}
 
-		// the first RR is SOA and its owner and QNAME are the same
 		// create the zone
 
 		*constr = (xfrin_constructed_zone_t *)malloc(

@@ -2984,22 +2984,6 @@ static int ns_ixfr(knot_ns_xfr_t *xfr)
 		return KNOT_EMALF;
 	}
 
-	const knot_rrset_t *soa = knot_packet_authority_rrset(xfr->query, 0);
-	const knot_dname_t *qname = knot_packet_qname(xfr->response);
-
-	// check if XFR QNAME and SOA correspond
-	if (knot_packet_qtype(xfr->query) != KNOT_RRTYPE_IXFR
-	    || knot_rrset_type(soa) != KNOT_RRTYPE_SOA
-	    || knot_dname_cmp(qname, knot_rrset_owner(soa)) != 0) {
-		// malformed packet
-		dbg_ns("IXFR query is malformed.\n");
-		knot_response_set_rcode(xfr->response, KNOT_RCODE_FORMERR);
-		if (ns_xfr_send_and_clear(xfr, 1) != KNOT_EOK) {
-			return KNOT_ECONN;
-		}
-		return KNOT_EMALF;
-	}
-
 	return ns_ixfr_from_zone(xfr);
 }
 
@@ -3441,7 +3425,10 @@ int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
 		return KNOT_EOK;
 
 	const knot_dname_t *qname = knot_packet_qname(*resp);
-	assert(qname != NULL);
+	if (qname == NULL) {
+		(*resp)->zone = query->zone = *zone = NULL;
+		 return KNOT_EMALF;
+	}
 
 	uint16_t qtype = knot_packet_qtype(*resp);
 dbg_ns_exec_verb(
@@ -3583,7 +3570,10 @@ int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
 	dbg_ns_verb("Response max size: %zu\n", (*resp)->max_size);
 
 	const knot_dname_t *qname = knot_packet_qname(knot_packet_query(*resp));
-	assert(qname != NULL);
+	if (qname == NULL) {
+		*zone = NULL;
+		return KNOT_EMALF;
+	}
 
 //	uint16_t qtype = knot_packet_qtype(*resp);
 dbg_ns_exec_verb(
