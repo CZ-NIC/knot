@@ -359,7 +359,7 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 static int xfrin_parse(knot_pkt_t **dst, uint8_t *wire, size_t wire_size)
 {
 	assert(dst != NULL);
-	
+
 	int ret = KNOT_EOK;
 	knot_pkt_t *pkt = knot_pkt_new(wire, wire_size, NULL);
 	if (pkt == NULL) {
@@ -405,7 +405,7 @@ static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uin
 		*rr = NULL;
 		ret = KNOT_EMALF;
 	}
-	
+
 	return ret;
 }
 
@@ -441,7 +441,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	if (ret != KNOT_EOK ) {
 		return ret;
 	}
-	
+
 	uint16_t rr_id = 0;
 	knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
@@ -554,7 +554,7 @@ dbg_xfrin_exec(
 			// merged, free the RRSet
 			knot_rrset_deep_free(&rr, 1);
 		}
-		
+
 		if (!semantic_check_passed(zone, node)) {
 			xfrin_log_error(xfr->zone->name,
 			                knot_node_rrset(node, rr->type),
@@ -562,7 +562,6 @@ dbg_xfrin_exec(
 			knot_pkt_free(&packet);
 			return KNOT_EMALF;
 		}
-		
 
 		// take next RR
 		ret = xfrin_take_rr(answer, &rr, &rr_id);
@@ -835,7 +834,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	if (ret != KNOT_EOK ) {
 		return ret;
 	}
-	
+
 	uint16_t rr_id = 0;
 	knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
