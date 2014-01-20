@@ -31,7 +31,6 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-events.h"
-#include "libknot/dnssec/zone-sign.h"
 #include "libknot/nameserver/chaos.h"
 #include "libknot/packet/response.h"
 #include "libknot/rdata.h"
@@ -1182,7 +1181,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 	fake_zone->contents = new_contents;
 	fake_zone->data = zone->data;
 	new_contents->zone = fake_zone;
-	hattrie_t *sorted_changes = NULL;
 
 	if (zone_config->dnssec_enable) {
 		dbg_zones_verb("%s: Signing the UPDATE\n", msg);
@@ -1206,7 +1204,7 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			                      knot_changesets_get_last(chgsets),
 			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
 			                      &used_lifetime, &used_refresh,
-			                      new_serial, &sorted_changes);
+			                      new_serial);
 
 			expires_at = used_lifetime - used_refresh;
 		}
@@ -1339,6 +1337,9 @@ static int zones_process_update_auth(knot_zone_t *zone,
 
 	free(msg);
 	msg = NULL;
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	/* Sync zonefile immediately if configured. */
 	zonedata_t *zone_data = (zonedata_t *)zone->data;
@@ -2130,6 +2131,7 @@ static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
 	char *new_fname = NULL;
 	int fd = zones_open_free_filename(fname, &new_fname);
 	if (fd < 0) {
+		free(new_fname);
 		return KNOT_EWRITABLE;
 	}
 
@@ -2250,6 +2252,9 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 
 	/* Delete all deprecated zones and delete the old database. */
 	knot_zonedb_deep_free(&old_db);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	/* Update events scheduled for zone. */
 	knot_zone_t *zone = NULL;

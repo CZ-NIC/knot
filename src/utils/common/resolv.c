@@ -135,7 +135,7 @@ static int get_resolv_nameservers(list_t *servers, const char *def_port)
 		pos += len;
 
 		// Check if the token is not empty.
-		if (len <= 0) {
+		if (len == 0) {
 			continue;
 		}
 
@@ -144,7 +144,7 @@ static int get_resolv_nameservers(list_t *servers, const char *def_port)
 		pos += len;
 
 		// Check if there is a separation between tokens.
-		if (len <= 0) {
+		if (len == 0) {
 			continue;
 		}
 

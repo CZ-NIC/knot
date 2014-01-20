@@ -118,12 +118,11 @@ int sockaddr_tostr(const sockaddr_t *addr, char *dst, size_t size)
 		return -1;
 	}
 
-	/* Minimum length. */
-	size_t minlen = INET_ADDRSTRLEN;
-
 	/* Check unsupported IPv6. */
 #ifndef DISABLE_IPV6
-	minlen = INET6_ADDRSTRLEN;
+	size_t minlen = INET6_ADDRSTRLEN;
+#else
+	size_t minlen = INET_ADDRSTRLEN;
 #endif
 
 	/* Check minimum length. */
@@ -204,13 +203,12 @@ char *sockaddr_hostname(void)
 	}
 
 	/* Fetch canonical name for this address/DNS. */
-	int ret = 0;
 	struct addrinfo hints, *info;
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_CANONNAME;
-	if ((ret = getaddrinfo(host, "domain", &hints, &info)) != 0) {
+	if (getaddrinfo(host, "domain", &hints, &info) != 0) {
 		return NULL;
 	}
 

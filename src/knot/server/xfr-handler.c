@@ -1425,6 +1425,10 @@ int xfr_task_free(knot_ns_xfr_t *rq)
 	free(rq->msg);
 	rq->msg = NULL;
 	free(rq);
+
+	/* Trim extra heap. */
+	mem_trim();
+
 	return KNOT_EOK;
 }
 
@@ -1446,19 +1450,14 @@ char *xfr_remote_str(const sockaddr_t *addr, const char *key)
 	}
 
 	/* Prepare address strings. */
-	char r_addr[SOCKADDR_STRLEN];
+	char r_addr[SOCKADDR_STRLEN] = {0};
 	int r_port = sockaddr_portnum(addr);
 	sockaddr_tostr(addr, r_addr, sizeof(r_addr));
 
 	/* Prepare key strings. */
-	char *tag = "";
-	char *q = "'";
 	if (key) {
-		tag = " key "; /* Prefix */
-	} else {
-		key = tag; /* Both empty. */
-		q = tag;
+		return sprintf_alloc("'%s@%d' key '%s'", r_addr, r_port, key);
 	}
 
-	return sprintf_alloc("'%s@%d'%s%s%s%s", r_addr, r_port, tag, q, key, q);
+	return sprintf_alloc("'%s@%d'", r_addr, r_port);
 }

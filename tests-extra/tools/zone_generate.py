@@ -4,7 +4,8 @@
 Usage: zone_generate.py [parameters] origin [rr_count]
 Parameters:
     -h, --help         This help.
-    -s, --sign         Generate zone signed with dnssec-signzone.
+    -s, --sign         Sign the zone with dnssec-signzone.
+    -3, --nsec3=y|n    Use/don't use NSEC3. If not specified choose randomly.
     -i, --serial=num   Specify SOA serial.
     -u, --update=file  Update zone file (no extra SOA).
     -n, --names=num    Generate unique zone names.
@@ -12,14 +13,15 @@ Parameters:
     -o, --outfile=file Specify output file name.
 '''
 
-import random
-import getopt
-import sys
-import re
-import tempfile
-import subprocess
-import shutil
 import binascii
+import getopt
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import dns
 import dns.rdataclass
 import dns.rdatatype
@@ -426,13 +428,15 @@ def main(args):
     global RPREFIX
     UPDATE = None
     sign = 0
+    nsec3 = random.choice([0, 1])
     count = 0
     outfile = None
 
     # Parse parameters
     try:
-        opts, args = getopt.getopt(args, 'hsi:u:n:t:o:', ['help', 'sign', 'serial=',
-                                   'update=', 'names=', 'ttl=', 'outfile='])
+        opts, args = getopt.getopt(args, 'hs3:i:u:n:t:o:', ['help', 'sign',
+                                   'nsec3=', 'serial=', 'update=', 'names=',
+                                   'ttl=', 'outfile='])
     except getopt.error as msg:
         print(msg)
         print('for help use --help')
@@ -443,7 +447,12 @@ def main(args):
             print(__doc__)
             sys.exit(0)
         if o in ('-s', '--sign'):
-            sign=1
+            sign = 1
+        if o in ('-3', '--nsec3'):
+            if a is 'y':
+                nsec3 = 1
+            else:
+                nsec3 = 0
         if o in ('-i', '--serial') and a != None:
             SERIAL = a
         if o in ('-u', '--update') and a != None:
@@ -597,7 +606,9 @@ def main(args):
     try:
         # Generate keys
         nf = open('/dev/null', 'w')
-        ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-3', '-n', 'ZONE', '-K', sign_dir ]
+        ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', sign_dir ]
+        if nsec3:
+            ps += ['-3']
         k1 = subprocess.check_output(ps + [ORIGIN], stderr=nf)
         k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ORIGIN], stderr=nf)
         k1 = sign_dir + '/' + k1.rstrip().decode('ascii')
@@ -612,12 +623,17 @@ def main(args):
         tmp_zfile.write(kf.read() + '\n')
         kf.close()
 
+        if nsec3:
+            nsec3_params = ['-3', binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')]
+        else:
+            nsec3_params = []
+
         # Sign zone
         if tmp_zfile != outf:
             tmp_zfile.close()
         ks = subprocess.check_output(["dnssec-signzone", "-d", "/tmp", "-P", "-p", "-u", \
-                                      "-3", "deadbeef", "-k", k2, "-r", "/dev/urandom", \
-                                      "-o", ORIGIN, zfname, k1 + ".key"])
+                                      "-k", k2, "-r", "/dev/urandom", "-o", ORIGIN] + \
+                                      nsec3_params + [zfname, k1 + ".key"])
         kf = open(zfname + '.signed')
         outf.write(kf.read())
         kf.close()

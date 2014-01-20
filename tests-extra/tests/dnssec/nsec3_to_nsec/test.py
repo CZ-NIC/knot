@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for transition from unsigned zone to auto-signed zone with NSEC3.'''
+'''Test for transition from NSEC3 to NSEC on auto-signed zone.'''
 
 from dnstest.utils import *
 from dnstest.test import Test
@@ -20,9 +20,9 @@ master.stop()
 # Enable autosigning.
 master.dnssec_enable = True
 master.enable_nsec3(zone)
-master.gen_key(zone, ksk=True, alg="RSASHA1") # Old NSEC only algorithm.
-master.gen_key(zone, alg="RSASHA1")
-master.gen_key(zone, ksk=True, alg="RSASHA256") # New NSEC/NSEC3 algorithm.
+master.gen_key(zone, ksk=True, alg="NSEC3RSASHA1")
+master.gen_key(zone, alg="NSEC3RSASHA1")
+master.gen_key(zone, ksk=True, alg="RSASHA256")
 master.gen_key(zone, alg="RSASHA256")
 master.gen_confile()
 master.start()
@@ -39,7 +39,34 @@ compare(resp.answer_count(), 1, "NSEC3PARAM count")
 
 # Check presence of DNSKEYs.
 resp = master.dig(zone, "DNSKEY", dnssec=True)
-compare(resp.answer_count(), 2, "DNSKEY count")
+compare(resp.answer_count(), 4, "DNSKEY count")
+
+master.stop()
+master.backup_zone(zone)
+
+# Verify signed zone file.
+master.zone_verify(zone)
+
+### NSEC3 -> NSEC ###
+
+# Disable NSEC3 on zone.
+master.disable_nsec3(zone)
+master.gen_confile()
+master.start()
+
+# Wait for changed zone and flush.
+master.zone_wait(zone, serial=new_serial)
+t.sleep(1)
+master.flush()
+t.sleep(1)
+
+# Check absence of NSEC3PARAM record.
+resp = master.dig(zone, "NSEC3PARAM", dnssec=True)
+compare(resp.answer_count(), 0, "NSEC3PARAM count")
+
+# Check presence of DNSKEYs.
+resp = master.dig(zone, "DNSKEY", dnssec=True)
+compare(resp.answer_count(), 4, "DNSKEY count")
 
 # Verify signed zone file.
 master.zone_verify(zone)

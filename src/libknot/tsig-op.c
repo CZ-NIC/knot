@@ -556,7 +556,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
                         const knot_tsig_key_t *key, uint8_t *to_sign,
                         size_t to_sign_len)
 {
-	if (!msg || !msg_len || !key || !key || !digest || !digest_len) {
+	if (!msg || !msg_len || !key || !digest || !digest_len) {
 		return KNOT_EINVAL;
 	}
 

@@ -47,8 +47,25 @@ static volatile short sig_stopping = 0;
 
 #ifdef INTEGRITY_CHECK
 static volatile short sig_integrity_check = 0;
-int check_iteration = 0;
-char *zone = NULL;
+
+static void check_integrity(server_t *server) {
+	const knot_zonedb_t *zonedb = server->nameserver->zone_db;
+	const unsigned      zone_count = knot_zonedb_zone_count(zonedb);
+	const knot_zone_t   **zones = knot_zonedb_zones(zonedb);
+
+	for (unsigned i = 0; i < zone_count; i++) {
+		char *zname = knot_dname_to_str(zones[i]->name);
+
+		log_server_info("Integrity check for zone %s\n", zname);
+
+		int ret = knot_zone_contents_integrity_check(zones[i]->contents);
+		if (ret != 0) {
+			log_server_info("Integrity errors(%i)\n", ret);
+		}
+
+		free(zname);
+	}
+}
 #endif /* INTEGRITY_CHECK */
 
 // Cleanup handler
@@ -79,7 +96,6 @@ void interrupt_handle(int s)
 			exit(1);
 		}
 	}
-
 #ifdef INTEGRITY_CHECK
 	// Start zone integrity check
 	if (s == SIGUSR1) {
@@ -95,10 +111,6 @@ void help(void)
 	       PACKAGE_NAME);
 	printf("\nParameters:\n"
 	       " -c, --config <file>     Select configuration file.\n"
-#ifdef INTEGRITY_CHECK
-	       " -z, --zone <zone>       Set zone to check. Send SIGUSR1 to trigger\n"
-	       "                         integrity check.\n"
-#endif /* INTEGRITY_CHECK */
 	       " -d, --daemonize=[dir]   Run server as a daemon.\n"
 	       " -v, --verbose           Verbose mode - additional runtime information.\n"
 	       " -V, --version           Print version of the server.\n"
@@ -113,15 +125,12 @@ int main(int argc, char **argv)
 	int c = 0, li = 0;
 	int verbose = 0;
 	int daemonize = 0;
-	char* config_fn = NULL;
-	char* daemon_root = NULL;
+	char *config_fn = NULL;
+	char *daemon_root = NULL;
 
 	/* Long options. */
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
-#ifdef INTEGRITY_CHECK
-		{"zone",      required_argument, 0, 'z'},
-#endif /* INTEGRITY_CHECK */
 		{"daemonize", optional_argument, 0, 'd'},
 		{"verbose",   no_argument,       0, 'v'},
 		{"version",   no_argument,       0, 'V'},
@@ -129,26 +138,13 @@ int main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
-#ifndef INTEGRITY_CHECK
 	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
-#else
-	while ((c = getopt_long(argc, argv, "c:z:dvVh", opts, &li)) != -1) {
-#endif /* INTEGRITY_CHECK */
 		switch (c)
 		{
 		case 'c':
 			free(config_fn);
 			config_fn = strdup(optarg);
 			break;
-#ifdef INTEGRITY_CHECK
-		case 'z':
-			if (optarg[strlen(optarg) - 1] != '.') {
-				zone = strcdup(optarg, ".");
-			} else {
-				zone = strdup(optarg);
-			}
-			break;
-#endif /* INTEGRITY_CHECK */
 		case 'd':
 			daemonize = 1;
 			if (optarg) {
@@ -160,15 +156,18 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			free(config_fn);
+			free(daemon_root);
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
 			return 0;
 		case 'h':
 		case '?':
 			free(config_fn);
+			free(daemon_root);
 			help();
 			return 0;
 		default:
 			free(config_fn);
+			free(daemon_root);
 			help();
 			return 1;
 		}
@@ -177,6 +176,7 @@ int main(int argc, char **argv)
 	// Check for non-option parameters.
 	if (argc - optind > 0) {
 		free(config_fn);
+		free(daemon_root);
 		help();
 		return 1;
 	}
@@ -189,6 +189,7 @@ int main(int argc, char **argv)
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
 			free(config_fn);
+			free(daemon_root);
 			fprintf(stderr, "Daemonization failed, "
 					"shutting down...\n");
 			return 1;
@@ -231,6 +232,7 @@ int main(int argc, char **argv)
 			log_server_error("Couldn't get absolute path for configuration file '%s' - "
 			                 "%s.\n", config_fn, strerror(errno));
 			free(config_fn);
+			free(daemon_root);
 			return 1;
 		} else {
 			free(config_fn);
@@ -411,24 +413,9 @@ int main(int argc, char **argv)
 				server_reload(server, config_fn);
 			}
 #ifdef INTEGRITY_CHECK
-			if (zone == NULL)
-				sig_integrity_check = 0;
 			if (sig_integrity_check) {
-				log_server_info("Starting integrity check of "
-				                "zone: %s\n", zone);
-				knot_dname_t *zdn =
-					knot_dname_from_str(zone);
-				knot_zone_t *z =
-					knot_zonedb_find_zone(server->nameserver->zone_db,
-					                      zdn);
-				int ic_ret =
-					knot_zone_contents_integrity_check(z->contents);
-				log_server_info("Integrity check: %d errors "
-				                "discovered.\n", ic_ret);
-				knot_dname_free(&zdn);
-				log_server_info("Integrity check %d finished.\n",
-				                check_iteration);
-				++check_iteration;
+				sig_integrity_check = 0;
+				check_integrity(server);
 			}
 #endif /* INTEGRITY_CHECK */
 		}
@@ -465,10 +452,6 @@ int main(int argc, char **argv)
 	if (pidf && pid_remove(pidf) < 0)
 		log_server_warning("Failed to remove PID file.\n");
 	do_cleanup(server, config_fn, pidf);
-
-#ifdef INTEGRITY_CHECK
-	free(zone);
-#endif /* INTEGRITY_CHECK */
 
 	if (!daemonize) {
 		fflush(stdout);

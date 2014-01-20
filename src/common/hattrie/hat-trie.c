@@ -104,7 +104,14 @@ static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
                     bs = malloc(slen * sizeof(node_ptr));
                     memcpy(bs, *s, (slen/2) * sizeof(node_ptr));
                 } else {        /* points to heap memory already */
-                    bs = realloc(bs, slen * sizeof(node_ptr));
+                    node_ptr *bs_new = realloc(bs, slen * sizeof(node_ptr));
+					/* \note tricky, hattrie should be slowly moved from 'never-expect-malloc-fail' state */
+					if (bs_new == NULL) {
+						*sp = 0;      /* caller will get take care of freeing old 'bs' */
+						return bs[0]; /* return root node, so the search fails */
+					} else {
+						bs = bs_new;
+					}
                 }
                 /* update parent pointer on resize */
                 *s = bs;
@@ -154,14 +161,13 @@ static inline int hattrie_clrval(hattrie_t *T, node_ptr n)
 static value_t* hattrie_find_rightmost(node_ptr node)
 {
     /* iterate children from right */
-    value_t *ret = NULL;
     if (*node.flag & NODE_TYPE_TRIE) {
         for (int i = TRIE_MAXCHAR; i > -1; --i) {
             /* skip repeated pointers to hybrid bucket */
             if (i < TRIE_MAXCHAR && node.t->xs[i].t == node.t->xs[i + 1].t)
                 continue;
             /* nest if trie */
-            ret = hattrie_find_rightmost(node.t->xs[i]);
+            value_t *ret = hattrie_find_rightmost(node.t->xs[i]);
             if (ret) {
                 return ret;
             }
@@ -317,7 +323,7 @@ hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
     /*! \todo could be probably implemented faster */
 
     size_t l = 0;
-    const char *k = 0;
+    const char *k = NULL;
     hattrie_iter_t *i = hattrie_iter_begin(T, false);
     while (!hattrie_iter_finished(i)) {
         k = hattrie_iter_key(i, &l);

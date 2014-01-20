@@ -49,7 +49,12 @@ static int knot_packet_parse_question(knot_packet_t *pkt)
 	if (len <= 0)
 		return KNOT_EMALF;
 
-	pkt->parsed += len + 2 * sizeof(uint16_t); /* Class + Type */
+	uint16_t question_size = len + 2 * sizeof(uint16_t);
+	if (pkt->parsed + question_size > pkt->size) {
+		return KNOT_EMALF;
+	}
+
+	pkt->parsed += question_size; /* Class + Type */
 	pkt->qname_size = len;
 
 	return KNOT_EOK;
@@ -484,7 +489,7 @@ int knot_packet_parse_from_wire(knot_packet_t *packet,
 		if ((err = knot_packet_parse_question(packet)) != KNOT_EOK)
 			return err;
 	} else if (qdcount > 1) {
-		dbg_packet("QDCOUNT larger than 1, FORMERR.\n");
+		dbg_packet("QDCOUNT > 1, FORMERR.\n");
 		return KNOT_EMALF;
 	}
 

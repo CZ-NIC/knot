@@ -62,11 +62,11 @@ class Response(object):
         self._check_question()
 
         # Check rcode.
-        if type(rcode) is str:
-            rc = dns.rcode.from_text(rcode)
+        if type(rcode) is not str:
+            rc = dns.rcode.to_text(rcode)
         else:
             rc = rcode
-        compare(self.resp.rcode(), rc, "RCODE")
+        compare(dns.rcode.to_text(self.resp.rcode()), rc, "RCODE")
 
         # Check rdata only if NOERROR.
         if rc != 0 or rdata == None:
@@ -108,7 +108,7 @@ class Response(object):
                 compare(option.data.decode('ascii'), nsid, "txt NSID")
 
     def diff(self, resp, flags=True, answer=True, authority=True, \
-             additional=False):
+             additional=True):
         '''Compares specified response sections against another response'''
 
         if flags:
@@ -121,16 +121,16 @@ class Response(object):
                              resp.resp.answer, resp.srv.name, \
                              "ANSWER")
         if authority:
-            compare_sections(self.resp.answer, self.srv.name, \
-                             resp.resp.answer, resp.srv.name, \
+            compare_sections(self.resp.authority, self.srv.name, \
+                             resp.resp.authority, resp.srv.name, \
                              "AUTHORITY")
         if additional:
-            compare_sections(self.resp.answer, self.srv.name, \
-                             resp.resp.answer, resp.srv.name, \
+            compare_sections(self.resp.additional, self.srv.name, \
+                             resp.resp.additional, resp.srv.name, \
                              "ADDITIONAL")
 
     def cmp(self, server, flags=True, answer=True, authority=True, \
-            additional=False):
+            additional=True):
         '''Asks server for the same question an compares specified sections'''
 
         resp = server.dig(**self.args)

@@ -157,8 +157,8 @@ int proc_update_privileges(int uid, int gid)
 						   uid, strerror(errno));
 			}
 		}
-	}
 # endif /* HAVE_INITGROUPS */
+	}
 #endif /* HAVE_SETGROUPS */
 
 	/* Watch uid/gid. */

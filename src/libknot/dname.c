@@ -425,7 +425,7 @@ bool knot_dname_is_sub(const knot_dname_t *sub, const knot_dname_t *domain)
 	if (sub_l < 0 || domain_l < 0)
 		return false;
 
-	assert(sub >= 0 && sub_l <= KNOT_DNAME_MAXLABELS);
+	assert(sub_l >= 0 && sub_l <= KNOT_DNAME_MAXLABELS);
 	assert(domain_l >= 0 && domain_l <= KNOT_DNAME_MAXLABELS);
 
 	/* Subdomain must have more labels as parent. */
