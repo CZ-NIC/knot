@@ -34,8 +34,8 @@ def protos_run(name, binfile, params):
 
 # Evaluate parameters
 protos_params = ["--host", slave.addr, "--port", str(slave.port) ]
-query_params = protos_params + ["--delay", "10", "--timeout", "100"]
-zonetransfer_params = protos_params + [ "--delay", "10", "--sourceport", str(master.port) ]
+query_params = protos_params + ["--delay", "0", "--timeout", "500"]
+zonetransfer_params = protos_params + [ "--delay", "0", "--sourceport", str(master.port) ]
 
 # Run PROTOS (transfers)
 protos_run('zonetransfer', protos_zonetransfer_bin, zonetransfer_params)
