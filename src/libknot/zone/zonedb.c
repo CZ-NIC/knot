@@ -98,6 +98,10 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 
 int knot_zonedb_build_index(knot_zonedb_t *db)
 {
+	if (db == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Rebuild order index. */
 	hhash_build_index(db->hash);
 
@@ -118,6 +122,9 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 
 static value_t *find_name(knot_zonedb_t *db, const knot_dname_t *dname, uint16_t size)
 {
+	assert(db);
+	assert(dname);
+
 	return hhash_find(db->hash, (const char*)dname, size);
 }
 
@@ -195,6 +202,10 @@ knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
 
 size_t knot_zonedb_size(const knot_zonedb_t *db)
 {
+	if (db == NULL) {
+		return 0;
+	}
+
 	return db->hash->weight;
 }
 
@@ -214,6 +225,10 @@ void knot_zonedb_free(knot_zonedb_t **db)
 
 void knot_zonedb_deep_free(knot_zonedb_t **db)
 {
+	if (db == NULL || *db == NULL) {
+		return;
+	}
+
 	/* Reindex for iteration. */
 	knot_zonedb_build_index(*db);
 	knot_zonedb_iter_t it;
