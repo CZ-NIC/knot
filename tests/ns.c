@@ -52,7 +52,7 @@ void create_root_zone(knot_nameserver_t *ns, mm_ctx_t *mm)
 	/* Stub data. */
 	root->data = mm->alloc(mm->ctx, sizeof(zonedata_t));
 	memset(root->data, 0, sizeof(zonedata_t));
-	
+
 	/* Bake the zone. */
 	knot_node_t *first_nsec3 = NULL, *last_nsec3 = NULL;
 	knot_zone_contents_adjust(root->contents, &first_nsec3, &last_nsec3, false);
@@ -90,7 +90,7 @@ static void exec_query(ns_proc_context_t *query_ctx, const char *name,
 
 	/* Input packet. */
 	int state = ns_proc_in(query, query_len, query_ctx);
-	
+
 	ok(state & (NS_PROC_FULL|NS_PROC_FAIL), "ns: process %s query", name);
 
 	/* Create answer. */
@@ -117,7 +117,7 @@ static void exec_query(ns_proc_context_t *query_ctx, const char *name,
 int main(int argc, char *argv[])
 {
 	plan(8*6 + 3); /* exec_query = 6 TAP tests */
-	
+
 	/* Create processing context. */
 	ns_proc_context_t query_ctx;
 	memset(&query_ctx, 0, sizeof(ns_proc_context_t));
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	/* Create name server. */
 	knot_nameserver_t *ns = knot_ns_create();
 	ns->opt_rr = knot_edns_new();
-	knot_edns_set_version(ns->opt_rr, EDNS_VERSION); 
+	knot_edns_set_version(ns->opt_rr, EDNS_VERSION);
 	knot_edns_set_payload(ns->opt_rr, 4096);
 	ns->identity = "bogus.ns";
 	ns->version = "0.11";
@@ -135,17 +135,17 @@ int main(int argc, char *argv[])
 	/* Insert root zone. */
 	create_root_zone(ns, &query_ctx.mm);
 	knot_zone_t *zone = knot_zonedb_find(ns->zone_db, ROOT_DNAME);
-	
+
 	/* Prepare. */
 	int state = NS_PROC_FAIL;
 	uint8_t query_wire[KNOT_WIRE_MAX_PKTSIZE];
 	uint16_t query_len = KNOT_WIRE_MAX_PKTSIZE;
 	knot_pkt_t *query = knot_pkt_new(query_wire, query_len, &query_ctx.mm);
-	
+
 	/* Create query processing parameter. */
 	struct ns_proc_query_param param;
 	sockaddr_set(&param.query_source, AF_INET, "127.0.0.1", 53);
-	
+
 	/* Query processor (CH zone) */
 	state = ns_proc_begin(&query_ctx, &param, NS_PROC_QUERY);
 	const uint8_t chaos_dname[] = "\2""id""\6""server"; /* id.server */
@@ -158,11 +158,11 @@ int main(int argc, char *argv[])
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	exec_query(&query_ctx, "IN/root", query->wire, query->size, KNOT_RCODE_NOERROR);
-	
+
 	/* Query processor (-1 bytes, not enough data). */
 	state = ns_proc_reset(&query_ctx);
 	exec_query(&query_ctx, "IN/few-data", query->wire, query->size - 1, KNOT_RCODE_FORMERR);
-	
+
 	/* Query processor (+1 bytes trailing). */
 	state = ns_proc_reset(&query_ctx);
 	query->wire[query->size] = '\1'; /* Initialize the "garbage" value. */
@@ -172,19 +172,19 @@ int main(int argc, char *argv[])
 	state = ns_proc_reset(&query_ctx);
 	knot_wire_set_opcode(query->wire, KNOT_OPCODE_NOTIFY);
 	exec_query(&query_ctx, "IN/notify", query->wire, query->size, KNOT_RCODE_NOTAUTH);
-	
+
 	/* Forge AXFR query. */
 	ns_proc_reset(&query_ctx);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_AXFR);
 	exec_query(&query_ctx, "IN/axfr", query->wire, query->size, KNOT_RCODE_NOTAUTH);
-	
+
 	/* Forge IXFR query (badly formed, no SOA in AUTHORITY section). */
 	ns_proc_reset(&query_ctx);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_IXFR);
 	exec_query(&query_ctx, "IN/ixfr-formerr", query->wire, query->size, KNOT_RCODE_FORMERR);
-	
+
 	/* Forge IXFR query (well formed). */
 	ns_proc_reset(&query_ctx);
 	/* Append SOA RR. */
@@ -192,19 +192,19 @@ int main(int argc, char *argv[])
 	knot_pkt_begin(query, KNOT_AUTHORITY);
 	knot_pkt_put(query, COMPR_HINT_NONE, soa_rr, 0);
 	exec_query(&query_ctx, "IN/ixfr", query->wire, query->size, KNOT_RCODE_NOTAUTH);
-	
+
 	/* \note Tests below are not possible without proper zone and zone data. */
 	/* #189 Process UPDATE query. */
 	/* #189 Process AXFR client. */
 	/* #189 Process IXFR client. */
-	
+
 	/* Query processor (smaller than DNS header, ignore). */
 	state = ns_proc_reset(&query_ctx);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	state = ns_proc_in(query->wire, KNOT_WIRE_HEADER_SIZE - 1, &query_ctx);
 	ok(state == NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
-	
+
 	/* Query processor (response, ignore). */
 	state = ns_proc_reset(&query_ctx);
 	knot_wire_set_qr(query->wire);
