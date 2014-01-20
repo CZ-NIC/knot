@@ -131,10 +131,10 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 	} else {
 		rx->iov_len = ret;
 	}
-	
+
 	/* Create query processing context. */
 	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
-	
+
 	/* Input packet. */
 	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
 

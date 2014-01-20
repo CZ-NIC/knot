@@ -134,7 +134,7 @@ typedef struct server_t {
  * \retval New instance if successful.
  * \retval NULL If an error occured.
  */
-server_t *server_create();
+server_t *server_create(void);
 
 /*!
  * \brief Starts the server.

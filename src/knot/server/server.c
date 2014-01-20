@@ -323,7 +323,7 @@ static int server_bind_sockets(server_t *s)
 	return bound;
 }
 
-server_t *server_create()
+server_t *server_create(void)
 {
 	// Create server structure
 	server_t *server = malloc(sizeof(server_t));
@@ -336,8 +336,7 @@ server_t *server_create()
 	// Create event scheduler
 	dbg_server("server: creating event scheduler\n");
 	server->sched = evsched_new();
-	server->iosched = dt_create(1, evsched_run, evsched_destruct,
-	                                     server->sched);
+	server->iosched = dt_create(1, evsched_run, evsched_destruct, server->sched);
 
 	// Create name server
 	dbg_server("server: creating Name Server structure\n");
@@ -372,13 +371,12 @@ static int server_init_handler(server_t *server, int index, int thread_count,
 		return KNOT_ENOMEM;
 	}
 
-	h->thread_state = malloc(thread_count * sizeof(unsigned));
+	h->thread_state = calloc(thread_count, sizeof(unsigned));
 	if (h->thread_state == NULL) {
 		dt_delete(&h->unit);
 		return KNOT_ENOMEM;
 	}
 
-	memset(h->thread_state, 0, thread_count * sizeof(unsigned));
 	return KNOT_EOK;
 }
 
