@@ -130,15 +130,16 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
  *        true for all types that should be signed, do not use this as an
  *        universal function, it is implementation specific.
  *
- * \param node   Node containing the RRSet.
- * \param rrset  RRSet we are checking for.
- * \param table  Optional hat trie with already signed RRs.
+ * \param node         Node containing the RRSet.
+ * \param rrset        RRSet we are checking for.
+ * \param table        Optional hat trie with already signed RRs.
+ * \param should_sign  Set to true if RR should be signed, false otherwise.
  *
- * \return True if RR should be signed, false otherwise.
+ * \return KNOT_E*
  */
-bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
-                                        const knot_rrset_t *rrset,
-                                        hattrie_t *trie);
+int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
+                                       const knot_rrset_t *rrset,
+                                       hattrie_t *trie, bool *should_sign);
 
 void knot_zone_clear_sorted_changes(hattrie_t *t);
 

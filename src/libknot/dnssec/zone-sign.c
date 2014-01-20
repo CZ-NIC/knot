@@ -441,7 +441,13 @@ static int sign_node_rrsets(const knot_node_t *node,
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		const knot_rrset_t *rrset = node->rrset_tree[i];
-		if (!knot_zone_sign_rr_should_be_signed(node, rrset, NULL)) {
+		bool should_sign = false;
+		result = knot_zone_sign_rr_should_be_signed(node, rrset, NULL,
+		                                            &should_sign);
+		if (result != KNOT_EOK) {
+			return result;
+		}
+		if (!should_sign) {
 			continue;
 		}
 
@@ -991,15 +997,18 @@ static int add_rr_type_to_list(const knot_rrset_t *rr, list_t *l)
  *        stores its pointer to the table if not found, but returns false in
  *        that case.
  *
- * \param rrset  RRSet to be checked for.
- * \param tree   Tree with already signed RRs.
+ * \param rrset      RRSet to be checked for.
+ * \param tree       Tree with already signed RRs.
+ * \param rr_signed  Set to true if RR should is signed already, false otherwise.
  *
- * \return True if RR should is signed already, false otherwise.
+ * \return KNOT_E*
  */
-static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
+static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
+                             bool *rr_signed)
 {
 	assert(rrset);
 	assert(t);
+	*rr_signed = false;
 	// Create a key = RRSet owner converted to sortable format
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, rrset->owner, NULL);
@@ -1010,22 +1019,22 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 		signed_info_t *info = malloc(sizeof(signed_info_t));
 		if (info == NULL) {
 			ERR_ALLOC_FAILED;
-			return false;
+			return KNOT_ENOMEM;
 		}
 		memset(info, 0, sizeof(signed_info_t));
 		// Store actual dname repr
 		info->dname = knot_dname_copy(rrset->owner);
 		if (info->dname == NULL) {
 			free(info);
-			return false;
+			return KNOT_ENOMEM;
 		}
 		// Create new list to insert as a value
 		info->type_list = malloc(sizeof(list_t));
 		if (info->type_list == NULL) {
+			ERR_ALLOC_FAILED;
 			free(info->dname);
 			free(info);
-			ERR_ALLOC_FAILED;
-			return false;
+			return KNOT_ENOMEM;
 		}
 		init_list(info->type_list);
 		// Insert type to list
@@ -1042,16 +1051,19 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 		assert(info->type_list);
 		// Check whether the type is in the list already
 		if (rr_type_in_list(rrset, info->type_list)) {
-			return true;
+			*rr_signed = true;
+			return KNOT_EOK;
 		}
 		// Just update the existing list
 		int ret = add_rr_type_to_list(rrset, info->type_list);
 		if (ret != KNOT_EOK) {
-			return false;
+			*rr_signed = false;
+			return KNOT_EOK;
 		}
 	}
 
-	return false;
+	*rr_signed = false;
+	return KNOT_EOK;
 }
 
 /*!
@@ -1066,6 +1078,7 @@ static bool rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t)
 static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 {
 	changeset_signing_data_t *args = (changeset_signing_data_t *)data;
+	bool rr_signed = false;
 	// Find RR's node in zone, find out if we need to sign this RR
 	const knot_node_t *node =
 		knot_zone_contents_find_node(args->zone, chg_rrset->owner);
@@ -1073,8 +1086,14 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 	if (node) {
 		const knot_rrset_t *zone_rrset =
 			knot_node_rrset(node, chg_rrset->type);
-		if (knot_zone_sign_rr_should_be_signed(node, zone_rrset,
-		                                       args->signed_tree)) {
+		bool should_sign = false;
+		int ret = knot_zone_sign_rr_should_be_signed(node, zone_rrset,
+		                                             args->signed_tree,
+		                                             &should_sign);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		if (should_sign) {
 			return force_resign_rrset(zone_rrset, args->zone_keys,
 			                          args->policy,
 			                          args->changeset);
@@ -1091,11 +1110,21 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			 * be signed, but it could create a new node, so we
 			 * have to mark the change.
 			 */
-			rr_already_signed(chg_rrset, args->signed_tree);
+			int ret = rr_already_signed(chg_rrset,
+			                            args->signed_tree,
+			                            &rr_signed);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 	} else {
 		// Update changes
-		rr_already_signed(chg_rrset, args->signed_tree);
+		int ret = rr_already_signed(chg_rrset, args->signed_tree,
+		                            &rr_signed);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
 	}
 	return KNOT_EOK;
 }
@@ -1333,29 +1362,34 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
  *        true for all types that should be signed, do not use this as an
  *        universal function, it is implementation specific.
  */
-bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
-                                        const knot_rrset_t *rrset,
-                                        hattrie_t *tree)
+int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
+                                       const knot_rrset_t *rrset,
+                                       hattrie_t *tree, bool *should_sign)
 {
+	if (should_sign == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	*should_sign = false; // Only one case at the end is set to true
 	if (node == NULL || rrset == NULL) {
-		return false;
+		return KNOT_EOK;
 	}
 
 	// SOA entry is maintained separately
 	if (rrset->type == KNOT_RRTYPE_SOA) {
-		return false;
+		return KNOT_EOK;
 	}
 
 	// DNSKEYs are maintained separately
 	if (rrset->type == KNOT_RRTYPE_DNSKEY) {
-		return false;
+		return KNOT_EOK;
 	}
 
 	// At delegation points we only want to sign NSECs and DSs
 	if (knot_node_is_deleg_point(node)) {
 		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
 		    rrset->type == KNOT_RRTYPE_DS)) {
-			return false;
+			return KNOT_EOK;
 		}
 	}
 
@@ -1363,17 +1397,23 @@ bool knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	if (knot_node_is_replaced_nsec(node)
 	    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
 	         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
-		return false;
+		return KNOT_EOK;
 	}
 
 	// Check for RRSet in the 'already_signed' table
 	if (tree) {
-		if (rr_already_signed(rrset, tree)) {
-			return false;
+		bool already_signed = false;
+		int ret = rr_already_signed(rrset, tree, &already_signed);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		if (already_signed) {
+			return KNOT_EOK;
 		}
 	}
 
-	return true;
+	*should_sign = true;
+	return KNOT_EOK;
 }
 
 void knot_zone_clear_sorted_changes(hattrie_t *t)
