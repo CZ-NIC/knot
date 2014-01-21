@@ -177,12 +177,28 @@ void xfrin_free_changesets(knot_changesets_t **changesets);
  */
 int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr);
 
+/*!
+ * \brief Applies changesets *with* zone shallow copy.
+ *
+ * \param zone          Zone to be updated.
+ * \param chsets        Changes to be made.
+ * \param new_contents  New zone will be returned using this arg.
+ * \return KNOT_E*
+ */
 int xfrin_apply_changesets(knot_zone_t *zone,
                            knot_changesets_t *chsets,
-                           knot_zone_contents_t **new_contents,
-                           bool full_adjust,
-                           const hattrie_t *sorted_changes);
+                           knot_zone_contents_t **new_contents);
 
+/*!
+ * \brief Applies changesets *without* zone shallow copy.
+ *
+ * \param z_old           Old contents for possible rollbacks.
+ * \param z_new           Post DDNS/reload zone.
+ * \param sec_chsets      Changes with RRSIGs/NSEC(3)s.
+ * \param chsets          DDNS/reload changes, for rollback.
+ * \param sorted_changes  Used for node->nsec3 node mapping.
+ * \return KNOT_E*
+ */
 int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
                                   knot_zone_contents_t *z_new,
                                   knot_changesets_t *sec_chsets,
@@ -192,8 +208,16 @@ int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents);
 
+/*!
+ * \brief Sets pointers and NSEC3 nodes after signing/DDNS.
+ * \param contents_copy    Contents to be updated.
+ * \param set_nsec3_names  Set to true if NSEC3 hashes should be set.
+ * \param sorted_changes   If this is non-NULL, it is used for normal node->NSEC3
+ *                         node mapping, no hashes are calculated.
+ * \return KNOT_E*
+ */
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                bool set_nsec3,
+                                bool set_nsec3_names,
                                 const hattrie_t *sorted_changes);
 
 int xfrin_switch_zone(knot_zone_t *zone,

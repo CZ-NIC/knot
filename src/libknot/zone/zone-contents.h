@@ -329,21 +329,14 @@ knot_node_t *knot_zone_contents_get_apex(
 
 /*!
  * \brief Sets parent and previous pointers and node flags. (cheap operation)
+ *        For both normal and NSEC3 tree
  */
 int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents);
 
 /*!
- * \brief Sets NSEC3 nodes for normal nodes. (costly operation)
+ * \brief Sets NSEC3 nodes for normal nodes. (costly operation, calculates hash)
  */
 int knot_zone_contents_adjust_nsec3_pointers(knot_zone_contents_t *);
-
-int knot_zone_contents_adjust_nsec3_changes(knot_zone_contents_t *contents,
-                                            void *data);
-
-/*!
- * \brief Sets parent and previous pointers and node flags. (cheap operation)
- */
-int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *);
 
 /*!
  * \brief Sets parent and previous pointers, sets node flags and NSEC3 links.

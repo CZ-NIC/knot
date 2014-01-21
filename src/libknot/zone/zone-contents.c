@@ -1295,6 +1295,23 @@ static int knot_zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
 
 /*----------------------------------------------------------------------------*/
 
+static int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
+{
+	if (contents->nsec3_nodes == NULL) {
+		return KNOT_EOK;
+	}
+	// adjusting parameters
+	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
+	                                      .previous_node = NULL,
+	                                      .zone = contents };
+	return knot_zone_contents_adjust_nodes(contents->nsec3_nodes,
+	                                       &adjust_arg,
+	                                       knot_zone_contents_adjust_nsec3_node);
+}
+
+
+/*----------------------------------------------------------------------------*/
+
 int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents)
 {
 	// adjusting parameters
@@ -1322,57 +1339,6 @@ int knot_zone_contents_adjust_nsec3_pointers(knot_zone_contents_t *contents)
 	                                      .zone = contents };
 	return knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
 	                                       adjust_nsec3_pointers);
-}
-
-int knot_zone_contents_adjust_nsec3_changes(knot_zone_contents_t *contents,
-                                            void *data)
-{
-	if (contents->nsec3_nodes == NULL) {
-		return KNOT_EOK;
-	}
-	hattrie_iter_t *itt = hattrie_iter_begin((hattrie_t *)data,
-	                                         false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
-	}
-	while (!hattrie_iter_finished(itt)) {
-		signed_info_t *val = (signed_info_t *)(*hattrie_iter_val(itt));
-		const knot_dname_t *dname = val->dname;
-		assert(dname);
-		const knot_dname_t *hash = val->hashed_dname;
-		if (hash) {
-			knot_node_t *nsec3_node =
-				knot_zone_contents_get_nsec3_node(contents, hash);
-			if (nsec3_node) {
-				knot_node_t *normal_node =
-					knot_zone_contents_get_node(contents,
-					                            dname);
-				if (normal_node) {
-					normal_node->nsec3_node = nsec3_node;
-				}
-			}
-		}
-		hattrie_iter_next(itt);
-	}
-
-	hattrie_iter_free(itt);
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
-{
-	if (contents->nsec3_nodes == NULL) {
-		return KNOT_EOK;
-	}
-	// adjusting parameters
-	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
-	                                      .previous_node = NULL,
-	                                      .zone = contents };
-	return knot_zone_contents_adjust_nodes(contents->nsec3_nodes,
-	                                       &adjust_arg,
-	                                       knot_zone_contents_adjust_nsec3_node);
 }
 
 /*----------------------------------------------------------------------------*/
