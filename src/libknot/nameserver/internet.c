@@ -124,8 +124,9 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
 	/* If we already have compressed name on the wire and compression hint,
 	 * we can just insert RRSet and fake synthesis by using compression
 	 * hint. */
+	int ret = KNOT_EOK;
 	if (compr_hint == COMPR_HINT_NONE && knot_dname_is_wildcard(rr->owner)) {
-		int ret = knot_rrset_deep_copy(rr, (knot_rrset_t **)&rr);
+		ret = knot_rrset_deep_copy(rr, (knot_rrset_t **)&rr);
 		if (ret != KNOT_EOK) {
 			return KNOT_ENOMEM;
 		}
@@ -134,7 +135,12 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
 		flags |= KNOT_PF_FREE;
 	}
 
-	return knot_pkt_put(pkt, compr_hint, rr, flags);
+	ret = knot_pkt_put(pkt, compr_hint, rr, flags);
+	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
+		knot_rrset_deep_free((knot_rrset_t **)&rr, 1);
+	}
+
+	return ret;
 }
 
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
