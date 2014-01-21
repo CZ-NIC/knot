@@ -75,7 +75,6 @@ int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 		} \
 	}
 
-
 #endif /* _KNOT_INTERNET_H_ */
 
 /*! @} */

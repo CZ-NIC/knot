@@ -56,8 +56,8 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr, const knot_
 		return NULL;
 	}
 
-	knot_rrset_t *cname_rrset = knot_rrset_new(
-					    owner, KNOT_RRTYPE_CNAME, KNOT_CLASS_IN, dname_rr->ttl);
+	knot_rrset_t *cname_rrset = knot_rrset_new(owner, KNOT_RRTYPE_CNAME,
+	                                           KNOT_CLASS_IN, dname_rr->ttl);
 	if (cname_rrset == NULL) {
 		knot_dname_free(&owner);
 		return NULL;
@@ -262,15 +262,15 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 {
 	/* Valid types for ADDITIONALS insertion. */
 	/* \note Not resolving CNAMEs as it doesn't pay off much. */
-	#define AR_TYPE_COUNT 2
 	static const uint16_t ar_type_list[] = {KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA};
+	static const int ar_type_count = 2;
 
 	int ret = KNOT_EOK;
 	uint32_t flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
 	uint16_t hint = COMPR_HINT_NONE;
 	const knot_node_t *node = NULL;
 	const knot_rrset_t *additional = NULL;
-	
+
 	/* All RRs should have additional node cached or NULL. */
 	for (uint16_t i = 0; i < rr->rdata_count; i++) {
 		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
@@ -281,7 +281,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 			continue;
 		}
 
-		for (uint16_t k = 0; k < AR_TYPE_COUNT; ++k) {
+		for (int k = 0; k < ar_type_count; ++k) {
 			additional = knot_node_rrset(node, ar_type_list[k]);
 			if (additional == NULL) {
 				continue;
@@ -294,7 +294,6 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 	}
 
 	return ret;
-	#undef AR_TYPE_COUNT
 }
 
 static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qdata)
@@ -313,20 +312,18 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	/* Now, try to put CNAME to answer. */
 	uint16_t rr_count_before = pkt->rrset_count;
 	ret = put_rr(pkt, cname_rr, 0, flags, qdata);
-	if (ret != KNOT_EOK) {
-		if (ret == KNOT_ESPACE) {
-			return TRUNC;
-		} else {
-			return ERROR;
-		}
-	} else {
-		/* Check if RR count increased. */
-		if (pkt->rrset_count <= rr_count_before) {
-			dbg_ns("%s: RR %p already inserted => CNAME loop\n",
-			       __func__, cname_rr);
-			qdata->node = NULL; /* Act is if the name leads to nowhere. */
-			return HIT;
-		}
+	switch (ret) {
+	case KNOT_EOK:    break;
+	case KNOT_ESPACE: return TRUNC;
+	default:          return ERROR;
+	}
+
+	/* Check if RR count increased. */
+	if (pkt->rrset_count <= rr_count_before) {
+		dbg_ns("%s: RR %p already inserted => CNAME loop\n",
+		       __func__, cname_rr);
+		qdata->node = NULL; /* Act is if the name leads to nowhere. */
+		return HIT;
 	}
 
 	/* Synthesize CNAME if followed DNAME. */
@@ -337,10 +334,10 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 		}
 		cname_rr = dname_cname_synth(cname_rr, qdata->name);
 		ret = put_rr(pkt, cname_rr, 0, KNOT_PF_FREE, qdata);
-		if (ret == KNOT_ESPACE) {
-			return TRUNC;
-		} else if (ret != KNOT_EOK) {
-			return ERROR;
+		switch (ret) {
+		case KNOT_EOK:    break;
+		case KNOT_ESPACE: return TRUNC;
+		default:          return ERROR;
 		}
 	}
 
@@ -548,7 +545,7 @@ static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 		assert(0);
 		break;
 	}
-	
+
 	/* Evaluate final state. */
 	switch (ret) {
 	case KNOT_EOK:    return state; /* Keep current state. */
@@ -562,7 +559,7 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 	if (!have_dnssec(qdata)) {
 		return state; /* DNSSEC not supported. */
 	}
-	
+
 	int ret = KNOT_ERROR;
 
 	switch (state) {
@@ -576,7 +573,7 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 		assert(0);
 		break;
 	}
-	
+
 	/* RFC4035, section 3.1 RRSIGs for RRs in AUTHORITY are mandatory. */
 	if (ret == KNOT_EOK) {
 		ret = nsec_append_rrsigs(pkt, false);
@@ -594,7 +591,7 @@ static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata
 {
 	/* Put OPT RR. */
 	int ret = knot_pkt_put_opt(pkt);
-	
+
 	/* Scan all RRs in ANSWER/AUTHORITY. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
 		/* Skip types for which it doesn't apply. */
@@ -648,7 +645,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	}
 
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
-	
+
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_have_tsig(qdata->query)) {
 		/* We have been challenged... */
@@ -660,7 +657,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
 	knot_pkt_begin(response, KNOT_ANSWER);
 	qdata->name = knot_pkt_qname(qdata->query);
-	
+
 	/* Begin processing. */
 	int state = BEGIN;
 	SOLVE_STEP(solve_answer_section, state);
