@@ -116,17 +116,18 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	        strfrom, sockaddr_portnum(addr));
 #endif
 
+	/* Create query processing parameter. */
+	struct ns_proc_query_param param = {0};
+	sockaddr_copy(&param.query_source, addr);
+	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
+	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
+	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
+
 	/* Rate limit is applied? */
 	server_t *server = (server_t *)query_ctx->ns->data;
 	if (knot_unlikely(server->rrl != NULL) && server->rrl->rate > 0) {
-		query_ctx->flags |= NS_QUERY_RATELIMIT;
-	} else {
-		query_ctx->flags &= ~NS_QUERY_RATELIMIT;
+		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
-
-	/* Create query processing parameter. */
-	struct ns_proc_query_param param;
-	sockaddr_copy(&param.query_source, addr);
 
 	/* Create query processing context. */
 	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
@@ -487,10 +488,6 @@ int udp_master(dthread_t *thread)
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&query_ctx.mm, 4 * sizeof(knot_pkt_t));
-
-	/* Disable transfers over UDP. */
-	query_ctx.flags |= NS_QUERY_NO_AXFR;
-	query_ctx.flags |= NS_QUERY_NO_IXFR;
 
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */

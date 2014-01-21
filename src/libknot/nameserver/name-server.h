@@ -314,15 +314,6 @@ enum ns_proc_state {
 	NS_PROC_FAIL = 1 << 3  /* Error. */
 };
 
-/*! \brief Packet processing flags. */
-enum ns_proc_flag {
-	/* Common flags. */
-	NS_PKTSIZE_NOLIMIT = 1 << 0, /* Don't limit packet size (for TCP). */
-
-	/* Module-specific flags. */
-	NS_PROCFLAG        = 1 << 8
-};
-
 /* Forward declarations. */
 struct ns_proc_module;
 
@@ -332,7 +323,7 @@ typedef struct ns_proc_context
 	int state;
 	mm_ctx_t mm;
 	uint16_t type;
-	uint16_t flags;
+
 	knot_nameserver_t *ns;
 	void *data;
 	

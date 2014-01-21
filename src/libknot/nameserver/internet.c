@@ -159,7 +159,8 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	switch (type) {
 	case KNOT_RRTYPE_ANY: /* Append all RRSets. */
 		/* If ANY not allowed, set TC bit. */
-		if (knot_zone_contents_any_disabled(qdata->zone->contents)) {
+		if ((qdata->param->proc_flags & NS_QUERY_LIMIT_ANY) &&
+		    knot_zone_contents_any_disabled(qdata->zone->contents)) {
 			knot_wire_set_tc(pkt->wire);
 			return KNOT_EOK;
 		}

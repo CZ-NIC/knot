@@ -180,7 +180,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 
 finish:
 	/* Apply rate limits for positive answers. */
-	if (ctx->flags & NS_QUERY_RATELIMIT) {
+	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
 		next_state = ratelimit_apply(next_state, pkt, ctx);
 	}
 	rcu_read_unlock();
@@ -365,21 +365,10 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		next_state = internet_notify(pkt, ctx->ns, data);
 		break;
 	case KNOT_QUERY_AXFR:
-		if (ctx->flags & NS_QUERY_NO_AXFR) {
-			/* AXFR disabled, respond with NOTIMPL. */
-			data->rcode = KNOT_RCODE_NOTIMPL;
-			next_state = NS_PROC_FAIL;
-		} else {
-			next_state = axfr_answer(pkt, ctx->ns, data);
-		}
+		next_state = axfr_answer(pkt, ctx->ns, data);
 		break;
 	case KNOT_QUERY_IXFR:
-		if (ctx->flags & NS_QUERY_NO_IXFR) {
-			/* IXFR disabled, respond with SOA. */
-			next_state = ixfr_answer_soa(pkt, ctx->ns, data);
-		} else {
-			next_state = ixfr_answer(pkt, ctx->ns, data);
-		}
+		next_state = ixfr_answer(pkt, ctx->ns, data);
 		break;
 	case KNOT_QUERY_UPDATE:
 		next_state = update_answer(pkt, ctx->ns, data);
@@ -515,7 +504,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 	qdata->zone = answer_zone_find(query, ctx->ns->zone_db);
 
 	/* Update maximal answer size. */
-	if (!(ctx->flags & NS_PKTSIZE_NOLIMIT)) {
+	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
 		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
 	}
 
@@ -541,7 +530,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 	resp->opt_rr.payload = MIN(client_maxlen, server_maxlen);
 
 	/* Update packet size limit. */
-	if (!(ctx->flags & NS_PKTSIZE_NOLIMIT)) {
+	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
 		resp->max_size =  MAX(resp->max_size, resp->opt_rr.payload);
 		dbg_ns("%s: packet size limit <= %zuB\n", __func__, resp->max_size);
 	}

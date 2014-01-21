@@ -57,13 +57,16 @@ extern const ns_proc_module_t _ns_proc_query;
 
 /* Query processing specific flags. */
 enum ns_proc_query_flag {
-	NS_QUERY_NO_AXFR   = NS_PROCFLAG << 1, /* Don't process AXFR */
-	NS_QUERY_NO_IXFR   = NS_PROCFLAG << 2, /* Don't process IXFR */
-	NS_QUERY_RATELIMIT = NS_PROCFLAG << 3  /* Apply rate limits. */
+	NS_QUERY_NO_AXFR    = 1 << 0, /* Don't process AXFR */
+	NS_QUERY_NO_IXFR    = 1 << 1, /* Don't process IXFR */
+	NS_QUERY_LIMIT_ANY  = 1 << 2, /* Limit ANY QTYPE (respond with TC=1) */
+	NS_QUERY_LIMIT_RATE = 1 << 3, /* Apply rate limits. */
+	NS_QUERY_LIMIT_SIZE = 1 << 4  /* Apply UDP size limit. */
 };
 
 /* Module load parameters. */
 struct ns_proc_query_param {
+	uint16_t   proc_flags;
 	sockaddr_t query_source;
 };
 

@@ -279,6 +279,11 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	struct timeval now = {0};
 	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;
 
+	/* If IXFR is disabled, respond with SOA. */
+	if (qdata->param->proc_flags & NS_QUERY_NO_IXFR) {
+		return ixfr_answer_soa(pkt, ns, qdata);
+	}
+
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 		ret = ixfr_answer_init(qdata);

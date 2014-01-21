@@ -108,7 +108,7 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
                       struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	struct ns_proc_query_param param;
+	struct ns_proc_query_param param = {0};
 	sockaddr_prep(&param.query_source);
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
@@ -375,14 +375,10 @@ int tcp_master(dthread_t *thread)
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
 	/* Create TCP answering context. */
-	memset(&tcp.query_ctx, 0, sizeof(tcp.query_ctx));
 	tcp.query_ctx.ns = handler->server->nameserver;
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&tcp.query_ctx.mm, 4 * sizeof(knot_pkt_t));
-
-	/* Packet size not limited by EDNS. */
-	tcp.query_ctx.flags |= NS_PKTSIZE_NOLIMIT;
 
 	/* Prepare structures for bound sockets. */
 	fdset_init(&tcp.set, conf()->ifaces_count + CONFIG_XFERS);

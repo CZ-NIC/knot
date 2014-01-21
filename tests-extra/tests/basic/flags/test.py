@@ -10,6 +10,9 @@ knot = t.server("knot")
 bind = t.server("bind")
 zone = t.zone("flags.")
 
+# Disable ANY over UDP
+knot.disable_any = True
+
 t.link(zone, knot)
 t.link(zone, bind)
 
@@ -44,5 +47,13 @@ resp.cmp(bind, authority=False) # Knot puts SOA compared to Bind!
 resp = knot.dig("513resp.flags", "TXT", udp=False)
 resp.check(flags="QR AA", noflags="TC RD RA AD CD")
 resp.cmp(bind)
+
+# Check ANY over UDP (expects TC=1)
+resp = knot.dig("flags", "ANY", udp=True)
+resp.check(flags="QR AA TC", noflags="RD RA AD CD")
+
+# Check ANY over TCP(expects TC=0)
+resp = knot.dig("flags", "ANY", udp=False)
+resp.check(flags="QR AA", noflags="TC RD RA AD CD")
 
 t.end()

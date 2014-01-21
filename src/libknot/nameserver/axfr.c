@@ -171,7 +171,12 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	int ret = KNOT_EOK;
 	struct timeval now = {0};
-	
+
+	/* If AXFR is disabled, respond with NOTIMPL. */
+	if (qdata->param->proc_flags & NS_QUERY_NO_AXFR) {
+		qdata->rcode = KNOT_RCODE_NOTIMPL;
+		return NS_PROC_FAIL;
+	}
 
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
