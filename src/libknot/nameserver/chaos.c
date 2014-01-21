@@ -58,17 +58,20 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 {
 	// truncate response to one TXT label
 	size_t response_len = strlen(response);
-	if (response_len > KNOT_DNAME_MAXLEN)
+	if (response_len > KNOT_DNAME_MAXLEN) {
 		response_len = KNOT_DNAME_MAXLEN;
+	}
 
 	knot_dname_t *rowner = knot_dname_copy(owner);
-	if (!rowner)
+	if (!rowner) {
 		return NULL;
+	}
 
 	knot_rrset_t *rrset;
 	rrset = knot_rrset_new(rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH, 0);
-	if (!rrset)
+	if (!rrset) {
 		return NULL;
+	}
 
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, response_len + 1);
 	if (!rdata) {
@@ -97,8 +100,9 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response)
 	}
 
 	knot_rrset_t *rrset = create_txt_rrset(qname, response_str);
-	if (!rrset)
+	if (!rrset) {
 		return KNOT_RCODE_SERVFAIL;
+	}
 
 	int result = knot_pkt_put(response, 0, rrset, KNOT_PF_FREE);
 	if (result != KNOT_EOK) {
@@ -108,7 +112,6 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response)
 
 	return KNOT_RCODE_NOERROR;
 }
-
 
 int knot_chaos_answer(knot_pkt_t *pkt, knot_nameserver_t *ns)
 {
