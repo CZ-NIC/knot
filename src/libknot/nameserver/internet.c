@@ -91,7 +91,7 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr, const knot_
  * \brief Checks if the name created by replacing the owner of \a dname_rrset
  *        in the \a qname by the DNAME's target would be longer than allowed.
  */
-static bool dname_cname_can_synth(const knot_rrset_t *rrset, const knot_dname_t *qname)
+static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname_t *qname)
 {
 	if (knot_dname_labels(qname, NULL)
 		- knot_dname_labels(knot_rrset_owner(rrset), NULL)
@@ -328,7 +328,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 
 	/* Synthesize CNAME if followed DNAME. */
 	if (rrtype == KNOT_RRTYPE_DNAME) {
-		if (dname_cname_can_synth(cname_rr, qdata->name)) {
+		if (dname_cname_cannot_synth(cname_rr, qdata->name)) {
 			qdata->rcode = KNOT_RCODE_YXDOMAIN;
 			return ERROR;
 		}
