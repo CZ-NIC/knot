@@ -241,7 +241,12 @@ static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
 		flags |= KNOT_PF_FREE;
 	}
 
-	return knot_pkt_put(pkt, 0, soa_rrset, flags);
+	ret = knot_pkt_put(pkt, 0, soa_rrset, flags);
+	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
+		knot_rrset_deep_free(&soa_rrset, 1);
+	}
+
+	return ret;
 }
 
 /*! \brief Put the delegation NS RRSet to the Authority section. */
