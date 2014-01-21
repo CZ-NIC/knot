@@ -1,3 +1,19 @@
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <config.h>
 
 #include "libknot/nameserver/axfr.h"
@@ -23,7 +39,7 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	unsigned i = state->cur_rrset;
 	unsigned rrset_count = knot_node_rrset_count(node);
 	const knot_rrset_t **rrset = knot_node_rrsets_no_copy(node);
-	
+
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
 		/* \note Only RRSIG for SOA, don't add the actual RRSet. */
@@ -145,7 +161,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 		} else { /* Packet full or other error. */
 			break;
 		}
-	}	
+	}
 
 	/* Append SOA on last packet. */
 	if (ret == KNOT_EOK) {
@@ -183,11 +199,11 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 		/* Check zone state. */
 		NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-		
+
 		/* Need valid transaction security. */
 		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
 		NS_NEED_AUTH(zone_data->xfr_out, qdata);
-		
+
 		ret = axfr_answer_init(qdata);
 		if (ret != KNOT_EOK) {
 			AXFR_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
@@ -196,7 +212,7 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 			AXFR_LOG(LOG_INFO, "Started (serial %u).", knot_zone_serial(qdata->zone->contents));
 		}
 	}
-	
+
 	/* Reserve space for TSIG. */
 	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
 
