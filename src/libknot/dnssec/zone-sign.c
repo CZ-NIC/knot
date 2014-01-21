@@ -958,6 +958,11 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	return update_dnskeys_rrsigs(dnskeys, soa, zone_keys, policy, changeset);
 }
 
+/*!
+ * \brief Goes through list and looks for RRSet type there.
+ *
+ * \return True if RR type is in the list, false otherwise.
+ */
 static bool rr_type_in_list(const knot_rrset_t *rr, const list_t *l)
 {
 	if (l == NULL || EMPTY_LIST(*l)) {

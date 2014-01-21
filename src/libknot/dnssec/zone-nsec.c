@@ -44,6 +44,21 @@ typedef struct {
 	const knot_zone_contents_t *zone;
 } nsec_chain_iterate_data_t;
 
+/*!
+ * \brief Parameters to be used when fixing NSEC(3) chain.
+ */
+typedef struct chain_fix_data {
+	const knot_zone_contents_t *zone;     // Zone to fix
+	knot_changeset_t *out_ch;             // Outgoing changes
+	const knot_dname_t *chain_start;      // Possible new starting node
+	bool old_connected;                   // Marks old start connection
+	const knot_dname_t *last_used_dname;  // Last dname used in chain
+	const knot_node_t *last_used_node;    // Last covered node used in chain
+	knot_dname_t *next_dname;             // Used to reconnect broken chain
+	const hattrie_t *sorted_changes;      // Iterated trie
+	uint32_t ttl;                         // TTL for NSEC(3) records
+} chain_fix_data_t;
+
 enum {
 	NSEC_NODE_SKIP = 1,
 	NSEC_NODE_RESET = 2
@@ -53,8 +68,9 @@ enum {
 
 typedef int (*chain_iterate_cb)(knot_node_t *, knot_node_t *, void *);
 typedef int (*chain_iterate_nsec_cb)(knot_dname_t *, knot_dname_t *,
-                                     knot_dname_t *, knot_dname_t *, void *);
-typedef int (*chain_finalize_cb)(void *);
+                                     knot_dname_t *, knot_dname_t *,
+                                     chain_fix_data_t *);
+typedef int (*chain_finalize_cb)(chain_fix_data_t *);
 
 /*!
  * \brief Call a function for each piece of the chain formed by sorted nodes.
@@ -115,9 +131,19 @@ static int chain_iterate(knot_zone_tree_t *nodes, chain_iterate_cb callback,
 	                 callback(current, first, data);
 }
 
+/*!
+ * \brief Iterates sorted changeset and calls callback function - works for
+ *        NSEC and NSEC3 chain.
+ *
+ * \param  nodes     Tree to fix.
+ * \param  callback  Callback to call.
+ * \param  finalize  Finalization callback.
+ * \param  data      Data needed for fixing.
+ * \return KNOT_E*
+ */
 static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
                               chain_finalize_cb finalize,
-                              void *data)
+                              chain_fix_data_t *data)
 {
 	assert(nodes);
 	assert(callback);
@@ -151,7 +177,10 @@ static int chain_iterate_nsec(hattrie_t *nodes, chain_iterate_nsec_cb callback,
 			// No NSEC should be created for 'current' node, skip
 			hattrie_iter_next(it);
 		} else if (result == NSEC_NODE_RESET) {
-			// Used previous node, call once again so that we don't loose this current
+			/*!
+			 * Used previous node, call once again so that
+			 * we don't lose this current node.
+			 */
 			previous_original = NULL;
 			previous_hashed = NULL;
 		} else if (result == KNOT_EOK) {
@@ -228,13 +257,12 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
  * \param from       Node that should contain the new RRSet
  * \param to         Node that should be pointed to from 'from'
  * \param ttl        Record TTL (SOA's minimun TTL).
- * \param from_apex  Indicates that 'from' node is zone apex node.
  *
  * \return NSEC RR set, NULL on error.
  */
 static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
                                        const knot_node_t *to,
-                                       uint32_t ttl, bool from_apex)
+                                       uint32_t ttl)
 {
 	assert(from);
 	assert(to);
@@ -253,7 +281,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	bitmap_add_node_rrsets(&rr_types, from);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
-	if (from_apex) {
+	if (knot_node_rrset(from->parent, KNOT_RRTYPE_SOA)) {
 		bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
 	}
 
@@ -315,8 +343,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 	}
 
 	// create new NSEC
-	bool a_is_apex = a == data->zone->apex;
-	knot_rrset_t *new_nsec = create_nsec_rrset(a, b, data->ttl, a_is_apex);
+	knot_rrset_t *new_nsec = create_nsec_rrset(a, b, data->ttl);
 	if (!new_nsec) {
 		dbg_dnssec_detail("Failed to create new NSEC.\n");
 		return KNOT_ENOMEM;
@@ -611,6 +638,7 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b, void *data)
 
 	assert(raw_length == knot_nsec3_hash_length(algorithm));
 
+	knot_dname_to_lower(b->owner);
 	uint8_t *b32_hash = (uint8_t *)knot_dname_to_str(b->owner);
 	size_t b32_length = knot_nsec3_hash_b32_length(algorithm);
 	if (!b32_hash) {
@@ -697,6 +725,13 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 	return nsec3_node;
 }
 
+/*!
+ * \brief Removes NSEC RR from node if NSEC3 is used.
+ *
+ * \param node    Node to be checked.
+ * \param chgset  Changes are stored in this variable.
+ * \return KNOT_E*
+ */
 static int remove_nsec_from_node(const knot_node_t *node,
                                  knot_changeset_t *chgset)
 {
@@ -845,6 +880,13 @@ static int create_nsec3_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 	return result;
 }
 
+/*!
+ * \brief Deletes NSEC3 chain if NSEC should be used.
+ *
+ * \param zone       Zone to fix.
+ * \param changeset  Changeset to be used.
+ * \return KNOT_E*
+ */
 static int delete_nsec3_chain(const knot_zone_contents_t *zone,
                               knot_changeset_t *changeset)
 {
@@ -910,6 +952,16 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	return true;
 }
 
+/* - Chain fix functions  --------------------------------------------------- */
+
+/*!
+ * \brief Cuts DNAME and looks for all the labels in the zone.
+ *
+ * \param dname  DNAME to be cut.
+ * \param zone   Zone to be searched.
+ * \param t      Trie that contains empty non-terminals.
+ * \return KNOT_E*
+ */
 static int walk_dname_and_store_empty_nonterminals(const knot_dname_t *dname,
                                                    const knot_zone_contents_t *zone,
                                                    hattrie_t *t)
@@ -1025,6 +1077,13 @@ static int update_changes_with_empty_non_terminals(const knot_zone_contents_t *z
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Iterates through changes made by DDNS/reload and NSEC3-hashes each name.
+ * \param sorted_changes  Changes to be iterated.
+ * \param zone            Changed zone.
+ * \param out             NSEC3 hashes are saved here with original DNAMEs.
+ * \return KNOT_E*
+ */
 static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
                                          const knot_zone_contents_t *zone,
                                          hattrie_t **out)
@@ -1054,9 +1113,10 @@ static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
 			hattrie_free(*out);
 			return KNOT_ERROR;
 		}
+		knot_dname_to_lower(nsec3_name);
 		val->hashed_dname = nsec3_name;
 
-		// Convert NSEC3 hash to sortable
+		// Convert NSEC3 hash to sortable format
 		uint8_t lf[KNOT_DNAME_MAXLEN];
 		knot_dname_lf(lf, nsec3_name, NULL);
 		// Store into new trie
@@ -1066,15 +1126,26 @@ static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Returns true if NSEC is only RRSet in node.
+ */
 static bool only_nsec_in_node(const knot_node_t *n)
 {
 	assert(n);
 	return n->rrset_count == 1 && knot_node_rrset(n, KNOT_RRTYPE_NSEC);
 }
 
+/*!
+ * \brief Checks whether NSEC in zone is valid and updates it if needed.
+ *
+ * \param from     Start node for NSEC link.
+ * \param to       End node for NSEC link.
+ * \param out_ch   Changes are stored here.
+ * \param soa_min  TTL to use for NSEC RRs.
+ * \return KNOT_E*
+ */
 static int update_nsec(const knot_node_t *from, const knot_node_t *to,
-                       knot_changeset_t *out_ch, uint32_t soa_min,
-                       bool is_apex)
+                       knot_changeset_t *out_ch, uint32_t soa_min)
 {
 	assert(from && to && out_ch);
 	const knot_rrset_t *nsec_rrset = knot_node_rrset(from,
@@ -1085,7 +1156,7 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 		// Just NSEC present, it has to be dropped
 		new_nsec = NULL;
 	} else {
-		new_nsec = create_nsec_rrset(from, to, soa_min, is_apex);
+		new_nsec = create_nsec_rrset(from, to, soa_min);
 		if (new_nsec == NULL) {
 			return KNOT_ERROR;
 		}
@@ -1136,6 +1207,17 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Checks whether NSEC3 RR in zone is valid and updates it if needed.
+ *
+ * \param from          Start hash in NSEC3 link.
+ * \param to            Destination hash in NSEC3 link.
+ * \param covered_node  Node covered by 'from' hash.
+ * \param out_ch        Changes go here.
+ * \param zone          Changed zone.
+ * \param soa_min       TTL to use for new NSEC3 RRs.
+ * \return KNOT_E*
+ */
 static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
                         const knot_node_t *covered_node,
                         knot_changeset_t *out_ch,
@@ -1180,7 +1262,6 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 			free(binary_next);
 			return KNOT_ENOMEM;
 		}
-
 		// Create the RRSet
 		gen_nsec3 = create_nsec3_rrset(owner, &zone->nsec3_params,
 		                               &bm, binary_next, soa_min);
@@ -1240,18 +1321,13 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 	return KNOT_EOK;
 }
 
-typedef struct chain_fix_data {
-	const knot_zone_contents_t *zone;     // Zone to fix
-	knot_changeset_t *out_ch;             // Outgoing changes
-	const knot_dname_t *chain_start;      // Possible new starting node
-	bool old_connected;                   // Marks old start connection
-	const knot_dname_t *last_used_dname;  // Last dname used in chain
-	const knot_node_t *last_used_node;    // Last covered node used in chain
-	knot_dname_t *next_dname;             // Used to reconnect broken chain
-	const hattrie_t *sorted_changes;      // Iterated trie
-	uint32_t ttl;                         // TTL for NSEC(3) records
-} chain_fix_data_t;
-
+/*!
+ * \brief Finds previous usable NSEC node in zone.
+ *
+ * \param z  Zone to be searched.
+ * \param d  DNAME to search for.
+ * \return Previous NSEC node for 'd'.
+ */
 static const knot_node_t *find_prev_nsec_node(const knot_zone_contents_t *z,
                                               const knot_dname_t *d)
 {
@@ -1277,6 +1353,14 @@ static const knot_node_t *find_prev_nsec_node(const knot_zone_contents_t *z,
 	return prev_zone_node;
 }
 
+/*!
+ * \brief Checks whether NSEC3 covered was not changed and is now non-auth.
+ *
+ * \param z               Zone to be searched.
+ * \param d_hashed        Hash to look for.
+ * \param sorted_changes  DDNS/reload changes.
+ * \return True if this node can be used, false otherwise.
+ */
 static bool covered_node_usable(const knot_zone_contents_t *z,
                                 const knot_dname_t *d_hashed,
                                 const hattrie_t *sorted_changes)
@@ -1299,6 +1383,14 @@ static bool covered_node_usable(const knot_zone_contents_t *z,
 	}
 }
 
+/*!
+ * \brief Finds previous usable NSEC3 node in zone, checks if node node not
+ *        deleted in changes.
+ * \param z               Zone to be searched.
+ * \param d_hashed        Hash to search for.
+ * \param sorted_changes  DDNS/reload changes.
+ * \return Previous NSEC3 node for 'd_hashed'.
+ */
 static const knot_node_t *find_prev_nsec3_node(const knot_zone_contents_t *z,
                                                const knot_dname_t *d_hashed,
                                                const hattrie_t *sorted_changes)
@@ -1324,6 +1416,13 @@ static const knot_node_t *find_prev_nsec3_node(const knot_zone_contents_t *z,
 	return prev_nsec3_node;
 }
 
+/*!
+ * \brief Creates knot_dname_t * from 'next hashed' NSEC3 RR field.
+ *
+ * \param rr         NSEC3 RRSet.
+ * \param zone_apex  Zone apex dname.
+ * \return Created dname if successful, NULL otherwise.
+ */
 static knot_dname_t *next_dname_from_nsec3_rrset(const knot_rrset_t *rr,
                                                  const knot_dname_t *zone_apex)
 {
@@ -1343,14 +1442,21 @@ static knot_dname_t *next_dname_from_nsec3_rrset(const knot_rrset_t *rr,
 	free(encoded);
 	memcpy(catted_hash + 1 + encoded_size,
 	       zone_apex, knot_dname_size(zone_apex));
-	assert(knot_dname_wire_check(catted_hash,
-	                             catted_hash + encoded_size +
-	                             knot_dname_size(zone_apex), NULL));
 	knot_dname_t *next_dname = knot_dname_copy(catted_hash);
+	if (next_dname == NULL) {
+		return NULL;
+	}
 	knot_dname_to_lower(next_dname);
 	return next_dname;
 }
 
+/*!
+ * \brief Handles node that has been deleted by DDNS/reload. NSEC + NSEC3.
+ *
+ * \param node      Deleted node
+ * \param fix_data  Chain fix data.
+ * \return KNOT_E*, NSEC_NODE_SKIP
+ */
 static int handle_deleted_node(const knot_node_t *node,
                                chain_fix_data_t *fix_data)
 {
@@ -1370,7 +1476,7 @@ static int handle_deleted_node(const knot_node_t *node,
 		return ret;
 	}
 
-	/*
+	/*!
 	 * This node should be ignored, but we might need the next dname from
 	 * previous node.
 	 */
@@ -1392,6 +1498,13 @@ static int handle_deleted_node(const knot_node_t *node,
 	return NSEC_NODE_SKIP;
 }
 
+/*!
+ * \brief Updates last used node and DNAME.
+ *
+ * \param data  Data to be updated.
+ * \param d     DNAME to be set.
+ * \param n     Node to be set.
+ */
 static void update_last_used(chain_fix_data_t *data, const knot_dname_t *d,
                              const knot_node_t *n)
 {
@@ -1400,23 +1513,36 @@ static void update_last_used(chain_fix_data_t *data, const knot_dname_t *d,
 	data->last_used_node = n;
 }
 
+/*!
+ * \brief Updates 'chain_start' field in 'chain_fix_data_t'.
+ *
+ * \param data  Data to be updated.
+ * \param d     DNAME to be set.
+ */
 static void update_chain_start(chain_fix_data_t *data, const knot_dname_t *d)
 {
 	assert(data && d);
 	data->chain_start = d;
 }
 
+/*!
+ * \brief Fixes 'gaps' between old and new NSEC chain.
+ *
+ * \param fix_data  Chain fix data.
+ * \param a         Dname that should be connected to old chain.
+ * \param a_node    Node that should be connected to old chain.
+ * \return KNOT_E*, or NSEC_NODE_RESET if needed.
+ */
 static int handle_nsec_next_dname(chain_fix_data_t *fix_data,
                                   const knot_dname_t *a,
                                   const knot_node_t *a_node)
 {
 	assert(fix_data && fix_data->next_dname && a && a_node);
-	const bool is_apex = a_node == fix_data->zone->apex;
 	int ret = KNOT_EOK;
 	if (knot_dname_is_equal(fix_data->next_dname, a)) {
 		// We cannot point to the same record here, extract next->next
-		const knot_rrset_t *nsec_rrset = knot_node_rrset(a_node,
-		                                                 KNOT_RRTYPE_NSEC);
+		const knot_rrset_t *nsec_rrset =
+			knot_node_rrset(a_node, KNOT_RRTYPE_NSEC);
 		assert(nsec_rrset);
 		const knot_node_t *next_node =
 			knot_zone_contents_find_node(fix_data->zone,
@@ -1424,7 +1550,7 @@ static int handle_nsec_next_dname(chain_fix_data_t *fix_data,
 		assert(next_node);
 		update_last_used(fix_data, next_node->owner, next_node);
 		ret = update_nsec(a_node, next_node, fix_data->out_ch,
-		                  fix_data->ttl, is_apex);
+		                  fix_data->ttl);
 	} else {
 		// We have no immediate previous node, connect broken chain
 		const knot_node_t *next_node =
@@ -1433,16 +1559,23 @@ static int handle_nsec_next_dname(chain_fix_data_t *fix_data,
 		assert(next_node);
 		update_last_used(fix_data, next_node->owner, next_node);
 		ret = update_nsec(a_node, next_node, fix_data->out_ch,
-		                  fix_data->ttl, is_apex);
+		                  fix_data->ttl);
 	}
 	fix_data->next_dname = NULL;
 	return ret == KNOT_EOK ? NSEC_NODE_RESET : ret;
 }
 
-static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
+/*!
+ * \brief Fixes NSEC chain for 'a' and 'b'. 'a' is always < 'b'.
+ * \param a
+ * \param b
+ * \param fix_data
+ * \return KNOT_E*, NSEC_NODE_SKIP, NSEC_NODE_RESET if needed.
+ */
+static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b,
+                          chain_fix_data_t *fix_data)
 {
 	assert(b);
-	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
 	assert(fix_data);
 	// Get changed nodes from zone
 	const knot_node_t *b_node = knot_zone_contents_find_node(fix_data->zone,
@@ -1464,7 +1597,10 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 	// Handle removals
 	bool node_deleted = only_nsec_in_node(b_node);
 	if (node_deleted) {
-		// If DDNS only contains removals, we need at least one last_used_dname
+		/*!
+		 * If DDNS only contains removals, we need at least
+		 * one 'last_used_dname'.
+		 */
 		if (fix_data->last_used_dname == NULL) {
 			assert(fix_data->last_used_node == NULL);
 			update_last_used(fix_data, prev_zone_node->owner,
@@ -1480,8 +1616,7 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 		// No valid data for the previous node, create the forward link
 		update_last_used(fix_data, b_node->owner, b_node);
 		return update_nsec(a_node, b_node, fix_data->out_ch,
-		                   fix_data->ttl,
-		                   prev_zone_node == fix_data->zone->apex);
+		                   fix_data->ttl);
 	} else {
 		// Use data from zone or next_dname
 		if (fix_data->next_dname) {
@@ -1500,16 +1635,19 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b, void *d)
 		update_last_used(fix_data, next_node->owner, next_node);
 		// Fix NSEC
 		return update_nsec(prev_zone_node, next_node, fix_data->out_ch,
-		                   fix_data->ttl,
-		                   prev_zone_node == fix_data->zone->apex);
+		                   fix_data->ttl);
 	}
 
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Wrapper for iteration function to be used with NSEC,
+ *        shortens the code a bit.
+ */
 static int fix_nsec_chain_wrap(knot_dname_t *a, knot_dname_t *a_hash,
                                knot_dname_t *b, knot_dname_t *b_hash,
-                               void *d)
+                               chain_fix_data_t *d)
 {
 	UNUSED(a_hash);
 	UNUSED(b_hash);
@@ -1517,6 +1655,11 @@ static int fix_nsec_chain_wrap(knot_dname_t *a, knot_dname_t *a_hash,
 }
 
 
+/*!
+ * \brief Updates next dname with 'next_hashed' from d's NSEC3 RR.
+ * \param fix_data  Data to be updated.
+ * \param d         DNAME to search for.
+ */
 static void update_next_nsec3_dname(chain_fix_data_t *fix_data,
                                     const knot_dname_t *d)
 
@@ -1537,11 +1680,16 @@ static void update_next_nsec3_dname(chain_fix_data_t *fix_data,
 	}
 }
 
-
+/*!
+ * \brief Fetches covered node for 'hash' from zone.
+ *
+ * \param fix_data  Chain fix data.
+ * \param hash      Hash to search for.
+ * \return          Covered node if changed via DDNS/reload, NULL otherwise.
+ */
 static const knot_node_t *fetch_covered_node(chain_fix_data_t *fix_data,
                                              const knot_dname_t *hash)
 {
-	assert(fix_data && hash);
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, hash, NULL);
 	value_t *val = hattrie_tryget((hattrie_t *)fix_data->sorted_changes,
@@ -1556,6 +1704,15 @@ static const knot_node_t *fetch_covered_node(chain_fix_data_t *fix_data,
 	}
 }
 
+/*!
+ * \brief Checks if old and new NSEC3 chains should be connected.
+ *
+ * \param fix_data Chain fix data.
+ * \param a          Old chain end.
+ * \param b          New chain start.
+ * \param zone_prev  Previous node from zone for 'b'.
+ * \return True if chains should be connected, false if no.
+ */
 static bool should_connect_to_old(chain_fix_data_t *fix_data,
                                   const knot_dname_t *a, const knot_dname_t *b,
                                   const knot_dname_t *zone_prev)
@@ -1566,6 +1723,16 @@ static bool should_connect_to_old(chain_fix_data_t *fix_data,
 	       knot_dname_cmp(zone_prev, b) < 0;
 }
 
+/*!
+ * \brief Connects old NSEC3 chain and new NSE3 chain.
+ *
+ * \param fix_data        Chain fix data.
+ * \param a_hash          Old NSEC3 chain end.
+ * \param b_hash          New NSEC3 chain beginning.
+ * \param a_node          Node covered by 'a_hash', from changeset.
+ * \param zone_prev_node  Nobe covered by 'a_hash', from zone.
+ * \return KNOT_E*
+ */
 static int connect_to_old_start(chain_fix_data_t *fix_data,
                                 const knot_dname_t *a_hash,
                                 const knot_dname_t *b_hash,
@@ -1587,6 +1754,15 @@ static int connect_to_old_start(chain_fix_data_t *fix_data,
 	                    fix_data->out_ch, fix_data->zone, fix_data->ttl);
 }
 
+/*!
+ * \brief Handles fixing of 'gaps' in NSEC3 chain.
+ *
+ * \param fix_data      Chain fix data.
+ * \param a_hash        Hash of DNAME we want to connect to.
+ * \param a_node        Node covered by 'a_hash' (normal node)
+ * \param a_nsec3_node  NSEC3 node for 'a_hash'
+ * \return KNOT_E*
+ */
 static int handle_nsec3_next_dname(chain_fix_data_t *fix_data,
                                    const knot_dname_t *a_hash,
                                    const knot_node_t *a_node,
@@ -1630,6 +1806,14 @@ static int handle_nsec3_next_dname(chain_fix_data_t *fix_data,
 	return ret == KNOT_EOK ? NSEC_NODE_RESET : ret;
 }
 
+/*!
+ * \brief Decides whether to use previous hash from zone or changeset.
+ *
+ * \param a_hash     Previous hash from changeset.
+ * \param b_hash     Hash we want to connect to.
+ * \param zone_prev  Previous hash from zone.
+ * \return True if previous dname from changeset should be used, false otherwise.
+ */
 static bool use_prev_from_changeset(const knot_dname_t *a_hash,
                                     const knot_dname_t *b_hash,
                                     const knot_dname_t *zone_prev)
@@ -1640,15 +1824,18 @@ static bool use_prev_from_changeset(const knot_dname_t *a_hash,
 		                                     zone_prev) >= 0;
 		// Previous node is no longer valid - new chain start was set
 		bool part_of_new_start = knot_dname_cmp(a_hash,
-		                                         zone_prev) < 0 &&
+		                                        zone_prev) < 0 &&
 		                         knot_dname_cmp(b_hash,
-		                                         zone_prev) <= 0;
+		                                        zone_prev) <= 0;
 		return name_eq_closer || part_of_new_start;
 	} else {
 		return false;
 	}
 }
 
+/*!
+ * \brief Helper function - sets variables by looking for data in the zone.
+ */
 static void fetch_nodes_from_zone(const knot_zone_contents_t *z,
                                   const knot_dname_t *a,
                                   const knot_dname_t *b,
@@ -1665,13 +1852,25 @@ static void fetch_nodes_from_zone(const knot_zone_contents_t *z,
 	*b_nsec3_node = knot_zone_contents_find_nsec3_node(z, b_hash);
 }
 
+/*!
+ * \brief Fixes one link between 'a' and 'b', or rather between their hashes.
+ *        'a_hash' is always < 'b_hash'. Called only via iteration function.
+ *
+ * \param a         Normal DNAME (changed in the update/reload)
+ * \param a_hash    NSEC3 hash of 'a'.
+ * \param b         Normal DNAME (changed in the update/reload)
+ * \param b_hash    NSEC3 hash of 'b'.
+ * \param fix_data  Fix data.
+ * \return KNOT_EOK if okay, KNOT_E* if something went wrong,
+ *         NSEC_NODE_RESET, NSEC_NODE_SKIP if special handling is needed by the
+ *         iteration funtion.
+ */
 static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
                            knot_dname_t *b, knot_dname_t *b_hash,
-                           void *d)
+                           chain_fix_data_t *fix_data)
 {
 	assert(b && b_hash);
 	assert((!a && !a_hash) || (a && a_hash));
-	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
 	assert(fix_data);
 	// Get nodes from zone
 	const knot_node_t *a_node, *b_node, *a_nsec3_node, *b_nsec3_node;
@@ -1692,7 +1891,8 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		// The deleted node might have been authoritative, but not anymore
 		if (fix_data->last_used_dname == NULL) {
 			update_last_used(fix_data, prev_nsec3_node->owner,
-			                 fetch_covered_node(fix_data, prev_nsec3_node->owner));
+			                 fetch_covered_node(fix_data,
+			                                    prev_nsec3_node->owner));
 		}
 		return handle_deleted_node(b_nsec3_node, fix_data);
 	}
@@ -1711,7 +1911,7 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 		                    fix_data->zone, fix_data->ttl);
 	}
 	if (should_connect_to_old(fix_data,
-	                           a_hash, b_hash, prev_nsec3_node->owner)) {
+	                          a_hash, b_hash, prev_nsec3_node->owner)) {
 		// Connect old start with new start
 		return connect_to_old_start(fix_data, a_hash, b_hash, a_node,
 		                            prev_nsec3_node);
@@ -1743,9 +1943,13 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 	return KNOT_EOK;
 }
 
-static int chain_finalize_nsec(void *d)
+/*!
+ * \brief Finalizes NSEC chain.
+ * \param d  Fix data.
+ * \return KNOT_E*
+ */
+static int chain_finalize_nsec(chain_fix_data_t *fix_data)
 {
-	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
 	assert(fix_data);
 	assert(fix_data->last_used_dname && fix_data->next_dname);
 	const knot_node_t *from = fix_data->last_used_node;
@@ -1768,10 +1972,15 @@ static int chain_finalize_nsec(void *d)
 		                                  fix_data->next_dname);
 	}
 	assert(to);
-	return update_nsec(from, to, fix_data->out_ch,
-	                   fix_data->ttl, from == fix_data->zone->apex);
+	return update_nsec(from, to, fix_data->out_ch, fix_data->ttl);
 }
 
+/*!
+ * \brief  Gets first NSEC3 node from zone.
+ *
+ * \param  z Zone to be searched.
+ * \return first NSEC3 node on success, NULL otherwise.
+ */
 static const knot_node_t *zone_first_nsec3_node(const knot_zone_contents_t *z)
 {
 	assert(z && hattrie_weight(z->nsec3_nodes) > 0);
@@ -1785,6 +1994,12 @@ static const knot_node_t *zone_first_nsec3_node(const knot_zone_contents_t *z)
 	return first_node;
 }
 
+/*!
+ * \brief  Gets last NSEC3 node from zone.
+ *
+ * \param  z Zone to be searched.
+ * \return last NSEC3 node on success, NULL otherwise.
+ */
 static const knot_node_t *zone_last_nsec3_node(const knot_zone_contents_t *z)
 {
 	// Get first node
@@ -1796,9 +2011,14 @@ static const knot_node_t *zone_last_nsec3_node(const knot_zone_contents_t *z)
 	return knot_zone_contents_find_previous_nsec3(z, first_node->owner);
 }
 
-static int chain_finalize_nsec3(void *d)
+/*!
+ * \brief Finalizes NSEC3 chain.
+ *
+ * \param fix_data Chain fix data.
+ * \return KNOT_E*
+ */
+static int chain_finalize_nsec3(chain_fix_data_t *fix_data)
 {
-	chain_fix_data_t *fix_data = (chain_fix_data_t *)d;
 	assert(fix_data);
 	if (fix_data->next_dname == NULL && fix_data->chain_start == NULL) {
 		// Nothing to fix
@@ -1996,6 +2216,9 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
 }
 
+/*!
+ * \brief Fix NSEC or NSEC3 chain in the zone.
+ */
 int knot_zone_fix_chain(const knot_zone_contents_t *zone,
                         hattrie_t *sorted_changes,
                         knot_changeset_t *out_ch,
@@ -2008,7 +2231,7 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 	}
 
 	if (hattrie_weight(sorted_changes) == 0) {
-		// no changes, no fixing
+		// no changes, no fix
 		return KNOT_EOK;
 	}
 
@@ -2040,6 +2263,7 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 		hattrie_build_index(nsec3_names);
 		fix_data.sorted_changes = nsec3_names;
 
+		// Fix NSEC3 chain
 		ret = chain_iterate_nsec(nsec3_names, fix_nsec3_chain,
 		                         chain_finalize_nsec3,
 		                         &fix_data);
@@ -2047,6 +2271,7 @@ int knot_zone_fix_chain(const knot_zone_contents_t *zone,
 	} else {
 		hattrie_build_index(sorted_changes);
 
+		// Fix NSEC chain
 		ret = chain_iterate_nsec(sorted_changes, fix_nsec_chain_wrap,
 		                         chain_finalize_nsec,
 		                         &fix_data);
