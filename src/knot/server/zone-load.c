@@ -355,10 +355,12 @@ static void zonedata_freeze(knot_zone_t *zone)
 	
 	/* Now some transfers may already be running, we need to wait for them. */
 	/*! \todo This should be done somehow. */
-	
+
 	/* Reacquire journal to ensure all operations on it are finished. */
-	if (journal_retain(zone_data->ixfr_db) == KNOT_EOK) {
-		journal_release(zone_data->ixfr_db);
+	if (journal_is_used(zone_data->ixfr_db)) {
+		if (journal_retain(zone_data->ixfr_db) == KNOT_EOK) {
+			journal_release(zone_data->ixfr_db);
+		}
 	}
 }
 

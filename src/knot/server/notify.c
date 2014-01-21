@@ -285,10 +285,10 @@ int notify_process_request(knot_nameserver_t *ns,
 	if (rcode != KNOT_RCODE_NOERROR) {
 		knot_ns_error_response_from_query(ns, notify, KNOT_RCODE_REFUSED,
 		                                  buffer, size);
-		log_server_warning(NOTIFY_MSG "%s\n", qstr, fromstr, knot_strerror(ret));
+		log_zone_warning(NOTIFY_MSG "%s\n", qstr, fromstr, knot_strerror(ret));
 		ret = KNOT_EOK; /* Send response. */
 	} else {
-		log_server_info(NOTIFY_MSG NOTIFY_XMSG "\n", qstr, fromstr, serial);
+		log_zone_info(NOTIFY_MSG NOTIFY_XMSG "\n", qstr, fromstr, serial);
 	}
 	free(qstr);
 	free(fromstr);

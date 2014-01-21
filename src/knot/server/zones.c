@@ -350,7 +350,7 @@ static int zones_zonefile_sync_from_ev(knot_zone_t *zone, zonedata_t *zd)
 
 	/* Only on zones with valid contents (non empty). */
 	int ret = KNOT_EOK;
-	if (knot_zone_contents(zone)) {
+	if (knot_zone_contents(zone) && journal_is_used(zd->ixfr_db)) {
 		/* Synchronize journal. */
 		ret = journal_retain(zd->ixfr_db);
 		if (ret == KNOT_EOK) {
@@ -635,16 +635,10 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	rcu_read_lock();
 	/* Check journal file existence. */
-	struct stat st;
-	if (stat(zd->conf->ixfr_db, &st) == -1) {
-		rcu_read_unlock();
-		return KNOT_ERANGE; /* Not existent, no changesets available. */
+	if (!journal_is_used(zd->ixfr_db)) {
+		return KNOT_ERANGE; /* Not used, no changesets available. */
 	}
-	dbg_xfr("xfr: loading changesets for zone '%s' from serial %u to %u\n",
-	        zd->conf->name, from, to);
-	rcu_read_unlock();
 
 	/* Retain journal for changeset loading. */
 	int ret = journal_retain(zd->ixfr_db);
