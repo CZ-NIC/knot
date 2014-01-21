@@ -172,7 +172,7 @@ int zones_expire_ev(event_t *e)
 	synchronize_rcu();
 
 	/* Log event. */
-	log_server_info("Zone '%s' expired.\n", zd->conf->name);
+	log_zone_warning("Zone '%s' expired.\n", zd->conf->name);
 
 	/* Cancel REFRESH timer. */
 	if (zd->xfr_in.timer) {
@@ -428,8 +428,8 @@ static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
 		/* Fetch zone-specific data. */
 		zonedata_t *zd = (zonedata_t *)zone->data;
 
-		log_server_notice("Journal for '%s' is full, flushing.\n",
-		                  zd->conf->name);
+		log_zone_notice("Journal for '%s' is full, flushing.\n",
+		                zd->conf->name);
 		/* Don't worry about sync event. It can't happen while this
 		 * event (signing) is not finished. We may thus do the sync
 		 * by hand and leave the planned one there to be executed
@@ -440,8 +440,7 @@ static int zones_store_changesets_begin_and_store(knot_zone_t *zone,
 		/* Transaction rolled back, journal released, we may flush. */
 		ret = zones_zonefile_sync_from_ev(zone, zd);
 		if (ret != KNOT_EOK) {
-			log_server_error("Failed to sync journal to zone file."
-			                 "\n");
+			log_zone_error("Failed to sync journal to zone file.\n");
 			return ret;
 		}
 
@@ -2663,8 +2662,8 @@ int zones_schedule_notify(knot_zone_t *zone)
 		/* Create request. */
 		knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_NOTIFY, XFR_FLAG_UDP);
 		if (!rq) {
-			log_server_error("Failed to create NOTIFY for '%s', "
-			                 "not enough memory.\n", cfg->name);
+			log_zone_error("Failed to create NOTIFY for '%s', "
+			               "not enough memory.\n", cfg->name);
 			continue;
 		}
 
@@ -2674,8 +2673,8 @@ int zones_schedule_notify(knot_zone_t *zone)
 		xfr_task_setaddr(rq, &addr, &cfg_if->via);
 		rq->data = (void *)((long)cfg->notify_retries);
 		if (xfr_enqueue(zd->server->xfr, rq) != KNOT_EOK) {
-			log_server_error("Failed to enqueue NOTIFY for '%s'.",
-			                 cfg->name);
+			log_zone_error("Failed to enqueue NOTIFY for '%s'.",
+			               cfg->name);
 			continue;
 		}
 	}
@@ -3045,23 +3044,23 @@ int zones_journal_apply(knot_zone_t *zone)
 	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
 		if (!EMPTY_LIST(chsets->sets)) {
 			/* Apply changesets. */
-			log_server_info("Applying '%zu' changesets from journal "
-			                "to zone '%s'.\n",
-			                chsets->count, zd->conf->name);
+			log_zone_info("Applying '%zu' changesets from journal "
+			              "to zone '%s'.\n",
+			              chsets->count, zd->conf->name);
 			knot_zone_contents_t *contents = NULL;
 			int apply_ret = xfrin_apply_changesets(zone, chsets,
 			                                       &contents);
 			if (apply_ret != KNOT_EOK) {
-				log_server_error("Failed to apply changesets to"
-				                 " '%s' - Apply failed: %s\n",
-				                 zd->conf->name,
-				                 knot_strerror(apply_ret));
+				log_zone_error("Failed to apply changesets to"
+				               " '%s' - Apply failed: %s\n",
+				               zd->conf->name,
+				               knot_strerror(apply_ret));
 				ret = KNOT_ERROR;
 			} else {
 				/* Switch zone immediately. */
-				log_server_info("Zone '%s' serial %u -> %u.\n",
-				                zd->conf->name,
-				                serial, knot_zone_serial(contents));
+				log_zone_info("Zone '%s' serial %u -> %u.\n",
+				              zd->conf->name,
+				              serial, knot_zone_serial(contents));
 				dbg_zones("Old zone contents: %p, new: %p\n",
 				          zone->contents, contents);
 				rcu_read_unlock();
@@ -3072,10 +3071,10 @@ int zones_journal_apply(knot_zone_t *zone)
 					xfrin_cleanup_successful_update(
 							chsets->changes);
 				} else {
-					log_server_error("Failed to apply "
-					  "changesets to '%s' - Switch failed: "
-					  "%s\n", zd->conf->name,
-					  knot_strerror(apply_ret));
+					log_zone_error("Failed to apply "
+					               "changesets to '%s' - Switch failed: "
+					               "%s\n", zd->conf->name,
+					               knot_strerror(apply_ret));
 					ret = KNOT_ERROR;
 
 					// Cleanup old and new contents

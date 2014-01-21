@@ -130,7 +130,7 @@ static int zonedata_init(conf_zone_t *cfg, knot_zone_t *zone)
 	if (zd->ixfr_db == NULL) {
 		char ebuf[256] = {0};
 		if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
-			log_server_warning("Couldn't open journal file for "
+			log_zone_warning("Couldn't open journal file for "
 			                   "zone '%s', disabling incoming "
 			                   "IXFR. (%s)\n", cfg->name, ebuf);
 		}
@@ -449,8 +449,8 @@ knot_zone_t *get_not_found_zone(knot_zone_t *old_zone, const knot_dname_t *apex,
 	knot_zone_t *new_zone = create_bootstrap_zone(apex);
 	zonedata_init(conf, new_zone);
 	if (!new_zone) {
-		log_server_error("Bootstrap of zone '%s' failed: %s\n",
-		                 conf->name, knot_strerror(KNOT_ENOMEM));
+		log_zone_error("Bootstrap of zone '%s' failed: %s\n",
+		               conf->name, knot_strerror(KNOT_ENOMEM));
 		return NULL;
 	}
 
@@ -476,12 +476,11 @@ static knot_zone_t *load_zone(conf_zone_t *conf)
 	case KNOT_EOK:
 		break;
 	case KNOT_EACCES:
-		log_server_error("No access/permission to zone file '%s'.\n",
-		                 conf->file);
+		log_zone_error("No access/permission to zone file '%s'.\n", conf->file);
 		knot_zload_close(zl);
 		return NULL;
 	default:
-		log_server_error("Failed to load zone file '%s'\n", conf->file);
+		log_zone_error("Failed to load zone file '%s'\n", conf->file);
 		knot_zload_close(zl);
 		return NULL;
 	}
@@ -500,9 +499,8 @@ static knot_zone_t *load_zone(conf_zone_t *conf)
 	knot_dname_t *dname_req = NULL;
 	dname_req = knot_dname_from_str(conf->name);
 	if (knot_dname_cmp(dname, dname_req) != 0) {
-		log_server_error("Origin of the zone db file is "
-				 "different than '%s'\n",
-				 conf->name);
+		log_zone_error("Zone '%s': mismatching origin in the zone file.\n",
+		               conf->name);
 		knot_zone_deep_free(&zone);
 		return NULL;
 	} else {
@@ -552,8 +550,7 @@ static void log_zone_load_info(const knot_zone_t *zone, const char *zone_name,
 		serial = knot_rdata_soa_serial(soa);
 	}
 
-	log_server_info("Zone '%s' %s (serial %" PRId64 ")\n",
-	                zone_name, action, serial);
+	log_zone_info("Zone '%s' %s (serial %" PRId64 ")\n", zone_name, action, serial);
 }
 
 /*!
@@ -652,17 +649,16 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 
 	result = zones_journal_apply(new_zone);
 	if (result != KNOT_EOK && result != KNOT_ERANGE && result != KNOT_ENOENT) {
-		log_server_error("Zone '%s', failed to apply changes from "
-		                 "journal: %s\n",
-		                 conf->name, knot_strerror(result));
+		log_zone_error("Zone '%s', failed to apply changes from journal: %s\n",
+		               conf->name, knot_strerror(result));
 		goto fail;
 	}
 
 	bool modified = (old_zone != new_zone);
 	result = zones_do_diff_and_sign(conf, new_zone, ns, modified);
 	if (result != KNOT_EOK) {
-		log_server_error("Zone '%s', failed to sign the zone: %s\n",
-		                 conf->name, knot_strerror(result));
+		log_zone_error("Zone '%s', failed to sign the zone: %s\n",
+		               conf->name, knot_strerror(result));
 		goto fail;
 	}
 
@@ -749,8 +745,8 @@ static int zone_loader_thread(dthread_t *thread)
 		pthread_mutex_lock(&ctx->lock);
 		if (ret == KNOT_EOK) {
 			if (knot_zonedb_add_zone(ctx->db_new, zone) != KNOT_EOK) {
-				log_server_error("Failed to insert zone '%s' "
-				                 "into database.\n", zone_config->name);
+				log_zone_error("Failed to insert zone '%s' "
+				               "into database.\n", zone_config->name);
 				knot_zone_deep_free(&zone);
 			}
 		} else {
@@ -869,8 +865,7 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 
 	/* Grab a pointer to the old database */
 	if (ns->zone_db == NULL) {
-		log_server_error("Missing zone database in nameserver structure"
-		                 ".\n");
+		log_server_error("Missing zone database in nameserver structure.\n");
 		return KNOT_ENOENT;
 	}
 
