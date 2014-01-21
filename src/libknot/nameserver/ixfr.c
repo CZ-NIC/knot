@@ -74,7 +74,7 @@ static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list
  *       with next empty answer and it must resume the processing exactly where
  *       it's left off.
  */
-static int ixfr_process_item(knot_pkt_t *pkt, const void *item, struct xfr_proc *xfer)
+static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item, struct xfr_proc *xfer)
 {
 	int ret = KNOT_EOK;
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)xfer;
@@ -311,7 +311,7 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
 
 	/* Answer current packet (or continue). */
-	ret = xfr_process_list(pkt, &ixfr_process_item, qdata);
+	ret = xfr_process_list(pkt, &ixfr_process_changeset, qdata);
 	switch(ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return NS_PROC_FULL; /* Check for more. */

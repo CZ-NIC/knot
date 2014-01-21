@@ -71,7 +71,7 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	return ret;
 }
 
-static int axfr_process_item(knot_pkt_t *pkt, const void *item, struct xfr_proc *state)
+static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item, struct xfr_proc *state)
 {
 	struct axfr_proc *axfr = (struct axfr_proc*)state;
 
@@ -218,7 +218,7 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	/* Answer current packet (or continue). */
 	struct xfr_proc *xfer = qdata->ext;
-	ret = xfr_process_list(pkt, &axfr_process_item, qdata);
+	ret = xfr_process_list(pkt, &axfr_process_node_tree, qdata);
 	switch(ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
 		return NS_PROC_FULL; /* Check for more. */
