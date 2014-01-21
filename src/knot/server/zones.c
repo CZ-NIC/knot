@@ -957,11 +957,9 @@ static bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
  * \retval KNOT_EOK if successful.
  * \retval error if not.
  */
-int zones_process_update_auth(knot_zone_t *zone,
-                                     knot_pkt_t *query,
-                                     knot_rcode_t *rcode,
-                                     const sockaddr_t *addr,
-                                     knot_tsig_key_t *tsig_key)
+int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
+                              knot_rcode_t *rcode, const sockaddr_t *addr,
+                              knot_tsig_key_t *tsig_key)
 {
 	assert(zone);
 	assert(query);

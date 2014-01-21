@@ -62,7 +62,7 @@ int tcp_accept(int fd);
 int tcp_send(int fd, uint8_t *msg, size_t msglen);
 
 /*!
- * \brief Send TCP message.
+ * \brief Receive TCP message.
  *
  * \param fd Associated socket.
  * \param buf Buffer for incoming bytestream.

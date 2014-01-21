@@ -115,7 +115,7 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	dbg_net("udp: received %zd bytes from '%s@%d'.\n", rx->iov_len,
 	        strfrom, sockaddr_portnum(addr));
 #endif
-	
+
 	/* Rate limit is applied? */
 	server_t *server = (server_t *)query_ctx->ns->data;
 	if (knot_unlikely(server->rrl != NULL) && server->rrl->rate > 0) {
@@ -127,7 +127,7 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	/* Create query processing parameter. */
 	struct ns_proc_query_param param;
 	sockaddr_copy(&param.query_source, addr);
-	
+
 	/* Create query processing context. */
 	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
 
