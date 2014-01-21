@@ -960,8 +960,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	if (rr == NULL) {
 		dbg_xfrin("No RRs in the packet.\n");
 		knot_packet_free(&packet);
-		/*! \todo Some other action??? */
-		return KNOT_EMALF;
+		return KNOT_EXFRREFUSED; /* Only SOA received, try again with AXFR. */
 	}
 
 	/*! \todo Replace with RRSet duplicate checking. */
