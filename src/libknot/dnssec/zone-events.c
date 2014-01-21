@@ -64,7 +64,7 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	assert(config);
 
 	// Read zone keys from disk
-	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
+	bool nsec3_enabled = knot_is_nsec3_enabled(zone->contents);
 	int result = knot_load_zone_keys(config->dnssec_keydir,
 	                                 zone->contents->apex->owner,
 	                                 nsec3_enabled, zone_keys);
@@ -263,8 +263,9 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 
 	assert(sorted_changes);
 	// Fix NSEC(3) chain
-	ret = knot_zone_fix_chain(zone->contents,
-	                          *sorted_changes, out_ch, &zone_keys, &policy);
+	ret = knot_zone_fix_nsec_chain(zone->contents,
+	                               *sorted_changes, out_ch,
+	                               &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to fix NSEC(3) chain (%s)\n",
 		               msgpref, knot_strerror(ret));

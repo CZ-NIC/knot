@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file zone-sign.h
+ * \file zone-nsec.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  * \author Lubos Slovak <lubos.slovak@nic.cz>
@@ -31,9 +31,10 @@
 
 #include <stdbool.h>
 #include "libknot/updates/changesets.h"
+#include "libknot/zone/zone-contents.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/zone-keys.h"
-#include "libknot/zone/zone-contents.h"
+#include "libknot/dnssec/nsec-bitmap.h"
 
 /*!
  * Check if NSEC3 is enabled for the given zone.
@@ -42,20 +43,7 @@
  *
  * \return NSEC3 is enabled.
  */
-bool is_nsec3_enabled(const knot_zone_contents_t *zone);
-
-/*!
- * \brief Create NSEC3 owner name from regular owner name.
- *
- * \param owner      Node owner name.
- * \param zone_apex  Zone apex name.
- * \param params     Params for NSEC3 hashing function.
- *
- * \return NSEC3 owner name, NULL in case of error.
- */
-knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
-                                 const knot_dname_t *zone_apex,
-                                 const knot_nsec3_params_t *params);
+bool knot_is_nsec3_enabled(const knot_zone_contents_t *zone);
 
 /*!
  * \brief Create NSEC3 owner name from hash and zone apex.
@@ -68,6 +56,19 @@ knot_dname_t *create_nsec3_owner(const knot_dname_t *owner,
  */
 knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
                                        const knot_dname_t *zone_apex);
+
+/*!
+ * \brief Create NSEC3 owner name from regular owner name.
+ *
+ * \param owner      Node owner name.
+ * \param zone_apex  Zone apex name.
+ * \param params     Params for NSEC3 hashing function.
+ *
+ * \return NSEC3 owner name, NULL in case of error.
+ */
+knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
+                                      const knot_dname_t *zone_apex,
+                                      const knot_nsec3_params_t *params);
 
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
@@ -97,11 +98,11 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_fix_chain(const knot_zone_contents_t *zone,
-                        hattrie_t *sorted_changes,
-                        knot_changeset_t *out_ch,
-                        const knot_zone_keys_t *zone_keys,
-                        const knot_dnssec_policy_t *policy);
+int knot_zone_fix_nsec_chain(const knot_zone_contents_t *zone,
+                             hattrie_t *sorted_changes,
+                             knot_changeset_t *out_ch,
+                             const knot_zone_keys_t *zone_keys,
+                             const knot_dnssec_policy_t *policy);
 
 #endif // _KNOT_DNSSEC_ZONE_NSEC_H_
 

@@ -175,6 +175,10 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/zone-events.h		\
 	libknot/dnssec/zone-keys.c		\
 	libknot/dnssec/zone-keys.h		\
+	libknot/dnssec/nsec-chain.c		\
+	libknot/dnssec/nsec-chain.h		\
+	libknot/dnssec/nsec3-chain.c		\
+	libknot/dnssec/nsec3-chain.h		\
 	libknot/dnssec/zone-nsec.c		\
 	libknot/dnssec/zone-nsec.h		\
 	libknot/dnssec/zone-sign.c		\

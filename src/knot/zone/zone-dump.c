@@ -201,7 +201,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	}
 
 	// Dump NSEC3 chain if available.
-	if (is_nsec3_enabled(zone)) {
+	if (knot_is_nsec3_enabled(zone)) {
 		fprintf(file, ";; DNSSEC NSEC3 chain\n");
 
 		params.dump_rdata = true;

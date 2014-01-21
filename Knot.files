@@ -283,3 +283,7 @@ tests/tap/macros.h
 tests/wire.c
 tests/zonedb.c
 tests/ztree.c
+src/libknot/dnssec/nsec-chain.c
+src/libknot/dnssec/nsec3-chain.c
+src/libknot/dnssec/nsec-chain.h
+src/libknot/dnssec/nsec3-chain.h
