@@ -223,25 +223,28 @@ bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
 	const knot_dname_t *key_name = NULL;
 	knot_tsig_algorithm_t key_alg = KNOT_TSIG_ALG_NULL;
 
-	if (qdata->sign.tsig_key == NULL) {
-		/* Authenticate with NOKEY if the packet isn't signed. */
-		if (query->tsig_rr) {
-			key_name = knot_rrset_owner(query->tsig_rr);
-			key_alg = tsig_rdata_alg(query->tsig_rr);
-		}
-		acl_match_t *match = acl_find(acl, query_source, key_name);
-
-		/* Did not authenticate, no fitting rule found. */
-		if (match == NULL || (match->key && match->key->algorithm != key_alg)) {
-			dbg_ns("%s: no ACL match => NOTAUTH\n", __func__);
-			qdata->rcode = KNOT_RCODE_NOTAUTH;
-			qdata->rcode_tsig = KNOT_RCODE_BADKEY;
-			return false;
-		} else {
-			/* Remember used TSIG key. */
-			qdata->sign.tsig_key = match->key;
-		}
+	/* Skip if already checked and valid. */
+	if (qdata->sign.tsig_key != NULL) {
+		return true;
 	}
+
+	/* Authenticate with NOKEY if the packet isn't signed. */
+	if (query->tsig_rr) {
+		key_name = knot_rrset_owner(query->tsig_rr);
+		key_alg = tsig_rdata_alg(query->tsig_rr);
+	}
+	acl_match_t *match = acl_find(acl, query_source, key_name);
+
+	/* Did not authenticate, no fitting rule found. */
+	if (match == NULL || (match->key && match->key->algorithm != key_alg)) {
+		dbg_ns("%s: no ACL match => NOTAUTH\n", __func__);
+		qdata->rcode = KNOT_RCODE_NOTAUTH;
+		qdata->rcode_tsig = KNOT_RCODE_BADKEY;
+		return false;
+	}
+
+	/* Remember used TSIG key. */
+	qdata->sign.tsig_key = match->key;
 	return true;
 }
 
