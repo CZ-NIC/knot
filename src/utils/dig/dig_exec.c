@@ -324,7 +324,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PACKET_DUPL_NO_MERGE) != KNOT_EOK) {
+		if (knot_pkt_parse(reply, KNOT_PF_NO_MERGE) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
 			net_close(net);
@@ -543,7 +543,7 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PACKET_DUPL_NO_MERGE) != KNOT_EOK) {
+		if (knot_pkt_parse(reply, KNOT_PF_NO_MERGE) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
 			net_close(net);

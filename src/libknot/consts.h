@@ -83,27 +83,6 @@ typedef enum {
 } knot_rcode_t;
 
 /*!
- * \brief DNS query types (internal use only).
- *
- * This type encompasses the different query types distinguished by both the
- * OPCODE and the QTYPE.
- */
-typedef enum {
-	KNOT_QUERY_INVALID   = 1 << 1, /*!< Invalid query. */
-	KNOT_QUERY_NORMAL    = 1 << 2, /*!< Normal query. */
-	KNOT_QUERY_AXFR      = 1 << 3, /*!< Request for AXFR transfer. */
-	KNOT_QUERY_IXFR      = 1 << 4, /*!< Request for IXFR transfer. */
-	KNOT_QUERY_NOTIFY    = 1 << 5, /*!< NOTIFY query. */
-	KNOT_QUERY_UPDATE    = 1 << 6, /*!< Dynamic update. */
-	KNOT_RESPONSE        = 1 << 0, /*!< Is response. */
-	KNOT_RESPONSE_NORMAL = KNOT_RESPONSE|KNOT_QUERY_NORMAL,/*!< Normal response. */
-	KNOT_RESPONSE_AXFR   = KNOT_RESPONSE|KNOT_QUERY_AXFR,  /*!< AXFR transfer response. */
-	KNOT_RESPONSE_IXFR   = KNOT_RESPONSE|KNOT_QUERY_IXFR,  /*!< IXFR transfer response. */
-	KNOT_RESPONSE_NOTIFY = KNOT_RESPONSE|KNOT_QUERY_NOTIFY,/*!< NOTIFY response. */
-	KNOT_RESPONSE_UPDATE = KNOT_RESPONSE|KNOT_QUERY_UPDATE /*!< Dynamic update response. */
-} knot_packet_type_t;
-
-/*!
  * \brief DNS packet section identifiers.
  */
 typedef enum {

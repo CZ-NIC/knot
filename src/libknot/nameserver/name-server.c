@@ -108,7 +108,7 @@ knot_nameserver_t *knot_ns_create()
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ns_parse_packet(knot_pkt_t *packet, knot_packet_type_t *type)
+int knot_ns_parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, packet, type);
 	if (packet == NULL || type == NULL) {
@@ -125,7 +125,7 @@ int knot_ns_parse_packet(knot_pkt_t *packet, knot_packet_type_t *type)
 
 	// 2) determine the query type
 	*type = knot_pkt_type(packet);
-	if (*type & KNOT_QUERY_INVALID) {
+	if (*type == KNOT_QUERY_INVALID) {
 		return KNOT_RCODE_NOTIMPL;
 	}
 

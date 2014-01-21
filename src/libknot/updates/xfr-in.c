@@ -369,7 +369,7 @@ static int xfrin_parse(knot_pkt_t **dst, uint8_t *wire, size_t wire_size)
 
 	/* This is important, don't merge RRs together. The SOAs are ordered
 	 * in a special way for a reason. */
-	ret = knot_pkt_parse(pkt, KNOT_PACKET_DUPL_NO_MERGE);
+	ret = knot_pkt_parse(pkt, KNOT_PF_NO_MERGE);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&pkt);
 		return ret;

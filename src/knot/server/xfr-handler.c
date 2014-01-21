@@ -566,7 +566,7 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		return KNOT_ENOMEM;
 	}
 
-	knot_packet_type_t rt = KNOT_RESPONSE_NORMAL;
+	knot_pkt_type_t rt = KNOT_RESPONSE_NORMAL;
 	int ret = knot_ns_parse_packet(re, &rt);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&re);
@@ -584,7 +584,7 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		return KNOT_EOK; /* Ignore */
 	}
 
-	ret = knot_pkt_parse_payload(re, KNOT_PACKET_DUPL_NO_MERGE);
+	ret = knot_pkt_parse_payload(re, KNOT_PF_NO_MERGE);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&re);
 		return KNOT_EOK; /* Ignore */

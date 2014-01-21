@@ -503,7 +503,7 @@ int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen)
 
 int remote_parse(knot_pkt_t* pkt)
 {
-	return knot_pkt_parse(pkt, KNOT_PACKET_DUPL_NO_MERGE);
+	return knot_pkt_parse(pkt, KNOT_PF_NO_MERGE);
 }
 
 static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t len)

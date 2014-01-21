@@ -625,7 +625,7 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 	assert(rr);
 
 	/* Don't want to merge, okay. */
-	if (flags & KNOT_PACKET_DUPL_NO_MERGE) {
+	if (flags & KNOT_PF_NO_MERGE) {
 		return KNOT_ENOENT;
 	}
 

@@ -217,7 +217,7 @@ knot_nameserver_t *knot_ns_create();
  *                              ns_error_response() with \a rcode set to this
  *                              value to get proper error response.
  */
-int knot_ns_parse_packet(knot_pkt_t *packet, knot_packet_type_t *type);
+int knot_ns_parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type);
 
 /*!
  * \brief Compares two zone serials.

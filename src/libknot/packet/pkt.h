@@ -46,6 +46,27 @@
 #define KNOT_PKT_MAX_RRS (KNOT_WIRE_MAX_PAYLOAD / KNOT_WIRE_RR_MIN_SIZE)
 
 /*!
+ * \brief DNS query types (internal use only).
+ *
+ * This type encompasses the different query types distinguished by both the
+ * OPCODE and the QTYPE.
+ */
+typedef enum {
+	KNOT_QUERY_INVALID   =      0, /*!< Invalid query. */
+	KNOT_QUERY_NORMAL    = 1 << 1, /*!< Normal query. */
+	KNOT_QUERY_AXFR      = 1 << 2, /*!< Request for AXFR transfer. */
+	KNOT_QUERY_IXFR      = 1 << 3, /*!< Request for IXFR transfer. */
+	KNOT_QUERY_NOTIFY    = 1 << 4, /*!< NOTIFY query. */
+	KNOT_QUERY_UPDATE    = 1 << 5, /*!< Dynamic update. */
+	KNOT_RESPONSE        = 1 << 0, /*!< Is response. */
+	KNOT_RESPONSE_NORMAL = KNOT_RESPONSE|KNOT_QUERY_NORMAL,/*!< Normal response. */
+	KNOT_RESPONSE_AXFR   = KNOT_RESPONSE|KNOT_QUERY_AXFR,  /*!< AXFR transfer response. */
+	KNOT_RESPONSE_IXFR   = KNOT_RESPONSE|KNOT_QUERY_IXFR,  /*!< IXFR transfer response. */
+	KNOT_RESPONSE_NOTIFY = KNOT_RESPONSE|KNOT_QUERY_NOTIFY,/*!< NOTIFY response. */
+	KNOT_RESPONSE_UPDATE = KNOT_RESPONSE|KNOT_QUERY_UPDATE /*!< Dynamic update response. */
+} knot_pkt_type_t;
+
+/*!
  * \brief Packet flags.
  */
 enum {
@@ -54,7 +75,7 @@ enum {
 	KNOT_PF_FREE      = 1 << 2, /*!< Free with packet. */
 	KNOT_PF_NOTRUNC   = 1 << 3, /*!< Don't truncate. */
 	KNOT_PF_CHECKDUP  = 1 << 4,  /*!< Check for duplicates. */
-	KNOT_PACKET_DUPL_NO_MERGE = 1 << 5 /* Don't add duplicate rdata to rrset. */
+	KNOT_PF_NO_MERGE = 1 << 5 /* Don't add duplicate rdata to rrset. */
 };
 
 /*!
@@ -137,7 +158,7 @@ void knot_pkt_clear(knot_pkt_t *pkt);
 void knot_pkt_free(knot_pkt_t **pkt);
 
 /*! \brief Classify packet according to the question.
- *  \return see enum knot_packet_type_t
+ *  \return see enum knot_pkt_type_t
  */
 uint16_t knot_pkt_type(const knot_pkt_t *pkt);
 
