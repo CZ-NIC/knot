@@ -16,7 +16,6 @@
  *             with hints to the RFC, as it's not so complicated as it looks here.
  */
 
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates a 'next closer name' to the given domain name.
@@ -122,7 +121,6 @@ dbg_ns_exec_verb(
 
 	return ns_put_nsec3_from_node(prev, resp);
 }
-
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -318,7 +316,6 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 	return ret;
 }
 
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Puts NSECs or NSEC3s for wildcard NODATA answer into the response.
@@ -451,7 +448,6 @@ dbg_ns_exec_verb(
 );
 	int ret = ns_put_covering_nsec3(zone, next_closer, resp);
 
-
 	/* Duplicate from ns_next_close(), safe to discard. */
 	knot_dname_free(&next_closer);
 
@@ -499,7 +495,6 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 	}
 	return ret;
 }
-
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -814,13 +809,13 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 int nsec_append_rrsigs(knot_pkt_t *pkt, bool optional)
 {
 	dbg_ns("%s(%p, optional=%d)\n", __func__, pkt, optional);
-	
+
 	int ret = KNOT_EOK;
-	uint32_t flags = (optional) ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;	
+	uint32_t flags = (optional) ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
 	uint16_t compr_hint = COMPR_HINT_NONE;
 	const knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *section = knot_pkt_section(pkt, pkt->current);
-	
+
 	/* Append RRSIG for each RR in given section. */
 	for (uint16_t i = 0; i < section->count; ++i) {
 		rr = section->rr[i];

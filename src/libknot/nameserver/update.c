@@ -10,7 +10,6 @@
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
 
-
 static int update_forward(struct query_data *qdata)
 {
 	/*! \todo This will be implemented when RESPONSE and REQUEST processors
@@ -63,7 +62,6 @@ static int update_forward(struct query_data *qdata)
 	return NS_PROC_FAIL;
 }
 
-
 static int update_process(knot_pkt_t *resp, struct query_data *qdata)
 {
 	/*! \todo Reusing the API for compatibility reasons. */
@@ -107,13 +105,13 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
 	 *        Most servers use NOTAUTH from RFC2136. */
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	
+
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
 	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
 	if (zone_data->xfr_in.has_master) {
 		return update_forward(qdata);
 	}
-	
+
 	/*
 	 * Check if UPDATE not running already.
 	 */
@@ -124,26 +122,25 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 		               zone_data->conf->name);
 		return NS_PROC_FAIL;
 	}
-	
 
 	/* Need valid transaction security. */
 	NS_NEED_AUTH(zone_data->update_in, qdata);
-	
+
 	/* Reserve space for TSIG. */
 	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
-	
+
 	/* Check prerequisites. */
 	if (update_prereq_check(qdata) != KNOT_EOK) {
 		pthread_mutex_unlock(&zone_data->ddns_lock);
 		return NS_PROC_FAIL;
 	}
-	
+
 	/* Process UPDATE. */
 	if (update_process(pkt, qdata) != KNOT_EOK) {
 		pthread_mutex_unlock(&zone_data->ddns_lock);
 		return NS_PROC_FAIL;
 	}
-	
+
 	pthread_mutex_unlock(&zone_data->ddns_lock);
 	return NS_PROC_DONE;
 }

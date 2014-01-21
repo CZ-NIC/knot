@@ -78,14 +78,14 @@ struct query_data {
 	knot_pkt_t *query;       /*!< Query to be solved. */
 	const knot_zone_t *zone; /*!< Zone from which is answered. */
 	list_t wildcards;        /*!< Visited wildcards. */
-	
+
 	/* Current processed name and nodes. */
 	const knot_node_t *node, *encloser, *previous;
 	const knot_dname_t *name;
-	
+
 	/* Original QNAME case. */
 	uint8_t orig_qname[KNOT_DNAME_MAXLEN];
-	
+
 	/* Bookkeeping below. */
 	ns_sign_context_t sign;            /*!< Signing context. */
 	struct ns_proc_query_param *param; /*!< Module parameters. */
@@ -132,7 +132,7 @@ int ns_proc_query_finish(ns_proc_context_t *ctx);
  * \param pkt
  * \param ctx
  * \retval NOOP (unsupported query)
- * \retval FULL (ready to write answer) 
+ * \retval FULL (ready to write answer)
  */
 int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx);
 

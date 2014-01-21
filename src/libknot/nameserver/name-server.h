@@ -147,7 +147,6 @@ typedef struct knot_ns_xfr {
 	hattrie_t *lookup_tree;
 } knot_ns_xfr_t;
 
-
 static const int KNOT_NS_TSIG_FREQ = 100;
 
 static const size_t KNOT_NS_TSIG_DATA_MAX_SIZE = 100 * 64 * 1024;
@@ -326,7 +325,7 @@ typedef struct ns_proc_context
 
 	knot_nameserver_t *ns;
 	void *data;
-	
+
 	/* Module implementation. */
 	const struct ns_proc_module *module;
 } ns_proc_context_t;
@@ -344,7 +343,7 @@ typedef struct ns_proc_module {
 /*! \brief Packet signing context.
  *  \todo This should be later moved to TSIG files when refactoring. */
 typedef struct ns_sign_context {
-	knot_tsig_key_t *tsig_key; 
+	knot_tsig_key_t *tsig_key;
 	uint8_t *tsig_buf;
 	uint8_t *tsig_digest;
 	size_t tsig_buflen;

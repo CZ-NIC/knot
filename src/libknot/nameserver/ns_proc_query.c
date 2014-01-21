@@ -102,7 +102,7 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		knot_pkt_free(&pkt);
 		return NS_PROC_NOOP; /* Ignore. */
 	}
-	
+
 	/* Accept only queries with QD=1. */
 	if (knot_wire_get_qr(pkt->wire) || knot_wire_get_qdcount(pkt->wire) != 1) {
 		knot_pkt_free(&pkt);
@@ -123,7 +123,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	struct query_data *qdata = QUERY_DATA(ctx);
 
 	rcu_read_lock();
-	
+
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
 	int next_state = NS_PROC_DONE;
@@ -161,7 +161,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		next_state = NS_PROC_FAIL;
 		break;
 	}
-	
+
 	/*
 	 * Postprocessing.
 	 */
@@ -170,7 +170,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
-	
+
 	/* Transaction security for positive answer. */
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
 		if (ns_proc_query_sign_response(pkt, qdata) != KNOT_EOK) {
@@ -207,7 +207,7 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 
 	/* Set RCODE. */
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
-	
+
 	/* Transaction security (if applicable). */
 	if (ns_proc_query_sign_response(pkt, qdata) != KNOT_EOK) {
 		return NS_PROC_FAIL;
@@ -230,7 +230,7 @@ bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
 			key_alg = tsig_rdata_alg(query->tsig_rr);
 		}
 		acl_match_t *match = acl_find(acl, query_source, key_name);
-		
+
 		/* Did not authenticate, no fitting rule found. */
 		if (match == NULL || (match->key && match->key->algorithm != key_alg)) {
 			dbg_ns("%s: no ACL match => NOTAUTH\n", __func__);
@@ -249,21 +249,21 @@ int ns_proc_query_verify(struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
 	ns_sign_context_t *ctx = &qdata->sign;
-	
+
 	/* NOKEY => no verification. */
 	if (query->tsig_rr == NULL) {
 		return KNOT_EOK;
 	}
-	
+
 	/* Keep digest for signing response. */
 	/*! \note This memory will be rewritten for multi-pkt answers. */
 	ctx->tsig_digest = (uint8_t *)tsig_rdata_mac(query->tsig_rr);
 	ctx->tsig_digestlen = tsig_rdata_mac_length(query->tsig_rr);
-	
+
 	/* Checking query. */
 	int ret = knot_tsig_server_check(query->tsig_rr, query->wire,
 	                                 query->size, ctx->tsig_key);
-	
+
 	dbg_ns("%s: QUERY TSIG check result = %s\n", __func__, knot_strerror(ret));
 
 	/* Evaluate TSIG check results. */
@@ -300,11 +300,10 @@ int ns_proc_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 	int ret = KNOT_EOK;
 	knot_pkt_t *query = qdata->query;
 	ns_sign_context_t *ctx = &qdata->sign;
-	
-	
+
 	/* KEY provided and verified TSIG or BADTIME allows signing. */
 	if (ctx->tsig_key != NULL && knot_tsig_can_sign(qdata->rcode_tsig)) {
-		
+
 		/* Sign query response. */
 		dbg_ns("%s: signing response using key %p\n", __func__, ctx->tsig_key);
 		size_t new_digest_len = knot_tsig_digest_length(ctx->tsig_key->algorithm);
@@ -337,7 +336,7 @@ int ns_proc_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 			}
 		}
 	}
-	
+
 	return ret;
 
 	/* Server failure in signing. */
@@ -394,7 +393,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	if (server->rrl == NULL) {
 		return state;
 	}
-	
+
 	rrl_req_t rrl_rq = {0};
 	rrl_rq.w = pkt->wire;
 	rrl_rq.query = qdata->query;
@@ -406,7 +405,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		/* Rate limiting not applied. */
 		return state;
 	}
-	
+
 	/* Now it is slip or drop. */
 	if (rrl_slip_roll(conf()->rrl_slip)) {
 		/* Answer slips. */
@@ -418,7 +417,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		/* Drop answer. */
 		pkt->size = 0;
 	}
-	
+
 	return NS_PROC_DONE;
 }
 
@@ -429,7 +428,7 @@ static int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, ctx);
 	struct query_data *data = QUERY_DATA(ctx);
-	
+
 	/* Nothing except normal queries is supported. */
 	if (data->packet_type != KNOT_QUERY_NORMAL) {
 		data->rcode = KNOT_RCODE_NOTIMPL;
@@ -475,7 +474,7 @@ static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t 
 	if (zone == NULL) {
 		zone = knot_zonedb_find_suffix(zonedb, qname);
 	}
-	
+
 	return zone;
 }
 
@@ -487,7 +486,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 		dbg_ns("%s: can't init response pkt (%d)\n", __func__, ret);
 		return ret;
 	}
-	
+
 	/* Convert query QNAME to lowercase, but keep original QNAME case.
  	 * Already checked for absence of compression and length.
 	 */

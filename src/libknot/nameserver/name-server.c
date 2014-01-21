@@ -573,7 +573,7 @@ int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx)
 	} else {
 		*wire_len = 0;
 	}
-	
+
 	knot_pkt_free(&pkt);
 
 	dbg_ns("%s -> %s\n", __func__, NS_STATE_STR(ctx->state));

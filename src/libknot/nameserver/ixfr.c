@@ -67,7 +67,6 @@ static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list
 	return ret;
 }
 
-
 /*!
  * \brief Process single changeset.
  * \note Keep in mind that this function must be able to resume processing,
@@ -114,7 +113,7 @@ static int ixfr_process_item(knot_pkt_t *pkt, const void *item, struct xfr_proc 
 		dbg_ns("%s: put 'ADD' RRs\n", __func__);
 		ixfr->state = SOA_REMOVE;
 	}
-	
+
 	/* Finished change set. */
 	struct query_data *qdata = ixfr->qdata; /*< Required for IXFR_LOG() */
 	IXFR_LOG(LOG_INFO, "Serial %u -> %u.", chgset->serial_from, chgset->serial_to);
@@ -169,7 +168,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	}
 	/* SOA needs to match QNAME. */
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
-	
+
 	/* Need valid transaction security. */
 	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
 	NS_NEED_AUTH(zone_data->xfr_out, qdata);
@@ -227,7 +226,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 		ptrlist_add(&xfer->proc.nodes, chs, mm);
 		dbg_ns("%s: preparing %u -> %u\n", __func__, chs->serial_from, chs->serial_to);
 	}
-	
+
 	/* Keep first and last serial. */
 	chs = HEAD(chgsets->sets);
 	xfer->soa_from = chs->soa_from;
@@ -253,9 +252,9 @@ int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	if (state == NS_PROC_FAIL) {
 		return state; /* Malformed query. */
 	}
-	
+
 	/* Reserve space for TSIG. */
-	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);	
+	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
 
 	/* Guaranteed to have zone contents. */
 	const knot_node_t *apex = qdata->zone->contents->apex;
@@ -307,7 +306,7 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 			return NS_PROC_FAIL;
 		}
 	}
-	
+
 	/* Reserve space for TSIG. */
 	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
 
