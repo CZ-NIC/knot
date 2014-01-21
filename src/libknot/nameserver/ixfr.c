@@ -240,7 +240,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	return KNOT_EOK;
 }
 
-int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
+static int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
 {
 	dbg_ns("%s: answering IXFR/SOA\n", __func__);
 	if (pkt == NULL || ns == NULL || qdata == NULL) {
