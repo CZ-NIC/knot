@@ -347,6 +347,7 @@ AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 src/Makefile
 		 samples/Makefile
+		 patches/Makefile
 		 src/zscanner/Makefile
 		 man/khost.1
 		 man/knotc.8
