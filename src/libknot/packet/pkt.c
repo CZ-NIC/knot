@@ -118,7 +118,6 @@ static void pkt_rr_wirecount_add(knot_pkt_t *pkt, knot_section_t section_id,
 	case KNOT_ANSWER:     return knot_wire_add_ancount(pkt->wire, val);
 	case KNOT_AUTHORITY:  return knot_wire_add_nscount(pkt->wire, val);
 	case KNOT_ADDITIONAL: return knot_wire_add_arcount(pkt->wire, val);
-	default: assert(0);   return 0;
 	}
 }
 
