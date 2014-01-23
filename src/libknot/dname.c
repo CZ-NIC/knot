@@ -375,7 +375,9 @@ int knot_dname_to_lower(knot_dname_t *name)
 		for (uint8_t i = 0; i < *name; ++i)
 			name[1 + i] = knot_tolower(name[1 + i]);
 		name = (uint8_t *)knot_wire_next_label(name, NULL);
-		assert(name); /* Must not be used on compressed names. */
+		if (name == NULL) { /* Must not be used on compressed names. */
+			return KNOT_EINVAL;
+		}
 	}
 
 	return KNOT_EOK;

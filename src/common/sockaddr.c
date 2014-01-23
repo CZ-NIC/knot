@@ -203,13 +203,12 @@ char *sockaddr_hostname(void)
 	}
 
 	/* Fetch canonical name for this address/DNS. */
-	int ret = 0;
 	struct addrinfo hints, *info;
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_CANONNAME;
-	if ((ret = getaddrinfo(host, "domain", &hints, &info)) != 0) {
+	if (getaddrinfo(host, "domain", &hints, &info) != 0) {
 		return NULL;
 	}
 

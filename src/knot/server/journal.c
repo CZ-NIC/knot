@@ -981,6 +981,17 @@ int journal_close(journal_t *journal)
 	return KNOT_EOK;
 }
 
+bool journal_is_used(journal_t *journal)
+{
+	if (journal == NULL) {
+		return false;
+	}
+
+	/* Check journal file existence. */
+	struct stat st;
+	return stat(journal->path, &st) == 0;
+}
+
 int journal_retain(journal_t *journal)
 {
 	if (journal == NULL) {

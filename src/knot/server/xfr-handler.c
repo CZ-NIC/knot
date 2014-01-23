@@ -325,8 +325,8 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 	/* Fetch zone contents. */
 	const knot_zone_contents_t *contents = knot_zone_contents(zone);
 	if (!contents && rq->type == XFR_TYPE_IIN) {
-		log_server_warning("%s Refusing to start IXFR on zone with no "
-				   "contents.\n", rq->msg);
+		log_zone_warning("%s Refusing to start IXFR on zone with no "
+		                 "contents.\n", rq->msg);
 		return KNOT_ECONNREFUSED;
 	}
 
@@ -373,8 +373,8 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		if (ret != rq->wire_size) {
 			char ebuf[256] = {0};
 			if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
-				log_server_info("%s Failed to send query (%s).\n",
-				                rq->msg, ebuf);
+				log_zone_info("%s Failed to send query (%s).\n",
+				              rq->msg, ebuf);
 			}
 			return KNOT_ECONNREFUSED;
 		}
@@ -502,9 +502,9 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 		log_zone_info("%s Query issued (serial %u).\n",
 		              rq->msg, knot_zone_serial(rq->zone->contents));
 	} else if (ret == KNOT_EOK) {
-		log_server_info("%s %s\n", rq->msg, msg);
+		log_zone_info("%s %s\n", rq->msg, msg);
 	} else {
-		log_server_error("%s %s\n", rq->msg, msg);
+		log_zone_error("%s %s\n", rq->msg, msg);
 	}
 
 	return ret;
@@ -597,7 +597,7 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		                             rq->digest, rq->digest_size,
 		                             rq->tsig_key, 0);
 		if (ret != KNOT_EOK) {
-			log_server_error("%s %s\n", rq->msg, knot_strerror(ret));
+			log_zone_error("%s %s\n", rq->msg, knot_strerror(ret));
 			knot_pkt_free(&re);
 			return KNOT_ECONNREFUSED;
 		}
@@ -617,7 +617,7 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	case KNOT_RESPONSE_UPDATE:
 		ret = zones_process_update_response(rq, rq->wire, &rlen);
 		if (ret == KNOT_EOK) {
-			log_server_info("%s Forwarded response.\n", rq->msg);
+			log_zone_info("%s Forwarded response.\n", rq->msg);
 		}
 		break;
 	default:
@@ -627,9 +627,9 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 
 	knot_pkt_free(&re);
 	if (ret == KNOT_EUPTODATE) {  /* Check up-to-date zone. */
-		log_server_info("%s %s (serial %u)\n", rq->msg,
-		                knot_strerror(ret),
-		                knot_zone_serial(knot_zone_contents(rq->zone)));
+		log_zone_info("%s %s (serial %u)\n", rq->msg,
+		              knot_strerror(ret),
+		              knot_zone_serial(knot_zone_contents(rq->zone)));
 		ret = KNOT_ECONNREFUSED;
 	} else if (ret == KNOT_EOK) { /* Disconnect if everything went well. */
 		ret = KNOT_ECONNREFUSED;
@@ -656,7 +656,7 @@ static int xfr_start_axfr(xfrhandler_t *xfr, knot_ns_xfr_t *rq, const char *reas
 	axfr->tsig_key = rq->tsig_key;
 
 	/* Enqueue new request and close the original. */
-	log_server_notice("%s Retrying with AXFR.\n", rq->msg);
+	log_zone_notice("%s Retrying with AXFR.\n", rq->msg);
 	xfr_enqueue(xfr, axfr);
 	return KNOT_ECONNREFUSED;
 }
@@ -664,7 +664,7 @@ static int xfr_start_axfr(xfrhandler_t *xfr, knot_ns_xfr_t *rq, const char *reas
 /*! \brief This will fall back to AXFR on idle connection. */
 static int xfr_fallback_axfr(knot_ns_xfr_t *rq)
 {
-	log_server_notice("%s Retrying with AXFR.\n", rq->msg);
+	log_zone_notice("%s Retrying with AXFR.\n", rq->msg);
 	rq->wire_size = rq->wire_maxlen; /* Reset maximum bufsize */
 	int ret = xfrin_create_axfr_query(rq->zone->name, rq);
 	/* Send AXFR/IN query. */
@@ -706,7 +706,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	/* AXFR-style IXFR. */
 	if (ret == KNOT_ENOIXFR) {
 		assert(rq->type == XFR_TYPE_IIN);
-		log_server_notice("%s Fallback to AXFR.\n", rq->msg);
+		log_zone_notice("%s Fallback to AXFR.\n", rq->msg);
 		xfr_task_cleanup(rq);
 		rq->type = XFR_TYPE_AIN;
 		rq->msg[XFR_MSG_DLTTR] = 'A';
@@ -729,9 +729,9 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 
 	/* Handle errors. */
 	if (ret == KNOT_ENOXFR) {
-		log_server_warning("%s Finished, %s\n", rq->msg, knot_strerror(ret));
+		log_zone_warning("%s Finished, %s\n", rq->msg, knot_strerror(ret));
 	} else if (ret < 0) {
-		log_server_error("%s %s\n", rq->msg, knot_strerror(ret));
+		log_zone_error("%s %s\n", rq->msg, knot_strerror(ret));
 	}
 
 	/* Only for successful xfers. */
@@ -787,7 +787,7 @@ static int xfr_process_event(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	int n = rq->recv(rq->session, &rq->addr, rq->wire, rq->wire_maxlen);
 	if (n < 0) { /* Disconnect */
 		n = knot_map_errno(errno);
-		log_server_error("%s %s\n", rq->msg, knot_strerror(n));
+		log_zone_error("%s %s\n", rq->msg, knot_strerror(n));
 		return n;
 	} else if (n == 0) {
 		return KNOT_ECONNREFUSED;

@@ -329,6 +329,15 @@ value_t *hhash_map(hhash_t* tbl, const char* key, uint16_t len, uint16_t mode)
 	tbl->item[empty].d = new_key;
 
 	++tbl->weight;
+
+	/* Free old index. */
+	if (tbl->index) {
+		if (tbl->mm.free) {
+			free(tbl->index);
+		}
+		tbl->index = NULL;
+	}
+
 	return (value_t *)KEY_VAL(new_key);
 }
 

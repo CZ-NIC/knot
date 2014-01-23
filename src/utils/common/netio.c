@@ -346,7 +346,7 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 	pfd.revents = 0;
 
 	if (net->socktype == SOCK_STREAM) {
-		uint16_t msg_len;
+		uint16_t msg_len = 0;
 		uint32_t total = 0;
 
 		// Receive TCP message header.

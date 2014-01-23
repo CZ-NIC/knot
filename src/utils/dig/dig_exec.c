@@ -359,9 +359,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 	}
 
 	// Check for question sections equality.
-	if (knot_wire_get_rcode(in) == KNOT_RCODE_NOERROR) {
-		check_reply_question(reply, query);
-	}
+	check_reply_question(reply, query);
 
 	// Verify signature if a key was specified.
 	if (key_params->name != NULL) {
@@ -446,6 +444,10 @@ static void process_query(const query_t *query)
 				// If error try next resolved address.
 				if (ret != 0) {
 					net.srv = (net.srv)->ai_next;
+					if (net.srv != NULL) {
+						printf("\n");
+					}
+
 					continue;
 				}
 
@@ -459,12 +461,16 @@ static void process_query(const query_t *query)
 				return;
 			// SERVFAIL.
 			} else if (ret == 1 && query->servfail_stop == true) {
+				WARN("failed to query server %s#%s(%s)\n",
+				     remote->name, remote->service,
+				     get_sockname(socktype));
 				net_clean(&net);
 				knot_pkt_free(&out_packet);
 				return;
 			}
 
 			if (i < query->retries) {
+				printf("\n");
 				DBG("retrying server %s#%s(%s)\n",
 				    remote->name, remote->service,
 				    get_sockname(socktype));

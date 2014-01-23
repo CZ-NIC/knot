@@ -230,14 +230,6 @@ short knot_node_rrset_count(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-struct knot_node_save_rrset_arg {
-	knot_rrset_t **array;
-	size_t count;
-	size_t max_count;
-};
-
-/*----------------------------------------------------------------------------*/
-
 knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
 {
 	if (node == NULL || node->rrset_count == 0) {

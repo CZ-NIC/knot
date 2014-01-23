@@ -81,8 +81,9 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 {
 	int result_length = length + strlen(suffix) + 1;
 	char *result = (char *)malloc(result_length);
-	if (!result)
+	if (!result) {
 		return NULL;
+	}
 
 	int ret = snprintf(result, result_length, "%.*s%s", length, base, suffix);
 	if (ret < 0 || ret >= result_length) {
@@ -242,8 +243,9 @@ static int key_param_int(const void *save_to, char *value)
 	int numeric_value = strtol(value, &value_end, 10);
 
 	if (value == value_end ||
-	    (*value_end != '\0' && !isspace((unsigned char)(*value_end))))
+	    (*value_end != '\0' && !isspace((unsigned char)(*value_end)))) {
 		return KNOT_EINVAL;
+	}
 
 	*parameter = numeric_value;
 	return KNOT_EOK;
@@ -257,8 +259,10 @@ static int key_param_time(const void *save_to, char *value)
 	time_t *parameter = (time_t *)save_to;
 
 	struct tm parsed = { 0 };
-	if (!strptime(value, "%Y%m%d%H%M%S", &parsed))
+
+	if (!strptime(value, "%Y%m%d%H%M%S", &parsed)) {
 		return KNOT_EINVAL;
+	}
 
 	*parameter = timegm(&parsed);
 	return KNOT_EOK;
@@ -321,8 +325,9 @@ static int parse_keyfile_line(knot_key_params_t *key_params,
 
 	// extract attribute name
 	char *separator = memchr(line, ':', length);
-	if (!separator)
+	if (!separator) {
 		return KNOT_EOK;
+	}
 
 	// find matching attribute
 	size_t name_length = separator - line;
@@ -399,8 +404,9 @@ int knot_load_key_params(const char *filename, knot_key_params_t *key_params)
 			buffer[read] = '\0';
 		}
 		result = parse_keyfile_line(key_params, buffer, read);
-		if (result != KNOT_EOK)
+		if (result != KNOT_EOK) {
 			break;
+		}
 	}
 	free(buffer);
 
