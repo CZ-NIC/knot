@@ -398,6 +398,12 @@ int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key)
 		return KNOT_EINVAL;
 	}
 
+	/* Space reserved by previous key is now free. */
+	if (pkt->tsig_key) {
+		pkt->reserved -= tsig_wire_maxsize(pkt->tsig_key);
+	}
+
+	/* Reserve space for new key. */
 	pkt->tsig_key = tsig_key;
 	if (tsig_key) {
 		pkt->reserved += tsig_wire_maxsize(tsig_key);
@@ -435,10 +441,12 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	/* Copy name wireformat. */
 	uint8_t *dst = pkt->wire + KNOT_WIRE_HEADER_SIZE;
 	int qname_len = knot_dname_to_wire(dst, qname, pkt->max_size - pkt->size);
-	assert(qname_len == knot_dname_size(qname));
-	size_t question_len = 2 * sizeof(uint16_t) + qname_len;
+	if (qname_len < 0) {
+		return qname_len;
+	}
 
 	/* Check size limits. */
+	size_t question_len = 2 * sizeof(uint16_t) + qname_len;
 	if (qname_len < 0 || pkt->size + question_len > pkt->max_size)
 		return KNOT_ESPACE;
 
