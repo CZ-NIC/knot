@@ -1315,12 +1315,18 @@ static int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
 
 int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents)
 {
+	int ret = knot_zone_contents_load_nsec3param(contents);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Failed to load NSEC3 params: %s\n",
+		               knot_strerror(ret));
+		return ret;
+	}
 	// adjusting parameters
 	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
 	                                      .previous_node = NULL,
 	                                      .zone = contents };
-	int ret =  knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
-	                                           adjust_pointers);
+	ret =  knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	                                       adjust_pointers);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

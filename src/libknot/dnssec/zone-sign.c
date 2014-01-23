@@ -1427,5 +1427,7 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 
 void knot_zone_clear_sorted_changes(hattrie_t *t)
 {
-	hattrie_apply_rev(t, free_helper_trie_node, NULL);
+	if (t) {
+		hattrie_apply_rev(t, free_helper_trie_node, NULL);
+	}
 }

@@ -1202,7 +1202,6 @@ static int zones_process_update_auth(knot_zone_t *zone,
 			uint32_t used_lifetime = 0;
 			uint32_t used_refresh = 0;
 
-			knot_zone_contents_load_nsec3param(new_contents);
 			ret = knot_dnssec_sign_changeset(fake_zone,
 			                      knot_changesets_get_last(chgsets),
 			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
