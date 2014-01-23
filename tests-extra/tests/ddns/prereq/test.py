@@ -7,7 +7,7 @@ from dnstest.test import Test
 t = Test()
 
 srv = t.server("knot")
-zone = t.zone("ddns.", local=True)
+zone = t.zone("ddns.", storage=".")
 
 t.link(zone, srv, ddns=True)
 

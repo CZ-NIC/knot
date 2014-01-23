@@ -532,6 +532,15 @@ class Server(object):
 
         self.zones[zone.name].zfile.backup()
 
+    def update_zonefile(self, zone, version):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.upd_file(version=version)
+
 class Bind(Server):
 
     def __init__(self):

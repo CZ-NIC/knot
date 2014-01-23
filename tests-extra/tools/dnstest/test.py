@@ -135,7 +135,8 @@ class Test(object):
             self.servers.discard(server)
             return
 
-        for server in self.servers:
+        servers = [srv for srv in self.servers]
+        for server in servers:
             self.server_remove(server)
 
     def generate_conf(self):
@@ -187,18 +188,19 @@ class Test(object):
     def sleep(self, seconds):
         time.sleep(seconds)
 
-    def zone(self, name, file_name=None, local=False, dnssec=None, serial=None,
-             exists=True):
+    def zone(self, name, file_name=None, storage=None, version=None, exists=True):
 
         zone = dnstest.zonefile.ZoneFile(self.zones_dir)
         zone.set_name(name)
 
-        if local:
+        if storage is ".":
             src_dir = self.data_dir
+        elif storage:
+            src_dir = storage
         else:
             src_dir = params.common_data_dir
 
-        zone.set_file(file_name=file_name, storage=src_dir, dnssec=dnssec,
+        zone.set_file(file_name=file_name, storage=src_dir, version=version,
                       exists=exists)
 
         return [zone]
