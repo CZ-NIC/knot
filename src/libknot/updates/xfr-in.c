@@ -819,6 +819,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	ret = xfrin_take_rr(answer, &rr, &rr_id);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&packet);
+		return KNOT_EXFRREFUSED; /* Empty, try again with AXFR */
 	}
 
 	// state of the transfer
