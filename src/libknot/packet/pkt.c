@@ -105,6 +105,7 @@ static uint16_t pkt_rr_wirecount(knot_pkt_t *pkt, knot_section_t section_id)
 	case KNOT_ANSWER:     return knot_wire_get_ancount(pkt->wire);
 	case KNOT_AUTHORITY:  return knot_wire_get_nscount(pkt->wire);
 	case KNOT_ADDITIONAL: return knot_wire_get_arcount(pkt->wire);
+	default: assert(0);   return 0;
 	}
 }
 
