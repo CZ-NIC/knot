@@ -471,6 +471,11 @@ int knot_pkt_put_opt(knot_pkt_t *pkt)
 		return KNOT_EINVAL;
 	}
 
+	/* OPT should be only in the AR. */
+	if (pkt->current != KNOT_ADDITIONAL) {
+		return KNOT_ENOTSUP;
+	}
+
 	/* \note #190, not going to be pretty until then */
 	if (pkt->opt_rr.version == EDNS_NOT_SUPPORTED) {
 		return KNOT_EOK;
