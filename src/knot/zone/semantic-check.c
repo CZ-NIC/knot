@@ -999,22 +999,25 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				const knot_dname_t *next_domain =
 					knot_rdata_nsec_next(nsec_rrset, 0);
 				assert(next_domain);
+				// Convert name to lowercase for trie lookup
+				knot_dname_t *lowercase = knot_dname_copy(next_domain);
+				if (lowercase == NULL) {
+					return KNOT_ENOMEM;
+				}
+				knot_dname_to_lower(lowercase);
 
-				if (knot_zone_contents_find_node(zone,
-				                                 next_domain) ==
-				    NULL) {
-					err_handler_handle_error(handler,
-						node,
+				if (knot_zone_contents_find_node(zone, lowercase) == NULL) {
+					err_handler_handle_error(handler, node,
 						ZC_ERR_NSEC_RDATA_CHAIN, NULL);
 				}
 
-				if (knot_dname_cmp(next_domain,
+				if (knot_dname_cmp(lowercase,
 				    knot_node_owner(knot_zone_contents_apex(zone)))
 					== 0) {
 					/* saving the last node */
 					*last_node = node;
 				}
-
+				knot_dname_free(&lowercase);
 			}
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node,
