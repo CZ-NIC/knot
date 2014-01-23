@@ -171,7 +171,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
 
-	/* Transaction security for positive answer. */
+	/* Transaction security (if applicable). */
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
 		if (ns_proc_query_sign_response(pkt, qdata) != KNOT_EOK) {
 			next_state = NS_PROC_FAIL;
@@ -179,7 +179,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	}
 
 finish:
-	/* Apply rate limits for positive answers. */
+	/* Rate limits (if applicable). */
 	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
 		next_state = ratelimit_apply(next_state, pkt, ctx);
 	}

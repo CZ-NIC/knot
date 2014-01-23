@@ -112,6 +112,9 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 		return update_forward(qdata);
 	}
 
+	/* Need valid transaction security. */
+	NS_NEED_AUTH(zone_data->update_in, qdata);
+
 	/*
 	 * Check if UPDATE not running already.
 	 */
@@ -122,9 +125,6 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 		               zone_data->conf->name);
 		return NS_PROC_FAIL;
 	}
-
-	/* Need valid transaction security. */
-	NS_NEED_AUTH(zone_data->update_in, qdata);
 
 	/* Reserve space for TSIG. */
 	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
