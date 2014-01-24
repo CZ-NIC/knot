@@ -1257,7 +1257,8 @@ static int fix_nsec3_chain(knot_dname_t *a, knot_dname_t *a_hash,
 
 	// Use either next_dname or data from zone
 	bool new_chain_start =
-		knot_dname_cmp(prev_nsec3_node->owner, b_hash) > 0;
+		knot_dname_cmp(prev_nsec3_node->owner, b_hash) > 0 &&
+		!(zone_first_nsec3_node(fix_data->zone) == b_nsec3_node);
 	if (new_chain_start) {
 		assert(a == NULL); // This has to be the first change
 		// New chain started by this change
