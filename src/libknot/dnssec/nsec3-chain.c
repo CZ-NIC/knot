@@ -1089,7 +1089,6 @@ static bool should_connect_to_old(chain_fix_data_t *fix_data,
                                   const knot_dname_t *a, const knot_dname_t *b,
                                   const knot_dname_t *zone_prev)
 {
-	fix_data->old_connected = true;
 	return fix_data->chain_start && !fix_data->old_connected &&
 	       a && knot_dname_cmp(a, zone_prev) < 0 &&
 	       knot_dname_cmp(zone_prev, b) < 0;
@@ -1112,6 +1111,7 @@ static int connect_to_old_start(chain_fix_data_t *fix_data,
                                 const knot_node_t *a_node,
                                 const knot_node_t *zone_prev_node)
 {
+	fix_data->old_connected = true;
 	assert(fix_data && a_hash && b_hash && a_node && zone_prev_node);
 	int ret = update_nsec3(a_hash, zone_prev_node->owner,
 	                       a_node, fix_data->out_ch, fix_data->zone,
