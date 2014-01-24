@@ -315,12 +315,12 @@ int zones_cancel_dnssec(knot_zone_t *zone);
 /*!
  * \brief Schedule DNSSEC event.
  * \param zone Related zone.
- * \param time When to schedule. Time difference in milliseconds from now.
+ * \param unixtime When to schedule.
  * \param force Force sign or not
  *
  * \return Error code, KNOT_OK if successful.
  */
-int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time);
+int zones_schedule_dnssec(knot_zone_t *zone, time_t unixtime);
 
 /*!
  * \brief Schedule IXFR sync for given zone.

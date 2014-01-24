@@ -16,6 +16,7 @@ doc/running.texi
 doc/security.texi
 doc/troubleshooting.texi
 man/Makefile.am
+patches/Makefile.am
 samples/Makefile.am
 src/Makefile.am
 src/common/acl.c
@@ -141,6 +142,7 @@ src/libknot/dnssec/key.h
 src/libknot/dnssec/nsec-bitmap.h
 src/libknot/dnssec/nsec3.c
 src/libknot/dnssec/nsec3.h
+src/libknot/dnssec/policy.c
 src/libknot/dnssec/policy.h
 src/libknot/dnssec/random.h
 src/libknot/dnssec/rrset-sign.c

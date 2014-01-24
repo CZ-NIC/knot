@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@
 #ifndef _KNOT_DNSSEC_POLICY_H_
 #define _KNOT_DNSSEC_POLICY_H_
 
+#include <stdbool.h>
+#include <stdint.h>
+
 typedef enum knot_update_serial {
 	KNOT_SOA_SERIAL_UPDATE = 1 << 0,
 	KNOT_SOA_SERIAL_KEEP = 1 << 1
@@ -34,25 +37,31 @@ typedef enum knot_update_serial {
 
 typedef struct {
 	uint32_t now;               //! Current time.
+	uint32_t refresh_before;    //! Refresh signatures expiring before to this time.
 	uint32_t sign_lifetime;     //! Signature life time.
-	uint32_t sign_refresh;      //! Sig. refresh time before expiration.
 	bool forced_sign;           //! Drop valid signatures as well.
 	knot_update_serial_t soa_up;//! Policy for serial updating.
 } knot_dnssec_policy_t;
 
 #define KNOT_DNSSEC_DEFAULT_LIFETIME 2592000
-#define KNOT_DNSSEC_DEFAULT_REFRESH 7200
 
-#define DEFAULT_DNSSEC_POLICY { .now = time_now(), \
-				.sign_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME, \
-				.sign_refresh = KNOT_DNSSEC_DEFAULT_REFRESH, \
-				.forced_sign = false, \
-				.soa_up = KNOT_SOA_SERIAL_UPDATE }
-#define FORCED_DNSSEC_POLICY {  .now = time_now(), \
-				.sign_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME, \
-				.sign_refresh = KNOT_DNSSEC_DEFAULT_REFRESH, \
-				.forced_sign = true, \
-				.soa_up = KNOT_SOA_SERIAL_UPDATE }
+/*!
+ * \brief Initialize default signing policy.
+ */
+void knot_dnssec_init_default_policy(knot_dnssec_policy_t *policy);
+
+/*!
+ * \brief Set policy timing data according to requested signature lifetime.
+ */
+void knot_dnssec_policy_set_sign_lifetime(knot_dnssec_policy_t *policy,
+                                          uint32_t sign_lifetime);
+
+/*!
+ * \brief Get signature refresh time from the earliest expiration time.
+ */
+uint32_t knot_dnssec_policy_refresh_time(const knot_dnssec_policy_t *policy,
+                                         uint32_t earliest_expiration);
+
 
 #endif // _KNOT_DNSSEC_POLICY_H_
 
