@@ -157,7 +157,7 @@ static void pkt_clear_payload(knot_pkt_t *pkt)
 
 	/* Keep question. */
 	pkt->parsed = 0;
-	pkt->size = knot_pkt_question_size(pkt);
+	pkt->size = KNOT_WIRE_HEADER_SIZE + knot_pkt_question_size(pkt);
 	knot_wire_set_ancount(pkt->wire, 0);
 	knot_wire_set_nscount(pkt->wire, 0);
 	knot_wire_set_arcount(pkt->wire, 0);
@@ -213,15 +213,15 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	}
 
 	/* Header + question size. */
-	size_t question_size = knot_pkt_question_size(query);
-	if (question_size > pkt->max_size) {
-		dbg_packet("%s: pkt max size < HEADER size\n", __func__);
+	size_t base_size = KNOT_WIRE_HEADER_SIZE + knot_pkt_question_size(query);
+	if (base_size > pkt->max_size) {
+		dbg_packet("%s: can't fit HEADER + QUESTION\n", __func__);
 		return KNOT_ESPACE;
 	}
 	pkt->query = query;
-	pkt->size = question_size;
+	pkt->size = base_size;
 	pkt->qname_size = query->qname_size;
-	memcpy(pkt->wire, query->wire, question_size);
+	memcpy(pkt->wire, query->wire, base_size);
 
 	/* Update size and flags. */
 	knot_wire_set_qr(pkt->wire);
@@ -312,15 +312,11 @@ uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 uint16_t knot_pkt_question_size(const knot_pkt_t *pkt)
 {
 	dbg_packet("%s(%p)\n", __func__, pkt);
-	if (pkt == NULL) {
+	if (pkt == NULL || pkt->qname_size == 0) {
 		return 0;
 	}
 
-	uint16_t ret = KNOT_WIRE_HEADER_SIZE;
-	if (pkt->qname_size > 0) {
-		ret += pkt->qname_size + 2 * sizeof(uint16_t);
-	}
-	return ret;
+	return pkt->qname_size + 2 * sizeof(uint16_t);
 }
 
 /*----------------------------------------------------------------------------*/
