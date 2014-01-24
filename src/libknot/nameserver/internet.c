@@ -96,7 +96,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 	if (knot_dname_labels(qname, NULL)
 		- knot_dname_labels(knot_rrset_owner(rrset), NULL)
 		+ knot_dname_labels(knot_rdata_dname_target(rrset), NULL)
-		> KNOT_DNAME_MAXLEN) {
+		> KNOT_DNAME_MAXLABELS) {
 		return true;
 	} else {
 		return false;
