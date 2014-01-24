@@ -86,12 +86,14 @@ struct query_data {
 	/* Original QNAME case. */
 	uint8_t orig_qname[KNOT_DNAME_MAXLEN];
 
-	/* Bookkeeping below. */
+	/* Extensions. */
+	void *ext;
+	void (*ext_cleanup)(struct query_data*); /*!< Extensions cleanup callback. */
 	ns_sign_context_t sign;            /*!< Signing context. */
+
+	/* Everything below should be kept on reset. */
 	struct ns_proc_query_param *param; /*!< Module parameters. */
 	mm_ctx_t *mm;                      /*!< Memory context. */
-	void *ext;                         /*!< Extensions. */
-	void (*ext_cleanup)(struct query_data*); /*!< Extensions cleanup callback. */
 };
 
 /*! \brief Visited wildcard node list. */

@@ -41,13 +41,10 @@ const ns_proc_module_t _ns_proc_query = {
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
 
-int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param)
+/*! \brief Reinitialize query data structure. */
+static void query_data_init(ns_proc_context_t *ctx, void *module_param)
 {
-	/* Initialize context. */
-	assert(ctx);
-	ctx->type = NS_PROC_QUERY_ID;
-	ctx->data = ctx->mm.alloc(ctx->mm.ctx, sizeof(struct query_data));
-
+	/* Initialize persistent data. */
 	struct query_data *data = QUERY_DATA(ctx);
 	memset(data, 0, sizeof(struct query_data));
 	data->mm = &ctx->mm;
@@ -55,6 +52,17 @@ int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param)
 
 	/* Initialize list. */
 	init_list(&data->wildcards);
+}
+
+int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param)
+{
+	/* Initialize context. */
+	assert(ctx);
+	ctx->type = NS_PROC_QUERY_ID;
+	ctx->data = ctx->mm.alloc(ctx->mm.ctx, sizeof(struct query_data));
+
+	/* Initialize persistent data. */
+	query_data_init(ctx, module_param);
 
 	/* Await packet. */
 	return NS_PROC_MORE;
@@ -62,24 +70,21 @@ int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param)
 
 int ns_proc_query_reset(ns_proc_context_t *ctx)
 {
-	/* Clear */
 	assert(ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
+
+	/* Remember persistent parameters. */
+	struct ns_proc_query_param *module_param = qdata->param;
+
+	/* Free allocated data. */
 	knot_pkt_free(&qdata->query);
-	qdata->rcode = KNOT_RCODE_NOERROR;
-	qdata->rcode_tsig = 0;
-	qdata->node = qdata->encloser = qdata->previous = NULL;
-	qdata->name = NULL;
-	qdata->orig_qname[0] = '\0';
-
-	/* Free wildcard list. */
 	ptrlist_free(&qdata->wildcards, qdata->mm);
-
-	/* Clear extensions. */
 	if (qdata->ext_cleanup != NULL) {
 		qdata->ext_cleanup(qdata);
 	}
-	qdata->ext = qdata->ext_cleanup = NULL;
+
+	/* Initialize persistent data. */
+	query_data_init(ctx, module_param);
 
 	/* Await packet. */
 	return NS_PROC_MORE;
