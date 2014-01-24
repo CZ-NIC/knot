@@ -180,9 +180,7 @@ static int remote_zone_sign(server_t *server, const knot_zone_t *zone)
 
 	uint32_t expires_at = 0;
 	zones_cancel_dnssec((knot_zone_t *)zone);
-	rcu_read_lock();
 	zones_dnssec_sign((knot_zone_t *)zone, true, &expires_at);
-	rcu_read_unlock();
 	zones_schedule_dnssec((knot_zone_t *)zone, expires_at);
 
 	return KNOT_EOK;
