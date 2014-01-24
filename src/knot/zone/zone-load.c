@@ -160,10 +160,12 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 	dbg_zload_verb("zp: create_node: Creating node using RRSet: %p.\n",
 	            current_rrset);
 	knot_node_t *node = knot_node_new(current_rrset->owner, NULL, 0);
+	if (node == NULL) {
+		return NULL;
+	}
+
 	int ret = node_add_func(zone, node, 1, 0);
 	if (ret != KNOT_EOK) {
-		log_zone_warning("Node could not be added (%s).\n",
-		                 knot_strerror(ret));
 		knot_node_free(&node);
 		return NULL;
 	}
@@ -179,10 +181,13 @@ static void process_rrsigs_in_node(parser_context_t *parser,
 	            node);
 	rrset_list_t *tmp = parser->node_rrsigs;
 	while (tmp != NULL) {
-		if (find_rrset_for_rrsig_in_node(zone, node,
-						 tmp->data) != KNOT_EOK) {
+		int ret = find_rrset_for_rrsig_in_node(zone, node, tmp->data);
+		if (ret != KNOT_EOK) {
 			parser->ret = KNOT_ERROR;
-			log_zone_error("Could not add RRSIG to zone!\n");
+			char *rr_name = knot_dname_to_str(node->owner);
+			log_zone_error("Can't add RRSIG for '%s': %s\n",
+			               rr_name, knot_strerror(ret));
+			free(rr_name);
 			return;
 		}
 		tmp = tmp->next;
@@ -260,7 +265,10 @@ static void process_rr(const scanner_t *scanner)
 
 	int ret = add_rdata_to_rr(current_rrset, scanner);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Cannot add RDATA to zone, load failed.\n");
+		char *rr_name = knot_dname_to_str(current_owner);
+		log_zone_error("%s:%"PRIu64": Can't add RDATA for '%s'.\n",
+		               scanner->file_name, scanner->line_counter, rr_name);
+		free(rr_name);
 		parser->ret = ret;
 		return;
 	}
@@ -301,14 +309,18 @@ static void process_rr(const scanner_t *scanner)
 			if (!knot_rrset_equal(current_rrset,
 			    knot_node_rrset(knot_zone_contents_apex(contents),
 			    KNOT_RRTYPE_SOA), KNOT_RRSET_COMPARE_WHOLE)) {
-				log_zone_error("Extra SOA record in the "
-				               "zone.\n");
+				char *rr_name = knot_dname_to_str(current_owner);
+				log_zone_error("%s:%"PRIu64": Extra SOA record in the zone '%s'.\n",
+				               scanner->file_name, scanner->line_counter, rr_name);
+				free(rr_name);
 				/*!< \todo consider a new error */
 				parser->ret = KNOT_EMALF;
 				return;
 			} else {
-				log_zone_warning("encountered identical "
-				                 "extra SOA record\n");
+				char *rr_name = knot_dname_to_str(current_owner);
+				log_zone_error("%s:%"PRIu64": encountered identical extra SOA record '%s'.\n",
+				               scanner->file_name, scanner->line_counter, rr_name);
+				free(rr_name);
 				knot_rrset_deep_free(&current_rrset, 1);
 				parser->ret = KNOT_EOK;
 				return;
@@ -318,10 +330,12 @@ static void process_rr(const scanner_t *scanner)
 
 	if (current_rrset->type == KNOT_RRTYPE_SOA) {
 		if (knot_dname_cmp(current_rrset->owner,
-					parser->origin_from_config) != 0) {
-			log_zone_error("SOA record has a different "
-				"owner than the one specified "
-				"in config! \n");
+		                   parser->origin_from_config) != 0) {
+			char *rr_name = knot_dname_to_str(current_owner);
+			log_zone_error("%s:%"PRIu64": SOA record '%s' has a different "
+			               "owner than the one specified in config!.\n",
+			               scanner->file_name, scanner->line_counter, rr_name);
+			free(rr_name);
 			/* Such SOA cannot even be added, because
 			 * it would not be in the zone apex. */
 			parser->ret = KNOT_EOUTOFZONE;
@@ -369,9 +383,10 @@ static void process_rr(const scanner_t *scanner)
 				                                     node_add_func))
 				    == NULL) {
 					knot_rrset_free(&tmp_rrsig);
-					dbg_zload("zp: process_rr: Cannot "
-					       "create new node.\n");
-					log_zone_error("None cannot be created.\n");
+					char *rr_name = knot_dname_to_str(current_owner);
+					log_zone_error("%s:%"PRIu64": Can't create node for '%s'.\n",
+					               scanner->file_name, scanner->line_counter, rr_name);
+					free(rr_name);
 					/*!< \todo consider a new error */
 					parser->ret = KNOT_ERROR;
 					return;
@@ -419,15 +434,10 @@ static void process_rr(const scanner_t *scanner)
 
 		if ((node = create_node(contents, current_rrset,
 		                        node_add_func)) == NULL) {
-			dbg_zload("zp: process_rr: Cannot "
-			       "create new node.\n");
-			char *zone_name = knot_dname_to_str(contents->apex->owner);
-			char *name = knot_dname_to_str(current_rrset->owner);
-			log_zone_warning("Zone %s: Cannot create new "
-			                 "node owned by %s, skipping.\n",
-			                 zone_name, name);
-			free(name);
-			free(zone_name);
+			char *rr_name = knot_dname_to_str(current_owner);
+			log_zone_error("%s:%"PRIu64": Can't create node for '%s'.\n",
+			               scanner->file_name, scanner->line_counter, rr_name);
+			free(rr_name);
 			knot_rrset_deep_free(&current_rrset, 1);
 			return;
 		}
@@ -440,11 +450,13 @@ static void process_rr(const scanner_t *scanner)
 		 */
 		const knot_rrset_t *rrset_in_node =
 			knot_node_rrset(node, current_rrset->type);
-		if (rrset_in_node &&
-		    current_rrset->ttl != rrset_in_node->ttl) {
-			log_zone_warning("TTL does not match TTL of its RRSet."
-			                 "Changing to %"PRIu32"\n",
-			                 rrset_in_node->ttl);
+		if (rrset_in_node && current_rrset->ttl != rrset_in_node->ttl) {
+			char *rr_name = knot_dname_to_str(current_owner);
+			log_zone_warning("%s:%"PRIu64": TTL of '%s/TYPE%u' does not match TTL "
+			                 "of its RRSet. Changing to %"PRIu32"\n",
+			                 scanner->file_name, scanner->line_counter,
+			                 rr_name, current_rrset->type, rrset_in_node->ttl);
+			free(rr_name);
 			/* Actual change will happen in merge. */
 		}
 	}
@@ -469,15 +481,16 @@ static void process_rr(const scanner_t *scanner)
 	                           parser->err_handler, true,
 	                           &sem_fatal_error);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Semantic check failed to run (%s)\n",
+		log_zone_error("%s:%"PRIu64": Semantic check failed: %s\n",
+		               scanner->file_name, scanner->line_counter,
 		               knot_strerror(ret));
 		parser->ret = ret;
 		return;
 	}
 	if (sem_fatal_error) {
-		log_zone_error("Semantic check found fatal error "
-		               "on line=%"PRIu64"\n",
-		               scanner->line_counter);
+		log_zone_error("%s:%"PRIu64": Semantic check found fatal error: %s\n",
+		               scanner->file_name, scanner->line_counter,
+		               knot_strerror(ret));
 		parser->ret = KNOT_EMALF;
 		return;
 	}
@@ -571,8 +584,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	assert(c);
 	int ret = file_loader_process(loader->file_loader);
 	if (ret != ZSCANNER_OK) {
-		log_zone_error("Zone could not be loaded (%s).\n",
-		               zscanner_strerror(ret));
+		log_zone_error("%s: zone file could not be loaded (%s).\n",
+		               loader->source, zscanner_strerror(ret));
 	}
 
 	if (c->last_node && c->node_rrsigs) {
@@ -580,8 +593,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 
 	if (c->ret != KNOT_EOK) {
-		log_zone_error("Zone could not be loaded (%s).\n",
-		               knot_strerror(c->ret));
+		log_zone_error("%s: zone file could not be loaded (%s).\n",
+		               loader->source, zscanner_strerror(c->ret));
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
@@ -589,8 +602,9 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	}
 
 	if (loader->file_loader->scanner->error_counter > 0) {
-		log_zone_error("Zone could not be loaded due to %"PRIu64" errors"
-		               " encountered.\n",
+		log_zone_error("%s: zone file could not be loaded due to "
+		               "%"PRIu64" errors encountered.\n",
+		               loader->source,
 		               loader->file_loader->scanner->error_counter);
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
@@ -601,7 +615,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	if (knot_zone_contents_apex(c->current_zone) == NULL ||
 	    knot_node_rrset(knot_zone_contents_apex(c->current_zone),
 	                    KNOT_RRTYPE_SOA) == NULL) {
-		log_zone_error("No SOA record in the zone file.\n");
+		log_zone_error("%s: no SOA record in the zone file.\n",
+		               loader->source);
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
@@ -614,8 +629,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	int kret = knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
 	                                     &last_nsec3_node, 0);
 	if (kret != KNOT_EOK)  {
-		log_zone_error("Failed to finalize zone contents: %s\n",
-		               knot_strerror(kret));
+		log_zone_error("%s: Failed to finalize zone contents: %s\n",
+		               loader->source, knot_strerror(kret));
 		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
