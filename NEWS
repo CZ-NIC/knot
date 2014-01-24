@@ -6,6 +6,8 @@ Bugfixes:
 	* AXFR/IXFR compatibility issues with tinydns/axfrdns
 	* Journal file is created only when needed
 	* Zone-related log messages are logged into correct category 
+	* DNSSEC: Refresh signatures earlier (3 days before their expiration
+	  with the default signature lifetime)
 
 v1.4.1 - Jan 13, 2014
 ---------------------
