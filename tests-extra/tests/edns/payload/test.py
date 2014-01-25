@@ -8,10 +8,10 @@ t = Test()
 
 knot = t.server("knot")
 bind = t.server("bind")
-zone = t.zone("flags.")
+zones = t.zone("flags.") + t.zone("example.", "example.zone.nsec", local=True)
 
-t.link(zone, knot)
-t.link(zone, bind)
+t.link(zones, knot)
+t.link(zones, bind)
 
 t.start()
 
@@ -27,6 +27,10 @@ resp.cmp(bind)
 
 # no TC - UDP message is extended using EDNS0/payload just for answer.
 resp = knot.dig("513resp.flags", "TXT", udp=True, bufsize=524)
+resp.check(noflags="TC")
+
+# check if RRSIG not fitting in the AR causes truncation
+resp = knot.dig("example", "SOA", udp=True, dnssec=True, bufsize=1400)
 resp.check(noflags="TC")
 
 t.end()
