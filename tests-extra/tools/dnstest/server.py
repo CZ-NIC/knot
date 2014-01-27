@@ -308,7 +308,7 @@ class Server(object):
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
             timeout=None, tries=3, recursion=False, bufsize=None,
-            nsid=False, dnssec=False):
+            nsid=False, dnssec=False, log_no_sep=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
         # Convert one item zone list to zone name.
@@ -412,7 +412,8 @@ class Server(object):
                     resp = dns.query.tcp(query, self.addr, port=self.port,
                                          timeout=timeout)
 
-                detail_log(SEP)
+                if not log_no_sep:
+                    detail_log(SEP)
                 return dnstest.response.Response(self, resp, args)
             except:
                 time.sleep(timeout)
@@ -445,8 +446,10 @@ class Server(object):
 
         _serial = 0
 
+        check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
+
         for t in range(20):
-            resp = self.dig(zone.name, "SOA", udp=True, tries=1)
+            resp = self.dig(zone.name, "SOA", udp=True, tries=1, log_no_sep=True)
             if resp.resp.rcode() == 0:
                 soa = str((resp.resp.answer[0]).to_rdataset())
                 _serial = int(soa.split()[5])
@@ -459,6 +462,8 @@ class Server(object):
         else:
             raise Exception("Can't get %s SOA%s from %s." % (zone.name,
                             ">%i" % serial if serial else "", self.name))
+
+        detail_log(SEP)
 
         return _serial
 
