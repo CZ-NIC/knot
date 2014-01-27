@@ -2610,13 +2610,6 @@ static int ns_xfr_send_and_clear(knot_ns_xfr_t *xfr, int add_tsig)
 
 	// increment the packet number
 	++xfr->packet_nr;
-	if ((xfr->tsig_key && knot_ns_tsig_required(xfr->packet_nr))
-	     || xfr->tsig_rcode != 0) {
-		/*! \todo Where is xfr->tsig_size set?? */
-		knot_packet_set_tsig_size(xfr->response, xfr->tsig_size);
-	} else {
-		knot_packet_set_tsig_size(xfr->response, 0);
-	}
 
 dbg_ns_exec_verb(
 	dbg_ns_verb("Response structure after clearing:\n");
