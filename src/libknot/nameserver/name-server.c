@@ -670,7 +670,7 @@ dbg_ns_exec(
 				const knot_dname_t *dname
 						= knot_node_owner(node);
 				ret = ns_follow_cname(&node, &dname, resp,
-				    knot_response_add_rrset_additional, 0);
+				    knot_response_add_rrset_additional, KNOT_PF_NOTRUNC);
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to follow CNAME.\n");
 					return ret;
@@ -703,7 +703,7 @@ dbg_ns_exec(
 				}
 
 				ret = ns_add_rrsigs(rrset_add, resp, dname,
-				      knot_response_add_rrset_additional, 0);
+				      knot_response_add_rrset_additional, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
 
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to add RRSIGs for A RR"
@@ -738,7 +738,7 @@ dbg_ns_exec(
 				}
 
 				ret = ns_add_rrsigs(rrset_add, resp, dname,
-				      knot_response_add_rrset_additional, 0);
+				      knot_response_add_rrset_additional, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
 
 				if (ret != KNOT_EOK) {
 					dbg_ns("Failed to add RRSIG for AAAA RR"
@@ -2106,7 +2106,7 @@ static int ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
 		ret = knot_response_add_rrset_additional(resp, rrset, KNOT_PF_NOTRUNC);
 		if (ret == KNOT_EOK) {
 			ret = ns_add_rrsigs(rrset, resp, apex->owner,
-			              knot_response_add_rrset_additional, 0);
+			              knot_response_add_rrset_additional, KNOT_PF_NOTRUNC);
 		}
 	}
 

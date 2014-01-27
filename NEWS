@@ -8,6 +8,7 @@ Bugfixes:
 	* Zone-related log messages are logged into correct category 
 	* DNSSEC: Refresh signatures earlier (3 days before their expiration
 	  with the default signature lifetime)
+	* Fixed RCU synchronization causing deadlock on 'knotc signzone'
 
 v1.4.1 - Jan 13, 2014
 ---------------------
