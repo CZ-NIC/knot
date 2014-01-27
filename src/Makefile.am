@@ -163,6 +163,7 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/nsec-bitmap.h		\
 	libknot/dnssec/nsec3.c			\
 	libknot/dnssec/nsec3.h			\
+	libknot/dnssec/policy.c			\
 	libknot/dnssec/policy.h			\
 	libknot/dnssec/random.h			\
 	libknot/dnssec/rrset-sign.c		\

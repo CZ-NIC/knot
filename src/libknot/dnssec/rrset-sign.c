@@ -334,11 +334,9 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(policy);
 
-	uint32_t now = policy->now;
-	uint32_t refresh = policy->sign_refresh;
 	uint32_t expiration = knot_rdata_rrsig_sig_expiration(rrsigs, pos);
 
-	return (expiration - refresh) <= now;
+	return (expiration <= policy->refresh_before);
 }
 
 /*!
