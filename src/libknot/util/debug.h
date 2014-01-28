@@ -64,8 +64,8 @@
 #endif
 
 #include "libknot/rrset.h"
-#include "libknot/zone/node.h"
-#include "libknot/zone/zone.h"
+#include "knot/zone/node.h"
+#include "knot/zone/zone.h"
 #include "libknot/util/utils.h"
 #include "common/print.h"
 

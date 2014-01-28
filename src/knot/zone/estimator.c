@@ -20,7 +20,7 @@
 #include "knot/zone/estimator.h"
 #include "libknot/dname.h"
 #include "common/lists.h"
-#include "libknot/zone/node.h"
+#include "knot/zone/node.h"
 #include "zscanner/scanner.h"
 #include "common/descriptor.h"
 

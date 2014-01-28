@@ -25,7 +25,7 @@
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/util/debug.h"
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 
 static int init_dnssec_structs(const knot_zone_t *zone,
                                knot_zone_keys_t *zone_keys,

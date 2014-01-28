@@ -30,8 +30,8 @@
 #define _KNOT_DNSSEC_ZONE_SIGN_H_
 
 #include "libknot/updates/changesets.h"
-#include "libknot/zone/zone.h"
-#include "libknot/zone/zone-contents.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/zone-contents.h"
 #include "libknot/dnssec/zone-keys.h"
 #include "libknot/dnssec/policy.h"
 

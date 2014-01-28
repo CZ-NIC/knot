@@ -27,11 +27,11 @@
 #ifndef _KNOT_ZONE_CONTENTS_H_
 #define _KNOT_ZONE_CONTENTS_H_
 
-#include "libknot/zone/node.h"
+#include "knot/zone/node.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/nsec3.h"
 
-#include "libknot/zone/zone-tree.h"
+#include "knot/zone/zone-tree.h"
 
 struct knot_zone;
 

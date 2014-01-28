@@ -28,7 +28,7 @@
 #define _KNOT_IXFR_H_
 
 #include "libknot/packet/pkt.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zonedb.h"
 #include "libknot/nameserver/name-server.h"
 
 struct query_data;

@@ -24,7 +24,7 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
 #include "libknot/consts.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zonedb.h"
 #include "libknot/common.h"
 #include "libknot/packet/wire.h"
 #include "knot/server/zones.h"

@@ -22,7 +22,7 @@
 #include <urcu.h>
 
 #include "libknot/common.h"
-#include "libknot/zone/node.h"
+#include "knot/zone/node.h"
 #include "libknot/rrset.h"
 #include "common/descriptor.h"
 #include "libknot/util/debug.h"
@@ -97,7 +97,6 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
 
 	return ret;
 }
-
 
 int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
 {
@@ -269,7 +268,6 @@ const knot_rrset_t **knot_node_rrsets_no_copy(const knot_node_t *node)
 {
 	return (const knot_rrset_t **)knot_node_get_rrsets_no_copy(node);
 }
-
 
 /*----------------------------------------------------------------------------*/
 
@@ -682,4 +680,3 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 
 	return KNOT_EOK;
 }
-

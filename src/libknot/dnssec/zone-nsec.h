@@ -31,7 +31,7 @@
 
 #include <stdbool.h>
 #include "libknot/updates/changesets.h"
-#include "libknot/zone/zone-contents.h"
+#include "knot/zone/zone-contents.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/zone-keys.h"
 #include "libknot/dnssec/nsec-bitmap.h"

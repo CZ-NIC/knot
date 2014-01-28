@@ -28,7 +28,7 @@
 #ifndef _KNOT_DNSSEC_ZONE_EVENTS_H_
 #define _KNOT_DNSSEC_ZONE_EVENTS_H_
 
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/dnssec/policy.h"
 /*!

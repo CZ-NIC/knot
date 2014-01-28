@@ -114,18 +114,6 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/wire.h			\
-	libknot/zone/zone.c			\
-	libknot/zone/zone-contents.c		\
-	libknot/zone/zone-tree.c		\
-	libknot/zone/zone-tree.h		\
-	libknot/zone/node.h			\
-	libknot/zone/zone.h			\
-	libknot/zone/zone-contents.h		\
-	libknot/zone/zonedb.c			\
-	libknot/zone/zonedb.h			\
-	libknot/zone/node.c			\
-	libknot/zone/zone-diff.h		\
-	libknot/zone/zone-diff.c		\
 	libknot/nameserver/nsec_proofs.h	\
 	libknot/nameserver/nsec_proofs.c	\
 	libknot/nameserver/name-server.h	\
@@ -301,7 +289,19 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-dump.h			\
 	knot/zone/zone-load.c			\
-	knot/zone/zone-load.h
+	knot/zone/zone-load.h			\
+	knot/zone/node.c			\
+	knot/zone/node.h			\
+	knot/zone/zone-contents.c		\
+	knot/zone/zone-contents.h		\
+	knot/zone/zone-diff.c		\
+	knot/zone/zone-diff.h		\
+	knot/zone/zone-tree.c		\
+	knot/zone/zone-tree.h		\
+	knot/zone/zone.c			\
+	knot/zone/zone.h			\
+	knot/zone/zonedb.c			\
+	knot/zone/zonedb.h
 
 libknotd_la_LIBADD = libknot.la libknots.la @LIBOBJS@
 libknots_la_LIBADD = zscanner/libzscanner.la @LIBOBJS@

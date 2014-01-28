@@ -30,8 +30,8 @@
 #ifndef _KNOT_ZONEDB_H_
 #define _KNOT_ZONEDB_H_
 
-#include "libknot/zone/zone.h"
-#include "libknot/zone/node.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/node.h"
 #include "libknot/dname.h"
 #include "common/hhash.h"
 

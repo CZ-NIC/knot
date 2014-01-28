@@ -31,7 +31,7 @@
 #include <pthread.h>
 #include "common/sockaddr.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 
 /* Defaults */
 #define RRL_SLIP_MAX 100

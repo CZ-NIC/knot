@@ -17,7 +17,7 @@
 #include <config.h>
 #include <assert.h>
 
-#include "libknot/zone/zone-contents.h"
+#include "knot/zone/zone-contents.h"
 #include "libknot/util/debug.h"
 #include "libknot/rrset.h"
 #include "common/base32hex.h"
@@ -25,7 +25,7 @@
 #include "common/hattrie/hat-trie.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
-#include "libknot/zone/zone-tree.h"
+#include "knot/zone/zone-tree.h"
 #include "libknot/packet/wire.h"
 #include "libknot/consts.h"
 #include "libknot/rdata.h"

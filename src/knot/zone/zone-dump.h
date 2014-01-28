@@ -27,7 +27,7 @@
 #ifndef _KNOTD_ZONEDUMP_H_
 #define _KNOTD_ZONEDUMP_H_
 
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 
 /*!
  * \brief Dumps given zone to text file.

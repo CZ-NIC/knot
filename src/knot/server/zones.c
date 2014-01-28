@@ -39,10 +39,10 @@
 #include "libknot/updates/ddns.h"
 #include "libknot/updates/xfr-in.h"
 #include "libknot/packet/wire.h"
-#include "libknot/zone/zone-contents.h"
-#include "libknot/zone/zone-diff.h"
-#include "libknot/zone/zone.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zone-contents.h"
+#include "knot/zone/zone-diff.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/zonedb.h"
 #include "zscanner/descriptor.h"
 
 /* Forward declarations. */

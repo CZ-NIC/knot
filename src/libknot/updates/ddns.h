@@ -28,7 +28,7 @@
 #define _KNOT_DDNS_H_
 
 #include "libknot/updates/changesets.h"
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"

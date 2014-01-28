@@ -33,12 +33,12 @@
 #include "common/acl.h"
 #include "common/evsched.h"
 #include "libknot/nameserver/name-server.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zonedb.h"
 #include "knot/conf/conf.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/journal.h"
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 #include "libknot/updates/xfr-in.h"
 
 /* Constants. */

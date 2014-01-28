@@ -39,7 +39,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zonedb.h"
 #include "libknot/edns.h"
 #include "libknot/consts.h"
 #include "libknot/tsig.h"

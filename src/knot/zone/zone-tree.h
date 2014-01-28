@@ -30,7 +30,7 @@
 #define _KNOT_ZONE_TREE_H_
 
 #include "common/hattrie/hat-trie.h"
-#include "libknot/zone/node.h"
+#include "knot/zone/node.h"
 
 /*----------------------------------------------------------------------------*/
 

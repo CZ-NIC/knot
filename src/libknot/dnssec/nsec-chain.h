@@ -31,7 +31,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "libknot/zone/zone-contents.h"
+#include "knot/zone/zone-contents.h"
 #include "libknot/updates/changesets.h"
 
 /*!

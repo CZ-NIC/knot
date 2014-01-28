@@ -27,7 +27,7 @@
 #include "libknot/util/debug.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/dnssec/random.h"

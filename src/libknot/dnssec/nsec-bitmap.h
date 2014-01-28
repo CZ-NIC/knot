@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
-#include "libknot/zone/node.h"
+#include "knot/zone/node.h"
 #include "libknot/rrset.h"
 #include "common/descriptor.h"
 

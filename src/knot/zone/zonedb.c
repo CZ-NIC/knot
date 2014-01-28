@@ -21,11 +21,11 @@
 #include <urcu.h>
 
 #include "libknot/common.h"
-#include "libknot/zone/zone.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
-#include "libknot/zone/node.h"
+#include "knot/zone/node.h"
 #include "libknot/util/debug.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
@@ -86,7 +86,7 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 	if (db == NULL || zone_name == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Can't guess maximum label count now. */
 	db->maxlabels = KNOT_DNAME_MAXLABELS;
 	/* Attempt to remove zone. */
@@ -152,7 +152,7 @@ knot_zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dnam
 	if (db == NULL || dname == NULL) {
 		return NULL;
 	}
-	
+
 	/* We know we have at most N label zones, so let's compare only those
 	 * N last labels. */
 	int zone_labels = knot_dname_labels(dname, NULL);
@@ -183,7 +183,7 @@ knot_zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dnam
 knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
                                               const knot_dname_t *zone_name)
 {
-	
+
 	if (db == NULL || zone_name == NULL) {
 		return NULL;
 	}

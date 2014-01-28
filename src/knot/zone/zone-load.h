@@ -29,7 +29,7 @@
 
 #include <stdio.h>
 
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
 #include "zscanner/zscanner.h"
 

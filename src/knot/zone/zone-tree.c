@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "libknot/zone/node.h"
+#include "knot/zone/node.h"
 #include "libknot/util/debug.h"
 #include "common/hattrie/hat-trie.h"
 

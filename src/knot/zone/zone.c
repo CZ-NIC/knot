@@ -22,12 +22,12 @@
 #include <urcu.h>
 
 #include "libknot/common.h"
-#include "libknot/zone/zone.h"
-#include "libknot/zone/node.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/node.h"
 #include "libknot/dname.h"
 #include "libknot/util/debug.h"
 #include "libknot/util/utils.h"
-#include "libknot/zone/zone-contents.h"
+#include "knot/zone/zone-contents.h"
 
 /*! \brief Adaptor for knot_zone_deep_free() */
 static void knot_zone_dtor(struct ref_t *p) {

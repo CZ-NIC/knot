@@ -30,7 +30,7 @@
 #include "common/crc.h"
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
-#include "libknot/zone/zone-contents.h"
+#include "knot/zone/zone-contents.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-load.h"

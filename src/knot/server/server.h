@@ -41,7 +41,7 @@
 #include "knot/server/socket.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/rrl.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zonedb.h"
 #include "common/evsched.h"
 #include "common/lists.h"
 

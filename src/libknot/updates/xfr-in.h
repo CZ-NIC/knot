@@ -31,7 +31,7 @@
 #include <string.h>
 
 #include "libknot/dname.h"
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/updates/changesets.h"

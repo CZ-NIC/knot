@@ -34,8 +34,8 @@
 #include "libknot/util/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
-#include "libknot/zone/zone-contents.h"
-#include "libknot/zone/zone-diff.h"
+#include "knot/zone/zone-contents.h"
+#include "knot/zone/zone-diff.h"
 
 /*!
  * \brief Deletes NSEC3 chain if NSEC should be used.
