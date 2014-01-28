@@ -17,15 +17,15 @@
 #include <assert.h>
 
 #include "common/base32hex.h"
-#include "libknot/dnssec/nsec3-chain.h"
+#include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/zone-contents.h"
 #include "knot/zone/zone-diff.h"
-#include "libknot/dnssec/nsec-chain.h"
-#include "libknot/dnssec/zone-sign.h"
-#include "libknot/dnssec/zone-nsec.h"
+#include "knot/dnssec/nsec-chain.h"
+#include "knot/dnssec/zone-sign.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/nsec-bitmap.h"
 
 /* - Forward declarations --------------------------------------------------- */

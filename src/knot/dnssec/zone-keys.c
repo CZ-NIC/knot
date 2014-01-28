@@ -26,7 +26,7 @@
 #include "libknot/consts.h"
 #include "libknot/dnssec/nsec3.h"
 #include "libknot/dnssec/sign.h"
-#include "libknot/dnssec/zone-keys.h"
+#include "knot/dnssec/zone-keys.h"
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 

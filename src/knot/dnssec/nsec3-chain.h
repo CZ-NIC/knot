@@ -28,8 +28,8 @@
 #ifndef _KNOT_DNSSEC_NSEC3_CHAIN_FIX_H_
 #define _KNOT_DNSSEC_NSEC3_CHAIN_FIX_H_
 
-#include "libknot/dnssec/zone-nsec.h"
-#include "libknot/dnssec/nsec-chain.h"
+#include "knot/dnssec/zone-nsec.h"
+#include "knot/dnssec/nsec-chain.h"
 
 /*!
  * \brief Creates new NSEC3 chain, add differences from current into a changeset.

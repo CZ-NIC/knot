@@ -22,7 +22,7 @@
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/zone-nsec.h"
+#include "knot/dnssec/zone-nsec.h"
 
 /*! \brief Size of auxiliary buffer. */
 #define DUMP_BUF_LEN (70 * 1024)

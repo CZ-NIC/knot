@@ -19,9 +19,9 @@
 
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"
-#include "libknot/dnssec/nsec-chain.h"
-#include "libknot/dnssec/zone-sign.h"
-#include "libknot/dnssec/zone-nsec.h"
+#include "knot/dnssec/nsec-chain.h"
+#include "knot/dnssec/zone-sign.h"
+#include "knot/dnssec/zone-nsec.h"
 
 /* - Forward declarations --------------------------------------------------- */
 

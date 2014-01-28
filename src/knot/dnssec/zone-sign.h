@@ -32,7 +32,7 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-contents.h"
-#include "libknot/dnssec/zone-keys.h"
+#include "knot/dnssec/zone-keys.h"
 #include "libknot/dnssec/policy.h"
 
 typedef struct type_node {

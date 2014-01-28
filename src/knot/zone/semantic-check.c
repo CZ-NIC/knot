@@ -31,7 +31,7 @@
 #include "common/descriptor.h"
 #include "common/mempattern.h"
 #include "libknot/rdata.h"
-#include "libknot/dnssec/zone-nsec.h"
+#include "knot/dnssec/zone-nsec.h"
 
 #include "knot/zone/semantic-check.h"
 

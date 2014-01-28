@@ -24,12 +24,12 @@
 #include "common/base32hex.h"
 #include "common/descriptor.h"
 #include "common/hhash.h"
-#include "libknot/dnssec/nsec-chain.h"
-#include "libknot/dnssec/nsec3-chain.h"
+#include "knot/dnssec/nsec-chain.h"
+#include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dnssec/nsec-bitmap.h"
 #include "libknot/dnssec/nsec3.h"
-#include "libknot/dnssec/zone-nsec.h"
-#include "libknot/dnssec/zone-sign.h"
+#include "knot/dnssec/zone-nsec.h"
+#include "knot/dnssec/zone-sign.h"
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 #include "libknot/util/utils.h"
@@ -269,4 +269,3 @@ int knot_zone_fix_nsec_chain(const knot_zone_contents_t *zone,
 
 	return ret;
 }
-

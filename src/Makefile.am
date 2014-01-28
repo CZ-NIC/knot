@@ -146,19 +146,7 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/sig0.c			\
 	libknot/dnssec/sig0.h			\
 	libknot/dnssec/sign.c			\
-	libknot/dnssec/sign.h			\
-	libknot/dnssec/zone-events.c		\
-	libknot/dnssec/zone-events.h		\
-	libknot/dnssec/zone-keys.c		\
-	libknot/dnssec/zone-keys.h		\
-	libknot/dnssec/nsec-chain.c		\
-	libknot/dnssec/nsec-chain.h		\
-	libknot/dnssec/nsec3-chain.c		\
-	libknot/dnssec/nsec3-chain.h		\
-	libknot/dnssec/zone-nsec.c		\
-	libknot/dnssec/zone-nsec.h		\
-	libknot/dnssec/zone-sign.c		\
-	libknot/dnssec/zone-sign.h
+	libknot/dnssec/sign.h
 
 libknots_la_SOURCES =				\
 	common/slab/slab.c			\
@@ -230,6 +218,18 @@ libknotd_la_SOURCES =				\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
 	knot/ctl/remote.h			\
+	knot/dnssec/nsec-chain.c		\
+	knot/dnssec/nsec-chain.h		\
+	knot/dnssec/nsec3-chain.c		\
+	knot/dnssec/nsec3-chain.h		\
+	knot/dnssec/zone-events.c		\
+	knot/dnssec/zone-events.h		\
+	knot/dnssec/zone-keys.c			\
+	knot/dnssec/zone-keys.h			\
+	knot/dnssec/zone-nsec.c			\
+	knot/dnssec/zone-nsec.h			\
+	knot/dnssec/zone-sign.c			\
+	knot/dnssec/zone-sign.h			\
 	knot/nameserver/axfr.c			\
 	knot/nameserver/axfr.h			\
 	knot/nameserver/chaos.c			\

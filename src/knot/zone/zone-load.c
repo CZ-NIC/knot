@@ -31,7 +31,7 @@
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/zone-contents.h"
-#include "libknot/dnssec/zone-nsec.h"
+#include "knot/dnssec/zone-nsec.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-load.h"
 #include "zscanner/file_loader.h"
