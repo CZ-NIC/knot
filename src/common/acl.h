@@ -32,6 +32,10 @@
 
 #include "common/lists.h"
 #include "common/sockaddr.h"
+#include "common/mempattern.h"
+#include "libknot/tsig.h"
+
+struct knot_tsig_key;
 
 /*! \brief ACL structure. */
 typedef list_t acl_t;
@@ -40,7 +44,7 @@ typedef list_t acl_t;
 typedef struct acl_match {
 	node_t n;
 	sockaddr_t addr; /*!< \brief Address for comparison. */
-	void *val;       /*!< \brief Associated value (or NULL). */
+	struct knot_tsig_key *key; /*!< \brief TSIG key. */
 } acl_match_t;
 
 /*!
@@ -69,7 +73,7 @@ void acl_delete(acl_t **acl);
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int acl_insert(acl_t *acl, const sockaddr_t *addr, void *val);
+int acl_insert(acl_t *acl, const sockaddr_t *addr, knot_tsig_key_t *key);
 
 /*!
  * \brief Match address against ACL.
@@ -80,7 +84,7 @@ int acl_insert(acl_t *acl, const sockaddr_t *addr, void *val);
  * \retval Matching rule instance if found.
  * \retval NULL if it didn't find a match.
  */
-acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr);
+acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr, const knot_dname_t *key_name);
 
 /*!
  * \brief Truncate ACL.

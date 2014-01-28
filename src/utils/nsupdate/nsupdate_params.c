@@ -115,23 +115,19 @@ static int nsupdate_init(nsupdate_params_t *params)
 
 void nsupdate_clean(nsupdate_params_t *params)
 {
-	strnode_t *n = NULL, *nxt = NULL;
-
 	if (params == NULL) {
 		return;
 	}
 
 	/* Free qfiles. */
-	WALK_LIST_DELSAFE(n, nxt, params->qfiles) {
-		free(n);
-	}
+	WALK_LIST_FREE(params->qfiles);
 
 	srv_info_free(params->server);
 	srv_info_free(params->srcif);
 	free(params->zone);
 	scanner_free(params->rrp);
-	knot_packet_free(&params->pkt);
-	knot_packet_free(&params->resp);
+	knot_pkt_free(&params->pkt);
+	knot_pkt_free(&params->resp);
 	knot_free_key_params(&params->key_params);
 
 	/* Clean up the structure. */
@@ -229,11 +225,11 @@ int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[])
 
 	/* Process non-option parameters. */
 	for (; optind < argc; ++optind) {
-		strnode_t *n = malloc(sizeof(strnode_t));
+		ptrnode_t *n = malloc(sizeof(ptrnode_t));
 		if (!n) { /* Params will be cleaned on exit. */
 			return KNOT_ENOMEM;
 		}
-		n->str = argv[optind];
+		n->d = argv[optind];
 		add_tail(&params->qfiles, &n->n);
 	}
 

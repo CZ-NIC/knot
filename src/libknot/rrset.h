@@ -33,6 +33,9 @@
 
 #include "libknot/dname.h"
 
+struct knot_compr;
+struct knot_node;
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure for representing an RRSet.
@@ -61,6 +64,10 @@ struct knot_rrset {
 	uint32_t *rdata_indices; /*!< Indices to beginnings of RRs (without 0)*/
 	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
 	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
+
+	/* Optional fields. */
+
+	struct knot_node **additional; /* Additional records. */
 };
 
 typedef struct knot_rrset knot_rrset_t;
@@ -335,14 +342,14 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner);
 void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner);
 
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
-                       size_t max_size, uint16_t *rr_count, void *comp_data);
+                       size_t max_size, uint16_t *rr_count, struct knot_compr *compr);
 
 /*!
  * \brief Write one RR from RRSet.
  */
 int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
                            uint8_t *wire, size_t max_size, size_t *outsize,
-                           void *comp_data);
+                           struct knot_compr *compr);
 
 /*!
  * \brief Merges two RRSets.
@@ -424,6 +431,19 @@ uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset, size_t pos);
 int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
                             const knot_rrset_t *rrset2,
                             size_t pos1, size_t pos2);
+
+/*!
+ * \brief Checks whether the given type requires additional processing.
+ *
+ * Only MX, NS and SRV types require additional processing.
+ *
+ * \param rrtype Type to check.
+ *
+ * \retval <> 0 if additional processing is needed for \a qtype.
+ * \retval 0 otherwise.
+ */
+int rrset_additional_needed(uint16_t rrtype);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

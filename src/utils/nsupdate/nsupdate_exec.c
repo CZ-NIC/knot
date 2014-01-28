@@ -293,12 +293,12 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	if (!p->pkt) {
 		p->pkt = create_empty_packet(MAX_PACKET_SIZE);
 		qname = knot_dname_from_str(p->zone);
-		ret = knot_query_set_question(p->pkt, qname, p->class_num, p->type_num);
+		ret = knot_pkt_put_question(p->pkt, qname, p->class_num, p->type_num);
 		knot_dname_free(&qname);
 		if (ret != KNOT_EOK)
 			return ret;
 
-		knot_query_set_opcode(p->pkt, KNOT_OPCODE_UPDATE);
+		knot_wire_set_opcode(p->pkt->wire, KNOT_OPCODE_UPDATE);
 	}
 
 	/* Form a rrset. */
@@ -339,13 +339,13 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 	switch(sect) {
 	case UP_ADD:
 	case UP_DEL:
-		ret = knot_response_add_rrset_authority(p->pkt, rr, KNOT_PF_NOTRUNC);
+		ret = knot_pkt_put(p->pkt, 0, rr, KNOT_PF_NOTRUNC);
 		break;
 	case PQ_NXDOMAIN:
 	case PQ_NXRRSET:
 	case PQ_YXDOMAIN:
 	case PQ_YXRRSET:
-		ret = knot_response_add_rrset_answer(p->pkt, rr, KNOT_PF_NOTRUNC);
+		ret = knot_pkt_put(p->pkt, 0, rr, KNOT_PF_NOTRUNC);
 		break;
 	default:
 		assert(0); /* Should never happen. */
@@ -357,7 +357,7 @@ static int pkt_append(nsupdate_params_t *p, int sect)
 		    __func__, knot_strerror(ret));
 		if (ret == KNOT_ESPACE) {
 			ERR("exceeded UPDATE message maximum size %zu\n",
-			    knot_packet_max_size(p->pkt));
+			    p->pkt->max_size);
 		}
 	}
 
@@ -454,7 +454,7 @@ static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
 
 	/* Free last answer. */
 	if (params->resp) {
-		knot_packet_free(&params->resp);
+		knot_pkt_free(&params->resp);
 	}
 
 	return ret;
@@ -474,16 +474,17 @@ int nsupdate_exec(nsupdate_params_t *params)
 	}
 
 	/* Read from each specified file. */
-	strnode_t *n = NULL;
+	ptrnode_t *n = NULL;
 	WALK_LIST(n, params->qfiles) {
-		if (strcmp(n->str, "-") == 0) {
+		const char *filename = (const char*)n->d;
+		if (strcmp(filename, "-") == 0) {
 			ret = nsupdate_process(params, stdin);
 			continue;
 		}
-		FILE *fp = fopen(n->str, "r");
+		FILE *fp = fopen(filename, "r");
 		if (!fp) {
 			ERR("could not open '%s': %s\n",
-			    n->str, strerror(errno));
+			    filename, strerror(errno));
 			return KNOT_ERROR;
 		}
 		ret = nsupdate_process(params, fp);
@@ -686,26 +687,19 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 
 	/* Create wireformat. */
 	int ret = KNOT_EOK;
-	uint8_t *wire = NULL;
-	size_t len = 0;
-
-	if ((ret = knot_packet_to_wire(params->pkt, &wire, &len))!= KNOT_EOK) {
-		ERR("couldn't serialize packet, %s\n", knot_strerror(ret));
-		return ret;
-	}
+	knot_pkt_t *pkt = params->pkt;
 
 	sign_context_t sign_ctx;
 	memset(&sign_ctx, '\0', sizeof(sign_context_t));
 
 	/* Sign if key specified. */
 	if (params->key_params.name) {
-		ret = sign_packet(params->pkt, &sign_ctx, &params->key_params);
+		ret = sign_packet(pkt, &sign_ctx, &params->key_params);
 		if (ret != KNOT_EOK) {
 			ERR("failed to sign UPDATE message - %s\n",
 			    knot_strerror(ret));
 			return ret;
 		}
-		len = params->pkt->size;
 	}
 
 	int rb = 0;
@@ -713,18 +707,18 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	int tries = 1 + params->retries;
 	for (; tries > 0; --tries) {
 		memset(params->rwire, 0, sizeof(params->rwire));
-		rb = pkt_sendrecv(params, wire, len,
+		rb = pkt_sendrecv(params, pkt->wire, pkt->size,
 		                  params->rwire, sizeof(params->rwire));
 		if (rb > 0) break;
 	}
 
 	/* Clear sent packet. */
-	knot_packet_free_rrsets(params->pkt);
-	knot_packet_free(&params->pkt);
+	knot_pkt_free(&pkt);
+	params->pkt = NULL;
 
 	/* Clear previous response. */
 	if (params->resp) {
-		knot_packet_free(&params->resp);
+		knot_pkt_free(&params->resp);
 	}
 
 	/* Check Send/recv result. */
@@ -734,12 +728,12 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	}
 
 	/* Parse response. */
-	params->resp = knot_packet_new();
+	params->resp = knot_pkt_new(params->rwire, rb, NULL);
 	if (!params->resp) {
 		free_sign_context(&sign_ctx);
 		return KNOT_ENOMEM;
 	}
-	ret = knot_packet_parse_from_wire(params->resp, params->rwire, rb, 0, 0);
+	ret = knot_pkt_parse(params->resp, KNOT_PF_NO_MERGE);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response, %s\n", knot_strerror(ret));
 		free_sign_context(&sign_ctx);
@@ -759,7 +753,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 
 	/* Check return code. */
 	knot_lookup_table_t *rcode;
-	int rc = knot_packet_rcode(params->resp);
+	int rc = knot_wire_get_rcode(params->resp->wire);
 	DBG("%s: received rcode=%d\n", __func__, rc);
 	rcode = knot_lookup_by_id(knot_rcode_names, rc);
 	if (rcode && rcode->id > KNOT_RCODE_NOERROR) {
@@ -827,8 +821,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 	/* Show current packet. */
 	if (!params->pkt) return KNOT_EOK;
 	printf("Outgoing update query:\n");
-	size_t len = knot_packet_size(params->pkt);
-	print_packet(params->pkt, len, NULL, -1, false, &params->style);
+	print_packet(params->pkt, NULL, -1, false, &params->style);
 	return KNOT_EOK;
 }
 
@@ -839,8 +832,7 @@ int cmd_answer(const char* lp, nsupdate_params_t *params)
 	/* Show current answer. */
 	if (!params->resp) return KNOT_EOK;
 	printf("\nAnswer:\n");
-	size_t len = knot_packet_size(params->resp);
-	print_packet(params->resp, len, NULL, -1, true, &params->style);
+	print_packet(params->resp, NULL, -1, true, &params->style);
 	return KNOT_EOK;
 }
 

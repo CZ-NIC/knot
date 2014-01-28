@@ -29,7 +29,7 @@
 #include "libknot/util/tolower.h"
 #include "libknot/util/debug.h"
 #include "libknot/util/utils.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 
 /*----------------------------------------------------------------------------*/
 

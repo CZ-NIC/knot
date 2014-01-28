@@ -47,7 +47,12 @@ enum knot_wire_offsets {
 enum knot_wire_sizes {
 	KNOT_WIRE_HEADER_SIZE = 12,
 	KNOT_WIRE_QUESTION_MIN_SIZE = 5,
-	KNOT_WIRE_RR_MIN_SIZE = 11
+	KNOT_WIRE_RR_MIN_SIZE = 11,
+	KNOT_WIRE_MIN_PKTSIZE = 512,
+	KNOT_WIRE_MAX_PKTSIZE = 65535,
+	KNOT_WIRE_MAX_PAYLOAD = KNOT_WIRE_MAX_PKTSIZE
+	                        - KNOT_WIRE_HEADER_SIZE
+	                        - KNOT_WIRE_QUESTION_MIN_SIZE
 };
 
 /*

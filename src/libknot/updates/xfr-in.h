@@ -32,7 +32,7 @@
 
 #include "libknot/dname.h"
 #include "libknot/zone/zone.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/nameserver/name-server.h"
 #include "libknot/updates/changesets.h"
 
@@ -68,8 +68,7 @@ typedef enum xfrin_transfer_result {
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
-                           size_t *size);
+int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Checks if a zone transfer is required by comparing the zone's SOA with
@@ -83,7 +82,7 @@ int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
  * \retval 0 if the transfer is not needed.
  */
 int xfrin_transfer_needed(const knot_zone_contents_t *zone,
-                          knot_packet_t *soa_response);
+                          knot_pkt_t *soa_response);
 
 /*!
  * \brief Creates normal query for the given zone name and the AXFR type.
@@ -91,9 +90,6 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
  * \param owner Zone owner.
  * \param xfr Data structure holding important data for the query, namely
  *            pointer to the buffer for wireformat and TSIG data.
- * \param size In: available space in the buffer. Out: actual size of the
- *             message in bytes.
- * \param use_tsig If TSIG should be used.
  *
  * \todo Parameter use_tsig probably not needed.
  *
@@ -101,17 +97,13 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
-                            size_t *size, int use_tsig);
+int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Creates normal query for the given zone name and the IXFR type.
  *
  * \param zone Zone contents.
  * \param buffer Buffer to fill the message in.
- * \param size In: available space in the buffer. Out: actual size of the
- *             message in bytes.
- * \param use_tsig If TSIG should be used.
  *
  * \todo Parameter use_tsig probably not needed.
  *
@@ -119,8 +111,7 @@ int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_ixfr_query(const knot_zone_contents_t *zone,
-                            knot_ns_xfr_t *xfr, size_t *size, int use_tsig);
+int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Processes the newly created transferred zone.

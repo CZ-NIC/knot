@@ -35,7 +35,6 @@
 #include "common/errcode.h"
 #include "knot/other/debug.h"
 
-#define CPU_ESTIMATE_MAGIC 0 /*!< \brief Extra threads to the number of cores.*/
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
 #define TCP_BACKLOG_SIZE 10  /*!< \brief TCP listen backlog size. */
 #define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */

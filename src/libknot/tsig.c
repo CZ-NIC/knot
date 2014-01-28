@@ -415,6 +415,10 @@ const knot_dname_t* tsig_alg_to_dname(knot_tsig_algorithm_t alg)
 
 size_t tsig_wire_maxsize(const knot_tsig_key_t *key)
 {
+	if (key == NULL) {
+		return 0;
+	}
+
 	size_t alg_name_size = strlen(tsig_alg_to_str(key->algorithm)) + 1;
 
 	/*! \todo Used fixed size as a base. */

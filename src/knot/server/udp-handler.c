@@ -45,12 +45,19 @@
 #include "libknot/nameserver/name-server.h"
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/consts.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
 #include "libknot/dnssec/crypto.h"
+
+/* Buffer identifiers. */
+enum {
+	RX = 0,
+	TX = 1,
+	NBUFS = 2
+};
 
 /* FD_COPY macro compat. */
 #ifndef FD_COPY
@@ -62,6 +69,12 @@
 
 /* PPS measurement. */
 /* #define MEASURE_PPS 1 */
+
+/* Next-gen packet processing API. */
+#define PACKET_NG
+#ifdef PACKET_NG
+#include "libknot/nameserver/ns_proc_query.h"
+#endif
 
 /* PPS measurement */
 #ifdef MEASURE_PPS
@@ -92,159 +105,58 @@ static inline void udp_pps_begin() {}
 static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 #endif
 
-
-/* Answering context. */
-struct answer_ctx
-{
-	server_t *srv;
-	mm_ctx_t *mm;
-	unsigned slip;
-};
-
-/*! \brief RRL reject procedure. */
-static size_t udp_rrl_reject(const knot_nameserver_t *ns,
-                             const knot_packet_t *packet,
-                             uint8_t* resp, size_t rlen,
-                             uint8_t rcode, unsigned *slip)
-{
-	int n_slip = conf()->rrl_slip; /* Check SLIP. */
-	if (n_slip > 0 && n_slip == ++*slip) {
-		knot_ns_error_response_from_query(ns, packet, rcode, resp, &rlen);
-		switch(rcode) { /* Do not set TC=1 to some RCODEs. */
-		case KNOT_RCODE_FORMERR:
-		case KNOT_RCODE_REFUSED:
-		case KNOT_RCODE_SERVFAIL:
-		case KNOT_RCODE_NOTIMPL:
-			break;
-		default:
-			knot_wire_set_tc(resp); /* Set TC=1 */
-			break;
-		}
-
-		*slip = 0; /* Restart SLIP interval. */
-		return rlen;
-	}
-
-	return 0; /* Discard response. */
-}
-
-int udp_handle(struct answer_ctx *ans, int fd,
-               uint8_t *qbuf, size_t qbuflen, size_t *resp_len,
-               sockaddr_t* addr)
+int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
+               struct iovec *rx, struct iovec *tx)
 {
 #ifdef DEBUG_ENABLE_BRIEF
 	char strfrom[SOCKADDR_STRLEN];
 	memset(strfrom, 0, sizeof(strfrom));
 	sockaddr_tostr(addr, strfrom, sizeof(strfrom));
-	dbg_net("udp: received %zd bytes from '%s@%d'.\n", qbuflen,
+	dbg_net("udp: received %zd bytes from '%s@%d'.\n", rx->iov_len,
 	        strfrom, sockaddr_portnum(addr));
 #endif
 
-	int res = KNOT_EOK;
-	int rcode = KNOT_RCODE_NOERROR;
-	knot_nameserver_t *ns = ans->srv->nameserver;
-	rrl_table_t *rrl = ans->srv->rrl;
-	knot_packet_type_t qtype = KNOT_QUERY_INVALID;
-	*resp_len = SOCKET_MTU_SZ;
+	/* Create query processing parameter. */
+	struct ns_proc_query_param param = {0};
+	sockaddr_copy(&param.query_source, addr);
+	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
+	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
+	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
 
-	/* The packet MUST contain at least DNS header.
-	 * If it doesn't, it's not a DNS packet and we should discard it.
-	 */
-	if (qbuflen < KNOT_WIRE_HEADER_SIZE) {
-		return KNOT_EFEWDATA;
+	/* Rate limit is applied? */
+	server_t *server = (server_t *)query_ctx->ns->data;
+	if (knot_unlikely(server->rrl != NULL) && server->rrl->rate > 0) {
+		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
-#ifdef MIRROR_MODE
-	knot_wire_set_qr(qbuf);
-	*resp_len = qbuflen;
+	/* Create query processing context. */
+	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
+
+	/* Input packet. */
+	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
+
+	/* Process answer. */
+	uint16_t tx_len = tx->iov_len;
+	if (state == NS_PROC_FULL) {
+		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
+	}
+
+	/* Process error response (if failed). */
+	if (state == NS_PROC_FAIL) {
+		tx_len = tx->iov_len; /* Reset size. */
+		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
+	}
+
+	/* Send response only if finished successfuly. */
+	if (state == NS_PROC_DONE) {
+		tx->iov_len = tx_len;
+	} else {
+		tx->iov_len = 0;
+	}
+
+	/* Reset context. */
+	ns_proc_finish(query_ctx);
 	return KNOT_EOK;
-#endif
-
-	knot_packet_t *packet = knot_packet_new_mm(ans->mm);
-	if (packet == NULL) {
-		dbg_net("udp: failed to create packet\n");
-		int ret = knot_ns_error_response_from_query_wire(ns, qbuf, qbuflen,
-		                                            KNOT_RCODE_SERVFAIL,
-		                                            qbuf, resp_len);
-		return ret;
-	}
-
-	/* Parse query. */
-	rcode = knot_ns_parse_packet(qbuf, qbuflen, packet, &qtype);
-	if (rcode < KNOT_RCODE_NOERROR) {
-		dbg_net("udp: failed to parse packet\n");
-		rcode = KNOT_RCODE_SERVFAIL;
-	}
-
-	/* Handle query. */
-	switch(qtype) {
-	case KNOT_QUERY_NORMAL:
-		res = zones_normal_query_answer(ns, packet, addr, qbuf,
-		                                resp_len, NS_TRANSPORT_UDP);
-		break;
-	case KNOT_QUERY_AXFR:
-		/* RFC1034, p.28 requires reliable transfer protocol.
-		 * Bind responds with FORMERR.
-		 */
-		res = knot_ns_error_response_from_query(ns, packet,
-		                                        KNOT_RCODE_FORMERR, qbuf,
-		                                        resp_len);
-		break;
-	case KNOT_QUERY_IXFR:
-		/* According to RFC1035, respond with SOA. */
-		res = zones_normal_query_answer(ns, packet, addr,
-		                                qbuf, resp_len,
-		                                NS_TRANSPORT_UDP);
-		break;
-	case KNOT_QUERY_NOTIFY:
-		res = notify_process_request(ns, packet, addr,
-		                             qbuf, resp_len);
-		break;
-
-	case KNOT_QUERY_UPDATE:
-		res = zones_process_update(ns, packet, addr, qbuf, resp_len,
-		                           fd, NS_TRANSPORT_UDP);
-		break;
-
-	/* Do not issue response to incoming response to avoid loops. */
-	case KNOT_RESPONSE_AXFR: /*!< Processed in XFR handler. */
-	case KNOT_RESPONSE_IXFR: /*!< Processed in XFR handler. */
-	case KNOT_RESPONSE_NORMAL:
-	case KNOT_RESPONSE_NOTIFY:
-	case KNOT_RESPONSE_UPDATE:
-		res = KNOT_EOK;
-		*resp_len = 0;
-		break;
-	/* Unknown opcodes */
-	default:
-		res = knot_ns_error_response_from_query(ns, packet,
-		                                        rcode, qbuf,
-		                                        resp_len);
-		break;
-	}
-
-	/* Process RRL. */
-	if (knot_unlikely(rrl != NULL) && rrl->rate > 0) {
-		rrl_req_t rrl_rq;
-		memset(&rrl_rq, 0, sizeof(rrl_req_t));
-		rrl_rq.w = qbuf; /* Wire */
-		rrl_rq.query = packet;
-
-		rcu_read_lock();
-		rrl_rq.flags = packet->flags;
-		if (rrl_query(rrl, addr, &rrl_rq, packet->zone) != KNOT_EOK) {
-			*resp_len = udp_rrl_reject(ns, packet, qbuf,
-			                           SOCKET_MTU_SZ,
-			                           knot_wire_get_rcode(qbuf),
-			                           &ans->slip);
-		}
-		rcu_read_unlock();
-	}
-
-
-	knot_packet_free(&packet);
-
-	return res;
 }
 
 /* Check for sendmmsg syscall. */
@@ -260,33 +172,37 @@ int udp_handle(struct answer_ctx *ans, int fd,
 static void* (*_udp_init)(void) = 0;
 static int (*_udp_deinit)(void *) = 0;
 static int (*_udp_recv)(int, void *) = 0;
-static int (*_udp_handle)(struct answer_ctx *, void *) = 0;
+static int (*_udp_handle)(ns_proc_context_t *, void *) = 0;
 static int (*_udp_send)(void *) = 0;
 
 /* UDP recvfrom() request struct. */
 struct udp_recvfrom {
 	int fd;
 	sockaddr_t addr;
-	struct msghdr msg;
-	struct iovec iov;
-	uint8_t buf[SOCKET_MTU_SZ];
-	size_t buflen;
+	struct msghdr msg[NBUFS];
+	struct iovec iov[NBUFS];
+	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
 };
 
 static void *udp_recvfrom_init(void)
 {
 	struct udp_recvfrom *rq = malloc(sizeof(struct udp_recvfrom));
-	if (rq) {
-		sockaddr_prep(&rq->addr);
-		rq->buflen = SOCKET_MTU_SZ;
-		rq->iov.iov_base = rq->buf;
-		rq->iov.iov_len = rq->buflen;
-		rq->msg.msg_name = &rq->addr;
-		rq->msg.msg_namelen = rq->addr.len;
-		rq->msg.msg_iov = &rq->iov;
-		rq->msg.msg_iovlen = 1;
-		rq->msg.msg_control = NULL;
-		rq->msg.msg_controllen = 0;
+	if (rq == NULL) {
+		return NULL;
+	}
+
+	memset(rq->msg, 0, NBUFS * sizeof(struct msghdr));
+	memset(rq->iov, 0, NBUFS * sizeof(struct iovec));
+	sockaddr_prep(&rq->addr);
+	for (unsigned i = 0; i < NBUFS; ++i) {
+		rq->iov[i].iov_base = rq->buf + i;
+		rq->iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+		rq->msg[i].msg_name = &rq->addr;
+		rq->msg[i].msg_namelen = rq->addr.len;
+		rq->msg[i].msg_iov = &rq->iov[i];
+		rq->msg[i].msg_iovlen = 1;
+		rq->msg[i].msg_control = NULL;
+		rq->msg[i].msg_controllen = 0;
 	}
 	return rq;
 }
@@ -301,28 +217,33 @@ static int udp_recvfrom_deinit(void *d)
 static int udp_recvfrom_recv(int fd, void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
-	int ret = recvmsg(fd, &rq->msg, MSG_DONTWAIT);
+	int ret = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
 	if (ret > 0) {
 		rq->fd = fd;
-		rq->buflen = ret;
+		rq->iov[RX].iov_len = ret;
 		return 1;
 	}
 
 	return 0;
 }
 
-static int udp_recvfrom_handle(struct answer_ctx *ans, void *d)
+static int udp_recvfrom_handle(ns_proc_context_t *ctx, void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 
+	/* Prepare TX address. */
+	rq->addr.len = rq->msg[RX].msg_namelen;
+	rq->msg[TX].msg_namelen = rq->addr.len;
+	rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+
 	/* Process received pkt. */
-	rq->addr.len = rq->msg.msg_namelen;
-	int ret = udp_handle(ans, rq->fd,
-	                     rq->buf, rq->buflen, &rq->iov.iov_len,
-	                     &rq->addr);
+	int ret = udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
 	if (ret != KNOT_EOK) {
-		rq->iov.iov_len = 0;
+		rq->iov[TX].iov_len = 0;
 	}
+
+	/* Reset RX buflen. */
+	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	return ret;
 }
@@ -331,14 +252,14 @@ static int udp_recvfrom_send(void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 	int rc = 0;
-	if (rq->iov.iov_len > 0) {
-		rc = sendmsg(rq->fd, &rq->msg, 0);
+	if (rq->iov[TX].iov_len > 0) {
+		rc = sendmsg(rq->fd, &rq->msg[TX], 0);
 	}
 
-	/* Reset buffer size and address len. */
-	rq->iov.iov_len = SOCKET_MTU_SZ;
+	/* Reset address lengths. */
 	sockaddr_prep(&rq->addr);
-	rq->msg.msg_namelen = rq->addr.len;
+	rq->msg[RX].msg_namelen = rq->addr.len;
+	rq->msg[TX].msg_namelen = rq->addr.len;
 
 	/* Return number of packets sent. */
 	if (rc > 1) {
@@ -395,40 +316,44 @@ int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
 /* UDP recvmmsg() request struct. */
 struct udp_recvmmsg {
 	int fd;
-	char *iobuf;
 	sockaddr_t *addrs;
-	struct iovec *iov;
-	struct mmsghdr *msgs;
+	char *iobuf[NBUFS];
+	struct iovec *iov[NBUFS];
+	struct mmsghdr *msgs[NBUFS];
 	unsigned rcvd;
+	mm_ctx_t mm;
 };
 
 static void *udp_recvmmsg_init(void)
 {
-	struct udp_recvmmsg *rq = malloc(sizeof(struct udp_recvmmsg));
-	if (rq) {
-		rq->iobuf = malloc(SOCKET_MTU_SZ * RECVMMSG_BATCHLEN);
-		rq->addrs = malloc(sizeof(sockaddr_t) * RECVMMSG_BATCHLEN);
-		rq->iov = malloc(sizeof(struct iovec) * RECVMMSG_BATCHLEN);
-		rq->msgs = malloc(sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
-		if (!rq->iobuf || !rq->addrs || !rq->iov || !rq->msgs) {
-			free(rq->iobuf);
-			free(rq->addrs);
-			free(rq->iov);
-			free(rq->msgs);
-			free(rq);
-			return NULL;
-		}
-		memset(rq->msgs, 0, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
-		for (unsigned i = 0; i < RECVMMSG_BATCHLEN; ++i) {
-			sockaddr_prep(rq->addrs + i);
-			rq->iov[i].iov_base = rq->iobuf + i * SOCKET_MTU_SZ;
-			rq->iov[i].iov_len = SOCKET_MTU_SZ;
-			rq->msgs[i].msg_hdr.msg_iov = rq->iov + i;
-			rq->msgs[i].msg_hdr.msg_iovlen = 1;
-			rq->msgs[i].msg_hdr.msg_name = rq->addrs + i;
-			rq->msgs[i].msg_hdr.msg_namelen = rq->addrs[i].len;
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, sizeof(struct udp_recvmmsg));
+
+	struct udp_recvmmsg *rq = mm.alloc(mm.ctx, sizeof(struct udp_recvmmsg));
+	memcpy(&rq->mm, &mm, sizeof(mm_ctx_t));
+
+	/* Initialize addresses. */
+	rq->addrs = mm.alloc(mm.ctx, sizeof(sockaddr_t) * RECVMMSG_BATCHLEN);
+	for (unsigned i = 0; i < RECVMMSG_BATCHLEN; ++i) {
+		sockaddr_prep(rq->addrs + i);
+	}
+
+	/* Initialize buffers. */
+	for (unsigned i = 0; i < NBUFS; ++i) {
+		rq->iobuf[i] = mm.alloc(mm.ctx, KNOT_WIRE_MAX_PKTSIZE * RECVMMSG_BATCHLEN);
+		rq->iov[i] = mm.alloc(mm.ctx, sizeof(struct iovec) * RECVMMSG_BATCHLEN);
+		rq->msgs[i] = mm.alloc(mm.ctx, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
+		memset(rq->msgs[i], 0, sizeof(struct mmsghdr) * RECVMMSG_BATCHLEN);
+		for (unsigned k = 0; k < RECVMMSG_BATCHLEN; ++k) {
+			rq->iov[i][k].iov_base = rq->iobuf[i] + k * KNOT_WIRE_MAX_PKTSIZE;
+			rq->iov[i][k].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+			rq->msgs[i][k].msg_hdr.msg_iov = rq->iov[i] + k;
+			rq->msgs[i][k].msg_hdr.msg_iovlen = 1;
+			rq->msgs[i][k].msg_hdr.msg_name = rq->addrs + k;
+			rq->msgs[i][k].msg_hdr.msg_namelen = rq->addrs[k].len;
 		}
 	}
+
 	return rq;
 }
 
@@ -436,19 +361,16 @@ static int udp_recvmmsg_deinit(void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 	if (rq) {
-		free(rq->iobuf);
-		free(rq->addrs);
-		free(rq->iov);
-		free(rq->msgs);
-		free(rq);
+		mp_delete(rq->mm.ctx);
 	}
+
 	return 0;
 }
 
 static int udp_recvmmsg_recv(int fd, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
-	int n = recvmmsg(fd, rq->msgs, RECVMMSG_BATCHLEN, MSG_DONTWAIT, NULL);
+	int n = recvmmsg(fd, rq->msgs[RX], RECVMMSG_BATCHLEN, MSG_DONTWAIT, NULL);
 	if (n > 0) {
 		rq->fd = fd;
 		rq->rcvd = n;
@@ -456,38 +378,44 @@ static int udp_recvmmsg_recv(int fd, void *d)
 	return n;
 }
 
-static int udp_recvmmsg_handle(struct answer_ctx *st, void *d)
+static int udp_recvmmsg_handle(ns_proc_context_t *ctx, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
 	/* Handle each received msg. */
 	int ret = 0;
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
-		struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
-		size_t rlen = 0;
-		rq->addrs[i].len = rq->msgs[i].msg_hdr.msg_namelen;
-		ret = udp_handle(st, rq->fd, cvec->iov_base,
-		                 rq->msgs[i].msg_len, &rlen,
-		                 rq->addrs + i);
+		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
+		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
+		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
+		rq->addrs[i].len = rq->msgs[RX][i].msg_hdr.msg_namelen;
+
+		ret = udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
 		if (ret != KNOT_EOK) { /* Do not send. */
-			rlen = 0;
+			tx->iov_len = 0;
 		}
-		cvec->iov_len = rlen;
+
+		rq->msgs[TX][i].msg_len = tx->iov_len;
+		rq->msgs[TX][i].msg_hdr.msg_namelen = rq->addrs[i].len;
 	}
+
 	return KNOT_EOK;
 }
 
 static int udp_recvmmsg_send(void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
-	int rc = _send_mmsg(rq->fd, rq->addrs, rq->msgs, rq->rcvd);
+	int rc = _send_mmsg(rq->fd, rq->addrs, rq->msgs[TX], rq->rcvd);
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		/* Reset buffer size and address len. */
-		struct iovec *cvec = rq->msgs[i].msg_hdr.msg_iov;
-		cvec->iov_len = SOCKET_MTU_SZ;
+		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
+		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
+		rx->iov_len = KNOT_WIRE_MAX_PKTSIZE; /* Reset RX buflen */
+		tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 		sockaddr_prep(rq->addrs + i);
-		rq->msgs[i].msg_hdr.msg_namelen = rq->addrs[i].len;
+		rq->msgs[RX][i].msg_hdr.msg_namelen = rq->addrs[i].len;
+		rq->msgs[TX][i].msg_hdr.msg_namelen = rq->addrs[i].len;
 	}
 	return rc;
 }
@@ -528,28 +456,38 @@ void __attribute__ ((constructor)) udp_master_init()
 #endif /* HAVE_RECVMMSG */
 }
 
-int udp_reader(iohandler_t *h, dthread_t *thread)
+int udp_master(dthread_t *thread)
 {
+	unsigned cpu = dt_online_cpus();
+	if (cpu > 1) {
+		unsigned cpu_mask[2];
+		cpu_mask[0] = dt_get_id(thread) % cpu;
+		cpu_mask[1] = (cpu_mask[0] + 2) % cpu;
+		dt_setaffinity(thread, cpu_mask, 2);
+	}
 
-	iostate_t *st = (iostate_t *)thread->data;
+	/* Drop all capabilities on all workers. */
+#ifdef HAVE_CAP_NG_H
+        if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
+                capng_clear(CAPNG_SELECT_BOTH);
+                capng_apply(CAPNG_SELECT_BOTH);
+        }
+#endif /* HAVE_CAP_NG_H */
 
 	/* Prepare structures for bound sockets. */
 	unsigned thr_id = dt_get_id(thread);
+	iohandler_t *handler = (iohandler_t *)thread->data;
+	unsigned *iostate = &handler->thread_state[thr_id];
 	void *rq = _udp_init();
 	ifacelist_t *ref = NULL;
 
-	/* Create memory pool context. */
-	struct mempool *pool = mp_new(64 * 1024);
-	mm_ctx_t mm;
-	mm.ctx = pool;
-	mm.alloc = (mm_alloc_t)mp_alloc;
-	mm.free = mm_nofree;
-
 	/* Create UDP answering context. */
-	struct answer_ctx ans_ctx;
-	ans_ctx.srv = h->server;
-	ans_ctx.slip = 0;
-	ans_ctx.mm = &mm;
+	ns_proc_context_t query_ctx;
+	memset(&query_ctx, 0, sizeof(query_ctx));
+	query_ctx.ns = handler->server->nameserver;
+
+	/* Create big enough memory cushion. */
+	mm_ctx_mempool(&query_ctx.mm, 4 * sizeof(knot_pkt_t));
 
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */
@@ -564,15 +502,15 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 	for (;;) {
 
 		/* Check handler state. */
-		if (knot_unlikely(st->s & ServerReload)) {
-			st->s &= ~ServerReload;
+		if (knot_unlikely(*iostate & ServerReload)) {
+			*iostate &= ~ServerReload;
 			maxfd = 0;
 			minfd = INT_MAX;
 			FD_ZERO(&fds);
 
 			rcu_read_lock();
 			ref_release((ref_t *)ref);
-			ref = h->server->ifaces;
+			ref = handler->server->ifaces;
 			if (ref) {
 				iface_t *i = NULL;
 				WALK_LIST(i, ref->l) {
@@ -602,9 +540,10 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 		for (unsigned fd = minfd; fd <= maxfd; ++fd) {
 			if (FD_ISSET(fd, &rfds)) {
 				while ((rcvd = _udp_recv(fd, rq)) > 0) {
-					_udp_handle(&ans_ctx, rq);
+					_udp_handle(&query_ctx, rq);
+					/* Flush allocated memory. */
+					mp_flush(query_ctx.mm.ctx);
 					_udp_send(rq);
-					mp_flush(mm.ctx);
 					udp_pps_sample(rcvd, thr_id);
 				}
 			}
@@ -613,32 +552,8 @@ int udp_reader(iohandler_t *h, dthread_t *thread)
 
 	_udp_deinit(rq);
 	ref_release((ref_t *)ref);
-	mp_delete(mm.ctx);
+	mp_delete(query_ctx.mm.ctx);
 	return KNOT_EOK;
-}
-
-int udp_master(dthread_t *thread)
-{
-	unsigned cpu = dt_online_cpus();
-	if (cpu > 1) {
-		unsigned cpu_mask[2];
-		cpu_mask[0] = dt_get_id(thread) % cpu;
-		cpu_mask[1] = (cpu_mask[0] + 2) % cpu;
-		dt_setaffinity(thread, cpu_mask, 2);
-	}
-
-	/* Drop all capabilities on all workers. */
-#ifdef HAVE_CAP_NG_H
-        if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
-                capng_clear(CAPNG_SELECT_BOTH);
-                capng_apply(CAPNG_SELECT_BOTH);
-        }
-#endif /* HAVE_CAP_NG_H */
-
-	iostate_t *st = (iostate_t *)thread->data;
-	if (!st) return KNOT_EINVAL;
-	iohandler_t *h = st->h;
-	return udp_reader(h, thread);
 }
 
 int udp_master_destruct(dthread_t *thread)

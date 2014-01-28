@@ -47,6 +47,9 @@ typedef struct mm_ctx {
 /*! \brief Initialize default memory allocation context. */
 void mm_ctx_init(mm_ctx_t *mm);
 
+/*! \brief Memory pool context. */
+void mm_ctx_mempool(mm_ctx_t *mm, size_t chunk_size);
+
 /*! \brief Allocate memory or die. */
 void* xmalloc(size_t l);
 

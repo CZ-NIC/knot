@@ -33,6 +33,7 @@
 #include "libknot/dname.h"
 #include "libknot/binary.h"
 #include "libknot/edns.h"
+#include "knot/server/rrl.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/libknotd_la-cf-parse.h" /* Automake generated header. */
 
@@ -652,7 +653,7 @@ system:
 	SET_SIZE(new_config->rrl_size, $3.i, "rate-limit-size");
  }
  | system RATE_LIMIT_SLIP NUM ';' {
-	SET_INT(new_config->rrl_slip, $3.i, "rate-limit-slip");
+	SET_NUM(new_config->rrl_slip, $3.i, 1, RRL_SLIP_MAX, "rate-limit-slip");
  }
  | system TRANSFERS NUM ';' {
 	SET_INT(new_config->xfers, $3.i, "transfers");

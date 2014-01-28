@@ -19,8 +19,7 @@
 
 #include "libknot/nameserver/chaos.h"
 #include "common/descriptor.h"
-#include "libknot/packet/packet.h"
-#include "libknot/packet/response.h"
+#include "libknot/packet/pkt.h"
 
 /*!
  * \brief Get a string result for a given TXT query.
@@ -59,17 +58,20 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 {
 	// truncate response to one TXT label
 	size_t response_len = strlen(response);
-	if (response_len > 255)
-		response_len = 255;
+	if (response_len > KNOT_DNAME_MAXLEN) {
+		response_len = KNOT_DNAME_MAXLEN;
+	}
 
 	knot_dname_t *rowner = knot_dname_copy(owner);
-	if (!rowner)
+	if (!rowner) {
 		return NULL;
+	}
 
 	knot_rrset_t *rrset;
 	rrset = knot_rrset_new(rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH, 0);
-	if (!rrset)
+	if (!rrset) {
 		return NULL;
+	}
 
 	uint8_t *rdata = knot_rrset_create_rdata(rrset, response_len + 1);
 	if (!rdata) {
@@ -89,52 +91,33 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
  * \param return KNOT_RCODE_NOERROR if the response was succesfully created,
  *               otherwise an RCODE representing the failure.
  */
-static int answer_txt(knot_nameserver_t *nameserver, knot_packet_t *response,
-                      uint8_t *response_wire, size_t *response_size)
+static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response)
 {
-	const knot_dname_t *qname = knot_packet_qname(response);
+	const knot_dname_t *qname = knot_pkt_qname(response);
 	const char *response_str = get_txt_response_string(nameserver, qname);
-	if (response_str == NULL || response_str[0] == '\0')
+	if (response_str == NULL || response_str[0] == '\0') {
 		return KNOT_RCODE_REFUSED;
+	}
 
 	knot_rrset_t *rrset = create_txt_rrset(qname, response_str);
-	if (!rrset)
+	if (!rrset) {
 		return KNOT_RCODE_SERVFAIL;
+	}
 
-	int result = knot_response_add_rrset_answer(response, rrset, 0);
+	int result = knot_pkt_put(response, 0, rrset, KNOT_PF_FREE);
 	if (result != KNOT_EOK) {
 		knot_rrset_deep_free(&rrset, 1);
 		return KNOT_RCODE_SERVFAIL;
 	}
-
-	result = ns_response_to_wire(response, response_wire, response_size);
-	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&rrset, 1);
-		return KNOT_RCODE_SERVFAIL;
-	}
-
-	knot_rrset_deep_free(&rrset, 1);
-	knot_response_set_rcode(response, KNOT_RCODE_NOERROR);
 
 	return KNOT_RCODE_NOERROR;
 }
 
-/*!
- * \brief Create a response for a given query in the CHAOS class.
- */
-int knot_ns_answer_chaos(knot_nameserver_t *nameserver, knot_packet_t *resp,
-                         uint8_t *resp_wire, size_t *resp_size)
+int knot_chaos_answer(knot_pkt_t *pkt, knot_nameserver_t *ns)
 {
-	int rcode = KNOT_RCODE_REFUSED;
-
-	if (knot_packet_qtype(resp) == KNOT_RRTYPE_TXT) {
-		rcode = answer_txt(nameserver, resp, resp_wire, resp_size);
+	if (knot_pkt_qtype(pkt) != KNOT_RRTYPE_TXT) {
+		return KNOT_RCODE_REFUSED;
 	}
 
-	if (rcode != KNOT_RCODE_NOERROR) {
-		knot_ns_error_response_full(nameserver, resp, rcode,
-		                            resp_wire, resp_size);
-	}
-
-	return KNOT_EOK;
+	return answer_txt(ns, pkt);
 }

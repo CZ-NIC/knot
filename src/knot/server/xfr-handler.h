@@ -42,14 +42,6 @@ enum xfrstate_t {
 };
 
 /*!
- * \brief XFR worker structure.
- */
-typedef struct xfrworker_t
-{
-	struct xfrhandler_t *master; /*! \brief Worker master. */
-} xfrworker_t;
-
-/*!
  * \brief XFR handler structure.
  */
 typedef struct xfrhandler_t
@@ -60,7 +52,6 @@ typedef struct xfrhandler_t
 	pthread_mutex_t mx; /*!< \brief Tasks synchronisation. */
 	knot_nameserver_t *ns;
 	dt_unit_t       *unit;  /*!< \brief Threading unit. */
-	xfrworker_t workers[];  /*!< \brief Workers. */
 } xfrhandler_t;
 
 /*!
@@ -133,18 +124,6 @@ int xfr_join(xfrhandler_t *xfr);
  * \retval KNOT_ERROR on error.
  */
 int xfr_enqueue(xfrhandler_t *xfr, knot_ns_xfr_t *rq);
-
-/*!
- * \brief Answer XFR query.
- *
- * \param ns Nameserver instance.
- * \param req XFR request.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on NULL handler or request.
- * \retval KNOT_ERROR on error.
- */
-int xfr_answer(knot_nameserver_t *ns, knot_ns_xfr_t *rq);
 
 /*!
  * \brief Prepare XFR request.
