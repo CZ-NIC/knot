@@ -326,7 +326,7 @@ static int knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
 }
 
 /*! \brief Discover additional records for affected nodes. */
-static int knot_zone_contents_discover_additional(knot_node_t **tnode, void *data)
+static int adjust_additional(knot_node_t **tnode, void *data)
 {
 	assert(data != NULL);
 	assert(tnode != NULL);
@@ -1381,7 +1381,14 @@ int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	return knot_zone_contents_adjust_nsec3_tree(contents);
+
+	ret = knot_zone_contents_adjust_nsec3_tree(contents);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	                                       adjust_additional);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1453,13 +1460,8 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
 	 * \note This MUST be done after node adjusting because it needs to
 	 *       do full lookup to see through wildcards. */
 
-	result = knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
-	                                 knot_zone_contents_discover_additional);
-	if (result != KNOT_EOK) {
-		return result;
-	}
-
-	return KNOT_EOK;
+	return knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
+	                                       adjust_additional);
 }
 
 /*----------------------------------------------------------------------------*/
