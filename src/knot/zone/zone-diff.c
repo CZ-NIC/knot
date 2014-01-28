@@ -271,10 +271,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 		return KNOT_EINVAL;
 	}
 
-	dbg_zonediff("zone_diff: remove_node: Removing node:\n");
-dbg_zonediff_exec_detail(
-	knot_node_dump((knot_node_t *)node);
-);
+	dbg_zonediff("zone_diff: remove_node: Removing node: ...\n");
 
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
