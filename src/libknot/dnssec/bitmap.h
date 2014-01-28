@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file nsec-bitmap.h
+ * \file bitmap.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz>
  *
@@ -30,8 +30,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
-#include "knot/zone/node.h"
-#include "libknot/rrset.h"
 #include "common/descriptor.h"
 
 #define BITMAP_WINDOW_SIZE 256
@@ -73,21 +71,6 @@ inline static void bitmap_add_type(bitmap_t *bitmap, uint16_t type)
 	window->data[win_byte] |= 0x80 >> win_bit;
 	if (window->used <= win_byte) {
 		window->used = win_byte + 1;
-	}
-}
-
-/*!
- * \brief Add all RR types from a node into the bitmap.
- */
-inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
-                                          const knot_node_t *node)
-{
-	const knot_rrset_t **node_rrsets = knot_node_rrsets_no_copy(node);
-	for (int i = 0; i < node->rrset_count; i++) {
-		const knot_rrset_t *rr = node_rrsets[i];
-		if (rr->type != KNOT_RRTYPE_NSEC && rr->rdata_count > 0) {
-			bitmap_add_type(bitmap, node_rrsets[i]->type);
-		}
 	}
 }
 

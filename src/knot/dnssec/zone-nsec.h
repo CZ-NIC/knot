@@ -34,7 +34,7 @@
 #include "knot/zone/zone-contents.h"
 #include "libknot/dnssec/policy.h"
 #include "knot/dnssec/zone-keys.h"
-#include "libknot/dnssec/nsec-bitmap.h"
+#include "libknot/dnssec/bitmap.h"
 
 /*!
  * Check if NSEC3 is enabled for the given zone.

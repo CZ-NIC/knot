@@ -180,12 +180,12 @@ src/libknot/consts.c
 src/libknot/consts.h
 src/libknot/dname.c
 src/libknot/dname.h
+src/libknot/dnssec/bitmap.h
 src/libknot/dnssec/config.h
 src/libknot/dnssec/crypto.c
 src/libknot/dnssec/crypto.h
 src/libknot/dnssec/key.c
 src/libknot/dnssec/key.h
-src/libknot/dnssec/nsec-bitmap.h
 src/libknot/dnssec/nsec3.c
 src/libknot/dnssec/nsec3.h
 src/libknot/dnssec/policy.c
