@@ -108,14 +108,12 @@ libknot_la_SOURCES =				\
 	libknot/util/utils.h			\
 	libknot/util/tolower.h			\
 	libknot/util/tolower.c			\
-	libknot/util/wire.h			\
 	libknot/util/endian.h			\
-	libknot/packet/query.c			\
-	libknot/packet/response.c		\
-	libknot/packet/packet.c			\
-	libknot/packet/packet.h			\
-	libknot/packet/query.h			\
-	libknot/packet/response.h		\
+	libknot/packet/pkt.c			\
+	libknot/packet/pkt.h			\
+	libknot/packet/compr.c			\
+	libknot/packet/compr.h			\
+	libknot/packet/wire.h			\
 	libknot/zone/zone.c			\
 	libknot/zone/zone-contents.c		\
 	libknot/zone/zone-tree.c		\
@@ -128,10 +126,22 @@ libknot_la_SOURCES =				\
 	libknot/zone/node.c			\
 	libknot/zone/zone-diff.h		\
 	libknot/zone/zone-diff.c		\
+	libknot/nameserver/nsec_proofs.h	\
+	libknot/nameserver/nsec_proofs.c	\
 	libknot/nameserver/name-server.h	\
 	libknot/nameserver/name-server.c	\
 	libknot/nameserver/chaos.h		\
 	libknot/nameserver/chaos.c		\
+	libknot/nameserver/internet.h		\
+	libknot/nameserver/internet.c		\
+	libknot/nameserver/axfr.h		\
+	libknot/nameserver/axfr.c		\
+	libknot/nameserver/ixfr.h		\
+	libknot/nameserver/ixfr.c		\
+	libknot/nameserver/update.h		\
+	libknot/nameserver/update.c		\
+	libknot/nameserver/ns_proc_query.h	\
+	libknot/nameserver/ns_proc_query.c	\
 	libknot/updates/changesets.h		\
 	libknot/updates/changesets.c		\
 	libknot/updates/xfr-in.h		\
@@ -163,6 +173,7 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/nsec-bitmap.h		\
 	libknot/dnssec/nsec3.c			\
 	libknot/dnssec/nsec3.h			\
+	libknot/dnssec/policy.c			\
 	libknot/dnssec/policy.h			\
 	libknot/dnssec/random.h			\
 	libknot/dnssec/rrset-sign.c		\

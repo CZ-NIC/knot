@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.4.1], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.4.2], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -285,7 +285,7 @@ AS_IF([test "$with_openssl" = "no"],[
 
 AC_EGREP_CPP(openssl_version_ok,
   [#include <openssl/crypto.h>
-   #if (OPENSSL_VERSION_NUMBER >= 0x1000000fL)
+   #if (OPENSSL_VERSION_NUMBER >= 0x10000000L)
    openssl_version_ok
    #endif
   ],[],[AC_MSG_ERROR([OpenSSL library version >= 1.0.0 is required.])]
@@ -347,6 +347,7 @@ AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 src/Makefile
 		 samples/Makefile
+		 patches/Makefile
 		 src/zscanner/Makefile
 		 man/khost.1
 		 man/knotc.8

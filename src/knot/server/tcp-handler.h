@@ -62,7 +62,7 @@ int tcp_accept(int fd);
 int tcp_send(int fd, uint8_t *msg, size_t msglen);
 
 /*!
- * \brief Send TCP message.
+ * \brief Receive TCP message.
  *
  * \param fd Associated socket.
  * \param buf Buffer for incoming bytestream.
@@ -76,37 +76,23 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen);
 int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr);
 
 /*!
- * \brief TCP event loop for accepting connections.
+ * \brief TCP handler thread runnable.
+ *
+ * Listens to both bound TCP sockets for client connections and
+ * serves TCP clients. This runnable is designed to be used as coherent
+ * and implements cancellation point.
  *
  * \param thread Associated thread from DThreads unit.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL invalid parameters.
  */
-int tcp_loop_master(dthread_t *thread);
+int tcp_master(dthread_t *thread);
 
 /*!
- * \brief TCP event loop for processing requests.
- *
- * \param thread Associated thread from DThreads unit.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
+ * \brief Destructor for TCP handler thread.
  */
-int tcp_loop_worker(dthread_t *thread);
-
-/*!
- * \brief Create TCP event handler from threading unit.
- *
- * Set-up threading unit for processing TCP requests.
- *
- * \param ioh Associated I/O handler.
- * \param thread Associated thread from DThreads unit.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL invalid parameters.
- */
-int tcp_loop_unit(iohandler_t *ioh, dt_unit_t *unit);
+int tcp_master_destruct(dthread_t *thread);
 
 #endif // _KNOTD_TCPHANDLER_H_
 

@@ -29,7 +29,7 @@
 
 #include "libknot/updates/changesets.h"
 #include "libknot/zone/zone.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
@@ -58,16 +58,16 @@ typedef struct knot_ddns_prereq_t {
 } knot_ddns_prereq_t;
 
 int knot_ddns_check_zone(const knot_zone_contents_t *zone,
-                         const knot_packet_t *query, knot_rcode_t *rcode);
+                         const knot_pkt_t *query, knot_rcode_t *rcode);
 
-int knot_ddns_process_prereqs(const knot_packet_t *query,
+int knot_ddns_process_prereqs(const knot_pkt_t *query,
                               knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode);
 
 int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
                             knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode);
 
 int knot_ddns_process_update(knot_zone_contents_t *zone,
-                              const knot_packet_t *query,
+                              const knot_pkt_t *query,
                               knot_changeset_t *changeset,
                               knot_changes_t *changes,
                               knot_rcode_t *rcode, uint32_t new_serial);

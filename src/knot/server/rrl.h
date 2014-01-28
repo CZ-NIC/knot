@@ -30,10 +30,11 @@
 #include <stdint.h>
 #include <pthread.h>
 #include "common/sockaddr.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/zone/zone.h"
 
 /* Defaults */
+#define RRL_SLIP_MAX 100
 #define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
 
 /*!
@@ -78,7 +79,7 @@ typedef struct rrl_req {
 	const uint8_t *w;
 	uint16_t len;
 	unsigned flags;
-	knot_packet_t *query;
+	knot_pkt_t *query;
 } rrl_req_t;
 
 /*!
@@ -141,6 +142,13 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
  */
 int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
               const knot_zone_t *zone);
+
+/*!
+ * \brief Roll a dice whether answer slips or not.
+ * \param n_slip Number represents every Nth answer that is slipped.
+ * \return true or false
+ */
+bool rrl_slip_roll(int n_slip);
 
 /*!
  * \brief Destroy RRL table.

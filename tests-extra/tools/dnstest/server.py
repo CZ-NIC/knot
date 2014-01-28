@@ -123,6 +123,7 @@ class Server(object):
         self.version = None
 
         self.ratelimit = None
+        self.disable_any = None
 
         self.ip = None
         self.addr = None
@@ -657,7 +658,7 @@ class Bind(Server):
                 s.item("allow-transfer", "{ %s; }" % self.addr)
             s.end()
 
-        self.start_params = ["-c", self.confile, "-g"]
+        self.start_params = ["-c", self.confile, "-f"]
         self.reload_params = ["-s", self.addr, "-p", str(self.ctlport), \
                               "-k", self.ctlkeyfile, "reload"]
         self.flush_params = ["-s", self.addr, "-p", str(self.ctlport), \
@@ -769,6 +770,8 @@ class Knot(Server):
         s.item("zonefile-sync", "5s")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
+        if self.disable_any:
+            s.item("disable-any", "on")
         if self.dnssec_enable:
             s.item_str("dnssec-keydir", self.keydir)
             s.item("dnssec-enable", "on")

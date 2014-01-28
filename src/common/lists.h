@@ -83,13 +83,19 @@ void insert_node(node_t *, node_t *);
 void list_dup(list_t *dst, list_t *src, size_t itemsz);
 size_t list_size(const list_t *);
 
+#include <stdbool.h>
+#include "common/mempattern.h"
 /*!
- * \brief List item for string lists.
+ * \brief Generic pointer list implementation.
  */
-typedef struct strnode_t {
+typedef struct ptrnode {
 	node_t n;
-	char *str;
-} strnode_t;
+	const void *d;
+} ptrnode_t;
+
+ptrnode_t *ptrlist_add(list_t *, const void *, mm_ctx_t *);
+void ptrlist_free(list_t *, mm_ctx_t *);
+bool ptrlist_contains(list_t *, const void *);
 
 /*! \todo This is broken atm.
 #ifndef _BIRD_LISTS_C_

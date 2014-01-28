@@ -24,7 +24,7 @@
 #include "knot/server/rrl.h"
 #include "knot/knot.h"
 #include "libknot/consts.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "common/hattrie/murmurhash3.h"
 #include "libknot/dnssec/random.h"
 #include "common/descriptor.h"
@@ -100,7 +100,7 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 
 	/* Check query type for spec. classes. */
 	if (p->query) {
-		switch(knot_packet_qtype(p->query)) {
+		switch(knot_pkt_qtype(p->query)) {
 		case KNOT_RRTYPE_ANY:      /* ANY spec. class */
 			return CLS_ANY;
 			break;
@@ -146,7 +146,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 	default:
 		/* Use QNAME */
 		if (req->query)
-			dn = knot_packet_qname(req->query);
+			dn = knot_pkt_qname(req->query);
 		break;
 	}
 
@@ -480,6 +480,16 @@ int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
 
 	if (lock > -1) rrl_unlock(rrl, lock);
 	return ret;
+}
+
+bool rrl_slip_roll(int n_slip)
+{
+	/* Now n_slip means every Nth answer slips.
+	 * That represents a chance of 1/N that answer slips.
+	 * Therefore, on average, from 100 answers 100/N will slip. */
+	int threshold = RRL_SLIP_MAX / n_slip;
+	int roll = knot_random_uint16_t() % RRL_SLIP_MAX;
+	return (roll < threshold);
 }
 
 int rrl_destroy(rrl_table_t *rrl)

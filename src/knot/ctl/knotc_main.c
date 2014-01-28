@@ -34,9 +34,7 @@
 #include "knot/zone/zone-load.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
-#include "libknot/util/wire.h"
-#include "libknot/packet/query.h"
-#include "libknot/packet/response.h"
+#include "libknot/packet/wire.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/estimator.h"
 
@@ -137,46 +135,46 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 
 static int cmd_remote_reply(int c)
 {
-	uint8_t *rwire = malloc(SOCKET_MTU_SZ);
-	knot_packet_t *reply = knot_packet_new();
-	if (!rwire || !reply) {
-		free(rwire);
-		knot_packet_free(&reply);
+	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	if (!pkt) {
 		return KNOT_ENOMEM;
 	}
 
 	/* Read response packet. */
-	int n = tcp_recv(c, rwire, SOCKET_MTU_SZ, NULL);
+	int n = tcp_recv(c, pkt->wire, pkt->max_size, NULL);
 	if (n <= 0) {
-		dbg_server("remote: couldn't receive response = %d\n", n);
-		knot_packet_free(&reply);
-		free(rwire);
+		dbg_server("remote: couldn't receive response = %s\n", knot_strerror(n));
+		knot_pkt_free(&pkt);
 		return KNOT_ECONN;
+	} else {
+		pkt->size = n;
 	}
 
 	/* Parse packet and check response. */
-	int ret = remote_parse(reply, rwire, n);
-	if (ret == KNOT_EOK) {
-		/* Check RCODE */
-		ret = knot_packet_rcode(reply);
-		switch(ret) {
-		case KNOT_RCODE_NOERROR:
-			if (knot_packet_authority_rrset_count(reply) > 0) {
-				ret = cmd_remote_print_reply(reply->authority[0]);
-			}
-			break;
-		case KNOT_RCODE_REFUSED:
-			ret = KNOT_EDENIED;
-			break;
-		default:
-			ret = KNOT_ERROR;
-			break;
-		}
+	int ret = remote_parse(pkt);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&pkt);
+		return ret;
 	}
 
-	/* Response cleanup. */
-	knot_packet_free(&reply);
-	free(rwire);
+	/* Check RCODE */
+	const knot_pktsection_t *authority = knot_pkt_section(pkt, KNOT_AUTHORITY);
+	ret = knot_wire_get_rcode(pkt->wire);
+	switch(ret) {
+	case KNOT_RCODE_NOERROR:
+		if (authority->count > 0) {
+			ret = cmd_remote_print_reply(authority->rr[0]);
+		}
+		break;
+	case KNOT_RCODE_REFUSED:
+		ret = KNOT_EDENIED;
+		break;
+	default:
+		ret = KNOT_ERROR;
+		break;
+	}
+
+	knot_pkt_free(&pkt);
 	return ret;
 }
 
@@ -193,16 +191,15 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Make query. */
-	uint8_t *buf = NULL;
-	size_t buflen = 0;
-	knot_packet_t *qr = remote_query(cmd, r->key);
-	if (!qr) {
+	knot_pkt_t *pkt = remote_query(cmd, r->key);
+	if (!pkt) {
 		log_server_warning("Could not prepare query for '%s'.\n",
 		                   cmd);
 		return 1;
 	}
 
 	/* Build query data. */
+	knot_pkt_begin(pkt, KNOT_AUTHORITY);
 	knot_rrset_t *rr = NULL;
 	if (argc > 0) {
 		rr = remote_build_rr("data.", rrt);
@@ -217,23 +214,30 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 				break;
 			}
 		}
-		remote_query_append(qr, rr);
-	}
-
-	if (knot_packet_to_wire(qr, &buf, &buflen) != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1);
-		knot_packet_free(&qr);
-		return 1;
+		int res = knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE);
+		if (res != KNOT_EOK) {
+			log_server_error("Couldn't create the query.\n");
+			knot_rrset_deep_free(&rr, 1);
+			knot_pkt_free(&pkt);
+			return 1;
+		}
 	}
 
 	if (r->key) {
-		remote_query_sign(buf, &buflen, qr->max_size, r->key);
+		int res = remote_query_sign(pkt->wire, &pkt->size, pkt->max_size, r->key);
+		if (res != KNOT_EOK) {
+			log_server_error("Couldn't sign the packet.\n");
+			knot_pkt_free(&pkt);
+			return 1;
+		}
 	}
+
+	dbg_server("%s: sending query size %zu\n", __func__, pkt->size);
 
 	/* Send query. */
 	int s = socket_create(r->family, SOCK_STREAM, 0);
 	int conn_state = socket_connect(s, r->family, r->address, r->port);
-	if (conn_state != KNOT_EOK || tcp_send(s, buf, buflen) <= 0) {
+	if (conn_state != KNOT_EOK || tcp_send(s, pkt->wire, pkt->size) <= 0) {
 		char portstr[32] = { '\0' };
 		if (r->family != AF_UNIX)
 			snprintf(portstr, sizeof(portstr), "@%d", r->port);
@@ -256,12 +260,13 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Cleanup. */
-	if (rc == 0) printf("\n");
-	knot_rrset_deep_free(&rr, 1);
+	if (rc == 0) {
+		printf("\n");
+	}
 
 	/* Close connection. */
 	socket_close(s);
-	knot_packet_free(&qr);
+	knot_pkt_free(&pkt);
 	return rc;
 }
 

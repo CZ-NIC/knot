@@ -29,6 +29,7 @@
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
 #include "libknot/dnssec/sig0.h"
+#include "libknot/dnssec/random.h"
 
 static knot_lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },
@@ -48,7 +49,7 @@ static knot_lookup_table_t rtypes[] = {
 	{ 0, NULL }
 };
 
-static void print_header(const knot_packet_t *packet, const style_t *style)
+static void print_header(const knot_pkt_t *packet, const style_t *style)
 {
 	char    flags[64] = "";
 	uint8_t rcode_id, opcode_id;
@@ -57,41 +58,41 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 	knot_lookup_table_t *rcode, *opcode;
 
 	// Get codes.
-	rcode_id = knot_wire_get_rcode(packet->wireformat);
+	rcode_id = knot_wire_get_rcode(packet->wire);
 	rcode = knot_lookup_by_id(knot_rcode_names, rcode_id);
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
 
-	opcode_id = knot_wire_get_opcode(packet->wireformat);
+	opcode_id = knot_wire_get_opcode(packet->wire);
 	opcode = knot_lookup_by_id(knot_opcode_names, opcode_id);
 	if (opcode != NULL) {
 		opcode_str = opcode->name;
 	}
 
 	// Get flags.
-	if (knot_wire_get_qr(packet->wireformat) != 0) {
+	if (knot_wire_get_qr(packet->wire) != 0) {
 		strcat(flags, " qr");
 	}
-	if (knot_wire_get_aa(packet->wireformat) != 0) {
+	if (knot_wire_get_aa(packet->wire) != 0) {
 		strcat(flags, " aa");
 	}
-	if (knot_wire_get_tc(packet->wireformat) != 0) {
+	if (knot_wire_get_tc(packet->wire) != 0) {
 		strcat(flags, " tc");
 	}
-	if (knot_wire_get_rd(packet->wireformat) != 0) {
+	if (knot_wire_get_rd(packet->wire) != 0) {
 		strcat(flags, " rd");
 	}
-	if (knot_wire_get_ra(packet->wireformat) != 0) {
+	if (knot_wire_get_ra(packet->wire) != 0) {
 		strcat(flags, " ra");
 	}
-	if (knot_wire_get_z(packet->wireformat) != 0) {
+	if (knot_wire_get_z(packet->wire) != 0) {
 		strcat(flags, " z");
 	}
-	if (knot_wire_get_ad(packet->wireformat) != 0) {
+	if (knot_wire_get_ad(packet->wire) != 0) {
 		strcat(flags, " ad");
 	}
-	if (knot_wire_get_cd(packet->wireformat) != 0) {
+	if (knot_wire_get_cd(packet->wire) != 0) {
 		strcat(flags, " cd");
 	}
 
@@ -101,22 +102,22 @@ static void print_header(const knot_packet_t *packet, const style_t *style)
 		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
 		       ";; Flags:%1s; "
 		       "ZONE: %u; PREREQ: %u; UPDATE: %u; ADDITIONAL: %u\n",
-		       opcode_str, rcode_str, knot_packet_id(packet),
-		       flags, knot_wire_get_qdcount(packet->wireformat),
-		       knot_wire_get_ancount(packet->wireformat),
-		       knot_wire_get_nscount(packet->wireformat),
-		       knot_wire_get_arcount(packet->wireformat));
+		       opcode_str, rcode_str, knot_wire_get_id(packet->wire),
+		       flags, knot_wire_get_qdcount(packet->wire),
+		       knot_wire_get_ancount(packet->wire),
+		       knot_wire_get_nscount(packet->wire),
+		       knot_wire_get_arcount(packet->wire));
 
 		break;
 	default:
 		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
 		       ";; Flags:%1s; "
 		       "QUERY: %u; ANSWER: %u; AUTHORITY: %u; ADDITIONAL: %u\n",
-		       opcode_str, rcode_str, knot_packet_id(packet),
-		       flags, knot_wire_get_qdcount(packet->wireformat),
-		       knot_wire_get_ancount(packet->wireformat),
-		       knot_wire_get_nscount(packet->wireformat),
-		       knot_wire_get_arcount(packet->wireformat));
+		       opcode_str, rcode_str, knot_wire_get_id(packet->wire),
+		       flags, knot_wire_get_qdcount(packet->wire),
+		       knot_wire_get_ancount(packet->wire),
+		       knot_wire_get_nscount(packet->wire),
+		       knot_wire_get_arcount(packet->wire));
 		break;
 	}
 }
@@ -341,9 +342,9 @@ static void print_section_host(const knot_rrset_t **rrsets,
 	free(buf);
 }
 
-static void print_error_host(const uint8_t       code,
-                             const knot_packet_t *packet,
-                             const style_t       *style)
+static void print_error_host(const uint8_t    code,
+                             const knot_pkt_t *packet,
+                             const style_t    *style)
 {
 	const char *rcode_str = "NULL";
 	char type[32] = "NULL";
@@ -351,7 +352,7 @@ static void print_error_host(const uint8_t       code,
 
 	knot_lookup_table_t *rcode;
 
-	owner = knot_dname_to_str(knot_packet_qname(packet));
+	owner = knot_dname_to_str(knot_pkt_qname(packet));
 	if (style->style.ascii_to_idn != NULL) {
 		style->style.ascii_to_idn(&owner);
 	}
@@ -359,7 +360,7 @@ static void print_error_host(const uint8_t       code,
 	if (rcode != NULL) {
 		rcode_str = rcode->name;
 	}
-	knot_rrtype_to_string(knot_packet_qtype(packet), type, sizeof(type));
+	knot_rrtype_to_string(knot_pkt_qtype(packet), type, sizeof(type));
 
 	if (code == KNOT_RCODE_NOERROR) {
 		printf("Host %s has no %s record\n", owner, type);
@@ -370,28 +371,22 @@ static void print_error_host(const uint8_t       code,
 	free(owner);
 }
 
-knot_packet_t* create_empty_packet(const size_t max_size)
+knot_pkt_t* create_empty_packet(const size_t max_size)
 {
 	// Create packet skeleton.
-	knot_packet_t *packet = knot_packet_new();
+	knot_pkt_t *packet = knot_pkt_new(NULL, max_size, NULL);
 	if (packet == NULL) {
 		DBG_NULL;
 		return NULL;
 	}
 
-	// Set packet buffer size.
-	knot_packet_set_max_size(packet, max_size);
-
-	// Initialize query packet.
-	knot_query_init(packet);
-
 	// Set random sequence id.
-	knot_packet_set_random_id(packet);
+	knot_wire_set_id(packet->wire, knot_random_uint16_t());
 
 	return packet;
 }
 
-void print_header_xfr(const knot_packet_t *packet, const style_t *style)
+void print_header_xfr(const knot_pkt_t *packet, const style_t  *style)
 {
 	if (style == NULL) {
 		DBG_NULL;
@@ -400,7 +395,7 @@ void print_header_xfr(const knot_packet_t *packet, const style_t *style)
 
 	char xfr[16] = "AXFR";
 
-	switch (knot_packet_qtype(packet)) {
+	switch (knot_pkt_qtype(packet)) {
 	case KNOT_RRTYPE_AXFR:
 		break;
 	case KNOT_RRTYPE_IXFR:
@@ -411,7 +406,7 @@ void print_header_xfr(const knot_packet_t *packet, const style_t *style)
 	}
 
 	if (style->show_header) {
-		char *owner = knot_dname_to_str(knot_packet_qname(packet));
+		char *owner = knot_dname_to_str(knot_pkt_qname(packet));
 		if (style->style.ascii_to_idn != NULL) {
 			style->style.ascii_to_idn(&owner);
 		}
@@ -422,29 +417,30 @@ void print_header_xfr(const knot_packet_t *packet, const style_t *style)
 	}
 }
 
-void print_data_xfr(const knot_packet_t *packet,
-                    const style_t       *style)
+void print_data_xfr(const knot_pkt_t *packet,
+                    const style_t    *style)
 {
 	if (packet == NULL || style == NULL) {
 		DBG_NULL;
 		return;
 	}
 
-	uint16_t ancount = knot_wire_get_ancount(packet->wireformat);
+	const knot_pktsection_t *answers = knot_pkt_section(packet, KNOT_ANSWER);
+	const knot_pktsection_t *additional = knot_pkt_section(packet, KNOT_ADDITIONAL);
+
 	switch (style->format) {
 	case FORMAT_DIG:
-		print_section_dig(packet->answer, ancount,style);
+		print_section_dig(answers->rr, answers->count, style);
 		break;
 	case FORMAT_HOST:
-		print_section_host(packet->answer, ancount, style);
+		print_section_host(answers->rr, answers->count, style);
 		break;
 	case FORMAT_FULL:
-		print_section_full(packet->answer, ancount, style);
+		print_section_full(answers->rr, answers->count, style);
 
 		// Print TSIG record if any.
 		if (style->show_additional) {
-			print_section_full(packet->additional,
-			                   knot_wire_get_arcount(packet->wireformat),
+			print_section_full(additional->rr, additional->count,
 			                   style);
 		}
 		break;
@@ -470,23 +466,26 @@ void print_footer_xfr(const size_t  total_len,
 	}
 }
 
-void print_packet(const knot_packet_t *packet,
-                  const size_t        total_len,
-                  const net_t         *net,
-                  const float         elapsed,
-                  const bool          incoming,
-                  const style_t       *style)
+void print_packet(const knot_pkt_t *packet,
+                  const net_t      *net,
+                  const float      elapsed,
+                  const bool       incoming,
+                  const style_t    *style)
 {
 	if (packet == NULL || style == NULL) {
 		DBG_NULL;
 		return;
 	}
 
-	uint8_t rcode = knot_wire_get_rcode(packet->wireformat);
-	uint16_t qdcount = knot_wire_get_qdcount(packet->wireformat);
-	uint16_t ancount = knot_wire_get_ancount(packet->wireformat);
-	uint16_t arcount = knot_wire_get_arcount(packet->wireformat);
-	uint16_t nscount = knot_wire_get_nscount(packet->wireformat);
+	const knot_pktsection_t *answers = knot_pkt_section(packet, KNOT_ANSWER);
+	const knot_pktsection_t *authority = knot_pkt_section(packet, KNOT_AUTHORITY);
+	const knot_pktsection_t *additional = knot_pkt_section(packet, KNOT_ADDITIONAL);
+
+	uint8_t rcode = knot_wire_get_rcode(packet->wire);
+	uint16_t qdcount = knot_wire_get_qdcount(packet->wire);
+	uint16_t arcount = additional->count;
+	uint16_t ancount = answers->count;
+
 
 	// Print packet information header.
 	if (style->show_header) {
@@ -507,12 +506,12 @@ void print_packet(const knot_packet_t *packet,
 	switch (style->format) {
 	case FORMAT_DIG:
 		if (ancount > 0) {
-			print_section_dig(packet->answer, ancount, style);
+			print_section_dig(answers->rr, ancount, style);
 		}
 		break;
 	case FORMAT_HOST:
 		if (ancount > 0) {
-			print_section_host(packet->answer, ancount, style);
+			print_section_host(answers->rr, ancount, style);
 		} else {
 			print_error_host(rcode, packet, style);
 		}
@@ -520,59 +519,59 @@ void print_packet(const knot_packet_t *packet,
 	case FORMAT_NSUPDATE:
 		if (style->show_question && qdcount > 0) {
 			printf("\n;; ZONE SECTION:\n;; ");
-			print_section_question(knot_packet_qname(packet),
-			                       knot_packet_qclass(packet),
-			                       knot_packet_qtype(packet),
+			print_section_question(knot_pkt_qname(packet),
+			                       knot_pkt_qclass(packet),
+			                       knot_pkt_qtype(packet),
 			                       style);
 		}
 
-		if (style->show_answer && ancount > 0) {
+		if (style->show_answer && answers->count > 0) {
 			printf("\n;; PREREQUISITE SECTION:\n");
-			print_section_full(packet->answer,
-			                   ancount,
+			print_section_full(answers->rr,
+			                   answers->count,
 			                   style);
 		}
 
-		if (style->show_authority && nscount > 0) {
+		if (style->show_authority && authority->count > 0) {
 			printf("\n;; UPDATE SECTION:\n");
-			print_section_full(packet->authority,
-			                   nscount,
+			print_section_full(authority->rr,
+			                   authority->count,
 			                   style);
 		}
 
-		if (style->show_additional && arcount > 0) {
+		if (style->show_additional && additional->count > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
-			print_section_full(packet->additional,
-			                   arcount,
+			print_section_full(additional->rr,
+			                   additional->count,
 			                   style);
 		}
 		break;
 	case FORMAT_FULL:
 		if (style->show_question && qdcount > 0) {
 			printf("\n;; QUESTION SECTION:\n;; ");
-			print_section_question(knot_packet_qname(packet),
-			                       knot_packet_qclass(packet),
-			                       knot_packet_qtype(packet),
+			print_section_question(knot_pkt_qname(packet),
+			                       knot_pkt_qclass(packet),
+			                       knot_pkt_qtype(packet),
 			                       style);
 		}
 
-		if (style->show_answer && ancount > 0) {
+		if (style->show_answer && answers->count > 0) {
 			printf("\n;; ANSWER SECTION:\n");
-			print_section_full(packet->answer,
-			                   ancount,
+			print_section_full(answers->rr,
+			                   answers->count,
 			                   style);
 		}
 
-		if (style->show_authority && nscount > 0) {
+		if (style->show_authority && authority->count > 0) {
 			printf("\n;; AUTHORITY SECTION:\n");
-			print_section_full(packet->authority,
-			                   nscount,
+			print_section_full(authority->rr,
+			                   authority->count,
 			                   style);
 		}
 
-		if (style->show_additional && arcount > 0) {
+		if (style->show_additional && additional->count > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-			print_section_full(packet->additional,
+			print_section_full(additional->rr,
 			                   arcount,
 			                   style);
 		}
@@ -584,7 +583,7 @@ void print_packet(const knot_packet_t *packet,
 	// Print packet statistics.
 	if (style->show_footer) {
 		printf("\n");
-		print_footer(total_len, 0, 0, net, elapsed, incoming);
+		print_footer(packet->size, 0, 0, net, elapsed, incoming);
 	}
 }
 
@@ -608,7 +607,7 @@ void free_sign_context(sign_context_t *ctx)
 	memset(ctx, '\0', sizeof(sign_context_t));
 }
 
-int sign_packet(knot_packet_t           *pkt,
+int sign_packet(knot_pkt_t              *pkt,
                 sign_context_t          *sign_ctx,
                 const knot_key_params_t *key_params)
 {
@@ -619,9 +618,9 @@ int sign_packet(knot_packet_t           *pkt,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *wire = pkt->wireformat;
+	uint8_t *wire = pkt->wire;
 	size_t  *wire_size = &pkt->size;
-	size_t  max_size = knot_packet_max_size(pkt);
+	size_t  max_size = pkt->max_size;
 
 	switch (knot_get_key_type(key_params)) {
 	case KNOT_KEY_TSIG:
@@ -637,8 +636,7 @@ int sign_packet(knot_packet_t           *pkt,
 		sign_ctx->digest_size = knot_tsig_digest_length(key->algorithm);
 		sign_ctx->digest = malloc(sign_ctx->digest_size);
 
-		size_t tsig_size = tsig_wire_maxsize(key);
-		knot_packet_set_tsig_size(pkt, tsig_size);
+		knot_pkt_tsig_set(pkt, key);
 
 		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
 		                        sign_ctx->digest, &sign_ctx->digest_size,
@@ -664,7 +662,7 @@ int sign_packet(knot_packet_t           *pkt,
 	}
 }
 
-int verify_packet(const knot_packet_t     *pkt,
+int verify_packet(const knot_pkt_t        *pkt,
                   const sign_context_t    *sign_ctx,
                   const knot_key_params_t *key_params)
 {
@@ -675,18 +673,17 @@ int verify_packet(const knot_packet_t     *pkt,
 		return KNOT_EINVAL;
 	}
 
-	const uint8_t *wire = pkt->wireformat;
+	const uint8_t *wire = pkt->wire;
 	const size_t  *wire_size = &pkt->size;
 
 	switch (knot_get_key_type(key_params)) {
 	case KNOT_KEY_TSIG:
 	{
-		const knot_rrset_t *tsig_rr = knot_packet_tsig(pkt);
-		if (tsig_rr == NULL) {
+		if (pkt->tsig_rr == NULL) {
 			return KNOT_ENOTSIG;
 		}
 
-		result = knot_tsig_client_check(tsig_rr, wire, *wire_size,
+		result = knot_tsig_client_check(pkt->tsig_rr, wire, *wire_size,
 		                                sign_ctx->digest,
 		                                sign_ctx->digest_size,
 		                                &sign_ctx->tsig_key, 0);

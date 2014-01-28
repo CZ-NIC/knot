@@ -62,6 +62,11 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 	dbg_edns_verb("Parsing payload.\n");
 	opt_rr->payload = knot_rrset_class(rrset);
 
+	/* RFC6891, 6.2.5 Value < 512B should be treated as 512. */
+	if (opt_rr->payload < EDNS_MIN_UDP_PAYLOAD) {
+		opt_rr->payload = EDNS_MIN_UDP_PAYLOAD;
+	}
+
 	// the TTL has switched bytes
 	uint32_t ttl;
 	dbg_edns_detail("TTL: %u\n", knot_rrset_ttl(rrset));
@@ -187,7 +192,6 @@ int knot_edns_do(const knot_opt_rr_t *opt_rr)
 		return KNOT_EINVAL;
 	}
 
-	dbg_edns("Flags: %u\n", opt_rr->flags);
 	return (opt_rr->flags & KNOT_EDNS_DO_MASK);
 }
 
@@ -265,7 +269,7 @@ int knot_edns_has_option(const knot_opt_rr_t *opt_rr, uint16_t code)
 /*----------------------------------------------------------------------------*/
 
 short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
-                          size_t max_size)
+                        size_t max_size)
 {
 	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
@@ -273,16 +277,12 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 
 	assert(EDNS_MIN_SIZE <= (int)max_size);
 
-	if ((int)max_size < opt_rr->size) {
-		dbg_edns("Not enough place for OPT RR wire format.\n");
+	if (max_size < opt_rr->size) {
+		dbg_packet("%s: not enough space for OPT RR\n", __func__);
 		return KNOT_ESPACE;
 	}
 
 	uint8_t *pos = wire;
-
-	dbg_edns_verb("Putting OPT RR to the wire format. Size: %d, "
-	              "position: %zu\n",
-	              opt_rr->size, (size_t)(pos - wire));
 
 	*(pos++) = 0;
 	knot_wire_write_u16(pos, KNOT_RRTYPE_OPT);
@@ -293,9 +293,6 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 	*(pos++) = opt_rr->version;
 	knot_wire_write_u16(pos, opt_rr->flags);
 	pos += 2;
-
-	dbg_edns_detail("Leaving space for RDLENGTH at pos %zu\n",
-	                (size_t)(pos - wire));
 
 	uint8_t *rdlen = pos;
 	uint16_t len = 0;
@@ -313,8 +310,6 @@ short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
 		pos += opt_rr->options[i].length;
 		len += 4 + opt_rr->options[i].length;
 	}
-
-	dbg_edns_detail("Final pos %zu\n", (size_t)(pos - wire));
 
 	knot_wire_write_u16(rdlen, len);
 

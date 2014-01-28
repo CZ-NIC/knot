@@ -33,7 +33,7 @@
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 #include "libknot/util/utils.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/zone/zone-diff.h"
 
@@ -157,7 +157,7 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 
 	// encode raw hash to first label
 
-	uint8_t label[KNOT_DNAME_MAX_LENGTH];
+	uint8_t label[KNOT_DNAME_MAXLEN];
 	int32_t label_size;
 	label_size = base32hex_encode(hash, hash_size, label, sizeof(label));
 	if (label_size <= 0) {

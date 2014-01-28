@@ -44,6 +44,7 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 /*!
  * \brief Journal entry flags.
@@ -336,6 +337,15 @@ int journal_trans_rollback(journal_t *journal);
  * \retval KNOT_EINVAL on invalid parameter.
  */
 int journal_close(journal_t *journal);
+
+/*!
+ * \brief Check if the journal file is used or not.
+ *
+ * \param journal Journal.
+ *
+ * \return true or false
+ */
+bool journal_is_used(journal_t *journal);
 
 /*!
  * \brief Retain journal for use.

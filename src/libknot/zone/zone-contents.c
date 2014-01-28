@@ -26,7 +26,7 @@
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/zone/zone-tree.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/consts.h"
 #include "libknot/rdata.h"
 
@@ -154,6 +154,38 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
+/*! \brief Link pointers to additional nodes for this RRSet. */
+static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
+{
+	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
+	const knot_dname_t *dname = NULL;
+
+	/* Free old additional nodes. */
+	if (rr->additional != NULL) {
+		free(rr->additional);
+	}
+
+	/* Create new additional nodes. */
+	uint16_t rdcount = knot_rrset_rdata_rr_count(rr);
+	rr->additional = malloc(rdcount * sizeof(knot_node_t));
+	if (rr->additional == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	for (uint16_t i = 0; i < rdcount; i++) {
+
+		/* Try to find node for the dname in the RDATA. */
+		dname = knot_rdata_name(rr, i);
+		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
+		if (node == NULL && encloser && encloser->wildcard_child) {
+			node = encloser->wildcard_child;
+		}
+
+		rr->additional[i] = (knot_node_t *)node;
+	}
+
+	return KNOT_EOK;
+}
 
 /*----------------------------------------------------------------------------*/
 
@@ -292,6 +324,31 @@ static int knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
 
 	return KNOT_EOK;
 }
+
+/*! \brief Discover additional records for affected nodes. */
+static int knot_zone_contents_discover_additional(knot_node_t **tnode, void *data)
+{
+	assert(data != NULL);
+	assert(tnode != NULL);
+
+	int ret = KNOT_EOK;
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = *tnode;
+	knot_rrset_t **rrset = node->rrset_tree;
+
+	/* Lookup additional records for specific nodes. */
+	for(uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (rrset_additional_needed(rrset[i]->type)) {
+			ret = discover_additionals(rrset[i], args->zone);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
+	}
+
+	return ret;
+}
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Tries to find the given domain name in the zone tree.
@@ -977,18 +1034,6 @@ dbg_zone_exec_verb(
 	free(zone_str);
 );
 
-	if (knot_dname_cmp(name, zone->apex->owner) == 0) {
-		*node = zone->apex;
-		*closest_encloser = *node;
-		return KNOT_ZONE_NAME_FOUND;
-	}
-
-	if (!knot_dname_is_sub(name, zone->apex->owner)) {
-		*node = NULL;
-		*closest_encloser = NULL;
-		return KNOT_EOUTOFZONE;
-	}
-
 	knot_node_t *found = NULL, *prev = NULL;
 
 	int exact_match = knot_zone_contents_find_in_tree(zone->nodes, name,
@@ -1027,6 +1072,12 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 	if (exact_match) {
 		*closest_encloser = *node;
 	} else {
+		if (!knot_dname_is_sub(name, zone->apex->owner)) {
+			*node = NULL;
+			*closest_encloser = NULL;
+			return KNOT_EOUTOFZONE;
+		}
+
 		*closest_encloser = *previous;
 		assert(*closest_encloser != NULL);
 
@@ -1397,6 +1448,16 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
 	}
 
 	assert(zone->apex == adjust_arg.first_node);
+
+	/* Discover additional records.
+	 * \note This MUST be done after node adjusting because it needs to
+	 *       do full lookup to see through wildcards. */
+
+	result = knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
+	                                 knot_zone_contents_discover_additional);
+	if (result != KNOT_EOK) {
+		return result;
+	}
 
 	return KNOT_EOK;
 }

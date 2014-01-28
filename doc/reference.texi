@@ -899,11 +899,10 @@ Default value (in @code{zone} config): inherited from @code{zones} section
 Specifies how long should the automatically generated DNSSEC signatures be valid.
 Expiration will thus be set as current time (in the moment of signing)
 + @code{signature-lifetime}.
-Possible values are from 10801 to INT_MAX. The lower limit is because the server
-will trigger resign when any of the signatures expires in 7200 seconds or less
-and it was chosen as a reasonable value with regard to signing overhead. Setting
-the signature lifetime to minimum value will result in re-signing the zone each
-hour. For information about zone expiration date, invoke the
+Possible values are from 10801 to INT_MAX. The signatures are refreshed one
+tenth of the signature lifetime before the signature expiration (i.e., 3 days
+before the expiration with the default value). For information about zone
+expiration date, invoke the
 @code{knotc zonestatus} command.
 
 Default value: @kbd{30d} (@kbd{2592000})

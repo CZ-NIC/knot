@@ -19,6 +19,8 @@
 /src/tests/Makefile.in
 /src/zscanner/Makefile
 /src/zscanner/Makefile.in
+/patches/Makefile
+/patches/Makefile.in
 /samples/Makefile
 /samples/Makefile.in
 /doc/Makefile

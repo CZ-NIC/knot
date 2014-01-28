@@ -20,7 +20,7 @@
 #include "libknot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/zone/zone-contents.h"
 #include "libknot/zone/zone-diff.h"
 #include "libknot/dnssec/nsec-chain.h"

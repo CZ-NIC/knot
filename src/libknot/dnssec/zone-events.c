@@ -27,27 +27,6 @@
 #include "libknot/util/debug.h"
 #include "libknot/zone/zone.h"
 
-static uint32_t time_now(void)
-{
-	return (uint32_t)time(NULL);
-}
-
-static void init_default_policy(knot_dnssec_policy_t *p,
-                                knot_update_serial_t soa_up)
-{
-	knot_dnssec_policy_t p_image = DEFAULT_DNSSEC_POLICY;
-	memcpy(p, &p_image, sizeof(knot_dnssec_policy_t));
-	p->soa_up = soa_up;
-}
-
-static void init_forced_policy(knot_dnssec_policy_t *p,
-                               knot_update_serial_t soa_up)
-{
-	knot_dnssec_policy_t p_image = FORCED_DNSSEC_POLICY;
-	memcpy(p, &p_image, sizeof(knot_dnssec_policy_t));
-	p->soa_up = soa_up;
-}
-
 static int init_dnssec_structs(const knot_zone_t *zone,
                                knot_zone_keys_t *zone_keys,
                                knot_dnssec_policy_t *policy,
@@ -78,23 +57,20 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	}
 
 	// Init sign policy
-	if (force) {
-		init_forced_policy(policy, soa_up);
-	} else {
-		init_default_policy(policy, soa_up);
-	}
+	knot_dnssec_init_default_policy(policy);
+	policy->soa_up = soa_up;
+	policy->forced_sign = force;
 
 	// Override signature lifetime, if set in config
-	int sig_lf = config->sig_lifetime;
-	if (sig_lf > 0) {
-		policy->sign_lifetime = sig_lf;
+	if (config->sig_lifetime > 0) {
+		knot_dnssec_policy_set_sign_lifetime(policy, config->sig_lifetime);
 	}
 
 	return KNOT_EOK;
 }
 
 static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
-                     knot_update_serial_t soa_up, uint32_t *expires_at,
+                     knot_update_serial_t soa_up, uint32_t *refresh_at,
                      uint32_t new_serial)
 {
 	assert(zone);
@@ -113,7 +89,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	if (!zone_config->dnssec_enable) {
-		log_server_warning("%s DNSSEC not enabled.\n", msgpref);
+		log_zone_warning("%s DNSSEC not enabled.\n", msgpref);
 		free(msgpref);
 		return KNOT_EOK;
 	}
@@ -143,7 +119,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 
 	// add missing signatures
 	result = knot_zone_sign(zone->contents, &zone_keys, &policy, out_ch,
-	                        expires_at);
+	                        refresh_at);
 	if (result != KNOT_EOK) {
 		log_zone_error("%s Error while signing (%s).\n",
 		               msgpref, knot_strerror(result));
@@ -188,25 +164,25 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 }
 
 int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
-                          knot_update_serial_t soa_up, uint32_t *expires_at,
+                          knot_update_serial_t soa_up, uint32_t *refresh_at,
                           uint32_t new_serial)
 {
 	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, false, soa_up, expires_at, new_serial);
+	return zone_sign(zone, out_ch, false, soa_up, refresh_at, new_serial);
 }
 
 int knot_dnssec_zone_sign_force(knot_zone_t *zone,
-                                knot_changeset_t *out_ch, uint32_t *expires_at,
+                                knot_changeset_t *out_ch, uint32_t *refresh_at,
                                 uint32_t new_serial)
 {
 	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_UPDATE, expires_at,
+	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_UPDATE, refresh_at,
 	                 new_serial);
 }
 
@@ -214,17 +190,13 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
-                               uint32_t *used_lifetime,
-                               uint32_t *used_refresh,
+                               uint32_t *refresh_at,
                                uint32_t new_serial,
                                hattrie_t **sorted_changes)
 {
-	if (!used_lifetime || !used_refresh || !sorted_changes) {
+	if (!refresh_at || !sorted_changes) {
 		return KNOT_EINVAL;
 	}
-
-	*used_lifetime = 0;
-	*used_refresh = 0;
 
 	if (!conf()->dnssec_enable) {
 		return KNOT_EOK;
@@ -301,8 +273,7 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 	knot_free_zone_keys(&zone_keys);
 	free(msgpref);
 
-	*used_lifetime = policy.sign_lifetime;
-	*used_refresh = policy.sign_refresh;
+	*refresh_at = policy.refresh_before; // only new signatures are made
 
 	return KNOT_EOK;
 }

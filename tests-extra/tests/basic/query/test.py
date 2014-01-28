@@ -30,6 +30,11 @@ resp.cmp(bind)
 
 ''' Positive answers. '''
 
+# Positive (SOA)
+resp = knot.dig("flags", "SOA", udp=True)
+resp.check(rcode="NOERROR")
+resp.cmp(bind)
+
 # Positive (DATA)
 resp = knot.dig("dns1.flags", "A", udp=True)
 resp.check(rcode="NOERROR")
@@ -181,6 +186,14 @@ resp.cmp(bind)
 
 # Wildcard leading out
 resp = knot.dig("a.wildcard-out.flags", "A", udp=True)
+resp.cmp(bind)
+
+# Wildcard leading to CNAME loop
+resp = knot.dig("test.loop-entry.flags", "A", udp=True)
+resp.cmp(bind)
+
+# Wildcard-covered additional record discovery
+resp = knot.dig("mx-additional.flags", "MX", udp=True)
 resp.cmp(bind)
 
 ''' Varied case tests. '''

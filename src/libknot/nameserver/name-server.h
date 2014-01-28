@@ -43,7 +43,7 @@
 #include "libknot/edns.h"
 #include "libknot/consts.h"
 #include "libknot/tsig.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "common/sockaddr.h"
 #include "common/lists.h"
 #include "libknot/updates/changesets.h"
@@ -57,6 +57,7 @@ struct server_t;
  *        supported DNS functions.
  *
  * Currently only holds pointer to the zone database for answering queries.
+ * \todo Merge this with server_t
  */
 typedef struct knot_nameserver {
 	/*!
@@ -64,8 +65,7 @@ typedef struct knot_nameserver {
 	 *        queries.
 	 */
 	knot_zonedb_t *zone_db;
-	uint8_t *err_response;    /*!< Prepared generic error response. */
-	size_t err_resp_size;     /*!< Size of the prepared error response. */
+	knot_pkt_t *err_response;    /*!< Prepared generic error response. */
 	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
 
 	const char *identity; //!< RFC 4892, server identity (id.server, hostname.bind).
@@ -88,8 +88,8 @@ typedef struct knot_ns_xfr {
 	int type;
 	int flags;
 	sockaddr_t addr, saddr;
-	knot_packet_t *query;
-	knot_packet_t *response;
+	knot_pkt_t *query;
+	knot_pkt_t *response;
 	knot_rcode_t rcode;
 	xfr_callback_t send;
 	xfr_callback_t recv;
@@ -147,7 +147,6 @@ typedef struct knot_ns_xfr {
 	hattrie_t *lookup_tree;
 } knot_ns_xfr_t;
 
-
 static const int KNOT_NS_TSIG_FREQ = 100;
 
 static const size_t KNOT_NS_TSIG_DATA_MAX_SIZE = 100 * 64 * 1024;
@@ -200,8 +199,6 @@ knot_nameserver_t *knot_ns_create();
  * to decide what to do with the query, the knot_query_t type is used for this
  * purpose.
  *
- * \param query_wire Wire format of the query.
- * \param qsize Size of the query in octets.
  * \param packet Packet structure to be filled with the parsed query.
  * \param type Type of the query.
  *
@@ -219,54 +216,7 @@ knot_nameserver_t *knot_ns_create();
  *                              ns_error_response() with \a rcode set to this
  *                              value to get proper error response.
  */
-int knot_ns_parse_packet(const uint8_t *query_wire, size_t qsize,
-                    knot_packet_t *packet, knot_packet_type_t *type);
-
-int knot_ns_error_response_from_query_wire(const knot_nameserver_t *nameserver,
-                                      const uint8_t *query, size_t size,
-                                      uint8_t rcode, uint8_t *response_wire,
-                                      size_t *rsize);
-
-int knot_ns_error_response_from_query(const knot_nameserver_t *nameserver,
-                                      const knot_packet_t *query,
-                                      uint8_t rcode, uint8_t *response_wire,
-                                      size_t *rsize);
-
-void knot_ns_error_response_full(knot_nameserver_t *nameserver,
-                                 knot_packet_t *response, uint8_t rcode,
-                                 uint8_t *response_wire, size_t *rsize);
-
-int knot_ns_prep_normal_response(knot_nameserver_t *nameserver,
-                                 knot_packet_t *query, knot_packet_t **resp,
-                                 const knot_zone_t **zone, size_t max_size);
-
-int knot_ns_prep_update_response(knot_nameserver_t *nameserver,
-                                 knot_packet_t *query, knot_packet_t **resp,
-                                 knot_zone_t **zone, size_t max_size);
-
-/*!
- * \brief Creates a response for the given normal query using the data of the
- *        nameserver.
- *
- * \param nameserver Name server structure to provide the needed data.
- * \param resp Response structure with parsed query.
- * \param response_wire Place for the response in wire format.
- * \param rsize Input: maximum acceptable size of the response. Output: real
- *              size of the response.
- *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EMALF if an error occured and the response is not valid.
- */
-int knot_ns_answer_normal(knot_nameserver_t *nameserver,
-                          const knot_zone_t *zone, knot_packet_t *resp,
-                          uint8_t *response_wire, size_t *rsize, int check_any);
-
-int knot_ns_answer_ixfr_udp(knot_nameserver_t *nameserver,
-                            const knot_zone_t *zone, knot_packet_t *resp,
-                            uint8_t *response_wire, size_t *rsize);
-
-int knot_ns_init_xfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
-int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
+int knot_ns_parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type);
 
 /*!
  * \brief Compares two zone serials.
@@ -276,45 +226,6 @@ int knot_ns_init_xfr_resp(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
  * \retval == 0 if s1 is equal to s2.
  */
 int ns_serial_compare(uint32_t s1, uint32_t s2);
-
-int ns_ixfr_load_serials(const knot_ns_xfr_t *xfr, uint32_t *serial_from,
-                         uint32_t *serial_to);
-
-int knot_ns_xfr_send_error(const knot_nameserver_t *nameserver,
-                           knot_ns_xfr_t *xfr, knot_rcode_t rcode);
-
-/*!
- * \brief Processes an AXFR query.
- *
- * This function sequentially creates DNS packets to be sent as a response
- * to the AXFR query and sends each packet using the given callback (\a
- * send_packet).
- *
- * \param nameserver Name server structure to provide the data for answering.
- * \param xfr Persistent transfer-specific data.
- *
- * \note Currently only a stub which sends one error response using the given
- *       callback.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOMEM
- * \retval KNOT_ERROR
- *
- * \todo Maybe the place for the wire format should be passed in as in
- *       the ns_answer_request() function...?
- */
-int knot_ns_answer_axfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
-
-/*!
- * \brief Processes an IXFR query.
- *
- * \param nameserver Name server structure to provide the data for answering.
- * \param xfr Persistent transfer-specific data.
- *
- * \todo Document properly.
- */
-int knot_ns_answer_ixfr(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Processes an AXFR-IN packet.
@@ -357,16 +268,16 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
                              knot_ns_xfr_t *xfr);
 
-int knot_ns_process_update(const knot_packet_t *query,
+int knot_ns_process_update(const knot_pkt_t *query,
                            knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents,
                            knot_changesets_t *chgs, knot_rcode_t *rcode,
                            uint32_t new_serial);
 
-int knot_ns_create_forward_query(const knot_packet_t *query,
+int knot_ns_create_forward_query(const knot_pkt_t *query,
                                  uint8_t *query_wire, size_t *size);
 
-int knot_ns_process_forward_response(const knot_packet_t *response,
+int knot_ns_process_forward_response(const knot_pkt_t *response,
                                      uint16_t original_id,
                                      uint8_t *response_wire, size_t *size);
 
@@ -379,26 +290,121 @@ void knot_ns_set_data(knot_nameserver_t *nameserver, void *data);
 int knot_ns_tsig_required(int packet_nr);
 
 /*!
- * \brief Converts the response to wire format.
- *
- * \param resp Response to convert.
- * \param wire Place for the wire format of the response.
- * \param wire_size In: space available for the wire format in bytes.
- *                  Out: actual size of the wire format in bytes.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-int ns_response_to_wire(knot_packet_t *resp, uint8_t *wire,
-                        size_t *wire_size);
-
-/*!
  * \brief Properly destroys the name server structure.
  *
  * \param nameserver Nameserver to destroy.
  */
 void knot_ns_destroy(knot_nameserver_t **nameserver);
 
+/* ^^^
+ * NG processing API below, everything upwards should be slowly moved to appropriate
+ * files or removed.
+ */
+
+/*! \brief Main packet processing states.
+ *         Each state describes the current machine processing step
+ *         and determines readiness for next action.
+ */
+enum ns_proc_state {
+	NS_PROC_NOOP = 0,      /* N/A */
+	NS_PROC_MORE = 1 << 0, /* More input data. */
+	NS_PROC_FULL = 1 << 1, /* Has output data. */
+	NS_PROC_DONE = 1 << 2, /* Finished. */
+	NS_PROC_FAIL = 1 << 3  /* Error. */
+};
+
+/* Forward declarations. */
+struct ns_proc_module;
+
+/*! \brief Packte processing context. */
+typedef struct ns_proc_context
+{
+	int state;
+	mm_ctx_t mm;
+	uint16_t type;
+
+	knot_nameserver_t *ns;
+	void *data;
+
+	/* Module implementation. */
+	const struct ns_proc_module *module;
+} ns_proc_context_t;
+
+/*! \brief Packet processing module API. */
+typedef struct ns_proc_module {
+	int (*begin)(ns_proc_context_t *ctx, void *module_param);
+	int (*reset)(ns_proc_context_t *ctx);
+	int (*finish)(ns_proc_context_t *ctx);
+	int (*in)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+	int (*out)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+	int (*err)(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+} ns_proc_module_t;
+
+/*! \brief Packet signing context.
+ *  \todo This should be later moved to TSIG files when refactoring. */
+typedef struct ns_sign_context {
+	knot_tsig_key_t *tsig_key;
+	uint8_t *tsig_buf;
+	uint8_t *tsig_digest;
+	size_t tsig_buflen;
+	size_t tsig_digestlen;
+	uint8_t tsig_runlen;
+	uint64_t tsig_time_signed;
+	size_t pkt_count;
+} ns_sign_context_t;
+
+/*!
+ * \brief Initialize packet processing context.
+ *
+ * Allowed from states: NOOP
+ *
+ * \param ctx Context.
+ * \param module_param Parameters for given module.
+ * \param module Module API.
+ * \return (module specific state)
+ */
+int ns_proc_begin(ns_proc_context_t *ctx, void *module_param, const ns_proc_module_t *module);
+
+/*!
+ * \brief Reset current packet processing context.
+ * \param ctx Context.
+ * \return (module specific state)
+ */
+int ns_proc_reset(ns_proc_context_t *ctx);
+
+/*!
+ * \brief Finish and close packet processing context.
+ *
+ * Allowed from states: MORE, FULL, DONE, FAIL
+ *
+ * \param ctx Context.
+ * \return (module specific state)
+ */
+int ns_proc_finish(ns_proc_context_t *ctx);
+
+/*!
+ * \brief Input more data into packet processing.
+ *
+ * Allowed from states: MORE
+ *
+ * \param wire Source data.
+ * \param wire_len Source data length.
+ * \param ctx Context.
+ * \return (module specific state)
+ */
+int ns_proc_in(const uint8_t *wire, uint16_t wire_len, ns_proc_context_t *ctx);
+
+/*!
+ * \brief Write out output from packet processing.
+ *
+ * Allowed from states: FULL, FAIL
+ *
+ * \param wire Destination.
+ * \param wire_len Destination length.
+ * \param ctx Context.
+ * \return (module specific state)
+ */
+int ns_proc_out(uint8_t *wire, uint16_t *wire_len, ns_proc_context_t *ctx);
 
 #endif /* _KNOTNAME_SERVER_H_ */
 

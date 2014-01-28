@@ -274,6 +274,7 @@ int main(int argc, char *argv[])
 
 	/* Delete journal. */
 	remove(jfilename);
+	free(tmpdir);
 
 skip_all:
 	return 0;

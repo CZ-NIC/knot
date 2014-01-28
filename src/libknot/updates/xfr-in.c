@@ -23,14 +23,14 @@
 #include "libknot/updates/xfr-in.h"
 
 #include "libknot/nameserver/name-server.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 #include "libknot/util/debug.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
 #include "libknot/zone/zone.h"
 #include "libknot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/zone-sign.h"
-#include "libknot/packet/query.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/common.h"
 #include "libknot/updates/changesets.h"
 #include "libknot/tsig.h"
@@ -40,98 +40,51 @@
 #include "common/descriptor.h"
 #include "libknot/rdata.h"
 
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
 static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
-			      uint16_t qclass, knot_ns_xfr_t *xfr, size_t *size,
-			      const knot_rrset_t *soa, int use_tsig)
+			      uint16_t qclass, knot_ns_xfr_t *xfr,
+			      const knot_rrset_t *soa)
 {
-	knot_packet_t *pkt = knot_packet_new();
+	knot_pkt_t *pkt = knot_pkt_new(xfr->wire, xfr->wire_maxlen, NULL);
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 
-	/*! \todo Get rid of the numeric constant. */
-	int rc = knot_packet_set_max_size(pkt, 512);
-	if (rc != KNOT_EOK) {
-		knot_packet_free(&pkt);
-		return KNOT_ERROR;
-	}
-
-	rc = knot_query_init(pkt);
-	if (rc != KNOT_EOK) {
-		knot_packet_free(&pkt);
-		return KNOT_ERROR;
-	}
-
 	/* Set random query ID. */
-	knot_packet_set_random_id(pkt);
-	rc = knot_query_set_question(pkt, qname, qclass, qtype);
-	if (rc != KNOT_EOK) {
-		knot_packet_free(&pkt);
-		return KNOT_ERROR;
+	knot_pkt_clear(pkt);
+	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
+	int ret = knot_pkt_put_question(pkt, qname, qclass, qtype);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&pkt);
+		return ret;
 	}
 
 	/* Reserve space for TSIG. */
-	if (use_tsig && xfr->tsig_key) {
-		dbg_xfrin_detail("xfrin: setting packet TSIG size to %zu\n",
-				 xfr->tsig_size);
-		knot_packet_set_tsig_size(pkt, xfr->tsig_size);
-	}
+	knot_pkt_tsig_set(pkt, xfr->tsig_key);
 
 	/* Add SOA RR to authority section for IXFR. */
+	knot_pkt_begin(pkt, KNOT_AUTHORITY);
 	if (qtype == KNOT_RRTYPE_IXFR && soa) {
-		knot_query_add_rrset_authority(pkt, soa);
-	}
-
-	/*! \todo OPT RR ?? */
-
-	uint8_t *wire = NULL;
-	size_t wire_size = 0;
-	rc = knot_packet_to_wire(pkt, &wire, &wire_size);
-	if (rc != KNOT_EOK) {
-		dbg_xfrin("Failed to write packet to wire.\n");
-		knot_packet_free(&pkt);
-		return KNOT_ERROR;
-	}
-
-	if (wire_size > *size) {
-		dbg_xfrin("Not enough space provided for the wire "
-			  "format of the query.\n");
-		knot_packet_free(&pkt);
-		return KNOT_ESPACE;
+		knot_pkt_put(pkt, 0, soa, 0);
 	}
 
 	// wire format created, sign it with TSIG if required
-	if (use_tsig && xfr->tsig_key) {
-		char *name = knot_dname_to_str(xfr->tsig_key->name);
-		dbg_xfrin_detail("Signing XFR query with key (name %s): \n",
-				  name);
-		free(name);
-
+	if (xfr->tsig_key) {
 		xfr->digest_size = xfr->digest_max_size;
-		rc = knot_tsig_sign(wire, &wire_size, *size, NULL, 0,
-			       xfr->digest, &xfr->digest_size, xfr->tsig_key,
-			       0, 0);
-		if (rc != KNOT_EOK) {
+		ret = knot_tsig_sign(pkt->wire, &pkt->size, pkt->max_size, NULL, 0,
+		                     xfr->digest, &xfr->digest_size, pkt->tsig_key,
+		                     0, 0);
+		if (ret != KNOT_EOK) {
 			/*! \todo [TSIG] Handle TSIG errors. */
-			knot_packet_free(&pkt);
-			return rc;
+			knot_pkt_free(&pkt);
+			return ret;
 		}
-
-		dbg_xfrin_detail("Signed XFR query, new wire size: %zu, digest:"
-				 "\n", wire_size);
-		dbg_xfrin_hex_detail((const char*)xfr->digest, xfr->digest_size);
 	}
 
-	memcpy(xfr->wire, wire, wire_size);
-	*size = wire_size;
-
-	dbg_xfrin("Created query of size %zu.\n", *size);
-	knot_packet_dump(pkt);
-
-	knot_packet_free(&pkt);
-
+	xfr->wire_size = pkt->size;
+	knot_pkt_free(&pkt);
 	return KNOT_EOK;
 }
 
@@ -139,34 +92,16 @@ static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
-                           size_t *size)
+int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr)
 {
-	return xfrin_create_query(owner, KNOT_RRTYPE_SOA,
-				  KNOT_CLASS_IN, xfr, size, 0,
-				  xfr->tsig_key != NULL);
+	return xfrin_create_query(owner, KNOT_RRTYPE_SOA, KNOT_CLASS_IN, xfr, 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
 int xfrin_transfer_needed(const knot_zone_contents_t *zone,
-                          knot_packet_t *soa_response)
+                          knot_pkt_t *soa_response)
 {
-	// first, parse the rest of the packet
-	assert(!knot_packet_is_query(soa_response));
-	dbg_xfrin_verb("Response - parsed: %zu, total wire size: %zu\n",
-		       soa_response->parsed, soa_response->size);
-	int ret;
-
-	if (soa_response->parsed < soa_response->size) {
-		ret = knot_packet_parse_rest(soa_response, 0);
-		if (ret != KNOT_EOK) {
-			dbg_xfrin_verb("knot_packet_parse_rest() returned %s\n",
-				       knot_strerror(ret));
-			return KNOT_EMALF;
-		}
-	}
-
 	/*
 	 * Retrieve the local Serial
 	 */
@@ -195,13 +130,13 @@ dbg_xfrin_exec(
 	 * Retrieve the remote Serial
 	 */
 	// the SOA should be the first (and only) RRSet in the response
-	soa_rrset = knot_packet_answer_rrset(soa_response, 0);
-	if (soa_rrset == NULL
-	    || knot_rrset_type(soa_rrset) != KNOT_RRTYPE_SOA) {
+
+	const knot_pktsection_t *answer = knot_pkt_section(soa_response, KNOT_ANSWER);
+	if (answer->count < 1 || knot_rrset_type(answer->rr[0]) != KNOT_RRTYPE_SOA) {
 		return KNOT_EMALF;
 	}
 
-	int64_t remote_serial = knot_rdata_soa_serial(soa_rrset);
+	int64_t remote_serial = knot_rdata_soa_serial(answer->rr[0]);
 	if (remote_serial < 0) {
 		return KNOT_EMALF;	// maybe some other error
 	}
@@ -211,26 +146,23 @@ dbg_xfrin_exec(
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr,
-                            size_t *size, int use_tsig)
+int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr)
 {
-	return xfrin_create_query(owner, KNOT_RRTYPE_AXFR,
-				  KNOT_CLASS_IN, xfr, size, 0, use_tsig);
+	return xfrin_create_query(owner, KNOT_RRTYPE_AXFR, KNOT_CLASS_IN, xfr, 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_ixfr_query(const knot_zone_contents_t *zone,
-                            knot_ns_xfr_t *xfr, size_t *size, int use_tsig)
+int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
 {
 	/*!
 	 *  \todo Implement properly.
 	 */
 	knot_node_t *apex = knot_zone_contents_get_apex(zone);
 	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+	knot_dname_t *owner = knot_node_get_owner(apex);
 
-	return xfrin_create_query(knot_node_get_owner(apex), KNOT_RRTYPE_IXFR,
-				  KNOT_CLASS_IN, xfr, size, soa, use_tsig);
+	return xfrin_create_query(owner, KNOT_RRTYPE_IXFR, KNOT_CLASS_IN, xfr, soa);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -337,7 +269,7 @@ void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
+static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
                             int tsig_req)
 {
 	assert(packet != NULL);
@@ -359,40 +291,31 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 	 * If we are not expecting it (i.e. xfr->prev_digest_size <= 0) and
 	 * it is there => it should probably be considered an error
 	 */
-	knot_rrset_t *tsig = NULL;
-	int ret = knot_packet_parse_next_rr_additional(packet, &tsig);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
 
+	int ret = KNOT_EOK;
 	if (xfr->tsig_key) {
 		// just append the wireformat to the TSIG data
 		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
 		       >= xfr->wire_size);
 		uint8_t *wire_buf = xfr->tsig_data + xfr->tsig_data_size;
-		memcpy(wire_buf, xfr->wire, xfr->wire_size);
-		xfr->tsig_data_size += xfr->wire_size;
-
-		/* Strip TSIG RR from wire and restore message ID. */
-		if (tsig) {
-			knot_tsig_check_prep(wire_buf, &xfr->tsig_data_size, tsig);
-		}
+		memcpy(wire_buf, packet->wire, packet->size);
+		xfr->tsig_data_size += packet->size;
 	}
 
 	if (xfr->tsig_key) {
-		if (tsig_req && tsig == NULL) {
+		if (tsig_req && packet->tsig_rr == NULL) {
 			// TSIG missing!!
 			return KNOT_ENOTSIG;
-		} else if (tsig != NULL) {
+		} else if (packet->tsig_rr != NULL) {
 			// TSIG there, either required or not, process
 			if (xfr->packet_nr == 0) {
-				ret = knot_tsig_client_check(tsig,
-					xfr->wire, xfr->wire_size,
+				ret = knot_tsig_client_check(packet->tsig_rr,
+					xfr->tsig_data, xfr->tsig_data_size,
 					xfr->digest, xfr->digest_size,
 					xfr->tsig_key,
 					xfr->tsig_prev_time_signed);
 			} else {
-				ret = knot_tsig_client_check_next(tsig,
+				ret = knot_tsig_client_check_next(packet->tsig_rr,
 					xfr->tsig_data, xfr->tsig_data_size,
 					xfr->digest, xfr->digest_size,
 					xfr->tsig_key,
@@ -402,7 +325,6 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			if (ret != KNOT_EOK) {
 				/* No need to check TSIG error
 				 * here, propagate and check elsewhere.*/
-				knot_rrset_deep_free(&tsig, 1);
 				return ret;
 			}
 
@@ -411,31 +333,83 @@ static int xfrin_check_tsig(knot_packet_t *packet, knot_ns_xfr_t *xfr,
 			xfr->tsig_data_size = 0;
 
 			// Extract the digest from the TSIG RDATA and store it.
-			if (xfr->digest_max_size < tsig_rdata_mac_length(tsig)) {
-				knot_rrset_deep_free(&tsig, 1);
+			if (xfr->digest_max_size < tsig_rdata_mac_length(packet->tsig_rr)) {
 				return KNOT_ESPACE;
 			}
-			memcpy(xfr->digest, tsig_rdata_mac(tsig),
-			       tsig_rdata_mac_length(tsig));
-			xfr->digest_size = tsig_rdata_mac_length(tsig);
+			memcpy(xfr->digest, tsig_rdata_mac(packet->tsig_rr),
+			       tsig_rdata_mac_length(packet->tsig_rr));
+			xfr->digest_size = tsig_rdata_mac_length(packet->tsig_rr);
 
 			// Extract the time signed from the TSIG and store it
 			// We may rewrite the tsig_req_time_signed field
 			xfr->tsig_prev_time_signed =
-					tsig_rdata_time_signed(tsig);
+					tsig_rdata_time_signed(packet->tsig_rr);
 
 
 		}
-	} else if (tsig != NULL) {
+	} else if (packet->tsig_rr != NULL) {
 		// TSIG where it should not be
-		knot_rrset_deep_free(&tsig, 1);
 		return KNOT_EMALF;
 	}
 
-	knot_rrset_deep_free(&tsig, 1);
-
 	return KNOT_EOK;
 }
+
+/*----------------------------------------------------------------------------*/
+
+static int xfrin_parse(knot_pkt_t **dst, uint8_t *wire, size_t wire_size)
+{
+	assert(dst != NULL);
+
+	int ret = KNOT_EOK;
+	knot_pkt_t *pkt = knot_pkt_new(wire, wire_size, NULL);
+	if (pkt == NULL) {
+		knot_pkt_free(&pkt);
+		return KNOT_ENOMEM;
+	}
+
+	/* This is important, don't merge RRs together. The SOAs are ordered
+	 * in a special way for a reason. */
+	ret = knot_pkt_parse(pkt, KNOT_PF_NO_MERGE);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&pkt);
+		return ret;
+	}
+
+	// check if the response is OK
+	if (knot_wire_get_rcode(pkt->wire) != KNOT_RCODE_NOERROR) {
+		knot_pkt_free(&pkt);
+		return KNOT_EXFRREFUSED;
+	}
+
+	// check if the TC bit is set (it must not be)
+	if (knot_wire_get_tc(pkt->wire)) {
+		knot_pkt_free(&pkt);
+		return KNOT_EMALF;
+	}
+
+	*dst = pkt;
+	return KNOT_EOK;
+}
+
+static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uint16_t *cur)
+{
+	int ret = KNOT_EOK;
+	if (*cur < answer->count) {
+		/*! \note For now, the RRSets are allocated using malloc(),
+		 *        clearing the KNOT_PF_FREE flags takes their ownership.
+		 */
+		*rr = (knot_rrset_t *)answer->rr[*cur];
+		answer->rrinfo[*cur].flags &= ~KNOT_PF_FREE;
+		*cur += 1;
+	} else {
+		*rr = NULL;
+		ret = KNOT_EMALF;
+	}
+
+	return ret;
+}
+
 
 /*----------------------------------------------------------------------------*/
 
@@ -452,12 +426,10 @@ static bool semantic_check_passed(const knot_zone_contents_t *z,
 
 int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 {
-	const uint8_t *pkt = xfr->wire;
-	size_t size = xfr->wire_size;
 	xfrin_constructed_zone_t **constr =
 			(xfrin_constructed_zone_t **)(&xfr->data);
 
-	if (pkt == NULL || constr == NULL) {
+	if (xfr->wire == NULL || constr == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -465,47 +437,19 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
 
-	dbg_xfrin_verb("Processing AXFR packet of size %zu.\n", size);
-
-	// check if the response is OK
-	if (knot_wire_get_rcode(pkt) != KNOT_RCODE_NOERROR) {
-		return KNOT_EXFRREFUSED;
+	knot_pkt_t *packet = NULL;
+	int ret = xfrin_parse(&packet, xfr->wire, xfr->wire_size);
+	if (ret != KNOT_EOK ) {
+		return ret;
 	}
 
-	/*! \todo Should TC bit be checked? */
-
-	knot_packet_t *packet = knot_packet_new();
-	if (packet == NULL) {
-		dbg_xfrin("Could not create packet structure.\n");
-		return KNOT_ENOMEM;
-	}
-
-	int ret = knot_packet_parse_from_wire(packet, pkt, size, 1, 0);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Could not parse packet: %s.\n", knot_strerror(ret));
-		knot_packet_free(&packet);
-		/*! \todo Cleanup. */
-		return KNOT_EMALF;
-	}
-
-	/*! \todo [TSIG] If packet RCODE is NOTAUTH(9), process as TSIG error. */
-
+	uint16_t rr_id = 0;
 	knot_rrset_t *rr = NULL;
-	ret = knot_packet_parse_next_rr_answer(packet, &rr);
-
+	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
+	ret = xfrin_take_rr(answer, &rr, &rr_id);
 	if (ret != KNOT_EOK) {
-		dbg_xfrin("Could not parse first Answer RR: %s.\n",
-			       knot_strerror(ret));
-		knot_packet_free(&packet);
-		/*! \todo Cleanup. */
-		return KNOT_EMALF;
-	}
-
-	if (rr == NULL) {
-		dbg_xfrin("No RRs in the packet.\n");
-		knot_packet_free(&packet);
-		/*! \todo Cleanup. */
-		return KNOT_EMALF;
+		knot_pkt_free(&packet);
+		return ret;
 	}
 
 	/*! \todo We should probably test whether the Question of the first
@@ -530,60 +474,28 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 			dbg_xfrin("No zone created, but the first RR in "
 				  "Answer is not a SOA RR.\n");
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			knot_node_free(&node);
 			knot_rrset_deep_free(&rr, 1);
 			/*! \todo Cleanup. */
-			return KNOT_EMALF;
-		}
-
-
-		/* Check for SOA name and type. */
-		if (knot_packet_qname(packet) == NULL) {
-			dbg_xfrin("Invalid packet in sequence, ignoring.\n");
-			knot_packet_free(&packet);
-			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1);
-			return KNOT_EOK;
-		}
-
-		const knot_dname_t *qname = knot_packet_qname(packet);
-		if (!knot_dname_is_equal(knot_rrset_owner(rr), qname)) {
-dbg_xfrin_exec(
-			char *rr_owner =
-				knot_dname_to_str(knot_rrset_owner(rr));
-			char *qname = knot_dname_to_str(
-				knot_packet_qname(packet));
-
-			dbg_xfrin("Owner of the first SOA RR (%s) does not"
-				  " match QNAME (%s).\n", rr_owner, qname);
-
-			free(rr_owner);
-			free(qname);
-);
-			/*! \todo Cleanup. */
-			knot_packet_free(&packet);
-			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1);
 			return KNOT_EMALF;
 		}
 
 		node = knot_node_new(rr->owner, NULL, 0);
 		if (node == NULL) {
 			dbg_xfrin("Failed to create new node.\n");
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			knot_rrset_deep_free(&rr, 1);
 			return KNOT_ENOMEM;
 		}
 
-		// the first RR is SOA and its owner and QNAME are the same
 		// create the zone
 
 		*constr = (xfrin_constructed_zone_t *)malloc(
 				sizeof(xfrin_constructed_zone_t));
 		if (*constr == NULL) {
 			dbg_xfrin("Failed to create new constr. zone.\n");
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			knot_node_free(&node);
 			knot_rrset_deep_free(&rr, 1);
 			return KNOT_ENOMEM;
@@ -595,7 +507,7 @@ dbg_xfrin_exec(
 		(*constr)->contents = knot_zone_contents_new(node, xfr->zone);
 		if ((*constr)->contents== NULL) {
 			dbg_xfrin("Failed to create new zone.\n");
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			knot_node_free(&node);
 			knot_rrset_deep_free(&rr, 1);
 			/*! \todo Cleanup. */
@@ -611,7 +523,7 @@ dbg_xfrin_exec(
 		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSet to zone node: %s.\n",
 				  knot_strerror(ret));
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			knot_node_free(&node);
 			knot_rrset_deep_free(&rr, 1);
 			/*! \todo Cleanup. */
@@ -622,8 +534,16 @@ dbg_xfrin_exec(
 			knot_rrset_deep_free(&rr, 1);
 		}
 
+		if (!semantic_check_passed(zone, node)) {
+			xfrin_log_error(xfr->zone->name,
+			                knot_node_rrset(node, rr->type),
+			                KNOT_EMALF);
+			knot_pkt_free(&packet);
+			return KNOT_EMALF;
+		}
+
 		// take next RR
-		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+		ret = xfrin_take_rr(answer, &rr, &rr_id);
 	} else {
 		zone = (*constr)->contents;
 		++xfr->packet_nr;
@@ -636,12 +556,12 @@ dbg_xfrin_exec(
 		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// Out-of-zone data
-			xfrin_log_error(xfr->zone->name, rr,
-			                KNOT_EOUTOFZONE);
+			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
 			knot_rrset_deep_free(&rr, 1);
-			ret = knot_packet_parse_next_rr_answer(packet, &rr);
+			// take next RR
+			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
-		}		
+		}
 
 		dbg_rrset_detail("\nNext RR:\n\n");
 		knot_rrset_dump(rr);
@@ -681,7 +601,7 @@ dbg_xfrin_exec_detail(
 
 			dbg_xfrin_verb("xfrin_check_tsig() returned %d\n", ret);
 
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			knot_rrset_deep_free(&rr, 1);
 
 			if (ret != KNOT_EOK) {
@@ -725,14 +645,14 @@ dbg_xfrin_exec_detail(
 				} else if (ret != KNOT_EOK) {
 					dbg_xfrin("Failed to save orphan"
 						  " RRSIGs.\n");
-					knot_packet_free(&packet);
+					knot_pkt_free(&packet);
 					knot_rrset_deep_free(&rr, 1);
 					return ret;
 				}
 			} else if (ret < 0) {
 				dbg_xfrin("Failed to add RRSIGs (%s).\n",
 					       knot_strerror(ret));
-				knot_packet_free(&packet);
+				knot_pkt_free(&packet);
 				knot_rrset_deep_free(&rr, 1);
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
@@ -760,20 +680,9 @@ dbg_xfrin_exec_verb(
 				assert(tmp_rrset->rrsigs == rr);
 			}
 
-			// parse next RR
-			ret = knot_packet_parse_next_rr_answer(packet, &rr);
-
+			// take next RR
+			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
-		}
-
-		/* TSIG where it should not be - in Answer section.*/
-		if (knot_rrset_type(rr) == KNOT_RRTYPE_TSIG) {
-			// not allowed here
-			dbg_xfrin("TSIG in Answer section.\n");
-			knot_packet_free(&packet);
-			knot_node_free(&node); // ???
-			knot_rrset_deep_free(&rr, 1);
-			return KNOT_EMALF;
 		}
 		
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
@@ -802,7 +711,7 @@ dbg_xfrin_exec_verb(
 			node = knot_node_new(rr->owner, NULL, 0);
 			if (node == NULL) {
 				dbg_xfrin("Failed to create new node.\n");
-				knot_packet_free(&packet);
+				knot_pkt_free(&packet);
 				knot_rrset_deep_free(&rr, 1);
 				return KNOT_ENOMEM;
 			}
@@ -813,7 +722,7 @@ dbg_xfrin_exec_verb(
 			if (ret < 0) {
 				dbg_xfrin("Failed to add RRSet to node (%s)\n",
 					  knot_strerror(ret));
-				knot_packet_free(&packet);
+				knot_pkt_free(&packet);
 				knot_node_free(&node);
 				knot_rrset_deep_free(&rr, 1);
 				return KNOT_ERROR;
@@ -826,9 +735,9 @@ dbg_xfrin_exec_verb(
 			ret = add_node(zone, node, 1, 0);
 			if (ret != KNOT_EOK) {
 				// Fatal error, free packet
-				knot_packet_free(&packet);
-				knot_rrset_deep_free(&rr, 1);
+				knot_pkt_free(&packet);
 				knot_node_free(&node);
+				knot_rrset_deep_free(&rr, 1);
 				return ret;
 			}
 			
@@ -836,18 +745,17 @@ dbg_xfrin_exec_verb(
 				xfrin_log_error(xfr->zone->name,
 				                rr,
 				                KNOT_EMALF);
-				knot_packet_free(&packet);
+				knot_pkt_free(&packet);
 				return KNOT_EMALF;
 			}
 
 			in_zone = 1;
 		} else {
 			assert(in_zone);
-			const uint16_t rrtype = rr->type;
 			ret = knot_zone_contents_add_rrset(zone, rr, &node,
 						    KNOT_RRSET_DUPL_MERGE);
 			if (ret < 0) {
-				knot_packet_free(&packet);
+				knot_pkt_free(&packet);
 				dbg_xfrin("Failed to add RRSet to zone :%s.\n",
 					  knot_strerror(ret));
 				return KNOT_ERROR;
@@ -855,37 +763,12 @@ dbg_xfrin_exec_verb(
 				// merged, free the RRSet
 				knot_rrset_deep_free(&rr, 1);
 			}
-			if (!semantic_check_passed(zone, node)) {
-				xfrin_log_error(xfr->zone->name,
-				                knot_node_rrset(node, rrtype),
-				                KNOT_EMALF);
-				knot_packet_free(&packet);
-				return KNOT_EMALF;
-			}
 		}
 
-		rr = NULL;
-
-		// parse next RR
-		ret = knot_packet_parse_next_rr_answer(packet, &rr);
+		// take next RR
+		ret = xfrin_take_rr(answer, &rr, &rr_id);
 	}
 
-	assert(ret != KNOT_EOK || rr == NULL);
-
-	if (ret < 0) {
-		// some error in parsing
-		dbg_xfrin("Could not parse next RR: %s.\n", knot_strerror(ret));
-		knot_packet_free(&packet);
-
-		if (!in_zone) {
-			knot_node_free(&node);
-		}
-
-		knot_rrset_deep_free(&rr, 1);
-		return KNOT_EMALF;
-	}
-
-	assert(ret == KNOT_EOK);
 	assert(rr == NULL);
 
 	// if the last node is not yet in the zone, insert
@@ -894,7 +777,7 @@ dbg_xfrin_exec_verb(
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add last node into zone (%s).\n",
 				  knot_strerror(ret));
-				knot_packet_free(&packet);
+				knot_pkt_free(&packet);
 				knot_node_free(&node);
 				knot_rrset_deep_free(&rr, 1);
 				return ret;
@@ -904,10 +787,8 @@ dbg_xfrin_exec_verb(
 	/* Now check if there is not a TSIG record at the end of the packet. */
 	ret = xfrin_check_tsig(packet, xfr,
 			       knot_ns_tsig_required(xfr->packet_nr));
-	//++xfr->packet_nr;
 
-	knot_packet_free(&packet);
-	dbg_xfrin_verb("Processed one AXFR packet successfully.\n");
+	knot_pkt_free(&packet);
 
 	/* TSIG errors are propagated and reported in a standard
 	 * manner, as we're in response processing, no further error response
@@ -919,83 +800,32 @@ dbg_xfrin_exec_verb(
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_parse_first_rr(knot_packet_t **packet, const uint8_t *pkt,
-                                size_t size, knot_rrset_t **rr)
-{
-	assert(packet != NULL);
-	assert(rr != NULL);
-
-	*packet = knot_packet_new();
-	if (*packet == NULL) {
-		dbg_xfrin("Could not create packet structure.\n");
-		return KNOT_ENOMEM;
-	}
-
-	int ret = knot_packet_parse_from_wire(*packet, pkt, size, 1, 0);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Could not parse packet: %s.\n", knot_strerror(ret));
-		knot_packet_free(packet);
-		return KNOT_EMALF;
-	}
-
-	// check if the TC bit is set (it must not be)
-	if (knot_wire_get_tc(pkt)) {
-		dbg_xfrin("IXFR response has TC bit set.\n");
-		knot_packet_free(packet);
-		return KNOT_EMALF;
-	}
-
-	ret = knot_packet_parse_next_rr_answer(*packet, rr);
-
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Could not parse first Answer RR: %s.\n",
-			  knot_strerror(ret));
-		knot_packet_free(packet);
-		return KNOT_EMALF;
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 {
-	size_t size = xfr->wire_size;
-	const uint8_t *pkt = xfr->wire;
 	knot_changesets_t **chs = (knot_changesets_t **)(&xfr->data);
-
-	if (pkt == NULL || chs == NULL) {
+	if (xfr->wire == NULL || chs == NULL) {
 		dbg_xfrin("Wrong parameters supported.\n");
 		return KNOT_EINVAL;
 	}
 
-	// check if the response is OK
-	if (knot_wire_get_rcode(pkt) != KNOT_RCODE_NOERROR) {
-		return KNOT_EXFRREFUSED;
-	}
-
-	knot_packet_t *packet = NULL;
-	knot_rrset_t *rr = NULL;
-
-	int ret;
-
-	if ((ret = xfrin_parse_first_rr(&packet, pkt, size, &rr)) != KNOT_EOK) {
+	knot_pkt_t *packet = NULL;
+	int ret = xfrin_parse(&packet, xfr->wire, xfr->wire_size);
+	if (ret != KNOT_EOK ) {
 		return ret;
 	}
 
-	assert(packet != NULL);
+	uint16_t rr_id = 0;
+	knot_rrset_t *rr = NULL;
+	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
+	ret = xfrin_take_rr(answer, &rr, &rr_id);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&packet);
+		return KNOT_EXFRREFUSED; /* Empty, try again with AXFR */
+	}
 
 	// state of the transfer
 	// -1 .. a SOA is expected to create a new changeset
 	int state = 0;
-
-	if (rr == NULL) {
-		dbg_xfrin("No RRs in the packet.\n");
-		knot_packet_free(&packet);
-		/*! \todo Some other action??? */
-		return KNOT_EMALF;
-	}
 
 	/*! \todo Replace with RRSet duplicate checking. */
 //	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
@@ -1006,7 +836,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		ret = knot_changesets_init(chs);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&rr, 1);
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			return ret;
 		}
 
@@ -1024,12 +854,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 
 		dbg_xfrin_verb("First SOA of IXFR saved, state set to -1.\n");
 
-		// parse the next one
-		ret = knot_packet_parse_next_rr_answer(packet, &rr);
-		if (ret != KNOT_EOK) {
-			knot_packet_free(&packet);
-			return ret;
-		}
+		// take next RR
+		ret = xfrin_take_rr(answer, &rr, &rr_id);
 
 		/*
 		 * If there is no other records in the response than the SOA, it
@@ -1049,11 +875,11 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		 */
 		if (rr == NULL) {
 			dbg_xfrin("Response containing only SOA,\n");
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			return XFRIN_RES_SOA_ONLY;
 		} else if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 			knot_rrset_deep_free(&rr, 1);
-			knot_packet_free(&packet);
+			knot_pkt_free(&packet);
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
 			return ret;
@@ -1104,7 +930,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	 *        changesets structure, or in some place persistent between
 	 *        calls to this function.
 	 */
-	knot_changeset_t *cur = knot_changesets_get_last(*chs);
+	knot_changeset_t *chset = knot_changesets_get_last(*chs);
 	if (state != -1) {
 		dbg_xfrin_detail("State is not -1, deciding...\n");
 		// there should be at least one started changeset right now
@@ -1115,9 +941,9 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		}
 
 		// a changeset should be created only when there is a SOA
-		assert(cur->soa_from != NULL);
+		assert(chset->soa_from != NULL);
 
-		if (cur->soa_to == NULL) {
+		if (chset->soa_to == NULL) {
 			state = KNOT_CHANGESET_REMOVE;
 		} else {
 			state = KNOT_CHANGESET_ADD;
@@ -1141,11 +967,11 @@ dbg_xfrin_exec_verb(
 			// out-of-zone domain
 			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
 			knot_rrset_deep_free(&rr, 1);
-			// Skip this rr
-			ret = knot_packet_parse_next_rr_answer(packet, &rr);
+			// take next RR
+			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
 		}
-		
+
 		switch (state) {
 		case -1:
 			// a SOA is expected
@@ -1156,8 +982,8 @@ dbg_xfrin_exec_verb(
 				dbg_xfrin("First RR is not a SOA RR!\n");
 				dbg_xfrin_verb("RR type: %u\n",
 					       knot_rrset_type(rr));
-				ret = KNOT_EMALF;
 				knot_rrset_deep_free(&rr, 1);
+				ret = KNOT_EMALF;
 				goto cleanup;
 			}
 
@@ -1171,7 +997,7 @@ dbg_xfrin_exec_verb(
 
 				// last SOA, discard and end
 				knot_rrset_deep_free(&rr, 1);
-				knot_packet_free(&packet);
+				knot_pkt_free(&packet);
 
 				/*! \note [TSIG] If TSIG validates, consider
 				 *        transfer complete. */
@@ -1191,12 +1017,12 @@ dbg_xfrin_exec_verb(
 					goto cleanup;
 				}
 
-				cur = knot_changesets_create_changeset(*chs);
-				if (cur == NULL) {
+				chset = knot_changesets_create_changeset(*chs);
+				if (chset == NULL) {
 					knot_rrset_deep_free(&rr, 1);
 					goto cleanup;
 				}
-				knot_changeset_add_soa(cur, rr, KNOT_CHANGESET_REMOVE);
+				knot_changeset_add_soa(chset, rr, KNOT_CHANGESET_REMOVE);
 
 				// change state to REMOVE
 				state = KNOT_CHANGESET_REMOVE;
@@ -1207,15 +1033,15 @@ dbg_xfrin_exec_verb(
 			// ADD
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 				// we should not be here if soa_from is not set
-				assert(cur->soa_from != NULL);
+				assert(chset->soa_from != NULL);
 
-				knot_changeset_add_soa(cur, rr, KNOT_CHANGESET_ADD);
+				knot_changeset_add_soa(chset, rr, KNOT_CHANGESET_ADD);
 
 				state = KNOT_CHANGESET_ADD;
 			} else {
 				// just add the RR to the REMOVE part and
 				// continue
-				ret = knot_changeset_add_rr(cur, rr,
+				ret = knot_changeset_add_rr(chset, rr,
 				                            KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1);
@@ -1229,14 +1055,14 @@ dbg_xfrin_exec_verb(
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 				log_zone_info("%s Serial %u -> %u.\n",
 					      xfr->msg,
-					      knot_rdata_soa_serial(cur->soa_from),
-					      knot_rdata_soa_serial(cur->soa_to));
+					      knot_rdata_soa_serial(chset->soa_from),
+					      knot_rdata_soa_serial(chset->soa_to));
 				state = -1;
 				continue;
 			} else {
 
 				// just add the RR to the ADD part and continue
-				ret = knot_changeset_add_rr(cur, rr,
+				ret = knot_changeset_add_rr(chset, rr,
 				                            KNOT_CHANGESET_ADD);
 				if (ret != KNOT_EOK) {
 					knot_rrset_deep_free(&rr, 1);
@@ -1246,10 +1072,8 @@ dbg_xfrin_exec_verb(
 			break;
 		}
 
-		// parse the next RR
-		dbg_xfrin_detail("Parsing next RR..\n");
-		ret = knot_packet_parse_next_rr_answer(packet, &rr);
-		dbg_xfrin_detail("Returned %d, %p.\n", ret, rr);
+		// take next RR
+		ret = xfrin_take_rr(answer, &rr, &rr_id);
 	}
 
 	/*! \note Check TSIG, we're at the end of packet. It may not be
@@ -1267,7 +1091,7 @@ dbg_xfrin_exec_verb(
 
 	// here no RRs remain in the packet but the transfer is not finished
 	// yet, return EOK
-	knot_packet_free(&packet);
+	knot_pkt_free(&packet);
 	return KNOT_EOK;
 
 cleanup:
@@ -1276,7 +1100,7 @@ cleanup:
 
 	dbg_xfrin_detail("Cleanup after processing IXFR/IN packet.\n");
 	knot_changesets_free(chs);
-	knot_packet_free(&packet);
+	knot_pkt_free(&packet);
 	xfr->data = 0;
 	return ret;
 }

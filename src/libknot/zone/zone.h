@@ -201,6 +201,15 @@ static inline unsigned knot_zone_flags(knot_zone_t *zone) {
  */
 void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on);
 
+/*!
+ * \brief Return zone state.
+ * \param zone Inspected zone.
+ * \retval KNOT_EOK if OK
+ * \retval KNOT_ENOENT if not exists
+ * \retval KNOT_ENOZONE if expired or stub
+ */
+int knot_zone_state(const knot_zone_t *zone);
+
 #endif
 
 /*! @} */

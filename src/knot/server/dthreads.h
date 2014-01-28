@@ -105,19 +105,6 @@ typedef struct dt_unit_t {
 } dt_unit_t;
 
 /*!
- * \brief Create a set of threads with no initial runnable.
- *
- * \note All threads are created with Dead state.
- *       This means, they're not physically created unit dt_start() is called.
- *
- * \param count Requested thread count.
- *
- * \retval New instance if successful
- * \retval NULL on error
- */
-dt_unit_t *dt_create(int count);
-
-/*!
  * \brief Create a set of coherent threads.
  *
  * Coherent means, that the threads will share a common runnable and the data.
@@ -130,8 +117,7 @@ dt_unit_t *dt_create(int count);
  * \retval New instance if successful
  * \retval NULL on error
  */
-dt_unit_t *dt_create_coherent(int count, runnable_t runnable,
-                              runnable_t destructor, void *data);
+dt_unit_t *dt_create(int count, runnable_t runnable, runnable_t destructor, void *data);
 
 /*!
  * \brief Free unit.
@@ -152,16 +138,6 @@ void dt_delete(dt_unit_t **unit);
  * \retval KNOT_EINVAL on invalid parameters (unit is null).
  */
 int dt_start(dt_unit_t *unit);
-
-/*!
- * \brief Start given thread.
- *
- * \param thread Target thread instance.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- */
-int dt_start_id(dthread_t *thread);
 
 /*!
  * \brief Send given signal to thread.
@@ -190,18 +166,6 @@ int dt_signalize(dthread_t *thread, int signum);
 int dt_join(dt_unit_t *unit);
 
 /*!
- * \brief Stop thread from running.
- *
- * Active thread is interrupted at the nearest runnable cancellation point.
- *
- * \param thread Target thread instance.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- */
-int dt_stop_id(dthread_t *thread);
-
-/*!
  * \brief Stop all threads in unit.
  *
  * Thread is interrupted at the nearest runnable cancellation point.
@@ -224,27 +188,6 @@ int dt_stop(dt_unit_t *unit);
  * \retval KNOT_EINVAL on invalid parameters.
  */
 int dt_setaffinity(dthread_t *thread, unsigned* cpu_id, size_t cpu_count);
-
-/*!
- * \brief Set thread destructor to be called before physical thread termination.
- *
- * \param thread Target thread instance
- * \param destructor Destructor callback.
- */
-int dt_set_desctructor(dthread_t *thread, runnable_t destructor);
-
-/*!
- * \brief Set thread to execute another runnable.
- *
- * \param thread Target thread instance.
- * \param runnable  Runnable function for target thread.
- * \param data      Data passed to target thread.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOTSUP operation not supported.
- */
-int dt_repurpose(dthread_t *thread, runnable_t runnable, void *data);
 
 /*!
  * \brief Wake up thread from idle state.

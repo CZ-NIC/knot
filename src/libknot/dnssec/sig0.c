@@ -21,7 +21,7 @@
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sig0.h"
 #include "libknot/dnssec/sign.h"
-#include "libknot/util/wire.h"
+#include "libknot/packet/wire.h"
 
 /*!
  * \brief Lifetime fudge of the SIG(0) packets in seconds.

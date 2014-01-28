@@ -23,7 +23,7 @@
 #include "libknot/updates/changesets.h"
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"
-#include "libknot/packet/packet.h"
+#include "libknot/packet/pkt.h"
 #include "libknot/common.h"
 #include "libknot/consts.h"
 #include "common/mempattern.h"
@@ -362,7 +362,7 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 int knot_ddns_check_zone(const knot_zone_contents_t *zone,
-                         const knot_packet_t *query, knot_rcode_t *rcode)
+                         const knot_pkt_t *query, knot_rcode_t *rcode)
 {
 	if (zone == NULL || query == NULL || rcode == NULL) {
 		if (rcode != NULL) {
@@ -371,14 +371,14 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	if (knot_packet_qtype(query) != KNOT_RRTYPE_SOA) {
+	if (knot_pkt_qtype(query) != KNOT_RRTYPE_SOA) {
 		*rcode = KNOT_RCODE_FORMERR;
 		return KNOT_EMALF;
 	}
 
 	// check zone CLASS
 	if (knot_zone_contents_class(zone) !=
-	    knot_packet_qclass(query)) {
+	    knot_pkt_qclass(query)) {
 		*rcode = KNOT_RCODE_NOTAUTH;
 		return KNOT_ENOZONE;
 	}
@@ -388,13 +388,9 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ddns_process_prereqs(const knot_packet_t *query,
+int knot_ddns_process_prereqs(const knot_pkt_t *query,
                               knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode)
 {
-	/*! \todo Consider not parsing the whole packet at once, but
-	 *        parsing one RR at a time - could save some memory and time.
-	 */
-
 	if (query == NULL || prereqs == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -407,14 +403,14 @@ int knot_ddns_process_prereqs(const knot_packet_t *query,
 
 	int ret;
 
-	for (int i = 0; i < knot_packet_answer_rrset_count(query); ++i) {
+	const knot_pktsection_t *answer = knot_pkt_section(query, KNOT_ANSWER);
+	for (int i = 0; i < answer->count; ++i) {
 		// we must copy the RRSets, because all those stored in the
 		// packet will be destroyed
 		dbg_ddns_detail("Creating prereqs from following RRSet:\n");
-		knot_rrset_dump(knot_packet_answer_rrset(query, i));
 		ret = knot_ddns_add_prereq(*prereqs,
-		                           knot_packet_answer_rrset(query, i),
-		                           knot_packet_qclass(query));
+		                           answer->rr[i],
+		                           knot_pkt_qclass(query));
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to add prerequisity RRSet:%s\n",
 			                knot_strerror(ret));
@@ -488,13 +484,13 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_check_update(const knot_rrset_t *rrset,
-                                  const knot_packet_t *query,
+                                  const knot_pkt_t *query,
                                   knot_rcode_t *rcode)
 {
 	/* Accept both subdomain and dname match. */
 	dbg_ddns("Checking UPDATE packet.\n");
 	const knot_dname_t *owner = knot_rrset_owner(rrset);
-	const knot_dname_t *qname = knot_packet_qname(query);
+	const knot_dname_t *qname = knot_pkt_qname(query);
 	int is_sub = knot_dname_is_sub(owner, qname);
 	if (!is_sub && knot_dname_cmp(owner, qname) != 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
@@ -507,7 +503,7 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 		return KNOT_EDENIED;
 	}
 
-	if (knot_rrset_class(rrset) == knot_packet_qclass(query)) {
+	if (knot_rrset_class(rrset) == knot_pkt_qclass(query)) {
 		if (knot_rrtype_is_metatype(knot_rrset_type(rrset))) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
@@ -1727,7 +1723,7 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
  * be good for this.
  */
 int knot_ddns_process_update(knot_zone_contents_t *zone,
-                             const knot_packet_t *query,
+                             const knot_pkt_t *query,
                              knot_changeset_t *changeset,
                              knot_changes_t *changes,
                              knot_rcode_t *rcode, uint32_t new_serial)
@@ -1772,9 +1768,10 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 	knot_rrset_t *rr_copy = NULL;
 
 	dbg_ddns("Processing UPDATE section.\n");
-	for (int i = 0; i < knot_packet_authority_rrset_count(query); ++i) {
+	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
+	for (int i = 0; i < authority->count; ++i) {
 
-		rr = knot_packet_authority_rrset(query, i);
+		rr = authority->rr[i];
 
 		/* Check if the entry is correct. */
 		ret = knot_ddns_check_update(rr, query, rcode);
@@ -1813,7 +1810,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 
 		dbg_ddns_verb("Processing RR %p...\n", rr);
 		ret = knot_ddns_process_rr(rr, zone, changeset, changes,
-		                           knot_packet_qclass(query),
+		                           knot_pkt_qclass(query),
 		                           &rr_copy);
 
 		if (ret != KNOT_EOK) {
