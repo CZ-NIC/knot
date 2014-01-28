@@ -1030,9 +1030,9 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
                    knot_changeset_t *changeset,
-                   uint32_t *expires_at)
+                   uint32_t *refresh_at)
 {
-	if (!zone || !zone_keys || !policy || !changeset || !expires_at) {
+	if (!zone || !zone_keys || !policy || !changeset || !refresh_at) {
 		return KNOT_EINVAL;
 	}
 
@@ -1062,14 +1062,12 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 
 	// renew the signatures a little earlier
 	uint32_t expiration = MIN(normal_tree_expiration, nsec3_tree_expiration);
-	assert(expiration >= policy->sign_refresh);
-	expiration = expiration - policy->sign_refresh;
 
 	// DNSKEY updates
 	uint32_t dnskey_update = knot_get_next_zone_key_event(zone_keys);
 	expiration = MIN(expiration, dnskey_update);
 
-	*expires_at = expiration;
+	*refresh_at = knot_dnssec_policy_refresh_time(policy, expiration);
 
 	return KNOT_EOK;
 }

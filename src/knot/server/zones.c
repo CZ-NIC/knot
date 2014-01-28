@@ -839,20 +839,6 @@ static int zones_merge_and_store_changesets(knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
-static uint32_t expiration_to_relative(uint32_t exp,
-                                       const knot_zone_t *zone) {
-	time_t t = time(NULL);
-	if (t >= exp) {
-		char *zname = knot_dname_to_str(zone->name);
-		log_zone_warning("DNSSEC: Zone %s: Signature lifetime too low, "
-		                 "set higher value in configuration!\n", zname);
-		free(zname);
-		return 0;
-	} else {
-		return (exp - t) * 1000;
-	}
-}
-
 static int zones_serial_policy(const knot_zone_t *zone)
 {
 	assert(zone != NULL);
@@ -895,21 +881,17 @@ static uint32_t zones_next_serial(knot_zone_t *zone)
 }
 
 static int replan_zone_sign_after_ddns(knot_zone_t *zone, zonedata_t *zd,
-                                       uint32_t expires_at)
+                                       uint32_t refresh_at)
 {
 	assert(zone);
 	assert(zd);
 
-	int ret = KNOT_EOK;
-	uint32_t new_expire = time(NULL) + expires_at;
-	if (new_expire < zd->dnssec_timer->tv.tv_sec) {
-		// Drop old event, earlier signing needed
-		zones_cancel_dnssec(zone);
-		ret = zones_schedule_dnssec(zone,
-		                            expiration_to_relative(new_expire,
-								   zone));
+	if (zd->dnssec_timer->tv.tv_sec <= refresh_at) {
+		return KNOT_EOK;
 	}
-	return ret;
+
+	zones_cancel_dnssec(zone);
+	return zones_schedule_dnssec(zone, refresh_at);
 }
 
 static bool apex_rr_changed(const knot_zone_contents_t *old_contents,
@@ -1015,7 +997,7 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 
 	knot_changesets_t *sec_chs = NULL;
 	knot_changeset_t *sec_ch = NULL;
-	uint32_t expires_at = 0;
+	uint32_t refresh_at = 0;
 
 	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
 	assert(zone_config);
@@ -1057,20 +1039,14 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 		    zones_nsec3param_changed(old_contents, new_contents)) {
 			ret = knot_dnssec_zone_sign(fake_zone, sec_ch,
 			                            KNOT_SOA_SERIAL_KEEP,
-			                            &expires_at, new_serial);
+			                            &refresh_at, new_serial);
 		} else {
 			// Sign the created changeset
-			uint32_t used_lifetime = 0;
-			uint32_t used_refresh = 0;
-
 			knot_zone_contents_load_nsec3param(new_contents);
 			ret = knot_dnssec_sign_changeset(fake_zone,
-			                      knot_changesets_get_last(chgsets),
-			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
-			                      &used_lifetime, &used_refresh,
-			                      new_serial);
-
-			expires_at = used_lifetime - used_refresh;
+			                                 knot_changesets_get_last(chgsets),
+			                                 sec_ch, KNOT_SOA_SERIAL_KEEP,
+			                                 &refresh_at, new_serial);
 		}
 
 		if (ret != KNOT_EOK) {
@@ -1127,7 +1103,7 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 		// Plan zone resign if needed
 		zonedata_t *zd = (zonedata_t *)zone->data;
 		assert(zd && zd->dnssec_timer);
-		ret = replan_zone_sign_after_ddns(zone, zd, expires_at);
+		ret = replan_zone_sign_after_ddns(zone, zd, refresh_at);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign %s\n",
 			               msg, knot_strerror(ret));
@@ -2030,11 +2006,11 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 	return KNOT_EOK;
 }
 
-int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at)
+int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *refresh_at)
 {
 	int ret = KNOT_EOK;
 	char *msgpref = NULL;
-	*expires_at = 0;
+	*refresh_at = 0;
 
 	knot_changesets_t *chs = knot_changesets_create();
 	if (chs == NULL) {
@@ -2065,11 +2041,11 @@ int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at)
 	uint32_t new_serial = zones_next_serial(zone);
 
 	if (force) {
-		ret = knot_dnssec_zone_sign_force(zone, ch, expires_at,
+		ret = knot_dnssec_zone_sign_force(zone, ch, refresh_at,
 		                                  new_serial);
 	} else {
 		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_UPDATE,
-		                            expires_at, new_serial);
+		                            refresh_at, new_serial);
 	}
 	if (ret != KNOT_EOK) {
 		goto done;
@@ -2100,14 +2076,13 @@ int zones_dnssec_ev(event_t *event)
 	// We will be working with zone, don't want it to change in the meantime
 	rcu_read_lock();
 	knot_zone_t *zone = (knot_zone_t *)event->data;
-	uint32_t expires_at = 0;
+	uint32_t refresh_at = 0;
 
-	int ret = zones_dnssec_sign(zone, false, &expires_at);
-	if (expires_at != 0) {
-		ret = zones_schedule_dnssec(zone,
-		                            expiration_to_relative(expires_at,
-								   zone));
+	int ret = zones_dnssec_sign(zone, false, &refresh_at);
+	if (refresh_at != 0) {
+		ret = zones_schedule_dnssec(zone, refresh_at);
 	}
+
 	rcu_read_unlock();
 
 	return ret;
@@ -2129,7 +2104,7 @@ int zones_cancel_dnssec(knot_zone_t *zone)
 	return KNOT_EOK;
 }
 
-int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time)
+int zones_schedule_dnssec(knot_zone_t *zone, time_t unixtime)
 {
 	if (!zone || !zone->data) {
 		return KNOT_EINVAL;
@@ -2138,20 +2113,44 @@ int zones_schedule_dnssec(knot_zone_t *zone, uint32_t time)
 	zonedata_t *zd = (zonedata_t *)zone->data;
 	evsched_t *scheduler = zd->server->sched;
 
-	char *zname = knot_dname_to_str(knot_zone_name(zone));
-	log_zone_info("DNSSEC: Zone %s - planning next resign %" PRIu32 "s"
-	              "(%" PRIu32 "h) from now.\n", zname, time / 1000,
-	              time / 3600000);
+	// event not created yet
+	if (zd->dnssec_timer == NULL) {
+		return KNOT_EAGAIN;
+	}
+
+	char *zname = knot_dname_to_str(zone->name);
+
+	// absolute time -> relative time
+
+	time_t now = time(NULL);
+	int32_t relative = 0;
+	if (unixtime <= now) {
+		log_zone_warning("DNSSEC: Zone %s: Signature life time too low, "
+		                 "set higher value in configuration!\n", zname);
+	} else {
+		relative = unixtime - now;
+	}
+
+	// log the message
+
+	char time_str[64] = {'\0'};
+	struct tm time_gm = {0};
+
+	gmtime_r(&unixtime, &time_gm);
+
+	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+
+	log_zone_info("DNSSEC: Zone %s: Next signing planned on %s.\n",
+	              zname, time_str);
+
 	free(zname);
 
-	if (zd->dnssec_timer) {
-		// Event created already, just reschedule
-		evsched_schedule(scheduler, zd->dnssec_timer, time);
-	}
+	// schedule
+
+	evsched_schedule(scheduler, zd->dnssec_timer, relative * 1000);
 
 	return KNOT_EOK;
 }
-
 
 /*!
  * \brief Schedule IXFR sync for given zone.
@@ -2456,7 +2455,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 	knot_changesets_t *sec_chs = NULL;
 	knot_changeset_t *sec_ch = NULL;
 	knot_zone_contents_t *new_contents = NULL;
-	uint32_t expires_at = 0;
+	uint32_t refresh_at = 0;
 	if (z->dnssec_enable) {
 		sec_chs = knot_changesets_create();
 		if (sec_chs == NULL) {
@@ -2484,7 +2483,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 		 */
 		int ret = knot_dnssec_zone_sign(zone, sec_ch,
 		                                KNOT_SOA_SERIAL_UPDATE,
-		                                &expires_at, new_serial);
+		                                &refresh_at, new_serial);
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
 			knot_changesets_free(&sec_chs);
@@ -2560,9 +2559,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 
 	// Schedule next zone signing
 	if (z->dnssec_enable) {
-		ret = zones_schedule_dnssec(zone,
-					    expiration_to_relative(expires_at,
-								   zone));
+		ret = zones_schedule_dnssec(zone, refresh_at);
 	}
 
 	return ret;

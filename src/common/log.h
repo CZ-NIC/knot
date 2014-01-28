@@ -62,6 +62,9 @@ typedef enum {
 /*! \brief Severity mapping. */
 #define LOG_FATAL LOG_CRIT /*!< Fatal errors cannot be masked. */
 
+/*! \brief Format for timestamps in log files. */
+#define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S"
+
 /* Logging facility setup. */
 
 /*!

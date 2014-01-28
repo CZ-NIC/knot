@@ -285,7 +285,7 @@ AS_IF([test "$with_openssl" = "no"],[
 
 AC_EGREP_CPP(openssl_version_ok,
   [#include <openssl/crypto.h>
-   #if (OPENSSL_VERSION_NUMBER >= 0x1000000fL)
+   #if (OPENSSL_VERSION_NUMBER >= 0x10000000L)
    openssl_version_ok
    #endif
   ],[],[AC_MSG_ERROR([OpenSSL library version >= 1.0.0 is required.])]
