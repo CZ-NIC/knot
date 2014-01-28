@@ -114,22 +114,6 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/wire.h			\
-	libknot/nameserver/nsec_proofs.h	\
-	libknot/nameserver/nsec_proofs.c	\
-	libknot/nameserver/name-server.h	\
-	libknot/nameserver/name-server.c	\
-	libknot/nameserver/chaos.h		\
-	libknot/nameserver/chaos.c		\
-	libknot/nameserver/internet.h		\
-	libknot/nameserver/internet.c		\
-	libknot/nameserver/axfr.h		\
-	libknot/nameserver/axfr.c		\
-	libknot/nameserver/ixfr.h		\
-	libknot/nameserver/ixfr.c		\
-	libknot/nameserver/update.h		\
-	libknot/nameserver/update.c		\
-	libknot/nameserver/ns_proc_query.h	\
-	libknot/nameserver/ns_proc_query.c	\
 	libknot/updates/changesets.h		\
 	libknot/updates/changesets.c		\
 	libknot/updates/xfr-in.h		\
@@ -253,6 +237,22 @@ libknotd_la_SOURCES =				\
 	knot/ctl/process.h			\
 	knot/ctl/remote.c			\
 	knot/ctl/remote.h			\
+	knot/nameserver/axfr.c			\
+	knot/nameserver/axfr.h			\
+	knot/nameserver/chaos.c			\
+	knot/nameserver/chaos.h			\
+	knot/nameserver/internet.c		\
+	knot/nameserver/internet.h		\
+	knot/nameserver/ixfr.c			\
+	knot/nameserver/ixfr.h			\
+	knot/nameserver/name-server.c		\
+	knot/nameserver/name-server.h		\
+	knot/nameserver/ns_proc_query.c		\
+	knot/nameserver/ns_proc_query.h		\
+	knot/nameserver/nsec_proofs.c		\
+	knot/nameserver/nsec_proofs.h		\
+	knot/nameserver/update.c		\
+	knot/nameserver/update.h		\
 	knot/knot.h				\
 	knot/other/debug.h			\
 	knot/server/dthreads.c			\
@@ -294,10 +294,10 @@ libknotd_la_SOURCES =				\
 	knot/zone/node.h			\
 	knot/zone/zone-contents.c		\
 	knot/zone/zone-contents.h		\
-	knot/zone/zone-diff.c		\
-	knot/zone/zone-diff.h		\
-	knot/zone/zone-tree.c		\
-	knot/zone/zone-tree.h		\
+	knot/zone/zone-diff.c			\
+	knot/zone/zone-diff.h			\
+	knot/zone/zone-tree.c			\
+	knot/zone/zone-tree.h			\
 	knot/zone/zone.c			\
 	knot/zone/zone.h			\
 	knot/zone/zonedb.c			\

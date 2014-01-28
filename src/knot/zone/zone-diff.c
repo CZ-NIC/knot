@@ -22,7 +22,7 @@
 #include "libknot/util/debug.h"
 #include "common/errcode.h"
 #include "knot/zone/zone-diff.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "common/descriptor.h"
 #include "libknot/rdata.h"
 

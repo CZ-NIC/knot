@@ -42,7 +42,7 @@
 #include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
 #include "libknot/packet/wire.h"
@@ -73,7 +73,7 @@ enum {
 /* Next-gen packet processing API. */
 #define PACKET_NG
 #ifdef PACKET_NG
-#include "libknot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/ns_proc_query.h"
 #endif
 
 /* PPS measurement */

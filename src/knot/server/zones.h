@@ -32,7 +32,7 @@
 #include "common/lists.h"
 #include "common/acl.h"
 #include "common/evsched.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "knot/zone/zonedb.h"
 #include "knot/conf/conf.h"
 #include "knot/server/notify.h"

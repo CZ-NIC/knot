@@ -1,9 +1,9 @@
 #include <config.h>
 
-#include "libknot/nameserver/ixfr.h"
-#include "libknot/nameserver/axfr.h"
-#include "libknot/nameserver/internet.h"
-#include "libknot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/ixfr.h"
+#include "knot/nameserver/axfr.h"
+#include "knot/nameserver/internet.h"
+#include "knot/nameserver/ns_proc_query.h"
 #include "libknot/util/debug.h"
 #include "libknot/rdata.h"
 #include "knot/server/zones.h"

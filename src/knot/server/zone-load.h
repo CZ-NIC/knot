@@ -26,7 +26,7 @@
 #define _KNOTD_ZONE_LOAD_H_
 
 #include "knot/conf/conf.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "knot/zone/zonedb.h"
 
 /*!

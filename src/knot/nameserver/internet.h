@@ -29,7 +29,7 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 
 /* Query data (from query processing). */
 struct query_data;

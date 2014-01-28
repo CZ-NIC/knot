@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "libknot/packet/pkt.h"
 
 /*!

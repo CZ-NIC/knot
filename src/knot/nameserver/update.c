@@ -1,9 +1,9 @@
 #include <config.h>
 
-#include "libknot/nameserver/update.h"
-#include "libknot/nameserver/internet.h"
-#include "libknot/nameserver/ns_proc_query.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/update.h"
+#include "knot/nameserver/internet.h"
+#include "knot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/name-server.h"
 #include "libknot/util/debug.h"
 #include "libknot/dnssec/zone-events.h"
 #include "libknot/updates/ddns.h"

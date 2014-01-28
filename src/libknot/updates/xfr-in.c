@@ -22,7 +22,7 @@
 
 #include "libknot/updates/xfr-in.h"
 
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
 #include "libknot/util/debug.h"
 #include "libknot/packet/pkt.h"

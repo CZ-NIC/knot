@@ -27,7 +27,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "libknot/rdata.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone.h"

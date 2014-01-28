@@ -30,7 +30,7 @@
 
 #include "knot/knot.h"
 #include "knot/server/xfr-handler.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "knot/server/socket.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"

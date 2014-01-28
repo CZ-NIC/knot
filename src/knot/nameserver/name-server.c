@@ -21,7 +21,7 @@
 
 #include <urcu.h>
 
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "libknot/updates/xfr-in.h"
 
 #include "libknot/libknot.h"

@@ -1,8 +1,8 @@
 #include <config.h>
 
-#include "libknot/nameserver/internet.h"
-#include "libknot/nameserver/nsec_proofs.h"
-#include "libknot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/internet.h"
+#include "knot/nameserver/nsec_proofs.h"
+#include "knot/nameserver/ns_proc_query.h"
 #include "libknot/common.h"
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"

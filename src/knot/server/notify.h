@@ -35,7 +35,7 @@
 #include "knot/zone/zonedb.h"
 #include "common/lists.h"
 #include "common/sockaddr.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 
 struct query_data;
 

@@ -39,9 +39,9 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/zones.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
-#include "libknot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/ns_proc_query.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
 

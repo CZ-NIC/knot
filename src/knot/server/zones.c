@@ -32,7 +32,7 @@
 #include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-events.h"
 #include "libknot/dnssec/zone-sign.h"
-#include "libknot/nameserver/chaos.h"
+#include "knot/nameserver/chaos.h"
 #include "libknot/rdata.h"
 #include "libknot/tsig-op.h"
 #include "libknot/updates/changesets.h"

@@ -26,7 +26,7 @@
 #include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
 #include "common/descriptor.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
 #include "libknot/dnssec/random.h"

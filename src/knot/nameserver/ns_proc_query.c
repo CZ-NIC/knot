@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <urcu.h>
 
-#include "libknot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/ns_proc_query.h"
 #include "libknot/consts.h"
 #include "libknot/util/debug.h"
 #include "libknot/common.h"
@@ -11,11 +11,11 @@
 #include "common/acl.h"
 
 /*! \todo Move close to server when done. */
-#include "libknot/nameserver/chaos.h"
-#include "libknot/nameserver/internet.h"
-#include "libknot/nameserver/axfr.h"
-#include "libknot/nameserver/ixfr.h"
-#include "libknot/nameserver/update.h"
+#include "knot/nameserver/chaos.h"
+#include "knot/nameserver/internet.h"
+#include "knot/nameserver/axfr.h"
+#include "knot/nameserver/ixfr.h"
+#include "knot/nameserver/update.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/rrl.h"
@@ -496,7 +496,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 	}
 
 	/* Convert query QNAME to lowercase, but keep original QNAME case.
- 	 * Already checked for absence of compression and length.
+	 * Already checked for absence of compression and length.
 	 */
 	struct query_data *qdata = QUERY_DATA(ctx);
 	const knot_dname_t *qname = knot_pkt_qname(query);

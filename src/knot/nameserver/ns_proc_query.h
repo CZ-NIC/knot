@@ -27,7 +27,7 @@
 #ifndef _KNOT_NS_PROC_QUERY_H_
 #define _KNOT_NS_PROC_QUERY_H_
 
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "common/acl.h"
 
 /* Query processing module implementation. */
