@@ -20,7 +20,7 @@
 
 #include "knot/server/journal.h"
 
-#include "libknot/updates/xfr-in.h"
+#include "knot/updates/xfr-in.h"
 
 #include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
@@ -32,14 +32,13 @@
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/common.h"
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/semantic-check.h"
 #include "common/lists.h"
 #include "common/descriptor.h"
 #include "libknot/rdata.h"
-
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -345,7 +344,6 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 			xfr->tsig_prev_time_signed =
 					tsig_rdata_time_signed(packet->tsig_rr);
 
-
 		}
 	} else if (packet->tsig_rr != NULL) {
 		// TSIG where it should not be
@@ -409,7 +407,6 @@ static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uin
 
 	return ret;
 }
-
 
 /*----------------------------------------------------------------------------*/
 
@@ -684,7 +681,7 @@ dbg_xfrin_exec_verb(
 			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
 		}
-		
+
 		knot_node_t *(*get_node)(const knot_zone_contents_t *,
 					 const knot_dname_t *) = NULL;
 		int (*add_node)(knot_zone_contents_t *, knot_node_t *, int,
@@ -740,7 +737,7 @@ dbg_xfrin_exec_verb(
 				knot_rrset_deep_free(&rr, 1);
 				return ret;
 			}
-			
+
 			if (!semantic_check_passed(zone, node)) {
 				xfrin_log_error(xfr->zone->name,
 				                rr,
@@ -2181,7 +2178,6 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 	assert(node != NULL);
 
 	assert(node != NULL);
-
 
 	int ret = xfrin_replace_rrset_in_node(node, chset->soa_to, changes,
 					      contents);

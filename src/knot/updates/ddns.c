@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "libknot/updates/ddns.h"
-#include "libknot/updates/changesets.h"
+#include "knot/updates/ddns.h"
+#include "knot/updates/changesets.h"
 #include "libknot/rdata.h"
 #include "libknot/util/debug.h"
 #include "libknot/packet/pkt.h"
@@ -28,7 +28,7 @@
 #include "libknot/consts.h"
 #include "common/mempattern.h"
 #include "knot/nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
-#include "libknot/updates/xfr-in.h"
+#include "knot/updates/xfr-in.h"
 #include "common/descriptor.h"
 
 /*----------------------------------------------------------------------------*/
@@ -496,7 +496,7 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
-	
+
 	if (knot_rrtype_is_ddns_forbidden(rrset->type)) {
 		*rcode = KNOT_RCODE_REFUSED;
 		log_zone_error("Refusing to update DNSSEC-related record!\n");
@@ -745,7 +745,6 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			knot_rrset_set_rrsigs(removed, NULL);
 		}
 
-
 		/* c) And remove it from the node. */
 		UNUSED(knot_node_remove_rrset(node, KNOT_RRTYPE_CNAME));
 
@@ -948,7 +947,6 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 	}
 
 	knot_rrset_deep_free(rr_copy, 1);
-
 
 	if (rdata_in_copy == deleted_rrs) {
 		/* All RDATA have been removed, because they were duplicates
@@ -1330,7 +1328,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 			dbg_ddns("Failed to add RRSet to changes.\n");
 			return ret;
 		}
-		
+
 		// Do the same with its RRSIGs (automatic drop)
 		if (rrset_copy->rrsigs) {
 			ret = knot_changes_add_rrset(changes,

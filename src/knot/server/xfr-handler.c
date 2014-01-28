@@ -34,7 +34,7 @@
 #include "knot/server/socket.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
-#include "libknot/updates/xfr-in.h"
+#include "knot/updates/xfr-in.h"
 #include "libknot/packet/wire.h"
 #include "knot/server/zones.h"
 #include "libknot/tsig-op.h"

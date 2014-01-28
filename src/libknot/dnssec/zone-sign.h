@@ -29,7 +29,7 @@
 #ifndef _KNOT_DNSSEC_ZONE_SIGN_H_
 #define _KNOT_DNSSEC_ZONE_SIGN_H_
 
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-contents.h"
 #include "libknot/dnssec/zone-keys.h"

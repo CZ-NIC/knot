@@ -6,7 +6,7 @@
 #include "knot/nameserver/name-server.h"
 #include "libknot/util/debug.h"
 #include "libknot/dnssec/zone-events.h"
-#include "libknot/updates/ddns.h"
+#include "knot/updates/ddns.h"
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
 

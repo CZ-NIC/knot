@@ -20,7 +20,7 @@
 #include <stdint.h>
 
 #include "knot/zone/zone-contents.h"
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 
 /*!
  * \brief Create diff between two zone trees.

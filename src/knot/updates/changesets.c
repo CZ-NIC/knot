@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
 #include "common/mempattern.h"

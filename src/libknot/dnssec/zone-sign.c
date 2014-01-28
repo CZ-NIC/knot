@@ -33,7 +33,7 @@
 #include "libknot/dnssec/zone-sign.h"
 #include "libknot/rdata.h"
 #include "libknot/rrset.h"
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 #include "libknot/util/debug.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-contents.h"

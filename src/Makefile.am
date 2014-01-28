@@ -114,12 +114,6 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/wire.h			\
-	libknot/updates/changesets.h		\
-	libknot/updates/changesets.c		\
-	libknot/updates/xfr-in.h		\
-	libknot/updates/xfr-in.c		\
-	libknot/updates/ddns.h			\
-	libknot/updates/ddns.c			\
 	libknot/dname.c				\
 	libknot/consts.h			\
 	libknot/edns.h				\
@@ -282,6 +276,12 @@ libknotd_la_SOURCES =				\
 	knot/stat/stat-common.h			\
 	knot/stat/stat.c			\
 	knot/stat/stat.h			\
+	knot/updates/changesets.h		\
+	knot/updates/changesets.c		\
+	knot/updates/xfr-in.h			\
+	knot/updates/xfr-in.c			\
+	knot/updates/ddns.h			\
+	knot/updates/ddns.c			\
 	knot/zone/estimator.c			\
 	knot/zone/estimator.h			\
 	knot/zone/semantic-check.c		\

@@ -29,7 +29,7 @@
 #define _KNOT_DNSSEC_ZONE_EVENTS_H_
 
 #include "knot/zone/zone.h"
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 #include "libknot/dnssec/policy.h"
 /*!
  * \brief DNSSEC resign zone, store new records into changeset. Valid signatures

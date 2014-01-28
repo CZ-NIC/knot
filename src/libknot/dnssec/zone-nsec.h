@@ -30,7 +30,7 @@
 #define _KNOT_DNSSEC_ZONE_NSEC_H_
 
 #include <stdbool.h>
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 #include "knot/zone/zone-contents.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/zone-keys.h"

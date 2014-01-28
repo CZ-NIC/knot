@@ -22,7 +22,7 @@
 #include <urcu.h>
 
 #include "knot/nameserver/name-server.h"
-#include "libknot/updates/xfr-in.h"
+#include "knot/updates/xfr-in.h"
 
 #include "libknot/libknot.h"
 #include "common/errcode.h"
@@ -32,8 +32,8 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/consts.h"
 #include "common/descriptor.h"
-#include "libknot/updates/changesets.h"
-#include "libknot/updates/ddns.h"
+#include "knot/updates/changesets.h"
+#include "knot/updates/ddns.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
 #include "libknot/dnssec/random.h"

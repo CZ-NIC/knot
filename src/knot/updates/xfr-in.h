@@ -34,7 +34,7 @@
 #include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
 #include "knot/nameserver/name-server.h"
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 
 /*----------------------------------------------------------------------------*/
 

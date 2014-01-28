@@ -135,6 +135,12 @@ src/knot/stat/gatherer.h
 src/knot/stat/stat-common.h
 src/knot/stat/stat.c
 src/knot/stat/stat.h
+src/knot/updates/changesets.c
+src/knot/updates/changesets.h
+src/knot/updates/ddns.c
+src/knot/updates/ddns.h
+src/knot/updates/xfr-in.c
+src/knot/updates/xfr-in.h
 src/knot/zone/estimator.c
 src/knot/zone/estimator.h
 src/knot/zone/node.c
@@ -208,12 +214,6 @@ src/libknot/tsig-op.c
 src/libknot/tsig-op.h
 src/libknot/tsig.c
 src/libknot/tsig.h
-src/libknot/updates/changesets.c
-src/libknot/updates/changesets.h
-src/libknot/updates/ddns.c
-src/libknot/updates/ddns.h
-src/libknot/updates/xfr-in.c
-src/libknot/updates/xfr-in.h
 src/libknot/util/debug.c
 src/libknot/util/debug.h
 src/libknot/util/endian.h

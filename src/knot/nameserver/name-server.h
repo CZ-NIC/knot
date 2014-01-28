@@ -46,7 +46,7 @@
 #include "libknot/packet/pkt.h"
 #include "common/sockaddr.h"
 #include "common/lists.h"
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 
 struct conf_t;
 struct server_t;

@@ -32,7 +32,7 @@
 #include <stdint.h>
 
 #include "knot/zone/zone-contents.h"
-#include "libknot/updates/changesets.h"
+#include "knot/updates/changesets.h"
 
 /*!
  * \brief Parameters to be used when fixing NSEC(3) chain.

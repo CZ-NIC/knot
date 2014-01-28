@@ -39,7 +39,7 @@
 #include "knot/server/server.h"
 #include "knot/server/journal.h"
 #include "knot/zone/zone.h"
-#include "libknot/updates/xfr-in.h"
+#include "knot/updates/xfr-in.h"
 
 /* Constants. */
 #define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
