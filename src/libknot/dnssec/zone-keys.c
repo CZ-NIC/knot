@@ -20,6 +20,8 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include "common/errcode.h"
+#include "common/mempattern.h"
+#include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/nsec3.h"

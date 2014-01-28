@@ -33,6 +33,9 @@
 #include <stdio.h>
 
 #include "common/log.h"
+#include "common/print.h"
+#include "libknot/rrset.h"
+#include "libknot/util/utils.h"
 
 /*
  * Debug macros
@@ -62,35 +65,6 @@
   #define KNOT_TSIG_DEBUG
   #define KNOT_DDNS_DEBUG
 #endif
-
-#include "libknot/rrset.h"
-#include "knot/zone/node.h"
-#include "knot/zone/zone.h"
-#include "libknot/util/utils.h"
-#include "common/print.h"
-
-/*!
- * \brief Dumps zone node.
- *
- * This function is empty if neither KNOT_ZONE_DEBUG nor KNOT_NODE_DEBUG
- * is defined.
- *
- * \param node Node to dump.
- * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
- *                    the server. Set to 0 otherwise.
- */
-void knot_node_dump(knot_node_t *node);
-
-/*!
- * \brief Dumps the whole zone.
- *
- * This function is empty if KNOT_ZONE_DEBUG is not defined.
- *
- * \param zone Zone to dump.
- * \param loaded_zone Set to <> 0 if the node is part of a zone loaded into
- *                    the server. Set to 0 otherwise.
- */
-void knot_zone_contents_dump(knot_zone_contents_t *zone);
 
 /******************************************************************************/
 
