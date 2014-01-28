@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 		.salt = (uint8_t *)"\xc0\x01", .salt_length = 2
 	};
 
-	knot_dname_t *result = create_nsec3_owner(owner, apex, &params);
+	knot_dname_t *result = knot_create_nsec3_owner(owner, apex, &params);
 	is_int(0, knot_dname_cmp(result, expect), "create_nsec3_owner()");
 
 	knot_dname_free(&result);

@@ -43,7 +43,7 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	assert(config);
 
 	// Read zone keys from disk
-	bool nsec3_enabled = is_nsec3_enabled(zone->contents);
+	bool nsec3_enabled = knot_is_nsec3_enabled(zone->contents);
 	int result = knot_load_zone_keys(config->dnssec_keydir,
 	                                 zone->contents->apex->owner,
 	                                 nsec3_enabled, zone_keys);
@@ -191,9 +191,10 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
                                uint32_t *refresh_at,
-                               uint32_t new_serial)
+                               uint32_t new_serial,
+                               hattrie_t **sorted_changes)
 {
-	if (!refresh_at) {
+	if (!refresh_at || !sorted_changes) {
 		return KNOT_EINVAL;
 	}
 
@@ -221,9 +222,22 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 		return KNOT_ENOMEM;
 	}
 
+	// Sign added and removed RRSets in changeset
+	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, sorted_changes,
+	                               &zone_keys, &policy);
+	if (ret != KNOT_EOK) {
+		log_zone_error("%s Failed to sign changeset (%s)\n", msgpref,
+		               knot_strerror(ret));
+		knot_free_zone_keys(&zone_keys);
+		free(msgpref);
+		return ret;
+	}
+
+	assert(sorted_changes);
 	// Fix NSEC(3) chain
-	ret = knot_zone_create_nsec_chain(zone->contents,
-	                                  out_ch, &zone_keys, &policy);
+	ret = knot_zone_fix_nsec_chain(zone->contents,
+	                               *sorted_changes, out_ch,
+	                               &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to fix NSEC(3) chain (%s)\n",
 		               msgpref, knot_strerror(ret));
@@ -232,10 +246,9 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 		return ret;
 	}
 
-	// Sign added and removed RRSets in changeset
-	ret = knot_zone_sign_changeset(zone->contents,
-	                               in_ch, out_ch, &zone_keys,
-	                               &policy);
+	// Sign added NSEC(3)
+	ret = knot_zone_sign_nsecs_in_changeset(&zone_keys, &policy,
+	                                        out_ch);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to sign changeset (%s)\n",
 		               msgpref, knot_strerror(ret));

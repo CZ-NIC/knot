@@ -31,6 +31,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/dnssec/zone-events.h"
+#include "libknot/dnssec/zone-sign.h"
 #include "libknot/nameserver/chaos.h"
 #include "libknot/rdata.h"
 #include "libknot/tsig-op.h"
@@ -373,7 +374,7 @@ static int zones_zonefile_sync_from_ev(knot_zone_t *zone, zonedata_t *zd)
 }
 
 /*!
- * \brief Sync changes in zone to zonefile.
+ * \brief Sync chagnes in zone to zonefile.
  */
 int zones_flush_ev(event_t *e)
 {
@@ -1028,6 +1029,8 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 	fake_zone->data = zone->data;
 	new_contents->zone = fake_zone;
 
+	hattrie_t *sorted_changes = NULL;
+
 	if (zone_config->dnssec_enable) {
 		dbg_zones_verb("%s: Signing the UPDATE\n", msg);
 		/*!
@@ -1042,11 +1045,11 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 			                            &refresh_at, new_serial);
 		} else {
 			// Sign the created changeset
-			knot_zone_contents_load_nsec3param(new_contents);
 			ret = knot_dnssec_sign_changeset(fake_zone,
-			                                 knot_changesets_get_last(chgsets),
-			                                 sec_ch, KNOT_SOA_SERIAL_KEEP,
-			                                 &refresh_at, new_serial);
+			                      knot_changesets_get_last(chgsets),
+			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
+			                      &refresh_at,
+			                      new_serial, &sorted_changes);
 		}
 
 		if (ret != KNOT_EOK) {
@@ -1081,24 +1084,22 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 	}
 
 	bool new_signatures = !knot_changeset_is_empty(sec_ch);
-	knot_zone_contents_t *dnssec_contents = NULL;
 	// Apply DNSSEC changeset
 	if (new_signatures) {
-		// Set zone generation to old, else applying fails
-		knot_zone_contents_set_gen_old(new_contents);
-		ret = xfrin_apply_changesets(fake_zone, sec_chs,
-		                             &dnssec_contents);
+		ret = xfrin_apply_changesets_dnssec(old_contents,
+		                                    new_contents,
+		                                    sec_chs,
+		                                    chgsets,
+		                                    sorted_changes);
+		knot_zone_clear_sorted_changes(sorted_changes);
+		hattrie_free(sorted_changes);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update %s\n",
 			               msg, knot_strerror(ret));
-			new_contents->zone = zone;
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
-			free(fake_zone);
 			return ret;
 		}
-		assert(dnssec_contents);
-		dnssec_contents->zone = zone;
 
 		// Plan zone resign if needed
 		zonedata_t *zd = (zonedata_t *)zone->data;
@@ -1107,10 +1108,19 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign %s\n",
 			               msg, knot_strerror(ret));
-			new_contents->zone = zone;
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
-			free(fake_zone);
+			return ret;
+		}
+	} else {
+		// Set NSEC3 nodes if no new signatures were created (or auto DNSSEC is off)
+		ret = knot_zone_contents_adjust_nsec3_pointers(new_contents);
+		if (ret != KNOT_EOK) {
+			zones_store_changesets_rollback(transaction);
+			zones_free_merged_changesets(chgsets, sec_chs);
+			xfrin_rollback_update(zone->contents, &new_contents,
+			                      chgsets->changes);
+			free(msg);
 			return ret;
 		}
 	}
@@ -1138,9 +1148,7 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 	// Switch zone contents.
 	knot_zone_retain(zone); /* Retain pointer for safe RCU unlock. */
 	rcu_read_unlock();      /* Unlock for switch. */
-	ret = xfrin_switch_zone(zone,
-	                        dnssec_contents ? dnssec_contents : new_contents,
-	                        XFR_TYPE_UPDATE);
+	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
 	rcu_read_lock();        /* Relock */
 	knot_zone_release(zone);/* Release held pointer. */
 	if (ret != KNOT_EOK) {
@@ -1159,9 +1167,6 @@ int zones_process_update_auth(knot_zone_t *zone, knot_pkt_t *query,
 	xfrin_cleanup_successful_update(chgsets->changes);
 	if (sec_chs) {
 		xfrin_cleanup_successful_update(sec_chs->changes);
-	}
-	if (new_signatures) {
-		xfrin_zone_contents_free(&new_contents);
 	}
 
 	// Free changesets, but not the data.

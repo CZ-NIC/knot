@@ -626,8 +626,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
 	rrset_list_delete(&c->node_rrsigs);
-	int kret = knot_zone_contents_adjust(c->current_zone, &first_nsec3_node,
-	                                     &last_nsec3_node, 0);
+	int kret = knot_zone_contents_adjust_full(c->current_zone, &first_nsec3_node,
+	                                          &last_nsec3_node);
 	if (kret != KNOT_EOK)  {
 		log_zone_error("%s: Failed to finalize zone contents: %s\n",
 		               loader->source, knot_strerror(kret));

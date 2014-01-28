@@ -29,6 +29,7 @@
 #include "libknot/dname.h"
 #include "libknot/zone/zone.h"
 #include "libknot/dnssec/zone-nsec.h"
+#include "libknot/dnssec/zone-sign.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/common.h"
 #include "libknot/updates/changesets.h"
@@ -2209,9 +2210,8 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 		  chset->serial_from, chset->serial_to);
 
 	// check if serial matches
-	/*! \todo Only if SOA is present? */
 	const knot_rrset_t *soa = knot_node_rrset(contents->apex,
-						  KNOT_RRTYPE_SOA);
+	                                          KNOT_RRTYPE_SOA);
 	if (soa == NULL || knot_rdata_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
@@ -2331,6 +2331,42 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *z)
 
 /*----------------------------------------------------------------------------*/
 
+static int adjust_nsec3_changes(knot_zone_contents_t *contents,
+                                hattrie_t *changes)
+{
+	if (contents->nsec3_nodes == NULL) {
+		return KNOT_EOK;
+	}
+	hattrie_iter_t *itt = hattrie_iter_begin(changes, false);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
+	}
+	while (!hattrie_iter_finished(itt)) {
+		signed_info_t *val = (signed_info_t *)(*hattrie_iter_val(itt));
+		const knot_dname_t *dname = val->dname;
+		assert(dname);
+		const knot_dname_t *hash = val->hashed_dname;
+		if (hash) {
+			knot_node_t *nsec3_node =
+				knot_zone_contents_get_nsec3_node(contents, hash);
+			if (nsec3_node) {
+				knot_node_t *normal_node =
+					knot_zone_contents_get_node(contents,
+					                            dname);
+				if (normal_node) {
+					normal_node->nsec3_node = nsec3_node;
+				}
+			}
+		}
+		hattrie_iter_next(itt);
+	}
+
+	hattrie_iter_free(itt);
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents)
 {
@@ -2392,9 +2428,10 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                knot_changes_t *changes)
+                                bool set_nsec3_names,
+                                const hattrie_t *sorted_changes)
 {
-	if (contents_copy == NULL || changes == NULL) {
+	if (contents_copy == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -2419,7 +2456,18 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	}
 
 	dbg_xfrin("Adjusting zone contents.\n");
-	ret = knot_zone_contents_adjust(contents_copy, NULL, NULL, 1);
+	if (set_nsec3_names) {
+		if (sorted_changes) {
+			ret = knot_zone_contents_adjust_pointers(contents_copy);
+			ret = adjust_nsec3_changes(contents_copy,
+			                           (void *)sorted_changes);
+		} else {
+			ret = knot_zone_contents_adjust_full(contents_copy,
+			                                     NULL, NULL);
+		}
+	} else {
+		ret = knot_zone_contents_adjust_pointers(contents_copy);
+	}
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize zone contents: %s\n",
 			  knot_strerror(ret));
@@ -2429,6 +2477,49 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
+
+/* Post-DDNS application, no need to shallow copy. */
+int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
+                                  knot_zone_contents_t *z_new,
+                                  knot_changesets_t *sec_chsets,
+                                  knot_changesets_t *chsets,
+                                  const hattrie_t *sorted_changes)
+{
+	if (z_old == NULL || z_new == NULL ||
+	    sec_chsets == NULL || chsets == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Set generation to old. Zone should be long locked at this point. */
+	knot_zone_contents_set_gen_old(z_new);
+
+	/* Apply changes. */
+	knot_changeset_t *set = NULL;
+	WALK_LIST(set, sec_chsets->sets) {
+		int ret = xfrin_apply_changeset(z_new,
+		                                sec_chsets->changes, set);
+		if (ret != KNOT_EOK) {
+			xfrin_rollback_update(z_old, &z_new, chsets->changes);
+			dbg_xfrin("Failed to apply changesets to zone: "
+			          "%s\n", knot_strerror(ret));
+			return ret;
+		}
+	}
+
+	const bool handle_nsec3 = true;
+	int ret = xfrin_finalize_updated_zone(z_new, handle_nsec3,
+	                                      sorted_changes);
+	if (ret != KNOT_EOK) {
+		dbg_xfrin("Failed to finalize updated zone: %s\n",
+		          knot_strerror(ret));
+		xfrin_rollback_update(z_old, &z_new, chsets->changes);
+		return ret;
+	}
+
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2483,7 +2574,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 	 */
 
 	dbg_xfrin_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, chsets->changes);
+	ret = xfrin_finalize_updated_zone(contents_copy, true, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));

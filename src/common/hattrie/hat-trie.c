@@ -334,7 +334,7 @@ hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
     return N;
 }
 
-size_t hattrie_weight (hattrie_t* T)
+size_t hattrie_weight (const hattrie_t *T)
 {
     return T->m;
 }

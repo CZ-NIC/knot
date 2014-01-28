@@ -1422,12 +1422,6 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	 *   'When the contents of an RRset are updated, the server MAY delete
 	 *    all associated SIG records, since they will no longer be valid.'
 	 *
-	 * (Although we are compliant with this RFC only selectively. The next
-	 * section says: 'If any changes are made, the server MUST, if
-	 * necessary, generate a new SOA record and new NXT records, and sign
-	 * these with the appropriate zone keys.' and we are definitely not
-	 * doing this...
-	 *
 	 * \todo Document!!
 	 */
 
@@ -1648,13 +1642,14 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 
 	dbg_ddns_verb("Removing all RRSets (count: %d).\n", count);
 	for (int i = 0; i < count; ++i) {
-		// If the node is apex, skip NS, SOA and DNSSEC records
+		// Skip DNSSEC records - automatic signing will handle this
+		if (knot_rrtype_is_ddns_forbidden(rrsets[i]->type)) {
+			continue;
+		}
+		// If the node is apex, skip NS and SOA as well
 		if (is_apex &&
 		    (knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_SOA
-		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS
-		     || knot_rrtype_is_ddns_forbidden(
-		             knot_rrset_type(rrsets[i])))) {
-			/* Do not remove these RRSets, nor their RRSIGs. */
+		     || knot_rrset_type(rrsets[i]) == KNOT_RRTYPE_NS)) {
 			continue;
 		}
 

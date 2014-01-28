@@ -299,28 +299,20 @@ void knot_rdata_dnskey_key(const knot_rrset_t *rrset, size_t pos, uint8_t **key,
 }
 
 static inline
-const knot_dname_t *knot_rdata_nsec_next(const knot_rrset_t *rrset, size_t pos)
+const knot_dname_t *knot_rdata_nsec_next(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rdata_count <= pos) {
-		return NULL;
-	}
-
-	return rrset_rdata_pointer(rrset, pos);
+	return rrset_rdata_pointer(rrset, 0);
 }
 
 static inline
-void knot_rdata_nsec_bitmap(const knot_rrset_t *rrset, size_t rr_pos,
+void knot_rdata_nsec_bitmap(const knot_rrset_t *rrset,
                             uint8_t **bitmap, uint16_t *size)
 {
-	if (rrset == NULL || rr_pos >= rrset->rdata_count) {
-		return;
-	}
-
-	uint8_t *rdata = knot_rrset_get_rdata(rrset, rr_pos);
+	uint8_t *rdata = knot_rrset_get_rdata(rrset, 0);
 	int next_size = knot_dname_size(rdata);
 
 	*bitmap = rdata + next_size;
-	*size = rrset_rdata_item_size(rrset, rr_pos) - next_size;
+	*size = rrset_rdata_item_size(rrset, 0) - next_size;
 }
 
 static inline
