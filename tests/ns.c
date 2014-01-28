@@ -55,7 +55,7 @@ void create_root_zone(knot_nameserver_t *ns, mm_ctx_t *mm)
 
 	/* Bake the zone. */
 	knot_node_t *first_nsec3 = NULL, *last_nsec3 = NULL;
-	knot_zone_contents_adjust(root->contents, &first_nsec3, &last_nsec3, false);
+	knot_zone_contents_adjust_full(root->contents, &first_nsec3, &last_nsec3);
 
 	/* Switch zone db. */
 	knot_zonedb_free(&ns->zone_db);
