@@ -17,8 +17,8 @@
 #include <config.h>
 #include <tap/basic.h>
 
-#include "libknot/zone/zonedb.h"
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/zonedb.h"
 
 #define ZONE_COUNT 10
 static const char *zone_list[ZONE_COUNT] = {

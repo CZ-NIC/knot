@@ -17,6 +17,7 @@
 #include <config.h>
 #include <tap/basic.h>
 
+#include "common/errcode.h"
 #include "common/mempool.h"
 #include "libknot/rrset.h"
 #include "libknot/rdata.h"

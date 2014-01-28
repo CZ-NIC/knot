@@ -17,7 +17,7 @@
 #include <config.h>
 #include <tap/basic.h>
 
-#include "libknot/zone/zone-tree.h"
+#include "knot/zone/zone-tree.h"
 
 #define NCOUNT 4
 static knot_dname_t* NAME[NCOUNT];

@@ -20,8 +20,8 @@
 #include "common/mempool.h"
 #include "common/descriptor.h"
 #include "libknot/packet/wire.h"
-#include "libknot/nameserver/name-server.h"
-#include "libknot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/name-server.h"
+#include "knot/nameserver/ns_proc_query.h"
 #include "knot/server/zones.h"
 
 /* SOA RDATA. */

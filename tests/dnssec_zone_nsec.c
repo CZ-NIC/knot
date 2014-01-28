@@ -18,7 +18,7 @@
 #include <tap/basic.h>
 
 #include "libknot/dname.h"
-#include "libknot/dnssec/zone-nsec.h"
+#include "knot/dnssec/zone-nsec.h"
 
 int main(int argc, char *argv[])
 {
