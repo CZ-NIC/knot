@@ -122,7 +122,7 @@ static void pkt_rr_wirecount_add(knot_pkt_t *pkt, knot_section_t section_id,
 }
 
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
-static int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
+static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 {
 	assert(pkt);
 
@@ -184,7 +184,7 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 	/* No data to free, set memory context. */
 	pkt->rrset_count = 0;
 	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
-	if (knot_pkt_reset(pkt, wire, len) != KNOT_EOK) {
+	if (pkt_reset(pkt, wire, len) != KNOT_EOK) {
 		mm->free(pkt);
 		return NULL;
 	}

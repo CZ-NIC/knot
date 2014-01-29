@@ -129,7 +129,7 @@ int udp_handle(udp_context_t *udp, int fd, sockaddr_t *addr,
 	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
 	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
 	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
-	param.ns = NULL;
+	param.ns = udp->ns;
 
 	/* Rate limit is applied? */
 	server_t *server = (server_t *)udp->ns->data;
