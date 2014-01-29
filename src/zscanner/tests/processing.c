@@ -21,7 +21,7 @@
 #include "tests/processing.h"
 #include "error.h"		// zscanner_strerror
 #include "scanner.h"		// scanner_t
-#include "descriptor.h"	// knot_rrtype_to_string
+#include "common/descriptor.h"	// knot_rrtype_to_string
 
 const char *separator = "------\n";
 

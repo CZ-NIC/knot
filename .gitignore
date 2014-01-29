@@ -58,8 +58,6 @@
 /src/knot/conf/libknotd_la-cf-parse.c
 /src/knot/conf/libknotd_la-cf-parse.h
 /tests/sample_conf.c
-/src/zscanner/descriptor.h
-/src/zscanner/descriptor.c
 /src/zscanner/scanner.c
 /src/zscanner/tests/tap/libtap.a
 /tests/tap/libtap.a

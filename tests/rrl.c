@@ -22,7 +22,7 @@
 #include "knot/server/rrl.h"
 #include "knot/server/dthreads.h"
 #include "knot/knot.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "common/descriptor.h"
 #include "libknot/dnssec/random.h"
 

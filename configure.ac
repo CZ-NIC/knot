@@ -339,8 +339,10 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread_np.h>]], [[cpuset_t set; CPU
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset_create(); cpuset_destroy(set);]])],
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
-gl_VISIBILITY()
-CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
+# Use -fvisibility=hidden when linking.
+# Let's leave it default now and use -export-symbols-regex in LDFLAGS
+#gl_VISIBILITY()
+#CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 
 AC_CONFIG_FILES([Makefile
 		 doc/Makefile

@@ -24,7 +24,7 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
 #include "libknot/consts.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zonedb.h"
 #include "libknot/common.h"
 #include "libknot/packet/wire.h"
 #include "knot/server/zones.h"
@@ -33,9 +33,9 @@
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
 #include "libknot/rdata.h"
-#include "libknot/nameserver/internet.h"
+#include "knot/nameserver/internet.h"
 #include "libknot/util/debug.h"
-#include "libknot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/random.h"
 
 /*----------------------------------------------------------------------------*/

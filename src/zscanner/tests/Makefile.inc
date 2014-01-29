@@ -33,7 +33,7 @@ tests_zscanner_tool_SOURCES =		\
 	tests/processing.h		\
 	tests/processing.c
 
-tests_zscanner_tool_LDADD = libzscanner.la @LIBOBJS@
+tests_zscanner_tool_LDADD = libzscanner.la ../libknots.la
 
 EXTRA_DIST += 				\
 	tests/TESTS			\

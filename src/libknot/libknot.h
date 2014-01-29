@@ -39,10 +39,6 @@
 #include "libknot/tsig-op.h"
 #include "libknot/util/tolower.h"
 #include "libknot/util/utils.h"
-
-#include "libknot/zone/node.h"
-#include "libknot/zone/zone.h"
-#include "libknot/zone/zonedb.h"
 #include "libknot/rdata.h"
 
 #endif

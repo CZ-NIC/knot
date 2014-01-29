@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 AM_CFLAGS = -I$(top_srcdir)/src
 
-noinst_LTLIBRARIES = libzscanner.la
+lib_LTLIBRARIES = libzscanner.la
 
 EXTRA_DIST =				\
 	scanner.rl			\
@@ -9,18 +9,8 @@ EXTRA_DIST =				\
 	scanner.c.g2			\
 	scanner.c.t0
 
-BUILT_SOURCES = descriptor.h descriptor.c
-CLEANFILES = descriptor.h descriptor.c
-nodist_libzscanner_la_SOURCES = descriptor.h descriptor.c
-
-descriptor.h: $(top_srcdir)/src/common/descriptor.h
-	cp $(top_srcdir)/src/common/descriptor.h $@
-
-descriptor.c: $(top_srcdir)/src/common/descriptor.c
-	cp $(top_srcdir)/src/common/descriptor.c $@
-
-BUILT_SOURCES += scanner.c
-CLEANFILES += scanner.c
+BUILT_SOURCES = scanner.c
+CLEANFILES = scanner.c
 
 if HAVE_RAGEL
 scanner.c: scanner.rl scanner_body.rl
@@ -51,6 +41,8 @@ libzscanner_la_SOURCES =		\
 	scanner_functions.h		\
 	scanner_functions.c
 
-libzscanner_la_LIBADD = @LIBOBJS@
+libzscanner_la_LDFLAGS =		\
+	-version-info 0:1:0		\
+	-export-symbols-regex '^(zscanner|scanner|file_loader)_|^date_to_timestamp'
 
 include $(srcdir)/tests/Makefile.inc

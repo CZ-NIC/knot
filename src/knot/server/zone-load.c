@@ -27,12 +27,12 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "libknot/rdata.h"
-#include "libknot/zone/zone.h"
-#include "libknot/zone/zone.h"
-#include "libknot/zone/zonedb.h"
-#include "zscanner/descriptor.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/zonedb.h"
+#include "common/descriptor.h"
 
 static const size_t XFRIN_BOOTSTRAP_DELAY = 2000; /*!< AXFR bootstrap avg. delay */
 
