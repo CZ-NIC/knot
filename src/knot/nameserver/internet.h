@@ -67,10 +67,10 @@ int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 
 /*! \brief Require authentication. */
 #define NS_NEED_AUTH(acl, qdata) \
-	if (!ns_proc_query_acl_check((acl), (qdata))) { \
+	if (!process_query_acl_check((acl), (qdata))) { \
 		return NS_PROC_FAIL; \
 	} else { \
-		if (ns_proc_query_verify(qdata) != KNOT_EOK) { \
+		if (process_query_verify(qdata) != KNOT_EOK) { \
 			return NS_PROC_FAIL; \
 		} \
 	}

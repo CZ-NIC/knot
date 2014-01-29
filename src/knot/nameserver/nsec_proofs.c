@@ -1,7 +1,7 @@
 #include <config.h>
 
 #include "knot/nameserver/nsec_proofs.h"
-#include "knot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/process_query.h"
 
 #include "libknot/common.h"
 #include "libknot/rdata.h"

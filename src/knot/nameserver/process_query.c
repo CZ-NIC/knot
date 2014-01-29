@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <urcu.h>
 
-#include "knot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/process_query.h"
 #include "libknot/consts.h"
 #include "libknot/util/debug.h"
 #include "libknot/common.h"
@@ -23,38 +23,38 @@
 
 /* Forward decls. */
 static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t *zonedb);
-static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t *ctx);
-static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx);
-static int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx);
-static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx);
+static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx);
+static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx);
+static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx);
+static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx);
 
 /*! \brief Module implementation. */
-const ns_proc_module_t _ns_proc_query = {
-        &ns_proc_query_begin,
-        &ns_proc_query_reset,
-        &ns_proc_query_finish,
-        &ns_proc_query_in,
-        &ns_proc_query_out,
-        &ns_proc_query_err
+const knot_process_module_t _process_query = {
+        &process_query_begin,
+        &process_query_reset,
+        &process_query_finish,
+        &process_query_in,
+        &process_query_out,
+        &process_query_err
 };
 
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((struct query_data *)(ctx)->data)
 
 /*! \brief Reinitialize query data structure. */
-static void query_data_init(ns_proc_context_t *ctx, void *module_param)
+static void query_data_init(knot_process_t *ctx, void *module_param)
 {
 	/* Initialize persistent data. */
 	struct query_data *data = QUERY_DATA(ctx);
 	memset(data, 0, sizeof(struct query_data));
 	data->mm = &ctx->mm;
-	data->param = (struct ns_proc_query_param*)module_param;
+	data->param = (struct process_query_param*)module_param;
 
 	/* Initialize list. */
 	init_list(&data->wildcards);
 }
 
-int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param)
+int process_query_begin(knot_process_t *ctx, void *module_param)
 {
 	/* Initialize context. */
 	assert(ctx);
@@ -68,13 +68,13 @@ int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param)
 	return NS_PROC_MORE;
 }
 
-int ns_proc_query_reset(ns_proc_context_t *ctx)
+int process_query_reset(knot_process_t *ctx)
 {
 	assert(ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
 
 	/* Remember persistent parameters. */
-	struct ns_proc_query_param *module_param = qdata->param;
+	struct process_query_param *module_param = qdata->param;
 
 	/* Free allocated data. */
 	knot_pkt_free(&qdata->query);
@@ -89,15 +89,15 @@ int ns_proc_query_reset(ns_proc_context_t *ctx)
 	/* Await packet. */
 	return NS_PROC_MORE;
 }
-int ns_proc_query_finish(ns_proc_context_t *ctx)
+int process_query_finish(knot_process_t *ctx)
 {
-	ns_proc_query_reset(ctx);
+	process_query_reset(ctx);
 	ctx->mm.free(ctx->data);
 	ctx->data = NULL;
 
 	return NS_PROC_NOOP;
 }
-int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
+int process_query_in(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
@@ -122,7 +122,7 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	return NS_PROC_FULL;
 }
 
-int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
+int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
@@ -178,7 +178,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 
 	/* Transaction security (if applicable). */
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
-		if (ns_proc_query_sign_response(pkt, qdata) != KNOT_EOK) {
+		if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
 			next_state = NS_PROC_FAIL;
 		}
 	}
@@ -192,7 +192,7 @@ finish:
 	return next_state;
 }
 
-int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
+int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
@@ -214,14 +214,14 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	knot_wire_set_rcode(pkt->wire, qdata->rcode);
 
 	/* Transaction security (if applicable). */
-	if (ns_proc_query_sign_response(pkt, qdata) != KNOT_EOK) {
+	if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
 		return NS_PROC_FAIL;
 	}
 
 	return NS_PROC_DONE;
 }
 
-bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
+bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
 	const sockaddr_t *query_source = &qdata->param->query_source;
@@ -253,10 +253,10 @@ bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata)
 	return true;
 }
 
-int ns_proc_query_verify(struct query_data *qdata)
+int process_query_verify(struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
-	ns_sign_context_t *ctx = &qdata->sign;
+	knot_sign_context_t *ctx = &qdata->sign;
 
 	/* NOKEY => no verification. */
 	if (query->tsig_rr == NULL) {
@@ -303,11 +303,11 @@ int ns_proc_query_verify(struct query_data *qdata)
 	return ret;
 }
 
-int ns_proc_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
+int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = KNOT_EOK;
 	knot_pkt_t *query = qdata->query;
-	ns_sign_context_t *ctx = &qdata->sign;
+	knot_sign_context_t *ctx = &qdata->sign;
 
 	/* KEY provided and verified TSIG or BADTIME allows signing. */
 	if (ctx->tsig_key != NULL && knot_tsig_can_sign(qdata->rcode_tsig)) {
@@ -358,9 +358,10 @@ fail:
 /*!
  * \brief Create a response for a given query in the INTERNET class.
  */
-static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
+static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
+	knot_nameserver_t *ns = data->param->ns;
 	int next_state = NS_PROC_FAIL;
 	dbg_ns("%s(%p, %p, pkt_type=%u)\n", __func__, pkt, ctx, data->packet_type);
 
@@ -369,16 +370,16 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		next_state = internet_answer(pkt, data);
 		break;
 	case KNOT_QUERY_NOTIFY:
-		next_state = internet_notify(pkt, ctx->ns, data);
+		next_state = internet_notify(pkt, ns, data);
 		break;
 	case KNOT_QUERY_AXFR:
-		next_state = axfr_answer(pkt, ctx->ns, data);
+		next_state = axfr_answer(pkt, ns, data);
 		break;
 	case KNOT_QUERY_IXFR:
-		next_state = ixfr_answer(pkt, ctx->ns, data);
+		next_state = ixfr_answer(pkt, ns, data);
 		break;
 	case KNOT_QUERY_UPDATE:
-		next_state = update_answer(pkt, ctx->ns, data);
+		next_state = update_answer(pkt, ns, data);
 		break;
 	default:
 		/* Nothing else is supported. */
@@ -393,11 +394,11 @@ static int query_internet(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 /*!
  * \brief Apply rate limit.
  */
-static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
+static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	/* Check if rate limiting applies. */
 	struct query_data *qdata = QUERY_DATA(ctx);
-	server_t *server = (server_t *)ctx->ns->data;
+	server_t *server = (server_t *)qdata->param->ns->data;
 	if (server->rrl == NULL) {
 		return state;
 	}
@@ -417,7 +418,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 	/* Now it is slip or drop. */
 	if (rrl_slip_roll(conf()->rrl_slip)) {
 		/* Answer slips. */
-		if (ns_proc_query_err(pkt, ctx) != KNOT_EOK) {
+		if (process_query_err(pkt, ctx) != KNOT_EOK) {
 			return NS_PROC_FAIL;
 		}
 		knot_wire_set_tc(pkt->wire);
@@ -432,7 +433,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, ns_proc_context_t *ctx)
 /*!
  * \brief Create a response for a given query in the CHAOS class.
  */
-static int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx)
+static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, ctx);
 	struct query_data *data = QUERY_DATA(ctx);
@@ -443,7 +444,7 @@ static int query_chaos(knot_pkt_t *pkt, ns_proc_context_t *ctx)
 		return NS_PROC_FAIL;
 	}
 
-	data->rcode = knot_chaos_answer(pkt, ctx->ns);
+	data->rcode = knot_chaos_answer(pkt, data->param->ns);
 	if (data->rcode != KNOT_RCODE_NOERROR) {
 		dbg_ns("%s: failed with RCODE=%d\n", __func__, data->rcode);
 		return NS_PROC_FAIL;
@@ -487,7 +488,7 @@ static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t 
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
-static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_context_t *ctx)
+static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx)
 {
 	int ret = knot_pkt_init_response(resp, query);
 	if (ret != KNOT_EOK) {
@@ -499,6 +500,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 	 * Already checked for absence of compression and length.
 	 */
 	struct query_data *qdata = QUERY_DATA(ctx);
+	knot_nameserver_t *ns = qdata->param->ns;
 	const knot_dname_t *qname = knot_pkt_qname(query);
 	memcpy(qdata->orig_qname, qname, query->qname_size);
 	ret = knot_dname_to_lower((knot_dname_t *)qname);
@@ -508,7 +510,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 	}
 
 	/* Find zone for QNAME. */
-	qdata->zone = answer_zone_find(query, ctx->ns->zone_db);
+	qdata->zone = answer_zone_find(query, ns->zone_db);
 
 	/* Update maximal answer size. */
 	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
@@ -519,7 +521,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, ns_proc_con
 	if (!knot_pkt_have_edns(query)) {
 		return KNOT_EOK;
 	}
-	ret = knot_pkt_add_opt(resp, ctx->ns->opt_rr, knot_pkt_have_nsid(query));
+	ret = knot_pkt_add_opt(resp, ns->opt_rr, knot_pkt_have_nsid(query));
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't add OPT RR (%d)\n", __func__, ret);
 		return ret;

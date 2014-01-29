@@ -41,13 +41,14 @@
 #include "knot/server/zones.h"
 #include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
-#include "knot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
 
 /*! \brief TCP context data. */
-typedef struct tcp_context_t {
-	ns_proc_context_t query_ctx; /*!< Query processing context. */
+typedef struct tcp_context {
+	knot_process_t query_ctx;    /*!< Query processing context. */
+	knot_nameserver_t *ns;       /*!< Name server structure. */
 	struct iovec iov[2];         /*!< TX/RX buffers. */
 	unsigned client_threshold;   /*!< Index of first TCP client. */
 	timev_t last_poll_time;      /*!< Time of the last socket poll. */
@@ -104,12 +105,13 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 /*!
  * \brief TCP event handler function.
  */
-static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
+static int tcp_handle(tcp_context_t *tcp, int fd,
                       struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
-	struct ns_proc_query_param param = {0};
+	struct process_query_param param = {0};
 	sockaddr_prep(&param.query_source);
+	param.ns = tcp->ns;
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
@@ -133,16 +135,16 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 	}
 
 	/* Create query processing context. */
-	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
+	knot_process_begin(&tcp->query_ctx, &param, NS_PROC_QUERY);
 
 	/* Input packet. */
-	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
+	int state = knot_process_in(rx->iov_base, rx->iov_len, &tcp->query_ctx);
 
 	/* Resolve until NOOP or finished. */
 	ret = KNOT_EOK;
 	while (state & (NS_PROC_FULL|NS_PROC_FAIL)) {
 		uint16_t tx_len = tx->iov_len;
-		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
+		state = knot_process_out(tx->iov_base, &tx_len, &tcp->query_ctx);
 
 		/* If it has response, send it. */
 		if (tx_len > 0) {
@@ -154,7 +156,7 @@ static int tcp_handle(ns_proc_context_t *query_ctx, int fd,
 	}
 
 	/* Reset after processing. */
-	ns_proc_finish(query_ctx);
+	knot_process_finish(&tcp->query_ctx);
 
 	return ret;
 }
@@ -298,7 +300,7 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i)
 {
 	int fd = tcp->set.pfd[i].fd;
-	int ret = tcp_handle(&tcp->query_ctx, fd, &tcp->iov[0], &tcp->iov[1]);
+	int ret = tcp_handle(tcp, fd, &tcp->iov[0], &tcp->iov[1]);
 
 	/* Flush per-query memory. */
 	mp_flush(tcp->query_ctx.mm.ctx);
@@ -375,7 +377,7 @@ int tcp_master(dthread_t *thread)
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
 	/* Create TCP answering context. */
-	tcp.query_ctx.ns = handler->server->nameserver;
+	tcp.ns = handler->server->nameserver;
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&tcp.query_ctx.mm, 4 * sizeof(knot_pkt_t));

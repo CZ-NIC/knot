@@ -54,6 +54,19 @@ enum tsig_consts {
 	                          + 6			// time signed
 };
 
+/*! \brief Packet signing context.
+ *  \todo This should be later moved to TSIG files when refactoring. */
+typedef struct knot_sign_context {
+	knot_tsig_key_t *tsig_key;
+	uint8_t *tsig_buf;
+	uint8_t *tsig_digest;
+	size_t tsig_buflen;
+	size_t tsig_digestlen;
+	uint8_t tsig_runlen;
+	uint64_t tsig_time_signed;
+	size_t pkt_count;
+} knot_sign_context_t;
+
 /*!
  * \brief Create TSIG RDATA.
  *

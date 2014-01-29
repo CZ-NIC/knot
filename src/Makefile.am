@@ -113,6 +113,8 @@ libknot_la_SOURCES =				\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/wire.h			\
+	libknot/processing/process.c	\
+	libknot/processing/process.h	\
 	libknot/dname.c				\
 	libknot/consts.h			\
 	libknot/edns.h				\
@@ -240,8 +242,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/ixfr.h			\
 	knot/nameserver/name-server.c		\
 	knot/nameserver/name-server.h		\
-	knot/nameserver/ns_proc_query.c		\
-	knot/nameserver/ns_proc_query.h		\
+	knot/nameserver/process_query.c		\
+	knot/nameserver/process_query.h		\
 	knot/nameserver/nsec_proofs.c		\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/update.c		\

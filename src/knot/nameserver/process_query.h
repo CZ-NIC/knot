@@ -1,5 +1,5 @@
 /*!
- * \file ns_proc_query.h
+ * \file process_query.h
  *
  * \author Marek Vavrusa <marek.vavrusa@nic.cz>
  *
@@ -24,15 +24,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_NS_PROC_QUERY_H_
-#define _KNOT_NS_PROC_QUERY_H_
+#ifndef _PROCESS_QUERY_H_
+#define _PROCESS_QUERY_H_
 
+#include "libknot/processing/process.h"
 #include "knot/nameserver/name-server.h"
 #include "common/acl.h"
 
 /* Query processing module implementation. */
-extern const ns_proc_module_t _ns_proc_query;
-#define NS_PROC_QUERY (&_ns_proc_query)
+extern const knot_process_module_t _process_query;
+#define NS_PROC_QUERY (&_process_query)
 #define NS_PROC_QUERY_ID 1
 
 /*! \brief Query processing logging common base. */
@@ -56,7 +57,7 @@ extern const ns_proc_module_t _ns_proc_query;
 	NS_PROC_LOG(severity, qdata, what " of '%s' to '%s:%d': ", msg)
 
 /* Query processing specific flags. */
-enum ns_proc_query_flag {
+enum process_query_flag {
 	NS_QUERY_NO_AXFR    = 1 << 0, /* Don't process AXFR */
 	NS_QUERY_NO_IXFR    = 1 << 1, /* Don't process IXFR */
 	NS_QUERY_LIMIT_ANY  = 1 << 2, /* Limit ANY QTYPE (respond with TC=1) */
@@ -65,9 +66,10 @@ enum ns_proc_query_flag {
 };
 
 /* Module load parameters. */
-struct ns_proc_query_param {
+struct process_query_param {
 	uint16_t   proc_flags;
 	sockaddr_t query_source;
+	knot_nameserver_t *ns;
 };
 
 /*! \brief Query processing intermediate data. */
@@ -89,10 +91,10 @@ struct query_data {
 	/* Extensions. */
 	void *ext;
 	void (*ext_cleanup)(struct query_data*); /*!< Extensions cleanup callback. */
-	ns_sign_context_t sign;            /*!< Signing context. */
+	knot_sign_context_t sign;            /*!< Signing context. */
 
 	/* Everything below should be kept on reset. */
-	struct ns_proc_query_param *param; /*!< Module parameters. */
+	struct process_query_param *param; /*!< Module parameters. */
 	mm_ctx_t *mm;                      /*!< Memory context. */
 };
 
@@ -110,7 +112,7 @@ struct wildcard_hit {
  * \param module_param
  * \return MORE (awaits query)
  */
-int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param);
+int process_query_begin(knot_process_t *ctx, void *module_param);
 
 /*!
  * \brief Reset query processing context.
@@ -118,7 +120,7 @@ int ns_proc_query_begin(ns_proc_context_t *ctx, void *module_param);
  * \param ctx
  * \return MORE (awaits next query)
  */
-int ns_proc_query_reset(ns_proc_context_t *ctx);
+int process_query_reset(knot_process_t *ctx);
 
 /*!
  * \brief Finish and close current query processing.
@@ -126,7 +128,7 @@ int ns_proc_query_reset(ns_proc_context_t *ctx);
  * \param ctx
  * \return NOOP (context will be inoperable further on)
  */
-int ns_proc_query_finish(ns_proc_context_t *ctx);
+int process_query_finish(knot_process_t *ctx);
 
 /*!
  * \brief Put query into query processing context.
@@ -136,7 +138,7 @@ int ns_proc_query_finish(ns_proc_context_t *ctx);
  * \retval NOOP (unsupported query)
  * \retval FULL (ready to write answer)
  */
-int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+int process_query_in(knot_pkt_t *pkt, knot_process_t *ctx);
 
 /*!
  * \brief Make query response.
@@ -147,7 +149,7 @@ int ns_proc_query_in(knot_pkt_t *pkt, ns_proc_context_t *ctx);
  * \retval FULL (partial response, send it and call again)
  * \retval FAIL (failure)
  */
-int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx);
 
 /*!
  * \brief Make an error response.
@@ -157,7 +159,7 @@ int ns_proc_query_out(knot_pkt_t *pkt, ns_proc_context_t *ctx);
  * \retval DONE (finished response)
  * \retval FAIL (failure)
  */
-int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx);
+int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx);
 
 /*!
  * \brief Check current query against ACL.
@@ -166,7 +168,7 @@ int ns_proc_query_err(knot_pkt_t *pkt, ns_proc_context_t *ctx);
  * \param qdata
  * \return true if accepted, false if denied.
  */
-bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata);
+bool process_query_acl_check(acl_t *acl, struct query_data *qdata);
 
 /*!
  * \brief Verify current query transaction security and update query data.
@@ -178,7 +180,7 @@ bool ns_proc_query_acl_check(acl_t *acl, struct query_data *qdata);
  * \retval KNOT_TSIG_EBADTIME
  * \retval (other generic errors)
  */
-int ns_proc_query_verify(struct query_data *qdata);
+int process_query_verify(struct query_data *qdata);
 
 /*!
  * \brief Sign query response if applicable.
@@ -188,8 +190,8 @@ int ns_proc_query_verify(struct query_data *qdata);
  * \retval KNOT_EOK
  * \retval (other generic errors)
  */
-int ns_proc_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata);
+int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata);
 
-#endif /* _KNOT_NS_PROC_QUERY_H_ */
+#endif /* _PROCESS_QUERY_H_ */
 
 /*! @} */

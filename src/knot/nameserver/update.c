@@ -2,7 +2,7 @@
 
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/internet.h"
-#include "knot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/process_query.h"
 #include "knot/nameserver/name-server.h"
 #include "libknot/util/debug.h"
 #include "knot/dnssec/zone-events.h"
