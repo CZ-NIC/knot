@@ -238,10 +238,10 @@ class Test(object):
 
         for msg in resp.resp:
             for rrset in msg.answer:
-                records = rrset.to_text().split("\n")
-                for record in records:
+                rrs = rrset.to_text().split("\n")
+                for rr in rrs:
                     # Owner to lower-case :-(
-                    item = record.strip().split(" ", 1)
+                    item = rr.strip().split(" ", 1)
                     item_lower = item[0].lower() + " " + item[1]
 
                     if item_lower in unique and rrset.rdtype != dns.rdatatype.SOA:
