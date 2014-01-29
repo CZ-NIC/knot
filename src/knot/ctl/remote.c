@@ -535,7 +535,7 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 
 	ret = knot_pkt_put(resp, 0, rr, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1);
+		knot_rrset_deep_free(&rr, 1, NULL);
 		goto failed;
 	}
 
@@ -798,7 +798,7 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	}
 
 	/* Create RRSet. */
-	knot_rrset_t *rr = knot_rrset_new(key, t, KNOT_CLASS_CH, 0);
+	knot_rrset_t *rr = knot_rrset_new(key, t, KNOT_CLASS_CH, 0, NULL);
 	if (rr == NULL)
 		knot_dname_free(&key);
 
@@ -814,7 +814,7 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 	/* Number of chunks. */
 	const size_t K = 255;
 	unsigned chunks = v_len / K + 1;
-	uint8_t *raw = knot_rrset_create_rdata(rr, v_len + chunks);
+	uint8_t *raw = knot_rrset_create_rdata(rr, v_len + chunks, NULL);
 
 	/* Write TXT item. */
 	unsigned p = 0;
@@ -848,7 +848,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 
 	/* Build RDATA. */
 	int dn_size = knot_dname_size(dn);
-	int result = knot_rrset_add_rdata(rr, dn, dn_size);
+	int result = knot_rrset_add_rdata(rr, dn, dn_size, NULL);
 	knot_dname_free(&dn);
 
 	return result;

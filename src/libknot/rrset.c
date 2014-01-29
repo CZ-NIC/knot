@@ -35,6 +35,38 @@
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
 
+static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size)
+{
+	if (mm) {
+		if (mm->free) {
+			mm->free(what);
+		}
+		what = mm->alloc(mm->ctx, size);
+		return what;
+	} else {
+		void *p = realloc(what, size);
+		return p;
+	}
+}
+
+static void *mm_alloc(mm_ctx_t *mm, size_t size)
+{
+	if (mm) {
+		return mm->alloc(mm->ctx, size);
+	} else {
+		return malloc(size);
+	}
+}
+
+static void mm_free(mm_ctx_t *mm, void *what)
+{
+	if (mm && mm->free) {
+		mm->free(what);
+	} else {
+		free(what);
+	}
+}
+
 static uint32_t rrset_rdata_offset(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_indices == NULL ||
@@ -716,9 +748,9 @@ uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset)
 }
 
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass, uint32_t ttl)
+                             uint16_t rclass, uint32_t ttl, mm_ctx_t *mm)
 {
-	knot_rrset_t *ret = malloc(sizeof(knot_rrset_t));
+	knot_rrset_t *ret = mm_alloc(mm, sizeof(knot_rrset_t));
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
@@ -739,7 +771,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	return ret;
 }
 
-knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl)
+knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl, mm_ctx_t *mm)
 {
 	if (!tpl) {
 		return NULL;
@@ -750,36 +782,37 @@ knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl)
 		return NULL;
 	}
 
-	return knot_rrset_new(owner, tpl->type, tpl->rclass, tpl->ttl);
+	return knot_rrset_new(owner, tpl->type, tpl->rclass, tpl->ttl, mm);
 }
 
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
-                         const uint8_t *rdata, uint16_t size)
+                         const uint8_t *rdata, uint16_t size, mm_ctx_t *mm)
 {
 	if (rrset == NULL || rdata == NULL || size == 0) {
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *p = knot_rrset_create_rdata(rrset, size);
+	uint8_t *p = knot_rrset_create_rdata(rrset, size, mm);
 	memcpy(p, rdata, size);
 
 	return KNOT_EOK;
 }
 
 static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
-                                               size_t pos, uint16_t size)
+                                               size_t pos, uint16_t size,
+                                               mm_ctx_t *mm)
 {
 	if (rrset == NULL || pos > rrset->rdata_count) {
 		return NULL;
 	}
 	if (pos == rrset->rdata_count) {
-		return knot_rrset_create_rdata(rrset, size);
+		return knot_rrset_create_rdata(rrset, size, mm);
 	}
 
 	uint32_t total_size = rrset_rdata_size_total(rrset);
 
 	// Realloc actual data.
-	void *tmp = realloc(rrset->rdata, total_size + size);
+	void *tmp = mm_realloc(mm, rrset->rdata, total_size + size);
 	if (tmp) {
 		rrset->rdata = tmp;
 	} else {
@@ -797,8 +830,8 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 	        rrset_rdata_size_total(rrset) - rrset_rdata_offset(rrset, pos));
 	
 	// Realloc indices. We will allocate exact size to save space.
-	tmp = realloc(rrset->rdata_indices,
-	              (rrset->rdata_count + 1) * sizeof(uint32_t));
+	tmp = mm_realloc(mm, rrset->rdata_indices,
+	                (rrset->rdata_count + 1) * sizeof(uint32_t));
 	if (tmp) {
 		rrset->rdata_indices = tmp;
 	} else {
@@ -821,13 +854,14 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 }
 
 static int knot_rrset_add_rdata_at_pos(knot_rrset_t *rrset, size_t pos,
-                                       const uint8_t *rdata, uint16_t size)
+                                       const uint8_t *rdata, uint16_t size,
+                                       mm_ctx_t *mm)
 {
 	if (rrset == NULL || rdata == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *p = knot_rrset_create_rdata_at_pos(rrset, pos, size);
+	uint8_t *p = knot_rrset_create_rdata_at_pos(rrset, pos, size, mm);
 	if (p == NULL) {
 		return KNOT_ERROR;
 	}
@@ -838,7 +872,8 @@ static int knot_rrset_add_rdata_at_pos(knot_rrset_t *rrset, size_t pos,
 
 /*----------------------------------------------------------------------------*/
 
-uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size)
+uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size,
+                                 mm_ctx_t *mm)
 {
 	if (rrset == NULL) {
 		return NULL;
@@ -847,11 +882,11 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size)
 	uint32_t total_size = rrset_rdata_size_total(rrset);
 
 	/* Realloc indices. We will allocate exact size to save space. */
-	rrset->rdata_indices = xrealloc(rrset->rdata_indices,
-	                                (rrset->rdata_count + 1) * sizeof(uint32_t));
+	rrset->rdata_indices = mm_realloc(mm, rrset->rdata_indices,
+	                                  (rrset->rdata_count + 1) * sizeof(uint32_t));
 
 	/* Realloc actual data. */
-	rrset->rdata = xrealloc(rrset->rdata, total_size + size);
+	rrset->rdata = mm_realloc(mm, rrset->rdata, total_size + size);
 
 	/* Pointer to new memory. */
 	uint8_t *dst = rrset->rdata + total_size;
@@ -913,7 +948,8 @@ int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
 		if (dupl == KNOT_RRSET_DUPL_MERGE) {
 			int merged, deleted_rrs;
 			rc = knot_rrset_merge_sort(rrset->rrsigs, rrsigs,
-			                           &merged, &deleted_rrs);
+			                           &merged, &deleted_rrs,
+			                           NULL);
 			if (rc != KNOT_EOK) {
 				return rc;
 			} else if (merged || deleted_rrs) {
@@ -1102,7 +1138,8 @@ int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
 
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
-                                   size_t total_size, size_t rdlength)
+                                   size_t total_size, size_t rdlength,
+                                   mm_ctx_t *mm)
 {
 	if (rrset == NULL || wire == NULL || pos == NULL) {
 		return KNOT_EINVAL;
@@ -1112,7 +1149,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		/* Nothing to parse, APLs can have 0 RDLENGTH, but only APLs. */
 		if (rrset->type == KNOT_RRTYPE_APL) {
 			// Add empty RDATA
-			return knot_rrset_create_rdata(rrset, 0) == NULL ?
+			return knot_rrset_create_rdata(rrset, 0, mm) == NULL ?
 			       KNOT_ENOMEM : KNOT_EOK;
 		} else {
 			return KNOT_EOK;
@@ -1257,7 +1294,7 @@ dbg_rrset_exec_detail(
 		}
 	}
 
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, offset);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, offset, mm);
 	if (rdata == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -1296,20 +1333,14 @@ int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to)
 
 	dbg_rrset_detail("rr: deep_copy: Copying RRs of type %d\n",
 	                 from->type);
+	*to = knot_rrset_new_from(from, NULL);
 
-	*to = xmalloc(sizeof(knot_rrset_t));
-
-	(*to)->owner = knot_dname_copy(from->owner);
-	if ((*to)->owner == NULL) {
-		free(*to);
+	if (*to == NULL) {
+		knot_rrset_deep_free(to, 1, NULL);
 		*to = NULL;
 		return KNOT_ENOMEM;
 	}
 
-	(*to)->rclass = from->rclass;
-	(*to)->ttl = from->ttl;
-	(*to)->type = from->type;
-	(*to)->rdata_count = from->rdata_count;
 	(*to)->rrsigs = NULL;
 
 	(*to)->additional = NULL; /* Never copy. */
@@ -1333,7 +1364,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
 		result = knot_rrset_deep_copy_no_sig(from->rrsigs,
 		                                     &(*to)->rrsigs);
 		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(to, 1);
+			knot_rrset_deep_free(to, 1, NULL);
 		}
 	}
 
@@ -1392,37 +1423,38 @@ void knot_rrset_free(knot_rrset_t **rrset)
 	*rrset = NULL;
 }
 
-static void rrset_deep_free_content(knot_rrset_t *rrset, int free_owner)
+static void rrset_deep_free_content(knot_rrset_t *rrset, int free_owner,
+                                    mm_ctx_t *mm)
 {
 	assert(rrset);
 
 	if (rrset->rrsigs) {
 		assert(rrset->rrsigs->rrsigs == NULL);
-		rrset_deep_free_content(rrset->rrsigs, free_owner);
-		free(rrset->rrsigs);
+		rrset_deep_free_content(rrset->rrsigs, free_owner, mm);
+		mm_free(mm, rrset->rrsigs);
 	}
 
-	free(rrset->rdata);
-	free(rrset->rdata_indices);
+	mm_free(mm, rrset->rdata);
+	mm_free(mm, rrset->rdata_indices);
 	if (free_owner) {
 		knot_dname_free(&rrset->owner);
 	}
 }
 
-void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner)
+void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner, mm_ctx_t *mm)
 {
 	/*! \bug The number of different frees in rrset is too damn high! */
 	if (rrset == NULL || *rrset == NULL) {
 		return;
 	}
 
-	rrset_deep_free_content(*rrset, free_owner);
+	rrset_deep_free_content(*rrset, free_owner, mm);
 
 	if (rrset_additional_needed((*rrset)->type)) {
-		free((*rrset)->additional);
+		mm_free(mm, (*rrset)->additional);
 	}
 
-	free(*rrset);
+	mm_free(mm, *rrset);
 	*rrset = NULL;
 }
 
@@ -1448,7 +1480,7 @@ void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner)
 }
 
 static int knot_rrset_add_rr_n(knot_rrset_t *rrset, const knot_rrset_t *rr,
-                               size_t pos)
+                               size_t pos, mm_ctx_t *mm)
 {
 	if (rrset == NULL || rr == NULL) {
 		return KNOT_EINVAL;
@@ -1460,7 +1492,8 @@ static int knot_rrset_add_rr_n(knot_rrset_t *rrset, const knot_rrset_t *rr,
 
 	uint8_t *new_rdata =
 		knot_rrset_create_rdata(rrset,
-	                                rrset_rdata_item_size(rr, pos));
+	                                rrset_rdata_item_size(rr, pos),
+	                                mm);
 	if (new_rdata == NULL) {
 		return KNOT_ERROR;
 	}
@@ -1471,10 +1504,11 @@ static int knot_rrset_add_rr_n(knot_rrset_t *rrset, const knot_rrset_t *rr,
 	return KNOT_EOK;
 }
 
-int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2)
+int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
+                     mm_ctx_t *mm)
 {
 	for (uint16_t i = 0; i < rrset2->rdata_count; ++i) {
-		int ret = knot_rrset_add_rr_n(rrset1, rrset2, i);
+		int ret = knot_rrset_add_rr_n(rrset1, rrset2, i, mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -1484,7 +1518,8 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2)
 }
 
 static int knot_rrset_add_rr_sort_n(knot_rrset_t *rrset, const knot_rrset_t *rr,
-                                    int *merged, int *deleted, size_t pos)
+                                    int *merged, int *deleted, size_t pos,
+                                    mm_ctx_t *mm)
 {
 	if (rrset == NULL || rr == NULL) {
 		dbg_rrset("rrset: add_rr_sort: NULL arguments.");
@@ -1528,7 +1563,8 @@ dbg_rrset_exec_detail(
 		// Insert RR to RRSet
 		int ret = knot_rrset_add_rdata_at_pos(rrset, insert_to,
 			                  rrset_rdata_pointer(rr, pos),
-			                  rrset_rdata_item_size(rr, pos));
+			                  rrset_rdata_item_size(rr, pos),
+			                  mm);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("rrset: add_rr: Could not "
 			          "add RDATA to RRSet. (%s)\n",
@@ -1544,7 +1580,7 @@ dbg_rrset_exec_detail(
 }
 
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
-                          int *merged_rrs, int *deleted_rrs)
+                          int *merged_rrs, int *deleted_rrs, mm_ctx_t *mm)
 {
 	int result = KNOT_EOK;
 	int merged = 0;
@@ -1552,7 +1588,7 @@ int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 
 	for (uint16_t i = 0; i < rrset2->rdata_count; ++i) {
 		result = knot_rrset_add_rr_sort_n(rrset1, rrset2, &merged,
-		                                   &deleted, i);
+		                                  &deleted, i, mm);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -1583,18 +1619,19 @@ int knot_rrset_sort_rdata(knot_rrset_t *rrset)
 	// 3. swap the contents, free the temporary
 
 	knot_rrset_t *sorted = knot_rrset_new(rrset->owner, rrset->type,
-	                                      rrset->rclass, rrset->ttl);
+	                                      rrset->rclass, rrset->ttl,
+	                                      NULL);
 	if (!sorted) {
 		return KNOT_ENOMEM;
 	}
 
-	int result = knot_rrset_merge_sort(sorted, rrset, NULL, NULL);
+	int result = knot_rrset_merge_sort(sorted, rrset, NULL, NULL, NULL);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&sorted, 1);
+		knot_rrset_deep_free(&sorted, 1, NULL);
 		return result;
 	}
 
-	rrset_deep_free_content(rrset, 0);
+	rrset_deep_free_content(rrset, 0, NULL);
 	*rrset = *sorted;
 	free(sorted);
 
@@ -1789,7 +1826,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 	offset += sizeof(uint32_t);
 
 	/* Create new RRSet. */
-	*rrset = knot_rrset_new(owner, type, rclass, ttl);
+	*rrset = knot_rrset_new(owner, type, rclass, ttl, NULL);
 	if (*rrset == NULL) {
 		knot_dname_free(&owner);
 		free(rdata_indices);
@@ -1904,7 +1941,7 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 	/* Get size of RDATA to be copied. */
 	uint16_t item_size = rrset_rdata_item_size(source, rdata_pos);
 	/* Reserve space in dest RRSet. */
-	uint8_t *rdata = knot_rrset_create_rdata(dest, item_size);
+	uint8_t *rdata = knot_rrset_create_rdata(dest, item_size, NULL);
 	if (rdata == NULL) {
 		dbg_rrset("rr: add_rr_from_rrset: Could not create RDATA.\n");
 		return KNOT_ERROR;
@@ -1941,7 +1978,7 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 			/* RR was removed, can be added to 'return' RRSet. */
 			ret = knot_rrset_add_rr_from_rrset(return_rr, what, i);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&return_rr, 0);
+				knot_rrset_deep_free(&return_rr, 0, NULL);
 				dbg_xfrin("xfr: Could not add RR (%s).\n",
 				          knot_strerror(ret));
 				return ret;
@@ -1954,7 +1991,7 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 			dbg_rrset("rrset: remove_using_rrset: "
 			          "RRSet removal failed (%s).\n",
 			          knot_strerror(ret));
-			knot_rrset_deep_free(&return_rr, 0);
+			knot_rrset_deep_free(&return_rr, 0, NULL);
 			return ret;
 		}
 	}
@@ -1968,7 +2005,7 @@ int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
 {
 	knot_rrset_t *rr_removed = NULL;
 	int ret = knot_rrset_remove_rr_using_rrset(from, what, &rr_removed);
-	knot_rrset_deep_free(&rr_removed, 1);
+	knot_rrset_deep_free(&rr_removed, 1, NULL);
 	return ret;
 }
 

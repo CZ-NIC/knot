@@ -195,7 +195,7 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 						    &rrset, &node,
 						    KNOT_RRSET_DUPL_MERGE);
 		if (ret > 0) {
-			knot_rrset_deep_free(&(*last)->rrsig, 1);
+			knot_rrset_deep_free(&(*last)->rrsig, 1, NULL);
 		} else if (ret == KNOT_ENONODE) {
 			// Nothing to cover - print warning
 			char *name = knot_dname_to_str((*last)->rrsig->owner);
@@ -210,7 +210,7 @@ static int xfrin_process_orphan_rrsigs(knot_zone_contents_t *zone,
 			free(name);
 
 			// discard RRSIG
-			knot_rrset_deep_free(&(*last)->rrsig, 1);
+			knot_rrset_deep_free(&(*last)->rrsig, 1, NULL);
 		} else if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to add orphan RRSIG to zone.\n");
 			return ret;
@@ -258,7 +258,7 @@ void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs)
 		xfrin_orphan_rrsig_t *prev = r;
 		r = r->next;
 		if (prev->rrsig != NULL) {
-			knot_rrset_deep_free(&prev->rrsig, 1);
+			knot_rrset_deep_free(&prev->rrsig, 1, NULL);
 		}
 		free(prev);
 	}
@@ -475,7 +475,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 				  "Answer is not a SOA RR.\n");
 			knot_pkt_free(&packet);
 			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			/*! \todo Cleanup. */
 			return KNOT_EMALF;
 		}
@@ -484,7 +484,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 		if (node == NULL) {
 			dbg_xfrin("Failed to create new node.\n");
 			knot_pkt_free(&packet);
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			return KNOT_ENOMEM;
 		}
 
@@ -496,7 +496,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			dbg_xfrin("Failed to create new constr. zone.\n");
 			knot_pkt_free(&packet);
 			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			return KNOT_ENOMEM;
 		}
 
@@ -508,7 +508,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			dbg_xfrin("Failed to create new zone.\n");
 			knot_pkt_free(&packet);
 			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			/*! \todo Cleanup. */
 			return KNOT_ENOMEM;
 		}
@@ -524,13 +524,13 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 				  knot_strerror(ret));
 			knot_pkt_free(&packet);
 			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			/*! \todo Cleanup. */
 			return KNOT_ERROR;
 		} else if (ret > 0) {
 			dbg_xfrin("Merged SOA RRSet.\n");
 			// merged, free the RRSet
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 		}
 
 		if (!semantic_check_passed(zone, node)) {
@@ -556,7 +556,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// Out-of-zone data
 			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			// take next RR
 			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
@@ -601,7 +601,7 @@ dbg_xfrin_exec_detail(
 			dbg_xfrin_verb("xfrin_check_tsig() returned %d\n", ret);
 
 			knot_pkt_free(&packet);
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 
 			if (ret != KNOT_EOK) {
 				/*! \todo [TSIG] Handle TSIG errors. */
@@ -640,19 +640,19 @@ dbg_xfrin_exec_detail(
 
 				if (ret > 0) {
 					dbg_xfrin_detail("Merged RRSIGs.\n");
-					knot_rrset_deep_free(&rr, 1);
+					knot_rrset_deep_free(&rr, 1, NULL);
 				} else if (ret != KNOT_EOK) {
 					dbg_xfrin("Failed to save orphan"
 						  " RRSIGs.\n");
 					knot_pkt_free(&packet);
-					knot_rrset_deep_free(&rr, 1);
+					knot_rrset_deep_free(&rr, 1, NULL);
 					return ret;
 				}
 			} else if (ret < 0) {
 				dbg_xfrin("Failed to add RRSIGs (%s).\n",
 					       knot_strerror(ret));
 				knot_pkt_free(&packet);
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 				return KNOT_ERROR;  /*! \todo Other error code. */
 			} else if (ret == 1) {
 				assert(node != NULL);
@@ -663,7 +663,7 @@ dbg_xfrin_exec_verb(
 				free(name);
 );
 				in_zone = 1;
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 			} else if (ret == 2) {
 				// should not happen
 				assert(0);
@@ -711,7 +711,7 @@ dbg_xfrin_exec_verb(
 			if (node == NULL) {
 				dbg_xfrin("Failed to create new node.\n");
 				knot_pkt_free(&packet);
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 				return KNOT_ENOMEM;
 			}
 			dbg_xfrin_detail("Created new node for the record.\n");
@@ -723,7 +723,7 @@ dbg_xfrin_exec_verb(
 					  knot_strerror(ret));
 				knot_pkt_free(&packet);
 				knot_node_free(&node);
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 				return KNOT_ERROR;
 			} else if (ret > 0) {
 				// should not happen, this is new node
@@ -736,7 +736,7 @@ dbg_xfrin_exec_verb(
 				// Fatal error, free packet
 				knot_pkt_free(&packet);
 				knot_node_free(&node);
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 				return ret;
 			}
 			
@@ -760,7 +760,7 @@ dbg_xfrin_exec_verb(
 				return KNOT_ERROR;
 			} else if (ret > 0) {
 				// merged, free the RRSet
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 			}
 		}
 
@@ -778,7 +778,7 @@ dbg_xfrin_exec_verb(
 				  knot_strerror(ret));
 				knot_pkt_free(&packet);
 				knot_node_free(&node);
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 				return ret;
 		}
 	}
@@ -834,7 +834,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 
 		ret = knot_changesets_init(chs);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			knot_pkt_free(&packet);
 			return ret;
 		}
@@ -842,7 +842,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		// the first RR must be a SOA
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 			dbg_xfrin("First RR is not a SOA RR!\n");
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			ret = KNOT_EMALF;
 			goto cleanup;
 		}
@@ -877,7 +877,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 			knot_pkt_free(&packet);
 			return XFRIN_RES_SOA_ONLY;
 		} else if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			knot_pkt_free(&packet);
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
@@ -886,7 +886,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	} else {
 		if ((*chs)->first_soa == NULL) {
 			dbg_xfrin("Changesets don't contain SOA first!\n");
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			ret = KNOT_EINVAL;
 			goto cleanup;
 		}
@@ -934,7 +934,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		dbg_xfrin_detail("State is not -1, deciding...\n");
 		// there should be at least one started changeset right now
 		if (EMPTY_LIST((*chs)->sets)) {
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			ret = KNOT_EMALF;
 			goto cleanup;
 		}
@@ -965,7 +965,7 @@ dbg_xfrin_exec_verb(
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// out-of-zone domain
 			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			// take next RR
 			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
@@ -981,7 +981,7 @@ dbg_xfrin_exec_verb(
 				dbg_xfrin("First RR is not a SOA RR!\n");
 				dbg_xfrin_verb("RR type: %u\n",
 					       knot_rrset_type(rr));
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 				ret = KNOT_EMALF;
 				goto cleanup;
 			}
@@ -995,7 +995,7 @@ dbg_xfrin_exec_verb(
 				ret = xfrin_check_tsig(packet, xfr, 1);
 
 				// last SOA, discard and end
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 				knot_pkt_free(&packet);
 
 				/*! \note [TSIG] If TSIG validates, consider
@@ -1012,13 +1012,13 @@ dbg_xfrin_exec_verb(
 					ret = KNOT_ESPACE;
 
 				if (ret != KNOT_EOK) {
-					knot_rrset_deep_free(&rr, 1);
+					knot_rrset_deep_free(&rr, 1, NULL);
 					goto cleanup;
 				}
 
 				chset = knot_changesets_create_changeset(*chs);
 				if (chset == NULL) {
-					knot_rrset_deep_free(&rr, 1);
+					knot_rrset_deep_free(&rr, 1, NULL);
 					goto cleanup;
 				}
 				knot_changeset_add_soa(chset, rr, KNOT_CHANGESET_REMOVE);
@@ -1043,7 +1043,7 @@ dbg_xfrin_exec_verb(
 				ret = knot_changeset_add_rr(chset, rr,
 				                            KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
-					knot_rrset_deep_free(&rr, 1);
+					knot_rrset_deep_free(&rr, 1, NULL);
 					goto cleanup;
 				}
 			}
@@ -1064,7 +1064,7 @@ dbg_xfrin_exec_verb(
 				ret = knot_changeset_add_rr(chset, rr,
 				                            KNOT_CHANGESET_ADD);
 				if (ret != KNOT_EOK) {
-					knot_rrset_deep_free(&rr, 1);
+					knot_rrset_deep_free(&rr, 1, NULL);
 					goto cleanup;
 				}
 			}
@@ -1141,7 +1141,7 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 	if (save_new) {
 		ret = knot_changes_add_rrset(changes, *copy, KNOT_CHANGES_NEW);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(copy, 1);
+			knot_rrset_deep_free(copy, 1, NULL);
 			return ret;
 		}
 		if ((*copy)->rrsigs != NULL) {
@@ -1149,7 +1149,7 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 			ret = knot_changes_add_rrset(changes, (*copy)->rrsigs,
 			      KNOT_CHANGES_NEW);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&((*copy)->rrsigs), 1);
+				knot_rrset_deep_free(&(*copy)->rrsigs, 1, NULL);
 				return ret;
 			}
 		}
@@ -1204,7 +1204,7 @@ dbg_xfrin_exec_detail(
 	// replace the RRSet in the node copy by the new one
 	ret = knot_node_add_rrset_replace(node, *rrset);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(rrset, 1);
+		knot_rrset_deep_free(rrset, 1, NULL);
 		dbg_xfrin("Failed to add RRSet copy to node\n");
 		return KNOT_ERROR;
 	}
@@ -1309,7 +1309,7 @@ static int xfrin_apply_remove_rrsigs(knot_changes_t *changes,
 	// connect the RDATA to the list of old RDATA
 	ret = knot_changes_add_rrset(changes, rr_removed, KNOT_CHANGES_OLD);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr_removed, 1);
+		knot_rrset_deep_free(&rr_removed, 1, NULL);
 		return ret;
 	}
 
@@ -1652,7 +1652,8 @@ dbg_xfrin_exec_detail(
 	}
 
 	int merged, deleted_rrs;
-	ret = knot_rrset_merge_sort(*rrset, add, &merged, &deleted_rrs);
+	ret = knot_rrset_merge_sort(*rrset, add, &merged, &deleted_rrs,
+	                            NULL);
 	if (ret < 0) {
 		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return ret;
@@ -1733,7 +1734,7 @@ dbg_xfrin_exec_verb(
 		knot_dname_t *owner_copy = knot_dname_copy(knot_node_get_owner(node));
 		*rrset = knot_rrset_new(owner_copy, type,
 					knot_rrset_class(add),
-					knot_rrset_ttl(add));
+					knot_rrset_ttl(add), NULL);
 		if (*rrset == NULL) {
 			knot_dname_free(&owner_copy);
 			dbg_xfrin("Failed to create new RRSet for RRSIGs.\n");
@@ -1814,7 +1815,8 @@ dbg_xfrin_exec_detail(
 		// merge the changeset RRSet to the copy
 		dbg_xfrin_detail("Merging RRSIG to the one in the RRSet.\n");
 		int merged, deleted_rrs;
-		ret = knot_rrset_merge_sort(rrsig, add, &merged, &deleted_rrs);
+		ret = knot_rrset_merge_sort(rrsig, add, &merged, &deleted_rrs,
+		                            NULL);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to merge changeset RRSIG to copy: %s"
 				  ".\n", knot_strerror(ret));
@@ -2150,7 +2152,7 @@ dbg_xfrin_exec_detail(
 				// already stored in the new RRSets list
 				// just delete the add RRSet, but without RDATA
 				// DNAMES as these were merged to the copied RRSet
-				knot_rrset_deep_free(&rr, 1);
+				knot_rrset_deep_free(&rr, 1, NULL);
 				rem_node((node_t *)rr_node);
 			} else if (ret == 3) {
 				// the RRSet was used and both RRSet and RDATA

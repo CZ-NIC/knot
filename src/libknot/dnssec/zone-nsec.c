@@ -142,8 +142,8 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
 	result = knot_changeset_add_rrset(changeset, old_nsec,
 	                                  KNOT_CHANGESET_REMOVE);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&old_nsec, 1);
-		knot_rrset_deep_free(&old_rrsigs, 1);
+		knot_rrset_deep_free(&old_nsec, 1, NULL);
+		knot_rrset_deep_free(&old_rrsigs, 1, NULL);
 		return result;
 	}
 
@@ -151,7 +151,7 @@ static int changeset_remove_nsec(const knot_rrset_t *oldrr,
 		result = knot_changeset_add_rrset(changeset, old_rrsigs,
 		                                  KNOT_CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&old_rrsigs, 1);
+			knot_rrset_deep_free(&old_rrsigs, 1, NULL);
 			return result;
 		}
 	}
@@ -182,7 +182,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	knot_dname_t *owner_cpy = knot_dname_copy(from->owner);
 	knot_rrset_t *rrset = knot_rrset_new(owner_cpy,
 	                                     KNOT_RRTYPE_NSEC, KNOT_CLASS_IN,
-	                                     ttl);
+	                                     ttl, NULL);
 	if (!rrset) {
 		return NULL;
 	}
@@ -200,7 +200,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	assert(to->owner);
 	size_t next_owner_size = knot_dname_size(to->owner);
 	size_t rdata_size = next_owner_size + bitmap_size(&rr_types);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size, NULL);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
@@ -267,7 +267,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
 			// current NSEC is valid, do nothing
 			dbg_dnssec_detail("NSECs equal.\n");
-			knot_rrset_deep_free(&new_nsec, 1);
+			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return KNOT_EOK;
 		}
 
@@ -277,7 +277,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b, void *d)
 		knot_node_set_replaced_nsec(a);
 		ret = changeset_remove_nsec(old_nsec, data->changeset);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&new_nsec, 1);
+			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return ret;
 		}
 	}
@@ -459,13 +459,13 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
 	assert(rr_types);
 
 	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl);
+	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl, NULL);
 	if (!rrset) {
 		return NULL;
 	}
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size, NULL);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
@@ -725,7 +725,7 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 			// referenced RRSIGs from old NSEC3 tree
 			node->rrset_tree[i]->rrsigs = NULL;
 			// newly allocated NSEC3 nodes
-			knot_rrset_deep_free(&node->rrset_tree[i], 1);
+			knot_rrset_deep_free(&node->rrset_tree[i], 1, NULL);
 		}
 
 		knot_node_free(&node);

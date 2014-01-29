@@ -31,6 +31,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "common/mempattern.h"
+
 #include "libknot/dname.h"
 
 struct knot_compr;
@@ -104,7 +106,8 @@ uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset);
  *         if an error occured.
  */
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
-                                 uint16_t rclass, uint32_t ttl);
+                             uint16_t rclass, uint32_t ttl,
+                             mm_ctx_t *mm);
 
 /*!
  * \brief Creates a new RRSet according to given template RRSet.
@@ -115,7 +118,7 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
  *
  * \return New RRSet, NULL if an error occured.
  */
-knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl);
+knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl, mm_ctx_t *mm);
 
 /*!
  * \brief Adds the given RDATA to the RRSet.
@@ -123,12 +126,13 @@ knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl);
  * \param rrset RRSet to add the RDATA to.
  * \param rdata RDATA to add to the RRSet.
  * \param size Size of RDATA.
+ * \param mm Memory context.
  *
  * \retval KNOT_EINVAL on wrong arguments.
  * \retval KNOT_EOK on success.
  */
 int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
-                         uint16_t size);
+                         uint16_t size, mm_ctx_t *mm);
 
 /*!
  * \brief Creates RDATA memory and returns a pointer to it.
@@ -137,11 +141,13 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
  *
  * \param rrset RRSet to add the RDATA to.
  * \param size Size of RR RDATA (Size in internal representation)
+ * \param mm Memory context.
  *
  * \return Pointer to memory to be written to.
  * \retval NULL if arguments are invalid
  */
-uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, const uint16_t size);
+uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, const uint16_t size,
+                                 mm_ctx_t *mm);
 
 /*!
  * \brief Returns size of an RR RDATA on a given position.
@@ -333,11 +339,8 @@ void knot_rrset_free(knot_rrset_t **rrset);
  * \param rrset RRset to be destroyed.
  * \param free_owner Set to 0 if you do not want the owner domain name to be
  *                   destroyed also. Set to <> 0 otherwise.
- * \param free_rdata_dnames Set to <> 0 if you want to delete ALL domain names
- *                          present in RDATA. Set to 0 otherwise. (See
- *                          knot_rdata_deep_free().)
  */
-void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner);
+void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner, mm_ctx_t *mm);
 
 void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner);
 
@@ -368,10 +371,11 @@ int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
  * \retval KNOT_EINVAL if the RRSets could not be merged, because their
  *         Owner, Type, Class or TTL does not match.
  */
-int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2);
+int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
+                     mm_ctx_t *mm);
 /*! \brief Merges without with duplicate check, with sort. */
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
-                          int *merged, int *deleted_rrs);
+                          int *merged, int *deleted_rrs, mm_ctx_t *mm);
 
 /*!
  * \brief Sort RDATA in RRSet to be in caonical order.
@@ -422,7 +426,8 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
 /* \brief Creates one RR from wire, stores it into 'rrset'. */
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
-                                   size_t total_size, size_t rdlength);
+                                   size_t total_size, size_t rdlength,
+                                   mm_ctx_t *mm);
 
 int knot_rrset_ds_check(const knot_rrset_t *rrset);
 

@@ -164,7 +164,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	                               KNOT_CHANGESET_ADD);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now! */
-		knot_rrset_deep_free(&rrset_copy, 1);
+		knot_rrset_deep_free(&rrset_copy, 1, NULL);
 		dbg_zonediff("zone_diff: add_rrset: Could not add RRSet. "
 		             "Reason: %s.\n", knot_strerror(ret));
 		return ret;
@@ -208,7 +208,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	                               KNOT_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now. */
-		knot_rrset_deep_free(&rrset_copy, 1);
+		knot_rrset_deep_free(&rrset_copy, 1, NULL);
 		dbg_zonediff("zone_diff: remove_rrset: Could not remove RRSet. "
 		             "Reason: %s.\n", knot_strerror(ret));
 		return ret;
@@ -344,7 +344,8 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	*changes = knot_rrset_new(owner_copy,
 	                          knot_rrset_type(rrset1),
 	                          knot_rrset_class(rrset1),
-	                          knot_rrset_ttl(rrset1));
+	                          knot_rrset_ttl(rrset1),
+	                          NULL);
 	if (*changes == NULL) {
 		knot_dname_free(&owner_copy);
 		dbg_zonediff("zone_diff: diff_rdata: "
@@ -457,14 +458,14 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	int ret = knot_zone_diff_changeset_remove_rrset(changeset,
 	                                            to_remove);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&to_remove, 1);
+		knot_rrset_deep_free(&to_remove, 1, NULL);
 		dbg_zonediff("zone_diff: diff_rdata: Could not remove RRs. "
 		             "Error: %s.\n", knot_strerror(ret));
 		return ret;
 	}
 
 	/* Copy was made in add_rrset function, we can free now. */
-	knot_rrset_deep_free(&to_remove, 1);
+	knot_rrset_deep_free(&to_remove, 1, NULL);
 
 	/* Get RRs to add to zone. */ // TODO move to extra function, same for remove
 	knot_rrset_t *to_add = NULL;
@@ -522,14 +523,14 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	ret = knot_zone_diff_changeset_add_rrset(changeset,
 	                                         to_add);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&to_add, 1);
+		knot_rrset_deep_free(&to_add, 1, NULL);
 		dbg_zonediff("zone_diff: diff_rdata: Could not remove RRs. "
 		             "Error: %s.\n", knot_strerror(ret));
 		return ret;
 	}
 
 	/* Copy was made in add_rrset function, we can free now. */
-	knot_rrset_deep_free(&to_add, 1);
+	knot_rrset_deep_free(&to_add, 1, NULL);
 
 	return KNOT_EOK;
 }

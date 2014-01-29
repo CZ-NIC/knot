@@ -142,7 +142,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 			int merged, deleted_rrs;
 			int ret = knot_rrset_merge_sort(node->rrset_tree[i],
 			                                rrset, &merged,
-			                                &deleted_rrs);
+			                                &deleted_rrs, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else if (merged || deleted_rrs) {
@@ -613,7 +613,7 @@ void knot_node_free_rrsets(knot_node_t *node)
 
 	knot_rrset_t **rrs = node->rrset_tree;
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_deep_free(&(rrs[i]), 1);
+		knot_rrset_deep_free(&(rrs[i]), 1, NULL);
 	}
 }
 

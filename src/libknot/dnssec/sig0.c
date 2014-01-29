@@ -43,7 +43,7 @@ static knot_rrset_t *sig0_create_rrset(void)
 	uint32_t ttl = 0;
 
 	knot_rrset_t *sig_record = knot_rrset_new(root, KNOT_RRTYPE_SIG,
-	                                          KNOT_CLASS_ANY, ttl);
+	                                          KNOT_CLASS_ANY, ttl, NULL);
 
 	return sig_record;
 }
@@ -74,7 +74,7 @@ static uint8_t *sig0_create_rdata(knot_rrset_t *rrset, knot_dnssec_key_t *key)
 	assert(key);
 
 	size_t rdata_size = knot_rrsig_rdata_size(key);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size, NULL);
 	if (!rdata) {
 		return NULL;
 	}
@@ -142,7 +142,7 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 
 	uint8_t *sig_rdata = sig0_create_rdata(sig_rrset, key);
 	if (!sig_rdata) {
-		knot_rrset_deep_free(&sig_rrset, 1);
+		knot_rrset_deep_free(&sig_rrset, 1, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -156,7 +156,7 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 	int result = knot_rrset_to_wire(sig_rrset, wire_end, &wire_sig_size,
 	                                wire_avail_size, &written_rr_count,
 	                                NULL);
-	knot_rrset_deep_free(&sig_rrset, 1);
+	knot_rrset_deep_free(&sig_rrset, 1, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	}

@@ -119,7 +119,7 @@ int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
 static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
                                const knot_rrset_t *covered,
                                const knot_dnssec_key_t *key,
-			       uint32_t sig_incepted, uint32_t sig_expires,
+                               uint32_t sig_incepted, uint32_t sig_expires,
                                uint8_t **rdata, size_t *rdata_size)
 {
 	assert(rrsigs);
@@ -132,7 +132,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	size_t size = knot_rrsig_rdata_size(key);
 	assert(size != 0);
 
-	uint8_t *result = knot_rrset_create_rdata(rrsigs, size);
+	uint8_t *result = knot_rrset_create_rdata(rrsigs, size, NULL);
 	if (!result) {
 		return KNOT_ENOMEM;
 	}

@@ -458,7 +458,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	knot_rrset_t *tmp_tsig =
 		knot_rrset_new(key_name_copy,
-			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0, NULL);
 	if (!tmp_tsig) {
 		dbg_tsig("TSIG: tmp_tsig = NULL\n");
 		knot_dname_free(&key_name_copy);
@@ -513,7 +513,7 @@ dbg_rrset_exec_detail(
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: could not create wire or sign wire: %s\n",
 		         knot_strerror(ret));
-		knot_rrset_deep_free(&tmp_tsig, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 		return ret;
 	}
 
@@ -531,11 +531,11 @@ dbg_rrset_exec_detail(
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
-		knot_rrset_deep_free(&tmp_tsig, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 		return ret;
 	}
 
-	knot_rrset_deep_free(&tmp_tsig, 1);
+	knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 
 	dbg_tsig("TSIG: written TSIG RR (wire len %zu)\n", tsig_wire_len);
 	*msg_len += tsig_wire_len;
@@ -566,7 +566,8 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Create tmp TSIG. */
 	knot_dname_t *owner_copy = knot_dname_copy(key->name);
 	knot_rrset_t *tmp_tsig = knot_rrset_new(owner_copy,
-	                                        KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+	                                        KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0,
+	                                        NULL);
 	if (!tmp_tsig) {
 		knot_dname_free(&owner_copy);
 		return KNOT_ENOMEM;
@@ -584,7 +585,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
 		ERR_ALLOC_FAILED;
-		knot_rrset_deep_free(&tmp_tsig, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 		return KNOT_ENOMEM;
 	}
 	memset(wire, 0, wire_len);
@@ -613,13 +614,13 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* No matter how the function did, this data is no longer needed. */
 	free(wire);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&tmp_tsig, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 		*digest_len = 0;
 		return ret;
 	}
 
 	if (digest_tmp_len > *digest_len) {
-		knot_rrset_deep_free(&tmp_tsig, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 		*digest_len = 0;
 		return KNOT_ESPACE;
 	}
@@ -642,18 +643,18 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	                         &tsig_wire_size, msg_max_len - *msg_len,
 	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&tmp_tsig, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 		*digest_len = 0;
 		return ret;
 	}
 
 	/* This should not happen, at least one rr has to be converted. */
 	if (rr_count == 0) {
-		knot_rrset_deep_free(&tmp_tsig, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_deep_free(&tmp_tsig, 1);
+	knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 
 	*msg_len += tsig_wire_size;
 	uint16_t arcount = knot_wire_get_arcount(msg);
@@ -821,7 +822,8 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	knot_rrset_t *tmp_tsig =
-		knot_rrset_new(key_name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0);
+		knot_rrset_new(key_name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0,
+		               NULL);
 	if (!tmp_tsig) {
 		dbg_tsig("TSIG: tmp_tsig = NULL\n");
 		knot_dname_free(&key_name);
@@ -854,12 +856,12 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
-		knot_rrset_deep_free(&tmp_tsig, 1);
+		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 		return ret;
 	}
 
 	/* key_name already referenced in RRSet, no need to free separately. */
-	knot_rrset_deep_free(&tmp_tsig, 1);
+	knot_rrset_deep_free(&tmp_tsig, 1, NULL);
 
 	*msg_len += tsig_wire_len;
 

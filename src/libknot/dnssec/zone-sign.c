@@ -50,7 +50,7 @@ static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 	knot_dname_t *owner_copy = knot_dname_copy(covered->owner);
 
 	return knot_rrset_new(owner_copy, KNOT_RRTYPE_RRSIG, covered->rclass,
-	                      covered->ttl);
+	                      covered->ttl, NULL);
 }
 
 /*- private API - signing of in-zone nodes -----------------------------------*/
@@ -256,7 +256,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 
 	if (to_remove != NULL && result != KNOT_EOK) {
 		int free_owners = true;
-		knot_rrset_deep_free(&to_remove, free_owners);
+		knot_rrset_deep_free(&to_remove, free_owners, NULL);
 	}
 
 	return result;
@@ -321,7 +321,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 	if (to_add != NULL && result != KNOT_EOK) {
 		int free_owners = true;
-		knot_rrset_deep_free(&to_add, free_owners);
+		knot_rrset_deep_free(&to_add, free_owners, NULL);
 	}
 
 	return result;
@@ -638,14 +638,14 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
 }
 
 static int rrset_add_zone_key(knot_rrset_t *rrset,
-                                   const knot_zone_key_t *zone_key)
+                              const knot_zone_key_t *zone_key)
 {
 	assert(rrset);
 	assert(zone_key);
 
 	const knot_binary_t *key_rdata = &zone_key->dnssec_key.dnskey_rdata;
 
-	return knot_rrset_add_rdata(rrset, key_rdata->data, key_rdata->size);
+	return knot_rrset_add_rdata(rrset, key_rdata->data, key_rdata->size, NULL);
 }
 
 /*!
@@ -704,7 +704,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 		dbg_dnssec_detail("removing DNSKEY with tag %d\n", keytag);
 
 		if (to_remove == NULL) {
-			to_remove = knot_rrset_new_from(dnskeys);
+			to_remove = knot_rrset_new_from(dnskeys, NULL);
 			if (to_remove == NULL) {
 				result = KNOT_ENOMEM;
 				break;
@@ -725,7 +725,7 @@ done:
 	}
 
 	if (to_remove != NULL && result != KNOT_EOK) {
-		knot_rrset_deep_free(&to_remove, 1);
+		knot_rrset_deep_free(&to_remove, 1, NULL);
 	}
 
 	return result;
@@ -747,7 +747,8 @@ static knot_rrset_t *create_dnskey_rrset_from_soa(const knot_rrset_t *soa)
 		return NULL;
 	}
 
-	return knot_rrset_new(owner, KNOT_RRTYPE_DNSKEY, soa->rclass, soa->ttl);
+	return knot_rrset_new(owner, KNOT_RRTYPE_DNSKEY, soa->rclass, soa->ttl,
+	                      NULL);
 }
 
 /*!
@@ -806,7 +807,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 		//! \todo Sorting should be handled by changesets application.
 		result = knot_rrset_sort_rdata(to_add);
 		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&to_add, 1);
+			knot_rrset_deep_free(&to_add, 1, NULL);
 			return result;
 		}
 		result = knot_changeset_add_rrset(changeset, to_add,
@@ -814,7 +815,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	}
 
 	if (to_add != NULL && result != KNOT_EOK) {
-		knot_rrset_deep_free(&to_add, 1);
+		knot_rrset_deep_free(&to_add, 1, NULL);
 	}
 
 	return result;
@@ -895,7 +896,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 
 fail:
 
-	knot_rrset_deep_free(&new_dnskeys, 1);
+	knot_rrset_deep_free(&new_dnskeys, 1, NULL);
 
 	return result;
 }
@@ -1132,7 +1133,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 		result = knot_changeset_add_rrset(changeset, soa_copy,
 		                                  KNOT_CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&soa_copy, 1);
+			knot_rrset_deep_free(&soa_copy, 1, NULL);
 			return result;
 		}
 	}
@@ -1149,7 +1150,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	result = knot_rrset_deep_copy_no_sig(soa, &soa_to);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&soa_from, 1);
+		knot_rrset_deep_free(&soa_from, 1, NULL);
 		return result;
 	}
 
@@ -1159,8 +1160,8 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	result = add_missing_rrsigs(soa_to, NULL, zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&soa_from, 1);
-		knot_rrset_deep_free(&soa_to, 1);
+		knot_rrset_deep_free(&soa_from, 1, NULL);
+		knot_rrset_deep_free(&soa_to, 1, NULL);
 		return result;
 	}
 

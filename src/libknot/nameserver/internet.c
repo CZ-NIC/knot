@@ -48,7 +48,8 @@ static int wildcard_visit(struct query_data *qdata, const knot_node_t *node, con
 }
 
 /*! \brief Synthetizes a CNAME RR from a DNAME. */
-static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr, const knot_dname_t *qname)
+static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr,
+                                       const knot_dname_t *qname, mm_ctx_t *mm)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, dname_rr, qname);
 	knot_dname_t *owner = knot_dname_copy(qname);
@@ -57,7 +58,8 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr, const knot_
 	}
 
 	knot_rrset_t *cname_rrset = knot_rrset_new(owner, KNOT_RRTYPE_CNAME,
-	                                           KNOT_CLASS_IN, dname_rr->ttl);
+	                                           KNOT_CLASS_IN, dname_rr->ttl,
+	                                           mm);
 	if (cname_rrset == NULL) {
 		knot_dname_free(&owner);
 		return NULL;
@@ -75,7 +77,8 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr, const knot_
 
 	/* Store DNAME into RDATA. */
 	int cname_size = knot_dname_size(cname);
-	uint8_t *cname_rdata = knot_rrset_create_rdata(cname_rrset, cname_size);
+	uint8_t *cname_rdata = knot_rrset_create_rdata(cname_rrset, cname_size,
+	                                               mm);
 	if (cname_rdata == NULL) {
 		knot_rrset_free(&cname_rrset);
 		knot_dname_free(&cname);
@@ -137,7 +140,7 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
 
 	ret = knot_pkt_put(pkt, compr_hint, rr, flags);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
-		knot_rrset_deep_free((knot_rrset_t **)&rr, 1);
+		knot_rrset_deep_free((knot_rrset_t **)&rr, 1, &pkt->mm);
 	}
 
 	return ret;
@@ -249,7 +252,7 @@ static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
 
 	ret = knot_pkt_put(pkt, 0, soa_rrset, flags);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
-		knot_rrset_deep_free(&soa_rrset, 1);
+		knot_rrset_deep_free(&soa_rrset, 1, &pkt->mm);
 	}
 
 	return ret;
@@ -343,7 +346,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 			qdata->rcode = KNOT_RCODE_YXDOMAIN;
 			return ERROR;
 		}
-		cname_rr = dname_cname_synth(cname_rr, qdata->name);
+		cname_rr = dname_cname_synth(cname_rr, qdata->name, &pkt->mm);
 		ret = put_rr(pkt, cname_rr, 0, KNOT_PF_FREE, qdata);
 		switch (ret) {
 		case KNOT_EOK:    break;

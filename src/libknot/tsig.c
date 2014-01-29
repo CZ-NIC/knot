@@ -133,7 +133,7 @@ int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg, uint16_t maclen
 	if (tsig_err != KNOT_RCODE_BADTIME) {
 		rdlen -= TSIG_OTHER_MAXLEN;
 	}
-	uint8_t *rd = knot_rrset_create_rdata(rr, rdlen);
+	uint8_t *rd = knot_rrset_create_rdata(rr, rdlen, NULL);
 	memset(rd, 0, rdlen);
 
 	/* Copy alg name. */
