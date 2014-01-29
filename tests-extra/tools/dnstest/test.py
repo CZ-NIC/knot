@@ -131,7 +131,8 @@ class Test(object):
         # Remove server/servers from the test.
 
         if server:
-            server.stop()
+            if server.running():
+                server.stop()
             self.servers.discard(server)
             return
 
@@ -229,46 +230,191 @@ class Test(object):
                     raise Exception("Server is out of testing scope")
                 slave.set_slave(zone, master, ddns, ixfr)
 
-    def xfr_diff(self, server1, server2, zones):
-        check_log("CHECK AXFR DIFF")
+    def _axfr_records(self, server, zone):
+        unique = set()
+        records = list()
+
+        resp = server.dig(zone.name, "AXFR", log_no_sep=True)
+
+        for msg in resp.resp:
+            for rrset in msg.answer:
+                records = rrset.to_text().split("\n")
+                for record in records:
+                    # Owner to lower-case :-(
+                    item = record.strip().split(" ", 1)
+                    item_lower = item[0].lower() + " " + item[1]
+
+                    if item_lower in unique and rrset.rdtype != dns.rdatatype.SOA:
+                        detail_log("!Duplicate record %s:%s" %
+                                   (server.name, item_lower))
+                        continue
+
+                    unique.add(item_lower)
+                    records.append(item_lower)
+
+        return unique, records
+
+    def _axfr_diff(self, server1, server2, zone):
+        unique1, rrsets1 = self._axfr_records(server1, zone)
+        unique2, rrsets2 = self._axfr_records(server2, zone)
+
+        diff1 = sorted(list(unique1 - unique2))
+        if diff1:
+            set_err("AXFR DIFF")
+            detail_log("!Extra records %s:" % server1.name)
+            for record in diff1:
+                detail_log(" " + record)
+
+        diff2 = sorted(list(unique2 - unique1))
+        if diff2:
+            set_err("AXFR DIFF")
+            detail_log("!Extra records %s:" % server2.name)
+            for record in diff2:
+                detail_log(" " + record)
+
+    class IxfrChange():
+        def __init__(self):
+            self.soa_old = None
+            self.soa_new = None
+            self.removed = list()
+            self.added = list()
+
+        def rem(self, record):
+            self.removed.append(record)
+
+        def add(self, record):
+            self.added.append(record)
+
+        def sort(self):
+            self.removed.sort()
+            self.added.sort()
+
+        def cmp(self, other):
+            if self.soa_old != other.soa_old:
+                set_err("IXFR CHANGE DIFF")
+                detail_log("!Different remove SOA:")
+                print(" " + self.soa_old)
+                print(" " + other.soa_old)
+
+            if len(self.removed) != len(other.removed):
+                set_err("IXFR CHANGE DIFF")
+                detail_log("!Number of remove records %s != %s" %
+                           (len(self.removed), len(other.removed)))
+
+            for rem1, rem2 in zip(self.removed, other.removed):
+                if rem1 != rem2:
+                    set_err("IXFR CHANGE DIFF")
+                    detail_log("!Different remove records:")
+                    print(" " + rem1)
+                    print(" " + rem2)
+
+            if self.soa_new != other.soa_new:
+                set_err("IXFR CHANGE DIFF")
+                detail_log("!Different add SOA:")
+                print(" " + self.soa_new)
+                print(" " + other.soa_new)
+
+            if len(self.added) != len(other.added):
+                set_err("IXFR CHANGE DIFF")
+                detail_log("!Number of add records %s != %s" %
+                           (len(self.added), len(other.added)))
+
+            for add1, add2 in zip(self.added, other.added):
+                if add1 != add2:
+                    set_err("IXFR CHANGE DIFF")
+                    detail_log("!Different add records:")
+                    print(" " + add1)
+                    print(" " + add2)
+
+    def _ixfr_changes(self, server, zone, serial):
+        soa = None
+        changes = list()
+
+        resp = server.dig(zone.name, "IXFR", log_no_sep=True, serial=serial)
+
+        change = Test.IxfrChange()
+        for msg in resp.resp:
+            for rrset in msg.answer:
+                records = rrset.to_text().split("\n")
+                for record in records:
+                    item = record.strip().split(" ", 1)
+                    item_lower = item[0].lower() + " " + item[1]
+
+                    if rrset.rdtype == dns.rdatatype.SOA:
+                        if not soa: # IXFR leading SOA.
+                            soa = item_lower
+                            continue
+
+                        if not change.soa_old: # First change.
+                            change.soa_old = item_lower
+                            continue
+
+                        if not change.soa_new: # Removed rdata SOA.
+                            change.soa_new = item_lower
+                        else: # Added rdata SOA.
+                            change.sort()
+                            changes.append(change)
+                            change = Test.IxfrChange()
+                            change.soa_old = item_lower
+                    else:
+                        if not soa:
+                            set_err("IXFR FORMAT")
+                            detail_log("!Missing leading SOA %s:%s before:" %
+                                       (server.name, zone.name))
+                            detail_log(" " + item_lower)
+
+                        if not change.soa_old:
+                            set_err("IXFR FORMAT")
+                            detail_log("!Expected SOA %s:%s before:" %
+                                       (server.name, zone.name))
+                            detail_log(" " + item_lower)
+
+                        if not change.soa_new:
+                            change.rem(item_lower)
+                        else:
+                            change.add(item_lower)
+
+        if not soa:
+            set_err("IXFR FORMAT")
+            detail_log("!Missing leading SOA %s:%s" %
+                       (server.name, zone.name))
+        elif change.removed or change.added:
+            set_err("IXFR FORMAT")
+            detail_log("!Missing trailing SOA %s:%s" %
+                       (server.name, zone.name))
+        elif change.soa_old and change.soa_old != soa:
+            set_err("IXFR FORMAT")
+            detail_log("!Trailing SOA differs from the leading one %s:%s" %
+                       (server.name, zone.name))
+
+        return soa, changes
+
+    def _ixfr_diff(self, server1, server2, zone, serial):
+        soa1, changes1 = self._ixfr_changes(server1, zone, serial)
+        soa2, changes2 = self._ixfr_changes(server2, zone, serial)
+
+        if soa1 != soa2:
+            set_err("IXFR DIFF")
+            detail_log("!Different leading SOA records:")
+            detail_log(" " + soa1)
+            detail_log(" " + soa2)
+
+        if len(changes1) != len(changes2):
+            set_err("IXFR DIFF")
+            detail_log("!Number of changes %s:%s != %s:%s" %
+                       (server1.name, len(changes1), server2.name,
+                       len(changes2)))
+
+        for change1, change2 in zip(changes1, changes2):
+            change1.cmp(change2)
+
+    def xfr_diff(self, server1, server2, zones, serial=None):
         for zone in zones:
-            detail_log("Zone %s %s-%s:" % (zone.name, server1.name, server2.name))
-            z1 = dns.zone.from_xfr(server1.dig(zone.name, "AXFR").resp)
-            z2 = dns.zone.from_xfr(server2.dig(zone.name, "AXFR").resp)
+            check_log("CHECK %sXFR DIFF %s %s<->%s" % ("I" if serial else "A",
+                      zone.name, server1.name, server2.name))
+            if serial:
+                self._ixfr_diff(server1, server2, zone, serial)
+            else:
+                self._axfr_diff(server1, server2, zone)
 
-            z1_keys = set(z1.nodes.keys())
-            z2_keys = set(z2.nodes.keys())
-
-            z1_diff = sorted(list(z1_keys - z2_keys))
-            z2_diff = sorted(list(z2_keys - z1_keys))
-            z_keys = sorted(list(z1_keys & z2_keys))
-
-            if z1_diff:
-                set_err("XFR DIFF")
-                detail_log("Extra records in %s:" % server1.name, True)
-                for key in z1_diff:
-                    for record in z1.nodes[key]:
-                        detail_log("  %s %s" % (key, str(record)), True)
-
-            if z2_diff:
-                set_err("XFR DIFF")
-                detail_log("Extra records in %s:" % server2.name, True)
-                for key in z2_diff:
-                    for record in z2.nodes[key]:
-                        detail_log("  %s %s" % (key, str(record)), True)
-
-            if not z_keys:
-                return
-
-            for key in z_keys:
-                if z1.nodes[key] != z2.nodes[key]:
-                    set_err("XFR DIFF")
-                    detail_log("Different nodes:", True)
-                    detail_log("%s:" % server1.name, True)
-                    for record in z1.nodes[key]:
-                        detail_log("  " + str(record), True)
-                    detail_log("%s:" % server2.name, True)
-                    for record in z2.nodes[key]:
-                        detail_log("  " + str(record), True)
-
-            detail_log(SEP)
+        detail_log(SEP)
