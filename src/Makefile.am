@@ -294,7 +294,7 @@ knotc_LDADD = libknot.la libknotd.la
 # bin programs
 kdig_LDADD       = libknotus.la libknots.la libknot.la
 khost_LDADD      = libknotus.la libknots.la libknot.la
-knsupdate_LDADD  = libknotus.la libknots.la libknot.la
+knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
 knsec3hash_LDADD = libknotus.la libknots.la libknot.la
 
 # Create storage and run-time directories
