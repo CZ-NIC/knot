@@ -22,7 +22,7 @@
 #include "knot/conf/conf.h"
 
 /* Forward decls. */
-static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t *zonedb);
+static const knot_zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb);
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx);
 static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx);
 static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx);
@@ -108,8 +108,8 @@ int process_query_in(knot_pkt_t *pkt, knot_process_t *ctx)
 		return NS_PROC_NOOP; /* Ignore. */
 	}
 
-	/* Accept only queries with QD=1. */
-	if (knot_wire_get_qr(pkt->wire) || knot_wire_get_qdcount(pkt->wire) != 1) {
+	/* Accept only queries. */
+	if (knot_wire_get_qr(pkt->wire)) {
 		knot_pkt_free(&pkt);
 		return NS_PROC_NOOP; /* Ignore. */
 	}
@@ -140,16 +140,13 @@ int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	}
 
 	/*
-	 * Preprocessing
+	 * Preprocessing.
 	 */
 
 	int ret = prepare_answer(query, pkt, ctx);
 	if (ret != KNOT_EOK) {
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		next_state = NS_PROC_FAIL;
 		goto finish;
-	} else {
-		qdata->rcode = KNOT_RCODE_NOERROR;
 	}
 
 	/* Answer based on qclass. */
@@ -171,11 +168,6 @@ int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	 * Postprocessing.
 	 */
 
-	/* Default RCODE is SERVFAIL if not specified otherwise. */
-	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR) {
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
-	}
-
 	/* Transaction security (if applicable). */
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
 		if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
@@ -184,10 +176,16 @@ int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	}
 
 finish:
+	/* Default RCODE is SERVFAIL if not specified otherwise. */
+	if (next_state == NS_PROC_FAIL && qdata->rcode == KNOT_RCODE_NOERROR) {
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+	}
+
 	/* Rate limits (if applicable). */
 	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
 		next_state = ratelimit_apply(next_state, pkt, ctx);
 	}
+
 	rcu_read_unlock();
 	return next_state;
 }
@@ -454,11 +452,11 @@ static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx)
 }
 
 /*! \brief Find zone for given question. */
-static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t *zonedb)
+static const knot_zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 {
-	uint16_t qtype = knot_pkt_qtype(pkt);
-	uint16_t qclass = knot_pkt_qclass(pkt);
-	const knot_dname_t *qname = knot_pkt_qname(pkt);
+	uint16_t qtype = knot_pkt_qtype(query);
+	uint16_t qclass = knot_pkt_qclass(query);
+	const knot_dname_t *qname = knot_pkt_qname(query);
 	const knot_zone_t *zone = NULL;
 
 	// search for zone only for IN and ANY classes
@@ -490,22 +488,30 @@ static const knot_zone_t *answer_zone_find(const knot_pkt_t *pkt, knot_zonedb_t 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx)
 {
-	int ret = knot_pkt_init_response(resp, query);
-	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't init response pkt (%d)\n", __func__, ret);
-		return ret;
+	struct query_data *qdata = QUERY_DATA(ctx);
+	knot_nameserver_t *ns = qdata->param->ns;
+
+	/* Query MUST carry a question. */
+	const knot_dname_t *qname = knot_pkt_qname(query);
+	if (qname == NULL) {
+		dbg_ns("%s: query missing QNAME, FORMERR\n", __func__);
+		qdata->rcode = KNOT_RCODE_FORMERR;
+		return KNOT_EMALF;
 	}
 
 	/* Convert query QNAME to lowercase, but keep original QNAME case.
 	 * Already checked for absence of compression and length.
 	 */
-	struct query_data *qdata = QUERY_DATA(ctx);
-	knot_nameserver_t *ns = qdata->param->ns;
-	const knot_dname_t *qname = knot_pkt_qname(query);
 	memcpy(qdata->orig_qname, qname, query->qname_size);
-	ret = knot_dname_to_lower((knot_dname_t *)qname);
+	int ret = knot_dname_to_lower((knot_dname_t *)qname);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't convert QNAME to lowercase (%d)\n", __func__, ret);
+		return ret;
+	}
+
+	ret = knot_pkt_init_response(resp, query);
+	if (ret != KNOT_EOK) {
+		dbg_ns("%s: can't init response pkt (%d)\n", __func__, ret);
 		return ret;
 	}
 
