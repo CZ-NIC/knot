@@ -32,7 +32,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
-#include "zscanner/descriptor.h"
+#include "common/descriptor.h"
 
 static const size_t XFRIN_BOOTSTRAP_DELAY = 2000; /*!< AXFR bootstrap avg. delay */
 

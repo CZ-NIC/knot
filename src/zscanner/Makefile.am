@@ -9,18 +9,8 @@ EXTRA_DIST =				\
 	scanner.c.g2			\
 	scanner.c.t0
 
-BUILT_SOURCES = descriptor.h descriptor.c
-CLEANFILES = descriptor.h descriptor.c
-nodist_libzscanner_la_SOURCES = descriptor.h descriptor.c
-
-descriptor.h: $(top_srcdir)/src/common/descriptor.h
-	cp $(top_srcdir)/src/common/descriptor.h $@
-
-descriptor.c: $(top_srcdir)/src/common/descriptor.c
-	cp $(top_srcdir)/src/common/descriptor.c $@
-
-BUILT_SOURCES += scanner.c
-CLEANFILES += scanner.c
+BUILT_SOURCES = scanner.c
+CLEANFILES = scanner.c
 
 if HAVE_RAGEL
 scanner.c: scanner.rl scanner_body.rl

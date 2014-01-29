@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 
+#include "common/descriptor.h"
 #include "common/lists.h"
 #include "common/log.h"
 #include "knot/conf/conf.h"
@@ -43,7 +44,6 @@
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
-#include "zscanner/descriptor.h"
 
 /* Forward declarations. */
 static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
