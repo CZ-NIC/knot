@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 AM_CFLAGS = -I$(top_srcdir)/src
 
-noinst_LTLIBRARIES = libzscanner.la
+lib_LTLIBRARIES = libzscanner.la
 
 EXTRA_DIST =				\
 	scanner.rl			\
@@ -41,6 +41,8 @@ libzscanner_la_SOURCES =		\
 	scanner_functions.h		\
 	scanner_functions.c
 
-libzscanner_la_LIBADD = @LIBOBJS@
+libzscanner_la_LDFLAGS =		\
+	-version-info 0:1:0		\
+	-export-symbols-regex '^(zscanner|scanner|file_loader)_|^date_to_timestamp'
 
 include $(srcdir)/tests/Makefile.inc
