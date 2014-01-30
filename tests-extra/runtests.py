@@ -133,6 +133,7 @@ def main(args):
             try:
                 out_dir = outs_dir + "/" + test + "/" + case
                 os.makedirs(out_dir, exist_ok=True)
+                params.module = TESTS_DIR + "." + test + "." + case
                 params.test_dir = case_dir
                 params.out_dir = out_dir
                 params.case_log = open(out_dir + "/case.log", mode="a")

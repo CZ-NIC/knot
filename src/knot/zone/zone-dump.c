@@ -22,7 +22,7 @@
 #include "knot/conf/conf.h"
 #include "knot/server/zones.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/zone-nsec.h"
+#include "knot/dnssec/zone-nsec.h"
 
 /*! \brief Size of auxiliary buffer. */
 #define DUMP_BUF_LEN (70 * 1024)
@@ -201,7 +201,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	}
 
 	// Dump NSEC3 chain if available.
-	if (is_nsec3_enabled(zone)) {
+	if (knot_is_nsec3_enabled(zone)) {
 		fprintf(file, ";; DNSSEC NSEC3 chain\n");
 
 		params.dump_rdata = true;

@@ -42,7 +42,7 @@
 #include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "knot/stat/stat.h"
 #include "knot/server/server.h"
 #include "libknot/packet/wire.h"
@@ -51,6 +51,7 @@
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
 #include "libknot/dnssec/crypto.h"
+#include "libknot/processing/process.h"
 
 /* Buffer identifiers. */
 enum {
@@ -58,6 +59,12 @@ enum {
 	TX = 1,
 	NBUFS = 2
 };
+
+/*! \brief UDP context data. */
+typedef struct udp_context {
+	knot_process_t query_ctx;    /*!< Query processing context. */
+	knot_nameserver_t *ns;       /*!< Name server structure. */
+} udp_context_t;
 
 /* FD_COPY macro compat. */
 #ifndef FD_COPY
@@ -73,7 +80,7 @@ enum {
 /* Next-gen packet processing API. */
 #define PACKET_NG
 #ifdef PACKET_NG
-#include "libknot/nameserver/ns_proc_query.h"
+#include "knot/nameserver/process_query.h"
 #endif
 
 /* PPS measurement */
@@ -105,7 +112,7 @@ static inline void udp_pps_begin() {}
 static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 #endif
 
-int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
+int udp_handle(udp_context_t *udp, int fd, sockaddr_t *addr,
                struct iovec *rx, struct iovec *tx)
 {
 #ifdef DEBUG_ENABLE_BRIEF
@@ -117,34 +124,35 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 #endif
 
 	/* Create query processing parameter. */
-	struct ns_proc_query_param param = {0};
+	struct process_query_param param = {0};
 	sockaddr_copy(&param.query_source, addr);
 	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
 	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
 	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
+	param.ns = udp->ns;
 
 	/* Rate limit is applied? */
-	server_t *server = (server_t *)query_ctx->ns->data;
+	server_t *server = (server_t *)udp->ns->data;
 	if (knot_unlikely(server->rrl != NULL) && server->rrl->rate > 0) {
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
 	/* Create query processing context. */
-	ns_proc_begin(query_ctx, &param, NS_PROC_QUERY);
+	knot_process_begin(&udp->query_ctx, &param, NS_PROC_QUERY);
 
 	/* Input packet. */
-	int state = ns_proc_in(rx->iov_base, rx->iov_len, query_ctx);
+	int state = knot_process_in(rx->iov_base, rx->iov_len, &udp->query_ctx);
 
 	/* Process answer. */
 	uint16_t tx_len = tx->iov_len;
 	if (state == NS_PROC_FULL) {
-		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
+		state = knot_process_out(tx->iov_base, &tx_len, &udp->query_ctx);
 	}
 
 	/* Process error response (if failed). */
 	if (state == NS_PROC_FAIL) {
 		tx_len = tx->iov_len; /* Reset size. */
-		state = ns_proc_out(tx->iov_base, &tx_len, query_ctx);
+		state = knot_process_out(tx->iov_base, &tx_len, &udp->query_ctx);
 	}
 
 	/* Send response only if finished successfuly. */
@@ -155,7 +163,7 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 	}
 
 	/* Reset context. */
-	ns_proc_finish(query_ctx);
+	knot_process_finish(&udp->query_ctx);
 	return KNOT_EOK;
 }
 
@@ -172,7 +180,7 @@ int udp_handle(ns_proc_context_t *query_ctx, int fd, sockaddr_t *addr,
 static void* (*_udp_init)(void) = 0;
 static int (*_udp_deinit)(void *) = 0;
 static int (*_udp_recv)(int, void *) = 0;
-static int (*_udp_handle)(ns_proc_context_t *, void *) = 0;
+static int (*_udp_handle)(udp_context_t *, void *) = 0;
 static int (*_udp_send)(void *) = 0;
 
 /* UDP recvfrom() request struct. */
@@ -227,7 +235,7 @@ static int udp_recvfrom_recv(int fd, void *d)
 	return 0;
 }
 
-static int udp_recvfrom_handle(ns_proc_context_t *ctx, void *d)
+static int udp_recvfrom_handle(udp_context_t *ctx, void *d)
 {
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 
@@ -378,7 +386,7 @@ static int udp_recvmmsg_recv(int fd, void *d)
 	return n;
 }
 
-static int udp_recvmmsg_handle(ns_proc_context_t *ctx, void *d)
+static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
@@ -482,12 +490,12 @@ int udp_master(dthread_t *thread)
 	ifacelist_t *ref = NULL;
 
 	/* Create UDP answering context. */
-	ns_proc_context_t query_ctx;
-	memset(&query_ctx, 0, sizeof(query_ctx));
-	query_ctx.ns = handler->server->nameserver;
+	udp_context_t udp;
+	memset(&udp, 0, sizeof(udp_context_t));
+	udp.ns = handler->server->nameserver;
 
 	/* Create big enough memory cushion. */
-	mm_ctx_mempool(&query_ctx.mm, 4 * sizeof(knot_pkt_t));
+	mm_ctx_mempool(&udp.query_ctx.mm, 4 * sizeof(knot_pkt_t));
 
 	/* Chose select as epoll/kqueue has larger overhead for a
 	 * single or handful of sockets. */
@@ -540,9 +548,9 @@ int udp_master(dthread_t *thread)
 		for (unsigned fd = minfd; fd <= maxfd; ++fd) {
 			if (FD_ISSET(fd, &rfds)) {
 				while ((rcvd = _udp_recv(fd, rq)) > 0) {
-					_udp_handle(&query_ctx, rq);
+					_udp_handle(&udp, rq);
 					/* Flush allocated memory. */
-					mp_flush(query_ctx.mm.ctx);
+					mp_flush(udp.query_ctx.mm.ctx);
 					_udp_send(rq);
 					udp_pps_sample(rcvd, thr_id);
 				}
@@ -552,7 +560,7 @@ int udp_master(dthread_t *thread)
 
 	_udp_deinit(rq);
 	ref_release((ref_t *)ref);
-	mp_delete(query_ctx.mm.ctx);
+	mp_delete(udp.query_ctx.mm.ctx);
 	return KNOT_EOK;
 }
 

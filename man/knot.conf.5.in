@@ -270,9 +270,8 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Default value: 30d (30 days or 2592000 seconds)
   # It is also possible to suffix with unit size [s/m/h/d]
   # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
-  # The lower limit is because the server will trigger resign when any of the
-  # signatures expires in 7200 seconds or less and it was chosen as a 
-  # reasonable value with regard to signing overhead.
+  # The signatures are refreshed one tenth of the signature lifetime before
+  # the signature expiration (i.e., 3 days before by default)
   signature-lifetime 30d;
   
   # Serial policy after DDNS and automatic DNSSEC signing.

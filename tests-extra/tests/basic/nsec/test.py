@@ -9,7 +9,7 @@ t = Test()
 knot = t.server("knot")
 knot.DIG_TIMEOUT = 2
 bind = t.server("bind")
-zone = t.zone("example.", "example.zone.nsec", local=True)
+zone = t.zone("example.", "example.zone.nsec", storage=".")
 
 t.link(zone, knot)
 t.link(zone, bind)

@@ -30,8 +30,8 @@
 #include "knot/server/zones.h"
 #include "knot/conf/conf.h"
 #include "knot/stat/stat.h"
-#include "libknot/nameserver/name-server.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/nameserver/name-server.h"
+#include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
@@ -180,6 +180,17 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		}
 	}
 #endif
+
+	/* accept() must not block */
+	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
+		free(new_if->addr);
+		socket_close(new_if->fd[IO_UDP]);
+		socket_close(sock);
+		log_server_error("Failed to listen on %s@%d in non-blocking mode.\n",
+		                 cfg_if->address, cfg_if->port);
+		return KNOT_ERROR;
+	}
+
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
 		free(new_if->addr);

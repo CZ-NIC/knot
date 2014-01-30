@@ -27,8 +27,8 @@
 #ifndef _KNOT_SEMANTIC_CHECK_H_
 #define _KNOT_SEMANTIC_CHECK_H_
 
-#include "libknot/zone/node.h"
-#include "libknot/zone/zone-contents.h"
+#include "knot/zone/node.h"
+#include "knot/zone/zone-contents.h"
 
 /*!
  *\brief Internal error constants. General errors are added for convenience,

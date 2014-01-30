@@ -30,12 +30,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libknot/zone/zone.h"
+#include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/zone/zonedb.h"
+#include "knot/zone/zonedb.h"
 #include "common/lists.h"
 #include "common/sockaddr.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 
 struct query_data;
 

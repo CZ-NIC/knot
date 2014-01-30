@@ -33,11 +33,10 @@
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
 #include "libknot/edns.h"
-#include "libknot/zone/node.h"
-#include "libknot/zone/zone.h"
 #include "libknot/packet/wire.h"
 #include "libknot/tsig.h"
 #include "libknot/packet/compr.h"
+#include "common/mempattern.h"
 
 /* Number of packet sections (ANSWER, AUTHORITY, ADDITIONAL). */
 #define KNOT_PKT_SECTIONS 3

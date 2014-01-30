@@ -83,12 +83,13 @@ class BindConf(object):
 class Zone(object):
     '''DNS zone description'''
 
-    def __init__(self, zone_file=None, ddns=False):
+    def __init__(self, zone_file=None, ddns=False, ixfr=False):
         self.zfile = zone_file
         self.master = None
         self.slaves = set()
-        # True: DDNS, False on master: ixfrFromDiff, False on slave: empty
         self.ddns = ddns
+        # ixfr from differences
+        self.ixfr = ixfr
 
     @property
     def name(self):
@@ -166,12 +167,12 @@ class Server(object):
 
         return True
 
-    def set_master(self, zone, slave=None, ddns=False):
+    def set_master(self, zone, slave=None, ddns=False, ixfr=False):
         '''Set the server as a master for the zone'''
 
         if zone.name not in self.zones:
             master_file = zone.clone(self.dir + "/master")
-            z = Zone(master_file, ddns)
+            z = Zone(master_file, ddns, ixfr)
             self.zones[zone.name] = z
         else:
             z = self.zones[zone.name]
@@ -179,14 +180,14 @@ class Server(object):
         if slave:
             z.slaves.add(slave)
 
-    def set_slave(self, zone, master, ddns=False):
+    def set_slave(self, zone, master, ddns=False, ixfr=False):
         '''Set the server as a slave for the zone'''
 
         if zone.name in self.zones:
             raise Exception("Can't set zone %s as a slave" % name)
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
-        z = Zone(slave_file, ddns)
+        z = Zone(slave_file, ddns, ixfr)
         z.master = master
         self.zones[zone.name] = z
 
@@ -198,10 +199,13 @@ class Server(object):
         except:
             err("Compile error")
 
-    def start(self):
+    def start(self, clean=False):
+
+        mode = "w" if clean else "a"
+
         try:
-            fout = open(self.fout, mode="a")
-            ferr = open(self.ferr, mode="a")
+            fout = open(self.fout, mode=mode)
+            ferr = open(self.ferr, mode=mode)
 
             if self.compile_params:
                 self.compile()
@@ -284,7 +288,7 @@ class Server(object):
         detail_log(SEP)
         f.close()
 
-    def stop(self):
+    def stop(self, check=True):
         if self.proc:
             try:
                 self.proc.terminate()
@@ -294,6 +298,8 @@ class Server(object):
             except:
                 err("killing")
                 self.proc.kill()
+        if check:
+            self._valgrind_check()
 
     def gen_confile(self):
         f = open(self.confile, mode="w")
@@ -301,8 +307,8 @@ class Server(object):
         f.close
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
-            timeout=None, tries=3, recursion=False, bufsize=None,
-            nsid=False, dnssec=False):
+            timeout=None, tries=3, flags="", bufsize=None,
+            nsid=False, dnssec=False, log_no_sep=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
         # Convert one item zone list to zone name.
@@ -340,13 +346,30 @@ class Server(object):
         # Prepare query (useless for XFR).
         query = dns.message.make_query(rname, rtype, rclass)
 
-        # Set recursion.
-        if recursion:
-            query.flags |= dns.flags.RD
-            dig_flags += " +rec"
-        else:
-            query.flags &= ~dns.flags.RD
-            dig_flags += " +norec"
+        # Remove implicit RD flag.
+        query.flags &= ~dns.flags.RD
+
+        # Set packet flags.
+        flag_names = flags.split()
+        for flag in flag_names:
+            if flag == "AA":
+                query.flags |= dns.flags.AA
+                dig_flags += " +aa"
+            elif flag == "TC":
+                query.flags |= dns.flags.TC
+                dig_flags += " +tc"
+            elif flag == "RD":
+                query.flags |= dns.flags.RD
+                dig_flags += " +rd"
+            elif flag == "RA":
+                query.flags |= dns.flags.RA
+                dig_flags += " +ra"
+            elif flag == "AD":
+                query.flags |= dns.flags.AD
+                dig_flags += " +ad"
+            elif flag == "CD":
+                query.flags |= dns.flags.CD
+                dig_flags += " +cd"
 
         # Set EDNS.
         if nsid or bufsize:
@@ -406,7 +429,8 @@ class Server(object):
                     resp = dns.query.tcp(query, self.addr, port=self.port,
                                          timeout=timeout)
 
-                detail_log(SEP)
+                if not log_no_sep:
+                    detail_log(SEP)
                 return dnstest.response.Response(self, resp, args)
             except:
                 time.sleep(timeout)
@@ -439,8 +463,10 @@ class Server(object):
 
         _serial = 0
 
+        check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
+
         for t in range(20):
-            resp = self.dig(zone.name, "SOA", udp=True, tries=1)
+            resp = self.dig(zone.name, "SOA", udp=True, tries=1, log_no_sep=True)
             if resp.resp.rcode() == 0:
                 soa = str((resp.resp.answer[0]).to_rdataset())
                 _serial = int(soa.split()[5])
@@ -453,6 +479,8 @@ class Server(object):
         else:
             raise Exception("Can't get %s SOA%s from %s." % (zone.name,
                             ">%i" % serial if serial else "", self.name))
+
+        detail_log(SEP)
 
         return _serial
 
@@ -525,6 +553,15 @@ class Server(object):
             zone = zone[0]
 
         self.zones[zone.name].zfile.backup()
+
+    def update_zonefile(self, zone, version):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].zfile.upd_file(version=version)
 
 class Bind(Server):
 
@@ -624,7 +661,7 @@ class Bind(Server):
                 s.item("type", "master")
                 s.item("notify", "explicit")
 
-                if not z.ddns:
+                if z.ixfr and not z.ddns:
                     s.item("ixfr-from-differences", "yes")
 
             # Init update list with the default local server.
@@ -658,7 +695,7 @@ class Bind(Server):
                 s.item("allow-transfer", "{ %s; }" % self.addr)
             s.end()
 
-        self.start_params = ["-c", self.confile, "-f"]
+        self.start_params = ["-c", self.confile, "-g"]
         self.reload_params = ["-s", self.addr, "-p", str(self.ctlport), \
                               "-k", self.ctlkeyfile, "reload"]
         self.flush_params = ["-s", self.addr, "-p", str(self.ctlport), \
@@ -797,7 +834,8 @@ class Knot(Server):
             if z.ddns:
                 all_slaves = "local" if not slaves else slaves + ", local"
                 s.item("update-in", all_slaves)
-            elif not z.master:
+
+            if z.ixfr and not z.master:
                 s.item("ixfr-from-differences", "on")
             s.end()
         s.end()
@@ -842,7 +880,7 @@ class Dummy(Server):
     def get_config(self):
         return ''
 
-    def start(self):
+    def start(self, clean=None):
         return True
 
     def running(self):

@@ -223,8 +223,7 @@ static int _log_msg(logsrc_t src, int level, const char *msg)
 		precise = true;
 #endif /* ENABLE_MICROSECONDS_LOG */
 
-		tlen = strftime(tstr, sizeof(tstr),
-				"%Y-%m-%dT%H:%M:%S ", &lt);
+		tlen = strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
 
 		if (precise && tlen > 0) {
 			char pm = (lt.tm_gmtoff > 0) ? '+' : '-';

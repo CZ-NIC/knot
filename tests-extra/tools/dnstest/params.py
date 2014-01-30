@@ -51,6 +51,8 @@ bind_ctl = get_binary("KNOT_TEST_BINDC", "rndc")
 # Common data directory (e.g. zone files).
 common_data_dir = ""
 
+# Current module name.
+module = ""
 # Current case relative directory.
 test_dir = ""
 # Current case absolute output directory.

@@ -8,7 +8,7 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zone = t.zone("empty.", local=True)
+zone = t.zone("empty.", storage=".")
 
 t.link(zone, master, slave)
 

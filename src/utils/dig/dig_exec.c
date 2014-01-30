@@ -392,8 +392,6 @@ static void process_query(const query_t *query)
 {
 	node_t     *server = NULL;
 	knot_pkt_t *out_packet;
-	uint8_t    *out = NULL;
-	size_t     out_len = 0;
 	net_t      net;
 	int        ret;
 
@@ -407,9 +405,6 @@ static void process_query(const query_t *query)
 	if (out_packet == NULL) {
 		ERR("can't create query packet\n");
 		return;
-	} else {
-		out = out_packet->wire;
-		out_len = out_packet->size;
 	}
 
 	// Get connection parameters.
@@ -640,8 +635,6 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 static void process_query_xfr(const query_t *query)
 {
 	knot_pkt_t *out_packet;
-	uint8_t    *out = NULL;
-	size_t     out_len = 0;
 	net_t      net;
 	int        ret;
 
@@ -655,9 +648,6 @@ static void process_query_xfr(const query_t *query)
 	if (out_packet == NULL) {
 		ERR("can't create query packet\n");
 		return;
-	} else {
-		out = out_packet->wire;
-		out_len = out_packet->size;
 	}
 
 	// Get connection parameters.

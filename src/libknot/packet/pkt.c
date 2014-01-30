@@ -122,7 +122,7 @@ static void pkt_rr_wirecount_add(knot_pkt_t *pkt, knot_section_t section_id,
 }
 
 /*! \brief Clear the packet and switch wireformat pointers (possibly allocate new). */
-static int knot_pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
+static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 {
 	assert(pkt);
 
@@ -184,7 +184,7 @@ static knot_pkt_t *pkt_new_mm(void *wire, uint16_t len, mm_ctx_t *mm)
 	/* No data to free, set memory context. */
 	pkt->rrset_count = 0;
 	memcpy(&pkt->mm, mm, sizeof(mm_ctx_t));
-	if (knot_pkt_reset(pkt, wire, len) != KNOT_EOK) {
+	if (pkt_reset(pkt, wire, len) != KNOT_EOK) {
 		mm->free(pkt);
 		return NULL;
 	}
@@ -228,6 +228,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 	knot_wire_clear_tc(pkt->wire);
 	knot_wire_clear_ad(pkt->wire);
 	knot_wire_clear_ra(pkt->wire);
+	knot_wire_clear_aa(pkt->wire);
 
 	/* Clear payload. */
 	pkt_clear_payload(pkt);
@@ -588,9 +589,12 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	
 	/* Check at least header size. */
 	if (pkt->size < KNOT_WIRE_HEADER_SIZE) {
-		dbg_packet("%s: smaller than DNS header, FORMERR\n", __func__);
+		dbg_packet("%s: smaller than DNS header, NOREPLY\n", __func__);
 		return KNOT_EMALF;
 	}
+
+	/* We have at least some DNS header. */
+	pkt->parsed = KNOT_WIRE_HEADER_SIZE;
 
 	/* Check QD count. */
 	uint16_t qd = knot_wire_get_qdcount(pkt->wire);
@@ -598,8 +602,6 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 		dbg_packet("%s: QD(%u) > 1, FORMERR\n", __func__, qd);
 		return KNOT_EMALF;
 	}
-
-	pkt->parsed = KNOT_WIRE_HEADER_SIZE;
 
 	/* No question. */
 	if (qd == 0) {

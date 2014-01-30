@@ -28,7 +28,7 @@
 #define _KNOTD_XFRHANDLER_H_
 
 #include "knot/server/dthreads.h"
-#include "libknot/nameserver/name-server.h"
+#include "knot/nameserver/name-server.h"
 #include "common/evqueue.h"
 #include "common/fdset.h"
 

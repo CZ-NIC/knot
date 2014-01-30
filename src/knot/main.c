@@ -50,20 +50,22 @@ static volatile short sig_integrity_check = 0;
 
 static void check_integrity(server_t *server) {
 	const knot_zonedb_t *zonedb = server->nameserver->zone_db;
-	const unsigned      zone_count = knot_zonedb_zone_count(zonedb);
-	const knot_zone_t   **zones = knot_zonedb_zones(zonedb);
 
-	for (unsigned i = 0; i < zone_count; i++) {
-		char *zname = knot_dname_to_str(zones[i]->name);
+	knot_zonedb_iter_t it;
+	knot_zonedb_iter_begin(zonedb, &it);
+	while(!knot_zonedb_iter_finished(&it)) {
+		knot_zone_t *zone = knot_zonedb_iter_val(&it);
+		char *zname = knot_dname_to_str(zone->name);
 
 		log_server_info("Integrity check for zone %s\n", zname);
 
-		int ret = knot_zone_contents_integrity_check(zones[i]->contents);
+		int ret = knot_zone_contents_integrity_check(zone->contents);
 		if (ret != 0) {
 			log_server_info("Integrity errors(%i)\n", ret);
 		}
 
 		free(zname);
+		knot_zonedb_iter_next(&it);
 	}
 }
 #endif /* INTEGRITY_CHECK */

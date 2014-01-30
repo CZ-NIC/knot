@@ -20,9 +20,9 @@ class ZoneFile(object):
         self.file_dir = file_dir
         self.file_name = ""
         self.name = ""
-        self.serial = None
-        self.dnssec = None
-        self.nsec3 = None
+
+        # Directory containing source zone file/updates.
+        self.storage = None
 
         self.backup_num = 1
 
@@ -42,39 +42,40 @@ class ZoneFile(object):
         else:
             self.name = zone_generate.main(["-n", 1]).strip()
 
-    def set_file(self, file_name=None, storage=None, dnssec=None, serial=None,
-                 exists=True):
+    def set_file(self, file_name=None, storage=None, version=None, exists=True):
         '''Make a copy of an existing zone file. If no file name is specified,
            the file name is constructed from the zone name (zname.zone).
+           If version is specified, file_name.version is used.
            The storage is a directory containg the zone file.'''
 
         if not file_name:
             file_name = self.name + "zone"
 
+        if storage:
+            self.storage = storage
+
         self.file_name = os.path.basename(file_name)
-        if os.path.isabs(file_name):
-            src_file = file_name
-        else:
-            src_file = os.path.join(storage, self.file_name)
 
         if not exists:
             return
 
         try:
+            if os.path.isabs(file_name):
+                src_file = file_name
+            else:
+                src_file = os.path.join(self.storage, self.file_name)
+
+            if version:
+                src_file += "." + str(version)
+
             shutil.copyfile(src_file, self.path)
         except:
             raise Exception("Can't use zone file %s" % src_file)
 
-        if dnssec is not None:
-            self.dnssec = dnssec
-        if serial:
-            self.serial = int(serial)
-
-    def upd_file(self, file_name=None, storage=None, dnssec=None, serial=None):
+    def upd_file(self, file_name=None, storage=None, version=None):
         '''Replace zone file with a different one.'''
 
-        self.set_file(file_name=file_name, storage=storage, dnssec=dnssec,
-                      serial=serial)
+        self.set_file(file_name=file_name, storage=storage, version=version)
 
     def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None):
         '''Generate zone file.'''
@@ -89,14 +90,11 @@ class ZoneFile(object):
             serial = random.randint(1, 4294967295)
 
         self.file_name = self.name + "rndzone"
-        self.serial = int(serial)
-        self.dnssec = dnssec
-        self.nsec3 = nsec3
 
         try:
-            params = ["-i", self.serial, "-o", self.path, self.name, records]
-            if self.dnssec:
-                params = ["-s", "-3", "y" if self.nsec3 else "n"] + params
+            params = ["-i", serial, "-o", self.path, self.name, records]
+            if dnssec:
+                params = ["-s", "-3", "y" if nsec3 else "n"] + params
             zone_generate.main(params)
         except OSError:
             err("Can't create zone file %s" % self.path)
@@ -121,8 +119,7 @@ class ZoneFile(object):
 
         new = ZoneFile(file_dir)
         new.set_name(self.name)
-        new.set_file(file_name=self.path, dnssec=self.dnssec,
-                     serial=self.serial,
+        new.set_file(file_name=self.path, storage=self.storage,
                      exists=exists and os.path.isfile(self.path))
         return new
 

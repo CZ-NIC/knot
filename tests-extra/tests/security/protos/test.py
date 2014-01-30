@@ -16,9 +16,6 @@ if not protos_java_bin:
     raise Exception("Java not found, skipping test.")
 if not protos_query_bin:
     raise Exception("'%s' PROTOS binary not found" % protos_bin[0])
-if not protos_zonetransfer_bin:
-    raise Exception("'%s' PROTOS binary not found" % protos_bin[1])
-
 
 t = Test(ip=4, tsig=False) # PROTOS works on IPv4, no TSIG
 master = t.server("dummy")
@@ -44,7 +41,8 @@ query_params = protos_params + ["--delay", "0", "--timeout", "500"]
 zonetransfer_params = protos_params + [ "--delay", "0", "--sourceport", str(master.port) ]
 
 # Run PROTOS (transfers)
-protos_run('zonetransfer', protos_zonetransfer_bin, zonetransfer_params)
+if protos_zonetransfer_bin:
+    protos_run('zonetransfer', protos_zonetransfer_bin, zonetransfer_params)
 
 # Run PROTOS (queries)
 protos_run('query', protos_query_bin, query_params)

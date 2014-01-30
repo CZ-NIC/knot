@@ -36,10 +36,10 @@ extern "C" {
 
 typedef struct hattrie_t_ hattrie_t;
 
-hattrie_t* hattrie_create (void);             //< Create an empty hat-trie.
-void       hattrie_free   (hattrie_t*);       //< Free all memory used by a trie.
-void       hattrie_clear  (hattrie_t*);       //< Remove all entries.
-size_t     hattrie_weight (hattrie_t*);       //< Number of entries
+hattrie_t* hattrie_create (void);              //< Create an empty hat-trie.
+void       hattrie_free   (hattrie_t*);        //< Free all memory used by a trie.
+void       hattrie_clear  (hattrie_t*);        //< Remove all entries.
+size_t     hattrie_weight (const hattrie_t*);  //< Number of entries
 
 /** Create new trie with custom bucket size and memory management.
  */
