@@ -307,7 +307,7 @@ class Server(object):
         f.close
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
-            timeout=None, tries=3, recursion=False, bufsize=None,
+            timeout=None, tries=3, flags="", bufsize=None,
             nsid=False, dnssec=False, log_no_sep=False):
         key_params = self.tsig.key_params if self.tsig else dict()
 
@@ -346,13 +346,30 @@ class Server(object):
         # Prepare query (useless for XFR).
         query = dns.message.make_query(rname, rtype, rclass)
 
-        # Set recursion.
-        if recursion:
-            query.flags |= dns.flags.RD
-            dig_flags += " +rec"
-        else:
-            query.flags &= ~dns.flags.RD
-            dig_flags += " +norec"
+        # Remove implicit RD flag.
+        query.flags &= ~dns.flags.RD
+
+        # Set packet flags.
+        flag_names = flags.split()
+        for flag in flag_names:
+            if flag == "AA":
+                query.flags |= dns.flags.AA
+                dig_flags += " +aa"
+            elif flag == "TC":
+                query.flags |= dns.flags.TC
+                dig_flags += " +tc"
+            elif flag == "RD":
+                query.flags |= dns.flags.RD
+                dig_flags += " +rd"
+            elif flag == "RA":
+                query.flags |= dns.flags.RA
+                dig_flags += " +ra"
+            elif flag == "AD":
+                query.flags |= dns.flags.AD
+                dig_flags += " +ad"
+            elif flag == "CD":
+                query.flags |= dns.flags.CD
+                dig_flags += " +cd"
 
         # Set EDNS.
         if nsid or bufsize:
