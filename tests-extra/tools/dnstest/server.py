@@ -678,7 +678,7 @@ class Bind(Server):
                 s.item("allow-transfer", "{ %s; }" % self.addr)
             s.end()
 
-        self.start_params = ["-c", self.confile, "-f"]
+        self.start_params = ["-c", self.confile, "-g"]
         self.reload_params = ["-s", self.addr, "-p", str(self.ctlport), \
                               "-k", self.ctlkeyfile, "reload"]
         self.flush_params = ["-s", self.addr, "-p", str(self.ctlport), \
