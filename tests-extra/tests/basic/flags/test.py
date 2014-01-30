@@ -23,6 +23,31 @@ resp = knot.dig("flags", "NS", flags="RD")
 resp.check(flags="QR AA RD", noflags="TC RA AD CD")
 resp.cmp(bind)
 
+# CD flag preservation.
+resp = knot.dig("flags", "NS", flags="CD")
+resp.check(flags="QR AA CD", noflags="TC RA AD RD")
+resp.cmp(bind)
+
+# TC flag must be cleared
+resp = knot.dig("flags", "NS", flags="TC")
+resp.check(flags="QR AA", noflags="TC RA AD CD RD")
+resp.cmp(bind)
+
+# AD flag must be cleared
+resp = knot.dig("flags", "NS", flags="AD")
+resp.check(flags="QR AA", noflags="TC RA AD CD RD")
+resp.cmp(bind)
+
+# AA flag must be cleared
+resp = knot.dig("sub.flags", "NS", flags="AA")
+resp.check(flags="QR", noflags="AA TC RD RA AD CD")
+resp.cmp(bind)
+
+# RA flag must be cleared
+resp = knot.dig("flags", "NS", flags="RA")
+resp.check(flags="QR AA", noflags="TC RA AD CD RD")
+resp.cmp(bind)
+
 # NS record for delegated subdomain (not authoritative).
 resp = knot.dig("sub.flags", "NS")
 resp.check(flags="QR", noflags="AA TC RD RA AD CD")
