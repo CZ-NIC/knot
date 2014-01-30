@@ -721,7 +721,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 	}
 
 	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
-	knot_pkt_tsig_set(pkt, key);
+	knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
 
 	/* Question section. */
 	char *qname = strcdup(query, KNOT_CTL_REALM_EXT);

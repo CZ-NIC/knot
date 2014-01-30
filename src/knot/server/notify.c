@@ -118,7 +118,7 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	
 	/* Reserve space for TSIG. */
-	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
+	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 	
 	/* SOA RR in answer may be included, recover serial. */
 	unsigned serial = 0;

@@ -338,7 +338,8 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 
 	/* Prepare TSIG key if set. */
 	if (rq->tsig_key) {
-		knot_pkt_tsig_set(pkt, rq->tsig_key);
+		/* Reserve space for TSIG. */
+		knot_pkt_reserve(pkt, tsig_wire_maxsize(rq->tsig_key));
 		ret = xfr_task_setsig(rq, rq->tsig_key);
 		if (ret != KNOT_EOK) {
 			knot_pkt_free(&pkt);

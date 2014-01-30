@@ -34,7 +34,6 @@
 #include "libknot/rrset.h"
 #include "libknot/edns.h"
 #include "libknot/packet/wire.h"
-#include "libknot/tsig.h"
 #include "libknot/packet/compr.h"
 #include "common/mempattern.h"
 
@@ -106,13 +105,6 @@ typedef struct knot_pkt {
 	knot_opt_rr_t opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
-	/* #189 <<< SHOULD BE IN ANSWERING CONTEXT */
-	/*! \todo Could be removed after NSEC proof port to packet processing,
-	 *        and request processing module. */
-	const knot_tsig_key_t *tsig_key;
-	const struct knot_pkt *query; /*!< Associated query. */
-	/* #189 >>> SHOULD BE IN ANSWERING CONTEXT */
-
 	/* Packet sections. */
 	knot_section_t current;
 	knot_pktsection_t sections[KNOT_PKT_SECTIONS];
@@ -153,8 +145,17 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query);
 /*! \brief Reinitialize packet for another use. */
 void knot_pkt_clear(knot_pkt_t *pkt);
 
-/*! \brief Begone you foul creature of underworld. */
+/*! \brief Begone you foul creature of the underworld. */
 void knot_pkt_free(knot_pkt_t **pkt);
+
+/*!
+ * \brief Reserve an arbitrary amount of space in the packet.
+ *
+ * \return KNOT_EOK
+ * \return KNOT_ERANGE if size can't be reserved
+ */
+int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size);
+
 
 /*! \brief Classify packet according to the question.
  *  \return see enum knot_pkt_type_t
@@ -197,17 +198,6 @@ int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id);
  * \return KNOT_EOK, KNOT_EINVAL, KNOT_ENOTSUP
  */
 int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len);
-
-/*!
- * \brief Set TSIG key for this packet.
- *
- * \note This must be done in advance to reserve space for TSIG RR later on.
- *
- * \param pkt
- * \param tsig_key
- * \return KNOT_EOK
- */
-int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key);
 
 /*!
  * \brief Put QUESTION in the packet.
