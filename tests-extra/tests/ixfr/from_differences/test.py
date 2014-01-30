@@ -107,5 +107,16 @@ for dirname in sorted(os.listdir(dnstest.params.test_dir)):
         storage = dnstest.params.test_dir + "/" + dirname
 
         i = IxfrTopology(t, storage)
+
+        detail_log("####################################")
+        check_log(">> %s <<" % mod_name)
+        detail_log("zone_diffs -> master(%s) -----> ref_slave(%s)" %
+                   (i.master.name, i.ref_slave.name))
+        detail_log("                            -----> slave1(%s)" %
+                   (i.slave1.name))
+        detail_log("           -> ref_master(%s) -> slave2(%s)" %
+                   (i.ref_master.name, i.slave2.name))
+        detail_log("####################################")
+
         mod.run(i)
         i.clean()
