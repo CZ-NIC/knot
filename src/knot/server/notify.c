@@ -28,7 +28,7 @@
 #include "libknot/common.h"
 #include "libknot/packet/wire.h"
 #include "knot/server/zones.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 #include "common/evsched.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"

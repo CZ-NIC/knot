@@ -30,7 +30,7 @@
 #include <stddef.h>
 
 #include "common/lists.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 #include "common/evsched.h"
 #include "knot/nameserver/name-server.h"
 #include "knot/zone/zonedb.h"

@@ -29,7 +29,7 @@
 
 #include "libknot/processing/process.h"
 #include "knot/nameserver/name-server.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 
 /* Query processing module implementation. */
 extern const knot_process_module_t _process_query;

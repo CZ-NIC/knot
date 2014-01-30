@@ -40,7 +40,7 @@
 #include "libknot/dnssec/policy.h"
 #include "common/lists.h"
 #include "common/log.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 #include "common/sockaddr.h"
 #include "common/hattrie/hat-trie.h"
 

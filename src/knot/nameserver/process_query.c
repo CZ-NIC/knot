@@ -8,7 +8,7 @@
 #include "libknot/common.h"
 #include "libknot/tsig-op.h"
 #include "common/descriptor.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 
 /*! \todo Move close to server when done. */
 #include "knot/nameserver/chaos.h"
