@@ -180,6 +180,17 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 		}
 	}
 #endif
+
+	/* accept() must not block */
+	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
+		free(new_if->addr);
+		socket_close(new_if->fd[IO_UDP]);
+		socket_close(sock);
+		log_server_error("Failed to listen on %s@%d in non-blocking mode.\n",
+		                 cfg_if->address, cfg_if->port);
+		return KNOT_ERROR;
+	}
+
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
 		free(new_if->addr);
