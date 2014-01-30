@@ -655,14 +655,17 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 		return NS_PROC_FAIL;
 	}
 
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
-
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_have_tsig(qdata->query)) {
 		/* We have been challenged... */
 		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
 		NS_NEED_AUTH(zone_data->xfr_out, qdata);
+
+		/* Reserve space for TSIG. */
+		knot_pkt_reserve(response, tsig_wire_maxsize(qdata->sign.tsig_key));
 	}
+
+	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
 
 	/* Get answer to QNAME. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);

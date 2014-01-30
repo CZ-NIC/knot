@@ -218,7 +218,7 @@ int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 		dbg_packet("%s: can't fit HEADER + QUESTION\n", __func__);
 		return KNOT_ESPACE;
 	}
-	pkt->query = query;
+
 	pkt->size = base_size;
 	pkt->qname_size = query->qname_size;
 	memcpy(pkt->wire, query->wire, base_size);
@@ -271,6 +271,24 @@ void knot_pkt_free(knot_pkt_t **pkt)
 	dbg_packet("Freeing packet structure\n");
 	(*pkt)->mm.free(*pkt);
 	*pkt = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size)
+{
+	dbg_packet("%s(%p, %hu)\n", __func__, pkt, size);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Reserve extra space (if possible). */
+	if (pkt_remaining(pkt) >= size) {
+		pkt->reserved += size;
+		return KNOT_EOK;
+	} else {
+		return KNOT_ERANGE;
+	}
 }
 
 /*----------------------------------------------------------------------------*/
@@ -385,26 +403,6 @@ int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t l
 		return KNOT_ENOTSUP;
 	}
 
-	return KNOT_EOK;
-}
-
-int knot_pkt_tsig_set(knot_pkt_t *pkt, const knot_tsig_key_t *tsig_key)
-{
-	dbg_packet("%s(%p, %p)\n", __func__, pkt, tsig_key);
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Space reserved by previous key is now free. */
-	if (pkt->tsig_key) {
-		pkt->reserved -= tsig_wire_maxsize(pkt->tsig_key);
-	}
-
-	/* Reserve space for new key. */
-	pkt->tsig_key = tsig_key;
-	if (tsig_key) {
-		pkt->reserved += tsig_wire_maxsize(tsig_key);
-	}
 	return KNOT_EOK;
 }
 

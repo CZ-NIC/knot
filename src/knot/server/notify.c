@@ -39,47 +39,21 @@
 #include "libknot/dnssec/random.h"
 
 /*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
-
-static int notify_request(const knot_rrset_t *rrset,
-                          uint8_t *buffer, size_t *size)
-{
-	knot_pkt_t *pkt = knot_pkt_new(buffer, *size, NULL);
-	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
-
-	knot_pkt_clear(pkt);
-	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
-	knot_wire_set_aa(pkt->wire);
-	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
-
-	int ret = knot_pkt_put_question(pkt, rrset->owner, rrset->rclass, rrset->type);
-	if (ret != KNOT_EOK) {
-		knot_pkt_free(&pkt);
-		return KNOT_ERROR;
-	}
-
-	/* Write back size, #189 crappy API. */
-	*size = pkt->size;
-
-	knot_pkt_free(&pkt);
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
-                          size_t *size)
+int notify_create_request(const knot_zone_t *zone, knot_pkt_t *pkt)
 {
-	const knot_rrset_t *soa_rrset = knot_node_rrset(
-		            knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
-	if (soa_rrset == NULL) {
-		return KNOT_ERROR;
+	knot_zone_contents_t *contents = zone->contents;
+	if (contents == NULL) {
+		return KNOT_EINVAL; /* Not valid for stub zones. */
 	}
 
-	return notify_request(soa_rrset, buffer, size);
+	knot_wire_set_aa(pkt->wire);
+	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
+
+	const knot_rrset_t *soa_rr = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+	return knot_pkt_put_question(pkt, soa_rr->owner, soa_rr->rclass, soa_rr->type);
 }
 
 int notify_process_response(knot_pkt_t *notify, int msgid)
@@ -133,16 +107,18 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
-	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
-	 *        Most servers use NOTAUTH from RFC2136. */
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-
 	/* Need valid transaction security. */
 	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
 	NS_NEED_AUTH(zone_data->notify_in, qdata);
+
+	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
+	 *        Most servers use NOTAUTH from RFC2136. */
+	/*! \note SERVFAIL is going to be sent if the zone is
+	 *        being bootstrapped, this is harmless. */
+	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	
 	/* Reserve space for TSIG. */
-	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
+	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 	
 	/* SOA RR in answer may be included, recover serial. */
 	unsigned serial = 0;

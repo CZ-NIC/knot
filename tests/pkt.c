@@ -22,6 +22,7 @@
 #include "libknot/rrset.h"
 #include "libknot/rdata.h"
 #include "libknot/packet/pkt.h"
+#include "libknot/tsig.h"
 
 #define TTL 7200
 #define NAMECOUNT 3
@@ -87,7 +88,7 @@ int main(int argc, char *argv[])
 	tsig_key.name = dnames[0];
 	tsig_key.secret.data = (uint8_t *)strdup(tsig_secret);
 	tsig_key.secret.size = strlen(tsig_secret);
-	ret = knot_pkt_tsig_set(out, &tsig_key);
+	ret = knot_pkt_reserve(out, tsig_wire_maxsize(&tsig_key));
 	ok(ret == KNOT_EOK, "pkt: set TSIG key");
 
 	/* Write question. */
