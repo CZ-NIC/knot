@@ -44,17 +44,14 @@ struct query_data;
 /*!
  * \brief Creates a NOTIFY request message for SOA RR of the given zone.
  *
- * \param zone Zone from which to take the SOA RR.
- * \param buffer Buffer to fill the message in.
- * \param size In: available space in the buffer. Out: actual size of the
- *             message in bytes.
+ * \param zone Zone for which a query should be created.
+ * \param pkt Packet to be written.
  *
  * \retval KNOT_EOK
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int notify_create_request(const knot_zone_contents_t *zone, uint8_t *buffer,
-			  size_t *size);
+int notify_create_request(const knot_zone_t *zone, knot_pkt_t *pkt);
 
 /*!
  * \brief Processes NOTIFY response packet.

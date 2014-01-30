@@ -330,26 +330,34 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		return KNOT_ECONNREFUSED;
 	}
 
+	/* Create query packet. */
+	knot_pkt_t *pkt = knot_pkt_new(rq->wire, rq->wire_maxlen, NULL);
+	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
+	knot_pkt_clear(pkt);
+	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
+
 	/* Prepare TSIG key if set. */
-	int add_tsig = 0;
 	if (rq->tsig_key) {
+		knot_pkt_tsig_set(pkt, rq->tsig_key);
 		ret = xfr_task_setsig(rq, rq->tsig_key);
-		add_tsig = (ret == KNOT_EOK);
+		if (ret != KNOT_EOK) {
+			knot_pkt_free(&pkt);
+			return ret;
+		}
 	}
 
-	/* Create XFR query. */
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
-		ret = xfrin_create_axfr_query(zone->name, rq);
+		ret = xfrin_create_axfr_query(zone, pkt);
 		break;
 	case XFR_TYPE_IIN:
-		ret = xfrin_create_ixfr_query(contents, rq);
+		ret = xfrin_create_ixfr_query(zone, pkt);
 		break;
 	case XFR_TYPE_SOA:
-		ret = xfrin_create_soa_query(zone->name, rq);
+		ret = xfrin_create_soa_query(zone, pkt);
 		break;
 	case XFR_TYPE_NOTIFY:
-		ret = notify_create_request(contents, rq->wire, &rq->wire_size);
+		ret = notify_create_request(zone, pkt);
 		break;
 	case XFR_TYPE_FORWARD:
 		ret = knot_ns_create_forward_query(rq->query, rq->wire, &rq->wire_size);
@@ -359,6 +367,10 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		break;
 	}
 
+	/* Write back size and finish packet writer. */
+	rq->wire_size = pkt->size;
+	knot_pkt_free(&pkt);
+
 	/* Handle errors. */
 	if (ret != KNOT_EOK) {
 		dbg_xfr("xfr: failed to create XFR query type %d: %s\n",
@@ -366,9 +378,21 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		return ret;
 	}
 
+	/* Sign query if secured. */
+	if (rq->tsig_key) {
+		rq->digest_size = rq->digest_max_size;
+		ret = knot_tsig_sign(rq->wire, &rq->wire_size, rq->wire_maxlen, NULL, 0,
+		                     rq->digest, &rq->digest_size, rq->tsig_key,
+		                     0, 0);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	/* Start transfer. */
 	gettimeofday(&rq->t_start, NULL);
 	if (rq->wire_size > 0) {
+
 		ret = rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
 		if (ret != rq->wire_size) {
 			char ebuf[256] = {0};
@@ -664,25 +688,15 @@ static int xfr_start_axfr(xfrhandler_t *xfr, knot_ns_xfr_t *rq, const char *reas
 /*! \brief This will fall back to AXFR on idle connection. */
 static int xfr_fallback_axfr(knot_ns_xfr_t *rq)
 {
-	log_zone_notice("%s Retrying with AXFR.\n", rq->msg);
-	rq->wire_size = rq->wire_maxlen; /* Reset maximum bufsize */
-	int ret = xfrin_create_axfr_query(rq->zone->name, rq);
-	/* Send AXFR/IN query. */
-	if (ret == KNOT_EOK) {
-		ret = rq->send(rq->session, &rq->addr,
-		               rq->wire, rq->wire_size);
-		/* Switch to AXFR and return. */
-		if (ret == rq->wire_size) {
-			xfr_task_cleanup(rq);
-			rq->type = XFR_TYPE_AIN;
-			rq->msg[XFR_MSG_DLTTR] = 'A';
-			ret = KNOT_EOK;
-		} else {
-			ret = KNOT_ERROR;
-		}
-	}
+	/* Clean up current transfer. */
+	xfr_task_cleanup(rq);
 
-	return ret;
+	/* Designate as AXFR type and restart. */
+	rq->type = XFR_TYPE_AIN;
+	rq->msg[XFR_MSG_DLTTR] = 'A';
+
+	log_zone_notice("%s Retrying with AXFR.\n", rq->msg);
+	return xfr_task_start(rq);
 }
 
 static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)

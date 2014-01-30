@@ -169,7 +169,7 @@ int tcp_accept(int fd)
 	/* Evaluate connection. */
 	if (incoming < 0) {
 		int en = errno;
-		if (en != EINTR) {
+		if (en != EINTR && en != EAGAIN) {
 			log_server_error("Cannot accept connection "
 					 "(%d).\n", errno);
 			if (en == EMFILE || en == ENFILE ||
