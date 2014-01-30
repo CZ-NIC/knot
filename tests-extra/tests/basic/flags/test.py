@@ -19,7 +19,7 @@ t.link(zone, bind)
 t.start()
 
 # RD flag preservation.
-resp = knot.dig("flags", "NS", recursion=True)
+resp = knot.dig("flags", "NS", flags="RD")
 resp.check(flags="QR AA RD", noflags="TC RA AD CD")
 resp.cmp(bind)
 
