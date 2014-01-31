@@ -826,6 +826,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 	printf("Outgoing update query:\n");
 	size_t len = knot_packet_size(params->pkt);
 	print_packet(params->pkt, len, NULL, -1, false, &params->style);
+	printf("\n");
 	return KNOT_EOK;
 }
 

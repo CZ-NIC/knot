@@ -1989,9 +1989,8 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	int    ret;
 
 	if (dump_rdata) {
-		// APL RR may have empty RDATA, in this case, dump only header.
-		if (rrset->rdata_count == 0
-		    && knot_rrset_type(rrset) == KNOT_RRTYPE_APL) {
+		// APL RR or UPDATE delete may have empty RDATA => dump header.
+		if (rrset->rdata_count == 0) {
 			// Dump rdata owner, class, ttl and type.
 			ret = knot_rrset_txt_dump_header(rrset, dst + len,
 			                                 maxlen - len, style);
