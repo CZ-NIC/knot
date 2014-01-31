@@ -450,11 +450,6 @@ static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
 	/* Process lines. */
 	int ret = tok_process_lines(fp, nsupdate_process_line, params);
 
-	/* Check for longing query. */
-	if (params->pkt && ret == KNOT_EOK) {
-		cmd_send("", params);
-	}
-
 	/* Free last answer. */
 	if (params->resp) {
 		knot_pkt_free(&params->resp);
