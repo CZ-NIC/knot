@@ -820,6 +820,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 	if (!params->pkt) return KNOT_EOK;
 	printf("Outgoing update query:\n");
 	print_packet(params->pkt, NULL, -1, false, &params->style);
+	printf("\n");
 	return KNOT_EOK;
 }
 
