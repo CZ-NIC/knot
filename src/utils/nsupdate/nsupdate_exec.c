@@ -165,7 +165,9 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Extract owner. */
 	size_t len = strcspn(lp, SEP_CHARS);
-	knot_dname_t *owner = knot_dname_from_str(lp);
+	char *owner_str = strndup(lp, len);
+	knot_dname_t *owner = knot_dname_from_str(owner_str);
+	free(owner_str);
 	if (owner == NULL) {
 		return KNOT_EPARSEFAIL;
 	}
