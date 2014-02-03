@@ -16,6 +16,9 @@
 %%{
 	machine zone_scanner;
 
+	# Convert CR to LF.
+	getkey*p!=13?*p:10;
+
 	# Comeback function to calling state machine.
 	action _ret {
 		fhold; fret;
