@@ -5048,7 +5048,7 @@ int scanner_process(const char *start,
 	if ( cs == 0 )
 		goto _out;
 _resume:
-	_widec = (*p);
+	_widec = (*p!=13?*p:10);
 	_klen = _zone_scanner_cond_lengths[cs];
 	_keys = _zone_scanner_cond_keys + (_zone_scanner_cond_offsets[cs]*2);
 	if ( _klen > 0 ) {
@@ -5067,37 +5067,37 @@ _resume:
 			else {
 				switch ( _zone_scanner_cond_spaces[_zone_scanner_cond_offsets[cs] + ((_mid - _keys)>>1)] ) {
 	case 0: {
-		_widec = (short)(640 + ((*p) - -128));
+		_widec = (short)(640 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->multiline  ) _widec += 256;
 		break;
 	}
 	case 1: {
-		_widec = (short)(1152 + ((*p) - -128));
+		_widec = (short)(1152 + ((*p!=13?*p:10) - -128));
 		if ( 
  !s->multiline  ) _widec += 256;
 		break;
 	}
 	case 2: {
-		_widec = (short)(128 + ((*p) - -128));
+		_widec = (short)(128 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->multiline  ) _widec += 256;
 		break;
 	}
 	case 3: {
-		_widec = (short)(2688 + ((*p) - -128));
+		_widec = (short)(2688 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->number64 != 0  ) _widec += 256;
 		break;
 	}
 	case 4: {
-		_widec = (short)(4224 + ((*p) - -128));
+		_widec = (short)(4224 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->number64 == 0  ) _widec += 256;
 		break;
 	}
 	case 5: {
-		_widec = (short)(1664 + ((*p) - -128));
+		_widec = (short)(1664 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->multiline  ) _widec += 256;
 		if ( 
@@ -5105,7 +5105,7 @@ _resume:
 		break;
 	}
 	case 6: {
-		_widec = (short)(3200 + ((*p) - -128));
+		_widec = (short)(3200 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->multiline  ) _widec += 256;
 		if ( 
@@ -5113,7 +5113,7 @@ _resume:
 		break;
 	}
 	case 7: {
-		_widec = (short)(4736 + ((*p) - -128));
+		_widec = (short)(4736 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->multiline  ) _widec += 256;
 		if ( 
@@ -5121,7 +5121,7 @@ _resume:
 		break;
 	}
 	case 8: {
-		_widec = (short)(5760 + ((*p) - -128));
+		_widec = (short)(5760 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->number64 != 0  ) _widec += 256;
 		if ( 
@@ -5129,7 +5129,7 @@ _resume:
 		break;
 	}
 	case 9: {
-		_widec = (short)(12928 + ((*p) - -128));
+		_widec = (short)(12928 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->multiline  ) _widec += 256;
 		if ( 
@@ -5139,7 +5139,7 @@ _resume:
 		break;
 	}
 	case 10: {
-		_widec = (short)(6784 + ((*p) - -128));
+		_widec = (short)(6784 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->multiline  ) _widec += 256;
 		if ( 
@@ -5149,7 +5149,7 @@ _resume:
 		break;
 	}
 	case 11: {
-		_widec = (short)(8832 + ((*p) - -128));
+		_widec = (short)(8832 + ((*p!=13?*p:10) - -128));
 		if ( 
  s->multiline  ) _widec += 256;
 		if ( 
@@ -5269,7 +5269,7 @@ _match:
 	case 6:
 	{
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
-			s->buffer[s->buffer_length++] = (*p);
+			s->buffer[s->buffer_length++] = (*p!=13?*p:10);
 		}
 	}
 	break;
@@ -5309,7 +5309,7 @@ _match:
 	case 10:
 	{
 		if (s->item_length < MAX_LABEL_LENGTH) {
-			(s->dname)[s->dname_tmp_length++] = (*p);
+			(s->dname)[s->dname_tmp_length++] = (*p!=13?*p:10);
 			s->item_length++;
 		} else {
 			WARN(ZSCANNER_ELABEL_OVERFLOW);
@@ -5342,7 +5342,7 @@ _match:
 	case 13:
 	{
 		(s->dname)[s->dname_tmp_length] *= 10;
-		(s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)(*p)];
+		(s->dname)[s->dname_tmp_length] += digit_to_num[(uint8_t)(*p!=13?*p:10)];
 	}
 	break;
 	case 14:
@@ -5457,11 +5457,11 @@ _match:
 		// Overflow check: 10*(s->number64) + fc - ASCII_0 <= UINT64_MAX
 		if ((s->number64 < (UINT64_MAX / 10)) ||   // Dominant fast check.
 			((s->number64 == (UINT64_MAX / 10)) && // Marginal case.
-			 ((uint8_t)(*p) <= (UINT64_MAX % 10) + ASCII_0)
+			 ((uint8_t)(*p!=13?*p:10) <= (UINT64_MAX % 10) + ASCII_0)
 			)
 		   ) {
 			s->number64 *= 10;
-			s->number64 += digit_to_num[(uint8_t)(*p)];
+			s->number64 += digit_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ENUMBER64_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -5636,7 +5636,7 @@ _match:
 	case 52:
 	{
 		if (s->buffer_length < MAX_RDATA_LENGTH) {
-			s->buffer[s->buffer_length++] = (*p);
+			s->buffer[s->buffer_length++] = (*p!=13?*p:10);
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -5689,7 +5689,7 @@ _match:
 	case 55:
 	{
 		if (rdata_tail <= rdata_stop) {
-			*(rdata_tail++) = (*p);
+			*(rdata_tail++) = (*p!=13?*p:10);
 		} else {
 			WARN(ZSCANNER_ETEXT_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -5723,11 +5723,11 @@ _match:
 	{
 		if ((*rdata_tail < (UINT8_MAX / 10)) ||   // Dominant fast check.
 			((*rdata_tail == (UINT8_MAX / 10)) && // Marginal case.
-			 ((*p) <= (UINT8_MAX % 10) + ASCII_0)
+			 ((*p!=13?*p:10) <= (UINT8_MAX % 10) + ASCII_0)
 			)
 		   ) {
 			*rdata_tail *= 10;
-			*rdata_tail += digit_to_num[(uint8_t)(*p)];
+			*rdata_tail += digit_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ENUMBER8_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -5929,7 +5929,7 @@ _match:
 	case 86:
 	{
 		if (s->buffer_length < MAX_RDATA_LENGTH) {
-			s->buffer[s->buffer_length++] = (*p);
+			s->buffer[s->buffer_length++] = (*p!=13?*p:10);
 		}
 		else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
@@ -6053,7 +6053,7 @@ _match:
 	case 99:
 	{
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = first_hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = first_hex_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6062,7 +6062,7 @@ _match:
 	break;
 	case 100:
 	{
-		*rdata_tail += second_hex_to_num[(uint8_t)(*p)];
+		*rdata_tail += second_hex_to_num[(uint8_t)(*p!=13?*p:10)];
 		rdata_tail++;
 	}
 	break;
@@ -6089,7 +6089,7 @@ _match:
 	case 104:
 	{
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = first_base64_to_num[(uint8_t)(*p)];
+			*rdata_tail = first_base64_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6098,10 +6098,10 @@ _match:
 	break;
 	case 105:
 	{
-		*(rdata_tail++) += second_left_base64_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += second_left_base64_to_num[(uint8_t)(*p!=13?*p:10)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = second_right_base64_to_num[(uint8_t)(*p)];
+			*rdata_tail = second_right_base64_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6110,10 +6110,10 @@ _match:
 	break;
 	case 106:
 	{
-		*(rdata_tail++) += third_left_base64_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += third_left_base64_to_num[(uint8_t)(*p!=13?*p:10)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = third_right_base64_to_num[(uint8_t)(*p)];
+			*rdata_tail = third_right_base64_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6122,7 +6122,7 @@ _match:
 	break;
 	case 107:
 	{
-		*(rdata_tail++) += fourth_base64_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += fourth_base64_to_num[(uint8_t)(*p!=13?*p:10)];
 	}
 	break;
 	case 108:
@@ -6137,7 +6137,7 @@ _match:
 	case 110:
 	{
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = first_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = first_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6146,10 +6146,10 @@ _match:
 	break;
 	case 111:
 	{
-		*(rdata_tail++) += second_left_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += second_left_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = second_right_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = second_right_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6158,15 +6158,15 @@ _match:
 	break;
 	case 112:
 	{
-		*rdata_tail += third_base32hex_to_num[(uint8_t)(*p)];
+		*rdata_tail += third_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 	}
 	break;
 	case 113:
 	{
-		*(rdata_tail++) += fourth_left_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += fourth_left_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = fourth_right_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = fourth_right_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6175,10 +6175,10 @@ _match:
 	break;
 	case 114:
 	{
-		*(rdata_tail++) += fifth_left_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += fifth_left_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = fifth_right_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = fifth_right_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6187,15 +6187,15 @@ _match:
 	break;
 	case 115:
 	{
-		*rdata_tail += sixth_base32hex_to_num[(uint8_t)(*p)];
+		*rdata_tail += sixth_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 	}
 	break;
 	case 116:
 	{
-		*(rdata_tail++) += seventh_left_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += seventh_left_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 
 		if (rdata_tail <= rdata_stop) {
-			*rdata_tail = seventh_right_base32hex_to_num[(uint8_t)(*p)];
+			*rdata_tail = seventh_right_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 		} else {
 			WARN(ZSCANNER_ERDATA_OVERFLOW);
 			p--; {cs = 246; goto _again;}
@@ -6204,7 +6204,7 @@ _match:
 	break;
 	case 117:
 	{
-		*(rdata_tail++) += eighth_base32hex_to_num[(uint8_t)(*p)];
+		*(rdata_tail++) += eighth_base32hex_to_num[(uint8_t)(*p!=13?*p:10)];
 	}
 	break;
 	case 118:
