@@ -201,8 +201,7 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
 		/* Need valid transaction security. */
-		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
-		NS_NEED_AUTH(zone_data->xfr_out, qdata);
+		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
 
 		ret = axfr_answer_init(qdata);
 		if (ret != KNOT_EOK) {

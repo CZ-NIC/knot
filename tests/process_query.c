@@ -16,6 +16,8 @@
 
 #include <config.h>
 #include <tap/basic.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "common/mempool.h"
 #include "common/descriptor.h"
@@ -40,18 +42,19 @@ static const uint8_t SOA_RDATA[SOA_RDLEN] = {
 void create_root_zone(knot_nameserver_t *ns, mm_ctx_t *mm)
 {
 	/* Insert root zone. */
-	knot_dname_t *root_name = knot_dname_from_str(".");
-	knot_node_t *apex = knot_node_new(root_name, NULL, 0);
+	conf_zone_t *conf = malloc(sizeof(conf_zone_t));
+	conf_init_zone(conf);
+	conf->name = strdup(".");
+
+	zone_t *root = zone_new(conf);
+	zone_create_contents(root);
+
+	knot_dname_t *root_name = knot_dname_copy(root->name);
 	knot_rrset_t *soa_rrset = knot_rrset_new(root_name,
 	                                         KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
 	                                         7200);
 	knot_rrset_add_rdata(soa_rrset, SOA_RDATA, SOA_RDLEN);
-	knot_node_add_rrset(apex, soa_rrset);
-	knot_zone_t *root = knot_zone_new(apex);
-
-	/* Stub data. */
-	root->data = mm->alloc(mm->ctx, sizeof(zonedata_t));
-	memset(root->data, 0, sizeof(zonedata_t));
+	knot_node_add_rrset(root->contents->apex, soa_rrset);
 
 	/* Bake the zone. */
 	knot_node_t *first_nsec3 = NULL, *last_nsec3 = NULL;
@@ -133,7 +136,7 @@ int main(int argc, char *argv[])
 
 	/* Insert root zone. */
 	create_root_zone(ns, &query_ctx.mm);
-	knot_zone_t *zone = knot_zonedb_find(ns->zone_db, ROOT_DNAME);
+	zone_t *zone = knot_zonedb_find(ns->zone_db, ROOT_DNAME);
 
 	/* Prepare. */
 	int state = NS_PROC_FAIL;

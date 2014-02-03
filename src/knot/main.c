@@ -54,7 +54,7 @@ static void check_integrity(server_t *server) {
 	knot_zonedb_iter_t it;
 	knot_zonedb_iter_begin(zonedb, &it);
 	while(!knot_zonedb_iter_finished(&it)) {
-		knot_zone_t *zone = knot_zonedb_iter_val(&it);
+		zone_t *zone = knot_zonedb_iter_val(&it);
 		char *zname = knot_dname_to_str(zone->name);
 
 		log_server_info("Integrity check for zone %s\n", zname);
@@ -257,7 +257,6 @@ int main(int argc, char **argv)
 	/* Drop all capabilities. */
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
 		capng_clear(CAPNG_SELECT_BOTH);
-
 
 		/* Retain ability to set capabilities and FS access. */
 		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;

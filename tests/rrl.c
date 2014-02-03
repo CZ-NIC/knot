@@ -48,7 +48,7 @@ struct runnable_data {
 	rrl_table_t *rrl;
 	sockaddr_t *addr;
 	rrl_req_t *rq;
-	knot_zone_t *zone;
+	zone_t *zone;
 };
 
 static void* rrl_runnable(void *arg)
@@ -109,7 +109,6 @@ int main(int argc, char *argv[])
 		return KNOT_ERROR; /* Fatal */
 	}
 
-
 	/* Prepare response */
 	knot_nameserver_t *ns = knot_ns_create();
 	uint8_t rbuf[65535];
@@ -137,8 +136,11 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "rrl: setlocks");
 
 	/* 4. N unlimited requests. */
-	knot_dname_t *apex = knot_dname_from_str("rrl.");
-	knot_zone_t *zone = knot_zone_new(knot_node_new(apex, NULL, 0));
+	conf_zone_t *zone_conf = malloc(sizeof(conf_zone_t));
+	conf_init_zone(zone_conf);
+	zone_conf->name = strdup("rrl.");
+	zone_t *zone = zone_new(zone_conf);
+
 	sockaddr_t addr;
 	sockaddr_t addr6;
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
@@ -195,8 +197,7 @@ int main(int argc, char *argv[])
 	skip_block(3, "Timed tests not enabled");
 #endif
 
-	knot_dname_free(&apex);
-	knot_zone_deep_free(&zone);
+	zone_free(&zone);
 	knot_ns_destroy(&ns);
 	knot_pkt_free(&query);
 	rrl_destroy(rrl);

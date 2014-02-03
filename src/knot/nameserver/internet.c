@@ -474,9 +474,9 @@ static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	                                        &qdata->previous);
 
 	switch(ret) {
-	case KNOT_ZONE_NAME_FOUND:
+	case ZONE_NAME_FOUND:
 		return name_found(pkt, qdata);
-	case KNOT_ZONE_NAME_NOT_FOUND:
+	case ZONE_NAME_NOT_FOUND:
 		return name_not_found(pkt, qdata);
 	case KNOT_EOUTOFZONE:
 		assert(state == FOLLOW); /* CNAME/DNAME chain only. */
@@ -660,8 +660,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_have_tsig(qdata->query)) {
 		/* We have been challenged... */
-		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
-		NS_NEED_AUTH(zone_data->xfr_out, qdata);
+		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
 	}
 
 	/* Get answer to QNAME. */

@@ -108,7 +108,7 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
-	if (match == KNOT_ZONE_NAME_FOUND || prev == NULL){
+	if (match == ZONE_NAME_FOUND || prev == NULL){
 		// if run-time collision => SERVFAIL
 		return KNOT_EOK;
 	}

@@ -134,7 +134,7 @@ int xfr_enqueue(xfrhandler_t *xfr, knot_ns_xfr_t *rq);
  *
  * \return new request
  */
-knot_ns_xfr_t *xfr_task_create(knot_zone_t *z, int type, int flags);
+knot_ns_xfr_t *xfr_task_create(zone_t *z, int type, int flags);
 
 /*!
  * \brief Free XFR request.

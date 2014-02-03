@@ -105,7 +105,7 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_sign_changeset(const knot_zone_t *zone,
+int knot_zone_sign_changeset(const zone_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
                              hattrie_t **sorted_changes,

@@ -42,7 +42,7 @@
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
+int knot_dnssec_zone_sign(zone_t *zone, knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up, uint32_t *refresh_at,
                           uint32_t new_serial);
 
@@ -56,7 +56,7 @@ int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch,
+int knot_dnssec_zone_sign_force(zone_t *zone, knot_changeset_t *out_ch,
                                 uint32_t *refresh_at, uint32_t new_serial);
 
 /*!
@@ -72,13 +72,12 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone, knot_changeset_t *out_ch,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_sign_changeset(const knot_zone_t *zone,
+int knot_dnssec_sign_changeset(const zone_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
                                uint32_t *refresh_at, uint32_t new_serial,
                                hattrie_t **sorted_changes);
-
 
 #endif // _KNOT_DNSSEC_ZONE_EVENTS_H_
 /*! @} */

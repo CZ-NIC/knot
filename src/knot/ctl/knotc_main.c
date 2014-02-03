@@ -674,8 +674,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 
 		/* Create zone loader context. */
 		zloader_t *l = NULL;
-		int ret = knot_zload_open(&l, zone->file, zone->name,
-		                          zone->enable_checks);
+		int ret = knot_zload_open(&l, zone);
 		if (ret != KNOT_EOK) {
 			log_zone_error("Could not open zone %s (%s).\n",
 			               zone->name, knot_strerror(ret));
@@ -684,7 +683,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 			continue;
 		}
 
-		knot_zone_t *z = knot_zload_load(l);
+		zone_t *z = knot_zload_load(l);
 		if (z == NULL) {
 			log_zone_error("Loading of zone %s failed.\n",
 			               zone->name);
@@ -693,7 +692,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 			continue;
 		}
 
-		knot_zone_deep_free(&z);
+		zone_deep_free(&z);
 		knot_zload_close(l);
 		log_zone_info("Zone %s OK.\n", zone->name);
 	}

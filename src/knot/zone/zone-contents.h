@@ -33,7 +33,12 @@
 
 #include "knot/zone/zone-tree.h"
 
-struct knot_zone;
+struct zone_t;
+
+enum zone_contents_find_dname_result {
+	ZONE_NAME_FOUND = 1,
+	ZONE_NAME_NOT_FOUND = 0
+};
 
 /*----------------------------------------------------------------------------*/
 
@@ -43,7 +48,7 @@ typedef struct knot_zone_contents_t {
 	knot_zone_tree_t *nodes;
 	knot_zone_tree_t *nsec3_nodes;
 
-	struct knot_zone *zone;
+	struct zone_t *zone;
 
 	knot_nsec3_params_t nsec3_params;
 
@@ -83,12 +88,11 @@ typedef int (*knot_zone_contents_apply_cb_t)(knot_node_t *node, void *data);
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             struct knot_zone *zone);
+                                             struct zone_t *zone);
 
 int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents);
 int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents);
 int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents);
-
 
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
@@ -242,8 +246,8 @@ const knot_node_t *knot_zone_contents_find_node(
  * \param[out] closest_encloser Closest encloser of the given name in the zone.
  * \param[out] previous Previous domain name in canonical order.
  *
- * \retval KNOT_ZONE_NAME_FOUND if node with owner \a name was found.
- * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
+ * \retval ZONE_NAME_FOUND if node with owner \a name was found.
+ * \retval ZONE_NAME_NOT_FOUND if it was not found.
  * \retval KNOT_EINVAL
  * \retval KNOT_EOUTOFZONE
  */
@@ -302,8 +306,8 @@ const knot_node_t *knot_zone_contents_find_nsec3_node(
  * \param[out] nsec3_previous The NSEC3 node immediately preceding hashed domain
  *                            name corresponding to \a name in canonical order.
  *
- * \retval KNOT_ZONE_NAME_FOUND if the corresponding NSEC3 node was found.
- * \retval KNOT_ZONE_NAME_NOT_FOUND if it was not found.
+ * \retval ZONE_NAME_FOUND if the corresponding NSEC3 node was found.
+ * \retval ZONE_NAME_NOT_FOUND if it was not found.
  * \retval KNOT_EINVAL
  * \retval KNOT_ENSEC3PAR
  * \retval KNOT_ECRYPTO
@@ -434,7 +438,6 @@ int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *zone,
 int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
                                         knot_zone_contents_apply_cb_t function,
                                         void *data);
-
 
 /*!
  * \brief Creates a shallow copy of the zone (no stored data are copied).

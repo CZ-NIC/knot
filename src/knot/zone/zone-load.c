@@ -284,7 +284,6 @@ static void process_rr(const scanner_t *scanner)
 	knot_node_t *(*node_get_func)(const knot_zone_contents_t *,
 	                                const knot_dname_t *);
 
-
 	/* If we have RRSIG of NSEC3 type first node will have
 	 * to be created in NSEC3 part of the zone */
 	uint16_t type_covered = 0;
@@ -502,10 +501,9 @@ static void process_rr(const scanner_t *scanner)
 	parser->ret = KNOT_EOK;
 }
 
-int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
-                    int semantic_checks)
+int knot_zload_open(zloader_t **dst, const conf_zone_t *conf)
 {
-	if (!dst || !source || !origin) {
+	if (!dst || !conf) {
 		dbg_zload("zload: open: Bad arguments.\n");
 		return KNOT_EINVAL;
 	}
@@ -513,7 +511,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	*dst = NULL;
 
 	/* Check zone file. */
-	if (access(source, F_OK | R_OK) != 0) {
+	if (access(conf->file, F_OK | R_OK) != 0) {
 		return KNOT_EACCES;
 	}
 
@@ -527,18 +525,24 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 		return KNOT_ENOMEM;
 	}
 
+	/* Create the new zone. */
+	zone_t *zone = zone_new((conf_zone_t *)conf);
+	int result = zone_create_contents(zone);
+	if (result != KNOT_EOK) {
+		zone_free(&zone);
+		free(context);
+		return result;
+	}
+
 	/* As it's a first node, no need for compression yet. */
-	context->origin_from_config = knot_dname_from_str(origin);
-	assert(context->origin_from_config);
-	knot_dname_to_lower(context->origin_from_config);
-	context->last_node = knot_node_new(context->origin_from_config, NULL, 0);
-	knot_zone_t *zone = knot_zone_new(context->last_node);
-	context->current_zone = knot_zone_get_contents(zone);
+	context->origin_from_config = knot_dname_copy(zone->name);
+	context->current_zone = zone->contents;
+	context->last_node = zone->contents->apex;
 	context->node_rrsigs = NULL;
 	context->ret = KNOT_EOK;
 
 	/* Create file loader. */
-	file_loader_t *loader = file_loader_create(source, origin,
+	file_loader_t *loader = file_loader_create(conf->file, conf->name,
 	                                           KNOT_CLASS_IN, 3600,
 	                                           process_rr, process_error,
 	                                           context);
@@ -552,11 +556,11 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	/* Allocate new loader. */
 	zloader_t *zl = xmalloc(sizeof(zloader_t));
 
-	zl->source = strdup(source);
-	zl->origin = strdup(origin);
+	zl->source = strdup(conf->file);
+	zl->origin = strdup(conf->name);
 	zl->file_loader = loader;
 	zl->context = context;
-	zl->semantic_checks = semantic_checks;
+	zl->semantic_checks = conf->enable_checks;
 	*dst = zl;
 
 	zl->err_handler = err_handler_new();
@@ -564,7 +568,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 		/* Not a reason to stop. */
 		log_zone_warning("Could not create semantic checks handler. "
 		                 "Semantic check skipped for zone %s\n",
-		                 origin);
+		                 conf->name);
 	}
 
 	context->err_handler = zl->err_handler;
@@ -572,7 +576,7 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	return KNOT_EOK;
 }
 
-knot_zone_t *knot_zload_load(zloader_t *loader)
+zone_t *knot_zload_load(zloader_t *loader)
 {
 	dbg_zload("zload: load: Loading zone, loader: %p.\n", loader);
 	if (!loader) {
@@ -596,8 +600,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
 		               loader->source, zscanner_strerror(c->ret));
 		rrset_list_delete(&c->node_rrsigs);
-		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_deep_free(&zone_to_free);
+		zone_t *zone_to_free = c->current_zone->zone;
+		zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 
@@ -607,8 +611,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		               loader->source,
 		               loader->file_loader->scanner->error_counter);
 		rrset_list_delete(&c->node_rrsigs);
-		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_deep_free(&zone_to_free);
+		zone_t *zone_to_free = c->current_zone->zone;
+		zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 
@@ -618,8 +622,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		log_zone_error("%s: no SOA record in the zone file.\n",
 		               loader->source);
 		rrset_list_delete(&c->node_rrsigs);
-		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_deep_free(&zone_to_free);
+		zone_t *zone_to_free = c->current_zone->zone;
+		zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 
@@ -632,8 +636,8 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		log_zone_error("%s: Failed to finalize zone contents: %s\n",
 		               loader->source, knot_strerror(kret));
 		rrset_list_delete(&c->node_rrsigs);
-		knot_zone_t *zone_to_free = c->current_zone->zone;
-		knot_zone_deep_free(&zone_to_free);
+		zone_t *zone_to_free = c->current_zone->zone;
+		zone_deep_free(&zone_to_free);
 		return NULL;
 	}
 

@@ -22,7 +22,7 @@
 #include "knot/conf/conf.h"
 
 /* Forward decls. */
-static const knot_zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb);
+static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb);
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx);
 static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx);
 static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx);
@@ -452,12 +452,12 @@ static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx)
 }
 
 /*! \brief Find zone for given question. */
-static const knot_zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
+static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 {
 	uint16_t qtype = knot_pkt_qtype(query);
 	uint16_t qclass = knot_pkt_qclass(query);
 	const knot_dname_t *qname = knot_pkt_qname(query);
-	const knot_zone_t *zone = NULL;
+	const zone_t *zone = NULL;
 
 	// search for zone only for IN and ANY classes
 	if (qclass != KNOT_CLASS_IN && qclass != KNOT_CLASS_ANY) {

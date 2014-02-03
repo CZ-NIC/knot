@@ -55,7 +55,7 @@ int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 
 /*! \brief Require valid zone or return error code. */
 #define NS_NEED_VALID_ZONE(qdata, error_rcode) \
-	switch(knot_zone_state((qdata)->zone)) { \
+	switch(zone_state((qdata)->zone)) { \
 	case KNOT_EOK: \
 		break; \
 	case KNOT_ENOENT: \

@@ -239,7 +239,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	        params.rr_count, date);
 
 	// Get master information.
-	sockaddr_t *master = &((zonedata_t *)zone->zone->data)->xfr_in.master;
+	sockaddr_t *master = &zone->zone->xfr_in.master;
 
 	int port = sockaddr_portnum(master);
 

@@ -27,7 +27,7 @@
 #include "libknot/util/debug.h"
 #include "knot/zone/zone.h"
 
-static int init_dnssec_structs(const knot_zone_t *zone,
+static int init_dnssec_structs(const zone_t *zone,
                                knot_zone_keys_t *zone_keys,
                                knot_dnssec_policy_t *policy,
                                knot_update_serial_t soa_up, bool force)
@@ -36,10 +36,7 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	assert(zone_keys);
 	assert(policy);
 
-	zonedata_t *zone_data = zone->data;
-	assert(zone_data);
-
-	conf_zone_t *config = zone_data->conf;
+	conf_zone_t *config = zone->conf;
 	assert(config);
 
 	// Read zone keys from disk
@@ -69,7 +66,7 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
-static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
+static int zone_sign(zone_t *zone, knot_changeset_t *out_ch, bool force,
                      knot_update_serial_t soa_up, uint32_t *refresh_at,
                      uint32_t new_serial)
 {
@@ -87,8 +84,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	dbg_dnssec_verb("Changeset empty before generating NSEC chain: %d\n",
 	                knot_changeset_is_empty(out_ch));
 
-	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
-	if (!zone_config->dnssec_enable) {
+	if (!zone->conf->dnssec_enable) {
 		log_zone_warning("%s DNSSEC not enabled.\n", msgpref);
 		free(msgpref);
 		return KNOT_EOK;
@@ -163,7 +159,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	return KNOT_EOK;
 }
 
-int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
+int knot_dnssec_zone_sign(zone_t *zone, knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up, uint32_t *refresh_at,
                           uint32_t new_serial)
 {
@@ -174,7 +170,7 @@ int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
 	return zone_sign(zone, out_ch, false, soa_up, refresh_at, new_serial);
 }
 
-int knot_dnssec_zone_sign_force(knot_zone_t *zone,
+int knot_dnssec_zone_sign_force(zone_t *zone,
                                 knot_changeset_t *out_ch, uint32_t *refresh_at,
                                 uint32_t new_serial)
 {
@@ -186,7 +182,7 @@ int knot_dnssec_zone_sign_force(knot_zone_t *zone,
 	                 new_serial);
 }
 
-int knot_dnssec_sign_changeset(const knot_zone_t *zone,
+int knot_dnssec_sign_changeset(const zone_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
@@ -215,7 +211,7 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 		return ret;
 	}
 
-	char *zname = knot_dname_to_str(knot_zone_name(zone));
+	char *zname = knot_dname_to_str(zone->name);
 	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
 	free(zname);
 	if (msgpref == NULL) {

@@ -420,7 +420,7 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             struct knot_zone *zone)
+                                             struct zone_t *zone)
 {
 	knot_zone_contents_t *contents = (knot_zone_contents_t *)
 				      calloc(1, sizeof(knot_zone_contents_t));
@@ -1099,8 +1099,8 @@ dbg_zone_exec(
 	dbg_zone_verb("find_dname() returning %d\n", exact_match);
 
 	return (exact_match)
-	       ? KNOT_ZONE_NAME_FOUND
-	       : KNOT_ZONE_NAME_NOT_FOUND;
+	       ? ZONE_NAME_FOUND
+	       : ZONE_NAME_NOT_FOUND;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1296,8 +1296,8 @@ dbg_zone_exec_detail(
 	}
 
 	return (exact_match)
-	       ? KNOT_ZONE_NAME_FOUND
-	       : KNOT_ZONE_NAME_NOT_FOUND;
+	       ? ZONE_NAME_FOUND
+	       : ZONE_NAME_NOT_FOUND;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1360,7 +1360,6 @@ static int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
 	                                       &adjust_arg,
 	                                       knot_zone_contents_adjust_nsec3_node);
 }
-
 
 /*----------------------------------------------------------------------------*/
 
@@ -2002,7 +2001,6 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	knot_zone_tree_apply_inorder(data->contents->nsec3_nodes,
 					     count_nsec3_nodes,
 					     (void *)apex_copy);
-
 
 	// now compare the children counts
 	// iterate over the old zone and search for nodes in the copy

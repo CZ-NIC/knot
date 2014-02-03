@@ -36,14 +36,14 @@
 #ifndef _KNOTD_SERVER_H_
 #define _KNOTD_SERVER_H_
 
-#include "knot/nameserver/name-server.h"
-#include "knot/server/xfr-handler.h"
-#include "knot/server/socket.h"
-#include "knot/server/dthreads.h"
-#include "knot/server/rrl.h"
-#include "knot/zone/zonedb.h"
 #include "common/evsched.h"
 #include "common/lists.h"
+#include "knot/nameserver/name-server.h"
+#include "knot/server/xfr-handler.h"
+#include "knot/server/dthreads.h"
+#include "knot/server/socket.h"
+#include "knot/server/rrl.h"
+#include "knot/zone/zonedb.h"
 
 /* Forwad declarations. */
 struct iface_t;
