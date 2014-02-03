@@ -1132,8 +1132,8 @@ log @{
 @stindex include
 
 The @code{include} statement is a special statement which can be used almost
-anywhere on any level in the configuration file. It makes inclusion of another
-file possible.
+anywhere on any level in the configuration file. It allows inclusion of another
+file or all files in the given directory.
 
 The path of the included file can be either absolute or relative to a
 configuration file currently being processed.
@@ -1148,6 +1148,7 @@ configuration file currently being processed.
 
 @example
 @code{include} "filename"@code{;}
+@code{include} "dirname"@code{;}
 @end example
 
 @node include Examples
@@ -1163,4 +1164,6 @@ remotes @{
   @}
   include "remotes.conf";
 @}
+
+include "zones";
 @end example
