@@ -2090,31 +2090,6 @@ dbg_ns_exec_verb(
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Adds DNSKEY RRSet from the apex of a zone to the response.
- *
- * \param apex Zone apex node.
- * \param resp Response.
- */
-static int ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
-{
-	knot_rrset_t *rrset =
-		knot_node_get_rrset(apex, KNOT_RRTYPE_DNSKEY);
-
-	int ret = KNOT_EOK;
-
-	if (rrset != NULL) {
-		ret = knot_response_add_rrset_additional(resp, rrset, KNOT_PF_NOTRUNC);
-		if (ret == KNOT_EOK) {
-			ret = ns_add_rrsigs(rrset, resp, apex->owner,
-			              knot_response_add_rrset_additional, KNOT_PF_NOTRUNC);
-		}
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief Answers the query from the given zone.
  *
  * This function performs the actual answering logic.
@@ -2326,16 +2301,6 @@ dbg_ns_exec_verb(
 	}
 	knot_response_set_aa(resp);
 	knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
-
-	// this is the only case when the servers answers from
-	// particular node, i.e. the only case when it may return SOA
-	// or NS records in Answer section
-	if (knot_packet_tc(resp) == 0 && DNSSEC_ENABLED
-	    && knot_query_dnssec_requested(knot_packet_query(resp))
-	    && node == knot_zone_contents_apex(zone)
-	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
-		ret = ns_add_dnskey(node, resp);
-	}
 
 finalize:
 	if (ret == KNOT_EOK && knot_packet_tc(resp) == 0 && auth_soa) {
