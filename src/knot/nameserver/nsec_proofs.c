@@ -35,8 +35,6 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
 	int ce_labels = knot_dname_labels(closest_encloser, NULL);
 	int qname_labels = knot_dname_labels(name, NULL);
 
-	assert(ce_labels < qname_labels);
-
 	// the common labels should match
 	assert(knot_dname_matched_labels(closest_encloser, name)
 	       == ce_labels);
@@ -701,7 +699,8 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		                            closest_encloser, resp);
 	}
 
-	if (knot_dname_is_wildcard(node->owner)) {
+	/* Query for wildcard is not a RFC5155 7.2.6 'Wildcard Answer Response' */
+	if (!knot_dname_is_wildcard(qname) && knot_dname_is_wildcard(node->owner)) {
 		return ns_put_nsec_nsec3_wildcard_nodata(node, closest_encloser,
 							 previous, zone, qname,
 							 resp);
