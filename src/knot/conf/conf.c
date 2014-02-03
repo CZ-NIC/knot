@@ -40,9 +40,8 @@ static const char *DEFAULT_CONFIG[] = {
 	CONFIG_DIR "/" "knot.conf",
 };
 
-#define DEFAULT_CONF_COUNT 1 /*!< \brief Number of default config paths. */
-#define ERROR_BUFFER_SIZE 512 /*!< \brief Error buffer size. */
-#define INCLUDES_MAX_DEPTH 8 /*!< \brief Max depth of config inclusion. */
+#define DEFAULT_CONF_COUNT        1 /*!< \brief Number of default config paths. */
+#define ERROR_BUFFER_SIZE       512 /*!< \brief Error buffer size. */
 
 /*
  * Utilities.
@@ -543,7 +542,7 @@ static int conf_fparser(conf_t *conf)
 	_parser_res = KNOT_EOK;
 	new_config->filename = conf->filename;
 	void *sc = NULL;
-	conf_extra_t *extra = conf_extra_init(conf->filename, INCLUDES_MAX_DEPTH);
+	conf_extra_t *extra = conf_extra_init(conf->filename);
 	cf_lex_init_extra(extra, &sc);
 	cf_set_in(f, sc);
 	cf_parse(sc);
@@ -577,7 +576,7 @@ static int conf_strparser(conf_t *conf, const char *src)
 	char *oldfn = new_config->filename;
 	new_config->filename = "(stdin)";
 	void *sc = NULL;
-	conf_extra_t *extra = conf_extra_init("", INCLUDES_MAX_DEPTH);
+	conf_extra_t *extra = conf_extra_init("");
 	cf_lex_init_extra(extra, &sc);
 	switch_input(src, sc);
 	cf_parse(sc);

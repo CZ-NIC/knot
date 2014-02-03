@@ -46,20 +46,13 @@ typedef struct conf_includes conf_includes_t;
 
 /*!
  * \brief Initialize structure for storing names of included files.
- *
- * \param capacity  Max depth of the inclusion.
  */
-conf_includes_t *conf_includes_init(int capacity);
+conf_includes_t *conf_includes_init();
 
 /*!
  * \brief Free structure for storing the names of included files.
  */
 void conf_includes_free(conf_includes_t *includes);
-
-/**
- * \brief Check if there is a capacity to insert new file.
- */
-bool conf_includes_can_push(conf_includes_t *includes);
 
 /**
  * \brief Pushes a file name onto the stack of files.
@@ -86,6 +79,13 @@ conf_include_t *conf_includes_top(conf_includes_t *includes);
  * \return File name on the top of the stack. Caller should free the result.
  */
 conf_include_t *conf_includes_pop(conf_includes_t *includes);
+
+/**
+ * \brief Remove the include on the top.
+ *
+ * \return True if the include was removed.
+ */
+bool conf_includes_remove(conf_includes_t *includes);
 
 #endif /* _KNOT_CONF_INCLUDES_H_ */
 
