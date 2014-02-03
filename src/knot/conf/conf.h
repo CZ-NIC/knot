@@ -415,6 +415,9 @@ static inline conf_t* conf() {
  */
 char* strcpath(char *path);
 
+/* \brief Initialize zone config. */
+void conf_init_zone(conf_zone_t *zone);
+
 /*! \brief Free zone config. */
 void conf_free_zone(conf_zone_t *zone);
 
