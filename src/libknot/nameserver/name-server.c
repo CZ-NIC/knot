@@ -927,8 +927,6 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
 	int ce_labels = knot_dname_labels(closest_encloser, NULL);
 	int qname_labels = knot_dname_labels(name, NULL);
 
-	assert(ce_labels < qname_labels);
-
 	// the common labels should match
 	assert(knot_dname_matched_labels(closest_encloser, name)
 	       == ce_labels);
@@ -970,7 +968,7 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 	// add RRSIG for the RRSet
 	if (res == KNOT_EOK && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL
 	    && knot_rrset_rdata_rr_count(rrset)) {
-		res = knot_response_add_rrset_authority(resp, rrset, 0);
+		res = knot_response_add_rrset_authority(resp, rrset, KNOT_PF_CHECKDUP);
 	}
 
 	/*! \note TC bit is already set, if something went wrong. */
@@ -1909,7 +1907,8 @@ static int ns_answer_from_node(const knot_node_t *node,
 				return ret;
 			}
 
-			if (knot_dname_is_wildcard(node->owner)) {
+			/* Query for wildcard is not a RFC5155 7.2.6 'Wildcard Answer Response' */
+			if (!knot_dname_is_wildcard(qname) && knot_dname_is_wildcard(node->owner)) {
 				dbg_ns_verb("Putting NSEC/NSEC3 for wildcard"
 				            " NODATA\n");
 				ret = ns_put_nsec_nsec3_wildcard_nodata(node,
