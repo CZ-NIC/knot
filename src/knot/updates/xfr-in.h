@@ -57,20 +57,6 @@ typedef enum xfrin_transfer_result {
 /*----------------------------------------------------------------------------*/
 
 /*!
- * \brief Creates normal query for the given zone name and the SOA type.
- *
- * \param owner Zone owner.
- * \param buffer Buffer to fill the message in.
- * \param size In: available space in the buffer. Out: actual size of the
- *             message in bytes.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
- */
-int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr);
-
-/*!
  * \brief Checks if a zone transfer is required by comparing the zone's SOA with
  *        the one received from master server.
  *
@@ -85,11 +71,22 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
                           knot_pkt_t *soa_response);
 
 /*!
+ * \brief Creates normal query for the given zone name and the SOA type.
+ *
+ * \param zone Zone for which a query should be created.
+ * \param pkt Packet to be written.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ESPACE
+ * \retval KNOT_ERROR
+ */
+int xfrin_create_soa_query(const zone_t *zone, knot_pkt_t *pkt);
+
+/*!
  * \brief Creates normal query for the given zone name and the AXFR type.
  *
- * \param owner Zone owner.
- * \param xfr Data structure holding important data for the query, namely
- *            pointer to the buffer for wireformat and TSIG data.
+ * \param zone Zone for which a query should be created.
+ * \param pkt Packet to be written.
  *
  * \todo Parameter use_tsig probably not needed.
  *
@@ -97,13 +94,13 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr);
+int xfrin_create_axfr_query(const zone_t *zone, knot_pkt_t *pkt);
 
 /*!
  * \brief Creates normal query for the given zone name and the IXFR type.
  *
- * \param zone Zone contents.
- * \param buffer Buffer to fill the message in.
+ * \param zone Zone for which a query should be created.
+ * \param pkt Packet to be written.
  *
  * \todo Parameter use_tsig probably not needed.
  *
@@ -111,7 +108,7 @@ int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr);
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, knot_ns_xfr_t *xfr);
+int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt);
 
 /*!
  * \brief Processes the newly created transferred zone.

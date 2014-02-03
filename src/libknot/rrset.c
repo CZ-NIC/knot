@@ -336,7 +336,7 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 				return KNOT_ESPACE;
 			}
 			/* Store first dname compression hint. */
-			if (compr && !knot_pkt_compr_hint(compr->rrinfo, hint_id)) {
+			if (!knot_pkt_compr_hint(compr->rrinfo, hint_id)) {
 				knot_pkt_compr_hint_set(compr->rrinfo, hint_id, compr->wire_pos, ret);
 			}
 			assert(ret + size + rdlength <= max_size);

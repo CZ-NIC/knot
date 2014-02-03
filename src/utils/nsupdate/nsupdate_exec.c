@@ -165,7 +165,9 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Extract owner. */
 	size_t len = strcspn(lp, SEP_CHARS);
-	knot_dname_t *owner = knot_dname_from_str(lp);
+	char *owner_str = strndup(lp, len);
+	knot_dname_t *owner = knot_dname_from_str(owner_str);
+	free(owner_str);
 	if (owner == NULL) {
 		return KNOT_EPARSEFAIL;
 	}
@@ -447,11 +449,6 @@ static int nsupdate_process(nsupdate_params_t *params, FILE *fp)
 {
 	/* Process lines. */
 	int ret = tok_process_lines(fp, nsupdate_process_line, params);
-
-	/* Check for longing query. */
-	if (params->pkt && ret == KNOT_EOK) {
-		cmd_send("", params);
-	}
 
 	/* Free last answer. */
 	if (params->resp) {
@@ -823,6 +820,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 	if (!params->pkt) return KNOT_EOK;
 	printf("Outgoing update query:\n");
 	print_packet(params->pkt, NULL, -1, false, &params->style);
+	printf("\n");
 	return KNOT_EOK;
 }
 

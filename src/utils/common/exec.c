@@ -636,7 +636,7 @@ int sign_packet(knot_pkt_t              *pkt,
 		sign_ctx->digest_size = knot_tsig_digest_length(key->algorithm);
 		sign_ctx->digest = malloc(sign_ctx->digest_size);
 
-		knot_pkt_tsig_set(pkt, key);
+		knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
 
 		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
 		                        sign_ctx->digest, &sign_ctx->digest_size,

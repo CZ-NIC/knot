@@ -1926,6 +1926,11 @@ int zones_schedule_notify(zone_t *zone)
 			continue;
 		}
 
+		/* Assign TSIG if exists. */
+		if (cfg_if->key) {
+			rq->tsig_key = cfg_if->key;
+		}
+
 		/* Parse server address. */
 		sockaddr_t addr;
 		sockaddr_set(&addr, cfg_if->family, cfg_if->address, cfg_if->port);

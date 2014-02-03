@@ -134,6 +134,7 @@ int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	int next_state = NS_PROC_DONE;
 	if (query->parsed < query->size) {
 		dbg_ns("%s: incompletely parsed query, FORMERR\n", __func__);
+		knot_pkt_clear(pkt);
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		next_state = NS_PROC_FAIL;
 		goto finish;
@@ -491,6 +492,13 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	struct query_data *qdata = QUERY_DATA(ctx);
 	knot_nameserver_t *ns = qdata->param->ns;
 
+	/* Initialize response. */
+	int ret = knot_pkt_init_response(resp, query);
+	if (ret != KNOT_EOK) {
+		dbg_ns("%s: can't init response pkt (%d)\n", __func__, ret);
+		return ret;
+	}
+
 	/* Query MUST carry a question. */
 	const knot_dname_t *qname = knot_pkt_qname(query);
 	if (qname == NULL) {
@@ -503,15 +511,9 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	 * Already checked for absence of compression and length.
 	 */
 	memcpy(qdata->orig_qname, qname, query->qname_size);
-	int ret = knot_dname_to_lower((knot_dname_t *)qname);
+	ret = knot_dname_to_lower((knot_dname_t *)qname);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't convert QNAME to lowercase (%d)\n", __func__, ret);
-		return ret;
-	}
-
-	ret = knot_pkt_init_response(resp, query);
-	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't init response pkt (%d)\n", __func__, ret);
 		return ret;
 	}
 

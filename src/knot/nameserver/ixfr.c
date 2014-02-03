@@ -253,7 +253,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
+	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* Guaranteed to have zone contents. */
 	const knot_node_t *apex = qdata->zone->contents->apex;
@@ -307,7 +307,7 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
+	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* Answer current packet (or continue). */
 	ret = xfr_process_list(pkt, &ixfr_process_changeset, qdata);

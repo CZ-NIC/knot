@@ -676,7 +676,7 @@ class Bind(Server):
                 for slave in z.slaves:
                     if self.tsig:
                         slaves += "%s port %i key %s; " \
-                                  % (slave.addr, slave.port, slave.tsig.name)
+                                  % (slave.addr, slave.port, self.tsig.name)
                         slaves_upd += "key %s; " % slave.tsig.name
                     else:
                         slaves += "%s port %i; " % (slave.addr, slave.port)
@@ -797,7 +797,7 @@ class Knot(Server):
                     s.item("address", slave.addr)
                     s.item("port", slave.port)
                     if slave.tsig:
-                        s.item_str("key", slave.tsig.name)
+                        s.item_str("key", self.tsig.name)
                     s.end()
                     servers.add(slave.name)
         s.end()
