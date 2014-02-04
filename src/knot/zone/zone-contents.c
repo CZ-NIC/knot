@@ -51,8 +51,6 @@ const uint8_t KNOT_ZONE_FLAGS_GEN_OLD  = 0;            /* xxxxxx00 */
 const uint8_t KNOT_ZONE_FLAGS_GEN_NEW  = 1 << 0;       /* xxxxxx01 */
 const uint8_t KNOT_ZONE_FLAGS_GEN_FIN  = 1 << 1;       /* xxxxxx10 */
 const uint8_t KNOT_ZONE_FLAGS_GEN_MASK = 3;            /* 00000011 */
-const uint8_t KNOT_ZONE_FLAGS_ANY_MASK = 4;            /* 00000100 */
-const uint8_t KNOT_ZONE_FLAGS_ANY      = 4;            /* 00000100 */
 
 /*----------------------------------------------------------------------------*/
 
@@ -517,36 +515,6 @@ void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
 	contents->flags |= KNOT_ZONE_FLAGS_GEN_FIN;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_any_disabled(const knot_zone_contents_t *contents)
-{
-	return ((contents->flags & KNOT_ZONE_FLAGS_ANY_MASK)
-		== KNOT_ZONE_FLAGS_ANY);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_contents_disable_any(knot_zone_contents_t *contents)
-{
-	if (contents == NULL) {
-		return;
-	}
-
-	contents->flags |= KNOT_ZONE_FLAGS_ANY;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_contents_enable_any(knot_zone_contents_t *contents)
-{
-	if (contents == NULL) {
-		return;
-	}
-
-	contents->flags &= ~KNOT_ZONE_FLAGS_ANY_MASK;
 }
 
 /*----------------------------------------------------------------------------*/

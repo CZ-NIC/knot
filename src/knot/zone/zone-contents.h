@@ -98,10 +98,6 @@ void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents);
 
-int knot_zone_contents_any_disabled(const knot_zone_contents_t *contents);
-void knot_zone_contents_disable_any(knot_zone_contents_t *contents);
-void knot_zone_contents_enable_any(knot_zone_contents_t *contents);
-
 uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
 
 /*!

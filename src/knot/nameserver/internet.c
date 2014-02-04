@@ -166,9 +166,10 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	case KNOT_RRTYPE_ANY: /* Append all RRSets. */
 		/* If ANY not allowed, set TC bit. */
 		if ((qdata->param->proc_flags & NS_QUERY_LIMIT_ANY) &&
-		    knot_zone_contents_any_disabled(qdata->zone->contents)) {
+		    (qdata->zone->conf->disable_any)) {
+			dbg_ns("%s: ANY/UDP disabled for this zone TC=1\n", __func__);
 			knot_wire_set_tc(pkt->wire);
-			return KNOT_EOK;
+			return KNOT_ESPACE;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
 			ret = put_rr(pkt, rrsets[i], compr_hint, 0, qdata);
@@ -272,7 +273,7 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t *info)
 {
 	/* Valid types for ADDITIONALS insertion. */
-	/* \note Not resolving CNAMEs as it doesn't pay off much. */
+	/* \note Not resolving CNAMEs as MX/NS name must not be an alias. (RFC2181/10.3) */
 	static const uint16_t ar_type_list[] = {KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA};
 	static const int ar_type_count = 2;
 
