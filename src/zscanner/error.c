@@ -45,6 +45,8 @@ const err_table_t err_msgs[] = {
 	          "Zone processing error." ),
 
 	/* Zone scanner errors. */
+	ERR_ITEM( ZSCANNER_DOS_NEWLINE,
+	          "Unsupported CRLF newline. Please, remove CR bytes." ),
 	ERR_ITEM( ZSCANNER_UNCOVERED_STATE,
 	          "General scanner error." ),
 	ERR_ITEM( ZSCANNER_UNCLOSED_MULTILINE,
