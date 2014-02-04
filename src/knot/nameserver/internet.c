@@ -576,15 +576,7 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 	switch (state) {
 	case HIT:    ret = nsec_prove_wildcards(pkt, qdata); break;
 	case MISS:   ret = nsec_prove_nxdomain(pkt, qdata); break;
-	case NODATA:
-		if (knot_node_rrset_count(qdata->node) == 0 &&
-		    !knot_zone_contents_nsec3_enabled(qdata->zone->contents)) {
-			// node is an empty non-terminal => NSEC for NXDOMAIN
-			ret = nsec_prove_nxdomain(pkt, qdata);
-		} else {
-			ret = nsec_prove_nodata(pkt, qdata);
-		}
-		break;
+	case NODATA: ret = nsec_prove_nodata(pkt, qdata); break;
 	case DELEG:  ret = nsec_prove_dp_security(pkt, qdata); break;
 	case TRUNC:  ret = KNOT_ESPACE; break;
 	case ERROR:  break;
