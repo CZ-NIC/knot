@@ -805,7 +805,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 
 	/* Show current packet. */
 	if (!params->query) return KNOT_EOK;
-	printf("Outgoing update query:\n");
+	printf("Update query:\n");
 	build_query(params);
 	print_packet(params->query, NULL, -1, false, &params->style);
 	printf("\n");
