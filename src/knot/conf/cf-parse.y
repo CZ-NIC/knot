@@ -23,6 +23,7 @@
 %{
 
 #include <config.h>
+#include <ctype.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
@@ -344,6 +345,11 @@ static void conf_zone_start(void *scanner, char *name) {
 		free(name);
 	} else {
 		this_zone->name = name; /* Already FQDN */
+	}
+
+	// Convert zone name to lower-case.
+	for (size_t i = 0; this_zone->name[i]; i++) {
+		this_zone->name[i] = tolower(this_zone->name[i]);
 	}
 
 	// DNSSEC configuration
