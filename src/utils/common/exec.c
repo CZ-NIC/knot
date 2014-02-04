@@ -486,7 +486,6 @@ void print_packet(const knot_pkt_t *packet,
 	uint16_t arcount = additional->count;
 	uint16_t ancount = answers->count;
 
-
 	// Print packet information header.
 	if (style->show_header) {
 		print_header(packet, style);

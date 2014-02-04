@@ -68,23 +68,26 @@ typedef struct {
 	/*!< Current zone. */
 	char		*zone;
 	/*!< RR parser. */
-	scanner_t	*rrp;
+	scanner_t	*parser;
 	/*!< Current packet. */
-	knot_pkt_t	*pkt;
+	knot_pkt_t	*query;
 	/*!< Current response. */
-	knot_pkt_t	*resp;
-	/*!< Buffer for response. */
-	uint8_t		rwire[MAX_PACKET_SIZE];
+	knot_pkt_t	*answer;
+	/*< Lists of RRSets. */
+	list_t		update_list, prereq_list;
 	/*!< Key parameters. */
 	knot_key_params_t key_params;
 	/*!< Default output settings. */
 	style_t		style;
+	/*!< Memory context. */
+	mm_ctx_t	mm;
 } nsupdate_params_t;
 
 int nsupdate_parse(nsupdate_params_t *params, int argc, char *argv[]);
 int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl);
 int nsupdate_set_origin(nsupdate_params_t *params, const char *origin);
 void nsupdate_clean(nsupdate_params_t *params);
+void nsupdate_reset(nsupdate_params_t *params);
 
 #endif // _NSUPDATE__NSUPDATE_PARAMS_H_
 
