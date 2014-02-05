@@ -1375,10 +1375,17 @@ static int chain_finalize_nsec3(chain_fix_data_t *fix_data)
 	return ret;
 }
 
-static int nsec3_is_empty(knot_node_t *node)
+/*!
+ * \brief Checks if NSEC3 should be generated for this node.
+ *
+ * \retval true if the node has no children and contains no RRSets or only
+ *         RRSIGs and NSECs.
+ * \retval false otherwise.
+ */
+static bool nsec3_is_empty(knot_node_t *node)
 {
 	if (knot_node_children(node) > 0) {
-		return 0;
+		return false;
 	}
 
 	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
@@ -1398,10 +1405,16 @@ static int nsec3_is_empty(knot_node_t *node)
 	return rrset_count == 0;
 }
 
+/*!
+ * \brief Marks node and its parents as empty if NSEC3 should not be generated
+ *        for them.
+ *
+ * It also lowers the children count for the parent of marked node. This must be
+ * fixed before further operations on the zone.
+ */
 static int nsec3_mark_empty(knot_node_t **node_p, void *data)
 {
-	//UNUSED(data);
-	int *count = (int *)data;
+	UNUSED(data);
 	knot_node_t *node = *node_p;
 
 	if (!knot_node_is_empty(node) && nsec3_is_empty(node)) {
@@ -1410,14 +1423,14 @@ static int nsec3_mark_empty(knot_node_t **node_p, void *data)
 		 * criteria as empty.
 		 */
 		knot_node_set_empty(node);
-		(*count)++;
 
 		if (node->parent) {
-			// We must decrease the parent's children count,
-			// but only temporarily! It must be set right after
-			// the operation
+			/* We must decrease the parent's children count,
+			 * but only temporarily! It must be set right after
+			 * the operation
+			 */
 			node->parent->children--;
-			// Recurse using the parent node
+			/* Recurse using the parent node */
 			return nsec3_mark_empty(&node->parent, data);
 		}
 	}
@@ -1425,21 +1438,32 @@ static int nsec3_mark_empty(knot_node_t **node_p, void *data)
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Function for temporary marking nodes as empty if NSEC3s should not be
+ *        generated for them.
+ *
+ * This is only temporary for the time of NSEC3 generation. Afterwards it must
+ * be reset (removed flag and fixed children counts).
+ */
 static void mark_empty_nodes_tmp(const knot_zone_contents_t *zone)
 {
 	assert(zone);
 
-	int count = 0;
 	int ret = knot_zone_tree_apply(zone->nodes, nsec3_mark_empty, &count);
-
-	printf("Marked %d nodes as empty.\n", count);
 
 	assert(ret == KNOT_EOK);
 }
 
+/*!
+ * \brief Resets the empty flag in the node and increases its parent's children
+ *        count if the node was marked as empty.
+ *
+ * The children count of node's parent is increased if this node was marked as
+ * empty, as it was previously decreased in the \a nsec3_mark_empty() function.
+ */
 static int nsec3_reset(knot_node_t **node_p, void *data)
 {
-	int *count = (int *)data;
+	UNUSED(data);
 	knot_node_t *node = *node_p;
 
 	if (knot_node_is_empty(node)) {
@@ -1447,23 +1471,25 @@ static int nsec3_reset(knot_node_t **node_p, void *data)
 		 * count.
 		 */
 		node->parent->children++;
-		(*count)++;
+		/* Clear the 'empty' flag. */
+		knot_node_clear_empty(node);
 	}
-
-	/* Clear the 'empty' flag in each node. */
-	knot_node_clear_empty(node);
 
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Resets empty node flag and children count in nodes that were
+ *        previously marked as empty by the \a mark_empty_nodes_tmp() function.
+ *
+ * This function must be called after NSEC3 generation, so that flags and
+ * children count are back to normal before further processing.
+ */
 static void reset_nodes(const knot_zone_contents_t *zone)
 {
 	assert(zone);
 
-	int count = 0;
 	int ret = knot_zone_tree_apply(zone->nodes, nsec3_reset, &count);
-
-	printf("Marked %d nodes as not empty.\n", count);
 
 	assert(ret == KNOT_EOK);
 }
