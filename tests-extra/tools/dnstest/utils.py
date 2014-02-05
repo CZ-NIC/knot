@@ -2,6 +2,7 @@
 
 import inspect
 import os
+import time
 
 import dnstest.params as params
 
@@ -30,8 +31,9 @@ def test_info():
 def check_log(text, stdout=False):
     '''Log message header'''
 
-    msg = "%s (%s)" % (str(text), test_info())
+    msg = "(%s) %s (%s)" % (time.strftime("%H:%M:%S"), str(text), test_info())
     params.case_log.write(msg + "\n")
+    params.case_log.flush()
     if stdout and params.debug:
         print(msg)
 
@@ -40,6 +42,7 @@ def detail_log(text, stdout=False):
 
     msg = str(text)
     params.case_log.write(msg + "\n")
+    params.case_log.flush()
     if stdout and params.debug:
         print(msg)
 
