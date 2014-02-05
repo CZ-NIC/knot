@@ -25,7 +25,7 @@
 #include "knot/zone/node.h"
 #include "libknot/rrset.h"
 #include "common/descriptor.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

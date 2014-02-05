@@ -34,7 +34,7 @@
 #include "knot/server/server.h"
 #include "libknot/rdata.h"
 #include "knot/nameserver/internet.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/random.h"
 

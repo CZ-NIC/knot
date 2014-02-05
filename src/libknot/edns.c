@@ -22,7 +22,7 @@
 #include "libknot/edns.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 
 /*! \brief Various EDNS constatns. */
 enum knot_edns_consts {

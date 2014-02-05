@@ -65,6 +65,7 @@ libknots_la_SOURCES =				\
 	common/base64.h				\
 	common/binsearch.h			\
 	common/crc.h				\
+	common/debug.h				\
 	common/descriptor.c			\
 	common/descriptor.h			\
 	common/errcode.c			\
@@ -174,7 +175,6 @@ libknot_la_SOURCES =				\
 	libknot/tsig-op.h			\
 	libknot/tsig.c				\
 	libknot/tsig.h				\
-	libknot/util/debug.h			\
 	libknot/util/endian.h			\
 	libknot/util/tolower.c			\
 	libknot/util/tolower.h			\

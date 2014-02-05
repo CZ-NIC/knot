@@ -25,7 +25,7 @@
 #include "common/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/rrset.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/rdata.h"
 
 static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,

@@ -18,7 +18,7 @@
 #include <assert.h>
 
 #include "knot/zone/zone-contents.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/rrset.h"
 #include "common/base32hex.h"
 #include "common/descriptor.h"
