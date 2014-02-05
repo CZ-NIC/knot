@@ -28658,6 +28658,10 @@ tr775:
 		s->buffer_length = 0;
 	}
 	{
+		if ((*p) == '\r') {
+			ERR(ZSCANNER_DOS_NEWLINE);
+		}
+
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
@@ -28665,6 +28669,10 @@ tr775:
 	goto st247;
 tr777:
 	{
+		if ((*p) == '\r') {
+			ERR(ZSCANNER_DOS_NEWLINE);
+		}
+
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}

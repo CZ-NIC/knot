@@ -932,7 +932,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	assert(addr);
 
 	int ret = KNOT_EOK;
-	dbg_zones_verb("TSIG check successful. Answering query.\n");
 
 	/* Create log message prefix. */
 	char *keytag = NULL;
@@ -944,7 +943,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	                           zone->conf->name, r_str ? r_str : "'unknown'");
 	free(r_str);
 	free(keytag);
-	log_zone_info("%s Started.\n", msg);
 
 	/*!
 	 * We must prepare a changesets_t structure even though there will
@@ -972,10 +970,8 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	ret = knot_ns_process_update(query, old_contents, &new_contents,
 	                             chgsets, rcode, new_serial);
 	if (ret != KNOT_EOK) {
-		if (ret < 0) {
-			log_zone_error("%s %s\n", msg, knot_strerror(ret));
-		} else {
-			log_zone_notice("%s No change to zone made.\n", msg);
+		if (ret > 0) {
+			log_zone_notice("%s: No change to zone made.\n", msg);
 			*rcode = KNOT_RCODE_NOERROR;
 		}
 
@@ -1160,9 +1156,8 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	assert(ret == KNOT_EOK);
 	*rcode = KNOT_RCODE_NOERROR; /* Mark as successful. */
 	if (new_signatures) {
-		log_zone_info("%s Signed.\n", msg);
+		log_zone_info("%s: Signed.\n", msg);
 	}
-	log_zone_info("%s Finished.\n", msg);
 
 	free(msg);
 	msg = NULL;

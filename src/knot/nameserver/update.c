@@ -10,6 +10,10 @@
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
 
+/* AXFR-specific logging (internal, expects 'qdata' variable set). */
+#define UPDATE_LOG(severity, msg...) \
+	QUERY_LOG(severity, qdata, "UPDATE", msg)
+
 static int update_forward(struct query_data *qdata)
 {
 	/*! \todo This will be implemented when RESPONSE and REQUEST processors
@@ -62,18 +66,6 @@ static int update_forward(struct query_data *qdata)
 	return NS_PROC_FAIL;
 }
 
-static int update_process(knot_pkt_t *resp, struct query_data *qdata)
-{
-	/*! \todo Reusing the API for compatibility reasons. */
-	knot_rcode_t rcode = qdata->rcode;
-	int ret = zones_process_update_auth((zone_t *)qdata->zone, qdata->query,
-	                                    &rcode,
-	                                    &qdata->param->query_source,
-	                                    qdata->sign.tsig_key);
-	qdata->rcode = rcode;
-	return ret;
-}
-
 static int update_prereq_check(struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
@@ -97,24 +89,41 @@ static int update_prereq_check(struct query_data *qdata)
 	return ret;
 }
 
+static int update_process(knot_pkt_t *resp, struct query_data *qdata)
+{
+	/* Check prerequisites. */
+	int ret = update_prereq_check(qdata);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/*! \todo Reusing the API for compatibility reasons. */
+	knot_rcode_t rcode = qdata->rcode;
+	ret = zones_process_update_auth((zone_t *)qdata->zone, qdata->query,
+	                                &rcode,
+	                                &qdata->param->query_source,
+	                                qdata->sign.tsig_key);
+	qdata->rcode = rcode;
+	return ret;
+}
+
 int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
 {
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
+	/* Need valid transaction security. */
+	zone_t *zone = (zone_t *)qdata->zone;
+	NS_NEED_AUTH(zone->update_in, qdata);
+
 	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
 	 *        Most servers use NOTAUTH from RFC2136. */
 	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-
-	zone_t *zone = (zone_t *)qdata->zone;
 
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
 	if (zone->xfr_in.has_master) {
 		return update_forward(qdata);
 	}
-
-	/* Need valid transaction security. */
-	NS_NEED_AUTH(zone->update_in, qdata);
 
 	/*
 	 * Check if UPDATE not running already.
@@ -127,21 +136,30 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 		return NS_PROC_FAIL;
 	}
 
+	struct timeval t_start = {0}, t_end = {0};
+	gettimeofday(&t_start, NULL);
+	UPDATE_LOG(LOG_INFO, "Started (serial %u).", knot_zone_serial(qdata->zone->contents));
+
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
-	/* Check prerequisites. */
-	if (update_prereq_check(qdata) != KNOT_EOK) {
-		pthread_mutex_unlock(&zone->ddns_lock);
-		return NS_PROC_FAIL;
-	}
-
 	/* Process UPDATE. */
-	if (update_process(pkt, qdata) != KNOT_EOK) {
-		pthread_mutex_unlock(&zone->ddns_lock);
-		return NS_PROC_FAIL;
-	}
+	int ret = update_process(pkt, qdata);
 
 	pthread_mutex_unlock(&zone->ddns_lock);
-	return NS_PROC_DONE;
+
+	/* Evaluate */
+	switch(ret) {
+	case KNOT_EOK:    /* Last response. */
+		gettimeofday(&t_end, NULL);
+		UPDATE_LOG(LOG_INFO, "Finished in %.02fs.",
+		           time_diff(&t_start, &t_end) / 1000.0);
+		return NS_PROC_DONE;
+		break;
+	default:          /* Generic error. */
+		UPDATE_LOG(LOG_ERR, "%s", knot_strerror(ret));
+		return NS_PROC_FAIL;
+	}
 }
+
+#undef UPDATE_LOG
