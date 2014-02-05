@@ -691,7 +691,7 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	uint32_t ttl = knot_wire_read_u32(wire + *pos + 2 * sizeof(uint16_t));
 	uint16_t rdlength = knot_wire_read_u16(wire + *pos + 4 * sizeof(uint16_t));
 
-	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, ttl,mm);
+	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, ttl, mm);
 	if (rrset == NULL) {
 		knot_dname_free(&owner);
 		return NULL;
