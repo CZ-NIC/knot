@@ -31,15 +31,15 @@ def test_info():
 def check_log(text):
     '''Log message header'''
 
-    msg = "(%s) %s (%s)" % (time.strftime("%H:%M:%S"), str(text), test_info())
-    params.case_log.write(msg + "\n")
+    msg = "(%s) %s (%s)\n" % (time.strftime("%H:%M:%S"), str(text), test_info())
+    params.case_log.write(msg)
     params.case_log.flush()
 
 def detail_log(text):
     '''Log message body'''
 
-    msg = str(text)
-    params.case_log.write(msg + "\n")
+    msg = "%s\n" % text
+    params.case_log.write(msg)
     params.case_log.flush()
 
 def err(text):
@@ -77,20 +77,25 @@ def compare(value, expected, name):
 def compare_sections(section1, srv1name, section2, srv2name, name):
     '''Compare two message sections'''
 
-    if section1 == section2:
-        return
-
-    set_err("COMPARE sections " + name)
-    check_log("COMPARE %s SECTIONS" % name)
+    different = False
 
     for rrset in section1:
         if rrset not in section2:
-            detail_log("%s has extra rrset:" % srv1name)
+            if not different:
+                different = True
+                set_err("COMPARE " + name)
+                check_log("COMPARE " + name)
+            detail_log("!Extra rrset %s:" % srv1name)
             detail_log("  %s" % rrset)
 
     for rrset in section2:
         if rrset not in section1:
-            detail_log("%s has extra rrset:" % srv2name)
+            if not different:
+                different = True
+                set_err("COMPARE " + name)
+                check_log("COMPARE " + name)
+            detail_log("!Extra rrset %s:" % srv2name)
             detail_log("  %s" % rrset)
 
-    detail_log(SEP)
+    if different:
+        detail_log(SEP)
