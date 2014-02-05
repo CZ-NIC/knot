@@ -129,7 +129,7 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
 	 * hint. */
 	int ret = KNOT_EOK;
 	if (compr_hint == COMPR_HINT_NONE && knot_dname_is_wildcard(rr->owner)) {
-		ret = knot_rrset_deep_copy(rr, (knot_rrset_t **)&rr);
+		ret = knot_rrset_deep_copy(rr, (knot_rrset_t **)&rr, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			return KNOT_ENOMEM;
 		}
@@ -241,7 +241,7 @@ static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
 	uint32_t flags = KNOT_PF_NOTRUNC;
 	uint32_t min = knot_rdata_soa_minimum(soa_rrset);
 	if (min < knot_rrset_ttl(soa_rrset)) {
-		ret = knot_rrset_deep_copy(soa_rrset, &soa_rrset);
+		ret = knot_rrset_deep_copy(soa_rrset, &soa_rrset, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

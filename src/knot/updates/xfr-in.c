@@ -1088,7 +1088,7 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 {
 	dbg_xfrin_detail("Copying old RRSet: %p\n", old);
 	// create new RRSet by copying the old one
-	int ret = knot_rrset_deep_copy(old, copy);
+	int ret = knot_rrset_deep_copy(old, copy, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to create RRSet copy.\n");
 		return KNOT_ENOMEM;

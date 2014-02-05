@@ -303,9 +303,11 @@ int knot_rrset_equal(const knot_rrset_t *r1,
                      const knot_rrset_t *r2,
                      knot_rrset_compare_type_t cmp);
 
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to);
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
+                         mm_ctx_t *mm);
 
-int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to);
+int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to,
+                                mm_ctx_t *mm);
 
 int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
 

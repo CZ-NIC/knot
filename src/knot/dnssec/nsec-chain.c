@@ -630,7 +630,7 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 	knot_rrset_t *old_nsec = NULL;
 	knot_rrset_t *old_rrsigs = NULL;
 
-	result = knot_rrset_deep_copy(oldrr, &old_nsec);
+	result = knot_rrset_deep_copy(oldrr, &old_nsec, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	}

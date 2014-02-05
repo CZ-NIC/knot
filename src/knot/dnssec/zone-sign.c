@@ -346,7 +346,7 @@ static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
 	}
 
 	knot_rrset_t *to_remove = NULL;
-	int result = knot_rrset_deep_copy(rrset->rrsigs, &to_remove);
+	int result = knot_rrset_deep_copy(rrset->rrsigs, &to_remove, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -686,7 +686,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 
 	if (dnskeys->ttl != soa->ttl) {
 		dbg_dnssec_detail("removing DNSKEYs (SOA TTL differs)\n");
-		result = knot_rrset_deep_copy_no_sig(dnskeys, &to_remove);
+		result = knot_rrset_deep_copy_no_sig(dnskeys, &to_remove, NULL);
 		goto done;
 	}
 
@@ -1251,7 +1251,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	if (soa->rrsigs) {
 		knot_rrset_t *soa_copy = NULL;
-		result = knot_rrset_deep_copy_no_sig(soa->rrsigs, &soa_copy);
+		result = knot_rrset_deep_copy_no_sig(soa->rrsigs, &soa_copy, NULL);
 		if (result != KNOT_EOK) {
 			return result;
 		}
@@ -1268,12 +1268,12 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	knot_rrset_t *soa_from = NULL;
 	knot_rrset_t *soa_to = NULL;
 
-	result = knot_rrset_deep_copy_no_sig(soa, &soa_from);
+	result = knot_rrset_deep_copy_no_sig(soa, &soa_from, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	result = knot_rrset_deep_copy_no_sig(soa, &soa_to);
+	result = knot_rrset_deep_copy_no_sig(soa, &soa_to, NULL);
 	if (result != KNOT_EOK) {
 		knot_rrset_deep_free(&soa_from, 1, NULL);
 		return result;

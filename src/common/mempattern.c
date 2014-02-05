@@ -35,6 +35,44 @@ static void *mm_malloc(void *ctx, size_t n)
 	return malloc(n);
 }
 
+void *mm_alloc(mm_ctx_t *mm, size_t size)
+{
+	if (mm) {
+		return mm->alloc(mm->ctx, size);
+	} else {
+		return malloc(size);
+	}
+}
+
+void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
+{
+	if (mm) {
+		void *p = mm->alloc(mm->ctx, size);
+		if (knot_unlikely(p == NULL)) {
+			return NULL;
+		} else {
+			if (what) {
+				memcpy(p, what, prev_size);
+			}
+			if (mm->free) {
+				mm->free(what);
+			}
+			return p;
+		}
+	} else {
+		return realloc(what, size);
+	}
+}
+
+void mm_free(mm_ctx_t *mm, void *what)
+{
+	if (mm && mm->free) {
+		mm->free(what);
+	} else {
+		free(what);
+	}
+}
+
 void mm_ctx_init(mm_ctx_t *mm)
 {
 	mm->ctx = NULL;

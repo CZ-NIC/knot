@@ -35,38 +35,6 @@
 #include "libknot/dname.h"
 #include "libknot/rdata.h"
 
-static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size)
-{
-	if (mm) {
-		if (mm->free) {
-			mm->free(what);
-		}
-		what = mm->alloc(mm->ctx, size);
-		return what;
-	} else {
-		void *p = realloc(what, size);
-		return p;
-	}
-}
-
-static void *mm_alloc(mm_ctx_t *mm, size_t size)
-{
-	if (mm) {
-		return mm->alloc(mm->ctx, size);
-	} else {
-		return malloc(size);
-	}
-}
-
-static void mm_free(mm_ctx_t *mm, void *what)
-{
-	if (mm && mm->free) {
-		mm->free(what);
-	} else {
-		free(what);
-	}
-}
-
 static uint32_t rrset_rdata_offset(const knot_rrset_t *rrset, size_t pos)
 {
 	if (rrset == NULL || rrset->rdata_indices == NULL ||
@@ -812,7 +780,7 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 	uint32_t total_size = rrset_rdata_size_total(rrset);
 
 	// Realloc actual data.
-	void *tmp = mm_realloc(mm, rrset->rdata, total_size + size);
+	void *tmp = mm_realloc(mm, rrset->rdata, total_size + size, total_size);
 	if (tmp) {
 		rrset->rdata = tmp;
 	} else {
@@ -831,7 +799,8 @@ static uint8_t* knot_rrset_create_rdata_at_pos(knot_rrset_t *rrset,
 	
 	// Realloc indices. We will allocate exact size to save space.
 	tmp = mm_realloc(mm, rrset->rdata_indices,
-	                (rrset->rdata_count + 1) * sizeof(uint32_t));
+	                (rrset->rdata_count + 1) * sizeof(uint32_t),
+	                 rrset->rdata_count * sizeof(uint32_t));
 	if (tmp) {
 		rrset->rdata_indices = tmp;
 	} else {
@@ -882,11 +851,24 @@ uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, uint16_t size,
 	uint32_t total_size = rrset_rdata_size_total(rrset);
 
 	/* Realloc indices. We will allocate exact size to save space. */
-	rrset->rdata_indices = mm_realloc(mm, rrset->rdata_indices,
-	                                  (rrset->rdata_count + 1) * sizeof(uint32_t));
+	void *tmp = mm_realloc(mm, rrset->rdata_indices,
+	                       (rrset->rdata_count + 1) * sizeof(uint32_t),
+	                       rrset->rdata_count * sizeof(uint32_t));
+	if (tmp) {
+		rrset->rdata_indices = tmp;
+	} else {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 
 	/* Realloc actual data. */
-	rrset->rdata = mm_realloc(mm, rrset->rdata, total_size + size);
+	tmp = mm_realloc(mm, rrset->rdata, total_size + size, total_size);
+	if (tmp) {
+		rrset->rdata = tmp;
+	} else {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 
 	/* Pointer to new memory. */
 	uint8_t *dst = rrset->rdata + total_size;
@@ -1325,7 +1307,8 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 	return true;
 }
 
-int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to)
+int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to,
+                                mm_ctx_t *mm)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
@@ -1333,38 +1316,47 @@ int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to)
 
 	dbg_rrset_detail("rr: deep_copy: Copying RRs of type %d\n",
 	                 from->type);
-	*to = knot_rrset_new_from(from, NULL);
-
+	*to = knot_rrset_new_from(from, mm);
 	if (*to == NULL) {
-		knot_rrset_deep_free(to, 1, NULL);
 		*to = NULL;
 		return KNOT_ENOMEM;
 	}
 
+	(*to)->rdata_count = from->rdata_count;
 	(*to)->rrsigs = NULL;
-
 	(*to)->additional = NULL; /* Never copy. */
 
 	/* Just copy arrays - actual data + indices. */
-	(*to)->rdata = xmalloc(rrset_rdata_size_total(from));
+	(*to)->rdata = mm_alloc(mm, rrset_rdata_size_total(from));
+	if ((*to)->rdata == NULL) {
+		ERR_ALLOC_FAILED;
+		knot_rrset_deep_free(to, 1, mm);
+		return KNOT_ENOMEM;
+	}
 	memcpy((*to)->rdata, from->rdata, rrset_rdata_size_total(from));
 
-	(*to)->rdata_indices = xmalloc(sizeof(uint32_t) * from->rdata_count);
+	(*to)->rdata_indices = mm_alloc(mm, sizeof(uint32_t) * from->rdata_count);
+	if ((*to)->rdata_indices == NULL) {
+		ERR_ALLOC_FAILED;
+		knot_rrset_deep_free(to, 1, mm);
+		return KNOT_ENOMEM;
+	}
 	memcpy((*to)->rdata_indices, from->rdata_indices,
 	       sizeof(uint32_t) * from->rdata_count);
 
 	return KNOT_EOK;
 }
 
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to)
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
+                         mm_ctx_t *mm)
 {
-	int result = knot_rrset_deep_copy_no_sig(from, to);
+	int result = knot_rrset_deep_copy_no_sig(from, to, mm);
 
 	if (result == KNOT_EOK && from->rrsigs != NULL) {
 		result = knot_rrset_deep_copy_no_sig(from->rrsigs,
-		                                     &(*to)->rrsigs);
+		                                     &(*to)->rrsigs, mm);
 		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(to, 1, NULL);
+			knot_rrset_deep_free(to, 1, mm);
 		}
 	}
 

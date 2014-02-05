@@ -316,7 +316,8 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 	} else {
 		assert(old_nsec3);
 		// Reuse bitmap and data from old NSEC3
-		int ret = knot_rrset_deep_copy_no_sig(old_nsec3, &gen_nsec3);
+		int ret = knot_rrset_deep_copy_no_sig(old_nsec3, &gen_nsec3,
+		                                      NULL);
 		if (ret != KNOT_EOK) {
 			free(binary_next);
 			return ret;
