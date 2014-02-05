@@ -296,7 +296,7 @@ class Server(object):
             except ProcessLookupError:
                 pass
             except:
-                err("killing")
+                err("Killing %s" % self.name)
                 self.proc.kill()
         if check:
             self._valgrind_check()
