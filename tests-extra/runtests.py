@@ -8,7 +8,7 @@ import dnstest.utils
 
 TESTS_DIR = "tests"
 COMMON_DATA_DIR = "data"
-LAST_WORKING_DIR = "/tmp/knottest-last"
+LAST_WORKING_DIR = params.outs_dir + "/knottest-last"
 
 def save_traceback(outdir):
     file = open(params.out_dir + "/traceback.log", mode="a")
@@ -74,7 +74,8 @@ def main(args):
 
     timestamp = int(time.time())
     today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
-    outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp)
+    outs_dir = tempfile.mkdtemp(prefix="knottest-%s-" % timestamp,
+                                dir=params.outs_dir)
 
     # Try to create symlink to the latest result.
     try:
