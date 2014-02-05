@@ -41,61 +41,7 @@
 #include "libknot/rdata.h"
 
 /*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_create_query(knot_dname_t *qname, uint16_t qtype,
-			      uint16_t qclass, knot_ns_xfr_t *xfr,
-			      const knot_rrset_t *soa)
-{
-	knot_pkt_t *pkt = knot_pkt_new(xfr->wire, xfr->wire_maxlen, NULL);
-	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
-
-	/* Set random query ID. */
-	knot_pkt_clear(pkt);
-	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
-	int ret = knot_pkt_put_question(pkt, qname, qclass, qtype);
-	if (ret != KNOT_EOK) {
-		knot_pkt_free(&pkt);
-		return ret;
-	}
-
-	/* Reserve space for TSIG. */
-	knot_pkt_tsig_set(pkt, xfr->tsig_key);
-
-	/* Add SOA RR to authority section for IXFR. */
-	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	if (qtype == KNOT_RRTYPE_IXFR && soa) {
-		knot_pkt_put(pkt, 0, soa, 0);
-	}
-
-	// wire format created, sign it with TSIG if required
-	if (xfr->tsig_key) {
-		xfr->digest_size = xfr->digest_max_size;
-		ret = knot_tsig_sign(pkt->wire, &pkt->size, pkt->max_size, NULL, 0,
-		                     xfr->digest, &xfr->digest_size, pkt->tsig_key,
-		                     0, 0);
-		if (ret != KNOT_EOK) {
-			/*! \todo [TSIG] Handle TSIG errors. */
-			knot_pkt_free(&pkt);
-			return ret;
-		}
-	}
-
-	xfr->wire_size = pkt->size;
-	knot_pkt_free(&pkt);
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
-/*----------------------------------------------------------------------------*/
-
-int xfrin_create_soa_query(knot_dname_t *owner, knot_ns_xfr_t *xfr)
-{
-	return xfrin_create_query(owner, KNOT_RRTYPE_SOA, KNOT_CLASS_IN, xfr, 0);
-}
-
 /*----------------------------------------------------------------------------*/
 
 int xfrin_transfer_needed(const knot_zone_contents_t *zone,
@@ -145,23 +91,36 @@ dbg_xfrin_exec(
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_axfr_query(knot_dname_t *owner, knot_ns_xfr_t *xfr)
+int xfrin_create_soa_query(const knot_zone_t *zone, knot_pkt_t *pkt)
 {
-	return xfrin_create_query(owner, KNOT_RRTYPE_AXFR, KNOT_CLASS_IN, xfr, 0);
+	return knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_ixfr_query(const knot_zone_contents_t *zone, knot_ns_xfr_t *xfr)
+int xfrin_create_axfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
 {
-	/*!
-	 *  \todo Implement properly.
-	 */
-	knot_node_t *apex = knot_zone_contents_get_apex(zone);
-	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
-	knot_dname_t *owner = knot_node_get_owner(apex);
+	return knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_AXFR);
+}
 
-	return xfrin_create_query(owner, KNOT_RRTYPE_IXFR, KNOT_CLASS_IN, xfr, soa);
+/*----------------------------------------------------------------------------*/
+
+int xfrin_create_ixfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
+{
+	if (zone->contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_IXFR);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Add SOA RR to authority section for IXFR. */
+	knot_node_t *apex = zone->contents->apex;
+	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+	knot_pkt_begin(pkt, KNOT_AUTHORITY);
+	return knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, 0);
 }
 
 /*----------------------------------------------------------------------------*/

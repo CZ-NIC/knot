@@ -50,11 +50,11 @@ extern const knot_process_module_t _process_query;
 
 /*! \brief Query logging common base. */
 #define QUERY_LOG(severity, qdata, what, msg...) \
-	NS_PROC_LOG(severity, qdata, what " of '%s' from '%s:%d': ", msg)
+	NS_PROC_LOG(severity, qdata, what " of '%s' from '%s@%d': ", msg)
 
 /*! \brief Answer logging common base. */
 #define ANSWER_LOG(severity, qdata, what, msg...)  \
-	NS_PROC_LOG(severity, qdata, what " of '%s' to '%s:%d': ", msg)
+	NS_PROC_LOG(severity, qdata, what " of '%s' to '%s@%d': ", msg)
 
 /* Query processing specific flags. */
 enum process_query_flag {

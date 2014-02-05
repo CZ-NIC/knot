@@ -214,7 +214,7 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	}
 
 	/* Reserve space for TSIG. */
-	knot_pkt_tsig_set(pkt, qdata->sign.tsig_key);
+	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* Answer current packet (or continue). */
 	struct xfr_proc *xfer = qdata->ext;

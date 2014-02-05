@@ -246,16 +246,16 @@ class Server(object):
 
         lock = False
         lost = 0
-        reachable = -32
+        reachable = 0
         errcount = 0
 
         f = open(self.ferr, "r")
         for line in f:
-            if re.search("LEAK SUMMARY", line):
-                lock = True
+            if re.search("(HEAP|LEAK) SUMMARY", line):
                 lost = 0
-                reachable = -32
+                reachable = 0
                 errcount = 0
+                lock = True
                 continue
 
             if lock:
@@ -276,7 +276,7 @@ class Server(object):
                     errcount += int(line[err_line.end():].lstrip(). \
                                     split(" ")[0].replace(",", ""))
 
-                    if lost > 0 or reachable > 0 or errcount > 0:
+                    if lost > 0 or reachable > 32 or errcount > 0:
                         set_err("VALGRIND")
                         detail_log("%s memcheck: lost(%i B), reachable(%i B), " \
                                    "errcount(%i)" \
@@ -296,7 +296,7 @@ class Server(object):
             except ProcessLookupError:
                 pass
             except:
-                err("killing")
+                err("Killing %s" % self.name)
                 self.proc.kill()
         if check:
             self._valgrind_check()
@@ -676,7 +676,7 @@ class Bind(Server):
                 for slave in z.slaves:
                     if self.tsig:
                         slaves += "%s port %i key %s; " \
-                                  % (slave.addr, slave.port, slave.tsig.name)
+                                  % (slave.addr, slave.port, self.tsig.name)
                         slaves_upd += "key %s; " % slave.tsig.name
                     else:
                         slaves += "%s port %i; " % (slave.addr, slave.port)
@@ -797,7 +797,7 @@ class Knot(Server):
                     s.item("address", slave.addr)
                     s.item("port", slave.port)
                     if slave.tsig:
-                        s.item_str("key", slave.tsig.name)
+                        s.item_str("key", self.tsig.name)
                     s.end()
                     servers.add(slave.name)
         s.end()

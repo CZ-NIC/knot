@@ -48,6 +48,9 @@ bind_ctl = get_binary("KNOT_TEST_BINDC", "rndc")
 # KNOT_TEST_NSDC - Nsd control binary.
 #nsd_ctl = get_binary("KNOT_TEST_NSDC", "nsdc")
 
+# KNOT_TEST_OUTS_DIR - working directories location.
+outs_dir = get_param("KNOT_TEST_OUTS_DIR", "/tmp")
+
 # Common data directory (e.g. zone files).
 common_data_dir = ""
 

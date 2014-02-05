@@ -68,6 +68,10 @@
 		s->buffer_length = 0;
 	}
 	action _err_line {
+		if (fc == '\r') {
+			ERR(ZSCANNER_DOS_NEWLINE);
+		}
+
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = fc;
 		}

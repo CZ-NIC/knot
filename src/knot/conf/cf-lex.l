@@ -25,10 +25,13 @@
 %{
 
 #include <config.h>
+#include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "common/sockaddr.h"
 #include "knot/conf/conf.h"
@@ -313,11 +316,7 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 : /* Optional : in assignments. */;
 
 <<EOF>> {
-	conf_include_t *inc = conf_includes_pop(yyextra->includes);
-	free(inc->filename);
-	if (inc->handle) {
-		fclose(inc->handle);
-	}
+	conf_includes_remove(yyextra->includes);
 
 	yypop_buffer_state(yyscanner);
 
@@ -345,7 +344,7 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 	yytext[yyleng] = '\0';
 
 	if (!conf_includes_push(yyextra->includes, yytext)) {
-		cf_error(yyscanner, "includes nested too deeply");
+		cf_error(yyscanner, "include loop");
 		return END;
 	}
 
@@ -355,16 +354,84 @@ hmac-sha512     { lval.alg = KNOT_TSIG_ALG_HMAC_SHA512; return TSIG_ALGO_NAME; }
 	FILE *included = fopen(inc->filename, "r");
 	if (!included) {
 		cf_error(yyscanner, "cannot open file '%s'", inc->filename);
-		conf_includes_pop(yyextra->includes);
-		free(inc->filename);
+		conf_includes_remove(yyextra->includes);
+		return END;
+	}
+	inc->handle = included;
+
+	struct stat file_stat;
+	if (fstat(fileno(included), &file_stat) == -1) {
+		cf_error(yyscanner, "cannot stat file '%s'", yytext);
+		conf_includes_remove(yyextra->includes);
 		return END;
 	}
 
-	inc->handle = included;
-	YY_BUFFER_STATE bs = yy_create_buffer(included, YY_BUF_SIZE, yyscanner);
-	yypush_buffer_state(bs, yyscanner);
-}
+	if (S_ISDIR(file_stat.st_mode)) {
+		// Store dirname statically to reduce deallocation.
+		char dirname[256] = { 0 };
+		int ret = snprintf(dirname, sizeof(dirname), "%s",
+		                   inc->filename);
+		if (ret <= 0 || ret >= sizeof(dirname)) {
+			cf_error(yyscanner, "dir name is too long '%s'",
+			         inc->filename);
+			return END;
+		}
 
+		// Remove include directory from the stack.
+		conf_includes_remove(yyextra->includes);
+
+		DIR *dp = opendir(dirname);
+		if (dp == NULL) {
+			cf_error(yyscanner, "cannot open directory '%s'",
+			         dirname);
+			return END;
+		}
+
+		struct dirent *ep;
+		while ((ep = readdir(dp)) != NULL) {
+			// Skip names with leading dot.
+			if (*ep->d_name == '.') {
+				continue;
+			}
+
+			char infile[256] = { 0 };
+			int ret = snprintf(infile, sizeof(infile), "%s/%s",
+			                   dirname, ep->d_name);
+			if (ret <= 0 || ret >= sizeof(infile)) {
+				cf_error(yyscanner, "cannot open file '%s/%s'",
+				         dirname, ep->d_name);
+				return END;
+			}
+
+			if (!conf_includes_push(yyextra->includes, infile)) {
+				cf_error(yyscanner, "include loop");
+				return END;
+			}
+
+			// retrieved relative to previous config
+			conf_include_t *inc = conf_includes_top(yyextra->includes);
+
+			FILE *included = fopen(inc->filename, "r");
+			if (!included) {
+				cf_error(yyscanner, "cannot open file '%s'",
+				         inc->filename);
+				conf_includes_remove(yyextra->includes);
+				return END;
+			}
+			inc->handle = included;
+
+			YY_BUFFER_STATE bs = yy_create_buffer(included,
+			                                      YY_BUF_SIZE,
+			                                      yyscanner);
+			yypush_buffer_state(bs, yyscanner);
+		}
+		(void)closedir(dp);
+	} else {
+		YY_BUFFER_STATE bs = yy_create_buffer(included, YY_BUF_SIZE,
+		                                      yyscanner);
+		yypush_buffer_state(bs, yyscanner);
+	}
+}
 <include>["][^"\n]*\n cf_error(yyscanner, "Unterminated string.");
 
 %%
