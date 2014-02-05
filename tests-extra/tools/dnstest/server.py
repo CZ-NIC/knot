@@ -246,16 +246,16 @@ class Server(object):
 
         lock = False
         lost = 0
-        reachable = -32
+        reachable = 0
         errcount = 0
 
         f = open(self.ferr, "r")
         for line in f:
-            if re.search("LEAK SUMMARY", line):
-                lock = True
+            if re.search("(HEAP|LEAK) SUMMARY", line):
                 lost = 0
-                reachable = -32
+                reachable = 0
                 errcount = 0
+                lock = True
                 continue
 
             if lock:
@@ -276,7 +276,7 @@ class Server(object):
                     errcount += int(line[err_line.end():].lstrip(). \
                                     split(" ")[0].replace(",", ""))
 
-                    if lost > 0 or reachable > 0 or errcount > 0:
+                    if lost > 0 or reachable > 32 or errcount > 0:
                         set_err("VALGRIND")
                         detail_log("%s memcheck: lost(%i B), reachable(%i B), " \
                                    "errcount(%i)" \
