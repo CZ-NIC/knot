@@ -80,8 +80,7 @@ bool knot_is_nsec3_enabled(const knot_zone_contents_t *zone)
 		return false;
 	}
 
-	return zone->nsec3_params.algorithm != 0 &&
-	       knot_zone_tree_weight(zone->nsec3_nodes) > 0;
+	return zone->nsec3_params.algorithm != 0;
 }
 
 /*!
