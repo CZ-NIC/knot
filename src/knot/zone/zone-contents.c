@@ -51,8 +51,6 @@ const uint8_t KNOT_ZONE_FLAGS_GEN_OLD  = 0;            /* xxxxxx00 */
 const uint8_t KNOT_ZONE_FLAGS_GEN_NEW  = 1 << 0;       /* xxxxxx01 */
 const uint8_t KNOT_ZONE_FLAGS_GEN_FIN  = 1 << 1;       /* xxxxxx10 */
 const uint8_t KNOT_ZONE_FLAGS_GEN_MASK = 3;            /* 00000011 */
-const uint8_t KNOT_ZONE_FLAGS_ANY_MASK = 4;            /* 00000100 */
-const uint8_t KNOT_ZONE_FLAGS_ANY      = 4;            /* 00000100 */
 
 /*----------------------------------------------------------------------------*/
 
@@ -420,7 +418,7 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 /*----------------------------------------------------------------------------*/
 
 knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             struct knot_zone *zone)
+                                             struct zone_t *zone)
 {
 	knot_zone_contents_t *contents = (knot_zone_contents_t *)
 				      calloc(1, sizeof(knot_zone_contents_t));
@@ -430,7 +428,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 	}
 
 	contents->apex = apex;
-	contents->zone = zone;
 	contents->node_count = 1;
 
 	dbg_zone_verb("Creating tree for normal nodes.\n");
@@ -517,36 +514,6 @@ void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
 	contents->flags |= KNOT_ZONE_FLAGS_GEN_FIN;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_any_disabled(const knot_zone_contents_t *contents)
-{
-	return ((contents->flags & KNOT_ZONE_FLAGS_ANY_MASK)
-		== KNOT_ZONE_FLAGS_ANY);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_contents_disable_any(knot_zone_contents_t *contents)
-{
-	if (contents == NULL) {
-		return;
-	}
-
-	contents->flags |= KNOT_ZONE_FLAGS_ANY;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_contents_enable_any(knot_zone_contents_t *contents)
-{
-	if (contents == NULL) {
-		return;
-	}
-
-	contents->flags &= ~KNOT_ZONE_FLAGS_ANY_MASK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1099,8 +1066,8 @@ dbg_zone_exec(
 	dbg_zone_verb("find_dname() returning %d\n", exact_match);
 
 	return (exact_match)
-	       ? KNOT_ZONE_NAME_FOUND
-	       : KNOT_ZONE_NAME_NOT_FOUND;
+	       ? ZONE_NAME_FOUND
+	       : ZONE_NAME_NOT_FOUND;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1296,8 +1263,8 @@ dbg_zone_exec_detail(
 	}
 
 	return (exact_match)
-	       ? KNOT_ZONE_NAME_FOUND
-	       : KNOT_ZONE_NAME_NOT_FOUND;
+	       ? ZONE_NAME_FOUND
+	       : ZONE_NAME_NOT_FOUND;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1360,7 +1327,6 @@ static int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
 	                                       &adjust_arg,
 	                                       knot_zone_contents_adjust_nsec3_node);
 }
-
 
 /*----------------------------------------------------------------------------*/
 
@@ -1491,18 +1457,6 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *zone)
-{
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return (zone->nsec3_params.algorithm != 0
-		&& knot_zone_tree_weight(zone->nsec3_nodes) != 0);
-}
-
-/*----------------------------------------------------------------------------*/
-
 const knot_nsec3_params_t *knot_zone_contents_nsec3params(
 	const knot_zone_contents_t *zone)
 {
@@ -1510,7 +1464,7 @@ const knot_nsec3_params_t *knot_zone_contents_nsec3params(
 		return NULL;
 	}
 
-	if (knot_zone_contents_nsec3_enabled(zone)) {
+	if (knot_is_nsec3_enabled(zone)) {
 		return &zone->nsec3_params;
 	} else {
 		return NULL;
@@ -1581,8 +1535,6 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 	contents->flags = from->flags;
 	// set the 'new' flag
 	knot_zone_contents_set_gen_new(contents);
-
-	contents->zone = from->zone;
 
 	if ((ret = knot_zone_tree_deep_copy(from->nodes,
 					    &contents->nodes)) != KNOT_EOK
@@ -2002,7 +1954,6 @@ int knot_zc_integrity_check_child_count(check_data_t *data)
 	knot_zone_tree_apply_inorder(data->contents->nsec3_nodes,
 					     count_nsec3_nodes,
 					     (void *)apex_copy);
-
 
 	// now compare the children counts
 	// iterate over the old zone and search for nodes in the copy

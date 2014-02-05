@@ -21,8 +21,7 @@
 
 #include "common/errcode.h"
 #include "common/sockaddr.h"
-#include "common/acl.h"
-
+#include "knot/updates/acl.h"
 
 int main(int argc, char *argv[])
 {

@@ -172,7 +172,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		knot_zone_contents_t *zone = constr_zone->contents;
 		assert(zone != NULL);
 		log_zone_info("%s Serial %u -> %u\n", xfr->msg,
-		              knot_zone_serial(knot_zone_contents(xfr->zone)),
+		              knot_zone_serial(xfr->zone->contents),
 		              knot_zone_serial(zone));
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
@@ -220,7 +220,7 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 
 	/* Zone must not be looked-up from server, as it may be a different zone if
 	 * a reload occurs when transfer is pending. */
-	knot_zone_t *z = xfr->zone;
+	zone_t *z = xfr->zone;
 	if (z == NULL) {
 		char *name = knot_dname_to_str(knot_node_owner(
 				knot_zone_contents_apex(zone)));
@@ -229,8 +229,6 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		free(name);
 
 		return KNOT_ENOZONE;
-	} else {
-		zone->zone = z;
 	}
 
 	rcu_read_unlock();
@@ -276,7 +274,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		// find zone associated with the changesets
 		/* Must not search for the zone in zonedb as it may fetch a
 		 * different zone than the one the transfer started on. */
-		knot_zone_t *zone = xfr->zone;
+		zone_t *zone = xfr->zone;
 		if (zone == NULL) {
 			dbg_ns("No zone found for incoming IXFR!\n");
 			knot_changesets_free(
@@ -290,8 +288,7 @@ int knot_ns_process_ixfrin(knot_nameserver_t *nameserver,
 		case XFRIN_RES_SOA_ONLY: {
 			// compare the SERIAL from the changeset with the zone's
 			// serial
-			const knot_node_t *apex = knot_zone_contents_apex(
-					knot_zone_contents(zone));
+			const knot_node_t *apex = zone->contents->apex;
 			if (apex == NULL) {
 				return KNOT_ERROR;
 			}

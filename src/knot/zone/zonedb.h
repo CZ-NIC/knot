@@ -30,8 +30,9 @@
 #ifndef _KNOT_ZONEDB_H_
 #define _KNOT_ZONEDB_H_
 
-#include "knot/zone/zone.h"
 #include "knot/zone/node.h"
+#include "knot/zone/zone.h"
+#include "knot/zone/zone-contents.h"
 #include "libknot/dname.h"
 #include "common/hhash.h"
 
@@ -78,7 +79,7 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size);
  * \retval KNOT_EOK
  * \retval KNOT_EZONEIN
  */
-int knot_zonedb_insert(knot_zonedb_t *db, knot_zone_t *zone);
+int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone);
 
 /*!
  * \brief Removes the given zone from the database if it exists.
@@ -105,8 +106,7 @@ int knot_zonedb_build_index(knot_zonedb_t *db);
  * \return Zone with \a zone_name being the owner of the zone apex or NULL if
  *         not found.
  */
-knot_zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name);
-
+zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name);
 
 /*!
  * \brief Finds zone the given domain name should belong to.
@@ -117,7 +117,7 @@ knot_zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name);
  * \retval Zone in which the domain name should be present or NULL if no such
  *         zone is found.
  */
-knot_zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname);
+zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname);
 
 knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
                                               const knot_dname_t *zone_name);

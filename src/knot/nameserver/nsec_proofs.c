@@ -2,6 +2,7 @@
 
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/dnssec/zone-nsec.h"
 
 #include "libknot/common.h"
 #include "libknot/rdata.h"
@@ -105,7 +106,7 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
-	if (match == KNOT_ZONE_NAME_FOUND || prev == NULL){
+	if (match == ZONE_NAME_FOUND || prev == NULL){
 		// if run-time collision => SERVFAIL
 		return KNOT_EOK;
 	}
@@ -336,7 +337,7 @@ static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
 {
 	int ret = KNOT_EOK;
 
-	if (knot_zone_contents_nsec3_enabled(zone)) {
+	if (knot_is_nsec3_enabled(zone)) {
 		ret = ns_put_nsec3_closest_encloser_proof(zone,
 		                                          &closest_encloser,
 		                                          qname, resp);
@@ -417,7 +418,7 @@ static int ns_put_nsec3_wildcard(const knot_zone_contents_t *zone,
 	assert(qname != NULL);
 	assert(resp != NULL);
 
-	if (!knot_zone_contents_nsec3_enabled(zone)) {
+	if (!knot_is_nsec3_enabled(zone)) {
 		return KNOT_EOK;
 	}
 
@@ -475,7 +476,7 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 	if (knot_dname_is_wildcard(knot_node_owner(node))
 	    && knot_dname_cmp(qname, knot_node_owner(node)) != 0) {
 		dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
-		if (knot_zone_contents_nsec3_enabled(zone)) {
+		if (knot_is_nsec3_enabled(zone)) {
 			ret = ns_put_nsec3_wildcard(zone, closest_encloser,
 			                            qname, resp);
 		} else {
@@ -663,7 +664,7 @@ static int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,
 {
 	int ret = 0;
 
-	if (knot_zone_contents_nsec3_enabled(zone)) {
+	if (knot_is_nsec3_enabled(zone)) {
 		ret = ns_put_nsec3_nxdomain(zone, closest_encloser,
 		                            qname, resp);
 	} else {
@@ -704,7 +705,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 
 	knot_rrset_t *rrset = NULL;
 
-	if (knot_zone_contents_nsec3_enabled(zone)) {
+	if (knot_is_nsec3_enabled(zone)) {
 		knot_node_t *nsec3_node = knot_node_get_nsec3_node(node);
 		dbg_ns("%s: adding NSEC3 NODATA\n", __func__);
 

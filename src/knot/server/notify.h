@@ -51,7 +51,7 @@ struct query_data;
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int notify_create_request(const knot_zone_t *zone, knot_pkt_t *pkt);
+int notify_create_request(const zone_t *zone, knot_pkt_t *pkt);
 
 /*!
  * \brief Processes NOTIFY response packet.

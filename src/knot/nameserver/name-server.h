@@ -109,7 +109,7 @@ typedef struct knot_ns_xfr {
 	size_t wire_size;
 	size_t wire_maxlen;
 	void *data;
-	knot_zone_t *zone;
+	zone_t *zone;
 	char* zname;
 	knot_zone_contents_t *new_contents;
 	char *msg;

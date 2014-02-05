@@ -259,7 +259,6 @@ static int server_bind_sockets(server_t *s)
 	init_list(&newlist->u);
 	init_list(&newlist->l);
 
-
 	/* Duplicate current list. */
 	/*! \note Pointers to addr, handlers etc. will be shared. */
 	if (s->ifaces) {
@@ -434,7 +433,6 @@ int server_start(server_t *s)
 		}
 	}
 
-
 	dbg_server("server: server started\n");
 
 	return ret;
@@ -474,13 +472,12 @@ int server_refresh(server_t *server)
 	knot_zonedb_iter_begin(ns->zone_db, &it);
 	unsigned count = 0;
 	while(!knot_zonedb_iter_finished(&it)) {
-		const knot_zone_t *zone = knot_zonedb_iter_val(&it);
-		zonedata_t *zd = (zonedata_t *)zone->data;
+		const zone_t *zone = knot_zonedb_iter_val(&it);
 
 		/* Expire REFRESH timer. */
-		if (zd && zd->xfr_in.timer) {
-			evsched_cancel(sch, zd->xfr_in.timer);
-			evsched_schedule(sch, zd->xfr_in.timer,
+		if (zone->xfr_in.timer) {
+			evsched_cancel(sch, zone->xfr_in.timer);
+			evsched_schedule(sch, zone->xfr_in.timer,
 			                 knot_random_uint16_t() % 500 + count/2);
 			/* Cumulative delay. */
 			++count;
@@ -612,7 +609,6 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 			                 knot_strerror(ret));
 			return ret;
 		}
-
 
 		/* Start if server is running. */
 		if (server->state & ServerRunning) {

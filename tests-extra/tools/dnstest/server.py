@@ -804,7 +804,7 @@ class Knot(Server):
 
         s.begin("zones")
         s.item_str("storage", self.dir)
-        s.item("zonefile-sync", "5s")
+        s.item("zonefile-sync", "0")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
         if self.disable_any:

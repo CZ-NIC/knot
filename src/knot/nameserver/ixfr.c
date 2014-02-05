@@ -123,7 +123,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item, struct xfr_
 
 #undef IXFR_SAFE_PUT
 
-static int ixfr_load_chsets(knot_changesets_t **chgsets, const knot_zone_t *zone,
+static int ixfr_load_chsets(knot_changesets_t **chgsets, const zone_t *zone,
 			    const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
@@ -155,8 +155,9 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const knot_zone_t *zone
 
 static int ixfr_query_check(struct query_data *qdata)
 {
-	/* Check zone state. */
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	/* Check if zone exists. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+
 	/* Need IXFR query type. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_IXFR, KNOT_RCODE_FORMERR);
 	/* Need SOA authority record. */
@@ -169,9 +170,9 @@ static int ixfr_query_check(struct query_data *qdata)
 	/* SOA needs to match QNAME. */
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
 
-	/* Need valid transaction security. */
-	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
-	NS_NEED_AUTH(zone_data->xfr_out, qdata);
+	/* Check transcation security and zone contents. */
+	NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	return NS_PROC_DONE;
 }

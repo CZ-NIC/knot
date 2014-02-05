@@ -53,15 +53,17 @@ int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 		return NS_PROC_FAIL; \
 	}
 
-/*! \brief Require valid zone or return error code. */
-#define NS_NEED_VALID_ZONE(qdata, error_rcode) \
-	switch(knot_zone_state((qdata)->zone)) { \
-	case KNOT_EOK: \
-		break; \
-	case KNOT_ENOENT: \
+/*! \brief Require existing zone or return failure. */
+#define NS_NEED_ZONE(qdata, error_rcode) \
+	if ((qdata)->zone == NULL) { \
 		qdata->rcode = (error_rcode); \
 		return NS_PROC_FAIL; \
-	default: /* SERVFAIL */ \
+	}
+
+/*! \brief Require existing zone contents or return failure. */
+#define NS_NEED_ZONE_CONTENTS(qdata, error_rcode) \
+	if ((qdata)->zone->contents == NULL) { \
+		qdata->rcode = (error_rcode); \
 		return NS_PROC_FAIL; \
 	}
 

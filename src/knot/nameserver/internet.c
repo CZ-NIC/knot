@@ -166,9 +166,10 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	case KNOT_RRTYPE_ANY: /* Append all RRSets. */
 		/* If ANY not allowed, set TC bit. */
 		if ((qdata->param->proc_flags & NS_QUERY_LIMIT_ANY) &&
-		    knot_zone_contents_any_disabled(qdata->zone->contents)) {
+		    (qdata->zone->conf->disable_any)) {
+			dbg_ns("%s: ANY/UDP disabled for this zone TC=1\n", __func__);
 			knot_wire_set_tc(pkt->wire);
-			return KNOT_EOK;
+			return KNOT_ESPACE;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
 			ret = put_rr(pkt, rrsets[i], compr_hint, 0, qdata);
@@ -272,7 +273,7 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t *info)
 {
 	/* Valid types for ADDITIONALS insertion. */
-	/* \note Not resolving CNAMEs as it doesn't pay off much. */
+	/* \note Not resolving CNAMEs as MX/NS name must not be an alias. (RFC2181/10.3) */
 	static const uint16_t ar_type_list[] = {KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA};
 	static const int ar_type_count = 2;
 
@@ -474,9 +475,9 @@ static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	                                        &qdata->previous);
 
 	switch(ret) {
-	case KNOT_ZONE_NAME_FOUND:
+	case ZONE_NAME_FOUND:
 		return name_found(pkt, qdata);
-	case KNOT_ZONE_NAME_NOT_FOUND:
+	case ZONE_NAME_NOT_FOUND:
 		return name_not_found(pkt, qdata);
 	case KNOT_EOUTOFZONE:
 		assert(state == FOLLOW); /* CNAME/DNAME chain only. */
@@ -655,17 +656,19 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 		return NS_PROC_FAIL;
 	}
 
+	/* Check valid zone, transaction security (optional) and contents. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
+
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_have_tsig(qdata->query)) {
 		/* We have been challenged... */
-		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
-		NS_NEED_AUTH(zone_data->xfr_out, qdata);
+		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
 
 		/* Reserve space for TSIG. */
 		knot_pkt_reserve(response, tsig_wire_maxsize(qdata->sign.tsig_key));
 	}
 
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
 
 	/* Get answer to QNAME. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);

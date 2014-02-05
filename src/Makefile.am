@@ -57,8 +57,6 @@ knsec3hash_SOURCES =				\
 
 # static: shared
 libknots_la_SOURCES =				\
-	common/acl.c				\
-	common/acl.h				\
 	common/array-sort.h			\
 	common/atomic.h				\
 	common/base32hex.c			\
@@ -256,6 +254,8 @@ libknotd_la_SOURCES =				\
 	knot/stat/stat-common.h			\
 	knot/stat/stat.c			\
 	knot/stat/stat.h			\
+	knot/updates/acl.c			\
+	knot/updates/acl.h			\
 	knot/updates/changesets.c		\
 	knot/updates/changesets.h		\
 	knot/updates/ddns.c			\

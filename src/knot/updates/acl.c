@@ -24,7 +24,7 @@
 #include <stdbool.h>
 
 #include "common/errcode.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 #include "libknot/util/endian.h"
 #include "libknot/tsig.h"
 
@@ -179,7 +179,7 @@ acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr, const knot_dname_t *ke
 				/* NOKEY entry, but key provided. */
 				continue;
 			}
-			
+
 			/* NOKEY provided, but key required. */
 			if (key_name == NULL) {
 				continue;

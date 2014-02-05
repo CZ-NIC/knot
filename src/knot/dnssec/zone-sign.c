@@ -1302,7 +1302,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
  */
-int knot_zone_sign_changeset(const knot_zone_t *zone,
+int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
                              hattrie_t **sorted_changes,
@@ -1315,7 +1315,7 @@ int knot_zone_sign_changeset(const knot_zone_t *zone,
 	}
 
 	// Create args for wrapper function - hattrie for duplicate sigs
-	changeset_signing_data_t args = { .zone = zone->contents,
+	changeset_signing_data_t args = { .zone = zone,
 	                                  .zone_keys = zone_keys,
 	                                  .policy = policy,
 	                                  .changeset = out_ch,

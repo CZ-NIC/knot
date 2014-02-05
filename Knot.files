@@ -19,8 +19,6 @@ man/Makefile.am
 patches/Makefile.am
 samples/Makefile.am
 src/Makefile.am
-src/common/acl.c
-src/common/acl.h
 src/common/array-sort.h
 src/common/atomic.h
 src/common/base32hex.c
@@ -147,6 +145,8 @@ src/knot/stat/gatherer.h
 src/knot/stat/stat-common.h
 src/knot/stat/stat.c
 src/knot/stat/stat.h
+src/knot/updates/acl.c
+src/knot/updates/acl.h
 src/knot/updates/changesets.c
 src/knot/updates/changesets.h
 src/knot/updates/ddns.c

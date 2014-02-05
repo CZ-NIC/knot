@@ -31,8 +31,6 @@
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
 
-struct knot_zone;
-
 /*! \brief RRSet count in node if there is only NSEC (and possibly its RRSIG).*/
 #define KNOT_NODE_RRSET_COUNT_ONLY_NSEC 1
 

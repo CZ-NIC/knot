@@ -29,6 +29,7 @@
 #include "libknot/dnssec/random.h"
 #include "common/descriptor.h"
 #include "common/errors.h"
+#include "knot/zone/zone.h"
 
 /* Hopscotch defines. */
 #define HOP_LEN (sizeof(unsigned)*8)
@@ -128,14 +129,15 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 }
 
 static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
-                       rrl_req_t *req, const knot_zone_t *zone)
+                       rrl_req_t *req, const zone_t *zone)
 {
 	/* Fallback zone (for errors etc.) */
 	const knot_dname_t *dn = (const knot_dname_t*)"\x00";
 
 	/* Found associated zone. */
-	if (zone != NULL)
-		dn = knot_zone_name(zone);
+	if (zone != NULL) {
+		dn = zone->name;
+	}
 
 	switch (cls) {
 	case CLS_ERROR:    /* Could be a non-existent zone or garbage. */
@@ -155,7 +157,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 }
 
 static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
-                        rrl_req_t *p, const knot_zone_t *z, uint32_t seed)
+                        rrl_req_t *p, const zone_t *z, uint32_t seed)
 {
 	if (!dst || !p || !a || maxlen == 0) {
 		return KNOT_EINVAL;
@@ -355,7 +357,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 }
 
 rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
-                     const knot_zone_t *zone, uint32_t stamp, int *lock)
+                     const zone_t *zone, uint32_t stamp, int *lock)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
 	int len = rrl_classify(buf, sizeof(buf), a, p, zone, t->seed);
@@ -420,7 +422,7 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
 }
 
 int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
-              const knot_zone_t *zone)
+              const zone_t *zone)
 {
 	if (!rrl || !req || !a) return KNOT_EINVAL;
 

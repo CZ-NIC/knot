@@ -91,21 +91,21 @@ dbg_xfrin_exec(
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_soa_query(const knot_zone_t *zone, knot_pkt_t *pkt)
+int xfrin_create_soa_query(const zone_t *zone, knot_pkt_t *pkt)
 {
 	return knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_axfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
+int xfrin_create_axfr_query(const zone_t *zone, knot_pkt_t *pkt)
 {
 	return knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_AXFR);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_ixfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
+int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt)
 {
 	if (zone->contents == NULL) {
 		return KNOT_EINVAL;
@@ -2479,7 +2479,7 @@ int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_apply_changesets(knot_zone_t *zone,
+int xfrin_apply_changesets(zone_t *zone,
                            knot_changesets_t *chsets,
                            knot_zone_contents_t **new_contents)
 {
@@ -2488,7 +2488,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
+	knot_zone_contents_t *old_contents = zone->contents;
 	if (!old_contents) {
 		dbg_xfrin("Cannot apply changesets to empty zone.\n");
 		return KNOT_EINVAL;
@@ -2544,7 +2544,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_switch_zone(knot_zone_t *zone,
+int xfrin_switch_zone(zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type)
 {
@@ -2558,7 +2558,7 @@ int xfrin_switch_zone(knot_zone_t *zone,
 		       ? zone->contents->apex : NULL, new_contents->apex);
 
 	knot_zone_contents_t *old =
-		knot_zone_switch_contents(zone, new_contents);
+		zone_switch_contents(zone, new_contents);
 
 	dbg_xfrin_verb("Old contents: %p, apex: %p, new apex: %p\n",
 		       old, (old) ? old->apex : NULL, new_contents->apex);

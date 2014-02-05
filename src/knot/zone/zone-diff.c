@@ -330,9 +330,9 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* After the list has been traversed, we have a list of
 	* changed/removed rdatas. This has awful computation time.
 	*/
-	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %s, type=%u. "
+	dbg_zonediff_detail("zone_diff: diff_rdata: Diff of %p, type=%u. "
 	              "RR count 1=%d RR count 2=%d.\n",
-	              knot_dname_to_str(rrset1->owner), rrset1->type,
+	              rrset1->owner, rrset1->type,
 	              knot_rrset_rdata_rr_count(rrset1),
 	              knot_rrset_rdata_rr_count(rrset2));
 
@@ -359,9 +359,9 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 		if (ret == KNOT_ENOENT) {
 			/* No such RR is present in 'rrset2'. */
 			dbg_zonediff("zone_diff: diff_rdata: "
-			       "No match for RR (type=%u owner=%s).\n",
+			       "No match for RR (type=%u owner=%p).\n",
 			       knot_rrset_type(rrset1),
-			       knot_dname_to_str(rrset1->owner));
+			       rrset1->owner);
 			/* We'll copy index 'i' into 'changes' RRSet. */
 			ret = knot_rrset_add_rr_from_rrset(*changes, rrset1, i);
 			if (ret != KNOT_EOK) {
@@ -573,9 +573,9 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 	int ret = knot_zone_diff_rdata(knot_rrset_rrsigs(rrset1),
 	                               knot_rrset_rrsigs(rrset2), changeset);
 	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: diff_rrsets (%s:%u): Failed to diff RRSIGs. "
+		dbg_zonediff("zone_diff: diff_rrsets (%p:%u): Failed to diff RRSIGs. "
 		       "They were: %p %p. (%s).\n",
-		       knot_dname_to_str(rrset1->owner),
+		       rrset1->owner,
 		       rrset1->type,
 		       rrset1->rrsigs,
 		       rrset2->rrsigs, knot_strerror(ret));
@@ -612,9 +612,9 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 	knot_zone_tree_find(param->nodes, node_owner, &node_in_second_tree);
 
 	if (node_in_second_tree == NULL) {
-		dbg_zonediff_detail("zone_diff: diff_node: Node %s is not "
+		dbg_zonediff_detail("zone_diff: diff_node: Node %p is not "
 		              "in the second tree.\n",
-		              knot_dname_to_str(node_owner));
+		              node_owner);
 		int ret = knot_zone_diff_remove_node(param->changeset,
 		                                               node);
 		if (ret != KNOT_EOK) {
@@ -625,8 +625,8 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 
 	assert(node_in_second_tree != node);
 
-	dbg_zonediff_detail("zone_diff: diff_node: Node %s is present in "
-	              "both trees.\n", knot_dname_to_str(node_owner));
+	dbg_zonediff_detail("zone_diff: diff_node: Node %p is present in "
+	              "both trees.\n", node_owner);
 	/* The nodes are in both trees, we have to diff each RRSet. */
 	const knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
@@ -827,8 +827,8 @@ static int knot_zone_diff_add_new_nodes(knot_node_t **node_ptr, void *data)
 		ret = knot_zone_diff_add_node(node, param->changeset);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: add_new_nodes: Cannot add "
-			             "node: %s to changeset. Reason: %s.\n",
-			             knot_dname_to_str(node->owner),
+			             "node: %p to changeset. Reason: %s.\n",
+			             node->owner,
 			             knot_strerror(ret));
 		}
 	}

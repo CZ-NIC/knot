@@ -1,13 +1,3 @@
-/*!
- * \file zone.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- *
- * \brief Zone structure and API for manipulating it.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -23,193 +13,162 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+/*!
+ * \file zone.h
+ *
+ * \brief Zone structure and API for manipulating it.
+ *
+ * \addtogroup libknot
+ * @{
+ */
 
-#ifndef _KNOT_ZONE_H_
-#define _KNOT_ZONE_H_
+#pragma once
 
 #include <time.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-#include "knot/zone/node.h"
-#include "libknot/dname.h"
-#include "libknot/dnssec/nsec3.h"
+#include "common/evsched.h"
 #include "common/ref.h"
-
-#include "knot/zone/zone-tree.h"
-
+#include "libknot/dname.h"
+#include "knot/conf/conf.h"
+#include "knot/server/journal.h"
+#include "knot/updates/acl.h"
 #include "knot/zone/zone-contents.h"
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Return values for search functions.
- *
- * Used in knot_zone_find_dname() and knot_zone_find_dname_hash().
- */
-enum knot_zone_retvals {
-	KNOT_ZONE_NAME_FOUND = 1,
-	KNOT_ZONE_NAME_NOT_FOUND = 0
-};
-
-typedef enum knot_zone_retvals knot_zone_retvals_t;
 
 /*!
  * \brief Zone flags.
  */
-typedef enum knot_zone_flag_t {
-	KNOT_ZONE_SLAVE     = 0 << 0, /*! Slave zone */
-	KNOT_ZONE_MASTER    = 1 << 0, /*! Master zone. */
-	KNOT_ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
-} knot_zone_flag_t;
+typedef enum zone_flag_t {
+	ZONE_SLAVE     = 0 << 0, /*! Slave zone */
+	ZONE_MASTER    = 1 << 0, /*! Master zone. */
+	ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
+} zone_flag_t;
 
-/*----------------------------------------------------------------------------*/
+struct server_t;
 
 /*!
  * \brief Structure for holding DNS zone.
- *
- * \warning Make sure not to insert the same nodes using both the normal and
- *          NSEC3 functions. Although this will be successfull, it will produce
- *          double-free errors when destroying the zone.
  */
-struct knot_zone {
+typedef struct zone_t {
+
+	//! \todo Move ACLs into configuration.
+	//! \todo Remove refcounting + flags.
+	//! \todo Remove server_t.
+
 	ref_t ref;     /*!< Reference counting. */
 	knot_dname_t *name;
 
 	knot_zone_contents_t *contents;
 
-	time_t version;
+	zone_flag_t flags;
 
-	unsigned flags;
+	/*! \brief Zone file flushing. */
+	time_t zonefile_mtime;
+	uint32_t zonefile_serial;
 
-	void *data; /*!< Pointer to generic zone-related data. */
-	int (*dtor)(struct knot_zone *); /*!< Data destructor. */
-};
+	/*! \brief Shortcut to server instance. */
+	struct server_t *server;
 
-typedef struct knot_zone knot_zone_t;
+	/*! \brief Shortcut to zone config entry. */
+	conf_zone_t *conf;
+
+	/*! \brief Zone data lock for exclusive access. */
+	pthread_mutex_t lock;
+	/*! \brief Zone lock for DDNS. */
+	pthread_mutex_t ddns_lock;
+
+	/*! \brief Access control lists. */
+	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
+	acl_t *notify_in;  /*!< ACL for notify-in.*/
+	acl_t *notify_out; /*!< ACL for notify-out.*/
+	acl_t *update_in;  /*!< ACL for notify-out.*/
+
+	/*! \brief XFR-IN scheduler. */
+	struct {
+		acl_t          *acl;      /*!< ACL for xfr-in.*/
+		sockaddr_t      master;   /*!< Master server for xfr-in.*/
+		sockaddr_t      via;      /*!< Master server transit interface.*/
+		knot_tsig_key_t tsig_key; /*!< Master TSIG key. */
+		struct event_t *timer;    /*!< Timer for REFRESH/RETRY. */
+		struct event_t *expire;   /*!< Timer for REFRESH. */
+		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
+		int has_master;           /*!< True if it has master set. */
+		unsigned state;
+	} xfr_in;
+
+	struct event_t *dnssec_timer;  /*!< Timer for DNSSEC events. */
+
+	/*! \brief Zone IXFR history. */
+	journal_t *ixfr_db;
+	struct event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
+} zone_t;
 
 /*----------------------------------------------------------------------------*/
 
 /*!
- * \brief Creates new empty DNS zone.
+ * \brief Creates new zone with emtpy zone content.
  *
- * \note Zone will be created without contents.
- *
- * \param name Zone owner.
+ * \param conf  Zone configuration.
  *
  * \return The initialized zone structure or NULL if an error occured.
  */
-knot_zone_t *knot_zone_new_empty(knot_dname_t *name);
+zone_t *zone_new(conf_zone_t *conf);
 
 /*!
- * \brief Creates new DNS zone.
+ * \brief Create zone contents.
  *
- * \param apex Node representing the zone apex.
+ * \param zone  Zone.
  *
- * \return The initialized zone structure or NULL if an error occured.
+ * \return Error code, KNOT_EOK if successful.
  */
-knot_zone_t *knot_zone_new(knot_node_t *apex);
-
-knot_zone_contents_t *knot_zone_get_contents(
-	const knot_zone_t *zone);
-
-const knot_zone_contents_t *knot_zone_contents(
-	const knot_zone_t *zone);
-
-
-time_t knot_zone_version(const knot_zone_t *zone);
-
-void knot_zone_set_version(knot_zone_t *zone, time_t version);
-
-short knot_zone_is_master(const knot_zone_t *zone);
-
-void knot_zone_set_master(knot_zone_t *zone, short master);
-
-const void *knot_zone_data(const knot_zone_t *zone);
-
-void knot_zone_set_data(knot_zone_t *zone, void *data);
-
-const knot_dname_t *knot_zone_name(const knot_zone_t *zone);
-
-knot_zone_contents_t *knot_zone_switch_contents(knot_zone_t *zone,
-                                          knot_zone_contents_t *new_contents);
+int zone_create_contents(zone_t *zone);
 
 /*!
- * \brief Correctly deallocates the zone structure, without deleting its nodes.
- *
- * Also sets the given pointer to NULL.
+ * \brief Deallocates the zone structure, without freeing its content.
  *
  * \param zone Zone to be freed.
  */
-void knot_zone_free(knot_zone_t **zone);
+void zone_free(zone_t **zone_ptr);
 
 /*!
- * \brief Correctly deallocates the zone structure and all nodes within.
- *
- * Also sets the given pointer to NULL.
+ * \brief Deallocates the zone structure, including the content.
  *
  * \param zone Zone to be freed.
  */
-void knot_zone_deep_free(knot_zone_t **zone);
+void zone_deep_free(zone_t **zone_ptr);
 
-/*!
- * \brief Set destructor and initialize reference counter to 1.
- *
- * \param zone Related zone.
- * \param dtor Destructor.
- */
-void knot_zone_set_dtor(knot_zone_t *zone, int (*dtor)(struct knot_zone *));
+/*! \brief Increase zone reference count. */
+static inline void zone_retain(zone_t *zone)
+{
+	ref_retain(&zone->ref);
+}
 
-/*!
- * \brief Increment reference counter for dname.
- *
- * \param zone Referenced zone.
- */
- static inline void knot_zone_retain(knot_zone_t *zone) {
-	if (zone != NULL) {
-		ref_retain(&zone->ref);
-	}
+/*! \brief Decrease zone reference count. */
+static inline void zone_release(zone_t *zone)
+{
+	ref_release(&zone->ref);
 }
 
 /*!
- * \brief Decrement reference counter for dname.
+ * \brief Reset zone timers.
  *
- * \param zone Referenced zone.
+ * \param zone       Zone.
  */
- static inline void knot_zone_release(knot_zone_t *zone) {
-	if (zone != NULL) {
-		ref_release(&zone->ref);
-	}
+void zone_reset_timers(zone_t *zone);
+
+/*!
+ * \brief Check if the zone is a master zone.
+ */
+static inline bool zone_is_master(const zone_t *zone)
+{
+	return zone->flags & ZONE_MASTER;
 }
 
 /*!
- * \brief Return zone flags.
- *
- * \param zone Zone.
+ * \brief Atomically switch the content of the zone.
  */
-static inline unsigned knot_zone_flags(knot_zone_t *zone) {
-	if (zone) {
-		return zone->flags;
-	} else {
-		return 0;
-	}
-}
-
-/*!
- * \brief Set zone flag.
- *
- * \param zone Zone.
- * \param flag Respected flag.
- * \param on 1 to set, 0 to unset flag.
- */
-void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on);
-
-/*!
- * \brief Return zone state.
- * \param zone Inspected zone.
- * \retval KNOT_EOK if OK
- * \retval KNOT_ENOENT if not exists
- * \retval KNOT_ENOZONE if expired or stub
- */
-int knot_zone_state(const knot_zone_t *zone);
-
-#endif
+knot_zone_contents_t *zone_switch_contents(zone_t *zone,
+					   knot_zone_contents_t *new_contents);
 
 /*! @} */
