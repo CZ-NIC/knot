@@ -111,9 +111,8 @@ int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
 	}
 	node->rrset_tree = p;
 	node->rrset_tree[node->rrset_count] = rrset;
-	if (knot_rrset_rdata_rr_count(rrset) > 0) {
-		++node->rrset_count;
-	}
+	++node->rrset_count;
+
 	return KNOT_EOK;
 }
 

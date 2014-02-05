@@ -1388,21 +1388,7 @@ static bool nsec3_is_empty(knot_node_t *node)
 		return false;
 	}
 
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
-
-	/*
-	 * Check if this node is 'empty', i.e. contains either no RRSets, or
-	 * only NSEC and RRSIGs.
-	 */
-	int rrset_count = 0;
-	for (int i = 0; i < knot_node_rrset_count(node); ++i) {
-		if (knot_rrset_type(rrsets[i]) != KNOT_RRTYPE_NSEC
-		    && knot_rrset_rdata_rr_count(rrsets[i]) > 0) {
-			rrset_count++;
-		}
-	}
-
-	return rrset_count == 0;
+	return knot_nsec_only_nsec_and_rrsigs_in_node(node);
 }
 
 /*!

@@ -33,10 +33,16 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *,
 
 /*!
  * \brief Returns true if NSEC is only RRSet in node.
+ *
+ * To be totally correct, we should also check for standalone RRSIGs, but this
+ * function is only used when fixing NSEC chain after DDNS and thus no
+ * standalone RRSIGs should be present, as they are removed automatically with
+ * the RRSets that they cover. \see knot_nsec_only_nsec_and_rrsigs_in_node().
  */
 static bool only_nsec_in_node(const knot_node_t *n)
 {
 	assert(n);
+
 	return n->rrset_count == 1 && knot_node_rrset(n, KNOT_RRTYPE_NSEC);
 }
 
@@ -208,11 +214,11 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	int ret = 0;
 
 	/*!
-	 * If the node has no other RRSets than NSEC (and possibly RRSIG),
+	 * If the node has no other RRSets than NSEC (and possibly RRSIGs),
 	 * just remove the NSEC and its RRSIG, they are redundant
 	 */
 	if (old_next_nsec != NULL
-	    && knot_node_rrset_count(b) == KNOT_NODE_RRSET_COUNT_ONLY_NSEC) {
+	    && knot_nsec_only_nsec_and_rrsigs_in_node(b)) {
 		ret = knot_nsec_changeset_remove(old_next_nsec,
 		                                 data->changeset);
 		if (ret != KNOT_EOK) {
@@ -658,6 +664,26 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 	}
 
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Checks whether the node is empty or eventually contains only NSEC and
+ *        RRSIGs.
+ */
+bool knot_nsec_only_nsec_and_rrsigs_in_node(const knot_node_t *n)
+{
+	assert(n);
+
+	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(n);
+
+	for (int i = 0; i < knot_node_rrset_count(n); ++i) {
+		if (knot_rrset_type(rrsets[i]) != KNOT_RRTYPE_NSEC
+		    && knot_rrset_rdata_rr_count(rrsets[i]) > 0) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 /* - API - Chain creation and fix ------------------------------------------- */
