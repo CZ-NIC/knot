@@ -35,11 +35,11 @@
  * \brief DNSSEC resign zone, store new records into changeset. Valid signatures
  *        and NSEC(3) records will not be changed.
  *
- * \param zone        Zone contents to be signed.
- * \param zone_config Zone/DNSSEC configuration.
- * \param out_ch      New records will be added to this changeset.
- * \param soa_up      SOA serial update policy.
- * \param refresh_at  Signature refresh time of the oldest signature in zone.
+ * \param zone         Zone contents to be signed.
+ * \param zone_config  Zone/DNSSEC configuration.
+ * \param out_ch       New records will be added to this changeset.
+ * \param soa_up       SOA serial update policy.
+ * \param refresh_at   Signature refresh time of the oldest signature in zone.
  * \param new_serial
  *
  * \return Error code, KNOT_EOK if successful.
@@ -53,10 +53,10 @@ int knot_dnssec_zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
  * \brief DNSSEC sign zone, store new records into changeset. Even valid
  *        signatures will be dropped.
  *
- * \param zone        Zone contents to be signed.
- * \param zone_config Zone/DNSSEC configuration.
- * \param out_ch  New records will be added to this changeset.
- * \param refresh_at  Signature refresh time of the oldest signature in zone.
+ * \param zone         Zone contents to be signed.
+ * \param zone_config  Zone/DNSSEC configuration.
+ * \param out_ch       New records will be added to this changeset.
+ * \param refresh_at   Signature refresh time of the oldest signature in zone.
  * \param new_serial
  *
  * \return Error code, KNOT_EOK if successful.
@@ -68,13 +68,13 @@ int knot_dnssec_zone_sign_force(knot_zone_contents_t *zone, conf_zone_t *zone_co
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
  *
- * \param zone        Zone contents to be signed.
- * \param zone_config Zone/DNSSEC configuration.
+ * \param zone            Zone contents to be signed.
+ * \param zone_config     Zone/DNSSEC configuration.
  * \param in_ch           Changeset created bvy DDNS or zone-diff
  * \param out_ch          New records will be added to this changeset.
  * \param soa_up          SOA serial update policy.
- * \param refresh_at     Signature refresh time of the new signatures.
- * \param new_serial     New SOA serial.
+ * \param refresh_at      Signature refresh time of the new signatures.
+ * \param new_serial      New SOA serial.
  * \param sorted_changes  Info about made changes, used for partial adjustment.
  *
  * \return Error code, KNOT_EOK if successful.
