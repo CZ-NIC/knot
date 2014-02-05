@@ -93,19 +93,19 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 			int ret = knot_nsec_changeset_remove(nsec_rrset,
 			                                out_ch);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&new_nsec, 1);
+				knot_rrset_deep_free(&new_nsec, 1, NULL);
 				return ret;
 			}
 			// Add new
 			ret = knot_changeset_add_rrset(out_ch, new_nsec,
 			                               KNOT_CHANGESET_ADD);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&new_nsec, 1);
+				knot_rrset_deep_free(&new_nsec, 1, NULL);
 				return ret;
 			}
 		} else {
 			// All good, no need to update
-			knot_rrset_deep_free(&new_nsec, 1);
+			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return KNOT_EOK;
 		}
 	} else if (new_nsec) {
@@ -113,7 +113,7 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 		int ret = knot_changeset_add_rrset(out_ch, new_nsec,
 		                                   KNOT_CHANGESET_ADD);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&new_nsec, 1);
+			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return ret;
 		}
 	} else {
@@ -121,7 +121,7 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 		int ret = knot_nsec_changeset_remove(nsec_rrset,
 		                                out_ch);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&new_nsec, 1);
+			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return ret;
 		}
 	}
@@ -150,7 +150,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	knot_dname_t *owner_cpy = knot_dname_copy(from->owner);
 	knot_rrset_t *rrset = knot_rrset_new(owner_cpy,
 	                                     KNOT_RRTYPE_NSEC, KNOT_CLASS_IN,
-	                                     ttl);
+	                                     ttl, NULL);
 	if (!rrset) {
 		return NULL;
 	}
@@ -168,7 +168,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	assert(to->owner);
 	size_t next_owner_size = knot_dname_size(to->owner);
 	size_t rdata_size = next_owner_size + bitmap_size(&rr_types);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size, NULL);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
@@ -235,7 +235,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
 			// current NSEC is valid, do nothing
 			dbg_dnssec_detail("NSECs equal.\n");
-			knot_rrset_deep_free(&new_nsec, 1);
+			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return KNOT_EOK;
 		}
 
@@ -245,7 +245,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 		knot_node_set_replaced_nsec(a);
 		ret = knot_nsec_changeset_remove(old_nsec, data->changeset);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&new_nsec, 1);
+			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return ret;
 		}
 	}
@@ -643,8 +643,8 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 	result = knot_changeset_add_rrset(changeset, old_nsec,
 	                                  KNOT_CHANGESET_REMOVE);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&old_nsec, 1);
-		knot_rrset_deep_free(&old_rrsigs, 1);
+		knot_rrset_deep_free(&old_nsec, 1, NULL);
+		knot_rrset_deep_free(&old_rrsigs, 1, NULL);
 		return result;
 	}
 
@@ -652,7 +652,7 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 		result = knot_changeset_add_rrset(changeset, old_rrsigs,
 		                                  KNOT_CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&old_rrsigs, 1);
+			knot_rrset_deep_free(&old_rrsigs, 1, NULL);
 			return result;
 		}
 	}

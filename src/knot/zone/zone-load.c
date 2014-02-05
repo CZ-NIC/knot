@@ -107,7 +107,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		tmp_rrset = knot_rrset_new(knot_dname_copy(rrsig->owner),
 		                           knot_rdata_rrsig_type_covered(rrsig, 0),
 		                           rrsig->rclass,
-		                           rrsig->ttl);
+		                           rrsig->ttl, NULL);
 		if (tmp_rrset == NULL) {
 			dbg_zload("zp: find_rr_for_sig_in_node: Cannot create "
 			       "dummy RRSet.\n");
@@ -144,7 +144,7 @@ static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	} else if (ret > 0) {
 		/* Merged, free data + owner, but not DNAMEs inside RDATA. */
-		knot_rrset_deep_free(&rrsig, 1);
+		knot_rrset_deep_free(&rrsig, 1, NULL);
 	}
 	assert(tmp_rrset->rrsigs != NULL);
 
@@ -218,7 +218,8 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 	dbg_zload_detail("zp: add_rdata_to_rr: Adding type %d, RRSet has %d RRs.\n",
 	              rrset->type, rrset->rdata_count);
 
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, scanner->r_data_length);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, scanner->r_data_length,
+	                                         NULL);
 	if (rdata == NULL) {
 		dbg_zload("zp: create_rdata: Could not create RR.\n");
 		return KNOT_ENOMEM;
@@ -257,7 +258,7 @@ static void process_rr(const scanner_t *scanner)
 	current_rrset = knot_rrset_new(current_owner,
 	               scanner->r_type,
 	               scanner->r_class,
-	               scanner->r_ttl);
+	               scanner->r_ttl, NULL);
 
 	assert(current_owner);
 	assert(current_rrset);
@@ -321,7 +322,7 @@ static void process_rr(const scanner_t *scanner)
 				log_zone_error("%s:%"PRIu64": encountered identical extra SOA record '%s'.\n",
 				               scanner->file_name, scanner->line_counter, rr_name);
 				free(rr_name);
-				knot_rrset_deep_free(&current_rrset, 1);
+				knot_rrset_deep_free(&current_rrset, 1, NULL);
 				parser->ret = KNOT_EOK;
 				return;
 			}
@@ -438,7 +439,7 @@ static void process_rr(const scanner_t *scanner)
 			log_zone_error("%s:%"PRIu64": Can't create node for '%s'.\n",
 			               scanner->file_name, scanner->line_counter, rr_name);
 			free(rr_name);
-			knot_rrset_deep_free(&current_rrset, 1);
+			knot_rrset_deep_free(&current_rrset, 1, NULL);
 			return;
 		}
 	}
@@ -469,10 +470,10 @@ static void process_rr(const scanner_t *scanner)
 		       "add RRSets.\n");
 		/*!< \todo mixed error codes, has to be changed. */
 		parser->ret = ret;
-		knot_rrset_deep_free(&current_rrset, 1);
+		knot_rrset_deep_free(&current_rrset, 1, NULL);
 		return;
 	} else if (ret > 0) {
-		knot_rrset_deep_free(&current_rrset, 1);
+		knot_rrset_deep_free(&current_rrset, 1, NULL);
 	}
 	assert(parser->current_zone && node);
 	/* Do mandatory semantic checks. */

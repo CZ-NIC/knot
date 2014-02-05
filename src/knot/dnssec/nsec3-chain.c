@@ -329,7 +329,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		if (next_hashed_size != written) {
 			// Possible algo mismatch
 			free(binary_next);
-			knot_rrset_deep_free(&gen_nsec3, 1);
+			knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 			return KNOT_ERROR;
 		}
 		memcpy(next_hashed, binary_next, next_hashed_size);
@@ -339,7 +339,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 	if (old_nsec3 && knot_rrset_equal(old_nsec3, gen_nsec3,
 	                                  KNOT_RRSET_COMPARE_WHOLE)) {
 		// Nothing to update
-		knot_rrset_deep_free(&gen_nsec3, 1);
+		knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 		return KNOT_EOK;
 	} else {
 		// Drop old
@@ -347,7 +347,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		if (old_nsec3) {
 			ret = knot_nsec_changeset_remove(old_nsec3, out_ch);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&gen_nsec3, 1);
+				knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 				return ret;
 			}
 		}
@@ -356,7 +356,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		ret = knot_changeset_add_rrset(out_ch, gen_nsec3,
 		                               KNOT_CHANGESET_ADD);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&gen_nsec3, 1);
+			knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 			return ret;
 		}
 	}
@@ -471,7 +471,7 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 			// referenced RRSIGs from old NSEC3 tree
 			node->rrset_tree[i]->rrsigs = NULL;
 			// newly allocated NSEC3 nodes
-			knot_rrset_deep_free(&node->rrset_tree[i], 1);
+			knot_rrset_deep_free(&node->rrset_tree[i], 1, NULL);
 		}
 
 		knot_node_free(&node);
@@ -554,13 +554,13 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
 	assert(rr_types);
 
 	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl);
+	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl, NULL);
 	if (!rrset) {
 		return NULL;
 	}
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
+	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size, NULL);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
