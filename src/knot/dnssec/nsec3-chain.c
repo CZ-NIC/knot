@@ -732,7 +732,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
-		if (knot_node_is_non_auth(node)) {
+		if (knot_node_is_non_auth(node) || knot_node_is_empty(node)) {
 			hattrie_iter_next(it);
 			continue;
 		}
@@ -1375,6 +1375,99 @@ static int chain_finalize_nsec3(chain_fix_data_t *fix_data)
 	return ret;
 }
 
+static int nsec3_is_empty(knot_node_t *node)
+{
+	if (knot_node_children(node) > 0) {
+		return 0;
+	}
+
+	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
+
+	/*
+	 * Check if this node is 'empty', i.e. contains either no RRSets, or
+	 * only NSEC and RRSIGs.
+	 */
+	int rrset_count = 0;
+	for (int i = 0; i < knot_node_rrset_count(node); ++i) {
+		if (knot_rrset_type(rrsets[i]) != KNOT_RRTYPE_NSEC
+		    && knot_rrset_rdata_rr_count(rrsets[i]) > 0) {
+			rrset_count++;
+		}
+	}
+
+	return rrset_count == 0;
+}
+
+static int nsec3_mark_empty(knot_node_t **node_p, void *data)
+{
+	//UNUSED(data);
+	int *count = (int *)data;
+	knot_node_t *node = *node_p;
+
+	if (!knot_node_is_empty(node) && nsec3_is_empty(node)) {
+		/*!
+		 * Mark this node and all parent nodes that meet the same
+		 * criteria as empty.
+		 */
+		knot_node_set_empty(node);
+		(*count)++;
+
+		if (node->parent) {
+			// We must decrease the parent's children count,
+			// but only temporarily! It must be set right after
+			// the operation
+			node->parent->children--;
+			// Recurse using the parent node
+			return nsec3_mark_empty(&node->parent, data);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static void mark_empty_nodes_tmp(const knot_zone_contents_t *zone)
+{
+	assert(zone);
+
+	int count = 0;
+	int ret = knot_zone_tree_apply(zone->nodes, nsec3_mark_empty, &count);
+
+	printf("Marked %d nodes as empty.\n", count);
+
+	assert(ret == KNOT_EOK);
+}
+
+static int nsec3_reset(knot_node_t **node_p, void *data)
+{
+	int *count = (int *)data;
+	knot_node_t *node = *node_p;
+
+	if (knot_node_is_empty(node)) {
+		/* If node was marked as empty, increase its parent's children
+		 * count.
+		 */
+		node->parent->children++;
+		(*count)++;
+	}
+
+	/* Clear the 'empty' flag in each node. */
+	knot_node_clear_empty(node);
+
+	return KNOT_EOK;
+}
+
+static void reset_nodes(const knot_zone_contents_t *zone)
+{
+	assert(zone);
+
+	int count = 0;
+	int ret = knot_zone_tree_apply(zone->nodes, nsec3_reset, &count);
+
+	printf("Marked %d nodes as not empty.\n", count);
+
+	assert(ret == KNOT_EOK);
+}
+
 /* - Public API ------------------------------------------------------------- */
 
 /*!
@@ -1393,11 +1486,24 @@ int knot_nsec3_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 		return KNOT_ENOMEM;
 	}
 
+	/* Before creating NSEC3 nodes, we must temporarily mark those nodes
+	 * that may still be in the zone, but for which the NSEC3s should not
+	 * be created. I.e. nodes with only RRSIG (or NSEC+RRSIG) and their
+	 * predecessors if they are empty.
+	 *
+	 * The flag will be removed when the node is encountered during NSEC3
+	 * creation procedure.
+	 */
+
+	mark_empty_nodes_tmp(zone);
+
 	result = create_nsec3_nodes(zone, ttl, nsec3_nodes, changeset);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
 	}
+
+	reset_nodes(zone);
 
 	result = knot_nsec_chain_iterate_create(nsec3_nodes,
 	                                        connect_nsec3_nodes, NULL);

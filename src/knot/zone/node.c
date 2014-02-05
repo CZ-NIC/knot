@@ -584,6 +584,13 @@ void knot_node_set_empty(knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_node_clear_empty(knot_node_t *node)
+{
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_EMPTY);
+}
+
+/*----------------------------------------------------------------------------*/
+
 int knot_node_is_replaced_nsec(const knot_node_t *node)
 {
 	return knot_node_flags_get(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
