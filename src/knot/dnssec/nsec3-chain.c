@@ -1449,7 +1449,7 @@ static void mark_empty_nodes_tmp(const knot_zone_contents_t *zone)
 {
 	assert(zone);
 
-	int ret = knot_zone_tree_apply(zone->nodes, nsec3_mark_empty, &count);
+	int ret = knot_zone_tree_apply(zone->nodes, nsec3_mark_empty, NULL);
 
 	assert(ret == KNOT_EOK);
 }
@@ -1489,7 +1489,7 @@ static void reset_nodes(const knot_zone_contents_t *zone)
 {
 	assert(zone);
 
-	int ret = knot_zone_tree_apply(zone->nodes, nsec3_reset, &count);
+	int ret = knot_zone_tree_apply(zone->nodes, nsec3_reset, NULL);
 
 	assert(ret == KNOT_EOK);
 }
