@@ -647,12 +647,11 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 
 	/* Zone checking */
 	int rc = 0;
-	node_t *n = 0;
 
 	/* Generate databases for all zones */
-	WALK_LIST(n, conf()->zones) {
+	conf_zone_t *zone = NULL, *next = NULL;
+	WALK_LIST_DELSAFE(zone, next, conf()->zones) {
 		/* Fetch zone */
-		conf_zone_t *zone = (conf_zone_t *) n;
 		int zone_match = 0;
 		for (unsigned i = 0; i < (unsigned)argc; ++i) {
 			size_t len = strlen(zone->name);
@@ -692,9 +691,10 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 			continue;
 		}
 
+		log_zone_info("Zone %s OK.\n", zone->name);
+		rem_node((node_t *)zone);
 		zone_deep_free(&z);
 		knot_zload_close(l);
-		log_zone_info("Zone %s OK.\n", zone->name);
 	}
 
 	return rc;
