@@ -48,8 +48,6 @@ typedef struct knot_zone_contents_t {
 	knot_zone_tree_t *nodes;
 	knot_zone_tree_t *nsec3_nodes;
 
-	struct zone_t *zone;
-
 	knot_nsec3_params_t nsec3_params;
 
 	/*!

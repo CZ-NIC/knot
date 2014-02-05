@@ -209,7 +209,6 @@ static zone_t *preserve_zone(conf_zone_t *conf, const zone_t *old_zone)
 	}
 
 	new_zone->contents = old_zone->contents;
-	new_zone->contents->zone = new_zone; // hopefully temporary
 
 	return new_zone;
 }
@@ -368,7 +367,6 @@ fail:
 	} else {
 		// recycled zone content (bind back to old zone)
 		if (!new_content) {
-			old_zone->contents->zone = old_zone;
 			new_zone->contents = NULL;
 		}
 
@@ -433,7 +431,6 @@ static int zone_loader_thread(dthread_t *thread)
 
 				// recycled zone content (bind back to old zone)
 				if (old_zone && old_zone->contents == zone->contents) {
-					old_zone->contents->zone = old_zone;
 					zone->contents = NULL;
 				}
 

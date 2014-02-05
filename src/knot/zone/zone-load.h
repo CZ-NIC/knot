@@ -46,7 +46,7 @@ typedef struct rrset_list rrset_list_t;
 
 struct parser_context {
 	rrset_list_t *node_rrsigs;
-	knot_zone_contents_t *current_zone;
+	zone_t *current_zone;
 	knot_rrset_t *current_rrset;
 	knot_dname_t *origin_from_config;
 	knot_node_t *last_node;

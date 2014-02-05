@@ -45,9 +45,6 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 
-/* Forward declarations. */
-static int zones_dump_zone_text(knot_zone_contents_t *zone,  const char *zf);
-
 /*!
  * \brief Apply jitter to time interval.
  *
@@ -906,7 +903,6 @@ static zone_t *create_fake_zone(zone_t *zone)
 
 	// steal the zone content
 	fake->contents = zone->contents;
-	fake->contents->zone = fake;
 
 	return fake;
 }
@@ -1042,7 +1038,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 			knot_changesets_free(&sec_chs);
 			free(msg);
 			zone_free(&fake_zone);
-			zone->contents->zone = zone;
 			return ret;
 		}
 
@@ -1062,7 +1057,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		zones_free_merged_changesets(chgsets, sec_chs);
 		free(msg);
 		zone_free(&fake_zone);
-		zone->contents->zone = zone;
 		return ret;
 	}
 
@@ -1108,7 +1102,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	}
 
 	zone_free(&fake_zone);
-	zone->contents->zone = zone;
 
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
 
@@ -1176,6 +1169,79 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 }
 
 /*----------------------------------------------------------------------------*/
+
+static int zones_open_free_filename(const char *old_name, char **new_name)
+{
+	/* find zone name not present on the disk */
+	size_t name_size = strlen(old_name);
+	*new_name = malloc(name_size + 7 + 1);
+	if (*new_name == NULL) {
+		return -1;
+	}
+	memcpy(*new_name, old_name, name_size + 1);
+	strncat(*new_name, ".XXXXXX", 7);
+	dbg_zones_verb("zones: creating temporary zone file\n");
+	mode_t old_mode = umask(077);
+	int fd = mkstemp(*new_name);
+	UNUSED(umask(old_mode));
+	if (fd < 0) {
+		dbg_zones_verb("zones: couldn't create temporary zone file\n");
+		free(*new_name);
+		*new_name = NULL;
+	}
+
+	return fd;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static int save_transferred_zone(knot_zone_contents_t *zone, const sockaddr_t *from, const char *fname)
+{
+	assert(zone != NULL && fname != NULL);
+
+	char *new_fname = NULL;
+	int fd = zones_open_free_filename(fname, &new_fname);
+	if (fd < 0) {
+		return KNOT_EWRITABLE;
+	}
+
+	FILE *f = fdopen(fd, "w");
+	if (f == NULL) {
+		log_zone_warning("Failed to open file descriptor for text zone.\n");
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	if (zone_dump_text(zone, from, f) != KNOT_EOK) {
+		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
+		                 new_fname);
+		fclose(f);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	/* Set zone file rights to 0640. */
+	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+
+	/* Swap temporary zonefile and new zonefile. */
+	fclose(f);
+
+	int ret = rename(new_fname, fname);
+	if (ret < 0 && ret != EEXIST) {
+		log_zone_warning("Failed to replace old zone file '%s'' with a "
+		                 "new zone file '%s'.\n", fname, new_fname);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	free(new_fname);
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -1224,7 +1290,7 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 		dbg_zones("zones: syncing '%s' differences to '%s' "
 		          "(SOA serial %u)\n",
 		          zone->conf->name, zone->conf->file, serial_to);
-		ret = zones_dump_zone_text(contents, zone->conf->file);
+		ret = save_transferred_zone(zone->contents, &zone->xfr_in.master, zone->conf->file);
 		if (ret != KNOT_EOK) {
 			log_zone_warning("Failed to apply differences "
 			                 "'%s' to '%s (%s)'\n",
@@ -1388,79 +1454,6 @@ knot_ns_xfr_type_t zones_transfer_to_use(zone_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_open_free_filename(const char *old_name, char **new_name)
-{
-	/* find zone name not present on the disk */
-	size_t name_size = strlen(old_name);
-	*new_name = malloc(name_size + 7 + 1);
-	if (*new_name == NULL) {
-		return -1;
-	}
-	memcpy(*new_name, old_name, name_size + 1);
-	strncat(*new_name, ".XXXXXX", 7);
-	dbg_zones_verb("zones: creating temporary zone file\n");
-	mode_t old_mode = umask(077);
-	int fd = mkstemp(*new_name);
-	UNUSED(umask(old_mode));
-	if (fd < 0) {
-		dbg_zones_verb("zones: couldn't create temporary zone file\n");
-		free(*new_name);
-		*new_name = NULL;
-	}
-
-	return fd;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int zones_dump_zone_text(knot_zone_contents_t *zone, const char *fname)
-{
-	assert(zone != NULL && fname != NULL);
-
-	char *new_fname = NULL;
-	int fd = zones_open_free_filename(fname, &new_fname);
-	if (fd < 0) {
-		return KNOT_EWRITABLE;
-	}
-
-	FILE *f = fdopen(fd, "w");
-	if (f == NULL) {
-		log_zone_warning("Failed to open file descriptor for text zone.\n");
-		unlink(new_fname);
-		free(new_fname);
-		return KNOT_ERROR;
-	}
-
-	if (zone_dump_text(zone, f) != KNOT_EOK) {
-		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
-		                 new_fname);
-		fclose(f);
-		unlink(new_fname);
-		free(new_fname);
-		return KNOT_ERROR;
-	}
-
-	/* Set zone file rights to 0640. */
-	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
-
-	/* Swap temporary zonefile and new zonefile. */
-	fclose(f);
-
-	int ret = rename(new_fname, fname);
-	if (ret < 0 && ret != EEXIST) {
-		log_zone_warning("Failed to replace old zone file '%s'' with a "
-		                 "new zone file '%s'.\n", fname, new_fname);
-		unlink(new_fname);
-		free(new_fname);
-		return KNOT_ERROR;
-	}
-
-	free(new_fname);
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
 	/* Zone is already referenced, no need for RCU locking. */
@@ -1491,7 +1484,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	assert(zonefile != NULL);
 
 	/* dump the zone into text zone file */
-	int ret = zones_dump_zone_text(new_zone, zonefile);
+	int ret = save_transferred_zone(new_zone, &xfr->addr, zonefile);
 	rcu_read_unlock();
 	return ret;
 }

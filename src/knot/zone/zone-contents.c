@@ -428,7 +428,6 @@ knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
 	}
 
 	contents->apex = apex;
-	contents->zone = zone;
 	contents->node_count = 1;
 
 	dbg_zone_verb("Creating tree for normal nodes.\n");
@@ -1536,8 +1535,6 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 	contents->flags = from->flags;
 	// set the 'new' flag
 	knot_zone_contents_set_gen_new(contents);
-
-	contents->zone = from->zone;
 
 	if ((ret = knot_zone_tree_deep_copy(from->nodes,
 					    &contents->nodes)) != KNOT_EOK

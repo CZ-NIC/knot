@@ -229,8 +229,6 @@ int knot_ns_switch_zone(knot_nameserver_t *nameserver,
 		free(name);
 
 		return KNOT_ENOZONE;
-	} else {
-		zone->zone = z;
 	}
 
 	rcu_read_unlock();
