@@ -1458,18 +1458,6 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *zone)
-{
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return (zone->nsec3_params.algorithm != 0
-		&& knot_zone_tree_weight(zone->nsec3_nodes) != 0);
-}
-
-/*----------------------------------------------------------------------------*/
-
 const knot_nsec3_params_t *knot_zone_contents_nsec3params(
 	const knot_zone_contents_t *zone)
 {
@@ -1477,7 +1465,7 @@ const knot_nsec3_params_t *knot_zone_contents_nsec3params(
 		return NULL;
 	}
 
-	if (knot_zone_contents_nsec3_enabled(zone)) {
+	if (knot_is_nsec3_enabled(zone)) {
 		return &zone->nsec3_params;
 	} else {
 		return NULL;

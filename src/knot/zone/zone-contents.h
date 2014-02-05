@@ -368,21 +368,6 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *contents,
 int knot_zone_contents_load_nsec3param(knot_zone_contents_t *contents);
 
 /*!
- * \brief Checks if the zone uses NSEC3.
- *
- * This function will return 0 if the NSEC3PARAM record was not parse prior to
- * calling it.
- *
- * \param zone Zone to check.
- *
- * \retval <> 0 if the zone uses NSEC3.
- * \retval 0 if it does not.
- *
- * \see knot_zone_contents_load_nsec3param()
- */
-int knot_zone_contents_nsec3_enabled(const knot_zone_contents_t *contents);
-
-/*!
  * \brief Returns the parsed NSEC3PARAM record of the zone.
  *
  * \note You must parse the NSEC3PARAM record prior to calling this function
