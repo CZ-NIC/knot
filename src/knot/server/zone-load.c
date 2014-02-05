@@ -326,7 +326,7 @@ static int update_zone(zone_t **dst, zone_t *old_zone,
 		goto fail;
 	}
 
-	result = zones_do_diff_and_sign(conf, new_zone, ns, new_content);
+	result = zones_do_diff_and_sign(conf, new_zone, old_zone, new_content);
 	if (result != KNOT_EOK) {
 		log_zone_error("Zone '%s', failed to sign the zone: %s\n",
 		               conf->name, knot_strerror(result));
@@ -365,7 +365,7 @@ fail:
 	if (result == KNOT_EOK) {
 		*dst = new_zone;
 	} else {
-		// recycled zone content (bind back to old zone)
+		/* Preserved zone, don't free the shared contents. */
 		if (!new_content) {
 			new_zone->contents = NULL;
 		}
@@ -429,7 +429,7 @@ static int zone_loader_thread(dthread_t *thread)
 				log_zone_error("Failed to insert zone '%s' "
 				               "into database.\n", zone_config->name);
 
-				// recycled zone content (bind back to old zone)
+				/* Preserved zone, don't free the shared contents. */
 				if (old_zone && old_zone->contents == zone->contents) {
 					zone->contents = NULL;
 				}
@@ -503,37 +503,38 @@ static knot_zonedb_t *load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
 }
 
 /*!
- * \brief Remove zones present in the configuration from the old database.
+ * \brief Remove old zones and zone database.
  *
- * After calling this function, the old zone database should contain only zones
- * that should be completely deleted.
+ * \note Zone may be preserved in the new zone database, in this case
+ *       new and old zone share the contents. Shared content is not freed.
  *
- * \param zone_conf Zone configuration.
- * \param db_old Old zone database to remove zones from.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ERROR
- */
-static int remove_zones(const knot_zonedb_t *db_new,
-                              knot_zonedb_t *db_old)
+ * \param db_new New zone database.
+ * \param db_old Old zone database.
+  */
+static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 {
 	knot_zonedb_iter_t it;
 	knot_zonedb_iter_begin(db_new, &it);
-	while(!knot_zonedb_iter_finished(&it)) {
-		const zone_t *old_zone = NULL;
-		const zone_t *new_zone = knot_zonedb_iter_val(&it);
-		const knot_dname_t *zone_name = new_zone->name;
 
-		/* try to find the new zone in the old DB
-		 * if the pointers match, remove the zone from old DB
+	while(!knot_zonedb_iter_finished(&it)) {
+		zone_t *new_zone = knot_zonedb_iter_val(&it);
+		zone_t *old_zone = knot_zonedb_find(db_old, new_zone->name);
+
+		/* If the zone exists in both new and old database and the contents
+		 * didn't change. We must invalidate the pointer in the old zone
+		 * to preserve the contents.
 		 */
-		old_zone = knot_zonedb_find(db_old, zone_name);
-		if (old_zone == new_zone) {
-			knot_zonedb_del(db_old, zone_name);
+		if (old_zone && old_zone->contents == new_zone->contents) {
+			old_zone->contents = NULL;
 		}
 
 		knot_zonedb_iter_next(&it);
 	}
+
+	synchronize_rcu();
+
+	/* Delete all deprecated zones and delete the old database. */
+	knot_zonedb_deep_free(&db_old);
 
 	return KNOT_EOK;
 }
@@ -589,22 +590,16 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	dbg_zones_detail("db in nameserver: %p, old db stored: %p, new db: %p\n",
 	                 ns->zone_db, *db_old, db_new);
 
+	/* Unlock RCU, messing with any data will not affect us now */
+	rcu_read_unlock();
+
+	/* Wait for readers to finish reading old zone database. */
+	synchronize_rcu();
+
 	/*
 	 * Remove all zones present in the new DB from the old DB.
 	 * No new thread can access these zones in the old DB, as the
 	 * databases are already switched.
-	 *
-	 * Beware - only the exact same zones (same pointer) may be removed.
-	 * All other have been loaded again so that the old must be destroyed.
 	 */
-	int ret = remove_zones(db_new, *db_old);
-
-	/* Unlock RCU, messing with any data will not affect us now */
-	rcu_read_unlock();
-
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return remove_old_zonedb(db_new, *db_old);
 }

@@ -1523,15 +1523,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 		return ret;
 	}
 
-	synchronize_rcu();
-
 	knot_edns_free(&opt_rr_old);
-
-	dbg_zones_verb("zones: nameserver's zone db: %p, old db: %p\n",
-	               ns->zone_db, old_db);
-
-	/* Delete all deprecated zones and delete the old database. */
-	knot_zonedb_deep_free(&old_db);
 
 	/* Trim extra heap. */
 	mem_trim();
