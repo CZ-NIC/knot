@@ -2358,21 +2358,14 @@ int zones_journal_apply(zone_t *zone)
 /*!
  * \brief Creates diff and DNSSEC changesets and stores them to journal.
  */
-int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone,
-                           const knot_nameserver_t *ns, bool zone_changed)
+int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
+                           bool zone_changed)
 {
 	/* Calculate differences. */
 	rcu_read_lock();
-	zone_t *z_old = knot_zonedb_find(ns->zone_db, zone->name);
-	/* Ensure both new and old have zone contents. */
-	knot_zone_contents_t *zc = zone ? zone->contents : NULL;
-	knot_zone_contents_t *zc_old = z_old ? z_old->contents : NULL;
-
-	dbg_zones("Going to calculate diff. Old contents: %p, new: %p\n",
-	          zc_old, zc);
 
 	knot_changesets_t *diff_chs = NULL;
-	if (z->build_diffs && zc && zc_old && zone_changed) {
+	if (z->build_diffs && old_zone && old_zone->contents && zone_changed) {
 		diff_chs = knot_changesets_create();
 		if (diff_chs == NULL) {
 			rcu_read_unlock();
@@ -2386,7 +2379,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone,
 			return KNOT_ENOMEM;
 		}
 		dbg_zones("Generating diff.\n");
-		int ret = zones_create_changeset(z_old,
+		int ret = zones_create_changeset(old_zone,
 		                                 zone, diff_ch);
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning("Zone file for '%s' changed, but "
@@ -2463,8 +2456,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone,
 	bool new_signatures = sec_ch && !knot_changeset_is_empty(sec_ch);
 	/* Apply DNSSEC changeset. */
 	if (new_signatures) {
-		ret = xfrin_apply_changesets(zone, sec_chs,
-		                             &new_contents);
+		ret = xfrin_apply_changesets(zone, sec_chs, &new_contents);
 		if (ret != KNOT_EOK) {
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(diff_chs, sec_chs);
@@ -2489,8 +2481,13 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone,
 	/* Switch zone contents. */
 	if (new_contents) {
 		rcu_read_unlock();
-		ret = xfrin_switch_zone(zone, new_contents,
-		                        XFR_TYPE_DNSSEC);
+		/* \note This will disconnect shared contents that will be freed
+		 *       in the function below. Not an ideal solution, but
+		 *       reworking zone management is out of scope of this MR. */
+		if (old_zone && !zone_changed) {
+			old_zone->contents = NULL;
+		}
+		ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_DNSSEC);
 		rcu_read_lock();
 		if (ret != KNOT_EOK) {
 			// Cleanup old and new contents
