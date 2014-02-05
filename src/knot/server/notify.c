@@ -70,11 +70,9 @@ int notify_process_response(knot_pkt_t *notify, int msgid)
 	return KNOT_EOK;
 }
 
-static int notify_reschedule(knot_nameserver_t *ns,
-			     const zone_t *zone,
-			     sockaddr_t *from)
+static int notify_reschedule(knot_nameserver_t *ns, const zone_t *zone)
 {
-	dbg_ns("%s(%p, %p, %p)\n", __func__, ns, zone, from);
+	dbg_ns("%s(%p, %p)\n", __func__, ns, zone);
 	if (ns == NULL || zone == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -106,14 +104,9 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
-	/* Need valid transaction security. */
+	/* Check valid zone, transaction security. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	NS_NEED_AUTH(qdata->zone->notify_in, qdata);
-
-	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
-	 *        Most servers use NOTAUTH from RFC2136. */
-	/*! \note SERVFAIL is going to be sent if the zone is
-	 *        being bootstrapped, this is harmless. */
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
@@ -132,7 +125,7 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	}
 
 	int next_state = NS_PROC_FAIL;
-	int ret = notify_reschedule(ns, qdata->zone, NULL /*! \todo API */);
+	int ret = notify_reschedule(ns, qdata->zone);
 
 	/* Format resulting log message. */
 	if (ret != KNOT_EOK) {

@@ -306,13 +306,3 @@ knot_zone_contents_t *zone_switch_contents(zone_t *zone,
 
 	return old_contents;
 }
-
-int zone_state(const zone_t *zone)
-{
-	if (zone == NULL) {
-		return KNOT_ENOENT;
-	} else if (zone->contents == NULL) {
-		return KNOT_ENOZONE;
-	}
-	return KNOT_EOK;
-}

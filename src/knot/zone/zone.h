@@ -171,13 +171,4 @@ static inline bool zone_is_master(const zone_t *zone)
 knot_zone_contents_t *zone_switch_contents(zone_t *zone,
 					   knot_zone_contents_t *new_contents);
 
-/*!
- * \brief Return zone state.
- * \param zone Inspected zone.
- * \retval KNOT_EOK if OK
- * \retval KNOT_ENOENT if not exists
- * \retval KNOT_ENOZONE if expired or stub
- */
-int zone_state(const zone_t *zone);
-
 /*! @} */

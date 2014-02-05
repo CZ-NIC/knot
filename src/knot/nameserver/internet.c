@@ -656,6 +656,9 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 		return NS_PROC_FAIL;
 	}
 
+	/* Check valid zone, transaction security (optional) and contents. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
+
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_have_tsig(qdata->query)) {
 		/* We have been challenged... */
@@ -665,7 +668,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 		knot_pkt_reserve(response, tsig_wire_maxsize(qdata->sign.tsig_key));
 	}
 
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
 
 	/* Get answer to QNAME. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);

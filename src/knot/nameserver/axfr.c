@@ -197,11 +197,10 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 
-		/* Check zone state. */
-		NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-
-		/* Need valid transaction security. */
+		/* Check valid zone, transaction security and contents. */
+		NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
+		NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 		ret = axfr_answer_init(qdata);
 		if (ret != KNOT_EOK) {

@@ -112,18 +112,18 @@ int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qda
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
-	/* Need valid transaction security. */
-	zone_t *zone = (zone_t *)qdata->zone;
-	NS_NEED_AUTH(zone->update_in, qdata);
-
-	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
-	 *        Most servers use NOTAUTH from RFC2136. */
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	/* Check valid zone, transaction security and contents. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
+	zone_t *zone = (zone_t *)qdata->zone;
 	if (zone->xfr_in.has_master) {
 		return update_forward(qdata);
 	}
+
+	/* Need valid transaction security. */
+	NS_NEED_AUTH(zone->update_in, qdata);
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	/*
 	 * Check if UPDATE not running already.
