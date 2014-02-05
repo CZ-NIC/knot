@@ -886,27 +886,6 @@ static bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
 	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM);
 }
 
-/*!
- * \todo Just a rewrite of existing code, I don't know what is the purpose of this.
- */
-static zone_t *create_fake_zone(zone_t *zone)
-{
-	conf_zone_t *conf = malloc(sizeof(conf_zone_t));
-	if (!conf) {
-		return NULL;
-	}
-
-	conf_init_zone(conf);
-	conf->name = strdup(zone->conf->name);
-
-	zone_t *fake = zone_new(conf);
-
-	// steal the zone content
-	fake->contents = zone->contents;
-
-	return fake;
-}
-
 /*! \brief Process UPDATE query.
  *
  * Functions expects that the query is already authenticated
@@ -993,17 +972,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		}
 	}
 
-	zone_t *fake_zone = create_fake_zone(zone);
-	if (fake_zone == NULL) {
-		log_zone_error("%s: Failed to apply changesets (%s)\n",
-		               msg, knot_strerror(KNOT_ENOMEM));
-		xfrin_rollback_update(zone->contents, &new_contents,
-		                      chgsets->changes);
-		knot_changesets_free(&chgsets);
-		free(msg);
-		return KNOT_ENOMEM;
-	}
-
 	// Apply changeset to zone created by DDNS processing
 
 	hattrie_t *sorted_changes = NULL;
@@ -1017,12 +985,13 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		 */
 		if (zones_dnskey_changed(old_contents, new_contents) ||
 		    zones_nsec3param_changed(old_contents, new_contents)) {
-			ret = knot_dnssec_zone_sign(fake_zone, sec_ch,
+			ret = knot_dnssec_zone_sign(new_contents, zone->conf,
+			                            sec_ch,
 			                            KNOT_SOA_SERIAL_KEEP,
 			                            &refresh_at, new_serial);
 		} else {
 			// Sign the created changeset
-			ret = knot_dnssec_sign_changeset(fake_zone,
+			ret = knot_dnssec_sign_changeset(new_contents, zone->conf,
 			                      knot_changesets_get_last(chgsets),
 			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
 			                      &refresh_at,
@@ -1037,7 +1006,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 			knot_changesets_free(&chgsets);
 			knot_changesets_free(&sec_chs);
 			free(msg);
-			zone_free(&fake_zone);
 			return ret;
 		}
 
@@ -1056,7 +1024,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		                      chgsets->changes);
 		zones_free_merged_changesets(chgsets, sec_chs);
 		free(msg);
-		zone_free(&fake_zone);
 		return ret;
 	}
 
@@ -1100,8 +1067,6 @@ int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 			return ret;
 		}
 	}
-
-	zone_free(&fake_zone);
 
 	dbg_zones_verb("%s: DNSSEC changes applied\n", msg);
 
@@ -2004,10 +1969,11 @@ int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *refresh_at)
 	uint32_t new_serial = zones_next_serial(zone);
 
 	if (force) {
-		ret = knot_dnssec_zone_sign_force(zone, ch, refresh_at,
-		                                  new_serial);
+		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
+		                                  ch, refresh_at, new_serial);
 	} else {
-		ret = knot_dnssec_zone_sign(zone, ch, KNOT_SOA_SERIAL_UPDATE,
+		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
+		                            ch, KNOT_SOA_SERIAL_UPDATE,
 		                            refresh_at, new_serial);
 	}
 	if (ret != KNOT_EOK) {
@@ -2430,7 +2396,8 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 		 * Update serial even if diff did that. This way it's always
 		 * possible to flush the changes to zonefile.
 		 */
-		int ret = knot_dnssec_zone_sign(zone, sec_ch,
+		int ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
+		                                sec_ch,
 		                                KNOT_SOA_SERIAL_UPDATE,
 		                                &refresh_at, new_serial);
 		if (ret != KNOT_EOK) {
