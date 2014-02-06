@@ -65,11 +65,7 @@ typedef struct knot_nameserver {
 	 *        queries.
 	 */
 	knot_zonedb_t *zone_db;
-	knot_pkt_t *err_response;    /*!< Prepared generic error response. */
 	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
-
-	const char *identity; //!< RFC 4892, server identity (id.server, hostname.bind).
-	const char *version;  //!< RFC 4892, server version (version.{server, bind}).
 
 	void *data;
 } knot_nameserver_t;

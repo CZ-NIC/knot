@@ -1461,10 +1461,6 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	knot_nameserver_t *ns = (knot_nameserver_t *)data;
 	dbg_zones_verb("zones: reconfiguring name server.\n");
 
-	/* Server identification, RFC 4892. */
-	ns->identity = conf->identity;
-	ns->version = conf->version;
-
 	/* New OPT RR: keep the old pointer and free it after RCU sync. */
 	knot_opt_rr_t *opt_rr = knot_edns_new();
 	if (opt_rr == NULL) {

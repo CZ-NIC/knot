@@ -131,8 +131,8 @@ int main(int argc, char *argv[])
 	ns->opt_rr = knot_edns_new();
 	knot_edns_set_version(ns->opt_rr, EDNS_VERSION);
 	knot_edns_set_payload(ns->opt_rr, 4096);
-	ns->identity = "bogus.ns";
-	ns->version = "0.11";
+	conf()->identity = strdup("bogus.ns");
+	conf()->version = strdup("0.11");
 
 	/* Insert root zone. */
 	create_root_zone(ns, &query_ctx.mm);

@@ -33,11 +33,11 @@ static const char *get_txt_response_string(const knot_nameserver_t *nameserver,
 	/* id.server and hostname.bind should have similar meaning */
 	if (strcasecmp("id.server.",     qname_str) == 0 ||
 	    strcasecmp("hostname.bind.", qname_str) == 0) {
-		response = nameserver->identity;
+		response = conf()->identity;
 	/* allow both version version.{server, bind}. for compatibility */
 	} else if (strcasecmp("version.server.", qname_str) == 0 ||
 	           strcasecmp("version.bind.",   qname_str) == 0) {
-		response = nameserver->version;
+		response = conf()->version;
 	}
 
 	free(qname_str);

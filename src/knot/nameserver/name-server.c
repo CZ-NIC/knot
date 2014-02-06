@@ -97,12 +97,7 @@ knot_nameserver_t *knot_ns_create()
 	knot_wire_set_qr(pkt->wire);
 	knot_wire_set_rcode(pkt->wire, KNOT_RCODE_SERVFAIL);
 
-	/* Store packet. */
-	ns->err_response = pkt;
-
 	ns->opt_rr = NULL;
-	ns->identity = NULL;
-	ns->version = NULL;
 	return ns;
 }
 
@@ -474,9 +469,6 @@ void knot_ns_destroy(knot_nameserver_t **nameserver)
 
 	// destroy the zone db
 	knot_zonedb_deep_free(&(*nameserver)->zone_db);
-
-	/* Free error response. */
-	knot_pkt_free(&(*nameserver)->err_response);
 
 	free(*nameserver);
 	*nameserver = NULL;
