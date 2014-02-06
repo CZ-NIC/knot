@@ -843,7 +843,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 
 		/* Check that the serial is indeed larger than the current one*/
 		assert(knot_serial_compare(knot_rdata_soa_serial(removed),
-		                         knot_rdata_soa_serial(rr)) < 0);
+		                           knot_rdata_soa_serial(rr)) < 0);
 
 		/* 1) Store it to 'changes', together with its RRSIGs. */
 		ret = knot_changes_add_rrset(changes, removed, KNOT_CHANGES_OLD);
@@ -1799,7 +1799,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		    && (knot_rrset_class(rr) == KNOT_CLASS_NONE
 		        || knot_rrset_class(rr) == KNOT_CLASS_ANY
 		        || knot_serial_compare(knot_rdata_soa_serial(rr),
-		                             sn) <= 0)) {
+		                               sn) <= 0)) {
 			// This ignores also SOA removals
 			dbg_ddns_verb("Ignoring SOA...\n");
 			continue;

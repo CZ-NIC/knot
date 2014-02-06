@@ -27,6 +27,7 @@ src/common/base64.c
 src/common/base64.h
 src/common/binsearch.h
 src/common/crc.h
+src/common/debug.h
 src/common/descriptor.c
 src/common/descriptor.h
 src/common/errcode.c
@@ -214,7 +215,6 @@ src/libknot/tsig-op.c
 src/libknot/tsig-op.h
 src/libknot/tsig.c
 src/libknot/tsig.h
-src/libknot/util/debug.h
 src/libknot/util/endian.h
 src/libknot/util/tolower.c
 src/libknot/util/tolower.h
