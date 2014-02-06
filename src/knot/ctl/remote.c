@@ -91,7 +91,6 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 	zone_t *zone = NULL;
 	int ret = KNOT_EOK;
 
-	/* Refresh specific zones. */
 	for (unsigned i = 0; i < a->argc; ++i) {
 		/* Process all zones in data section. */
 		const knot_rrset_t *rr = a->arg[i];
@@ -100,7 +99,6 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		}
 
 		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
-			/* Refresh zones. */
 			const knot_dname_t *dn = knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find(s->zone_db, dn);
