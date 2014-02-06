@@ -34,7 +34,7 @@
 #include "libknot/rdata.h"
 #include "libknot/rrset.h"
 #include "knot/updates/changesets.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-contents.h"
 

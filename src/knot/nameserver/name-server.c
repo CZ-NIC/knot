@@ -28,7 +28,7 @@
 #include "common/errcode.h"
 #include "libknot/common.h"
 #include "common/lists.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/consts.h"
 #include "common/descriptor.h"

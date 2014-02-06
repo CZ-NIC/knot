@@ -6,7 +6,7 @@
 
 #include "libknot/common.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 
 #define DNSSEC_ENABLED 1
 

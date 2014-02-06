@@ -24,7 +24,7 @@
 
 #include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
 #include "knot/zone/zone.h"

@@ -4,7 +4,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/name-server.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
 #include "common/descriptor.h"

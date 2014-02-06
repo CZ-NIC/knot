@@ -20,7 +20,7 @@
 #include <stdbool.h>
 
 #include "libknot/packet/pkt.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
 #include "libknot/packet/wire.h"

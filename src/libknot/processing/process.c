@@ -18,7 +18,7 @@
 #include <assert.h>
 
 #include "libknot/processing/process.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 
 /* State -> string translation table. */
 #ifdef KNOT_NS_DEBUG
