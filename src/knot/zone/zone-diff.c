@@ -96,19 +96,9 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_ERANGE;
 	}
 
-	/* We will not touch SOA later, now is the time to handle RRSIGs. */
-	int ret = knot_zone_diff_rdata(knot_rrset_rrsigs(soa_rrset1),
-	                               knot_rrset_rrsigs(soa_rrset2),
-	                               changeset);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff_verb("zone_diff: load_soas: Failed to diff SOAs' RRSIGs."
-		       " Reason: %s.\n", knot_strerror(ret));
-		/* This might not necasarilly be an error. */
-	}
-
 	assert(changeset);
 
-	ret = knot_rrset_deep_copy_no_sig(soa_rrset1, &changeset->soa_from, NULL);
+	int ret = knot_rrset_deep_copy_no_sig(soa_rrset1, &changeset->soa_from, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
@@ -119,9 +109,6 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
 	}
-
-	assert(changeset->soa_from->rrsigs == NULL);
-	assert(changeset->soa_to->rrsigs == NULL);
 
 	changeset->serial_from = soa_serial1;
 	changeset->serial_to = soa_serial2;
@@ -158,7 +145,6 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
 		return ret;
 	}
-	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 
 	ret = knot_changeset_add_rrset(changeset, rrset_copy,
 	                               KNOT_CHANGESET_ADD);
@@ -202,7 +188,6 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
 		return ret;
 	}
-	assert(knot_rrset_rrsigs(rrset_copy) == NULL);
 
 	ret = knot_changeset_add_rrset(changeset, rrset_copy,
 	                               KNOT_CHANGESET_REMOVE);
@@ -243,19 +228,6 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 			free(rrsets);
 			return ret;
 		}
-
-		if (knot_rrset_rrsigs(rrsets[i])) {
-			/* Add RRSIGs of the new node. */
-			ret = knot_zone_diff_changeset_add_rrset(changeset,
-						knot_rrset_rrsigs(rrsets[i]));
-			if (ret != KNOT_EOK) {
-				dbg_zonediff("zone_diff: add_node: Cannot "
-				             "add RRSIG (%s).\n",
-				       knot_strerror(ret));
-				free(rrsets);
-				return ret;
-			}
-		}
 	}
 
 	free(rrsets);
@@ -293,18 +265,6 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 			             knot_strerror(ret));
 			free(rrsets);
 			return ret;
-		}
-		if (knot_rrset_rrsigs(rrsets[i])) {
-			/* Remove RRSIGs of the old node. */
-			ret = knot_zone_diff_changeset_remove_rrset(changeset,
-						knot_rrset_rrsigs(rrsets[i]));
-			if (ret != KNOT_EOK) {
-				dbg_zonediff("zone_diff: remove_node: Cannot "
-				             "remove RRSIG (%s).\n",
-				       knot_strerror(ret));
-				free(rrsets);
-				return ret;
-			}
 		}
 	}
 
@@ -536,52 +496,6 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
                                  const knot_rrset_t *rrset2,
                                  knot_changeset_t *changeset)
 {
-//	if (rrset1 == NULL || rrset2 == NULL) {
-//		/* This could happen when diffing RRSIGs. */
-//		if (rrset1 == NULL && rrset2 != NULL) {
-//			dbg_zonediff("zone_diff: diff_rrsets: RRSIG missing in first"
-//			       " rrset1.\n");
-//			int ret =
-//				knot_zone_diff_changeset_add_rrset(changeset,
-//			                                           rrset2);
-//			if (ret != KNOT_EOK) {
-//				dbg_zonediff("zone_diff: diff_rrsets: "
-//				       "Cannot add RRSIG. (%s)\n",
-//				       knot_strerror(ret));
-//			}
-//		} else if (rrset1 != NULL && rrset2 == NULL) {
-//			dbg_zonediff("zone_diff: diff_rrsets: RRSIG missing in second"
-//			       " rrset1.\n");
-//			int ret =
-//				knot_zone_diff_changeset_remove_rrset(changeset,
-//			                                              rrset1);
-//			if (ret != KNOT_EOK) {
-//				dbg_zonediff("zone_diff: diff_rrsets: "
-//				       "Cannot remove RRSIG. (%s)\n",
-//				       knot_strerror(ret));
-//			}
-//		}
-//		dbg_zonediff_detail("zone_diff: diff_rrsets: "
-//		              "NULL arguments (RRSIGs?). (%p) (%p)\n",
-//		              rrset1, rrset2);
-//		return KNOT_EOK;
-//	}
-
-	assert(knot_dname_cmp(knot_rrset_owner(rrset1),
-	                          knot_rrset_owner(rrset2)) == 0);
-	assert(knot_rrset_type(rrset1) == knot_rrset_type(rrset2));
-
-	int ret = knot_zone_diff_rdata(knot_rrset_rrsigs(rrset1),
-	                               knot_rrset_rrsigs(rrset2), changeset);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: diff_rrsets (%s:%u): Failed to diff RRSIGs. "
-		       "They were: %p %p. (%s).\n",
-		       knot_dname_to_str(rrset1->owner),
-		       rrset1->type,
-		       rrset1->rrsigs,
-		       rrset2->rrsigs, knot_strerror(ret));
-	}
-
 	/* RRs (=rdata) have to be cross-compared, unfortunalely. */
 	return knot_zone_diff_rdata(rrset1, rrset2, changeset);
 }
@@ -674,19 +588,6 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 				free(rrsets);
 				return ret;
 			}
-
-			/* Remove RRSet's RRSIGs as well. */
-			if (knot_rrset_rrsigs(rrset)) {
-				ret = knot_zone_diff_changeset_remove_rrset(
-				            param->changeset,
-				            knot_rrset_rrsigs(rrset));
-				if (ret != KNOT_EOK) {
-				    dbg_zonediff("zone_diff: diff_node+: "
-				                 "Failed to remove RRSIGs.\n");
-				    free(rrsets);
-				    return ret;
-				}
-			}
 		} else {
 			dbg_zonediff("zone_diff: diff_node: There is a counterpart "
 			       "for RRSet of type %u in second tree.\n",
@@ -766,17 +667,6 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 				             "Failed to add RRSet.\n");
 				free(rrsets);
 				return ret;
-			}
-			if (knot_rrset_rrsigs(rrset)) {
-				int ret = knot_zone_diff_changeset_add_rrset(
-			        param->changeset,
-			         knot_rrset_rrsigs(rrset));
-			   if (ret != KNOT_EOK) {
-			     dbg_zonediff("zone_diff: diff_node: "
-			            "Failed to add RRSIGs.\n");
-					free(rrsets);
-				return ret;
-			 }
 			}
 		} else {
 			/* Already handled. */

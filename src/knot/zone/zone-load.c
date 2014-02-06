@@ -39,118 +39,6 @@
 
 /* ZONE LOADING FROM FILE USING RAGEL PARSER */
 
-/*!
- * \brief Adds RRSet to list.
- *
- * \param head Head of list.
- * \param rrsig RRSet to be added.
- */
-static int rrset_list_add(rrset_list_t **head, knot_rrset_t *rrsig)
-{
-	if (*head == NULL) {
-		*head = xmalloc(sizeof(rrset_list_t));
-		(*head)->next = NULL;
-		(*head)->data = rrsig;
-	} else {
-		rrset_list_t *tmp = xmalloc(sizeof(*tmp));
-		tmp->next = *head;
-		tmp->data = rrsig;
-		*head = tmp;
-	}
-
-	dbg_zload_verb("zp: rrset_add: Added RRSIG %p to list.\n", rrsig);
-
-	return KNOT_EOK;
-}
-
-/*!
- * \brief Deletes RRSet list. Sets pointer to NULL.
- *
- * \param head Head of list to be deleted.
- */
-static void rrset_list_delete(rrset_list_t **head)
-{
-	rrset_list_t *tmp;
-	if (*head == NULL) {
-		return;
-	}
-
-	while (*head != NULL) {
-		tmp = *head;
-		*head = (*head)->next;
-		free(tmp);
-	}
-
-	*head = NULL;
-
-	dbg_zload("zp: list_delete: List deleleted.\n");
-}
-
-static int find_rrset_for_rrsig_in_node(knot_zone_contents_t *zone,
-                                 knot_node_t *node,
-                                 knot_rrset_t *rrsig)
-{
-	assert(node);
-
-	assert(knot_dname_cmp(rrsig->owner, node->owner) == 0);
-
-	knot_rrset_t *tmp_rrset =
-		knot_node_get_rrset(node,
-	                            knot_rdata_rrsig_type_covered(rrsig, 0));
-
-	int ret;
-
-	if (tmp_rrset == NULL) {
-		dbg_zload("zp: find_rr_for_sig_in_node: Node does not contain "
-		       "RRSet of type %d.\n",
-		       knot_rdata_rrsig_type_covered(rrsig, 0));
-		tmp_rrset = knot_rrset_new(knot_dname_copy(rrsig->owner),
-		                           knot_rdata_rrsig_type_covered(rrsig, 0),
-		                           rrsig->rclass,
-		                           rrsig->ttl, NULL);
-		if (tmp_rrset == NULL) {
-			dbg_zload("zp: find_rr_for_sig_in_node: Cannot create "
-			       "dummy RRSet.\n");
-			return KNOT_ERROR;
-		}
-
-		ret = knot_zone_contents_add_rrset(zone, tmp_rrset, &node,
-		                                   KNOT_RRSET_DUPL_MERGE);
-		assert(ret <= 0);
-		if (ret < 0) {
-			dbg_zload("zp: Failed to add new dummy RRSet to the zone."
-			       "\n");
-			return KNOT_ERROR;
-		}
-	}
-
-	assert(tmp_rrset);
-
-	if (tmp_rrset->ttl != rrsig->ttl) {
-		char *name = knot_dname_to_str(tmp_rrset->owner);
-		assert(name);
-		log_zone_warning("RRSIG owned by: %s (covering type %d) cannot "
-		                 "be added to its RRSet, because their TTLs "
-		                 "differ. Changing TTL=%d to value=%d.\n",
-		                 name, knot_rdata_rrsig_type_covered(rrsig, 0),
-		                 rrsig->ttl, tmp_rrset->ttl);
-		free(name);
-	}
-
-	ret = knot_zone_contents_add_rrsigs(zone, rrsig, &tmp_rrset, &node,
-			                    KNOT_RRSET_DUPL_MERGE);
-	if (ret < 0) {
-		dbg_zload("zp: find_rr_for_sig: Cannot add RRSIG.\n");
-		return KNOT_EINVAL;
-	} else if (ret > 0) {
-		/* Merged, free data + owner, but not DNAMEs inside RDATA. */
-		knot_rrset_deep_free(&rrsig, 1, NULL);
-	}
-	assert(tmp_rrset->rrsigs != NULL);
-
-	return KNOT_EOK;
-}
-
 static knot_node_t *create_node(knot_zone_contents_t *zone,
                                 knot_rrset_t *current_rrset,
                                 int (*node_add_func)(knot_zone_contents_t *zone,
@@ -171,27 +59,6 @@ static knot_node_t *create_node(knot_zone_contents_t *zone,
 	}
 
 	return node;
-}
-
-static void process_rrsigs_in_node(parser_context_t *parser,
-                                   knot_zone_contents_t *zone,
-                                   knot_node_t *node)
-{
-	dbg_zload_verb("zp: process_rrsigs: Processing RRSIGS in node: %p.\n",
-	            node);
-	rrset_list_t *tmp = parser->node_rrsigs;
-	while (tmp != NULL) {
-		int ret = find_rrset_for_rrsig_in_node(zone, node, tmp->data);
-		if (ret != KNOT_EOK) {
-			parser->ret = KNOT_ERROR;
-			char *rr_name = knot_dname_to_str(node->owner);
-			log_zone_error("Can't add RRSIG for '%s': %s\n",
-			               rr_name, knot_strerror(ret));
-			free(rr_name);
-			return;
-		}
-		tmp = tmp->next;
-	}
 }
 
 void process_error(const scanner_t *s)
@@ -344,95 +211,14 @@ static void process_rr(const scanner_t *scanner)
 		}
 	}
 
-	if (current_rrset->type == KNOT_RRTYPE_RRSIG) {
-		knot_rrset_t *tmp_rrsig = current_rrset;
-
-		if (parser->last_node &&
-		    !knot_dname_is_equal(parser->last_node->owner,
-		                         current_rrset->owner)) {
-			/* RRSIG is first in the node, so we have to create it
-			 * before we return
-			 */
-			if (parser->node_rrsigs != NULL) {
-				process_rrsigs_in_node(parser,
-				                       contents,
-				                       parser->last_node);
-				rrset_list_delete(&parser->node_rrsigs);
-			}
-
-			/* The node might however been created previously. */
-			parser->last_node =
-				knot_zone_contents_get_node(contents,
-					knot_rrset_owner(current_rrset));
-
-			if (parser->last_node == NULL) {
-				/* Try NSEC3 tree. */
-				if (current_rrset->type == KNOT_RRTYPE_NSEC3 ||
-				    current_rrset->type == KNOT_RRTYPE_RRSIG) {
-					parser->last_node =
-						knot_zone_contents_get_nsec3_node(
-							contents,
-							knot_rrset_owner(
-								current_rrset));
-				}
-			}
-
-			if (parser->last_node == NULL) {
-				/* Still NULL, node has to be created. */
-				if ((parser->last_node = create_node(contents,
-				                                     current_rrset,
-				                                     node_add_func))
-				    == NULL) {
-					knot_rrset_free(&tmp_rrsig);
-					char *rr_name = knot_dname_to_str(current_owner);
-					log_zone_error("%s:%"PRIu64": Can't create node for '%s'.\n",
-					               scanner->file_name, scanner->line_counter, rr_name);
-					free(rr_name);
-					/*!< \todo consider a new error */
-					parser->ret = KNOT_ERROR;
-					return;
-				}
-			}
-		}
-
-		if (rrset_list_add(&parser->node_rrsigs, tmp_rrsig) != 0) {
-			dbg_zload("zp: process_rr: Cannot "
-			       "create new node.\n");
-			parser->ret = KNOT_ERROR;
-			return;
-		}
-
-		dbg_zload_verb("zp: process_rr: RRSIG proccesed successfully.\n");
-		parser->ret = KNOT_EOK;
-		return;
-	}
-
-	/*! \todo Move RRSIG and RRSet handling to funtions. */
-	assert(current_rrset->type != KNOT_RRTYPE_RRSIG);
-
 	knot_node_t *node = NULL;
 	/* \note this could probably be much simpler */
 	if (parser->last_node && current_rrset->type != KNOT_RRTYPE_SOA &&
 	    knot_dname_is_equal(parser->last_node->owner, current_rrset->owner)) {
 		node = parser->last_node;
-	} else {
-		if (parser->last_node && parser->node_rrsigs) {
-			process_rrsigs_in_node(parser,
-			                       contents,
-			                       parser->last_node);
-		}
-		rrset_list_delete(&parser->node_rrsigs);
-		/* new node */
-		node = node_get_func(contents, current_rrset->owner);
 	}
 
 	if (node == NULL) {
-		if (parser->last_node && parser->node_rrsigs) {
-			process_rrsigs_in_node(parser,
-			                       contents,
-			                       parser->last_node);
-		}
-
 		if ((node = create_node(contents, current_rrset,
 		                        node_add_func)) == NULL) {
 			char *rr_name = knot_dname_to_str(current_owner);
@@ -444,22 +230,20 @@ static void process_rr(const scanner_t *scanner)
 		}
 	}
 
-	if (current_rrset->type != KNOT_RRTYPE_RRSIG) {
-		/*
-		 * If there's already an RRSet of this type in a node, check
-		 * that TTLs are the same, if not, give warning a change TTL.
-		 */
-		const knot_rrset_t *rrset_in_node =
-			knot_node_rrset(node, current_rrset->type);
-		if (rrset_in_node && current_rrset->ttl != rrset_in_node->ttl) {
-			char *rr_name = knot_dname_to_str(current_owner);
-			log_zone_warning("%s:%"PRIu64": TTL of '%s/TYPE%u' does not match TTL "
-			                 "of its RRSet. Changing to %"PRIu32"\n",
-			                 scanner->file_name, scanner->line_counter,
-			                 rr_name, current_rrset->type, rrset_in_node->ttl);
-			free(rr_name);
-			/* Actual change will happen in merge. */
-		}
+	/*
+	 * If there's already an RRSet of this type in a node, check
+	 * that TTLs are the same, if not, give warning a change TTL.
+	 */
+	const knot_rrset_t *rrset_in_node =
+		knot_node_rrset(node, current_rrset->type);
+	if (rrset_in_node && current_rrset->ttl != rrset_in_node->ttl) {
+		char *rr_name = knot_dname_to_str(current_owner);
+		log_zone_warning("%s:%"PRIu64": TTL of '%s/TYPE%u' does not match TTL "
+		                 "of its RRSet. Changing to %"PRIu32"\n",
+		                 scanner->file_name, scanner->line_counter,
+		                 rr_name, current_rrset->type, rrset_in_node->ttl);
+		free(rr_name);
+		/* Actual change will happen in merge. */
 	}
 
 	ret = knot_zone_contents_add_rrset(contents, current_rrset,
@@ -535,7 +319,6 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin,
 	context->last_node = knot_node_new(context->origin_from_config, NULL, 0);
 	knot_zone_t *zone = knot_zone_new(context->last_node);
 	context->current_zone = knot_zone_get_contents(zone);
-	context->node_rrsigs = NULL;
 	context->ret = KNOT_EOK;
 
 	/* Create file loader. */
@@ -589,14 +372,9 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		               loader->source, zscanner_strerror(ret));
 	}
 
-	if (c->last_node && c->node_rrsigs) {
-		process_rrsigs_in_node(c, c->current_zone, c->last_node);
-	}
-
 	if (c->ret != KNOT_EOK) {
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
 		               loader->source, zscanner_strerror(c->ret));
-		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
 		return NULL;
@@ -607,7 +385,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		               "%"PRIu64" errors encountered.\n",
 		               loader->source,
 		               loader->file_loader->scanner->error_counter);
-		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
 		return NULL;
@@ -618,7 +395,6 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 	                    KNOT_RRTYPE_SOA) == NULL) {
 		log_zone_error("%s: no SOA record in the zone file.\n",
 		               loader->source);
-		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
 		return NULL;
@@ -626,13 +402,11 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
-	rrset_list_delete(&c->node_rrsigs);
 	int kret = knot_zone_contents_adjust_full(c->current_zone, &first_nsec3_node,
 	                                          &last_nsec3_node);
 	if (kret != KNOT_EOK)  {
 		log_zone_error("%s: Failed to finalize zone contents: %s\n",
 		               loader->source, knot_strerror(kret));
-		rrset_list_delete(&c->node_rrsigs);
 		knot_zone_t *zone_to_free = c->current_zone->zone;
 		knot_zone_deep_free(&zone_to_free);
 		return NULL;
@@ -647,10 +421,10 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		const knot_rrset_t *nsec3param_rr =
 			knot_node_rrset(knot_zone_contents_apex(c->current_zone),
 		                        KNOT_RRTYPE_NSEC3PARAM);
-		if (soa_rr->rrsigs && nsec3param_rr == NULL) {
+		if (knot_zone_contents_is_signed(loader->context->current_zone) && nsec3param_rr == NULL) {
 			/* Set check level to DNSSEC. */
 			check_level = 2;
-		} else if (soa_rr->rrsigs && nsec3param_rr) {
+		} else if (knot_zone_contents_is_signed(loader->context->current_zone) && nsec3param_rr) {
 			check_level = 3;
 		}
 		zone_do_sem_checks(c->current_zone, check_level,

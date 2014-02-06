@@ -416,10 +416,8 @@ static void shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 
 	knot_rrset_t *from_rrset = from->rrset_tree[0];
 	knot_rrset_t *to_rrset = to->rrset_tree[0];
-
-	assert(to_rrset->rrsigs == NULL);
-
-	to_rrset->rrsigs = from_rrset->rrsigs;
+assert(0);
+//	to_rrset->rrsigs = from_rrset->rrsigs;
 }
 
 /*!
@@ -469,8 +467,6 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
 		for (int i = 0; i < node->rrset_count; i++) {
-			// referenced RRSIGs from old NSEC3 tree
-			node->rrset_tree[i]->rrsigs = NULL;
 			// newly allocated NSEC3 nodes
 			knot_rrset_deep_free(&node->rrset_tree[i], 1, NULL);
 		}

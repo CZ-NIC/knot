@@ -677,8 +677,6 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
                               const knot_rrset_t *rrsigs)
 {
-	list_t index_list;
-	init_list(&index_list);
 	for (size_t i = 0; i < rrsigs->rdata_count; ++i) {
 		const uint16_t type_covered =
 			knot_rdata_rrsig_type_covered(rrsigs, i);
@@ -703,7 +701,7 @@ int knot_node_synth_rrsig_for_type(const knot_node_t *node, uint16_t type,
 
 	const knot_rrset_t *covered = knot_node_rrset(node, type);
 	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
-	if (covered == NULL || rrsigs == NULL) {
+	if (covered == NULL || rrsigs == NULL || !knot_node_rrtype_is_signed(node, type)) {
 		return KNOT_ENOENT;
 	}
 
@@ -720,4 +718,26 @@ int knot_node_synth_rrsig_for_type(const knot_node_t *node, uint16_t type,
 	}
 
 	return KNOT_EOK;
+}
+
+bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
+{
+	if (node == NULL) {
+		return false;
+	}
+
+	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+	if (rrsigs == NULL) {
+		return false;
+	}
+
+	for (size_t i = 0; i < rrsigs->rdata_count; ++i) {
+		const uint16_t type_covered =
+			knot_rdata_rrsig_type_covered(rrsigs, i);
+		if (type_covered == type) {
+			return true;
+		}
+	}
+
+	return false;
 }

@@ -233,7 +233,6 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 		} else if (rq->data) {
 			xfrin_constructed_zone_t *constr_zone = rq->data;
 			knot_zone_contents_deep_free(&(constr_zone->contents));
-			xfrin_free_orphan_rrsigs(&(constr_zone->rrsigs));
 			free(rq->data);
 			rq->data = NULL;
 		}

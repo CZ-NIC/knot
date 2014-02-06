@@ -2034,15 +2034,5 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 		}
 	}
 
-	// Dump RRSIG records if any via recursion call.
-	if (dump_rrsig && rrset->rrsigs != NULL) {
-		ret = knot_rrset_txt_dump(rrset->rrsigs, dst + len,
-		                          maxlen - len, true, false, style);
-		if (ret < 0) {
-			return KNOT_ESPACE;
-		}
-		len += ret;
-	}
-
 	return len;
 }

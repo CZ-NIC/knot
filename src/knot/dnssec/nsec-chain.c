@@ -616,6 +616,7 @@ int knot_nsec_chain_iterate_fix(hattrie_t *nodes, chain_iterate_fix_cb callback,
 int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
                                knot_changeset_t *changeset)
 {
+	/* TODO rrsig removing! */
 	if (oldrr == NULL) {
 		return KNOT_EOK;
 	}
@@ -635,9 +636,6 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 		return result;
 	}
 
-	old_rrsigs = old_nsec->rrsigs;
-	old_nsec->rrsigs = NULL;
-
 	// update changeset
 
 	result = knot_changeset_add_rrset(changeset, old_nsec,
@@ -646,15 +644,6 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 		knot_rrset_deep_free(&old_nsec, 1, NULL);
 		knot_rrset_deep_free(&old_rrsigs, 1, NULL);
 		return result;
-	}
-
-	if (old_rrsigs) {
-		result = knot_changeset_add_rrset(changeset, old_rrsigs,
-		                                  KNOT_CHANGESET_REMOVE);
-		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&old_rrsigs, 1, NULL);
-			return result;
-		}
 	}
 
 	return KNOT_EOK;

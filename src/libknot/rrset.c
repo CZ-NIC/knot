@@ -732,7 +732,6 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	ret->type = type;
 	ret->rclass = rclass;
 	ret->ttl = ttl;
-	ret->rrsigs = NULL;
 
 	ret->additional = NULL;
 
@@ -907,53 +906,6 @@ uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
 	return rrset->rdata_indices[pos] - rrset->rdata_indices[pos - 1];
 }
 
-int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs)
-{
-	if (rrset == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	rrset->rrsigs = rrsigs;
-	return KNOT_EOK;
-}
-
-int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
-                          knot_rrset_dupl_handling_t dupl)
-{
-	if (rrset == NULL || rrsigs == NULL ||
-	    !knot_dname_is_equal(rrset->owner, rrsigs->owner)) {
-		return KNOT_EINVAL;
-	}
-
-	int rc;
-	if (rrset->rrsigs != NULL) {
-		if (dupl == KNOT_RRSET_DUPL_MERGE) {
-			int merged, deleted_rrs;
-			rc = knot_rrset_merge_sort(rrset->rrsigs, rrsigs,
-			                           &merged, &deleted_rrs,
-			                           NULL);
-			if (rc != KNOT_EOK) {
-				return rc;
-			} else if (merged || deleted_rrs) {
-				return 1;
-			} else {
-				return 0;
-			}
-		} else if (dupl == KNOT_RRSET_DUPL_SKIP) {
-			return 2;
-		} else if (dupl == KNOT_RRSET_DUPL_REPLACE) {
-			rrset->rrsigs = rrsigs;
-		}
-	} else {
-		if (rrset->ttl != rrsigs->ttl) {
-			rrsigs->ttl = rrset->ttl;
-		}
-		rrset->rrsigs = rrsigs;
-	}
-
-	return KNOT_EOK;
-}
-
 const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset)
 {
 	return rrset->owner;
@@ -1018,24 +970,6 @@ uint16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset)
 		return rrset->rdata_count;
 	} else {
 		return 0;
-	}
-}
-
-const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset)
-{
-	if (rrset == NULL) {
-		return NULL;
-	} else {
-		return rrset->rrsigs;
-	}
-}
-
-knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset)
-{
-	if (rrset == NULL) {
-		return NULL;
-	} else {
-		return rrset->rrsigs;
 	}
 }
 
@@ -1323,7 +1257,6 @@ int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to,
 	}
 
 	(*to)->rdata_count = from->rdata_count;
-	(*to)->rrsigs = NULL;
 	(*to)->additional = NULL; /* Never copy. */
 
 	/* Just copy arrays - actual data + indices. */
@@ -1351,14 +1284,6 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          mm_ctx_t *mm)
 {
 	int result = knot_rrset_deep_copy_no_sig(from, to, mm);
-
-	if (result == KNOT_EOK && from->rrsigs != NULL) {
-		result = knot_rrset_deep_copy_no_sig(from->rrsigs,
-		                                     &(*to)->rrsigs, mm);
-		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(to, 1, mm);
-		}
-	}
 
 	return result;
 }
@@ -1419,12 +1344,6 @@ static void rrset_deep_free_content(knot_rrset_t *rrset, int free_owner,
                                     mm_ctx_t *mm)
 {
 	assert(rrset);
-
-	if (rrset->rrsigs) {
-		assert(rrset->rrsigs->rrsigs == NULL);
-		rrset_deep_free_content(rrset->rrsigs, free_owner, mm);
-		mm_free(mm, rrset->rrsigs);
-	}
 
 	mm_free(mm, rrset->rdata);
 	mm_free(mm, rrset->rdata_indices);
@@ -1962,7 +1881,6 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	}
 	/* Reset RDATA of returned RRSet. */
 	knot_rrset_rdata_reset(return_rr);
-	return_rr->rrsigs = NULL;
 
 	for (uint16_t i = 0; i < what->rdata_count; ++i) {
 		ret = knot_rrset_remove_rr(from, what, i);

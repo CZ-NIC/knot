@@ -180,16 +180,6 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 			}
 		}
 		break;
-	case KNOT_RRTYPE_RRSIG: /* Append all RRSIGs. */
-		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
-			if (rrsets[i]->rrsigs) {
-				ret = put_rr(pkt, rrsets[i]->rrsigs, compr_hint, 0, qdata);
-				if (ret != KNOT_EOK) {
-					break;
-				}
-			}
-		}
-		break;
 	default: /* Single RRSet of given type. */
 		rrset = knot_node_get_rrset(qdata->node, type);
 		if (rrset) {

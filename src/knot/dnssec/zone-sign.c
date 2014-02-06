@@ -341,18 +341,7 @@ static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
 	assert(rrset);
 	assert(changeset);
 
-	if (!rrset->rrsigs) {
-		return KNOT_EOK;
-	}
-
-	knot_rrset_t *to_remove = NULL;
-	int result = knot_rrset_deep_copy(rrset->rrsigs, &to_remove, NULL);
-	if (result != KNOT_EOK) {
-		return result;
-	}
-
-	return knot_changeset_add_rrset(changeset, to_remove,
-	                                KNOT_CHANGESET_REMOVE);
+	assert(0);
 }
 
 /*!
@@ -372,7 +361,8 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 {
 	assert(covered);
 
-	if (covered->rrsigs) {
+	assert(0);
+/*	if (covered->rrsigs) {
 		int result = remove_rrset_rrsigs(covered, changeset);
 		if (result != KNOT_EOK) {
 			return result;
@@ -380,6 +370,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 	}
 
 	return add_missing_rrsigs(covered, NULL, zone_keys, policy, changeset);
+	*/
 }
 
 /*!
@@ -407,14 +398,15 @@ static int resign_rrset(const knot_rrset_t *covered,
 	// but the verification process can differ from signature computation.
 	// TODO reuse digest for RSA then, RSA is the most used algo family,
 	// and we create all the signatures twice, that is not cool I think.
-	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
-	                                   policy, changeset, expires_at);
-	if (result != KNOT_EOK) {
-		return result;
-	}
+	assert(0);
+//	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
+//	                                   policy, changeset, expires_at);
+//	if (result != KNOT_EOK) {
+//		return result;
+//	}
 
-	return add_missing_rrsigs(covered, covered->rrsigs, zone_keys, policy,
-	                          changeset);
+//	return add_missing_rrsigs(covered, covered->rrsigs, zone_keys, policy,
+//	                          changeset);
 }
 
 /*!
@@ -452,8 +444,8 @@ static int sign_node_rrsets(const knot_node_t *node,
 		}
 
 		// Remove standalone RRSIGs (without the RRSet they sign)
-		if (rrset->rdata_count == 0 && rrset->rrsigs) {
-			assert(rrset->rrsigs->rdata_count > 0);
+		assert(0);
+		if (rrset->rdata_count == 0 && knot_node_rrtype_is_signed(node, rrset->type)) {
 			result = remove_rrset_rrsigs(rrset, changeset);
 			if (result != KNOT_EOK) {
 				break;
@@ -948,12 +940,12 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	}
 
 	bool modified = knot_changeset_size(changeset) != changes_before;
-
-	if (!modified && dnskeys &&
-	    all_signatures_exist(dnskeys, dnskeys->rrsigs, zone_keys, policy)
-	) {
-		return KNOT_EOK;
-	}
+assert(0);
+//	if (!modified && dnskeys &&
+//	    all_signatures_exist(dnskeys, dnskeys->rrsigs, zone_keys, policy)
+//	) {
+//		return KNOT_EOK;
+//	}
 
 	dbg_dnssec_detail("Creating new signatures for DNSKEYs\n");
 	return update_dnskeys_rrsigs(dnskeys, soa, zone_keys, policy, changeset);
@@ -1103,7 +1095,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			return force_resign_rrset(zone_rrset, args->zone_keys,
 			                          args->policy,
 			                          args->changeset);
-		} else if (zone_rrset && zone_rrset->rrsigs != NULL) {
+		} else if (zone_rrset && 1) {//zone_rrset->rrsigs != NULL) {
+			assert(0);
 			/*!
 			 * If RRSet in zone DOES have RRSIGs although we
 			 * should not sign it, DDNS-caused change to node/rr
@@ -1213,8 +1206,8 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 
 	const knot_rrset_t *soa = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 	assert(soa);
-
-	return !all_signatures_exist(soa, soa->rrsigs, zone_keys, policy);
+assert(0);
+//	return !all_signatures_exist(soa, soa->rrsigs, zone_keys, policy);
 }
 
 /*!
@@ -1249,9 +1242,11 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	// remove signatures for old SOA (if there are any)
 
-	if (soa->rrsigs) {
+	assert(0);
+	if (/*soa->rrsigs*/1) {
 		knot_rrset_t *soa_copy = NULL;
-		result = knot_rrset_deep_copy_no_sig(soa->rrsigs, &soa_copy, NULL);
+		assert(0);
+//		result = knot_rrset_deep_copy_no_sig(soa->rrsigs, &soa_copy, NULL);
 		if (result != KNOT_EOK) {
 			return result;
 		}

@@ -59,9 +59,6 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		if (params->dump_rdata) {
 			params->rr_count += soa->rdata_count;
 		}
-		if (params->dump_rrsig && soa->rrsigs != NULL) {
-			params->rr_count += soa->rrsigs->rdata_count;
-		}
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -92,9 +89,6 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		}
 		if (params->dump_rdata) {
 			params->rr_count += rrsets[i]->rdata_count;
-		}
-		if (params->dump_rrsig && rrsets[i]->rrsigs != NULL) {
-			params->rr_count += rrsets[i]->rrsigs->rdata_count;
 		}
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
@@ -137,9 +131,6 @@ static int node_dump_text(knot_node_t *node, void *data)
 		}
 		if (params->dump_rdata) {
 			params->rr_count += rrsets[i]->rdata_count;
-		}
-		if (params->dump_rrsig && rrsets[i]->rrsigs != NULL) {
-			params->rr_count += rrsets[i]->rrsigs->rdata_count;
 		}
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
@@ -186,8 +177,9 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	// Dump DNSSEC signatures if secured.
 	const knot_rrset_t *soa = knot_node_rrset(knot_zone_contents_apex(zone),
 	                                          KNOT_RRTYPE_SOA);
-	if (soa && soa->rrsigs) {
+	if (knot_zone_contents_is_signed(zone)) {
 		fprintf(file, ";; DNSSEC signatures\n");
+		/* TODO: will not dump RRSIGs after, will handle as any other RR. */
 
 		// Dump rrsig records.
 		params.dump_rdata = false;
@@ -212,7 +204,8 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-	} else if (soa && soa->rrsigs) {
+	} else if (knot_zone_contents_is_signed(zone)) {
+		// TODO same as above
 		fprintf(file, ";; DNSSEC NSEC chain\n");
 
 		// Dump nsec and rrsig records.

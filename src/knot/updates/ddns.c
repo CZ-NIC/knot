@@ -732,18 +732,20 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			return ret;
 		}
 
-		if (removed->rrsigs) {
-			ret = knot_changes_add_rrset(changes,
-			                             removed->rrsigs,
-			                             KNOT_CHANGES_OLD);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add removed RRSIGs to "
-				         "'changes': %s\n", knot_strerror(ret));
-				return ret;
-			}
-			/* Disconnect RRsigs from rrset. */
-			knot_rrset_set_rrsigs(removed, NULL);
-		}
+		/* TODO: signing will take care of this. If signing is off, then, oh well. */
+//		if (knot_node_rrtype_is_signed(node, removed->type)) {
+//			assert(0);
+//			ret = knot_changes_add_rrset(changes,
+//			                             removed->rrsigs,
+//			                             KNOT_CHANGES_OLD);
+//			if (ret != KNOT_EOK) {
+//				dbg_ddns("Failed to add removed RRSIGs to "
+//				         "'changes': %s\n", knot_strerror(ret));
+//				return ret;
+//			}
+//			/* Disconnect RRsigs from rrset. */
+//			knot_rrset_set_rrsigs(removed, NULL);
+//		}
 
 		/* c) And remove it from the node. */
 		UNUSED(knot_node_remove_rrset(node, KNOT_RRTYPE_CNAME));
@@ -851,19 +853,6 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 			dbg_ddns("Failed to add removed RRSet to "
 			         "'changes': %s\n", knot_strerror(ret));
 			return ret;
-		}
-
-		if (removed->rrsigs) {
-			ret = knot_changes_add_rrset(changes,
-			                             removed->rrsigs,
-			                             KNOT_CHANGES_OLD);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add removed RRSIGs to "
-				         "'changes': %s\n", knot_strerror(ret));
-				return ret;
-			}
-			/* Disconnect RRsigs from rrset. */
-			knot_rrset_set_rrsigs(removed, NULL);
 		}
 
 		/* 2) And remove it from the node. */
@@ -1328,16 +1317,6 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 			return ret;
 		}
 
-		// Do the same with its RRSIGs (automatic drop)
-		if (rrset_copy->rrsigs) {
-			ret = knot_changes_add_rrset(changes,
-			                             rrset_copy->rrsigs,
-			                             KNOT_CHANGES_OLD);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add RRSet to changes.\n");
-				return ret;
-			}
-		}
 		knot_rrset_t *tmp = knot_node_remove_rrset(node, type);
 		dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
 		assert(tmp == rrset_copy);
@@ -1474,20 +1453,6 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 			         knot_strerror(ret));
 			free(removed);
 			return ret;
-		}
-
-		if (removed[i]->rrsigs) {
-			ret = knot_changes_add_rrset(changes,
-			                             removed[i]->rrsigs,
-			                             KNOT_CHANGES_OLD);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add removed RRSIGs to "
-				         "'changes': %s\n", knot_strerror(ret));
-				free(removed);
-				return ret;
-			}
-			/* Disconnect RRsigs from rrset. */
-			knot_rrset_set_rrsigs(removed[i], NULL);
 		}
 	}
 

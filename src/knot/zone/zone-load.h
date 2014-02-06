@@ -33,20 +33,7 @@
 #include "knot/zone/semantic-check.h"
 #include "zscanner/zscanner.h"
 
-/* TODO this structure is highly redundant, remove. Maybe use oh-so-great BIRD lists. */
-/*!
- * \brief One-purpose linked list holding pointers to RRSets.
- */
-struct rrset_list {
-	knot_rrset_t *data; /*!< List data. */
-	struct rrset_list *next; /*!< Next node. */
-};
-
-typedef struct rrset_list rrset_list_t;
-
-
 struct parser_context {
-	rrset_list_t *node_rrsigs;
 	knot_zone_contents_t *current_zone;
 	knot_rrset_t *current_rrset;
 	knot_dname_t *origin_from_config;

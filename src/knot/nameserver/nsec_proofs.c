@@ -801,14 +801,15 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, bool optional)
 
 	/* Append RRSIG for each RR in given section. */
 	for (uint16_t i = 0; i < section->count; ++i) {
-		rr = section->rr[i];
-		compr_hint = section->rrinfo[i].compress_ptr[0];
-		if (rr->rrsigs) {
-			ret = knot_pkt_put(pkt, compr_hint, rr->rrsigs, flags);
-			if (ret != KNOT_EOK) {
-				break;
-			}
-		}
+		assert(0);
+//		rr = section->rr[i];
+//		compr_hint = section->rrinfo[i].compress_ptr[0];
+//		if (rr->rrsigs) {
+//			ret = knot_pkt_put(pkt, compr_hint, rr->rrsigs, flags);
+//			if (ret != KNOT_EOK) {
+//				break;
+//			}
+//		}
 	}
 
 	return ret;

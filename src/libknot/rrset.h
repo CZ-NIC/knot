@@ -65,7 +65,6 @@ struct knot_rrset {
 	 */
 	uint32_t *rdata_indices; /*!< Indices to beginnings of RRs (without 0)*/
 	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
-	struct knot_rrset *rrsigs; /*!< Set of RRSIGs covering this RRSet. */
 
 	/* Optional fields. */
 

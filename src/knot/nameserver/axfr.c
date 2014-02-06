@@ -29,7 +29,6 @@ struct axfr_proc {
 	struct xfr_proc proc;
 	hattrie_iter_t *i;
 	unsigned cur_rrset;
-	bool cur_rrsig; /* \note Workaround because 'RRSIGS' need to be 'special', jeez. */
 };
 
 static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *state)
@@ -42,31 +41,15 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
-		/* \note Only RRSIG for SOA, don't add the actual RRSet. */
-		if (!state->cur_rrsig && knot_rrset_type(rrset[i]) != KNOT_RRTYPE_SOA) {
-			ret = knot_pkt_put(pkt, 0, rrset[i], flags);
-		}
-
-		/* Now put the RRSIG (if it exists). */
-		if (ret == KNOT_EOK && rrset[i]->rrsigs) {
-			/* \note RRSet data is already in the packet,
-			 *       now we need only RRSIG. Because RRSIGs are special
-			 *       we need to remember that :-( */
-			state->cur_rrsig = true;
-			ret = knot_pkt_put(pkt, 0, rrset[i]->rrsigs, flags);
-		}
+		ret = knot_pkt_put(pkt, 0, rrset[i], flags);
 
 		/* If something failed, remember the current RR for later. */
 		if (ret != KNOT_EOK) {
 			state->cur_rrset = i;
 			return ret;
-		} else {
-			/* RRSIG is in the packet, clear the flag. */
-			state->cur_rrsig = false;
 		}
 	}
 
-	state->cur_rrsig = false;
 	state->cur_rrset = 0;
 	return ret;
 }
