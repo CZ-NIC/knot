@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 
 	// 1. Construct event scheduler
 	event_t *e = 0;
-	evsched_t *s = evsched_new();
+	evsched_t *s = evsched_new(NULL);
 	ok(s != 0, "evsched: new");
 
 	// 2. Schedule event to happen after N ms

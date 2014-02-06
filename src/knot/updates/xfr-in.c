@@ -22,7 +22,6 @@
 
 #include "knot/updates/xfr-in.h"
 
-#include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
 #include "libknot/util/debug.h"
 #include "libknot/packet/pkt.h"
@@ -39,6 +38,19 @@
 #include "common/lists.h"
 #include "common/descriptor.h"
 #include "libknot/rdata.h"
+
+#define KNOT_NS_TSIG_FREQ 100
+
+static int knot_ns_tsig_required(int packet_nr)
+{
+	/*! \bug This can overflow to negative numbers. Proper solution is to
+	 *       count exactly at one place for each incoming/outgoing packet
+	 *       with packet_nr = (packet_nr + 1) % FREQ and require TSIG on 0.
+	 */
+	dbg_ns_verb("ns_tsig_required(%d): %d\n", packet_nr,
+	            (packet_nr % KNOT_NS_TSIG_FREQ == 0));
+	return (packet_nr % KNOT_NS_TSIG_FREQ == 0);
+}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -253,8 +265,6 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 	int ret = KNOT_EOK;
 	if (xfr->tsig_key) {
 		// just append the wireformat to the TSIG data
-		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
-		       >= xfr->wire_size);
 		uint8_t *wire_buf = xfr->tsig_data + xfr->tsig_data_size;
 		memcpy(wire_buf, packet->wire, packet->size);
 		xfr->tsig_data_size += packet->size;

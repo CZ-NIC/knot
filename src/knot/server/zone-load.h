@@ -26,8 +26,9 @@
 #define _KNOTD_ZONE_LOAD_H_
 
 #include "knot/conf/conf.h"
-#include "knot/nameserver/name-server.h"
 #include "knot/zone/zonedb.h"
+
+struct server_t;
 
 /*!
  * \brief Update zone database according to configuration.
@@ -44,15 +45,12 @@
  *
  * \param[in] conf Configuration.
  * \param[in] ns Nameserver which holds the zone database.
- * \param[out] db_old Old database, containing only zones which should be
- *                    deleted afterwards.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
-                               knot_zonedb_t **db_old);
+int zones_update_db_from_config(const conf_t *conf, struct server_t *server);
 
 #endif // _KNOTD_ZONE_LOAD_H_
 

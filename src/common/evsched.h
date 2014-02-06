@@ -99,6 +99,7 @@ typedef struct {
 		slab_cache_t alloc;   /*!< Events SLAB cache. */
 		pthread_mutex_t lock; /*!< Events cache spin lock. */
 	} cache;
+	void *ctx;
 } evsched_t;
 
 /*!
@@ -107,7 +108,7 @@ typedef struct {
  * \retval New instance on success.
  * \retval NULL on error.
  */
-evsched_t *evsched_new();
+evsched_t *evsched_new(void *ctx);
 
 /*!
  * \brief Deinitialize and free event scheduler instance.

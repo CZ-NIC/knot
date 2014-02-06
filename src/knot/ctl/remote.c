@@ -26,7 +26,6 @@
 #include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
 #include "common/descriptor.h"
-#include "knot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
 #include "libknot/dnssec/random.h"
@@ -89,7 +88,6 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		return KNOT_EINVAL;
 	}
 
-	knot_nameserver_t *ns = s->nameserver;
 	zone_t *zone = NULL;
 	int ret = KNOT_EOK;
 
@@ -103,10 +101,9 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 
 		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
 			/* Refresh zones. */
-			const knot_dname_t *dn =
-				knot_rdata_ns_name(rr, i);
+			const knot_dname_t *dn = knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
-			zone = knot_zonedb_find(ns->zone_db, dn);
+			zone = knot_zonedb_find(s->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
@@ -122,9 +119,7 @@ static void reschedule(server_t *server, event_t *timer, uint32_t time)
 	assert(server);
 	assert(timer);
 
-	knot_nameserver_t *nameserver = server->nameserver;
-	evsched_t *scheduler = ((server_t *)knot_ns_get_data(nameserver))->sched;
-
+	evsched_t *scheduler = server->sched;
 	evsched_cancel(scheduler, timer);
 	evsched_schedule(scheduler, timer, time);
 }
@@ -248,9 +243,9 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 
 	int ret = KNOT_EOK;
 	rcu_read_lock();
-	knot_nameserver_t *ns =  s->nameserver;
+
 	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(ns->zone_db, &it);
+	knot_zonedb_iter_begin(s->zone_db, &it);
 	while(!knot_zonedb_iter_finished(&it)) {
 		const zone_t *zone = knot_zonedb_iter_val(&it);
 
@@ -348,7 +343,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		return server_refresh(s);
+		return server_refresh_zones(s);
 	}
 
 	/* Refresh specific zones. */
@@ -370,9 +365,8 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 		int ret = 0;
 		dbg_server_verb("remote: flushing all zones\n");
 		rcu_read_lock();
-		knot_nameserver_t *ns =  s->nameserver;
 		knot_zonedb_iter_t it;
-		knot_zonedb_iter_begin(ns->zone_db, &it);
+		knot_zonedb_iter_begin(s->zone_db, &it);
 		while(!knot_zonedb_iter_finished(&it)) {
 			ret = remote_zone_flush(s, knot_zonedb_iter_val(&it));
 			knot_zonedb_iter_next(&it);

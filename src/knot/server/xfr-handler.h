@@ -27,19 +27,48 @@
 #ifndef _KNOTD_XFRHANDLER_H_
 #define _KNOTD_XFRHANDLER_H_
 
-#include "knot/server/dthreads.h"
-#include "knot/nameserver/name-server.h"
 #include "common/evqueue.h"
 #include "common/fdset.h"
+#include "knot/server/dthreads.h"
+#include "knot/server/socket.h"
+#include "libknot/packet/pkt.h"
+#include "knot/zone/zone.h"
 
+struct server_t;
 struct xfrhandler_t;
 
 /*! \brief Transfer state. */
 enum xfrstate_t {
 	XFR_IDLE = 0,
 	XFR_SCHED,
-	XFR_PENDING,
+	XFR_PENDING
 };
+
+/*!
+ * \brief XFR request flags.
+ */
+enum knot_ns_xfr_flag_t {
+	XFR_FLAG_TCP = 1 << 0, /*!< XFR request is on TCP. */
+	XFR_FLAG_UDP = 1 << 1,  /*!< XFR request is on UDP. */
+	XFR_FLAG_AXFR_FINISHED = 1 << 2, /*!< Transfer is finished. */
+	XFR_FLAG_CONNECTING = 1 << 3 /*!< In connecting phase. */
+};
+
+/*!
+ * \brief XFR request types.
+ */
+typedef enum knot_ns_xfr_type_t {
+	/* DNS events. */
+	XFR_TYPE_AIN = 0, /*!< AXFR-IN request (start transfer). */
+	XFR_TYPE_IIN,     /*!< IXFR-IN request (start transfer). */
+	XFR_TYPE_AOUT,    /*!< AXFR-OUT request (incoming transfer). */
+	XFR_TYPE_IOUT,    /*!< IXFR-OUT request (incoming transfer). */
+	XFR_TYPE_SOA,     /*!< Pending SOA request. */
+	XFR_TYPE_NOTIFY,  /*!< Pending NOTIFY query. */
+	XFR_TYPE_UPDATE,  /*!< UPDATE request (incoming UPDATE). */
+	XFR_TYPE_FORWARD,  /*!< UPDATE forward request. */
+	XFR_TYPE_DNSSEC   /*!< DNSSEC changes. */
+} knot_ns_xfr_type_t;
 
 /*!
  * \brief XFR handler structure.
@@ -50,9 +79,82 @@ typedef struct xfrhandler_t
 	unsigned pending; /*!< \brief Pending transfers. */
 	pthread_mutex_t pending_mx;
 	pthread_mutex_t mx; /*!< \brief Tasks synchronisation. */
-	knot_nameserver_t *ns;
+	struct server_t *server;
 	dt_unit_t       *unit;  /*!< \brief Threading unit. */
 } xfrhandler_t;
+
+/*! \brief Callback for sending one packet back through a TCP connection. */
+typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
+			      uint8_t *packet, size_t size);
+
+/*!
+ * \brief Single XFR operation structure.
+ *
+ * Used for communication with XFR handler.
+ */
+typedef struct knot_ns_xfr {
+	node_t n;
+	int type;
+	int flags;
+	sockaddr_t addr, saddr;
+	knot_pkt_t *query;
+	knot_pkt_t *response;
+	knot_rcode_t rcode;
+	xfr_callback_t send;
+	xfr_callback_t recv;
+	int session;
+	struct timeval t_start, t_end;
+
+	/*!
+	 * XFR-out: Output buffer.
+	 * XFR-in: Buffer for query or incoming packet.
+	 */
+	uint8_t *wire;
+
+	/*!
+	 * XFR-out: Size of the output buffer.
+	 * XFR-in: Size of the current packet.
+	 */
+	size_t wire_size;
+	size_t wire_maxlen;
+	void *data;
+	zone_t *zone;
+	char* zname;
+	knot_zone_contents_t *new_contents;
+	char *msg;
+
+	/*! \note [TSIG] TSIG fields */
+	/*! \brief Message(s) to sign in wireformat.
+	 *
+	 *  This field should be allocated at the start of transfer and
+	 *  freed at the end. During the transfer it is only rewritten.
+	 */
+	uint8_t *tsig_data;
+	size_t tsig_data_size;	/*!< Size of the message(s) in bytes */
+	size_t tsig_size;	/*!< Size of the TSIG RR wireformat in bytes.*/
+	knot_tsig_key_t *tsig_key; /*!< Associated TSIG key for signing. */
+
+	uint8_t *digest;     /*!< Buffer for counting digest. */
+	size_t digest_size;  /*!< Size of the digest. */
+	size_t digest_max_size; /*!< Size of the buffer. */
+
+	/*! \note [DDNS] Update forwarding fields. */
+	int fwd_src_fd;           /*!< Query originator fd. */
+	sockaddr_t fwd_addr;
+
+	uint16_t tsig_rcode;
+	uint64_t tsig_prev_time_signed;
+
+	/*!
+	 * \brief Number of the packet currently assembled.
+	 *
+	 * In case of XFR-in, this is not the overall number of packet, just
+	 * number counted from last TSIG check.
+	 */
+	int packet_nr;
+
+	hattrie_t *lookup_tree;
+} knot_ns_xfr_t;
 
 /*!
  * \brief Create XFR threading unit.
@@ -61,12 +163,12 @@ typedef struct xfrhandler_t
  * Unit is created in Idle mode.
  *
  * \param thrcount Requested number of threads.
- * \param ns Pointer to nameserver.
+ * \param server Pointer to nameserver.
  *
  * \retval New handler on success.
  * \retval NULL on error.
  */
-xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns);
+xfrhandler_t *xfr_create(size_t thrcount, struct server_t *server);
 
 /*!
  * \brief Delete XFR handler.

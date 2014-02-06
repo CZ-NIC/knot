@@ -27,17 +27,43 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
-#include "knot/nameserver/name-server.h"
 #include "libknot/rdata.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 #include "common/descriptor.h"
 
+/*!
+ * \brief Create timer if not exists, cancel if running.
+*/
+static void timer_reset(evsched_t *sched, event_t **ev,
+			event_cb_t cb, zone_t *zone)
+{
+	if (*ev == NULL) {
+		*ev = evsched_event_new_cb(sched, cb, zone);
+	} else {
+		evsched_cancel(sched, *ev);
+	}
+}
+
+void zone_reset_timers(zone_t *zone, server_t *server)
+{
+	if (!zone) {
+		return;
+	}
+
+	evsched_t *scheduler = server->sched;
+
+	timer_reset(scheduler, &zone->ixfr_dbsync,   zones_flush_ev,   zone);
+	timer_reset(scheduler, &zone->xfr_in.timer,  zones_refresh_ev, zone);
+	timer_reset(scheduler, &zone->xfr_in.expire, zones_expire_ev,  zone);
+	timer_reset(scheduler, &zone->dnssec_timer,  zones_dnssec_ev,  zone);
+}
+
 /*! \brief Freeze the zone data to prevent any further transfers or
  *         events manipulation.
  */
-static void zone_freeze(zone_t *zone)
+static void zone_freeze(zone_t *zone, server_t *server)
 {
 	if (!zone) {
 		return;
@@ -51,7 +77,7 @@ static void zone_freeze(zone_t *zone)
 	synchronize_rcu();
 
 	/* Cancel all pending timers. */
-	zone_reset_timers(zone);
+	zone_reset_timers(zone, server);
 
 	/* Now some transfers may already be running, we need to wait for them. */
 	/*! \todo This should be done somehow. */
@@ -251,14 +277,12 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
  *
  * \param old_zone  Already loaded zone (can be NULL).
  * \param conf      Zone configuration.
- * \param ns        Name server structure.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf, knot_nameserver_t *ns)
+static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf)
 {
 	assert(conf);
-	assert(ns);
 
 	zone_status_t zstatus = zone_file_status(old_zone, conf->file);
 	zone_t *new_zone = NULL;
@@ -283,9 +307,6 @@ static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf, knot_nameserver_
 		return NULL;
 	}
 
-	new_zone->server = (server_t *)ns->data;
-	zone_reset_timers(new_zone);
-
 	log_zone_load_info(new_zone, conf->name, zstatus);
 
 	return new_zone;
@@ -294,27 +315,23 @@ static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf, knot_nameserver_
 /*!
  * \brief Load/reload the zone, apply journal, sign it and schedule XFR sync.
  *
- * \param[out] dst       Pointer to successfully loaded zone.
  * \param[in]  old_zone  Old zone (if loaded).
  * \param[in]  conf      Zone configuration.
- * \param[in]  ns        Name server structure.
+ * \param[in]  server    Name server structure.
  *
- * \return Error code, KNOT_EOK if sucessful.
+ * \return Updated zone on success, NULL otherwise.
  */
-static int update_zone(zone_t **dst, zone_t *old_zone,
-                       conf_zone_t *conf, knot_nameserver_t *ns)
+static zone_t* update_zone(zone_t *old_zone, conf_zone_t *conf)
 {
-	assert(dst);
 	assert(conf);
-	assert(ns);
 
 	int result = KNOT_ERROR;
 
 	// Load zone.
 
-	zone_t *new_zone = create_zone(old_zone, conf, ns);
+	zone_t *new_zone = create_zone(old_zone, conf);
 	if (!new_zone) {
-		return KNOT_EZONENOENT;
+		return NULL;
 	}
 
 	bool new_content = (old_zone == NULL || old_zone->contents != new_zone->contents);
@@ -333,37 +350,11 @@ static int update_zone(zone_t **dst, zone_t *old_zone,
 		goto fail;
 	}
 
-	new_zone->server = (server_t *)ns->data;
-
-	// Post processing.
-
-	zones_schedule_ixfr_sync(new_zone, conf->dbsync_timeout);
-
-	knot_zone_contents_t *new_contents = new_zone->contents;
-	if (new_contents) {
-		/* Check NSEC3PARAM state if present. */
-		result = knot_zone_contents_load_nsec3param(new_contents);
-		if (result != KNOT_EOK) {
-			log_zone_error("NSEC3 signed zone has invalid or no "
-				       "NSEC3PARAM record.\n");
-			goto fail;
-		}
-		/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
-		if (knot_zone_contents_is_signed(new_contents)) {
-			unsigned edns_dnssec_min = EDNS_MIN_DNSSEC_PAYLOAD;
-			if (knot_edns_get_payload(ns->opt_rr) < edns_dnssec_min) {
-				log_zone_warning("EDNS payload lower than %uB for "
-						 "DNSSEC-enabled zone '%s'.\n",
-						 edns_dnssec_min, conf->name);
-			}
-		}
-	}
-
 fail:
 	assert(new_zone);
 
 	if (result == KNOT_EOK) {
-		*dst = new_zone;
+		return new_zone;
 	} else {
 		/* Preserved zone, don't free the shared contents. */
 		if (!new_content) {
@@ -373,13 +364,59 @@ fail:
 		zone_deep_free(&new_zone);
 	}
 
-	return result;
+	return NULL;
+}
+
+/*!
+ * \brief Check zone configuration constraints.
+ */
+static int update_zone_postcond(zone_t *new_zone, const conf_t *config)
+{
+	/* Bootstrapped zone, no checks apply. */
+	if (new_zone->contents == NULL) {
+		return KNOT_EOK;
+	}
+
+	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
+	if (knot_zone_contents_is_signed(new_zone->contents)) {
+		unsigned edns_dnssec_min = EDNS_MIN_DNSSEC_PAYLOAD;
+		if (config->max_udp_payload < edns_dnssec_min) {
+			log_zone_warning("EDNS payload lower than %uB for "
+			                 "DNSSEC-enabled zone '%s'.\n",
+			                 edns_dnssec_min, new_zone->conf->name);
+		}
+	}
+
+	/* Check NSEC3PARAM state if present. */
+	int result = knot_zone_contents_load_nsec3param(new_zone->contents);
+	if (result != KNOT_EOK) {
+		log_zone_error("NSEC3 signed zone has invalid or no "
+			       "NSEC3PARAM record.\n");
+		return result;
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Check zone configuration constraints.
+ */
+static int update_zone_triggers(zone_t *new_zone, server_t *server)
+{
+	/* Reset timers. */
+	zone_freeze(new_zone, server);
+
+	/* Schedule zone file syncing. */
+	zones_schedule_ixfr_sync(new_zone, new_zone->conf->dbsync_timeout);
+
+	return KNOT_EOK;
 }
 
 /*! \brief Context for threaded zone loader. */
 typedef struct {
 	const struct conf_t *config;
-	knot_nameserver_t *ns;
+	server_t      *server;
+	knot_zonedb_t *db_old;
 	knot_zonedb_t *db_new;
 	pthread_mutex_t lock;
 } zone_loader_ctx_t;
@@ -391,7 +428,6 @@ static int zone_loader_thread(dthread_t *thread)
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_ERROR;
 	zone_t *zone = NULL;
 	conf_zone_t *zone_config = NULL;
 	zone_loader_ctx_t *ctx = (zone_loader_ctx_t *)thread->data;
@@ -413,34 +449,45 @@ static int zone_loader_thread(dthread_t *thread)
 		if (!apex) {
 			return KNOT_ENOMEM;
 		}
-		zone_t *old_zone = knot_zonedb_find(ctx->ns->zone_db, apex);
+		zone_t *old_zone = knot_zonedb_find(ctx->db_old, apex);
 		knot_dname_free(&apex);
 
 		/* Freeze existing zone. */
-		zone_freeze(old_zone);
+		zone_freeze(old_zone, ctx->server);
 
 		/* Update the zone. */
-		ret = update_zone(&zone, old_zone, zone_config, ctx->ns);
+		zone = update_zone(old_zone, zone_config);
+		if (zone == NULL) {
+			conf_free_zone(zone_config);
+			continue;
+		}
+
+		/* Check updated zone post-conditions. */
+		int ret = update_zone_postcond(zone, ctx->config);
 
 		/* Insert into database if properly loaded. */
-		pthread_mutex_lock(&ctx->lock);
 		if (ret == KNOT_EOK) {
-			if (knot_zonedb_insert(ctx->db_new, zone) != KNOT_EOK) {
-				log_zone_error("Failed to insert zone '%s' "
-				               "into database.\n", zone_config->name);
-
-				/* Preserved zone, don't free the shared contents. */
-				if (old_zone && old_zone->contents == zone->contents) {
-					zone->contents = NULL;
-				}
-
-				zone_deep_free(&zone);
+			pthread_mutex_lock(&ctx->lock);
+			if (zone != NULL) {
+				ret = knot_zonedb_insert(ctx->db_new, zone);
 			}
-		} else {
-			/* Unable to load, discard configuration. */
-			conf_free_zone(zone_config);
+			pthread_mutex_unlock(&ctx->lock);
 		}
-		pthread_mutex_unlock(&ctx->lock);
+
+		/* Run post-update triggers. */
+		if (ret == KNOT_EOK) {
+			ret = update_zone_triggers(zone, ctx->server);
+		}
+
+		/* Check for any failure. */
+		if (ret != KNOT_EOK && zone) {
+			/* Preserved zone, don't free the shared contents. */
+			if (old_zone && old_zone->contents == zone->contents) {
+				zone->contents = NULL;
+			}
+
+			zone_deep_free(&zone);
+		}
 	}
 
 	return KNOT_EOK;
@@ -458,17 +505,18 @@ static int zone_loader_destruct(dthread_t *thread)
  * Zones that should be retained are just added from the old database to the
  * new. New zones are loaded.
  *
- * \param ns Name server instance.
+ * \param server Name server instance.
  * \param conf Server configuration.
  *
  * \return Number of inserted zones.
  */
-static knot_zonedb_t *load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
+static knot_zonedb_t *load_zonedb(server_t *server, const conf_t *conf)
 {
 	/* Initialize threaded loader. */
 	zone_loader_ctx_t ctx = {0};
-	ctx.ns = ns;
 	ctx.config = conf;
+	ctx.server = server;
+	ctx.db_old = server->zone_db;
 	ctx.db_new = knot_zonedb_new(conf->zones_count);
 	if (ctx.db_new == NULL) {
 		return NULL;
@@ -513,6 +561,10 @@ static knot_zonedb_t *load_zonedb(knot_nameserver_t *ns, const conf_t *conf)
   */
 static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 {
+	if (db_old == NULL) {
+		return KNOT_EOK; /* Nothing to free. */
+	}
+
 	knot_zonedb_iter_t it;
 	knot_zonedb_iter_begin(db_new, &it);
 
@@ -544,24 +596,17 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 /*!
  * \brief Update zone database according to configuration.
  */
-int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
-                               knot_zonedb_t **db_old)
+int zones_update_db_from_config(const conf_t *conf, struct server_t *server)
 {
 	/* Check parameters */
-	if (conf == NULL || ns == NULL) {
+	if (conf == NULL || server == NULL) {
 		return KNOT_EINVAL;
-	}
-
-	/* Grab a pointer to the old database */
-	if (ns->zone_db == NULL) {
-		log_server_error("Missing zone database in nameserver structure.\n");
-		return KNOT_ENOENT;
 	}
 
 	/* Insert all required zones to the new zone DB. */
 	/*! \warning RCU must not be locked as some contents switching will
 	             be required. */
-	knot_zonedb_t *db_new = load_zonedb(ns, conf);
+	knot_zonedb_t *db_new = load_zonedb(server, conf);
 	if (db_new == NULL) {
 		log_server_warning("Failed to load zones.\n");
 		return KNOT_ENOMEM;
@@ -576,19 +621,12 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 
 	/* Lock RCU to ensure none will deallocate any data under our hands. */
 	rcu_read_lock();
-	*db_old = ns->zone_db;
-
-	dbg_zones_detail("zones: old db in nameserver: %p, old db stored: %p, "
-	                 "new db: %p\n", ns->zone_db, *db_old, db_new);
 
 	/* Rebuild zone database search stack. */
 	knot_zonedb_build_index(db_new);
 
 	/* Switch the databases. */
-	UNUSED(rcu_xchg_pointer(&ns->zone_db, db_new));
-
-	dbg_zones_detail("db in nameserver: %p, old db stored: %p, new db: %p\n",
-	                 ns->zone_db, *db_old, db_new);
+	knot_zonedb_t *db_old = rcu_xchg_pointer(&server->zone_db, db_new);
 
 	/* Unlock RCU, messing with any data will not affect us now */
 	rcu_read_unlock();
@@ -601,5 +639,5 @@ int zones_update_db_from_config(const conf_t *conf, knot_nameserver_t *ns,
 	 * No new thread can access these zones in the old DB, as the
 	 * databases are already switched.
 	 */
-	return remove_old_zonedb(db_new, *db_old);
+	return remove_old_zonedb(db_new, db_old);
 }

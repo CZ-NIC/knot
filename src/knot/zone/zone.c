@@ -111,34 +111,6 @@ static void set_xfrin_parameters(zone_t *zone, conf_zone_t *conf)
 	}
 }
 
-/*!
- * \brief Create timer if not exists, cancel if running.
-*/
-static void timer_reset(evsched_t *sched, event_t **ev,
-			event_cb_t cb, zone_t *zone)
-{
-	if (*ev == NULL) {
-		*ev = evsched_event_new_cb(sched, cb, zone);
-	} else {
-		evsched_cancel(sched, *ev);
-	}
-}
-
-void zone_reset_timers(zone_t *zone)
-{
-	if (!zone) {
-		return;
-	}
-
-	assert(zone->server);
-	evsched_t *scheduler = zone->server->sched;
-
-	timer_reset(scheduler, &zone->ixfr_dbsync,   zones_flush_ev,   zone);
-	timer_reset(scheduler, &zone->xfr_in.timer,  zones_refresh_ev, zone);
-	timer_reset(scheduler, &zone->xfr_in.expire, zones_expire_ev,  zone);
-	timer_reset(scheduler, &zone->dnssec_timer,  zones_dnssec_ev,  zone);
-}
-
 zone_t* zone_new(conf_zone_t *conf)
 {
 	if (!conf) {
@@ -217,6 +189,20 @@ int zone_create_contents(zone_t *zone)
 	return KNOT_EOK;
 }
 
+/*! \brief Cancel and free zone event. */
+static void zone_event_free(event_t **event)
+{
+	if (event == NULL || *event == NULL) {
+		return;
+	}
+
+	evsched_t *sched = (*event)->parent;
+	assert(sched);
+	evsched_cancel(sched, *event);
+	evsched_event_free(sched, *event);
+	*event = NULL;
+}
+
 void zone_free(zone_t **zone_ptr)
 {
 	if (zone_ptr == NULL || *zone_ptr == NULL) {
@@ -227,42 +213,11 @@ void zone_free(zone_t **zone_ptr)
 
 	knot_dname_free(&zone->name);
 
-	evsched_t *sch = NULL;
-	if (zone->server) {
-		sch = zone->server->sched;
-	}
-
-	/* Cancel REFRESH timer. */
-	if (zone->xfr_in.timer) {
-		assert(sch);
-		evsched_cancel(sch, zone->xfr_in.timer);
-		evsched_event_free(sch, zone->xfr_in.timer);
-		zone->xfr_in.timer = NULL;
-	}
-
-	/* Cancel EXPIRE timer. */
-	if (zone->xfr_in.expire) {
-		assert(sch);
-		evsched_cancel(sch, zone->xfr_in.expire);
-		evsched_event_free(sch, zone->xfr_in.expire);
-		zone->xfr_in.expire = NULL;
-	}
-
-	/* Cancel IXFR DB sync timer. */
-	if (zone->ixfr_dbsync) {
-		assert(sch);
-		evsched_cancel(sch, zone->ixfr_dbsync);
-		evsched_event_free(sch, zone->ixfr_dbsync);
-		zone->ixfr_dbsync = NULL;
-	}
-
-	/* Cancel DNSSEC timer. */
-	if (zone->dnssec_timer) {
-		assert(sch);
-		evsched_cancel(sch, zone->dnssec_timer);
-		evsched_event_free(sch, zone->dnssec_timer);
-		zone->dnssec_timer = NULL;
-	}
+	/* Cancel and free timers. */
+	zone_event_free(&zone->xfr_in.timer);
+	zone_event_free(&zone->xfr_in.expire);
+	zone_event_free(&zone->ixfr_dbsync);
+	zone_event_free(&zone->dnssec_timer);
 
 	acl_delete(&zone->xfr_in.acl);
 	acl_delete(&zone->xfr_out);

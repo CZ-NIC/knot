@@ -28,7 +28,7 @@
 #include "common/lists.h"
 #include "knot/knot.h"
 
-int log_conf_hook(const struct conf_t *conf, void *data)
+int log_reconfigure(const struct conf_t *conf, void *data)
 {
 	// Data not used
 	int ret = 0;

@@ -18,14 +18,14 @@
 #include <strings.h>
 
 #include "knot/nameserver/chaos.h"
+#include "knot/conf/conf.h"
 #include "common/descriptor.h"
 #include "libknot/packet/pkt.h"
 
 /*!
  * \brief Get a string result for a given TXT query.
  */
-static const char *get_txt_response_string(const knot_nameserver_t *nameserver,
-                                           const knot_dname_t *qname)
+static const char *get_txt_response_string(const knot_dname_t *qname)
 {
 	char *qname_str = knot_dname_to_str(qname);
 	const char *response = NULL;
@@ -91,10 +91,10 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
  * \param return KNOT_RCODE_NOERROR if the response was succesfully created,
  *               otherwise an RCODE representing the failure.
  */
-static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response)
+static int answer_txt(knot_pkt_t *response)
 {
 	const knot_dname_t *qname = knot_pkt_qname(response);
-	const char *response_str = get_txt_response_string(nameserver, qname);
+	const char *response_str = get_txt_response_string(qname);
 	if (response_str == NULL || response_str[0] == '\0') {
 		return KNOT_RCODE_REFUSED;
 	}
@@ -113,11 +113,11 @@ static int answer_txt(knot_nameserver_t *nameserver, knot_pkt_t *response)
 	return KNOT_RCODE_NOERROR;
 }
 
-int knot_chaos_answer(knot_pkt_t *pkt, knot_nameserver_t *ns)
+int knot_chaos_answer(knot_pkt_t *pkt)
 {
 	if (knot_pkt_qtype(pkt) != KNOT_RRTYPE_TXT) {
 		return KNOT_RCODE_REFUSED;
 	}
 
-	return answer_txt(ns, pkt);
+	return answer_txt(pkt);
 }

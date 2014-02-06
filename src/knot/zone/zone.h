@@ -67,9 +67,6 @@ typedef struct zone_t {
 	time_t zonefile_mtime;
 	uint32_t zonefile_serial;
 
-	/*! \brief Shortcut to server instance. */
-	struct server_t *server;
-
 	/*! \brief Shortcut to zone config entry. */
 	conf_zone_t *conf;
 
@@ -149,13 +146,6 @@ static inline void zone_release(zone_t *zone)
 {
 	ref_release(&zone->ref);
 }
-
-/*!
- * \brief Reset zone timers.
- *
- * \param zone       Zone.
- */
-void zone_reset_timers(zone_t *zone);
 
 /*!
  * \brief Check if the zone is a master zone.

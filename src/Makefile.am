@@ -218,8 +218,6 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/internet.h		\
 	knot/nameserver/ixfr.c			\
 	knot/nameserver/ixfr.h			\
-	knot/nameserver/name-server.c		\
-	knot/nameserver/name-server.h		\
 	knot/nameserver/nsec_proofs.c		\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\

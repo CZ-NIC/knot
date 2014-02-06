@@ -119,9 +119,6 @@ zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name);
  */
 zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname);
 
-knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
-                                              const knot_dname_t *zone_name);
-
 size_t knot_zonedb_size(const knot_zonedb_t *db);
 
 /*!

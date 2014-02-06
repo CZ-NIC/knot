@@ -27,7 +27,6 @@
 #include "libknot/common.h"
 #include "libknot/consts.h"
 #include "common/mempattern.h"
-#include "knot/nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
 #include "knot/updates/xfr-in.h"
 #include "common/descriptor.h"
 

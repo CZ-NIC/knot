@@ -20,15 +20,18 @@
 
 #include <urcu.h>
 
+#include "knot/zone/zonedb.h"
+#include "knot/server/server.h"
+#include "knot/server/zones.h"
 #include "libknot/common.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
-#include "libknot/util/debug.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
+
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -176,26 +179,6 @@ zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname)
 	}
 
 	return NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
-                                              const knot_dname_t *zone_name)
-{
-
-	if (db == NULL || zone_name == NULL) {
-		return NULL;
-	}
-
-	// Remove the contents from the zone, but keep the zone in the zonedb.
-
-	zone_t *zone = knot_zonedb_find(db, zone_name);
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return zone_switch_contents(zone, NULL);
 }
 
 /*----------------------------------------------------------------------------*/

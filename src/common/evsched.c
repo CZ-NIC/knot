@@ -68,13 +68,14 @@ static void evsched_settimer(event_t *e, uint32_t dt)
 /*! \brief Singleton application-wide event scheduler. */
 evsched_t *s_evsched = NULL;
 
-evsched_t *evsched_new()
+evsched_t *evsched_new(void *ctx)
 {
 	evsched_t *s = malloc(sizeof(evsched_t));
 	if (!s) {
 		return NULL;
 	}
 	memset(s, 0, sizeof(evsched_t));
+	s->ctx = ctx;
 
 	/* Initialize event calendar. */
 	pthread_mutex_init(&s->rl, 0);

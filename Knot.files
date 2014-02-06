@@ -109,8 +109,6 @@ src/knot/nameserver/internet.c
 src/knot/nameserver/internet.h
 src/knot/nameserver/ixfr.c
 src/knot/nameserver/ixfr.h
-src/knot/nameserver/name-server.c
-src/knot/nameserver/name-server.h
 src/knot/nameserver/nsec_proofs.c
 src/knot/nameserver/nsec_proofs.h
 src/knot/nameserver/process_query.c
