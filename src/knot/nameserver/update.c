@@ -239,7 +239,7 @@ static int replan_zone_sign_after_ddns(zone_t *zone, uint32_t refresh_at)
 {
 	assert(zone);
 
-	if (zone->dnssec_timer->tv.tv_sec <= refresh_at) {
+	if (zone->dnssec.timer->tv.tv_sec <= refresh_at) {
 		return KNOT_EOK;
 	}
 
@@ -402,7 +402,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		}
 
 		// Plan zone resign if needed
-		assert(zone->dnssec_timer);
+		assert(zone->dnssec.timer);
 		ret = replan_zone_sign_after_ddns(zone, refresh_at);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign %s\n",

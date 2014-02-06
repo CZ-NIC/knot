@@ -199,14 +199,6 @@ int server_reconfigure(const struct conf_t *conf, void *data);
 int server_update_zones(const struct conf_t *conf, void *data);
 
 /*!
- * \brief Refresh slave zones and resend notifications.
- *
- * \return KNOT_EOK on success or KNOT_ error
- */
-int server_refresh_zones(server_t *server);
-
-
-/*!
  * \brief Update fdsets from current interfaces list.
  * \param s Server.
  * \param fds Filedescriptor set.

@@ -867,7 +867,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		} else {
 
 			/* Passed, schedule NOTIFYs. */
-			zones_schedule_notify(xfr->server, zone);
+			zones_schedule_notify(zone, xfr->server);
 		}
 
 		/* Sync zonefile immediately if configured. */

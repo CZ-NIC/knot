@@ -196,7 +196,7 @@ int zones_schedule_refresh(zone_t *zone, int64_t time);
  * \retval KNOT_EOK
  * \retval KNOT_ERROR
  */
-int zones_schedule_notify(server_t *server, zone_t *zone);
+int zones_schedule_notify(zone_t *zone, server_t *server);
 
 /*!
  * \brief Cancel DNSSEC event.

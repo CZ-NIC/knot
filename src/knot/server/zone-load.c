@@ -33,63 +33,6 @@
 #include "knot/zone/zonedb.h"
 #include "common/descriptor.h"
 
-/*!
- * \brief Create timer if not exists, cancel if running.
-*/
-static void timer_reset(evsched_t *sched, event_t **ev,
-			event_cb_t cb, zone_t *zone)
-{
-	if (*ev == NULL) {
-		*ev = evsched_event_new_cb(sched, cb, zone);
-	} else {
-		evsched_cancel(sched, *ev);
-	}
-}
-
-void zone_reset_timers(zone_t *zone, server_t *server)
-{
-	if (!zone) {
-		return;
-	}
-
-	evsched_t *scheduler = server->sched;
-
-	timer_reset(scheduler, &zone->ixfr_dbsync,   zones_flush_ev,   zone);
-	timer_reset(scheduler, &zone->xfr_in.timer,  zones_refresh_ev, zone);
-	timer_reset(scheduler, &zone->xfr_in.expire, zones_expire_ev,  zone);
-	timer_reset(scheduler, &zone->dnssec_timer,  zones_dnssec_ev,  zone);
-}
-
-/*! \brief Freeze the zone data to prevent any further transfers or
- *         events manipulation.
- */
-static void zone_freeze(zone_t *zone, server_t *server)
-{
-	if (!zone) {
-		return;
-	}
-
-	/*! \todo NOTIFY, xfers and updates now MUST NOT trigger reschedule. */
-	/*! \todo No new xfers or updates should be processed. */
-	/*! \todo Raise some kind of flag. */
-
-	/* Wait for readers to notice the change. */
-	synchronize_rcu();
-
-	/* Cancel all pending timers. */
-	zone_reset_timers(zone, server);
-
-	/* Now some transfers may already be running, we need to wait for them. */
-	/*! \todo This should be done somehow. */
-
-	/* Reacquire journal to ensure all operations on it are finished. */
-	if (journal_is_used(zone->ixfr_db)) {
-		if (journal_retain(zone->ixfr_db) == KNOT_EOK) {
-			journal_release(zone->ixfr_db);
-		}
-	}
-}
-
 /*- zone file status --------------------------------------------------------*/
 
 /*!
@@ -277,10 +220,11 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
  *
  * \param old_zone  Already loaded zone (can be NULL).
  * \param conf      Zone configuration.
+ * \param server    Name server.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf)
+static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf, server_t *server)
 {
 	assert(conf);
 
@@ -307,6 +251,9 @@ static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf)
 		return NULL;
 	}
 
+	/* Initialize zone timers. */
+	zone_timers_create(new_zone, server->sched);
+
 	log_zone_load_info(new_zone, conf->name, zstatus);
 
 	return new_zone;
@@ -321,15 +268,14 @@ static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf)
  *
  * \return Updated zone on success, NULL otherwise.
  */
-static zone_t* update_zone(zone_t *old_zone, conf_zone_t *conf)
+static zone_t* update_zone(zone_t *old_zone, conf_zone_t *conf, server_t *server)
 {
 	assert(conf);
 
 	int result = KNOT_ERROR;
 
 	// Load zone.
-
-	zone_t *new_zone = create_zone(old_zone, conf);
+	zone_t *new_zone = create_zone(old_zone, conf, server);
 	if (!new_zone) {
 		return NULL;
 	}
@@ -398,20 +344,6 @@ static int update_zone_postcond(zone_t *new_zone, const conf_t *config)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Check zone configuration constraints.
- */
-static int update_zone_triggers(zone_t *new_zone, server_t *server)
-{
-	/* Reset timers. */
-	zone_freeze(new_zone, server);
-
-	/* Schedule zone file syncing. */
-	zones_schedule_ixfr_sync(new_zone, new_zone->conf->dbsync_timeout);
-
-	return KNOT_EOK;
-}
-
 /*! \brief Context for threaded zone loader. */
 typedef struct {
 	const struct conf_t *config;
@@ -452,11 +384,8 @@ static int zone_loader_thread(dthread_t *thread)
 		zone_t *old_zone = knot_zonedb_find(ctx->db_old, apex);
 		knot_dname_free(&apex);
 
-		/* Freeze existing zone. */
-		zone_freeze(old_zone, ctx->server);
-
 		/* Update the zone. */
-		zone = update_zone(old_zone, zone_config);
+		zone = update_zone(old_zone, zone_config, ctx->server);
 		if (zone == NULL) {
 			conf_free_zone(zone_config);
 			continue;
@@ -472,11 +401,6 @@ static int zone_loader_thread(dthread_t *thread)
 				ret = knot_zonedb_insert(ctx->db_new, zone);
 			}
 			pthread_mutex_unlock(&ctx->lock);
-		}
-
-		/* Run post-update triggers. */
-		if (ret == KNOT_EOK) {
-			ret = update_zone_triggers(zone, ctx->server);
 		}
 
 		/* Check for any failure. */
@@ -603,6 +527,11 @@ int zones_update_db_from_config(const conf_t *conf, struct server_t *server)
 		return KNOT_EINVAL;
 	}
 
+	/* Freeze zone timers. */
+	if (server->zone_db) {
+		knot_zonedb_foreach(server->zone_db, zone_timers_freeze);
+	}
+
 	/* Insert all required zones to the new zone DB. */
 	/*! \warning RCU must not be locked as some contents switching will
 	             be required. */
@@ -619,20 +548,20 @@ int zones_update_db_from_config(const conf_t *conf, struct server_t *server)
 		}
 	}
 
-	/* Lock RCU to ensure none will deallocate any data under our hands. */
-	rcu_read_lock();
-
 	/* Rebuild zone database search stack. */
 	knot_zonedb_build_index(db_new);
 
 	/* Switch the databases. */
 	knot_zonedb_t *db_old = rcu_xchg_pointer(&server->zone_db, db_new);
 
-	/* Unlock RCU, messing with any data will not affect us now */
-	rcu_read_unlock();
-
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();
+
+	/* Thaw zone events now that the database is published. */
+	if (server->zone_db) {
+		knot_zonedb_foreach(server->zone_db, zone_timers_thaw);
+		knot_zonedb_foreach(server->zone_db, zones_schedule_notify, server);
+	}
 
 	/*
 	 * Remove all zones present in the new DB from the old DB.

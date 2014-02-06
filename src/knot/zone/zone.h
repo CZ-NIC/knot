@@ -94,7 +94,10 @@ typedef struct zone_t {
 		unsigned state;
 	} xfr_in;
 
-	struct event_t *dnssec_timer;  /*!< Timer for DNSSEC events. */
+	struct {
+		struct event_t *timer;  /*!< Timer for DNSSEC events. */
+		uint32_t   refresh_at;  /*!< Next refresh time. */
+	} dnssec;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
@@ -160,5 +163,22 @@ static inline bool zone_is_master(const zone_t *zone)
  */
 knot_zone_contents_t *zone_switch_contents(zone_t *zone,
 					   knot_zone_contents_t *new_contents);
+
+/*!
+ * \brief Initialize zone timers.
+ *
+ * \todo Zone timers should be in a separate file, callbacks are still scattered.
+ */
+int zone_timers_create(zone_t *zone, evsched_t *sched);
+
+/*!
+ * \brief Freeze the zone timers.
+ */
+int zone_timers_freeze(zone_t *zone);
+
+/*!
+ * \brief Reschedule frozen zone timers.
+ */
+int zone_timers_thaw(zone_t *zone);
 
 /*! @} */

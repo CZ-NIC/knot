@@ -60,6 +60,19 @@ typedef hhash_iter_t knot_zonedb_iter_t;
 #define knot_zonedb_iter_next(it) hhash_iter_next(it)
 #define knot_zonedb_iter_val(it) *hhash_iter_val(it)
 
+/*
+ * Simple foreach() access with callback and variable number of callback params.
+ */
+#define knot_zonedb_foreach(db, callback, ...) \
+{ \
+	knot_zonedb_iter_t it; \
+	knot_zonedb_iter_begin((db), &it); \
+	while(!knot_zonedb_iter_finished(&it)) { \
+		callback((zone_t *)knot_zonedb_iter_val(&it), ##__VA_ARGS__); \
+		knot_zonedb_iter_next(&it); \
+	} \
+}
+
 /*----------------------------------------------------------------------------*/
 
 /*!

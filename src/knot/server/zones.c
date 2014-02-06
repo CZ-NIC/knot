@@ -1535,7 +1535,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 
 /*----------------------------------------------------------------------------*/
 
-int zones_schedule_notify(server_t *server, zone_t *zone)
+int zones_schedule_notify(zone_t *zone, server_t *server)
 {
 	if (!zone) {
 		return KNOT_EINVAL;
@@ -1708,8 +1708,8 @@ int zones_cancel_dnssec(zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	evsched_t *scheduler = zone->dnssec_timer->parent;
-	evsched_cancel(scheduler, zone->dnssec_timer);
+	evsched_t *scheduler = zone->dnssec.timer->parent;
+	evsched_cancel(scheduler, zone->dnssec.timer);
 
 	return KNOT_EOK;
 }
@@ -1749,8 +1749,8 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
 
 	// schedule
 
-	evsched_t *scheduler = zone->dnssec_timer->parent;
-	evsched_schedule(scheduler, zone->dnssec_timer, relative * 1000);
+	evsched_t *scheduler = zone->dnssec.timer->parent;
+	evsched_schedule(scheduler, zone->dnssec.timer, relative * 1000);
 
 	return KNOT_EOK;
 }
@@ -2022,7 +2022,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	knot_changesets_t *sec_chs = NULL;
 	knot_changeset_t *sec_ch = NULL;
 	knot_zone_contents_t *new_contents = NULL;
-	uint32_t refresh_at = 0;
+	zone->dnssec.refresh_at = 0;
 	if (z->dnssec_enable) {
 		sec_chs = knot_changesets_create();
 		if (sec_chs == NULL) {
@@ -2051,7 +2051,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 		int ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
 		                                sec_ch,
 		                                KNOT_SOA_SERIAL_UPDATE,
-		                                &refresh_at, new_serial);
+		                                &zone->dnssec.refresh_at, new_serial);
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(&diff_chs);
 			knot_changesets_free(&sec_chs);
@@ -2128,11 +2128,6 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	rcu_read_unlock();
 
 	zones_free_merged_changesets(diff_chs, sec_chs);
-
-	// Schedule next zone signing
-	if (z->dnssec_enable) {
-		ret = zones_schedule_dnssec(zone, refresh_at);
-	}
 
 	return ret;
 }

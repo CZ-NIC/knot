@@ -39,7 +39,7 @@
 /*----------------------------------------------------------------------------*/
 
 /*! \brief Discard zone in zone database. */
-static void delete_zone_from_db(zone_t *zone)
+static void discard_zone(zone_t *zone)
 {
 	synchronize_rcu();
 	zone->flags |= ZONE_DISCARDED;
@@ -215,12 +215,8 @@ void knot_zonedb_deep_free(knot_zonedb_t **db)
 
 	/* Reindex for iteration. */
 	knot_zonedb_build_index(*db);
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(*db, &it);
-	while (!knot_zonedb_iter_finished(&it)) {
-		delete_zone_from_db(knot_zonedb_iter_val(&it));
-		knot_zonedb_iter_next(&it);
-	}
 
+	/* Free zones and database. */
+	knot_zonedb_foreach(*db, discard_zone);
 	knot_zonedb_free(db);
 }

@@ -691,24 +691,6 @@ int server_update_zones(const struct conf_t *conf, void *data)
 	/* Trim extra heap. */
 	mem_trim();
 
-	/* Update events scheduled for zone. */
-	server_refresh_zones(server);
-
-	return KNOT_EOK;
-}
-
-int server_refresh_zones(server_t *server)
-{
-	/* Update events scheduled for zone. */
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(server->zone_db, &it);
-	while(!knot_zonedb_iter_finished(&it)) {
-		zone_t *zone = knot_zonedb_iter_val(&it);
-		zones_schedule_refresh(zone, 0); /* Now. */
-		zones_schedule_notify(server, zone);
-		knot_zonedb_iter_next(&it);
-	}
-
 	return KNOT_EOK;
 }
 

@@ -215,10 +215,10 @@ static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 
 static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 {
-	assert(zone && zone->dnssec_timer);
+	assert(zone && zone->dnssec.timer);
 	assert(buf);
 
-	time_t diff_time = zone->dnssec_timer->tv.tv_sec;
+	time_t diff_time = zone->dnssec.timer->tv.tv_sec;
 	struct tm *t = localtime(&diff_time);
 
 	size_t written = strftime(buf, buf_size, "%c", t);
@@ -343,7 +343,8 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		return server_refresh_zones(s);
+		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, 0);
+		return KNOT_EOK;
 	}
 
 	/* Refresh specific zones. */
