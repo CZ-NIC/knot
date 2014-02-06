@@ -182,7 +182,7 @@ static inline void knot_wire_write_u64(uint8_t *pos, uint64_t data)
  * \retval > 0 if s1 is larger than s2.
  * \retval == 0 if s1 is equal to s2.
  */
-int ns_serial_compare(uint32_t s1, uint32_t s2);
+int knot_serial_compare(uint32_t s1, uint32_t s2);
 
 #endif /* _KNOT_UTILS_H_ */
 

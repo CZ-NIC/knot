@@ -38,6 +38,7 @@
 #include "common/lists.h"
 #include "common/descriptor.h"
 #include "libknot/rdata.h"
+#include "libknot/util/utils.h"
 
 #define KNOT_NS_TSIG_FREQ 100
 
@@ -98,7 +99,7 @@ dbg_xfrin_exec(
 		return KNOT_EMALF;	// maybe some other error
 	}
 
-	return (ns_serial_compare(local_serial, remote_serial) < 0);
+	return (knot_serial_compare(local_serial, remote_serial) < 0);
 }
 
 /*----------------------------------------------------------------------------*/

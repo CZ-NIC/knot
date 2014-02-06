@@ -8,6 +8,7 @@
 #include "libknot/rdata.h"
 #include "knot/server/zones.h"
 #include "common/descriptor.h"
+#include "libknot/util/utils.h"
 
 /*! \brief Current IXFR answer sections. */
 enum {
@@ -134,7 +135,7 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const zone_t *zone,
 	const knot_rrset_t *our_soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 	uint32_t serial_to = knot_rdata_soa_serial(our_soa);
 	uint32_t serial_from = knot_rdata_soa_serial(their_soa);
-	int ret = ns_serial_compare(serial_to, serial_from);
+	int ret = knot_serial_compare(serial_to, serial_from);
 	if (ret <= 0) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
 	}
@@ -390,7 +391,7 @@ int ixfr_process_answer(knot_ns_xfr_t *xfr)
 				return KNOT_ERROR;
 			}
 
-			if (ns_serial_compare(
+			if (knot_serial_compare(
 			      knot_rdata_soa_serial(chgsets->first_soa),
 			      knot_rdata_soa_serial(zone_soa))
 			    > 0) {

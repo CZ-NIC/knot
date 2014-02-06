@@ -842,7 +842,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 		}
 
 		/* Check that the serial is indeed larger than the current one*/
-		assert(ns_serial_compare(knot_rdata_soa_serial(removed),
+		assert(knot_serial_compare(knot_rdata_soa_serial(removed),
 		                         knot_rdata_soa_serial(rr)) < 0);
 
 		/* 1) Store it to 'changes', together with its RRSIGs. */
@@ -1798,7 +1798,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA
 		    && (knot_rrset_class(rr) == KNOT_CLASS_NONE
 		        || knot_rrset_class(rr) == KNOT_CLASS_ANY
-		        || ns_serial_compare(knot_rdata_soa_serial(rr),
+		        || knot_serial_compare(knot_rdata_soa_serial(rr),
 		                             sn) <= 0)) {
 			// This ignores also SOA removals
 			dbg_ddns_verb("Ignoring SOA...\n");
@@ -1823,7 +1823,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 			int64_t sn_rr = knot_rdata_soa_serial(rr);
 			dbg_ddns_verb("Replacing SOA. Old serial: %"PRId64", "
 			              "new serial: %"PRId64"\n", sn_new, sn_rr);
-			assert(ns_serial_compare(sn_rr, sn) > 0);
+			assert(knot_serial_compare(sn_rr, sn) > 0);
 			assert(rr_copy != NULL);
 			sn_new = sn_rr;
 			soa_end = rr_copy;

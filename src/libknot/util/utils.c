@@ -55,14 +55,14 @@ knot_lookup_table_t *knot_lookup_by_id(knot_lookup_table_t *table,
 
 /*----------------------------------------------------------------------------*/
 
-static int32_t ns_serial_difference(uint32_t s1, uint32_t s2)
+static int32_t serial_difference(uint32_t s1, uint32_t s2)
 {
 	return (((int64_t)s1 - s2) % ((int64_t)1 << 32));
 }
 
-int ns_serial_compare(uint32_t s1, uint32_t s2)
+int knot_serial_compare(uint32_t s1, uint32_t s2)
 {
-	int32_t diff = ns_serial_difference(s1, s2);
+	int32_t diff = serial_difference(s1, s2);
 	return (s1 == s2) /* s1 equal to s2 */
 	        ? 0
 	        :((diff >= 1 && diff < ((uint32_t)1 << 31))

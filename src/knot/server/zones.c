@@ -39,11 +39,11 @@
 #include "knot/updates/changesets.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/xfr-in.h"
-#include "libknot/packet/wire.h"
 #include "knot/zone/zone-contents.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
+#include "libknot/util/utils.h"
 
 /*!
  * \brief Apply jitter to time interval.
@@ -839,7 +839,7 @@ uint32_t zones_next_serial(zone_t *zone)
 	}
 
 	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
-	if (ns_serial_compare(old_serial, new_serial) >= 0) {
+	if (knot_serial_compare(old_serial, new_serial) >= 0) {
 		log_zone_warning("New serial will be lower than "
 		                 "the current one. Old: %"PRIu32" "
 		                 "new: %"PRIu32".\n",
