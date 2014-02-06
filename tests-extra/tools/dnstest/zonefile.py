@@ -97,7 +97,7 @@ class ZoneFile(object):
                 params = ["-s", "-3", "y" if nsec3 else "n"] + params
             zone_generate.main(params)
         except OSError:
-            err("Can't create zone file %s" % self.path)
+            raise Exception("Can't create zone file %s" % self.path)
 
     def dnssec_verify(self):
         '''Call dnssec-verify on the zone file.'''
