@@ -4,7 +4,7 @@
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/rdata.h"
 #include "knot/server/zones.h"
 #include "common/descriptor.h"

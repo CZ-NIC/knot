@@ -4,7 +4,7 @@
 
 #include "knot/nameserver/process_query.h"
 #include "libknot/consts.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/common.h"
 #include "libknot/tsig-op.h"
 #include "common/descriptor.h"

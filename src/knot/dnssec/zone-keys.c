@@ -28,7 +28,7 @@
 #include "libknot/dnssec/sign.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 
 /*!
  * \brief Free DNSSEC signing context for each key.

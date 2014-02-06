@@ -197,7 +197,7 @@ class Server(object):
                       stdout=self.fout, stderr=self.ferr)
             p.communicate(timeout=Server.COMPILE_TIMEOUT)
         except:
-            err("Compile error")
+            raise Exception("Can't compile %s" %self.name)
 
     def start(self, clean=False):
 
@@ -219,7 +219,7 @@ class Server(object):
             else:
                 time.sleep(Server.START_WAIT)
         except OSError:
-            err("Server %s start error" % self.name)
+            raise Exception("Can't start %s" % self.name)
 
     def reload(self):
         try:
@@ -227,7 +227,7 @@ class Server(object):
                        stdout=DEVNULL, stderr=DEVNULL)
             time.sleep(Server.START_WAIT)
         except OSError:
-            err("Server %s reload error" % self.name)
+            raise Exception("Can't reload %s" % self.name)
 
     def flush(self):
         try:
@@ -236,7 +236,7 @@ class Server(object):
                            stdout=DEVNULL, stderr=DEVNULL)
                 time.sleep(Server.START_WAIT)
         except OSError:
-            err("Server %s flush error" % self.name)
+            raise Exception("Can't flush %s" % self.name)
 
     def _valgrind_check(self):
         if not self.valgrind:
@@ -296,7 +296,8 @@ class Server(object):
             except ProcessLookupError:
                 pass
             except:
-                err("Killing %s" % self.name)
+                check_log("WARNING: KILLING %s" % self.name)
+                detail_log(SEP)
                 self.proc.kill()
         if check:
             self._valgrind_check()

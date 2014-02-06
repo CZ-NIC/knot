@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "common/errcode.h"
 #include "knot/zone/zone-diff.h"
 #include "common/descriptor.h"

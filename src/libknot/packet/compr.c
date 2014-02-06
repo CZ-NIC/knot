@@ -18,7 +18,7 @@
 #include "common/errcode.h"
 #include "libknot/packet/compr.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/util/tolower.h"
 
 /*! \brief Case insensitive label compare for compression. */

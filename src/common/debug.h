@@ -1,5 +1,5 @@
 /*!
- * \file libknot/util/debug.h
+ * \file common/debug.h
  *
  * \author Jan Kadlec <jan.kadlec.@nic.cz>
  * \author Lubos Slovak <lubos.slovak@nic.cz>
@@ -34,8 +34,6 @@
 
 #include "common/log.h"
 #include "common/print.h"
-#include "libknot/rrset.h"
-#include "libknot/util/utils.h"
 
 /*
  * Debug macros

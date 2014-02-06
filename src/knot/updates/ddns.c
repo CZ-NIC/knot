@@ -22,7 +22,7 @@
 #include "knot/updates/ddns.h"
 #include "knot/updates/changesets.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/common.h"
 #include "libknot/consts.h"

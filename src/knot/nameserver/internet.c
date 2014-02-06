@@ -5,7 +5,7 @@
 #include "knot/nameserver/process_query.h"
 #include "libknot/common.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
 
