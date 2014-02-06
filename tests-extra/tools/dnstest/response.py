@@ -53,8 +53,8 @@ class Response(object):
             flag_val = dns.flags.edns_from_text(flag)
             isset(not(self.resp.ednsflags & flag_val), "NO %s FLAG" % flag)
 
-    def check(self, rdata=None, ttl=None, rcode="NOERROR", flags="",
-              noflags="", eflags="", noeflags=""):
+    def check(self, rdata=None, ttl=None, rcode="NOERROR", nordata=None,
+              flags="", noflags="", eflags="", noeflags=""):
         '''Flags are text strings separated by whitespace character'''
 
         self._check_flags(flags, noflags)
@@ -69,31 +69,51 @@ class Response(object):
         compare(dns.rcode.to_text(self.resp.rcode()), rc, "RCODE")
 
         # Check rdata only if NOERROR.
-        if rc != "NOERROR" or rdata == None:
+        if rc != "NOERROR":
             return
 
-        # We work with just one rdata with TTL=0 (this TTL is not used).
-        ref = list(dns.rdataset.from_text(self.rclass, self.rtype, 0, rdata))[0]
+        # Check rdata presence.
+        if rdata:
+            # We work with just one rdata with TTL=0 (this TTL is not used).
+            rrset = dns.rdataset.from_text(self.rclass, self.rtype, 0, rdata)
+            ref = list(rrset)[0]
 
-        # Check answer section if contains reference rdata.
-        for data in self.resp.answer:
-            for rdata in data.to_rdataset():
-                # Compare Rdataset instances.
-                if rdata == ref:
-                    # Check CLASS.
-                    compare(data.rdclass, self.rclass, "CLASS")
-                    # Check TYPE.
-                    compare(data.rdtype, self.rtype, "TYPE")
-                    # Check TTL if specified.
-                    if ttl != None:
-                        compare(data.ttl, int(ttl), "TTL")
-                    return
-        else:
-            set_err("CHECK RDATA")
-            check_log("ERROR: CHECK RDATA")
-            detail_log("!Missing data in ANSWER section:")
-            detail_log("  %s" % ref)
-            detail_log(SEP)
+            # Check answer section if contains reference rdata.
+            for data in self.resp.answer:
+                for rdata in data.to_rdataset():
+                    # Compare Rdataset instances.
+                    if rdata == ref:
+                        # Check CLASS.
+                        compare(data.rdclass, self.rclass, "CLASS")
+                        # Check TYPE.
+                        compare(data.rdtype, self.rtype, "TYPE")
+                        # Check TTL if specified.
+                        if ttl != None:
+                            compare(data.ttl, int(ttl), "TTL")
+                        return
+            else:
+                set_err("CHECK RDATA")
+                check_log("ERROR: CHECK RDATA")
+                detail_log("!Missing data in ANSWER section:")
+                detail_log("  %s" % ref)
+                detail_log(SEP)
+        # Check rdata absence.
+        if nordata:
+            # We work with just one rdata with TTL=0 (this TTL is not used).
+            rrset = dns.rdataset.from_text(self.rclass, self.rtype, 0, nordata)
+            ref = list(rrset)[0]
+
+            # Check answer section if contains reference rdata.
+            for data in self.resp.answer:
+                for rdata in data.to_rdataset():
+                    # Compare Rdataset instances.
+                    if rdata == ref:
+                        set_err("CHECK RDATA")
+                        check_log("ERROR: CHECK RDATA")
+                        detail_log("!Unwanted data in ANSWER section:")
+                        detail_log("  %s" % ref)
+                        detail_log(SEP)
+                        return
 
     def check_edns(self, nsid=None, buff_size=None):
         compare(self.resp.edns, 0, "EDNS VERSION")
