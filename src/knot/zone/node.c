@@ -24,7 +24,9 @@
 #include "libknot/common.h"
 #include "knot/zone/node.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata.h"
 #include "common/descriptor.h"
+#include "common/lists.h"
 #include "libknot/util/debug.h"
 
 /*----------------------------------------------------------------------------*/
@@ -642,15 +644,6 @@ void knot_node_free(knot_node_t **node)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_node_compare(knot_node_t *node1, knot_node_t *node2)
-{
-	assert(node1 != NULL && node2 != NULL);
-
-	return knot_dname_cmp(node1->owner, node2->owner);
-}
-
-/*----------------------------------------------------------------------------*/
-
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 {
 	if (from == NULL || to == NULL) {
@@ -677,6 +670,54 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 		return KNOT_ENOMEM;
 	}
 	memcpy((*to)->rrset_tree, from->rrset_tree, rrlen);
+
+	return KNOT_EOK;
+}
+
+static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
+                              const knot_rrset_t *rrsigs)
+{
+	list_t index_list;
+	init_list(&index_list);
+	for (size_t i = 0; i < rrsigs->rdata_count; ++i) {
+		const uint16_t type_covered =
+			knot_rdata_rrsig_type_covered(rrsigs, i);
+		if (type_covered == type) {
+			int ret = knot_rrset_add_rr_from_rrset(new_sig,
+			                                       rrsigs, i);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	return new_sig->rdata_count > 0 ? KNOT_EOK : KNOT_ENOENT;
+}
+
+int knot_node_synth_rrsig_for_type(const knot_node_t *node, uint16_t type,
+                                   knot_rrset_t **sig, mm_ctx_t *mm)
+{
+	if (node == NULL || sig == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	const knot_rrset_t *covered = knot_node_rrset(node, type);
+	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+	if (covered == NULL || rrsigs == NULL) {
+		return KNOT_ENOENT;
+	}
+
+	*sig = knot_rrset_new_from(covered, mm);
+	if (*sig == NULL) {
+		return KNOT_ENOMEM;
+	}
+	(*sig)->type = KNOT_RRTYPE_RRSIG;
+
+	int ret = add_rdata_to_rrsig(*sig, type, rrsigs);
+	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(sig, 1, mm);
+		return ret;
+	}
 
 	return KNOT_EOK;
 }

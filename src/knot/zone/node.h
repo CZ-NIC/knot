@@ -405,20 +405,10 @@ void knot_node_free_rrsets(knot_node_t *node);
  */
 void knot_node_free(knot_node_t **node);
 
-/*!
- * \brief Compares two nodes according to their owner.
- *
- * \param node1 First node.
- * \param node2 Second node.
- *
- * \retval < 0 if \a node1 goes before \a node2 according to canonical order
- *         of their owner names.
- * \retval 0 if they are equal.
- * \retval > 0 if \a node1 goes after \a node2.
- */
-int knot_node_compare(knot_node_t *node1, knot_node_t *node2);
-
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
+
+int knot_node_synth_rrsig_for_type(const knot_node_t *node, uint16_t type,
+                                   knot_rrset_t **sig, mm_ctx_t *mm);
 
 #endif /* _KNOT_NODE_H_ */
 
