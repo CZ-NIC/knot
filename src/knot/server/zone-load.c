@@ -172,7 +172,7 @@ static zone_t *load_zone(conf_zone_t *conf)
 	if (knot_dname_cmp(zone->name, dname_req) != 0) {
 		log_zone_error("Zone '%s': mismatching origin in the zone file.\n",
 		               conf->name);
-		zone_deep_free(&zone);
+		zone_free(&zone);
 		return NULL;
 	} else {
 		/* Save the timestamp from the zone db file. */
@@ -180,7 +180,7 @@ static zone_t *load_zone(conf_zone_t *conf)
 		if (stat(conf->file, &st) < 0) {
 			dbg_zones("zones: failed to stat() zone db, "
 				  "something is seriously wrong\n");
-			zone_deep_free(&zone);
+			zone_free(&zone);
 			return NULL;
 		} else {
 			zone->zonefile_mtime = st.st_mtime;
@@ -370,7 +370,7 @@ fail:
 			new_zone->contents = NULL;
 		}
 
-		zone_deep_free(&new_zone);
+		zone_free(&new_zone);
 	}
 
 	return result;
@@ -434,7 +434,7 @@ static int zone_loader_thread(dthread_t *thread)
 					zone->contents = NULL;
 				}
 
-				zone_deep_free(&zone);
+				zone_free(&zone);
 			}
 		} else {
 			/* Unable to load, discard configuration. */

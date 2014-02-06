@@ -693,7 +693,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 
 		log_zone_info("Zone %s OK.\n", zone->name);
 		rem_node((node_t *)zone);
-		zone_deep_free(&z);
+		zone_free(&z);
 		knot_zload_close(l);
 	}
 

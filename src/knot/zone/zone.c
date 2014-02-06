@@ -38,7 +38,7 @@ static const size_t XFRIN_BOOTSTRAP_DELAY = 2000; /*!< AXFR bootstrap avg. delay
   */
 static void knot_zone_dtor(struct ref_t *p) {
 	zone_t *z = (zone_t *)p;
-	zone_deep_free(&z);
+	zone_free(&z);
 }
 
 /*!
@@ -278,20 +278,11 @@ void zone_free(zone_t **zone_ptr)
 	/* Free assigned config. */
 	conf_free_zone(zone->conf);
 
+	/* Free zone contents. */
+	knot_zone_contents_deep_free(&zone->contents);
+
 	free(zone);
 	*zone_ptr = NULL;
-}
-
-void zone_deep_free(zone_t **zone_ptr)
-{
-	if (zone_ptr == NULL || *zone_ptr == NULL) {
-		return;
-	}
-
-	zone_t *zone = *zone_ptr;
-
-	knot_zone_contents_deep_free(&zone->contents);
-	zone_free(zone_ptr);
 }
 
 knot_zone_contents_t *zone_switch_contents(zone_t *zone,

@@ -55,6 +55,7 @@ typedef struct zone_t {
 	//! \todo Move ACLs into configuration.
 	//! \todo Remove refcounting + flags.
 	//! \todo Remove server_t.
+	//! \todo Remove zonefile_{serial,mtime}, use zone-dirty flag instead
 
 	ref_t ref;     /*!< Reference counting. */
 	knot_dname_t *name;
@@ -125,18 +126,13 @@ zone_t *zone_new(conf_zone_t *conf);
 int zone_create_contents(zone_t *zone);
 
 /*!
- * \brief Deallocates the zone structure, without freeing its content.
+ * \brief Deallocates the zone structure.
+ *
+ * \note The function also deallocates all bound structures (config, contents, etc.).
  *
  * \param zone Zone to be freed.
  */
 void zone_free(zone_t **zone_ptr);
-
-/*!
- * \brief Deallocates the zone structure, including the content.
- *
- * \param zone Zone to be freed.
- */
-void zone_deep_free(zone_t **zone_ptr);
 
 /*! \brief Increase zone reference count. */
 static inline void zone_retain(zone_t *zone)

@@ -601,7 +601,7 @@ zone_t *knot_zload_load(zloader_t *loader)
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
 		               loader->source, zscanner_strerror(c->ret));
 		rrset_list_delete(&c->node_rrsigs);
-		zone_deep_free(&c->current_zone);
+		zone_free(&c->current_zone);
 		return NULL;
 	}
 
@@ -611,7 +611,7 @@ zone_t *knot_zload_load(zloader_t *loader)
 		               loader->source,
 		               loader->file_loader->scanner->error_counter);
 		rrset_list_delete(&c->node_rrsigs);
-		zone_deep_free(&c->current_zone);
+		zone_free(&c->current_zone);
 		return NULL;
 	}
 
@@ -619,7 +619,7 @@ zone_t *knot_zload_load(zloader_t *loader)
 		log_zone_error("%s: no SOA record in the zone file.\n",
 		               loader->source);
 		rrset_list_delete(&c->node_rrsigs);
-		zone_deep_free(&c->current_zone);
+		zone_free(&c->current_zone);
 		return NULL;
 	}
 
@@ -632,7 +632,7 @@ zone_t *knot_zload_load(zloader_t *loader)
 		log_zone_error("%s: Failed to finalize zone contents: %s\n",
 		               loader->source, knot_strerror(kret));
 		rrset_list_delete(&c->node_rrsigs);
-		zone_deep_free(&c->current_zone);
+		zone_free(&c->current_zone);
 		return NULL;
 	}
 
