@@ -44,7 +44,7 @@ class IxfrTopology():
     def check(self, version=None):
         '''Check ixfr between all nodes.'''
 
-        check_log("CHECK IXFR TOPOLOGY")
+        check_log("CHECK IXFR TOPOLOGY %s" % version)
 
         # Set zone file version if specified.
         if version:
@@ -71,7 +71,8 @@ class IxfrTopology():
 
         check_log("====================================")
 
-    def check_rec(self, rname, rtype, rdata=None, rcode="NOERROR"):
+    def check_rec(self, rname, rtype, rdata=None, nordata=None,
+                  rcode="NOERROR"):
         '''Ask all nodes for the given record.'''
 
         check_log("CHECK IXFR RECORD")
@@ -82,19 +83,19 @@ class IxfrTopology():
 
         check_log("%s:" % self.master.name)
         resp = self.master.dig(rname, rtype)
-        resp.check(rdata=rdata, rcode=rcode)
+        resp.check(rdata=rdata, nordata=nordata, rcode=rcode)
 
         check_log("%s:" % self.slave1.name)
         resp = self.slave1.dig(rname, rtype)
-        resp.check(rdata=rdata, rcode=rcode)
+        resp.check(rdata=rdata, nordata=nordata, rcode=rcode)
 
         check_log("%s:" % self.slave2.name)
         resp = self.slave2.dig(rname, rtype)
-        resp.check(rdata=rdata, rcode=rcode)
+        resp.check(rdata=rdata, nordata=nordata, rcode=rcode)
 
         check_log("%s:" % self.ref_slave.name)
         resp = self.ref_slave.dig(rname, rtype)
-        resp.check(rdata=rdata, rcode=rcode)
+        resp.check(rdata=rdata, nordata=nordata, rcode=rcode)
 
         check_log("====================================")
 

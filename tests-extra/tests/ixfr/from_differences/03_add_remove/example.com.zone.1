@@ -15,10 +15,13 @@ dns2	A	192.0.2.2
 mail	A	192.0.2.3
 	AAAA	2001:DB8::3
 
+; Removed node with one rrset.
+
 rem2	AAAA	::1
-	TXT	"some text"
+	TXT	"some_text"
 
 rem3	AAAA	::2
-rem4	TXT	"some text2"
+rem4	TXT	"some_text2"
 
+; Added new node one rrset.
 add1	A	1.2.3.4

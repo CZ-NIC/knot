@@ -18,7 +18,7 @@ mail	A	192.0.2.3
 rem1	A	1.2.3.4
 
 rem2	AAAA	::1
-	TXT	"some text"
+	TXT	"some_text"
 
 rem3	AAAA	::2
-rem4	TXT	"some text2"
+rem4	TXT	"some_text2"
