@@ -450,6 +450,9 @@ int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
  */
 int rrset_additional_needed(uint16_t rrtype);
 
+int knot_rrset_synth_rrsig(const knot_rrset_t *covered, const knot_rrset_t *rrsigs,
+                           knot_rrset_t **out_sig, mm_ctx_t *mm);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

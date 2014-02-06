@@ -1955,3 +1955,48 @@ int rrset_additional_needed(uint16_t rrtype)
 		rrtype == KNOT_RRTYPE_NS ||
 		rrtype == KNOT_RRTYPE_SRV);
 }
+
+static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
+                              const knot_rrset_t *rrsigs)
+{
+	for (size_t i = 0; i < rrsigs->rdata_count; ++i) {
+		const uint16_t type_covered =
+			knot_rdata_rrsig_type_covered(rrsigs, i);
+		if (type_covered == type) {
+			int ret = knot_rrset_add_rr_from_rrset(new_sig,
+			                                       rrsigs, i);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	return new_sig->rdata_count > 0 ? KNOT_EOK : KNOT_ENOENT;
+}
+
+int knot_rrset_synth_rrsig(const knot_rrset_t *covered, const knot_rrset_t *rrsigs,
+                           knot_rrset_t **out_sig, mm_ctx_t *mm)
+{
+	if (covered == NULL || rrsigs == NULL) {
+		return KNOT_ENOENT;
+	}
+
+	if (out_sig == NULL || !knot_dname_is_equal(covered->owner, rrsigs->owner)) {
+		return KNOT_EINVAL;
+	}
+
+	*out_sig = knot_rrset_new_from(covered, mm);
+	if (*out_sig == NULL) {
+		return KNOT_ENOMEM;
+	}
+	(*out_sig)->type = KNOT_RRTYPE_RRSIG;
+
+	int ret = add_rdata_to_rrsig(*out_sig, covered->type, rrsigs);
+	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(out_sig, 1, mm);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+

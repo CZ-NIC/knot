@@ -674,24 +674,6 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	return KNOT_EOK;
 }
 
-static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
-                              const knot_rrset_t *rrsigs)
-{
-	for (size_t i = 0; i < rrsigs->rdata_count; ++i) {
-		const uint16_t type_covered =
-			knot_rdata_rrsig_type_covered(rrsigs, i);
-		if (type_covered == type) {
-			int ret = knot_rrset_add_rr_from_rrset(new_sig,
-			                                       rrsigs, i);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-	}
-
-	return new_sig->rdata_count > 0 ? KNOT_EOK : KNOT_ENOENT;
-}
-
 int knot_node_synth_rrsig_for_type(const knot_node_t *node, uint16_t type,
                                    knot_rrset_t **sig, mm_ctx_t *mm)
 {
@@ -705,19 +687,7 @@ int knot_node_synth_rrsig_for_type(const knot_node_t *node, uint16_t type,
 		return KNOT_ENOENT;
 	}
 
-	*sig = knot_rrset_new_from(covered, mm);
-	if (*sig == NULL) {
-		return KNOT_ENOMEM;
-	}
-	(*sig)->type = KNOT_RRTYPE_RRSIG;
-
-	int ret = add_rdata_to_rrsig(*sig, type, rrsigs);
-	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(sig, 1, mm);
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return knot_rrset_synth_rrsig(covered, rrsigs, sig, mm);
 }
 
 bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)

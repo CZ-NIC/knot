@@ -717,14 +717,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			return 1;
 		}
 
-		/*! \note
-		 * Together with the removed CNAME we remove also its RRSIGs as
-		 * they would not be valid for the new CNAME anyway.
-		 *
-		 * \todo Document!!
-		 */
-
-		/* b) Store it to 'changes', together with its RRSIGs. */
+		/* b) Store it to 'changes' */
 		ret = knot_changes_add_rrset(changes, removed, KNOT_CHANGES_OLD);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to add removed RRSet to "

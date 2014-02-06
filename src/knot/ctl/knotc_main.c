@@ -214,7 +214,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 				break;
 			}
 		}
-		int res = knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE);
+		int res = knot_pkt_put(pkt, 0, rr, NULL, KNOT_PF_FREE);
 		if (res != KNOT_EOK) {
 			log_server_error("Couldn't create the query.\n");
 			knot_rrset_deep_free(&rr, 1, NULL);

@@ -114,7 +114,8 @@ static bool have_dnssec(struct query_data *qdata)
 }
 
 /*! \brief Put RR into packet, expand wildcards. */
-static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
+static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, const knot_rrset_t *sigs,
+                  uint16_t compr_hint,
 		  uint32_t flags, struct query_data *qdata)
 {
 	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
@@ -138,7 +139,7 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, uint16_t compr_hint,
 		flags |= KNOT_PF_FREE;
 	}
 
-	ret = knot_pkt_put(pkt, compr_hint, rr, flags);
+	ret = knot_pkt_put(pkt, compr_hint, rr, sigs, flags);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
 		knot_rrset_deep_free((knot_rrset_t **)&rr, 1, &pkt->mm);
 	}
@@ -164,6 +165,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		compr_hint = COMPR_HINT_QNAME;
 	}
 
+	const knot_rrset_t *rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 	int ret = KNOT_EOK;
 	switch (type) {
 	case KNOT_RRTYPE_ANY: /* Append all RRSets. */
@@ -174,7 +176,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 			return KNOT_EOK;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
-			ret = put_rr(pkt, rrsets[i], compr_hint, 0, qdata);
+			ret = put_rr(pkt, rrsets[i], rrsigs, compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -183,7 +185,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	default: /* Single RRSet of given type. */
 		rrset = knot_node_get_rrset(qdata->node, type);
 		if (rrset) {
-			ret = put_rr(pkt, rrset, compr_hint, 0, qdata);
+			ret = put_rr(pkt, rrset, rrsigs, compr_hint, 0, qdata);
 		}
 		break;
 	}
@@ -210,8 +212,9 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	const knot_rrset_t *ns_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_NS);
+	const knot_rrset_t *rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	if (ns_rrset) {
-		return knot_pkt_put(pkt, 0, ns_rrset, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
+		return knot_pkt_put(pkt, 0, ns_rrset, rrsigs, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
 	} else {
 		dbg_ns("%s: no NS RRSets in this zone, fishy...\n", __func__);
 	}
@@ -224,6 +227,7 @@ static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
 	knot_rrset_t *soa_rrset = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrset);
+	const knot_rrset_t *rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 
 	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
 	// MINIMUM as TTL
@@ -240,7 +244,7 @@ static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
 		flags |= KNOT_PF_FREE;
 	}
 
-	ret = knot_pkt_put(pkt, 0, soa_rrset, flags);
+	ret = knot_pkt_put(pkt, 0, soa_rrset, rrsigs, flags);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
 		knot_rrset_deep_free(&soa_rrset, 1, &pkt->mm);
 	}
@@ -258,7 +262,8 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Insert NS record. */
 	const knot_rrset_t *rrset = knot_node_rrset(qdata->node, KNOT_RRTYPE_NS);
-	return knot_pkt_put(pkt, 0, rrset, 0);
+	const knot_rrset_t *rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+	return knot_pkt_put(pkt, 0, rrset, rrsigs, 0);
 }
 
 /*! \brief Put additional records for given RR. */
@@ -290,7 +295,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 			if (additional == NULL) {
 				continue;
 			}
-			ret = knot_pkt_put(pkt, hint, additional, flags);
+			ret = knot_pkt_put(pkt, hint, additional, NULL, flags);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -306,6 +311,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 
 	const knot_node_t *cname_node = qdata->node;
 	knot_rrset_t *cname_rr = knot_node_get_rrset(qdata->node, rrtype);
+	const knot_rrset_t *rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 	int ret = KNOT_EOK;
 
 	assert(cname_rr != NULL);
@@ -315,7 +321,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 
 	/* Now, try to put CNAME to answer. */
 	uint16_t rr_count_before = pkt->rrset_count;
-	ret = put_rr(pkt, cname_rr, 0, flags, qdata);
+	ret = put_rr(pkt, cname_rr, rrsigs, 0, flags, qdata);
 	switch (ret) {
 	case KNOT_EOK:    break;
 	case KNOT_ESPACE: return TRUNC;
@@ -337,7 +343,17 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 			return ERROR;
 		}
 		cname_rr = dname_cname_synth(cname_rr, qdata->name, &pkt->mm);
-		ret = put_rr(pkt, cname_rr, 0, KNOT_PF_FREE, qdata);
+		if (cname_rr) {
+			assert(0);
+			/* TODO need rrsigs? */
+			const knot_node_t *synth_node =
+				knot_zone_contents_find_node(qdata->zone->contents,
+				                             cname_rr->owner);
+			rrsigs = knot_node_rrset(synth_node, KNOT_RRTYPE_RRSIG);
+		} else {
+			rrsigs = NULL;
+		}
+		ret = put_rr(pkt, cname_rr, rrsigs, 0, KNOT_PF_FREE, qdata);
 		switch (ret) {
 		case KNOT_EOK:    break;
 		case KNOT_ESPACE: return TRUNC;

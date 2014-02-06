@@ -33,7 +33,7 @@ struct ixfr_proc {
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
-	ret = knot_pkt_put((pkt), 0, (rr), KNOT_PF_NOTRUNC); \
+	ret = knot_pkt_put((pkt), 0, (rr), NULL, KNOT_PF_NOTRUNC); \
 	if (ret != KNOT_EOK) { \
 		return ret; \
 	}
@@ -259,7 +259,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_
 	/* Guaranteed to have zone contents. */
 	const knot_node_t *apex = qdata->zone->contents->apex;
 	const knot_rrset_t *soa_rr = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
-	int ret = knot_pkt_put(pkt, 0, soa_rr, 0);
+	int ret = knot_pkt_put(pkt, 0, soa_rr, NULL, 0);
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return NS_PROC_FAIL;

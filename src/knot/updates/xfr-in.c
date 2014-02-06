@@ -120,7 +120,7 @@ int xfrin_create_ixfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
 	knot_node_t *apex = zone->contents->apex;
 	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	return knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, 0);
+	return knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, NULL, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -945,7 +945,7 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 		return KNOT_ENOMEM;
 	}
 
-	// add the RRSet to the list of new RRSets, RRSIG as well
+	// add the RRSet to the list of new RRSets
 	if (save_new) {
 		ret = knot_changes_add_rrset(changes, *copy, KNOT_CHANGES_NEW);
 		if (ret != KNOT_EOK) {
@@ -1545,7 +1545,6 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 	int ret = KNOT_EOK;
 	knot_node_t *last_node = NULL;
 	knot_rrset_t *rrset = NULL;
-	knot_rrset_t *rrsigs = NULL;
 	int is_nsec3 = 0;
 
 	knot_rr_ln_t *rr_node = NULL;

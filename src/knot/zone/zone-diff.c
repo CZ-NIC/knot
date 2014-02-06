@@ -362,17 +362,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 
 	/* Get RRs to remove from zone. */
 	knot_rrset_t *to_remove = NULL;
-	if (rrset1 != NULL && rrset2 == NULL) {
-		assert(rrset1->type == KNOT_RRTYPE_RRSIG);
-		dbg_zonediff_detail("zone_diff: diff_rdata: RRSIG will be "
-		              "removed.\n");
-		int ret = knot_rrset_deep_copy(rrset1, &to_remove, NULL);
-		if (ret != KNOT_EOK) {
-			dbg_zonediff("zone_diff: diff_rdata: Could not copy rrset. "
-			             "Error: %s.\n", knot_strerror(ret));
-			return ret;
-		}
-	} else if (rrset1 != NULL && rrset2 != NULL) {
+	if (rrset1 != NULL && rrset2 != NULL) {
 		int ret = knot_zone_diff_rdata_return_changes(rrset1, rrset2,
 		                                              &to_remove);
 		if (ret != KNOT_EOK) {
@@ -380,9 +370,6 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 			             "Error: %s.\n", knot_strerror(ret));
 			return ret;
 		}
-	} else {
-		dbg_zonediff("zone_diff: diff_rdata: These are not the diffs you "
-		       "are looking for.\n");
 	}
 
 	dbg_zonediff_detail("zone_diff: diff_rdata: To remove:\n");
@@ -426,17 +413,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 
 	/* Get RRs to add to zone. */ // TODO move to extra function, same for remove
 	knot_rrset_t *to_add = NULL;
-	if (rrset2 != NULL && rrset1 == NULL) {
-		assert(rrset2->type == KNOT_RRTYPE_RRSIG);
-		dbg_zonediff_detail("zone_diff: diff_rdata: RRSIG will be "
-		              "added.\n");
-		int ret = knot_rrset_deep_copy(rrset2, &to_add, NULL);
-		if (ret != KNOT_EOK) {
-			dbg_zonediff("zone_diff: diff_rdata: Could not copy rrset. "
-			             "Error: %s.\n", knot_strerror(ret));
-			return ret;
-		}
-	} else if (rrset1 != NULL && rrset2 != NULL) {
+	if (rrset1 != NULL && rrset2 != NULL) {
 		ret = knot_zone_diff_rdata_return_changes(rrset2, rrset1,
 		                                          &to_add);
 		if (ret != KNOT_EOK) {
@@ -444,9 +421,6 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 			             "Error: %s.\n", knot_strerror(ret));
 			return ret;
 		}
-	} else {
-		dbg_zonediff("zone_diff: diff_rdata: These are not the diffs you "
-		       "are looking for.\n");
 	}
 
 	dbg_zonediff_detail("zone_diff: diff_rdata: To add:\n");

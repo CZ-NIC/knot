@@ -29,6 +29,7 @@
 
 #include "libknot/packet/wire.h"
 #include "libknot/dname.h"
+#include "libknot/rrset.h"
 
 /*! \brief Compression hint type. */
 enum knot_compr_hint {
@@ -62,6 +63,7 @@ typedef struct {
 	uint16_t pos;   /* RRSet position in the packet. */
 	uint16_t flags; /* RRSet flags. */
 	uint16_t compress_ptr[COMPR_HINT_COUNT]; /* Array of compr. ptr hints. */
+	const knot_rrset_t *rrsigs; /* Optional: RRSet containing RRSet's RRSIGs. */
 } knot_rrinfo_t;
 
 /*!
