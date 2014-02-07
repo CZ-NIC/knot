@@ -28,15 +28,16 @@
 #include <assert.h>
 #include <urcu.h>
 
-#include "knot/knot.h"
 #include "knot/server/xfr-handler.h"
-#include "knot/nameserver/name-server.h"
+#include "knot/server/server.h"
 #include "knot/server/socket.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/xfr-in.h"
-#include "libknot/packet/wire.h"
+#include "knot/nameserver/axfr.h"
+#include "knot/nameserver/ixfr.h"
 #include "knot/server/zones.h"
+#include "knot/knot.h"
 #include "libknot/tsig-op.h"
 #include "common/evsched.h"
 #include "common/descriptor.h"
@@ -44,10 +45,12 @@
 #include "libknot/dnssec/random.h"
 
 /* Constants */
+
 #define XFR_MAX_TASKS 1024 /*! Maximum pending tasks. */
 #define XFR_CHUNKLEN 16 /*! Number of requests assigned in a single pass. */
 #define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */
 #define XFR_MSG_DLTTR 9 /*! Index of letter differentiating IXFR/AXFR in log msg. */
+#define XFR_TSIG_DATA_MAX_SIZE (100 * 64 * 1024) /*! Naximum size of TSIG buffers. */
 
 /* Messages */
 
@@ -107,6 +110,73 @@ static int xfr_recv_tcp(int fd, sockaddr_t *addr, uint8_t *buf, size_t buflen)
 static int xfr_recv_udp(int fd, sockaddr_t *addr, uint8_t *buf, size_t buflen)
 { return recvfrom(fd, buf, buflen, 0, (struct sockaddr *)addr, &addr->len); }
 
+
+/*! \todo This should be obsoleted by the generic response parsing layer. */
+static int parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type)
+{
+	dbg_xfr("%s(%p, %p)\n", __func__, packet, type);
+	if (packet == NULL || type == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// 1) create empty response
+	int ret = KNOT_ERROR;
+	*type = KNOT_QUERY_INVALID;
+	if ((ret = knot_pkt_parse_question(packet)) != KNOT_EOK) {
+		dbg_xfr("%s: couldn't parse question = %d\n", __func__, ret);
+		return KNOT_RCODE_FORMERR;
+	}
+
+	// 2) determine the query type
+	*type = knot_pkt_type(packet);
+	if (*type == KNOT_QUERY_INVALID) {
+		return KNOT_RCODE_NOTIMPL;
+	}
+
+	return KNOT_RCODE_NOERROR;
+}
+
+/*! \brief Create forwarded query. */
+static int forward_packet(const knot_pkt_t *query,
+                          uint8_t *query_wire, size_t *size)
+{
+	/* Forward UPDATE query:
+	 * assign a new packet id
+	 */
+	int ret = KNOT_EOK;
+	if (query->size > *size) {
+		return KNOT_ESPACE;
+	}
+
+	memcpy(query_wire, query->wire, query->size);
+	*size = query->size;
+	knot_wire_set_id(query_wire, knot_random_uint16_t());
+
+	return ret;
+}
+
+/*! \brief Forwarded packet response. */
+int forward_packet_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *rsize)
+{
+	/* Processing of a forwarded response:
+	 * change packet id
+	 */
+	int ret = KNOT_EOK;
+	knot_wire_set_id(rwire, (uint16_t)data->packet_nr);
+
+	/* Forward the response. */
+	ret = data->send(data->fwd_src_fd, &data->fwd_addr, rwire, *rsize);
+	if (ret != *rsize) {
+		ret = KNOT_ECONN;
+	} else {
+		ret = KNOT_EOK;
+	}
+
+	/* As it is a response, do not reply back. */
+	*rsize = 0;
+	return ret;
+}
+
 /*! \brief Build string for logging related to given xfer descriptor. */
 static int xfr_task_setmsg(knot_ns_xfr_t *rq, const char *keytag)
 {
@@ -161,7 +231,7 @@ static int xfr_task_setsig(knot_ns_xfr_t *rq, knot_tsig_key_t *key)
 		return KNOT_ENOMEM;
 	}
 	memset(rq->digest, 0 , rq->digest_max_size);
-	rq->tsig_data = malloc(KNOT_NS_TSIG_DATA_MAX_SIZE);
+	rq->tsig_data = malloc(XFR_TSIG_DATA_MAX_SIZE);
 	if (rq->tsig_data) {
 		dbg_xfr("xfr: using TSIG for XFR/IN\n");
 		rq->tsig_data_size = 0;
@@ -264,13 +334,13 @@ static int xfr_task_close(knot_ns_xfr_t *rq)
 	if (rq->type == XFR_TYPE_AIN && !rq->zone->contents) {
 		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
 		zone->xfr_in.bootstrap_retry += knot_random_uint32_t() % AXFR_BOOTSTRAP_RETRY;
-		if (zone->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME)
+		if (zone->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME) {
 			zone->xfr_in.bootstrap_retry = AXFR_RETRY_MAXTIME;
-		event_t *ev = zone->xfr_in.timer;
-		if (ev) {
-			evsched_cancel(ev->parent, ev);
-			evsched_schedule(ev->parent, ev, zone->xfr_in.bootstrap_retry);
 		}
+
+		evsched_cancel(zone->xfr_in.timer);
+		evsched_schedule(zone->xfr_in.timer, zone->xfr_in.bootstrap_retry);
+
 		log_zone_notice("%s Bootstrap failed, next attempt in %d seconds.\n",
 		                rq->msg, zone->xfr_in.bootstrap_retry / 1000);
 	}
@@ -354,7 +424,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		ret = notify_create_request(zone, pkt);
 		break;
 	case XFR_TYPE_FORWARD:
-		ret = knot_ns_create_forward_query(rq->query, rq->wire, &rq->wire_size);
+		ret = forward_packet(rq->query, rq->wire, &rq->wire_size);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -529,17 +599,51 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 	return ret;
 }
 
+/*! \brief Switch zone contents with new. */
+int knot_ns_switch_zone(knot_ns_xfr_t *xfr)
+{
+	if (xfr == NULL || xfr->new_contents == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->new_contents;
+
+	dbg_xfr("Replacing zone by new one: %p\n", zone);
+	if (zone == NULL) {
+		dbg_xfr("No new zone!\n");
+		return KNOT_ENOZONE;
+	}
+
+	/* Zone must not be looked-up from server, as it may be a different zone if
+	 * a reload occurs when transfer is pending. */
+	zone_t *z = xfr->zone;
+	if (z == NULL) {
+		char *name = knot_dname_to_str(knot_node_owner(
+				knot_zone_contents_apex(zone)));
+		dbg_xfr("Failed to replace zone %s, old zone "
+		       "not found\n", name);
+		free(name);
+
+		return KNOT_ENOZONE;
+	}
+
+	rcu_read_unlock();
+	int ret = xfrin_switch_zone(z, zone, xfr->type);
+	rcu_read_lock();
+
+	return ret;
+}
+
 /*! \brief Finalize XFR/IN transfer. */
-static int xfr_task_finalize(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
+static int xfr_task_finalize(knot_ns_xfr_t *rq)
 {
 	int ret = KNOT_EINVAL;
 	rcu_read_lock();
-	knot_nameserver_t *ns = xfr->ns;
 
 	if (rq->type == XFR_TYPE_AIN) {
 		ret = zones_save_zone(rq);
 		if (ret == KNOT_EOK) {
-			ret = knot_ns_switch_zone(ns, rq);
+			ret = knot_ns_switch_zone(rq);
 			if (ret != KNOT_EOK) {
 				log_zone_error("%s %s\n", rq->msg, knot_strerror(ret));
 				log_zone_error("%s Failed to switch in-memory "
@@ -579,14 +683,13 @@ static int xfr_task_finalize(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 /*! \brief Query response event handler function. */
 static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 {
-	knot_nameserver_t *ns = xfr->ns;
 	knot_pkt_t *re = knot_pkt_new(rq->wire, rq->wire_size, NULL);
 	if (re == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	knot_pkt_type_t rt = KNOT_RESPONSE_NORMAL;
-	int ret = knot_ns_parse_packet(re, &rt);
+	int ret = parse_packet(re, &rt);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&re);
 		return KNOT_EOK; /* Ignore */
@@ -627,14 +730,14 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	size_t rlen = rq->wire_size;
 	switch(rt) {
 	case KNOT_RESPONSE_NORMAL:
-		ret = zones_process_response(ns, rq->packet_nr, &rq->addr,
+		ret = zones_process_response(xfr->server, rq->packet_nr, &rq->addr,
 		                             re, rq->wire, &rlen);
 		break;
 	case KNOT_RESPONSE_NOTIFY:
 		ret = notify_process_response(re, rq->packet_nr);
 		break;
 	case KNOT_RESPONSE_UPDATE:
-		ret = zones_process_update_response(rq, rq->wire, &rlen);
+		ret = forward_packet_response(rq, rq->wire, &rlen);
 		if (ret == KNOT_EOK) {
 			log_zone_info("%s Forwarded response.\n", rq->msg);
 		}
@@ -698,13 +801,12 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 {
 	/* Process incoming packet. */
 	int ret = KNOT_EOK;
-	knot_nameserver_t *ns = xfr->ns;
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
-		ret = knot_ns_process_axfrin(ns, rq);
+		ret = axfr_process_answer(rq);
 		break;
 	case XFR_TYPE_IIN:
-		ret = knot_ns_process_ixfrin(ns, rq);
+		ret = ixfr_process_answer(rq);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -718,7 +820,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		xfr_task_cleanup(rq);
 		rq->type = XFR_TYPE_AIN;
 		rq->msg[XFR_MSG_DLTTR] = 'A';
-		ret = knot_ns_process_axfrin(ns, rq);
+		ret = axfr_process_answer(rq);
 	}
 
 	/* IXFR refused, try again with AXFR. */
@@ -744,7 +846,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 
 	/* Only for successful xfers. */
 	if (ret > 0) {
-		ret = xfr_task_finalize(xfr, rq);
+		ret = xfr_task_finalize(rq);
 		zone_t *zone = rq->zone;
 
 		/* EBUSY on incremental transfer has a special meaning and
@@ -765,13 +867,13 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		} else {
 
 			/* Passed, schedule NOTIFYs. */
-			zones_schedule_notify(zone);
+			zones_schedule_notify(zone, xfr->server);
 		}
 
 		/* Sync zonefile immediately if configured. */
 		if (rq->type == XFR_TYPE_IIN && zone->conf->dbsync_timeout == 0) {
 			dbg_zones("%s: syncing zone immediately\n", __func__);
-			zones_schedule_ixfr_sync(zone, 0);
+			zones_schedule_zonefile_sync(zone, 0);
 		}
 
 		/* Update REFRESH/RETRY */
@@ -1001,7 +1103,7 @@ int xfr_worker(dthread_t *thread)
  * Public APIs.
  */
 
-xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns)
+xfrhandler_t *xfr_create(size_t thrcount, struct server_t *server)
 {
 	/* Create XFR handler data. */
 	xfrhandler_t *xfr = malloc(sizeof(xfrhandler_t));
@@ -1009,7 +1111,7 @@ xfrhandler_t *xfr_create(size_t thrcount, knot_nameserver_t *ns)
 		return NULL;
 	}
 	memset(xfr, 0, sizeof(xfrhandler_t));
-	xfr->ns = ns;
+	xfr->server = server;
 
 	/* Create threading unit. */
 	xfr->unit = dt_create(thrcount, xfr_worker, NULL, xfr);

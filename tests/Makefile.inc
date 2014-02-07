@@ -6,7 +6,6 @@ check_PROGRAMS = \
 	tests/hattrie \
 	tests/hhash \
 	tests/dthreads \
-	tests/events \
 	tests/acl \
 	tests/fdset \
 	tests/base64 \

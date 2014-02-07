@@ -38,7 +38,6 @@
 
 #include "common/evsched.h"
 #include "common/lists.h"
-#include "knot/nameserver/name-server.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/socket.h"
@@ -106,8 +105,8 @@ typedef struct server_t {
 	/*! \brief Server state tracking. */
 	volatile unsigned state;
 
-	/*! \brief Reference to the name server structure. */
-	knot_nameserver_t *nameserver;
+	knot_zonedb_t *zone_db; /*!< Zone database. */
+	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
 
 	/*! \brief I/O handlers. */
 	unsigned tu_size;
@@ -116,7 +115,7 @@ typedef struct server_t {
 
 	/*! \brief Event scheduler. */
 	dt_unit_t *iosched;
-	evsched_t *sched;
+	evsched_t sched;
 
 	/*! \brief List of interfaces. */
 	ifacelist_t* ifaces;
@@ -127,14 +126,19 @@ typedef struct server_t {
 } server_t;
 
 /*!
- * \brief Allocates and initializes the server structure.
+ * \brief Initializes the server structure.
  *
- * Creates all other main structures.
- *
- * \retval New instance if successful.
- * \retval NULL If an error occured.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
  */
-server_t *server_create(void);
+int server_init(server_t *server);
+
+/*!
+ * \brief Properly destroys the server structure.
+ *
+ * \param server Server structure to be used for operation.
+ */
+void server_deinit(server_t *server);
 
 /*!
  * \brief Starts the server.
@@ -158,16 +162,6 @@ int server_start(server_t *server);
 int server_wait(server_t *server);
 
 /*!
- * \brief Refresh served zones.
- *
- * \param server Server structure to be used for operation.
- *
- * \retval  0 On success (EOK).
- * \retval <0 If an error occured (EINVAL).
- */
-int server_refresh(server_t *server);
-
-/*!
  * \brief Reload server configuration.
  *
  * \param server Server instance.
@@ -184,14 +178,7 @@ int server_reload(server_t *server, const char *cf);
 void server_stop(server_t *server);
 
 /*!
- * \brief Properly destroys the server structure.
- *
- * \param server Server structure to be used for operation.
- */
-void server_destroy(server_t **server);
-
-/*!
- * \brief Server config hook.
+ * \brief Server reconfiguration routine.
  *
  * Routine for dynamic server reconfiguration.
  *
@@ -200,7 +187,16 @@ void server_destroy(server_t **server);
  * \retval KNOT_EINVAL on invalid parameters.
  * \retval KNOT_ERROR unspecified error.
  */
-int server_conf_hook(const struct conf_t *conf, void *data);
+int server_reconfigure(const struct conf_t *conf, void *data);
+
+/*!
+ * \brief Reconfigure zone database.
+ *
+ * Routine for dynamic server reconfiguration.
+ *
+ * \return KNOT_EOK on success or KNOT_ error
+ */
+int server_update_zones(const struct conf_t *conf, void *data);
 
 /*!
  * \brief Update fdsets from current interfaces list.

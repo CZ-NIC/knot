@@ -22,9 +22,9 @@
 #include "common/debug.h"
 #include "common/errcode.h"
 #include "knot/zone/zone-diff.h"
-#include "knot/nameserver/name-server.h"
 #include "common/descriptor.h"
 #include "libknot/rdata.h"
+#include "libknot/util/utils.h"
 
 struct zone_diff_param {
 	knot_zone_tree_t *nodes;
@@ -80,7 +80,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
 	}
 
-	if (ns_serial_compare(soa_serial1, soa_serial2) == 0) {
+	if (knot_serial_compare(soa_serial1, soa_serial2) == 0) {
 		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
 		             "first one. (%"PRId64" vs. %"PRId64")\n",
@@ -88,7 +88,7 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_ENODIFF;
 	}
 
-	if (ns_serial_compare(soa_serial1, soa_serial2) > 0) {
+	if (knot_serial_compare(soa_serial1, soa_serial2) > 0) {
 		dbg_zonediff("zone_diff: "
 		             "second zone must have higher serial than the "
 		             "first one. (%"PRId64" vs. %"PRId64")\n",

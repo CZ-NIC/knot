@@ -72,8 +72,6 @@ libknots_la_SOURCES =				\
 	common/errcode.h			\
 	common/errors.c				\
 	common/errors.h				\
-	common/evqueue.c			\
-	common/evqueue.h			\
 	common/evsched.c			\
 	common/evsched.h			\
 	common/fdset.c				\
@@ -218,8 +216,6 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/internet.h		\
 	knot/nameserver/ixfr.c			\
 	knot/nameserver/ixfr.h			\
-	knot/nameserver/name-server.c		\
-	knot/nameserver/name-server.h		\
 	knot/nameserver/nsec_proofs.c		\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\

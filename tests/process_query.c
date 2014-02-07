@@ -22,7 +22,6 @@
 #include "common/mempool.h"
 #include "common/descriptor.h"
 #include "libknot/packet/wire.h"
-#include "knot/nameserver/name-server.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/server/zones.h"
 
@@ -39,7 +38,7 @@ static const uint8_t SOA_RDATA[SOA_RDLEN] = {
 };
 
 /* Create fake root zone. */
-void create_root_zone(knot_nameserver_t *ns, mm_ctx_t *mm)
+void create_root_zone(server_t *server, mm_ctx_t *mm)
 {
 	/* Insert root zone. */
 	conf_zone_t *conf = malloc(sizeof(conf_zone_t));
@@ -61,10 +60,10 @@ void create_root_zone(knot_nameserver_t *ns, mm_ctx_t *mm)
 	knot_zone_contents_adjust_full(root->contents, &first_nsec3, &last_nsec3);
 
 	/* Switch zone db. */
-	knot_zonedb_free(&ns->zone_db);
-	ns->zone_db = knot_zonedb_new(1);
-	knot_zonedb_insert(ns->zone_db, root);
-	knot_zonedb_build_index(ns->zone_db);
+	knot_zonedb_free(&server->zone_db);
+	server->zone_db = knot_zonedb_new(1);
+	knot_zonedb_insert(server->zone_db, root);
+	knot_zonedb_build_index(server->zone_db);
 }
 
 /* Basic response check (4 TAP tests). */
@@ -127,16 +126,17 @@ int main(int argc, char *argv[])
 	mm_ctx_mempool(&query_ctx.mm, sizeof(knot_pkt_t));
 
 	/* Create name server. */
-	knot_nameserver_t *ns = knot_ns_create();
-	ns->opt_rr = knot_edns_new();
-	knot_edns_set_version(ns->opt_rr, EDNS_VERSION);
-	knot_edns_set_payload(ns->opt_rr, 4096);
-	ns->identity = "bogus.ns";
-	ns->version = "0.11";
+	server_t server;
+	server_init(&server);
+	server.opt_rr = knot_edns_new();
+	knot_edns_set_version(server.opt_rr, EDNS_VERSION);
+	knot_edns_set_payload(server.opt_rr, 4096);
+	conf()->identity = strdup("bogus.ns");
+	conf()->version = strdup("0.11");
 
 	/* Insert root zone. */
-	create_root_zone(ns, &query_ctx.mm);
-	zone_t *zone = knot_zonedb_find(ns->zone_db, ROOT_DNAME);
+	create_root_zone(&server, &query_ctx.mm);
+	zone_t *zone = knot_zonedb_find(server.zone_db, ROOT_DNAME);
 
 	/* Prepare. */
 	int state = NS_PROC_FAIL;
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 	/* Create query processing parameter. */
 	struct process_query_param param = {0};
 	sockaddr_set(&param.query_source, AF_INET, "127.0.0.1", 53);
-	param.ns = ns;
+	param.server = &server;
 
 	/* Query processor (CH zone) */
 	state = knot_process_begin(&query_ctx, &param, NS_PROC_QUERY);
@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
 
 	/* Cleanup. */
 	mp_delete((struct mempool *)query_ctx.mm.ctx);
-	knot_ns_destroy(&ns);
+	server_deinit(&server);
 
 	return 0;
 }

@@ -20,11 +20,9 @@
 #include <tap/basic.h>
 
 #include "knot/server/rrl.h"
-#include "knot/server/dthreads.h"
-#include "knot/knot.h"
-#include "knot/nameserver/name-server.h"
+#include "knot/zone/zone.h"
+#include "knot/conf/conf.h"
 #include "common/descriptor.h"
-#include "libknot/dnssec/random.h"
 
 /* Enable time-dependent tests. */
 //#define ENABLE_TIMED_TESTS
@@ -110,7 +108,6 @@ int main(int argc, char *argv[])
 	}
 
 	/* Prepare response */
-	knot_nameserver_t *ns = knot_ns_create();
 	uint8_t rbuf[65535];
 	size_t rlen = sizeof(rbuf);
 	memcpy(rbuf, query->wire, query->size);
@@ -198,7 +195,6 @@ int main(int argc, char *argv[])
 #endif
 
 	zone_free(&zone);
-	knot_ns_destroy(&ns);
 	knot_pkt_free(&query);
 	rrl_destroy(rrl);
 	return 0;

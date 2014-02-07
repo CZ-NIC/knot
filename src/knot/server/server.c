@@ -28,9 +28,9 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/zones.h"
+#include "knot/server/zone-load.h"
 #include "knot/conf/conf.h"
 #include "knot/stat/stat.h"
-#include "knot/nameserver/name-server.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
@@ -46,23 +46,18 @@ static int evsched_run(dthread_t *thread)
 
 	/* Run event loop. */
 	event_t *ev = 0;
-	while((ev = evsched_next(s))) {
+	while((ev = evsched_begin_process(s))) {
 
-		/* Process termination event. */
-		if (ev->type == EVSCHED_TERM) {
-			evsched_event_finished(s);
-			evsched_event_free(s, ev);
+		/* Process termination event (NULL function). */
+		if (ev->cb == NULL) {
+			evsched_end_process(s);
+			evsched_event_free(ev);
 			break;
 		}
 
 		/* Process event. */
-		if (ev->type == EVSCHED_CB && ev->cb) {
-			ev->cb(ev);
-			evsched_event_finished(s);
-		} else {
-			evsched_event_finished(s);
-			evsched_event_free(s, ev);
-		}
+		ev->cb(ev);
+		evsched_end_process(s);
 
 		/* Check for thread cancellation. */
 		if (dt_is_cancelled(thread)) {
@@ -241,7 +236,7 @@ static void remove_ifacelist(struct ref_t *p)
  * \param server Server instance.
  * \return number of added sockets.
  */
-static int server_bind_sockets(server_t *s)
+static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 {
 	/*! \todo This requires locking to disable parallel updates (issue #278).
 	 *  However, this is only used when RCU is read-locked, so count with that.
@@ -267,7 +262,7 @@ static int server_bind_sockets(server_t *s)
 
 	/* Update bound interfaces. */
 	node_t *n = 0;
-	WALK_LIST(n, conf()->ifaces) {
+	WALK_LIST(n, conf->ifaces) {
 
 		/* Find already matching interface. */
 		int found_match = 0;
@@ -333,40 +328,69 @@ static int server_bind_sockets(server_t *s)
 	return bound;
 }
 
-server_t *server_create(void)
+int server_init(server_t *server)
 {
-	// Create server structure
-	server_t *server = malloc(sizeof(server_t));
+	/* Clear the structure. */
+	dbg_server("%s(%p)\n", __func__, server);
 	if (server == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
+		return KNOT_EINVAL;
 	}
+
 	memset(server, 0, sizeof(server_t));
 
-	// Create event scheduler
-	dbg_server("server: creating event scheduler\n");
-	server->sched = evsched_new();
-	server->iosched = dt_create(1, evsched_run, evsched_destruct, server->sched);
-
-	// Create name server
-	dbg_server("server: creating Name Server structure\n");
-	server->nameserver = knot_ns_create();
-	if (server->nameserver == NULL) {
-		free(server);
-		return NULL;
+	/* Initialize event scheduler. */
+	if (evsched_init(&server->sched, server) != KNOT_EOK) {
+		return KNOT_ENOMEM;
 	}
-	knot_ns_set_data(server->nameserver, server);
-
-	// Create XFR handler
-	server->xfr = xfr_create(XFR_THREADS_COUNT, server->nameserver);
-	if (!server->xfr) {
-		knot_ns_destroy(&server->nameserver);
-		free(server);
-		return NULL;
+	server->iosched = dt_create(1, evsched_run, evsched_destruct, &server->sched);
+	if (server->iosched == NULL) {
+		evsched_deinit(&server->sched);
+		return KNOT_ENOMEM;
 	}
 
-	dbg_server("server: created server instance\n");
-	return server;
+	/* Create zone events threads. */
+	server->xfr = xfr_create(XFR_THREADS_COUNT, server);
+	if (server->xfr == NULL) {
+		dt_delete(&server->iosched);
+		evsched_deinit(&server->sched);
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
+}
+
+void server_deinit(server_t *server)
+{
+	dbg_server("%s(%p)\n", __func__, server);
+	if (server == NULL) {
+		return;
+	}
+
+	/* Free remaining interfaces. */
+	if (server->ifaces) {
+		iface_t *n = NULL, *m = NULL;
+		WALK_LIST_DELSAFE(n, m, server->ifaces->l) {
+			server_remove_iface(n);
+		}
+		free(server->ifaces);
+	}
+
+	/* Free threads and event handlers. */
+	xfr_free(server->xfr);
+	dt_delete(&server->iosched);
+
+	/* Free rate limits. */
+	rrl_destroy(server->rrl);
+
+	/* Free zone database. */
+	knot_edns_free(&server->opt_rr);
+	knot_zonedb_deep_free(&server->zone_db);
+
+	/* Free remaining events. */
+	evsched_deinit(&server->sched);
+
+	/* Clear the structure. */
+	memset(server, 0, sizeof(server_t));
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
@@ -458,39 +482,6 @@ int server_wait(server_t *s)
 	return ret;
 }
 
-int server_refresh(server_t *server)
-{
-	if (server == NULL || server->nameserver == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Lock RCU and fetch zones. */
-	rcu_read_lock();
-	knot_nameserver_t *ns =  server->nameserver;
-	evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(ns->zone_db, &it);
-	unsigned count = 0;
-	while(!knot_zonedb_iter_finished(&it)) {
-		const zone_t *zone = knot_zonedb_iter_val(&it);
-
-		/* Expire REFRESH timer. */
-		if (zone->xfr_in.timer) {
-			evsched_cancel(sch, zone->xfr_in.timer);
-			evsched_schedule(sch, zone->xfr_in.timer,
-			                 knot_random_uint16_t() % 500 + count/2);
-			/* Cumulative delay. */
-			++count;
-		}
-
-		knot_zonedb_iter_next(&it);
-	}
-
-	/* Unlock RCU. */
-	rcu_read_unlock();
-	return KNOT_EOK;
-}
-
 int server_reload(server_t *server, const char *cf)
 {
 	if (!server || !cf) {
@@ -525,7 +516,8 @@ void server_stop(server_t *server)
 	log_server_info("Stopping server...\n");
 
 	/* Send termination event. */
-	evsched_schedule_term(server->sched, 0);
+	event_t *term_ev = evsched_event_create(&server->sched, NULL, NULL);
+	evsched_schedule(term_ev, 0);
 	dt_stop(server->iosched);
 
 	/* Interrupt XFR handler execution. */
@@ -535,48 +527,38 @@ void server_stop(server_t *server)
 	server->state &= ~ServerRunning;
 }
 
-void server_destroy(server_t **server)
+/*! \brief Reconfigure server OPT RR. */
+static int opt_rr_reconfigure(const struct conf_t *conf, server_t *server)
 {
-	// Check server
-	if (!server || !*server) {
-		return;
-	}
+	dbg_server("%s(%p, %p)\n", __func__, conf, server);
 
-	dbg_server("server: destroying server instance\n");
-
-	/* Free remaining interfaces. */
-	ifacelist_t *ifaces = (*server)->ifaces;
-	iface_t *n = NULL, *m = NULL;
-	if (ifaces) {
-		WALK_LIST_DELSAFE(n, m, ifaces->l) {
-			server_remove_iface(n);
+	/* New OPT RR: keep the old pointer and free it after RCU sync. */
+	knot_opt_rr_t *opt_rr = knot_edns_new();
+	if (opt_rr == NULL) {
+		log_server_error("Couldn't create OPT RR, please restart.\n");
+	} else {
+		knot_edns_set_version(opt_rr, EDNS_VERSION);
+		knot_edns_set_payload(opt_rr, conf->max_udp_payload);
+		if (conf->nsid_len > 0) {
+			knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
+			                     conf->nsid_len,
+			                     (const uint8_t *)conf->nsid);
 		}
-		free(ifaces);
-		(*server)->ifaces = NULL;
 	}
 
-	xfr_free((*server)->xfr);
-	stat_static_gath_free();
-	knot_ns_destroy(&(*server)->nameserver);
-	evsched_delete(&(*server)->sched);
-	dt_delete(&(*server)->iosched);
-	rrl_destroy((*server)->rrl);
-	free(*server);
-	*server = NULL;
+	knot_opt_rr_t *opt_rr_old = server->opt_rr;
+	server->opt_rr = opt_rr;
+
+	synchronize_rcu();
+
+	knot_edns_free(&opt_rr_old);
+
+	return KNOT_EOK;
 }
 
-int server_conf_hook(const struct conf_t *conf, void *data)
+/*! \brief Reconfigure UDP and TCP query processing threads. */
+static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 {
-	server_t *server = (server_t *)data;
-
-	if (!server) {
-		return KNOT_EINVAL;
-	}
-
-	if (!(server->state & ServerRunning)) {
-		log_server_info("Knot DNS %s starting.\n", PACKAGE_VERSION);
-	}
-
 	/* Estimate number of threads/manager. */
 	int ret = KNOT_EOK;
 	int tu_size = conf->workers;
@@ -619,6 +601,11 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		server->tu_size = tu_size;
 	}
 
+	return ret;
+}
+
+static int reconfigure_rate_limits(const struct conf_t *conf, server_t *server)
+{
 	/* Rate limiting. */
 	if (!server->rrl && conf->rrl > 0) {
 		server->rrl = rrl_create(conf->rrl_size);
@@ -643,13 +630,63 @@ int server_conf_hook(const struct conf_t *conf, void *data)
 		} /* At this point, old buckets will converge to new rate. */
 	}
 
+	return KNOT_EOK;
+}
+
+int server_reconfigure(const struct conf_t *conf, void *data)
+{
+	server_t *server = (server_t *)data;
+	dbg_server("%s(%p, %p)\n", __func__, conf, server);
+	if (server == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* First reconfiguration. */
+	if (!(server->state & ServerRunning)) {
+		log_server_info("Knot DNS %s starting.\n", PACKAGE_VERSION);
+	}
+
+	/* Reconfigure rate limits. */
+	int ret = KNOT_EOK;
+	if ((ret = reconfigure_rate_limits(conf, server)) < 0) {
+		log_server_error("Failed to reconfigure rate limits.\n");
+		return ret;
+	}
+
+	/* Reconfigure OPT RR. */
+	if ((ret = opt_rr_reconfigure(conf, server)) < 0) {
+		log_server_error("Failed to reconfigure EDNS settings.\n");
+		return ret;
+	}
+
+	/* Reconfigure server threads. */
+	if ((ret = reconfigure_threads(conf, server)) < 0) {
+		log_server_error("Failed to reconfigure server threads.\n");
+		return ret;
+	}
+
 	/* Update bound sockets. */
-	if ((ret = server_bind_sockets(server)) < 0) {
-		log_server_error("Failed to bind configured "
-		                 "interfaces.\n");
+	if ((ret = reconfigure_sockets(conf, server)) < 0) {
+		log_server_error("Failed to reconfigure server sockets.\n");
+		return ret;
 	}
 
 	return ret;
+}
+
+int server_update_zones(const struct conf_t *conf, void *data)
+{
+	server_t *server = (server_t *)data;
+
+	int ret = zones_update_db_from_config(conf, server);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Trim extra heap. */
+	mem_trim();
+
+	return KNOT_EOK;
 }
 
 ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type)

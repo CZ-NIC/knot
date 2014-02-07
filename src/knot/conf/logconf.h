@@ -38,7 +38,7 @@ struct conf_t;
  * \retval KNOT_EINVAL on invalid parameters.
  * \retval KNOT_ENOMEM out of memory error.
  */
-int log_conf_hook(const struct conf_t *conf, void *data);
+int log_reconfigure(const struct conf_t *conf, void *data);
 
 #endif /* _KNOTD_LOGCONF_H_ */
 

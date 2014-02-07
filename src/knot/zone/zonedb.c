@@ -20,6 +20,9 @@
 
 #include <urcu.h>
 
+#include "knot/zone/zonedb.h"
+#include "knot/server/server.h"
+#include "knot/server/zones.h"
 #include "libknot/common.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
@@ -30,12 +33,13 @@
 #include "common/mempattern.h"
 #include "common/mempool.h"
 
+
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
 /*! \brief Discard zone in zone database. */
-static void delete_zone_from_db(zone_t *zone)
+static void discard_zone(zone_t *zone)
 {
 	synchronize_rcu();
 	zone->flags |= ZONE_DISCARDED;
@@ -180,26 +184,6 @@ zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname)
 
 /*----------------------------------------------------------------------------*/
 
-knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
-                                              const knot_dname_t *zone_name)
-{
-
-	if (db == NULL || zone_name == NULL) {
-		return NULL;
-	}
-
-	// Remove the contents from the zone, but keep the zone in the zonedb.
-
-	zone_t *zone = knot_zonedb_find(db, zone_name);
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return zone_switch_contents(zone, NULL);
-}
-
-/*----------------------------------------------------------------------------*/
-
 size_t knot_zonedb_size(const knot_zonedb_t *db)
 {
 	if (db == NULL) {
@@ -231,12 +215,8 @@ void knot_zonedb_deep_free(knot_zonedb_t **db)
 
 	/* Reindex for iteration. */
 	knot_zonedb_build_index(*db);
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(*db, &it);
-	while (!knot_zonedb_iter_finished(&it)) {
-		delete_zone_from_db(knot_zonedb_iter_val(&it));
-		knot_zonedb_iter_next(&it);
-	}
 
+	/* Free zones and database. */
+	knot_zonedb_foreach(*db, discard_zone);
 	knot_zonedb_free(db);
 }

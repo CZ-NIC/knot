@@ -34,8 +34,6 @@ src/common/errcode.c
 src/common/errcode.h
 src/common/errors.c
 src/common/errors.h
-src/common/evqueue.c
-src/common/evqueue.h
 src/common/evsched.c
 src/common/evsched.h
 src/common/fdset.c
@@ -110,8 +108,6 @@ src/knot/nameserver/internet.c
 src/knot/nameserver/internet.h
 src/knot/nameserver/ixfr.c
 src/knot/nameserver/ixfr.h
-src/knot/nameserver/name-server.c
-src/knot/nameserver/name-server.h
 src/knot/nameserver/nsec_proofs.c
 src/knot/nameserver/nsec_proofs.h
 src/knot/nameserver/process_query.c
@@ -281,7 +277,6 @@ tests/dnssec_nsec3.c
 tests/dnssec_sign.c
 tests/dnssec_zone_nsec.c
 tests/dthreads.c
-tests/events.c
 tests/fdset.c
 tests/hattrie.c
 tests/hhash.c

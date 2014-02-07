@@ -28,7 +28,7 @@
 #define _PROCESS_QUERY_H_
 
 #include "libknot/processing/process.h"
-#include "knot/nameserver/name-server.h"
+#include "knot/server/server.h"
 #include "knot/updates/acl.h"
 
 /* Query processing module implementation. */
@@ -69,7 +69,7 @@ enum process_query_flag {
 struct process_query_param {
 	uint16_t   proc_flags;
 	sockaddr_t query_source;
-	knot_nameserver_t *ns;
+	server_t   *server;
 };
 
 /*! \brief Query processing intermediate data. */

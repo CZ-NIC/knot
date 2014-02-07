@@ -26,7 +26,6 @@
 #include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
 #include "common/descriptor.h"
-#include "knot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
 #include "libknot/dnssec/random.h"
@@ -89,11 +88,9 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		return KNOT_EINVAL;
 	}
 
-	knot_nameserver_t *ns = s->nameserver;
 	zone_t *zone = NULL;
 	int ret = KNOT_EOK;
 
-	/* Refresh specific zones. */
 	for (unsigned i = 0; i < a->argc; ++i) {
 		/* Process all zones in data section. */
 		const knot_rrset_t *rr = a->arg[i];
@@ -102,11 +99,9 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		}
 
 		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
-			/* Refresh zones. */
-			const knot_dname_t *dn =
-				knot_rdata_ns_name(rr, i);
+			const knot_dname_t *dn = knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
-			zone = knot_zonedb_find(ns->zone_db, dn);
+			zone = knot_zonedb_find(s->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
@@ -117,18 +112,6 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 	return ret;
 }
 
-static void reschedule(server_t *server, event_t *timer, uint32_t time)
-{
-	assert(server);
-	assert(timer);
-
-	knot_nameserver_t *nameserver = server->nameserver;
-	evsched_t *scheduler = ((server_t *)knot_ns_get_data(nameserver))->sched;
-
-	evsched_cancel(scheduler, timer);
-	evsched_schedule(scheduler, timer, time);
-}
-
 /*! \brief Zone refresh callback. */
 static int remote_zone_refresh(server_t *server, const zone_t *zone)
 {
@@ -136,9 +119,7 @@ static int remote_zone_refresh(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	if (zone->xfr_in.timer) {
-		reschedule(server, zone->xfr_in.timer, knot_random_uint32_t() % 1000);
-	}
+	zones_schedule_refresh((zone_t *)zone, knot_random_uint32_t() % 1000);
 
 	return KNOT_EOK;
 }
@@ -150,9 +131,7 @@ static int remote_zone_flush(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	if (zone->ixfr_dbsync) {
-		reschedule(server, zone->ixfr_dbsync, knot_random_uint32_t() % 1000);
-	}
+	zones_schedule_zonefile_sync((zone_t *)zone, knot_random_uint32_t() % 1000);
 
 	return KNOT_EOK;
 }
@@ -220,10 +199,10 @@ static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 
 static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 {
-	assert(zone && zone->dnssec_timer);
+	assert(zone && zone->dnssec.timer);
 	assert(buf);
 
-	time_t diff_time = zone->dnssec_timer->tv.tv_sec;
+	time_t diff_time = zone->dnssec.timer->tv.tv_sec;
 	struct tm *t = localtime(&diff_time);
 
 	size_t written = strftime(buf, buf_size, "%c", t);
@@ -248,9 +227,9 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 
 	int ret = KNOT_EOK;
 	rcu_read_lock();
-	knot_nameserver_t *ns =  s->nameserver;
+
 	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(ns->zone_db, &it);
+	knot_zonedb_iter_begin(s->zone_db, &it);
 	while(!knot_zonedb_iter_finished(&it)) {
 		const zone_t *zone = knot_zonedb_iter_val(&it);
 
@@ -348,7 +327,8 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		return server_refresh(s);
+		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, 0);
+		return KNOT_EOK;
 	}
 
 	/* Refresh specific zones. */
@@ -370,9 +350,8 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 		int ret = 0;
 		dbg_server_verb("remote: flushing all zones\n");
 		rcu_read_lock();
-		knot_nameserver_t *ns =  s->nameserver;
 		knot_zonedb_iter_t it;
-		knot_zonedb_iter_begin(ns->zone_db, &it);
+		knot_zonedb_iter_begin(s->zone_db, &it);
 		while(!knot_zonedb_iter_finished(&it)) {
 			ret = remote_zone_flush(s, knot_zonedb_iter_val(&it));
 			knot_zonedb_iter_next(&it);

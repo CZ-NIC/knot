@@ -179,10 +179,9 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 #define AXFR_LOG(severity, msg...) \
 	ANSWER_LOG(severity, qdata, "Outgoing AXFR", msg)
 
-int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
+int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	assert(pkt);
-	assert(ns);
 	assert(qdata);
 
 	int ret = KNOT_EOK;
@@ -231,6 +230,61 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		AXFR_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		return NS_PROC_FAIL;
 	}
+}
+
+int axfr_process_answer(knot_ns_xfr_t *xfr)
+{
+	/*
+	 * Here we assume that 'xfr' contains TSIG information
+	 * and the digest of the query sent to the master or the previous
+	 * digest.
+	 */
+
+	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
+	       xfr->wire_size);
+	int ret = xfrin_process_axfr_packet(xfr);
+
+	if (ret > 0) { // transfer finished
+		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
+
+		gettimeofday(&xfr->t_end, NULL);
+
+		/*
+		 * Adjust zone so that node count is set properly and nodes are
+		 * marked authoritative / delegation point.
+		 */
+		xfrin_constructed_zone_t *constr_zone =
+				(xfrin_constructed_zone_t *)xfr->data;
+		knot_zone_contents_t *zone = constr_zone->contents;
+		assert(zone != NULL);
+		log_zone_info("%s Serial %u -> %u\n", xfr->msg,
+		              knot_zone_serial(xfr->zone->contents),
+		              knot_zone_serial(zone));
+
+		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
+		int rc = knot_zone_contents_adjust_full(zone, NULL, NULL);
+		if (rc != KNOT_EOK) {
+			return rc;
+		}
+
+		// save the zone contents to the xfr->data
+		xfr->new_contents = zone;
+		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
+
+		assert(zone->nsec3_nodes != NULL);
+
+		// free the structure used for processing XFR
+		assert(constr_zone->rrsigs == NULL);
+		free(constr_zone);
+
+		// check zone integrity
+dbg_ns_exec_verb(
+		int errs = knot_zone_contents_integrity_check(zone);
+		dbg_ns_verb("Zone integrity check: %d errors.\n", errs);
+);
+	}
+
+	return ret;
 }
 
 #undef AXFR_LOG

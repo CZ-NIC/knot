@@ -33,7 +33,7 @@
 #include "libknot/dname.h"
 #include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
-#include "knot/nameserver/name-server.h"
+#include "knot/server/xfr-handler.h"
 #include "knot/updates/changesets.h"
 
 /*----------------------------------------------------------------------------*/
@@ -109,17 +109,6 @@ int xfrin_create_axfr_query(const zone_t *zone, knot_pkt_t *pkt);
  * \retval KNOT_ERROR
  */
 int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt);
-
-/*!
- * \brief Processes the newly created transferred zone.
- *
- * \param nameserver Name server to update.
- * \param zone Zone build from transfer.
- *
- * \retval KNOT_ENOTSUP
- */
-int xfrin_zone_transferred(knot_nameserver_t *nameserver,
-                           knot_zone_contents_t *zone);
 
 /*!
  * \brief Processes one incoming packet of AXFR transfer by updating the given

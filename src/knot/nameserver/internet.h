@@ -29,13 +29,15 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
-#include "knot/nameserver/name-server.h"
 
 /* Query data (from query processing). */
 struct query_data;
 
 /*!
  * \brief Answer query from IN class zone.
+ *
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
  */
 int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 

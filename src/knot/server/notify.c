@@ -70,23 +70,15 @@ int notify_process_response(knot_pkt_t *notify, int msgid)
 	return KNOT_EOK;
 }
 
-static int notify_reschedule(knot_nameserver_t *ns, const zone_t *zone)
+static int notify_reschedule(const zone_t *zone)
 {
-	dbg_ns("%s(%p, %p)\n", __func__, ns, zone);
-	if (ns == NULL || zone == NULL) {
+	dbg_ns("%s(%p)\n", __func__, zone);
+	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Cancel REFRESH/RETRY timer. */
-	server_t *server = ns->data;
-	event_t *refresh_ev = zone->xfr_in.timer;
-	if (refresh_ev && server) {
-		dbg_ns("%s: expiring REFRESH timer\n", __func__);
-		evsched_cancel(server->sched, refresh_ev);
-		evsched_schedule(server->sched, refresh_ev, 0);
-	} else {
-		dbg_ns("%s: no REFRESH timer to expire\n", __func__);
-	}
+	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
+	zones_schedule_refresh((zone_t *)zone, 0);
 
 	return KNOT_EOK;
 }
@@ -95,9 +87,9 @@ static int notify_reschedule(knot_nameserver_t *ns, const zone_t *zone)
 #define NOTIFY_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
 
-int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
+int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	if (pkt == NULL || ns == NULL || qdata == NULL) {
+	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
 	}
 
@@ -125,7 +117,7 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	}
 
 	int next_state = NS_PROC_FAIL;
-	int ret = notify_reschedule(ns, qdata->zone);
+	int ret = notify_reschedule(qdata->zone);
 
 	/* Format resulting log message. */
 	if (ret != KNOT_EOK) {
