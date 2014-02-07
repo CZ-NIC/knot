@@ -732,7 +732,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
-		if (knot_node_is_non_auth(node)) {
+		if (knot_node_is_non_auth(node) || knot_node_is_empty(node)) {
 			hattrie_iter_next(it);
 			continue;
 		}
@@ -1375,6 +1375,111 @@ static int chain_finalize_nsec3(chain_fix_data_t *fix_data)
 	return ret;
 }
 
+/*!
+ * \brief Checks if NSEC3 should be generated for this node.
+ *
+ * \retval true if the node has no children and contains no RRSets or only
+ *         RRSIGs and NSECs.
+ * \retval false otherwise.
+ */
+static bool nsec3_is_empty(knot_node_t *node)
+{
+	if (knot_node_children(node) > 0) {
+		return false;
+	}
+
+	return knot_nsec_only_nsec_and_rrsigs_in_node(node);
+}
+
+/*!
+ * \brief Marks node and its parents as empty if NSEC3 should not be generated
+ *        for them.
+ *
+ * It also lowers the children count for the parent of marked node. This must be
+ * fixed before further operations on the zone.
+ */
+static int nsec3_mark_empty(knot_node_t **node_p, void *data)
+{
+	UNUSED(data);
+	knot_node_t *node = *node_p;
+
+	if (!knot_node_is_empty(node) && nsec3_is_empty(node)) {
+		/*!
+		 * Mark this node and all parent nodes that meet the same
+		 * criteria as empty.
+		 */
+		knot_node_set_empty(node);
+
+		if (node->parent) {
+			/* We must decrease the parent's children count,
+			 * but only temporarily! It must be set right after
+			 * the operation
+			 */
+			node->parent->children--;
+			/* Recurse using the parent node */
+			return nsec3_mark_empty(&node->parent, data);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Function for temporary marking nodes as empty if NSEC3s should not be
+ *        generated for them.
+ *
+ * This is only temporary for the time of NSEC3 generation. Afterwards it must
+ * be reset (removed flag and fixed children counts).
+ */
+static void mark_empty_nodes_tmp(const knot_zone_contents_t *zone)
+{
+	assert(zone);
+
+	int ret = knot_zone_tree_apply(zone->nodes, nsec3_mark_empty, NULL);
+
+	assert(ret == KNOT_EOK);
+}
+
+/*!
+ * \brief Resets the empty flag in the node and increases its parent's children
+ *        count if the node was marked as empty.
+ *
+ * The children count of node's parent is increased if this node was marked as
+ * empty, as it was previously decreased in the \a nsec3_mark_empty() function.
+ */
+static int nsec3_reset(knot_node_t **node_p, void *data)
+{
+	UNUSED(data);
+	knot_node_t *node = *node_p;
+
+	if (knot_node_is_empty(node)) {
+		/* If node was marked as empty, increase its parent's children
+		 * count.
+		 */
+		node->parent->children++;
+		/* Clear the 'empty' flag. */
+		knot_node_clear_empty(node);
+	}
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Resets empty node flag and children count in nodes that were
+ *        previously marked as empty by the \a mark_empty_nodes_tmp() function.
+ *
+ * This function must be called after NSEC3 generation, so that flags and
+ * children count are back to normal before further processing.
+ */
+static void reset_nodes(const knot_zone_contents_t *zone)
+{
+	assert(zone);
+
+	int ret = knot_zone_tree_apply(zone->nodes, nsec3_reset, NULL);
+
+	assert(ret == KNOT_EOK);
+}
+
 /* - Public API ------------------------------------------------------------- */
 
 /*!
@@ -1393,11 +1498,24 @@ int knot_nsec3_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 		return KNOT_ENOMEM;
 	}
 
+	/* Before creating NSEC3 nodes, we must temporarily mark those nodes
+	 * that may still be in the zone, but for which the NSEC3s should not
+	 * be created. I.e. nodes with only RRSIG (or NSEC+RRSIG) and their
+	 * predecessors if they are empty.
+	 *
+	 * The flag will be removed when the node is encountered during NSEC3
+	 * creation procedure.
+	 */
+
+	mark_empty_nodes_tmp(zone);
+
 	result = create_nsec3_nodes(zone, ttl, nsec3_nodes, changeset);
 	if (result != KNOT_EOK) {
 		free_nsec3_tree(nsec3_nodes);
 		return result;
 	}
+
+	reset_nodes(zone);
 
 	result = knot_nsec_chain_iterate_create(nsec3_nodes,
 	                                        connect_nsec3_nodes, NULL);

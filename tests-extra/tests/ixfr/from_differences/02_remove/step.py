@@ -9,7 +9,7 @@ def run(i):
     i.check_rec("dns1", "A", "192.0.2.1")
     i.check_rec("dns1", "A", "1.1.1.1")
     i.check_rec("dns2", "A", "192.0.2.2")
-    i.check_rec("dns2", "AAAA", "2001:DB8::2")
+    i.check_rec("dns2", "AAAA", "2001:db8::2")
     i.check_rec("rem1", "A", "1.2.3.4")
     i.check_rec("rem2", "AAAA", "::1")
     i.check_rec("rem2", "TXT", "some_text")
@@ -31,6 +31,6 @@ def run(i):
     i.check_rec("dns1", "A", "192.0.2.1")
     i.check_rec("dns1", "A", nordata="1.1.1.1")
     i.check_rec("dns2", "A", "192.0.2.2")
-    i.check_rec("dns2", "AAAA", nordata="2001:DB8::2")
+    i.check_rec("dns2", "AAAA", nordata="2001:db8::2")
 
     i.test.end()

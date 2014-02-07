@@ -76,13 +76,13 @@ class Response(object):
         if rdata:
             # We work with just one rdata with TTL=0 (this TTL is not used).
             rrset = dns.rdataset.from_text(self.rclass, self.rtype, 0, rdata)
-            ref = list(rrset)[0]
+            ref = str(list(rrset)[0])
 
             # Check answer section if contains reference rdata.
             for data in self.resp.answer:
-                for rdata in data.to_rdataset():
+                for rd in data.to_rdataset():
                     # Compare Rdataset instances.
-                    if rdata == ref:
+                    if str(rd) == ref:
                         # Check CLASS.
                         compare(data.rdclass, self.rclass, "CLASS")
                         # Check TYPE.
@@ -101,13 +101,13 @@ class Response(object):
         if nordata:
             # We work with just one rdata with TTL=0 (this TTL is not used).
             rrset = dns.rdataset.from_text(self.rclass, self.rtype, 0, nordata)
-            ref = list(rrset)[0]
+            ref = str(list(rrset)[0])
 
             # Check answer section if contains reference rdata.
             for data in self.resp.answer:
-                for rdata in data.to_rdataset():
+                for rd in data.to_rdataset():
                     # Compare Rdataset instances.
-                    if rdata == ref:
+                    if str(rd) == ref:
                         set_err("CHECK RDATA")
                         check_log("ERROR: CHECK RDATA")
                         detail_log("!Unwanted data in ANSWER section:")

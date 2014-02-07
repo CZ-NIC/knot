@@ -1487,6 +1487,10 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 				return ret;
 			}
 			/* Disconnect RRsigs from rrset. */
+			/*! \todo What if the update fails after this? The RRSet
+			 *        in the old tree will not carry pointer to its
+			 *        RRSIGs, will it?
+			 */
 			knot_rrset_set_rrsigs(removed[i], NULL);
 		}
 	}

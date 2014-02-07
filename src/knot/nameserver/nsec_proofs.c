@@ -694,6 +694,13 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 			     const knot_dname_t *qname,
 			     knot_pkt_t *resp)
 {
+	// This case must be handled first, before handling the wildcard case
+	if (knot_node_rrset_count(node) == 0 && !knot_is_nsec3_enabled(zone)) {
+		// node is an empty non-terminal => NSEC for NXDOMAIN
+		return ns_put_nsec_nxdomain(qname, zone, previous,
+		                            closest_encloser, resp);
+	}
+
 	if (knot_dname_is_wildcard(node->owner)) {
 		return ns_put_nsec_nsec3_wildcard_nodata(node, closest_encloser,
 							 previous, zone, qname,
@@ -730,10 +737,6 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 			dbg_ns_detail("Putting the RRSet to Authority\n");
 			ret = knot_pkt_put(resp, 0, rrset, 0);
 		}
-	}
-
-	if (ret != KNOT_EOK) {
-		return ret;
 	}
 
 	return ret;
