@@ -3,7 +3,6 @@ slab
 hattrie
 hhash
 dthreads
-events
 acl
 fdset
 base64

@@ -252,7 +252,7 @@ static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf, server_t *server
 	}
 
 	/* Initialize zone timers. */
-	zone_timers_create(new_zone, server->sched);
+	zone_timers_create(new_zone, &server->sched);
 
 	log_zone_load_info(new_zone, conf->name, zstatus);
 

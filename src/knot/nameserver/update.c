@@ -479,7 +479,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 
 	/* Sync zonefile immediately if configured. */
 	if (zone->conf->dbsync_timeout == 0) {
-		zones_schedule_ixfr_sync(zone, 0);
+		zones_schedule_zonefile_sync(zone, 0);
 	}
 
 	return ret;

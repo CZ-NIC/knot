@@ -27,8 +27,8 @@
 #ifndef _KNOTD_XFRHANDLER_H_
 #define _KNOTD_XFRHANDLER_H_
 
-#include "common/evqueue.h"
 #include "common/fdset.h"
+#include "common/evsched.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/socket.h"
 #include "libknot/packet/pkt.h"

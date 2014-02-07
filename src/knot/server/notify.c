@@ -77,16 +77,8 @@ static int notify_reschedule(const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	/* Cancel REFRESH/RETRY timer. */
-	event_t *refresh_event = zone->xfr_in.timer;
-	if (refresh_event) {
-		dbg_ns("%s: expiring REFRESH timer\n", __func__);
-		evsched_t *sched = refresh_event->parent;
-		evsched_cancel(sched, refresh_event);
-		evsched_schedule(sched, refresh_event, 0);
-	} else {
-		dbg_ns("%s: no REFRESH timer to expire\n", __func__);
-	}
+	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
+	zones_schedule_refresh((zone_t *)zone, 0);
 
 	return KNOT_EOK;
 }

@@ -46,23 +46,18 @@ static int evsched_run(dthread_t *thread)
 
 	/* Run event loop. */
 	event_t *ev = 0;
-	while((ev = evsched_next(s))) {
+	while((ev = evsched_begin_process(s))) {
 
-		/* Process termination event. */
-		if (ev->type == EVSCHED_TERM) {
-			evsched_event_finished(s);
-			evsched_event_free(s, ev);
+		/* Process termination event (NULL function). */
+		if (ev->cb == NULL) {
+			evsched_end_process(s);
+			evsched_event_free(ev);
 			break;
 		}
 
 		/* Process event. */
-		if (ev->type == EVSCHED_CB && ev->cb) {
-			ev->cb(ev);
-			evsched_event_finished(s);
-		} else {
-			evsched_event_finished(s);
-			evsched_event_free(s, ev);
-		}
+		ev->cb(ev);
+		evsched_end_process(s);
 
 		/* Check for thread cancellation. */
 		if (dt_is_cancelled(thread)) {
@@ -343,14 +338,13 @@ int server_init(server_t *server)
 
 	memset(server, 0, sizeof(server_t));
 
-	/* Create event scheduler. */
-	server->sched = evsched_new(server);
-	if (server->sched == NULL) {
+	/* Initialize event scheduler. */
+	if (evsched_init(&server->sched, server) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
-	server->iosched = dt_create(1, evsched_run, evsched_destruct, server->sched);
+	server->iosched = dt_create(1, evsched_run, evsched_destruct, &server->sched);
 	if (server->iosched == NULL) {
-		evsched_delete(&server->sched);
+		evsched_deinit(&server->sched);
 		return KNOT_ENOMEM;
 	}
 
@@ -358,7 +352,7 @@ int server_init(server_t *server)
 	server->xfr = xfr_create(XFR_THREADS_COUNT, server);
 	if (server->xfr == NULL) {
 		dt_delete(&server->iosched);
-		evsched_delete(&server->sched);
+		evsched_deinit(&server->sched);
 		return KNOT_ENOMEM;
 	}
 
@@ -393,7 +387,7 @@ void server_deinit(server_t *server)
 	knot_zonedb_deep_free(&server->zone_db);
 
 	/* Free remaining events. */
-	evsched_delete(&server->sched);
+	evsched_deinit(&server->sched);
 
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
@@ -522,7 +516,8 @@ void server_stop(server_t *server)
 	log_server_info("Stopping server...\n");
 
 	/* Send termination event. */
-	evsched_schedule_term(server->sched, 0);
+	event_t *term_ev = evsched_event_create(&server->sched, NULL, NULL);
+	evsched_schedule(term_ev, 0);
 	dt_stop(server->iosched);
 
 	/* Interrupt XFR handler execution. */

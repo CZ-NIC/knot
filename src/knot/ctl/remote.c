@@ -112,16 +112,6 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 	return ret;
 }
 
-static void reschedule(server_t *server, event_t *timer, uint32_t time)
-{
-	assert(server);
-	assert(timer);
-
-	evsched_t *scheduler = server->sched;
-	evsched_cancel(scheduler, timer);
-	evsched_schedule(scheduler, timer, time);
-}
-
 /*! \brief Zone refresh callback. */
 static int remote_zone_refresh(server_t *server, const zone_t *zone)
 {
@@ -129,9 +119,7 @@ static int remote_zone_refresh(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	if (zone->xfr_in.timer) {
-		reschedule(server, zone->xfr_in.timer, knot_random_uint32_t() % 1000);
-	}
+	zones_schedule_refresh((zone_t *)zone, knot_random_uint32_t() % 1000);
 
 	return KNOT_EOK;
 }
@@ -143,9 +131,7 @@ static int remote_zone_flush(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	if (zone->ixfr_dbsync) {
-		reschedule(server, zone->ixfr_dbsync, knot_random_uint32_t() % 1000);
-	}
+	zones_schedule_zonefile_sync((zone_t *)zone, knot_random_uint32_t() % 1000);
 
 	return KNOT_EOK;
 }

@@ -181,13 +181,13 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
  * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
  *
  * \param zone Related zone.
- * \param time Specific time or REFRESH_DEFAULT for default.
+ * \param time Specific timeout or REFRESH_DEFAULT for default.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_schedule_refresh(zone_t *zone, int64_t time);
+int zones_schedule_refresh(zone_t *zone, int64_t timeout);
 
 /*!
  * \brief Schedule NOTIFY after zone update.
@@ -220,10 +220,10 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime);
 /*!
  * \brief Schedule IXFR sync for given zone.
  *
- * \param zone            Zone to scheduler IXFR sync for.
- * \param dbsync_timeout  Sync time in seconds.
+ * \param zone     Zone to scheduler IXFR sync for.
+ * \param timeout  Sync time in seconds.
  */
-void zones_schedule_ixfr_sync(zone_t *zone, int dbsync_timeout);
+void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout);
 
 /*!
  * \brief Verify TSIG in query.
@@ -273,9 +273,9 @@ int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *expires_at);
  * Event callbacks.
  */
 
-int zones_expire_ev(event_t *e);
-int zones_refresh_ev(event_t *e);
-int zones_flush_ev(event_t *e);
+int zones_expire_ev(event_t *event);
+int zones_refresh_ev(event_t *event);
+int zones_flush_ev(event_t *event);
 int zones_dnssec_ev(event_t *event);
 
 /*! \note Exported API for UPDATE processing, but this should really be done

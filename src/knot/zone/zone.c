@@ -45,21 +45,20 @@ static void knot_zone_dtor(struct ref_t *p) {
 static void zone_timer_cancel(event_t *event)
 {
 	if (event != NULL) {
-		evsched_cancel(event->parent, event);
+		evsched_cancel(event);
 	}
 }
 
 /*! \brief Cancel and free zone timer. */
-static void zone_timer_free(event_t **event)
+static void zone_timer_free(event_t *event)
 {
-	if (event == NULL || *event == NULL) {
+	if (event == NULL) {
 		return;
 	}
 
-	evsched_t *sched = (*event)->parent;
-	evsched_cancel(sched, *event);
-	evsched_event_free(sched, *event);
-	*event = NULL;
+	if (evsched_cancel(event) == KNOT_EOK) {
+		evsched_event_free(event);
+	}
 }
 
 /*!
@@ -67,7 +66,7 @@ static void zone_timer_free(event_t **event)
 */
 static event_t* zone_timer_create(evsched_t *sched, event_cb_t cb, zone_t *zone)
 {
-	return evsched_event_new_cb(sched, cb, zone);
+	return evsched_event_create(sched, cb, zone);
 }
 
 int zone_timers_create(zone_t *zone, evsched_t *scheduler)
@@ -128,7 +127,7 @@ int zone_timers_thaw(zone_t *zone)
 	}
 
 	/* Schedule zone file syncing. */
-	zones_schedule_ixfr_sync(zone, zone->conf->dbsync_timeout);
+	zones_schedule_zonefile_sync(zone, zone->conf->dbsync_timeout);
 
 	/* Schedule REFRESH. */
 	zones_schedule_refresh(zone, 0);
@@ -295,10 +294,10 @@ void zone_free(zone_t **zone_ptr)
 	knot_dname_free(&zone->name);
 
 	/* Cancel and free timers. */
-	zone_timer_free(&zone->xfr_in.timer);
-	zone_timer_free(&zone->xfr_in.expire);
-	zone_timer_free(&zone->ixfr_dbsync);
-	zone_timer_free(&zone->dnssec.timer);
+	zone_timer_free(zone->xfr_in.timer);
+	zone_timer_free(zone->xfr_in.expire);
+	zone_timer_free(zone->ixfr_dbsync);
+	zone_timer_free(zone->dnssec.timer);
 
 	acl_delete(&zone->xfr_in.acl);
 	acl_delete(&zone->xfr_out);

@@ -28,7 +28,6 @@
 
 #include "libknot/common.h"
 #include "libknot/dnssec/crypto.h"
-#include "common/evqueue.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
@@ -353,7 +352,7 @@ int main(int argc, char **argv)
 	// Run server
 	log_server_info("Starting server...\n");
 	if ((server_start(&server)) == KNOT_EOK) {
-		if (!knot_zonedb_size(server.zone_db)) {
+		if (knot_zonedb_size(server.zone_db) == 0) {
 			log_server_warning("Server started, but no zones served.\n");
 		}
 

@@ -20,45 +20,6 @@
  *
  * \brief Event scheduler.
  *
- * Scheduler works with the same event_t type as event queue.
- * It is also thread-safe so the scheduler can run in a separate thread
- * while events can be enqueued from different threads.
- *
- * Guideline is, that the scheduler run loop should exit with
- * a special event type EVSCHED_TERM.
- *
- * Example usage:
- * \code
- * evsched_t *s = evsched_new();
- *
- * // Schedule myfunc() after 1000ms
- * evsched_schedule_cb(s, myfunc, data, 1000)
- *
- * // Schedule termination event after 1500ms
- * evsched_schedule_term(s, 1500);
- *
- * // Event scheduler main loop
- * while (1) {
- *    // Wait for next scheduled event
- *    event_t *ev = evsched_next();
- *
- *    // Break on termination event
- *    if (ev->type == EVSCHED_TERM) {
- *       evsched_event_free(s, ev);
- *       break;
- *    }
- *
- *    // Execute and discard event
- *    if (ev->cb) {
- *       ev->cb(ev);
- *    }
- *    evsched_event_free(s, ev); // Free executed event
- * }
- *
- * // Delete event scheduler
- * evsched_delete(s);
- * \endcode
- *
  * \addtogroup common_lib
  * @{
  */
@@ -68,76 +29,82 @@
 
 #include <pthread.h>
 #include <stdbool.h>
-#include "common/slab/slab.h"
+#include <stdint.h>
 #include "common/heap.h"
-#include "common/evqueue.h"
+
+/* Forward decls. */
+struct evsched;
+struct event;
 
 /*!
- * \brief Scheduler event types.
+ * \brief Event callback.
+ *
+ * Pointer to whole event structure is passed to the callback.
+ * Callback should return 0 on success and negative integer on error.
+ *
+ * Example callback:
+ * \code
+ * int print_callback(event_t *t) {
+ *    return printf("Callback: %s\n", t->data);
+ * }
+ * \endcode
  */
-typedef enum evsched_ev_t {
-	EVSCHED_NOOP = 0,   /*!< No-op action, skip. */
-	EVSCHED_CB,         /*!< Callback action. */
-	EVSCHED_TERM        /*!< Terminal action, stop event scheduler. */
-} evsched_ev_t;
+typedef int (*event_cb_t)(struct event *);
+
+/*!
+ * \brief Event structure.
+ */
+typedef struct event {
+	struct timeval tv; /*!< Event scheduled time. */
+	void *data;        /*!< Usable data ptr. */
+	event_cb_t cb;     /*!< Event callback. */
+	struct evsched *sched; /*!< Scheduler for this event. */
+} event_t;
 
 /*!
  * \brief Event scheduler structure.
  *
- * Keeps list of scheduled events. Events are executed in their scheduled
- * time and kept in an ordered list (queue).
- * Scheduler is terminated with a special EVSCHED_TERM event type.
+ * Events are executed in their scheduled time.
  */
-typedef struct {
+typedef struct evsched {
 	pthread_mutex_t rl;        /*!< Event running lock. */
-	volatile bool running;
+	volatile bool running;     /*!< True if running. */
 	volatile event_t *last_ev; /*!< Last running event. */
 	pthread_mutex_t mx;        /*!< Event queue locking. */
 	pthread_cond_t notify;     /*!< Event queue notification. */
-	struct heap heap;
-	struct {
-		slab_cache_t alloc;   /*!< Events SLAB cache. */
-		pthread_mutex_t lock; /*!< Events cache spin lock. */
-	} cache;
-	void *ctx;
+	struct heap heap;          /*!< Events heap. */
+	void *ctx;                 /*!< Scheduler context. */
 } evsched_t;
 
 /*!
- * \brief Create new event scheduler instance.
+ * \brief Initialize event scheduler instance.
  *
  * \retval New instance on success.
  * \retval NULL on error.
  */
-evsched_t *evsched_new(void *ctx);
+int evsched_init(evsched_t *sched, void *ctx);
 
 /*!
  * \brief Deinitialize and free event scheduler instance.
  *
- * \param s Pointer to event scheduler instance.
- * \note *sched is set to 0.
+ * \param sched Pointer to event scheduler instance.
  */
-void evsched_delete(evsched_t **s);
-
-/*!
- * \brief Create an empty event.
- *
- * \param s Pointer to event scheduler instance.
- * \param type Event type.
- * \retval New instance on success.
- * \retval NULL on error.
- */
-event_t *evsched_event_new(evsched_t *s, int type);
+void evsched_deinit(evsched_t *sched);
 
 /*!
  * \brief Create a callback event.
  *
- * \param s Pointer to event scheduler instance.
+ * \note Scheduler takes ownership of scheduled events. Created, but unscheduled
+ *       events are in the ownership of the caller.
+ *
+ * \param sched Pointer to event scheduler instance.
  * \param cb Callback handler.
  * \param data Data for callback.
+ *
  * \retval New instance on success.
  * \retval NULL on error.
  */
-event_t *evsched_event_new_cb(evsched_t *s, event_cb_t cb, void *data);
+event_t *evsched_event_create(evsched_t *sched, event_cb_t cb, void *data);
 
 /*!
  * \brief Dispose event instance.
@@ -145,78 +112,22 @@ event_t *evsched_event_new_cb(evsched_t *s, event_cb_t cb, void *data);
  * \param s Pointer to event scheduler instance.
  * \param ev Event instance.
  */
-void evsched_event_free(evsched_t *s, event_t *ev);
-
-/*!
- * \brief Fetch next-event.
- *
- * Scheduler may block until a next event is available.
- * Send scheduler an EVSCHED_NOOP or EVSCHED_TERM event to unblock it.
- *
- * \warning Returned event must be marked as finished, or deadlock occurs.
- *
- * \param s Event scheduler.
- *
- * \retval Scheduled event.
- * \retval NULL on error.
- */
-event_t* evsched_next(evsched_t *s);
-
-/*!
- * \brief Mark running event as finished.
- *
- * Need to call this after each event returned by evsched_next() is finished.
- *
- * \note Must not be called from outside event scheduler, only from events or
- *       event processing.
- *
- * \param s Event scheduler.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOTRUNNING
- */
-int evsched_event_finished(evsched_t *s);
+void evsched_event_free(event_t *ev);
 
 /*!
  * \brief Schedule an event.
  *
- * \param s Event scheduler.
+ * \note This function checks if the event was already scheduled, if it was
+ *       then it replaces this timer with the newer value.
+ *       Running events are not canceled or waited for.
+ *
  * \param ev Prepared event.
  * \param dt Time difference in milliseconds from now (dt is relative).
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL
  */
-int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt);
-
-/*!
- * \brief Schedule callback event.
- *
- * Execute callback after dt miliseconds has passed.
- *
- * \param s Event scheduler.
- * \param cb Callback handler.
- * \param data Data for callback.
- * \param dt Time difference in milliseconds from now (dt is relative).
- *
- * \retval Event instance on success.
- * \retval NULL on error.
- */
-event_t* evsched_schedule_cb(evsched_t *s, event_cb_t cb, void *data, uint32_t dt);
-
-/*!
- * \brief Schedule termination event.
- *
- * Special action for scheduler termination.
- *
- * \param s Event scheduler.
- * \param dt Time difference in milliseconds from now (dt is relative).
- *
- * \retval Event instance on success.
- * \retval NULL on error.
- */
-event_t* evsched_schedule_term(evsched_t *s, uint32_t dt);
+int evsched_schedule(event_t *ev, uint32_t dt);
 
 /*!
  * \brief Cancel a scheduled event.
@@ -233,25 +144,37 @@ event_t* evsched_schedule_term(evsched_t *s, uint32_t dt);
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
-int evsched_cancel(evsched_t *s, event_t *ev);
-
-/* Singleton event scheduler pointer. */
-extern evsched_t *s_evsched;
+int evsched_cancel(event_t *ev);
 
 /*!
- * \brief Event scheduler singleton.
+ * \brief Fetch next-event.
+ *
+ * Scheduler may block until a next event is available.
+ *
+ * \warning Returned event must be marked as finished, or deadlock occurs.
+ *
+ * \param s Event scheduler.
+ *
+ * \retval Scheduled event.
+ * \retval NULL on error.
  */
-static inline evsched_t *evsched() {
-	return s_evsched;
-}
+event_t* evsched_begin_process(evsched_t *sched);
 
 /*!
- * \brief Set event scheduler singleton.
+ * \brief Mark running event as finished.
+ *
+ * Need to call this after each event returned by evsched_begin_process() is finished.
+ *
+ * \note Must not be called from outside event scheduler, only from events or
+ *       event processing.
+ *
+ * \param s Event scheduler.
+ *
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ENOTRUNNING
  */
-static inline void evsched_set(evsched_t *s) {
-	s_evsched = s;
-}
-
+int evsched_end_process(evsched_t *sched);
 
 #endif /* _KNOTD_COMMON_EVSCHED_H_ */
 

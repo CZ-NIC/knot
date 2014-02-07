@@ -34,8 +34,6 @@ src/common/errcode.c
 src/common/errcode.h
 src/common/errors.c
 src/common/errors.h
-src/common/evqueue.c
-src/common/evqueue.h
 src/common/evsched.c
 src/common/evsched.h
 src/common/fdset.c

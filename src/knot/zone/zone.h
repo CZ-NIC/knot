@@ -87,21 +87,21 @@ typedef struct zone_t {
 		sockaddr_t      master;   /*!< Master server for xfr-in.*/
 		sockaddr_t      via;      /*!< Master server transit interface.*/
 		knot_tsig_key_t tsig_key; /*!< Master TSIG key. */
-		struct event_t *timer;    /*!< Timer for REFRESH/RETRY. */
-		struct event_t *expire;   /*!< Timer for REFRESH. */
+		event_t *timer;           /*!< Timer for REFRESH/RETRY. */
+		event_t *expire;          /*!< Timer for EXPIRE. */
 		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
 		int has_master;           /*!< True if it has master set. */
 		unsigned state;
 	} xfr_in;
 
 	struct {
-		struct event_t *timer;  /*!< Timer for DNSSEC events. */
+		event_t *timer;  /*!< Timer for DNSSEC events. */
 		uint32_t   refresh_at;  /*!< Next refresh time. */
 	} dnssec;
 
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
-	struct event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
+	event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
 } zone_t;
 
 /*----------------------------------------------------------------------------*/

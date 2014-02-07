@@ -131,17 +131,17 @@ static uint32_t zones_soa_expire(zone_t *zone)
 /*!
  * \brief XFR/IN expire event handler.
  */
-int zones_expire_ev(event_t *e)
+int zones_expire_ev(event_t *event)
 {
-	assert(e);
+	assert(event);
 
-	dbg_zones("zones: EXPIRE timer event\n");
-	if (e->data == NULL) {
+	dbg_zones("zone: EXPIRE timer event\n");
+	if (event->data == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	rcu_read_lock();
-	zone_t *zone = (zone_t *)e->data;
+	zone_t *zone = (zone_t *)event->data;
 
 	/* Check if zone is not discarded. */
 	if (zone->flags & ZONE_DISCARDED) {
@@ -152,27 +152,24 @@ int zones_expire_ev(event_t *e)
 	zone_retain(zone); /* Keep a reference. */
 	rcu_read_unlock();
 
+	/* Early finish this event to prevent lockup during cancellation. */
+	evsched_end_process(event->sched);
+
 	/* Mark the zone as expired. This will remove the zone contents. */
 	knot_zone_contents_t *contents = zone_switch_contents(zone, NULL);
-
-	/* Early finish this event to prevent lockup during cancellation. */
-	dbg_zones("zones: zone expired, removing from database\n");
-	evsched_event_finished(e->parent);
 
 	/* Publish expired zone, must be after evsched_event_finished.
 	 * This is because some other thread may hold rcu_read_lock and
 	 * wait for event cancellation. */
 	synchronize_rcu();
 
+	knot_zone_contents_deep_free(&contents);
+
 	/* Log event. */
 	log_zone_info("Zone '%s' expired.\n", zone->conf->name);
 
-	/* Cancel REFRESH timer. */
-	if (zone->xfr_in.timer) {
-		evsched_cancel(e->parent, zone->xfr_in.timer);
-	}
-
-	knot_zone_contents_deep_free(&contents);
+	/* No more REFRESH/RETRY on expired zone. */
+	evsched_cancel(zone->xfr_in.timer);
 
 	/* Release holding reference. */
 	zone_release(zone);
@@ -182,13 +179,13 @@ int zones_expire_ev(event_t *e)
 /*!
  * \brief Zone REFRESH or RETRY event.
  */
-int zones_refresh_ev(event_t *e)
+int zones_refresh_ev(event_t *event)
 {
-	assert(e);
+	assert(event);
 
-	dbg_zones("zones: REFRESH or RETRY timer event\n");
+	dbg_zones("zone: REFRESH/RETRY timer event\n");
 	rcu_read_lock();
-	zone_t *zone = (zone_t *)e->data;
+	zone_t *zone = (zone_t *)event->data;
 	if (zone == NULL) {
 		rcu_read_unlock();
 		return KNOT_EINVAL;
@@ -200,8 +197,7 @@ int zones_refresh_ev(event_t *e)
 	}
 
 	/* Create XFR request. */
-	evsched_t *sched = e->parent;
-	server_t *server = (server_t *)sched->ctx;
+	server_t *server = (server_t *)event->sched->ctx;
 	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_SOA, XFR_FLAG_TCP);
 	rcu_read_unlock(); /* rq now holds a reference to zone */
 	if (!rq) {
@@ -219,7 +215,7 @@ int zones_refresh_ev(event_t *e)
 		/* Bootstrap over TCP. */
 		rq->type = XFR_TYPE_AIN;
 		rq->flags = XFR_FLAG_TCP;
-		evsched_event_finished(e->parent);
+		evsched_end_process(event->sched);
 
 		/* Check transfer state. */
 		pthread_mutex_lock(&zone->lock);
@@ -239,31 +235,16 @@ int zones_refresh_ev(event_t *e)
 		}
 		pthread_mutex_unlock(&zone->lock);
 		return ret;
-
-	}
-
-	/* Schedule EXPIRE timer on first attempt. */
-	if (!zone->xfr_in.expire) {
-		uint32_t expire_tmr = zones_jitter(zones_soa_expire(zone));
-		// Allow for timeouts.  Otherwise zones with very short
-		// expiry may expire before the timeout is reached.
-		expire_tmr += 2 * (conf()->max_conn_idle * 1000);
-		zone->xfr_in.expire = evsched_schedule_cb(
-					      e->parent,
-					      zones_expire_ev,
-					      zone, expire_tmr);
-		dbg_zones("zones: EXPIRE of '%s' after %u seconds\n",
-		          zone->conf->name, expire_tmr / 1000);
 	}
 
 	/* Reschedule as RETRY timer. */
 	uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
-	evsched_schedule(e->parent, e, retry_tmr);
-	dbg_zones("zones: RETRY of '%s' after %u seconds\n",
+	evsched_schedule(event, retry_tmr);
+	dbg_zones("zone: RETRY of '%s' after %u seconds\n",
 	          zone->conf->name, retry_tmr / 1000);
 
 	/* Issue request. */
-	evsched_event_finished(e->parent);
+	evsched_end_process(event->sched);
 	ret = xfr_enqueue(server->xfr, rq);
 	if (ret != KNOT_EOK) {
 		xfr_task_free(rq);
@@ -364,13 +345,13 @@ static int zones_zonefile_sync_from_ev(zone_t *zone)
 /*!
  * \brief Sync chagnes in zone to zonefile.
  */
-int zones_flush_ev(event_t *e)
+int zones_flush_ev(event_t *event)
 {
-	assert(e);
-	dbg_zones("zones: IXFR database SYNC timer event\n");
+	assert(event);
+	dbg_zones("zone: zonefile SYNC timer event\n");
 
 	/* Fetch zone. */
-	zone_t *zone = (zone_t *)e->data;
+	zone_t *zone = (zone_t *)event->data;
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
@@ -381,9 +362,9 @@ int zones_flush_ev(event_t *e)
 	rcu_read_lock();
 	int next_timeout = zone->conf->dbsync_timeout * 1000;
 	if (next_timeout > 0) {
-		dbg_zones("%s: next zonefile sync of '%s' in %d seconds\n",
+		dbg_zones("%s: next zonefile SYNC of '%s' in %d seconds\n",
 		          __func__, zone->conf->name, next_timeout / 1000);
-		evsched_schedule(e->parent, e, next_timeout);
+		evsched_schedule(event, next_timeout);
 	}
 	rcu_read_unlock();
 	return ret;
@@ -1582,16 +1563,15 @@ int zones_schedule_notify(zone_t *zone, server_t *server)
 	return KNOT_EOK;
 }
 
-int zones_schedule_refresh(zone_t *zone, int64_t time)
+int zones_schedule_refresh(zone_t *zone, int64_t timeout)
 {
 	if (!zone) {
 		return KNOT_EINVAL;
 	}
 
 	/* Cancel REFRESH/EXPIRE timer. */
-	evsched_t *sch = zone->xfr_in.timer->parent;
-	evsched_cancel(sch, zone->xfr_in.timer);
-	evsched_cancel(sch, zone->xfr_in.expire);
+	evsched_cancel(zone->xfr_in.expire);
+	evsched_cancel(zone->xfr_in.timer);
 
 	/* Check XFR/IN master server. */
 	pthread_mutex_lock(&zone->lock);
@@ -1599,19 +1579,30 @@ int zones_schedule_refresh(zone_t *zone, int64_t time)
 	zone->xfr_in.state = XFR_IDLE;
 	if (zone->xfr_in.has_master) {
 
-		/* Schedule REFRESH timer. */
-		if (time < 0) {
-			if (zone->contents) {
-				time = zones_jitter(zones_soa_refresh(zone));
-			} else {
-				time = zone->xfr_in.bootstrap_retry;
-			}
+		/* Schedule EXPIRE timer. */
+		if (zone->contents != NULL) {
+			int64_t expire_tmr = zones_jitter(zones_soa_expire(zone));
+			// Allow for timeouts.  Otherwise zones with very short
+			// expiry may expire before the timeout is reached.
+			expire_tmr += 2 * (conf()->max_conn_idle * 1000);
+			evsched_schedule(zone->xfr_in.expire, expire_tmr);
+			dbg_zones("zone: EXPIRE '%s' set to %"PRIi64"\n",
+			          zone->conf->name, expire_tmr);
 		}
 
-		evsched_schedule(sch, zone->xfr_in.timer, time);
+		/* Schedule REFRESH timer. */
+		if (timeout < 0) {
+			if (zone->contents) {
+				timeout = zones_jitter(zones_soa_refresh(zone));
+			} else {
+				timeout = zone->xfr_in.bootstrap_retry;
+			}
+		}
+		evsched_schedule(zone->xfr_in.timer, timeout);
 		dbg_zones("zone: REFRESH '%s' set to %"PRIi64"\n",
-		          zone->conf->name, time);
+		          zone->conf->name, timeout);
 		zone->xfr_in.state = XFR_SCHED;
+
 	}
 	rcu_read_unlock();
 	pthread_mutex_unlock(&zone->lock);
@@ -1708,8 +1699,7 @@ int zones_cancel_dnssec(zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	evsched_t *scheduler = zone->dnssec.timer->parent;
-	evsched_cancel(scheduler, zone->dnssec.timer);
+	evsched_cancel(zone->dnssec.timer);
 
 	return KNOT_EOK;
 }
@@ -1749,22 +1739,15 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
 
 	// schedule
 
-	evsched_t *scheduler = zone->dnssec.timer->parent;
-	evsched_schedule(scheduler, zone->dnssec.timer, relative * 1000);
+	evsched_schedule(zone->dnssec.timer, relative * 1000);
 
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Schedule IXFR sync for given zone.
- */
-void zones_schedule_ixfr_sync(zone_t *zone, int dbsync_timeout)
+void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout)
 {
 	assert(zone);
-
-	evsched_t *sched = zone->ixfr_dbsync->parent;
-	evsched_schedule(sched, zone->ixfr_dbsync, dbsync_timeout * 1000);
-
+	evsched_schedule(zone->ixfr_dbsync, timeout * 1000);
 }
 
 int zones_verify_tsig_query(const knot_pkt_t *query,

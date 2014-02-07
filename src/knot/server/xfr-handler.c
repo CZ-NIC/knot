@@ -334,13 +334,13 @@ static int xfr_task_close(knot_ns_xfr_t *rq)
 	if (rq->type == XFR_TYPE_AIN && !rq->zone->contents) {
 		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
 		zone->xfr_in.bootstrap_retry += knot_random_uint32_t() % AXFR_BOOTSTRAP_RETRY;
-		if (zone->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME)
+		if (zone->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME) {
 			zone->xfr_in.bootstrap_retry = AXFR_RETRY_MAXTIME;
-		event_t *ev = zone->xfr_in.timer;
-		if (ev) {
-			evsched_cancel(ev->parent, ev);
-			evsched_schedule(ev->parent, ev, zone->xfr_in.bootstrap_retry);
 		}
+
+		evsched_cancel(zone->xfr_in.timer);
+		evsched_schedule(zone->xfr_in.timer, zone->xfr_in.bootstrap_retry);
+
 		log_zone_notice("%s Bootstrap failed, next attempt in %d seconds.\n",
 		                rq->msg, zone->xfr_in.bootstrap_retry / 1000);
 	}
@@ -873,7 +873,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		/* Sync zonefile immediately if configured. */
 		if (rq->type == XFR_TYPE_IIN && zone->conf->dbsync_timeout == 0) {
 			dbg_zones("%s: syncing zone immediately\n", __func__);
-			zones_schedule_ixfr_sync(zone, 0);
+			zones_schedule_zonefile_sync(zone, 0);
 		}
 
 		/* Update REFRESH/RETRY */

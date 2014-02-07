@@ -72,8 +72,6 @@ libknots_la_SOURCES =				\
 	common/errcode.h			\
 	common/errors.c				\
 	common/errors.h				\
-	common/evqueue.c			\
-	common/evqueue.h			\
 	common/evsched.c			\
 	common/evsched.h			\
 	common/fdset.c				\

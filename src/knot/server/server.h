@@ -115,7 +115,7 @@ typedef struct server_t {
 
 	/*! \brief Event scheduler. */
 	dt_unit_t *iosched;
-	evsched_t *sched;
+	evsched_t sched;
 
 	/*! \brief List of interfaces. */
 	ifacelist_t* ifaces;
