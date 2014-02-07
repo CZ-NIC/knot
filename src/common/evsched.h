@@ -68,12 +68,12 @@ typedef struct event {
  * Events are executed in their scheduled time.
  */
 typedef struct evsched {
-	pthread_mutex_t rl;        /*!< Event running lock. */
 	volatile bool running;     /*!< True if running. */
-	volatile event_t *last_ev; /*!< Last running event. */
-	pthread_mutex_t mx;        /*!< Event queue locking. */
-	pthread_cond_t notify;     /*!< Event queue notification. */
-	struct heap heap;          /*!< Events heap. */
+	volatile event_t *last_ev; /*!< Last (or current) running event. */
+	pthread_mutex_t run_lock;  /*!< Event running lock. */
+	pthread_mutex_t heap_lock; /*!< Event heap locking. */
+	pthread_cond_t notify;     /*!< Event heap notification. */
+	struct heap heap;          /*!< Event heap. */
 	void *ctx;                 /*!< Scheduler context. */
 } evsched_t;
 

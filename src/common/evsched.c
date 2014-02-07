@@ -66,8 +66,8 @@ int evsched_init(evsched_t *sched, void *ctx)
 	sched->ctx = ctx;
 
 	/* Initialize event calendar. */
-	pthread_mutex_init(&sched->rl, 0);
-	pthread_mutex_init(&sched->mx, 0);
+	pthread_mutex_init(&sched->run_lock, 0);
+	pthread_mutex_init(&sched->heap_lock, 0);
 	pthread_cond_init(&sched->notify, 0);
 	heap_init(&sched->heap, compare_event_heap_nodes, 0);
 
@@ -81,8 +81,8 @@ void evsched_deinit(evsched_t *sched)
 	}
 
 	/* Deinitialize event calendar. */
-	pthread_mutex_destroy(&sched->rl);
-	pthread_mutex_destroy(&sched->mx);
+	pthread_mutex_destroy(&sched->run_lock);
+	pthread_mutex_destroy(&sched->heap_lock);
 	pthread_cond_destroy(&sched->notify);
 
 	while (! EMPTY_HEAP(&sched->heap))
@@ -140,7 +140,7 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 
 	/* Lock calendar. */
 	evsched_t *sched = ev->sched;
-	pthread_mutex_lock(&sched->mx);
+	pthread_mutex_lock(&sched->heap_lock);
 
 	/* Make sure it's not already enqueued. */
 	int found = 0;
@@ -152,7 +152,7 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 
 	/* Unlock calendar. */
 	pthread_cond_broadcast(&sched->notify);
-	pthread_mutex_unlock(&sched->mx);
+	pthread_mutex_unlock(&sched->heap_lock);
 
 	return KNOT_EOK;
 }
@@ -168,10 +168,10 @@ static int evsched_try_cancel(evsched_t *sched, event_t *ev)
 	/* Make sure not running. If an event is starting, we race for this lock
 	 * and either win or lose. If we lose, we may find it in heap because
 	 * it rescheduled itself. Either way, it will be marked as last running. */
-	pthread_mutex_lock(&sched->rl);
+	pthread_mutex_lock(&sched->run_lock);
 	
 	/* Lock calendar. */
-	pthread_mutex_lock(&sched->mx);
+	pthread_mutex_lock(&sched->heap_lock);
 	
 	if ((found = heap_find(&sched->heap, ev))) {
 		heap_delete(&sched->heap, found);
@@ -185,10 +185,10 @@ static int evsched_try_cancel(evsched_t *sched, event_t *ev)
 
 	/* Unlock calendar. */
 	pthread_cond_broadcast(&sched->notify);
-	pthread_mutex_unlock(&sched->mx);
+	pthread_mutex_unlock(&sched->heap_lock);
 	
 	/* Enable running events. */
-	pthread_mutex_unlock(&sched->rl);
+	pthread_mutex_unlock(&sched->run_lock);
 
 	if (found > 0) {        /* Event canceled. */
 		return KNOT_EOK;
@@ -225,11 +225,11 @@ event_t* evsched_begin_process(evsched_t *sched)
 	}
 
 	/* Lock calendar. */
-	pthread_mutex_lock(&sched->mx);
+	pthread_mutex_lock(&sched->heap_lock);
 
 	while(1) {
 
-		/* Check event queue. */
+		/* Check event heap. */
 		if (!EMPTY_HEAP(&sched->heap)) {
 
 			/* Get current time. */
@@ -244,8 +244,8 @@ event_t* evsched_begin_process(evsched_t *sched)
 				sched->last_ev = next_ev;
 				sched->running = true;
 				heap_delmin(&sched->heap);
-				pthread_mutex_unlock(&sched->mx);
-				pthread_mutex_lock(&sched->rl);
+				pthread_mutex_unlock(&sched->heap_lock);
+				pthread_mutex_lock(&sched->run_lock);
 				return next_ev;
 			}
 
@@ -254,15 +254,15 @@ event_t* evsched_begin_process(evsched_t *sched)
 			struct timespec ts;
 			ts.tv_sec = next_ev->tv.tv_sec;
 			ts.tv_nsec = next_ev->tv.tv_usec * 1000L;
-			pthread_cond_timedwait(&sched->notify, &sched->mx, &ts);
+			pthread_cond_timedwait(&sched->notify, &sched->heap_lock, &ts);
 		} else {
 			/* Block until an event is scheduled. Unlock calendar.*/
-			pthread_cond_wait(&sched->notify, &sched->mx);
+			pthread_cond_wait(&sched->notify, &sched->heap_lock);
 		}
 	}
 
-	/* Unlock calendar, this shouldn't happen. */
-	pthread_mutex_unlock(&sched->mx);
+	/* Unlock heap, this shouldn't happen. */
+	pthread_mutex_unlock(&sched->heap_lock);
 	return NULL;
 }
 
@@ -274,7 +274,7 @@ int evsched_end_process(evsched_t *sched)
 
 	/* \note This enables event cancellation & running on next event. */
 	if(sched->running) {
-		if (pthread_mutex_unlock(&sched->rl) != 0) {
+		if (pthread_mutex_unlock(&sched->run_lock) != 0) {
 			return KNOT_ERROR;
 		}
 		sched->running = false; /* Mark as not running. */
