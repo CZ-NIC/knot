@@ -48,7 +48,7 @@ static volatile short sig_stopping = 0;
 static volatile short sig_integrity_check = 0;
 
 static void check_integrity(server_t *server) {
-	const knot_zonedb_t *zonedb = server->nameserver->zone_db;
+	const knot_zonedb_t *zonedb = server->zone_db;
 
 	knot_zonedb_iter_t it;
 	knot_zonedb_iter_begin(zonedb, &it);
@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 #ifdef INTEGRITY_CHECK
 			if (sig_integrity_check) {
 				sig_integrity_check = 0;
-				check_integrity(server);
+				check_integrity(&server);
 			}
 #endif /* INTEGRITY_CHECK */
 		}
