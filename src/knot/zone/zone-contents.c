@@ -165,7 +165,7 @@ static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
 
 	/* Create new additional nodes. */
 	uint16_t rdcount = knot_rrset_rdata_rr_count(rr);
-	rr->additional = malloc(rdcount * sizeof(knot_node_t));
+	rr->additional = malloc(rdcount * sizeof(knot_node_t*));
 	if (rr->additional == NULL) {
 		return KNOT_ENOMEM;
 	}
