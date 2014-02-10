@@ -110,6 +110,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	/* Create query processing parameter. */
 	struct process_query_param param = {0};
 	sockaddr_prep(&param.query_source);
+	param.query_socket = fd;
 	param.server = tcp->server;
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;

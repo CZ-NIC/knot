@@ -69,6 +69,7 @@ enum process_query_flag {
 struct process_query_param {
 	uint16_t   proc_flags;
 	sockaddr_t query_source;
+	int        query_socket;
 	server_t   *server;
 };
 
