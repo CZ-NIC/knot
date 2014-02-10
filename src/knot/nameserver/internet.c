@@ -577,16 +577,25 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 
 	int ret = KNOT_ERROR;
 
+
+	/* Authenticated denial of existence. */
 	switch (state) {
-	case HIT:    ret = nsec_prove_wildcards(pkt, qdata); break;
+	case HIT:    ret = KNOT_EOK; break;
 	case MISS:   ret = nsec_prove_nxdomain(pkt, qdata); break;
 	case NODATA: ret = nsec_prove_nodata(pkt, qdata); break;
 	case DELEG:  ret = nsec_prove_dp_security(pkt, qdata); break;
 	case TRUNC:  ret = KNOT_ESPACE; break;
-	case ERROR:  break;
+	case ERROR:  ret = KNOT_ERROR; break;
 	default:
 		assert(0);
 		break;
+	}
+
+	/* RFC4035 3.1.3 Prove visited wildcards.
+	 * Wildcard expansion applies for Name Error, Wildcard Answer and
+	 * No Data proofs if at one point the search expanded a wildcard node. */
+	if (ret == KNOT_EOK) {
+		ret = nsec_prove_wildcards(pkt, qdata);
 	}
 
 	/* RFC4035, section 3.1 RRSIGs for RRs in AUTHORITY are mandatory. */
