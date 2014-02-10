@@ -245,11 +245,6 @@ libknotd_la_SOURCES =				\
 	knot/server/zone-load.h			\
 	knot/server/zones.c			\
 	knot/server/zones.h			\
-	knot/stat/gatherer.c			\
-	knot/stat/gatherer.h			\
-	knot/stat/stat-common.h			\
-	knot/stat/stat.c			\
-	knot/stat/stat.h			\
 	knot/updates/acl.c			\
 	knot/updates/acl.h			\
 	knot/updates/changesets.c		\

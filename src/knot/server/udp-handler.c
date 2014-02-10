@@ -42,7 +42,6 @@
 #include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"
-#include "knot/stat/stat.h"
 #include "knot/server/server.h"
 #include "libknot/packet/wire.h"
 #include "libknot/consts.h"

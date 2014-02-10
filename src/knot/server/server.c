@@ -30,7 +30,6 @@
 #include "knot/server/zones.h"
 #include "knot/server/zone-load.h"
 #include "knot/conf/conf.h"
-#include "knot/stat/stat.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
