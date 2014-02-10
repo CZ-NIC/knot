@@ -35,9 +35,9 @@ struct axfr_proc {
 static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *state)
 {
 	int ret = KNOT_EOK;
+	int i = state->cur_rrset;
+	int rrset_count = knot_node_rrset_count(node);
 	unsigned flags = KNOT_PF_NOTRUNC;
-	unsigned i = state->cur_rrset;
-	unsigned rrset_count = knot_node_rrset_count(node);
 	const knot_rrset_t **rrset = knot_node_rrsets_no_copy(node);
 
 	/* Append all RRs. */
