@@ -75,24 +75,12 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 	return KNOT_EOK;
 }
 
-static bool to_nsec3_tree(const knot_rrset_t *rr)
-{
-	return rr->type == KNOT_RRTYPE_NSEC3 ||
-	       (rr->type == KNOT_RRTYPE_RRSIG &&
-	        knot_rdata_rrsig_type_covered(rr, 0) == KNOT_RRTYPE_NSEC3);
-}
-
 static int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr)
 {
 	assert(zl && rr);
 
 	knot_node_t *n = NULL;
-	int ret = KNOT_EOK;
-	if (!to_nsec3_tree(rr)) {
-		ret = knot_zone_contents_add_rr(zl->z, rr, &n);
-	} else {
-		ret = knot_zone_contents_add_nsec3_rr(zl->z, rr, &n);
-	}
+	int ret = knot_zone_contents_add_rr(zl->z, rr, &n);
 	if (ret < 0) {
 		return ret;
 	} else if (ret > 0) {

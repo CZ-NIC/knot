@@ -725,18 +725,17 @@ static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
 	return knot_node_add_rrset(*n, rr);
 }
 
-int knot_zone_contents_add_nsec3_rr(knot_zone_contents_t *z,
-                                    knot_rrset_t *rr, knot_node_t **n)
+static bool to_nsec3_tree(const knot_rrset_t *rr)
 {
-	const bool nsec3 = true;
-	return insert_rr(z, rr, n, nsec3);
+	return rr->type == KNOT_RRTYPE_NSEC3 ||
+	       (rr->type == KNOT_RRTYPE_RRSIG &&
+	        knot_rdata_rrsig_type_covered(rr, 0) == KNOT_RRTYPE_NSEC3);
 }
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
                               knot_rrset_t *rr, knot_node_t **n)
 {
-	const bool nsec3 = false;
-	return insert_rr(z, rr, n, nsec3);
+	return insert_rr(z, rr, n, to_nsec3_tree(rr));
 }
 
 int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,

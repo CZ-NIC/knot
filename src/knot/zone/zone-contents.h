@@ -133,8 +133,6 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
                                    const knot_rrset_t *rr,
                                    knot_node_t **node);
 
-int knot_zone_contents_add_nsec3_rr(knot_zone_contents_t *z,
-                                    knot_rrset_t *rr, knot_node_t **n);
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
                               knot_rrset_t *rr, knot_node_t **n);
 

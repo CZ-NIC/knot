@@ -815,7 +815,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, bool optional)
 		if (section->rrinfo[i].rrsigs) {
 			knot_rrset_t *synth_sig = NULL;
 			ret = knot_rrset_synth_rrsig(rr, section->rrinfo[i].rrsigs, &synth_sig, &pkt->mm);
-			if (ret != KNOT_EOK || ret != KNOT_ENOENT) {
+			if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 				break;
 			}
 			ret = knot_pkt_put(pkt, compr_hint, synth_sig, NULL, flags);
