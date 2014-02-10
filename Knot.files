@@ -20,7 +20,6 @@ patches/Makefile.am
 samples/Makefile.am
 src/Makefile.am
 src/common/array-sort.h
-src/common/atomic.h
 src/common/base32hex.c
 src/common/base32hex.h
 src/common/base64.c

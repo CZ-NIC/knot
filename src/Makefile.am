@@ -58,7 +58,6 @@ knsec3hash_SOURCES =				\
 # static: shared
 libknots_la_SOURCES =				\
 	common/array-sort.h			\
-	common/atomic.h				\
 	common/base32hex.c			\
 	common/base32hex.h			\
 	common/base64.c				\
