@@ -276,12 +276,6 @@ int axfr_process_answer(knot_ns_xfr_t *xfr)
 		// free the structure used for processing XFR
 		assert(constr_zone->rrsigs == NULL);
 		free(constr_zone);
-
-		// check zone integrity
-dbg_ns_exec_verb(
-		int errs = knot_zone_contents_integrity_check(zone);
-		dbg_ns_verb("Zone integrity check: %d errors.\n", errs);
-);
 	}
 
 	return ret;
