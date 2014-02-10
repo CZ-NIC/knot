@@ -238,6 +238,7 @@ event_t* evsched_begin_process(evsched_t *sched)
 
 			/* Get next event. */
 			event_t *next_ev = *((event_t**)HHEAD(&sched->heap));
+			assert(next_ev != NULL);
 
 			/* Immediately return. */
 			if (timercmp_ge(&dt, &next_ev->tv)) {
