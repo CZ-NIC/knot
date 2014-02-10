@@ -39,6 +39,11 @@ static int wildcard_visit(struct query_data *qdata, const knot_node_t *node, con
 	assert(qdata);
 	assert(node);
 
+	/* Already in the list. */
+	if (wildcard_has_visited(qdata, node)) {
+		return KNOT_EOK;
+	}
+
 	mm_ctx_t *mm = qdata->mm;
 	struct wildcard_hit *item = mm->alloc(mm->ctx, sizeof(struct wildcard_hit));
 	item->node = node;
@@ -439,12 +444,15 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 		/* keep encloser */
 		qdata->previous = NULL;
 
+		/* Follow expanded wildcard. */
+		int next_state = name_found(pkt, qdata);
+
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, qdata->encloser, qdata->name) != KNOT_EOK) {
-			return ERROR;
+		if (wildcard_visit(qdata, wildcard_node, qdata->name) != KNOT_EOK) {
+				next_state = ERROR;
 		}
 
-		return name_found(pkt, qdata);
+		return next_state;
 	}
 
 	/* Name is under DNAME, use it for substitution. */
@@ -501,11 +509,6 @@ static int solve_answer_section(int state, knot_pkt_t *pkt, struct query_data *q
 	/* Additional resolving for CNAME/DNAME chain. */
 	while (state == FOLLOW) {
 		state = solve_name(state, pkt, qdata);
-		/* Chain lead to NXDOMAIN, this is okay since
-		 * the first CNAME/DNAME is a valid answer. */
-		if (state == MISS) {
-			state = HIT;
-		}
 	}
 
 	return state;
