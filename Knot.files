@@ -50,8 +50,6 @@ src/common/hex.c
 src/common/hex.h
 src/common/hhash.c
 src/common/hhash.h
-src/common/latency.c
-src/common/latency.h
 src/common/lists.c
 src/common/lists.h
 src/common/log.c
