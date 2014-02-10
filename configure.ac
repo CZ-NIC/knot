@@ -145,11 +145,6 @@ AC_ARG_ENABLE([recvmmsg],
       [AC_DEFINE(HAVE_RECVMMSG, 1, [Define if struct mmsghdr and recvmmsg() exists.])])
     ])
 
-# Enable integrity check
-AC_ARG_ENABLE([integrity-check],
-    AS_HELP_STRING([--enable-integrity-check], [enable integrity check in knotd via SIGUSR1]),
-    [AC_DEFINE([INTEGRITY_CHECK], [1], [integrity check in knotd])])
-
 # Check for link time optimizations support and predictive commoning
 AC_ARG_ENABLE([lto],
     AS_HELP_STRING([--enable-lto=yes|no], [enable link-time optimizations, enable if not broken for some extra speed [default=no]]),

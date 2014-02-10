@@ -44,31 +44,6 @@ static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
 static volatile short sig_stopping = 0;
 
-#ifdef INTEGRITY_CHECK
-static volatile short sig_integrity_check = 0;
-
-static void check_integrity(server_t *server) {
-	const knot_zonedb_t *zonedb = server->zone_db;
-
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(zonedb, &it);
-	while(!knot_zonedb_iter_finished(&it)) {
-		zone_t *zone = knot_zonedb_iter_val(&it);
-		char *zname = knot_dname_to_str(zone->name);
-
-		log_server_info("Integrity check for zone %s\n", zname);
-
-		int ret = knot_zone_contents_integrity_check(zone->contents);
-		if (ret != 0) {
-			log_server_info("Integrity errors(%i)\n", ret);
-		}
-
-		free(zname);
-		knot_zonedb_iter_next(&it);
-	}
-}
-#endif /* INTEGRITY_CHECK */
-
 // Cleanup handler
 static int do_cleanup(server_t *server, char *configf, char *pidf);
 
@@ -97,13 +72,6 @@ void interrupt_handle(int s)
 			exit(1);
 		}
 	}
-#ifdef INTEGRITY_CHECK
-	// Start zone integrity check
-	if (s == SIGUSR1) {
-		sig_integrity_check = 1;
-		return;
-	}
-#endif /* INTEGRITY_CHECK */
 }
 
 void help(void)
@@ -365,9 +333,6 @@ int main(int argc, char **argv)
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
 		sigaction(SIGPIPE, &sa, NULL);
-#ifdef INTEGRITY_CHECK
-		sigaction(SIGUSR1, &sa, NULL);
-#endif /* INTEGRITY_CHECK */
 		sa.sa_flags = 0;
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
@@ -416,12 +381,6 @@ int main(int argc, char **argv)
 				sig_req_reload = 0;
 				server_reload(&server, config_fn);
 			}
-#ifdef INTEGRITY_CHECK
-			if (sig_integrity_check) {
-				sig_integrity_check = 0;
-				check_integrity(&server);
-			}
-#endif /* INTEGRITY_CHECK */
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
