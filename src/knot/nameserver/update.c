@@ -19,56 +19,51 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 #define UPDATE_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "UPDATE", msg)
 
-static int update_forward(struct query_data *qdata)
+static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	/*! \todo This will be implemented when RESPONSE and REQUEST processors
+	/*! \todo This will be reimplemented when RESPONSE and REQUEST processors
 	 *        are written. */
-#if 0
-	const zone_t* zone = qdata->zone;
-	knot_pkt_t *query = qdata->pkt;
-	const sockaddr_t *from = &qdata->param->query_source;
 
-	rcu_read_lock();
+	zone_t* zone = (zone_t *)qdata->zone;
+	knot_pkt_t *query = qdata->query;
 
 	/* Check transport type. */
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(zone);
-	unsigned flags = XFR_FLAG_UDP;
-	if (ttype == NS_TRANSPORT_TCP) {
-		flags = XFR_FLAG_TCP;
+	unsigned flags = XFR_FLAG_TCP;
+	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
+		flags = XFR_FLAG_UDP;
 	}
 
 	/* Prepare task. */
 	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_FORWARD, flags);
 	if (!rq) {
-		rcu_read_unlock();
-		return KNOT_ENOMEM;
+		return NS_PROC_FAIL;
 	}
-	xfr_task_setaddr(rq, &zd->xfr_in.master, &zd->xfr_in.via);
+	xfr_task_setaddr(rq, &zone->xfr_in.master, &zone->xfr_in.via);
 
 	/* Copy query originator data. */
-	rq->fwd_src_fd = fd;
-	memcpy(&rq->fwd_addr, from, sizeof(sockaddr_t));
+	rq->fwd_src_fd = qdata->param->query_socket;
+	memcpy(&rq->fwd_addr, &qdata->param->query_source, sizeof(sockaddr_t));
 	rq->packet_nr = knot_wire_get_id(query->wire);
 
 	/* Duplicate query to keep it in memory during forwarding. */
 	rq->query = knot_pkt_new(NULL, query->size, NULL);
 	if (!rq->query) {
 		xfr_task_free(rq);
-		rcu_read_unlock();
-		return KNOT_ENOMEM;
+		return NS_PROC_FAIL;
 	}
 	memcpy(rq->query->wire, query->wire, query->size);
+	rq->query->size = query->size;
 
 	/* Retain pointer to zone and issue. */
-	rcu_read_unlock();
-	int ret = xfr_enqueue(zd->server->xfr, rq);
+	xfrhandler_t *xfr = qdata->param->server->xfr;
+	int ret = xfr_enqueue(xfr, rq);
 	if (ret != KNOT_EOK) {
 		xfr_task_free(rq);
 	}
-#endif
 
-	qdata->rcode = KNOT_RCODE_NOTIMPL;
-	return NS_PROC_FAIL;
+	/* No immediate response. */
+	pkt->size = 0;
+	return NS_PROC_DONE;
 }
 
 static int update_prereq_check(struct query_data *qdata)
@@ -123,7 +118,7 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
 	zone_t *zone = (zone_t *)qdata->zone;
 	if (zone->xfr_in.has_master) {
-		return update_forward(qdata);
+		return update_forward(pkt, qdata);
 	}
 
 	/* Need valid transaction security. */

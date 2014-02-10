@@ -137,22 +137,16 @@ static int parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type)
 }
 
 /*! \brief Create forwarded query. */
-static int forward_packet(const knot_pkt_t *query,
-                          uint8_t *query_wire, size_t *size)
+static int forward_packet(const knot_pkt_t *query, knot_pkt_t *pkt)
 {
 	/* Forward UPDATE query:
 	 * assign a new packet id
 	 */
-	int ret = KNOT_EOK;
-	if (query->size > *size) {
-		return KNOT_ESPACE;
-	}
+	memcpy(pkt->wire, query->wire, query->size);
+	pkt->size = query->size;
+	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 
-	memcpy(query_wire, query->wire, query->size);
-	*size = query->size;
-	knot_wire_set_id(query_wire, knot_random_uint16_t());
-
-	return ret;
+	return KNOT_EOK;
 }
 
 /*! \brief Forwarded packet response. */
@@ -424,7 +418,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		ret = notify_create_request(zone, pkt);
 		break;
 	case XFR_TYPE_FORWARD:
-		ret = forward_packet(rq->query, rq->wire, &rq->wire_size);
+		ret = forward_packet(rq->query, pkt);
 		break;
 	default:
 		ret = KNOT_EINVAL;
