@@ -80,6 +80,10 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 	}
 
 	int name_size = knot_dname_size(zone->name);
+	if (name_size < 0) {
+		return KNOT_EINVAL;
+	}
+
 	return hhash_insert(db->hash, (const char*)zone->name, name_size, zone);
 }
 
