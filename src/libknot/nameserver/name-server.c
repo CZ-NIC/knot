@@ -927,8 +927,6 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
 	int ce_labels = knot_dname_labels(closest_encloser, NULL);
 	int qname_labels = knot_dname_labels(name, NULL);
 
-	assert(ce_labels < qname_labels);
-
 	// the common labels should match
 	assert(knot_dname_matched_labels(closest_encloser, name)
 	       == ce_labels);
@@ -970,7 +968,7 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 	// add RRSIG for the RRSet
 	if (res == KNOT_EOK && (rrset = knot_rrset_get_rrsigs(rrset)) != NULL
 	    && knot_rrset_rdata_rr_count(rrset)) {
-		res = knot_response_add_rrset_authority(resp, rrset, 0);
+		res = knot_response_add_rrset_authority(resp, rrset, KNOT_PF_CHECKDUP);
 	}
 
 	/*! \note TC bit is already set, if something went wrong. */
@@ -1909,7 +1907,8 @@ static int ns_answer_from_node(const knot_node_t *node,
 				return ret;
 			}
 
-			if (knot_dname_is_wildcard(node->owner)) {
+			/* Query for wildcard is not a RFC5155 7.2.6 'Wildcard Answer Response' */
+			if (!knot_dname_is_wildcard(qname) && knot_dname_is_wildcard(node->owner)) {
 				dbg_ns_verb("Putting NSEC/NSEC3 for wildcard"
 				            " NODATA\n");
 				ret = ns_put_nsec_nsec3_wildcard_nodata(node,
@@ -2086,31 +2085,6 @@ dbg_ns_exec_verb(
 	*qname = cname;
 
 	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Adds DNSKEY RRSet from the apex of a zone to the response.
- *
- * \param apex Zone apex node.
- * \param resp Response.
- */
-static int ns_add_dnskey(const knot_node_t *apex, knot_packet_t *resp)
-{
-	knot_rrset_t *rrset =
-		knot_node_get_rrset(apex, KNOT_RRTYPE_DNSKEY);
-
-	int ret = KNOT_EOK;
-
-	if (rrset != NULL) {
-		ret = knot_response_add_rrset_additional(resp, rrset, KNOT_PF_NOTRUNC);
-		if (ret == KNOT_EOK) {
-			ret = ns_add_rrsigs(rrset, resp, apex->owner,
-			              knot_response_add_rrset_additional, KNOT_PF_NOTRUNC);
-		}
-	}
-
-	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2326,16 +2300,6 @@ dbg_ns_exec_verb(
 	}
 	knot_response_set_aa(resp);
 	knot_response_set_rcode(resp, KNOT_RCODE_NOERROR);
-
-	// this is the only case when the servers answers from
-	// particular node, i.e. the only case when it may return SOA
-	// or NS records in Answer section
-	if (knot_packet_tc(resp) == 0 && DNSSEC_ENABLED
-	    && knot_query_dnssec_requested(knot_packet_query(resp))
-	    && node == knot_zone_contents_apex(zone)
-	    && (qtype == KNOT_RRTYPE_SOA || qtype == KNOT_RRTYPE_NS)) {
-		ret = ns_add_dnskey(node, resp);
-	}
 
 finalize:
 	if (ret == KNOT_EOK && knot_packet_tc(resp) == 0 && auth_soa) {
