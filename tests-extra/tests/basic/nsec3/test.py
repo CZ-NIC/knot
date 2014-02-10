@@ -56,6 +56,16 @@ resp = knot.dig("a.to-apex.example", "SOA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
+# Wildcard Expansion to apex (NODATA)
+resp = knot.dig("a.to-apex.example", "TXT", dnssec=True)
+resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
+resp.cmp(bind)
+
+# Wildcard Expansion to non-existent name 
+resp = knot.dig("a.to-nxdomain.example", "A", bufsize=1600, dnssec=True)
+resp.check(rcode="NXDOMAIN", flags="QR AA", eflags="DO")
+resp.cmp(bind)
+
 # B9. Direct wildcard query (positive)
 resp = knot.dig("*.w.example", "MX", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")

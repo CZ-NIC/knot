@@ -24,3 +24,4 @@ xx.example.	3600 IN HINFO	"KLH-10" "TOPS-20"
 xx.example.	3600 IN AAAA	2001:db8::f00:baaa
 x.w.example.	3600 IN MX	1 xx.example.
 *.to-apex.example. 3600 IN CNAME example. ; Wildcard expansion leading to apex
+*.to-nxdomain.example. 3600 IN CNAME nxdomain.example. ; Wildcard expansion leading to nonexistent name
