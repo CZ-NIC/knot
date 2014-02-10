@@ -343,17 +343,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 			return ERROR;
 		}
 		cname_rr = dname_cname_synth(cname_rr, qdata->name, &pkt->mm);
-		if (cname_rr) {
-			assert(0);
-			/* TODO need rrsigs? */
-			const knot_node_t *synth_node =
-				knot_zone_contents_find_node(qdata->zone->contents,
-				                             cname_rr->owner);
-			rrsigs = knot_node_rrset(synth_node, KNOT_RRTYPE_RRSIG);
-		} else {
-			rrsigs = NULL;
-		}
-		ret = put_rr(pkt, cname_rr, rrsigs, 0, KNOT_PF_FREE, qdata);
+		ret = put_rr(pkt, cname_rr, NULL, 0, KNOT_PF_FREE, qdata);
 		switch (ret) {
 		case KNOT_EOK:    break;
 		case KNOT_ESPACE: return TRUNC;

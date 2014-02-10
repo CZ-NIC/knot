@@ -691,6 +691,54 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
+static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
+                     bool nsec3)
+{
+	if (z == NULL || rr == NULL || n == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// check if the RRSet belongs to the zone
+	if (!knot_dname_is_equal(rr->owner, z->apex->owner)
+	    && !knot_dname_is_sub(rr->owner, z->apex->owner)) {
+		return KNOT_EOUTOFZONE;
+	}
+
+	int ret = KNOT_EOK;
+	if (*n == NULL) {
+		*n = nsec3 ? knot_zone_contents_get_nsec3_node(z, rr->owner) :
+		             knot_zone_contents_get_node(z, rr->owner);
+		if (*n == NULL) {
+			// Create new, insert
+			*n = knot_node_new(rr->owner, NULL, 0);
+			if (*n == NULL) {
+				return KNOT_ENOMEM;
+			}
+			ret = nsec3 ? knot_zone_contents_add_nsec3_node(z, *n, true, 0) :
+			              knot_zone_contents_add_node(z, *n, true, 0);
+			if (ret != KNOT_EOK) {
+				knot_node_free(n);
+			}
+		}
+	}
+
+	return knot_node_add_rrset(*n, rr);
+}
+
+int knot_zone_contents_add_nsec3_rr(knot_zone_contents_t *z,
+                                    knot_rrset_t *rr, knot_node_t **n)
+{
+	const bool nsec3 = true;
+	return insert_rr(z, rr, n, nsec3);
+}
+
+int knot_zone_contents_add_rr(knot_zone_contents_t *z,
+                              knot_rrset_t *rr, knot_node_t **n)
+{
+	const bool nsec3 = false;
+	return insert_rr(z, rr, n, nsec3);
+}
+
 int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
                                  knot_rrset_t *rrset, knot_node_t **node,
                                  knot_rrset_dupl_handling_t dupl)

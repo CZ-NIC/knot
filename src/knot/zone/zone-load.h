@@ -45,6 +45,13 @@ struct parser_context {
 
 typedef struct parser_context parser_context_t;
 
+typedef struct zone_loader {
+	knot_zone_contents_t *z;
+	err_handler_t *err_handler;
+	hattrie_t *lookup_tree;
+	int ret;
+} zone_loader_t;
+
 /*!
  * \brief Zone loader structure.
  */
@@ -55,7 +62,7 @@ typedef struct zloader_t
 	int semantic_checks;      /*!< Wanted level of semantic checks. */
 	err_handler_t *err_handler; /*!< Semantic checks error handler. */
 	file_loader_t *file_loader; /*!< Scanner's file loader. */
-	parser_context_t *context; /*!< Loader context. */
+	zone_loader_t *context; /*!< Loader context. */
 
 } zloader_t;
 

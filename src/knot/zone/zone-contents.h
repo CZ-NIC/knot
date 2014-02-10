@@ -28,7 +28,6 @@
 #define _KNOT_ZONE_CONTENTS_H_
 
 #include "knot/zone/node.h"
-#include "libknot/dname.h"
 #include "libknot/dnssec/nsec3.h"
 
 #include "knot/zone/zone-tree.h"
@@ -133,6 +132,11 @@ int knot_zone_contents_add_node(knot_zone_contents_t *contents,
 int knot_zone_contents_create_node(knot_zone_contents_t *contents,
                                    const knot_rrset_t *rr,
                                    knot_node_t **node);
+
+int knot_zone_contents_add_nsec3_rr(knot_zone_contents_t *z,
+                                    knot_rrset_t *rr, knot_node_t **n);
+int knot_zone_contents_add_rr(knot_zone_contents_t *z,
+                              knot_rrset_t *rr, knot_node_t **n);
 
 /*!
  * \brief Adds a RRSet to the given zone.
