@@ -70,6 +70,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
 	if (!zone) {
 		dbg_zones_verb("zones: zones_soa_timer() called "
 		               "with NULL zone\n");
+		return 0;
 	}
 
 	uint32_t ret = 0;
