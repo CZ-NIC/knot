@@ -131,14 +131,13 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 
 	/* Set socket options. */
 	int flag = 1;
-#ifndef DISABLE_IPV6
 	if (cfg_if->family == AF_INET6) {
 		/* Disable dual-stack for performance reasons. */
 		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
 			dbg_net("udp: failed to set IPV6_V6ONLY to socket, using default config\n");
 		}
 	}
-#endif
+
 	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
 	if (ret < 0) {
 		socket_close(sock);
@@ -167,13 +166,11 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	}
 
 	/* Set socket options. */
-#ifndef DISABLE_IPV6
 	if (cfg_if->family == AF_INET6) {
 		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
 			dbg_net("tcp: failed to set IPV6_V6ONLY to socket, using default config\n");
 		}
 	}
-#endif
 
 	/* accept() must not block */
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {

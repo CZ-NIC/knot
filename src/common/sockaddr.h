@@ -32,131 +32,76 @@
 #define __POSIX_VISIBLE = 200112
 #endif
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-/*! \brief Universal socket address. */
-typedef struct sockaddr_t {
-	union {
-		struct sockaddr_in addr4; /*!< IPv4 sockaddr. */
-#ifndef DISABLE_IPV6
-		struct sockaddr_in6 addr6; /*!< IPv6 sockaddr. */
-#endif
-	};
-	socklen_t len;              /*!< Length of used sockaddr. */
-	short prefix; /*!< Address prefix. */
-} sockaddr_t;
+#include <stdint.h>
 
 /* Subnet maximum prefix length. */
 #define IPV4_PREFIXLEN 32
 #define IPV6_PREFIXLEN 128
 
-/*! \brief Maximum address length in string format. */
-#ifdef DISABLE_IPV6
-#define SOCKADDR_STRLEN INET_ADDRSTRLEN
-#else
-#define SOCKADDR_STRLEN INET6_ADDRSTRLEN
-#endif
+/* Address string "address[@port]" maximum length. */
+#define SOCKADDR_STRLEN_EXT (1 + 6) /* '@', 5 digits number, \0 */
+#define SOCKADDR_STRLEN (sizeof(struct sockaddr_un) + SOCKADDR_STRLEN_EXT)
 
 /*!
- * \brief Initialize address structure.
+ * \brief Calculate current structure length based on address family.
  *
- * Members ptr and len will be initialized to correct address family.
+ * \param ss Socket address storage.
  *
- * \param addr Socket address structure.
- * \param af Requested address family.
- *
- * \retval 0 on success.
- * \retval -1 on unsupported address family (probably INET6).
+ * \return number of bytes or error code
  */
-int sockaddr_init(sockaddr_t *addr, int af);
-
-/*!
- * \brief Return true value if sockaddr is valid.
- *
- * \param addr Socket address structure.
- *
- * \retval true on succes.
- * \retval false otherwise.
- */
-int sockaddr_isvalid(sockaddr_t *addr);
-
-/*!
- * \brief Copy socket address structure.
- *
- * \param dst Target address structure.
- * \param src Source address structure.
- *
- * \retval 0 on success.
- * \retval -1 on error.
- */
-int sockaddr_copy(sockaddr_t *dst, const sockaddr_t *src);
+int sockaddr_len(const struct sockaddr_storage *ss);
 
 /*!
  * \brief Set address and port.
  *
- * \param dst Target address structure.
+ * \param ss Socket address storage.
  * \param family Address family.
- * \param addr IP address in string format.
+ * \param straddr IP address in string format.
  * \param port Port.
  *
- * \retval 0 if addr is not valid address in string format.
- * \retval positive value in case of success.
- * \retval -1 on error.
- * \see inet_pton(3)
+ * \return KNOT_EOK on success or an error code
  */
-int sockaddr_set(sockaddr_t *dst, int family, const char* addr, int port);
-
-/*!
- * \brief Set address prefix.
- *
- * \param dst Target address structure.
- * \param prefix Prefix.
- *
- * \retval 0 if success.
- * \retval -1 on error.
- */
-int sockaddr_setprefix(sockaddr_t *dst, int prefix);
+int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port);
 
 /*!
  * \brief Return string representation of socket address.
  *
- * \param addr Socket address structure.
- * \param dst Destination for string representation.
- * \param size Maximum number of written bytes.
+ * \note String format: <address>[@<port>], f.e. '127.0.0.1@53'
  *
- * \retval 0 on success.
- * \retval -1 on invalid parameters.
+ * \param ss Socket address storage.
+ * \param buf Destination for string representation.
+ * \param maxlen Maximum number of written bytes.
+ *
+ * \return EOK on success, error code on failure
  */
-int sockaddr_tostr(const sockaddr_t *addr, char *dst, size_t size);
+int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen);
 
 /*!
  * \brief Return port number from address.
  *
- * \param addr Socket address structure.
+ * \param ss Socket address storage.
  *
- * \retval Port number on success.
- * \retval -1 on errors.
+ * \return port number or error code
  */
-int sockaddr_portnum(const sockaddr_t *addr);
+int sockaddr_port(const struct sockaddr_storage *ss);
 
 /*!
- * \brief Return socket address family.
- * \param addr Socket address structure.
- * \return address family
+ * \brief Set port number.
+ *
+ * \param ss Socket address storage.
+ *
  */
-int sockaddr_family(const sockaddr_t *addr);
-
-/*!
- * \brief Prepare to maximum largest size.
- * \return KNOT_EOK
- */
-void sockaddr_prep(sockaddr_t *addr);
+void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port);
 
 /*!
  * \brief Get host FQDN address.
- * \retval hostname string
- * \retval NULL on error
+ *
+ * \return hostname string or NULL
  */
 char *sockaddr_hostname(void);
 

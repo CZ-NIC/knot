@@ -434,14 +434,12 @@ static int conf_process(conf_t *conf)
 	if (conf->gid < 0) conf->gid = getgid();
 
 	/* Build remote control ACL. */
-	sockaddr_t addr;
 	conf_remote_t *r = NULL;
 	WALK_LIST(r, conf->ctl.allow) {
 		conf_iface_t *i = r->remote;
-		sockaddr_init(&addr, -1);
-		sockaddr_set(&addr, i->family, i->address, 0);
-		sockaddr_setprefix(&addr, i->prefix);
-		acl_insert(conf->ctl.acl, &addr, i->key);
+		struct sockaddr_storage ss;
+		sockaddr_set(&ss, i->family, i->address, 0);
+		acl_insert(conf->ctl.acl, &ss, i->prefix, i->key);
 	}
 
 	return ret;

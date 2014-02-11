@@ -111,7 +111,6 @@ static void conf_start_remote(void *scanner, char *remote)
 	memset(this_remote, 0, sizeof(conf_iface_t));
 	this_remote->name = remote;
 	add_tail(&new_config->remotes, &this_remote->n);
-	sockaddr_init(&this_remote->via, -1);
 	++new_config->remotes_count;
 }
 

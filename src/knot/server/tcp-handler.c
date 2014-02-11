@@ -72,32 +72,23 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	assert(set && i < set->n && i >= 0);
 
 	int fd = set->pfd[i].fd;
-	char r_addr[SOCKADDR_STRLEN] = { '\0' };
-	int r_port = 0;
-	struct sockaddr_storage addr;
-	socklen_t len = sizeof(addr);
-	memset(&addr, 0, len);
-	if (getpeername(fd, (struct sockaddr*)&addr, &len) < 0) {
+
+	struct sockaddr_storage ss;
+	socklen_t len = sizeof(struct sockaddr_storage);
+	memset(&ss, 0, len);
+	if (getpeername(fd, (struct sockaddr*)&ss, &len) < 0) {
 		dbg_net("tcp: sweep getpeername() on invalid socket=%d\n", fd);
 		return FDSET_SWEEP;
 	}
 
 	/* Translate */
-	if (addr.ss_family == AF_INET) {
-	    struct sockaddr_in *s = (struct sockaddr_in *)&addr;
-	    r_port = ntohs(s->sin_port);
-	    inet_ntop(AF_INET, &s->sin_addr, r_addr, sizeof(r_addr));
-	} else {
-#ifndef DISABLE_IPV6
-	    struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
-	    r_port = ntohs(s->sin6_port);
-	    inet_ntop(AF_INET6, &s->sin6_addr, r_addr, sizeof(r_addr));
-#endif
-	}
+	char addr_str[SOCKADDR_STRLEN] = {0};
+	sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
 
-	log_server_notice("Connection with '%s@%d' was terminated due to "
-	                  "inactivity.\n", r_addr, r_port);
-	close(fd);
+	log_server_notice("Connection '%s' was terminated due to inactivity.\n",
+	                  addr_str);
+
+	socket_close(fd);
 	return FDSET_SWEEP;
 }
 
@@ -108,25 +99,26 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
                       struct iovec *rx, struct iovec *tx)
 {
 	/* Create query processing parameter. */
+	struct sockaddr_storage ss;
+	memset(&ss, 0, sizeof(struct sockaddr_storage));
 	struct process_query_param param = {0};
-	sockaddr_prep(&param.query_source);
 	param.query_socket = fd;
+	param.query_source = &ss;
 	param.server = tcp->server;
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Receive data. */
-	int ret = tcp_recv(fd, rx->iov_base, rx->iov_len, &param.query_source);
+	int ret = tcp_recv(fd, rx->iov_base, rx->iov_len, (struct sockaddr *)&ss);
 	if (ret <= 0) {
 		dbg_net("tcp: client on fd=%d disconnected\n", fd);
 		if (ret == KNOT_EAGAIN) {
-			char r_addr[SOCKADDR_STRLEN];
-			sockaddr_tostr(&param.query_source, r_addr, sizeof(r_addr));
-			int r_port = sockaddr_portnum(&param.query_source);
 			rcu_read_lock();
-			log_server_warning("Couldn't receive query from '%s@%d'"
+			char addr_str[SOCKADDR_STRLEN] = {0};
+			sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
+			log_server_warning("Couldn't receive query from '%s'"
 			                  " within the time limit of %ds.\n",
-			                   r_addr, r_port, conf()->max_conn_idle);
+			                   addr_str, conf()->max_conn_idle);
 			rcu_read_unlock();
 		}
 		return KNOT_ECONNREFUSED;
@@ -224,7 +216,7 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen)
 	return msglen; /* Do not count the size prefix. */
 }
 
-int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
+int tcp_recv(int fd, uint8_t *buf, size_t len, struct sockaddr *addr)
 {
 	/* Flags. */
 	int flags = MSG_WAITALL;
@@ -255,7 +247,8 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr)
 
 	/* Get peer name. */
 	if (addr) {
-		if (getpeername(fd, (struct sockaddr *)addr, &addr->len) < 0) {
+		socklen_t addrlen = sizeof(struct sockaddr_storage);
+		if (getpeername(fd, addr, &addrlen) < 0) {
 			return KNOT_EMALF;
 		}
 	}

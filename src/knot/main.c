@@ -337,7 +337,7 @@ int main(int argc, char **argv)
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 		/* Bind to control interface. */
-		uint8_t buf[SOCKET_MTU_SZ];
+		uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 		size_t buflen = sizeof(buf);
 		int remote = -1;
 		if (conf()->ctl.iface != NULL) {

@@ -85,8 +85,8 @@ typedef struct zone_t {
 	/*! \brief XFR-IN scheduler. */
 	struct {
 		acl_t          *acl;      /*!< ACL for xfr-in.*/
-		sockaddr_t      master;   /*!< Master server for xfr-in.*/
-		sockaddr_t      via;      /*!< Master server transit interface.*/
+		struct sockaddr_storage master;   /*!< Master server for xfr-in.*/
+		struct sockaddr_storage via;      /*!< Master server transit interface.*/
 		knot_tsig_key_t tsig_key; /*!< Master TSIG key. */
 		event_t *timer;           /*!< Timer for REFRESH/RETRY. */
 		event_t *expire;          /*!< Timer for EXPIRE. */

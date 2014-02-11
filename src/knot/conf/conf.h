@@ -72,7 +72,7 @@ typedef struct conf_iface_t {
 	int port;             /*!< Port number for this interface */
 	int family;           /*!< Address family. */
 	knot_tsig_key_t *key; /*!< TSIG key (only valid for remotes). */
-	sockaddr_t  via;      /*!< Used for remotes to specify qry endpoint.*/
+	struct sockaddr_storage via;      /*!< Used for remotes to specify qry endpoint.*/
 } conf_iface_t;
 
 /*!

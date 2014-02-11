@@ -76,7 +76,7 @@ int remote_poll(int r);
  * \return client TCP socket if success.
  * \return KNOT_ECONNREFUSED if fails to receive command.
  */
-int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen);
+int remote_recv(int r, struct sockaddr *a, uint8_t* buf, size_t *buflen);
 
 /*!
  * \brief Parse a RC command.

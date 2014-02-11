@@ -885,7 +885,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 
 /*----------------------------------------------------------------------------*/
 
-static int save_transferred_zone(knot_zone_contents_t *zone, const sockaddr_t *from, const char *fname)
+static int save_transferred_zone(knot_zone_contents_t *zone, const struct sockaddr_storage *from, const char *fname)
 {
 	assert(zone != NULL && fname != NULL);
 
@@ -1034,12 +1034,10 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 
 int zones_process_response(server_t *server,
                            int exp_msgid,
-                           sockaddr_t *from,
                            knot_pkt_t *packet, uint8_t *response_wire,
                            size_t *rsize)
 {
-	if (!packet || !rsize || server == NULL || from == NULL ||
-	    response_wire == NULL) {
+	if (!packet || !rsize || server == NULL || response_wire == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1549,7 +1547,7 @@ int zones_schedule_notify(zone_t *zone, server_t *server)
 		}
 
 		/* Parse server address. */
-		sockaddr_t addr;
+		struct sockaddr_storage addr;
 		sockaddr_set(&addr, cfg_if->family, cfg_if->address, cfg_if->port);
 		xfr_task_setaddr(rq, &addr, &cfg_if->via);
 		rq->data = (void *)((long)cfg->notify_retries);

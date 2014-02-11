@@ -450,7 +450,7 @@ int remote_poll(int r)
 	return fdset_pselect(r + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 
-int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen)
+int remote_recv(int r, struct sockaddr *a, uint8_t* buf, size_t *buflen)
 {
 	int c = tcp_accept(r);
 	if (c < 0) {
@@ -605,11 +605,11 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 	}
 
 	/* Initialize remote party address. */
-	sockaddr_t addr;
-	sockaddr_prep(&addr);
+	struct sockaddr_storage ss;
+	memset(&ss, 0, sizeof(struct sockaddr_storage));
 
 	/* Accept incoming connection and read packet. */
-	int client = remote_recv(sock, &addr, pkt->wire, &buflen);
+	int client = remote_recv(sock, (struct sockaddr *)&ss, pkt->wire, &buflen);
 	if (client < 0) {
 		dbg_server("remote: couldn't receive query = %d\n", client);
 		knot_pkt_free(&pkt);
@@ -623,22 +623,21 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 	if (ret == KNOT_EOK && ctl_if->family != AF_UNIX) {
 
 		/* Check ACL list. */
-		char straddr[SOCKADDR_STRLEN];
-		sockaddr_tostr(&addr, straddr, sizeof(straddr));
-		int rport = sockaddr_portnum(&addr);
+		char addr_str[SOCKADDR_STRLEN] = {0};
+		sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
 		knot_tsig_key_t *tsig_key = NULL;
 		const knot_dname_t *tsig_name = NULL;
 		if (pkt->tsig_rr) {
 			tsig_name = pkt->tsig_rr->owner;
 		}
-		acl_match_t *match = acl_find(conf()->ctl.acl, &addr, tsig_name);
+		acl_match_t *match = acl_find(conf()->ctl.acl, &ss, tsig_name);
 		knot_rcode_t ts_rc = 0;
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
 		if (match == NULL) {
-			log_server_warning("Denied remote control for '%s@%d' "
+			log_server_warning("Denied remote control for '%s' "
 			                   "(doesn't match ACL).\n",
-			                   straddr, rport);
+			                   addr_str);
 			remote_senderr(client, pkt->wire, pkt->size);
 			ret = KNOT_EACCES;
 			goto finish;
@@ -649,9 +648,9 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		/* Check TSIG. */
 		if (tsig_key) {
 			if (pkt->tsig_rr == NULL) {
-				log_server_warning("Denied remote control for '%s@%d' "
+				log_server_warning("Denied remote control for '%s' "
 				                   "(key required).\n",
-				                   straddr, rport);
+				                   addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
 				goto finish;
@@ -659,9 +658,9 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 			ret = zones_verify_tsig_query(pkt, tsig_key, &ts_rc,
 			                              &ts_trc, &ts_tmsigned);
 			if (ret != KNOT_EOK) {
-				log_server_warning("Denied remote control for '%s@%d' "
+				log_server_warning("Denied remote control for '%s' "
 				                   "(key verification failed).\n",
-				                   straddr, rport);
+				                   addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
 				goto finish;

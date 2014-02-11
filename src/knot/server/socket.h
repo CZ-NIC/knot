@@ -34,12 +34,7 @@
 #define _KNOTD_SOCKET_H_
 
 /* POSIX only. */
-#include <sys/types.h>
-#include <sys/socket.h>
 #include "common/sockaddr.h"
-
-/*! \brief Socket-related constants. */
-#define SOCKET_MTU_SZ 65535 /*!< Maximum MTU size. */
 
 /*!
  * \brief Create socket.
@@ -87,7 +82,6 @@ int socket_connect(int fd, int family, const char *addr, unsigned short port);
  * \retval KNOT_EACCES process does not have appropriate privileges.
  * \retval KNOT_EADDRINUSE address already in use.
  * \retval KNOT_ENOMEM out of memory error.
- * \retval KNOT_ENOIPV6 IPv6 support is not available.
  * \retval KNOT_ERROR unspecified error.
  */
 int socket_bind(int fd, int family, const char *addr, unsigned short port);

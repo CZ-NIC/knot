@@ -73,7 +73,7 @@ int tcp_send(int fd, uint8_t *msg, size_t msglen);
  * \retval KNOT_ERROR on error.
  * \retval KNOT_ENOMEM on potential buffer overflow.
  */
-int tcp_recv(int fd, uint8_t *buf, size_t len, sockaddr_t *addr);
+int tcp_recv(int fd, uint8_t *buf, size_t len, struct sockaddr *addr);
 
 /*!
  * \brief TCP handler thread runnable.
