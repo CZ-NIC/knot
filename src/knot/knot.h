@@ -40,9 +40,6 @@
 #define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */
 #define RECVMMSG_BATCHLEN 64 /*!< \brief Define for recvmmsg() batch size. */
 
-///*! \brief If defined, the statistics module will be enabled. */
-//#define STAT_COMPILE
-
 /* Workarounds for clock_gettime() not available on some platforms. */
 #ifdef HAVE_CLOCK_GETTIME
 #define time_now(x) clock_gettime(CLOCK_MONOTONIC, (x))
