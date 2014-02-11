@@ -35,7 +35,7 @@
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
-#include "knot/zone/zone-load.h"
+#include "knot/server/zone-load.h"
 #include "knot/zone/estimator.h"
 
 /*! \brief Controller flags. */
@@ -672,29 +672,15 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Create zone loader context. */
-		zloader_t *l = NULL;
-		int ret = knot_zload_open(&l, zone);
-		if (ret != KNOT_EOK) {
-			log_zone_error("Could not open zone %s (%s).\n",
-			               zone->name, knot_strerror(ret));
-			knot_zload_close(l);
-			rc = 1;
-			continue;
-		}
-
-		zone_t *z = knot_zload_load(l);
-		if (z == NULL) {
-			log_zone_error("Loading of zone %s failed.\n",
-			               zone->name);
-			knot_zload_close(l);
+		zone_t *loaded_zone = load_zone_file(zone);
+		if (loaded_zone == NULL) {
 			rc = 1;
 			continue;
 		}
 
 		log_zone_info("Zone %s OK.\n", zone->name);
 		rem_node((node_t *)zone);
-		zone_free(&z);
-		knot_zload_close(l);
+		zone_free(&loaded_zone);
 	}
 
 	return rc;

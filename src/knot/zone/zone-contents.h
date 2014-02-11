@@ -85,8 +85,7 @@ typedef int (*knot_zone_contents_apply_cb_t)(knot_node_t *node, void *data);
 
 /*----------------------------------------------------------------------------*/
 
-knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             struct zone_t *zone);
+knot_zone_contents_t *knot_zone_contents_new(const knot_dname_t *apex_name);
 
 int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents);
 int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents);

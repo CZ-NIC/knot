@@ -46,7 +46,7 @@ void create_root_zone(server_t *server, mm_ctx_t *mm)
 	conf->name = strdup(".");
 
 	zone_t *root = zone_new(conf);
-	zone_create_contents(root);
+	root->contents = knot_zone_contents_new(root->name);
 
 	knot_dname_t *root_name = knot_dname_copy(root->name);
 	knot_rrset_t *soa_rrset = knot_rrset_new(root_name,

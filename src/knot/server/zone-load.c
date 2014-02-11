@@ -85,7 +85,7 @@ static zone_t *bootstrap_zone(conf_zone_t *conf)
 
 	bool bootstrap = !EMPTY_LIST(conf->acl.xfr_in);
 	if (!bootstrap) {
-		return NULL;
+		return load_zone_file(conf); /* No master for this zone, fallback. */
 	}
 
 	zone_t *new_zone = zone_new(conf);
@@ -98,66 +98,50 @@ static zone_t *bootstrap_zone(conf_zone_t *conf)
 	return new_zone;
 }
 
-/*!
- * \brief Load zone.
- *
- * \param conf Zone configuration.
- *
- * \return Loaded zone, NULL in case of error.
- */
-static zone_t *load_zone(conf_zone_t *conf)
+zone_t *load_zone_file(conf_zone_t *conf)
 {
 	assert(conf);
 
-	zloader_t *zl = NULL;
-	zone_t *zone = NULL;
-
 	/* Open zone file for parsing. */
-	switch (knot_zload_open(&zl, conf)) {
-	case KNOT_EOK:
-		break;
-	case KNOT_EACCES:
-		log_zone_error("No access/permission to zone file '%s'.\n", conf->file);
-		knot_zload_close(zl);
-		return NULL;
-	default:
-		log_zone_error("Failed to load zone file '%s'\n", conf->file);
-		knot_zload_close(zl);
+	zloader_t zl;
+	int ret = zonefile_open(&zl, conf);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Failed to open zone file '%s': %s\n",
+		               conf->file, knot_strerror(ret));
 		return NULL;
 	}
 
-	/* Check the source file */
-	assert(zl != NULL);
-	zone = knot_zload_load(zl);
-	if (!zone) {
-		log_zone_error("Zone '%s' could not be loaded.\n", conf->name);
-		knot_zload_close(zl);
+	struct stat st;
+	if (stat(conf->file, &st) < 0) {
+		/* Go silently and reset mtime to 0. */
+		memset(&st, 0, sizeof(struct stat));
+	}
+
+	/* Load the zone contents. */
+	knot_zone_contents_t *zone_contents = zonefile_load(&zl);
+	zonefile_close(&zl);
+
+	/* Check the loader result. */
+	if (zone_contents == NULL) {
+		log_zone_error("Failed to load zone file '%s'.\n", conf->file);
 		return NULL;
 	}
 
-	/* Check if loaded origin matches. */
-	knot_dname_t *dname_req = NULL;
-	dname_req = knot_dname_from_str(conf->name);
-	if (knot_dname_cmp(zone->name, dname_req) != 0) {
-		log_zone_error("Zone '%s': mismatching origin in the zone file.\n",
-		               conf->name);
-		zone_free(&zone);
+	/* Create the new zone. */
+	zone_t *zone = zone_new((conf_zone_t *)conf);
+	if (zone == NULL) {
+		log_zone_error("Failed to create zone '%s': %s\n",
+		               conf->name, knot_strerror(KNOT_ENOMEM));
+		knot_zone_contents_deep_free(&zone_contents);
 		return NULL;
-	} else {
-		/* Save the timestamp from the zone db file. */
-		struct stat st;
-		if (stat(conf->file, &st) < 0) {
-			dbg_zones("zones: failed to stat() zone db, "
-				  "something is seriously wrong\n");
-			zone_free(&zone);
-			return NULL;
-		} else {
-			zone->zonefile_mtime = st.st_mtime;
-			zone->zonefile_serial = knot_zone_serial(zone->contents);
-		}
 	}
-	knot_dname_free(&dname_req);
-	knot_zload_close(zl);
+
+	/* Link zone contents to zone. */
+	zone->contents = zone_contents;
+
+	/* Save the timestamp from the zone db file. */
+	zone->zonefile_mtime = st.st_mtime;
+	zone->zonefile_serial = knot_zone_serial(zone->contents);
 
 	return zone;
 }
@@ -237,7 +221,7 @@ static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf, server_t *server
 		break;
 	case ZONE_STATUS_FOUND_NEW:
 	case ZONE_STATUS_FOUND_UPDATED:
-		new_zone = load_zone(conf);
+		new_zone = load_zone_file(conf);
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
 		new_zone = preserve_zone(conf, old_zone);
@@ -520,7 +504,7 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 /*!
  * \brief Update zone database according to configuration.
  */
-int zones_update_db_from_config(const conf_t *conf, struct server_t *server)
+int load_zones_from_config(const conf_t *conf, struct server_t *server)
 {
 	/* Check parameters */
 	if (conf == NULL || server == NULL) {

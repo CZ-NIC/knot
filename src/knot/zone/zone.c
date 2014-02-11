@@ -262,27 +262,6 @@ zone_t* zone_new(conf_zone_t *conf)
 	return zone;
 }
 
-int zone_create_contents(zone_t *zone)
-{
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-
-	knot_node_t *apex = knot_node_new(zone->name, NULL, 0);
-	if (!apex) {
-		return KNOT_ENOMEM;
-	}
-
-	knot_zone_contents_t *contents = knot_zone_contents_new(apex, zone);
-	if (!contents) {
-		knot_node_free(&apex);
-		return KNOT_ENOMEM;
-	}
-
-	zone->contents = contents;
-	return KNOT_EOK;
-}
-
 void zone_free(zone_t **zone_ptr)
 {
 	if (zone_ptr == NULL || *zone_ptr == NULL) {

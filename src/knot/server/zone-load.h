@@ -31,6 +31,15 @@
 struct server_t;
 
 /*!
+ * \brief Load zone from zone file.
+ *
+ * \param conf Zone configuration.
+ *
+ * \return Loaded zone, NULL in case of error.
+ */
+zone_t *load_zone_file(conf_zone_t *conf);
+
+/*!
  * \brief Update zone database according to configuration.
  *
  * Creates a new database, copies references those zones from the old database
@@ -50,7 +59,7 @@ struct server_t;
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_update_db_from_config(const conf_t *conf, struct server_t *server);
+int load_zones_from_config(const conf_t *conf, struct server_t *server);
 
 #endif // _KNOTD_ZONE_LOAD_H_
 
