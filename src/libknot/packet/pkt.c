@@ -504,7 +504,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, c
 	rrinfo->pos = pkt->size;
 	rrinfo->flags = flags;
 	rrinfo->compress_ptr[0] = compr_hint;
-	rrinfo->rrsigs = rrsigs;
+	rrinfo->rrsigs = rr->type != KNOT_RRTYPE_RRSIG ? rrsigs : NULL;
 	pkt->rr[pkt->rrset_count] = rr;
 
 	/* Check for double insertion. */

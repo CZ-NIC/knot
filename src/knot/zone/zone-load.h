@@ -47,8 +47,8 @@ typedef struct parser_context parser_context_t;
 
 typedef struct zone_loader {
 	knot_zone_contents_t *z;
-	err_handler_t *err_handler;
 	hattrie_t *lookup_tree;
+	knot_node_t *last_node;
 	int ret;
 } zone_loader_t;
 
@@ -94,6 +94,12 @@ knot_zone_t *knot_zload_load(zloader_t *loader);
  * \param loader Zone loader instance.
  */
 void knot_zload_close(zloader_t *loader);
+
+knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin,
+                                             knot_zone_t *zone);
+knot_zone_t *create_zone_from_name(const char *origin);
+
+int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr);
 
 void process_error(const scanner_t *scanner);
 

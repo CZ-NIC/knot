@@ -243,7 +243,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 			}
 		}
 
-		result = knot_rrset_add_rr_from_rrset(to_remove, rrsigs, i);
+		result = knot_rrset_add_rr_from_rrset(to_remove, rrsigs, i, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -709,7 +709,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 			}
 		}
 
-		result = knot_rrset_add_rr_from_rrset(to_remove, dnskeys, i);
+		result = knot_rrset_add_rr_from_rrset(to_remove, dnskeys, i, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -858,7 +858,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 			continue;
 		}
 
-		result = knot_rrset_add_rr_from_rrset(new_dnskeys, dnskeys, i);
+		result = knot_rrset_add_rr_from_rrset(new_dnskeys, dnskeys, i, NULL);
 		if (result != KNOT_EOK) {
 			goto fail;
 		}

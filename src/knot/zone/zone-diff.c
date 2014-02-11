@@ -324,7 +324,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			       knot_rrset_type(rrset1),
 			       knot_dname_to_str(rrset1->owner));
 			/* We'll copy index 'i' into 'changes' RRSet. */
-			ret = knot_rrset_add_rr_from_rrset(*changes, rrset1, i);
+			ret = knot_rrset_add_rr_from_rrset(*changes, rrset1, i, NULL);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_rdata: Could not"
 				             " add RR to RRSet (%s).\n",

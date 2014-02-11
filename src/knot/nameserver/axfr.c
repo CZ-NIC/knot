@@ -41,6 +41,9 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
+		if (rrset[i]->type == KNOT_RRTYPE_SOA) {
+			continue;
+		}
 		ret = knot_pkt_put(pkt, 0, rrset[i], NULL, flags);
 
 		/* If something failed, remember the current RR for later. */

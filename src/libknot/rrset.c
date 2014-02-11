@@ -1842,7 +1842,7 @@ static int knot_rrset_rdata_reset(knot_rrset_t *rrset)
 }
 
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
-                                 size_t rdata_pos)
+                                 size_t rdata_pos, mm_ctx_t *mm)
 {
 	if (dest == NULL || source == NULL ||
 	    rdata_pos >= source->rdata_count) {
@@ -1852,7 +1852,7 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 	/* Get size of RDATA to be copied. */
 	uint16_t item_size = rrset_rdata_item_size(source, rdata_pos);
 	/* Reserve space in dest RRSet. */
-	uint8_t *rdata = knot_rrset_create_rdata(dest, item_size, NULL);
+	uint8_t *rdata = knot_rrset_create_rdata(dest, item_size, mm);
 	if (rdata == NULL) {
 		dbg_rrset("rr: add_rr_from_rrset: Could not create RDATA.\n");
 		return KNOT_ERROR;
@@ -1886,7 +1886,7 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 		ret = knot_rrset_remove_rr(from, what, i);
 		if (ret == KNOT_EOK) {
 			/* RR was removed, can be added to 'return' RRSet. */
-			ret = knot_rrset_add_rr_from_rrset(return_rr, what, i);
+			ret = knot_rrset_add_rr_from_rrset(return_rr, what, i, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_deep_free(&return_rr, 0, NULL);
 				dbg_xfrin("xfr: Could not add RR (%s).\n",
@@ -1957,14 +1957,14 @@ int rrset_additional_needed(uint16_t rrtype)
 }
 
 static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
-                              const knot_rrset_t *rrsigs)
+                              const knot_rrset_t *rrsigs, mm_ctx_t *mm)
 {
 	for (size_t i = 0; i < rrsigs->rdata_count; ++i) {
 		const uint16_t type_covered =
 			knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
 			int ret = knot_rrset_add_rr_from_rrset(new_sig,
-			                                       rrsigs, i);
+			                                       rrsigs, i, mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -1991,7 +1991,7 @@ int knot_rrset_synth_rrsig(const knot_rrset_t *covered, const knot_rrset_t *rrsi
 	}
 	(*out_sig)->type = KNOT_RRTYPE_RRSIG;
 
-	int ret = add_rdata_to_rrsig(*out_sig, covered->type, rrsigs);
+	int ret = add_rdata_to_rrsig(*out_sig, covered->type, rrsigs, mm);
 	if (ret != KNOT_EOK) {
 		knot_rrset_deep_free(out_sig, 1, mm);
 		return ret;

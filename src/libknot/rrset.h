@@ -410,7 +410,7 @@ int rrset_deserialize(uint8_t *stream, size_t *stream_size,
 
 /* \brief Adds RR on 'pos' position from 'source' to 'dest' */
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
-                                 size_t rdata_pos);
+                                 size_t rdata_pos, mm_ctx_t *mm);
 /* \brief Removes RRs contained in 'what' RRSet from 'from' RRSet.
  *        Deleted RRs are returned in 'rr_deleted' */
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,

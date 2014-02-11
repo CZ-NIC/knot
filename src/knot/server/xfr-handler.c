@@ -231,10 +231,10 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 		if (rq->flags & XFR_FLAG_AXFR_FINISHED) {
 			knot_zone_contents_deep_free(&rq->new_contents);
 		} else if (rq->data) {
-			xfrin_constructed_zone_t *constr_zone = rq->data;
-			knot_zone_contents_deep_free(&(constr_zone->contents));
-			free(rq->data);
-			rq->data = NULL;
+//			xfrin_constructed_zone_t *constr_zone = rq->data;
+//			knot_zone_contents_deep_free(&(constr_zone->contents));
+//			free(rq->data);
+//			rq->data = NULL;
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
 		knot_changesets_t *chs = (knot_changesets_t *)rq->data;

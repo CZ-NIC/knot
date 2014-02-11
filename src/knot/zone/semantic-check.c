@@ -748,8 +748,8 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 	if (cname_rrset) {
 		if (knot_node_rrset_count(node) != 1) {
 			/* With DNSSEC node can contain RRSIGs or NSEC */
-			if (!knot_node_rrset(node, KNOT_RRTYPE_NSEC) ||
-			    knot_node_rrset_count(node) > 2) {
+			if (!(knot_node_rrset(node, KNOT_RRTYPE_NSEC) || knot_node_rrset(node, KNOT_RRTYPE_RRSIG)) ||
+			    knot_node_rrset_count(node) > 3) {
 				*fatal_error = true;
 				err_handler_handle_error(handler, node,
 				ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC, NULL);

@@ -176,7 +176,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 			return KNOT_EOK;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
-			ret = put_rr(pkt, rrsets[i], rrsigs, compr_hint, 0, qdata);
+			ret = put_rr(pkt, rrsets[i], NULL, compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -391,7 +391,6 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 
 	if (knot_node_rrset(qdata->node, KNOT_RRTYPE_CNAME) != NULL
 	    && qtype != KNOT_RRTYPE_CNAME
-	    && qtype != KNOT_RRTYPE_RRSIG
 	    && qtype != KNOT_RRTYPE_ANY) {
 		dbg_ns("%s: solving CNAME\n", __func__);
 		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);

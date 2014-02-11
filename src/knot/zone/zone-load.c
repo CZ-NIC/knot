@@ -75,23 +75,58 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 	return KNOT_EOK;
 }
 
-static int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr)
+static bool handle_err(zone_loader_t *zl,
+                       const knot_rrset_t *rr,
+                       int ret)
+{
+	char *zname = zl->z ? knot_dname_to_str(zl->z->apex->owner) : NULL;
+	char *rrname = rr ? knot_dname_to_str(rr->owner) : NULL;
+	if (ret == KNOT_EOUTOFZONE) {
+		log_zone_warning("Zone %s: Ignoring out-of-zone data for %s\n",
+		                 zname ? zname : "unknown", rrname ? rrname : "unknown");
+		return true;
+	} else {
+		log_zone_error("Zone %s: Cannot process record %s, stopping.\n",
+		               zname ? zname : "unknown", rrname ? rrname : "unknown");
+		return false;
+	}
+
+	free(zname);
+	free(rrname);
+}
+
+int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr)
 {
 	assert(zl && rr);
 
 	knot_node_t *n = NULL;
+	if (rr->type == KNOT_RRTYPE_SOA &&
+	    knot_node_rrset(zl->z->apex, KNOT_RRTYPE_SOA)) {
+		// Ignore extra SOA
+		knot_rrset_deep_free(&rr, true, NULL);
+		return KNOT_EOK;
+	}
 	int ret = knot_zone_contents_add_rr(zl->z, rr, &n);
 	if (ret < 0) {
-		return ret;
+		if (!handle_err(zl, rr, ret)) {
+			// Fatal error
+			return ret;
+		}
+
+		// Recoverable error, returning KNOT_EOK to caller
+		knot_rrset_deep_free(&rr, true, NULL);
 	} else if (ret > 0) {
 		knot_rrset_deep_free(&rr, true, NULL);
 	}
+	assert(n);
 	ret = KNOT_EOK;
 
 	bool sem_fatal_error = false;
-//	ret = sem_check_node_plain(zl->z, n,
-//	                           zl->err_handler, true,
-//	                           &sem_fatal_error);
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
+	ret = sem_check_node_plain(zl->z, n,
+	                           &err_handler, true,
+	                           &sem_fatal_error);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -142,6 +177,49 @@ static void loader_process(const scanner_t *scanner)
 	}
 }
 
+knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin,
+                                             knot_zone_t *zone)
+{
+	knot_dname_t *owner = knot_dname_copy(origin);
+	if (owner == NULL) {
+		return NULL;
+	}
+	knot_dname_to_lower(owner);
+	knot_node_t *apex = knot_node_new(owner, NULL, 0);
+	if (apex == NULL) {
+		knot_dname_free(&owner);
+		return NULL;
+	}
+
+	knot_zone_contents_t *ret = knot_zone_contents_new(apex, zone);
+	if (ret == NULL) {
+		knot_node_free(&apex);
+	}
+
+	return ret;
+}
+
+knot_zone_t *create_zone_from_name(const char *origin)
+{
+	knot_dname_t *owner = knot_dname_from_str(origin);
+	if (owner == NULL) {
+		return NULL;
+	}
+	knot_dname_to_lower(owner);
+	knot_node_t *apex = knot_node_new(owner, NULL, 0);
+	if (apex == NULL) {
+		knot_dname_free(&owner);
+		return NULL;
+	}
+
+	knot_zone_t *ret = knot_zone_new(apex);
+	if (ret == NULL) {
+		knot_node_free(&apex);
+	}
+
+	return ret;
+}
+
 int knot_zload_open(zloader_t **dst, const char *source, const char *origin_str,
                     int semantic_checks)
 {
@@ -168,11 +246,11 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin_str,
 		return KNOT_ENOMEM;
 	}
 
-	/* As it's a first node, no need for compression yet. */
-	knot_dname_t *origin = knot_dname_from_str(origin_str);
-	knot_dname_to_lower(origin);
-	knot_node_t *apex = knot_node_new(origin, NULL, 0);
-	knot_zone_t *zone = knot_zone_new(apex);
+	knot_zone_t *zone = create_zone_from_name(origin_str);
+	if (zone == NULL) {
+		free(zl);
+		return KNOT_ENOMEM;
+	}
 	zl->z = zone->contents;
 	zl->ret = KNOT_EOK;
 
@@ -198,7 +276,6 @@ int knot_zload_open(zloader_t **dst, const char *source, const char *origin_str,
 	zld->semantic_checks = semantic_checks;
 	*dst = zld;
 
-	zld->err_handler = zl->err_handler;
 	return KNOT_EOK;
 }
 
@@ -273,8 +350,10 @@ knot_zone_t *knot_zload_load(zloader_t *loader)
 		} else if (knot_zone_contents_is_signed(loader->context->z) && nsec3param_rr) {
 			check_level = 3;
 		}
+		err_handler_t err_handler;
+		err_handler_init(&err_handler);
 		zone_do_sem_checks(c->z, check_level,
-		                   loader->err_handler, first_nsec3_node,
+		                   &err_handler, first_nsec3_node,
 		                   last_nsec3_node);
 		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
 		log_zone_info("Semantic checks completed for zone=%s\n", zname);
@@ -297,6 +376,5 @@ void knot_zload_close(zloader_t *loader)
 	free(loader->source);
 	free(loader->origin);
 	free(loader->context);
-	free(loader->err_handler);
 	free(loader);
 }

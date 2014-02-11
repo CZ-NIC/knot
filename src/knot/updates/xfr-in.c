@@ -28,6 +28,7 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
 #include "knot/zone/zone.h"
+#include "knot/zone/zone-load.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/dnssec/random.h"
@@ -124,32 +125,6 @@ int xfrin_create_ixfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
 }
 
 /*----------------------------------------------------------------------------*/
-
-static void xfrin_log_error(const knot_dname_t *zone_owner,
-                            const knot_rrset_t *rr,
-                            int ret)
-{
-	char *zonename = knot_dname_to_str(zone_owner);
-	char *rrname = knot_dname_to_str(rr->owner);
-	if (ret == KNOT_EOUTOFZONE) {
-		// Out-of-zone data, ignore
-		log_zone_warning("Zone %s: Ignoring "
-		                 "out-of-zone RR owned by %s\n",
-		                 zonename, rrname);
-	} if (ret == KNOT_EMALF) {
-		// Fatal semantic error
-		char rrstr[16] = { '\0' };
-		knot_rrtype_to_string(rr->type, rrstr, 16);
-		log_zone_error("Zone %s: Semantic error for RR owned by %s, "
-		               "type %s.\n", zonename, rrname, rrstr);
-	} else {
-	        log_zone_error("Zone %s: Failed to process "
-	                       "incoming RR, Transfer failed (Reason: %s)\n",
-	                        zonename, knot_strerror(ret));
-	}
-	free(rrname);
-	free(zonename);
-}
 
 static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
                             int tsig_req)
@@ -293,29 +268,11 @@ static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uin
 
 /*----------------------------------------------------------------------------*/
 
-static bool semantic_check_passed(const knot_zone_contents_t *z,
-                                  const knot_node_t *node)
+int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 {
-	assert(node && z);
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
-	bool fatal = false;
-	sem_check_node_plain(z, node, &err_handler, true, &fatal);
-	return !fatal;
-}
-
-int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
-{
-	xfrin_constructed_zone_t **constr =
-			(xfrin_constructed_zone_t **)(&xfr->data);
-
-	if (xfr->wire == NULL || constr == NULL) {
+	if (xfr->wire == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	/* Init semantic error handler - used for CNAME/DNAME checks. */
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
 
 	knot_pkt_t *packet = NULL;
 	int ret = xfrin_parse(&packet, xfr->wire, xfr->wire_size);
@@ -324,284 +281,56 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 	}
 
 	uint16_t rr_id = 0;
+	xfr->packet_nr = -1;
 	knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
+
 	ret = xfrin_take_rr(answer, &rr, &rr_id);
-	if (ret != KNOT_EOK) {
+	*zone = create_zone_from_dname(rr->owner, xfr->zone);
+	if (*zone == NULL) {
 		knot_pkt_free(&packet);
-		return ret;
+		return KNOT_ENOMEM;
 	}
 
-	/*! \todo We should probably test whether the Question of the first
-	 *        message corresponds to the SOA RR.
-	 */
+	zone_loader_t zl;
+	zl.z = *zone;
+	zl.lookup_tree = NULL;
+	zl.ret = KNOT_EOK;
 
-	/* RR parsed - sort out DNAME duplications. */
-	/*! \todo Replace with RRSet duplicate checking. */
-//	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
-
-	knot_node_t *node = NULL;
-	int in_zone = 0;
-	knot_zone_contents_t *zone = NULL;
-
-	if (*constr == NULL) {
-		// this should be the first packet
-		/*! Packet number for checking TSIG validation. */
-		xfr->packet_nr = 0;
-
-		// create new zone
-		/*! \todo Ensure that the packet is the first one. */
-		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
-			dbg_xfrin("No zone created, but the first RR in "
-				  "Answer is not a SOA RR.\n");
-			knot_pkt_free(&packet);
-			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1, NULL);
-			/*! \todo Cleanup. */
-			return KNOT_EMALF;
-		}
-
-		node = knot_node_new(rr->owner, NULL, 0);
-		if (node == NULL) {
-			dbg_xfrin("Failed to create new node.\n");
-			knot_pkt_free(&packet);
-			knot_rrset_deep_free(&rr, 1, NULL);
-			return KNOT_ENOMEM;
-		}
-
-		// create the zone
-
-		*constr = (xfrin_constructed_zone_t *)malloc(
-				sizeof(xfrin_constructed_zone_t));
-		if (*constr == NULL) {
-			dbg_xfrin("Failed to create new constr. zone.\n");
-			knot_pkt_free(&packet);
-			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1, NULL);
-			return KNOT_ENOMEM;
-		}
-
-		memset(*constr, 0, sizeof(xfrin_constructed_zone_t));
-
-		dbg_xfrin_verb("Creating new zone contents.\n");
-		(*constr)->contents = knot_zone_contents_new(node, xfr->zone);
-		if ((*constr)->contents== NULL) {
-			dbg_xfrin("Failed to create new zone.\n");
-			knot_pkt_free(&packet);
-			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1, NULL);
-			/*! \todo Cleanup. */
-			return KNOT_ENOMEM;
-		}
-
-		in_zone = 1;
-		zone = (*constr)->contents;
-		assert(zone->apex == node);
-		// add the RRSet to the node
-		ret = knot_zone_contents_add_rrset(zone, rr, &node,
-		                                   KNOT_RRSET_DUPL_MERGE);
-		if (ret < 0) {
-			dbg_xfrin("Failed to add RRSet to zone node: %s.\n",
-				  knot_strerror(ret));
-			knot_pkt_free(&packet);
-			knot_node_free(&node);
-			knot_rrset_deep_free(&rr, 1, NULL);
-			/*! \todo Cleanup. */
-			return KNOT_ERROR;
-		} else if (ret > 0) {
-			dbg_xfrin("Merged SOA RRSet.\n");
-			// merged, free the RRSet
-			knot_rrset_deep_free(&rr, 1, NULL);
-		}
-
-		if (!semantic_check_passed(zone, node)) {
-			xfrin_log_error(xfr->zone->name,
-			                knot_node_rrset(node, rr->type),
-			                KNOT_EMALF);
-			knot_pkt_free(&packet);
-			return KNOT_EMALF;
-		}
-
-		// take next RR
-		ret = xfrin_take_rr(answer, &rr, &rr_id);
-	} else {
-		zone = (*constr)->contents;
+	while (ret == KNOT_EOK) {
+		assert(rr);
 		++xfr->packet_nr;
-	}
-
-	assert(zone != NULL);
-
-	while (ret == KNOT_EOK && rr != NULL) {
-		// process the parsed RR
-		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
-		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
-			// Out-of-zone data
-			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
-			knot_rrset_deep_free(&rr, 1, NULL);
-			// take next RR
-			ret = xfrin_take_rr(answer, &rr, &rr_id);
-			continue;
-		}
-
-		dbg_rrset_detail("\nNext RR:\n\n");
-		knot_rrset_dump(rr);
-		/*! \todo Replace with RRSet duplicate checking. */
-//		xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
-
-		if (node != NULL && !knot_dname_is_equal(rr->owner, node->owner)) {
-dbg_xfrin_exec_detail(
-			char *name = knot_dname_to_str(node->owner);
-			dbg_xfrin_detail("Node owner: %s\n", name);
-			free(name);
-);
-			if (!in_zone) {
-				// this should not happen
-				assert(0);
-				// the node is not in the zone and the RR has
-				// other owner, so a new node must be created
-				// insert the old node to the zone
-			}
-
-			node = NULL;
-		}
-
-		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
-			// this must be the last SOA, do not do anything more
-			// discard the RR
-			assert(knot_zone_contents_apex((zone)) != NULL);
-			assert(knot_node_rrset(knot_zone_contents_apex((zone)),
-					       KNOT_RRTYPE_SOA) != NULL);
-			dbg_xfrin_verb("Found last SOA, transfer finished.\n");
-
-			dbg_xfrin_verb("Verifying TSIG...\n");
-			/*! \note [TSIG] Now check if there is not a TSIG record
-			 *               at the end of the packet.
-			 */
-			ret = xfrin_check_tsig(packet, xfr, 1);
-
-			dbg_xfrin_verb("xfrin_check_tsig() returned %d\n", ret);
-
+		if (rr->type == KNOT_RRTYPE_SOA &&
+		    knot_node_rrset(zl.z->apex, KNOT_RRTYPE_SOA)) {
+			// Ending SOA, check TSIG
+//			ret = xfrin_check_tsig(packet, xfr, 1);
 			knot_pkt_free(&packet);
-			knot_rrset_deep_free(&rr, 1, NULL);
-
+			knot_rrset_deep_free(&rr, true, NULL);
 			if (ret != KNOT_EOK) {
-				/*! \todo [TSIG] Handle TSIG errors. */
 				return ret;
 			}
-
 			return 1;
-		}
-
-		knot_node_t *(*get_node)(const knot_zone_contents_t *,
-					 const knot_dname_t *) = NULL;
-		int (*add_node)(knot_zone_contents_t *, knot_node_t *, int,
-				uint8_t) = NULL;
-
-		if (knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3) {
-			get_node = knot_zone_contents_get_nsec3_node;
-			add_node = knot_zone_contents_add_nsec3_node;
 		} else {
-			get_node = knot_zone_contents_get_node;
-			add_node = knot_zone_contents_add_node;
-		}
-
-		if (node == NULL && (node = get_node(zone,
-					       knot_rrset_owner(rr))) != NULL) {
-			// the node for this RR was found in the zone
-			dbg_xfrin_detail("Found node for the record in zone\n");
-			in_zone = 1;
-		}
-
-		if (node == NULL) {
-			// a new node for the RR is required but it is not
-			// in the zone
-			node = knot_node_new(rr->owner, NULL, 0);
-			if (node == NULL) {
-				dbg_xfrin("Failed to create new node.\n");
-				knot_pkt_free(&packet);
-				knot_rrset_deep_free(&rr, 1, NULL);
-				return KNOT_ENOMEM;
-			}
-			dbg_xfrin_detail("Created new node for the record.\n");
-
-			// insert the RRSet to the node
-			ret = knot_node_add_rrset(node, rr);
-			if (ret < 0) {
-				dbg_xfrin("Failed to add RRSet to node (%s)\n",
-					  knot_strerror(ret));
-				knot_pkt_free(&packet);
-				knot_node_free(&node);
-				knot_rrset_deep_free(&rr, 1, NULL);
-				return KNOT_ERROR;
-			} else if (ret > 0) {
-				// should not happen, this is new node
-				assert(0);
-			}
-
-			// insert the node into the zone
-			ret = add_node(zone, node, 1, 0);
+			ret = zone_loader_step(&zl, rr);
 			if (ret != KNOT_EOK) {
-				// Fatal error, free packet
 				knot_pkt_free(&packet);
-				knot_node_free(&node);
-				knot_rrset_deep_free(&rr, 1, NULL);
+				knot_rrset_deep_free(&rr, true, NULL);
 				return ret;
 			}
-
-			if (!semantic_check_passed(zone, node)) {
-				xfrin_log_error(xfr->zone->name,
-				                rr,
-				                KNOT_EMALF);
-				knot_pkt_free(&packet);
-				return KNOT_EMALF;
-			}
-
-			in_zone = 1;
-		} else {
-			assert(in_zone);
-			ret = knot_zone_contents_add_rrset(zone, rr, &node,
-						    KNOT_RRSET_DUPL_MERGE);
-			if (ret < 0) {
-				knot_pkt_free(&packet);
-				dbg_xfrin("Failed to add RRSet to zone :%s.\n",
-					  knot_strerror(ret));
-				return KNOT_ERROR;
-			} else if (ret > 0) {
-				// merged, free the RRSet
-				knot_rrset_deep_free(&rr, 1, NULL);
-			}
+			ret = xfrin_take_rr(answer, &rr, &rr_id);
 		}
-
-		// take next RR
-		ret = xfrin_take_rr(answer, &rr, &rr_id);
 	}
 
 	assert(rr == NULL);
-
-	// if the last node is not yet in the zone, insert
-	if (!in_zone && node) {
-		ret = knot_zone_contents_add_node(zone, node, 1, 0);
-		if (ret != KNOT_EOK) {
-			dbg_xfrin("Failed to add last node into zone (%s).\n",
-				  knot_strerror(ret));
-				knot_pkt_free(&packet);
-				knot_node_free(&node);
-				knot_rrset_deep_free(&rr, 1, NULL);
-				return ret;
-		}
-	}
-
-	/* Now check if there is not a TSIG record at the end of the packet. */
-	ret = xfrin_check_tsig(packet, xfr,
-			       knot_ns_tsig_required(xfr->packet_nr));
-
+//	ret = xfrin_check_tsig(packet, xfr,
+//	                       knot_ns_tsig_required(xfr->packet_nr));
 	knot_pkt_free(&packet);
 
-	/* TSIG errors are propagated and reported in a standard
+	/*!
+	 * TSIG errors are propagated and reported in a standard
 	 * manner, as we're in response processing, no further error response
 	 * should be sent.
 	 */
-
 	return ret;
 }
 
@@ -611,7 +340,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 {
 	knot_changesets_t **chs = (knot_changesets_t **)(&xfr->data);
 	if (xfr->wire == NULL || chs == NULL) {
-		dbg_xfrin("Wrong parameters supported.\n");
+		dbg_xfrin("Wrong parameters supplied.\n");
 		return KNOT_EINVAL;
 	}
 
@@ -739,7 +468,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	 */
 	knot_changeset_t *chset = knot_changesets_get_last(*chs);
 	if (state != -1) {
-		dbg_xfrin_detail("State is not -1, deciding...\n");
+	dbg_xfrin_detail("State is not -1, deciding...\n");
 		// there should be at least one started changeset right now
 		if (EMPTY_LIST((*chs)->sets)) {
 			knot_rrset_deep_free(&rr, 1, NULL);
@@ -772,7 +501,6 @@ dbg_xfrin_exec_verb(
 		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// out-of-zone domain
-			xfrin_log_error(xfr->zone->name, rr, KNOT_EOUTOFZONE);
 			knot_rrset_deep_free(&rr, 1, NULL);
 			// take next RR
 			ret = xfrin_take_rr(answer, &rr, &rr_id);

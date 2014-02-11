@@ -156,7 +156,8 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
 	       xfr->wire_size);
-	int ret = xfrin_process_axfr_packet(xfr);
+	knot_zone_contents_t **zp = (knot_zone_contents_t **)&xfr->data;
+	int ret = xfrin_process_axfr_packet(xfr, zp);
 
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
@@ -167,9 +168,7 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		 * Adjust zone so that node count is set properly and nodes are
 		 * marked authoritative / delegation point.
 		 */
-		xfrin_constructed_zone_t *constr_zone =
-				(xfrin_constructed_zone_t *)xfr->data;
-		knot_zone_contents_t *zone = constr_zone->contents;
+		knot_zone_contents_t *zone = *zp;
 		assert(zone != NULL);
 		log_zone_info("%s Serial %u -> %u\n", xfr->msg,
 		              knot_zone_serial(knot_zone_contents(xfr->zone)),
@@ -186,10 +185,6 @@ int knot_ns_process_axfrin(knot_nameserver_t *nameserver, knot_ns_xfr_t *xfr)
 		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
 
 		assert(zone->nsec3_nodes != NULL);
-
-		// free the structure used for processing XFR
-		assert(constr_zone->rrsigs == NULL);
-		free(constr_zone);
 
 		// check zone integrity
 dbg_ns_exec_verb(
