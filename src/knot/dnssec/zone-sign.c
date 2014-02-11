@@ -216,17 +216,27 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	knot_rrset_t *to_remove = NULL;
 	int result = KNOT_EOK;
 
-	for (int i = 0; i < rrsigs->rdata_count; i++) {
+	knot_rrset_t *synth_rrsig = NULL;
+	result = knot_rrset_synth_rrsig(covered, rrsigs, &synth_rrsig, NULL);
+	if (result == KNOT_ENOENT) {
+		// Nothing to remove
+		return KNOT_EOK;
+	}
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	for (int i = 0; i < synth_rrsig->rdata_count; i++) {
 		const knot_zone_key_t *key;
-		key = get_matching_zone_key(rrsigs, i, zone_keys);
+		key = get_matching_zone_key(synth_rrsig, i, zone_keys);
 
 		if (key && key->is_active && key->context) {
-			result = knot_is_valid_signature(covered, rrsigs, i,
+			result = knot_is_valid_signature(covered, synth_rrsig, i,
 			                                 &key->dnssec_key,
 			                                 key->context, policy);
 			if (result == KNOT_EOK) {
 				// valid signature
-				note_earliest_expiration(rrsigs, i, expires_at);
+				note_earliest_expiration(synth_rrsig, i, expires_at);
 				continue;
 			}
 
@@ -236,14 +246,14 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		}
 
 		if (to_remove == NULL) {
-			to_remove = create_empty_rrsigs_for(rrsigs);
+			to_remove = create_empty_rrsigs_for(synth_rrsig);
 			if (to_remove == NULL) {
 				result = KNOT_ENOMEM;
 				break;
 			}
 		}
 
-		result = knot_rrset_add_rr_from_rrset(to_remove, rrsigs, i, NULL);
+		result = knot_rrset_add_rr_from_rrset(to_remove, synth_rrsig, i, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -258,6 +268,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		int free_owners = true;
 		knot_rrset_deep_free(&to_remove, free_owners, NULL);
 	}
+
+	knot_rrset_deep_free(&synth_rrsig, true, NULL);
 
 	return result;
 }
@@ -336,12 +348,28 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
  * \return Error code, KNOT_EOK if successful.
  */
 static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
+                               const knot_rrset_t *rrsigs,
                                knot_changeset_t *changeset)
 {
 	assert(rrset);
 	assert(changeset);
 
-	assert(0);
+	knot_rrset_t *synth_rrsig = NULL;
+	int ret = knot_rrset_synth_rrsig(rrset, rrsigs, &synth_rrsig, NULL);
+	if (ret == KNOT_ENOENT) {
+		// Nothing to remove
+		return KNOT_EOK;
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = knot_changeset_add_rrset(changeset, synth_rrsig, KNOT_CHANGESET_REMOVE);
+	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(&synth_rrsig, true, NULL);
+	}
+
+	return ret;
 }
 
 /*!
@@ -355,22 +383,21 @@ static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
  * \return Error code, KNOT_EOK if successful.
  */
 static int force_resign_rrset(const knot_rrset_t *covered,
+                              const knot_rrset_t *rrsigs,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset)
 {
 	assert(covered);
 
-	assert(0);
-/*	if (covered->rrsigs) {
-		int result = remove_rrset_rrsigs(covered, changeset);
+	if (rrsigs) {
+		int result = remove_rrset_rrsigs(covered, rrsigs, changeset);
 		if (result != KNOT_EOK) {
 			return result;
 		}
 	}
 
 	return add_missing_rrsigs(covered, NULL, zone_keys, policy, changeset);
-	*/
 }
 
 /*!
@@ -385,6 +412,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
  * \return Error code, KNOT_EOK if successful.
  */
 static int resign_rrset(const knot_rrset_t *covered,
+                        const knot_rrset_t *rrsigs,
                         const knot_zone_keys_t *zone_keys,
                         const knot_dnssec_policy_t *policy,
                         knot_changeset_t *changeset,
@@ -398,15 +426,15 @@ static int resign_rrset(const knot_rrset_t *covered,
 	// but the verification process can differ from signature computation.
 	// TODO reuse digest for RSA then, RSA is the most used algo family,
 	// and we create all the signatures twice, that is not cool I think.
-	assert(0);
-//	int result = remove_expired_rrsigs(covered, covered->rrsigs, zone_keys,
-//	                                   policy, changeset, expires_at);
-//	if (result != KNOT_EOK) {
-//		return result;
-//	}
 
-//	return add_missing_rrsigs(covered, covered->rrsigs, zone_keys, policy,
-//	                          changeset);
+	int result = remove_expired_rrsigs(covered, rrsigs, zone_keys,
+	                                   policy, changeset, expires_at);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	return add_missing_rrsigs(covered, rrsigs, zone_keys, policy,
+	                          changeset);
 }
 
 /*!
@@ -430,9 +458,13 @@ static int sign_node_rrsets(const knot_node_t *node,
 	assert(policy);
 
 	int result = KNOT_EOK;
+	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 
 	for (int i = 0; i < node->rrset_count; i++) {
 		const knot_rrset_t *rrset = node->rrset_tree[i];
+		if (rrset->type == KNOT_RRTYPE_RRSIG) {
+			continue;
+		}
 		bool should_sign = false;
 		result = knot_zone_sign_rr_should_be_signed(node, rrset, NULL,
 		                                            &should_sign);
@@ -444,19 +476,19 @@ static int sign_node_rrsets(const knot_node_t *node,
 		}
 
 		// Remove standalone RRSIGs (without the RRSet they sign)
-		assert(0);
-		if (rrset->rdata_count == 0 && knot_node_rrtype_is_signed(node, rrset->type)) {
-			result = remove_rrset_rrsigs(rrset, changeset);
-			if (result != KNOT_EOK) {
-				break;
-			}
-		}
+//		assert(0); TODO
+//		if (rrset->rdata_count == 0 && knot_node_rrtype_is_signed(node, rrset->type)) {
+//			result = remove_rrset_rrsigs(rrset, rrsigs, changeset);
+//			if (result != KNOT_EOK) {
+//				break;
+//			}
+//		}
 
 		if (policy->forced_sign) {
-			result = force_resign_rrset(rrset, zone_keys, policy,
+			result = force_resign_rrset(rrset, rrsigs, zone_keys, policy,
 			         changeset);
 		} else {
-			result = resign_rrset(rrset, zone_keys, policy,
+			result = resign_rrset(rrset, rrsigs, zone_keys, policy,
 			                      changeset, expires_at);
 		}
 
@@ -831,6 +863,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
  * \return Error code, KNOT_EOK if successful.
  */
 static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
+                                 const knot_rrset_t *rrsigs,
                                  const knot_rrset_t *soa,
                                  const knot_zone_keys_t *zone_keys,
                                  const knot_dnssec_policy_t *policy,
@@ -889,13 +922,12 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	}
 
 	if (dnskeys) {
-		result = remove_rrset_rrsigs(dnskeys, changeset);
+		result = remove_rrset_rrsigs(dnskeys, rrsigs, changeset);
 	}
 
 fail:
 
 	knot_rrset_deep_free(&new_dnskeys, 1, NULL);
-
 	return result;
 }
 
@@ -921,6 +953,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	const knot_node_t *apex = zone->apex;
 	const knot_rrset_t *dnskeys = knot_node_rrset(apex, KNOT_RRTYPE_DNSKEY);
 	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+	const knot_rrset_t *rrsigs = knot_node_rrset(apex, KNOT_RRTYPE_RRSIG);
 
 	if (!soa) {
 		return KNOT_EINVAL;
@@ -940,15 +973,14 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	}
 
 	bool modified = knot_changeset_size(changeset) != changes_before;
-assert(0);
-//	if (!modified && dnskeys &&
-//	    all_signatures_exist(dnskeys, dnskeys->rrsigs, zone_keys, policy)
-//	) {
-//		return KNOT_EOK;
-//	}
+	if (!modified && dnskeys &&
+	    all_signatures_exist(dnskeys, rrsigs, zone_keys, policy)
+	) {
+		return KNOT_EOK;
+	}
 
 	dbg_dnssec_detail("Creating new signatures for DNSKEYs\n");
-	return update_dnskeys_rrsigs(dnskeys, soa, zone_keys, policy, changeset);
+	return update_dnskeys_rrsigs(dnskeys, rrsigs, soa, zone_keys, policy, changeset);
 }
 
 /*!
@@ -1092,7 +1124,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			return ret;
 		}
 		if (should_sign) {
-			return force_resign_rrset(zone_rrset, args->zone_keys,
+			assert(0); // Need rrsigs
+			return force_resign_rrset(zone_rrset, NULL, args->zone_keys,
 			                          args->policy,
 			                          args->changeset);
 		} else if (zone_rrset && 1) {//zone_rrset->rrsigs != NULL) {
@@ -1102,7 +1135,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			 * should not sign it, DDNS-caused change to node/rr
 			 * occured and we have to drop all RRSIGs.
 			 */
-			return remove_rrset_rrsigs(zone_rrset, args->changeset);
+			assert(0); //Need rrsigs
+			return remove_rrset_rrsigs(zone_rrset, NULL, args->changeset);
 		} else {
 			/*!
 			 * RRSet dropped from zone using update, or should not
@@ -1205,15 +1239,16 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 	}
 
 	const knot_rrset_t *soa = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	const knot_rrset_t *rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	assert(soa);
-assert(0);
-//	return !all_signatures_exist(soa, soa->rrsigs, zone_keys, policy);
+	return !all_signatures_exist(soa, rrsigs, zone_keys, policy);
 }
 
 /*!
  * \brief Update and sign SOA and store performed changes in changeset.
  */
 int knot_zone_sign_update_soa(const knot_rrset_t *soa,
+                              const knot_rrset_t *rrsigs,
                               const knot_zone_keys_t *zone_keys,
                               const knot_dnssec_policy_t *policy,
                               uint32_t new_serial,
@@ -1242,18 +1277,9 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	// remove signatures for old SOA (if there are any)
 
-	assert(0);
-	if (/*soa->rrsigs*/1) {
-		knot_rrset_t *soa_copy = NULL;
-		assert(0);
-//		result = knot_rrset_deep_copy_no_sig(soa->rrsigs, &soa_copy, NULL);
+	if (rrsigs) {
+		result = remove_rrset_rrsigs(soa, rrsigs, changeset);
 		if (result != KNOT_EOK) {
-			return result;
-		}
-		result = knot_changeset_add_rrset(changeset, soa_copy,
-		                                  KNOT_CHANGESET_REMOVE);
-		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&soa_copy, 1, NULL);
 			return result;
 		}
 	}

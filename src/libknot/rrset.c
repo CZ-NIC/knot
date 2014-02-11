@@ -1963,8 +1963,11 @@ static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
 		const uint16_t type_covered =
 			knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
-			int ret = knot_rrset_add_rr_from_rrset(new_sig,
-			                                       rrsigs, i, mm);
+			int merged = 0;
+			int deleted = 0;
+			int ret = knot_rrset_add_rr_sort_n(new_sig, rrsigs,
+			                                   &merged, &deleted, i,
+			                                   mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
