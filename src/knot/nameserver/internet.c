@@ -39,6 +39,11 @@ static int wildcard_visit(struct query_data *qdata, const knot_node_t *node, con
 	assert(qdata);
 	assert(node);
 
+	/* Already in the list. */
+	if (wildcard_has_visited(qdata, node)) {
+		return KNOT_EOK;
+	}
+
 	mm_ctx_t *mm = qdata->mm;
 	struct wildcard_hit *item = mm->alloc(mm->ctx, sizeof(struct wildcard_hit));
 	item->node = node;
@@ -439,12 +444,15 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 		/* keep encloser */
 		qdata->previous = NULL;
 
+		/* Follow expanded wildcard. */
+		int next_state = name_found(pkt, qdata);
+
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, qdata->encloser, qdata->name) != KNOT_EOK) {
-			return ERROR;
+		if (wildcard_visit(qdata, wildcard_node, qdata->name) != KNOT_EOK) {
+				next_state = ERROR;
 		}
 
-		return name_found(pkt, qdata);
+		return next_state;
 	}
 
 	/* Name is under DNAME, use it for substitution. */
@@ -501,11 +509,6 @@ static int solve_answer_section(int state, knot_pkt_t *pkt, struct query_data *q
 	/* Additional resolving for CNAME/DNAME chain. */
 	while (state == FOLLOW) {
 		state = solve_name(state, pkt, qdata);
-		/* Chain lead to NXDOMAIN, this is okay since
-		 * the first CNAME/DNAME is a valid answer. */
-		if (state == MISS) {
-			state = HIT;
-		}
 	}
 
 	return state;
@@ -574,16 +577,25 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 
 	int ret = KNOT_ERROR;
 
+
+	/* Authenticated denial of existence. */
 	switch (state) {
-	case HIT:    ret = nsec_prove_wildcards(pkt, qdata); break;
+	case HIT:    ret = KNOT_EOK; break;
 	case MISS:   ret = nsec_prove_nxdomain(pkt, qdata); break;
 	case NODATA: ret = nsec_prove_nodata(pkt, qdata); break;
 	case DELEG:  ret = nsec_prove_dp_security(pkt, qdata); break;
 	case TRUNC:  ret = KNOT_ESPACE; break;
-	case ERROR:  break;
+	case ERROR:  ret = KNOT_ERROR; break;
 	default:
 		assert(0);
 		break;
+	}
+
+	/* RFC4035 3.1.3 Prove visited wildcards.
+	 * Wildcard expansion applies for Name Error, Wildcard Answer and
+	 * No Data proofs if at one point the search expanded a wildcard node. */
+	if (ret == KNOT_EOK) {
+		ret = nsec_prove_wildcards(pkt, qdata);
 	}
 
 	/* RFC4035, section 3.1 RRSIGs for RRs in AUTHORITY are mandatory. */
