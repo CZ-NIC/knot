@@ -448,14 +448,6 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			return KNOT_EMALF;
 		}
 
-		node = knot_node_new(rr->owner, NULL, 0);
-		if (node == NULL) {
-			dbg_xfrin("Failed to create new node.\n");
-			knot_pkt_free(&packet);
-			knot_rrset_deep_free(&rr, 1);
-			return KNOT_ENOMEM;
-		}
-
 		// create the zone
 
 		*constr = (xfrin_constructed_zone_t *)malloc(
@@ -471,14 +463,16 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 		memset(*constr, 0, sizeof(xfrin_constructed_zone_t));
 
 		dbg_xfrin_verb("Creating new zone contents.\n");
-		(*constr)->contents = knot_zone_contents_new(node, xfr->zone);
+		(*constr)->contents = knot_zone_contents_new(rr->owner);
 		if ((*constr)->contents== NULL) {
 			dbg_xfrin("Failed to create new zone.\n");
 			knot_pkt_free(&packet);
-			knot_node_free(&node);
 			knot_rrset_deep_free(&rr, 1);
 			/*! \todo Cleanup. */
 			return KNOT_ENOMEM;
+		} else {
+			/* \note Node is already owned by zone contents. */
+			node = (*constr)->contents->apex;
 		}
 
 		in_zone = 1;
@@ -491,7 +485,6 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr)
 			dbg_xfrin("Failed to add RRSet to zone node: %s.\n",
 				  knot_strerror(ret));
 			knot_pkt_free(&packet);
-			knot_node_free(&node);
 			knot_rrset_deep_free(&rr, 1);
 			/*! \todo Cleanup. */
 			return KNOT_ERROR;

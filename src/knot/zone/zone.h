@@ -117,15 +117,6 @@ typedef struct zone_t {
 zone_t *zone_new(conf_zone_t *conf);
 
 /*!
- * \brief Create zone contents.
- *
- * \param zone  Zone.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int zone_create_contents(zone_t *zone);
-
-/*!
  * \brief Deallocates the zone structure.
  *
  * \note The function also deallocates all bound structures (config, contents, etc.).

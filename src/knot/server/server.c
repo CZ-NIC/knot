@@ -677,7 +677,7 @@ int server_update_zones(const struct conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 
-	int ret = zones_update_db_from_config(conf, server);
+	int ret = load_zones_from_config(conf, server);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

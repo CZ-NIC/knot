@@ -239,7 +239,7 @@ static void process_rr(const scanner_t *scanner)
 		return;
 	}
 
-	knot_zone_contents_t *contents = parser->current_zone->contents;
+	knot_zone_contents_t *contents = parser->current_zone;
 
 	/*!
 	 * \todo Node/RRSet compression at this level? To avoid duplicate
@@ -476,7 +476,7 @@ static void process_rr(const scanner_t *scanner)
 	assert(contents && node);
 	/* Do mandatory semantic checks. */
 	bool sem_fatal_error = false;
-	ret = sem_check_node_plain(parser->current_zone->contents, node,
+	ret = sem_check_node_plain(parser->current_zone, node,
 	                           parser->err_handler, true,
 	                           &sem_fatal_error);
 	if (ret != KNOT_EOK) {
@@ -501,14 +501,11 @@ static void process_rr(const scanner_t *scanner)
 	parser->ret = KNOT_EOK;
 }
 
-int knot_zload_open(zloader_t **dst, const conf_zone_t *conf)
+int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 {
-	if (!dst || !conf) {
-		dbg_zload("zload: open: Bad arguments.\n");
+	if (!loader || !conf) {
 		return KNOT_EINVAL;
 	}
-
-	*dst = NULL;
 
 	/* Check zone file. */
 	if (access(conf->file, F_OK | R_OK) != 0) {
@@ -516,67 +513,59 @@ int knot_zload_open(zloader_t **dst, const conf_zone_t *conf)
 	}
 
 	/* Create context. */
-	parser_context_t *context = xmalloc(sizeof(parser_context_t));
+	parser_context_t *context = malloc(sizeof(parser_context_t));
+	if (context == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* As it's a first node, no need for compression yet. */
+	memset(context, 0, sizeof(parser_context_t));
+	context->origin_from_config = knot_dname_from_str(conf->name);
+	if (context->origin_from_config == NULL) {
+		goto fail;
+	}
 
 	/* Create trie for DNAME duplicits. */
 	context->lookup_tree = hattrie_create();
 	if (context->lookup_tree == NULL) {
-		free(context);
-		return KNOT_ENOMEM;
+		goto fail;
 	}
-
-	/* Create the new zone. */
-	zone_t *zone = zone_new((conf_zone_t *)conf);
-	int result = zone_create_contents(zone);
-	if (result != KNOT_EOK) {
-		zone_free(&zone);
-		free(context);
-		return result;
-	}
-
-	/* As it's a first node, no need for compression yet. */
-	context->origin_from_config = knot_dname_copy(zone->name);
-	context->current_zone = zone;
-	context->last_node = zone->contents->apex;
-	context->node_rrsigs = NULL;
-	context->ret = KNOT_EOK;
 
 	/* Create file loader. */
-	file_loader_t *loader = file_loader_create(conf->file, conf->name,
-	                                           KNOT_CLASS_IN, 3600,
-	                                           process_rr, process_error,
-	                                           context);
-	if (loader == NULL) {
-		dbg_zload("Could not initialize zone parser.\n");
-		hattrie_free(context->lookup_tree);
-		free(context);
-		return KNOT_ERROR;
+	memset(loader, 0, sizeof(zloader_t));
+	loader->file_loader = file_loader_create(conf->file, conf->name,
+	                                         KNOT_CLASS_IN, 3600,
+	                                         process_rr, process_error,
+	                                         context);
+	if (loader->file_loader == NULL) {
+		goto fail;
 	}
 
-	/* Allocate new loader. */
-	zloader_t *zl = xmalloc(sizeof(zloader_t));
-
-	zl->source = strdup(conf->file);
-	zl->origin = strdup(conf->name);
-	zl->file_loader = loader;
-	zl->context = context;
-	zl->semantic_checks = conf->enable_checks;
-	*dst = zl;
-
-	zl->err_handler = err_handler_new();
-	if (zl->err_handler == NULL) {
+	/* Initialize new loader. */
+	loader->source = strdup(conf->file);
+	loader->origin = strdup(conf->name);
+	loader->context = context;
+	loader->semantic_checks = conf->enable_checks;
+	loader->err_handler = err_handler_new();
+	if (loader->err_handler == NULL) {
 		/* Not a reason to stop. */
 		log_zone_warning("Could not create semantic checks handler. "
 		                 "Semantic check skipped for zone %s\n",
 		                 conf->name);
 	}
 
-	context->err_handler = zl->err_handler;
+	context->err_handler = loader->err_handler;
 
 	return KNOT_EOK;
+
+fail:
+	knot_dname_free(&context->origin_from_config);
+	hattrie_free(context->lookup_tree);
+	free(context);
+	return KNOT_ENOMEM;
 }
 
-zone_t *knot_zload_load(zloader_t *loader)
+knot_zone_contents_t *zonefile_load(zloader_t *loader)
 {
 	dbg_zload("zload: load: Loading zone, loader: %p.\n", loader);
 	if (!loader) {
@@ -584,9 +573,16 @@ zone_t *knot_zload_load(zloader_t *loader)
 		return NULL;
 	}
 
+	/* Initialize empty zone contents. */
 	parser_context_t *c = loader->context;
-	knot_node_t *apex = c->current_zone->contents->apex;
-	assert(c);
+	c->current_zone = knot_zone_contents_new(c->origin_from_config);
+	if (c->current_zone == NULL) {
+		return NULL;
+	}
+
+	knot_node_t *apex = c->last_node = c->current_zone->apex;
+
+	/* Load zone contents. */
 	int ret = file_loader_process(loader->file_loader);
 	if (ret != ZSCANNER_OK) {
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
@@ -594,15 +590,13 @@ zone_t *knot_zload_load(zloader_t *loader)
 	}
 
 	if (c->last_node && c->node_rrsigs) {
-		process_rrsigs_in_node(c, c->current_zone->contents, c->last_node);
+		process_rrsigs_in_node(c, c->current_zone, c->last_node);
 	}
 
 	if (c->ret != KNOT_EOK) {
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
 		               loader->source, zscanner_strerror(c->ret));
-		rrset_list_delete(&c->node_rrsigs);
-		zone_free(&c->current_zone);
-		return NULL;
+		goto fail;
 	}
 
 	if (loader->file_loader->scanner->error_counter > 0) {
@@ -610,30 +604,24 @@ zone_t *knot_zload_load(zloader_t *loader)
 		               "%"PRIu64" errors encountered.\n",
 		               loader->source,
 		               loader->file_loader->scanner->error_counter);
-		rrset_list_delete(&c->node_rrsigs);
-		zone_free(&c->current_zone);
-		return NULL;
+		goto fail;
 	}
 
 	if (knot_node_rrset(apex, KNOT_RRTYPE_SOA) == NULL) {
 		log_zone_error("%s: no SOA record in the zone file.\n",
 		               loader->source);
-		rrset_list_delete(&c->node_rrsigs);
-		zone_free(&c->current_zone);
-		return NULL;
+		goto fail;
 	}
 
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
 	rrset_list_delete(&c->node_rrsigs);
-	int kret = knot_zone_contents_adjust_full(c->current_zone->contents, &first_nsec3_node,
-	                                          &last_nsec3_node);
+	int kret = knot_zone_contents_adjust_full(c->current_zone,
+	                                          &first_nsec3_node, &last_nsec3_node);
 	if (kret != KNOT_EOK)  {
 		log_zone_error("%s: Failed to finalize zone contents: %s\n",
 		               loader->source, knot_strerror(kret));
-		rrset_list_delete(&c->node_rrsigs);
-		zone_free(&c->current_zone);
-		return NULL;
+		goto fail;
 	}
 
 	if (loader->semantic_checks) {
@@ -647,7 +635,7 @@ zone_t *knot_zload_load(zloader_t *loader)
 		} else if (soa_rr->rrsigs && nsec3param_rr) {
 			check_level = 3;
 		}
-		zone_do_sem_checks(c->current_zone->contents, check_level,
+		zone_do_sem_checks(c->current_zone, check_level,
 		                   loader->err_handler, first_nsec3_node,
 		                   last_nsec3_node);
 		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
@@ -656,9 +644,14 @@ zone_t *knot_zload_load(zloader_t *loader)
 	}
 
 	return c->current_zone;
+
+fail:
+	rrset_list_delete(&c->node_rrsigs);
+	knot_zone_contents_deep_free(&c->current_zone);
+	return NULL;
 }
 
-void knot_zload_close(zloader_t *loader)
+void zonefile_close(zloader_t *loader)
 {
 	if (!loader) {
 		return;
@@ -674,5 +667,4 @@ void knot_zload_close(zloader_t *loader)
 	free(loader->origin);
 	free(loader->context);
 	free(loader->err_handler);
-	free(loader);
 }

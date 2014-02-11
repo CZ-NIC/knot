@@ -46,7 +46,7 @@ typedef struct rrset_list rrset_list_t;
 
 struct parser_context {
 	rrset_list_t *node_rrsigs;
-	zone_t *current_zone;
+	knot_zone_contents_t *current_zone;
 	knot_rrset_t *current_rrset;
 	knot_dname_t *origin_from_config;
 	knot_node_t *last_node;
@@ -72,32 +72,32 @@ typedef struct zloader_t
 } zloader_t;
 
 /*!
- * \brief Initializes zone loader from file.
+ * \brief Open zone file for loading.
  *
- * \param dst Output zone loader.
+ * \param zl Output zone loader.
  * \param conf Zone configuration.
  *
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
-int knot_zload_open(zloader_t **dst, const conf_zone_t *conf);
+int zonefile_open(zloader_t *loader, const conf_zone_t *conf);
 
 /*!
- * \brief Loads zone from a compiled and serialized zone file.
+ * \brief Loads zone from a zone file.
  *
  * \param loader Zone loader instance.
  *
- * \retval Loaded zone on success.
+ * \retval Loaded zone contents on success.
  * \retval NULL otherwise.
  */
-zone_t *knot_zload_load(zloader_t *loader);
+knot_zone_contents_t *zonefile_load(zloader_t *loader);
 
 /*!
- * \brief Free zone loader.
+ * \brief Close zone file loader.
  *
  * \param loader Zone loader instance.
  */
-void knot_zload_close(zloader_t *loader);
+void zonefile_close(zloader_t *loader);
 
 void process_error(const scanner_t *scanner);
 

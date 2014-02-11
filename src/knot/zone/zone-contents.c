@@ -417,51 +417,43 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_zone_contents_t *knot_zone_contents_new(knot_node_t *apex,
-                                             struct zone_t *zone)
+knot_zone_contents_t *knot_zone_contents_new(const knot_dname_t *apex_name)
 {
-	knot_zone_contents_t *contents = (knot_zone_contents_t *)
-				      calloc(1, sizeof(knot_zone_contents_t));
-	if (contents == NULL) {
-		ERR_ALLOC_FAILED;
+	dbg_zone("%s(%p)\n", __func__, apex_name);
+	if (apex_name == NULL) {
 		return NULL;
 	}
 
-	contents->apex = apex;
-	contents->node_count = 1;
+	knot_zone_contents_t *contents = malloc(sizeof(knot_zone_contents_t));
+	if (contents == NULL) {
+		return NULL;
+	}
 
-	dbg_zone_verb("Creating tree for normal nodes.\n");
+	memset(contents, 0, sizeof(knot_zone_contents_t));
+	contents->node_count = 1;
+	contents->apex = knot_node_new(apex_name, NULL, 0);
+	if (contents->apex == NULL) {
+		goto cleanup;
+	}
+
 	contents->nodes = knot_zone_tree_create();
 	if (contents->nodes == NULL) {
-		ERR_ALLOC_FAILED;
 		goto cleanup;
 	}
 
-	dbg_zone_verb("Creating tree for NSEC3 nodes.\n");
 	contents->nsec3_nodes = knot_zone_tree_create();
 	if (contents->nsec3_nodes == NULL) {
-		ERR_ALLOC_FAILED;
 		goto cleanup;
 	}
 
-	/* Initialize NSEC3 params */
-	dbg_zone_verb("Initializing NSEC3 parameters.\n");
-	contents->nsec3_params.algorithm = 0;
-	contents->nsec3_params.flags = 0;
-	contents->nsec3_params.iterations = 0;
-	contents->nsec3_params.salt_length = 0;
-	contents->nsec3_params.salt = NULL;
-
-	dbg_zone_verb("Inserting apex into the zone tree.\n");
-	if (knot_zone_tree_insert(contents->nodes, apex) != KNOT_EOK) {
-		dbg_zone("Failed to insert apex to the zone tree.\n");
+	if (knot_zone_tree_insert(contents->nodes, contents->apex) != KNOT_EOK) {
 		goto cleanup;
 	}
 
 	return contents;
 
 cleanup:
-	dbg_zone_verb("Cleaning up.\n");
+	dbg_zone("%s: failure to initialize contents %p\n", __func__, contents);
 	free(contents->nodes);
 	free(contents->nsec3_nodes);
 	free(contents);
