@@ -112,7 +112,6 @@ int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr)
 			// Fatal error
 			return ret;
 		}
-
 		// Recoverable error, returning KNOT_EOK to caller
 		knot_rrset_deep_free(&rr, true, NULL);
 	} else if (ret > 0) {
@@ -190,6 +189,7 @@ knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin,
 		knot_dname_free(&owner);
 		return NULL;
 	}
+	knot_dname_free(&owner);
 
 	knot_zone_contents_t *ret = knot_zone_contents_new(apex, zone);
 	if (ret == NULL) {
@@ -211,6 +211,7 @@ knot_zone_t *create_zone_from_name(const char *origin)
 		knot_dname_free(&owner);
 		return NULL;
 	}
+	knot_dname_free(&owner);
 
 	knot_zone_t *ret = knot_zone_new(apex);
 	if (ret == NULL) {
