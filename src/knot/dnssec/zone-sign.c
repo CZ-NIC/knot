@@ -972,10 +972,17 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 		return result;
 	}
 
+	knot_rrset_t *dnskey_rrsig = NULL;
+	result = knot_rrset_synth_rrsig(dnskeys, rrsigs, &dnskey_rrsig, NULL);
+	if (result != KNOT_EOK && result != KNOT_ENOENT) {
+		return result;
+	}
+
 	bool modified = knot_changeset_size(changeset) != changes_before;
-	if (!modified && dnskeys &&
-	    all_signatures_exist(dnskeys, rrsigs, zone_keys, policy)
-	) {
+	bool signatures_exist = all_signatures_exist(dnskeys, dnskey_rrsig,
+	                                             zone_keys, policy);
+	knot_rrset_deep_free(&dnskey_rrsig, true, NULL);
+	if (!modified && dnskeys && signatures_exist) {
 		return KNOT_EOK;
 	}
 
