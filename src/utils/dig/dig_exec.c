@@ -158,6 +158,10 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 			                        NULL, 0);
 		}
 
+		// Write prepared OPT to wire
+		knot_pkt_begin(packet, KNOT_ADDITIONAL);
+		ret |= knot_pkt_put_opt(packet);
+
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");
 			knot_pkt_free(&packet);
