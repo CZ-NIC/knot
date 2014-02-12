@@ -273,18 +273,6 @@ uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
  */
 uint16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
 
-/*!
- * \brief Returns the set of RRSIGs covering the given RRSet.
- *
- * \param rrset RRSet to get the signatures for.
- *
- * \return Set of RRSIGs which cover the given RRSet or NULL if there is none or
- *         if no rrset was provided (\a rrset is NULL).
- */
-const knot_rrset_t *knot_rrset_rrsigs(const knot_rrset_t *rrset);
-
-knot_rrset_t *knot_rrset_get_rrsigs(knot_rrset_t *rrset);
-
 int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
 /*!
