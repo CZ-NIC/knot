@@ -33,7 +33,8 @@
 
 static knot_pkt_t* create_query_packet(const query_t *query)
 {
-	knot_pkt_t   *packet;
+	knot_pkt_t *packet;
+	int        ret = 0;
 
 	// Set packet buffer size.
 	int max_size = query->udp_size;
@@ -86,8 +87,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	}
 
 	// Set packet question.
-	int ret = knot_pkt_put_question(packet, qname,
-	                                query->class_num, query->type_num);
+	ret = knot_pkt_put_question(packet, qname, query->class_num,
+	                            query->type_num);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&qname);
 		knot_pkt_free(&packet);
@@ -138,49 +139,34 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	// Create EDNS section if required.
 	if (query->udp_size > 0 || query->flags.do_flag || query->nsid ||
 	    query->edns > -1) {
-		knot_opt_rr_t *opt_rr = knot_edns_new();
-		if (opt_rr == NULL) {
-			ERR("can't create EDNS section\n");
-			knot_edns_free(&opt_rr);
-			knot_pkt_free(&packet);
-			return NULL;
-		}
+		uint8_t version = query->edns > -1 ? query->edns : 0;
 
-		uint8_t edns_version = query->edns > -1 ? query->edns : 0;
+		ret = knot_pkt_opt_set(packet, KNOT_PKT_EDNS_PAYLOAD,
+		                       &max_size, 2);
+		ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_VERSION,
+		                       &version, 1);
 
-		knot_edns_set_version(opt_rr, edns_version);
-		knot_edns_set_payload(opt_rr, max_size);
-
-		if (knot_pkt_add_opt(packet, opt_rr, 0) != KNOT_EOK) {
-			ERR("can't set EDNS section\n");
-			knot_edns_free(&opt_rr);
-			knot_pkt_free(&packet);
-			return NULL;
-		}
-
-		// Set DO flag to EDNS section.
 		if (query->flags.do_flag) {
-			knot_edns_set_do(&packet->opt_rr);
+			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_FLAG_DO,
+			                        NULL, 0);
 		}
 
 		if (query->nsid) {
-			if (knot_edns_add_option(&packet->opt_rr,
-			                         EDNS_OPTION_NSID,
-			                         0, NULL) != KNOT_EOK) {
-				ERR("can't set NSID query\n");
-				knot_edns_free(&opt_rr);
-				knot_pkt_free(&packet);
-				return NULL;
-			}
+			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_NSID,
+			                        NULL, 0);
 		}
 
-		knot_edns_free(&opt_rr);
+		if (ret != KNOT_EOK) {
+			ERR("can't set up EDNS section\n");
+			knot_pkt_free(&packet);
+			return NULL;
+		}
 	}
 
 	// Sign the packet if a key was specified.
 	if (query->key_params.name != NULL) {
-		int ret = sign_packet(packet, (sign_context_t *)&query->sign_ctx,
-		                      &query->key_params);
+		ret = sign_packet(packet, (sign_context_t *)&query->sign_ctx,
+		                  &query->key_params);
 		if (ret != KNOT_EOK) {
 			ERR("failed to sign query packet (%s)\n",
 			    knot_strerror(ret));
@@ -302,6 +288,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 		print_packet(query, net,
 		             time_diff(&t_start, &t_query),
 		             false, style);
+		printf("\n");
 	}
 
 	// Loop over incoming messages, unless reply id is correct or timeout.
@@ -522,6 +509,7 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 		print_packet(query, net,
 		             time_diff(&t_start, &t_query),
 		             false, style);
+		printf("\n");
 	}
 
 	// Print leading transfer information.
