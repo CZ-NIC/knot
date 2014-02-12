@@ -143,6 +143,7 @@ int knot_nsec_chain_iterate_fix(hattrie_t *nodes,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
+                               const knot_rrset_t *rrsigs,
                                knot_changeset_t *changeset);
 
 /*!

@@ -47,15 +47,16 @@ inline static bool valid_nsec3_node(const knot_node_t *node)
 {
 	assert(node);
 
-	if (node->rrset_count != 1) {
+	if (node->rrset_count > 2) {
 		return false;
 	}
 
-	if (node->rrset_tree[0]->type != KNOT_RRTYPE_NSEC3) {
+	const knot_rrset_t *nsec3 = knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
+	if (nsec3 == NULL) {
 		return false;
 	}
 
-	if (node->rrset_tree[0]->rdata_count != 1) {
+	if (nsec3->rdata_count != 1) {
 		return false;
 	}
 
@@ -71,8 +72,8 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 		return false;
 	}
 
-	knot_rrset_t *a_rrset = a->rrset_tree[0];
-	knot_rrset_t *b_rrset = b->rrset_tree[0];
+	const knot_rrset_t *a_rrset = knot_node_rrset(a, KNOT_RRTYPE_NSEC3);
+	const knot_rrset_t *b_rrset = knot_node_rrset(b, KNOT_RRTYPE_NSEC3);
 
 	return knot_rrset_equal(a_rrset, b_rrset, KNOT_RRSET_COMPARE_WHOLE);
 }
@@ -346,7 +347,8 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		// Drop old
 		int ret = KNOT_EOK;
 		if (old_nsec3) {
-			ret = knot_nsec_changeset_remove(old_nsec3, out_ch);
+			assert(0);
+			ret = knot_nsec_changeset_remove(old_nsec3, NULL, out_ch);
 			if (ret != KNOT_EOK) {
 				knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 				return ret;
@@ -409,21 +411,22 @@ static const knot_node_t *zone_last_nsec3_node(const knot_zone_contents_t *z)
  * \brief Shallow copy NSEC3 signatures from the one node to the second one.
  *        Just sets the pointer, needed only for comparison.
  */
-static void shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
+static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 {
 	assert(valid_nsec3_node(from));
 	assert(valid_nsec3_node(to));
 
-	knot_rrset_t *from_rrset = from->rrset_tree[0];
-	knot_rrset_t *to_rrset = to->rrset_tree[0];
-assert(0);
-//	to_rrset->rrsigs = from_rrset->rrsigs;
+	knot_rrset_t *from_sig = knot_node_get_rrset(from, KNOT_RRTYPE_RRSIG);
+	if (from_sig == NULL) {
+		return KNOT_EOK;
+	}
+	return knot_node_add_rrset(to, from_sig);
 }
 
 /*!
  * \brief Reuse signatatures by shallow copying them from one tree to another.
  */
-static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
+static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 {
 	assert(from);
 	assert(to);
@@ -444,10 +447,14 @@ static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 			continue;
 		}
 
-		shallow_copy_signature(node_from, node_to);
+		int ret = shallow_copy_signature(node_from, node_to);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	hattrie_iter_free(it);
+	return KNOT_EOK;
 }
 
 /*!
@@ -465,12 +472,10 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-
-		for (int i = 0; i < node->rrset_count; i++) {
-			// newly allocated NSEC3 nodes
-			knot_rrset_deep_free(&node->rrset_tree[i], 1, NULL);
-		}
-
+		// newly allocated NSEC3 nodes
+		knot_rrset_t *nsec3 = knot_node_get_rrset(node,
+		                                          KNOT_RRTYPE_NSEC3);
+		knot_rrset_deep_free(&nsec3, 1, NULL);
 		knot_node_free(&node);
 	}
 
@@ -752,7 +757,10 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		 * and NSEC3 in the zone at once.)
 		 */
 		result = knot_nsec_changeset_remove(knot_node_rrset(node,
-		                                    KNOT_RRTYPE_NSEC), chgset);
+		                                    KNOT_RRTYPE_NSEC),
+		                                    knot_node_rrset(node,
+		                                    KNOT_RRTYPE_RRSIG),
+		                                    chgset);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -1051,7 +1059,8 @@ static int handle_deleted_node(const knot_node_t *node,
 	}
 	const knot_rrset_t *old_nsec3 = knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
 	assert(old_nsec3);
-	int ret = knot_nsec_changeset_remove(old_nsec3, fix_data->out_ch);
+	assert(0);
+	int ret = knot_nsec_changeset_remove(old_nsec3, NULL, fix_data->out_ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

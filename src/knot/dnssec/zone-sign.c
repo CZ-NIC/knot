@@ -437,6 +437,37 @@ static int resign_rrset(const knot_rrset_t *covered,
 	                          changeset);
 }
 
+static int remove_standalone_rrsigs(const knot_node_t *node,
+                                    const knot_rrset_t *rrsigs,
+                                    knot_changeset_t *changeset)
+{
+	if (rrsigs == NULL) {
+		return KNOT_EOK;
+	}
+
+	for (size_t i = 0; i < rrsigs->rdata_count; ++i) {
+		uint16_t type_covered = knot_rdata_rrsig_type_covered(rrsigs, i);
+		if (!knot_node_rrset(node, type_covered)) {
+			knot_rrset_t *to_remove = knot_rrset_new_from(rrsigs, NULL);
+			if (to_remove == NULL) {
+				return KNOT_ENOMEM;
+			}
+			int ret = knot_rrset_add_rr_from_rrset(to_remove, rrsigs, i, NULL);
+			if (ret != KNOT_EOK) {
+				knot_rrset_deep_free(&to_remove, true, NULL);
+				return ret;
+			}
+			ret = knot_changeset_add_rr(changeset, to_remove, KNOT_CHANGESET_REMOVE);
+			if (ret != KNOT_EOK) {
+				knot_rrset_deep_free(&to_remove, true, NULL);
+				return ret;
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Update RRSIGs in a given node by updating changeset.
  *
@@ -475,15 +506,6 @@ static int sign_node_rrsets(const knot_node_t *node,
 			continue;
 		}
 
-		// Remove standalone RRSIGs (without the RRSet they sign)
-//		assert(0); TODO
-//		if (rrset->rdata_count == 0 && knot_node_rrtype_is_signed(node, rrset->type)) {
-//			result = remove_rrset_rrsigs(rrset, rrsigs, changeset);
-//			if (result != KNOT_EOK) {
-//				break;
-//			}
-//		}
-
 		if (policy->forced_sign) {
 			result = force_resign_rrset(rrset, rrsigs, zone_keys, policy,
 			         changeset);
@@ -497,7 +519,11 @@ static int sign_node_rrsets(const knot_node_t *node,
 		}
 	}
 
-	return result;
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	return remove_standalone_rrsigs(node, rrsigs, changeset);
 }
 
 /*!
@@ -979,10 +1005,11 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	}
 
 	bool modified = knot_changeset_size(changeset) != changes_before;
-	bool signatures_exist = all_signatures_exist(dnskeys, dnskey_rrsig,
+	bool signatures_exist = dnskeys &&
+	                        all_signatures_exist(dnskeys, dnskey_rrsig,
 	                                             zone_keys, policy);
 	knot_rrset_deep_free(&dnskey_rrsig, true, NULL);
-	if (!modified && dnskeys && signatures_exist) {
+	if (!modified && signatures_exist) {
 		return KNOT_EOK;
 	}
 
@@ -1121,6 +1148,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 		knot_zone_contents_find_node(args->zone, chg_rrset->owner);
 	// If node is not in zone, all its RRSIGs were dropped - no-op
 	if (node) {
+		const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 		const knot_rrset_t *zone_rrset =
 			knot_node_rrset(node, chg_rrset->type);
 		bool should_sign = false;
@@ -1131,19 +1159,16 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			return ret;
 		}
 		if (should_sign) {
-			assert(0); // Need rrsigs
-			return force_resign_rrset(zone_rrset, NULL, args->zone_keys,
+			return force_resign_rrset(zone_rrset, rrsigs, args->zone_keys,
 			                          args->policy,
 			                          args->changeset);
-		} else if (zone_rrset && 1) {//zone_rrset->rrsigs != NULL) {
-			assert(0);
+		} else if (zone_rrset && knot_node_rrtype_is_signed(node, zone_rrset->type)) {
 			/*!
 			 * If RRSet in zone DOES have RRSIGs although we
 			 * should not sign it, DDNS-caused change to node/rr
 			 * occured and we have to drop all RRSIGs.
 			 */
-			assert(0); //Need rrsigs
-			return remove_rrset_rrsigs(zone_rrset, NULL, args->changeset);
+			return remove_rrset_rrsigs(zone_rrset, rrsigs, args->changeset);
 		} else {
 			/*!
 			 * RRSet dropped from zone using update, or should not
