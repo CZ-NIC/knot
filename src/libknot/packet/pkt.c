@@ -397,6 +397,9 @@ int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t l
 	case KNOT_PKT_EDNS_VERSION:
 		knot_edns_set_version(rr, *(uint8_t *)data);
 		break;
+	case KNOT_PKT_EDNS_FLAG_DO:
+		knot_edns_set_do(rr);
+		break;
 	case KNOT_PKT_EDNS_NSID:
 		return knot_edns_add_option(rr, EDNS_OPTION_NSID, len, data);
 	default:
