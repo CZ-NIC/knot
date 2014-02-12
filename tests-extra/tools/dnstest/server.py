@@ -735,6 +735,8 @@ class Knot(Server):
     def _on_str_hex(self, conf, name, value):
         if value == True:
             conf.item(name, "on")
+        elif value == False:
+            conf.item(name, "off")
         elif value:
             if isinstance(value, int) or value[:2] == "0x":
                 conf.item(name, value)
