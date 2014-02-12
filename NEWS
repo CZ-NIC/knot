@@ -1,5 +1,16 @@
 Knot DNS NEWS
 
+v1.4.3 - Feb 13, 2014
+---------------------
+Bugfixes:
+	* Failure when expanding wildcard leading to apex and having DNSKEY records
+	* Failure for query to wildcard without wildcard expansion
+	* Bad cleanup when loading a faulty entry from a journal 
+	* Zone parser supports DOS newlines
+	* Zone file $ORIGIN and configuration comparison is case-insensitive
+Features:
+	* Config "include" statement supports directory and includes all files within
+
 v1.4.2 - Jan 27, 2014
 ---------------------
 Bugfixes:
