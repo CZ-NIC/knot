@@ -315,8 +315,6 @@ static int knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
 		args->first_node = node;
 	}
 
-	assert(knot_node_rrset(node, KNOT_RRTYPE_NSEC3));
-
 	// set previous node
 
 	knot_node_set_previous(node, args->previous_node);
@@ -727,9 +725,7 @@ static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
 
 static bool to_nsec3_tree(const knot_rrset_t *rr)
 {
-	return rr->type == KNOT_RRTYPE_NSEC3 ||
-	       (rr->type == KNOT_RRTYPE_RRSIG &&
-	        knot_rdata_rrsig_type_covered(rr, 0) == KNOT_RRTYPE_NSEC3);
+	return knot_rrset_is_nsec3rel(rr);
 }
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
