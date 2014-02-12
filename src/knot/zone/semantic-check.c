@@ -440,60 +440,70 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
-	assert(0);
-	const knot_rrset_t *rrsigs = knot_rrset_rrsigs(rrset);
+	knot_rrset_t *rrsigs = NULL;
+	ret = knot_rrset_synth_rrsig(rrset,
+	                             knot_node_rrset(node, KNOT_RRTYPE_RRSIG),
+	                             &rrsigs, NULL);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		return ret;
+	}
 
-//	if (knot_node_rrsigs == NULL) {
-//		err_handler_handle_error(handler, node,
-//		                         ZC_ERR_RRSIG_NO_RRSIG,
-//		                         info_str);
-//		return KNOT_EOK;
-//	}
+	if (rrsigs == NULL) {
+		assert(ret == KNOT_ENOENT);
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_NO_RRSIG,
+		                         info_str);
+		return KNOT_EOK;
+	}
 
-//	/* signed rrsig - nonsense */
-//	if (knot_rrset_rrsigs(rrsigs) != NULL) {
-//		err_handler_handle_error(handler, node,
-//		                         ZC_ERR_RRSIG_SIGNED,
-//		                         info_str);
-//		/* Safe to continue, nothing is malformed. */
-//	}
+	/* signed rrsig - nonsense */
+	if (knot_node_rrtype_is_signed(node, KNOT_RRTYPE_RRSIG)) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_SIGNED,
+		                         info_str);
+		/* Safe to continue, nothing is malformed. */
+	}
 
-//	/* Different owner, class, ttl */
+	/* Different owner, class, ttl */
+	if (knot_dname_cmp(knot_rrset_owner(rrset),
+				 knot_rrset_owner(rrsigs)) != 0) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_OWNER,
+		                         info_str);
+	}
 
-//	if (knot_dname_cmp(knot_rrset_owner(rrset),
-//				 knot_rrset_owner(rrsigs)) != 0) {
-//		err_handler_handle_error(handler, node,
-//		                         ZC_ERR_RRSIG_OWNER,
-//		                         info_str);
-//	}
+	if (knot_rrset_class(rrset) != knot_rrset_class(rrsigs)) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_CLASS,
+		                         info_str);
+	}
 
-//	if (knot_rrset_class(rrset) != knot_rrset_class(rrsigs)) {
-//		err_handler_handle_error(handler, node,
-//		                         ZC_ERR_RRSIG_CLASS,
-//		                         info_str);
-//	}
+	if (knot_rrset_ttl(rrset) != knot_rrset_ttl(rrsigs)) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_TTL,
+		                         info_str);
+	}
 
-//	if (knot_rrset_ttl(rrset) != knot_rrset_ttl(rrsigs)) {
-//		err_handler_handle_error(handler, node,
-//		                         ZC_ERR_RRSIG_TTL,
-//		                         info_str);
-//	}
-
-//	if (knot_rrset_rdata_rr_count(rrsigs) == 0) {
-//		/* Nothing to check, and should not happen. */
-//		return KNOT_EOK;
-//	}
+	if (knot_rrset_rdata_rr_count(rrsigs) == 0) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_RRSIG_RDATA_SIGNED_WRONG,
+		                         info_str);
+		knot_rrset_deep_free(&rrsigs, true, NULL);
+		return KNOT_EOK;
+	}
 	
-//	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrsigs); ++i) {
-//		int ret = check_rrsig_rdata(handler, node, rrsigs, i, rrset,
-//		                            dnskey_rrset);
-//		if (ret != KNOT_EOK) {
-//			dbg_semcheck("Could not check RRSIG properly (%s).\n",
-//			             knot_strerror(ret));
-//		}
-//	}
+	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrsigs); ++i) {
+		int ret = check_rrsig_rdata(handler, node, rrsigs, i, rrset,
+		                            dnskey_rrset);
+		if (ret != KNOT_EOK) {
+			dbg_semcheck("Could not check RRSIG properly (%s).\n",
+			             knot_strerror(ret));
+			break;
+		}
+	}
 
-	return KNOT_EOK;
+	knot_rrset_deep_free(&rrsigs, true, NULL);
+	return ret;
 }
 
 /*!
