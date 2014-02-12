@@ -260,7 +260,7 @@ static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uin
 		*cur += 1;
 	} else {
 		*rr = NULL;
-		ret = KNOT_EMALF;
+		ret = KNOT_EOK;
 	}
 
 	return ret;
@@ -281,35 +281,41 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 	}
 
 	uint16_t rr_id = 0;
-	xfr->packet_nr = -1;
 	knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
 
 	ret = xfrin_take_rr(answer, &rr, &rr_id);
-	*zone = create_zone_from_dname(rr->owner, xfr->zone);
 	if (*zone == NULL) {
-		knot_pkt_free(&packet);
-		return KNOT_ENOMEM;
+		// Transfer start, init zone
+		if (rr->type != KNOT_RRTYPE_SOA) {
+			return KNOT_EMALF;
+		}
+		*zone = create_zone_from_dname(rr->owner, xfr->zone);
+		if (*zone == NULL) {
+			knot_pkt_free(&packet);
+			return KNOT_ENOMEM;
+		}
+		xfr->packet_nr = 0;
+	} else {
+		++xfr->packet_nr;
 	}
 
-	zone_loader_t zl;
-	zl.z = *zone;
-	zl.lookup_tree = NULL;
-	zl.ret = KNOT_EOK;
+	// Init zone loader
+	zone_loader_t zl = {.z = *zone, .lookup_tree = NULL,
+	                    .last_node = NULL, .ret = KNOT_EOK };
 
-	while (ret == KNOT_EOK) {
-		assert(rr);
-		++xfr->packet_nr;
+
+	while (ret == KNOT_EOK && rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
 		    knot_node_rrset(zl.z->apex, KNOT_RRTYPE_SOA)) {
-			// Ending SOA, check TSIG
-//			ret = xfrin_check_tsig(packet, xfr, 1);
+			// Last SOA, last message, check TSIG.
+			ret = xfrin_check_tsig(packet, xfr, 1);
 			knot_pkt_free(&packet);
 			knot_rrset_deep_free(&rr, true, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-			return 1;
+			return 1; // Signal that transfer finished.
 		} else {
 			ret = zone_loader_step(&zl, rr);
 			if (ret != KNOT_EOK) {
@@ -322,16 +328,11 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 	}
 
 	assert(rr == NULL);
-//	ret = xfrin_check_tsig(packet, xfr,
-//	                       knot_ns_tsig_required(xfr->packet_nr));
+	// Check possible TSIG at the end of DNS message.
+	ret = xfrin_check_tsig(packet, xfr,
+	                       knot_ns_tsig_required(xfr->packet_nr));
 	knot_pkt_free(&packet);
-
-	/*!
-	 * TSIG errors are propagated and reported in a standard
-	 * manner, as we're in response processing, no further error response
-	 * should be sent.
-	 */
-	return ret;
+	return ret; // ret == KNOT_EOK means processing continues.
 }
 
 /*----------------------------------------------------------------------------*/
