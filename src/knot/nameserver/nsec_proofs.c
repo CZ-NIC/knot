@@ -803,7 +803,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, bool optional)
 
 	int ret = KNOT_EOK;
 	uint32_t flags = (optional) ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
-	flags &= KNOT_PF_FREE; // Free all RRSIGs, they are synthesized
+	flags |= KNOT_PF_FREE; // Free all RRSIGs, they are synthesized
 	uint16_t compr_hint = COMPR_HINT_NONE;
 	const knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *section = knot_pkt_section(pkt, pkt->current);
