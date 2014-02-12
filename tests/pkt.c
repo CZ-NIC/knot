@@ -44,7 +44,7 @@ const char *g_rdata[DATACOUNT] = {
 
 int main(int argc, char *argv[])
 {
-	plan(24);
+	plan(25);
 
 	/* Create memory pool context. */
 	int ret = 0;
@@ -73,12 +73,14 @@ int main(int argc, char *argv[])
 	const char* nsid = "string";
 	uint16_t data = 4096;
 	uint8_t version = 0, rcode = 0;
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_PAYLOAD, &data, 2);
+	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_PAYLOAD, &data, sizeof(data));
 	ok(ret == KNOT_EOK, "pkt: set EDNS max payload");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_VERSION, &version, 1);
+	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_VERSION, &version, sizeof(version));
 	ok(ret == KNOT_EOK, "pkt: set EDNS version");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_RCODE,   &rcode, 1);
+	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_RCODE,   &rcode, sizeof(rcode));
 	ok(ret == KNOT_EOK, "pkt: set EDNS extended RCODE");
+	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_FLAG_DO, NULL, 0);
+	ok(ret == KNOT_EOK, "pkt: set EDNS DO flag");
 	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_NSID,    nsid, strlen(nsid));
 	ok(ret == KNOT_EOK, "pkt: set NSID");
 
