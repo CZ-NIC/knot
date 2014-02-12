@@ -84,27 +84,37 @@ static bool handle_err(zone_loader_t *zl,
 	if (ret == KNOT_EOUTOFZONE) {
 		log_zone_warning("Zone %s: Ignoring out-of-zone data for %s\n",
 		                 zname ? zname : "unknown", rrname ? rrname : "unknown");
+		free(zname);
+		free(rrname);
 		return true;
 	} else {
 		log_zone_error("Zone %s: Cannot process record %s, stopping.\n",
 		               zname ? zname : "unknown", rrname ? rrname : "unknown");
+		free(zname);
+		free(rrname);
 		return false;
 	}
-
-	free(zname);
-	free(rrname);
 }
 
 int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr)
 {
 	assert(zl && rr);
 
-	knot_node_t *n = NULL;
 	if (rr->type == KNOT_RRTYPE_SOA &&
 	    knot_node_rrset(zl->z->apex, KNOT_RRTYPE_SOA)) {
 		// Ignore extra SOA
 		knot_rrset_deep_free(&rr, true, NULL);
 		return KNOT_EOK;
+	}
+
+	knot_node_t *n;
+	if (zl->last_node &&
+	    knot_dname_is_equal(zl->last_node->owner, rr->owner)) {
+		// Reuse hint from last addition.
+		n = zl->last_node;
+	} else {
+		// Search for node or create a new one
+		n = NULL;
 	}
 	int ret = knot_zone_contents_add_rr(zl->z, rr, &n);
 	if (ret < 0) {
@@ -112,13 +122,14 @@ int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr)
 			// Fatal error
 			return ret;
 		}
-		// Recoverable error, returning KNOT_EOK to caller
+		// Recoverable error, skip record
 		knot_rrset_deep_free(&rr, true, NULL);
+		return KNOT_EOK;
 	} else if (ret > 0) {
 		knot_rrset_deep_free(&rr, true, NULL);
 	}
 	assert(n);
-	ret = KNOT_EOK;
+	zl->last_node = n;
 
 	bool sem_fatal_error = false;
 	err_handler_t err_handler;
