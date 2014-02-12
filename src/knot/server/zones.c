@@ -689,7 +689,6 @@ static int zones_load_changesets(const knot_zone_t *zone,
 		ret = journal_read_node(zd->ixfr_db, n, (char*)chs->data);
 		if (ret != KNOT_EOK) {
 			dbg_xfr("xfr: failed to read data from journal\n");
-			free(chs->data);
 			journal_release(zd->ixfr_db);
 			return KNOT_ERROR;
 		}
