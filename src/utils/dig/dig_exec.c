@@ -37,8 +37,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	int        ret = 0;
 
 	// Set packet buffer size.
-	int max_size = query->udp_size;
-	if (max_size < 0) {
+	uint16_t max_size;
+	if (query->udp_size < 0) {
 		if (get_socktype(query->protocol, query->type_num)
 		    == SOCK_STREAM) {
 			max_size = MAX_PACKET_SIZE;
@@ -48,6 +48,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		} else {
 			max_size = DEFAULT_UDP_SIZE;
 		}
+	} else {
+		max_size = query->udp_size;
 	}
 
 	// Create packet skeleton.
@@ -142,9 +144,9 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		uint8_t version = query->edns > -1 ? query->edns : 0;
 
 		ret = knot_pkt_opt_set(packet, KNOT_PKT_EDNS_PAYLOAD,
-		                       &max_size, 2);
+		                       &max_size, sizeof(max_size));
 		ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_VERSION,
-		                       &version, 1);
+		                       &version, sizeof(version));
 
 		if (query->flags.do_flag) {
 			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_FLAG_DO,
