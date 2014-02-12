@@ -52,7 +52,6 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 			soa_style.show_class = true;
 		}
 		if (knot_rrset_txt_dump(soa, params->buf, params->buflen,
-					params->dump_rdata, params->dump_rrsig,
 					&soa_style) < 0) {
 			return KNOT_ENOMEM;
 		}
@@ -73,17 +72,22 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 				break;
 			}
 			continue;
+		case KNOT_RRTYPE_RRSIG:
+			if (params->dump_rrsig) {
+				break;
+			}
+			continue;
 		case KNOT_RRTYPE_SOA:
 			continue;
 		default:
-			if (params->dump_nsec) {
+			if (params->dump_nsec ||
+			    (params->dump_rrsig && !params->dump_rdata)) {
 				continue;
 			}
 			break;
 		}
 
 		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
-		                        params->dump_rdata, params->dump_rrsig,
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
@@ -112,20 +116,25 @@ static int node_dump_text(knot_node_t *node, void *data)
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
 		switch (rrsets[i]->type) {
+		case KNOT_RRTYPE_RRSIG:
+			if (params->dump_rrsig) {
+				break;
+			}
+			continue;
 		case KNOT_RRTYPE_NSEC:
 			if (params->dump_nsec) {
 				break;
 			}
 			continue;
 		default:
-			if (params->dump_nsec) {
+			if (params->dump_nsec ||
+			    (params->dump_rrsig && !params->dump_rdata)) {
 				continue;
 			}
 			break;
 		}
 
 		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
-		                        params->dump_rdata, params->dump_rrsig,
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
@@ -175,12 +184,8 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	}
 
 	// Dump DNSSEC signatures if secured.
-	const knot_rrset_t *soa = knot_node_rrset(knot_zone_contents_apex(zone),
-	                                          KNOT_RRTYPE_SOA);
 	if (knot_zone_contents_is_signed(zone)) {
 		fprintf(file, ";; DNSSEC signatures\n");
-		/* TODO: will not dump RRSIGs after, will handle as any other RR. */
-
 		// Dump rrsig records.
 		params.dump_rdata = false;
 		params.dump_rrsig = true;
