@@ -37,7 +37,7 @@ Knot DNS requires few libraries to be compiled:
 @itemize
 
 @item
-OpenSSL, at least 0.9.8
+OpenSSL, at least 1.0.0
 @item
 zlib
 @item
