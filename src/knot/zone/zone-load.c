@@ -187,51 +187,11 @@ static void loader_process(const scanner_t *scanner)
 	}
 }
 
-knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin,
-                                             knot_zone_t *zone)
+knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin)
 {
-	knot_dname_t *owner = knot_dname_copy(origin);
-	if (owner == NULL) {
-		return NULL;
-	}
-	knot_dname_to_lower(owner);
-	knot_node_t *apex = knot_node_new(owner, NULL, 0);
-	if (apex == NULL) {
-		knot_dname_free(&owner);
-		return NULL;
-	}
-	knot_dname_free(&owner);
-
-	knot_zone_contents_t *ret = knot_zone_contents_new(apex, zone);
-	if (ret == NULL) {
-		knot_node_free(&apex);
-	}
-
+	knot_zone_contents_t *ret = knot_zone_contents_new(origin);
 	return ret;
 }
-
-knot_zone_t *create_zone_from_name(const char *origin)
-{
-	knot_dname_t *owner = knot_dname_from_str(origin);
-	if (owner == NULL) {
-		return NULL;
-	}
-	knot_dname_to_lower(owner);
-	knot_node_t *apex = knot_node_new(owner, NULL, 0);
-	if (apex == NULL) {
-		knot_dname_free(&owner);
-		return NULL;
-	}
-	knot_dname_free(&owner);
-
-	knot_zone_t *ret = knot_zone_new(apex);
-	if (ret == NULL) {
-		knot_node_free(&apex);
-	}
-
-	return ret;
-}
-
 
 int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 {
@@ -242,15 +202,16 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 	/* Check zone file. */
 	if (access(conf->file, F_OK | R_OK) != 0) {
 		return KNOT_EACCES;
+	}
 
 	/* Create context. */
 	zone_loader_t *zl = xmalloc(sizeof(zone_loader_t));
 	memset(zl, 0, sizeof(*zl));
 
 	/* Create trie for DNAME duplicits. */
-	context->lookup_tree = hattrie_create();
-	if (context->lookup_tree == NULL) {
-		free(context);
+	zl->lookup_tree = hattrie_create();
+	if (zl->lookup_tree == NULL) {
+		free(zl);
 		return KNOT_ENOMEM;
 	}
 
@@ -258,29 +219,20 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 	memset(loader, 0, sizeof(zloader_t));
 	loader->file_loader = file_loader_create(conf->file, conf->name,
 	                                         KNOT_CLASS_IN, 3600,
-	                                         process_rr, process_error,
-	                                         context);
+	                                         loader_process, process_error,
+	                                         zl);
 	if (loader->file_loader == NULL) {
-		goto fail;
+		hattrie_free(zl->lookup_tree);
+		free(zl);
+		return KNOT_ERROR;
 	}
 
-	/* Allocate new loader. */
-	zloader_t *zld = xmalloc(sizeof(zloader_t));
-
-	zld->source = strdup(source);
-	zld->origin = strdup(origin_str);
-	zld->file_loader = loader;
-	zld->context = zl;
-	zld->semantic_checks = semantic_checks;
-	*dst = zld;
+	loader->source = strdup(conf->file);
+	loader->origin = strdup(conf->name);
+	loader->context = zl;
+	loader->semantic_checks = conf->enable_checks;
 
 	return KNOT_EOK;
-
-fail:
-	knot_dname_free(&context->origin_from_config);
-	hattrie_free(context->lookup_tree);
-	free(context);
-	return KNOT_ENOMEM;
 }
 
 knot_zone_contents_t *zonefile_load(zloader_t *loader)
@@ -297,11 +249,12 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 	if (ret != ZSCANNER_OK) {
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
 		               loader->source, zscanner_strerror(ret));
+		goto fail;
 	}
 
 	if (c->ret != KNOT_EOK) {
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
-		               loader->source, zscanner_strerror(c->ret));
+		               loader->source, knot_strerror(c->ret));
 		goto fail;
 	}
 
@@ -313,7 +266,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	if (knot_node_rrset(apex, KNOT_RRTYPE_SOA) == NULL) {
+	if (knot_node_rrset(loader->context->z->apex, KNOT_RRTYPE_SOA) == NULL) {
 		log_zone_error("%s: no SOA record in the zone file.\n",
 		               loader->source);
 		goto fail;
@@ -322,9 +275,9 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
 
-	int kret = knot_zone_contents_adjust_full(c->current_zone,
+	int kret = knot_zone_contents_adjust_full(c->z,
 	                                          &first_nsec3_node, &last_nsec3_node);
-	if (kret != KNOT_EOK)  {
+	if (kret != KNOT_EOK) {
 		log_zone_error("%s: Failed to finalize zone contents: %s\n",
 		               loader->source, knot_strerror(kret));
 		goto fail;
@@ -339,10 +292,10 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		const knot_rrset_t *nsec3param_rr =
 			knot_node_rrset(knot_zone_contents_apex(c->z),
 		                        KNOT_RRTYPE_NSEC3PARAM);
-		if (knot_zone_contents_is_signed(loader->context->z) && nsec3param_rr == NULL) {
+		if (knot_zone_contents_is_signed(c->z) && nsec3param_rr == NULL) {
 			/* Set check level to DNSSEC. */
 			check_level = 2;
-		} else if (knot_zone_contents_is_signed(loader->context->z) && nsec3param_rr) {
+		} else if (knot_zone_contents_is_signed(c->z) && nsec3param_rr) {
 			check_level = 3;
 		}
 		err_handler_t err_handler;
@@ -355,11 +308,10 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		free(zname);
 	}
 
-	return c->z->zone;
+	return c->z;
 
 fail:
-	rrset_list_delete(&c->node_rrsigs);
-	knot_zone_contents_deep_free(&c->current_zone);
+	knot_zone_contents_deep_free(&c->z);
 	return NULL;
 }
 

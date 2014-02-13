@@ -98,13 +98,13 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 
 	assert(changeset);
 
-	int ret = knot_rrset_deep_copy_no_sig(soa_rrset1, &changeset->soa_from, NULL);
+	int ret = knot_rrset_deep_copy(soa_rrset1, &changeset->soa_from, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
 	}
 
-	ret = knot_rrset_deep_copy_no_sig(soa_rrset2, &changeset->soa_to, NULL);
+	ret = knot_rrset_deep_copy(soa_rrset2, &changeset->soa_to, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
 		return ret;
@@ -140,7 +140,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset);
 
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy, NULL);
+	int ret = knot_rrset_deep_copy(rrset, &rrset_copy, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
 		return ret;
@@ -183,7 +183,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	knot_rrset_dump(rrset);
 
 	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_deep_copy_no_sig(rrset, &rrset_copy, NULL);
+	int ret = knot_rrset_deep_copy(rrset, &rrset_copy, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
 		return ret;
@@ -409,7 +409,7 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	}
 
 	/* Copy was made in add_rrset function, we can free now. */
-	knot_rrset_deep_free(&to_remove, 1);
+	knot_rrset_deep_free(&to_remove, 1, NULL);
 
 	/* Get RRs to add to zone. */ // TODO move to extra function, same for remove
 	knot_rrset_t *to_add = NULL;

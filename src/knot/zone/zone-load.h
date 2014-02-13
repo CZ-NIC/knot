@@ -47,7 +47,7 @@ typedef struct zloader_t
 {
 	char *source;             /*!< Zone source file. */
 	char *origin;             /*!< Zone's origin string. */
-	int semantic_checks;      /*!< Wanted level of semantic checks. */
+	bool semantic_checks;      /*!< Do semantic checks. */
 	err_handler_t *err_handler; /*!< Semantic checks error handler. */
 	file_loader_t *file_loader; /*!< Scanner's file loader. */
 	zone_loader_t *context; /*!< Loader context. */
@@ -82,9 +82,8 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader);
  */
 void zonefile_close(zloader_t *loader);
 
-knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin,
-                                             knot_zone_t *zone);
-knot_zone_t *create_zone_from_name(const char *origin);
+knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin);
+zone_t *create_zone_from_name(const char *origin);
 
 int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr);
 

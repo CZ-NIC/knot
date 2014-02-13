@@ -22,7 +22,6 @@
 
 #include "knot/updates/xfr-in.h"
 
-#include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
 #include "common/debug.h"
 #include "libknot/packet/pkt.h"
@@ -135,7 +134,7 @@ int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt)
 	knot_node_t *apex = zone->contents->apex;
 	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	return knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, 0);
+	return knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, NULL, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -302,7 +301,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 		if (rr->type != KNOT_RRTYPE_SOA) {
 			return KNOT_EMALF;
 		}
-		*zone = create_zone_from_dname(rr->owner, xfr->zone);
+		*zone = create_zone_from_dname(rr->owner);
 		if (*zone == NULL) {
 			knot_pkt_free(&packet);
 			return KNOT_ENOMEM;

@@ -836,7 +836,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 		}
 
 		/* Check that the serial is indeed larger than the current one*/
-		assert(ns_serial_compare(knot_rdata_soa_serial(removed),
+		assert(knot_serial_compare(knot_rdata_soa_serial(removed),
 		                         knot_rdata_soa_serial(rr)) < 0);
 
 		/* 1) Store it to 'changes', together with its RRSIGs. */
@@ -1798,7 +1798,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		}
 
 		/* If not set, create new SOA. */
-		ret = knot_rrset_deep_copy_no_sig(soa, &soa_end, NULL);
+		ret = knot_rrset_deep_copy(soa, &soa_end, NULL);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy ending SOA: %s\n",
 			         knot_strerror(ret));

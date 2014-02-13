@@ -60,8 +60,6 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 {
 	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC3);
 	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
-	//assert(rrset != NULL);
-
 	if (rrset == NULL) {
 		// bad zone, ignore
 		return KNOT_EOK;

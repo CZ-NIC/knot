@@ -293,11 +293,6 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          mm_ctx_t *mm);
 
-int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to,
-                                mm_ctx_t *mm);
-
-int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to);
-
 /*! \brief Does round-robin rotation of the RRSet.
  *
  * \note This is not thread-safe. If two threads call this function, the RRSet

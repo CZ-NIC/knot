@@ -1241,8 +1241,8 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 	return true;
 }
 
-int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to,
-                                mm_ctx_t *mm)
+int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
+                         mm_ctx_t *mm)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
@@ -1276,40 +1276,6 @@ int knot_rrset_deep_copy_no_sig(const knot_rrset_t *from, knot_rrset_t **to,
 	}
 	memcpy((*to)->rdata_indices, from->rdata_indices,
 	       sizeof(uint32_t) * from->rdata_count);
-
-	return KNOT_EOK;
-}
-
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
-                         mm_ctx_t *mm)
-{
-	int result = knot_rrset_deep_copy_no_sig(from, to, mm);
-
-	return result;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_rrset_shallow_copy(const knot_rrset_t *from, knot_rrset_t **to)
-{
-	if (!from || !to) {
-		return KNOT_EINVAL;
-	}
-
-	knot_rrset_t *result = (knot_rrset_t *)malloc(sizeof(knot_rrset_t));
-	if (!result) {
-		return KNOT_ENOMEM;
-	}
-
-	memcpy(result, from, sizeof(knot_rrset_t));
-	result->additional = NULL; /* Never share between copies. */
-	result->owner = knot_dname_copy(result->owner);
-	if (!result->owner) {
-		free(result);
-		return KNOT_ENOMEM;
-	}
-
-	*to = result;
 
 	return KNOT_EOK;
 }
@@ -1807,19 +1773,6 @@ static int knot_rrset_remove_rr(knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
-static int knot_rrset_rdata_reset(knot_rrset_t *rrset)
-{
-	if (rrset == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	rrset->rdata = NULL;
-	rrset->rdata_indices = NULL;
-	rrset->rdata_count = 0;
-
-	return KNOT_EOK;
-}
-
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
                                  size_t rdata_pos, mm_ctx_t *mm)
 {
@@ -1851,18 +1804,12 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_t *return_rr = NULL;
-	int ret = knot_rrset_shallow_copy(what, &return_rr);
-	if (ret != KNOT_EOK) {
-		dbg_rrset("remove_rr_using_rrset: Could not copy RRSet (%s).\n",
-		          knot_strerror(ret));
-		return ret;
+	knot_rrset_t *return_rr = knot_rrset_new_from(what, NULL);
+	if (return_rr == NULL) {
+		return KNOT_ENOMEM;
 	}
-	/* Reset RDATA of returned RRSet. */
-	knot_rrset_rdata_reset(return_rr);
-
 	for (uint16_t i = 0; i < what->rdata_count; ++i) {
-		ret = knot_rrset_remove_rr(from, what, i);
+		int ret = knot_rrset_remove_rr(from, what, i);
 		if (ret == KNOT_EOK) {
 			/* RR was removed, can be added to 'return' RRSet. */
 			ret = knot_rrset_add_rr_from_rrset(return_rr, what, i, NULL);
@@ -1942,11 +1889,10 @@ static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
 		const uint16_t type_covered =
 			knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
-			int merged = 0;
-			int deleted = 0;
-			int ret = knot_rrset_add_rr_sort_n(new_sig, rrsigs,
-			                                   &merged, &deleted, i,
-			                                   mm);
+			int ret = knot_rrset_add_rr_from_rrset(new_sig,
+			                                       rrsigs,
+			                                       i,
+			                                       mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
