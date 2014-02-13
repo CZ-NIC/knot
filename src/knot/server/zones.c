@@ -1547,9 +1547,7 @@ int zones_schedule_notify(zone_t *zone, server_t *server)
 		}
 
 		/* Parse server address. */
-		struct sockaddr_storage addr;
-		sockaddr_set(&addr, cfg_if->family, cfg_if->address, cfg_if->port);
-		xfr_task_setaddr(rq, &addr, &cfg_if->via);
+		xfr_task_setaddr(rq, &cfg_if->addr, &cfg_if->via);
 		rq->data = (void *)((long)cfg->notify_retries);
 		if (xfr_enqueue(server->xfr, rq) != KNOT_EOK) {
 			log_zone_error("Failed to enqueue NOTIFY for '%s'.\n",

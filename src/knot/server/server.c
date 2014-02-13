@@ -94,7 +94,6 @@ static void server_remove_iface(iface_t *iface)
 	}
 
 	/* Free interface. */
-	free(iface->addr);
 	free(iface);
 }
 
@@ -113,98 +112,47 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 {
 	/* Initialize interface. */
 	int ret = 0;
-	int sock = 0;
-	char errbuf[256] = {0};
 	memset(new_if, 0, sizeof(iface_t));
+	memcpy(&new_if->addr, &cfg_if->addr, sizeof(struct sockaddr_storage));
 
-	/* Create UDP socket. */
-	ret = socket_create(cfg_if->family, SOCK_DGRAM, IPPROTO_UDP);
-	if (ret < 0) {
-		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0) {
-			log_server_error("Could not create UDP socket: %s.\n",
-					 errbuf);
-		}
-		return ret;
-	} else {
-		sock = ret;
-	}
+	/* Convert to string address format. */
+	char addr_str[SOCKADDR_STRLEN] = {0};
+	sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
 
-	/* Set socket options. */
-	int flag = 1;
-	if (cfg_if->family == AF_INET6) {
-		/* Disable dual-stack for performance reasons. */
-		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
-			dbg_net("udp: failed to set IPV6_V6ONLY to socket, using default config\n");
-		}
-	}
-
-	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
-	if (ret < 0) {
-		socket_close(sock);
-		log_server_error("Could not bind to "
-		                 "UDP interface %s port %d.\n",
-		                 cfg_if->address, cfg_if->port);
-		return ret;
+	/* Create bound UDP socket. */
+	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr);
+	if (sock < 0) {
+		return sock;
 	}
 
 	new_if->fd[IO_UDP] = sock;
-	new_if->type = cfg_if->family;
-	new_if->port = cfg_if->port;
-	new_if->addr = strdup(cfg_if->address);
 
-	/* Create TCP socket. */
-	ret = socket_create(cfg_if->family, SOCK_STREAM, IPPROTO_TCP);
-	if (ret < 0) {
-		socket_close(new_if->fd[IO_UDP]);
-		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0) {
-			log_server_error("Could not create TCP socket: %s.\n",
-					 errbuf);
-		}
-		return ret;
-	} else {
-		sock = ret;
+	/* Create bound TCP socket. */
+	sock = net_bound_socket(SOCK_STREAM, &cfg_if->addr);
+	if (sock < 0) {
+		close(new_if->fd[IO_UDP]);
+		return sock;
 	}
 
-	/* Set socket options. */
-	if (cfg_if->family == AF_INET6) {
-		if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0) {
-			dbg_net("tcp: failed to set IPV6_V6ONLY to socket, using default config\n");
-		}
+	new_if->fd[IO_TCP] = sock;
+
+	/* Listen for incoming connections. */
+	ret = listen(sock, TCP_BACKLOG_SIZE);
+	if (ret < 0) {
+		close(new_if->fd[IO_UDP]);
+		close(new_if->fd[IO_TCP]);
+		log_server_error("Failed to listen on TCP interface '%s'.\n", addr_str);
+		return KNOT_ERROR;
 	}
 
 	/* accept() must not block */
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
-		free(new_if->addr);
-		socket_close(new_if->fd[IO_UDP]);
-		socket_close(sock);
-		log_server_error("Failed to listen on %s@%d in non-blocking mode.\n",
-		                 cfg_if->address, cfg_if->port);
+		close(new_if->fd[IO_UDP]);
+		close(new_if->fd[IO_TCP]);
+		log_server_error("Failed to listen on '%s' in non-blocking mode.\n", addr_str);
 		return KNOT_ERROR;
 	}
 
-	ret = socket_bind(sock, cfg_if->family, cfg_if->address, cfg_if->port);
-	if (ret < 0) {
-		free(new_if->addr);
-		socket_close(new_if->fd[IO_UDP]);
-		socket_close(sock);
-		log_server_error("Could not bind to "
-		                 "TCP interface %s port %d.\n",
-		                 cfg_if->address, cfg_if->port);
-		return ret;
-	}
-
-	ret = socket_listen(sock, TCP_BACKLOG_SIZE);
-	if (ret < 0) {
-		free(new_if->addr);
-		socket_close(new_if->fd[IO_UDP]);
-		socket_close(sock);
-		log_server_error("Failed to listen on "
-		                 "TCP interface %s port %d.\n",
-		                 cfg_if->address, cfg_if->port);
-		return ret;
-	}
-
-	new_if->fd[IO_TCP] = sock;
 	return KNOT_EOK;
 }
 
@@ -213,10 +161,11 @@ static void remove_ifacelist(struct ref_t *p)
 	ifacelist_t *ifaces = (ifacelist_t *)p;
 
 	/* Remove deprecated interfaces. */
+	char addr_str[SOCKADDR_STRLEN] = {0};
 	iface_t *n = NULL, *m = NULL;
 	WALK_LIST_DELSAFE(n, m, ifaces->u) {
-		log_server_info("Removing interface %s port %d.\n",
-		                n->addr, n->port);
+		sockaddr_tostr(&n->addr, addr_str, sizeof(addr_str));
+		log_server_info("Removing interface '%s'.\n", addr_str);
 		server_remove_iface(n);
 	}
 	WALK_LIST_DELSAFE(n, m, ifaces->l) {
@@ -242,6 +191,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 	rcu_read_lock();
 
 	/* Prepare helper lists. */
+	char addr_str[SOCKADDR_STRLEN] = {0};
 	int bound = 0;
 	iface_t *m = 0;
 	ifacelist_t *newlist = malloc(sizeof(ifacelist_t));
@@ -266,11 +216,9 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 		if (s->ifaces) {
 			WALK_LIST(m, s->ifaces->u) {
 				/* Matching port and address. */
-				if (cfg_if->port == m->port) {
-					if (strcmp(cfg_if->address, m->addr) == 0) {
-						found_match = 1;
-						break;
-					}
+				if (sockaddr_cmp(&cfg_if->addr, &m->addr) == 0) {
+					found_match = 1;
+					break;
 				}
 			}
 		}
@@ -279,8 +227,8 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 		if (found_match) {
 			rem_node((node_t *)m);
 		} else {
-			log_server_info("Binding to interface %s port %d.\n",
-			                cfg_if->address, cfg_if->port);
+			sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
+			log_server_info("Binding to interface %s.\n", addr_str);
 
 			/* Create new interface. */
 			m = malloc(sizeof(iface_t));

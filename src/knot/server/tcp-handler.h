@@ -33,7 +33,7 @@
 
 #include <stdint.h>
 
-#include "knot/server/socket.h"
+#include "knot/server/net.h"
 #include "knot/server/server.h"
 #include "knot/server/dthreads.h"
 

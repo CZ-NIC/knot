@@ -88,7 +88,7 @@ static enum fdset_sweep_state tcp_sweep(fdset_t *set, int i, void *data)
 	log_server_notice("Connection '%s' was terminated due to inactivity.\n",
 	                  addr_str);
 
-	socket_close(fd);
+	close(fd);
 	return FDSET_SWEEP;
 }
 
@@ -277,7 +277,7 @@ static int tcp_event_accept(tcp_context_t *tcp, unsigned i)
 		/* Assign to fdset. */
 		int next_id = fdset_add(&tcp->set, client, POLLIN, NULL);
 		if (next_id < 0) {
-			socket_close(client);
+			close(client);
 			return next_id; /* Contains errno. */
 		}
 
@@ -344,7 +344,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 
 		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
 			fdset_remove(set, i);
-			socket_close(fd);
+			close(fd);
 			continue; /* Stay on the same index. */
 		}
 
@@ -401,7 +401,7 @@ int tcp_master(dthread_t *thread)
 
 			/* Cancel client connections. */
 			for (unsigned i = tcp.client_threshold; i < tcp.set.n; ++i) {
-				socket_close(tcp.set.pfd[i].fd);
+				close(tcp.set.pfd[i].fd);
 			}
 
 			ref_release(ref);

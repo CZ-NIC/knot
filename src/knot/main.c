@@ -339,18 +339,7 @@ int main(int argc, char **argv)
 		/* Bind to control interface. */
 		uint8_t buf[KNOT_WIRE_MAX_PKTSIZE];
 		size_t buflen = sizeof(buf);
-		int remote = -1;
-		if (conf()->ctl.iface != NULL) {
-			conf_iface_t *ctl_if = conf()->ctl.iface;
-			memset(buf, 0, buflen);
-			if (ctl_if->port)
-				snprintf((char*)buf, buflen, "@%d", ctl_if->port);
-			/* Log control interface description. */
-			log_server_info("Binding remote control interface "
-					"to %s%s\n",
-					ctl_if->address, (char*)buf);
-			remote = remote_bind(ctl_if);
-		}
+		int remote = remote_bind(conf()->ctl.iface);
 
 		/* Run event loop. */
 		for(;;) {
@@ -385,14 +374,7 @@ int main(int argc, char **argv)
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
 		/* Close remote control interface */
-		if (remote > -1) {
-			close(remote);
-
-			/* Remove control socket.  */
-			conf_iface_t *ctl_if = conf()->ctl.iface;
-			if (ctl_if && ctl_if->family == AF_UNIX)
-				unlink(conf()->ctl.iface->address);
-		}
+		remote_unbind(conf()->ctl.iface, remote);
 
 		if ((server_wait(&server)) != KNOT_EOK) {
 			log_server_error("An error occured while "

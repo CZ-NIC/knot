@@ -66,13 +66,11 @@
  */
 typedef struct conf_iface_t {
 	node_t n;
-	char *name;           /*!< Internal name for the interface. */
-	char *address;        /*!< IP (IPv4/v6) address for this interface */
-	unsigned prefix;      /*!< IP subnet prefix. */
-	int port;             /*!< Port number for this interface */
-	int family;           /*!< Address family. */
-	knot_tsig_key_t *key; /*!< TSIG key (only valid for remotes). */
-	struct sockaddr_storage via;      /*!< Used for remotes to specify qry endpoint.*/
+	char *name;                   /*!< Internal name for the interface. */
+	knot_tsig_key_t *key;         /*!< TSIG key (only applic for remotes). */
+	unsigned prefix;              /*!< IP subnet prefix (only applic for remotes). */
+	struct sockaddr_storage addr; /*!< Interface address. */
+	struct sockaddr_storage via;  /*!< Used for remotes to specify qry endpoint.*/
 } conf_iface_t;
 
 /*!

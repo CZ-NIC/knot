@@ -30,7 +30,7 @@
 
 #include "knot/server/xfr-handler.h"
 #include "knot/server/server.h"
-#include "knot/server/socket.h"
+#include "knot/server/net.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/xfr-in.h"
@@ -102,25 +102,13 @@ static int xfr_send_tcp(int fd, struct sockaddr *addr, uint8_t *msg, size_t msgl
 { return tcp_send(fd, msg, msglen); }
 
 static int xfr_send_udp(int fd, struct sockaddr *addr, uint8_t *msg, size_t msglen)
-{
-	struct sockaddr_storage *ss = (struct sockaddr_storage *)addr;
-	if (ss->ss_family == AF_INET) {
-		return sendto(fd, msg, msglen, 0, addr, sizeof(struct sockaddr_in));
-	}
-	if (ss->ss_family == AF_INET6) {
-		return sendto(fd, msg, msglen, 0, addr, sizeof(struct sockaddr_in6));
-	}
-	return KNOT_EINVAL;
-}
+{ return sendto(fd, msg, msglen, 0, addr, sockaddr_len((struct sockaddr_storage *)addr));  }
 
 static int xfr_recv_tcp(int fd, struct sockaddr *addr, uint8_t *buf, size_t buflen)
 { return tcp_recv(fd, buf, buflen, addr); }
 
 static int xfr_recv_udp(int fd, struct sockaddr *addr, uint8_t *buf, size_t buflen)
-{
-	socklen_t addrlen = sizeof(struct sockaddr_storage);
-	return recvfrom(fd, buf, buflen, 0, addr, &addrlen);
-}
+{ return recv(fd, buf, buflen, 0); }
 
 /*! \todo This should be obsoleted by the generic response parsing layer. */
 static int parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type)
@@ -257,38 +245,16 @@ static int xfr_task_setsig(knot_ns_xfr_t *rq, knot_tsig_key_t *key)
 static int xfr_task_connect(knot_ns_xfr_t *rq)
 {
 	/* Create socket by type. */
-	int ret = 0;
 	int stype = (rq->flags & XFR_FLAG_TCP) ? SOCK_STREAM : SOCK_DGRAM;
-	int fd = socket_create(rq->addr.ss_family, stype, 0);
-	if (fd < 0) {
-		return KNOT_ERROR;
-	}
-
-	/* Bind to specific address - if set. */
-	if (rq->saddr.ss_family != AF_UNSPEC) {
-		if (bind(fd, (struct sockaddr *)&rq->saddr, sizeof(rq->saddr)) < 0) {
-			socket_close(fd);
-			return KNOT_ERROR;
-		}
-	}
-
-	/* Connect if TCP. */
-	if (rq->flags & XFR_FLAG_TCP) {
-		if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
-			; /* Go silently with blocking if it fails. */
-
-		ret = connect(fd, (struct sockaddr *)&rq->addr, sizeof(rq->addr));
-		if (ret != 0 && errno != EINPROGRESS) {
-			socket_close(fd);
-			return KNOT_ECONNREFUSED;
-		}
+	int ret = net_connected_socket(stype, &rq->addr, &rq->saddr);
+	if (ret < 0) {
+		return ret;
 	}
 
 	/* Set up for UDP as well to trigger 'send query' event. */
+	rq->session = ret;
 	rq->flags |= XFR_FLAG_CONNECTING;
 
-	/* Store new socket descriptor. */
-	rq->session = fd;
 	return KNOT_EOK;
 }
 
@@ -945,7 +911,7 @@ static enum fdset_sweep_state xfr_sweep(fdset_t *set, int i, void *data)
 		if (xfr_task_is_transfer(rq))
 			xfr_pending_decr(xfr);
 		xfr_task_close(rq);
-		socket_close(set->pfd[i].fd);
+		close(set->pfd[i].fd);
 		return FDSET_SWEEP;
 	}
 
@@ -1063,7 +1029,7 @@ int xfr_worker(dthread_t *thread)
 				if (xfr_task_is_transfer(rq))
 					xfr_pending_decr(xfr);
 				xfr_task_close(rq);
-				socket_close(set.pfd[i].fd);
+				close(set.pfd[i].fd);
 				fdset_remove(&set, i);
 				continue; /* Stay on the same index. */
 			} else {
@@ -1093,7 +1059,7 @@ int xfr_worker(dthread_t *thread)
 	/* Cancel existing connections. */
 	for (unsigned i = 0; i < set.n; ++i) {
 		knot_ns_xfr_t *rq = (knot_ns_xfr_t *)set.ctx[i];
-		socket_close(set.pfd[i].fd);
+		close(set.pfd[i].fd);
 		if (xfr_task_is_transfer(rq))
 			xfr_pending_decr(xfr);
 		xfr_task_free(rq);

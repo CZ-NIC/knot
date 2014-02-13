@@ -30,7 +30,7 @@
 #include "common/fdset.h"
 #include "common/evsched.h"
 #include "knot/server/dthreads.h"
-#include "knot/server/socket.h"
+#include "knot/server/net.h"
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zone.h"
 

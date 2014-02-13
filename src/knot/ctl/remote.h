@@ -38,6 +38,7 @@
 
 /*!
  * \brief Bind RC interface according to configuration.
+ *
  * \param desc Interface descriptor (address, port).
  *
  * \retval socket if passed.
@@ -50,20 +51,22 @@ int remote_bind(conf_iface_t *desc);
  *
  * \note Breaks all pending connections.
  *
- * \param r RC interface socket
+ * \param desc Interface descriptor (address, port).
+ * \param socket Interface socket
  *
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_unbind(int r);
+int remote_unbind(conf_iface_t *desc, int sock);
 
 /*!
  * \brief Poll new events on RC socket.
+ *
  * \param r RC interface socket.
  *
  * \return number of polled events or -1 on error.
  */
-int remote_poll(int r);
+int remote_poll(int sock);
 
 /*!
  * \brief Start a RC connection with remote.
@@ -76,7 +79,7 @@ int remote_poll(int r);
  * \return client TCP socket if success.
  * \return KNOT_ECONNREFUSED if fails to receive command.
  */
-int remote_recv(int r, struct sockaddr *a, uint8_t* buf, size_t *buflen);
+int remote_recv(int sock, struct sockaddr *addr, uint8_t* buf, size_t *buflen);
 
 /*!
  * \brief Parse a RC command.
@@ -100,7 +103,7 @@ int remote_parse(knot_pkt_t* pkt);
  * \retval KNOT_EOK on success.
  * \retval knot_error else.
  */
-int remote_answer(int fd, server_t *s, knot_pkt_t *pkt);
+int remote_answer(int sock, server_t *s, knot_pkt_t *pkt);
 
 /*!
  * \brief Accept new client, receive command, process it and send response.

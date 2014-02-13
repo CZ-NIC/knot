@@ -38,6 +38,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdint.h>
+#include <unistd.h>
 
 /* Subnet maximum prefix length. */
 #define IPV4_PREFIXLEN 32
@@ -55,6 +56,13 @@
  * \return number of bytes or error code
  */
 int sockaddr_len(const struct sockaddr_storage *ss);
+
+/*!
+ * \brief Compare address storages.
+ *
+ * \return like memcmp(3)
+ */
+int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storage *k2);
 
 /*!
  * \brief Set address and port.

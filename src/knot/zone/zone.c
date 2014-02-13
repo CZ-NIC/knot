@@ -159,12 +159,8 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 	/* Load ACL rules. */
 	conf_remote_t *r = 0;
 	WALK_LIST(r, *acl_list) {
-		/* Initialize address. */
-		/*! Port matching disabled, port = 0. */
 		conf_iface_t *cfg_if = r->remote;
-		struct sockaddr_storage addr;
-		sockaddr_set(&addr, cfg_if->family, cfg_if->address, 0);
-		acl_insert(new_acl, &addr, cfg_if->prefix, cfg_if->key);
+		acl_insert(new_acl, &cfg_if->addr, cfg_if->prefix, cfg_if->key);
 	}
 
 	*acl = new_acl;
@@ -186,8 +182,7 @@ static void set_xfrin_parameters(zone_t *zone, conf_zone_t *conf)
 
 	conf_remote_t *master = HEAD(conf->acl.xfr_in);
 	conf_iface_t *master_if = master->remote;
-	sockaddr_set(&zone->xfr_in.master, master_if->family,
-	             master_if->address, master_if->port);
+	memcpy(&zone->xfr_in.master, &master_if->addr, sizeof(struct sockaddr_storage));
 	if (master_if->via.ss_family != AF_UNSPEC) {
 		memcpy(&zone->xfr_in.via, &master_if->via, sizeof(struct sockaddr_storage));
 	}

@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
-#include <unistd.h>
 
 #include "common/sockaddr.h"
 #include "common/errcode.h"
@@ -36,6 +35,15 @@ int sockaddr_len(const struct sockaddr_storage *ss)
 	default:
 		return KNOT_EINVAL;
 	}
+}
+
+int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storage *k2)
+{
+	if (k1->ss_family != k2->ss_family) {
+		return (int)k1->ss_family - (int)k2->ss_family;
+	}
+
+	return memcmp(k1, k2, sockaddr_len(k1));
 }
 
 int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port)
@@ -118,7 +126,7 @@ int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen)
 		sprintf(&buf[written], "%d", port);
 	}
 
-	return KNOT_ERROR;
+	return KNOT_EOK;
 }
 
 int sockaddr_port(const struct sockaddr_storage *ss)
