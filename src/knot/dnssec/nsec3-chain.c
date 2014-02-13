@@ -232,7 +232,8 @@ static bool node_should_be_signed_nsec3(const knot_node_t *n)
 {
 	knot_rrset_t **node_rrsets = knot_node_get_rrsets_no_copy(n);
 	for (int i = 0; i < n->rrset_count; i++) {
-		if (node_rrsets[i]->type == KNOT_RRTYPE_NSEC) {
+		if (node_rrsets[i]->type == KNOT_RRTYPE_NSEC ||
+		    node_rrsets[i]->type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
 		bool should_sign = false;
@@ -734,6 +735,22 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
+		/*!
+		 * Remove possible NSEC from the node. (Do not allow both NSEC
+		 * and NSEC3 in the zone at once.)
+		 */
+		result = knot_nsec_changeset_remove(knot_node_rrset(node,
+		                                    KNOT_RRTYPE_NSEC),
+		                                    knot_node_rrset(node,
+		                                    KNOT_RRTYPE_RRSIG),
+		                                    chgset);
+		if (result != KNOT_EOK) {
+			break;
+		}
+		if (knot_node_rrset(node, KNOT_RRTYPE_NSEC)) {
+			knot_node_set_replaced_nsec(node);
+		}
+
 		if (knot_node_is_non_auth(node)) {
 			hattrie_iter_next(it);
 			continue;
@@ -748,19 +765,6 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		}
 
 		result = knot_zone_tree_insert(nsec3_nodes, nsec3_node);
-		if (result != KNOT_EOK) {
-			break;
-		}
-
-		/*!
-		 * Remove possible NSEC from the node. (Do not allow both NSEC
-		 * and NSEC3 in the zone at once.)
-		 */
-		result = knot_nsec_changeset_remove(knot_node_rrset(node,
-		                                    KNOT_RRTYPE_NSEC),
-		                                    knot_node_rrset(node,
-		                                    KNOT_RRTYPE_RRSIG),
-		                                    chgset);
 		if (result != KNOT_EOK) {
 			break;
 		}

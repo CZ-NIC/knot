@@ -631,11 +631,8 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 
 	int result;
 
-	// extract copy of NSEC and RRSIG
-
+	// extract copy of NSEC
 	knot_rrset_t *old_nsec = NULL;
-	knot_rrset_t *synth_rrsigs = NULL;
-
 	result = knot_rrset_deep_copy(oldrr, &old_nsec, NULL);
 	if (result != KNOT_EOK) {
 		return result;
@@ -646,10 +643,11 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 	                                  KNOT_CHANGESET_REMOVE);
 	if (result != KNOT_EOK) {
 		knot_rrset_deep_free(&old_nsec, 1, NULL);
-		knot_rrset_deep_free(&synth_rrsigs, 1, NULL);
 		return result;
 	}
 
+	// extract copy of RRSIG
+	knot_rrset_t *synth_rrsigs = NULL;
 	result = knot_rrset_synth_rrsig(oldrr, rrsigs, &synth_rrsigs, NULL);
 	if (result != KNOT_EOK && result != KNOT_ENOENT) {
 		return result;

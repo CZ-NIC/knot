@@ -1446,6 +1446,11 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
+	// We do not want to sign RRSIGs
+	if (rrset->type == KNOT_RRTYPE_RRSIG) {
+		return KNOT_EOK;
+	}
+
 	// At delegation points we only want to sign NSECs and DSs
 	if (knot_node_is_deleg_point(node)) {
 		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
