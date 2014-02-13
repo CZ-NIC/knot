@@ -179,17 +179,6 @@ static void set_xfrin_parameters(zone_t *zone, conf_zone_t *conf)
 
 	zone->xfr_in.bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
 	zone->xfr_in.has_master = 1;
-
-	conf_remote_t *master = HEAD(conf->acl.xfr_in);
-	conf_iface_t *master_if = master->remote;
-	memcpy(&zone->xfr_in.master, &master_if->addr, sizeof(struct sockaddr_storage));
-	if (master_if->via.ss_family != AF_UNSPEC) {
-		memcpy(&zone->xfr_in.via, &master_if->via, sizeof(struct sockaddr_storage));
-	}
-	if (master_if->key) {
-		memcpy(&zone->xfr_in.tsig_key, master_if->key,
-		       sizeof(knot_tsig_key_t));
-	}
 }
 
 zone_t* zone_new(conf_zone_t *conf)
@@ -224,10 +213,8 @@ zone_t* zone_new(conf_zone_t *conf)
 	pthread_mutex_init(&zone->ddns_lock, 0);
 
 	// ACLs
-	set_acl(&zone->xfr_in.acl, &conf->acl.xfr_in);
 	set_acl(&zone->xfr_out,    &conf->acl.xfr_out);
 	set_acl(&zone->notify_in,  &conf->acl.notify_in);
-	set_acl(&zone->notify_out, &conf->acl.notify_out);
 	set_acl(&zone->update_in,  &conf->acl.update_in);
 
 	// XFR-IN
@@ -265,10 +252,8 @@ void zone_free(zone_t **zone_ptr)
 	zone_timer_free(zone->ixfr_dbsync);
 	zone_timer_free(zone->dnssec.timer);
 
-	acl_delete(&zone->xfr_in.acl);
 	acl_delete(&zone->xfr_out);
 	acl_delete(&zone->notify_in);
-	acl_delete(&zone->notify_out);
 	acl_delete(&zone->update_in);
 	pthread_mutex_destroy(&zone->lock);
 	pthread_mutex_destroy(&zone->ddns_lock);
@@ -297,4 +282,18 @@ knot_zone_contents_t *zone_switch_contents(zone_t *zone,
 	old_contents = rcu_xchg_pointer(&zone->contents, new_contents);
 
 	return old_contents;
+}
+
+const conf_iface_t *zone_master(const zone_t *zone)
+{
+	if (zone == NULL) {
+		return NULL;
+	}
+
+	if (EMPTY_LIST(zone->conf->acl.xfr_in)) {
+		return NULL;
+	}
+
+	conf_remote_t *master = HEAD(zone->conf->acl.xfr_in);
+	return master->remote;
 }

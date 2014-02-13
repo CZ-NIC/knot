@@ -77,17 +77,12 @@ typedef struct zone_t {
 	pthread_mutex_t ddns_lock;
 
 	/*! \brief Access control lists. */
-	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
-	acl_t *notify_in;  /*!< ACL for notify-in.*/
-	acl_t *notify_out; /*!< ACL for notify-out.*/
-	acl_t *update_in;  /*!< ACL for notify-out.*/
+	acl_t *xfr_out;    /*!< ACL for outgoing transfers.*/
+	acl_t *notify_in;  /*!< ACL for incoming notifications.*/
+	acl_t *update_in;  /*!< ACL for incoming updates.*/
 
 	/*! \brief XFR-IN scheduler. */
 	struct {
-		acl_t          *acl;      /*!< ACL for xfr-in.*/
-		struct sockaddr_storage master;   /*!< Master server for xfr-in.*/
-		struct sockaddr_storage via;      /*!< Master server transit interface.*/
-		knot_tsig_key_t tsig_key; /*!< Master TSIG key. */
 		event_t *timer;           /*!< Timer for REFRESH/RETRY. */
 		event_t *expire;          /*!< Timer for EXPIRE. */
 		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
@@ -167,5 +162,10 @@ int zone_timers_freeze(zone_t *zone);
  * \brief Reschedule frozen zone timers.
  */
 int zone_timers_thaw(zone_t *zone);
+
+/*!
+ * \brief Return zone master interface.
+ */
+const conf_iface_t *zone_master(const zone_t *zone);
 
 /*! @} */

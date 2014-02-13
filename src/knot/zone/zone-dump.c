@@ -239,7 +239,7 @@ int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *fr
 	        params.rr_count, date);
 
 	// If a master server is configured, dump info about it.
-	if (from->ss_family != AF_UNSPEC) {
+	if (from) {
 		char addr_str[SOCKADDR_STRLEN] = {0};
 		sockaddr_tostr(from, addr_str, sizeof(addr_str));
 

@@ -38,7 +38,10 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 	if (!rq) {
 		return NS_PROC_FAIL;
 	}
-	xfr_task_setaddr(rq, &zone->xfr_in.master, &zone->xfr_in.via);
+
+	const conf_iface_t *master = zone_master(zone);
+	xfr_task_setaddr(rq, &master->addr, &master->via);
+	/* Don't set TSIG key, as it's only forwarded. */
 
 	/* Copy query originator data. */
 	rq->fwd_src_fd = qdata->param->query_socket;
