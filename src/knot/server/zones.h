@@ -45,9 +45,9 @@
 #define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Interval between AXFR BS retries. */
 #define AXFR_RETRY_MAXTIME (10*60*1000) /*!< Maximum interval 10mins */
 
-enum {
-	REFRESH_DEFAULT = -1 /* Use time value from zone structure. */
-};
+/* Timer special values. */
+#define REFRESH_DEFAULT -1 /* Use time value from zone structure. */
+#define REFRESH_NOW (knot_random_uint16_t() % 1000) /* Now, but with jitter. */
 
 /*!
  * \brief Sync zone data back to text zonefile.
