@@ -55,9 +55,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 					&soa_style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		if (params->dump_rdata) {
-			params->rr_count += soa->rdata_count;
-		}
+		params->rr_count += soa->rdata_count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -91,9 +89,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		if (params->dump_rdata) {
-			params->rr_count += rrsets[i]->rdata_count;
-		}
+		params->rr_count += rrsets[i]->rdata_count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -138,9 +134,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		if (params->dump_rdata) {
-			params->rr_count += rrsets[i]->rdata_count;
-		}
+		params->rr_count += rrsets[i]->rdata_count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
