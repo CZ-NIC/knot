@@ -301,7 +301,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 		if (rr->type != KNOT_RRTYPE_SOA) {
 			return KNOT_EMALF;
 		}
-		*zone = create_zone_from_dname(rr->owner);
+		*zone = knot_zone_contents_new(rr->owner);
 		if (*zone == NULL) {
 			knot_pkt_free(&packet);
 			return KNOT_ENOMEM;

@@ -187,10 +187,18 @@ static void loader_process(const scanner_t *scanner)
 	}
 }
 
-knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin)
+knot_zone_contents_t *create_zone_from_name(const char *origin)
 {
-	knot_zone_contents_t *ret = knot_zone_contents_new(origin);
-	return ret;
+	if (origin == NULL) {
+		return NULL;
+	}
+	knot_dname_t *owner = knot_dname_from_str(origin);
+	if (owner == NULL) {
+		return NULL;
+	}
+	knot_zone_contents_t *z = knot_zone_contents_new(owner);
+	knot_dname_free(&owner);
+	return z;
 }
 
 int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
@@ -211,6 +219,11 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 	/* Create trie for DNAME duplicits. */
 	zl->lookup_tree = hattrie_create();
 	if (zl->lookup_tree == NULL) {
+		free(zl);
+		return KNOT_ENOMEM;
+	}
+	zl->z = create_zone_from_name(conf->name);
+	if (zl->z == NULL) {
 		free(zl);
 		return KNOT_ENOMEM;
 	}
@@ -328,5 +341,4 @@ void zonefile_close(zloader_t *loader)
 	free(loader->source);
 	free(loader->origin);
 	free(loader->context);
-	free(loader);
 }

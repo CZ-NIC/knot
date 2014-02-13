@@ -82,8 +82,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader);
  */
 void zonefile_close(zloader_t *loader);
 
-knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin);
-zone_t *create_zone_from_name(const char *origin);
+knot_zone_contents_t *create_zone_from_name(const char *origin);
 
 int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr);
 
