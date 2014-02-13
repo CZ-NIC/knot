@@ -23,7 +23,7 @@
 #include <time.h>
 
 #include "libknot/tsig.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/common.h"
 #include "libknot/util/utils.h"
 #include "libknot/rrset.h"

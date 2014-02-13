@@ -57,24 +57,20 @@ knsec3hash_SOURCES =				\
 
 # static: shared
 libknots_la_SOURCES =				\
-	common/acl.c				\
-	common/acl.h				\
 	common/array-sort.h			\
-	common/atomic.h				\
 	common/base32hex.c			\
 	common/base32hex.h			\
 	common/base64.c				\
 	common/base64.h				\
 	common/binsearch.h			\
 	common/crc.h				\
+	common/debug.h				\
 	common/descriptor.c			\
 	common/descriptor.h			\
 	common/errcode.c			\
 	common/errcode.h			\
 	common/errors.c				\
 	common/errors.h				\
-	common/evqueue.c			\
-	common/evqueue.h			\
 	common/evsched.c			\
 	common/evsched.h			\
 	common/fdset.c				\
@@ -176,7 +172,6 @@ libknot_la_SOURCES =				\
 	libknot/tsig-op.h			\
 	libknot/tsig.c				\
 	libknot/tsig.h				\
-	libknot/util/debug.h			\
 	libknot/util/endian.h			\
 	libknot/util/tolower.c			\
 	libknot/util/tolower.h			\
@@ -220,8 +215,6 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/internet.h		\
 	knot/nameserver/ixfr.c			\
 	knot/nameserver/ixfr.h			\
-	knot/nameserver/name-server.c		\
-	knot/nameserver/name-server.h		\
 	knot/nameserver/nsec_proofs.c		\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\
@@ -251,11 +244,8 @@ libknotd_la_SOURCES =				\
 	knot/server/zone-load.h			\
 	knot/server/zones.c			\
 	knot/server/zones.h			\
-	knot/stat/gatherer.c			\
-	knot/stat/gatherer.h			\
-	knot/stat/stat-common.h			\
-	knot/stat/stat.c			\
-	knot/stat/stat.h			\
+	knot/updates/acl.c			\
+	knot/updates/acl.h			\
 	knot/updates/changesets.c		\
 	knot/updates/changesets.h		\
 	knot/updates/ddns.c			\

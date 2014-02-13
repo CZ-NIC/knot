@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
@@ -212,11 +212,11 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	int ret = 0;
 
 	/*!
-	 * If the node has no other RRSets than NSEC (and possibly RRSIG),
+	 * If the node has no other RRSets than NSEC (and possibly RRSIGs),
 	 * just remove the NSEC and its RRSIG, they are redundant
 	 */
 	if (old_next_nsec != NULL
-	    && knot_node_rrset_count(b) == KNOT_NODE_RRSET_COUNT_ONLY_NSEC) {
+	    && knot_nsec_only_nsec_and_rrsigs_in_node(b)) {
 		ret = knot_nsec_changeset_remove(old_next_nsec, old_rrsigs,
 		                                 data->changeset);
 		if (ret != KNOT_EOK) {
@@ -637,6 +637,7 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 	if (result != KNOT_EOK) {
 		return result;
 	}
+
 	// update changeset
 
 	result = knot_changeset_add_rrset(changeset, old_nsec,
@@ -665,6 +666,27 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 	}
 
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Checks whether the node is empty or eventually contains only NSEC and
+ *        RRSIGs.
+ */
+bool knot_nsec_only_nsec_and_rrsigs_in_node(const knot_node_t *n)
+{
+	assert(n);
+	assert(0); // fix and reuse
+
+	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(n);
+
+	for (int i = 0; i < knot_node_rrset_count(n); ++i) {
+		if (knot_rrset_type(rrsets[i]) != KNOT_RRTYPE_NSEC
+		    && knot_rrset_rdata_rr_count(rrsets[i]) > 0) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 /* - API - Chain creation and fix ------------------------------------------- */

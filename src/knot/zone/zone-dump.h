@@ -33,12 +33,13 @@
  * \brief Dumps given zone to text file.
  *
  * \param zone Zone to be saved.
+ * \param from From where the zone originated.
  * \param file File to write to.
  *
  * \retval KNOT_EOK on success.
  * \retval < 0 if error.
  */
-int zone_dump_text(knot_zone_contents_t *zone, FILE *file);
+int zone_dump_text(knot_zone_contents_t *zone, const sockaddr_t *from, FILE *file);
 
 #endif // _KNOTD_ZONEDUMP_H_
 

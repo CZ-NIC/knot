@@ -22,12 +22,11 @@
 #include "knot/updates/ddns.h"
 #include "knot/updates/changesets.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/common.h"
 #include "libknot/consts.h"
 #include "common/mempattern.h"
-#include "knot/nameserver/name-server.h"  // ns_serial_compare() - TODO: extract
 #include "knot/updates/xfr-in.h"
 #include "common/descriptor.h"
 
@@ -1756,8 +1755,8 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA
 		    && (knot_rrset_class(rr) == KNOT_CLASS_NONE
 		        || knot_rrset_class(rr) == KNOT_CLASS_ANY
-		        || ns_serial_compare(knot_rdata_soa_serial(rr),
-		                             sn) <= 0)) {
+		        || knot_serial_compare(knot_rdata_soa_serial(rr),
+		                               sn) <= 0)) {
 			// This ignores also SOA removals
 			dbg_ddns_verb("Ignoring SOA...\n");
 			continue;
@@ -1781,7 +1780,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 			int64_t sn_rr = knot_rdata_soa_serial(rr);
 			dbg_ddns_verb("Replacing SOA. Old serial: %"PRId64", "
 			              "new serial: %"PRId64"\n", sn_new, sn_rr);
-			assert(ns_serial_compare(sn_rr, sn) > 0);
+			assert(knot_serial_compare(sn_rr, sn) > 0);
 			assert(rr_copy != NULL);
 			sn_new = sn_rr;
 			soa_end = rr_copy;

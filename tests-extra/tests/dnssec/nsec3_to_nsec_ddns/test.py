@@ -15,6 +15,10 @@ t.start()
 
 # Wait for listening server with unsigned zone.
 old_serial = master.zone_wait(zone)
+
+# Check NSEC absence.
+master.check_nsec(zone, nonsec=True)
+
 master.stop()
 
 # Enable autosigning.
@@ -41,6 +45,9 @@ compare(resp.answer_count(), 1, "NSEC3PARAM count")
 resp = master.dig(zone, "DNSKEY", dnssec=True)
 compare(resp.answer_count(), 4, "DNSKEY count")
 
+# Check NSEC3 presence.
+master.check_nsec(zone, nsec3=True)
+
 master.backup_zone(zone)
 
 # Verify signed zone file.
@@ -66,6 +73,9 @@ compare(resp.answer_count(), 0, "NSEC3PARAM count")
 # Check presence of DNSKEYs.
 resp = master.dig(zone, "DNSKEY", dnssec=True)
 compare(resp.answer_count(), 4, "DNSKEY count")
+
+# Check NSEC presence.
+master.check_nsec(zone)
 
 # Verify signed zone file.
 master.zone_verify(zone)

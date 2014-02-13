@@ -20,26 +20,30 @@
 
 #include <urcu.h>
 
+#include "knot/zone/zonedb.h"
+#include "knot/server/server.h"
+#include "knot/server/zones.h"
 #include "libknot/common.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/node.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "common/mempattern.h"
 #include "common/mempool.h"
+
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
 /*----------------------------------------------------------------------------*/
 
 /*! \brief Discard zone in zone database. */
-static void delete_zone_from_db(knot_zone_t *zone)
+static void discard_zone(zone_t *zone)
 {
 	synchronize_rcu();
-	knot_zone_set_flag(zone, KNOT_ZONE_DISCARDED, 1);
-	knot_zone_release(zone);
+	zone->flags |= ZONE_DISCARDED;
+	zone_release(zone);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -69,13 +73,17 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zonedb_insert(knot_zonedb_t *db, knot_zone_t *zone)
+int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 {
 	if (db == NULL || zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int name_size = knot_dname_size(zone->name);
+	if (name_size < 0) {
+		return KNOT_EINVAL;
+	}
+
 	return hhash_insert(db->hash, (const char*)zone->name, name_size, zone);
 }
 
@@ -110,7 +118,7 @@ int knot_zonedb_build_index(knot_zonedb_t *db)
 	knot_zonedb_iter_t it;
 	knot_zonedb_iter_begin(db, &it);
 	while (!knot_zonedb_iter_finished(&it)) {
-		knot_zone_t *zone = knot_zonedb_iter_val(&it);
+		zone_t *zone = knot_zonedb_iter_val(&it);
 		db->maxlabels = MAX(db->maxlabels, knot_dname_labels(zone->name, NULL));
 		knot_zonedb_iter_next(&it);
 	}
@@ -130,7 +138,7 @@ static value_t *find_name(knot_zonedb_t *db, const knot_dname_t *dname, uint16_t
 
 /*----------------------------------------------------------------------------*/
 
-knot_zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
+zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 {
 	int name_size = knot_dname_size(zone_name);
 	if (!db || name_size < 1) {
@@ -147,7 +155,7 @@ knot_zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
 
 /*----------------------------------------------------------------------------*/
 
-knot_zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname)
+zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dname)
 {
 	if (db == NULL || dname == NULL) {
 		return NULL;
@@ -176,26 +184,6 @@ knot_zone_t *knot_zonedb_find_suffix(knot_zonedb_t *db, const knot_dname_t *dnam
 	}
 
 	return NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_zone_contents_t *knot_zonedb_expire_zone(knot_zonedb_t *db,
-                                              const knot_dname_t *zone_name)
-{
-
-	if (db == NULL || zone_name == NULL) {
-		return NULL;
-	}
-
-	// Remove the contents from the zone, but keep the zone in the zonedb.
-
-	knot_zone_t *zone = knot_zonedb_find(db, zone_name);
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return knot_zone_switch_contents(zone, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -231,12 +219,8 @@ void knot_zonedb_deep_free(knot_zonedb_t **db)
 
 	/* Reindex for iteration. */
 	knot_zonedb_build_index(*db);
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(*db, &it);
-	while (!knot_zonedb_iter_finished(&it)) {
-		delete_zone_from_db(knot_zonedb_iter_val(&it));
-		knot_zonedb_iter_next(&it);
-	}
 
+	/* Free zones and database. */
+	knot_zonedb_foreach(*db, discard_zone);
 	knot_zonedb_free(db);
 }

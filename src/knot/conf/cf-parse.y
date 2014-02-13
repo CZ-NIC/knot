@@ -325,14 +325,8 @@ static void conf_zone_start(void *scanner, char *name) {
 		cf_error(scanner, "out of memory while allocating zone config");
 		return;
 	}
-	memset(this_zone, 0, sizeof(conf_zone_t));
-	this_zone->enable_checks = -1; // Default policy applies
-	this_zone->notify_timeout = -1; // Default policy applies
-	this_zone->notify_retries = 0; // Default policy applies
-	this_zone->dbsync_timeout = -1; // Default policy applies
-	this_zone->disable_any = -1; // Default policy applies
-	this_zone->build_diffs = -1; // Default policy applies
-	this_zone->sig_lifetime = -1; // Default policy applies
+
+	conf_init_zone(this_zone);
 
 	// Append mising dot to ensure FQDN
 	size_t nlen = strlen(name);
@@ -352,16 +346,6 @@ static void conf_zone_start(void *scanner, char *name) {
 	for (size_t i = 0; this_zone->name[i]; i++) {
 		this_zone->name[i] = tolower(this_zone->name[i]);
 	}
-
-	// DNSSEC configuration
-	this_zone->dnssec_enable = -1;
-
-	/* Initialize ACL lists. */
-	init_list(&this_zone->acl.xfr_in);
-	init_list(&this_zone->acl.xfr_out);
-	init_list(&this_zone->acl.notify_in);
-	init_list(&this_zone->acl.notify_out);
-	init_list(&this_zone->acl.update_in);
 
 	/* Check domain name. */
 	knot_dname_t *dn = NULL;

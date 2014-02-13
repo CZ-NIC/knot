@@ -24,10 +24,11 @@
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "knot/zone/zone.h"
 
-static int init_dnssec_structs(const knot_zone_t *zone,
+static int init_dnssec_structs(const knot_zone_contents_t *zone,
+                               conf_zone_t *config,
                                knot_zone_keys_t *zone_keys,
                                knot_dnssec_policy_t *policy,
                                knot_update_serial_t soa_up, bool force)
@@ -35,20 +36,15 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	assert(zone);
 	assert(zone_keys);
 	assert(policy);
-
-	zonedata_t *zone_data = zone->data;
-	assert(zone_data);
-
-	conf_zone_t *config = zone_data->conf;
 	assert(config);
 
 	// Read zone keys from disk
-	bool nsec3_enabled = knot_is_nsec3_enabled(zone->contents);
+	bool nsec3_enabled = knot_is_nsec3_enabled(zone);
 	int result = knot_load_zone_keys(config->dnssec_keydir,
-	                                 zone->contents->apex->owner,
+	                                 zone->apex->owner,
 	                                 nsec3_enabled, zone_keys);
 	if (result != KNOT_EOK) {
-		char *zname = knot_dname_to_str(zone->name);
+		char *zname = knot_dname_to_str(zone->apex->owner);
 		log_zone_error("DNSSEC: Zone %s - %s\n", zname,
 		               knot_strerror(result));
 		free(zname);
@@ -69,17 +65,15 @@ static int init_dnssec_structs(const knot_zone_t *zone,
 	return KNOT_EOK;
 }
 
-static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
+static int zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
+                     knot_changeset_t *out_ch, bool force,
                      knot_update_serial_t soa_up, uint32_t *refresh_at,
                      uint32_t new_serial)
 {
 	assert(zone);
-	assert(zone->contents);
 	assert(out_ch);
 
-	char *zname = knot_dname_to_str(zone->name);
-	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
-	free(zname);
+	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zone_config->name);
 	if (msgpref == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -87,17 +81,10 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	dbg_dnssec_verb("Changeset empty before generating NSEC chain: %d\n",
 	                knot_changeset_is_empty(out_ch));
 
-	conf_zone_t *zone_config = ((zonedata_t *)knot_zone_data(zone))->conf;
-	if (!zone_config->dnssec_enable) {
-		log_zone_warning("%s DNSSEC not enabled.\n", msgpref);
-		free(msgpref);
-		return KNOT_EOK;
-	}
-
 	// Init needed structs
 	knot_zone_keys_t zone_keys = { '\0' };
 	knot_dnssec_policy_t policy = { '\0' };
-	int result = init_dnssec_structs(zone, &zone_keys, &policy, soa_up,
+	int result = init_dnssec_structs(zone, zone_config, &zone_keys, &policy, soa_up,
 	                                 force);
 	if (result != KNOT_EOK) {
 		free(msgpref);
@@ -105,7 +92,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	}
 
 	// generate NSEC records
-	result = knot_zone_create_nsec_chain(zone->contents, out_ch,
+	result = knot_zone_create_nsec_chain(zone, out_ch,
 	                                     &zone_keys, &policy);
 	if (result != KNOT_EOK) {
 		log_zone_error("%s Could not create NSEC(3) chain (%s).\n",
@@ -118,7 +105,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	                knot_changeset_is_empty(out_ch));
 
 	// add missing signatures
-	result = knot_zone_sign(zone->contents, &zone_keys, &policy, out_ch,
+	result = knot_zone_sign(zone, &zone_keys, &policy, out_ch,
 	                        refresh_at);
 	if (result != KNOT_EOK) {
 		log_zone_error("%s Error while signing (%s).\n",
@@ -132,7 +119,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 
 	// Check if only SOA changed
 	if (knot_changeset_is_empty(out_ch) &&
-	    !knot_zone_sign_soa_expired(zone->contents, &zone_keys, &policy)) {
+	    !knot_zone_sign_soa_expired(zone, &zone_keys, &policy)) {
 		log_zone_info("%s No signing performed, zone is valid.\n",
 		              msgpref);
 		free(msgpref);
@@ -142,7 +129,7 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	}
 
 	// update SOA if there were any changes
-	const knot_rrset_t *soa = knot_node_rrset(zone->contents->apex,
+	const knot_rrset_t *soa = knot_node_rrset(zone->apex,
 	                                          KNOT_RRTYPE_SOA);
 	const knot_rrset_t *rrsigs = knot_node_rrset(zone->contents->apex,
 	                                             KNOT_RRTYPE_RRSIG);
@@ -165,30 +152,32 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	return KNOT_EOK;
 }
 
-int knot_dnssec_zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch,
+int knot_dnssec_zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
+                          knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up, uint32_t *refresh_at,
                           uint32_t new_serial)
 {
-	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
+	if (zone == NULL || zone_config == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, false, soa_up, refresh_at, new_serial);
+	return zone_sign(zone, zone_config, out_ch, false, soa_up, refresh_at, new_serial);
 }
 
-int knot_dnssec_zone_sign_force(knot_zone_t *zone,
+int knot_dnssec_zone_sign_force(knot_zone_contents_t *zone, conf_zone_t *zone_config,
                                 knot_changeset_t *out_ch, uint32_t *refresh_at,
                                 uint32_t new_serial)
 {
-	if (zone == NULL || zone->contents == NULL || out_ch == NULL) {
+	if (zone == NULL || zone_config == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, out_ch, true, KNOT_SOA_SERIAL_UPDATE, refresh_at,
+	return zone_sign(zone, zone_config, out_ch, true, KNOT_SOA_SERIAL_UPDATE, refresh_at,
 	                 new_serial);
 }
 
-int knot_dnssec_sign_changeset(const knot_zone_t *zone,
+int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
+                               conf_zone_t *zone_config,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
@@ -200,10 +189,6 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	if (!conf()->dnssec_enable) {
-		return KNOT_EOK;
-	}
-
 	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -211,13 +196,13 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 	// Init needed structures
 	knot_zone_keys_t zone_keys = { '\0' };
 	knot_dnssec_policy_t policy = { '\0' };
-	int ret = init_dnssec_structs(zone, &zone_keys, &policy, soa_up,
+	int ret = init_dnssec_structs(zone, zone_config, &zone_keys, &policy, soa_up,
 	                              false);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	char *zname = knot_dname_to_str(knot_zone_name(zone));
+	char *zname = knot_dname_to_str(zone->apex->owner);
 	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
 	free(zname);
 	if (msgpref == NULL) {
@@ -237,7 +222,7 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 
 	assert(sorted_changes);
 	// Fix NSEC(3) chain
-	ret = knot_zone_fix_nsec_chain(zone->contents,
+	ret = knot_zone_fix_nsec_chain(zone,
 	                               *sorted_changes, out_ch,
 	                               &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
@@ -260,7 +245,7 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 	}
 
 	// Update SOA RRSIGs
-	ret = knot_zone_sign_update_soa(knot_node_rrset(zone->contents->apex,
+	ret = knot_zone_sign_update_soa(knot_node_rrset(zone->apex,
 	                                                KNOT_RRTYPE_SOA),
 	                                knot_node_rrset(zone->contents->apex,
 	                                                KNOT_RRTYPE_RRSIG),

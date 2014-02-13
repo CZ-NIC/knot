@@ -27,7 +27,7 @@
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
 #include "libknot/packet/wire.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/key.h"
 

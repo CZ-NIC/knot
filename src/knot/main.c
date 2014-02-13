@@ -28,7 +28,6 @@
 
 #include "libknot/common.h"
 #include "libknot/dnssec/crypto.h"
-#include "common/evqueue.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
@@ -44,31 +43,6 @@
 static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
 static volatile short sig_stopping = 0;
-
-#ifdef INTEGRITY_CHECK
-static volatile short sig_integrity_check = 0;
-
-static void check_integrity(server_t *server) {
-	const knot_zonedb_t *zonedb = server->nameserver->zone_db;
-
-	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(zonedb, &it);
-	while(!knot_zonedb_iter_finished(&it)) {
-		knot_zone_t *zone = knot_zonedb_iter_val(&it);
-		char *zname = knot_dname_to_str(zone->name);
-
-		log_server_info("Integrity check for zone %s\n", zname);
-
-		int ret = knot_zone_contents_integrity_check(zone->contents);
-		if (ret != 0) {
-			log_server_info("Integrity errors(%i)\n", ret);
-		}
-
-		free(zname);
-		knot_zonedb_iter_next(&it);
-	}
-}
-#endif /* INTEGRITY_CHECK */
 
 // Cleanup handler
 static int do_cleanup(server_t *server, char *configf, char *pidf);
@@ -98,13 +72,6 @@ void interrupt_handle(int s)
 			exit(1);
 		}
 	}
-#ifdef INTEGRITY_CHECK
-	// Start zone integrity check
-	if (s == SIGUSR1) {
-		sig_integrity_check = 1;
-		return;
-	}
-#endif /* INTEGRITY_CHECK */
 }
 
 void help(void)
@@ -183,19 +150,28 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	// Initialize cryptographic backend
-	knot_crypto_init();
-	knot_crypto_init_threads();
-
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
 			free(config_fn);
 			free(daemon_root);
-			fprintf(stderr, "Daemonization failed, "
-					"shutting down...\n");
+			fprintf(stderr, "Daemonization failed, shutting down...\n");
 			return 1;
 		}
+	}
+
+	// Initialize cryptographic backend
+	knot_crypto_init();
+	knot_crypto_init_threads();
+
+	// Create server
+	server_t server;
+	int res = server_init(&server);
+	if (res != KNOT_EOK) {
+		fprintf(stderr, "Could not initialize server: %s\n", knot_strerror(res));
+		free(config_fn);
+		free(daemon_root);
+		return 1;
 	}
 
 	// Register service and signal handler
@@ -242,13 +218,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Create server
-	server_t *server = server_create();
-
 	// Initialize configuration
 	rcu_read_lock();
-	conf_add_hook(conf(), CONF_LOG, log_conf_hook, 0);
-	conf_add_hook(conf(), CONF_ALL, server_conf_hook, server);
+	conf_add_hook(conf(), CONF_LOG, log_reconfigure, 0);
+	conf_add_hook(conf(), CONF_ALL, server_reconfigure, &server);
 	rcu_read_unlock();
 
 	/* POSIX 1003.1e capabilities. */
@@ -257,7 +230,6 @@ int main(int argc, char **argv)
 	/* Drop all capabilities. */
 	if (capng_have_capability(CAPNG_EFFECTIVE, CAP_SETPCAP)) {
 		capng_clear(CAPNG_SELECT_BOTH);
-
 
 		/* Retain ability to set capabilities and FS access. */
 		capng_type_t tp = CAPNG_EFFECTIVE|CAPNG_PERMITTED;
@@ -299,7 +271,7 @@ int main(int argc, char **argv)
 			log_server_error("Failed to load configuration '%s'.\n",
 			                 config_fn);
 		}
-		return do_cleanup(server, config_fn, NULL);
+		return do_cleanup(&server, config_fn, NULL);
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",
 				conf()->ifaces_count, conf()->zones_count);
@@ -308,7 +280,7 @@ int main(int argc, char **argv)
 	/* Alter privileges. */
 	log_update_privileges(conf()->uid, conf()->gid);
 	if (proc_update_privileges(conf()->uid, conf()->gid) != KNOT_EOK)
-		return do_cleanup(server, config_fn, NULL);
+		return do_cleanup(&server, config_fn, NULL);
 
 	/* Check and create PID file. */
 	long pid = (long)getpid();
@@ -316,7 +288,7 @@ int main(int argc, char **argv)
 	char *cwd = NULL;
 	if (daemonize) {
 		if ((pidf = pid_check_and_create()) == NULL)
-			return do_cleanup(server, config_fn, pidf);
+			return do_cleanup(&server, config_fn, pidf);
 		log_server_info("Server started as a daemon, PID = %ld\n", pid);
 		log_server_info("PID stored in '%s'\n", pidf);
 		if ((cwd = malloc(PATH_MAX)) != NULL) {
@@ -341,15 +313,14 @@ int main(int argc, char **argv)
 		log_server_info("Server running without PID file.\n");
 	}
 
-	/* Load zones and add hook. */
-	zones_ns_conf_hook(conf(), server->nameserver);
-	conf_add_hook(conf(), CONF_ALL, zones_ns_conf_hook, server->nameserver);
+	/* Populate zone database and add reconfiguration hook. */
+	server_update_zones(conf(), &server);
+	conf_add_hook(conf(), CONF_ALL, server_update_zones, &server);
 
 	// Run server
-	int res = 0;
 	log_server_info("Starting server...\n");
-	if ((server_start(server)) == KNOT_EOK) {
-		if (!knot_zonedb_size(server->nameserver->zone_db)) {
+	if ((server_start(&server)) == KNOT_EOK) {
+		if (knot_zonedb_size(server.zone_db) == 0) {
 			log_server_warning("Server started, but no zones served.\n");
 		}
 
@@ -362,9 +333,6 @@ int main(int argc, char **argv)
 		sigaction(SIGTERM, &sa, NULL);
 		sigaction(SIGHUP,  &sa, NULL);
 		sigaction(SIGPIPE, &sa, NULL);
-#ifdef INTEGRITY_CHECK
-		sigaction(SIGUSR1, &sa, NULL);
-#endif /* INTEGRITY_CHECK */
 		sa.sa_flags = 0;
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
@@ -392,7 +360,7 @@ int main(int argc, char **argv)
 
 			/* Events. */
 			if (ret > 0) {
-				ret = remote_process(server, conf()->ctl.iface,
+				ret = remote_process(&server, conf()->ctl.iface,
 				                     remote, buf, buflen);
 				switch(ret) {
 				case KNOT_CTL_STOP:
@@ -406,19 +374,13 @@ int main(int argc, char **argv)
 			/* Interrupts. */
 			if (sig_req_stop) {
 				sig_req_stop = 0;
-				server_stop(server);
+				server_stop(&server);
 				break;
 			}
 			if (sig_req_reload) {
 				sig_req_reload = 0;
-				server_reload(server, config_fn);
+				server_reload(&server, config_fn);
 			}
-#ifdef INTEGRITY_CHECK
-			if (sig_integrity_check) {
-				sig_integrity_check = 0;
-				check_integrity(server);
-			}
-#endif /* INTEGRITY_CHECK */
 		}
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
@@ -432,7 +394,7 @@ int main(int argc, char **argv)
 				unlink(conf()->ctl.iface->address);
 		}
 
-		if ((server_wait(server)) != KNOT_EOK) {
+		if ((server_wait(&server)) != KNOT_EOK) {
 			log_server_error("An error occured while "
 					 "waiting for server to finish.\n");
 			res = 1;
@@ -450,9 +412,10 @@ int main(int argc, char **argv)
 	log_close();
 
 	/* Cleanup. */
-	if (pidf && pid_remove(pidf) < 0)
+	if (pidf && pid_remove(pidf) < 0) {
 		log_server_warning("Failed to remove PID file.\n");
-	do_cleanup(server, config_fn, pidf);
+	}
+	do_cleanup(&server, config_fn, pidf);
 
 	if (!daemonize) {
 		fflush(stdout);
@@ -461,8 +424,9 @@ int main(int argc, char **argv)
 
 	/* Return to original working directory. */
 	if (cwd) {
-		if (chdir(cwd) != 0)
+		if (chdir(cwd) != 0) {
 			log_server_warning("Server can't change working directory.\n");
+		}
 		free(cwd);
 	}
 
@@ -472,10 +436,8 @@ int main(int argc, char **argv)
 static int do_cleanup(server_t *server, char *configf, char *pidf)
 {
 	/* Free alloc'd variables. */
-	if (server) {
-		server_wait(server);
-		server_destroy(&server);
-	}
+	server_wait(server);
+	server_deinit(server);
 	free(configf);
 	free(pidf);
 

@@ -35,7 +35,6 @@
 #include "knot/zone/zonedb.h"
 #include "common/lists.h"
 #include "common/sockaddr.h"
-#include "knot/nameserver/name-server.h"
 
 struct query_data;
 
@@ -51,7 +50,7 @@ struct query_data;
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int notify_create_request(const knot_zone_t *zone, knot_pkt_t *pkt);
+int notify_create_request(const zone_t *zone, knot_pkt_t *pkt);
 
 /*!
  * \brief Processes NOTIFY response packet.
@@ -67,12 +66,11 @@ int notify_process_response(knot_pkt_t *notify, int msgid);
 
 /*!
  * \brief Answer IN class zone NOTIFY message (RFC1996).
- * \param response
- * \param ns
- * \param qdata
- * \return
+ *
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
  */
-int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
+int internet_notify(knot_pkt_t *pkt, struct query_data *qdata);
 
 
 #endif /* _KNOTD_NOTIFY_H_ */

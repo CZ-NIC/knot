@@ -148,7 +148,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
+int zone_dump_text(knot_zone_contents_t *zone, const sockaddr_t *from, FILE *file)
 {
 	if (zone == NULL || file == NULL) {
 		return KNOT_EINVAL;
@@ -164,12 +164,13 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	fprintf(file, ";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
 
 	// Set structure with parameters.
+	knot_node_t *apex = zone->apex;
 	dump_params_t params;
 	params.file = file;
 	params.buf = buf;
 	params.buflen = DUMP_BUF_LEN;
 	params.rr_count = 0;
-	params.origin = knot_node_owner(knot_zone_contents_apex(zone));
+	params.origin = knot_node_owner(apex);
 	params.style = &KNOT_DUMP_STYLE_DEFAULT;
 
 	int ret;
@@ -186,6 +187,7 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	// Dump DNSSEC signatures if secured.
 	if (knot_zone_contents_is_signed(zone)) {
 		fprintf(file, ";; DNSSEC signatures\n");
+
 		// Dump rrsig records.
 		params.dump_rdata = false;
 		params.dump_rrsig = true;
@@ -210,7 +212,6 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 			return ret;
 		}
 	} else if (knot_zone_contents_is_signed(zone)) {
-		// TODO same as above
 		fprintf(file, ";; DNSSEC NSEC chain\n");
 
 		// Dump nsec and rrsig records.
@@ -237,14 +238,12 @@ int zone_dump_text(knot_zone_contents_t *zone, FILE *file)
 	        params.rr_count, date);
 
 	// Get master information.
-	sockaddr_t *master = &((zonedata_t *)zone->zone->data)->xfr_in.master;
-
-	int port = sockaddr_portnum(master);
+	int port = sockaddr_portnum(from);
 
 	// If a master server is configured, dump info about it.
 	if (port >= 0) {
 		char addr[INET6_ADDRSTRLEN] = "NULL";
-		sockaddr_tostr(master, addr, sizeof(addr));
+		sockaddr_tostr(from, addr, sizeof(addr));
 
 		fprintf(file, ";; Transfered from %s#%i\n", addr, port);
 	}

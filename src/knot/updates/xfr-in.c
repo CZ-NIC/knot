@@ -24,7 +24,7 @@
 
 #include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
 #include "knot/zone/zone.h"
@@ -40,6 +40,20 @@
 #include "common/lists.h"
 #include "common/descriptor.h"
 #include "libknot/rdata.h"
+#include "libknot/util/utils.h"
+
+#define KNOT_NS_TSIG_FREQ 100
+
+static int knot_ns_tsig_required(int packet_nr)
+{
+	/*! \bug This can overflow to negative numbers. Proper solution is to
+	 *       count exactly at one place for each incoming/outgoing packet
+	 *       with packet_nr = (packet_nr + 1) % FREQ and require TSIG on 0.
+	 */
+	dbg_ns_verb("ns_tsig_required(%d): %d\n", packet_nr,
+	            (packet_nr % KNOT_NS_TSIG_FREQ == 0));
+	return (packet_nr % KNOT_NS_TSIG_FREQ == 0);
+}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -87,26 +101,26 @@ dbg_xfrin_exec(
 		return KNOT_EMALF;	// maybe some other error
 	}
 
-	return (ns_serial_compare(local_serial, remote_serial) < 0);
+	return (knot_serial_compare(local_serial, remote_serial) < 0);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_soa_query(const knot_zone_t *zone, knot_pkt_t *pkt)
+int xfrin_create_soa_query(const zone_t *zone, knot_pkt_t *pkt)
 {
 	return knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_axfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
+int xfrin_create_axfr_query(const zone_t *zone, knot_pkt_t *pkt)
 {
 	return knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_AXFR);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_ixfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
+int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt)
 {
 	if (zone->contents == NULL) {
 		return KNOT_EINVAL;
@@ -121,7 +135,7 @@ int xfrin_create_ixfr_query(const knot_zone_t *zone, knot_pkt_t *pkt)
 	knot_node_t *apex = zone->contents->apex;
 	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	return knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, NULL, 0);
+	return knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -152,8 +166,6 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 	int ret = KNOT_EOK;
 	if (xfr->tsig_key) {
 		// just append the wireformat to the TSIG data
-		assert(KNOT_NS_TSIG_DATA_MAX_SIZE - xfr->tsig_data_size
-		       >= xfr->wire_size);
 		uint8_t *wire_buf = xfr->tsig_data + xfr->tsig_data_size;
 		memcpy(wire_buf, packet->wire, packet->size);
 		xfr->tsig_data_size += packet->size;
@@ -341,7 +353,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 {
 	knot_changesets_t **chs = (knot_changesets_t **)(&xfr->data);
 	if (xfr->wire == NULL || chs == NULL) {
-		dbg_xfrin("Wrong parameters supplied.\n");
+		dbg_xfrin("Wrong parameters supported.\n");
 		return KNOT_EINVAL;
 	}
 
@@ -469,7 +481,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	 */
 	knot_changeset_t *chset = knot_changesets_get_last(*chs);
 	if (state != -1) {
-	dbg_xfrin_detail("State is not -1, deciding...\n");
+		dbg_xfrin_detail("State is not -1, deciding...\n");
 		// there should be at least one started changeset right now
 		if (EMPTY_LIST((*chs)->sets)) {
 			knot_rrset_deep_free(&rr, 1, NULL);
@@ -1734,7 +1746,7 @@ int xfrin_apply_changesets_dnssec(knot_zone_contents_t *z_old,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_apply_changesets(knot_zone_t *zone,
+int xfrin_apply_changesets(zone_t *zone,
                            knot_changesets_t *chsets,
                            knot_zone_contents_t **new_contents)
 {
@@ -1743,7 +1755,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	knot_zone_contents_t *old_contents = knot_zone_get_contents(zone);
+	knot_zone_contents_t *old_contents = zone->contents;
 	if (!old_contents) {
 		dbg_xfrin("Cannot apply changesets to empty zone.\n");
 		return KNOT_EINVAL;
@@ -1799,7 +1811,7 @@ int xfrin_apply_changesets(knot_zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_switch_zone(knot_zone_t *zone,
+int xfrin_switch_zone(zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type)
 {
@@ -1813,7 +1825,7 @@ int xfrin_switch_zone(knot_zone_t *zone,
 		       ? zone->contents->apex : NULL, new_contents->apex);
 
 	knot_zone_contents_t *old =
-		knot_zone_switch_contents(zone, new_contents);
+		zone_switch_contents(zone, new_contents);
 
 	dbg_xfrin_verb("Old contents: %p, apex: %p, new apex: %p\n",
 		       old, (old) ? old->apex : NULL, new_contents->apex);

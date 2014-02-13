@@ -40,7 +40,7 @@
 #include "libknot/dnssec/policy.h"
 #include "common/lists.h"
 #include "common/log.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 #include "common/sockaddr.h"
 #include "common/hattrie/hat-trie.h"
 
@@ -414,6 +414,9 @@ static inline conf_t* conf() {
  * \retval Pointer to normalized path.
  */
 char* strcpath(char *path);
+
+/* \brief Initialize zone config. */
+void conf_init_zone(conf_zone_t *zone);
 
 /*! \brief Free zone config. */
 void conf_free_zone(conf_zone_t *zone);

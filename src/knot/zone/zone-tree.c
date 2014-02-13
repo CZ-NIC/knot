@@ -21,7 +21,7 @@
 
 #include "knot/zone/zone-tree.h"
 #include "knot/zone/node.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "common/hattrie/hat-trie.h"
 
 /*----------------------------------------------------------------------------*/
@@ -166,8 +166,8 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		hattrie_iter_free(i);
 	}
 
-	/* Check if previous node is not an empty non-terminal. */
-	if (knot_node_rrset_count(*previous) == 0) {
+	/* Previous node for proof must be non-empty and authoritative. */
+	if (knot_node_rrset_count(*previous) == 0 || knot_node_is_non_auth(*previous)) {
 		*previous = knot_node_get_previous(*previous);
 	}
 

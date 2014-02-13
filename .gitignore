@@ -90,6 +90,8 @@
 /tests/hattrie
 /tests/hhash
 /tests/journal
+/tests/pkt
+/tests/process_query
 /tests/rrl
 /tests/rrset
 /tests/server

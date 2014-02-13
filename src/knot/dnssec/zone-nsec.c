@@ -31,7 +31,7 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/zone-contents.h"

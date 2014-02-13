@@ -176,14 +176,13 @@ static inline void knot_wire_write_u64(uint8_t *pos, uint64_t data)
 }
 
 /*!
- * \brief Helper function for simple locking.
+ * \brief Compares two zone serials.
  *
- * \param type Type of lock.
- * \param type Starting position of lock.
- *
- * \return Locking structure.
+ * \retval < 0 if s1 is less than s2.
+ * \retval > 0 if s1 is larger than s2.
+ * \retval == 0 if s1 is equal to s2.
  */
-struct flock* knot_file_lock(short type, short whence);
+int knot_serial_compare(uint32_t s1, uint32_t s2);
 
 #endif /* _KNOT_UTILS_H_ */
 

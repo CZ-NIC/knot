@@ -28,7 +28,7 @@
 #include "libknot/rrset.h"
 #include "libknot/rrset-dump.h"
 #include "common/descriptor.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/pkt.h"

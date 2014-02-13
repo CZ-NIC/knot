@@ -5,6 +5,7 @@ import random
 import shutil
 import socket
 import time
+import dns.name
 import dns.zone
 import zone_generate
 from dnstest.utils import *
@@ -238,15 +239,16 @@ class Test(object):
 
         for msg in resp.resp:
             for rrset in msg.answer:
-                rrs = rrset.to_text().split("\n")
+                rrs = rrset.to_text(origin=dns.name.from_text(zone.name),
+                                    relativize=False).split("\n")
                 for rr in rrs:
                     # Owner to lower-case :-(
                     item = rr.strip().split(" ", 1)
                     item_lower = item[0].lower() + " " + item[1]
 
                     if item_lower in unique and rrset.rdtype != dns.rdatatype.SOA:
-                        detail_log("!Duplicate record %s:%s" %
-                                   (server.name, item_lower))
+                        detail_log("!Duplicate record %s:" % server.name)
+                        detail_log("  %s" % item_lower)
                         continue
 
                     unique.add(item_lower)
@@ -263,14 +265,14 @@ class Test(object):
             set_err("AXFR DIFF")
             detail_log("!Extra records %s:" % server1.name)
             for record in diff1:
-                detail_log(" " + record)
+                detail_log("  %s" % record)
 
         diff2 = sorted(list(unique2 - unique1))
         if diff2:
             set_err("AXFR DIFF")
             detail_log("!Extra records %s:" % server2.name)
             for record in diff2:
-                detail_log(" " + record)
+                detail_log("  %s" % record)
 
     class IxfrChange():
         def __init__(self):
@@ -293,38 +295,40 @@ class Test(object):
             if self.soa_old != other.soa_old:
                 set_err("IXFR CHANGE DIFF")
                 detail_log("!Different remove SOA:")
-                print(" " + self.soa_old)
-                print(" " + other.soa_old)
+                print("  %s" % self.soa_old)
+                print("  %s" % other.soa_old)
 
             if len(self.removed) != len(other.removed):
                 set_err("IXFR CHANGE DIFF")
-                detail_log("!Number of remove records %s != %s" %
+                detail_log("!Number of remove records:")
+                detail_log("  (%s) != (%s)" %
                            (len(self.removed), len(other.removed)))
 
             for rem1, rem2 in zip(self.removed, other.removed):
                 if rem1 != rem2:
                     set_err("IXFR CHANGE DIFF")
                     detail_log("!Different remove records:")
-                    print(" " + rem1)
-                    print(" " + rem2)
+                    print("  %s" % rem1)
+                    print("  %s" % rem2)
 
             if self.soa_new != other.soa_new:
                 set_err("IXFR CHANGE DIFF")
                 detail_log("!Different add SOA:")
-                print(" " + self.soa_new)
-                print(" " + other.soa_new)
+                print("  %s" % self.soa_new)
+                print("  %s" % other.soa_new)
 
             if len(self.added) != len(other.added):
                 set_err("IXFR CHANGE DIFF")
-                detail_log("!Number of add records %s != %s" %
+                detail_log("!Number of add records:")
+                detail_log("  (%s) != (%s)" %
                            (len(self.added), len(other.added)))
 
             for add1, add2 in zip(self.added, other.added):
                 if add1 != add2:
                     set_err("IXFR CHANGE DIFF")
                     detail_log("!Different add records:")
-                    print(" " + add1)
-                    print(" " + add2)
+                    print("  %s" % add1)
+                    print("  %s" % add2)
 
     def _ixfr_changes(self, server, zone, serial):
         soa = None
@@ -335,7 +339,8 @@ class Test(object):
         change = Test.IxfrChange()
         for msg in resp.resp:
             for rrset in msg.answer:
-                records = rrset.to_text().split("\n")
+                records = rrset.to_text(origin=dns.name.from_text(zone.name),
+                                    relativize=False).split("\n")
                 for record in records:
                     item = record.strip().split(" ", 1)
                     item_lower = item[0].lower() + " " + item[1]
@@ -361,13 +366,13 @@ class Test(object):
                             set_err("IXFR FORMAT")
                             detail_log("!Missing leading SOA %s:%s before:" %
                                        (server.name, zone.name))
-                            detail_log(" " + item_lower)
+                            detail_log("  %s" % item_lower)
 
                         if not change.soa_old:
                             set_err("IXFR FORMAT")
                             detail_log("!Expected SOA %s:%s before:" %
                                        (server.name, zone.name))
-                            detail_log(" " + item_lower)
+                            detail_log("  %s" % item_lower)
 
                         if not change.soa_new:
                             change.rem(item_lower)
@@ -396,14 +401,15 @@ class Test(object):
         if soa1 != soa2:
             set_err("IXFR DIFF")
             detail_log("!Different leading SOA records:")
-            detail_log(" " + soa1)
-            detail_log(" " + soa2)
+            detail_log("  %s" % soa1)
+            detail_log("  %s" % soa2)
 
         if len(changes1) != len(changes2):
             set_err("IXFR DIFF")
-            detail_log("!Number of changes %s:%s != %s:%s" %
-                       (server1.name, len(changes1), server2.name,
-                       len(changes2)))
+            detail_log("!Number of changes:")
+            detail_log("  (%s:%s) != (%s:%s)" %
+                       (server1.name, len(changes1),
+                        server2.name, len(changes2)))
 
         for change1, change2 in zip(changes1, changes2):
             change1.cmp(change2)

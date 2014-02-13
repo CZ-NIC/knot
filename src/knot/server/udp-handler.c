@@ -42,8 +42,6 @@
 #include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"
-#include "knot/nameserver/name-server.h"
-#include "knot/stat/stat.h"
 #include "knot/server/server.h"
 #include "libknot/packet/wire.h"
 #include "libknot/consts.h"
@@ -62,8 +60,8 @@ enum {
 
 /*! \brief UDP context data. */
 typedef struct udp_context {
-	knot_process_t query_ctx;    /*!< Query processing context. */
-	knot_nameserver_t *ns;       /*!< Name server structure. */
+	knot_process_t query_ctx; /*!< Query processing context. */
+	server_t *server;         /*!< Name server structure. */
 } udp_context_t;
 
 /* FD_COPY macro compat. */
@@ -129,11 +127,11 @@ int udp_handle(udp_context_t *udp, int fd, sockaddr_t *addr,
 	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
 	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
 	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
-	param.ns = udp->ns;
+	param.query_socket = fd;
+	param.server = udp->server;
 
 	/* Rate limit is applied? */
-	server_t *server = (server_t *)udp->ns->data;
-	if (knot_unlikely(server->rrl != NULL) && server->rrl->rate > 0) {
+	if (knot_unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
 		param.proc_flags |= NS_QUERY_LIMIT_RATE;
 	}
 
@@ -492,7 +490,7 @@ int udp_master(dthread_t *thread)
 	/* Create UDP answering context. */
 	udp_context_t udp;
 	memset(&udp, 0, sizeof(udp_context_t));
-	udp.ns = handler->server->nameserver;
+	udp.server = handler->server;
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&udp.query_ctx.mm, 4 * sizeof(knot_pkt_t));

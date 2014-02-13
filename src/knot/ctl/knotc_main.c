@@ -35,7 +35,7 @@
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
-#include "knot/zone/zone-load.h"
+#include "knot/server/zone-load.h"
 #include "knot/zone/estimator.h"
 
 /*! \brief Controller flags. */
@@ -647,12 +647,11 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 
 	/* Zone checking */
 	int rc = 0;
-	node_t *n = 0;
 
 	/* Generate databases for all zones */
-	WALK_LIST(n, conf()->zones) {
+	conf_zone_t *zone = NULL, *next = NULL;
+	WALK_LIST_DELSAFE(zone, next, conf()->zones) {
 		/* Fetch zone */
-		conf_zone_t *zone = (conf_zone_t *) n;
 		int zone_match = 0;
 		for (unsigned i = 0; i < (unsigned)argc; ++i) {
 			size_t len = strlen(zone->name);
@@ -673,29 +672,15 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Create zone loader context. */
-		zloader_t *l = NULL;
-		int ret = knot_zload_open(&l, zone->file, zone->name,
-		                          zone->enable_checks);
-		if (ret != KNOT_EOK) {
-			log_zone_error("Could not open zone %s (%s).\n",
-			               zone->name, knot_strerror(ret));
-			knot_zload_close(l);
+		zone_t *loaded_zone = load_zone_file(zone);
+		if (loaded_zone == NULL) {
 			rc = 1;
 			continue;
 		}
 
-		knot_zone_t *z = knot_zload_load(l);
-		if (z == NULL) {
-			log_zone_error("Loading of zone %s failed.\n",
-			               zone->name);
-			knot_zload_close(l);
-			rc = 1;
-			continue;
-		}
-
-		knot_zone_deep_free(&z);
-		knot_zload_close(l);
 		log_zone_info("Zone %s OK.\n", zone->name);
+		rem_node((node_t *)zone);
+		zone_free(&loaded_zone);
 	}
 
 	return rc;

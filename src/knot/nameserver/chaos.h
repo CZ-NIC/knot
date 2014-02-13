@@ -29,13 +29,12 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "knot/nameserver/name-server.h"
 #include "libknot/packet/pkt.h"
 
 /*!
  * \brief Create a response for a given query in the CHAOS class.
  */
-int knot_chaos_answer(knot_pkt_t *pkt, knot_nameserver_t *ns);
+int knot_chaos_answer(knot_pkt_t *pkt);
 
 #endif // _KNOT_CHAOS_H_
 

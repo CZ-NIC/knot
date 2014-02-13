@@ -30,9 +30,8 @@
 #include <stddef.h>
 
 #include "common/lists.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 #include "common/evsched.h"
-#include "knot/nameserver/name-server.h"
 #include "knot/zone/zonedb.h"
 #include "knot/conf/conf.h"
 #include "knot/server/notify.h"
@@ -51,49 +50,6 @@ enum {
 };
 
 /*!
- * \brief Zone-related data.
- */
-typedef struct zonedata_t
-{
-	/*! \brief Shortcut to zone config entry. */
-	conf_zone_t *conf;
-
-	/*! \brief Shortcut to server instance. */
-	server_t  *server;
-
-	/*! \brief Zone data lock for exclusive access. */
-	pthread_mutex_t lock;
-	/*! \brief Zone lock for DDNS. */
-	pthread_mutex_t ddns_lock;
-
-	/*! \brief Access control lists. */
-	acl_t *xfr_out;    /*!< ACL for xfr-out.*/
-	acl_t *notify_in;  /*!< ACL for notify-in.*/
-	acl_t *notify_out; /*!< ACL for notify-out.*/
-	acl_t *update_in; /*!< ACL for notify-out.*/
-
-	/*! \brief XFR-IN scheduler. */
-	struct {
-		acl_t          *acl;      /*!< ACL for xfr-in.*/
-		sockaddr_t      master;   /*!< Master server for xfr-in.*/
-		sockaddr_t      via;      /*!< Master server transit interface.*/
-		knot_tsig_key_t tsig_key; /*!< Master TSIG key. */
-		struct event_t *timer;    /*!< Timer for REFRESH/RETRY. */
-		struct event_t *expire;   /*!< Timer for REFRESH. */
-		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-		int has_master;           /*!< True if it has master set. */
-		unsigned state;
-	} xfr_in;
-
-	struct event_t *dnssec_timer;  /*!< Timer for DNSSEC events. */
-
-	/*! \brief Zone IXFR history. */
-	journal_t *ixfr_db;
-	struct event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
-	uint32_t zonefile_serial;
-} zonedata_t;
-
-/*!
  * \brief Sync zone data back to text zonefile.
  *
  * In case when SOA serial of the zonefile differs from the SOA serial of the
@@ -109,21 +65,12 @@ typedef struct zonedata_t
  * \retval KNOT_EINVAL on invalid parameter.
  * \retval KNOT_ERROR on unspecified error during processing.
  */
-int zones_zonefile_sync(knot_zone_t *zone, journal_t *journal);
-
-/*!
- * \todo Document me.
- */
-int zones_process_update_auth(knot_zone_t *zone,
-                                     knot_pkt_t *query,
-                                     knot_rcode_t *rcode,
-                                     const sockaddr_t *addr,
-                                     knot_tsig_key_t *tsig_key);
+int zones_zonefile_sync(zone_t *zone, journal_t *journal);
 
 /*!
  * \brief Processes normal response packet.
  *
- * \param nameserver Name server structure to provide the needed data.
+ * \param server Name server structure to provide the needed data.
  * \param from Address of the response sender.
  * \param packet Parsed response packet.
  * \param response_wire Place for the response in wire format.
@@ -134,7 +81,7 @@ int zones_process_update_auth(knot_zone_t *zone,
  * \retval KNOT_EINVAL on invalid parameters or packet.
  * \retval KNOT_EMALF if an error occured and the response is not valid.
  */
-int zones_process_response(knot_nameserver_t *nameserver,
+int zones_process_response(server_t *server,
                            int exp_msgid,
                            sockaddr_t *from,
                            knot_pkt_t *packet, uint8_t *response_wire,
@@ -143,27 +90,13 @@ int zones_process_response(knot_nameserver_t *nameserver,
 /*!
  * \brief Decides what type of transfer should be used to update the given zone.
  *.
- * \param data Zone data for associated zone.
+ * \param zone Zone.
  *
  * \retval
  */
-knot_ns_xfr_type_t zones_transfer_to_use(zonedata_t *data);
+knot_ns_xfr_type_t zones_transfer_to_use(zone_t *zone);
 
 int zones_save_zone(const knot_ns_xfr_t *xfr);
-
-/*!
- * \brief Name server config hook.
- *
- * Routine for dynamic name server reconfiguration.
- *
- * \param conf Current configuration.
- * \param data Instance of the nameserver structure to update.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL
- * \retval KNOT_ERROR
- */
-int zones_ns_conf_hook(const struct conf_t *conf, void *data);
 
 /*!
  * \brief Store changesets in journal.
@@ -181,7 +114,7 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data);
  * \todo Expects the xfr structure to be initialized in some way.
  * \todo Update documentation!!!
  */
-int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src, journal_t *j);
+int zones_store_changesets(zone_t *zone, knot_changesets_t *src, journal_t *j);
 
 /*!
  * \brief Begin changesets storing transaction.
@@ -189,7 +122,7 @@ int zones_store_changesets(knot_zone_t *zone, knot_changesets_t *src, journal_t 
  * \retval pointer to journal if successful
  * \retval NULL on failure.
  */
-journal_t *zones_store_changesets_begin(knot_zone_t *zone);
+journal_t *zones_store_changesets_begin(zone_t *zone);
 
 /*!
  * \brief Commit stored changesets.
@@ -215,8 +148,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets);
 /*! \todo Document me. */
 int zones_changesets_to_binary(knot_changesets_t *chgsets);
 
-
-int zones_load_changesets(const knot_zone_t *zone,
+int zones_load_changesets(const zone_t *zone,
 			  knot_changesets_t *dst,
 			  uint32_t from, uint32_t to) __attribute__((deprecated));
 
@@ -234,12 +166,12 @@ int zones_load_changesets(const knot_zone_t *zone,
  * \retval KNOT_ENODIFF when new zone's serial are equal.
  * \retval KNOT_ERROR when there was error creating changesets.
  */
-int zones_create_changeset(const knot_zone_t *old_zone,
-                           const knot_zone_t *new_zone,
+int zones_create_changeset(const zone_t *old_zone,
+                           const zone_t *new_zone,
                            knot_changeset_t *changeset);
 
 int zones_store_and_apply_chgsets(knot_changesets_t *chs,
-                                  knot_zone_t *zone,
+                                  zone_t *zone,
                                   knot_zone_contents_t **new_contents,
                                   const char *msgpref, int type);
 
@@ -249,13 +181,13 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
  * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
  *
  * \param zone Related zone.
- * \param time Specific time or REFRESH_DEFAULT for default.
+ * \param time Specific timeout or REFRESH_DEFAULT for default.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  * \retval KNOT_ERROR
  */
-int zones_schedule_refresh(knot_zone_t *zone, int64_t time);
+int zones_schedule_refresh(zone_t *zone, int64_t timeout);
 
 /*!
  * \brief Schedule NOTIFY after zone update.
@@ -264,7 +196,7 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time);
  * \retval KNOT_EOK
  * \retval KNOT_ERROR
  */
-int zones_schedule_notify(knot_zone_t *zone);
+int zones_schedule_notify(zone_t *zone, server_t *server);
 
 /*!
  * \brief Cancel DNSSEC event.
@@ -273,7 +205,7 @@ int zones_schedule_notify(knot_zone_t *zone);
  *
  * \return Error code, KNOT_OK if successful.
  */
-int zones_cancel_dnssec(knot_zone_t *zone);
+int zones_cancel_dnssec(zone_t *zone);
 
 /*!
  * \brief Schedule DNSSEC event.
@@ -283,21 +215,15 @@ int zones_cancel_dnssec(knot_zone_t *zone);
  *
  * \return Error code, KNOT_OK if successful.
  */
-int zones_schedule_dnssec(knot_zone_t *zone, time_t unixtime);
+int zones_schedule_dnssec(zone_t *zone, time_t unixtime);
 
 /*!
  * \brief Schedule IXFR sync for given zone.
  *
- * \param zone            Zone to scheduler IXFR sync for.
- * \param dbsync_timeout  Sync time in seconds.
+ * \param zone     Zone to scheduler IXFR sync for.
+ * \param timeout  Sync time in seconds.
  */
-void zones_schedule_ixfr_sync(knot_zone_t *zone, int dbsync_timeout);
-
-/*!
- * \brief Processes forwarded UPDATE response packet.
- * \todo #1291 move to appropriate section (DDNS).
- */
-int zones_process_update_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *rsize);
+void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout);
 
 /*!
  * \brief Verify TSIG in query.
@@ -325,32 +251,47 @@ int zones_verify_tsig_query(const knot_pkt_t *query,
  * \retval KNOT_ENOENT if zone has no contents.
  * \retval KNOT_ERROR on unspecified error.
  */
-int zones_journal_apply(knot_zone_t *zone);
+int zones_journal_apply(zone_t *zone);
 
 /*!
  * \brief Creates diff and DNSSEC changesets and stores them to journal.
  *
  * \param z             Zone configuration.
  * \param zone          Zone to sign.
- * \param ns            Name server structure.
+ * \param old_zone      Previous zone.
  * \param zone_changed  The zone was loaded or modified.
  *
  * \return Error code, KNOT_OK if successful.
  */
-int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
-                           const knot_nameserver_t *ns, bool zone_changed);
+int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone,
+                           zone_t *old_zone, bool zone_changed);
 
 /*! \brief Just sign current zone. */
-int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at);
+int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *expires_at);
 
 /*
  * Event callbacks.
  */
 
-int zones_expire_ev(event_t *e);
-int zones_refresh_ev(event_t *e);
-int zones_flush_ev(event_t *e);
+int zones_expire_ev(event_t *event);
+int zones_refresh_ev(event_t *event);
+int zones_flush_ev(event_t *event);
 int zones_dnssec_ev(event_t *event);
+
+/*! \note Exported API for UPDATE processing, but this should really be done
+ *        in a better way as it's very similar code to ixfr-from-diff signing code. */
+bool zones_dnskey_changed(const knot_zone_contents_t *old_contents,
+                          const knot_zone_contents_t *new_contents);
+bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
+                              const knot_zone_contents_t *new_contents);
+int zones_merge_and_store_changesets(zone_t *zone,
+                                     knot_changesets_t *diff_chs,
+                                     knot_changesets_t *sec_chs,
+                                     journal_t **transaction);
+void zones_free_merged_changesets(knot_changesets_t *diff_chs,
+                                  knot_changesets_t *sec_chs);
+uint32_t zones_next_serial(zone_t *zone);
+
 
 #endif // _KNOTD_ZONES_H_
 

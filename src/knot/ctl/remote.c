@@ -26,7 +26,6 @@
 #include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
 #include "common/descriptor.h"
-#include "knot/nameserver/name-server.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rdata.h"
 #include "libknot/dnssec/random.h"
@@ -51,7 +50,7 @@ typedef struct remote_cmdargs_t {
 typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
 
 /*! \brief Callback prototype for per-zone operations. */
-typedef int (remote_zonef_t)(server_t*, const knot_zone_t *);
+typedef int (remote_zonef_t)(server_t*, const zone_t *);
 
 /*! \brief Remote command table item. */
 typedef struct remote_cmd_t {
@@ -89,11 +88,9 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		return KNOT_EINVAL;
 	}
 
-	knot_nameserver_t *ns = s->nameserver;
-	knot_zone_t *zone = NULL;
+	zone_t *zone = NULL;
 	int ret = KNOT_EOK;
 
-	/* Refresh specific zones. */
 	for (unsigned i = 0; i < a->argc; ++i) {
 		/* Process all zones in data section. */
 		const knot_rrset_t *rr = a->arg[i];
@@ -102,11 +99,9 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 		}
 
 		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
-			/* Refresh zones. */
-			const knot_dname_t *dn =
-				knot_rdata_ns_name(rr, i);
+			const knot_dname_t *dn = knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
-			zone = knot_zonedb_find(ns->zone_db, dn);
+			zone = knot_zonedb_find(s->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
@@ -118,55 +113,31 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 }
 
 /*! \brief Zone refresh callback. */
-static int remote_zone_refresh(server_t *s, const knot_zone_t *z)
+static int remote_zone_refresh(server_t *server, const zone_t *zone)
 {
-	if (!s || !z) {
+	if (!server || !zone) {
 		return KNOT_EINVAL;
 	}
 
-	knot_nameserver_t *ns =  s->nameserver;
-	evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(z);
-	if (!sch || !zd) {
-		return KNOT_EINVAL;
-	}
-
-	/* Expire REFRESH timer. */
-	if (zd->xfr_in.timer) {
-		evsched_cancel(sch, zd->xfr_in.timer);
-		evsched_schedule(sch, zd->xfr_in.timer,
-		                 knot_random_uint32_t() % 1000);
-	}
+	zones_schedule_refresh((zone_t *)zone, knot_random_uint32_t() % 1000);
 
 	return KNOT_EOK;
 }
 
 /*! \brief Zone flush callback. */
-static int remote_zone_flush(server_t *s, const knot_zone_t *z)
+static int remote_zone_flush(server_t *server, const zone_t *zone)
 {
-	if (!s || !z) {
+	if (!server || !zone) {
 		return KNOT_EINVAL;
 	}
 
-	knot_nameserver_t *ns =  s->nameserver;
-	evsched_t *sch = ((server_t *)knot_ns_get_data(ns))->sched;
-	zonedata_t *zd = (zonedata_t *)knot_zone_data(z);
-	if (!sch || !zd) {
-		return KNOT_EINVAL;
-	}
-
-	/* Expire IXFR sync timer. */
-	if (zd->ixfr_dbsync) {
-		evsched_cancel(sch, zd->ixfr_dbsync);
-		evsched_schedule(sch, zd->ixfr_dbsync,
-		                 knot_random_uint32_t() % 1000);
-	}
+	zones_schedule_zonefile_sync((zone_t *)zone, knot_random_uint32_t() % 1000);
 
 	return KNOT_EOK;
 }
 
 /*! \brief Sign zone callback. */
-static int remote_zone_sign(server_t *server, const knot_zone_t *zone)
+static int remote_zone_sign(server_t *server, const zone_t *zone)
 {
 	if (!server || !zone) {
 		return KNOT_EINVAL;
@@ -177,9 +148,11 @@ static int remote_zone_sign(server_t *server, const knot_zone_t *zone)
 	free(zone_name);
 
 	uint32_t refresh_at = 0;
-	zones_cancel_dnssec((knot_zone_t *)zone);
-	zones_dnssec_sign((knot_zone_t *)zone, true, &refresh_at);
-	zones_schedule_dnssec((knot_zone_t *)zone, refresh_at);
+	zone_t *wzone = (zone_t *)zone;
+
+	zones_cancel_dnssec(wzone);
+	zones_dnssec_sign(wzone, true, &refresh_at);
+	zones_schedule_dnssec(wzone, refresh_at);
 
 	return KNOT_EOK;
 }
@@ -224,12 +197,12 @@ static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 	return KNOT_EOK;
 }
 
-static char *dnssec_info(const zonedata_t *zd, char *buf, size_t buf_size)
+static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 {
-	assert(zd && zd->dnssec_timer);
+	assert(zone && zone->dnssec.timer);
 	assert(buf);
 
-	time_t diff_time = zd->dnssec_timer->tv.tv_sec;
+	time_t diff_time = zone->dnssec.timer->tv.tv_sec;
 	struct tm *t = localtime(&diff_time);
 
 	size_t written = strftime(buf, buf_size, "%c", t);
@@ -254,19 +227,17 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 
 	int ret = KNOT_EOK;
 	rcu_read_lock();
-	knot_nameserver_t *ns =  s->nameserver;
+
 	knot_zonedb_iter_t it;
-	knot_zonedb_iter_begin(ns->zone_db, &it);
+	knot_zonedb_iter_begin(s->zone_db, &it);
 	while(!knot_zonedb_iter_finished(&it)) {
-		const knot_zone_t *zone = knot_zonedb_iter_val(&it);
-		zonedata_t *zd = (zonedata_t *)zone->data;
+		const zone_t *zone = knot_zonedb_iter_val(&it);
 
 		/* Fetch latest serial. */
 		const knot_rrset_t *soa_rrs = 0;
 		uint32_t serial = 0;
-		knot_zone_contents_t *contents = knot_zone_get_contents(zone);
-		if (contents) {
-			soa_rrs = knot_node_rrset(knot_zone_contents_apex(contents),
+		if (zone->contents) {
+			soa_rrs = knot_node_rrset(zone->contents->apex,
 			                          KNOT_RRTYPE_SOA);
 			assert(soa_rrs != NULL);
 			serial = knot_rdata_soa_serial(soa_rrs);
@@ -276,18 +247,18 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		const char *state = NULL;
 		if (serial == 0)  {
 			state = "bootstrap";
-		} else if (zd->xfr_in.has_master) {
+		} else if (zone->xfr_in.has_master) {
 			state = "xfer";
 		}
 
 		/* Evaluate zone state. */
 		char *when = NULL;
-		if (zd->xfr_in.state == XFR_PENDING) {
+		if (zone->xfr_in.state == XFR_PENDING) {
 			when = strdup("pending");
-		} else if (zd->xfr_in.timer && zd->xfr_in.timer->tv.tv_sec != 0) {
+		} else if (zone->xfr_in.timer && zone->xfr_in.timer->tv.tv_sec != 0) {
 			struct timeval now, dif;
 			gettimeofday(&now, 0);
-			timersub(&zd->xfr_in.timer->tv, &now, &dif);
+			timersub(&zone->xfr_in.timer->tv, &now, &dif);
 			when = malloc(64);
 			if (when == NULL) {
 				ret = KNOT_ENOMEM;
@@ -315,13 +286,13 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		char dnssec_buf[128] = { '\0' };
 		int n = snprintf(buf, sizeof(buf),
 		                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
-		                 zd->conf->name,
-		                 zd->xfr_in.has_master ? "slave" : "master",
+		                 zone->conf->name,
+		                 zone->xfr_in.has_master ? "slave" : "master",
 		                 serial,
 		                 state ? state : "",
 		                 when ? when : "",
-		                 zd->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "",
-		                 zd->conf->dnssec_enable ? dnssec_info(zd, dnssec_buf, sizeof(dnssec_buf)) : "");
+		                 zone->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "",
+		                 zone->conf->dnssec_enable ? dnssec_info(zone, dnssec_buf, sizeof(dnssec_buf)) : "");
 		free(when);
 		if (n < 0 || (size_t)n > rb) {
 			*dst = '\0';
@@ -356,7 +327,8 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		return server_refresh(s);
+		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, 0);
+		return KNOT_EOK;
 	}
 
 	/* Refresh specific zones. */
@@ -378,9 +350,8 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 		int ret = 0;
 		dbg_server_verb("remote: flushing all zones\n");
 		rcu_read_lock();
-		knot_nameserver_t *ns =  s->nameserver;
 		knot_zonedb_iter_t it;
-		knot_zonedb_iter_begin(ns->zone_db, &it);
+		knot_zonedb_iter_begin(s->zone_db, &it);
 		while(!knot_zonedb_iter_finished(&it)) {
 			ret = remote_zone_flush(s, knot_zonedb_iter_val(&it));
 			knot_zonedb_iter_next(&it);
@@ -761,7 +732,6 @@ int remote_query_append(knot_pkt_t *qry, knot_rrset_t *data)
 	qry->size += bsize;
 	return KNOT_EOK;
 }
-
 
 int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
                       const knot_tsig_key_t *key)

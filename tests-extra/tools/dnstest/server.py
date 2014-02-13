@@ -197,7 +197,7 @@ class Server(object):
                       stdout=self.fout, stderr=self.ferr)
             p.communicate(timeout=Server.COMPILE_TIMEOUT)
         except:
-            err("Compile error")
+            raise Exception("Can't compile %s" %self.name)
 
     def start(self, clean=False):
 
@@ -219,7 +219,7 @@ class Server(object):
             else:
                 time.sleep(Server.START_WAIT)
         except OSError:
-            err("Server %s start error" % self.name)
+            raise Exception("Can't start %s" % self.name)
 
     def reload(self):
         try:
@@ -227,7 +227,7 @@ class Server(object):
                        stdout=DEVNULL, stderr=DEVNULL)
             time.sleep(Server.START_WAIT)
         except OSError:
-            err("Server %s reload error" % self.name)
+            raise Exception("Can't reload %s" % self.name)
 
     def flush(self):
         try:
@@ -236,7 +236,7 @@ class Server(object):
                            stdout=DEVNULL, stderr=DEVNULL)
                 time.sleep(Server.START_WAIT)
         except OSError:
-            err("Server %s flush error" % self.name)
+            raise Exception("Can't flush %s" % self.name)
 
     def _valgrind_check(self):
         if not self.valgrind:
@@ -296,7 +296,8 @@ class Server(object):
             except ProcessLookupError:
                 pass
             except:
-                err("Killing %s" % self.name)
+                check_log("WARNING: KILLING %s" % self.name)
+                detail_log(SEP)
                 self.proc.kill()
         if check:
             self._valgrind_check()
@@ -496,6 +497,16 @@ class Server(object):
             zone = zone[0]
 
         self.zones[zone.name].zfile.dnssec_verify()
+
+    def check_nsec(self, zone, nsec3=False, nonsec=False):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        resp = self.dig("0-x-not-existing-x-0." + zone.name, "ANY", dnssec=True)
+        resp.check_nsec(nsec3=nsec3, nonsec=nonsec)
 
     def update(self, zone):
         # Convert one item list to single object.
@@ -724,6 +735,8 @@ class Knot(Server):
     def _on_str_hex(self, conf, name, value):
         if value == True:
             conf.item(name, "on")
+        elif value == False:
+            conf.item(name, "off")
         elif value:
             if isinstance(value, int) or value[:2] == "0x":
                 conf.item(name, value)
@@ -804,7 +817,7 @@ class Knot(Server):
 
         s.begin("zones")
         s.item_str("storage", self.dir)
-        s.item("zonefile-sync", "5s")
+        s.item("zonefile-sync", "0")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
         if self.disable_any:

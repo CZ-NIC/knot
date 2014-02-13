@@ -1,0 +1,25 @@
+$ORIGIN example.com.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 2010111206 10800 3600 1209600 7200
+	NS	dns1
+	NS	dns2
+	MX	10 mail
+
+dns1	A	192.0.2.1
+	A	1.1.1.1
+
+dns2	A	192.0.2.2
+	AAAA	2001:DB8::2
+
+mail	A	192.0.2.3
+	AAAA	2001:DB8::3
+
+ch1	A	1.1.1.1
+
+ch2	AAAA	::1
+	TXT	"some_better_text"
+
+; Changed rdata in two record rrset.
+ch3	MX	10 mail.example.com.
+	MX	40 ch2.example.com.

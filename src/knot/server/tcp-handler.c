@@ -39,7 +39,6 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/zones.h"
-#include "knot/nameserver/name-server.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/crypto.h"
@@ -47,12 +46,12 @@
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
-	knot_process_t query_ctx;    /*!< Query processing context. */
-	knot_nameserver_t *ns;       /*!< Name server structure. */
-	struct iovec iov[2];         /*!< TX/RX buffers. */
-	unsigned client_threshold;   /*!< Index of first TCP client. */
-	timev_t last_poll_time;      /*!< Time of the last socket poll. */
-	fdset_t set;                 /*!< Set of server/client sockets. */
+	knot_process_t query_ctx;   /*!< Query processing context. */
+	server_t *server;           /*!< Name server structure. */
+	struct iovec iov[2];        /*!< TX/RX buffers. */
+	unsigned client_threshold;  /*!< Index of first TCP client. */
+	timev_t last_poll_time;     /*!< Time of the last socket poll. */
+	fdset_t set;                /*!< Set of server/client sockets. */
 } tcp_context_t;
 
 /*
@@ -111,7 +110,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	/* Create query processing parameter. */
 	struct process_query_param param = {0};
 	sockaddr_prep(&param.query_source);
-	param.ns = tcp->ns;
+	param.query_socket = fd;
+	param.server = tcp->server;
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
@@ -377,7 +377,7 @@ int tcp_master(dthread_t *thread)
 	memset(&tcp, 0, sizeof(tcp_context_t));
 
 	/* Create TCP answering context. */
-	tcp.ns = handler->server->nameserver;
+	tcp.server = handler->server;
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&tcp.query_ctx.mm, 4 * sizeof(knot_pkt_t));

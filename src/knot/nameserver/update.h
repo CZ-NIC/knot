@@ -29,11 +29,16 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
-#include "knot/nameserver/name-server.h"
 
 struct query_data;
 
-int update_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
+/*!
+ * \brief UPDATE query processing module.
+ *
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
+ */
+int update_answer(knot_pkt_t *pkt, struct query_data *qdata);
 
 #endif /* _KNOT_UPDATE_H_ */
 

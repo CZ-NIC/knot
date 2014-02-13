@@ -19,7 +19,7 @@
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "common/descriptor.h"
 #include "common/lists.h"
 #include "knot/server/zones.h"
@@ -55,9 +55,9 @@ static int put_rrsigs_for_rrset(knot_pkt_t *pkt,
 static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *state)
 {
 	int ret = KNOT_EOK;
+	int i = state->cur_rrset;
+	int rrset_count = knot_node_rrset_count(node);
 	unsigned flags = KNOT_PF_NOTRUNC;
-	unsigned i = state->cur_rrset;
-	unsigned rrset_count = knot_node_rrset_count(node);
 	const knot_rrset_t **rrset = knot_node_rrsets_no_copy(node);
 	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 
@@ -203,10 +203,9 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 #define AXFR_LOG(severity, msg...) \
 	ANSWER_LOG(severity, qdata, "Outgoing AXFR", msg)
 
-int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
+int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	assert(pkt);
-	assert(ns);
 	assert(qdata);
 
 	int ret = KNOT_EOK;
@@ -221,12 +220,10 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 	/* Initialize on first call. */
 	if (qdata->ext == NULL) {
 
-		/* Check zone state. */
-		NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-
-		/* Need valid transaction security. */
-		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
-		NS_NEED_AUTH(zone_data->xfr_out, qdata);
+		/* Check valid zone, transaction security and contents. */
+		NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
+		NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 		ret = axfr_answer_init(qdata);
 		if (ret != KNOT_EOK) {
@@ -257,6 +254,55 @@ int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		AXFR_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		return NS_PROC_FAIL;
 	}
+}
+
+int axfr_process_answer(knot_ns_xfr_t *xfr)
+{
+	/*
+	 * Here we assume that 'xfr' contains TSIG information
+	 * and the digest of the query sent to the master or the previous
+	 * digest.
+	 */
+
+	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
+	       xfr->wire_size);
+	int ret = xfrin_process_axfr_packet(xfr);
+
+	if (ret > 0) { // transfer finished
+		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
+
+		gettimeofday(&xfr->t_end, NULL);
+
+		/*
+		 * Adjust zone so that node count is set properly and nodes are
+		 * marked authoritative / delegation point.
+		 */
+		xfrin_constructed_zone_t *constr_zone =
+				(xfrin_constructed_zone_t *)xfr->data;
+		knot_zone_contents_t *zone = constr_zone->contents;
+		assert(zone != NULL);
+		log_zone_info("%s Serial %u -> %u\n", xfr->msg,
+		              knot_zone_serial(xfr->zone->contents),
+		              knot_zone_serial(zone));
+
+		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
+		int rc = knot_zone_contents_adjust_full(zone, NULL, NULL);
+		if (rc != KNOT_EOK) {
+			return rc;
+		}
+
+		// save the zone contents to the xfr->data
+		xfr->new_contents = zone;
+		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
+
+		assert(zone->nsec3_nodes != NULL);
+
+		// free the structure used for processing XFR
+		assert(constr_zone->rrsigs == NULL);
+		free(constr_zone);
+	}
+
+	return ret;
 }
 
 #undef AXFR_LOG

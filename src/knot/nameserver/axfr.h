@@ -29,7 +29,7 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
-#include "knot/nameserver/name-server.h"
+#include "knot/server/xfr-handler.h"
 
 struct query_data;
 
@@ -57,7 +57,15 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int axfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata);
+int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
+
+/*!
+ * \brief Processes an AXFR query response.
+ *
+ * \param xfr Persistent transfer-specific data.
+ *
+ */
+int axfr_process_answer(knot_ns_xfr_t *xfr);
 
 #endif /* _KNOT_AXFR_H_ */
 

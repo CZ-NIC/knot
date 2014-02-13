@@ -5,7 +5,7 @@
 #include "knot/nameserver/process_query.h"
 #include "libknot/common.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
 
@@ -38,6 +38,11 @@ static int wildcard_visit(struct query_data *qdata, const knot_node_t *node, con
 {
 	assert(qdata);
 	assert(node);
+
+	/* Already in the list. */
+	if (wildcard_has_visited(qdata, node)) {
+		return KNOT_EOK;
+	}
 
 	mm_ctx_t *mm = qdata->mm;
 	struct wildcard_hit *item = mm->alloc(mm->ctx, sizeof(struct wildcard_hit));
@@ -171,9 +176,10 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	case KNOT_RRTYPE_ANY: /* Append all RRSets. */
 		/* If ANY not allowed, set TC bit. */
 		if ((qdata->param->proc_flags & NS_QUERY_LIMIT_ANY) &&
-		    knot_zone_contents_any_disabled(qdata->zone->contents)) {
+		    (qdata->zone->conf->disable_any)) {
+			dbg_ns("%s: ANY/UDP disabled for this zone TC=1\n", __func__);
 			knot_wire_set_tc(pkt->wire);
-			return KNOT_EOK;
+			return KNOT_ESPACE;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
 			ret = put_rr(pkt, rrsets[i], NULL, compr_hint, 0, qdata);
@@ -270,7 +276,7 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t *info)
 {
 	/* Valid types for ADDITIONALS insertion. */
-	/* \note Not resolving CNAMEs as it doesn't pay off much. */
+	/* \note Not resolving CNAMEs as MX/NS name must not be an alias. (RFC2181/10.3) */
 	static const uint16_t ar_type_list[] = {KNOT_RRTYPE_A, KNOT_RRTYPE_AAAA};
 	static const int ar_type_count = 2;
 
@@ -436,12 +442,15 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 		/* keep encloser */
 		qdata->previous = NULL;
 
+		/* Follow expanded wildcard. */
+		int next_state = name_found(pkt, qdata);
+
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, qdata->encloser, qdata->name) != KNOT_EOK) {
-			return ERROR;
+		if (wildcard_visit(qdata, wildcard_node, qdata->name) != KNOT_EOK) {
+				next_state = ERROR;
 		}
 
-		return name_found(pkt, qdata);
+		return next_state;
 	}
 
 	/* Name is under DNAME, use it for substitution. */
@@ -472,9 +481,9 @@ static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	                                        &qdata->previous);
 
 	switch(ret) {
-	case KNOT_ZONE_NAME_FOUND:
+	case ZONE_NAME_FOUND:
 		return name_found(pkt, qdata);
-	case KNOT_ZONE_NAME_NOT_FOUND:
+	case ZONE_NAME_NOT_FOUND:
 		return name_not_found(pkt, qdata);
 	case KNOT_EOUTOFZONE:
 		assert(state == FOLLOW); /* CNAME/DNAME chain only. */
@@ -498,11 +507,6 @@ static int solve_answer_section(int state, knot_pkt_t *pkt, struct query_data *q
 	/* Additional resolving for CNAME/DNAME chain. */
 	while (state == FOLLOW) {
 		state = solve_name(state, pkt, qdata);
-		/* Chain lead to NXDOMAIN, this is okay since
-		 * the first CNAME/DNAME is a valid answer. */
-		if (state == MISS) {
-			state = HIT;
-		}
 	}
 
 	return state;
@@ -571,16 +575,25 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 
 	int ret = KNOT_ERROR;
 
+
+	/* Authenticated denial of existence. */
 	switch (state) {
-	case HIT:    ret = nsec_prove_wildcards(pkt, qdata); break;
+	case HIT:    ret = KNOT_EOK; break;
 	case MISS:   ret = nsec_prove_nxdomain(pkt, qdata); break;
 	case NODATA: ret = nsec_prove_nodata(pkt, qdata); break;
 	case DELEG:  ret = nsec_prove_dp_security(pkt, qdata); break;
 	case TRUNC:  ret = KNOT_ESPACE; break;
-	case ERROR:  break;
+	case ERROR:  ret = KNOT_ERROR; break;
 	default:
 		assert(0);
 		break;
+	}
+
+	/* RFC4035 3.1.3 Prove visited wildcards.
+	 * Wildcard expansion applies for Name Error, Wildcard Answer and
+	 * No Data proofs if at one point the search expanded a wildcard node. */
+	if (ret == KNOT_EOK) {
+		ret = nsec_prove_wildcards(pkt, qdata);
 	}
 
 	/* RFC4035, section 3.1 RRSIGs for RRs in AUTHORITY are mandatory. */
@@ -653,17 +666,19 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 		return NS_PROC_FAIL;
 	}
 
+	/* Check valid zone, transaction security (optional) and contents. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
+
 	/* No applicable ACL, refuse transaction security. */
 	if (knot_pkt_have_tsig(qdata->query)) {
 		/* We have been challenged... */
-		zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
-		NS_NEED_AUTH(zone_data->xfr_out, qdata);
+		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
 
 		/* Reserve space for TSIG. */
 		knot_pkt_reserve(response, tsig_wire_maxsize(qdata->sign.tsig_key));
 	}
 
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_REFUSED);
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
 
 	/* Get answer to QNAME. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);

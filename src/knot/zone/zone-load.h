@@ -33,18 +33,6 @@
 #include "knot/zone/semantic-check.h"
 #include "zscanner/zscanner.h"
 
-struct parser_context {
-	knot_zone_contents_t *current_zone;
-	knot_rrset_t *current_rrset;
-	knot_dname_t *origin_from_config;
-	knot_node_t *last_node;
-	err_handler_t *err_handler;
-	hattrie_t *lookup_tree;
-	int ret;
-};
-
-typedef struct parser_context parser_context_t;
-
 typedef struct zone_loader {
 	knot_zone_contents_t *z;
 	hattrie_t *lookup_tree;
@@ -67,33 +55,32 @@ typedef struct zloader_t
 } zloader_t;
 
 /*!
- * \brief Initializes zone loader from file..
+ * \brief Open zone file for loading.
  *
- * \param filename File containing the compiled zone.
- * \param loader Will create new loader in *loader.
+ * \param zl Output zone loader.
+ * \param conf Zone configuration.
  *
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
-int knot_zload_open(zloader_t **loader, const char *source, const char *origin,
-                    int semantic_checks);
+int zonefile_open(zloader_t *loader, const conf_zone_t *conf);
 
 /*!
- * \brief Loads zone from a compiled and serialized zone file.
+ * \brief Loads zone from a zone file.
  *
  * \param loader Zone loader instance.
  *
- * \retval Loaded zone on success.
+ * \retval Loaded zone contents on success.
  * \retval NULL otherwise.
  */
-knot_zone_t *knot_zload_load(zloader_t *loader);
+knot_zone_contents_t *zonefile_load(zloader_t *loader);
 
 /*!
- * \brief Free zone loader.
+ * \brief Close zone file loader.
  *
  * \param loader Zone loader instance.
  */
-void knot_zload_close(zloader_t *loader);
+void zonefile_close(zloader_t *loader);
 
 knot_zone_contents_t *create_zone_from_dname(const knot_dname_t *origin,
                                              knot_zone_t *zone);

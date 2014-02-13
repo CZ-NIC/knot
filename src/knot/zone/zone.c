@@ -1,4 +1,4 @@
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,267 +19,295 @@
 #include <assert.h>
 #include <string.h>
 
-#include <urcu.h>
-
-#include "libknot/common.h"
-#include "knot/zone/zone.h"
+#include "common/descriptor.h"
+#include "common/evsched.h"
+#include "knot/server/zones.h"
 #include "knot/zone/node.h"
-#include "libknot/dname.h"
-#include "libknot/util/debug.h"
-#include "libknot/util/utils.h"
+#include "knot/zone/zone.h"
 #include "knot/zone/zone-contents.h"
+#include "libknot/common.h"
+#include "libknot/dname.h"
+#include "libknot/dnssec/random.h"
+#include "libknot/rdata.h"
+#include "libknot/util/utils.h"
 
-/*! \brief Adaptor for knot_zone_deep_free() */
+static const size_t XFRIN_BOOTSTRAP_DELAY = 2000; /*!< AXFR bootstrap avg. delay */
+
+/*!
+ * \brief Called when the reference count for zone drops to zero.
+  */
 static void knot_zone_dtor(struct ref_t *p) {
-	knot_zone_t *z = (knot_zone_t *)p;
-	knot_zone_deep_free(&z);
+	zone_t *z = (zone_t *)p;
+	zone_free(&z);
 }
 
-/*----------------------------------------------------------------------------*/
-/* API functions                                                              */
-/*----------------------------------------------------------------------------*/
-
-knot_zone_t *knot_zone_new_empty(knot_dname_t *name)
+/*! \brief Cancel zone event. */
+static void zone_timer_cancel(event_t *event)
 {
-	if (!name) {
-		return 0;
+	if (event != NULL) {
+		evsched_cancel(event);
 	}
-
-	dbg_zone("Creating new zone!\n");
-
-	knot_zone_t *zone = malloc(sizeof(knot_zone_t));
-	if (zone == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-	memset(zone, 0, sizeof(knot_zone_t));
-
-	// save the zone name
-	dbg_zone("Setting zone name.\n");
-	zone->name = name;
-
-	/* Initialize reference counting. */
-	ref_init(&zone->ref, knot_zone_dtor);
-
-	/* Set reference counter to 1, caller should release it after use. */
-	knot_zone_retain(zone);
-
-	return zone;
 }
 
-/*----------------------------------------------------------------------------*/
-
-knot_zone_t *knot_zone_new(knot_node_t *apex)
+/*! \brief Cancel and free zone timer. */
+static void zone_timer_free(event_t *event)
 {
-	knot_zone_t *zone = knot_zone_new_empty(
-			knot_dname_copy(knot_node_owner(apex)));
-	if (zone == NULL) {
-		return NULL;
+	if (event == NULL) {
+		return;
 	}
 
-	dbg_zone("Creating zone contents.\n");
-	zone->contents = knot_zone_contents_new(apex, zone);
-	if (zone->contents == NULL) {
-		knot_dname_free(&zone->name);
-		free(zone);
-		return NULL;
+	if (evsched_cancel(event) == KNOT_EOK) {
+		evsched_event_free(event);
 	}
-
-	zone->contents->zone = zone;
-
-	return zone;
 }
 
-/*----------------------------------------------------------------------------*/
-
-knot_zone_contents_t *knot_zone_get_contents(
-	const knot_zone_t *zone)
+/*!
+ * \brief Create timer if not exists, cancel if running.
+*/
+static event_t* zone_timer_create(evsched_t *sched, event_cb_t cb, zone_t *zone)
 {
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return rcu_dereference(zone->contents);
+	return evsched_event_create(sched, cb, zone);
 }
 
-/*----------------------------------------------------------------------------*/
-
-const knot_zone_contents_t *knot_zone_contents(
-	const knot_zone_t *zone)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return rcu_dereference(zone->contents);
-}
-
-/*----------------------------------------------------------------------------*/
-
-time_t knot_zone_version(const knot_zone_t *zone)
+int zone_timers_create(zone_t *zone, evsched_t *scheduler)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone->version;
+	zone->ixfr_dbsync   = zone_timer_create(scheduler, zones_flush_ev,   zone);
+	zone->xfr_in.timer  = zone_timer_create(scheduler, zones_refresh_ev, zone);
+	zone->xfr_in.expire = zone_timer_create(scheduler, zones_expire_ev,  zone);
+	zone->dnssec.timer  = zone_timer_create(scheduler, zones_dnssec_ev,  zone);
+
+	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_set_version(knot_zone_t *zone, time_t version)
+int zone_timers_freeze(zone_t *zone)
 {
 	if (zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/*! \todo NOTIFY, xfers and updates now MUST NOT trigger reschedule. */
+	/*! \todo No new xfers or updates should be processed. */
+	/*! \todo Raise some kind of flag. */
+
+	/* Cancel all pending timers. */
+	zone_timer_cancel(zone->ixfr_dbsync);
+	zone_timer_cancel(zone->xfr_in.timer);
+	zone_timer_cancel(zone->xfr_in.expire);
+	zone_timer_cancel(zone->dnssec.timer);
+
+	/* Wait for readers to notice the change. */
+	synchronize_rcu();
+
+	/* Now some transfers may already be running, we need to wait for them. */
+	/*! \todo This should be done somehow. */
+
+	/* Reacquire journal to ensure all operations on it are finished. */
+	if (journal_is_used(zone->ixfr_db)) {
+		if (journal_retain(zone->ixfr_db) == KNOT_EOK) {
+			journal_release(zone->ixfr_db);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+int zone_timers_thaw(zone_t *zone)
+{
+	if (zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Schedule DNSSEC signing timer. */
+	if(zone->conf->dnssec_enable) {
+		zones_schedule_dnssec(zone, zone->dnssec.refresh_at);
+	}
+
+	/* Schedule zone file syncing. */
+	zones_schedule_zonefile_sync(zone, zone->conf->dbsync_timeout);
+
+	/* Schedule REFRESH. */
+	zones_schedule_refresh(zone, 0);
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Set ACL list from configuration.
+ *
+ * \param acl      ACL to be created.
+ * \param acl_list List of remotes from configuration.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_ENOMEM on failed memory allocation.
+ */
+static int set_acl(acl_t **acl, list_t* acl_list)
+{
+	assert(acl);
+	assert(acl_list);
+
+	/* Create new ACL. */
+	acl_t *new_acl = acl_new();
+	if (new_acl == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Load ACL rules. */
+	sockaddr_t addr;
+	conf_remote_t *r = 0;
+	WALK_LIST(r, *acl_list) {
+		/* Initialize address. */
+		/*! Port matching disabled, port = 0. */
+		sockaddr_init(&addr, -1);
+		conf_iface_t *cfg_if = r->remote;
+		int ret = sockaddr_set(&addr, cfg_if->family, cfg_if->address, 0);
+		sockaddr_setprefix(&addr, cfg_if->prefix);
+
+		/* Load rule. */
+		if (ret > 0) {
+			acl_insert(new_acl, &addr, cfg_if->key);
+		}
+	}
+
+	*acl = new_acl;
+
+	return KNOT_EOK;
+}
+
+/*!
+ * \brief Set XFR-IN parameters.
+ * \param zone
+ */
+static void set_xfrin_parameters(zone_t *zone, conf_zone_t *conf)
+{
+	assert(zone);
+	assert(conf);
+
+	zone->xfr_in.bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
+	zone->xfr_in.has_master = 1;
+
+	conf_remote_t *master = HEAD(conf->acl.xfr_in);
+	conf_iface_t *master_if = master->remote;
+	sockaddr_set(&zone->xfr_in.master, master_if->family,
+		     master_if->address, master_if->port);
+
+	if (sockaddr_isvalid(&master_if->via)) {
+		sockaddr_copy(&zone->xfr_in.via, &master_if->via);
+	}
+
+	if (master_if->key) {
+		memcpy(&zone->xfr_in.tsig_key, master_if->key,
+		       sizeof(knot_tsig_key_t));
+	}
+}
+
+zone_t* zone_new(conf_zone_t *conf)
+{
+	if (!conf) {
+		return NULL;
+	}
+
+	zone_t *zone = malloc(sizeof(zone_t));
+	if (zone == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	memset(zone, 0, sizeof(zone_t));
+
+	zone->name = knot_dname_from_str(conf->name);
+	knot_dname_to_lower(zone->name);
+	if (zone->name == NULL) {
+		free(zone);
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
+	ref_init(&zone->ref, knot_zone_dtor);
+	zone_retain(zone);
+
+	// Configuration
+	zone->conf = conf;
+
+	// Mutexes
+	pthread_mutex_init(&zone->lock, 0);
+	pthread_mutex_init(&zone->ddns_lock, 0);
+
+	// ACLs
+	set_acl(&zone->xfr_in.acl, &conf->acl.xfr_in);
+	set_acl(&zone->xfr_out,    &conf->acl.xfr_out);
+	set_acl(&zone->notify_in,  &conf->acl.notify_in);
+	set_acl(&zone->notify_out, &conf->acl.notify_out);
+	set_acl(&zone->update_in,  &conf->acl.update_in);
+
+	// XFR-IN
+	if (!EMPTY_LIST(conf->acl.xfr_in)) {
+		set_xfrin_parameters(zone, conf);
+	}
+
+	/* Initialize IXFR database. */
+	zone->ixfr_db = journal_open(conf->ixfr_db, conf->ixfr_fslimit, JOURNAL_DIRTY);
+	if (zone->ixfr_db == NULL) {
+		char ebuf[256] = {0};
+		if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
+			log_zone_warning("Couldn't open journal file for "
+			                 "zone '%s', disabling incoming "
+			                 "IXFR. (%s)\n", conf->name, ebuf);
+		}
+	}
+
+	return zone;
+}
+
+void zone_free(zone_t **zone_ptr)
+{
+	if (zone_ptr == NULL || *zone_ptr == NULL) {
 		return;
 	}
 
-	zone->version = version;
+	zone_t *zone = *zone_ptr;
+
+	knot_dname_free(&zone->name);
+
+	/* Cancel and free timers. */
+	zone_timer_free(zone->xfr_in.timer);
+	zone_timer_free(zone->xfr_in.expire);
+	zone_timer_free(zone->ixfr_dbsync);
+	zone_timer_free(zone->dnssec.timer);
+
+	acl_delete(&zone->xfr_in.acl);
+	acl_delete(&zone->xfr_out);
+	acl_delete(&zone->notify_in);
+	acl_delete(&zone->notify_out);
+	acl_delete(&zone->update_in);
+	pthread_mutex_destroy(&zone->lock);
+	pthread_mutex_destroy(&zone->ddns_lock);
+
+	/* Close IXFR db. */
+	journal_close(zone->ixfr_db);
+
+	/* Free assigned config. */
+	conf_free_zone(zone->conf);
+
+	/* Free zone contents. */
+	knot_zone_contents_deep_free(&zone->contents);
+
+	free(zone);
+	*zone_ptr = NULL;
 }
 
-/*----------------------------------------------------------------------------*/
-
-short knot_zone_is_master(const knot_zone_t *zone)
-{
-	return zone->flags & KNOT_ZONE_MASTER;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_set_master(knot_zone_t *zone, short master)
-{
-	if (master) {
-		zone->flags |= KNOT_ZONE_MASTER;
-	} else {
-		zone->flags &= ~KNOT_ZONE_MASTER;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-const void *knot_zone_data(const knot_zone_t *zone)
-{
-	return zone->data;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_set_data(knot_zone_t *zone, void *data)
-{
-	zone->data = data;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_dname_t *knot_zone_name(const knot_zone_t *zone)
-{
-	return zone->name;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_zone_contents_t *knot_zone_switch_contents(knot_zone_t *zone,
-                                           knot_zone_contents_t *new_contents)
+knot_zone_contents_t *zone_switch_contents(zone_t *zone,
+					   knot_zone_contents_t *new_contents)
 {
 	if (zone == NULL) {
 		return NULL;
 	}
 
-	knot_zone_contents_t *old_contents =
-		rcu_xchg_pointer(&zone->contents, new_contents);
+	knot_zone_contents_t *old_contents;
+	old_contents = rcu_xchg_pointer(&zone->contents, new_contents);
 
 	return old_contents;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_free(knot_zone_t **zone)
-{
-	if (zone == NULL || *zone == NULL) {
-		return;
-	}
-
-	dbg_zone("zone_free().\n");
-
-	if ((*zone)->contents
-	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
-		// zone is in the middle of an update, report
-		dbg_zone("Destroying zone that is in the middle of an "
-		         "update.\n");
-	}
-
-	knot_dname_free(&(*zone)->name);
-
-	/* Call zone data destructor if exists. */
-	if ((*zone)->dtor) {
-		(*zone)->dtor(*zone);
-	}
-
-	knot_zone_contents_free(&(*zone)->contents);
-	free(*zone);
-	*zone = NULL;
-
-	dbg_zone("Done.\n");
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_deep_free(knot_zone_t **zone)
-{
-	if (zone == NULL || *zone == NULL) {
-		return;
-	}
-
-	if ((*zone)->contents
-	    && !knot_zone_contents_gen_is_old((*zone)->contents)) {
-		// zone is in the middle of an update, report
-		dbg_zone("Destroying zone that is in the middle of an "
-		         "update.\n");
-	}
-
-dbg_zone_exec(
-	char *name = knot_dname_to_str((*zone)->name);
-	dbg_zone("Destroying zone %p, name: %s.\n", *zone, name);
-	free(name);
-);
-
-	knot_dname_free(&(*zone)->name);
-
-	/* Call zone data destructor if exists. */
-	if ((*zone)->dtor) {
-		(*zone)->dtor(*zone);
-	}
-
-	knot_zone_contents_deep_free(&(*zone)->contents);
-	free(*zone);
-	*zone = NULL;
-}
-
-void knot_zone_set_dtor(knot_zone_t *zone, int (*dtor)(struct knot_zone *))
-{
-	if (zone != NULL) {
-		zone->dtor = dtor;
-	}
-}
-
-void knot_zone_set_flag(knot_zone_t *zone, knot_zone_flag_t flag, unsigned on)
-{
-	if (zone != NULL) {
-		if (on) {
-			zone->flags |= flag;
-		} else {
-			zone->flags &= ~flag;
-		}
-	}
-}
-
-int knot_zone_state(const knot_zone_t *zone)
-{
-	if (zone == NULL || zone->data == NULL) {
-		dbg_ns("%s: zone not found\n", __func__);
-		return KNOT_ENOENT;
-	} else if (zone->contents == NULL) {
-		dbg_ns("%s: zone expired or stub\n", __func__);
-		return KNOT_ENOZONE;
-	}
-	return KNOT_EOK;
 }

@@ -262,7 +262,6 @@ static int conf_process(conf_t *conf)
 	if (conf->xfers <= 0)
 		conf->xfers = CONFIG_XFERS;
 
-
 	/* Zones global configuration. */
 	if (conf->storage == NULL) {
 		conf->storage = strdup(STORAGE_DIR);
@@ -905,8 +904,6 @@ int conf_open(const char* path)
 		conf_free(oldconf);
 	}
 
-
-
 	return KNOT_EOK;
 }
 
@@ -967,6 +964,32 @@ char* strcpath(char *path)
 	}
 
 	return path;
+}
+
+void conf_init_zone(conf_zone_t *zone)
+{
+	if (!zone) {
+		return;
+	}
+
+	memset(zone, 0, sizeof(conf_zone_t));
+
+	// Default policy applies.
+	zone->enable_checks = -1;
+	zone->notify_timeout = -1;
+	zone->notify_retries = 0;
+	zone->dbsync_timeout = -1;
+	zone->disable_any = -1;
+	zone->build_diffs = -1;
+	zone->sig_lifetime = -1;
+	zone->dnssec_enable = -1;
+
+	// Initialize ACL lists.
+	init_list(&zone->acl.xfr_in);
+	init_list(&zone->acl.xfr_out);
+	init_list(&zone->acl.notify_in);
+	init_list(&zone->acl.notify_out);
+	init_list(&zone->acl.update_in);
 }
 
 void conf_free_zone(conf_zone_t *zone)

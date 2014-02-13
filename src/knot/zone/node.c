@@ -24,10 +24,8 @@
 #include "libknot/common.h"
 #include "knot/zone/node.h"
 #include "libknot/rrset.h"
-#include "libknot/rdata.h"
 #include "common/descriptor.h"
-#include "common/lists.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -114,6 +112,7 @@ int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
 	node->rrset_tree = p;
 	node->rrset_tree[node->rrset_count] = rrset;
 	++node->rrset_count;
+
 	return KNOT_EOK;
 }
 
@@ -580,6 +579,13 @@ int knot_node_is_empty(const knot_node_t *node)
 void knot_node_set_empty(knot_node_t *node)
 {
 	knot_node_flags_set(node, KNOT_NODE_FLAGS_EMPTY);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_node_clear_empty(knot_node_t *node)
+{
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_EMPTY);
 }
 
 /*----------------------------------------------------------------------------*/

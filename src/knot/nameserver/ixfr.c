@@ -4,10 +4,11 @@
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/rdata.h"
 #include "knot/server/zones.h"
 #include "common/descriptor.h"
+#include "libknot/util/utils.h"
 
 /*! \brief Current IXFR answer sections. */
 enum {
@@ -123,7 +124,7 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item, struct xfr_
 
 #undef IXFR_SAFE_PUT
 
-static int ixfr_load_chsets(knot_changesets_t **chgsets, const knot_zone_t *zone,
+static int ixfr_load_chsets(knot_changesets_t **chgsets, const zone_t *zone,
 			    const knot_rrset_t *their_soa)
 {
 	assert(chgsets);
@@ -134,7 +135,7 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const knot_zone_t *zone
 	const knot_rrset_t *our_soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 	uint32_t serial_to = knot_rdata_soa_serial(our_soa);
 	uint32_t serial_from = knot_rdata_soa_serial(their_soa);
-	int ret = ns_serial_compare(serial_to, serial_from);
+	int ret = knot_serial_compare(serial_to, serial_from);
 	if (ret <= 0) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
 	}
@@ -155,8 +156,9 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const knot_zone_t *zone
 
 static int ixfr_query_check(struct query_data *qdata)
 {
-	/* Check zone state. */
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	/* Check if zone exists. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+
 	/* Need IXFR query type. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_IXFR, KNOT_RCODE_FORMERR);
 	/* Need SOA authority record. */
@@ -169,9 +171,9 @@ static int ixfr_query_check(struct query_data *qdata)
 	/* SOA needs to match QNAME. */
 	NS_NEED_QNAME(qdata, their_soa->owner, KNOT_RCODE_FORMERR);
 
-	/* Need valid transaction security. */
-	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
-	NS_NEED_AUTH(zone_data->xfr_out, qdata);
+	/* Check transcation security and zone contents. */
+	NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
+	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	return NS_PROC_DONE;
 }
@@ -240,10 +242,10 @@ static int ixfr_answer_init(struct query_data *qdata)
 	return KNOT_EOK;
 }
 
-static int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
+static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s: answering IXFR/SOA\n", __func__);
-	if (pkt == NULL || ns == NULL || qdata == NULL) {
+	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
 	}
 
@@ -268,9 +270,9 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_
 	return NS_PROC_DONE;
 }
 
-int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
+int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	if (pkt == NULL || ns == NULL || qdata == NULL) {
+	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
 	}
 
@@ -280,7 +282,7 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 
 	/* If IXFR is disabled, respond with SOA. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_IXFR) {
-		return ixfr_answer_soa(pkt, ns, qdata);
+		return ixfr_answer_soa(pkt, qdata);
 	}
 
 	/* Initialize on first call. */
@@ -295,12 +297,12 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
 			IXFR_LOG(LOG_INFO, "Zone is up-to-date.");
-			return ixfr_answer_soa(pkt, ns, qdata);
+			return ixfr_answer_soa(pkt, qdata);
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
 			IXFR_LOG(LOG_INFO, "Incomplete history, fallback to AXFR.");
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
-			return axfr_answer(pkt, ns, qdata);
+			return axfr_answer(pkt, qdata);
 		default:            /* Server errors. */
 			IXFR_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
 			return NS_PROC_FAIL;
@@ -327,6 +329,98 @@ int ixfr_answer(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata
 		ret = NS_PROC_FAIL;
 		break;
 	}
+
+	return ret;
+}
+
+int ixfr_process_answer(knot_ns_xfr_t *xfr)
+{
+	dbg_ns("ns_process_ixfrin: incoming packet\n");
+
+	/*
+	 * [TSIG] Here we assume that 'xfr' contains TSIG information
+	 * and the digest of the query sent to the master or the previous
+	 * digest.
+	 */
+	int ret = xfrin_process_ixfr_packet(xfr);
+
+	if (ret == XFRIN_RES_FALLBACK) {
+		dbg_ns("ns_process_ixfrin: Fallback to AXFR.\n");
+		ret = KNOT_ENOIXFR;
+	}
+
+	if (ret < 0) {
+		knot_pkt_free(&xfr->query);
+		return ret;
+	} else if (ret > 0) {
+		dbg_ns("ns_process_ixfrin: IXFR finished\n");
+		gettimeofday(&xfr->t_end, NULL);
+
+		knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
+		if (chgsets == NULL || chgsets->first_soa == NULL) {
+			// nothing to be done??
+			dbg_ns("No changesets created for incoming IXFR!\n");
+			return ret;
+		}
+
+		// find zone associated with the changesets
+		/* Must not search for the zone in zonedb as it may fetch a
+		 * different zone than the one the transfer started on. */
+		zone_t *zone = xfr->zone;
+		if (zone == NULL) {
+			dbg_ns("No zone found for incoming IXFR!\n");
+			knot_changesets_free(
+				(knot_changesets_t **)(&xfr->data));
+			return KNOT_ENOZONE;
+		}
+
+		switch (ret) {
+		case XFRIN_RES_COMPLETE:
+			break;
+		case XFRIN_RES_SOA_ONLY: {
+			// compare the SERIAL from the changeset with the zone's
+			// serial
+			const knot_node_t *apex = zone->contents->apex;
+			if (apex == NULL) {
+				return KNOT_ERROR;
+			}
+
+			const knot_rrset_t *zone_soa = knot_node_rrset(
+					apex, KNOT_RRTYPE_SOA);
+			if (zone_soa == NULL) {
+				return KNOT_ERROR;
+			}
+
+			if (knot_serial_compare(
+			      knot_rdata_soa_serial(chgsets->first_soa),
+			      knot_rdata_soa_serial(zone_soa))
+			    > 0) {
+				if ((xfr->flags & XFR_FLAG_UDP) != 0) {
+					// IXFR over UDP
+					dbg_ns("Update did not fit.\n");
+					return KNOT_EIXFRSPACE;
+				} else {
+					// fallback to AXFR
+					dbg_ns("ns_process_ixfrin: "
+					       "Fallback to AXFR.\n");
+					knot_changesets_free(
+					      (knot_changesets_t **)&xfr->data);
+					knot_pkt_free(&xfr->query);
+					return KNOT_ENOIXFR;
+				}
+
+			} else {
+				// free changesets
+				dbg_ns("No update needed.\n");
+				knot_changesets_free(
+					(knot_changesets_t **)(&xfr->data));
+				return KNOT_ENOXFR;
+			}
+		} break;
+		}
+	}
+
+	/*! \todo In case of error, shouldn't the zone be destroyed here? */
 
 	return ret;
 }

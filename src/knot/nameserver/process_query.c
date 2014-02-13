@@ -4,11 +4,11 @@
 
 #include "knot/nameserver/process_query.h"
 #include "libknot/consts.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "libknot/common.h"
 #include "libknot/tsig-op.h"
 #include "common/descriptor.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 
 /*! \todo Move close to server when done. */
 #include "knot/nameserver/chaos.h"
@@ -22,7 +22,7 @@
 #include "knot/conf/conf.h"
 
 /* Forward decls. */
-static const knot_zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb);
+static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb);
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx);
 static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx);
 static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx);
@@ -360,7 +360,6 @@ fail:
 static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	struct query_data *data = QUERY_DATA(ctx);
-	knot_nameserver_t *ns = data->param->ns;
 	int next_state = NS_PROC_FAIL;
 	dbg_ns("%s(%p, %p, pkt_type=%u)\n", __func__, pkt, ctx, data->packet_type);
 
@@ -369,16 +368,16 @@ static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 		next_state = internet_answer(pkt, data);
 		break;
 	case KNOT_QUERY_NOTIFY:
-		next_state = internet_notify(pkt, ns, data);
+		next_state = internet_notify(pkt, data);
 		break;
 	case KNOT_QUERY_AXFR:
-		next_state = axfr_answer(pkt, ns, data);
+		next_state = axfr_answer(pkt, data);
 		break;
 	case KNOT_QUERY_IXFR:
-		next_state = ixfr_answer(pkt, ns, data);
+		next_state = ixfr_answer(pkt, data);
 		break;
 	case KNOT_QUERY_UPDATE:
-		next_state = update_answer(pkt, ns, data);
+		next_state = update_answer(pkt, data);
 		break;
 	default:
 		/* Nothing else is supported. */
@@ -397,7 +396,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	/* Check if rate limiting applies. */
 	struct query_data *qdata = QUERY_DATA(ctx);
-	server_t *server = (server_t *)qdata->param->ns->data;
+	server_t *server = qdata->param->server;
 	if (server->rrl == NULL) {
 		return state;
 	}
@@ -443,7 +442,7 @@ static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx)
 		return NS_PROC_FAIL;
 	}
 
-	data->rcode = knot_chaos_answer(pkt, data->param->ns);
+	data->rcode = knot_chaos_answer(pkt);
 	if (data->rcode != KNOT_RCODE_NOERROR) {
 		dbg_ns("%s: failed with RCODE=%d\n", __func__, data->rcode);
 		return NS_PROC_FAIL;
@@ -453,12 +452,12 @@ static int query_chaos(knot_pkt_t *pkt, knot_process_t *ctx)
 }
 
 /*! \brief Find zone for given question. */
-static const knot_zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
+static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 {
 	uint16_t qtype = knot_pkt_qtype(query);
 	uint16_t qclass = knot_pkt_qclass(query);
 	const knot_dname_t *qname = knot_pkt_qname(query);
-	const knot_zone_t *zone = NULL;
+	const zone_t *zone = NULL;
 
 	// search for zone only for IN and ANY classes
 	if (qclass != KNOT_CLASS_IN && qclass != KNOT_CLASS_ANY) {
@@ -490,7 +489,7 @@ static const knot_zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_
 static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_process_t *ctx)
 {
 	struct query_data *qdata = QUERY_DATA(ctx);
-	knot_nameserver_t *ns = qdata->param->ns;
+	server_t *server = qdata->param->server;
 
 	/* Initialize response. */
 	int ret = knot_pkt_init_response(resp, query);
@@ -518,7 +517,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	}
 
 	/* Find zone for QNAME. */
-	qdata->zone = answer_zone_find(query, ns->zone_db);
+	qdata->zone = answer_zone_find(query, server->zone_db);
 
 	/* Update maximal answer size. */
 	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
@@ -529,7 +528,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	if (!knot_pkt_have_edns(query)) {
 		return KNOT_EOK;
 	}
-	ret = knot_pkt_add_opt(resp, ns->opt_rr, knot_pkt_have_nsid(query));
+	ret = knot_pkt_add_opt(resp, server->opt_rr, knot_pkt_have_nsid(query));
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't add OPT RR (%d)\n", __func__, ret);
 		return ret;

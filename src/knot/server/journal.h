@@ -126,7 +126,6 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
 /* HEADER = magic, crc, max_entries, qhead, qtail */
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3)
 
-
 /*!
  * \brief Create new journal.
  *
@@ -196,7 +195,6 @@ int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
  * \retval KNOT_ERROR on I/O error.
  */
 int journal_read_node(journal_t *journal, journal_node_t *n, char *dst);
-
 
 /*!
  * \brief Write journal entry data.

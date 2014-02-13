@@ -29,13 +29,15 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
-#include "knot/nameserver/name-server.h"
 
 /* Query data (from query processing). */
 struct query_data;
 
 /*!
  * \brief Answer query from IN class zone.
+ *
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
  */
 int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 
@@ -53,15 +55,17 @@ int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 		return NS_PROC_FAIL; \
 	}
 
-/*! \brief Require valid zone or return error code. */
-#define NS_NEED_VALID_ZONE(qdata, error_rcode) \
-	switch(knot_zone_state((qdata)->zone)) { \
-	case KNOT_EOK: \
-		break; \
-	case KNOT_ENOENT: \
+/*! \brief Require existing zone or return failure. */
+#define NS_NEED_ZONE(qdata, error_rcode) \
+	if ((qdata)->zone == NULL) { \
 		qdata->rcode = (error_rcode); \
 		return NS_PROC_FAIL; \
-	default: /* SERVFAIL */ \
+	}
+
+/*! \brief Require existing zone contents or return failure. */
+#define NS_NEED_ZONE_CONTENTS(qdata, error_rcode) \
+	if ((qdata)->zone->contents == NULL) { \
+		qdata->rcode = (error_rcode); \
 		return NS_PROC_FAIL; \
 	}
 

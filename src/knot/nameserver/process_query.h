@@ -28,8 +28,8 @@
 #define _PROCESS_QUERY_H_
 
 #include "libknot/processing/process.h"
-#include "knot/nameserver/name-server.h"
-#include "common/acl.h"
+#include "knot/server/server.h"
+#include "knot/updates/acl.h"
 
 /* Query processing module implementation. */
 extern const knot_process_module_t _process_query;
@@ -69,17 +69,18 @@ enum process_query_flag {
 struct process_query_param {
 	uint16_t   proc_flags;
 	sockaddr_t query_source;
-	knot_nameserver_t *ns;
+	int        query_socket;
+	server_t   *server;
 };
 
 /*! \brief Query processing intermediate data. */
 struct query_data {
-	uint16_t rcode;          /*!< Resulting RCODE. */
-	uint16_t rcode_tsig;     /*!< Resulting TSIG RCODE. */
-	uint16_t packet_type;    /*!< Resolved packet type. */
-	knot_pkt_t *query;       /*!< Query to be solved. */
-	const knot_zone_t *zone; /*!< Zone from which is answered. */
-	list_t wildcards;        /*!< Visited wildcards. */
+	uint16_t rcode;       /*!< Resulting RCODE. */
+	uint16_t rcode_tsig;  /*!< Resulting TSIG RCODE. */
+	uint16_t packet_type; /*!< Resolved packet type. */
+	knot_pkt_t *query;    /*!< Query to be solved. */
+	const zone_t *zone;   /*!< Zone from which is answered. */
+	list_t wildcards;     /*!< Visited wildcards. */
 
 	/* Current processed name and nodes. */
 	const knot_node_t *node, *encloser, *previous;

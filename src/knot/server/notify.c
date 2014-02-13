@@ -28,13 +28,13 @@
 #include "libknot/common.h"
 #include "libknot/packet/wire.h"
 #include "knot/server/zones.h"
-#include "common/acl.h"
+#include "knot/updates/acl.h"
 #include "common/evsched.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
 #include "libknot/rdata.h"
 #include "knot/nameserver/internet.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/random.h"
 
@@ -42,7 +42,7 @@
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int notify_create_request(const knot_zone_t *zone, knot_pkt_t *pkt)
+int notify_create_request(const zone_t *zone, knot_pkt_t *pkt)
 {
 	knot_zone_contents_t *contents = zone->contents;
 	if (contents == NULL) {
@@ -70,26 +70,15 @@ int notify_process_response(knot_pkt_t *notify, int msgid)
 	return KNOT_EOK;
 }
 
-static int notify_reschedule(knot_nameserver_t *ns,
-			     const knot_zone_t *zone,
-			     sockaddr_t *from)
+static int notify_reschedule(const zone_t *zone)
 {
-	dbg_ns("%s(%p, %p, %p)\n", __func__, ns, zone, from);
-	if (ns == NULL || zone == NULL || zone->data == NULL) {
+	dbg_ns("%s(%p)\n", __func__, zone);
+	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Cancel REFRESH/RETRY timer. */
-	server_t *server = ns->data;
-	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(zone);
-	event_t *refresh_ev = zone_data->xfr_in.timer;
-	if (refresh_ev && server) {
-		dbg_ns("%s: expiring REFRESH timer\n", __func__);
-		evsched_cancel(server->sched, refresh_ev);
-		evsched_schedule(server->sched, refresh_ev, 0);
-	} else {
-		dbg_ns("%s: no REFRESH timer to expire\n", __func__);
-	}
+	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
+	zones_schedule_refresh((zone_t *)zone, 0);
 
 	return KNOT_EOK;
 }
@@ -98,28 +87,22 @@ static int notify_reschedule(knot_nameserver_t *ns,
 #define NOTIFY_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
 
-int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *qdata)
+int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	if (pkt == NULL || ns == NULL || qdata == NULL) {
+	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
 	}
 
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
-	/* Need valid transaction security. */
-	zonedata_t *zone_data = (zonedata_t *)knot_zone_data(qdata->zone);
-	NS_NEED_AUTH(zone_data->notify_in, qdata);
+	/* Check valid zone, transaction security. */
+	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
+	NS_NEED_AUTH(qdata->zone->notify_in, qdata);
 
-	/*! \note NOTIFY/RFC1996 isn't clear on error RCODEs.
-	 *        Most servers use NOTAUTH from RFC2136. */
-	/*! \note SERVFAIL is going to be sent if the zone is
-	 *        being bootstrapped, this is harmless. */
-	NS_NEED_VALID_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
-	
+
 	/* SOA RR in answer may be included, recover serial. */
 	unsigned serial = 0;
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
@@ -134,7 +117,7 @@ int internet_notify(knot_pkt_t *pkt, knot_nameserver_t *ns, struct query_data *q
 	}
 
 	int next_state = NS_PROC_FAIL;
-	int ret = notify_reschedule(ns, qdata->zone, NULL /*! \todo API */);
+	int ret = notify_reschedule(qdata->zone);
 
 	/* Format resulting log message. */
 	if (ret != KNOT_EOK) {

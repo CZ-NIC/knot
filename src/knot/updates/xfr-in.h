@@ -33,7 +33,7 @@
 #include "libknot/dname.h"
 #include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
-#include "knot/nameserver/name-server.h"
+#include "knot/server/xfr-handler.h"
 #include "knot/updates/changesets.h"
 
 /*----------------------------------------------------------------------------*/
@@ -70,7 +70,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_soa_query(const knot_zone_t *zone, knot_pkt_t *pkt);
+int xfrin_create_soa_query(const zone_t *zone, knot_pkt_t *pkt);
 
 /*!
  * \brief Creates normal query for the given zone name and the AXFR type.
@@ -84,7 +84,7 @@ int xfrin_create_soa_query(const knot_zone_t *zone, knot_pkt_t *pkt);
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_axfr_query(const knot_zone_t *zone, knot_pkt_t *pkt);
+int xfrin_create_axfr_query(const zone_t *zone, knot_pkt_t *pkt);
 
 /*!
  * \brief Creates normal query for the given zone name and the IXFR type.
@@ -98,18 +98,7 @@ int xfrin_create_axfr_query(const knot_zone_t *zone, knot_pkt_t *pkt);
  * \retval KNOT_ESPACE
  * \retval KNOT_ERROR
  */
-int xfrin_create_ixfr_query(const knot_zone_t *zone, knot_pkt_t *pkt);
-
-/*!
- * \brief Processes the newly created transferred zone.
- *
- * \param nameserver Name server to update.
- * \param zone Zone build from transfer.
- *
- * \retval KNOT_ENOTSUP
- */
-int xfrin_zone_transferred(knot_nameserver_t *nameserver,
-                           knot_zone_contents_t *zone);
+int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt);
 
 /*!
  * \brief Processes one incoming packet of AXFR transfer by updating the given
@@ -159,7 +148,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr);
  * \param new_contents  New zone will be returned using this arg.
  * \return KNOT_E*
  */
-int xfrin_apply_changesets(knot_zone_t *zone,
+int xfrin_apply_changesets(zone_t *zone,
                            knot_changesets_t *chsets,
                            knot_zone_contents_t **new_contents);
 
@@ -194,7 +183,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
                                 bool set_nsec3_names,
                                 const hattrie_t *sorted_changes);
 
-int xfrin_switch_zone(knot_zone_t *zone,
+int xfrin_switch_zone(zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type);
 

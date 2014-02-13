@@ -31,11 +31,12 @@
 #include <pthread.h>
 #include "common/sockaddr.h"
 #include "libknot/packet/pkt.h"
-#include "knot/zone/zone.h"
 
 /* Defaults */
 #define RRL_SLIP_MAX 100
 #define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
+
+struct zone_t;
 
 /*!
  * \brief RRL hash bucket.
@@ -128,7 +129,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity);
  * \return assigned bucket
  */
 rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
-                     const knot_zone_t *zone, uint32_t stamp, int* lock);
+                     const struct zone_t *zone, uint32_t stamp, int* lock);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
@@ -141,7 +142,7 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
  * \retval KNOT_ELIMIT when the limit is reached.
  */
 int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
-              const knot_zone_t *zone);
+              const struct zone_t *zone);
 
 /*!
  * \brief Roll a dice whether answer slips or not.

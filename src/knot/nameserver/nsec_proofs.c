@@ -2,10 +2,11 @@
 
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/dnssec/zone-nsec.h"
 
 #include "libknot/common.h"
 #include "libknot/rdata.h"
-#include "libknot/util/debug.h"
+#include "common/debug.h"
 
 #define DNSSEC_ENABLED 1
 
@@ -33,8 +34,6 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
 {
 	int ce_labels = knot_dname_labels(closest_encloser, NULL);
 	int qname_labels = knot_dname_labels(name, NULL);
-
-	assert(ce_labels < qname_labels);
 
 	// the common labels should match
 	assert(knot_dname_matched_labels(closest_encloser, name)
@@ -106,7 +105,7 @@ static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
-	if (match == KNOT_ZONE_NAME_FOUND || prev == NULL){
+	if (match == ZONE_NAME_FOUND || prev == NULL){
 		// if run-time collision => SERVFAIL
 		return KNOT_EOK;
 	}
@@ -315,50 +314,6 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Puts NSECs or NSEC3s for wildcard NODATA answer into the response.
- *
- * \note This function first checks if DNSSEC is enabled and requested by the
- *       query.
- *
- * \param node Node used for answering.
- * \param closest_encloser Closest encloser of \a qname in the zone.
- * \param previous Previous node of \a qname in canonical order.
- * \param zone Zone used for answering.
- * \param qname Actual searched domain name.
- * \param resp Response where to put the NSECs and NSEC3s.
- *
- * \retval KNOT_EOK
- * \retval NS_ERR_SERVFAIL
- */
-static int ns_put_nsec_nsec3_wildcard_nodata(const knot_node_t *node,
-					  const knot_node_t *closest_encloser,
-					  const knot_node_t *previous,
-					  const knot_zone_contents_t *zone,
-					  const knot_dname_t *qname,
-					  knot_pkt_t *resp)
-{
-	int ret = KNOT_EOK;
-
-	if (knot_zone_contents_nsec3_enabled(zone)) {
-		ret = ns_put_nsec3_closest_encloser_proof(zone,
-		                                          &closest_encloser,
-		                                          qname, resp);
-
-		const knot_node_t *nsec3_node;
-		if (ret == KNOT_EOK
-		    && (nsec3_node = knot_node_nsec3_node(node))
-		    != NULL) {
-			ret = ns_put_nsec3_from_node(nsec3_node, resp);
-		}
-	} else {
-		ret = ns_put_nsec_wildcard(zone, qname, previous, resp);
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief Puts NSEC3s covering the non-existent wildcard child of a node
  *        (and their associated RRSIGs) into the response.
  *
@@ -420,7 +375,7 @@ static int ns_put_nsec3_wildcard(const knot_zone_contents_t *zone,
 	assert(qname != NULL);
 	assert(resp != NULL);
 
-	if (!knot_zone_contents_nsec3_enabled(zone)) {
+	if (!knot_is_nsec3_enabled(zone)) {
 		return KNOT_EOK;
 	}
 
@@ -476,9 +431,9 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 
 	int ret = KNOT_EOK;
 	if (knot_dname_is_wildcard(knot_node_owner(node))
-	    && knot_dname_cmp(qname, knot_node_owner(node)) != 0) {
+	    && !knot_dname_is_equal(qname, knot_node_owner(node))) {
 		dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
-		if (knot_zone_contents_nsec3_enabled(zone)) {
+		if (knot_is_nsec3_enabled(zone)) {
 			ret = ns_put_nsec3_wildcard(zone, closest_encloser,
 			                            qname, resp);
 		} else {
@@ -668,7 +623,7 @@ static int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,
 {
 	int ret = 0;
 
-	if (knot_zone_contents_nsec3_enabled(zone)) {
+	if (knot_is_nsec3_enabled(zone)) {
 		ret = ns_put_nsec3_nxdomain(zone, closest_encloser,
 		                            qname, resp);
 	} else {
@@ -698,10 +653,11 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 			     const knot_dname_t *qname,
 			     knot_pkt_t *resp)
 {
-	if (knot_dname_is_wildcard(node->owner)) {
-		return ns_put_nsec_nsec3_wildcard_nodata(node, closest_encloser,
-							 previous, zone, qname,
-							 resp);
+	// This case must be handled first, before handling the wildcard case
+	if (knot_node_rrset_count(node) == 0 && !knot_is_nsec3_enabled(zone)) {
+		// node is an empty non-terminal => NSEC for NXDOMAIN
+		return ns_put_nsec_nxdomain(qname, zone, previous,
+		                            closest_encloser, resp);
 	}
 
 	/*! \todo Maybe distinguish different errors. */
@@ -709,17 +665,21 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 
 	knot_rrset_t *rrset = NULL;
 
-	if (knot_zone_contents_nsec3_enabled(zone)) {
-		knot_node_t *nsec3_node = knot_node_get_nsec3_node(node);
-		dbg_ns("%s: adding NSEC3 NODATA\n", __func__);
+	if (knot_is_nsec3_enabled(zone)) {
 
-		if (nsec3_node != NULL
-		    && (rrset = knot_node_get_rrset(nsec3_node,
-		                                  KNOT_RRTYPE_NSEC3)) != NULL
-		    && knot_rrset_rdata_rr_count(rrset)) {
-			dbg_ns_detail("Putting the RRSet to Authority\n");
-			const knot_rrset_t *rrsigs = knot_node_rrset(nsec3_node, KNOT_RRTYPE_RRSIG);
-			ret = knot_pkt_put(resp, 0, rrset, rrsigs, 0);
+		/* RFC5155 7.2.5 Wildcard No Data Responses */
+		if (!knot_dname_is_wildcard(qname) && knot_dname_is_wildcard(node->owner)) {
+			dbg_ns("%s: adding NSEC3 wildcard NODATA\n", __func__);
+			ret = ns_put_nsec3_closest_encloser_proof(zone,
+			                                          &closest_encloser,
+			                                          qname, resp);
+		}
+
+		/* RFC5155 7.2.3-7.2.5 common proof. */
+		dbg_ns("%s: adding NSEC3 NODATA\n", __func__);
+		const knot_node_t *nsec3_node = knot_node_nsec3_node(node);
+		if (nsec3_node) {
+			ret = ns_put_nsec3_from_node(nsec3_node, resp);
 		} else {
 			// No NSEC3 node => Opt-out
 			return ns_put_nsec3_closest_encloser_proof(zone,
@@ -747,6 +707,8 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 
 int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 {
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+
 	int ret = KNOT_EOK;
 	struct wildcard_hit *item = NULL;
 
@@ -767,6 +729,8 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 
 int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 {
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+
 	return ns_put_nsec_nsec3_nodata(qdata->node, qdata->encloser,
 	                                qdata->previous, qdata->zone->contents,
 	                                qdata->name, pkt);
@@ -774,15 +738,18 @@ int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata)
 
 int nsec_prove_nxdomain(knot_pkt_t *pkt, struct query_data *qdata)
 {
-    return ns_put_nsec_nsec3_nxdomain(qdata->zone->contents, qdata->previous,
-                                      qdata->encloser, qdata->name,
-                                      pkt);
+	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+
+	return ns_put_nsec_nsec3_nxdomain(qdata->zone->contents, qdata->previous,
+	                                  qdata->encloser, qdata->name,
+	                                  pkt);
 }
 
 int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	/* Add DS record if present. */
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
+
+	/* Add DS record if present. */
 	knot_rrset_t *rrset = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_DS);
 	const knot_rrset_t *rrsigs = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 	if (rrset != NULL) {

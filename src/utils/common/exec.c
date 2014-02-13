@@ -492,7 +492,7 @@ void print_packet(const knot_pkt_t *packet,
 	}
 
 	// Print EDNS section.
-	if (knot_edns_get_version(&packet->opt_rr) != EDNS_NOT_SUPPORTED) {
+	if (knot_pkt_have_edns(packet)) {
 		if (style->show_edns) {
 			printf("\n;; EDNS PSEUDOSECTION:\n;; ");
 			print_opt_section(&packet->opt_rr);

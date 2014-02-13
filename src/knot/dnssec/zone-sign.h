@@ -96,7 +96,7 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
  *
- * \param zone Updated zone (with *new* contents).
+ * \param zone New zone contents.
  * \param in_ch Changeset created bvy DDNS or zone-diff
  * \param out_ch New records will be added to this changeset.
  * \param sorted_changes Sorted representation of changes.
@@ -105,7 +105,7 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_sign_changeset(const knot_zone_t *zone,
+int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
                              hattrie_t **sorted_changes,

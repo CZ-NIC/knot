@@ -88,7 +88,8 @@ enum knot_edns_option {
 	KNOT_PKT_EDNS_PAYLOAD = 0,
 	KNOT_PKT_EDNS_VERSION = 1,
 	KNOT_PKT_EDNS_RCODE   = 2,
-	KNOT_PKT_EDNS_NSID    = 3
+	KNOT_PKT_EDNS_FLAG_DO = 3,
+	KNOT_PKT_EDNS_NSID    = 4
 };
 
 /*----------------------------------------------------------------------------*/
