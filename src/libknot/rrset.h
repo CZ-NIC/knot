@@ -331,8 +331,6 @@ void knot_rrset_free(knot_rrset_t **rrset);
  */
 void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner, mm_ctx_t *mm);
 
-void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner);
-
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, struct knot_compr *compr);
 
@@ -438,8 +436,19 @@ int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
  */
 int rrset_additional_needed(uint16_t rrtype);
 
-int knot_rrset_synth_rrsig(const knot_rrset_t *covered, const knot_rrset_t *rrsigs,
-                           knot_rrset_t **out_sig, mm_ctx_t *mm);
+/*!
+ * \brief Creates RRSIG record from node RRSIGs for given RRSet.
+ *
+ * \param covered  RRSet to create RRSIG for.
+ * \param rrsigs   Node RRSIGs.
+ * \param out_sig  Output RRSIG.
+ * \param mm       Memory context.
+ *
+ * \return KNOT_E*
+ */
+int knot_rrset_synth_rrsig(const knot_rrset_t *covered,
+                           const knot_rrset_t *rrsigs, knot_rrset_t **out_sig,
+                           mm_ctx_t *mm);
 
 #endif /* _KNOT_RRSET_H_ */
 

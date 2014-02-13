@@ -674,22 +674,6 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	return KNOT_EOK;
 }
 
-int knot_node_synth_rrsig_for_type(const knot_node_t *node, uint16_t type,
-                                   knot_rrset_t **sig, mm_ctx_t *mm)
-{
-	if (node == NULL || sig == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	const knot_rrset_t *covered = knot_node_rrset(node, type);
-	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
-	if (covered == NULL || rrsigs == NULL || !knot_node_rrtype_is_signed(node, type)) {
-		return KNOT_ENOENT;
-	}
-
-	return knot_rrset_synth_rrsig(covered, rrsigs, sig, mm);
-}
-
 bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 {
 	if (node == NULL) {

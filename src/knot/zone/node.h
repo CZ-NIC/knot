@@ -407,10 +407,14 @@ void knot_node_free(knot_node_t **node);
 
 int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
 
-int knot_node_synth_rrsig_for_type(const knot_node_t *node, uint16_t type,
-                                   knot_rrset_t **sig, mm_ctx_t *mm);
-
-bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t);
+/*!
+ * \brief Checks whether node contains an RRSIG for given type.
+ * \param node  Node to check in.
+ * \param node  Type to check for.
+ *
+ * \return True/False.
+ */
+bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type);
 
 #endif /* _KNOT_NODE_H_ */
 

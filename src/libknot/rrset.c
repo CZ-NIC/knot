@@ -1369,27 +1369,6 @@ void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner, mm_ctx_t *mm)
 	*rrset = NULL;
 }
 
-void knot_rrset_deep_free_no_sig(knot_rrset_t **rrset, int free_owner)
-{
-	if (rrset == NULL || *rrset == NULL) {
-		return;
-	}
-
-	free((*rrset)->rdata);
-	free((*rrset)->rdata_indices);
-
-	if (free_owner) {
-		knot_dname_free(&(*rrset)->owner);
-	}
-
-	if (rrset_additional_needed((*rrset)->type)) {
-		free((*rrset)->additional);
-	}
-
-	free(*rrset);
-	*rrset = NULL;
-}
-
 static int knot_rrset_add_rr_n(knot_rrset_t *rrset, const knot_rrset_t *rr,
                                size_t pos, mm_ctx_t *mm)
 {

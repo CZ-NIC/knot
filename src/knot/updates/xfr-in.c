@@ -1067,7 +1067,7 @@ void xfrin_cleanup_successful_update(knot_changes_t *changes)
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changes->old_rrsets) {
 		knot_rrset_t *rrset = rr_node->rr;
-		knot_rrset_deep_free_no_sig(&rrset, 1);
+		knot_rrset_deep_free(&rrset, 1, NULL);
 	}
 }
 
@@ -1174,7 +1174,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changes->new_rrsets) {
 		knot_rrset_t *rrset = rr_node->rr;
-		knot_rrset_deep_free_no_sig(&rrset, 1);
+		knot_rrset_deep_free(&rrset, 1, NULL);
 	}
 
 	xfrin_cleanup_failed_update(old_contents, new_contents);
