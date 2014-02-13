@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
 		'a', 'b', 'c', 'd'     // salt
 	};
 
-	rrset = knot_rrset_new(NULL, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, 0);
-	result = knot_rrset_add_rdata(rrset, rdata, sizeof(rdata));
+	rrset = knot_rrset_new(NULL, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, 0, NULL);
+	result = knot_rrset_add_rdata(rrset, rdata, sizeof(rdata), NULL);
 	if (result == KNOT_EOK) {
 		result = knot_nsec3_params_from_wire(&params, rrset);
 	}
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	is_int(4, params.salt_length, "parse salt length from wire");
 	is_int(0, memcmp(params.salt, "abcd", 4), "parse salt from wire");
 
-	knot_rrset_deep_free(&rrset, 1);
+	knot_rrset_deep_free(&rrset, 1, NULL);
 	knot_nsec3_params_free(&params);
 
 	// hash computation
