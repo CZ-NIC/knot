@@ -174,11 +174,12 @@ class Response(object):
         elif section == "authority":
             sect = self.resp.authority
 
+        cnt = 0
         for rrset in sect:
-            if rrset.rdtype == rtype:
-                return len(rrset)
-        else:
-            return 0
+            if rrset.rdtype == rtype or rtype == dns.rdatatype.ANY:
+                cnt += len(rrset)
+
+        return cnt
 
     def check_nsec(self, nsec3=False, nonsec=False):
         '''Checks if the response contains NSEC(3) records.'''
