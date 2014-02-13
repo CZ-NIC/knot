@@ -498,6 +498,16 @@ class Server(object):
 
         self.zones[zone.name].zfile.dnssec_verify()
 
+    def check_nsec(self, zone, nsec3=False, nonsec=False):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        resp = self.dig("0-x-not-existing-x-0." + zone.name, "ANY", dnssec=True)
+        resp.check_nsec(nsec3=nsec3, nonsec=nonsec)
+
     def update(self, zone):
         # Convert one item list to single object.
         if isinstance(zone, list):
