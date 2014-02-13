@@ -38,11 +38,11 @@ t.sleep(1)
 
 # Check absence of NSEC3PARAM record.
 resp = master.dig(zone, "NSEC3PARAM", dnssec=True)
-compare(resp.answer_count(), 0, "NSEC3PARAM count")
+compare(resp.count(), 0, "NSEC3PARAM count")
 
 # Check presence of DNSKEYs.
 resp = master.dig(zone, "DNSKEY", dnssec=True)
-compare(resp.answer_count(), 4, "DNSKEY count")
+compare(resp.count(), 4, "DNSKEY count")
 
 # Check NSEC presence.
 master.check_nsec(zone)
@@ -68,11 +68,11 @@ t.sleep(1)
 
 # Check presence of NSEC3PARAM record.
 resp = master.dig(zone, "NSEC3PARAM", dnssec=True)
-compare(resp.answer_count(), 1, "NSEC3PARAM count")
+compare(resp.count(), 1, "NSEC3PARAM count")
 
 # Check presence of DNSKEYs.
 resp = master.dig(zone, "DNSKEY", dnssec=True)
-compare(resp.answer_count(), 4, "DNSKEY count")
+compare(resp.count(), 4, "DNSKEY count")
 
 # Check NSEC3 presence.
 master.check_nsec(zone, nsec3=True)
