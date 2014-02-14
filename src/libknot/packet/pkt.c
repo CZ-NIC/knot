@@ -506,6 +506,9 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, c
 	memset(rrinfo, 0, sizeof(knot_rrinfo_t));
 	rrinfo->pos = pkt->size;
 	rrinfo->flags = flags;
+#ifdef NDEBUG
+	assert(!rrsigs || knot_dname_is_equal(rr->owner, rrsigs->owner));
+#endif
 	rrinfo->compress_ptr[0] = compr_hint;
 	rrinfo->rrsigs = rr->type != KNOT_RRTYPE_RRSIG ? rrsigs : NULL;
 	pkt->rr[pkt->rrset_count] = rr;
