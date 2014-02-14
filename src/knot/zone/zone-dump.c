@@ -110,6 +110,11 @@ static int node_dump_text(knot_node_t *node, void *data)
 				break;
 			}
 			continue;
+		case KNOT_RRTYPE_NSEC3:
+			if (params->dump_nsec) {
+				break;
+			}
+			continue;
 		default:
 			if (params->dump_nsec || params->dump_rrsig) {
 				continue;
@@ -181,6 +186,16 @@ int zone_dump_text(knot_zone_contents_t *zone, const sockaddr_t *from, FILE *fil
 	// Dump NSEC3 chain if available.
 	if (knot_is_nsec3_enabled(zone)) {
 		fprintf(file, ";; DNSSEC NSEC3 chain\n");
+
+		params.dump_rrsig = false;
+		params.dump_nsec = true;
+		ret = knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text,
+		                                             &params);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		fprintf(file, ";; DNSSEC NSEC3 signatures\n");
 
 		params.dump_rrsig = true;
 		params.dump_nsec = false;
