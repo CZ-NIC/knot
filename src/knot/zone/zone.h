@@ -40,8 +40,6 @@
  * \brief Zone flags.
  */
 typedef enum zone_flag_t {
-	ZONE_SLAVE     = 0 << 0, /*! Slave zone */
-	ZONE_MASTER    = 1 << 0, /*! Master zone. */
 	ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
 } zone_flag_t;
 
@@ -86,7 +84,6 @@ typedef struct zone_t {
 		event_t *timer;           /*!< Timer for REFRESH/RETRY. */
 		event_t *expire;          /*!< Timer for EXPIRE. */
 		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-		int has_master;           /*!< True if it has master set. */
 		unsigned state;
 	} xfr_in;
 
@@ -130,14 +127,6 @@ static inline void zone_retain(zone_t *zone)
 static inline void zone_release(zone_t *zone)
 {
 	ref_release(&zone->ref);
-}
-
-/*!
- * \brief Check if the zone is a master zone.
- */
-static inline bool zone_is_master(const zone_t *zone)
-{
-	return zone->flags & ZONE_MASTER;
 }
 
 /*!

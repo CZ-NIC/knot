@@ -120,7 +120,7 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
 	zone_t *zone = (zone_t *)qdata->zone;
-	if (zone->xfr_in.has_master) {
+	if (zone_master(zone) != NULL) {
 		return update_forward(pkt, qdata);
 	}
 

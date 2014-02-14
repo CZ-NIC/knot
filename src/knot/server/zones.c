@@ -1574,7 +1574,7 @@ int zones_schedule_refresh(zone_t *zone, int64_t timeout)
 	pthread_mutex_lock(&zone->lock);
 	rcu_read_lock();
 	zone->xfr_in.state = XFR_IDLE;
-	if (zone->xfr_in.has_master) {
+	if (zone_master(zone) != NULL) {
 
 		/* Schedule EXPIRE timer. */
 		if (zone->contents != NULL) {

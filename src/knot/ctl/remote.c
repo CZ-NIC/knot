@@ -247,7 +247,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		const char *state = NULL;
 		if (serial == 0)  {
 			state = "bootstrap";
-		} else if (zone->xfr_in.has_master) {
+		} else if (zone_master(zone) != NULL) {
 			state = "xfer";
 		}
 
@@ -287,7 +287,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		int n = snprintf(buf, sizeof(buf),
 		                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
 		                 zone->conf->name,
-		                 zone->xfr_in.has_master ? "slave" : "master",
+		                 zone_master(zone) ? "slave" : "master",
 		                 serial,
 		                 state ? state : "",
 		                 when ? when : "",

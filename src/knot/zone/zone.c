@@ -168,19 +168,6 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Set XFR-IN parameters.
- * \param zone
- */
-static void set_xfrin_parameters(zone_t *zone, conf_zone_t *conf)
-{
-	assert(zone);
-	assert(conf);
-
-	zone->xfr_in.bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
-	zone->xfr_in.has_master = 1;
-}
-
 zone_t* zone_new(conf_zone_t *conf)
 {
 	if (!conf) {
@@ -216,11 +203,6 @@ zone_t* zone_new(conf_zone_t *conf)
 	set_acl(&zone->xfr_out,    &conf->acl.xfr_out);
 	set_acl(&zone->notify_in,  &conf->acl.notify_in);
 	set_acl(&zone->update_in,  &conf->acl.update_in);
-
-	// XFR-IN
-	if (!EMPTY_LIST(conf->acl.xfr_in)) {
-		set_xfrin_parameters(zone, conf);
-	}
 
 	/* Initialize IXFR database. */
 	zone->ixfr_db = journal_open(conf->ixfr_db, conf->ixfr_fslimit, JOURNAL_DIRTY);
