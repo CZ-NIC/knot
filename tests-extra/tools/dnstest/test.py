@@ -38,7 +38,14 @@ class Test(object):
         if self.ip not in [4, 6]:
             raise Exception("Invalid IP version")
 
-        self.tsig = bool(tsig) if tsig != None else random.choice([True, False])
+        self.tsig = None
+        if tsig != None:
+            if type(tsig) is dnstest.keys.Tsig:
+                self.tsig = tsig
+            elif tsig:
+                self.tsig = dnstest.keys.Tsig()
+        elif random.choice([True, False]):
+            self.tsig = dnstest.keys.Tsig()
 
         self.servers = set()
 
@@ -109,6 +116,7 @@ class Test(object):
         srv.ip = self.ip
         srv.addr = Test.LOCAL_ADDR[self.ip]
         srv.tsig = dnstest.keys.Tsig() if self.tsig else None
+        srv.tsig_test = self.tsig
 
         srv.name = "%s%s" % (server, srv.count)
         srv.dir = self.out_dir + "/" + srv.name
