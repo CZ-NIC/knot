@@ -249,7 +249,13 @@ class Server(object):
         reachable = 0
         errcount = 0
 
-        f = open(self.ferr, "r")
+        try:
+            f = open(self.ferr, "r")
+        except:
+            detail_log("No err log file")
+            detail_log(SEP)
+            return
+
         for line in f:
             if re.search("(HEAP|LEAK) SUMMARY", line):
                 lost = 0

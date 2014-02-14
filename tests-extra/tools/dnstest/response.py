@@ -159,19 +159,27 @@ class Response(object):
         resp = server.dig(**self.args)
         self.diff(resp, flags, answer, authority, additional)
 
-    def answer_count(self, rtype=None):
-        '''Returns number of records of given type in answer section'''
+    def count(self, rtype=None, section="answer"):
+        '''Returns number of records of given type in specified section'''
 
         if not rtype:
             rtype = self.rtype
         elif type(rtype) is str:
             rtype = dns.rdatatype.from_text(rtype)
 
-        for rrset in self.resp.answer:
-            if rrset.rdtype == rtype:
-                return len(rrset)
-        else:
-            return 0
+        if not section or section == "answer":
+            sect = self.resp.answer
+        elif section == "additional":
+            sect = self.resp.additional
+        elif section == "authority":
+            sect = self.resp.authority
+
+        cnt = 0
+        for rrset in sect:
+            if rrset.rdtype == rtype or rtype == dns.rdatatype.ANY:
+                cnt += len(rrset)
+
+        return cnt
 
     def check_nsec(self, nsec3=False, nonsec=False):
         '''Checks if the response contains NSEC(3) records.'''

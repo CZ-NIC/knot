@@ -33,8 +33,8 @@ def check_zone(server, expect_dnskey, expect_rrsig):
     dnskeys = server.dig("example.com", "DNSKEY")
     soa = server.dig("example.com", "SOA", dnssec=True)
 
-    found_dnskeys = dnskeys.answer_count("DNSKEY")
-    found_rrsigs = soa.answer_count("RRSIG")
+    found_dnskeys = dnskeys.count("DNSKEY")
+    found_rrsigs = soa.count("RRSIG")
 
     expect_dnskeys = 2 if expect_dnskey else 1
     expect_rrsigs = 2 if expect_rrsig else 1
