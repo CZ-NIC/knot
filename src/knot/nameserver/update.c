@@ -381,7 +381,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	bool new_signatures = !knot_changeset_is_empty(sec_ch);
 	// Apply DNSSEC changeset
 	if (new_signatures) {
-		ret = xfrin_apply_changesets_dnssec(old_contents,
+		ret = xfrin_apply_changesets_dnssec_ddns(old_contents,
 		                                    new_contents,
 		                                    sec_chs,
 		                                    chgsets,

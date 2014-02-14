@@ -1957,14 +1957,92 @@ int zones_journal_apply(zone_t *zone)
 }
 
 /*!
+ * \brief Signs the reloaded zone.
+ *
+ * There is no need to create zone copy. This zone is just loaded from zone file
+ * and not used by the server yet. All changes can be made directly to the zone.
+ */
+static int zones_sign_reload(const conf_zone_t *z, zone_t *zone,
+                             bool *zone_changed)
+{
+	if (!z->dnssec_enable) {
+		/* Do no change, just return. */
+		return KNOT_EOK;
+	}
+
+	/* Run DNSSEC signing if enabled (no zone change needed) */
+	knot_changesets_t *dnssec_chs = NULL;
+	knot_changeset_t *chgset = NULL;
+
+	zone->dnssec.refresh_at = 0;
+
+	dnssec_chs = knot_changesets_create();
+	if (dnssec_chs == NULL) {
+		return KNOT_ENOMEM;
+	}
+	/* Extra changeset is needed. */
+	chgset = knot_changesets_create_changeset(dnssec_chs);
+	if (chgset == NULL) {
+		knot_changesets_free(&dnssec_chs);
+		return KNOT_ENOMEM;
+	}
+
+	log_zone_info("DNSSEC: Zone %s - Signing started...\n",
+		      z->name);
+
+	uint32_t new_serial = zones_next_serial(zone);
+
+	/*
+	 * Update serial even if user did that. This way it's always
+	 * possible to flush the changes to zonefile.
+	 */
+	int ret = knot_dnssec_zone_sign(zone->contents, zone->conf, chgset,
+	                            KNOT_SOA_SERIAL_UPDATE,
+	                            &zone->dnssec.refresh_at, new_serial);
+	if (ret != KNOT_EOK) {
+		knot_changesets_free(&dnssec_chs);
+		return ret;
+	}
+
+	/* Apply DNSSEC changeset. */
+	if (!knot_changeset_is_empty(chgset)) {
+		ret = xfrin_apply_changesets_directly(zone->contents,
+		                                      dnssec_chs->changes,
+		                                      dnssec_chs);
+		if (ret == KNOT_EOK) {
+			*zone_changed = true;
+		}
+		/* No need to rollback anything, if failed. If this went wrong,
+		 * the whole zone will be discarded.
+		 */
+	}
+
+	knot_changesets_free(&dnssec_chs);
+
+	return ret;
+}
+
+/*!
  * \brief Creates diff and DNSSEC changesets and stores them to journal.
  */
 int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
                            bool zone_changed)
 {
-	/* Calculate differences. */
 	rcu_read_lock();
 
+	/*
+	 * First, if DNSSEC is enabled, sign the new zone. We can modify it as
+	 * it's not used by the server yet. Also we don't need diff yet, we'll
+	 * do one afterwars (incorporating both the changes made by user on the
+	 * disk and those made by the sign, discarding any redundant changes).
+	 */
+	int ret = zones_sign_reload(z, zone, &zone_changed);
+	if (ret != KNOT_EOK) {
+		rcu_read_unlock();
+		return ret;
+	}
+
+	/* Calculate differences. */
 	knot_changesets_t *diff_chs = NULL;
 	if (z->build_diffs && old_zone && old_zone->contents && zone_changed) {
 		diff_chs = knot_changesets_create();
@@ -1980,8 +2058,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 			return KNOT_ENOMEM;
 		}
 		dbg_zones("Generating diff.\n");
-		int ret = zones_create_changeset(old_zone,
-		                                 zone, diff_ch);
+		ret = zones_create_changeset(old_zone, zone, diff_ch);
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning("Zone file for '%s' changed, but "
 			                 "serial didn't - won't create "
@@ -1991,8 +2068,6 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 			                 "the zone file update: %s\n",
 			                 knot_strerror(ret));
 		}
-		/* Even if there's nothing to create the diff from
-		 * we can still sign the zone - inconsistencies may happen. */
 		// TODO consider returning straight away when serial did not change
 		if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
 			knot_changesets_free(&diff_chs);
@@ -2001,116 +2076,31 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 		}
 	}
 
-	/* Run DNSSEC signing if enabled (no zone change needed) */
-	knot_changesets_t *sec_chs = NULL;
-	knot_changeset_t *sec_ch = NULL;
-	knot_zone_contents_t *new_contents = NULL;
-	zone->dnssec.refresh_at = 0;
-	if (z->dnssec_enable) {
-		sec_chs = knot_changesets_create();
-		if (sec_chs == NULL) {
-			knot_changesets_free(&diff_chs);
-			rcu_read_unlock();
-			return KNOT_ENOMEM;
-		}
-		/* Extra changeset is needed. */
-		sec_ch = knot_changesets_create_changeset(sec_chs);
-		if (sec_ch == NULL) {
-			knot_changesets_free(&diff_chs);
-			knot_changesets_free(&sec_chs);
-			rcu_read_unlock();
-			return KNOT_ENOMEM;
-		}
-
-		log_zone_info("DNSSEC: Zone %s - Signing started...\n",
-		              z->name);
-
-		uint32_t new_serial = zones_next_serial(zone);
-
-		/*!
-		 * Update serial even if diff did that. This way it's always
-		 * possible to flush the changes to zonefile.
-		 */
-		int ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
-		                                sec_ch,
-		                                KNOT_SOA_SERIAL_UPDATE,
-		                                &zone->dnssec.refresh_at, new_serial);
-		if (ret != KNOT_EOK) {
-			knot_changesets_free(&diff_chs);
-			knot_changesets_free(&sec_chs);
-			rcu_read_unlock();
-			return ret;
-		}
-	}
-
-	/* Merge changesets created by diff and sign. */
+	/* TODO: Save the changeset to the journal!! */
+	// Store *ALL* changes to disk.
 	journal_t *transaction = NULL;
-	int ret = zones_merge_and_store_changesets(zone, diff_chs,
-	                                           sec_chs,
-	                                           &transaction);
+	ret = zones_store_changesets_begin_and_store(zone, diff_chs,
+	                                             &transaction);
 	if (ret != KNOT_EOK) {
+		log_zone_error("Could not store changesets to journal (%s)!",
+		               knot_strerror(ret));
 		knot_changesets_free(&diff_chs);
-		knot_changesets_free(&sec_chs);
 		rcu_read_unlock();
 		return ret;
 	}
 
-	bool new_signatures = sec_ch && !knot_changeset_is_empty(sec_ch);
-	/* Apply DNSSEC changeset. */
-	if (new_signatures) {
-		ret = xfrin_apply_changesets(zone, sec_chs, &new_contents);
-		if (ret != KNOT_EOK) {
-			zones_store_changesets_rollback(transaction);
-			zones_free_merged_changesets(diff_chs, sec_chs);
-			rcu_read_unlock();
-			return ret;
-		}
-		assert(new_contents);
-	}
+	assert(transaction);
 
 	/* Commit transaction. */
-	if (transaction) {
-		ret = zones_store_changesets_commit(transaction);
-		if (ret != KNOT_EOK) {
-			log_zone_error("Failed to commit stored changesets: %s."
-			               "\n", knot_strerror(ret));
-			zones_free_merged_changesets(diff_chs, sec_chs);
-			rcu_read_unlock();
-			return ret;
-		}
-	}
-
-	/* Switch zone contents. */
-	if (new_contents) {
+	ret = zones_store_changesets_commit(transaction);
+	if (ret != KNOT_EOK) {
+		log_zone_error("Failed to commit stored changesets: %s.\n",
+		               knot_strerror(ret));
+		knot_changesets_free(&diff_chs);
 		rcu_read_unlock();
-		/* \note This will disconnect shared contents that will be freed
-		 *       in the function below. Not an ideal solution, but
-		 *       reworking zone management is out of scope of this MR. */
-		if (old_zone && !zone_changed) {
-			old_zone->contents = NULL;
-		}
-		ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_DNSSEC);
-		rcu_read_lock();
-		if (ret != KNOT_EOK) {
-			// Cleanup old and new contents
-			xfrin_rollback_update(zone->contents,
-			                      &new_contents,
-			                      sec_chs->changes);
-			zones_free_merged_changesets(diff_chs, sec_chs);
-			rcu_read_unlock();
-			return ret;
-		}
-	}
-
-	if (new_signatures) {
-		xfrin_cleanup_successful_update(sec_chs->changes);
-		log_zone_info("DNSSEC: Zone %s - Successfully signed.\n",
-		              z->name);
+		return ret;
 	}
 
 	rcu_read_unlock();
-
-	zones_free_merged_changesets(diff_chs, sec_chs);
-
-	return ret;
+	return KNOT_EOK;
 }
