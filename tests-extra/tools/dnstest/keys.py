@@ -24,32 +24,40 @@ class Tsig(object):
     vocabulary = string.ascii_uppercase + string.ascii_lowercase + \
                  string.digits
 
-    def __init__(self, alg=None):
-        nlabels = random.randint(1, 10)
+    def __init__(self, name=None, alg=None, key=None):
+        if not name:
+            nlabels = random.randint(1, 10)
 
-        self.name = ""
-        for i in range(nlabels):
-            label_len = random.randint(1, 63)
+            self.name = ""
+            for i in range(nlabels):
+                label_len = random.randint(1, 63)
 
-            # Check for maximal dname length (255 B = max fqdn in wire).
-            # 255 = 1 leading byte + 253 + 1 trailing byte.
-            if len(self.name) + 1 + label_len > 253:
-                break
+                # Check for maximal dname length (255 B = max fqdn in wire).
+                # 255 = 1 leading byte + 253 + 1 trailing byte.
+                if len(self.name) + 1 + label_len > 253:
+                    break
 
-            # Add label separator.
-            if i > 0:
-                self.name += "."
+                # Add label separator.
+                if i > 0:
+                    self.name += "."
 
-            self.name += "".join(random.choice(Tsig.vocabulary)
-                         for x in range(label_len))
+                self.name += "".join(random.choice(Tsig.vocabulary)
+                             for x in range(label_len))
+        else:
+            self.name = str(name)
 
-        if alg and alg not in Tsig.algs:
-            raise Exception("Unsupported TSIG algorithm %s" % alg)
+        if not alg:
+            self.alg = random.choice(list(Tsig.algs.keys()))
+        else:
+            if alg not in Tsig.algs:
+                raise Exception("Unsupported TSIG algorithm %s" % alg)
+            self.alg = alg
 
-        self.alg = alg if alg else random.choice(list(Tsig.algs.keys()))
-
-        self.key = base64.b64encode(os.urandom(Tsig.algs[self.alg])). \
-                   decode('ascii')
+        if not key:
+            self.key = base64.b64encode(os.urandom(Tsig.algs[self.alg])). \
+                       decode('ascii')
+        else:
+            self.key = str(key)
 
         # TSIG preparation for pythondns utils.
         if self.alg == "hmac-md5":
