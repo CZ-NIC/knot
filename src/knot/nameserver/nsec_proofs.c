@@ -544,7 +544,8 @@ dbg_ns_exec_verb(
 
 	if (prev_new != previous) {
 		rrset = knot_node_get_rrset(prev_new, KNOT_RRTYPE_NSEC);
-		if (rrset == NULL || knot_rrset_rdata_rr_count(rrset) == 0) {
+		rrsigs = knot_node_get_rrset(prev_new, KNOT_RRTYPE_RRSIG);
+		if (rrset == NULL) {
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
