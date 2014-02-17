@@ -14,6 +14,10 @@ t.link(zone, master)
 
 t.start()
 
+# Check if the server is answering and zone _isn't_ loaded
+resp = master.dig("badrecord.", "SOA", udp=True)
+resp.check(rcode="REFUSED")
+
 # Stop master.
 master.stop()
 
