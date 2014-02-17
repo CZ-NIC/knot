@@ -31,8 +31,6 @@
 #include "libknot/rdata.h"
 #include "libknot/util/utils.h"
 
-static const size_t XFRIN_BOOTSTRAP_DELAY = 2000; /*!< AXFR bootstrap avg. delay */
-
 /*!
  * \brief Called when the reference count for zone drops to zero.
   */
