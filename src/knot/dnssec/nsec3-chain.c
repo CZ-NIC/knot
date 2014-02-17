@@ -348,8 +348,10 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		// Drop old
 		int ret = KNOT_EOK;
 		if (old_nsec3) {
-			assert(0);
-			ret = knot_nsec_changeset_remove(old_nsec3, NULL, out_ch);
+
+			const knot_rrset_t *rrsigs = knot_node_rrset(from_node,
+			                                             KNOT_RRTYPE_RRSIG);
+			ret = knot_nsec_changeset_remove(old_nsec3, rrsigs, out_ch);
 			if (ret != KNOT_EOK) {
 				knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 				return ret;
@@ -1063,8 +1065,8 @@ static int handle_deleted_node(const knot_node_t *node,
 	}
 	const knot_rrset_t *old_nsec3 = knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
 	assert(old_nsec3);
-	assert(0);
-	int ret = knot_nsec_changeset_remove(old_nsec3, NULL, fix_data->out_ch);
+	const knot_rrset_t *old_rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+	int ret = knot_nsec_changeset_remove(old_nsec3, old_rrsigs, fix_data->out_ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

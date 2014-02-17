@@ -280,8 +280,8 @@ static int handle_deleted_node(const knot_node_t *node,
 	}
 	const knot_rrset_t *old_nsec = knot_node_rrset(node, KNOT_RRTYPE_NSEC);
 	assert(old_nsec);
-	assert(0);
-	int ret = knot_nsec_changeset_remove(old_nsec, NULL, fix_data->out_ch);
+	const knot_rrset_t *old_rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+	int ret = knot_nsec_changeset_remove(old_nsec, old_rrsigs, fix_data->out_ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
