@@ -844,27 +844,35 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Set other len. */
 	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
 
+
+	/* Append TSIG RR. */
+	int ret = knot_tsig_append(msg, msg_len, msg_max_len, tsig_rr);
+
+	/* key_name already referenced in RRSet, no need to free separately. */
+	knot_rrset_deep_free(&tmp_tsig, 1);
+
+	return ret;
+}
+
+int knot_tsig_append(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
+                     const knot_rrset_t *tsig_rr)
+{
 	size_t tsig_wire_len = 0;
 	uint16_t rr_count = 0;
 
 	/* Write RRSet to wire */
 	int ret = KNOT_ERROR;
-	ret = knot_rrset_to_wire(tmp_tsig, msg + *msg_len,
+	ret = knot_rrset_to_wire(tsig_rr, msg + *msg_len,
 	                         &tsig_wire_len, msg_max_len - *msg_len,
 	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
-		knot_rrset_deep_free(&tmp_tsig, 1);
 		return ret;
 	}
 
-	/* key_name already referenced in RRSet, no need to free separately. */
-	knot_rrset_deep_free(&tmp_tsig, 1);
-
 	*msg_len += tsig_wire_len;
 
-	uint16_t arcount = knot_wire_get_arcount(msg);
-	knot_wire_set_arcount(msg, ++arcount);
+	knot_wire_set_arcount(msg, knot_wire_get_arcount(msg) + 1);
 
 	return KNOT_EOK;
 }
