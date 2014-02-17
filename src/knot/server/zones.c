@@ -1035,16 +1035,11 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 int zones_process_response(server_t *server,
                            int exp_msgid,
                            sockaddr_t *from,
-                           knot_pkt_t *packet, uint8_t *response_wire,
-                           size_t *rsize)
+                           knot_pkt_t *packet)
 {
-	if (!packet || !rsize || server == NULL || from == NULL ||
-	    response_wire == NULL) {
+	if (!packet || server == NULL || from == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	/* Declare no response. */
-	*rsize = 0;
 
 	/* Handle SOA query response, cancel EXPIRE timer
 	 * and start AXFR transfer if needed.
