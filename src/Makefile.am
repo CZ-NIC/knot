@@ -232,8 +232,8 @@ libknotd_la_SOURCES =				\
 	knot/server/rrl.h			\
 	knot/server/server.c			\
 	knot/server/server.h			\
-	knot/server/socket.c			\
-	knot/server/socket.h			\
+	knot/server/net.c				\
+	knot/server/net.h				\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\

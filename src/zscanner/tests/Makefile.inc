@@ -6,20 +6,12 @@ check_PROGRAMS = \
 dist_check_SCRIPTS = \
 	tests/zscanner.sh
 
-check_LIBRARIES = tests/tap/libtap.a
-
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/src
 
 tests_runtests_CPPFLAGS = \
 	-DSOURCE='"$(abs_srcdir)/tests"' \
 	-DBUILD='"$(abs_builddir)/tests"'
-
-tests_tap_libtap_a_CPPFLAGS = -I$(abs_srcdir)/tests
-tests_tap_libtap_a_SOURCES = \
-	tests/tap/basic.c tests/tap/basic.h \
-	tests/tap/float.c tests/tap/float.h \
-	tests/tap/macros.h
 
 check-compile-only: $(check_PROGRAMS)
 

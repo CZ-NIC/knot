@@ -32,7 +32,6 @@
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/zone-create.h"
-#include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "knot/server/zone-load.h"
@@ -184,7 +183,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Check remote address. */
 	conf_iface_t *r = conf()->ctl.iface;
-	if (!r || !r->address) {
+	if (!r || r->addr.ss_family == AF_UNSPEC) {
 		log_server_error("No remote address for '%s' configured.\n",
 		                 cmd);
 		return 1;
@@ -234,28 +233,39 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	dbg_server("%s: sending query size %zu\n", __func__, pkt->size);
 
-	/* Send query. */
-	int s = socket_create(r->family, SOCK_STREAM, 0);
-	int conn_state = socket_connect(s, r->family, r->address, r->port);
-	if (conn_state != KNOT_EOK || tcp_send(s, pkt->wire, pkt->size) <= 0) {
-		char portstr[32] = { '\0' };
-		if (r->family != AF_UNIX)
-			snprintf(portstr, sizeof(portstr), "@%d", r->port);
-		log_server_error("Couldn't connect to remote host "
-		                 "%s%s\n", r->address, portstr);
-		rc = 1;
+	/* Connect to remote. */
+	char addr_str[SOCKADDR_STRLEN] = {0};
+	sockaddr_tostr(&r->addr, addr_str, sizeof(addr_str));
+
+	int s = net_connected_socket(SOCK_STREAM, &r->addr, &r->via);
+	if (s < 0) {
+		log_server_error("Couldn't connect to remote host '%s'.\n", addr_str);
+		knot_pkt_free(&pkt);
+		return 1;
+	}
+
+	/* Wait for availability. */
+	struct pollfd pfd = { s, POLLOUT, 0 };
+	poll(&pfd, 1, conf()->max_conn_reply);
+
+	/* Send and free packet. */
+	int ret = tcp_send(s, pkt->wire, pkt->size);
+	knot_pkt_free(&pkt);
+
+	/* Evaluate and wait for reply. */
+	if (ret <= 0) {
+		log_server_error("Couldn't connect to remote host '%s'.\n", addr_str);
+		return 1;
 	}
 
 	/* Wait for reply. */
-	if (rc == 0) {
-		int ret = KNOT_EOK;
-		while (ret == KNOT_EOK) {
-			ret = cmd_remote_reply(s);
-			if (ret != KNOT_EOK && ret != KNOT_ECONN) {
-				log_server_warning("Remote command reply: %s\n",
-				                   knot_strerror(ret));
-				rc = 1;
-			}
+	ret = KNOT_EOK;
+	while (ret == KNOT_EOK) {
+		ret = cmd_remote_reply(s);
+		if (ret != KNOT_EOK && ret != KNOT_ECONN) {
+			log_server_warning("Remote command reply: %s\n",
+			                   knot_strerror(ret));
+			rc = 1;
 		}
 	}
 
@@ -265,8 +275,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Close connection. */
-	socket_close(s);
-	knot_pkt_free(&pkt);
+	close(s);
 	return rc;
 }
 
@@ -530,25 +539,26 @@ int main(int argc, char **argv)
 
 	/* Override from command line. */
 	if (r_addr) {
-		free(ctl_if->address);
-		ctl_if->address = strdup(r_addr);
-		ctl_if->family = AF_INET;
-
 		/* Check for v6 address. */
-		if (strchr(r_addr, ':'))
-			ctl_if->family = AF_INET6;
+		int family = AF_INET;
+		if (strchr(r_addr, ':')) {
+			family = AF_INET6;
+		}
 
 		/* Is a valid UNIX socket or at least contains slash ? */
 		struct stat st;
 		bool has_slash = strchr(r_addr, '/') != NULL;
 		bool is_file = stat(r_addr, &st) == 0;
 		if (has_slash || (is_file && S_ISSOCK(st.st_mode))) {
-			ctl_if->family = AF_UNIX;
-			r_port = 0; /* Override. */
+			family = AF_UNIX;
 		}
 
+		sockaddr_set(&ctl_if->addr, family, r_addr, sockaddr_port(&ctl_if->addr));
 	}
-	if (r_port > -1) ctl_if->port = r_port;
+
+	if (r_port > 0) {
+		sockaddr_port_set(&ctl_if->addr, r_port);
+	}
 
 	/* Verbose mode. */
 	if (has_flag(flags, F_VERBOSE)) {

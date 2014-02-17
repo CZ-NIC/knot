@@ -32,6 +32,7 @@
 #include "utils/common/msg.h"		// WARN
 #include "common/descriptor.h"		// KNOT_CLASS_IN
 #include "common/errcode.h"		// KNOT_E
+#include "common/sockaddr.h"		// sockaddr_tostr, sockaddr_portnum
 
 srv_info_t* srv_info_create(const char *name, const char *service)
 {
@@ -146,32 +147,20 @@ static void get_addr_str(const struct sockaddr_storage *ss,
                          const int                     socktype,
                          char                          **dst)
 {
-	char     addr[INET6_ADDRSTRLEN] = "NULL";
-	char     buf[128] = "NULL";
-	uint16_t port;
+	char addr_str[SOCKADDR_STRLEN] = {0};
 
 	// Get network address string and port number.
-	if (ss->ss_family == AF_INET) {
-		struct sockaddr_in *s = (struct sockaddr_in *)ss;
-		inet_ntop(ss->ss_family, &s->sin_addr, addr, sizeof(addr));
-		port = ntohs(s->sin_port);
-	} else {
-		struct sockaddr_in6 *s = (struct sockaddr_in6 *)ss;
-		inet_ntop(ss->ss_family, &s->sin6_addr, addr, sizeof(addr));
-		port = ntohs(s->sin6_port);
-	}
+	sockaddr_tostr(ss, addr_str, sizeof(addr_str));
 
-	// Free previous string if any.
+	// Calculate needed buffer size
+	const char *sock_name = get_sockname(socktype);
+	size_t buflen = strlen(addr_str) + strlen(sock_name) + 3 /* () */;
+
+	// Free previous string if any and write result
 	free(*dst);
-	*dst = NULL;
-
-	// Write formated information string.
-	int ret = snprintf(buf, sizeof(buf), "%s#%u(%s)", addr, port,
-	                   get_sockname(socktype));
-	if (ret > 0) {
-		*dst = strdup(buf);
-	} else {
-		*dst = strdup("NULL");
+	*dst = malloc(buflen);
+	if (*dst != NULL) {
+		snprintf(*dst, buflen, "%s(%s)", addr_str, sock_name);
 	}
 }
 

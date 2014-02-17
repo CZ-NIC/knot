@@ -71,7 +71,6 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal);
  * \brief Processes normal response packet.
  *
  * \param server Name server structure to provide the needed data.
- * \param from Address of the response sender.
  * \param packet Parsed response packet.
  *
  * \retval KNOT_EOK if a valid response was created.
@@ -80,7 +79,7 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal);
  */
 int zones_process_response(server_t *server,
                            int exp_msgid,
-                           sockaddr_t *from,
+                           struct sockaddr_storage *from,
                            knot_pkt_t *packet);
 
 /*!

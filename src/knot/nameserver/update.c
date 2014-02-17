@@ -13,7 +13,7 @@
 
 /* Forward decls. */
 static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
-                              knot_rcode_t *rcode, const sockaddr_t *addr,
+                              knot_rcode_t *rcode, const struct sockaddr_storage *addr,
                               knot_tsig_key_t *tsig_key);
 
 /* AXFR-specific logging (internal, expects 'qdata' variable set). */
@@ -39,11 +39,14 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 	if (!rq) {
 		return NS_PROC_FAIL;
 	}
-	xfr_task_setaddr(rq, &zone->xfr_in.master, &zone->xfr_in.via);
+
+	const conf_iface_t *master = zone_master(zone);
+	xfr_task_setaddr(rq, &master->addr, &master->via);
+	/* Don't set TSIG key, as it's only forwarded. */
 
 	/* Copy query originator data. */
 	rq->fwd_src_fd = qdata->param->query_socket;
-	memcpy(&rq->fwd_addr, &qdata->param->query_source, sizeof(sockaddr_t));
+	memcpy(&rq->fwd_addr, qdata->param->query_source, sizeof(struct sockaddr_storage));
 	rq->packet_nr = knot_wire_get_id(query->wire);
 
 	/* Duplicate query to keep it in memory during forwarding. */
@@ -115,7 +118,7 @@ static int update_process(knot_pkt_t *resp, struct query_data *qdata)
 	knot_rcode_t rcode = qdata->rcode;
 	ret = zones_process_update_auth((zone_t *)qdata->zone, qdata->query,
 	                                &rcode,
-	                                &qdata->param->query_source,
+	                                qdata->param->query_source,
 	                                qdata->sign.tsig_key);
 	qdata->rcode = rcode;
 	return ret;
@@ -131,7 +134,7 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Allow pass-through of an unknown TSIG in DDNS forwarding (must have zone). */
 	zone_t *zone = (zone_t *)qdata->zone;
-	if (zone->xfr_in.has_master) {
+	if (zone_master(zone) != NULL) {
 		return update_forward(pkt, qdata);
 	}
 
@@ -268,7 +271,7 @@ static int replan_zone_sign_after_ddns(zone_t *zone, uint32_t refresh_at)
  * \retval error if not.
  */
 static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
-                              knot_rcode_t *rcode, const sockaddr_t *addr,
+                              knot_rcode_t *rcode, const struct sockaddr_storage *addr,
                               knot_tsig_key_t *tsig_key)
 {
 	assert(zone);

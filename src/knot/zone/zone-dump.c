@@ -134,7 +134,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-int zone_dump_text(knot_zone_contents_t *zone, const sockaddr_t *from, FILE *file)
+int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *from, FILE *file)
 {
 	if (zone == NULL || file == NULL) {
 		return KNOT_EINVAL;
@@ -229,15 +229,12 @@ int zone_dump_text(knot_zone_contents_t *zone, const sockaddr_t *from, FILE *fil
 	              ";; Time %s\n",
 	        params.rr_count, date);
 
-	// Get master information.
-	int port = sockaddr_portnum(from);
-
 	// If a master server is configured, dump info about it.
-	if (port >= 0) {
-		char addr[INET6_ADDRSTRLEN] = "NULL";
-		sockaddr_tostr(from, addr, sizeof(addr));
+	if (from) {
+		char addr_str[SOCKADDR_STRLEN] = {0};
+		sockaddr_tostr(from, addr_str, sizeof(addr_str));
 
-		fprintf(file, ";; Transfered from %s#%i\n", addr, port);
+		fprintf(file, ";; Transfered from %s\n", addr_str);
 	}
 
 	free(buf);

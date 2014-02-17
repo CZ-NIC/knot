@@ -145,8 +145,11 @@ int main(int argc, char *argv[])
 	knot_pkt_t *query = knot_pkt_new(query_wire, query_len, &query_ctx.mm);
 
 	/* Create query processing parameter. */
+	struct sockaddr_storage ss;
+	memset(&ss, 0, sizeof(struct sockaddr_storage));
+	sockaddr_set(&ss, AF_INET, "127.0.0.1", 53);
 	struct process_query_param param = {0};
-	sockaddr_set(&param.query_source, AF_INET, "127.0.0.1", 53);
+	param.query_source = &ss;
 	param.server = &server;
 
 	/* Query processor (CH zone) */

@@ -40,10 +40,16 @@ struct knot_tsig_key;
 /*! \brief ACL structure. */
 typedef list_t acl_t;
 
+/*! \brief Netblock (address and prefix). */
+typedef struct netblock {
+	struct sockaddr_storage ss; /*!< Address storage. */
+	uint8_t prefix;               /*!< Address prefix. */
+} netblock_t;
+
 /*! \brief Single ACL match. */
 typedef struct acl_match {
 	node_t n;
-	sockaddr_t addr; /*!< \brief Address for comparison. */
+	netblock_t netblock;
 	struct knot_tsig_key *key; /*!< \brief TSIG key. */
 } acl_match_t;
 
@@ -66,14 +72,15 @@ void acl_delete(acl_t **acl);
  * \brief Insert new ACL match.
  *
  * \param acl Pointer to ACL instance.
- * \param addr IP address.
- * \param val Value to be stored for given address (or NULL).
+ * \param addr Address.
+ * \param prefix Netblock prefix.
+ * \param key TSIG key.
  *
  * \retval KNOT_EOK if successful.
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int acl_insert(acl_t *acl, const sockaddr_t *addr, knot_tsig_key_t *key);
+int acl_insert(acl_t *acl, const struct sockaddr_storage *addr, uint8_t prefix, knot_tsig_key_t *key);
 
 /*!
  * \brief Match address against ACL.
@@ -84,7 +91,7 @@ int acl_insert(acl_t *acl, const sockaddr_t *addr, knot_tsig_key_t *key);
  * \retval Matching rule instance if found.
  * \retval NULL if it didn't find a match.
  */
-acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr, const knot_dname_t *key_name);
+acl_match_t* acl_find(acl_t *acl, const struct sockaddr_storage *addr, const knot_dname_t *key_name);
 
 /*!
  * \brief Truncate ACL.

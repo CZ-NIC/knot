@@ -38,23 +38,21 @@ extern const knot_process_module_t _process_query;
 
 /*! \brief Query processing logging common base. */
 #define NS_PROC_LOG(severity, qdata, what, msg, ...) do { \
-	sockaddr_t *addr = &(qdata)->param->query_source; \
 	char addr_str[SOCKADDR_STRLEN] = {0}; \
-	sockaddr_tostr(addr, addr_str, sizeof(addr_str)); \
+	sockaddr_tostr((qdata)->param->query_source, addr_str, sizeof(addr_str)); \
 	char *zone_str = knot_dname_to_str(knot_pkt_qname((qdata)->query)); \
 	log_msg(LOG_SERVER, severity, what msg "\n", \
-	                zone_str, \
-	                addr_str, sockaddr_portnum(addr), ##__VA_ARGS__); \
+	                zone_str, addr_str, ##__VA_ARGS__); \
 	free(zone_str); \
 	} while (0)
 
 /*! \brief Query logging common base. */
 #define QUERY_LOG(severity, qdata, what, msg...) \
-	NS_PROC_LOG(severity, qdata, what " of '%s' from '%s@%d': ", msg)
+	NS_PROC_LOG(severity, qdata, what " of '%s' from '%s': ", msg)
 
 /*! \brief Answer logging common base. */
 #define ANSWER_LOG(severity, qdata, what, msg...)  \
-	NS_PROC_LOG(severity, qdata, what " of '%s' to '%s@%d': ", msg)
+	NS_PROC_LOG(severity, qdata, what " of '%s' to '%s': ", msg)
 
 /* Query processing specific flags. */
 enum process_query_flag {
@@ -68,8 +66,8 @@ enum process_query_flag {
 /* Module load parameters. */
 struct process_query_param {
 	uint16_t   proc_flags;
-	sockaddr_t query_source;
 	int        query_socket;
+	struct sockaddr_storage *query_source;
 	server_t   *server;
 };
 

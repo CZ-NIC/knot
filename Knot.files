@@ -116,14 +116,14 @@ src/knot/server/dthreads.c
 src/knot/server/dthreads.h
 src/knot/server/journal.c
 src/knot/server/journal.h
+src/knot/server/net.c
+src/knot/server/net.h
 src/knot/server/notify.c
 src/knot/server/notify.h
 src/knot/server/rrl.c
 src/knot/server/rrl.h
 src/knot/server/server.c
 src/knot/server/server.h
-src/knot/server/socket.c
-src/knot/server/socket.h
 src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
 src/knot/server/udp-handler.c
