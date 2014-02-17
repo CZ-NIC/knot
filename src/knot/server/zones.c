@@ -1994,7 +1994,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 		/* Even if there's nothing to create the diff from
 		 * we can still sign the zone - inconsistencies may happen. */
 		// TODO consider returning straight away when serial did not change
-		if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
+		if (ret != KNOT_EOK && ret != KNOT_ENODIFF && ret != KNOT_ERANGE) {
 			knot_changesets_free(&diff_chs);
 			rcu_read_unlock();
 			return ret;
