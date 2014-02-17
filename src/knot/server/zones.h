@@ -73,9 +73,6 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal);
  * \param server Name server structure to provide the needed data.
  * \param from Address of the response sender.
  * \param packet Parsed response packet.
- * \param response_wire Place for the response in wire format.
- * \param rsize Input: maximum acceptable size of the response. Output: real
- *              size of the response.
  *
  * \retval KNOT_EOK if a valid response was created.
  * \retval KNOT_EINVAL on invalid parameters or packet.
@@ -84,8 +81,7 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal);
 int zones_process_response(server_t *server,
                            int exp_msgid,
                            sockaddr_t *from,
-                           knot_pkt_t *packet, uint8_t *response_wire,
-                           size_t *rsize);
+                           knot_pkt_t *packet);
 
 /*!
  * \brief Decides what type of transfer should be used to update the given zone.
