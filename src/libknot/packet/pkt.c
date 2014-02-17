@@ -551,7 +551,7 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, c
 	}
 
 	dbg_packet("%s: added %u RRs (@%zu, len=%zu), pktsize=%zu\n",
-	           __func__, rr_added, pkt->size - len, len, pkt->size)
+	           __func__, rr_added, pkt->size - len, len, pkt->size);
 
 	return KNOT_EOK;
 }

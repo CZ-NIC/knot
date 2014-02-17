@@ -1524,13 +1524,6 @@ dbg_rrset_exec_detail(
 	dbg_rrset_detail("  ttl: %d\n", rrset->ttl);
 	dbg_rrset_detail("  RDATA count: %d\n", rrset->rdata_count);
 
-	dbg_rrset_detail("  RRSIGs:\n");
-	if (rrset->rrsigs != NULL) {
-	        knot_rrset_dump(rrset->rrsigs);
-	} else {
-	        dbg_rrset_detail("  none\n");
-	}
-
 	dbg_rrset_detail("RDATA indices (total=%d):\n",
 	        rrset_rdata_size_total(rrset));
 
