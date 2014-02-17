@@ -1039,15 +1039,12 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 
 int zones_process_response(server_t *server,
                            int exp_msgid,
-                           knot_pkt_t *packet, uint8_t *response_wire,
-                           size_t *rsize)
+                           struct sockaddr_storage *from,
+                           knot_pkt_t *packet)
 {
-	if (!packet || !rsize || server == NULL || response_wire == NULL) {
+	if (server == NULL || from == NULL || packet == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	/* Declare no response. */
-	*rsize = 0;
 
 	/* Handle SOA query response, cancel EXPIRE timer
 	 * and start AXFR transfer if needed.
@@ -1991,7 +1988,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 		/* Even if there's nothing to create the diff from
 		 * we can still sign the zone - inconsistencies may happen. */
 		// TODO consider returning straight away when serial did not change
-		if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
+		if (ret != KNOT_EOK && ret != KNOT_ENODIFF && ret != KNOT_ERANGE) {
 			knot_changesets_free(&diff_chs);
 			rcu_read_unlock();
 			return ret;

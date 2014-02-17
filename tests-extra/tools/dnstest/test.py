@@ -5,6 +5,7 @@ import random
 import shutil
 import socket
 import time
+import dns.name
 import dns.zone
 import zone_generate
 from dnstest.utils import *
@@ -37,7 +38,14 @@ class Test(object):
         if self.ip not in [4, 6]:
             raise Exception("Invalid IP version")
 
-        self.tsig = bool(tsig) if tsig != None else random.choice([True, False])
+        self.tsig = None
+        if tsig != None:
+            if type(tsig) is dnstest.keys.Tsig:
+                self.tsig = tsig
+            elif tsig:
+                self.tsig = dnstest.keys.Tsig()
+        elif random.choice([True, False]):
+            self.tsig = dnstest.keys.Tsig()
 
         self.servers = set()
 
@@ -108,6 +116,7 @@ class Test(object):
         srv.ip = self.ip
         srv.addr = Test.LOCAL_ADDR[self.ip]
         srv.tsig = dnstest.keys.Tsig() if self.tsig else None
+        srv.tsig_test = self.tsig
 
         srv.name = "%s%s" % (server, srv.count)
         srv.dir = self.out_dir + "/" + srv.name
@@ -238,7 +247,8 @@ class Test(object):
 
         for msg in resp.resp:
             for rrset in msg.answer:
-                rrs = rrset.to_text().split("\n")
+                rrs = rrset.to_text(origin=dns.name.from_text(zone.name),
+                                    relativize=False).split("\n")
                 for rr in rrs:
                     # Owner to lower-case :-(
                     item = rr.strip().split(" ", 1)
@@ -337,7 +347,8 @@ class Test(object):
         change = Test.IxfrChange()
         for msg in resp.resp:
             for rrset in msg.answer:
-                records = rrset.to_text().split("\n")
+                records = rrset.to_text(origin=dns.name.from_text(zone.name),
+                                    relativize=False).split("\n")
                 for record in records:
                     item = record.strip().split(" ", 1)
                     item_lower = item[0].lower() + " " + item[1]

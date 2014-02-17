@@ -133,6 +133,7 @@ class Server(object):
         self.ctlkey = None
         self.ctlkeyfile = None
         self.tsig = None
+        self.tsig_test = None
 
         self.zones = dict()
 
@@ -249,7 +250,13 @@ class Server(object):
         reachable = 0
         errcount = 0
 
-        f = open(self.ferr, "r")
+        try:
+            f = open(self.ferr, "r")
+        except:
+            detail_log("No err log file")
+            detail_log(SEP)
+            return
+
         for line in f:
             if re.search("(HEAP|LEAK) SUMMARY", line):
                 lost = 0
@@ -310,7 +317,7 @@ class Server(object):
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None,
             timeout=None, tries=3, flags="", bufsize=None,
             nsid=False, dnssec=False, log_no_sep=False):
-        key_params = self.tsig.key_params if self.tsig else dict()
+        key_params = self.tsig_test.key_params if self.tsig_test else dict()
 
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
@@ -410,7 +417,8 @@ class Server(object):
         check_log("DIG %s %s %s @%s -p %i %s" %
                   (rname, rtype_str, rclass, self.addr, self.port, dig_flags))
         if key_params:
-            detail_log("%s:%s:%s" % (self.tsig.alg, self.tsig.name, self.tsig.key))
+            detail_log("%s:%s:%s" %
+                (self.tsig_test.alg, self.tsig_test.name, self.tsig_test.key))
 
         for t in range(tries):
             try:
@@ -498,6 +506,16 @@ class Server(object):
 
         self.zones[zone.name].zfile.dnssec_verify()
 
+    def check_nsec(self, zone, nsec3=False, nonsec=False):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        resp = self.dig("0-x-not-existing-x-0." + zone.name, "ANY", dnssec=True)
+        resp.check_nsec(nsec3=nsec3, nonsec=nonsec)
+
     def update(self, zone):
         # Convert one item list to single object.
         if isinstance(zone, list):
@@ -505,7 +523,7 @@ class Server(object):
                 raise Exception("One zone required.")
             zone = zone[0]
 
-        key_params = self.tsig.key_params if self.tsig else dict()
+        key_params = self.tsig_test.key_params if self.tsig_test else dict()
 
         return dnstest.update.Update(self, dns.update.Update(zone.name,
                                                              **key_params))
@@ -622,6 +640,12 @@ class Bind(Server):
             s.item("algorithm", t.alg)
             s.item_str("secret", t.key)
             s.end()
+            t = self.tsig_test
+            s.begin("key", t.name)
+            s.item("# Test key")
+            s.item("algorithm", t.alg)
+            s.item_str("secret", t.key)
+            s.end()
 
             keys = set() # Duplicy check.
             for zone in sorted(self.zones):
@@ -665,33 +689,30 @@ class Bind(Server):
                 if z.ixfr and not z.ddns:
                     s.item("ixfr-from-differences", "yes")
 
-            # Init update list with the default local server.
-            slaves_upd = ""
-            if self.tsig:
-                slaves_upd += "key %s; " % self.tsig.name
-            else:
-                slaves_upd += "%s; " % self.addr
-
             if z.slaves:
                 slaves = ""
                 for slave in z.slaves:
                     if self.tsig:
                         slaves += "%s port %i key %s; " \
                                   % (slave.addr, slave.port, self.tsig.name)
-                        slaves_upd += "key %s; " % slave.tsig.name
                     else:
                         slaves += "%s port %i; " % (slave.addr, slave.port)
-                        slaves_upd += "%s; " % slave.addr
                 s.item("also-notify", "{ %s}" % slaves)
 
             if z.ddns:
-                if z.master:
-                    s.item("allow-update-forwarding", "{ %s}" % slaves_upd)
+                if self.tsig:
+                    upd = "key %s; " % self.tsig_test.name
                 else:
-                    s.item("allow-update", "{ %s}" % slaves_upd)
+                    upd = "%s; " % self.addr
+
+                if z.master:
+                    s.item("allow-update-forwarding", "{ %s}" % upd)
+                else:
+                    s.item("allow-update", "{ %s}" % upd)
 
             if self.tsig:
-                s.item("allow-transfer", "{ key %s; }" % self.tsig.name)
+                s.item("allow-transfer", "{ key %s; key %s; }" %
+                       (self.tsig.name, self.tsig_test.name))
             else:
                 s.item("allow-transfer", "{ %s; }" % self.addr)
             s.end()
@@ -725,6 +746,8 @@ class Knot(Server):
     def _on_str_hex(self, conf, name, value):
         if value == True:
             conf.item(name, "on")
+        elif value == False:
+            conf.item(name, "off")
         elif value:
             if isinstance(value, int) or value[:2] == "0x":
                 conf.item(name, value)
@@ -759,6 +782,8 @@ class Knot(Server):
             s.begin("keys")
             t = self.tsig
             s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
+            t = self.tsig_test
+            s.item_str("\"%s\" %s" % (t.name, t.alg), t.key)
 
             keys = set() # Duplicy check.
             for zone in sorted(self.zones):
@@ -779,6 +804,11 @@ class Knot(Server):
         s.item("address", self.addr)
         if self.tsig:
             s.item_str("key", self.tsig.name)
+        s.end()
+        s.begin("test")
+        s.item("address", self.addr)
+        if self.tsig_test:
+            s.item_str("key", self.tsig_test.name)
         s.end()
 
         servers = set() # Duplicity check.
@@ -830,11 +860,10 @@ class Knot(Server):
                     slaves += slave.name
                 s.item("notify-out", slaves)
 
-            s.item("xfr-out", "local")
+            s.item("xfr-out", "local, test")
 
             if z.ddns:
-                all_slaves = "local" if not slaves else slaves + ", local"
-                s.item("update-in", all_slaves)
+                s.item("update-in", "test")
 
             if z.ixfr and not z.master:
                 s.item("ixfr-from-differences", "on")

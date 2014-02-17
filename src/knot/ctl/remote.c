@@ -119,7 +119,7 @@ static int remote_zone_refresh(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_refresh((zone_t *)zone, knot_random_uint32_t() % 1000);
+	zones_schedule_refresh((zone_t *)zone, REFRESH_NOW);
 
 	return KNOT_EOK;
 }
@@ -131,7 +131,7 @@ static int remote_zone_flush(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_zonefile_sync((zone_t *)zone, knot_random_uint32_t() % 1000);
+	zones_schedule_zonefile_sync((zone_t *)zone, REFRESH_NOW);
 
 	return KNOT_EOK;
 }
@@ -327,7 +327,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, 0);
+		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, REFRESH_NOW);
 		return KNOT_EOK;
 	}
 

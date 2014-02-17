@@ -294,6 +294,8 @@ fail:
 			new_zone->contents = NULL;
 		}
 
+		/* Disconnect config, caller is responsible for it. */
+		new_zone->conf = NULL;
 		zone_free(&new_zone);
 	}
 

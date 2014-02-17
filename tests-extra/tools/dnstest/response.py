@@ -159,17 +159,72 @@ class Response(object):
         resp = server.dig(**self.args)
         self.diff(resp, flags, answer, authority, additional)
 
-    def answer_count(self, rtype=None):
-        '''Returns number of records of given type in answer section'''
+    def count(self, rtype=None, section="answer"):
+        '''Returns number of records of given type in specified section'''
 
         if not rtype:
             rtype = self.rtype
         elif type(rtype) is str:
             rtype = dns.rdatatype.from_text(rtype)
 
-        for rrset in self.resp.answer:
-            if rrset.rdtype == rtype:
-                return len(rrset)
-        else:
-            return 0
+        if not section or section == "answer":
+            sect = self.resp.answer
+        elif section == "additional":
+            sect = self.resp.additional
+        elif section == "authority":
+            sect = self.resp.authority
 
+        cnt = 0
+        for rrset in sect:
+            if rrset.rdtype == rtype or rtype == dns.rdatatype.ANY:
+                cnt += len(rrset)
+
+        return cnt
+
+    def check_nsec(self, nsec3=False, nonsec=False):
+        '''Checks if the response contains NSEC(3) records.'''
+
+        nsec_rrs = list()
+        nsec3_rrs = list()
+        for data in self.resp.authority:
+            rrset = data.to_rdataset()
+            records = data.to_text().split("\n")
+            if rrset.rdtype == dns.rdatatype.NSEC:
+                nsec_rrs.extend(records)
+            elif rrset.rdtype == dns.rdatatype.NSEC3:
+                nsec3_rrs.extend(records)
+
+        if nonsec:
+            if nsec_rrs or nsec3_rrs:
+                set_err("CHECK NSEC(3) ABSENCE")
+                check_log("ERROR: CHECK NSEC(3) ABSENCE")
+                detail_log("!Unexpected records:")
+                for rr in nsec_rrs + nsec3_rrs:
+                    detail_log("  %s" % rr)
+                detail_log(SEP)
+            return
+
+        if nsec3:
+            if not nsec3_rrs:
+                set_err("CHECK NSEC3 PRESENCE")
+                check_log("ERROR: CHECK NSEC3 PRESENCE")
+                detail_log(SEP)
+            if nsec_rrs:
+                set_err("CHECK NSEC3")
+                check_log("ERROR: CHECK NSEC3")
+                detail_log("!Unexpected records:")
+                for rr in nsec_rrs:
+                    detail_log("  %s" % rr)
+                detail_log(SEP)
+        else:
+            if not nsec_rrs:
+                set_err("CHECK NSEC PRESENCE")
+                check_log("ERROR: CHECK NSEC PRESENCE")
+                detail_log(SEP)
+            if nsec3_rrs:
+                set_err("CHECK NSEC")
+                check_log("ERROR: CHECK NSEC")
+                detail_log("!Unexpected records:")
+                for rr in nsec3_rrs:
+                    detail_log("  %s" % rr)
+                detail_log(SEP)

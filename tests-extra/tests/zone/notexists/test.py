@@ -14,6 +14,14 @@ t.link(zones, master)
 
 t.start()
 
+# Check if the server is answering and zone _isn't_ loaded
+resp = master.dig("notexist.", "SOA", udp=True)
+resp.check(rcode="REFUSED")
+
+# The other zone should answer without problem
+resp = master.dig("wild.", "SOA", udp=True)
+resp.check(rcode="NOERROR")
+
 # Stop master.
 master.stop()
 

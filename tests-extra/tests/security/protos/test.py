@@ -4,6 +4,7 @@
 
 import shutil
 from subprocess import check_call
+from dnstest.utils import *
 from dnstest.test import Test
 from dnstest.params import get_binary
 
@@ -13,9 +14,9 @@ protos_java_bin = get_binary("PROTOS_JAVA_BIN", "java")
 protos_query_bin = get_binary("PROTOS_QUERY_BIN", protos_bin[0])
 protos_zonetransfer_bin = get_binary("PROTOS_ZONETRANSFER_BIN", protos_bin[1])
 if not protos_java_bin:
-    raise Exception("Java not found, skipping test.")
+    raise Skip("Java not found")
 if not protos_query_bin:
-    raise Exception("'%s' PROTOS binary not found" % protos_bin[0])
+    raise Skip("'%s' PROTOS binary not found" % protos_bin[0])
 
 t = Test(ip=4, tsig=False) # PROTOS works on IPv4, no TSIG
 master = t.server("dummy")
