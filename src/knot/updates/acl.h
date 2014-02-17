@@ -72,9 +72,9 @@ void acl_delete(acl_t **acl);
  * \brief Insert new ACL match.
  *
  * \param acl Pointer to ACL instance.
- * \param addr Netblock address.
- * \param address Netblock prefix.
- * \param val Value to be stored for given address (or NULL).
+ * \param addr Address.
+ * \param prefix Netblock prefix.
+ * \param key TSIG key.
  *
  * \retval KNOT_EOK if successful.
  * \retval KNOT_EINVAL
