@@ -32,26 +32,25 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
 #include "zscanner/zscanner.h"
-
-typedef struct zone_loader {
-	knot_zone_contents_t *z;
-	hattrie_t *lookup_tree;
-	knot_node_t *last_node;
-	int ret;
-} zone_loader_t;
+/*!
+ * \brief Zone creator structure.
+ */
+typedef struct zone_creator {
+	knot_zone_contents_t *z;  /*!< Created zone. */
+	knot_node_t *last_node;   /*!< Last used node, use to save zone lookup. */
+	int ret;                  /*!< Return value. */
+} zcreator_t;
 
 /*!
  * \brief Zone loader structure.
  */
-typedef struct zloader_t
-{
-	char *source;             /*!< Zone source file. */
-	char *origin;             /*!< Zone's origin string. */
-	bool semantic_checks;      /*!< Do semantic checks. */
-	err_handler_t *err_handler; /*!< Semantic checks error handler. */
-	file_loader_t *file_loader; /*!< Scanner's file loader. */
-	zone_loader_t *context; /*!< Loader context. */
-
+typedef struct zloader_t {
+	char *source;                /*!< Zone source file. */
+	char *origin;                /*!< Zone's origin string. */
+	bool semantic_checks;        /*!< Do semantic checks. */
+	err_handler_t *err_handler;  /*!< Semantic checks error handler. */
+	file_loader_t *file_loader;  /*!< Scanner's file loader. */
+	zcreator_t *creator;         /*!< Loader context. */
 } zloader_t;
 
 /*!
@@ -84,7 +83,7 @@ void zonefile_close(zloader_t *loader);
 
 knot_zone_contents_t *create_zone_from_name(const char *origin);
 
-int zone_loader_step(zone_loader_t *zl, knot_rrset_t *rr);
+int zcreator_step(zcreator_t *zl, knot_rrset_t *rr);
 
 void process_error(const scanner_t *scanner);
 

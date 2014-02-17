@@ -27,7 +27,7 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/zone-load.h"
+#include "knot/zone/zone-create.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/dnssec/random.h"
@@ -311,14 +311,14 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 		++xfr->packet_nr;
 	}
 
-	// Init zone loader
-	zone_loader_t zl = {.z = *zone, .lookup_tree = NULL,
-	                    .last_node = NULL, .ret = KNOT_EOK };
+	// Init zone creator
+	zcreator_t zc = {.z = *zone,
+	                 .last_node = NULL, .ret = KNOT_EOK };
 
 
 	while (ret == KNOT_EOK && rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
-		    knot_node_rrset(zl.z->apex, KNOT_RRTYPE_SOA)) {
+		    knot_node_rrset(zc.z->apex, KNOT_RRTYPE_SOA)) {
 			// Last SOA, last message, check TSIG.
 			ret = xfrin_check_tsig(packet, xfr, 1);
 			knot_pkt_free(&packet);
@@ -328,7 +328,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 			}
 			return 1; // Signal that transfer finished.
 		} else {
-			ret = zone_loader_step(&zl, rr);
+			ret = zcreator_step(&zc, rr);
 			if (ret != KNOT_EOK) {
 				knot_pkt_free(&packet);
 				knot_rrset_deep_free(&rr, true, NULL);

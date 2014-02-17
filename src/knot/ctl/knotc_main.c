@@ -31,7 +31,7 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
-#include "knot/zone/zone-load.h"
+#include "knot/zone/zone-create.h"
 #include "knot/server/socket.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
