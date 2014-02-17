@@ -26,9 +26,9 @@ def reload_zone(serial, version):
     if new_serial != serial:
         set_err("SOA MISMATCH")
         detail_log("!Zone '%s' SOA serial %s != %s" % (zone[0].name, new_serial, serial))
-    return new_serial
-    resp = master.dig("version%d.%s" % (version, zone[0].name), "A", flags="RD")
-    resp.check(rcode="NOERROR", flags="AA")
+        return
+    resp = master.dig("new-record%d.%s" % (version, zone[0].name), "A")
+    resp.check(rcode="NOERROR")
 
 # Zone changes, serial increases (create changeset)
 version = 1 
