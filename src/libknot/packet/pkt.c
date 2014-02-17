@@ -550,9 +550,8 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, c
 		pkt_rr_wirecount_add(pkt, pkt->current, rr_added);
 	}
 
-	dbg_packet("%s: added %u RRs (@%zu, len=%zu), pktsize=%zu (%s)\n",
-	           __func__, rr_added, pkt->size - len, len, pkt->size,
-	           rr->rrsigs ? "signed" : "unsigned");
+	dbg_packet("%s: added %u RRs (@%zu, len=%zu), pktsize=%zu\n",
+	           __func__, rr_added, pkt->size - len, len, pkt->size)
 
 	return KNOT_EOK;
 }
