@@ -137,37 +137,45 @@ static int parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type)
 }
 
 /*! \brief Create forwarded query. */
-static int forward_packet(const knot_pkt_t *query, knot_pkt_t *pkt)
+static int forward_packet(knot_ns_xfr_t *data, knot_pkt_t *pkt)
 {
-	/* Forward UPDATE query:
-	 * assign a new packet id
-	 */
+	knot_pkt_t *query = data->query;
 	memcpy(pkt->wire, query->wire, query->size);
 	pkt->size = query->size;
+
+	/* Assign new message id. */
+	data->packet_nr = knot_wire_get_id(pkt->wire);
 	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 
 	return KNOT_EOK;
 }
 
 /*! \brief Forwarded packet response. */
-int forward_packet_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *rsize)
+static int forward_packet_response(knot_ns_xfr_t *data, knot_pkt_t *pkt)
 {
-	/* Processing of a forwarded response:
-	 * change packet id
-	 */
-	int ret = KNOT_EOK;
-	knot_wire_set_id(rwire, (uint16_t)data->packet_nr);
+	/* Restore message id. */
+	knot_wire_set_id(pkt->wire, (uint16_t)data->packet_nr);
 
-	/* Forward the response. */
-	ret = data->send(data->fwd_src_fd, &data->fwd_addr, rwire, *rsize);
-	if (ret != *rsize) {
-		ret = KNOT_ECONN;
-	} else {
-		ret = KNOT_EOK;
+	/* Restore TSIG. */
+	int ret = KNOT_EOK;
+	if (pkt->tsig_rr) {
+		ret = knot_tsig_append(pkt->wire, &pkt->size, pkt->max_size,
+		                       pkt->tsig_rr);
 	}
 
-	/* As it is a response, do not reply back. */
-	*rsize = 0;
+	/* Forward the response. */
+	if (ret == KNOT_EOK) {
+		ret = data->send(data->fwd_src_fd, &data->fwd_addr,
+		                 pkt->wire, pkt->size);
+		if (ret != pkt->size) {
+			ret = KNOT_ECONN;
+		} else {
+			ret = KNOT_EOK;
+		}
+	}
+
+	/* Invalidate response => do not reply to master. */
+	pkt->size = 0;
 	return ret;
 }
 
@@ -416,7 +424,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		ret = notify_create_request(zone, pkt);
 		break;
 	case XFR_TYPE_FORWARD:
-		ret = forward_packet(rq->query, pkt);
+		ret = forward_packet(rq, pkt);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -719,17 +727,16 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	}
 
 	/* Process response. */
-	size_t rlen = rq->wire_size;
 	switch(rt) {
 	case KNOT_RESPONSE_NORMAL:
 		ret = zones_process_response(xfr->server, rq->packet_nr, &rq->addr,
-		                             re, rq->wire, &rlen);
+		                             re);
 		break;
 	case KNOT_RESPONSE_NOTIFY:
 		ret = notify_process_response(re, rq->packet_nr);
 		break;
 	case KNOT_RESPONSE_UPDATE:
-		ret = forward_packet_response(rq, rq->wire, &rlen);
+		ret = forward_packet_response(rq, re);
 		if (ret == KNOT_EOK) {
 			log_zone_info("%s Forwarded response.\n", rq->msg);
 		}

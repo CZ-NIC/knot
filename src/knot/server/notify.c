@@ -70,19 +70,6 @@ int notify_process_response(knot_pkt_t *notify, int msgid)
 	return KNOT_EOK;
 }
 
-static int notify_reschedule(const zone_t *zone)
-{
-	dbg_ns("%s(%p)\n", __func__, zone);
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
-	zones_schedule_refresh((zone_t *)zone, 0);
-
-	return KNOT_EOK;
-}
-
 /* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
 #define NOTIFY_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
@@ -117,7 +104,9 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	int next_state = NS_PROC_FAIL;
-	int ret = notify_reschedule(qdata->zone);
+
+	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
+	int ret =  zones_schedule_refresh((zone_t *)qdata->zone, REFRESH_NOW);
 
 	/* Format resulting log message. */
 	if (ret != KNOT_EOK) {

@@ -61,14 +61,14 @@ class Tsig(object):
 
         # TSIG preparation for pythondns utils.
         if self.alg == "hmac-md5":
-            alg = "hmac-md5.sig-alg.reg.int"
+            _alg = "hmac-md5.sig-alg.reg.int"
         else:
-            alg = self.alg
+            _alg = self.alg
 
-        key = dns.tsigkeyring.from_text({
+        _key = dns.tsigkeyring.from_text({
             self.name: self.key
         })
-        self.key_params = dict(keyname=self.name, keyalgorithm=alg, keyring=key)
+        self.key_params = dict(keyname=self.name, keyalgorithm=_alg, keyring=_key)
 
     def dump(self, filename):
         s = dnstest.server.BindConf()

@@ -130,7 +130,7 @@ int zone_timers_thaw(zone_t *zone)
 	zones_schedule_zonefile_sync(zone, zone->conf->dbsync_timeout);
 
 	/* Schedule REFRESH. */
-	zones_schedule_refresh(zone, 0);
+	zones_schedule_refresh(zone, REFRESH_NOW);
 
 	return KNOT_EOK;
 }

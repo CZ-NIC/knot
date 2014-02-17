@@ -9,6 +9,7 @@
 #include "knot/updates/ddns.h"
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
+#include "libknot/tsig-op.h"
 
 /* Forward decls. */
 static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
@@ -46,19 +47,32 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 	rq->packet_nr = knot_wire_get_id(query->wire);
 
 	/* Duplicate query to keep it in memory during forwarding. */
-	rq->query = knot_pkt_new(NULL, query->size, NULL);
-	if (!rq->query) {
+	rq->query = knot_pkt_new(NULL, query->max_size, NULL);
+	if (rq->query == NULL) {
 		xfr_task_free(rq);
 		return NS_PROC_FAIL;
+	} else {
+		memcpy(rq->query->wire, query->wire, query->size);
+		rq->query->size = query->size;
 	}
-	memcpy(rq->query->wire, query->wire, query->size);
-	rq->query->size = query->size;
+
+	/* Copy TSIG. */
+	int ret = KNOT_EOK;
+	if (query->tsig_rr) {
+		ret = knot_tsig_append(rq->query->wire, &rq->query->size,
+		                       rq->query->max_size, query->tsig_rr);
+		if (ret != KNOT_EOK) {
+			xfr_task_free(rq);
+			return NS_PROC_FAIL;
+		}
+	}
 
 	/* Retain pointer to zone and issue. */
 	xfrhandler_t *xfr = qdata->param->server->xfr;
-	int ret = xfr_enqueue(xfr, rq);
+	ret = xfr_enqueue(xfr, rq);
 	if (ret != KNOT_EOK) {
 		xfr_task_free(rq);
+		return NS_PROC_FAIL;
 	}
 
 	/* No immediate response. */
