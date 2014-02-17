@@ -110,20 +110,18 @@ static inline void udp_pps_begin() {}
 static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 #endif
 
-int udp_handle(udp_context_t *udp, int fd, sockaddr_t *addr,
+int udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
                struct iovec *rx, struct iovec *tx)
 {
 #ifdef DEBUG_ENABLE_BRIEF
-	char strfrom[SOCKADDR_STRLEN];
-	memset(strfrom, 0, sizeof(strfrom));
-	sockaddr_tostr(addr, strfrom, sizeof(strfrom));
-	dbg_net("udp: received %zd bytes from '%s@%d'.\n", rx->iov_len,
-	        strfrom, sockaddr_portnum(addr));
+	char addr_str[SOCKADDR_STRLEN] = {0};
+	sockaddr_tostr(ss, addr_str, sizeof(addr_str));
+	dbg_net("%s: received %zd bytes from '%s'\n", __func__, rx->iov_len, addr_str);
 #endif
 
 	/* Create query processing parameter. */
 	struct process_query_param param = {0};
-	sockaddr_copy(&param.query_source, addr);
+	param.query_source = ss;
 	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
 	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
 	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
@@ -184,7 +182,7 @@ static int (*_udp_send)(void *) = 0;
 /* UDP recvfrom() request struct. */
 struct udp_recvfrom {
 	int fd;
-	sockaddr_t addr;
+	struct sockaddr_storage addr;
 	struct msghdr msg[NBUFS];
 	struct iovec iov[NBUFS];
 	uint8_t buf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
@@ -197,14 +195,12 @@ static void *udp_recvfrom_init(void)
 		return NULL;
 	}
 
-	memset(rq->msg, 0, NBUFS * sizeof(struct msghdr));
-	memset(rq->iov, 0, NBUFS * sizeof(struct iovec));
-	sockaddr_prep(&rq->addr);
+	memset(rq, 0, sizeof(struct udp_recvfrom));
 	for (unsigned i = 0; i < NBUFS; ++i) {
 		rq->iov[i].iov_base = rq->buf + i;
 		rq->iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 		rq->msg[i].msg_name = &rq->addr;
-		rq->msg[i].msg_namelen = rq->addr.len;
+		rq->msg[i].msg_namelen = sizeof(rq->addr);
 		rq->msg[i].msg_iov = &rq->iov[i];
 		rq->msg[i].msg_iovlen = 1;
 		rq->msg[i].msg_control = NULL;
@@ -222,7 +218,11 @@ static int udp_recvfrom_deinit(void *d)
 
 static int udp_recvfrom_recv(int fd, void *d)
 {
+	/* Reset max lengths. */
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
+	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
+	rq->msg[RX].msg_namelen = sizeof(struct sockaddr_storage);
+
 	int ret = recvmsg(fd, &rq->msg[RX], MSG_DONTWAIT);
 	if (ret > 0) {
 		rq->fd = fd;
@@ -238,8 +238,7 @@ static int udp_recvfrom_handle(udp_context_t *ctx, void *d)
 	struct udp_recvfrom *rq = (struct udp_recvfrom *)d;
 
 	/* Prepare TX address. */
-	rq->addr.len = rq->msg[RX].msg_namelen;
-	rq->msg[TX].msg_namelen = rq->addr.len;
+	rq->msg[TX].msg_namelen = rq->msg[RX].msg_namelen;
 	rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Process received pkt. */
@@ -247,9 +246,6 @@ static int udp_recvfrom_handle(udp_context_t *ctx, void *d)
 	if (ret != KNOT_EOK) {
 		rq->iov[TX].iov_len = 0;
 	}
-
-	/* Reset RX buflen. */
-	rq->iov[RX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	return ret;
 }
@@ -262,11 +258,6 @@ static int udp_recvfrom_send(void *d)
 		rc = sendmsg(rq->fd, &rq->msg[TX], 0);
 	}
 
-	/* Reset address lengths. */
-	sockaddr_prep(&rq->addr);
-	rq->msg[RX].msg_namelen = rq->addr.len;
-	rq->msg[TX].msg_namelen = rq->addr.len;
-
 	/* Return number of packets sent. */
 	if (rc > 1) {
 		return 1;
@@ -278,14 +269,14 @@ static int udp_recvfrom_send(void *d)
 #ifdef HAVE_RECVMMSG
 
 /*! \brief Pointer to selected UDP send implementation. */
-static int (*_send_mmsg)(int, sockaddr_t *, struct mmsghdr *, size_t) = 0;
+static int (*_send_mmsg)(int, struct sockaddr *, struct mmsghdr *, size_t) = 0;
 
 /*!
  * \brief Send multiple packets.
  *
  * Basic, sendmsg() based implementation.
  */
-int udp_sendmsg(int sock, sockaddr_t * addrs, struct mmsghdr *msgs, size_t count)
+int udp_sendmsg(int sock, struct sockaddr *addrs, struct mmsghdr *msgs, size_t count)
 {
 	int sent = 0;
 	for (unsigned i = 0; i < count; ++i) {
@@ -312,7 +303,7 @@ static inline int sendmmsg(int fd, struct mmsghdr *mmsg, unsigned vlen,
  *
  * sendmmsg() implementation.
  */
-int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
+int udp_sendmmsg(int sock, struct sockaddr *_, struct mmsghdr *msgs, size_t count)
 {
 	UNUSED(_);
 	return sendmmsg(sock, msgs, count, 0);
@@ -322,7 +313,7 @@ int udp_sendmmsg(int sock, sockaddr_t *_, struct mmsghdr *msgs, size_t count)
 /* UDP recvmmsg() request struct. */
 struct udp_recvmmsg {
 	int fd;
-	sockaddr_t *addrs;
+	struct sockaddr_storage *addrs;
 	char *iobuf[NBUFS];
 	struct iovec *iov[NBUFS];
 	struct mmsghdr *msgs[NBUFS];
@@ -339,10 +330,8 @@ static void *udp_recvmmsg_init(void)
 	memcpy(&rq->mm, &mm, sizeof(mm_ctx_t));
 
 	/* Initialize addresses. */
-	rq->addrs = mm.alloc(mm.ctx, sizeof(sockaddr_t) * RECVMMSG_BATCHLEN);
-	for (unsigned i = 0; i < RECVMMSG_BATCHLEN; ++i) {
-		sockaddr_prep(rq->addrs + i);
-	}
+	rq->addrs = mm.alloc(mm.ctx, sizeof(struct sockaddr_storage) * RECVMMSG_BATCHLEN);
+	memset(rq->addrs, 0, sizeof(struct sockaddr_storage) * RECVMMSG_BATCHLEN);
 
 	/* Initialize buffers. */
 	for (unsigned i = 0; i < NBUFS; ++i) {
@@ -356,7 +345,7 @@ static void *udp_recvmmsg_init(void)
 			rq->msgs[i][k].msg_hdr.msg_iov = rq->iov[i] + k;
 			rq->msgs[i][k].msg_hdr.msg_iovlen = 1;
 			rq->msgs[i][k].msg_hdr.msg_name = rq->addrs + k;
-			rq->msgs[i][k].msg_hdr.msg_namelen = rq->addrs[k].len;
+			rq->msgs[i][k].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
 		}
 	}
 
@@ -394,7 +383,6 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
 		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
 		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
-		rq->addrs[i].len = rq->msgs[RX][i].msg_hdr.msg_namelen;
 
 		ret = udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
 		if (ret != KNOT_EOK) { /* Do not send. */
@@ -402,7 +390,7 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 		}
 
 		rq->msgs[TX][i].msg_len = tx->iov_len;
-		rq->msgs[TX][i].msg_hdr.msg_namelen = rq->addrs[i].len;
+		rq->msgs[TX][i].msg_hdr.msg_namelen = rq->msgs[RX][i].msg_hdr.msg_namelen;
 	}
 
 	return KNOT_EOK;
@@ -411,7 +399,7 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 static int udp_recvmmsg_send(void *d)
 {
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
-	int rc = _send_mmsg(rq->fd, rq->addrs, rq->msgs[TX], rq->rcvd);
+	int rc = _send_mmsg(rq->fd, (struct sockaddr *)rq->addrs, rq->msgs[TX], rq->rcvd);
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		/* Reset buffer size and address len. */
 		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
@@ -419,9 +407,9 @@ static int udp_recvmmsg_send(void *d)
 		rx->iov_len = KNOT_WIRE_MAX_PKTSIZE; /* Reset RX buflen */
 		tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
-		sockaddr_prep(rq->addrs + i);
-		rq->msgs[RX][i].msg_hdr.msg_namelen = rq->addrs[i].len;
-		rq->msgs[TX][i].msg_hdr.msg_namelen = rq->addrs[i].len;
+		memset(rq->addrs + i, 0, sizeof(struct sockaddr_storage));
+		rq->msgs[RX][i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		rq->msgs[TX][i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
 	}
 	return rc;
 }

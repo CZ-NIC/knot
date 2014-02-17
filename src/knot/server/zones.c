@@ -204,10 +204,10 @@ int zones_refresh_ev(event_t *event)
 	if (!rq) {
 		return KNOT_EINVAL;
 	}
-	xfr_task_setaddr(rq, &zone->xfr_in.master, &zone->xfr_in.via);
-	if (zone->xfr_in.tsig_key.name) {
-		rq->tsig_key = &zone->xfr_in.tsig_key;
-	}
+
+	const conf_iface_t *master = zone_master(zone);
+	xfr_task_setaddr(rq, &master->addr, &master->via);
+	rq->tsig_key = master->key;
 
 	/* Check for contents. */
 	int ret = KNOT_EOK;
@@ -885,7 +885,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 
 /*----------------------------------------------------------------------------*/
 
-static int save_transferred_zone(knot_zone_contents_t *zone, const sockaddr_t *from, const char *fname)
+static int save_transferred_zone(knot_zone_contents_t *zone, const struct sockaddr_storage *from, const char *fname)
 {
 	assert(zone != NULL && fname != NULL);
 
@@ -977,10 +977,15 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 	if (zone->zonefile_serial != serial_to) {
 
 		/* Save zone to zonefile. */
-		dbg_zones("zones: syncing '%s' differences to '%s' "
-		          "(SOA serial %u)\n",
-		          zone->conf->name, zone->conf->file, serial_to);
-		ret = save_transferred_zone(zone->contents, &zone->xfr_in.master, zone->conf->file);
+		const struct sockaddr_storage *master_addr = NULL;
+		const conf_iface_t *master = zone_master(zone);
+		if (master != NULL) {
+			master_addr = &master->addr;
+		}
+
+		dbg_zones("zones: syncing '%s' (SOA serial %u)\n",
+		          zone->conf->name, serial_to);
+		ret = save_transferred_zone(zone->contents, master_addr, zone->conf->file);
 		if (ret != KNOT_EOK) {
 			log_zone_warning("Failed to apply differences "
 			                 "'%s' to '%s (%s)'\n",
@@ -1034,10 +1039,10 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 
 int zones_process_response(server_t *server,
                            int exp_msgid,
-                           sockaddr_t *from,
+                           struct sockaddr_storage *from,
                            knot_pkt_t *packet)
 {
-	if (!packet || server == NULL || from == NULL) {
+	if (server == NULL || from == NULL || packet == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1108,10 +1113,10 @@ int zones_process_response(server_t *server,
 			rcu_read_unlock();
 			return KNOT_ENOMEM;
 		}
-		xfr_task_setaddr(rq, &zone->xfr_in.master, &zone->xfr_in.via);
-		if (zone->xfr_in.tsig_key.name) {
-			rq->tsig_key = &zone->xfr_in.tsig_key;
-		}
+
+		const conf_iface_t *master = zone_master(zone);
+		xfr_task_setaddr(rq, &master->addr, &master->via);
+		rq->tsig_key = master->key;
 
 		rcu_read_unlock();
 		ret = xfr_enqueue(server->xfr, rq);
@@ -1538,15 +1543,9 @@ int zones_schedule_notify(zone_t *zone, server_t *server)
 			continue;
 		}
 
-		/* Assign TSIG if exists. */
-		if (cfg_if->key) {
-			rq->tsig_key = cfg_if->key;
-		}
+		xfr_task_setaddr(rq, &cfg_if->addr, &cfg_if->via);
+		rq->tsig_key = cfg_if->key;
 
-		/* Parse server address. */
-		sockaddr_t addr;
-		sockaddr_set(&addr, cfg_if->family, cfg_if->address, cfg_if->port);
-		xfr_task_setaddr(rq, &addr, &cfg_if->via);
 		rq->data = (void *)((long)cfg->notify_retries);
 		if (xfr_enqueue(server->xfr, rq) != KNOT_EOK) {
 			log_zone_error("Failed to enqueue NOTIFY for '%s'.\n",
@@ -1572,7 +1571,7 @@ int zones_schedule_refresh(zone_t *zone, int64_t timeout)
 	pthread_mutex_lock(&zone->lock);
 	rcu_read_lock();
 	zone->xfr_in.state = XFR_IDLE;
-	if (zone->xfr_in.has_master) {
+	if (zone_master(zone) != NULL) {
 
 		/* Schedule EXPIRE timer. */
 		if (zone->contents != NULL) {

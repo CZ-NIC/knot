@@ -30,7 +30,7 @@
 #include "common/fdset.h"
 #include "common/evsched.h"
 #include "knot/server/dthreads.h"
-#include "knot/server/socket.h"
+#include "knot/server/net.h"
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zone.h"
 
@@ -84,7 +84,7 @@ typedef struct xfrhandler_t
 } xfrhandler_t;
 
 /*! \brief Callback for sending one packet back through a TCP connection. */
-typedef int (*xfr_callback_t)(int session, sockaddr_t *addr,
+typedef int (*xfr_callback_t)(int session, struct sockaddr *addr,
 			      uint8_t *packet, size_t size);
 
 /*!
@@ -96,7 +96,7 @@ typedef struct knot_ns_xfr {
 	node_t n;
 	int type;
 	int flags;
-	sockaddr_t addr, saddr;
+	struct sockaddr_storage addr, saddr;
 	knot_pkt_t *query;
 	knot_pkt_t *response;
 	knot_rcode_t rcode;
@@ -140,7 +140,7 @@ typedef struct knot_ns_xfr {
 
 	/*! \note [DDNS] Update forwarding fields. */
 	int fwd_src_fd;           /*!< Query originator fd. */
-	sockaddr_t fwd_addr;
+	struct sockaddr_storage fwd_addr;
 
 	uint16_t tsig_rcode;
 	uint64_t tsig_prev_time_signed;
@@ -253,7 +253,9 @@ int xfr_task_free(knot_ns_xfr_t *rq);
  * \param from Source address.
  * \return
  */
-int xfr_task_setaddr(knot_ns_xfr_t *rq, sockaddr_t *to, sockaddr_t *from);
+int xfr_task_setaddr(knot_ns_xfr_t *rq,
+                     const struct sockaddr_storage *to,
+                     const struct sockaddr_storage *from);
 
 /*!
  * \brief Return formatted string of the remote as 'ip\@port key $key'.
@@ -263,7 +265,7 @@ int xfr_task_setaddr(knot_ns_xfr_t *rq, sockaddr_t *to, sockaddr_t *from);
  *
  * \return formatted string or NULL.
  */
-char *xfr_remote_str(const sockaddr_t *addr, const char *keytag);
+char *xfr_remote_str(const struct sockaddr_storage *addr, const char *keytag);
 
 #endif // _KNOTD_XFRHANDLER_H_
 

@@ -40,7 +40,7 @@
 #include "common/lists.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/server/dthreads.h"
-#include "knot/server/socket.h"
+#include "knot/server/net.h"
 #include "knot/server/rrl.h"
 #include "knot/zone/zonedb.h"
 
@@ -77,9 +77,7 @@ typedef enum {
 typedef struct iface_t {
 	struct node n;
 	int fd[2];
-	int type;
-	int port;    /*!< \brief Socket port. */
-	char* addr;  /*!< \brief Socket address. */
+	struct sockaddr_storage addr;
 } iface_t;
 
 /* Handler types. */

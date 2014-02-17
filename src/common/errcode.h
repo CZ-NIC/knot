@@ -62,7 +62,6 @@ enum knot_error {
 	KNOT_ERROR = -10000,  /*!< General error. */
 	KNOT_ENOTRUNNING,     /*!< Resource is not running. */
 	KNOT_EPARSEFAIL,      /*!< Parser fail. */
-	KNOT_ENOIPV6,         /*!< No IPv6 support. */
 	KNOT_EEXPIRED,        /*!< Resource is expired. */
 	KNOT_EUPTODATE,       /*!< Zone is up-to-date. */
 	KNOT_EFEWDATA,        /*!< Not enough data to parse. */

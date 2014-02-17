@@ -138,8 +138,8 @@ int main(int argc, char *argv[])
 	zone_conf->name = strdup("rrl.");
 	zone_t *zone = zone_new(zone_conf);
 
-	sockaddr_t addr;
-	sockaddr_t addr6;
+	struct sockaddr_storage addr;
+	struct sockaddr_storage addr6;
 	sockaddr_set(&addr, AF_INET, "1.2.3.4", 0);
 	sockaddr_set(&addr6, AF_INET6, "1122:3344:5566:7788::aabb", 0);
 	ret = 0;

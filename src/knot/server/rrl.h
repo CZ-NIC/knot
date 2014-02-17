@@ -128,7 +128,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity);
  * \param lock Held lock.
  * \return assigned bucket
  */
-rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
+rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
                      const struct zone_t *zone, uint32_t stamp, int* lock);
 
 /*!
@@ -141,7 +141,7 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
  * \retval KNOT_EOK if passed.
  * \retval KNOT_ELIMIT when the limit is reached.
  */
-int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
               const struct zone_t *zone);
 
 /*!

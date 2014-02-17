@@ -28,31 +28,32 @@
 #include "libknot/util/endian.h"
 #include "libknot/tsig.h"
 
-static inline uint32_t ipv4_chunk(const sockaddr_t *a)
+static inline uint32_t ipv4_chunk(const struct sockaddr_in *ipv4)
 {
 	/* Stored as big end first. */
-	return a->addr4.sin_addr.s_addr;
+	return ipv4->sin_addr.s_addr;
 }
 
-static inline uint32_t ipv6_chunk(const sockaddr_t *a, uint8_t idx)
+static inline uint32_t ipv6_chunk(const struct sockaddr_in6 *ipv6, uint8_t idx)
 {
 	/* Is byte array, 4x 32bit value. */
-	return ((uint32_t *)&a->addr6.sin6_addr)[idx];
+	return ((uint32_t *)&ipv6->sin6_addr)[idx];
 }
 
-static inline uint32_t ip_chunk(const sockaddr_t *a, uint8_t idx)
+static inline uint32_t ip_chunk(const struct sockaddr_storage *ss, uint8_t idx)
 {
-	if (sockaddr_family(a) == AF_INET)
-		return ipv4_chunk(a);
-
-	return ipv6_chunk(a, idx);
+	if (ss->ss_family == AF_INET6) {
+		return ipv6_chunk((const struct sockaddr_in6 *)ss, idx);
+	} else {
+		return ipv4_chunk((const struct sockaddr_in *)ss);
+	}
 }
 
 /*! \brief Compare chunks using given mask. */
-static int cmp_chunk(const sockaddr_t *a1, const sockaddr_t *a2,
+static int cmp_chunk(const netblock_t *a1, const struct sockaddr_storage *a2,
                      uint8_t idx, uint32_t mask)
 {
-	const uint32_t c1 = ip_chunk(a1, idx) & mask;
+	const uint32_t c1 = ip_chunk(&a1->ss, idx) & mask;
 	const uint32_t c2 = ip_chunk(a2, idx) & mask;
 
 	if (c1 > c2)
@@ -82,7 +83,7 @@ static uint32_t acl_fill_mask32(short nbits)
 	return htonl(r);
 }
 
-static int addr_match(const sockaddr_t *a1, const sockaddr_t *a2)
+static int addr_match(const netblock_t *a1, const struct sockaddr_storage *a2)
 {
 	int ret = 0;
 	uint32_t mask = 0xffffffff;
@@ -90,11 +91,12 @@ static int addr_match(const sockaddr_t *a1, const sockaddr_t *a2)
 	const short chunk_bits = sizeof(mask) * CHAR_BIT;
 
 	/* Check different length, IPv4 goes first. */
-	if (a1->len != a2->len) {
-		if (a1->len < a2->len)
+	if (a1->ss.ss_family != a2->ss_family) {
+		if (a1->ss.ss_family < a2->ss_family) {
 			return -1;
-		else
+		} else {
 			return 1;
+		}
 	}
 
 	/* At most 4xchunk_bits for IPv6 */
@@ -109,8 +111,9 @@ static int addr_match(const sockaddr_t *a1, const sockaddr_t *a2)
 		}
 
 		/* Empty mask - shortcut, we're done. */
-		if (mask > 0)
+		if (mask > 0) {
 			ret = cmp_chunk(a1, a2, i, mask);
+		}
 		++i;
 	}
 
@@ -142,7 +145,7 @@ void acl_delete(acl_t **acl)
 	*acl = 0;
 }
 
-int acl_insert(acl_t *acl, const sockaddr_t *addr, knot_tsig_key_t *key)
+int acl_insert(acl_t *acl, const struct sockaddr_storage *addr, uint8_t prefix, knot_tsig_key_t *key)
 {
 	if (acl == NULL || addr == NULL) {
 		return KNOT_EINVAL;
@@ -154,7 +157,8 @@ int acl_insert(acl_t *acl, const sockaddr_t *addr, knot_tsig_key_t *key)
 		return KNOT_ENOMEM;
 	}
 
-	sockaddr_copy(&match->addr, addr);
+	match->netblock.prefix = prefix;
+	memcpy(&match->netblock.ss, addr, sizeof(struct sockaddr_storage));
 	match->key = key;
 
 	add_tail(acl, &match->n);
@@ -162,7 +166,7 @@ int acl_insert(acl_t *acl, const sockaddr_t *addr, knot_tsig_key_t *key)
 	return KNOT_EOK;
 }
 
-acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr, const knot_dname_t *key_name)
+acl_match_t* acl_find(acl_t *acl, const struct sockaddr_storage *addr, const knot_dname_t *key_name)
 {
 	if (acl == NULL || addr == NULL) {
 		return NULL;
@@ -170,7 +174,7 @@ acl_match_t* acl_find(acl_t *acl, const sockaddr_t *addr, const knot_dname_t *ke
 
 	acl_match_t *cur = NULL;
 	WALK_LIST(cur, *acl) {
-		if (addr_match(&cur->addr, addr) == 0) {
+		if (addr_match(&cur->netblock, addr) == 0) {
 			/* NOKEY entry. */
 			if (cur->key == NULL) {
 				if (key_name == NULL) {
