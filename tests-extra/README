@@ -7,6 +7,15 @@ dnssec-signzone
 dnssec-verify
 Bind 9.9
 lsof
+(gdb)
 
-Ubuntu - disable apparmor protection for system Bind:
-sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
+Ubuntu:
+-------
+Disable apparmor protection for system Bind:
+# sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
+
+Allow ptrace:
+echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+or
+/etc/sysctl.d/10-ptrace.conf
+kernel.yama.ptrace_scope = 0

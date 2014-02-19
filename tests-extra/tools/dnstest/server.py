@@ -295,6 +295,24 @@ class Server(object):
         detail_log(SEP)
         f.close()
 
+    def backtrace(self):
+        if self.valgrind:
+            check_log("BACKTRACE %s" % self.name)
+
+            try:
+                out = open(self.dir + "/gdb.out", mode="a")
+                err = open(self.dir + "/gdb.err", mode="a")
+
+                check_call([params.gdb_bin, "-ex", "set confirm off", "-ex",
+                            "target remote | %s --pid=%s" %
+                            (params.vgdb_bin, self.proc.pid),
+                            "-ex", "bt full", "-ex", "q", self.daemon_bin],
+                           stdout=out, stderr=err)
+            except:
+                detail_log("!Failed to get backtrace")
+
+            detail_log(SEP)
+
     def stop(self, check=True):
         if self.proc:
             try:
@@ -303,6 +321,7 @@ class Server(object):
             except ProcessLookupError:
                 pass
             except:
+                self.backtrace()
                 check_log("WARNING: KILLING %s" % self.name)
                 detail_log(SEP)
                 self.proc.kill()
@@ -486,6 +505,7 @@ class Server(object):
                     break
             time.sleep(2)
         else:
+            self.backtrace()
             raise Exception("Can't get %s SOA%s from %s." % (zone.name,
                             ">%i" % serial if serial else "", self.name))
 
