@@ -228,6 +228,7 @@ class Server(object):
                        stdout=DEVNULL, stderr=DEVNULL)
             time.sleep(Server.START_WAIT)
         except OSError:
+            self.backtrace()
             raise Exception("Can't reload %s" % self.name)
 
     def flush(self):
@@ -237,6 +238,7 @@ class Server(object):
                            stdout=DEVNULL, stderr=DEVNULL)
                 time.sleep(Server.START_WAIT)
         except OSError:
+            self.backtrace()
             raise Exception("Can't flush %s" % self.name)
 
     def _valgrind_check(self):
