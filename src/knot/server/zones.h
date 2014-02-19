@@ -259,7 +259,7 @@ int zones_journal_apply(zone_t *zone);
  * \param z             Zone configuration.
  * \param zone          Zone to sign.
  * \param old_zone      Previous zone.
- * \param zone_changed  The zone was loaded or modified.
+ * \param zone_changed  Set to true if the zone was loaded or modified.
  *
  * \return Error code, KNOT_OK if successful.
  */
