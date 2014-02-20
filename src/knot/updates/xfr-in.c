@@ -2450,7 +2450,6 @@ int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
 
 	knot_changeset_t *set = NULL;
 	WALK_LIST(set, chsets->sets) {
-		/*! \todo Check if it does not modify 'changes'. */
 		int ret = xfrin_apply_changeset(contents, changes, set);
 		if (ret != KNOT_EOK) {
 			return ret;

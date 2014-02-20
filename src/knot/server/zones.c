@@ -1980,8 +1980,7 @@ static int sign_after_load(zone_t *zone, const conf_zone_t *z,
 		 * possible to flush the changes to zonefile.
 		 */
 		int ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
-		                                chgset,
-		                                KNOT_SOA_SERIAL_UPDATE,
+		                                chgset, KNOT_SOA_SERIAL_UPDATE,
 		                                &zone->dnssec.refresh_at,
 		                                new_serial);
 		if (ret != KNOT_EOK) {
@@ -2101,11 +2100,20 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 		 * generated. May check that in an assert.
 		 */
 		if (zone_changed) {
+			assert(old_zone->contents != zone->contents);
 			ret = xfrin_apply_changesets_directly(zone->contents,
 			                                      diff_chs->changes,
 			                                      diff_chs);
+			if (ret == KNOT_EOK) {
+				ret = xfrin_finalize_updated_zone(
+				                    zone->contents, true, NULL);
+				/* In case of error no zone rollback is
+				 * required.
+				 */
+			}
 		} else {
 			assert(old_zone != NULL);
+			assert(old_zone->contents == zone->contents);
 			ret = xfrin_apply_changesets(zone, diff_chs,
 			                             &new_contents);
 		}
@@ -2136,16 +2144,19 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 		 *        in the function below. Not an ideal solution, but
 		 *        reworking zone management is out of scope of this MR.
 		 */
-		if (old_zone && !zone_changed) {
+		if (old_zone->contents == zone->contents) {
 			/*! \todo Maybe use the condition from this assert in
 			 *        the if statement.
 			 */
-			assert(old_zone->contents == zone->contents);
+//			assert(old_zone->contents == zone->contents);
 			old_zone->contents = NULL;
 		}
 		ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_DNSSEC);
 		rcu_read_lock();
 		if (ret != KNOT_EOK) {
+			log_zone_error("DNSSEC: Zone %s - Signing failed while "
+			               "switching zone (%s).\n", z->name,
+			               knot_strerror(ret));
 			// Cleanup old and new contents
 			xfrin_rollback_update(zone->contents, &new_contents,
 			                      diff_chs->changes);
