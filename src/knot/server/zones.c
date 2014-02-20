@@ -1903,6 +1903,9 @@ int zones_journal_apply(zone_t *zone)
 			              "to zone '%s'.\n",
 			              chsets->count, zone->conf->name);
 			knot_zone_contents_t *contents = NULL;
+			/*! \todo Journal changes may be applied directly,
+			 *        without need to copy the zone!!!
+			 */
 			int apply_ret = xfrin_apply_changesets(zone, chsets,
 			                                       &contents);
 			if (apply_ret != KNOT_EOK) {
@@ -2034,7 +2037,7 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 
 	/* Calculate differences. */
 	if (z->build_diffs) {
-		log_zone_info("Zone %s: generating diff after reload.\n",
+		log_zone_info("Zone %s: Generating diff after reload.\n",
 		              z->name);
 		*diff_chs = knot_changesets_create();
 		if (*diff_chs == NULL) {
@@ -2058,10 +2061,11 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 			               "file update: %s\n",
 			               z->name, knot_strerror(ret));
 		}
-		if (ret != KNOT_EOK && ret != KNOT_ENODIFF
-		    && ret != KNOT_ERANGE) {
+		if (ret != KNOT_EOK) {
 			knot_changesets_free(diff_chs);
-			return ret;
+			if (ret != KNOT_ENODIFF && ret != KNOT_ERANGE) {
+				return ret;
+			}
 		}
 	}
 
