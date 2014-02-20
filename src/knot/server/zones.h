@@ -45,9 +45,9 @@
 #define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Interval between AXFR BS retries. */
 #define AXFR_RETRY_MAXTIME (10*60*1000) /*!< Maximum interval 10mins */
 
-enum {
-	REFRESH_DEFAULT = -1 /* Use time value from zone structure. */
-};
+/* Timer special values. */
+#define REFRESH_DEFAULT -1 /* Use time value from zone structure. */
+#define REFRESH_NOW (knot_random_uint16_t() % 1000) /* Now, but with jitter. */
 
 /*!
  * \brief Sync zone data back to text zonefile.
@@ -71,11 +71,7 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal);
  * \brief Processes normal response packet.
  *
  * \param server Name server structure to provide the needed data.
- * \param from Address of the response sender.
  * \param packet Parsed response packet.
- * \param response_wire Place for the response in wire format.
- * \param rsize Input: maximum acceptable size of the response. Output: real
- *              size of the response.
  *
  * \retval KNOT_EOK if a valid response was created.
  * \retval KNOT_EINVAL on invalid parameters or packet.
@@ -83,9 +79,8 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal);
  */
 int zones_process_response(server_t *server,
                            int exp_msgid,
-                           sockaddr_t *from,
-                           knot_pkt_t *packet, uint8_t *response_wire,
-                           size_t *rsize);
+                           struct sockaddr_storage *from,
+                           knot_pkt_t *packet);
 
 /*!
  * \brief Decides what type of transfer should be used to update the given zone.

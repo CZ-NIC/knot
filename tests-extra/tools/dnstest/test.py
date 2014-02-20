@@ -105,7 +105,7 @@ class Test(object):
 
         if params.valgrind_bin and \
            (valgrind or (valgrind == None and server == "knot")):
-            srv.valgrind = [params.valgrind_bin, params.valgrind_flags]
+            srv.valgrind = [params.valgrind_bin] + params.valgrind_flags.split()
 
         srv.data_dir = self.data_dir
 

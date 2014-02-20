@@ -33,6 +33,10 @@
 #include "knot/zone/zonedb.h"
 #include "common/descriptor.h"
 
+/* Constants */
+
+#define XFRIN_BOOTSTRAP_DELAY 2000 /*!< AXFR bootstrap avg. delay */
+
 /*- zone file status --------------------------------------------------------*/
 
 /*!
@@ -94,6 +98,9 @@ static zone_t *bootstrap_zone(conf_zone_t *conf)
 		               conf->name, knot_strerror(KNOT_ENOMEM));
 		return NULL;
 	}
+
+	/* Initialize bootstrap timer. */
+	new_zone->xfr_in.bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
 
 	return new_zone;
 }
@@ -293,6 +300,8 @@ fail:
 			new_zone->contents = NULL;
 		}
 
+		/* Disconnect config, caller is responsible for it. */
+		new_zone->conf = NULL;
 		zone_free(&new_zone);
 	}
 

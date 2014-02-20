@@ -43,7 +43,6 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_ERROR, "General error." },
 	{ KNOT_ENOTRUNNING, "Resource is not running." },
 	{ KNOT_EPARSEFAIL, "Parser failed." },
-	{ KNOT_ENOIPV6, "IPv6 support disabled." },
 	{ KNOT_EEXPIRED, "Resource is expired." },
 	{ KNOT_EUPTODATE, "Zone is up-to-date." },
 	{ KNOT_EFEWDATA, "Not enough data to parse." },

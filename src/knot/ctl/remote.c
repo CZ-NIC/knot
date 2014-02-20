@@ -21,7 +21,7 @@
 #include "common/fdset.h"
 #include "knot/knot.h"
 #include "knot/conf/conf.h"
-#include "knot/server/socket.h"
+#include "knot/server/net.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
@@ -119,7 +119,7 @@ static int remote_zone_refresh(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_refresh((zone_t *)zone, knot_random_uint32_t() % 1000);
+	zones_schedule_refresh((zone_t *)zone, REFRESH_NOW);
 
 	return KNOT_EOK;
 }
@@ -131,7 +131,7 @@ static int remote_zone_flush(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_zonefile_sync((zone_t *)zone, knot_random_uint32_t() % 1000);
+	zones_schedule_zonefile_sync((zone_t *)zone, REFRESH_NOW);
 
 	return KNOT_EOK;
 }
@@ -247,7 +247,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		const char *state = NULL;
 		if (serial == 0)  {
 			state = "bootstrap";
-		} else if (zone->xfr_in.has_master) {
+		} else if (zone_master(zone) != NULL) {
 			state = "xfer";
 		}
 
@@ -287,7 +287,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		int n = snprintf(buf, sizeof(buf),
 		                 "%s\ttype=%s | serial=%u | %s %s | %s %s\n",
 		                 zone->conf->name,
-		                 zone->xfr_in.has_master ? "slave" : "master",
+		                 zone_master(zone) ? "slave" : "master",
 		                 serial,
 		                 state ? state : "",
 		                 when ? when : "",
@@ -327,7 +327,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, 0);
+		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, REFRESH_NOW);
 		return KNOT_EOK;
 	}
 
@@ -399,71 +399,77 @@ static int remote_senderr(int c, uint8_t *qbuf, size_t buflen)
 
 int remote_bind(conf_iface_t *desc)
 {
-	if (!desc) {
-		return -1;
-	}
-
-	/* Create new socket. */
-	int s = socket_create(desc->family, SOCK_STREAM, 0);
-	if (s < 0) {
-		log_server_error("Couldn't create socket for remote "
-				 "control interface - %s", knot_strerror(s));
-		return KNOT_ERROR;
-	}
-
-	/* Bind to interface and start listening. */
-	mode_t old_umask = umask(KNOT_CTL_SOCKET_UMASK);
-	int r = socket_bind(s, desc->family, desc->address, desc->port);
-	umask(old_umask);
-	if (r == KNOT_EOK) {
-		r = socket_listen(s, TCP_BACKLOG_SIZE);
-	}
-	if (r != KNOT_EOK) {
-		log_server_error("Could not bind to remote control interface.\n");
-		socket_close(s);
-		return r;
-	}
-
-	return s;
-}
-
-int remote_unbind(int r)
-{
-	if (r < 0) {
+	if (desc == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return socket_close(r);
+	char addr_str[SOCKADDR_STRLEN] = {0};
+	sockaddr_tostr(&desc->addr, addr_str, sizeof(addr_str));
+	log_server_info("Binding remote control interface to '%s'.\n", addr_str);
+
+	/* Create new socket. */
+	mode_t old_umask = umask(KNOT_CTL_SOCKET_UMASK);
+	int sock = net_bound_socket(SOCK_STREAM, &desc->addr);
+	umask(old_umask);
+	if (sock < 0) {
+		return sock;
+	}
+
+	/* Start listening. */
+	int ret = listen(sock, TCP_BACKLOG_SIZE);
+	if (ret < 0) {
+		log_server_error("Could not bind to '%s'.\n", addr_str);
+		close(sock);
+		return ret;
+	}
+
+	return sock;
 }
 
-int remote_poll(int r)
+int remote_unbind(conf_iface_t *desc, int sock)
+{
+	if (desc == NULL || sock < 0) {
+		return KNOT_EINVAL;
+	}
+
+	/* Remove control socket file.  */
+	if (desc->addr.ss_family == AF_UNIX) {
+		char addr_str[SOCKADDR_STRLEN] = {0};
+		sockaddr_tostr(&desc->addr, addr_str, sizeof(addr_str));
+		unlink(addr_str);
+	}
+
+	return close(sock);
+}
+
+int remote_poll(int sock)
 {
 	/* Wait for events. */
 	fd_set rfds;
 	FD_ZERO(&rfds);
-	if (r > -1) {
-		FD_SET(r, &rfds);
+	if (sock > -1) {
+		FD_SET(sock, &rfds);
 	} else {
-		r = -1; /* Make sure n == r + 1 == 0 */
+		sock = -1; /* Make sure n == r + 1 == 0 */
 	}
 
-	return fdset_pselect(r + 1, &rfds, NULL, NULL, NULL, NULL);
+	return fdset_pselect(sock + 1, &rfds, NULL, NULL, NULL, NULL);
 }
 
-int remote_recv(int r, sockaddr_t *a, uint8_t* buf, size_t *buflen)
+int remote_recv(int sock, struct sockaddr *addr, uint8_t* buf, size_t *buflen)
 {
-	int c = tcp_accept(r);
+	int c = tcp_accept(sock);
 	if (c < 0) {
 		dbg_server("remote: couldn't accept incoming connection\n");
 		return c;
 	}
 
 	/* Receive data. */
-	int n = tcp_recv(c, buf, *buflen, a);
+	int n = tcp_recv(c, buf, *buflen, addr);
 	*buflen = n;
 	if (n <= 0) {
 		dbg_server("remote: failed to receive data\n");
-		socket_close(c);
+		close(c);
 		return KNOT_ECONNREFUSED;
 	}
 
@@ -518,9 +524,9 @@ failed:
 	return ret;
 }
 
-int remote_answer(int fd, server_t *s, knot_pkt_t *pkt)
+int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 {
-	if (fd < 0 || s == NULL || pkt == NULL) {
+	if (sock < 0 || s == NULL || pkt == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -583,12 +589,12 @@ int remote_answer(int fd, server_t *s, knot_pkt_t *pkt)
 	unsigned p = 0;
 	size_t chunk = 16384;
 	for (; p + chunk < args->rlen; p += chunk) {
-		remote_send_chunk(fd, pkt, args->resp + p, chunk);
+		remote_send_chunk(sock, pkt, args->resp + p, chunk);
 	}
 
 	unsigned r = args->rlen - p;
 	if (r > 0) {
-		remote_send_chunk(fd, pkt, args->resp + p, r);
+		remote_send_chunk(sock, pkt, args->resp + p, r);
 	}
 
 	free(args);
@@ -605,11 +611,11 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 	}
 
 	/* Initialize remote party address. */
-	sockaddr_t addr;
-	sockaddr_prep(&addr);
+	struct sockaddr_storage ss;
+	memset(&ss, 0, sizeof(struct sockaddr_storage));
 
 	/* Accept incoming connection and read packet. */
-	int client = remote_recv(sock, &addr, pkt->wire, &buflen);
+	int client = remote_recv(sock, (struct sockaddr *)&ss, pkt->wire, &buflen);
 	if (client < 0) {
 		dbg_server("remote: couldn't receive query = %d\n", client);
 		knot_pkt_free(&pkt);
@@ -620,25 +626,24 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 
 	/* Parse packet and answer if OK. */
 	int ret = remote_parse(pkt);
-	if (ret == KNOT_EOK && ctl_if->family != AF_UNIX) {
+	if (ret == KNOT_EOK && ctl_if->addr.ss_family != AF_UNIX) {
 
 		/* Check ACL list. */
-		char straddr[SOCKADDR_STRLEN];
-		sockaddr_tostr(&addr, straddr, sizeof(straddr));
-		int rport = sockaddr_portnum(&addr);
+		char addr_str[SOCKADDR_STRLEN] = {0};
+		sockaddr_tostr(&ss, addr_str, sizeof(addr_str));
 		knot_tsig_key_t *tsig_key = NULL;
 		const knot_dname_t *tsig_name = NULL;
 		if (pkt->tsig_rr) {
 			tsig_name = pkt->tsig_rr->owner;
 		}
-		acl_match_t *match = acl_find(conf()->ctl.acl, &addr, tsig_name);
+		acl_match_t *match = acl_find(conf()->ctl.acl, &ss, tsig_name);
 		knot_rcode_t ts_rc = 0;
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
 		if (match == NULL) {
-			log_server_warning("Denied remote control for '%s@%d' "
+			log_server_warning("Denied remote control for '%s' "
 			                   "(doesn't match ACL).\n",
-			                   straddr, rport);
+			                   addr_str);
 			remote_senderr(client, pkt->wire, pkt->size);
 			ret = KNOT_EACCES;
 			goto finish;
@@ -649,9 +654,9 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		/* Check TSIG. */
 		if (tsig_key) {
 			if (pkt->tsig_rr == NULL) {
-				log_server_warning("Denied remote control for '%s@%d' "
+				log_server_warning("Denied remote control for '%s' "
 				                   "(key required).\n",
-				                   straddr, rport);
+				                   addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
 				goto finish;
@@ -659,9 +664,9 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 			ret = zones_verify_tsig_query(pkt, tsig_key, &ts_rc,
 			                              &ts_trc, &ts_tmsigned);
 			if (ret != KNOT_EOK) {
-				log_server_warning("Denied remote control for '%s@%d' "
+				log_server_warning("Denied remote control for '%s' "
 				                   "(key verification failed).\n",
-				                   straddr, rport);
+				                   addr_str);
 				remote_senderr(client, pkt->wire, pkt->size);
 				ret = KNOT_EACCES;
 				goto finish;
@@ -676,7 +681,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 
 finish:
 	knot_pkt_free(&pkt);
-	socket_close(client);
+	close(client);
 	return ret;
 }
 

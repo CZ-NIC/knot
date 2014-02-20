@@ -30,7 +30,7 @@
 
 #include "knot/server/xfr-handler.h"
 #include "knot/server/server.h"
-#include "knot/server/socket.h"
+#include "knot/server/net.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/xfr-in.h"
@@ -98,18 +98,17 @@ static void xfr_pending_decr(xfrhandler_t *xfr)
 
 /* I/O wrappers */
 
-static int xfr_send_tcp(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
+static int xfr_send_tcp(int fd, struct sockaddr *addr, uint8_t *msg, size_t msglen)
 { return tcp_send(fd, msg, msglen); }
 
-static int xfr_send_udp(int fd, sockaddr_t *addr, uint8_t *msg, size_t msglen)
-{ return sendto(fd, msg, msglen, 0, (struct sockaddr *)addr, addr->len); }
+static int xfr_send_udp(int fd, struct sockaddr *addr, uint8_t *msg, size_t msglen)
+{ return sendto(fd, msg, msglen, 0, addr, sockaddr_len((struct sockaddr_storage *)addr));  }
 
-static int xfr_recv_tcp(int fd, sockaddr_t *addr, uint8_t *buf, size_t buflen)
+static int xfr_recv_tcp(int fd, struct sockaddr *addr, uint8_t *buf, size_t buflen)
 { return tcp_recv(fd, buf, buflen, addr); }
 
-static int xfr_recv_udp(int fd, sockaddr_t *addr, uint8_t *buf, size_t buflen)
-{ return recvfrom(fd, buf, buflen, 0, (struct sockaddr *)addr, &addr->len); }
-
+static int xfr_recv_udp(int fd, struct sockaddr *addr, uint8_t *buf, size_t buflen)
+{ return recv(fd, buf, buflen, 0); }
 
 /*! \todo This should be obsoleted by the generic response parsing layer. */
 static int parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type)
@@ -137,37 +136,45 @@ static int parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type)
 }
 
 /*! \brief Create forwarded query. */
-static int forward_packet(const knot_pkt_t *query, knot_pkt_t *pkt)
+static int forward_packet(knot_ns_xfr_t *data, knot_pkt_t *pkt)
 {
-	/* Forward UPDATE query:
-	 * assign a new packet id
-	 */
+	knot_pkt_t *query = data->query;
 	memcpy(pkt->wire, query->wire, query->size);
 	pkt->size = query->size;
+
+	/* Assign new message id. */
+	data->packet_nr = knot_wire_get_id(pkt->wire);
 	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
 
 	return KNOT_EOK;
 }
 
 /*! \brief Forwarded packet response. */
-int forward_packet_response(knot_ns_xfr_t *data, uint8_t *rwire, size_t *rsize)
+static int forward_packet_response(knot_ns_xfr_t *data, knot_pkt_t *pkt)
 {
-	/* Processing of a forwarded response:
-	 * change packet id
-	 */
-	int ret = KNOT_EOK;
-	knot_wire_set_id(rwire, (uint16_t)data->packet_nr);
+	/* Restore message id. */
+	knot_wire_set_id(pkt->wire, (uint16_t)data->packet_nr);
 
-	/* Forward the response. */
-	ret = data->send(data->fwd_src_fd, &data->fwd_addr, rwire, *rsize);
-	if (ret != *rsize) {
-		ret = KNOT_ECONN;
-	} else {
-		ret = KNOT_EOK;
+	/* Restore TSIG. */
+	int ret = KNOT_EOK;
+	if (pkt->tsig_rr) {
+		ret = knot_tsig_append(pkt->wire, &pkt->size, pkt->max_size,
+		                       pkt->tsig_rr);
 	}
 
-	/* As it is a response, do not reply back. */
-	*rsize = 0;
+	/* Forward the response. */
+	if (ret == KNOT_EOK) {
+		ret = data->send(data->fwd_src_fd, (struct sockaddr *)&data->fwd_addr,
+		                 pkt->wire, pkt->size);
+		if (ret != pkt->size) {
+			ret = KNOT_ECONN;
+		} else {
+			ret = KNOT_EOK;
+		}
+	}
+
+	/* Invalidate response => do not reply to master. */
+	pkt->size = 0;
 	return ret;
 }
 
@@ -246,38 +253,16 @@ static int xfr_task_setsig(knot_ns_xfr_t *rq, knot_tsig_key_t *key)
 static int xfr_task_connect(knot_ns_xfr_t *rq)
 {
 	/* Create socket by type. */
-	int ret = 0;
 	int stype = (rq->flags & XFR_FLAG_TCP) ? SOCK_STREAM : SOCK_DGRAM;
-	int fd = socket_create(sockaddr_family(&rq->addr), stype, 0);
-	if (fd < 0) {
-		return KNOT_ERROR;
-	}
-
-	/* Bind to specific address - if set. */
-	if (rq->saddr.len > 0) {
-		if (bind(fd, (struct sockaddr *)&rq->saddr, rq->saddr.len) < 0) {
-			socket_close(fd);
-			return KNOT_ERROR;
-		}
-	}
-
-	/* Connect if TCP. */
-	if (rq->flags & XFR_FLAG_TCP) {
-		if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
-			; /* Go silently with blocking if it fails. */
-
-		ret = connect(fd, (struct sockaddr *)&rq->addr, rq->addr.len);
-		if (ret != 0 && errno != EINPROGRESS) {
-			socket_close(fd);
-			return KNOT_ECONNREFUSED;
-		}
+	int ret = net_connected_socket(stype, &rq->addr, &rq->saddr);
+	if (ret < 0) {
+		return ret;
 	}
 
 	/* Set up for UDP as well to trigger 'send query' event. */
+	rq->session = ret;
 	rq->flags |= XFR_FLAG_CONNECTING;
 
-	/* Store new socket descriptor. */
-	rq->session = fd;
 	return KNOT_EOK;
 }
 
@@ -354,7 +339,7 @@ static int xfr_task_expire(fdset_t *set, int i, knot_ns_xfr_t *rq)
 	switch(rq->type) {
 	case XFR_TYPE_NOTIFY:
 		if ((long)--rq->data > 0) { /* Retries */
-			rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
+			rq->send(rq->session, (struct sockaddr *)&rq->addr, rq->wire, rq->wire_size);
 			log_zone_info("%s Query issued (serial %u).\n",
 			              rq->msg, knot_zone_serial(zone->contents));
 			fdset_set_watchdog(set, i, NOTIFY_TIMEOUT);
@@ -418,7 +403,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		ret = notify_create_request(zone, pkt);
 		break;
 	case XFR_TYPE_FORWARD:
-		ret = forward_packet(rq->query, pkt);
+		ret = forward_packet(rq, pkt);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -451,7 +436,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 	gettimeofday(&rq->t_start, NULL);
 	if (rq->wire_size > 0) {
 
-		ret = rq->send(rq->session, &rq->addr, rq->wire, rq->wire_size);
+		ret = rq->send(rq->session, (struct sockaddr *)&rq->addr, rq->wire, rq->wire_size);
 		if (ret != rq->wire_size) {
 			char ebuf[256] = {0};
 			if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
@@ -721,17 +706,16 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	}
 
 	/* Process response. */
-	size_t rlen = rq->wire_size;
 	switch(rt) {
 	case KNOT_RESPONSE_NORMAL:
 		ret = zones_process_response(xfr->server, rq->packet_nr, &rq->addr,
-		                             re, rq->wire, &rlen);
+		                             re);
 		break;
 	case KNOT_RESPONSE_NOTIFY:
 		ret = notify_process_response(re, rq->packet_nr);
 		break;
 	case KNOT_RESPONSE_UPDATE:
-		ret = forward_packet_response(rq, rq->wire, &rlen);
+		ret = forward_packet_response(rq, re);
 		if (ret == KNOT_EOK) {
 			log_zone_info("%s Forwarded response.\n", rq->msg);
 		}
@@ -887,7 +871,7 @@ static int xfr_process_event(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	}
 
 	/* Receive msg. */
-	int n = rq->recv(rq->session, &rq->addr, rq->wire, rq->wire_maxlen);
+	int n = rq->recv(rq->session, (struct sockaddr *)&rq->addr, rq->wire, rq->wire_maxlen);
 	if (n < 0) { /* Disconnect */
 		n = knot_map_errno(errno);
 		log_zone_error("%s %s\n", rq->msg, knot_strerror(n));
@@ -934,7 +918,7 @@ static enum fdset_sweep_state xfr_sweep(fdset_t *set, int i, void *data)
 		if (xfr_task_is_transfer(rq))
 			xfr_pending_decr(xfr);
 		xfr_task_close(rq);
-		socket_close(set->pfd[i].fd);
+		close(set->pfd[i].fd);
 		return FDSET_SWEEP;
 	}
 
@@ -947,7 +931,7 @@ int xfr_worker(dthread_t *thread)
 	xfrhandler_t *xfr = (xfrhandler_t *)thread->data;
 
 	/* Buffer for answering. */
-	size_t buflen = SOCKET_MTU_SZ;
+	size_t buflen = KNOT_WIRE_MAX_PKTSIZE;
 	uint8_t* buf = malloc(buflen);
 	if (buf == NULL) {
 		dbg_xfr("xfr: failed to allocate buffer for XFR worker\n");
@@ -1052,7 +1036,7 @@ int xfr_worker(dthread_t *thread)
 				if (xfr_task_is_transfer(rq))
 					xfr_pending_decr(xfr);
 				xfr_task_close(rq);
-				socket_close(set.pfd[i].fd);
+				close(set.pfd[i].fd);
 				fdset_remove(&set, i);
 				continue; /* Stay on the same index. */
 			} else {
@@ -1082,7 +1066,7 @@ int xfr_worker(dthread_t *thread)
 	/* Cancel existing connections. */
 	for (unsigned i = 0; i < set.n; ++i) {
 		knot_ns_xfr_t *rq = (knot_ns_xfr_t *)set.ctx[i];
-		socket_close(set.pfd[i].fd);
+		close(set.pfd[i].fd);
 		if (xfr_task_is_transfer(rq))
 			xfr_pending_decr(xfr);
 		xfr_task_free(rq);
@@ -1228,32 +1212,34 @@ int xfr_task_free(knot_ns_xfr_t *rq)
 	return KNOT_EOK;
 }
 
-int xfr_task_setaddr(knot_ns_xfr_t *rq, sockaddr_t *to, sockaddr_t *from)
+int xfr_task_setaddr(knot_ns_xfr_t *rq,
+                     const struct sockaddr_storage *to,
+                     const struct sockaddr_storage *from)
 {
 	if (!rq) {
 		return KNOT_EINVAL;
 	}
 
-	memcpy(&rq->addr, to, sizeof(sockaddr_t));
-	if (from) memcpy(&rq->saddr, from, sizeof(sockaddr_t));
+	memcpy(&rq->addr, to, sizeof(struct sockaddr_storage));
+	memcpy(&rq->saddr, from, sizeof(struct sockaddr_storage));
+
 	return KNOT_EOK;
 }
 
-char *xfr_remote_str(const sockaddr_t *addr, const char *key)
+char *xfr_remote_str(const struct sockaddr_storage *addr, const char *key)
 {
 	if (!addr) {
 		return NULL;
 	}
 
 	/* Prepare address strings. */
-	char r_addr[SOCKADDR_STRLEN] = {0};
-	int r_port = sockaddr_portnum(addr);
-	sockaddr_tostr(addr, r_addr, sizeof(r_addr));
+	char addr_str[SOCKADDR_STRLEN] = {0};
+	sockaddr_tostr(addr, addr_str, sizeof(addr_str));
 
 	/* Prepare key strings. */
 	if (key) {
-		return sprintf_alloc("'%s@%d' key '%s'", r_addr, r_port, key);
+		return sprintf_alloc("'%s' key '%s'", addr_str, key);
+	} else {
+		return sprintf_alloc("'%s'", addr_str);
 	}
-
-	return sprintf_alloc("'%s@%d'", r_addr, r_port);
 }

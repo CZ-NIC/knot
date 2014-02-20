@@ -25,7 +25,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(18);
+	plan(14);
 
 	// 1. Create an ACL
 	acl_match_t *match = NULL;
@@ -33,37 +33,31 @@ int main(int argc, char *argv[])
 	ok(acl != 0, "acl: new");
 
 	// 2. Create IPv4 address
-	sockaddr_t test_v4;
+	struct sockaddr_storage test_v4;
 	int ret = sockaddr_set(&test_v4, AF_INET, "127.0.0.1", 12345);
-	ok(ret > 0, "acl: new IPv4 address");
+	ok(ret == KNOT_EOK, "acl: new IPv4 address");
 
 	// 3. Create IPv6 address
-	sockaddr_t test_v6;
+	struct sockaddr_storage test_v6;
 	ret = sockaddr_set(&test_v6, AF_INET6, "::1", 54321);
-	ok(ret > 0, "acl: new IPv6 address");
+	ok(ret == KNOT_EOK, "acl: new IPv6 address");
 
 	// 4. Create simple IPv4 rule
-	ret = acl_insert(acl, &test_v4, NULL);
+	ret = acl_insert(acl, &test_v4, IPV4_PREFIXLEN, NULL);
 	ok(ret == KNOT_EOK, "acl: inserted IPv4 rule");
 
 	// 5. Create simple IPv6 rule
-	ret = acl_insert(acl, &test_v6, NULL);
+	ret = acl_insert(acl, &test_v6, IPV6_PREFIXLEN, NULL);
 	ok(ret == KNOT_EOK, "acl: inserted IPv6 rule");
 
-	// 6. Create simple IPv4 'any port' rule
-	sockaddr_t test_v4a;
-	sockaddr_set(&test_v4a, AF_INET, "20.20.20.20", 0);
-	ret = acl_insert(acl, &test_v4a, NULL);
-	ok(ret == KNOT_EOK, "acl: inserted IPv4 'any port' rule");
-
 	// 7. Attempt to match unmatching address
-	sockaddr_t unmatch_v4;
+	struct sockaddr_storage unmatch_v4;
 	sockaddr_set(&unmatch_v4, AF_INET, "10.10.10.10", 24424);
 	match = acl_find(acl, &unmatch_v4, NULL);
 	ok(match == NULL, "acl: matching non-existing address");
 
 	// 8. Attempt to match unmatching IPv6 address
-	sockaddr_t unmatch_v6;
+	struct sockaddr_storage unmatch_v6;
 	sockaddr_set(&unmatch_v6, AF_INET6, "2001:db8::1428:57ab", 24424);
 	match = acl_find(acl, &unmatch_v6, NULL);
 	ok(match == NULL, "acl: matching non-existing IPv6 address");
@@ -76,33 +70,10 @@ int main(int argc, char *argv[])
 	match = acl_find(acl, &test_v6, NULL);
 	ok(match != NULL, "acl: matching existing IPv6 address");
 
-	// 11. Attempt to match matching 'any port' address
-	sockaddr_t match_v4a;
-	sockaddr_set(&match_v4a, AF_INET, "20.20.20.20", 24424);
-	match = acl_find(acl, &match_v4a, NULL);
-	ok(match != NULL, "acl: matching existing IPv4 'any port' address");
-
-	// 12. Attempt to match matching address without matching port
-	// FIXME
-	skip("acl: matching address without matching port");
-/*	sockaddr_set(&unmatch_v4, AF_INET, "127.0.0.1", 54321);
-	match = acl_find(acl, &unmatch_v4);
-	ok(match == NULL, "acl: matching address without matching port"); */
-
-	// 13. Invalid parameters
-//	lives_ok({
-		acl_delete(0);
-		acl_insert(0, 0, NULL);
-		acl_find(0, 0, NULL);
-		acl_truncate(0);
-//	}, "acl: won't crash with NULL parameters");
-		ok(1, "acl: won't crash with NULL parameters");
-
 	// 14. Attempt to match subnet
-	sockaddr_t match_pf4, test_pf4;
+	struct sockaddr_storage match_pf4, test_pf4;
 	sockaddr_set(&match_pf4, AF_INET, "192.168.1.0", 0);
-	sockaddr_setprefix(&match_pf4, 24);
-	acl_insert(acl, &match_pf4, NULL);
+	acl_insert(acl, &match_pf4, 24, NULL);
 	sockaddr_set(&test_pf4, AF_INET, "192.168.1.20", 0);
 	match = acl_find(acl, &test_pf4, NULL);
 	ok(match != NULL, "acl: searching address in matching prefix /24");
@@ -113,10 +84,9 @@ int main(int argc, char *argv[])
 	ok(match == NULL, "acl: searching address in non-matching prefix /24");
 
 	// 16. Attempt to match v6 subnet
-	sockaddr_t match_pf6, test_pf6;
+	struct sockaddr_storage match_pf6, test_pf6;
 	sockaddr_set(&match_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB00", 0);
-	sockaddr_setprefix(&match_pf6, 120);
-	acl_insert(acl, &match_pf6, NULL);
+	acl_insert(acl, &match_pf6, 120, NULL);
 	sockaddr_set(&test_pf6, AF_INET6, "2001:0DB8:0400:000e:0:0:0:AB03", 0);
 	match = acl_find(acl, &test_pf6, NULL);
 	ok(match != NULL, "acl: searching v6 address in matching prefix /120");
@@ -129,11 +99,11 @@ int main(int argc, char *argv[])
 	// 18. Scenario after truncating
 	acl_truncate(acl);
 	sockaddr_set(&test_pf6, AF_INET6, "2001:a1b0:e11e:50d1::3:300", 0);
-	acl_insert(acl, &test_pf6, NULL);
+	acl_insert(acl, &test_pf6, IPV6_PREFIXLEN, NULL);
 	sockaddr_set(&test_pf4, AF_INET, "231.17.67.223", 0);
-	acl_insert(acl, &test_pf4, NULL);
+	acl_insert(acl, &test_pf4, IPV4_PREFIXLEN, NULL);
 	sockaddr_set(&test_pf4, AF_INET, "82.87.48.136", 0);
-	acl_insert(acl, &test_pf4, NULL);
+	acl_insert(acl, &test_pf4, IPV4_PREFIXLEN, NULL);
 	sockaddr_set(&match_pf4, AF_INET, "82.87.48.136", 12345);
 	match = acl_find(acl, &match_pf4, NULL);
 	ok(match != NULL, "acl: scenario after truncating");

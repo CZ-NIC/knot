@@ -223,7 +223,7 @@ int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
-	const sockaddr_t *query_source = &qdata->param->query_source;
+	struct sockaddr_storage *query_source = qdata->param->query_source;
 	const knot_dname_t *key_name = NULL;
 	knot_tsig_algorithm_t key_alg = KNOT_TSIG_ALG_NULL;
 
@@ -407,7 +407,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	if (!EMPTY_LIST(qdata->wildcards)) {
 		rrl_rq.flags = KNOT_PF_WILDCARD;
 	}
-	if (rrl_query(server->rrl, &qdata->param->query_source,
+	if (rrl_query(server->rrl, qdata->param->query_source,
 	              &rrl_rq, qdata->zone) == KNOT_EOK) {
 		/* Rate limiting not applied. */
 		return state;

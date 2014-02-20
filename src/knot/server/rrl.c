@@ -156,7 +156,7 @@ static int rrl_clsname(char *dst, size_t maxlen, uint8_t cls,
 	return knot_dname_to_wire((uint8_t *)dst, dn, maxlen);
 }
 
-static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
+static int rrl_classify(char *dst, size_t maxlen, const struct sockaddr_storage *a,
                         rrl_req_t *p, const zone_t *z, uint32_t seed)
 {
 	if (!dst || !p || !a || maxlen == 0) {
@@ -170,10 +170,12 @@ static int rrl_classify(char *dst, size_t maxlen, const sockaddr_t *a,
 
 	/* Address (in network byteorder, adjust masks). */
 	uint64_t nb = 0;
-	if (sockaddr_family(a) == AF_INET6) { /* Take the /56 prefix. */
-		nb = *((uint64_t*)&a->addr6.sin6_addr) & RRL_V6_PREFIX;
-	} else {                     /* Take the /24 prefix */
-		nb = (uint32_t)a->addr4.sin_addr.s_addr & RRL_V4_PREFIX;
+	if (a->ss_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)a;
+		nb = *((uint64_t*)(&ipv6->sin6_addr)) & RRL_V6_PREFIX;
+	} else {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *)a;
+		nb = ((uint32_t)ipv4->sin_addr.s_addr) & RRL_V4_PREFIX;
 	}
 	if (blklen + sizeof(nb) > maxlen) return KNOT_ESPACE;
 	memcpy(dst + blklen, (void*)&nb, sizeof(nb));
@@ -274,19 +276,19 @@ static inline unsigned reduce_dist(rrl_table_t *t, unsigned id, unsigned d, unsi
 	return d;
 }
 
-static void rrl_log_state(const sockaddr_t *a, uint16_t flags, uint8_t cls)
+static void rrl_log_state(const struct sockaddr_storage *ss, uint16_t flags, uint8_t cls)
 {
 #ifdef RRL_ENABLE_LOG
-	char saddr[SOCKADDR_STRLEN];
-	memset(saddr, 0, sizeof(saddr));
-	sockaddr_tostr(a, saddr, sizeof(saddr));
+	char addr_str[SOCKADDR_STRLEN] = {0};
+	sockaddr_tostr(ss, addr_str, sizeof(addr_str));
+
 	const char *what = "leaves";
 	if (flags & RRL_BF_ELIMIT) {
 		what = "enters";
 	}
 
 	log_server_notice("Address '%s' %s rate-limiting (class '%s').\n",
-	                  saddr, what, rrl_clsstr(cls));
+	                  addr_str, what, rrl_clsstr(cls));
 #endif
 }
 
@@ -356,7 +358,7 @@ int rrl_setlocks(rrl_table_t *rrl, unsigned granularity)
 	return KNOT_EOK;
 }
 
-rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
+rrl_item_t* rrl_hash(rrl_table_t *t, const struct sockaddr_storage *a, rrl_req_t *p,
                      const zone_t *zone, uint32_t stamp, int *lock)
 {
 	char buf[RRL_CLSBLK_MAXLEN];
@@ -421,7 +423,7 @@ rrl_item_t* rrl_hash(rrl_table_t *t, const sockaddr_t *a, rrl_req_t *p,
 	return b;
 }
 
-int rrl_query(rrl_table_t *rrl, const sockaddr_t *a, rrl_req_t *req,
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *a, rrl_req_t *req,
               const zone_t *zone)
 {
 	if (!rrl || !req || !a) return KNOT_EINVAL;

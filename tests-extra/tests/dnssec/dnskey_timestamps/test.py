@@ -39,12 +39,12 @@ def check_zone(server, expect_dnskey, expect_rrsig):
     expect_dnskeys = 2 if expect_dnskey else 1
     expect_rrsigs = 2 if expect_rrsig else 1
 
-    detail_log("DNSKEYs: %d (expected %d) RRSIGs: %d (expected %d)" % (
-                       found_dnskeys, expect_dnskeys, found_rrsigs, expect_rrsigs));
+    check_log("DNSKEYs: %d (expected %d) RRSIGs: %d (expected %d)" %
+              (found_dnskeys, expect_dnskeys, found_rrsigs, expect_rrsigs));
 
     if found_dnskeys != expect_dnskeys or found_rrsigs != expect_rrsigs:
-        err("Expectations do not match.")
-        set_err("DNSKEYs not published and activated as expected.")
+        set_err("BAD DNSKEY")
+        detail_log("!DNSKEYs not published and activated as expected")
 
     detail_log(SEP)
 

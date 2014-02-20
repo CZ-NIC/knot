@@ -64,7 +64,7 @@ static conf_log_map_t *this_logmap = 0;
 #define SET_INT(out, in, name) SET_NUM(out, in, 0, INT_MAX, name);
 #define SET_SIZE(out, in, name) SET_NUM(out, in, 0, SIZE_MAX, name);
 
-static void conf_init_iface(void *scanner, char* ifname, int port)
+static void conf_init_iface(void *scanner, char* ifname)
 {
 	this_iface = malloc(sizeof(conf_iface_t));
 	if (this_iface == NULL) {
@@ -73,12 +73,11 @@ static void conf_init_iface(void *scanner, char* ifname, int port)
 	}
 	memset(this_iface, 0, sizeof(conf_iface_t));
 	this_iface->name = ifname;
-	this_iface->port = port;
 }
 
 static void conf_start_iface(void *scanner, char* ifname)
 {
-	conf_init_iface(scanner, ifname, -1);
+	conf_init_iface(scanner, ifname);
 	add_tail(&new_config->ifaces, &this_iface->n);
 	++new_config->ifaces_count;
 }
@@ -111,7 +110,6 @@ static void conf_start_remote(void *scanner, char *remote)
 	memset(this_remote, 0, sizeof(conf_iface_t));
 	this_remote->name = remote;
 	add_tail(&new_config->remotes, &this_remote->n);
-	sockaddr_init(&this_remote->via, -1);
 	++new_config->remotes_count;
 }
 
@@ -129,7 +127,7 @@ static void conf_remote_set_via(void *scanner, char *item) {
 	if (!found) {
 		cf_error(scanner, "interface '%s' is not defined", item);
 	} else {
-		sockaddr_set(&this_remote->via, found->family, found->address, 0);
+		memcpy(&this_remote->via, &found->addr, sizeof(struct sockaddr_storage));
 	}
 }
 
@@ -238,6 +236,17 @@ static bool set_remote_or_group(void *scanner, char *name,
 
 static void conf_acl_item_install(void *scanner, conf_iface_t *found)
 {
+
+	// additional check for transfers
+
+	if ((this_list == &this_zone->acl.xfr_in || this_list == &this_zone->acl.notify_out)
+	    && sockaddr_port(&found->addr) == 0)
+	{
+		cf_error(scanner, "remote specified for XFR/IN or "
+		"NOTIFY/OUT needs to have valid port!");
+		return;
+	}
+
 	// silently skip duplicates
 
 	conf_remote_t *remote;
@@ -245,16 +254,6 @@ static void conf_acl_item_install(void *scanner, conf_iface_t *found)
 		if (remote->remote == found) {
 			return;
 		}
-	}
-
-	// additional check for transfers
-
-	if ((this_list == &this_zone->acl.xfr_in ||
-	    this_list == &this_zone->acl.notify_out) && found->port == 0)
-	{
-		cf_error(scanner, "remote specified for XFR/IN or "
-		"NOTIFY/OUT needs to have valid port!");
-		return;
 	}
 
 	// add into the list
@@ -511,60 +510,34 @@ interface_start:
 
 interface:
  | interface PORT NUM ';' {
-     if (this_iface->port > 0) {
-       cf_error(scanner, "only one port definition is allowed in interface section\n");
+     if (this_iface->addr.ss_family == AF_UNSPEC) {
+       cf_error(scanner, "can't set port number before interface address\n");
      } else {
-       SET_UINT16(this_iface->port, $3.i, "port");
+       sockaddr_port_set(&this_iface->addr, $3.i);
      }
    }
  | interface ADDRESS IPA ';' {
-     if (this_iface->address != 0) {
-       cf_error(scanner, "only one address is allowed in interface section\n");
-     } else {
-       this_iface->address = $3.t;
-       this_iface->family = AF_INET;
-     }
+     sockaddr_set(&this_iface->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
+     free($3.t);
    }
  | interface ADDRESS IPA '@' NUM ';' {
-     if (this_iface->address != 0) {
-       cf_error(scanner, "only one address is allowed in interface section\n");
-     } else {
-       this_iface->address = $3.t;
-       this_iface->family = AF_INET;
-       if (this_iface->port > 0) {
-	 cf_error(scanner, "only one port definition is allowed in interface section\n");
-       } else {
-         SET_UINT16(this_iface->port, $5.i, "port");
-       }
-     }
+     sockaddr_set(&this_iface->addr, AF_INET, $3.t, $5.i);
+     free($3.t);
    }
  | interface ADDRESS IPA6 ';' {
-     if (this_iface->address != 0) {
-       cf_error(scanner, "only one address is allowed in interface section\n");
-     } else {
-       this_iface->address = $3.t;
-       this_iface->family = AF_INET6;
-     }
+     sockaddr_set(&this_iface->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
+     free($3.t);
    }
  | interface ADDRESS IPA6 '@' NUM ';' {
-     if (this_iface->address != 0) {
-       cf_error(scanner, "only one address is allowed in interface section\n");
-     } else {
-       this_iface->address = $3.t;
-       this_iface->family = AF_INET6;
-       if (this_iface->port > 0) {
-          cf_error(scanner, "only one port definition is allowed in interface section\n");
-       } else {
-          SET_UINT16(this_iface->port, $5.i, "port");
-       }
-     }
+     sockaddr_set(&this_iface->addr, AF_INET, $3.t, $5.i);
+     free($3.t);
    }
  ;
 
 interfaces:
    INTERFACES '{'
  | interfaces interface_start '{' interface '}' {
-   if (this_iface->address == 0) {
+   if (this_iface->addr.ss_family == AF_UNSPEC) {
      cf_error(scanner, "interface '%s' has no defined address", this_iface->name);
    }
  }
@@ -714,75 +687,41 @@ remote_start:
 
 remote:
  | remote PORT NUM ';' {
-     if (this_remote->port != 0) {
-       cf_error(scanner, "only one port definition is allowed in remote section\n");
+     if (this_remote->addr.ss_family == AF_UNSPEC) {
+       cf_error(scanner, "can't set port number before interface address\n");
      } else {
-       SET_UINT16(this_remote->port, $3.i, "port");
+       sockaddr_port_set(&this_remote->addr, $3.i);
      }
    }
  | remote ADDRESS IPA ';' {
-     if (this_remote->address != 0) {
-       cf_error(scanner, "only one address is allowed in remote section\n");
-     } else {
-       this_remote->address = $3.t;
-       this_remote->prefix = IPV4_PREFIXLEN;
-       this_remote->family = AF_INET;
-     }
+     sockaddr_set(&this_remote->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
+     this_remote->prefix = IPV4_PREFIXLEN;
+     free($3.t);
    }
-   | remote ADDRESS IPA '/' NUM ';' {
-       if (this_remote->address != 0) {
-         cf_error(scanner, "only one address is allowed in remote section\n");
-       } else {
-         this_remote->address = $3.t;
-         this_remote->family = AF_INET;
-         SET_NUM(this_remote->prefix, $5.i, 0, IPV4_PREFIXLEN, "prefix length");
-       }
-     }
+ | remote ADDRESS IPA '/' NUM ';' {
+     sockaddr_set(&this_remote->addr, AF_INET, $3.t, 0);
+     SET_NUM(this_remote->prefix, $5.i, 0, IPV4_PREFIXLEN, "prefix length");
+     free($3.t);
+   }
  | remote ADDRESS IPA '@' NUM ';' {
-     if (this_remote->address != 0) {
-       cf_error(scanner, "only one address is allowed in remote section\n");
-     } else {
-       this_remote->address = $3.t;
-       this_remote->family = AF_INET;
-       this_remote->prefix = IPV4_PREFIXLEN;
-       if (this_remote->port != 0) {
-	 cf_error(scanner, "only one port definition is allowed in remote section\n");
-       } else {
-         SET_UINT16(this_remote->port, $5.i, "port");
-       }
-     }
+     sockaddr_set(&this_remote->addr, AF_INET, $3.t, $5.i);
+     this_remote->prefix = IPV4_PREFIXLEN;
+     free($3.t);
    }
  | remote ADDRESS IPA6 ';' {
-     if (this_remote->address != 0) {
-       cf_error(scanner, "only one address is allowed in remote section\n");
-     } else {
-       this_remote->address = $3.t;
-       this_remote->family = AF_INET6;
-       this_remote->prefix = IPV6_PREFIXLEN;
-     }
+     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
+     this_remote->prefix = IPV6_PREFIXLEN;
+     free($3.t);
    }
-   | remote ADDRESS IPA6 '/' NUM ';' {
-       if (this_remote->address != 0) {
-         cf_error(scanner, "only one address is allowed in remote section\n");
-       } else {
-         this_remote->address = $3.t;
-         this_remote->family = AF_INET6;
-         SET_NUM(this_remote->prefix, $5.i, 0, IPV6_PREFIXLEN, "prefix length");
-       }
-     }
+ | remote ADDRESS IPA6 '/' NUM ';' {
+     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, 0);
+     SET_NUM(this_remote->prefix, $5.i, 0, IPV6_PREFIXLEN, "prefix length");
+     free($3.t);
+   }
  | remote ADDRESS IPA6 '@' NUM ';' {
-     if (this_remote->address != 0) {
-       cf_error(scanner, "only one address is allowed in remote section\n");
-     } else {
-       this_remote->address = $3.t;
-       this_remote->family = AF_INET6;
-       this_remote->prefix = IPV6_PREFIXLEN;
-       if (this_remote->port != 0) {
-	 cf_error(scanner, "only one port definition is allowed in remote section\n");
-       } else {
-         SET_UINT16(this_remote->port, $5.i, "port");
-       }
-     }
+     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, $5.i);
+     this_remote->prefix = IPV6_PREFIXLEN;
+     free($3.t);
    }
  | remote KEY TEXT ';' {
      if (this_remote->key != 0) {
@@ -809,7 +748,7 @@ remote:
 remotes:
    REMOTES '{'
  | remotes remote_start '{' remote '}' {
-     if (this_remote->address == 0) {
+     if (this_remote->addr.ss_family == AF_UNSPEC) {
        cf_error(scanner, "remote '%s' has no defined address", this_remote->name);
      }
    }
@@ -1082,7 +1021,7 @@ log: LOG { new_config->logs_count = 0; } '{' log_start log_end
  ;
 
 ctl_listen_start:
-  LISTEN_ON { conf_init_iface(scanner, NULL, -1); }
+  LISTEN_ON { conf_init_iface(scanner, NULL); }
   ;
 
 ctl_allow_start:
@@ -1094,17 +1033,16 @@ ctl_allow_start:
 control:
    CONTROL '{' { new_config->ctl.have = true; }
  | control ctl_listen_start '{' interface '}' {
-     if (this_iface->address == 0) {
+     if (this_iface->addr.ss_family == AF_UNSPEC) {
        cf_error(scanner, "control interface has no defined address");
      } else {
        new_config->ctl.iface = this_iface;
      }
  }
  | control ctl_listen_start TEXT ';' {
-     this_iface->address = $3.t;
-     this_iface->family = AF_UNIX;
-     this_iface->port = 0;
+     sockaddr_set(&this_iface->addr, AF_UNIX, $3.t, 0);
      new_config->ctl.iface = this_iface;
+     free($3.t);
  }
  | control ctl_allow_start '{' zone_acl '}'
  | control ctl_allow_start zone_acl_list

@@ -217,36 +217,36 @@ static int conf_process(conf_t *conf)
 		conf->max_conn_reply = CONFIG_REPLY_WD;
 	}
 
-	// Postprocess interfaces
-	conf_iface_t *cfg_if = NULL;
-	WALK_LIST(cfg_if, conf->ifaces) {
-		if (cfg_if->port <= 0) {
-			cfg_if->port = CONFIG_DEFAULT_PORT;
-		}
-	}
-
 	/* Default interface. */
 	conf_iface_t *ctl_if = conf->ctl.iface;
 	if (!conf->ctl.have && ctl_if == NULL) {
 		ctl_if = malloc(sizeof(conf_iface_t));
 		memset(ctl_if, 0, sizeof(conf_iface_t));
-		ctl_if->family = AF_UNIX;
-		ctl_if->address = strdup("knot.sock");
+		sockaddr_set(&ctl_if->addr, AF_UNIX, "knot.sock", 0);
 		conf->ctl.iface = ctl_if;
 	}
 
 	/* Control interface. */
 	if (ctl_if) {
-		if (ctl_if->family == AF_UNIX) {
-			ctl_if->address = conf_abs_path(conf->rundir,
-			                                ctl_if->address);
+		if (ctl_if->addr.ss_family == AF_UNIX) {
+			char *full_path = malloc(SOCKADDR_STRLEN);
+			memset(full_path, 0, SOCKADDR_STRLEN);
+			sockaddr_tostr(&ctl_if->addr, full_path, SOCKADDR_STRLEN);
+
+			/* Convert to absolute path. */
+			full_path = conf_abs_path(conf->rundir, full_path);
+			if(full_path) {
+				sockaddr_set(&ctl_if->addr, AF_UNIX, full_path, 0);
+				free(full_path);
+			}
+
 			/* Check for ACL existence. */
 			if (!EMPTY_LIST(conf->ctl.allow)) {
 				log_server_warning("Control 'allow' statement "
 				                   "does not affect UNIX sockets.\n");
 			}
-		} else if (ctl_if->port <= 0) {
-			ctl_if->port = REMOTE_DPORT;
+		} else if (sockaddr_port(&ctl_if->addr) <= 0) {
+			sockaddr_port_set(&ctl_if->addr, REMOTE_DPORT);
 		}
 	}
 
@@ -434,14 +434,10 @@ static int conf_process(conf_t *conf)
 	if (conf->gid < 0) conf->gid = getgid();
 
 	/* Build remote control ACL. */
-	sockaddr_t addr;
 	conf_remote_t *r = NULL;
 	WALK_LIST(r, conf->ctl.allow) {
 		conf_iface_t *i = r->remote;
-		sockaddr_init(&addr, -1);
-		sockaddr_set(&addr, i->family, i->address, 0);
-		sockaddr_setprefix(&addr, i->prefix);
-		acl_insert(conf->ctl.acl, &addr, i->key);
+		acl_insert(conf->ctl.acl, &i->addr, i->prefix, i->key);
 	}
 
 	return ret;
@@ -465,9 +461,8 @@ void __attribute__ ((constructor)) conf_init()
 	/* Create default interface. */
 	conf_iface_t * iface = malloc(sizeof(conf_iface_t));
 	memset(iface, 0, sizeof(conf_iface_t));
+	sockaddr_set(&iface->addr, AF_INET, "127.0.0.1", CONFIG_DEFAULT_PORT);
 	iface->name = strdup("localhost");
-	iface->address = strdup("127.0.0.1");
-	iface->port = CONFIG_DEFAULT_PORT;
 	add_tail(&s_config->ifaces, &iface->n);
 	++s_config->ifaces_count;
 
@@ -1026,7 +1021,6 @@ void conf_free_iface(conf_iface_t *iface)
 	}
 
 	free(iface->name);
-	free(iface->address);
 	free(iface);
 }
 
