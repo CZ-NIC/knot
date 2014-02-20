@@ -2016,13 +2016,11 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 	 */
 	int ret;
 	if (*diff_chs != NULL) {
+		assert(!zones_changesets_empty(*diff_chs));
 		/* Apply DNSSEC changeset to the new zone. */
 		ret = xfrin_apply_changesets_directly(zone->contents,
 		                                      (*diff_chs)->changes,
 		                                      *diff_chs);
-
-		/* Free the DNSSEC changeset, not needed anymore. */
-		knot_changesets_free(diff_chs);
 
 		if (ret != KNOT_EOK) {
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
@@ -2199,6 +2197,10 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	if (ret != KNOT_EOK) {
 		rcu_read_unlock();
 		return ret;
+	}
+
+	if (zones_changesets_empty(diff_chs)) {
+		knot_changesets_free(&diff_chs);
 	}
 
 	/* Now we have changeset with DNSSEC changes, but not applied to zone.
