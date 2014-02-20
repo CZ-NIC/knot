@@ -1428,8 +1428,6 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 			knot_rrset_deep_free(rrset, true, NULL);
 			return ret;
 		}
-		dbg_rrset_detail("rr: deserialize: RR read size=%zu,"
-		                 "actual=%"PRIu32"\n", read, rdata_size);
 		offset += rdata_size;
 	}
 

@@ -364,8 +364,6 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	if (rrset1 && rrset2 &&
 	    (knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) &&
 	    knot_rrset_rr_count(to_remove) == 0) {
-		dbg_zonediff_detail("zone_diff: diff_rdata: Remove RR: Old TTL=%"PRIu32", New=%"PRIu32"\n",
-		                    rrset1->ttl, rrset2->ttl);
 		/* We have to remove old TTL. */
 		assert(knot_rrset_ttl(to_remove) == knot_rrset_ttl(rrset1));
 		/*
@@ -412,8 +410,6 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 	if (rrset1 && rrset2 &&
 	    knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) {
 		/* We have to add newer TTL. */
-		dbg_zonediff_detail("zone_diff: diff_rdata: Add RR: Old TTL=%"PRIu32", New=%"PRIu32"\n",
-		                    rrset1->ttl, rrset2->ttl);
 		if (knot_rrset_rr_count(to_add) == 0) {
 			/*
 			 * Fill the RDATA so that the change gets saved. All RRs can
