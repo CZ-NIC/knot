@@ -2100,7 +2100,8 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 		 * generated. May check that in an assert.
 		 */
 		if (zone_changed) {
-			assert(old_zone->contents != zone->contents);
+			assert(!old_zone ||
+			       old_zone->contents != zone->contents);
 			ret = xfrin_apply_changesets_directly(zone->contents,
 			                                      diff_chs->changes,
 			                                      diff_chs);
