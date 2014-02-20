@@ -2074,18 +2074,22 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 	return KNOT_EOK;
 }
 
-static int store_chgsets_after_load(zone_t *zone, const conf_zone_t *z,
+static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
+                                    const conf_zone_t *z,
                                     knot_changesets_t *diff_chs,
-                                    bool apply_chgset)
+                                    bool apply_chgset, bool zone_changed)
 {
 	assert(zone != NULL);
 	assert(z != NULL);
 	assert(diff_chs != NULL);
 	assert(!zones_changesets_empty(diff_chs));
+	assert(old_zone != NULL);
 
 	journal_t *transaction = NULL;
+
 	int ret = zones_store_changesets_begin_and_store(zone, diff_chs,
-	                                             &transaction);
+	                                                 &transaction);
+
 	if (ret != KNOT_EOK) {
 		log_zone_error("Zone %s: Could not save new entry in journal "
 		               "(%s)!\n", z->name, knot_strerror(ret));
@@ -2094,19 +2098,27 @@ static int store_chgsets_after_load(zone_t *zone, const conf_zone_t *z,
 
 	assert(transaction);
 
+	knot_zone_contents_t *new_contents = NULL;
 	if (apply_chgset) {
 		/* Apply DNSSEC changeset to the zone as it was not
 		 * applied yet. In this case, no diff should have been
 		 * generated. May check that in an assert.
 		 */
-		ret = xfrin_apply_changesets_directly(zone->contents,
-		                                      diff_chs->changes,
-		                                      diff_chs);
+		if (zone_changed) {
+			ret = xfrin_apply_changesets_directly(zone->contents,
+			                                      diff_chs->changes,
+			                                      diff_chs);
+		} else {
+			ret = xfrin_apply_changesets(zone, diff_chs,
+			                             &new_contents);
+		}
+
 
 		if (ret != KNOT_EOK) {
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
 			               "modifying zone (%s).\n", z->name,
 			               knot_strerror(ret));
+			zones_store_changesets_rollback(transaction);
 			return ret;
 		}
 	}
@@ -2117,6 +2129,31 @@ static int store_chgsets_after_load(zone_t *zone, const conf_zone_t *z,
 		log_zone_error("Zone %s: Failed to commit new journal entry (%s"
 		               ").\n", z->name, knot_strerror(ret));
 		return ret;
+	}
+
+	if (new_contents) {
+		assert(!zone_changed);
+		rcu_read_unlock();
+		/*! \note This will disconnect shared contents that will be freed
+		 *        in the function below. Not an ideal solution, but
+		 *        reworking zone management is out of scope of this MR.
+		 */
+		if (old_zone && !zone_changed) {
+			/*! \todo Maybe use the condition from this assert in
+			 *        the if statement.
+			 */
+			assert(old_zone->contents == zone->contents);
+			old_zone->contents = NULL;
+		}
+		ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_DNSSEC);
+		rcu_read_lock();
+		if (ret != KNOT_EOK) {
+			// Cleanup old and new contents
+			xfrin_rollback_update(zone->contents, &new_contents,
+			                      diff_chs->changes);
+			return ret;
+		}
+
 	}
 
 	return KNOT_EOK;
@@ -2186,7 +2223,8 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	 * (Or it is empty, then nothing has to be done.)
 	 */
 	if (!zones_changesets_empty(diff_chs)) {
-		ret = store_chgsets_after_load(zone, z, diff_chs, apply_chgset);
+		ret = store_chgsets_after_load(old_zone, zone, z, diff_chs,
+		                               apply_chgset, zone_changed);
 	}
 
 	knot_changesets_free(&diff_chs);
