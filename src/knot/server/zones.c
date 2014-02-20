@@ -1992,6 +1992,9 @@ static int sign_after_load(zone_t *zone, const conf_zone_t *z,
 		                                new_serial);
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(diff_chs);
+			log_zone_error("DNSSEC: Zone %s - Signing failed while "
+			               "generating records (%s).\n",
+			               z->name, knot_strerror(ret));
 			return ret;
 		}
 	}
@@ -2022,14 +2025,16 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 	if (*diff_chs != NULL) {
 		/* Apply DNSSEC changeset to the new zone. */
 		ret = xfrin_apply_changesets_directly(zone->contents,
-						      (*diff_chs)->changes,
-						      *diff_chs);
+		                                      (*diff_chs)->changes,
+		                                      *diff_chs);
 
 		/* Free the DNSSEC changeset, not needed anymore. */
 		knot_changesets_free(diff_chs);
 
 		if (ret != KNOT_EOK) {
-			/*! \todo Check if some error is printed. */
+			log_zone_error("DNSSEC: Zone %s - Signing failed while "
+			               "modifying zone (%s).\n", z->name,
+			               knot_strerror(ret));
 			return ret;
 		}
 
@@ -2038,6 +2043,8 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 
 	/* Calculate differences. */
 	if (z->build_diffs) {
+		log_zone_info("Zone %s: generating diff after reload.\n",
+		              z->name);
 		*diff_chs = knot_changesets_create();
 		if (*diff_chs == NULL) {
 			return KNOT_ENOMEM;
@@ -2053,15 +2060,12 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning("Zone %s: Zone file changed, "
 			                 "but serial didn't - won't "
-			                 "create changesets.\n", z->name);
+			                 "create journal entry.\n", z->name);
 		} else if (ret != KNOT_EOK) {
-			log_zone_warning("Zone %s: Failed to calculate "
-			                 "differences from the zone "
-			                 "file update: %s\n",
-			                 z->name, knot_strerror(ret));
-		}
-
-		if (ret != KNOT_EOK && ret != KNOT_ENODIFF) {
+			log_zone_error("Zone %s: Failed to calculate "
+			               "differences from the zone "
+			               "file update: %s\n",
+			               z->name, knot_strerror(ret));
 			knot_changesets_free(diff_chs);
 			return ret;
 		}
@@ -2083,7 +2087,7 @@ static int store_chgsets_after_load(zone_t *zone, const conf_zone_t *z,
 	int ret = zones_store_changesets_begin_and_store(zone, diff_chs,
 	                                             &transaction);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Zone %s: Could not store changesets to journal "
+		log_zone_error("Zone %s: Could not save new entry in journal "
 		               "(%s)!\n", z->name, knot_strerror(ret));
 		return ret;
 	}
@@ -2100,7 +2104,9 @@ static int store_chgsets_after_load(zone_t *zone, const conf_zone_t *z,
 		                                      diff_chs);
 
 		if (ret != KNOT_EOK) {
-			/*! \todo Check if some error is printed. */
+			log_zone_error("DNSSEC: Zone %s - Signing failed while "
+			               "modifying zone (%s).\n", z->name,
+			               knot_strerror(ret));
 			return ret;
 		}
 	}
@@ -2108,8 +2114,8 @@ static int store_chgsets_after_load(zone_t *zone, const conf_zone_t *z,
 	/* Commit transaction. */
 	ret = zones_store_changesets_commit(transaction);
 	if (ret != KNOT_EOK) {
-		log_zone_error("Zone %s: Failed to commit stored changesets: %s"
-		               ".\n", z->name, knot_strerror(ret));
+		log_zone_error("Zone %s: Failed to commit new journal entry (%s"
+		               ").\n", z->name, knot_strerror(ret));
 		return ret;
 	}
 
@@ -2179,14 +2185,12 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	 * In either case the changeset must be stored (if it's not empty).
 	 * (Or it is empty, then nothing has to be done.)
 	 */
-
-	// Store *ALL* changes to disk.
 	if (!zones_changesets_empty(diff_chs)) {
 		ret = store_chgsets_after_load(zone, z, diff_chs, apply_chgset);
 	}
 
 	knot_changesets_free(&diff_chs);
-
 	rcu_read_unlock();
-	return KNOT_EOK;
+
+	return ret;
 }
