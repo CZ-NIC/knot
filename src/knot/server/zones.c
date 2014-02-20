@@ -2083,7 +2083,6 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 	assert(z != NULL);
 	assert(diff_chs != NULL);
 	assert(!zones_changesets_empty(diff_chs));
-	assert(old_zone != NULL);
 
 	journal_t *transaction = NULL;
 
@@ -2109,6 +2108,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			                                      diff_chs->changes,
 			                                      diff_chs);
 		} else {
+			assert(old_zone != NULL);
 			ret = xfrin_apply_changesets(zone, diff_chs,
 			                             &new_contents);
 		}
@@ -2133,6 +2133,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 
 	if (new_contents) {
 		assert(!zone_changed);
+		assert(old_zone != NULL);
 		rcu_read_unlock();
 		/*! \note This will disconnect shared contents that will be freed
 		 *        in the function below. Not an ideal solution, but
