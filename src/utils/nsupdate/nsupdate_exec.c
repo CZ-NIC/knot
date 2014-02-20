@@ -297,8 +297,7 @@ static int rr_list_append(scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 		DBG("%s: failed to create dname\n", __func__);
 		return KNOT_ENOMEM;
 	}
-	knot_rrset_t *rr = knot_rrset_new(owner, s->r_type, s->r_class,
-	                                  s->r_ttl, NULL);
+	knot_rrset_t *rr = knot_rrset_new(owner, s->r_type, s->r_class, NULL);
 	if (!rr) {
 		DBG("%s: failed to create rrset\n", __func__);
 		knot_dname_free(&owner);
@@ -310,6 +309,7 @@ static int rr_list_append(scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 		size_t pos = 0;
 		int ret = knot_rrset_rdata_from_wire_one(rr, s->r_data, &pos,
 		                                         s->r_data_length,
+		                                         s->r_ttl,
 		                                         s->r_data_length,
 		                                         NULL);
 		if (ret != KNOT_EOK) {

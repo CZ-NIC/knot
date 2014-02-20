@@ -51,24 +51,17 @@ struct knot_node;
  */
 
 struct knot_rrset {
-	/*! \brief Domain name being the owner of the RRSet. */
-	knot_dname_t *owner;
+	knot_dname_t *owner; /*!< Domain name being the owner of the RRSet. */
 	uint16_t type; /*!< TYPE of the RRset. */
 	uint16_t rclass; /*!< CLASS of the RRSet. */
-	uint32_t ttl; /*!< TTL of the RRSet. */
+	uint16_t rr_count;
 	/*! \brief RDATA array (for all RRs). DNAMEs stored as full,
 	 *         uncompressed wire. Binary data stored in wireformat order.
+	 *         Each RR is prepended with RDATA length and TTL, respectively.
 	 */
-	uint8_t *rdata; /*!< RDATA array (All RRs). DNAMEs stored as full wire. */
-	/*! \brief Beginnings of RRs - first one does not contain 0, last
-	 *         last one holds total length of all RRs together
-	 */
-	uint32_t *rdata_indices; /*!< Indices to beginnings of RRs (without 0)*/
-	uint16_t rdata_count; /*!< Count of RRs in this RRSet. */
-
+	uint8_t *rrs;
 	/* Optional fields. */
-
-	struct knot_node **additional; /* Additional records. */
+	struct knot_node **additional; /*!< Additional records. */
 };
 
 typedef struct knot_rrset knot_rrset_t;
@@ -89,8 +82,6 @@ typedef enum  {
 
 /*----------------------------------------------------------------------------*/
 
-uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset);
-
 /*!
  * \brief Creates a new RRSet with the given properties.
  *
@@ -99,13 +90,11 @@ uint32_t rrset_rdata_size_total(const knot_rrset_t *rrset);
  * \param owner OWNER of the RRSet.
  * \param type TYPE of the RRSet.
  * \param rclass CLASS of the RRSet.
- * \param ttl TTL of the RRset.
  *
- * \return New RRSet structure with the given OWNER, TYPE, CLASS and TTL or NULL
- *         if an error occured.
+ * \return New RRSet structure or NULL if an error occured.
  */
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass, uint32_t ttl,
+                             uint16_t rclass,
                              mm_ctx_t *mm);
 
 /*!
@@ -130,8 +119,9 @@ knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl, mm_ctx_t *mm);
  * \retval KNOT_EINVAL on wrong arguments.
  * \retval KNOT_EOK on success.
  */
-int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
-                         uint16_t size, mm_ctx_t *mm);
+int knot_rrset_add_rr(knot_rrset_t *rrset, const uint8_t *rdata,
+                      const uint16_t size, const uint32_t ttl,
+                      mm_ctx_t *mm);
 
 /*!
  * \brief Creates RDATA memory and returns a pointer to it.
@@ -145,21 +135,8 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
  * \return Pointer to memory to be written to.
  * \retval NULL if arguments are invalid
  */
-uint8_t* knot_rrset_create_rdata(knot_rrset_t *rrset, const uint16_t size,
-                                 mm_ctx_t *mm);
-
-/*!
- * \brief Returns size of an RR RDATA on a given position.
- *
- * \param rrset RRSet holding RR RDATA.
- * \param pos RR position.
- *
- * \retval 0 on error.
- * \return Item size on success.
- */
-/* [code-review] Misleading name, maybe remove the word 'item'. And add knot. */
-uint16_t rrset_rdata_item_size(const knot_rrset_t *rrset,
-                               size_t pos);
+uint8_t* knot_rrset_create_rr(knot_rrset_t *rrset, const uint16_t size,
+                              const uint32_t ttl, mm_ctx_t *mm);
 
 /*!
  * \brief Adds RRSIG signatures to this RRSet.
@@ -257,23 +234,26 @@ uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
  * \brief Returns RDATA of RR on given position.
  *
  * \param rrset RRSet to get the RDATA from.
- * \param rdata_pos Position of RR to get.
+ * \param pos Position of RR to get.
  *
  * \retval NULL if no RDATA on rdata_pos exist.
  * \return Pointer to RDATA on given position if successfull.
  */
-uint8_t *knot_rrset_get_rdata(const knot_rrset_t *rrset, size_t rdata_pos);
+uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos);
 
 /*!
- * \brief Returns the count of RRs in a given RRSet.
+ * \brief Returns size of an RR RDATA on a given position.
  *
- * \param rrset RRSet to get the RRs count from.
+ * \param rrset RRSet holding RR RDATA.
+ * \param pos RR position.
  *
- * \return Count of the RRs in a given RRSet.
+ * \retval 0 on error.
+ * \return Item size on success.
  */
-uint16_t knot_rrset_rdata_rr_count(const knot_rrset_t *rrset);
+uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos);
+uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
 
-int knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
+bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
 /*!
  * \brief Compares two RRSets for equality.
@@ -292,14 +272,6 @@ int knot_rrset_equal(const knot_rrset_t *r1,
 
 int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          mm_ctx_t *mm);
-
-/*! \brief Does round-robin rotation of the RRSet.
- *
- * \note This is not thread-safe. If two threads call this function, the RRSet
- *       may rotate twice, or not rotate at all. This is not a big issue though.
- *       In future we may replace this with some per-thread counter.
- */
-void knot_rrset_rotate(knot_rrset_t *rrset);
 
 /*!
  * \brief Destroys the RRSet structure.
@@ -386,7 +358,7 @@ int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
                           size_t *size);
 
 //TODO test
-int rrset_deserialize(uint8_t *stream, size_t *stream_size,
+int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset);
 
 /* \brief Adds RR on 'pos' position from 'source' to 'dest' */
@@ -396,10 +368,11 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
  *        Deleted RRs are returned in 'rr_deleted' */
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
-                                     knot_rrset_t **rr_deleted);
+                                     knot_rrset_t **rr_deleted, mm_ctx_t *mm);
 /* \brief Removes RRs contained in 'what' RRSet from 'from' RRSet. */
 int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
-                                         const knot_rrset_t *what);
+                                         const knot_rrset_t *what,
+                                         mm_ctx_t *mm);
 /* \brief Finds RR at 'pos' position in 'rr_reference' RRSet in 
          'rr_search_in' RRSet. Position returned in 'pos_out'. */
 int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
@@ -408,12 +381,8 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
 /* \brief Creates one RR from wire, stores it into 'rrset'. */
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
-                                   size_t total_size, size_t rdlength,
+                                   size_t total_size, uint32_t ttl, size_t rdlength,
                                    mm_ctx_t *mm);
-
-int knot_rrset_ds_check(const knot_rrset_t *rrset);
-
-uint8_t *rrset_rdata_pointer(const knot_rrset_t *rrset, size_t pos);
 
 int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
                             const knot_rrset_t *rrset2,
@@ -444,6 +413,8 @@ int rrset_additional_needed(uint16_t rrtype);
 int knot_rrset_synth_rrsig(const knot_rrset_t *covered,
                            const knot_rrset_t *rrsigs, knot_rrset_t **out_sig,
                            mm_ctx_t *mm);
+
+size_t knot_rrset_rr_count(const knot_rrset_t *rrset);
 
 #endif /* _KNOT_RRSET_H_ */
 

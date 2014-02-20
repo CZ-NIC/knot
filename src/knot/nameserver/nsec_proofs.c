@@ -66,7 +66,7 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 	}
 
 	int res = KNOT_EOK;
-	if (knot_rrset_rdata_rr_count(rrset)) {
+	if (knot_rrset_rr_count(rrset)) {
 		res = knot_pkt_put(resp, 0, rrset, rrsigs, KNOT_PF_CHECKDUP);
 	}
 
@@ -302,7 +302,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 
 	int ret = KNOT_EOK;
 
-	if (rrset != NULL && knot_rrset_rdata_rr_count(rrset)) {
+	if (rrset != NULL && knot_rrset_rr_count(rrset)) {
 		// NSEC proving that there is no node with the searched name
 		ret = knot_pkt_put(resp, 0, rrset, rrsigs, 0);
 	}
@@ -690,7 +690,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		dbg_ns("%s: adding NSEC NODATA\n", __func__);
 		if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC))
 		    != NULL
-		    && knot_rrset_rdata_rr_count(rrset)) {
+		    && knot_rrset_rr_count(rrset)) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
 			const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 			ret = knot_pkt_put(resp, 0, rrset, rrsigs, 0);

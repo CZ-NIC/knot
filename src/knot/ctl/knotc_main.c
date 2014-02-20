@@ -124,7 +124,7 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 		return KNOT_EMALF;
 	}
 
-	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
+	for (uint16_t i = 0; i < knot_rrset_rr_count(rr); i++) {
 		/* Parse TXT. */
 		remote_print_txt(rr, i);
 	}

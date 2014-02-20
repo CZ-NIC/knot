@@ -31,27 +31,6 @@ struct axfr_proc {
 	unsigned cur_rrset;
 };
 
-static int put_rrsigs_for_rrset(knot_pkt_t *pkt,
-                                const knot_rrset_t *rr,
-                                const knot_rrset_t *rrsigs,
-                                unsigned flags)
-{
-	knot_rrset_t *synth_rrsig = NULL;
-	int ret = knot_rrset_synth_rrsig(rr, rrsigs, &synth_rrsig, &pkt->mm);
-	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-		return ret;
-	}
-	if (ret == KNOT_ENOENT) {
-		return KNOT_EOK;
-	}
-
-	ret = knot_pkt_put(pkt, 0, synth_rrsig, NULL, flags | KNOT_PF_FREE);
-	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&synth_rrsig, true, &pkt->mm);
-	}
-	return ret;
-}
-
 static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *state)
 {
 	int ret = KNOT_EOK;
@@ -59,32 +38,15 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	int rrset_count = knot_node_rrset_count(node);
 	unsigned flags = KNOT_PF_NOTRUNC;
 	const knot_rrset_t **rrset = knot_node_rrsets_no_copy(node);
-	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
 		if (rrset[i]->type == KNOT_RRTYPE_SOA) {
-			/* Put RRSIGs for SOA. */
-			ret = put_rrsigs_for_rrset(pkt, rrset[i], rrsigs, flags);
-			if (ret != KNOT_EOK) {
-				state->cur_rrset = i;
-				return ret;
-			}
-			continue;
-		}
-		if (rrset[i]->type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
 		ret = knot_pkt_put(pkt, 0, rrset[i], NULL, flags);
 
 		/* If something failed, remember the current RR for later. */
-		if (ret != KNOT_EOK) {
-			state->cur_rrset = i;
-			return ret;
-		}
-
-		/* Put RRSIGs after the records, so TTLs are matched. */
-		ret = put_rrsigs_for_rrset(pkt, rrset[i], rrsigs, flags);
 		if (ret != KNOT_EOK) {
 			state->cur_rrset = i;
 			return ret;

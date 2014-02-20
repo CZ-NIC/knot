@@ -164,7 +164,7 @@ static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
 	}
 
 	/* Create new additional nodes. */
-	uint16_t rdcount = knot_rrset_rdata_rr_count(rr);
+	uint16_t rdcount = knot_rrset_rr_count(rr);
 	rr->additional = malloc(rdcount * sizeof(knot_node_t*));
 	if (rr->additional == NULL) {
 		return KNOT_ENOMEM;
@@ -1167,7 +1167,7 @@ dbg_zone_exec_detail(
 
 	while (nsec3_rrset && !match) {
 		for (uint16_t i = 0;
-		     i < knot_rrset_rdata_rr_count(nsec3_rrset) && !match;
+		     i < knot_rrset_rr_count(nsec3_rrset) && !match;
 		     i++) {
 			if (knot_zc_nsec3_parameters_match(nsec3_rrset,
 							    &zone->nsec3_params,
@@ -1382,7 +1382,7 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 	const knot_rrset_t *rrset = knot_node_rrset(zone->apex,
 						    KNOT_RRTYPE_NSEC3PARAM);
 
-	if (rrset != NULL && rrset->rdata_count > 0) {
+	if (rrset != NULL) {
 		int r = knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
 		if (r != KNOT_EOK) {
 			dbg_zone("Failed to load NSEC3PARAM (%s).\n",

@@ -40,10 +40,8 @@
 static knot_rrset_t *sig0_create_rrset(void)
 {
 	knot_dname_t *root = knot_dname_from_str(".");
-	uint32_t ttl = 0;
-
 	knot_rrset_t *sig_record = knot_rrset_new(root, KNOT_RRTYPE_SIG,
-	                                          KNOT_CLASS_ANY, ttl, NULL);
+	                                          KNOT_CLASS_ANY, NULL);
 
 	return sig_record;
 }
@@ -74,7 +72,8 @@ static uint8_t *sig0_create_rdata(knot_rrset_t *rrset, knot_dnssec_key_t *key)
 	assert(key);
 
 	size_t rdata_size = knot_rrsig_rdata_size(key);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size, NULL);
+	uint32_t ttl = 0;
+	uint8_t *rdata = knot_rrset_create_rr(rrset, rdata_size, ttl, NULL);
 	if (!rdata) {
 		return NULL;
 	}

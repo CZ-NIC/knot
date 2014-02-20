@@ -458,7 +458,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	knot_rrset_t *tmp_tsig =
 		knot_rrset_new(key_name_copy,
-			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0, NULL);
+			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, NULL);
 	if (!tmp_tsig) {
 		dbg_tsig("TSIG: tmp_tsig = NULL\n");
 		knot_dname_free(&key_name_copy);
@@ -499,11 +499,6 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
-
-dbg_rrset_exec_detail(
-	dbg_tsig_detail("tmp_tsig before sign_wire():\n");
-	knot_rrset_dump(tmp_tsig);
-);
 
 	int ret = KNOT_ERROR;
 	ret = knot_tsig_create_sign_wire(msg, *msg_len, /*msg_max_len,*/
@@ -566,7 +561,8 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Create tmp TSIG. */
 	knot_dname_t *owner_copy = knot_dname_copy(key->name);
 	knot_rrset_t *tmp_tsig = knot_rrset_new(owner_copy,
-	                                        KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0,
+	                                        KNOT_RRTYPE_TSIG,
+	                                        KNOT_CLASS_ANY,
 	                                        NULL);
 	if (!tmp_tsig) {
 		knot_dname_free(&owner_copy);
@@ -714,7 +710,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
-	assert(tsig_rr->rdata);
+	assert(tsig_rr->rrs);
 
 	if (use_times) {
 		/* Wire is not a single packet, TSIG RRs must be stripped already. */
@@ -729,7 +725,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 		                                 tsig_rr, tsig_key);
 	}
 
-	assert(tsig_rr->rdata);
+	assert(tsig_rr->rrs);
 	free(wire_to_sign);
 
 	if (ret != KNOT_EOK) {
@@ -822,7 +818,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	knot_rrset_t *tmp_tsig =
-		knot_rrset_new(key_name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, 0,
+		knot_rrset_new(key_name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY,
 		               NULL);
 	if (!tmp_tsig) {
 		dbg_tsig("TSIG: tmp_tsig = NULL\n");

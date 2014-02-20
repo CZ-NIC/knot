@@ -50,7 +50,7 @@ static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 	knot_dname_t *owner_copy = knot_dname_copy(covered->owner);
 
 	return knot_rrset_new(owner_copy, KNOT_RRTYPE_RRSIG, covered->rclass,
-	                      covered->ttl, NULL);
+	                      NULL);
 }
 
 /*- private API - signing of in-zone nodes -----------------------------------*/
@@ -78,7 +78,8 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 		return false;
 	}
 
-	for (int i = 0; i < rrsigs->rdata_count; i++) {
+	size_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	for (int i = 0; i < rrsigs_rdata_count; i++) {
 		uint16_t keytag = knot_rdata_rrsig_key_tag(rrsigs, i);
 		if (keytag != key->keytag) {
 			continue;
@@ -226,7 +227,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		return result;
 	}
 
-	for (int i = 0; i < synth_rrsig->rdata_count; i++) {
+	size_t rrsig_rdata_count = knot_rrset_rr_count(synth_rrsig);
+	for (int i = 0; i < rrsig_rdata_count; i++) {
 		const knot_zone_key_t *key;
 		key = get_matching_zone_key(synth_rrsig, i, zone_keys);
 
@@ -294,7 +296,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	assert(covered);
 	assert(zone_keys);
 	assert(changeset);
-	if (covered->rdata_count == 0) {
+	if (covered->rrs == NULL) {
 		return KNOT_EOK;
 	}
 
@@ -445,7 +447,8 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
-	for (size_t i = 0; i < rrsigs->rdata_count; ++i) {
+	size_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	for (size_t i = 0; i < rrsigs_rdata_count; ++i) {
 		uint16_t type_covered = knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (!knot_node_rrset(node, type_covered)) {
 			knot_rrset_t *to_remove = knot_rrset_new_from(rrsigs, NULL);
@@ -681,10 +684,10 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
 	assert(dnskeys);
 	assert(key);
 
-	for (int i = 0; i < dnskeys->rdata_count; i++) {
-		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
-		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
-
+	size_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	for (int i = 0; i < dnskeys_rdata_count; i++) {
+		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
+		size_t rdata_size = knot_rrset_rr_size(dnskeys, i);
 		if (dnskey_rdata_match(key, rdata, rdata_size)) {
 			return true;
 		}
@@ -694,14 +697,16 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
 }
 
 static int rrset_add_zone_key(knot_rrset_t *rrset,
-                              const knot_zone_key_t *zone_key)
+                              const knot_zone_key_t *zone_key,
+                              uint32_t ttl)
 {
 	assert(rrset);
 	assert(zone_key);
 
 	const knot_binary_t *key_rdata = &zone_key->dnssec_key.dnskey_rdata;
 
-	return knot_rrset_add_rdata(rrset, key_rdata->data, key_rdata->size, NULL);
+	return knot_rrset_add_rr(rrset, key_rdata->data, key_rdata->size, ttl,
+	                         NULL);
 }
 
 /*!
@@ -734,15 +739,16 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 	knot_rrset_t *to_remove = NULL;
 	int result = KNOT_EOK;
 
-	if (dnskeys->ttl != soa->ttl) {
+	if (knot_rrset_ttl(dnskeys) != knot_rrset_ttl(soa)) {
 		dbg_dnssec_detail("removing DNSKEYs (SOA TTL differs)\n");
 		result = knot_rrset_deep_copy(dnskeys, &to_remove, NULL);
 		goto done;
 	}
 
-	for (int i = 0; i < dnskeys->rdata_count; i++) {
-		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
-		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
+	size_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	for (int i = 0; i < dnskeys_rdata_count; i++) {
+		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
+		size_t rdata_size = knot_rrset_rr_size(dnskeys, i);
 		uint16_t keytag = knot_keytag(rdata, rdata_size);
 		const knot_zone_key_t *key = knot_get_zone_key(zone_keys, keytag);
 		if (key == NULL) {
@@ -803,7 +809,7 @@ static knot_rrset_t *create_dnskey_rrset_from_soa(const knot_rrset_t *soa)
 		return NULL;
 	}
 
-	return knot_rrset_new(owner, KNOT_RRTYPE_DNSKEY, soa->rclass, soa->ttl,
+	return knot_rrset_new(owner, KNOT_RRTYPE_DNSKEY, soa->rclass,
 	                      NULL);
 }
 
@@ -830,7 +836,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 
 	knot_rrset_t *to_add = NULL;
 	int result = KNOT_EOK;
-	bool add_all = dnskeys == NULL || dnskeys->ttl != soa->ttl;
+	bool add_all = dnskeys == NULL || knot_rrset_ttl(dnskeys) != knot_rrset_ttl(soa);
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const knot_zone_key_t *key = &zone_keys->keys[i];
@@ -853,7 +859,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 			}
 		}
 
-		result = rrset_add_zone_key(to_add, key);
+		result = rrset_add_zone_key(to_add, key, knot_rrset_ttl(soa));
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -909,9 +915,10 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	}
 
 	// add unknown keys from zone
-	for (int i = 0; dnskeys && i < dnskeys->rdata_count; i++) {
-		uint8_t *rdata = knot_rrset_get_rdata(dnskeys, i);
-		size_t rdata_size = rrset_rdata_item_size(dnskeys, i);
+	size_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	for (int i = 0; dnskeys && i < dnskeys_rdata_count; i++) {
+		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
+		size_t rdata_size = knot_rrset_rr_size(dnskeys, i);
 		uint16_t keytag = knot_keytag(rdata, rdata_size);
 		if (knot_get_zone_key(zone_keys, keytag) != NULL) {
 			continue;
@@ -930,7 +937,8 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 			continue;
 		}
 
-		result = rrset_add_zone_key(new_dnskeys, key);
+		result = rrset_add_zone_key(new_dnskeys, key,
+		                            knot_rrset_ttl(soa));
 		if (result != KNOT_EOK) {
 			goto fail;
 		}

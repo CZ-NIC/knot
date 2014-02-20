@@ -63,7 +63,7 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr,
 	}
 
 	knot_rrset_t *cname_rrset = knot_rrset_new(owner, KNOT_RRTYPE_CNAME,
-	                                           KNOT_CLASS_IN, dname_rr->ttl,
+	                                           KNOT_CLASS_IN,
 	                                           mm);
 	if (cname_rrset == NULL) {
 		knot_dname_free(&owner);
@@ -82,8 +82,9 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr,
 
 	/* Store DNAME into RDATA. */
 	int cname_size = knot_dname_size(cname);
-	uint8_t *cname_rdata = knot_rrset_create_rdata(cname_rrset, cname_size,
-	                                               mm);
+	uint8_t *cname_rdata = knot_rrset_create_rr(cname_rrset, cname_size,
+	                                            knot_rrset_ttl(dname_rr),
+	                                            mm);
 	if (cname_rdata == NULL) {
 		knot_rrset_free(&cname_rrset);
 		knot_dname_free(&cname);
@@ -124,7 +125,7 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, const knot_rrset_t *s
 		  uint32_t flags, struct query_data *qdata)
 {
 	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
-	if (knot_rrset_rdata_rr_count(rr) < 1 &&
+	if (knot_rrset_rr_count(rr) < 1 &&
 	    knot_rrset_type(rr) != KNOT_RRTYPE_APL) {
 		dbg_ns("%s: refusing to put empty RR of type %u\n", __func__, knot_rrset_type(rr));
 		return KNOT_EMALF;
@@ -287,7 +288,8 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 	const knot_rrset_t *additional = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
-	for (uint16_t i = 0; i < rr->rdata_count; i++) {
+	size_t rr_rdata_count = knot_rrset_rr_count(rr);
+	for (uint16_t i = 0; i < rr_rdata_count; i++) {
 		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
 		node = rr->additional[i];
 
@@ -456,7 +458,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Name is under DNAME, use it for substitution. */
 	knot_rrset_t *dname_rrset = knot_node_get_rrset(qdata->encloser, KNOT_RRTYPE_DNAME);
 	if (dname_rrset != NULL
-	    && knot_rrset_rdata_rr_count(dname_rrset) > 0) {
+	    && knot_rrset_rr_count(dname_rrset) > 0) {
 		dbg_ns("%s: solving DNAME for name %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser; /* Follow encloser as new node. */
 		return follow_cname(pkt, KNOT_RRTYPE_DNAME, qdata);

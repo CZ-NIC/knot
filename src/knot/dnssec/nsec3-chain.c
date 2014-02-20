@@ -56,7 +56,7 @@ inline static bool valid_nsec3_node(const knot_node_t *node)
 		return false;
 	}
 
-	if (nsec3->rdata_count != 1) {
+	if (knot_rrset_rr_count(nsec3) != 1) {
 		return false;
 	}
 
@@ -559,13 +559,13 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
 	assert(rr_types);
 
 	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl, NULL);
+	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, NULL);
 	if (!rrset) {
 		return NULL;
 	}
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size, NULL);
+	uint8_t *rdata = knot_rrset_create_rr(rrset, rdata_size, ttl, NULL);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;

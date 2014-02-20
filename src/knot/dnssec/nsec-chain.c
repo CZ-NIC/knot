@@ -153,7 +153,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	knot_dname_t *owner_cpy = knot_dname_copy(from->owner);
 	knot_rrset_t *rrset = knot_rrset_new(owner_cpy,
 	                                     KNOT_RRTYPE_NSEC, KNOT_CLASS_IN,
-	                                     ttl, NULL);
+	                                     NULL);
 	if (!rrset) {
 		return NULL;
 	}
@@ -171,7 +171,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	assert(to->owner);
 	size_t next_owner_size = knot_dname_size(to->owner);
 	size_t rdata_size = next_owner_size + bitmap_size(&rr_types);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size, NULL);
+	uint8_t *rdata = knot_rrset_create_rr(rrset, rdata_size, ttl, NULL);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
@@ -208,7 +208,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	}
 
 	knot_rrset_t *old_next_nsec = knot_node_get_rrset(b, KNOT_RRTYPE_NSEC);
-	const knot_rrset_t *old_rrsigs = knot_node_get_rrset(b, KNOT_RRTYPE_RRSIG);
+	const knot_rrset_t *old_next_rrsigs = knot_node_get_rrset(b, KNOT_RRTYPE_RRSIG);
 	int ret = 0;
 
 	/*!
@@ -217,7 +217,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	 */
 	if (old_next_nsec != NULL
 	    && knot_nsec_only_nsec_and_rrsigs_in_node(b)) {
-		ret = knot_nsec_changeset_remove(old_next_nsec, old_rrsigs,
+		ret = knot_nsec_changeset_remove(old_next_nsec, old_next_rrsigs,
 		                                 data->changeset);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -234,6 +234,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	}
 
 	knot_rrset_t *old_nsec = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC);
+	const knot_rrset_t *old_rrsigs = knot_node_get_rrset(a, KNOT_RRTYPE_RRSIG);
 	if (old_nsec != NULL) {
 		if (knot_rrset_equal(new_nsec, old_nsec,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {

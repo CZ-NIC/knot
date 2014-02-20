@@ -55,7 +55,7 @@ static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list
 	 * rejoin the iteration at any point. */
 	while(ixfr->cur->next) {
 		knot_rr_ln_t *rr_item = (knot_rr_ln_t *)(ixfr->cur);
-		if (knot_rrset_rdata_rr_count(rr_item->rr) > 0) {
+		if (knot_rrset_rr_count(rr_item->rr) > 0) {
 			IXFR_SAFE_PUT(pkt, rr_item->rr);
 		} else {
 			dbg_ns("%s: empty RR %p, skipping\n", __func__, rr_item->rr);

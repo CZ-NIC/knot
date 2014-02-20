@@ -69,12 +69,12 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 	}
 
 	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH, 0, mm);
+	rrset = knot_rrset_new(rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH, mm);
 	if (!rrset) {
 		return NULL;
 	}
 
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, response_len + 1, mm);
+	uint8_t *rdata = knot_rrset_create_rr(rrset, response_len + 1, 0, mm);
 	if (!rdata) {
 		knot_rrset_deep_free(&rrset, 1, mm);
 		return NULL;

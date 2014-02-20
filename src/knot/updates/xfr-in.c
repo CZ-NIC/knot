@@ -757,9 +757,6 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 
 	int ret;
 
-	dbg_xfrin_detail("Removing RRSet: \n");
-	knot_rrset_dump(remove);
-
 	// now we have the copy of the node, so lets get the right RRSet
 	// check if we do not already have it
 	if (*rrset
@@ -780,8 +777,6 @@ static int xfrin_apply_remove_normal(knot_changes_t *changes,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		dbg_xfrin_detail("Copied RRSet:\n");
-		knot_rrset_dump(*rrset);
 	}
 
 	if (*rrset == NULL) {
@@ -798,14 +793,14 @@ dbg_xfrin_exec_detail(
 
 	// remove the specified RRs from the RRSet (de facto difference of sets)
 	knot_rrset_t *rr_remove = NULL;
-	ret = knot_rrset_remove_rr_using_rrset(*rrset, remove, &rr_remove);
+	ret = knot_rrset_remove_rr_using_rrset(*rrset, remove, &rr_remove, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("xfr: remove_normal: Could not remove RR (%s).\n",
 			  knot_strerror(ret));
 		return ret;
 	}
 	/*!< \todo either one of these checks should be enough. */
-	if (knot_rrset_rdata_rr_count(rr_remove) == 0) {
+	if (knot_rrset_rr_count(rr_remove) == 0) {
 		/* No RDATA, no need to deep free. */
 		knot_rrset_free(&rr_remove);
 		dbg_xfrin_verb("Failed to remove RDATA from RRSet\n");
@@ -813,7 +808,7 @@ dbg_xfrin_exec_detail(
 		return 1;
 	}
 
-	if (rr_remove->rdata_count != 0) {
+	if (rr_remove->rrs) {
 		ret = knot_changes_add_rrset(changes, rr_remove, KNOT_CHANGES_OLD);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&rr_remove);
@@ -825,7 +820,7 @@ dbg_xfrin_exec_detail(
 	}
 
 	// if the RRSet is empty, remove from node and add to old RRSets
-	if (knot_rrset_rdata_rr_count(*rrset) == 0) {
+	if (knot_rrset_rr_count(*rrset) == 0) {
 		knot_rrset_t *tmp = knot_node_remove_rrset(node,
 						     knot_rrset_type(*rrset));
 		dbg_xfrin_detail("Removed whole RRSet (%p). Node rr count=%d\n",
@@ -938,11 +933,6 @@ static int xfrin_apply_add_normal(knot_changes_t *changes,
 
 	int ret;
 
-dbg_xfrin_exec_detail(
-	dbg_xfrin_detail("applying rrset:\n");
-	knot_rrset_dump(add);
-);
-
 	int copied = 0;
 	/*! \note Reusing RRSet from previous function caused it not to be
 	 *        removed from the node.
@@ -966,18 +956,9 @@ dbg_xfrin_exec_detail(
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-
-			dbg_xfrin_detail("Copied RRSet: %p\n", *rrset);
-			dbg_xfrin_detail("Copied RRSet:\n");
-			knot_rrset_dump(*rrset);
 			copied = 1;
 		}
 	}
-
-dbg_xfrin_exec_detail(
-	dbg_xfrin_detail("Removed RRSet: \n");
-	knot_rrset_dump(*rrset);
-);
 
 	if (*rrset == NULL) {
 dbg_xfrin_exec_detail(
@@ -1024,19 +1005,12 @@ dbg_xfrin_exec_detail(
 	 * TODO: add the 'add' rrset to list of old RRSets?
 	 */
 
-	dbg_xfrin_detail("Merging RRSets with owners: %s, %s types: %u, %u\n",
-			 (*rrset)->owner, add->owner,
-			 (*rrset)->type,
-			 add->type);
-	dbg_xfrin_detail("RDATA in RRSet1: %p, RDATA in RRSet2: %p\n",
-			 (*rrset)->rdata, add->rdata);
-
 	/* In case the RRSet is empty (and only remained there because of the
 	 * RRSIGs) it may happen that the TTL may be different than that of
 	 * the new RRs. Update the TTL according to the first RR.
 	 */
 
-	if (knot_rrset_rdata_rr_count(*rrset) == 0
+	if (knot_rrset_rr_count(*rrset) == 0
 	    && knot_rrset_ttl(*rrset) != knot_rrset_ttl(add)) {
 		knot_rrset_set_ttl(*rrset, knot_rrset_ttl(add));
 	}
@@ -1048,9 +1022,6 @@ dbg_xfrin_exec_detail(
 		dbg_xfrin("Failed to merge changeset RRSet.\n");
 		return ret;
 	}
-	dbg_xfrin_detail("Merge returned: %d\n", ret);
-	knot_rrset_dump(*rrset);
-
 	if (copied) {
 		ret = knot_node_add_rrset_no_merge(node, *rrset);
 
@@ -1218,9 +1189,6 @@ dbg_xfrin_exec_verb(
 			       knot_rrset_type(rr));
 		free(name);
 );
-dbg_xfrin_exec_detail(
-		knot_rrset_dump(rr);
-);
 
 		is_nsec3 = 0;
 
@@ -1299,10 +1267,6 @@ dbg_xfrin_exec_verb(
 			       knot_rrset_type(rr));
 		free(name);
 );
-dbg_xfrin_exec_detail(
-		knot_rrset_dump(rr);
-);
-
 		is_nsec3 = 0;
 
 		// check if the RRSet belongs to the NSEC3 tree

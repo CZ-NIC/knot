@@ -52,7 +52,8 @@ void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 			return NULL;
 		} else {
 			if (what) {
-				memcpy(p, what, prev_size);
+				memcpy(p, what,
+				       prev_size < size ? prev_size : size);
 			}
 			if (mm->free) {
 				mm->free(what);

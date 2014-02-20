@@ -262,7 +262,7 @@ static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 	const uint16_t mask = 1 << 8; //0b0000000100000000;
 
 	uint16_t flags =
-		knot_wire_read_u16(knot_rrset_get_rdata(rrset, rdata_pos));
+		knot_wire_read_u16(knot_rrset_rr_rdata(rrset, rdata_pos));
 
 	if (flags & mask) {
 		return KNOT_EOK;
@@ -298,12 +298,6 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
-	}
-
-	if (knot_rrset_rdata_rr_count(rrsig) == 0) {
-		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_NO_RRSIG,
-		                         info_str);
-		return KNOT_EOK;
 	}
 
 	if (knot_rdata_rrsig_type_covered(rrsig, 0) !=
@@ -378,7 +372,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	int match = 0;
 	uint8_t rrsig_alg = knot_rdata_rrsig_algorithm(rrsig, rr_pos);
 	uint16_t key_tag_rrsig = knot_rdata_rrsig_key_tag(rrsig, rr_pos);
-	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(dnskey_rrset) &&
+	for (uint16_t i = 0; i < knot_rrset_rr_count(dnskey_rrset) &&
 	     !match; ++i) {
 		uint8_t dnskey_alg =
 			knot_rdata_dnskey_alg(dnskey_rrset, i);
@@ -388,8 +382,8 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		
 		/* Calculate keytag. */
 		uint16_t dnskey_key_tag =
-			knot_keytag(knot_rrset_get_rdata(dnskey_rrset, i),
-		                    rrset_rdata_item_size(dnskey_rrset, i));
+			knot_keytag(knot_rrset_rr_rdata(dnskey_rrset, i),
+		                    knot_rrset_rr_size(dnskey_rrset, i));
 		if (key_tag_rrsig != dnskey_key_tag) {
 			continue;
 		}
@@ -484,7 +478,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                         info_str);
 	}
 
-	if (knot_rrset_rdata_rr_count(rrsigs) == 0) {
+	if (knot_rrset_rr_count(rrsigs) == 0) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_SIGNED_WRONG,
 		                         info_str);
@@ -492,7 +486,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		return KNOT_EOK;
 	}
 	
-	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rrsigs); ++i) {
+	for (uint16_t i = 0; i < knot_rrset_rr_count(rrsigs); ++i) {
 		int ret = check_rrsig_rdata(handler, node, rrsigs, i, rrset,
 		                            dnskey_rrset);
 		if (ret != KNOT_EOK) {
@@ -668,7 +662,11 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	const knot_rrset_t *nsec3_rrset =
 		knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
 
-	assert(nsec3_rrset);
+	if (nsec3_rrset == NULL) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
+		return KNOT_EOK;
+	}
 
 	const knot_rrset_t *soa_rrset =
 		knot_node_rrset(knot_zone_contents_apex(zone),
@@ -766,7 +764,7 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 			}
 		}
 
-		if (knot_rrset_rdata_rr_count(cname_rrset) != 1) {
+		if (knot_rrset_rr_count(cname_rrset) != 1) {
 			*fatal_error = true;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE, NULL);
@@ -809,7 +807,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 	                node) {
 		const knot_rrset_t *ns_rrset =
 				knot_node_rrset(node, KNOT_RRTYPE_NS);
-		if (ns_rrset == NULL || ns_rrset->rdata_count == 0) {
+		if (ns_rrset == NULL) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_MISSING_NS_DEL_POINT,
 			                         NULL);
@@ -937,7 +935,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 
 	for (int i = 0; i < rrset_count; i++) {
 		const knot_rrset_t *rrset = rrsets[i];
-		if (auth && !deleg &&
+		if (auth && !deleg && rrset->type != KNOT_RRTYPE_RRSIG &&
 		    (ret = check_rrsig_in_rrset(handler, node,
 		                                rrset, dnskey_rrset)) != 0) {
 			err_handler_handle_error(handler, node, ret, NULL);
@@ -990,7 +988,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			/* Test that only one record is in the
 				 * NSEC RRSet */
 
-			if (knot_rrset_rdata_rr_count(nsec_rrset) != 1) {
+			if (knot_rrset_rr_count(nsec_rrset) != 1) {
 				err_handler_handle_error(handler,
 						 node,
 						 ZC_ERR_NSEC_RDATA_MULTIPLE,

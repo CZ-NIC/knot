@@ -53,24 +53,8 @@ void process_error(const scanner_t *s)
 
 static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
 {
-	if (rrset == NULL) {
-		dbg_zload("zp: add_rdata_to_rr: No RRSet.\n");
-		return KNOT_EINVAL;
-	}
-
-	dbg_zload_detail("zp: add_rdata_to_rr: Adding type %d, RRSet has %d RRs.\n",
-	              rrset->type, rrset->rdata_count);
-
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, scanner->r_data_length,
-	                                         NULL);
-	if (rdata == NULL) {
-		dbg_zload("zp: create_rdata: Could not create RR.\n");
-		return KNOT_ENOMEM;
-	}
-
-	memcpy(rdata, scanner->r_data, scanner->r_data_length);
-
-	return KNOT_EOK;
+	return knot_rrset_add_rr(rrset, scanner->r_data, scanner->r_data_length,
+	                         scanner->r_ttl, NULL);
 }
 
 static bool handle_err(zcreator_t *zc,
@@ -160,7 +144,7 @@ static void loader_process(const scanner_t *scanner)
 	knot_rrset_t *rr = knot_rrset_new(owner,
 	                                  scanner->r_type,
 	                                  scanner->r_class,
-	                                  scanner->r_ttl, NULL);
+	                                  NULL);
 	if (rr == NULL) {
 		knot_dname_free(&owner);
 		zc->ret = KNOT_ENOMEM;

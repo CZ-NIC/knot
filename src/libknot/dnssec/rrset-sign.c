@@ -132,7 +132,8 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	size_t size = knot_rrsig_rdata_size(key);
 	assert(size != 0);
 
-	uint8_t *result = knot_rrset_create_rdata(rrsigs, size, NULL);
+	uint8_t *result = knot_rrset_create_rr(rrsigs, size,
+	                                       knot_rrset_ttl(covered), NULL);
 	if (!result) {
 		return KNOT_ENOMEM;
 	}
@@ -143,7 +144,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	}
 
 	int res = knot_rrsig_write_rdata(result, key, covered->type, owner_labels,
-	                                 covered->ttl, sig_incepted, sig_expires);
+	                                 knot_rrset_ttl(covered), sig_incepted, sig_expires);
 
 	assert(res == KNOT_EOK);
 	UNUSED(res);
@@ -206,7 +207,7 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
 
 	int result = KNOT_EOK;
 
-	uint16_t rr_count = covered->rdata_count;
+	uint16_t rr_count = knot_rrset_rr_count(covered);
 	for (uint16_t i = 0; i < rr_count; i++) {
 		size_t rr_size;
 		result = knot_rrset_to_wire_one(covered, i, rrwf,
@@ -365,7 +366,7 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	// identify fields in the signature being validated
 
-	uint8_t *rdata = knot_rrset_get_rdata(synth_rrsigs, pos);
+	uint8_t *rdata = knot_rrset_rr_rdata(synth_rrsigs, pos);
 	if (!rdata) {
 		return KNOT_EINVAL;
 	}

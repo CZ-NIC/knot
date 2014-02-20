@@ -98,7 +98,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 			continue;
 		}
 
-		for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
+		for (uint16_t i = 0; i < knot_rrset_rr_count(rr); i++) {
 			const knot_dname_t *dn = knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find(s->zone_db, dn);
@@ -719,25 +719,6 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 	return pkt;
 }
 
-int remote_query_append(knot_pkt_t *qry, knot_rrset_t *data)
-{
-	if (!qry || !data) {
-		return KNOT_EINVAL;
-	}
-
-	uint8_t *sp = qry->wire + qry->size;
-	uint16_t rrs = 0;
-	size_t bsize = 0;
-	int ret = knot_rrset_to_wire(data, sp, &bsize, qry->max_size, &rrs, 0);
-	if (ret == KNOT_EOK) {
-		knot_wire_add_nscount(qry->wire, rrs);
-	}
-
-	/* Finalize packet size. */
-	qry->size += bsize;
-	return KNOT_EOK;
-}
-
 int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
                       const knot_tsig_key_t *key)
 {
@@ -771,7 +752,7 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	}
 
 	/* Create RRSet. */
-	knot_rrset_t *rr = knot_rrset_new(key, t, KNOT_CLASS_CH, 0, NULL);
+	knot_rrset_t *rr = knot_rrset_new(key, t, KNOT_CLASS_CH, NULL);
 	if (rr == NULL)
 		knot_dname_free(&key);
 
@@ -787,7 +768,7 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 	/* Number of chunks. */
 	const size_t K = 255;
 	unsigned chunks = v_len / K + 1;
-	uint8_t *raw = knot_rrset_create_rdata(rr, v_len + chunks, NULL);
+	uint8_t *raw = knot_rrset_create_rr(rr, v_len + chunks, 0, NULL);
 
 	/* Write TXT item. */
 	unsigned p = 0;
@@ -821,7 +802,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 
 	/* Build RDATA. */
 	int dn_size = knot_dname_size(dn);
-	int result = knot_rrset_add_rdata(rr, dn, dn_size, NULL);
+	int result = knot_rrset_add_rr(rr, dn, dn_size, 0, NULL);
 	knot_dname_free(&dn);
 
 	return result;
@@ -829,15 +810,15 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 
 int remote_print_txt(const knot_rrset_t *rr, uint16_t i)
 {
-	if (!rr || knot_rrset_rdata_rr_count(rr) < 1) {
+	if (!rr || knot_rrset_rr_count(rr) < 1) {
 		return -1;
 	}
 
 	/* Packet parser should have already checked the packet validity. */
 	char buf[256];
 	uint16_t parsed = 0;
-	uint16_t rlen = rrset_rdata_item_size(rr, i);
-	uint8_t *p = knot_rrset_get_rdata(rr, i);
+	uint16_t rlen = knot_rrset_rr_size(rr, i);
+	uint8_t *p = knot_rrset_rr_rdata(rr, i);
 	while (parsed < rlen) {
 		memcpy(buf, (const char*)(p+1), *p);
 		buf[*p] = '\0';

@@ -52,7 +52,8 @@ knot_opt_rr_t *knot_edns_new()
 
 /*----------------------------------------------------------------------------*/
 
-int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
+int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset,
+                          uint32_t rr_ttl)
 {
 	if (opt_rr == NULL || rrset == NULL
 	    || knot_rrset_type(rrset) != KNOT_RRTYPE_OPT) {
@@ -69,8 +70,8 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 
 	// the TTL has switched bytes
 	uint32_t ttl;
-	dbg_edns_detail("TTL: %u\n", knot_rrset_ttl(rrset));
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(rrset));
+	dbg_edns_detail("TTL: %u\n", rr_ttl);
+	knot_wire_write_u32((uint8_t *)&ttl, rr_ttl);
 	// first byte of TTL is extended RCODE
 	dbg_edns_detail("TTL: %u\n", ttl);
 	memcpy(&opt_rr->ext_rcode, &ttl, 1);
@@ -86,8 +87,8 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 
 	int rc = 0;
 	dbg_edns_verb("Parsing options.\n");
-	uint8_t *raw = knot_rrset_get_rdata(rrset, 0);
-	uint16_t size = rrset_rdata_item_size(rrset, 0);
+	uint8_t *raw = knot_rrset_rr_rdata(rrset, 0);
+	uint16_t size = knot_rrset_rr_size(rrset, 0);
 
 	if (raw != NULL) {
 		size_t pos = 0;
