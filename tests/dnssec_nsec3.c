@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
 		'a', 'b', 'c', 'd'     // salt
 	};
 
-	rrset = knot_rrset_new(NULL, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, 0, NULL);
-	result = knot_rrset_add_rr(rrset, rdata, sizeof(rdata), NULL);
+	rrset = knot_rrset_new(NULL, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
+	result = knot_rrset_add_rr(rrset, rdata, sizeof(rdata), 0, NULL);
 	if (result == KNOT_EOK) {
 		result = knot_nsec3_params_from_wire(&params, rrset);
 	}
