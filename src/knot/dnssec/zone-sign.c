@@ -519,12 +519,8 @@ static int sign_node_rrsets(const knot_node_t *node,
 		}
 
 		if (result != KNOT_EOK) {
-			break;
+			return result;
 		}
-	}
-
-	if (result != KNOT_EOK) {
-		return result;
 	}
 
 	return remove_standalone_rrsigs(node, rrsigs, changeset);
@@ -837,8 +833,8 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 
 	knot_rrset_t *to_add = NULL;
 	int result = KNOT_EOK;
-	bool add_all = dnskeys == NULL ||
-	               knot_rrset_rr_ttl(dnskeys, 0) != knot_rrset_rr_ttl(soa, 0);
+	bool add_all = (dnskeys == NULL ||
+	                knot_rrset_rr_ttl(dnskeys, 0) != knot_rrset_rr_ttl(soa, 0));
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const knot_zone_key_t *key = &zone_keys->keys[i];
@@ -1016,10 +1012,10 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 		return result;
 	}
 
-	bool modified = knot_changeset_size(changeset) != changes_before;
-	bool signatures_exist = dnskeys &&
+	bool modified = (knot_changeset_size(changeset) != changes_before);
+	bool signatures_exist = (dnskeys &&
 	                        all_signatures_exist(dnskeys, dnskey_rrsig,
-	                                             zone_keys, policy);
+	                                             zone_keys, policy));
 	knot_rrset_deep_free(&dnskey_rrsig, true, NULL);
 	if (!modified && signatures_exist) {
 		return KNOT_EOK;
