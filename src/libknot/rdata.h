@@ -67,7 +67,7 @@ const knot_dname_t *knot_rdata_soa_primary_ns(const knot_rrset_t *rrset)
 static inline
 const knot_dname_t *knot_rdata_soa_mailbox(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || rrset->rrs == NULL) {
+	if (rrset == NULL || knot_rrset_rr_count(rrset) == 0) {
 		return NULL;
 	}
 

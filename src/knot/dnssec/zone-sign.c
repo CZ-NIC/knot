@@ -296,7 +296,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	assert(covered);
 	assert(zone_keys);
 	assert(changeset);
-	if (covered->rrs == NULL) {
+	if (knot_rrset_rr_count(covered) == 0) {
 		return KNOT_EOK;
 	}
 

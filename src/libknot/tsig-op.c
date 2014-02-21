@@ -710,7 +710,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
-	assert(tsig_rr->rrs);
+	assert(knot_rrset_rr_count(tsig_rr) > 0);
 
 	if (use_times) {
 		/* Wire is not a single packet, TSIG RRs must be stripped already. */
@@ -725,7 +725,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 		                                 tsig_rr, tsig_key);
 	}
 
-	assert(tsig_rr->rrs);
+	assert(knot_rrset_rr_count(tsig_rr) > 0);
 	free(wire_to_sign);
 
 	if (ret != KNOT_EOK) {

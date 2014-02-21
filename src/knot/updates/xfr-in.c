@@ -808,7 +808,7 @@ dbg_xfrin_exec_detail(
 		return 1;
 	}
 
-	if (rr_remove->rrs) {
+	if (knot_rrset_rr_count(rr_remove) > 0) {
 		ret = knot_changes_add_rrset(changes, rr_remove, KNOT_CHANGES_OLD);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&rr_remove);
