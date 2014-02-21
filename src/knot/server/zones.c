@@ -2156,10 +2156,6 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 		 *        reworking zone management is out of scope of this MR.
 		 */
 		if (old_zone->contents == zone->contents) {
-			/*! \todo Maybe use the condition from this assert in
-			 *        the if statement.
-			 */
-//			assert(old_zone->contents == zone->contents);
 			old_zone->contents = NULL;
 		}
 		ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_DNSSEC);
