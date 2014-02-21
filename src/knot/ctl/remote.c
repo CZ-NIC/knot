@@ -131,7 +131,7 @@ static int remote_zone_flush(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_zonefile_sync((zone_t *)zone, REFRESH_NOW);
+	zones_schedule_zonefile_sync((zone_t *)zone, 0);
 
 	return KNOT_EOK;
 }

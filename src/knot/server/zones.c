@@ -361,11 +361,9 @@ int zones_flush_ev(event_t *event)
 
 	/* Reschedule. */
 	rcu_read_lock();
-	int next_timeout = zone->conf->dbsync_timeout * 1000;
+	int next_timeout = zone->conf->dbsync_timeout;
 	if (next_timeout > 0) {
-		dbg_zones("%s: next zonefile SYNC of '%s' in %d seconds\n",
-		          __func__, zone->conf->name, next_timeout / 1000);
-		evsched_schedule(event, next_timeout);
+		zones_schedule_zonefile_sync(zone, next_timeout * 1000);
 	}
 	rcu_read_unlock();
 	return ret;
@@ -1740,8 +1738,11 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
 
 void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout)
 {
-	assert(zone);
-	evsched_schedule(zone->ixfr_dbsync, timeout * 1000);
+	if (zone != NULL) {
+		dbg_zones("zone: SYNC '%s' set to %"PRIi64"\n",
+		          zone->conf->name, timeout);
+		evsched_schedule(zone->ixfr_dbsync, timeout);
+	}
 }
 
 int zones_verify_tsig_query(const knot_pkt_t *query,

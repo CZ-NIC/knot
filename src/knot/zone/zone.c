@@ -125,7 +125,7 @@ int zone_timers_thaw(zone_t *zone)
 	}
 
 	/* Schedule zone file syncing. */
-	zones_schedule_zonefile_sync(zone, zone->conf->dbsync_timeout);
+	zones_schedule_zonefile_sync(zone, zone->conf->dbsync_timeout * 1000);
 
 	/* Schedule REFRESH. */
 	zones_schedule_refresh(zone, REFRESH_NOW);
