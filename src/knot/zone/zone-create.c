@@ -169,7 +169,7 @@ static void loader_process(const scanner_t *scanner)
 	}
 }
 
-knot_zone_contents_t *create_zone_from_name(const char *origin)
+static knot_zone_contents_t *create_zone_from_name(const char *origin)
 {
 	if (origin == NULL) {
 		return NULL;
@@ -178,6 +178,7 @@ knot_zone_contents_t *create_zone_from_name(const char *origin)
 	if (owner == NULL) {
 		return NULL;
 	}
+	knot_dname_to_lower(owner);
 	knot_zone_contents_t *z = knot_zone_contents_new(owner);
 	knot_dname_free(&owner);
 	return z;
@@ -195,7 +196,11 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 	}
 
 	/* Create context. */
-	zcreator_t *zc = xmalloc(sizeof(zcreator_t));
+	zcreator_t *zc = malloc(sizeof(zcreator_t));
+	if (zc == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
 	memset(zc, 0, sizeof(zcreator_t));
 
 	zc->z = create_zone_from_name(conf->name);

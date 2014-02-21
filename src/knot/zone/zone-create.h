@@ -35,7 +35,7 @@
 /*!
  * \brief Zone creator structure.
  */
-typedef struct zone_creator {
+typedef struct zcreator {
 	knot_zone_contents_t *z;  /*!< Created zone. */
 	knot_node_t *last_node;   /*!< Last used node, use to save zone lookup. */
 	int ret;                  /*!< Return value. */
@@ -80,8 +80,6 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader);
  * \param loader Zone loader instance.
  */
 void zonefile_close(zloader_t *loader);
-
-knot_zone_contents_t *create_zone_from_name(const char *origin);
 
 int zcreator_step(zcreator_t *zl, knot_rrset_t *rr);
 
