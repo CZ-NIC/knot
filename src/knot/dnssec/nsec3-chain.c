@@ -423,7 +423,7 @@ static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 	if (from_sig == NULL) {
 		return KNOT_EOK;
 	}
-	return knot_node_add_rrset(to, from_sig);
+	return knot_node_add_rrset(to, from_sig, NULL);
 }
 
 /*!

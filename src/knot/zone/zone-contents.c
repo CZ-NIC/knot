@@ -679,7 +679,7 @@ static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
 		}
 	}
 
-	return knot_node_add_rrset(*n, rr);
+	return knot_node_add_rrset(*n, rr, z->apex->owner);
 }
 
 static bool to_nsec3_tree(const knot_rrset_t *rr)
@@ -728,7 +728,7 @@ dbg_zone_exec_detail(
 
 	/*! \todo REMOVE RRSET */
 	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset(*node, rrset);
+		rc = knot_node_add_rrset(*node, rrset, zone->apex->owner);
 	} else {
 		rc = knot_node_add_rrset_no_merge(*node, rrset);
 	}
@@ -811,7 +811,7 @@ int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
 
 	/*! \todo REMOVE RRSET */
 	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset(*node, rrset);
+		rc = knot_node_add_rrset(*node, rrset, zone->apex->owner);
 	} else {
 		rc = knot_node_add_rrset_no_merge(*node, rrset);
 	}

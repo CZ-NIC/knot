@@ -69,6 +69,31 @@ static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * \brief Logs a warning if merging RRs with different TTLs.
+ *
+ * \param ttl_first TTL of the first RR in the RRSet.
+ * \param ttl_new TTL to be inserted.
+ * \param rr RRSet we're adding into.
+ * \param zname Zone name for logging.
+ */
+static void ttl_check(uint32_t ttl_first, uint32_t ttl_new,
+                      knot_rrset_t *rr, const knot_dname_t *zname)
+{
+	if (rr->type != KNOT_RRTYPE_RRSIG && (ttl_first != ttl_new) && zname) {
+		char *zstr = knot_dname_to_str(zname);
+		char *rrstr = knot_dname_to_str(rr->owner);
+		char typestr[32];
+		knot_rrtype_to_string(rr->type, typestr, 32);
+		log_zone_warning("Zone %s: Record %s, type %s: "
+		                 "Inserting different TTL into RRSet.\n",
+		                 zstr, rrstr, typestr);
+		free(zstr);
+		free(rrstr);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -132,7 +157,8 @@ int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset)
 	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
-int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
+int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
+                        const knot_dname_t *zname)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
@@ -140,6 +166,8 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrset_tree[i]->type == rrset->type) {
+			ttl_check(knot_rrset_rr_ttl(node->rrset_tree[i], 0),
+			          knot_rrset_rr_ttl(rrset, 0), rrset, zname);
 			int merged, deleted_rrs;
 			int ret = knot_rrset_merge_sort(node->rrset_tree[i],
 			                                rrset, &merged,
