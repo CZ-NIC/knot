@@ -1953,14 +1953,12 @@ int zones_journal_apply(zone_t *zone)
 	return ret;
 }
 
-static int sign_after_load(zone_t *zone, const conf_zone_t *z,
-                           knot_changesets_t **diff_chs)
+static int sign_after_load(zone_t *zone, knot_changesets_t **diff_chs)
 {
 	assert(zone != NULL);
-	assert(z != NULL);
 	assert(diff_chs != NULL);
 
-	if (z->dnssec_enable) {
+	if (zone->conf->dnssec_enable) {
 		zone->dnssec.refresh_at = 0;
 
 		*diff_chs = knot_changesets_create();
@@ -1975,7 +1973,8 @@ static int sign_after_load(zone_t *zone, const conf_zone_t *z,
 			return KNOT_ENOMEM;
 		}
 
-		log_zone_info("DNSSEC: Zone %s - Signing started...\n", z->name);
+		log_zone_info("DNSSEC: Zone %s - Signing started...\n",
+		              zone->conf->name);
 		uint32_t new_serial = zones_next_serial(zone);
 
 		/*
@@ -1990,7 +1989,7 @@ static int sign_after_load(zone_t *zone, const conf_zone_t *z,
 			knot_changesets_free(diff_chs);
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
 			               "generating records (%s).\n",
-			               z->name, knot_strerror(ret));
+			               zone->conf->name, knot_strerror(ret));
 			return ret;
 		}
 	}
@@ -1998,11 +1997,10 @@ static int sign_after_load(zone_t *zone, const conf_zone_t *z,
 	return KNOT_EOK;
 }
 
-static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
+static int diff_after_load(zone_t *zone, zone_t *old_zone,
                            knot_changesets_t **diff_chs)
 {
 	assert(zone != NULL);
-	assert(z != NULL);
 	assert(old_zone != NULL);
 	assert(diff_chs != NULL);
 
@@ -2032,8 +2030,8 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 
 		if (ret != KNOT_EOK) {
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
-			               "modifying zone (%s).\n", z->name,
-			               knot_strerror(ret));
+			               "modifying zone (%s).\n",
+			               zone->conf->name, knot_strerror(ret));
 			/* No need to do rollback, the whole new zone will be
 			 * discarded. */
 			return ret;
@@ -2041,13 +2039,13 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 
 		xfrin_cleanup_successful_update((*diff_chs)->changes);
 		knot_changesets_free(diff_chs);
-		assert(z->build_diffs);
+		assert(zone->conf->build_diffs);
 	}
 
 	/* Calculate differences. */
-	if (z->build_diffs) {
+	if (zone->conf->build_diffs) {
 		log_zone_info("Zone %s: Generating diff after reload.\n",
-		              z->name);
+		              zone->conf->name);
 		*diff_chs = knot_changesets_create();
 		if (*diff_chs == NULL) {
 			return KNOT_ENOMEM;
@@ -2063,12 +2061,13 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning("Zone %s: Zone file changed, "
 			                 "but serial didn't - won't "
-			                 "create journal entry.\n", z->name);
+			                 "create journal entry.\n",
+			                 zone->conf->name);
 		} else if (ret != KNOT_EOK) {
 			log_zone_error("Zone %s: Failed to calculate "
 			               "differences from the zone "
 			               "file update: %s\n",
-			               z->name, knot_strerror(ret));
+			               zone->conf->name, knot_strerror(ret));
 		}
 		if (ret != KNOT_EOK) {
 			knot_changesets_free(diff_chs);
@@ -2082,12 +2081,10 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 }
 
 static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
-                                    const conf_zone_t *z,
                                     knot_changesets_t *diff_chs,
                                     bool apply_chgset, bool zone_changed)
 {
 	assert(zone != NULL);
-	assert(z != NULL);
 	assert(diff_chs != NULL);
 	assert(!zones_changesets_empty(diff_chs));
 
@@ -2098,7 +2095,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 
 	if (ret != KNOT_EOK) {
 		log_zone_error("Zone %s: Could not save new entry to journal "
-		               "(%s)!\n", z->name, knot_strerror(ret));
+		               "(%s)!\n", zone->conf->name, knot_strerror(ret));
 		return ret;
 	}
 
@@ -2130,8 +2127,8 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 
 		if (ret != KNOT_EOK) {
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
-			               "modifying zone (%s).\n", z->name,
-			               knot_strerror(ret));
+			               "modifying zone (%s).\n",
+			               zone->conf->name, knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
 			/* No zone rollback needed, the whole new zone will be
 			 * discarded. */
@@ -2145,7 +2142,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 	ret = zones_store_changesets_commit(transaction);
 	if (ret != KNOT_EOK) {
 		log_zone_error("Zone %s: Failed to commit new journal entry (%s"
-		               ").\n", z->name, knot_strerror(ret));
+		               ").\n", zone->conf->name, knot_strerror(ret));
 		return ret;
 	}
 
@@ -2168,8 +2165,8 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 		rcu_read_lock();
 		if (ret != KNOT_EOK) {
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
-			               "switching zone (%s).\n", z->name,
-			               knot_strerror(ret));
+			               "switching zone (%s).\n",
+			               zone->conf->name, knot_strerror(ret));
 			// Cleanup old and new contents
 			xfrin_rollback_update(zone->contents, &new_contents,
 			                      diff_chs->changes);
@@ -2186,10 +2183,9 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
  *
  * \todo Isn't zone's config stored in the new zone? (Duplicate argument.)
  */
-int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
-                           bool zone_changed)
+int zones_do_diff_and_sign(zone_t *zone, zone_t *old_zone, bool zone_changed)
 {
-	if (z == NULL) {
+	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -2208,7 +2204,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	                     && old_zone != NULL && old_zone->contents != NULL;
 	bool zone_signed = false;
 
-	int ret = sign_after_load(zone, z, &diff_chs);
+	int ret = sign_after_load(zone, &diff_chs);
 	if (ret != KNOT_EOK) {
 		rcu_read_unlock();
 		return ret;
@@ -2233,7 +2229,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	 * chgset).
 	 */
 	if (zone_reloaded) {
-		ret = diff_after_load(zone, z, old_zone, &diff_chs);
+		ret = diff_after_load(zone, old_zone, &diff_chs);
 		if (ret != KNOT_EOK) {
 			rcu_read_unlock();
 			return ret;
@@ -2252,7 +2248,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	 * (Or it is empty, then nothing has to be done.)
 	 */
 	if (!zones_changesets_empty(diff_chs)) {
-		ret = store_chgsets_after_load(old_zone, zone, z, diff_chs,
+		ret = store_chgsets_after_load(old_zone, zone, diff_chs,
 		                               apply_chgset, zone_changed);
 	}
 
@@ -2261,7 +2257,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 
 	if (ret == KNOT_EOK && zone_signed) {
 		log_zone_info("DNSSEC: Zone %s - Successfully signed.\n",
-		              z->name);
+		              zone->conf->name);
 	}
 
 	return ret;
