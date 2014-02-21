@@ -1739,7 +1739,7 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
 void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout)
 {
 	if (zone != NULL) {
-		dbg_zones("zone: SYNC '%s' set to %"PRIi64"\n",
+		dbg_zones("zone: SYNC '%s' set to %u\n",
 		          zone->conf->name, timeout);
 		evsched_schedule(zone->ixfr_dbsync, timeout);
 	}

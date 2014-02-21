@@ -106,6 +106,9 @@ static void axfr_answer_cleanup(struct query_data *qdata)
 
 	ptrlist_free(&axfr->nodes, mm);
 	mm->free(axfr);
+
+	/* Allow zone changes (finished). */
+	rcu_read_unlock();
 }
 
 static int axfr_answer_init(struct query_data *qdata)
@@ -130,6 +133,10 @@ static int axfr_answer_init(struct query_data *qdata)
 	/* Set up cleanup callback. */
 	qdata->ext = xfer;
 	qdata->ext_cleanup = &axfr_answer_cleanup;
+
+	/* No zone changes during multipacket answer (unlocked in axfr_answer_cleanup) */
+	rcu_read_lock();
+
 	return KNOT_EOK;
 }
 
