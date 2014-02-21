@@ -361,7 +361,8 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	// Synthesize RRSIG for covered RRSet
 	knot_rrset_t *synth_rrsigs = NULL;
-	int result = knot_rrset_synth_rrsig(covered, rrsigs, &synth_rrsigs, NULL);
+	int result = knot_rrset_synth_rrsig(rrsigs, covered->type,
+	                                    &synth_rrsigs, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	}

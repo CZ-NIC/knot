@@ -650,7 +650,7 @@ int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
 
 	// extract copy of RRSIG
 	knot_rrset_t *synth_rrsigs = NULL;
-	result = knot_rrset_synth_rrsig(oldrr, rrsigs, &synth_rrsigs, NULL);
+	result = knot_rrset_synth_rrsig(rrsigs, oldrr->type, &synth_rrsigs, NULL);
 	if (result != KNOT_EOK && result != KNOT_ENOENT) {
 		return result;
 	}

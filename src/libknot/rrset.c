@@ -1590,14 +1590,14 @@ static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
 	return knot_rrset_rr_count(new_sig) > 0 ? KNOT_EOK : KNOT_ENOENT;
 }
 
-int knot_rrset_synth_rrsig(const knot_rrset_t *covered, const knot_rrset_t *rrsigs,
+int knot_rrset_synth_rrsig(const knot_rrset_t *rrsigs, uint16_t type,
                            knot_rrset_t **out_sig, mm_ctx_t *mm)
 {
-	if (covered == NULL || rrsigs == NULL) {
+	if (rrsigs == NULL) {
 		return KNOT_ENOENT;
 	}
 
-	if (out_sig == NULL || !knot_dname_is_equal(covered->owner, rrsigs->owner)) {
+	if (out_sig == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1606,7 +1606,7 @@ int knot_rrset_synth_rrsig(const knot_rrset_t *covered, const knot_rrset_t *rrsi
 		return KNOT_ENOMEM;
 	}
 
-	int ret = add_rdata_to_rrsig(*out_sig, covered->type, rrsigs, mm);
+	int ret = add_rdata_to_rrsig(*out_sig, type, rrsigs, mm);
 	if (ret != KNOT_EOK) {
 		knot_rrset_deep_free(out_sig, 1, mm);
 		return ret;

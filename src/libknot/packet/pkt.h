@@ -227,11 +227,10 @@ int knot_pkt_put_opt(knot_pkt_t *pkt);
  * \param pkt
  * \param compr_hint Compression hint, see enum knot_compr_hint or absolute position.
  * \param rr Given RRSet.
- * \param rrsigs RRSIGs of all RRs in node (optional).
  * \param flags RRSet flags (set PF_FREE if you want RRSet to be freed with the packet).
  * \return KNOT_EOK, KNOT_ESPACE, various errors
  */
-int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, const knot_rrset_t *sig, uint16_t flags);
+int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, uint16_t flags);
 
 /*! \brief Get description of the given packet section. */
 const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t section_id);

@@ -79,6 +79,7 @@ struct query_data {
 	knot_pkt_t *query;    /*!< Query to be solved. */
 	const zone_t *zone;   /*!< Zone from which is answered. */
 	list_t wildcards;     /*!< Visited wildcards. */
+	list_t rrsigs;        /*!< Section RRSIGs. */
 
 	/* Current processed name and nodes. */
 	const knot_node_t *node, *encloser, *previous;
@@ -102,6 +103,13 @@ struct wildcard_hit {
 	node_t n;
 	const knot_node_t *node;   /* Visited node. */
 	const knot_dname_t *sname; /* Name leading to this node. */
+};
+
+/*! \brief RRSIGs info. */
+struct rrsig_info {
+	node_t n;
+	const knot_rrset_t *rrsigs;   /* RRSIGs for node. */
+	uint16_t type;                /* Covered type. */
 };
 
 /*!

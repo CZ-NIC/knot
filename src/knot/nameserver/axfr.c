@@ -44,7 +44,7 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 		if (rrset[i]->type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
-		ret = knot_pkt_put(pkt, 0, rrset[i], NULL, flags);
+		ret = knot_pkt_put(pkt, 0, rrset[i], flags);
 
 		/* If something failed, remember the current RR for later. */
 		if (ret != KNOT_EOK) {
@@ -130,7 +130,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 
 	/* Prepend SOA on first packet. */
 	if (xfer->npkts == 0) {
-		ret = knot_pkt_put(pkt, 0, soa_rr, NULL, KNOT_PF_NOTRUNC);
+		ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_NOTRUNC);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -151,7 +151,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 
 	/* Append SOA on last packet. */
 	if (ret == KNOT_EOK) {
-		ret = knot_pkt_put(pkt, 0, soa_rr, NULL, KNOT_PF_NOTRUNC);
+		ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_NOTRUNC);
 	}
 
 	/* Update counters. */

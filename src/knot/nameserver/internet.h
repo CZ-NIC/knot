@@ -41,6 +41,22 @@ struct query_data;
  */
 int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
 
+/*!
+ * \brief Puts RRSet to packet, will store its RRSIG for later use.
+ *
+ * \param pkt         Packet to store RRSet into.
+ * \param rr          RRSet to be stored.
+ * \param rrsigs      RRSIGs to be stored.
+ * \param compr_hint  Compression hint.
+ * \param flags       Flags.
+ * \param qdata       Query data structure.
+ *
+ * \return KNOT_E*
+ */
+int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
+              const knot_rrset_t *rrsigs, uint16_t compr_hint,
+              uint32_t flags, struct query_data *qdata);
+
 /*! \brief Require given QUERY TYPE or return error code. */
 #define NS_NEED_QTYPE(qdata, qtype_want, error_rcode) \
 	if (knot_pkt_qtype((qdata)->query) != (qtype_want)) { \

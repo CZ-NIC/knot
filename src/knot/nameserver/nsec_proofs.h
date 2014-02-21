@@ -46,7 +46,7 @@ int nsec_prove_nodata(knot_pkt_t *pkt, struct query_data *qdata);
 int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*! \brief Append missing RRSIGs for current processing section. */
-int nsec_append_rrsigs(knot_pkt_t *pkt, bool optional);
+int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional);
 
 #endif /* _KNOT_NSEC_PROOFS_H_ */
 

@@ -120,9 +120,9 @@ static bool have_dnssec(struct query_data *qdata)
 }
 
 /*! \brief Put RR into packet, expand wildcards. */
-static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, const knot_rrset_t *sigs,
-                  uint16_t compr_hint,
-		  uint32_t flags, struct query_data *qdata)
+int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
+              const knot_rrset_t *rrsigs, uint16_t compr_hint,
+              uint32_t flags, struct query_data *qdata)
 {
 	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
 	if (knot_rrset_rr_count(rr) < 1 &&
@@ -145,12 +145,26 @@ static int put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr, const knot_rrset_t *s
 		flags |= KNOT_PF_FREE;
 	}
 
-	ret = knot_pkt_put(pkt, compr_hint, rr, sigs, flags);
-	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
-		knot_rrset_deep_free((knot_rrset_t **)&rr, 1, &pkt->mm);
+	ret = knot_pkt_put(pkt, compr_hint, rr, flags);
+	if (ret != KNOT_EOK) {
+		if (flags & KNOT_PF_FREE) {
+			knot_rrset_deep_free((knot_rrset_t **)&rr, 1, &pkt->mm);
+		}
+		return ret;
 	}
 
-	return ret;
+	if (rrsigs && rr->type != KNOT_RRTYPE_RRSIG) {
+		struct rrsig_info *i = mm_alloc(qdata->mm,
+		                                sizeof(struct rrsig_info));
+		if (i == NULL) {
+			return KNOT_ENOMEM;
+		}
+		i->rrsigs = rrsigs;
+		i->type = rr->type;
+		add_tail(&qdata->rrsigs, &i->n);
+	}
+
+	return KNOT_EOK;
 }
 
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
@@ -183,7 +197,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 			return KNOT_ESPACE;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
-			ret = put_rr(pkt, rrsets[i], NULL, compr_hint, 0, qdata);
+			ret = ns_put_rr(pkt, rrsets[i], NULL, compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -192,7 +206,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	default: /* Single RRSet of given type. */
 		rrset = knot_node_get_rrset(qdata->node, type);
 		if (rrset) {
-			ret = put_rr(pkt, rrset, rrsigs, compr_hint, 0, qdata);
+			ret = ns_put_rr(pkt, rrset, rrsigs, compr_hint, 0, qdata);
 		}
 		break;
 	}
@@ -221,7 +235,8 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 	const knot_rrset_t *ns_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_NS);
 	const knot_rrset_t *rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	if (ns_rrset) {
-		return knot_pkt_put(pkt, 0, ns_rrset, rrsigs, KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP);
+		return ns_put_rr(pkt, ns_rrset, rrsigs, COMPR_HINT_NONE,
+		                 KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP, qdata);
 	} else {
 		dbg_ns("%s: no NS RRSets in this zone, fishy...\n", __func__);
 	}
@@ -229,7 +244,8 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 }
 
 /*! \brief Puts optional SOA RRSet to the Authority section of the response. */
-static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
+static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
+                             const knot_zone_contents_t *zone)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
 	knot_rrset_t *soa_rrset = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
@@ -251,7 +267,7 @@ static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
 		flags |= KNOT_PF_FREE;
 	}
 
-	ret = knot_pkt_put(pkt, 0, soa_rrset, rrsigs, flags);
+	ret = ns_put_rr(pkt, soa_rrset, rrsigs, COMPR_HINT_NONE, flags, qdata);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
 		knot_rrset_deep_free(&soa_rrset, 1, &pkt->mm);
 	}
@@ -270,7 +286,7 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Insert NS record. */
 	const knot_rrset_t *rrset = knot_node_rrset(qdata->node, KNOT_RRTYPE_NS);
 	const knot_rrset_t *rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-	return knot_pkt_put(pkt, 0, rrset, rrsigs, 0);
+	return ns_put_rr(pkt, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
 }
 
 /*! \brief Put additional records for given RR. */
@@ -303,7 +319,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 			if (additional == NULL) {
 				continue;
 			}
-			ret = knot_pkt_put(pkt, hint, additional, NULL, flags);
+			ret = knot_pkt_put(pkt, hint, additional, flags);
 			if (ret != KNOT_EOK) {
 				break;
 			}
@@ -329,7 +345,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 
 	/* Now, try to put CNAME to answer. */
 	uint16_t rr_count_before = pkt->rrset_count;
-	ret = put_rr(pkt, cname_rr, rrsigs, 0, flags, qdata);
+	ret = ns_put_rr(pkt, cname_rr, rrsigs, 0, flags, qdata);
 	switch (ret) {
 	case KNOT_EOK:    break;
 	case KNOT_ESPACE: return TRUNC;
@@ -351,7 +367,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 			return ERROR;
 		}
 		cname_rr = dname_cname_synth(cname_rr, qdata->name, &pkt->mm);
-		ret = put_rr(pkt, cname_rr, NULL, 0, KNOT_PF_FREE, qdata);
+		ret = ns_put_rr(pkt, cname_rr, NULL, 0, KNOT_PF_FREE, qdata);
 		switch (ret) {
 		case KNOT_EOK:    break;
 		case KNOT_ESPACE: return TRUNC;
@@ -521,7 +537,7 @@ static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qd
 	}
 
 	/* RFC4035, section 3.1 RRSIGs for RRs in ANSWER are mandatory. */
-	int ret = nsec_append_rrsigs(pkt, false);
+	int ret = nsec_append_rrsigs(pkt, qdata, false);
 	switch(ret) {
 	case KNOT_ESPACE: return TRUNC;
 	case KNOT_EOK:    return state;
@@ -542,11 +558,11 @@ static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	case MISS:   /* MISS, set NXDOMAIN RCODE. */
 		dbg_ns("%s: answer is NXDOMAIN\n", __func__);
 		qdata->rcode = KNOT_RCODE_NXDOMAIN;
-		ret = put_authority_soa(pkt, zone_contents);
+		ret = put_authority_soa(pkt, qdata, zone_contents);
 		break;
 	case NODATA: /* NODATA append AUTHORITY SOA. */
 		dbg_ns("%s: answer is NODATA\n", __func__);
-		ret = put_authority_soa(pkt, zone_contents);
+		ret = put_authority_soa(pkt, qdata, zone_contents);
 		break;
 	case DELEG:  /* Referral response. */
 		ret = put_delegation(pkt, qdata);
@@ -600,7 +616,7 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 
 	/* RFC4035, section 3.1 RRSIGs for RRs in AUTHORITY are mandatory. */
 	if (ret == KNOT_EOK) {
-		ret = nsec_append_rrsigs(pkt, false);
+		ret = nsec_append_rrsigs(pkt, qdata, false);
 	}
 
 	/* Evaluate final state. */
@@ -644,7 +660,7 @@ static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data
 	}
 
 	/* RFC4035, section 3.1 RRSIGs for RRs in ADDITIONAL are optional. */
-	int ret = nsec_append_rrsigs(pkt, true);
+	int ret = nsec_append_rrsigs(pkt, qdata, true);
 	switch(ret) {
 	case KNOT_ESPACE: return TRUNC;
 	case KNOT_EOK:    return state;

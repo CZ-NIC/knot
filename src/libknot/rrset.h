@@ -387,15 +387,14 @@ int rrset_additional_needed(uint16_t rrtype);
 /*!
  * \brief Creates RRSIG record from node RRSIGs for given RRSet.
  *
- * \param covered  RRSet to create RRSIG for.
  * \param rrsigs   Node RRSIGs.
+ * \param type     Type to cover.
  * \param out_sig  Output RRSIG.
  * \param mm       Memory context.
  *
  * \return KNOT_E*
  */
-int knot_rrset_synth_rrsig(const knot_rrset_t *covered,
-                           const knot_rrset_t *rrsigs, knot_rrset_t **out_sig,
+int knot_rrset_synth_rrsig(const knot_rrset_t *rrsigs, uint16_t type, knot_rrset_t **out_sig,
                            mm_ctx_t *mm);
 
 size_t knot_rrset_rr_count(const knot_rrset_t *rrset);
