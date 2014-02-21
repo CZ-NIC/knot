@@ -386,7 +386,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	ret = zones_merge_and_store_changesets(zone, chgsets, sec_chs,
 	                                       &transaction);
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s: Failed to store changesets (%s)\n",
+		log_zone_error("%s: Failed to save new entry to journal (%s)\n",
 		               msg, knot_strerror(ret));
 		xfrin_rollback_update(zone->contents, &new_contents,
 		                      chgsets->changes);
@@ -398,7 +398,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	bool new_signatures = !knot_changeset_is_empty(sec_ch);
 	// Apply DNSSEC changeset
 	if (new_signatures) {
-		ret = xfrin_apply_changesets_dnssec(old_contents,
+		ret = xfrin_apply_changesets_dnssec_ddns(old_contents,
 		                                    new_contents,
 		                                    sec_chs,
 		                                    chgsets,
@@ -406,8 +406,8 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		knot_zone_clear_sorted_changes(sorted_changes);
 		hattrie_free(sorted_changes);
 		if (ret != KNOT_EOK) {
-			log_zone_error("%s: Failed to sign incoming update %s\n",
-			               msg, knot_strerror(ret));
+			log_zone_error("%s: Failed to sign incoming update (%s)"
+			               "\n", msg, knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
 			return ret;
@@ -417,7 +417,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		assert(zone->dnssec.timer);
 		ret = replan_zone_sign_after_ddns(zone, refresh_at);
 		if (ret != KNOT_EOK) {
-			log_zone_error("%s: Failed to replan zone sign %s\n",
+			log_zone_error("%s: Failed to replan zone sign (%s)\n",
 			               msg, knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
@@ -440,9 +440,8 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	if (transaction) {
 		ret = zones_store_changesets_commit(transaction);
 		if (ret != KNOT_EOK) {
-			log_zone_error("%s: Failed to commit stored "
-			               "changesets: %s."
-			               "\n", msg, knot_strerror(ret));
+			log_zone_error("%s: Failed to commit new journal entry "
+			               "(%s).\n", msg, knot_strerror(ret));
 			xfrin_rollback_update(zone->contents, &new_contents,
 			                      chgsets->changes);
 			zones_free_merged_changesets(chgsets, sec_chs);
@@ -458,7 +457,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	rcu_read_lock();        /* Relock */
 	zone_release(zone);     /* Release held pointer. */
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to replace current zone - %s\n",
+		log_zone_error("%s: Failed to replace current zone (%s)\n",
 		               msg, knot_strerror(ret));
 		// Cleanup old and new contents
 		xfrin_rollback_update(zone->contents, &new_contents,
@@ -480,7 +479,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	assert(ret == KNOT_EOK);
 	*rcode = KNOT_RCODE_NOERROR; /* Mark as successful. */
 	if (new_signatures) {
-		log_zone_info("%s: Signed.\n", msg);
+		log_zone_info("%s: Successfuly signed.\n", msg);
 	}
 
 	free(msg);

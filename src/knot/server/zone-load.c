@@ -280,9 +280,11 @@ static zone_t* update_zone(zone_t *old_zone, conf_zone_t *conf, server_t *server
 		goto fail;
 	}
 
-	result = zones_do_diff_and_sign(conf, new_zone, old_zone, new_content);
+	result = zones_do_diff_and_sign(new_zone, old_zone, new_content);
 	if (result != KNOT_EOK) {
-		log_zone_error("Zone '%s', failed to sign the zone: %s\n",
+		log_zone_error("Zone '%s', failed to create diff and/or sign "
+		               "the zone: %s. The server will continue to serve"
+		               " the old zone.\n",
 		               conf->name, knot_strerror(result));
 		goto fail;
 	}
