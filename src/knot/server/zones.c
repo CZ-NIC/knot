@@ -2097,7 +2097,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 	                                                 &transaction);
 
 	if (ret != KNOT_EOK) {
-		log_zone_error("Zone %s: Could not save new entry in journal "
+		log_zone_error("Zone %s: Could not save new entry to journal "
 		               "(%s)!\n", z->name, knot_strerror(ret));
 		return ret;
 	}
@@ -2206,6 +2206,7 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 	bool apply_chgset = false;
 	bool zone_reloaded = zone_changed
 	                     && old_zone != NULL && old_zone->contents != NULL;
+	bool zone_signed = false;
 
 	int ret = sign_after_load(zone, z, &diff_chs);
 	if (ret != KNOT_EOK) {
@@ -2215,6 +2216,8 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 
 	if (zones_changesets_empty(diff_chs)) {
 		knot_changesets_free(&diff_chs);
+	} else {
+		zone_signed = true;
 	}
 
 	/* Now we have changeset with DNSSEC changes, but not applied to zone.
@@ -2255,6 +2258,11 @@ int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone, zone_t *old_zone,
 
 	knot_changesets_free(&diff_chs);
 	rcu_read_unlock();
+
+	if (ret == KNOT_EOK && zone_signed) {
+		log_zone_info("DNSSEC: Zone %s - Successfully signed.\n",
+		              z->name);
+	}
 
 	return ret;
 }
