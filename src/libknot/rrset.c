@@ -227,7 +227,7 @@ static int knot_rrset_header_to_wire(const knot_rrset_t *rrset, uint32_t ttl,
 	knot_wire_write_u16(*pos, rrset->rclass);
 	*pos += sizeof(uint16_t);
 
-	dbg_rrset_detail("  TTL: %u\n", knot_rrset_ttl(rrset));
+	dbg_rrset_detail("  TTL: %u\n", ttl);
 	knot_wire_write_u32(*pos, ttl);
 	*pos += sizeof(uint32_t);
 
