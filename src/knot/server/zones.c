@@ -2034,9 +2034,13 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
 			               "modifying zone (%s).\n", z->name,
 			               knot_strerror(ret));
+			/* No need to do rollback, the whole new zone will be
+			 * discarded. */
 			return ret;
 		}
 
+		xfrin_cleanup_successful_update((*diff_chs)->changes);
+		knot_changesets_free(diff_chs);
 		assert(z->build_diffs);
 	}
 
@@ -2115,25 +2119,26 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			if (ret == KNOT_EOK) {
 				ret = xfrin_finalize_updated_zone(
 				                    zone->contents, true, NULL);
-				/* In case of error no zone rollback is
-				 * required.
-				 */
 			}
 		} else {
 			assert(old_zone != NULL);
 			assert(old_zone->contents == zone->contents);
+
 			ret = xfrin_apply_changesets(zone, diff_chs,
 			                             &new_contents);
 		}
-
 
 		if (ret != KNOT_EOK) {
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
 			               "modifying zone (%s).\n", z->name,
 			               knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
+			/* No zone rollback needed, the whole new zone will be
+			 * discarded. */
 			return ret;
 		}
+
+		xfrin_cleanup_successful_update(diff_chs->changes);
 	}
 
 	/* Commit transaction. */
