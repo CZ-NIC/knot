@@ -2032,6 +2032,7 @@ static int diff_after_load(zone_t *zone, zone_t *old_zone,
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
 			               "modifying zone (%s).\n",
 			               zone->conf->name, knot_strerror(ret));
+			knot_changesets_free(diff_chs);
 			/* No need to do rollback, the whole new zone will be
 			 * discarded. */
 			return ret;
