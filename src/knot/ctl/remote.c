@@ -98,7 +98,8 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 			continue;
 		}
 
-		for (uint16_t i = 0; i < knot_rrset_rr_count(rr); i++) {
+		uint16_t rr_count = knot_rrset_rr_count(rr);
+		for (uint16_t i = 0; i < rr_count; i++) {
 			const knot_dname_t *dn = knot_rdata_ns_name(rr, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find(s->zone_db, dn);

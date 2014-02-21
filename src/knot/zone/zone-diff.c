@@ -299,7 +299,8 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 		get_rdata_descriptor(knot_rrset_type(rrset1));
 	assert(desc);
 
-	for (uint16_t i = 0; i < knot_rrset_rr_count(rrset1); ++i) {
+	uint16_t rr1_count = knot_rrset_rr_count(rrset1);
+	for (uint16_t i = 0; i < rr1_count; ++i) {
 		size_t rr_pos = 0;
 		int ret = knot_rrset_find_rr_pos(rrset2, rrset1, i, &rr_pos);
 		if (ret == KNOT_ENOENT) {

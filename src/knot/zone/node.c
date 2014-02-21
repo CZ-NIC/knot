@@ -720,8 +720,8 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 		return false;
 	}
 
-	size_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
-	for (size_t i = 0; i < rrsigs_rdata_count; ++i) {
+	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		const uint16_t type_covered =
 			knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {

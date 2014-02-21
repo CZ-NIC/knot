@@ -304,7 +304,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr, knot_rrinfo_t
 	const knot_rrset_t *additional = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
-	size_t rr_rdata_count = knot_rrset_rr_count(rr);
+	uint16_t rr_rdata_count = knot_rrset_rr_count(rr);
 	for (uint16_t i = 0; i < rr_rdata_count; i++) {
 		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
 		node = rr->additional[i];

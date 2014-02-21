@@ -78,8 +78,8 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 		return false;
 	}
 
-	size_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
-	for (int i = 0; i < rrsigs_rdata_count; i++) {
+	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	for (uint16_t i = 0; i < rrsigs_rdata_count; i++) {
 		uint16_t keytag = knot_rdata_rrsig_key_tag(rrsigs, i);
 		if (keytag != key->keytag) {
 			continue;
@@ -227,8 +227,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		return KNOT_EOK;
 	}
 
-	size_t rrsig_rdata_count = knot_rrset_rr_count(synth_rrsig);
-	for (int i = 0; i < rrsig_rdata_count; i++) {
+	uint16_t rrsig_rdata_count = knot_rrset_rr_count(synth_rrsig);
+	for (uint16_t i = 0; i < rrsig_rdata_count; i++) {
 		const knot_zone_key_t *key;
 		key = get_matching_zone_key(synth_rrsig, i, zone_keys);
 
@@ -446,8 +446,8 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
-	size_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
-	for (size_t i = 0; i < rrsigs_rdata_count; ++i) {
+	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		uint16_t type_covered = knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (!knot_node_rrset(node, type_covered)) {
 			knot_rrset_t *to_remove = knot_rrset_new_from(rrsigs, NULL);
@@ -679,10 +679,10 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
 	assert(dnskeys);
 	assert(key);
 
-	size_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
-	for (int i = 0; i < dnskeys_rdata_count; i++) {
+	uint16_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
-		size_t rdata_size = knot_rrset_rr_size(dnskeys, i);
+		uint16_t rdata_size = knot_rrset_rr_size(dnskeys, i);
 		if (dnskey_rdata_match(key, rdata, rdata_size)) {
 			return true;
 		}
@@ -740,10 +740,10 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 		goto done;
 	}
 
-	size_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
-	for (int i = 0; i < dnskeys_rdata_count; i++) {
+	uint16_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
-		size_t rdata_size = knot_rrset_rr_size(dnskeys, i);
+		uint16_t rdata_size = knot_rrset_rr_size(dnskeys, i);
 		uint16_t keytag = knot_keytag(rdata, rdata_size);
 		const knot_zone_key_t *key = knot_get_zone_key(zone_keys, keytag);
 		if (key == NULL) {
@@ -912,10 +912,10 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	}
 
 	// add unknown keys from zone
-	size_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
-	for (int i = 0; dnskeys && i < dnskeys_rdata_count; i++) {
+	uint16_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
-		size_t rdata_size = knot_rrset_rr_size(dnskeys, i);
+		uint16_t rdata_size = knot_rrset_rr_size(dnskeys, i);
 		uint16_t keytag = knot_keytag(rdata, rdata_size);
 		if (knot_get_zone_key(zone_keys, keytag) != NULL) {
 			continue;

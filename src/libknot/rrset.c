@@ -774,8 +774,8 @@ bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
 		return KNOT_EINVAL;
 	}
 
-	size_t r1_rdata_count = knot_rrset_rr_count(r1);
-	size_t r2_rdata_count = knot_rrset_rr_count(r2);
+	uint16_t r1_rdata_count = knot_rrset_rr_count(r1);
+	uint16_t r2_rdata_count = knot_rrset_rr_count(r2);
 
 	if (r1_rdata_count != r2_rdata_count) {
 		return false;
@@ -1137,8 +1137,8 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 		return KNOT_EINVAL;
 	}
 
-	size_t r2_rdata_count = knot_rrset_rr_count(rrset2);
-	for (size_t i = 0; i < r2_rdata_count; ++i) {
+	uint16_t r2_rdata_count = knot_rrset_rr_count(rrset2);
+	for (uint16_t i = 0; i < r2_rdata_count; ++i) {
 		int ret = knot_rrset_add_rr_n(rrset1, rrset2, i, mm);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -1222,7 +1222,7 @@ int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 	int merged = 0;
 	int deleted = 0;
 
-	size_t r2_rdata_count = knot_rrset_rr_count(rrset2);
+	uint16_t r2_rdata_count = knot_rrset_rr_count(rrset2);
 	for (uint16_t i = 0; i < r2_rdata_count; i++) {
 		result = knot_rrset_add_rr_sort_n(rrset1, rrset2, &merged,
 		                                  &deleted, i, mm);
@@ -1436,8 +1436,8 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
                            size_t *pos_out)
 {
 	bool found = false;
-	size_t rr_count = knot_rrset_rr_count(rr_search_in);
-	for (size_t i = 0; i < rr_count && !found; ++i) {
+	uint16_t rr_count = knot_rrset_rr_count(rr_search_in);
+	for (uint16_t i = 0; i < rr_count && !found; ++i) {
 		if (rrset_rdata_compare_one(rr_search_in,
 		                            rr_reference, i, pos) == 0) {
 			*pos_out = i;
@@ -1517,7 +1517,7 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 		return KNOT_ENOMEM;
 	}
 
-	size_t what_rdata_count = knot_rrset_rr_count(what);
+	uint16_t what_rdata_count = knot_rrset_rr_count(what);
 	for (uint16_t i = 0; i < what_rdata_count; ++i) {
 		int ret = knot_rrset_remove_rr(from, what, i, mm);
 		if (ret == KNOT_EOK) {
@@ -1563,8 +1563,8 @@ int rrset_additional_needed(uint16_t rrtype)
 static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
                               const knot_rrset_t *rrsigs, mm_ctx_t *mm)
 {
-	size_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
-	for (size_t i = 0; i < rrsigs_rdata_count; ++i) {
+	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		const uint16_t type_covered =
 			knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
