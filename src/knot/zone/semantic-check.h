@@ -30,6 +30,12 @@
 #include "knot/zone/node.h"
 #include "knot/zone/zone-contents.h"
 
+enum check_levels {
+	SEM_CHECK_UNSIGNED = 1,
+	SEM_CHECK_NSEC = 2,
+	SEM_CHECK_NSEC3 = 3
+};
+
 /*!
  *\brief Internal error constants. General errors are added for convenience,
  *       so that code does not have to change if new errors are added.

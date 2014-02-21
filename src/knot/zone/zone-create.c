@@ -277,7 +277,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	if (loader->semantic_checks) {
-		int check_level = 1;
+		int check_level = SEM_CHECK_UNSIGNED;
 		const knot_rrset_t *soa_rr =
 			knot_node_rrset(zc->z->apex,
 		                        KNOT_RRTYPE_SOA);
@@ -287,9 +287,9 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		                        KNOT_RRTYPE_NSEC3PARAM);
 		if (knot_zone_contents_is_signed(zc->z) && nsec3param_rr == NULL) {
 			/* Set check level to DNSSEC. */
-			check_level = 2;
+			check_level = SEM_CHECK_NSEC;
 		} else if (knot_zone_contents_is_signed(zc->z) && nsec3param_rr) {
-			check_level = 3;
+			check_level = SEM_CHECK_NSEC3;
 		}
 		err_handler_t err_handler;
 		err_handler_init(&err_handler);

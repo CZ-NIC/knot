@@ -1081,9 +1081,9 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 		return KNOT_EOK;
 	}
 
-	if (do_checks > 1) {
+	if (do_checks == SEM_CHECK_NSEC || do_checks == SEM_CHECK_NSEC3) {
 		semantic_checks_dnssec(zone, node, last_node,
-				       handler, do_checks == 3);
+				       handler, do_checks == SEM_CHECK_NSEC3);
 	}
 
 	return KNOT_EOK;
