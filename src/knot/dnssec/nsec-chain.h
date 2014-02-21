@@ -136,15 +136,14 @@ int knot_nsec_chain_iterate_fix(hattrie_t *nodes,
                                 chain_fix_data_t *data);
 
 /*!
- * \brief Add entry for removed NSEC to the changeset.
+ * \brief Add entry for removed NSEC(3) and its RRSIG to the changeset.
  *
- * \param oldrr      Old NSEC RR set to be removed (including RRSIG).
+ * \param n          Node to extract NSEC(3) from.
  * \param changeset  Changeset to add the old RR into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
-                               const knot_rrset_t *rrsigs,
+int knot_nsec_changeset_remove(const knot_node_t *n,
                                knot_changeset_t *changeset);
 
 /*!

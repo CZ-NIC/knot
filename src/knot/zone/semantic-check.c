@@ -442,12 +442,13 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	ret = knot_rrset_synth_rrsig(knot_node_rrset(node, KNOT_RRTYPE_RRSIG),
 	                             rrset->type,
 	                             &rrsigs, NULL);
-	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-		return ret;
+	if (ret != KNOT_EOK) {
+		if (ret != KNOT_ENOENT) {
+			return ret;
+		}
 	}
 
 	if (rrsigs == NULL) {
-		assert(ret == KNOT_ENOENT);
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_NO_RRSIG,
 		                         info_str);

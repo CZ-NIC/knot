@@ -364,7 +364,11 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 	int result = knot_rrset_synth_rrsig(rrsigs, covered->type,
 	                                    &synth_rrsigs, NULL);
 	if (result != KNOT_EOK) {
-		return result;
+		if (result != KNOT_ENOENT) {
+			return result;
+		}
+		// No signature exists
+		return KNOT_EINVAL;
 	}
 
 	// identify fields in the signature being validated

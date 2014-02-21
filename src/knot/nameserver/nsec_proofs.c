@@ -802,6 +802,8 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 			if (ret != KNOT_ENOENT) {
 				return ret;
 			}
+			// Nothing to insert
+			continue;
 		}
 		ret = knot_pkt_put(pkt, compr_hint, synth_sig, flags);
 		if (ret != KNOT_EOK) {

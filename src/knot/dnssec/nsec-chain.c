@@ -72,8 +72,6 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 	assert(from && to && out_ch);
 	const knot_rrset_t *nsec_rrset = knot_node_rrset(from,
 	                                                 KNOT_RRTYPE_NSEC);
-	const knot_rrset_t *rrsigs = knot_node_rrset(from,
-	                                             KNOT_RRTYPE_RRSIG);
 	// Create new NSEC
 	knot_rrset_t *new_nsec;
 	if (only_nsec_in_node(from)) {
@@ -93,8 +91,7 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 			dbg_dnssec_detail("Creating new NSEC for %s\n",
 			                  knot_dname_to_str(new_nsec->owner));
 			// Drop old
-			int ret = knot_nsec_changeset_remove(nsec_rrset, rrsigs,
-			                                out_ch);
+			int ret = knot_nsec_changeset_remove(from, out_ch);
 			if (ret != KNOT_EOK) {
 				knot_rrset_deep_free(&new_nsec, 1, NULL);
 				return ret;
@@ -121,8 +118,7 @@ static int update_nsec(const knot_node_t *from, const knot_node_t *to,
 		}
 	} else {
 		// Drop old, no longer needed
-		int ret = knot_nsec_changeset_remove(nsec_rrset, rrsigs,
-		                                out_ch);
+		int ret = knot_nsec_changeset_remove(from, out_ch);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return ret;
@@ -208,7 +204,6 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	}
 
 	knot_rrset_t *old_next_nsec = knot_node_get_rrset(b, KNOT_RRTYPE_NSEC);
-	const knot_rrset_t *old_next_rrsigs = knot_node_get_rrset(b, KNOT_RRTYPE_RRSIG);
 	int ret = 0;
 
 	/*!
@@ -217,8 +212,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	 */
 	if (old_next_nsec != NULL
 	    && knot_nsec_only_nsec_and_rrsigs_in_node(b)) {
-		ret = knot_nsec_changeset_remove(old_next_nsec, old_next_rrsigs,
-		                                 data->changeset);
+		ret = knot_nsec_changeset_remove(b, data->changeset);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -234,7 +228,6 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	}
 
 	knot_rrset_t *old_nsec = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC);
-	const knot_rrset_t *old_rrsigs = knot_node_get_rrset(a, KNOT_RRTYPE_RRSIG);
 	if (old_nsec != NULL) {
 		if (knot_rrset_equal(new_nsec, old_nsec,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
@@ -248,7 +241,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 		// current NSEC is invalid, replace it and drop RRSIG
 		// mark the node, so later we know this NSEC needs new RRSIGs
 		knot_node_set_replaced_nsec(a);
-		ret = knot_nsec_changeset_remove(old_nsec, old_rrsigs, data->changeset);
+		ret = knot_nsec_changeset_remove(a, data->changeset);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&new_nsec, 1, NULL);
 			return ret;
@@ -279,10 +272,8 @@ static int handle_deleted_node(const knot_node_t *node,
 		assert(knot_node_is_non_auth(node));
 		return NSEC_NODE_SKIP;
 	}
-	const knot_rrset_t *old_nsec = knot_node_rrset(node, KNOT_RRTYPE_NSEC);
-	assert(old_nsec);
-	const knot_rrset_t *old_rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
-	int ret = knot_nsec_changeset_remove(old_nsec, old_rrsigs, fix_data->out_ch);
+
+	int ret = knot_nsec_changeset_remove(node, fix_data->out_ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -292,6 +283,9 @@ static int handle_deleted_node(const knot_node_t *node,
 	 * previous node.
 	 */
 	if (fix_data->next_dname == NULL) {
+		const knot_rrset_t *old_nsec =
+			knot_node_rrset(node, KNOT_RRTYPE_NSEC);
+		assert(old_nsec);
 		fix_data->next_dname =
 			(knot_dname_t *)knot_rdata_nsec_next(old_nsec);
 		assert(fix_data->next_dname);
@@ -619,51 +613,58 @@ int knot_nsec_chain_iterate_fix(hattrie_t *nodes, chain_iterate_fix_cb callback,
 /*!
  * \brief Add entry for removed NSEC to the changeset.
  */
-int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
-                               const knot_rrset_t *rrsigs,
+int knot_nsec_changeset_remove(const knot_node_t *n,
                                knot_changeset_t *changeset)
 {
-	if (oldrr == NULL) {
-		return KNOT_EOK;
-	}
 	if (changeset == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int result;
+	int result = KNOT_EOK;
+
+	const knot_rrset_t *nsec = knot_node_rrset(n, KNOT_RRTYPE_NSEC);
+	if (nsec == NULL) {
+		nsec = knot_node_rrset(n, KNOT_RRTYPE_NSEC3);
+	}
+	const knot_rrset_t *rrsigs = knot_node_rrset(n, KNOT_RRTYPE_RRSIG);
 
 	// extract copy of NSEC
 	knot_rrset_t *old_nsec = NULL;
-	result = knot_rrset_deep_copy(oldrr, &old_nsec, NULL);
-	if (result != KNOT_EOK) {
-		return result;
+	if (nsec) {
+		result = knot_rrset_deep_copy(nsec, &old_nsec, NULL);
+		if (result != KNOT_EOK) {
+			return result;
+		}
+
+		// update changeset
+
+		result = knot_changeset_add_rrset(changeset, old_nsec,
+		                                  KNOT_CHANGESET_REMOVE);
+		if (result != KNOT_EOK) {
+			knot_rrset_deep_free(&old_nsec, 1, NULL);
+			return result;
+		}
 	}
 
-	// update changeset
+	if (rrsigs) {
+		// Sythesize RRSets' RRSIG
+		knot_rrset_t *synth_rrsigs = NULL;
+		result = knot_rrset_synth_rrsig(rrsigs, KNOT_RRTYPE_NSEC,
+		                                &synth_rrsigs, NULL);
+		if (result != KNOT_EOK) {
+			if (result != KNOT_ENOENT) {
+				return result;
+			}
+			return KNOT_EOK;
+		}
 
-	result = knot_changeset_add_rrset(changeset, old_nsec,
-	                                  KNOT_CHANGESET_REMOVE);
-	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&old_nsec, 1, NULL);
-		return result;
-	}
-
-	// extract copy of RRSIG
-	knot_rrset_t *synth_rrsigs = NULL;
-	result = knot_rrset_synth_rrsig(rrsigs, oldrr->type, &synth_rrsigs, NULL);
-	if (result != KNOT_EOK && result != KNOT_ENOENT) {
-		return result;
-	}
-	if (result == KNOT_ENOENT) {
-		return KNOT_EOK;
-	}
-
-	// store RRSIG
-	result = knot_changeset_add_rrset(changeset, synth_rrsigs,
-	                                  KNOT_CHANGESET_REMOVE);
-	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&synth_rrsigs, 1, NULL);
-		return result;
+		// store RRSIG
+		result = knot_changeset_add_rrset(changeset, synth_rrsigs,
+		                                  KNOT_CHANGESET_REMOVE);
+		if (result != KNOT_EOK) {
+			knot_rrset_deep_free(&synth_rrsigs, 1, NULL);
+			return result;
+		}
 	}
 
 	return KNOT_EOK;

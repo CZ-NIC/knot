@@ -348,10 +348,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		// Drop old
 		int ret = KNOT_EOK;
 		if (old_nsec3) {
-
-			const knot_rrset_t *rrsigs = knot_node_rrset(from_node,
-			                                             KNOT_RRTYPE_RRSIG);
-			ret = knot_nsec_changeset_remove(old_nsec3, rrsigs, out_ch);
+			ret = knot_nsec_changeset_remove(from_node, out_ch);
 			if (ret != KNOT_EOK) {
 				knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 				return ret;
@@ -741,11 +738,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		 * Remove possible NSEC from the node. (Do not allow both NSEC
 		 * and NSEC3 in the zone at once.)
 		 */
-		result = knot_nsec_changeset_remove(knot_node_rrset(node,
-		                                    KNOT_RRTYPE_NSEC),
-		                                    knot_node_rrset(node,
-		                                    KNOT_RRTYPE_RRSIG),
-		                                    chgset);
+		result = knot_nsec_changeset_remove(node, chgset);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -1063,10 +1056,7 @@ static int handle_deleted_node(const knot_node_t *node,
 		assert(knot_node_is_non_auth(node));
 		return NSEC_NODE_SKIP;
 	}
-	const knot_rrset_t *old_nsec3 = knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
-	assert(old_nsec3);
-	const knot_rrset_t *old_rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
-	int ret = knot_nsec_changeset_remove(old_nsec3, old_rrsigs, fix_data->out_ch);
+	int ret = knot_nsec_changeset_remove(node, fix_data->out_ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -1076,6 +1066,9 @@ static int handle_deleted_node(const knot_node_t *node,
 	 * previous node.
 	 */
 	if (fix_data->next_dname == NULL) {
+		const knot_rrset_t *old_nsec3 =
+			knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
+		assert(old_nsec3);
 		fix_data->next_dname =
 			next_dname_from_nsec3_rrset(old_nsec3,
 			                            fix_data->zone->apex->owner);

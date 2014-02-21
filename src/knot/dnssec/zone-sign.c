@@ -220,12 +220,11 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	knot_rrset_t *synth_rrsig = NULL;
 	result = knot_rrset_synth_rrsig(rrsigs, covered->type,
 	                                &synth_rrsig, NULL);
-	if (result == KNOT_ENOENT) {
-		// Nothing to remove
-		return KNOT_EOK;
-	}
 	if (result != KNOT_EOK) {
-		return result;
+		if (result != KNOT_ENOENT) {
+			return result;
+		}
+		return KNOT_EOK;
 	}
 
 	size_t rrsig_rdata_count = knot_rrset_rr_count(synth_rrsig);
@@ -359,12 +358,11 @@ static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
 
 	knot_rrset_t *synth_rrsig = NULL;
 	int ret = knot_rrset_synth_rrsig(rrsigs, rrset->type, &synth_rrsig, NULL);
-	if (ret == KNOT_ENOENT) {
-		// Nothing to remove
-		return KNOT_EOK;
-	}
 	if (ret != KNOT_EOK) {
-		return ret;
+		if (ret != KNOT_ENOENT) {
+			return ret;
+		}
+		return KNOT_EOK;
 	}
 
 	ret = knot_changeset_add_rrset(changeset, synth_rrsig, KNOT_CHANGESET_REMOVE);
@@ -1008,8 +1006,10 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	knot_rrset_t *dnskey_rrsig = NULL;
 	result = knot_rrset_synth_rrsig(rrsigs, KNOT_RRTYPE_DNSKEY,
 	                                &dnskey_rrsig, NULL);
-	if (result != KNOT_EOK && result != KNOT_ENOENT) {
-		return result;
+	if (result != KNOT_EOK) {
+		if (result != KNOT_ENOENT) {
+			return result;
+		}
 	}
 
 	bool modified = (knot_changeset_size(changeset) != changes_before);
