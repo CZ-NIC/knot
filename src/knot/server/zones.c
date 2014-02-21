@@ -2025,6 +2025,11 @@ static int diff_after_load(zone_t *zone, const conf_zone_t *z, zone_t *old_zone,
 		                                      (*diff_chs)->changes,
 		                                      *diff_chs);
 
+		if (ret == KNOT_EOK) {
+			ret = xfrin_finalize_updated_zone(
+			                        zone->contents, true, NULL);
+		}
+
 		if (ret != KNOT_EOK) {
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
 			               "modifying zone (%s).\n", z->name,
