@@ -705,6 +705,14 @@ uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos)
 	}
 }
 
+void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl)
+{
+	rr_t *rr = get_rr(rrset, pos);
+	if (rr) {
+		rr_set_ttl(rr, ttl);
+	}
+}
+
 const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset)
 {
 	return rrset->owner;
@@ -736,14 +744,6 @@ int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner)
 	return KNOT_EOK;
 }
 
-void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl)
-{
-	if (rrset && rrset->rrs) {
-		rr_t *rr = get_rr(rrset, 0);
-		rr_set_ttl(rr, ttl);
-	}
-}
-
 uint16_t knot_rrset_type(const knot_rrset_t *rrset)
 {
 	return rrset->type;
@@ -752,11 +752,6 @@ uint16_t knot_rrset_type(const knot_rrset_t *rrset)
 uint16_t knot_rrset_class(const knot_rrset_t *rrset)
 {
 	return rrset->rclass;
-}
-
-uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
-{
-	return knot_rrset_rr_ttl(rrset, 0);
 }
 
 uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos)

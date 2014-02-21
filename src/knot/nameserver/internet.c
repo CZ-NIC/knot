@@ -83,7 +83,7 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr,
 	/* Store DNAME into RDATA. */
 	int cname_size = knot_dname_size(cname);
 	uint8_t *cname_rdata = knot_rrset_create_rr(cname_rrset, cname_size,
-	                                            knot_rrset_ttl(dname_rr),
+	                                            knot_rrset_rr_ttl(dname_rr, 0),
 	                                            mm);
 	if (cname_rdata == NULL) {
 		knot_rrset_free(&cname_rrset);
@@ -241,13 +241,13 @@ static int put_authority_soa(knot_pkt_t *pkt, const knot_zone_contents_t *zone)
 	int ret = KNOT_EOK;
 	uint32_t flags = KNOT_PF_NOTRUNC;
 	uint32_t min = knot_rdata_soa_minimum(soa_rrset);
-	if (min < knot_rrset_ttl(soa_rrset)) {
+	if (min < knot_rrset_rr_ttl(soa_rrset, 0)) {
 		ret = knot_rrset_deep_copy(soa_rrset, &soa_rrset, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
-		knot_rrset_set_ttl(soa_rrset, min);
+		knot_rrset_rr_set_ttl(soa_rrset, 0, min);
 		flags |= KNOT_PF_FREE;
 	}
 

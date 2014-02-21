@@ -193,14 +193,6 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  */
 int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
 
-/*!
- * \brief Sets rrset TTL to given TTL.
- *
- * \param rrset Specified RRSet.
- * \param ttl New TTL.
- */
-void knot_rrset_set_ttl(knot_rrset_t *rrset, uint32_t ttl);
-
 void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass);
 
 /*!
@@ -220,15 +212,6 @@ uint16_t knot_rrset_type(const knot_rrset_t *rrset);
  * \return CLASS of the given RRSet.
  */
 uint16_t knot_rrset_class(const knot_rrset_t *rrset);
-
-/*!
- * \brief Returns the TTL of the RRSet.
- *
- * \param rrset RRSet to get the TTL of.
- *
- * \return TTL of the given RRSet.
- */
-uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns RDATA of RR on given position.
@@ -252,6 +235,7 @@ uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos);
  */
 uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos);
 uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
+void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
 
 bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
 

@@ -311,17 +311,19 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			/* We'll copy index 'i' into 'changes' RRSet. */
 			ret = knot_rrset_add_rr_from_rrset(*changes, rrset1, i, NULL);
 			if (ret != KNOT_EOK) {
-				dbg_zonediff("zone_diff: diff_rdata: Could not"
-				             " add RR to RRSet (%s).\n",
-				             knot_strerror(ret));
 				knot_rrset_free(changes);
 				return ret;
 			}
 		} else if (ret == KNOT_EOK) {
-			/* RR in both RRSets. no-op*/
-			dbg_zonediff_detail("zone_diff: diff_rdata: "
-			              "Found matching RR for type %d.\n",
-			              rrset1->type);
+			if (knot_rrset_rr_ttl(rrset1, i) !=
+			    knot_rrset_rr_ttl(rrset2, rr_pos)) {
+				// TTLs differ add a change
+				ret = knot_rrset_add_rr_from_rrset(*changes, rrset1, i, NULL);
+				if (ret != KNOT_EOK) {
+					knot_rrset_free(changes);
+					return ret;
+				}
+			}
 		} else {
 			dbg_zonediff("zone_diff: diff_rdata: Could not search "
 			             "for RR (%s).\n", knot_strerror(ret));
@@ -357,28 +359,6 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 		}
 	}
 
-	/*
-	 * to_remove RRSet might be empty, meaning that
-	 * there are no differences in RDATA, but TTLs can differ.
-	 */
-	if (rrset1 && rrset2 &&
-	    (knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) &&
-	    knot_rrset_rr_count(to_remove) == 0) {
-		/* We have to remove old TTL. */
-		assert(knot_rrset_ttl(to_remove) == knot_rrset_ttl(rrset1));
-		/*
-		 * Fill the RDATA so that the change gets saved. All RRs can
-		 * be copied because TTLs are the same for all of them.
-		 */
-		knot_rrset_free(&to_remove);
-		int ret = knot_rrset_deep_copy(rrset1, &to_remove, NULL);
-		if (ret != KNOT_EOK) {
-			dbg_zonediff("zone_diff: diff_rdata: Cannot copy RRSet "
-			             "(%s).\n", knot_strerror(ret));
-			return ret;
-		}
-	}
-
 	int ret = knot_zone_diff_changeset_remove_rrset(changeset,
 	                                            to_remove);
 	if (ret != KNOT_EOK) {
@@ -401,29 +381,6 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
 			             "Error: %s.\n", knot_strerror(ret));
 			return ret;
 		}
-	}
-
-	/*
-	 * to_remove RRSet might be empty, meaning that
-	 * there are no differences in RDATA, but TTLs can differ.
-	 */
-	if (rrset1 && rrset2 &&
-	    knot_rrset_ttl(rrset1) != knot_rrset_ttl(rrset2)) {
-		/* We have to add newer TTL. */
-		if (knot_rrset_rr_count(to_add) == 0) {
-			/*
-			 * Fill the RDATA so that the change gets saved. All RRs can
-			 * be copied because TTLs are the same for all of them.
-			 */
-			knot_rrset_free(&to_add);
-			int ret = knot_rrset_deep_copy(rrset1, &to_add, NULL);
-			if (ret != KNOT_EOK) {
-				dbg_zonediff("zone_diff: diff_rdata: Cannot copy RRSet "
-				             "(%s).\n", knot_strerror(ret));
-				return ret;
-			}
-		}
-		knot_rrset_set_ttl(to_add, knot_rrset_ttl(rrset2));
 	}
 
 	ret = knot_zone_diff_changeset_add_rrset(changeset,

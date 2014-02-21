@@ -216,7 +216,7 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	offset += sizeof(uint16_t);
 
 	/* Copy TTL - always 0. */
-	knot_wire_write_u32(wire + offset, knot_rrset_ttl(tsig_rr));
+	knot_wire_write_u32(wire + offset, knot_rrset_rr_ttl(tsig_rr, 0));
 	dbg_tsig_verb("TSIG: write variables: written TTL: %u - \n",
 	              knot_rrset_ttl(tsig_rr));
 	dbg_tsig_hex_detail((char *)(wire + offset), sizeof(uint32_t));

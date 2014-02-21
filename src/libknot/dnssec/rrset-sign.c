@@ -133,7 +133,8 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	assert(size != 0);
 
 	uint8_t *result = knot_rrset_create_rr(rrsigs, size,
-	                                       knot_rrset_ttl(covered), NULL);
+	                                       knot_rrset_rr_ttl(covered, 0),
+	                                       NULL);
 	if (!result) {
 		return KNOT_ENOMEM;
 	}
@@ -144,7 +145,8 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	}
 
 	int res = knot_rrsig_write_rdata(result, key, covered->type, owner_labels,
-	                                 knot_rrset_ttl(covered), sig_incepted, sig_expires);
+	                                 knot_rrset_rr_ttl(covered, 0),
+	                                 sig_incepted, sig_expires);
 
 	assert(res == KNOT_EOK);
 	UNUSED(res);

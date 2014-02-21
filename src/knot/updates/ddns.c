@@ -135,7 +135,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 	assert(prereqs != NULL);
 	assert(rrset != NULL);
 
-	if (knot_rrset_ttl(rrset) != 0) {
+	if (knot_rrset_rr_ttl(rrset, 0) != 0) {
 		dbg_ddns("ddns: add_prereq: Wrong TTL.\n");
 		return KNOT_EMALF;
 	}
@@ -228,7 +228,6 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	assert(rrset != NULL);
 	assert(rcode != NULL);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
-	assert(knot_rrset_ttl(rrset) == 0);
 
 	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
@@ -513,7 +512,7 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 			return KNOT_EMALF;
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
-		if (knot_rrset_ttl(rrset) != 0
+		if (knot_rrset_rr_ttl(rrset, 0) != 0
 		    || knot_rrtype_is_metatype(knot_rrset_type(rrset))) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
@@ -1326,7 +1325,11 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		return ret;
 	}
 	knot_rrset_set_class(to_chgset, qclass);
-	knot_rrset_set_ttl(to_chgset, knot_rrset_ttl(to_modify));
+	uint16_t rr_count = knot_rrset_rr_count(to_chgset);
+	for (uint16_t i = 0; i < rr_count; ++i) {
+		knot_rrset_rr_set_ttl(to_chgset,
+		                      knot_rrset_rr_ttl(to_modify, i), i);
+	}
 
 	ret = knot_changeset_add_rrset(changeset, to_chgset,
 	                               KNOT_CHANGESET_REMOVE);

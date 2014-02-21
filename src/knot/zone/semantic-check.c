@@ -334,9 +334,13 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	uint32_t original_ttl =
 		knot_rdata_rrsig_original_ttl(rrsig, rr_pos);
 
-	if (original_ttl != knot_rrset_ttl(rrset)) {
-		err_handler_handle_error(handler, node, ZC_ERR_RRSIG_RDATA_TTL,
-		                         info_str);
+	uint16_t rr_count = knot_rrset_rr_count(rrset);
+	for (uint16_t i = 0; i < rr_count; ++i) {
+		if (original_ttl != knot_rrset_rr_ttl(rrset, i)) {
+			err_handler_handle_error(handler, node,
+			                         ZC_ERR_RRSIG_RDATA_TTL,
+			                         info_str);
+		}
 	}
 
 	/* Check for expired signature. */
@@ -472,7 +476,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                         info_str);
 	}
 
-	if (knot_rrset_ttl(rrset) != knot_rrset_ttl(rrsigs)) {
+	if (knot_rrset_rr_ttl(rrset, 0) != knot_rrset_rr_ttl(rrsigs, 0)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_TTL,
 		                         info_str);
@@ -674,7 +678,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	assert(soa_rrset);
 	uint32_t minimum_ttl = knot_rdata_soa_minimum(soa_rrset);
 
-	if (knot_rrset_ttl(nsec3_rrset) != minimum_ttl) {
+	if (knot_rrset_rr_ttl(nsec3_rrset, 0) != minimum_ttl) {
 			err_handler_handle_error(handler, node,
 						 ZC_ERR_NSEC3_RDATA_TTL, NULL);
 	}

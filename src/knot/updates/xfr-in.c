@@ -1005,16 +1005,6 @@ dbg_xfrin_exec_detail(
 	 * TODO: add the 'add' rrset to list of old RRSets?
 	 */
 
-	/* In case the RRSet is empty (and only remained there because of the
-	 * RRSIGs) it may happen that the TTL may be different than that of
-	 * the new RRs. Update the TTL according to the first RR.
-	 */
-
-	if (knot_rrset_rr_count(*rrset) == 0
-	    && knot_rrset_ttl(*rrset) != knot_rrset_ttl(add)) {
-		knot_rrset_set_ttl(*rrset, knot_rrset_ttl(add));
-	}
-
 	int merged, deleted_rrs;
 	ret = knot_rrset_merge_sort(*rrset, add, &merged, &deleted_rrs,
 	                            NULL);
