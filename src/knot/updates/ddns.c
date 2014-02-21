@@ -1324,7 +1324,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 		dbg_ddns("Failed to copy RRSet from packet to changeset.\n");
 		return ret;
 	}
-	knot_rrset_set_class(to_chgset, qclass);
+	to_chgset->rclass = qclass;
 	uint16_t rr_count = knot_rrset_rr_count(to_chgset);
 	for (uint16_t i = 0; i < rr_count; ++i) {
 		knot_rrset_rr_set_ttl(to_chgset,

@@ -105,7 +105,7 @@ static size_t rrset_rdata_size_total(const knot_rrset_t *rrset)
 	return total_size;
 }
 
-size_t knot_rrset_rr_count(const knot_rrset_t *rrset)
+uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset)
 {
 	if (rrset == NULL || rrset->rrs == NULL) {
 		return 0;
@@ -1551,15 +1551,6 @@ int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
 	int ret = knot_rrset_remove_rr_using_rrset(from, what, &rr_removed, mm);
 	knot_rrset_deep_free(&rr_removed, 1, NULL);
 	return ret;
-}
-
-void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass)
-{
-	if (!rrset) {
-		return;
-	}
-
-	rrset->rclass = rclass;
 }
 
 int rrset_additional_needed(uint16_t rrtype)

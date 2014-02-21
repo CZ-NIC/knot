@@ -139,33 +139,6 @@ uint8_t* knot_rrset_create_rr(knot_rrset_t *rrset, const uint16_t size,
                               const uint32_t ttl, mm_ctx_t *mm);
 
 /*!
- * \brief Adds RRSIG signatures to this RRSet.
- *
- * \param rrset RRSet to add the signatures into.
- * \param rrsigs Set of RRSIGs covering this RRSet.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- */
-int knot_rrset_set_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs);
-
-/*!
- * \brief Adds RRSIG signatures to this RRSet.
- *
- * \param rrset RRSet to add the signatures into.
- * \param rrsigs Set of RRSIGs covering this RRSet.
- * \param dupl Merging strategy.
- *
- * \retval KNOT_EOK if no merge was needed.
- * \retval 1 if merge was needed.
- * \retval 2 if rrsig was not first, but is was skipped.
- * \retval KNOT_EINVAL on faulty arguments or rrsig does not belong to this rrset.
- */
-//TODO test
-int knot_rrset_add_rrsigs(knot_rrset_t *rrset, knot_rrset_t *rrsigs,
-                          knot_rrset_dupl_handling_t dupl);
-
-/*!
  * \brief Returns the Owner of the RRSet.
  *
  * \param rrset RRSet to get the Owner of.
@@ -192,8 +165,6 @@ knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
  * \param owner New owner dname.
  */
 int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
-
-void knot_rrset_set_class(knot_rrset_t *rrset, uint16_t rclass);
 
 /*!
  * \brief Returns the TYPE of the RRSet.
@@ -234,8 +205,34 @@ uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos);
  * \return Item size on success.
  */
 uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos);
+
+/*!
+ * \brief Returns TTL of an RR on a given position.
+ *
+ * \param rrset RRSet holding RR RDATA.
+ * \param pos RR position.
+ *
+ * \retval 0 on error.
+ * \return TTL on success.
+ */
 uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
+
+/*!
+ * \brief Sets TTL for RR on a given position.
+ *
+ * \param rrset  RRSet containing RR.
+ * \param pos    RR position.
+ * \param ttl    TTL to be set.
+ */
 void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
+
+/*!
+ * \brief Returns count of RRs in RRSet.
+ * \param rrset  RRSet.
+ *
+ * \return RR count.
+ */
+uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset);
 
 bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
 
@@ -311,7 +308,7 @@ int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
  */
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                      mm_ctx_t *mm);
-/*! \brief Merges without with duplicate check, with sort. */
+/*! \brief Merges with duplicate check, with sort. */
 int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
                           int *merged, int *deleted_rrs, mm_ctx_t *mm);
 
@@ -396,8 +393,6 @@ int rrset_additional_needed(uint16_t rrtype);
  */
 int knot_rrset_synth_rrsig(const knot_rrset_t *rrsigs, uint16_t type, knot_rrset_t **out_sig,
                            mm_ctx_t *mm);
-
-size_t knot_rrset_rr_count(const knot_rrset_t *rrset);
 
 #endif /* _KNOT_RRSET_H_ */
 
