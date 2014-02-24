@@ -52,11 +52,11 @@ knot_opt_rr_t *knot_edns_new()
 
 /*----------------------------------------------------------------------------*/
 
-int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset,
-                          uint32_t rr_ttl)
+int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 {
 	if (opt_rr == NULL || rrset == NULL
-	    || knot_rrset_type(rrset) != KNOT_RRTYPE_OPT) {
+	    || knot_rrset_type(rrset) != KNOT_RRTYPE_OPT ||
+	    knot_rrset_rr_count(rrset) == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -68,10 +68,10 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset,
 		opt_rr->payload = EDNS_MIN_UDP_PAYLOAD;
 	}
 
-	// the TTL has switched bytes
+	// TTL has switched bytes
 	uint32_t ttl;
-	dbg_edns_detail("TTL: %u\n", rr_ttl);
-	knot_wire_write_u32((uint8_t *)&ttl, rr_ttl);
+	dbg_edns_detail("TTL: %u\n", knot_rrset_rr_ttl(rrset, 0));
+	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_rr_ttl(rrset, 0));
 	// first byte of TTL is extended RCODE
 	dbg_edns_detail("TTL: %u\n", ttl);
 	memcpy(&opt_rr->ext_rcode, &ttl, 1);
@@ -87,12 +87,10 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset,
 
 	int rc = 0;
 	dbg_edns_verb("Parsing options.\n");
-	uint8_t *raw = knot_rrset_rr_rdata(rrset, 0);
 	uint16_t size = knot_rrset_rr_size(rrset, 0);
-
-	if (raw != NULL) {
+	if (size > 0) {
+		uint8_t *raw = knot_rrset_rr_rdata(rrset, 0);
 		size_t pos = 0;
-		assert(size > 0);
 		while (pos < size) {
 			// ensure there is enough data to parse the OPTION CODE
 			// and OPTION LENGTH

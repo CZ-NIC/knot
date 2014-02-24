@@ -670,8 +670,7 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
  *        should be copied if they are supposed to be stored in zone permanently.
  */
 static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
-                                           size_t size, uint32_t *ttl,
-                                           mm_ctx_t *mm)
+                                           size_t size, mm_ctx_t *mm)
 {
 	dbg_packet("%s(%p, %zu, %zu)\n", __func__, wire, *pos, size);
 	assert(wire);
@@ -691,7 +690,7 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	uint16_t type = knot_wire_read_u16(wire + *pos);
 	uint16_t rclass = knot_wire_read_u16(wire + *pos + sizeof(uint16_t));
-	*ttl = knot_wire_read_u32(wire + *pos + 2 * sizeof(uint16_t));
+	uint32_t ttl = knot_wire_read_u32(wire + *pos + 2 * sizeof(uint16_t));
 	uint16_t rdlength = knot_wire_read_u16(wire + *pos + 4 * sizeof(uint16_t));
 
 	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, mm);
@@ -702,7 +701,7 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	*pos += KNOT_RR_HEADER_SIZE;
 
 	dbg_packet_verb("%s: read type %u, class %u, ttl %u, rdlength %u\n",
-	                __func__, rrset->type, rrset->rclass, *ttl, rdlength);
+	                __func__, rrset->type, rrset->rclass, ttl, rdlength);
 
 	if (size - *pos < rdlength) {
 		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
@@ -713,7 +712,7 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	// parse RDATA
 	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
 	 *        probably. */
-	int ret = knot_rrset_rdata_from_wire_one(rrset, wire, pos, size, *ttl,
+	int ret = knot_rrset_rdata_from_wire_one(rrset, wire, pos, size, ttl,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
 		dbg_packet("%s: couldn't parse RDATA (%d)\n", __func__, ret);
@@ -745,9 +744,8 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	/* Parse wire format. */
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = NULL;
-	uint32_t rr_ttl = 0;
 	rr = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
-	                           &rr_ttl, &pkt->mm);
+	                           &pkt->mm);
 	if (rr == NULL) {
 		dbg_packet("%s: failed to parse RR\n", __func__);
 		return KNOT_EMALF;
@@ -790,7 +788,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 		pkt->tsig_rr = rr;
 		break;
 	case KNOT_RRTYPE_OPT:
-		ret = knot_edns_new_from_rr(&pkt->opt_rr, rr, rr_ttl);
+		ret = knot_edns_new_from_rr(&pkt->opt_rr, rr);
 		if (ret != KNOT_EOK) {
 			dbg_packet("%s: couldn't parse OPT RR = %d\n",
 				   __func__, ret);

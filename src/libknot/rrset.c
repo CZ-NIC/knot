@@ -852,14 +852,8 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
-		/* Nothing to parse, APLs can have 0 RDLENGTH, but only APLs. */
-		if (rrset->type == KNOT_RRTYPE_APL) {
-			// Add empty RDATA
-			return knot_rrset_create_rr(rrset, 0, ttl, mm) == NULL ?
-			       KNOT_ENOMEM : KNOT_EOK;
-		} else {
-			return KNOT_EOK;
-		}
+		return knot_rrset_create_rr(rrset, 0, ttl, mm) == NULL ?
+		       KNOT_ENOMEM : KNOT_EOK;
 	}
 
 	dbg_rrset_detail("rr: parse_rdata_wire: Parsing RDATA of size=%zu,"

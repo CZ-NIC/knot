@@ -30,6 +30,18 @@
 #include "knot/updates/xfr-in.h"
 #include "common/descriptor.h"
 
+static bool rrset_empty(const knot_rrset_t *rrset)
+{
+	uint16_t rr_count = knot_rrset_rr_count(rrset);
+	if (rr_count == 0) {
+		return true;
+	}
+	if (rr_count == 1) {
+		return knot_rrset_rr_size(rrset, 0) == 0;
+	}
+	return false;
+}
+
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
 static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
@@ -143,7 +155,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 	int ret;
 
 	if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
-		if (knot_rrset_rr_count(rrset)) {
+		if (!rrset_empty(rrset)) {
 			dbg_ddns("ddns: add_prereq: Extra data\n");
 			return KNOT_EMALF;
 		}
@@ -159,7 +171,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 			                                &prereqs->exist_allocd);
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
-		if (knot_rrset_rr_count(rrset)) {
+		if (!rrset_empty(rrset)) {
 			dbg_ddns("ddns: add_prereq: Extra data\n");
 			return KNOT_EMALF;
 		}
@@ -195,7 +207,6 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(rrset != NULL);
 	assert(rcode != NULL);
-	assert(knot_rrset_rr_count(rrset) == 0);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
 
@@ -269,7 +280,6 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(rrset != NULL);
 	assert(rcode != NULL);
-	assert(knot_rrset_rr_count(rrset) == 0);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_NONE);
 
@@ -505,7 +515,7 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 			return KNOT_EMALF;
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
-		if (knot_rrset_rr_count(rrset)
+		if (!rrset_empty(rrset)
 		    || (knot_rrtype_is_metatype(knot_rrset_type(rrset))
 		        && knot_rrset_type(rrset) != KNOT_RRTYPE_ANY)) {
 			*rcode = KNOT_RCODE_FORMERR;
@@ -607,7 +617,7 @@ dbg_ddns_exec_detail(
 );
 		if (knot_dname_is_equal(knot_rrset_owner(rrset), owner)) {
 			// Removing one or all RRSets
-			if ((knot_rrset_rr_count(rr) == 0)
+			if (rrset_empty(rr)
 			    && (knot_rrset_type(rr) == knot_rrset_type(rrset)
 			        || knot_rrset_type(rr) == KNOT_RRTYPE_ANY)) {
 				dbg_ddns_detail("Removing one or all RRSets\n");
@@ -718,21 +728,6 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			         "'changes': %s\n", knot_strerror(ret));
 			return ret;
 		}
-
-		/* TODO: signing will take care of this. If signing is off, then, oh well. */
-//		if (knot_node_rrtype_is_signed(node, removed->type)) {
-//			assert(0);
-//			ret = knot_changes_add_rrset(changes,
-//			                             removed->rrsigs,
-//			                             KNOT_CHANGES_OLD);
-//			if (ret != KNOT_EOK) {
-//				dbg_ddns("Failed to add removed RRSIGs to "
-//				         "'changes': %s\n", knot_strerror(ret));
-//				return ret;
-//			}
-//			/* Disconnect RRsigs from rrset. */
-//			knot_rrset_set_rrsigs(removed, NULL);
-//		}
 
 		/* c) And remove it from the node. */
 		UNUSED(knot_node_remove_rrset(node, KNOT_RRTYPE_CNAME));
@@ -1633,7 +1628,6 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 			                                   changes);
 		}
 	} else {
-		assert(0);
 		return KNOT_ERROR;
 	}
 }

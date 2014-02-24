@@ -110,8 +110,7 @@ knot_opt_rr_t *knot_edns_new();
  * \retval KNOT_EINVAL
  * \retval KNOT_EMALF
  */
-int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset,
-                          uint32_t rr_ttl);
+int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset);
 
 /*!
  * \brief Returns the UDP payload stored in the OPT RR.
