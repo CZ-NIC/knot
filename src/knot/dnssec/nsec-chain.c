@@ -37,7 +37,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *,
 static bool only_nsec_in_node(const knot_node_t *n)
 {
 	assert(n);
-	return n->rrset_count >= 2 && (knot_node_rrset(n, KNOT_RRTYPE_NSEC)
+	return n->rrset_count <= 2 && (knot_node_rrset(n, KNOT_RRTYPE_NSEC)
 	       && knot_node_rrset(n, KNOT_RRTYPE_RRSIG));
 }
 
