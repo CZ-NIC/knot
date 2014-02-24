@@ -1533,19 +1533,26 @@ static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
 	return knot_rrset_rr_count(new_sig) > 0 ? KNOT_EOK : KNOT_ENOENT;
 }
 
-int knot_rrset_synth_rrsig(const knot_rrset_t *rrsigs, uint16_t type,
+int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
+                           const knot_rrset_t *rrsigs,
                            knot_rrset_t **out_sig, mm_ctx_t *mm)
 {
 	if (rrsigs == NULL) {
 		return KNOT_ENOENT;
 	}
 
-	if (out_sig == NULL) {
+	if (out_sig == NULL || owner == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	*out_sig = knot_rrset_new_from(rrsigs, mm);
+	knot_dname_t *owner_copy = knot_dname_copy(owner);
+	if (owner_copy == NULL) {
+		return KNOT_ENOMEM;
+	}
+	*out_sig = knot_rrset_new(owner_copy,
+	                          KNOT_RRTYPE_RRSIG, rrsigs->rclass, mm);
 	if (*out_sig == NULL) {
+		knot_dname_free(&owner_copy);
 		return KNOT_ENOMEM;
 	}
 

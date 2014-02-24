@@ -452,14 +452,16 @@ int rrset_additional_needed(uint16_t rrtype);
 /*!
  * \brief Creates RRSIG record from node RRSIGs for given RRSet.
  *
- * \param rrsigs   Node RRSIGs.
+ * \param owner    Owner to use for the RRSIG.
  * \param type     Type to cover.
+ * \param rrsigs   Node RRSIGs.
  * \param out_sig  Output RRSIG.
  * \param mm       Memory context.
  *
  * \return KNOT_E*
  */
-int knot_rrset_synth_rrsig(const knot_rrset_t *rrsigs, uint16_t type,
+int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
+                           const knot_rrset_t *rrsigs,
                            knot_rrset_t **out_sig, mm_ctx_t *mm);
 
 #endif /* _KNOT_RRSET_H_ */

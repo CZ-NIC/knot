@@ -105,11 +105,11 @@ struct wildcard_hit {
 	const knot_dname_t *sname; /* Name leading to this node. */
 };
 
-/*! \brief RRSIGs info. */
+/*! \brief RRSIG info node list. */
 struct rrsig_info {
 	node_t n;
-	const knot_rrset_t *rrsigs;   /* RRSIGs for node. */
-	uint16_t type;                /* Covered type. */
+	knot_rrset_t *synth_rrsig;  /* Synthesized RRSIG. */
+	uint16_t hint;              /* Compression hint. */
 };
 
 /*!

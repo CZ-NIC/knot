@@ -649,8 +649,8 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 	if (rrsigs) {
 		// Sythesize RRSets' RRSIG
 		knot_rrset_t *synth_rrsigs = NULL;
-		result = knot_rrset_synth_rrsig(rrsigs, KNOT_RRTYPE_NSEC,
-		                                &synth_rrsigs, NULL);
+		result = knot_rrset_synth_rrsig(rrsigs->owner, KNOT_RRTYPE_NSEC,
+		                                rrsigs, &synth_rrsigs, NULL);
 		if (result != KNOT_EOK) {
 			if (result != KNOT_ENOENT) {
 				return result;

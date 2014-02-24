@@ -481,8 +481,9 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		return KNOT_ENOMEM;
 	}
 	knot_rrset_t *rrsigs = NULL;
-	ret = knot_rrset_synth_rrsig(knot_node_rrset(node, KNOT_RRTYPE_RRSIG),
+	ret = knot_rrset_synth_rrsig(rrset->owner,
 	                             rrset->type,
+	                             knot_node_rrset(node, KNOT_RRTYPE_RRSIG),
 	                             &rrsigs, NULL);
 	if (ret != KNOT_EOK) {
 		if (ret != KNOT_ENOENT) {
