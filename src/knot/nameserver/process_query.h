@@ -109,7 +109,7 @@ struct wildcard_hit {
 struct rrsig_info {
 	node_t n;
 	knot_rrset_t *synth_rrsig;  /* Synthesized RRSIG. */
-	uint16_t hint;              /* Compression hint. */
+	knot_rrinfo_t *rrinfo;      /* RR info. */
 };
 
 /*!

@@ -1005,7 +1005,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	}
 
 	knot_rrset_t *dnskey_rrsig = NULL;
-	result = knot_rrset_synth_rrsig(rrsigs->owner, KNOT_RRTYPE_DNSKEY,
+	result = knot_rrset_synth_rrsig(apex->owner, KNOT_RRTYPE_DNSKEY,
 	                                rrsigs, &dnskey_rrsig, NULL);
 	if (result != KNOT_EOK) {
 		if (result != KNOT_ENOENT) {

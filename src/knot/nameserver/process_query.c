@@ -80,15 +80,7 @@ int process_query_reset(knot_process_t *ctx)
 	/* Free allocated data. */
 	knot_pkt_free(&qdata->query);
 	ptrlist_free(&qdata->wildcards, qdata->mm);
-	node_t *n = NULL, *nxt = NULL;
-	WALK_LIST_DELSAFE(n, nxt, qdata->rrsigs) {
-		struct rrsig_info *info = (struct rrsig_info *)n;
-		knot_rrset_t *rrsig = info->synth_rrsig;
-		rem_node(n);
-		mm_free(qdata->mm, n);
-		knot_rrset_deep_free(&rrsig, true, qdata->mm);
-	};
-
+	ns_reset_rrsigs(qdata);
 	ptrlist_free(&qdata->rrsigs, qdata->mm);
 	if (qdata->ext_cleanup != NULL) {
 		qdata->ext_cleanup(qdata);

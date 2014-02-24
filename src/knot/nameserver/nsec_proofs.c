@@ -70,7 +70,7 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
 	int res = KNOT_EOK;
 	if (knot_rrset_rr_count(rrset)) {
 		res = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE,
-		                KNOT_PF_CHECKDUP, qdata);
+		                KNOT_PF_CHECKDUP, false, qdata);
 	}
 
 	/*! \note TC bit is already set, if something went wrong. */
@@ -309,7 +309,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 
 	if (rrset != NULL && knot_rrset_rr_count(rrset) > 0) {
 		// NSEC proving that there is no node with the searched name
-		ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+		ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, false, qdata);
 	}
 
 	return ret;
@@ -513,7 +513,7 @@ dbg_ns_exec_verb(
 
 	}
 
-	int ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+	int ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, false, qdata);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to add NSEC for NXDOMAIN to response: %s\n",
 		       knot_strerror(ret));
@@ -563,7 +563,7 @@ dbg_ns_exec_verb(
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
-		ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+		ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, false, qdata);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add second NSEC for NXDOMAIN to "
 			       "response: %s\n", knot_strerror(ret));
@@ -715,7 +715,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		    != NULL) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
 			const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
-			ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+			ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, false, qdata);
 		}
 	}
 
@@ -770,7 +770,7 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_rrset_t *rrset = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_DS);
 	if (rrset != NULL) {
 		const knot_rrset_t *rrsigs = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-		return ns_put_rr(pkt, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+		return ns_put_rr(pkt, rrset, rrsigs, COMPR_HINT_NONE, 0, false, qdata);
 	}
 
 	/* DS doesn't exist => NODATA proof. */
@@ -791,10 +791,10 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 	/* Append RRSIGs for section. */
 	node_t *n = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, qdata->rrsigs) {
-		struct rrsig_info *info = (struct rrsig_info *)n;
-		knot_rrset_t *rrsig = info->synth_rrsig;
+		struct rrsig_info *i = (struct rrsig_info *)n;
+		knot_rrset_t *rrsig = i->synth_rrsig;
 		assert(rrsig);
-		uint16_t compr_hint = info->hint;
+		uint16_t compr_hint = i->rrinfo->compress_ptr[0];
 		rem_node(n);
 		mm_free(qdata->mm, n);
 		ret = knot_pkt_put(pkt, compr_hint, rrsig, flags);
