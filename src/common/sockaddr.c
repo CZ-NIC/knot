@@ -33,7 +33,7 @@ int sockaddr_len(const struct sockaddr_storage *ss)
 	case AF_UNIX:
 		return sizeof(struct sockaddr_un);
 	default:
-		return KNOT_EINVAL;
+		return 0;
 	}
 }
 
