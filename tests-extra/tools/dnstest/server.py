@@ -101,7 +101,7 @@ class Server(object):
 
     START_WAIT = 2
     START_WAIT_VALGRIND = 5
-    STOP_TIMEOUT = 60
+    STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 15
 
