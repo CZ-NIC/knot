@@ -1145,7 +1145,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
 	/* Zone is already referenced, no need for RCU locking. */
 
-	if (xfr == NULL || xfr->new_contents == NULL || xfr->zone == NULL) {
+	if (xfr == NULL || xfr->new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
