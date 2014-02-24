@@ -112,7 +112,9 @@ int main(int argc, char **argv)
 		{
 		case 'c':
 			free(config_fn);
-			config_fn = strdup(optarg);
+			if (optarg) {
+				config_fn = strdup(optarg);
+			}
 			break;
 		case 'd':
 			daemonize = 1;
