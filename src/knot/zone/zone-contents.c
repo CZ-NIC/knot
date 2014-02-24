@@ -476,14 +476,6 @@ int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents)
-{
-	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
-		== KNOT_ZONE_FLAGS_GEN_FIN);
-}
-
-/*----------------------------------------------------------------------------*/
-
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
@@ -496,14 +488,6 @@ void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
 	contents->flags |= KNOT_ZONE_FLAGS_GEN_NEW;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents)
-{
-	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
-	contents->flags |= KNOT_ZONE_FLAGS_GEN_FIN;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -649,9 +633,9 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
 /*----------------------------------------------------------------------------*/
 
 static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
-                     bool nsec3)
+                     knot_rrset_t **rrset, bool nsec3)
 {
-	if (z == NULL || rr == NULL || n == NULL) {
+	if (z == NULL || rr == NULL || n == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -679,7 +663,7 @@ static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
 		}
 	}
 
-	return knot_node_add_rrset(*n, rr, z->apex->owner);
+	return knot_node_add_rrset(*n, rr, rrset);
 }
 
 static bool to_nsec3_tree(const knot_rrset_t *rr)
@@ -688,9 +672,10 @@ static bool to_nsec3_tree(const knot_rrset_t *rr)
 }
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
-                              knot_rrset_t *rr, knot_node_t **n)
+                              knot_rrset_t *rr, knot_node_t **n,
+                              knot_rrset_t **rrset)
 {
-	return insert_rr(z, rr, n, to_nsec3_tree(rr));
+	return insert_rr(z, rr, n, rrset, to_nsec3_tree(rr));
 }
 
 int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
@@ -728,7 +713,7 @@ dbg_zone_exec_detail(
 
 	/*! \todo REMOVE RRSET */
 	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset(*node, rrset, zone->apex->owner);
+		rc = knot_node_add_rrset(*node, rrset, NULL);
 	} else {
 		rc = knot_node_add_rrset_no_merge(*node, rrset);
 	}
@@ -778,52 +763,6 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 	// cannot be wildcard child, so nothing to be done
 
 	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
-                                         knot_rrset_t *rrset,
-                                         knot_node_t **node,
-                                         knot_rrset_dupl_handling_t dupl)
-{
-	if (zone == NULL || rrset == NULL || zone->apex == NULL
-	    || zone->apex->owner == NULL || node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// check if the RRSet belongs to the zone
-	if (knot_dname_cmp(knot_rrset_owner(rrset),
-				 zone->apex->owner) != 0
-	    && !knot_dname_is_sub(knot_rrset_owner(rrset),
-					  zone->apex->owner)) {
-		return KNOT_EOUTOFZONE;
-	}
-
-	if ((*node) == NULL
-	    && (*node = knot_zone_contents_get_nsec3_node(
-			      zone, knot_rrset_owner(rrset))) == NULL) {
-		return KNOT_ENONODE;
-	}
-
-	assert(*node != NULL);
-	int rc;
-
-	/*! \todo REMOVE RRSET */
-	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset(*node, rrset, zone->apex->owner);
-	} else {
-		rc = knot_node_add_rrset_no_merge(*node, rrset);
-	}
-
-	if (rc < 0) {
-		return rc;
-	}
-
-	int ret = rc;
-
-	dbg_zone_detail("NSEC3 OK\n");
-	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

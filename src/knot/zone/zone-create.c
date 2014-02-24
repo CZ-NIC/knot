@@ -98,7 +98,8 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		// Search for node or create a new one
 		n = NULL;
 	}
-	int ret = knot_zone_contents_add_rr(zc->z, rr, &n);
+	knot_rrset_t *zone_rrset = NULL;
+	int ret = knot_zone_contents_add_rr(zc->z, rr, &n, &zone_rrset);
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
 			// Fatal error
@@ -111,11 +112,17 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		knot_rrset_deep_free(&rr, true, NULL);
 	}
 	assert(n);
+	assert(zone_rrset);
 	zc->last_node = n;
 
+	// Do RRSet and node semantic checks
 	bool sem_fatal_error = false;
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
+	ret = sem_check_rrset(n, zone_rrset, &err_handler);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	ret = sem_check_node_plain(zc->z, n,
 	                           &err_handler, true,
 	                           &sem_fatal_error);

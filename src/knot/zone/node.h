@@ -123,13 +123,13 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  *
  * \param node Node to add the RRSet to.
  * \param rrset RRSet to add.
- * \param zname Zone owner for error logging.
+ * \param rrset Stores destination RRSet in case of merge.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR if the RRSet could not be inserted.
  */
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                        const knot_dname_t *zname);
+                        knot_rrset_t **out_rrset);
 
 int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset);
 

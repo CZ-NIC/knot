@@ -88,11 +88,9 @@ knot_zone_contents_t *knot_zone_contents_new(const knot_dname_t *apex_name);
 
 int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents);
 int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents);
-int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents);
 
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
-void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents);
 
 uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
 
@@ -131,7 +129,8 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
                                    knot_node_t **node);
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
-                              knot_rrset_t *rr, knot_node_t **n);
+                              knot_rrset_t *rr, knot_node_t **n,
+                              knot_rrset_t **rrset);
 
 /*!
  * \brief Adds a RRSet to the given zone.
@@ -159,11 +158,6 @@ int knot_zone_contents_add_rrset(knot_zone_contents_t *contents,
                                  knot_rrset_t *rrset, knot_node_t **node,
                                  knot_rrset_dupl_handling_t dupl);
 
-int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
-                           knot_rrset_t *rrsigs,
-                           knot_rrset_t **rrset, knot_node_t **node,
-                           knot_rrset_dupl_handling_t dupl);
-
 /*!
  * \brief Adds a node holding NSEC3 records to the given zone.
  *
@@ -182,11 +176,6 @@ int knot_zone_contents_add_rrsigs(knot_zone_contents_t *contents,
 int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *contents,
                                         knot_node_t *node, int create_parents,
                                         uint8_t flags);
-
-int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *contents,
-                                         knot_rrset_t *rrset,
-                                         knot_node_t **node,
-                                         knot_rrset_dupl_handling_t dupl);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 	const knot_dname_t *owner);

@@ -45,8 +45,9 @@ enum zonechecks_errors {
 
 	ZC_ERR_MISSING_SOA,
 	ZC_ERR_MISSING_NS_DEL_POINT,
+	ZC_ERR_TTL_MISMATCH,
 
-	ZC_ERR_GENERIC_GENERAL_ERROR, /* isn't there a better name? */
+	ZC_ERR_GENERIC_GENERAL_ERROR, /* Generic error delimiter. */
 
 	ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
 	ZC_ERR_RRSIG_RDATA_TTL,
@@ -61,7 +62,7 @@ enum zonechecks_errors {
 	ZC_ERR_RRSIG_CLASS,
 	ZC_ERR_RRSIG_TTL,
 
-	ZC_ERR_RRSIG_GENERAL_ERROR,
+	ZC_ERR_RRSIG_GENERAL_ERROR, /* RRSIG error delimiter. */
 
 	ZC_ERR_NO_NSEC,
 	ZC_ERR_NSEC_RDATA_BITMAP,
@@ -69,7 +70,7 @@ enum zonechecks_errors {
 	ZC_ERR_NSEC_RDATA_CHAIN,
 	ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC,
 
-	ZC_ERR_NSEC_GENERAL_ERROR,
+	ZC_ERR_NSEC_GENERAL_ERROR, /* NSEC error delimiter. */
 
 	ZC_ERR_NSEC3_UNSECURED_DELEGATION,
 	ZC_ERR_NSEC3_NOT_FOUND,
@@ -79,7 +80,7 @@ enum zonechecks_errors {
 	ZC_ERR_NSEC3_RDATA_BITMAP,
 	ZC_ERR_NSEC3_EXTRA_RECORD,
 
-	ZC_ERR_NSEC3_GENERAL_ERROR,
+	ZC_ERR_NSEC3_GENERAL_ERROR, /* NSEC3 error delimiter. */
 
 	ZC_ERR_CNAME_EXTRA_RECORDS,
 	ZC_ERR_DNAME_CHILDREN,
@@ -89,12 +90,12 @@ enum zonechecks_errors {
 	ZC_ERR_CNAME_WILDCARD_SELF,
 	ZC_ERR_DNAME_WILDCARD_SELF,
 
-	ZC_ERR_CNAME_GENERAL_ERROR,
+	ZC_ERR_CNAME_GENERAL_ERROR, /* CNAME/DNAME error delimiter. */
 
 	ZC_ERR_GLUE_NODE,
 	ZC_ERR_GLUE_RECORD,
 
-	ZC_ERR_GLUE_GENERAL_ERROR,
+	ZC_ERR_GLUE_GENERAL_ERROR, /* GLUE error delimiter. */
 };
 
 /*!
@@ -206,11 +207,35 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
                        err_handler_t *handler, knot_node_t *first_nsec3_node,
                        knot_node_t *last_nsec3_node);
 
+/*!
+ * \brief Does a non-DNSSEC semantic node check. Logs errors via error handler.
+ *
+ * \param zone            Zone containing the node.
+ * \param node            Node to be tested.
+ * \param handler         Error handler.
+ * \param only_mandatory  Mandatory/optional switch.
+ * \param fatal_error     Fatal error out param.
+ *
+ * \return KNOT_E*
+ */
 int sem_check_node_plain(const knot_zone_contents_t *zone,
                          const knot_node_t *node,
                          err_handler_t *handler,
                          bool only_mandatory,
                          bool *fatal_error);
+
+/*!
+ * \brief Checks RRSet for semantic errors. Logs errors via error handler.
+ *
+ * \param node     Node containg the RRSet.
+ * \param rrset    RRSet to be tested.
+ * \param handler  Error handler.
+ *
+ * \return KNOT_E*
+ */
+int sem_check_rrset(const knot_node_t *node,
+                    const knot_rrset_t *rrset,
+                    err_handler_t *handler);
 
 #endif // _KNOT_SEMANTIC_CHECK_H_
 

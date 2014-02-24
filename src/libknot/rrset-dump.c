@@ -2006,7 +2006,7 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 
 	// Loop over rdata in rrset.
 	uint16_t rr_count = knot_rrset_rr_count(rrset);
-	for (uint16_t i = 0; i < knot_rrset_rr_count(rrset); i++) {
+	for (uint16_t i = 0; i < rr_count; i++) {
 		// Dump rdata owner, class, ttl and type.
 		ret = knot_rrset_txt_dump_header(rrset,
 		                                 knot_rrset_rr_ttl(rrset, i),
