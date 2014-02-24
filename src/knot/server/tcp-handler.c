@@ -343,6 +343,7 @@ static int tcp_wait_for_events(tcp_context_t *tcp)
 		}
 
 		if (set->pfd[i].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+			--nfds; /* One less active event. */
 			fdset_remove(set, i);
 			close(fd);
 			continue; /* Stay on the same index. */

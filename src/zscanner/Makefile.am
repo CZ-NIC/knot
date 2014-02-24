@@ -20,7 +20,6 @@ else
 if G2_PARSER
 scanner.c: scanner.c.g2
 	cp $@.g2 $@
-	@echo "NOTE: Compilation of scanner.c can take several minutes!"
 endif
 
 if T0_PARSER
@@ -29,6 +28,10 @@ scanner.c: scanner.c.t0
 endif
 
 endif #HAVE_RAGEL
+
+if G2_PARSER
+	@echo "NOTE: Compilation of scanner.c can take several minutes!"
+endif
 
 libzscanner_la_SOURCES =		\
 	zscanner.h			\

@@ -254,12 +254,11 @@ int zones_journal_apply(zone_t *zone);
  * \param z             Zone configuration.
  * \param zone          Zone to sign.
  * \param old_zone      Previous zone.
- * \param zone_changed  The zone was loaded or modified.
+ * \param zone_changed  Set to true if the zone was loaded or modified.
  *
  * \return Error code, KNOT_OK if successful.
  */
-int zones_do_diff_and_sign(const conf_zone_t *z, zone_t *zone,
-                           zone_t *old_zone, bool zone_changed);
+int zones_do_diff_and_sign(zone_t *zone, zone_t *old_zone, bool zone_changed);
 
 /*! \brief Just sign current zone. */
 int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *expires_at);

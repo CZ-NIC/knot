@@ -112,7 +112,9 @@ int main(int argc, char **argv)
 		{
 		case 'c':
 			free(config_fn);
-			config_fn = strdup(optarg);
+			if (optarg) {
+				config_fn = strdup(optarg);
+			}
 			break;
 		case 'd':
 			daemonize = 1;
@@ -271,6 +273,7 @@ int main(int argc, char **argv)
 			log_server_error("Failed to load configuration '%s'.\n",
 			                 config_fn);
 		}
+		free(daemon_root);
 		return do_cleanup(&server, config_fn, NULL);
 	} else {
 		log_server_info("Configured %d interfaces and %d zones.\n",

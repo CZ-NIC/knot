@@ -167,7 +167,7 @@ const rdata_descriptor_t *get_rdata_descriptor(const uint16_t type)
 const rdata_descriptor_t *get_obsolete_rdata_descriptor(const uint16_t type)
 {
 	if (type <= KNOT_RRTYPE_NXT &&
-	    obsolete_rdata_descriptors[type].type_name != 0) {
+	    obsolete_rdata_descriptors[type].type_name != NULL) {
 		return &obsolete_rdata_descriptors[type];
 	} else {
 		return &obsolete_rdata_descriptors[0];

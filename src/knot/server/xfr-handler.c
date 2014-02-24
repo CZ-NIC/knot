@@ -205,7 +205,7 @@ static int xfr_task_setmsg(knot_ns_xfr_t *rq, const char *keytag)
 
 	/* Prepare log message. */
 	const char *zname = rq->zname;
-	if (zname == NULL && rq->zone != NULL) {
+	if (zname == NULL) {
 		zname = rq->zone->conf->name;
 	}
 
@@ -355,10 +355,6 @@ static int xfr_task_expire(fdset_t *set, int i, knot_ns_xfr_t *rq)
 /*! \brief Start pending request. */
 static int xfr_task_start(knot_ns_xfr_t *rq)
 {
-	if (!rq || !rq->zone) {
-		return KNOT_EINVAL;
-	}
-
 	/* Zone is refcounted, no need for RCU. */
 	int ret = KNOT_EOK;
 	zone_t *zone = (zone_t *)rq->zone;
@@ -1161,19 +1157,23 @@ int xfr_enqueue(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	return KNOT_EOK;
 }
 
-knot_ns_xfr_t *xfr_task_create(zone_t *z, int type, int flags)
+knot_ns_xfr_t *xfr_task_create(zone_t *zone, int type, int flags)
 {
+	if (zone == NULL) {
+		return NULL; /* Invalid. */
+	}
+
 	knot_ns_xfr_t *rq = malloc(sizeof(knot_ns_xfr_t));
-	if (rq == NULL) return NULL;
+	if (rq == NULL) {
+		return NULL;
+	}
 	memset(rq, 0, sizeof(knot_ns_xfr_t));
 
 	/* Initialize. */
 	rq->type = type;
 	rq->flags = flags;
-	if (z) {
-		rq->zone = z;
-		zone_retain(rq->zone);
-	}
+	rq->zone = zone;
+	zone_retain(rq->zone);
 	return rq;
 }
 

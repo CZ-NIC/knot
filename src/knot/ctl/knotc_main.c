@@ -260,13 +260,16 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Wait for reply. */
-	ret = KNOT_EOK;
-	while (ret == KNOT_EOK) {
+	pfd.events = POLLIN;
+	while (poll(&pfd, 1, conf()->max_conn_reply) > 0) {
 		ret = cmd_remote_reply(s);
-		if (ret != KNOT_EOK && ret != KNOT_ECONN) {
-			log_server_warning("Remote command reply: %s\n",
-			                   knot_strerror(ret));
-			rc = 1;
+		if (ret != KNOT_EOK) {
+			if (ret != KNOT_ECONN) {
+				log_server_warning("Remote command reply: %s\n",
+				                   knot_strerror(ret));
+				rc = 1;
+			}
+			break;
 		}
 	}
 
