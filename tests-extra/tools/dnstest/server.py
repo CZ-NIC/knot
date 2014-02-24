@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import inspect
+import psutil
 import re
 import random
 import shutil
@@ -240,6 +241,14 @@ class Server(object):
         except OSError:
             self.backtrace()
             raise Exception("Can't flush %s" % self.name)
+
+    def running(self):
+        proc = psutil.Process(self.proc.pid)
+        if proc.status == psutil.STATUS_RUNNING or \
+           proc.status == psutil.STATUS_SLEEPING:
+            return True
+        else:
+            return False
 
     def _valgrind_check(self):
         if not self.valgrind:
@@ -614,7 +623,7 @@ class Bind(Server):
         self.control_bin = params.bind_ctl
         self.ctlkey = dnstest.keys.Tsig(alg="hmac-md5")
 
-    def running(self):
+    def listening(self):
         tcp = super()._check_socket("tcp", self.port)
         udp = super()._check_socket("udp", self.port)
         ctltcp = super()._check_socket("tcp", self.ctlport)
@@ -760,7 +769,7 @@ class Knot(Server):
     def keydir(self):
         return os.path.join(self.dir, "keys")
 
-    def running(self):
+    def listening(self):
         tcp = super()._check_socket("tcp", self.port)
         udp = super()._check_socket("udp", self.port)
         return (tcp and udp)
@@ -935,5 +944,5 @@ class Dummy(Server):
     def start(self, clean=None):
         return True
 
-    def running(self):
-        return True # Fake running
+    def listening(self):
+        return True # Fake listening

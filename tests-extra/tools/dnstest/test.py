@@ -140,7 +140,7 @@ class Test(object):
         # Remove server/servers from the test.
 
         if server:
-            if server.running():
+            if server.listening():
                 server.stop()
             self.servers.discard(server)
             return
@@ -177,7 +177,11 @@ class Test(object):
         # Sort server list by number of masters. I.e. masters are preferred.
         for server in sorted(self.servers, key=srv_sort):
             server.start(clean=True)
+
             if not server.running():
+                raise Exception("Server %s not running" % server.name)
+
+            if not server.listening():
                 self.stop(check=False)
                 self.start()
 
