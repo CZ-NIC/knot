@@ -147,9 +147,10 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
 	return ret;
 }
 
-int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
-                            const knot_rrset_t *rrset2,
-                            size_t pos1, size_t pos2)
+/*! \brief Canonical order RDATA comparison. */
+static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
+                                   const knot_rrset_t *rrset2,
+                                   size_t pos1, size_t pos2)
 {
 	assert(rrset1 != NULL);
 	assert(rrset2 != NULL);
@@ -810,7 +811,6 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	int ret = knot_rrset_to_wire_aux(rrset, &pos, max_size, compr);
 	if (ret < 0) {
 		// some RR didn't fit in, so no RRs should be used
-		// TODO: remove last entries from compression table
 		dbg_rrset_verb("Some RR didn't fit in.\n");
 		return KNOT_ESPACE;
 	}
@@ -827,18 +827,6 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	*rr_count = knot_rrset_rr_count(rrset) > 0 ? knot_rrset_rr_count(rrset) : 1;
 
 	return KNOT_EOK;
-}
-
-int knot_rrset_to_wire_one(const knot_rrset_t *rrset, uint16_t rr_number,
-                           uint8_t *wire, size_t max_size, size_t *outsize,
-                           knot_compr_t *compr)
-{
-	if (!rrset || !wire || !outsize)
-		return KNOT_EINVAL;
-
-	uint8_t *pos = wire;
-	return knot_rrset_rdata_to_wire_one(rrset, rr_number, &pos, max_size,
-					    outsize, compr);
 }
 
 int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
@@ -1004,9 +992,9 @@ dbg_rrset_exec_detail(
 	return KNOT_EOK;
 }
 
-int knot_rrset_equal(const knot_rrset_t *r1,
-                     const knot_rrset_t *r2,
-                     knot_rrset_compare_type_t cmp)
+bool knot_rrset_equal(const knot_rrset_t *r1,
+                      const knot_rrset_t *r2,
+                      knot_rrset_compare_type_t cmp)
 {
 	if (cmp == KNOT_RRSET_COMPARE_PTR) {
 		return r1 == r2;
@@ -1072,7 +1060,7 @@ void knot_rrset_free(knot_rrset_t **rrset)
 	*rrset = NULL;
 }
 
-static void rrset_deep_free_content(knot_rrset_t *rrset, int free_owner,
+static void rrset_deep_free_content(knot_rrset_t *rrset, bool free_owner,
                                     mm_ctx_t *mm)
 {
 	assert(rrset);
@@ -1083,7 +1071,7 @@ static void rrset_deep_free_content(knot_rrset_t *rrset, int free_owner,
 	}
 }
 
-void knot_rrset_deep_free(knot_rrset_t **rrset, int free_owner, mm_ctx_t *mm)
+void knot_rrset_deep_free(knot_rrset_t **rrset, bool free_owner, mm_ctx_t *mm)
 {
 	/*! \bug The number of different frees in rrset is too damn high! */
 	if (rrset == NULL || *rrset == NULL) {
@@ -1341,26 +1329,6 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 	return KNOT_EOK;
 }
 
-int rrset_serialize_alloc(const knot_rrset_t *rrset, uint8_t **stream,
-                          size_t *size)
-{
-	/* Get the binary size. */
-	*size = rrset_binary_size(rrset);
-	if (*size == 0) {
-		/* Nothing to serialize. */
-		dbg_rrset("rrset: serialize alloc: No data to serialize.\n");
-		return KNOT_EINVAL;
-	}
-
-	/* Prepare memory. */
-	*stream = malloc(*size);
-	if (*stream == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	return rrset_serialize(rrset, *stream, size);
-}
-
 int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
                       knot_rrset_t **rrset)
 {
@@ -1537,20 +1505,10 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	return KNOT_EOK;
 }
 
-int knot_rrset_remove_rr_using_rrset_del(knot_rrset_t *from,
-                                         const knot_rrset_t *what,
-                                         mm_ctx_t *mm)
-{
-	knot_rrset_t *rr_removed = NULL;
-	int ret = knot_rrset_remove_rr_using_rrset(from, what, &rr_removed, mm);
-	knot_rrset_deep_free(&rr_removed, 1, NULL);
-	return ret;
-}
-
 int rrset_additional_needed(uint16_t rrtype)
 {
-	return (rrtype == KNOT_RRTYPE_MX ||
-		rrtype == KNOT_RRTYPE_NS ||
+	return (rrtype == KNOT_RRTYPE_NS ||
+		rrtype == KNOT_RRTYPE_MX ||
 		rrtype == KNOT_RRTYPE_SRV);
 }
 

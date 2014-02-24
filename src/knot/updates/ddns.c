@@ -1486,8 +1486,9 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 			/* ...try to remove redundant RDATA. Each RRSet in
 			 * 'from_chgset' contains only one RDATA.
 			 */
-			ret = knot_rrset_remove_rr_using_rrset_del(to_chgset[j],
-			                                  from_chgset[i], NULL);
+			knot_rrset_t *removed = NULL;
+			ret = knot_rrset_remove_rr_using_rrset(to_chgset[j],
+			                                  from_chgset[i], &removed, NULL);
 			if (ret != KNOT_EOK) {
 				dbg_ddns("Failed to remove RR from RRSet"
 				         "(%s).\n", knot_strerror(ret));
@@ -1495,6 +1496,7 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 				free(to_chgset);
 				return ret;
 			}
+			knot_rrset_deep_free(&removed, true, NULL);
 		}
 	}
 
