@@ -10,6 +10,7 @@ ns2.b.example.	3600 IN A	192.0.2.8
 a.example.	3600 IN NS	ns1.a.example.
 a.example.	3600 IN NS	ns2.a.example.
 a.example.	3600 IN DS	57855 5 1 B6DCD485719ADCA18E5F3D48A2331627FDD3636B
+*.a.example. 3600 IN A 192.0.2.11
 ai.example.	3600 IN A	192.0.2.9
 ai.example.	3600 IN HINFO	"KLH-10" "ITS"
 ai.example.	3600 IN AAAA	2001:db8::f00:baa9
