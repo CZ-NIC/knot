@@ -651,7 +651,7 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 
 	result = zones_journal_apply(new_zone);
 	if (result != KNOT_EOK && result != KNOT_ERANGE && result != KNOT_ENOENT) {
-		log_zone_error("Zone '%s', failed to apply changes from journal: %s\n",
+		log_zone_error("Zone '%s' failed to apply changes from journal - %s\n",
 		               conf->name, knot_strerror(result));
 		goto fail;
 	}
@@ -659,8 +659,13 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 	bool modified = (old_zone != new_zone);
 	result = zones_do_diff_and_sign(conf, new_zone, ns, modified);
 	if (result != KNOT_EOK) {
-		log_zone_error("Zone '%s', failed to sign the zone: %s\n",
-		               conf->name, knot_strerror(result));
+		if (result == KNOT_ESPACE) {
+			log_zone_error("Zone '%s' journal size is too small to fit the changes.\n",
+			               conf->name);
+		} else {
+			log_zone_error("Zone '%s' failed to store changes in the journal - %s\n",
+			               conf->name, knot_strerror(result));
+		}
 		goto fail;
 	}
 
