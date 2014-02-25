@@ -2095,10 +2095,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 
 	int ret = zones_store_changesets_begin_and_store(zone, diff_chs,
 	                                                 &transaction);
-
 	if (ret != KNOT_EOK) {
-		log_zone_error("Zone %s: Could not save new entry to journal "
-		               "(%s)!\n", zone->conf->name, knot_strerror(ret));
 		return ret;
 	}
 

@@ -275,17 +275,20 @@ static zone_t* update_zone(zone_t *old_zone, conf_zone_t *conf, server_t *server
 
 	result = zones_journal_apply(new_zone);
 	if (result != KNOT_EOK && result != KNOT_ERANGE && result != KNOT_ENOENT) {
-		log_zone_error("Zone '%s', failed to apply changes from journal: %s\n",
+		log_zone_error("Zone '%s' failed to apply changes from journal - %s\n",
 		               conf->name, knot_strerror(result));
 		goto fail;
 	}
 
 	result = zones_do_diff_and_sign(new_zone, old_zone, new_content);
 	if (result != KNOT_EOK) {
-		log_zone_error("Zone '%s', failed to create diff and/or sign "
-		               "the zone: %s. The server will continue to serve"
-		               " the old zone.\n",
-		               conf->name, knot_strerror(result));
+		if (result == KNOT_ESPACE) {
+			log_zone_error("Zone '%s' journal size is too small to fit the changes.\n",
+			               conf->name);
+		} else {
+			log_zone_error("Zone '%s' failed to store changes in the journal - %s\n",
+			               conf->name, knot_strerror(result));
+		}
 		goto fail;
 	}
 
