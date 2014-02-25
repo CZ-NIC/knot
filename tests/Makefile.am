@@ -3,9 +3,9 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src
 
 LDADD = \
-	$(top_srcdir)/libtap/libtap.a \
-	$(top_srcdir)/src/libknotd.la \
-	$(top_srcdir)/src/libknots.la
+	$(top_builddir)/libtap/libtap.a \
+	$(top_builddir)/src/libknotd.la \
+	$(top_builddir)/src/libknots.la
 
 check_PROGRAMS = \
 	journal			\
@@ -36,9 +36,9 @@ check_PROGRAMS = \
 check-compile-only: $(check_PROGRAMS)
 
 check-local: $(check_PROGRAMS)
-	$(top_srcdir)/libtap/runtests \
-		-s $(abs_top_srcdir)/tests -b $(abs_top_srcdir)/tests \
-		$(check_PROGRAMS)
+	$(top_builddir)/libtap/runtests -s $(top_srcdir)/tests \
+					-b $(top_builddir)/tests \
+					$(check_PROGRAMS)
 
 EXTRA_DIST = data
 dist_check_SCRIPTS = resource.sh
