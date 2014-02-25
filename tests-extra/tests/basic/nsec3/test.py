@@ -56,7 +56,7 @@ resp = knot.dig("a.to-apex.example", "SOA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# Wildcard Expansion to apex (NODATA)
+# Wildcard Expansion to apex (no data)
 resp = knot.dig("a.to-apex.example", "TXT", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
@@ -64,6 +64,16 @@ resp.cmp(bind)
 # Wildcard Expansion to non-existent name 
 resp = knot.dig("a.to-nxdomain.example", "A", bufsize=1600, dnssec=True)
 resp.check(rcode="NXDOMAIN", flags="QR AA", eflags="DO")
+resp.cmp(bind)
+
+# Wildcard Expansion below delegation point
+resp = knot.dig("a.a.example", "A", dnssec=True)
+resp.check(rcode="NOERROR", flags="QR", eflags="DO")
+resp.cmp(bind)
+
+# Wildcard Expansion below delegation point (no data)
+resp = knot.dig("a.a.example", "AAAA", dnssec=True)
+resp.check(rcode="NOERROR", flags="QR", eflags="DO")
 resp.cmp(bind)
 
 # B9. Direct wildcard query (positive)
@@ -74,6 +84,16 @@ resp.cmp(bind)
 # B10. Direct wildcard query (no data)
 resp = knot.dig("*.w.example", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
+resp.cmp(bind)
+
+# Direct wildcard query below delegation point (positive)
+resp = knot.dig("*.a.example", "A", dnssec=True)
+resp.check(rcode="NOERROR", flags="QR", eflags="DO")
+resp.cmp(bind)
+
+# Direct wildcard query below delegation point (no data)
+resp = knot.dig("*.a.example", "AAAA", dnssec=True)
+resp.check(rcode="NOERROR", flags="QR", eflags="DO")
 resp.cmp(bind)
 
 # B11. DS Child Zone No Data Error.
