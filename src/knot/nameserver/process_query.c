@@ -16,6 +16,7 @@
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/update.h"
+#include "knot/nameserver/nsec_proofs.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/rrl.h"
@@ -80,8 +81,7 @@ int process_query_reset(knot_process_t *ctx)
 	/* Free allocated data. */
 	knot_pkt_free(&qdata->query);
 	ptrlist_free(&qdata->wildcards, qdata->mm);
-	ns_reset_rrsigs(qdata);
-	ptrlist_free(&qdata->rrsigs, qdata->mm);
+	nsec_clear_rrsigs(qdata);
 	if (qdata->ext_cleanup != NULL) {
 		qdata->ext_cleanup(qdata);
 	}
