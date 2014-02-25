@@ -246,7 +246,12 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Wait for availability. */
 	struct pollfd pfd = { s, POLLOUT, 0 };
-	poll(&pfd, 1, conf()->max_conn_reply);
+	if (poll(&pfd, 1, conf()->max_conn_reply) != 1) {
+		log_server_error("Couldn't connect to remote host '%s'.\n", addr_str);
+		close(s);
+		knot_pkt_free(&pkt);
+		return 1;
+	}
 
 	/* Send and free packet. */
 	int ret = tcp_send(s, pkt->wire, pkt->size);
@@ -255,6 +260,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	/* Evaluate and wait for reply. */
 	if (ret <= 0) {
 		log_server_error("Couldn't connect to remote host '%s'.\n", addr_str);
+		close(s);
 		return 1;
 	}
 
