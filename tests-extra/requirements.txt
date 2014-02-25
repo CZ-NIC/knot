@@ -1,0 +1,2 @@
+dnspython3==1.11.1
+psutil==1.2.1
