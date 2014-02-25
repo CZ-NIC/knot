@@ -31,7 +31,7 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
-#include "knot/zone/zone-load.h"
+#include "knot/zone/zone-create.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "knot/server/zone-load.h"
@@ -124,7 +124,8 @@ static int cmd_remote_print_reply(const knot_rrset_t *rr)
 		return KNOT_EMALF;
 	}
 
-	for (uint16_t i = 0; i < knot_rrset_rdata_rr_count(rr); i++) {
+	uint16_t rr_count = knot_rrset_rr_count(rr);
+	for (uint16_t i = 0; i < rr_count; i++) {
 		/* Parse TXT. */
 		remote_print_txt(rr, i);
 	}
@@ -216,7 +217,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 		int res = knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE);
 		if (res != KNOT_EOK) {
 			log_server_error("Couldn't create the query.\n");
-			knot_rrset_deep_free(&rr, 1);
+			knot_rrset_deep_free(&rr, 1, NULL);
 			knot_pkt_free(&pkt);
 			return 1;
 		}

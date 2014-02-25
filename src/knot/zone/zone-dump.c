@@ -33,7 +33,6 @@ typedef struct {
 	char     *buf;
 	size_t   buflen;
 	uint64_t rr_count;
-	bool     dump_rdata;
 	bool     dump_rrsig;
 	bool     dump_nsec;
 	const knot_dname_t *origin;
@@ -48,20 +47,12 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
-		if (params->dump_rdata) {
-			soa_style.show_class = true;
-		}
+		soa_style.show_class = true;
 		if (knot_rrset_txt_dump(soa, params->buf, params->buflen,
-					params->dump_rdata, params->dump_rrsig,
 					&soa_style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		if (params->dump_rdata) {
-			params->rr_count += soa->rdata_count;
-		}
-		if (params->dump_rrsig && soa->rrsigs != NULL) {
-			params->rr_count += soa->rrsigs->rdata_count;
-		}
+		params->rr_count += knot_rrset_rr_count(soa);
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -72,30 +63,20 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
 		switch (rrsets[i]->type) {
 		case KNOT_RRTYPE_NSEC:
-			if (params->dump_nsec) {
-				break;
-			}
+			continue;
+		case KNOT_RRTYPE_RRSIG:
 			continue;
 		case KNOT_RRTYPE_SOA:
 			continue;
 		default:
-			if (params->dump_nsec) {
-				continue;
-			}
 			break;
 		}
 
 		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
-		                        params->dump_rdata, params->dump_rrsig,
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		if (params->dump_rdata) {
-			params->rr_count += rrsets[i]->rdata_count;
-		}
-		if (params->dump_rrsig && rrsets[i]->rrsigs != NULL) {
-			params->rr_count += rrsets[i]->rrsigs->rdata_count;
-		}
+		params->rr_count +=  knot_rrset_rr_count(rrsets[i]);
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -108,7 +89,8 @@ static int node_dump_text(knot_node_t *node, void *data)
 	dump_params_t *params = (dump_params_t *)data;
 
 	// Zone apex rrsets.
-	if (node->owner == params->origin) {
+	if (node->owner == params->origin && !params->dump_rrsig &&
+	    !params->dump_nsec) {
 		apex_node_dump_text(node, params);
 		return KNOT_EOK;
 	}
@@ -118,29 +100,33 @@ static int node_dump_text(knot_node_t *node, void *data)
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
 		switch (rrsets[i]->type) {
+		case KNOT_RRTYPE_RRSIG:
+			if (params->dump_rrsig) {
+				break;
+			}
+			continue;
 		case KNOT_RRTYPE_NSEC:
 			if (params->dump_nsec) {
 				break;
 			}
 			continue;
-		default:
+		case KNOT_RRTYPE_NSEC3:
 			if (params->dump_nsec) {
+				break;
+			}
+			continue;
+		default:
+			if (params->dump_nsec || params->dump_rrsig) {
 				continue;
 			}
 			break;
 		}
 
 		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
-		                        params->dump_rdata, params->dump_rrsig,
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		if (params->dump_rdata) {
-			params->rr_count += rrsets[i]->rdata_count;
-		}
-		if (params->dump_rrsig && rrsets[i]->rrsigs != NULL) {
-			params->rr_count += rrsets[i]->rrsigs->rdata_count;
-		}
+		params->rr_count += knot_rrset_rr_count(rrsets[i]);
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -176,7 +162,6 @@ int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *fr
 	int ret;
 
 	// Dump standard zone records without rrsigs.
-	params.dump_rdata = true;
 	params.dump_rrsig = false;
 	params.dump_nsec = false;
 	ret = knot_zone_contents_tree_apply_inorder(zone, node_dump_text, &params);
@@ -185,12 +170,10 @@ int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *fr
 	}
 
 	// Dump DNSSEC signatures if secured.
-	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
-	if (soa && soa->rrsigs) {
+	if (knot_zone_contents_is_signed(zone)) {
 		fprintf(file, ";; DNSSEC signatures\n");
 
 		// Dump rrsig records.
-		params.dump_rdata = false;
 		params.dump_rrsig = true;
 		params.dump_nsec = false;
 		ret = knot_zone_contents_tree_apply_inorder(zone, node_dump_text,
@@ -204,7 +187,16 @@ int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *fr
 	if (knot_is_nsec3_enabled(zone)) {
 		fprintf(file, ";; DNSSEC NSEC3 chain\n");
 
-		params.dump_rdata = true;
+		params.dump_rrsig = false;
+		params.dump_nsec = true;
+		ret = knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text,
+		                                             &params);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		fprintf(file, ";; DNSSEC NSEC3 signatures\n");
+
 		params.dump_rrsig = true;
 		params.dump_nsec = false;
 		ret = knot_zone_contents_nsec3_apply_inorder(zone, node_dump_text,
@@ -212,12 +204,11 @@ int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *fr
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-	} else if (soa && soa->rrsigs) {
+	} else if (knot_zone_contents_is_signed(zone)) {
 		fprintf(file, ";; DNSSEC NSEC chain\n");
 
-		// Dump nsec and rrsig records.
-		params.dump_rdata = true;
-		params.dump_rrsig = true;
+		// Dump nsec records.
+		params.dump_rrsig = false;
 		params.dump_nsec = true;
 		ret = knot_zone_contents_tree_apply_inorder(zone, node_dump_text,
 		                                            &params);

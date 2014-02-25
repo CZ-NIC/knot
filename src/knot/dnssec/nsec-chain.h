@@ -93,8 +93,9 @@ inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
 	const knot_rrset_t **node_rrsets = knot_node_rrsets_no_copy(node);
 	for (int i = 0; i < node->rrset_count; i++) {
 		const knot_rrset_t *rr = node_rrsets[i];
-		if (rr->type != KNOT_RRTYPE_NSEC && rr->rdata_count > 0) {
-			bitmap_add_type(bitmap, node_rrsets[i]->type);
+		if (rr->type != KNOT_RRTYPE_NSEC &&
+		    rr->type != KNOT_RRTYPE_RRSIG) {
+			bitmap_add_type(bitmap, rr->type);
 		}
 	}
 }
@@ -135,14 +136,14 @@ int knot_nsec_chain_iterate_fix(hattrie_t *nodes,
                                 chain_fix_data_t *data);
 
 /*!
- * \brief Add entry for removed NSEC to the changeset.
+ * \brief Add entry for removed NSEC(3) and its RRSIG to the changeset.
  *
- * \param oldrr      Old NSEC RR set to be removed (including RRSIG).
+ * \param n          Node to extract NSEC(3) from.
  * \param changeset  Changeset to add the old RR into.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_changeset_remove(const knot_rrset_t *oldrr,
+int knot_nsec_changeset_remove(const knot_node_t *n,
                                knot_changeset_t *changeset);
 
 /*!

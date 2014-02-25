@@ -38,16 +38,6 @@
 
 /*----------------------------------------------------------------------------*/
 
-typedef struct xfrin_orphan_rrsig {
-	knot_rrset_t *rrsig;
-	struct xfrin_orphan_rrsig *next;
-} xfrin_orphan_rrsig_t;
-
-typedef struct xfrin_constructed_zone {
-	knot_zone_contents_t *contents;
-	xfrin_orphan_rrsig_t *rrsigs;
-} xfrin_constructed_zone_t;
-
 typedef enum xfrin_transfer_result {
 	XFRIN_RES_COMPLETE = 1,
 	XFRIN_RES_SOA_ONLY = 2,
@@ -124,11 +114,7 @@ int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt);
  *
  * \todo Refactor!!!
  */
-int xfrin_process_axfr_packet(/*const uint8_t *pkt, size_t size,
-                              xfrin_constructed_zone_t **zone*/
-                              knot_ns_xfr_t *xfr);
-
-void xfrin_free_orphan_rrsigs(xfrin_orphan_rrsig_t **rrsigs);
+int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone);
 
 /*!
  * \brief Destroys the whole changesets structure.

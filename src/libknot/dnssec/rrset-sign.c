@@ -119,7 +119,7 @@ int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
 static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
                                const knot_rrset_t *covered,
                                const knot_dnssec_key_t *key,
-			       uint32_t sig_incepted, uint32_t sig_expires,
+                               uint32_t sig_incepted, uint32_t sig_expires,
                                uint8_t **rdata, size_t *rdata_size)
 {
 	assert(rrsigs);
@@ -132,7 +132,9 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	size_t size = knot_rrsig_rdata_size(key);
 	assert(size != 0);
 
-	uint8_t *result = knot_rrset_create_rdata(rrsigs, size);
+	uint8_t *result = knot_rrset_create_rr(rrsigs, size,
+	                                       knot_rrset_rr_ttl(covered, 0),
+	                                       NULL);
 	if (!result) {
 		return KNOT_ENOMEM;
 	}
@@ -143,7 +145,8 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	}
 
 	int res = knot_rrsig_write_rdata(result, key, covered->type, owner_labels,
-	                                 covered->ttl, sig_incepted, sig_expires);
+	                                 knot_rrset_rr_ttl(covered, 0),
+	                                 sig_incepted, sig_expires);
 
 	assert(res == KNOT_EOK);
 	UNUSED(res);
@@ -197,50 +200,18 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
 		return KNOT_ENOMEM;
 	}
 
-#ifndef NDEBUG
-	// cannonical ordering of RRs is cheked in debug mode
-	uint8_t *prev_rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
-	size_t prev_rr_size = 0;
-	size_t rdata_offset = 0;
-#endif
-
 	int result = KNOT_EOK;
 
-	uint16_t rr_count = covered->rdata_count;
-	for (uint16_t i = 0; i < rr_count; i++) {
-		size_t rr_size;
-		result = knot_rrset_to_wire_one(covered, i, rrwf,
-		                                MAX_RR_WIREFORMAT_SIZE,
-		                                &rr_size, NULL);
-		if (result != KNOT_EOK) {
-			break;
-		}
-
-#ifndef NDEBUG
-		if (i == 0) {
-			rdata_offset = knot_dname_size(covered->owner);
-			rdata_offset += 10; // type, class, ttl, rdlength
-		} else {
-			size_t cmp_size = MIN(prev_rr_size, rr_size);
-			int cmp = memcmp(prev_rrwf + rdata_offset,
-			                 rrwf + rdata_offset,
-			                 cmp_size - rdata_offset);
-			assert(cmp < 0 || (cmp == 0 && prev_rr_size <= rr_size));
-		}
-
-		memcpy(prev_rrwf, rrwf, rr_size);
-		prev_rr_size = rr_size;
-#endif
-
-		result = knot_dnssec_sign_add(ctx, rrwf, rr_size);
-		if (result != KNOT_EOK) {
-			break;
-		}
+	size_t rr_wire_size = 0;
+	uint16_t rr_count = 0;
+	result = knot_rrset_to_wire(covered, rrwf, &rr_wire_size,
+	                            MAX_RR_WIREFORMAT_SIZE, &rr_count, NULL);
+	if (result != KNOT_EOK || rr_count != knot_rrset_rr_count(covered)) {
+		free(rrwf);
+		return result;
 	}
 
-#ifndef NDEBUG
-	free(prev_rrwf);
-#endif
+	result = knot_dnssec_sign_add(ctx, rrwf, rr_wire_size);
 	free(rrwf);
 
 	return result;
@@ -356,23 +327,35 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 		return KNOT_DNSSEC_EINVALID_SIGNATURE;
 	}
 
+	// Synthesize RRSIG for covered RRSet
+	knot_rrset_t *synth_rrsigs = NULL;
+	int result = knot_rrset_synth_rrsig(covered->owner, covered->type,
+	                                    rrsigs, &synth_rrsigs, NULL);
+	if (result != KNOT_EOK) {
+		if (result != KNOT_ENOENT) {
+			return result;
+		}
+		// No signature exists
+		return KNOT_EINVAL;
+	}
+
 	// identify fields in the signature being validated
 
-	uint8_t *rdata = knot_rrset_get_rdata(rrsigs, pos);
+	uint8_t *rdata = knot_rrset_rr_rdata(synth_rrsigs, pos);
 	if (!rdata) {
 		return KNOT_EINVAL;
 	}
 
 	uint8_t *signature = NULL;
 	size_t signature_size = 0;
-	knot_rdata_rrsig_signature(rrsigs, pos, &signature, &signature_size);
+	knot_rdata_rrsig_signature(synth_rrsigs, pos, &signature, &signature_size);
 	if (!signature) {
 		return KNOT_EINVAL;
 	}
 
 	// perform the validation
 
-	int result = knot_dnssec_sign_new(ctx);
+	result = knot_dnssec_sign_new(ctx);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -382,5 +365,7 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 		return result;
 	}
 
-	return knot_dnssec_sign_verify(ctx, signature, signature_size);
+	result = knot_dnssec_sign_verify(ctx, signature, signature_size);
+	knot_rrset_deep_free(&synth_rrsigs, true, NULL);
+	return result;
 }

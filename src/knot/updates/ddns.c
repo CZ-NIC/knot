@@ -30,6 +30,18 @@
 #include "knot/updates/xfr-in.h"
 #include "common/descriptor.h"
 
+static bool rrset_empty(const knot_rrset_t *rrset)
+{
+	uint16_t rr_count = knot_rrset_rr_count(rrset);
+	if (rr_count == 0) {
+		return true;
+	}
+	if (rr_count == 1) {
+		return knot_rrset_rr_size(rrset, 0) == 0;
+	}
+	return false;
+}
+
 /*----------------------------------------------------------------------------*/
 // Copied from XFR - maybe extract somewhere else
 static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
@@ -77,7 +89,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	for (int i = 0; i < *count; ++i) {
 		if (knot_rrset_equal(rrset, (*rrsets)[i],
 		                     KNOT_RRSET_COMPARE_HEADER)) {
-			ret = knot_rrset_merge((*rrsets)[i], rrset);
+			ret = knot_rrset_merge((*rrsets)[i], rrset, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else {
@@ -93,7 +105,7 @@ static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
 	}
 
 	knot_rrset_t *new_rrset = NULL;
-	ret = knot_rrset_deep_copy(rrset, &new_rrset);
+	ret = knot_rrset_deep_copy(rrset, &new_rrset, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -135,7 +147,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 	assert(prereqs != NULL);
 	assert(rrset != NULL);
 
-	if (knot_rrset_ttl(rrset) != 0) {
+	if (knot_rrset_rr_ttl(rrset, 0) != 0) {
 		dbg_ddns("ddns: add_prereq: Wrong TTL.\n");
 		return KNOT_EMALF;
 	}
@@ -143,7 +155,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 	int ret;
 
 	if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
-		if (knot_rrset_rdata_rr_count(rrset)) {
+		if (!rrset_empty(rrset)) {
 			dbg_ddns("ddns: add_prereq: Extra data\n");
 			return KNOT_EMALF;
 		}
@@ -159,7 +171,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 			                                &prereqs->exist_allocd);
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
-		if (knot_rrset_rdata_rr_count(rrset)) {
+		if (!rrset_empty(rrset)) {
 			dbg_ddns("ddns: add_prereq: Extra data\n");
 			return KNOT_EMALF;
 		}
@@ -195,9 +207,7 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(rrset != NULL);
 	assert(rcode != NULL);
-	assert(knot_rrset_rdata_rr_count(rrset) == 0);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
-	assert(knot_rrset_ttl(rrset) == 0);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
 
 	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
@@ -229,7 +239,6 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	assert(rrset != NULL);
 	assert(rcode != NULL);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
-	assert(knot_rrset_ttl(rrset) == 0);
 
 	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
 	    knot_node_owner(knot_zone_contents_apex(zone)))) {
@@ -271,9 +280,7 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	assert(zone != NULL);
 	assert(rrset != NULL);
 	assert(rcode != NULL);
-	assert(knot_rrset_rdata_rr_count(rrset) == 0);
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
-	assert(knot_rrset_ttl(rrset) == 0);
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_NONE);
 
 	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
@@ -508,14 +515,14 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 			return KNOT_EMALF;
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_ANY) {
-		if (knot_rrset_rdata_rr_count(rrset)
+		if (!rrset_empty(rrset)
 		    || (knot_rrtype_is_metatype(knot_rrset_type(rrset))
 		        && knot_rrset_type(rrset) != KNOT_RRTYPE_ANY)) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
 		}
 	} else if (knot_rrset_class(rrset) == KNOT_CLASS_NONE) {
-		if (knot_rrset_ttl(rrset) != 0
+		if (knot_rrset_rr_ttl(rrset, 0) != 0
 		    || knot_rrtype_is_metatype(knot_rrset_type(rrset))) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
@@ -537,17 +544,17 @@ void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 	int i;
 
 	for (i = 0; i < (*prereq)->exist_count; ++i) {
-		knot_rrset_deep_free(&(*prereq)->exist[i], 1);
+		knot_rrset_deep_free(&(*prereq)->exist[i], 1, NULL);
 	}
 	free((*prereq)->exist);
 
 	for (i = 0; i < (*prereq)->exist_full_count; ++i) {
-		knot_rrset_deep_free(&(*prereq)->exist_full[i], 1);
+		knot_rrset_deep_free(&(*prereq)->exist_full[i], 1, NULL);
 	}
 	free((*prereq)->exist_full);
 
 	for (i = 0; i < (*prereq)->not_exist_count; ++i) {
-		knot_rrset_deep_free(&(*prereq)->not_exist[i], 1);
+		knot_rrset_deep_free(&(*prereq)->not_exist[i], 1, NULL);
 	}
 	free((*prereq)->not_exist);
 
@@ -569,11 +576,11 @@ void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 /* New DDNS processing                                                      - */
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_check_remove_rr2(knot_changeset_t *changeset,
-                                      const knot_dname_t *owner,
-                                      const knot_rrset_t *rr,
-                                      knot_rrset_t ***removed,
-                                      size_t *removed_count)
+static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
+                                     const knot_dname_t *owner,
+                                     const knot_rrset_t *rr,
+                                     knot_rrset_t ***removed,
+                                     size_t *removed_count)
 {
 	assert(changeset != NULL);
 	assert(removed != NULL);
@@ -604,13 +611,13 @@ static int knot_ddns_check_remove_rr2(knot_changeset_t *changeset,
 		// Removing RR(s) from this owner
 dbg_ddns_exec_detail(
 		char *name = knot_dname_to_str(rrset->owner);
-		dbg_ddns_detail("ddns: remove_rr2: Removing RR of type=%u owned by %s\n",
+		dbg_ddns_detail("ddns: remove_rr: Removing RR of type=%u owned by %s\n",
 		                knot_rrset_type(rrset), name);
 		free(name);
 );
 		if (knot_dname_is_equal(knot_rrset_owner(rrset), owner)) {
 			// Removing one or all RRSets
-			if ((knot_rrset_rdata_rr_count(rr) == 0)
+			if (rrset_empty(rr)
 			    && (knot_rrset_type(rr) == knot_rrset_type(rrset)
 			        || knot_rrset_type(rr) == KNOT_RRTYPE_ANY)) {
 				dbg_ddns_detail("Removing one or all RRSets\n");
@@ -620,7 +627,7 @@ dbg_ddns_exec_detail(
 			} else if (knot_rrset_type(rr) ==
 			           knot_rrset_type(rrset)) {
 				// Removing specific RR
-				assert(knot_rrset_rdata_rr_count(rr) != 0);
+				assert(knot_rrset_rr_count(rr) != 0);
 
 				// We must check if the RDATA match
 				if (knot_rrset_rdata_equal(rr,
@@ -661,8 +668,6 @@ static void knot_ddns_check_add_rr(knot_changeset_t *changeset,
 		                     KNOT_RRSET_COMPARE_WHOLE) == 1) {
 			*removed = rrset;
 			rem_node((node_t *)rr_node);
-			dbg_ddns_detail("Removed RRSet from chgset:\n");
-			knot_rrset_dump(rrset);
 			break;
 		}
 	}
@@ -716,32 +721,12 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			return 1;
 		}
 
-		/*! \note
-		 * Together with the removed CNAME we remove also its RRSIGs as
-		 * they would not be valid for the new CNAME anyway.
-		 *
-		 * \todo Document!!
-		 */
-
-		/* b) Store it to 'changes', together with its RRSIGs. */
+		/* b) Store it to 'changes' */
 		ret = knot_changes_add_rrset(changes, removed, KNOT_CHANGES_OLD);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to add removed RRSet to "
 			         "'changes': %s\n", knot_strerror(ret));
 			return ret;
-		}
-
-		if (removed->rrsigs) {
-			ret = knot_changes_add_rrset(changes,
-			                             removed->rrsigs,
-			                             KNOT_CHANGES_OLD);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add removed RRSIGs to "
-				         "'changes': %s\n", knot_strerror(ret));
-				return ret;
-			}
-			/* Disconnect RRsigs from rrset. */
-			knot_rrset_set_rrsigs(removed, NULL);
 		}
 
 		/* c) And remove it from the node. */
@@ -753,7 +738,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 		 */
 		knot_rrset_t **from_chgset = NULL;
 		size_t from_chgset_count = 0;
-		ret = knot_ddns_check_remove_rr2(
+		ret = knot_ddns_check_remove_rr(
 		                   changeset, knot_rrset_owner(removed),
 		                   removed, &from_chgset, &from_chgset_count);
 		if (ret != KNOT_EOK) {
@@ -768,7 +753,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 
 		if (from_chgset_count == 1) {
 			/* Just delete the RRSet. */
-			knot_rrset_deep_free(&(from_chgset[0]), 1);
+			knot_rrset_deep_free(&(from_chgset[0]), 1, NULL);
 			/* Okay, &(from_chgset[0]) is basically equal to just
 			 * from_chgset, but it's more clear this way that we are
 			 * deleting the first RRSet in the array ;-)
@@ -778,7 +763,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			 * to the REMOVE section.
 			 */
 			knot_rrset_t *removed_copy;
-			ret = knot_rrset_deep_copy(removed, &removed_copy);
+			ret = knot_rrset_deep_copy(removed, &removed_copy, NULL);
 			if (ret != KNOT_EOK) {
 				dbg_ddns("Failed to copy removed RRSet:"
 				         " %s\n", knot_strerror(ret));
@@ -789,8 +774,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 			ret = knot_changeset_add_rrset(
 				changeset, removed_copy, KNOT_CHANGESET_REMOVE);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&removed_copy,
-				                     1);
+				knot_rrset_deep_free(&removed_copy, 1, NULL);
 				dbg_ddns("Failed to add removed CNAME "
 				         "to changeset: %s\n",
 				         knot_strerror(ret));
@@ -843,7 +827,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 
 		/* Check that the serial is indeed larger than the current one*/
 		assert(knot_serial_compare(knot_rdata_soa_serial(removed),
-		                           knot_rdata_soa_serial(rr)) < 0);
+		                         knot_rdata_soa_serial(rr)) < 0);
 
 		/* 1) Store it to 'changes', together with its RRSIGs. */
 		ret = knot_changes_add_rrset(changes, removed, KNOT_CHANGES_OLD);
@@ -851,19 +835,6 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 			dbg_ddns("Failed to add removed RRSet to "
 			         "'changes': %s\n", knot_strerror(ret));
 			return ret;
-		}
-
-		if (removed->rrsigs) {
-			ret = knot_changes_add_rrset(changes,
-			                             removed->rrsigs,
-			                             KNOT_CHANGES_OLD);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add removed RRSIGs to "
-				         "'changes': %s\n", knot_strerror(ret));
-				return ret;
-			}
-			/* Disconnect RRsigs from rrset. */
-			knot_rrset_set_rrsigs(removed, NULL);
 		}
 
 		/* 2) And remove it from the node. */
@@ -894,7 +865,7 @@ static int knot_ddns_add_rr_new_normal(knot_node_t *node, knot_rrset_t *rr_copy,
 
 	int ret = knot_changes_add_rrset(changes, rr_copy, KNOT_CHANGES_NEW);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr_copy, 1);
+		knot_rrset_deep_free(&rr_copy, 1, NULL);
 		dbg_ddns("Failed to store copy of the added RR: "
 		         "%s\n", knot_strerror(ret));
 		return ret;
@@ -921,22 +892,10 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 
 	dbg_ddns_verb("Merging normal RR to existing RRSet.\n");
 
-	/* In case the RRSet is empty (and only remained there because
-	 * of the RRSIGs) it may happen that the TTL may be different
-	 * than that of he new RRs. Update the TTL according to the
-	 * first RR.
-	 */
-	if (knot_rrset_rdata_rr_count(node_rrset_copy) == 0
-	    && knot_rrset_ttl(node_rrset_copy)
-	       != knot_rrset_ttl(*rr_copy)) {
-		knot_rrset_set_ttl(node_rrset_copy,
-		                   knot_rrset_ttl(*rr_copy));
-	}
-
-	int rdata_in_copy = knot_rrset_rdata_rr_count(*rr_copy);
+	int rdata_in_copy = knot_rrset_rr_count(*rr_copy);
 	int merged = 0, deleted_rrs = 0;
 	int ret = knot_rrset_merge_sort(node_rrset_copy, *rr_copy, &merged,
-	                                &deleted_rrs);
+	                                &deleted_rrs, NULL);
 	dbg_ddns_detail("Merge returned: %d\n", ret);
 
 	if (ret != KNOT_EOK) {
@@ -945,7 +904,7 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 		return ret;
 	}
 
-	knot_rrset_deep_free(rr_copy, 1);
+	knot_rrset_deep_free(rr_copy, 1, NULL);
 
 	if (rdata_in_copy == deleted_rrs) {
 		/* All RDATA have been removed, because they were duplicates
@@ -976,7 +935,7 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 
 	/* Copy the RRSet from the packet. */
 	//knot_rrset_t *rr_copy;
-	int ret = knot_rrset_deep_copy(rr, rr_copy);
+	int ret = knot_rrset_deep_copy(rr, rr_copy, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy RR: %s\n", knot_strerror(ret));
 		return ret;
@@ -991,7 +950,7 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 	ret = xfrin_copy_rrset(node, rr->type, &node_rrset_copy, changes, 0);
 	if (ret < 0) {
 		dbg_ddns("Failed to copy RRSet: %s\n", knot_strerror(ret));
-		knot_rrset_deep_free(rr_copy, 1);
+		knot_rrset_deep_free(rr_copy, 1, NULL);
 		return ret;
 	}
 
@@ -1007,24 +966,12 @@ static int knot_ddns_add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		dbg_ddns_detail("RRSet added successfully.\n");
 	} else {
 		/* We have copied the RRSet from the node. */
-dbg_ddns_exec_detail(
-		dbg_ddns_detail("Merging RR to an existing RRSet.\n");
-		knot_rrset_dump(node_rrset_copy);
-		dbg_ddns_detail("New RR:\n");
-		knot_rrset_dump(*rr_copy);
-);
-
 		ret = knot_ddns_add_rr_merge_normal(node_rrset_copy, rr_copy);
-
-dbg_ddns_exec_detail(
-		dbg_ddns_detail("After merge:\n");
-		knot_rrset_dump(node_rrset_copy);
-);
 
 		if (ret < KNOT_EOK) {
 			dbg_ddns("Failed to merge UPDATE RR to node RRSet.\n");
-			knot_rrset_deep_free(rr_copy, 1);
-			knot_rrset_deep_free(&node_rrset_copy, 1);
+			knot_rrset_deep_free(rr_copy, 1, NULL);
+			knot_rrset_deep_free(&node_rrset_copy, 1, NULL);
 			return ret;
 		}
 
@@ -1034,7 +981,7 @@ dbg_ddns_exec_detail(
 		                               KNOT_CHANGES_NEW);
 		if (r != KNOT_EOK) {
 			dbg_ddns("Failed to store RRSet copy to 'changes'\n");
-			knot_rrset_deep_free(&node_rrset_copy, 1);
+			knot_rrset_deep_free(&node_rrset_copy, 1, NULL);
 			return r;
 		}
 	}
@@ -1052,7 +999,7 @@ static int knot_ddns_final_soa_to_chgset(const knot_rrset_t *soa,
 	assert(changeset != NULL);
 
 	knot_rrset_t *soa_copy = NULL;
-	int ret = knot_rrset_deep_copy(soa, &soa_copy);
+	int ret = knot_rrset_deep_copy(soa, &soa_copy, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy SOA RR to the changeset: "
 			 "%s\n", knot_strerror(ret));
@@ -1076,7 +1023,7 @@ static int knot_ddns_add_rr_to_chgset(const knot_rrset_t *rr,
 	knot_rrset_t *chgset_rr = NULL;
 	knot_ddns_check_add_rr(changeset, rr, &chgset_rr);
 	if (chgset_rr == NULL) {
-		ret = knot_rrset_deep_copy(rr, &chgset_rr);
+		ret = knot_rrset_deep_copy(rr, &chgset_rr, NULL);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy RR to the changeset: "
 				 "%s\n", knot_strerror(ret));
@@ -1086,13 +1033,13 @@ static int knot_ddns_add_rr_to_chgset(const knot_rrset_t *rr,
 		ret = knot_changeset_add_rrset(changeset, chgset_rr,
 		                               KNOT_CHANGESET_ADD);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&chgset_rr, 1);
+			knot_rrset_deep_free(&chgset_rr, 1, NULL);
 			dbg_ddns("Failed to add RR to changeset: %s.\n",
 				 knot_strerror(ret));
 			return ret;
 		}
 	} else {
-		knot_rrset_deep_free(&chgset_rr, 1);
+		knot_rrset_deep_free(&chgset_rr, 1, NULL);
 	}
 
 	return KNOT_EOK;
@@ -1255,7 +1202,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * - if they match, the last NS cannot be removed anyway.
 	 */
 	if (is_apex && type == KNOT_RRTYPE_NS
-	    && knot_rrset_rdata_rr_count(knot_node_rrset(node, type)) == 1) {
+	    && knot_rrset_rr_count(knot_node_rrset(node, type)) == 1) {
 		return KNOT_EOK;
 	}
 
@@ -1285,7 +1232,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * 2) Remove the proper RDATA from the RRSet copy
 	 */
 	knot_rrset_t *rr_remove = NULL;
-	ret = knot_rrset_remove_rr_using_rrset(to_modify, rr, &rr_remove);
+	ret = knot_rrset_remove_rr_using_rrset(to_modify, rr, &rr_remove, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("ddns: proces_rem_rr: Could not remove RDATA from"
 		         " RRSet (%s).\n", knot_strerror(ret));
@@ -1293,7 +1240,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	}
 
 	/* No such RR in the RRSet. */
-	if (knot_rrset_rdata_rr_count(rr_remove) == 0) {
+	if (knot_rrset_rr_count(rr_remove) == 0) {
 		knot_rrset_free(&rr_remove);
 		dbg_ddns_detail("No such RR found to be removed.\n");
 		return KNOT_EOK;
@@ -1301,14 +1248,14 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 
 	/* If we removed NS from apex, there should be at least one more. */
 	assert(!is_apex || type != KNOT_RRTYPE_NS
-	       || knot_rrset_rdata_rr_count(rrset_copy));
+	       || knot_rrset_rr_count(rrset_copy));
 
 	/*
 	 * 3) Store the removed data in 'changes'.
 	 */
 	ret = knot_changes_add_rrset(changes, rr_remove, KNOT_CHANGES_OLD);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr_remove, 1);
+		knot_rrset_deep_free(&rr_remove, 1, NULL);
 		dbg_ddns_detail("Failed to add data to changes.\n");
 		return ret;
 	}
@@ -1316,7 +1263,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	/*
 	 * 4) If the RRSet is empty, remove it and store in 'changes'.
 	 */
-	if (knot_rrset_rdata_rr_count(to_modify) == 0) {
+	if (knot_rrset_rr_count(to_modify) == 0) {
 		// The RRSet should not be empty if we were removing NSs from
 		// apex in case of DDNS
 //		assert(!is_apex);
@@ -1328,16 +1275,6 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 			return ret;
 		}
 
-		// Do the same with its RRSIGs (automatic drop)
-		if (rrset_copy->rrsigs) {
-			ret = knot_changes_add_rrset(changes,
-			                             rrset_copy->rrsigs,
-			                             KNOT_CHANGES_OLD);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add RRSet to changes.\n");
-				return ret;
-			}
-		}
 		knot_rrset_t *tmp = knot_node_remove_rrset(node, type);
 		dbg_xfrin_detail("Removed whole RRSet (%p).\n", tmp);
 		assert(tmp == rrset_copy);
@@ -1349,7 +1286,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 */
 	knot_rrset_t **from_chgset = NULL;
 	size_t from_chgset_count = 0;
-	ret = knot_ddns_check_remove_rr2(changeset, knot_node_owner(node),
+	ret = knot_ddns_check_remove_rr(changeset, knot_node_owner(node),
 	                                 rr, &from_chgset, &from_chgset_count);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to remove possible redundant RRs from ADD "
@@ -1362,7 +1299,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 
 	if (from_chgset_count == 1) {
 		/* Just delete the RRSet. */
-		knot_rrset_deep_free(&(from_chgset[0]), 1);
+		knot_rrset_deep_free(&(from_chgset[0]), 1, NULL);
 
 		/* Finish processing, no adding to changeset. */
 		free(from_chgset);
@@ -1377,20 +1314,24 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 *    and TTL.
 	 */
 	knot_rrset_t *to_chgset = NULL;
-	ret = knot_rrset_deep_copy(rr, &to_chgset);
+	ret = knot_rrset_deep_copy(rr, &to_chgset, NULL);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to copy RRSet from packet to changeset.\n");
 		return ret;
 	}
-	knot_rrset_set_class(to_chgset, qclass);
-	knot_rrset_set_ttl(to_chgset, knot_rrset_ttl(to_modify));
+	to_chgset->rclass = qclass;
+	uint16_t rr_count = knot_rrset_rr_count(to_chgset);
+	for (uint16_t i = 0; i < rr_count; ++i) {
+		knot_rrset_rr_set_ttl(to_chgset,
+		                      knot_rrset_rr_ttl(to_modify, i), i);
+	}
 
 	ret = knot_changeset_add_rrset(changeset, to_chgset,
 	                               KNOT_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to store the RRSet copy to changeset: %s.\n",
 		         knot_strerror(ret));
-		knot_rrset_deep_free(&to_chgset, 1);
+		knot_rrset_deep_free(&to_chgset, 1, NULL);
 		return ret;
 	}
 
@@ -1475,24 +1416,6 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 			free(removed);
 			return ret;
 		}
-
-		if (removed[i]->rrsigs) {
-			ret = knot_changes_add_rrset(changes,
-			                             removed[i]->rrsigs,
-			                             KNOT_CHANGES_OLD);
-			if (ret != KNOT_EOK) {
-				dbg_ddns("Failed to add removed RRSIGs to "
-				         "'changes': %s\n", knot_strerror(ret));
-				free(removed);
-				return ret;
-			}
-			/* Disconnect RRsigs from rrset. */
-			/*! \todo What if the update fails after this? The RRSet
-			 *        in the old tree will not carry pointer to its
-			 *        RRSIGs, will it?
-			 */
-			knot_rrset_set_rrsigs(removed[i], NULL);
-		}
 	}
 
 	/* 3) Copy the RRSets, so that they can be stored to the changeset. */
@@ -1506,12 +1429,12 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	}
 
 	for (int i = 0; i < removed_count; ++i) {
-		ret = knot_rrset_deep_copy(removed[i], &to_chgset[i]);
+		ret = knot_rrset_deep_copy(removed[i], &to_chgset[i], NULL);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy the removed RRSet: %s.\n",
 			         knot_strerror(ret));
 			for (int j = 0; j < i; ++j) {
-				knot_rrset_deep_free(&to_chgset[j], 1);
+				knot_rrset_deep_free(&to_chgset[j], 1, NULL);
 			}
 			free(to_chgset);
 			free(removed);
@@ -1532,20 +1455,20 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	/* 4 a) Remove redundant RRs from the ADD section of the changeset. */
 	knot_dname_t *owner_copy = knot_dname_copy(rrset->owner);
 	knot_rrset_t *empty_rrset =
-		knot_rrset_new(owner_copy, type, rrset->rclass, rrset->ttl);
+		knot_rrset_new(owner_copy, type, rrset->rclass, NULL);
 	if (empty_rrset == NULL) {
 		free(to_chgset);
 		knot_dname_free(&owner_copy);
 		return KNOT_ENOMEM;
 	}
-	ret = knot_ddns_check_remove_rr2(changeset, knot_node_owner(node),
+	ret = knot_ddns_check_remove_rr(changeset, knot_node_owner(node),
 	                                 empty_rrset, &from_chgset,
 	                                 &from_chgset_count);
 	if (ret != KNOT_EOK) {
 		dbg_ddns("Failed to remove possible redundant RRs from ADD "
 		         "section: %s.\n", knot_strerror(ret));
 		for (int i = 0; i < removed_count; ++i) {
-			knot_rrset_deep_free(&to_chgset[i], 1);
+			knot_rrset_deep_free(&to_chgset[i], 1, NULL);
 		}
 		free(from_chgset);
 		free(to_chgset);
@@ -1563,8 +1486,9 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 			/* ...try to remove redundant RDATA. Each RRSet in
 			 * 'from_chgset' contains only one RDATA.
 			 */
-			ret = knot_rrset_remove_rr_using_rrset_del(to_chgset[j],
-			                                  from_chgset[i]);
+			knot_rrset_t *removed = NULL;
+			ret = knot_rrset_remove_rr_using_rrset(to_chgset[j],
+			                                  from_chgset[i], &removed, NULL);
 			if (ret != KNOT_EOK) {
 				dbg_ddns("Failed to remove RR from RRSet"
 				         "(%s).\n", knot_strerror(ret));
@@ -1572,12 +1496,13 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 				free(to_chgset);
 				return ret;
 			}
+			knot_rrset_deep_free(&removed, true, NULL);
 		}
 	}
 
 	/* The array is cleared, we may delete the redundant RRs. */
 	for (int i = 0; i < from_chgset_count; ++i) {
-		knot_rrset_deep_free(&from_chgset[i], 1);
+		knot_rrset_deep_free(&from_chgset[i], 1, NULL);
 	}
 	free(from_chgset);
 
@@ -1591,7 +1516,7 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 			dbg_ddns("Failed to store the RRSet copy to changeset: "
 			         "%s.\n", knot_strerror(ret));
 			for (int j = i; j < removed_count; ++j) {
-				knot_rrset_deep_free(&to_chgset[j], 1);
+				knot_rrset_deep_free(&to_chgset[j], 1, NULL);
 			}
 			free(to_chgset);
 			return ret;
@@ -1705,7 +1630,6 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 			                                   changes);
 		}
 	} else {
-		assert(0);
 		return KNOT_ERROR;
 	}
 }
@@ -1741,7 +1665,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 						  KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_begin = NULL;
 	knot_rrset_t *soa_end = NULL;
-	ret = knot_rrset_deep_copy(soa, &soa_begin);
+	ret = knot_rrset_deep_copy(soa, &soa_begin, NULL);
 	if (ret == KNOT_EOK) {
 		knot_changeset_add_soa(changeset, soa_begin,
 		                       KNOT_CHANGESET_REMOVE);
@@ -1845,7 +1769,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		}
 
 		/* If not set, create new SOA. */
-		ret = knot_rrset_deep_copy_no_sig(soa, &soa_end);
+		ret = knot_rrset_deep_copy(soa, &soa_end, NULL);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy ending SOA: %s\n",
 			         knot_strerror(ret));

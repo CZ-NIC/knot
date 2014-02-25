@@ -29,6 +29,7 @@
 
 #include "libknot/packet/wire.h"
 #include "libknot/dname.h"
+#include "libknot/rrset.h"
 
 /*! \brief Compression hint type. */
 enum knot_compr_hint {

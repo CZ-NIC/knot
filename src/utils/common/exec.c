@@ -203,9 +203,9 @@ static void print_section_question(const knot_dname_t *owner,
 
 	knot_dname_t *owner_copy = knot_dname_copy(owner);
 	knot_rrset_t *question = knot_rrset_new(owner_copy, qtype,
-	                                        qclass, 0);
+	                                        qclass, NULL);
 
-	if (knot_rrset_txt_dump_header(question, buf, buflen,
+	if (knot_rrset_txt_dump_header(question, 0, buf, buflen,
 	    &(style->style)) < 0) {
 		WARN("can't print whole question section\n");
 	}
@@ -229,7 +229,7 @@ static void print_section_full(const knot_rrset_t **rrsets,
 		}
 
 		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
-		                           true, true, &(style->style)) < 0) {
+		                           &(style->style)) < 0) {
 			buflen += 4096;
 			// Oversize protection.
 			if (buflen > 1000000) {
@@ -259,8 +259,8 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 
 	for (size_t i = 0; i < count; i++) {
 		const knot_rrset_t *rrset = rrsets[i];
-
-		for (size_t j = 0; j < rrset->rdata_count; j++) {
+		uint16_t rrset_rdata_count = knot_rrset_rr_count(rrset);
+		for (uint16_t j = 0; j < rrset_rdata_count; j++) {
 			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
 			                                &(style->style)) < 0) {
 				buflen += 4096;
@@ -303,7 +303,8 @@ static void print_section_host(const knot_rrset_t **rrsets,
 		}
 		descr = knot_lookup_by_id(rtypes, rrset->type);
 
-		for (size_t j = 0; j < rrset->rdata_count; j++) {
+		uint16_t rrset_rdata_count = knot_rrset_rr_count(rrset);
+		for (uint16_t j = 0; j < rrset_rdata_count; j++) {
 			if (rrset->type == KNOT_RRTYPE_CNAME &&
 			    style->hide_cname) {
 				continue;

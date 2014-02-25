@@ -32,43 +32,25 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
 #include "zscanner/zscanner.h"
-
-/* TODO this structure is highly redundant, remove. Maybe use oh-so-great BIRD lists. */
 /*!
- * \brief One-purpose linked list holding pointers to RRSets.
+ * \brief Zone creator structure.
  */
-struct rrset_list {
-	knot_rrset_t *data; /*!< List data. */
-	struct rrset_list *next; /*!< Next node. */
-};
-
-typedef struct rrset_list rrset_list_t;
-
-struct parser_context {
-	rrset_list_t *node_rrsigs;
-	knot_zone_contents_t *current_zone;
-	knot_rrset_t *current_rrset;
-	knot_dname_t *origin_from_config;
-	knot_node_t *last_node;
-	err_handler_t *err_handler;
-	hattrie_t *lookup_tree;
-	int ret;
-};
-
-typedef struct parser_context parser_context_t;
+typedef struct zcreator {
+	knot_zone_contents_t *z;  /*!< Created zone. */
+	knot_node_t *last_node;   /*!< Last used node, use to save zone lookup. */
+	int ret;                  /*!< Return value. */
+} zcreator_t;
 
 /*!
  * \brief Zone loader structure.
  */
-typedef struct zloader_t
-{
-	char *source;             /*!< Zone source file. */
-	char *origin;             /*!< Zone's origin string. */
-	int semantic_checks;      /*!< Wanted level of semantic checks. */
-	err_handler_t *err_handler; /*!< Semantic checks error handler. */
-	file_loader_t *file_loader; /*!< Scanner's file loader. */
-	parser_context_t *context; /*!< Loader context. */
-
+typedef struct zloader_t {
+	char *source;                /*!< Zone source file. */
+	char *origin;                /*!< Zone's origin string. */
+	bool semantic_checks;        /*!< Do semantic checks. */
+	err_handler_t *err_handler;  /*!< Semantic checks error handler. */
+	file_loader_t *file_loader;  /*!< Scanner's file loader. */
+	zcreator_t *creator;         /*!< Loader context. */
 } zloader_t;
 
 /*!
@@ -98,6 +80,8 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader);
  * \param loader Zone loader instance.
  */
 void zonefile_close(zloader_t *loader);
+
+int zcreator_step(zcreator_t *zl, knot_rrset_t *rr);
 
 void process_error(const scanner_t *scanner);
 

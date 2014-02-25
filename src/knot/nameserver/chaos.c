@@ -50,11 +50,12 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
  *
  * \param owner     RR owner name.
  * \param response  String to be saved in RDATA. Truncated to 255 chars.
+ * \param mm        Memory context.
  *
  * \return Allocated RRset or NULL in case of error.
  */
 static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
-                                      const char *response)
+                                      const char *response, mm_ctx_t *mm)
 {
 	// truncate response to one TXT label
 	size_t response_len = strlen(response);
@@ -68,14 +69,14 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 	}
 
 	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH, 0);
+	rrset = knot_rrset_new(rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH, mm);
 	if (!rrset) {
 		return NULL;
 	}
 
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, response_len + 1);
+	uint8_t *rdata = knot_rrset_create_rr(rrset, response_len + 1, 0, mm);
 	if (!rdata) {
-		knot_rrset_deep_free(&rrset, 1);
+		knot_rrset_deep_free(&rrset, 1, mm);
 		return NULL;
 	}
 
@@ -99,14 +100,15 @@ static int answer_txt(knot_pkt_t *response)
 		return KNOT_RCODE_REFUSED;
 	}
 
-	knot_rrset_t *rrset = create_txt_rrset(qname, response_str);
+	knot_rrset_t *rrset = create_txt_rrset(qname, response_str,
+	                                       &response->mm);
 	if (!rrset) {
 		return KNOT_RCODE_SERVFAIL;
 	}
 
 	int result = knot_pkt_put(response, 0, rrset, KNOT_PF_FREE);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&rrset, 1);
+		knot_rrset_deep_free(&rrset, 1, &response->mm);
 		return KNOT_RCODE_SERVFAIL;
 	}
 

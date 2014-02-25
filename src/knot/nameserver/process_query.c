@@ -16,6 +16,7 @@
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/update.h"
+#include "knot/nameserver/nsec_proofs.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/rrl.h"
@@ -50,8 +51,9 @@ static void query_data_init(knot_process_t *ctx, void *module_param)
 	data->mm = &ctx->mm;
 	data->param = (struct process_query_param*)module_param;
 
-	/* Initialize list. */
+	/* Initialize lists. */
 	init_list(&data->wildcards);
+	init_list(&data->rrsigs);
 }
 
 int process_query_begin(knot_process_t *ctx, void *module_param)
@@ -79,6 +81,7 @@ int process_query_reset(knot_process_t *ctx)
 	/* Free allocated data. */
 	knot_pkt_free(&qdata->query);
 	ptrlist_free(&qdata->wildcards, qdata->mm);
+	nsec_clear_rrsigs(qdata);
 	if (qdata->ext_cleanup != NULL) {
 		qdata->ext_cleanup(qdata);
 	}

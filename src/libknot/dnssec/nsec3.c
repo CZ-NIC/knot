@@ -111,7 +111,7 @@ static int nsec3_sha1(const uint8_t *salt, uint8_t salt_length,
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
                                 const knot_rrset_t *rrset)
 {
-	if (params == NULL || rrset == NULL || rrset->rdata_count == 0) {
+	if (params == NULL || rrset == NULL || knot_rrset_rr_count(rrset) == 0) {
 		return KNOT_EINVAL;
 	}
 

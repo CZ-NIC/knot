@@ -29,7 +29,6 @@ struct axfr_proc {
 	struct xfr_proc proc;
 	hattrie_iter_t *i;
 	unsigned cur_rrset;
-	bool cur_rrsig; /* \note Workaround because 'RRSIGS' need to be 'special', jeez. */
 };
 
 static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *state)
@@ -42,31 +41,18 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
-		/* \note Only RRSIG for SOA, don't add the actual RRSet. */
-		if (!state->cur_rrsig && knot_rrset_type(rrset[i]) != KNOT_RRTYPE_SOA) {
-			ret = knot_pkt_put(pkt, 0, rrset[i], flags);
+		if (rrset[i]->type == KNOT_RRTYPE_SOA) {
+			continue;
 		}
-
-		/* Now put the RRSIG (if it exists). */
-		if (ret == KNOT_EOK && rrset[i]->rrsigs) {
-			/* \note RRSet data is already in the packet,
-			 *       now we need only RRSIG. Because RRSIGs are special
-			 *       we need to remember that :-( */
-			state->cur_rrsig = true;
-			ret = knot_pkt_put(pkt, 0, rrset[i]->rrsigs, flags);
-		}
+		ret = knot_pkt_put(pkt, 0, rrset[i], flags);
 
 		/* If something failed, remember the current RR for later. */
 		if (ret != KNOT_EOK) {
 			state->cur_rrset = i;
 			return ret;
-		} else {
-			/* RRSIG is in the packet, clear the flag. */
-			state->cur_rrsig = false;
 		}
 	}
 
-	state->cur_rrsig = false;
 	state->cur_rrset = 0;
 	return ret;
 }
@@ -249,8 +235,8 @@ int axfr_process_answer(knot_ns_xfr_t *xfr)
 
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
 	       xfr->wire_size);
-	int ret = xfrin_process_axfr_packet(xfr);
-
+	int ret = xfrin_process_axfr_packet(xfr,
+	                                    (knot_zone_contents_t **)&xfr->data);
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
 
@@ -260,9 +246,7 @@ int axfr_process_answer(knot_ns_xfr_t *xfr)
 		 * Adjust zone so that node count is set properly and nodes are
 		 * marked authoritative / delegation point.
 		 */
-		xfrin_constructed_zone_t *constr_zone =
-				(xfrin_constructed_zone_t *)xfr->data;
-		knot_zone_contents_t *zone = constr_zone->contents;
+		knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->data;
 		assert(zone != NULL);
 		log_zone_info("%s Serial %u -> %u\n", xfr->msg,
 		              knot_zone_serial(xfr->zone->contents),
@@ -279,10 +263,6 @@ int axfr_process_answer(knot_ns_xfr_t *xfr)
 		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
 
 		assert(zone->nsec3_nodes != NULL);
-
-		// free the structure used for processing XFR
-		assert(constr_zone->rrsigs == NULL);
-		free(constr_zone);
 	}
 
 	return ret;

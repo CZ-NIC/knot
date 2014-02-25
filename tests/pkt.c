@@ -103,8 +103,8 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: begin ANSWER");
 
 	/* Write ANSWER section. */
-	rrsets[0] = knot_rrset_new(dnames[0], KNOT_RRTYPE_A, KNOT_CLASS_IN, TTL);
-	knot_rrset_add_rdata(rrsets[0], RDVAL(0), RDLEN(0));
+	rrsets[0] = knot_rrset_new(dnames[0], KNOT_RRTYPE_A, KNOT_CLASS_IN, NULL);
+	knot_rrset_add_rr(rrsets[0], RDVAL(0), RDLEN(0), TTL, NULL);
 	ret = knot_pkt_put(out, COMPR_HINT_QNAME, rrsets[0], 0);
 	ok(ret == KNOT_EOK, "pkt: write ANSWER");
 
@@ -115,8 +115,8 @@ int main(int argc, char *argv[])
 	/* Write rest to AUTHORITY. */
 	ret = KNOT_EOK;
 	for (unsigned i = 1; i < NAMECOUNT; ++i) {
-		rrsets[i] = knot_rrset_new(dnames[i], KNOT_RRTYPE_NS, KNOT_CLASS_IN, TTL);
-		knot_rrset_add_rdata(rrsets[i], RDVAL(i), RDLEN(i));
+		rrsets[i] = knot_rrset_new(dnames[i], KNOT_RRTYPE_NS, KNOT_CLASS_IN, NULL);
+		knot_rrset_add_rr(rrsets[i], RDVAL(i), RDLEN(i), TTL, NULL);
 		ret |= knot_pkt_put(out, COMPR_HINT_NONE, rrsets[i], 0);
 	}
 	ok(ret == KNOT_EOK, "pkt: write AUTHORITY(%u)", NAMECOUNT - 1);
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 
 	/* Free extra data. */
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		knot_rrset_deep_free(&rrsets[i], 1);
+		knot_rrset_deep_free(&rrsets[i], 1, NULL);
 	}
 	free(tsig_key.secret.data);
 	mp_delete((struct mempool *)mm.ctx);

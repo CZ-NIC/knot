@@ -154,8 +154,8 @@ src/knot/zone/zone-diff.c
 src/knot/zone/zone-diff.h
 src/knot/zone/zone-dump.c
 src/knot/zone/zone-dump.h
-src/knot/zone/zone-load.c
-src/knot/zone/zone-load.h
+src/knot/zone/zone-create.c
+src/knot/zone/zone-create.h
 src/knot/zone/zone-tree.c
 src/knot/zone/zone-tree.h
 src/knot/zone/zone.c

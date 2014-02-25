@@ -47,15 +47,16 @@ inline static bool valid_nsec3_node(const knot_node_t *node)
 {
 	assert(node);
 
-	if (node->rrset_count != 1) {
+	if (node->rrset_count > 2) {
 		return false;
 	}
 
-	if (node->rrset_tree[0]->type != KNOT_RRTYPE_NSEC3) {
+	const knot_rrset_t *nsec3 = knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
+	if (nsec3 == NULL) {
 		return false;
 	}
 
-	if (node->rrset_tree[0]->rdata_count != 1) {
+	if (knot_rrset_rr_count(nsec3) != 1) {
 		return false;
 	}
 
@@ -71,8 +72,8 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 		return false;
 	}
 
-	knot_rrset_t *a_rrset = a->rrset_tree[0];
-	knot_rrset_t *b_rrset = b->rrset_tree[0];
+	const knot_rrset_t *a_rrset = knot_node_rrset(a, KNOT_RRTYPE_NSEC3);
+	const knot_rrset_t *b_rrset = knot_node_rrset(b, KNOT_RRTYPE_NSEC3);
 
 	return knot_rrset_equal(a_rrset, b_rrset, KNOT_RRSET_COMPARE_WHOLE);
 }
@@ -231,7 +232,8 @@ static bool node_should_be_signed_nsec3(const knot_node_t *n)
 {
 	knot_rrset_t **node_rrsets = knot_node_get_rrsets_no_copy(n);
 	for (int i = 0; i < n->rrset_count; i++) {
-		if (node_rrsets[i]->type == KNOT_RRTYPE_NSEC) {
+		if (node_rrsets[i]->type == KNOT_RRTYPE_NSEC ||
+		    node_rrsets[i]->type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
 		bool should_sign = false;
@@ -316,7 +318,8 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 	} else {
 		assert(old_nsec3);
 		// Reuse bitmap and data from old NSEC3
-		int ret = knot_rrset_deep_copy_no_sig(old_nsec3, &gen_nsec3);
+		int ret = knot_rrset_deep_copy(old_nsec3, &gen_nsec3,
+		                                      NULL);
 		if (ret != KNOT_EOK) {
 			free(binary_next);
 			return ret;
@@ -329,7 +332,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		if (next_hashed_size != written) {
 			// Possible algo mismatch
 			free(binary_next);
-			knot_rrset_deep_free(&gen_nsec3, 1);
+			knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 			return KNOT_ERROR;
 		}
 		memcpy(next_hashed, binary_next, next_hashed_size);
@@ -339,15 +342,15 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 	if (old_nsec3 && knot_rrset_equal(old_nsec3, gen_nsec3,
 	                                  KNOT_RRSET_COMPARE_WHOLE)) {
 		// Nothing to update
-		knot_rrset_deep_free(&gen_nsec3, 1);
+		knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 		return KNOT_EOK;
 	} else {
 		// Drop old
 		int ret = KNOT_EOK;
 		if (old_nsec3) {
-			ret = knot_nsec_changeset_remove(old_nsec3, out_ch);
+			ret = knot_nsec_changeset_remove(from_node, out_ch);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&gen_nsec3, 1);
+				knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 				return ret;
 			}
 		}
@@ -356,7 +359,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 		ret = knot_changeset_add_rrset(out_ch, gen_nsec3,
 		                               KNOT_CHANGESET_ADD);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&gen_nsec3, 1);
+			knot_rrset_deep_free(&gen_nsec3, 1, NULL);
 			return ret;
 		}
 	}
@@ -408,23 +411,22 @@ static const knot_node_t *zone_last_nsec3_node(const knot_zone_contents_t *z)
  * \brief Shallow copy NSEC3 signatures from the one node to the second one.
  *        Just sets the pointer, needed only for comparison.
  */
-static void shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
+static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 {
 	assert(valid_nsec3_node(from));
 	assert(valid_nsec3_node(to));
 
-	knot_rrset_t *from_rrset = from->rrset_tree[0];
-	knot_rrset_t *to_rrset = to->rrset_tree[0];
-
-	assert(to_rrset->rrsigs == NULL);
-
-	to_rrset->rrsigs = from_rrset->rrsigs;
+	knot_rrset_t *from_sig = knot_node_get_rrset(from, KNOT_RRTYPE_RRSIG);
+	if (from_sig == NULL) {
+		return KNOT_EOK;
+	}
+	return knot_node_add_rrset(to, from_sig, NULL);
 }
 
 /*!
  * \brief Reuse signatatures by shallow copying them from one tree to another.
  */
-static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
+static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 {
 	assert(from);
 	assert(to);
@@ -445,10 +447,14 @@ static void copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 			continue;
 		}
 
-		shallow_copy_signature(node_from, node_to);
+		int ret = shallow_copy_signature(node_from, node_to);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	hattrie_iter_free(it);
+	return KNOT_EOK;
 }
 
 /*!
@@ -466,14 +472,10 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	hattrie_iter_t *it = hattrie_iter_begin(nodes, sorted);
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
-
-		for (int i = 0; i < node->rrset_count; i++) {
-			// referenced RRSIGs from old NSEC3 tree
-			node->rrset_tree[i]->rrsigs = NULL;
-			// newly allocated NSEC3 nodes
-			knot_rrset_deep_free(&node->rrset_tree[i], 1);
-		}
-
+		// newly allocated NSEC3 nodes
+		knot_rrset_t *nsec3 = knot_node_get_rrset(node,
+		                                          KNOT_RRTYPE_NSEC3);
+		knot_rrset_deep_free(&nsec3, 1, NULL);
 		knot_node_free(&node);
 	}
 
@@ -554,13 +556,13 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
 	assert(rr_types);
 
 	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, ttl);
+	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, NULL);
 	if (!rrset) {
 		return NULL;
 	}
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
-	uint8_t *rdata = knot_rrset_create_rdata(rrset, rdata_size);
+	uint8_t *rdata = knot_rrset_create_rr(rrset, rdata_size, ttl, NULL);
 	if (!rdata) {
 		knot_rrset_free(&rrset);
 		return NULL;
@@ -732,7 +734,19 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 	while (!hattrie_iter_finished(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 
-		if (knot_node_is_non_auth(node) || knot_node_is_empty(node)) {
+		/*!
+		 * Remove possible NSEC from the node. (Do not allow both NSEC
+		 * and NSEC3 in the zone at once.)
+		 */
+		result = knot_nsec_changeset_remove(node, chgset);
+		if (result != KNOT_EOK) {
+			break;
+		}
+		if (knot_node_rrset(node, KNOT_RRTYPE_NSEC)) {
+			knot_node_set_replaced_nsec(node);
+		}
+
+		if (knot_node_is_non_auth(node)) {
 			hattrie_iter_next(it);
 			continue;
 		}
@@ -746,16 +760,6 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		}
 
 		result = knot_zone_tree_insert(nsec3_nodes, nsec3_node);
-		if (result != KNOT_EOK) {
-			break;
-		}
-
-		/*!
-		 * Remove possible NSEC from the node. (Do not allow both NSEC
-		 * and NSEC3 in the zone at once.)
-		 */
-		result = knot_nsec_changeset_remove(knot_node_rrset(node,
-		                                    KNOT_RRTYPE_NSEC), chgset);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -1052,9 +1056,7 @@ static int handle_deleted_node(const knot_node_t *node,
 		assert(knot_node_is_non_auth(node));
 		return NSEC_NODE_SKIP;
 	}
-	const knot_rrset_t *old_nsec3 = knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
-	assert(old_nsec3);
-	int ret = knot_nsec_changeset_remove(old_nsec3, fix_data->out_ch);
+	int ret = knot_nsec_changeset_remove(node, fix_data->out_ch);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -1064,6 +1066,9 @@ static int handle_deleted_node(const knot_node_t *node,
 	 * previous node.
 	 */
 	if (fix_data->next_dname == NULL) {
+		const knot_rrset_t *old_nsec3 =
+			knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
+		assert(old_nsec3);
 		fix_data->next_dname =
 			next_dname_from_nsec3_rrset(old_nsec3,
 			                            fix_data->zone->apex->owner);

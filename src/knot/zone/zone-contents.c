@@ -164,7 +164,7 @@ static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
 	}
 
 	/* Create new additional nodes. */
-	uint16_t rdcount = knot_rrset_rdata_rr_count(rr);
+	uint16_t rdcount = knot_rrset_rr_count(rr);
 	rr->additional = malloc(rdcount * sizeof(knot_node_t*));
 	if (rr->additional == NULL) {
 		return KNOT_ENOMEM;
@@ -312,8 +312,6 @@ static int knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
 	if (args->first_node == NULL) {
 		args->first_node = node;
 	}
-
-	assert(knot_node_rrset(node, KNOT_RRTYPE_NSEC3));
 
 	// set previous node
 
@@ -478,14 +476,6 @@ int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_gen_is_finished(const knot_zone_contents_t *contents)
-{
-	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
-		== KNOT_ZONE_FLAGS_GEN_FIN);
-}
-
-/*----------------------------------------------------------------------------*/
-
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
@@ -498,14 +488,6 @@ void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
 	contents->flags |= KNOT_ZONE_FLAGS_GEN_NEW;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_zone_contents_set_gen_new_finished(knot_zone_contents_t *contents)
-{
-	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
-	contents->flags |= KNOT_ZONE_FLAGS_GEN_FIN;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -650,6 +632,52 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
+static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
+                     knot_rrset_t **rrset, bool nsec3)
+{
+	if (z == NULL || rr == NULL || n == NULL || rrset == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// check if the RRSet belongs to the zone
+	if (!knot_dname_is_equal(rr->owner, z->apex->owner)
+	    && !knot_dname_is_sub(rr->owner, z->apex->owner)) {
+		return KNOT_EOUTOFZONE;
+	}
+
+	int ret = KNOT_EOK;
+	if (*n == NULL) {
+		*n = nsec3 ? knot_zone_contents_get_nsec3_node(z, rr->owner) :
+		             knot_zone_contents_get_node(z, rr->owner);
+		if (*n == NULL) {
+			// Create new, insert
+			*n = knot_node_new(rr->owner, NULL, 0);
+			if (*n == NULL) {
+				return KNOT_ENOMEM;
+			}
+			ret = nsec3 ? knot_zone_contents_add_nsec3_node(z, *n, true, 0) :
+			              knot_zone_contents_add_node(z, *n, true, 0);
+			if (ret != KNOT_EOK) {
+				knot_node_free(n);
+			}
+		}
+	}
+
+	return knot_node_add_rrset(*n, rr, rrset);
+}
+
+static bool to_nsec3_tree(const knot_rrset_t *rr)
+{
+	return knot_rrset_is_nsec3rel(rr);
+}
+
+int knot_zone_contents_add_rr(knot_zone_contents_t *z,
+                              knot_rrset_t *rr, knot_node_t **n,
+                              knot_rrset_t **rrset)
+{
+	return insert_rr(z, rr, n, rrset, to_nsec3_tree(rr));
+}
+
 int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
                                  knot_rrset_t *rrset, knot_node_t **node,
                                  knot_rrset_dupl_handling_t dupl)
@@ -685,7 +713,7 @@ dbg_zone_exec_detail(
 
 	/*! \todo REMOVE RRSET */
 	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset(*node, rrset);
+		rc = knot_node_add_rrset(*node, rrset, NULL);
 	} else {
 		rc = knot_node_add_rrset_no_merge(*node, rrset);
 	}
@@ -698,100 +726,6 @@ dbg_zone_exec_detail(
 	int ret = rc;
 
 	dbg_zone_detail("RRSet OK (%d).\n", ret);
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_add_rrsigs(knot_zone_contents_t *zone,
-                                  knot_rrset_t *rrsigs,
-                                  knot_rrset_t **rrset,
-                                  knot_node_t **node,
-                                  knot_rrset_dupl_handling_t dupl)
-{
-	dbg_zone_verb("Adding RRSIGs to zone contents.\n");
-
-	if (zone == NULL || rrsigs == NULL || rrset == NULL || node == NULL
-	    || zone->apex == NULL || zone->apex->owner == NULL) {
-dbg_zone_exec(
-		dbg_zone("Parameters: zone=%p, rrsigs=%p, rrset=%p, "
-			 "node=%p\n", zone, rrsigs, rrset, node);
-		if (zone != NULL) {
-			dbg_zone("zone->apex=%p\n", zone->apex);
-			if (zone->apex != NULL) {
-				dbg_zone("zone->apex->owner=%p\n",
-						zone->apex->owner);
-			}
-		}
-);
-		return KNOT_EINVAL;
-	}
-
-	// check if the RRSet belongs to the zone
-	if (*rrset != NULL
-	    && knot_dname_cmp(knot_rrset_owner(*rrset),
-				    zone->apex->owner) != 0
-	    && !knot_dname_is_sub(knot_rrset_owner(*rrset),
-					  zone->apex->owner)) {
-		return KNOT_EOUTOFZONE;
-	}
-
-	// check if the RRSIGs belong to the RRSet
-	if (*rrset != NULL
-	    && (knot_dname_cmp(knot_rrset_owner(rrsigs),
-				     knot_rrset_owner(*rrset)) != 0)) {
-		dbg_zone("RRSIGs do not belong to the given RRSet.\n");
-		return KNOT_EINVAL;
-	}
-
-	// if no RRSet given, try to find the right RRSet
-	if (*rrset == NULL) {
-		// even no node given
-		// find proper node
-		knot_node_t *(*get_node)(const knot_zone_contents_t *,
-					   const knot_dname_t *)
-		    = (knot_rdata_rrsig_type_covered(rrsigs, 0)
-		       == KNOT_RRTYPE_NSEC3)
-		       ? knot_zone_contents_get_nsec3_node
-		       : knot_zone_contents_get_node;
-
-		if (*node == NULL
-		    && (*node = get_node(
-				   zone, knot_rrset_owner(rrsigs))) == NULL) {
-			dbg_zone("Failed to find node for RRSIGs.\n");
-			return KNOT_ENONODE;
-		}
-
-		assert(*node != NULL);
-
-		// find the RRSet in the node
-		// take only the first RDATA from the RRSIGs
-		dbg_zone_detail("Finding RRSet for type %d\n",
-				knot_rdata_rrsig_type_covered(rrsigs, 0));
-		*rrset = knot_node_get_rrset(
-			     *node, knot_rdata_rrsig_type_covered(rrsigs, 0));
-		if (*rrset == NULL) {
-			dbg_zone("Failed to find RRSet for RRSIGs.\n");
-			return KNOT_ENORRSET;
-		}
-	}
-
-	assert(*rrset != NULL);
-
-	int rc;
-	int ret = KNOT_EOK;
-
-	rc = knot_rrset_add_rrsigs(*rrset, rrsigs, dupl);
-	if (rc < 0) {
-		dbg_zone("Failed to add RRSIGs to RRSet.\n");
-		return rc;
-	} else if (rc > 0) {
-		assert(dupl == KNOT_RRSET_DUPL_MERGE ||
-		       dupl == KNOT_RRSET_DUPL_SKIP);
-		ret = 1;
-	}
-
-	dbg_zone_detail("RRSIGs OK\n");
 	return ret;
 }
 
@@ -829,52 +763,6 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 	// cannot be wildcard child, so nothing to be done
 
 	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_add_nsec3_rrset(knot_zone_contents_t *zone,
-                                         knot_rrset_t *rrset,
-                                         knot_node_t **node,
-                                         knot_rrset_dupl_handling_t dupl)
-{
-	if (zone == NULL || rrset == NULL || zone->apex == NULL
-	    || zone->apex->owner == NULL || node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// check if the RRSet belongs to the zone
-	if (knot_dname_cmp(knot_rrset_owner(rrset),
-				 zone->apex->owner) != 0
-	    && !knot_dname_is_sub(knot_rrset_owner(rrset),
-					  zone->apex->owner)) {
-		return KNOT_EOUTOFZONE;
-	}
-
-	if ((*node) == NULL
-	    && (*node = knot_zone_contents_get_nsec3_node(
-			      zone, knot_rrset_owner(rrset))) == NULL) {
-		return KNOT_ENONODE;
-	}
-
-	assert(*node != NULL);
-	int rc;
-
-	/*! \todo REMOVE RRSET */
-	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset(*node, rrset);
-	} else {
-		rc = knot_node_add_rrset_no_merge(*node, rrset);
-	}
-
-	if (rc < 0) {
-		return rc;
-	}
-
-	int ret = rc;
-
-	dbg_zone_detail("NSEC3 OK\n");
-	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1218,7 +1106,7 @@ dbg_zone_exec_detail(
 
 	while (nsec3_rrset && !match) {
 		for (uint16_t i = 0;
-		     i < knot_rrset_rdata_rr_count(nsec3_rrset) && !match;
+		     i < knot_rrset_rr_count(nsec3_rrset) && !match;
 		     i++) {
 			if (knot_zc_nsec3_parameters_match(nsec3_rrset,
 							    &zone->nsec3_params,
@@ -1433,7 +1321,7 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 	const knot_rrset_t *rrset = knot_node_rrset(zone->apex,
 						    KNOT_RRTYPE_NSEC3PARAM);
 
-	if (rrset != NULL && rrset->rdata_count > 0) {
+	if (rrset != NULL) {
 		int r = knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
 		if (r != KNOT_EOK) {
 			dbg_zone("Failed to load NSEC3PARAM (%s).\n",
@@ -1606,11 +1494,5 @@ uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
 
 bool knot_zone_contents_is_signed(const knot_zone_contents_t *zone)
 {
-	const knot_rrset_t *soa = NULL;
-	if (zone->apex) {
-		/* Returns true if SOA has a RRSIG (basic check). */
-		soa = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-		return soa && soa->rrsigs;
-	}
-	return false;
+	return knot_node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 }

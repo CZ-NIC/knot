@@ -24,6 +24,7 @@
 #include "libknot/common.h"
 #include "knot/zone/node.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata.h"
 #include "common/descriptor.h"
 #include "common/debug.h"
 
@@ -131,7 +132,8 @@ int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset)
 	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
-int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
+int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
+                        knot_rrset_t **out_rrset)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
@@ -139,10 +141,13 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrset_tree[i]->type == rrset->type) {
+			if (out_rrset) {
+				*out_rrset = node->rrset_tree[i];
+			}
 			int merged, deleted_rrs;
 			int ret = knot_rrset_merge_sort(node->rrset_tree[i],
 			                                rrset, &merged,
-			                                &deleted_rrs);
+			                                &deleted_rrs, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			} else if (merged || deleted_rrs) {
@@ -154,6 +159,9 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset)
 	}
 
 	// New RRSet (with one RR)
+	if (out_rrset) {
+		*out_rrset = rrset;
+	}
 	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
@@ -619,7 +627,7 @@ void knot_node_free_rrsets(knot_node_t *node)
 
 	knot_rrset_t **rrs = node->rrset_tree;
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_deep_free(&(rrs[i]), 1);
+		knot_rrset_deep_free(&(rrs[i]), 1, NULL);
 	}
 }
 
@@ -646,15 +654,6 @@ void knot_node_free(knot_node_t **node)
 	*node = NULL;
 
 	dbg_node_detail("Done.\n");
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_compare(knot_node_t *node1, knot_node_t *node2)
-{
-	assert(node1 != NULL && node2 != NULL);
-
-	return knot_dname_cmp(node1->owner, node2->owner);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -687,4 +686,27 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	memcpy((*to)->rrset_tree, from->rrset_tree, rrlen);
 
 	return KNOT_EOK;
+}
+
+bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
+{
+	if (node == NULL) {
+		return false;
+	}
+
+	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+	if (rrsigs == NULL) {
+		return false;
+	}
+
+	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
+		const uint16_t type_covered =
+			knot_rdata_rrsig_type_covered(rrsigs, i);
+		if (type_covered == type) {
+			return true;
+		}
+	}
+
+	return false;
 }

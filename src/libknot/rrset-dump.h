@@ -56,6 +56,7 @@ extern const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT;
  * \brief Dumps rrset header.
  *
  * \param rrset		RRset to dump.
+ * \param ttl		TTL to dump.
  * \param dst		Output buffer.
  * \param maxlen	Otuput buffer size.
  * \param style		Output style.
@@ -64,6 +65,7 @@ extern const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT;
  * \retval < 0			if error.
  */
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
+                               uint32_t                ttl,
                                char                    *dst,
                                const size_t            maxlen,
                                const knot_dump_style_t *style);
@@ -92,8 +94,6 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
  * \param rrset		RRset to dump.
  * \param dst		Output buffer.
  * \param maxlen	Otuput buffer size.
- * \param dump_rdata	Dump rrset records.
- * \param dump_rrsig	Dump rrset rrsig record.
  * \param style		Output style.
  *
  * \retval output length	if success.
@@ -102,8 +102,6 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         char                    *dst,
                         const size_t            maxlen,
-                        const bool              dump_rdata,
-                        const bool              dump_rrsig,
                         const knot_dump_style_t *style);
 
 #endif // _KNOT_RRSETDUMP_H_

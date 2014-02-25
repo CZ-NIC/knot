@@ -437,7 +437,7 @@ static int test_rrset_create_rdata()
 	* are changed accordingly and so on, but the data are not important.
 	*/
 	uint8_t *write_pointer =
-		knot_rrset_create_rdata(rrset,
+		knot_rrset_create_rr(rrset,
 	                                test_rdata_array[0].size);
 	if (write_pointer == NULL) {
 		diag("Could not create data of size %d\n",
@@ -474,7 +474,7 @@ static int test_rrset_create_rdata()
 	}
 
 	/* Insert second item - all other inserts will do the same thing. */
-	write_pointer = knot_rrset_create_rdata(rrset,
+	write_pointer = knot_rrset_create_rr(rrset,
 	                                        test_rdata_array[1].size);
 	if (write_pointer == NULL) {
 		diag("Could not create data of size %d\n",
@@ -521,7 +521,7 @@ static int test_rrset_create_rdata()
 	}
 
 	/* Test that data of length 0 are not inserted. */
-	void *ret_ptr = knot_rrset_create_rdata(rrset, 0);
+	void *ret_ptr = knot_rrset_create_rr(rrset, 0);
 	if (ret_ptr != NULL) {
 		diag("Empty RDATA inserted.\n");
 		knot_rrset_deep_free(&rrset, 1, 1);
@@ -532,17 +532,17 @@ static int test_rrset_create_rdata()
 	return 1;
 }
 
-static int test_rrset_rdata_item_size()
+static int test_knot_rrset_rr_size()
 {
 	/* Test that types containing DNAMEs only return OK values. */
 	knot_rrset_t *rrset =
 		&test_rrset_array[TEST_RRSET_MINFO_MULTIPLE1].rrset;
-	if (rrset_rdata_item_size(rrset, 0) != sizeof(knot_dname_t *) * 2) {
+	if (knot_rrset_rr_size(rrset, 0) != sizeof(knot_dname_t *) * 2) {
 		diag("Wrong item length read from RRSet (first item).\n");
 		return 0;
 	}
 
-	if (rrset_rdata_item_size(rrset, 1) != sizeof(knot_dname_t *) * 2) {
+	if (knot_rrset_rr_size(rrset, 1) != sizeof(knot_dname_t *) * 2) {
 		diag("Wrong item length read from RRSet (last item).\n");
 		return 0;
 	}
@@ -553,13 +553,13 @@ static int test_rrset_rdata_item_size()
 	}
 
 	rrset = &test_rrset_array[TEST_RRSET_A_GT].rrset;
-	if (rrset_rdata_item_size(rrset, 0) != 4) {
+	if (knot_rrset_rr_size(rrset, 0) != 4) {
 		diag("Wrong item length read from A RRSet.\n");
 		return 0;
 	}
 
 	rrset = &test_rrset_array[TEST_RRSET_MX_BIN_GT].rrset;
-	if (rrset_rdata_item_size(rrset, 0) != 2 + sizeof(knot_dname_t *)) {
+	if (knot_rrset_rr_size(rrset, 0) != 2 + sizeof(knot_dname_t *)) {
 		diag("Wrong item length read from A RRSet.\n");
 		return 0;
 	}
@@ -568,24 +568,24 @@ static int test_rrset_rdata_item_size()
 	                                      KNOT_RRTYPE_TXT, KNOT_CLASS_IN,
 	                                      3600);
 
-	knot_rrset_create_rdata(rrset1, 16);
-	knot_rrset_add_rdata(rrset1,
+	knot_rrset_create_rr(rrset1, 16);
+	knot_rrset_add_rr(rrset1,
 	                     (uint8_t *)"thesearesomedatathatdonotmatter", 25);
-	knot_rrset_create_rdata(rrset1, 38);
+	knot_rrset_create_rr(rrset1, 38);
 
-	if (rrset_rdata_item_size(rrset1, 0) != 16) {
+	if (knot_rrset_rr_size(rrset1, 0) != 16) {
 		diag("Wrong item lenght in read (first).\n");
 		knot_rrset_deep_free(&rrset1, 1, 1);
 		return 0;
 	}
 
-	if (rrset_rdata_item_size(rrset1, 1) != 25) {
+	if (knot_rrset_rr_size(rrset1, 1) != 25) {
 		diag("Wrong item lenght in read (middle).\n");
 		knot_rrset_deep_free(&rrset1, 1, 1);
 		return 0;
 	}
 
-	if (rrset_rdata_item_size(rrset1, 2) != 38) {
+	if (knot_rrset_rr_size(rrset1, 2) != 38) {
 		diag("Wrong item lenght in read (last).\n");
 		knot_rrset_deep_free(&rrset1, 1, 1);
 		return 0;
@@ -600,9 +600,9 @@ static int test_rrset_get_rdata()
 	knot_rrset_t *rrset = knot_rrset_new(test_dnames[0],
 	                                     KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 3600);
 	assert(rrset);
-	uint8_t *ref_pointer = knot_rrset_create_rdata(rrset, 16);
+	uint8_t *ref_pointer = knot_rrset_create_rr(rrset, 16);
 	memcpy(ref_pointer, "badcafecafebabee", 16);
-	uint8_t *pointer = knot_rrset_get_rdata(rrset, 0);
+	uint8_t *pointer = knot_rrset_rr_rdata(rrset, 0);
 	if (pointer != ref_pointer) {
 		diag("Could not get RDATA from RRSet (%p vs %p).\n",
 		     pointer, ref_pointer);
@@ -617,9 +617,9 @@ static int test_rrset_get_rdata()
 		return 0;
 	}
 
-	uint8_t *ref_pointer2 = knot_rrset_create_rdata(rrset, 16);
+	uint8_t *ref_pointer2 = knot_rrset_create_rr(rrset, 16);
 	memcpy(ref_pointer2, "foobarfoobarfoob", 16);
-	pointer = knot_rrset_get_rdata(rrset, 1);
+	pointer = knot_rrset_rr_rdata(rrset, 1);
 	if (pointer != ref_pointer2) {
 		diag("Could not ger RDATA from RRSet (%p vs %p).\n",
 		     pointer, ref_pointer2);
@@ -1285,12 +1285,12 @@ static int test_rrset_find_pos()
 	                                            KNOT_CLASS_IN, 3600);
 	uint8_t *mock_data = (uint8_t *)"cafebabebadcafecafecafecafe";
 	/* Test removal of two exactly same items. */
-	uint8_t *rdata = knot_rrset_create_rdata(rrset_source,
+	uint8_t *rdata = knot_rrset_create_rr(rrset_source,
 	                                          strlen((char *)mock_data));
 	memcpy(rdata, mock_data, strlen((char *)mock_data));
 	knot_rrset_t *rrset_find_in = NULL;
 	knot_rrset_deep_copy(rrset_source, &rrset_find_in);
-	rdata = knot_rrset_create_rdata(rrset_source, 10);
+	rdata = knot_rrset_create_rr(rrset_source, 10);
 	memcpy(rdata, mock_data ,10);
 	size_t rr_pos = 0;
 	int ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 0, &rr_pos);
@@ -1315,7 +1315,7 @@ static int test_rrset_find_pos()
 	rrset_find_in->rdata_indices = NULL;
 	rrset_find_in->rdata_count = 0;
 
-	rdata = knot_rrset_create_rdata(rrset_find_in, 10);
+	rdata = knot_rrset_create_rr(rrset_find_in, 10);
 	memcpy(rdata, mock_data ,10);
 	ret = knot_rrset_find_rr_pos(rrset_source, rrset_find_in, 0, &rr_pos);
 	if (ret != KNOT_EOK) {
@@ -1342,15 +1342,15 @@ static int test_rrset_remove_rr()
 	                                            KNOT_CLASS_IN, 3600);
 	uint8_t *mock_data = (uint8_t *)"cafebabebadcafecafecafecafe";
 	/* Test removal of two exactly same items. */
-	uint8_t *rdata = knot_rrset_create_rdata(rrset_source,
+	uint8_t *rdata = knot_rrset_create_rr(rrset_source,
 	                                         strlen((char *)mock_data));
 	memcpy(rdata, mock_data, strlen((char *)mock_data));
-	rdata = knot_rrset_create_rdata(rrset_source, 10);
+	rdata = knot_rrset_create_rr(rrset_source, 10);
 	memcpy(rdata, mock_data ,10);
 	knot_rrset_t *rrset_dest = NULL;
 	/* Create copy. */
 	knot_rrset_deep_copy(rrset_source, &rrset_dest);
-	rdata = knot_rrset_create_rdata(rrset_dest, 16);
+	rdata = knot_rrset_create_rr(rrset_dest, 16);
 	memcpy(rdata, "foobarfoobarfoo", 16);
 	knot_rrset_t *returned_rr = NULL;
 	int ret = knot_rrset_remove_rr_using_rrset(rrset_dest, rrset_source, &returned_rr, 0);
@@ -1425,7 +1425,7 @@ static int knot_rrset_tests_run(int argc, char *argv[])
 	ok(res, "rrset: to wire");
 	res_final *= res;
 
-	res = test_rrset_rdata_item_size();
+	res = test_knot_rrset_rr_size();
 	ok(res, "rrset: rdata_item_size");
 	res_final *= res;
 
