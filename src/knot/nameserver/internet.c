@@ -594,8 +594,9 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 
 	/* RFC4035 3.1.3 Prove visited wildcards.
 	 * Wildcard expansion applies for Name Error, Wildcard Answer and
-	 * No Data proofs if at one point the search expanded a wildcard node. */
-	if (ret == KNOT_EOK) {
+	 * No Data proofs if at one point the search expanded a wildcard node.
+	 * \note Do not attempt to prove non-authoritative data. */
+	if (ret == KNOT_EOK && state != DELEG) {
 		ret = nsec_prove_wildcards(pkt, qdata);
 	}
 
