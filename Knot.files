@@ -16,6 +16,12 @@ doc/running.texi
 doc/security.texi
 doc/troubleshooting.texi
 libtap/Makefile.am
+libtap/runtests.c
+libtap/tap/basic.c
+libtap/tap/basic.h
+libtap/tap/float.c
+libtap/tap/float.h
+libtap/tap/macros.h
 man/Makefile.am
 patches/Makefile.am
 samples/Makefile.am
@@ -151,12 +157,12 @@ src/knot/zone/semantic-check.c
 src/knot/zone/semantic-check.h
 src/knot/zone/zone-contents.c
 src/knot/zone/zone-contents.h
+src/knot/zone/zone-create.c
+src/knot/zone/zone-create.h
 src/knot/zone/zone-diff.c
 src/knot/zone/zone-diff.h
 src/knot/zone/zone-dump.c
 src/knot/zone/zone-dump.h
-src/knot/zone/zone-create.c
-src/knot/zone/zone-create.h
 src/knot/zone/zone-tree.c
 src/knot/zone/zone-tree.h
 src/knot/zone/zone.c

@@ -10,11 +10,12 @@ SOURCES = [
     "Doxyfile*", "Doxy.file.h", "doc/*.texi",
 
     # build-system
-    "*.ac", "*.am", "Makefile",
+    "*.ac", "*.am",
 
     # sources
     "src/*.c", "src/*.h", "src/*.rl", "src/*.l",
     "src/*.y", "tests/*.c", "tests/*.h",
+    "libtap/*.c", "libtap/*.h",
 ]
 
 OUTPUT_FILE = "Knot.files"
