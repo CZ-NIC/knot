@@ -81,7 +81,8 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
 	for (uint16_t i = 0; i < rrsigs_rdata_count; i++) {
 		uint16_t keytag = knot_rdata_rrsig_key_tag(rrsigs, i);
-		if (keytag != key->keytag) {
+		uint16_t type_covered = knot_rdata_rrsig_type_covered(rrsigs, i);
+		if (keytag != key->keytag || type_covered != covered->type) {
 			continue;
 		}
 

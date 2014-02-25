@@ -327,35 +327,23 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 		return KNOT_DNSSEC_EINVALID_SIGNATURE;
 	}
 
-	// Synthesize RRSIG for covered RRSet
-	knot_rrset_t *synth_rrsigs = NULL;
-	int result = knot_rrset_synth_rrsig(covered->owner, covered->type,
-	                                    rrsigs, &synth_rrsigs, NULL);
-	if (result != KNOT_EOK) {
-		if (result != KNOT_ENOENT) {
-			return result;
-		}
-		// No signature exists
-		return KNOT_EINVAL;
-	}
-
 	// identify fields in the signature being validated
 
-	uint8_t *rdata = knot_rrset_rr_rdata(synth_rrsigs, pos);
+	uint8_t *rdata = knot_rrset_rr_rdata(rrsigs, pos);
 	if (!rdata) {
 		return KNOT_EINVAL;
 	}
 
 	uint8_t *signature = NULL;
 	size_t signature_size = 0;
-	knot_rdata_rrsig_signature(synth_rrsigs, pos, &signature, &signature_size);
+	knot_rdata_rrsig_signature(rrsigs, pos, &signature, &signature_size);
 	if (!signature) {
 		return KNOT_EINVAL;
 	}
 
 	// perform the validation
 
-	result = knot_dnssec_sign_new(ctx);
+	int result = knot_dnssec_sign_new(ctx);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -365,7 +353,5 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 		return result;
 	}
 
-	result = knot_dnssec_sign_verify(ctx, signature, signature_size);
-	knot_rrset_deep_free(&synth_rrsigs, true, NULL);
-	return result;
+	return knot_dnssec_sign_verify(ctx, signature, signature_size);
 }

@@ -164,6 +164,7 @@ static void loader_process(const scanner_t *scanner)
 		log_zone_error("%s:%"PRIu64": Can't add RDATA for '%s'.\n",
 		               scanner->file_name, scanner->line_counter, rr_name);
 		free(rr_name);
+		knot_rrset_deep_free(&rr, true, NULL);
 		zc->ret = ret;
 		return;
 	}

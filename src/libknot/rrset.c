@@ -475,8 +475,12 @@ static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
                                     size_t rdata_pos)
 {
 	rr_t *rr = get_rr(rrset, rdata_pos);
-	// RR size + TTL
-	return rr_size(rr) + sizeof(uint32_t);
+	if (rr) {
+		// RR size + TTL
+		return rr_size(rr) + sizeof(uint32_t);
+	} else {
+		return 0;
+	}
 }
 
 static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,

@@ -91,6 +91,10 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 static knot_dname_t *next_dname_from_nsec3_rrset(const knot_rrset_t *rr,
                                                  const knot_dname_t *zone_apex)
 {
+	int apex_size = knot_dname_size(zone_apex);
+	if (apex_size < 0) {
+		return NULL;
+	}
 	uint8_t *next_hashed = NULL;
 	uint8_t hashed_size = 0;
 	knot_rdata_nsec3_next_hashed(rr, 0, &next_hashed, &hashed_size);
@@ -101,12 +105,12 @@ static knot_dname_t *next_dname_from_nsec3_rrset(const knot_rrset_t *rr,
 		return NULL;
 	}
 
-	uint8_t catted_hash[encoded_size + knot_dname_size(zone_apex)];
+	uint8_t catted_hash[encoded_size + apex_size];
 	*catted_hash = encoded_size;
 	memcpy(catted_hash + 1, encoded, encoded_size);
 	free(encoded);
 	memcpy(catted_hash + 1 + encoded_size,
-	       zone_apex, knot_dname_size(zone_apex));
+	       zone_apex, apex_size);
 	knot_dname_t *next_dname = knot_dname_copy(catted_hash);
 	if (next_dname == NULL) {
 		return NULL;
@@ -449,6 +453,7 @@ static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 
 		int ret = shallow_copy_signature(node_from, node_to);
 		if (ret != KNOT_EOK) {
+			hattrie_iter_free(it);
 			return ret;
 		}
 	}
@@ -944,6 +949,7 @@ static int create_nsec3_hashes_from_trie(const hattrie_t *sorted_changes,
 		                                zone->apex->owner,
 		                                &zone->nsec3_params);
 		if (nsec3_name == NULL) {
+			hattrie_iter_free(itt);
 			hattrie_free(*out);
 			return KNOT_ERROR;
 		}
