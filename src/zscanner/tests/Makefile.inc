@@ -1,4 +1,6 @@
 # -*- mode: makefile; -*-
+# vim: syntax=automake
+
 check_PROGRAMS = \
 	tests/runtests \
 	tests/zscanner-tool
@@ -25,7 +27,7 @@ tests_zscanner_tool_SOURCES =		\
 	tests/processing.h		\
 	tests/processing.c
 
-tests_zscanner_tool_LDADD = libzscanner.la ../libknots.la
+tests_zscanner_tool_LDADD = libzscanner.la
 
 EXTRA_DIST += 				\
 	tests/TESTS			\

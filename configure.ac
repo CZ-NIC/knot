@@ -324,7 +324,7 @@ AC_CHECK_FUNCS([clock_gettime gettimeofday fgetln getline madvise malloc_trim po
 
 # Check for be64toh function
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <endian.h>]], [[return be64toh(0);]])],
-[AC_DEFINE(HAVE_BE64TOH, 1, [Define to 1 if you have the `be64toh' function.])])
+[AC_DEFINE(HAVE_BE64TOH, 1, [Define to 1 if you have the 'be64toh' function.])])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
@@ -342,9 +342,11 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 AC_CONFIG_FILES([Makefile
 		 doc/Makefile
 		 man/Makefile
-		 src/Makefile
 		 samples/Makefile
 		 patches/Makefile
+		 libtap/Makefile
+		 src/Makefile
+		 tests/Makefile
 		 src/zscanner/Makefile
 		 man/khost.1
 		 man/knotc.8
