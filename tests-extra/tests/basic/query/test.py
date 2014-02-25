@@ -20,39 +20,39 @@ t.start()
 
 # Negative (REFUSED)
 resp = knot.dig("another.world", "SOA", udp=True)
-resp.check(rcode="REFUSED")
+resp.check(rcode="REFUSED", flags="QR", noflags="AA TC AD RA")
 resp.cmp(bind)
 
 # Negative (NXDOMAIN)
 resp = knot.dig("nxdomain.flags", "A", udp=True)
-resp.check(rcode="NXDOMAIN")
+resp.check(rcode="NXDOMAIN", flags="QR AA", noflags="TC AD RA")
 resp.cmp(bind)
 
 ''' Positive answers. '''
 
 # Positive (SOA)
 resp = knot.dig("flags", "SOA", udp=True)
-resp.check(rcode="NOERROR", flags="AA")
+resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
 resp.cmp(bind)
 
 # Positive (DATA)
 resp = knot.dig("dns1.flags", "A", udp=True)
-resp.check(rcode="NOERROR", flags="AA")
+resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
 resp.cmp(bind)
 
 # Positive (NODATA)
 resp = knot.dig("dns1.flags", "TXT", udp=True)
-resp.check(rcode="NOERROR", flags="AA")
+resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
 resp.cmp(bind)
 
 # Positive (REFERRAL)
 resp = knot.dig("sub.flags", "NS", udp=True)
-resp.check(rcode="NOERROR", noflags="AA")
+resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
 resp.cmp(bind)
 
 # Positive (REFERRAL, below delegation)
 resp = knot.dig("ns.sub.flags", "A", udp=True)
-resp.check(rcode="NOERROR", noflags="AA")
+resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
 resp.cmp(bind)
 
 ''' ANY query type. '''
