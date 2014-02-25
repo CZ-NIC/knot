@@ -35,12 +35,7 @@
  * Defaults.
  */
 
-/*! \brief Default config paths. */
-static const char *DEFAULT_CONFIG[] = {
-	CONFIG_DIR "/" "knot.conf",
-};
-
-#define DEFAULT_CONF_COUNT        1 /*!< \brief Number of default config paths. */
+#define DEFAULT_CONFIG CONFIG_DIR "/" "knot.conf" /*!< \brief Default config path. */
 #define ERROR_BUFFER_SIZE       512 /*!< \brief Error buffer size. */
 
 /*
@@ -453,7 +448,7 @@ conf_t *s_config = NULL; /*! \brief Singleton config instance. */
 void __attribute__ ((constructor)) conf_init()
 {
 	// Create new config
-	s_config = conf_new(0);
+	s_config = conf_new(NULL);
 	if (!s_config) {
 		return;
 	}
@@ -587,15 +582,13 @@ static int conf_strparser(conf_t *conf, const char *src)
  * API functions.
  */
 
-conf_t *conf_new(const char* path)
+conf_t *conf_new(char* path)
 {
 	conf_t *c = malloc(sizeof(conf_t));
 	memset(c, 0, sizeof(conf_t));
 
 	/* Add path. */
-	if (path) {
-		c->filename = strdup(path);
-	}
+	c->filename = path;
 
 	/* Initialize lists. */
 	init_list(&c->logs);
@@ -815,32 +808,9 @@ void conf_free(conf_t *conf)
 	free(conf);
 }
 
-char* conf_find_default()
+const char* conf_find_default()
 {
-	/* Try sequentially each default path. */
-	char *path = NULL;
-	for (int i = 0; i < DEFAULT_CONF_COUNT; ++i) {
-		path = strcpath(strdup(DEFAULT_CONFIG[i]));
-
-		/* Break, if the path exists. */
-		struct stat st;
-		if (stat(path, &st) == 0) {
-			break;
-		}
-
-		log_server_notice("Config '%s' does not exist.\n",
-		                  path);
-
-		/* Keep the last item. */
-		if (i < DEFAULT_CONF_COUNT - 1) {
-			free(path);
-			path = NULL;
-		}
-	}
-
-	log_server_info("Using '%s' as default configuration.\n",
-	                path);
-	return path;
+	return DEFAULT_CONFIG;
 }
 
 int conf_open(const char* path)
@@ -850,15 +820,22 @@ int conf_open(const char* path)
 		return KNOT_EINVAL;
 	}
 
+	/* Find real path of the config file */
+	char *config_realpath = realpath(path, NULL);
+	if (config_realpath == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	/* Check if exists. */
 	struct stat st;
-	if (stat(path, &st) != 0) {
+	if (stat(config_realpath, &st) != 0) {
 		return KNOT_ENOENT;
 	}
 
 	/* Create new config. */
-	conf_t *nconf = conf_new(path);
-	if (!nconf) {
+	conf_t *nconf = conf_new(config_realpath);
+	if (nconf == NULL) {
+		free(config_realpath);
 		return KNOT_ENOMEM;
 	}
 

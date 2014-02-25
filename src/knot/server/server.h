@@ -154,10 +154,8 @@ int server_start(server_t *server);
  *
  * \param server Server structure to be used for operation.
  *
- * \retval  0 On success (EOK).
- * \retval <0 If an error occured (EINVAL).
  */
-int server_wait(server_t *server);
+void server_wait(server_t *server);
 
 /*!
  * \brief Reload server configuration.

@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 
 	// Test 1: Allocate new config
 	const char *config_fn = "rc:/sample_conf";
-	conf_t *conf = conf_new(config_fn);
+	conf_t *conf = conf_new(strdup(config_fn));
 	ok(conf != 0, "config_new()");
 
 	// Test 2: Parse config

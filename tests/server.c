@@ -26,7 +26,7 @@ static void interrupt_handle(int s)
 /*! API: run tests. */
 int main(int argc, char *argv[])
 {
-	plan(3);
+	plan(2);
 
 	server_t server;
 	int ret = 0;
@@ -55,8 +55,7 @@ int main(int argc, char *argv[])
 	server_stop(&server);
 
 	/* Wait for server to finish. */
-	ret = server_wait(&server);
-	ok(ret == KNOT_EOK, "server: waiting for finish");
+	server_wait(&server);
 
 	/* Wait for server to finish. */
 	server_deinit(&server);

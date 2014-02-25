@@ -417,8 +417,7 @@ int main(int argc, char **argv)
 	/* Parse command line arguments */
 	int c = 0, li = 0, rc = 0;
 	unsigned flags = F_NULL;
-	char *config_fn = NULL;
-	char *default_config = conf_find_default();
+	const char *config_fn = conf_find_default();
 
 	/* Remote server descriptor. */
 	const char *r_addr = NULL;
@@ -479,7 +478,7 @@ int main(int argc, char **argv)
 			flags |= F_INTERACTIVE;
 			break;
 		case 'c':
-			config_fn = strdup(optarg);
+			config_fn = optarg;
 			break;
 		case 'V':
 			rc = 0;
@@ -522,9 +521,7 @@ int main(int argc, char **argv)
 
 	/* Open config, allow if not exists. */
 	if (conf_open(config_fn) != KNOT_EOK) {
-		if(conf_open(default_config) != KNOT_EOK) {
-			flags |= F_NOCONF;
-		}
+		flags |= F_NOCONF;
 	}
 
 	/* Create remote iface if not present in config. */
@@ -583,8 +580,6 @@ exit:
 	/* Finish */
 	knot_tsig_key_free(&r_key);
 	log_close();
-	free(config_fn);
-	free(default_config);
 	return rc;
 }
 
