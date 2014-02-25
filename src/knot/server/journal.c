@@ -403,9 +403,11 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 		}
 	}
 
+	/* Count node visits to prevent looping. */
+	uint16_t visit_count = 0;
+
 	/* Evict occupied nodes if necessary. */
-	while (j->free.len < len ||
-	       j->nodes[jnext].flags > JOURNAL_FREE) {
+	while (j->free.len < len || j->nodes[jnext].flags > JOURNAL_FREE) {
 
 		/* Evict least recent node if not empty. */
 		journal_node_t *head = j->nodes + j->qhead;
@@ -435,6 +437,12 @@ int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
 
 		/* Increase free segment. */
 		j->free.len += head->len;
+
+		/* Update node visit count. */
+		visit_count += 1;
+		if (visit_count >= j->max_nodes) {
+			return KNOT_ESPACE;
+		}
 	}
 
 	/* Invalidate node and write back. */
