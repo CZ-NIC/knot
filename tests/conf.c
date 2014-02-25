@@ -21,7 +21,7 @@
 #include "knot/conf/conf.h"
 
 /* Resources. */
-#include "tests/sample_conf.h"
+#include "sample_conf.h"
 
 /*! Run all scheduled tests for given parameters.
  */

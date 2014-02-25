@@ -1,11 +1,5 @@
 /*
- * Utility routines for writing floating point tests.
- *
- * Currently provides only one function, which checks whether a double is
- * equal to an expected value within a given epsilon.  This is broken into a
- * separate source file from the rest of the basic C TAP library because it
- * may require linking with -lm on some platforms, and the package may not
- * otherwise care about floating point.
+ * Floating point check function for the TAP protocol.
  *
  * This file is part of C TAP Harness.  The current version plus supporting
  * documentation is at <http://www.eyrie.org/~eagle/software/c-tap-harness/>.
@@ -31,37 +25,18 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-/* Required for isnan() and isinf(). */
-#if defined(__STRICT_ANSI__) || defined(PEDANTIC)
-# ifndef _XOPEN_SOURCE
-#  define _XOPEN_SOURCE 600
-# endif
-#endif
+#ifndef TAP_FLOAT_H
+#define TAP_FLOAT_H 1
 
-#include <math.h>
-#include <stdarg.h>
-#include <stdio.h>
+#include "macros.h"
 
-#include <tests/tap/basic.h>
-#include <tests/tap/float.h>
+BEGIN_DECLS
 
-/*
- * Takes an expected double and a seen double and assumes the test passes if
- * those two numbers are within delta of each other.
- */
-void
-is_double(double wanted, double seen, double epsilon, const char *format, ...)
-{
-    va_list args;
+/* Check an expected value against a seen value within epsilon. */
+void is_double(double wanted, double seen, double epsilon,
+               const char *format, ...)
+    __attribute__((__format__(printf, 4, 5)));
 
-    va_start(args, format);
-    fflush(stderr);
-    if ((isnan(wanted) && isnan(seen))
-        || (isinf(wanted) && isinf(seen) && wanted == seen)
-        || fabs(wanted - seen) <= epsilon)
-        okv(1, format, args);
-    else {
-        printf("# wanted: %g\n#   seen: %g\n", wanted, seen);
-        okv(0, format, args);
-    }
-}
+END_DECLS
+
+#endif /* TAP_FLOAT_H */

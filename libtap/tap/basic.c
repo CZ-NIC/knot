@@ -48,7 +48,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <tests/tap/basic.h>
+#include "basic.h"
 
 /* Windows provides mkdir and rmdir under different names. */
 #ifdef _WIN32

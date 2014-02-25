@@ -15,8 +15,6 @@
 /Makefile.in
 /src/Makefile
 /src/Makefile.in
-/src/tests/Makefile
-/src/tests/Makefile.in
 /src/zscanner/Makefile
 /src/zscanner/Makefile.in
 /patches/Makefile
@@ -57,12 +55,12 @@
 /src/knot/conf/libknotd_la-cf-lex.c
 /src/knot/conf/libknotd_la-cf-parse.c
 /src/knot/conf/libknotd_la-cf-parse.h
-/tests/sample_conf.c
 /src/zscanner/scanner.c
-/src/zscanner/tests/tap/libtap.a
-/tests/tap/libtap.a
-/tests/tmp/
+
+# zscanner
 /src/zscanner/tests/tmp/
+/src/zscanner/tests/runtests
+/src/zscanner/tests/zscanner-tool
 
 # Binaries
 /src/knotc
@@ -71,31 +69,3 @@
 /src/khost
 /src/knsupdate
 /src/knsec3hash
-/src/zscanner/tests/runtests
-/src/zscanner/tests/zscanner-tool
-/tests/runtests
-/tests/acl
-/tests/base32hex
-/tests/base64
-/tests/conf
-/tests/descriptor
-/tests/dname
-/tests/dnssec_keys
-/tests/dnssec_nsec3
-/tests/dnssec_sign
-/tests/dnssec_zone_nsec
-/tests/dthreads
-/tests/events
-/tests/fdset
-/tests/hattrie
-/tests/hhash
-/tests/journal
-/tests/pkt
-/tests/process_query
-/tests/rrl
-/tests/rrset
-/tests/server
-/tests/slab
-/tests/wire
-/tests/zonedb
-/tests/ztree

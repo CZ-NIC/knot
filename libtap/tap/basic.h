@@ -30,7 +30,7 @@
 #ifndef TAP_BASIC_H
 #define TAP_BASIC_H 1
 
-#include <tests/tap/macros.h>
+#include "macros.h"
 #include <stdarg.h>             /* va_list */
 #include <sys/types.h>          /* size_t */
 
