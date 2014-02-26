@@ -37,8 +37,6 @@
 #include "knot/server/zones.h"
 #include "knot/server/tcp-handler.h"
 
-/*----------------------------------------------------------------------------*/
-
 /* Signal flags. */
 static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
@@ -215,28 +213,28 @@ int main(int argc, char **argv)
 			break;
 		case 'V':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
-			return 0;
+			return EXIT_SUCCESS;
 		case 'h':
 		case '?':
 			help();
-			return 0;
+			return EXIT_SUCCESS;
 		default:
 			help();
-			return 1;
+			return EXIT_FAILURE;
 		}
 	}
 
 	// Check for non-option parameters.
 	if (argc - optind > 0) {
 		help();
-		return 1;
+		return EXIT_FAILURE;
 	}
 
 	// Now check if we want to daemonize
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
 			fprintf(stderr, "Daemonization failed, shutting down...\n");
-			return 1;
+			return EXIT_FAILURE;
 		}
 	}
 
@@ -312,15 +310,16 @@ int main(int argc, char **argv)
 
 	/* Initialize configuration hooks. */
 	log_reconfigure(config, NULL);
-	conf_add_hook(config, CONF_LOG, log_reconfigure,    NULL);
+	conf_add_hook(config, CONF_LOG, log_reconfigure, NULL);
 	log_server_info("Initializing server...\n");
 
 	/* Create server */
 	server_t server;
 	int res = server_init(&server);
 	if (res != KNOT_EOK) {
-		fprintf(stderr, "Could not initialize server: %s\n", knot_strerror(res));
-		return 1;
+		fprintf(stderr, "Could not initialize server: %s\n",
+		        knot_strerror(res));
+		return EXIT_FAILURE;
 	}
 
 	/* Reconfigure server interfaces. */
@@ -343,15 +342,18 @@ int main(int argc, char **argv)
 	log_server_info("Starting server...\n");
 	if ((server_start(&server)) == KNOT_EOK) {
 		if (daemonize) {
-			log_server_info("Server started as a daemon, PID = %ld\n", pid);
+			log_server_info("Server started as a daemon, PID = %ld\n",
+			                pid);
 		} else {
-			log_server_info("Server started in foreground, PID = %ld\n", pid);
+			log_server_info("Server started in foreground, PID = %ld\n",
+			                pid);
 		}
 
 		/* Start the event loop. */
 		event_loop(&server);
 	} else {
-		log_server_fatal("Server failed to start: %s.\n", knot_strerror(res));
+		log_server_fatal("Server failed to start: %s.\n",
+		                 knot_strerror(res));
 	}
 
 	/* Unhook from RCU */
