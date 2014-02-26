@@ -90,7 +90,6 @@ AC_ARG_ENABLE([systemd],
     AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd notification mechanism [default=auto]]),
     [enable_systemd="$enableval"], [enable_systemd=auto])
 
-use_systemd=no
 case "$enable_systemd" in
     auto) PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon], [enable_systemd=yes], [true]) ;;
     yes)  PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon]) ;;
