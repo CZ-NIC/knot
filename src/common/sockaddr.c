@@ -108,22 +108,19 @@ int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen)
 	}
 
 	if (ret == NULL) {
+		*buf = '\0';
 		return KNOT_ESPACE;
 	}
 
 	/* Write separator and port. */
 	int port = sockaddr_port(ss);
 	if (port > 0) {
-		/* Check available space. */
 		size_t written = strlen(buf);
-		if (written + SOCKADDR_STRLEN_EXT > maxlen) {
+		int ret = snprintf(&buf[written], maxlen - written, "@%d", port);
+		if (ret <= 0 || (size_t)ret >= maxlen - written) {
+			*buf = '\0';
 			return KNOT_ESPACE;
 		}
-		/* Write separator. */
-		buf[written] = '@';
-		written += 1;
-		/* Write port number. */
-		sprintf(&buf[written], "%d", port);
 	}
 
 	return KNOT_EOK;
