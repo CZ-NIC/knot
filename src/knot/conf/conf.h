@@ -304,7 +304,7 @@ typedef struct conf_hook_t {
  * \retval new structure if successful.
  * \retval NULL on error.
  */
-conf_t *conf_new(const char* path);
+conf_t *conf_new(char *path);
 
 /*!
  * \brief Register on-update callback.
@@ -367,13 +367,9 @@ void conf_free(conf_t *conf);
 /*!
  * \brief Find implicit configuration file.
  *
- * Ordering:
- * 1. ~/.knot/knot.conf (if exists)
- * 2. /etc/knot/knot.conf (fallback)
- *
  * \return Path to implicit configuration file.
  */
-char* conf_find_default();
+const char* conf_find_default();
 
 /*!
  * \brief Open singleton configuration from file.

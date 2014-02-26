@@ -105,6 +105,10 @@ int log_init()
 void log_close()
 {
 	log_truncate();
+
+	fflush(stdout);
+	fflush(stderr);
+
 	closelog();
 }
 

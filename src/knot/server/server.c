@@ -183,17 +183,11 @@ static void remove_ifacelist(struct ref_t *p)
  */
 static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 {
-	/*! \todo This requires locking to disable parallel updates (issue #278).
-	 *  However, this is only used when RCU is read-locked, so count with that.
-	 */
-
-	/* Lock configuration. */
-	rcu_read_lock();
-
 	/* Prepare helper lists. */
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	int bound = 0;
 	iface_t *m = 0;
+	ifacelist_t *oldlist = s->ifaces;
 	ifacelist_t *newlist = malloc(sizeof(ifacelist_t));
 	ref_init(&newlist->ref, &remove_ifacelist);
 	ref_retain(&newlist->ref);
@@ -246,13 +240,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 	}
 
 	/* Publish new list. */
-	ifacelist_t *oldlist = rcu_xchg_pointer(&s->ifaces, newlist);
-
-	/* Unlock configuration. */
-	rcu_read_unlock();
-
-	/* Ensure no one is reading old interfaces. */
-	synchronize_rcu();
+	s->ifaces = newlist;
 
 	/* Update TCP+UDP ifacelist (reload all threads). */
 	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
@@ -358,10 +346,10 @@ static int server_init_handler(server_t *server, int index, int thread_count,
 	return KNOT_EOK;
 }
 
-static int server_free_handler(iohandler_t *h)
+static void server_free_handler(iohandler_t *h)
 {
-	if (!h || !h->server) {
-		return KNOT_EINVAL;
+	if (h == NULL || h->server == NULL) {
+		return;
 	}
 
 	/* Wait for threads to finish */
@@ -374,7 +362,6 @@ static int server_free_handler(iohandler_t *h)
 	dt_delete(&h->unit);
 	free(h->thread_state);
 	memset(h, 0, sizeof(iohandler_t));
-	return KNOT_EOK;
 }
 
 int server_start(server_t *s)
@@ -406,24 +393,22 @@ int server_start(server_t *s)
 	return ret;
 }
 
-int server_wait(server_t *s)
+void server_wait(server_t *s)
 {
-	if (!s) return KNOT_EINVAL;
+	if (s == NULL) {
+		return;
+	}
 
-	xfr_join(s->xfr);
 	dt_join(s->iosched);
+	xfr_join(s->xfr);
+
 	if (s->tu_size == 0) {
-		return KNOT_EOK;
+		return;
 	}
 
-	int ret = KNOT_EOK;
 	for (unsigned i = 0; i < IO_COUNT; ++i) {
-		if ((ret = server_free_handler(s->handler + i)) != KNOT_EOK) {
-			break;
-		}
+		server_free_handler(s->handler + i);
 	}
-
-	return ret;
 }
 
 int server_reload(server_t *server, const char *cf)
@@ -513,7 +498,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		/* Free old handlers */
 		if (server->tu_size > 0) {
 			for (unsigned i = 0; i < IO_COUNT; ++i) {
-				ret = server_free_handler(server->handler + i);
+				server_free_handler(server->handler + i);
 			}
 		}
 
