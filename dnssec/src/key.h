@@ -1,39 +1,76 @@
 #pragma once
 
+#include <gnutls/abstract.h>
 #include <stdint.h>
 #include "binary.h"
+#include "shared.h"
 
-enum dnssec_dnskey_algorithm {
-	DNSKEY_ALGORITHM_INVALID = 0,
+typedef enum dnssec_key_algorithm {
+	DNSSEC_KEY_ALGORITHM_INVALID = 0,
+	DNSSEC_KEY_ALGORITHM_DSA_SHA1 = 3,
+	DNSSEC_KEY_ALGORITHM_RSA_SHA1 = 5,
+	DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3 = 6,
+	DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3 = 7,
+	DNSSEC_KEY_ALGORITHM_RSA_SHA256 = 8,
+	DNSSEC_KEY_ALGORITHM_RSA_SHA512 = 10,
+	DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 = 13,
+	DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384 = 14,
+} dnssec_key_algorithm_t;
 
-	DNSKEY_ALGORITHM_DSA_SHA1 = 3,
-	DNSKEY_ALGORITHM_RSA_SHA1 = 5,
-	DNSKEY_ALGORITHM_DSA_SHA1_NSEC3 = 6,
-	DNSKEY_ALGORITHM_RSA_SHA1_NSEC3 = 7,
-	DNSKEY_ALGORITHM_RSA_SHA256 = 8,
-	DNSKEY_ALGORITHM_RSA_SHA512 = 10,
-	DNSKEY_ALGORITHM_ECDSA_P256_SHA256 = 13,
-	DNSKEY_ALGORITHM_ECDSA_P384_SHA384 = 14
-};
+typedef enum dnssec_key_digest {
+	DNSSEC_KEY_DIGEST_INVALID = 0,
+	DNSSEC_KEY_DIGEST_SHA1 = 1,
+	DNSSEC_KEY_DIGEST_SHA256 = 2,
+	DNSSEC_KEY_DIGEST_SHA384 = 4,
+} dnssec_key_digest_t;
 
-typedef uint8_t dnssec_key_id_t[20];
+struct dnssec_key;
+typedef struct dnssec_key dnssec_key_t;
 
-typedef struct dnssec_key {
-	dnssec_key_id_t id;
-	uint16_t keytag;
+#define _cleanup_key_ _cleanup_(dnssec_key_free)
 
-	struct {
-		uint16_t flags;
-		uint8_t algorithm;
-		dnssec_binary_t *public_key;
-	} dnskey_rdata;
+int dnssec_key_new(dnssec_key_t **key);
+void dnssec_key_free(dnssec_key_t **key);
 
-	void *public_key;
-	void *private_key;
-} dnssec_key_t;
+// LEGACY API
 
-int dnssec_key_to_dnskey(const dnssec_key_t *key, dnssec_binary_t *dnskey);
-int dnssec_dnskey_to_key(const dnssec_binary_t *dnskey, dnssec_key_t *key);
+int dnssec_key_from_rsa_params(dnssec_key_t *key,
+			       dnssec_key_algorithm_t algorithm,
+			       const dnssec_binary_t *modulus,
+			       const dnssec_binary_t *public_exponent,
+			       const dnssec_binary_t *private_exponent,
+			       const dnssec_binary_t *first_prime,
+			       const dnssec_binary_t *second_prime,
+			       const dnssec_binary_t *coefficient);
 
-uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key);
-uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);
+int dnssec_key_from_dsa_params(dnssec_key_t *key,
+			       dnssec_key_algorithm_t algorithm,
+			       const dnssec_binary_t *p,
+			       const dnssec_binary_t *q,
+			       const dnssec_binary_t *g,
+			       const dnssec_binary_t *y,
+			       const dnssec_binary_t *x);
+
+int dnssec_key_from_ecdsa_params(dnssec_key_t *key,
+                                 dnssec_key_algorithm_t algorithm,
+			         const dnssec_binary_t *x_coordinate,
+			         const dnssec_binary_t *y_coordinate,
+			         const dnssec_binary_t *private_key);
+
+// TODO: PKCS 8
+
+// TODO: PKCS 11
+
+// FORMAT CONVERSION
+
+int dnssec_key_from_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
+			   uint8_t algorithm, const dnssec_binary_t *public_key);
+
+int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata);
+
+int dnssec_key_get_dnskey(const dnssec_key_t *key, dnssec_binary_t *rdata);
+
+int dnssec_key_get_ds(const dnssec_key_t *key, dnssec_key_digest_t digest,
+		      dnssec_binary_t *rdata);
+
+// HASH FUNCTIONS

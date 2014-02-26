@@ -1,8 +1,11 @@
-AM_CPPFLAGS = -I$(top_srcdir)/libtap
-LDADD = $(top_builddir)/libtap/libtap.a
+AM_CPPFLAGS = -I$(top_srcdir)/libtap -I../src
+LDADD = $(top_builddir)/libtap/libtap.a \
+	../libdnssec.la
 
 check_PROGRAMS = \
-	key
+	binary		\
+	key		\
+	sign
 
 check-compile-only: $(check_PROGRAMS)
 

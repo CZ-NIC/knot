@@ -1,0 +1,7 @@
+/Makefile
+/Makefile.in
+
+# test binaries
+binary
+key
+sign

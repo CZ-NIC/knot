@@ -1,6 +1,8 @@
 #include "error.h"
 #include "keystore.h"
 
+#if 0
+
 dnssec_keystore_t *dnssec_keystore_open(const char *path);
 
 int dnssec_keystore_close(dnssec_keystore_t **keystore)
@@ -11,3 +13,5 @@ int dnssec_keystore_close(dnssec_keystore_t **keystore)
 
 	return DNSSEC_EOK;
 }
+
+#endif

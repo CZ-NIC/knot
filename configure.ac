@@ -101,6 +101,9 @@ if test "$enable_systemd" = yes; then
     AC_DEFINE([ENABLE_SYSTEMD_NOTIFY], [1], [Use systemd notifications.])
 fi
 
+# GnuTLS crypto backend
+PKG_CHECK_MODULES([gnutls], [gnutls nettle])
+
 # Debug modules
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,rr,ns,loader,dnssec],
@@ -364,6 +367,8 @@ AC_CONFIG_FILES([Makefile
 		 src/Makefile
 		 tests/Makefile
 		 src/zscanner/Makefile
+		 dnssec/Makefile
+		 dnssec/tests/Makefile
 		 man/khost.1
 		 man/knotc.8
 		 man/knotd.8
@@ -388,5 +393,6 @@ echo "
   Ragel: ${RAGEL} ${FSM_TYPE}
   Utils with IDN: ${libidn}
   Use systemd notifications: ${enable_systemd}
+  GnuTLS: CFLAGS: ${gnutls_CFLAGS} LIBS: ${gnutls_LIBS}
 
   Continue with 'make' command"
