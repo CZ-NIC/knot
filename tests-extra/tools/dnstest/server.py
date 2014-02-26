@@ -946,3 +946,6 @@ class Dummy(Server):
 
     def listening(self):
         return True # Fake listening
+
+    def running(self):
+        return True # Fake running
