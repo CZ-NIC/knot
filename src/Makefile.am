@@ -279,6 +279,9 @@ libknotd_la_LIBADD = libknots.la libknot.la
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
+knotd_CPPFLAGS = ${systemd_daemon_CFLAGS}
+knotd_LDFLAGS = ${systemd_daemon_LIBS}
+
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs

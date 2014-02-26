@@ -26,6 +26,10 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
+#ifdef ENABLE_SYSTEMD_NOTIFY
+#include <systemd/sd-daemon.h>
+#endif
+
 #include "libknot/common.h"
 #include "libknot/dnssec/crypto.h"
 #include "knot/knot.h"
@@ -41,6 +45,14 @@
 static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
 static volatile short sig_stopping = 0;
+
+/** \brief Signal started state to the init system. */
+static void init_signal_started(void)
+{
+#ifdef ENABLE_SYSTEMD_NOTIFY
+	sd_notify(0, "READY=1");
+#endif
+}
 
 // atexit() handler for server code
 static void knot_crypto_deinit(void)
@@ -347,6 +359,7 @@ int main(int argc, char **argv)
 		} else {
 			log_server_info("Server started in foreground, PID = %ld\n",
 			                pid);
+			init_signal_started();
 		}
 
 		/* Start the event loop. */
