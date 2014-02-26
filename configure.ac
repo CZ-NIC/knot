@@ -91,7 +91,7 @@ AC_ARG_ENABLE([systemd],
     [enable_systemd="$enableval"], [enable_systemd=auto])
 
 case "$enable_systemd" in
-    auto) PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon], [enable_systemd=yes], [true]) ;;
+    auto) PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon], [enable_systemd=yes], [enable_systemd=no]) ;;
     yes)  PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon]) ;;
     no)   ;;
     *)    AC_MSG_ERROR([Invalid value of --enable-systemd.]) ;;
@@ -387,6 +387,6 @@ echo "
   Libs: ${LIBS}
   Ragel: ${RAGEL} ${FSM_TYPE}
   Utils with IDN: ${libidn}
-  Use systemd notification: ${enable_systemd}
+  Use systemd notifications: ${enable_systemd}
 
   Continue with 'make' command"
