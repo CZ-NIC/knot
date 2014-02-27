@@ -310,10 +310,8 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 			return KNOT_ENOMEM;
 		}
 		// Create the RRSet
-		gen_nsec3 = create_nsec3_rrset(owner,
-		                                         &zone->nsec3_params,
-		                                         &bm, binary_next,
-		                                         soa_min);
+		gen_nsec3 = create_nsec3_rrset(owner, &zone->nsec3_params,
+		                               &bm, binary_next, soa_min);
 		if (gen_nsec3 == NULL) {
 			free(binary_next);
 			knot_dname_free(&owner);
@@ -322,8 +320,7 @@ static int update_nsec3(const knot_dname_t *from, const knot_dname_t *to,
 	} else {
 		assert(old_nsec3);
 		// Reuse bitmap and data from old NSEC3
-		int ret = knot_rrset_deep_copy(old_nsec3, &gen_nsec3,
-		                                      NULL);
+		int ret = knot_rrset_deep_copy(old_nsec3, &gen_nsec3, NULL);
 		if (ret != KNOT_EOK) {
 			free(binary_next);
 			return ret;
