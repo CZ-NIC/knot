@@ -238,9 +238,8 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 		}
 
 		dbg_dnssec_detail("NSECs not equal, replacing.\n");
-		// current NSEC is invalid, replace it and drop RRSIG
-		// mark the node, so later we know this NSEC needs new RRSIGs
-		knot_node_set_replaced_nsec(a);
+		// Mark the node so that we do not sign this NSEC
+		knot_node_set_removed_nsec(a);
 		ret = knot_nsec_changeset_remove(a, data->changeset);
 		if (ret != KNOT_EOK) {
 			knot_rrset_deep_free(&new_nsec, 1, NULL);
@@ -655,6 +654,7 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 			if (result != KNOT_ENOENT) {
 				return result;
 			}
+			/*! \todo do the same for NSEC3. */
 			return KNOT_EOK;
 		}
 

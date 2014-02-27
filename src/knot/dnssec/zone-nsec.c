@@ -109,6 +109,44 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	return true;
 }
 
+static int mark_nsec3(knot_rrset_t *rrset, void *data)
+{
+	assert(rrset != NULL);
+	assert(data != NULL);
+
+	knot_zone_tree_t *nsec3s = (knot_zone_tree_t *)data;
+	knot_node_t *node = NULL;
+	int ret;
+
+	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
+		printf("NSEC3 in REMOVE section.\n");
+		// Find the name in the NSEC3 tree and mark the node
+		ret = knot_zone_tree_get(nsec3s, knot_rrset_owner(rrset),
+		                         &node);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		if (node != NULL) {
+			knot_node_set_removed_nsec(node);
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int mark_removed_nsec3(knot_changeset_t *out_ch,
+                              const knot_zone_contents_t *zone)
+{
+	if (zone->nsec3_nodes == NULL) {
+		return KNOT_EOK;
+	}
+
+	int ret = knot_changeset_apply(out_ch, KNOT_CHANGESET_REMOVE,
+	                               mark_nsec3, (void *)zone->nsec3_nodes);
+	return ret;
+}
+
 /* - public API ------------------------------------------------------------ */
 
 /*!
@@ -218,6 +256,11 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 
 	if (result == KNOT_EOK && !nsec3_enabled) {
 		result = delete_nsec3_chain(zone, changeset);
+	}
+
+	if (result == KNOT_EOK) {
+		// Mark removed NSEC3 nodes, so that they are not signed later
+		result = mark_removed_nsec3(changeset, zone);
 	}
 
 	if (result != KNOT_EOK) {

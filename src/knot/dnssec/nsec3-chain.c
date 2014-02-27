@@ -748,7 +748,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 			break;
 		}
 		if (knot_node_rrset(node, KNOT_RRTYPE_NSEC)) {
-			knot_node_set_replaced_nsec(node);
+			knot_node_set_removed_nsec(node);
 		}
 
 		if (knot_node_is_non_auth(node)) {

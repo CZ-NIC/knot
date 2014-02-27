@@ -559,7 +559,7 @@ static int sign_node(knot_node_t **node, void *data)
 
 	int result = sign_node_rrsets(*node, args->zone_keys, args->policy,
 	                              args->changeset, &args->expires_at);
-	knot_node_clear_replaced_nsec(*node);
+	knot_node_clear_removed_nsec(*node);
 
 	return result;
 }
@@ -1470,7 +1470,7 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	}
 
 	// These RRs have their signatures stored in changeset already
-	if (knot_node_is_replaced_nsec(node)
+	if (knot_node_is_removed_nsec(node)
 	    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
 	         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
 		return KNOT_EOK;
