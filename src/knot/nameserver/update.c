@@ -306,6 +306,8 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 
 	// Process the UPDATE packet, apply to zone, create changesets.
 	if (knot_changesets_create_changeset(chgsets) == NULL) {
+		knot_changesets_free(&chgsets);
+		free(msg);
 		return KNOT_ENOMEM;
 	}
 	*rcode = KNOT_RCODE_SERVFAIL; /* SERVFAIL unless it applies correctly. */
