@@ -740,58 +740,6 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
     return ret;
 }
 
-int hattrie_find_lpr (hattrie_t* T, const char* key, size_t len, value_t** dst)
-{
-    /* create node stack for traceback */
-    int ret = -1;
-    size_t sp = 0;
-    node_ptr bs[NODESTACK_INIT];  /* base stack (will be enough mostly) */
-    node_ptr *ns = bs;            /* generic ptr, could point to new mem */
-    ns[sp] = T->root;
-    *dst = NULL;
-
-    /* consume trie nodes for key (thus building prefix chain) */
-    node_ptr node = hattrie_find_ns(&ns, &sp, NODESTACK_INIT, &key, &len);
-    if (node.flag == NULL) {
-        if (sp == 0) { /* empty trie, no prefix match */
-            if (ns != bs) free(ns);
-            return -1;
-        }
-        node = ns[--sp]; /* dead end, pop node */
-    }
-
-    /* search for suffix in current node */
-    size_t suffix = len; /* suffix length */
-    if (*node.flag & NODE_TYPE_TRIE) {
-        *dst = &node.t->val; /* use current trie node value */
-    } else {
-        while (*dst == NULL) { /* find remainder in current hashtable */
-            *dst = hhash_find(node.b, key, suffix);
-            if (suffix == 0)
-                break;
-            --suffix;
-        }
-    }
-
-    /* not in current node, need to traceback node stack */
-    while (*dst == NULL) {
-        node = ns[sp]; /* parent node, always a trie node type */
-        if (*node.flag & NODE_HAS_VAL)
-            *dst = &node.t->val;
-        if (sp == 0)
-            break;
-        --sp;
-    }
-
-    if (*dst) { /* prefix found? */
-        ret = 0;
-    }
-
-    if (ns != bs) free(ns);
-    return ret;
-}
-
-
 int hattrie_del(hattrie_t* T, const char* key, size_t len)
 {
     node_ptr parent = T->root;
