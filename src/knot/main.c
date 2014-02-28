@@ -337,8 +337,8 @@ int main(int argc, char **argv)
 	/* Reconfigure server interfaces. */
 	server_reconfigure(config, &server);
 	conf_add_hook(config, CONF_ALL, server_reconfigure, &server);
-	log_server_info("Configured %zu interfaces and %d zones.\n",
-	                list_size(&config->ifaces), config->zones_count);
+	log_server_info("Configured %zu interfaces and %zu zones.\n",
+	                list_size(&config->ifaces), hattrie_weight(config->zones));
 
 	/* Populate zone database and add reconfiguration hook. */
 	log_server_info("Loading zones...\n");

@@ -112,7 +112,6 @@ typedef struct conf_group_t {
  * zone transfers.  Same logic applies for the NOTIFY.
  */
 typedef struct conf_zone_t {
-	node_t n;
 	char *name;                /*!< Zone name. */
 	uint16_t cls;              /*!< Zone class (IN or CH). */
 	char *file;                /*!< Path to a zone file. */
@@ -250,8 +249,7 @@ typedef struct conf_t {
 	/*
 	 * Zones
 	 */
-	list_t zones;        /*!< List of zones. */
-	int zones_count;     /*!< Count of zones. */
+	hattrie_t *zones;    /*!< List of zones. */
 	int zone_checks;     /*!< Semantic checks for parser.*/
 	int disable_any;     /*!< Disable ANY type queries for AA.*/
 	int notify_retries;  /*!< NOTIFY query retries. */
@@ -259,7 +257,6 @@ typedef struct conf_t {
 	int dbsync_timeout;  /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
-	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
 	char *storage;       /*!< Storage dir. */
 	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
 	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */

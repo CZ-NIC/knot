@@ -102,19 +102,6 @@ void cf_error(void *scanner, const char *format, ...)
 	cf_print_error(scanner, buffer);
 }
 
-static void conf_parse_begin(conf_t *conf)
-{
-	conf->names = hattrie_create();
-}
-
-static void conf_parse_end(conf_t *conf)
-{
-	if (conf->names) {
-		hattrie_free(conf->names);
-		conf->names = NULL;
-	}
-}
-
 /*!
  * \brief Call config hooks that need updating.
  *
@@ -269,9 +256,14 @@ static int conf_process(conf_t *conf)
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
-	node_t *n = NULL;
-	WALK_LIST (n, conf->zones) {
-		conf_zone_t *zone = (conf_zone_t*)n;
+
+	const bool sorted = false;
+	hattrie_iter_t *z_iter = hattrie_iter_begin(conf->zones, sorted);
+	if (z_iter == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
+		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 
 		// Default policy for dbsync timeout
 		if (zone->dbsync_timeout < 0) {
@@ -423,6 +415,7 @@ static int conf_process(conf_t *conf)
 		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
 	}
+	hattrie_iter_free(z_iter);
 
 	/* Update UID and GID. */
 	if (conf->uid < 0) conf->uid = getuid();
@@ -590,12 +583,14 @@ conf_t *conf_new(char* path)
 	/* Initialize lists. */
 	init_list(&c->logs);
 	init_list(&c->ifaces);
-	init_list(&c->zones);
 	init_list(&c->hooks);
 	init_list(&c->remotes);
 	init_list(&c->groups);
 	init_list(&c->keys);
 	init_list(&c->ctl.allow);
+
+	/* Zones container. */
+	c->zones = hattrie_create();
 
 	/* Defaults. */
 	c->zone_checks = 0;
@@ -644,9 +639,7 @@ int conf_add_hook(conf_t * conf, int sections,
 int conf_parse(conf_t *conf)
 {
 	/* Parse file. */
-	conf_parse_begin(conf);
 	int ret = conf_fparser(conf);
-	conf_parse_end(conf);
 
 	/* Postprocess config. */
 	if (ret == 0) {
@@ -665,9 +658,7 @@ int conf_parse(conf_t *conf)
 int conf_parse_str(conf_t *conf, const char* src)
 {
 	/* Parse config from string. */
-	conf_parse_begin(conf);
 	int ret = conf_strparser(conf, src);
-	conf_parse_end(conf);
 
 	/* Postprocess config. */
 	conf_process(conf);
@@ -729,10 +720,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	init_list(&conf->groups);
 
 	// Free zones
-	WALK_LIST_DELSAFE(n, nxt, conf->zones) {
-		conf_free_zone((conf_zone_t*)n);
+	if (conf->zones) {
+		hattrie_free(conf->zones);
+		conf->zones = NULL;
 	}
-	init_list(&conf->zones);
 
 	conf->dnssec_enable = -1;
 	if (conf->filename) {
@@ -829,9 +820,7 @@ int conf_open(const char* path)
 	}
 
 	/* Parse config. */
-	conf_parse_begin(nconf);
 	int ret = conf_fparser(nconf);
-	conf_parse_end(nconf);
 	if (ret == KNOT_EOK) {
 		/* Postprocess config. */
 		ret = conf_process(nconf);
