@@ -79,7 +79,6 @@ static void conf_start_iface(void *scanner, char* ifname)
 {
 	conf_init_iface(scanner, ifname);
 	add_tail(&new_config->ifaces, &this_iface->n);
-	++new_config->ifaces_count;
 }
 
 static conf_iface_t *conf_get_remote(const char *name)
@@ -110,7 +109,6 @@ static void conf_start_remote(void *scanner, char *remote)
 	memset(this_remote, 0, sizeof(conf_iface_t));
 	this_remote->name = remote;
 	add_tail(&new_config->remotes, &this_remote->n);
-	++new_config->remotes_count;
 }
 
 static void conf_remote_set_via(void *scanner, char *item) {
@@ -668,7 +666,6 @@ keys:
                  free(k);
              } else {
                  add_tail(&new_config->keys, &k->n);
-                 ++new_config->key_count;
              }
          }
      }
@@ -976,7 +973,6 @@ log_dest: LOG_DEST {
     this_log->file = 0;
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
-    ++new_config->logs_count;
   }
 }
 ;
@@ -1003,7 +999,6 @@ log_file: FILENAME TEXT {
     this_log->file = strcpath($2.t);
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
-    ++new_config->logs_count;
   }
 }
 ;
@@ -1017,7 +1012,7 @@ log_start:
  | log_start log_file '{' log_src '}'
  ;
 
-log: LOG { new_config->logs_count = 0; } '{' log_start log_end
+log: LOG { } '{' log_start log_end
  ;
 
 ctl_listen_start:

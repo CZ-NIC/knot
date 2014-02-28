@@ -35,7 +35,7 @@ int log_reconfigure(const struct conf_t *conf, void *data)
 	UNUSED(data);
 
 	// Use defaults if no 'log' section is configured.
-	if (conf->logs_count < 0) {
+	if (list_size(&conf->logs) == 0) {
 		log_close();
 		log_init();
 		return KNOT_EOK;

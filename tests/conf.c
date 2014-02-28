@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 	is_int(0, sockaddr_cmp(&iface->addr, &addr_ref), "interface1 address check");
 
 	// Test 9,10: Check server key
-	if(conf->key_count <= 0) {
+	if(list_size(&conf->keys) == 0) {
 		ok(0, "TSIG key algorithm check - NO KEY FOUND");
 		ok(0, "TSIG key secret check - NO KEY FOUND");
 	} else {
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Test 11,12,13,14,15,16,17,18: Check logging facilities
-	ok(conf->logs_count == 4, "log facilites count check");
+	ok(list_size(&conf->logs) == 4, "log facilites count check");
 	n = HEAD(conf->logs);
 	ok(!EMPTY_LIST(conf->logs), "log facilities not empty");
 
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	// Test 21: Load key dname
 	const char *sample_str = "key0.example.net";
 	knot_dname_t *sample = knot_dname_from_str(sample_str);
-	if (conf->key_count > 0) {
+	if (list_size(&conf->keys) > 0) {
 		knot_tsig_key_t *k = &((conf_key_t *)HEAD(conf->keys))->k;
 		ok(knot_dname_cmp(sample, k->name) == 0,
 		   "TSIG key dname check");

@@ -459,7 +459,6 @@ void __attribute__ ((constructor)) conf_init()
 	sockaddr_set(&iface->addr, AF_INET, "127.0.0.1", CONFIG_DEFAULT_PORT);
 	iface->name = strdup("localhost");
 	add_tail(&s_config->ifaces, &iface->n);
-	++s_config->ifaces_count;
 
 	/* Create default storage. */
 	s_config->storage = strdup(STORAGE_DIR);
@@ -477,7 +476,6 @@ void __attribute__ ((constructor)) conf_init()
 	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
 	add_tail(&log->map, &map->n);
 	add_tail(&s_config->logs, &log->n);
-	s_config->logs_count = 1;
 
 	/* Stderr */
 	log = malloc(sizeof(conf_log_t));
@@ -490,7 +488,6 @@ void __attribute__ ((constructor)) conf_init()
 	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
 	add_tail(&log->map, &map->n);
 	add_tail(&s_config->logs, &log->n);
-	++s_config->logs_count;
 
 	/* Process config. */
 	conf_process(s_config);
@@ -613,7 +610,6 @@ conf_t *conf_new(char* path)
 	c->xfers = -1;
 	c->rrl_slip = -1;
 	c->build_diffs = 0; /* Disable by default. */
-	c->logs_count = -1;
 
 	/* DNSSEC. */
 	c->dnssec_enable = 0;
@@ -641,7 +637,6 @@ int conf_add_hook(conf_t * conf, int sections,
 	hook->update = on_update;
 	hook->data = data;
 	add_tail(&conf->hooks, &hook->n);
-	++conf->hooks_count;
 
 	return KNOT_EOK;
 }
@@ -701,7 +696,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 			/*! \todo Call hook unload (issue #1583) */
 			free((conf_hook_t*)n);
 		}
-		conf->hooks_count = 0;
 		init_list(&conf->hooks);
 	}
 
@@ -714,21 +708,18 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	WALK_LIST_DELSAFE(n, nxt, conf->ifaces) {
 		conf_free_iface((conf_iface_t*)n);
 	}
-	conf->ifaces_count = 0;
 	init_list(&conf->ifaces);
 
 	// Free logs
 	WALK_LIST_DELSAFE(n, nxt, conf->logs) {
 		conf_free_log((conf_log_t*)n);
 	}
-	conf->logs_count = -1;
 	init_list(&conf->logs);
 
 	// Free remote interfaces
 	WALK_LIST_DELSAFE(n, nxt, conf->remotes) {
 		conf_free_iface((conf_iface_t*)n);
 	}
-	conf->remotes_count = 0;
 	init_list(&conf->remotes);
 
 	// Free groups of remotes
@@ -741,7 +732,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	WALK_LIST_DELSAFE(n, nxt, conf->zones) {
 		conf_free_zone((conf_zone_t*)n);
 	}
-	conf->zones_count = 0;
 	init_list(&conf->zones);
 
 	conf->dnssec_enable = -1;
@@ -782,7 +772,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	WALK_LIST_DELSAFE(n, nxt, conf->ctl.allow) {
 		conf_free_remote((conf_remote_t*)n);
 	}
-	conf->remotes_count = 0;
 	init_list(&conf->remotes);
 
 	/* Free remote control ACL. */
