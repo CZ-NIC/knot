@@ -723,6 +723,11 @@ int hattrie_find_leq (hattrie_t* T, const char* key, size_t len, value_t** dst)
 
     /* return if found equal or left in hashtable */
     if (*dst == 0) {
+        /* we're retracing from pure bucket, pop the key */
+        if (*node.flag & NODE_TYPE_PURE_BUCKET) {
+            --key;
+        }
+        /* walk up the stack of visited nodes and find closest match on the left */
         *dst = hattrie_walk(ns, sp, key, hattrie_find_rightmost);
         if (*dst) {
             ret = -1; /* found previous */
