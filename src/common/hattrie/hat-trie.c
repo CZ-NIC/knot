@@ -84,12 +84,12 @@ static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)
 
 /* iterate trie nodes until string is consumed or bucket is found */
 static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
-                                const char **k, size_t *l, unsigned brk)
+                                const char **k, size_t *l, unsigned min_len)
 {
 
     node_ptr *bs = *s;
     node_ptr node = bs[*sp].t->xs[(unsigned char) **k];
-    while (node.flag && *node.flag & NODE_TYPE_TRIE && *l > brk) {
+    while (node.flag && *node.flag & NODE_TYPE_TRIE && *l > min_len) {
         ++*k;
         --*l;
         /* build node stack if slen > 0 */
@@ -128,11 +128,12 @@ static node_ptr hattrie_consume_ns(node_ptr **s, size_t *sp, size_t slen,
     return node;
 }
 
-static inline node_ptr hattrie_consume(node_ptr *parent, const char **k,
-                                       size_t *l, unsigned brk)
+/*! \brief Consume key. */
+static inline node_ptr hattrie_consume(node_ptr *parent, const char **key,
+                                       size_t *key_len, unsigned min_len)
 {
     size_t sp = 0;
-    return hattrie_consume_ns(&parent, &sp, 0, k, l, brk);
+    return hattrie_consume_ns(&parent, &sp, 0, key, key_len, min_len);
 }
 
 /* use node value and return pointer to it */
