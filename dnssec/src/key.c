@@ -1,8 +1,12 @@
-#include <string.h>
+#include <assert.h>
 #include <gnutls/abstract.h>
+#include <netinet/in.h>
+#include <stdbool.h>
+#include <string.h>
 
 #include "key.h"
 #include "error.h"
+#include "keytag.h"
 
 typedef uint8_t dnssec_key_id_t[20];
 
@@ -10,15 +14,32 @@ struct dnssec_key {
 	dnssec_key_id_t id;
 	uint16_t keytag;
 
-	struct {
-		uint16_t flags;
-		uint8_t algorithm;
-		dnssec_binary_t public_key;
-	} rdata;
+	dnssec_binary_t rdata;
 
 	gnutls_pubkey_t public_key;
 	gnutls_privkey_t private_key;
 };
+
+static bool key_is_valid(const dnssec_key_t *key)
+{
+	/*
+	 * 2 bytes: flags
+	 * 1 byte:  protocol
+	 * 1 byte:  algorithm
+	 * rest:    public key
+	 */
+
+	return key && key->rdata.size > 4;
+}
+
+static void update_keytag(dnssec_key_t *key)
+{
+	if (!key_is_valid(key)) {
+		return;
+	}
+
+	key->keytag = keytag(&key->rdata);
+}
 
 int dnssec_key_new(dnssec_key_t **key_ptr)
 {
@@ -37,20 +58,66 @@ int dnssec_key_new(dnssec_key_t **key_ptr)
 	return DNSSEC_EOK;
 }
 
+void dnssec_key_clear(dnssec_key_t *key)
+{
+	if (!key) {
+		return;
+	}
+
+	dnssec_binary_free(&key->rdata);
+	gnutls_privkey_deinit(key->private_key);
+	gnutls_pubkey_deinit(key->public_key);
+
+	memset(key, 0, sizeof(dnssec_key_t));
+}
+
 void dnssec_key_free(dnssec_key_t **key_ptr)
 {
 	if (!key_ptr || !*key_ptr) {
 		return;
 	}
 
-	dnssec_key_t *key = *key_ptr;
+	dnssec_key_clear(*key_ptr);
 
-	dnssec_binary_free(&key->rdata.public_key);
-	gnutls_privkey_deinit(key->private_key);
-	gnutls_pubkey_deinit(key->public_key);
-
-	free(key);
+	free(*key_ptr);
 	*key_ptr = NULL;
+}
+
+uint16_t dnssec_key_get_flags(const dnssec_key_t *key)
+{
+	if (!key_is_valid(key)) {
+		return 0;
+	}
+
+	return ntohs(*((uint16_t *)key->rdata.data));
+}
+
+uint8_t dnssec_key_get_protocol(const dnssec_key_t *key)
+{
+	if (!key_is_valid(key)) {
+		return 0;
+	}
+
+	return *(key->rdata.data + 2);
+
+}
+
+uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key)
+{
+	if (!key_is_valid(key)) {
+		return 0;
+	}
+
+	return *(key->rdata.data + 3);
+}
+
+uint16_t dnssec_key_get_keytag(const dnssec_key_t *key)
+{
+	if (!key_is_valid(key)) {
+		return 0;
+	}
+
+	return key->keytag;
 }
 
 int dnssec_key_from_rsa_params(dnssec_key_t *key,
@@ -102,7 +169,14 @@ int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata)
 		return DNSSEC_EINVAL;
 	}
 
-	return DNSSEC_ERROR;
+	int result = dnssec_binary_dup(rdata, &key->rdata);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	update_keytag(key);
+
+	return DNSSEC_EOK;
 }
 
 int dnssec_key_get_dnskey(const dnssec_key_t *key, dnssec_binary_t *rdata)

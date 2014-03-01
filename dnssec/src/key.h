@@ -30,7 +30,14 @@ typedef struct dnssec_key dnssec_key_t;
 #define _cleanup_key_ _cleanup_(dnssec_key_free)
 
 int dnssec_key_new(dnssec_key_t **key);
+void dnssec_key_clear(dnssec_key_t *key);
 void dnssec_key_free(dnssec_key_t **key);
+
+uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);
+
+uint16_t dnssec_key_get_flags(const dnssec_key_t *key);
+uint8_t dnssec_key_get_protocol(const dnssec_key_t *key);
+uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key);
 
 // LEGACY API
 
