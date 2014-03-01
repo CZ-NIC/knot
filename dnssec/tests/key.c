@@ -63,6 +63,7 @@ static void public_from_dnskey(void)
 	keyinfo_t keys[] = {
 		{ "rsa", &SAMPLE_RSA_KEY },
 		{ "dsa", &SAMPLE_DSA_KEY },
+		{ "ecdsa", &SAMPLE_ECDSA_KEY },
 		{ NULL }
 	};
 
