@@ -160,7 +160,33 @@ int dnssec_key_from_ecdsa_params(dnssec_key_t *key,
 int dnssec_key_from_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
 			   uint8_t algorithm, const dnssec_binary_t *public_key)
 {
-	return DNSSEC_ERROR;
+	if (!key || !public_key) {
+		return DNSSEC_EINVAL;
+	}
+
+	size_t rdata_size = 4 + public_key->size;
+	uint8_t *rdata = malloc(rdata_size);
+	if (!rdata) {
+		return DNSSEC_ENOMEM;
+	}
+
+	key->rdata.data = rdata;
+	key->rdata.size = rdata_size;
+
+	uint8_t *write = rdata;
+	*((uint16_t *)write) = htons(flags);
+	write += 2;
+	*write = protocol;
+	write += 1;
+	*write = algorithm;
+	write += 1;
+	memcpy(write, public_key->data, public_key->size);
+	write += public_key->size;
+	assert(write == key->rdata.data + key->rdata.size);
+
+	update_keytag(key);
+
+	return DNSSEC_EOK;
 }
 
 int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata)
@@ -181,11 +207,18 @@ int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata)
 
 int dnssec_key_get_dnskey(const dnssec_key_t *key, dnssec_binary_t *rdata)
 {
-	if (!key || !rdata) {
+	if (!key_is_valid(key)) {
 		return DNSSEC_EINVAL;
 	}
 
-	return DNSSEC_ERROR;
+	dnssec_binary_t copy = { 0 };
+	int result = dnssec_binary_dup(&key->rdata, &copy);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	*rdata = copy;
+	return DNSSEC_EOK;
 }
 
 int dnssec_key_get_ds(const dnssec_key_t *key, dnssec_key_digest_t digest,
