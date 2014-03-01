@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <nettle/base64.h>
+#include <string.h>
 
 #include "binary.h"
 #include "error.h"
@@ -60,4 +61,23 @@ void dnssec_binary_free(dnssec_binary_t *binary)
 
 	binary->data = NULL;
 	binary->size = 0;
+}
+
+int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
+{
+	if (!from || !to) {
+		return DNSSEC_EINVAL;
+	}
+
+	uint8_t *copy = malloc(from->size);
+	if (!copy) {
+		return DNSSEC_ENOMEM;
+	}
+
+	memcpy(copy, from->data, from->size);
+
+	to->size = from->size;
+	to->data = copy;
+
+	return DNSSEC_EOK;
 }

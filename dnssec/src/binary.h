@@ -16,3 +16,5 @@ int dnssec_binary_from_base64(dnssec_binary_t *binary, const uint8_t *base64,
 			      size_t base64_size);
 
 void dnssec_binary_free(dnssec_binary_t *binary);
+
+int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to);
