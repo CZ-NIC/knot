@@ -13,4 +13,5 @@ libdnssec_la_SOURCES =	\
 	src/key.h	src/key.c	\
 	src/keystore.h	src/keystore.c	\
 	src/keytag.h	src/keytag.c	\
-	src/sign.h	src/sign.c
+	src/sign.h	src/sign.c	\
+	src/wire.h
