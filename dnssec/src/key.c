@@ -1,12 +1,12 @@
 #include <assert.h>
 #include <gnutls/abstract.h>
-#include <netinet/in.h>
 #include <stdbool.h>
 #include <string.h>
 
 #include "key.h"
 #include "error.h"
 #include "keytag.h"
+#include "wire.h"
 
 typedef uint8_t dnssec_key_id_t[20];
 
@@ -89,7 +89,10 @@ uint16_t dnssec_key_get_flags(const dnssec_key_t *key)
 		return 0;
 	}
 
-	return ntohs(*((uint16_t *)key->rdata.data));
+	wire_ctx_t ctx;
+	wire_init_binary(&ctx, &key->rdata);
+
+	return wire_read_u16(&ctx);
 }
 
 uint8_t dnssec_key_get_protocol(const dnssec_key_t *key)
@@ -98,8 +101,11 @@ uint8_t dnssec_key_get_protocol(const dnssec_key_t *key)
 		return 0;
 	}
 
-	return *(key->rdata.data + 2);
+	wire_ctx_t ctx;
+	wire_init_binary(&ctx, &key->rdata);
+	wire_seek(&ctx, 2);
 
+	return wire_read_u8(&ctx);
 }
 
 uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key)
@@ -108,7 +114,11 @@ uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key)
 		return 0;
 	}
 
-	return *(key->rdata.data + 3);
+	wire_ctx_t ctx;
+	wire_init_binary(&ctx, &key->rdata);
+	wire_seek(&ctx, 3);
+
+	return wire_read_u8(&ctx);
 }
 
 uint16_t dnssec_key_get_keytag(const dnssec_key_t *key)
@@ -173,16 +183,15 @@ int dnssec_key_from_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
 	key->rdata.data = rdata;
 	key->rdata.size = rdata_size;
 
-	uint8_t *write = rdata;
-	*((uint16_t *)write) = htons(flags);
-	write += 2;
-	*write = protocol;
-	write += 1;
-	*write = algorithm;
-	write += 1;
-	memcpy(write, public_key->data, public_key->size);
-	write += public_key->size;
-	assert(write == key->rdata.data + key->rdata.size);
+	wire_ctx_t wc;
+	wire_init(&wc, key->rdata.data, key->rdata.size);
+
+	wire_write_u16(&wc, flags);
+	wire_write_u8(&wc, protocol);
+	wire_write_u8(&wc, algorithm);
+	wire_write_binary(&wc, public_key);
+
+	assert(wire_tell(&wc) == key->rdata.size);
 
 	update_keytag(key);
 
