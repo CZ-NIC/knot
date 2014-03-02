@@ -24,7 +24,20 @@ typedef enum dnssec_key_digest {
 	DNSSEC_KEY_DIGEST_SHA384 = 4,
 } dnssec_key_digest_t;
 
-struct dnssec_key;
+typedef uint8_t dnssec_key_id_t[20];
+#define DNSSEC_KEY_ID_SIZE sizeof(dnssec_key_id_t)
+
+// TODO: library internal API
+struct dnssec_key {
+	dnssec_key_id_t id;
+	uint16_t keytag;
+
+	dnssec_binary_t rdata;
+
+	gnutls_pubkey_t public_key;
+	gnutls_privkey_t private_key;
+};
+
 typedef struct dnssec_key dnssec_key_t;
 
 #define _cleanup_key_ _cleanup_(dnssec_key_free)
@@ -33,36 +46,12 @@ int dnssec_key_new(dnssec_key_t **key);
 void dnssec_key_clear(dnssec_key_t *key);
 void dnssec_key_free(dnssec_key_t **key);
 
-uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);
+int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id);
 
+uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);
 uint16_t dnssec_key_get_flags(const dnssec_key_t *key);
 uint8_t dnssec_key_get_protocol(const dnssec_key_t *key);
 uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key);
-
-// LEGACY API
-
-int dnssec_key_from_rsa_params(dnssec_key_t *key,
-			       dnssec_key_algorithm_t algorithm,
-			       const dnssec_binary_t *modulus,
-			       const dnssec_binary_t *public_exponent,
-			       const dnssec_binary_t *private_exponent,
-			       const dnssec_binary_t *first_prime,
-			       const dnssec_binary_t *second_prime,
-			       const dnssec_binary_t *coefficient);
-
-int dnssec_key_from_dsa_params(dnssec_key_t *key,
-			       dnssec_key_algorithm_t algorithm,
-			       const dnssec_binary_t *p,
-			       const dnssec_binary_t *q,
-			       const dnssec_binary_t *g,
-			       const dnssec_binary_t *y,
-			       const dnssec_binary_t *x);
-
-int dnssec_key_from_ecdsa_params(dnssec_key_t *key,
-                                 dnssec_key_algorithm_t algorithm,
-			         const dnssec_binary_t *x_coordinate,
-			         const dnssec_binary_t *y_coordinate,
-			         const dnssec_binary_t *private_key);
 
 // TODO: PKCS 8
 

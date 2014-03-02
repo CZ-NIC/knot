@@ -8,18 +8,6 @@
 #include "keytag.h"
 #include "wire.h"
 
-typedef uint8_t dnssec_key_id_t[20];
-
-struct dnssec_key {
-	dnssec_key_id_t id;
-	uint16_t keytag;
-
-	dnssec_binary_t rdata;
-
-	gnutls_pubkey_t public_key;
-	gnutls_privkey_t private_key;
-};
-
 static bool key_is_valid(const dnssec_key_t *key)
 {
 	/*
@@ -39,6 +27,15 @@ static void update_keytag(dnssec_key_t *key)
 	}
 
 	key->keytag = keytag(&key->rdata);
+}
+
+static void update_key_id(dnssec_key_t *key)
+{
+	if (!key_is_valid(key)) {
+		return;
+	}
+
+	strncpy((char *)key->id, "ahoj", 5);
 }
 
 int dnssec_key_new(dnssec_key_t **key_ptr)
@@ -130,41 +127,15 @@ uint16_t dnssec_key_get_keytag(const dnssec_key_t *key)
 	return key->keytag;
 }
 
-int dnssec_key_from_rsa_params(dnssec_key_t *key,
-			       dnssec_key_algorithm_t algorithm,
-			       const dnssec_binary_t *modulus,
-			       const dnssec_binary_t *public_exponent,
-			       const dnssec_binary_t *private_exponent,
-			       const dnssec_binary_t *first_prime,
-			       const dnssec_binary_t *second_prime,
-			       const dnssec_binary_t *coefficient)
+int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id)
 {
-//	int result;
-//	gnutls_x509_privkey_import_rsa_raw(key, m, e, d, p, q, u);
+	if (!key || !id) {
+		return DNSSEC_EINVAL;
+	}
 
-	return DNSSEC_ERROR;
-}
+	memcpy(id, key->id, DNSSEC_KEY_ID_SIZE);
 
-int dnssec_key_from_dsa_params(dnssec_key_t *key,
-			       dnssec_key_algorithm_t algorithm,
-			       const dnssec_binary_t *p,
-			       const dnssec_binary_t *q,
-			       const dnssec_binary_t *g,
-			       const dnssec_binary_t *y,
-			       const dnssec_binary_t *x)
-{
-//	gnutls_x509_privkey_import_dsa_raw()
-	return DNSSEC_ERROR;
-}
-
-int dnssec_key_from_ecdsa_params(dnssec_key_t *key,
-                                 dnssec_key_algorithm_t algorithm,
-			         const dnssec_binary_t *x_coordinate,
-			         const dnssec_binary_t *y_coordinate,
-			         const dnssec_binary_t *private_key)
-{
-//	gnutls_x509_privkey_import_ecc_raw()
-	return DNSSEC_ERROR;
+	return DNSSEC_EOK;
 }
 
 int dnssec_key_from_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
@@ -194,6 +165,7 @@ int dnssec_key_from_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
 	assert(wire_tell(&wc) == key->rdata.size);
 
 	update_keytag(key);
+	update_key_id(key);
 
 	return DNSSEC_EOK;
 }
@@ -210,6 +182,7 @@ int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata)
 	}
 
 	update_keytag(key);
+	update_key_id(key);
 
 	return DNSSEC_EOK;
 }

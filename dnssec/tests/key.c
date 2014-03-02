@@ -32,7 +32,10 @@ static void check_key(const char *name, const key_parameters_t *params)
 
 	// get identifiers
 
-	skip("%s: dnssec_key_get_id()", name);
+	dnssec_key_id_t key_id = { 0 };
+	r = dnssec_key_get_id(key, key_id);
+	ok(r == DNSSEC_EOK && 0 /* TBD */,
+	   "%s: dnssec_key_get_id()", name);
 
 	ok(dnssec_key_get_keytag(key) == params->keytag,
 	   "%s: dnssec_key_get_keytag()", name);
