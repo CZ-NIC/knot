@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
 	/* Random keys. */
 	srand(time(NULL));
-	unsigned key_count = 500000;
+	unsigned key_count = 100000;
 	char **keys = xmalloc(sizeof(char*) * key_count);
 	for (unsigned i = 0; i < key_count; ++i) {
 		keys[i] = str_key_rand(KEY_MAXLEN);
@@ -190,9 +190,9 @@ int main(int argc, char *argv[])
 	while (!hattrie_iter_finished(it)) {
 		size_t cur_key_len = 0;
 		const char *cur_key = hattrie_iter_key(it, &cur_key_len);
-		if (key_buf[0] > 0) { /* Only if previous exists. */
+		if (iterated > 0) { /* Only if previous exists. */
 			if (strcmp(key_buf, cur_key) > 0) {
-				diag("'%s' < '%s' FAIL\n", key_buf, cur_key);
+				diag("'%s' <= '%s' FAIL\n", key_buf, cur_key);
 				break;
 			}
 		}
