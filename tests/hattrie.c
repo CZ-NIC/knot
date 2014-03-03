@@ -69,7 +69,7 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 	} else {
 		ret = hattrie_find_leq(trie, key_buf, key_len, &val);
 		if (ret > 0 || strcmp(*val, key_buf) > 0) {
-			diag("%s: '%s' is not before the key %zu/'%s'", __func__, *val, i, keys[i]);
+			diag("%s: '%s' is not before the key %zu/'%s'", __func__, (char*)*val, i, keys[i]);
 			return false; /* Found key must be LEQ than searched. */
 		}
 	}
@@ -86,7 +86,7 @@ static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size
 	key_buf[key_len - 2] += 1;
 	ret = hattrie_find_leq(trie, key_buf, key_len, &val);
 	if (! (ret <= 0 && strcmp(*val, key_buf) <= 0)) {
-		diag("%s: leq for key AFTER %zu/'%s' ret = %d %s", __func__, i, keys[i], ret, *val);
+		diag("%s: leq for key AFTER %zu/'%s' ret = %d %s", __func__, i, keys[i], ret, (char*)*val);
 		return false; /* Every key must have its LEQ match. */
 	}
 
