@@ -10,6 +10,7 @@ enum dnssec_error {
 	/* Directly mapped error codes. */
 	DNSSEC_ENOMEM = errno2error(ENOMEM),
 	DNSSEC_EINVAL = errno2error(EINVAL),
+	DNSSEC_EIO = errno2error(EIO),
 //	DNSSEC_ENOTSUP = errno2error(ENOTSUP),
 //	DNSSEC_EBUSY = errno2error(EBUSY),
 //	DNSSEC_EAGAIN = errno2error(EAGAIN),
@@ -22,5 +23,10 @@ enum dnssec_error {
 
 	DNSSEC_ERROR = -1000,
 };
+
+static inline int dnssec_errno_to_error(int ecode)
+{
+	return errno2error(ecode);
+}
 
 #undef errno2error
