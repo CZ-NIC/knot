@@ -26,6 +26,9 @@ typedef enum dnssec_key_digest {
 
 typedef uint8_t dnssec_key_id_t[20];
 #define DNSSEC_KEY_ID_SIZE sizeof(dnssec_key_id_t)
+#define DNSSEC_KEY_ID_STRING_SIZE (2 * DNSSEC_KEY_ID_SIZE)
+
+char *dnssec_key_id_to_string(const dnssec_key_id_t key_id);
 
 // TODO: library internal API
 struct dnssec_key {
