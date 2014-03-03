@@ -136,6 +136,8 @@ typedef struct conf_zone_t {
 		list_t notify_out; /*!< Remotes accepted for notify-out.*/
 		list_t update_in;  /*!< Remotes accepted for DDNS.*/
 	} acl;
+
+	list_t synth_templates;
 } conf_zone_t;
 
 /*!

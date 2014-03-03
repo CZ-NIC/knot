@@ -962,6 +962,9 @@ void conf_init_zone(conf_zone_t *zone)
 	init_list(&zone->acl.notify_in);
 	init_list(&zone->acl.notify_out);
 	init_list(&zone->acl.update_in);
+
+	// Initialize synthesis templates
+	init_list(&zone->synth_templates);
 }
 
 void conf_free_zone(conf_zone_t *zone)
