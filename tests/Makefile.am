@@ -38,6 +38,7 @@ check-compile-only: $(check_PROGRAMS)
 check-local: $(check_PROGRAMS)
 	$(top_builddir)/libtap/runtests -s $(top_srcdir)/tests \
 					-b $(top_builddir)/tests \
+					-L $(top_builddir)/tests/runtests.log \
 					$(check_PROGRAMS)
 
 EXTRA_DIST = data
