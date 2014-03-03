@@ -10,7 +10,7 @@ import time
 import dns.message
 import dns.query
 import dns.update
-from subprocess import Popen, PIPE, DEVNULL, check_call
+from subprocess import Popen, PIPE, DEVNULL, check_call, CalledProcessError
 from dnstest.utils import *
 import dnstest.params as params
 import dnstest.keys
@@ -228,7 +228,7 @@ class Server(object):
             check_call([self.control_bin] + self.reload_params, \
                        stdout=DEVNULL, stderr=DEVNULL)
             time.sleep(Server.START_WAIT)
-        except OSError:
+        except CalledProcessError:
             self.backtrace()
             raise Exception("Can't reload %s" % self.name)
 
@@ -238,7 +238,7 @@ class Server(object):
                 check_call([self.control_bin] + self.flush_params, \
                            stdout=DEVNULL, stderr=DEVNULL)
                 time.sleep(Server.START_WAIT)
-        except OSError:
+        except CalledProcessError:
             self.backtrace()
             raise Exception("Can't flush %s" % self.name)
 
