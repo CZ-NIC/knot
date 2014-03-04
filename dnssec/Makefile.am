@@ -1,7 +1,7 @@
 SUBDIRS = tests
 
-# Knot DNS common sources depedency (temporary)
-#AM_CPPFLAGS = -I$(top_srcdir)/src
+AM_CPPFLAGS = \
+	-include $(top_builddir)/src/config.h
 
 lib_LTLIBRARIES = libdnssec.la
 
