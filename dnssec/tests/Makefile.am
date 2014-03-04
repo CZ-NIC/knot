@@ -5,6 +5,7 @@ LDADD = $(top_builddir)/libtap/libtap.a \
 check_PROGRAMS = \
 	binary		\
 	key		\
+	key_pubkey	\
 	sign
 
 check-compile-only: $(check_PROGRAMS)

@@ -17,6 +17,8 @@ libdnssec_la_SOURCES =	\
 	src/key.h \
 	src/keys/legacy.c \
 	src/keys/legacy.h \
+	src/keys/pubkey.c \
+	src/keys/pubkey.h \
 	src/keystore.c \
 	src/keystore.h \
 	src/keytag.c \

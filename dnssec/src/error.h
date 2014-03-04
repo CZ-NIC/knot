@@ -11,7 +11,7 @@ enum dnssec_error {
 	DNSSEC_ENOMEM = errno2error(ENOMEM),
 	DNSSEC_EINVAL = errno2error(EINVAL),
 	DNSSEC_EIO = errno2error(EIO),
-//	DNSSEC_ENOTSUP = errno2error(ENOTSUP),
+	DNSSEC_ENOTSUP = errno2error(ENOTSUP),
 //	DNSSEC_EBUSY = errno2error(EBUSY),
 //	DNSSEC_EAGAIN = errno2error(EAGAIN),
 //	DNSSEC_EACCES = errno2error(EACCES),
@@ -22,6 +22,9 @@ enum dnssec_error {
 //	DNSSEC_ERANGE = errno2error(ERANGE),
 
 	DNSSEC_ERROR = -1000,
+	DNSSEC_PKCS8_IMPORT_ERROR,
+	DNSSEC_PUBKEY_EXPORT_ERROR,
+	DNSSEC_INVALID_KEY_SIZE,
 };
 
 static inline int dnssec_errno_to_error(int ecode)

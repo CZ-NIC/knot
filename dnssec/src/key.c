@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <gnutls/abstract.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "binary.h"
@@ -195,6 +196,93 @@ int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata)
 
 	update_keytag(key);
 	update_key_id(key);
+
+	return DNSSEC_EOK;
+}
+
+static void binary_to_datum(const dnssec_binary_t *binary, gnutls_datum_t *datum)
+{
+	assert(binary);
+	assert(datum);
+
+	datum->data = binary->data;
+	datum->size = binary->size;
+}
+
+static int public_key_to_rdata(gnutls_pubkey_t key, gnutls_datum_t *rdata)
+{
+	return DNSSEC_ENOTSUP;
+}
+
+static void free_x509_privkey(gnutls_x509_privkey_t *ptr)
+{
+	if (*ptr) {
+		gnutls_x509_privkey_deinit(*ptr);
+	}
+}
+
+#define _cleanup_x509_privkey_ _cleanup_(free_x509_privkey)
+
+int privkey_from_pkcs8(const dnssec_binary_t *pkcs8, gnutls_privkey_t *key)
+{
+	assert(pkcs8);
+	assert(key);
+
+	gnutls_datum_t data;
+	binary_to_datum(pkcs8, &data);
+
+	int result;
+
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key_x509 = NULL;
+	result = gnutls_x509_privkey_init(&key_x509);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	result = gnutls_x509_privkey_import_pkcs8(key_x509, &data,
+						  GNUTLS_X509_FMT_PEM, NULL, 0);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_PKCS8_IMPORT_ERROR;
+	}
+
+	gnutls_privkey_t key_abs = NULL;
+	result = gnutls_privkey_init(&key_abs);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	result = gnutls_privkey_import_x509(key_abs, key_x509, 0);
+	if (result != GNUTLS_E_SUCCESS) {
+		gnutls_privkey_deinit(key_abs);
+		return DNSSEC_ENOMEM;
+	}
+
+	*key = key_abs;
+
+	return DNSSEC_EOK;
+}
+
+int dnssec_key_from_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pkcs8_data)
+{
+	if (!key || !pkcs8_data) {
+		return DNSSEC_EINVAL;
+	}
+
+	gnutls_privkey_t private_key = NULL;
+	int result = privkey_from_pkcs8(pkcs8_data, &private_key);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	gnutls_pubkey_t public_key = NULL;
+	result = gnutls_pubkey_init(&public_key);
+	if (result != DNSSEC_EOK) {
+		gnutls_privkey_deinit(private_key);
+		return result;
+	}
+
+	key->private_key = private_key;
+	key->public_key = public_key;
 
 	return DNSSEC_EOK;
 }
