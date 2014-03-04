@@ -3,28 +3,21 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "key.h"
+#include "binary.h"
 #include "error.h"
+#include "hex.h"
+#include "key.h"
 #include "keytag.h"
 #include "wire.h"
 
-static const char BIN_TO_HEX[] = { '0', '1', '2', '3', '4', '5', '6', '7',
-				   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-
-char *dnssec_key_id_to_string(const dnssec_key_id_t key_id)
+char *dnssec_key_id_to_string(const dnssec_key_id_t id)
 {
-	char *str = malloc(DNSSEC_KEY_ID_STRING_SIZE + 1);
-	if (!str) {
-		return NULL;
-	}
+	const dnssec_binary_t binary = {
+		.data = (uint8_t *)id,
+		.size = DNSSEC_KEY_ID_SIZE
+	};
 
-	for (int i = 0; i < DNSSEC_KEY_ID_SIZE; i++) {
-		str[2*i]   = BIN_TO_HEX[key_id[i] >> 4];
-		str[2*i+1] = BIN_TO_HEX[key_id[i] & 0x0f];
-	}
-	str[DNSSEC_KEY_ID_STRING_SIZE] = '\0';
-
-	return str;
+	return hex_to_string(&binary);
 }
 
 static bool key_is_valid(const dnssec_key_t *key)
