@@ -22,175 +22,192 @@
 #include "common/mempattern.h"
 #include "common/hattrie/hat-trie.h"
 
-static const char *alphabet = "abcdefghijklmn.0123456789-";
-static char *randstr() {
-	unsigned len = (1 + rand() % 64) + 1; /* (1-64) + '\0' */
-	char *s = xmalloc(len * sizeof(char));
+/* Constants. */
+#define KEY_MAXLEN 64
+
+/*! \brief Generate random key. */
+static const char *alphabet = "abcdefghijklmn0123456789";
+static char *str_key_rand(size_t len)
+{
+	char *s = xmalloc(len);
+	memset(s, 0, len);
 	for (unsigned i = 0; i < len - 1; ++i) {
 		s[i] = alphabet[rand() % strlen(alphabet)];
 	}
-	s[len - 1] = '\0';
 	return s;
 }
-static bool str_check_sort(const char *prev, const char *cur, size_t l1, size_t l2)
+
+/* \brief Check lesser or equal result. */
+static bool str_key_find_leq(hattrie_t *trie, char **keys, size_t i, size_t size)
 {
-	if (prev == NULL) {
-		return true;
-	}
-	int res = memcmp(prev, cur, MIN(l1, l2));
-	if (res == 0) { /* Keys may be equal. */
-		if (l1 > l2) { /* 'prev' is longer, breaks ordering. */
-			return false;
+	static char key_buf[KEY_MAXLEN];
+
+	int ret = 0;
+	value_t *val = NULL;
+	const char *key = keys[i];
+	size_t key_len = strlen(key) + 1;
+	memcpy(key_buf, key, key_len);
+
+	/* Count equal first keys. */
+	size_t first_key_count = 1;
+	for (size_t k = 1; k < size; ++k) {
+		if (strcmp(keys[0], keys[k]) == 0) {
+			first_key_count += 1;
+		} else {
+			break;
 		}
-	} else if (res > 0){
-		return false; /* Broken lexicographical order */
 	}
+
+	/* Before current key. */
+	key_buf[key_len - 2] -= 1;
+	if (i < first_key_count) {
+		ret = hattrie_find_leq(trie, key_buf, key_len, &val);
+		if (ret != 1) {
+			diag("%s: leq for key BEFORE %zu/'%s' ret = %d", __func__, i, keys[i], ret);
+			return false; /* No key before first. */
+		}
+	} else {
+		ret = hattrie_find_leq(trie, key_buf, key_len, &val);
+		if (ret > 0 || strcmp(*val, key_buf) > 0) {
+			diag("%s: '%s' is not before the key %zu/'%s'", __func__, (char*)*val, i, keys[i]);
+			return false; /* Found key must be LEQ than searched. */
+		}
+	}
+
+	/* Current key. */
+	key_buf[key_len - 2] += 1;
+	ret = hattrie_find_leq(trie, key_buf, key_len, &val);
+	if (! (ret == 0 && val && strcmp(*val, key_buf) == 0)) {
+		diag("%s: leq for key %zu/'%s' ret = %d", __func__, i, keys[i], ret);
+		return false; /* Must find equal match. */
+	}
+
+	/* After the current key. */
+	key_buf[key_len - 2] += 1;
+	ret = hattrie_find_leq(trie, key_buf, key_len, &val);
+	if (! (ret <= 0 && strcmp(*val, key_buf) <= 0)) {
+		diag("%s: leq for key AFTER %zu/'%s' ret = %d %s", __func__, i, keys[i], ret, (char*)*val);
+		return false; /* Every key must have its LEQ match. */
+	}
+
 	return true;
+
 }
 
+/* UCW array sorting defines. */
+#define ASORT_PREFIX(X) str_key_##X
+#define ASORT_KEY_TYPE char*
+#define ASORT_LT(x, y) (strcmp((x), (y)) < 0)
+#include "common/array-sort.h"
 
 int main(int argc, char *argv[])
 {
-	plan(9);
+	plan(7);
 
-	/* Interesting intems. */
-	unsigned count = 10;
-	const char *items[] = {
-		"abcd",
-		"abc",
-		"ab",
-		"a",
-		"abcdefghijklmnopqrstuvw",
-		"abAcd",
-		"abcA",
-		"abA",
-		"Aab",
-		"A"
-	};
-
-	/* Dummy items. */
+	/* Random keys. */
 	srand(time(NULL));
-	unsigned dummy_count = 65535;
-	char **dummy = xmalloc(sizeof(char*) * dummy_count);
-	for (unsigned i = 0; i < dummy_count; ++i) {
-		dummy[i] = randstr();
+	unsigned key_count = 100000;
+	char **keys = xmalloc(sizeof(char*) * key_count);
+	for (unsigned i = 0; i < key_count; ++i) {
+		keys[i] = str_key_rand(KEY_MAXLEN);
 	}
 
-	/* Test 1: Create */
-	value_t *v = NULL;
-	hattrie_t *t = hattrie_create();
-	ok(t != NULL, "hattrie: create");
+	/* Sort random keys. */
+	str_key_sort(keys, key_count);
 
-	/* Test 2: Insert */
-	unsigned passed = 1;
-	unsigned really_inserted = 0;
-	for (unsigned i = 0; i < count; ++i) {
-		v = hattrie_get(t, items[i], strlen(items[i]));
-		if (!v) {
-			passed = 0;
+	/* Create trie */
+	value_t *val = NULL;
+	hattrie_t *trie = hattrie_create();
+	ok(trie != NULL, "hattrie: create");
+
+	/* Insert keys */
+	bool passed = true;
+	size_t inserted = 0;
+	for (unsigned i = 0; i < key_count; ++i) {
+		val = hattrie_get(trie, keys[i], strlen(keys[i]) + 1);
+		if (!val) {
+			passed = false;
 			break;
 		}
-		if (*v == NULL) {
-			++really_inserted;
+		if (*val == NULL) {
+			*val = keys[i];
+			++inserted;
 		}
-		*v = (value_t)items[i];
 	}
 	ok(passed, "hattrie: insert");
 
-	/* Test 3: Insert dummy. */
-	passed = 1;
-	for (unsigned i = 0; i < dummy_count; ++i) {
-		v = hattrie_get(t, dummy[i], strlen(dummy[i]));
-		if (!v) {
-			passed = 0;
-			break;
-		}
-		if (*v == NULL) {
-			*v = dummy[i];
-			++really_inserted;
-		}
-	}
-	ok(passed, "hattrie: dummy insert");
-
-	/* Test 4: Lookup */
-	passed = 1;
-	for (unsigned i = 0; i < count; ++i) {
-		v = hattrie_tryget(t, items[i], strlen(items[i]));
-		if (!v || *v != items[i]) {
-			diag("hattrie: mismatch on element '%u'", i);
-			passed = 0;
-			break;
-		}
-	}
-	ok(passed, "hattrie: lookup");
-
-	/* Test 5: LPR lookup */
-	unsigned lpr_count = 5;
-	const char *lpr[] = {
-		"abcdZ",
-		"abcZ",
-		"abZ",
-		"aZ",
-		"abcdefghijklmnopqrstuvw"
-	};
-	passed = 1;
-	for (unsigned i = 0; i < lpr_count; ++i) {
-		int ret = hattrie_find_lpr(t, lpr[i], strlen(lpr[i]), &v);
-		if (!v || ret != 0 || *v != items[i]) {
-			diag("hattrie: lpr='%s' mismatch lpr(%s) != %s",
-			     (char *)(!v ? "<NULL>" : *v), lpr[i], items[i]);
-			passed = 0;
-			break;
-		}
-	}
-	ok(passed, "hattrie: longest prefix match");
-
-	/* Test 6: false LPR lookup */
-	const char *false_lpr = "Z";
-	int ret = hattrie_find_lpr(t, false_lpr, strlen(false_lpr), &v);
-	ok(ret != 0 && v == NULL, "hattrie: non-existent prefix lookup");
-
 	/* Check total insertions against trie weight. */
-	is_int(hattrie_weight(t), really_inserted, "hattrie: trie weight matches insertions");
+	is_int(hattrie_weight(trie), inserted, "hattrie: trie weight matches insertions");
+
+	/* Build order-index. */
+	hattrie_build_index(trie);
+
+	/* Lookup all keys */
+	passed = true;
+	for (unsigned i = 0; i < key_count; ++i) {
+		val = hattrie_tryget(trie, keys[i], strlen(keys[i]) + 1);
+		if (val && (*val == keys[i] || strcmp(*val, keys[i]) == 0)) {
+			continue;
+		} else {
+			diag("hattrie: mismatch on element '%u'", i);
+			passed = false;
+			break;
+		}
+	}
+	ok(passed, "hattrie: lookup all keys");
+
+	/* Lesser or equal lookup. */
+	passed = true;
+	for (unsigned i = 0; i < key_count; ++i) {
+		if (!str_key_find_leq(trie, keys, i, key_count)) {
+			passed = false;
+			for (int off = -10; off < 10; ++off) {
+				int k = (int)i + off;
+				if (k < 0 || k >= key_count) {
+					continue;
+				}
+				diag("[%u/%d]: %s%s", i, off, off == 0?">":"",keys[k]);
+			}
+			break;
+		}
+	}
+	ok(passed, "hattrie: find lesser or equal for all keys");
 
 	/* Unsorted iteration */
-	unsigned counted = 0;
-	hattrie_iter_t *it = hattrie_iter_begin(t, false);
+	size_t iterated = 0;
+	hattrie_iter_t *it = hattrie_iter_begin(trie, false);
 	while (!hattrie_iter_finished(it)) {
-		++counted;
+		++iterated;
 		hattrie_iter_next(it);
 	}
-	is_int(really_inserted, counted, "hattrie: unsorted iteration");
+	is_int(inserted, iterated, "hattrie: unsorted iteration");
 	hattrie_iter_free(it);
 
 	/* Sorted iteration. */
-	size_t len = 0, prev_len = 0;
-	char *prev = NULL;
-	counted = 0;
-	hattrie_build_index(t);
-	it = hattrie_iter_begin(t, true);
+	char key_buf[KEY_MAXLEN] = {'\0'};
+	iterated = 0;
+	it = hattrie_iter_begin(trie, true);
 	while (!hattrie_iter_finished(it)) {
-		const char *cur = hattrie_iter_key(it, &len);
-		if (!str_check_sort(prev, cur, prev_len, len)) {
-			diag("(%zu)'%s' < (%zu)'%s' FAIL\n",
-			     prev_len, prev, len, cur);
-			break;
+		size_t cur_key_len = 0;
+		const char *cur_key = hattrie_iter_key(it, &cur_key_len);
+		if (iterated > 0) { /* Only if previous exists. */
+			if (strcmp(key_buf, cur_key) > 0) {
+				diag("'%s' <= '%s' FAIL\n", key_buf, cur_key);
+				break;
+			}
 		}
-		++counted;
-		free(prev);
-		prev = xmalloc(len);
-		memcpy(prev, cur, len);
-		prev_len = len;
+		++iterated;
+		memcpy(key_buf, cur_key, cur_key_len);
 		hattrie_iter_next(it);
 	}
-	free(prev);
-	is_int(really_inserted, counted, "hattrie: sorted iteration");
+	is_int(inserted, iterated, "hattrie: sorted iteration");
 	hattrie_iter_free(it);
 
-	for (unsigned i = 0; i < dummy_count; ++i) {
-		free(dummy[i]);
+	/* Cleanup */
+	for (unsigned i = 0; i < key_count; ++i) {
+		free(keys[i]);
 	}
-	free(dummy);
-	hattrie_free(t);
+	free(keys);
+	hattrie_free(trie);
 	return 0;
 }

@@ -85,6 +85,22 @@ AS_CASE([$enable_fastparser],
 AM_CONDITIONAL([G2_PARSER], test "$enable_fastparser" = "yes")
 AM_CONDITIONAL([T0_PARSER], test "$enable_fastparser" = "no")
 
+# Systemd integration
+AC_ARG_ENABLE([systemd],
+    AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd notification mechanism [default=auto]]),
+    [enable_systemd="$enableval"], [enable_systemd=auto])
+
+case "$enable_systemd" in
+    auto) PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon], [enable_systemd=yes], [enable_systemd=no]) ;;
+    yes)  PKG_CHECK_MODULES([systemd_daemon], [libsystemd-daemon]) ;;
+    no)   ;;
+    *)    AC_MSG_ERROR([Invalid value of --enable-systemd.]) ;;
+esac
+
+if test "$enable_systemd" = yes; then
+    AC_DEFINE([ENABLE_SYSTEMD_NOTIFY], [1], [Use systemd notifications.])
+fi
+
 # Debug modules
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,rr,ns,loader,dnssec],
@@ -371,5 +387,6 @@ echo "
   Libs: ${LIBS}
   Ragel: ${RAGEL} ${FSM_TYPE}
   Utils with IDN: ${libidn}
+  Use systemd notifications: ${enable_systemd}
 
   Continue with 'make' command"

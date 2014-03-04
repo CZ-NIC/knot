@@ -180,7 +180,7 @@ struct testlist {
  */
 static const char usage_message[] = "\
 Usage: %s [-b <build-dir>] [-s <source-dir>] <test> ...\n\
-       %s [-b <build-dir>] [-s <source-dir>] -l <test-list>\n\
+       %s [-b <build-dir>] [-s <source-dir>] -l <test-list> -L <log-file>\n\
        %s -o [-b <build-dir>] [-s <source-dir>] <test>\n\
 \n%s";
 static const char usage_extra[] = "\
@@ -189,6 +189,7 @@ Options:\n\
     -l <list>           Take the list of tests to run from <test-list>\n\
     -o                  Run a single test rather than a list of tests\n\
     -s <source-dir>     Set the source directory to <source-dir>\n\
+    -L <log-file>       Set log file for a list of tests\n\
 \n\
 runtests normally runs each test listed on the command line.  With the -l\n\
 option, it instead runs every test listed in a file.  With the -o option,\n\
@@ -857,6 +858,15 @@ test_analyze(struct testset *ts)
     }
 }
 
+static void
+cond_fputs(const char *buffer, FILE *stream)
+{
+	if (!stream) {
+		return;
+	}
+
+	fputs(buffer, stream);
+}
 
 /*
  * Runs a single test set, accumulating and then reporting the results.
@@ -864,7 +874,7 @@ test_analyze(struct testset *ts)
  * false otherwise.
  */
 static int
-test_run(struct testset *ts)
+test_run(struct testset *ts, FILE *logfile)
 {
     pid_t testpid, child;
     int outfd, status;
@@ -882,8 +892,10 @@ test_run(struct testset *ts)
     }
 
     /* Pass each line of output to test_checkline(). */
-    while (!ts->aborted && fgets(buffer, sizeof(buffer), output))
+    while (!ts->aborted && fgets(buffer, sizeof(buffer), output)) {
+        cond_fputs(buffer, logfile);
         test_checkline(buffer, ts);
+    }
     if (ferror(output) || ts->plan == PLAN_INIT)
         ts->aborted = 1;
     test_backspace(ts);
@@ -1149,7 +1161,8 @@ free_testset(struct testset *ts)
  * frees the test list that's passed in.
  */
 static int
-test_batch(struct testlist *tests, const char *source, const char *build)
+test_batch(struct testlist *tests, const char *source, const char *build,
+           const char *logfile_name)
 {
     size_t length;
     unsigned int i;
@@ -1162,6 +1175,7 @@ test_batch(struct testlist *tests, const char *source, const char *build)
     struct testlist *failtail = NULL;
     struct testlist *current, *next;
     int succeeded;
+    FILE *logfile = NULL;
     unsigned long total = 0;
     unsigned long passed = 0;
     unsigned long skipped = 0;
@@ -1186,6 +1200,14 @@ test_batch(struct testlist *tests, const char *source, const char *build)
     /* Start the wall clock timer. */
     gettimeofday(&start, NULL);
 
+    /* Open the log (soft error). */
+    if (logfile_name != NULL) {
+        logfile = fopen(logfile_name, "w+");
+        if (!logfile) {
+            fprintf(stderr, "Could not open the log file.\n");
+        }
+    }
+
     /* Now, plow through our tests again, running each one. */
     for (current = tests; current != NULL; current = current->next) {
         ts = current->ts;
@@ -1199,7 +1221,7 @@ test_batch(struct testlist *tests, const char *source, const char *build)
 
         /* Run the test. */
         ts->path = find_test(ts->file, source, build);
-        succeeded = test_run(ts);
+        succeeded = test_run(ts, logfile);
         fflush(stdout);
 
         /* Record cumulative statistics. */
@@ -1224,6 +1246,11 @@ test_batch(struct testlist *tests, const char *source, const char *build)
         }
     }
     total -= skipped;
+
+    /* Close the log. */
+    if (logfile) {
+        fclose(logfile);
+    }
 
     /* Stop the timer and get our child resource statistics. */
     gettimeofday(&end, NULL);
@@ -1308,9 +1335,10 @@ main(int argc, char *argv[])
     const char *list = NULL;
     const char *source = SOURCE;
     const char *build = BUILD;
+    const char *logfile = NULL;
     struct testlist *tests;
 
-    while ((option = getopt(argc, argv, "b:hl:os:")) != EOF) {
+    while ((option = getopt(argc, argv, "b:hl:os:L:")) != EOF) {
         switch (option) {
         case 'b':
             build = optarg;
@@ -1327,6 +1355,9 @@ main(int argc, char *argv[])
             break;
         case 's':
             source = optarg;
+            break;
+        case 'L':
+            logfile = optarg;
             break;
         default:
             exit(1);
@@ -1366,10 +1397,10 @@ main(int argc, char *argv[])
             shortlist++;
         printf(banner, shortlist);
         tests = read_test_list(list);
-        status = test_batch(tests, source, build) ? 0 : 1;
+        status = test_batch(tests, source, build, logfile) ? 0 : 1;
     } else {
         tests = build_test_list(argv, argc);
-        status = test_batch(tests, source, build) ? 0 : 1;
+        status = test_batch(tests, source, build, logfile) ? 0 : 1;
     }
 
     /* For valgrind cleanliness, free all our memory. */

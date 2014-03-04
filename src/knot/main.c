@@ -26,6 +26,10 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
+#ifdef ENABLE_SYSTEMD_NOTIFY
+#include <systemd/sd-daemon.h>
+#endif
+
 #include "libknot/common.h"
 #include "libknot/dnssec/crypto.h"
 #include "knot/knot.h"
@@ -42,23 +46,39 @@ static volatile short sig_req_stop = 0;
 static volatile short sig_req_reload = 0;
 static volatile short sig_stopping = 0;
 
-// atexit() handler for server code
+/* \brief Signal started state to the init system. */
+static void init_signal_started(void)
+{
+#ifdef ENABLE_SYSTEMD_NOTIFY
+	sd_notify(0, "READY=1");
+#endif
+}
+
+/*! \brief atexit() handler for server code. */
 static void knot_crypto_deinit(void)
 {
 	knot_crypto_cleanup();
 	knot_crypto_cleanup_threads();
 }
 
-// SIGINT signal handler
+/*! \brief PID file cleanup handler. */
+static void pid_cleanup(char *pidfile)
+{
+	if (pidfile && pid_remove(pidfile) < 0) {
+		log_server_warning("Failed to remove PID file.\n");
+	}
+}
+
+/*! \brief SIGINT signal handler. */
 void interrupt_handle(int s)
 {
-	// Reload configuration
+	/* Reload configuration. */
 	if (s == SIGHUP) {
 		sig_req_reload = 1;
 		return;
 	}
 
-	// Stop server
+	/* Stop server. */
 	if (s == SIGINT || s == SIGTERM) {
 		if (sig_stopping == 0) {
 			sig_req_stop = 1;
@@ -95,7 +115,7 @@ static void setup_capabilities(void)
 		/* Allow priorities changing. */
 		capng_update(CAPNG_ADD, tp, CAP_SYS_NICE);
 
-		/* Apply */
+		/* Apply. */
 		if (capng_apply(CAPNG_SELECT_BOTH) < 0) {
 			log_server_error("Couldn't set process capabilities - "
 			                 "%s.\n", strerror(errno));
@@ -110,7 +130,7 @@ static void setup_capabilities(void)
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server)
 {
-	// Setup signal handler
+	/* Setup signal handler. */
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = interrupt_handle;
@@ -127,7 +147,7 @@ static void event_loop(server_t *server)
 	int remote = remote_bind(conf()->ctl.iface);
 
 	/* Run event loop. */
-	for(;;) {
+	for (;;) {
 		pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 		int ret = remote_poll(remote);
 		pthread_sigmask(SIG_BLOCK, &sa.sa_mask, NULL);
@@ -136,7 +156,7 @@ static void event_loop(server_t *server)
 		if (ret > 0) {
 			ret = remote_process(server, conf()->ctl.iface,
 			                     remote, buf, buflen);
-			switch(ret) {
+			switch (ret) {
 			case KNOT_CTL_STOP:
 				sig_req_stop = 1;
 				break;
@@ -158,7 +178,7 @@ static void event_loop(server_t *server)
 	}
 	pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
 
-	/* Close remote control interface */
+	/* Close remote control interface. */
 	remote_unbind(conf()->ctl.iface, remote);
 
 	/* Wait for server to finish. */
@@ -179,7 +199,7 @@ static void help(void)
 
 int main(int argc, char **argv)
 {
-	// Parse command line arguments
+	/* Parse command line arguments. */
 	int c = 0, li = 0;
 	int verbose = 0;
 	int daemonize = 0;
@@ -224,13 +244,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Check for non-option parameters.
+	/* Check for non-option parameters. */
 	if (argc - optind > 0) {
 		help();
 		return EXIT_FAILURE;
 	}
 
-	// Now check if we want to daemonize
+	/* Now check if we want to daemonize. */
 	if (daemonize) {
 		if (daemon(1, 0) != 0) {
 			fprintf(stderr, "Daemonization failed, shutting down...\n");
@@ -238,27 +258,27 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Initialize cryptographic backend
+	/* Initialize cryptographic backend. */
 	knot_crypto_init();
 	knot_crypto_init_threads();
 	atexit(knot_crypto_deinit);
 
-	// Initialize log
+	/* Initialize log. */
 	log_init();
 
-	// Verbose mode
+	/* Verbose mode. */
 	if (verbose) {
 		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
 		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
 	}
 
-	// Initialize pseudorandom number generator
+	/* Initialize pseudorandom number generator. */
 	srand(time(NULL));
 
 	/* POSIX 1003.1e capabilities. */
 	setup_capabilities();
 
-	/* Open configuration */
+	/* Open configuration. */
 	log_server_info("Reading configuration '%s' ...\n", config_fn);
 	int conf_ret = conf_open(config_fn);
 	conf_t *config = conf();
@@ -270,12 +290,14 @@ int main(int argc, char **argv)
 			log_server_error("Failed to load configuration '%s'.\n",
 			                 config_fn);
 		}
+		log_close();
 		return EXIT_FAILURE;
 	}
 
 	/* Alter privileges. */
 	log_update_privileges(config->uid, config->gid);
 	if (proc_update_privileges(config->uid, config->gid) != KNOT_EOK) {
+		log_close();
 		return EXIT_FAILURE;
 	}
 
@@ -311,14 +333,17 @@ int main(int argc, char **argv)
 	/* Initialize configuration hooks. */
 	log_reconfigure(config, NULL);
 	conf_add_hook(config, CONF_LOG, log_reconfigure, NULL);
-	log_server_info("Initializing server...\n");
 
-	/* Create server */
+	/* Initialize server. */
 	server_t server;
+	log_server_info("Initializing server...\n");
 	int res = server_init(&server);
 	if (res != KNOT_EOK) {
-		fprintf(stderr, "Could not initialize server: %s\n",
-		        knot_strerror(res));
+		log_server_fatal("Could not initialize server: %s\n",
+		                 knot_strerror(res));
+		rcu_unregister_thread();
+		pid_cleanup(pidfile);
+		log_close();
 		return EXIT_FAILURE;
 	}
 
@@ -340,39 +365,38 @@ int main(int argc, char **argv)
 
 	/* Start it up. */
 	log_server_info("Starting server...\n");
-	if ((server_start(&server)) == KNOT_EOK) {
-		if (daemonize) {
-			log_server_info("Server started as a daemon, PID = %ld\n",
-			                pid);
-		} else {
-			log_server_info("Server started in foreground, PID = %ld\n",
-			                pid);
-		}
-
-		/* Start the event loop. */
-		event_loop(&server);
-	} else {
-		log_server_fatal("Server failed to start: %s.\n",
+	res = server_start(&server);
+	if (res != KNOT_EOK) {
+		log_server_fatal("Failed to start server: %s.\n",
 		                 knot_strerror(res));
+		server_deinit(&server);
+		rcu_unregister_thread();
+		pid_cleanup(pidfile);
+		log_close();
+		return EXIT_FAILURE;
 	}
 
-	/* Unhook from RCU */
-	rcu_unregister_thread();
+	if (daemonize) {
+		log_server_info("Server started as a daemon, PID = %ld\n", pid);
+	} else {
+		log_server_info("Server started in foreground, PID = %ld\n", pid);
+		init_signal_started();
+	}
+
+	/* Start the event loop. */
+	event_loop(&server);
 
 	/* Teardown server and configuration. */
 	server_deinit(&server);
 
+	/* Unhook from RCU. */
+	rcu_unregister_thread();
+
 	/* Cleanup PID file. */
-	if (pidfile && pid_remove(pidfile) < 0) {
-		log_server_warning("Failed to remove PID file.\n");
-	}
+	pid_cleanup(pidfile);
 
 	log_server_info("Shut down.\n");
 	log_close();
-
-	if (res != KNOT_EOK) {
-		return EXIT_FAILURE;
-	}
 
 	return EXIT_SUCCESS;
 }
