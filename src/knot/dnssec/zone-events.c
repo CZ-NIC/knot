@@ -84,8 +84,8 @@ static int zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
 	// Init needed structs
 	knot_zone_keys_t zone_keys = { '\0' };
 	knot_dnssec_policy_t policy = { '\0' };
-	int result = init_dnssec_structs(zone, zone_config, &zone_keys, &policy, soa_up,
-	                                 force);
+	int result = init_dnssec_structs(zone, zone_config, &zone_keys, &policy,
+	                                 soa_up, force);
 	if (result != KNOT_EOK) {
 		free(msgpref);
 		return result;
