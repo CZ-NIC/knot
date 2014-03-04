@@ -23,7 +23,6 @@ libdnssec_la_SOURCES =	\
 	src/keystore.h \
 	src/keytag.c \
 	src/keytag.h \
-	src/pkcs8.c \
 	src/shared.h \
 	src/sign.c \
 	src/sign.h \

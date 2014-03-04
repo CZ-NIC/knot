@@ -1,12 +1,15 @@
 #include <assert.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
-#include "shared.h"
 #include "error.h"
 #include "key.h"
+#include "keystore/keydir.h"
+#include "keystore/keystore.h"
 #include "shared.h"
 
 typedef struct keydir_ctx {
@@ -25,6 +28,7 @@ static int keydir_open(void **context, const char *path)
 	}
 
 	memset(ctx, 0, sizeof(keydir_ctx_t));
+	// TODO: convert to absolute path and normalize
 	ctx->path = strdup(path);
 
 	*context = ctx;
@@ -55,8 +59,36 @@ static int keydir_refresh(void *context)
 	return DNSSEC_EOK;
 }
 
+static char *get_key_path(keydir_ctx_t *ctx, dnssec_key_id_t key_id)
+{
+	assert(key_id);
+
+	_cleanup_free_ char *key_id_str = dnssec_key_id_to_string(key_id);
+	if (!key_id_str) {
+		return NULL;;
+	}
+
+	// <path> / <key-id> .pem <null>
+	size_t len = strlen(ctx->path) + 1 + DNSSEC_KEY_ID_STRING_SIZE + 4 + 1;
+	char *path = malloc(len);
+	if (!path) {
+		return NULL;
+	}
+
+	int wrote = snprintf(path, len, "%s/%s.pem", ctx->path, key_id_str);
+	assert(wrote == len);
+
+	return path;
+}
+
 static int keydir_load_key(void *context, dnssec_key_id_t key_id, dnssec_binary_t *data)
 {
+	if (!context || !key_id || !data) {
+		return DNSSEC_EINVAL;
+	}
+
+	keydir_ctx_t *ctx = context;
+
 	return DNSSEC_ERROR;
 }
 
@@ -68,17 +100,18 @@ static int keydir_store_key(void *context, const dnssec_key_id_t key_id, const d
 
 	keydir_ctx_t *ctx = context;
 
-	char filename[PATH_MAX] = { 0 };
-	_cleanup_free_ char *key_id_str = dnssec_key_id_to_string(key_id);
-
-	if (snprintf(filename, PATH_MAX, "%s/%s.pem", ctx->path, key_id_str) < 0) {
+	_cleanup_free_ char *filename = get_key_path(ctx, key_id);
+	if (!filename) {
 		return DNSSEC_ENOMEM;
 	}
 
-	// TODO: check existence
-	// TODO: create with correct permissions
-	_cleanup_fclose_ FILE *keyfile = fopen(filename, "w");
-	if (!keyfile) {
+	_cleanup_close_ int fd = open(filename, O_WRONLY|O_CREAT||O_EXCL, S_IRUSR|S_IWUSR);
+	if (fd == -1) {
+		return dnssec_errno_to_error(errno);
+	}
+
+	_cleanup_fclose_ FILE *file = fdopen(fd, "w");
+	if (!file) {
 		return dnssec_errno_to_error(errno);
 	}
 
@@ -87,9 +120,7 @@ static int keydir_store_key(void *context, const dnssec_key_id_t key_id, const d
 	return written == 1 ? DNSSEC_EOK : DNSSEC_EIO;
 }
 
-//static dnssec_key_storage_keydir_implementation = {
-//	.open = keydir_open,
-//	.close = keydir_close,
-//	.refresh = keydir_refresh,
-//	.load_key = keydir_load_key,
-//};
+const dnssec_keystore_impl_t DNSSEC_KEYSTORE_KEYDIR_IMPL = {
+	.foo = 1,
+	.bar = 2,
+};
