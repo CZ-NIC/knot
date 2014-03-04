@@ -11,6 +11,8 @@ libdnssec_la_SOURCES =	\
 	src/binary.c \
 	src/binary.h \
 	src/error.h \
+	src/hex.c \
+	src/hex.h \
 	src/key.c \
 	src/key.h \
 	src/keys/legacy.c \
