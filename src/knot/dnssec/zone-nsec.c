@@ -109,6 +109,17 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	return true;
 }
 
+/*!
+ * \brief Finds a node with the same owner as the given NSEC3 RRSet and marks it
+ *        as 'removed'.
+ *
+ * \param data NSEC3 tree to search for the node in. (type knot_zone_tree_t *).
+ * \param rrset RRSet whose owner will be sought in the zone tree. non-NSEC3
+ *              RRSets are ignored.
+ *
+ * This function is constructed as a callback for the knot_changeset_apply() f
+ * function.
+ */
 static int mark_nsec3(knot_rrset_t *rrset, void *data)
 {
 	assert(rrset != NULL);
@@ -119,7 +130,6 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 	int ret;
 
 	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
-		printf("NSEC3 in REMOVE section.\n");
 		// Find the name in the NSEC3 tree and mark the node
 		ret = knot_zone_tree_get(nsec3s, knot_rrset_owner(rrset),
 		                         &node);
@@ -135,6 +145,12 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Marks all NSEC3 nodes in zone from which RRSets are to be removed.
+ *
+ * For each NSEC3 RRSet in the changeset finds its node and marks it with the
+ * 'removed' flag.
+ */
 static int mark_removed_nsec3(knot_changeset_t *out_ch,
                               const knot_zone_contents_t *zone)
 {
