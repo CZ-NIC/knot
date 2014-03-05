@@ -25,24 +25,24 @@
 #include <sys/stat.h>			// fstat
 #include <sys/mman.h>			// mmap
 
-#include "zscanner/file_loader.h"
-#include "zscanner/error.h"		// error codes
+#include "zscanner/loader.h"
+#include "zscanner/error.h"
 
 /*! \brief Mmap block size in bytes. This value is then adjusted to the
  *         multiple of memory pages which fit in.
  */
 #define BLOCK_SIZE      30000000
 
-file_loader_t* file_loader_create(const char     *file_name,
-                                  const char     *origin,
-                                  const uint16_t rclass,
-                                  const uint32_t ttl,
-                                  void (*process_record)(const scanner_t *),
-                                  void (*process_error)(const scanner_t *),
-                                  void *data)
+zs_loader_t* zs_loader_create(const char     *file_name,
+                              const char     *origin,
+                              const uint16_t rclass,
+                              const uint32_t ttl,
+                              void (*process_record)(const zs_scanner_t *),
+                              void (*process_error)(const zs_scanner_t *),
+                              void *data)
 {
 	// Creating zeroed structure.
-	file_loader_t *fl = calloc(1, sizeof(file_loader_t));
+	zs_loader_t *fl = calloc(1, sizeof(zs_loader_t));
 	if (fl == NULL) {
 		return NULL;
 	}
@@ -59,8 +59,8 @@ file_loader_t* file_loader_create(const char     *file_name,
 	}
 
 	// Creating zone scanner.
-	fl->scanner = scanner_create(fl->file_name, origin, rclass, ttl,
-	                             process_record, process_error, data);
+	fl->scanner = zs_scanner_create(fl->file_name, origin, rclass, ttl,
+	                                process_record, process_error, data);
 	if (fl->scanner == NULL) {
 		close(fl->fd);
 		free(fl->file_name);
@@ -71,15 +71,15 @@ file_loader_t* file_loader_create(const char     *file_name,
 	return fl;
 }
 
-void file_loader_free(file_loader_t *fl)
+void zs_loader_free(zs_loader_t *fl)
 {
 	close(fl->fd);
 	free(fl->file_name);
-	scanner_free(fl->scanner);
+	zs_scanner_free(fl->scanner);
 	free(fl);
 }
 
-int file_loader_process(file_loader_t *fl)
+int zs_loader_process(zs_loader_t *fl)
 {
 	int		ret = 0;
 	char		*data;		// Mmaped data.
@@ -143,17 +143,17 @@ int file_loader_process(file_loader_t *fl)
 		}
 
 		// Scan zone file.
-		ret = scanner_process(data,
-		                      data + block_size,
-		                      false,
-		                      fl->scanner);
+		ret = zs_scanner_process(data,
+		                         data + block_size,
+		                         false,
+		                         fl->scanner);
 
 		// Artificial last block containing newline char only.
 		if (is_last_block == true && fl->scanner->stop == 0) {
-			ret = scanner_process(zone_termination,
-			                      zone_termination + 1,
-			                      true,
-			                      fl->scanner);
+			ret = zs_scanner_process(zone_termination,
+			                         zone_termination + 1,
+			                         true,
+			                         fl->scanner);
 		}
 
 		// Zone file block unmapping.

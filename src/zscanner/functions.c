@@ -18,10 +18,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "zscanner/scanner_functions.h"
-#include "zscanner/error.h"		// error codes
-#include "zscanner/scanner.h"		// scanner_t
-#include "common/descriptor.h"		// KNOT_RDATA_WF_END
+#include "zscanner/functions.h"
+#include "zscanner/error.h"
+#include "zscanner/scanner.h"		// ASCII_0
 
 const uint8_t digit_to_num[] = {
     ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,

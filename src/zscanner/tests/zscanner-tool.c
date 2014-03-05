@@ -21,10 +21,10 @@
 #include <getopt.h>			// getopt
 #include <pthread.h>			// pthread_t
 
-#include "error.h"		// knot_strerror
-#include "file_loader.h"	// file_loader
-#include "tests/processing.h"	// processing functions
-#include "tests/tests.h"	// test functions
+#include "error.h"
+#include "loader.h"
+#include "tests/processing.h"
+#include "tests/tests.h"
 
 #define DEFAULT_MODE	1
 #define DEFAULT_CLASS	1
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	// Parsed command line arguments.
 	int c = 0, li = 0;
 	int ret, mode = DEFAULT_MODE, test = 0;
-	file_loader_t *fl;
+	zs_loader_t *fl;
 	const char *origin;
 	const char *zone_file;
 
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 		// Create appropriate file loader.
 		switch (mode) {
 		case 0:
-			fl = file_loader_create(zone_file,
+			fl = zs_loader_create(zone_file,
 			                        origin,
 			                        DEFAULT_CLASS,
 			                        DEFAULT_TTL,
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 			                        NULL);
 			break;
 		case 1:
-			fl = file_loader_create(zone_file,
+			fl = zs_loader_create(zone_file,
 			                        origin,
 			                        DEFAULT_CLASS,
 			                        DEFAULT_TTL,
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 			                        NULL);
 			break;
 		case 2:
-			fl = file_loader_create(zone_file,
+			fl = zs_loader_create(zone_file,
 			                        origin,
 			                        DEFAULT_CLASS,
 			                        DEFAULT_TTL,
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
 		// Check file loader.
 		if (fl != NULL) {
-			ret = file_loader_process(fl);
+			ret = zs_loader_process(fl);
 
 			switch (ret) {
 			case ZSCANNER_OK:
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 					printf("Zone file has been processed "
 					       "successfully\n");
 				}
-				file_loader_free(fl);
+				zs_loader_free(fl);
 				break;
 
 			case FLOADER_ESCANNER:
@@ -165,14 +165,14 @@ int main(int argc, char *argv[])
 					       "%"PRIu64" warnings/errors!\n",
 					       fl->scanner->error_counter);
 				}
-				file_loader_free(fl);
+				zs_loader_free(fl);
 				return EXIT_FAILURE;
 
 			default:
 				if (mode == DEFAULT_MODE) {
-					printf("%s\n", zscanner_strerror(ret));
+					printf("%s\n", zs_strerror(ret));
 				}
-				file_loader_free(fl);
+				zs_loader_free(fl);
 				return EXIT_FAILURE;
 			}
 		} else {

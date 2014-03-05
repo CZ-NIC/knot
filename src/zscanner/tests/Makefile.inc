@@ -6,7 +6,6 @@ LDADD = \
 
 tests_zscanner_tool_SOURCES = \
 	tests/zscanner-tool.c	\
-	tests/tests.h		\
 	tests/tests.c		\
 	tests/processing.h	\
 	tests/processing.c

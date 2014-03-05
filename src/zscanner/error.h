@@ -102,7 +102,7 @@ enum err_codes {
  *
  * \return String containing the error message.
  */
-const char* zscanner_strerror(const int code);
+const char* zs_strerror(const int code);
 
 /*!
  * \brief Returns error code name of the given error code.
@@ -111,7 +111,7 @@ const char* zscanner_strerror(const int code);
  *
  * \return String containing the error code name.
  */
-const char* zscanner_errorname(const int code);
+const char* zs_errorname(const int code);
 
 #endif // _ZSCANNER__ERROR_H_
 

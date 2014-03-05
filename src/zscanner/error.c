@@ -165,7 +165,7 @@ const err_table_t err_msgs[] = {
 	ERR_ITEM( 0, NULL ) // Terminator
 };
 
-const char* zscanner_strerror(const int code)
+const char* zs_strerror(const int code)
 {
 	const err_table_t *err = err_msgs;
 
@@ -179,7 +179,7 @@ const char* zscanner_strerror(const int code)
 	return NULL;
 }
 
-const char* zscanner_errorname(const int code)
+const char* zs_errorname(const int code)
 {
 	const err_table_t *err = err_msgs;
 

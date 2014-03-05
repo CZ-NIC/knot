@@ -662,17 +662,17 @@
 		}
 
 		// Create new file loader for included zone file.
-		file_loader_t *fl = file_loader_create((char*)(s->buffer),
-		                                       text_origin,
-		                                       s->default_class,
-		                                       s->default_ttl,
-		                                       s->process_record,
-		                                       s->process_error,
-		                                       s->data);
+		zs_loader_t *fl = zs_loader_create((char*)(s->buffer),
+		                                   text_origin,
+		                                   s->default_class,
+		                                   s->default_ttl,
+		                                   s->process_record,
+		                                   s->process_error,
+		                                   s->data);
 		if (fl != NULL) {
 			// Process included zone file.
-			ret = file_loader_process(fl);
-			file_loader_free(fl);
+			ret = zs_loader_process(fl);
+			zs_loader_free(fl);
 
 			if (ret != 0) {
 				ERR(ZSCANNER_EUNPROCESSED_INCLUDE);
