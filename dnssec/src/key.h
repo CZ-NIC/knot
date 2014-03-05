@@ -55,6 +55,7 @@ uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);
 uint16_t dnssec_key_get_flags(const dnssec_key_t *key);
 uint8_t dnssec_key_get_protocol(const dnssec_key_t *key);
 uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key);
+int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey);
 
 // TODO: PKCS 8
 

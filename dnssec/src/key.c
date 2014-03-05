@@ -8,6 +8,7 @@
 #include "error.h"
 #include "hex.h"
 #include "key.h"
+#include "keys/pubkey.h"
 #include "keytag.h"
 #include "wire.h"
 
@@ -48,7 +49,19 @@ static void update_key_id(dnssec_key_t *key)
 		return;
 	}
 
-	strncpy((char *)key->id, "ahoj", 5);
+	assert(key->public_key);
+
+	dnssec_key_id_t new_id;
+	size_t id_size = DNSSEC_KEY_ID_SIZE;
+
+	int r = gnutls_pubkey_get_key_id(key->public_key, 0, new_id, &id_size);
+	if (r != GNUTLS_E_SUCCESS) {
+		return;
+	}
+
+	assert(id_size == DNSSEC_KEY_ID_SIZE);
+
+	memcpy(key->id, new_id, id_size);
 }
 
 int dnssec_key_new(dnssec_key_t **key_ptr)
@@ -140,6 +153,22 @@ uint16_t dnssec_key_get_keytag(const dnssec_key_t *key)
 	return key->keytag;
 }
 
+int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey)
+{
+	if (!key || !pubkey) {
+		return DNSSEC_EINVAL;
+	}
+
+	wire_ctx_t ctx;
+	wire_init_binary(&ctx, &key->rdata);
+	wire_seek(&ctx, 4);
+
+	pubkey->size = wire_available(&ctx);
+	pubkey->data = ctx.position;
+
+	return DNSSEC_EOK;
+}
+
 int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id)
 {
 	if (!key || !id) {
@@ -177,6 +206,16 @@ int dnssec_key_from_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
 
 	assert(wire_tell(&wc) == key->rdata.size);
 
+	int result = gnutls_pubkey_init(&key->public_key);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	result = rdata_to_pubkey(algorithm, public_key, key->public_key);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
 	update_keytag(key);
 	update_key_id(key);
 
@@ -190,6 +229,23 @@ int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata)
 	}
 
 	int result = dnssec_binary_dup(rdata, &key->rdata);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	uint8_t algorithm = dnssec_key_get_algorithm(key);
+	dnssec_binary_t pubkey = { 0 };
+	result = dnssec_key_get_pubkey(key, &pubkey);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	result = gnutls_pubkey_init(&key->public_key);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	result = rdata_to_pubkey(algorithm, &pubkey, key->public_key);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
