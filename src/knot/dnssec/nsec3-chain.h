@@ -16,10 +16,9 @@
 /*!
  * \file nsec3-chain-fix.h
  *
- * \author Jan Kadlec <jan.kadlec@nic.cz> (chain fix)
  * \author Jan Vcelak <jan.vcelak@nic.cz> (chain creation)
  *
- * \brief NSEC3 chain fix and creation.
+ * \brief NSEC3 chain creation.
  *
  * \addtogroup dnssec
  * @{
@@ -42,15 +41,5 @@
  */
 int knot_nsec3_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
                             knot_changeset_t *changeset);
-
-/*!
- * \brief Fixes NSEC3 chain after DDNS/reload.
- *
- * \param sorted_changes  Sorted changes created by changeset sign function.
- * \param fix_data        Chain fix data.
- *
- * \return KNOT_E*
- */
-int knot_nsec3_fix_chain(hattrie_t *sorted_changes, chain_fix_data_t *fix_data);
 
 #endif // _KNOT_DNSSEC_NSEC3_CHAIN_FIX_H_
