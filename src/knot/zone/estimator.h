@@ -28,7 +28,7 @@
 #define _KNOT_ESTIMATOR_H_
 
 #include "common/hattrie/hat-trie.h"
-#include "zscanner/scanner.h"
+#include "zscanner/zscanner.h"
 
 // Mutiplicative constant, needed because of malloc's fragmentation
 static const double ESTIMATE_MAGIC = 1.2;
@@ -76,7 +76,7 @@ size_t estimator_trie_ahtable_memsize(hattrie_t *table);
  *
  * \param scanner Scanner context.
  */
-void estimator_rrset_memsize_wrap(const scanner_t *scanner);
+void estimator_rrset_memsize_wrap(const zs_scanner_t *scanner);
 
 /*!
  * \brief Cleanup function for use with hattrie.
