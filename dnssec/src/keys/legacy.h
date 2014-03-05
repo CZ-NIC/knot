@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../binary.h"
-#include "../key.h"
+#include "binary.h"
+#include "key.h"
 
 int dnssec_key_from_rsa_params(dnssec_key_t *key,
 			       dnssec_key_algorithm_t algorithm,

@@ -200,6 +200,7 @@ int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata)
 	return DNSSEC_EOK;
 }
 
+// TODO: move to crypto abstraction?
 static void binary_to_datum(const dnssec_binary_t *binary, gnutls_datum_t *datum)
 {
 	assert(binary);
@@ -207,11 +208,6 @@ static void binary_to_datum(const dnssec_binary_t *binary, gnutls_datum_t *datum
 
 	datum->data = binary->data;
 	datum->size = binary->size;
-}
-
-static int public_key_to_rdata(gnutls_pubkey_t key, gnutls_datum_t *rdata)
-{
-	return DNSSEC_ENOTSUP;
 }
 
 static void free_x509_privkey(gnutls_x509_privkey_t *ptr)
