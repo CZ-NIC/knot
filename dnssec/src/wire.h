@@ -45,6 +45,15 @@ static inline size_t wire_tell(wire_ctx_t *ctx)
 	return ctx->position - ctx->wire;
 }
 
+static inline size_t wire_available(wire_ctx_t *ctx)
+{
+	assert(ctx);
+
+	size_t position = wire_tell(ctx);
+
+	return ctx->size > position ? (ctx->size - position) : 0;
+}
+
 static inline uint8_t wire_read_u8(wire_ctx_t *ctx)
 {
 	assert(ctx);
@@ -63,6 +72,22 @@ static inline uint16_t wire_read_u16(wire_ctx_t *ctx)
 	ctx->position += 2;
 
 	return ntohs(result);
+}
+
+static inline void wire_read(wire_ctx_t *ctx, uint8_t *data, size_t size)
+{
+	assert(ctx);
+	assert(data);
+
+	memcpy(data, ctx->position, size);
+	ctx->position += size;
+}
+
+static inline void wire_read_binary(wire_ctx_t *ctx, dnssec_binary_t *data)
+{
+	assert(data);
+
+	wire_read(ctx, data->data, data->size);
 }
 
 static inline void wire_write_u8(wire_ctx_t *ctx, uint8_t value)
