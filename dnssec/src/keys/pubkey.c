@@ -7,6 +7,7 @@
 
 #include "binary.h"
 #include "error.h"
+#include "key.h"
 #include "keys/pubkey.h"
 #include "shared.h"
 #include "wire.h"
@@ -127,7 +128,7 @@ int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	}
 
 	assert(p.size == g.size && g.size == y.size);
-	assert(p.size >= 64 && (p.size - 64) % 8 == 0); // TODO: >= ? > 64
+	assert(p.size >= 64 && (p.size - 64) % 8 == 0);
 
 	uint8_t t = (p.size - 64) / 8;
 
@@ -193,7 +194,7 @@ int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	return DNSSEC_EOK;
 }
 
-int rsa_rdata_to_pubkey(dnssec_binary_t *rdata, gnutls_pubkey_t key)
+int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
 	assert(key);
@@ -263,7 +264,7 @@ static bool valid_dsa_rdata_size(size_t size)
 	return true;
 }
 
-int dsa_rdata_to_pubkey(dnssec_binary_t *rdata, gnutls_pubkey_t key)
+int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
 	assert(key);
@@ -320,7 +321,7 @@ static gnutls_ecc_curve_t choose_ecdsa_curve(size_t rdata_size)
 	}
 }
 
-int ecdsa_rdata_to_pubkey(dnssec_binary_t *rdata, gnutls_pubkey_t key)
+int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
 	assert(key);
@@ -354,4 +355,46 @@ int ecdsa_rdata_to_pubkey(dnssec_binary_t *rdata, gnutls_pubkey_t key)
 	}
 
 	return DNSSEC_EOK;
+}
+
+int pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
+{
+	assert(key);
+	assert(rdata);
+
+	int algorithm = gnutls_pubkey_get_pk_algorithm(key, NULL);
+	if (algorithm < 0) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+
+	switch ((gnutls_pk_algorithm_t)algorithm) {
+	case GNUTLS_PK_RSA: return rsa_pubkey_to_rdata(key, rdata);
+	case GNUTLS_PK_DSA: return dsa_pubkey_to_rdata(key, rdata);
+	case GNUTLS_PK_EC:  return ecdsa_pubkey_to_rdata(key, rdata);
+	default:
+		return DNSSEC_INVALID_KEY_ALGORITHM;
+	}
+}
+
+int rdata_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
+		    gnutls_pubkey_t key)
+{
+	assert(rdata);
+	assert(key);
+
+	switch ((dnssec_key_algorithm_t)algorithm) {
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
+		return rsa_rdata_to_pubkey(rdata, key);
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
+		return dsa_rdata_to_pubkey(rdata, key);
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+		return ecdsa_rdata_to_pubkey(rdata, key);
+	default:
+		return DNSSEC_INVALID_KEY_ALGORITHM;
+	}
 }
