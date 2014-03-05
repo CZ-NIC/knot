@@ -34,24 +34,24 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/other/debug.h"
 #include "knot/zone/zone-create.h"
-#include "zscanner/file_loader.h"
+#include "zscanner/zscanner.h"
 #include "libknot/rdata.h"
 
-void process_error(const scanner_t *s)
+void process_error(const zs_scanner_t *s)
 {
 	if (s->stop == true) {
 		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "
 		               "Stopping zone loading.\n",
 		               s->file_name, s->line_counter,
-		               zscanner_strerror(s->error_code));
+		               zs_strerror(s->error_code));
 	} else {
 		log_zone_error("Error in zone file %s:%"PRIu64": %s\n",
 		               s->file_name, s->line_counter,
-		               zscanner_strerror(s->error_code));
+		               zs_strerror(s->error_code));
 	}
 }
 
-static int add_rdata_to_rr(knot_rrset_t *rrset, const scanner_t *scanner)
+static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 {
 	return knot_rrset_add_rr(rrset, scanner->r_data, scanner->r_data_length,
 	                         scanner->r_ttl, NULL);
@@ -134,7 +134,7 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
-static void loader_process(const scanner_t *scanner)
+static void loader_process(const zs_scanner_t *scanner)
 {
 	zcreator_t *zc = scanner->data;
 	if (zc->ret != KNOT_EOK) {
@@ -219,10 +219,10 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 
 	/* Create file loader. */
 	memset(loader, 0, sizeof(zloader_t));
-	loader->file_loader = file_loader_create(conf->file, conf->name,
-	                                         KNOT_CLASS_IN, 3600,
-	                                         loader_process, process_error,
-	                                         zc);
+	loader->file_loader = zs_loader_create(conf->file, conf->name,
+	                                       KNOT_CLASS_IN, 3600,
+	                                       loader_process, process_error,
+	                                       zc);
 	if (loader->file_loader == NULL) {
 		free(zc);
 		return KNOT_ERROR;
@@ -246,10 +246,10 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 
 	zcreator_t *zc = loader->creator;
 	assert(zc);
-	int ret = file_loader_process(loader->file_loader);
+	int ret = zs_loader_process(loader->file_loader);
 	if (ret != ZSCANNER_OK) {
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
-		               loader->source, zscanner_strerror(ret));
+		               loader->source, zs_strerror(ret));
 		goto fail;
 	}
 
@@ -322,7 +322,7 @@ void zonefile_close(zloader_t *loader)
 		return;
 	}
 
-	file_loader_free(loader->file_loader);
+	zs_loader_free(loader->file_loader);
 
 	free(loader->source);
 	free(loader->origin);
