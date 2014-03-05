@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -23,10 +24,12 @@ static void free_datum(gnutls_datum_t *ptr)
 
 // internal
 
-/*!
+/**
  * Trim leading zero from binary data.
  *
- * From some reason, numbers exported by GnuTLS are prefixed with a zero.
+ * GnuTLS uses Nettle, Nettle uses GMP, and some GMP conversions operations
+ * return numbers prefixed with a zero byte. The byte is useless and can
+ * create incompatibility with other DNSSEC software.
  */
 static void trim_leading_zero(gnutls_datum_t *data)
 {
@@ -40,10 +43,21 @@ static void trim_leading_zero(gnutls_datum_t *data)
 	}
 }
 
+/**
+ * Write data in gnutls_datum_t structo to the wire wire.
+ */
 static void wire_write_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
 {
 	assert(data);
+
 	wire_write(ctx, data->data, data->size);
+}
+
+static void wire_read_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
+{
+	assert(data);
+
+	wire_read(ctx, data->data, data->size);
 }
 
 // API
@@ -58,14 +72,13 @@ int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	int result = gnutls_pubkey_get_pk_rsa_raw(key, &modulus, &pub_exponent);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_PUBKEY_EXPORT_ERROR;
+		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
 	trim_leading_zero(&modulus);
 	trim_leading_zero(&pub_exponent);
 
-	// TODO: larger keys are defined, but not used in real life
-	assert(pub_exponent.size < UINT8_MAX);
+	assert(pub_exponent.size <= UINT8_MAX);
 
 	size_t size = 1 + pub_exponent.size + modulus.size;
 	uint8_t *data = malloc(size);
@@ -79,6 +92,7 @@ int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	wire_write_u8(&wire, pub_exponent.size);
 	wire_write_datum(&wire, &pub_exponent);
 	wire_write_datum(&wire, &modulus);
+
 	assert(wire_tell(&wire) == size);
 
 	rdata->size = size;
@@ -92,7 +106,6 @@ int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	assert(key);
 	assert(rdata);
 
-	// TODO: sensible names?
 	_cleanup_datum_ gnutls_datum_t p = { 0 };
 	_cleanup_datum_ gnutls_datum_t q = { 0 };
 	_cleanup_datum_ gnutls_datum_t g = { 0 };
@@ -100,7 +113,7 @@ int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	int result = gnutls_pubkey_get_pk_dsa_raw(key, &p, &q, &g, &y);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_PUBKEY_EXPORT_ERROR;
+		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
 	trim_leading_zero(&p);
@@ -152,7 +165,7 @@ int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	int result = gnutls_pubkey_get_pk_ecc_raw(key, &curve, &point_x, &point_y);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_PUBKEY_EXPORT_ERROR;
+		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
 	trim_leading_zero(&point_x);
@@ -168,8 +181,10 @@ int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	wire_ctx_t wire = { 0 };
 	wire_init(&wire, data, size);
+
 	wire_write_datum(&wire, &point_x);
 	wire_write_datum(&wire, &point_y);
+
 	assert(wire_tell(&wire) == size);
 
 	rdata->size = size;
@@ -180,15 +195,163 @@ int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 int rsa_rdata_to_pubkey(dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
-	return DNSSEC_ENOTSUP;
+	assert(rdata);
+	assert(key);
+
+	if (rdata->size == 0) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+
+	wire_ctx_t ctx;
+	wire_init_binary(&ctx, rdata);
+
+	// parse exponent
+
+	_cleanup_datum_ gnutls_datum_t pub_exponent = { 0 };
+	pub_exponent.size = wire_read_u8(&ctx);
+	if (pub_exponent.size == 0 || wire_available(&ctx) < pub_exponent.size) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+	pub_exponent.data = gnutls_malloc(pub_exponent.size);
+	if (!pub_exponent.data) {
+		return DNSSEC_ENOMEM;
+	}
+	wire_read_datum(&ctx, &pub_exponent);
+
+	// parse modulus
+
+	_cleanup_datum_ gnutls_datum_t modulus = { 0 };
+	modulus.size = wire_available(&ctx);
+	if (modulus.size == 0) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+	modulus.data = gnutls_malloc(modulus.size);
+	if (!modulus.data) {
+		return DNSSEC_ENOMEM;
+	}
+	wire_read_datum(&ctx, &modulus);
+
+	assert(wire_tell(&ctx) == rdata->size);
+
+	int result = gnutls_pubkey_import_rsa_raw(key, &modulus, &pub_exponent);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	return DNSSEC_EOK;
+}
+
+static bool valid_dsa_rdata_size(size_t size)
+{
+	// minimal key size
+	if (size < 20 + 3 * 64) {
+		return false;
+	}
+
+	// p, g, and y size equals
+	size_t pgy_size = size - 20;
+	if (pgy_size % 3 != 0) {
+		return false;
+	}
+
+	// p size constraints
+	size_t p_size = pgy_size / 3;
+	if (p_size % 8 != 0) {
+		return false;
+	}
+
+	return true;
 }
 
 int dsa_rdata_to_pubkey(dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
-	return DNSSEC_ENOTSUP;
+	assert(rdata);
+	assert(key);
+
+	if (!valid_dsa_rdata_size(rdata->size)) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+
+	wire_ctx_t ctx;
+	wire_init_binary(&ctx, rdata);
+
+	// parse q
+
+	_cleanup_datum_ gnutls_datum_t q = { 0 };
+	q.size = 20;
+	q.data = gnutls_malloc(q.size);
+	if (!q.data) {
+		return DNSSEC_ENOMEM;
+	}
+	wire_read_datum(&ctx, &q);
+
+	// parse p, g, and y
+
+	_cleanup_datum_ gnutls_datum_t p = { 0 };
+	_cleanup_datum_ gnutls_datum_t g = { 0 };
+	_cleanup_datum_ gnutls_datum_t y = { 0 };
+	p.size = g.size = y.size = wire_available(&ctx) / 3;
+	p.data = gnutls_malloc(p.size);
+	g.data = gnutls_malloc(g.size);
+	y.data = gnutls_malloc(y.size);
+	if (!p.data || !g.data || !y.data) {
+		return DNSSEC_ENOMEM;
+	}
+	wire_read_datum(&ctx, &p);
+	wire_read_datum(&ctx, &g);
+	wire_read_datum(&ctx, &y);
+
+	assert(wire_tell(&ctx) == rdata->size);
+
+	int result = gnutls_pubkey_import_dsa_raw(key, &p, &q, &g, &y);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	return DNSSEC_EOK;
+}
+
+static gnutls_ecc_curve_t choose_ecdsa_curve(size_t rdata_size)
+{
+	switch (rdata_size) {
+	case 64: return GNUTLS_ECC_CURVE_SECP256R1;
+	case 96: return GNUTLS_ECC_CURVE_SECP384R1;
+	default: return GNUTLS_ECC_CURVE_INVALID;
+	}
 }
 
 int ecdsa_rdata_to_pubkey(dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
-	return DNSSEC_ENOTSUP;
+	assert(rdata);
+	assert(key);
+
+	gnutls_ecc_curve_t curve = choose_ecdsa_curve(rdata->size);
+	if (curve == GNUTLS_ECC_CURVE_INVALID) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+
+	wire_ctx_t ctx;
+	wire_init_binary(&ctx, rdata);
+
+	// parse points
+
+	_cleanup_datum_ gnutls_datum_t point_x = { 0 };
+	_cleanup_datum_ gnutls_datum_t point_y = { 0 };
+	point_x.size = point_y.size = rdata->size / 2;
+	point_x.data = gnutls_malloc(point_x.size);
+	point_y.data = gnutls_malloc(point_y.size);
+	if (!point_x.data || !point_y.data) {
+		return DNSSEC_ENOMEM;
+	}
+	wire_read_datum(&ctx, &point_x);
+	wire_read_datum(&ctx, &point_y);
+
+	assert(wire_tell(&ctx) == rdata->size);
+
+	int result = gnutls_pubkey_import_ecc_raw(key, curve, &point_x, &point_y);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	return DNSSEC_EOK;
 }
