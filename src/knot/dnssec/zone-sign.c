@@ -1204,6 +1204,12 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Frees info node about update signing.
+ *
+ * \param val  Node to free.
+ * \param d    Unused.
+ */
 static int free_helper_trie_node(value_t *val, void *d)
 {
 	UNUSED(d);
@@ -1216,6 +1222,18 @@ static int free_helper_trie_node(value_t *val, void *d)
 	knot_dname_free(&info->hashed_dname);
 	free(info);
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Clears trie with info about update signing.
+ *
+ * \param t  Trie to clear.
+ */
+static void knot_zone_clear_sorted_changes(hattrie_t *t)
+{
+	if (t) {
+		hattrie_apply_rev(t, free_helper_trie_node, NULL);
+	}
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -1369,12 +1387,10 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
-                             hattrie_t **sorted_changes,
                              const knot_zone_keys_t *zone_keys,
                              const knot_dnssec_policy_t *policy)
 {
-	if (zone == NULL || in_ch == NULL || out_ch == NULL ||
-	    sorted_changes == NULL) {
+	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1398,13 +1414,11 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		ret = knot_changeset_apply((knot_changeset_t *)in_ch,
 		                           KNOT_CHANGESET_REMOVE,
 		                           sign_changeset_wrap, &args);
-	} else {
-		knot_zone_clear_sorted_changes(args.signed_tree);
-		hattrie_free(args.signed_tree);
-		args.signed_tree = NULL;
 	}
 
-	*sorted_changes = args.signed_tree;
+	knot_zone_clear_sorted_changes(args.signed_tree);
+	hattrie_free(args.signed_tree);
+
 	return ret;
 }
 
@@ -1492,9 +1506,3 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	return KNOT_EOK;
 }
 
-void knot_zone_clear_sorted_changes(hattrie_t *t)
-{
-	if (t) {
-		hattrie_apply_rev(t, free_helper_trie_node, NULL);
-	}
-}
