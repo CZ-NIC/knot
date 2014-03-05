@@ -743,7 +743,7 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 	second =   10 * (buff[12] - '0') +       (buff[13] - '0');
 
 	if (year < 1970 || year > 2105 || month < 1 || month > 12 || day < 1) {
-		return ZSCANNER_EBAD_DATE;
+		return ZS_BAD_DATE;
 	} else {
 		year -= 1970;
 	}
@@ -753,14 +753,14 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 			leap_day = 1; // Add one day in case of leap year.
 		} else if (month == 2 &&
 		           day > (uint32_t)(days_in_months[month] + 1)) {
-			return ZSCANNER_EBAD_DATE;
+			return ZS_BAD_DATE;
 		}
 	} else if (day > days_in_months[month]){
-		return ZSCANNER_EBAD_DATE;
+		return ZS_BAD_DATE;
 	}
 
 	if (hour > 23 || minute > 59 || second > 59) {
-		return ZSCANNER_EBAD_TIME;
+		return ZS_BAD_TIME;
 	}
 
 	*timestamp = hour * 3600 + minute * 60 + second +
@@ -768,7 +768,7 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 	             days_across_months[month] +
 	             day - 1 + leap_day) * 86400;
 
-	return ZSCANNER_OK;
+	return ZS_OK;
 }
 
 void wire_dname_to_str(const uint8_t  *data,

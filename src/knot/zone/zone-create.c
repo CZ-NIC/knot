@@ -247,7 +247,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 	zcreator_t *zc = loader->creator;
 	assert(zc);
 	int ret = zs_loader_process(loader->file_loader);
-	if (ret != ZSCANNER_OK) {
+	if (ret != ZS_OK) {
 		log_zone_error("%s: zone file could not be loaded (%s).\n",
 		               loader->source, zs_strerror(ret));
 		goto fail;

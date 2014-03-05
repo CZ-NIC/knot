@@ -100,17 +100,17 @@ int zs_loader_process(zs_loader_t *fl)
 
 	// Getting file information.
 	if (fstat(fl->fd, &file_stat) == -1) {
-		return FLOADER_EFSTAT;
+		return ZS_LOADER_FSTAT;
 	}
 
 	// Check for directory.
 	if (S_ISDIR(file_stat.st_mode)) {
-		return FLOADER_EDIRECTORY;
+		return ZS_LOADER_DIRECTORY;
 	}
 
 	// Check for empty file.
 	if (file_stat.st_size == 0) {
-		return FLOADER_EEMPTY;
+		return ZS_LOADER_EMPTY;
 	}
 
 	// Block size adjustment to multiple of page size.
@@ -139,7 +139,7 @@ int zs_loader_process(zs_loader_t *fl)
 		            fl->fd,
 		            scanner_start);
 		if (data == MAP_FAILED) {
-			return FLOADER_EMMAP;
+			return ZS_LOADER_MMAP;
 		}
 
 		// Scan zone file.
@@ -158,14 +158,14 @@ int zs_loader_process(zs_loader_t *fl)
 
 		// Zone file block unmapping.
 		if (munmap(data, block_size) == -1) {
-			return FLOADER_EMUNMAP;
+			return ZS_LOADER_MUNMAP;
 		}
 	}
 
 	// Check for scanner return.
 	if (ret != 0) {
-		return FLOADER_ESCANNER;
+		return ZS_LOADER_SCANNER;
 	}
 
-	return ZSCANNER_OK;
+	return ZS_OK;
 }

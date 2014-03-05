@@ -202,7 +202,7 @@ int zs_scanner_process(const char   *start,
 
 	// Check if scanner state machine is in uncovered state.
 	if (cs == zone_scanner_error) {
-		ERR(ZSCANNER_UNCOVERED_STATE);
+		ERR(ZS_UNCOVERED_STATE);
 		s->error_counter++;
 
 		// Fill error context data.
@@ -229,7 +229,7 @@ int zs_scanner_process(const char   *start,
 
 	// Check unclosed multiline record.
 	if (is_complete && s->multiline) {
-		ERR(ZSCANNER_UNCLOSED_MULTILINE);
+		ERR(ZS_UNCLOSED_MULTILINE);
 		s->error_counter++;
 		s->process_error(s);
 	}

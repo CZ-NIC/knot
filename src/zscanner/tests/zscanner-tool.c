@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
 			ret = zs_loader_process(fl);
 
 			switch (ret) {
-			case ZSCANNER_OK:
+			case ZS_OK:
 				if (mode == DEFAULT_MODE) {
 					printf("Zone file has been processed "
 					       "successfully\n");
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 				zs_loader_free(fl);
 				break;
 
-			case FLOADER_ESCANNER:
+			case ZS_LOADER_SCANNER:
 				if (mode == DEFAULT_MODE) {
 					printf("Zone processing has stopped with "
 					       "%"PRIu64" warnings/errors!\n",
