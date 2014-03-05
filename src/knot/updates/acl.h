@@ -53,6 +53,9 @@ typedef struct acl_match {
 	struct knot_tsig_key *key; /*!< \brief TSIG key. */
 } acl_match_t;
 
+/*! \brief Match address against netblock. */
+int netblock_match(const netblock_t *a1, const struct sockaddr_storage *a2);
+
 /*!
  * \brief Create a new ACL.
  *

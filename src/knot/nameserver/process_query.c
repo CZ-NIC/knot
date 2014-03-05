@@ -3,24 +3,21 @@
 #include <urcu.h>
 
 #include "knot/nameserver/process_query.h"
-#include "libknot/consts.h"
-#include "common/debug.h"
-#include "libknot/common.h"
-#include "libknot/tsig-op.h"
-#include "common/descriptor.h"
-#include "knot/updates/acl.h"
-
-/*! \todo Move close to server when done. */
 #include "knot/nameserver/chaos.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/nsec_proofs.h"
+#include "knot/nameserver/synth_record.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/rrl.h"
+#include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
+#include "libknot/tsig-op.h"
+#include "common/descriptor.h"
+#include "common/debug.h"
 
 /* Forward decls. */
 static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb);
@@ -171,6 +168,11 @@ int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	/*
 	 * Postprocessing.
 	 */
+
+	/* Synthetic response (if applicable). */
+	if (synth_answer_possible(qdata)) {
+		next_state = synth_answer(pkt, qdata);
+	}
 
 	/* Transaction security (if applicable). */
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {
