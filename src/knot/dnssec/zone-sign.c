@@ -1174,9 +1174,6 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 		}
 
 		// Check for RRSet in the 'already_signed' table
-		/*!
-		 * \todo Describe why it this here and what it does.
-		 */
 		if (args->signed_tree && (should_sign && zone_rrset == NULL)) {
 			bool already_signed = false;
 
@@ -1205,22 +1202,14 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 			 * OR
 			 *
 			 * The whole RRSet was removed, but RRSIGs remained in
-			 * the zone. Also we need to drop them.
+			 * the zone. We need to drop them as well.
 			 */
 			return remove_rrset_rrsigs(chg_rrset->owner,
 			                           chg_rrset->type, rrsigs,
 			                           args->changeset);
 		}
-	} else {
-		// Update changes
-		bool rr_signed = false; // Placeholder
-		int ret = rr_already_signed(chg_rrset, args->signed_tree,
-		                            &rr_signed);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
 	}
+
 	return KNOT_EOK;
 }
 
