@@ -1010,7 +1010,8 @@ dbg_xfrin_exec_detail(
 	  * We assume that the added RRSet has only one RR, but that should be
 	  * the case here.
 	  */
-	if (knot_rrset_rr_ttl(add, 0) != knot_rrset_rr_ttl(*rrset, 0)) {
+	if (knot_rrset_type(add) != KNOT_RRTYPE_RRSIG
+	    && knot_rrset_rr_ttl(add, 0) != knot_rrset_rr_ttl(*rrset, 0)) {
 		char type_str[16] = { '\0' };
 		knot_rrtype_to_string(knot_rrset_type(add), type_str,
 		                      sizeof(type_str));
