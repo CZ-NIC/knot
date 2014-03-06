@@ -19,9 +19,9 @@
 #include <stdio.h>			// printf
 
 #include "tests/processing.h"
-#include "error.h"		// zscanner_strerror
-#include "scanner.h"		// scanner_t
-#include "common/descriptor.c"	// knot_rrtype_to_string (implementation)
+#include "error.h"
+#include "scanner.h"
+#include "common/descriptor.c"		// knot_rrtype_to_string (implementation)
 
 const char *separator = "------\n";
 
@@ -40,25 +40,25 @@ static void print_wire_dname(const uint8_t *dname, uint32_t dname_length)
 	}
 }
 
-void debug_process_error(const scanner_t *s)
+void debug_process_error(const zs_scanner_t *s)
 {
 	if (s->stop == true) {
 		printf("LINE(%03"PRIu64") ERROR(%s) FILE(%s) NEAR(%s)\n",
 		       s->line_counter,
-		       zscanner_strerror(s->error_code),
+		       zs_strerror(s->error_code),
 		       s->file_name,
 		       s->buffer);
 	} else {
 		printf("LINE(%03"PRIu64") WARNING(%s) FILE(%s) NEAR(%s)\n",
 		       s->line_counter,
-		       zscanner_strerror(s->error_code),
+		       zs_strerror(s->error_code),
 		       s->file_name,
 		       s->buffer);
 	}
 	fflush(stdout);
 }
 
-void debug_process_record(const scanner_t *s)
+void debug_process_record(const zs_scanner_t *s)
 {
 	uint32_t i;
 
@@ -85,17 +85,17 @@ void debug_process_record(const scanner_t *s)
 	fflush(stdout);
 }
 
-void test_process_error(const scanner_t *s)
+void test_process_error(const zs_scanner_t *s)
 {
 	if (s->stop == true) {
-		printf("ERROR=%s\n%s", zscanner_errorname(s->error_code), separator);
+		printf("ERROR=%s\n%s", zs_errorname(s->error_code), separator);
 	} else {
-		printf("WARNG=%s\n%s", zscanner_errorname(s->error_code), separator);
+		printf("WARNG=%s\n%s", zs_errorname(s->error_code), separator);
 	}
 	fflush(stdout);
 }
 
-void test_process_record(const scanner_t *s)
+void test_process_record(const zs_scanner_t *s)
 {
 	uint32_t i;
 

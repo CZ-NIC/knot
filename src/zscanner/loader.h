@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file file_loader.h
+ * \file loader.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
@@ -24,22 +24,22 @@
  * @{
  */
 
-#ifndef _ZSCANNER__FILE_LOADER_H_
-#define _ZSCANNER__FILE_LOADER_H_
+#ifndef _ZSCANNER__LOADER_H_
+#define _ZSCANNER__LOADER_H_
 
-#include <stdint.h>			// uint32_t
+#include <stdint.h>
 
-#include "zscanner/scanner.h"		// scanner_t
+#include "zscanner/scanner.h"
 
 /*! \brief Structure for zone file loader (each included file has one). */
 typedef struct {
 	/*!< File descriptor. */
-	int       fd;
+	int          fd;
 	/*!< Zone file name this loader belongs to. */
-	char      *file_name;
+	char         *file_name;
 	/*!< Zone scanner context stucture. */
-	scanner_t *scanner;
-} file_loader_t;
+	zs_scanner_t *scanner;
+} zs_loader_t;
 
 /*!
  * \brief Creates file loader structure.
@@ -52,23 +52,23 @@ typedef struct {
  * \param process_error 	Error callback function.
  * \param data			Arbitrary data useful in callback functions.
  *
- * \retval file_loader		if success.
+ * \retval loader		if success.
  * \retval 0			if error.
  */
-file_loader_t* file_loader_create(const char     *file_name,
-                                  const char     *origin,
-                                  const uint16_t rclass,
-                                  const uint32_t ttl,
-                                  void (*process_record)(const scanner_t *),
-                                  void (*process_error)(const scanner_t *),
-                                  void *data);
+zs_loader_t* zs_loader_create(const char     *file_name,
+                              const char     *origin,
+                              const uint16_t rclass,
+                              const uint32_t ttl,
+                              void (*process_record)(const zs_scanner_t *),
+                              void (*process_error)(const zs_scanner_t *),
+                              void *data);
 
 /*!
  * \brief Destroys file loader structure.
  *
- * \param file_loader	File loader structure.
+ * \param loader	File loader structure.
  */
-void file_loader_free(file_loader_t *file_loader);
+void zs_loader_free(zs_loader_t *loader);
 
 /*!
  * \brief Processes zone file.
@@ -80,13 +80,13 @@ void file_loader_free(file_loader_t *file_loader);
  * \note Zone scanner error code and other information are stored in
  *       fl.scanner context.
  *
- * \param file_loader	File loader structure.
+ * \param loader	File loader structure.
  *
  * \retval ZSCANNER_OK	if success.
  * \retval error_code	if error.
  */
-int file_loader_process(file_loader_t *file_loader);
+int zs_loader_process(zs_loader_t *loader);
 
-#endif // _ZSCANNER__FILE_LOADER_H_
+#endif // _ZSCANNER__LOADER_H_
 
 /*! @} */

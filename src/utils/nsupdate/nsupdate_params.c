@@ -54,11 +54,11 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_footer = false,
 };
 
-static void parse_err(const scanner_t *s) {
-	ERR("failed to parse RR: %s\n", zscanner_strerror(s->error_code));
+static void parse_err(const zs_scanner_t *s) {
+	ERR("failed to parse RR: %s\n", zs_strerror(s->error_code));
 }
 
-static int parser_set_default(scanner_t *s, const char *fmt, ...)
+static int parser_set_default(zs_scanner_t *s, const char *fmt, ...)
 {
 	/* Format string. */
 	char buf[512]; /* Must suffice for domain name and TTL. */
@@ -72,7 +72,7 @@ static int parser_set_default(scanner_t *s, const char *fmt, ...)
 	}
 
 	/* fmt must contain newline */
-	if (scanner_process(buf, buf + n, 1, s) < 0) {
+	if (zs_scanner_process(buf, buf + n, 1, s) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -107,8 +107,8 @@ static int nsupdate_init(nsupdate_params_t *params)
 	params->zone = strdup(".");
 
 	/* Initialize RR parser. */
-	params->parser = scanner_create(NULL, ".", params->class_num, 0, NULL,
-	                             parse_err, NULL);
+	params->parser = zs_scanner_create(NULL, ".", params->class_num, 0,
+	                                   NULL, parse_err, NULL);
 	if (!params->parser)
 		return KNOT_ENOMEM;
 
@@ -137,7 +137,7 @@ void nsupdate_clean(nsupdate_params_t *params)
 	srv_info_free(params->server);
 	srv_info_free(params->srcif);
 	free(params->zone);
-	scanner_free(params->parser);
+	zs_scanner_free(params->parser);
 	knot_pkt_free(&params->query);
 	knot_pkt_free(&params->answer);
 	knot_free_key_params(&params->key_params);

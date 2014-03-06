@@ -85,25 +85,6 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
 
-/*!
- * \brief Fix NSEC or NSEC3 chain in the zone.
- *
- * \param zone            Zone for which the NSEC(3) chain will be created.
- * \param sorted_changes  Sorted changes created by 'sign_changeset' function.
- *                        This param is updated with normal node -> NSEC3 node
- *                        links, to be used later when adjusting zone.
- * \param out_ch          Changeset into which the changes will be added.
- * \param zone_keys       Zone keys used for NSEC(3) creation.
- * \param policy          DNSSEC signing policy.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int knot_zone_fix_nsec_chain(const knot_zone_contents_t *zone,
-                             hattrie_t *sorted_changes,
-                             knot_changeset_t *out_ch,
-                             const knot_zone_keys_t *zone_keys,
-                             const knot_dnssec_policy_t *policy);
-
 #endif // _KNOT_DNSSEC_ZONE_NSEC_H_
 
 /*! @} */

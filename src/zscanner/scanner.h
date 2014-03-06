@@ -18,7 +18,7 @@
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
- * \brief Zone scanner.
+ * \brief Zone scanner core interface.
  *
  * \addtogroup zone_scanner
  * @{
@@ -27,8 +27,8 @@
 #ifndef _ZSCANNER__SCANNER_H_
 #define _ZSCANNER__SCANNER_H_
 
-#include <stdint.h>			// uint32_t
-#include <stdbool.h>			// bool
+#include <stdint.h>
+#include <stdbool.h>
 
 /*! \brief Maximal length of rdata. */
 #define MAX_RDATA_LENGTH		65535
@@ -99,7 +99,7 @@ typedef struct {
  *  - Output variables (r_ prefix) containing all parts of zone record. These
  *    data are usefull during processing via callback function.
  */
-typedef struct scanner scanner_t; // Forward declaration due to arguments.
+typedef struct scanner zs_scanner_t; // Forward declaration due to arguments.
 struct scanner {
 	/*! Current state (Ragel internals). */
 	int      cs;
@@ -163,9 +163,9 @@ struct scanner {
 	uint32_t default_ttl;
 
 	/*! Callback function for correct zone record. */
-	void (*process_record)(const scanner_t *);
+	void (*process_record)(const zs_scanner_t *);
 	/*! Callback function for wrong situations. */
-	void (*process_error)(const scanner_t *);
+	void (*process_error)(const zs_scanner_t *);
 	/*! Arbitrary data useful inside callback functions. */
 	void *data;
 
@@ -233,20 +233,20 @@ struct scanner {
  * \retval scanner	if success.
  * \retval 0		if error.
  */
-scanner_t* scanner_create(const char     *file_name,
-                          const char     *origin,
-                          const uint16_t rclass,
-                          const uint32_t ttl,
-                          void (*process_record)(const scanner_t *),
-                          void (*process_error)(const scanner_t *),
-                          void *data);
+zs_scanner_t* zs_scanner_create(const char     *file_name,
+                                const char     *origin,
+                                const uint16_t rclass,
+                                const uint32_t ttl,
+                                void (*process_record)(const zs_scanner_t *),
+                                void (*process_error)(const zs_scanner_t *),
+                                void *data);
 
 /*!
  * \brief Destroys zone scanner structure.
  *
  * \param scanner	Zone scanner structure.
  */
-void scanner_free(scanner_t *scanner);
+void zs_scanner_free(zs_scanner_t *scanner);
 
 /*!
  * \brief Executes zone scanner on data block.
@@ -263,10 +263,10 @@ void scanner_free(scanner_t *scanner);
  * \retval  0		if success.
  * \retval -1		if error.
  */
-int scanner_process(const char *start,
-                    const char *end,
-                    const bool is_complete,
-                    scanner_t  *scanner);
+int zs_scanner_process(const char   *start,
+                       const char   *end,
+                       const bool   is_complete,
+                       zs_scanner_t *scanner);
 
 #endif // _ZSCANNER__SCANNER_H_
 

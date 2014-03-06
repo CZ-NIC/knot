@@ -230,8 +230,7 @@ int knot_ns_process_update(const knot_pkt_t *query,
 
 	// 3) Finalize zone
 	dbg_ns_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, false,
-	                                  NULL);
+	ret = xfrin_finalize_updated_zone(contents_copy, false);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to finalize updated zone: %s\n",
 		       knot_strerror(ret));
@@ -348,8 +347,6 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 
 	// Apply changeset to zone created by DDNS processing
 
-	hattrie_t *sorted_changes = NULL;
-
 	if (zone->conf->dnssec_enable) {
 		/*!
 		 * Check if the UPDATE changed DNSKEYs. If yes, resign the whole
@@ -368,7 +365,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 			                      knot_changesets_get_last(chgsets),
 			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
 			                      &refresh_at,
-			                      new_serial, &sorted_changes);
+			                      new_serial);
 		}
 
 		if (ret != KNOT_EOK) {
@@ -403,10 +400,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		ret = xfrin_apply_changesets_dnssec_ddns(old_contents,
 		                                    new_contents,
 		                                    sec_chs,
-		                                    chgsets,
-		                                    sorted_changes);
-		knot_zone_clear_sorted_changes(sorted_changes);
-		hattrie_free(sorted_changes);
+		                                    chgsets);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update (%s)"
 			               "\n", msg, knot_strerror(ret));

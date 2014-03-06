@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*!
- * \file scanner_functions.h
+ * \file functions.h
  *
  * \author Daniel Salzman <daniel.salzman@nic.cz>
  *
@@ -24,12 +24,10 @@
  * @{
  */
 
-#ifndef _ZSCANNER__SCANNER_FUNCTIONS_H_
-#define _ZSCANNER__SCANNER_FUNCTIONS_H_
+#ifndef _ZSCANNER__FUNCTIONS_H_
+#define _ZSCANNER__FUNCTIONS_H_
 
 #include <stdint.h>
-
-#include "zscanner/scanner.h"
 
 /*! \brief Transforms digit char to number. */
 extern const uint8_t digit_to_num[];
@@ -112,6 +110,6 @@ void wire_dname_to_str(const uint8_t  *data,
  */
 uint8_t loc64to8(uint64_t number);
 
-#endif // _ZSCANNER__SCANNER_FUNCTIONS_H_
+#endif // _ZSCANNER__FUNCTIONS_H_
 
 /*! @} */

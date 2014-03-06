@@ -75,7 +75,6 @@ int knot_dnssec_zone_sign_force(knot_zone_contents_t *zone, conf_zone_t *zone_co
  * \param soa_up          SOA serial update policy.
  * \param refresh_at      Signature refresh time of the new signatures.
  * \param new_serial      New SOA serial.
- * \param sorted_changes  Info about made changes, used for partial adjustment.
  *
  * \return Error code, KNOT_EOK if successful.
  */
@@ -84,8 +83,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
-                               uint32_t *refresh_at, uint32_t new_serial,
-                               hattrie_t **sorted_changes);
+                               uint32_t *refresh_at, uint32_t new_serial);
 
 #endif // _KNOT_DNSSEC_ZONE_EVENTS_H_
 /*! @} */
