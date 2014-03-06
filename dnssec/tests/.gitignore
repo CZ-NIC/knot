@@ -1,7 +1,9 @@
 /Makefile
 /Makefile.in
+/runtests.log
 
 # test binaries
-binary
-key
-sign
+/binary
+/key
+/sign
+/key_pubkey

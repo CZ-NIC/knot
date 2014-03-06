@@ -1,6 +1,10 @@
-AM_CPPFLAGS = -I$(top_srcdir)/libtap -I../src
-LDADD = $(top_builddir)/libtap/libtap.a \
-	../libdnssec.la
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/libtap \
+	-I$(srcdir)/../src
+
+LDADD = \
+	$(top_builddir)/libtap/libtap.a \
+	$(builddir)/../libdnssec.la
 
 check_PROGRAMS = \
 	binary		\
@@ -11,6 +15,7 @@ check_PROGRAMS = \
 check-compile-only: $(check_PROGRAMS)
 
 check-local: $(check_PROGRAMS)
-	$(top_builddir)/libtap/runtests -s $(top_srcdir)/tests \
-					-b $(top_builddir)/tests \
+	$(top_builddir)/libtap/runtests -s $(srcdir) \
+					-b $(builddir) \
+					-L $(builddir)/runtests.log \
 					$(check_PROGRAMS)

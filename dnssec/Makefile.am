@@ -1,4 +1,4 @@
-SUBDIRS = tests
+SUBDIRS = . tests
 
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h
