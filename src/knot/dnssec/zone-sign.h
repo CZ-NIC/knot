@@ -137,7 +137,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
  */
 int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
                                        const knot_rrset_t *rrset,
-                                       hattrie_t *trie, bool *should_sign);
+                                       bool *should_sign);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 

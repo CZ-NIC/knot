@@ -195,8 +195,8 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	// Init needed structures
 	knot_zone_keys_t zone_keys = { '\0' };
 	knot_dnssec_policy_t policy = { '\0' };
-	int ret = init_dnssec_structs(zone, zone_config, &zone_keys, &policy, soa_up,
-	                              false);
+	int ret = init_dnssec_structs(zone, zone_config, &zone_keys, &policy,
+	                              soa_up, false);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

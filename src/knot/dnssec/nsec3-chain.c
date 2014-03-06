@@ -95,9 +95,8 @@ static bool node_should_be_signed_nsec3(const knot_node_t *n)
 			continue;
 		}
 		bool should_sign = false;
-		int ret = knot_zone_sign_rr_should_be_signed(n,
-		                                             node_rrsets[i],
-		                                             NULL, &should_sign);
+		int ret = knot_zone_sign_rr_should_be_signed(n, node_rrsets[i],
+		                                             &should_sign);
 		assert(ret == KNOT_EOK); // No tree inside the function, no fail
 		if (should_sign) {
 			return true;
