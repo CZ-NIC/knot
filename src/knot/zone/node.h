@@ -129,7 +129,7 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  * \retval KNOT_ERROR if the RRSet could not be inserted.
  */
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                        knot_rrset_t **out_rrset);
+                        bool *ttl_err);
 
 int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset);
 

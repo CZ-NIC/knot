@@ -80,7 +80,9 @@ static bool handle_err(zcreator_t *zc,
 
 int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 {
-	assert(zc && rr);
+	if (zc == NULL || rr == NULL || knot_rrset_rr_count(rr) != 1) {
+		return KNOT_EINVAL;
+	}
 
 	if (rr->type == KNOT_RRTYPE_SOA &&
 	    knot_node_rrset(zc->z->apex, KNOT_RRTYPE_SOA)) {
@@ -98,8 +100,10 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		// Search for node or create a new one
 		n = NULL;
 	}
-	knot_rrset_t *zone_rrset = NULL;
-	int ret = knot_zone_contents_add_rr(zc->z, rr, &n, &zone_rrset);
+
+	bool ttl_err = false;
+
+	int ret = knot_zone_contents_add_rr(zc->z, rr, &n, &ttl_err);
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
 			// Fatal error
@@ -112,7 +116,6 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		knot_rrset_deep_free(&rr, true, NULL);
 	}
 	assert(n);
-	assert(zone_rrset);
 	zc->last_node = n;
 
 	// Do RRSet and node semantic checks
@@ -120,12 +123,30 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
 
-	ret = sem_check_rrset(n, zone_rrset, zc->master, &err_handler);
-	if (ret != KNOT_EOK) {
-		return ret;
+	/* Check if TTL of the added RR is equal to the TTL of the RRSet.
+	 * It's sufficient to compare with the first RR, because each RR in the
+	 * RRSet already underwent this check.
+	 */
+	if (ttl_err) {
+		/* Prepare additional info string. */
+		char info_str[64] = { '\0' };
+		char type_str[16] = { '\0' };
+		knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
+		snprintf(info_str, sizeof(info_str), "Record type: %s.",
+		         type_str);
+
+		if (zc->master) {
+			/*! \todo REPLACE WITH FATAL ERROR */
+			err_handler_handle_error(&err_handler, n,
+			                         ZC_ERR_TTL_MISMATCH, info_str);
+			return KNOT_EMALF;
+		} else {
+			err_handler_handle_error(&err_handler, n,
+			                         ZC_ERR_TTL_MISMATCH, info_str);
+		}
 	}
-	ret = sem_check_node_plain(zc->z, n,
-	                           &err_handler, true,
+
+	ret = sem_check_node_plain(zc->z, n, &err_handler, true,
 	                           &sem_fatal_error);
 	if (ret != KNOT_EOK) {
 		return ret;

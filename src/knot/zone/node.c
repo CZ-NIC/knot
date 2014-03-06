@@ -133,18 +133,24 @@ int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset)
 }
 
 int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                        knot_rrset_t **out_rrset)
+                        bool *ttl_err)
 {
-	if (node == NULL) {
+	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrset_tree[i]->type == rrset->type) {
-			if (out_rrset) {
-				*out_rrset = node->rrset_tree[i];
-			}
 			int merged, deleted_rrs;
+
+			/* Check if the added RR has the same TTL as the first
+			 * RR in the RRSet.
+			 */
+			if (ttl_err && knot_rrset_rr_ttl(rrset, 0)
+			    != knot_rrset_rr_ttl(node->rrset_tree[i], 0)) {
+				*ttl_err = true;
+			}
+
 			int ret = knot_rrset_merge_sort(node->rrset_tree[i],
 			                                rrset, &merged,
 			                                &deleted_rrs, NULL);
@@ -158,10 +164,6 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 		}
 	}
 
-	// New RRSet (with one RR)
-	if (out_rrset) {
-		*out_rrset = rrset;
-	}
 	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
