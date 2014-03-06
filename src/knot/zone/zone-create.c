@@ -119,7 +119,8 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	bool sem_fatal_error = false;
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
-	ret = sem_check_rrset(n, zone_rrset, &err_handler);
+
+	ret = sem_check_rrset(n, zone_rrset, zc->master, &err_handler);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

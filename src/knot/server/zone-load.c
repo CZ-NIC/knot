@@ -118,11 +118,24 @@ zone_t *load_zone_file(conf_zone_t *conf)
 		return NULL;
 	}
 
+	/* Create the new zone. */
+	zone_t *zone = zone_new((conf_zone_t *)conf);
+	if (zone == NULL) {
+		log_zone_error("Failed to create zone '%s': %s\n",
+		               conf->name, knot_strerror(KNOT_ENOMEM));
+		return NULL;
+	}
+
 	struct stat st;
 	if (stat(conf->file, &st) < 0) {
 		/* Go silently and reset mtime to 0. */
 		memset(&st, 0, sizeof(struct stat));
 	}
+
+	/* Set the zone type (master/slave). If zone has no master set, we
+	 * are the primary master for this zone (i.e. zone type = master).
+	 */
+	zl.creator->master = (zone_master(zone) == NULL);
 
 	/* Load the zone contents. */
 	knot_zone_contents_t *zone_contents = zonefile_load(&zl);
@@ -131,15 +144,6 @@ zone_t *load_zone_file(conf_zone_t *conf)
 	/* Check the loader result. */
 	if (zone_contents == NULL) {
 		log_zone_error("Failed to load zone file '%s'.\n", conf->file);
-		return NULL;
-	}
-
-	/* Create the new zone. */
-	zone_t *zone = zone_new((conf_zone_t *)conf);
-	if (zone == NULL) {
-		log_zone_error("Failed to create zone '%s': %s\n",
-		               conf->name, knot_strerror(KNOT_ENOMEM));
-		knot_zone_contents_deep_free(&zone_contents);
 		return NULL;
 	}
 

@@ -277,16 +277,12 @@ static bool rrset_ttls_equal(const knot_rrset_t *rrset)
  * \param rr RRSet we're adding into.
  * \param zname Zone name for logging.
  */
-static void rrset_ttl_check(err_handler_t *handler,
-                            const knot_rrset_t *rr, const knot_node_t *n)
+static int rrset_ttl_check(const knot_rrset_t *rr)
 {
 	if (rr->type != KNOT_RRTYPE_RRSIG && !rrset_ttls_equal(rr)) {
-		/* Prepare additional info string. */
-		char info_str[64] = { '\0' };
-		char type_str[16] = { '\0' };
-		knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-		snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
-		err_handler_handle_error(handler, n, ZC_ERR_TTL_MISMATCH, info_str);
+		return KNOT_EMALF;
+	} else {
+		return KNOT_EOK;
 	}
 }
 
@@ -946,15 +942,35 @@ int sem_check_node_plain(const knot_zone_contents_t *zone,
 	}
 }
 
-int sem_check_rrset(const knot_node_t *node,
-                    const knot_rrset_t *rrset,
-                    err_handler_t *handler)
+int sem_check_rrset(const knot_node_t *node, const knot_rrset_t *rrset,
+                    bool master, err_handler_t *handler)
 {
 	if (node == NULL || rrset == NULL || handler == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	rrset_ttl_check(handler, rrset, node);
+	int ret = rrset_ttl_check(rrset);
+
+	/* Do the check both on master and slave because of the warning,
+	 * but fail only on master. */
+	if (ret != KNOT_EOK) {
+		/* Prepare additional info string. */
+		char info_str[64] = { '\0' };
+		char type_str[16] = { '\0' };
+		knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
+		snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
+
+		if (master) {
+			/*! \todo REPLACE WITH FATAL ERROR */
+			err_handler_handle_error(handler, n, ZC_ERR_TTL_MISMATCH,
+			                         info_str);
+			return KNOT_EMALF;
+		} else {
+			err_handler_handle_error(handler, n, ZC_ERR_TTL_MISMATCH,
+			                         info_str);
+		}
+	}
+
 	return KNOT_EOK;
 }
 
