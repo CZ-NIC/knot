@@ -1005,6 +1005,23 @@ dbg_xfrin_exec_detail(
 	 * TODO: add the 'add' rrset to list of old RRSets?
 	 */
 
+	 /* Check if the added RR has the same TTL as the first RR from the
+	  * zone's RRSet. If not, log a warning.
+	  * We assume that the added RRSet has only one RR, but that should be
+	  * the case here.
+	  */
+	if (knot_rrset_rr_ttl(add, 0) != knot_rrset_rr_ttl(*rrset, 0)) {
+		char type_str[16] = { '\0' };
+		knot_rrtype_to_string(knot_rrset_type(add), type_str,
+		                      sizeof(type_str));
+		char *name = knot_dname_to_str(knot_rrset_owner(add));
+		char *zname = knot_dname_to_str(knot_node_owner(contents->apex));
+		log_zone_warning("Changes application to zone %s: TTL mismatch"
+		                 " in %s, type %s\n", zname, name, type_str);
+		free(name);
+		free(zname);
+	}
+
 	int merged, deleted_rrs;
 	ret = knot_rrset_merge_sort(*rrset, add, &merged, &deleted_rrs,
 	                            NULL);
