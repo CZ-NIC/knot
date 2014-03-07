@@ -7,3 +7,6 @@ check_LIBRARIES = libtap.a
 
 check_PROGRAMS = \
 	runtests
+
+EXTRA_DIST = \
+	tap/libtap.sh

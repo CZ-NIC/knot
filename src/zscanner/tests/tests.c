@@ -21,7 +21,7 @@
 #include <time.h>			// mktime
 
 #include "tests/tests.h"
-#include "scanner_functions.h"	// date_to_timestamp
+#include "functions.c"			// date_to_timestamp (implementation)
 
 int test__date_to_timestamp()
 {

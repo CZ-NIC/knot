@@ -49,7 +49,7 @@ typedef struct zloader_t {
 	char *origin;                /*!< Zone's origin string. */
 	bool semantic_checks;        /*!< Do semantic checks. */
 	err_handler_t *err_handler;  /*!< Semantic checks error handler. */
-	file_loader_t *file_loader;  /*!< Scanner's file loader. */
+	zs_loader_t *file_loader;    /*!< Scanner's file loader. */
 	zcreator_t *creator;         /*!< Loader context. */
 } zloader_t;
 
@@ -83,7 +83,7 @@ void zonefile_close(zloader_t *loader);
 
 int zcreator_step(zcreator_t *zl, knot_rrset_t *rr);
 
-void process_error(const scanner_t *scanner);
+void process_error(const zs_scanner_t *scanner);
 
 #endif /* _KNOTD_ZONELOAD_H_ */
 

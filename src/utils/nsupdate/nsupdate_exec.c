@@ -139,13 +139,13 @@ static int dname_isvalid(const char *lp, size_t len) {
 }
 
 /* This is probably redundant, but should be a bit faster so let's keep it. */
-static int parse_full_rr(scanner_t *s, const char* lp)
+static int parse_full_rr(zs_scanner_t *s, const char* lp)
 {
-	if (scanner_process(lp, lp + strlen(lp), 0, s) < 0) {
+	if (zs_scanner_process(lp, lp + strlen(lp), 0, s) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
 	char nl = '\n'; /* Ensure newline after complete RR */
-	if (scanner_process(&nl, &nl+sizeof(char), 1, s) < 0) { /* Terminate */
+	if (zs_scanner_process(&nl, &nl+sizeof(char), 1, s) < 0) { /* Terminate */
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -160,7 +160,7 @@ static int parse_full_rr(scanner_t *s, const char* lp)
 	return KNOT_EOK;
 }
 
-static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
+static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 	int ret = KNOT_EOK;
 	char b1[32], b2[32]; /* Should suffice for both class/type */
 
@@ -246,7 +246,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	/* Need to parse rdata, synthetize input. */
 	char *rr = sprintf_alloc("%s %u %s %s %s\n",
 	                         owner_s, s->r_ttl, b1, b2, lp);
-	if (scanner_process(rr, rr + strlen(rr), 1, s) < 0) {
+	if (zs_scanner_process(rr, rr + strlen(rr), 1, s) < 0) {
 		ret = KNOT_EPARSEFAIL;
 	}
 
@@ -289,7 +289,7 @@ static srv_info_t *parse_host(const char *lp, const char* default_port)
 }
 
 /* Append parsed RRSet to list. */
-static int rr_list_append(scanner_t *s, list_t *target_list, mm_ctx_t *mm)
+static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 {
 	/* Form a rrset. */
 	knot_dname_t *owner = knot_dname_copy(s->r_owner);
@@ -541,7 +541,7 @@ int cmd_del(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	scanner_t *rrp = params->parser;
+	zs_scanner_t *rrp = params->parser;
 	if (parse_partial_rr(rrp, lp, PARSE_NODEFAULT) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
@@ -575,7 +575,7 @@ int cmd_class(const char* lp, nsupdate_params_t *params)
 		return KNOT_EPARSEFAIL;
 	} else {
 		params->class_num = cls;
-		scanner_t *s = params->parser;
+		zs_scanner_t *s = params->parser;
 		s->default_class = params->class_num;
 	}
 
@@ -609,7 +609,7 @@ int cmd_prereq_domain(const char *lp, nsupdate_params_t *params, unsigned type)
 	UNUSED(type);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	scanner_t *s = params->parser;
+	zs_scanner_t *s = params->parser;
 	int ret = parse_partial_rr(s, lp, PARSE_NODEFAULT|PARSE_NAMEONLY);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -623,7 +623,7 @@ int cmd_prereq_rrset(const char *lp, nsupdate_params_t *params, unsigned type)
 	UNUSED(type);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	scanner_t *rrp = params->parser;
+	zs_scanner_t *rrp = params->parser;
 	if (parse_partial_rr(rrp, lp, 0) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
@@ -664,7 +664,7 @@ int cmd_prereq(const char* lp, nsupdate_params_t *params)
 
 	/* Append to packet. */
 	if (ret == KNOT_EOK) {
-		scanner_t *s = params->parser;
+		zs_scanner_t *s = params->parser;
 		s->r_ttl = 0; /* Set TTL = 0 for prereq. */
 		/* YX{RRSET,DOMAIN} - cls ANY */
 		if (prereq_type == PQ_YXRRSET || prereq_type == PQ_YXDOMAIN) {

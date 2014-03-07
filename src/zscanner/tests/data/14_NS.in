@@ -8,6 +8,7 @@ $TTL	1
 @	NS	*.				; FQD with asterisk
 @	NS	*				; Alone asterisk
 @	NS	*.*				; More asterisks
+@	NS	*a.a*a.**			; Also possible
 @	NS	@				; Use origin
 @	NS	0123456789			; Digits
 @	NS	_a_.-b-c-./d/.			; Allowed characters '_' '-' '/' anywhere
@@ -27,7 +28,6 @@ $TTL	1
 @	NS					; Empty rdata
 @	NS	\# 0				; Hex empty rdata
 @	NS	&				; Bad (unslashed) character
-@	NS	a*a				; * char can substitute whole label only
 @	NS	@@				; Double @@
 @	NS	..				; Missing label between dots
 @	NS	\1				; Slash notation requires 3 digits

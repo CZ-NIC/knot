@@ -350,16 +350,16 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
+static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
                                const knot_rrset_t *rrsigs,
                                knot_changeset_t *changeset)
 {
-	assert(rrset);
+	assert(owner);
 	assert(changeset);
 
 	knot_rrset_t *synth_rrsig = NULL;
-	int ret = knot_rrset_synth_rrsig(rrset->owner, rrset->type,
-	                                 rrsigs, &synth_rrsig, NULL);
+	int ret = knot_rrset_synth_rrsig(owner, type, rrsigs, &synth_rrsig,
+	                                 NULL);
 	if (ret != KNOT_EOK) {
 		if (ret != KNOT_ENOENT) {
 			return ret;
@@ -367,7 +367,8 @@ static int remove_rrset_rrsigs(const knot_rrset_t *rrset,
 		return KNOT_EOK;
 	}
 
-	ret = knot_changeset_add_rrset(changeset, synth_rrsig, KNOT_CHANGESET_REMOVE);
+	ret = knot_changeset_add_rrset(changeset, synth_rrsig,
+	                               KNOT_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
 		knot_rrset_deep_free(&synth_rrsig, true, NULL);
 	}
@@ -394,7 +395,8 @@ static int force_resign_rrset(const knot_rrset_t *covered,
 	assert(covered);
 
 	if (rrsigs) {
-		int result = remove_rrset_rrsigs(covered, rrsigs, changeset);
+		int result = remove_rrset_rrsigs(covered->owner, covered->type,
+		                                 rrsigs, changeset);
 		if (result != KNOT_EOK) {
 			return result;
 		}
@@ -501,7 +503,7 @@ static int sign_node_rrsets(const knot_node_t *node,
 			continue;
 		}
 		bool should_sign = false;
-		result = knot_zone_sign_rr_should_be_signed(node, rrset, NULL,
+		result = knot_zone_sign_rr_should_be_signed(node, rrset,
 		                                            &should_sign);
 		if (result != KNOT_EOK) {
 			return result;
@@ -559,7 +561,7 @@ static int sign_node(knot_node_t **node, void *data)
 
 	int result = sign_node_rrsets(*node, args->zone_keys, args->policy,
 	                              args->changeset, &args->expires_at);
-	knot_node_clear_replaced_nsec(*node);
+	knot_node_clear_removed_nsec(*node);
 
 	return result;
 }
@@ -955,7 +957,8 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	}
 
 	if (dnskeys) {
-		result = remove_rrset_rrsigs(dnskeys, rrsigs, changeset);
+		result = remove_rrset_rrsigs(dnskeys->owner, dnskeys->type,
+		                             rrsigs, changeset);
 	}
 
 fail:
@@ -1152,58 +1155,70 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 {
 	changeset_signing_data_t *args = (changeset_signing_data_t *)data;
-	bool rr_signed = false;
 	// Find RR's node in zone, find out if we need to sign this RR
 	const knot_node_t *node =
 		knot_zone_contents_find_node(args->zone, chg_rrset->owner);
+
 	// If node is not in zone, all its RRSIGs were dropped - no-op
 	if (node) {
-		const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+		const knot_rrset_t *rrsigs = knot_node_rrset(node,
+		                                             KNOT_RRTYPE_RRSIG);
 		const knot_rrset_t *zone_rrset =
 			knot_node_rrset(node, chg_rrset->type);
 		bool should_sign = false;
+
 		int ret = knot_zone_sign_rr_should_be_signed(node, zone_rrset,
-		                                             args->signed_tree,
 		                                             &should_sign);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		if (should_sign) {
-			return force_resign_rrset(zone_rrset, rrsigs, args->zone_keys,
-			                          args->policy,
-			                          args->changeset);
-		} else if (zone_rrset && knot_node_rrtype_is_signed(node, zone_rrset->type)) {
-			/*!
-			 * If RRSet in zone DOES have RRSIGs although we
-			 * should not sign it, DDNS-caused change to node/rr
-			 * occured and we have to drop all RRSIGs.
-			 */
-			return remove_rrset_rrsigs(zone_rrset, rrsigs, args->changeset);
-		} else {
-			/*!
-			 * RRSet dropped from zone using update, or should not
-			 * be signed, but it could create a new node, so we
-			 * have to mark the change.
-			 */
-			int ret = rr_already_signed(chg_rrset,
-			                            args->signed_tree,
-			                            &rr_signed);
+
+		// Check for RRSet in the 'already_signed' table
+		if (args->signed_tree && (should_sign && zone_rrset == NULL)) {
+			bool already_signed = false;
+
+			int ret = rr_already_signed(chg_rrset, args->signed_tree,
+			                            &already_signed);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-		}
-	} else {
-		// Update changes
-		int ret = rr_already_signed(chg_rrset, args->signed_tree,
-		                            &rr_signed);
-		if (ret != KNOT_EOK) {
-			return ret;
+			if (already_signed) {
+				/* Do not sign again. */
+				should_sign = false;
+			}
 		}
 
+		if (should_sign) {
+			return force_resign_rrset(zone_rrset, rrsigs,
+			                          args->zone_keys,
+			                          args->policy,
+			                          args->changeset);
+		} else {
+			/*
+			 * If RRSet in zone DOES have RRSIGs although we
+			 * should not sign it, DDNS-caused change to node/rr
+			 * occured and we have to drop all RRSIGs.
+			 *
+			 * OR
+			 *
+			 * The whole RRSet was removed, but RRSIGs remained in
+			 * the zone. We need to drop them as well.
+			 */
+			return remove_rrset_rrsigs(chg_rrset->owner,
+			                           chg_rrset->type, rrsigs,
+			                           args->changeset);
+		}
 	}
+
 	return KNOT_EOK;
 }
 
+/*!
+ * \brief Frees info node about update signing.
+ *
+ * \param val  Node to free.
+ * \param d    Unused.
+ */
 static int free_helper_trie_node(value_t *val, void *d)
 {
 	UNUSED(d);
@@ -1216,6 +1231,18 @@ static int free_helper_trie_node(value_t *val, void *d)
 	knot_dname_free(&info->hashed_dname);
 	free(info);
 	return KNOT_EOK;
+}
+
+/*!
+ * \brief Clears trie with info about update signing.
+ *
+ * \param t  Trie to clear.
+ */
+static void knot_zone_clear_sorted_changes(hattrie_t *t)
+{
+	if (t) {
+		hattrie_apply_rev(t, free_helper_trie_node, NULL);
+	}
 }
 
 /*- public API ---------------------------------------------------------------*/
@@ -1320,7 +1347,8 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	// remove signatures for old SOA (if there are any)
 
 	if (rrsigs) {
-		result = remove_rrset_rrsigs(soa, rrsigs, changeset);
+		result = remove_rrset_rrsigs(soa->owner, soa->type, rrsigs,
+		                             changeset);
 		if (result != KNOT_EOK) {
 			return result;
 		}
@@ -1369,12 +1397,10 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
-                             hattrie_t **sorted_changes,
                              const knot_zone_keys_t *zone_keys,
                              const knot_dnssec_policy_t *policy)
 {
-	if (zone == NULL || in_ch == NULL || out_ch == NULL ||
-	    sorted_changes == NULL) {
+	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1398,13 +1424,11 @@ int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
 		ret = knot_changeset_apply((knot_changeset_t *)in_ch,
 		                           KNOT_CHANGESET_REMOVE,
 		                           sign_changeset_wrap, &args);
-	} else {
-		knot_zone_clear_sorted_changes(args.signed_tree);
-		hattrie_free(args.signed_tree);
-		args.signed_tree = NULL;
 	}
 
-	*sorted_changes = args.signed_tree;
+	knot_zone_clear_sorted_changes(args.signed_tree);
+	hattrie_free(args.signed_tree);
+
 	return ret;
 }
 
@@ -1435,7 +1459,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
  */
 int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
                                        const knot_rrset_t *rrset,
-                                       hattrie_t *tree, bool *should_sign)
+                                       bool *should_sign)
 {
 	if (should_sign == NULL) {
 		return KNOT_EINVAL;
@@ -1470,31 +1494,13 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	}
 
 	// These RRs have their signatures stored in changeset already
-	if (knot_node_is_replaced_nsec(node)
+	if (knot_node_is_removed_nsec(node)
 	    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
 	         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
 		return KNOT_EOK;
-	}
-
-	// Check for RRSet in the 'already_signed' table
-	if (tree) {
-		bool already_signed = false;
-		int ret = rr_already_signed(rrset, tree, &already_signed);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-		if (already_signed) {
-			return KNOT_EOK;
-		}
 	}
 
 	*should_sign = true;
 	return KNOT_EOK;
 }
 
-void knot_zone_clear_sorted_changes(hattrie_t *t)
-{
-	if (t) {
-		hattrie_apply_rev(t, free_helper_trie_node, NULL);
-	}
-}

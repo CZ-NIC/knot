@@ -336,7 +336,6 @@ int main(int argc, char **argv)
 
 	/* Initialize server. */
 	server_t server;
-	log_server_info("Initializing server...\n");
 	int res = server_init(&server);
 	if (res != KNOT_EOK) {
 		log_server_fatal("Could not initialize server: %s\n",
