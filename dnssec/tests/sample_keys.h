@@ -58,6 +58,7 @@ static const key_parameters_t SAMPLE_RSA_KEY = {
 		0x03, 0x01, 0x00, 0x01, 0xad, 0xa0, 0x24, 0xcf, 0x45, 0x7b,
 		0xc3, 0x6c, 0x9b, 0x91, 0x71, 0xc6, 0x3f, 0x8e, 0xd3, 0x8d,
 	}},
+	.id = "bbab201968d2f46aae88c6c8c9687e6900122883",
 	.keytag = 726,
 	.bit_size = 128,
 	.privkey_params = {
@@ -154,6 +155,7 @@ static const key_parameters_t SAMPLE_DSA_KEY = {
 		0x3f, 0xc8, 0x26,
 	}},
 	.keytag = 1203,
+	.id = "141b2d54837494735b53795bf0c1579bd9e12754",
 	.bit_size = 512,
 	.privkey_params = {
 		{ "prime", { .size = 64, .data = (uint8_t []) {
@@ -231,6 +233,7 @@ static const key_parameters_t SAMPLE_ECDSA_KEY = {
 		0x66, 0xcb, 0x97, 0xcc,
 	}},
 	.keytag = 5345,
+	.id = "",
 	.bit_size = 256,
 	.privkey_params = {
 		{ "private_key", { .size = 32, .data = (uint8_t []) {

@@ -34,8 +34,10 @@ static void check_key(const char *name, const key_parameters_t *params)
 
 	dnssec_key_id_t key_id = { 0 };
 	r = dnssec_key_get_id(key, key_id);
-	ok(r == DNSSEC_EOK && 0 /* TBD */,
+	char *key_id_str = dnssec_key_id_to_string(key_id);
+	ok(r == DNSSEC_EOK && strcmp(key_id_str, params->id) == 0,
 	   "%s: dnssec_key_get_id()", name);
+	free(key_id_str);
 
 	ok(dnssec_key_get_keytag(key) == params->keytag,
 	   "%s: dnssec_key_get_keytag()", name);
@@ -78,6 +80,8 @@ static void public_from_dnskey(void)
 int main(void)
 {
 	plan_lazy();
+
+	gnutls_global_init();
 
 	public_from_dnskey();
 
