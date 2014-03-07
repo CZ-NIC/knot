@@ -245,12 +245,12 @@ int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 static bool valid_dsa_rdata_size(size_t size)
 {
 	// minimal key size
-	if (size < 20 + 3 * 64) {
+	if (size < 1 + 20 + 3 * 64) {
 		return false;
 	}
 
 	// p, g, and y size equals
-	size_t pgy_size = size - 20;
+	size_t pgy_size = size - 20 - 1;
 	if (pgy_size % 3 != 0) {
 		return false;
 	}
@@ -264,6 +264,13 @@ static bool valid_dsa_rdata_size(size_t size)
 	return true;
 }
 
+static uint8_t expected_t_size(size_t size)
+{
+	size_t p_size = (size - 1 - 20) / 3;
+	return (p_size - 64) / 8;
+}
+
+
 int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
@@ -275,6 +282,13 @@ int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 
 	wire_ctx_t ctx;
 	wire_init_binary(&ctx, rdata);
+
+	// read t
+
+	uint8_t t = wire_read_u8(&ctx);
+	if (t != expected_t_size(rdata->size)) {
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
 
 	// parse q
 
