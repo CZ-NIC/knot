@@ -150,15 +150,15 @@
 	}
 
 	label_char =
-	    ( (alnum | [\-_/]) $_label_char                 # One common char.
-	    | ('\\' . ^digit)  @_label_char                 # One "\x" char.
-	    | ('\\'            %_label_dec_init             # Initial "\" char.
-	       . digit {3}     $_label_dec %_label_dec_exit # "DDD" rest.
-	                       $!_label_dec_error
+	    ( (alnum | [*\-_/]) $_label_char                 # One common char.
+	    | ('\\' . ^digit)   @_label_char                 # One "\x" char.
+	    | ('\\'             %_label_dec_init             # Initial "\" char.
+	       . digit {3}      $_label_dec %_label_dec_exit # "DDD" rest.
+	                        $!_label_dec_error
 	      )
 	    );
 
-	label  = (label_char+ | ('*' $_label_char)) >_label_init %_label_exit;
+	label  = label_char+ >_label_init %_label_exit;
 	labels = (label . '.')* . label;
 	# END
 
