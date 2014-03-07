@@ -9,6 +9,7 @@ tld		NS	@	; Relative form
 *.		NS	@	; FQD with asterisk
 *		NS	@	; Alone asterisk
 *.*		NS	@	; More asterisks
+*a.a*a.**	NS	@	; Also possible
 @		NS	@	; Use origin
 0123456789	NS	@	; Digits
 _a_.-b-c-./d/.	NS	@	; Allowed characters '_' '-' '/' anywhere
@@ -22,7 +23,6 @@ b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.	NS	@	;
 
 ; KO
 &	NS	@	; Bad (unslashed) character
-a*a	NS	@	; * char can substitute whole label only
 	NS	@	; Bad previous
 .a	NS	@	; Leading dot
 @@	NS	@	; Double @@
