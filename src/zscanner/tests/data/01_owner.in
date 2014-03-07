@@ -12,6 +12,7 @@ tld		NS	@	; Relative form
 *a.a*a.**	NS	@	; Also possible
 @		NS	@	; Use origin
 0123456789	NS	@	; Digits
+0/25.2.0.192.in-addr.arpa.	NS	@	; CIDR notation
 _a_.-b-c-./d/.	NS	@	; Allowed characters '_' '-' '/' anywhere
 ABCDEFGHIJKLMNOPQRSTUVWXYZ	NS	@	; All upper-case letters
 abcdefghijklmnopqrstuvwxyz	NS	@	; All lower-case letters
