@@ -34,10 +34,9 @@ static void check_key(const char *name, const key_parameters_t *params)
 
 	dnssec_key_id_t key_id = { 0 };
 	r = dnssec_key_get_id(key, key_id);
-	char *key_id_str = dnssec_key_id_to_string(key_id);
-	ok(r == DNSSEC_EOK && strcmp(key_id_str, params->id) == 0,
+	ok(r == DNSSEC_EOK &&
+	   memcmp(key_id, params->key_id.data, params->key_id.size) == 0,
 	   "%s: dnssec_key_get_id()", name);
-	free(key_id_str);
 
 	ok(dnssec_key_get_keytag(key) == params->keytag,
 	   "%s: dnssec_key_get_keytag()", name);
