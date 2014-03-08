@@ -233,7 +233,7 @@ static const key_parameters_t SAMPLE_ECDSA_KEY = {
 		0x66, 0xcb, 0x97, 0xcc,
 	}},
 	.keytag = 5345,
-	.id = "",
+	.id = "47fd10011e76cc6741af586041eae5519465fc8d",
 	.bit_size = 256,
 	.privkey_params = {
 		{ "private_key", { .size = 32, .data = (uint8_t []) {
