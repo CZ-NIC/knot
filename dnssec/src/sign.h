@@ -14,6 +14,5 @@ void dnssec_sign_free(dnssec_sign_ctx_t *ctx);
 
 int dnssec_sign_init(dnssec_sign_ctx_t *ctx);
 int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data);
-size_t dnssec_sign_size(dnssec_sign_ctx_t *ctx);
 int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature);
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature);

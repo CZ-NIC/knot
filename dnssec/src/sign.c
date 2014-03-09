@@ -110,16 +110,6 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 	return DNSSEC_EOK;
 }
 
-size_t dnssec_sign_size(dnssec_sign_ctx_t *ctx)
-{
-	if (!ctx) {
-		return 0;
-	}
-
-	// TODO: algorithm dependent
-	return 1024;
-}
-
 static int finish_hash(dnssec_sign_ctx_t *ctx, gnutls_datum_t *hash)
 {
 	assert(ctx);
