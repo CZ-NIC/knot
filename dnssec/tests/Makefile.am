@@ -10,7 +10,8 @@ check_PROGRAMS = \
 	binary		\
 	key		\
 	key_pubkey	\
-	sign
+	sign		\
+	sign_der
 
 check-compile-only: $(check_PROGRAMS)
 
