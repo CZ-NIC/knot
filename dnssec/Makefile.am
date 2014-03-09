@@ -26,4 +26,6 @@ libdnssec_la_SOURCES =	\
 	src/shared.h \
 	src/sign.c \
 	src/sign.h \
+	src/sign/der.c \
+	src/sign/der.h \
 	src/wire.h
