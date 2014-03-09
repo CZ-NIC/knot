@@ -22,12 +22,12 @@ static int keydir_open(void **context, const char *path)
 		return DNSSEC_EINVAL;
 	}
 
-	keydir_ctx_t *ctx = malloc(sizeof(keydir_ctx_t));
+	keydir_ctx_t *ctx = malloc(sizeof(*ctx));
 	if (!ctx) {
 		return DNSSEC_ENOMEM;
 	}
 
-	memset(ctx, 0, sizeof(keydir_ctx_t));
+	clear_struct(ctx);
 	// TODO: convert to absolute path and normalize
 	ctx->path = strdup(path);
 

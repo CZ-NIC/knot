@@ -8,6 +8,14 @@
 #define _hidden_ __attribute__((visibility("hidden")))
 
 #define _unused_ __attribute__((unused))
+
+/**
+ * Macro to clear a structure of known size.
+ *
+ * \param pointer Pointer to the structure.
+ */
+#define clear_struct(pointer) memset((pointer), '\0', sizeof(*(pointer)))
+
 #define _cleanup_(var) __attribute__((cleanup(var)))
 
 static inline void close_ptr(int *ptr)

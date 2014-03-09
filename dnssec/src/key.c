@@ -70,12 +70,12 @@ int dnssec_key_new(dnssec_key_t **key_ptr)
 		return DNSSEC_EINVAL;
 	}
 
-	dnssec_key_t *key = malloc(sizeof(dnssec_key_t));
+	dnssec_key_t *key = malloc(sizeof(*key));
 	if (!key) {
 		return DNSSEC_ENOMEM;
 	}
 
-	memset(key, 0, sizeof(dnssec_key_t));
+	clear_struct(key);
 	*key_ptr = key;
 
 	return DNSSEC_EOK;
@@ -91,7 +91,7 @@ void dnssec_key_clear(dnssec_key_t *key)
 	gnutls_privkey_deinit(key->private_key);
 	gnutls_pubkey_deinit(key->public_key);
 
-	memset(key, 0, sizeof(dnssec_key_t));
+	clear_struct(key);
 }
 
 void dnssec_key_free(dnssec_key_t **key_ptr)

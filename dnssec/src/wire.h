@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "binary.h"
+#include "shared.h"
 
 typedef struct wire_ctx {
 	uint8_t *wire;
@@ -18,7 +19,7 @@ static inline void wire_init(wire_ctx_t *ctx, uint8_t *wire, size_t size)
 	assert(ctx);
 	assert(wire);
 
-	memset(ctx, 0, sizeof(wire_ctx_t));
+	clear_struct(ctx);
 	ctx->wire = wire;
 	ctx->size = size;
 	ctx->position = wire;
