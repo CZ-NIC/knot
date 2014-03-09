@@ -9,11 +9,15 @@
 #include "shared.h"
 #include "sign.h"
 
+/*!
+ * DNSSEC signgin context.
+ */
 struct dnssec_sign_ctx {
-	const dnssec_key_t *key;
+	const dnssec_key_t *key;		  //!< Signing key.
+	const algorithm_functions_t *functions;	  //!< Implementation specific.
 
-	gnutls_digest_algorithm_t digest_algorithm;
-	gnutls_hash_hd_t digest;
+	gnutls_digest_algorithm_t hash_algorithm; //!< Used algorithm.
+	gnutls_hash_hd_t hash;			  //!< Hash computation context.
 };
 
 /**
@@ -40,7 +44,6 @@ gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 	}
 }
 
-
 int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 {
 	if (!ctx_ptr) {
@@ -51,7 +54,7 @@ int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 	clear_struct(ctx);
 
 	ctx->key = key;
-	ctx->digest_algorithm = get_digest_algorithm(key);
+	ctx->hash_algorithm = get_digest_algorithm(key);
 
 	int result = dnssec_sign_init(ctx);
 	if (result != DNSSEC_EOK) {
@@ -70,8 +73,8 @@ void dnssec_sign_free(dnssec_sign_ctx_t *ctx)
 		return;
 	}
 
-	if (ctx->digest) {
-		gnutls_hash_deinit(ctx->digest, NULL);
+	if (ctx->hash) {
+		gnutls_hash_deinit(ctx->hash, NULL);
 	}
 
 	free(ctx);
@@ -83,12 +86,12 @@ int dnssec_sign_init(dnssec_sign_ctx_t *ctx)
 		return DNSSEC_EINVAL;
 	}
 
-	if (ctx->digest) {
-		gnutls_hash_deinit(ctx->digest, NULL);
-		ctx->digest = NULL;
+	if (ctx->hash) {
+		gnutls_hash_deinit(ctx->hash, NULL);
+		ctx->hash = NULL;
 	}
 
-	int result = gnutls_hash_init(&ctx->digest, ctx->digest_algorithm);
+	int result = gnutls_hash_init(&ctx->hash, ctx->hash_algorithm);
 	if (result != GNUTLS_E_SUCCESS) {
 		return DNSSEC_SIGN_INIT_ERROR;
 	}
@@ -102,7 +105,7 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 		return DNSSEC_EINVAL;
 	}
 
-	int result = gnutls_hash(ctx->digest, data->data, data->size);
+	int result = gnutls_hash(ctx->hash, data->data, data->size);
 	if (result != 0) {
 		return DNSSEC_SIGN_ERROR;
 	}
@@ -115,7 +118,7 @@ static int finish_hash(dnssec_sign_ctx_t *ctx, gnutls_datum_t *hash)
 	assert(ctx);
 	assert(hash);
 
-	hash->size = gnutls_hash_get_len(ctx->digest_algorithm);
+	hash->size = gnutls_hash_get_len(ctx->hash_algorithm);
 	if (hash->size == 0) {
 		return DNSSEC_SIGN_ERROR;
 	}
@@ -125,9 +128,20 @@ static int finish_hash(dnssec_sign_ctx_t *ctx, gnutls_datum_t *hash)
 		return DNSSEC_ENOMEM;
 	}
 
-	gnutls_hash_output(ctx->digest, hash->data);
+	gnutls_hash_output(ctx->hash, hash->data);
 
 	return DNSSEC_EOK;
+}
+
+static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_sign_ctx_t *ctx)
+{
+	assert(ctx);
+	assert(ctx->key && ctx->key->public_key);
+
+	gnutls_pk_algorithm_t pubkey_algorithm =
+		gnutls_pubkey_get_pk_algorithm(ctx->key->public_key, NULL);
+
+	return gnutls_pk_to_sign(pubkey_algorithm, ctx->hash_algorithm);
 }
 
 int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
@@ -149,7 +163,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 	assert(ctx->key->private_key);
 	_cleanup_datum_ gnutls_datum_t raw_signature = { 0 };
 	result = gnutls_privkey_sign_hash(ctx->key->private_key,
-					  ctx->digest_algorithm,
+					  ctx->hash_algorithm,
 					  0, &hash, &raw_signature);
 	if (!result) {
 		return DNSSEC_SIGN_ERROR;
@@ -158,17 +172,6 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 	// TODO: conversion
 
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
-}
-
-static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_sign_ctx_t *ctx)
-{
-	assert(ctx);
-	assert(ctx->key && ctx->key->public_key);
-
-	gnutls_pk_algorithm_t pubkey_algorithm =
-		gnutls_pubkey_get_pk_algorithm(ctx->key->public_key, NULL);
-
-	return gnutls_pk_to_sign(pubkey_algorithm, ctx->digest_algorithm);
 }
 
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
