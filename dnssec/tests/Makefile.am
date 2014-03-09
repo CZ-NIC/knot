@@ -11,7 +11,8 @@ check_PROGRAMS = \
 	key		\
 	key_pubkey	\
 	sign		\
-	sign_der
+	sign_der	\
+	wire
 
 check-compile-only: $(check_PROGRAMS)
 

@@ -107,7 +107,7 @@ static inline void wire_write_u16(wire_ctx_t *ctx, uint16_t value)
 	ctx->position += 2;
 }
 
-static inline void wire_write(wire_ctx_t *ctx, uint8_t *data, size_t size)
+static inline void wire_write(wire_ctx_t *ctx, const uint8_t *data, size_t size)
 {
 	assert(ctx);
 	assert(data);
@@ -121,4 +121,28 @@ static inline void wire_write_binary(wire_ctx_t *ctx, const dnssec_binary_t *dat
 	assert(data);
 
 	wire_write(ctx, data->data, data->size);
+}
+
+static inline void wire_write_ralign(wire_ctx_t *ctx, size_t width,
+				     const uint8_t *data, size_t size)
+{
+	assert(ctx);
+	assert(data);
+	assert(width >= size);
+
+	size_t padding = width - size;
+	if (padding > 0) {
+		memset(ctx->position, 0, padding);
+		ctx->position += padding;
+	}
+
+	wire_write(ctx, data, size);
+}
+
+static inline void wire_write_ralign_binary(wire_ctx_t *ctx, size_t width,
+					    const dnssec_binary_t *data)
+{
+	assert(data);
+
+	wire_write_ralign(ctx, width, data->data, data->size);
 }
