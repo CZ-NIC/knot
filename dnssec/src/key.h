@@ -1,7 +1,9 @@
 #pragma once
 
 #include <gnutls/abstract.h>
+#include <stdbool.h>
 #include <stdint.h>
+
 #include "binary.h"
 #include "shared.h"
 
@@ -56,6 +58,9 @@ uint16_t dnssec_key_get_flags(const dnssec_key_t *key);
 uint8_t dnssec_key_get_protocol(const dnssec_key_t *key);
 uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key);
 int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey);
+
+bool dnssec_key_can_sign(const dnssec_key_t *key);
+bool dnssec_key_can_verify(const dnssec_key_t *key);
 
 // TODO: PKCS 8
 

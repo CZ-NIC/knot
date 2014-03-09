@@ -180,6 +180,16 @@ int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id)
 	return DNSSEC_EOK;
 }
 
+bool dnssec_key_can_sign(const dnssec_key_t *key)
+{
+	return key && key->private_key;
+}
+
+bool dnssec_key_can_verify(const dnssec_key_t *key)
+{
+	return key && key->public_key;
+}
+
 int dnssec_key_from_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
 			   uint8_t algorithm, const dnssec_binary_t *public_key)
 {
