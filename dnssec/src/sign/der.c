@@ -69,11 +69,13 @@ static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *value)
 		return result;
 	}
 
-	if (size <= wire_available(wire)) {
+	if (size > wire_available(wire)) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	wire_read_binary(wire, value);
+	value->size = size;
+	value->data = wire->position;
+	wire->position += size;
 
 	return DNSSEC_EOK;
 }
