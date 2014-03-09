@@ -12,17 +12,6 @@
 #include "shared.h"
 #include "wire.h"
 
-// INTERNAL API (crypto dependent)
-
-// auto cleanup functions
-
-static void free_datum(gnutls_datum_t *ptr)
-{
-	gnutls_free(ptr->data);
-}
-
-#define _cleanup_datum_ _cleanup_(free_datum)
-
 // internal
 
 /**
