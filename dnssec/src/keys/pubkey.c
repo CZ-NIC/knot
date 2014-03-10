@@ -33,22 +33,6 @@ static void trim_leading_zero(gnutls_datum_t *data)
 	}
 }
 
-/**
- * Write data in gnutls_datum_t structo to the wire wire.
- */
-static void wire_write_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
-{
-	assert(data);
-
-	wire_write(ctx, data->data, data->size);
-}
-
-static void wire_read_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
-{
-	assert(data);
-
-	wire_read(ctx, data->data, data->size);
-}
 
 // API
 

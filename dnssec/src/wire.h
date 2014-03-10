@@ -2,6 +2,7 @@
 
 #include <arpa/inet.h>
 #include <assert.h>
+#include <gnutls/gnutls.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -145,4 +146,18 @@ static inline void wire_write_ralign_binary(wire_ctx_t *ctx, size_t width,
 	assert(data);
 
 	wire_write_ralign(ctx, width, data->data, data->size);
+}
+
+static inline void wire_write_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
+{
+	assert(data);
+
+	wire_write(ctx, data->data, data->size);
+}
+
+static inline void wire_read_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
+{
+	assert(data);
+
+	wire_read(ctx, data->data, data->size);
 }
