@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 	is_int(0, sockaddr_cmp(&iface->addr, &addr_ref), "interface1 address check");
 
 	// Test 9,10: Check server key
-	if(list_size(&conf->keys) == 0) {
+	if (EMPTY_LIST(conf->keys)) {
 		ok(0, "TSIG key algorithm check - NO KEY FOUND");
 		ok(0, "TSIG key secret check - NO KEY FOUND");
 	} else {
