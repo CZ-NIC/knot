@@ -30,6 +30,7 @@
 #include "knot/conf/extra.h"
 #include "knot/knot.h"
 #include "knot/ctl/remote.h"
+#include "knot/nameserver/synth_record.h"
 
 /*
  * Defaults.
@@ -979,6 +980,13 @@ void conf_free_zone(conf_zone_t *zone)
 	WALK_LIST_FREE(zone->acl.notify_in);
 	WALK_LIST_FREE(zone->acl.notify_out);
 	WALK_LIST_FREE(zone->acl.update_in);
+
+	/* Free answer synthesis rule list. */
+	synth_template_t *tpl = NULL, *tpl_next = NULL;
+	WALK_LIST_DELSAFE(tpl, tpl_next, zone->synth_templates) {
+		free(tpl->format);
+		free(tpl);
+	}
 
 	free(zone->name);
 	free(zone->file);

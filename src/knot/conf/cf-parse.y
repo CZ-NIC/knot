@@ -888,7 +888,7 @@ zone_synth_addr:
  ;
 
 zone_synth:
- | FORWARD TEXT zone_synth_addr zone_synth_ttl { synth_tpl_define(scanner, SYNTH_FORWARD, $2.t); }
+   FORWARD TEXT zone_synth_addr zone_synth_ttl { synth_tpl_define(scanner, SYNTH_FORWARD, $2.t); }
  | REVERSE TEXT zone_synth_addr zone_synth_ttl { synth_tpl_define(scanner, SYNTH_REVERSE, $2.t); }
  ;
 
