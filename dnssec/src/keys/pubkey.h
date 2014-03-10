@@ -3,13 +3,24 @@
 #include <gnutls/abstract.h>
 #include "binary.h"
 
-int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata);
-int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata);
-int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata);
-
-int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key);
-int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key);
-int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key);
-
+/*!
+ * Encode public key to the format used in DNSKEY RDATA.
+ *
+ * \param key    Public key to be encoded.
+ * \param rdata  Encoded key (allocated).
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
 int pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata);
-int rdata_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata, gnutls_pubkey_t key);
+
+/*!
+ * Create public key from the format encoded in DNSKEY RDATA.
+ *
+ * \param algorithm  DNSSEC algorithm identification.
+ * \param rdata      Public key in DNSKEY RDATA format.
+ * \param key        Created public key.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int rdata_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
+                    gnutls_pubkey_t key);

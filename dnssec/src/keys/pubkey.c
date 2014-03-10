@@ -12,8 +12,6 @@
 #include "shared.h"
 #include "wire.h"
 
-// internal
-
 /**
  * Trim leading zero from binary data.
  *
@@ -33,10 +31,12 @@ static void trim_leading_zero(gnutls_datum_t *data)
 	}
 }
 
+/* -- DNSSEC to crypto ------------------------------------------------------*/
 
-// API
-
-int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
+/*!
+ * Convert RSA public key to DNSSEC format.
+ */
+static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 {
 	assert(key);
 	assert(rdata);
@@ -75,7 +75,10 @@ int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	return DNSSEC_EOK;
 }
 
-int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
+/*!
+ * Convert DSA public key to DNSSEC format.
+ */
+static int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 {
 	assert(key);
 	assert(rdata);
@@ -128,6 +131,9 @@ int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Convert ECDSA public key to DNSSEC format.
+ */
 int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 {
 	assert(key);
@@ -167,7 +173,12 @@ int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	return DNSSEC_EOK;
 }
 
-int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
+/* -- crypto to DNSSEC ------------------------------------------------------*/
+
+/*!
+ * Convert RSA key in DNSSEC format to crypto key.
+ */
+static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
 	assert(key);
@@ -215,6 +226,9 @@ int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 	return DNSSEC_EOK;
 }
 
+/*!
+ * Check if the size of DSA public key in DNSSEC format is correct.
+ */
 static bool valid_dsa_rdata_size(size_t size)
 {
 	// minimal key size
@@ -237,13 +251,18 @@ static bool valid_dsa_rdata_size(size_t size)
 	return true;
 }
 
+/*!
+ * Compute the DSA t value from RDATA public key size.
+ */
 static uint8_t expected_t_size(size_t size)
 {
 	size_t p_size = (size - 1 - 20) / 3;
 	return (p_size - 64) / 8;
 }
 
-
+/*!
+ * Convert DSA key in DNSSEC format to crypto key.
+ */
 int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
@@ -299,6 +318,9 @@ int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 	return DNSSEC_EOK;
 }
 
+/**
+ * Choose proper ECDSA curve basd on RDATA public key size.
+ */
 static gnutls_ecc_curve_t choose_ecdsa_curve(size_t rdata_size)
 {
 	switch (rdata_size) {
@@ -308,7 +330,10 @@ static gnutls_ecc_curve_t choose_ecdsa_curve(size_t rdata_size)
 	}
 }
 
-int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
+/*!
+ * Convert ECDSA key in DNSSEC format to crypto key.
+ */
+static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 {
 	assert(rdata);
 	assert(key);
@@ -344,6 +369,11 @@ int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 	return DNSSEC_EOK;
 }
 
+/* -- public API ----------------------------------------------------------- */
+
+/*!
+ * Encode public key to the format used in DNSKEY RDATA.
+ */
 int pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 {
 	assert(key);
@@ -363,6 +393,9 @@ int pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	}
 }
 
+/*!
+ * Create public key from the format encoded in DNSKEY RDATA.
+ */
 int rdata_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 		    gnutls_pubkey_t key)
 {
