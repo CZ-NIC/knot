@@ -67,6 +67,53 @@ static int reverse_addr_parse(struct query_data *qdata, char *addr_str)
 	return family;
 }
 
+static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, char *addr_str)
+{
+	/* Extract [prefix] from [prefix][address][suffix]. */
+	const char *addr_beginp = strchr(tpl->format, '%');
+	if (addr_beginp == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	/* Find prefix label count (additive to prefix length). */
+	const knot_dname_t *addr_label = knot_pkt_qname(qdata->query);
+	int prefix_len = addr_beginp - tpl->format;
+	int skip_len = 0;
+	for (int i = 0; i < prefix_len; ++i) {
+		if (tpl->format[i] == '.') {
+			skip_len = 0;
+			addr_label = knot_wire_next_label(addr_label, NULL);
+		} else {
+			skip_len += 1;
+		}
+	}
+
+	/* Mismatch if seeked out of the domain name. */
+	if (addr_label == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	memcpy(addr_str, addr_label + 1 + skip_len, *addr_label - skip_len);
+	
+	/* Restore correct address format. */
+	char sep = '.';
+	if (tpl->subnet.ss.ss_family == AF_INET6) {
+		sep = ':';
+	}
+	for (int i = 0; i < *addr_label - skip_len; ++i) {
+		if (addr_str[i] == '-') {
+			addr_str[i] = sep;
+		}
+	}
+	
+	/* Get family from QTYPE. */
+	switch(knot_pkt_qtype(qdata->query)) {
+	case KNOT_RRTYPE_A:    return AF_INET;
+	case KNOT_RRTYPE_AAAA: return AF_INET6;
+	default:               return AF_UNSPEC;
+	}
+}
+
 static knot_dname_t *synth_ptrname(const char *addr_str, synth_template_t *tpl)
 {
 	/* PTR right-hand value is [prefix][addresbs][suffix] */
@@ -165,7 +212,58 @@ static int reverse_match(synth_template_t *tpl, knot_pkt_t *pkt, struct query_da
 
 static int forward_match(synth_template_t *tpl, knot_pkt_t *pkt, struct query_data *qdata)
 {
-	return NS_PROC_FAIL;
+	/* Parse address from query name. */
+	char addr_str[SOCKADDR_STRLEN] = { '\0' };
+	int family = forward_addr_parse(qdata, tpl, addr_str);
+	if (family == AF_UNSPEC) {
+		qdata->rcode = KNOT_RCODE_NXDOMAIN; /* Invalid address in our authority. */
+		return NS_PROC_FAIL;
+	}
+
+	/* Match against template netblock. */
+	struct sockaddr_storage query_addr;
+	int ret = sockaddr_set(&query_addr, family, addr_str, 0);
+	if (ret == KNOT_EOK) {
+		ret = netblock_match(&tpl->subnet, &query_addr);
+	}
+	if (ret != 0) {
+		return NS_PROC_NOOP; /* Not applicable. */
+	}
+
+	/* Decide synthetic record A/AAAA type. */
+	uint16_t rr_class = KNOT_RRTYPE_NAPTR;
+	if (family == AF_INET6) {
+		rr_class = KNOT_RRTYPE_AAAA;
+	}
+
+	knot_dname_t* qname = knot_dname_copy(knot_pkt_qname(qdata->query));
+	knot_rrset_t *rr = knot_rrset_new(qname, rr_class, KNOT_CLASS_IN, &pkt->mm);
+	if (rr == NULL) {
+		knot_dname_free(&qname);
+		qdata->rcode = KNOT_RCODE_SERVFAIL;
+		return NS_PROC_FAIL;
+	}
+
+	/* Append address. */
+	if (family == AF_INET6) {
+		const struct sockaddr_in6* ip = (const struct sockaddr_in6*)&query_addr;
+		knot_rrset_add_rr(rr, (const uint8_t *)&ip->sin6_addr, sizeof(struct in6_addr),
+		                  tpl->ttl, &pkt->mm);
+	} else {
+		const struct sockaddr_in* ip = (const struct sockaddr_in*)&query_addr;
+		knot_rrset_add_rr(rr, (const uint8_t *)&ip->sin_addr, sizeof(struct in_addr),
+		                  tpl->ttl, &pkt->mm);
+	}
+
+	/*! \todo Minimal TTL if not configured, after SOA record API cleanup. */
+
+	/* Create empty response with PTR record in AN. */
+	knot_pkt_init_response(pkt, qdata->query);
+	if (knot_pkt_put(pkt, COMPR_HINT_QNAME, rr, KNOT_PF_FREE) != KNOT_EOK) {
+		return NS_PROC_FAIL;
+	}
+
+	return NS_PROC_DONE;
 }
 
 /*! \brief Check if query fits the template requirements. */

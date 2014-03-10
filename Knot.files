@@ -116,6 +116,8 @@ src/knot/nameserver/nsec_proofs.c
 src/knot/nameserver/nsec_proofs.h
 src/knot/nameserver/process_query.c
 src/knot/nameserver/process_query.h
+src/knot/nameserver/synth_record.c
+src/knot/nameserver/synth_record.h
 src/knot/nameserver/update.c
 src/knot/nameserver/update.h
 src/knot/other/debug.h
