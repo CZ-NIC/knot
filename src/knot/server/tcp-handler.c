@@ -377,7 +377,7 @@ int tcp_master(dthread_t *thread)
 	mm_ctx_mempool(&tcp.query_ctx.mm, 4 * sizeof(knot_pkt_t));
 
 	/* Prepare structures for bound sockets. */
-	fdset_init(&tcp.set, conf()->ifaces_count + CONFIG_XFERS);
+	fdset_init(&tcp.set, list_size(&conf()->ifaces) + CONFIG_XFERS);
 
 	/* Create iovec abstraction. */
 	for (unsigned i = 0; i < 2; ++i) {
