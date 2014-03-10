@@ -43,8 +43,8 @@
 
 /* Constants. */
 #define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
-#define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Interval between AXFR BS retries. */
-#define AXFR_RETRY_MAXTIME (10*60*1000) /*!< Maximum interval 10mins */
+#define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Jitter cap between AXFR bootstrap retries. */
+#define AXFR_RETRY_MAXTIME (24*60*60*1000) /*!< Maximum AXFR retry interval cap of 24 hours. */
 
 enum {
 	REFRESH_DEFAULT = -1 /* Use time value from zone structure. */
