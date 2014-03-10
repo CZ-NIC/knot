@@ -196,9 +196,25 @@ static int rsa_copy_signature(dnssec_sign_ctx_t *ctx,
 }
 
 /*!
+ * Get T value from DSA key public key.
+ */
+static uint8_t dsa_dnskey_get_t_value(const dnssec_key_t *key)
+{
+	assert(key);
+
+	if (key->rdata.size <= 4) {
+		return 0;
+	}
+
+	wire_ctx_t wire;
+	wire_init_binary(&wire, &key->rdata);
+	wire_seek(&wire, 4);
+
+	return wire_read_u8(&wire);
+}
+
+/*!
  * Convert DSA signature to DNSSEC format.
- *
- * \todo T value of the signature is not written (but not needed).
  *
  * \note Described in RFC 2536.
  */
@@ -223,7 +239,7 @@ static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	uint8_t value_t = 0;
+	uint8_t value_t = dsa_dnskey_get_t_value(ctx->key);
 
 	size_t size = 41;
 	uint8_t *data = malloc(size);
