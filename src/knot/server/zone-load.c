@@ -229,10 +229,6 @@ static zone_t *create_zone(zone_t *old_zone, conf_zone_t *conf, server_t *server
 	case ZONE_STATUS_FOUND_NEW:
 	case ZONE_STATUS_FOUND_UPDATED:
 		new_zone = load_zone_file(conf);
-		if (!new_zone) {
-			zstatus = ZONE_STATUS_NOT_FOUND;
-			new_zone = bootstrap_zone(conf);
-		}
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
 		new_zone = preserve_zone(conf, old_zone);
