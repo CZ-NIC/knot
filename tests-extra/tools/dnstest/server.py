@@ -10,7 +10,7 @@ import time
 import dns.message
 import dns.query
 import dns.update
-from subprocess import Popen, PIPE, DEVNULL, check_call, CalledProcessError
+from subprocess import Popen, PIPE, check_call, CalledProcessError
 from dnstest.utils import *
 import dnstest.params as params
 import dnstest.keys
@@ -202,19 +202,17 @@ class Server(object):
             raise Exception("Can't compile %s" %self.name)
 
     def start(self, clean=False):
-
         mode = "w" if clean else "a"
 
         try:
-            fout = open(self.fout, mode=mode)
-            ferr = open(self.ferr, mode=mode)
-
             if self.compile_params:
                 self.compile()
 
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
-                                  self.start_params, stdout=fout, stderr=ferr)
+                                  self.start_params,
+                                  stdout=open(self.fout, mode=mode),
+                                  stderr=open(self.ferr, mode=mode))
 
             if self.valgrind:
                 time.sleep(Server.START_WAIT_VALGRIND)
@@ -225,22 +223,23 @@ class Server(object):
 
     def reload(self):
         try:
-            check_call([self.control_bin] + self.reload_params, \
-                       stdout=DEVNULL, stderr=DEVNULL)
+            check_call([self.control_bin] + self.reload_params,
+                       stdout=open(self.dir + "/call.out", mode="a"),
+                       stderr=open(self.dir + "/call.err", mode="a"))
             time.sleep(Server.START_WAIT)
-        except CalledProcessError:
+        except CalledProcessError as e:
             self.backtrace()
-            raise Exception("Can't reload %s" % self.name)
+            raise Exception("Can't reload %s (%i)" % (self.name, e.returncode))
 
     def flush(self):
         try:
-            if self.flush_params:
-                check_call([self.control_bin] + self.flush_params, \
-                           stdout=DEVNULL, stderr=DEVNULL)
-                time.sleep(Server.START_WAIT)
-        except CalledProcessError:
+            check_call([self.control_bin] + self.flush_params,
+                       stdout=open(self.dir + "/call.out", mode="a"),
+                       stderr=open(self.dir + "/call.err", mode="a"))
+            time.sleep(Server.START_WAIT)
+        except CalledProcessError as e:
             self.backtrace()
-            raise Exception("Can't flush %s" % self.name)
+            raise Exception("Can't flush %s (%i)" % (self.name, e.returncode))
 
     def running(self):
         proc = psutil.Process(self.proc.pid)
@@ -311,14 +310,12 @@ class Server(object):
             check_log("BACKTRACE %s" % self.name)
 
             try:
-                out = open(self.dir + "/gdb.out", mode="a")
-                err = open(self.dir + "/gdb.err", mode="a")
-
                 check_call([params.gdb_bin, "-ex", "set confirm off", "-ex",
                             "target remote | %s --pid=%s" %
                             (params.vgdb_bin, self.proc.pid),
                             "-ex", "bt full", "-ex", "q", self.daemon_bin],
-                           stdout=out, stderr=err)
+                           stdout=open(self.dir + "/gdb.out", mode="a"),
+                           stderr=open(self.dir + "/gdb.err", mode="a"))
             except:
                 detail_log("!Failed to get backtrace")
 
