@@ -1,4 +1,3 @@
-#include <config.h>
 
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"

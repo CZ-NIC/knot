@@ -1,4 +1,3 @@
-#include <config.h>
 
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"

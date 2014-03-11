@@ -1,5 +1,7 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-AM_CFLAGS = -I$(top_srcdir)/src
+AM_CPPFLAGS = \
+	-include $(top_builddir)/src/config.h \
+	-I$(top_srcdir)/src
 
 lib_LTLIBRARIES = libzscanner.la
 

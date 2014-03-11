@@ -1,6 +1,3 @@
-AM_CPPFLAGS = \
-	-I$(top_srcdir)/src
-
 LDADD = \
 	$(top_builddir)/src/zscanner/libzscanner.la
 

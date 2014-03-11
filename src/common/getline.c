@@ -19,7 +19,6 @@
 #define _WITH_GETLINE
 #endif
 
-#include <config.h>
 #include "common/getline.h"
 
 #include <stdio.h>		// getline or fgetln

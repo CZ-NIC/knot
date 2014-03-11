@@ -1,4 +1,3 @@
-#include <config.h>
 
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/internet.h"
