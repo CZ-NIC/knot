@@ -26,7 +26,7 @@ class Response(object):
             self.rclass = self.args["rclass"]
 
     def _check_question(self):
-        question = self.resp.question.pop()
+        question = self.resp.question[0]
         compare(question.name, self.rname, "QNAME")
         compare(question.rdclass, self.rclass, "QCLASS")
         compare(question.rdtype, self.rtype, "QTYPE")
