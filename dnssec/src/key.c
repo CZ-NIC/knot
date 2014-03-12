@@ -8,8 +8,8 @@
 #include "error.h"
 #include "hex.h"
 #include "key.h"
-#include "keys/keytag.h"
-#include "keys/pubkey.h"
+#include "key/keytag.h"
+#include "key/pubkey.h"
 #include "wire.h"
 
 char *dnssec_key_id_to_string(const dnssec_key_id_t id)

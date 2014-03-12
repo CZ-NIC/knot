@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 #include "binary.h"
-#include "keys/keytag.h"
+#include "key/keytag.h"
 
 int main(void)
 {

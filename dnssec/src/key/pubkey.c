@@ -8,7 +8,7 @@
 #include "binary.h"
 #include "error.h"
 #include "key.h"
-#include "keys/pubkey.h"
+#include "key/pubkey.h"
 #include "shared.h"
 #include "wire.h"
 
@@ -319,7 +319,7 @@ int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 }
 
 /**
- * Choose proper ECDSA curve basd on RDATA public key size.
+ * Choose proper ECDSA curve based on RDATA public key size.
  */
 static gnutls_ecc_curve_t choose_ecdsa_curve(size_t rdata_size)
 {
