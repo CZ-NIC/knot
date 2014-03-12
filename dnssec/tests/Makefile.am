@@ -9,8 +9,9 @@ LDADD = \
 check_PROGRAMS = \
 	binary		\
 	key		\
-	key_pubkey	\
 	key_keytag	\
+	key_pubkey	\
+	nsec_bitmap	\
 	sign		\
 	sign_der	\
 	wire
