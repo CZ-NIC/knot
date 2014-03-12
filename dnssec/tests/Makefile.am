@@ -10,6 +10,7 @@ check_PROGRAMS = \
 	binary		\
 	key		\
 	key_pubkey	\
+	keys_keytag	\
 	sign		\
 	sign_der	\
 	wire

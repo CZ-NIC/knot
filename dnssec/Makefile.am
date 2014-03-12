@@ -15,14 +15,14 @@ libdnssec_la_SOURCES =	\
 	src/hex.h \
 	src/key.c \
 	src/key.h \
+	src/keys/keytag.c \
+	src/keys/keytag.h \
 	src/keys/legacy.c \
 	src/keys/legacy.h \
 	src/keys/pubkey.c \
 	src/keys/pubkey.h \
 	src/keystore.c \
 	src/keystore.h \
-	src/keytag.c \
-	src/keytag.h \
 	src/shared.h \
 	src/sign.c \
 	src/sign.h \
