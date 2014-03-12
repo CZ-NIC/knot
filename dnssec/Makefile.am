@@ -25,6 +25,8 @@ libdnssec_la_SOURCES =	\
 	src/key/pubkey.h \
 	src/keystore.c \
 	src/keystore.h \
+	src/nsec/bitmap.c \
+	src/nsec/bitmap.h \
 	src/shared.h \
 	src/sign.c \
 	src/sign.h \
