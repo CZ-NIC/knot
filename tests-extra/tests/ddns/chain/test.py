@@ -20,82 +20,79 @@ RUNS = 2
 DNAME_ALLOWED = ascii_uppercase + ascii_lowercase + digits
 
 def gen_dname(origin):
-  name = ""
-  label_count = random.randint(1, MAX_LABELS)
-  label_lengths = []
-  for i in range(label_count):
-    label_lengths.append(random.randint(1, 16))
-  for l in label_lengths:
-    for i in range(l):
-      name += random.choice(DNAME_ALLOWED)
-    name += "."
-  name += origin
-  return name
+    name = ""
+    label_count = random.randint(1, MAX_LABELS)
+    label_lengths = []
+    for i in range(label_count):
+        label_lengths.append(random.randint(1, 16))
+    for l in label_lengths:
+        for i in range(l):
+            name += random.choice(DNAME_ALLOWED)
+        name += "."
+    name += origin
+    return name
 
 names = []
 
 def add_rand_name(up, zone, version):
-  name = gen_dname(zone[0].name)
-  names.append(name)
-  up.add(name, 3600, "TXT", "generated_v" + str(version))
+    name = gen_dname(zone[0].name)
+    names.append(name)
+    up.add(name, 3600, "TXT", "generated_v" + str(version))
 
 def remove_added_name(up):
-  name = random.choice(names)
-  up.delete(name, "TXT")
+    name = random.choice(names)
+    up.delete(name, "TXT")
 
 def modify_added_name(up):
-  name = random.choice(names)
-  up.add(name, 3600, "SPF", "text")
+    name = random.choice(names)
+    up.add(name, 3600, "SPF", "text")
 
 def verify(master, zone):
-  t.sleep(3)
-  master.flush()
-  t.sleep(3)
-  master.zone_verify(zone)
+    t.sleep(3)
+    master.flush()
+    t.sleep(3)
+    master.zone_verify(zone)
 
 def test_run(master, zone, msg):
-  names = []
-  for i in range(RUNS):
-    check_log(msg + " Run " + str(i + 1) + " of " + str(RUNS))
-    update = master.update(zone)
-    # add records
-    check_log(msg + " Additions")
-    add_count = random.randint(1, MAX_UPDATE_SIZE)
-    for j in range(add_count):
-      add_rand_name(update, zone, i)
-    update.send("NOERROR")
-    verify(master, zone)
-    detail_log(SEP)
+    names = []
+    for i in range(RUNS):
+        check_log(msg + " Run " + str(i + 1) + " of " + str(RUNS))
 
-    update = master.update(zone)
-    #remove some of previously added records
-    check_log(msg + " Removals")
-    remove_count = random.randint(1, int(add_count / 2) + 1)
-    for j in range(remove_count):
-      remove_added_name(update)
-    update.send("NOERROR")
-    verify(master, zone)
-    detail_log(SEP)
-
-    update = master.update(zone)
-    #modify existing names
-    check_log(msg + " Modifications")
-    mod_count = random.randint(1, int(add_count / 2) + 1)
-    for j in range(mod_count):
-      modify_added_name(update)
-    update.send("NOERROR")
-    verify(master, zone)
-    detail_log(SEP)
-
-    update = master.update(zone)
-    check_log(msg + " Add / Remove mix")
-    #add and remove records
-    for j in range(mod_count):
-      add_rand_name(update, zone, i)
-      remove_added_name(update)
-    update.send("NOERROR")
-    verify(master, zone)
-    detail_log(SEP)
+        # add records
+        check_log(msg + " Additions")
+        update = master.update(zone)
+        add_count = random.randint(1, MAX_UPDATE_SIZE)
+        for j in range(add_count):
+            add_rand_name(update, zone, i)
+        update.send("NOERROR")
+        verify(master, zone)
+       
+        # remove some of previously added records
+        check_log(msg + " Removals")
+        update = master.update(zone)
+        remove_count = random.randint(1, int(add_count / 2) + 1)
+        for j in range(remove_count):
+            remove_added_name(update)
+        update.send("NOERROR")
+        verify(master, zone)
+       
+        # modify existing names
+        check_log(msg + " Modifications")
+        update = master.update(zone)
+        mod_count = random.randint(1, int(add_count / 2) + 1)
+        for j in range(mod_count):
+            modify_added_name(update)
+        update.send("NOERROR")
+        verify(master, zone)
+       
+        # add and remove records
+        check_log(msg + " Add / Remove mix")
+        update = master.update(zone)
+        for j in range(mod_count):
+            add_rand_name(update, zone, i)
+            remove_added_name(update)
+        update.send("NOERROR")
+        verify(master, zone)
 
 ############################## TEST START #####################################
 
@@ -103,12 +100,10 @@ random.seed()
 
 t = Test()
 
-master = t.server("knot")
 zone = t.zone_rnd(1, dnssec=False)
-
+master = t.server("knot")
 t.link(zone, master, ddns=True)
 
-# Enable autosigning.
 master.dnssec_enable = True
 master.gen_key(zone, ksk=True, alg="RSASHA256")
 master.gen_key(zone, alg="RSASHA256")
@@ -117,20 +112,15 @@ master.gen_confile()
 t.start()
 
 # Test NSEC fix
-detail_log(SEP)
-detail_log(" ============ NSEC test ============")
-detail_log(SEP)
-
+check_log("============ NSEC test ============")
 test_run(master, zone, "NSEC")
+
 master.enable_nsec3(zone)
 master.reload()
 t.sleep(1)
 
 # Test NSEC3 fix
-detail_log(SEP)
-detail_log(" ============ NSEC3 test ===========")
-detail_log(SEP)
-
+check_log("============ NSEC3 test ===========")
 test_run(master, zone, "NSEC3")
 
 t.end()
