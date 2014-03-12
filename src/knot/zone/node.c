@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
@@ -598,23 +597,23 @@ void knot_node_clear_empty(knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_node_is_replaced_nsec(const knot_node_t *node)
+int knot_node_is_removed_nsec(const knot_node_t *node)
 {
-	return knot_node_flags_get(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_set_replaced_nsec(knot_node_t *node)
+void knot_node_set_removed_nsec(knot_node_t *node)
 {
-	knot_node_flags_set(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_clear_replaced_nsec(knot_node_t *node)
+void knot_node_clear_removed_nsec(knot_node_t *node)
 {
-	knot_node_flags_clear(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
 }
 
 /*----------------------------------------------------------------------------*/

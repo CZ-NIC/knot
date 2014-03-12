@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -310,6 +309,7 @@ static int xfr_task_close(knot_ns_xfr_t *rq)
 	/* Reschedule failed bootstrap. */
 	if (rq->type == XFR_TYPE_AIN && !rq->zone->contents) {
 		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
+		zone->xfr_in.bootstrap_retry *= 2;
 		zone->xfr_in.bootstrap_retry += knot_random_uint32_t() % AXFR_BOOTSTRAP_RETRY;
 		if (zone->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME) {
 			zone->xfr_in.bootstrap_retry = AXFR_RETRY_MAXTIME;

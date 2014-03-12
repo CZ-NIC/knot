@@ -80,7 +80,6 @@ static void conf_start_iface(void *scanner, char* ifname)
 {
 	conf_init_iface(scanner, ifname);
 	add_tail(&new_config->ifaces, &this_iface->n);
-	++new_config->ifaces_count;
 }
 
 static conf_iface_t *conf_get_remote(const char *name)
@@ -111,7 +110,6 @@ static void conf_start_remote(void *scanner, char *remote)
 	memset(this_remote, 0, sizeof(conf_iface_t));
 	this_remote->name = remote;
 	add_tail(&new_config->remotes, &this_remote->n);
-	++new_config->remotes_count;
 }
 
 static void conf_remote_set_via(void *scanner, char *item) {
@@ -400,7 +398,7 @@ static void conf_zone_start(void *scanner, char *name) {
 		cf_error(scanner, "invalid zone origin");
 	} else {
 	/* Check for duplicates. */
-	if (hattrie_tryget(new_config->names, (const char *)dn,
+	if (hattrie_tryget(new_config->zones, (const char *)dn,
 	                   knot_dname_size(dn)) != NULL) {
 		cf_error(scanner, "zone '%s' is already present, refusing to "
 		         "duplicate", this_zone->name);
@@ -414,11 +412,8 @@ static void conf_zone_start(void *scanner, char *name) {
 		return;
 	}
 
-	/* Directly discard dname, won't be needed. */
-	add_tail(&new_config->zones, &this_zone->n);
-	*hattrie_get(new_config->names, (const char *)dn,
-	             knot_dname_size(dn)) = (void *)1;
-	++new_config->zones_count;
+	*hattrie_get(new_config->zones, (const char *)dn,
+	             knot_dname_size(dn)) = this_zone;
 	knot_dname_free(&dn);
 	}
 }
@@ -713,7 +708,6 @@ keys:
                  free(k);
              } else {
                  add_tail(&new_config->keys, &k->n);
-                 ++new_config->key_count;
              }
          }
      }
@@ -1038,7 +1032,6 @@ log_dest: LOG_DEST {
     this_log->file = 0;
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
-    ++new_config->logs_count;
   }
 }
 ;
@@ -1065,7 +1058,6 @@ log_file: FILENAME TEXT {
     this_log->file = strcpath($2.t);
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
-    ++new_config->logs_count;
   }
 }
 ;
@@ -1079,7 +1071,7 @@ log_start:
  | log_start log_file '{' log_src '}'
  ;
 
-log: LOG { new_config->logs_count = 0; } '{' log_start log_end
+log: LOG { } '{' log_start log_end
  ;
 
 ctl_listen_start:

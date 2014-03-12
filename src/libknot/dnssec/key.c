@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -94,7 +93,7 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 	return result;
 }
 
-static void key_scan_set_done(const scanner_t *s)
+static void key_scan_set_done(const zs_scanner_t *s)
 {
 	*((bool *)s->data) = true;
 }
@@ -115,8 +114,8 @@ static int get_key_info_from_public_key(const char *filename,
 		return KNOT_KEY_EPUBLIC_KEY_OPEN;
 	}
 
-	scanner_t *scanner = scanner_create(filename, ".", KNOT_CLASS_IN, 0,
-	                                    NULL, NULL, NULL);
+	zs_scanner_t *scanner = zs_scanner_create(filename, ".", KNOT_CLASS_IN,
+	                                          0, NULL, NULL, NULL);
 	if (!scanner) {
 		fclose(keyfile);
 		return KNOT_ENOMEM;
@@ -144,21 +143,21 @@ static int get_key_info_from_public_key(const char *filename,
 			last_block = true;
 			read = 0;
 		}
-		result = scanner_process(buffer, buffer + read, last_block,
-		                         scanner);
+		result = zs_scanner_process(buffer, buffer + read, last_block,
+		                            scanner);
 	}
 
 	free(buffer);
 	fclose(keyfile);
 
 	if (scanner->r_type != KNOT_RRTYPE_DNSKEY) {
-		scanner_free(scanner);
+		zs_scanner_free(scanner);
 		return KNOT_KEY_EPUBLIC_KEY_INVALID;
 	}
 
 	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
 	if (!owner) {
-		scanner_free(scanner);
+		zs_scanner_free(scanner);
 		return KNOT_ENOMEM;
 	}
 	knot_dname_to_lower(owner);
@@ -167,7 +166,7 @@ static int get_key_info_from_public_key(const char *filename,
 	result = knot_binary_from_string(scanner->r_data, scanner->r_data_length,
 	                                 &rdata_bin);
 	if (result != KNOT_EOK) {
-		scanner_free(scanner);
+		zs_scanner_free(scanner);
 		knot_dname_free(&owner);
 		return result;
 	}
@@ -175,7 +174,7 @@ static int get_key_info_from_public_key(const char *filename,
 	*name = owner;
 	*rdata = rdata_bin;
 
-	scanner_free(scanner);
+	zs_scanner_free(scanner);
 
 	return KNOT_EOK;
 }

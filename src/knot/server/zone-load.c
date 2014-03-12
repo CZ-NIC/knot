@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 #include <sys/stat.h>
 #include <inttypes.h>
@@ -345,9 +344,10 @@ static int update_zone_postcond(zone_t *new_zone, const conf_t *config)
 /*! \brief Context for threaded zone loader. */
 typedef struct {
 	const struct conf_t *config;
-	server_t      *server;
-	knot_zonedb_t *db_old;
-	knot_zonedb_t *db_new;
+	server_t        *server;
+	knot_zonedb_t   *db_old;
+	knot_zonedb_t   *db_new;
+	hattrie_iter_t  *z_iter;
 	pthread_mutex_t lock;
 } zone_loader_ctx_t;
 
@@ -364,14 +364,14 @@ static int zone_loader_thread(dthread_t *thread)
 	for(;;) {
 		/* Fetch zone configuration from the list. */
 		pthread_mutex_lock(&ctx->lock);
-		if (EMPTY_LIST(ctx->config->zones)) {
+		if (hattrie_iter_finished(ctx->z_iter)) {
 			pthread_mutex_unlock(&ctx->lock);
 			break;
 		}
 
 		/* Disconnect from the list and start processing. */
-		zone_config = HEAD(ctx->config->zones);
-		rem_node(&zone_config->n);
+		zone_config = (conf_zone_t *)*hattrie_iter_val(ctx->z_iter);
+		hattrie_iter_next(ctx->z_iter);
 		pthread_mutex_unlock(&ctx->lock);
 
 		/* Retrive old zone (if exists). */
@@ -439,13 +439,20 @@ static knot_zonedb_t *load_zonedb(server_t *server, const conf_t *conf)
 	ctx.config = conf;
 	ctx.server = server;
 	ctx.db_old = server->zone_db;
-	ctx.db_new = knot_zonedb_new(conf->zones_count);
+	ctx.db_new = knot_zonedb_new(hattrie_weight(conf->zones));
 	if (ctx.db_new == NULL) {
 		return NULL;
 	}
 
-	if (conf->zones_count == 0) {
+	if (hattrie_weight(conf->zones) == 0) {
 		return ctx.db_new;
+	}
+
+	const bool sorted = false;
+	ctx.z_iter = hattrie_iter_begin(conf->zones, sorted);
+	if (ctx.z_iter == NULL) {
+		knot_zonedb_free(&ctx.db_new);
+		return NULL;
 	}
 
 	if (pthread_mutex_init(&ctx.lock, NULL) < 0) {
@@ -454,10 +461,10 @@ static knot_zonedb_t *load_zonedb(server_t *server, const conf_t *conf)
 	}
 
 	/* Initialize threads. */
-	size_t thread_count = MIN(conf->zones_count, dt_optimal_size());
+	size_t thread_count = MIN(hattrie_weight(conf->zones), dt_optimal_size());
 	dt_unit_t *unit = NULL;
 	unit = dt_create(thread_count, &zone_loader_thread,
-	                          &zone_loader_destruct, &ctx);
+	                 &zone_loader_destruct, &ctx);
 	if (unit != NULL) {
 		/* Start loading. */
 		dt_start(unit);
@@ -469,6 +476,7 @@ static knot_zonedb_t *load_zonedb(server_t *server, const conf_t *conf)
 	}
 
 	pthread_mutex_destroy(&ctx.lock);
+	hattrie_iter_free(ctx.z_iter);
 	return ctx.db_new;
 }
 
@@ -539,9 +547,9 @@ int load_zones_from_config(const conf_t *conf, struct server_t *server)
 		return KNOT_ENOMEM;
 	} else {
 		size_t loaded = knot_zonedb_size(db_new);
-		log_server_info("Loaded %zu out of %d zones.\n",
-		                loaded, conf->zones_count);
-		if (loaded != conf->zones_count) {
+		log_server_info("Loaded %zu out of %zu zones.\n",
+		                loaded, hattrie_weight(conf->zones));
+		if (loaded != hattrie_weight(conf->zones)) {
 			log_server_warning("Not all the zones were loaded.\n");
 		}
 	}

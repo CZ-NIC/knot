@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -664,8 +663,14 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 	int rc = 0;
 
 	/* Generate databases for all zones */
-	conf_zone_t *zone = NULL, *next = NULL;
-	WALK_LIST_DELSAFE(zone, next, conf()->zones) {
+	const bool sorted = false;
+	hattrie_iter_t *z_iter = hattrie_iter_begin(conf()->zones, sorted);
+	if (z_iter == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
+		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
+
 		/* Fetch zone */
 		int zone_match = 0;
 		for (unsigned i = 0; i < (unsigned)argc; ++i) {
@@ -697,6 +702,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		rem_node((node_t *)zone);
 		zone_free(&loaded_zone);
 	}
+	hattrie_iter_free(z_iter);
 
 	return rc;
 }
@@ -707,13 +713,18 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 	/* Zone checking */
 	int rc = 0;
-	node_t *n = 0;
 	size_t total_size = 0;
 
 	/* Generate databases for all zones */
-	WALK_LIST(n, conf()->zones) {
+	const bool sorted = false;
+	hattrie_iter_t *z_iter = hattrie_iter_begin(conf()->zones, sorted);
+	if (z_iter == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
+		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
+
 		/* Fetch zone */
-		conf_zone_t *zone = (conf_zone_t *) n;
 		int zone_match = 0;
 		for (unsigned i = 0; i < (unsigned)argc; ++i) {
 			size_t len = strlen(zone->name);
@@ -750,11 +761,11 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Create file loader. */
-		file_loader_t *loader = file_loader_create(zone->file, zone->name,
-		                                           KNOT_CLASS_IN, 3600,
-		                                           estimator_rrset_memsize_wrap,
-		                                           process_error,
-		                                           &est);
+		zs_loader_t *loader = zs_loader_create(zone->file, zone->name,
+		                                       KNOT_CLASS_IN, 3600,
+		                                       estimator_rrset_memsize_wrap,
+		                                       process_error,
+		                                       &est);
 		if (loader == NULL) {
 			rc = 1;
 			log_zone_error("Could not load zone %s\n", zone->name);
@@ -764,13 +775,13 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Do a parser run, but do not actually create the zone. */
-		int ret = file_loader_process(loader);
+		int ret = zs_loader_process(loader);
 		if (ret != KNOT_EOK) {
 			rc = 1;
 			log_zone_error("Failed to parse zone %s.\n", zone->name);
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
-			file_loader_free(loader);
+			zs_loader_free(loader);
 			break;
 		}
 
@@ -791,9 +802,10 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		log_zone_info("Zone %s: %zu RRs, used memory estimation is %zuMB.\n",
 		              zone->name, est.record_count, zone_size);
-		file_loader_free(loader);
+		zs_loader_free(loader);
 		total_size += zone_size;
 	}
+	hattrie_iter_free(z_iter);
 
 	if (rc == 0 && argc == 0) { // for all zones
 		log_zone_info("Estimated memory consumption for all zones is %zuMB.\n", total_size);

@@ -59,7 +59,7 @@
 
 # zscanner
 /src/zscanner/tests/tmp/
-/src/zscanner/tests/runtests
+/src/zscanner/tests/unittests
 /src/zscanner/tests/zscanner-tool
 
 # Binaries

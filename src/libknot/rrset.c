@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <assert.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -1524,10 +1523,8 @@ static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
 		const uint16_t type_covered =
 			knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
-			int ret = knot_rrset_add_rr_from_rrset(new_sig,
-			                                       rrsigs,
-			                                       i,
-			                                       mm);
+			int ret = knot_rrset_add_rr_from_rrset(new_sig, rrsigs,
+			                                       i, mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}

@@ -99,7 +99,6 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
  * \param zone New zone contents.
  * \param in_ch Changeset created bvy DDNS or zone-diff
  * \param out_ch New records will be added to this changeset.
- * \param sorted_changes Sorted representation of changes.
  * \param zone_keys Keys to use for signing.
  * \param policy DNSSEC signing policy.
  *
@@ -108,7 +107,6 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
-                             hattrie_t **sorted_changes,
                              const knot_zone_keys_t *zone_keys,
                              const knot_dnssec_policy_t *policy);
 
@@ -139,9 +137,7 @@ int knot_zone_sign_nsecs_in_changeset(const knot_zone_keys_t *zone_keys,
  */
 int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
                                        const knot_rrset_t *rrset,
-                                       hattrie_t *trie, bool *should_sign);
-
-void knot_zone_clear_sorted_changes(hattrie_t *t);
+                                       bool *should_sign);
 
 #endif // _KNOT_DNSSEC_ZONE_SIGN_H_
 

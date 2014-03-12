@@ -28,20 +28,20 @@
 #include <arpa/inet.h>			// inet_pton
 
 #include "zscanner/scanner.h"
-#include "zscanner/error.h"		// error codes
-#include "zscanner/file_loader.h"	// file_loader
-#include "zscanner/scanner_functions.h"	// Base64
-#include "common/descriptor.h"		// KNOT_RRTYPE_A
+#include "zscanner/loader.h"		// loader in includes
+#include "zscanner/error.h"
+#include "zscanner/functions.h"
+#include "common/descriptor.h"
 
 /*! \brief Shorthand for setting warning data. */
 #define WARN(code) { s->error_code = code; }
 /*! \brief Shorthand for setting error data. */
-#define ERR(code)   { s->error_code = code; s->stop = true; }
+#define ERR(code) { s->error_code = code; s->stop = true; }
 
 /*!
  * \brief Empty function which is called if no callback function is specified.
  */
-static inline void noop(const scanner_t *s)
+static inline void noop(const zs_scanner_t *s)
 {
 	(void)s;
 }
@@ -64,7 +64,7 @@ static inline void type_num(const uint16_t type, uint8_t **rdata_tail)
  * \param type		Type number.
  * \param s		Scanner context.
  */
-static inline void window_add_bit(const uint16_t type, scanner_t *s) {
+static inline void window_add_bit(const uint16_t type, zs_scanner_t *s) {
 	uint8_t win      = type / 256;
 	uint8_t bit_pos  = type % 256;
 	uint8_t byte_pos = bit_pos / 8;
@@ -89,17 +89,17 @@ static inline void window_add_bit(const uint16_t type, scanner_t *s) {
 	write data;
 }%%
 
-scanner_t* scanner_create(const char     *file_name,
-                          const char     *origin,
-                          const uint16_t rclass,
-                          const uint32_t ttl,
-                          void (*process_record)(const scanner_t *),
-                          void (*process_error)(const scanner_t *),
-                          void *data)
+zs_scanner_t* zs_scanner_create(const char     *file_name,
+                                const char     *origin,
+                                const uint16_t rclass,
+                                const uint32_t ttl,
+                                void (*process_record)(const zs_scanner_t *),
+                                void (*process_error)(const zs_scanner_t *),
+                                void *data)
 {
 	char settings[1024];
 
-	scanner_t *s = calloc(1, sizeof(scanner_t));
+	zs_scanner_t *s = calloc(1, sizeof(zs_scanner_t));
 	if (s == NULL) {
 		return NULL;
 	}
@@ -138,8 +138,8 @@ scanner_t* scanner_create(const char     *file_name,
 	}
 	int ret = snprintf(settings, sizeof(settings), format, origin);
 	if (ret <= 0 || (size_t)ret >= sizeof(settings) ||
-	    scanner_process(settings, settings + ret, true, s) != 0) {
-		scanner_free(s);
+	    zs_scanner_process(settings, settings + ret, true, s) != 0) {
+		zs_scanner_free(s);
 		return NULL;
 	}
 
@@ -154,7 +154,7 @@ scanner_t* scanner_create(const char     *file_name,
 	return s;
 }
 
-void scanner_free(scanner_t *s)
+void zs_scanner_free(zs_scanner_t *s)
 {
 	if (s != NULL) {
 		free(s->file_name);
@@ -163,10 +163,10 @@ void scanner_free(scanner_t *s)
 	}
 }
 
-int scanner_process(const char *start,
-                    const char *end,
-                    const bool is_complete,
-                    scanner_t  *s)
+int zs_scanner_process(const char   *start,
+                       const char   *end,
+                       const bool   is_complete,
+                       zs_scanner_t *s)
 {
 	// Necessary scanner variables.
 	const char *p = start;
@@ -202,7 +202,7 @@ int scanner_process(const char *start,
 
 	// Check if scanner state machine is in uncovered state.
 	if (cs == zone_scanner_error) {
-		ERR(ZSCANNER_UNCOVERED_STATE);
+		ERR(ZS_UNCOVERED_STATE);
 		s->error_counter++;
 
 		// Fill error context data.
@@ -229,7 +229,7 @@ int scanner_process(const char *start,
 
 	// Check unclosed multiline record.
 	if (is_complete && s->multiline) {
-		ERR(ZSCANNER_UNCLOSED_MULTILINE);
+		ERR(ZS_UNCLOSED_MULTILINE);
 		s->error_counter++;
 		s->process_error(s);
 	}

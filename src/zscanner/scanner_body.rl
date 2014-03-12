@@ -28,21 +28,21 @@
 
 	action _check_multiline_begin {
 		if (s->multiline == true) {
-			ERR(ZSCANNER_ELEFT_PARENTHESIS);
+			ERR(ZS_LEFT_PARENTHESIS);
 			fhold; fgoto err_line;
 		}
 		s->multiline = true;
 	}
 	action _check_multiline_end {
 		if (s->multiline == false) {
-			ERR(ZSCANNER_ERIGHT_PARENTHESIS);
+			ERR(ZS_RIGHT_PARENTHESIS);
 			fhold; fgoto err_line;
 		}
 		s->multiline = false;
 	}
 
 	action _rest_error {
-		WARN(ZSCANNER_EBAD_REST);
+		WARN(ZS_BAD_REST);
 		fhold; fgoto err_line;
 	}
 
@@ -69,7 +69,7 @@
 	}
 	action _err_line {
 		if (fc == '\r') {
-			ERR(ZSCANNER_DOS_NEWLINE);
+			ERR(ZS_DOS_NEWLINE);
 		}
 
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
@@ -90,7 +90,7 @@
 		s->process_error(s);
 
 		// Reset.
-		s->error_code = ZSCANNER_OK;
+		s->error_code = ZS_OK;
 		s->multiline = false;
 
 		// In case of serious error, stop scanner.
@@ -114,7 +114,7 @@
 			(s->dname)[s->dname_tmp_length++] = fc;
 			s->item_length++;
 		} else {
-			WARN(ZSCANNER_ELABEL_OVERFLOW);
+			WARN(ZS_LABEL_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -123,7 +123,7 @@
 			(s->dname)[s->item_length_position] =
 				(uint8_t)(s->item_length);
 		} else {
-			WARN(ZSCANNER_EDNAME_OVERFLOW);
+			WARN(ZS_DNAME_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -133,7 +133,7 @@
 			(s->dname)[s->dname_tmp_length] = 0;
 			s->item_length++;
 		} else {
-			WARN(ZSCANNER_ELABEL_OVERFLOW);
+			WARN(ZS_LABEL_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -145,20 +145,20 @@
 		s->dname_tmp_length++;
 	}
 	action _label_dec_error {
-		WARN(ZSCANNER_EBAD_NUMBER);
+		WARN(ZS_BAD_NUMBER);
 		fhold; fgoto err_line;
 	}
 
 	label_char =
-	    ( (alnum | [\-_/]) $_label_char                 # One common char.
-	    | ('\\' . ^digit)  @_label_char                 # One "\x" char.
-	    | ('\\'            %_label_dec_init             # Initial "\" char.
-	       . digit {3}     $_label_dec %_label_dec_exit # "DDD" rest.
-	                       $!_label_dec_error
+	    ( (alnum | [*\-_/]) $_label_char                 # One common char.
+	    | ('\\' . ^digit)   @_label_char                 # One "\x" char.
+	    | ('\\'             %_label_dec_init             # Initial "\" char.
+	       . digit {3}      $_label_dec %_label_dec_exit # "DDD" rest.
+	                        $!_label_dec_error
 	      )
 	    );
 
-	label  = (label_char+ | ('*' $_label_char)) >_label_init %_label_exit;
+	label  = label_char+ >_label_init %_label_exit;
 	labels = (label . '.')* . label;
 	# END
 
@@ -174,7 +174,7 @@
 		s->dname_tmp_length += s->zone_origin_length;
 
 		if (s->dname_tmp_length > MAX_DNAME_LENGTH) {
-			WARN(ZSCANNER_EDNAME_OVERFLOW);
+			WARN(ZS_DNAME_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -191,7 +191,7 @@
 		s->dname_tmp_length = 0;
 	}
 	action _dname_error {
-		WARN(ZSCANNER_EBAD_DNAME_CHAR);
+		WARN(ZS_BAD_DNAME_CHAR);
 		fhold; fgoto err_line;
 	}
 
@@ -215,7 +215,7 @@
 		if (s->item_length <= MAX_ITEM_LENGTH) {
 			*(s->item_length_location) = (uint8_t)(s->item_length);
 		} else {
-			WARN(ZSCANNER_EITEM_OVERFLOW);
+			WARN(ZS_ITEM_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -231,13 +231,13 @@
 	}
 	action _r_owner_empty_exit {
 		if (s->r_owner_length == 0) {
-			WARN(ZSCANNER_EBAD_PREVIOUS_OWNER);
+			WARN(ZS_BAD_PREVIOUS_OWNER);
 			fhold; fgoto err_line;
 		}
 	}
 	action _r_owner_error {
 		s->r_owner_length = 0;
-		WARN(ZSCANNER_EBAD_OWNER);
+		WARN(ZS_BAD_OWNER);
 		fhold; fgoto err_line;
 	}
 
@@ -268,7 +268,7 @@
 			s->number64 *= 10;
 			s->number64 += digit_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ENUMBER64_OVERFLOW);
+			WARN(ZS_NUMBER64_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -279,7 +279,7 @@
 		s->number64 = 0;
 	}
 	action _number_error {
-		WARN(ZSCANNER_EBAD_NUMBER);
+		WARN(ZS_BAD_NUMBER);
 		fhold; fgoto err_line;
 	}
 
@@ -304,7 +304,7 @@
 			s->number64 *= pow(10, s->decimals - s->decimal_counter);
 			s->number64 += s->number64_tmp * pow(10, s->decimals);
 		} else {
-			WARN(ZSCANNER_EFLOAT_OVERFLOW);
+			WARN(ZS_FLOAT_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -330,7 +330,7 @@
 			*rdata_tail = (uint8_t)(s->number64);
 			rdata_tail += 1;
 		} else {
-			WARN(ZSCANNER_ENUMBER8_OVERFLOW);
+			WARN(ZS_NUMBER8_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -339,7 +339,7 @@
 			*((uint16_t *)rdata_tail) = htons((uint16_t)(s->number64));
 			rdata_tail += 2;
 		} else {
-			WARN(ZSCANNER_ENUMBER16_OVERFLOW);
+			WARN(ZS_NUMBER16_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -348,7 +348,7 @@
 			*((uint32_t *)rdata_tail) = htonl((uint32_t)(s->number64));
 			rdata_tail += 4;
 		} else {
-			WARN(ZSCANNER_ENUMBER32_OVERFLOW);
+			WARN(ZS_NUMBER32_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -357,7 +357,7 @@
 		if (s->number64 <= UINT16_MAX) {
 			s->r_type = (uint16_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_ENUMBER16_OVERFLOW);
+			WARN(ZS_NUMBER16_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -366,7 +366,7 @@
 		if (s->number64 <= UINT16_MAX) {
 			s->r_data_length = (uint16_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_ENUMBER16_OVERFLOW);
+			WARN(ZS_NUMBER16_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -380,7 +380,7 @@
 
 	# BEGIN - Time processing
 	action _time_unit_error {
-		WARN(ZSCANNER_EBAD_TIME_UNIT);
+		WARN(ZS_BAD_TIME_UNIT);
 		fhold; fgoto err_line;
 	}
 
@@ -389,28 +389,28 @@
 	    | 'm'i ${ if (s->number64 <= (UINT32_MAX / 60)) {
 	                  s->number64 *= 60;
 	              } else {
-	                  WARN(ZSCANNER_ENUMBER32_OVERFLOW);
+	                  WARN(ZS_NUMBER32_OVERFLOW);
 	                  fhold; fgoto err_line;
 	              }
 	            }
 	    | 'h'i ${ if (s->number64 <= (UINT32_MAX / 3600)) {
 	                  s->number64 *= 3600;
 	              } else {
-	                  WARN(ZSCANNER_ENUMBER32_OVERFLOW);
+	                  WARN(ZS_NUMBER32_OVERFLOW);
 	                  fhold; fgoto err_line;
 	              }
 	            }
 	    | 'd'i ${ if (s->number64 <= (UINT32_MAX / 86400)) {
 	                  s->number64 *= 86400;
 	              } else {
-	                  WARN(ZSCANNER_ENUMBER32_OVERFLOW);
+	                  WARN(ZS_NUMBER32_OVERFLOW);
 	                  fhold; fgoto err_line;
 	              }
 	            }
 	    | 'w'i ${ if (s->number64 <= (UINT32_MAX / 604800)) {
 	                  s->number64 *= 604800;
 	              } else {
-	                  WARN(ZSCANNER_ENUMBER32_OVERFLOW);
+	                  WARN(ZS_NUMBER32_OVERFLOW);
 	                  fhold; fgoto err_line;
 	              }
 	            }
@@ -424,7 +424,7 @@
 		if (s->number64 + s->number64_tmp < UINT32_MAX) {
 			s->number64 += s->number64_tmp;
 		} else {
-			WARN(ZSCANNER_ENUMBER32_OVERFLOW);
+			WARN(ZS_NUMBER32_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -445,7 +445,7 @@
 		if (s->buffer_length < MAX_RDATA_LENGTH) {
 			s->buffer[s->buffer_length++] = fc;
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -455,7 +455,7 @@
 		if (s->buffer_length == 14) { // Date; 14 = len("YYYYMMDDHHmmSS").
 			ret = date_to_timestamp(s->buffer, &timestamp);
 
-			if (ret == ZSCANNER_OK) {
+			if (ret == ZS_OK) {
 				*((uint32_t *)rdata_tail) = htonl(timestamp);
 				rdata_tail += 4;
 			} else {
@@ -468,7 +468,7 @@
 			s->number64 = strtoull((char *)(s->buffer), &end,  10);
 
 			if (end == (char *)(s->buffer) || *end != '\0') {
-				WARN(ZSCANNER_EBAD_TIMESTAMP);
+				WARN(ZS_BAD_TIMESTAMP);
 				fhold; fgoto err_line;
 			}
 
@@ -476,16 +476,16 @@
 				*((uint32_t *)rdata_tail) = htonl((uint32_t)s->number64);
 				rdata_tail += 4;
 			} else {
-				WARN(ZSCANNER_ENUMBER32_OVERFLOW);
+				WARN(ZS_NUMBER32_OVERFLOW);
 				fhold; fgoto err_line;
 			}
 		} else {
-			WARN(ZSCANNER_EBAD_TIMESTAMP_LENGTH);
+			WARN(ZS_BAD_TIMESTAMP_LENGTH);
 			fhold; fgoto err_line;
 		}
 	}
 	action _timestamp_error {
-		WARN(ZSCANNER_EBAD_TIMESTAMP_CHAR);
+		WARN(ZS_BAD_TIMESTAMP_CHAR);
 		fhold; fgoto err_line;
 	}
 
@@ -498,16 +498,16 @@
 		if (rdata_tail <= rdata_stop) {
 			*(rdata_tail++) = fc;
 		} else {
-			WARN(ZSCANNER_ETEXT_OVERFLOW);
+			WARN(ZS_TEXT_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
 	action _text_char_error {
-		WARN(ZSCANNER_EBAD_TEXT_CHAR);
+		WARN(ZS_BAD_TEXT_CHAR);
 		fhold; fgoto err_line;
 	}
 	action _text_error {
-		WARN(ZSCANNER_EBAD_TEXT);
+		WARN(ZS_BAD_TEXT);
 		fhold; fgoto err_line;
 	}
 
@@ -516,7 +516,7 @@
 			*rdata_tail = 0;
 			s->item_length++;
 		} else {
-			WARN(ZSCANNER_ETEXT_OVERFLOW);
+			WARN(ZS_TEXT_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -529,7 +529,7 @@
 			*rdata_tail *= 10;
 			*rdata_tail += digit_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ENUMBER8_OVERFLOW);
+			WARN(ZS_NUMBER8_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -537,7 +537,7 @@
 		rdata_tail++;
 	}
 	action _text_dec_error {
-		WARN(ZSCANNER_EBAD_NUMBER);
+		WARN(ZS_BAD_NUMBER);
 		fhold; fgoto err_line;
 	}
 
@@ -572,12 +572,12 @@
 		if (s->number64 <= UINT32_MAX) {
 			s->default_ttl = (uint32_t)(s->number64);
 		} else {
-			ERR(ZSCANNER_ENUMBER32_OVERFLOW);
+			ERR(ZS_NUMBER32_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
 	action _default_ttl_error {
-		ERR(ZSCANNER_EBAD_TTL);
+		ERR(ZS_BAD_TTL);
 		fhold; fgoto err_line;
 	}
 
@@ -594,7 +594,7 @@
 		s->zone_origin_length = s->dname_tmp_length;
 	}
 	action _zone_origin_error {
-		ERR(ZSCANNER_EBAD_ORIGIN);
+		ERR(ZS_BAD_ORIGIN);
 		fhold; fgoto err_line;
 	}
 
@@ -615,7 +615,7 @@
 		// Check for correct string copy.
 		if (strlen(s->include_filename) !=
 		    (size_t)(rdata_tail - s->r_data)) {
-			ERR(ZSCANNER_EBAD_INCLUDE_FILENAME);
+			ERR(ZS_BAD_INCLUDE_FILENAME);
 			fhold; fgoto err_line;
 		}
 
@@ -623,7 +623,7 @@
 		s->dname = NULL;
 	}
 	action _incl_filename_error {
-		ERR(ZSCANNER_EBAD_INCLUDE_FILENAME);
+		ERR(ZS_BAD_INCLUDE_FILENAME);
 		fhold; fgoto err_line;
 	}
 
@@ -634,7 +634,7 @@
 		s->r_data_length = s->dname_tmp_length;
 	}
 	action _incl_origin_error {
-		ERR(ZSCANNER_EBAD_INCLUDE_ORIGIN);
+		ERR(ZS_BAD_INCLUDE_ORIGIN);
 		fhold; fgoto err_line;
 	}
 
@@ -662,24 +662,24 @@
 		}
 
 		// Create new file loader for included zone file.
-		file_loader_t *fl = file_loader_create((char*)(s->buffer),
-		                                       text_origin,
-		                                       s->default_class,
-		                                       s->default_ttl,
-		                                       s->process_record,
-		                                       s->process_error,
-		                                       s->data);
+		zs_loader_t *fl = zs_loader_create((char*)(s->buffer),
+		                                   text_origin,
+		                                   s->default_class,
+		                                   s->default_ttl,
+		                                   s->process_record,
+		                                   s->process_error,
+		                                   s->data);
 		if (fl != NULL) {
 			// Process included zone file.
-			ret = file_loader_process(fl);
-			file_loader_free(fl);
+			ret = zs_loader_process(fl);
+			zs_loader_free(fl);
 
 			if (ret != 0) {
-				ERR(ZSCANNER_EUNPROCESSED_INCLUDE);
+				ERR(ZS_UNPROCESSED_INCLUDE);
 				fhold; fgoto err_line;
 			}
 		} else {
-			ERR(ZSCANNER_EUNOPENED_INCLUDE);
+			ERR(ZS_UNOPENED_INCLUDE);
 			fhold; fgoto err_line;
 		}
 	}
@@ -705,7 +705,7 @@
 		s->stop = false;
 	}
 	action _directive_error {
-		ERR(ZSCANNER_EBAD_DIRECTIVE);
+		ERR(ZS_BAD_DIRECTIVE);
 		fhold; fgoto err_line;
 	}
 
@@ -732,7 +732,7 @@
 		if (s->number64 <= UINT32_MAX) {
 			s->r_ttl = (uint32_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_ENUMBER32_OVERFLOW);
+			WARN(ZS_NUMBER32_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -751,12 +751,12 @@
 			s->buffer[s->buffer_length++] = fc;
 		}
 		else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
 	action _addr_error {
-		WARN(ZSCANNER_EBAD_ADDRESS_CHAR);
+		WARN(ZS_BAD_ADDRESS_CHAR);
 		fhold; fgoto err_line;
 	}
 
@@ -764,7 +764,7 @@
 		s->buffer[s->buffer_length] = 0;
 
 		if (inet_pton(AF_INET, (char *)s->buffer, &addr4) <= 0) {
-			WARN(ZSCANNER_EBAD_IPV4);
+			WARN(ZS_BAD_IPV4);
 			fhold; fgoto err_line;
 		}
 	}
@@ -777,7 +777,7 @@
 		s->buffer[s->buffer_length] = 0;
 
 		if (inet_pton(AF_INET6, (char *)s->buffer, &addr6) <= 0) {
-			WARN(ZSCANNER_EBAD_IPV6);
+			WARN(ZS_BAD_IPV6);
 			fhold; fgoto err_line;
 		}
 	}
@@ -815,7 +815,7 @@
 		    (s->apl.addr_family == 2 && s->number64 <= 128)) {
 			s->apl.prefix_length = (uint8_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_EBAD_APL);
+			WARN(ZS_BAD_APL);
 			fhold; fgoto err_line;
 		}
 	}
@@ -838,7 +838,7 @@
 			memcpy(s->buffer, &(addr6.s6_addr), len);
 			break;
 		default:
-			WARN(ZSCANNER_EBAD_APL);
+			WARN(ZS_BAD_APL);
 			fhold; fgoto err_line;
 		}
 		// Find prefix without trailing zeroes.
@@ -856,7 +856,7 @@
 		rdata_tail += len;
 	}
 	action _apl_error {
-		WARN(ZSCANNER_EBAD_APL);
+		WARN(ZS_BAD_APL);
 		fhold; fgoto err_line;
 	}
 
@@ -877,7 +877,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_hex_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -886,7 +886,7 @@
 		rdata_tail++;
 	}
 	action _hex_char_error {
-		WARN(ZSCANNER_EBAD_HEX_CHAR);
+		WARN(ZS_BAD_HEX_CHAR);
 		fhold; fgoto err_line;
 	}
 
@@ -901,13 +901,13 @@
 
 	action _type_data_exit {
 		if ((rdata_tail - s->r_data) != s->r_data_length) {
-			WARN(ZSCANNER_EBAD_RDATA_LENGTH);
+			WARN(ZS_BAD_RDATA_LENGTH);
 			fhold; fgoto err_line;
 		}
 	}
 
 	action _type_data_error {
-		WARN(ZSCANNER_EBAD_HEX_RDATA);
+		WARN(ZS_BAD_HEX_RDATA);
 		fhold; fgoto err_line;
 	}
 
@@ -920,7 +920,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_base64_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -930,7 +930,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = second_right_base64_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -940,7 +940,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = third_right_base64_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -949,7 +949,7 @@
 	}
 
 	action _base64_char_error {
-		WARN(ZSCANNER_EBAD_BASE64_CHAR);
+		WARN(ZS_BAD_BASE64_CHAR);
 		fhold; fgoto err_line;
 	}
 
@@ -978,7 +978,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = first_base32hex_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -988,7 +988,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = second_right_base32hex_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1001,7 +1001,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = fourth_right_base32hex_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1011,7 +1011,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = fifth_right_base32hex_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1024,7 +1024,7 @@
 		if (rdata_tail <= rdata_stop) {
 			*rdata_tail = seventh_right_base32hex_to_num[(uint8_t)fc];
 		} else {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1033,7 +1033,7 @@
 	}
 
 	action _base32hex_char_error {
-		WARN(ZSCANNER_EBAD_BASE32HEX_CHAR);
+		WARN(ZS_BAD_BASE32HEX_CHAR);
 		fhold; fgoto err_line;
 	}
 
@@ -1157,11 +1157,11 @@
 
 	# BEGIN - Gateway
 	action _gateway_error {
-		WARN(ZSCANNER_EBAD_GATEWAY);
+		WARN(ZS_BAD_GATEWAY);
 		fhold; fgoto err_line;
 	}
 	action _gateway_key_error {
-		WARN(ZSCANNER_EBAD_GATEWAY_KEY);
+		WARN(ZS_BAD_GATEWAY_KEY);
 		fhold; fgoto err_line;
 	}
 
@@ -1179,7 +1179,7 @@
 
 	# BEGIN - Type processing
 	action _type_error {
-		WARN(ZSCANNER_EUNSUPPORTED_TYPE);
+		WARN(ZS_UNSUPPORTED_TYPE);
 		fhold; fgoto err_line;
 	}
 
@@ -1231,7 +1231,7 @@
 		if (s->number64 <= UINT16_MAX) {
 			window_add_bit(s->number64, s);
 		} else {
-			WARN(ZSCANNER_ENUMBER16_OVERFLOW);
+			WARN(ZS_NUMBER16_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1302,14 +1302,14 @@
 					       (s->windows[window]).length);
 					rdata_tail += (s->windows[window]).length;
 				} else {
-					WARN(ZSCANNER_ERDATA_OVERFLOW);
+					WARN(ZS_RDATA_OVERFLOW);
 					fhold; fgoto err_line;
 				}
 			}
 		}
 	}
 	action _bitmap_error {
-		WARN(ZSCANNER_EBAD_BITMAP);
+		WARN(ZS_BAD_BITMAP);
 		fhold; fgoto err_line;
 	}
 
@@ -1324,7 +1324,7 @@
 		if (s->number64 <= 90) {
 			s->loc.d1 = (uint32_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1332,7 +1332,7 @@
 		if (s->number64 <= 180) {
 			s->loc.d2 = (uint32_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1340,7 +1340,7 @@
 		if (s->number64 <= 59) {
 			s->loc.m1 = (uint32_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1348,7 +1348,7 @@
 		if (s->number64 <= 59) {
 			s->loc.m2 = (uint32_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1356,7 +1356,7 @@
 		if (s->number64 <= 59999) {
 			s->loc.s1 = (uint32_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1364,7 +1364,7 @@
 		if (s->number64 <= 59999) {
 			s->loc.s2 = (uint32_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1374,7 +1374,7 @@
 		{
 			s->loc.alt = (uint32_t)(s->number64);
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1382,7 +1382,7 @@
 		if (s->number64 <= 9000000000ULL) {
 			s->loc.siz = s->number64;
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1390,7 +1390,7 @@
 		if (s->number64 <= 9000000000ULL) {
 			s->loc.hp = s->number64;
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1398,7 +1398,7 @@
 		if (s->number64 <= 9000000000ULL) {
 			s->loc.vp = s->number64;
 		} else {
-			WARN(ZSCANNER_EBAD_NUMBER);
+			WARN(ZS_BAD_NUMBER);
 			fhold; fgoto err_line;
 		}
 	}
@@ -1462,7 +1462,7 @@
 		rdata_tail += 4;
 	}
 	action _loc_error {
-		WARN(ZSCANNER_EBAD_LOC_DATA);
+		WARN(ZS_BAD_LOC_DATA);
 		fhold; fgoto err_line;
 	}
 
@@ -1475,7 +1475,7 @@
 
 	# BEGIN - Hexadecimal rdata processing
 	action _hex_r_data_error {
-		WARN(ZSCANNER_EBAD_HEX_RDATA);
+		WARN(ZS_BAD_HEX_RDATA);
 		fhold; fgoto err_line;
 	}
 
@@ -1500,18 +1500,18 @@
 	}
 	action _eui48_exit {
 		if (s->item_length != 6) {
-			WARN(ZSCANNER_EBAD_EUI_LENGTH);
+			WARN(ZS_BAD_EUI_LENGTH);
 			fhold; fgoto err_line;
 		}
 	}
 	action _eui64_exit {
 		if (s->item_length != 8) {
-			WARN(ZSCANNER_EBAD_EUI_LENGTH);
+			WARN(ZS_BAD_EUI_LENGTH);
 			fhold; fgoto err_line;
 		}
 	}
 	action _eui_sep_error {
-		WARN(ZSCANNER_EBAD_CHAR_DASH);
+		WARN(ZS_BAD_CHAR_DASH);
 		fhold; fgoto err_line;
 	}
 
@@ -1533,12 +1533,12 @@
 	}
 	action _l64_exit {
 		if (s->item_length != 4) {
-			WARN(ZSCANNER_EBAD_L64_LENGTH);
+			WARN(ZS_BAD_L64_LENGTH);
 			fhold; fgoto err_line;
 		}
 	}
 	action _l64_sep_error {
-		WARN(ZSCANNER_EBAD_CHAR_COLON);
+		WARN(ZS_BAD_CHAR_COLON);
 		fhold; fgoto err_line;
 	}
 
@@ -1551,11 +1551,11 @@
 
 	# BEGIN - Mnemomic names processing
 	action _dns_alg_error {
-		WARN(ZSCANNER_EBAD_ALGORITHM);
+		WARN(ZS_BAD_ALGORITHM);
 		fhold; fgoto err_line;
 	}
 	action _cert_type_error {
-		WARN(ZSCANNER_EBAD_CERT_TYPE);
+		WARN(ZS_BAD_CERT_TYPE);
 		fhold; fgoto err_line;
 	}
 
@@ -1599,7 +1599,7 @@
 		rdata_tail = s->r_data;
 	}
 	action _r_data_error {
-		WARN(ZSCANNER_EBAD_RDATA);
+		WARN(ZS_BAD_RDATA);
 		fhold; fgoto err_line;
 	}
 
@@ -1785,7 +1785,7 @@
 		case KNOT_RRTYPE_EUI64:
 			fcall r_data_eui64;
 		default:
-			WARN(ZSCANNER_ECANNOT_TEXT_DATA);
+			WARN(ZS_CANNOT_TEXT_DATA);
 			fgoto err_line;
 		}
 	}
@@ -1848,7 +1848,7 @@
 
 	# BEGIN - Record type processing
 	action _r_type_error {
-		WARN(ZSCANNER_EUNSUPPORTED_TYPE);
+		WARN(ZS_UNSUPPORTED_TYPE);
 		fhold; fgoto err_line;
 	}
 
@@ -1898,7 +1898,7 @@
 	# BEGIN - The highest level processing
 	action _record_exit {
 		if (rdata_tail - s->r_data > UINT16_MAX) {
-			WARN(ZSCANNER_ERDATA_OVERFLOW);
+			WARN(ZS_RDATA_OVERFLOW);
 			fhold; fgoto err_line;
 		}
 		s->r_data_length = rdata_tail - s->r_data;

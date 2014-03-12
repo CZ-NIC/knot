@@ -77,9 +77,9 @@ struct knot_node {
 	/*!
 	 * \brief Various flags.
 	 *
-	 * Currently only two:
 	 *   0x01 - node is a delegation point
 	 *   0x02 - node is non-authoritative (under a delegation point)
+	 *   0x04 - NSEC(3) was removed from the node.
 	 *   0x10 - node is empty and will be deleted after update
 	 */
 	uint8_t flags;
@@ -94,11 +94,11 @@ typedef enum {
 	KNOT_NODE_FLAGS_DELEG = (uint8_t)0x01,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
 	KNOT_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
+	/*! \brief NSEC/NSEC3 was removed from this node. */
+	KNOT_NODE_FLAGS_REMOVED_NSEC = (uint8_t)0x04,
 	/*! \brief Node is empty and will be deleted after update.
 	 *  \todo Remove after dname refactoring, update description in node. */
-	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10,
-	/*! \brief NSEC in this node needs new RRSIGs. Used for signing. */
-	KNOT_NODE_FLAGS_REPLACED_NSEC = (uint8_t)0x20
+	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
@@ -371,11 +371,11 @@ void knot_node_set_auth(knot_node_t *node);
 
 int knot_node_is_auth(const knot_node_t *node);
 
-int knot_node_is_replaced_nsec(const knot_node_t *node);
+int knot_node_is_removed_nsec(const knot_node_t *node);
 
-void knot_node_set_replaced_nsec(knot_node_t *node);
+void knot_node_set_removed_nsec(knot_node_t *node);
 
-void knot_node_clear_replaced_nsec(knot_node_t *node);
+void knot_node_clear_removed_nsec(knot_node_t *node);
 
 //! \todo remove after dname refactoring
 int knot_node_is_empty(const knot_node_t *node);

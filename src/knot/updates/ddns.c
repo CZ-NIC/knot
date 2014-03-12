@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -1188,9 +1187,6 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 *    use the RRSet from the packet for this - copy it, set CLASS
 	 *    and TTL.
 	 *
-	 * Special handling of RRSIGs is required in that the RRSet containing
-	 * them must be copied as well. However, copying of RRSet copies also
-	 * the RRSIGs, so copying the base RRSet is enough for both cases!
 	 */
 
 	assert(type != KNOT_RRTYPE_SOA);

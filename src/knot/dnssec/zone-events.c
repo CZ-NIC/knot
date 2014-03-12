@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <assert.h>
 #include <time.h>
 #include "knot/conf/conf.h"
@@ -84,8 +83,8 @@ static int zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
 	// Init needed structs
 	knot_zone_keys_t zone_keys = { '\0' };
 	knot_dnssec_policy_t policy = { '\0' };
-	int result = init_dnssec_structs(zone, zone_config, &zone_keys, &policy, soa_up,
-	                                 force);
+	int result = init_dnssec_structs(zone, zone_config, &zone_keys, &policy,
+	                                 soa_up, force);
 	if (result != KNOT_EOK) {
 		free(msgpref);
 		return result;
@@ -182,10 +181,9 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                knot_changeset_t *out_ch,
                                knot_update_serial_t soa_up,
                                uint32_t *refresh_at,
-                               uint32_t new_serial,
-                               hattrie_t **sorted_changes)
+                               uint32_t new_serial)
 {
-	if (!refresh_at || !sorted_changes) {
+	if (!refresh_at) {
 		return KNOT_EINVAL;
 	}
 
@@ -196,8 +194,8 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	// Init needed structures
 	knot_zone_keys_t zone_keys = { '\0' };
 	knot_dnssec_policy_t policy = { '\0' };
-	int ret = init_dnssec_structs(zone, zone_config, &zone_keys, &policy, soa_up,
-	                              false);
+	int ret = init_dnssec_structs(zone, zone_config, &zone_keys, &policy,
+	                              soa_up, false);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -210,7 +208,7 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 	}
 
 	// Sign added and removed RRSets in changeset
-	ret = knot_zone_sign_changeset(zone, in_ch, out_ch, sorted_changes,
+	ret = knot_zone_sign_changeset(zone, in_ch, out_ch,
 	                               &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to sign changeset (%s)\n", msgpref,
@@ -220,13 +218,10 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
 		return ret;
 	}
 
-	assert(sorted_changes);
-	// Fix NSEC(3) chain
-	ret = knot_zone_fix_nsec_chain(zone,
-	                               *sorted_changes, out_ch,
-	                               &zone_keys, &policy);
+	// Create NSEC(3) chain
+	ret = knot_zone_create_nsec_chain(zone, out_ch, &zone_keys, &policy);
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s Failed to fix NSEC(3) chain (%s)\n",
+		log_zone_error("%s Failed to create NSEC(3) chain (%s)\n",
 		               msgpref, knot_strerror(ret));
 		knot_free_zone_keys(&zone_keys);
 		free(msgpref);

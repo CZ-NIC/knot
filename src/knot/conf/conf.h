@@ -112,7 +112,6 @@ typedef struct conf_group_t {
  * zone transfers.  Same logic applies for the NOTIFY.
  */
 typedef struct conf_zone_t {
-	node_t n;
 	char *name;                /*!< Zone name. */
 	uint16_t cls;              /*!< Zone class (IN or CH). */
 	char *file;                /*!< Path to a zone file. */
@@ -228,25 +227,21 @@ typedef struct conf_t {
 	 * Log
 	 */
 	list_t logs;      /*!< List of logging facilites. */
-	int logs_count;   /*!< Count of logging facilities. */
 
 	/*
 	 * Interfaces
 	 */
 	list_t ifaces;    /*!< List of interfaces. */
-	int ifaces_count; /*!< Count of interfaces. */
 
 	/*
 	 * TSIG keys
 	 */
 	list_t keys;   /*!< List of TSIG keys. */
-	int key_count; /*!< Count of TSIG keys. */
 
 	/*
 	 * Remotes
 	 */
 	list_t remotes;    /*!< List of remotes. */
-	int remotes_count; /*!< Count of remotes. */
 
 	/*
 	 * Groups of remotes.
@@ -256,8 +251,7 @@ typedef struct conf_t {
 	/*
 	 * Zones
 	 */
-	list_t zones;        /*!< List of zones. */
-	int zones_count;     /*!< Count of zones. */
+	hattrie_t *zones;    /*!< List of zones. */
 	int zone_checks;     /*!< Semantic checks for parser.*/
 	int disable_any;     /*!< Disable ANY type queries for AA.*/
 	int notify_retries;  /*!< NOTIFY query retries. */
@@ -265,7 +259,6 @@ typedef struct conf_t {
 	int dbsync_timeout;  /*!< Default interval between syncing to zonefile.*/
 	size_t ixfr_fslimit; /*!< File size limit for IXFR journal. */
 	int build_diffs;     /*!< Calculate differences from changes. */
-	hattrie_t *names;    /*!< Zone tree for duplicate checking. */
 	char *storage;       /*!< Storage dir. */
 	char *dnssec_keydir; /*!< DNSSEC: Path to key directory. */
 	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
@@ -281,7 +274,6 @@ typedef struct conf_t {
 	 * Implementation specifics
 	 */
 	list_t hooks;    /*!< List of config hooks. */
-	int hooks_count; /*!< Count of config hooks. */
 	int _touched;    /*!< Bitmask of sections touched by last update. */
 } conf_t;
 

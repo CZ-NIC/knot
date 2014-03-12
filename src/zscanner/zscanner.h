@@ -27,8 +27,7 @@
 
 #include "zscanner/error.h"
 #include "zscanner/scanner.h"
-#include "common/descriptor.h"
-#include "zscanner/file_loader.h"
+#include "zscanner/loader.h"
 
 #endif // _ZSCANNER__ZSCANNER_H_
 

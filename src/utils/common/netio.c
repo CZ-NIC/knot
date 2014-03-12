@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include "utils/common/netio.h"
 
 #include <stdlib.h>			// free
@@ -104,21 +103,14 @@ int get_socktype(const protocol_t proto, const uint16_t type)
 
 const char* get_sockname(const int socktype)
 {
-	const char *proto;
-
 	switch (socktype) {
 	case SOCK_STREAM:
-		proto = "TCP";
-		break;
+		return "TCP";
 	case SOCK_DGRAM:
-		proto = "UDP";
-		break;
+		return "UDP";
 	default:
-		proto = "UNKNOWN";
-		break;
+		return "UNKNOWN";
 	}
-
-	return proto;
 }
 
 static int get_addr(const srv_info_t *server,
@@ -160,7 +152,10 @@ static void get_addr_str(const struct sockaddr_storage *ss,
 	free(*dst);
 	*dst = malloc(buflen);
 	if (*dst != NULL) {
-		snprintf(*dst, buflen, "%s(%s)", addr_str, sock_name);
+		int ret = snprintf(*dst, buflen, "%s(%s)", addr_str, sock_name);
+		if (ret <= 0 || ret >= buflen) {
+			*dst = '\0';
+		}
 	}
 }
 

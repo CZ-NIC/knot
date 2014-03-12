@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <assert.h>
 #include <urcu.h>
 
@@ -1506,42 +1505,6 @@ static int xfrin_remove_empty_nodes(knot_zone_contents_t *z)
 
 /*----------------------------------------------------------------------------*/
 
-static int adjust_nsec3_changes(knot_zone_contents_t *contents,
-                                hattrie_t *changes)
-{
-	if (contents->nsec3_nodes == NULL) {
-		return KNOT_EOK;
-	}
-	hattrie_iter_t *itt = hattrie_iter_begin(changes, false);
-	if (itt == NULL) {
-		return KNOT_ENOMEM;
-	}
-	while (!hattrie_iter_finished(itt)) {
-		signed_info_t *val = (signed_info_t *)(*hattrie_iter_val(itt));
-		const knot_dname_t *dname = val->dname;
-		assert(dname);
-		const knot_dname_t *hash = val->hashed_dname;
-		if (hash) {
-			knot_node_t *nsec3_node =
-				knot_zone_contents_get_nsec3_node(contents, hash);
-			if (nsec3_node) {
-				knot_node_t *normal_node =
-					knot_zone_contents_get_node(contents,
-					                            dname);
-				if (normal_node) {
-					normal_node->nsec3_node = nsec3_node;
-				}
-			}
-		}
-		hattrie_iter_next(itt);
-	}
-
-	hattrie_iter_free(itt);
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
                             knot_zone_contents_t **new_contents)
 {
@@ -1603,8 +1566,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 /*----------------------------------------------------------------------------*/
 
 int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
-                                bool set_nsec3_names,
-                                const hattrie_t *sorted_changes)
+                                bool set_nsec3_names)
 {
 	if (contents_copy == NULL) {
 		return KNOT_EINVAL;
@@ -1632,14 +1594,8 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 
 	dbg_xfrin("Adjusting zone contents.\n");
 	if (set_nsec3_names) {
-		if (sorted_changes) {
-			ret = knot_zone_contents_adjust_pointers(contents_copy);
-			ret = adjust_nsec3_changes(contents_copy,
-			                           (void *)sorted_changes);
-		} else {
-			ret = knot_zone_contents_adjust_full(contents_copy,
-			                                     NULL, NULL);
-		}
+		ret = knot_zone_contents_adjust_full(contents_copy,
+		                                     NULL, NULL);
 	} else {
 		ret = knot_zone_contents_adjust_pointers(contents_copy);
 	}
@@ -1681,8 +1637,7 @@ int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
 int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
                                        knot_zone_contents_t *z_new,
                                        knot_changesets_t *sec_chsets,
-                                       knot_changesets_t *chsets,
-                                       const hattrie_t *sorted_changes)
+                                       knot_changesets_t *chsets)
 {
 	if (z_old == NULL || z_new == NULL ||
 	    sec_chsets == NULL || chsets == NULL) {
@@ -1703,7 +1658,7 @@ int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
 	}
 
 	const bool handle_nsec3 = true;
-	ret = xfrin_finalize_updated_zone(z_new, handle_nsec3, sorted_changes);
+	ret = xfrin_finalize_updated_zone(z_new, handle_nsec3);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 		          knot_strerror(ret));
@@ -1766,7 +1721,7 @@ int xfrin_apply_changesets(zone_t *zone,
 	 */
 
 	dbg_xfrin_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, true, NULL);
+	ret = xfrin_finalize_updated_zone(contents_copy, true);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));

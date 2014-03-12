@@ -1,5 +1,7 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-AM_CFLAGS = -I$(top_srcdir)/src
+AM_CPPFLAGS = \
+	-include $(top_builddir)/src/config.h \
+	-I$(top_srcdir)/src
 
 lib_LTLIBRARIES = libzscanner.la
 
@@ -39,13 +41,13 @@ libzscanner_la_SOURCES =		\
 	scanner.c			\
 	error.h				\
 	error.c				\
-	file_loader.h			\
-	file_loader.c			\
-	scanner_functions.h		\
-	scanner_functions.c
+	loader.h			\
+	loader.c			\
+	functions.h			\
+	functions.c
 
 libzscanner_la_LDFLAGS =		\
 	-version-info 0:1:0		\
-	-export-symbols-regex '^(zscanner|scanner|file_loader)_|^date_to_timestamp'
+	-export-symbols-regex '^zs_'
 
 include $(srcdir)/tests/Makefile.inc

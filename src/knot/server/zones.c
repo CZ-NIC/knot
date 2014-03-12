@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -2027,7 +2026,7 @@ static int diff_after_load(zone_t *zone, zone_t *old_zone,
 
 		if (ret == KNOT_EOK) {
 			ret = xfrin_finalize_updated_zone(
-			                        zone->contents, true, NULL);
+			                        zone->contents, true);
 		}
 
 		if (ret != KNOT_EOK) {
@@ -2115,7 +2114,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			                                      diff_chs);
 			if (ret == KNOT_EOK) {
 				ret = xfrin_finalize_updated_zone(
-				                    zone->contents, true, NULL);
+				                    zone->contents, true);
 			}
 		} else {
 			assert(old_zone != NULL);
