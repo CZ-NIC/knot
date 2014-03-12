@@ -1,4 +1,3 @@
-#include <config.h>
 
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
