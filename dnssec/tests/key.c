@@ -2,8 +2,10 @@
 #include <string.h>
 
 #include "binary.h"
-#include "key.h"
+#include "crypto.h"
 #include "error.h"
+#include "key.h"
+
 #include "sample_keys.h"
 
 static void check_key(const char *name, const key_parameters_t *params)
@@ -80,7 +82,7 @@ int main(void)
 {
 	plan_lazy();
 
-	gnutls_global_init();
+	dnssec_crypto_init();
 
 	public_from_dnskey();
 
@@ -93,6 +95,7 @@ int main(void)
 	   "dnssec_key_id_to_string()");
 	free(key_id_str);
 
+	dnssec_crypto_cleanup();
 
 	return 0;
 }

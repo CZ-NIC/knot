@@ -10,6 +10,8 @@ libdnssec_la_LDFLAGS = $(gnutls_LIBS) -version-info 0:1:0
 libdnssec_la_SOURCES =	\
 	src/binary.c \
 	src/binary.h \
+	src/crypto.c \
+	src/crypto.h \
 	src/error.h \
 	src/hex.c \
 	src/hex.h \
