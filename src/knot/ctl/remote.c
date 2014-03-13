@@ -34,6 +34,7 @@
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
 #define CMDARGS_BUFLEN (1024*1024) /* 1M */
+#define CMDARGS_BUFLEN_LOG 256
 #define KNOT_CTL_SOCKET_UMASK 0007
 
 /*! \brief Remote command structure. */
@@ -524,6 +525,34 @@ failed:
 	return ret;
 }
 
+static void log_command(const char *cmd, const remote_cmdargs_t* args)
+{
+	char params[CMDARGS_BUFLEN_LOG] = { 0 };
+	size_t rest = CMDARGS_BUFLEN_LOG;
+
+	for (unsigned i = 0; i < args->argc; i++) {
+		const knot_rrset_t *rr = args->arg[i];
+		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {
+			continue;
+		}
+
+		uint16_t rr_count = knot_rrset_rr_count(rr);
+		for (uint16_t j = 0; j < rr_count; j++) {
+			const knot_dname_t *dn = knot_rdata_ns_name(rr, j);
+			char *name = knot_dname_to_str(dn);
+
+			int ret = snprintf(params, rest, " %s", name);
+			free(name);
+			if (ret <= 0 || ret >= rest) {
+				break;
+			}
+			rest -= ret;
+		}
+	}
+
+	log_server_info("Remote command: '%s%s'\n", cmd, params);
+}
+
 int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 {
 	if (sock < 0 || s == NULL || pkt == NULL) {
@@ -571,8 +600,10 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	args->argc = authority->count;
 	args->rc = KNOT_RCODE_NOERROR;
 
+	log_command(cmd, args);
+
 	remote_cmd_t *c = remote_cmd_tbl;
-	while(c->name != NULL) {
+	while (c->name != NULL) {
 		if (strcmp(cmd, c->name) == 0) {
 			ret = c->f(s, args);
 			break;
