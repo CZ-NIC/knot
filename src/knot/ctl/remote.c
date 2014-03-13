@@ -550,7 +550,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 		}
 	}
 
-	log_server_info("Remote command: %s%s\n", cmd, params);
+	log_server_info("Remote command: '%s%s'\n", cmd, params);
 }
 
 int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
