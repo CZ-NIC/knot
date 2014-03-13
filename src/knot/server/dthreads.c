@@ -744,7 +744,7 @@ int dt_compact(dt_unit_t *unit)
 	return KNOT_EOK;
 }
 
-int dt_online_cpus()
+int dt_online_cpus(void)
 {
 	int ret = -1;
 /* Linux, Solaris, OS X 10.4+ */
@@ -762,7 +762,7 @@ int dt_online_cpus()
 	return ret;
 }
 
-int dt_optimal_size()
+int dt_optimal_size(void)
 {
 	int ret = dt_online_cpus();
 	if (ret > 1) {
