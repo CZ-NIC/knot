@@ -92,6 +92,13 @@ static inline void wire_read_binary(wire_ctx_t *ctx, dnssec_binary_t *data)
 	wire_read(ctx, data->data, data->size);
 }
 
+static inline void wire_read_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
+{
+	assert(data);
+
+	wire_read(ctx, data->data, data->size);
+}
+
 static inline void wire_write_u8(wire_ctx_t *ctx, uint8_t value)
 {
 	assert(ctx);
@@ -153,11 +160,4 @@ static inline void wire_write_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
 	assert(data);
 
 	wire_write(ctx, data->data, data->size);
-}
-
-static inline void wire_read_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
-{
-	assert(data);
-
-	wire_read(ctx, data->data, data->size);
 }
