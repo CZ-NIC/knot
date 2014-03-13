@@ -42,6 +42,8 @@ zone_t *load_zone_file(conf_zone_t *conf);
 /*!
  * \brief Update zone database according to configuration.
  *
+ * TODO: update documentation
+ *
  * Creates a new database, copies references those zones from the old database
  * which are still in the configuration, loads any new zones required and
  * replaces the database inside the namserver.

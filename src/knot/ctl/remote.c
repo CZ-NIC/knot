@@ -200,6 +200,10 @@ static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 
 static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 {
+	return NULL;
+
+	/*
+
 	assert(zone && zone->dnssec.timer);
 	assert(buf);
 
@@ -212,6 +216,8 @@ static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 	}
 
 	return buf;
+
+	*/
 }
 
 /*!
@@ -254,6 +260,9 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 
 		/* Evaluate zone state. */
 		char *when = NULL;
+		if (false) {
+// TODO!
+#if 0
 		if (zone->xfr_in.state == XFR_PENDING) {
 			when = strdup("pending");
 		} else if (zone->xfr_in.timer && zone->xfr_in.timer->tv.tv_sec != 0) {
@@ -278,6 +287,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 				ret = KNOT_ESPACE;
 				break;
 			}
+#endif
 		} else {
 			when = strdup("idle");
 		}

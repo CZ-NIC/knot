@@ -70,6 +70,8 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 		}
 	}
 
+#warning "XFR."
+#if 0
 	/* Retain pointer to zone and issue. */
 	xfrhandler_t *xfr = qdata->param->server->xfr;
 	ret = xfr_enqueue(xfr, rq);
@@ -77,6 +79,7 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 		xfr_task_free(rq);
 		return NS_PROC_FAIL;
 	}
+#endif
 
 	/* No immediate response. */
 	pkt->size = 0;
@@ -251,12 +254,15 @@ static int replan_zone_sign_after_ddns(zone_t *zone, uint32_t refresh_at)
 {
 	assert(zone);
 
+	return KNOT_DNSSEC_ENOTSUP;
+#if 0
 	if (zone->dnssec.timer->tv.tv_sec <= refresh_at) {
 		return KNOT_EOK;
 	}
 
 	zones_cancel_dnssec(zone);
 	return zones_schedule_dnssec(zone, refresh_at);
+#endif
 }
 
 /*! \brief Process UPDATE query.
@@ -416,7 +422,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		}
 
 		// Plan zone resign if needed
-		assert(zone->dnssec.timer);
+//		assert(zone->dnssec.timer);
 		ret = replan_zone_sign_after_ddns(zone, refresh_at);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign (%s)\n",

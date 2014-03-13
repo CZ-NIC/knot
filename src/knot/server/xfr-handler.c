@@ -315,8 +315,8 @@ static int xfr_task_close(knot_ns_xfr_t *rq)
 			zone->xfr_in.bootstrap_retry = AXFR_RETRY_MAXTIME;
 		}
 
-		evsched_cancel(zone->xfr_in.timer);
-		evsched_schedule(zone->xfr_in.timer, zone->xfr_in.bootstrap_retry);
+		//evsched_cancel(zone->xfr_in.timer);
+		//evsched_schedule(zone->xfr_in.timer, zone->xfr_in.bootstrap_retry);
 
 		log_zone_notice("%s Bootstrap failed, next attempt in %d seconds.\n",
 		                rq->msg, zone->xfr_in.bootstrap_retry / 1000);

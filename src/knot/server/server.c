@@ -26,10 +26,10 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/xfr-handler.h"
 #include "knot/server/zones.h"
 #include "knot/server/zone-load.h"
 #include "knot/conf/conf.h"
+#include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
@@ -281,8 +281,8 @@ int server_init(server_t *server)
 	}
 
 	/* Create zone events threads. */
-	server->xfr = xfr_create(XFR_THREADS_COUNT, server);
-	if (server->xfr == NULL) {
+	server->workers = worker_pool_create(4); //! \todo config option
+	if (server->workers == NULL) {
 		dt_delete(&server->iosched);
 		evsched_deinit(&server->sched);
 		return KNOT_ENOMEM;
@@ -308,7 +308,7 @@ void server_deinit(server_t *server)
 	}
 
 	/* Free threads and event handlers. */
-	xfr_free(server->xfr);
+	worker_pool_destroy(server->workers);
 	dt_delete(&server->iosched);
 
 	/* Free rate limits. */
@@ -373,11 +373,11 @@ int server_start(server_t *s)
 
 	dbg_server("server: starting server instance\n");
 
-	/* Start XFR handler. */
-	xfr_start(s->xfr);
-
 	/* Start evsched handler. */
 	dt_start(s->iosched);
+
+	/* Start workers. */
+	worker_pool_start(s->workers);
 
 	/* Start I/O handlers. */
 	int ret = KNOT_EOK;
@@ -400,7 +400,7 @@ void server_wait(server_t *s)
 	}
 
 	dt_join(s->iosched);
-	xfr_join(s->xfr);
+	worker_pool_join(s->workers);
 
 	if (s->tu_size == 0) {
 		return;
@@ -449,8 +449,8 @@ void server_stop(server_t *server)
 	evsched_schedule(term_ev, 0);
 	dt_stop(server->iosched);
 
-	/* Interrupt XFR handler execution. */
-	xfr_stop(server->xfr);
+	/* Interrupt background workers. */
+	worker_pool_stop(server->workers);
 
 	/* Clear 'running' flag. */
 	server->state &= ~ServerRunning;

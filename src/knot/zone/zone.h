@@ -30,11 +30,12 @@
 
 #include "common/evsched.h"
 #include "common/ref.h"
-#include "libknot/dname.h"
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
 #include "knot/updates/acl.h"
+#include "knot/zone/events.h"
 #include "knot/zone/zone-contents.h"
+#include "libknot/dname.h"
 
 /*!
  * \brief Zone flags.
@@ -43,8 +44,6 @@ typedef enum zone_flag_t {
 	ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
 } zone_flag_t;
 
-struct server_t;
-
 /*!
  * \brief Structure for holding DNS zone.
  */
@@ -52,7 +51,6 @@ typedef struct zone_t {
 
 	//! \todo Move ACLs into configuration.
 	//! \todo Remove refcounting + flags.
-	//! \todo Remove server_t.
 	//! \todo Remove zonefile_{serial,mtime}, use zone-dirty flag instead
 
 	ref_t ref;     /*!< Reference counting. */
@@ -79,17 +77,17 @@ typedef struct zone_t {
 	acl_t *notify_in;  /*!< ACL for incoming notifications.*/
 	acl_t *update_in;  /*!< ACL for incoming updates.*/
 
+	/*! \brief Zone events. */
+	zone_events_t events;
+
 	/*! \brief XFR-IN scheduler. */
 	struct {
-		event_t *timer;           /*!< Timer for REFRESH/RETRY. */
-		event_t *expire;          /*!< Timer for EXPIRE. */
 		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
 		unsigned state;
 	} xfr_in;
 
 	struct {
-		event_t *timer;  /*!< Timer for DNSSEC events. */
-		uint32_t   refresh_at;  /*!< Next refresh time. */
+		uint32_t refresh_at;  /*!< Next refresh time. */
 	} dnssec;
 
 	/*! \brief Zone IXFR history. */
@@ -136,25 +134,33 @@ knot_zone_contents_t *zone_switch_contents(zone_t *zone,
 					   knot_zone_contents_t *new_contents);
 
 /*!
- * \brief Initialize zone timers.
- *
- * \todo Zone timers should be in a separate file, callbacks are still scattered.
- */
-int zone_timers_create(zone_t *zone, evsched_t *sched);
-
-/*!
- * \brief Freeze the zone timers.
- */
-int zone_timers_freeze(zone_t *zone);
-
-/*!
- * \brief Reschedule frozen zone timers.
- */
-int zone_timers_thaw(zone_t *zone);
-
-/*!
  * \brief Return zone master interface.
  */
 const conf_iface_t *zone_master(const zone_t *zone);
+
+//int zone_start_events(zone_t *zone, evsched_t *scheduler);
+//
+//void zone_events_freeze(zone_t *zone)
+//{
+//}
+//
+//void zone_events_wait(zone_t *zone)
+//{
+//}
+//
+//void zone_events_thaw(zone_t *zone)
+//{
+//}
+//
+////void zone_event_plan(type, when)
+//
+//void zone_event_plan_reload(zone_t *zone)
+//{
+//	zone->events.load = true;
+//
+//	evsched_cancel(zone->next_event);
+//	evsched_schedule(zone->next_event, 0);
+//}
+
 
 /*! @} */

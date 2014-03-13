@@ -21,6 +21,7 @@
 
 #include "common/descriptor.h"
 #include "common/evsched.h"
+#include "common/lists.h"
 #include "knot/server/zones.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
@@ -37,100 +38,6 @@
 static void knot_zone_dtor(struct ref_t *p) {
 	zone_t *z = (zone_t *)p;
 	zone_free(&z);
-}
-
-/*! \brief Cancel zone event. */
-static void zone_timer_cancel(event_t *event)
-{
-	if (event != NULL) {
-		evsched_cancel(event);
-	}
-}
-
-/*! \brief Cancel and free zone timer. */
-static void zone_timer_free(event_t *event)
-{
-	if (event == NULL) {
-		return;
-	}
-
-	if (evsched_cancel(event) == KNOT_EOK) {
-		evsched_event_free(event);
-	}
-}
-
-/*!
- * \brief Create timer if not exists, cancel if running.
-*/
-static event_t* zone_timer_create(evsched_t *sched, event_cb_t cb, zone_t *zone)
-{
-	return evsched_event_create(sched, cb, zone);
-}
-
-int zone_timers_create(zone_t *zone, evsched_t *scheduler)
-{
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	zone->ixfr_dbsync   = zone_timer_create(scheduler, zones_flush_ev,   zone);
-	zone->xfr_in.timer  = zone_timer_create(scheduler, zones_refresh_ev, zone);
-	zone->xfr_in.expire = zone_timer_create(scheduler, zones_expire_ev,  zone);
-	zone->dnssec.timer  = zone_timer_create(scheduler, zones_dnssec_ev,  zone);
-
-	return KNOT_EOK;
-}
-
-int zone_timers_freeze(zone_t *zone)
-{
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/*! \todo NOTIFY, xfers and updates now MUST NOT trigger reschedule. */
-	/*! \todo No new xfers or updates should be processed. */
-	/*! \todo Raise some kind of flag. */
-
-	/* Cancel all pending timers. */
-	zone_timer_cancel(zone->ixfr_dbsync);
-	zone_timer_cancel(zone->xfr_in.timer);
-	zone_timer_cancel(zone->xfr_in.expire);
-	zone_timer_cancel(zone->dnssec.timer);
-
-	/* Wait for readers to notice the change. */
-	synchronize_rcu();
-
-	/* Now some transfers may already be running, we need to wait for them. */
-	/*! \todo This should be done somehow. */
-
-	/* Reacquire journal to ensure all operations on it are finished. */
-	if (journal_is_used(zone->ixfr_db)) {
-		if (journal_retain(zone->ixfr_db) == KNOT_EOK) {
-			journal_release(zone->ixfr_db);
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-int zone_timers_thaw(zone_t *zone)
-{
-	if (zone == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Schedule DNSSEC signing timer. */
-	if(zone->conf->dnssec_enable) {
-		zones_schedule_dnssec(zone, zone->dnssec.refresh_at);
-	}
-
-	/* Schedule zone file syncing. */
-	zones_schedule_zonefile_sync(zone, zone->conf->dbsync_timeout * 1000);
-
-	/* Schedule REFRESH. */
-	zones_schedule_refresh(zone, REFRESH_NOW);
-
-	return KNOT_EOK;
 }
 
 /*!
@@ -226,11 +133,9 @@ void zone_free(zone_t **zone_ptr)
 
 	knot_dname_free(&zone->name);
 
-	/* Cancel and free timers. */
-	zone_timer_free(zone->xfr_in.timer);
-	zone_timer_free(zone->xfr_in.expire);
-	zone_timer_free(zone->ixfr_dbsync);
-	zone_timer_free(zone->dnssec.timer);
+	// TODO: review
+//	evsched_cancel(zone->next_event);
+//	evsched_event_free(zone->next_event);
 
 	acl_delete(&zone->xfr_out);
 	acl_delete(&zone->notify_in);

@@ -170,7 +170,7 @@ int zones_expire_ev(event_t *event)
 	log_zone_info("Zone '%s' expired.\n", zone->conf->name);
 
 	/* No more REFRESH/RETRY on expired zone. */
-	evsched_cancel(zone->xfr_in.timer);
+//	evsched_cancel(zone->xfr_in.timer);
 
 	/* Release holding reference. */
 	zone_release(zone);
@@ -229,11 +229,12 @@ int zones_refresh_ev(event_t *event)
 		}
 
 		/* Issue request. */
-		ret = xfr_enqueue(server->xfr, rq);
-		if (ret != KNOT_EOK) {
-			xfr_task_free(rq);
-			zone->xfr_in.state = XFR_SCHED; /* Revert state. */
-		}
+#warning "XFR enqueue."
+//		ret = xfr_enqueue(server->xfr, rq);
+//		if (ret != KNOT_EOK) {
+//			xfr_task_free(rq);
+//			zone->xfr_in.state = XFR_SCHED; /* Revert state. */
+//		}
 		pthread_mutex_unlock(&zone->lock);
 		return ret;
 	}
@@ -246,10 +247,11 @@ int zones_refresh_ev(event_t *event)
 
 	/* Issue request. */
 	evsched_end_process(event->sched);
-	ret = xfr_enqueue(server->xfr, rq);
-	if (ret != KNOT_EOK) {
-		xfr_task_free(rq);
-	}
+#warning "XFR enqueue."
+//	ret = xfr_enqueue(server->xfr, rq);
+//	if (ret != KNOT_EOK) {
+//		xfr_task_free(rq);
+//	}
 
 	return ret;
 }
@@ -1118,11 +1120,12 @@ int zones_process_response(server_t *server,
 		rq->tsig_key = master->key;
 
 		rcu_read_unlock();
-		ret = xfr_enqueue(server->xfr, rq);
-		if (ret != KNOT_EOK) {
-			xfr_task_free(rq);
-			zone->xfr_in.state = XFR_SCHED; /* Revert state */
-		}
+#warning "XFR enqueue."
+//		ret = xfr_enqueue(server->xfr, rq);
+//		if (ret != KNOT_EOK) {
+//			xfr_task_free(rq);
+//			zone->xfr_in.state = XFR_SCHED; /* Revert state */
+//		}
 		pthread_mutex_unlock(&zone->lock);
 	}
 
@@ -1546,11 +1549,12 @@ int zones_schedule_notify(zone_t *zone, server_t *server)
 		rq->tsig_key = cfg_if->key;
 
 		rq->data = (void *)((long)cfg->notify_retries);
-		if (xfr_enqueue(server->xfr, rq) != KNOT_EOK) {
-			log_zone_error("Failed to enqueue NOTIFY for '%s'.\n",
-			               cfg->name);
-			continue;
-		}
+#warning "XFR enqueue."
+//		if (xfr_enqueue(server->xfr, rq) != KNOT_EOK) {
+//			log_zone_error("Failed to enqueue NOTIFY for '%s'.\n",
+//			               cfg->name);
+//			continue;
+//		}
 	}
 
 	return KNOT_EOK;
@@ -1563,8 +1567,8 @@ int zones_schedule_refresh(zone_t *zone, int64_t timeout)
 	}
 
 	/* Cancel REFRESH/EXPIRE timer. */
-	evsched_cancel(zone->xfr_in.expire);
-	evsched_cancel(zone->xfr_in.timer);
+//	evsched_cancel(zone->xfr_in.expire);
+//	evsched_cancel(zone->xfr_in.timer);
 
 	/* Check XFR/IN master server. */
 	pthread_mutex_lock(&zone->lock);
@@ -1578,7 +1582,7 @@ int zones_schedule_refresh(zone_t *zone, int64_t timeout)
 			// Allow for timeouts.  Otherwise zones with very short
 			// expiry may expire before the timeout is reached.
 			expire_tmr += 2 * (conf()->max_conn_idle * 1000);
-			evsched_schedule(zone->xfr_in.expire, expire_tmr);
+//			evsched_schedule(zone->xfr_in.expire, expire_tmr);
 			dbg_zones("zone: EXPIRE '%s' set to %"PRIi64"\n",
 			          zone->conf->name, expire_tmr);
 		}
@@ -1591,7 +1595,7 @@ int zones_schedule_refresh(zone_t *zone, int64_t timeout)
 				timeout = zone->xfr_in.bootstrap_retry;
 			}
 		}
-		evsched_schedule(zone->xfr_in.timer, timeout);
+//		evsched_schedule(zone->xfr_in.timer, timeout);
 		dbg_zones("zone: REFRESH '%s' set to %"PRIi64"\n",
 		          zone->conf->name, timeout);
 		zone->xfr_in.state = XFR_SCHED;
@@ -1692,7 +1696,7 @@ int zones_cancel_dnssec(zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	evsched_cancel(zone->dnssec.timer);
+//	evsched_cancel(zone->dnssec.timer);
 
 	return KNOT_EOK;
 }
@@ -1732,7 +1736,7 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
 
 	// schedule
 
-	evsched_schedule(zone->dnssec.timer, relative * 1000);
+//	evsched_schedule(zone->dnssec.timer, relative * 1000);
 
 	return KNOT_EOK;
 }
