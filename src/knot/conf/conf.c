@@ -444,67 +444,6 @@ static int conf_process(conf_t *conf)
 
 conf_t *s_config = NULL; /*! \brief Singleton config instance. */
 
-/*! \brief Singleton config constructor (automatically called on load). */
-void __attribute__ ((constructor)) conf_init()
-{
-	// Create new config
-	s_config = conf_new(NULL);
-	if (!s_config) {
-		return;
-	}
-
-	/* Create default interface. */
-	conf_iface_t * iface = malloc(sizeof(conf_iface_t));
-	memset(iface, 0, sizeof(conf_iface_t));
-	sockaddr_set(&iface->addr, AF_INET, "127.0.0.1", CONFIG_DEFAULT_PORT);
-	iface->name = strdup("localhost");
-	add_tail(&s_config->ifaces, &iface->n);
-	++s_config->ifaces_count;
-
-	/* Create default storage. */
-	s_config->storage = strdup(STORAGE_DIR);
-
-	/* Create default logs. */
-
-	/* Syslog */
-	conf_log_t *log = malloc(sizeof(conf_log_t));
-	log->type = LOGT_SYSLOG;
-	log->file = NULL;
-	init_list(&log->map);
-
-	conf_log_map_t *map = malloc(sizeof(conf_log_map_t));
-	map->source = LOG_ANY;
-	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
-	add_tail(&log->map, &map->n);
-	add_tail(&s_config->logs, &log->n);
-	s_config->logs_count = 1;
-
-	/* Stderr */
-	log = malloc(sizeof(conf_log_t));
-	log->type = LOGT_STDERR;
-	log->file = NULL;
-	init_list(&log->map);
-
-	map = malloc(sizeof(conf_log_map_t));
-	map->source = LOG_ANY;
-	map->prios = LOG_MASK(LOG_WARNING)|LOG_MASK(LOG_ERR);
-	add_tail(&log->map, &map->n);
-	add_tail(&s_config->logs, &log->n);
-	++s_config->logs_count;
-
-	/* Process config. */
-	conf_process(s_config);
-}
-
-/*! \brief Singleton config destructor (automatically called on exit). */
-void __attribute__ ((destructor)) conf_deinit()
-{
-	if (s_config) {
-		conf_free(s_config);
-		s_config = NULL;
-	}
-}
-
 /*!
  * \brief Parse config (from file).
  * \return yyparser return value.
