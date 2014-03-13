@@ -12,6 +12,7 @@ check_PROGRAMS = \
 	key_keytag	\
 	key_pubkey	\
 	nsec_bitmap	\
+	nsec_hash	\
 	sign		\
 	sign_der	\
 	wire

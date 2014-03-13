@@ -36,6 +36,8 @@ enum dnssec_error {
 	DNSSEC_SIGN_INIT_ERROR,
 	DNSSEC_SIGN_ERROR,
 	DNSSEC_INVALID_SIGNATURE,
+	DNSSEC_INVALID_NSEC3_ALGORITHM,
+	DNSSEC_NSEC3_HASHING_ERROR,
 };
 
 static inline int dnssec_errno_to_error(int ecode)
