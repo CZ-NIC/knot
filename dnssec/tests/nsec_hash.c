@@ -71,13 +71,9 @@ int main(void)
 {
 	plan_lazy();
 
-	dnssec_crypto_init();
-
 	test_length();
 	test_parsing();
 	test_hashing();
-
-	dnssec_crypto_cleanup();
 
 	return 0;
 }
