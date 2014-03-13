@@ -34,6 +34,7 @@
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
 #define CMDARGS_BUFLEN (1024*1024) /* 1M */
+#define CMDARGS_BUFLEN_LOG 256
 #define KNOT_CTL_SOCKET_UMASK 0007
 
 /*! \brief Remote command structure. */
@@ -526,8 +527,8 @@ failed:
 
 static void log_command(const char *cmd, const remote_cmdargs_t* args)
 {
-	char params[CMDARGS_BUFLEN] = { 0 };
-	size_t rest = CMDARGS_BUFLEN;
+	char params[CMDARGS_BUFLEN_LOG] = { 0 };
+	size_t rest = CMDARGS_BUFLEN_LOG;
 
 	for (unsigned i = 0; i < args->argc; i++) {
 		const knot_rrset_t *rr = args->arg[i];
