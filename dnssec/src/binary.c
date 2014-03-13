@@ -70,7 +70,7 @@ int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
 	}
 
 	uint8_t *copy = malloc(from->size);
-	if (!copy) {
+	if (copy == NULL) {
 		return DNSSEC_ENOMEM;
 	}
 
@@ -78,6 +78,23 @@ int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
 
 	to->size = from->size;
 	to->data = copy;
+
+	return DNSSEC_EOK;
+}
+
+int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size)
+{
+	if (!data) {
+		return DNSSEC_EINVAL;
+	}
+
+	uint8_t *new_data = realloc(data->data, new_size);
+	if (new_data == NULL) {
+		return DNSSEC_ENOMEM;
+	}
+
+	data->data = new_data;
+	data->size = new_size;
 
 	return DNSSEC_EOK;
 }
