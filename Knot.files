@@ -149,6 +149,10 @@ src/knot/updates/ddns.c
 src/knot/updates/ddns.h
 src/knot/updates/xfr-in.c
 src/knot/updates/xfr-in.h
+src/knot/worker/queue.c
+src/knot/worker/queue.h
+src/knot/worker/task.c
+src/knot/worker/task.h
 src/knot/zone/estimator.c
 src/knot/zone/estimator.h
 src/knot/zone/node.c

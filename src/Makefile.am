@@ -232,8 +232,8 @@ libknotd_la_SOURCES =				\
 	knot/server/rrl.h			\
 	knot/server/server.c			\
 	knot/server/server.h			\
-	knot/server/net.c				\
-	knot/server/net.h				\
+	knot/server/net.c			\
+	knot/server/net.h			\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
@@ -252,20 +252,28 @@ libknotd_la_SOURCES =				\
 	knot/updates/ddns.h			\
 	knot/updates/xfr-in.c			\
 	knot/updates/xfr-in.h			\
+	knot/worker/pool.c			\
+	knot/worker/pool.h			\
+	knot/worker/queue.c			\
+	knot/worker/queue.h			\
+	knot/worker/task.c			\
+	knot/worker/task.h			\
 	knot/zone/estimator.c			\
 	knot/zone/estimator.h			\
+	knot/zone/events.c			\
+	knot/zone/events.h			\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
 	knot/zone/zone-contents.c		\
 	knot/zone/zone-contents.h		\
+	knot/zone/zone-create.c			\
+	knot/zone/zone-create.h			\
 	knot/zone/zone-diff.c			\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-dump.h			\
-	knot/zone/zone-create.c			\
-	knot/zone/zone-create.h			\
 	knot/zone/zone-tree.c			\
 	knot/zone/zone-tree.h			\
 	knot/zone/zone.c			\

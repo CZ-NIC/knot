@@ -264,9 +264,6 @@ int main(int argc, char **argv)
 		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
 	}
 
-	// Initialize pseudorandom number generator
-	srand(time(NULL));
-
 	/* POSIX 1003.1e capabilities. */
 	setup_capabilities();
 
