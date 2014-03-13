@@ -29,6 +29,8 @@ libdnssec_la_SOURCES =	\
 	src/nsec/bitmap.h \
 	src/nsec/hash.c \
 	src/nsec/hash.h \
+	src/random.c \
+	src/random.h \
 	src/shared.h \
 	src/sign.c \
 	src/sign.h \

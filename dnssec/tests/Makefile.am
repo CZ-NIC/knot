@@ -13,6 +13,7 @@ check_PROGRAMS = \
 	key_pubkey	\
 	nsec_bitmap	\
 	nsec_hash	\
+	random		\
 	sign		\
 	sign_der	\
 	wire
