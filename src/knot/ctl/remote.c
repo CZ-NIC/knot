@@ -38,6 +38,7 @@
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
 #define CMDARGS_BUFLEN (1024*1024) /* 1M */
+#define CMDARGS_BUFLEN_LOG 256
 #define KNOT_CTL_SOCKET_UMASK 0007
 
 /*! \brief Remote command structure. */
@@ -571,6 +572,34 @@ static int remote_send_chunk(int c, knot_packet_t *pkt, const char* d,
 	return len;
 }
 
+static void log_command(const char *cmd, const remote_cmdargs_t* args)          
+{                                                                               
+	char params[CMDARGS_BUFLEN_LOG] = { 0 };                                
+	size_t rest = CMDARGS_BUFLEN_LOG;                                       
+							
+	for (unsigned i = 0; i < args->argc; i++) {                             
+		const knot_rrset_t *rr = args->arg[i];                          
+		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {                    
+			continue;                                               
+		}                                                               
+							
+		uint16_t rr_count = knot_rrset_rdata_rr_count(rr);                    
+		for (uint16_t j = 0; j < rr_count; j++) {                       
+			const knot_dname_t *dn = knot_rdata_ns_name(rr, j);     
+			char *name = knot_dname_to_str(dn);                     
+								
+			int ret = snprintf(params, rest, " %s", name);          
+			free(name);                                             
+			if (ret <= 0 || ret >= rest) {                          
+				break;                                          
+			}                                                       
+			rest -= ret;                                            
+		}                                                               
+	}                                                                       
+						
+	log_server_info("Remote command: '%s%s'\n", cmd, params);               
+}
+
 int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_t rlen)
 {
 	if (fd < 0 || !s || !pkt || !rwire) {
@@ -615,6 +644,8 @@ int remote_answer(int fd, server_t *s, knot_packet_t *pkt, uint8_t* rwire, size_
 	args->arg = pkt->authority;
 	args->argc = knot_packet_authority_rrset_count(pkt);
 	args->rc = KNOT_RCODE_NOERROR;
+
+	log_command(cmd, args);
 
 	remote_cmd_t *c = remote_cmd_tbl;
 	while(c->name != NULL) {
