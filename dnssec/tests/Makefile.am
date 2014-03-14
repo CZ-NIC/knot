@@ -8,6 +8,7 @@ LDADD = \
 
 check_PROGRAMS = \
 	binary		\
+	crypto		\
 	key		\
 	key_keytag	\
 	key_pubkey	\
