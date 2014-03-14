@@ -28,26 +28,31 @@ int main(void)
 
 	for (int i = 0; data[i].encoded != NULL; i++) {
 		test_string_t *ts = &data[i];
+
+		const dnssec_binary_t base64 = {
+			.size = ts->encoded_size,
+			.data = (uint8_t *) ts->encoded
+		};
+
 		dnssec_binary_t binary = { 0 };
-		int r = dnssec_binary_from_base64(&binary,
-						 (const uint8_t *)ts->encoded,
-						 ts->encoded_size);
 
-		ok(r == DNSSEC_EOK, "[%d] conversion performed", i);
-
-		ok(binary.size == ts->decoded_size &&
+		int r = dnssec_binary_from_base64(&base64, &binary);
+		ok(r == DNSSEC_EOK &&
+		   binary.size == ts->decoded_size &&
 		   memcmp(binary.data, ts->decoded, binary.size) == 0,
-		   "[%d] conversion is correct", i);
+		   "dnssec_binary_from_base64() for '%s'", ts->encoded);
 
 		dnssec_binary_free(&binary);
 	}
 
 	dnssec_binary_t src = { .size = 5, .data = (uint8_t *) "ahoj" };
 	dnssec_binary_t dst = { 0 };
+
 	int r = dnssec_binary_dup(&src, &dst);
 	ok(r == DNSSEC_EOK &&
 	   src.size == dst.size && memcmp(src.data, dst.data, src.size) == 0,
 	   "dnssec_binary_dup()");
+
 	dnssec_binary_free(&dst);
 
 	return 0;

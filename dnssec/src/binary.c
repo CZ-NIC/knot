@@ -4,6 +4,7 @@
 
 #include "binary.h"
 #include "error.h"
+#include "shared.h"
 
 static size_t base64_decode_raw(const uint8_t *src, size_t src_len,
 				uint8_t *dst, size_t dst_max_size)
@@ -23,19 +24,28 @@ static size_t base64_decode_raw(const uint8_t *src, size_t src_len,
 	return (size_t) dst_size;
 }
 
-int dnssec_binary_from_base64(dnssec_binary_t *binary, const uint8_t *base64, size_t base64_size)
+/* -- public API ----------------------------------------------------------- */
+
+int dnssec_binary_from_base64(const dnssec_binary_t *base64,
+			      dnssec_binary_t *binary)
 {
-	if (!binary || !base64) {
+	if (!base64 || !binary) {
 		return DNSSEC_EINVAL;
 	}
 
-	size_t raw_size = BASE64_DECODE_LENGTH(base64_size);
+	if (base64->size == 0) {
+		clear_struct(binary);
+		return DNSSEC_EOK;
+	}
+
+	size_t raw_size = BASE64_DECODE_LENGTH(base64->size);
 	uint8_t *raw = malloc(raw_size);
 	if (raw == NULL) {
 		return DNSSEC_ENOMEM;
 	}
 
-	size_t real_size = base64_decode_raw(base64, base64_size, raw, raw_size);
+	size_t real_size = base64_decode_raw(base64->data, base64->size,
+					     raw, raw_size);
 	if (real_size == 0) {
 		free(raw);
 		return DNSSEC_EINVAL;
@@ -58,9 +68,7 @@ void dnssec_binary_free(dnssec_binary_t *binary)
 	}
 
 	free(binary->data);
-
-	binary->data = NULL;
-	binary->size = 0;
+	clear_struct(binary);
 }
 
 int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
@@ -89,7 +97,7 @@ int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size)
 	}
 
 	uint8_t *new_data = realloc(data->data, new_size);
-	if (new_data == NULL) {
+	if (new_size > 0 && new_data == NULL) {
 		return DNSSEC_ENOMEM;
 	}
 
