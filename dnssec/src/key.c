@@ -40,7 +40,7 @@ static void update_keytag(dnssec_key_t *key)
 		return;
 	}
 
-	key->keytag = keytag(&key->rdata);
+	keytag(&key->rdata, &key->keytag);
 }
 
 static void update_key_id(dnssec_key_t *key)
