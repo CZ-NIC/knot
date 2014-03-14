@@ -687,7 +687,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		if (!zone_match && argc > 0) {
-			/* WALK_LIST is a for-cycle. */
+			conf_free_zone(zone);
 			continue;
 		}
 
@@ -699,7 +699,6 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		log_zone_info("Zone %s OK.\n", zone->name);
-		rem_node((node_t *)zone);
 		zone_free(&loaded_zone);
 	}
 	hattrie_iter_free(z_iter);
@@ -740,7 +739,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		if (!zone_match && argc > 0) {
-			/* WALK_LIST is a for-cycle. */
+			conf_free_zone(zone);
 			continue;
 		}
 
@@ -804,6 +803,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		              zone->name, est.record_count, zone_size);
 		zs_loader_free(loader);
 		total_size += zone_size;
+		conf_free_zone(zone);
 	}
 	hattrie_iter_free(z_iter);
 

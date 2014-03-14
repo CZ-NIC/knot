@@ -342,11 +342,12 @@ class Test(object):
                     print("  %s" % add1)
                     print("  %s" % add2)
 
-    def _ixfr_changes(self, server, zone, serial):
+    def _ixfr_changes(self, server, zone, serial, udp):
         soa = None
         changes = list()
 
-        resp = server.dig(zone.name, "IXFR", log_no_sep=True, serial=serial)
+        resp = server.dig(zone.name, "IXFR", log_no_sep=True, serial=serial,
+                          udp=udp)
 
         change = Test.IxfrChange()
         for msg in resp.resp:
@@ -406,9 +407,9 @@ class Test(object):
 
         return soa, changes
 
-    def _ixfr_diff(self, server1, server2, zone, serial):
-        soa1, changes1 = self._ixfr_changes(server1, zone, serial)
-        soa2, changes2 = self._ixfr_changes(server2, zone, serial)
+    def _ixfr_diff(self, server1, server2, zone, serial, udp):
+        soa1, changes1 = self._ixfr_changes(server1, zone, serial, udp)
+        soa2, changes2 = self._ixfr_changes(server2, zone, serial, udp)
 
         if soa1 != soa2:
             set_err("IXFR DIFF")
@@ -426,12 +427,12 @@ class Test(object):
         for change1, change2 in zip(changes1, changes2):
             change1.cmp(change2)
 
-    def xfr_diff(self, server1, server2, zones, serial=None):
+    def xfr_diff(self, server1, server2, zones, serial=None, udp=False):
         for zone in zones:
             check_log("CHECK %sXFR DIFF %s %s<->%s" % ("I" if serial else "A",
                       zone.name, server1.name, server2.name))
             if serial:
-                self._ixfr_diff(server1, server2, zone, serial)
+                self._ixfr_diff(server1, server2, zone, serial, udp)
             else:
                 self._axfr_diff(server1, server2, zone)
 
