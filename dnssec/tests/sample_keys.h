@@ -24,7 +24,6 @@ typedef struct key_parameters {
 		const char *name;
 		dnssec_binary_t data;
 	} privkey_params[];
-
 } key_parameters_t;
 
 /*
@@ -126,7 +125,7 @@ static const key_parameters_t SAMPLE_RSA_KEY = {
 			0xe3, 0xe3,
 		}}},
 		{ NULL },
-	}
+	},
 };
 
 /*
