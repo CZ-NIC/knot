@@ -8,7 +8,6 @@
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/nsec_proofs.h"
-#include "knot/nameserver/synth_record.h"
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/rrl.h"
@@ -167,11 +166,6 @@ int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	/*
 	 * Postprocessing.
 	 */
-
-	/* Synthetic response (if applicable). */
-	if (synth_answer_possible(qdata)) {
-		next_state = synth_answer(pkt, qdata);
-	}
 
 	/* Transaction security (if applicable). */
 	if (next_state == NS_PROC_DONE || next_state == NS_PROC_FULL) {

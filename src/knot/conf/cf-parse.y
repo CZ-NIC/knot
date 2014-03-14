@@ -35,7 +35,7 @@
 #include "libknot/binary.h"
 #include "libknot/edns.h"
 #include "knot/server/rrl.h"
-#include "knot/nameserver/synth_record.h"
+#include "knot/nameserver/query_module.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/libknotd_la-cf-parse.h" /* Automake generated header. */
 
@@ -276,45 +276,15 @@ static void conf_acl_item(void *scanner, char *item)
 	free(item);
 }
 
-static void synth_tpl_create(void *scanner)
+static void query_module_create(void *scanner, const char *name, const char *param)
 {
-	synth_template_t *tpl = malloc(sizeof(synth_template_t));
-	if (tpl == NULL) {
-		cf_error(scanner, "out of memory");
+	struct query_module *module = query_module_open(name, param, NULL);
+	if (module == NULL) {
+		cf_error(scanner, "cannot load query module '%s'", name);
 		return;
 	}
-	memset(tpl, 0, sizeof(synth_template_t));
-	add_tail(&this_zone->synth_templates, &tpl->node);
-}
 
-static void synth_tpl_define(void *scanner, enum synth_template_type template_type, char* format)
-{
-	synth_template_t *tpl = TAIL(this_zone->synth_templates);
-
-	tpl->type = template_type;
-	tpl->format = format;
-}
-
-static void synth_tpl_set_addr(void *scanner, int family, char* addr, int netblock)
-{
-	synth_template_t *tpl = TAIL(this_zone->synth_templates);
-
-	sockaddr_set(&tpl->subnet.ss, family, addr, 0);
-	int prefix_max = IPV4_PREFIXLEN;
-	if (family == AF_INET6) {
-		prefix_max = IPV6_PREFIXLEN;
-	}
-
-	SET_NUM(tpl->subnet.prefix, netblock, 0, prefix_max, "prefix length");
-
-	free(addr);
-}
-
-static void synth_tpl_set_ttl(void *scanner, uint32_t ttl)
-{
-	synth_template_t *tpl = TAIL(this_zone->synth_templates);
-
-	SET_NUM(tpl->ttl, ttl, 0, UINT32_MAX, "ttl");
+	add_tail(&this_zone->query_modules, &module->node);
 }
 
 static int conf_key_exists(void *scanner, char *item)
@@ -514,9 +484,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> SIGNATURE_LIFETIME
 %token <tok> SERIAL_POLICY
 %token <tok> SERIAL_POLICY_VAL
-%token <tok> SYNTH
-%token <tok> REVERSE
-%token <tok> FORWARD
+%token <tok> QUERY_MODULE
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -872,21 +840,15 @@ zone_acl:
    }
  ;
 
-zone_synth_ttl:
- | NUM { synth_tpl_set_ttl(scanner, $1.i); }
+query_module:
+ TEXT TEXT { query_module_create(scanner, $1.t, $2.t); free($1.t); free($2.t); }
  ;
 
-zone_synth_addr:
-   IPA '/' NUM  { synth_tpl_set_addr(scanner, AF_INET, $1.t, $3.i); }
- | IPA6 '/' NUM { synth_tpl_set_addr(scanner, AF_INET6, $1.t, $3.i); }
+query_module_list:
+   query_module
+ | query_module ',' query_module_list
+ | query_module ';' query_module_list
  ;
-
-zone_synth:
-   FORWARD TEXT zone_synth_addr zone_synth_ttl { synth_tpl_define(scanner, SYNTH_FORWARD, $2.t); }
- | REVERSE TEXT zone_synth_addr zone_synth_ttl { synth_tpl_define(scanner, SYNTH_REVERSE, $2.t); }
- ;
-
-zone_synth_start: SYNTH { synth_tpl_create(scanner); }
 
 zone_start:
  | USER  { conf_zone_start(scanner, strdup($1.t)); }
@@ -952,7 +914,7 @@ zone:
  | zone SERIAL_POLICY SERIAL_POLICY_VAL ';' {
 	this_zone->serial_policy = $3.i;
  }
- | zone zone_synth_start zone_synth ';'
+ | zone QUERY_MODULE '{' query_module_list '}'
  ;
 
 zones:

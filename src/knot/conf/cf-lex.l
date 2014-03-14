@@ -132,9 +132,7 @@ transfers       { lval.t = yytext; return TRANSFERS; }
 dnssec-enable   { lval.t = yytext; return DNSSEC_ENABLE; }
 dnssec-keydir   { lval.t = yytext; return DNSSEC_KEYDIR; }
 signature-lifetime { lval.t = yytext; return SIGNATURE_LIFETIME; }
-synth           { lval.t = yytext; return SYNTH; }
-forward         { lval.t = yytext; return FORWARD; }
-reverse         { lval.t = yytext; return REVERSE; }
+query_module    { lval.t = yytext; return QUERY_MODULE; }
 
 interfaces      { lval.t = yytext; return INTERFACES; }
 address         { lval.t = yytext; return ADDRESS; }
