@@ -40,7 +40,9 @@ static void check_key(const char *name, const key_parameters_t *params)
 	   memcmp(key_id, params->key_id.data, params->key_id.size) == 0,
 	   "%s: dnssec_key_get_id()", name);
 
-	ok(dnssec_key_get_keytag(key) == params->keytag,
+	uint16_t keytag = 0;
+	r = dnssec_key_get_keytag(key, &keytag);
+	ok(r == DNSSEC_EOK && keytag == params->keytag,
 	   "%s: dnssec_key_get_keytag()", name);
 
 	// create from RDATA
@@ -49,14 +51,22 @@ static void check_key(const char *name, const key_parameters_t *params)
 	r = dnssec_key_from_dnskey(key, &params->rdata);
 	ok(r == DNSSEC_EOK, "%s: dnssec_key_from_dnskey()", name);
 
-	ok(dnssec_key_get_flags(key) == params->flags,
+	uint16_t flags = 0;
+	r = dnssec_key_get_flags(key, &flags);
+	ok(r == DNSSEC_EOK && flags == params->flags,
 	   "%s: dnssec_key_get_flags()", name);
-	ok(dnssec_key_get_protocol(key) == params->protocol,
+
+	uint8_t protocol = 0;
+	r = dnssec_key_get_protocol(key, &protocol);
+	ok(r == DNSSEC_EOK && protocol == params->protocol,
 	   "%s: dnssec_key_get_protocol()", name);
-	ok(dnssec_key_get_algorithm(key) == params->algorithm,
+
+	uint8_t algorithm = 0;
+	r = dnssec_key_get_algorithm(key, &algorithm);
+	ok(r == DNSSEC_EOK && algorithm == params->algorithm,
 	   "%s: dnssec_key_get_algorithm()", name);
 
-	dnssec_key_free(&key);
+	dnssec_key_free(key);
 }
 
 typedef struct keyinfo {

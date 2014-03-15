@@ -1,6 +1,7 @@
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/libtap \
-	-I$(srcdir)/../src
+	-I$(srcdir)/../lib/dnssec \
+	-I$(srcdir)/../lib
 
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \

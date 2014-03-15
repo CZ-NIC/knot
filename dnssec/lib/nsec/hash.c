@@ -4,18 +4,9 @@
 #include <string.h>
 
 #include "error.h"
-#include "nsec/hash.h"
+#include "nsec.h"
 #include "shared.h"
 #include "wire.h"
-
-static void free_gnutls_hash(gnutls_hash_hd_t *ptr)
-{
-	if (*ptr) {
-		gnutls_hash_deinit(*ptr, NULL);
-	}
-}
-
-#define _cleanup_digest_ _cleanup_(free_gnutls_hash)
 
 /*!
  * Compute NSEC3 hash for given data and algorithm.
@@ -42,7 +33,7 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, unsigned iterations,
 		return result;
 	}
 
-	_cleanup_digest_ gnutls_hash_hd_t digest = NULL;
+	_cleanup_hash_ gnutls_hash_hd_t digest = NULL;
 	result = gnutls_hash_init(&digest, algorithm);
 	if (result < 0) {
 		return DNSSEC_NSEC3_HASHING_ERROR;

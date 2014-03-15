@@ -1,4 +1,5 @@
 #include <stdint.h>
+
 #include "binary.h"
 
 /*!

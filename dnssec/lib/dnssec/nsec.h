@@ -1,6 +1,9 @@
 #pragma once
 
-#include "binary.h"
+#include <stddef.h>
+#include <stdint.h>
+
+#include <dnssec/binary.h>
 
 /*!
  * DNSSEC NSEC3 algorithm numbers.
@@ -12,6 +15,8 @@ typedef enum dnssec_nsec_algorithm {
 
 /*!
  * DNSSEC NSEC3 parameters.
+ *
+ * \todo Disclose this and add setters?
  */
 typedef struct dnssec_nsec3_params {
 	dnssec_nsec3_algorithm_t algorithm;
@@ -59,3 +64,39 @@ int dnssec_nsec3_hash(const dnssec_binary_t *data,
  * \return Length of raw NSEC3 hash, zero on error.
  */
 size_t dnssec_nsec3_hash_length(dnssec_nsec3_algorithm_t algorithm);
+
+/*!
+ * Context for encoding of RR types bitmap used in NSEC/NSEC3.
+ */
+struct dnssec_nsec_bitmap;
+typedef struct dnssec_nsec_bitmap dnssec_nsec_bitmap_t;
+
+/*!
+ * Allocate new bit map encoding context.
+ */
+dnssec_nsec_bitmap_t *dnssec_nsec_bitmap_new(void);
+
+/*!
+ * Clear existing bit map encoding context.
+ */
+void dnssec_nsec_bitmap_clear(dnssec_nsec_bitmap_t *bitmap);
+
+/*!
+ * Free bit map encoding context.
+ */
+void dnssec_nsec_bitmap_free(dnssec_nsec_bitmap_t *bitmap);
+
+/*!
+ * Add one RR type into the bitmap.
+ */
+void dnssec_nsec_bitmap_add(dnssec_nsec_bitmap_t *bitmap, uint16_t type);
+
+/*!
+ * Compute the size of the encoded bitmap.
+ */
+size_t dnssec_nsec_bitmap_size(const dnssec_nsec_bitmap_t *bitmap);
+
+/*!
+ * Write encoded bitmap into the given buffer.
+ */
+void dnssec_nsec_bitmap_write(const dnssec_nsec_bitmap_t *bitmap, uint8_t *output);

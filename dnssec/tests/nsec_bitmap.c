@@ -4,7 +4,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "nsec/bitmap.h"
+#include "nsec.h"
 
 int main(void)
 {

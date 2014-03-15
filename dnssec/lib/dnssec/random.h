@@ -1,8 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
-#include "binary.h"
+#include <dnssec/binary.h>
 
 /*!
  * Fill a buffer with pseudo-random data.

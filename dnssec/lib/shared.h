@@ -5,6 +5,8 @@
 #include <unistd.h>
 
 #include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
+#include <gnutls/x509.h>
 
 #define _public_ __attribute__((visibility("default")))
 #define _hidden_ __attribute__((visibility("hidden")))
@@ -45,7 +47,24 @@ static inline void free_gnutls_datum_ptr(gnutls_datum_t *ptr)
 	gnutls_free(ptr->data);
 }
 
+static inline void free_x509_privkey_ptr(gnutls_x509_privkey_t *ptr)
+{
+	if (*ptr) {
+		gnutls_x509_privkey_deinit(*ptr);
+	}
+}
+
+static inline void free_gnutls_hash_ptr(gnutls_hash_hd_t *ptr)
+{
+	if (*ptr) {
+		gnutls_hash_deinit(*ptr, NULL);
+	}
+}
+
 #define _cleanup_free_ _cleanup_(free_ptr)
 #define _cleanup_fclose_ _cleanup_(fclose_ptr)
 #define _cleanup_fclose_ _cleanup_(fclose_ptr)
+#define _cleanup_binary_ _cleanup_(dnssec_binary_free)
 #define _cleanup_datum_ _cleanup_(free_gnutls_datum_ptr)
+#define _cleanup_x509_privkey_ _cleanup_(free_x509_privkey_ptr)
+#define _cleanup_hash_ _cleanup_(free_gnutls_hash_ptr)

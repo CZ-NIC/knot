@@ -6,6 +6,7 @@
 
 #include "error.h"
 #include "key.h"
+#include "key/internal.h"
 #include "shared.h"
 #include "sign.h"
 #include "sign/der.h"
@@ -50,8 +51,10 @@ struct dnssec_sign_ctx {
  */
 gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 {
-	dnssec_key_algorithm_t key_algorithm = dnssec_key_get_algorithm(key);
-	switch (key_algorithm) {
+	uint8_t algorithm = 0;
+	dnssec_key_get_algorithm(key, &algorithm);
+
+	switch ((dnssec_key_algorithm_t)algorithm) {
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:

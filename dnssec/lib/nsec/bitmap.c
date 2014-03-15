@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "nsec/bitmap.h"
+#include "nsec.h"
 #include "shared.h"
 
 #define BITMAP_WINDOW_SIZE 256

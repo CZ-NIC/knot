@@ -3,13 +3,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "shared.h"
-
-/*!
- * Cleanup attribute, calls \ref dnssec_binary_free.
- */
-#define _cleanup_binary_ _cleanup_(dnssec_binary_free)
-
 /*!
  * Universal structure to hold binary data.
  */

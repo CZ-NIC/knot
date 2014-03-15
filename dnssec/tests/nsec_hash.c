@@ -3,7 +3,7 @@
 
 #include "crypto.h"
 #include "error.h"
-#include "nsec/hash.h"
+#include "nsec.h"
 
 void test_length(void)
 {
