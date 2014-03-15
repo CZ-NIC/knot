@@ -3,6 +3,7 @@
 #include "sample_keys.h"
 
 #include "binary.h"
+#include "crypto.h"
 #include "error.h"
 #include "key.h"
 
@@ -39,7 +40,7 @@ static const dnssec_binary_t signed_ecdsa = { .size = 64, .data = (uint8_t []) {
 	0xad, 0x2f,
 }};
 
-static void check_key(const char *name, void *key,
+static void check_key(const char *name, const key_parameters_t *key_data,
 		      const dnssec_binary_t *data,
 		      const dnssec_binary_t *signature, bool signature_match)
 {
@@ -56,9 +57,13 @@ int main(void)
 {
 	plan_lazy();
 
+	dnssec_crypto_init();
+
 	check_key("rsa",   NULL, &input_data, &signed_rsa, true);
 	check_key("dsa",   NULL, &input_data, &signed_rsa, false);
 	check_key("ecdsa", NULL, &input_data, &signed_rsa, false);
+
+	dnssec_crypto_cleanup();
 
 	return 0;
 }
