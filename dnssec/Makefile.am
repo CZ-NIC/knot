@@ -24,6 +24,7 @@ libdnssec_la_SOURCES =	\
 	lib/dnssec/key.h \
 	lib/dnssec/nsec.h \
 	lib/dnssec/random.h \
+	lib/dnssec/sign.h \
 	lib/hex.c \
 	lib/hex.h \
 	lib/key/ds.c \
@@ -40,5 +41,4 @@ libdnssec_la_SOURCES =	\
 	lib/sign/der.c \
 	lib/sign/der.h \
 	lib/sign/sign.c \
-	lib/sign/sign.h \
 	lib/wire.h

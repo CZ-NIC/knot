@@ -14,3 +14,4 @@ likely to be changing often.
 
 - Decide how to work with `extern "C"`.
 - Decide how to mark the symbols to be exported in ELF.
+- Autogenerating of public library headers.

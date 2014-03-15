@@ -436,5 +436,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 		return DNSSEC_INVALID_SIGNATURE;
 	}
 
+	// TODO: add retval for failed verification.
+
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }

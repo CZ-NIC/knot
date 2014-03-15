@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -7,6 +8,8 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 #include <gnutls/x509.h>
+
+#include "binary.h"
 
 #define _public_ __attribute__((visibility("default")))
 #define _hidden_ __attribute__((visibility("hidden")))
@@ -68,3 +71,15 @@ static inline void free_gnutls_hash_ptr(gnutls_hash_hd_t *ptr)
 #define _cleanup_datum_ _cleanup_(free_gnutls_datum_ptr)
 #define _cleanup_x509_privkey_ _cleanup_(free_x509_privkey_ptr)
 #define _cleanup_hash_ _cleanup_(free_gnutls_hash_ptr)
+
+/* -- crypto helpers ------------------------------------------------------- */
+
+static inline void binary_to_datum(const dnssec_binary_t *binary,
+				   gnutls_datum_t *datum)
+{
+	assert(binary);
+	assert(datum);
+
+	datum->data = binary->data;
+	datum->size = binary->size;
+}

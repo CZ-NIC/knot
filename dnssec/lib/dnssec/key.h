@@ -64,7 +64,7 @@ int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id);
 int dnssec_key_get_keytag(const dnssec_key_t *key, uint16_t *keytag);
 
 // parameters
-int dnssec_key_get_dnskey(const dnssec_key_t *key, dnssec_binary_t *rdata);
+int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata);
 int dnssec_key_get_flags(const dnssec_key_t *key, uint16_t *flags);
 int dnssec_key_get_protocol(const dnssec_key_t *key, uint8_t *protocol);
 int dnssec_key_get_algorithm(const dnssec_key_t *key, uint8_t *algorithm);

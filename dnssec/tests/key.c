@@ -25,12 +25,11 @@ static void check_key(const char *name, const key_parameters_t *params)
 	// get RDATA
 
 	dnssec_binary_t rdata = { 0 };
-	r = dnssec_key_get_dnskey(key, &rdata);
+	r = dnssec_key_get_rdata(key, &rdata);
 	ok(r == DNSSEC_EOK &&
 	   rdata.size == params->rdata.size &&
 	   memcmp(rdata.data, params->rdata.data, rdata.size) == 0,
-	  "%s: dnssec_key_get_dnskey()", name);
-	dnssec_binary_free(&rdata);
+	  "%s: dnssec_key_get_rdata()", name);
 
 	// get identifiers
 

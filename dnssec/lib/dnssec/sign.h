@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "key.h"
-#include "binary.h"
+#include <dnssec/binary.h>
+#include <dnssec/key.h>
 
 /*!
  * DNSSEC signing context.
@@ -67,6 +67,5 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature);
  * \param signature  Signature to be verified.
  *
  * \return Error code, DNSSEC_EOK if successful.
- * TODO: add retval for failed verification.
  */
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature);
