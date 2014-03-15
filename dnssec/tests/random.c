@@ -9,8 +9,10 @@
 int check_buffer(void)
 {
 	const size_t buffer_size = 128;
-	uint8_t buffer_prev[buffer_size] = { 0 };
-	uint8_t buffer[buffer_size] = { 0 };
+	uint8_t buffer_prev[buffer_size];
+	memset(buffer_prev, 0, buffer_size);
+	uint8_t buffer[buffer_size];
+	memset(buffer, 0, buffer_size);
 
 	for (int i = 0; i < 10; i++) {
 		int result = dnssec_random_buffer(buffer, buffer_size);
