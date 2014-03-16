@@ -19,7 +19,7 @@ void dnssec_key_id_copy(const dnssec_key_id_t from, dnssec_key_id_t to)
 		return;
 	}
 
-	memcpy(to, from, DNSSEC_KEY_ID_SIZE);
+	memmove(to, from, DNSSEC_KEY_ID_SIZE);
 }
 
 int dnssec_key_id_cmp(const dnssec_key_id_t one, const dnssec_key_id_t two)

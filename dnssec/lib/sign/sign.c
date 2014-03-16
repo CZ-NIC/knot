@@ -190,7 +190,7 @@ static int rsa_copy_signature(dnssec_sign_ctx_t *ctx,
 		return DNSSEC_ENOMEM;
 	}
 
-	memcpy(data, from->data, from->size);
+	memmove(data, from->data, from->size);
 
 	to->size = from->size;
 	to->data = data;

@@ -82,7 +82,7 @@ int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
 		return DNSSEC_ENOMEM;
 	}
 
-	memcpy(copy, from->data, from->size);
+	memmove(copy, from->data, from->size);
 
 	to->size = from->size;
 	to->data = copy;

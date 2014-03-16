@@ -24,7 +24,7 @@ int check_buffer(void)
 			return 1;
 		}
 
-		memcpy(buffer_prev, buffer, buffer_size);
+		memmove(buffer_prev, buffer, buffer_size);
 	}
 
 	return 0;

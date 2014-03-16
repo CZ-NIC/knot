@@ -82,7 +82,7 @@ static inline void wire_read(wire_ctx_t *ctx, uint8_t *data, size_t size)
 	assert(ctx);
 	assert(data);
 
-	memcpy(data, ctx->position, size);
+	memmove(data, ctx->position, size);
 	ctx->position += size;
 }
 
@@ -130,7 +130,7 @@ static inline void wire_write(wire_ctx_t *ctx, const uint8_t *data, size_t size)
 	assert(ctx);
 	assert(data);
 
-	memcpy(ctx->position, data, size);
+	memmove(ctx->position, data, size);
 	ctx->position += size;
 }
 

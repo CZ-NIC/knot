@@ -114,7 +114,7 @@ void dnssec_nsec_bitmap_write(const dnssec_nsec_bitmap_t *bitmap, uint8_t *outpu
 		*write_ptr = (uint8_t)used;
 		write_ptr += 1;
 
-		memcpy(write_ptr, bitmap->windows[win].data, used);
+		memmove(write_ptr, bitmap->windows[win].data, used);
 		write_ptr += used;
 	}
 }

@@ -91,7 +91,7 @@ void dnssec_key_clear(dnssec_key_t *key)
 	// restore template RDATA (downsize, no need to realloc)
 	assert(rdata.size >= DNSKEY_RDATA_MIN_SIZE);
 	rdata.size = DNSKEY_RDATA_MIN_SIZE;
-	memcpy(rdata.data, DNSKEY_RDATA_TEMPLATE.data, rdata.size);
+	memmove(rdata.data, DNSKEY_RDATA_TEMPLATE.data, rdata.size);
 
 	key->rdata = rdata;
 }
