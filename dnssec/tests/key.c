@@ -86,7 +86,7 @@ static void test_private_key(const key_parameters_t *params)
 	r = dnssec_key_set_rdata(key, &params->rdata);
 	ok(r == DNSSEC_EOK, "set RDATA");
 
-	r = dnssec_key_load_pkcs8(key, &params->rdata);
+	r = dnssec_key_load_pkcs8(key, &params->pem);
 	ok(r == DNSSEC_EOK, "load private key (1)");
 
 	ok(dnssec_key_can_verify(key), "can verify");
