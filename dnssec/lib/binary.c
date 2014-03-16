@@ -106,3 +106,33 @@ int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size)
 
 	return DNSSEC_EOK;
 }
+
+int dnssec_binary_cmp(const dnssec_binary_t *one, const dnssec_binary_t *two)
+{
+	if (one == two) {
+		return 0;
+	}
+
+	uint8_t *data_one = one ? one->data : NULL;
+	uint8_t *data_two = two ? two->data : NULL;
+
+	if (data_one == data_two) {
+		return 0;
+	} else if (data_one == NULL) {
+		return -1;
+	} else if (data_two == NULL) {
+		return +1;
+	}
+
+	size_t min_size = one->size <= two->size ? one->size : two->size;
+	int cmp = memcmp(data_one, data_two, min_size);
+	if (cmp != 0) {
+		return cmp;
+	} else if (one->size == two->size) {
+		return 0;
+	} else if (one->size < two->size) {
+		return -1;
+	} else {
+		return +1;
+	}
+}

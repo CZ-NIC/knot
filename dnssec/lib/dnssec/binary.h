@@ -51,3 +51,15 @@ int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to);
  * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size);
+
+/*!
+ * Compare two binary structures (equivalent of memcmp).
+ *
+ * \note NULL sorts before data.
+ *
+ * \param one  First binary.
+ * \param two  Second binary.
+ *
+ * \return 0 if one equals two, <0 if one sorts before two, >0 otherwise.
+ */
+int dnssec_binary_cmp(const dnssec_binary_t *one, const dnssec_binary_t *two);
