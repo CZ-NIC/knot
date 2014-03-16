@@ -56,6 +56,7 @@ static void test_public_key(const key_parameters_t *params)
 	r = dnssec_key_get_rdata(key, &rdata);
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&rdata, &params->rdata) == 0,
 	   "get RDATA");
+	dnssec_binary_free(&rdata);
 
 	check_key_ids(key, params);
 
@@ -107,6 +108,7 @@ static void test_private_key(const key_parameters_t *params)
 	r = dnssec_key_get_rdata(key, &rdata);
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&rdata, &params->rdata) == 0,
 	   "get RDATA");
+	dnssec_binary_free(&rdata);
 
 	ok(dnssec_key_can_verify(key), "can verify");
 	ok(dnssec_key_can_sign(key), "can sign");
