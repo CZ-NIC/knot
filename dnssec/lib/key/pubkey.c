@@ -372,6 +372,28 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 /* -- public API ----------------------------------------------------------- */
 
 /*!
+ * Convert DNSKEY algorithm identifier to GnuTLS identifier.
+ */
+gnutls_pk_algorithm_t dnskey_algorithm_to_gnutls(dnssec_key_algorithm_t dnssec)
+{
+	switch (dnssec) {
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
+		return GNUTLS_PK_RSA;
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
+		return GNUTLS_PK_DSA;
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+		return GNUTLS_PK_EC;
+	default:
+		return GNUTLS_PK_UNKNOWN;
+	}
+}
+
+/*!
  * Encode public key to the format used in DNSKEY RDATA.
  */
 int pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
@@ -402,18 +424,12 @@ int rdata_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 	assert(rdata);
 	assert(key);
 
-	switch ((dnssec_key_algorithm_t)algorithm) {
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
-	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
-		return rsa_rdata_to_pubkey(rdata, key);
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
-	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
-		return dsa_rdata_to_pubkey(rdata, key);
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
-	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
-		return ecdsa_rdata_to_pubkey(rdata, key);
+	gnutls_pk_algorithm_t gnutls_alg = dnskey_algorithm_to_gnutls(algorithm);
+
+	switch(gnutls_alg) {
+	case GNUTLS_PK_RSA: return rsa_rdata_to_pubkey(rdata, key);
+	case GNUTLS_PK_DSA: return dsa_rdata_to_pubkey(rdata, key);
+	case GNUTLS_PK_EC:  return ecdsa_rdata_to_pubkey(rdata, key);
 	default:
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}

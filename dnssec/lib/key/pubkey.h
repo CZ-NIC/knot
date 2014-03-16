@@ -2,6 +2,16 @@
 
 #include <gnutls/abstract.h>
 #include "binary.h"
+#include "key.h"
+
+/*!
+ * Convert DNSKEY algorithm identifier to GnuTLS identifier.
+ *
+ * \param dnssec  DNSSEC DNSKEY algorithm identifier.
+ *
+ * \return GnuTLS private key algorithm identifier, GNUTLS_PK_UNKNOWN on error.
+ */
+gnutls_pk_algorithm_t dnskey_algorithm_to_gnutls(dnssec_key_algorithm_t dnssec);
 
 /*!
  * Encode public key to the format used in DNSKEY RDATA.
