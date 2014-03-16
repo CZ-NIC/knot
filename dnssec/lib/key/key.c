@@ -34,7 +34,7 @@ enum dnskey_rdata_offsets {
  */
 static const dnssec_binary_t DNSKEY_RDATA_TEMPLATE = {
 	.size = 4,
-	.data = (uint8_t []) { 0x00, 0x00, 0x03, 0x00 }
+	.data = (uint8_t []) { 0x01, 0x00, 0x03, 0x00 }
 };
 
 /* -- key allocation ------------------------------------------------------- */
