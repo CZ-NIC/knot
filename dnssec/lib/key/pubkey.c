@@ -60,13 +60,10 @@ static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t wire = { 0 };
-	wire_init(&wire, data, size);
-
+	wire_ctx_t wire = wire_init(data, size);
 	wire_write_u8(&wire, pub_exponent.size);
 	wire_write_datum(&wire, &pub_exponent);
 	wire_write_datum(&wire, &modulus);
-
 	assert(wire_tell(&wire) == size);
 
 	rdata->size = size;
@@ -114,15 +111,12 @@ static int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t ctx;
-	wire_init(&ctx, data, size);
-
+	wire_ctx_t ctx = wire_init(data, size);
 	wire_write_u8(&ctx, t);
 	wire_write_datum(&ctx, &q);
 	wire_write_datum(&ctx, &p);
 	wire_write_datum(&ctx, &g);
 	wire_write_datum(&ctx, &y);
-
 	assert(wire_tell(&ctx) == size);
 
 	rdata->size = size;
@@ -159,12 +153,9 @@ int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t wire = { 0 };
-	wire_init(&wire, data, size);
-
+	wire_ctx_t wire = wire_init(data, size);
 	wire_write_datum(&wire, &point_x);
 	wire_write_datum(&wire, &point_y);
-
 	assert(wire_tell(&wire) == size);
 
 	rdata->size = size;
@@ -187,8 +178,7 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	wire_ctx_t ctx;
-	wire_init_binary(&ctx, rdata);
+	wire_ctx_t ctx = wire_init_binary(rdata);
 
 	// parse exponent
 
@@ -272,8 +262,7 @@ int dsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	wire_ctx_t ctx;
-	wire_init_binary(&ctx, rdata);
+	wire_ctx_t ctx =wire_init_binary(rdata);
 
 	// read t
 
@@ -343,8 +332,7 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	wire_ctx_t ctx;
-	wire_init_binary(&ctx, rdata);
+	wire_ctx_t ctx = wire_init_binary(rdata);
 
 	// parse points
 

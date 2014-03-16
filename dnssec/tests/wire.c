@@ -14,10 +14,10 @@ int main(void)
 		0x83, 0xb3, 0x3e, 0x6f, 0xb9, 0x01, 0xe2, 0x91, 0xa8, 0xa9,
 	}};
 
-	wire_init(&wire, buffer.data + 10, 10);
+	wire = wire_init(buffer.data + 10, 10);
 	ok(wire_read_u8(&wire) == 0x83, "wire_init()");
 
-	wire_init_binary(&wire, &buffer);
+	wire = wire_init_binary(&buffer);
 	ok(wire_read_u8(&wire) == 0xc8, "wire_init_binary()");
 
 	// read operations
@@ -32,6 +32,10 @@ int main(void)
 	ok(wire_read_u16(&wire) == 45886, "wire_read_u16()");
 	ok(wire_tell(&wire) == 13, "wire_tell()");
 	ok(wire_available(&wire) == 7, "wire_available()");
+
+	dnssec_binary_t ref = { 0 };
+	wire_available_binary(&wire, &ref);
+	ok(ref.data == buffer.data + 13 && ref.size == 7, "wire_available_binary()");
 
 	uint8_t in[6] = { 0 };
 	wire_seek(&wire, 4);

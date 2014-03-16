@@ -209,8 +209,7 @@ static uint8_t dsa_dnskey_get_t_value(const dnssec_key_t *key)
 		return 0;
 	}
 
-	wire_ctx_t wire;
-	wire_init_binary(&wire, &key->rdata);
+	wire_ctx_t wire = wire_init_binary(&key->rdata);
 	wire_seek(&wire, 4);
 
 	return wire_read_u8(&wire);
@@ -250,13 +249,10 @@ static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t wire;
-	wire_init(&wire, data, size);
-
+	wire_ctx_t wire = wire_init(data, size);
 	wire_write_u8(&wire, value_t);
 	wire_write_ralign_binary(&wire, 20, &value_r);
 	wire_write_ralign_binary(&wire, 20, &value_s);
-
 	assert(wire_tell(&wire) == size);
 
 	dnssec->size = size;
@@ -336,12 +332,9 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t wire;
-	wire_init(&wire, data, size);
-
+	wire_ctx_t wire = wire_init(data, size);
 	wire_write_ralign_binary(&wire, int_size, &value_r);
 	wire_write_ralign_binary(&wire, int_size, &value_s);
-
 	assert(wire_tell(&wire) == size);
 
 	dnssec->size = size;

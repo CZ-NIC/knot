@@ -102,8 +102,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 
 	dnssec_nsec3_params_t new_params = { 0 };
 
-	wire_ctx_t wire;
-	wire_init_binary(&wire, rdata);
+	wire_ctx_t wire = wire_init_binary(rdata);
 
 	if (wire_available(&wire) < 5) {
 		return DNSSEC_MALFORMED_DATA;

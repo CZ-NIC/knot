@@ -115,8 +115,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 		return DNSSEC_EINVAL;
 	}
 
-	wire_ctx_t wire;
-	wire_init(&wire, der->data, der->size);
+	wire_ctx_t wire = wire_init_binary(der);
 
 	size_t size;
 	int result;
@@ -189,8 +188,7 @@ int dss_sig_value_encode(dnssec_binary_t *der,
 		return DNSSEC_ENOMEM;
 	}
 
-	wire_ctx_t wire;
-	wire_init(&wire, encoded, total_size);
+	wire_ctx_t wire = wire_init(encoded, total_size);
 
 	asn1_write_header(&wire, ASN1_TYPE_SEQUENCE, seq_size);
 	asn1_write_integer(&wire, r);

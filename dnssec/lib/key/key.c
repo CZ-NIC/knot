@@ -161,16 +161,14 @@ int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id)
 
 #define rdata_read(rdata, offset, size, var) \
 {\
-	wire_ctx_t wire; \
-	wire_init_binary(&wire, rdata); \
+	wire_ctx_t wire = wire_init_binary(rdata); \
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_##offset); \
 	*var = wire_read_u##size(&wire); \
 }
 
 #define rdata_write(rdata, offset, size, var) \
 {\
-	wire_ctx_t wire; \
-	wire_init_binary(&wire, rdata); \
+	wire_ctx_t wire = wire_init_binary(rdata); \
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_##offset); \
 	wire_write_u##size(&wire, var); \
 }

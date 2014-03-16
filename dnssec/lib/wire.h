@@ -15,22 +15,23 @@ typedef struct wire_ctx {
 	uint8_t *position;
 } wire_ctx_t;
 
-static inline void wire_init(wire_ctx_t *ctx, uint8_t *wire, size_t size)
+static inline wire_ctx_t wire_init(uint8_t *data, size_t size)
 {
-	assert(ctx);
-	assert(wire);
+	assert(data);
 
-	clear_struct(ctx);
-	ctx->wire = wire;
-	ctx->size = size;
-	ctx->position = wire;
+	wire_ctx_t result = {
+		.wire = data,
+		.size = size,
+		.position = data
+	};
+	return result;
 }
 
-static inline void wire_init_binary(wire_ctx_t *ctx, const dnssec_binary_t *wire)
+static inline wire_ctx_t wire_init_binary(const dnssec_binary_t *binary)
 {
-	assert(wire);
+	assert(binary);
 
-	wire_init(ctx, wire->data, wire->size);
+	return wire_init(binary->data, binary->size);
 }
 
 static inline void wire_seek(wire_ctx_t *ctx, size_t offset)
@@ -97,6 +98,15 @@ static inline void wire_read_datum(wire_ctx_t *ctx, gnutls_datum_t *data)
 	assert(data);
 
 	wire_read(ctx, data->data, data->size);
+}
+
+static inline void wire_available_binary(wire_ctx_t *ctx, dnssec_binary_t *data)
+{
+	assert(ctx);
+	assert(data);
+
+	data->data = ctx->position;
+	data->size = wire_available(ctx);
 }
 
 static inline void wire_write_u8(wire_ctx_t *ctx, uint8_t value)
