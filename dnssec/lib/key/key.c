@@ -488,6 +488,11 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 		return DNSSEC_INVALID_KEY_ID;
 	}
 
+	if (key->public_key) {
+		key->private_key = private_key;
+		return DNSSEC_EOK;
+	}
+
 	gnutls_pubkey_t public_key = NULL;
 	result = pubkey_from_privkey(private_key, &public_key);
 	if (result != DNSSEC_EOK) {
@@ -496,8 +501,8 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 	}
 
 	dnssec_key_id_copy(new_key_id, key->id);
-	key->private_key = private_key;
 	key->public_key = public_key;
+	key->private_key = private_key;
 
 	return DNSSEC_EOK;
 }
