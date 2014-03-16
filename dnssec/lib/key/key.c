@@ -409,7 +409,7 @@ static int privkey_from_pem(const dnssec_binary_t *pem, gnutls_privkey_t *key,
 	gnutls_datum_t data;
 	binary_to_datum(pem, &data);
 
-	_cleanup_x509_privkey_ gnutls_x509_privkey_t key_x509 = NULL;
+	gnutls_x509_privkey_t key_x509 = NULL;
 	int result = gnutls_x509_privkey_init(&key_x509);
 	if (result != GNUTLS_E_SUCCESS) {
 		return DNSSEC_ENOMEM;
@@ -418,17 +418,21 @@ static int privkey_from_pem(const dnssec_binary_t *pem, gnutls_privkey_t *key,
 	result = gnutls_x509_privkey_import_pkcs8(key_x509, &data,
 						  GNUTLS_X509_FMT_PEM, NULL, 0);
 	if (result != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(key_x509);
 		return DNSSEC_PKCS8_IMPORT_ERROR;
 	}
 
 	gnutls_privkey_t key_abs = NULL;
 	result = gnutls_privkey_init(&key_abs);
 	if (result != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(key_x509);
 		return DNSSEC_ENOMEM;
 	}
 
-	result = gnutls_privkey_import_x509(key_abs, key_x509, 0);
+	result = gnutls_privkey_import_x509(key_abs, key_x509,
+					    GNUTLS_PRIVKEY_IMPORT_AUTO_RELEASE);
 	if (result != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(key_x509);
 		gnutls_privkey_deinit(key_abs);
 		return DNSSEC_ENOMEM;
 	}
