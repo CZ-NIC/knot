@@ -378,18 +378,18 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 		return DNSSEC_KEY_ALREADY_PRESENT;
 	}
 
-	dnssec_binary_t new_rdata = key->rdata;
-	int result = dnssec_binary_resize(&new_rdata, rdata->size);
+	int result = dnssec_binary_resize(&key->rdata, rdata->size);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
 
-	memcpy(&key->rdata, rdata, rdata->size);
+	memcpy(key->rdata.data, rdata->data, rdata->size);
 
 	update_keytag(key);
 
 	result = create_public_key(key);
 	if (result != DNSSEC_EOK) {
+		key->rdata.size = DNSKEY_RDATA_MIN_SIZE;
 		return result;
 	}
 
