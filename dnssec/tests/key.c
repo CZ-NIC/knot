@@ -8,83 +8,110 @@
 
 #include "sample_keys.h"
 
-static void check_key(const char *name, const key_parameters_t *params)
-{
-	int r;
-
-	dnssec_key_t *key = NULL;
-	r = dnssec_key_new(&key);
-	ok(r == DNSSEC_EOK && key != NULL, "%s: dnssec_key_new()", name);
-
-	// create from parameters
-
-	r = dnssec_key_from_params(key, params->flags, params->protocol,
-				   params->algorithm, &params->public_key);
-	ok(r == DNSSEC_EOK, "%s: dnssec_key_from_params()", name);
-
-	// get RDATA
-
-	dnssec_binary_t rdata = { 0 };
-	r = dnssec_key_get_rdata(key, &rdata);
-	ok(r == DNSSEC_EOK &&
-	   rdata.size == params->rdata.size &&
-	   memcmp(rdata.data, params->rdata.data, rdata.size) == 0,
-	  "%s: dnssec_key_get_rdata()", name);
-
-	// get identifiers
-
-	dnssec_key_id_t key_id = { 0 };
-	r = dnssec_key_get_id(key, key_id);
-	ok(r == DNSSEC_EOK &&
-	   memcmp(key_id, params->key_id.data, params->key_id.size) == 0,
-	   "%s: dnssec_key_get_id()", name);
-
-	uint16_t keytag = 0;
-	r = dnssec_key_get_keytag(key, &keytag);
-	ok(r == DNSSEC_EOK && keytag == params->keytag,
-	   "%s: dnssec_key_get_keytag()", name);
-
-	// create from RDATA
-
-	dnssec_key_clear(key);
-	r = dnssec_key_from_dnskey(key, &params->rdata);
-	ok(r == DNSSEC_EOK, "%s: dnssec_key_from_dnskey()", name);
-
-	uint16_t flags = 0;
-	r = dnssec_key_get_flags(key, &flags);
-	ok(r == DNSSEC_EOK && flags == params->flags,
-	   "%s: dnssec_key_get_flags()", name);
-
-	uint8_t protocol = 0;
-	r = dnssec_key_get_protocol(key, &protocol);
-	ok(r == DNSSEC_EOK && protocol == params->protocol,
-	   "%s: dnssec_key_get_protocol()", name);
-
-	uint8_t algorithm = 0;
-	r = dnssec_key_get_algorithm(key, &algorithm);
-	ok(r == DNSSEC_EOK && algorithm == params->algorithm,
-	   "%s: dnssec_key_get_algorithm()", name);
-
-	dnssec_key_free(key);
-}
-
 typedef struct keyinfo {
 	const char *name;
 	const key_parameters_t *parameters;
 } keyinfo_t;
 
-static void public_from_dnskey(void)
-{
-	keyinfo_t keys[] = {
-		{ "rsa", &SAMPLE_RSA_KEY },
-		{ "dsa", &SAMPLE_DSA_KEY },
-		{ "ecdsa", &SAMPLE_ECDSA_KEY },
-		{ NULL }
-	};
+#define check_attr_scalar(key, type, name, def_val, set_val) { \
+	type value = -1; \
+	int r = dnssec_key_get_##name(key, &value); \
+	ok(r == DNSSEC_EOK && value == def_val, #name " default"); \
+	r = dnssec_key_set_##name(key, set_val); \
+	ok(r == DNSSEC_EOK, #name " set"); \
+	value = -1; \
+	r = dnssec_key_get_##name(key, &value); \
+	ok(r == DNSSEC_EOK && value == set_val, #name " get"); \
+}
 
-	for (keyinfo_t *k = keys; k->name != NULL; k += 1) {
-		check_key(k->name, k->parameters);
-	}
+static void check_key_ids(dnssec_key_t *key, const key_parameters_t *params)
+{
+	uint16_t keytag = 0;
+	int r = dnssec_key_get_keytag(key, &keytag);
+	ok(r == DNSSEC_EOK && keytag == params->keytag, "get keytag");
+
+	dnssec_key_id_t key_id = { 0 };
+	r = dnssec_key_get_id(key, key_id);
+	ok(r == DNSSEC_EOK &&
+	   memcmp(key_id, params->key_id.data, params->key_id.size) == 0,
+	   "get key ID");
+}
+
+static void test_public_key(const key_parameters_t *params)
+{
+	dnssec_key_t *key = NULL;
+	int r = dnssec_key_new(&key);
+	ok(r == DNSSEC_EOK && key != NULL, "create key");
+
+	// create from parameters
+
+	check_attr_scalar(key, uint16_t, flags,     256, params->flags);
+	check_attr_scalar(key, uint8_t,  protocol,  3,   params->protocol);
+	check_attr_scalar(key, uint8_t,  algorithm, 0,   params->algorithm);
+
+	r = dnssec_key_set_pubkey(key, &params->public_key);
+	ok(r == DNSSEC_EOK, "set public key");
+
+	dnssec_binary_t rdata = { 0 };
+	r = dnssec_key_get_rdata(key, &rdata);
+	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&rdata, &params->rdata) == 0,
+	   "get RDATA");
+
+	check_key_ids(key, params);
+
+	// create from RDATA
+
+	dnssec_key_clear(key);
+	r = dnssec_key_set_rdata(key, &params->rdata);
+	ok(r == DNSSEC_EOK, "set RDATA");
+
+	check_key_ids(key, params);
+
+	// key usage
+
+	ok(dnssec_key_can_verify(key), "can verify");
+	ok(!dnssec_key_can_sign(key), "cannot sign");
+
+	dnssec_key_free(key);
+}
+
+static void test_private_key(const key_parameters_t *params)
+{
+	dnssec_key_t *key = NULL;
+	int r = dnssec_key_new(&key);
+	ok(r == DNSSEC_EOK && key != NULL, "create key");
+
+	// import to public
+
+	r = dnssec_key_set_rdata(key, &params->rdata);
+	ok(r == DNSSEC_EOK, "set RDATA");
+
+	r = dnssec_key_load_pkcs8(key, &params->rdata);
+	ok(r == DNSSEC_EOK, "load private key (1)");
+
+	ok(dnssec_key_can_verify(key), "can verify");
+	ok(dnssec_key_can_sign(key), "can sign");
+
+	// purely from parameters
+
+	dnssec_key_clear(key);
+
+	dnssec_key_set_algorithm(key, params->algorithm);
+	dnssec_key_set_flags(key, params->flags);
+	r = dnssec_key_load_pkcs8(key, &params->pem);
+	ok(r == DNSSEC_EOK, "load private key (2)");
+
+	check_key_ids(key, params);
+
+	dnssec_binary_t rdata = { 0 };
+	r = dnssec_key_get_rdata(key, &rdata);
+	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&rdata, &params->rdata) == 0,
+	   "get RDATA");
+
+	ok(dnssec_key_can_verify(key), "can verify");
+	ok(dnssec_key_can_sign(key), "can sign");
+
+	dnssec_key_free(key);
 }
 
 int main(void)
@@ -93,16 +120,18 @@ int main(void)
 
 	dnssec_crypto_init();
 
-	public_from_dnskey();
-
-	dnssec_key_id_t key_id = {
-		0x17, 0xda, 0x10, 0xb0, 0x18, 0xdf, 0xff, 0xb0, 0x8a, 0x25,
-		0x1e, 0x74, 0xaf, 0x39, 0x75, 0x2a, 0x54, 0x6e, 0x8c, 0x85
+	keyinfo_t keys[] = {
+		{ "RSA", &SAMPLE_RSA_KEY },
+		{ "DSA", &SAMPLE_DSA_KEY },
+		{ "ECDSA", &SAMPLE_ECDSA_KEY },
+		{ NULL }
 	};
-	char *key_id_str = dnssec_key_id_to_string(key_id);
-	ok(strcmp(key_id_str, "17da10b018dfffb08a251e74af39752a546e8c85") == 0,
-	   "dnssec_key_id_to_string()");
-	free(key_id_str);
+
+	for (keyinfo_t *k = keys; k->name != NULL; k += 1) {
+		diag("testing %s key", k->name);
+		test_public_key(k->parameters);
+		test_private_key(k->parameters);
+	}
 
 	dnssec_crypto_cleanup();
 
