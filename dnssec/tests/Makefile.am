@@ -11,6 +11,7 @@ check_PROGRAMS = \
 	binary		\
 	crypto		\
 	key		\
+	key_keyid	\
 	key_keytag	\
 	key_pubkey	\
 	nsec_bitmap	\
