@@ -297,7 +297,7 @@ int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 
-	rdata_write(&key->rdata, PROTOCOL, 8, algorithm);
+	rdata_write(&key->rdata, ALGORITHM, 8, algorithm);
 	update_keytag(key);
 
 	return DNSSEC_EOK;
