@@ -30,6 +30,7 @@ libdnssec_la_SOURCES =	\
 	lib/key/ds.c \
 	lib/key/internal.h \
 	lib/key/key.c \
+	lib/key/keyid.c \
 	lib/key/keytag.c \
 	lib/key/keytag.h \
 	lib/key/pubkey.c \

@@ -6,6 +6,30 @@
 #include <dnssec/binary.h>
 
 /*!
+ * Unique DNSSEC key identifier (CKA_ID in PKCS #11).
+ *
+ * The value is a SHA-1 hash of public key material in X.509 DER.
+ */
+typedef uint8_t dnssec_key_id_t[20];
+#define DNSSEC_KEY_ID_SIZE sizeof(dnssec_key_id_t)
+#define DNSSEC_KEY_ID_STRING_SIZE (2 * DNSSEC_KEY_ID_SIZE)
+
+/*!
+ * Convert DNSSEC key id to hexadecimal string.
+ */
+char *dnssec_key_id_to_string(const dnssec_key_id_t key_id);
+
+/*!
+ * Copy key ID.
+ */
+void dnssec_key_id_copy(const dnssec_key_id_t from, dnssec_key_id_t to);
+
+/*!
+ * Compare two key IDs, similar to memcmp.
+ */
+int dnssec_key_id_cmp(const dnssec_key_id_t one, const dnssec_key_id_t two);
+
+/*!
  * DNSKEY algorithm numbers.
  *
  * \see https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml
@@ -29,15 +53,6 @@ struct dnssec_key;
 typedef struct dnssec_key dnssec_key_t;
 
 /*!
- * Unique DNSSEC key identifier (CKA_ID in PKCS #11).
- *
- * The value is a SHA-1 hash of public key material in X.509 DER.
- */
-typedef uint8_t dnssec_key_id_t[20];
-#define DNSSEC_KEY_ID_SIZE sizeof(dnssec_key_id_t)
-#define DNSSEC_KEY_ID_STRING_SIZE (2 * DNSSEC_KEY_ID_SIZE)
-
-/*!
  * Allocate new DNSSEC key.
  *
  * \return Error code, DNSSEC_EOK if successful.
@@ -46,6 +61,8 @@ int dnssec_key_new(dnssec_key_t **key);
 
 /*!
  * Clear the DNSSEC key.
+ *
+ * Has the same effect as calling \ref dnssec_key_free and \ref dnssec_key_new.
  */
 void dnssec_key_clear(dnssec_key_t *key);
 
@@ -54,33 +71,40 @@ void dnssec_key_clear(dnssec_key_t *key);
  */
 void dnssec_key_free(dnssec_key_t *key);
 
-// public key import
-int dnssec_key_from_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
-			   uint8_t algorithm, const dnssec_binary_t *public_key);
-int dnssec_key_from_dnskey(dnssec_key_t *key, const dnssec_binary_t *rdata);
-
-// identifiers
-int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id);
+/*!
+ * Get the key tag of the DNSKEY.
+ */
 int dnssec_key_get_keytag(const dnssec_key_t *key, uint16_t *keytag);
 
-// parameters
-int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata);
+/*!
+ * Get the ID of the associated public key.
+ */
+int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id);
+
 int dnssec_key_get_flags(const dnssec_key_t *key, uint16_t *flags);
+int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags);
+
 int dnssec_key_get_protocol(const dnssec_key_t *key, uint8_t *protocol);
+int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol);
+
 int dnssec_key_get_algorithm(const dnssec_key_t *key, uint8_t *algorithm);
+int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm);
+
 int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey);
+int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey);
+
+int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata);
+int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata);
+
+int dnssec_key_set_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
+			  uint8_t algorithm, const dnssec_binary_t *public_key);
+
+// private key
+int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem);
 
 // key availability
 bool dnssec_key_can_sign(const dnssec_key_t *key);
 bool dnssec_key_can_verify(const dnssec_key_t *key);
-
-/*!
- * Convert DNSSEC key id to hexadecimal string.
- */
-char *dnssec_key_id_to_string(const dnssec_key_id_t key_id);
-
-// private key import (PKCS #8, #11)
-// TODO
 
 /*!
  * DS algorithm numbers.
