@@ -86,7 +86,7 @@ void params_to_raw(void)
 
 	dnssec_binary_t raw = { 0 };
 
-	int result = dss_sig_value_encode(&raw, &value_r, &value_s);
+	int result = dss_sig_value_encode(&value_r, &value_s, &raw);
 
 	ok(result == DNSSEC_EOK, "dss_sig_value_encode() exit code");
 	ok(raw.size == expected_raw.size && raw.data != NULL &&

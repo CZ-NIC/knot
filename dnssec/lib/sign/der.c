@@ -162,10 +162,10 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 /*!
  * Encode signature parameters from X.509 (EC)DSA signature.
  */
-int dss_sig_value_encode(dnssec_binary_t *der,
-			 const dnssec_binary_t *r, const dnssec_binary_t *s)
+int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
+			 dnssec_binary_t *der)
 {
-	if (!der || !r || !r->data || !s || !s->data) {
+	if (!r || !r->data || !s || !s->data || !der) {
 		return DNSSEC_EINVAL;
 	}
 
