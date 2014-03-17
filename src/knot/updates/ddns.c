@@ -753,10 +753,6 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 		if (from_chgset_count == 1) {
 			/* Just delete the RRSet. */
 			knot_rrset_deep_free(&(from_chgset[0]), 1, NULL);
-			/* Okay, &(from_chgset[0]) is basically equal to just
-			 * from_chgset, but it's more clear this way that we are
-			 * deleting the first RRSet in the array ;-)
-			 */
 		} else {
 			/* Otherwise copy the removed CNAME and add it
 			 * to the REMOVE section.
@@ -1348,17 +1344,6 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 
 	uint16_t type = knot_rrset_type(rrset);
 
-	/*! \note
-	 * We decided to automatically remove RRSIGs together with the removed
-	 * RRSet as they are no longer valid or required anyway.
-	 *
-	 * Also refer to RFC3007, section 4.3:
-	 *   'When the contents of an RRset are updated, the server MAY delete
-	 *    all associated SIG records, since they will no longer be valid.'
-	 *
-	 * \todo Document!!
-	 */
-
 	// this should be ruled out before
 	assert(type != KNOT_RRTYPE_SOA);
 
@@ -1506,6 +1491,11 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	 *    to some previous RRSet, there should be none.
 	 */
 	for (int i = 0; i < removed_count; ++i) {
+		if (knot_rrset_rr_count(to_chgset[i]) == 0) {
+			// Empty RRs caused by add + remove combo, skip.
+			knot_rrset_free(&to_chgset[i]);
+			continue;
+		}
 		ret = knot_changeset_add_rrset(changeset, to_chgset[i],
 		                               KNOT_CHANGESET_REMOVE);
 		if (ret != KNOT_EOK) {
