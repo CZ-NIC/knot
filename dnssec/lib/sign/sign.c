@@ -46,10 +46,250 @@ struct dnssec_sign_ctx {
 	gnutls_hash_hd_t hash;			  //!< Hash computation context.
 };
 
+/* -- signature format conversions ----------------------------------------- */
+
+/*!
+ * Conversion of RSA signature between X.509 and DNSSEC format is a NOOP.
+ *
+ * \note Described in RFC 3110.
+ */
+static int rsa_copy_signature(dnssec_sign_ctx_t *ctx,
+			      const dnssec_binary_t *from,
+			      dnssec_binary_t *to)
+{
+	assert(ctx);
+	assert(from);
+	assert(to);
+
+	uint8_t *data = malloc(from->size);
+	if (!data) {
+		return DNSSEC_ENOMEM;
+	}
+
+	memmove(data, from->data, from->size);
+
+	to->size = from->size;
+	to->data = data;
+
+	return DNSSEC_EOK;
+}
+
+static const algorithm_functions_t rsa_functions = {
+	.x509_to_dnssec = rsa_copy_signature,
+	.dnssec_to_x509 = rsa_copy_signature,
+};
+
+/*!
+ * Get T value from DSA key public key.
+ */
+static uint8_t dsa_dnskey_get_t_value(const dnssec_key_t *key)
+{
+	assert(key);
+
+	if (key->rdata.size <= 4) {
+		return 0;
+	}
+
+	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_seek(&wire, 4);
+
+	return wire_read_u8(&wire);
+}
+
+/*!
+ * Convert DSA signature to DNSSEC format.
+ *
+ * \note Described in RFC 2536.
+ */
+static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
+			      const dnssec_binary_t *x509,
+			      dnssec_binary_t *dnssec)
+{
+	assert(ctx);
+	assert(x509);
+	assert(dnssec);
+
+	dnssec_binary_t value_r = { 0 };
+	dnssec_binary_t value_s = { 0 };
+
+	int result = dss_sig_value_decode(x509, &value_r, &value_s);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	if (value_r.size > 20 || value_s.size > 20) {
+		// TODO: possibly zero-padding from the left?
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	uint8_t value_t = dsa_dnskey_get_t_value(ctx->key);
+
+	size_t size = 41;
+	uint8_t *data = malloc(size);
+	if (!data) {
+		return DNSSEC_ENOMEM;
+	}
+
+	wire_ctx_t wire = wire_init(data, size);
+	wire_write_u8(&wire, value_t);
+	wire_write_ralign_binary(&wire, 20, &value_r);
+	wire_write_ralign_binary(&wire, 20, &value_s);
+	assert(wire_tell(&wire) == size);
+
+	dnssec->size = size;
+	dnssec->data = data;
+
+	return DNSSEC_EOK;
+}
+
+static int dsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
+			      const dnssec_binary_t *dnssec,
+			      dnssec_binary_t *x509)
+{
+	assert(ctx);
+	assert(dnssec);
+	assert(x509);
+
+	if (dnssec->size != 41) {
+		return DNSSEC_INVALID_SIGNATURE;
+	}
+
+	const dnssec_binary_t value_r = { .size = 20, .data = dnssec->data + 1 };
+	const dnssec_binary_t value_s = { .size = 20, .data = dnssec->data + 21 };
+	dnssec_binary_t der = { 0 };
+
+	int result = dss_sig_value_encode(&der, &value_r, &value_s);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	*x509 = der;
+
+	return DNSSEC_EOK;
+}
+
+static const algorithm_functions_t dsa_functions = {
+	.x509_to_dnssec = dsa_x509_to_dnssec,
+	.dnssec_to_x509 = dsa_dnssec_to_x509,
+};
+
+static size_t ecdsa_sign_integer_size(dnssec_sign_ctx_t *ctx)
+{
+	assert(ctx);
+
+	switch (ctx->hash_algorithm) {
+	case GNUTLS_DIG_SHA256: return 32;
+	case GNUTLS_DIG_SHA384: return 48;
+	default: return 0;
+	};
+}
+
+/*!
+ * Convert ECDSA signature to DNSSEC format.
+ *
+ * \note Described in RFC 6605.
+ */
+static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
+				const dnssec_binary_t *x509,
+				dnssec_binary_t *dnssec)
+{
+	assert(ctx);
+	assert(x509);
+	assert(dnssec);
+
+	dnssec_binary_t value_r = { 0 };
+	dnssec_binary_t value_s = { 0 };
+	int result = dss_sig_value_decode(x509, &value_r, &value_s);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	size_t int_size = ecdsa_sign_integer_size(ctx);
+	assert(int_size > 0);
+
+	if (value_r.size > int_size || value_s.size > int_size) {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	size_t size = 2 * int_size;
+	uint8_t *data = malloc(size);
+	if (!data) {
+		return DNSSEC_ENOMEM;
+	}
+
+	wire_ctx_t wire = wire_init(data, size);
+	wire_write_ralign_binary(&wire, int_size, &value_r);
+	wire_write_ralign_binary(&wire, int_size, &value_s);
+	assert(wire_tell(&wire) == size);
+
+	dnssec->size = size;
+	dnssec->data = data;
+
+	return DNSSEC_EOK;
+}
+
+static int ecdsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
+				const dnssec_binary_t *dnssec,
+				dnssec_binary_t *x509)
+{
+	assert(ctx);
+	assert(x509);
+	assert(dnssec);
+
+	size_t int_size = ecdsa_sign_integer_size(ctx);
+	assert(int_size > 0);
+
+	if (dnssec->size != 2 * int_size) {
+		return DNSSEC_INVALID_SIGNATURE;
+	}
+
+	const dnssec_binary_t value_r = { .size = int_size, .data = dnssec->data };
+	const dnssec_binary_t value_s = { .size = int_size, .data = dnssec->data + int_size };
+	dnssec_binary_t der = { 0 };
+
+	int result = dss_sig_value_encode(&der, &value_r, &value_s);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	*x509 = der;
+
+	return DNSSEC_EOK;
+}
+
+static const algorithm_functions_t ecdsa_functions = {
+	.x509_to_dnssec = ecdsa_x509_to_dnssec,
+	.dnssec_to_x509 = ecdsa_dnssec_to_x509,
+};
+
+/* -- crypto helper functions --------------------------------------------- */
+
+static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
+{
+	uint8_t algorithm = 0;
+	dnssec_key_get_algorithm(key, &algorithm);
+
+	switch ((dnssec_key_algorithm_t)algorithm) {
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
+		return &rsa_functions;
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
+		return &dsa_functions;
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+		return &ecdsa_functions;
+	default:
+		return NULL;
+	}
+}
+
 /**
  * Get digest algorithm used with a given key.
  */
-gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
+static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 {
 	uint8_t algorithm = 0;
 	dnssec_key_get_algorithm(key, &algorithm);
@@ -72,18 +312,36 @@ gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 	}
 }
 
+static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_sign_ctx_t *ctx)
+{
+	assert(ctx);
+	assert(ctx->key && ctx->key->public_key);
+
+	gnutls_pk_algorithm_t pubkey_algorithm =
+		gnutls_pubkey_get_pk_algorithm(ctx->key->public_key, NULL);
+
+	return gnutls_pk_to_sign(pubkey_algorithm, ctx->hash_algorithm);
+}
+
+/* -- public API ---------------------------------------------------------- */
+
 int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 {
 	if (!ctx_ptr) {
 		return DNSSEC_EINVAL;
 	}
 
-	dnssec_sign_ctx_t *ctx = malloc(sizeof(*ctx));
-	clear_struct(ctx);
+	dnssec_sign_ctx_t *ctx = calloc(1, sizeof(*ctx));
 
 	ctx->key = key;
-	ctx->hash_algorithm = get_digest_algorithm(key);
 
+	ctx->functions = get_functions(key);
+	if (ctx->functions == NULL) {
+		free(ctx);
+		return DNSSEC_INVALID_KEY_ALGORITHM;
+	}
+
+	ctx->hash_algorithm = get_digest_algorithm(key);
 	int result = dnssec_sign_init(ctx);
 	if (result != DNSSEC_EOK) {
 		free(ctx);
@@ -157,217 +415,6 @@ static int finish_hash(dnssec_sign_ctx_t *ctx, gnutls_datum_t *hash)
 	}
 
 	gnutls_hash_output(ctx->hash, hash->data);
-
-	return DNSSEC_EOK;
-}
-
-static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_sign_ctx_t *ctx)
-{
-	assert(ctx);
-	assert(ctx->key && ctx->key->public_key);
-
-	gnutls_pk_algorithm_t pubkey_algorithm =
-		gnutls_pubkey_get_pk_algorithm(ctx->key->public_key, NULL);
-
-	return gnutls_pk_to_sign(pubkey_algorithm, ctx->hash_algorithm);
-}
-
-/*!
- * Conversion of RSA signature between X.509 and DNSSEC format is a NOOP.
- *
- * \note Described in RFC 3110.
- */
-static int rsa_copy_signature(dnssec_sign_ctx_t *ctx,
-			      const dnssec_binary_t *from,
-			      dnssec_binary_t *to)
-{
-	assert(ctx);
-	assert(from);
-	assert(to);
-
-	uint8_t *data = malloc(from->size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
-	}
-
-	memmove(data, from->data, from->size);
-
-	to->size = from->size;
-	to->data = data;
-
-	return DNSSEC_EOK;
-}
-
-/*!
- * Get T value from DSA key public key.
- */
-static uint8_t dsa_dnskey_get_t_value(const dnssec_key_t *key)
-{
-	assert(key);
-
-	if (key->rdata.size <= 4) {
-		return 0;
-	}
-
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
-	wire_seek(&wire, 4);
-
-	return wire_read_u8(&wire);
-}
-
-/*!
- * Convert DSA signature to DNSSEC format.
- *
- * \note Described in RFC 2536.
- */
-static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
-			      const dnssec_binary_t *x509,
-			      dnssec_binary_t *dnssec)
-{
-	assert(ctx);
-	assert(x509);
-	assert(dnssec);
-
-	_cleanup_binary_ dnssec_binary_t value_r = { 0 };
-	_cleanup_binary_ dnssec_binary_t value_s = { 0 };
-
-	int result = dss_sig_value_decode(x509, &value_r, &value_s);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	if (value_r.size > 20 || value_s.size > 20) {
-		// TODO: possibly zero-padding from the left?
-		return DNSSEC_MALFORMED_DATA;
-	}
-
-	uint8_t value_t = dsa_dnskey_get_t_value(ctx->key);
-
-	size_t size = 41;
-	uint8_t *data = malloc(size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
-	}
-
-	wire_ctx_t wire = wire_init(data, size);
-	wire_write_u8(&wire, value_t);
-	wire_write_ralign_binary(&wire, 20, &value_r);
-	wire_write_ralign_binary(&wire, 20, &value_s);
-	assert(wire_tell(&wire) == size);
-
-	dnssec->size = size;
-	dnssec->data = data;
-
-	return DNSSEC_EOK;
-}
-
-static int dsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
-			      const dnssec_binary_t *dnssec,
-			      dnssec_binary_t *x509)
-{
-	assert(ctx);
-	assert(dnssec);
-	assert(x509);
-
-	if (dnssec->size != 41) {
-		return DNSSEC_INVALID_SIGNATURE;
-	}
-
-	const dnssec_binary_t value_r = { .size = 20, .data = dnssec->data + 1 };
-	const dnssec_binary_t value_s = { .size = 20, .data = dnssec->data + 21 };
-	dnssec_binary_t der = { 0 };
-
-	int result = dss_sig_value_encode(&der, &value_r, &value_s);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	*x509 = der;
-
-	return DNSSEC_EOK;
-}
-
-static size_t ecdsa_sign_integer_size(dnssec_sign_ctx_t *ctx)
-{
-	assert(ctx);
-
-	switch (ctx->hash_algorithm) {
-	case GNUTLS_DIG_SHA256: return 32;
-	case GNUTLS_DIG_SHA384: return 48;
-	default: return 0;
-	};
-}
-
-
-/*!
- * Convert ECDSA signature to DNSSEC format.
- *
- * \note Described in RFC 6605.
- */
-static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
-				const dnssec_binary_t *x509,
-				dnssec_binary_t *dnssec)
-{
-	assert(ctx);
-	assert(x509);
-	assert(dnssec);
-
-	_cleanup_binary_ dnssec_binary_t value_r = { 0 };
-	_cleanup_binary_ dnssec_binary_t value_s = { 0 };
-	int result = dss_sig_value_decode(x509, &value_r, &value_s);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	size_t int_size = ecdsa_sign_integer_size(ctx);
-	assert(int_size > 0);
-
-	if (value_r.size > int_size || value_s.size > int_size) {
-		return DNSSEC_MALFORMED_DATA;
-	}
-
-	size_t size = 2 * int_size;
-	uint8_t *data = malloc(size);
-	if (!data) {
-		return DNSSEC_ENOMEM;
-	}
-
-	wire_ctx_t wire = wire_init(data, size);
-	wire_write_ralign_binary(&wire, int_size, &value_r);
-	wire_write_ralign_binary(&wire, int_size, &value_s);
-	assert(wire_tell(&wire) == size);
-
-	dnssec->size = size;
-	dnssec->data = data;
-
-	return DNSSEC_EOK;
-}
-
-static int ecdsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
-				const dnssec_binary_t *dnssec,
-				dnssec_binary_t *x509)
-{
-	assert(ctx);
-	assert(x509);
-	assert(dnssec);
-
-	size_t int_size = ecdsa_sign_integer_size(ctx);
-	assert(int_size > 0);
-
-	if (dnssec->size != 2 * int_size) {
-		return DNSSEC_INVALID_SIGNATURE;
-	}
-
-	const dnssec_binary_t value_r = { .size = int_size, .data = dnssec->data };
-	const dnssec_binary_t value_s = { .size = int_size, .data = dnssec->data + int_size };
-	dnssec_binary_t der = { 0 };
-
-	int result = dss_sig_value_encode(&der, &value_r, &value_s);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	*x509 = der;
 
 	return DNSSEC_EOK;
 }
