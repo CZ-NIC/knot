@@ -158,7 +158,7 @@ static int dsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
 	const dnssec_binary_t value_s = { .size = 20, .data = dnssec->data + 21 };
 	dnssec_binary_t der = { 0 };
 
-	int result = dss_sig_value_encode(&der, &value_r, &value_s);
+	int result = dss_sig_value_encode(&value_r, &value_s, &der);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
@@ -247,7 +247,7 @@ static int ecdsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
 	const dnssec_binary_t value_s = { .size = int_size, .data = dnssec->data + int_size };
 	dnssec_binary_t der = { 0 };
 
-	int result = dss_sig_value_encode(&der, &value_r, &value_s);
+	int result = dss_sig_value_encode(&value_r, &value_s, &der);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
