@@ -107,7 +107,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	 * just remove the NSEC and its RRSIG, they are redundant
 	 */
 	if (old_next_nsec != NULL
-	    && knot_nsec_only_nsec_and_rrsigs_in_node(b)) {
+	    && knot_nsec_empty_nsec_and_rrsigs_in_node(b)) {
 		ret = knot_nsec_changeset_remove(b, data->changeset);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -277,7 +277,7 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
  * \brief Checks whether the node is empty or eventually contains only NSEC and
  *        RRSIGs.
  */
-bool knot_nsec_only_nsec_and_rrsigs_in_node(const knot_node_t *n)
+bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n)
 {
 	assert(n);
 	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(n);

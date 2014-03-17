@@ -447,8 +447,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		if (knot_node_rrset(node, KNOT_RRTYPE_NSEC)) {
 			knot_node_set_removed_nsec(node);
 		}
-
-		if (knot_node_is_non_auth(node)) {
+		if (knot_node_is_non_auth(node) || knot_node_is_empty(node)) {
 			hattrie_iter_next(it);
 			continue;
 		}
@@ -490,7 +489,7 @@ static bool nsec3_is_empty(knot_node_t *node)
 		return false;
 	}
 
-	return knot_nsec_only_nsec_and_rrsigs_in_node(node);
+	return knot_nsec_empty_nsec_and_rrsigs_in_node(node);
 }
 
 /*!
@@ -514,7 +513,7 @@ static int nsec3_mark_empty(knot_node_t **node_p, void *data)
 
 		if (node->parent) {
 			/* We must decrease the parent's children count,
-			 * but only temporarily! It must be set right after
+			 * but only temporarily! It must be set back right after
 			 * the operation
 			 */
 			node->parent->children--;
