@@ -51,37 +51,37 @@ resp = knot.dig("a.z.w.example", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# B8. Wildcard Expansion to apex
+# Wildcard Expansion to apex
 resp = knot.dig("a.to-apex.example", "SOA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# Wildcard Expansion to apex (nodata)
+# Wildcard Expansion to apex (no data)
 resp = knot.dig("a.to-apex.example", "TXT", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# Wildcard Expansion to non-existent name 
+# Wildcard Expansion to non-existent name
 resp = knot.dig("a.to-nxdomain.example", "A", dnssec=True)
 resp.check(rcode="NXDOMAIN", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# Wildcard Expansion below delegation point 
+# Wildcard Expansion below delegation point
 resp = knot.dig("a.a.example", "A", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", eflags="DO")
 resp.cmp(bind)
 
-# Wildcard Expansion below delegation point (nodata)
+# Wildcard Expansion below delegation point (no data)
 resp = knot.dig("a.a.example", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", eflags="DO")
 resp.cmp(bind)
 
-# B9. Direct wildcard query (positive)
+# Direct wildcard query (positive)
 resp = knot.dig("*.w.example", "MX", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# B10. Direct wildcard query (no data)
+# Direct wildcard query (no data)
 resp = knot.dig("*.w.example", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
@@ -96,22 +96,22 @@ resp = knot.dig("*.a.example", "AAAA", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR", eflags="DO")
 resp.cmp(bind)
 
-# B11. DS Child Zone No Data Error.
+# B8. DS Child Zone No Data Error.
 resp = knot.dig("example", "DS", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# DS query at delegation.
+# DS query at delegation
 resp = knot.dig("a.example", "DS", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# DS query at delegation (insecure).
+# DS query at delegation (insecure)
 resp = knot.dig("b.example", "DS", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
 
-# Empty non-terminal.
+# Empty non-terminal
 resp = knot.dig("y.w.example", "A", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
 resp.cmp(bind)
