@@ -8,11 +8,6 @@
 
 #include "sample_keys.h"
 
-typedef struct keyinfo {
-	const char *name;
-	const key_parameters_t *parameters;
-} keyinfo_t;
-
 #define check_attr_scalar(key, type, name, def_val, set_val) { \
 	type value = -1; \
 	int r = dnssec_key_get_##name(key, &value); \
@@ -116,6 +111,11 @@ static void test_private_key(const key_parameters_t *params)
 	dnssec_key_free(key);
 }
 
+typedef struct keyinfo {
+	const char *name;
+	const key_parameters_t *parameters;
+} keyinfo_t;
+
 int main(void)
 {
 	plan_lazy();
@@ -130,7 +130,7 @@ int main(void)
 	};
 
 	for (keyinfo_t *k = keys; k->name != NULL; k += 1) {
-		diag("testing %s key", k->name);
+		diag("%s key", k->name);
 		test_public_key(k->parameters);
 		test_private_key(k->parameters);
 	}

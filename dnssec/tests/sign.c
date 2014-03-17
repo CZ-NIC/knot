@@ -1,3 +1,4 @@
+#include <string.h>
 #include <tap/basic.h>
 
 #include "sample_keys.h"
@@ -6,6 +7,7 @@
 #include "crypto.h"
 #include "error.h"
 #include "key.h"
+#include "sign.h"
 
 static const dnssec_binary_t input_data = {
 	.size = 25,
@@ -40,17 +42,93 @@ static const dnssec_binary_t signed_ecdsa = { .size = 64, .data = (uint8_t []) {
 	0xad, 0x2f,
 }};
 
-static void check_key(const char *name, const key_parameters_t *key_data,
-		      const dnssec_binary_t *data,
+static dnssec_binary_t binary_set_string(char *str)
+{
+	dnssec_binary_t result = { .data = (uint8_t *)str, .size = strlen(str) };
+	return result;
+}
+
+static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *data,
 		      const dnssec_binary_t *signature, bool signature_match)
 {
-	ok(0, "%s: sign data", name);
+	int r;
+
+	// check validation on static signatures
+
+	dnssec_key_t *key = NULL;
+	r = dnssec_key_new(&key);
+	ok(r == DNSSEC_EOK && key != NULL, "create key");
+	r = dnssec_key_set_algorithm(key, key_data->algorithm);
+	ok(r == DNSSEC_EOK, "set algorithm");
+	r = dnssec_key_load_pkcs8(key, &key_data->pem);
+	ok(r == DNSSEC_EOK, "load private key");
+
+	dnssec_sign_ctx_t *ctx = NULL;
+	r = dnssec_sign_new(&ctx, key);
+	ok(r == DNSSEC_EOK, "create signing context");
+	r = dnssec_sign_add(ctx, data);
+
+	// check existing signature
+
+	ok(r == DNSSEC_EOK, "add data to be signed");
+	r = dnssec_sign_verify(ctx, signature);
+	ok(r == DNSSEC_EOK, "signature verified");
 
 	if (signature_match) {
-		ok(0, "%s: signature matches", name);
+		r = dnssec_sign_init(ctx);
+		ok(r == DNSSEC_EOK, "reinitialize context");
+		r = dnssec_sign_add(ctx, data);
+		ok(r == DNSSEC_EOK, "add data to be signed");
+		dnssec_binary_t new_signature = { 0 };
+		r = dnssec_sign_write(ctx, &new_signature);
+		ok(r == DNSSEC_EOK, "write the signature");
+		ok(dnssec_binary_cmp(signature, &new_signature) == 0,
+		   "signature exact match");
+		dnssec_binary_free(&new_signature);
 	}
 
-	ok(0, "%s: verify signature", name);
+	// context reinitialization
+
+	dnssec_binary_t tmp = { 0 };
+
+	r = dnssec_sign_init(ctx);
+	ok(r == DNSSEC_EOK, "reinitialize context");
+
+	tmp = binary_set_string("bind");
+	r = dnssec_sign_add(ctx, &tmp);
+	ok(r == DNSSEC_EOK, "add data (1)");
+
+	r = dnssec_sign_init(ctx);
+	ok(r == DNSSEC_EOK, "reinitialize context");
+
+	tmp = binary_set_string("knot");
+	r = dnssec_sign_add(ctx, &tmp);
+	ok(r == DNSSEC_EOK, "add data (2)");
+
+	tmp = binary_set_string(" is the best");
+	r = dnssec_sign_add(ctx, &tmp);
+	ok(r == DNSSEC_EOK, "add data (3)");
+
+	dnssec_binary_t new_signature = { 0 };
+	r = dnssec_sign_write(ctx, &new_signature);
+	ok(r == DNSSEC_EOK, "write signature");
+
+	r = dnssec_sign_init(ctx);
+	ok(r == DNSSEC_EOK, "reinitialize context");
+
+	tmp = binary_set_string("knot is the best");
+	r = dnssec_sign_add(ctx, &tmp);
+	ok(r == DNSSEC_EOK, "add data (4)");
+
+	r = dnssec_sign_verify(ctx, &new_signature);
+	ok(r == DNSSEC_EOK, "verify signature");
+
+	dnssec_binary_free(&new_signature);
+
+	// cleanup
+
+	dnssec_sign_free(ctx);
+	dnssec_key_free(key);
 }
 
 int main(void)
@@ -59,9 +137,12 @@ int main(void)
 
 	dnssec_crypto_init();
 
-	check_key("rsa",   NULL, &input_data, &signed_rsa, true);
-	check_key("dsa",   NULL, &input_data, &signed_rsa, false);
-	check_key("ecdsa", NULL, &input_data, &signed_rsa, false);
+	diag("RSA signing");
+	check_key(&SAMPLE_RSA_KEY, &input_data, &signed_rsa, true);
+	diag("DSA signing");
+	check_key(&SAMPLE_DSA_KEY, &input_data, &signed_dsa, false);
+	diag("ECDSA signing");
+	check_key(&SAMPLE_ECDSA_KEY, &input_data, &signed_ecdsa, false);
 
 	dnssec_crypto_cleanup();
 
