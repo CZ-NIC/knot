@@ -1037,7 +1037,7 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 	(*to)->rrs = mm_alloc(mm, rrset_rdata_size_total(from));
 	if ((*to)->rrs == NULL) {
 		ERR_ALLOC_FAILED;
-		knot_rrset_deep_free(to, 1, mm);
+		knot_rrset_deep_free(to, mm);
 		return KNOT_ENOMEM;
 	}
 	memcpy((*to)->rrs, from->rrs, rrset_rdata_size_total(from));
@@ -1047,41 +1047,22 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_rrset_free(knot_rrset_t **rrset)
-{
-	if (rrset == NULL || *rrset == NULL) {
-		return;
-	}
-
-	knot_dname_free(&(*rrset)->owner);
-
-	if (rrset_additional_needed((*rrset)->type)) {
-		free((*rrset)->additional);
-	}
-
-	free(*rrset);
-	*rrset = NULL;
-}
-
-static void rrset_deep_free_content(knot_rrset_t *rrset, bool free_owner,
+static void rrset_deep_free_content(knot_rrset_t *rrset,
                                     mm_ctx_t *mm)
 {
 	assert(rrset);
 
 	mm_free(mm, rrset->rrs);
-	if (free_owner) {
-		knot_dname_free(&rrset->owner);
-	}
+	knot_dname_free(&rrset->owner);
 }
 
-void knot_rrset_deep_free(knot_rrset_t **rrset, bool free_owner, mm_ctx_t *mm)
+void knot_rrset_deep_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 {
-	/*! \bug The number of different frees in rrset is too damn high! */
 	if (rrset == NULL || *rrset == NULL) {
 		return;
 	}
 
-	rrset_deep_free_content(*rrset, free_owner, mm);
+	rrset_deep_free_content(*rrset, mm);
 
 	if (rrset_additional_needed((*rrset)->type)) {
 		mm_free(mm, (*rrset)->additional);
@@ -1240,20 +1221,18 @@ int knot_rrset_sort_rdata(knot_rrset_t *rrset)
 	// 2. sort-merge given rrset into temporary rrset
 	// 3. swap the contents, free the temporary
 
-	knot_rrset_t *sorted = knot_rrset_new(rrset->owner, rrset->type,
-	                                      rrset->rclass,
-	                                      NULL);
+	knot_rrset_t *sorted = knot_rrset_new_from(rrset, NULL);
 	if (!sorted) {
 		return KNOT_ENOMEM;
 	}
 
 	int result = knot_rrset_merge_sort(sorted, rrset, NULL, NULL, NULL);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&sorted, 1, NULL);
+		knot_rrset_deep_free(&sorted, NULL);
 		return result;
 	}
 
-	rrset_deep_free_content(rrset, 0, NULL);
+	rrset_deep_free_content(rrset, NULL);
 	*rrset = *sorted;
 	free(sorted);
 
@@ -1385,7 +1364,7 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 		int ret = rrset_deserialize_rr((*rrset), stream + offset,
 		                               rdata_size);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(rrset, true, NULL);
+			knot_rrset_deep_free(rrset, NULL);
 			return ret;
 		}
 		offset += rdata_size;
@@ -1489,7 +1468,7 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 			/* RR was removed, can be added to 'return' RRSet. */
 			ret = knot_rrset_add_rr_from_rrset(return_rr, what, i, NULL);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&return_rr, 0, NULL);
+				knot_rrset_deep_free(&return_rr, NULL);
 				dbg_xfrin("xfr: Could not add RR (%s).\n",
 				          knot_strerror(ret));
 				return ret;
@@ -1499,7 +1478,7 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 			dbg_rrset("rrset: remove_using_rrset: "
 			          "RRSet removal failed (%s).\n",
 			          knot_strerror(ret));
-			knot_rrset_deep_free(&return_rr, 0, NULL);
+			knot_rrset_deep_free(&return_rr, NULL);
 			return ret;
 		}
 	}
@@ -1559,7 +1538,7 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
 
 	int ret = add_rdata_to_rrsig(*out_sig, type, rrsigs, mm);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(out_sig, 1, mm);
+		knot_rrset_deep_free(out_sig, mm);
 		return ret;
 	}
 

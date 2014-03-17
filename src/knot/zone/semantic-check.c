@@ -529,7 +529,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_SIGNED_WRONG,
 		                         info_str);
-		knot_rrset_deep_free(&rrsigs, true, NULL);
+		knot_rrset_deep_free(&rrsigs, NULL);
 		return KNOT_EOK;
 	}
 	
@@ -543,7 +543,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		}
 	}
 
-	knot_rrset_deep_free(&rrsigs, true, NULL);
+	knot_rrset_deep_free(&rrsigs, NULL);
 	return ret;
 }
 

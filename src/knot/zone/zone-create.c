@@ -84,7 +84,7 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	if (rr->type == KNOT_RRTYPE_SOA &&
 	    knot_node_rrset(zc->z->apex, KNOT_RRTYPE_SOA)) {
 		// Ignore extra SOA
-		knot_rrset_deep_free(&rr, true, NULL);
+		knot_rrset_deep_free(&rr, NULL);
 		return KNOT_EOK;
 	}
 
@@ -105,10 +105,10 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 			return ret;
 		}
 		// Recoverable error, skip record
-		knot_rrset_deep_free(&rr, true, NULL);
+		knot_rrset_deep_free(&rr, NULL);
 		return KNOT_EOK;
 	} else if (ret > 0) {
-		knot_rrset_deep_free(&rr, true, NULL);
+		knot_rrset_deep_free(&rr, NULL);
 	}
 	assert(n);
 	assert(zone_rrset);
@@ -163,14 +163,14 @@ static void loader_process(const zs_scanner_t *scanner)
 		log_zone_error("%s:%"PRIu64": Can't add RDATA for '%s'.\n",
 		               scanner->file_name, scanner->line_counter, rr_name);
 		free(rr_name);
-		knot_rrset_deep_free(&rr, true, NULL);
+		knot_rrset_deep_free(&rr, NULL);
 		zc->ret = ret;
 		return;
 	}
 
 	ret = zcreator_step(zc, rr);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1, NULL);
+		knot_rrset_deep_free(&rr, NULL);
 		zc->ret = ret;
 		return;
 	}

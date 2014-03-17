@@ -54,7 +54,7 @@ static void pkt_free_data(knot_pkt_t *pkt)
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
 		if (pkt->rr_info[i].flags & KNOT_PF_FREE) {
 			rr = (knot_rrset_t *)pkt->rr[i];
-			knot_rrset_deep_free(&rr, 1, &pkt->mm);
+			knot_rrset_deep_free(&rr, &pkt->mm);
 		}
 	}
 
@@ -655,7 +655,7 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 			}
 
 			dbg_packet("%s: merged RR %p\n", __func__, rr);
-			knot_rrset_deep_free(&rr, 1, &pkt->mm);
+			knot_rrset_deep_free(&rr, &pkt->mm);
 			return KNOT_EOK;
 		}
 	}
@@ -704,7 +704,7 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	if (size - *pos < rdlength) {
 		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
-		knot_rrset_deep_free(&rrset, 1, mm);
+		knot_rrset_deep_free(&rrset, mm);
 		return NULL;
 	}
 
@@ -715,7 +715,7 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
 		dbg_packet("%s: couldn't parse RDATA (%d)\n", __func__, ret);
-		knot_rrset_deep_free(&rrset, 1, mm);
+		knot_rrset_deep_free(&rrset, mm);
 		return NULL;
 	}
 

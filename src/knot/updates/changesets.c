@@ -171,7 +171,7 @@ int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
 			return KNOT_ERROR;
 		}
 
-		knot_rrset_deep_free(&rr, 1, NULL);
+		knot_rrset_deep_free(&rr, NULL);
 		return KNOT_EOK;
 	} else {
 		return knot_changeset_add_rrset(chgs, rr, part);
@@ -288,7 +288,7 @@ int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2)
 
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
-	knot_rrset_deep_free(&ch1->soa_to, 1, NULL);
+	knot_rrset_deep_free(&ch1->soa_to, NULL);
 	ch1->soa_to = ch2->soa_to;
 	ch1->serial_to = ch2->serial_to;
 
@@ -304,14 +304,14 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 	// Delete RRSets in lists, in case there are any left
 	knot_rr_ln_t *rr_node;
 	WALK_LIST(rr_node, changeset->add) {
-		knot_rrset_deep_free(&rr_node->rr, 1, NULL);
+		knot_rrset_deep_free(&rr_node->rr, NULL);
 	}
 	WALK_LIST(rr_node, changeset->remove) {
-		knot_rrset_deep_free(&rr_node->rr, 1, NULL);
+		knot_rrset_deep_free(&rr_node->rr, NULL);
 	}
 
-	knot_rrset_deep_free(&changeset->soa_from, 1, NULL);
-	knot_rrset_deep_free(&changeset->soa_to, 1, NULL);
+	knot_rrset_deep_free(&changeset->soa_from, NULL);
+	knot_rrset_deep_free(&changeset->soa_to, NULL);
 
 	// Delete binary data
 	free(changeset->data);
@@ -335,7 +335,7 @@ void knot_changesets_free(knot_changesets_t **changesets)
 	// Free pool with RRs in sets / changes
 	mp_delete((*changesets)->mmc_rr.ctx);
 
-	knot_rrset_deep_free(&(*changesets)->first_soa, 1, NULL);
+	knot_rrset_deep_free(&(*changesets)->first_soa, NULL);
 
 	free((*changesets)->changes);
 	free(*changesets);

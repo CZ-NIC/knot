@@ -265,26 +265,13 @@ int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
                          mm_ctx_t *mm);
 
 /*!
- * \brief Destroys the RRSet structure.
- *
- * Does not destroy RDATA structures neither, as they need special processing.
- *
- * Also sets the given pointer to NULL.
- *
- * \param rrset RRset to be destroyed.
- */
-void knot_rrset_free(knot_rrset_t **rrset);
-
-/*!
  * \brief Destroys the RRSet structure and all its substructures.
- *
+ )
  * Also sets the given pointer to NULL.
  *
  * \param rrset       RRset to be destroyed.
- * \param free_owner  Set to false if you do not want the owner domain name to be
- *                    destroyed also. Set to true otherwise.
  */
-void knot_rrset_deep_free(knot_rrset_t **rrset, bool free_owner, mm_ctx_t *mm);
+void knot_rrset_deep_free(knot_rrset_t **rrset, mm_ctx_t *mm);
 
 /*!
  * \brief Converts RRSet structure to wireformat, compression included.

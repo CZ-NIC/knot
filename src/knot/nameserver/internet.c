@@ -75,7 +75,7 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr,
 	int labels = knot_dname_labels(dname_wire, NULL);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
 	if (cname == NULL) {
-		knot_rrset_free(&cname_rrset);
+		knot_rrset_deep_free(&cname_rrset, NULL);
 		return NULL;
 	}
 
@@ -85,7 +85,7 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr,
 	                                            knot_rrset_rr_ttl(dname_rr, 0),
 	                                            mm);
 	if (cname_rdata == NULL) {
-		knot_rrset_free(&cname_rrset);
+		knot_rrset_deep_free(&cname_rrset, NULL);
 		knot_dname_free(&cname);
 		return NULL;
 	}
@@ -138,7 +138,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	                                   sizeof(struct rrsig_info));
 	if (info == NULL) {
 		ERR_ALLOC_FAILED;
-		knot_rrset_deep_free(&synth_sig, true, qdata->mm);
+		knot_rrset_deep_free(&synth_sig, qdata->mm);
 		return KNOT_ENOMEM;
 	}
 	info->synth_rrsig = synth_sig;
@@ -250,7 +250,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 
 	ret = ns_put_rr(pkt, soa_rrset, rrsigs, COMPR_HINT_NONE, flags, qdata);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
-		knot_rrset_deep_free(&soa_rrset, 1, &pkt->mm);
+		knot_rrset_deep_free(&soa_rrset, &pkt->mm);
 	}
 
 	return ret;
@@ -689,7 +689,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	ret = knot_pkt_put(pkt, compr_hint, rr, flags);
 	if (ret != KNOT_EOK) {
 		if (flags & KNOT_PF_FREE) {
-			knot_rrset_deep_free((knot_rrset_t **)&rr, 1, &pkt->mm);
+			knot_rrset_deep_free((knot_rrset_t **)&rr, &pkt->mm);
 		}
 		return ret;
 	}
