@@ -7,6 +7,10 @@ from dnstest.test import Test
 
 t = Test()
 
+def check_soa(master, prev_soa):
+    soa_resp = master.dig("ddns.", "SOA")
+    compare(prev_soa, soa_resp.resp.answer, "SOA changed when it shouldn't")
+
 def verify(master, zone, dnssec):
     if not dnssec:
         return
@@ -14,7 +18,7 @@ def verify(master, zone, dnssec):
     t.sleep(1)
     master.zone_verify(zone)
 
-def do_test(master, zone, dnssec=False):
+def do_normal_tests(master, zone, dnssec=False):
     # add node
     check_log("Node addition")
     up = master.update(zone)
@@ -34,6 +38,19 @@ def do_test(master, zone, dnssec=False):
     resp.check(rcode="NOERROR", rdata="1.2.3.5")
     verify(master, zone, dnssec)
 
+    # add records to existing rrset
+    check_log("Node update - new records")
+    up = master.update(zone)
+    up.add("rrtest.ddns.", 3600, "A", "1.2.3.7")
+    up.add("rrtest.ddns.", 3600, "A", "1.2.3.0")
+    up.send("NOERROR")
+    resp = master.dig("rrtest.ddns.", "A")
+    resp.check(rcode="NOERROR", rdata="1.2.3.0")
+    resp.check(rcode="NOERROR", rdata="1.2.3.4")
+    resp.check(rcode="NOERROR", rdata="1.2.3.5")
+    resp.check(rcode="NOERROR", rdata="1.2.3.7")
+    verify(master, zone, dnssec)
+
     # add rrset to existing node
     check_log("Node update - new rrset")
     up = master.update(zone)
@@ -42,8 +59,10 @@ def do_test(master, zone, dnssec=False):
     resp = master.dig("rrtest.ddns.", "TXT")
     resp.check(rcode="NOERROR", rdata="abcedf")
     resp = master.dig("rrtest.ddns.", "A")
+    resp.check(rcode="NOERROR", rdata="1.2.3.0")
     resp.check(rcode="NOERROR", rdata="1.2.3.4")
     resp.check(rcode="NOERROR", rdata="1.2.3.5")
+    resp.check(rcode="NOERROR", rdata="1.2.3.7")
     verify(master, zone, dnssec)
 
     # remove rrset
@@ -55,8 +74,10 @@ def do_test(master, zone, dnssec=False):
     resp.check(rcode="NOERROR")
     compare(resp.count(section="answer"), 0, "TXT rrset removal")
     resp = master.dig("rrtest.ddns.", "A")
+    resp.check(rcode="NOERROR", rdata="1.2.3.0")
     resp.check(rcode="NOERROR", rdata="1.2.3.4")
     resp.check(rcode="NOERROR", rdata="1.2.3.5")
+    resp.check(rcode="NOERROR", rdata="1.2.3.7")
     verify(master, zone, dnssec)
 
     # remove record
@@ -66,13 +87,27 @@ def do_test(master, zone, dnssec=False):
     up.send("NOERROR")
     resp = master.dig("rrtest.ddns.", "A")
     resp.check(rcode="NOERROR", nordata="1.2.3.5")
+    resp.check(rcode="NOERROR", rdata="1.2.3.0")
+    resp.check(rcode="NOERROR", rdata="1.2.3.4")
+    resp.check(rcode="NOERROR", rdata="1.2.3.7")
+    verify(master, zone, dnssec)
+
+    # remove records
+    check_log("Node update - records removal")
+    up = master.update(zone)
+    up.delete("rrtest.ddns.", "A", "1.2.3.0")
+    up.delete("rrtest.ddns.", "A", "1.2.3.7")
+    up.send("NOERROR")
+    resp = master.dig("rrtest.ddns.", "A")
+    resp.check(rcode="NOERROR", nordata="1.2.3.0")
+    resp.check(rcode="NOERROR", nordata="1.2.3.7")
     resp.check(rcode="NOERROR", rdata="1.2.3.4")
     verify(master, zone, dnssec)
 
     # remove node
     check_log("Node removal")
     up = master.update(zone)
-    up.delete("rrtest.ddns.", "A")
+    up.delete("rrtest.ddns.", "ANY")
     up.send("NOERROR")
     resp = master.dig("rrtest.ddns.", "A")
     resp.check(rcode="NXDOMAIN")
@@ -89,28 +124,88 @@ def do_test(master, zone, dnssec=False):
     resp.check_record(section="additional", rtype="A", rdata="1.2.3.4")
     verify(master, zone, dnssec)
 
-    # add DS for existing delegation
-    if dnssec:
-        check_log("DS addition")
-        up = master.update(zone)
-        up.add("deleg.ddns.", 3600, "DS",
-               "54576 10 2 397E50C85EDE9CDE33F363A9E66FD1B216D788F8DD438A57A423A386869C8F06")
-        up.send("NOERROR")
-        resp = master.dig("deleg.ddns.", "NS", dnssec=True)
-        resp.check(rcode="NOERROR")
-        resp.check_record(section="authority", rtype="DS",
-                          rdata="54576 10 2 397E50C85EDE9CDE33F363A9E66FD1B216D788F8DD438A57A423A386869C8F06")
-        resp.check_record(section="authority", rtype="NS", rdata="a.deleg.ddns.")
-        verify(master, zone, dnssec)
+    # add CNAME to node with A records, should be ignored
+    check_log("Add CNAME to A node")
+    up = master.update(zone)
+    up.add("dns1.ddns.", "3600", "CNAME", "ignore.me.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("dns1.ddns.", "CNAME")
+    compare(resp.count(), 0, "Added CNAME when it shouldn't")
+
+    # add A to CNAME node, should be ignored
+    check_log("Add A to CNAME node")
+    up = master.update(zone)
+    up.add("cname.ddns.", "3600", "A", "1.2.3.4")
+    up.send("NOERROR")
+    resp = master.dig("cname.ddns.", "ANY")
+    compare(resp.count(), 1, "Added A when it shouldn't")
+
+    # add CNAME to CNAME node, should be replaced
+    check_log("CNAME to CNAME addition")
+    up = master.update(zone)
+    up.add("cname.ddns.", 3600, "CNAME", "new-cname.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("cname.ddns.", "CNAME")
+    resp.check(rcode="NOERROR", rdata="new-cname.ddns.")
+    resp.check(rcode="NOERROR", nordata="mail.ddns.")
+    verify(master, zone, dnssec)
+
+    # add SOA with higher than current serial, serial starting from 2010111213
+    check_log("Newer SOA addition")
+    up = master.update(zone)
+    up.add("ddns.", 3600, "SOA", "dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "SOA")
+    resp.check(rcode="NOERROR", rdata="dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
+    verify(master, zone, dnssec)
+
+    # add SOA with lower serial, should be ignored
+    check_log("Older SOA addition")
+    up = master.update(zone)
+    up.add("ddns.", 3600, "SOA", "dns1.ddns. hostmaster.ddns. 2010111213 10800 3600 1209600 7200")
+    resp = master.dig("ddns.", "SOA")
+    resp.check(rcode="NOERROR", rdata="dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
+    verify(master, zone, dnssec)
 
     # add and remove the same record
     check_log("Add and remove same record")
+    up = master.update(zone)
+    up.add("testaddrem.ddns.", 3600, "TXT", "record")
+    up.delete("testaddrem.ddns.", "TXT", "record")
+    up.send("NOERROR")
+    resp = master.dig("testaddrem.ddns.", "TXT")
+    resp.check(rcode="NXDOMAIN")
+    verify(master, zone, dnssec)
+
+    # add and remove the same record, delete whole RRSet
+    check_log("Add and remove same record, delete whole")
     up = master.update(zone)
     up.add("testaddrem.ddns.", 3600, "TXT", "record")
     up.delete("testaddrem.ddns.", "TXT")
     up.send("NOERROR")
     resp = master.dig("testaddrem.ddns.", "TXT")
     resp.check(rcode="NXDOMAIN")
+    verify(master, zone, dnssec)
+
+    # Remove non-existent record
+    check_log("Remove non-existent record")
+    up = master.update(zone)
+    up.add("testaddrem.ddns.", 3600, "TXT", "record")
+    up.delete("testaddrem.ddns.", "TXT", "record1")
+    up.send("NOERROR")
+    resp = master.dig("testaddrem.ddns.", "TXT")
+    resp.check(rcode="NOERROR", rdata="record")
+    verify(master, zone, dnssec)
+
+    # remove NS from APEX (NS should stay)
+    check_log("Remove NS")
+    up = master.update(zone)
+    up.delete("ddns.", "NS")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "NS")
+    resp.check(rcode="NOERROR")
+    resp.check_record(rtype="NS", rdata="dns1.ddns.")
+    resp.check_record(rtype="NS", rdata="dns2.ddns.")
     verify(master, zone, dnssec)
 
     # remove all from APEX (NS should stay)
@@ -126,6 +221,147 @@ def do_test(master, zone, dnssec=False):
     resp.check(rcode="NOERROR")
     compare(resp.count(section="answer"), 0, "MX rrset removal")
     verify(master, zone, dnssec)
+
+    if dnssec:
+        # add DS for existing delegation
+        check_log("DS addition")
+        up = master.update(zone)
+        up.add("deleg.ddns.", 3600, "DS",
+               "54576 10 2 397E50C85EDE9CDE33F363A9E66FD1B216D788F8DD438A57A423A386869C8F06")
+        up.send("NOERROR")
+        resp = master.dig("deleg.ddns.", "NS", dnssec=True)
+        resp.check(rcode="NOERROR")
+        resp.check_record(section="authority", rtype="DS",
+                          rdata="54576 10 2 397E50C85EDE9CDE33F363A9E66FD1B216D788F8DD438A57A423A386869C8F06")
+        resp.check_record(section="authority", rtype="NS", rdata="a.deleg.ddns.")
+        resp.check_record(section="authority", rtype="RRSIG")
+        verify(master, zone, dnssec)
+        
+        # add extra DNSKEY
+        check_log("DNSKEY addition")
+        up = master.update(zone)
+        up.add("ddns.", "3600", "DNSKEY",
+               "256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
+        up.send("NOERROR")
+        resp = master.dig("ddns.", "DNSKEY")
+        resp.check(rcode="NOERROR", rdata="256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
+        verify(master, zone, dnssec)
+
+def do_refusal_tests(master, zone, dnssec=False):
+
+    forbidden = [{'type':"RRSIG", 'data':"A 5 2 1800 20140331062706 20140317095503 132 nic.cz. rc7TwX4GnExDQBNDCdbgf0PS7zabtymSKQ0VhmbFJAcYZxN+yFF9PXAo SpsDVR5H0PIuUM4oqoe7gsKfqqpTdOuB9M6cN/Mni99u7XfKHkopDjYc qTJXKn3x2TER4WkGtG5uthuSEc9lseCr6XqAqkDnJlUa6pB2a3mEHwu/ Elk="},
+                 {'type':"NSEC",  'data':"0-0.se. NS SOA TXT RRSIG NSEC DNSKEY"},
+                 {'type':"NSEC3", 'data':"1 0 10 B8399FF56C1C0C7E D0RS5MTK2AT5SVG2S9LRMM4L2J63V6GL NS"}]
+
+    # Store initial SOA
+    soa_resp = master.dig("ddns.", "SOA")
+    prev_soa = soa_resp.resp.answer
+
+    # Add DDNS forbidden records
+    check_log("Adding forbidden records")
+    for f in forbidden:
+        up = master.update(zone)
+        up.add("forbidden.ddns.", 3600, f['type'], f['data'])
+        up.send("REFUSED")
+        resp = master.dig("forbidden.ddns", "ANY")
+        resp.check(rcode="NXDOMAIN")
+        check_soa(master, prev_soa)
+
+    # Remove DDNS forbidden records
+    check_log("Removing forbidden records")
+    for f in forbidden:
+        up = master.update(zone)
+        up.delete("forbidden.ddns.", f['type'])
+        up.send("REFUSED")
+        check_soa(master, prev_soa)
+    
+    # Add normal records and then forbidden one
+    check_log("Refusal rollback")
+    up = master.update(zone)
+    up.add("rollback.ddns.", 3600, "TXT", "do not add me")
+    up.add("forbidden.ddns.", 3600, forbidden[0]['type'], forbidden[0]['data'])
+    up.send("REFUSED")
+    resp = master.dig("forbidden.ddns", "ANY")
+    resp.check(rcode="NXDOMAIN")
+    check_soa(master, prev_soa)
+
+    # Add DNAME to CNAME node
+    check_log("Add extra DNAME rollback")
+    up = master.update(zone)
+    up.add("rollback.ddns.", 3600, "TXT", "do not add me")
+    up.add("cname.ddns.", 3600, "DNAME", "ddns.")
+    up.send("REFUSED")
+    resp = master.dig("forbidden.ddns", "ANY")
+    resp.check(rcode="NXDOMAIN")
+    check_soa(master, prev_soa)
+
+    # Add DNAME children
+    check_log("Add DNAME children rollback")
+    up = master.update(zone)
+    up.add("rollback.ddns.", 3600, "TXT", "do not add me")
+    up.add("under.dname.ddns.", 3600, "DNAME", "ddns.")
+    up.send("REFUSED")
+    resp = master.dig("forbidden.ddns", "ANY")
+    resp.check(rcode="NXDOMAIN")
+    check_soa(master, prev_soa)
+
+    # Remove SOA, ignore
+    check_log("Remove SOA")
+    up = master.update(zone)
+    up.delete("ddns.", "SOA")
+    up.send("MALFORMED")
+    check_soa(master, prev_soa)
+
+    # Out-of-zone data
+    check_log("Out-of-zone data")
+    up = master.update(zone)
+    up.add("what.the.hell.am.i.doing.here.", "3600", "TXT", "I don't belong here")
+    up.send("NOTZONE")
+    check_soa(master, prev_soa)
+
+    if dnssec:
+        # NSEC3PARAM for non-apex node
+        check_log("Non-apex NSEC3PARAM")
+        up = master.update(zone)
+        up.add("not.apex.ddns.", "0", "NSEC3PARAM", "1 0 10 B8399FF56C1C0C7E")
+        up.send("MALFORMED")
+        resp = master.dig("not.apex.ddns", "NSEC3PARAM")
+        resp.check(rcode="NXDOMAIN")
+        check_soa(master, prev_soa)
+
+
+def do_nsec3param_tests(master, zone):
+    assert(master.dig("ddns", "NSEC3PARAM").count() == 0)
+
+    # Add NSEC3PARAM
+    check_log("Add NSEC3PARAM")
+    up = master.update(zone)
+    up.add("ddns.", "0", "NSEC3PARAM", "1 0 10 CAFEBABE")
+    up.send("NOERROR")
+    resp = master.dig("ddns", "NSEC3PARAM")
+    resp.check(rcode="NOERROR", rdata="1 0 10 CAFEBABE")
+    verify(master, zone, dnssec=True)
+
+    # Change NSEC3PARAM - silently ignore
+    check_log("Change NSEC3PARAM")
+    up = master.update(zone)
+    up.add("ddns.", "0", "NSEC3PARAM", "1 0 10 BADDCAFE")
+    up.send("NOERROR")
+    resp = master.dig("ddns", "NSEC3PARAM")
+    resp.check(rcode="NOERROR", rdata="1 0 10 CAFEBABE")
+    resp.check(rcode="NOERROR", nordata="1 0 10 BADDCAFE")
+    verify(master, zone, dnssec=True)
+
+    # Delete and add NSEC3PARAM
+    check_log("Delete and add NSEC3PARAM")
+    up = master.update(zone)
+    up.delete("ddns.", "NSEC3PARAM", "1 0 10 CAFEBABE")
+    up.add("ddns.", "0", "NSEC3PARAM", "1 0 10 BADDCAFE")
+    up.send("NOERROR")
+    resp = master.dig("ddns", "NSEC3PARAM")
+    resp.check(rcode="NOERROR", nordata="1 0 10 CAFEBABE")
+    resp.check(rcode="NOERROR", rdata="1 0 10 BADDCAFE")
+    verify(master, zone, dnssec=True)
 
 zone = t.zone("ddns.", storage=".")
 
@@ -149,14 +385,18 @@ t.start()
 
 # DNSSEC-less test
 check_log("============ Plain test ===========")
-do_test(master_plain, zone)
+do_normal_tests(master_plain, zone)
+do_refusal_tests(master_plain, zone)
 
 # DNSSEC with NSEC test
 check_log("============ NSEC test ============")
-do_test(master_nsec, zone, dnssec=True)
+do_normal_tests(master_nsec, zone, dnssec=True)
+do_refusal_tests(master_nsec, zone, dnssec=True)
+do_nsec3param_tests(master_nsec, zone)
 
 # DNSSEC with NSEC3 test
 check_log("============ NSEC3 test ===========")
-do_test(master_nsec3, zone, dnssec=True)
+do_normal_tests(master_nsec3, zone, dnssec=True)
+do_refusal_tests(master_nsec3, zone, dnssec=True)
 
 t.end()

@@ -15,6 +15,9 @@ dns2    A       192.0.2.2
 mail    A       192.0.2.3
         AAAA    2001:DB8::3
 
+cname   CNAME   mail
+dname   DNAME   mail
+
 existing        A       1.2.3.4
 *.wildcard      A       4.3.2.1
 
