@@ -46,13 +46,14 @@ static char str_separator(int addr_family)
 	return '.';
 }
 
-/*! \brief QTYPE to address family. */
-static int qtype_addrfamily(uint16_t qtype)
+/*! \brief Return true if query type is satisfied with provided address family. */
+static bool query_satisfied_by_family(uint16_t qtype, int family)
 {
 	switch(qtype) {
-	case KNOT_RRTYPE_A:    return AF_INET;
-	case KNOT_RRTYPE_AAAA: return AF_INET6;
-	default:               return AF_UNSPEC;
+	case KNOT_RRTYPE_A:    return family == AF_INET;
+	case KNOT_RRTYPE_AAAA: return family == AF_INET6;
+	case KNOT_RRTYPE_ANY:  return true;
+	default:               return false;
 	}
 }
 
@@ -62,7 +63,7 @@ static int reverse_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	/* QNAME required format is [address].[subnet/zone]
 	 * f.e.  [1.0...0].[h.g.f.e.0.0.0.0.d.c.b.a.ip6.arpa] represents
 	 *       [abcd:0:efgh::1] */
-	const knot_dname_t* label = knot_pkt_qname(qdata->query);
+	const knot_dname_t* label = qdata->name;
 	const uint8_t *query_wire = qdata->query->wire;
 
 	/* Push labels on stack for reverse walkthrough. */
@@ -104,7 +105,7 @@ static int reverse_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, char *addr_str)
 {
 	/* Find prefix label count (additive to prefix length). */
-	const knot_dname_t *addr_label = knot_pkt_qname(qdata->query);
+	const knot_dname_t *addr_label = qdata->name;
 
 	/* Mismatch if label shorter/equal than prefix. */
 	int prefix_len = strlen(tpl->prefix);
@@ -126,7 +127,7 @@ static int addr_parse(struct query_data *qdata, synth_template_t *tpl, char *add
 {
 	/* Check if we have at least 1 label below zone. */
 	int zone_labels = knot_dname_labels(qdata->zone->name, NULL);
-	int label_count = knot_dname_labels(knot_pkt_qname(qdata->query), qdata->query->wire);
+	int label_count = knot_dname_labels(qdata->name, qdata->query->wire);
 	if (label_count < zone_labels + 1) {
 		return KNOT_EINVAL;
 	}
@@ -170,67 +171,68 @@ static knot_dname_t *synth_ptrname(const char *addr_str, synth_template_t *tpl)
 	return knot_dname_from_str(ptrname);
 }
 
-static knot_rrset_t *reverse_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, struct query_data *qdata)
+static int reverse_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, knot_rrset_t *rr)
 {
-	/* Synthetize PTR record. */
-	knot_dname_t* qname = knot_dname_copy(knot_pkt_qname(qdata->query));
-	knot_rrset_t *rr = knot_rrset_new(qname, KNOT_RRTYPE_PTR, KNOT_CLASS_IN, &pkt->mm);
-	if (rr == NULL) {
-		knot_dname_free(&qname);
-		return NULL;
-	}
-
 	/* Synthetize PTR record data. */
 	knot_dname_t *ptrname = synth_ptrname(addr_str, tpl);
 	if (ptrname == NULL) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
+
+	rr->type = KNOT_RRTYPE_PTR;
 	knot_rrset_add_rr(rr, ptrname, knot_dname_size(ptrname), tpl->ttl, &pkt->mm);
 	knot_dname_free(&ptrname);
 
-	return rr;
+	return KNOT_EOK;
 }
 
-static knot_rrset_t *forward_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, struct query_data *qdata)
+static int forward_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, knot_rrset_t *rr)
 {
-	/* Decide synthetic record A/AAAA type. */
-	int family = tpl->subnet.ss.ss_family;
-	uint16_t rr_class = KNOT_RRTYPE_A;
-	if (family == AF_INET6) {
-		rr_class = KNOT_RRTYPE_AAAA;
-	}
-
-	knot_dname_t* qname = knot_dname_copy(knot_pkt_qname(qdata->query));
-	knot_rrset_t *rr = knot_rrset_new(qname, rr_class, KNOT_CLASS_IN, &pkt->mm);
-	if (rr == NULL) {
-		knot_dname_free(&qname);
-		return NULL;
-	}
-
 	struct sockaddr_storage query_addr = {'\0'};
-	sockaddr_set(&query_addr, family, addr_str, 0);
+	sockaddr_set(&query_addr, tpl->subnet.ss.ss_family, addr_str, 0);
 
-	/* Append address. */
-	if (family == AF_INET6) {
+	/* Specify address type and data. */
+	if (tpl->subnet.ss.ss_family == AF_INET6) {
+		rr->type = KNOT_RRTYPE_AAAA;
 		const struct sockaddr_in6* ip = (const struct sockaddr_in6*)&query_addr;
 		knot_rrset_add_rr(rr, (const uint8_t *)&ip->sin6_addr, sizeof(struct in6_addr),
 		                  tpl->ttl, &pkt->mm);
-	} else {
+	} else if (tpl->subnet.ss.ss_family == AF_INET) {
+		rr->type = KNOT_RRTYPE_A;
 		const struct sockaddr_in* ip = (const struct sockaddr_in*)&query_addr;
 		knot_rrset_add_rr(rr, (const uint8_t *)&ip->sin_addr, sizeof(struct in_addr),
 		                  tpl->ttl, &pkt->mm);
+	} else {
+		return KNOT_EINVAL;
 	}
 
-	return rr;
+	return KNOT_EOK;
 }
 
 static knot_rrset_t *synth_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, struct query_data *qdata)
 {
-	switch(tpl->type) {
-	case SYNTH_REVERSE: return reverse_rr(addr_str, tpl, pkt, qdata);
-	case SYNTH_FORWARD: return forward_rr(addr_str, tpl, pkt, qdata);
-	default:            return NULL;
+	/* Synthetize empty RR. */
+	knot_dname_t* qname = knot_dname_copy(qdata->name);
+	knot_rrset_t *rr = knot_rrset_new(qname, 0, KNOT_CLASS_IN, &pkt->mm);
+	if (rr == NULL) {
+		knot_dname_free(&qname);
+		return NULL;
 	}
+
+	/* Fill in the specific data. */
+	int ret = KNOT_ERROR;
+	switch(tpl->type) {
+	case SYNTH_REVERSE: ret = reverse_rr(addr_str, tpl, pkt, rr); break;
+	case SYNTH_FORWARD: ret = forward_rr(addr_str, tpl, pkt, rr); break;
+	default: break;
+	}
+
+	if (ret != KNOT_EOK) {
+		knot_rrset_deep_free(&rr, true, &pkt->mm);
+		return NULL;
+	}
+
+	return rr;
 }
 
 /*! \brief Check if query fits the template requirements. */
@@ -255,12 +257,22 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 	}
 
 	/* Check if the request is for a available query type. */
-	if (tpl->type == SYNTH_FORWARD) {
-		int requested_af = qtype_addrfamily(knot_pkt_qtype(qdata->query));
-		if (requested_af != provided_af) {
+	uint16_t qtype = knot_pkt_qtype(qdata->query);
+	switch(tpl->type) {
+	case SYNTH_FORWARD:
+		if (!query_satisfied_by_family(qtype, provided_af)) {
 			qdata->rcode = KNOT_RCODE_NOERROR;
 			return NODATA;
 		}
+		break;
+	case SYNTH_REVERSE:
+		if (qtype != KNOT_RRTYPE_PTR && qtype != KNOT_RRTYPE_ANY) {
+			qdata->rcode = KNOT_RCODE_NOERROR;
+			return NODATA;
+		}
+		break;
+	default:
+		break;
 	}
 
 	/* Synthetise record from template. */
@@ -270,11 +282,13 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 		return ERROR;
 	}
 
-	/* Create empty response with PTR record in AN. */
-	knot_pkt_init_response(pkt, qdata->query);
-	if (knot_pkt_put(pkt, COMPR_HINT_QNAME, rr, KNOT_PF_FREE) != KNOT_EOK) {
+	/* Insert synthetic response into packet. */
+	if (knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE) != KNOT_EOK) {
 		return ERROR;
 	}
+
+	/* Authoritative response. */
+	knot_wire_set_aa(pkt->wire);
 
 	return HIT;
 }
