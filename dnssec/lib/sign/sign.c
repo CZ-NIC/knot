@@ -442,17 +442,18 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 	}
 
 	assert(ctx->key->private_key);
-	_cleanup_datum_ gnutls_datum_t raw_signature = { 0 };
+	_cleanup_datum_ gnutls_datum_t raw = { 0 };
 	result = gnutls_privkey_sign_hash(ctx->key->private_key,
 					  ctx->hash_algorithm,
-					  0, &hash, &raw_signature);
-	if (!result) {
+					  0, &hash, &raw);
+	if (result < 0) {
 		return DNSSEC_SIGN_ERROR;
 	}
 
-	// TODO: conversion
+	dnssec_binary_t bin_raw = { 0 };
+	datum_to_binary(&raw, &bin_raw);
 
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return ctx->functions->x509_to_dnssec(ctx, &bin_raw, signature);
 }
 
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
@@ -471,18 +472,25 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 		return result;
 	}
 
-	_cleanup_datum_ gnutls_datum_t raw_signature = { 0 };
+	_cleanup_binary_ dnssec_binary_t bin_raw = { 0 };
+	result = ctx->functions->dnssec_to_x509(ctx, signature, &bin_raw);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	gnutls_datum_t raw = { 0 };
+	binary_to_datum(&bin_raw, &raw);
+
 	gnutls_sign_algorithm_t algorithm = get_sign_algorithm(ctx);
 
 	assert(ctx->key->public_key);
 	result = gnutls_pubkey_verify_hash2(ctx->key->public_key, algorithm,
-					    0, &hash, &raw_signature);
-	if (result < 0) {
-		assert(result == GNUTLS_E_PK_SIG_VERIFY_FAILED);
+					    0, &hash, &raw);
+	if (result == GNUTLS_E_PK_SIG_VERIFY_FAILED) {
 		return DNSSEC_INVALID_SIGNATURE;
+	} else if (result < 0) {
+		return DNSSEC_ERROR;
 	}
 
-	// TODO: add retval for failed verification.
-
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return DNSSEC_EOK;
 }

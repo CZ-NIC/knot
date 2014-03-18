@@ -66,6 +66,8 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature);
  * \param ctx        Signing context.
  * \param signature  Signature to be verified.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code.
+ * \retval DNSSEC_EOK                Validation successful, valid signature.
+ * \retval DNSSEC_INVALID_SIGNATURE  Validation successful, invalid signature.
  */
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature);
