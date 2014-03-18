@@ -6,8 +6,6 @@
 
 /* Defines. */
 #define ARPA_ZONE_LABELS 2
-#define IP4_ARPA_NAME (const uint8_t *)("\x7""in-addr""\x4""arpa""\x0")
-#define IP6_ARPA_NAME (const uint8_t *)("\x3""ip6""\x4""arpa""\x0")
 #define MODULE_ERR(msg...) log_zone_error("Module 'synth_record': " msg)
 
 /*! \brief Supported answer synthesis template types. */
@@ -48,8 +46,18 @@ static char str_separator(int addr_family)
 	return '.';
 }
 
+/*! \brief QTYPE to address family. */
+static int qtype_addrfamily(uint16_t qtype)
+{
+	switch(qtype) {
+	case KNOT_RRTYPE_A:    return AF_INET;
+	case KNOT_RRTYPE_AAAA: return AF_INET6;
+	default:               return AF_UNSPEC;
+	}
+}
+
 /*! \brief Parse address from reverse query QNAME and return address family. */
-static int reverse_addr_parse(struct query_data *qdata, char *addr_str)
+static int reverse_addr_parse(struct query_data *qdata, synth_template_t *tpl, char *addr_str)
 {
 	/* QNAME required format is [address].[subnet/zone]
 	 * f.e.  [1.0...0].[h.g.f.e.0.0.0.0.d.c.b.a.ip6.arpa] represents
@@ -57,33 +65,18 @@ static int reverse_addr_parse(struct query_data *qdata, char *addr_str)
 	const knot_dname_t* label = knot_pkt_qname(qdata->query);
 	const uint8_t *query_wire = qdata->query->wire;
 
-	/* Check if we have at least 3 last labels for arpa zone and label. */
-	int label_count = knot_dname_labels(label, query_wire);
-	if (label_count <= ARPA_ZONE_LABELS) {
-		return AF_UNSPEC;
-	}
-
 	/* Push labels on stack for reverse walkthrough. */
 	const uint8_t* label_stack[KNOT_DNAME_MAXLABELS];
 	const uint8_t** sp = label_stack;
+	int label_count = knot_dname_labels(label, query_wire);
 	while(label_count > ARPA_ZONE_LABELS) {
 		*sp++ = label;
 		label = knot_wire_next_label(label, query_wire);
 		--label_count;
 	}
 
-	/* Check remaining suffix if we're matching IPv6/IPv4 */
-	int family = AF_UNSPEC;
-	if (knot_dname_is_equal(label, IP4_ARPA_NAME)) {
-		family = AF_INET;
-	} else if (knot_dname_is_equal(label, IP6_ARPA_NAME)) {
-		family = AF_INET6;
-	} else {
-		return AF_UNSPEC;
-	}
-
 	/* Write formatted address string. */
-	char sep = str_separator(family);
+	char sep = str_separator(tpl->subnet.ss.ss_family);
 	int sep_frequency = 1;
 	if (sep == ':') {
 		sep_frequency = 4; /* Separator per 4 hexdigits. */
@@ -105,20 +98,13 @@ static int reverse_addr_parse(struct query_data *qdata, char *addr_str)
 		label_count += 1;
 	}
 
-	return family;
+	return KNOT_EOK;
 }
 
 static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, char *addr_str)
 {
 	/* Find prefix label count (additive to prefix length). */
 	const knot_dname_t *addr_label = knot_pkt_qname(qdata->query);
-
-	/* Mismatch extra labels after address. */
-	int query_labels = knot_dname_labels(addr_label, qdata->query->wire);
-	int zone_labels = knot_dname_labels(qdata->zone->name, NULL);
-	if (query_labels - zone_labels != 1) {
-		return KNOT_EINVAL;
-	}
 
 	/* Mismatch if label shorter/equal than prefix. */
 	int prefix_len = strlen(tpl->prefix);
@@ -132,19 +118,21 @@ static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	/* Restore correct address format. */
 	char sep = str_separator(tpl->subnet.ss.ss_family);
 	str_subst(addr_str, addr_len, '-', sep);
-	
-	/* Get family from QTYPE. */
-	switch(knot_pkt_qtype(qdata->query)) {
-	case KNOT_RRTYPE_A:    return AF_INET;
-	case KNOT_RRTYPE_AAAA: return AF_INET6;
-	default:               return KNOT_EINVAL;
-	}
+
+	return KNOT_EOK;
 }
 
 static int addr_parse(struct query_data *qdata, synth_template_t *tpl, char *addr_str)
 {
+	/* Check if we have at least 1 label below zone. */
+	int zone_labels = knot_dname_labels(qdata->zone->name, NULL);
+	int label_count = knot_dname_labels(knot_pkt_qname(qdata->query), qdata->query->wire);
+	if (label_count < zone_labels + 1) {
+		return KNOT_EINVAL;
+	}
+
 	switch(tpl->type) {
-	case SYNTH_REVERSE: return reverse_addr_parse(qdata, addr_str);
+	case SYNTH_REVERSE: return reverse_addr_parse(qdata, tpl, addr_str);
 	case SYNTH_FORWARD: return forward_addr_parse(qdata, tpl, addr_str);
 	default:            return KNOT_EINVAL;
 	}
@@ -250,19 +238,29 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 {
 	/* Parse address from query name. */
 	char addr_str[SOCKADDR_STRLEN] = { '\0' };
-	int family = addr_parse(qdata, tpl, addr_str);
-	if (family != AF_INET && family != AF_INET6) {
+	int ret = addr_parse(qdata, tpl, addr_str);
+	if (ret != KNOT_EOK) {
 		return state; /* Can't identify addr in QNAME, not applicable. */
 	}
 
 	/* Match against template netblock. */
-	struct sockaddr_storage query_addr;
-	int ret = sockaddr_set(&query_addr, family, addr_str, 0);
+	struct sockaddr_storage query_addr = { '\0' };
+	int provided_af = tpl->subnet.ss.ss_family;
+	ret = sockaddr_set(&query_addr, provided_af, addr_str, 0);
 	if (ret == KNOT_EOK) {
 		ret = netblock_match(&tpl->subnet, &query_addr);
 	}
 	if (ret != 0) {
 		return state; /* Out of our netblock, not applicable. */
+	}
+
+	/* Check if the request is for a available query type. */
+	if (tpl->type == SYNTH_FORWARD) {
+		int requested_af = qtype_addrfamily(knot_pkt_qtype(qdata->query));
+		if (requested_af != provided_af) {
+			qdata->rcode = KNOT_RCODE_NOERROR;
+			return NODATA;
+		}
 	}
 
 	/* Synthetise record from template. */
@@ -271,8 +269,6 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return ERROR;
 	}
-
-	/*! \todo Minimal TTL if not configured, after SOA record API cleanup. */
 
 	/* Create empty response with PTR record in AN. */
 	knot_pkt_init_response(pkt, qdata->query);
