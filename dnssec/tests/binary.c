@@ -12,10 +12,8 @@ typedef struct test_string {
 	size_t decoded_size;
 } test_string_t;
 
-int main(void)
+static void test_base64(void)
 {
-	plan_lazy();
-
 	test_string_t data[] = {
 		{ "YQ==",     4, "a",      1 },
 		{ "YWI=",     4, "ab",     2 },
@@ -44,7 +42,10 @@ int main(void)
 
 		dnssec_binary_free(&binary);
 	}
+}
 
+static void test_dup(void)
+{
 	dnssec_binary_t src = { .size = 5, .data = (uint8_t *) "ahoj" };
 	dnssec_binary_t dst = { 0 };
 
@@ -54,6 +55,37 @@ int main(void)
 	   "dnssec_binary_dup()");
 
 	dnssec_binary_free(&dst);
+}
+
+static void test_ltrim(void)
+{
+	dnssec_binary_t trim_me = {
+		.size = 4,
+		.data = (uint8_t []) { 0x02, 0x00, 0x01, 0x00 }
+	};
+
+	dnssec_binary_ltrim(&trim_me);
+	ok(trim_me.size == 4 && trim_me.data[0] == 0x02,
+	   "dnssec_binary_ltrim() nothing to trim");
+
+	trim_me.data[0] = 0x00;
+	dnssec_binary_ltrim(&trim_me);
+	ok(trim_me.size == 2 && trim_me.data[0] == 0x01,
+	   "dnssec_binary_ltrim() trim a few");
+
+	trim_me.data[0] = 0x00;
+	dnssec_binary_ltrim(&trim_me);
+	ok(trim_me.size == 1 && trim_me.data[0] == 0x00,
+	   "dnssec_binary_ltrim() preserve last zero");
+}
+
+int main(void)
+{
+	plan_lazy();
+
+	test_base64();
+	test_dup();
+	test_ltrim();
 
 	return 0;
 }

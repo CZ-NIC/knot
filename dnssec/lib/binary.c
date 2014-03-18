@@ -136,3 +136,24 @@ int dnssec_binary_cmp(const dnssec_binary_t *one, const dnssec_binary_t *two)
 		return +1;
 	}
 }
+
+void dnssec_binary_ltrim(dnssec_binary_t *binary)
+{
+	if (!binary || !binary->data) {
+		return;
+	}
+
+	size_t start = 0;
+	while (start + 1 < binary->size && binary->data[start] == 0x00) {
+		start += 1;
+	}
+
+	if (start == 0) {
+		return;
+	}
+
+	size_t new_size = binary->size - start;
+
+	memmove(binary->data, binary->data + start, new_size);
+	binary->size = new_size;
+}
