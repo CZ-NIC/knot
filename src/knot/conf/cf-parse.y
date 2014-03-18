@@ -845,8 +845,6 @@ query_module:
  ;
 
 query_module_list:
-   query_module
- | query_module ',' query_module_list
  | query_module ';' query_module_list
  ;
 

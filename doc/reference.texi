@@ -703,7 +703,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
     [ @code{notify-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{notify-out} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
     [ @code{update-in} @kbd{remote_id} [, @kbd{remote_id}, @dots{} ]@code{;} ]
-    [ @code{query_module} @code{@{} @kbd{module_name} @code{"}@kbd{string}@code{"} [, @kbd{module_name} @code{"}@kbd{string}@code{"}, @dots{} ] @code{@}} ]
+    [ @code{query_module} @code{@{} @kbd{module_name} @code{"}@kbd{string}@code{"}@code{;} [ @kbd{module_name} @code{"}@kbd{string}@code{"}; @dots{} ] @code{@}} ]
     [ @kbd{zone_options} ]
   @code{@}}
 @code{@}}
