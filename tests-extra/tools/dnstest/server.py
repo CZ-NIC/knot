@@ -91,10 +91,15 @@ class Zone(object):
         self.ddns = ddns
         # ixfr from differences
         self.ixfr = ixfr
+        # modules
+        self.query_modules = []
 
     @property
     def name(self):
         return self.zfile.name
+
+    def add_query_module(self, module, param):
+        self.query_modules.append((module, param))
 
 class Server(object):
     '''Specification of DNS server'''
@@ -610,6 +615,15 @@ class Server(object):
 
         self.zones[zone.name].zfile.upd_file(version=version)
 
+    def add_query_module(self, zone, module, param):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
+        self.zones[zone.name].add_query_module(module, param)
+
 class Bind(Server):
 
     def __init__(self):
@@ -895,6 +909,12 @@ class Knot(Server):
 
             if z.ixfr and not z.master:
                 s.item("ixfr-from-differences", "on")
+
+            if len(z.query_modules) > 0:
+                s.begin("query_module")
+                for query_module in z.query_modules:
+                    s.item(query_module[0], '"' + query_module[1] + '"')
+                s.end()
             s.end()
         s.end()
 
