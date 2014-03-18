@@ -26,5 +26,4 @@ check-local: $(check_PROGRAMS)
 	$(top_builddir)/libtap/runtests -s $(srcdir) \
 					-b $(builddir) \
 					-L $(builddir)/runtests.log \
-					$(check_PROGRAMS) || :
-	@echo -e '\033[1;31mWARNING\e[0m: The result of DNSSEC tests is ignored!'
+					$(check_PROGRAMS)
