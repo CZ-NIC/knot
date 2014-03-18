@@ -117,8 +117,10 @@ static int dsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 		return result;
 	}
 
+	dnssec_binary_ltrim(&value_r);
+	dnssec_binary_ltrim(&value_s);
+
 	if (value_r.size > 20 || value_s.size > 20) {
-		// TODO: possibly zero-padding from the left?
 		return DNSSEC_MALFORMED_DATA;
 	}
 
@@ -199,10 +201,14 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 
 	dnssec_binary_t value_r = { 0 };
 	dnssec_binary_t value_s = { 0 };
+
 	int result = dss_sig_value_decode(x509, &value_r, &value_s);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
+
+	dnssec_binary_ltrim(&value_r);
+	dnssec_binary_ltrim(&value_s);
 
 	size_t int_size = ecdsa_sign_integer_size(ctx);
 	assert(int_size > 0);

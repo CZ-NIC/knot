@@ -13,22 +13,20 @@
 #include "wire.h"
 
 /**
- * Trim leading zero from binary data.
+ * Trim leading zeroes from binary data.
  *
  * GnuTLS uses Nettle, Nettle uses GMP, and some GMP conversions operations
  * return numbers prefixed with a zero byte. The byte is useless and can
  * create incompatibility with other DNSSEC software.
  */
-static void trim_leading_zero(gnutls_datum_t *data)
+static void trim_leading_zeros(gnutls_datum_t *data)
 {
 	assert(data);
 
-	if (data->data[0] == '\0') {
-		memmove(data->data, data->data + 1, data->size - 1);
-		data->size -= 1;
-
-		assert(data->data[0] != '\0');
-	}
+	dnssec_binary_t tmp = { 0 };
+	datum_to_binary(data, &tmp);
+	dnssec_binary_ltrim(&tmp);
+	binary_to_datum(&tmp, data);
 }
 
 /* -- DNSSEC to crypto ------------------------------------------------------*/
@@ -49,8 +47,8 @@ static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	trim_leading_zero(&modulus);
-	trim_leading_zero(&pub_exponent);
+	trim_leading_zeros(&modulus);
+	trim_leading_zeros(&pub_exponent);
 
 	assert(pub_exponent.size <= UINT8_MAX);
 
@@ -90,10 +88,10 @@ static int dsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	trim_leading_zero(&p);
-	trim_leading_zero(&q);
-	trim_leading_zero(&g);
-	trim_leading_zero(&y);
+	trim_leading_zeros(&p);
+	trim_leading_zeros(&q);
+	trim_leading_zeros(&g);
+	trim_leading_zeros(&y);
 
 	if (q.size != 20) {
 		// only certain key size range can be exported in DNSKEY
@@ -142,8 +140,8 @@ int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	trim_leading_zero(&point_x);
-	trim_leading_zero(&point_y);
+	trim_leading_zeros(&point_x);
+	trim_leading_zeros(&point_y);
 
 	assert(point_x.size == point_y.size);
 

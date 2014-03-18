@@ -83,3 +83,13 @@ static inline void binary_to_datum(const dnssec_binary_t *binary,
 	datum->data = binary->data;
 	datum->size = binary->size;
 }
+
+static inline void datum_to_binary(const gnutls_datum_t *datum,
+				   dnssec_binary_t *binary)
+{
+	assert(datum);
+	assert(binary);
+
+	binary->data = datum->data;
+	binary->size = datum->size;
+}
