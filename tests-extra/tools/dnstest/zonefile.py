@@ -129,6 +129,8 @@ class ZoneFile(object):
         with open(self.path, "a") as file:
             file.write("@ 0 NSEC3PARAM 1 0 %i %s" % (iters, salt))
 
+        self.update_serial()
+
     def disable_nsec3(self):
         '''Remove NSEC3PARAM record if any.'''
 
@@ -142,6 +144,8 @@ class ZoneFile(object):
 
         os.remove(old_name)
 
+        self.update_serial()
+
     def backup(self):
         '''Make a backup copy of the actual zone file.'''
 
@@ -150,3 +154,26 @@ class ZoneFile(object):
             self.backup_num += 1
         except:
             raise Exception("Can't make a copy of zone file %s" % self.path)
+
+    def update_serial(self, new_serial=None):
+        '''Change SOA serial.'''
+
+        serial = None
+        first = False
+
+        old_name = self.path + ".old"
+        os.rename(self.path, old_name)
+
+        with open(old_name) as old_file, open(self.path, 'w') as new_file:
+            for line in old_file:
+                if "SOA" in line and not first:
+                    items = line.split()
+                    serial = int(items[-5])
+                    items[-5] = str(serial + 1) if not new_serial else str(new_serial)
+                    new_file.write(str.join(" ", items))
+                    new_file.write("\n")
+                    first = True
+                else:
+                    new_file.write(line)
+
+        os.remove(old_name)

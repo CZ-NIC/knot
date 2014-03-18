@@ -8,13 +8,16 @@ from dnstest.test import Test
 t = Test()
 
 master = t.server("knot")
+slave = t.server("bind")
 zone = t.zone_rnd(1, dnssec=False)
-t.link(zone, master)
+t.link(zone, master, slave)
 
 t.start()
 
 # Wait for listening server with unsigned zone.
 old_serial = master.zone_wait(zone)
+slave.zone_wait(zone)
+t.xfr_diff(master, slave, zone)
 
 # Check NSEC absence.
 master.check_nsec(zone, nonsec=True)
@@ -32,8 +35,9 @@ master.gen_confile()
 master.start()
 
 # Wait for changed zone and flush.
-new_serial = master.zone_wait(zone, serial=old_serial)
-t.sleep(1)
+new_serial = master.zone_wait(zone, old_serial)
+slave.zone_wait(zone, old_serial)
+t.xfr_diff(master, slave, zone)
 master.flush()
 t.sleep(1)
 
@@ -62,8 +66,9 @@ master.gen_confile()
 master.start()
 
 # Wait for changed zone and flush.
-master.zone_wait(zone, serial=new_serial)
-t.sleep(1)
+master.zone_wait(zone, new_serial)
+slave.zone_wait(zone, new_serial)
+t.xfr_diff(master, slave, zone)
 master.flush()
 t.sleep(1)
 
