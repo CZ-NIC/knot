@@ -267,11 +267,10 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	}
 
 	if (to_remove != NULL && result != KNOT_EOK) {
-		int free_owners = true;
-		knot_rrset_deep_free(&to_remove, free_owners, NULL);
+		knot_rrset_free(&to_remove, NULL);
 	}
 
-	knot_rrset_deep_free(&synth_rrsig, true, NULL);
+	knot_rrset_free(&synth_rrsig, NULL);
 
 	return result;
 }
@@ -334,8 +333,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	}
 
 	if (to_add != NULL && result != KNOT_EOK) {
-		int free_owners = true;
-		knot_rrset_deep_free(&to_add, free_owners, NULL);
+		knot_rrset_free(&to_add, NULL);
 	}
 
 	return result;
@@ -369,7 +367,7 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 	ret = knot_changeset_add_rrset(changeset, synth_rrsig,
 	                               KNOT_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&synth_rrsig, true, NULL);
+		knot_rrset_free(&synth_rrsig, NULL);
 	}
 
 	return ret;
@@ -459,12 +457,12 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 			}
 			int ret = knot_rrset_add_rr_from_rrset(to_remove, rrsigs, i, NULL);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&to_remove, true, NULL);
+				knot_rrset_free(&to_remove, NULL);
 				return ret;
 			}
 			ret = knot_changeset_add_rr(changeset, to_remove, KNOT_CHANGESET_REMOVE);
 			if (ret != KNOT_EOK) {
-				knot_rrset_deep_free(&to_remove, true, NULL);
+				knot_rrset_free(&to_remove, NULL);
 				return ret;
 			}
 		}
@@ -739,7 +737,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 
 	if (knot_rrset_rr_ttl(dnskeys, 0) != knot_rrset_rr_ttl(soa, 0)) {
 		dbg_dnssec_detail("removing DNSKEYs (SOA TTL differs)\n");
-		result = knot_rrset_deep_copy(dnskeys, &to_remove, NULL);
+		result = knot_rrset_copy(dnskeys, &to_remove, NULL);
 		goto done;
 	}
 
@@ -785,7 +783,7 @@ done:
 	}
 
 	if (to_remove != NULL && result != KNOT_EOK) {
-		knot_rrset_deep_free(&to_remove, 1, NULL);
+		knot_rrset_free(&to_remove, NULL);
 	}
 
 	return result;
@@ -869,7 +867,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 		//! \todo Sorting should be handled by changesets application.
 		result = knot_rrset_sort_rdata(to_add);
 		if (result != KNOT_EOK) {
-			knot_rrset_deep_free(&to_add, 1, NULL);
+			knot_rrset_free(&to_add, NULL);
 			return result;
 		}
 		result = knot_changeset_add_rrset(changeset, to_add,
@@ -877,7 +875,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	}
 
 	if (to_add != NULL && result != KNOT_EOK) {
-		knot_rrset_deep_free(&to_add, 1, NULL);
+		knot_rrset_free(&to_add, NULL);
 	}
 
 	return result;
@@ -962,7 +960,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 
 fail:
 
-	knot_rrset_deep_free(&new_dnskeys, 1, NULL);
+	knot_rrset_free(&new_dnskeys, NULL);
 	return result;
 }
 
@@ -1020,7 +1018,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	bool signatures_exist = (dnskeys &&
 	                        all_signatures_exist(dnskeys, dnskey_rrsig,
 	                                             zone_keys, policy));
-	knot_rrset_deep_free(&dnskey_rrsig, true, NULL);
+	knot_rrset_free(&dnskey_rrsig, NULL);
 	if (!modified && signatures_exist) {
 		return KNOT_EOK;
 	}
@@ -1358,14 +1356,14 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	knot_rrset_t *soa_from = NULL;
 	knot_rrset_t *soa_to = NULL;
 
-	result = knot_rrset_deep_copy(soa, &soa_from, NULL);
+	result = knot_rrset_copy(soa, &soa_from, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
-	result = knot_rrset_deep_copy(soa, &soa_to, NULL);
+	result = knot_rrset_copy(soa, &soa_to, NULL);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&soa_from, 1, NULL);
+		knot_rrset_free(&soa_from, NULL);
 		return result;
 	}
 
@@ -1375,8 +1373,8 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	result = add_missing_rrsigs(soa_to, NULL, zone_keys, policy, changeset);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&soa_from, 1, NULL);
-		knot_rrset_deep_free(&soa_to, 1, NULL);
+		knot_rrset_free(&soa_from, NULL);
+		knot_rrset_free(&soa_to, NULL);
 		return result;
 	}
 

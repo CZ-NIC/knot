@@ -511,7 +511,7 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 
 	ret = knot_pkt_put(resp, 0, rr, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1, NULL);
+		knot_rrset_free(&rr, NULL);
 		goto failed;
 	}
 
