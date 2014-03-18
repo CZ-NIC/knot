@@ -261,17 +261,17 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
  *
  * \return KNOT_E*
  */
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
-                         mm_ctx_t *mm);
+int knot_rrset_copy(const knot_rrset_t *from, knot_rrset_t **to, mm_ctx_t *mm);
 
 /*!
  * \brief Destroys the RRSet structure and all its substructures.
  )
  * Also sets the given pointer to NULL.
  *
- * \param rrset       RRset to be destroyed.
+ * \param rrset  RRset to be destroyed.
+ * \param mm     Memory context.
  */
-void knot_rrset_deep_free(knot_rrset_t **rrset, mm_ctx_t *mm);
+void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
 
 /*!
  * \brief Converts RRSet structure to wireformat, compression included.

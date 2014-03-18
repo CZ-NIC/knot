@@ -211,7 +211,7 @@ static void print_section_question(const knot_dname_t *owner,
 
 	printf("%s\n", buf);
 
-	knot_rrset_deep_free(&question, NULL);
+	knot_rrset_free(&question, NULL);
 	free(buf);
 }
 
