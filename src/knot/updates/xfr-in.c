@@ -311,8 +311,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 	}
 
 	// Init zone creator
-	zcreator_t zc = {.z = *zone,
-	                 .last_node = NULL, .ret = KNOT_EOK };
+	zcreator_t zc = {.z = *zone, .ret = KNOT_EOK };
 
 
 	while (ret == KNOT_EOK && rr) {
