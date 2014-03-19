@@ -1310,6 +1310,9 @@ static int zones_process_update_auth(knot_zone_t *zone,
 		zones_schedule_ixfr_sync(zone, 0);
 	}
 
+	/* Zone has changed. Issue notifications. */
+	zones_schedule_notify(zone);
+
 	// Prepare DDNS response.
 	assert(*rcode == KNOT_RCODE_NOERROR);
 	dbg_zones_verb("Preparing NOERROR UPDATE response RCODE=%u "
@@ -2746,6 +2749,9 @@ int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *refresh_at)
 	}
 
 	log_zone_info("%s Successfully signed.\n", msgpref);
+
+	/* DNSSEC signing passed, zone has changed. Issue notifications. */
+	zones_schedule_notify(zone);
 
 done:
 	knot_changesets_free(&chs);
