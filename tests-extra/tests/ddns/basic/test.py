@@ -139,8 +139,9 @@ def do_normal_tests(master, zone, dnssec=False):
     up.add("cname.ddns.", "3600", "A", "1.2.3.4")
     up.send("NOERROR")
     resp = master.dig("cname.ddns.", "ANY")
+    resp.check(rcode="NOERROR")
+    resp.check_record(rtype="A", nordata="1.2.3.4")
     resp.check_record(rtype="CNAME", rdata="mail.ddns.")
-    compare(resp.count(), 1, "Added A when it shouldn't")
     verify(master, zone, dnssec)
 
     # add CNAME to CNAME node, should be replaced
@@ -292,18 +293,6 @@ def do_refusal_tests(master, zone, dnssec=False):
     resp.check(rcode="NXDOMAIN")
     check_soa(master, prev_soa)
 
-    # Add DNAME to CNAME node
-    check_log("Add extra DNAME rollback")
-    up = master.update(zone)
-    up.add("rollback.ddns.", 3600, "TXT", "do not add me")
-    up.add("cname.ddns.", 3600, "DNAME", "ddns.")
-    up.send("REFUSED")
-    resp = master.dig("rollback.ddns", "ANY")
-    resp.check(rcode="NXDOMAIN")
-    resp = master.dig("forbidden.ddns", "ANY")
-    resp.check(rcode="NXDOMAIN")
-    check_soa(master, prev_soa)
-
     # Add DNAME children
     check_log("Add DNAME children rollback")
     up = master.update(zone)
@@ -312,15 +301,6 @@ def do_refusal_tests(master, zone, dnssec=False):
     up.send("REFUSED")
     resp = master.dig("rollback.ddns", "ANY")
     resp.check(rcode="NXDOMAIN")
-    resp = master.dig("forbidden.ddns", "ANY")
-    resp.check(rcode="NXDOMAIN")
-    check_soa(master, prev_soa)
-
-    # Remove SOA, ignore
-    check_log("Remove SOA")
-    up = master.update(zone)
-    up.delete("ddns.", "SOA")
-    up.send("MALFORMED")
     check_soa(master, prev_soa)
 
     # Out-of-zone data
@@ -330,12 +310,26 @@ def do_refusal_tests(master, zone, dnssec=False):
     up.send("NOTZONE")
     check_soa(master, prev_soa)
 
+    # Remove 'all' SOA, ignore
+    check_log("Remove all SOA")
+    up = master.update(zone)
+    up.delete("ddns.", "SOA")
+    up.send("NOERROR")
+    check_soa(master, prev_soa)
+
+    # Remove specific SOA, ignore
+    check_log("Remove specific SOA")
+    up = master.update(zone)
+    up.delete("ddns.", "SOA", "dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
+    up.send("NOERROR")
+    check_soa(master, prev_soa)
+
     if dnssec:
         # NSEC3PARAM for non-apex node
         check_log("Non-apex NSEC3PARAM")
         up = master.update(zone)
         up.add("not.apex.ddns.", "0", "NSEC3PARAM", "1 0 10 B8399FF56C1C0C7E")
-        up.send("MALFORMED")
+        up.send("REFUSED")
         resp = master.dig("not.apex.ddns", "NSEC3PARAM")
         resp.check(rcode="NXDOMAIN")
         check_soa(master, prev_soa)
@@ -373,6 +367,8 @@ def do_nsec3param_tests(master, zone):
     resp.check(rcode="NOERROR", nordata="1 0 10 CAFEBABE")
     resp.check(rcode="NOERROR", rdata="1 0 10 BADDCAFE")
     verify(master, zone, dnssec=True)
+
+    # Normal deletion tested in DNSSEC tests
 
 zone = t.zone("ddns.", storage=".")
 

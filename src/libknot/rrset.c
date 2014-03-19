@@ -166,6 +166,45 @@ static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
 	return cmp;
 }
 
+/*!
+ * \brief RRSet RDATA equality check.
+ *
+ * \param r1  First RRSet.
+ * \param r2  Second RRSet.
+ *
+ * \return True if RRs in r1 are equal to RRs in r2, false otherwise.
+ */
+static bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
+{
+	if (r1 == NULL || r2 == NULL || (r1->type != r2->type) ||
+	    r1->rrs == NULL || r2->rrs == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	uint16_t r1_rdata_count = knot_rrset_rr_count(r1);
+	uint16_t r2_rdata_count = knot_rrset_rr_count(r2);
+
+	if (r1_rdata_count != r2_rdata_count) {
+		return false;
+	}
+
+	for (uint16_t i = 0; i < r1_rdata_count; i++) {
+		bool found = false;
+		for (uint16_t j = 0; j < r2_rdata_count; j++) {
+			if (rrset_rdata_compare_one(r1, r2, i, j) == 0) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static int knot_rrset_header_to_wire(const knot_rrset_t *rrset, uint32_t ttl,
                                      uint8_t **pos, size_t max_size,
                                      knot_compr_t *compr, size_t *size)
@@ -766,40 +805,6 @@ uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos)
 	} else {
 		return NULL;
 	}
-}
-
-/*!
- * \brief Compare two RR sets, order of RDATA is not significant.
- */
-bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
-{
-	if (r1 == NULL || r2 == NULL || (r1->type != r2->type) ||
-	    r1->rrs == NULL || r2->rrs == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	uint16_t r1_rdata_count = knot_rrset_rr_count(r1);
-	uint16_t r2_rdata_count = knot_rrset_rr_count(r2);
-
-	if (r1_rdata_count != r2_rdata_count) {
-		return false;
-	}
-
-	for (uint16_t i = 0; i < r1_rdata_count; i++) {
-		bool found = false;
-		for (uint16_t j = 0; j < r2_rdata_count; j++) {
-			if (rrset_rdata_compare_one(r1, r2, i, j) == 0) {
-				found = true;
-				break;
-			}
-		}
-
-		if (!found) {
-			return false;
-		}
-	}
-
-	return true;
 }
 
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
