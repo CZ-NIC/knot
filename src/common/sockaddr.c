@@ -156,13 +156,13 @@ void sockaddr_port_set(struct sockaddr_storage *ss, uint16_t port)
 char *sockaddr_hostname(void)
 {
 	/* Fetch hostname. */
-	char host[KNOT_DNAME_MAXLEN];
+	char host[KNOT_DNAME_MAXLEN] = {'\0'};
 	if (gethostname(host, KNOT_DNAME_MAXLEN) != 0) {
 		return NULL;
 	}
 
 	/* Fetch canonical name for this address/DNS. */
-	struct addrinfo hints, *info;
+	struct addrinfo hints, *info = NULL;
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
