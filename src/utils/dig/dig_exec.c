@@ -119,7 +119,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		                                     0, sizeof(wire),
 		                                     &packet->mm);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&soa, 1, &packet->mm);
+			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);
 			return NULL;
 		}
@@ -131,7 +131,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		knot_pkt_begin(packet, KNOT_AUTHORITY);
 		ret = knot_pkt_put(packet, 0, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&soa, 1, &packet->mm);
+			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);
 			return NULL;
 		}

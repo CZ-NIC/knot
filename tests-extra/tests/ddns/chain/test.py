@@ -13,7 +13,7 @@ from dnstest.test import Test
 MAX_LABELS = 16
 MAX_UPDATE_SIZE = 256
 
-RUNS = 2
+RUNS = 1
 
 ############################### HELPERS ######################################
 
@@ -66,7 +66,7 @@ def test_run(master, zone, msg):
             add_rand_name(update, zone, i)
         update.send("NOERROR")
         verify(master, zone)
-       
+
         # remove some of previously added records
         check_log(msg + " Removals")
         update = master.update(zone)
@@ -75,7 +75,7 @@ def test_run(master, zone, msg):
             remove_added_name(update)
         update.send("NOERROR")
         verify(master, zone)
-       
+
         # modify existing names
         check_log(msg + " Modifications")
         update = master.update(zone)
@@ -84,7 +84,7 @@ def test_run(master, zone, msg):
             modify_added_name(update)
         update.send("NOERROR")
         verify(master, zone)
-       
+
         # add and remove records
         check_log(msg + " Add / Remove mix")
         update = master.update(zone)

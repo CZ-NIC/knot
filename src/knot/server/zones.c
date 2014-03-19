@@ -539,7 +539,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 				} else {
 					/* Final SOA. */
 					dbg_xfr_verb("xfr: extra SOA\n");
-					knot_rrset_deep_free(&rrset, 1, NULL);
+					knot_rrset_free(&rrset, NULL);
 					break;
 				}
 			} else {
@@ -724,9 +724,8 @@ void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 			 * From SOAs from the second changeset was not used,
 			 * it must be freed.
 			 */
-			knot_rrset_deep_free(
-			  &(knot_changesets_get_last(sec_chs)->soa_from), 1,
-			                        NULL);
+			knot_rrset_free(&(knot_changesets_get_last(sec_chs)->soa_from),
+					     NULL);
 
 			// Reset sec_chs' chngeset list, else we'd double free.
 			init_list(&sec_chs->sets);

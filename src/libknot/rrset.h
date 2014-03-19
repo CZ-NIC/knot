@@ -229,16 +229,6 @@ void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
 uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset);
 
 /*!
- * \brief RRSet RDATA equality check.
- *
- * \param r1  First RRSet.
- * \param r2  Second RRSet.
- *
- * \return True if RRs in r1 are equal to RRs in r2, false otherwise.
- */
-bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
-
-/*!
  * \brief Compares two RRSets for equality.
  *
  * \param r1   First RRSet.
@@ -261,30 +251,17 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
  *
  * \return KNOT_E*
  */
-int knot_rrset_deep_copy(const knot_rrset_t *from, knot_rrset_t **to,
-                         mm_ctx_t *mm);
-
-/*!
- * \brief Destroys the RRSet structure.
- *
- * Does not destroy RDATA structures neither, as they need special processing.
- *
- * Also sets the given pointer to NULL.
- *
- * \param rrset RRset to be destroyed.
- */
-void knot_rrset_free(knot_rrset_t **rrset);
+int knot_rrset_copy(const knot_rrset_t *from, knot_rrset_t **to, mm_ctx_t *mm);
 
 /*!
  * \brief Destroys the RRSet structure and all its substructures.
- *
+ )
  * Also sets the given pointer to NULL.
  *
- * \param rrset       RRset to be destroyed.
- * \param free_owner  Set to false if you do not want the owner domain name to be
- *                    destroyed also. Set to true otherwise.
+ * \param rrset  RRset to be destroyed.
+ * \param mm     Memory context.
  */
-void knot_rrset_deep_free(knot_rrset_t **rrset, bool free_owner, mm_ctx_t *mm);
+void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
 
 /*!
  * \brief Converts RRSet structure to wireformat, compression included.
