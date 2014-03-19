@@ -228,7 +228,7 @@ static knot_rrset_t *synth_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t 
 	}
 
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, true, &pkt->mm);
+		knot_rrset_free(&rr, &pkt->mm);
 		return NULL;
 	}
 
