@@ -131,6 +131,7 @@ def do_normal_tests(master, zone, dnssec=False):
     up.send("NOERROR")
     resp = master.dig("dns1.ddns.", "CNAME")
     compare(resp.count(), 0, "Added CNAME when it shouldn't")
+    verify(master, zone, dnssec)
 
     # add A to CNAME node, should be ignored
     check_log("Add A to CNAME node")
@@ -138,7 +139,9 @@ def do_normal_tests(master, zone, dnssec=False):
     up.add("cname.ddns.", "3600", "A", "1.2.3.4")
     up.send("NOERROR")
     resp = master.dig("cname.ddns.", "ANY")
+    resp.check_record(rtype="CNAME", rdata="mail.ddns.")
     compare(resp.count(), 1, "Added A when it shouldn't")
+    verify(master, zone, dnssec)
 
     # add CNAME to CNAME node, should be replaced
     check_log("CNAME to CNAME addition")
@@ -153,18 +156,22 @@ def do_normal_tests(master, zone, dnssec=False):
     # add SOA with higher than current serial, serial starting from 2010111213
     check_log("Newer SOA addition")
     up = master.update(zone)
-    up.add("ddns.", 3600, "SOA", "dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
+    up.add("ddns.", 3600, "SOA",
+           "dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
     up.send("NOERROR")
     resp = master.dig("ddns.", "SOA")
-    resp.check(rcode="NOERROR", rdata="dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
+    resp.check(rcode="NOERROR",
+               rdata="dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
 
     # add SOA with lower serial, should be ignored
     check_log("Older SOA addition")
     up = master.update(zone)
-    up.add("ddns.", 3600, "SOA", "dns1.ddns. hostmaster.ddns. 2010111213 10800 3600 1209600 7200")
+    up.add("ddns.", 3600, "SOA",
+           "dns1.ddns. hostmaster.ddns. 2010111213 10800 3600 1209600 7200")
     resp = master.dig("ddns.", "SOA")
-    resp.check(rcode="NOERROR", rdata="dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
+    resp.check(rcode="NOERROR",
+               rdata="dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
 
     # add and remove the same record
@@ -187,14 +194,11 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check(rcode="NXDOMAIN")
     verify(master, zone, dnssec)
 
-    # Remove non-existent record
+    # remove non-existent record
     check_log("Remove non-existent record")
     up = master.update(zone)
-    up.add("testaddrem.ddns.", 3600, "TXT", "record")
-    up.delete("testaddrem.ddns.", "TXT", "record1")
+    up.delete("testaddrem.ddns.", "TXT", "record")
     up.send("NOERROR")
-    resp = master.dig("testaddrem.ddns.", "TXT")
-    resp.check(rcode="NOERROR", rdata="record")
     verify(master, zone, dnssec)
 
     # remove NS from APEX (NS should stay)
@@ -236,7 +240,7 @@ def do_normal_tests(master, zone, dnssec=False):
         resp.check_record(section="authority", rtype="NS", rdata="a.deleg.ddns.")
         resp.check_record(section="authority", rtype="RRSIG")
         verify(master, zone, dnssec)
-        
+
         # add extra DNSKEY
         check_log("DNSKEY addition")
         up = master.update(zone)
@@ -244,7 +248,8 @@ def do_normal_tests(master, zone, dnssec=False):
                "256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
         up.send("NOERROR")
         resp = master.dig("ddns.", "DNSKEY")
-        resp.check(rcode="NOERROR", rdata="256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
+        resp.check(rcode="NOERROR",
+                   rdata="256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN")
         verify(master, zone, dnssec)
 
 def do_refusal_tests(master, zone, dnssec=False):
@@ -274,13 +279,15 @@ def do_refusal_tests(master, zone, dnssec=False):
         up.delete("forbidden.ddns.", f['type'])
         up.send("REFUSED")
         check_soa(master, prev_soa)
-    
+
     # Add normal records and then forbidden one
     check_log("Refusal rollback")
     up = master.update(zone)
     up.add("rollback.ddns.", 3600, "TXT", "do not add me")
     up.add("forbidden.ddns.", 3600, forbidden[0]['type'], forbidden[0]['data'])
     up.send("REFUSED")
+    resp = master.dig("rollback.ddns", "ANY")
+    resp.check(rcode="NXDOMAIN")
     resp = master.dig("forbidden.ddns", "ANY")
     resp.check(rcode="NXDOMAIN")
     check_soa(master, prev_soa)
@@ -291,6 +298,8 @@ def do_refusal_tests(master, zone, dnssec=False):
     up.add("rollback.ddns.", 3600, "TXT", "do not add me")
     up.add("cname.ddns.", 3600, "DNAME", "ddns.")
     up.send("REFUSED")
+    resp = master.dig("rollback.ddns", "ANY")
+    resp.check(rcode="NXDOMAIN")
     resp = master.dig("forbidden.ddns", "ANY")
     resp.check(rcode="NXDOMAIN")
     check_soa(master, prev_soa)
@@ -301,6 +310,8 @@ def do_refusal_tests(master, zone, dnssec=False):
     up.add("rollback.ddns.", 3600, "TXT", "do not add me")
     up.add("under.dname.ddns.", 3600, "DNAME", "ddns.")
     up.send("REFUSED")
+    resp = master.dig("rollback.ddns", "ANY")
+    resp.check(rcode="NXDOMAIN")
     resp = master.dig("forbidden.ddns", "ANY")
     resp.check(rcode="NXDOMAIN")
     check_soa(master, prev_soa)
