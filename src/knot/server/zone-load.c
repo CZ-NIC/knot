@@ -582,6 +582,13 @@ knot_zone_t *get_zone(knot_zone_t *old_zone, const knot_dname_t *apex,
 	case ZONE_STATUS_FOUND_NEW:
 	case ZONE_STATUS_FOUND_UPDATED:
 		new_zone = load_zone(conf);
+		if (!new_zone) {
+			/* Don't keep the old zone, change status only if succeeds. */
+			new_zone = get_not_found_zone(NULL, apex, conf, ns);
+			if (new_zone) {
+				zstatus = ZONE_STATUS_NOT_FOUND;
+			}
+		}
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
 		assert(old_zone);
