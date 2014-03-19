@@ -1,5 +1,16 @@
 Knot DNS NEWS
 
+v1.4.4 - Mar 24, 2014
+---------------------
+Features:
+	* Server is logging remote control commands
+Bugfixes:
+	* Missing notifications after DDNS/automatic resign
+	* Zone is rebootstrapped if the zone file is unreadable
+	* Progressive bootstrap retry backoff 
+	* Zone file parser allows asterisk as part of the label
+	* Journal maximum entry size fixes
+
 v1.4.3 - Feb 13, 2014
 ---------------------
 Bugfixes:
