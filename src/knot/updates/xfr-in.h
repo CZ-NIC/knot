@@ -114,7 +114,7 @@ int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt);
  *
  * \todo Refactor!!!
  */
-int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone);
+int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_contents_t **zone);
 
 /*!
  * \brief Destroys the whole changesets structure.
@@ -138,7 +138,7 @@ void xfrin_free_changesets(knot_changesets_t **changesets);
  * \retval KNOT_EMALF
  * \retval KNOT_ENOMEM
  */
-int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr);
+int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr);
 
 /*!
  * \brief Applies changesets *with* zone shallow copy.

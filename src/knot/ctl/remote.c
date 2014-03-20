@@ -668,7 +668,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 			tsig_name = pkt->tsig_rr->owner;
 		}
 		acl_match_t *match = acl_find(conf()->ctl.acl, &ss, tsig_name);
-		knot_rcode_t ts_rc = 0;
+		uint16_t ts_rc = 0;
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
 		if (match == NULL) {

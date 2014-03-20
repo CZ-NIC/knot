@@ -202,7 +202,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
-                                 const knot_rrset_t *rrset, knot_rcode_t *rcode)
+                                 const knot_rrset_t *rrset, uint16_t *rcode)
 {
 	assert(zone != NULL);
 	assert(rrset != NULL);
@@ -233,7 +233,7 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 
 static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
                                       const knot_rrset_t *rrset,
-                                      knot_rcode_t *rcode)
+                                      uint16_t *rcode)
 {
 	assert(zone != NULL);
 	assert(rrset != NULL);
@@ -275,7 +275,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 
 static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
                                      const knot_rrset_t *rrset,
-                                     knot_rcode_t *rcode)
+                                     uint16_t *rcode)
 {
 	assert(zone != NULL);
 	assert(rrset != NULL);
@@ -308,7 +308,7 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 
 static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
                                   const knot_dname_t *dname,
-                                  knot_rcode_t *rcode)
+                                  uint16_t *rcode)
 {
 	assert(zone != NULL);
 	assert(dname != NULL);
@@ -338,7 +338,7 @@ static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
 
 static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
                                       const knot_dname_t *dname,
-                                      knot_rcode_t *rcode)
+                                      uint16_t *rcode)
 {
 	assert(zone != NULL);
 	assert(dname != NULL);
@@ -368,7 +368,7 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 int knot_ddns_check_zone(const knot_zone_contents_t *zone,
-                         const knot_pkt_t *query, knot_rcode_t *rcode)
+                         const knot_pkt_t *query, uint16_t *rcode)
 {
 	if (zone == NULL || query == NULL || rcode == NULL) {
 		if (rcode != NULL) {
@@ -395,7 +395,7 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
 /*----------------------------------------------------------------------------*/
 
 int knot_ddns_process_prereqs(const knot_pkt_t *query,
-                              knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode)
+                              knot_ddns_prereq_t **prereqs, uint16_t *rcode)
 {
 	if (query == NULL || prereqs == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
@@ -433,7 +433,7 @@ int knot_ddns_process_prereqs(const knot_pkt_t *query,
 /*----------------------------------------------------------------------------*/
 
 int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
-                            knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode)
+                            knot_ddns_prereq_t **prereqs, uint16_t *rcode)
 {
 	int i, ret;
 
@@ -491,7 +491,7 @@ int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
 
 static int knot_ddns_check_update(const knot_rrset_t *rrset,
                                   const knot_pkt_t *query,
-                                  knot_rcode_t *rcode)
+                                  uint16_t *rcode)
 {
 	/* Accept both subdomain and dname match. */
 	dbg_ddns("Checking UPDATE packet.\n");
@@ -1636,7 +1636,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
                              const knot_pkt_t *query,
                              knot_changeset_t *changeset,
                              knot_changes_t *changes,
-                             knot_rcode_t *rcode, uint32_t new_serial)
+                             uint16_t *rcode, uint32_t new_serial)
 {
 	if (zone == NULL || query == NULL || changeset == NULL || rcode == NULL
 	    || changes == NULL) {
