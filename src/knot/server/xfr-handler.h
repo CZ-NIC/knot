@@ -119,7 +119,6 @@ typedef struct knot_ns_xfr {
 	size_t wire_maxlen;
 	void *data;
 	zone_t *zone;
-	char* zname;
 	knot_zone_contents_t *new_contents;
 	char *msg;
 
@@ -152,8 +151,6 @@ typedef struct knot_ns_xfr {
 	 * number counted from last TSIG check.
 	 */
 	int packet_nr;
-
-	hattrie_t *lookup_tree;
 } knot_ns_xfr_t;
 
 /*!

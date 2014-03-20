@@ -338,7 +338,7 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	return ret;
 }
 
-int ixfr_process_answer(knot_ns_xfr_t *xfr)
+int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 {
 	dbg_ns("ns_process_ixfrin: incoming packet\n");
 
@@ -347,7 +347,7 @@ int ixfr_process_answer(knot_ns_xfr_t *xfr)
 	 * and the digest of the query sent to the master or the previous
 	 * digest.
 	 */
-	int ret = xfrin_process_ixfr_packet(xfr);
+	int ret = xfrin_process_ixfr_packet(pkt, xfr);
 
 	if (ret == XFRIN_RES_FALLBACK) {
 		dbg_ns("ns_process_ixfrin: Fallback to AXFR.\n");

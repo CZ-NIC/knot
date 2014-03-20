@@ -64,7 +64,7 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
  * \retval Other If any other error occured. The connection should be closed.
  *
  */
-int ixfr_process_answer(knot_ns_xfr_t *xfr);
+int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr);
 
 #endif /* _KNOT_IXFR_H_ */
 
