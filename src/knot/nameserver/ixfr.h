@@ -45,6 +45,7 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
 /*!
  * \brief Process an IXFR query response.
  *
+ * \param pkt Processed packet.
  * \param xfr Persistent transfer-specific data.
  *
  * \retval KNOT_EOK If this packet was processed successfuly and another packet

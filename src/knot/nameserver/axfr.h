@@ -62,6 +62,7 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
 /*!
  * \brief Processes an AXFR query response.
  *
+ * \param pkt Processed packet.
  * \param xfr Persistent transfer-specific data.
  *
  */
