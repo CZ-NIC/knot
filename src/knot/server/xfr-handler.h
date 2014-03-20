@@ -99,7 +99,6 @@ typedef struct knot_ns_xfr {
 	struct sockaddr_storage addr, saddr;
 	knot_pkt_t *query;
 	knot_pkt_t *response;
-	knot_rcode_t rcode;
 	xfr_callback_t send;
 	xfr_callback_t recv;
 	int session;
@@ -141,7 +140,6 @@ typedef struct knot_ns_xfr {
 	int fwd_src_fd;           /*!< Query originator fd. */
 	struct sockaddr_storage fwd_addr;
 
-	uint16_t tsig_rcode;
 	uint64_t tsig_prev_time_signed;
 
 	/*!

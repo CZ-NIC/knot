@@ -91,14 +91,12 @@ static int update_prereq_check(struct query_data *qdata)
 	 * \note Permissions section means probably policies and fine grained
 	 *       access control, not transaction security.
 	 */
-	knot_rcode_t rcode = KNOT_RCODE_NOERROR;
 	knot_ddns_prereq_t *prereqs = NULL;
-	int ret = knot_ddns_process_prereqs(query, &prereqs, &rcode);
+	int ret = knot_ddns_process_prereqs(query, &prereqs, &qdata->rcode);
 	if (ret == KNOT_EOK) {
-		ret = knot_ddns_check_prereqs(contents, &prereqs, &rcode);
+		ret = knot_ddns_check_prereqs(contents, &prereqs, &qdata->rcode);
 		knot_ddns_prereqs_free(&prereqs);
 	}
-	qdata->rcode = rcode;
 
 	return ret;
 }
@@ -181,11 +179,11 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
  * NOTE: Mostly copied from xfrin_apply_changesets(). Should be refactored in
  *       order to get rid of duplicate code.
  */
-int knot_ns_process_update(const knot_pkt_t *query,
-                           knot_zone_contents_t *old_contents,
-                           knot_zone_contents_t **new_contents,
-                           knot_changesets_t *chgs, knot_rcode_t *rcode,
-                           uint32_t new_serial)
+static int knot_ns_process_update(const knot_pkt_t *query,
+                                  knot_zone_contents_t *old_contents,
+                                  knot_zone_contents_t **new_contents,
+                                  knot_changesets_t *chgs, uint16_t *rcode,
+                                  uint32_t new_serial)
 {
 	if (query == NULL || old_contents == NULL || chgs == NULL ||
 	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
