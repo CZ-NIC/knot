@@ -479,9 +479,11 @@ static int zones_process_update_auth(struct query_data *qdata)
 		zones_schedule_zonefile_sync(zone, 0);
 	}
 
-	/* Release old zone, as it may be removed in the process. */
+	/* Since we unlocked RCU read lock, it is possible that the
+	 * zone was modified/removed in the background. Therefore,
+	 * we must NOT touch the zone after we release it here. */
 	zone_release(zone);
-	qdata->zone = NULL; /* Zone may not be valid now. */
+	qdata->zone = NULL;
 
 	return ret;
 }
