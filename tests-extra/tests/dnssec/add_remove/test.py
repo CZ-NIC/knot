@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 
 '''Test for DNSSEC additions and removals'''
@@ -6,7 +5,7 @@
 from dnstest.utils import *
 from dnstest.test import Test
 
-CHANGE_COUNT = 7
+CHANGE_COUNT = 8
 
 def update_zone(master, slave, zone, changes, change_serial=False, serials=None):
     for i in changes:
@@ -29,7 +28,8 @@ def update_zone(master, slave, zone, changes, change_serial=False, serials=None)
 def do_steps(master, slave, zone):
     # add records
     serials = []
-    update_zone(master, slave, zone, range(1, CHANGE_COUNT + 1), change_serial=False, serials=serials)
+    update_zone(master, slave, zone, range(1, CHANGE_COUNT + 1),
+                change_serial=False, serials=serials)
     # remove added records, in descending order
     rev = list(range(1, CHANGE_COUNT + 1))
     rev.reverse()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for properly signed NSEC/NSEC3 zone '''
+'''Test for no resigning if the zone is properly signed.'''
 
 from dnstest.utils import *
 from dnstest.test import Test
@@ -15,7 +15,6 @@ t.link(nsec3_zone, master)
 
 t.start()
 
-check_log("Load signed zones")
 # Get zone serial.
 old_nsec_serial = master.zone_wait(nsec_zone)
 old_nsec3_serial = master.zone_wait(nsec3_zone)
@@ -24,15 +23,15 @@ old_nsec3_serial = master.zone_wait(nsec3_zone)
 master.dnssec_enable = True
 master.use_gen_keys()
 master.gen_confile()
-check_log("Add keys for zones")
 master.reload()
 
-t.sleep(3)
+t.sleep(5)
 
 new_nsec_serial = master.zone_wait(nsec_zone)
 new_nsec3_serial = master.zone_wait(nsec3_zone)
 
-compare(old_nsec_serial, new_nsec_serial, "Server did needless NSEC signing operation")
-compare(old_nsec3_serial, new_nsec3_serial, "Server did needless NSEC3 signing operation")
+# Check if the zones are resigned.
+compare(old_nsec_serial, new_nsec_serial, "SOA serial")
+compare(old_nsec3_serial, new_nsec3_serial, "SOA serial")
 
 t.stop()
