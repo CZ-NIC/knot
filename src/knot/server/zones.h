@@ -167,7 +167,7 @@ int zones_create_changeset(const zone_t *old_zone,
 
 int zones_store_and_apply_chgsets(knot_changesets_t *chs,
                                   zone_t *zone,
-                                  knot_zone_contents_t **new_contents,
+                                  zone_contents_t **new_contents,
                                   const char *msgpref, int type);
 
 /*!
@@ -274,10 +274,10 @@ int zones_dnssec_ev(event_t *event);
 
 /*! \note Exported API for UPDATE processing, but this should really be done
  *        in a better way as it's very similar code to ixfr-from-diff signing code. */
-bool zones_dnskey_changed(const knot_zone_contents_t *old_contents,
-                          const knot_zone_contents_t *new_contents);
-bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
-                              const knot_zone_contents_t *new_contents);
+bool zones_dnskey_changed(const zone_contents_t *old_contents,
+                          const zone_contents_t *new_contents);
+bool zones_nsec3param_changed(const zone_contents_t *old_contents,
+                              const zone_contents_t *new_contents);
 int zones_merge_and_store_changesets(zone_t *zone,
                                      knot_changesets_t *diff_chs,
                                      knot_changesets_t *sec_chs,

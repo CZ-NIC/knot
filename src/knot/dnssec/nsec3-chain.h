@@ -40,7 +40,7 @@
  *
  * \return KNOT_E*
  */
-int knot_nsec3_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
+int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
                             knot_changeset_t *changeset);
 
 /*!

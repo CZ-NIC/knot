@@ -258,6 +258,8 @@ libknotd_la_SOURCES =				\
 	knot/worker/queue.h			\
 	knot/worker/task.c			\
 	knot/worker/task.h			\
+	knot/zone/contents.c			\
+	knot/zone/contents.h			\
 	knot/zone/estimator.c			\
 	knot/zone/estimator.h			\
 	knot/zone/events.c			\
@@ -266,10 +268,6 @@ libknotd_la_SOURCES =				\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
-	knot/zone/zone-contents.c		\
-	knot/zone/zone-contents.h		\
-	knot/zone/zone-create.c			\
-	knot/zone/zone-create.h			\
 	knot/zone/zone-diff.c			\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\
@@ -279,7 +277,9 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone.c			\
 	knot/zone/zone.h			\
 	knot/zone/zonedb.c			\
-	knot/zone/zonedb.h
+	knot/zone/zonedb.h			\
+	knot/zone/zonefile.c			\
+	knot/zone/zonefile.h
 
 # libraries
 libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la

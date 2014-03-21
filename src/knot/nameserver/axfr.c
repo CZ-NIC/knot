@@ -103,7 +103,7 @@ static int axfr_answer_init(struct query_data *qdata)
 
 	/* Create transfer processing context. */
 	mm_ctx_t *mm = qdata->mm;
-	knot_zone_contents_t *zone = qdata->zone->contents;
+	zone_contents_t *zone = qdata->zone->contents;
 	struct xfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
 	if (xfer == NULL) {
 		return KNOT_ENOMEM;
@@ -132,7 +132,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 	int ret = KNOT_EOK;
 	mm_ctx_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->ext;
-	knot_zone_contents_t *zone = qdata->zone->contents;
+	zone_contents_t *zone = qdata->zone->contents;
 	knot_rrset_t *soa_rr = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
 
 	/* Prepend SOA on first packet. */
@@ -236,7 +236,7 @@ int axfr_process_answer(knot_ns_xfr_t *xfr)
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
 	       xfr->wire_size);
 	int ret = xfrin_process_axfr_packet(xfr,
-	                                    (knot_zone_contents_t **)&xfr->data);
+	                                    (zone_contents_t **)&xfr->data);
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");
 
@@ -246,14 +246,14 @@ int axfr_process_answer(knot_ns_xfr_t *xfr)
 		 * Adjust zone so that node count is set properly and nodes are
 		 * marked authoritative / delegation point.
 		 */
-		knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->data;
+		zone_contents_t *zone = (zone_contents_t *)xfr->data;
 		assert(zone != NULL);
 		log_zone_info("%s Serial %u -> %u\n", xfr->msg,
 		              knot_zone_serial(xfr->zone->contents),
 		              knot_zone_serial(zone));
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
-		int rc = knot_zone_contents_adjust_full(zone, NULL, NULL);
+		int rc = zone_contents_adjust_full(zone, NULL, NULL);
 		if (rc != KNOT_EOK) {
 			return rc;
 		}

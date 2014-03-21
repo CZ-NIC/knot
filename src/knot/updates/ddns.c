@@ -201,7 +201,7 @@ static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
+static int knot_ddns_check_exist(const zone_contents_t *zone,
                                  const knot_rrset_t *rrset, knot_rcode_t *rcode)
 {
 	assert(zone != NULL);
@@ -211,13 +211,13 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_ANY);
 
 	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
-	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+	    knot_node_owner(zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
-	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
+	node = zone_contents_find_node(zone, knot_rrset_owner(rrset));
 	if (node == NULL) {
 		*rcode = KNOT_RCODE_NXRRSET;
 		return KNOT_ENONODE;
@@ -231,7 +231,7 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
+static int knot_ddns_check_exist_full(const zone_contents_t *zone,
                                       const knot_rrset_t *rrset,
                                       knot_rcode_t *rcode)
 {
@@ -241,7 +241,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	assert(knot_rrset_type(rrset) != KNOT_RRTYPE_ANY);
 
 	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
-	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+	    knot_node_owner(zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
@@ -249,7 +249,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	const knot_node_t *node;
 	const knot_rrset_t *found;
 
-	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
+	node = zone_contents_find_node(zone, knot_rrset_owner(rrset));
 	if (node == NULL) {
 		*rcode = KNOT_RCODE_NXRRSET;
 		return KNOT_EPREREQ;
@@ -273,7 +273,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
+static int knot_ddns_check_not_exist(const zone_contents_t *zone,
                                      const knot_rrset_t *rrset,
                                      knot_rcode_t *rcode)
 {
@@ -284,14 +284,14 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	assert(knot_rrset_class(rrset) == KNOT_CLASS_NONE);
 
 	if (!knot_dname_is_sub(knot_rrset_owner(rrset),
-	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+	    knot_node_owner(zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
 
-	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
+	node = zone_contents_find_node(zone, knot_rrset_owner(rrset));
 	if (node == NULL) {
 		return KNOT_EOK;
 	} else if (knot_node_rrset(node, knot_rrset_type(rrset)) == NULL) {
@@ -306,7 +306,7 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
+static int knot_ddns_check_in_use(const zone_contents_t *zone,
                                   const knot_dname_t *dname,
                                   knot_rcode_t *rcode)
 {
@@ -315,14 +315,14 @@ static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
 	assert(rcode != NULL);
 
 	if (!knot_dname_is_sub(dname,
-	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+	    knot_node_owner(zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
 
-	node = knot_zone_contents_find_node(zone, dname);
+	node = zone_contents_find_node(zone, dname);
 	if (node == NULL) {
 		*rcode = KNOT_RCODE_NXDOMAIN;
 		return KNOT_EPREREQ;
@@ -336,7 +336,7 @@ static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
+static int knot_ddns_check_not_in_use(const zone_contents_t *zone,
                                       const knot_dname_t *dname,
                                       knot_rcode_t *rcode)
 {
@@ -345,14 +345,14 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 	assert(rcode != NULL);
 
 	if (!knot_dname_is_sub(dname,
-	    knot_node_owner(knot_zone_contents_apex(zone)))) {
+	    knot_node_owner(zone_contents_apex(zone)))) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
 
 	const knot_node_t *node;
 
-	node = knot_zone_contents_find_node(zone, dname);
+	node = zone_contents_find_node(zone, dname);
 	if (node == NULL) {
 		return KNOT_EOK;
 	} else if (knot_node_rrset_count(node) == 0) {
@@ -367,7 +367,7 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int knot_ddns_check_zone(const knot_zone_contents_t *zone,
+int knot_ddns_check_zone(const zone_contents_t *zone,
                          const knot_pkt_t *query, knot_rcode_t *rcode)
 {
 	if (zone == NULL || query == NULL || rcode == NULL) {
@@ -383,7 +383,7 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
 	}
 
 	// check zone CLASS
-	if (knot_zone_contents_class(zone) !=
+	if (zone_contents_class(zone) !=
 	    knot_pkt_qclass(query)) {
 		*rcode = KNOT_RCODE_NOTAUTH;
 		return KNOT_ENOZONE;
@@ -432,7 +432,7 @@ int knot_ddns_process_prereqs(const knot_pkt_t *query,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
+int knot_ddns_check_prereqs(const zone_contents_t *zone,
                             knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode)
 {
 	int i, ret;
@@ -675,7 +675,7 @@ static void knot_ddns_check_add_rr(knot_changeset_t *changeset,
 
 /*----------------------------------------------------------------------------*/
 
-static knot_node_t *knot_ddns_get_node(knot_zone_contents_t *zone,
+static knot_node_t *knot_ddns_get_node(zone_contents_t *zone,
                                        const knot_rrset_t *rr)
 {
 	assert(zone != NULL);
@@ -686,9 +686,9 @@ static knot_node_t *knot_ddns_get_node(knot_zone_contents_t *zone,
 
 	dbg_ddns_detail("Searching for node...\n");
 	if (knot_rrset_is_nsec3rel(rr)) {
-		node = knot_zone_contents_get_nsec3_node(zone, owner);
+		node = zone_contents_get_nsec3_node(zone, owner);
 	} else {
-		node = knot_zone_contents_get_node(zone, owner);
+		node = zone_contents_get_node(zone, owner);
 	}
 
 	return node;
@@ -1049,7 +1049,7 @@ static int knot_ddns_add_rr_to_chgset(const knot_rrset_t *rr,
 
 static int knot_ddns_process_add(const knot_rrset_t *rr,
                                  knot_node_t *node,
-                                 knot_zone_contents_t *zone,
+                                 zone_contents_t *zone,
                                  knot_changeset_t *changeset,
                                  knot_changes_t *changes,
                                  knot_rrset_t **rr_copy)
@@ -1065,7 +1065,7 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 	if (node == NULL) {
 		// create new node, connect it to the zone nodes
 		dbg_ddns_detail("Node not found. Creating new.\n");
-		int ret = knot_zone_contents_create_node(zone, rr, &node);
+		int ret = zone_contents_create_node(zone, rr, &node);
 		if (ret != KNOT_EOK) {
 			dbg_xfrin("Failed to create new node in zone.\n");
 			return ret;
@@ -1162,7 +1162,7 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
  */
 static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
                                     knot_node_t *node,
-                                    knot_zone_contents_t *zone,
+                                    zone_contents_t *zone,
                                     knot_changeset_t *changeset,
                                     knot_changes_t *changes, uint16_t qclass)
 {
@@ -1596,7 +1596,7 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 /*----------------------------------------------------------------------------*/
 
 static int knot_ddns_process_rr(const knot_rrset_t *rr,
-                                knot_zone_contents_t *zone,
+                                zone_contents_t *zone,
                                 knot_changeset_t *changeset,
                                 knot_changes_t *changes, uint16_t qclass,
                                 knot_rrset_t **rr_copy)
@@ -1612,7 +1612,7 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 
 	/* 2) Decide what to do. */
 
-	if (knot_rrset_class(rr) == knot_zone_contents_class(zone)) {
+	if (knot_rrset_class(rr) == zone_contents_class(zone)) {
 		return knot_ddns_process_add(rr, node, zone, changeset,
 		                             changes, rr_copy);
 	} else if (node == NULL) {
@@ -1647,7 +1647,7 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
  * If anything fails, rollback must be done. The xfrin_rollback_update() may
  * be good for this.
  */
-int knot_ddns_process_update(knot_zone_contents_t *zone,
+int knot_ddns_process_update(zone_contents_t *zone,
                              const knot_pkt_t *query,
                              knot_changeset_t *changeset,
                              knot_changes_t *changes,
@@ -1661,7 +1661,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 	int ret = KNOT_EOK;
 
 	/* Copy base SOA RR. */
-	const knot_rrset_t *soa = knot_node_rrset(knot_zone_contents_apex(zone),
+	const knot_rrset_t *soa = knot_node_rrset(zone_contents_apex(zone),
 						  KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_begin = NULL;
 	knot_rrset_t *soa_end = NULL;
@@ -1780,7 +1780,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 
 		/* And replace it in the zone. */
 		ret = xfrin_replace_rrset_in_node(
-		                        knot_zone_contents_get_apex(zone),
+		                        zone_contents_get_apex(zone),
 		                        soa_end, changes, zone);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy replace SOA in zone: %s\n",

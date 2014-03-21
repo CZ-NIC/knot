@@ -31,7 +31,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
 #include "libknot/dnssec/bitmap.h"
 
@@ -39,7 +39,7 @@
  * \brief Parameters to be used when fixing NSEC(3) chain.
  */
 typedef struct chain_fix_data {
-	const knot_zone_contents_t *zone;     // Zone to fix
+	const zone_contents_t *zone;     // Zone to fix
 	knot_changeset_t *out_ch;             // Outgoing changes
 	const knot_dname_t *chain_start;      // Possible new starting node
 	bool old_connected;                   // Marks old start connection
@@ -56,7 +56,7 @@ typedef struct chain_fix_data {
 typedef struct {
 	uint32_t ttl;                      // TTL for NSEC(3) records
 	knot_changeset_t *changeset;       // Changeset for NSEC(3) changes
-	const knot_zone_contents_t *zone;  // Updated zone
+	const zone_contents_t *zone;  // Updated zone
 } nsec_chain_iterate_data_t;
 
 /*!
@@ -166,7 +166,7 @@ bool knot_nsec_only_nsec_and_rrsigs_in_node(const knot_node_t *n);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
+int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
                            knot_changeset_t *changeset);
 
 /*!

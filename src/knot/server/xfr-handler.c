@@ -272,10 +272,10 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 	dbg_xfr_verb("Cleaning up after XFR-in.\n");
 	if (rq->type == XFR_TYPE_AIN) {
 		if (rq->flags & XFR_FLAG_AXFR_FINISHED) {
-			knot_zone_contents_deep_free(&rq->new_contents);
+			zone_contents_deep_free(&rq->new_contents);
 		} else if (rq->data) {
-			knot_zone_contents_t *zone = rq->data;
-			knot_zone_contents_deep_free(&zone);
+			zone_contents_t *zone = rq->data;
+			zone_contents_deep_free(&zone);
 			rq->data = NULL;
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
@@ -579,7 +579,7 @@ int knot_ns_switch_zone(knot_ns_xfr_t *xfr)
 		return KNOT_EINVAL;
 	}
 
-	knot_zone_contents_t *zone = (knot_zone_contents_t *)xfr->new_contents;
+	zone_contents_t *zone = (zone_contents_t *)xfr->new_contents;
 
 	dbg_xfr("Replacing zone by new one: %p\n", zone);
 	if (zone == NULL) {
@@ -592,7 +592,7 @@ int knot_ns_switch_zone(knot_ns_xfr_t *xfr)
 	zone_t *z = xfr->zone;
 	if (z == NULL) {
 		char *name = knot_dname_to_str(knot_node_owner(
-				knot_zone_contents_apex(zone)));
+				zone_contents_apex(zone)));
 		dbg_xfr("Failed to replace zone %s, old zone "
 		       "not found\n", name);
 		free(name);

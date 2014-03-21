@@ -36,16 +36,16 @@ static int knot_zone_diff_rdata(const knot_rrset_t *rrset1,
                                 const knot_rrset_t *rrset2,
                                 knot_changeset_t *changeset);
 
-static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
-                                    const knot_zone_contents_t *zone2,
+static int knot_zone_diff_load_soas(const zone_contents_t *zone1,
+                                    const zone_contents_t *zone2,
                                     knot_changeset_t *changeset)
 {
 	if (zone1 == NULL || zone2 == NULL || changeset == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	const knot_node_t *apex1 = knot_zone_contents_apex(zone1);
-	const knot_node_t *apex2 = knot_zone_contents_apex(zone2);
+	const knot_node_t *apex1 = zone_contents_apex(zone1);
+	const knot_node_t *apex2 = zone_contents_apex(zone2);
 	if (apex1 == NULL || apex2 == NULL) {
 		dbg_zonediff("zone_diff: "
 		             "both zones must have apex nodes.\n");
@@ -661,8 +661,8 @@ static int knot_zone_diff_load_trees(knot_zone_tree_t *nodes1,
 }
 
 
-static int knot_zone_diff_load_content(const knot_zone_contents_t *zone1,
-                                       const knot_zone_contents_t *zone2,
+static int knot_zone_diff_load_content(const zone_contents_t *zone1,
+                                       const zone_contents_t *zone2,
                                        knot_changeset_t *changeset)
 {
 	int result;
@@ -678,8 +678,8 @@ static int knot_zone_diff_load_content(const knot_zone_contents_t *zone1,
 }
 
 
-static int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
-                            const knot_zone_contents_t *zone2,
+static int zone_contents_diff(const zone_contents_t *zone1,
+                            const zone_contents_t *zone2,
                             knot_changeset_t *changeset)
 {
 	if (zone1 == NULL || zone2 == NULL) {
@@ -694,15 +694,15 @@ static int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
 	return knot_zone_diff_load_content(zone1, zone2, changeset);
 }
 
-int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
-                                   const knot_zone_contents_t *z2,
+int zone_contents_create_diff(const zone_contents_t *z1,
+                                   const zone_contents_t *z2,
                                    knot_changeset_t *changeset)
 {
 	if (z1 == NULL || z2 == NULL) {
 		dbg_zonediff("zone_diff: create_changesets: NULL arguments.\n");
 		return KNOT_EINVAL;
 	}
-	int ret = knot_zone_contents_diff(z1, z2, changeset);
+	int ret = zone_contents_diff(z1, z2, changeset);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "
 		             "Could not diff zones. "

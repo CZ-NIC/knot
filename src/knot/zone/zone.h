@@ -34,7 +34,7 @@
 #include "knot/server/journal.h"
 #include "knot/updates/acl.h"
 #include "knot/zone/events.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "libknot/dname.h"
 
 /*!
@@ -56,7 +56,7 @@ typedef struct zone_t {
 	ref_t ref;     /*!< Reference counting. */
 	knot_dname_t *name;
 
-	knot_zone_contents_t *contents;
+	zone_contents_t *contents;
 
 	zone_flag_t flags;
 
@@ -130,8 +130,8 @@ static inline void zone_release(zone_t *zone)
 /*!
  * \brief Atomically switch the content of the zone.
  */
-knot_zone_contents_t *zone_switch_contents(zone_t *zone,
-					   knot_zone_contents_t *new_contents);
+zone_contents_t *zone_switch_contents(zone_t *zone,
+					   zone_contents_t *new_contents);
 
 /*!
  * \brief Return zone master interface.

@@ -36,7 +36,7 @@
 #include "knot/updates/changesets.h"
 #include "common/debug.h"
 #include "knot/zone/node.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 
 /*- private API - common functions -------------------------------------------*/
 
@@ -605,7 +605,7 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
  * \brief Struct to carry data for 'add_rrsigs_for_nsec' callback function.
  */
 typedef struct {
-	const knot_zone_contents_t *zone;
+	const zone_contents_t *zone;
 	const knot_zone_keys_t *zone_keys;
 	const knot_dnssec_policy_t *policy;
 	knot_changeset_t *changeset;
@@ -974,7 +974,7 @@ fail:
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int update_dnskeys(const knot_zone_contents_t *zone,
+static int update_dnskeys(const zone_contents_t *zone,
                           const knot_zone_keys_t *zone_keys,
                           const knot_dnssec_policy_t *policy,
                           knot_changeset_t *changeset)
@@ -1155,7 +1155,7 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 	bool rr_signed = false;
 	// Find RR's node in zone, find out if we need to sign this RR
 	const knot_node_t *node =
-		knot_zone_contents_find_node(args->zone, chg_rrset->owner);
+		zone_contents_find_node(args->zone, chg_rrset->owner);
 	// If node is not in zone, all its RRSIGs were dropped - no-op
 	if (node) {
 		const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
@@ -1223,7 +1223,7 @@ static int free_helper_trie_node(value_t *val, void *d)
 /*!
  * \brief Update zone signatures and store performed changes in changeset.
  */
-int knot_zone_sign(const knot_zone_contents_t *zone,
+int knot_zone_sign(const zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
                    knot_changeset_t *changeset,
@@ -1272,7 +1272,7 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 /*!
  * \brief Check if zone SOA signatures are expired.
  */
-bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
+bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy)
 {
@@ -1366,7 +1366,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
  */
-int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
+int knot_zone_sign_changeset(const zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
                              hattrie_t **sorted_changes,

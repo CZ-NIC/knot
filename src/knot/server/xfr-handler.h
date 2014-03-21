@@ -120,7 +120,7 @@ typedef struct knot_ns_xfr {
 	void *data;
 	zone_t *zone;
 	char* zname;
-	knot_zone_contents_t *new_contents;
+	zone_contents_t *new_contents;
 	char *msg;
 
 	/*! \note [TSIG] TSIG fields */

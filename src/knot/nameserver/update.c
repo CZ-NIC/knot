@@ -89,7 +89,7 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 static int update_prereq_check(struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
-	const knot_zone_contents_t *contents = qdata->zone->contents;
+	const zone_contents_t *contents = qdata->zone->contents;
 
 	/*
 	 * 2) DDNS Prerequisities Section processing (RFC2136, Section 3.2).
@@ -194,8 +194,8 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
  *       order to get rid of duplicate code.
  */
 int knot_ns_process_update(const knot_pkt_t *query,
-                           knot_zone_contents_t *old_contents,
-                           knot_zone_contents_t **new_contents,
+                           zone_contents_t *old_contents,
+                           zone_contents_t **new_contents,
                            knot_changesets_t *chgs, knot_rcode_t *rcode,
                            uint32_t new_serial)
 {
@@ -208,7 +208,7 @@ int knot_ns_process_update(const knot_pkt_t *query,
 
 	// 1) Create zone shallow copy.
 	dbg_ns_verb("Creating shallow copy of the zone...\n");
-	knot_zone_contents_t *contents_copy = NULL;
+	zone_contents_t *contents_copy = NULL;
 	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to prepare zone copy: %s\n",
@@ -320,8 +320,8 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 
 	uint32_t new_serial = zones_next_serial(zone);
 
-	knot_zone_contents_t *new_contents = NULL;
-	knot_zone_contents_t *old_contents = zone->contents;
+	zone_contents_t *new_contents = NULL;
+	zone_contents_t *old_contents = zone->contents;
 	ret = knot_ns_process_update(query, old_contents, &new_contents,
 	                             chgsets, rcode, new_serial);
 	if (ret != KNOT_EOK) {
@@ -433,7 +433,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		}
 	} else {
 		// Set NSEC3 nodes if no new signatures were created (or auto DNSSEC is off)
-		ret = knot_zone_contents_adjust_nsec3_pointers(new_contents);
+		ret = zone_contents_adjust_nsec3_pointers(new_contents);
 		if (ret != KNOT_EOK) {
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);

@@ -315,7 +315,7 @@ static int handle_nsec_next_dname(chain_fix_data_t *fix_data,
 			knot_node_rrset(a_node, KNOT_RRTYPE_NSEC);
 		assert(nsec_rrset);
 		const knot_node_t *next_node =
-			knot_zone_contents_find_node(fix_data->zone,
+			zone_contents_find_node(fix_data->zone,
 			                             knot_rdata_nsec_next(nsec_rrset));
 		assert(next_node);
 		update_last_used(fix_data, next_node->owner, next_node);
@@ -324,7 +324,7 @@ static int handle_nsec_next_dname(chain_fix_data_t *fix_data,
 	} else {
 		// We have no immediate previous node, connect broken chain
 		const knot_node_t *next_node =
-			knot_zone_contents_find_node(fix_data->zone,
+			zone_contents_find_node(fix_data->zone,
 			                             fix_data->next_dname);
 		assert(next_node);
 		update_last_used(fix_data, next_node->owner, next_node);
@@ -343,18 +343,18 @@ static int handle_nsec_next_dname(chain_fix_data_t *fix_data,
  *
  * \return Previous NSEC node for 'd'.
  */
-static const knot_node_t *find_prev_nsec_node(const knot_zone_contents_t *z,
+static const knot_node_t *find_prev_nsec_node(const zone_contents_t *z,
                                               const knot_dname_t *d)
 {
 	// Find previous node for the dname, return node that will be used later
-	const knot_node_t *prev_zone_node = knot_zone_contents_find_previous(z,
+	const knot_node_t *prev_zone_node = zone_contents_find_previous(z,
 	                                                                     d);
 	bool nsec_node_found = !knot_node_is_non_auth(prev_zone_node) &&
 	                       !only_nsec_in_node(prev_zone_node);
 	while (!nsec_node_found) {
 		// Get previous node from zone tree
 		prev_zone_node =
-			knot_zone_contents_find_previous(z,
+			zone_contents_find_previous(z,
 		                                         prev_zone_node->owner);
 		assert(prev_zone_node);
 		// Infinite loop check
@@ -383,14 +383,14 @@ static int fix_nsec_chain(knot_dname_t *a, knot_dname_t *b,
 	assert(b);
 	assert(fix_data);
 	// Get changed nodes from zone
-	const knot_node_t *b_node = knot_zone_contents_find_node(fix_data->zone,
+	const knot_node_t *b_node = zone_contents_find_node(fix_data->zone,
 	                                                         b);
 	assert(b_node);
 	if (knot_node_is_non_auth(b_node)) {
 		// Nothing to fix in this node
 		return NSEC_NODE_SKIP;
 	}
-	const knot_node_t *a_node = knot_zone_contents_find_node(fix_data->zone,
+	const knot_node_t *a_node = zone_contents_find_node(fix_data->zone,
 	                                                         a);
 	// Find previous node in zone
 	const knot_node_t *prev_zone_node = find_prev_nsec_node(fix_data->zone,
@@ -482,11 +482,11 @@ static int chain_finalize_nsec(chain_fix_data_t *fix_data)
 		// NSEC cannot point to itself (except for the case above)
 		const knot_rrset_t *nsec_rrset =
 			knot_node_rrset(from, KNOT_RRTYPE_NSEC);
-		to = knot_zone_contents_find_node(fix_data->zone,
+		to = zone_contents_find_node(fix_data->zone,
 		                                  knot_rdata_nsec_next(nsec_rrset));
 	} else {
 		// Normal case
-		to = knot_zone_contents_find_node(fix_data->zone,
+		to = zone_contents_find_node(fix_data->zone,
 		                                  fix_data->next_dname);
 	}
 	assert(to);
@@ -693,7 +693,7 @@ bool knot_nsec_only_nsec_and_rrsigs_in_node(const knot_node_t *n)
 /*!
  * \brief Create new NSEC chain, add differences from current into a changeset.
  */
-int knot_nsec_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
+int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
                            knot_changeset_t *changeset)
 {
 	assert(zone);

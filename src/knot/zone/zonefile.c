@@ -30,10 +30,10 @@
 #include "common/crc.h"
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/other/debug.h"
-#include "knot/zone/zone-create.h"
+#include "knot/zone/zonefile.h"
 #include "zscanner/file_loader.h"
 #include "libknot/rdata.h"
 
@@ -99,7 +99,7 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		n = NULL;
 	}
 	knot_rrset_t *zone_rrset = NULL;
-	int ret = knot_zone_contents_add_rr(zc->z, rr, &n, &zone_rrset);
+	int ret = zone_contents_add_rr(zc->z, rr, &n, &zone_rrset);
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
 			// Fatal error
@@ -177,7 +177,7 @@ static void loader_process(const scanner_t *scanner)
 	}
 }
 
-static knot_zone_contents_t *create_zone_from_name(const char *origin)
+static zone_contents_t *create_zone_from_name(const char *origin)
 {
 	if (origin == NULL) {
 		return NULL;
@@ -187,19 +187,20 @@ static knot_zone_contents_t *create_zone_from_name(const char *origin)
 		return NULL;
 	}
 	knot_dname_to_lower(owner);
-	knot_zone_contents_t *z = knot_zone_contents_new(owner);
+	zone_contents_t *z = zone_contents_new(owner);
 	knot_dname_free(&owner);
 	return z;
 }
 
-int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
+int zonefile_open(zloader_t *loader, const char *source, const char *origin,
+		  bool semantic_checks)
 {
 	if (!loader || !conf) {
 		return KNOT_EINVAL;
 	}
 
 	/* Check zone file. */
-	if (access(conf->file, F_OK | R_OK) != 0) {
+	if (access(source, F_OK | R_OK) != 0) {
 		return KNOT_EACCES;
 	}
 
@@ -211,7 +212,7 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 	}
 	memset(zc, 0, sizeof(zcreator_t));
 
-	zc->z = create_zone_from_name(conf->name);
+	zc->z = create_zone_from_name(origin);
 	if (zc->z == NULL) {
 		free(zc);
 		return KNOT_ENOMEM;
@@ -219,7 +220,7 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 
 	/* Create file loader. */
 	memset(loader, 0, sizeof(zloader_t));
-	loader->file_loader = file_loader_create(conf->file, conf->name,
+	loader->file_loader = file_loader_create(source, origin,
 	                                         KNOT_CLASS_IN, 3600,
 	                                         loader_process, process_error,
 	                                         zc);
@@ -228,15 +229,15 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 		return KNOT_ERROR;
 	}
 
-	loader->source = strdup(conf->file);
-	loader->origin = strdup(conf->name);
+	loader->source = strdup(source);
+	loader->origin = strdup(origin);
 	loader->creator = zc;
-	loader->semantic_checks = conf->enable_checks;
+	loader->semantic_checks = semantic_checks;
 
 	return KNOT_EOK;
 }
 
-knot_zone_contents_t *zonefile_load(zloader_t *loader)
+zone_contents_t *zonefile_load(zloader_t *loader)
 {
 	dbg_zload("zload: load: Loading zone, loader: %p.\n", loader);
 	if (!loader) {
@@ -276,7 +277,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 	knot_node_t *first_nsec3_node = NULL;
 	knot_node_t *last_nsec3_node = NULL;
 
-	int kret = knot_zone_contents_adjust_full(zc->z,
+	int kret = zone_contents_adjust_full(zc->z,
 	                                          &first_nsec3_node, &last_nsec3_node);
 	if (kret != KNOT_EOK) {
 		log_zone_error("%s: Failed to finalize zone contents: %s\n",
@@ -293,10 +294,10 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		const knot_rrset_t *nsec3param_rr =
 			knot_node_rrset(zc->z->apex,
 		                        KNOT_RRTYPE_NSEC3PARAM);
-		if (knot_zone_contents_is_signed(zc->z) && nsec3param_rr == NULL) {
+		if (zone_contents_is_signed(zc->z) && nsec3param_rr == NULL) {
 			/* Set check level to DNSSEC. */
 			check_level = SEM_CHECK_NSEC;
-		} else if (knot_zone_contents_is_signed(zc->z) && nsec3param_rr) {
+		} else if (zone_contents_is_signed(zc->z) && nsec3param_rr) {
 			check_level = SEM_CHECK_NSEC3;
 		}
 		err_handler_t err_handler;
@@ -312,7 +313,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 	return zc->z;
 
 fail:
-	knot_zone_contents_deep_free(&zc->z);
+	zone_contents_deep_free(&zc->z);
 	return NULL;
 }
 

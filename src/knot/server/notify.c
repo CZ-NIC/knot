@@ -44,7 +44,7 @@
 
 int notify_create_request(const zone_t *zone, knot_pkt_t *pkt)
 {
-	knot_zone_contents_t *contents = zone->contents;
+	zone_contents_t *contents = zone->contents;
 	if (contents == NULL) {
 		return KNOT_EINVAL; /* Not valid for stub zones. */
 	}

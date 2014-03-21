@@ -31,7 +31,7 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
-#include "knot/zone/zone-create.h"
+#include "knot/zone/zonefile.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "knot/server/zone-load.h"
@@ -687,7 +687,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Create zone loader context. */
-		zone_t *loaded_zone = load_zone_file(zone);
+		zone_t *loaded_zone = NULL; // TODO load_zone_file(zone);
 		if (loaded_zone == NULL) {
 			rc = 1;
 			continue;

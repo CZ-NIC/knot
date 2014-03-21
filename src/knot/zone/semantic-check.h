@@ -28,7 +28,7 @@
 #define _KNOT_SEMANTIC_CHECK_H_
 
 #include "knot/zone/node.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 
 enum check_levels {
 	SEM_CHECK_UNSIGNED = 1,
@@ -181,7 +181,7 @@ int err_handler_handle_error(err_handler_t *handler,
  * \param do_checks Level of semantic checks.
  */
 void log_cyclic_errors_in_zone(err_handler_t *handler,
-				      knot_zone_contents_t *zone,
+				      zone_contents_t *zone,
 				      knot_node_t *last_node,
 				      const knot_node_t *first_nsec3_node,
 				      const knot_node_t *last_nsec3_node,
@@ -203,7 +203,7 @@ void err_handler_log_all(err_handler_t *handler);
  * \param handler Semantic error handler.
  * \param last_node Last checked node, that is a part of NSEC(3) chain.
  */
-int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
+int zone_do_sem_checks(zone_contents_t *zone, int check_level,
                        err_handler_t *handler, knot_node_t *first_nsec3_node,
                        knot_node_t *last_nsec3_node);
 
@@ -218,7 +218,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int check_level,
  *
  * \return KNOT_E*
  */
-int sem_check_node_plain(const knot_zone_contents_t *zone,
+int sem_check_node_plain(const zone_contents_t *zone,
                          const knot_node_t *node,
                          err_handler_t *handler,
                          bool only_mandatory,

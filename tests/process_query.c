@@ -46,7 +46,7 @@ void create_root_zone(server_t *server, mm_ctx_t *mm)
 	conf->name = strdup(".");
 
 	zone_t *root = zone_new(conf);
-	root->contents = knot_zone_contents_new(root->name);
+	root->contents = zone_contents_new(root->name);
 
 	knot_dname_t *root_name = knot_dname_copy(root->name);
 	knot_rrset_t *soa_rrset = knot_rrset_new(root_name,
@@ -57,7 +57,7 @@ void create_root_zone(server_t *server, mm_ctx_t *mm)
 
 	/* Bake the zone. */
 	knot_node_t *first_nsec3 = NULL, *last_nsec3 = NULL;
-	knot_zone_contents_adjust_full(root->contents, &first_nsec3, &last_nsec3);
+	zone_contents_adjust_full(root->contents, &first_nsec3, &last_nsec3);
 
 	/* Switch zone db. */
 	knot_zonedb_free(&server->zone_db);

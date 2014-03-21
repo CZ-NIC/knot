@@ -34,7 +34,7 @@
 #include "common/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/zone/zone-diff.h"
 
 /*!
@@ -44,7 +44,7 @@
  * \param changeset  Changeset to be used.
  * \return KNOT_E*
  */
-static int delete_nsec3_chain(const knot_zone_contents_t *zone,
+static int delete_nsec3_chain(const zone_contents_t *zone,
                               knot_changeset_t *changeset)
 {
 	assert(zone);
@@ -74,7 +74,7 @@ static int delete_nsec3_chain(const knot_zone_contents_t *zone,
 /*!
  * \brief Check if NSEC3 is enabled for given zone.
  */
-bool knot_is_nsec3_enabled(const knot_zone_contents_t *zone)
+bool knot_is_nsec3_enabled(const zone_contents_t *zone)
 {
 	if (!zone) {
 		return false;
@@ -87,7 +87,7 @@ bool knot_is_nsec3_enabled(const knot_zone_contents_t *zone)
  * \brief Get minimum TTL from zone SOA.
  * \note Value should be used for NSEC records.
  */
-static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
+static bool get_zone_soa_min_ttl(const zone_contents_t *zone,
                                  uint32_t *ttl)
 {
 	assert(zone);
@@ -193,7 +193,7 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
 /*!
  * \brief Create NSEC or NSEC3 chain in the zone.
  */
-int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
+int knot_zone_create_nsec_chain(const zone_contents_t *zone,
                                 knot_changeset_t *changeset,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy)
@@ -231,7 +231,7 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 /*!
  * \brief Fix NSEC or NSEC3 chain in the zone.
  */
-int knot_zone_fix_nsec_chain(const knot_zone_contents_t *zone,
+int knot_zone_fix_nsec_chain(const zone_contents_t *zone,
                              hattrie_t *sorted_changes,
                              knot_changeset_t *out_ch,
                              const knot_zone_keys_t *zone_keys,

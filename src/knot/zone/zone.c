@@ -25,7 +25,7 @@
 #include "knot/server/zones.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
@@ -109,7 +109,7 @@ zone_t* zone_new(conf_zone_t *conf)
 	set_acl(&zone->notify_in,  &conf->acl.notify_in);
 	set_acl(&zone->update_in,  &conf->acl.update_in);
 
-	/* Initialize IXFR database. */
+	// Initialize XFR database
 	zone->ixfr_db = journal_open(conf->ixfr_db, conf->ixfr_fslimit, JOURNAL_DIRTY);
 	if (zone->ixfr_db == NULL) {
 		char ebuf[256] = {0};
@@ -150,20 +150,20 @@ void zone_free(zone_t **zone_ptr)
 	conf_free_zone(zone->conf);
 
 	/* Free zone contents. */
-	knot_zone_contents_deep_free(&zone->contents);
+	zone_contents_deep_free(&zone->contents);
 
 	free(zone);
 	*zone_ptr = NULL;
 }
 
-knot_zone_contents_t *zone_switch_contents(zone_t *zone,
-					   knot_zone_contents_t *new_contents)
+zone_contents_t *zone_switch_contents(zone_t *zone,
+					   zone_contents_t *new_contents)
 {
 	if (zone == NULL) {
 		return NULL;
 	}
 
-	knot_zone_contents_t *old_contents;
+	zone_contents_t *old_contents;
 	old_contents = rcu_xchg_pointer(&zone->contents, new_contents);
 
 	return old_contents;

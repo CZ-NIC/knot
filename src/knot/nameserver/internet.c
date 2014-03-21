@@ -116,7 +116,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 static bool have_dnssec(struct query_data *qdata)
 {
 	return knot_pkt_have_dnssec(qdata->query) &&
-	       knot_zone_contents_is_signed(qdata->zone->contents);
+	       zone_contents_is_signed(qdata->zone->contents);
 }
 
 /*! \brief Synthesize RRSIG for given parameters, store in 'qdata' for later use */
@@ -199,7 +199,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 /*! \brief Puts optional NS RRSet to the Authority section of the response. */
 static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	const knot_zone_contents_t *zone = qdata->zone->contents;
+	const zone_contents_t *zone = qdata->zone->contents;
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	/* DS/DNSKEY queries are not referrals. NS is optional.
@@ -227,7 +227,7 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 
 /*! \brief Puts optional SOA RRSet to the Authority section of the response. */
 static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
-                             const knot_zone_contents_t *zone)
+                             const zone_contents_t *zone)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
 	knot_rrset_t *soa_rrset = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
@@ -479,7 +479,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	dbg_ns("%s(%d, %p, %p)\n", __func__, state, pkt, qdata);
-	int ret = knot_zone_contents_find_dname(qdata->zone->contents, qdata->name,
+	int ret = zone_contents_find_dname(qdata->zone->contents, qdata->name,
 	                                        &qdata->node, &qdata->encloser,
 	                                        &qdata->previous);
 
@@ -533,7 +533,7 @@ static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qd
 static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 {
 	int ret = KNOT_ERROR;
-	const knot_zone_contents_t *zone_contents = qdata->zone->contents;
+	const zone_contents_t *zone_contents = qdata->zone->contents;
 
 	switch (state) {
 	case HIT:    /* Positive response, add (optional) AUTHORITY NS. */

@@ -92,14 +92,14 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
  * \retval NS_ERR_SERVFAIL if a runtime collision occured. The server should
  *                         respond with SERVFAIL in such case.
  */
-static int ns_put_covering_nsec3(const knot_zone_contents_t *zone,
+static int ns_put_covering_nsec3(const zone_contents_t *zone,
                                  const knot_dname_t *name,
                                  struct query_data *qdata,
                                  knot_pkt_t *resp)
 {
 	const knot_node_t *prev, *node;
 	/*! \todo Check version. */
-	int match = knot_zone_contents_find_nsec3_for_name(zone, name,
+	int match = zone_contents_find_nsec3_for_name(zone, name,
 	                                                   &node, &prev);
 	//assert(match >= 0);
 	if (match < 0) {
@@ -142,7 +142,7 @@ dbg_ns_exec_verb(
  * \retval NS_ERR_SERVFAIL
  */
 static int ns_put_nsec3_closest_encloser_proof(
-                                         const knot_zone_contents_t *zone,
+                                         const zone_contents_t *zone,
                                          const knot_node_t **closest_encloser,
                                          const knot_dname_t *qname,
                                          struct query_data *qdata,
@@ -155,14 +155,14 @@ static int ns_put_nsec3_closest_encloser_proof(
 	assert(resp != NULL);
 
 	// this function should be called only if NSEC3 is enabled in the zone
-	assert(knot_zone_contents_nsec3params(zone) != NULL);
+	assert(zone_contents_nsec3params(zone) != NULL);
 
 	dbg_ns_verb("Adding closest encloser proof\n");
 
-	if (knot_zone_contents_nsec3params(zone) == NULL) {
+	if (zone_contents_nsec3params(zone) == NULL) {
 dbg_ns_exec_verb(
 		char *name = knot_dname_to_str(knot_node_owner(
-				knot_zone_contents_apex(zone)));
+				zone_contents_apex(zone)));
 		dbg_ns_verb("No NSEC3PARAM found in zone %s.\n", name);
 		free(name);
 );
@@ -282,7 +282,7 @@ dbg_ns_exec_verb(
  * \param qdata Query data.
  * \param resp Response to put the NSEC3s into.
  */
-static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
+static int ns_put_nsec_wildcard(const zone_contents_t *zone,
                                 const knot_dname_t *qname,
                                 const knot_node_t *previous,
                                 struct query_data *qdata,
@@ -290,12 +290,12 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 {
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {
-		previous = knot_zone_contents_find_previous(zone, qname);
+		previous = zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
 
 		/*!
 		 * \todo isn't this handled in adjusting?
-		 * knot_zone_contents_adjust_node_in_tree_ptr()
+		 * zone_contents_adjust_node_in_tree_ptr()
 		 */
 		while (!knot_node_is_auth(previous)) {
 			previous = knot_node_previous(previous);
@@ -331,7 +331,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_put_nsec3_no_wildcard_child(const knot_zone_contents_t *zone,
+static int ns_put_nsec3_no_wildcard_child(const zone_contents_t *zone,
                                           const knot_node_t *node,
                                           struct query_data *qdata,
                                           knot_pkt_t *resp)
@@ -372,7 +372,7 @@ static int ns_put_nsec3_no_wildcard_child(const knot_zone_contents_t *zone,
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_put_nsec3_wildcard(const knot_zone_contents_t *zone,
+static int ns_put_nsec3_wildcard(const zone_contents_t *zone,
                                  const knot_node_t *closest_encloser,
                                  const knot_dname_t *qname,
                                  struct query_data *qdata,
@@ -431,7 +431,7 @@ dbg_ns_exec_verb(
 static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
                                              const knot_node_t *closest_encloser,
                                              const knot_node_t *previous,
-                                             const knot_zone_contents_t *zone,
+                                             const zone_contents_t *zone,
                                              const knot_dname_t *qname,
                                              struct query_data *qdata,
                                              knot_pkt_t *resp)
@@ -473,7 +473,7 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
  * \retval NS_ERR_SERVFAIL
  */
 static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
-                                const knot_zone_contents_t *zone,
+                                const zone_contents_t *zone,
                                 const knot_node_t *previous,
                                 const knot_node_t *closest_encloser,
                                 struct query_data *qdata,
@@ -485,12 +485,12 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {
 		/*! \todo Check version. */
-		previous = knot_zone_contents_find_previous(zone, qname);
+		previous = zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
 
 		/*!
 		 * \todo isn't this handled in adjusting?
-		 * knot_zone_contents_adjust_node_in_tree_ptr()
+		 * zone_contents_adjust_node_in_tree_ptr()
 		 */
 		while (!knot_node_is_auth(previous)) {
 			previous = knot_node_previous(previous);
@@ -541,7 +541,7 @@ dbg_ns_exec_verb(
 		dbg_ns_verb("Previous node: %s\n", name);
 		free(name);
 );
-		assert(prev_new != knot_zone_contents_apex(zone));
+		assert(prev_new != zone_contents_apex(zone));
 		prev_new = knot_node_previous(prev_new);
 	}
 	assert(knot_dname_cmp(knot_node_owner(prev_new),
@@ -591,7 +591,7 @@ dbg_ns_exec_verb(
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_put_nsec3_nxdomain(const knot_zone_contents_t *zone,
+static int ns_put_nsec3_nxdomain(const zone_contents_t *zone,
                                  const knot_node_t *closest_encloser,
                                  const knot_dname_t *qname,
                                  struct query_data *qdata,
@@ -631,7 +631,7 @@ static int ns_put_nsec3_nxdomain(const knot_zone_contents_t *zone,
  * \retval KNOT_EOK
  * \retval NS_ERR_SERVFAIL
  */
-static int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,
+static int ns_put_nsec_nsec3_nxdomain(const zone_contents_t *zone,
                                       const knot_node_t *previous,
                                       const knot_node_t *closest_encloser,
                                       const knot_dname_t *qname,
@@ -667,7 +667,7 @@ static int ns_put_nsec_nsec3_nxdomain(const knot_zone_contents_t *zone,
 static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
                                     const knot_node_t *closest_encloser,
                                     const knot_node_t *previous,
-                                    const knot_zone_contents_t *zone,
+                                    const zone_contents_t *zone,
                                     const knot_dname_t *qname,
                                     struct query_data *qdata,
                                     knot_pkt_t *resp)

@@ -57,7 +57,7 @@ typedef enum xfrin_transfer_result {
  * \retval 1 if the transfer is needed.
  * \retval 0 if the transfer is not needed.
  */
-int xfrin_transfer_needed(const knot_zone_contents_t *zone,
+int xfrin_transfer_needed(const zone_contents_t *zone,
                           knot_pkt_t *soa_response);
 
 /*!
@@ -114,7 +114,7 @@ int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt);
  *
  * \todo Refactor!!!
  */
-int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone);
+int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, zone_contents_t **zone);
 
 /*!
  * \brief Destroys the whole changesets structure.
@@ -150,7 +150,7 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr);
  */
 int xfrin_apply_changesets(zone_t *zone,
                            knot_changesets_t *chsets,
-                           knot_zone_contents_t **new_contents);
+                           zone_contents_t **new_contents);
 
 /*!
  * \brief Applies DNSSEC changesets after DDNS.
@@ -166,8 +166,8 @@ int xfrin_apply_changesets(zone_t *zone,
  * by the UPDATE-processing function. It uses new and old zones from this
  * operation.
  */
-int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
-                                       knot_zone_contents_t *z_new,
+int xfrin_apply_changesets_dnssec_ddns(zone_contents_t *z_old,
+                                       zone_contents_t *z_new,
                                        knot_changesets_t *sec_chsets,
                                        knot_changesets_t *chsets,
                                        const hattrie_t *sorted_changes);
@@ -185,12 +185,12 @@ int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
  * \retval KNOT_EINVAL if given one of the arguments is NULL.
  * \return Other error code if the application went wrong.
  */
-int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
+int xfrin_apply_changesets_directly(zone_contents_t *contents,
                                     knot_changes_t *changes,
                                     knot_changesets_t *chsets);
 
-int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
-                            knot_zone_contents_t **new_contents);
+int xfrin_prepare_zone_copy(zone_contents_t *old_contents,
+                            zone_contents_t **new_contents);
 
 /*!
  * \brief Sets pointers and NSEC3 nodes after signing/DDNS.
@@ -200,18 +200,18 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
  *                         node mapping, no hashes are calculated.
  * \return KNOT_E*
  */
-int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
+int xfrin_finalize_updated_zone(zone_contents_t *contents_copy,
                                 bool set_nsec3_names,
                                 const hattrie_t *sorted_changes);
 
 int xfrin_switch_zone(zone_t *zone,
-                      knot_zone_contents_t *new_contents,
+                      zone_contents_t *new_contents,
                       int transfer_type);
 
 void xfrin_cleanup_successful_update(knot_changes_t *changes);
 
-void xfrin_rollback_update(knot_zone_contents_t *old_contents,
-                           knot_zone_contents_t **new_contents,
+void xfrin_rollback_update(zone_contents_t *old_contents,
+                           zone_contents_t **new_contents,
                            knot_changes_t *changes);
 
 int xfrin_copy_rrset(knot_node_t *node, uint16_t type,
@@ -224,9 +224,9 @@ int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
 int xfrin_replace_rrset_in_node(knot_node_t *node,
                                 knot_rrset_t *rrset_new,
                                 knot_changes_t *changes,
-                                knot_zone_contents_t *contents);
+                                zone_contents_t *contents);
 
-void xfrin_zone_contents_free(knot_zone_contents_t **contents);
+void xfrin_zone_contents_free(zone_contents_t **contents);
 
 #endif /* _KNOTXFR_IN_H_ */
 

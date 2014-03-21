@@ -648,7 +648,7 @@ static int rdata_nsec_to_type_array(const knot_rrset_t *rrset, size_t pos,
  *
  * \return Appropriate error code if error was found.
  */
-static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
+static int check_nsec3_node_in_zone(zone_contents_t *zone,
                                     knot_node_t *node, err_handler_t *handler)
 {
 	assert(handler);
@@ -668,7 +668,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 			const knot_node_t *nsec3_previous;
 			const knot_node_t *nsec3_node;
 
-			if (knot_zone_contents_find_nsec3_for_name(zone,
+			if (zone_contents_find_nsec3_for_name(zone,
 						knot_node_owner(node),
 						&nsec3_node,
 						&nsec3_previous) != 0) {
@@ -715,7 +715,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	}
 
 	const knot_rrset_t *soa_rrset =
-		knot_node_rrset(knot_zone_contents_apex(zone),
+		knot_node_rrset(zone_contents_apex(zone),
 	                        KNOT_RRTYPE_SOA);
 	assert(soa_rrset);
 	uint32_t minimum_ttl = knot_rdata_soa_minimum(soa_rrset);
@@ -726,7 +726,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	}
 
 	/* Result is a dname, it can't be larger */
-	const knot_node_t *apex = knot_zone_contents_apex(zone);
+	const knot_node_t *apex = zone_contents_apex(zone);
 	uint8_t *next_dname_str = NULL;
 	uint8_t next_dname_size = 0;
 	knot_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
@@ -738,7 +738,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		return KNOT_ERROR;
 	}
 
-	if (knot_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
+	if (zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
 		err_handler_handle_error(handler, node,
 					 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 	}
@@ -843,11 +843,11 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 	return KNOT_EOK;
 }
 
-static int sem_check_node_optional(const knot_zone_contents_t *zone,
+static int sem_check_node_optional(const zone_contents_t *zone,
                                    const knot_node_t *node,
                                    err_handler_t *handler)
 {
-	if (knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
+	if (knot_node_is_deleg_point(node) || zone_contents_apex(zone) ==
 	                node) {
 		const knot_rrset_t *ns_rrset =
 				knot_node_rrset(node, KNOT_RRTYPE_NS);
@@ -867,10 +867,10 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 		}
 
 		const knot_node_t *glue_node =
-				knot_zone_contents_find_node(zone, ns_dname);
+				zone_contents_find_node(zone, ns_dname);
 		
 		if (knot_dname_is_sub(ns_dname,
-			      knot_node_owner(knot_zone_contents_apex(zone)))) {
+			      knot_node_owner(zone_contents_apex(zone)))) {
 			if (glue_node == NULL) {
 				/* Try wildcard ([1]* + suffix). */
 				knot_dname_t wildcard[KNOT_DNAME_MAXLEN];
@@ -879,7 +879,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 				                   knot_wire_next_label(ns_dname, NULL),
 				                   sizeof(wildcard));
 				const knot_node_t *wildcard_node = 
-					knot_zone_contents_find_node(zone,
+					zone_contents_find_node(zone,
 				                                     wildcard);
 				if (wildcard_node == NULL) {
 					err_handler_handle_error(handler, node,
@@ -925,7 +925,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
  *
  * \return Appropriate error code if error was found.
  */
-int sem_check_node_plain(const knot_zone_contents_t *zone,
+int sem_check_node_plain(const zone_contents_t *zone,
                          const knot_node_t *node,
                          err_handler_t *handler,
                          bool only_mandatory,
@@ -971,7 +971,7 @@ int sem_check_rrset(const knot_node_t *node,
  *
  * \return Appropriate error code if error was found.
  */
-static int semantic_checks_dnssec(knot_zone_contents_t *zone,
+static int semantic_checks_dnssec(zone_contents_t *zone,
 				  knot_node_t *node,
 				  knot_node_t **last_node,
 				  err_handler_t *handler,
@@ -984,7 +984,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	uint rrset_count = knot_node_rrset_count(node);
 	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
 	const knot_rrset_t *dnskey_rrset =
-		knot_node_rrset(knot_zone_contents_apex(zone),
+		knot_node_rrset(zone_contents_apex(zone),
 				  KNOT_RRTYPE_DNSKEY);
 
 	int ret = 0;
@@ -1070,13 +1070,13 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				}
 				knot_dname_to_lower(lowercase);
 
-				if (knot_zone_contents_find_node(zone, lowercase) == NULL) {
+				if (zone_contents_find_node(zone, lowercase) == NULL) {
 					err_handler_handle_error(handler, node,
 						ZC_ERR_NSEC_RDATA_CHAIN, NULL);
 				}
 
 				if (knot_dname_cmp(lowercase,
-				    knot_node_owner(knot_zone_contents_apex(zone)))
+				    knot_node_owner(zone_contents_apex(zone)))
 					== 0) {
 					/* saving the last node */
 					*last_node = node;
@@ -1113,7 +1113,7 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 
 	arg_t *args = (arg_t *)data;
 
-	knot_zone_contents_t *zone = (knot_zone_contents_t *)args->arg1;
+	zone_contents_t *zone = (zone_contents_t *)args->arg1;
 
 	knot_node_t **last_node = (knot_node_t **)args->arg5;
 
@@ -1141,7 +1141,7 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
+int zone_do_sem_checks(zone_contents_t *zone, int do_checks,
                        err_handler_t *handler, knot_node_t *first_nsec3_node,
                        knot_node_t *last_nsec3_node)
 {
@@ -1158,7 +1158,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 	int fatal_error = 0;
 	arguments.arg7 = (void *)&fatal_error;
 
-	int ret = knot_zone_contents_tree_apply_inorder(zone,
+	int ret = zone_contents_tree_apply_inorder(zone,
 	                                                do_checks_in_tree,
 	                                                &arguments);
 	if (ret != KNOT_EOK) {
@@ -1175,7 +1175,7 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 }
 
 void log_cyclic_errors_in_zone(err_handler_t *handler,
-                               knot_zone_contents_t *zone,
+                               zone_contents_t *zone,
                                knot_node_t *last_node,
                                const knot_node_t *first_nsec3_node,
                                const knot_node_t *last_nsec3_node,
@@ -1196,7 +1196,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		}
 
 		/* Result is a dname, it can't be larger */
-		const knot_node_t *apex = knot_zone_contents_apex(zone);
+		const knot_node_t *apex = zone_contents_apex(zone);
 		uint8_t *next_dname_str = NULL;
 		uint8_t next_dname_size = 0;
 		knot_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
@@ -1210,8 +1210,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		}
 
 		/* Check it points somewhere first. */
-		if (knot_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
-			assert(knot_zone_contents_find_node(zone,
+		if (zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
+			assert(zone_contents_find_node(zone,
 			                                    next_dname) ==
 			                                    NULL);
 			err_handler_handle_error(handler, last_nsec3_node,
@@ -1248,7 +1248,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			assert(next_dname);
 
 			const knot_dname_t *apex_dname =
-				knot_node_owner(knot_zone_contents_apex(zone));
+				knot_node_owner(zone_contents_apex(zone));
 			assert(apex_dname);
 
 			if (knot_dname_cmp(next_dname, apex_dname) !=0) {

@@ -31,7 +31,7 @@
 
 #include "knot/updates/changesets.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/dnssec/policy.h"
 
@@ -59,7 +59,7 @@ typedef struct signed_info {
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_sign(const knot_zone_contents_t *zone,
+int knot_zone_sign(const zone_contents_t *zone,
                    const knot_zone_keys_t *zone_keys,
                    const knot_dnssec_policy_t *policy,
                    knot_changeset_t *out_ch, uint32_t *refresh_at);
@@ -89,7 +89,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa, const knot_rrset_t *rrsig
  *
  * \return True if zone SOA signatures need update, false othewise.
  */
-bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
+bool knot_zone_sign_soa_expired(const zone_contents_t *zone,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
 
@@ -105,7 +105,7 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_sign_changeset(const knot_zone_contents_t *zone,
+int knot_zone_sign_changeset(const zone_contents_t *zone,
                              const knot_changeset_t *in_ch,
                              knot_changeset_t *out_ch,
                              hattrie_t **sorted_changes,

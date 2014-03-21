@@ -39,7 +39,7 @@
 #include "knot/updates/changesets.h"
 #include "knot/updates/ddns.h"
 #include "knot/updates/xfr-in.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
@@ -80,7 +80,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
 
 	rcu_read_lock();
 
-	knot_zone_contents_t * zc = zone->contents;
+	zone_contents_t * zc = zone->contents;
 	if (!zc) {
 		rcu_read_unlock();
 		return 0;
@@ -831,8 +831,8 @@ uint32_t zones_next_serial(zone_t *zone)
 	return new_serial;
 }
 
-static bool apex_rr_changed(const knot_zone_contents_t *old_contents,
-                            const knot_zone_contents_t *new_contents,
+static bool apex_rr_changed(const zone_contents_t *old_contents,
+                            const zone_contents_t *new_contents,
                             uint16_t type)
 {
 	const knot_rrset_t *old_rr = knot_node_rrset(old_contents->apex, type);
@@ -845,14 +845,14 @@ static bool apex_rr_changed(const knot_zone_contents_t *old_contents,
 	return !knot_rrset_equal(old_rr, new_rr, KNOT_RRSET_COMPARE_WHOLE);
 }
 
-bool zones_dnskey_changed(const knot_zone_contents_t *old_contents,
-                                 const knot_zone_contents_t *new_contents)
+bool zones_dnskey_changed(const zone_contents_t *old_contents,
+                                 const zone_contents_t *new_contents)
 {
 	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_DNSKEY);
 }
 
-bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
-                                     const knot_zone_contents_t *new_contents)
+bool zones_nsec3param_changed(const zone_contents_t *old_contents,
+                                     const zone_contents_t *new_contents)
 {
 	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM);
 }
@@ -886,7 +886,7 @@ static int zones_open_free_filename(const char *old_name, char **new_name)
 
 /*----------------------------------------------------------------------------*/
 
-static int save_transferred_zone(knot_zone_contents_t *zone, const struct sockaddr_storage *from, const char *fname)
+static int save_transferred_zone(zone_contents_t *zone, const struct sockaddr_storage *from, const char *fname)
 {
 	assert(zone != NULL && fname != NULL);
 
@@ -954,7 +954,7 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 	/* Lock RCU for zone contents. */
 	rcu_read_lock();
 
-	knot_zone_contents_t *contents = zone->contents;
+	zone_contents_t *contents = zone->contents;
 	if (!contents) {
 		rcu_read_unlock();
 		pthread_mutex_unlock(&zone->lock);
@@ -1157,14 +1157,14 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 
 	rcu_read_lock();
 
-	knot_zone_contents_t *new_zone = xfr->new_contents;
+	zone_contents_t *new_zone = xfr->new_contents;
 
 	const char *zonefile = xfr->zone->conf->file;
 
 	/* Check if the new zone apex dname matches zone name. */
 	knot_dname_t *cur_name = knot_dname_from_str(xfr->zone->conf->name);
 	const knot_dname_t *new_name = NULL;
-	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
+	new_name = knot_node_owner(zone_contents_apex(new_zone));
 	int r = knot_dname_cmp(cur_name, new_name);
 	knot_dname_free(&cur_name);
 	if (r != 0) {
@@ -1420,7 +1420,7 @@ int zones_create_changeset(const zone_t *old_zone,
 		return KNOT_EINVAL;
 	}
 
-	int ret = knot_zone_contents_create_diff(old_zone->contents,
+	int ret = zone_contents_create_diff(old_zone->contents,
 	                                         new_zone->contents,
 	                                         changeset);
 	if (ret != KNOT_EOK) {
@@ -1449,7 +1449,7 @@ int zones_create_changeset(const zone_t *old_zone,
 
 int zones_store_and_apply_chgsets(knot_changesets_t *chs,
                                   zone_t *zone,
-                                  knot_zone_contents_t **new_contents,
+                                  zone_contents_t **new_contents,
                                   const char *msgpref, int type)
 {
 	int ret = KNOT_EOK;
@@ -1654,7 +1654,7 @@ int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *refresh_at)
 	}
 
 	if (!zones_changesets_empty(chs)) {
-		knot_zone_contents_t *new_c = NULL;
+		zone_contents_t *new_c = NULL;
 		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
 						    XFR_TYPE_UPDATE);
 		chs = NULL; // freed by zones_store_and_apply_chgsets()
@@ -2105,7 +2105,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 
 	assert(transaction);
 
-	knot_zone_contents_t *new_contents = NULL;
+	zone_contents_t *new_contents = NULL;
 	if (apply_chgset) {
 		/* Apply DNSSEC changeset to the zone as it was not
 		 * applied yet. In this case, no diff should have been

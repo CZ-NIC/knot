@@ -19,14 +19,14 @@
 
 #include <stdint.h>
 
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
 
 /*!
  * \brief Create diff between two zone trees.
  * */
-int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
-                                   const knot_zone_contents_t *z2,
+int zone_contents_create_diff(const zone_contents_t *z1,
+                                   const zone_contents_t *z2,
                                    knot_changeset_t *changeset);
 
 /*!

@@ -27,7 +27,7 @@
 #include "common/debug.h"
 #include "knot/zone/zone.h"
 
-static int init_dnssec_structs(const knot_zone_contents_t *zone,
+static int init_dnssec_structs(const zone_contents_t *zone,
                                conf_zone_t *config,
                                knot_zone_keys_t *zone_keys,
                                knot_dnssec_policy_t *policy,
@@ -65,7 +65,7 @@ static int init_dnssec_structs(const knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-static int zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
+static int zone_sign(zone_contents_t *zone, conf_zone_t *zone_config,
                      knot_changeset_t *out_ch, bool force,
                      knot_update_serial_t soa_up, uint32_t *refresh_at,
                      uint32_t new_serial)
@@ -152,7 +152,7 @@ static int zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
 	return KNOT_EOK;
 }
 
-int knot_dnssec_zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
+int knot_dnssec_zone_sign(zone_contents_t *zone, conf_zone_t *zone_config,
                           knot_changeset_t *out_ch,
                           knot_update_serial_t soa_up, uint32_t *refresh_at,
                           uint32_t new_serial)
@@ -164,7 +164,7 @@ int knot_dnssec_zone_sign(knot_zone_contents_t *zone, conf_zone_t *zone_config,
 	return zone_sign(zone, zone_config, out_ch, false, soa_up, refresh_at, new_serial);
 }
 
-int knot_dnssec_zone_sign_force(knot_zone_contents_t *zone, conf_zone_t *zone_config,
+int knot_dnssec_zone_sign_force(zone_contents_t *zone, conf_zone_t *zone_config,
                                 knot_changeset_t *out_ch, uint32_t *refresh_at,
                                 uint32_t new_serial)
 {
@@ -176,7 +176,7 @@ int knot_dnssec_zone_sign_force(knot_zone_contents_t *zone, conf_zone_t *zone_co
 	                 new_serial);
 }
 
-int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
+int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                conf_zone_t *zone_config,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,

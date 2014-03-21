@@ -17,7 +17,7 @@
 #include <config.h>
 #include <assert.h>
 
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "common/debug.h"
 #include "libknot/rrset.h"
 #include "common/base32hex.h"
@@ -35,13 +35,13 @@
 /*----------------------------------------------------------------------------*/
 
 typedef struct {
-	knot_zone_contents_apply_cb_t func;
+	zone_contents_apply_cb_t func;
 	void *data;
 } knot_zone_tree_func_t;
 
 typedef struct {
 	knot_node_t *first_node;
-	knot_zone_contents_t *zone;
+	zone_contents_t *zone;
 	knot_node_t *previous_node;
 } knot_zone_adjust_arg_t;
 
@@ -79,8 +79,8 @@ static int tree_apply_cb(knot_node_t **node, void *data)
  * \retval KNOT_EINVAL if either of the arguments is NULL.
  * \retval KNOT_EOUTOFZONE if the node does not belong to the zone.
  */
-static int knot_zone_contents_check_node(
-	const knot_zone_contents_t *contents, const knot_node_t *node)
+static int zone_contents_check_node(
+	const zone_contents_t *contents, const knot_node_t *node)
 {
 	if (contents == NULL || node == NULL) {
 		return KNOT_EINVAL;
@@ -114,7 +114,7 @@ dbg_zone_exec(
  * \param node Node to destroy RRSets from.
  * \param data Unused parameter.
  */
-static int knot_zone_contents_destroy_node_rrsets_from_tree(
+static int zone_contents_destroy_node_rrsets_from_tree(
 	knot_node_t **tnode, void *data)
 {
 	UNUSED(data);
@@ -129,7 +129,7 @@ static int knot_zone_contents_destroy_node_rrsets_from_tree(
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
+static int zone_contents_nsec3_name(const zone_contents_t *zone,
                                          const knot_dname_t *name,
                                          knot_dname_t **nsec3_name)
 {
@@ -137,7 +137,7 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 	*nsec3_name = NULL;
 
 	const knot_nsec3_params_t *nsec3_params =
-		knot_zone_contents_nsec3params(zone);
+		zone_contents_nsec3params(zone);
 
 	if (nsec3_params == NULL) {
 		return KNOT_ENSEC3PAR;
@@ -153,7 +153,7 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 }
 
 /*! \brief Link pointers to additional nodes for this RRSet. */
-static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
+static int discover_additionals(knot_rrset_t *rr, zone_contents_t *zone)
 {
 	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
 	const knot_dname_t *dname = NULL;
@@ -174,7 +174,7 @@ static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
 
 		/* Try to find node for the dname in the RDATA. */
 		dname = knot_rdata_name(rr, i);
-		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
+		zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
 		if (node == NULL && encloser && encloser->wildcard_child) {
 			node = encloser->wildcard_child;
 		}
@@ -243,7 +243,7 @@ static int adjust_nsec3_pointers(knot_node_t **tnode, void *data)
 	// Connect to NSEC3 node (only if NSEC3 tree is not empty)
 	knot_node_t *nsec3 = NULL;
 	knot_dname_t *nsec3_name = NULL;
-	int ret = knot_zone_contents_nsec3_name(args->zone,
+	int ret = zone_contents_nsec3_name(args->zone,
 	                                        knot_node_owner(node),
 	                                        &nsec3_name);
 	if (ret == KNOT_EOK) {
@@ -271,7 +271,7 @@ static int adjust_nsec3_pointers(knot_node_t **tnode, void *data)
  * \param tnode  Zone node to adjust.
  * \param data   Adjusting parameters (knot_zone_adjust_arg_t *).
  */
-static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
+static int zone_contents_adjust_normal_node(knot_node_t **tnode,
                                                  void *data)
 {
 	assert(data != NULL);
@@ -298,7 +298,7 @@ static int knot_zone_contents_adjust_normal_node(knot_node_t **tnode,
  * \param tnode  Zone node to adjust.
  * \param data   Adjusting parameters (knot_zone_adjust_arg_t *).
  */
-static int knot_zone_contents_adjust_nsec3_node(knot_node_t **tnode,
+static int zone_contents_adjust_nsec3_node(knot_node_t **tnode,
                                                 void *data)
 {
 	assert(data != NULL);
@@ -362,7 +362,7 @@ static int adjust_additional(knot_node_t **tnode, void *data)
  * \retval 0 if the domain name was not found. \a node may hold any (or none)
  *           node. \a previous is set properly.
  */
-static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
+static int zone_contents_find_in_tree(knot_zone_tree_t *tree,
                                            const knot_dname_t *name,
                                            knot_node_t **node,
                                            knot_node_t **previous)
@@ -415,19 +415,19 @@ static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_zone_contents_t *knot_zone_contents_new(const knot_dname_t *apex_name)
+zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 {
 	dbg_zone("%s(%p)\n", __func__, apex_name);
 	if (apex_name == NULL) {
 		return NULL;
 	}
 
-	knot_zone_contents_t *contents = malloc(sizeof(knot_zone_contents_t));
+	zone_contents_t *contents = malloc(sizeof(zone_contents_t));
 	if (contents == NULL) {
 		return NULL;
 	}
 
-	memset(contents, 0, sizeof(knot_zone_contents_t));
+	memset(contents, 0, sizeof(zone_contents_t));
 	contents->node_count = 1;
 	contents->apex = knot_node_new(apex_name, NULL, 0);
 	if (contents->apex == NULL) {
@@ -460,7 +460,7 @@ cleanup:
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents)
+int zone_contents_gen_is_old(const zone_contents_t *contents)
 {
 	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
 		== KNOT_ZONE_FLAGS_GEN_OLD);
@@ -468,7 +468,7 @@ int knot_zone_contents_gen_is_old(const knot_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents)
+int zone_contents_gen_is_new(const zone_contents_t *contents)
 {
 	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
 		== KNOT_ZONE_FLAGS_GEN_NEW);
@@ -476,7 +476,7 @@ int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents)
+void zone_contents_set_gen_old(zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
 	contents->flags |= KNOT_ZONE_FLAGS_GEN_OLD;
@@ -484,7 +484,7 @@ void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents)
+void zone_contents_set_gen_new(zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
 	contents->flags |= KNOT_ZONE_FLAGS_GEN_NEW;
@@ -492,7 +492,7 @@ void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
-uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents)
+uint16_t zone_contents_class(const zone_contents_t *contents)
 {
 	if (contents == NULL || contents->apex == NULL
 	    || knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA) == NULL) {
@@ -505,7 +505,7 @@ uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_add_node(knot_zone_contents_t *zone,
+int zone_contents_add_node(zone_contents_t *zone,
                                   knot_node_t *node, int create_parents,
                                   uint8_t flags)
 {
@@ -520,7 +520,7 @@ dbg_zone_exec_detail(
 );
 
 	int ret = 0;
-	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
+	if ((ret = zone_contents_check_node(zone, node)) != 0) {
 		dbg_zone("Node check failed.\n");
 		return ret;
 	}
@@ -556,7 +556,7 @@ dbg_zone_exec_detail(
 		}
 	} else {
 		while (parent != NULL &&
-		       !(next_node = knot_zone_contents_get_node(zone, parent))) {
+		       !(next_node = zone_contents_get_node(zone, parent))) {
 
 			/* Create a new node. */
 			dbg_zone_detail("Creating new node.\n");
@@ -567,7 +567,7 @@ dbg_zone_exec_detail(
 
 			/* Insert node to a tree. */
 			dbg_zone_detail("Inserting new node to zone tree.\n");
-			assert(knot_zone_contents_find_node(zone, parent) == NULL);
+			assert(zone_contents_find_node(zone, parent) == NULL);
 			ret = knot_zone_tree_insert(zone->nodes, next_node);
 			if (ret != KNOT_EOK) {
 				knot_node_free(&next_node);
@@ -600,7 +600,7 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_create_node(knot_zone_contents_t *contents,
+int zone_contents_create_node(zone_contents_t *contents,
                                    const knot_rrset_t *rr,
                                    knot_node_t **node)
 {
@@ -616,9 +616,9 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
 	/* Add to the proper tree. */
 	int ret = KNOT_EOK;
 	if (knot_rrset_is_nsec3rel(rr)) {
-		ret = knot_zone_contents_add_nsec3_node(contents, *node, 1, 0);
+		ret = zone_contents_add_nsec3_node(contents, *node, 1, 0);
 	} else {
-		ret = knot_zone_contents_add_node(contents, *node, 1, 0);
+		ret = zone_contents_add_node(contents, *node, 1, 0);
 	}
 
 	if (ret != KNOT_EOK) {
@@ -632,7 +632,7 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
+static int insert_rr(zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
                      knot_rrset_t **rrset, bool nsec3)
 {
 	if (z == NULL || rr == NULL || n == NULL || rrset == NULL) {
@@ -647,16 +647,16 @@ static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
 
 	int ret = KNOT_EOK;
 	if (*n == NULL) {
-		*n = nsec3 ? knot_zone_contents_get_nsec3_node(z, rr->owner) :
-		             knot_zone_contents_get_node(z, rr->owner);
+		*n = nsec3 ? zone_contents_get_nsec3_node(z, rr->owner) :
+		             zone_contents_get_node(z, rr->owner);
 		if (*n == NULL) {
 			// Create new, insert
 			*n = knot_node_new(rr->owner, NULL, 0);
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
-			ret = nsec3 ? knot_zone_contents_add_nsec3_node(z, *n, true, 0) :
-			              knot_zone_contents_add_node(z, *n, true, 0);
+			ret = nsec3 ? zone_contents_add_nsec3_node(z, *n, true, 0) :
+			              zone_contents_add_node(z, *n, true, 0);
 			if (ret != KNOT_EOK) {
 				knot_node_free(n);
 			}
@@ -671,14 +671,14 @@ static bool to_nsec3_tree(const knot_rrset_t *rr)
 	return knot_rrset_is_nsec3rel(rr);
 }
 
-int knot_zone_contents_add_rr(knot_zone_contents_t *z,
+int zone_contents_add_rr(zone_contents_t *z,
                               knot_rrset_t *rr, knot_node_t **n,
                               knot_rrset_t **rrset)
 {
 	return insert_rr(z, rr, n, rrset, to_nsec3_tree(rr));
 }
 
-int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
+int zone_contents_add_rrset(zone_contents_t *zone,
                                  knot_rrset_t *rrset, knot_node_t **node,
                                  knot_rrset_dupl_handling_t dupl)
 {
@@ -701,7 +701,7 @@ dbg_zone_exec_detail(
 	}
 
 	if ((*node) == NULL
-	    && (*node = knot_zone_contents_get_node(zone,
+	    && (*node = zone_contents_get_node(zone,
 	                                            rrset->owner)) == NULL) {
 		return KNOT_ENONODE;
 	}
@@ -731,7 +731,7 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
+int zone_contents_add_nsec3_node(zone_contents_t *zone,
                                         knot_node_t *node, int create_parents,
                                         uint8_t flags)
 {
@@ -743,7 +743,7 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 	}
 
 	int ret = 0;
-	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
+	if ((ret = zone_contents_check_node(zone, node)) != 0) {
 		dbg_zone("Failed node check: %s\n", knot_strerror(ret));
 		return ret;
 	}
@@ -767,7 +767,7 @@ int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
+int zone_contents_remove_node(zone_contents_t *contents,
                                    const knot_dname_t *owner)
 {
 	if (contents == NULL || owner == NULL) {
@@ -791,7 +791,7 @@ dbg_zone_exec_verb(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
+int zone_contents_remove_nsec3_node(zone_contents_t *contents,
 	const knot_dname_t *owner)
 {
 	if (contents == NULL || owner == NULL) {
@@ -812,7 +812,7 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_get_node(const knot_zone_contents_t *zone,
+knot_node_t *zone_contents_get_node(const zone_contents_t *zone,
 				    const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
@@ -831,8 +831,8 @@ knot_node_t *knot_zone_contents_get_node(const knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_get_nsec3_node(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
+knot_node_t *zone_contents_get_nsec3_node(
+	const zone_contents_t *zone, const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
@@ -852,15 +852,15 @@ knot_node_t *knot_zone_contents_get_nsec3_node(
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_zone_contents_find_node(
-	const knot_zone_contents_t *zone,const knot_dname_t *name)
+const knot_node_t *zone_contents_find_node(
+	const zone_contents_t *zone,const knot_dname_t *name)
 {
-	return knot_zone_contents_get_node(zone, name);
+	return zone_contents_get_node(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_find_dname(const knot_zone_contents_t *zone,
+int zone_contents_find_dname(const zone_contents_t *zone,
                            const knot_dname_t *name,
                            const knot_node_t **node,
                            const knot_node_t **closest_encloser,
@@ -883,7 +883,7 @@ dbg_zone_exec_verb(
 
 	knot_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = knot_zone_contents_find_in_tree(zone->nodes, name,
+	int exact_match = zone_contents_find_in_tree(zone->nodes, name,
 							    &found, &prev);
 	assert(exact_match >= 0);
 	*node = found;
@@ -952,8 +952,8 @@ dbg_zone_exec(
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_get_previous(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
+knot_node_t *zone_contents_get_previous(
+	const zone_contents_t *zone, const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
@@ -961,7 +961,7 @@ knot_node_t *knot_zone_contents_get_previous(
 
 	knot_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = knot_zone_contents_find_in_tree(zone->nodes, name,
+	int exact_match = zone_contents_find_in_tree(zone->nodes, name,
 							    &found, &prev);
 	assert(exact_match >= 0);
 	assert(prev != NULL);
@@ -971,16 +971,16 @@ knot_node_t *knot_zone_contents_get_previous(
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_zone_contents_find_previous(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
+const knot_node_t *zone_contents_find_previous(
+	const zone_contents_t *zone, const knot_dname_t *name)
 {
-	return knot_zone_contents_get_previous(zone, name);
+	return zone_contents_get_previous(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_get_previous_nsec3(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
+knot_node_t *zone_contents_get_previous_nsec3(
+	const zone_contents_t *zone, const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
 		return NULL;
@@ -988,7 +988,7 @@ knot_node_t *knot_zone_contents_get_previous_nsec3(
 
 	knot_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = knot_zone_contents_find_in_tree(zone->nsec3_nodes,
+	int exact_match = zone_contents_find_in_tree(zone->nsec3_nodes,
 							   name, &found, &prev);
 	assert(exact_match >= 0);
 	assert(prev != NULL);
@@ -998,23 +998,23 @@ knot_node_t *knot_zone_contents_get_previous_nsec3(
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_zone_contents_find_previous_nsec3(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
+const knot_node_t *zone_contents_find_previous_nsec3(
+	const zone_contents_t *zone, const knot_dname_t *name)
 {
-	return knot_zone_contents_get_previous_nsec3(zone, name);
+	return zone_contents_get_previous_nsec3(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_zone_contents_find_nsec3_node(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
+const knot_node_t *zone_contents_find_nsec3_node(
+	const zone_contents_t *zone, const knot_dname_t *name)
 {
-	return knot_zone_contents_get_nsec3_node(zone, name);
+	return zone_contents_get_nsec3_node(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
+int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
                                     const knot_dname_t *name,
                                     const knot_node_t **nsec3_node,
                                     const knot_node_t **nsec3_previous)
@@ -1025,7 +1025,7 @@ int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
 	}
 
 	knot_dname_t *nsec3_name = NULL;
-	int ret = knot_zone_contents_nsec3_name(zone, name, &nsec3_name);
+	int ret = zone_contents_nsec3_name(zone, name, &nsec3_name);
 
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1149,8 +1149,8 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_zone_contents_apex(
-	const knot_zone_contents_t *zone)
+const knot_node_t *zone_contents_apex(
+	const zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -1161,7 +1161,7 @@ const knot_node_t *knot_zone_contents_apex(
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
+knot_node_t *zone_contents_get_apex(const zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -1172,7 +1172,7 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
+static int zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
                                            knot_zone_adjust_arg_t *adjust_arg,
                                            knot_zone_tree_apply_cb_t callback)
 {
@@ -1194,7 +1194,7 @@ static int knot_zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
+static int zone_contents_adjust_nsec3_tree(zone_contents_t *contents)
 {
 	if (contents->nsec3_nodes == NULL) {
 		return KNOT_EOK;
@@ -1203,16 +1203,16 @@ static int knot_zone_contents_adjust_nsec3_tree(knot_zone_contents_t *contents)
 	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
 	                                      .previous_node = NULL,
 	                                      .zone = contents };
-	return knot_zone_contents_adjust_nodes(contents->nsec3_nodes,
+	return zone_contents_adjust_nodes(contents->nsec3_nodes,
 	                                       &adjust_arg,
-	                                       knot_zone_contents_adjust_nsec3_node);
+	                                       zone_contents_adjust_nsec3_node);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents)
+int zone_contents_adjust_pointers(zone_contents_t *contents)
 {
-	int ret = knot_zone_contents_load_nsec3param(contents);
+	int ret = zone_contents_load_nsec3param(contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error("Failed to load NSEC3 params: %s\n",
 		               knot_strerror(ret));
@@ -1222,24 +1222,24 @@ int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents)
 	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
 	                                      .previous_node = NULL,
 	                                      .zone = contents };
-	ret =  knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	ret =  zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
 	                                       adjust_pointers);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = knot_zone_contents_adjust_nsec3_tree(contents);
+	ret = zone_contents_adjust_nsec3_tree(contents);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	return zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
 	                                       adjust_additional);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_adjust_nsec3_pointers(knot_zone_contents_t *contents)
+int zone_contents_adjust_nsec3_pointers(zone_contents_t *contents)
 {
 	if (contents->nsec3_nodes == NULL) {
 		return KNOT_EOK;
@@ -1248,13 +1248,13 @@ int knot_zone_contents_adjust_nsec3_pointers(knot_zone_contents_t *contents)
 	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
 	                                      .previous_node = NULL,
 	                                      .zone = contents };
-	return knot_zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
+	return zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
 	                                       adjust_nsec3_pointers);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
+int zone_contents_adjust_full(zone_contents_t *zone,
                                    knot_node_t **first_nsec3_node,
                                    knot_node_t **last_nsec3_node)
 {
@@ -1262,7 +1262,7 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	int result = knot_zone_contents_load_nsec3param(zone);
+	int result = zone_contents_load_nsec3param(zone);
 	if (result != KNOT_EOK) {
 		log_zone_error("Failed to load NSEC3 params: %s\n",
 		               knot_strerror(result));
@@ -1276,8 +1276,8 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
 
 	// adjust NSEC3 nodes
 
-	result = knot_zone_contents_adjust_nodes(zone->nsec3_nodes, &adjust_arg,
-	                                 knot_zone_contents_adjust_nsec3_node);
+	result = zone_contents_adjust_nodes(zone->nsec3_nodes, &adjust_arg,
+	                                 zone_contents_adjust_nsec3_node);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -1294,8 +1294,8 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
 
 	// adjust normal nodes
 
-	result = knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
-	                                 knot_zone_contents_adjust_normal_node);
+	result = zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
+	                                 zone_contents_adjust_normal_node);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -1306,13 +1306,13 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
 	 * \note This MUST be done after node adjusting because it needs to
 	 *       do full lookup to see through wildcards. */
 
-	return knot_zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
+	return zone_contents_adjust_nodes(zone->nodes, &adjust_arg,
 	                                       adjust_additional);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
+int zone_contents_load_nsec3param(zone_contents_t *zone)
 {
 	if (zone == NULL || zone->apex == NULL) {
 		return KNOT_EINVAL;
@@ -1337,8 +1337,8 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_nsec3_params_t *knot_zone_contents_nsec3params(
-	const knot_zone_contents_t *zone)
+const knot_nsec3_params_t *zone_contents_nsec3params(
+	const zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -1353,8 +1353,8 @@ const knot_nsec3_params_t *knot_zone_contents_nsec3params(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *zone,
-                                        knot_zone_contents_apply_cb_t function,
+int zone_contents_tree_apply_inorder(zone_contents_t *zone,
+                                        zone_contents_apply_cb_t function,
                                         void *data)
 {
 	if (zone == NULL) {
@@ -1370,8 +1370,8 @@ int knot_zone_contents_tree_apply_inorder(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
-                                        knot_zone_contents_apply_cb_t function,
+int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
+                                        zone_contents_apply_cb_t function,
                                         void *data)
 {
 	if (zone == NULL) {
@@ -1388,8 +1388,8 @@ int knot_zone_contents_nsec3_apply_inorder(knot_zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
-                                    knot_zone_contents_t **to)
+int zone_contents_shallow_copy(const zone_contents_t *from,
+                                    zone_contents_t **to)
 {
 	if (from == NULL || to == NULL) {
 		return KNOT_EINVAL;
@@ -1402,8 +1402,8 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 
 	int ret = KNOT_EOK;
 
-	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
-					     1, sizeof(knot_zone_contents_t));
+	zone_contents_t *contents = (zone_contents_t *)calloc(
+					     1, sizeof(zone_contents_t));
 	if (contents == NULL) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
@@ -1414,7 +1414,7 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 	contents->node_count = from->node_count;
 	contents->flags = from->flags;
 	// set the 'new' flag
-	knot_zone_contents_set_gen_new(contents);
+	zone_contents_set_gen_new(contents);
 
 	if ((ret = knot_zone_tree_deep_copy(from->nodes,
 					    &contents->nodes)) != KNOT_EOK
@@ -1425,7 +1425,7 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 
 	contents->apex = knot_node_get_new_node(from->apex);
 
-	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
+	dbg_zone("zone_contents_shallow_copy: finished OK\n");
 
 	*to = contents;
 	return KNOT_EOK;
@@ -1439,7 +1439,7 @@ cleanup:
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_contents_free(knot_zone_contents_t **contents)
+void zone_contents_free(zone_contents_t **contents)
 {
 	if (contents == NULL || *contents == NULL) {
 		return;
@@ -1459,7 +1459,7 @@ void knot_zone_contents_free(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
+void zone_contents_deep_free(zone_contents_t **contents)
 {
 	if (contents == NULL || *contents == NULL) {
 		return;
@@ -1469,30 +1469,30 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 		// Delete NSEC3 tree
 		knot_zone_tree_apply(
 			(*contents)->nsec3_nodes,
-			knot_zone_contents_destroy_node_rrsets_from_tree,
+			zone_contents_destroy_node_rrsets_from_tree,
 			(void*)1);
 
 		// Delete normal tree
 		knot_zone_tree_apply(
 			(*contents)->nodes,
-			knot_zone_contents_destroy_node_rrsets_from_tree,
+			zone_contents_destroy_node_rrsets_from_tree,
 			(void*)1);
 	}
 
-	knot_zone_contents_free(contents);
+	zone_contents_free(contents);
 }
 
 /*----------------------------------------------------------------------------*/
 
-uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
+uint32_t knot_zone_serial(const zone_contents_t *zone)
 {
 	if (!zone) return 0;
 	const knot_rrset_t *soa = NULL;
-	soa = knot_node_rrset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
+	soa = knot_node_rrset(zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	return knot_rdata_soa_serial(soa);
 }
 
-bool knot_zone_contents_is_signed(const knot_zone_contents_t *zone)
+bool zone_contents_is_signed(const zone_contents_t *zone)
 {
 	return knot_node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 }
