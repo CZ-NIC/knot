@@ -11,6 +11,7 @@ Parameters:
     -n, --names=num    Generate unique zone names.
     -t, --ttl=sec      Specify default TTL.
     -o, --outfile=file Specify output file name.
+    -k, --keydir=dir   Specify output key directory.
 '''
 
 import binascii
@@ -431,12 +432,13 @@ def main(args):
     nsec3 = random.choice([0, 1])
     count = 0
     outfile = None
+    key_dir = None
 
     # Parse parameters
     try:
-        opts, args = getopt.getopt(args, 'hs3:i:u:n:t:o:', ['help', 'sign',
+        opts, args = getopt.getopt(args, 'hs3:i:u:n:t:o:k:', ['help', 'sign',
                                    'nsec3=', 'serial=', 'update=', 'names=',
-                                   'ttl=', 'outfile='])
+                                   'ttl=', 'outfile=', 'keydir='])
     except getopt.error as msg:
         print(msg)
         print('for help use --help')
@@ -463,6 +465,8 @@ def main(args):
             TTL = int(a)
         if o in ('-o', '--outfile') and a != None:
             outfile = a
+        if o in ('-k', '--keydir') and a != None:
+            key_dir = a
 
     ORIGIN = ""
     # Arguments
@@ -557,6 +561,8 @@ def main(args):
             tmp_zfile = outf
         if soa != None:
             tmp_zfile.write(soa)
+        if not key_dir:
+            key_dir = sign_dir
     else:
         if soa != None:
             outf.write(soa)
@@ -606,13 +612,13 @@ def main(args):
     try:
         # Generate keys
         nf = open('/dev/null', 'w')
-        ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', sign_dir ]
+        ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', key_dir ]
         if nsec3:
             ps += ['-3']
         k1 = subprocess.check_output(ps + [ORIGIN], stderr=nf)
         k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ORIGIN], stderr=nf)
-        k1 = sign_dir + '/' + k1.rstrip().decode('ascii')
-        k2 = sign_dir + '/' + k2.rstrip().decode('ascii')
+        k1 = key_dir + '/' + k1.rstrip().decode('ascii')
+        k2 = key_dir + '/' + k2.rstrip().decode('ascii')
         nf.close()
 
         # Append to zone
@@ -631,7 +637,7 @@ def main(args):
         # Sign zone
         if tmp_zfile != outf:
             tmp_zfile.close()
-        ks = subprocess.check_output(["dnssec-signzone", "-d", "/tmp", "-P", "-p", "-u", \
+        ks = subprocess.check_output(["dnssec-signzone", "-d", sign_dir, "-P", "-p", "-u", \
                                       "-k", k2, "-r", "/dev/urandom", "-o", ORIGIN] + \
                                       nsec3_params + [zfname, k1 + ".key"])
         kf = open(zfname + '.signed')
