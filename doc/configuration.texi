@@ -14,6 +14,7 @@ In this chapter we provide suggested configurations and explain the meaning of i
 * Creating IXFR differences from zone file changes::
 * Using Response Rate Limiting::
 * Automatic DNSSEC signing::
+* Query modules::
 @end menu
 
 @node Minimal configuration
@@ -376,3 +377,29 @@ can be also forced using @code{signzone} command issued by @code{knotc}, in
 this case all signatures are recreated. After each zone signing, a new signing
 event is planned. User can view the time of this event by using the
 @code{knotc zonestatus} command.
+
+@node Query modules
+@section Query modules
+
+Knot DNS supports configurable query modules that can alter the way queries are processed.
+The concept is quite simple - each query requires a finite number of steps to be resolved.
+We call this set of steps a query plan, which is groups these steps into several stages.
+
+@itemize @bullet
+@item Before query processing
+@item Answer, Authority, Additional records packet sections processing
+@item After query processing
+@end itemize
+
+For example processing an internet zone query needs to find and answer, then
+based on the previous state it may also append an authority SOA or provide additional records.
+Each of this action is represents a 'processing step'.
+Query modules are provided with a default query plan for given zone and add to it or change it
+altogether to for example add synthetic records, check additional constraints or apply limits.
+@emph{Note: Programmable interface is described in the @code{query_module.h}, it will not be discussed here.}
+
+Now, Knot DNS has several modules built-in. The general syntax for importing a query module is described in
+the @ref{query_module} configuration reference. Basically, each module is described by a name and a configuration
+string. Below is a list of modules and configuration string reference. 
+
+@include synth_record.texi

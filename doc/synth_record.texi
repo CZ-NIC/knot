@@ -1,0 +1,80 @@
+@subsection Automatic forward/reverse records module
+
+This module is able to synthetise either forward or reverse record for given prefix and subnet.
+Configuration string looks like follows: @code{(forward|reverse) <prefix> <ttl> <address>/<netblock>}.
+
+Records are synthetised only if the query can't be satisfied from the zone and both IPv4 and IPv6 are supported.
+@emph{Note: prefix doesn't allow dots and address parts in the synthetised names are separated with a dash.}
+
+Here are a few examples:
+
+@subsubsection Automatic forward records
+
+@code{synth_record "forward dynamic- 400 2620:0:b61::/52"} on @code{forward.} zone will result in following
+answer.
+@example
+$ kdig AAAA dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.forward.
+...
+;; QUESTION SECTION:
+;; dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.forward. 0	IN	AAAA
+
+;; ANSWER SECTION:
+dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.forward. 400	IN	AAAA	2620:0:b61:100::
+@end example
+
+You can also have CNAME aliases to the dynamic records, which will be further resoluted.
+@example
+$ kdig AAAA hostalias.forward.
+...
+;; QUESTION SECTION:
+;hostalias.forward. 0	IN	AAAA
+
+;; ANSWER SECTION:
+hostalias.forward.	3600 IN	CNAME dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.forward. 
+dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.forward. 400	IN	AAAA	2620:0:b61:100::
+@end example
+
+@subsubsection Automatic reverse records
+
+@code{synth_record "reverse dynamic- forward. 400 2620:0:b61::/52"} in @code{1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.} zone will
+generate reverse records instead.
+@example
+$ kdig PTR 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.
+...
+;; QUESTION SECTION:
+;; 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 0	IN	PTR
+
+;; ANSWER SECTION:
+1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 400	IN	PTR	dynamic-2620-0000-0b61-0000-0000-0000-0000-0001.forward.
+@end example
+
+
+Here's a full configuration of the aforementioned zones. Note that the zone files have to exist, even if they contain just minimal zone.
+@example
+forward. @{
+	query_module @{
+		synth_record "forward dynamic- 400 2620:0:b61::/52";
+		synth_record "forward dynamic- 400 192.168.1.0/25";
+	@}
+@}
+1.168.192.in-addr.arpa @{
+	query_module @{
+		synth_record "reverse dynamic- forward. 400 192.168.1.0/25";
+	@}
+@}
+1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa @{
+	query_module @{
+		synth_record "reverse dynamic- forward. 400 2620:0:b61::/52";
+	@}
+@}
+@end example
+
+@subsubsection Limitations
+
+@itemize @bullet
+
+@item
+As of now, there is no authenticated denial of nonexistence (neither NSEC or NSEC3 is supported). However, since the module is hooked in the query processing plan,
+it will be possible to do online signing in the future.
+
+@end itemize

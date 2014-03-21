@@ -735,6 +735,7 @@ The @code{zones} statement contains definition of zones served by Knot DNS.
 * notify-in::
 * notify-out::
 * update-in::
+* query_module::
 * storage::
 * semantic-checks::
 * ixfr-from-differences::
@@ -797,6 +798,13 @@ Remotes are defined in @code{remotes} section of configuration file (@pxref{remo
 
 In @code{update-in} statement user specifies which remotes will be permitted to perform a DNS UPDATE.
 Remotes are defined in @code{remotes} section of configuration file (@pxref{remotes}).
+
+@node query_module 
+@subsubsection query_module 
+@vindex query_module 
+
+Statement @code{query_module} takes a list of @code{module_name "config_string"} query modules separated
+by semicolon.
 
 @node storage
 @subsubsection storage

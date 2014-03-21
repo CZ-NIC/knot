@@ -5,9 +5,9 @@
  *
  * \brief Query module interface
  *
- * The concept of query plan is simple - each query requires requires a finite
+ * The concept of query plan is simple - each query requires a finite
  * number of steps to be solved. For example IN query needs to find an answer and
- * based on the result process authority and maybe supply additional records.
+ * based on the result, process authority and maybe supply additional records.
  * This can be represented by a query plan:
  * answer => { find_answer },
  * authority => { process_authority },
