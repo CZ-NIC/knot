@@ -11,12 +11,7 @@ class ZoneFile(object):
     '''A zone file handler.'''
 
     def __init__(self, file_dir):
-        try:
-            os.makedirs(file_dir)
-        except OSError:
-            if not os.path.isdir(file_dir):
-                raise Exception("Can't use zone file directory %s" % file_dir)
-
+        prepare_dir(file_dir)
         self.file_dir = file_dir
         self.file_name = ""
         self.name = ""
@@ -77,7 +72,8 @@ class ZoneFile(object):
 
         self.set_file(file_name=file_name, storage=storage, version=version)
 
-    def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None):
+    def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None,
+                 keydir=None):
         '''Generate zone file.'''
 
         if dnssec == None:
@@ -94,7 +90,9 @@ class ZoneFile(object):
         try:
             params = ["-i", serial, "-o", self.path, self.name, records]
             if dnssec:
-                params = ["-s", "-3", "y" if nsec3 else "n"] + params
+                prepare_dir(keydir)
+                params = ["-s", "-3", "y" if nsec3 else "n", "-k", keydir] \
+                         + params
             zone_generate.main(params)
         except OSError:
             raise Exception("Can't create zone file %s" % self.path)

@@ -565,16 +565,21 @@ class Server(object):
                 raise Exception("One zone required.")
             zone = zone[0]
 
-        try:
-            os.makedirs(self.keydir)
-        except OSError:
-            if not os.path.isdir(self.keydir):
-                raise Exception("Can't create key directory %s" % self.keydir)
-
+        prepare_dir(self.keydir)
         key = dnstest.keys.Key(self.keydir, zone.name, **args)
         key.generate()
 
         return key
+
+    def use_gen_keys(self):
+        # Copy generated keys to server key directory.
+        prepare_dir(self.keydir)
+
+        src_files = os.listdir(params.test.key_dir)
+        for file_name in src_files:
+            full_file_name = os.path.join(params.test.key_dir, file_name)
+            if (os.path.isfile(full_file_name)):
+                shutil.copy(full_file_name, self.keydir)
 
     def enable_nsec3(self, zone, **args):
         # Convert one item list to single object.
