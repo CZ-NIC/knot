@@ -257,6 +257,7 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 		}
 		*zone = knot_zone_contents_new(rr->owner);
 		if (*zone == NULL) {
+			knot_rrset_free(&rr, NULL);
 			return KNOT_ENOMEM;
 		}
 		xfr->packet_nr = 0;
