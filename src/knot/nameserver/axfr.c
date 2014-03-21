@@ -36,22 +36,24 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	int i = state->cur_rrset;
 	int rrset_count = knot_node_rrset_count(node);
 	unsigned flags = KNOT_PF_NOTRUNC;
-	const knot_rrset_t **rrset = knot_node_rrsets_no_copy(node);
+	knot_rrset_t **rrsets = knot_node_rrsets(node);
 
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
-		if (rrset[i]->type == KNOT_RRTYPE_SOA) {
+		if (rrsets[i]->type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
-		ret = knot_pkt_put(pkt, 0, rrset[i], flags);
+		ret = knot_pkt_put(pkt, 0, rrsets[i], flags);
 
 		/* If something failed, remember the current RR for later. */
 		if (ret != KNOT_EOK) {
 			state->cur_rrset = i;
+			knot_node_free_rrset_array(node, rrsets);
 			return ret;
 		}
 	}
 
+	knot_node_free_rrset_array(node, rrsets);
 	state->cur_rrset = 0;
 	return ret;
 }

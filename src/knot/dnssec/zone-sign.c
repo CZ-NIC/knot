@@ -494,8 +494,9 @@ static int sign_node_rrsets(const knot_node_t *node,
 	int result = KNOT_EOK;
 	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 
+	knot_rrset_t **node_rrsets = knot_node_rrsets(node);
 	for (int i = 0; i < node->rrset_count; i++) {
-		const knot_rrset_t *rrset = node->rrset_tree[i];
+		const knot_rrset_t *rrset = node_rrsets[i];
 		if (rrset->type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
@@ -521,6 +522,8 @@ static int sign_node_rrsets(const knot_node_t *node,
 			return result;
 		}
 	}
+
+	knot_node_free_rrset_array(node, node_rrsets);
 
 	return remove_standalone_rrsigs(node, rrsigs, changeset);
 }

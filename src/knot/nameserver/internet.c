@@ -154,7 +154,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 {
 	const knot_rrset_t *rrset = NULL;
-	knot_rrset_t **rrsets = knot_node_get_rrsets_no_copy(qdata->node);
+	knot_rrset_t **rrsets = knot_node_rrsets(qdata->node);
 
 	/* Wildcard expansion or exact match, either way RRSet owner is
 	 * is QNAME. We can fake name synthesis by setting compression hint to
@@ -174,6 +174,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		    (qdata->zone->conf->disable_any)) {
 			dbg_ns("%s: ANY/UDP disabled for this zone TC=1\n", __func__);
 			knot_wire_set_tc(pkt->wire);
+			knot_node_free_rrset_array(qdata->node, rrsets);
 			return KNOT_ESPACE;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
@@ -192,6 +193,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		break;
 	}
 
+	knot_node_free_rrset_array(qdata->node, rrsets);
 	return ret;
 }
 

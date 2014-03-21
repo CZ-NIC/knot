@@ -771,7 +771,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	}
 	
 	/* Check that the node only contains NSEC3 and RRSIG. */
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(nsec3_node);
+	knot_rrset_t **rrsets = knot_node_rrsets(nsec3_node);
 	if (rrsets == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -786,6 +786,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		}
 	}
 
+	knot_node_free_rrset_array(nsec3_node, rrsets);
 	free(array);
 
 	return KNOT_EOK;
@@ -981,7 +982,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	char auth = !knot_node_is_non_auth(node);
 	char deleg = knot_node_is_deleg_point(node);
 	uint rrset_count = knot_node_rrset_count(node);
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
+	knot_rrset_t **rrsets = knot_node_rrsets(node);
 	const knot_rrset_t *dnskey_rrset =
 		knot_node_rrset(knot_zone_contents_apex(zone),
 				  KNOT_RRTYPE_DNSKEY);
@@ -1019,6 +1020,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 					             "Could not create type "
 					             "array. Reason: %s.\n",
 					             knot_strerror(ret));
+					knot_node_free_rrset_array(node, rrsets);
 					return ret;
 				}
 
@@ -1090,10 +1092,13 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				              "Checking of NSEC3 node "
 				              "failed. Reason: %s.\n",
 				              knot_strerror(ret));
+				knot_node_free_rrset_array(node, rrsets);
 				return ret;
 			}
 		}
 	}
+
+	knot_node_free_rrset_array(node, rrsets);
 
 	return KNOT_EOK;
 }

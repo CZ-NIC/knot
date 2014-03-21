@@ -867,15 +867,12 @@ int knot_rrset_copy(const knot_rrset_t *from, knot_rrset_t **to, mm_ctx_t *mm)
 		return KNOT_ENOMEM;
 	}
 
-	(*to)->rrs.rr_count = from->rrs.rr_count;
-	size_t data_size = knot_rrs_size(&from->rrs);
-	(*to)->rrs.data = mm_alloc(mm, data_size);
-	if ((*to)->rrs.data == NULL) {
-		ERR_ALLOC_FAILED;
+	int ret = knot_rrs_copy(&(*to)->rrs, &from->rrs, mm);
+	if (ret != KNOT_EOK) {
 		knot_rrset_free(to, mm);
-		return KNOT_ENOMEM;
+		return ret;
 	}
-	memcpy((*to)->rrs.data, from->rrs.data, data_size);
+
 	(*to)->additional = NULL; /* Never copy. */
 
 	return KNOT_EOK;

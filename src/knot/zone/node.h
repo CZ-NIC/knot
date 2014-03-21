@@ -30,11 +30,18 @@
 
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
+#include "libknot/rr.h"
 
 /*! \brief RRSet count in node if there is only NSEC (and possibly its RRSIG).*/
 #define KNOT_NODE_RRSET_COUNT_ONLY_NSEC 2
 
 /*----------------------------------------------------------------------------*/
+
+struct rr_data {
+	uint16_t type;
+	knot_rrs_t rrs;
+};
+
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
  *        name in a zone.
@@ -45,8 +52,8 @@ struct knot_node {
 	knot_dname_t *owner; /*!< Domain name being the owner of this node. */
 	struct knot_node *parent; /*!< Parent node in the name hierarchy. */
 
-	/*! \brief Type-ordered list of RRSets belonging to this node. */
-	knot_rrset_t **rrset_tree;
+	/*! \brief Type-ordered array of RRSets belonging to this node. */
+	struct rr_data *rrs;
 
 	/*! \brief Wildcard node being the direct descendant of this node. */
 	struct knot_node *wildcard_child;
@@ -160,8 +167,6 @@ knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type);
 
 knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type);
 
-void knot_node_remove_all_rrsets(knot_node_t *node);
-
 /*!
  * \brief Returns number of RRSets in the node.
  *
@@ -178,21 +183,7 @@ short knot_node_rrset_count(const knot_node_t *node);
  *
  * \return Newly allocated array of RRSets or NULL if an error occured.
  */
-knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node);
-
-/*!
- * \brief Returns all RRSets from the node.
- *
- * \note This function is identical to knot_node_get_rrsets(), only it returns
- *       non-modifiable data.
- *
- * \param node Node to get the RRSets from.
- *
- * \return Newly allocated array of RRSets or NULL if an error occured.
- */
-const knot_rrset_t **knot_node_rrsets(const knot_node_t *node);
-const knot_rrset_t **knot_node_rrsets_no_copy(const knot_node_t *node);
-knot_rrset_t **knot_node_get_rrsets_no_copy(const knot_node_t *node);
+knot_rrset_t **knot_node_rrsets(const knot_node_t *node);
 
 int knot_node_count_rrsets(const knot_node_t *node);
 
@@ -391,6 +382,7 @@ void knot_node_clear_empty(knot_node_t *node);
  * \param node Node to be destroyed.
  */
 void knot_node_free_rrsets(knot_node_t *node);
+void knot_node_free_rrset_array(const knot_node_t *node, knot_rrset_t **rrsets);
 
 /*!
  * \brief Destroys the node structure.
@@ -417,6 +409,8 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
  * \return True/False.
  */
 bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type);
+
+bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type);
 
 #endif /* _KNOT_NODE_H_ */
 

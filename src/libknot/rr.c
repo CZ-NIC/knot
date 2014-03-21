@@ -222,5 +222,21 @@ void knot_rrs_clear(knot_rrs_t *rrs, mm_ctx_t *mm)
 	}
 }
 
+int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm)
+{
+	if (dst == NULL || src == NULL) {
+		return KNOT_EINVAL;
+	}
 
+	dst->rr_count = src->rr_count;
+	size_t src_size = knot_rrs_size(src);
+	dst->data = mm_alloc(mm, src_size);
+	if (dst->data == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(dst->data, src->data, src_size);
+	return KNOT_EOK;
+}
 

@@ -202,7 +202,7 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 	}
 
 	/* Add all rrsets from node. */
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
 		/* Empty non-terminals - legal case. */
 		dbg_zonediff_detail("zone_diff: Node has no RRSets.\n");
@@ -236,7 +236,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 
 	dbg_zonediff("zone_diff: remove_node: Removing node: ...\n");
 
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
 		dbg_zonediff_verb("zone_diff: remove_node: "
 		                  "Nothing to remove.\n");
@@ -449,7 +449,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 	dbg_zonediff_detail("zone_diff: diff_node: Node %p is present in "
 	              "both trees.\n", node_owner);
 	/* The nodes are in both trees, we have to diff each RRSet. */
-	const knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_rrsets(node);
 	if (rrsets == NULL) {
 		dbg_zonediff("zone_diff: Node in first tree has no RRSets.\n");
 		/*

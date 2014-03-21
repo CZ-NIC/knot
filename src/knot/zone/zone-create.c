@@ -104,16 +104,16 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		knot_rrset_free(&rr, NULL);
 	}
 	assert(node);
-	assert(zone_rrset);
+//	assert(zone_rrset);
 
 	// Do RRSet and node semantic checks
 	bool sem_fatal_error = false;
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
-	ret = sem_check_rrset(node, zone_rrset, &err_handler);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+//	ret = sem_check_rrset(node, zone_rrset, &err_handler);
+//	if (ret != KNOT_EOK) {
+//		return ret;
+//	}
 	ret = sem_check_node_plain(zc->z, node,
 	                           &err_handler, true,
 	                           &sem_fatal_error);

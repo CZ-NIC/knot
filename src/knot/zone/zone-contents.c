@@ -326,22 +326,25 @@ static int adjust_additional(knot_node_t **tnode, void *data)
 	assert(data != NULL);
 	assert(tnode != NULL);
 
-	int ret = KNOT_EOK;
-	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
-	knot_node_t *node = *tnode;
-	knot_rrset_t **rrset = node->rrset_tree;
+	// TODO store elsewhere
+	return KNOT_EOK;
+
+//	int ret = KNOT_EOK;
+//	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+//	knot_node_t *node = *tnode;
+//	knot_rrset_t **rrset = knot_node_rrsets(node);
 
 	/* Lookup additional records for specific nodes. */
-	for(uint16_t i = 0; i < node->rrset_count; ++i) {
-		if (rrset_additional_needed(rrset[i]->type)) {
-			ret = discover_additionals(rrset[i], args->zone);
-			if (ret != KNOT_EOK) {
-				break;
-			}
-		}
-	}
+//	for(uint16_t i = 0; i < node->rrset_count; ++i) {
+//		if (rrset_additional_needed(rrset[i]->type)) {
+//			ret = discover_additionals(rrset[i], args->zone);
+//			if (ret != KNOT_EOK) {
+//				break;
+//			}
+//		}
+//	}
 
-	return ret;
+//	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

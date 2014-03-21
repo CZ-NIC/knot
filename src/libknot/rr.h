@@ -31,4 +31,5 @@ uint8_t* knot_rrs_create_rr_at_pos(knot_rrs_t *rrs,
 int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm);
 void knot_rrs_free(knot_rrs_t *rrs, mm_ctx_t *mm);
 void knot_rrs_clear(knot_rrs_t *rrs, mm_ctx_t *mm);
+int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm);
 
