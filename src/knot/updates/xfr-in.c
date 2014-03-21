@@ -282,7 +282,7 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 		} else {
 			ret = zcreator_step(&zc, rr);
 			if (ret != KNOT_EOK) {
-				knot_rrset_free(&rr, NULL);
+				// 'rr' is either inserted, or free'd
 				return ret;
 			}
 			ret = xfrin_take_rr(answer, &rr, &rr_id);

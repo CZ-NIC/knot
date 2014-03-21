@@ -94,6 +94,7 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
 			// Fatal error
+			knot_rrset_free(&rr, NULL);
 			return ret;
 		}
 		// Recoverable error, skip record

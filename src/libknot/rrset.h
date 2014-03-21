@@ -34,6 +34,7 @@
 #include "common/mempattern.h"
 
 #include "libknot/dname.h"
+#include "libknot/rr.h"
 
 struct knot_compr;
 struct knot_node;
@@ -48,13 +49,7 @@ struct knot_rrset {
 	knot_dname_t *owner;  /*!< Domain name being the owner of the RRSet. */
 	uint16_t type;        /*!< TYPE of the RRset. */
 	uint16_t rclass;      /*!< CLASS of the RRSet. */
-	uint16_t rr_count;    /*!< Count of RRs in RRSet */
-	/*! \brief RDATA array (for all RRs). DNAMEs stored as full,
-	 *         uncompressed wire. Binary data stored in wireformat order.
-	 *         Each RR is prepended with RDATA length and TTL, respectively.
-	 *         Do not work directly with this value.
-	 */
-	uint8_t *rrs;
+	knot_rrs_t rrs;       /*!< RRSet's RRs */
 	/* Optional fields. */
 	struct knot_node **additional; /*!< Additional records. */
 };

@@ -285,3 +285,5 @@ tests/slab.c
 tests/wire.c
 tests/zonedb.c
 tests/ztree.c
+src/libknot/rr.c
+src/libknot/rr.h

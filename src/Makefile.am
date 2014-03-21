@@ -170,6 +170,8 @@ libknot_la_SOURCES =				\
 	libknot/rdata.h				\
 	libknot/rrset-dump.c			\
 	libknot/rrset-dump.h			\
+	libknot/rr.c				\
+	libknot/rr.h				\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	libknot/tsig-op.c			\
