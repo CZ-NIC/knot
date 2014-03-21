@@ -233,7 +233,7 @@ void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout);
  */
 int zones_verify_tsig_query(const knot_pkt_t *query,
                             const knot_tsig_key_t *key,
-                            knot_rcode_t *rcode, uint16_t *tsig_rcode,
+                            uint16_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed);
 
 /*!
@@ -284,7 +284,7 @@ int zones_merge_and_store_changesets(zone_t *zone,
                                      journal_t **transaction);
 void zones_free_merged_changesets(knot_changesets_t *diff_chs,
                                   knot_changesets_t *sec_chs);
-uint32_t zones_next_serial(zone_t *zone);
+uint32_t zones_next_serial(const zone_t *zone);
 
 
 #endif // _KNOTD_ZONES_H_

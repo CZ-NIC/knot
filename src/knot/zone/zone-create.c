@@ -88,17 +88,9 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		return KNOT_EOK;
 	}
 
-	knot_node_t *n;
-	if (zc->last_node &&
-	    knot_dname_is_equal(zc->last_node->owner, rr->owner)) {
-		// Reuse hint from last addition.
-		n = zc->last_node;
-	} else {
-		// Search for node or create a new one
-		n = NULL;
-	}
+	knot_node_t *node = NULL;
 	knot_rrset_t *zone_rrset = NULL;
-	int ret = knot_zone_contents_add_rr(zc->z, rr, &n, &zone_rrset);
+	int ret = knot_zone_contents_add_rr(zc->z, rr, &node, &zone_rrset);
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
 			// Fatal error
@@ -110,19 +102,18 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	} else if (ret > 0) {
 		knot_rrset_free(&rr, NULL);
 	}
-	assert(n);
+	assert(node);
 	assert(zone_rrset);
-	zc->last_node = n;
 
 	// Do RRSet and node semantic checks
 	bool sem_fatal_error = false;
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
-	ret = sem_check_rrset(n, zone_rrset, &err_handler);
+	ret = sem_check_rrset(node, zone_rrset, &err_handler);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	ret = sem_check_node_plain(zc->z, n,
+	ret = sem_check_node_plain(zc->z, node,
 	                           &err_handler, true,
 	                           &sem_fatal_error);
 	if (ret != KNOT_EOK) {

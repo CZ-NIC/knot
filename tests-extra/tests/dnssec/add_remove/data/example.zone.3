@@ -1,0 +1,31 @@
+; This zone comes from RFC-4035
+example.	3600 IN SOA	ns1.example. bugs.x.w.example. 1081539390 3600 300 3600000 3600
+example.	3600 IN NS	ns1.example.
+example.	3600 IN NS	ns2.example.
+example.	3600 IN MX	1 xx.example.
+ns1.a.example.	3600 IN A	192.0.2.5
+ns2.a.example.	3600 IN A	192.0.2.6
+ns1.b.example.	3600 IN A	192.0.2.7
+ns2.b.example.	3600 IN A	192.0.2.8
+a.example.	3600 IN NS	ns1.a.example.
+a.example.	3600 IN NS	ns2.a.example.
+a.example.	3600 IN DS	57855 5 1 B6DCD485719ADCA18E5F3D48A2331627FDD3636B
+*.a.example. 3600 IN A 192.0.2.11
+ai.example.	3600 IN A	192.0.2.9
+ai.example.	3600 IN HINFO	"KLH-10" "ITS"
+ai.example.	3600 IN AAAA	2001:db8::f00:baa9
+b.example.	3600 IN NS	ns1.b.example.
+b.example.	3600 IN NS	ns2.b.example.
+ns1.example.	3600 IN A	192.0.2.1
+ns2.example.	3600 IN A	192.0.2.2
+*.w.example.	3600 IN MX	1 ai.example.
+x.y.w.example.	3600 IN MX	1 xx.example.
+xx.example.	3600 IN A	192.0.2.10
+xx.example.	3600 IN HINFO	"KLH-10" "TOPS-20"
+xx.example.	3600 IN AAAA	2001:db8::f00:baaa
+x.w.example.	3600 IN MX	1 xx.example.
+*.to-apex.example. 3600 IN CNAME example. ; Wildcard expansion leading to apex
+*.to-nxdomain.example. 3600 IN CNAME nxdomain.example. ; Wildcard expansion leading to nonexistent name
+new-node IN A 1.2.3.4 ; added new node
+new-node IN A 1.2.3.5 ; added new RR
+new-node IN TXT "test" ; added new RR type

@@ -37,7 +37,6 @@
  */
 typedef struct zcreator {
 	knot_zone_contents_t *z;  /*!< Created zone. */
-	knot_node_t *last_node;   /*!< Last used node, use to save zone lookup. */
 	int ret;                  /*!< Return value. */
 } zcreator_t;
 
