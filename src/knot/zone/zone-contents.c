@@ -153,8 +153,7 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 
 /*! \brief Link pointers to additional nodes for this RRSet. */
 static int discover_additionals(struct rr_data *rr_data,
-                                knot_zone_contents_t *zone,
-                                knot_node_t ***additional)
+                                knot_zone_contents_t *zone)
 {
 	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
 	const knot_dname_t *dname = NULL;
@@ -162,8 +161,8 @@ static int discover_additionals(struct rr_data *rr_data,
 
 	/* Create new additional nodes. */
 	uint16_t rdcount = rrs->rr_count;
-	*additional = malloc(rdcount * sizeof(knot_node_t *));
-	if (*additional == NULL) {
+	rr_data->additional = malloc(rdcount * sizeof(knot_node_t *));
+	if (rr_data->additional == NULL) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
@@ -178,7 +177,7 @@ static int discover_additionals(struct rr_data *rr_data,
 			node = encloser->wildcard_child;
 		}
 		
-		(*additional)[i] = (knot_node_t *)node;
+		rr_data->additional[i] = (knot_node_t *)node;
 	}
 
 	return KNOT_EOK;
@@ -334,13 +333,10 @@ static int adjust_additional(knot_node_t **tnode, void *data)
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
 		struct rr_data *rr_data = &node->rrs[i];
 		if (rrset_additional_needed(rr_data->type)) {
-			knot_node_t **additional = NULL;
-			ret = discover_additionals(rr_data, args->zone,
-			                           &additional);
+			ret = discover_additionals(rr_data, args->zone);
 			if (ret != KNOT_EOK) {
 				break;
 			}
-			rr_data->additional = additional;
 		}
 	}
 
