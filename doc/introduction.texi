@@ -31,7 +31,7 @@ Knot DNS supports the following DNS features:
 @item TCP/UDP protocols
 @item AXFR, IXFR - master, slave
 @item TSIG
-@item ENDS0
+@item EDNS0
 @item DNSSEC, including NSEC3
 @item NSID
 @item Unknown RR types

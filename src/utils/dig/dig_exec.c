@@ -409,7 +409,7 @@ static void process_query(const query_t *query)
 	WALK_LIST(server, query->servers) {
 		srv_info_t *remote = (srv_info_t *)server;
 
-		DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+		DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 		    "port(%s), protocol(%s)\n", query->owner, query->class_num,
 		    query->type_num, remote->name, remote->service,
 		    get_sockname(socktype));
@@ -652,7 +652,7 @@ static void process_query_xfr(const query_t *query)
 	// Use the first nameserver from the list.
 	srv_info_t *remote = HEAD(query->servers);
 
-	DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+	DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 	    "port(%s), protocol(%s)\n", query->owner, query->class_num,
 	    query->type_num, remote->name, remote->service,
 	    get_sockname(socktype));
