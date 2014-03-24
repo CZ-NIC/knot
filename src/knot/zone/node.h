@@ -37,10 +37,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-struct rr_data {
-	uint16_t type;
-	knot_rrs_t rrs;
-};
+struct rr_data;
 
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
@@ -93,6 +90,12 @@ struct knot_node {
 };
 
 typedef struct knot_node knot_node_t;
+
+struct rr_data {
+	uint16_t type;
+	knot_rrs_t rrs;
+	knot_node_t **additional;
+};
 
 /*----------------------------------------------------------------------------*/
 /*! \brief Flags used to mark nodes with some property. */

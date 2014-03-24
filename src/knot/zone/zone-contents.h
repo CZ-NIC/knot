@@ -92,8 +92,6 @@ int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
 
-uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents);
-
 /*!
  * \brief Adds a node to the given zone.
  *

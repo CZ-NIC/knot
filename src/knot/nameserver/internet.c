@@ -154,7 +154,6 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 {
 	const knot_rrset_t *rrset = NULL;
-	knot_rrset_t **rrsets = knot_node_rrsets(qdata->node);
 
 	/* Wildcard expansion or exact match, either way RRSet owner is
 	 * is QNAME. We can fake name synthesis by setting compression hint to
@@ -168,7 +167,8 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 
 	int ret = KNOT_EOK;
 	switch (type) {
-	case KNOT_RRTYPE_ANY: /* Append all RRSets. */
+	case KNOT_RRTYPE_ANY: /* Append all RRSets. */ {
+		knot_rrset_t **rrsets = knot_node_rrsets(qdata->node);
 		/* If ANY not allowed, set TC bit. */
 		if ((qdata->param->proc_flags & NS_QUERY_LIMIT_ANY) &&
 		    (qdata->zone->conf->disable_any)) {
@@ -180,10 +180,13 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
 			ret = ns_put_rr(pkt, rrsets[i], NULL, compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
+				knot_node_free_rrset_array(qdata->node, rrsets);
 				break;
 			}
 		}
+		knot_node_free_rrset_array(qdata->node, rrsets);
 		break;
+	}
 	default: /* Single RRSet of given type. */
 		rrset = knot_node_get_rrset(qdata->node, type);
 		if (rrset) {
@@ -193,7 +196,6 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		break;
 	}
 
-	knot_node_free_rrset_array(qdata->node, rrsets);
 	return ret;
 }
 
@@ -292,11 +294,12 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	for (uint16_t i = 0; i < rr_rdata_count; i++) {
 		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
 		node = rr->additional[i];
-
+		
 		/* No additional node for this record. */
 		if (node == NULL) {
 			continue;
 		}
+		
 		const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
 			additional = knot_node_rrset(node, ar_type_list[k]);
@@ -666,6 +669,13 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		return KNOT_EMALF;
 	}
 
+	// Copy all RRs for now TODO
+	int ret = knot_rrset_copy(rr, (knot_rrset_t **)&rr, &pkt->mm);
+	if (ret != KNOT_EOK) {
+		return KNOT_ENOMEM;
+	}
+	flags |= KNOT_PF_FREE;
+
 	/* Wildcard expansion applies only for answers. */
 	bool expand = false;
 	if (pkt->current == KNOT_ANSWER) {
@@ -676,12 +686,13 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	/* If we already have compressed name on the wire and compression hint,
 	 * we can just insert RRSet and fake synthesis by using compression
 	 * hint. */
-	int ret = KNOT_EOK;
+//	int ret = KNOT_EOK;
 	if (compr_hint == COMPR_HINT_NONE && expand) {
-		ret = knot_rrset_copy(rr, (knot_rrset_t **)&rr, &pkt->mm);
-		if (ret != KNOT_EOK) {
-			return KNOT_ENOMEM;
-		}
+		// TODO workaround for rrset compatibility
+//		ret = knot_rrset_copy(rr, (knot_rrset_t **)&rr, &pkt->mm);
+//		if (ret != KNOT_EOK) {
+//			return KNOT_ENOMEM;
+//		}
 
 		knot_rrset_set_owner((knot_rrset_t *)rr, qdata->name);
 		flags |= KNOT_PF_FREE;

@@ -69,14 +69,31 @@ static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 	node->flags &= ~flag;
 }
 
+void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
+{
+	knot_rrs_clear(&data->rrs, mm);
+	mm_free(mm, data->additional);
+}
+
 int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
 {
 	int ret = knot_rrs_copy(&data->rrs, &rrset->rrs, mm);
 	if (ret != KNOT_EOK) {
-		free(data);
 		return ret;
 	}
 	data->type = rrset->type;
+	if (rrset->additional) {
+		data->additional = mm_alloc(mm, data->rrs.rr_count * sizeof(void *));
+		if (data->additional == NULL) {
+			ERR_ALLOC_FAILED;
+			knot_rrs_clear(&data->rrs, mm);
+			return ret;
+		}
+		memcpy(data->additional, rrset->additional,
+		       data->rrs.rr_count * sizeof(void *));
+	} else {
+		data->additional = NULL;
+	}
 	return KNOT_EOK;
 }
 
@@ -88,7 +105,7 @@ static knot_rrset_t *rrset_from_rr_data(const knot_node_t *n, size_t pos,
 	if (dname_copy == NULL) {
 		return NULL;
 	}
-	knot_rrset_t *rrset = knot_rrset_new(n->owner, data.type, KNOT_CLASS_IN, mm);
+	knot_rrset_t *rrset = knot_rrset_new(dname_copy, data.type, KNOT_CLASS_IN, mm);
 	if (rrset == NULL) {
 		knot_dname_free(&dname_copy);
 		return NULL;
@@ -98,6 +115,16 @@ static knot_rrset_t *rrset_from_rr_data(const knot_node_t *n, size_t pos,
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&rrset, mm);
 		return NULL;
+	}
+	
+	if (data.additional) {
+		size_t alloc_size = data.rrs.rr_count * sizeof(knot_node_t *);
+		rrset->additional = mm_alloc(mm, alloc_size);
+		if (rrset->additional == NULL) {
+			knot_rrset_free(&rrset, mm);
+			return NULL;
+		}
+		memcpy(rrset->additional, data.additional, alloc_size);
 	}
 
 	return rrset;
@@ -195,8 +222,8 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 				knot_rrset_free(&node_rrset, NULL);
 				return ret;
 			} else {
-				knot_rrs_clear(&node->rrs[i].rrs, NULL);
-				knot_rrs_copy(&node->rrs[i].rrs, &rrset->rrs, NULL);
+				rr_data_clear(&node->rrs[i], NULL);
+				rr_data_from(node_rrset, &node->rrs[i], NULL);
 				knot_rrset_free(&node_rrset, NULL);
 				if (merged || deleted_rrs) {
 					return 1;
@@ -728,10 +755,12 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 		const uint16_t type_covered =
 			knot_rdata_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
+			knot_rrset_free(&rrsigs, NULL);
 			return true;
 		}
 	}
 
+	knot_rrset_free(&rrsigs, NULL);
 	return false;
 }
 

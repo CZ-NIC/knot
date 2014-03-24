@@ -88,6 +88,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
 	soa_rrs = knot_node_rrset(zc->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 	ret = rr_func(soa_rrs);
+	knot_rrset_free(&soa_rrs, NULL);
 
 	rcu_read_unlock();
 
@@ -1879,6 +1880,7 @@ int zones_journal_apply(zone_t *zone)
 	soa_rrs = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
+	knot_rrset_free(&soa_rrs, NULL);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		return KNOT_EINVAL;

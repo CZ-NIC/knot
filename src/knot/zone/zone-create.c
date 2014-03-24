@@ -82,7 +82,7 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	assert(zc && rr);
 
 	if (rr->type == KNOT_RRTYPE_SOA &&
-	    knot_node_rrset(zc->z->apex, KNOT_RRTYPE_SOA)) {
+	    knot_node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_SOA)) {
 		// Ignore extra SOA
 		knot_rrset_free(&rr, NULL);
 		return KNOT_EOK;
@@ -103,6 +103,8 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	} else if (ret > 0) {
 		knot_rrset_free(&rr, NULL);
 	}
+	// TODO: free everytime for now
+	knot_rrset_free(&rr, NULL);
 	assert(node);
 //	assert(zone_rrset);
 
@@ -258,7 +260,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	if (knot_node_rrset(loader->creator->z->apex, KNOT_RRTYPE_SOA) == NULL) {
+	if (!knot_node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
 		log_zone_error("%s: no SOA record in the zone file.\n",
 		               loader->source);
 		goto fail;

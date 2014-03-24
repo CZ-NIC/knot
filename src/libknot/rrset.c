@@ -873,7 +873,19 @@ int knot_rrset_copy(const knot_rrset_t *from, knot_rrset_t **to, mm_ctx_t *mm)
 		return ret;
 	}
 
-	(*to)->additional = NULL; /* Never copy. */
+	if (from->additional) {
+		const size_t alloc_size =
+			knot_rrset_rr_count(from) * sizeof(void *);
+		(*to)->additional = mm_alloc(mm, alloc_size);
+		if ((*to)->additional == NULL) {
+			ERR_ALLOC_FAILED;
+			knot_rrset_free(to, mm);
+			return KNOT_ENOMEM;
+		}
+		memcpy((*to)->additional, from->additional, alloc_size);
+	} else {
+		(*to)->additional = NULL;
+	}
 
 	return KNOT_EOK;
 }

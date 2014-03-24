@@ -152,33 +152,33 @@ static int knot_zone_contents_nsec3_name(const knot_zone_contents_t *zone,
 }
 
 /*! \brief Link pointers to additional nodes for this RRSet. */
-static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
+static int discover_additionals(struct rr_data *rr_data,
+                                knot_zone_contents_t *zone,
+                                knot_node_t ***additional)
 {
 	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
 	const knot_dname_t *dname = NULL;
-
-	/* Free old additional nodes. */
-	if (rr->additional != NULL) {
-		free(rr->additional);
-	}
+	const knot_rrs_t *rrs = &rr_data->rrs;
 
 	/* Create new additional nodes. */
-	uint16_t rdcount = knot_rrset_rr_count(rr);
-	rr->additional = malloc(rdcount * sizeof(knot_node_t*));
-	if (rr->additional == NULL) {
+	uint16_t rdcount = rrs->rr_count;
+	*additional = malloc(rdcount * sizeof(knot_node_t *));
+	if (*additional == NULL) {
+		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
 	for (uint16_t i = 0; i < rdcount; i++) {
-
 		/* Try to find node for the dname in the RDATA. */
-		dname = knot_rdata_name(rr, i);
+		// TODO wrapper RRSET, remove
+		knot_rrset_t rrset = {.rrs = *rrs, .type = rr_data->type};
+		dname = knot_rdata_name(&rrset, i);
 		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
 		if (node == NULL && encloser && encloser->wildcard_child) {
 			node = encloser->wildcard_child;
 		}
-
-		rr->additional[i] = (knot_node_t *)node;
+		
+		(*additional)[i] = (knot_node_t *)node;
 	}
 
 	return KNOT_EOK;
@@ -213,7 +213,7 @@ static int adjust_pointers(knot_node_t **tnode, void *data)
 		|| knot_node_is_non_auth(knot_node_parent(node)))
 	) {
 		knot_node_set_non_auth(node);
-	} else if (knot_node_rrset(node, KNOT_RRTYPE_NS) != NULL
+	} else if (knot_node_rrtype_exists(node, KNOT_RRTYPE_NS)
 		   && node != args->zone->apex) {
 		knot_node_set_deleg_point(node);
 	} else {
@@ -326,25 +326,25 @@ static int adjust_additional(knot_node_t **tnode, void *data)
 	assert(data != NULL);
 	assert(tnode != NULL);
 
-	// TODO store elsewhere
-	return KNOT_EOK;
-
-//	int ret = KNOT_EOK;
-//	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
-//	knot_node_t *node = *tnode;
-//	knot_rrset_t **rrset = knot_node_rrsets(node);
-
+	int ret = KNOT_EOK;
+	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
+	knot_node_t *node = *tnode;
+	
 	/* Lookup additional records for specific nodes. */
-//	for(uint16_t i = 0; i < node->rrset_count; ++i) {
-//		if (rrset_additional_needed(rrset[i]->type)) {
-//			ret = discover_additionals(rrset[i], args->zone);
-//			if (ret != KNOT_EOK) {
-//				break;
-//			}
-//		}
-//	}
+	for(uint16_t i = 0; i < node->rrset_count; ++i) {
+		struct rr_data *rr_data = &node->rrs[i];
+		if (rrset_additional_needed(rr_data->type)) {
+			knot_node_t **additional = NULL;
+			ret = discover_additionals(rr_data, args->zone,
+			                           &additional);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+			rr_data->additional = additional;
+		}
+	}
 
-//	return ret;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -490,19 +490,6 @@ void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents)
 {
 	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
 	contents->flags |= KNOT_ZONE_FLAGS_GEN_NEW;
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint16_t knot_zone_contents_class(const knot_zone_contents_t *contents)
-{
-	if (contents == NULL || contents->apex == NULL
-	    || knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA) == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return knot_rrset_class(knot_node_rrset(contents->apex,
-						KNOT_RRTYPE_SOA));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1263,6 +1250,7 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
 	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
+	
 
 	int result = knot_zone_contents_load_nsec3param(zone);
 	if (result != KNOT_EOK) {
@@ -1328,12 +1316,14 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 		if (r != KNOT_EOK) {
 			dbg_zone("Failed to load NSEC3PARAM (%s).\n",
 			         knot_strerror(r));
+			knot_rrset_free(&rrset, NULL);
 			return r;
 		}
 	} else {
 		memset(&zone->nsec3_params, 0, sizeof(knot_nsec3_params_t));
 	}
 
+	knot_rrset_free(&rrset, NULL);
 	return KNOT_EOK;
 }
 
@@ -1491,7 +1481,9 @@ uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
 	if (!zone) return 0;
 	const knot_rrset_t *soa = NULL;
 	soa = knot_node_rrset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
-	return knot_rdata_soa_serial(soa);
+	uint32_t serial = knot_rdata_soa_serial(soa);
+	knot_rrset_free(&soa, NULL);
+	return serial;
 }
 
 bool knot_zone_contents_is_signed(const knot_zone_contents_t *zone)

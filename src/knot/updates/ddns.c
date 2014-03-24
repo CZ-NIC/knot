@@ -383,8 +383,7 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
 	}
 
 	// check zone CLASS
-	if (knot_zone_contents_class(zone) !=
-	    knot_pkt_qclass(query)) {
+	if (knot_pkt_qclass(query) != KNOT_CLASS_IN) {
 		*rcode = KNOT_RCODE_NOTAUTH;
 		return KNOT_ENOZONE;
 	}
@@ -1581,7 +1580,7 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 
 	/* 2) Decide what to do. */
 	int ret = KNOT_EOK;
-	if (knot_rrset_class(rr) == knot_zone_contents_class(zone)) {
+	if (knot_rrset_class(rr) == KNOT_CLASS_IN) {
 		ret = knot_ddns_process_add(rr, &node, zone, changeset,
 		                            changes, rr_copy);
 	} else if (node == NULL) {
