@@ -151,7 +151,7 @@ Show TTL value.
 Use TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
 .TP
 .BR + [ no ] fail
-Stop quering next nameserver if SERVFAIL response is received.
+Stop querying next nameserver if SERVFAIL response is received.
 .TP
 .BR + [ no ] ignore
 Don't use TCP automatically if truncated reply is received.

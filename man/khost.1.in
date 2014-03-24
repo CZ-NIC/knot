@@ -41,7 +41,7 @@ Print help.
 Disable recursion.
 .TP
 .B \-s
-Stop quering next nameserver if SERVFAIL response is received.
+Stop querying next nameserver if SERVFAIL response is received.
 .TP
 .B \-T
 Use TCP protocol.
