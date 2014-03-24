@@ -25,13 +25,22 @@ master.use_gen_keys()
 master.gen_confile()
 master.reload()
 
-t.sleep(5)
+t.sleep(4)
 
 new_nsec_serial = master.zone_wait(nsec_zone)
 new_nsec3_serial = master.zone_wait(nsec3_zone)
 
 # Check if the zones are resigned.
-compare(old_nsec_serial, new_nsec_serial, "SOA serial")
-compare(old_nsec3_serial, new_nsec3_serial, "SOA serial")
+if compare(old_nsec_serial, new_nsec_serial,
+           "%s SOA serial (NSEC)" % nsec_zone[0].name):
+    resp = master.dig(nsec_zone, "IXFR", serial=old_nsec_serial)
+    for rr in resp.resp:
+        detail_log(rr)
+
+if compare(old_nsec3_serial, new_nsec3_serial,
+           "%s SOA serial (NSEC3)" % nsec3_zone[0].name):
+    resp = master.dig(nsec3_zone, "IXFR", serial=old_nsec3_serial)
+    for rr in resp.resp:
+        detail_log(rr)
 
 t.stop()

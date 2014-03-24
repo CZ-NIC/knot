@@ -63,6 +63,8 @@ def isset(value, name):
         set_err("IS SET \'%s\'" % name)
         check_log("ERROR: IS SET \'%s\'" % name)
         detail_log(SEP)
+        return True
+    return False
 
 def compare(value, expected, name):
     '''Compare two values'''
@@ -72,6 +74,8 @@ def compare(value, expected, name):
         check_log("ERROR: COMPARE \'%s\'" % name)
         detail_log("  (%s) != (%s)" % (value, expected))
         detail_log(SEP)
+        return True
+    return False
 
 def compare_sections(section1, srv1name, section2, srv2name, name):
     '''Compare two message sections'''
