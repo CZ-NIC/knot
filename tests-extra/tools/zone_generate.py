@@ -431,7 +431,7 @@ def main(args):
     sign = 0
     nsec3 = random.choice([0, 1])
     count = 0
-    outfile = None
+    out_fname = None
     key_dir = None
 
     # Parse parameters
@@ -464,16 +464,18 @@ def main(args):
         if o in ('-t', '--ttl') and a != None:
             TTL = int(a)
         if o in ('-o', '--outfile') and a != None:
-            outfile = a
+            out_fname = a
         if o in ('-k', '--keydir') and a != None:
             key_dir = a
 
-    ORIGIN = ""
-    # Arguments
+    # Check arguments
     if len(args) > 2:
         print('Too many arguments.')
         print(__doc__)
         sys.exit(2)
+
+    # Parse non-option arguments
+    ORIGIN = ""
     for a in args:
         if len(ORIGIN) == 0:
             if a != '.':
@@ -481,11 +483,14 @@ def main(args):
             ORIGIN = a
         else:
             count = int(a)
+
     # Check values
-    if count == 0:
-        count = 100 # (default)
     if len(ORIGIN) == 0:
         ORIGIN = 'com'
+    if count == 0:
+        count = 100 # (default)
+    if not out_fname:
+        out_fname = UPDATE if UPDATE else ORIGIN + '.zone'
 
     # Reverse zones
     if ORIGIN.find('in-addr') > 0:
@@ -495,77 +500,17 @@ def main(args):
         if pp > 0:
             RPREFIX = int(RORIGIN[0:pp])
 
-    # Load DB if updating
-    soa = None
-    outf = open(outfile, "w") if outfile else sys.stdout
-    if UPDATE != None:
-        outf = open(UPDATE, 'r+')
-        NAME_EXIST.add(g_fqdn(ORIGIN))
+    tmp_dir = tempfile.mkdtemp()
+    in_fname = tmp_dir + '/zfile'
 
-        # Load DB
-        for l in outf:
-            l = l.replace('\t', ' ').strip().split()
-            if len(l) < 2:
-                continue
-            if len(l) > 4:
-                l = l[0:4] + [ '' ]
-            # Remove lines without starting dname
-            l[0] = l[0].strip()
-            if l[0].startswith('@') or l[0].startswith('$') or l[0].startswith(';'):
-                continue
+    # Open zone file
+    if UPDATE:
+        shutil.copyfile(UPDATE, in_fname)
 
-            # Enroll dname as existing
-            NAME_EXIST.add(g_fqdn(l[0]))
+    outf = open(in_fname, "a")
 
-            # Shift class,ttl fields
-            rt = ''
-            for i in range(1, len(l)-1):
-                l[1] = l[1].strip()
-                if l[1].lower() != 'in' and (l[1].isalpha() or l[1].startswith('TYPE')) and l[1].isupper():
-                    rt = l[1]
-            if len(rt) == 0:
-                continue
-
-            # Add names
-            names = []
-            if l[0].startswith('*'):
-                NAME_EXIST.add(g_fqdn(l[0][2:]))
-                for i in range(2,6):
-                    names.append('%s%s' % (rnd_str(), l[0][1:]))
-            else:
-                names.append(l[0])
-            for n in names:
-                if rt == 'A':
-                    A_NAMES.append(g_fqdn(n))
-                if rt == 'AAAA':
-                    AAAA_NAMES.append(g_fqdn(n))
-                if rt == 'CNAME' or rt == 'DNAME':
-                    CNAME_EXIST.add(g_fqdn(n))
-                if rt == 'TYPE5' or rt == 'TYPE39':
-                    CNAME_EXIST.add(g_fqdn(n))
-
-        # Seek END
-        outf.seek(0, 2)
-    else:
-        # Generate SOA RR
-        soa = gen_soa(ORIGIN, SERIAL, RORIGIN)
-
-    # Signed zone workarounds
-    sign_dir = None
-    tmp_zfile = None
-    if sign != 0:
-        sign_dir = tempfile.mkdtemp()
-        if UPDATE == None:
-            tmp_zfile = open(sign_dir + "/zfile", 'w')
-        else:
-            tmp_zfile = outf
-        if soa != None:
-            tmp_zfile.write(soa)
-        if not key_dir:
-            key_dir = sign_dir
-    else:
-        if soa != None:
-            outf.write(soa)
+    if not UPDATE:
+        outf.write(gen_soa(ORIGIN, SERIAL, RORIGIN))
 
     # Check if prefix exists
     if RPREFIX != None and count > RPREFIX:
@@ -594,62 +539,55 @@ def main(args):
             # This crudely implements weighted distribution
             while rr is None:
                 rr = gen_rr()
-        if sign != 0:
-            tmp_zfile.write(rr + '\n')
-        else:
-            outf.write(rr + '\n')
+        outf.write(rr + '\n')
 
     # Return if no signing is required
     if sign == 0:
-        outf.write('\n');
-        if outf != sys.stdout:
-            outf.close()
+        outf.close()
+        shutil.copyfile(in_fname, out_fname)
+        shutil.rmtree(tmp_dir)
         return 0
 
     # Now sign if requested
+    if not key_dir:
+        key_dir = tmp_dir
+
     ret = 1
-    zfname = tmp_zfile.name
     try:
         # Generate keys
-        nf = open('/dev/null', 'w')
         ps = [ 'dnssec-keygen', '-r', '/dev/urandom', '-n', 'ZONE', '-K', key_dir ]
         if nsec3:
             ps += ['-3']
-        k1 = subprocess.check_output(ps + [ORIGIN], stderr=nf)
-        k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ORIGIN], stderr=nf)
+        k1 = subprocess.check_output(ps + [ORIGIN], stderr=subprocess.DEVNULL)
+        k2 = subprocess.check_output(ps + ["-f", "KSK"] + [ORIGIN], stderr=subprocess.DEVNULL)
         k1 = key_dir + '/' + k1.rstrip().decode('ascii')
         k2 = key_dir + '/' + k2.rstrip().decode('ascii')
-        nf.close()
 
         # Append to zone
         kf = open(k1 + '.key', 'r')
-        tmp_zfile.write(kf.read() + '\n')
+        outf.write(kf.read() + '\n')
         kf.close()
         kf = open(k2 + '.key', 'r')
-        tmp_zfile.write(kf.read() + '\n')
+        outf.write(kf.read() + '\n')
         kf.close()
+
+        outf.close()
 
         if nsec3:
             nsec3_params = ['-3', binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')]
         else:
             nsec3_params = []
 
-        # Sign zone
-        if tmp_zfile != outf:
-            tmp_zfile.close()
-        ks = subprocess.check_output(["dnssec-signzone", "-d", sign_dir, "-P", "-p", "-u", \
-                                      "-k", k2, "-r", "/dev/urandom", "-o", ORIGIN] + \
-                                      nsec3_params + [zfname, k1 + ".key"])
-        kf = open(zfname + '.signed')
-        outf.write(kf.read())
-        kf.close()
-        if outf != sys.stdout:
-            outf.close()
+        subprocess.check_output(["dnssec-signzone", "-d", tmp_dir, "-P", "-p", "-u", \
+                                 "-k", k2, "-r", "/dev/urandom", "-o", ORIGIN, \
+                                 "-O", "full"] + nsec3_params + [in_fname, k1 + ".key"],
+                                 stderr=subprocess.DEVNULL)
+        shutil.copyfile(in_fname + '.signed', out_fname)
         ret = 0
     except:
         pass
     else:
-        shutil.rmtree(sign_dir)
+        shutil.rmtree(tmp_dir)
 
     return ret
 
