@@ -1467,19 +1467,20 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
-	// SOA entry is maintained separately
-	if (rrset->type == KNOT_RRTYPE_SOA) {
-		return KNOT_EOK;
-	}
-
-	// DNSKEYs are maintained separately
-	if (rrset->type == KNOT_RRTYPE_DNSKEY) {
-		return KNOT_EOK;
-	}
-
 	// We do not want to sign RRSIGs
 	if (rrset->type == KNOT_RRTYPE_RRSIG) {
 		return KNOT_EOK;
+	}
+
+	// SOA and DNSKEYs are handled separately in the zone apex
+	if (knot_node_is_apex(node)) {
+		if (rrset->type == KNOT_RRTYPE_SOA) {
+			return KNOT_EOK;
+		}
+
+		if (rrset->type == KNOT_RRTYPE_DNSKEY) {
+			return KNOT_EOK;
+		}
 	}
 
 	// At delegation points we only want to sign NSECs and DSs

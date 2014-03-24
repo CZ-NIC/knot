@@ -1217,6 +1217,9 @@ int knot_zone_contents_adjust_pointers(knot_zone_contents_t *contents)
 		               knot_strerror(ret));
 		return ret;
 	}
+
+	knot_node_set_apex(contents->apex);
+
 	// adjusting parameters
 	knot_zone_adjust_arg_t adjust_arg = { .first_node = NULL,
 	                                      .previous_node = NULL,
@@ -1267,6 +1270,8 @@ int knot_zone_contents_adjust_full(knot_zone_contents_t *zone,
 		               knot_strerror(result));
 		return result;
 	}
+
+	knot_node_set_apex(zone->apex);
 
 	// adjusting parameters
 
