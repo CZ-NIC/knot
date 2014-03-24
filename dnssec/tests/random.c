@@ -59,7 +59,7 @@ int main(void)
 	// quite stupid, just check if it does something
 
 	ok(check_buffer() == 0, "dnssec_random_buffer()");
-	ok(check_random_type() == 0, "dnsec_random_uint16_t()");
+	ok(check_random_type() == 0, "dnssec_random_uint16_t()");
 
 	dnssec_crypto_cleanup();
 
