@@ -118,13 +118,13 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
 
 	knot_nsec3_params_t result = { 0 };
 
-	result.algorithm   = knot_rdata_nsec3param_algorithm(rrset, 0);
-	result.iterations  = knot_rdata_nsec3param_iterations(rrset, 0);
-	result.flags       = knot_rdata_nsec3param_flags(rrset, 0);
-	result.salt_length = knot_rdata_nsec3param_salt_length(rrset, 0);
+	result.algorithm   = knot_rrs_nsec3param_algorithm(rrset, 0);
+	result.iterations  = knot_rrs_nsec3param_iterations(rrset, 0);
+	result.flags       = knot_rrs_nsec3param_flags(rrset, 0);
+	result.salt_length = knot_rrs_nsec3param_salt_length(rrset, 0);
 
 	if (result.salt_length > 0) {
-		result.salt = knot_memdup(knot_rdata_nsec3param_salt(rrset, 0),
+		result.salt = knot_memdup(knot_rrs_nsec3param_salt(rrset, 0),
 		                          result.salt_length);
 		if (!result.salt) {
 			return KNOT_ENOMEM;
