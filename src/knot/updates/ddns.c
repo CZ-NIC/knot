@@ -221,7 +221,7 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 	if (node == NULL) {
 		*rcode = KNOT_RCODE_NXRRSET;
 		return KNOT_ENONODE;
-	} else if (knot_node_rrset(node, knot_rrset_type(rrset)) == NULL) {
+	} else if (!knot_node_rrtype_exists(node, knot_rrset_type(rrset))) {
 		*rcode = KNOT_RCODE_NXRRSET;
 		return KNOT_ENORRSET;
 	}
@@ -247,22 +247,20 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	}
 
 	const knot_node_t *node;
-	const knot_rrset_t *found;
-
 	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
 	if (node == NULL) {
 		*rcode = KNOT_RCODE_NXRRSET;
 		return KNOT_EPREREQ;
-	} else if ((found = knot_node_rrset(node, knot_rrset_type(rrset)))
-	            == NULL) {
+	} else if (!knot_node_rrtype_exists(node, rrset->type)) {
 		*rcode = KNOT_RCODE_NXRRSET;
 		return KNOT_EPREREQ;
 	} else {
+		knot_rrset_t found = RRSET_INIT(node, rrset->type);
 		// do not have to compare the header, it is already done
-		assert(knot_rrset_type(found) == knot_rrset_type(rrset));
-		assert(knot_dname_cmp(knot_rrset_owner(found),
+		assert(knot_rrset_type(&found) == knot_rrset_type(rrset));
+		assert(knot_dname_cmp(knot_rrset_owner(&found),
 		                          knot_rrset_owner(rrset)) == 0);
-		if (!knot_rrset_equal(found, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
+		if (!knot_rrset_equal(&found, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
 			*rcode = KNOT_RCODE_NXRRSET;
 			return KNOT_EPREREQ;
 		}
@@ -294,7 +292,7 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	node = knot_zone_contents_find_node(zone, knot_rrset_owner(rrset));
 	if (node == NULL) {
 		return KNOT_EOK;
-	} else if (knot_node_rrset(node, knot_rrset_type(rrset)) == NULL) {
+	} else if (!knot_node_rrtype_exists(node, knot_rrset_type(rrset))) {
 		return KNOT_EOK;
 	}
 
@@ -689,7 +687,7 @@ static int knot_ddns_process_add_cname(knot_node_t *node,
 	int ret = 0;
 
 	/* Get the current CNAME RR from the node. */
-	knot_rrset_t *removed = knot_node_get_rrset(node, KNOT_RRTYPE_CNAME);
+	knot_rrset_t *removed = knot_node_create_rrset(node, KNOT_RRTYPE_CNAME);
 
 	if (removed != NULL) {
 		/* If they are identical, ignore. */
@@ -788,7 +786,7 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 	 */
 
 	/* Get the current SOA RR from the node. */
-	knot_rrset_t *removed = knot_node_get_rrset(node, KNOT_RRTYPE_SOA);
+	knot_rrset_t *removed = knot_node_create_rrset(node, KNOT_RRTYPE_SOA);
 
 	if (removed != NULL) {
 		dbg_ddns_detail("Found SOA in the node.\n");
@@ -1064,13 +1062,13 @@ static int knot_ddns_process_add(const knot_rrset_t *rr,
 			log_zone_error("NSEC3PARAM RR may be added under apex name only!\n");
 			return KNOT_EDENIED;
 		}
-		if (knot_node_rrset(*node, KNOT_RRTYPE_NSEC3PARAM)) {
+		if (knot_node_rrtype_exists(*node, KNOT_RRTYPE_NSEC3PARAM)) {
 			/* Ignore if there is one already in the zone.*/
 			log_zone_warning("NSEC3PARAM already present in the zone. "
 			                 "Ignoring NSEC3PARAM from the UPDATE.\n");
 			return KNOT_EOK;
 		}
-	} else if (knot_node_rrset(*node, KNOT_RRTYPE_CNAME) != NULL) {
+	} else if (knot_node_rrtype_exists(*node, KNOT_RRTYPE_CNAME)) {
 		/*
 		 * Adding RR to CNAME node. Ignore the UPDATE RR.
 		 *
@@ -1166,7 +1164,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 */
 
 	assert(type != KNOT_RRTYPE_SOA);
-	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
+	bool is_apex = knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA);
 
 	/* If removing NS from an apex and there is only one NS left, ignore
 	 * this removal right away. We do not have to check if the RRs match:
@@ -1174,7 +1172,7 @@ static int knot_ddns_process_rem_rr(const knot_rrset_t *rr,
 	 * - if they match, the last NS cannot be removed anyway.
 	 */
 	if (is_apex && type == KNOT_RRTYPE_NS
-	    && knot_rrset_rr_count(knot_node_rrset(node, type)) == 1) {
+	    && knot_rrs_rr_count(knot_node_rrs(node, type)) == 1) {
 		return KNOT_EOK;
 	}
 
@@ -1329,7 +1327,7 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	// this should be ruled out before
 	assert(type != KNOT_RRTYPE_SOA);
 
-	if (knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL
+	if (knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA)
 	    && type == KNOT_RRTYPE_NS) {
 		// if removing NS from apex, ignore
 		return KNOT_EOK;
@@ -1532,7 +1530,7 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 		return KNOT_ENOMEM;
 	}
 
-	int is_apex = knot_node_rrset(node, KNOT_RRTYPE_SOA) != NULL;
+	bool is_apex = knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA);
 
 	dbg_ddns_verb("Removing all RRSets (count: %d).\n", count);
 	for (int i = 0; i < count; ++i) {
@@ -1645,7 +1643,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 	int ret = KNOT_EOK;
 
 	/* Copy base SOA RR. */
-	knot_rrset_t *soa_begin = knot_node_get_rrset(knot_zone_contents_apex(zone),
+	knot_rrset_t *soa_begin = knot_node_create_rrset(knot_zone_contents_apex(zone),
 	                                              KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_end = NULL;
 	if (ret == KNOT_EOK) {

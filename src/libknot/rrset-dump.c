@@ -1978,7 +1978,7 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         const size_t            maxlen,
                         const knot_dump_style_t *style)
 {
-	if (rrset == NULL || dst == NULL || style == NULL) {
+	if (knot_rrset_empty(rrset) || dst == NULL || style == NULL) {
 		return KNOT_EINVAL;
 	}
 

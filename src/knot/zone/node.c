@@ -240,12 +240,6 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 
 /*----------------------------------------------------------------------------*/
 
-const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
-                                        uint16_t type)
-{
-	return knot_node_get_rrset(node, type);
-}
-
 const knot_rrs_t *knot_node_rrs(const knot_node_t *node, uint16_t type)
 {
 	return (const knot_rrs_t *)knot_node_get_rrs(node, type);
@@ -268,7 +262,7 @@ knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type)
 
 /*----------------------------------------------------------------------------*/
 
-knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type)
+knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return NULL;
@@ -784,17 +778,16 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 
 bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type)
 {
-	if (node == NULL) {
-		return false;
-	}
+	return knot_node_rrs(node, type) != NULL;
+}
 
-	for (uint i = 0; i < node->rrset_count; ++i) {
-		if (node->rrs[i].type == type) {
-			return true;
-		}
-	}
-
-	return false;
+static void clear_rrset(knot_rrset_t *rrset)
+{
+	rrset->owner = NULL;
+	rrset->type = 0;
+	rrset->rclass = KNOT_CLASS_IN;
+	knot_rrs_clear(&rrset->rrs, NULL);
+	rrset->additional = NULL;
 }
 
 void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
@@ -803,8 +796,10 @@ void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
 	if (node == NULL || rrset == NULL) {
 		return;
 	}
+	bool hit = false;
 	for (uint i = 0; i < node->rrset_count; ++i) {
-		if (node->rrs[i].type == type) {
+		hit = node->rrs[i].type == type;
+		if (hit) {
 			rrset->owner = node->owner;
 			rrset->type = type;
 			rrset->rclass = KNOT_CLASS_IN;
@@ -812,12 +807,16 @@ void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
 			rrset->additional = NULL;
 		}
 	}
+	if (!hit) {
+		clear_rrset(rrset);
+	}
 }
 
 void knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
                               knot_rrset_t *rrset)
 {
 	if (node == NULL || pos >= node->rrset_count || rrset == NULL) {
+		clear_rrset(rrset);
 		return;
 	}
 	struct rr_data *rr_data = &node->rrs[pos];

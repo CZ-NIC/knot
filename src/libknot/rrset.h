@@ -436,6 +436,8 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
                            const knot_rrset_t *rrsigs,
                            knot_rrset_t **out_sig, mm_ctx_t *mm);
 
+bool knot_rrset_empty(const knot_rrset_t *rrset);
+
 #endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

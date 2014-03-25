@@ -130,9 +130,14 @@ int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt)
 
 	/* Add SOA RR to authority section for IXFR. */
 	knot_node_t *apex = zone->contents->apex;
-	const knot_rrset_t *soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa = knot_node_create_rrset(apex, KNOT_RRTYPE_SOA);
+	if (soa == NULL) {
+		return KNOT_ENOMEM;
+	}
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	return knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, 0);
+	ret = knot_pkt_put(pkt, COMPR_HINT_QNAME, soa, KNOT_PF_FREE);
+	knot_rrset_free(&soa, NULL);
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -270,7 +275,7 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 
 	while (ret == KNOT_EOK && rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
-		    knot_node_rrset(zc.z->apex, KNOT_RRTYPE_SOA)) {
+		    knot_node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
 			// Last SOA, last message, check TSIG.
 			ret = xfrin_check_tsig(pkt, xfr, 1);
 			knot_rrset_free(&rr, NULL);

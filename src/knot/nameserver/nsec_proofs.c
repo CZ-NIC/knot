@@ -59,8 +59,8 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
                                   struct query_data *qdata,
                                   knot_pkt_t *resp)
 {
-	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC3);
-	knot_rrset_t *rrsigs = knot_node_get_rrset(node, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t *rrset = knot_node_create_rrset(node, KNOT_RRTYPE_NSEC3);
+	knot_rrset_t *rrsigs = knot_node_create_rrset(node, KNOT_RRTYPE_RRSIG);
 	if (rrset == NULL) {
 		// bad zone, ignore
 		return KNOT_EOK;
@@ -301,8 +301,8 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		}
 	}
 
-	knot_rrset_t *rrset = knot_node_get_rrset(previous, KNOT_RRTYPE_NSEC);
-	knot_rrset_t *rrsigs = knot_node_get_rrset(previous, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t *rrset = knot_node_create_rrset(previous, KNOT_RRTYPE_NSEC);
+	knot_rrset_t *rrsigs = knot_node_create_rrset(previous, KNOT_RRTYPE_RRSIG);
 
 	int ret = KNOT_EOK;
 
@@ -503,8 +503,8 @@ dbg_ns_exec_verb(
 );
 
 	// 1) NSEC proving that there is no node with the searched name
-	rrset = knot_node_get_rrset(previous, KNOT_RRTYPE_NSEC);
-	rrsigs = knot_node_get_rrset(previous, KNOT_RRTYPE_RRSIG);
+	rrset = knot_node_create_rrset(previous, KNOT_RRTYPE_NSEC);
+	rrsigs = knot_node_create_rrset(previous, KNOT_RRTYPE_RRSIG);
 	if (rrset == NULL) {
 		// no NSEC records
 		//return NS_ERR_SERVFAIL;
@@ -556,8 +556,8 @@ dbg_ns_exec_verb(
 	knot_dname_free(&wildcard);
 
 	if (prev_new != previous) {
-		rrset = knot_node_get_rrset(prev_new, KNOT_RRTYPE_NSEC);
-		rrsigs = knot_node_get_rrset(prev_new, KNOT_RRTYPE_RRSIG);
+		rrset = knot_node_create_rrset(prev_new, KNOT_RRTYPE_NSEC);
+		rrsigs = knot_node_create_rrset(prev_new, KNOT_RRTYPE_RRSIG);
 		if (rrset == NULL) {
 			// bad zone, ignore
 			return KNOT_EOK;
@@ -710,10 +710,10 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		}
 	} else {
 		dbg_ns("%s: adding NSEC NODATA\n", __func__);
-		if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC))
+		if ((rrset = knot_node_create_rrset(node, KNOT_RRTYPE_NSEC))
 		    != NULL) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
-			knot_rrset_t *rrsigs = knot_node_get_rrset(node, KNOT_RRTYPE_RRSIG);
+			knot_rrset_t *rrsigs = knot_node_create_rrset(node, KNOT_RRTYPE_RRSIG);
 			ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
 		}
 	}
@@ -766,9 +766,9 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	/* Add DS record if present. */
-	knot_rrset_t *rrset = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_DS);
+	knot_rrset_t *rrset = knot_node_create_rrset(qdata->node, KNOT_RRTYPE_DS);
 	if (rrset != NULL) {
-		knot_rrset_t *rrsigs = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t *rrsigs = knot_node_create_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 		return ns_put_rr(pkt, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
 	}
 

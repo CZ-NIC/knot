@@ -831,14 +831,14 @@ static bool apex_rr_changed(const knot_zone_contents_t *old_contents,
                             const knot_zone_contents_t *new_contents,
                             uint16_t type)
 {
-	const knot_rrset_t *old_rr = knot_node_rrset(old_contents->apex, type);
-	const knot_rrset_t *new_rr = knot_node_rrset(new_contents->apex, type);
-	if (old_rr== NULL) {
-		return new_rr != NULL;
-	} else if (new_rr == NULL) {
-		return old_rr != NULL;
+	knot_rrset_t old_rr = RRSET_INIT(old_contents->apex, type);
+	knot_rrset_t new_rr = RRSET_INIT(new_contents->apex, type);
+	if (knot_rrset_empty(&old_rr)) {
+		return !knot_rrset_empty(&new_rr);
+	} else if (knot_rrset_empty(&new_rr)) {
+		return !knot_rrset_empty(&old_rr);
 	}
-	return !knot_rrset_equal(old_rr, new_rr, KNOT_RRSET_COMPARE_WHOLE);
+	return !knot_rrset_equal(&old_rr, &new_rr, KNOT_RRSET_COMPARE_WHOLE);
 }
 
 bool zones_dnskey_changed(const knot_zone_contents_t *old_contents,

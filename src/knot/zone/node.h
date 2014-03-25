@@ -145,18 +145,6 @@ int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset);
 
 int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset);
 
-/*!
- * \brief Returns the RRSet of the given type from the node.
- *
- * \param node Node to get the RRSet from.
- * \param type Type of the RRSet to retrieve.
- *
- * \return RRSet from node \a node having type \a type, or NULL if no such
- *         RRSet exists in this node.
- */
-const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
-                                        uint16_t type);
-
 const knot_rrs_t *knot_node_rrs(const knot_node_t *node, uint16_t type);
 knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);
 
@@ -169,7 +157,7 @@ knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);
  * \return RRSet from node \a node having type \a type, or NULL if no such
  *         RRSet exists in this node.
  */
-knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type);
+knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type);
 
 knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type);
 
@@ -423,6 +411,35 @@ void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
 
 void knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
                               knot_rrset_t *rrset);
+
+static struct rr_data EMPTY_DATA =
+	{.type = 0,
+	.additional = 0,
+	.rrs.rr_count = 0,
+	.rrs.data = NULL};
+
+static inline struct rr_data *knot_node_rr_data(const knot_node_t *node,
+                                                uint16_t type)
+{
+	if (node == NULL) {
+		return &EMPTY_DATA;
+	}
+	for (short i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			return &node->rrs[i];
+		}
+	}
+	return &EMPTY_DATA;
+}
+
+#define _RRSET_INIT(node, rr_data) \
+	{.owner = node->owner,\
+	.type = rr_data->type,\
+	.rclass = KNOT_CLASS_IN,\
+	.rrs = rr_data->rrs,\
+	.additional = rr_data->additional}
+
+#define RRSET_INIT(node, type) _RRSET_INIT(node, knot_node_rr_data(node, type))
 
 #endif /* _KNOT_NODE_H_ */
 

@@ -51,12 +51,12 @@ inline static bool valid_nsec3_node(const knot_node_t *node)
 		return false;
 	}
 
-	const knot_rrset_t *nsec3 = knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
+	const knot_rrs_t *nsec3 = knot_node_rrs(node, KNOT_RRTYPE_NSEC3);
 	if (nsec3 == NULL) {
 		return false;
 	}
 
-	if (knot_rrset_rr_count(nsec3) != 1) {
+	if (knot_rrs_rr_count(nsec3) != 1) {
 		return false;
 	}
 
@@ -72,10 +72,11 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 		return false;
 	}
 
-	const knot_rrset_t *a_rrset = knot_node_rrset(a, KNOT_RRTYPE_NSEC3);
-	const knot_rrset_t *b_rrset = knot_node_rrset(b, KNOT_RRTYPE_NSEC3);
-
-	return knot_rrset_equal(a_rrset, b_rrset, KNOT_RRSET_COMPARE_WHOLE);
+	knot_rrset_t a_rrset;
+	knot_rrset_t b_rrset;
+	knot_node_fill_rrset(a, KNOT_RRTYPE_NSEC3, &a_rrset);
+	knot_node_fill_rrset(b, KNOT_RRTYPE_NSEC3, &b_rrset);
+	return knot_rrset_equal(&a_rrset, &b_rrset, KNOT_RRSET_COMPARE_WHOLE);
 }
 
 /*!
@@ -117,7 +118,7 @@ static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 	assert(valid_nsec3_node(from));
 	assert(valid_nsec3_node(to));
 
-	knot_rrset_t *from_sig = knot_node_get_rrset(from, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t *from_sig = knot_node_create_rrset(from, KNOT_RRTYPE_RRSIG);
 	if (from_sig == NULL) {
 		return KNOT_EOK;
 	}
@@ -175,7 +176,7 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 		// newly allocated NSEC3 nodes
-		knot_rrset_t *nsec3 = knot_node_get_rrset(node,
+		knot_rrset_t *nsec3 = knot_node_create_rrset(node,
 		                                          KNOT_RRTYPE_NSEC3);
 		knot_rrset_free(&nsec3, NULL);
 		knot_node_free(&node);
@@ -444,7 +445,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		if (result != KNOT_EOK) {
 			break;
 		}
-		if (knot_node_rrset(node, KNOT_RRTYPE_NSEC)) {
+		if (knot_node_rrtype_exists(node, KNOT_RRTYPE_NSEC)) {
 			knot_node_set_removed_nsec(node);
 		}
 		if (knot_node_is_non_auth(node) || knot_node_is_empty(node)) {

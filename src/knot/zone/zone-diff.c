@@ -49,8 +49,8 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_t *soa_rrset1 = knot_node_get_rrset(apex1, KNOT_RRTYPE_SOA);
-	knot_rrset_t *soa_rrset2 = knot_node_get_rrset(apex2, KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_rrset1 = knot_node_create_rrset(apex1, KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_rrset2 = knot_node_create_rrset(apex2, KNOT_RRTYPE_SOA);
 	if (soa_rrset1 == NULL || soa_rrset2 == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -443,10 +443,8 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 			continue;
 		}
 
-		const knot_rrset_t *rrset_from_second_node =
-			knot_node_rrset(node_in_second_tree,
-			                knot_rrset_type(rrset));
-		if (rrset_from_second_node == NULL) {
+		knot_rrset_t rrset_from_second_node = RRSET_INIT(node_in_second_tree, rrset->type);
+		if (knot_rrset_empty(&rrset_from_second_node)) {
 			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
 			       "for RRSet of type %u in second tree.\n",
 			       knot_rrset_type(rrset));
@@ -467,7 +465,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 			       knot_rrset_type(rrset));
 			/* Diff RRSets. */
 			int ret = knot_zone_diff_rrsets(rrset,
-			                                rrset_from_second_node,
+			                                &rrset_from_second_node,
 			                                param->changeset);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: "
@@ -496,10 +494,8 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 			continue;
 		}
 
-		const knot_rrset_t *rrset_from_first_node =
-			knot_node_rrset(node,
-			                knot_rrset_type(rrset));
-		if (rrset_from_first_node == NULL) {
+		knot_rrset_t rrset_from_first_node = RRSET_INIT(node, rrset->type);
+		if (knot_rrset_empty(&rrset_from_first_node)) {
 			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
 			       "for RRSet of type %u in first tree.\n",
 			       knot_rrset_type(rrset));

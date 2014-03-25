@@ -1389,3 +1389,10 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
 	return KNOT_EOK;
 }
 
+bool knot_rrset_empty(const knot_rrset_t *rrset)
+{
+	uint16_t rr_count = knot_rrset_rr_count(rrset);
+	return rr_count == 0;
+}
+
+

@@ -51,8 +51,9 @@ int notify_create_request(const zone_t *zone, knot_pkt_t *pkt)
 	knot_wire_set_aa(pkt->wire);
 	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
 
-	const knot_rrset_t *soa_rr = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-	return knot_pkt_put_question(pkt, soa_rr->owner, soa_rr->rclass, soa_rr->type);
+	knot_rrset_t soa_rr = RRSET_INIT(contents->apex, KNOT_RRTYPE_SOA);
+	assert(!knot_rrset_empty(&soa_rr));
+	return knot_pkt_put_question(pkt, soa_rr.owner, soa_rr.rclass, soa_rr.type);
 }
 
 int notify_process_response(knot_pkt_t *notify, int msgid)

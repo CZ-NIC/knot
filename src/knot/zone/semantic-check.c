@@ -392,7 +392,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* Check if DNSKEY exists. */
-	if (!dnskey_rrset) {
+	if (knot_rrset_empty(dnskey_rrset)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_NO_DNSKEY, info_str);
 	}
@@ -402,7 +402,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		knot_rrs_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
-	if (dnskey_rrset &&
+	if (!knot_rrset_empty(dnskey_rrset) &&
 	    knot_dname_cmp(signer_name, knot_rrset_owner(dnskey_rrset)) != 0
 	) {
 		err_handler_handle_error(handler, node,
@@ -633,7 +633,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	if (nsec3_node == NULL) {
 		/* I know it's probably not what RFCs say, but it will have to
 		 * do for now. */
-		if (knot_node_rrset(node, KNOT_RRTYPE_DS) != NULL) {
+		if (knot_node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
 			err_handler_handle_error(handler, node,
 					ZC_ERR_NSEC3_UNSECURED_DELEGATION,
 			                         NULL);
@@ -760,12 +760,11 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 static int sem_check_node_mandatory(const knot_node_t *node,
                                     err_handler_t *handler, bool *fatal_error)
 {
-	const knot_rrset_t *cname_rrset =
-			knot_node_rrset(node, KNOT_RRTYPE_CNAME);
-	if (cname_rrset) {
+	const knot_rrs_t *cname_rrs = knot_node_rrs(node, KNOT_RRTYPE_CNAME);
+	if (cname_rrs) {
 		if (knot_node_rrset_count(node) != 1) {
 			/* With DNSSEC node can contain RRSIGs or NSEC */
-			if (!(knot_node_rrset(node, KNOT_RRTYPE_NSEC) || knot_node_rrset(node, KNOT_RRTYPE_RRSIG)) ||
+			if (!(knot_node_rrtype_exists(node, KNOT_RRTYPE_NSEC) || knot_node_rrtype_exists(node, KNOT_RRTYPE_RRSIG)) ||
 			    knot_node_rrset_count(node) > 3) {
 				*fatal_error = true;
 				err_handler_handle_error(handler, node,
@@ -773,17 +772,16 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 			}
 		}
 
-		if (knot_rrset_rr_count(cname_rrset) != 1) {
+		if (knot_rrs_rr_count(cname_rrs) != 1) {
 			*fatal_error = true;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE, NULL);
 		}
 	}
 
-	const knot_rrset_t *dname_rrset =
-		knot_node_rrset(node, KNOT_RRTYPE_DNAME);
-	if (dname_rrset) {
-		if (cname_rrset) {
+	const knot_rrs_t *dname_rrs = knot_node_rrs(node, KNOT_RRTYPE_DNAME);
+	if (dname_rrs) {
+		if (cname_rrs) {
 			*fatal_error = true;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_EXTRA_RECORDS,
@@ -798,7 +796,7 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 		}
 	}
 	
-	if (node->parent && knot_node_rrset(node->parent, KNOT_RRTYPE_DNAME)) {
+	if (node->parent && knot_node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
 		*fatal_error = true;
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_DNAME_CHILDREN,
@@ -933,9 +931,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	bool auth = !knot_node_is_non_auth(node);
 	bool deleg = knot_node_is_deleg_point(node);
 	short rrset_count = knot_node_rrset_count(node);
-	const knot_rrset_t *dnskey_rrset =
-		knot_node_rrset(knot_zone_contents_apex(zone),
-		                KNOT_RRTYPE_DNSKEY);
+	knot_rrset_t dnskey_rrset = RRSET_INIT(zone->apex, KNOT_RRTYPE_DNSKEY);
 
 	int ret = KNOT_EOK;
 
@@ -944,7 +940,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 		knot_node_fill_rrset_pos(node, i, &rrset);
 		if (auth && !deleg && rrset.type != KNOT_RRTYPE_RRSIG &&
 		    (ret = check_rrsig_in_rrset(handler, node,
-		                                &rrset, dnskey_rrset)) != 0) {
+		                                &rrset, &dnskey_rrset)) != 0) {
 			err_handler_handle_error(handler, node, ret, NULL);
 		}
 
