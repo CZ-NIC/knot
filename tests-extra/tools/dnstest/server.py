@@ -571,15 +571,22 @@ class Server(object):
 
         return key
 
-    def use_gen_keys(self):
+    def use_keys(self, zone):
+        # Convert one item list to single object.
+        if isinstance(zone, list):
+            if len(zone) != 1:
+                raise Exception("One zone required.")
+            zone = zone[0]
+
         # Copy generated keys to server key directory.
         prepare_dir(self.keydir)
 
-        src_files = os.listdir(params.test.key_dir)
+        src_files = os.listdir(zone.key_dir)
         for file_name in src_files:
-            full_file_name = os.path.join(params.test.key_dir, file_name)
-            if (os.path.isfile(full_file_name)):
-                shutil.copy(full_file_name, self.keydir)
+            if zone.name[:-1] in file_name:
+                full_file_name = os.path.join(zone.key_dir, file_name)
+                if (os.path.isfile(full_file_name)):
+                    shutil.copy(full_file_name, self.keydir)
 
     def enable_nsec3(self, zone, **args):
         # Convert one item list to single object.

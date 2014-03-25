@@ -33,7 +33,6 @@ class Test(object):
         self.out_dir = params.out_dir
         self.data_dir = params.test_dir + "/data/"
         self.zones_dir = self.out_dir + "/zones/"
-        self.key_dir = self.out_dir + "/keys/"
 
         self.ip = ip if ip else random.choice([4, 6])
         if self.ip not in [4, 6]:
@@ -226,7 +225,7 @@ class Test(object):
             zone = dnstest.zonefile.ZoneFile(self.zones_dir)
             zone.set_name(name)
             zone.gen_file(dnssec=dnssec, nsec3=nsec3, records=records,
-                          serial=serial, keydir=self.key_dir)
+                          serial=serial)
             zones.append(zone)
 
         return zones

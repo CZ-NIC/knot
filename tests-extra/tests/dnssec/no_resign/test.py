@@ -21,7 +21,8 @@ old_nsec3_serial = master.zone_wait(nsec3_zone)
 
 # Enable autosigning.
 master.dnssec_enable = True
-master.use_gen_keys()
+master.use_keys(nsec_zone)
+master.use_keys(nsec3_zone)
 master.gen_confile()
 master.reload()
 
