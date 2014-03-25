@@ -115,7 +115,7 @@ static bool use_key(const knot_zone_key_t *key, const knot_rrset_t *covered)
 		}
 
 		// use KSK only in the zone apex
-		if (knot_dname_cmp(key->dnssec_key.name, covered->owner) != 0) {
+		if (knot_dname_is_equal(key->dnssec_key.name, covered->owner)) {
 			return false;
 		}
 	}
