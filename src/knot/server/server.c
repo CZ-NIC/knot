@@ -481,7 +481,7 @@ int server_refresh(server_t *server)
 			continue;
 		}
 		/* Expire REFRESH timer. */
-		if (zd->xfr_in.timer) {
+		if (zd->xfr_in.timer && zd->xfr_in.has_master) {
 			evsched_cancel(sch, zd->xfr_in.timer);
 			evsched_schedule(sch, zd->xfr_in.timer,
 			                 knot_random_int() % 500 + i/2);

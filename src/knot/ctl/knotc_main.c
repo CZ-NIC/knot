@@ -585,7 +585,11 @@ static int cmd_refresh(int argc, char *argv[], unsigned flags)
 {
 	UNUSED(flags);
 
-	return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
+	if (has_flag(flags, F_FORCE)) {
+		return cmd_remote("retransfer", KNOT_RRTYPE_NS, argc, argv);
+	} else {
+		return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
+	}
 }
 
 static int cmd_flush(int argc, char *argv[], unsigned flags)

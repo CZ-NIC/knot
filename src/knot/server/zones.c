@@ -219,9 +219,15 @@ int zones_refresh_ev(event_t *e)
 		rq->tsig_key = &zd->xfr_in.tsig_key;
 	}
 
-	/* Check for contents. */
+	/* Forced transfer - either bootstrap or retransfer. */
 	int ret = KNOT_EOK;
-	if (!knot_zone_contents(zone)) {
+	bool force_transfer = !knot_zone_contents(zone);
+	if (zone->flags & KNOT_ZONE_OBSOLETE) {
+		/* One-shot flag. */
+		zone->flags &= ~KNOT_ZONE_OBSOLETE;
+		force_transfer = true;
+	}
+	if (force_transfer) {
 
 		/* Bootstrap over TCP. */
 		rq->type = XFR_TYPE_AIN;
@@ -2227,8 +2233,12 @@ int zones_ns_conf_hook(const struct conf_t *conf, void *data)
 	/* REFRESH zones. */
 	for (unsigned i = 0; i < knot_zonedb_zone_count(ns->zone_db); ++i) {
 		zone = (knot_zone_t *)zones[i];
-		zones_schedule_refresh(zone, 0); /* Now. */
-		zones_schedule_notify(zone);
+
+		/* Refresh / issue notifications for the changed zones. */
+		if (zone->flags & KNOT_ZONE_UPDATED) {
+			zones_schedule_refresh(zone, 0); /* Now. */
+			zones_schedule_notify(zone);
+		}
 	}
 
 	return KNOT_EOK;
@@ -2850,6 +2860,7 @@ void zones_schedule_ixfr_sync(knot_zone_t *zone, int dbsync_timeout)
 	evsched_t *scheduler = zd->server->sched;
 
 	if (zd->ixfr_dbsync != NULL) {
+		evsched_cancel(scheduler, zd->ixfr_dbsync);
 		evsched_schedule(scheduler, zd->ixfr_dbsync, dbsync_timeout * 1000);
 	}
 }

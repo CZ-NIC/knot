@@ -228,10 +228,14 @@ static void timer_reset(evsched_t *sched, event_t **ev,
 }
 
 /*! \brief Reset zone data timers. */
-static void zonedata_reset_timers(knot_zone_t *zone)
+static void zonedata_reset_timers(knot_zone_t *zone, evsched_t *scheduler)
 {
+	if (zone == NULL || scheduler == NULL) {
+		return;
+	}
+
 	zonedata_t *zd = zone->data;
-	
+
 	/* Create or cancel existing events. They must not be freed during their
 	 * lifetime since they are referenced from numerous places.
 	 * So each reload does following:
@@ -240,11 +244,12 @@ static void zonedata_reset_timers(knot_zone_t *zone)
 	 *  3. events may be freed _ONLY_ on zone teardown
 	 */
 
-	evsched_t *scheduler = zd->server->sched;
 	timer_reset(scheduler, &zd->ixfr_dbsync, zones_flush_ev, zone);
 	timer_reset(scheduler, &zd->xfr_in.timer, zones_refresh_ev, zone);
 	timer_reset(scheduler, &zd->xfr_in.expire, zones_expire_ev, zone);
-	timer_reset(scheduler, &zd->dnssec_timer, zones_dnssec_ev, zone);	
+	timer_reset(scheduler, &zd->dnssec_timer, zones_dnssec_ev, zone);
+
+	zd->xfr_in.state = XFR_IDLE;
 }
 
 /*!
@@ -273,9 +278,6 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 	}
 
 	zd->server = (server_t *)ns->data;
-
-	/* Reset event timers. */
-	zonedata_reset_timers(zone);
 
 	// ACLs
 
@@ -339,20 +341,20 @@ static void zonedata_update(knot_zone_t *zone, conf_zone_t *conf,
 /*! \brief Freeze the zone data to prevent any further transfers or
  *         events manipulation.
  */
-static void zonedata_freeze(knot_zone_t *zone)
+static void zonedata_freeze(knot_zone_t *zone, evsched_t *scheduler)
 {
 	zonedata_t *zone_data = zone->data;
-	
+
 	/*! \todo NOTIFY, xfers and updates now MUST NOT trigger reschedule. */
 	/*! \todo No new xfers or updates should be processed. */
 	/*! \todo Raise some kind of flag. */
-	
+
 	/* Wait for readers to notice the change. */
 	synchronize_rcu();
 
 	/* Cancel all pending timers. */
-	zonedata_reset_timers(zone);
-	
+	zonedata_reset_timers(zone, scheduler);
+
 	/* Now some transfers may already be running, we need to wait for them. */
 	/*! \todo This should be done somehow. */
 
@@ -647,11 +649,24 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 	 *    guarantees that zone is not and won't be participating on further
 	 *    transfers, updates or events.
 	 */
-	
+
+	evsched_t *scheduler = ((server_t *)ns->data)->sched;
+
 	/* Freeze the old zone blocks any further transfers or events,
 	 * as it will be deleted later on. */
-	if (old_zone && new_zone != old_zone) {
-		zonedata_freeze(old_zone);
+	if (new_zone != old_zone) {
+		/* Freeze the old zone blocks any further transfers or events,
+		 * as it will be deleted later on. */
+		if (old_zone) {
+			zonedata_freeze(old_zone, scheduler);
+		}
+		/* Reset timers on new zone. */
+		zonedata_reset_timers(new_zone, scheduler);
+		/* Mark as updated. */
+		new_zone->flags |= KNOT_ZONE_UPDATED;
+	} else {
+		/* Mark as unchanged. */
+		new_zone->flags &= ~KNOT_ZONE_UPDATED;
 	}
 
 	zonedata_update(new_zone, conf, ns);
@@ -663,6 +678,7 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 		goto fail;
 	}
 
+	uint32_t old_serial = knot_zone_serial(knot_zone_contents(new_zone));
 	bool modified = (old_zone != new_zone);
 	result = zones_do_diff_and_sign(conf, new_zone, ns, modified);
 	if (result != KNOT_EOK) {
@@ -674,6 +690,12 @@ static int update_zone(knot_zone_t **dst, conf_zone_t *conf, knot_nameserver_t *
 			               conf->name, knot_strerror(result));
 		}
 		goto fail;
+	}
+
+	/* DNSSEC signing can also change the zone, detect this. */
+	uint32_t new_serial = knot_zone_serial(knot_zone_contents(new_zone));
+	if (new_serial != old_serial) {
+		new_zone->flags |= KNOT_ZONE_UPDATED;
 	}
 
 	/* Schedule zonefile flush. */

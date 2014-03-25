@@ -253,6 +253,12 @@ int evsched_schedule(evsched_t *s, event_t *ev, uint32_t dt)
 	/* Lock calendar. */
 	pthread_mutex_lock(&s->mx);
 
+	/* Make sure it's not already enqueued. */
+	int found = 0;
+	if ((found = heap_find(&s->heap, ev))) {
+		heap_delete(&s->heap, found);
+	}
+
 	heap_insert(&s->heap, ev);
 
 	/* Unlock calendar. */

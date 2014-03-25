@@ -4,6 +4,8 @@ v1.4.4 - Mar 24, 2014
 ---------------------
 Features:
 	* Server is logging remote control commands
+	* 'knotc reload' doesn't refresh unchanged zones
+	* 'knotc -f refresh' forces zone retransfer
 Bugfixes:
 	* Missing notifications after DDNS/automatic resign
 	* Zone is rebootstrapped if the zone file is unreadable
