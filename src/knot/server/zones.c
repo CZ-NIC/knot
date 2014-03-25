@@ -219,9 +219,15 @@ int zones_refresh_ev(event_t *e)
 		rq->tsig_key = &zd->xfr_in.tsig_key;
 	}
 
-	/* Check for contents. */
+	/* Forced transfer - either bootstrap or retransfer. */
 	int ret = KNOT_EOK;
-	if (!knot_zone_contents(zone)) {
+	bool force_transfer = !knot_zone_contents(zone);
+	if (zone->flags & KNOT_ZONE_OBSOLETE) {
+		/* One-shot flag. */
+		zone->flags &= ~KNOT_ZONE_OBSOLETE;
+		force_transfer = true;
+	}
+	if (force_transfer) {
 
 		/* Bootstrap over TCP. */
 		rq->type = XFR_TYPE_AIN;
