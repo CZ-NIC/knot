@@ -59,7 +59,7 @@ typedef enum knot_zone_flag_t {
 	KNOT_ZONE_MASTER     = 1 << 0, /*! Master zone. */
 	KNOT_ZONE_DISCARDED  = 1 << 1, /*! Zone waiting to be discarded. */
 	KNOT_ZONE_UPDATED    = 1 << 2, /*! Zone is updated in this cycle. */
-	KNOT_ZONE_OBSOLETE   = 1 << 4  /*! Zone is updated in this cycle. */
+	KNOT_ZONE_OBSOLETE   = 1 << 3  /*! Zone is obsolete (forces retransfer). */
 } knot_zone_flag_t;
 
 /*----------------------------------------------------------------------------*/
