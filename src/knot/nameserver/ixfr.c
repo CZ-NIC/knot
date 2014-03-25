@@ -130,10 +130,8 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const zone_t *zone,
 	assert(zone);
 
 	/* Compare serials. */
-	const knot_node_t *apex = zone->contents->apex;
-	const knot_rrset_t *our_soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
-	uint32_t serial_to = knot_rdata_soa_serial(our_soa);
-	uint32_t serial_from = knot_rdata_soa_serial(their_soa);
+	uint32_t serial_to = knot_zone_serial(zone->contents);
+	uint32_t serial_from = knot_rrs_soa_serial(&their_soa->rrs);
 	int ret = knot_serial_compare(serial_to, serial_from);
 	if (ret <= 0) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
@@ -297,8 +295,8 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 		case KNOT_EOK:      /* OK */
 			ixfr = (struct ixfr_proc*)qdata->ext;
 			IXFR_LOG(LOG_INFO, "Started (serial %u -> %u).",
-			         knot_rdata_soa_serial(ixfr->soa_from),
-			         knot_rdata_soa_serial(ixfr->soa_to));
+			         knot_rrs_soa_serial(&ixfr->soa_from->rrs),
+			         knot_rrs_soa_serial(&ixfr->soa_to->rrs));
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
 			IXFR_LOG(LOG_INFO, "Zone is up-to-date.");
@@ -385,20 +383,10 @@ int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		case XFRIN_RES_SOA_ONLY: {
 			// compare the SERIAL from the changeset with the zone's
 			// serial
-			const knot_node_t *apex = zone->contents->apex;
-			if (apex == NULL) {
-				return KNOT_ERROR;
-			}
-
-			const knot_rrset_t *zone_soa = knot_node_rrset(
-					apex, KNOT_RRTYPE_SOA);
-			if (zone_soa == NULL) {
-				return KNOT_ERROR;
-			}
-
+			uint32_t zone_serial = knot_zone_serial(zone->contents);
 			if (knot_serial_compare(
-			      knot_rdata_soa_serial(chgsets->first_soa),
-			      knot_rdata_soa_serial(zone_soa))
+			      knot_rrs_soa_serial(&chgsets->first_soa->rrs),
+			      zone_serial)
 			    > 0) {
 				if ((xfr->flags & XFR_FLAG_UDP) != 0) {
 					// IXFR over UDP

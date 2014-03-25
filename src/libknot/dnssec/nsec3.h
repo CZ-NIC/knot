@@ -89,12 +89,12 @@ typedef struct {
  * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
  *
  * \param params      Structure to initialize.
- * \param nsec3param  The NSEC3PARAM RR set.
+ * \param nsec3param  The NSEC3PARAM RRs.
  *
  * \return Error code, KNOT_EOK on success.
  */
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
-                                const knot_rrset_t *rrset);
+                                const knot_rrs_t *rrs);
 /*!
  * \brief Clean up structure with NSEC3 params (do not deallocate).
  *

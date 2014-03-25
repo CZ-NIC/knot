@@ -46,74 +46,41 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 	const knot_node_t *apex1 = knot_zone_contents_apex(zone1);
 	const knot_node_t *apex2 = knot_zone_contents_apex(zone2);
 	if (apex1 == NULL || apex2 == NULL) {
-		dbg_zonediff("zone_diff: "
-		             "both zones must have apex nodes.\n");
 		return KNOT_EINVAL;
 	}
 
 	knot_rrset_t *soa_rrset1 = knot_node_get_rrset(apex1, KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_rrset2 = knot_node_get_rrset(apex2, KNOT_RRTYPE_SOA);
 	if (soa_rrset1 == NULL || soa_rrset2 == NULL) {
-		dbg_zonediff("zone_diff: "
-		             "both zones must have apex nodes.\n");
 		return KNOT_EINVAL;
 	}
 
 	if (knot_rrset_rr_count(soa_rrset1) == 0 ||
 	    knot_rrset_rr_count(soa_rrset2) == 0) {
-		dbg_zonediff("zone_diff: "
-		             "both zones must have apex nodes with SOA "
-		             "RRs.\n");
 		return KNOT_EINVAL;
 	}
 
-	int64_t soa_serial1 =
-		knot_rdata_soa_serial(soa_rrset1);
-	if (soa_serial1 == -1) {
-		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
-	}
-
-	int64_t soa_serial2 =
-		knot_rdata_soa_serial(soa_rrset2);
-	if (soa_serial2 == -1) {
-		dbg_zonediff("zone_diff: load_soas: Got bad SOA.\n");
-	}
+	int64_t soa_serial1 = knot_rrs_soa_serial(&soa_rrset1->rrs);
+	int64_t soa_serial2 = knot_rrs_soa_serial(&soa_rrset2->rrs);
 
 	if (knot_serial_compare(soa_serial1, soa_serial2) == 0) {
-		dbg_zonediff("zone_diff: "
-		             "second zone must have higher serial than the "
-		             "first one. (%"PRId64" vs. %"PRId64")\n",
-		             soa_serial1, soa_serial2);
 		return KNOT_ENODIFF;
 	}
 
 	if (knot_serial_compare(soa_serial1, soa_serial2) > 0) {
-		dbg_zonediff("zone_diff: "
-		             "second zone must have higher serial than the "
-		             "first one. (%"PRId64" vs. %"PRId64")\n",
-		             soa_serial1, soa_serial2);
 		return KNOT_ERANGE;
 	}
 
 	assert(changeset);
 
-	int ret = knot_rrset_copy(soa_rrset1, &changeset->soa_from, NULL);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
-		return ret;
-	}
-
-	ret = knot_rrset_copy(soa_rrset2, &changeset->soa_to, NULL);
-	if (ret != KNOT_EOK) {
-		dbg_zonediff("zone_diff: load_soas: Cannot copy RRSet.\n");
-		return ret;
-	}
+	changeset->soa_from = soa_rrset1;
+	changeset->soa_to = soa_rrset2;
 
 	changeset->serial_from = soa_serial1;
 	changeset->serial_to = soa_serial2;
 
 	dbg_zonediff_verb("zone_diff: load_soas: SOAs diffed. (%"PRId64" -> %"PRId64")\n",
-	            soa_serial1, soa_serial2);
+	                  soa_serial1, soa_serial2);
 
 	return KNOT_EOK;
 }
@@ -212,7 +179,7 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
 		assert(rrsets[i]);
 		int ret = knot_zone_diff_changeset_add_rrset(changeset,
-		                                         rrsets[i]);
+		                                             rrsets[i]);
 		if (ret != KNOT_EOK) {
 			dbg_zonediff("zone_diff: add_node: Cannot add RRSet (%s).\n",
 			       knot_strerror(ret));
@@ -221,7 +188,7 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 		}
 	}
 
-	free(rrsets);
+	knot_node_free_rrset_array(node, rrsets);
 
 	return KNOT_EOK;
 }
@@ -259,7 +226,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 		}
 	}
 
-	free(rrsets);
+	knot_node_free_rrset_array(node, rrsets);
 
 	return KNOT_EOK;
 }
@@ -508,41 +475,14 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 				free(rrsets);
 				return ret;
 			}
-
-//			dbg_zonediff_verb("zone_diff: diff_node: Changes in "
-//			            "RRSIGs.\n");
-//			/*! \todo There is ad-hoc solution in the function, maybe handle here. */
-//			ret = knot_zone_diff_rrsets(rrset->rrsigs,
-//			                                rrset_from_second_node->rrsigs,
-//			                                param->changeset);
-//			if (ret != KNOT_EOK) {
-//				dbg_zonediff("zone_diff: "
-//				             "Failed to diff RRSIGs.\n");
-//				return ret;
-//			}
 		}
 	}
 
-	free(rrsets);
+	knot_node_free_rrset_array(node, rrsets);
 
 	/*! \todo move to one function with the code above. */
 	rrsets = knot_node_rrsets(node_in_second_tree);
 	if (rrsets == NULL) {
-		dbg_zonediff("zone_diff: Node in second tree has no RRSets.\n");
-		/*
-		 * This can happen when node in second
-		 * tree is empty non-terminal and as such has no RRs.
-		 * Whole node from the first tree has to be removed.
-		 */
-		// TODO following code creates duplicated RR in diff.
-		// IHMO such case should be handled here
-//		int ret = knot_zone_diff_remove_node(param->changeset,
-//		                                     node);
-//		if (ret != KNOT_EOK) {
-//			dbg_zonediff("zone_diff: diff_node: "
-//			             "Cannot remove node. Reason: %s.\n",
-//			             knot_strerror(ret));
-//		}
 		return KNOT_EOK;
 	}
 
@@ -571,7 +511,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_node: "
 				             "Failed to add RRSet.\n");
-				free(rrsets);
+				knot_node_free_rrset_array(node, rrsets);
 				return ret;
 			}
 		} else {
@@ -580,7 +520,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 		}
 	}
 
-	free(rrsets);
+	knot_node_free_rrset_array(node, rrsets);
 
 	return KNOT_EOK;
 }

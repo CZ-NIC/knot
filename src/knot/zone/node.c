@@ -246,6 +246,26 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
 	return knot_node_get_rrset(node, type);
 }
 
+const knot_rrs_t *knot_node_rrs(const knot_node_t *node, uint16_t type)
+{
+	return (const knot_rrs_t *)knot_node_get_rrs(node, type);
+}
+
+knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type)
+{
+	if (node == NULL) {
+		return NULL;
+	}
+
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			return &node->rrs[i].rrs;
+		}
+	}
+
+	return NULL;
+}
+
 /*----------------------------------------------------------------------------*/
 
 knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type)
@@ -745,22 +765,20 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 		return false;
 	}
 
-	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+	const knot_rrs_t *rrsigs = knot_node_rrs(node, KNOT_RRTYPE_RRSIG);
 	if (rrsigs == NULL) {
 		return false;
 	}
 
-	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	uint16_t rrsigs_rdata_count = knot_rrs_rr_count(rrsigs);
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		const uint16_t type_covered =
-			knot_rdata_rrsig_type_covered(rrsigs, i);
+			knot_rrs_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
-			knot_rrset_free(&rrsigs, NULL);
 			return true;
 		}
 	}
 
-	knot_rrset_free(&rrsigs, NULL);
 	return false;
 }
 
@@ -778,3 +796,35 @@ bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type)
 
 	return false;
 }
+
+void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
+                          knot_rrset_t *rrset)
+{
+	if (node == NULL || rrset == NULL) {
+		return;
+	}
+	for (uint i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			rrset->owner = node->owner;
+			rrset->type = type;
+			rrset->rclass = KNOT_CLASS_IN;
+			rrset->rrs = node->rrs[i].rrs;
+			rrset->additional = NULL;
+		}
+	}
+}
+
+void knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
+                              knot_rrset_t *rrset)
+{
+	if (node == NULL || pos >= node->rrset_count || rrset == NULL) {
+		return;
+	}
+	struct rr_data *rr_data = &node->rrs[pos];
+	rrset->owner = node->owner;
+	rrset->type = rr_data->type;
+	rrset->rclass = KNOT_CLASS_IN;
+	rrset->rrs = rr_data->rrs;
+	rrset->additional = NULL;
+}
+

@@ -71,7 +71,7 @@ static knot_rrset_t *dname_cname_synth(const knot_rrset_t *dname_rr,
 
 	/* Replace last labels of qname with DNAME. */
 	const knot_dname_t *dname_wire = knot_rrset_owner(dname_rr);
-	const knot_dname_t *dname_tgt = knot_rdata_dname_target(dname_rr);
+	const knot_dname_t *dname_tgt = knot_rrs_dname_target(&dname_rr->rrs);
 	int labels = knot_dname_labels(dname_wire, NULL);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
 	if (cname == NULL) {
@@ -103,7 +103,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 {
 	if (knot_dname_labels(qname, NULL)
 		- knot_dname_labels(knot_rrset_owner(rrset), NULL)
-		+ knot_dname_labels(knot_rdata_dname_target(rrset), NULL)
+		+ knot_dname_labels(knot_rrs_dname_target(&rrset->rrs), NULL)
 		> KNOT_DNAME_MAXLABELS) {
 		return true;
 	} else {
@@ -153,7 +153,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
  */
 static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 {
-	const knot_rrset_t *rrset = NULL;
+	knot_rrset_t *rrset = NULL;
 
 	/* Wildcard expansion or exact match, either way RRSet owner is
 	 * is QNAME. We can fake name synthesis by setting compression hint to
@@ -190,7 +190,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	default: /* Single RRSet of given type. */
 		rrset = knot_node_get_rrset(qdata->node, type);
 		if (rrset) {
-			const knot_rrset_t *rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+			knot_rrset_t *rrsigs = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 			ret = ns_put_rr(pkt, rrset, rrsigs, compr_hint, 0, qdata);
 		}
 		break;
@@ -217,9 +217,9 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 		return KNOT_EOK;
 	}
 
-	const knot_rrset_t *ns_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_NS);
+	knot_rrset_t *ns_rrset = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_NS);
 	if (ns_rrset) {
-		const knot_rrset_t *rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t *rrsigs = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 		return ns_put_rr(pkt, ns_rrset, rrsigs, COMPR_HINT_NONE,
 		                 KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP, qdata);
 	} else {
@@ -233,20 +233,20 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
                              const knot_zone_contents_t *zone)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
+	assert(knot_node_rrtype_exists(zone->apex, KNOT_RRTYPE_SOA));
 	knot_rrset_t *soa_rrset = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	assert(soa_rrset);
-	const knot_rrset_t *rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t *rrsigs = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 
 	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
 	// MINIMUM as TTL
 	int ret = KNOT_EOK;
 	uint32_t flags = KNOT_PF_NOTRUNC;
-	uint32_t min = knot_rdata_soa_minimum(soa_rrset);
+	uint32_t min = knot_rrs_soa_minimum(&soa_rrset->rrs);
 	if (min < knot_rrset_rr_ttl(soa_rrset, 0)) {
-		ret = knot_rrset_copy(soa_rrset, &soa_rrset, &pkt->mm);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
+//		ret = knot_rrset_copy(soa_rrset, &soa_rrset, &pkt->mm);
+//		if (ret != KNOT_EOK) {
+//			return ret;
+//		}
 
 		knot_rrset_rr_set_ttl(soa_rrset, 0, min);
 		flags |= KNOT_PF_FREE;
@@ -269,8 +269,8 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Insert NS record. */
-	const knot_rrset_t *rrset = knot_node_rrset(qdata->node, KNOT_RRTYPE_NS);
-	const knot_rrset_t *rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t *rrset = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_NS);
+	knot_rrset_t *rrsigs = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 	return ns_put_rr(pkt, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
 }
 
@@ -287,7 +287,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	uint32_t flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
 	uint16_t hint = COMPR_HINT_NONE;
 	const knot_node_t *node = NULL;
-	const knot_rrset_t *additional = NULL;
+	knot_rrset_t *additional = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
 	uint16_t rr_rdata_count = knot_rrset_rr_count(rr);
@@ -300,9 +300,9 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			continue;
 		}
 		
-		const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t *rrsigs = knot_node_get_rrset(node, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
-			additional = knot_node_rrset(node, ar_type_list[k]);
+			additional = knot_node_get_rrset(node, ar_type_list[k]);
 			if (additional == NULL) {
 				continue;
 			}
@@ -323,7 +323,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 
 	const knot_node_t *cname_node = qdata->node;
 	knot_rrset_t *cname_rr = knot_node_get_rrset(qdata->node, rrtype);
-	const knot_rrset_t *rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t *rrsigs = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 	int ret = KNOT_EOK;
 
 	assert(cname_rr != NULL);
@@ -383,7 +383,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	}
 
 	/* Now follow the next CNAME TARGET. */
-	qdata->name = knot_rdata_cname_name(cname_rr);
+	qdata->name = knot_rrs_cname_name(&cname_rr->rrs);
 
 #ifdef KNOT_NS_DEBUG
 	char *cname_str = knot_dname_to_str(cname_node->owner);
@@ -658,8 +658,8 @@ static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data
 	}
 }
 
-int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
-              const knot_rrset_t *rrsigs, uint16_t compr_hint,
+int ns_put_rr(knot_pkt_t *pkt, knot_rrset_t *rr,
+              knot_rrset_t *rrsigs, uint16_t compr_hint,
               uint32_t flags, struct query_data *qdata)
 {
 	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
@@ -670,10 +670,12 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	}
 
 	// Copy all RRs for now TODO
+	knot_rrset_t *to_free = rr;
 	int ret = knot_rrset_copy(rr, (knot_rrset_t **)&rr, &pkt->mm);
 	if (ret != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
+	knot_rrset_free(&to_free, NULL);
 	flags |= KNOT_PF_FREE;
 
 	/* Wildcard expansion applies only for answers. */
@@ -713,6 +715,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count - 1];
 		ret = put_rrsig(rr->owner, rr->type, rrsigs, rrinfo, qdata);
 	}
+	knot_rrset_free(&rrsigs, NULL);
 
 	return ret;
 }

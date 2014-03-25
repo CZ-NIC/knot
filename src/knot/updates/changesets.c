@@ -208,7 +208,7 @@ static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                      uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
-	*chg_serial = knot_rdata_soa_serial(soa);
+	*chg_serial = knot_rrs_soa_serial(&soa->rrs);
 }
 
 void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,

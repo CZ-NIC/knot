@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "libknot/rr.h"
+#include "libknot/rdata.h"
 #include "libknot/common.h"
 #include "common/errcode.h"
 
@@ -87,6 +88,15 @@ size_t knot_rrs_size(const knot_rrs_t *rrs)
 	return total_size;
 }
 
+uint16_t knot_rrs_rr_count(const knot_rrs_t *rrs)
+{
+	if (rrs == NULL) {
+		return 0;
+	}
+	
+	return rrs->rr_count;
+}
+
 int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm)
 {
 	if (rrs == NULL || pos >= rrs->rr_count) {
@@ -125,6 +135,38 @@ int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm)
 	rrs->rr_count--;
 
 	return KNOT_EOK;
+}
+
+const uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos)
+{
+	if (rrs == NULL || pos >= rrs->rr_count) {
+		return NULL;
+	}
+	
+	return knot_rr_rdata(knot_rrs_rr(rrs, pos));
+}
+
+uint8_t *knot_rrs_rr_get_rdata(const knot_rrs_t *rrs, size_t pos)
+{
+	return (uint8_t *)knot_rrs_rr_rdata(rrs, pos);
+}
+
+uint16_t knot_rrs_rr_size(const knot_rrs_t *rrs, size_t pos)
+{
+	if (rrs == NULL || pos >= rrs->rr_count) {
+		return 0;
+	}
+	
+	return knot_rr_size(knot_rrs_rr(rrs, pos));
+}
+
+uint32_t knot_rrs_rr_ttl(const knot_rrs_t *rrs, size_t pos)
+{
+	if (rrs == NULL || pos >= rrs->rr_count) {
+		return 0;
+	}
+	
+	return knot_rr_ttl(knot_rrs_rr(rrs, pos));
 }
 
 uint8_t* knot_rrs_create_rr_at_pos(knot_rrs_t *rrs,
@@ -198,6 +240,33 @@ uint8_t* knot_rrs_create_rr(knot_rrs_t *rrs, const uint16_t size,
 	return knot_rr_get_rdata(rr);
 }
 
+int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm)
+{
+	if (rrs == NULL || rr == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	uint8_t *data =
+		knot_rrs_create_rr(rrs, knot_rr_size(rr), knot_rr_ttl(rr), mm);
+	if (data == NULL) {
+		return KNOT_ENOMEM;
+	}
+	memcpy(data, knot_rr_rdata(rr), knot_rr_size(rr));
+	
+	return KNOT_EOK;
+}
+
+knot_rrs_t *knot_rrs_new(mm_ctx_t *mm)
+{
+	knot_rrs_t *rrs = mm_alloc(mm, sizeof(knot_rrs_t));
+	if (rrs == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	knot_rrs_init(rrs);
+	return rrs;
+}
+
 void knot_rrs_init(knot_rrs_t *rrs)
 {
 	if (rrs) {
@@ -239,4 +308,31 @@ int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm)
 	memcpy(dst->data, src->data, src_size);
 	return KNOT_EOK;
 }
+
+
+int knot_rrs_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
+                         knot_rrs_t *out_sig, mm_ctx_t *mm)
+{
+	if (rrsig_rrs == NULL) {
+		return KNOT_ENOENT;
+	}
+	
+	if (out_sig == NULL || out_sig->rr_count > 0) {
+		return KNOT_EINVAL;
+	}
+	
+	for (int i = 0; i < rrsig_rrs->rr_count; ++i) {
+		if (type == knot_rrs_rrsig_type_covered(rrsig_rrs, i)) {
+			const knot_rr_t *rr_to_copy = knot_rrs_rr(rrsig_rrs, i);
+			int ret = knot_rrs_add_rr(out_sig, rr_to_copy, mm);
+			if (ret != KNOT_EOK) {
+				knot_rrs_clear(out_sig, mm);
+				return ret;
+			}
+		}
+	}
+	
+	return out_sig->rr_count > 0 ? KNOT_EOK : KNOT_ENOENT;
+}
+
 

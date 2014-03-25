@@ -79,8 +79,8 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 
 	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
 	for (uint16_t i = 0; i < rrsigs_rdata_count; i++) {
-		uint16_t keytag = knot_rdata_rrsig_key_tag(rrsigs, i);
-		uint16_t type_covered = knot_rdata_rrsig_type_covered(rrsigs, i);
+		uint16_t keytag = knot_rrs_rrsig_key_tag(&rrsigs->rrs, i);
+		uint16_t type_covered = knot_rrs_rrsig_type_covered(&rrsigs->rrs, i);
 		if (keytag != key->keytag || type_covered != covered->type) {
 			continue;
 		}
@@ -163,7 +163,7 @@ static const knot_zone_key_t *get_matching_zone_key(const knot_rrset_t *rrsigs,
 	assert(rrsigs && rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(keys);
 
-	uint16_t keytag = knot_rdata_rrsig_key_tag(rrsigs, pos);
+	uint16_t keytag = knot_rrs_rrsig_key_tag(&rrsigs->rrs, pos);
 
 	return knot_get_zone_key(keys, keytag);
 }
@@ -181,7 +181,7 @@ static void note_earliest_expiration(const knot_rrset_t *rrsigs, size_t pos,
 	assert(rrsigs);
 	assert(expires_at);
 
-	const uint32_t current = knot_rdata_rrsig_sig_expiration(rrsigs, pos);
+	const uint32_t current = knot_rrs_rrsig_sig_expiration(&rrsigs->rrs, pos);
 	if (current < *expires_at) {
 		*expires_at = current;
 	}
@@ -449,7 +449,7 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 
 	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
-		uint16_t type_covered = knot_rdata_rrsig_type_covered(rrsigs, i);
+		uint16_t type_covered = knot_rrs_rrsig_type_covered(&rrsigs->rrs, i);
 		if (!knot_node_rrset(node, type_covered)) {
 			knot_rrset_t *to_remove = knot_rrset_new_from(rrsigs, NULL);
 			if (to_remove == NULL) {
@@ -1329,7 +1329,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	dbg_dnssec_verb("Updating SOA...\n");
 
-	uint32_t serial = knot_rdata_soa_serial(soa);
+	uint32_t serial = knot_rrs_soa_serial(&soa->rrs);
 	if (serial == UINT32_MAX && policy->soa_up == KNOT_SOA_SERIAL_UPDATE) {
 		// TODO: this is wrong, the value should be 'rewound' to 0 in this case
 		return KNOT_EINVAL;
@@ -1370,7 +1370,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 		return result;
 	}
 
-	knot_rdata_soa_serial_set(soa_to, new_serial);
+	knot_rrs_soa_serial_set(&soa_to->rrs, new_serial);
 
 	// add signatures for new SOA
 

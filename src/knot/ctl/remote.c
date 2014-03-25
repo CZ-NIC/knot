@@ -100,7 +100,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 
 		uint16_t rr_count = knot_rrset_rr_count(rr);
 		for (uint16_t i = 0; i < rr_count; i++) {
-			const knot_dname_t *dn = knot_rdata_ns_name(rr, i);
+			const knot_dname_t *dn = knot_rrs_ns_name(&rr->rrs, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find(s->zone_db, dn);
 			if (cb(s, zone) != KNOT_EOK) {
@@ -235,13 +235,13 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		const zone_t *zone = knot_zonedb_iter_val(&it);
 
 		/* Fetch latest serial. */
-		const knot_rrset_t *soa_rrs = 0;
+		const knot_rrs_t *soa_rrs = NULL;
 		uint32_t serial = 0;
 		if (zone->contents) {
-			soa_rrs = knot_node_rrset(zone->contents->apex,
-			                          KNOT_RRTYPE_SOA);
+			soa_rrs = knot_node_rrs(zone->contents->apex,
+			                        KNOT_RRTYPE_SOA);
 			assert(soa_rrs != NULL);
-			serial = knot_rdata_soa_serial(soa_rrs);
+			serial = knot_rrs_soa_serial(soa_rrs);
 		}
 
 		/* Evalute zone type. */
@@ -538,7 +538,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 
 		uint16_t rr_count = knot_rrset_rr_count(rr);
 		for (uint16_t j = 0; j < rr_count; j++) {
-			const knot_dname_t *dn = knot_rdata_ns_name(rr, j);
+			const knot_dname_t *dn = knot_rrs_ns_name(&rr->rrs, j);
 			char *name = knot_dname_to_str(dn);
 
 			int ret = snprintf(params, rest, " %s", name);

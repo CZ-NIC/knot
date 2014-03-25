@@ -60,14 +60,14 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
                                   knot_pkt_t *resp)
 {
 	knot_rrset_t *rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC3);
-	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t *rrsigs = knot_node_get_rrset(node, KNOT_RRTYPE_RRSIG);
 	if (rrset == NULL) {
 		// bad zone, ignore
 		return KNOT_EOK;
 	}
 
 	int res = KNOT_EOK;
-	if (knot_rrset_rr_count(rrset)) {
+	if (knot_rrset_rr_count(rrset) > 0) {
 		res = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE,
 		                KNOT_PF_CHECKDUP, qdata);
 	}
@@ -301,8 +301,8 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		}
 	}
 
-	const knot_rrset_t *rrset = knot_node_rrset(previous, KNOT_RRTYPE_NSEC);
-	const knot_rrset_t *rrsigs = knot_node_rrset(previous, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t *rrset = knot_node_get_rrset(previous, KNOT_RRTYPE_NSEC);
+	knot_rrset_t *rrsigs = knot_node_get_rrset(previous, KNOT_RRTYPE_RRSIG);
 
 	int ret = KNOT_EOK;
 
@@ -479,7 +479,7 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
                                 knot_pkt_t *resp)
 {
 	knot_rrset_t *rrset = NULL;
-	const knot_rrset_t *rrsigs = NULL;
+	knot_rrset_t *rrsigs = NULL;
 
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {
@@ -713,7 +713,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		if ((rrset = knot_node_get_rrset(node, KNOT_RRTYPE_NSEC))
 		    != NULL) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
-			const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+			knot_rrset_t *rrsigs = knot_node_get_rrset(node, KNOT_RRTYPE_RRSIG);
 			ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
 		}
 	}
@@ -768,7 +768,7 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Add DS record if present. */
 	knot_rrset_t *rrset = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_DS);
 	if (rrset != NULL) {
-		const knot_rrset_t *rrsigs = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t *rrsigs = knot_node_get_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 		return ns_put_rr(pkt, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
 	}
 

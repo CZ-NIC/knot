@@ -157,6 +157,9 @@ int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset);
 const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
                                         uint16_t type);
 
+const knot_rrs_t *knot_node_rrs(const knot_node_t *node, uint16_t type);
+knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);
+
 /*!
  * \brief Returns the RRSet of the given type from the node (non-const version).
  *
@@ -414,6 +417,12 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
 bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type);
 
 bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type);
+
+void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
+                          knot_rrset_t *rrset);
+
+void knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
+                              knot_rrset_t *rrset);
 
 #endif /* _KNOT_NODE_H_ */
 

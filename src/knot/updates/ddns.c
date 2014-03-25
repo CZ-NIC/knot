@@ -800,8 +800,8 @@ static int knot_ddns_process_add_soa(knot_node_t *node,
 		}
 
 		/* Check that the serial is indeed larger than the current one*/
-		assert(knot_serial_compare(knot_rdata_soa_serial(removed),
-		                         knot_rdata_soa_serial(rr)) < 0);
+		assert(knot_serial_compare(knot_rrs_soa_serial(&removed->rrs),
+		                           knot_rrs_soa_serial(&rr->rrs)) < 0);
 
 		/* 1) Store it to 'changes', together with its RRSIGs. */
 		ret = knot_changes_add_rrset(changes, removed, KNOT_CHANGES_OLD);
@@ -1645,11 +1645,9 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 	int ret = KNOT_EOK;
 
 	/* Copy base SOA RR. */
-	const knot_rrset_t *soa = knot_node_rrset(knot_zone_contents_apex(zone),
-						  KNOT_RRTYPE_SOA);
-	knot_rrset_t *soa_begin = NULL;
+	knot_rrset_t *soa_begin = knot_node_get_rrset(knot_zone_contents_apex(zone),
+	                                              KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_end = NULL;
-	ret = knot_rrset_copy(soa, &soa_begin, NULL);
 	if (ret == KNOT_EOK) {
 		knot_changeset_add_soa(changeset, soa_begin,
 		                       KNOT_CHANGESET_REMOVE);
@@ -1659,7 +1657,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 	}
 
 	/* Current SERIAL */
-	int64_t sn = knot_rdata_soa_serial(soa_begin);
+	int64_t sn = knot_rrs_soa_serial(&soa_begin->rrs);
 	int64_t sn_new;
 
 	/* Set the new serial according to policy. */
@@ -1710,7 +1708,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA
 		    && (knot_rrset_class(rr) == KNOT_CLASS_NONE
 		        || knot_rrset_class(rr) == KNOT_CLASS_ANY
-		        || knot_serial_compare(knot_rdata_soa_serial(rr),
+		        || knot_serial_compare(knot_rrs_soa_serial(&rr->rrs),
 		                               sn) <= 0)) {
 			// This ignores also SOA removals
 			dbg_ddns_verb("Ignoring SOA...\n");
@@ -1737,7 +1735,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 
 		// we need the RR copy, that's why this code is here
 		if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
-			int64_t sn_rr = knot_rdata_soa_serial(rr);
+			int64_t sn_rr = knot_rrs_soa_serial(&rr->rrs);
 			dbg_ddns_verb("Replacing SOA. Old serial: %"PRId64", "
 			              "new serial: %"PRId64"\n", sn_new, sn_rr);
 			assert(knot_serial_compare(sn_rr, sn) > 0);
@@ -1758,14 +1756,14 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		}
 
 		/* If not set, create new SOA. */
-		ret = knot_rrset_copy(soa, &soa_end, NULL);
+		ret = knot_rrset_copy(soa_begin, &soa_end, NULL);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy ending SOA: %s\n",
 			         knot_strerror(ret));
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
-		knot_rdata_soa_serial_set(soa_end, sn_new);
+		knot_rrs_soa_serial_set(&soa_end->rrs, sn_new);
 
 		/* And replace it in the zone. */
 		ret = xfrin_replace_rrset_in_node(

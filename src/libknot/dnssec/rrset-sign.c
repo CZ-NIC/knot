@@ -304,7 +304,7 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(policy);
 
-	uint32_t expiration = knot_rdata_rrsig_sig_expiration(rrsigs, pos);
+	uint32_t expiration = knot_rrs_rrsig_sig_expiration(&rrsigs->rrs, pos);
 
 	return (expiration <= policy->refresh_before);
 }
@@ -335,7 +335,7 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	uint8_t *signature = NULL;
 	size_t signature_size = 0;
-	knot_rdata_rrsig_signature(rrsigs, pos, &signature, &signature_size);
+	knot_rrs_rrsig_signature(&rrsigs->rrs, pos, &signature, &signature_size);
 	if (!signature) {
 		return KNOT_EINVAL;
 	}

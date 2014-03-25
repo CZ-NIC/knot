@@ -108,23 +108,21 @@ static int nsec3_sha1(const uint8_t *salt, uint8_t salt_length,
  * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
  */
 int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
-                                const knot_rrset_t *rrset)
+                                const knot_rrs_t *rrs)
 {
-	if (params == NULL || rrset == NULL || knot_rrset_rr_count(rrset) == 0) {
+	if (params == NULL || rrs == NULL || rrs->rr_count == 0) {
 		return KNOT_EINVAL;
 	}
 
-	assert(rrset->type == KNOT_RRTYPE_NSEC3PARAM);
-
 	knot_nsec3_params_t result = { 0 };
 
-	result.algorithm   = knot_rrs_nsec3param_algorithm(rrset, 0);
-	result.iterations  = knot_rrs_nsec3param_iterations(rrset, 0);
-	result.flags       = knot_rrs_nsec3param_flags(rrset, 0);
-	result.salt_length = knot_rrs_nsec3param_salt_length(rrset, 0);
+	result.algorithm   = knot_rrs_nsec3param_algorithm(rrs, 0);
+	result.iterations  = knot_rrs_nsec3param_iterations(rrs, 0);
+	result.flags       = knot_rrs_nsec3param_flags(rrs, 0);
+	result.salt_length = knot_rrs_nsec3param_salt_length(rrs, 0);
 
 	if (result.salt_length > 0) {
-		result.salt = knot_memdup(knot_rrs_nsec3param_salt(rrset, 0),
+		result.salt = knot_memdup(knot_rrs_nsec3param_salt(rrs, 0),
 		                          result.salt_length);
 		if (!result.salt) {
 			return KNOT_ENOMEM;

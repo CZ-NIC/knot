@@ -63,10 +63,9 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 	/*
 	 * Retrieve the local Serial
 	 */
-	const knot_rrset_t *soa_rrset =
-		knot_node_rrset(knot_zone_contents_apex(zone),
-				KNOT_RRTYPE_SOA);
-	if (soa_rrset == NULL) {
+	const knot_rrs_t *soa_rrs =
+		knot_node_rrs(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
+	if (soa_rrs == NULL) {
 		char *name = knot_dname_to_str(knot_node_owner(
 				knot_zone_contents_apex(zone)));
 		dbg_xfrin("SOA RRSet missing in the zone %s!\n", name);
@@ -74,7 +73,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 		return KNOT_ERROR;
 	}
 
-	int64_t local_serial = knot_rdata_soa_serial(soa_rrset);
+	int64_t local_serial = knot_rrs_soa_serial(soa_rrs);
 	if (local_serial < 0) {
 dbg_xfrin_exec(
 		char *name = knot_dname_to_str(knot_rrset_owner(soa_rrset));
@@ -94,7 +93,7 @@ dbg_xfrin_exec(
 		return KNOT_EMALF;
 	}
 
-	int64_t remote_serial = knot_rdata_soa_serial(answer->rr[0]);
+	int64_t remote_serial = knot_rrs_soa_serial(&answer->rr[0]->rrs);
 	if (remote_serial < 0) {
 		return KNOT_EMALF;	// maybe some other error
 	}
@@ -474,8 +473,8 @@ dbg_xfrin_exec_verb(
 				goto cleanup;
 			}
 
-			if (knot_rdata_soa_serial(rr)
-			    == knot_rdata_soa_serial((*chs)->first_soa)) {
+			if (knot_rrs_soa_serial(&rr->rrs)
+			    == knot_rrs_soa_serial(&(*chs)->first_soa->rrs)) {
 
 				/*! \note [TSIG] Check TSIG, we're at the end of
 				 *               transfer.
@@ -541,8 +540,8 @@ dbg_xfrin_exec_verb(
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 				log_zone_info("%s Serial %u -> %u.\n",
 					      xfr->msg,
-					      knot_rdata_soa_serial(chset->soa_from),
-					      knot_rdata_soa_serial(chset->soa_to));
+					      knot_rrs_soa_serial(&chset->soa_from->rrs),
+					      knot_rrs_soa_serial(&chset->soa_to->rrs));
 				state = -1;
 				continue;
 			} else {
@@ -1120,11 +1119,7 @@ dbg_xfrin_exec_verb(
 		is_nsec3 = 0;
 
 		// check if the RRSet belongs to the NSEC3 tree
-		if ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
-		    || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
-			&& knot_rdata_rrsig_type_covered(rr, 0)
-			    == KNOT_RRTYPE_NSEC3))
-		{
+		if (knot_rrset_is_nsec3rel(rr)) {
 			dbg_xfrin_verb("Removed RRSet belongs to NSEC3 tree.\n");
 			is_nsec3 = 1;
 		}
@@ -1197,11 +1192,7 @@ dbg_xfrin_exec_verb(
 		is_nsec3 = 0;
 
 		// check if the RRSet belongs to the NSEC3 tree
-		if ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
-		    || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
-			&& knot_rdata_rrsig_type_covered(rr, 0)
-			    == KNOT_RRTYPE_NSEC3))
-		{
+		if (knot_rrset_is_nsec3rel(rr)) {
 			dbg_xfrin_detail("This is NSEC3-related RRSet.\n");
 			is_nsec3 = 1;
 		}
@@ -1322,9 +1313,8 @@ static int xfrin_apply_changeset(knot_zone_contents_t *contents,
 		  chset->serial_from, chset->serial_to);
 
 	// check if serial matches
-	const knot_rrset_t *soa = knot_node_rrset(contents->apex,
-	                                          KNOT_RRTYPE_SOA);
-	if (soa == NULL || knot_rdata_soa_serial(soa)
+	const knot_rrs_t *soa = knot_node_rrs(contents->apex, KNOT_RRTYPE_SOA);
+	if (soa == NULL || knot_rrs_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
 		return KNOT_ERROR;

@@ -1089,7 +1089,7 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
 	return ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
 	        || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
-	            && knot_rdata_rrsig_type_covered(rr, 0)
+	            && knot_rrs_rrsig_type_covered(&rr->rrs, 0)
 	            == KNOT_RRTYPE_NSEC3));
 }
 
@@ -1344,7 +1344,7 @@ static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
 	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		const uint16_t type_covered =
-			knot_rdata_rrsig_type_covered(rrsigs, i);
+			knot_rrs_rrsig_type_covered(&rrsigs->rrs, i);
 		if (type_covered == type) {
 			int ret = knot_rrset_add_rr_from_rrset(new_sig, rrsigs,
 			                                       i, mm);

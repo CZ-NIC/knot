@@ -169,9 +169,7 @@ static int discover_additionals(struct rr_data *rr_data,
 
 	for (uint16_t i = 0; i < rdcount; i++) {
 		/* Try to find node for the dname in the RDATA. */
-		// TODO wrapper RRSET, remove
-		knot_rrset_t rrset = {.rrs = *rrs, .type = rr_data->type};
-		dname = knot_rdata_name(&rrset, i);
+		dname = knot_rrs_name(rrs, i, rr_data->type);
 		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
 		if (node == NULL && encloser && encloser->wildcard_child) {
 			node = encloser->wildcard_child;
@@ -384,27 +382,27 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zc_nsec3_parameters_match(const knot_rrset_t *rrset,
+static int knot_zc_nsec3_parameters_match(const knot_rrs_t *rrs,
                                           const knot_nsec3_params_t *params,
                                           size_t rdata_pos)
 {
-	assert(rrset != NULL && params != NULL);
+	assert(rrs != NULL && params != NULL);
 
 	dbg_zone_detail("RDATA algo: %u, iterations: %u, salt length: %u, salt:"
 			" %.*s\n",
-			knot_rdata_nsec3_algorithm(rrset, rdata_pos),
-			knot_rdata_nsec3_iterations(rrset, rdata_pos),
-			knot_rdata_nsec3_salt_length(rrset, rdata_pos),
-			knot_rdata_nsec3_salt_length(rrset, rdata_pos),
-			knot_rdata_nsec3_salt(rrset, rdata_pos));
+			knot_rrs_nsec3_algorithm(rrs, rdata_pos),
+			knot_rrs_nsec3_iterations(rrs, rdata_pos),
+			knot_rrs_nsec3_salt_length(rrs, rdata_pos),
+			knot_rrs_nsec3_salt_length(rrs, rdata_pos),
+			knot_rrs_nsec3_salt(rrs, rdata_pos));
 	dbg_zone_detail("NSEC3PARAM algo: %u, iterations: %u, salt length: %u, "
 			"salt: %.*s\n",  params->algorithm, params->iterations,
 			params->salt_length, params->salt_length, params->salt);
 
-	return (knot_rdata_nsec3_algorithm(rrset, rdata_pos) == params->algorithm
-		&& knot_rdata_nsec3_iterations(rrset, rdata_pos) == params->iterations
-		&& knot_rdata_nsec3_salt_length(rrset, rdata_pos) == params->salt_length
-		&& strncmp((const char *)knot_rdata_nsec3_salt(rrset, rdata_pos),
+	return (knot_rrs_nsec3_algorithm(rrs, rdata_pos) == params->algorithm
+		&& knot_rrs_nsec3_iterations(rrs, rdata_pos) == params->iterations
+		&& knot_rrs_nsec3_salt_length(rrs, rdata_pos) == params->salt_length
+		&& strncmp((const char *)knot_rrs_nsec3_salt(rrs, rdata_pos),
 			   (const char *)params->salt, params->salt_length)
 		   == 0);
 }
@@ -1058,13 +1056,6 @@ dbg_zone_exec_detail(
 );
 	*nsec3_node = found;
 
-	// This check cannot be used now, the function returns proper return
-	// value if the node was not found
-//	if (*nsec3_node == NULL) {
-//		// there is no NSEC3 node even if there should be
-//		return KNOT_ENSEC3CHAIN;
-//	}
-
 	if (prev == NULL) {
 		// either the returned node is the root of the tree, or it is
 		// the leftmost node in the tree; in both cases node was found
@@ -1082,20 +1073,20 @@ dbg_zone_exec_detail(
 	 * from the right chain. Check iterations, hash algorithm and salt
 	 * values and compare them to the ones from NSEC3PARAM.
 	 */
-	const knot_rrset_t *nsec3_rrset = knot_node_rrset(*nsec3_previous,
-							  KNOT_RRTYPE_NSEC3);
-	assert(nsec3_rrset);
+	const knot_rrs_t *nsec3_rrs =
+		knot_node_rrs(*nsec3_previous, KNOT_RRTYPE_NSEC3);
+	assert(nsec3_rrs);
 	const knot_node_t *original_prev = *nsec3_previous;
 
 	int match = 0;
 
-	while (nsec3_rrset && !match) {
+	while (nsec3_rrs && !match) {
 		for (uint16_t i = 0;
-		     i < knot_rrset_rr_count(nsec3_rrset) && !match;
+		     i < nsec3_rrs->rr_count && !match;
 		     i++) {
-			if (knot_zc_nsec3_parameters_match(nsec3_rrset,
-							    &zone->nsec3_params,
-							    i)) {
+			if (knot_zc_nsec3_parameters_match(nsec3_rrs,
+			                                   &zone->nsec3_params,
+			                                   i)) {
 				/* Matching NSEC3PARAM match at position nr.: i. */
 				match = 1;
 			}
@@ -1107,8 +1098,7 @@ dbg_zone_exec_detail(
 
 		/* This RRSET was not a match, try the one from previous node. */
 		*nsec3_previous = knot_node_previous(*nsec3_previous);
-		nsec3_rrset = knot_node_rrset(*nsec3_previous,
-					      KNOT_RRTYPE_NSEC3);
+		nsec3_rrs = knot_node_rrs(*nsec3_previous, KNOT_RRTYPE_NSEC3);
 		dbg_zone_exec_detail(
 		char *name = (*nsec3_previous)
 				? knot_dname_to_str(
@@ -1120,7 +1110,7 @@ dbg_zone_exec_detail(
 			free(name);
 		}
 );
-		if (*nsec3_previous == original_prev || nsec3_rrset == NULL) {
+		if (*nsec3_previous == original_prev || nsec3_rrs == NULL) {
 			// cycle
 			*nsec3_previous = NULL;
 			break;
@@ -1304,22 +1294,18 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	const knot_rrset_t *rrset = knot_node_rrset(zone->apex,
-						    KNOT_RRTYPE_NSEC3PARAM);
-
-	if (rrset != NULL) {
-		int r = knot_nsec3_params_from_wire(&zone->nsec3_params, rrset);
+	const knot_rrs_t *rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
+	if (rrs!= NULL) {
+		int r = knot_nsec3_params_from_wire(&zone->nsec3_params, rrs);
 		if (r != KNOT_EOK) {
 			dbg_zone("Failed to load NSEC3PARAM (%s).\n",
 			         knot_strerror(r));
-			knot_rrset_free(&rrset, NULL);
 			return r;
 		}
 	} else {
 		memset(&zone->nsec3_params, 0, sizeof(knot_nsec3_params_t));
 	}
 
-	knot_rrset_free(&rrset, NULL);
 	return KNOT_EOK;
 }
 
@@ -1475,10 +1461,9 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
 {
 	if (!zone) return 0;
-	const knot_rrset_t *soa = NULL;
-	soa = knot_node_rrset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
-	uint32_t serial = knot_rdata_soa_serial(soa);
-	knot_rrset_free(&soa, NULL);
+	const knot_rrs_t *soa = NULL;
+	soa = knot_node_rrs(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
+	uint32_t serial = knot_rrs_soa_serial(soa);
 	return serial;
 }
 

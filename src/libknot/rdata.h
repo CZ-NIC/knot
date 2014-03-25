@@ -385,5 +385,23 @@ const knot_dname_t *knot_rrs_srv_name(const knot_rrs_t *rrs, size_t pos)
 	return data_offset(rrs, pos, 6);
 }
 
-#endif /* _knot_rrs_H_ */
+static inline
+const knot_dname_t *knot_rrs_name(const knot_rrs_t *rrs, size_t pos,
+                                  uint16_t type)
+{
+	switch (type) {
+		case KNOT_RRTYPE_NS:
+			return knot_rrs_ns_name(rrs, pos);
+		case KNOT_RRTYPE_MX:
+			return knot_rrs_mx_name(rrs, pos);
+		case KNOT_RRTYPE_SRV:
+			return knot_rrs_srv_name(rrs, pos);
+		case KNOT_RRTYPE_CNAME:
+			return knot_rrs_cname_name(rrs);
+	}
+
+	return NULL;
+}
+
+#endif /* _KNOT_RDATA_H_ */
 /*! @} */
