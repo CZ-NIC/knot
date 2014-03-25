@@ -57,7 +57,8 @@ typedef enum knot_zone_retvals knot_zone_retvals_t;
 typedef enum knot_zone_flag_t {
 	KNOT_ZONE_SLAVE     = 0 << 0, /*! Slave zone */
 	KNOT_ZONE_MASTER    = 1 << 0, /*! Master zone. */
-	KNOT_ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
+	KNOT_ZONE_DISCARDED = 1 << 1, /*! Zone waiting to be discarded. */
+	KNOT_ZONE_UPDATED   = 1 << 2  /*! Zone is updated in this cycle. */
 } knot_zone_flag_t;
 
 /*----------------------------------------------------------------------------*/
