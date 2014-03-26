@@ -169,7 +169,7 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 	}
 
 	/* Add all rrsets from node. */
-	knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
 	if (rrsets == NULL) {
 		/* Empty non-terminals - legal case. */
 		dbg_zonediff_detail("zone_diff: Node has no RRSets.\n");
@@ -188,7 +188,7 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 		}
 	}
 
-	knot_node_free_rrset_array(node, rrsets);
+	knot_node_free_created_rrsets(node, rrsets);
 
 	return KNOT_EOK;
 }
@@ -203,7 +203,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 
 	dbg_zonediff("zone_diff: remove_node: Removing node: ...\n");
 
-	knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
 	if (rrsets == NULL) {
 		dbg_zonediff_verb("zone_diff: remove_node: "
 		                  "Nothing to remove.\n");
@@ -226,7 +226,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 		}
 	}
 
-	knot_node_free_rrset_array(node, rrsets);
+	knot_node_free_created_rrsets(node, rrsets);
 
 	return KNOT_EOK;
 }
@@ -416,7 +416,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 	dbg_zonediff_detail("zone_diff: diff_node: Node %p is present in "
 	              "both trees.\n", node_owner);
 	/* The nodes are in both trees, we have to diff each RRSet. */
-	knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
 	if (rrsets == NULL) {
 		dbg_zonediff("zone_diff: Node in first tree has no RRSets.\n");
 		/*
@@ -476,10 +476,10 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 		}
 	}
 
-	knot_node_free_rrset_array(node, rrsets);
+	knot_node_free_created_rrsets(node, rrsets);
 
 	/*! \todo move to one function with the code above. */
-	rrsets = knot_node_rrsets(node_in_second_tree);
+	rrsets = knot_node_create_rrsets(node_in_second_tree);
 	if (rrsets == NULL) {
 		return KNOT_EOK;
 	}
@@ -507,7 +507,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_node: "
 				             "Failed to add RRSet.\n");
-				knot_node_free_rrset_array(node, rrsets);
+				knot_node_free_created_rrsets(node, rrsets);
 				return ret;
 			}
 		} else {
@@ -516,7 +516,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 		}
 	}
 
-	knot_node_free_rrset_array(node, rrsets);
+	knot_node_free_created_rrsets(node, rrsets);
 
 	return KNOT_EOK;
 }

@@ -412,7 +412,7 @@ int knot_ddns_process_prereqs(const knot_pkt_t *query,
 		// packet will be destroyed
 		dbg_ddns_detail("Creating prereqs from following RRSet:\n");
 		ret = knot_ddns_add_prereq(*prereqs,
-		                           answer->rr[i],
+		                           &answer->rr[i],
 		                           knot_pkt_qclass(query));
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to add prerequisity RRSet:%s\n",
@@ -1522,7 +1522,7 @@ static int knot_ddns_process_rem_all(knot_node_t *node,
 	 */
 	int ret = 0;
 	// The copy of rrsets is important here.
-	knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
 	int count = knot_node_rrset_count(node);
 
 	if (rrsets == NULL && count != 0) {
@@ -1676,7 +1676,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
 	for (int i = 0; i < authority->count; ++i) {
 
-		rr = authority->rr[i];
+		rr = &authority->rr[i];
 
 		/* Check if the entry is correct. */
 		ret = knot_ddns_check_update(rr, query, rcode);

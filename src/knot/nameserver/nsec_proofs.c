@@ -59,18 +59,15 @@ static int ns_put_nsec3_from_node(const knot_node_t *node,
                                   struct query_data *qdata,
                                   knot_pkt_t *resp)
 {
-	knot_rrset_t *rrset = knot_node_create_rrset(node, KNOT_RRTYPE_NSEC3);
-	knot_rrset_t *rrsigs = knot_node_create_rrset(node, KNOT_RRTYPE_RRSIG);
-	if (rrset == NULL) {
+	knot_rrset_t rrset = RRSET_INIT(node, KNOT_RRTYPE_NSEC3);
+	knot_rrset_t rrsigs = RRSET_INIT(node, KNOT_RRTYPE_RRSIG);
+	if (knot_rrset_empty(&rrset)) {
 		// bad zone, ignore
 		return KNOT_EOK;
 	}
 
-	int res = KNOT_EOK;
-	if (knot_rrset_rr_count(rrset) > 0) {
-		res = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE,
-		                KNOT_PF_CHECKDUP, qdata);
-	}
+	int res = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE,
+	                    KNOT_PF_CHECKDUP, qdata);
 
 	/*! \note TC bit is already set, if something went wrong. */
 
@@ -301,14 +298,13 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		}
 	}
 
-	knot_rrset_t *rrset = knot_node_create_rrset(previous, KNOT_RRTYPE_NSEC);
-	knot_rrset_t *rrsigs = knot_node_create_rrset(previous, KNOT_RRTYPE_RRSIG);
-
+	knot_rrset_t rrset = RRSET_INIT(previous, KNOT_RRTYPE_NSEC);
 	int ret = KNOT_EOK;
 
-	if (rrset != NULL && knot_rrset_rr_count(rrset) > 0) {
+	if (!knot_rrset_empty(&rrset)) {
+		knot_rrset_t rrsigs = RRSET_INIT(previous, KNOT_RRTYPE_RRSIG);
 		// NSEC proving that there is no node with the searched name
-		ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+		ret = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
 	}
 
 	return ret;
@@ -478,8 +474,8 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
                                 struct query_data *qdata,
                                 knot_pkt_t *resp)
 {
-	knot_rrset_t *rrset = NULL;
-	knot_rrset_t *rrsigs = NULL;
+	knot_rrset_t rrset = { 0 };
+	knot_rrset_t rrsigs = { 0 };
 
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {
@@ -503,16 +499,15 @@ dbg_ns_exec_verb(
 );
 
 	// 1) NSEC proving that there is no node with the searched name
-	rrset = knot_node_create_rrset(previous, KNOT_RRTYPE_NSEC);
-	rrsigs = knot_node_create_rrset(previous, KNOT_RRTYPE_RRSIG);
-	if (rrset == NULL) {
+	knot_node_fill_rrset(previous, KNOT_RRTYPE_NSEC, &rrset);
+	knot_node_fill_rrset(previous, KNOT_RRTYPE_RRSIG, &rrsigs);
+	if (knot_rrset_empty(&rrset)) {
 		// no NSEC records
 		//return NS_ERR_SERVFAIL;
 		return KNOT_EOK;
-
 	}
 
-	int ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+	int ret = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to add NSEC for NXDOMAIN to response: %s\n",
 		       knot_strerror(ret));
@@ -556,13 +551,13 @@ dbg_ns_exec_verb(
 	knot_dname_free(&wildcard);
 
 	if (prev_new != previous) {
-		rrset = knot_node_create_rrset(prev_new, KNOT_RRTYPE_NSEC);
-		rrsigs = knot_node_create_rrset(prev_new, KNOT_RRTYPE_RRSIG);
-		if (rrset == NULL) {
+		knot_node_fill_rrset(prev_new, KNOT_RRTYPE_NSEC, &rrset);
+		knot_node_fill_rrset(prev_new, KNOT_RRTYPE_RRSIG, &rrsigs);
+		if (knot_rrset_empty(&rrset)) {
 			// bad zone, ignore
 			return KNOT_EOK;
 		}
-		ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+		ret = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
 		if (ret != KNOT_EOK) {
 			dbg_ns("Failed to add second NSEC for NXDOMAIN to "
 			       "response: %s\n", knot_strerror(ret));
@@ -681,8 +676,6 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 	/*! \todo Maybe distinguish different errors. */
 	int ret = KNOT_ERROR;
 
-	knot_rrset_t *rrset = NULL;
-
 	if (knot_is_nsec3_enabled(zone)) {
 
 		/* RFC5155 7.2.5 Wildcard No Data Responses */
@@ -710,11 +703,11 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 		}
 	} else {
 		dbg_ns("%s: adding NSEC NODATA\n", __func__);
-		if ((rrset = knot_node_create_rrset(node, KNOT_RRTYPE_NSEC))
-		    != NULL) {
+		knot_rrset_t rrset = RRSET_INIT(node, KNOT_RRTYPE_NSEC);
+		if (!knot_rrset_empty(&rrset)) {
 			dbg_ns_detail("Putting the RRSet to Authority\n");
-			knot_rrset_t *rrsigs = knot_node_create_rrset(node, KNOT_RRTYPE_RRSIG);
-			ret = ns_put_rr(resp, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+			knot_rrset_t rrsigs = RRSET_INIT(node, KNOT_RRTYPE_RRSIG);
+			ret = ns_put_rr(resp, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
 		}
 	}
 
@@ -766,10 +759,10 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, struct query_data *qdata)
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	/* Add DS record if present. */
-	knot_rrset_t *rrset = knot_node_create_rrset(qdata->node, KNOT_RRTYPE_DS);
-	if (rrset != NULL) {
-		knot_rrset_t *rrsigs = knot_node_create_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
-		return ns_put_rr(pkt, rrset, rrsigs, COMPR_HINT_NONE, 0, qdata);
+	knot_rrset_t rrset = RRSET_INIT(qdata->node, KNOT_RRTYPE_DS);
+	if (!knot_rrset_empty(&rrset)) {
+		knot_rrset_t rrsigs = RRSET_INIT(qdata->node, KNOT_RRTYPE_RRSIG);
+		return ns_put_rr(pkt, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
 	}
 
 	/* DS doesn't exist => NODATA proof. */
@@ -791,13 +784,14 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 	/* Append RRSIGs for section. */
 	struct rrsig_info *info = NULL;
 	WALK_LIST(info, qdata->rrsigs) {
-		knot_rrset_t *rrsig = info->synth_rrsig;
+		knot_rrset_t *rrsig = &info->synth_rrsig;
 		uint16_t compr_hint = info->rrinfo->compress_ptr[COMPR_HINT_OWNER];
 		ret = knot_pkt_put(pkt, compr_hint, rrsig, flags);
 		if (ret != KNOT_EOK) {
 			break;
 		}
-		info->synth_rrsig = NULL; /* RRSIG is owned by packet now. */
+		/* RRSIG is owned by packet now. */
+		knot_rrs_init(&info->synth_rrsig.rrs); 
 	};
 
 	/* Clear the list. */
@@ -814,8 +808,8 @@ void nsec_clear_rrsigs(struct query_data *qdata)
 
 	struct rrsig_info *info = NULL;
 	WALK_LIST(info, qdata->rrsigs) {
-		knot_rrset_t *rrsig = info->synth_rrsig;
-		knot_rrset_free(&rrsig, qdata->mm);
+		knot_rrset_t *rrsig = &info->synth_rrsig;
+		knot_rrs_clear(&rrsig->rrs, qdata->mm);
 	};
 
 	ptrlist_free(&qdata->rrsigs, qdata->mm);

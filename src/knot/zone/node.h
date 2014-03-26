@@ -177,7 +177,7 @@ short knot_node_rrset_count(const knot_node_t *node);
  *
  * \return Newly allocated array of RRSets or NULL if an error occured.
  */
-knot_rrset_t **knot_node_rrsets(const knot_node_t *node);
+knot_rrset_t **knot_node_create_rrsets(const knot_node_t *node);
 
 int knot_node_count_rrsets(const knot_node_t *node);
 
@@ -376,7 +376,7 @@ void knot_node_clear_empty(knot_node_t *node);
  * \param node Node to be destroyed.
  */
 void knot_node_free_rrsets(knot_node_t *node);
-void knot_node_free_rrset_array(const knot_node_t *node, knot_rrset_t **rrsets);
+void knot_node_free_created_rrsets(const knot_node_t *node, knot_rrset_t **rrsets);
 
 /*!
  * \brief Destroys the node structure.
@@ -432,6 +432,16 @@ static inline struct rr_data *knot_node_rr_data(const knot_node_t *node,
 	return &EMPTY_DATA;
 }
 
+static inline struct rr_data *knot_node_rr_data_n(const knot_node_t *node,
+                                                  size_t pos)
+{
+	if (node == NULL || pos >= node->rrset_count) {
+		return &EMPTY_DATA;
+	}
+	
+	return &node->rrs[pos];
+}
+
 #define _RRSET_INIT(node, rr_data) \
 	{.owner = node->owner,\
 	.type = rr_data->type,\
@@ -440,6 +450,8 @@ static inline struct rr_data *knot_node_rr_data(const knot_node_t *node,
 	.additional = rr_data->additional}
 
 #define RRSET_INIT(node, type) _RRSET_INIT(node, knot_node_rr_data(node, type))
+
+#define RRSET_INIT_N(node, pos) _RRSET_INIT(node, knot_node_rr_data_n(node, pos))
 
 #endif /* _KNOT_NODE_H_ */
 

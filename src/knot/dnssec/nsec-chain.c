@@ -278,16 +278,16 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n)
 {
 	assert(n);
-	knot_rrset_t **rrsets = knot_node_rrsets(n);
+	knot_rrset_t **rrsets = knot_node_create_rrsets(n);
 	for (int i = 0; i < n->rrset_count; ++i) {
 		if (rrsets[i]->type != KNOT_RRTYPE_NSEC &&
 		    rrsets[i]->type != KNOT_RRTYPE_RRSIG) {
-			knot_node_free_rrset_array(n, rrsets);
+			knot_node_free_created_rrsets(n, rrsets);
 			return false;
 		}
 	}
 
-	knot_node_free_rrset_array(n, rrsets);
+	knot_node_free_created_rrsets(n, rrsets);
 	return true;
 }
 

@@ -89,7 +89,7 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
  */
 static bool node_should_be_signed_nsec3(const knot_node_t *n)
 {
-	knot_rrset_t **node_rrsets = knot_node_rrsets(n);
+	knot_rrset_t **node_rrsets = knot_node_create_rrsets(n);
 	for (int i = 0; i < n->rrset_count; i++) {
 		if (node_rrsets[i]->type == KNOT_RRTYPE_NSEC ||
 		    node_rrsets[i]->type == KNOT_RRTYPE_RRSIG) {

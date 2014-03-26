@@ -55,7 +55,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		params->buf[0] = '\0';
 	}
 
-	knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
 
 	// Dump other records.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
@@ -72,7 +72,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 
 		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
 		                        params->style) < 0) {
-			knot_node_free_rrset_array(node, rrsets);
+			knot_node_free_created_rrsets(node, rrsets);
 			return KNOT_ENOMEM;
 		}
 		params->rr_count +=  knot_rrset_rr_count(rrsets[i]);
@@ -80,7 +80,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		params->buf[0] = '\0';
 	}
 
-	knot_node_free_rrset_array(node, rrsets);
+	knot_node_free_created_rrsets(node, rrsets);
 	return KNOT_EOK;
 }
 
@@ -95,7 +95,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t **rrsets = knot_node_rrsets(node);
+	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
 
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
@@ -124,7 +124,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 
 		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
 		                        params->style) < 0) {
-			knot_node_free_rrset_array(node, rrsets);
+			knot_node_free_created_rrsets(node, rrsets);
 			return KNOT_ENOMEM;
 		}
 		params->rr_count += knot_rrset_rr_count(rrsets[i]);
@@ -132,7 +132,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 		params->buf[0] = '\0';
 	}
 
-	knot_node_free_rrset_array(node, rrsets);
+	knot_node_free_created_rrsets(node, rrsets);
 	return KNOT_EOK;
 }
 

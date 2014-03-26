@@ -287,6 +287,7 @@ void knot_rrs_clear(knot_rrs_t *rrs, mm_ctx_t *mm)
 {
 	if (rrs) {
 		mm_free(mm, rrs->data);
+		rrs->data = NULL;
 		rrs->rr_count = 0;
 	}
 }

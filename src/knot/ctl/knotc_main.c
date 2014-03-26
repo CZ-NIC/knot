@@ -162,7 +162,7 @@ static int cmd_remote_reply(int c)
 	switch(ret) {
 	case KNOT_RCODE_NOERROR:
 		if (authority->count > 0) {
-			ret = cmd_remote_print_reply(authority->rr[0]);
+			ret = cmd_remote_print_reply(&authority->rr[0]);
 		}
 		break;
 	case KNOT_RCODE_REFUSED:

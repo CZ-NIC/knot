@@ -94,7 +94,7 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 	unsigned serial = 0;
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
 	if (answer->count > 0) {
-		const knot_rrset_t *soa = answer->rr[0];
+		const knot_rrset_t *soa = &answer->rr[0];
 		if (knot_rrset_type(soa) == KNOT_RRTYPE_SOA) {
 			serial = knot_rrs_soa_serial(&soa->rrs);
 			dbg_ns("%s: received serial %u\n", __func__, serial);

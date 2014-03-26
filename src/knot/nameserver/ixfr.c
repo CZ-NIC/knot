@@ -160,7 +160,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_IXFR, KNOT_RCODE_FORMERR);
 	/* Need SOA authority record. */
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
-	const knot_rrset_t *their_soa = authority->rr[0];
+	const knot_rrset_t *their_soa = &authority->rr[0];
 	if (authority->count < 1 || knot_rrset_type(their_soa) != KNOT_RRTYPE_SOA) {
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		return NS_PROC_FAIL;
@@ -201,7 +201,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	}
 
 	/* Compare serials. */
-	const knot_rrset_t *their_soa = knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
+	const knot_rrset_t *their_soa = &knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
 	knot_changesets_t *chgsets = NULL;
 	int ret = ixfr_load_chsets(&chgsets, qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
@@ -263,12 +263,11 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Guaranteed to have zone contents. */
 	const knot_node_t *apex = qdata->zone->contents->apex;
-	knot_rrset_t *soa_rr = knot_node_create_rrset(apex, KNOT_RRTYPE_SOA);
-	if (soa_rr == NULL) {
+	knot_rrset_t soa_rr = RRSET_INIT(apex, KNOT_RRTYPE_SOA);
+	if (knot_rrset_empty(&soa_rr)) {
 		return NS_PROC_FAIL;
 	}
-	int ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_FREE);
-	knot_rrset_free(&soa_rr, NULL);
+	int ret = knot_pkt_put(pkt, 0, &soa_rr, 0);
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return NS_PROC_FAIL;

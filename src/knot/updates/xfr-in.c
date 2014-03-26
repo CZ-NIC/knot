@@ -89,11 +89,11 @@ dbg_xfrin_exec(
 	// the SOA should be the first (and only) RRSet in the response
 
 	const knot_pktsection_t *answer = knot_pkt_section(soa_response, KNOT_ANSWER);
-	if (answer->count < 1 || knot_rrset_type(answer->rr[0]) != KNOT_RRTYPE_SOA) {
+	if (answer->count < 1 || knot_rrset_type(&answer->rr[0]) != KNOT_RRTYPE_SOA) {
 		return KNOT_EMALF;
 	}
 
-	int64_t remote_serial = knot_rrs_soa_serial(&answer->rr[0]->rrs);
+	int64_t remote_serial = knot_rrs_soa_serial(&answer->rr[0].rrs);
 	if (remote_serial < 0) {
 		return KNOT_EMALF;	// maybe some other error
 	}
@@ -231,7 +231,7 @@ static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uin
 {
 	int ret = KNOT_EOK;
 	if (*cur < answer->count) {
-		ret = knot_rrset_copy(answer->rr[*cur], rr, NULL);
+		ret = knot_rrset_copy(&answer->rr[*cur], rr, NULL);
 		*cur += 1;
 	} else {
 		*rr = NULL;

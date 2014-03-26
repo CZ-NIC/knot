@@ -82,9 +82,9 @@ enum {
  * This structure is required for random access to packet sections.
  */
 typedef struct {
-	const knot_rrset_t **rr;     /*!< Array of RRSets for this section. */
-	knot_rrinfo_t *rrinfo;       /*!< Compression info for each RRSet. */
-	uint16_t count;              /*!< Number of RRSets in this section. */
+	const knot_rrset_t *rr;     /*!< Array of RRSets for this section. */
+	knot_rrinfo_t *rrinfo;      /*!< Compression info for each RRSet. */
+	uint16_t count;             /*!< Number of RRSets in this section. */
 } knot_pktsection_t;
 
 /*!
@@ -113,7 +113,7 @@ typedef struct knot_pkt {
 	
 	/* Packet RRSet (meta)data. */
 	knot_rrinfo_t rr_info[KNOT_PKT_MAX_RRS];
-	const knot_rrset_t *rr[KNOT_PKT_MAX_RRS];
+	knot_rrset_t rr[KNOT_PKT_MAX_RRS];
 	
 	mm_ctx_t mm; /*!< Memory allocation context. */
 } knot_pkt_t;

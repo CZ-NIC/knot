@@ -28,14 +28,15 @@
 
 /*! \brief Scan packet for RRSet existence. */
 static bool pkt_contains(const knot_pkt_t *packet,
-			 const knot_rrset_t *rrset,
-			 knot_rrset_compare_type_t cmp)
+			 const knot_rrset_t *rrset)
 {
 	assert(packet);
 	assert(rrset);
 
 	for (int i = 0; i < packet->rrset_count; ++i) {
-		if (knot_rrset_equal(packet->rr[i], rrset, cmp)) {
+		const uint16_t type = packet->rr[i].type;
+		const uint8_t *data = packet->rr[i].rrs.data;
+		if (type == rrset->type && data == rrset->rrs.data) {
 			return true;
 		}
 	}
@@ -50,11 +51,9 @@ static void pkt_free_data(knot_pkt_t *pkt)
 	assert(pkt);
 
 	/* Free RRSets if applicable. */
-	knot_rrset_t *rr  = NULL;
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
 		if (pkt->rr_info[i].flags & KNOT_PF_FREE) {
-			rr = (knot_rrset_t *)pkt->rr[i];
-			knot_rrset_free(&rr, &pkt->mm);
+			knot_rrs_clear(&pkt->rr[i].rrs, &pkt->mm);
 		}
 	}
 
@@ -506,11 +505,11 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, u
 	rrinfo->pos = pkt->size;
 	rrinfo->flags = flags;
 	rrinfo->compress_ptr[0] = compr_hint;
-	pkt->rr[pkt->rrset_count] = rr;
+	pkt->rr[pkt->rrset_count] = *rr;
 
 	/* Check for double insertion. */
 	if ((flags & KNOT_PF_CHECKDUP) &&
-	    pkt_contains(pkt, rr, KNOT_RRSET_COMPARE_PTR)) {
+	    pkt_contains(pkt, rr)) {
 		return KNOT_EOK; /*! \todo return rather a number of added RRs */
 	}
 
@@ -643,10 +642,10 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 	// try to find the RRSet in this array of RRSets
 	for (int i = 0; i < pkt->rrset_count; ++i) {
 
-		if (knot_rrset_equal(pkt->rr[i], rr, KNOT_RRSET_COMPARE_HEADER)) {
+		if (knot_rrset_equal(&pkt->rr[i], rr, KNOT_RRSET_COMPARE_HEADER)) {
 			int merged = 0;
 			int deleted_rrs = 0;
-			int rc = knot_rrset_merge_sort((knot_rrset_t *)pkt->rr[i],
+			int rc = knot_rrset_merge_sort((knot_rrset_t *)&pkt->rr[i],
 			                               rr, &merged, &deleted_rrs,
 			                               &pkt->mm);
 			if (rc != KNOT_EOK) {
@@ -759,7 +758,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	}
 
 	/* Append to RR list. */
-	pkt->rr[pkt->rrset_count] = rr;
+	pkt->rr[pkt->rrset_count] = *rr;
 	++pkt->rrset_count;
 
 	/* Update section RRSet count. */
@@ -854,7 +853,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	/* TSIG must be last record of AR if present. */
 	const knot_pktsection_t *ar = knot_pkt_section(pkt, KNOT_ADDITIONAL);
 	if (pkt->tsig_rr != NULL) {
-		if (ar->count > 0 && pkt->tsig_rr != ar->rr[ar->count - 1]) {
+		if (ar->count > 0 && pkt->tsig_rr->rrs.data != ar->rr[ar->count - 1].rrs.data) {
 			dbg_packet("%s: TSIG not last RR in AR.\n", __func__);
 			return KNOT_EMALF;
 		}

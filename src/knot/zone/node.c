@@ -209,6 +209,7 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
+			
 			// TODO this is obviously a workaround
 			knot_rrset_t *node_rrset = rrset_from_rr_data(node, i, NULL);
 			if (node_rrset == NULL) {
@@ -310,7 +311,7 @@ short knot_node_rrset_count(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
+knot_rrset_t **knot_node_create_rrsets(const knot_node_t *node)
 {
 	if (node == NULL || node->rrset_count == 0) {
 		return NULL;
@@ -322,7 +323,7 @@ knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
 		for (int i = 0; i < node->rrset_count; ++i) {
 			cpy[i] = rrset_from_rr_data(node, i, NULL);
 			if (cpy[i] == NULL) {
-				knot_node_free_rrset_array(node, cpy);
+				knot_node_free_created_rrsets(node, cpy);
 				return NULL;
 			}
 		}
@@ -680,10 +681,11 @@ void knot_node_free_rrsets(knot_node_t *node)
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		knot_rrs_clear(&node->rrs[i].rrs, NULL);
+		mm_free(NULL, node->rrs[i].additional);
 	}
 }
 
-void knot_node_free_rrset_array(const knot_node_t *node, knot_rrset_t **rrsets)
+void knot_node_free_created_rrsets(const knot_node_t *node, knot_rrset_t **rrsets)
 {
 	if (node == NULL) {
 		return;
@@ -786,7 +788,7 @@ static void clear_rrset(knot_rrset_t *rrset)
 	rrset->owner = NULL;
 	rrset->type = 0;
 	rrset->rclass = KNOT_CLASS_IN;
-	knot_rrs_clear(&rrset->rrs, NULL);
+	knot_rrs_init(&rrset->rrs);
 	rrset->additional = NULL;
 }
 
@@ -804,7 +806,7 @@ void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
 			rrset->type = type;
 			rrset->rclass = KNOT_CLASS_IN;
 			rrset->rrs = node->rrs[i].rrs;
-			rrset->additional = NULL;
+			rrset->additional = node->rrs->additional;
 		}
 	}
 	if (!hit) {
@@ -824,6 +826,6 @@ void knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
 	rrset->type = rr_data->type;
 	rrset->rclass = KNOT_CLASS_IN;
 	rrset->rrs = rr_data->rrs;
-	rrset->additional = NULL;
+	rrset->additional = rr_data->additional;
 }
 

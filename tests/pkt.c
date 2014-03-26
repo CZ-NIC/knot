@@ -1,3 +1,4 @@
+LE
 /*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -28,8 +29,12 @@
 #define NAMECOUNT 3
 #define DATACOUNT 3
 const char *g_names[NAMECOUNT] = {
-        "example.com",
-        "ns1.example.com",
+         remove the copy
+knot_rrset_t *copy;
+         remove
+        t_rrset_free(&copy, NULL)
+knot_rrset_copy(cname_rr, &copy, NULL)e_rr = copy;
+        
         "ns2.example.com"
 };
 
