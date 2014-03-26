@@ -27,7 +27,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(56);
+	plan(65);
 
 	int32_t  ret;
 	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3, *out4;
@@ -43,18 +43,18 @@ int main(int argc, char *argv[])
 	ret = base32hex_encode(in, 160, out, 255);
 	ok(ret == KNOT_ERANGE, "base32hex_encode: output buffer too small");
 	ret = base32hex_encode_alloc(in, ((INT32_MAX / 8) * 5) + 1, &out3);
-	ok(ret == KNOT_ERANGE, "base32hex_encode_alloc: input buffer too large: '%i'", ret);
+	ok(ret == KNOT_ERANGE, "base32hex_encode_alloc: input buffer too large");
 
 	ret = base32hex_decode(NULL, 0, out, BUF_LEN);
 	ok(ret == KNOT_EINVAL, "base32hex_decode: NULL input buffer");
 	ret = base32hex_decode(in, BUF_LEN, NULL, 0);
 	ok(ret == KNOT_EINVAL, "base32hex_decode: NULL output buffer");
-	ret = base32hex_decode(in, INT32_MAX + 1, out, BUF_LEN);
+	ret = base32hex_decode(in, UINT32_MAX, out, BUF_LEN);
 	ok(ret == KNOT_ERANGE, "base32hex_decode: input buffer too large");
 	ret = base32hex_decode(in, 256, out, 159);
 	ok(ret == KNOT_ERANGE, "base32hex_decode: output buffer too small");
-	ret = base32hex_decode_alloc(in, INT32_MAX + 1, &out3);
-	ok(ret == KNOT_ERANGE, "base32hex_decode_alloc: input buffer too large: '%i'", ret);
+	ret = base32hex_decode_alloc(in, UINT32_MAX, &out3);
+	ok(ret == KNOT_ERANGE, "base32hex_decode_alloc: input buffer too large");
 
 	// 1. test vector -> ENC -> DEC
 	strcpy((char *)in, "");
@@ -205,6 +205,10 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding length 7");
 	ret = base32hex_decode((uint8_t *)"=======", 8, out, BUF_LEN);
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding length 8");
+	ret = base32hex_decode((uint8_t *)"=AAAAAA", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding on position 1");
+	ret = base32hex_decode((uint8_t *)"A=AAAAAA", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding on position 2");
 
 	// Bad data length
 	ret = base32hex_decode((uint8_t *)"A", 1, out, BUF_LEN);
@@ -229,6 +233,43 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar");
 	ret = base32hex_decode((uint8_t *)"AAAAAAA ", 8, out, BUF_LEN);
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character space");
+	ret = base32hex_decode((uint8_t *)"AAAAAA$A", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar on position 7");
+	ret = base32hex_decode((uint8_t *)"AAAAA$AA", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar on position 6");
+	ret = base32hex_decode((uint8_t *)"AAAA$AAA", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar on position 5");
+	ret = base32hex_decode((uint8_t *)"AAA$AAAA", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar on position 4");
+	ret = base32hex_decode((uint8_t *)"AA$AAAAA", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar on position 3");
+	ret = base32hex_decode((uint8_t *)"A$AAAAAA", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar on position 2");
+	ret = base32hex_decode((uint8_t *)"$AAAAAAA", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar on position 1");
+
+	// Alloc function
+	strcpy((char *)in, "fo");
+	in_len = strlen((char *)in);
+	strcpy((char *)ref, "CPNG====");
+	ref_len = strlen((char *)ref);
+
+	ret = base32hex_encode_alloc(in, in_len, &out3);
+	ok(ret == ref_len, "base32hex_encode_alloc: encode output length");
+	if (ret < 0) {
+		skip("base32hex_encode_alloc: encode error");
+	} else {
+		ok(memcmp(out3, ref, ret) == 0, "base32hex_encode_alloc: encode output content");
+	}
+	ret = base32hex_decode_alloc(out3, ret, &out4);
+	ok(ret == in_len, "base32hex_decode_alloc: decode output length");
+	if (ret < 0) {
+		skip("base32hex_decode_alloc: decode error");
+	} else {
+		ok(memcmp(out4, in, ret) == 0, "base32hex_decode_alloc: decode output content");
+	}
+	free(out3);
+	free(out4);
 
 	// Alloc function
 	strcpy((char *)in, "fo");
