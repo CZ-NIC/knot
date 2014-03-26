@@ -5,7 +5,7 @@
 from dnstest.utils import *
 from dnstest.test import Test
 
-CHANGE_COUNT = 8
+CHANGE_COUNT = 9
 
 def update_zone(master, slave, zone, changes, change_serial=False, serials=None):
     for i in changes:
