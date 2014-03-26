@@ -44,7 +44,7 @@ static knot_dname_t *ns_next_closer(const knot_dname_t *closest_encloser,
 		name = knot_wire_next_label(name, NULL);
 	}
 
-	return knot_dname_copy(name);
+	return knot_dname_copy(name, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -227,7 +227,7 @@ dbg_ns_exec_verb(
 );
 		ret = ns_put_covering_nsec3(zone, new_next_closer, qdata, resp);
 
-		knot_dname_free(&new_next_closer);
+		knot_dname_free(&new_next_closer, NULL);
 	} else {
 		ret = ns_put_covering_nsec3(zone, next_closer, qdata, resp);
 	}
@@ -343,7 +343,7 @@ static int ns_put_nsec3_no_wildcard_child(const knot_zone_contents_t *zone,
 		ret = ns_put_covering_nsec3(zone, wildcard, qdata, resp);
 
 		/* Directly discard wildcard. */
-		knot_dname_free(&wildcard);
+		knot_dname_free(&wildcard, NULL);
 	}
 
 	return ret;
@@ -400,7 +400,7 @@ dbg_ns_exec_verb(
 	int ret = ns_put_covering_nsec3(zone, next_closer, qdata, resp);
 
 	/* Duplicate from ns_next_close(), safe to discard. */
-	knot_dname_free(&next_closer);
+	knot_dname_free(&next_closer, NULL);
 
 	return ret;
 }
@@ -548,7 +548,7 @@ dbg_ns_exec_verb(
 );
 
 	/* Directly discard dname. */
-	knot_dname_free(&wildcard);
+	knot_dname_free(&wildcard, NULL);
 
 	if (prev_new != previous) {
 		knot_node_fill_rrset(prev_new, KNOT_RRTYPE_NSEC, &rrset);

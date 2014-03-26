@@ -46,7 +46,7 @@ static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 {
 	assert(covered);
 
-	knot_dname_t *owner_copy = knot_dname_copy(covered->owner);
+	knot_dname_t *owner_copy = knot_dname_copy(covered->owner, NULL);
 
 	return knot_rrset_new(owner_copy, KNOT_RRTYPE_RRSIG, covered->rclass,
 	                      NULL);
@@ -803,7 +803,7 @@ static knot_rrset_t *create_dnskey_rrset_from_soa(const knot_rrset_t *soa)
 {
 	assert(soa);
 
-	knot_dname_t *owner = knot_dname_copy(soa->owner);
+	knot_dname_t *owner = knot_dname_copy(soa->owner, NULL);
 	if (!owner) {
 		return NULL;
 	}
@@ -1103,7 +1103,7 @@ static int rr_already_signed(const knot_rrset_t *rrset, hattrie_t *t,
 		}
 		memset(info, 0, sizeof(signed_info_t));
 		// Store actual dname repr
-		info->dname = knot_dname_copy(rrset->owner);
+		info->dname = knot_dname_copy(rrset->owner, NULL);
 		if (info->dname == NULL) {
 			free(info);
 			return KNOT_ENOMEM;
@@ -1228,8 +1228,8 @@ static int free_helper_trie_node(value_t *val, void *d)
 		WALK_LIST_FREE(*(info->type_list));
 	}
 	free(info->type_list);
-	knot_dname_free(&info->dname);
-	knot_dname_free(&info->hashed_dname);
+	knot_dname_free(&info->dname, NULL);
+	knot_dname_free(&info->hashed_dname, NULL);
 	free(info);
 	return KNOT_EOK;
 }

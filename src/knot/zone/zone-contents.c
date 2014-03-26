@@ -251,7 +251,7 @@ static int adjust_nsec3_pointers(knot_node_t **tnode, void *data)
 		ret = KNOT_EOK;
 	}
 
-	knot_dname_free(&nsec3_name);
+	knot_dname_free(&nsec3_name, NULL);
 	return ret;
 }
 
@@ -1017,7 +1017,7 @@ int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
 	// check if the NSEC3 tree is not empty
 	if (knot_zone_tree_weight(zone->nsec3_nodes) == 0) {
 		dbg_zone("NSEC3 tree is empty.\n");
-		knot_dname_free(&nsec3_name);
+		knot_dname_free(&nsec3_name, NULL);
 		return KNOT_ENSEC3CHAIN;
 	}
 
@@ -1034,7 +1034,7 @@ dbg_zone_exec_verb(
 		zone->nsec3_nodes, nsec3_name, &found, &prev);
 	assert(exact_match >= 0);
 
-	knot_dname_free(&nsec3_name);
+	knot_dname_free(&nsec3_name, NULL);
 
 dbg_zone_exec_detail(
 	if (found) {

@@ -479,7 +479,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrs_t rrsigs;
+	knot_rrs_t rrsigs = { 0 };
 	ret = knot_rrs_synth_rrsig(rrset->type,
 	                           knot_node_rrs(node, KNOT_RRTYPE_RRSIG),
 	                           &rrsigs, NULL);
@@ -714,7 +714,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 					 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 	}
 
-	knot_dname_free(&next_dname);
+	knot_dname_free(&next_dname, NULL);
 	
 	size_t arr_size;
 	uint16_t *array = NULL;
@@ -999,7 +999,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			const knot_dname_t *next_domain =
 				knot_rrs_nsec_next(nsec_rrs);
 			// Convert name to lowercase for trie lookup
-			knot_dname_t *lowercase = knot_dname_copy(next_domain);
+			knot_dname_t *lowercase = knot_dname_copy(next_domain, NULL);
 			if (lowercase == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -1015,7 +1015,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				/* saving the last node */
 				*last_node = node;
 			}
-			knot_dname_free(&lowercase);
+			knot_dname_free(&lowercase, NULL);
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node,
 			                                   handler);
@@ -1157,7 +1157,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		}
 
 		/* Directly discard. */
-		knot_dname_free(&next_dname);
+		knot_dname_free(&next_dname, NULL);
 
 	} else if (do_checks == 2 ) {
 		if (last_node == NULL) {

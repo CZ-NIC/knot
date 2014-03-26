@@ -1161,7 +1161,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	const knot_dname_t *new_name = NULL;
 	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
 	int r = knot_dname_cmp(cur_name, new_name);
-	knot_dname_free(&cur_name);
+	knot_dname_free(&cur_name, NULL);
 	if (r != 0) {
 		rcu_read_unlock();
 		return KNOT_EINVAL;

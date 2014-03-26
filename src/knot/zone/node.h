@@ -443,7 +443,7 @@ static inline struct rr_data *knot_node_rr_data_n(const knot_node_t *node,
 }
 
 #define _RRSET_INIT(node, rr_data) \
-	{.owner = node->owner,\
+	{.owner = node ? node->owner : NULL,\
 	.type = rr_data->type,\
 	.rclass = KNOT_CLASS_IN,\
 	.rrs = rr_data->rrs,\

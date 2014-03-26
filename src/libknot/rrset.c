@@ -508,7 +508,7 @@ knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl, mm_ctx_t *mm)
 		return NULL;
 	}
 
-	knot_dname_t *owner = knot_dname_copy(tpl->owner);
+	knot_dname_t *owner = knot_dname_copy(tpl->owner, mm);
 	if (!owner) {
 		return NULL;
 	}
@@ -596,27 +596,6 @@ const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset)
 knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset)
 {
 	return rrset->owner;
-}
-
-int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner)
-{
-	if (rrset == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Copy the new owner. */
-	knot_dname_t *owner_copy = NULL;
-	if (owner) {
-		owner_copy = knot_dname_copy(owner);
-		if (owner_copy == NULL) {
-			return KNOT_ENOMEM;
-		}
-	}
-
-	/* Free old owner and assign. */
-	knot_dname_free(&rrset->owner);
-	rrset->owner = owner_copy;
-	return KNOT_EOK;
 }
 
 uint16_t knot_rrset_type(const knot_rrset_t *rrset)
@@ -896,7 +875,7 @@ static void rrset_deep_free_content(knot_rrset_t *rrset,
 	assert(rrset);
 
 	knot_rrs_clear(&rrset->rrs, mm);
-	knot_dname_free(&rrset->owner);
+	knot_dname_free(&rrset->owner, mm);
 }
 
 void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
@@ -1177,7 +1156,7 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 	offset += sizeof(uint16_t);
 	/* Read owner from the stream. */
 	unsigned owner_size = knot_dname_size(stream + offset);
-	knot_dname_t *owner = knot_dname_copy_part(stream + offset, owner_size);
+	knot_dname_t *owner = knot_dname_copy_part(stream + offset, owner_size, NULL);
 	assert(owner);
 	offset += owner_size;
 	/* Read type. */
@@ -1192,7 +1171,7 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 	/* Create new RRSet. */
 	*rrset = knot_rrset_new(owner, type, rclass, NULL);
 	if (*rrset == NULL) {
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -1369,14 +1348,14 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
 		return KNOT_EINVAL;
 	}
 
-	knot_dname_t *owner_copy = knot_dname_copy(owner);
+	knot_dname_t *owner_copy = knot_dname_copy(owner, mm);
 	if (owner_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
 	*out_sig = knot_rrset_new(owner_copy,
 	                          KNOT_RRTYPE_RRSIG, rrsigs->rclass, mm);
 	if (*out_sig == NULL) {
-		knot_dname_free(&owner_copy);
+		knot_dname_free(&owner_copy, mm);
 		return KNOT_ENOMEM;
 	}
 

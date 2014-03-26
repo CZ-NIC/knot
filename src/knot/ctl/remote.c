@@ -572,10 +572,10 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	knot_dname_t *realm = knot_dname_from_str(KNOT_CTL_REALM);
 	if (!knot_dname_is_sub(qname, realm) != 0) {
 		dbg_server("remote: qname != *%s\n", KNOT_CTL_REALM_EXT);
-		knot_dname_free(&realm);
+		knot_dname_free(&realm, NULL);
 		return KNOT_EMALF;
 	}
-	knot_dname_free(&realm);
+	knot_dname_free(&realm, NULL);
 
 	/* Command:
 	 * QNAME: leftmost label of QNAME
@@ -742,11 +742,11 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 	/* Cannot return != KNOT_EOK, but still. */
 	if (knot_pkt_put_question(pkt, dname, KNOT_CLASS_CH, KNOT_RRTYPE_ANY) != KNOT_EOK) {
 		knot_pkt_free(&pkt);
-		knot_dname_free(&dname);
+		knot_dname_free(&dname, NULL);
 		return NULL;
 	}
 
-	knot_dname_free(&dname);
+	knot_dname_free(&dname, NULL);
 	return pkt;
 }
 
@@ -785,7 +785,7 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
 	/* Create RRSet. */
 	knot_rrset_t *rr = knot_rrset_new(key, t, KNOT_CLASS_CH, NULL);
 	if (rr == NULL)
-		knot_dname_free(&key);
+		knot_dname_free(&key, NULL);
 
 	return rr;
 }
@@ -834,7 +834,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 	/* Build RDATA. */
 	int dn_size = knot_dname_size(dn);
 	int result = knot_rrset_add_rr(rr, dn, dn_size, 0, NULL);
-	knot_dname_free(&dn);
+	knot_dname_free(&dn, NULL);
 
 	return result;
 }

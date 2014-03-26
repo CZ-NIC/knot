@@ -82,11 +82,11 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	                                            knot_rrset_rr_ttl(dname_rr, 0),
 	                                            mm);
 	if (cname_rdata == NULL) {
-		knot_dname_free(&cname);
+		knot_dname_free(&cname, NULL);
 		return KNOT_ENOMEM;
 	}
 	memcpy(cname_rdata, cname, cname_size);
-	knot_dname_free(&cname);
+	knot_dname_free(&cname, NULL);
 
 	return KNOT_EOK;
 }
@@ -120,7 +120,8 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
                      knot_rrinfo_t *rrinfo,
                      struct query_data *qdata)
 {
-	knot_rrset_t synth_sig = *rrsigs;
+	knot_rrset_t synth_sig;
+	knot_rrs_init(&synth_sig.rrs);
 	int ret = knot_rrs_synth_rrsig(type, &rrsigs->rrs,
 	                               &synth_sig.rrs, qdata->mm);
 	if (ret == KNOT_ENOENT) {
@@ -130,6 +131,10 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	synth_sig.owner = (knot_dname_t *)sig_owner;
+	synth_sig.type = KNOT_RRTYPE_RRSIG;
+	synth_sig.rclass = KNOT_CLASS_IN;
+	synth_sig.additional = NULL;
 	struct rrsig_info *info = mm_alloc(qdata->mm,
 	                                   sizeof(struct rrsig_info));
 	if (info == NULL) {

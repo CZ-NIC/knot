@@ -284,12 +284,12 @@ static int conf_key_exists(void *scanner, char *item)
 	WALK_LIST (r, new_config->keys) {
 		if (knot_dname_cmp(r->k.name, sample) == 0) {
 			cf_error(scanner, "key '%s' is already defined", item);
-			knot_dname_free(&sample);
+			knot_dname_free(&sample, NULL);
 			return 1;
 		}
 	}
 
-	knot_dname_free(&sample);
+	knot_dname_free(&sample, NULL);
 	return 0;
 }
 
@@ -306,13 +306,13 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
 	WALK_LIST (r, new_config->keys) {
 		if (knot_dname_cmp(r->k.name, sample) == 0) {
 			*key = &r->k;
-			knot_dname_free(&sample);
+			knot_dname_free(&sample, NULL);
 			return 0;
 		}
 	}
 
 	cf_error(scanner, "key '%s' is not defined", item);
-	knot_dname_free(&sample);
+	knot_dname_free(&sample, NULL);
 	return 1;
 }
 
@@ -360,7 +360,7 @@ static void conf_zone_start(void *scanner, char *name) {
 	                   knot_dname_size(dn)) != NULL) {
 		cf_error(scanner, "zone '%s' is already present, refusing to "
 		         "duplicate", this_zone->name);
-		knot_dname_free(&dn);
+		knot_dname_free(&dn, NULL);
 		free(this_zone->name);
 		this_zone->name = NULL;
 		/* Must not free, some versions of flex might continue after
@@ -372,7 +372,7 @@ static void conf_zone_start(void *scanner, char *name) {
 
 	*hattrie_get(new_config->zones, (const char *)dn,
 	             knot_dname_size(dn)) = this_zone;
-	knot_dname_free(&dn);
+	knot_dname_free(&dn, NULL);
 	}
 }
 
@@ -659,7 +659,7 @@ keys:
              k->k.algorithm = $3.alg;
              if (knot_binary_from_base64($4.t, &(k->k.secret)) != 0) {
                  cf_error(scanner, "invalid key secret '%s'", $4.t);
-                 knot_dname_free(&dname);
+                 knot_dname_free(&dname, NULL);
                  free(k);
              } else {
                  add_tail(&new_config->keys, &k->n);

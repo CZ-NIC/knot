@@ -129,7 +129,7 @@ static int knot_ddns_add_prereq_dname(const knot_dname_t *dname,
 		return ret;
 	}
 
-	knot_dname_t *dname_new = knot_dname_copy(dname);
+	knot_dname_t *dname_new = knot_dname_copy(dname, NULL);
 	if (dname_new == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -556,12 +556,12 @@ void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
 	free((*prereq)->not_exist);
 
 	for (i = 0; i < (*prereq)->in_use_count; ++i) {
-		knot_dname_free(&(*prereq)->in_use[i]);
+		knot_dname_free(&(*prereq)->in_use[i], NULL);
 	}
 	free((*prereq)->in_use);
 
 	for (i = 0; i < (*prereq)->not_in_use_count; ++i) {
-		knot_dname_free(&(*prereq)->not_in_use[i]);
+		knot_dname_free(&(*prereq)->not_in_use[i], NULL);
 	}
 	free((*prereq)->not_in_use);
 
@@ -1414,12 +1414,12 @@ static int knot_ddns_process_rem_rrset(const knot_rrset_t *rrset,
 	size_t from_chgset_count = 0;
 
 	/* 4 a) Remove redundant RRs from the ADD section of the changeset. */
-	knot_dname_t *owner_copy = knot_dname_copy(rrset->owner);
+	knot_dname_t *owner_copy = knot_dname_copy(rrset->owner, NULL);
 	knot_rrset_t *empty_rrset =
 		knot_rrset_new(owner_copy, type, rrset->rclass, NULL);
 	if (empty_rrset == NULL) {
 		free(to_chgset);
-		knot_dname_free(&owner_copy);
+		knot_dname_free(&owner_copy, NULL);
 		return KNOT_ENOMEM;
 	}
 	ret = knot_ddns_check_remove_rr(changeset, knot_node_owner(node),

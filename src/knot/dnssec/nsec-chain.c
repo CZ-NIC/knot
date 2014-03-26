@@ -42,11 +42,12 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	assert(to);
 
 	// Create new RRSet
-	knot_dname_t *owner_cpy = knot_dname_copy(from->owner);
+	knot_dname_t *owner_cpy = knot_dname_copy(from->owner, NULL);
 	knot_rrset_t *rrset = knot_rrset_new(owner_cpy,
 	                                     KNOT_RRTYPE_NSEC, KNOT_CLASS_IN,
 	                                     NULL);
 	if (!rrset) {
+		knot_dname_free(&owner_cpy, NULL);
 		return NULL;
 	}
 

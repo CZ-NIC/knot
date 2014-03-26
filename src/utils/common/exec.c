@@ -200,7 +200,7 @@ static void print_section_question(const knot_dname_t *owner,
 	size_t buflen = 8192;
 	char   *buf = calloc(buflen, 1);
 
-	knot_dname_t *owner_copy = knot_dname_copy(owner);
+	knot_dname_t *owner_copy = knot_dname_copy(owner, NULL);
 	knot_rrset_t *question = knot_rrset_new(owner_copy, qtype,
 	                                        qclass, NULL);
 

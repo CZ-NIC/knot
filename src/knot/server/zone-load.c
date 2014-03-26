@@ -380,7 +380,7 @@ static int zone_loader_thread(dthread_t *thread)
 			return KNOT_ENOMEM;
 		}
 		zone_t *old_zone = knot_zonedb_find(ctx->db_old, apex);
-		knot_dname_free(&apex);
+		knot_dname_free(&apex, NULL);
 
 		/* Update the zone. */
 		zone = update_zone(old_zone, zone_config, ctx->server);

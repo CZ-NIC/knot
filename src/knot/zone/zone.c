@@ -223,7 +223,7 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_t *zone = *zone_ptr;
 
-	knot_dname_free(&zone->name);
+	knot_dname_free(&zone->name, NULL);
 
 	/* Cancel and free timers. */
 	zone_timer_free(zone->xfr_in.timer);

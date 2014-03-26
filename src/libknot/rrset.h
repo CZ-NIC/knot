@@ -25,8 +25,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_RRSET_H_
-#define _KNOT_RRSET_H_
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -145,16 +144,6 @@ const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset);
  * \return Owner of the given RRSet.
  */
 knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
-
-/*!
- * \brief Set rrset owner to specified dname.
- *
- * Previous owner will be replaced if exist.
- *
- * \param rrset  Specified RRSet.
- * \param owner  New owner dname.
- */
-int knot_rrset_set_owner(knot_rrset_t *rrset, const knot_dname_t *owner);
 
 /*!
  * \brief Returns the TYPE of the RRSet.
@@ -437,7 +426,5 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
                            knot_rrset_t **out_sig, mm_ctx_t *mm);
 
 bool knot_rrset_empty(const knot_rrset_t *rrset);
-
-#endif /* _KNOT_RRSET_H_ */
 
 /*! @} */

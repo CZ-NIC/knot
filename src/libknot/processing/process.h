@@ -36,6 +36,7 @@
  *         Each state describes the current machine processing step
  *         and determines readiness for next action.
  */
+
 enum knot_process_state {
 	NS_PROC_NOOP = 0,      /* N/A */
 	NS_PROC_MORE = 1 << 0, /* More input data. */

@@ -133,7 +133,7 @@ static int dname_isvalid(const char *lp, size_t len) {
 	if (dn == NULL) {
 		return 0;
 	}
-	knot_dname_free(&dn);
+	knot_dname_free(&dn, NULL);
 	return 1;
 }
 
@@ -188,7 +188,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Parse only name? */
 	if (flags & PARSE_NAMEONLY) {
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, NULL);
 		return KNOT_EOK;
 	}
 
@@ -218,7 +218,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 		char cls_s[16] = {0};
 		knot_rrclass_to_string(s->default_class, cls_s, sizeof(cls_s));
 		ERR("class mismatch: '%s'\n", cls_s);
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, NULL);
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -233,7 +233,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Remainder */
 	if (*lp == '\0') {
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, NULL);
 		return ret; /* No RDATA */
 	}
 
@@ -251,7 +251,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 
 	free(owner_s);
 	free(rr);
-	knot_dname_free(&owner);
+	knot_dname_free(&owner, NULL);
 	return ret;
 }
 
@@ -291,7 +291,7 @@ static srv_info_t *parse_host(const char *lp, const char* default_port)
 static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 {
 	/* Form a rrset. */
-	knot_dname_t *owner = knot_dname_copy(s->r_owner);
+	knot_dname_t *owner = knot_dname_copy(s->r_owner, NULL);
 	if (!owner) {
 		DBG("%s: failed to create dname\n", __func__);
 		return KNOT_ENOMEM;
@@ -299,7 +299,7 @@ static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 	knot_rrset_t *rr = knot_rrset_new(owner, s->r_type, s->r_class, NULL);
 	if (!rr) {
 		DBG("%s: failed to create rrset\n", __func__);
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -357,7 +357,7 @@ static int build_query(nsupdate_params_t *params)
 	knot_wire_set_opcode(query->wire, KNOT_OPCODE_UPDATE);
 	knot_dname_t *qname = knot_dname_from_str(params->zone);
 	int ret = knot_pkt_put_question(query, qname, params->class_num, params->type_num);
-	knot_dname_free(&qname);
+	knot_dname_free(&qname, NULL);
 	if (ret != KNOT_EOK)
 		return ret;
 

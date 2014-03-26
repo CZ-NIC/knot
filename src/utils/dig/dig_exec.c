@@ -91,7 +91,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	ret = knot_pkt_put_question(packet, qname, query->class_num,
 	                            query->type_num);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&qname);
+		knot_dname_free(&qname, NULL);
 		knot_pkt_free(&packet);
 		return NULL;
 	}
@@ -108,7 +108,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		                                   query->class_num,
 		                                   &packet->mm);
 		if (soa == NULL) {
-			knot_dname_free(&qname);
+			knot_dname_free(&qname, NULL);
 			knot_pkt_free(&packet);
 			return NULL;
 		}
@@ -136,7 +136,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 			return NULL;
 		}
 	} else {
-		knot_dname_free(&qname);
+		knot_dname_free(&qname, NULL);
 	}
 
 	// Create EDNS section if required.

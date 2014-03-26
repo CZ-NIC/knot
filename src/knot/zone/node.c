@@ -101,13 +101,13 @@ static knot_rrset_t *rrset_from_rr_data(const knot_node_t *n, size_t pos,
                                         mm_ctx_t *mm)
 {
 	struct rr_data data = n->rrs[pos];
-	knot_dname_t *dname_copy = knot_dname_copy(n->owner);
+	knot_dname_t *dname_copy = knot_dname_copy(n->owner, mm);
 	if (dname_copy == NULL) {
 		return NULL;
 	}
 	knot_rrset_t *rrset = knot_rrset_new(dname_copy, data.type, KNOT_CLASS_IN, mm);
 	if (rrset == NULL) {
-		knot_dname_free(&dname_copy);
+		knot_dname_free(&dname_copy, mm);
 		return NULL;
 	}
 
@@ -149,7 +149,7 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
 	 *        do the copying (or not if he decides to do so).
 	 */
 	if (owner) {
-		ret->owner = knot_dname_copy(owner);
+		ret->owner = knot_dname_copy(owner, NULL);
 	}
 
 	knot_node_set_parent(ret, parent);
@@ -715,7 +715,7 @@ void knot_node_free(knot_node_t **node)
 		(*node)->rrset_count = 0;
 	}
 
-	knot_dname_free(&(*node)->owner);
+	knot_dname_free(&(*node)->owner, NULL);
 
 	free(*node);
 	*node = NULL;
@@ -740,7 +740,7 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	// do not use the API function to set parent, so that children count
 	// is not changed
 	memcpy(*to, from, sizeof(knot_node_t));
-	(*to)->owner = knot_dname_copy(from->owner);
+	(*to)->owner = knot_dname_copy(from->owner, NULL);
 
 	// copy RRSets
 	size_t rrlen = sizeof(struct rr_data) * from->rrset_count;

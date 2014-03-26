@@ -94,17 +94,11 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
 			// Fatal error
-			knot_rrset_free(&rr, NULL);
 			return ret;
 		}
 		// Recoverable error, skip record
-		knot_rrset_free(&rr, NULL);
 		return KNOT_EOK;
-	} else if (ret > 0) {
-		knot_rrset_free(&rr, NULL);
 	}
-	// TODO: free everytime for now
-	knot_rrset_free(&rr, NULL);
 	assert(node);
 //	assert(zone_rrset);
 
@@ -134,37 +128,33 @@ static void loader_process(const zs_scanner_t *scanner)
 		return;
 	}
 
-	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
+	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
 	if (owner == NULL) {
 		zc->ret = KNOT_ENOMEM;
 		return;
 	}
 	knot_dname_to_lower(owner);
 
-	knot_rrset_t *rr = knot_rrset_new(owner,
-	                                  scanner->r_type,
-	                                  scanner->r_class,
-	                                  NULL);
-	if (rr == NULL) {
-		knot_dname_free(&owner);
-		zc->ret = KNOT_ENOMEM;
-		return;
-	}
-
-	int ret = add_rdata_to_rr(rr, scanner);
+	knot_rrset_t rr = {.owner = owner,
+	                   .type = scanner->r_type,
+	                   .rclass = scanner->r_class,
+	                   .additional = NULL};
+	knot_rrs_init(&rr.rrs);
+	int ret = add_rdata_to_rr(&rr, scanner);
 	if (ret != KNOT_EOK) {
-		char *rr_name = knot_dname_to_str(rr->owner);
+		char *rr_name = knot_dname_to_str(rr.owner);
 		log_zone_error("%s:%"PRIu64": Can't add RDATA for '%s'.\n",
 		               scanner->file_name, scanner->line_counter, rr_name);
 		free(rr_name);
-		knot_rrset_free(&rr, NULL);
+		knot_dname_free(&owner, NULL);
 		zc->ret = ret;
 		return;
 	}
 
-	ret = zcreator_step(zc, rr);
+	ret = zcreator_step(zc, &rr);
+	knot_dname_free(&owner, NULL);
+	knot_rrs_clear(&rr.rrs, NULL);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rr, NULL);
 		zc->ret = ret;
 		return;
 	}
@@ -181,7 +171,7 @@ static knot_zone_contents_t *create_zone_from_name(const char *origin)
 	}
 	knot_dname_to_lower(owner);
 	knot_zone_contents_t *z = knot_zone_contents_new(owner);
-	knot_dname_free(&owner);
+	knot_dname_free(&owner, NULL);
 	return z;
 }
 

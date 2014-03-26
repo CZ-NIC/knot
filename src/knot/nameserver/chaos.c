@@ -62,7 +62,7 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 		response_len = KNOT_DNAME_MAXLEN;
 	}
 
-	knot_dname_t *rowner = knot_dname_copy(owner);
+	knot_dname_t *rowner = knot_dname_copy(owner, NULL);
 	if (!rowner) {
 		return NULL;
 	}

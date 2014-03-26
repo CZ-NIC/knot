@@ -674,15 +674,14 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	assert(wire);
 	assert(pos);
 
-	knot_dname_t *owner = knot_dname_parse(wire, pos, size);
+	knot_dname_t *owner = knot_dname_parse(wire, pos, size, mm);
 	if (owner == NULL) {
 		return NULL;
 	}
 	knot_dname_to_lower(owner);
-
 	if (size - *pos < KNOT_RR_HEADER_SIZE) {
 		dbg_packet("%s: not enough data to parse RR HEADER\n", __func__);
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, mm);
 		return NULL;
 	}
 
@@ -693,7 +692,7 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, mm);
 	if (rrset == NULL) {
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, mm);
 		return NULL;
 	}
 	*pos += KNOT_RR_HEADER_SIZE;
