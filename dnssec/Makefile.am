@@ -23,6 +23,7 @@ libdnssec_la_SOURCES =	\
 	lib/dnssec/error.h \
 	lib/dnssec/key.h \
 	lib/dnssec/nsec.h \
+	lib/dnssec/pkcs8.h \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
 	lib/hex.c \
@@ -42,4 +43,7 @@ libdnssec_la_SOURCES =	\
 	lib/sign/der.c \
 	lib/sign/der.h \
 	lib/sign/sign.c \
+	lib/store/internal.h \
+	lib/store/pkcs8.c \
+	lib/store/pkcs8_dir.c \
 	lib/wire.h
