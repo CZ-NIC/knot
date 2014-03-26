@@ -65,7 +65,7 @@ static inline void free_gnutls_hash_ptr(gnutls_hash_hd_t *ptr)
 }
 
 #define _cleanup_free_ _cleanup_(free_ptr)
-#define _cleanup_fclose_ _cleanup_(fclose_ptr)
+#define _cleanup_close_ _cleanup_(close_ptr)
 #define _cleanup_fclose_ _cleanup_(fclose_ptr)
 #define _cleanup_binary_ _cleanup_(dnssec_binary_free)
 #define _cleanup_datum_ _cleanup_(free_gnutls_datum_ptr)
