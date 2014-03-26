@@ -355,6 +355,9 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 #gl_VISIBILITY()
 #CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
 
+# Add code coverage macro
+AX_CODE_COVERAGE
+
 AC_CONFIG_FILES([Makefile
 		 doc/Makefile
 		 man/Makefile

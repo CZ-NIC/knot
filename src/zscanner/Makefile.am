@@ -46,7 +46,9 @@ libzscanner_la_SOURCES =		\
 	functions.h			\
 	functions.c
 
+libzscanner_la_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 libzscanner_la_LDFLAGS =		\
+	$(COVERAGE_LDFLAGS)		\
 	-version-info 0:1:0		\
 	-export-symbols-regex '^zs_'
 

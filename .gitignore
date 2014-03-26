@@ -69,3 +69,7 @@
 /src/khost
 /src/knsupdate
 /src/knsec3hash
+*.gcda
+*.gcno
+/*-coverage.info
+/*coverage/
