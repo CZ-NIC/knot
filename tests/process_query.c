@@ -131,6 +131,9 @@ int main(int argc, char *argv[])
 	server.opt_rr = knot_edns_new();
 	knot_edns_set_version(server.opt_rr, EDNS_VERSION);
 	knot_edns_set_payload(server.opt_rr, 4096);
+
+	/* Create configuration. */
+	s_config = conf_new(strdup("rc:/noconf"));
 	conf()->identity = strdup("bogus.ns");
 	conf()->version = strdup("0.11");
 
