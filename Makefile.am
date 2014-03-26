@@ -1,9 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = libtap src tests samples doc man patches
 
-code_coverage_quiet = $(code_coverage_quiet_$(V))
-code_coverage_quiet_ = $(code_coverage_quiet_$(AM_DEFAULT_VERBOSITY))
-code_coverage_quiet_0 = --quiet
+code_coverage_quiet = --quiet
 
 check-code-coverage:
 if CODE_COVERAGE_ENABLED
