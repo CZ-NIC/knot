@@ -27,7 +27,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(70);
+	plan(68);
 
 	int32_t  ret;
 	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3, *out4;
@@ -203,14 +203,10 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding length 2");
 	ret = base32hex_decode((uint8_t *)"AAA=====", 8, out, BUF_LEN);
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding length 5");
-	ret = base32hex_decode((uint8_t *)"A======", 8, out, BUF_LEN);
+	ret = base32hex_decode((uint8_t *)"A=======", 8, out, BUF_LEN);
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding length 7");
-	ret = base32hex_decode((uint8_t *)"=======", 8, out, BUF_LEN);
+	ret = base32hex_decode((uint8_t *)"========", 8, out, BUF_LEN);
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding length 8");
-	ret = base32hex_decode((uint8_t *)"=AAAAAA", 8, out, BUF_LEN);
-	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding on position 1");
-	ret = base32hex_decode((uint8_t *)"A=AAAAAA", 8, out, BUF_LEN);
-	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad padding on position 2");
 
 	// Bad data length
 	ret = base32hex_decode((uint8_t *)"A", 1, out, BUF_LEN);
