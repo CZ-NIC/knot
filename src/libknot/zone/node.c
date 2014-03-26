@@ -605,6 +605,29 @@ void knot_node_clear_replaced_nsec(knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_node_set_apex(knot_node_t *node)
+{
+	if (node == NULL) {
+		return;
+	}
+
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_APEX);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_node_is_apex(const knot_node_t *node)
+{
+	if (node == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_APEX);
+}
+
+
+/*----------------------------------------------------------------------------*/
+
 void knot_node_free_rrsets(knot_node_t *node)
 {
 	if (node == NULL) {

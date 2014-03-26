@@ -1319,6 +1319,7 @@ int knot_zone_contents_adjust(knot_zone_contents_t *zone,
 	}
 
 	assert(zone->apex == adjust_arg.first_node);
+	knot_node_set_apex(zone->apex);
 
 	return KNOT_EOK;
 }
