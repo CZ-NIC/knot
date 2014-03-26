@@ -27,7 +27,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(69);
+	plan(70);
 
 	int32_t  ret;
 	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3, *out4;
@@ -44,6 +44,8 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_ERANGE, "base32hex_encode: output buffer too small");
 	ret = base32hex_encode_alloc(in, ((INT32_MAX / 8) * 5) + 1, &out3);
 	ok(ret == KNOT_ERANGE, "base32hex_encode_alloc: input buffer too large");
+	ret = base32hex_encode_alloc(NULL, 0, &out3);
+	ok(ret == KNOT_EINVAL, "base32hex_encode_alloc: NULL input buffer");
 
 	ret = base32hex_decode(NULL, 0, out, BUF_LEN);
 	ok(ret == KNOT_EINVAL, "base32hex_decode: NULL input buffer");
