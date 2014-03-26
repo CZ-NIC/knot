@@ -17,6 +17,14 @@ import dnstest.keys
 import dnstest.response
 import dnstest.update
 
+def zone_arg_check(zone):
+    # Convert one item list to single object.
+    if isinstance(zone, list):
+        if len(zone) != 1:
+            raise Exception("One zone required.")
+        return zone[0]
+    return zone
+
 class KnotConf(object):
     '''Knot server config generator'''
 
@@ -493,11 +501,7 @@ class Server(object):
     def zone_wait(self, zone, serial=None):
         '''Try to get SOA record with serial higher then specified'''
 
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         _serial = 0
 
@@ -528,30 +532,18 @@ class Server(object):
             self.zone_wait(zone)
 
     def zone_verify(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.dnssec_verify()
 
     def check_nsec(self, zone, nsec3=False, nonsec=False):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         resp = self.dig("0-x-not-existing-x-0." + zone.name, "ANY", dnssec=True)
         resp.check_nsec(nsec3=nsec3, nonsec=nonsec)
 
     def update(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         key_params = self.tsig_test.key_params if self.tsig_test else dict()
 
@@ -559,11 +551,7 @@ class Server(object):
                                                              **key_params))
 
     def gen_key(self, zone, **args):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         prepare_dir(self.keydir)
         key = dnstest.keys.Key(self.keydir, zone.name, **args)
@@ -572,11 +560,7 @@ class Server(object):
         return key
 
     def use_keys(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         # Copy generated keys to server key directory.
         prepare_dir(self.keydir)
@@ -589,38 +573,22 @@ class Server(object):
                     shutil.copy(full_file_name, self.keydir)
 
     def enable_nsec3(self, zone, **args):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.enable_nsec3(**args)
 
     def disable_nsec3(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.disable_nsec3()
 
     def backup_zone(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.backup()
 
     def update_zonefile(self, zone, version):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.upd_file(version=version)
 
