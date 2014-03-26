@@ -27,11 +27,34 @@
 
 int main(int argc, char *argv[])
 {
-	plan(42);
+	plan(56);
 
 	int32_t  ret;
-	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN];
+	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3, *out4;
 	uint32_t in_len, ref_len;
+
+	// 0. test invalid input
+	ret = base32hex_encode(NULL, 0, out, BUF_LEN);
+	ok(ret == KNOT_EINVAL, "base32hex_encode: NULL input buffer");
+	ret = base32hex_encode(in, BUF_LEN, NULL, 0);
+	ok(ret == KNOT_EINVAL, "base32hex_encode: NULL output buffer");
+	ret = base32hex_encode(in, ((INT32_MAX / 8) * 5) + 1, out, BUF_LEN);
+	ok(ret == KNOT_ERANGE, "base32hex_encode: input buffer too large");
+	ret = base32hex_encode(in, 160, out, 255);
+	ok(ret == KNOT_ERANGE, "base32hex_encode: output buffer too small");
+	ret = base32hex_encode_alloc(in, ((INT32_MAX / 8) * 5) + 1, &out3);
+	ok(ret == KNOT_ERANGE, "base32hex_encode_alloc: input buffer too large: '%i'", ret);
+
+	ret = base32hex_decode(NULL, 0, out, BUF_LEN);
+	ok(ret == KNOT_EINVAL, "base32hex_decode: NULL input buffer");
+	ret = base32hex_decode(in, BUF_LEN, NULL, 0);
+	ok(ret == KNOT_EINVAL, "base32hex_decode: NULL output buffer");
+	ret = base32hex_decode(in, INT32_MAX + 1, out, BUF_LEN);
+	ok(ret == KNOT_ERANGE, "base32hex_decode: input buffer too large");
+	ret = base32hex_decode(in, 256, out, 159);
+	ok(ret == KNOT_ERANGE, "base32hex_decode: output buffer too small");
+	ret = base32hex_decode_alloc(in, INT32_MAX + 1, &out3);
+	ok(ret == KNOT_ERANGE, "base32hex_decode_alloc: input buffer too large: '%i'", ret);
 
 	// 1. test vector -> ENC -> DEC
 	strcpy((char *)in, "");
@@ -206,6 +229,27 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character dollar");
 	ret = base32hex_decode((uint8_t *)"AAAAAAA ", 8, out, BUF_LEN);
 	ok(ret == KNOT_BASE32HEX_ECHAR, "Bad data character space");
+
+	// Alloc function
+	strcpy((char *)in, "fo");
+	in_len = strlen((char *)in);
+	strcpy((char *)ref, "CPNG====");
+	ref_len = strlen((char *)ref);
+
+	ret = base32hex_encode_alloc(in, in_len, &out3);
+	ok(ret == ref_len, "base32hex_encode_alloc: encode output length");
+	if (ret < 0) {
+		skip("base32hex_encode_alloc: encode error");
+	} else {
+		ok(memcmp(out3, ref, ret) == 0, "base32hex_encode_alloc: encode output content");
+	}
+	ret = base32hex_decode_alloc(out3, ret, &out4);
+	ok(ret == in_len, "base32hex_decode_alloc: decode output length");
+	if (ret < 0) {
+		skip("base32hex_decode_alloc: decode error");
+	} else {
+		ok(memcmp(out4, in, ret) == 0, "base32hex_decode_alloc: decode output content");
+	}
 
 	return 0;
 }
