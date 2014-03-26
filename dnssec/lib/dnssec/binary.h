@@ -12,15 +12,14 @@ typedef struct dnssec_binary {
 } dnssec_binary_t;
 
 /*!
- * Allocate binary from Base64 encoded string.
+ * Allocate new binary data structure.
  *
- * \param[in]  base64  Base64 encoded data.
- * \param[out] binary  Decoded binary data.
+ * \param[out] data  Binary to be allocated.
+ * \param[in]  size  Requested size of the binary.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int dnssec_binary_from_base64(const dnssec_binary_t *base64,
-			      dnssec_binary_t *binary);
+int dnssec_binary_alloc(dnssec_binary_t *data, size_t size);
 
 /*!
  * Free content of binary structure.
@@ -72,3 +71,14 @@ int dnssec_binary_cmp(const dnssec_binary_t *one, const dnssec_binary_t *two);
  * \param binary  Input to be trimmed.
  */
 void dnssec_binary_ltrim(dnssec_binary_t *binary);
+
+/*!
+ * Allocate binary from Base64 encoded string.
+ *
+ * \param[in]  base64  Base64 encoded data.
+ * \param[out] binary  Decoded binary data.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int dnssec_binary_from_base64(const dnssec_binary_t *base64,
+			      dnssec_binary_t *binary);

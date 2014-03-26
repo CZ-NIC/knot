@@ -26,37 +26,19 @@ static size_t base64_decode_raw(const uint8_t *src, size_t src_len,
 
 /* -- public API ----------------------------------------------------------- */
 
-int dnssec_binary_from_base64(const dnssec_binary_t *base64,
-			      dnssec_binary_t *binary)
+int dnssec_binary_alloc(dnssec_binary_t *data, size_t size)
 {
-	if (!base64 || !binary) {
+	if (!data || size == 0) {
 		return DNSSEC_EINVAL;
 	}
 
-	if (base64->size == 0) {
-		clear_struct(binary);
-		return DNSSEC_EOK;
-	}
-
-	size_t raw_size = BASE64_DECODE_LENGTH(base64->size);
-	uint8_t *raw = malloc(raw_size);
-	if (raw == NULL) {
+	uint8_t *new_data = calloc(1, size);
+	if (!new_data) {
 		return DNSSEC_ENOMEM;
 	}
 
-	size_t real_size = base64_decode_raw(base64->data, base64->size,
-					     raw, raw_size);
-	if (real_size == 0) {
-		free(raw);
-		return DNSSEC_EINVAL;
-	}
-
-	if (real_size < raw_size) {
-		raw = realloc(raw, real_size);
-	}
-
-	binary->data = raw;
-	binary->size = real_size;
+	data->data = new_data;
+	data->size = size;
 
 	return DNSSEC_EOK;
 }
@@ -156,4 +138,39 @@ void dnssec_binary_ltrim(dnssec_binary_t *binary)
 
 	memmove(binary->data, binary->data + start, new_size);
 	binary->size = new_size;
+}
+
+int dnssec_binary_from_base64(const dnssec_binary_t *base64,
+			      dnssec_binary_t *binary)
+{
+	if (!base64 || !binary) {
+		return DNSSEC_EINVAL;
+	}
+
+	if (base64->size == 0) {
+		clear_struct(binary);
+		return DNSSEC_EOK;
+	}
+
+	size_t raw_size = BASE64_DECODE_LENGTH(base64->size);
+	uint8_t *raw = malloc(raw_size);
+	if (raw == NULL) {
+		return DNSSEC_ENOMEM;
+	}
+
+	size_t real_size = base64_decode_raw(base64->data, base64->size,
+					     raw, raw_size);
+	if (real_size == 0) {
+		free(raw);
+		return DNSSEC_EINVAL;
+	}
+
+	if (real_size < raw_size) {
+		raw = realloc(raw, real_size);
+	}
+
+	binary->data = raw;
+	binary->size = real_size;
+
+	return DNSSEC_EOK;
 }
