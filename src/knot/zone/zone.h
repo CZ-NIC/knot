@@ -51,18 +51,15 @@ typedef struct zone_t {
 
 	//! \todo Move ACLs into configuration.
 	//! \todo Remove refcounting + flags.
-	//! \todo Remove zonefile_{serial,mtime}, use zone-dirty flag instead
 
 	ref_t ref;     /*!< Reference counting. */
 	knot_dname_t *name;
 
 	zone_contents_t *contents;
-
-	zone_flag_t flags;
-
-	/*! \brief Zone file flushing. */
 	time_t zonefile_mtime;
 	uint32_t zonefile_serial;
+
+	zone_flag_t flags;
 
 	/*! \brief Shortcut to zone config entry. */
 	conf_zone_t *conf;
@@ -161,6 +158,5 @@ const conf_iface_t *zone_master(const zone_t *zone);
 //	evsched_cancel(zone->next_event);
 //	evsched_schedule(zone->next_event, 0);
 //}
-
 
 /*! @} */

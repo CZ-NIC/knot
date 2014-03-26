@@ -120,6 +120,9 @@ zone_t* zone_new(conf_zone_t *conf)
 		}
 	}
 
+	// Initialize events
+	zone_events_init(zone);
+
 	return zone;
 }
 
@@ -131,11 +134,9 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_t *zone = *zone_ptr;
 
-	knot_dname_free(&zone->name);
+	zone_events_deinit(zone);
 
-	// TODO: review
-//	evsched_cancel(zone->next_event);
-//	evsched_event_free(zone->next_event);
+	knot_dname_free(&zone->name);
 
 	acl_delete(&zone->xfr_out);
 	acl_delete(&zone->notify_in);

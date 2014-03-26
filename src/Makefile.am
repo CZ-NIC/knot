@@ -264,6 +264,8 @@ libknotd_la_SOURCES =				\
 	knot/zone/estimator.h			\
 	knot/zone/events.c			\
 	knot/zone/events.h			\
+	knot/zone/load.c			\
+	knot/zone/load.h			\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\

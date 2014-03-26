@@ -130,54 +130,6 @@ static uint32_t zones_soa_expire(zone_t *zone)
 }
 
 /*!
- * \brief XFR/IN expire event handler.
- */
-int zones_expire_ev(event_t *event)
-{
-	assert(event);
-
-	dbg_zones("zone: EXPIRE timer event\n");
-	if (event->data == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	rcu_read_lock();
-	zone_t *zone = (zone_t *)event->data;
-
-	/* Check if zone is not discarded. */
-	if (zone->flags & ZONE_DISCARDED) {
-		rcu_read_unlock();
-		return KNOT_EOK;
-	}
-
-	zone_retain(zone); /* Keep a reference. */
-	rcu_read_unlock();
-
-	/* Early finish this event to prevent lockup during cancellation. */
-	evsched_end_process(event->sched);
-
-	/* Mark the zone as expired. This will remove the zone contents. */
-	knot_zone_contents_t *contents = zone_switch_contents(zone, NULL);
-
-	/* Publish expired zone, must be after evsched_event_finished.
-	 * This is because some other thread may hold rcu_read_lock and
-	 * wait for event cancellation. */
-	synchronize_rcu();
-
-	knot_zone_contents_deep_free(&contents);
-
-	/* Log event. */
-	log_zone_info("Zone '%s' expired.\n", zone->conf->name);
-
-	/* No more REFRESH/RETRY on expired zone. */
-//	evsched_cancel(zone->xfr_in.timer);
-
-	/* Release holding reference. */
-	zone_release(zone);
-	return KNOT_EOK;
-}
-
-/*!
  * \brief Zone REFRESH or RETRY event.
  */
 int zones_refresh_ev(event_t *event)
@@ -198,7 +150,6 @@ int zones_refresh_ev(event_t *event)
 	}
 
 	/* Create XFR request. */
-	server_t *server = (server_t *)event->sched->ctx;
 	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_SOA, XFR_FLAG_TCP);
 	rcu_read_unlock(); /* rq now holds a reference to zone */
 	if (!rq) {
@@ -230,11 +181,6 @@ int zones_refresh_ev(event_t *event)
 
 		/* Issue request. */
 #warning "XFR enqueue."
-//		ret = xfr_enqueue(server->xfr, rq);
-//		if (ret != KNOT_EOK) {
-//			xfr_task_free(rq);
-//			zone->xfr_in.state = XFR_SCHED; /* Revert state. */
-//		}
 		pthread_mutex_unlock(&zone->lock);
 		return ret;
 	}
@@ -248,10 +194,6 @@ int zones_refresh_ev(event_t *event)
 	/* Issue request. */
 	evsched_end_process(event->sched);
 #warning "XFR enqueue."
-//	ret = xfr_enqueue(server->xfr, rq);
-//	if (ret != KNOT_EOK) {
-//		xfr_task_free(rq);
-//	}
 
 	return ret;
 }
@@ -1874,7 +1816,7 @@ int zones_journal_apply(zone_t *zone)
 	}
 
 	rcu_read_lock();
-	knot_zone_contents_t *contents = zone->contents;
+	zone_contents_t *contents = zone->contents;
 	if (!contents) {
 		rcu_read_unlock();
 		return KNOT_ENOENT;
@@ -1908,7 +1850,7 @@ int zones_journal_apply(zone_t *zone)
 			log_zone_info("Applying '%zu' changesets from journal "
 			              "to zone '%s'.\n",
 			              chsets->count, zone->conf->name);
-			knot_zone_contents_t *contents = NULL;
+			zone_contents_t *contents = NULL;
 			/*! \todo Journal changes may be applied directly,
 			 *        without need to copy the zone!!!
 			 */

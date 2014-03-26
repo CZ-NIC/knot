@@ -86,56 +86,6 @@ zone_t *load_zone_file(conf_zone_t *conf)
 	return NULL;
 }
 
-#if 0
-zone_t *load_zone_file(conf_zone_t *conf)
-{
-	assert(conf);
-
-	/* Open zone file for parsing. */
-	zloader_t zl;
-	int ret = zonefile_open(&zl, conf);
-	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to open zone file '%s': %s\n",
-		               conf->file, knot_strerror(ret));
-		return NULL;
-	}
-
-	struct stat st;
-	if (stat(conf->file, &st) < 0) {
-		/* Go silently and reset mtime to 0. */
-		memset(&st, 0, sizeof(struct stat));
-	}
-
-	/* Load the zone contents. */
-	knot_zone_contents_t *zone_contents = zonefile_load(&zl);
-	zonefile_close(&zl);
-
-	/* Check the loader result. */
-	if (zone_contents == NULL) {
-		log_zone_error("Failed to load zone file '%s'.\n", conf->file);
-		return NULL;
-	}
-
-	/* Create the new zone. */
-	zone_t *zone = zone_new((conf_zone_t *)conf);
-	if (zone == NULL) {
-		log_zone_error("Failed to create zone '%s': %s\n",
-		               conf->name, knot_strerror(KNOT_ENOMEM));
-		knot_zone_contents_deep_free(&zone_contents);
-		return NULL;
-	}
-
-	/* Link zone contents to zone. */
-	zone->contents = zone_contents;
-
-	/* Save the timestamp from the zone db file. */
-	zone->zonefile_mtime = st.st_mtime;
-	zone->zonefile_serial = knot_zone_serial(zone->contents);
-
-	return zone;
-}
-#endif
-
 /*!
  * \brief Log message about loaded zone (name and status).
  *
@@ -166,17 +116,16 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 /*!
  * \brief Load or reload the zone.
  *
- * \param conf       Zone configuration.
- * \param scheduler  Server scheduler.
- * \param old_zone   Already loaded zone (can be NULL).
+ * \param conf      Zone configuration.
+ * \param server    Server.
+ * \param old_zone  Already loaded zone (can be NULL).
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static zone_t *create_zone(conf_zone_t *conf, evsched_t *scheduler,
-                           zone_t *old_zone)
+static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone)
 {
 	assert(conf);
-	assert(scheduler);
+	assert(server);
 	
 	zone_t *zone = zone_new(conf);
 	if (!zone) {
@@ -192,10 +141,11 @@ static zone_t *create_zone(conf_zone_t *conf, evsched_t *scheduler,
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
 	case ZONE_STATUS_FOUND_UPDATED:
-//		zone_queue_enqueue(zone->events, ZONE_EVENT_RELOAD);
+		zone_events_schedule(zone, ZONE_EVENT_RELOAD, 1);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
-		// will be triggered by timer
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, 1);
+		break;
 	case ZONE_STATUS_NOT_FOUND:
 	case ZONE_STATUS_FOUND_CURRENT:
 		break;
@@ -203,10 +153,12 @@ static zone_t *create_zone(conf_zone_t *conf, evsched_t *scheduler,
 		assert(0);
 	}
 
-	/* Initialize zone timers. */
-	// TODO:
-
-//	zone_timers_create(zone, scheduler);
+	int result = zone_events_setup(zone, server->workers, &server->sched);
+	if (result != KNOT_EOK) {
+		zone->conf = NULL;
+		zone_free(&zone);
+		return NULL;
+	}
 
 	log_zone_load_info(zone, conf->name, zstatus);
 
@@ -367,8 +319,6 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 	assert(server);
 	
 	knot_zonedb_t *db_old = server->zone_db;
-	evsched_t *scheduler = &server->sched;
-	
 	knot_zonedb_t *db_new = knot_zonedb_new(conf->zones_count);
 	if (!db_new) {
 		return NULL;
@@ -382,10 +332,11 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 		zone_t *old_zone = knot_zonedb_find(db_old, apex);
 		knot_dname_free(&apex);
 
-		zone_t *zone = create_zone(zone_config, scheduler, old_zone);
+		zone_t *zone = create_zone(zone_config, server, old_zone);
 		if (!zone) {
 			log_server_error("Zone '%s' cannot be created.\n",
 			                 zone_config->name);
+			conf_free_zone(zone_config);
 			continue;
 		}
 
@@ -446,7 +397,7 @@ int load_zones_from_config(const conf_t *conf, struct server_t *server)
 	/* Freeze zone timers. */
 	if (server->zone_db) {
 		// TODO: ne, tohle nechceme
-		knot_zonedb_foreach(server->zone_db, zone_events_freeze);
+		//knot_zonedb_foreach(server->zone_db, zone_events_freeze);
 	}
 
 	/* Insert all required zones to the new zone DB. */
@@ -469,7 +420,7 @@ int load_zones_from_config(const conf_t *conf, struct server_t *server)
 
 	/* Thaw zone events now that the database is published. */
 	if (server->zone_db) {
-		knot_zonedb_foreach(server->zone_db, zone_events_thaw);
+		knot_zonedb_foreach(server->zone_db, zone_events_start);
 		// TODO: emit after loading
 		//knot_zonedb_foreach(server->zone_db, zones_schedule_notify, server);
 	}

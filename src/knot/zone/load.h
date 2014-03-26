@@ -16,20 +16,9 @@
 
 #pragma once
 
-#include <time.h>
+#include "knot/conf/conf.h"
+#include "knot/server/journal.h"
+#include "knot/zone/contents.h"
 
-struct task;
-typedef struct task task_t;
-
-typedef void (*task_cb)(task_t *);
-
-/*!
- * \brief Task executable by a worker.
- */
-struct task {
-	void *ctx;
-	task_cb run;
-};
-
-task_t *task_create(void *ctx, task_cb run);
-void task_free(task_t *task);
+zone_contents_t *zone_load_contents(conf_zone_t *conf);
+int apply_journal(zone_contents_t *contents, journal_t *journal);

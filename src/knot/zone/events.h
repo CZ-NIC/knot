@@ -33,12 +33,16 @@ typedef enum zone_event_type {
 	ZONE_EVENT_RELOAD = 0,
 	ZONE_EVENT_REFRESH,
 	ZONE_EVENT_EXPIRE,
+	ZONE_EVENT_FLUSH,
 	ZONE_EVENT_DNSSEC,
 	// terminator
 	ZONE_EVENT_COUNT,
 } zone_event_type_t;
 
 typedef struct zone_events {
+	pthread_mutex_t mx;		//!< Mutex protecting the struct.
+	bool running;			//!< Some zone event is being run.
+
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
 
@@ -49,10 +53,21 @@ typedef struct zone_events {
 /*!
  * \brief Initialize zone events.
  *
- * \param events  Zone events.
- * \param zone    Pointer to zone (context of execution).
+ * The function will not set up the scheduling, use \ref zone_events_enable
+ * to do that.
+ *
+ * \param zone  Pointer to zone (context of execution).
  */
-int zone_events_init(struct zone_t *zone, struct server_t *server);
+int zone_events_init(struct zone_t *zone);
+
+/*!
+ * \brief Set up zone events execution.
+ *
+ * \param workers    Worker thread pool.
+ * \param scheduler  Event scheduler.
+ */
+int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
+		      evsched_t *scheduler);
 
 /*!
  * \brief Deinitialize zone events.
@@ -73,3 +88,8 @@ void zone_events_cancel(struct zone_t *zone, zone_event_type_t type);
  * \brief Cancel all zone events.
  */
 void zone_events_cancel_all(struct zone_t *zone);
+
+/*!
+ * \brief Start the events processing.
+ */
+void zone_events_start(struct zone_t *zone);
