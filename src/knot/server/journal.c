@@ -29,6 +29,7 @@
 #include "libknot/common.h"
 #include "knot/other/debug.h"
 #include "knot/server/journal.h"
+#include "libknot/rdata.h"
 
 /*! \brief Infinite file size limit. */
 #define FSLIMIT_INF (~((size_t)0))
@@ -52,12 +53,54 @@ static inline int sfwrite(const void *src, size_t len, int fd)
 	return write(fd, src, len) == len;
 }
 
+static inline journal_node_t *journal_head(journal_t *journal) {
+	return journal->nodes + journal->qhead;
+}
+
+static inline journal_node_t *journal_end(journal_t *journal) {
+	return journal->nodes +  journal->qtail;
+}
+
 /*! \brief Equality compare function. */
 static inline int journal_cmp_eq(uint64_t k1, uint64_t k2)
 {
 	if (k1 > k2) return 1;
 	if (k1 < k2) return -1;
 	return 0;
+}
+
+/*! \brief Return 'serial_from' part of the key. */
+static inline uint32_t journal_key_from(uint64_t k)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Least significant 32 bits.
+	 */
+	return (uint32_t)(k & ((uint64_t)0x00000000ffffffff));
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Return 'serial_to' part of the key. */
+static inline uint32_t journal_key_to(uint64_t k)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Most significant 32 bits.
+	 */
+	return (uint32_t)(k >> (uint64_t)32);
+}
+
+/*----------------------------------------------------------------------------*/
+
+/*! \brief Compare function to match entries with starting serial. */
+static inline int journal_key_from_cmp(uint64_t k, uint64_t from)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 * Need: Least significant 32 bits.
+	 */
+	return ((uint64_t)journal_key_from(k)) - from;
 }
 
 /*! \brief Recover metadata from journal. */
@@ -134,6 +177,143 @@ static int journal_recover(journal_t *j)
 	return KNOT_EOK;
 }
 
+/* Recalculate CRC. */
+static int journal_update_crc(int fd)
+{
+	if (fcntl(fd, F_GETFL) < 0) {
+		return KNOT_EINVAL;
+	}
+
+	char buf[4096];
+	ssize_t rb = 0;
+	crc_t crc = crc_init();
+	if (lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
+		return KNOT_ERROR;
+	}
+	while((rb = read(fd, buf, sizeof(buf))) > 0) {
+		crc = crc_update(crc, (const unsigned char *)buf, rb);
+	}
+	if (lseek(fd, MAGIC_LENGTH, SEEK_SET) < 0) {
+		return KNOT_ERROR;
+	}
+	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
+		dbg_journal("journal: couldn't write CRC to fd=%d\n", fd);
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
+}
+
+
+/*! \brief Create new journal. */
+static int journal_create_file(const char *fn, uint16_t max_nodes)
+{
+	if (fn == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* File lock. */
+	struct flock fl;
+	memset(&fl, 0, sizeof(struct flock));
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 0;
+	fl.l_len = 0;
+	fl.l_pid = getpid();
+
+	/* Create journal file. */
+	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+	if (fd < 0) {
+		dbg_journal("journal: failed to create file '%s'\n", fn);
+		return knot_map_errno(errno);
+	}
+
+	/* Lock. */
+	fcntl(fd, F_SETLKW, &fl);
+
+	/* Create journal header. */
+	dbg_journal("journal: creating header\n");
+	const char magic[MAGIC_LENGTH] = JOURNAL_MAGIC;
+	if (!sfwrite(magic, MAGIC_LENGTH, fd)) {
+		close(fd);
+		remove(fn);
+		return KNOT_ERROR;
+	}
+	crc_t crc = crc_init();
+	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
+		close(fd);
+		remove(fn);
+		return KNOT_ERROR;
+	}
+	if (!sfwrite(&max_nodes, sizeof(uint16_t), fd)) {
+		close(fd);
+		remove(fn);
+		return KNOT_ERROR;
+	}
+
+	/* Create node queue head + tail.
+	 * qhead points to least recent node
+	 * qtail points to next free node
+	 * qhead == qtail means empty queue
+	 */
+	uint16_t zval = 0;
+	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
+		close(fd);
+		remove(fn);
+		return KNOT_ERROR;
+	}
+
+	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
+		close(fd);
+		remove(fn);
+		return KNOT_ERROR;
+	}
+
+	dbg_journal_verb("journal: creating free segment descriptor\n");
+
+	/* Create free segment descriptor. */
+	journal_node_t jn;
+	memset(&jn, 0, sizeof(journal_node_t));
+	jn.id = 0;
+	jn.flags = JOURNAL_VALID;
+	jn.pos = JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t);
+	jn.len = 0;
+	if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
+		close(fd);
+		remove(fn);
+		return KNOT_ERROR;
+	}
+
+	/* Create nodes. */
+	dbg_journal("journal: creating node table, size=%u\n", max_nodes);
+	memset(&jn, 0, sizeof(journal_node_t));
+	for(uint16_t i = 0; i < max_nodes; ++i) {
+		if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
+			close(fd);
+			if (remove(fn) < 0) {
+				dbg_journal("journal: failed to remove journal file after error\n");
+			}
+			return KNOT_ERROR;
+		}
+	}
+
+	/* Recalculate CRC. */
+	if (journal_update_crc(fd) != KNOT_EOK) {
+		close(fd);
+		if(remove(fn) < 0) {
+			dbg_journal("journal: failed to remove journal file after error\n");
+		}
+		return KNOT_ERROR;
+	}
+
+	/* Unlock and close. */
+	close(fd);
+
+	/* Journal file created. */
+	dbg_journal("journal: file '%s' initialized\n", fn);
+	return KNOT_EOK;
+}
+
 /*! \brief Open journal file for r/w (returns error if not exists). */
 static int journal_open_file(journal_t *j)
 {
@@ -148,7 +328,7 @@ static int journal_open_file(journal_t *j)
 		}
 
 		/* Create new journal file and open if not exists. */
-		ret = journal_create(j->path, JOURNAL_NCOUNT);
+		ret = journal_create_file(j->path, JOURNAL_NCOUNT);
 		if(ret == KNOT_EOK) {
 			return journal_open_file(j);
 		}
@@ -156,30 +336,20 @@ static int journal_open_file(journal_t *j)
 	}
 
 	/* File lock. */
-	memset(&j->fl, 0, sizeof(struct flock));
-	j->fl.l_type = F_WRLCK;
-	j->fl.l_whence = SEEK_SET;
-	j->fl.l_start = 0;
-	j->fl.l_len = 0;
-	j->fl.l_pid = getpid();
+	struct flock lock;
+	memset(&lock, 0, sizeof(struct flock));
+	lock.l_type = F_WRLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = 0;
+	lock.l_len = 0;
+	lock.l_pid = 0;
 
 	/* Attempt to lock. */
 	dbg_journal_verb("journal: locking journal %s\n", j->path);
-	ret = fcntl(j->fd, F_SETLK, &j->fl);
-
-	/* Lock. */
+	ret = fcntl(j->fd, F_SETLKW, &lock);
 	if (ret < 0) {
-		struct flock efl = {0};
-		memcpy(&efl, &j->fl, sizeof(struct flock));
-		(void) fcntl(j->fd, F_GETLK, &efl);
-		log_server_warning("Journal file '%s' is locked by process "
-		                   "PID=%d, waiting for process to "
-		                   "release lock.\n",
-		                   j->path, efl.l_pid);
-		ret = fcntl(j->fd, F_SETLKW, &j->fl);
+		return knot_map_errno(errno);
 	}
-	UNUSED(ret);
-	dbg_journal("journal: locked journal %s (returned %d)\n", j->path, ret);
 
 	/* Read magic bytes. */
 	dbg_journal("journal: reading magic bytes\n");
@@ -194,7 +364,7 @@ static int journal_open_file(journal_t *j)
 		                   "it will be purged.\n", j->path);
 		close(j->fd);
 		j->fd = -1;
-		ret = journal_create(j->path, JOURNAL_NCOUNT);
+		ret = journal_create_file(j->path, JOURNAL_NCOUNT);
 		if(ret == KNOT_EOK) {
 			return journal_open_file(j);
 		}
@@ -225,7 +395,7 @@ static int journal_open_file(journal_t *j)
 		                   "it will be purged.\n", j->path);
 		close(j->fd);
 		j->fd = -1;
-		ret = journal_create(j->path, JOURNAL_NCOUNT);
+		ret = journal_create_file(j->path, JOURNAL_NCOUNT);
 		if(ret == KNOT_EOK) {
 			return journal_open_file(j);
 		}
@@ -342,16 +512,47 @@ static int journal_close_file(journal_t *journal)
 	int ret = journal_update_crc(journal->fd);
 
 	/* Close file. */
-	close(journal->fd);
-	journal->fd = -1;
+	if (journal->fd > 0) {
+		close(journal->fd);
+		journal->fd = -1;
+	}
 
 	/* Free nodes. */
 	free(journal->nodes);
 	journal->nodes = NULL;
 
-	dbg_journal("journal: closed journal %p\n", journal);
-
 	return ret;
+}
+
+/*!  \brief Sync node state to permanent storage. */
+static int journal_update(journal_t *journal, journal_node_t *n)
+{
+	if (journal == NULL || n == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Calculate node offset. */
+	const size_t node_len = sizeof(journal_node_t);
+	size_t i = n - journal->nodes;
+	if (i > journal->max_nodes) {
+		return KNOT_EINVAL;
+	}
+
+	/* Calculate node position in permanent storage. */
+	long jn_fpos = JOURNAL_HSIZE + (i + 1) * node_len;
+
+	dbg_journal("journal: syncing journal node=%zu id=%llu flags=0x%x\n",
+		      i, (unsigned long long)n->id, n->flags);
+
+	/* Write back. */
+	int seek_ret = lseek(journal->fd, jn_fpos, SEEK_SET);
+	if (seek_ret < 0 || !sfwrite(n, node_len, journal->fd)) {
+		dbg_journal("journal: failed to writeback node=%llu to %ld\n",
+		            (unsigned long long)n->id, jn_fpos);
+		return KNOT_ERROR;
+	}
+
+	return KNOT_EOK;
 }
 
 int journal_write_in(journal_t *j, journal_node_t **rn, uint64_t id, size_t len)
@@ -519,145 +720,10 @@ int journal_write_out(journal_t *journal, journal_node_t *n)
 	return KNOT_EOK;
 }
 
-/* Recalculate CRC. */
-int journal_update_crc(int fd)
+
+journal_t* journal_open(const char *path, size_t fslimit)
 {
-	if (fcntl(fd, F_GETFL) < 0) {
-		return KNOT_EINVAL;
-	}
-
-	char buf[4096];
-	ssize_t rb = 0;
-	crc_t crc = crc_init();
-	if (lseek(fd, MAGIC_LENGTH + sizeof(crc_t), SEEK_SET) < 0) {
-		return KNOT_ERROR;
-	}
-	while((rb = read(fd, buf, sizeof(buf))) > 0) {
-		crc = crc_update(crc, (const unsigned char *)buf, rb);
-	}
-	if (lseek(fd, MAGIC_LENGTH, SEEK_SET) < 0) {
-		return KNOT_ERROR;
-	}
-	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
-		dbg_journal("journal: couldn't write CRC to fd=%d\n", fd);
-		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
-}
-
-int journal_create(const char *fn, uint16_t max_nodes)
-{
-	if (fn == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* File lock. */
-	struct flock fl;
-	memset(&fl, 0, sizeof(struct flock));
-	fl.l_type = F_WRLCK;
-	fl.l_whence = SEEK_SET;
-	fl.l_start = 0;
-	fl.l_len = 0;
-	fl.l_pid = getpid();
-
-	/* Create journal file. */
-	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
-	if (fd < 0) {
-		dbg_journal("journal: failed to create file '%s'\n", fn);
-		return knot_map_errno(errno);
-	}
-
-	/* Lock. */
-	fcntl(fd, F_SETLKW, &fl);
-
-	/* Create journal header. */
-	dbg_journal("journal: creating header\n");
-	const char magic[MAGIC_LENGTH] = JOURNAL_MAGIC;
-	if (!sfwrite(magic, MAGIC_LENGTH, fd)) {
-		close(fd);
-		remove(fn);
-		return KNOT_ERROR;
-	}
-	crc_t crc = crc_init();
-	if (!sfwrite(&crc, sizeof(crc_t), fd)) {
-		close(fd);
-		remove(fn);
-		return KNOT_ERROR;
-	}
-	if (!sfwrite(&max_nodes, sizeof(uint16_t), fd)) {
-		close(fd);
-		remove(fn);
-		return KNOT_ERROR;
-	}
-
-	/* Create node queue head + tail.
-	 * qhead points to least recent node
-	 * qtail points to next free node
-	 * qhead == qtail means empty queue
-	 */
-	uint16_t zval = 0;
-	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
-		close(fd);
-		remove(fn);
-		return KNOT_ERROR;
-	}
-
-	if (!sfwrite(&zval, sizeof(uint16_t), fd)) {
-		close(fd);
-		remove(fn);
-		return KNOT_ERROR;
-	}
-
-	dbg_journal_verb("journal: creating free segment descriptor\n");
-
-	/* Create free segment descriptor. */
-	journal_node_t jn;
-	memset(&jn, 0, sizeof(journal_node_t));
-	jn.id = 0;
-	jn.flags = JOURNAL_VALID;
-	jn.pos = JOURNAL_HSIZE + (max_nodes + 1) * sizeof(journal_node_t);
-	jn.len = 0;
-	if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
-		close(fd);
-		remove(fn);
-		return KNOT_ERROR;
-	}
-
-	/* Create nodes. */
-	dbg_journal("journal: creating node table, size=%u\n", max_nodes);
-	memset(&jn, 0, sizeof(journal_node_t));
-	for(uint16_t i = 0; i < max_nodes; ++i) {
-		if (!sfwrite(&jn, sizeof(journal_node_t), fd)) {
-			close(fd);
-			if (remove(fn) < 0) {
-				dbg_journal("journal: failed to remove journal file after error\n");
-			}
-			return KNOT_ERROR;
-		}
-	}
-
-	/* Recalculate CRC. */
-	if (journal_update_crc(fd) != KNOT_EOK) {
-		close(fd);
-		if(remove(fn) < 0) {
-			dbg_journal("journal: failed to remove journal file after error\n");
-		}
-		return KNOT_ERROR;
-	}
-
-	/* Unlock and close. */
-	close(fd);
-
-	/* Journal file created. */
-	dbg_journal("journal: file '%s' initialized\n", fn);
-	return KNOT_EOK;
-}
-
-journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
-{
-	/*! \todo Memory mapping may be faster than stdio? (issue #964) */
-	if (fn == NULL) {
+	if (path == NULL) {
 		return NULL;
 	}
 
@@ -667,7 +733,7 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	}
 
 	memset(j, 0, sizeof(journal_t));
-	j->bflags = bflags;
+	j->bflags = JOURNAL_DIRTY;
 	j->fd = -1;
 
 	/* Set file size. */
@@ -678,30 +744,36 @@ journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags)
 	}
 
 	/* Copy path. */
-	j->path = strdup(fn);
+	j->path = strdup(path);
 	if (j->path == NULL) {
 		free(j);
 		return NULL;
 	}
-	/* Initialize mutex. */
-	if (pthread_mutex_init(&j->mutex, NULL) != 0) {
-		free(j->path);
-		free(j);
+
+	/* Open journal file. */
+	int ret = journal_open_file(j);
+	if (ret != KNOT_EOK) {
+		journal_close(j);
 		return NULL;
 	}
+
 	return j;
 }
 
-int journal_fetch(journal_t *journal, uint64_t id,
+/*!
+ * \brief Entry identifier compare function.
+ *
+ * \retval -n if k1 < k2
+ * \retval +n if k1 > k2
+ * \retval  0 if k1 == k2
+ */
+typedef int (*journal_cmp_t)(uint64_t k1, uint64_t k2);
+
+static int journal_fetch(journal_t *journal, uint64_t id,
 		  journal_cmp_t cf, journal_node_t** dst)
 {
 	if (journal == NULL || dst == NULL) {
 		return KNOT_EINVAL;
-	}
-
-	/* Check compare function. */
-	if (!cf) {
-		cf = journal_cmp_eq;
 	}
 
 	/*! \todo Organize journal descriptors in btree? */
@@ -719,23 +791,7 @@ int journal_fetch(journal_t *journal, uint64_t id,
 	return KNOT_ENOENT;
 }
 
-int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst)
-{
-	if (journal == NULL || dst == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	journal_node_t *n = 0;
-	if(journal_fetch(journal, id, cf, &n) != 0) {
-		dbg_journal("journal: failed to fetch node with id=%llu\n",
-		            (unsigned long long)id);
-		return KNOT_ENOENT;
-	}
-
-	return journal_read_node(journal, n, dst);
-}
-
-int journal_read_node(journal_t *journal, journal_node_t *n, char *dst)
+static int journal_read_node(journal_t *journal, journal_node_t *n, char *dst)
 {
 	dbg_journal("journal: reading node with id=%"PRIu64", data=<%u, %u>, flags=0x%hx\n",
 	            n->id, n->pos, n->pos + n->len, n->flags);
@@ -758,57 +814,48 @@ int journal_read_node(journal_t *journal, journal_node_t *n, char *dst)
 	return KNOT_EOK;
 }
 
-int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
-{
-	if (journal == NULL || src == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Prepare journal write. */
-	journal_node_t *n = NULL;
-	int ret = journal_write_in(journal, &n, id, size);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* Write data to permanent storage. */
-	int seek_ret = lseek(journal->fd, n->pos, SEEK_SET);
-	if (seek_ret < 0 || !sfwrite(src, size, journal->fd)) {
-		return KNOT_ERROR;
-	}
-
-	/* Finalize journal write. */
-	return journal_write_out(journal, n);
-}
-
-int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size)
+int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size, bool rdonly)
 {
 	if (journal == NULL || dst == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Prepare journal write. */
+	/* Check if entry exists. */
 	journal_node_t *n = NULL;
-	int ret = journal_write_in(journal, &n, id, size);
+	int ret = journal_fetch(journal, id, journal_cmp_eq, &n);
 	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* Reserve data in permanent storage. */
-	/*! \todo This is only needed when inflating journal file. */
-	if (lseek(journal->fd, n->pos, SEEK_SET) < 0) {
-		return KNOT_ERROR;
-	}
-	char nbuf[4096] = {0};
-	size_t wb = sizeof(nbuf);
-	while (size > 0) {
-		if (size < sizeof(nbuf)) {
-			wb = size;
+		/* Return error if read only. */
+		if (rdonly) {
+			return ret;
 		}
-		if (!sfwrite(nbuf, wb, journal->fd)) {
+
+		/* Prepare journal write. */
+		ret = journal_write_in(journal, &n, id, size);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		/* Reserve data in permanent storage. */
+		/*! \todo This is only needed when inflating journal file. */
+		if (lseek(journal->fd, n->pos, SEEK_SET) < 0) {
 			return KNOT_ERROR;
 		}
-		size -= wb;
+		char nbuf[4096] = {0};
+		size_t wb = sizeof(nbuf);
+		while (size > 0) {
+			if (size < sizeof(nbuf)) {
+				wb = size;
+			}
+			if (!sfwrite(nbuf, wb, journal->fd)) {
+				return KNOT_ERROR;
+			}
+			size -= wb;
+		}
+	} else {
+		/* Entry resizing is not really supported now. */
+		if (n->len < size) {
+			return KNOT_ESPACE;
+		}
 	}
 
 	/* Align offset to page size (required). */
@@ -867,48 +914,6 @@ int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize)
 		ret = journal_write_out(journal, n);
 	}
 	return ret;
-}
-
-int journal_walk(journal_t *journal, journal_apply_t apply)
-{
-	int ret = KNOT_EOK;
-	size_t i = journal->qhead;
-	for(; i != journal->qtail; i = (i + 1) % journal->max_nodes) {
-		/* Apply function. */
-		ret = apply(journal, journal->nodes + i);
-	}
-
-	return ret;
-}
-
-int journal_update(journal_t *journal, journal_node_t *n)
-{
-	if (journal == NULL || n == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Calculate node offset. */
-	const size_t node_len = sizeof(journal_node_t);
-	size_t i = n - journal->nodes;
-	if (i > journal->max_nodes) {
-		return KNOT_EINVAL;
-	}
-
-	/* Calculate node position in permanent storage. */
-	long jn_fpos = JOURNAL_HSIZE + (i + 1) * node_len;
-
-	dbg_journal("journal: syncing journal node=%zu id=%llu flags=0x%x\n",
-		      i, (unsigned long long)n->id, n->flags);
-
-	/* Write back. */
-	int seek_ret = lseek(journal->fd, jn_fpos, SEEK_SET);
-	if (seek_ret < 0 || !sfwrite(n, node_len, journal->fd)) {
-		dbg_journal("journal: failed to writeback node=%llu to %ld\n",
-		            (unsigned long long)n->id, jn_fpos);
-		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
 }
 
 int journal_trans_begin(journal_t *journal)
@@ -981,53 +986,234 @@ int journal_close(journal_t *journal)
 		return KNOT_EINVAL;
 	}
 
+	/* Close file. */
+	journal_close_file(journal);
+
 	/* Free allocated resources. */
-	pthread_mutex_destroy(&journal->mutex);
 	free(journal->path);
 	free(journal);
 
 	return KNOT_EOK;
 }
 
-bool journal_is_used(journal_t *journal)
+bool journal_exists(const char *path)
 {
-	if (journal == NULL) {
+	if (path == NULL) {
 		return false;
 	}
 
 	/* Check journal file existence. */
 	struct stat st;
-	return stat(journal->path, &st) == 0;
+	return stat(path, &st) == 0;
 }
 
-int journal_retain(journal_t *journal)
+/*! \brief No doc here. Moved from zones.h (@mvavrusa) */
+static int changesets_unpack(knot_changesets_t *chgsets)
 {
+	/*! \todo #1291 Why doesn't this just increment stream ptr? */
+
+	assert(chgsets != NULL);
+	/*
+	 * Parses changesets from the binary format stored in chgsets->data
+	 * into the changeset_t structures.
+	 */
+	knot_rrset_t *rrset = 0;
+	int ret = 0;
+
+	knot_changeset_t* chs = NULL;
+	WALK_LIST(chs, chgsets->sets) {
+		/* Read changeset flags. */
+		if (chs->data == NULL) {
+			return KNOT_EMALF;
+		}
+		size_t remaining = chs->size;
+		memcpy(&chs->flags, chs->data, sizeof(uint32_t));
+		remaining -= sizeof(uint32_t);
+
+		/* Read initial changeset RRSet - SOA. */
+		uint8_t *stream = chs->data + (chs->size - remaining);
+		ret = rrset_deserialize(stream, &remaining, &rrset);
+		if (ret != KNOT_EOK) {
+			return KNOT_EMALF;
+		}
+
+		/* in this special case (changesets loaded
+		 * from journal) the SOA serial should already
+		 * be set, check it.
+		 */
+		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
+		assert(chs->serial_from == knot_rdata_soa_serial(rrset));
+		knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
+
+		/* Read remaining RRSets */
+		int in_remove_section = 1;
+		while (remaining > 0) {
+
+			/* Parse next RRSet. */
+			rrset = 0;
+			stream = chs->data + (chs->size - remaining);
+			ret = rrset_deserialize(stream, &remaining, &rrset);
+			if (ret != KNOT_EOK) {
+				return KNOT_EMALF;
+			}
+
+			/* Check for next SOA. */
+			if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
+
+				/* Move to ADD section if in REMOVE. */
+				if (in_remove_section) {
+					knot_changeset_add_soa(chs, rrset,
+					                       KNOT_CHANGESET_ADD);
+					in_remove_section = 0;
+				} else {
+					/* Final SOA. */
+					knot_rrset_deep_free(&rrset, 1, NULL);
+					break;
+				}
+			} else {
+				/* Remove RRSets. */
+				if (in_remove_section) {
+					ret = knot_changeset_add_rrset(
+						chs, rrset,
+						KNOT_CHANGESET_REMOVE);
+				} else {
+				/* Add RRSets. */
+					ret = knot_changeset_add_rrset(
+						chs, rrset,
+						KNOT_CHANGESET_ADD);
+				}
+
+				/* Check result. */
+				if (ret != KNOT_EOK) {
+					return KNOT_ERROR;
+				}
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+/*! \brief Helper for iterating journal (this is temporary until #80) */
+typedef int (*journal_apply_t)(journal_t *, journal_node_t *, void *);
+static int journal_walk(const char *fn, uint32_t from, uint32_t to,
+                        journal_apply_t cb, void *data)
+{
+	/* Open journal for reading. */
+	journal_t *journal = journal_open(fn, FSLIMIT_INF);
 	if (journal == NULL) {
-		return KNOT_EINVAL;
+		return KNOT_ENOMEM;
 	}
 
-	dbg_journal("%s: lock(%p)\n", __func__, journal);
-	pthread_mutex_lock(&journal->mutex);
-	dbg_journal("%s: open(%p)\n", __func__, journal);
-
-	int ret = journal_open_file(journal);
+	/* Read entries from starting serial until finished. */
+	uint32_t found_to = from;
+	journal_node_t *n = 0;
+	int ret = journal_fetch(journal, from, journal_key_from_cmp, &n);
 	if (ret != KNOT_EOK) {
-		dbg_journal("%s: open(%p) FAIL\n", __func__, journal);
-		pthread_mutex_unlock(&journal->mutex);
+		goto finish;
 	}
 
+	while (n != 0 && n != journal_end(journal)) {
+		/* Check for history end. */
+		if (to == found_to) {
+			break;
+		}
+
+		/* Skip wrong changesets. */
+		if (!(n->flags & JOURNAL_VALID) || n->flags & JOURNAL_TRANS) {
+			++n;
+			continue;
+		}
+
+		/* Callback. */
+		ret = cb(journal, n, data);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+
+		++n;
+	}
+
+finish:
+	/* Close journal. */
+	journal_close(journal);
 	return ret;
 }
 
-
-void journal_release(journal_t *journal)
+static int load_changeset(journal_t *journal, journal_node_t *n, void *data)
 {
-	if (journal == NULL) {
-		return;
+	knot_changesets_t *chsets = (knot_changesets_t *)data;
+	knot_changeset_t *chs = knot_changesets_create_changeset(chsets);
+	if (chs == NULL) {
+		return KNOT_ERROR;
 	}
 
-	dbg_journal("%s: close(%p)\n", __func__, journal);
-	journal_close_file(journal);
-	dbg_journal("%s: unlock(%p)\n", __func__, journal);
-	pthread_mutex_unlock(&journal->mutex);
+	/* Initialize changeset. */
+	chs->serial_from = journal_key_from(n->id);
+	chs->serial_to = journal_key_to(n->id);
+	chs->data = malloc(n->len);
+	if (!chs->data) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Read journal entry. */
+	int ret = journal_read_node(journal, n, (char*)chs->data);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Update changeset binary size. */
+	chs->size = n->len;
+	return KNOT_EOK;
+}
+
+int journal_load_changesets(const char *path, knot_changesets_t *dst,
+                            uint32_t from, uint32_t to)
+{
+	int ret = journal_walk(path, from, to, &load_changeset, dst);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Unpack binary data. */
+	ret = changesets_unpack(dst);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Check for complete history. */
+	knot_changeset_t *last = knot_changesets_get_last(dst);
+	if (to != last->serial_to) {
+		return KNOT_ERANGE;
+	}
+
+	return KNOT_EOK;
+}
+
+static void mark_synced(journal_t *journal, journal_node_t *node)
+{
+	/* Check for dirty bit (not synced to permanent storage). */
+	if (node->flags & JOURNAL_DIRTY) {
+		/* Remove dirty bit. */
+		node->flags = node->flags & ~JOURNAL_DIRTY;
+		journal_update(journal, node);
+	}
+}
+
+int journal_mark_synced(const char *path)
+{
+	journal_t *journal = journal_open(path, FSLIMIT_INF);
+	if (journal == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = KNOT_EOK;
+	size_t i = journal->qhead;
+	for(; i != journal->qtail; i = (i + 1) % journal->max_nodes) {
+		mark_synced(journal, journal->nodes + i);
+	}
+
+	journal_close(journal);
+
+	return ret;
 }

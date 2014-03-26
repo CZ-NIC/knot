@@ -21,4 +21,4 @@
 #include "knot/zone/contents.h"
 
 zone_contents_t *zone_load_contents(conf_zone_t *conf);
-int apply_journal(zone_contents_t *contents, journal_t *journal);
+int apply_journal(zone_contents_t *contents, conf_zone_t *conf);

@@ -78,6 +78,13 @@ int zonefile_open(zloader_t *loader, const char *source, const char *origin,
  */
 zone_contents_t *zonefile_load(zloader_t *loader);
 
+
+/*!
+ * \brief Write zone contents to zone file.
+ */
+int zonefile_write(const char *path, zone_contents_t *zone,
+                   const struct sockaddr_storage *from);
+
 /*!
  * \brief Close zone file loader.
  *

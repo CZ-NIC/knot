@@ -43,6 +43,7 @@
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
+#include "knot/zone/zonefile.h"
 #include "libknot/util/utils.h"
 
 /*!
@@ -198,25 +199,6 @@ int zones_refresh_ev(event_t *event)
 	return ret;
 }
 
-/*! \brief Function for marking nodes as synced and updated. */
-static int zones_ixfrdb_sync_apply(journal_t *j, journal_node_t *n)
-{
-	assert(j);
-	assert(n);
-
-	/* Check for dirty bit (not synced to permanent storage). */
-	if (n->flags & JOURNAL_DIRTY) {
-
-		/* Remove dirty bit. */
-		n->flags = n->flags & ~JOURNAL_DIRTY;
-
-		/* Sync. */
-		journal_update(j, n);
-	}
-
-	return KNOT_EOK;
-}
-
 static bool zones_changesets_empty(const knot_changesets_t *chs)
 {
 	if (chs == NULL) {
@@ -244,7 +226,7 @@ static int zones_store_chgsets_try_store(zone_t *zone,
 		return KNOT_ERROR;
 	}
 
-	int ret = zones_store_changesets(zone, chgsets, *transaction);
+	int ret = zones_store_changesets(chgsets, *transaction);
 
 	/* In any case, rollback the transaction. */
 	if (ret != KNOT_EOK) {
@@ -258,64 +240,9 @@ static int zones_store_chgsets_try_store(zone_t *zone,
 	return KNOT_EOK;
 }
 
-static int zones_zonefile_sync_from_ev(zone_t *zone)
-{
-	assert(zone);
-
-	/* Only on zones with valid contents (non empty). */
-	int ret = KNOT_EOK;
-	if (zone->contents && journal_is_used(zone->ixfr_db)) {
-		/* Synchronize journal. */
-		ret = journal_retain(zone->ixfr_db);
-		if (ret == KNOT_EOK) {
-			ret = zones_zonefile_sync(zone, zone->ixfr_db);
-			journal_release(zone->ixfr_db);
-		}
-
-		rcu_read_lock();
-		if (ret == KNOT_EOK) {
-			log_zone_info("Applied differences of '%s' to zonefile.\n",
-			              zone->conf->name);
-		} else if (ret != KNOT_ERANGE) {
-			log_zone_warning("Failed to apply differences of '%s' "
-			                 "to zonefile (%s).\n", zone->conf->name,
-			                 knot_strerror(ret));
-		}
-		rcu_read_unlock();
-	}
-
-	return ret;
-}
-
-/*!
- * \brief Sync chagnes in zone to zonefile.
- */
-int zones_flush_ev(event_t *event)
-{
-	assert(event);
-	dbg_zones("zone: zonefile SYNC timer event\n");
-
-	/* Fetch zone. */
-	zone_t *zone = (zone_t *)event->data;
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = zones_zonefile_sync_from_ev(zone);
-
-	/* Reschedule. */
-	rcu_read_lock();
-	int next_timeout = zone->conf->dbsync_timeout;
-	if (next_timeout > 0) {
-		zones_schedule_zonefile_sync(zone, next_timeout * 1000);
-	}
-	rcu_read_unlock();
-	return ret;
-}
-
 static int zones_store_changesets_begin_and_store(zone_t *zone,
                                                   knot_changesets_t *chgsets,
-                                                  journal_t **transaction)
+                                                  journal_t **journal)
 {
 	assert(zone != NULL);
 	assert(chgsets != NULL);
@@ -324,7 +251,7 @@ static int zones_store_changesets_begin_and_store(zone_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	int ret = zones_store_chgsets_try_store(zone, chgsets, transaction);
+	int ret = zones_store_chgsets_try_store(zone, chgsets, journal);
 
 	/* If the journal was full (KNOT_EBUSY), we must flush it by hand and
 	 * try to save the changesets once again. If this fails, the changesets
@@ -338,68 +265,19 @@ static int zones_store_changesets_begin_and_store(zone_t *zone,
 		 * by hand and leave the planned one there to be executed
 		 * later. */
 
-		assert(*transaction == NULL);
+		assert(*journal == NULL);
 
 		/* Transaction rolled back, journal released, we may flush. */
-		ret = zones_zonefile_sync_from_ev(zone);
+		ret = zone_flush_journal(zone);
 		if (ret != KNOT_EOK) {
-			log_zone_error("Failed to sync journal to zone file.\n");
 			return ret;
 		}
 
 		/* Begin the transaction anew. */
-		ret = zones_store_chgsets_try_store(zone, chgsets, transaction);
+		ret = zones_store_chgsets_try_store(zone, chgsets, journal);
 	}
 
 	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-/*! \brief Return 'serial_from' part of the key. */
-static inline uint32_t ixfrdb_key_from(uint64_t k)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Least significant 32 bits.
-	 */
-	return (uint32_t)(k & ((uint64_t)0x00000000ffffffff));
-}
-
-/*----------------------------------------------------------------------------*/
-
-/*! \brief Return 'serial_to' part of the key. */
-static inline uint32_t ixfrdb_key_to(uint64_t k)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Most significant 32 bits.
-	 */
-	return (uint32_t)(k >> (uint64_t)32);
-}
-
-/*----------------------------------------------------------------------------*/
-
-/*! \brief Compare function to match entries with target serial. */
-static inline int ixfrdb_key_to_cmp(uint64_t k, uint64_t to)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Most significant 32 bits.
-	 */
-	return ((uint64_t)ixfrdb_key_to(k)) - to;
-}
-
-/*----------------------------------------------------------------------------*/
-
-/*! \brief Compare function to match entries with starting serial. */
-static inline int ixfrdb_key_from_cmp(uint64_t k, uint64_t from)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Least significant 32 bits.
-	 */
-	return ((uint64_t)ixfrdb_key_from(k)) - from;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -414,217 +292,6 @@ static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
 }
 
 /*----------------------------------------------------------------------------*/
-
-int zones_changesets_from_binary(knot_changesets_t *chgsets)
-{
-	/*! \todo #1291 Why doesn't this just increment stream ptr? */
-
-	assert(chgsets != NULL);
-	/*
-	 * Parses changesets from the binary format stored in chgsets->data
-	 * into the changeset_t structures.
-	 */
-	knot_rrset_t *rrset = 0;
-	int ret = 0;
-
-	knot_changeset_t* chs = NULL;
-	WALK_LIST(chs, chgsets->sets) {
-		/* Read changeset flags. */
-		if (chs->data == NULL) {
-			return KNOT_EMALF;
-		}
-		size_t remaining = chs->size;
-		memcpy(&chs->flags, chs->data, sizeof(uint32_t));
-		remaining -= sizeof(uint32_t);
-
-		/* Read initial changeset RRSet - SOA. */
-		uint8_t *stream = chs->data + (chs->size - remaining);
-		ret = rrset_deserialize(stream, &remaining, &rrset);
-		if (ret != KNOT_EOK) {
-			dbg_xfr("xfr: SOA: failed to deserialize data "
-			        "from changeset, %s\n", knot_strerror(ret));
-			return KNOT_EMALF;
-		}
-
-		/* in this special case (changesets loaded
-		 * from journal) the SOA serial should already
-		 * be set, check it.
-		 */
-		dbg_xfr_verb("xfr: reading RRSets to REMOVE, first RR is %hu\n",
-		             knot_rrset_type(rrset));
-		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
-		assert(chs->serial_from == knot_rdata_soa_serial(rrset));
-		knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
-
-		/* Read remaining RRSets */
-		int in_remove_section = 1;
-		while (remaining > 0) {
-
-			/* Parse next RRSet. */
-			rrset = 0;
-			stream = chs->data + (chs->size - remaining);
-			ret = rrset_deserialize(stream, &remaining, &rrset);
-			if (ret != KNOT_EOK) {
-				dbg_xfr("xfr: failed to deserialize data "
-				        "from changeset, %s\n",
-				        knot_strerror(ret));
-				return KNOT_EMALF;
-			}
-
-			/* Check for next SOA. */
-			if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
-
-				/* Move to ADD section if in REMOVE. */
-				if (in_remove_section) {
-					knot_changeset_add_soa(chs, rrset,
-					                       KNOT_CHANGESET_ADD);
-					dbg_xfr_verb("xfr: reading RRSets"
-					             " to ADD\n");
-					in_remove_section = 0;
-				} else {
-					/* Final SOA. */
-					dbg_xfr_verb("xfr: extra SOA\n");
-					knot_rrset_deep_free(&rrset, 1, NULL);
-					break;
-				}
-			} else {
-				/* Remove RRSets. */
-				if (in_remove_section) {
-					ret = knot_changeset_add_rrset(
-						chs, rrset,
-						KNOT_CHANGESET_REMOVE);
-				} else {
-				/* Add RRSets. */
-					ret = knot_changeset_add_rrset(
-						chs, rrset,
-						KNOT_CHANGESET_ADD);
-				}
-
-				/* Check result. */
-				if (ret != KNOT_EOK) {
-					dbg_xfr("xfr: failed to add/remove "
-					        "RRSet to changeset: %s\n",
-					        knot_strerror(ret));
-					return KNOT_ERROR;
-				}
-			}
-		}
-
-		dbg_xfr_verb("xfr: read all RRSets in changeset\n");
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int zones_load_changesets(const zone_t *zone, knot_changesets_t *dst,
-                          uint32_t from, uint32_t to)
-{
-	if (!zone || !dst) {
-		dbg_zones_detail("Bad arguments: zone=%p, dst=%p\n", zone, dst);
-		return KNOT_EINVAL;
-	}
-
-	/* Fetch zone-specific data. */
-	if (!zone->ixfr_db) {
-		dbg_zones_detail("Bad arguments: zone->ixfr_db=%p\n", zone->ixfr_db);
-		return KNOT_EINVAL;
-	}
-
-	/* Check journal file existence. */
-	if (!journal_is_used(zone->ixfr_db)) {
-		return KNOT_ERANGE; /* Not used, no changesets available. */
-	}
-
-	/* Retain journal for changeset loading. */
-	int ret = journal_retain(zone->ixfr_db);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* Read entries from starting serial until finished. */
-	uint32_t found_to = from;
-	journal_node_t *n = 0;
-	ret = journal_fetch(zone->ixfr_db, from, ixfrdb_key_from_cmp, &n);
-	if (ret != KNOT_EOK) {
-		dbg_xfr("xfr: failed to fetch starting changeset: %s\n",
-		        knot_strerror(ret));
-		journal_release(zone->ixfr_db);
-		return ret;
-	}
-
-	while (n != 0 && n != journal_end(zone->ixfr_db)) {
-
-		/* Check for history end. */
-		if (to == found_to) {
-			break;
-		}
-
-		knot_changeset_t *chs = knot_changesets_create_changeset(dst);
-		if (chs == NULL) {
-			dbg_xfr("xfr: failed to create changeset: %s\n",
-			        knot_strerror(ret));
-			journal_release(zone->ixfr_db);
-			return KNOT_ERROR;
-		}
-
-		/* Skip wrong changesets. */
-		if (!(n->flags & JOURNAL_VALID) || n->flags & JOURNAL_TRANS) {
-			++n;
-			continue;
-		}
-
-		/* Initialize changeset. */
-		dbg_xfr_detail("xfr: reading entry #%zu id=%llu\n",
-		               dst->count, (unsigned long long)n->id);
-		chs->serial_from = ixfrdb_key_from(n->id);
-		chs->serial_to = ixfrdb_key_to(n->id);
-		chs->data = malloc(n->len);
-		if (!chs->data) {
-			journal_release(zone->ixfr_db);
-			return KNOT_ENOMEM;
-		}
-
-		/* Read journal entry. */
-		ret = journal_read_node(zone->ixfr_db, n, (char*)chs->data);
-		if (ret != KNOT_EOK) {
-			dbg_xfr("xfr: failed to read data from journal\n");
-			journal_release(zone->ixfr_db);
-			return KNOT_ERROR;
-		}
-
-		/* Update changeset binary size. */
-		chs->size = n->len;
-
-		/* Next node. */
-		found_to = chs->serial_to;
-		++n;
-
-		/*! \todo Check consistency. */
-	}
-
-	dbg_xfr_detail("xfr: finished reading journal entries\n");
-	journal_release(zone->ixfr_db);
-
-	/* Unpack binary data. */
-	int unpack_ret = zones_changesets_from_binary(dst);
-	if (unpack_ret != KNOT_EOK) {
-		dbg_xfr("xfr: failed to unpack changesets "
-		        "from binary, %s\n", knot_strerror(unpack_ret));
-		return unpack_ret;
-	}
-
-	/* Check for complete history. */
-	if (to != found_to) {
-		dbg_xfr_detail("xfr: load changesets finished, ERANGE\n");
-		return KNOT_ERANGE;
-	}
-
-	/* History reconstructed. */
-	dbg_xfr_detail("xfr: load changesets finished, EOK\n");
-	return KNOT_EOK;
-}
 
 void zones_free_merged_changesets(knot_changesets_t *diff_chs,
                                   knot_changesets_t *sec_chs)
@@ -748,7 +415,7 @@ uint32_t zones_next_serial(zone_t *zone)
 {
 	assert(zone);
 
-	uint32_t old_serial = knot_zone_serial(zone->contents);
+	uint32_t old_serial = zone_contents_serial(zone->contents);
 	uint32_t new_serial;
 
 	switch (zones_serial_policy(zone)) {
@@ -800,184 +467,8 @@ bool zones_nsec3param_changed(const zone_contents_t *old_contents,
 }
 
 
-
-/*----------------------------------------------------------------------------*/
-
-static int zones_open_free_filename(const char *old_name, char **new_name)
-{
-	/* find zone name not present on the disk */
-	size_t name_size = strlen(old_name);
-	*new_name = malloc(name_size + 7 + 1);
-	if (*new_name == NULL) {
-		return -1;
-	}
-	memcpy(*new_name, old_name, name_size + 1);
-	strncat(*new_name, ".XXXXXX", 7);
-	dbg_zones_verb("zones: creating temporary zone file\n");
-	mode_t old_mode = umask(077);
-	int fd = mkstemp(*new_name);
-	UNUSED(umask(old_mode));
-	if (fd < 0) {
-		dbg_zones_verb("zones: couldn't create temporary zone file\n");
-		free(*new_name);
-		*new_name = NULL;
-	}
-
-	return fd;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int save_transferred_zone(zone_contents_t *zone, const struct sockaddr_storage *from, const char *fname)
-{
-	assert(zone != NULL && fname != NULL);
-
-	char *new_fname = NULL;
-	int fd = zones_open_free_filename(fname, &new_fname);
-	if (fd < 0) {
-		return KNOT_EWRITABLE;
-	}
-
-	FILE *f = fdopen(fd, "w");
-	if (f == NULL) {
-		log_zone_warning("Failed to open file descriptor for text zone.\n");
-		unlink(new_fname);
-		free(new_fname);
-		return KNOT_ERROR;
-	}
-
-	if (zone_dump_text(zone, from, f) != KNOT_EOK) {
-		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
-		                 new_fname);
-		fclose(f);
-		unlink(new_fname);
-		free(new_fname);
-		return KNOT_ERROR;
-	}
-
-	/* Set zone file rights to 0640. */
-	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
-
-	/* Swap temporary zonefile and new zonefile. */
-	fclose(f);
-
-	int ret = rename(new_fname, fname);
-	if (ret < 0 && ret != EEXIST) {
-		log_zone_warning("Failed to replace old zone file '%s'' with a "
-		                 "new zone file '%s'.\n", fname, new_fname);
-		unlink(new_fname);
-		free(new_fname);
-		return KNOT_ERROR;
-	}
-
-	free(new_fname);
-	return KNOT_EOK;
-}
-
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
-/*----------------------------------------------------------------------------*/
-
-int zones_zonefile_sync(zone_t *zone, journal_t *journal)
-{
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-	if (journal == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Fetch zone data. */
-	int ret = KNOT_EOK;
-
-	/* Lock zone data. */
-	pthread_mutex_lock(&zone->lock);
-
-	/* Lock RCU for zone contents. */
-	rcu_read_lock();
-
-	zone_contents_t *contents = zone->contents;
-	if (!contents) {
-		rcu_read_unlock();
-		pthread_mutex_unlock(&zone->lock);
-		return KNOT_EINVAL;
-	}
-
-	/* Latest zone serial. */
-	const knot_rrset_t *soa_rrs = 0;
-	soa_rrs = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-	assert(soa_rrs != NULL);
-
-	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
-	if (serial_ret < 0) {
-		rcu_read_unlock();
-		pthread_mutex_unlock(&zone->lock);
-		return KNOT_EINVAL;
-	}
-	uint32_t serial_to = (uint32_t)serial_ret;
-
-	/* Check for difference against zonefile serial. */
-	if (zone->zonefile_serial != serial_to) {
-
-		/* Save zone to zonefile. */
-		const struct sockaddr_storage *master_addr = NULL;
-		const conf_iface_t *master = zone_master(zone);
-		if (master != NULL) {
-			master_addr = &master->addr;
-		}
-
-		dbg_zones("zones: syncing '%s' (SOA serial %u)\n",
-		          zone->conf->name, serial_to);
-		ret = save_transferred_zone(zone->contents, master_addr, zone->conf->file);
-		if (ret != KNOT_EOK) {
-			log_zone_warning("Failed to apply differences "
-			                 "'%s' to '%s (%s)'\n",
-			                 zone->conf->name, zone->conf->file,
-			                 knot_strerror(ret));
-			rcu_read_unlock();
-			pthread_mutex_unlock(&zone->lock);
-			return ret;
-		}
-
-		/* Update zone version. */
-		struct stat st;
-		if (stat(zone->conf->file, &st) < 0) {
-			log_zone_warning("Failed to apply differences "
-			                 "'%s' to '%s (%s)'\n",
-			                 zone->conf->name, zone->conf->file,
-			                 knot_strerror(KNOT_EACCES));
-			rcu_read_unlock();
-			pthread_mutex_unlock(&zone->lock);
-			return KNOT_ERROR;
-		} else {
-			zone->zonefile_mtime = st.st_mtime;
-		}
-
-		/* Update journal entries. */
-		dbg_zones_verb("zones: unmarking all dirty nodes "
-		               "in '%s' journal\n",
-		               zone->conf->name);
-		journal_walk(journal, zones_ixfrdb_sync_apply);
-
-		/* Update zone file serial. */
-		dbg_zones("zones: new '%s' zonefile serial is %u\n",
-		          zone->conf->name, serial_to);
-		zone->zonefile_serial = serial_to;
-	} else {
-		dbg_zones("zones: '%s' zonefile is in sync "
-		          "with differences\n", zone->conf->name);
-		ret = KNOT_ERANGE;
-	}
-
-	/* Unlock RCU. */
-	rcu_read_unlock();
-
-	/* Unlock zone data. */
-	pthread_mutex_unlock(&zone->lock);
-
-	return ret;
-}
-
 /*----------------------------------------------------------------------------*/
 
 int zones_process_response(server_t *server,
@@ -1078,7 +569,7 @@ int zones_process_response(server_t *server,
 
 knot_ns_xfr_type_t zones_transfer_to_use(zone_t *zone)
 {
-	if (zone == NULL || zone->ixfr_db == NULL) {
+	if (zone == NULL || !journal_exists(zone->conf->ixfr_db)) {
 		return XFR_TYPE_AIN;
 	}
 
@@ -1117,7 +608,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	assert(zonefile != NULL);
 
 	/* dump the zone into text zone file */
-	int ret = save_transferred_zone(new_zone, &xfr->addr, zonefile);
+	int ret = zonefile_write(zonefile, new_zone, &xfr->addr);
 	rcu_read_unlock();
 	return ret;
 }
@@ -1223,8 +714,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 
 /*----------------------------------------------------------------------------*/
 
-static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
-                                 zone_t *zone)
+static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j)
 {
 	assert(chs != NULL);
 	assert(j != NULL);
@@ -1244,7 +734,7 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 
 	/* Reserve space for the journal entry. */
 	char *journal_entry = NULL;
-	ret = journal_map(j, k, &journal_entry, entry_size);
+	ret = journal_map(j, k, &journal_entry, entry_size, false);
 	if (ret != KNOT_EOK) {
 		dbg_xfr("Failed to map space for journal entry: %s.\n",
 		        knot_strerror(ret));
@@ -1273,23 +763,19 @@ journal_t *zones_store_changesets_begin(zone_t *zone)
 		return NULL;
 	}
 
-	/* Fetch zone-specific data. */
-	if (!zone->ixfr_db) {
-		return NULL;
-	}
-
 	/* Begin transaction, will be released on commit/rollback. */
-	int ret = journal_retain(zone->ixfr_db);
-	if (ret != KNOT_EOK) {
+	conf_zone_t *conf = zone->conf;
+	journal_t *journal = journal_open(conf->ixfr_db, conf->ixfr_fslimit);
+	if (journal == NULL) {
 		return NULL;
 	}
 
-	if (journal_trans_begin(zone->ixfr_db) != KNOT_EOK) {
-		journal_release(zone->ixfr_db);
+	if (journal_trans_begin(journal) != KNOT_EOK) {
+		journal_close(journal);
 		return NULL;
 	}
 
-	return zone->ixfr_db;
+	return journal;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1301,7 +787,7 @@ int zones_store_changesets_commit(journal_t *j)
 	}
 
 	int ret = journal_trans_commit(j);
-	journal_release(j);
+	journal_close(j);
 	return ret;
 }
 
@@ -1314,30 +800,25 @@ int zones_store_changesets_rollback(journal_t *j)
 	}
 
 	int ret = journal_trans_rollback(j);
-	journal_release(j);
+	journal_close(j);
 	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int zones_store_changesets(zone_t *zone, knot_changesets_t *src, journal_t *j)
+int zones_store_changesets(knot_changesets_t *src, journal_t *j)
 {
-	if (zone == NULL || src == NULL) {
+	if (src == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	int ret = KNOT_EOK;
 
-	/* Fetch zone-specific data. */
-	if (!zone->ixfr_db) {
-		return KNOT_EINVAL;
-	}
-
 	/* Begin writing to journal. */
 	knot_changeset_t *chs = NULL;
 	WALK_LIST(chs, src->sets) {
 		/* Make key from serials. */
-		ret = zones_store_changeset(chs, j, zone);
+		ret = zones_store_changeset(chs, j);
 		if (ret != KNOT_EOK)
 			break;
 	}
@@ -1683,15 +1164,6 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
 	return KNOT_EOK;
 }
 
-void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout)
-{
-	if (zone != NULL) {
-		dbg_zones("zone: SYNC '%s' set to %u\n",
-		          zone->conf->name, timeout);
-		evsched_schedule(zone->ixfr_dbsync, timeout);
-	}
-}
-
 int zones_verify_tsig_query(const knot_pkt_t *query,
                             const knot_tsig_key_t *key,
                             knot_rcode_t *rcode, uint16_t *tsig_rcode,
@@ -1802,102 +1274,6 @@ int zones_verify_tsig_query(const knot_pkt_t *query,
 		}
 	}
 
-	return ret;
-}
-
-/*!
- * \brief Apply changesets to zone from journal.
- */
-int zones_journal_apply(zone_t *zone)
-{
-	/* Fetch zone. */
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-
-	rcu_read_lock();
-	zone_contents_t *contents = zone->contents;
-	if (!contents) {
-		rcu_read_unlock();
-		return KNOT_ENOENT;
-	}
-
-	/* Fetch SOA serial. */
-	const knot_rrset_t *soa_rrs = 0;
-	soa_rrs = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-	assert(soa_rrs != NULL);
-	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
-	if (serial_ret < 0) {
-		rcu_read_unlock();
-		return KNOT_EINVAL;
-	}
-	uint32_t serial = (uint32_t)serial_ret;
-
-	/* Load all pending changesets. */
-	dbg_zones_verb("zones: loading all changesets of '%s' from SERIAL %u\n",
-	               zone->conf->name, serial);
-	knot_changesets_t* chsets = knot_changesets_create();
-	if (chsets == NULL) {
-		rcu_read_unlock();
-		return KNOT_ERROR;
-	}
-
-	/*! \todo Check what should be the upper bound. */
-	int ret = zones_load_changesets(zone, chsets, serial, serial - 1);
-	if (ret == KNOT_EOK || ret == KNOT_ERANGE) {
-		if (!EMPTY_LIST(chsets->sets)) {
-			/* Apply changesets. */
-			log_zone_info("Applying '%zu' changesets from journal "
-			              "to zone '%s'.\n",
-			              chsets->count, zone->conf->name);
-			zone_contents_t *contents = NULL;
-			/*! \todo Journal changes may be applied directly,
-			 *        without need to copy the zone!!!
-			 */
-			int apply_ret = xfrin_apply_changesets(zone, chsets,
-			                                       &contents);
-			if (apply_ret != KNOT_EOK) {
-				log_zone_error("Failed to apply changesets to"
-				               " '%s' - Apply failed: %s\n",
-				               zone->conf->name,
-				               knot_strerror(apply_ret));
-				ret = KNOT_ERROR;
-			} else {
-				/* Switch zone immediately. */
-				log_zone_info("Zone '%s' serial %u -> %u.\n",
-				              zone->conf->name,
-				              serial, knot_zone_serial(contents));
-				dbg_zones("Old zone contents: %p, new: %p\n",
-				          zone->contents, contents);
-				rcu_read_unlock();
-				apply_ret = xfrin_switch_zone(zone, contents,
-							      XFR_TYPE_IIN);
-				rcu_read_lock();
-				if (apply_ret == KNOT_EOK) {
-					xfrin_cleanup_successful_update(
-							chsets->changes);
-				} else {
-					log_zone_error("Failed to apply "
-					               "changesets to '%s' - Switch failed: "
-					               "%s\n", zone->conf->name,
-					               knot_strerror(apply_ret));
-					ret = KNOT_ERROR;
-
-					// Cleanup old and new contents
-					xfrin_rollback_update(zone->contents,
-					                      &contents,
-					                      chsets->changes);
-				}
-			}
-		}
-	} else {
-		dbg_zones("zones: failed to load changesets - %s\n",
-		          knot_strerror(ret));
-	}
-
-	/* Free changesets and return. */
-	rcu_read_unlock();
-	knot_changesets_free(&chsets);
 	return ret;
 }
 

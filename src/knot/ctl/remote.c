@@ -120,7 +120,7 @@ static int remote_zone_refresh(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_refresh((zone_t *)zone, REFRESH_NOW);
+#warning Implement me (schedule zone refresh)
 
 	return KNOT_EOK;
 }
@@ -132,7 +132,7 @@ static int remote_zone_flush(server_t *server, const zone_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	zones_schedule_zonefile_sync((zone_t *)zone, 0);
+#warning Implement me (schedule zone file flush)
 
 	return KNOT_EOK;
 }

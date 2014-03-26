@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "common/descriptor.h"
 #include "common/evsched.h"
@@ -25,6 +26,7 @@
 #include "knot/server/zones.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
+#include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
@@ -109,17 +111,6 @@ zone_t* zone_new(conf_zone_t *conf)
 	set_acl(&zone->notify_in,  &conf->acl.notify_in);
 	set_acl(&zone->update_in,  &conf->acl.update_in);
 
-	// Initialize XFR database
-	zone->ixfr_db = journal_open(conf->ixfr_db, conf->ixfr_fslimit, JOURNAL_DIRTY);
-	if (zone->ixfr_db == NULL) {
-		char ebuf[256] = {0};
-		if (strerror_r(errno, ebuf, sizeof(ebuf)) == 0) {
-			log_zone_warning("Couldn't open journal file for "
-			                 "zone '%s', disabling incoming "
-			                 "IXFR. (%s)\n", conf->name, ebuf);
-		}
-	}
-
 	// Initialize events
 	zone_events_init(zone);
 
@@ -143,9 +134,6 @@ void zone_free(zone_t **zone_ptr)
 	acl_delete(&zone->update_in);
 	pthread_mutex_destroy(&zone->lock);
 	pthread_mutex_destroy(&zone->ddns_lock);
-
-	/* Close IXFR db. */
-	journal_close(zone->ixfr_db);
 
 	/* Free assigned config. */
 	conf_free_zone(zone->conf);
@@ -182,4 +170,55 @@ const conf_iface_t *zone_master(const zone_t *zone)
 
 	conf_remote_t *master = HEAD(zone->conf->acl.xfr_in);
 	return master->remote;
+}
+
+
+
+int zone_flush_journal(zone_t *zone)
+{
+	/*! @note Function expects nobody will change zone contents meanwile. */
+
+	if (zone == NULL || zone_contents_is_empty(zone->contents)) {
+		return KNOT_EINVAL;
+	}
+
+	/* Check for difference against zonefile serial. */
+	zone_contents_t *contents = zone->contents;
+	uint32_t serial_to = zone_contents_serial(contents);
+	if (zone->zonefile_serial == serial_to) {
+		return KNOT_EOK; /* No differences. */
+	}
+
+	/* Fetch zone source (where it came from). */
+	const struct sockaddr_storage *from = NULL;
+	const conf_iface_t *master = zone_master(zone);
+	if (master != NULL) {
+		from = &master->addr;
+	}
+
+	/* Synchronize journal. */
+	conf_zone_t *conf = zone->conf;
+	int ret = zonefile_write(conf->file, contents, from);
+	if (ret == KNOT_EOK) {
+		log_zone_info("Applied differences of '%s' to zonefile.\n", conf->name);
+	} else {
+		log_zone_warning("Failed to apply differences of '%s' "
+		                 "to zonefile (%s).\n", conf->name, knot_strerror(ret));
+		return ret;
+	}
+
+	/* Update zone version. */
+	struct stat st;
+	if (stat(zone->conf->file, &st) < 0) {
+		log_zone_warning("Failed to apply differences '%s' to '%s (%s)'\n",
+		                 conf->name, conf->file, knot_strerror(KNOT_EACCES));
+		return KNOT_EACCES;
+	}
+
+	/* Update zone file serial and journal. */
+	zone->zonefile_mtime = st.st_mtime;
+	zone->zonefile_serial = serial_to;
+	journal_mark_synced(zone->conf->ixfr_db);
+
+	return ret;
 }

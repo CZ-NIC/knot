@@ -36,6 +36,7 @@
 #include "knot/zone/zonefile.h"
 #include "zscanner/file_loader.h"
 #include "libknot/rdata.h"
+#include "knot/zone/zone-dump.h"
 
 void process_error(const scanner_t *s)
 {
@@ -315,6 +316,79 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 fail:
 	zone_contents_deep_free(&zc->z);
 	return NULL;
+}
+
+/*! \brief Moved from zones.c, no doc. @mvavrusa */
+static int zones_open_free_filename(const char *old_name, char **new_name)
+{
+	/* find zone name not present on the disk */
+	size_t name_size = strlen(old_name);
+	*new_name = malloc(name_size + 7 + 1);
+	if (*new_name == NULL) {
+		return -1;
+	}
+	memcpy(*new_name, old_name, name_size + 1);
+	strncat(*new_name, ".XXXXXX", 7);
+	dbg_zones_verb("zones: creating temporary zone file\n");
+	mode_t old_mode = umask(077);
+	int fd = mkstemp(*new_name);
+	UNUSED(umask(old_mode));
+	if (fd < 0) {
+		dbg_zones_verb("zones: couldn't create temporary zone file\n");
+		free(*new_name);
+		*new_name = NULL;
+	}
+
+	return fd;
+}
+
+int zonefile_write(const char *path, zone_contents_t *zone,
+                   const struct sockaddr_storage *from)
+{
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+
+	char *new_fname = NULL;
+	int fd = zones_open_free_filename(path, &new_fname);
+	if (fd < 0) {
+		return KNOT_EWRITABLE;
+	}
+
+	FILE *f = fdopen(fd, "w");
+	if (f == NULL) {
+		log_zone_warning("Failed to open file descriptor for text zone.\n");
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	if (zone_dump_text(zone, from, f) != KNOT_EOK) {
+		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
+		                 new_fname);
+		fclose(f);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	/* Set zone file rights to 0640. */
+	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+
+	/* Swap temporary zonefile and new zonefile. */
+	fclose(f);
+
+	int ret = rename(new_fname, path);
+	if (ret < 0 && ret != EEXIST) {
+		log_zone_warning("Failed to replace old zone file '%s'' with a "
+		                 "new zone file '%s'.\n", path, new_fname);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	free(new_fname);
+	return KNOT_EOK;
 }
 
 void zonefile_close(zloader_t *loader)

@@ -45,6 +45,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include "knot/updates/changesets.h"
 
 /*!
  * \brief Journal entry flags.
@@ -86,8 +87,6 @@ typedef struct journal_node_t
 typedef struct journal_t
 {
 	int fd;
-	struct flock fl;        /*!< File lock. */
-	pthread_mutex_t mutex;  /*!< Synchronization mutex. */
 	char *path;             /*!< Path to journal file. */
 	uint16_t tmark;         /*!< Transaction start mark. */
 	uint16_t max_nodes;     /*!< Number of nodes. */
@@ -100,23 +99,6 @@ typedef struct journal_t
 	journal_node_t *nodes;  /*!< Array of nodes. */
 } journal_t;
 
-/*!
- * \brief Entry identifier compare function.
- *
- * \retval -n if k1 < k2
- * \retval +n if k1 > k2
- * \retval  0 if k1 == k2
- */
-typedef int (*journal_cmp_t)(uint64_t k1, uint64_t k2);
-
-/*!
- * \brief Function prototype for journal_walk() function.
- *
- * \param j Associated journal.
- * \param n Pointer to target node.
- */
-typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
-
 /*
  * Journal defaults and constants.
  */
@@ -127,87 +109,15 @@ typedef int (*journal_apply_t)(journal_t *j, journal_node_t *n);
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3)
 
 /*!
- * \brief Create new journal.
- *
- * \param fn Journal file name, will be created if not exist.
- * \param max_nodes Maximum number of nodes in journal.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL if the file with given name cannot be created.
- * \retval KNOT_ERROR on I/O error.
- */
-int journal_create(const char *fn, uint16_t max_nodes);
-
-/*!
  * \brief Open journal.
- *
- * \warning This doesn't open the file yet, just sets up the structure.
- *          Call \fn journal_retain before reading/writing the journal.
  *
  * \param fn Journal file name.
  * \param fslimit File size limit (0 for no limit).
- * \param bflags Initial flags for each written node.
  *
  * \retval new journal instance if successful.
  * \retval NULL on error.
  */
-journal_t* journal_open(const char *fn, size_t fslimit, uint16_t bflags);
-
-/*!
- * \brief Fetch entry node for given identifier.
- *
- * \param journal Associated journal.
- * \param id Entry identifier.
- * \param cf Compare function (NULL for equality).
- * \param dst Destination for journal entry.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_ENOENT if not found.
- */
-int journal_fetch(journal_t *journal, uint64_t id,
-		  journal_cmp_t cf, journal_node_t** dst);
-
-/*!
- * \brief Read journal entry data.
- *
- * \param journal Associated journal.
- * \param id Entry identifier.
- * \param cf Compare function (NULL for equality).
- * \param dst Pointer to destination memory.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_ENOENT if the entry cannot be found.
- * \retval KNOT_EINVAL if the entry is invalid.
- * \retval KNOT_ERROR on I/O error.
- */
-int journal_read(journal_t *journal, uint64_t id, journal_cmp_t cf, char *dst);
-
-/*!
- * \brief Read journal entry data.
- *
- * \param journal Associated journal.
- * \param n Entry.
- * \param dst Pointer to destination memory.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_ENOENT if the entry cannot be found.
- * \retval KNOT_EINVAL if the entry is invalid.
- * \retval KNOT_ERROR on I/O error.
- */
-int journal_read_node(journal_t *journal, journal_node_t *n, char *dst);
-
-/*!
- * \brief Write journal entry data.
- *
- * \param journal Associated journal.
- * \param id Entry identifier.
- * \param src Pointer to source data.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EAGAIN if no free node is available, need to remove dirty nodes.
- * \retval KNOT_ERROR on I/O error.
- */
-int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size);
+journal_t* journal_open(const char *path, size_t fslimit);
 
 /*!
  * \brief Map journal entry for read/write.
@@ -217,12 +127,13 @@ int journal_write(journal_t *journal, uint64_t id, const char *src, size_t size)
  * \param journal Associated journal.
  * \param id Entry identifier.
  * \param dst Will contain mapped memory.
+ * \param rdonly If read only.
  *
  * \retval KNOT_EOK if successful.
  * \retval KNOT_EAGAIN if no free node is available, need to remove dirty nodes.
  * \retval KNOT_ERROR on I/O error.
  */
-int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size);
+int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size, bool rdonly);
 
 /*!
  * \brief Finalize mapped journal entry.
@@ -238,54 +149,6 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size);
  * \retval KNOT_ERROR on I/O error.
  */
 int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize);
-
-/*!
- * \brief Return least recent node (journal head).
- *
- * \param journal Associated journal.
- *
- * \retval node if successful.
- * \retval NULL if empty.
- */
-static inline journal_node_t *journal_head(journal_t *journal) {
-	return journal->nodes + journal->qhead;
-}
-
-/*!
- * \brief Return node after most recent node (journal tail).
- *
- * \param journal Associated journal.
- *
- * \retval node if successful.
- * \retval NULL if empty.
- */
-static inline journal_node_t *journal_end(journal_t *journal) {
-	return journal->nodes +  journal->qtail;
-}
-
-/*!
- * \brief Apply function to each node.
- *
- * \param journal Associated journal.
- * \param apply Function to apply to each node.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL on invalid parameters.
- */
-int journal_walk(journal_t *journal, journal_apply_t apply);
-
-/*!
- * \brief Sync node state to permanent storage.
- *
- * \note May be used for journal_walk().
- *
- * \param journal Associated journal.
- * \param n Pointer to node (must belong to associated journal).
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- */
-int journal_update(journal_t *journal, journal_node_t *n);
 
 /*!
  * \brief Begin transaction of multiple entries.
@@ -339,45 +202,22 @@ int journal_close(journal_t *journal);
 /*!
  * \brief Check if the journal file is used or not.
  *
- * \param journal Journal.
+ * \param path Journal file.
  *
  * \return true or false
  */
-bool journal_is_used(journal_t *journal);
+bool journal_exists(const char *path);
 
 /*!
- * \brief Retain journal for use.
+ * \brief Load changesets from journal.
  *
- * \param journal Journal.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EBUSY
- * \retval KNOT_EINVAL
- * \retval KNOT_ERROR
+ * \param changesets Double pointer to changesets structure to be freed.
  */
-int journal_retain(journal_t *journal);
+int journal_load_changesets(const char *path, knot_changesets_t *dst,
+                            uint32_t from, uint32_t to);
 
-/*!
- * \brief Release retained journal.
- *
- * \param journal Retained journal.
- */
-void journal_release(journal_t *journal);
-
-/*!
- * \brief Recompute journal CRC.
- *
- * \warning Use only if you altered the journal file somehow
- * and need it to pass CRC checks. CRC check normally
- * checks file integrity, so you should not touch it unless
- * you know what you're doing.
- *
- * \param fd Open journal file.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL if not valid fd.
- */
-int journal_update_crc(int fd);
+/*! \brief Function for unmarking dirty nodes. */
+int journal_mark_synced(const char *path);
 
 #endif /* _KNOTD_JOURNAL_H_ */
 

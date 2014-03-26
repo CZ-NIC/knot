@@ -339,7 +339,7 @@ static int xfr_task_expire(fdset_t *set, int i, knot_ns_xfr_t *rq)
 		if ((long)--rq->data > 0) { /* Retries */
 			rq->send(rq->session, (struct sockaddr *)&rq->addr, rq->wire, rq->wire_size);
 			log_zone_info("%s Query issued (serial %u).\n",
-			              rq->msg, knot_zone_serial(zone->contents));
+			              rq->msg, zone_contents_serial(zone->contents));
 			fdset_set_watchdog(set, i, NOTIFY_TIMEOUT);
 			return KNOT_EOK; /* Keep state. */
 		}
@@ -562,7 +562,7 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 	/* NOTIFY is special. */
 	if (rq->type == XFR_TYPE_NOTIFY) {
 		log_zone_info("%s Query issued (serial %u).\n",
-		              rq->msg, knot_zone_serial(rq->zone->contents));
+		              rq->msg, zone_contents_serial(rq->zone->contents));
 	} else if (ret == KNOT_EOK) {
 		log_zone_info("%s %s\n", rq->msg, msg);
 	} else {
@@ -723,7 +723,7 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	if (ret == KNOT_EUPTODATE) {  /* Check up-to-date zone. */
 		log_zone_info("%s %s (serial %u)\n", rq->msg,
 		              knot_strerror(ret),
-		              knot_zone_serial(rq->zone->contents));
+		              zone_contents_serial(rq->zone->contents));
 		ret = KNOT_ECONNREFUSED;
 	} else if (ret == KNOT_EOK) { /* Disconnect if everything went well. */
 		ret = KNOT_ECONNREFUSED;
@@ -844,8 +844,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 
 		/* Sync zonefile immediately if configured. */
 		if (rq->type == XFR_TYPE_IIN && zone->conf->dbsync_timeout == 0) {
-			dbg_zones("%s: syncing zone immediately\n", __func__);
-			zones_schedule_zonefile_sync(zone, 0);
+#warning Implement me (schedule zone file flush to now)
 		}
 
 		/* Update REFRESH/RETRY */

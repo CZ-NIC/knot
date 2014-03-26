@@ -50,24 +50,6 @@
 #define REFRESH_NOW (knot_random_uint16_t() % 1000) /* Now, but with jitter. */
 
 /*!
- * \brief Sync zone data back to text zonefile.
- *
- * In case when SOA serial of the zonefile differs from the SOA serial of the
- * loaded zone, zonefile needs to be updated.
- *
- * \note Current implementation rewrites the zone file.
- *
- * \param zone Evaluated zone.
- * \param journal Journal to sync.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_ERANGE if zonefile is in sync with journal.
- * \retval KNOT_EINVAL on invalid parameter.
- * \retval KNOT_ERROR on unspecified error during processing.
- */
-int zones_zonefile_sync(zone_t *zone, journal_t *journal);
-
-/*!
  * \brief Processes normal response packet.
  *
  * \param server Name server structure to provide the needed data.
@@ -109,7 +91,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr);
  * \todo Expects the xfr structure to be initialized in some way.
  * \todo Update documentation!!!
  */
-int zones_store_changesets(zone_t *zone, knot_changesets_t *src, journal_t *j);
+int zones_store_changesets(knot_changesets_t *src, journal_t *j);
 
 /*!
  * \brief Begin changesets storing transaction.
@@ -136,16 +118,6 @@ int zones_store_changesets_commit(journal_t *j);
  * \retval KNOT_ENOENT when no transaction is pending.
  */
 int zones_store_changesets_rollback(journal_t *j);
-
-/*! \todo Document me. */
-int zones_changesets_from_binary(knot_changesets_t *chgsets);
-
-/*! \todo Document me. */
-int zones_changesets_to_binary(knot_changesets_t *chgsets);
-
-int zones_load_changesets(const zone_t *zone,
-			  knot_changesets_t *dst,
-			  uint32_t from, uint32_t to) __attribute__((deprecated));
 
 /*!
  * \brief Creates changesets from zones difference.
@@ -213,14 +185,6 @@ int zones_cancel_dnssec(zone_t *zone);
 int zones_schedule_dnssec(zone_t *zone, time_t unixtime);
 
 /*!
- * \brief Schedule IXFR sync for given zone.
- *
- * \param zone     Zone to scheduler IXFR sync for.
- * \param timeout  Sync time in seconds.
- */
-void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout);
-
-/*!
  * \brief Verify TSIG in query.
  *
  * \param query Query packet.
@@ -235,18 +199,6 @@ int zones_verify_tsig_query(const knot_pkt_t *query,
                             const knot_tsig_key_t *key,
                             knot_rcode_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed);
-
-/*!
- * \brief Apply changesets to zone from journal.
- *
- * \param zone Specified zone.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOENT if zone has no contents.
- * \retval KNOT_ERROR on unspecified error.
- */
-int zones_journal_apply(zone_t *zone);
 
 /*!
  * \brief Creates diff and DNSSEC changesets and stores them to journal.
@@ -269,7 +221,6 @@ int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *expires_at);
 
 int zones_expire_ev(event_t *event);
 int zones_refresh_ev(event_t *event);
-int zones_flush_ev(event_t *event);
 int zones_dnssec_ev(event_t *event);
 
 /*! \note Exported API for UPDATE processing, but this should really be done

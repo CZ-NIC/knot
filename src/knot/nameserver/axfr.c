@@ -199,7 +199,7 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 			AXFR_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
 			return ret;
 		} else {
-			AXFR_LOG(LOG_INFO, "Started (serial %u).", knot_zone_serial(qdata->zone->contents));
+			AXFR_LOG(LOG_INFO, "Started (serial %u).", zone_contents_serial(qdata->zone->contents));
 		}
 	}
 
@@ -249,8 +249,8 @@ int axfr_process_answer(knot_ns_xfr_t *xfr)
 		zone_contents_t *zone = (zone_contents_t *)xfr->data;
 		assert(zone != NULL);
 		log_zone_info("%s Serial %u -> %u\n", xfr->msg,
-		              knot_zone_serial(xfr->zone->contents),
-		              knot_zone_serial(zone));
+		              zone_contents_serial(xfr->zone->contents),
+		              zone_contents_serial(zone));
 
 		dbg_ns_verb("ns_process_axfrin: adjusting zone.\n");
 		int rc = zone_contents_adjust_full(zone, NULL, NULL);

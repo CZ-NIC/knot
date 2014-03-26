@@ -145,8 +145,8 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const zone_t *zone,
 		return KNOT_ENOMEM;
 	}
 
-	/*! \todo This is a candidate for function relocation. */
-	ret = zones_load_changesets(zone, *chgsets, serial_from, serial_to);
+	ret = journal_load_changesets(zone->conf->ixfr_db, *chgsets,
+	                              serial_from, serial_to);
 	if (ret != KNOT_EOK) {
 		knot_changesets_free(chgsets);
 	}

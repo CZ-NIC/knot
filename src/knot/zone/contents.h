@@ -437,11 +437,14 @@ void zone_contents_deep_free(zone_contents_t **contents);
  *
  * \return serial or 0
  */
-uint32_t knot_zone_serial(const zone_contents_t *zone);
+uint32_t zone_contents_serial(const zone_contents_t *zone);
 
 /*!
  * \brief Return true if zone is signed.
  */
 bool zone_contents_is_signed(const zone_contents_t *zone);
+
+/*! \brief Return true if zone contents is empty. */
+bool zone_contents_is_empty(const zone_contents_t *zone);
 
 /*! @} */

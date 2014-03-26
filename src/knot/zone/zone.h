@@ -87,9 +87,6 @@ typedef struct zone_t {
 		uint32_t refresh_at;  /*!< Next refresh time. */
 	} dnssec;
 
-	/*! \brief Zone IXFR history. */
-	journal_t *ixfr_db;
-	event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
 } zone_t;
 
 /*----------------------------------------------------------------------------*/
@@ -134,6 +131,9 @@ zone_contents_t *zone_switch_contents(zone_t *zone,
  * \brief Return zone master interface.
  */
 const conf_iface_t *zone_master(const zone_t *zone);
+
+/*! \brief Synchronize zone file with journal. */
+int zone_flush_journal(zone_t *zone);
 
 //int zone_start_events(zone_t *zone, evsched_t *scheduler);
 //

@@ -1484,7 +1484,7 @@ void zone_contents_deep_free(zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-uint32_t knot_zone_serial(const zone_contents_t *zone)
+uint32_t zone_contents_serial(const zone_contents_t *zone)
 {
 	if (!zone) return 0;
 	const knot_rrset_t *soa = NULL;
@@ -1495,4 +1495,9 @@ uint32_t knot_zone_serial(const zone_contents_t *zone)
 bool zone_contents_is_signed(const zone_contents_t *zone)
 {
 	return knot_node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
+}
+
+bool zone_contents_is_empty(const zone_contents_t *zone)
+{
+	return !zone || !knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 }

@@ -39,7 +39,7 @@ static int event_reload(zone_t *zone)
 		return KNOT_ERROR; // TODO: specific error code
 	}
 
-	int result = apply_journal(content, zone->ixfr_db);
+	int result = apply_journal(content, zone->conf);
 	if (result != KNOT_EOK) {
 		zone_contents_free(&content);
 		return result;
@@ -82,6 +82,28 @@ static int event_expire(zone_t *zone)
 
 static int event_flush(zone_t *zone)
 {
+#warning Implement me.
+#if 0
+	assert(event);
+	dbg_zones("zone: zonefile SYNC timer event\n");
+
+	/* Fetch zone. */
+	zone_t *zone = (zone_t *)event->data;
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = zones_zonefile_sync_from_ev(zone);
+
+	/* Reschedule. */
+	rcu_read_lock();
+	int next_timeout = zone->conf->dbsync_timeout;
+	if (next_timeout > 0) {
+		zones_schedule_zonefile_sync(zone, next_timeout * 1000);
+	}
+	rcu_read_unlock();
+	return ret;
+#endif
 	return KNOT_ERROR;
 }
 

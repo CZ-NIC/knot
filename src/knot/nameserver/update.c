@@ -158,7 +158,7 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 
 	struct timeval t_start = {0}, t_end = {0};
 	gettimeofday(&t_start, NULL);
-	UPDATE_LOG(LOG_INFO, "Started (serial %u).", knot_zone_serial(qdata->zone->contents));
+	UPDATE_LOG(LOG_INFO, "Started (serial %u).", zone_contents_serial(qdata->zone->contents));
 
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
@@ -390,9 +390,9 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	}
 
 	// Merge changesets
-	journal_t *transaction = NULL;
+	journal_t *journal = NULL;
 	ret = zones_merge_and_store_changesets(zone, chgsets, sec_chs,
-	                                       &transaction);
+	                                       &journal);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s: Failed to save new entry to journal (%s)\n",
 		               msg, knot_strerror(ret));
@@ -416,7 +416,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update (%s)"
 			               "\n", msg, knot_strerror(ret));
-			zones_store_changesets_rollback(transaction);
+			zones_store_changesets_rollback(journal);
 			zones_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
@@ -427,7 +427,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign (%s)\n",
 			               msg, knot_strerror(ret));
-			zones_store_changesets_rollback(transaction);
+			zones_store_changesets_rollback(journal);
 			zones_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
@@ -435,7 +435,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		// Set NSEC3 nodes if no new signatures were created (or auto DNSSEC is off)
 		ret = zone_contents_adjust_nsec3_pointers(new_contents);
 		if (ret != KNOT_EOK) {
-			zones_store_changesets_rollback(transaction);
+			zones_store_changesets_rollback(journal);
 			zones_free_merged_changesets(chgsets, sec_chs);
 			xfrin_rollback_update(zone->contents, &new_contents,
 			                      chgsets->changes);
@@ -445,8 +445,8 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	}
 
 	// Commit transaction.
-	if (transaction) {
-		ret = zones_store_changesets_commit(transaction);
+	if (journal) {
+		ret = zones_store_changesets_commit(journal);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to commit new journal entry "
 			               "(%s).\n", msg, knot_strerror(ret));
@@ -498,7 +498,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 
 	/* Sync zonefile immediately if configured. */
 	if (zone->conf->dbsync_timeout == 0) {
-		zones_schedule_zonefile_sync(zone, 0);
+#warning Implement me (schedule zone file flush to now)
 	}
 
 	return ret;
