@@ -2760,6 +2760,9 @@ int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *refresh_at)
 
 	log_zone_info("%s Successfully signed.\n", msgpref);
 
+	/* Trim extra heap. */
+	mem_trim();
+
 	/* DNSSEC signing passed, zone has changed. Issue notifications. */
 	zones_schedule_notify(zone);
 
@@ -3254,6 +3257,9 @@ int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
 	rcu_read_unlock();
 
 	zones_free_merged_changesets(diff_chs, sec_chs);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	// Schedule next zone signing
 	if (z->dnssec_enable) {
