@@ -484,7 +484,7 @@ static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	}
 }
 
-static int solve_answer_section(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int solve_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	/* Get answer to QNAME. */
 	state = solve_name(state, pkt, qdata);
@@ -709,7 +709,7 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 	/* Resolve ANSWER. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
 	knot_pkt_begin(response, KNOT_AUTHORITY);
-	SOLVE_STEP(solve_answer_section, state, NULL);
+	SOLVE_STEP(solve_answer, state, NULL);
 	SOLVE_STEP(solve_answer_dnssec, state, NULL);
 
 	/* Resolve AUTHORITY. */
@@ -796,7 +796,7 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 
 int internet_query_plan(struct query_plan *plan)
 {
-	query_plan_step(plan, QPLAN_ANSWER, solve_answer_section, NULL);
+	query_plan_step(plan, QPLAN_ANSWER, solve_answer, NULL);
 	query_plan_step(plan, QPLAN_ANSWER, solve_answer_dnssec, NULL);
 	query_plan_step(plan, QPLAN_AUTHORITY, solve_authority, NULL);
 	query_plan_step(plan, QPLAN_AUTHORITY, solve_authority_dnssec, NULL);

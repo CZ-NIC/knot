@@ -1,3 +1,19 @@
+/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "knot/modules/synth_record.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
@@ -49,7 +65,7 @@ static char str_separator(int addr_family)
 /*! \brief Return true if query type is satisfied with provided address family. */
 static bool query_satisfied_by_family(uint16_t qtype, int family)
 {
-	switch(qtype) {
+	switch (qtype) {
 	case KNOT_RRTYPE_A:    return family == AF_INET;
 	case KNOT_RRTYPE_AAAA: return family == AF_INET6;
 	case KNOT_RRTYPE_ANY:  return true;
@@ -127,12 +143,12 @@ static int addr_parse(struct query_data *qdata, synth_template_t *tpl, char *add
 {
 	/* Check if we have at least 1 label below zone. */
 	int zone_labels = knot_dname_labels(qdata->zone->name, NULL);
-	int label_count = knot_dname_labels(qdata->name, qdata->query->wire);
-	if (label_count < zone_labels + 1) {
+	int query_labels = knot_dname_labels(qdata->name, qdata->query->wire);
+	if (query_labels < zone_labels + 1) {
 		return KNOT_EINVAL;
 	}
 
-	switch(tpl->type) {
+	switch (tpl->type) {
 	case SYNTH_REVERSE: return reverse_addr_parse(qdata, tpl, addr_str);
 	case SYNTH_FORWARD: return forward_addr_parse(qdata, tpl, addr_str);
 	default:            return KNOT_EINVAL;
@@ -221,7 +237,7 @@ static knot_rrset_t *synth_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t 
 
 	/* Fill in the specific data. */
 	int ret = KNOT_ERROR;
-	switch(tpl->type) {
+	switch (tpl->type) {
 	case SYNTH_REVERSE: ret = reverse_rr(addr_str, tpl, pkt, rr); break;
 	case SYNTH_FORWARD: ret = forward_rr(addr_str, tpl, pkt, rr); break;
 	default: break;
@@ -256,9 +272,9 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 		return state; /* Out of our netblock, not applicable. */
 	}
 
-	/* Check if the request is for a available query type. */
+	/* Check if the request is for an available query type. */
 	uint16_t qtype = knot_pkt_qtype(qdata->query);
-	switch(tpl->type) {
+	switch (tpl->type) {
 	case SYNTH_FORWARD:
 		if (!query_satisfied_by_family(qtype, provided_af)) {
 			qdata->rcode = KNOT_RCODE_NOERROR;
@@ -367,8 +383,16 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 
 	/* Estimate family. */
 	int family = AF_INET;
+	int prefix_max = IPV4_PREFIXLEN;
 	if (strchr(token, ':') != NULL) {
 		family = AF_INET6;
+		prefix_max = IPV6_PREFIXLEN;
+	}
+
+	/* Check subnet. */
+	if (tpl->subnet.prefix > prefix_max) {
+		MODULE_ERR("invalid address prefix '%s'.\n", subnet);
+		return KNOT_EMALF;
 	}
 
 	int ret = sockaddr_set(&tpl->subnet.ss, family, token, 0);
