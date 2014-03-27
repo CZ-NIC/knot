@@ -86,6 +86,10 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                              uint16_t rclass,
                              mm_ctx_t *mm);
 
+void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
+                     uint16_t rclass);
+void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
+
 /*!
  * \brief Creates a new RRSet according to given template RRSet.
  *
@@ -426,5 +430,7 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
                            knot_rrset_t **out_sig, mm_ctx_t *mm);
 
 bool knot_rrset_empty(const knot_rrset_t *rrset);
+int knot_rrset_copy_int(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm);
+knot_rrset_t *knot_rrset_cpy(const knot_rrset_t *src, mm_ctx_t *mm);
 
 /*! @} */

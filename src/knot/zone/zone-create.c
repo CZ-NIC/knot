@@ -77,14 +77,13 @@ static bool handle_err(zcreator_t *zc,
 	}
 }
 
-int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
+int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 {
 	assert(zc && rr);
 
 	if (rr->type == KNOT_RRTYPE_SOA &&
 	    knot_node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_SOA)) {
 		// Ignore extra SOA
-		knot_rrset_free(&rr, NULL);
 		return KNOT_EOK;
 	}
 

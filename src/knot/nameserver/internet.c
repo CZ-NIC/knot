@@ -246,18 +246,15 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 	uint32_t flags = KNOT_PF_NOTRUNC;
 	uint32_t min = knot_rrs_soa_minimum(&soa_rrset.rrs);
 	if (min < knot_rrset_rr_ttl(&soa_rrset, 0)) {
-		ret = knot_rrs_copy(&soa_rrset.rrs, &soa_rrset.rrs, &pkt->mm);
+		knot_rrset_t copy;
+		ret = knot_rrset_copy_int(&copy, &soa_rrset, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 		knot_rrset_rr_set_ttl(&soa_rrset, 0, min);
 		
-		soa_rrset.owner = knot_dname_copy(soa_rrset.owner, &pkt->mm);
-		if (soa_rrset.owner == NULL) {
-			knot_rrs_clear(&soa_rrset.rrs, &pkt->mm);
-			return KNOT_ENOMEM;
-		}
 		flags |= KNOT_PF_FREE;
+		soa_rrset = copy;
 	}
 
 	ret = ns_put_rr(pkt, &soa_rrset, &rrsigs, COMPR_HINT_NONE, flags, qdata);
@@ -695,11 +692,20 @@ int ns_put_rr(knot_pkt_t *pkt, knot_rrset_t *rr,
 	int ret = KNOT_EOK;
 	if (compr_hint == COMPR_HINT_NONE && expand) {
 		rr->owner = (knot_dname_t *)qdata->name;
+		knot_rrset_t copy;
+		int ret = knot_rrset_copy_int(&copy, rr, &pkt->mm);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		flags |= KNOT_PF_FREE;
+		*rr = copy;
 	}
 
 	uint16_t prev_count = pkt->rrset_count;
 	ret = knot_pkt_put(pkt, compr_hint, rr, flags);
 	if (ret != KNOT_EOK) {
+		knot_dname_free(&rr->owner, &pkt->mm);
+		knot_rrs_clear(&rr->rrs, &pkt->mm);
 		return ret;
 	}
 

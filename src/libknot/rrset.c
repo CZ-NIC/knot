@@ -418,9 +418,16 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
-int knot_rrset_remove_rdata_pos(knot_rrset_t *rrset, size_t pos, mm_ctx_t *mm)
+void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
+                     uint16_t rclass)
 {
-	return knot_rrs_remove_rr_at_pos(&rrset->rrs, pos, mm);
+	if (rrset) {
+		rrset->owner = owner;
+		rrset->type = type;
+		rrset->rclass = rclass;
+		knot_rrs_init(&rrset->rrs);
+		rrset->additional = NULL;
+	}
 }
 
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
@@ -837,6 +844,15 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 	*rrset = NULL;
 }
 
+void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
+{
+	if (rrset == NULL) {
+		return;
+	}
+
+	rrset_deep_free_content(rrset, mm);
+}
+
 static int knot_rrset_add_rr_n(knot_rrset_t *rrset, const knot_rrset_t *rr,
                                size_t pos, mm_ctx_t *mm)
 {
@@ -1177,7 +1193,7 @@ static int knot_rrset_remove_rr(knot_rrset_t *rrset,
 		dbg_rrset_detail("rr: remove_rr: Counter position found=%zu\n",
 		                 pos_to_remove);
 		assert(pos_to_remove < knot_rrset_rr_count(rrset));
-		ret = knot_rrset_remove_rdata_pos(rrset, pos_to_remove, mm);
+		ret = knot_rrs_remove_rr_at_pos(&rrset->rrs, pos_to_remove, mm);
 		if (ret != KNOT_EOK) {
 			dbg_rrset("Cannot remove RDATA from RRSet (%s).\n",
 			          knot_strerror(ret));
@@ -1320,4 +1336,34 @@ bool knot_rrset_empty(const knot_rrset_t *rrset)
 	return rr_count == 0;
 }
 
+int knot_rrset_copy_int(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm)
+{
+	if (dst == NULL || src == NULL) {
+		return KNOT_EINVAL;
+	}
+	
+	dst->type = src->type;
+	dst->additional = src->additional;
+	dst->rclass = src->rclass;
+	
+	dst->owner = knot_dname_copy(src->owner, mm);
+	if (dst->owner == NULL) {
+		return KNOT_ENOMEM;
+	}
+	knot_rrs_init(&dst->rrs);
+	int ret = knot_rrs_copy(&dst->rrs, &src->rrs, mm);
+	if (ret != KNOT_EOK) {
+		knot_dname_free(&dst->owner, mm);
+		return ret;
+	}
+	
+	return KNOT_EOK;
+}
+
+knot_rrset_t *knot_rrset_cpy(const knot_rrset_t *src, mm_ctx_t *mm)
+{
+	knot_rrset_t *dst = NULL;
+	int ret = knot_rrset_copy(src, &dst, mm);
+	return ret == KNOT_EOK ? dst : NULL;
+}
 

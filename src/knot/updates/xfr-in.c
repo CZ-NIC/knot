@@ -223,15 +223,14 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uint16_t *cur)
+static int xfrin_take_rr(const knot_pktsection_t *answer, const knot_rrset_t **rr, uint16_t *cur)
 {
 	int ret = KNOT_EOK;
 	if (*cur < answer->count) {
-		ret = knot_rrset_copy(&answer->rr[*cur], rr, NULL);
+		*rr = &answer->rr[*cur];
 		*cur += 1;
 	} else {
 		*rr = NULL;
-		ret = KNOT_EOK;
 	}
 
 	return ret;
@@ -246,7 +245,7 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 	}
 
 	uint16_t rr_id = 0;
-	knot_rrset_t *rr = NULL;
+	const knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
 	int ret = xfrin_take_rr(answer, &rr, &rr_id);
@@ -257,7 +256,6 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 		}
 		*zone = knot_zone_contents_new(rr->owner);
 		if (*zone == NULL) {
-			knot_rrset_free(&rr, NULL);
 			return KNOT_ENOMEM;
 		}
 		xfr->packet_nr = 0;
@@ -274,7 +272,6 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 		    knot_node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
 			// Last SOA, last message, check TSIG.
 			ret = xfrin_check_tsig(pkt, xfr, 1);
-			knot_rrset_free(&rr, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -307,7 +304,7 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 	}
 
 	uint16_t rr_id = 0;
-	knot_rrset_t *rr = NULL;
+	const knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	int ret = xfrin_take_rr(answer, &rr, &rr_id);
 	if (ret != KNOT_EOK) {
@@ -326,20 +323,22 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 
 		ret = knot_changesets_init(chs);
 		if (ret != KNOT_EOK) {
-			knot_rrset_free(&rr, NULL);
 			return ret;
 		}
 
 		// the first RR must be a SOA
 		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 			dbg_xfrin("First RR is not a SOA RR!\n");
-			knot_rrset_free(&rr, NULL);
 			ret = KNOT_EMALF;
 			goto cleanup;
 		}
 
 		// just store the first SOA for later use
-		(*chs)->first_soa = rr;
+		(*chs)->first_soa = knot_rrset_cpy(rr, NULL);
+		if ((*chs)->first_soa == NULL) {
+			ret = KNOT_ENOMEM;
+			goto cleanup;
+		}
 		state = -1;
 
 		dbg_xfrin_verb("First SOA of IXFR saved, state set to -1.\n");
@@ -367,7 +366,6 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 			dbg_xfrin("Response containing only SOA,\n");
 			return XFRIN_RES_SOA_ONLY;
 		} else if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
-			knot_rrset_free(&rr, NULL);
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
 			return ret;
@@ -375,7 +373,6 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 	} else {
 		if ((*chs)->first_soa == NULL) {
 			dbg_xfrin("Changesets don't contain SOA first!\n");
-			knot_rrset_free(&rr, NULL);
 			ret = KNOT_EINVAL;
 			goto cleanup;
 		}
@@ -423,7 +420,6 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		dbg_xfrin_detail("State is not -1, deciding...\n");
 		// there should be at least one started changeset right now
 		if (EMPTY_LIST((*chs)->sets)) {
-			knot_rrset_free(&rr, NULL);
 			ret = KNOT_EMALF;
 			goto cleanup;
 		}
@@ -453,7 +449,6 @@ dbg_xfrin_exec_verb(
 		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// out-of-zone domain
-			knot_rrset_free(&rr, NULL);
 			// take next RR
 			ret = xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
@@ -469,7 +464,6 @@ dbg_xfrin_exec_verb(
 				dbg_xfrin("First RR is not a SOA RR!\n");
 				dbg_xfrin_verb("RR type: %u\n",
 					       knot_rrset_type(rr));
-				knot_rrset_free(&rr, NULL);
 				ret = KNOT_EMALF;
 				goto cleanup;
 			}
@@ -483,8 +477,6 @@ dbg_xfrin_exec_verb(
 				ret = xfrin_check_tsig(pkt, xfr, 1);
 
 				// last SOA, discard and end
-				knot_rrset_free(&rr, NULL);
-
 				/*! \note [TSIG] If TSIG validates, consider
 				 *        transfer complete. */
 				if (ret == KNOT_EOK) {
@@ -499,16 +491,20 @@ dbg_xfrin_exec_verb(
 					ret = KNOT_ESPACE;
 
 				if (ret != KNOT_EOK) {
-					knot_rrset_free(&rr, NULL);
 					goto cleanup;
 				}
 
 				chset = knot_changesets_create_changeset(*chs);
 				if (chset == NULL) {
-					knot_rrset_free(&rr, NULL);
 					goto cleanup;
 				}
-				knot_changeset_add_soa(chset, rr, KNOT_CHANGESET_REMOVE);
+				knot_rrset_t *soa = knot_rrset_cpy(rr, NULL);
+				if (soa == NULL) {
+					ret = KNOT_ENOMEM;
+					goto cleanup;
+				}
+				
+				knot_changeset_add_soa(chset, soa, KNOT_CHANGESET_REMOVE);
 
 				// change state to REMOVE
 				state = KNOT_CHANGESET_REMOVE;
@@ -520,17 +516,25 @@ dbg_xfrin_exec_verb(
 			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
 				// we should not be here if soa_from is not set
 				assert(chset->soa_from != NULL);
-
-				knot_changeset_add_soa(chset, rr, KNOT_CHANGESET_ADD);
+				knot_rrset_t *soa = knot_rrset_cpy(rr, NULL);
+				if (soa == NULL) {
+					ret = KNOT_ENOMEM;
+					goto cleanup;
+				}
+				knot_changeset_add_soa(chset, soa, KNOT_CHANGESET_ADD);
 
 				state = KNOT_CHANGESET_ADD;
 			} else {
 				// just add the RR to the REMOVE part and
 				// continue
-				ret = knot_changeset_add_rr(chset, rr,
+				knot_rrset_t *cpy = knot_rrset_cpy(rr, NULL);
+				if (cpy == NULL) {
+					ret = KNOT_ENOMEM;
+					goto cleanup;
+				}
+				ret = knot_changeset_add_rr(chset, cpy,
 				                            KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
-					knot_rrset_free(&rr, NULL);
 					goto cleanup;
 				}
 			}
@@ -546,12 +550,15 @@ dbg_xfrin_exec_verb(
 				state = -1;
 				continue;
 			} else {
-
 				// just add the RR to the ADD part and continue
-				ret = knot_changeset_add_rr(chset, rr,
+				knot_rrset_t *cpy = knot_rrset_cpy(rr, NULL);
+				if (cpy == NULL) {
+					ret = KNOT_ENOMEM;
+					goto cleanup;
+				}
+				ret = knot_changeset_add_rr(chset, cpy,
 				                            KNOT_CHANGESET_ADD);
 				if (ret != KNOT_EOK) {
-					knot_rrset_free(&rr, NULL);
 					goto cleanup;
 				}
 			}

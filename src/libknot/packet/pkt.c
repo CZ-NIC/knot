@@ -698,6 +698,7 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	rrset->owner = owner;
 	rrset->type = type;
 	rrset->rclass = rclass;
+	rrset->additional = NULL;
 	
 	*pos += KNOT_RR_HEADER_SIZE;
 
@@ -713,6 +714,7 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	// parse RDATA
 	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
 	 *        probably. */
+	knot_rrs_init(&rrset->rrs);
 	int ret = knot_rrset_rdata_from_wire_one(rrset, wire, pos, size, ttl,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
@@ -745,7 +747,6 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	/* Parse wire format. */
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
-	knot_rrs_init(&rr->rrs);
 	ret = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
 	                           &pkt->mm, rr);
 	if (ret != KNOT_EOK) {
@@ -761,8 +762,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 		return KNOT_EOK;
 	}
 
-	/* Append to RR list. */
-	pkt->rr[pkt->rrset_count] = *rr;
+	/* Update packet RRSet count. */
 	++pkt->rrset_count;
 
 	/* Update section RRSet count. */

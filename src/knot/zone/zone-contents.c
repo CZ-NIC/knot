@@ -615,7 +615,8 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
+static int insert_rr(knot_zone_contents_t *z,
+                     const knot_rrset_t *rr, knot_node_t **n,
                      bool nsec3)
 {
 	if (z == NULL || knot_rrset_empty(rr) || n == NULL) {
@@ -655,7 +656,7 @@ static bool to_nsec3_tree(const knot_rrset_t *rr)
 }
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
-                              knot_rrset_t *rr, knot_node_t **n)
+                              const knot_rrset_t *rr, knot_node_t **n)
 {
 	return insert_rr(z, rr, n, to_nsec3_tree(rr));
 }

@@ -50,11 +50,12 @@ static const char *get_txt_response_string(const knot_dname_t *qname)
  * \param owner     RR owner name.
  * \param response  String to be saved in RDATA. Truncated to 255 chars.
  * \param mm        Memory context.
+ * \param rrset     Store here.
  *
- * \return Allocated RRset or NULL in case of error.
+ * \return KNOT_EOK
  */
-static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
-                                      const char *response, mm_ctx_t *mm)
+static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
+                            const char *response, mm_ctx_t *mm)
 {
 	// truncate response to one TXT label
 	size_t response_len = strlen(response);
@@ -62,27 +63,23 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 		response_len = KNOT_DNAME_MAXLEN;
 	}
 
-	knot_dname_t *rowner = knot_dname_copy(owner, NULL);
+	knot_dname_t *rowner = knot_dname_copy(owner, mm);
 	if (!rowner) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
-	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH, mm);
-	if (!rrset) {
-		return NULL;
-	}
-
+	knot_rrset_init(rrset, rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH);
 	uint8_t *rdata = knot_rrset_create_rr(rrset, response_len + 1, 0, mm);
 	if (!rdata) {
-		knot_rrset_free(&rrset, mm);
-		return NULL;
+		knot_dname_free(&rrset->owner, mm);
+		knot_rrs_clear(&rrset->rrs, mm);
+		return KNOT_ENOMEM;
 	}
 
 	rdata[0] = response_len;
 	memcpy(&rdata[1], response, response_len);
 
-	return rrset;
+	return KNOT_EOK;
 }
 
 /*!
@@ -99,15 +96,15 @@ static int answer_txt(knot_pkt_t *response)
 		return KNOT_RCODE_REFUSED;
 	}
 
-	knot_rrset_t *rrset = create_txt_rrset(qname, response_str,
-	                                       &response->mm);
-	if (!rrset) {
+	knot_rrset_t rrset;
+	int ret = create_txt_rrset(&rrset, qname, response_str, &response->mm);
+	if (ret != KNOT_EOK) {
 		return KNOT_RCODE_SERVFAIL;
 	}
 
-	int result = knot_pkt_put(response, 0, rrset, KNOT_PF_FREE);
+	int result = knot_pkt_put(response, 0, &rrset, KNOT_PF_FREE);
 	if (result != KNOT_EOK) {
-		knot_rrset_free(&rrset, &response->mm);
+		knot_rrset_clear(&rrset, &response->mm);
 		return KNOT_RCODE_SERVFAIL;
 	}
 
