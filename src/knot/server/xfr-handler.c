@@ -634,13 +634,11 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq, knot_pkt_t *pkt)
 	case KNOT_RESPONSE_UPDATE:
 		break;
 	default:
-		knot_pkt_free(&pkt);
 		return KNOT_EOK; /* Ignore */
 	}
 
 	int ret = knot_pkt_parse_payload(pkt, KNOT_PF_NO_MERGE);
 	if (ret != KNOT_EOK) {
-		knot_pkt_free(&pkt);
 		return KNOT_EOK; /* Ignore */
 	}
 
@@ -652,7 +650,6 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq, knot_pkt_t *pkt)
 		                             rq->tsig_key, 0);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s %s\n", rq->msg, knot_strerror(ret));
-			knot_pkt_free(&pkt);
 			return KNOT_ECONNREFUSED;
 		}
 
