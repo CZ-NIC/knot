@@ -18,6 +18,7 @@ check_PROGRAMS = \
 	random		\
 	sign		\
 	sign_der	\
+	store_pkcs8_dir \
 	wire
 
 check-compile-only: $(check_PROGRAMS)
