@@ -26,6 +26,12 @@
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
 
+static void free_pkt_rr(knot_rrset_t *rr, mm_ctx_t *mm)
+{
+	knot_dname_free(&rr->owner, mm);
+	knot_rrs_clear(&rr->rrs, mm);
+}
+
 /*! \brief Scan packet for RRSet existence. */
 static bool pkt_contains(const knot_pkt_t *packet,
 			 const knot_rrset_t *rrset)
@@ -641,7 +647,6 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 
 	// try to find the RRSet in this array of RRSets
 	for (int i = 0; i < pkt->rrset_count; ++i) {
-
 		if (knot_rrset_equal(&pkt->rr[i], rr, KNOT_RRSET_COMPARE_HEADER)) {
 			int merged = 0;
 			int deleted_rrs = 0;
@@ -654,7 +659,7 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 			}
 
 			dbg_packet("%s: merged RR %p\n", __func__, rr);
-			knot_rrset_free(&rr, &pkt->mm);
+			free_pkt_rr(rr, &pkt->mm);
 			return KNOT_EOK;
 		}
 	}
@@ -667,8 +672,8 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
  *        RRSets should use packet memory context for allocation and
  *        should be copied if they are supposed to be stored in zone permanently.
  */
-static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
-                                           size_t size, mm_ctx_t *mm)
+static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
+                                 size_t size, mm_ctx_t *mm, knot_rrset_t *rrset)
 {
 	dbg_packet("%s(%p, %zu, %zu)\n", __func__, wire, *pos, size);
 	assert(wire);
@@ -676,13 +681,13 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	knot_dname_t *owner = knot_dname_parse(wire, pos, size, mm);
 	if (owner == NULL) {
-		return NULL;
+		return KNOT_EMALF;
 	}
 	knot_dname_to_lower(owner);
 	if (size - *pos < KNOT_RR_HEADER_SIZE) {
 		dbg_packet("%s: not enough data to parse RR HEADER\n", __func__);
 		knot_dname_free(&owner, mm);
-		return NULL;
+		return KNOT_EMALF;
 	}
 
 	uint16_t type = knot_wire_read_u16(wire + *pos);
@@ -690,11 +695,10 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	uint32_t ttl = knot_wire_read_u32(wire + *pos + 2 * sizeof(uint16_t));
 	uint16_t rdlength = knot_wire_read_u16(wire + *pos + 4 * sizeof(uint16_t));
 
-	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, mm);
-	if (rrset == NULL) {
-		knot_dname_free(&owner, mm);
-		return NULL;
-	}
+	rrset->owner = owner;
+	rrset->type = type;
+	rrset->rclass = rclass;
+	
 	*pos += KNOT_RR_HEADER_SIZE;
 
 	dbg_packet_verb("%s: read type %u, class %u, ttl %u, rdlength %u\n",
@@ -702,8 +706,9 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	if (size - *pos < rdlength) {
 		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
-		knot_rrset_free(&rrset, mm);
-		return NULL;
+		knot_dname_free(&owner, mm);
+		knot_rrs_clear(&rrset->rrs, mm);
+		return KNOT_EMALF;
 	}
 
 	// parse RDATA
@@ -713,11 +718,12 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
 		dbg_packet("%s: couldn't parse RDATA (%d)\n", __func__, ret);
-		knot_rrset_free(&rrset, mm);
-		return NULL;
+		knot_dname_free(&owner, mm);
+		knot_rrs_clear(&rrset->rrs, mm);
+		return ret;
 	}
 
-	return rrset;
+	return KNOT_EOK;
 }
 
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
@@ -740,12 +746,12 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 
 	/* Parse wire format. */
 	size_t rr_size = pkt->parsed;
-	knot_rrset_t *rr = NULL;
-	rr = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
-	                           &pkt->mm);
-	if (rr == NULL) {
+	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
+	ret = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
+	                           &pkt->mm, rr);
+	if (ret != KNOT_EOK) {
 		dbg_packet("%s: failed to parse RR\n", __func__);
-		return KNOT_EMALF;
+		return ret;
 	}
 	
 	/* Calculate parsed RR size from before/after parsing. */
