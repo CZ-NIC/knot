@@ -13,6 +13,7 @@ Bugfixes:
 	* Zone file parser allows asterisk as part of the label
 	* Journal maximum entry size fixes
 	* Sign DNSKEYs in non-apex nodes as regular RR sets
+	* Various spelling and typo fixes
 
 v1.4.3 - Feb 13, 2014
 ---------------------
