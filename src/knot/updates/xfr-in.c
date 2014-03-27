@@ -132,7 +132,7 @@ int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt)
 	knot_node_t *apex = zone->contents->apex;
 	knot_rrset_t soa = RRSET_INIT(apex, KNOT_RRTYPE_SOA);
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	ret = knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa, KNOT_PF_FREE);
+	ret = knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa, 0);
 	return ret;
 }
 

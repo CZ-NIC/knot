@@ -62,7 +62,10 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	}
 	dbg_ns("%s(%p, %p)\n", __func__, dname_rr, qname);
 	
-	cname_rrset->owner = (knot_dname_t *)qname;
+	cname_rrset->owner = knot_dname_copy(qname, mm);
+	if (cname_rrset->owner == NULL) {
+		return KNOT_ENOMEM;
+	}
 	cname_rrset->type = KNOT_RRTYPE_CNAME;
 	cname_rrset->rclass = KNOT_CLASS_IN;
 	knot_rrs_init(&cname_rrset->rrs);
@@ -131,14 +134,17 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	synth_sig.owner = (knot_dname_t *)sig_owner;
+	synth_sig.owner = knot_dname_copy(sig_owner, qdata->mm);
+	if (synth_sig.owner == NULL) {
+		knot_rrs_clear(&synth_sig.rrs, qdata->mm);
+	}
 	synth_sig.type = KNOT_RRTYPE_RRSIG;
 	synth_sig.rclass = KNOT_CLASS_IN;
 	synth_sig.additional = NULL;
-	struct rrsig_info *info = mm_alloc(qdata->mm,
-	                                   sizeof(struct rrsig_info));
+	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
 	if (info == NULL) {
 		ERR_ALLOC_FAILED;
+		knot_dname_free(&synth_sig.owner, qdata->mm);
 		knot_rrs_clear(&synth_sig.rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
@@ -244,14 +250,20 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-
 		knot_rrset_rr_set_ttl(&soa_rrset, 0, min);
+		
+		soa_rrset.owner = knot_dname_copy(soa_rrset.owner, &pkt->mm);
+		if (soa_rrset.owner == NULL) {
+			knot_rrs_clear(&soa_rrset.rrs, &pkt->mm);
+			return KNOT_ENOMEM;
+		}
 		flags |= KNOT_PF_FREE;
 	}
 
 	ret = ns_put_rr(pkt, &soa_rrset, &rrsigs, COMPR_HINT_NONE, flags, qdata);
 	if (ret != KNOT_EOK && (flags & KNOT_PF_FREE)) {
-		knot_rrs_free(&soa_rrset.rrs, &pkt->mm);
+		knot_dname_free(&soa_rrset.owner, &pkt->mm);
+		knot_rrs_clear(&soa_rrset.rrs, &pkt->mm);
 	}
 
 	return ret;

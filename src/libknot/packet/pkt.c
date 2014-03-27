@@ -26,7 +26,7 @@
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
 
-static void free_pkt_rr(knot_rrset_t *rr, mm_ctx_t *mm)
+static void clear_pkt_rr(knot_rrset_t *rr, mm_ctx_t *mm)
 {
 	knot_dname_free(&rr->owner, mm);
 	knot_rrs_clear(&rr->rrs, mm);
@@ -59,7 +59,7 @@ static void pkt_free_data(knot_pkt_t *pkt)
 	/* Free RRSets if applicable. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
 		if (pkt->rr_info[i].flags & KNOT_PF_FREE) {
-			knot_rrs_clear(&pkt->rr[i].rrs, &pkt->mm);
+			clear_pkt_rr(&pkt->rr[i], &pkt->mm);
 		}
 	}
 
@@ -659,7 +659,7 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 			}
 
 			dbg_packet("%s: merged RR %p\n", __func__, rr);
-			free_pkt_rr(rr, &pkt->mm);
+			clear_pkt_rr(rr, &pkt->mm);
 			return KNOT_EOK;
 		}
 	}
@@ -706,8 +706,7 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	if (size - *pos < rdlength) {
 		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
-		knot_dname_free(&owner, mm);
-		knot_rrs_clear(&rrset->rrs, mm);
+		clear_pkt_rr(rrset, mm);
 		return KNOT_EMALF;
 	}
 
@@ -718,8 +717,7 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
 		dbg_packet("%s: couldn't parse RDATA (%d)\n", __func__, ret);
-		knot_dname_free(&owner, mm);
-		knot_rrs_clear(&rrset->rrs, mm);
+		clear_pkt_rr(rrset, mm);
 		return ret;
 	}
 

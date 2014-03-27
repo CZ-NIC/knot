@@ -276,14 +276,6 @@ void knot_rrs_init(knot_rrs_t *rrs)
 	}
 }
 
-void knot_rrs_free(knot_rrs_t *rrs, mm_ctx_t *mm)
-{
-	if (rrs) {
-		mm_free(mm, rrs->data);
-		mm_free(mm, rrs);
-	}
-}
-
 void knot_rrs_clear(knot_rrs_t *rrs, mm_ctx_t *mm)
 {
 	if (rrs) {
