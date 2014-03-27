@@ -262,7 +262,8 @@ static int conf_process(conf_t *conf)
 	if (z_iter == NULL) {
 		return KNOT_ERROR;
 	}
-	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
+	for (; !hattrie_iter_finished(z_iter) && ret == KNOT_EOK; hattrie_iter_next(z_iter)) {
+
 		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 
 		// Default policy for dbsync timeout
