@@ -54,14 +54,6 @@ int knot_changesets_init(knot_changesets_t **changesets)
 	// Init list with changesets
 	init_list(&(*changesets)->sets);
 
-	// Init changes structure
-	(*changesets)->changes = xmalloc(sizeof(knot_changes_t));
-	// Init changes' allocator (storing RRs)
-	(*changesets)->changes->mem_ctx = (*changesets)->mmc_rr;
-	// Init changes' lists
-	init_list(&(*changesets)->changes->new_rrsets);
-	init_list(&(*changesets)->changes->old_rrsets);
-
 	return KNOT_EOK;
 }
 
@@ -176,32 +168,6 @@ int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
 	} else {
 		return knot_changeset_add_rrset(chgs, rr, part);
 	}
-}
-
-int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
-                           knot_changes_part_t part)
-{
-	if (ch == NULL || rrset == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_rr_ln_t *rr_node =
-		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_rr_ln_t));
-	if (rr_node == NULL) {
-		// This will not happen with mp_alloc, but allocator can change
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	}
-	rr_node->rr = rrset;
-
-	if (part == KNOT_CHANGES_NEW) {
-		add_tail(&ch->new_rrsets, (node_t *)rr_node);
-	} else {
-		assert(part == KNOT_CHANGES_OLD);
-		add_tail(&ch->old_rrsets, (node_t *)rr_node);
-	}
-
-	return KNOT_EOK;
 }
 
 static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
@@ -337,7 +303,6 @@ void knot_changesets_free(knot_changesets_t **changesets)
 
 	knot_rrset_free(&(*changesets)->first_soa, NULL);
 
-	free((*changesets)->changes);
 	free(*changesets);
 	*changesets = NULL;
 }

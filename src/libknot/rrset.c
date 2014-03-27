@@ -76,65 +76,6 @@ static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
 	return ret;
 }
 
-/*! \brief Canonical order RDATA comparison. */
-static int rrset_rdata_compare_one(const knot_rrset_t *rrset1,
-                                   const knot_rrset_t *rrset2,
-                                   size_t pos1, size_t pos2)
-{
-	assert(rrset1 != NULL);
-	assert(rrset2 != NULL);
-	assert(rrset1->type == rrset2->type);
-
-	uint8_t *r1 = knot_rrset_rr_rdata(rrset1, pos1);
-	uint8_t *r2 = knot_rrset_rr_rdata(rrset2, pos2);
-	uint16_t l1 = knot_rrset_rr_size(rrset1, pos1);
-	uint16_t l2 = knot_rrset_rr_size(rrset2, pos2);
-	int cmp = memcmp(r1, r2, MIN(l1, l2));
-	if (cmp == 0 && l1 != l2) {
-		cmp = l1 < l2 ? -1 : 1;
-	}
-	return cmp;
-}
-
-/*!
- * \brief RRSet RDATA equality check.
- *
- * \param r1  First RRSet.
- * \param r2  Second RRSet.
- *
- * \return True if RRs in r1 are equal to RRs in r2, false otherwise.
- */
-static bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
-{
-	if (r1 == NULL || r2 == NULL || (r1->type != r2->type) ||
-	    r1->rrs.data == NULL || r2->rrs.data == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	uint16_t r1_rdata_count = knot_rrset_rr_count(r1);
-	uint16_t r2_rdata_count = knot_rrset_rr_count(r2);
-
-	if (r1_rdata_count != r2_rdata_count) {
-		return false;
-	}
-
-	for (uint16_t i = 0; i < r1_rdata_count; i++) {
-		bool found = false;
-		for (uint16_t j = 0; j < r2_rdata_count; j++) {
-			if (rrset_rdata_compare_one(r1, r2, i, j) == 0) {
-				found = true;
-				break;
-			}
-		}
-
-		if (!found) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
 static int knot_rrset_header_to_wire(const knot_rrset_t *rrset, uint32_t ttl,
                                      uint8_t **pos, size_t max_size,
                                      knot_compr_t *compr, size_t *size)
@@ -819,15 +760,17 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 		return r1 == r2;
 	}
 
-
-	if (!knot_dname_is_equal(r1->owner, r2->owner))
+	if (!knot_dname_is_equal(r1->owner, r2->owner)) {
 		return false;
+	}
 
-	if (r1->rclass != r2->rclass || r1->type != r2->type)
+	if (r1->type != r2->type || r1->rclass != r2->rclass) {
 		return false;
+	}
 
-	if (cmp == KNOT_RRSET_COMPARE_WHOLE)
-		return knot_rrset_rdata_equal(r1, r2);
+	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {
+		return knot_rrs_eq(&r1->rrs, &r2->rrs);
+	}
 
 	return true;
 }
@@ -965,7 +908,9 @@ dbg_rrset_exec_detail(
 	size_t insert_to = 0;
 	uint16_t rdata_count = knot_rrset_rr_count(rrset);
 	for (uint16_t j = 0; j < rdata_count && (!duplicated && !found); ++j) {
-		int cmp = rrset_rdata_compare_one(rrset, rr, j, pos);
+		const knot_rr_t *rr1 = knot_rrs_rr(&rrset->rrs, j);
+		const knot_rr_t *rr2 = knot_rrs_rr(&rr->rrs, pos);
+		int cmp = knot_rr_cmp(rr1, rr2);
 		if (cmp == 0) {
 			// Duplication - no need to merge this RR
 			duplicated = 1;
@@ -1205,8 +1150,9 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
 	bool found = false;
 	uint16_t rr_count = knot_rrset_rr_count(rr_search_in);
 	for (uint16_t i = 0; i < rr_count && !found; ++i) {
-		if (rrset_rdata_compare_one(rr_search_in,
-		                            rr_reference, i, pos) == 0) {
+		const knot_rr_t *in_rr = knot_rrs_rr(&rr_search_in->rrs, i);
+		const knot_rr_t *ref_rr = knot_rrs_rr(&rr_reference->rrs, pos);
+		if (knot_rr_cmp(in_rr, ref_rr) == 0) {
 			*pos_out = i;
 			found = true;
 		}
@@ -1340,7 +1286,7 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
                            const knot_rrset_t *rrsigs,
                            knot_rrset_t **out_sig, mm_ctx_t *mm)
 {
-	if (rrsigs == NULL) {
+	if (knot_rrset_empty(rrsigs)) {
 		return KNOT_ENOENT;
 	}
 

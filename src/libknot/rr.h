@@ -3,12 +3,19 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "common/mempattern.h"
 
 typedef uint8_t knot_rr_t;
 
+enum rrs_flags {
+	RRS_OLD = 1 << 0,
+	RRS_NEW = 1 << 1
+};
+
 typedef struct knot_rrs {
+	uint8_t flags;
 	uint16_t rr_count;
 	knot_rr_t *data;
 } knot_rrs_t;
@@ -38,6 +45,8 @@ uint8_t* knot_rrs_create_rr_at_pos(knot_rrs_t *rrs,
 int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm);
 void knot_rrs_free(knot_rrs_t *rrs, mm_ctx_t *mm);
 void knot_rrs_clear(knot_rrs_t *rrs, mm_ctx_t *mm);
+int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2);
+bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2);
 int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm);
 int knot_rrs_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
                          knot_rrs_t *out_sig, mm_ctx_t *mm);

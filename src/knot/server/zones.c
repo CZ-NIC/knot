@@ -1478,8 +1478,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	/* Commit transaction. */
 	ret = zones_store_changesets_commit(transaction);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update(zone->contents, new_contents,
-		                      chs->changes);
+		xfrin_rollback_update(zone->contents, new_contents);
 		log_zone_error("%s Failed to commit stored changesets.\n", msgpref);
 		knot_changesets_free(&chs);
 		return ret;
@@ -1495,15 +1494,14 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	if (switch_ret != KNOT_EOK) {
 		log_zone_error("%s Failed to replace current zone.\n", msgpref);
 		// Cleanup old and new contents
-		xfrin_rollback_update(zone->contents, new_contents,
-		                      chs->changes);
+		xfrin_rollback_update(zone->contents, new_contents);
 
 		/* Free changesets, but not the data. */
 		knot_changesets_free(&chs);
 		return KNOT_ERROR;
 	}
 
-	xfrin_cleanup_successful_update(chs->changes);
+	xfrin_cleanup_successful_update(NULL);
 
 	/* Free changesets, but not the data. */
 	knot_changesets_free(&chs);
@@ -1926,8 +1924,7 @@ int zones_journal_apply(zone_t *zone)
 							      XFR_TYPE_IIN);
 				rcu_read_lock();
 				if (apply_ret == KNOT_EOK) {
-					xfrin_cleanup_successful_update(
-							chsets->changes);
+					xfrin_cleanup_successful_update(NULL);
 				} else {
 					log_zone_error("Failed to apply "
 					               "changesets to '%s' - Switch failed: "
@@ -1937,8 +1934,7 @@ int zones_journal_apply(zone_t *zone)
 
 					// Cleanup old and new contents
 					xfrin_rollback_update(zone->contents,
-					                      &contents,
-					                      chsets->changes);
+					                      &contents);
 				}
 			}
 		}
@@ -2020,7 +2016,6 @@ static int diff_after_load(zone_t *zone, zone_t *old_zone,
 		assert(!zones_changesets_empty(*diff_chs));
 		/* Apply DNSSEC changeset to the new zone. */
 		ret = xfrin_apply_changesets_directly(zone->contents,
-		                                      (*diff_chs)->changes,
 		                                      *diff_chs);
 
 		if (ret == KNOT_EOK) {
@@ -2038,7 +2033,7 @@ static int diff_after_load(zone_t *zone, zone_t *old_zone,
 			return ret;
 		}
 
-		xfrin_cleanup_successful_update((*diff_chs)->changes);
+		xfrin_cleanup_successful_update(NULL);
 		knot_changesets_free(diff_chs);
 		assert(zone->conf->build_diffs);
 	}
@@ -2109,7 +2104,6 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			assert(!old_zone ||
 			       old_zone->contents != zone->contents);
 			ret = xfrin_apply_changesets_directly(zone->contents,
-			                                      diff_chs->changes,
 			                                      diff_chs);
 			if (ret == KNOT_EOK) {
 				ret = xfrin_finalize_updated_zone(
@@ -2133,7 +2127,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			return ret;
 		}
 
-		xfrin_cleanup_successful_update(diff_chs->changes);
+		xfrin_cleanup_successful_update(NULL);
 	}
 
 	/* Commit transaction. */
@@ -2162,8 +2156,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			               "switching zone (%s).\n",
 			               zone->conf->name, knot_strerror(ret));
 			// Cleanup old and new contents
-			xfrin_rollback_update(zone->contents, &new_contents,
-			                      diff_chs->changes);
+			xfrin_rollback_update(zone->contents, &new_contents);
 			return ret;
 		}
 

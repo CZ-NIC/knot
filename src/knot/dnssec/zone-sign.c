@@ -495,14 +495,13 @@ static int sign_node_rrsets(const knot_node_t *node,
 	knot_rrset_t rrsigs;
 	knot_node_fill_rrset(node, KNOT_RRTYPE_RRSIG, &rrsigs);
 
-	knot_rrset_t **node_rrsets = knot_node_create_rrsets(node);
 	for (int i = 0; i < node->rrset_count; i++) {
-		const knot_rrset_t *rrset = node_rrsets[i];
-		if (rrset->type == KNOT_RRTYPE_RRSIG) {
+		knot_rrset_t rrset = RRSET_INIT_N(node, i);
+		if (rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
 		bool should_sign = false;
-		result = knot_zone_sign_rr_should_be_signed(node, rrset,
+		result = knot_zone_sign_rr_should_be_signed(node, &rrset,
 		                                            &should_sign);
 		if (result != KNOT_EOK) {
 			return result;
@@ -512,10 +511,10 @@ static int sign_node_rrsets(const knot_node_t *node,
 		}
 
 		if (policy->forced_sign) {
-			result = force_resign_rrset(rrset, &rrsigs, zone_keys, policy,
+			result = force_resign_rrset(&rrset, &rrsigs, zone_keys, policy,
 			         changeset);
 		} else {
-			result = resign_rrset(rrset, &rrsigs, zone_keys, policy,
+			result = resign_rrset(&rrset, &rrsigs, zone_keys, policy,
 			                      changeset, expires_at);
 		}
 
@@ -523,8 +522,6 @@ static int sign_node_rrsets(const knot_node_t *node,
 			return result;
 		}
 	}
-
-	knot_node_free_created_rrsets(node, node_rrsets);
 
 	return remove_standalone_rrsigs(node, &rrsigs, changeset);
 }
@@ -1467,7 +1464,7 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	}
 
 	*should_sign = false; // Only one case at the end is set to true
-	if (node == NULL || rrset == NULL) {
+	if (node == NULL || knot_rrset_empty(rrset)) {
 		return KNOT_EOK;
 	}
 

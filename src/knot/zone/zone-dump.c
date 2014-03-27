@@ -55,11 +55,10 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		params->buf[0] = '\0';
 	}
 
-	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
-
 	// Dump other records.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		switch (rrsets[i]->type) {
+		knot_rrset_t rrset = RRSET_INIT_N(node, i);
+		switch (rrset.type) {
 		case KNOT_RRTYPE_NSEC:
 			continue;
 		case KNOT_RRTYPE_RRSIG:
@@ -70,17 +69,15 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 			break;
 		}
 
-		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
+		if (knot_rrset_txt_dump(&rrset, params->buf, params->buflen,
 		                        params->style) < 0) {
-			knot_node_free_created_rrsets(node, rrsets);
 			return KNOT_ENOMEM;
 		}
-		params->rr_count +=  knot_rrset_rr_count(rrsets[i]);
+		params->rr_count +=  knot_rrset_rr_count(&rrset);
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
-
-	knot_node_free_created_rrsets(node, rrsets);
+	
 	return KNOT_EOK;
 }
 
@@ -95,11 +92,10 @@ static int node_dump_text(knot_node_t *node, void *data)
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
-
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		switch (rrsets[i]->type) {
+		knot_rrset_t rrset = RRSET_INIT_N(node, i);
+		switch (rrset.type) {
 		case KNOT_RRTYPE_RRSIG:
 			if (params->dump_rrsig) {
 				break;
@@ -122,17 +118,15 @@ static int node_dump_text(knot_node_t *node, void *data)
 			break;
 		}
 
-		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
+		if (knot_rrset_txt_dump(&rrset, params->buf, params->buflen,
 		                        params->style) < 0) {
-			knot_node_free_created_rrsets(node, rrsets);
 			return KNOT_ENOMEM;
 		}
-		params->rr_count += knot_rrset_rr_count(rrsets[i]);
+		params->rr_count += knot_rrset_rr_count(&rrset);
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
 
-	knot_node_free_created_rrsets(node, rrsets);
 	return KNOT_EOK;
 }
 

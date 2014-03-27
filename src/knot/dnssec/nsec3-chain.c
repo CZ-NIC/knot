@@ -89,14 +89,14 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
  */
 static bool node_should_be_signed_nsec3(const knot_node_t *n)
 {
-	knot_rrset_t **node_rrsets = knot_node_create_rrsets(n);
 	for (int i = 0; i < n->rrset_count; i++) {
-		if (node_rrsets[i]->type == KNOT_RRTYPE_NSEC ||
-		    node_rrsets[i]->type == KNOT_RRTYPE_RRSIG) {
+		knot_rrset_t rrset = RRSET_INIT_N(n, i);
+		if (rrset.type == KNOT_RRTYPE_NSEC ||
+		    rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
 		bool should_sign = false;
-		int ret = knot_zone_sign_rr_should_be_signed(n, node_rrsets[i],
+		int ret = knot_zone_sign_rr_should_be_signed(n, &rrset,
 		                                             &should_sign);
 		assert(ret == KNOT_EOK); // No tree inside the function, no fail
 		if (should_sign) {
@@ -122,7 +122,9 @@ static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 	if (from_sig == NULL) {
 		return KNOT_EOK;
 	}
-	return knot_node_add_rrset(to, from_sig, NULL);
+	int ret = knot_node_add_rrset(to, from_sig);
+	knot_rrset_free(&from_sig, NULL);
+	return ret;
 }
 
 /*!
@@ -176,9 +178,8 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 		// newly allocated NSEC3 nodes
-		knot_rrset_t *nsec3 = knot_node_create_rrset(node,
-		                                          KNOT_RRTYPE_NSEC3);
-		knot_rrset_free(&nsec3, NULL);
+		knot_rrs_t *nsec3 = knot_node_get_rrs(node, KNOT_RRTYPE_NSEC3);
+		knot_rrs_clear(nsec3, NULL);
 		knot_node_free(&node);
 	}
 

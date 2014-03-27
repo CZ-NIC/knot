@@ -270,6 +270,7 @@ knot_rrs_t *knot_rrs_new(mm_ctx_t *mm)
 void knot_rrs_init(knot_rrs_t *rrs)
 {
 	if (rrs) {
+		rrs->flags = 0;
 		rrs->rr_count = 0;
 		rrs->data = NULL;
 	}
@@ -336,4 +337,35 @@ int knot_rrs_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
 	return out_sig->rr_count > 0 ? KNOT_EOK : KNOT_ENOENT;
 }
 
+int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2)
+{
+	if (rr1 == NULL || rr2 == NULL) {
+		return -1;
+	}
+	const uint8_t *r1 = knot_rr_rdata(rr1);
+	const uint8_t *r2 = knot_rr_rdata(rr2);
+	uint16_t l1 = knot_rr_size(rr1);
+	uint16_t l2 = knot_rr_size(rr2);
+	int cmp = memcmp(r1, r2, MIN(l1, l2));
+	if (cmp == 0 && l1 != l2) {
+		cmp = l1 < l2 ? -1 : 1;
+	}
+	return cmp;
+}
 
+bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2)
+{
+	if (rrs1->rr_count != rrs2->rr_count) {
+		return false;
+	}
+	
+	for (uint16_t i = 0; i < rrs1->rr_count; ++i) {
+		const knot_rr_t *rr1 = knot_rrs_rr(rrs1, i);
+		const knot_rr_t *rr2 = knot_rrs_rr(rrs2, i);
+		if (knot_rr_cmp(rr1, rr2) != 0) {
+			return false;
+		}
+	}
+	
+	return true;
+}

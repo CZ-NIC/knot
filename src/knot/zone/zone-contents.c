@@ -616,9 +616,9 @@ int knot_zone_contents_create_node(knot_zone_contents_t *contents,
 /*----------------------------------------------------------------------------*/
 
 static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
-                     knot_rrset_t **rrset, bool nsec3)
+                     bool nsec3)
 {
-	if (z == NULL || rr == NULL || n == NULL || rrset == NULL) {
+	if (z == NULL || knot_rrset_empty(rr) || n == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -646,7 +646,7 @@ static int insert_rr(knot_zone_contents_t *z, knot_rrset_t *rr, knot_node_t **n,
 		}
 	}
 
-	return knot_node_add_rrset(*n, rr, rrset);
+	return knot_node_add_rrset(*n, rr);
 }
 
 static bool to_nsec3_tree(const knot_rrset_t *rr)
@@ -655,10 +655,9 @@ static bool to_nsec3_tree(const knot_rrset_t *rr)
 }
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
-                              knot_rrset_t *rr, knot_node_t **n,
-                              knot_rrset_t **rrset)
+                              knot_rrset_t *rr, knot_node_t **n)
 {
-	return insert_rr(z, rr, n, rrset, to_nsec3_tree(rr));
+	return insert_rr(z, rr, n, to_nsec3_tree(rr));
 }
 
 int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
@@ -696,7 +695,7 @@ dbg_zone_exec_detail(
 
 	/*! \todo REMOVE RRSET */
 	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset(*node, rrset, NULL);
+		rc = knot_node_add_rrset(*node, rrset);
 	} else {
 		rc = knot_node_add_rrset_no_merge(*node, rrset);
 	}
