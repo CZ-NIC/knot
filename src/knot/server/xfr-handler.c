@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -110,31 +109,6 @@ static int xfr_recv_tcp(int fd, struct sockaddr *addr, uint8_t *buf, size_t bufl
 static int xfr_recv_udp(int fd, struct sockaddr *addr, uint8_t *buf, size_t buflen)
 { return recv(fd, buf, buflen, 0); }
 
-/*! \todo This should be obsoleted by the generic response parsing layer. */
-static int parse_packet(knot_pkt_t *packet, knot_pkt_type_t *type)
-{
-	dbg_xfr("%s(%p, %p)\n", __func__, packet, type);
-	if (packet == NULL || type == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// 1) create empty response
-	int ret = KNOT_ERROR;
-	*type = KNOT_QUERY_INVALID;
-	if ((ret = knot_pkt_parse_question(packet)) != KNOT_EOK) {
-		dbg_xfr("%s: couldn't parse question = %d\n", __func__, ret);
-		return KNOT_RCODE_FORMERR;
-	}
-
-	// 2) determine the query type
-	*type = knot_pkt_type(packet);
-	if (*type == KNOT_QUERY_INVALID) {
-		return KNOT_RCODE_NOTIMPL;
-	}
-
-	return KNOT_RCODE_NOERROR;
-}
-
 /*! \brief Create forwarded query. */
 static int forward_packet(knot_ns_xfr_t *data, knot_pkt_t *pkt)
 {
@@ -204,11 +178,7 @@ static int xfr_task_setmsg(knot_ns_xfr_t *rq, const char *keytag)
 	}
 
 	/* Prepare log message. */
-	const char *zname = rq->zname;
-	if (zname == NULL) {
-		zname = rq->zone->conf->name;
-	}
-
+	const char *zname = rq->zone->conf->name;
 	rq->msg = sprintf_alloc(xd->name, zname, kstr ? kstr : "'unknown'");
 	free(kstr);
 	return KNOT_EOK;
@@ -290,7 +260,6 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 	/* Cleanup other data - so that the structure may be reused. */
 	rq->packet_nr = 0;
 	rq->tsig_data_size = 0;
-	hattrie_clear(rq->lookup_tree);
 }
 
 /*! \brief End task properly and free it. */
@@ -310,6 +279,7 @@ static int xfr_task_close(knot_ns_xfr_t *rq)
 	/* Reschedule failed bootstrap. */
 	if (rq->type == XFR_TYPE_AIN && !rq->zone->contents) {
 		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
+		zone->xfr_in.bootstrap_retry *= 2;
 		zone->xfr_in.bootstrap_retry += knot_random_uint32_t() % AXFR_BOOTSTRAP_RETRY;
 		if (zone->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME) {
 			zone->xfr_in.bootstrap_retry = AXFR_RETRY_MAXTIME;
@@ -545,7 +515,6 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
 	case XFR_TYPE_IIN:
-		rq->lookup_tree = hattrie_create();
 		if (ret != KNOT_EOK) {
 			pthread_mutex_lock(&zone->lock);
 			zone->xfr_in.state = XFR_IDLE;
@@ -654,62 +623,49 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 }
 
 /*! \brief Query response event handler function. */
-static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
+static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq, knot_pkt_t *pkt)
 {
-	knot_pkt_t *re = knot_pkt_new(rq->wire, rq->wire_size, NULL);
-	if (re == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	knot_pkt_type_t rt = KNOT_RESPONSE_NORMAL;
-	int ret = parse_packet(re, &rt);
-	if (ret != KNOT_EOK) {
-		knot_pkt_free(&re);
-		return KNOT_EOK; /* Ignore */
-	}
+	knot_pkt_type_t pkt_type = knot_pkt_type(pkt);
 
 	/* Ignore other packets. */
-	switch(rt) {
+	switch(pkt_type) {
 	case KNOT_RESPONSE_NORMAL:
 	case KNOT_RESPONSE_NOTIFY:
 	case KNOT_RESPONSE_UPDATE:
 		break;
 	default:
-		knot_pkt_free(&re);
 		return KNOT_EOK; /* Ignore */
 	}
 
-	ret = knot_pkt_parse_payload(re, KNOT_PF_NO_MERGE);
+	int ret = knot_pkt_parse_payload(pkt, KNOT_PF_NO_MERGE);
 	if (ret != KNOT_EOK) {
-		knot_pkt_free(&re);
 		return KNOT_EOK; /* Ignore */
 	}
 
 	/* Check TSIG. */
-	const knot_rrset_t * tsig_rr = re->tsig_rr;
+	const knot_rrset_t * tsig_rr = pkt->tsig_rr;
 	if (rq->tsig_key != NULL) {
-		ret = knot_tsig_client_check(tsig_rr, re->wire, re->size,
+		ret = knot_tsig_client_check(tsig_rr, pkt->wire, pkt->size,
 		                             rq->digest, rq->digest_size,
 		                             rq->tsig_key, 0);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s %s\n", rq->msg, knot_strerror(ret));
-			knot_pkt_free(&re);
 			return KNOT_ECONNREFUSED;
 		}
 
 	}
 
 	/* Process response. */
-	switch(rt) {
+	switch(pkt_type) {
 	case KNOT_RESPONSE_NORMAL:
 		ret = zones_process_response(xfr->server, rq->packet_nr, &rq->addr,
-		                             re);
+		                             pkt);
 		break;
 	case KNOT_RESPONSE_NOTIFY:
-		ret = notify_process_response(re, rq->packet_nr);
+		ret = notify_process_response(pkt, rq->packet_nr);
 		break;
 	case KNOT_RESPONSE_UPDATE:
-		ret = forward_packet_response(rq, re);
+		ret = forward_packet_response(rq, pkt);
 		if (ret == KNOT_EOK) {
 			log_zone_info("%s Forwarded response.\n", rq->msg);
 		}
@@ -719,7 +675,6 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		break;
 	}
 
-	knot_pkt_free(&re);
 	if (ret == KNOT_EUPTODATE) {  /* Check up-to-date zone. */
 		log_zone_info("%s %s (serial %u)\n", rq->msg,
 		              knot_strerror(ret),
@@ -769,16 +724,44 @@ static int xfr_fallback_axfr(knot_ns_xfr_t *rq)
 	return xfr_task_start(rq);
 }
 
-static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
+static int xfr_parse_packet(knot_pkt_t *pkt)
 {
+	/* This is important, don't merge RRs together. The SOAs are ordered
+	 * in a special way for a reason. */
+	int ret = knot_pkt_parse(pkt, KNOT_PF_NO_MERGE);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// check if the response is OK
+	if (knot_wire_get_rcode(pkt->wire) != KNOT_RCODE_NOERROR) {
+		return KNOT_EXFRREFUSED;
+	}
+
+	// check if the TC bit is set (it must not be)
+	if (knot_wire_get_tc(pkt->wire)) {
+		return KNOT_EMALF;
+	}
+
+	return ret;
+}
+
+static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq, knot_pkt_t *pkt)
+{
+	/* Parse transfer packet. */
+	int ret = xfr_parse_packet(pkt);
+	if (ret != KNOT_EOK) {
+		log_zone_error("%s %s\n", rq->msg, knot_strerror(ret));
+		return ret;
+	}
+
 	/* Process incoming packet. */
-	int ret = KNOT_EOK;
 	switch(rq->type) {
 	case XFR_TYPE_AIN:
-		ret = axfr_process_answer(rq);
+		ret = axfr_process_answer(pkt, rq);
 		break;
 	case XFR_TYPE_IIN:
-		ret = ixfr_process_answer(rq);
+		ret = ixfr_process_answer(pkt, rq);
 		break;
 	default:
 		ret = KNOT_EINVAL;
@@ -792,7 +775,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		xfr_task_cleanup(rq);
 		rq->type = XFR_TYPE_AIN;
 		rq->msg[XFR_MSG_DLTTR] = 'A';
-		ret = axfr_process_answer(rq);
+		ret = axfr_process_answer(pkt, rq);
 	}
 
 	/* IXFR refused, try again with AXFR. */
@@ -876,15 +859,32 @@ static int xfr_process_event(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 		rq->wire_size = n;
 	}
 
-	/* Handle SOA/NOTIFY responses. */
+	/* Parse question. */
+	knot_pkt_t *pkt = knot_pkt_new(rq->wire, rq->wire_size, NULL);
+	if (pkt == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = knot_pkt_parse_question(pkt);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&pkt);
+		return ret;
+	}
+
+	/* Process packet by request type. */
 	switch(rq->type) {
 	case XFR_TYPE_NOTIFY:
 	case XFR_TYPE_SOA:
 	case XFR_TYPE_FORWARD:
-		return xfr_task_resp(xfr, rq);
+		ret = xfr_task_resp(xfr, rq, pkt);
+		break;
 	default:
-		return xfr_task_xfer(xfr, rq);
+		ret = xfr_task_xfer(xfr, rq, pkt);
+		break;
 	}
+
+	knot_pkt_free(&pkt);
+	return ret;
 }
 
 /*! \brief Sweep inactive connection. */
@@ -1182,10 +1182,6 @@ int xfr_task_free(knot_ns_xfr_t *rq)
 	if (!rq) {
 		return KNOT_EINVAL;
 	}
-
-	/* Free DNAME trie. */
-	hattrie_free(rq->lookup_tree);
-	rq->lookup_tree = NULL;
 
 	/* Free TSIG buffers. */
 	free(rq->digest);

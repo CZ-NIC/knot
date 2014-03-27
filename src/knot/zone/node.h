@@ -91,14 +91,16 @@ typedef struct knot_node knot_node_t;
 /*! \brief Flags used to mark nodes with some property. */
 typedef enum {
 	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
-	KNOT_NODE_FLAGS_DELEG = (uint8_t)0x01,
+	KNOT_NODE_FLAGS_DELEG = 1 << 0,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
-	KNOT_NODE_FLAGS_NONAUTH = (uint8_t)0x02,
+	KNOT_NODE_FLAGS_NONAUTH = 1 << 1,
+	/*! \brief Node is an apex node. */
+	KNOT_NODE_FLAGS_APEX = 1 << 2,
 	/*! \brief NSEC/NSEC3 was removed from this node. */
-	KNOT_NODE_FLAGS_REMOVED_NSEC = (uint8_t)0x04,
+	KNOT_NODE_FLAGS_REMOVED_NSEC = 1 << 3,
 	/*! \brief Node is empty and will be deleted after update.
 	 *  \todo Remove after dname refactoring, update description in node. */
-	KNOT_NODE_FLAGS_EMPTY = (uint8_t)0x10
+	KNOT_NODE_FLAGS_EMPTY = 1 << 4,
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
@@ -376,6 +378,10 @@ int knot_node_is_removed_nsec(const knot_node_t *node);
 void knot_node_set_removed_nsec(knot_node_t *node);
 
 void knot_node_clear_removed_nsec(knot_node_t *node);
+
+void knot_node_set_apex(knot_node_t *node);
+
+int knot_node_is_apex(const knot_node_t *node);
 
 //! \todo remove after dname refactoring
 int knot_node_is_empty(const knot_node_t *node);

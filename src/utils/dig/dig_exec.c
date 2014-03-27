@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include "utils/dig/dig_exec.h"
 
 #include <stdlib.h>			// free
@@ -120,7 +119,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		                                     0, sizeof(wire),
 		                                     &packet->mm);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&soa, 1, &packet->mm);
+			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);
 			return NULL;
 		}
@@ -132,7 +131,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		knot_pkt_begin(packet, KNOT_AUTHORITY);
 		ret = knot_pkt_put(packet, 0, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&soa, 1, &packet->mm);
+			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);
 			return NULL;
 		}
@@ -410,7 +409,7 @@ static void process_query(const query_t *query)
 	WALK_LIST(server, query->servers) {
 		srv_info_t *remote = (srv_info_t *)server;
 
-		DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+		DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 		    "port(%s), protocol(%s)\n", query->owner, query->class_num,
 		    query->type_num, remote->name, remote->service,
 		    get_sockname(socktype));
@@ -653,7 +652,7 @@ static void process_query_xfr(const query_t *query)
 	// Use the first nameserver from the list.
 	srv_info_t *remote = HEAD(query->servers);
 
-	DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+	DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 	    "port(%s), protocol(%s)\n", query->owner, query->class_num,
 	    query->type_num, remote->name, remote->service,
 	    get_sockname(socktype));

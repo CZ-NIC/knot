@@ -109,7 +109,7 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
  * \retval true if the node is empty or contains only NSEC and RRSIGs.
  * \retval false otherwise.
  */
-bool knot_nsec_only_nsec_and_rrsigs_in_node(const knot_node_t *n);
+bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n);
 
 /*!
  * \brief Create new NSEC chain, add differences from current into a changeset.

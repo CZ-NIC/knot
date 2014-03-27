@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
@@ -315,13 +314,13 @@ static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 		if (ret != KNOT_EOK) {
 			DBG("%s: failed to set rrset from wire - %s\n",
 			    __func__, knot_strerror(ret));
-			knot_rrset_free(&rr);
+			knot_rrset_free(&rr, NULL);
 			return ret;
 		}
 	}
 
 	if (ptrlist_add(target_list, rr, mm) == NULL) {
-		knot_rrset_free(&rr);
+		knot_rrset_free(&rr, NULL);
 		return KNOT_ENOMEM;
 	}
 

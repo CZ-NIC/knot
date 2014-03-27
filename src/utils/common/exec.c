@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include "utils/common/exec.h"
 
 #include <stdlib.h>			// free
@@ -212,7 +211,7 @@ static void print_section_question(const knot_dname_t *owner,
 
 	printf("%s\n", buf);
 
-	knot_rrset_free(&question);
+	knot_rrset_free(&question, NULL);
 	free(buf);
 }
 

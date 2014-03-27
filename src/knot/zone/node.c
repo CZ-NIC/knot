@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
@@ -621,6 +620,29 @@ void knot_node_clear_removed_nsec(knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
+void knot_node_set_apex(knot_node_t *node)
+{
+	if (node == NULL) {
+		return;
+	}
+
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_APEX);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_node_is_apex(const knot_node_t *node)
+{
+	if (node == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_APEX);
+}
+
+
+/*----------------------------------------------------------------------------*/
+
 void knot_node_free_rrsets(knot_node_t *node)
 {
 	if (node == NULL) {
@@ -629,7 +651,7 @@ void knot_node_free_rrsets(knot_node_t *node)
 
 	knot_rrset_t **rrs = node->rrset_tree;
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_deep_free(&(rrs[i]), 1, NULL);
+		knot_rrset_free(&(rrs[i]), NULL);
 	}
 }
 

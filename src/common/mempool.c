@@ -8,7 +8,6 @@
  *	of the GNU Lesser General Public License.
  */
 
-#include <config.h>
 
 #undef LOCAL_DEBUG
 

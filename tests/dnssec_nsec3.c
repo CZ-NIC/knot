@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	is_int(4, params.salt_length, "parse salt length from wire");
 	is_int(0, memcmp(params.salt, "abcd", 4), "parse salt from wire");
 
-	knot_rrset_deep_free(&rrset, 1, NULL);
+	knot_rrset_free(&rrset, NULL);
 	knot_nsec3_params_free(&params);
 
 	// hash computation

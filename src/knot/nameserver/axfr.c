@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
@@ -225,7 +224,7 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 }
 
-int axfr_process_answer(knot_ns_xfr_t *xfr)
+int axfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 {
 	/*
 	 * Here we assume that 'xfr' contains TSIG information
@@ -235,7 +234,7 @@ int axfr_process_answer(knot_ns_xfr_t *xfr)
 
 	dbg_ns("ns_process_axfrin: incoming packet, wire size: %zu\n",
 	       xfr->wire_size);
-	int ret = xfrin_process_axfr_packet(xfr,
+	int ret = xfrin_process_axfr_packet(pkt, xfr,
 	                                    (knot_zone_contents_t **)&xfr->data);
 	if (ret > 0) { // transfer finished
 		dbg_ns("ns_process_axfrin: AXFR finished, zone created.\n");

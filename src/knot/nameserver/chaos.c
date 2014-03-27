@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <strings.h>
 
 #include "knot/nameserver/chaos.h"
@@ -76,7 +75,7 @@ static knot_rrset_t *create_txt_rrset(const knot_dname_t *owner,
 
 	uint8_t *rdata = knot_rrset_create_rr(rrset, response_len + 1, 0, mm);
 	if (!rdata) {
-		knot_rrset_deep_free(&rrset, 1, mm);
+		knot_rrset_free(&rrset, mm);
 		return NULL;
 	}
 
@@ -108,7 +107,7 @@ static int answer_txt(knot_pkt_t *response)
 
 	int result = knot_pkt_put(response, 0, rrset, KNOT_PF_FREE);
 	if (result != KNOT_EOK) {
-		knot_rrset_deep_free(&rrset, 1, &response->mm);
+		knot_rrset_free(&rrset, &response->mm);
 		return KNOT_RCODE_SERVFAIL;
 	}
 

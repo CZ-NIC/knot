@@ -15,7 +15,6 @@
  */
 
 #define _BSD_SOURCE
-#include <config.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>

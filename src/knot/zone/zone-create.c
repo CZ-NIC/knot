@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,36 +86,27 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	if (rr->type == KNOT_RRTYPE_SOA &&
 	    knot_node_rrset(zc->z->apex, KNOT_RRTYPE_SOA)) {
 		// Ignore extra SOA
-		knot_rrset_deep_free(&rr, true, NULL);
+		knot_rrset_free(&rr, NULL);
 		return KNOT_EOK;
 	}
 
-	knot_node_t *n;
-	if (zc->last_node &&
-	    knot_dname_is_equal(zc->last_node->owner, rr->owner)) {
-		// Reuse hint from last addition.
-		n = zc->last_node;
-	} else {
-		// Search for node or create a new one
-		n = NULL;
-	}
-
 	bool ttl_err = false;
-
-	int ret = knot_zone_contents_add_rr(zc->z, rr, &n, &ttl_err);
+	knot_node_t *node = NULL;
+	knot_rrset_t *zone_rrset = NULL;
+	int ret = knot_zone_contents_add_rr(zc->z, rr, &node, &zone_rrset);
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
 			// Fatal error
 			return ret;
 		}
 		// Recoverable error, skip record
-		knot_rrset_deep_free(&rr, true, NULL);
+		knot_rrset_free(&rr, NULL);
 		return KNOT_EOK;
 	} else if (ret > 0) {
-		knot_rrset_deep_free(&rr, true, NULL);
+		knot_rrset_free(&rr, NULL);
 	}
-	assert(n);
-	zc->last_node = n;
+	assert(node);
+	assert(zone_rrset);
 
 	// Do RRSet and node semantic checks
 	bool sem_fatal_error = false;
@@ -146,7 +136,8 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		}
 	}
 
-	ret = sem_check_node_plain(zc->z, n, &err_handler, true,
+	ret = sem_check_node_plain(zc->z, node,
+	                           &err_handler, true,
 	                           &sem_fatal_error);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -186,14 +177,14 @@ static void loader_process(const zs_scanner_t *scanner)
 		log_zone_error("%s:%"PRIu64": Can't add RDATA for '%s'.\n",
 		               scanner->file_name, scanner->line_counter, rr_name);
 		free(rr_name);
-		knot_rrset_deep_free(&rr, true, NULL);
+		knot_rrset_free(&rr, NULL);
 		zc->ret = ret;
 		return;
 	}
 
 	ret = zcreator_step(zc, rr);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1, NULL);
+		knot_rrset_free(&rr, NULL);
 		zc->ret = ret;
 		return;
 	}

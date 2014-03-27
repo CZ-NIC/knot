@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <sys/stat.h>
 #include "knot/ctl/remote.h"
 #include "common/log.h"
@@ -35,6 +34,7 @@
 #define KNOT_CTL_REALM "knot."
 #define KNOT_CTL_REALM_EXT ("." KNOT_CTL_REALM)
 #define CMDARGS_BUFLEN (1024*1024) /* 1M */
+#define CMDARGS_BUFLEN_LOG 256
 #define KNOT_CTL_SOCKET_UMASK 0007
 
 /*! \brief Remote command structure. */
@@ -511,7 +511,7 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 
 	ret = knot_pkt_put(resp, 0, rr, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&rr, 1, NULL);
+		knot_rrset_free(&rr, NULL);
 		goto failed;
 	}
 
@@ -523,6 +523,34 @@ failed:
 	knot_pkt_free(&resp);
 
 	return ret;
+}
+
+static void log_command(const char *cmd, const remote_cmdargs_t* args)
+{
+	char params[CMDARGS_BUFLEN_LOG] = { 0 };
+	size_t rest = CMDARGS_BUFLEN_LOG;
+
+	for (unsigned i = 0; i < args->argc; i++) {
+		const knot_rrset_t *rr = args->arg[i];
+		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {
+			continue;
+		}
+
+		uint16_t rr_count = knot_rrset_rr_count(rr);
+		for (uint16_t j = 0; j < rr_count; j++) {
+			const knot_dname_t *dn = knot_rdata_ns_name(rr, j);
+			char *name = knot_dname_to_str(dn);
+
+			int ret = snprintf(params, rest, " %s", name);
+			free(name);
+			if (ret <= 0 || ret >= rest) {
+				break;
+			}
+			rest -= ret;
+		}
+	}
+
+	log_server_info("Remote command: '%s%s'\n", cmd, params);
 }
 
 int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
@@ -572,8 +600,10 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	args->argc = authority->count;
 	args->rc = KNOT_RCODE_NOERROR;
 
+	log_command(cmd, args);
+
 	remote_cmd_t *c = remote_cmd_tbl;
-	while(c->name != NULL) {
+	while (c->name != NULL) {
 		if (strcmp(cmd, c->name) == 0) {
 			ret = c->f(s, args);
 			break;
@@ -638,7 +668,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 			tsig_name = pkt->tsig_rr->owner;
 		}
 		acl_match_t *match = acl_find(conf()->ctl.acl, &ss, tsig_name);
-		knot_rcode_t ts_rc = 0;
+		uint16_t ts_rc = 0;
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
 		if (match == NULL) {

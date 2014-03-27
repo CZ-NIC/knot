@@ -224,23 +224,6 @@ int sem_check_node_plain(const knot_zone_contents_t *zone,
                          bool only_mandatory,
                          bool *fatal_error);
 
-/*!
- * \brief Checks RRSet for semantic errors. Logs errors via error handler.
- *
- * \param node     Node containg the RRSet.
- * \param rrset    RRSet to be tested.
- * \param master   Set to true if server is primary master for this zone.
- * \param handler  Error handler.
- *
- * If \a master is true, additional check is performed which results in error
- * of the RR has different TTL than the rest of the RRSet.
- *
- * \return KNOT_E*
- */
-int sem_check_rrset(const knot_node_t *node,
-                    const knot_rrset_t *rrset,
-                    bool master, err_handler_t *handler);
-
 #endif // _KNOT_SEMANTIC_CHECK_H_
 
 /*! @} */

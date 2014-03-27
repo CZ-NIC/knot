@@ -37,7 +37,6 @@
  */
 typedef struct zcreator {
 	knot_zone_contents_t *z;  /*!< Created zone. */
-	knot_node_t *last_node;   /*!< Last used node, use to save zone lookup. */
 	bool master;              /*!< Master flag. True if server is a primary
 	                               master for the zone. */
 	int ret;                  /*!< Return value. */

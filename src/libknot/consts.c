@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <libknot/consts.h>
 
 knot_lookup_table_t knot_opcode_names[] = {

@@ -99,7 +99,6 @@ typedef struct knot_ns_xfr {
 	struct sockaddr_storage addr, saddr;
 	knot_pkt_t *query;
 	knot_pkt_t *response;
-	knot_rcode_t rcode;
 	xfr_callback_t send;
 	xfr_callback_t recv;
 	int session;
@@ -119,7 +118,6 @@ typedef struct knot_ns_xfr {
 	size_t wire_maxlen;
 	void *data;
 	zone_t *zone;
-	char* zname;
 	knot_zone_contents_t *new_contents;
 	char *msg;
 
@@ -142,7 +140,6 @@ typedef struct knot_ns_xfr {
 	int fwd_src_fd;           /*!< Query originator fd. */
 	struct sockaddr_storage fwd_addr;
 
-	uint16_t tsig_rcode;
 	uint64_t tsig_prev_time_signed;
 
 	/*!
@@ -152,8 +149,6 @@ typedef struct knot_ns_xfr {
 	 * number counted from last TSIG check.
 	 */
 	int packet_nr;
-
-	hattrie_t *lookup_tree;
 } knot_ns_xfr_t;
 
 /*!

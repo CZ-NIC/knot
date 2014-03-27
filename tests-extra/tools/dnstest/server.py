@@ -10,12 +10,20 @@ import time
 import dns.message
 import dns.query
 import dns.update
-from subprocess import Popen, PIPE, DEVNULL, check_call, CalledProcessError
+from subprocess import Popen, PIPE, check_call, CalledProcessError
 from dnstest.utils import *
 import dnstest.params as params
 import dnstest.keys
 import dnstest.response
 import dnstest.update
+
+def zone_arg_check(zone):
+    # Convert one item list to single object.
+    if isinstance(zone, list):
+        if len(zone) != 1:
+            raise Exception("One zone required.")
+        return zone[0]
+    return zone
 
 class KnotConf(object):
     '''Knot server config generator'''
@@ -202,19 +210,17 @@ class Server(object):
             raise Exception("Can't compile %s" %self.name)
 
     def start(self, clean=False):
-
         mode = "w" if clean else "a"
 
         try:
-            fout = open(self.fout, mode=mode)
-            ferr = open(self.ferr, mode=mode)
-
             if self.compile_params:
                 self.compile()
 
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
-                                  self.start_params, stdout=fout, stderr=ferr)
+                                  self.start_params,
+                                  stdout=open(self.fout, mode=mode),
+                                  stderr=open(self.ferr, mode=mode))
 
             if self.valgrind:
                 time.sleep(Server.START_WAIT_VALGRIND)
@@ -225,27 +231,30 @@ class Server(object):
 
     def reload(self):
         try:
-            check_call([self.control_bin] + self.reload_params, \
-                       stdout=DEVNULL, stderr=DEVNULL)
+            check_call([self.control_bin] + self.reload_params,
+                       stdout=open(self.dir + "/call.out", mode="a"),
+                       stderr=open(self.dir + "/call.err", mode="a"))
             time.sleep(Server.START_WAIT)
-        except CalledProcessError:
+        except CalledProcessError as e:
             self.backtrace()
-            raise Exception("Can't reload %s" % self.name)
+            raise Exception("Can't reload %s (%i)" % (self.name, e.returncode))
 
     def flush(self):
         try:
-            if self.flush_params:
-                check_call([self.control_bin] + self.flush_params, \
-                           stdout=DEVNULL, stderr=DEVNULL)
-                time.sleep(Server.START_WAIT)
-        except CalledProcessError:
+            check_call([self.control_bin] + self.flush_params,
+                       stdout=open(self.dir + "/call.out", mode="a"),
+                       stderr=open(self.dir + "/call.err", mode="a"))
+            time.sleep(Server.START_WAIT)
+        except CalledProcessError as e:
             self.backtrace()
-            raise Exception("Can't flush %s" % self.name)
+            raise Exception("Can't flush %s (%i)" % (self.name, e.returncode))
 
     def running(self):
         proc = psutil.Process(self.proc.pid)
         if proc.status == psutil.STATUS_RUNNING or \
-           proc.status == psutil.STATUS_SLEEPING:
+           proc.status == psutil.STATUS_SLEEPING or \
+           proc.status == psutil.STATUS_DISK_SLEEP or \
+           proc.status == psutil.STATUS_WAITING:
             return True
         else:
             return False
@@ -311,14 +320,12 @@ class Server(object):
             check_log("BACKTRACE %s" % self.name)
 
             try:
-                out = open(self.dir + "/gdb.out", mode="a")
-                err = open(self.dir + "/gdb.err", mode="a")
-
                 check_call([params.gdb_bin, "-ex", "set confirm off", "-ex",
                             "target remote | %s --pid=%s" %
                             (params.vgdb_bin, self.proc.pid),
                             "-ex", "bt full", "-ex", "q", self.daemon_bin],
-                           stdout=out, stderr=err)
+                           stdout=open(self.dir + "/gdb.out", mode="a"),
+                           stderr=open(self.dir + "/gdb.err", mode="a"))
             except:
                 detail_log("!Failed to get backtrace")
 
@@ -494,11 +501,7 @@ class Server(object):
     def zone_wait(self, zone, serial=None):
         '''Try to get SOA record with serial higher then specified'''
 
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         _serial = 0
 
@@ -529,30 +532,18 @@ class Server(object):
             self.zone_wait(zone)
 
     def zone_verify(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.dnssec_verify()
 
     def check_nsec(self, zone, nsec3=False, nonsec=False):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         resp = self.dig("0-x-not-existing-x-0." + zone.name, "ANY", dnssec=True)
         resp.check_nsec(nsec3=nsec3, nonsec=nonsec)
 
     def update(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         key_params = self.tsig_test.key_params if self.tsig_test else dict()
 
@@ -560,56 +551,44 @@ class Server(object):
                                                              **key_params))
 
     def gen_key(self, zone, **args):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
-        try:
-            os.makedirs(self.keydir)
-        except OSError:
-            if not os.path.isdir(self.keydir):
-                raise Exception("Can't create key directory %s" % self.keydir)
-
+        prepare_dir(self.keydir)
         key = dnstest.keys.Key(self.keydir, zone.name, **args)
         key.generate()
 
         return key
 
+    def use_keys(self, zone):
+        zone = zone_arg_check(zone)
+
+        # Copy generated keys to server key directory.
+        prepare_dir(self.keydir)
+
+        src_files = os.listdir(zone.key_dir)
+        for file_name in src_files:
+            if zone.name[:-1] in file_name:
+                full_file_name = os.path.join(zone.key_dir, file_name)
+                if (os.path.isfile(full_file_name)):
+                    shutil.copy(full_file_name, self.keydir)
+
     def enable_nsec3(self, zone, **args):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.enable_nsec3(**args)
 
     def disable_nsec3(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.disable_nsec3()
 
     def backup_zone(self, zone):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.backup()
 
     def update_zonefile(self, zone, version):
-        # Convert one item list to single object.
-        if isinstance(zone, list):
-            if len(zone) != 1:
-                raise Exception("One zone required.")
-            zone = zone[0]
+        zone = zone_arg_check(zone)
 
         self.zones[zone.name].zfile.upd_file(version=version)
 

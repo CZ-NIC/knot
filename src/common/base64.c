@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include "common/base64.h"
 #include "common/errcode.h"
 
@@ -167,7 +166,10 @@ int32_t base64_encode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out)
 {
-	// Check input (output is longer).
+	// Checking inputs.
+	if (out == NULL) {
+		return KNOT_EINVAL;
+	}
 	if (in_len > MAX_BIN_DATA_LEN) {
 		return KNOT_ERANGE;
 	}
@@ -222,7 +224,7 @@ int32_t base64_decode(const uint8_t  *in,
 
 		// Check 4. char if is bad or padding.
 		if (c4 >= PD) {
-			if (c4 == PD) {
+			if (c4 == PD && pad_len == 0) {
 				pad_len = 1;
 			} else {
 				return KNOT_BASE64_ECHAR;
@@ -231,7 +233,7 @@ int32_t base64_decode(const uint8_t  *in,
 
 		// Check 3. char if is bad or padding.
 		if (c3 >= PD) {
-			if (c3 == PD) {
+			if (c3 == PD && pad_len == 1) {
 				pad_len = 2;
 			} else {
 				return KNOT_BASE64_ECHAR;
@@ -270,6 +272,11 @@ int32_t base64_decode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out)
 {
+	// Checking inputs.
+	if (out == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	// Compute output buffer length.
 	uint32_t out_len = ((in_len + 3) / 4) * 3;
 

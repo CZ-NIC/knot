@@ -90,7 +90,7 @@ typedef struct {
 	int32_t		wait;
 	/*!< Ignore truncated response. */
 	bool		ignore_tc;
-	/*!< Stop quering if servfail. */
+	/*!< Stop querying if servfail. */
 	bool		servfail_stop;
 	/*!< Class number (16unsigned + -1 uninitialized). */
 	int32_t		class_num;
@@ -116,7 +116,7 @@ typedef struct {
 
 /*! \brief Settings for dig. */
 typedef struct {
-	/*!< Stop processing - just pring help, version,... */
+	/*!< Stop processing - just print help, version,... */
 	bool	stop;
 	/*!< List of DNS queries to process. */
 	list_t	queries;

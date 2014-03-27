@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -540,7 +539,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 				} else {
 					/* Final SOA. */
 					dbg_xfr_verb("xfr: extra SOA\n");
-					knot_rrset_deep_free(&rrset, 1, NULL);
+					knot_rrset_free(&rrset, NULL);
 					break;
 				}
 			} else {
@@ -725,9 +724,8 @@ void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 			 * From SOAs from the second changeset was not used,
 			 * it must be freed.
 			 */
-			knot_rrset_deep_free(
-			  &(knot_changesets_get_last(sec_chs)->soa_from), 1,
-			                        NULL);
+			knot_rrset_free(&(knot_changesets_get_last(sec_chs)->soa_from),
+					     NULL);
 
 			// Reset sec_chs' chngeset list, else we'd double free.
 			init_list(&sec_chs->sets);
@@ -800,7 +798,7 @@ static int zones_serial_policy(const zone_t *zone)
 	return zone->conf->serial_policy;
 }
 
-uint32_t zones_next_serial(zone_t *zone)
+uint32_t zones_next_serial(const zone_t *zone)
 {
 	assert(zone);
 
@@ -1666,6 +1664,10 @@ int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *refresh_at)
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
+
+	/* Trim extra heap. */
+	mem_trim();
+
 	return ret;
 }
 
@@ -1748,7 +1750,7 @@ void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout)
 
 int zones_verify_tsig_query(const knot_pkt_t *query,
                             const knot_tsig_key_t *key,
-                            knot_rcode_t *rcode, uint16_t *tsig_rcode,
+                            uint16_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed)
 {
 	assert(key != NULL);
@@ -2250,6 +2252,9 @@ int zones_do_diff_and_sign(zone_t *zone, zone_t *old_zone, bool zone_changed)
 
 	knot_changesets_free(&diff_chs);
 	rcu_read_unlock();
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	if (ret == KNOT_EOK && zone_signed) {
 		log_zone_info("DNSSEC: Zone %s - Successfully signed.\n",

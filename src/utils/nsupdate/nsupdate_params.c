@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <string.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -156,7 +155,7 @@ static void rr_list_free(list_t *list, mm_ctx_t *mm)
 	ptrnode_t *node = NULL;
 	WALK_LIST(node, *list) {
 		knot_rrset_t *rrset = (knot_rrset_t *)node->d;
-		knot_rrset_free(&rrset);
+		knot_rrset_free(&rrset, NULL);
 	}
 	ptrlist_free(list, mm);
 }

@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <inttypes.h>			// PRIu64
 #include <unistd.h>			// sysconf
 #include <stdio.h>			// sprintf

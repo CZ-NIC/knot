@@ -177,7 +177,7 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 		// newly allocated NSEC3 nodes
 		knot_rrset_t *nsec3 = knot_node_get_rrset(node,
 		                                          KNOT_RRTYPE_NSEC3);
-		knot_rrset_deep_free(&nsec3, 1, NULL);
+		knot_rrset_free(&nsec3, NULL);
 		knot_node_free(&node);
 	}
 
@@ -266,7 +266,7 @@ static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
 	uint8_t *rdata = knot_rrset_create_rr(rrset, rdata_size, ttl, NULL);
 	if (!rdata) {
-		knot_rrset_free(&rrset);
+		knot_rrset_free(&rrset, NULL);
 		return NULL;
 	}
 
@@ -304,7 +304,7 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 	}
 
 	if (knot_node_add_rrset_no_merge(new_node, nsec3_rrset) != KNOT_EOK) {
-		knot_rrset_free(&nsec3_rrset);
+		knot_rrset_free(&nsec3_rrset, NULL);
 		knot_node_free(&new_node);
 		return NULL;
 	}
@@ -447,8 +447,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		if (knot_node_rrset(node, KNOT_RRTYPE_NSEC)) {
 			knot_node_set_removed_nsec(node);
 		}
-
-		if (knot_node_is_non_auth(node)) {
+		if (knot_node_is_non_auth(node) || knot_node_is_empty(node)) {
 			hattrie_iter_next(it);
 			continue;
 		}
@@ -490,7 +489,7 @@ static bool nsec3_is_empty(knot_node_t *node)
 		return false;
 	}
 
-	return knot_nsec_only_nsec_and_rrsigs_in_node(node);
+	return knot_nsec_empty_nsec_and_rrsigs_in_node(node);
 }
 
 /*!
@@ -514,7 +513,7 @@ static int nsec3_mark_empty(knot_node_t **node_p, void *data)
 
 		if (node->parent) {
 			/* We must decrease the parent's children count,
-			 * but only temporarily! It must be set right after
+			 * but only temporarily! It must be set back right after
 			 * the operation
 			 */
 			node->parent->children--;

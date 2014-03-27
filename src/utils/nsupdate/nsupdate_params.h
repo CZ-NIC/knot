@@ -43,7 +43,7 @@
 
 /*! \brief nsupdate-specific params data. */
 typedef struct {
-	/*!< Stop processing - just pring help, version,... */
+	/*!< Stop processing - just print help, version,... */
 	bool		stop;
 	/*!< List of files with query data. */
 	list_t		qfiles;

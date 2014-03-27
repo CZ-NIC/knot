@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -179,8 +178,13 @@ int proc_update_privileges(int uid, int gid)
 
 	/* Check storage writeability. */
 	int ret = KNOT_EOK;
-	conf_zone_t *zone;
-	WALK_LIST(zone, conf()->zones) {
+	const bool sorted = false;
+	hattrie_iter_t *z_iter = hattrie_iter_begin(conf()->zones, sorted);
+	if (z_iter == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
+		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 		char *lfile = strcdup(zone->storage, "/knot.lock");
 		assert(lfile != NULL);
 		FILE* fp = fopen(lfile, "w");
@@ -198,6 +202,8 @@ int proc_update_privileges(int uid, int gid)
 			break;
 		}
 	}
+	hattrie_iter_free(z_iter);
+
 	return ret;
 }
 

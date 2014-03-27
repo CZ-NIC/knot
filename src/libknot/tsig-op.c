@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <assert.h>
 #include <stdint.h>
 #include <openssl/hmac.h>
@@ -508,7 +507,7 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: could not create wire or sign wire: %s\n",
 		         knot_strerror(ret));
-		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+		knot_rrset_free(&tmp_tsig, NULL);
 		return ret;
 	}
 
@@ -526,11 +525,11 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	if (ret != KNOT_EOK) {
 		dbg_tsig("TSIG: rrset_to_wire = %s\n", knot_strerror(ret));
 		*digest_len = 0;
-		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+		knot_rrset_free(&tmp_tsig, NULL);
 		return ret;
 	}
 
-	knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+	knot_rrset_free(&tmp_tsig, NULL);
 
 	dbg_tsig("TSIG: written TSIG RR (wire len %zu)\n", tsig_wire_len);
 	*msg_len += tsig_wire_len;
@@ -581,7 +580,7 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	uint8_t *wire = malloc(wire_len);
 	if (!wire) {
 		ERR_ALLOC_FAILED;
-		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+		knot_rrset_free(&tmp_tsig, NULL);
 		return KNOT_ENOMEM;
 	}
 	memset(wire, 0, wire_len);
@@ -610,13 +609,13 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* No matter how the function did, this data is no longer needed. */
 	free(wire);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+		knot_rrset_free(&tmp_tsig, NULL);
 		*digest_len = 0;
 		return ret;
 	}
 
 	if (digest_tmp_len > *digest_len) {
-		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+		knot_rrset_free(&tmp_tsig, NULL);
 		*digest_len = 0;
 		return KNOT_ESPACE;
 	}
@@ -639,18 +638,18 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	                         &tsig_wire_size, msg_max_len - *msg_len,
 	                         &rr_count, NULL);
 	if (ret != KNOT_EOK) {
-		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+		knot_rrset_free(&tmp_tsig, NULL);
 		*digest_len = 0;
 		return ret;
 	}
 
 	/* This should not happen, at least one rr has to be converted. */
 	if (rr_count == 0) {
-		knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+		knot_rrset_free(&tmp_tsig, NULL);
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+	knot_rrset_free(&tmp_tsig, NULL);
 
 	*msg_len += tsig_wire_size;
 	uint16_t arcount = knot_wire_get_arcount(msg);
@@ -670,8 +669,13 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
                                   uint64_t prev_time_signed,
                                   int use_times)
 {
-	if (!tsig_rr || !wire || !tsig_key) {
+	if (!wire || !tsig_key) {
 		return KNOT_EINVAL;
+	}
+
+	/* No TSIG record means verification failure. */
+	if (tsig_rr == NULL) {
+		return KNOT_TSIG_EBADKEY;
 	}
 
 	/* Check time signed. */
@@ -847,7 +851,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	int ret = knot_tsig_append(msg, msg_len, msg_max_len, tsig_rr);
 
 	/* key_name already referenced in RRSet, no need to free separately. */
-	knot_rrset_deep_free(&tmp_tsig, 1, NULL);
+	knot_rrset_free(&tmp_tsig, NULL);
 
 	return ret;
 }
