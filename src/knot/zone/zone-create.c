@@ -93,7 +93,7 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 	bool ttl_err = false;
 	knot_node_t *node = NULL;
 	knot_rrset_t *zone_rrset = NULL;
-	int ret = knot_zone_contents_add_rr(zc->z, rr, &node, &zone_rrset);
+	int ret = knot_zone_contents_add_rr(zc->z, rr, &node, &ttl_err);
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
 			// Fatal error
@@ -127,11 +127,11 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 
 		if (zc->master) {
 			/*! \todo REPLACE WITH FATAL ERROR */
-			err_handler_handle_error(&err_handler, n,
+			err_handler_handle_error(&err_handler, node,
 			                         ZC_ERR_TTL_MISMATCH, info_str);
 			return KNOT_EMALF;
 		} else {
-			err_handler_handle_error(&err_handler, n,
+			err_handler_handle_error(&err_handler, node,
 			                         ZC_ERR_TTL_MISMATCH, info_str);
 		}
 	}
