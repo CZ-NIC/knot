@@ -801,11 +801,13 @@ void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
 	for (uint i = 0; i < node->rrset_count; ++i) {
 		hit = node->rrs[i].type == type;
 		if (hit) {
+			struct rr_data *rr_data = &node->rrs[i];
 			rrset->owner = node->owner;
 			rrset->type = type;
 			rrset->rclass = KNOT_CLASS_IN;
-			rrset->rrs = node->rrs[i].rrs;
-			rrset->additional = node->rrs->additional;
+			rrset->rrs = rr_data->rrs;
+			rrset->additional = rr_data->additional;
+			return;
 		}
 	}
 	if (!hit) {

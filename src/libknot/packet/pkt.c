@@ -745,6 +745,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	/* Parse wire format. */
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
+	knot_rrs_init(&rr->rrs);
 	ret = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
 	                           &pkt->mm, rr);
 	if (ret != KNOT_EOK) {
