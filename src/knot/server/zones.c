@@ -2760,15 +2760,16 @@ int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *refresh_at)
 
 	log_zone_info("%s Successfully signed.\n", msgpref);
 
-	/* Trim extra heap. */
-	mem_trim();
-
 	/* DNSSEC signing passed, zone has changed. Issue notifications. */
 	zones_schedule_notify(zone);
 
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
+
+	/* Trim extra heap. */
+	mem_trim();
+
 	return ret;
 }
 
