@@ -28,7 +28,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(51);
+	plan(52);
 
 	int32_t  ret;
 	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3;
@@ -212,6 +212,8 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 3");
 	ret = base64_decode((uint8_t *)"====", 4, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 4");
+	ret = base64_decode((uint8_t *)"AA=A", 4, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ECHAR, "Bad padding character on position 2");
 	ret = base64_decode((uint8_t *)"Zg==Zg==", 8, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Two quartets with padding");
 
