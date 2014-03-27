@@ -1664,6 +1664,10 @@ int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *refresh_at)
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
+
+	/* Trim extra heap. */
+	mem_trim();
+
 	return ret;
 }
 
@@ -2248,6 +2252,9 @@ int zones_do_diff_and_sign(zone_t *zone, zone_t *old_zone, bool zone_changed)
 
 	knot_changesets_free(&diff_chs);
 	rcu_read_unlock();
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	if (ret == KNOT_EOK && zone_signed) {
 		log_zone_info("DNSSEC: Zone %s - Successfully signed.\n",
