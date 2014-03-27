@@ -23,15 +23,49 @@
 #include "common/errcode.h"
 #include "common/base64.h"
 
-#define BUF_LEN 256
+#define BUF_LEN			256
+#define MAX_BIN_DATA_LEN	((INT32_MAX / 4) * 3)
 
 int main(int argc, char *argv[])
 {
-	plan(36);
+	plan(51);
 
 	int32_t  ret;
-	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN];
+	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3;
 	uint32_t in_len, ref_len;
+
+	// 0. test invalid input
+	ret = base64_encode(NULL, 0, out, BUF_LEN);
+	ok(ret == KNOT_EINVAL, "base64_encode: NULL input buffer");
+	ret = base64_encode(in, BUF_LEN, NULL, 0);
+	ok(ret == KNOT_EINVAL, "base64_encode: NULL output buffer");
+	ret = base64_encode(in, MAX_BIN_DATA_LEN + 1, out, BUF_LEN);
+	ok(ret == KNOT_ERANGE, "base64_encode: input buffer too large");
+	ret = base64_encode(in, BUF_LEN, out, BUF_LEN);
+	ok(ret == KNOT_ERANGE, "base64_encode: output buffer too small");
+
+	ret = base64_encode_alloc(NULL, 0, &out3);
+	ok(ret == KNOT_EINVAL, "base64_encode_alloc: NULL input buffer");
+	ret = base64_encode_alloc(in, MAX_BIN_DATA_LEN + 1, &out3);
+	ok(ret == KNOT_ERANGE, "base64_encode_alloc: input buffer too large");
+	ret = base64_encode_alloc(in, BUF_LEN, NULL);
+	ok(ret == KNOT_EINVAL, "base64_encode_alloc: NULL output buffer");
+
+	ret = base64_decode(NULL, 0, out, BUF_LEN);
+	ok(ret == KNOT_EINVAL, "base64_decode: NULL input buffer");
+	ret = base64_decode(in, BUF_LEN, NULL, 0);
+	ok(ret == KNOT_EINVAL, "base64_decode: NULL output buffer");
+	ret = base64_decode(in, UINT32_MAX, out, BUF_LEN);
+	ok(ret == KNOT_ERANGE, "base64_decode: input buffer too large");
+	ret = base64_decode(in, BUF_LEN, out, 0);
+	ok(ret == KNOT_ERANGE, "base64_decode: output buffer too small");
+
+	ret = base64_decode_alloc(NULL, 0, &out3);
+	ok(ret == KNOT_EINVAL, "base64_decode_alloc: NULL input buffer");
+	ret = base64_decode_alloc(in, UINT32_MAX, &out3);
+	ok(ret == KNOT_ERANGE, "base64_decode_aloc: input buffer too large");
+	ret = base64_decode_alloc(in, BUF_LEN, NULL);
+	ok(ret == KNOT_EINVAL, "base64_decode_alloc: NULL output buffer");
 
 	// 1. test vector -> ENC -> DEC
 	strcpy((char *)in, "");
@@ -178,6 +212,8 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 3");
 	ret = base64_decode((uint8_t *)"====", 4, out, BUF_LEN);
 	ok(ret == KNOT_BASE64_ECHAR, "Bad padding length 4");
+	ret = base64_decode((uint8_t *)"Zg==Zg==", 8, out, BUF_LEN);
+	ok(ret == KNOT_BASE64_ECHAR, "Two quartets with padding");
 
 	// Bad data length
 	ret = base64_decode((uint8_t *)"A", 1, out, BUF_LEN);
