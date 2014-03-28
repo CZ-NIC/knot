@@ -13,12 +13,12 @@ check_PROGRAMS = \
 	key		\
 	key_keyid	\
 	key_keytag	\
+	keystore_pkcs8_dir \
 	nsec_bitmap	\
 	nsec_hash	\
 	random		\
 	sign		\
 	sign_der	\
-	store_pkcs8_dir \
 	wire
 
 check-compile-only: $(check_PROGRAMS)

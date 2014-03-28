@@ -5,12 +5,14 @@
 #include "binary.h"
 #include "error.h"
 #include "key.h"
-#include "pkcs8.h"
+#include "keystore.h"
 
 typedef struct test_pem {
 	dnssec_key_id_t id;
 	dnssec_binary_t data;
 } test_pem_t;
+
+extern const dnssec_keystore_pkcs8_functions_t PKCS8_DIR_FUNCTIONS;
 
 const test_pem_t TEST_PEM_A = {
 	{ 0x7b, 0x0c, 0x9f, 0x6a, 0x59, 0xb1, 0xc7, 0x6b, 0x26, 0xed,
@@ -52,7 +54,7 @@ int main(void)
 
 	// create context
 
-	const dnssec_pkcs8_functions_t *func = dnssec_pkcs8_dir_functions();
+	const dnssec_keystore_pkcs8_functions_t *func = &PKCS8_DIR_FUNCTIONS;
 	r = func->open(&data, dir);
 	ok(r == DNSSEC_EOK && data != NULL, "open");
 
