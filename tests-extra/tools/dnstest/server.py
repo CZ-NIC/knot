@@ -21,7 +21,7 @@ def zone_arg_check(zone):
     # Convert one item list to single object.
     if isinstance(zone, list):
         if len(zone) != 1:
-            raise Exception("One zone required.")
+            raise Exception("One zone required")
         return zone[0]
     return zone
 
@@ -199,7 +199,7 @@ class Server(object):
         '''Set the server as a slave for the zone'''
 
         if zone.name in self.zones:
-            raise Exception("Can't set zone %s as a slave" % name)
+            raise Exception("Can't set zone='%s' as a slave" % name)
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
         z = Zone(slave_file, ddns, ixfr)
@@ -212,7 +212,7 @@ class Server(object):
                       stdout=self.fout, stderr=self.ferr)
             p.communicate(timeout=Server.COMPILE_TIMEOUT)
         except:
-            raise Exception("Can't compile %s" %self.name)
+            raise Exception("Can't compile server='%s'" %self.name)
 
     def start(self, clean=False):
         mode = "w" if clean else "a"
@@ -232,7 +232,7 @@ class Server(object):
             else:
                 time.sleep(Server.START_WAIT)
         except OSError:
-            raise Exception("Can't start %s" % self.name)
+            raise Exception("Can't start server='%s'" % self.name)
 
     def reload(self):
         try:
@@ -242,7 +242,8 @@ class Server(object):
             time.sleep(Server.START_WAIT)
         except CalledProcessError as e:
             self.backtrace()
-            raise Exception("Can't reload %s (%i)" % (self.name, e.returncode))
+            raise Exception("Can't reload server='%s', ret='%i'" %
+                            (self.name, e.returncode))
 
     def flush(self):
         try:
@@ -252,7 +253,8 @@ class Server(object):
             time.sleep(Server.START_WAIT)
         except CalledProcessError as e:
             self.backtrace()
-            raise Exception("Can't flush %s (%i)" % (self.name, e.returncode))
+            raise Exception("Can't flush server='%s', ret='%i'" %
+                            (self.name, e.returncode))
 
     def running(self):
         proc = psutil.Process(self.proc.pid)
@@ -363,7 +365,7 @@ class Server(object):
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
             if len(rname) != 1:
-                raise Exception("One zone required.")
+                raise Exception("One zone required")
             rname = rname[0].name
 
         rtype_str = rtype.upper()
@@ -485,7 +487,7 @@ class Server(object):
             except:
                 time.sleep(timeout)
 
-        raise Exception("Can't query %s for %s %s %s." % \
+        raise Exception("Can't query server='%s' for '%s %s %s'" % \
                         (self.name, rname, rclass, rtype))
 
     def create_sock(self, socket_type):
@@ -499,7 +501,7 @@ class Server(object):
             sock = self.create_sock(socket.SOCK_DGRAM)
         sent = sock.sendto(bytes(data, 'utf-8'), (self.addr, self.port))
         if sent != len(data):
-            raise Exception("Can't send RAW data (%d bytes) to %s." % \
+            raise Exception("Can't send RAW data (%d bytes) to server='%s'" %
                             (len(data), self.name))
 
     def zone_wait(self, zone, serial=None):
@@ -513,7 +515,11 @@ class Server(object):
 
         for t in range(20):
             resp = self.dig(zone.name, "SOA", udp=True, tries=1, log_no_sep=True)
-            if resp.resp.rcode() == 0 and resp.resp.answer:
+            if resp.resp.rcode() == 0:
+                if not resp.resp.answer:
+                    raise Exception("No SOA in ANSWER, zone='%s', server='%s'" %
+                                    (zone.name, self.name))
+
                 soa = str((resp.resp.answer[0]).to_rdataset())
                 _serial = int(soa.split()[5])
                 if serial:
@@ -524,8 +530,9 @@ class Server(object):
             time.sleep(2)
         else:
             self.backtrace()
-            raise Exception("Can't get %s SOA%s from %s." % (zone.name,
-                            ">%i" % serial if serial else "", self.name))
+            raise Exception("Can't get SOA%s, zone='%s', server='%s'" %
+                            (" serial > %i" % serial if serial else "",
+                            zone.name, self.name))
 
         detail_log(SEP)
 
@@ -600,7 +607,7 @@ class Server(object):
         # Convert one item list to single object.
         if isinstance(zone, list):
             if len(zone) != 1:
-                raise Exception("One zone required.")
+                raise Exception("One zone required")
             zone = zone[0]
 
         self.zones[zone.name].add_query_module(module, param)

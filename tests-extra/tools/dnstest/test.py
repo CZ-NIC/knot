@@ -99,7 +99,7 @@ class Test(object):
         elif server == "dummy":
             srv = dnstest.server.Dummy()
         else:
-            raise Exception("Usupported server %s" % server)
+            raise Exception("Usupported server '%s'" % server)
 
         type(srv).count += 1
 
@@ -176,7 +176,7 @@ class Test(object):
             server.start(clean=True)
 
             if not server.running():
-                raise Exception("Server %s not running" % server.name)
+                raise Exception("Server '%s' not running" % server.name)
 
             if not server.listening():
                 self.stop(check=False)
