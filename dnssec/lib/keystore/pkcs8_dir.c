@@ -9,9 +9,9 @@
 #include "binary.h"
 #include "error.h"
 #include "key.h"
+#include "keystore.h"
 #include "shared.h"
-#include "pkcs8.h"
-#include "store/internal.h"
+#include "keystore/internal.h"
 
 #ifndef MAX_PATH
 #define MAX_PATH 4096
@@ -20,9 +20,9 @@
 /*!
  * Context for PKCS #8 key directory.
  */
-typedef struct pkcs8_ctx_data {
+typedef struct pkcs8_dir_handle {
 	char *dir_name;
-} pkcs8_dir_data_t;
+} pkcs8_dir_handle_t;
 
 /* -- internal functions --------------------------------------------------- */
 
@@ -126,53 +126,53 @@ static int key_open_write(const char *dir_name, const dnssec_key_id_t id, int *f
 
 /* -- PKCS #8 dir access API ----------------------------------------------- */
 
-static int pkcs8_dir_open(void **data_ptr, const char *path)
+static int pkcs8_dir_open(void **handle_ptr, const char *path)
 {
-	if (!data_ptr || !path) {
+	if (!handle_ptr || !path) {
 		return DNSSEC_EINVAL;
 	}
 
-	pkcs8_dir_data_t *data = calloc(1, sizeof(pkcs8_dir_data_t));
-	if (!data) {
+	pkcs8_dir_handle_t *handle = calloc(1, sizeof(pkcs8_dir_handle_t));
+	if (!handle) {
 		return DNSSEC_ENOMEM;
 	}
 
-	data->dir_name = normalize_dir(path);
-	if (!data->dir_name) {
-		free(data);
+	handle->dir_name = normalize_dir(path);
+	if (!handle->dir_name) {
+		free(handle);
 		return DNSSEC_ERROR;
 	}
 
-	*data_ptr = data;
+	*handle_ptr = handle;
 
 	return DNSSEC_EOK;
 }
 
-static int pkcs8_dir_close(void *_data)
+static int pkcs8_dir_close(void *_handle)
 {
-	if (!_data) {
+	if (!_handle) {
 		return DNSSEC_EINVAL;
 	}
 
-	pkcs8_dir_data_t *data = _data;
+	pkcs8_dir_handle_t *handle = _handle;
 
-	free(data->dir_name);
+	free(handle->dir_name);
 
 	return DNSSEC_EOK;
 }
 
-static int pkcs8_dir_read(void *_data, const dnssec_key_id_t id, dnssec_binary_t *pem)
+static int pkcs8_dir_read(void *_handle, const dnssec_key_id_t id, dnssec_binary_t *pem)
 {
-	if (!_data || !id || !pem) {
+	if (!_handle || !id || !pem) {
 		return DNSSEC_EINVAL;
 	}
 
-	pkcs8_dir_data_t *data = _data;
+	pkcs8_dir_handle_t *handle = _handle;
 
 	// open file and get it's size
 
 	_cleanup_close_ int file = 0;
-	int result = key_open_read(data->dir_name, id, &file);
+	int result = key_open_read(handle->dir_name, id, &file);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
@@ -207,9 +207,9 @@ static int pkcs8_dir_read(void *_data, const dnssec_key_id_t id, dnssec_binary_t
 	return DNSSEC_EOK;
 }
 
-static int pkcs8_dir_write(void *_data, const dnssec_key_id_t id, const dnssec_binary_t *pem)
+static int pkcs8_dir_write(void *_handle, const dnssec_key_id_t id, const dnssec_binary_t *pem)
 {
-	if (!_data || !id || !pem) {
+	if (!_handle || !id || !pem) {
 		return DNSSEC_EINVAL;
 	}
 
@@ -217,12 +217,12 @@ static int pkcs8_dir_write(void *_data, const dnssec_key_id_t id, const dnssec_b
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	pkcs8_dir_data_t *data = _data;
+	pkcs8_dir_handle_t *handle = _handle;
 
 	// create the file
 
 	_cleanup_close_ int file = 0;
-	int result = key_open_write(data->dir_name, id, &file);
+	int result = key_open_write(handle->dir_name, id, &file);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
@@ -239,17 +239,23 @@ static int pkcs8_dir_write(void *_data, const dnssec_key_id_t id, const dnssec_b
 	return DNSSEC_EOK;
 }
 
-static const dnssec_pkcs8_functions_t DNSSEC_PKCS8_DIR_FUNCTIONS = {
+const dnssec_keystore_pkcs8_functions_t PKCS8_DIR_FUNCTIONS = {
 	.open    = pkcs8_dir_open,
 	.close   = pkcs8_dir_close,
-	.refresh = NULL,
-	.read    = &pkcs8_dir_read,
+	.read    = pkcs8_dir_read,
 	.write   = pkcs8_dir_write,
 };
 
 /* -- public API ----------------------------------------------------------- */
 
-const dnssec_pkcs8_functions_t *dnssec_pkcs8_dir_functions(void)
+int dnssec_keystore_create_pkcs8_dir(dnssec_keystore_t **store_ptr,
+				     const char *path)
 {
-	return &DNSSEC_PKCS8_DIR_FUNCTIONS;
+	if (!store_ptr || !path) {
+		return DNSSEC_EINVAL;
+	}
+
+	return dnssec_keystore_create_pkcs8_custom(store_ptr,
+						   &PKCS8_DIR_FUNCTIONS,
+						   path);
 }

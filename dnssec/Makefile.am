@@ -22,8 +22,8 @@ libdnssec_la_SOURCES =	\
 	lib/dnssec/crypto.h \
 	lib/dnssec/error.h \
 	lib/dnssec/key.h \
+	lib/dnssec/keystore.h \
 	lib/dnssec/nsec.h \
-	lib/dnssec/pkcs8.h \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
 	lib/hex.c \
@@ -36,6 +36,11 @@ libdnssec_la_SOURCES =	\
 	lib/key/keytag.h \
 	lib/key/pubkey.c \
 	lib/key/pubkey.h \
+	lib/keystore/internal.h \
+	lib/keystore/keystore.c \
+	lib/keystore/pkcs11.c \
+	lib/keystore/pkcs8.c \
+	lib/keystore/pkcs8_dir.c \
 	lib/nsec/bitmap.c \
 	lib/nsec/hash.c \
 	lib/random.c \
@@ -43,7 +48,4 @@ libdnssec_la_SOURCES =	\
 	lib/sign/der.c \
 	lib/sign/der.h \
 	lib/sign/sign.c \
-	lib/store/internal.h \
-	lib/store/pkcs8.c \
-	lib/store/pkcs8_dir.c \
 	lib/wire.h

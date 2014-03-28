@@ -100,6 +100,12 @@ int dnssec_key_set_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
 			  uint8_t algorithm, const dnssec_binary_t *public_key);
 
 /*!
+ * Load private key from key store.
+ */
+int dnssec_key_from_privkey(dnssec_key_t *key, void *store, uint8_t algorithm, dnssec_key_id_t id);
+int dnssec_key_load_privkey(dnssec_key_t *key, void *store);
+
+/*!
  * Load PKCS #8 private key in unencrypted PEM format.
  *
  * At least an algorithm must be set prior to calling this function.
@@ -110,8 +116,14 @@ int dnssec_key_set_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
  */
 int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem);
 
-// key availability
+/*!
+ * Check if the key can be used for signing.
+ */
 bool dnssec_key_can_sign(const dnssec_key_t *key);
+
+/*!
+ * Check if the key can be used for verification.
+ */
 bool dnssec_key_can_verify(const dnssec_key_t *key);
 
 /*!
