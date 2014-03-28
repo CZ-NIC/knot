@@ -101,8 +101,6 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		// Recoverable error, skip record
 		knot_rrset_free(&rr, NULL);
 		return KNOT_EOK;
-	} else if (ret > 0) {
-		knot_rrset_free(&rr, NULL);
 	}
 	assert(node);
 
@@ -132,6 +130,10 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 			err_handler_handle_error(&err_handler, node,
 			                         ZC_ERR_TTL_MISMATCH, info_str);
 		}
+	}
+
+	if (ret > 0) {
+		knot_rrset_free(&rr, NULL);
 	}
 
 	ret = sem_check_node_plain(zc->z, node,
