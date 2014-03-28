@@ -46,7 +46,7 @@ static int pkcs8_open(void *_ctx, const char *config)
 static int pkcs8_close(void *_ctx)
 {
 	pkcs8_ctx_t *ctx = _ctx;
-	return ctx->functions->close(&ctx->data);
+	return ctx->functions->close(ctx->data);
 }
 
 static int pkcs8_list_keys(void *_ctx, void *list)
