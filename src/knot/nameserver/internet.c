@@ -708,7 +708,7 @@ static int default_answer(knot_pkt_t *response, struct query_data *qdata)
 
 	/* Resolve ANSWER. */
 	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
-	knot_pkt_begin(response, KNOT_AUTHORITY);
+	knot_pkt_begin(response, KNOT_ANSWER);
 	SOLVE_STEP(solve_answer, state, NULL);
 	SOLVE_STEP(solve_answer_dnssec, state, NULL);
 
