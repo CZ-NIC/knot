@@ -92,7 +92,6 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 
 	bool ttl_err = false;
 	knot_node_t *node = NULL;
-	knot_rrset_t *zone_rrset = NULL;
 	int ret = knot_zone_contents_add_rr(zc->z, rr, &node, &ttl_err);
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
@@ -106,7 +105,6 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		knot_rrset_free(&rr, NULL);
 	}
 	assert(node);
-	assert(zone_rrset);
 
 	// Do RRSet and node semantic checks
 	bool sem_fatal_error = false;
