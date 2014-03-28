@@ -245,8 +245,7 @@ class Server(object):
         proc = psutil.Process(self.proc.pid)
         if proc.status == psutil.STATUS_RUNNING or \
            proc.status == psutil.STATUS_SLEEPING or \
-           proc.status == psutil.STATUS_DISK_SLEEP or \
-           proc.status == psutil.STATUS_WAITING:
+           proc.status == psutil.STATUS_DISK_SLEEP:
             return True
         else:
             return False
