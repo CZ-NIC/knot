@@ -513,7 +513,7 @@ class Server(object):
 
         for t in range(20):
             resp = self.dig(zone.name, "SOA", udp=True, tries=1, log_no_sep=True)
-            if resp.resp.rcode() == 0:
+            if resp.resp.rcode() == 0 and resp.resp.answer:
                 soa = str((resp.resp.answer[0]).to_rdataset())
                 _serial = int(soa.split()[5])
                 if serial:
