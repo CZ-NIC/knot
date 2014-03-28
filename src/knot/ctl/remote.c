@@ -500,18 +500,18 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 	assert(ret == KNOT_EOK);
 
 	/* Create TXT RR with result. */
-	knot_rrset_t *rr = remote_build_rr("result.", KNOT_RRTYPE_TXT);
-	if (rr == NULL) {
-		ret = KNOT_ENOMEM;
+	knot_rrset_t rr;
+	ret = remote_build_rr(&rr, "result.", KNOT_RRTYPE_TXT);
+	if (ret != KNOT_EOK) {
 		goto failed;
 	}
 
-	ret = remote_create_txt(rr, d, len);
+	ret = remote_create_txt(&rr, d, len);
 	assert(ret == KNOT_EOK);
 
-	ret = knot_pkt_put(resp, 0, rr, KNOT_PF_FREE);
+	ret = knot_pkt_put(resp, 0, &rr, KNOT_PF_FREE);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rr, NULL);
+		knot_rrset_clear(&rr, NULL);
 		goto failed;
 	}
 
@@ -770,24 +770,22 @@ int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
 	return ret;
 }
 
-knot_rrset_t* remote_build_rr(const char *k, uint16_t t)
+int remote_build_rr(knot_rrset_t *rr, const char *k, uint16_t t)
 {
 	if (!k) {
-		return NULL;
+		return KNOT_EINVAL;
 	}
 
 	/* Assert K is FQDN. */
 	knot_dname_t *key = knot_dname_from_str(k);
 	if (key == NULL) {
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
-	/* Create RRSet. */
-	knot_rrset_t *rr = knot_rrset_new(key, t, KNOT_CLASS_CH, NULL);
-	if (rr == NULL)
-		knot_dname_free(&key, NULL);
+	/* Init RRSet. */
+	knot_rrset_init(rr, key, t, KNOT_CLASS_CH);
 
-	return rr;
+	return KNOT_EOK;
 }
 
 int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)

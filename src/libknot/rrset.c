@@ -421,13 +421,11 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset,
 void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
                      uint16_t rclass)
 {
-	if (rrset) {
-		rrset->owner = owner;
-		rrset->type = type;
-		rrset->rclass = rclass;
-		knot_rrs_init(&rrset->rrs);
-		rrset->additional = NULL;
-	}
+	rrset->owner = owner;
+	rrset->type = type;
+	rrset->rclass = rclass;
+	knot_rrs_init(&rrset->rrs);
+	rrset->additional = NULL;
 }
 
 knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
@@ -846,10 +844,6 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 
 void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 {
-	if (rrset == NULL) {
-		return;
-	}
-
 	rrset_deep_free_content(rrset, mm);
 }
 

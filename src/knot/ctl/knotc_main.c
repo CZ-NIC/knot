@@ -199,24 +199,29 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Build query data. */
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	knot_rrset_t *rr = NULL;
 	if (argc > 0) {
-		rr = remote_build_rr("data.", rrt);
+		knot_rrset_t rr;
+		int res = remote_build_rr(&rr, "data.", rrt);
+		if (res != KNOT_EOK) {
+			log_server_error("Couldn't create the query.\n");
+			knot_pkt_free(&pkt);
+			return 1;
+		}
 		for (int i = 0; i < argc; ++i) {
 			switch(rrt) {
 			case KNOT_RRTYPE_NS:
-				remote_create_ns(rr, argv[i]);
+				remote_create_ns(&rr, argv[i]);
 				break;
 			case KNOT_RRTYPE_TXT:
 			default:
-				remote_create_txt(rr, argv[i], strlen(argv[i]));
+				remote_create_txt(&rr, argv[i], strlen(argv[i]));
 				break;
 			}
 		}
-		int res = knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE);
+		res = knot_pkt_put(pkt, 0, &rr, KNOT_PF_FREE);
 		if (res != KNOT_EOK) {
 			log_server_error("Couldn't create the query.\n");
-			knot_rrset_free(&rr, NULL);
+			knot_rrset_clear(&rr, NULL);
 			knot_pkt_free(&pkt);
 			return 1;
 		}
