@@ -1520,7 +1520,7 @@ int xfrin_apply_changesets(zone_t *zone,
 	    || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
-
+	
 	knot_zone_contents_t *old_contents = zone->contents;
 	if (!old_contents) {
 		dbg_xfrin("Cannot apply changesets to empty zone.\n");

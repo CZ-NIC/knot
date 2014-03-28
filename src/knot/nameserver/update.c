@@ -198,13 +198,14 @@ static int knot_ns_process_update(const knot_pkt_t *query,
 	                                   knot_changesets_get_last(chgs),
 	                                   rcode, new_serial);
 	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
-		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
-		                                : "No change made.");
 		return ret;
 	}
 	
-	return xfrin_apply_changesets(old_zone, chgs, new_contents);
+	const bool change_made =
+		knot_changeset_is_empty(knot_changesets_get_last(chgs));
+	return change_made ? 
+	       xfrin_apply_changesets(old_zone, chgs, new_contents) :
+	       KNOT_EOK;
 }
 
 static int replan_zone_sign_after_ddns(zone_t *zone, uint32_t refresh_at)
@@ -280,14 +281,15 @@ static int zones_process_update_auth(struct query_data *qdata)
 	ret = knot_ns_process_update(qdata->query, zone, &new_contents,
 	                             chgsets, &qdata->rcode, new_serial);
 	if (ret != KNOT_EOK) {
-		if (ret > 0) {
-			log_zone_notice("%s: No change to zone made.\n", msg);
-			qdata->rcode = KNOT_RCODE_NOERROR;
-		}
-
+		return ret;
+	}
+	
+	if (knot_changeset_is_empty(knot_changesets_get_last(chgsets))) {
+		log_zone_notice("%s: No change to zone made.\n", msg);
+		qdata->rcode = KNOT_RCODE_NOERROR;
 		knot_changesets_free(&chgsets);
 		free(msg);
-		return (ret < 0) ? ret : KNOT_EOK;
+		return KNOT_EOK;
 	}
 
 	knot_changesets_t *sec_chs = NULL;
