@@ -143,6 +143,7 @@ zone_t *load_zone_file(conf_zone_t *conf)
 	/* Check the loader result. */
 	if (zone_contents == NULL) {
 		log_zone_error("Failed to load zone file '%s'.\n", conf->file);
+		zone_free(&zone);
 		return NULL;
 	}
 
