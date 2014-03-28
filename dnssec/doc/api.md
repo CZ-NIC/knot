@@ -10,6 +10,16 @@ likely to be changing often.
 - Use `#pragma once` in the headers files as a include guard.
 - Includes of other library modules have the following form: `#include <dnssec/module.h>`.
 
+## Linking
+
+- During the build process, all sources are linked into the lib.la library,
+  which exports all symbols, including the private ones. From this library, the
+  libdnssec.la library is made, which exports only public symbols.
+
+- Unit tests are linked against lib.la to be able to test internal interfaces.
+
+- The tools must be linked to the libdnssec.la library.
+
 ## TODO
 
 - Decide how to work with `extern "C"`.

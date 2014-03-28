@@ -3,19 +3,31 @@ SUBDIRS = . tests
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h
 
+noinst_LTLIBRARIES = lib.la
 lib_LTLIBRARIES = libdnssec.la
 
-libdnssec_la_CFLAGS = \
+lib_la_CFLAGS = \
 	$(AM_CFLAGS) $(gnutls_CFLAGS) \
-	-fvisibility=hidden \
+	-fvisibility=default \
 	-Ilib -Ilib/dnssec
 
+lib_la_LDFLAGS = \
+	$(gnutls_LIBS)
+
+libdnssec_la_CFLAGS = \
+	$(lib_la_CFLAGS) \
+	-fvisibility=default
+
 libdnssec_la_LDFLAGS = \
-	$(gnutls_LIBS) \
+	$(lib_la_LDFLAGS) \
 	-export-symbols-regex '^dnssec_' \
 	-version-info 0:1:0
 
-libdnssec_la_SOURCES =	\
+libdnssec_la_LIBADD = lib.la
+
+libdnssec_la_SOURCES =
+
+lib_la_SOURCES = \
 	lib/binary.c \
 	lib/crypto.c \
 	lib/dnssec/binary.h \

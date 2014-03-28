@@ -5,7 +5,7 @@ AM_CPPFLAGS = \
 
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
-	$(builddir)/../libdnssec.la
+	$(builddir)/../lib.la
 
 check_PROGRAMS = \
 	binary		\
