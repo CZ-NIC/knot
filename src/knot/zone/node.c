@@ -145,8 +145,9 @@ int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
 			/* Check if the added RR has the same TTL as the first
 			 * RR in the RRSet.
 			 */
-			if (ttl_err && knot_rrset_rr_ttl(rrset, 0)
-			    != knot_rrset_rr_ttl(node->rrset_tree[i], 0)) {
+			if (ttl_err && knot_rrset_type(rrset) != KNOT_RRTYPE_RRSIG
+			    && knot_rrset_rr_ttl(rrset, 0)
+			        != knot_rrset_rr_ttl(node->rrset_tree[i], 0)) {
 				*ttl_err = true;
 			}
 
