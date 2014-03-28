@@ -13,6 +13,7 @@ check_PROGRAMS = \
 	key		\
 	key_keyid	\
 	key_keytag	\
+	keystore_pkcs8	\
 	keystore_pkcs8_dir \
 	nsec_bitmap	\
 	nsec_hash	\
