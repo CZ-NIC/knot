@@ -692,7 +692,7 @@ int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt)
 	*dst = '\0';
 	const uint8_t* l = src;
 	/*! \todo This could be made as offsets to pkt? */
-	const uint8_t* lstack[KNOT_DNAME_MAXLEN];
+	const uint8_t* lstack[KNOT_DNAME_MAXLABELS];
 	const uint8_t **sp = lstack;
 	while(*l != 0) { /* build label stack */
 		*sp++ = l;

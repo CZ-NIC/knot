@@ -22,6 +22,7 @@ hhash
 journal
 pkt
 process_query
+query_module
 rrl
 rrset
 server

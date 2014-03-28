@@ -17,7 +17,7 @@ def prepare_dir(path):
         os.makedirs(path)
     except OSError:
         if not os.path.isdir(path):
-            raise Exception("Can't create directory %s" % path)
+            raise Exception("Can't create directory '%s'" % path)
 
 def test_info():
     '''Get current test case name'''

@@ -67,7 +67,7 @@ class ZoneFile(object):
 
             shutil.copyfile(src_file, self.path)
         except:
-            raise Exception("Can't use zone file %s" % src_file)
+            raise Exception("Can't use zone file '%s'" % src_file)
 
     def upd_file(self, file_name=None, storage=None, version=None):
         '''Replace zone file with a different one.'''
@@ -96,7 +96,7 @@ class ZoneFile(object):
                          + params
             zone_generate.main(params)
         except OSError:
-            raise Exception("Can't create zone file %s" % self.path)
+            raise Exception("Can't create zone file '%s'" % self.path)
 
     def dnssec_verify(self):
         '''Call dnssec-verify on the zone file.'''
@@ -152,7 +152,7 @@ class ZoneFile(object):
             shutil.copyfile(self.path, self.path + ".back" + str(self.backup_num))
             self.backup_num += 1
         except:
-            raise Exception("Can't make a copy of zone file %s" % self.path)
+            raise Exception("Can't make a copy of zone file '%s'" % self.path)
 
     def update_serial(self, new_serial=None):
         '''Change SOA serial.'''
@@ -203,6 +203,6 @@ class ZoneFile(object):
                          + params
             zone_generate.main(params)
         except OSError:
-            raise Exception("Can't modify zone file %s" % self.path)
+            raise Exception("Can't modify zone file '%s'" % self.path)
 
         os.remove(old_name)

@@ -43,6 +43,7 @@
 #include "knot/updates/acl.h"
 #include "common/sockaddr.h"
 #include "common/hattrie/hat-trie.h"
+#include "knot/nameserver/query_module.h"
 
 /* Constants. */
 #define CONFIG_DEFAULT_PORT 53
@@ -135,6 +136,9 @@ typedef struct conf_zone_t {
 		list_t notify_out; /*!< Remotes accepted for notify-out.*/
 		list_t update_in;  /*!< Remotes accepted for DDNS.*/
 	} acl;
+
+	struct query_plan *query_plan;
+	list_t query_modules;
 } conf_zone_t;
 
 /*!
