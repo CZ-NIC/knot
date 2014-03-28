@@ -180,57 +180,31 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
  *       order to get rid of duplicate code.
  */
 static int knot_ns_process_update(const knot_pkt_t *query,
-                                  knot_zone_contents_t *old_contents,
+                                  zone_t *old_zone,
                                   knot_zone_contents_t **new_contents,
                                   knot_changesets_t *chgs, uint16_t *rcode,
                                   uint32_t new_serial)
 {
-	if (query == NULL || old_contents == NULL || chgs == NULL ||
+	if (query == NULL || old_zone == NULL || chgs == NULL ||
 	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	dbg_ns("Applying UPDATE to zone...\n");
 
-	// 1) Create zone shallow copy.
-	dbg_ns_verb("Creating shallow copy of the zone...\n");
-	knot_zone_contents_t *contents_copy = NULL;
-	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to prepare zone copy: %s\n",
-		          knot_strerror(ret));
-		*rcode = KNOT_RCODE_SERVFAIL;
-		return ret;
-	}
-
-	// 2) Apply the UPDATE and create changesets.
+	// Create changesets from UPDATE
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
-	ret = knot_ddns_process_update(contents_copy, query,
-	                               knot_changesets_get_last(chgs),
-	                               rcode, new_serial);
+	int ret = knot_ddns_process_update(old_zone->contents, query,
+	                                   knot_changesets_get_last(chgs),
+	                                   rcode, new_serial);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
 		                                : "No change made.");
-		xfrin_rollback_update(old_contents, &contents_copy);
 		return ret;
 	}
-
-	// 3) Finalize zone
-	dbg_ns_verb("Finalizing updated zone...\n");
-	ret = xfrin_finalize_updated_zone(contents_copy, false);
-	if (ret != KNOT_EOK) {
-		dbg_ns("Failed to finalize updated zone: %s\n",
-		       knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy);
-		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
-		                             : KNOT_RCODE_SERVFAIL;
-		return ret;
-	}
-
-	*new_contents = contents_copy;
-
-	return KNOT_EOK;
+	
+	return xfrin_apply_changesets(old_zone, chgs, new_contents);
 }
 
 static int replan_zone_sign_after_ddns(zone_t *zone, uint32_t refresh_at)
@@ -303,7 +277,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 
 	knot_zone_contents_t *new_contents = NULL;
 	knot_zone_contents_t *old_contents = zone->contents;
-	ret = knot_ns_process_update(qdata->query, old_contents, &new_contents,
+	ret = knot_ns_process_update(qdata->query, zone, &new_contents,
 	                             chgsets, &qdata->rcode, new_serial);
 	if (ret != KNOT_EOK) {
 		if (ret > 0) {

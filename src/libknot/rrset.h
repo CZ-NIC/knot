@@ -432,5 +432,7 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
 bool knot_rrset_empty(const knot_rrset_t *rrset);
 int knot_rrset_copy_int(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm);
 knot_rrset_t *knot_rrset_cpy(const knot_rrset_t *src, mm_ctx_t *mm);
+int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
+                            knot_rrset_t *out, mm_ctx_t *mm);
 
 /*! @} */

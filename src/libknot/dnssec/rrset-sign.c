@@ -123,7 +123,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 {
 	assert(rrsigs);
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
-	assert(covered);
+	assert(!knot_rrset_empty(covered));
 	assert(key);
 	assert(rdata);
 	assert(rdata_size);
@@ -250,7 +250,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
                     knot_dnssec_sign_context_t *sign_ctx,
                     const knot_dnssec_policy_t *policy)
 {
-	if (!rrsigs || !covered || !key || !sign_ctx || !policy ||
+	if (knot_rrset_empty(covered) || !key || !sign_ctx || !policy ||
 	    rrsigs->type != KNOT_RRTYPE_RRSIG ||
 	    (knot_dname_cmp(rrsigs->owner, covered->owner) != 0)
 	) {
@@ -300,7 +300,7 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
                                  const knot_dnssec_policy_t *policy)
 {
-	assert(rrsigs);
+	assert(!knot_rrset_empty(rrsigs));
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(policy);
 
@@ -318,7 +318,8 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
                             knot_dnssec_sign_context_t *ctx,
                             const knot_dnssec_policy_t *policy)
 {
-	if (!covered || !rrsigs || !key || !ctx || !policy) {
+	if (knot_rrset_empty(covered) ||
+	    knot_rrset_empty(rrsigs) || !key || !ctx || !policy) {
 		return KNOT_EINVAL;
 	}
 

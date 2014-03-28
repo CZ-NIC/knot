@@ -1266,6 +1266,12 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	return KNOT_EOK;
 }
 
+int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
+                            knot_rrset_t *out, mm_ctx_t *mm)
+{
+	return KNOT_EOK;
+}
+
 int rrset_additional_needed(uint16_t rrtype)
 {
 	return (rrtype == KNOT_RRTYPE_NS ||

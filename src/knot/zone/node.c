@@ -166,8 +166,8 @@ int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *rrset)
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	size_t nlen = (node->rrset_count + 1) * sizeof(struct rr_data);
+	
+	const size_t nlen = (node->rrset_count + 1) * sizeof(struct rr_data);
 	void *p = realloc(node->rrs, nlen);
 	if (p == NULL) {
 		return KNOT_ENOMEM;

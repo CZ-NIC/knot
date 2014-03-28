@@ -685,8 +685,8 @@ static int xfrin_apply_remove_normal(const knot_rrset_t *remove,
 	// now we have the copy of the node, so lets get the right RRSet
 	// check if we do not already have it
 	if (*rrset
-	    && knot_dname_cmp(knot_rrset_owner(*rrset),
-				  knot_node_owner(node)) == 0
+	    && knot_dname_is_equal(knot_rrset_owner(*rrset),
+				   knot_node_owner(node))
 	    && knot_rrset_type(*rrset) == knot_rrset_type(remove)) {
 		/*! \todo Does some other case even occur? */
 		dbg_xfrin_verb("Using RRSet from previous loop.\n");
@@ -860,7 +860,7 @@ dbg_xfrin_exec_detail(
 		 *       be added to the table or not.
 		 */
 		ret = knot_zone_contents_add_rrset(contents, add, &node,
-						   KNOT_RRSET_DUPL_SKIP);
+		                                   KNOT_RRSET_DUPL_SKIP);
 
 		if (ret < 0) {
 			dbg_xfrin("Failed to add RRSet to node.\n");
@@ -1079,19 +1079,12 @@ dbg_xfrin_exec_verb(
 		}
 
 		assert(last_node != NULL);
-
-		// The CLASS should not be ANY, we do not accept such chgsets
-		dbg_xfrin_verb("RRSet class to be removed=%u\n",
-			       knot_rrset_class(rr));
-		// this should work also for UPDATE
 		ret = xfrin_apply_remove_normal(rr, last_node,
 		                                &rrset);
 
 		dbg_xfrin_detail("xfrin_apply_remove() ret = %d\n", ret);
 
-		if (ret > 0) {
-			continue;
-		} else if (ret != KNOT_EOK) {
+		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}

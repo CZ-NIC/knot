@@ -44,7 +44,7 @@
  */
 static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 {
-	assert(covered);
+	assert(!knot_rrset_empty(covered));
 
 	knot_dname_t *owner_copy = knot_dname_copy(covered->owner, NULL);
 
@@ -130,7 +130,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
                                  const knot_zone_keys_t *zone_keys,
                                  const knot_dnssec_policy_t *policy)
 {
-	assert(covered);
+	assert(!knot_rrset_empty(covered));
 	assert(zone_keys);
 
 	for (int i = 0; i < zone_keys->count; i++) {
@@ -292,12 +292,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset)
 {
-	assert(covered);
+	assert(!knot_rrset_empty(covered));
 	assert(zone_keys);
 	assert(changeset);
-	if (knot_rrset_rr_count(covered) == 0) {
-		return KNOT_EOK;
-	}
 
 	int result = KNOT_EOK;
 	knot_rrset_t *to_add = NULL;
@@ -389,7 +386,7 @@ static int force_resign_rrset(const knot_rrset_t *covered,
                               const knot_dnssec_policy_t *policy,
                               knot_changeset_t *changeset)
 {
-	assert(covered);
+	assert(!knot_rrset_empty(covered));
 
 	if (!knot_rrset_empty(rrsigs)) {
 		int result = remove_rrset_rrsigs(covered->owner, covered->type,
@@ -420,7 +417,7 @@ static int resign_rrset(const knot_rrset_t *covered,
                         knot_changeset_t *changeset,
                         uint32_t *expires_at)
 {
-	assert(covered);
+	assert(!knot_rrset_empty(covered));
 
 	// TODO this function creates some signatures twice (for checking)
 	// maybe merge the two functions into one
@@ -678,7 +675,7 @@ static bool dnskey_rdata_match(const knot_zone_key_t *key,
 static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
                                   const knot_zone_key_t *key)
 {
-	assert(dnskeys);
+	assert(!knot_rrset_empty(dnskeys));
 	assert(key);
 
 	uint16_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
@@ -826,13 +823,13 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 {
 	assert(soa);
 	assert(soa->type == KNOT_RRTYPE_SOA);
-	assert(!dnskeys || dnskeys->type == KNOT_RRTYPE_DNSKEY);
+	assert(knot_rrset_empty(dnskeys) || dnskeys->type == KNOT_RRTYPE_DNSKEY);
 	assert(zone_keys);
 	assert(changeset);
 
 	knot_rrset_t *to_add = NULL;
 	int result = KNOT_EOK;
-	bool add_all = (dnskeys == NULL ||
+	bool add_all = (knot_rrset_empty(dnskeys) ||
 	                knot_rrset_rr_ttl(dnskeys, 0) != knot_rrset_rr_ttl(soa, 0));
 
 	for (int i = 0; i < zone_keys->count; i++) {
@@ -953,7 +950,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 		goto fail;
 	}
 
-	if (dnskeys) {
+	if (!knot_rrset_empty(dnskeys)) {
 		result = remove_rrset_rrsigs(dnskeys->owner, dnskeys->type,
 		                             rrsigs, changeset);
 	}
