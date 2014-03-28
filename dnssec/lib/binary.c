@@ -26,6 +26,7 @@ static size_t base64_decode_raw(const uint8_t *src, size_t src_len,
 
 /* -- public API ----------------------------------------------------------- */
 
+_public_
 int dnssec_binary_alloc(dnssec_binary_t *data, size_t size)
 {
 	if (!data || size == 0) {
@@ -43,6 +44,7 @@ int dnssec_binary_alloc(dnssec_binary_t *data, size_t size)
 	return DNSSEC_EOK;
 }
 
+_public_
 void dnssec_binary_free(dnssec_binary_t *binary)
 {
 	if (!binary) {
@@ -53,6 +55,7 @@ void dnssec_binary_free(dnssec_binary_t *binary)
 	clear_struct(binary);
 }
 
+_public_
 int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
 {
 	if (!from || !to) {
@@ -72,6 +75,7 @@ int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size)
 {
 	if (!data) {
@@ -89,6 +93,7 @@ int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_binary_cmp(const dnssec_binary_t *one, const dnssec_binary_t *two)
 {
 	if (one == two) {
@@ -119,6 +124,7 @@ int dnssec_binary_cmp(const dnssec_binary_t *one, const dnssec_binary_t *two)
 	}
 }
 
+_public_
 void dnssec_binary_ltrim(dnssec_binary_t *binary)
 {
 	if (!binary || !binary->data) {
@@ -140,6 +146,7 @@ void dnssec_binary_ltrim(dnssec_binary_t *binary)
 	binary->size = new_size;
 }
 
+_public_
 int dnssec_binary_from_base64(const dnssec_binary_t *base64,
 			      dnssec_binary_t *binary)
 {

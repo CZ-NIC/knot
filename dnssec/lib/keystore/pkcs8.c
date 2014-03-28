@@ -4,6 +4,7 @@
 #include "key.h"
 #include "keystore.h"
 #include "keystore/internal.h"
+#include "shared.h"
 
 /*!
  * PKCS #8 key store context.
@@ -84,6 +85,7 @@ const keystore_functions_t PKCS8_FUNCTIONS = {
 
 /* -- public API ----------------------------------------------------------- */
 
+_public_
 int dnssec_keystore_create_pkcs8_custom(dnssec_keystore_t **store_ptr,
 		const dnssec_keystore_pkcs8_functions_t *store_functions,
 		const char *config)

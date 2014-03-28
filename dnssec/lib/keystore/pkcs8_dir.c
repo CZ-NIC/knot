@@ -248,6 +248,7 @@ const dnssec_keystore_pkcs8_functions_t PKCS8_DIR_FUNCTIONS = {
 
 /* -- public API ----------------------------------------------------------- */
 
+_public_
 int dnssec_keystore_create_pkcs8_dir(dnssec_keystore_t **store_ptr,
 				     const char *path)
 {

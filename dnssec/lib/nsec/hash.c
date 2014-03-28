@@ -78,6 +78,7 @@ static gnutls_digest_algorithm_t algorithm_d2g(dnssec_nsec3_algorithm_t dnssec)
 /*!
  * Free NSEC3 parameters.
  */
+_public_
 void dnssec_nsec3_params_free(dnssec_nsec3_params_t *params)
 {
 	if (!params) {
@@ -93,6 +94,7 @@ void dnssec_nsec3_params_free(dnssec_nsec3_params_t *params)
  *
  * \see RFC 5155 (section 4.2)
  */
+_public_
 int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 				   const dnssec_binary_t *rdata)
 {
@@ -133,6 +135,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 /*!
  * Compute NSEC3 hash for given data.
  */
+_public_
 int dnssec_nsec3_hash(const dnssec_binary_t *data,
 		      const dnssec_nsec3_params_t *params,
 		      dnssec_binary_t *hash)
@@ -152,6 +155,7 @@ int dnssec_nsec3_hash(const dnssec_binary_t *data,
 /*!
  * Get length of raw NSEC3 hash for a given algorithm.
  */
+_public_
 size_t dnssec_nsec3_hash_length(dnssec_nsec3_algorithm_t dnssec)
 {
 	gnutls_digest_algorithm_t gnutls = algorithm_d2g(dnssec);

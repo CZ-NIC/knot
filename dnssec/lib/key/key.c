@@ -10,6 +10,7 @@
 #include "key/internal.h"
 #include "key/keytag.h"
 #include "key/pubkey.h"
+#include "shared.h"
 #include "wire.h"
 
 /*!
@@ -39,6 +40,7 @@ static const dnssec_binary_t DNSKEY_RDATA_TEMPLATE = {
 
 /* -- key allocation ------------------------------------------------------- */
 
+_public_
 int dnssec_key_new(dnssec_key_t **key_ptr)
 {
 	if (!key_ptr) {
@@ -75,6 +77,7 @@ static void crypto_free_keys(dnssec_key_t *key)
 	key->public_key = NULL;
 }
 
+_public_
 void dnssec_key_clear(dnssec_key_t *key)
 {
 	if (!key) {
@@ -96,6 +99,7 @@ void dnssec_key_clear(dnssec_key_t *key)
 	key->rdata = rdata;
 }
 
+_public_
 void dnssec_key_free(dnssec_key_t *key)
 {
 	if (!key) {
@@ -135,6 +139,7 @@ static void update_key_id(dnssec_key_t *key)
 	dnssec_key_id_copy(new_id, key->id);
 }
 
+_public_
 int dnssec_key_get_keytag(const dnssec_key_t *key, uint16_t *keytag)
 {
 	if (!key || !keytag) {
@@ -146,6 +151,7 @@ int dnssec_key_get_keytag(const dnssec_key_t *key, uint16_t *keytag)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id)
 {
 	if (!key || !id) {
@@ -173,6 +179,7 @@ int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id)
 	wire_write_u##size(&wire, var); \
 }
 
+_public_
 int dnssec_key_get_flags(const dnssec_key_t *key, uint16_t *flags)
 {
 	if (!key || !flags) {
@@ -184,6 +191,7 @@ int dnssec_key_get_flags(const dnssec_key_t *key, uint16_t *flags)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags)
 {
 	if (!key) {
@@ -196,6 +204,7 @@ int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_get_protocol(const dnssec_key_t *key, uint8_t *protocol)
 {
 	if (!key || !protocol) {
@@ -207,6 +216,7 @@ int dnssec_key_get_protocol(const dnssec_key_t *key, uint8_t *protocol)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol)
 {
 	if (!key) {
@@ -278,6 +288,7 @@ static int crypto_create_pubkey(const dnssec_binary_t *rdata,
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_get_algorithm(const dnssec_key_t *key, uint8_t *algorithm)
 {
 	if (!key || !algorithm) {
@@ -289,6 +300,7 @@ int dnssec_key_get_algorithm(const dnssec_key_t *key, uint8_t *algorithm)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 {
 	if (!key) {
@@ -305,6 +317,7 @@ int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey)
 {
 	if (!key || !pubkey) {
@@ -320,6 +333,7 @@ int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey)
 	return dnssec_binary_dup(&rdata_pubkey, pubkey);
 }
 
+_public_
 int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 {
 	if (!key || !pubkey || !pubkey->data) {
@@ -357,6 +371,7 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata)
 {
 	if (!key || !rdata) {
@@ -366,6 +381,7 @@ int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata)
 	return dnssec_binary_dup(&key->rdata, rdata);
 }
 
+_public_
 int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 {
 	if (!key || !rdata || !rdata->data) {
@@ -479,6 +495,7 @@ static int crypto_pubkey_from_privkey(gnutls_privkey_t privkey,
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 {
 	if (!key || !pem) {
@@ -546,11 +563,13 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 
 /* -- key presence checking ------------------------------------------------ */
 
+_public_
 bool dnssec_key_can_sign(const dnssec_key_t *key)
 {
 	return key && key->private_key;
 }
 
+_public_
 bool dnssec_key_can_verify(const dnssec_key_t *key)
 {
 	return key && key->public_key;

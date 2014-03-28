@@ -44,7 +44,7 @@ static uint16_t keytag_current(const dnssec_binary_t *rdata)
 	return ac & 0xFFFF;
 }
 
-/* -- public API ----------------------------------------------------------- */
+/* -- internal API --------------------------------------------------------- */
 
 /*!
  * Compute keytag for a DNSSEC key.

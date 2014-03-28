@@ -27,6 +27,7 @@ struct dnssec_nsec_bitmap {
 /*!
  * Allocate new bit map encoding context.
  */
+_public_
 dnssec_nsec_bitmap_t *dnssec_nsec_bitmap_new(void)
 {
 	dnssec_nsec_bitmap_t *bitmap = malloc(sizeof(*bitmap));
@@ -42,6 +43,7 @@ dnssec_nsec_bitmap_t *dnssec_nsec_bitmap_new(void)
 /*!
  * Clear existing bit map encoding context.
  */
+_public_
 void dnssec_nsec_bitmap_clear(dnssec_nsec_bitmap_t *bitmap)
 {
 	clear_struct(bitmap);
@@ -50,6 +52,7 @@ void dnssec_nsec_bitmap_clear(dnssec_nsec_bitmap_t *bitmap)
 /*!
  * Free bit map encoding context.
  */
+_public_
 void dnssec_nsec_bitmap_free(dnssec_nsec_bitmap_t *bitmap)
 {
 	free(bitmap);
@@ -58,6 +61,7 @@ void dnssec_nsec_bitmap_free(dnssec_nsec_bitmap_t *bitmap)
 /*!
  * \brief Add one RR type into the bitmap.
  */
+_public_
 void dnssec_nsec_bitmap_add(dnssec_nsec_bitmap_t *bitmap, uint16_t type)
 {
 	int win = type / BITMAP_WINDOW_SIZE;
@@ -80,6 +84,7 @@ void dnssec_nsec_bitmap_add(dnssec_nsec_bitmap_t *bitmap, uint16_t type)
 /*!
  * Compute the size of the encoded bitmap.
  */
+_public_
 size_t dnssec_nsec_bitmap_size(const dnssec_nsec_bitmap_t *bitmap)
 {
 	size_t result = 0;
@@ -99,6 +104,7 @@ size_t dnssec_nsec_bitmap_size(const dnssec_nsec_bitmap_t *bitmap)
 /*!
  * Write encoded bitmap into the given buffer.
  */
+_public_
 void dnssec_nsec_bitmap_write(const dnssec_nsec_bitmap_t *bitmap, uint8_t *output)
 {
 	uint8_t *write_ptr = output;

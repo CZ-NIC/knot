@@ -331,6 +331,7 @@ static gnutls_sign_algorithm_t get_sign_algorithm(const dnssec_sign_ctx_t *ctx)
 
 /* -- public API ---------------------------------------------------------- */
 
+_public_
 int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 {
 	if (!ctx_ptr) {
@@ -359,6 +360,7 @@ int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 	return DNSSEC_EOK;
 }
 
+_public_
 void dnssec_sign_free(dnssec_sign_ctx_t *ctx)
 {
 	if (!ctx) {
@@ -372,6 +374,7 @@ void dnssec_sign_free(dnssec_sign_ctx_t *ctx)
 	free(ctx);
 }
 
+_public_
 int dnssec_sign_init(dnssec_sign_ctx_t *ctx)
 {
 	if (!ctx) {
@@ -391,6 +394,7 @@ int dnssec_sign_init(dnssec_sign_ctx_t *ctx)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 {
 	if (!ctx || !data || !data->data) {
@@ -425,6 +429,7 @@ static int finish_hash(dnssec_sign_ctx_t *ctx, gnutls_datum_t *hash)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 {
 	if (!ctx || !signature) {
@@ -456,6 +461,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature)
 	return ctx->functions->x509_to_dnssec(ctx, &bin_raw, signature);
 }
 
+_public_
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature)
 {
 	if (!ctx || !signature) {

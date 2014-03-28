@@ -4,6 +4,7 @@
 #include "error.h"
 #include "keystore.h"
 #include "keystore/internal.h"
+#include "shared.h"
 
 /* -- private API ---------------------------------------------------------- */
 
@@ -39,6 +40,7 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 
 /* -- public API ----------------------------------------------------------- */
 
+_public_
 int dnssec_keystore_close(dnssec_keystore_t *store)
 {
 	if (!store) {
@@ -52,6 +54,7 @@ int dnssec_keystore_close(dnssec_keystore_t *store)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_keystore_list_keys(dnssec_keystore_t *store, void *list)
 {
 	if (!store || !list) {
@@ -62,6 +65,7 @@ int dnssec_keystore_list_keys(dnssec_keystore_t *store, void *list)
 
 }
 
+_public_
 int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 				 dnssec_key_algorithm_t algorithm,
 				 unsigned bits, dnssec_key_id_t key_id)
@@ -73,6 +77,7 @@ int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 	return store->functions->generate_key(store, algorithm, bits, key_id);
 }
 
+_public_
 int dnssec_keystore_delete_key(dnssec_keystore_t *store,
 			       const dnssec_key_id_t key_id)
 {

@@ -6,7 +6,11 @@
 
 #include "error.h"
 #include "random.h"
+#include "shared.h"
 
+/* -- public API ----------------------------------------------------------- */
+
+_public_
 int dnssec_random_buffer(uint8_t *data, size_t size)
 {
 	if (!data) {
@@ -22,6 +26,7 @@ int dnssec_random_buffer(uint8_t *data, size_t size)
 	return DNSSEC_EOK;
 }
 
+_public_
 int dnssec_random_binary(dnssec_binary_t *binary)
 {
 	if (!binary) {
