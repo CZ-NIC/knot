@@ -4,7 +4,6 @@ AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h
 
 lib_LTLIBRARIES = libdnssec.la
-noinst_LTLIBRARIES = lib.la
 
 libdnssec_la_CFLAGS = \
 	$(AM_CFLAGS) $(gnutls_CFLAGS) \
@@ -49,7 +48,3 @@ libdnssec_la_SOURCES = \
 	lib/sign/der.h \
 	lib/sign/sign.c \
 	lib/wire.h
-
-lib_la_CFLAGS  = $(libdnssec_la_CFLAGS) -fvisibility=default
-lib_la_LDFLAGS = $(gnutls_LIBS)
-lib_la_SOURCES = $(libdnssec_la_SOURCES)

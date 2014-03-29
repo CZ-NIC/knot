@@ -3,9 +3,12 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/../lib/dnssec \
 	-I$(srcdir)/../lib
 
+AM_LDFLAGS = \
+	-static
+
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
-	$(builddir)/../lib.la
+	$(builddir)/../libdnssec.la
 
 check_PROGRAMS = \
 	binary		\

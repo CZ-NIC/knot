@@ -13,11 +13,10 @@ likely to be changing often.
 
 ## Linking
 
-- During the build process, all sources are linked into the lib.la library,
-  which exports all symbols, including the private ones. From this library, the
-  libdnssec.la library is made, which exports only public symbols.
-- Unit tests are linked against lib.la to be able to test internal interfaces.
-- The tools must be linked to the libdnssec.la library.
+- Building of static libraries is enabled by default, as shared libraries expose
+  only a public interface. The unit tests perform testing of some internal
+  interfaces, therefore disabling the static build breaks the tests.
+- Installing of static libraries into the system is not recommended.
 
 ## TODO
 
