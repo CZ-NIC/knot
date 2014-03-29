@@ -14,6 +14,7 @@ check_PROGRAMS = \
 	binary		\
 	crypto		\
 	key		\
+	key_algorithm	\
 	key_keyid	\
 	key_keytag	\
 	keystore_pkcs8	\
