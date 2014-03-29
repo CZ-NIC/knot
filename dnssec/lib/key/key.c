@@ -8,10 +8,11 @@
 #include "error.h"
 #include "key.h"
 #include "key/algorithm.h"
+#include "key/dnskey.h"
 #include "key/internal.h"
+#include "key/keyid.h"
 #include "key/keytag.h"
 #include "key/privkey.h"
-#include "key/dnskey.h"
 #include "shared.h"
 #include "wire.h"
 
@@ -133,12 +134,7 @@ static void update_key_id(dnssec_key_t *key)
 	assert(key);
 	assert(key->public_key);
 
-	dnssec_key_id_t new_id = { 0 };
-	size_t id_size = DNSSEC_KEY_ID_SIZE;
-	gnutls_pubkey_get_key_id(key->public_key, 0, new_id, &id_size);
-	assert(id_size == DNSSEC_KEY_ID_SIZE);
-
-	dnssec_key_id_copy(new_id, key->id);
+	gnutls_pubkey_to_key_id(key->public_key, key->id);
 }
 
 _public_
