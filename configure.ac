@@ -25,7 +25,6 @@ CFLAGS="$CFLAGS -Wall -Werror=format-security"
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR]) # call AM_PROG_AR only if available
 
 # Initialize libtool
-AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 LT_INIT
 
