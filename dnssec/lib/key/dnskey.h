@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gnutls/abstract.h>
+
 #include "binary.h"
 #include "key.h"
 
@@ -21,7 +22,7 @@ gnutls_pk_algorithm_t dnskey_algorithm_to_gnutls(dnssec_key_algorithm_t dnssec);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata);
+int dnskey_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata);
 
 /*!
  * Create public key from the format encoded in DNSKEY RDATA.
@@ -32,5 +33,5 @@ int pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata);
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int rdata_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
-                    gnutls_pubkey_t key);
+int dnskey_rdata_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
+			   gnutls_pubkey_t key);

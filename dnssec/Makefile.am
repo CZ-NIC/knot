@@ -27,14 +27,16 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/sign.h \
 	lib/hex.c \
 	lib/hex.h \
+	lib/key/dnskey.c \
+	lib/key/dnskey.h \
 	lib/key/ds.c \
 	lib/key/internal.h \
 	lib/key/key.c \
 	lib/key/keyid.c \
 	lib/key/keytag.c \
 	lib/key/keytag.h \
-	lib/key/pubkey.c \
-	lib/key/pubkey.h \
+	lib/key/privkey.c \
+	lib/key/privkey.h \
 	lib/keystore/internal.h \
 	lib/keystore/keystore.c \
 	lib/keystore/pkcs11.c \
