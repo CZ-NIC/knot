@@ -127,6 +127,29 @@ bool dnssec_key_can_sign(const dnssec_key_t *key);
 bool dnssec_key_can_verify(const dnssec_key_t *key);
 
 /*!
+ * Get private key size range for a DNSSEC algorithm.
+ *
+ * \param[in]  algorithm  DNSKEY algorithm.
+ * \param[out] min        Minimal size of the private key (can be NULL).
+ * \param[out] max        Maximal size of the private key (can be NULL).
+ *
+ * \return DNSSEC_EOK for valid parameters.
+ */
+int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
+				    unsigned *min, unsigned *max);
+
+/*!
+ * Check if the private key size matches DNSKEY contraints.
+ *
+ * \param algorithm  DNSKEY algorithm.
+ * \param bits       Private key size.
+ *
+ * \return DNSKEY algorithm matches the key size constraints.
+ */
+bool dnssec_algorithm_key_size_check(dnssec_key_algorithm_t algorithm,
+				     unsigned bits);
+
+/*!
  * DS algorithm numbers.
  *
  * \see https://www.iana.org/assignments/ds-rr-types/ds-rr-types.xhtml

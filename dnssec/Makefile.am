@@ -27,6 +27,8 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/sign.h \
 	lib/hex.c \
 	lib/hex.h \
+	lib/key/algorithm.c \
+	lib/key/algorithm.h \
 	lib/key/dnskey.c \
 	lib/key/dnskey.h \
 	lib/key/ds.c \

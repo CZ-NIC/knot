@@ -7,6 +7,7 @@
 #include "binary.h"
 #include "error.h"
 #include "key.h"
+#include "key/algorithm.h"
 #include "key/internal.h"
 #include "key/keytag.h"
 #include "key/privkey.h"
@@ -243,7 +244,7 @@ static bool can_change_algorithm(dnssec_key_t *key, uint8_t algorithm)
 		return true;
 	}
 
-	gnutls_pk_algorithm_t new = dnskey_algorithm_to_gnutls(algorithm);
+	gnutls_pk_algorithm_t new = algorithm_to_gnutls(algorithm);
 	if (new == GNUTLS_PK_UNKNOWN) {
 		return false;
 	}
