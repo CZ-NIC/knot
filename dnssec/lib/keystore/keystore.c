@@ -74,7 +74,7 @@ int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 		return DNSSEC_EINVAL;
 	}
 
-	return store->functions->generate_key(store, algorithm, bits, key_id);
+	return store->functions->generate_key(store->ctx, algorithm, bits, key_id);
 }
 
 _public_
