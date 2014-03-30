@@ -55,7 +55,7 @@ static char *key_path(const char *dir, const dnssec_key_id_t id)
 {
 	char buffer[MAX_PATH] = { 0 };
 
-	char *keyname = dnssec_key_id_to_string(id);
+	_cleanup_free_ char *keyname = dnssec_key_id_to_string(id);
 	if (!keyname) {
 		return NULL;
 	}
@@ -157,6 +157,7 @@ static int pkcs8_dir_close(void *_handle)
 	pkcs8_dir_handle_t *handle = _handle;
 
 	free(handle->dir_name);
+	free(handle);
 
 	return DNSSEC_EOK;
 }
