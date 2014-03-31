@@ -95,6 +95,44 @@ static int pkcs8_delete_key(void *_ctx, const dnssec_key_id_t id)
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
+static int pkcs8_get_private(void *_ctx, const dnssec_key_id_t id,
+			     gnutls_privkey_t *key_ptr)
+{
+	assert(_ctx);
+	assert(id);
+	assert(key_ptr);
+
+	pkcs8_ctx_t *ctx = _ctx;
+
+	// load private key data
+
+	_cleanup_binary_ dnssec_binary_t pem = { 0 };
+	int r = ctx->functions->read(ctx->data, id, &pem);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	// construct the key
+
+	gnutls_privkey_t key = NULL;
+	dnssec_key_id_t key_id = { 0 };
+	r = pem_to_privkey(&pem, &key, key_id);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	// check the result
+
+	if (dnssec_key_id_cmp(key_id, id) != 0) {
+		gnutls_privkey_deinit(key);
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	*key_ptr = key;
+
+	return DNSSEC_EOK;
+}
+
 const keystore_functions_t PKCS8_FUNCTIONS = {
 	.ctx_new = pkcs8_ctx_new,
 	.ctx_free = pkcs8_ctx_free,
@@ -103,6 +141,7 @@ const keystore_functions_t PKCS8_FUNCTIONS = {
 	.list_keys = pkcs8_list_keys,
 	.generate_key = pkcs8_generate_key,
 	.delete_key = pkcs8_delete_key,
+	.get_private = pkcs8_get_private,
 };
 
 /* -- public API ----------------------------------------------------------- */
