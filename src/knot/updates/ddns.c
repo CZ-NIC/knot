@@ -429,8 +429,8 @@ static bool should_replace(const knot_rrset_t *chg_rrset,
 	}
 }
 
-static int knot_ddns_check_add_rr(knot_changeset_t *changeset,
-                                  knot_rrset_t *rr)
+static bool skip_record_addition(knot_changeset_t *changeset,
+                                 knot_rrset_t *rr)
 {
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changeset->remove) {
@@ -438,14 +438,14 @@ static int knot_ddns_check_add_rr(knot_changeset_t *changeset,
 		if (should_replace(rr, rrset)) {
 			knot_rrset_free(&rrset, NULL);
 			rrset = rr;
-			return KNOT_EOK;
+			return true;
 		} else if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
 			knot_rrset_free(&rr, NULL);
-			return KNOT_EOK;
+			return true;
 		}
 	}
 
-	return knot_changeset_add_rrset(changeset, rr, KNOT_CHANGESET_ADD);
+	return false;
 }
 
 static int add_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset)
@@ -455,7 +455,11 @@ static int add_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset)
 		return KNOT_ENOMEM;
 	}
 
-	return knot_ddns_check_add_rr(changeset, rr_copy);
+	if (skip_record_addition(changeset, rr_copy)) {
+		return KNOT_EOK;
+	}
+
+	return knot_changeset_add_rrset(changeset, rr_copy, KNOT_CHANGESET_ADD);
 }
 
 static bool skip_record_removal(knot_changeset_t *changeset, knot_rrset_t *rr)
@@ -500,6 +504,7 @@ static int rem_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
 	if (apex_ns_rem) {
 		(*apex_ns_rem)++;
 	}
+
 	return knot_changeset_add_rrset(changeset, rr_copy, KNOT_CHANGESET_REMOVE);
 }
 
