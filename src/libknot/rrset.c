@@ -1281,7 +1281,7 @@ int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
                             knot_rrset_t *out, mm_ctx_t *mm)
 {
 	if (a == NULL || b == NULL || !knot_dname_is_equal(a->owner, b->owner) ||
-	    a->type != b->type) {
+	    a->type != b->type || a->rclass != b->rclass) {
 		return KNOT_EINVAL;
 	}
 
