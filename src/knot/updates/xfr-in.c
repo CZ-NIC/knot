@@ -726,15 +726,10 @@ dbg_xfrin_exec_detail(
 	}
 	/*!< \todo either one of these checks should be enough. */
 	if (knot_rrset_rr_count(rr_remove) == 0) {
-		/* No RDATA, no need to deep free. */
 		knot_rrset_free(&rr_remove, NULL);
 		dbg_xfrin_verb("Failed to remove RDATA from RRSet\n");
 		// In this case, the RDATA was not found in the RRSet
 		return 1;
-	}
-
-	if (knot_rrset_rr_count(rr_remove) == 0) {
-		knot_rrset_free(&rr_remove, NULL);
 	}
 
 	// if the RRSet is empty, remove from node and add to old RRSets
@@ -1166,19 +1161,19 @@ dbg_xfrin_exec_verb(
 				// the ADD RRSet was used, i.e. it should be
 				// removed from the changeset and saved in the
 				// list of new RRSets
-				rem_node((node_t *)rr_node);
+//				rem_node((node_t *)rr_node);
 			} else if (ret == 2) {
 				// the copy of the RRSet was used, but it was
 				// already stored in the new RRSets list
 				// just delete the add RRSet, but without RDATA
 				// DNAMES as these were merged to the copied RRSet
-				knot_rrset_free(&rr, NULL);
-				rem_node((node_t *)rr_node);
+//				knot_rrset_free(&rr, NULL);
+//				rem_node((node_t *)rr_node);
 			} else if (ret == 3) {
 				// the RRSet was used and both RRSet and RDATA
 				// were properly stored. Just clear the place
 				// in the changeset
-				rem_node((node_t *)rr_node);
+//				rem_node((node_t *)rr_node);
 			} else {
 				assert(0);
 			}
@@ -1202,14 +1197,7 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 
 	assert(node != NULL);
 
-	int ret = xfrin_replace_rrset_in_node(node, chset->soa_to, contents);
-	if (ret == KNOT_EOK) {
-		// remove the SOA from the changeset, so it will not be deleted
-		// after successful apply
-		chset->soa_to = NULL;
-	}
-
-	return ret;
+	return xfrin_replace_rrset_in_node(node, chset->soa_to, contents);
 }
 
 /*----------------------------------------------------------------------------*/

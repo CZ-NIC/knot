@@ -1266,9 +1266,37 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	return KNOT_EOK;
 }
 
+static bool has_rr(const knot_rrset_t *rrset, const knot_rr_t *rr)
+{
+	for (uint16_t i = 0; i < rrset->rrs.rr_count; ++i) {
+		const knot_rr_t *cmp_rr = knot_rrs_rr(&rrset->rrs, i);
+		if (knot_rr_cmp(cmp_rr, rr) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
 int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
                             knot_rrset_t *out, mm_ctx_t *mm)
 {
+	if (a == NULL || b == NULL || !knot_dname_is_equal(a->owner, b->owner) ||
+	    a->type != b->type) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rrset_init(out, a->owner, a->type, a->rclass);
+	for (uint16_t i = 0; i < a->rrs.rr_count; ++i) {
+		const knot_rr_t *rr = knot_rrs_rr(&a->rrs, i);
+		if (has_rr(b, rr)) {
+			int ret = knot_rrset_add_rr_from_rrset(out, a, i, mm);
+			if (ret != KNOT_EOK) {
+				knot_rrs_clear(&out->rrs, mm);
+				return ret;
+			}
+		}
+	}
+
 	return KNOT_EOK;
 }
 

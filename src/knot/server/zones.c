@@ -1239,7 +1239,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	int ret = zones_rrset_write_to_mem(chs->soa_from, &entry, &max_size);
 	if (ret != KNOT_EOK) {
 		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
-		return KNOT_ERROR;  /*! \todo Other code? */
+		return ret;
 	}
 
 	/* Serialize RRSets from the 'remove' section. */
@@ -1249,7 +1249,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
 			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
-			return KNOT_ERROR;  /*! \todo Other code? */
+			return ret;
 		}
 	}
 
@@ -1257,7 +1257,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	ret = zones_rrset_write_to_mem(chs->soa_to, &entry, &max_size);
 	if (ret != KNOT_EOK) {
 		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
-		return KNOT_ERROR;  /*! \todo Other code? */
+		return ret;
 	}
 
 	/* Serialize RRSets from the 'add' section. */
@@ -1266,7 +1266,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
 			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
-			return KNOT_ERROR;  /*! \todo Other code? */
+			return ret;
 		}
 
 	}

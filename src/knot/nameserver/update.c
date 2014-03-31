@@ -168,25 +168,13 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 }
 
-/*
- * This function should:
- * 1) Create zone shallow copy and the changes structure.
- * 2) Call knot_ddns_process_update().
- *    - If something went bad, call xfrin_rollback_update() and return an error.
- *    - If everything went OK, continue.
- * 3) Finalize the updated zone.
- *
- * NOTE: Mostly copied from xfrin_apply_changesets(). Should be refactored in
- *       order to get rid of duplicate code.
- */
 static int knot_ns_process_update(const knot_pkt_t *query,
                                   zone_t *old_zone,
-                                  knot_zone_contents_t **new_contents,
                                   knot_changesets_t *chgs, uint16_t *rcode,
                                   uint32_t new_serial)
 {
 	if (query == NULL || old_zone == NULL || chgs == NULL ||
-	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
+	    EMPTY_LIST(chgs->sets) || rcode == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -197,15 +185,7 @@ static int knot_ns_process_update(const knot_pkt_t *query,
 	int ret = knot_ddns_process_update(old_zone->contents, query,
 	                                   knot_changesets_get_last(chgs),
 	                                   rcode, new_serial);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	
-	const bool change_made =
-		knot_changeset_is_empty(knot_changesets_get_last(chgs));
-	return change_made ? 
-	       xfrin_apply_changesets(old_zone, chgs, new_contents) :
-	       KNOT_EOK;
+	return ret;
 }
 
 static int replan_zone_sign_after_ddns(zone_t *zone, uint32_t refresh_at)
@@ -266,7 +246,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 		return ret;
 	}
 
-	// Process the UPDATE packet, apply to zone, create changesets.
+	// Process the UPDATE packet, create changesets.
 	if (knot_changesets_create_changeset(chgsets) == NULL) {
 		knot_changesets_free(&chgsets);
 		free(msg);
@@ -276,21 +256,33 @@ static int zones_process_update_auth(struct query_data *qdata)
 
 	uint32_t new_serial = zones_next_serial(zone);
 
-	knot_zone_contents_t *new_contents = NULL;
 	knot_zone_contents_t *old_contents = zone->contents;
-	ret = knot_ns_process_update(qdata->query, zone, &new_contents,
-	                             chgsets, &qdata->rcode, new_serial);
+	ret = knot_ns_process_update(qdata->query, zone, chgsets, &qdata->rcode, new_serial);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	
-	if (knot_changeset_is_empty(knot_changesets_get_last(chgsets))) {
+
+	knot_zone_contents_t *new_contents = NULL;
+	const bool change_made =
+		!knot_changeset_is_empty(knot_changesets_get_last(chgsets));
+	if (!change_made) {
 		log_zone_notice("%s: No change to zone made.\n", msg);
 		qdata->rcode = KNOT_RCODE_NOERROR;
 		knot_changesets_free(&chgsets);
 		free(msg);
 		return KNOT_EOK;
+	} else {
+		ret = xfrin_apply_changesets(zone, chgsets, &new_contents);
+		if (ret != KNOT_EOK) {
+			log_zone_notice("%s: Failed to process: %s.\n", msg, knot_strerror(ret));
+			qdata->rcode = KNOT_RCODE_SERVFAIL;
+			knot_changesets_free(&chgsets);
+			free(msg);
+			return ret;
+		}
 	}
+
+	assert(new_contents);
 
 	knot_changesets_t *sec_chs = NULL;
 	knot_changeset_t *sec_ch = NULL;
@@ -324,10 +316,9 @@ static int zones_process_update_auth(struct query_data *qdata)
 		} else {
 			// Sign the created changeset
 			ret = knot_dnssec_sign_changeset(new_contents, zone_config,
-			                      knot_changesets_get_last(chgsets),
-			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
-			                      &refresh_at,
-			                      new_serial);
+			                                 knot_changesets_get_last(chgsets),
+			                                 sec_ch, KNOT_SOA_SERIAL_KEEP,
+			                                 &refresh_at, new_serial);
 		}
 
 		if (ret != KNOT_EOK) {
