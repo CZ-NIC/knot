@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "error.h"
+#include "key/algorithm.h"
 #include "keystore.h"
 #include "keystore/internal.h"
 #include "shared.h"
@@ -67,11 +68,22 @@ int dnssec_keystore_list_keys(dnssec_keystore_t *store, void *list)
 
 _public_
 int dnssec_keystore_generate_key(dnssec_keystore_t *store,
-				 dnssec_key_algorithm_t algorithm,
+				 dnssec_key_algorithm_t _algorithm,
 				 unsigned bits, dnssec_key_id_t key_id)
 {
-	if (!store || !algorithm || !key_id) {
+	if (!store || !_algorithm || !key_id) {
 		return DNSSEC_EINVAL;
+	}
+
+	// prepare parameters
+
+	gnutls_pk_algorithm_t algorithm = algorithm_to_gnutls(_algorithm);
+	if (algorithm == GNUTLS_PK_UNKNOWN) {
+		return DNSSEC_INVALID_KEY_ALGORITHM;
+	}
+
+	if (!dnssec_algorithm_key_size_check(_algorithm, bits)) {
+		return DNSSEC_INVALID_KEY_SIZE;
 	}
 
 	return store->functions->generate_key(store->ctx, algorithm, bits, key_id);

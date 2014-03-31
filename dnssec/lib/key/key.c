@@ -13,6 +13,7 @@
 #include "key/keyid.h"
 #include "key/keytag.h"
 #include "key/privkey.h"
+#include "keystore/pem.h"
 #include "shared.h"
 #include "wire.h"
 
@@ -427,7 +428,7 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 
 	gnutls_privkey_t new_privkey = NULL;
 	dnssec_key_id_t new_key_id = { 0 };
-	int result = privkey_from_pem(pem, &new_privkey, new_key_id);
+	int result = pem_to_privkey(pem, &new_privkey, new_key_id);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}

@@ -1,3 +1,5 @@
+#include <gnutls/gnutls.h>
+
 #include "error.h"
 #include "keystore.h"
 #include "keystore/internal.h"
@@ -37,7 +39,7 @@ static int pkcs11_list_keys(void *ctx, void *list)
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
-static int pkcs11_generate_key(void *_ctx, dnssec_key_algorithm_t algorithm,
+static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 			       unsigned bits, dnssec_key_id_t id)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
