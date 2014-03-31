@@ -16,10 +16,10 @@ t.link(zone, bind)
 t.start()
 
 # Wait for zone and get serial.
-serial = bind.zone_wait(zone)
+serial = bind.zones_wait(zone)
 knot.zone_wait(zone)
 
 # Query IXFR over UDP and compare responses.
-t.xfr_diff(knot, bind, zone, serial=serial, udp=True)
+t.xfr_diff(knot, bind, zone, serial, udp=True)
 
 t.end()
