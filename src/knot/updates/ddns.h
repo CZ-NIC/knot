@@ -35,43 +35,15 @@
 #include "libknot/consts.h"
 #include "common/lists.h"
 
-typedef struct knot_ddns_prereq_t {
-	knot_rrset_t **exist;
-	size_t exist_count;
-	size_t exist_allocd;
-
-	knot_rrset_t **exist_full;
-	size_t exist_full_count;
-	size_t exist_full_allocd;
-
-	knot_rrset_t **not_exist;
-	size_t not_exist_count;
-	size_t not_exist_allocd;
-
-	knot_dname_t **in_use;
-	size_t in_use_count;
-	size_t in_use_allocd;
-
-	knot_dname_t **not_in_use;
-	size_t not_in_use_count;
-	size_t not_in_use_allocd;
-} knot_ddns_prereq_t;
-
 int knot_ddns_check_zone(const knot_zone_contents_t *zone,
                          const knot_pkt_t *query, uint16_t *rcode);
 
-int knot_ddns_process_prereqs(const knot_pkt_t *query,
-                              knot_ddns_prereq_t **prereqs, uint16_t *rcode);
-
-int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
-                            knot_ddns_prereq_t **prereqs, uint16_t *rcode);
+int knot_ddns_process_prereqs(const knot_pkt_t *query, const knot_zone_contents_t *zone, uint16_t *rcode);
 
 int knot_ddns_process_update(knot_zone_contents_t *zone,
                               const knot_pkt_t *query,
                               knot_changeset_t *changeset,
                               uint16_t *rcode, uint32_t new_serial);
-
-void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq);
 
 #endif /* _KNOT_DDNS_H_ */
 

@@ -84,21 +84,8 @@ static int update_prereq_check(struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
 	const knot_zone_contents_t *contents = qdata->zone->contents;
-
-	/*
-	 * 2) DDNS Prerequisities Section processing (RFC2136, Section 3.2).
-	 *
-	 * \note Permissions section means probably policies and fine grained
-	 *       access control, not transaction security.
-	 */
-	knot_ddns_prereq_t *prereqs = NULL;
-	int ret = knot_ddns_process_prereqs(query, &prereqs, &qdata->rcode);
-	if (ret == KNOT_EOK) {
-		ret = knot_ddns_check_prereqs(contents, &prereqs, &qdata->rcode);
-		knot_ddns_prereqs_free(&prereqs);
-	}
-
-	return ret;
+	// DDNS Prerequisities Section processing (RFC2136, Section 3.2).
+	return knot_ddns_process_prereqs(query, contents, &qdata->rcode);
 }
 
 static int update_process(knot_pkt_t *resp, struct query_data *qdata)

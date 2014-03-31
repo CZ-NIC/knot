@@ -29,6 +29,7 @@
 #include "libknot/consts.h"
 #include "common/mempattern.h"
 #include "common/descriptor.h"
+#include "common/lists.h"
 
 static bool rrset_empty(const knot_rrset_t *rrset)
 {
@@ -42,164 +43,39 @@ static bool rrset_empty(const knot_rrset_t *rrset)
 	return false;
 }
 
-
-// Copied from XFR - maybe extract somewhere else
-static int knot_ddns_prereq_check_rrsets(knot_rrset_t ***rrsets,
-                                         size_t *count, size_t *allocated)
+static void rrset_list_clear(list_t *l)
 {
-	/* This is really confusing, it's ptr -> array of "knot_rrset_t*" */
-	char *arr = (char*)*rrsets;
-	int ret = 0;
-	ret = mreserve(&arr, sizeof(knot_rrset_t*), *count + 1, 0, allocated);
-	if (ret < 0) {
-		return KNOT_ENOMEM;
-	}
-
-	*rrsets = (knot_rrset_t**)arr;
-
-	return KNOT_EOK;
+	node_t *n, *nxt;
+	WALK_LIST_DELSAFE(n, nxt, *l) {
+		ptrnode_t *ptr_n = (ptrnode_t *)n;
+		knot_rrset_t *rrset = (knot_rrset_t *)ptr_n->d;
+		knot_rrset_free(&rrset, NULL);
+		free(n);
+	};
 }
 
-
-
-static int knot_ddns_prereq_check_dnames(knot_dname_t ***dnames,
-                                         size_t *count, size_t *allocated)
+static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 {
-	/* This is really confusing, it's ptr -> array of "knot_dname_t*" */
-	char *arr = (char*)*dnames;
-	int ret = 0;
-	ret = mreserve(&arr, sizeof(knot_dname_t*), *count + 1, 0, allocated);
-	if (ret < 0) {
-		return KNOT_ENOMEM;
-	}
-
-	*dnames = (knot_dname_t**)arr;
-
-	return KNOT_EOK;
-}
-
-
-
-static int knot_ddns_add_prereq_rrset(const knot_rrset_t *rrset,
-                                      knot_rrset_t ***rrsets,
-                                      size_t *count, size_t *allocd)
-{
-	// check if such RRSet is not already there and merge if needed
-	int ret;
-	for (int i = 0; i < *count; ++i) {
-		if (knot_rrset_equal(rrset, (*rrsets)[i],
-		                     KNOT_RRSET_COMPARE_HEADER)) {
-			ret = knot_rrset_merge((*rrsets)[i], rrset, NULL);
+	node_t *n;
+	WALK_LIST(n, *l) {
+		ptrnode_t *ptr_n = (ptrnode_t *)n;
+		knot_rrset_t *rrset = (knot_rrset_t *)ptr_n->d;
+		if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_HEADER)) {
+			int ret = knot_rrset_merge_sort(rrset, rr, NULL,
+			                                NULL, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
-			} else {
-				return KNOT_EOK;
 			}
+			return KNOT_EOK;
 		}
-	}
+	};
 
-	// if we are here, the RRSet was not found
-	ret = knot_ddns_prereq_check_rrsets(rrsets, count, allocd);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	knot_rrset_t *new_rrset = NULL;
-	ret = knot_rrset_copy(rrset, &new_rrset, NULL);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	(*rrsets)[(*count)++] = new_rrset;
-
-	return KNOT_EOK;
-}
-
-
-
-static int knot_ddns_add_prereq_dname(const knot_dname_t *dname,
-                                      knot_dname_t ***dnames,
-                                      size_t *count, size_t *allocd)
-{
-	// we do not have to check if the name is not already there
-	// if it is, we will just check it twice in the zone
-
-	int ret = knot_ddns_prereq_check_dnames(dnames, count, allocd);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	knot_dname_t *dname_new = knot_dname_copy(dname, NULL);
-	if (dname_new == NULL) {
+	knot_rrset_t *rr_copy = knot_rrset_cpy(rr, NULL);
+	if (rr_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
-
-	(*dnames)[(*count)++] = dname_new;
-
-	return KNOT_EOK;
+	return ptrlist_add(l, rr_copy, NULL) != NULL ? KNOT_EOK : KNOT_ENOMEM;
 }
-
-
-
-static int knot_ddns_add_prereq(knot_ddns_prereq_t *prereqs,
-                                const knot_rrset_t *rrset, uint16_t qclass)
-{
-	assert(prereqs != NULL);
-	assert(rrset != NULL);
-
-	if (knot_rrset_rr_ttl(rrset, 0) != 0) {
-		dbg_ddns("ddns: add_prereq: Wrong TTL.\n");
-		return KNOT_EMALF;
-	}
-
-	int ret;
-
-	if (rrset->rclass == KNOT_CLASS_ANY) {
-		if (!rrset_empty(rrset)) {
-			dbg_ddns("ddns: add_prereq: Extra data\n");
-			return KNOT_EMALF;
-		}
-		if (rrset->type == KNOT_RRTYPE_ANY) {
-			ret = knot_ddns_add_prereq_dname(
-				knot_rrset_owner(rrset), &prereqs->in_use,
-				&prereqs->in_use_count,
-				&prereqs->in_use_allocd);
-		} else {
-			ret = knot_ddns_add_prereq_rrset(rrset,
-			                                &prereqs->exist,
-			                                &prereqs->exist_count,
-			                                &prereqs->exist_allocd);
-		}
-	} else if (rrset->rclass == KNOT_CLASS_NONE) {
-		if (!rrset_empty(rrset)) {
-			dbg_ddns("ddns: add_prereq: Extra data\n");
-			return KNOT_EMALF;
-		}
-		if (rrset->type == KNOT_RRTYPE_ANY) {
-			ret = knot_ddns_add_prereq_dname(
-				knot_rrset_owner(rrset), &prereqs->not_in_use,
-				&prereqs->not_in_use_count,
-				&prereqs->not_in_use_allocd);
-		} else {
-			ret = knot_ddns_add_prereq_rrset(rrset,
-			                            &prereqs->not_exist,
-			                            &prereqs->not_exist_count,
-			                            &prereqs->not_exist_allocd);
-		}
-	} else if (rrset->rclass == qclass) {
-		ret = knot_ddns_add_prereq_rrset(rrset,
-		                                 &prereqs->exist_full,
-		                                 &prereqs->exist_full_count,
-		                                 &prereqs->exist_full_allocd);
-	} else {
-		dbg_ddns("ddns: add_prereq: Bad class.\n");
-		return KNOT_EMALF;
-	}
-
-	return ret;
-}
-
-
 
 static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
                                  const knot_rrset_t *rrset, uint16_t *rcode)
@@ -228,8 +104,6 @@ static int knot_ddns_check_exist(const knot_zone_contents_t *zone,
 
 	return KNOT_EOK;
 }
-
-
 
 static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
                                       const knot_rrset_t *rrset,
@@ -269,7 +143,21 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
+static int check_exists_in_list(list_t *l, const knot_zone_contents_t *zone,
+                                uint16_t *rcode)
+{
+	node_t *n;
+	WALK_LIST(n, *l) {
+		ptrnode_t *ptr_n = (ptrnode_t *)n;
+		knot_rrset_t *rrset = (knot_rrset_t *)ptr_n->d;
+		int ret = knot_ddns_check_exist_full(zone, rrset, rcode);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	};
 
+	return KNOT_EOK;
+}
 
 static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
                                      const knot_rrset_t *rrset,
@@ -302,8 +190,6 @@ static int knot_ddns_check_not_exist(const knot_zone_contents_t *zone,
 	return KNOT_EPREREQ;
 }
 
-
-
 static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
                                   const knot_dname_t *dname,
                                   uint16_t *rcode)
@@ -332,8 +218,6 @@ static int knot_ddns_check_in_use(const knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-
-
 static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
                                       const knot_dname_t *dname,
                                       uint16_t *rcode)
@@ -361,6 +245,44 @@ static int knot_ddns_check_not_in_use(const knot_zone_contents_t *zone,
 	return KNOT_EPREREQ;
 }
 
+static int knot_ddns_check_prereq(const knot_rrset_t *rrset,
+                                  uint16_t qclass,
+                                  const knot_zone_contents_t *zone,
+                                  uint16_t *rcode,
+                                  list_t *rrset_list)
+{
+	if (knot_rrset_rr_ttl(rrset, 0) != 0) {
+		dbg_ddns("ddns: add_prereq: Wrong TTL.\n");
+		return KNOT_EMALF;
+	}
+
+	if (rrset->rclass == KNOT_CLASS_ANY) {
+		if (!rrset_empty(rrset)) {
+			dbg_ddns("ddns: add_prereq: Extra data\n");
+			return KNOT_EMALF;
+		}
+		if (rrset->type == KNOT_RRTYPE_ANY) {
+			return knot_ddns_check_in_use(zone, rrset->owner, rcode);
+		} else {
+			return knot_ddns_check_exist(zone, rrset, rcode);
+		}
+	} else if (rrset->rclass == KNOT_CLASS_NONE) {
+		if (!rrset_empty(rrset)) {
+			dbg_ddns("ddns: add_prereq: Extra data\n");
+			return KNOT_EMALF;
+		}
+		if (rrset->type == KNOT_RRTYPE_ANY) {
+			return knot_ddns_check_not_in_use(zone, rrset->owner, rcode);
+		} else {
+			return knot_ddns_check_not_exist(zone, rrset, rcode);
+		}
+	} else if (rrset->rclass == qclass) {
+		return add_rr_to_list(rrset_list, rrset);
+	} else {
+		dbg_ddns("ddns: add_prereq: Bad class.\n");
+		return KNOT_EMALF;
+	}
+}
 
 /* API functions                                                              */
 
@@ -391,100 +313,36 @@ int knot_ddns_check_zone(const knot_zone_contents_t *zone,
 
 
 
-int knot_ddns_process_prereqs(const knot_pkt_t *query,
-                              knot_ddns_prereq_t **prereqs, uint16_t *rcode)
+int knot_ddns_process_prereqs(const knot_pkt_t *query, const knot_zone_contents_t *zone,
+                              uint16_t *rcode)
 {
-	if (query == NULL || prereqs == NULL || rcode == NULL) {
+	if (query == NULL || rcode == NULL || zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	dbg_ddns("Processing prerequisities.\n");
 
-	// allocate space for the prerequisities
-	*prereqs = (knot_ddns_prereq_t *)calloc(1, sizeof(knot_ddns_prereq_t));
-	CHECK_ALLOC_LOG(*prereqs, KNOT_ENOMEM);
-
-	int ret;
+	int ret = KNOT_EOK;
+	list_t rrset_list; // List used to store merged RRSets
+	init_list(&rrset_list);
 
 	const knot_pktsection_t *answer = knot_pkt_section(query, KNOT_ANSWER);
 	for (int i = 0; i < answer->count; ++i) {
-		// we must copy the RRSets, because all those stored in the
-		// packet will be destroyed
-		dbg_ddns_detail("Creating prereqs from following RRSet:\n");
-		ret = knot_ddns_add_prereq(*prereqs,
-		                           &answer->rr[i],
-		                           knot_pkt_qclass(query));
+		// Check what can be checked, store full RRs into list
+		ret = knot_ddns_check_prereq(&answer->rr[i],
+		                             knot_pkt_qclass(query),
+		                             zone, rcode, &rrset_list);
 		if (ret != KNOT_EOK) {
-			dbg_ddns("Failed to add prerequisity RRSet:%s\n",
-			                knot_strerror(ret));
-			*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
-			                             : KNOT_RCODE_SERVFAIL;
-			knot_ddns_prereqs_free(prereqs);
+			rrset_list_clear(&rrset_list);
 			return ret;
 		}
 	}
 
-	return KNOT_EOK;
+	// Check stored RRSets
+	ret = check_exists_in_list(&rrset_list, zone, rcode);
+	rrset_list_clear(&rrset_list);
+	return ret;
 }
-
-
-
-int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
-                            knot_ddns_prereq_t **prereqs, uint16_t *rcode)
-{
-	int i, ret;
-
-	dbg_ddns("Checking 'exist' prerequisities.\n");
-
-	for (i = 0; i < (*prereqs)->exist_count; ++i) {
-		ret = knot_ddns_check_exist(zone, (*prereqs)->exist[i], rcode);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	dbg_ddns("Checking 'exist full' prerequisities.\n");
-	for (i = 0; i < (*prereqs)->exist_full_count; ++i) {
-		ret = knot_ddns_check_exist_full(zone,
-		                                (*prereqs)->exist_full[i],
-		                                 rcode);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	dbg_ddns("Checking 'not exist' prerequisities.\n");
-	for (i = 0; i < (*prereqs)->not_exist_count; ++i) {
-		ret = knot_ddns_check_not_exist(zone, (*prereqs)->not_exist[i],
-		                                rcode);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	dbg_ddns("Checking 'in use' prerequisities.\n");
-	for (i = 0; i < (*prereqs)->in_use_count; ++i) {
-		ret = knot_ddns_check_in_use(zone, (*prereqs)->in_use[i],
-		                             rcode);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	dbg_ddns("Checking 'not in use' prerequisities.\n");
-	for (i = 0; i < (*prereqs)->not_in_use_count; ++i) {
-		ret = knot_ddns_check_not_in_use(zone,
-		                                 (*prereqs)->not_in_use[i],
-		                                 rcode);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	return KNOT_EOK;
-}
-
-
 
 static int knot_ddns_check_update(const knot_rrset_t *rrset,
                                   const knot_pkt_t *query,
@@ -530,43 +388,6 @@ static int knot_ddns_check_update(const knot_rrset_t *rrset,
 	}
 
 	return KNOT_EOK;
-}
-
-
-
-void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq)
-{
-	dbg_ddns("Freeing prerequisities.\n");
-
-	int i;
-
-	for (i = 0; i < (*prereq)->exist_count; ++i) {
-		knot_rrset_free(&(*prereq)->exist[i], NULL);
-	}
-	free((*prereq)->exist);
-
-	for (i = 0; i < (*prereq)->exist_full_count; ++i) {
-		knot_rrset_free(&(*prereq)->exist_full[i], NULL);
-	}
-	free((*prereq)->exist_full);
-
-	for (i = 0; i < (*prereq)->not_exist_count; ++i) {
-		knot_rrset_free(&(*prereq)->not_exist[i], NULL);
-	}
-	free((*prereq)->not_exist);
-
-	for (i = 0; i < (*prereq)->in_use_count; ++i) {
-		knot_dname_free(&(*prereq)->in_use[i], NULL);
-	}
-	free((*prereq)->in_use);
-
-	for (i = 0; i < (*prereq)->not_in_use_count; ++i) {
-		knot_dname_free(&(*prereq)->not_in_use[i], NULL);
-	}
-	free((*prereq)->not_in_use);
-
-	free(*prereq);
-	*prereq = NULL;
 }
 
 /* DDNS processing */
@@ -953,10 +774,6 @@ static int process_remove(const knot_rrset_t *rr,
 		return KNOT_EINVAL;
 	}
 }
-
-
-
-
 
 static int knot_ddns_final_soa_to_chgset(const knot_rrset_t *soa,
                                          knot_changeset_t *changeset)
