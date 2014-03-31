@@ -20,19 +20,21 @@ typedef struct pkcs8_ctx {
 
 /* -- internal API --------------------------------------------------------- */
 
-static void *pkcs8_ctx_new(void *data)
+static int pkcs8_ctx_new(void **ctx_ptr, void *data)
 {
+	assert(ctx_ptr);
 	assert(data);
 
 	pkcs8_ctx_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx) {
-		return NULL;
+		return DNSSEC_ENOMEM;
 	}
 
 	dnssec_keystore_pkcs8_functions_t *functions = data;
 	ctx->functions = functions;
 
-	return ctx;
+	*ctx_ptr = ctx;
+	return DNSSEC_EOK;
 }
 
 static void pkcs8_ctx_free(void *ctx)

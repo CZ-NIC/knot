@@ -23,13 +23,13 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 
 	store->functions = functions;
 
-	store->ctx = functions->ctx_new(ctx_custom_data);
-	if (!store->ctx) {
+	int result = functions->ctx_new(&store->ctx, ctx_custom_data);
+	if (result != DNSSEC_EOK) {
 		free(store);
 		return DNSSEC_ENOMEM;
 	}
 
-	int result = functions->open(store->ctx, open_config);
+	result = functions->open(store->ctx, open_config);
 	if (result != DNSSEC_EOK) {
 		dnssec_keystore_close(store);
 		return result;

@@ -14,9 +14,15 @@ typedef struct pkcs11_ctx {
 
 /* -- internal API --------------------------------------------------------- */
 
-static void *pkcs11_ctx_new(_unused_ void *data)
+static int pkcs11_ctx_new(void **ctx_ptr, _unused_ void *data)
 {
-	return calloc(1, sizeof(pkcs11_ctx_t));
+	pkcs11_ctx_t *ctx = calloc(1, sizeof(*ctx));
+	if (!ctx) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*ctx_ptr = ctx;
+	return DNSSEC_EOK;
 }
 
 static void pkcs11_ctx_free(void *ctx)

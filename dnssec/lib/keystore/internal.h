@@ -8,7 +8,7 @@
 
 typedef struct keystore_functions {
 	// construction of internal context
-	void *(*ctx_new)(void *custom_data);
+	int (*ctx_new)(void **ctx_ptr, void *custom_data);
 	void (*ctx_free)(void *ctx);
 	// keystore open/close
 	int (*open)(void *ctx, const char *config);
