@@ -6,7 +6,7 @@
 #include "keystore/internal.h"
 #include "shared.h"
 
-/* -- private API ---------------------------------------------------------- */
+/* -- internal API --------------------------------------------------------- */
 
 int keystore_create(dnssec_keystore_t **store_ptr,
 		    const keystore_functions_t *functions,

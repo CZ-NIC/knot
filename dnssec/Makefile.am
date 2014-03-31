@@ -42,6 +42,8 @@ libdnssec_la_SOURCES = \
 	lib/key/privkey.h \
 	lib/keystore/internal.h \
 	lib/keystore/keystore.c \
+	lib/keystore/pem.c \
+	lib/keystore/pem.h \
 	lib/keystore/pkcs11.c \
 	lib/keystore/pkcs8.c \
 	lib/keystore/pkcs8_dir.c \
