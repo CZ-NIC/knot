@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for IXFR from Knot to Bind'''
+'''Test for IXFR from Knot to Knot'''
 
 from dnstest.test import Test
 
@@ -26,6 +26,7 @@ for i in range(4):
         master.update_zonefile(zone, random=True)
 
     master.reload()
+    t.sleep(5)
 
     # Wait for IXFR to slave.
     serials = master.zones_wait(zones, serials_prev)
