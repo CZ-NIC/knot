@@ -401,10 +401,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 	}
 
 	// Cleanup.
-	xfrin_cleanup_successful_update(NULL);
-	if (sec_chs) {
-		xfrin_cleanup_successful_update(NULL);
-	}
+	xfrin_cleanup_successful_update(old_contents);
 
 	// Free changesets, but not the data.
 	zones_free_merged_changesets(chgsets, sec_chs);

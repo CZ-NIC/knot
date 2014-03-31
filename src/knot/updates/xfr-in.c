@@ -635,6 +635,7 @@ void xfrin_cleanup_successful_update(knot_zone_contents_t *zone)
 	}
 
 	rrs_list_clear(&zone->old_data, NULL);
+	ptrlist_free(&zone->new_data, NULL);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -732,6 +733,7 @@ void xfrin_rollback_update(knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents)
 {
 	rrs_list_clear(&old_contents->new_data, NULL);
+	ptrlist_free(&old_contents->old_data, NULL);
 	xfrin_cleanup_failed_update(old_contents, new_contents);
 }
 
@@ -754,8 +756,8 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 
 	// Add copied RRSet
 	ret = knot_node_add_rrset(node, &new_rr);
+	knot_rrs_clear(&new_rr.rrs, mm);
 	if (ret != KNOT_EOK) {
-		knot_rrs_clear(&new_rr.rrs, mm);
 		return ret;
 	}
 
@@ -821,6 +823,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 			clear_new_rrs(node, rr->type);
 			return ret;
 		}
+		assert(removed->rrs.rr_count > 0);
 		knot_rrset_free(&removed, NULL);
 
 		if (rrset.rrs.rr_count > 0) {

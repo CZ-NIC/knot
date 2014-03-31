@@ -458,8 +458,7 @@ static int add_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset)
 	return knot_ddns_check_add_rr(changeset, rr_copy);
 }
 
-static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
-                                     knot_rrset_t *rr, size_t *apex_ns_rem)
+static bool skip_record_removal(knot_changeset_t *changeset, knot_rrset_t *rr)
 {
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changeset->remove) {
@@ -467,7 +466,7 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 		if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
 			// Removing the same RR, drop.
 			knot_rrset_free(&rr, NULL);
-			return KNOT_EOK;
+			return true;
 		}
 	}
 
@@ -479,14 +478,11 @@ static int knot_ddns_check_remove_rr(knot_changeset_t *changeset,
 			knot_rrset_free(&rrset, NULL);
 			knot_rrset_free(&rr, NULL);
 			rem_node((node_t *)rr_node);
-			return KNOT_EOK;
+			return true;
 		}
 	}
 
-	if (apex_ns_rem) {
-		(*apex_ns_rem)++;
-	}
-	return knot_changeset_add_rrset(changeset, rr, KNOT_CHANGESET_REMOVE);
+	return false;
 }
 
 static int rem_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
@@ -497,7 +493,14 @@ static int rem_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
 		return KNOT_ENOMEM;
 	}
 
-	return knot_ddns_check_remove_rr(changeset, rr_copy, apex_ns_rem);
+	if (skip_record_removal(changeset, rr_copy)) {
+		return KNOT_EOK;
+	}
+
+	if (apex_ns_rem) {
+		(*apex_ns_rem)++;
+	}
+	return knot_changeset_add_rrset(changeset, rr_copy, KNOT_CHANGESET_REMOVE);
 }
 
 static int rem_rrset_to_chgset(const knot_rrset_t *rrset,
@@ -671,12 +674,51 @@ static int process_add_soa(const knot_node_t *node,
 	return add_rr_to_chgset(rr, changeset);
 }
 
+static bool node_contains_rr(const knot_node_t *node,
+                             const knot_rrset_t *rr)
+{
+	knot_rrset_t zone_rrset = RRSET_INIT(node, rr->type);
+	if (!knot_rrset_empty(&zone_rrset)) {
+		knot_rrset_t intersection;
+		int ret = knot_rrset_intersection(&zone_rrset, rr,
+		                                  &intersection, NULL);
+		if (ret != KNOT_EOK) {
+			return false;
+		}
+		const bool contains = !knot_rrset_empty(&intersection);
+		knot_rrs_clear(&intersection.rrs, NULL);
+		return contains;
+	} else {
+		return false;
+	}
+}
+
+static void remove_rr_from_changeset(knot_changeset_t *changeset,
+                                     const knot_rrset_t *rr)
+{
+	knot_rr_ln_t *rr_node = NULL;
+	node_t *nxt = NULL;
+	WALK_LIST_DELSAFE(rr_node, nxt, changeset->remove) {
+		knot_rrset_t *rrset = rr_node->rr;
+		if (knot_rrset_equal(rrset, rr, KNOT_RRSET_COMPARE_WHOLE)) {
+			knot_rrset_free(&rrset, NULL);
+			rem_node((node_t *)rr_node);
+			return;
+		}
+	}
+}
+
 static int process_add_normal(const knot_node_t *node,
                               const knot_rrset_t *rr,
                               knot_changeset_t *changeset)
 {
 	if (knot_node_rrtype_exists(node, KNOT_RRTYPE_CNAME)) {
 		// Adding RR to CNAME node. Ignore the UPDATE RR.
+		return KNOT_EOK;
+	}
+
+	if (node && node_contains_rr(node, rr)) {
+		remove_rr_from_changeset(changeset, rr);
 		return KNOT_EOK;
 	}
 
@@ -719,16 +761,10 @@ static int process_remove(const knot_rrset_t *rr,
 	}
 }
 
-static int knot_ddns_final_soa_to_chgset(const knot_rrset_t *soa,
+static int knot_ddns_final_soa_to_chgset(knot_rrset_t *soa,
                                          knot_changeset_t *changeset)
 {
-	knot_rrset_t *soa_copy = NULL;
-	int ret = knot_rrset_copy(soa, &soa_copy, NULL);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	knot_changeset_add_soa(changeset, soa_copy, KNOT_CHANGESET_ADD);
+	knot_changeset_add_soa(changeset, soa, KNOT_CHANGESET_ADD);
 
 	return KNOT_EOK;
 }
@@ -751,6 +787,30 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 
 	if (ret == KNOT_EOK) {
 		1 == 1; // no node now, semantic check will need to be done during application
+	}
+}
+
+static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
+{
+	if (rr->type == KNOT_RRTYPE_SOA
+	    && (rr->rclass == KNOT_CLASS_NONE
+	        || rr->rclass == KNOT_CLASS_ANY
+	        || knot_serial_compare(knot_rrs_soa_serial(&rr->rrs),
+	                               sn) <= 0)) {
+		return true;
+	}
+
+	return false;
+}
+
+static uint16_t ret_to_rcode(int ret)
+{
+	if (ret == KNOT_EMALF) {
+		return KNOT_RCODE_FORMERR;
+	} else if (ret == KNOT_EDENIED) {
+		return KNOT_RCODE_REFUSED;
+	} else {
+		return KNOT_RCODE_SERVFAIL;
 	}
 }
 
@@ -804,8 +864,6 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		/* Check if the entry is correct. */
 		ret = knot_ddns_check_update(rr, query, rcode);
 		if (ret != KNOT_EOK) {
-			dbg_ddns("Failed to check update RRSet:%s\n",
-			                knot_strerror(ret));
 			return ret;
 		}
 
@@ -818,36 +876,20 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		 * be used.
 		 */
 		1 == 1; // multiple SOAs test
-		if (rr->type == KNOT_RRTYPE_SOA
-		    && (rr->rclass == KNOT_CLASS_NONE
-		        || rr->rclass == KNOT_CLASS_ANY
-		        || knot_serial_compare(knot_rrs_soa_serial(&rr->rrs),
-		                               sn) <= 0)) {
-			// This ignores also SOA removals
-			dbg_ddns_verb("Ignoring SOA...\n");
+		if (skip_soa(rr, sn)) {
 			continue;
 		}
 
 		dbg_ddns_verb("Processing RR %p...\n", rr);
 		ret = knot_ddns_process_rr(rr, zone, changeset, &apex_ns_removals);
 		if (ret != KNOT_EOK) {
-			dbg_ddns("Failed to process update RR:%s\n",
-			         knot_strerror(ret));
-			if (ret == KNOT_EMALF) {
-				*rcode = KNOT_RCODE_FORMERR;
-			} else if (ret == KNOT_EDENIED) {
-				*rcode = KNOT_RCODE_REFUSED;
-			} else {
-				*rcode = KNOT_RCODE_SERVFAIL;
-			}
+			*rcode = ret_to_rcode(ret);
 			return ret;
 		}
 
 		// we need the RR copy, that's why this code is here
 		if (rr->type == KNOT_RRTYPE_SOA) {
 			int64_t sn_rr = knot_rrs_soa_serial(&rr->rrs);
-			dbg_ddns_verb("Replacing SOA. Old serial: %"PRId64", "
-			              "new serial: %"PRId64"\n", sn_new, sn_rr);
 			assert(knot_serial_compare(sn_rr, sn) > 0);
 			sn_new = sn_rr;
 			soa_end = knot_rrset_cpy(rr, NULL);
@@ -867,9 +909,7 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		/* If not set, create new SOA. */
 		ret = knot_rrset_copy(soa_begin, &soa_end, NULL);
 		if (ret != KNOT_EOK) {
-			dbg_ddns("Failed to copy ending SOA: %s\n",
-			         knot_strerror(ret));
-			*rcode = KNOT_RCODE_SERVFAIL;
+			*rcode = ret_to_rcode(ret);
 			return ret;
 		}
 		knot_rrs_soa_serial_set(&soa_end->rrs, sn_new);

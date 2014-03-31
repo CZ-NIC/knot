@@ -1501,7 +1501,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 		return KNOT_ERROR;
 	}
 
-	xfrin_cleanup_successful_update(NULL);
+	xfrin_cleanup_successful_update(zone->contents);
 
 	/* Free changesets, but not the data. */
 	knot_changesets_free(&chs);

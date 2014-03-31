@@ -63,15 +63,13 @@ typedef int (*chain_iterate_create_cb)(knot_node_t *, knot_node_t *,
 inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
                                           const knot_node_t *node)
 {
-	knot_rrset_t **node_rrsets = knot_node_create_rrsets(node);
 	for (int i = 0; i < node->rrset_count; i++) {
-		const knot_rrset_t *rr = node_rrsets[i];
-		if (rr->type != KNOT_RRTYPE_NSEC &&
-		    rr->type != KNOT_RRTYPE_RRSIG) {
-			bitmap_add_type(bitmap, rr->type);
+		knot_rrset_t rr = RRSET_INIT_N(node, i);
+		if (rr.type != KNOT_RRTYPE_NSEC &&
+		    rr.type != KNOT_RRTYPE_RRSIG) {
+			bitmap_add_type(bitmap, rr.type);
 		}
 	}
-	knot_node_free_created_rrsets(node, node_rrsets);
 }
 
 /*!

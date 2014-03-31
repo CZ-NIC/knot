@@ -215,6 +215,7 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
                                 knot_zone_contents_t *contents);
 
 void xfrin_zone_contents_free(knot_zone_contents_t **contents);
+void xfrin_cleanup_successful_update(knot_zone_contents_t *zone);
 
 #endif /* _KNOTXFR_IN_H_ */
 

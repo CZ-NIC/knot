@@ -161,6 +161,9 @@ static int discover_additionals(struct rr_data *rr_data,
 
 	/* Create new additional nodes. */
 	uint16_t rdcount = rrs->rr_count;
+	if (rr_data->additional) {
+		free(rr_data->additional);
+	}
 	rr_data->additional = malloc(rdcount * sizeof(knot_node_t *));
 	if (rr_data->additional == NULL) {
 		ERR_ALLOC_FAILED;

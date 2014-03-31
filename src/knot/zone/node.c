@@ -678,8 +678,7 @@ void knot_node_free_rrsets(knot_node_t *node)
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrs_clear(&node->rrs[i].rrs, NULL);
-		mm_free(NULL, node->rrs[i].additional);
+		rr_data_clear(&node->rrs[i], NULL);
 	}
 }
 
