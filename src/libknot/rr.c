@@ -270,7 +270,6 @@ knot_rrs_t *knot_rrs_new(mm_ctx_t *mm)
 void knot_rrs_init(knot_rrs_t *rrs)
 {
 	if (rrs) {
-		rrs->flags = 0;
 		rrs->rr_count = 0;
 		rrs->data = NULL;
 	}

@@ -202,8 +202,6 @@ int xfrin_switch_zone(zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type);
 
-void xfrin_cleanup_successful_update(knot_zone_contents_t *zone);
-
 void xfrin_rollback_update(knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents);
 

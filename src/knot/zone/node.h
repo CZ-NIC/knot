@@ -157,7 +157,7 @@ knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);
  */
 knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type);
 
-knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type);
+void knot_node_remove_rrset(knot_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns number of RRSets in the node.

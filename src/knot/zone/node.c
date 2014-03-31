@@ -279,22 +279,21 @@ knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type)
 
 /*----------------------------------------------------------------------------*/
 
-knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
+void knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
-		return NULL;
+		return;
 	}
 
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
-			knot_rrset_t *ret = rrset_from_rr_data(node, i, NULL);
 			memmove(node->rrs + i, node->rrs + i + 1, (node->rrset_count - i - 1) * sizeof(struct rr_data));
 			--node->rrset_count;
-			return ret;
+			return;
 		}
 	}
 
-	return NULL;
+	return;
 }
 
 /*----------------------------------------------------------------------------*/

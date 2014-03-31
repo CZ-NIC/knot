@@ -9,13 +9,7 @@
 
 typedef uint8_t knot_rr_t;
 
-enum rrs_flags {
-	RRS_OLD = 1 << 0,
-	RRS_NEW = 1 << 1
-};
-
 typedef struct knot_rrs {
-	uint8_t flags;
 	uint16_t rr_count;
 	knot_rr_t *data;
 } knot_rrs_t;

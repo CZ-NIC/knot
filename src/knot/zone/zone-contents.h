@@ -29,6 +29,7 @@
 
 #include "knot/zone/node.h"
 #include "libknot/dnssec/nsec3.h"
+#include "common/lists.h"
 
 #include "knot/zone/zone-tree.h"
 
@@ -69,6 +70,8 @@ typedef struct knot_zone_contents_t {
 	 * - 0xx - ANY queries enabled
 	 */
 	uint8_t flags;
+	list_t old_data;
+	list_t new_data;
 } knot_zone_contents_t;
 
 /*!< \brief Helper linked list list for CNAME loop checking */
@@ -441,6 +444,12 @@ uint32_t knot_zone_serial(const knot_zone_contents_t *zone);
  * \brief Return true if zone is signed.
  */
 bool knot_zone_contents_is_signed(const knot_zone_contents_t *zone);
+
+knot_node_t *zone_contents_get_node_for_rr(knot_zone_contents_t *zone,
+                                           const knot_rrset_t *rrset);
+
+knot_node_t *zone_contents_find_node_for_rr(knot_zone_contents_t *zone,
+                                            const knot_rrset_t *rrset);
 
 #endif
 

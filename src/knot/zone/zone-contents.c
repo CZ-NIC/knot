@@ -1471,3 +1471,55 @@ bool knot_zone_contents_is_signed(const knot_zone_contents_t *zone)
 {
 	return knot_node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 }
+
+knot_node_t *zone_contents_get_node_for_rr(knot_zone_contents_t *zone,
+                                           const knot_rrset_t *rrset)
+{
+	if (zone == NULL || rrset == NULL) {
+		return NULL;
+	}
+
+	knot_node_t *node;
+	const bool nsec3 = knot_rrset_is_nsec3rel(rrset);
+	if (!nsec3) {
+		node = knot_zone_contents_get_node(zone, rrset->owner);
+	} else {
+		node = knot_zone_contents_get_nsec3_node(zone, rrset->owner);
+	}
+
+	if (node == NULL) {
+		int ret = KNOT_EOK;
+		node = knot_node_new(rrset->owner, NULL, 0);
+		if (!nsec3) {
+			ret = knot_zone_contents_add_node(zone, node, 1, 0);
+		} else {
+			ret = knot_zone_contents_add_nsec3_node(zone, node, 1, 0);
+		}
+		if (ret != KNOT_EOK) {
+			knot_node_free(&node);
+			return NULL;
+		}
+
+		return node;
+	} else {
+		return node;
+	}
+}
+
+knot_node_t *zone_contents_find_node_for_rr(knot_zone_contents_t *zone,
+                                            const knot_rrset_t *rrset)
+{
+	if (zone == NULL || rrset == NULL) {
+		return NULL;
+	}
+
+	knot_node_t *node;
+	const bool nsec3 = knot_rrset_is_nsec3rel(rrset);
+	if (!nsec3) {
+		node = knot_zone_contents_get_node(zone, rrset->owner);
+	} else {
+		node = knot_zone_contents_get_nsec3_node(zone, rrset->owner);
+	}
+
+	return node;
+}
