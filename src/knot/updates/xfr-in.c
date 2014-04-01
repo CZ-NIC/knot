@@ -253,6 +253,7 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 	if (*zone == NULL) {
 		// Transfer start, init zone
 		if (rr->type != KNOT_RRTYPE_SOA) {
+			knot_rrset_free(&rr, NULL);
 			return KNOT_EMALF;
 		}
 		*zone = knot_zone_contents_new(rr->owner);
