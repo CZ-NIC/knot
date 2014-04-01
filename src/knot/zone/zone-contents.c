@@ -174,8 +174,12 @@ static int discover_additionals(knot_rrset_t *rr, knot_zone_contents_t *zone)
 		/* Try to find node for the dname in the RDATA. */
 		dname = knot_rdata_name(rr, i);
 		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
-		if (node == NULL && encloser && encloser->wildcard_child) {
-			node = encloser->wildcard_child;
+		if (node == NULL && encloser
+		    && knot_node_has_wildcard_child(encloser)) {
+			/* Find wildcard child in the zone. */
+			node = knot_zone_contents_find_wildcard_child(zone,
+			                                              encloser);
+			assert(node != NULL);
 		}
 
 		rr->additional[i] = (knot_node_t *)node;
@@ -203,7 +207,7 @@ static int adjust_pointers(knot_node_t **tnode, void *data)
 
 	if (knot_dname_is_wildcard(knot_node_owner(node))) {
 		assert(knot_node_parent(node) != NULL);
-		knot_node_set_wildcard_child(knot_node_get_parent(node), node);
+		knot_node_set_wildcard_child(knot_node_get_parent(node));
 	}
 
 	// set flags (delegation point, non-authoritative)
@@ -551,7 +555,7 @@ dbg_zone_exec_detail(
 
 		// check if the node is not wildcard child of the parent
 		if (knot_dname_is_wildcard(knot_node_owner(node))) {
-			knot_node_set_wildcard_child(zone->apex, node);
+			knot_node_set_wildcard_child(zone->apex);
 		}
 	} else {
 		while (parent != NULL &&
@@ -576,7 +580,7 @@ dbg_zone_exec_detail(
 			/* Update node pointers. */
 			knot_node_set_parent(node, next_node);
 			if (knot_dname_is_wildcard(knot_node_owner(node))) {
-				knot_node_set_wildcard_child(next_node, node);
+				knot_node_set_wildcard_child(next_node);
 			}
 
 			++zone->node_count;
@@ -1167,6 +1171,24 @@ knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 	}
 
 	return zone->apex;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_node_t *knot_zone_contents_find_wildcard_child(
+                const knot_zone_contents_t *contents, const knot_node_t *parent)
+{
+	if (contents == NULL || parent == NULL
+	    || knot_node_owner(parent) == NULL) {
+		return NULL;
+	}
+
+	knot_dname_t *wildcard_name = knot_dname_from_str("*");
+	knot_dname_cat(wildcard_name, knot_node_owner(parent));
+	const knot_node_t *node = knot_zone_contents_find_node(contents,
+	                                                        wildcard_name);
+	knot_dname_free(&wildcard_name, NULL);
+	return node;
 }
 
 /*----------------------------------------------------------------------------*/

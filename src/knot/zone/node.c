@@ -417,37 +417,27 @@ knot_dname_t *knot_node_get_owner(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->wildcard_child;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_wildcard_child(knot_node_t *node,
-                                  knot_node_t *wildcard_child)
+void knot_node_set_wildcard_child(knot_node_t *node)
 {
 	if (node == NULL) {
 		return;
 	}
 
-	node->wildcard_child = wildcard_child;
-//	assert(wildcard_child->parent == node);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
 }
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_wildcard_child(const knot_node_t *node)
+int knot_node_has_wildcard_child(const knot_node_t *node)
 {
-	if (node == NULL) {
-		return NULL;
-	}
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
+}
 
-	return knot_node_get_wildcard_child(node);
+/*----------------------------------------------------------------------------*/
+
+void knot_node_clear_wildcard_child(knot_node_t *node)
+{
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -501,8 +491,6 @@ void knot_node_update_refs(knot_node_t *node)
 	knot_node_update_ref(&node->prev);
 	// reference to parent
 	knot_node_update_ref(&node->parent);
-	// reference to wildcard child
-	knot_node_update_ref(&node->wildcard_child);
 	// reference to NSEC3 node
 	knot_node_update_ref(&node->nsec3_node);
 }

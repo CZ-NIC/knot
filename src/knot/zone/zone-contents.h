@@ -315,6 +315,9 @@ const knot_node_t *knot_zone_contents_apex(
 knot_node_t *knot_zone_contents_get_apex(
 	const knot_zone_contents_t *contents);
 
+const knot_node_t *knot_zone_contents_find_wildcard_child(
+               const knot_zone_contents_t *contents, const knot_node_t *parent);
+
 /*!
  * \brief Sets parent and previous pointers and node flags. (cheap operation)
  *        For both normal and NSEC3 tree

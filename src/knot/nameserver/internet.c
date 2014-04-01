@@ -426,10 +426,14 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	/* Name is covered by wildcard. */
-	const knot_node_t *wildcard_node = knot_node_wildcard_child(qdata->encloser);
-	if (wildcard_node) {
+	if (knot_node_has_wildcard_child(qdata->encloser)) {
 		dbg_ns("%s: name %p covered by wildcard\n", __func__, qdata->name);
-		qdata->node = wildcard_node;
+
+		/* Find wildcard child in the zone. */
+		qdata->node = knot_zone_contents_find_wildcard_child(
+		                        qdata->zone->contents, qdata->encloser);
+		assert(qdata->node != NULL);
+
 		/* keep encloser */
 		qdata->previous = NULL;
 
@@ -437,8 +441,8 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 		int next_state = name_found(pkt, qdata);
 
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, wildcard_node, qdata->name) != KNOT_EOK) {
-				next_state = ERROR;
+		if (wildcard_visit(qdata, qdata->node, qdata->name) != KNOT_EOK) {
+			next_state = ERROR;
 		}
 
 		return next_state;

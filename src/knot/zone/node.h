@@ -48,9 +48,6 @@ struct knot_node {
 	/*! \brief Type-ordered list of RRSets belonging to this node. */
 	knot_rrset_t **rrset_tree;
 
-	/*! \brief Wildcard node being the direct descendant of this node. */
-	struct knot_node *wildcard_child;
-
 	/*!
 	 * \brief Previous node in canonical order.
 	 *
@@ -80,6 +77,7 @@ struct knot_node {
 	 *   0x01 - node is a delegation point
 	 *   0x02 - node is non-authoritative (under a delegation point)
 	 *   0x04 - NSEC(3) was removed from the node.
+	 *   0x08 - Node has a wildcard child.
 	 *   0x10 - node is empty and will be deleted after update
 	 */
 	uint8_t flags;
@@ -101,6 +99,8 @@ typedef enum {
 	/*! \brief Node is empty and will be deleted after update.
 	 *  \todo Remove after dname refactoring, update description in node. */
 	KNOT_NODE_FLAGS_EMPTY = 1 << 4,
+	/*! \brief Node has a wildcard child. */
+	KNOT_NODE_FLAGS_WILDCARD_CHILD = (uint8_t)0x08,
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
@@ -288,7 +288,7 @@ const knot_node_t *knot_node_nsec3_node(const knot_node_t *node);
 void knot_node_set_nsec3_node(knot_node_t *node, knot_node_t *nsec3_node);
 
 /*!
- * \brief Returns the owner of the node.
+ * \brief Returns the owner of the node as a const reference.
  *
  * \param node Node to get the owner of.
  *
@@ -297,33 +297,37 @@ void knot_node_set_nsec3_node(knot_node_t *node, knot_node_t *nsec3_node);
 const knot_dname_t *knot_node_owner(const knot_node_t *node);
 
 /*!
- * \todo Document me.
+ * \brief Returns the owner of the node as a non-const reference.
+ *
+ * \param node Node to get the owner of.
+ *
+ * \return Owner of the given node.
  */
 knot_dname_t *knot_node_get_owner(const knot_node_t *node);
 
 /*!
- * \brief Returns the wildcard child of the node.
+ * \brief Sets the wildcard child flag of the node.
  *
- * \param node Node to get the owner of.
- *
- * \return Wildcard child of the given node or NULL if it has none.
+ * \param node Node that has wildcard.
  */
-const knot_node_t *knot_node_wildcard_child(const knot_node_t *node);
+void knot_node_set_wildcard_child(knot_node_t *node);
 
 /*!
- * \brief Sets the wildcard child of the node.
+ * \brief Checks if node has a wildcard child.
  *
- * \param node Node to set the wildcard child of.
- * \param wildcard_child Wildcard child of the node.
+ * \param node Node to check.
+ *
+ * \retval > 0 if the node has a wildcard child.
+ * \retval 0 otherwise.
  */
-void knot_node_set_wildcard_child(knot_node_t *node,
-                                  knot_node_t *wildcard_child);
+int knot_node_has_wildcard_child(const knot_node_t *node);
 
-knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node);
-
-//const knot_node_t *knot_node_current(const knot_node_t *node);
-
-//knot_node_t *knot_node_get_current(knot_node_t *node);
+/*!
+ * \brief Clears the node's wildcard child flag.
+ *
+ * \param node Node to clear the flag in.
+ */
+void knot_node_clear_wildcard_child(knot_node_t *node);
 
 const knot_node_t *knot_node_new_node(const knot_node_t *node);
 

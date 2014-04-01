@@ -1382,8 +1382,9 @@ static int xfrin_mark_empty(knot_node_t **node_p, void *data)
 		}
 		knot_node_set_empty(node);
 		if (node->parent) {
-			if (node->parent->wildcard_child == node) {
-				node->parent->wildcard_child = NULL;
+			if (knot_node_has_wildcard_child(node->parent)
+			    && knot_dname_is_wildcard(node->owner)) {
+				knot_node_clear_wildcard_child(node->parent);
 			}
 			node->parent->children--;
 			// Recurse using the parent node
