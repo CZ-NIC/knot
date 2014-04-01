@@ -628,7 +628,7 @@ void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-void xfrin_cleanup_successful_update(knot_zone_contents_t *zone)
+void xfrin_cleanup_successful_update(zone_t *zone)
 {
 	if (zone == NULL) {
 		return;
@@ -636,6 +636,8 @@ void xfrin_cleanup_successful_update(knot_zone_contents_t *zone)
 
 	rrs_list_clear(&zone->old_data, NULL);
 	ptrlist_free(&zone->new_data, NULL);
+	init_list(&zone->new_data);
+	init_list(&zone->old_data);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -729,11 +731,14 @@ static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
 
 /*----------------------------------------------------------------------------*/
 
-void xfrin_rollback_update(knot_zone_contents_t *old_contents,
+void xfrin_rollback_update(zone_t *zone,
+                           knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents)
 {
-	rrs_list_clear(&old_contents->new_data, NULL);
-	ptrlist_free(&old_contents->old_data, NULL);
+	rrs_list_clear(&zone->new_data, NULL);
+	ptrlist_free(&zone->old_data, NULL);
+	init_list(&zone->new_data);
+	init_list(&zone->old_data);
 	xfrin_cleanup_failed_update(old_contents, new_contents);
 }
 
@@ -937,8 +942,6 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 		return KNOT_ERROR;
 	}
 
-	init_list(new_rrs);
-	init_list(old_rrs);
 	int ret = xfrin_apply_remove(contents, chset, old_rrs, new_rrs);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1160,7 +1163,8 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
+int xfrin_apply_changesets_directly(zone_t *zone,
+                                    knot_zone_contents_t *contents,
                                     knot_changesets_t *chsets)
 {
 	if (contents == NULL || chsets == NULL) {
@@ -1169,8 +1173,8 @@ int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
 
 	knot_changeset_t *set = NULL;
 	WALK_LIST(set, chsets->sets) {
-		int ret = xfrin_apply_changeset(&contents->old_data,
-		                                &contents->new_data,
+		int ret = xfrin_apply_changeset(&zone->old_data,
+		                                &zone->new_data,
 		                                contents, set);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -1183,12 +1187,13 @@ int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
 /*----------------------------------------------------------------------------*/
 
 /* Post-DDNS application, no need to shallow copy. */
-int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
+int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
+                                       knot_zone_contents_t *z_old,
                                        knot_zone_contents_t *z_new,
                                        knot_changesets_t *sec_chsets,
                                        knot_changesets_t *chsets)
 {
-	if (z_old == NULL || z_new == NULL ||
+	if (zone == NULL || z_old == NULL || z_new == NULL ||
 	    sec_chsets == NULL || chsets == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -1197,10 +1202,10 @@ int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
 	knot_zone_contents_set_gen_old(z_new);
 
 	/* Apply changes. */
-	int ret = xfrin_apply_changesets_directly(z_new,
+	int ret = xfrin_apply_changesets_directly(zone, z_new,
 	                                          sec_chsets);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update(z_old, &z_new);
+		xfrin_rollback_update(zone, z_old, &z_new);
 		dbg_xfrin("Failed to apply changesets to zone: "
 		          "%s\n", knot_strerror(ret));
 		return ret;
@@ -1211,7 +1216,7 @@ int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 		          knot_strerror(ret));
-		xfrin_rollback_update(z_old, &z_new);
+		xfrin_rollback_update(zone, z_old, &z_new);
 		return ret;
 	}
 
@@ -1254,12 +1259,12 @@ int xfrin_apply_changesets(zone_t *zone,
 		       old_contents->apex, contents_copy->apex);
 	knot_changeset_t *set = NULL;
 	WALK_LIST(set, chsets->sets) {
-		ret = xfrin_apply_changeset(&zone->contents->old_data,
-		                            &zone->contents->new_data,
+		ret = xfrin_apply_changeset(&zone->old_data,
+		                            &zone->new_data,
 		                            contents_copy, set);
 		if (ret != KNOT_EOK) {
-			xfrin_rollback_update(old_contents,
-					       &contents_copy);
+			xfrin_rollback_update(zone, old_contents,
+			                      &contents_copy);
 			dbg_xfrin("Failed to apply changesets to zone: "
 				  "%s\n", knot_strerror(ret));
 			return ret;
@@ -1276,7 +1281,7 @@ int xfrin_apply_changesets(zone_t *zone,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy);
+		xfrin_rollback_update(zone, old_contents, &contents_copy);
 		return ret;
 	}
 

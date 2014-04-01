@@ -433,7 +433,7 @@ static bool skip_record_addition(knot_changeset_t *changeset,
                                  knot_rrset_t *rr)
 {
 	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, changeset->remove) {
+	WALK_LIST(rr_node, changeset->add) {
 		knot_rrset_t *rrset = rr_node->rr;
 		if (should_replace(rr, rrset)) {
 			knot_rrset_free(&rrset, NULL);
@@ -795,6 +795,11 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
 	}
 }
 
+/*
+ * Check if the record is SOA. If yes, check the SERIAL.
+ * If this record should cause the SOA to be replaced in the
+ * zone, use it as the ending SOA.
+ */
 static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 {
 	if (rr->type == KNOT_RRTYPE_SOA
@@ -828,19 +833,11 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_EOK;
-
 	/* Copy base SOA RR. */
-	knot_rrset_t *soa_begin = knot_node_create_rrset(knot_zone_contents_apex(zone),
+	knot_rrset_t *soa_begin = knot_node_create_rrset(zone->apex,
 	                                                 KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_end = NULL;
-	if (ret == KNOT_EOK) {
-		knot_changeset_add_soa(changeset, soa_begin,
-		                       KNOT_CHANGESET_REMOVE);
-	} else {
-		*rcode = KNOT_RCODE_SERVFAIL;
-		return ret;
-	}
+	knot_changeset_add_soa(changeset, soa_begin, KNOT_CHANGESET_REMOVE);
 
 	/* Current SERIAL */
 	int64_t sn = knot_rrs_soa_serial(&soa_begin->rrs);
@@ -852,48 +849,39 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		assert(sn_new != KNOT_EINVAL);
 	} else {
 		*rcode = KNOT_RCODE_SERVFAIL;
-		return ret;
+		return KNOT_EINVAL;
 	}
 
 	/* Process all RRs the Authority (Update) section. */
 
-	const knot_rrset_t *rr = NULL;
-
 	dbg_ddns("Processing UPDATE section.\n");
 	size_t apex_ns_removals = 0;
 	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
-	for (int i = 0; i < authority->count; ++i) {
-
-		rr = &authority->rr[i];
+	for (uint16_t i = 0; i < authority->count; ++i) {
+		const knot_rrset_t *rr = &authority->rr[i];
 
 		/* Check if the entry is correct. */
-		ret = knot_ddns_check_update(rr, query, rcode);
+		int ret = knot_ddns_check_update(rr, query, rcode);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
-		/* Check if the record is SOA. If yes, check the SERIAL.
-		 * If this record should cause the SOA to be replaced in the
-		 * zone, use it as the ending SOA.
-		 *
-		 * Also handle cases where there are multiple SOAs to be added
-		 * in the same UPDATE. The one with the largest SERIAL should
-		 * be used.
-		 */
 		1 == 1; // multiple SOAs test
 		if (skip_soa(rr, sn)) {
 			continue;
 		}
 
-		dbg_ddns_verb("Processing RR %p...\n", rr);
 		ret = knot_ddns_process_rr(rr, zone, changeset, &apex_ns_removals);
 		if (ret != KNOT_EOK) {
 			*rcode = ret_to_rcode(ret);
 			return ret;
 		}
 
-		// we need the RR copy, that's why this code is here
 		if (rr->type == KNOT_RRTYPE_SOA) {
+			// Using new SOA that came in the update
+			if (soa_end == NULL) {
+				knot_rrset_free(&soa_end, NULL);
+			}
 			int64_t sn_rr = knot_rrs_soa_serial(&rr->rrs);
 			assert(knot_serial_compare(sn_rr, sn) > 0);
 			sn_new = sn_rr;
@@ -904,23 +892,20 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 		}
 	}
 
-	/* Ending SOA (not in the UPDATE) */
 	if (soa_end == NULL) {
-		// If the changeset is empty, do not process anything further
+		// No SOA in the update, create according to current policy
 		if (knot_changeset_is_empty(changeset)) {
+			// No change, no new SOA
 			return KNOT_EOK;
 		}
 
-		/* If not set, create new SOA. */
-		ret = knot_rrset_copy(soa_begin, &soa_end, NULL);
-		if (ret != KNOT_EOK) {
-			*rcode = ret_to_rcode(ret);
-			return ret;
+		soa_end = knot_rrset_cpy(soa_begin, NULL);
+		if (soa_end == NULL) {
+			*rcode = KNOT_RCODE_SERVFAIL;
+			return KNOT_ENOMEM;
 		}
 		knot_rrs_soa_serial_set(&soa_end->rrs, sn_new);
 	}
 
-	ret = knot_ddns_final_soa_to_chgset(soa_end, changeset);
-
-	return ret;
+	return knot_ddns_final_soa_to_chgset(soa_end, changeset);
 }

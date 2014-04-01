@@ -70,8 +70,6 @@ typedef struct knot_zone_contents_t {
 	 * - 0xx - ANY queries enabled
 	 */
 	uint8_t flags;
-	list_t old_data;
-	list_t new_data;
 } knot_zone_contents_t;
 
 /*!< \brief Helper linked list list for CNAME loop checking */

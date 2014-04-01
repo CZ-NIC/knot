@@ -95,6 +95,8 @@ typedef struct zone_t {
 	/*! \brief Zone IXFR history. */
 	journal_t *ixfr_db;
 	event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
+	list_t old_data;
+	list_t new_data;
 } zone_t;
 
 /*----------------------------------------------------------------------------*/

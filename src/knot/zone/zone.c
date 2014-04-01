@@ -212,6 +212,9 @@ zone_t* zone_new(conf_zone_t *conf)
 		}
 	}
 
+	init_list(&zone->old_data);
+	init_list(&zone->new_data);
+
 	return zone;
 }
 
