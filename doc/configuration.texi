@@ -398,8 +398,8 @@ Now if a query module is loaded for a zone, it is provided with an implicit quer
 it is allowed to extend it or even change it altogether.
 @emph{Note: Programmable interface is described in the @code{query_module.h}, it will not be discussed here.}
 
-Now, Knot DNS has several modules built-in. The general syntax for importing a query module is described in
-the @ref{query_module} configuration reference. Basically, each module is described by a name and a configuration
-string. Below is a list of modules and configuration string reference. 
+The general syntax for importing a query module is described in the @ref{query_module} configuration reference.
+Basically, each module is described by a name and a configuration string.
+Below is a list of modules and configuration string reference.
 
 @include synth_record.texi
