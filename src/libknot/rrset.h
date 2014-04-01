@@ -355,18 +355,16 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 
 /*!
  * \brief Removes RRs contained in 'what' RRSet from 'from' RRSet.
- *        Deleted RRs are returned in 'rr_deleted'.
  *
  * \param from        Delete from.
  * \param what        Delete what.
- * \param rr_deleted  Deleted RRs stored here.
  * \param mm          Memory context.
  *
  * \return KNOT_E*
  */
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
-                                     knot_rrset_t **rr_deleted, mm_ctx_t *mm);
+                                     mm_ctx_t *mm);
 
 /*!
  * \brief Finds RR at 'pos' position in 'rr_reference' RRSet in

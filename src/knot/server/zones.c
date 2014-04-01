@@ -2016,10 +2016,7 @@ static int diff_after_load(zone_t *zone, zone_t *old_zone,
 	if (*diff_chs != NULL) {
 		assert(!zones_changesets_empty(*diff_chs));
 		/* Apply DNSSEC changeset to the new zone. */
-		ret = xfrin_apply_changesets_directly(zone,
-		                                      zone->contents,
-		                                      *diff_chs);
-
+		ret = xfrin_apply_changesets_directly(zone->contents, *diff_chs);
 		if (ret == KNOT_EOK) {
 			ret = xfrin_finalize_updated_zone(
 			                        zone->contents, true);
@@ -2105,7 +2102,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 		if (zone_changed) {
 			assert(!old_zone ||
 			       old_zone->contents != zone->contents);
-			ret = xfrin_apply_changesets_directly(zone, zone->contents,
+			ret = xfrin_apply_changesets_directly(zone->contents,
 			                                      diff_chs);
 			if (ret == KNOT_EOK) {
 				ret = xfrin_finalize_updated_zone(

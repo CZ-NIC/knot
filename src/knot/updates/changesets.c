@@ -90,6 +90,10 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	init_list(&set->add);
 	init_list(&set->remove);
 
+	// Init change lists
+	init_list(&set->new_data);
+	init_list(&set->old_data);
+
 	// Insert into list of sets
 	add_tail(&ch->sets, (node_t *)set);
 

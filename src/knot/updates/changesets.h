@@ -55,6 +55,8 @@ typedef struct knot_changeset {
 	uint32_t serial_from; /*!< SOA start serial. */
 	uint32_t serial_to; /*!< SOA destination serial. */
 	uint32_t flags; /*!< DDNS / IXFR flags. */
+	list_t old_data;
+	list_t new_data;
 } knot_changeset_t;
 
 /*----------------------------------------------------------------------------*/

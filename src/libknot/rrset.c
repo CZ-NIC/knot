@@ -1228,41 +1228,22 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
-                                     knot_rrset_t **rr_deleted,
                                      mm_ctx_t *mm)
 {
-	if (from == NULL || what == NULL || rr_deleted == NULL) {
+	if (from == NULL || what == NULL) {
 		return KNOT_EINVAL;
-	}
-
-	knot_rrset_t *return_rr = knot_rrset_new_from(what, NULL);
-	if (return_rr == NULL) {
-		return KNOT_ENOMEM;
 	}
 
 	uint16_t what_rdata_count = knot_rrset_rr_count(what);
 	for (uint16_t i = 0; i < what_rdata_count; ++i) {
 		int ret = knot_rrset_remove_rr(from, what, i, mm);
-		if (ret == KNOT_EOK) {
-			/* RR was removed, can be added to 'return' RRSet. */
-			ret = knot_rrset_add_rr_from_rrset(return_rr, what, i, NULL);
-			if (ret != KNOT_EOK) {
-				knot_rrset_free(&return_rr, NULL);
-				dbg_xfrin("xfr: Could not add RR (%s).\n",
-				          knot_strerror(ret));
+		if (ret != KNOT_EOK) {
+			if (ret != KNOT_ENOENT) {
 				return ret;
 			}
-		} else if (ret != KNOT_ENOENT) {
-			/* NOENT is OK, but other errors are not. */
-			dbg_rrset("rrset: remove_using_rrset: "
-			          "RRSet removal failed (%s).\n",
-			          knot_strerror(ret));
-			knot_rrset_free(&return_rr, NULL);
-			return ret;
 		}
 	}
 
-	*rr_deleted = return_rr;
 	return KNOT_EOK;
 }
 

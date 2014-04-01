@@ -124,6 +124,7 @@ int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm)
 		                       total_size);
 		if (tmp == NULL) {
 			ERR_ALLOC_FAILED;
+			return KNOT_ENOMEM;
 		} else {
 			rrs->data = tmp;
 		}

@@ -628,16 +628,17 @@ void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-void xfrin_cleanup_successful_update(zone_t *zone)
+void xfrin_cleanup_successful_update(knot_changesets_t *chgs)
 {
-	if (zone == NULL) {
-		return;
-	}
-
-	rrs_list_clear(&zone->old_data, NULL);
-	ptrlist_free(&zone->new_data, NULL);
-	init_list(&zone->new_data);
-	init_list(&zone->old_data);
+	knot_changeset_t *change = NULL;
+	WALK_LIST(change, chgs->sets) {
+		// Delete old RR data
+		rrs_list_clear(&change->old_data, NULL);
+		// Keep new RR data
+		ptrlist_free(&change->new_data, NULL);
+		init_list(&change->new_data);
+		init_list(&change->old_data);
+	};
 }
 
 /*----------------------------------------------------------------------------*/
@@ -731,14 +732,19 @@ static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
 
 /*----------------------------------------------------------------------------*/
 
-void xfrin_rollback_update(zone_t *zone,
+void xfrin_rollback_update(knot_changesets_t *chgs,
                            knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents)
 {
-	rrs_list_clear(&zone->new_data, NULL);
-	ptrlist_free(&zone->old_data, NULL);
-	init_list(&zone->new_data);
-	init_list(&zone->old_data);
+	knot_changeset_t *change = NULL;
+	WALK_LIST(change, chgs->sets) {
+		// Delete new RR data
+		rrs_list_clear(&change->new_data, NULL);
+		// Keep old RR data
+		ptrlist_free(&change->old_data, NULL);
+		init_list(&change->new_data);
+		init_list(&change->old_data);
+	};
 	xfrin_cleanup_failed_update(old_contents, new_contents);
 }
 
@@ -801,7 +807,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 {
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chset->remove) {
-		knot_rrset_t *rr = rr_node->rr;
+		const knot_rrset_t *rr = rr_node->rr;
 		knot_node_t *node = zone_contents_find_node_for_rr(contents,
 		                                                   rr);
 		if (!can_remove(node, rr)) {
@@ -822,20 +828,19 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 		}
 
 		knot_rrset_t rrset = RRSET_INIT(node, rr->type);
-		knot_rrset_t *removed = NULL;
-		ret = knot_rrset_remove_rr_using_rrset(&rrset, rr, &removed, NULL);
+		ret = knot_rrset_remove_rr_using_rrset(&rrset, rr, NULL);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
 			return ret;
 		}
-		assert(removed->rrs.rr_count > 0);
-		knot_rrset_free(&removed, NULL);
 
 		if (rrset.rrs.rr_count > 0) {
 			if (ptrlist_add(new_rrs, rrset.rrs.data, NULL) == NULL) {
 				knot_rrs_clear(rrs, NULL);
 				return KNOT_ENOMEM;
 			}
+			rrs = knot_node_get_rrs(node, rr->type);
+			*rrs = rrset.rrs;
 		} else {
 			knot_node_remove_rrset(node, rr->type);
 		}
@@ -873,7 +878,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 
 		// Either node did not exist before, and we add new RR, or merge
 		int ret = knot_node_add_rrset(node, rr);
-		if (ret != KNOT_EOK) {
+		if (ret < 0) {
 			clear_new_rrs(node, rr->type);
 			return ret;
 		}
@@ -952,8 +957,7 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 		return ret;
 	}
 
-	ret = xfrin_apply_replace_soa(contents, chset, old_rrs, new_rrs);
-	return ret;
+	return xfrin_apply_replace_soa(contents, chset, old_rrs, new_rrs);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1163,8 +1167,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_apply_changesets_directly(zone_t *zone,
-                                    knot_zone_contents_t *contents,
+int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
                                     knot_changesets_t *chsets)
 {
 	if (contents == NULL || chsets == NULL) {
@@ -1173,8 +1176,8 @@ int xfrin_apply_changesets_directly(zone_t *zone,
 
 	knot_changeset_t *set = NULL;
 	WALK_LIST(set, chsets->sets) {
-		int ret = xfrin_apply_changeset(&zone->old_data,
-		                                &zone->new_data,
+		int ret = xfrin_apply_changeset(&set->old_data,
+		                                &set->new_data,
 		                                contents, set);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -1202,10 +1205,9 @@ int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
 	knot_zone_contents_set_gen_old(z_new);
 
 	/* Apply changes. */
-	int ret = xfrin_apply_changesets_directly(zone, z_new,
-	                                          sec_chsets);
+	int ret = xfrin_apply_changesets_directly(z_new, sec_chsets);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update(zone, z_old, &z_new);
+		xfrin_rollback_update(sec_chsets, z_old, &z_new);
 		dbg_xfrin("Failed to apply changesets to zone: "
 		          "%s\n", knot_strerror(ret));
 		return ret;
@@ -1216,7 +1218,7 @@ int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 		          knot_strerror(ret));
-		xfrin_rollback_update(zone, z_old, &z_new);
+		xfrin_rollback_update(sec_chsets, z_old, &z_new);
 		return ret;
 	}
 
@@ -1259,11 +1261,11 @@ int xfrin_apply_changesets(zone_t *zone,
 		       old_contents->apex, contents_copy->apex);
 	knot_changeset_t *set = NULL;
 	WALK_LIST(set, chsets->sets) {
-		ret = xfrin_apply_changeset(&zone->old_data,
-		                            &zone->new_data,
+		ret = xfrin_apply_changeset(&set->old_data,
+		                            &set->new_data,
 		                            contents_copy, set);
 		if (ret != KNOT_EOK) {
-			xfrin_rollback_update(zone, old_contents,
+			xfrin_rollback_update(chsets, old_contents,
 			                      &contents_copy);
 			dbg_xfrin("Failed to apply changesets to zone: "
 				  "%s\n", knot_strerror(ret));
@@ -1281,7 +1283,7 @@ int xfrin_apply_changesets(zone_t *zone,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));
-		xfrin_rollback_update(zone, old_contents, &contents_copy);
+		xfrin_rollback_update(chsets, old_contents, &contents_copy);
 		return ret;
 	}
 

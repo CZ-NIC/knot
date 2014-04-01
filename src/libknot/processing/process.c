@@ -82,7 +82,7 @@ int knot_process_in(const uint8_t *wire, uint16_t wire_len, knot_process_t *ctx)
 	}
 
 	knot_pkt_t *pkt = knot_pkt_new((uint8_t *)wire, wire_len, &ctx->mm);
-	knot_pkt_parse(pkt, 0);
+	knot_pkt_parse(pkt, KNOT_PF_NO_MERGE);
 
 	ctx->state = ctx->module->in(pkt, ctx);
 	dbg_ns("%s -> %s\n", __func__, PROCESSING_STATE_STR(ctx->state));

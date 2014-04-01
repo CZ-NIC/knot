@@ -174,16 +174,13 @@ int xfrin_apply_changesets_dnssec_ddns(zone_t *zone, knot_zone_contents_t *z_old
  * \brief Applies changesets directly to the zone, without copying it.
  *
  * \param contents Zone contents to apply the changesets to. Will be modified.
- * \param changes  Structure to store changes made during application. It
- *                 doesn't have to be empty, present changes will not be
- *                 modified.
  * \param chsets   Changesets to be applied to the zone.
  *
  * \retval KNOT_EOK if successful.
  * \retval KNOT_EINVAL if given one of the arguments is NULL.
  * \return Other error code if the application went wrong.
  */
-int xfrin_apply_changesets_directly(zone_t *zone, knot_zone_contents_t *contents,
+int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
                                     knot_changesets_t *chsets);
 
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
@@ -202,7 +199,7 @@ int xfrin_switch_zone(zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type);
 
-void xfrin_rollback_update(zone_t *zone, knot_zone_contents_t *old_contents,
+void xfrin_rollback_update(knot_changesets_t *chgs, knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents);
 
 int xfrin_copy_rrset(knot_node_t *node, uint16_t type,
@@ -215,7 +212,7 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
                                 knot_zone_contents_t *contents);
 
 void xfrin_zone_contents_free(knot_zone_contents_t **contents);
-void xfrin_cleanup_successful_update(zone_t *zone);
+void xfrin_cleanup_successful_update(knot_changesets_t *chgs);
 
 #endif /* _KNOTXFR_IN_H_ */
 
