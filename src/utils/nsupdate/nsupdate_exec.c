@@ -718,7 +718,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	}
 
 	/* Parse response. */
-	ret = knot_pkt_parse(params->answer, KNOT_PF_NO_MERGE);
+	ret = knot_pkt_parse(params->answer, 0);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response, %s\n", knot_strerror(ret));
 		free_sign_context(&sign_ctx);
