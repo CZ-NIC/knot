@@ -629,41 +629,6 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	return KNOT_EOK;
 }
 
-static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
-{
-	dbg_packet("%s(%p, %p, %u)\n", __func__, pkt, rr, flags);
-	assert(pkt);
-	assert(rr);
-
-	/* Don't want to merge, okay. */
-	if (flags & KNOT_PF_NO_MERGE) {
-		return KNOT_ENOENT;
-	}
-
-	// try to find the RRSet in this array of RRSets
-	for (int i = 0; i < pkt->rrset_count; ++i) {
-
-		if (knot_rrset_equal(pkt->rr[i], rr, KNOT_RRSET_COMPARE_HEADER)) {
-			int merged = 0;
-			int deleted_rrs = 0;
-			int rc = knot_rrset_merge_sort((knot_rrset_t *)pkt->rr[i],
-			                               rr, &merged, &deleted_rrs,
-			                               &pkt->mm);
-			if (rc != KNOT_EOK) {
-				dbg_packet("%s: failed to merge RR %p (%d)\n", __func__, rr, rc);
-				return rc;
-			}
-
-			dbg_packet("%s: merged RR %p\n", __func__, rr);
-			knot_rrset_free(&rr, &pkt->mm);
-			return KNOT_EOK;
-		}
-	}
-
-
-	return KNOT_ENOENT;
-}
-
 /*! \note Legacy code, mainly for transfers and updates.
  *        RRSets should use packet memory context for allocation and
  *        should be copied if they are supposed to be stored in zone permanently.
@@ -752,11 +717,6 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	
 	/* Calculate parsed RR size from before/after parsing. */
 	rr_size = (pkt->parsed - rr_size);
-
-	/* Merge with existing RRSet if possible, otherwise add new RR set. */
-	if (knot_pkt_merge_rr(pkt, rr, flags) == KNOT_EOK) {
-		return KNOT_EOK;
-	}
 
 	/* Append to RR list. */
 	pkt->rr[pkt->rrset_count] = rr;
