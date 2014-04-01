@@ -139,10 +139,6 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  */
 int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset);
 
-int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset);
-
-int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *rrset);
-
 const knot_rrs_t *knot_node_rrs(const knot_node_t *node, uint16_t type);
 knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);
 
@@ -167,17 +163,6 @@ void knot_node_remove_rrset(knot_node_t *node, uint16_t type);
  * \return Number of RRSets in \a node.
  */
 short knot_node_rrset_count(const knot_node_t *node);
-
-/*!
- * \brief Returns all RRSets from the node.
- *
- * \param node Node to get the RRSets from.
- *
- * \return Newly allocated array of RRSets or NULL if an error occured.
- */
-knot_rrset_t **knot_node_create_rrsets(const knot_node_t *node);
-
-int knot_node_count_rrsets(const knot_node_t *node);
 
 /*!
  * \brief Returns the parent of the node.
@@ -302,17 +287,11 @@ void knot_node_set_wildcard_child(knot_node_t *node,
 
 knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node);
 
-//const knot_node_t *knot_node_current(const knot_node_t *node);
-
-//knot_node_t *knot_node_get_current(knot_node_t *node);
-
 const knot_node_t *knot_node_new_node(const knot_node_t *node);
 
 knot_node_t *knot_node_get_new_node(const knot_node_t *node);
 
 void knot_node_set_new_node(knot_node_t *node, knot_node_t *new_node);
-
-void knot_node_update_ref(knot_node_t **ref);
 
 void knot_node_update_refs(knot_node_t *node);
 
@@ -374,7 +353,6 @@ void knot_node_clear_empty(knot_node_t *node);
  * \param node Node to be destroyed.
  */
 void knot_node_free_rrsets(knot_node_t *node);
-void knot_node_free_created_rrsets(const knot_node_t *node, knot_rrset_t **rrsets);
 
 /*!
  * \brief Destroys the node structure.

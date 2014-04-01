@@ -630,6 +630,10 @@ void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 
 void xfrin_cleanup_successful_update(knot_changesets_t *chgs)
 {
+	if (chgs == NULL) {
+		return;
+	}
+
 	knot_changeset_t *change = NULL;
 	WALK_LIST(change, chgs->sets) {
 		// Delete old RR data
@@ -736,15 +740,17 @@ void xfrin_rollback_update(knot_changesets_t *chgs,
                            knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents)
 {
-	knot_changeset_t *change = NULL;
-	WALK_LIST(change, chgs->sets) {
-		// Delete new RR data
-		rrs_list_clear(&change->new_data, NULL);
-		// Keep old RR data
-		ptrlist_free(&change->old_data, NULL);
-		init_list(&change->new_data);
+	if (chgs != NULL) {
+		knot_changeset_t *change = NULL;
+		WALK_LIST(change, chgs->sets) {
+			// Delete new RR data
+			rrs_list_clear(&change->new_data, NULL);
+			// Keep old RR data
+			ptrlist_free(&change->old_data, NULL);
+				init_list(&change->new_data);
 		init_list(&change->old_data);
-	};
+		};
+	}
 	xfrin_cleanup_failed_update(old_contents, new_contents);
 }
 
@@ -814,6 +820,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 			continue;
 		}
 
+		1 == 1; // store additional
 		knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
 		knot_rr_t *old_data = rrs->data;
 
@@ -921,7 +928,17 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 
 	soa_rrs = knot_node_get_rrs(node, KNOT_RRTYPE_SOA);
 	knot_rrs_clear(soa_rrs, NULL);
-	return knot_rrs_copy(soa_rrs, &chset->soa_to->rrs, NULL);
+	ret = knot_rrs_copy(soa_rrs, &chset->soa_to->rrs, NULL);
+	if (ret != KNOT_EOK) {
+		clear_new_rrs(node, KNOT_RRTYPE_SOA);
+		return KNOT_ENOMEM;
+	}
+
+	if (ptrlist_add(new_rrs, soa_rrs->data, NULL) == NULL) {
+		clear_new_rrs(node, KNOT_RRTYPE_SOA);
+		return KNOT_ENOMEM;
+	}
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

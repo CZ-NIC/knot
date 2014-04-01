@@ -696,14 +696,7 @@ dbg_zone_exec_detail(
 
 	// add all domain names from the RRSet to domain name table
 	int rc;
-
-	/*! \todo REMOVE RRSET */
-	if (dupl == KNOT_RRSET_DUPL_MERGE) {
-		rc = knot_node_add_rrset(*node, rrset);
-	} else {
-		rc = knot_node_add_rrset_no_merge(*node, rrset);
-	}
-
+	rc = knot_node_add_rrset(*node, rrset);
 	if (rc < 0) {
 		dbg_zone("Failed to add RRSet to node.\n");
 		return rc;

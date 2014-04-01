@@ -388,8 +388,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 	dbg_zonediff_detail("zone_diff: diff_node: Node %p is present in "
 	              "both trees.\n", node_owner);
 	/* The nodes are in both trees, we have to diff each RRSet. */
-	knot_rrset_t **rrsets = knot_node_create_rrsets(node);
-	if (rrsets == NULL) {
+	if (node->rrset_count == 0) {
 		dbg_zonediff("zone_diff: Node in first tree has no RRSets.\n");
 		/*
 		 * If there are no RRs in the first tree, all of the RRs
@@ -407,79 +406,58 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 
 	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
 		/* Search for the RRSet in the node from the second tree. */
-		const knot_rrset_t *rrset = rrsets[i];
-		assert(rrset);
+		knot_rrset_t rrset = RRSET_INIT_N(node, i);
 
-		/* SOAs are handled explicitly. */
-		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
+		/* SOAs are handled explicitely. */
+		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
 
-		knot_rrset_t rrset_from_second_node = RRSET_INIT(node_in_second_tree, rrset->type);
+		knot_rrset_t rrset_from_second_node = RRSET_INIT(node_in_second_tree, rrset.type);
 		if (knot_rrset_empty(&rrset_from_second_node)) {
 			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
 			       "for RRSet of type %u in second tree.\n",
 			       knot_rrset_type(rrset));
 			/* RRSet has been removed. Make a copy and remove. */
-			assert(rrset);
 			int ret = knot_zone_diff_changeset_remove_rrset(
 				param->changeset,
-				rrset);
+				&rrset);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_node: "
 				             "Failed to remove RRSet.\n");
-				free(rrsets);
 				return ret;
 			}
 		} else {
-			dbg_zonediff("zone_diff: diff_node: There is a counterpart "
-			       "for RRSet of type %u in second tree.\n",
-			       knot_rrset_type(rrset));
 			/* Diff RRSets. */
-			int ret = knot_zone_diff_rrsets(rrset,
+			int ret = knot_zone_diff_rrsets(&rrset,
 			                                &rrset_from_second_node,
 			                                param->changeset);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: "
 				             "Failed to diff RRSets.\n");
-				free(rrsets);
 				return ret;
 			}
 		}
 	}
 
-	knot_node_free_created_rrsets(node, rrsets);
-
-	/*! \todo move to one function with the code above. */
-	rrsets = knot_node_create_rrsets(node_in_second_tree);
-	if (rrsets == NULL) {
-		return KNOT_EOK;
-	}
-
 	for (uint i = 0; i < knot_node_rrset_count(node_in_second_tree); i++) {
 		/* Search for the RRSet in the node from the second tree. */
-		const knot_rrset_t *rrset = rrsets[i];
-		assert(rrset);
+		knot_rrset_t rrset = RRSET_INIT_N(node_in_second_tree, i);
 
-		/* SOAs are handled explicitly. */
-		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
+		/* SOAs are handled explicitely. */
+		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
 
-		knot_rrset_t rrset_from_first_node = RRSET_INIT(node, rrset->type);
+		knot_rrset_t rrset_from_first_node = RRSET_INIT(node, rrset.type);
 		if (knot_rrset_empty(&rrset_from_first_node)) {
-			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
-			       "for RRSet of type %u in first tree.\n",
-			       knot_rrset_type(rrset));
 			/* RRSet has been added. Make a copy and add. */
-			assert(rrset);
 			int ret = knot_zone_diff_changeset_add_rrset(
 				param->changeset,
-				rrset);
+				&rrset);
 			if (ret != KNOT_EOK) {
 				dbg_zonediff("zone_diff: diff_node: "
 				             "Failed to add RRSet.\n");
-				knot_node_free_created_rrsets(node, rrsets);
 				return ret;
 			}
 		} else {
@@ -487,8 +465,6 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 			;
 		}
 	}
-
-	knot_node_free_created_rrsets(node, rrsets);
 
 	return KNOT_EOK;
 }

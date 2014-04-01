@@ -246,6 +246,8 @@ static int zones_process_update_auth(struct query_data *qdata)
 	knot_zone_contents_t *old_contents = zone->contents;
 	ret = knot_ns_process_update(qdata->query, zone, chgsets, &qdata->rcode, new_serial);
 	if (ret != KNOT_EOK) {
+		knot_changesets_free(&chgsets);
+		free(msg);
 		return ret;
 	}
 
@@ -345,6 +347,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 			               "\n", msg, knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
+			free(msg);
 			return ret;
 		}
 
@@ -356,6 +359,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 			               msg, knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
 			zones_free_merged_changesets(chgsets, sec_chs);
+			free(msg);
 			return ret;
 		}
 	} else {
@@ -403,6 +407,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 
 	// Cleanup.
 	xfrin_cleanup_successful_update(chgsets);
+	xfrin_cleanup_successful_update(sec_chs);
 
 	// Free changesets, but not the data.
 	zones_free_merged_changesets(chgsets, sec_chs);

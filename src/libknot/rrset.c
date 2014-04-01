@@ -769,7 +769,7 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 		return false;
 	}
 
-	if (r1->type != r2->type || r1->rclass != r2->rclass) {
+	if (r1->type != r2->type) {
 		return false;
 	}
 
@@ -835,7 +835,7 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 	rrset_deep_free_content(*rrset, mm);
 
 	if (rrset_additional_needed((*rrset)->type)) {
-		mm_free(mm, (*rrset)->additional);
+		free((*rrset)->additional);
 	}
 
 	mm_free(mm, *rrset);

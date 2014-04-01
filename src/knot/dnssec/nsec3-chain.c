@@ -119,13 +119,11 @@ static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 	assert(valid_nsec3_node(from));
 	assert(valid_nsec3_node(to));
 
-	knot_rrset_t *from_sig = knot_node_create_rrset(from, KNOT_RRTYPE_RRSIG);
-	if (from_sig == NULL) {
+	knot_rrset_t from_sig = RRSET_INIT(from, KNOT_RRTYPE_RRSIG);
+	if (knot_rrset_empty(&from_sig)) {
 		return KNOT_EOK;
 	}
-	int ret = knot_node_add_rrset(to, from_sig);
-	knot_rrset_free(&from_sig, NULL);
-	return ret;
+	return knot_node_add_rrset(to, &from_sig);
 }
 
 /*!
@@ -166,9 +164,6 @@ static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 /*!
  * \brief Custom NSEC3 tree free function.
  *
- * - Leaves RRSIGs, as these are only referenced (shallow copied).
- * - Deep frees NSEC3 RRs, as these nodes were created.
- *
  */
 static void free_nsec3_tree(knot_zone_tree_t *nodes)
 {
@@ -180,7 +175,9 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 		// newly allocated NSEC3 nodes
 		knot_rrs_t *nsec3 = knot_node_get_rrs(node, KNOT_RRTYPE_NSEC3);
+		knot_rrs_t *rrsig = knot_node_get_rrs(node, KNOT_RRTYPE_RRSIG);
 		knot_rrs_clear(nsec3, NULL);
+		knot_rrs_clear(rrsig, NULL);
 		knot_node_free(&node);
 	}
 
@@ -304,7 +301,7 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 		return NULL;
 	}
 
-	ret = knot_node_add_rrset_no_merge(new_node, &nsec3_rrset);
+	ret = knot_node_add_rrset(new_node, &nsec3_rrset);
 	knot_rrset_clear(&nsec3_rrset, NULL);
 	if (ret != KNOT_EOK) {
 		knot_node_free(&new_node);

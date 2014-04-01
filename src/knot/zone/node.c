@@ -72,7 +72,7 @@ static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
 {
 	knot_rrs_clear(&data->rrs, mm);
-	mm_free(mm, data->additional);
+	free(data->additional);
 }
 
 int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
@@ -83,7 +83,7 @@ int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
 	}
 	data->type = rrset->type;
 	if (rrset->additional) {
-		data->additional = mm_alloc(mm, data->rrs.rr_count * sizeof(void *));
+		data->additional = malloc(data->rrs.rr_count * sizeof(void *));
 		if (data->additional == NULL) {
 			ERR_ALLOC_FAILED;
 			knot_rrs_clear(&data->rrs, mm);
@@ -119,7 +119,7 @@ static knot_rrset_t *rrset_from_rr_data(const knot_node_t *n, size_t pos,
 	
 	if (data.additional) {
 		size_t alloc_size = data.rrs.rr_count * sizeof(knot_node_t *);
-		rrset->additional = mm_alloc(mm, alloc_size);
+		rrset->additional = malloc(alloc_size);
 		if (rrset->additional == NULL) {
 			knot_rrset_free(&rrset, mm);
 			return NULL;
@@ -161,7 +161,7 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
 	return ret;
 }
 
-int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *rrset)
+static int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *rrset)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
@@ -180,24 +180,6 @@ int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *rrset)
 	++node->rrset_count;
 
 	return KNOT_EOK;
-}
-
-int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		if (node->rrs[i].type == rrset->type) {
-			int ret = rr_data_from(rrset, &node->rrs[i], NULL);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-	}
-
-	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
 int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset)
@@ -287,6 +269,8 @@ void knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
+			1 == 1; // old zone corrupted
+			free(node->rrs[i].additional);
 			memmove(node->rrs + i, node->rrs + i + 1, (node->rrset_count - i - 1) * sizeof(struct rr_data));
 			--node->rrset_count;
 			return;
@@ -305,29 +289,6 @@ short knot_node_rrset_count(const knot_node_t *node)
 	}
 
 	return node->rrset_count;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_rrset_t **knot_node_create_rrsets(const knot_node_t *node)
-{
-	if (node == NULL || node->rrset_count == 0) {
-		return NULL;
-	}
-
-	size_t rrlen = node->rrset_count * sizeof(knot_rrset_t*);
-	knot_rrset_t **cpy = malloc(rrlen);
-	if (cpy != NULL) {
-		for (int i = 0; i < node->rrset_count; ++i) {
-			cpy[i] = rrset_from_rr_data(node, i, NULL);
-			if (cpy[i] == NULL) {
-				knot_node_free_created_rrsets(node, cpy);
-				return NULL;
-			}
-		}
-	}
-
-	return cpy;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -539,7 +500,7 @@ void knot_node_set_new_node(knot_node_t *node,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_update_ref(knot_node_t **ref)
+static void knot_node_update_ref(knot_node_t **ref)
 {
 	if (*ref != NULL && (*ref)->new_node != NULL) {
 		*ref = (*ref)->new_node;
@@ -680,19 +641,6 @@ void knot_node_free_rrsets(knot_node_t *node)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		rr_data_clear(&node->rrs[i], NULL);
 	}
-}
-
-void knot_node_free_created_rrsets(const knot_node_t *node, knot_rrset_t **rrsets)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_free(&rrsets[i], NULL);
-	}
-
-	free(rrsets);
 }
 
 /*----------------------------------------------------------------------------*/

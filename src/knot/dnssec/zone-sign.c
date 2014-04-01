@@ -1378,6 +1378,9 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	// save the result
 
+	assert(changeset->soa_from == NULL);
+	assert(changeset->soa_to == NULL);
+
 	changeset->soa_from = soa_from;
 	changeset->soa_to = soa_to;
 	changeset->serial_from = serial;
