@@ -931,7 +931,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	bool auth = !knot_node_is_non_auth(node);
 	bool deleg = knot_node_is_deleg_point(node);
 	short rrset_count = knot_node_rrset_count(node);
-	knot_rrset_t dnskey_rrset = RRSET_INIT(zone->apex, KNOT_RRTYPE_DNSKEY);
+	knot_rrset_t dnskey_rrset = NODE_RR_INIT(zone->apex, KNOT_RRTYPE_DNSKEY);
 
 	int ret = KNOT_EOK;
 

@@ -64,7 +64,7 @@ inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
                                           const knot_node_t *node)
 {
 	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rr = RRSET_INIT_N(node, i);
+		knot_rrset_t rr = NODE_RR_INIT_N(node, i);
 		if (rr.type != KNOT_RRTYPE_NSEC &&
 		    rr.type != KNOT_RRTYPE_RRSIG) {
 			bitmap_add_type(bitmap, rr.type);

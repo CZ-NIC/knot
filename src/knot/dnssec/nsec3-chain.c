@@ -91,7 +91,7 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 static bool node_should_be_signed_nsec3(const knot_node_t *n)
 {
 	for (int i = 0; i < n->rrset_count; i++) {
-		knot_rrset_t rrset = RRSET_INIT_N(n, i);
+		knot_rrset_t rrset = NODE_RR_INIT_N(n, i);
 		if (rrset.type == KNOT_RRTYPE_NSEC ||
 		    rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
@@ -119,7 +119,7 @@ static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 	assert(valid_nsec3_node(from));
 	assert(valid_nsec3_node(to));
 
-	knot_rrset_t from_sig = RRSET_INIT(from, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t from_sig = NODE_RR_INIT(from, KNOT_RRTYPE_RRSIG);
 	if (knot_rrset_empty(&from_sig)) {
 		return KNOT_EOK;
 	}

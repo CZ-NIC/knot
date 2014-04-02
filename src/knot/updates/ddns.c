@@ -96,7 +96,7 @@ static bool node_empty(const knot_node_t *node, const knot_changeset_t *changese
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_t node_rrset = RRSET_INIT_N(node, i);
+		knot_rrset_t node_rrset = NODE_RR_INIT_N(node, i);
 		knot_rrset_t node_rr;
 		knot_rrset_init(&node_rr, node->owner, node_rrset.type, KNOT_CLASS_IN);
 		for (uint16_t j = 0; j < node_rrset.rrs.rr_count; ++j) {
@@ -209,7 +209,7 @@ static int knot_ddns_check_exist_full(const knot_zone_contents_t *zone,
 		*rcode = KNOT_RCODE_NXRRSET;
 		return KNOT_EPREREQ;
 	} else {
-		knot_rrset_t found = RRSET_INIT(node, rrset->type);
+		knot_rrset_t found = NODE_RR_INIT(node, rrset->type);
 		// do not have to compare the header, it is already done
 		assert((&found)->type == rrset->type);
 		assert(knot_dname_cmp((&found)->owner,
@@ -620,7 +620,7 @@ static int process_add_cname(const knot_node_t *node,
                              const knot_rrset_t *rr,
                              knot_changeset_t *changeset)
 {
-	knot_rrset_t cname = RRSET_INIT(node, KNOT_RRTYPE_CNAME);
+	knot_rrset_t cname = NODE_RR_INIT(node, KNOT_RRTYPE_CNAME);
 	if (!knot_rrset_empty(&cname)) {
 		// If they are identical, ignore.
 		if (knot_rrset_equal(&cname, rr, KNOT_RRSET_COMPARE_WHOLE)) {
@@ -655,7 +655,7 @@ static int process_add_nsec3param(const knot_node_t *node,
 		free(owner);
 		return KNOT_EDENIED;
 	}
-	knot_rrset_t param = RRSET_INIT(node, KNOT_RRTYPE_NSEC3PARAM);
+	knot_rrset_t param = NODE_RR_INIT(node, KNOT_RRTYPE_NSEC3PARAM);
 	if (knot_rrset_empty(&param) || removed_rr(changeset, &param)) {
 		return add_rr_to_chgset(rr, changeset, NULL);
 	}
@@ -691,7 +691,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 		}
 	}
 
-	knot_rrset_t to_modify = RRSET_INIT(node, rr->type);
+	knot_rrset_t to_modify = NODE_RR_INIT(node, rr->type);
 	if (knot_rrset_empty(&to_modify)) {
 		// No such RRSet, but check duplicates
 		remove_rr_from_list(&changeset->add, rr);
@@ -743,7 +743,7 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t to_remove = RRSET_INIT(node, type);
+	knot_rrset_t to_remove = NODE_RR_INIT(node, type);
 	return rem_rrset_to_chgset(&to_remove, changeset, NULL);
 }
 
@@ -758,7 +758,7 @@ static int process_rem_node(const knot_rrset_t *rr,
 	}
 
 	for (int i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_t rrset = RRSET_INIT_N(node, i);
+		knot_rrset_t rrset = NODE_RR_INIT_N(node, i);
 		int ret = process_rem_rrset(&rrset, node, changeset);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -778,7 +778,7 @@ static int process_add_soa(const knot_node_t *node,
 	}
 
 	/* Get the current SOA RR from the node. */
-	knot_rrset_t removed = RRSET_INIT(node, KNOT_RRTYPE_SOA);
+	knot_rrset_t removed = NODE_RR_INIT(node, KNOT_RRTYPE_SOA);
 	/* If they are identical, ignore. */
 	if (knot_rrset_equal(&removed, rr, KNOT_RRSET_COMPARE_WHOLE)) {
 		return KNOT_EOK;
@@ -789,7 +789,7 @@ static int process_add_soa(const knot_node_t *node,
 static bool node_contains_rr(const knot_node_t *node,
                              const knot_rrset_t *rr)
 {
-	knot_rrset_t zone_rrset = RRSET_INIT(node, rr->type);
+	knot_rrset_t zone_rrset = NODE_RR_INIT(node, rr->type);
 	if (!knot_rrset_empty(&zone_rrset)) {
 		knot_rrset_t intersection;
 		int ret = knot_rrset_intersection(&zone_rrset, rr,
@@ -813,7 +813,7 @@ static bool adding_to_cname(const knot_node_t *node,
 		return false;
 	}
 
-	knot_rrset_t cname = RRSET_INIT(node, KNOT_RRTYPE_CNAME);
+	knot_rrset_t cname = NODE_RR_INIT(node, KNOT_RRTYPE_CNAME);
 	if (knot_rrset_empty(&cname)) {
 		// Node did not contain CNAME before update.
 		return false;

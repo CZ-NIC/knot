@@ -189,7 +189,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 	default: /* Single RRSet of given type. */
 		knot_node_fill_rrset(qdata->node, type, &rrset);
 		if (!knot_rrset_empty(&rrset)) {
-			knot_rrset_t rrsigs = RRSET_INIT(qdata->node, KNOT_RRTYPE_RRSIG);
+			knot_rrset_t rrsigs = NODE_RR_INIT(qdata->node, KNOT_RRTYPE_RRSIG);
 			ret = ns_put_rr(pkt, &rrset, &rrsigs, compr_hint, 0, qdata);
 		}
 		break;
@@ -216,9 +216,9 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t ns_rrset = RRSET_INIT(zone->apex, KNOT_RRTYPE_NS);
+	knot_rrset_t ns_rrset = NODE_RR_INIT(zone->apex, KNOT_RRTYPE_NS);
 	if (!knot_rrset_empty(&ns_rrset)) {
-		knot_rrset_t rrsigs = RRSET_INIT(zone->apex, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t rrsigs = NODE_RR_INIT(zone->apex, KNOT_RRTYPE_RRSIG);
 		return ns_put_rr(pkt, &ns_rrset, &rrsigs, COMPR_HINT_NONE,
 		                 KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP, qdata);
 	} else {
@@ -232,8 +232,8 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
                              const knot_zone_contents_t *zone)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
-	knot_rrset_t soa_rrset = RRSET_INIT(zone->apex, KNOT_RRTYPE_SOA);
-	knot_rrset_t rrsigs = RRSET_INIT(zone->apex, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t soa_rrset = NODE_RR_INIT(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t rrsigs = NODE_RR_INIT(zone->apex, KNOT_RRTYPE_RRSIG);
 
 	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
 	// MINIMUM as TTL
@@ -270,8 +270,8 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Insert NS record. */
-	knot_rrset_t rrset = RRSET_INIT(qdata->node, KNOT_RRTYPE_NS);
-	knot_rrset_t rrsigs = RRSET_INIT(qdata->node, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t rrset = NODE_RR_INIT(qdata->node, KNOT_RRTYPE_NS);
+	knot_rrset_t rrsigs = NODE_RR_INIT(qdata->node, KNOT_RRTYPE_RRSIG);
 	return ns_put_rr(pkt, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
 }
 
@@ -300,9 +300,9 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			continue;
 		}
 		
-		knot_rrset_t rrsigs = RRSET_INIT(node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t rrsigs = NODE_RR_INIT(node, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
-			knot_rrset_t additional = RRSET_INIT(node, ar_type_list[k]);
+			knot_rrset_t additional = NODE_RR_INIT(node, ar_type_list[k]);
 			if (knot_rrset_empty(&additional)) {
 				continue;
 			}
@@ -322,8 +322,8 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	const knot_node_t *cname_node = qdata->node;
-	knot_rrset_t cname_rr = RRSET_INIT(qdata->node, rrtype);
-	knot_rrset_t rrsigs = RRSET_INIT(qdata->node, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t cname_rr = NODE_RR_INIT(qdata->node, rrtype);
+	knot_rrset_t rrsigs = NODE_RR_INIT(qdata->node, KNOT_RRTYPE_RRSIG);
 	int ret = KNOT_EOK;
 
 	assert(!knot_rrset_empty(&cname_rr));
@@ -467,7 +467,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Name is under DNAME, use it for substitution. */
-	knot_rrset_t dname_rrset = RRSET_INIT(qdata->encloser, KNOT_RRTYPE_DNAME);
+	knot_rrset_t dname_rrset = NODE_RR_INIT(qdata->encloser, KNOT_RRTYPE_DNAME);
 	if (!knot_rrset_empty(&dname_rrset)) {
 		dbg_ns("%s: solving DNAME for name %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser; /* Follow encloser as new node. */

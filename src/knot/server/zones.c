@@ -825,8 +825,8 @@ static bool apex_rr_changed(const knot_zone_contents_t *old_contents,
                             const knot_zone_contents_t *new_contents,
                             uint16_t type)
 {
-	knot_rrset_t old_rr = RRSET_INIT(old_contents->apex, type);
-	knot_rrset_t new_rr = RRSET_INIT(new_contents->apex, type);
+	knot_rrset_t old_rr = NODE_RR_INIT(old_contents->apex, type);
+	knot_rrset_t new_rr = NODE_RR_INIT(new_contents->apex, type);
 	if (knot_rrset_empty(&old_rr)) {
 		return !knot_rrset_empty(&new_rr);
 	} else if (knot_rrset_empty(&new_rr)) {

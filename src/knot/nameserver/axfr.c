@@ -39,7 +39,7 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
-		knot_rrset_t rrset = RRSET_INIT_N(node, i);
+		knot_rrset_t rrset = NODE_RR_INIT_N(node, i);
 		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
@@ -132,7 +132,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 	mm_ctx_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->ext;
 	knot_zone_contents_t *zone = qdata->zone->contents;
-	knot_rrset_t soa_rr = RRSET_INIT(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rr = NODE_RR_INIT(zone->apex, KNOT_RRTYPE_SOA);
 
 	/* Prepend SOA on first packet. */
 	if (xfer->npkts == 0) {

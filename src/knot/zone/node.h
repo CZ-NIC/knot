@@ -373,6 +373,7 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
 
 /*!
  * \brief Checks whether node contains an RRSIG for given type.
+ *
  * \param node  Node to check in.
  * \param node  Type to check for.
  *
@@ -380,44 +381,84 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
  */
 bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type);
 
+/*!
+ * \brief Checks whether node contains RRSet for given type.
+ *
+ * \param node  Node to check in.
+ * \param node  Type to check for.
+ *
+ * \return True/False.
+ */
 bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type);
 
+/*!
+ * \brief Initializes given RRSet structure with data from node.
+ *
+ * \param node   Node containing RRSet.
+ * \param type   RRSet type we want to get.
+ * \param rrset  Structure to be initialized.
+ */
 void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
                           knot_rrset_t *rrset);
 
+/*!
+ * \brief Initializes given RRSet structure with data from node.
+ *
+ * \param node   Node containing RRSet.
+ * \param pos    Position to use for initialization.
+ * \param rrset  Structure to be initialized.
+ */
 void knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
                               knot_rrset_t *rrset);
 
-static struct rr_data EMPTY_DATA =
+/*!< \brief Empty node data initializer. */
+static struct rr_data NODE_EMPTY_DATA =
 	{.type = 0,
 	.additional = 0,
 	.rrs.rr_count = 0,
 	.rrs.data = NULL};
 
+/*!
+ * \brief Gets RR data for given type from node.
+ *
+ * \param node  Node to be searched.
+ * \param type  Type to search for.
+ *
+ * \return RR data for given type if found, empty data otherwise.
+ */
 static inline struct rr_data *knot_node_rr_data(const knot_node_t *node,
                                                 uint16_t type)
 {
 	if (node == NULL) {
-		return &EMPTY_DATA;
+		return &NODE_EMPTY_DATA;
 	}
 	for (short i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
 			return &node->rrs[i];
 		}
 	}
-	return &EMPTY_DATA;
+	return &NODE_EMPTY_DATA;
 }
 
+/*!
+ * \brief Gets RR data for given offset from node.
+ *
+ * \param node  Node to be searched.
+ * \param type  Offset to get.
+ *
+ * \return RR data for given offset if node has that much data, empty data otherwise.
+ */
 static inline struct rr_data *knot_node_rr_data_n(const knot_node_t *node,
                                                   size_t pos)
 {
 	if (node == NULL || pos >= node->rrset_count) {
-		return &EMPTY_DATA;
+		return &NODE_EMPTY_DATA;
 	}
 	
 	return &node->rrs[pos];
 }
 
+/*!< \brief Inits RRSet structure with given data. */
 #define _RRSET_INIT(node, rr_data) \
 	{.owner = node ? node->owner : NULL,\
 	.type = rr_data->type,\
@@ -425,9 +466,17 @@ static inline struct rr_data *knot_node_rr_data_n(const knot_node_t *node,
 	.rrs = rr_data->rrs,\
 	.additional = rr_data->additional}
 
-#define RRSET_INIT(node, type) _RRSET_INIT(node, knot_node_rr_data(node, type))
+/*!
+ * \brief Inits created static RRSet structure with data from node, uses
+ *        type to get data from node.
+ */
+#define NODE_RR_INIT(node, type) _RRSET_INIT(node, knot_node_rr_data(node, type))
 
-#define RRSET_INIT_N(node, pos) _RRSET_INIT(node, knot_node_rr_data_n(node, pos))
+/*!
+ * \brief Inits created static RRSet structure with data from node, uses
+ *        offset to get data from node. Use in for cycles to do node enumeration.
+ */
+#define NODE_RR_INIT_N(node, pos) _RRSET_INIT(node, knot_node_rr_data_n(node, pos))
 
 #endif /* _KNOT_NODE_H_ */
 
