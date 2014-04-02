@@ -336,6 +336,10 @@ hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
 
 size_t hattrie_weight (const hattrie_t *T)
 {
+    if (T == NULL) {
+        return 0;
+    }
+
     return T->m;
 }
 
@@ -499,6 +503,18 @@ static void hashnode_split_reinsert(hattrie_t *T, node_ptr parent, node_ptr src)
     hhash_free(src.b);
 }
 
+static size_t hashnode_nextsize(unsigned items)
+{
+    /* Next bucket size increments. */
+    size_t increment = ((items + (TRIE_BUCKET_INCR/2))/TRIE_BUCKET_INCR);
+    if (increment > TRIE_BUCKET_MAX) {
+       increment = TRIE_BUCKET_MAX;
+    }
+    /* Align to closest bucket size. */
+    return TRIE_BUCKET_SIZE + increment * TRIE_BUCKET_INCR;
+}
+
+
 static void hashnode_split(hattrie_t *T, node_ptr parent, node_ptr node)
 {
     /* Find split point. */
@@ -514,8 +530,8 @@ static void hashnode_split(hattrie_t *T, node_ptr parent, node_ptr node)
      */
     unsigned char c0 = node.b->c0, c1 = node.b->c1;
     node_ptr left, right;
-    right.b = hhash_create(TRIE_BUCKET_SIZE);
-    left.b = hhash_create(TRIE_BUCKET_SIZE);
+    right.b = hhash_create(hashnode_nextsize(right_m));
+    left.b = hhash_create(hashnode_nextsize(left_m));
 
     /* setup created nodes */
     left.b->c0    = c0;
