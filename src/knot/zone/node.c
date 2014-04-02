@@ -97,39 +97,6 @@ int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
 	return KNOT_EOK;
 }
 
-static knot_rrset_t *rrset_from_rr_data(const knot_node_t *n, size_t pos,
-                                        mm_ctx_t *mm)
-{
-	struct rr_data data = n->rrs[pos];
-	knot_dname_t *dname_copy = knot_dname_copy(n->owner, mm);
-	if (dname_copy == NULL) {
-		return NULL;
-	}
-	knot_rrset_t *rrset = knot_rrset_new(dname_copy, data.type, KNOT_CLASS_IN, mm);
-	if (rrset == NULL) {
-		knot_dname_free(&dname_copy, mm);
-		return NULL;
-	}
-
-	int ret = knot_rrs_copy(&rrset->rrs, &data.rrs, mm);
-	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rrset, mm);
-		return NULL;
-	}
-	
-	if (data.additional) {
-		size_t alloc_size = data.rrs.rr_count * sizeof(knot_node_t *);
-		rrset->additional = malloc(alloc_size);
-		if (rrset->additional == NULL) {
-			knot_rrset_free(&rrset, mm);
-			return NULL;
-		}
-		memcpy(rrset->additional, data.additional, alloc_size);
-	}
-
-	return rrset;
-}
-
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -190,23 +157,8 @@ int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset)
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
-			
-			// TODO this is obviously a workaround
-			knot_rrset_t *node_rrset = rrset_from_rr_data(node, i, NULL);
-			if (node_rrset == NULL) {
-				return KNOT_ENOMEM;
-			}
-			int ret = knot_rrset_merge(node_rrset,
-			                                rrset, NULL);
-			if (ret != KNOT_EOK) {
-				knot_rrset_free(&node_rrset, NULL);
-				return ret;
-			} else {
-				rr_data_clear(&node->rrs[i], NULL);
-				rr_data_from(node_rrset, &node->rrs[i], NULL);
-				knot_rrset_free(&node_rrset, NULL);
-				return KNOT_EOK;
-			}
+			struct rr_data *node_data = &node->rrs[i];
+			return knot_rrs_merge(&node_data->rrs, &rrset->rrs, NULL);
 		}
 	}
 
@@ -246,7 +198,8 @@ knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type)
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
-			return rrset_from_rr_data(node, i, NULL);
+			knot_rrset_t rrset = RRSET_INIT_N(node, i);
+			return knot_rrset_cpy(&rrset, NULL);
 		}
 	}
 
