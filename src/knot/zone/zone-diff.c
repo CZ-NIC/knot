@@ -714,8 +714,9 @@ int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
 int knot_zone_tree_add_diff(knot_zone_tree_t *t1, knot_zone_tree_t *t2,
                             knot_changeset_t *changeset)
 {
-	if (!changeset)
+	if (!changeset) {
 		return KNOT_EINVAL;
+	}
 
 	return knot_zone_diff_load_trees(t1, t2, changeset);
 }
