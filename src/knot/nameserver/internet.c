@@ -71,7 +71,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	knot_rrs_init(&cname_rrset->rrs);
 
 	/* Replace last labels of qname with DNAME. */
-	const knot_dname_t *dname_wire = knot_rrset_owner(dname_rr);
+	const knot_dname_t *dname_wire = dname_rr->owner;
 	const knot_dname_t *dname_tgt = knot_rrs_dname_target(&dname_rr->rrs);
 	int labels = knot_dname_labels(dname_wire, NULL);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
@@ -101,7 +101,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname_t *qname)
 {
 	if (knot_dname_labels(qname, NULL)
-		- knot_dname_labels(knot_rrset_owner(rrset), NULL)
+		- knot_dname_labels(rrset->owner, NULL)
 		+ knot_dname_labels(knot_rrs_dname_target(&rrset->rrs), NULL)
 		> KNOT_DNAME_MAXLABELS) {
 		return true;
@@ -674,8 +674,8 @@ int ns_put_rr(knot_pkt_t *pkt, knot_rrset_t *rr,
 {
 	/* RFC3123 s.6 - empty APL is valid, ignore other empty RRs. */
 	if (knot_rrset_rr_count(rr) < 1 &&
-	    knot_rrset_type(rr) != KNOT_RRTYPE_APL) {
-		dbg_ns("%s: refusing to put empty RR of type %u\n", __func__, knot_rrset_type(rr));
+	    rr->type != KNOT_RRTYPE_APL) {
+		dbg_ns("%s: refusing to put empty RR of type %u\n", __func__, rr->type);
 		return KNOT_EMALF;
 	}
 

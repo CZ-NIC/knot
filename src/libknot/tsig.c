@@ -352,7 +352,7 @@ size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig)
 		return 0;
 	}
 	/* Key name, Algorithm name and Other data have variable lengths. */
-	const knot_dname_t *key_name = knot_rrset_owner(tsig);
+	const knot_dname_t *key_name = tsig->owner;
 	if (!key_name) {
 		return 0;
 	}
@@ -444,7 +444,7 @@ size_t tsig_wire_actsize(const knot_rrset_t *tsig)
 	}
 
 	/*! \todo Used fixed size as a base. */
-	return knot_dname_size(knot_rrset_owner(tsig)) +
+	return knot_dname_size(tsig->owner) +
 	sizeof(uint16_t) + /* TYPE */
 	sizeof(uint16_t) + /* CLASS */
 	sizeof(uint32_t) + /* TTL */

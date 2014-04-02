@@ -510,26 +510,6 @@ void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl)
 	}
 }
 
-const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset)
-{
-	return rrset->owner;
-}
-
-knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset)
-{
-	return rrset->owner;
-}
-
-uint16_t knot_rrset_type(const knot_rrset_t *rrset)
-{
-	return rrset->type;
-}
-
-uint16_t knot_rrset_class(const knot_rrset_t *rrset)
-{
-	return rrset->rclass;
-}
-
 uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos)
 {
 	knot_rr_t *rr = knot_rrs_get_rr(&rrset->rrs, pos);
@@ -827,8 +807,8 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 	assert(rr != NULL);
 
 	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
-	return ((knot_rrset_type(rr) == KNOT_RRTYPE_NSEC3)
-	        || (knot_rrset_type(rr) == KNOT_RRTYPE_RRSIG
+	return ((rr->type == KNOT_RRTYPE_NSEC3)
+	        || (rr->type == KNOT_RRTYPE_RRSIG
 	            && knot_rrs_rrsig_type_covered(&rr->rrs, 0)
 	            == KNOT_RRTYPE_NSEC3));
 }
@@ -839,7 +819,7 @@ uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 		return 0;
 	}
 	uint64_t size = sizeof(uint64_t) + // size at the beginning
-	              knot_dname_size(knot_rrset_owner(rrset)) + // owner data
+	              knot_dname_size(rrset->owner) + // owner data
 	              sizeof(uint16_t) + // type
 	              sizeof(uint16_t) + // class
 	              sizeof(uint16_t);  //RR count

@@ -766,7 +766,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 	++pkt->sections[pkt->current].count;
 
 	/* Check RR constraints. */
-	switch(knot_rrset_type(rr)) {
+	switch(rr->type) {
 	case KNOT_RRTYPE_TSIG:
 		// if there is some TSIG already, treat as malformed
 		if (pkt->tsig_rr != NULL) {

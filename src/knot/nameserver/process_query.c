@@ -236,7 +236,7 @@ bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 
 	/* Authenticate with NOKEY if the packet isn't signed. */
 	if (query->tsig_rr) {
-		key_name = knot_rrset_owner(query->tsig_rr);
+		key_name = query->tsig_rr->owner;
 		key_alg = tsig_rdata_alg(query->tsig_rr);
 	}
 	acl_match_t *match = acl_find(acl, query_source, key_name);

@@ -119,7 +119,7 @@ void help(void)
 static int cmd_remote_print_reply(const knot_rrset_t *rr)
 {
 	/* Process first RRSet in data section. */
-	if (knot_rrset_type(rr) != KNOT_RRTYPE_TXT) {
+	if (rr->type != KNOT_RRTYPE_TXT) {
 		return KNOT_EMALF;
 	}
 

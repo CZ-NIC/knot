@@ -94,7 +94,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 	for (unsigned i = 0; i < a->argc; ++i) {
 		/* Process all zones in data section. */
 		const knot_rrset_t *rr = &a->arg[i];
-		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {
+		if (rr->type != KNOT_RRTYPE_NS) {
 			continue;
 		}
 
@@ -532,7 +532,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 
 	for (unsigned i = 0; i < args->argc; i++) {
 		const knot_rrset_t *rr = &args->arg[i];
-		if (knot_rrset_type(rr) != KNOT_RRTYPE_NS) {
+		if (rr->type != KNOT_RRTYPE_NS) {
 			continue;
 		}
 

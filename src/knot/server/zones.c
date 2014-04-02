@@ -506,8 +506,8 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		 * be set, check it.
 		 */
 		dbg_xfr_verb("xfr: reading RRSets to REMOVE, first RR is %hu\n",
-		             knot_rrset_type(rrset));
-		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
+		             rrset->type);
+		assert(rrset->type == KNOT_RRTYPE_SOA);
 		assert(chs->serial_from == knot_rrs_soa_serial(&rrset->rrs));
 		knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
 
@@ -527,7 +527,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 			}
 
 			/* Check for next SOA. */
-			if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
+			if (rrset->type == KNOT_RRTYPE_SOA) {
 
 				/* Move to ADD section if in REMOVE. */
 				if (in_remove_section) {
@@ -1767,7 +1767,7 @@ int zones_verify_tsig_query(const knot_pkt_t *query,
 		return KNOT_TSIG_EBADKEY;
 	}
 
-	const knot_dname_t *kname = knot_rrset_owner(query->tsig_rr);
+	const knot_dname_t *kname = query->tsig_rr->owner;
 	assert(kname != NULL);
 
 	/*

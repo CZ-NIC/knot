@@ -61,7 +61,7 @@ static int knot_tsig_check_key(const knot_rrset_t *tsig_rr,
 		return KNOT_EINVAL;
 	}
 
-	const knot_dname_t *tsig_name = knot_rrset_owner(tsig_rr);
+	const knot_dname_t *tsig_name = tsig_rr->owner;
 	if (!tsig_name) {
 		return KNOT_EMALF;
 	}
@@ -195,7 +195,7 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	}
 
 	/* Copy TSIG variables - starting with key name. */
-	const knot_dname_t *tsig_owner = knot_rrset_owner(tsig_rr);
+	const knot_dname_t *tsig_owner = tsig_rr->owner;
 	if (!tsig_owner) {
 		dbg_tsig("TSIG: write variables: no owner.\n");
 		return KNOT_EINVAL;
@@ -208,9 +208,9 @@ static int knot_tsig_write_tsig_variables(uint8_t *wire,
 	/*!< \todo which order? */
 
 	/* Copy class. */
-	knot_wire_write_u16(wire + offset, knot_rrset_class(tsig_rr));
+	knot_wire_write_u16(wire + offset, tsig_rr->rclass);
 	dbg_tsig_verb("TSIG: write variables: written CLASS: %u - \n",
-	               knot_rrset_class(tsig_rr));
+	               tsig_rr->rclass);
 	dbg_tsig_hex_detail((char *)(wire + offset), sizeof(uint16_t));
 	offset += sizeof(uint16_t);
 
@@ -810,7 +810,7 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	/*! \todo What key to use, when we do not sign? Does this even work? */
 	knot_dname_t *key_name =
-			knot_dname_copy(knot_rrset_owner(tsig_rr), NULL);
+			knot_dname_copy(tsig_rr->owner, NULL);
 	if (key_name == NULL) {
 		dbg_tsig("TSIG: failed to copy owner\n");
 		return KNOT_ERROR;

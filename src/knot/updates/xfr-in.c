@@ -99,7 +99,7 @@ dbg_xfrin_exec(
 	// the SOA should be the first (and only) RRSet in the response
 
 	const knot_pktsection_t *answer = knot_pkt_section(soa_response, KNOT_ANSWER);
-	if (answer->count < 1 || knot_rrset_type(&answer->rr[0]) != KNOT_RRTYPE_SOA) {
+	if (answer->count < 1 || (&answer->rr[0])->type != KNOT_RRTYPE_SOA) {
 		return KNOT_EMALF;
 	}
 
@@ -337,7 +337,7 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		}
 
 		// the first RR must be a SOA
-		if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+		if (rr->type != KNOT_RRTYPE_SOA) {
 			dbg_xfrin("First RR is not a SOA RR!\n");
 			ret = KNOT_EMALF;
 			goto cleanup;
@@ -375,7 +375,7 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		if (rr == NULL) {
 			dbg_xfrin("Response containing only SOA,\n");
 			return XFRIN_RES_SOA_ONLY;
-		} else if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+		} else if (rr->type != KNOT_RRTYPE_SOA) {
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
 			return ret;
@@ -470,10 +470,10 @@ dbg_xfrin_exec_verb(
 			// this may be either a start of a changeset or the
 			// last SOA (in case the transfer was empty, but that
 			// is quite weird in fact
-			if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
+			if (rr->type != KNOT_RRTYPE_SOA) {
 				dbg_xfrin("First RR is not a SOA RR!\n");
 				dbg_xfrin_verb("RR type: %u\n",
-					       knot_rrset_type(rr));
+					       rr->type);
 				ret = KNOT_EMALF;
 				goto cleanup;
 			}
@@ -523,7 +523,7 @@ dbg_xfrin_exec_verb(
 		case KNOT_CHANGESET_REMOVE:
 			// if the next RR is SOA, store it and change state to
 			// ADD
-			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
+			if (rr->type == KNOT_RRTYPE_SOA) {
 				// we should not be here if soa_from is not set
 				assert(chset->soa_from != NULL);
 				knot_rrset_t *soa = knot_rrset_cpy(rr, NULL);
@@ -552,7 +552,7 @@ dbg_xfrin_exec_verb(
 		case KNOT_CHANGESET_ADD:
 			// if the next RR is SOA change to state -1 and do not
 			// parse next RR
-			if (knot_rrset_type(rr) == KNOT_RRTYPE_SOA) {
+			if (rr->type == KNOT_RRTYPE_SOA) {
 				log_zone_info("%s Serial %u -> %u.\n",
 					      xfr->msg,
 					      knot_rrs_soa_serial(&chset->soa_from->rrs),

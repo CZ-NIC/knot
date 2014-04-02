@@ -128,9 +128,9 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 	knot_node_t *node = NULL;
 	int ret;
 
-	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
+	if (rrset->type == KNOT_RRTYPE_NSEC3) {
 		// Find the name in the NSEC3 tree and mark the node
-		ret = knot_zone_tree_get(nsec3s, knot_rrset_owner(rrset),
+		ret = knot_zone_tree_get(nsec3s, rrset->owner,
 		                         &node);
 		if (ret != KNOT_EOK) {
 			return ret;

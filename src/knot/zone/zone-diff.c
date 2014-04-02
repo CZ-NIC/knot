@@ -221,10 +221,11 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* changed/removed rdatas. This has awful computation time.
 	*/
 	/* Create fake RRSet, it will be easier to handle. */
-	knot_dname_t *owner_copy = knot_dname_copy(knot_rrset_get_owner(rrset1), NULL);
+	knot_dname_t *owner_copy = knot_dname_copy(rrset1->owner,
+								 NULL);
 	*changes = knot_rrset_new(owner_copy,
-	                          knot_rrset_type(rrset1),
-	                          knot_rrset_class(rrset1),
+	                          rrset1->type,
+	                          rrset1->rclass,
 	                          NULL);
 	if (*changes == NULL) {
 		knot_dname_free(&owner_copy, NULL);
@@ -234,7 +235,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	}
 
 	const rdata_descriptor_t *desc =
-		get_rdata_descriptor(knot_rrset_type(rrset1));
+		get_rdata_descriptor(rrset1->type);
 	assert(desc);
 
 	uint16_t rr1_count = knot_rrset_rr_count(rrset1);
@@ -245,7 +246,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			/* No such RR is present in 'rrset2'. */
 			dbg_zonediff("zone_diff: diff_rdata: "
 			       "No match for RR (type=%u owner=%p).\n",
-			       knot_rrset_type(rrset1),
+			       rrset1->type,
 			       rrset1->owner);
 			/* We'll copy index 'i' into 'changes' RRSet. */
 			ret = knot_rrset_add_rr_from_rrset(*changes, rrset1, i, NULL);
@@ -417,7 +418,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 		if (knot_rrset_empty(&rrset_from_second_node)) {
 			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
 			       "for RRSet of type %u in second tree.\n",
-			       knot_rrset_type(rrset));
+			       rrset->type);
 			/* RRSet has been removed. Make a copy and remove. */
 			int ret = knot_zone_diff_changeset_remove_rrset(
 				param->changeset,

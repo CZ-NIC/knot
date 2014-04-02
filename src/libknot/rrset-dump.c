@@ -1797,7 +1797,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 
 	int ret = 0;
 
-	switch (knot_rrset_type(rrset)) {
+	switch (rrset->type) {
 		case KNOT_RRTYPE_A:
 			ret = dump_a(data, data_len, dst, maxlen, style);
 			break;

@@ -335,14 +335,14 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* Prepare additional info string. */
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
-	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
+	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
 
 	if (knot_rrs_rrsig_type_covered(rrsig, 0) !=
-	    knot_rrset_type(rrset)) {
+	    rrset->type) {
 		/* zoneparser would not let this happen
 		 * but to be on the safe side
 		 */
@@ -354,11 +354,11 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* label number at the 2nd index should be same as owner's */
 	uint8_t labels_rdata = knot_rrs_rrsig_labels(rrsig, rr_pos);
 
-	int tmp = knot_dname_labels(knot_rrset_owner(rrset), NULL) - labels_rdata;
+	int tmp = knot_dname_labels(rrset->owner, NULL) - labels_rdata;
 
 	if (tmp != 0) {
 		/* if name has wildcard, label must not be included */
-		if (!knot_dname_is_wildcard(knot_rrset_owner(rrset))) {
+		if (!knot_dname_is_wildcard(rrset->owner)) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_RRSIG_RDATA_LABELS,
 			                         info_str);
@@ -403,7 +403,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	/* dnskey is in the apex node */
 	if (!knot_rrset_empty(dnskey_rrset) &&
-	    knot_dname_cmp(signer_name, knot_rrset_owner(dnskey_rrset)) != 0
+	    knot_dname_cmp(signer_name, dnskey_rrset->owner) != 0
 	) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
@@ -473,7 +473,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	/* Prepare additional info string. */
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
-	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
+	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.",
 	                   type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {

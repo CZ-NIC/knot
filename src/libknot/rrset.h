@@ -132,42 +132,6 @@ uint8_t* knot_rrset_create_rr(knot_rrset_t *rrset, const uint16_t size,
                               const uint32_t ttl, mm_ctx_t *mm);
 
 /*!
- * \brief Returns the Owner of the RRSet.
- *
- * \param rrset  RRSet to get the Owner of.
- *
- * \return Owner of the given RRSet.
- */
-const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset);
-
-/*!
- * \brief Returns the Owner of the RRSet.
- *
- * \param rrset  RRSet to get the Owner of.
- *
- * \return Owner of the given RRSet.
- */
-knot_dname_t *knot_rrset_get_owner(const knot_rrset_t *rrset);
-
-/*!
- * \brief Returns the TYPE of the RRSet.
- *
- * \param rrset  RRSet to get the TYPE of.
- *
- * \return TYPE  of the given RRSet.
- */
-uint16_t knot_rrset_type(const knot_rrset_t *rrset);
-
-/*!
- * \brief Returns the CLASS of the RRSet.
- *
- * \param rrset  RRSet to get the CLASS of.
- *
- * \return CLASS of the given RRSet.
- */
-uint16_t knot_rrset_class(const knot_rrset_t *rrset);
-
-/*!
  * \brief Returns RDATA of RR on given position.
  *
  * \param rrset  RRSet to get the RDATA from.

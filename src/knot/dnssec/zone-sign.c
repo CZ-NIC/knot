@@ -1483,8 +1483,8 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 
 	// These RRs have their signatures stored in changeset already
 	if (knot_node_is_removed_nsec(node)
-	    && ((knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC)
-	         || (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3))) {
+	    && ((rrset->type == KNOT_RRTYPE_NSEC)
+	         || (rrset->type == KNOT_RRTYPE_NSEC3))) {
 		return KNOT_EOK;
 	}
 

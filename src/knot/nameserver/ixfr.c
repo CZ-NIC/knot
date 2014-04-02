@@ -161,7 +161,7 @@ static int ixfr_query_check(struct query_data *qdata)
 	/* Need SOA authority record. */
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
 	const knot_rrset_t *their_soa = &authority->rr[0];
-	if (authority->count < 1 || knot_rrset_type(their_soa) != KNOT_RRTYPE_SOA) {
+	if (authority->count < 1 || their_soa->type != KNOT_RRTYPE_SOA) {
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		return NS_PROC_FAIL;
 	}
