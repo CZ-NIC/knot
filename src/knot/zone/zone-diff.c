@@ -417,7 +417,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 	knot_node_t *node = *node_ptr;
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
-	if (param->changeset == NULL || param->nodes == NULL) {
+	if (param->changeset == NULL) {
 		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
 		return KNOT_EINVAL;
 	}
@@ -596,7 +596,7 @@ static int knot_zone_diff_add_new_nodes(knot_node_t **node_ptr, void *data)
 	knot_node_t *node = *node_ptr;
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
-	if (param->changeset == NULL || param->nodes == NULL) {
+	if (param->changeset == NULL) {
 		dbg_zonediff("zone_diff: add_new_nodes: NULL arguments.\n");
 		return KNOT_EINVAL;
 	}
@@ -637,8 +637,6 @@ static int knot_zone_diff_load_trees(knot_zone_tree_t *nodes1,
 				     knot_zone_tree_t *nodes2,
 				     knot_changeset_t *changeset)
 {
-	assert(nodes1);
-	assert(nodes2);
 	assert(changeset);
 
 	struct zone_diff_param param = { 0 };
@@ -716,7 +714,7 @@ int knot_zone_contents_create_diff(const knot_zone_contents_t *z1,
 int knot_zone_tree_add_diff(knot_zone_tree_t *t1, knot_zone_tree_t *t2,
                             knot_changeset_t *changeset)
 {
-	if (!t1 || !t2 || !changeset)
+	if (!changeset)
 		return KNOT_EINVAL;
 
 	return knot_zone_diff_load_trees(t1, t2, changeset);

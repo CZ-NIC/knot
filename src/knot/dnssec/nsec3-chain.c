@@ -129,7 +129,10 @@ static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
  */
 static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 {
-	assert(from);
+	if (knot_zone_tree_is_empty(from)) {
+		return KNOT_EOK;
+	}
+
 	assert(to);
 
 	bool sorted = false;
