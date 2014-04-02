@@ -588,7 +588,6 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
                           knot_changeset_t *changeset,
                           uint32_t *expires_at)
 {
-	assert(tree);
 	assert(zone_keys);
 	assert(policy);
 	assert(changeset);
