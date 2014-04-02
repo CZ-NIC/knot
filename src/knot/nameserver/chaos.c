@@ -69,15 +69,16 @@ static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
 	}
 
 	knot_rrset_init(rrset, rowner, KNOT_RRTYPE_TXT, KNOT_CLASS_CH);
-	uint8_t *rdata = knot_rrset_create_rr(rrset, response_len + 1, 0, mm);
-	if (!rdata) {
-		knot_dname_free(&rrset->owner, mm);
-		knot_rrs_clear(&rrset->rrs, mm);
-		return KNOT_ENOMEM;
-	}
+	uint8_t rdata[response_len + 1];
 
 	rdata[0] = response_len;
 	memcpy(&rdata[1], response, response_len);
+
+	int ret = knot_rrset_add_rr(rrset, rdata, response_len + 1, 0, mm);
+	if (ret != KNOT_EOK) {
+		knot_dname_free(&rrset->owner, mm);
+		return ret;
+	}
 
 	return KNOT_EOK;
 }

@@ -797,24 +797,26 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 	/* Number of chunks. */
 	const size_t K = 255;
 	unsigned chunks = v_len / K + 1;
-	uint8_t *raw = knot_rrset_create_rr(rr, v_len + chunks, 0, NULL);
+	uint8_t raw[v_len + chunks];
+	memset(raw, 0, v_len + chunks);
 
 	/* Write TXT item. */
 	unsigned p = 0;
+	size_t off = 0;
 	if (v_len > K) {
 		for (; p + K < v_len; p += K) {
-			*(raw++) = (uint8_t)K;
-			memcpy(raw, v+p, K);
-			raw += K;
+			raw[off++] = (uint8_t)K;
+			memcpy(raw + off, v + p, K);
+			off += K;
 		}
 	}
 	unsigned r = v_len - p;
 	if (r > 0) {
-		*(raw++) = (uint8_t)r;
-		memcpy(raw, v+p, r);
+		raw[off++] = (uint8_t)r;
+		memcpy(raw + off, v + p, r);
 	}
 
-	return KNOT_EOK;
+	return knot_rrset_add_rr(rr, raw, v_len + chunks, 0, NULL);
 }
 
 int remote_create_ns(knot_rrset_t *rr, const char *d)

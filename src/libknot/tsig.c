@@ -132,15 +132,20 @@ int tsig_create_rdata(knot_rrset_t *rr, const knot_dname_t *alg, uint16_t maclen
 	if (tsig_err != KNOT_RCODE_BADTIME) {
 		rdlen -= TSIG_OTHER_MAXLEN;
 	}
-	uint8_t *rd = knot_rrset_create_rr(rr, rdlen, 0, NULL);
+	uint8_t rd[rdlen];
 	memset(rd, 0, rdlen);
 
 	/* Copy alg name. */
 	knot_dname_to_wire(rd, alg, rdlen);
 
 	/* Set MAC variable length in advance. */
-	rd += alg_len + TSIG_OFF_MACLEN;
-	knot_wire_write_u16(rd, maclen);
+	size_t offset = alg_len + TSIG_OFF_MACLEN;
+	knot_wire_write_u16(rd + offset, maclen);
+
+	int ret = knot_rrset_add_rr(rr, rd, rdlen, 0, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	/* Set error. */
 	tsig_rdata_set_tsig_error(rr, tsig_err);

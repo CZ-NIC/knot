@@ -81,17 +81,12 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 
 	/* Store DNAME into RDATA. */
 	int cname_size = knot_dname_size(cname);
-	uint8_t *cname_rdata = knot_rrset_create_rr(cname_rrset, cname_size,
-	                                            knot_rrset_rr_ttl(dname_rr, 0),
-	                                            mm);
-	if (cname_rdata == NULL) {
-		knot_dname_free(&cname, NULL);
-		return KNOT_ENOMEM;
-	}
+	uint8_t cname_rdata[cname_size];
 	memcpy(cname_rdata, cname, cname_size);
 	knot_dname_free(&cname, NULL);
 
-	return KNOT_EOK;
+	return knot_rrset_add_rr(cname_rrset, cname_rdata, cname_size,
+	                         knot_rrset_rr_ttl(dname_rr, 0), mm);
 }
 
 /*!

@@ -511,7 +511,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                         info_str);
 	}
 
-	for (uint16_t i = 0; i < knot_rrs_rr_count(&rrsigs); ++i) {
+	for (uint16_t i = 0; i < (&rrsigs)->rr_count; ++i) {
 		int ret = check_rrsig_rdata(handler, node, &rrsigs, i, rrset,
 		                            dnskey_rrset);
 		if (ret != KNOT_EOK) {
@@ -772,7 +772,7 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 			}
 		}
 
-		if (knot_rrs_rr_count(cname_rrs) != 1) {
+		if (cname_rrs->rr_count != 1) {
 			*fatal_error = true;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE, NULL);
@@ -822,7 +822,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
-	for (int i = 0; i < knot_rrs_rr_count(ns_rrs); ++i) {
+	for (int i = 0; i < ns_rrs->rr_count; ++i) {
 		const knot_dname_t *ns_dname =
 			knot_rrs_ns_name(ns_rrs, i);
 		const knot_node_t *glue_node =
@@ -982,7 +982,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			}
 			free(array);
 			/* Test that only one record is in the NSEC RRSet */
-			if (knot_rrs_rr_count(nsec_rrs) != 1) {
+			if (nsec_rrs->rr_count != 1) {
 				err_handler_handle_error(handler,
 				                         node,
 				                         ZC_ERR_NSEC_RDATA_MULTIPLE,

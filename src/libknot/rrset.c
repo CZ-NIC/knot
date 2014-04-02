@@ -407,15 +407,8 @@ static int rrset_deserialize_rr(knot_rrset_t *rrset,
 {
 	uint32_t ttl;
 	memcpy(&ttl, stream, sizeof(uint32_t));
-	uint8_t *rdata = knot_rrset_create_rr(rrset,
-	                                      rdata_size - sizeof(uint32_t),
-	                                      ttl, NULL);
-	if (rdata == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	memcpy(rdata, stream + sizeof(uint32_t), rdata_size - sizeof(uint32_t));
-	return KNOT_EOK;
+	return knot_rrset_add_rr(rrset, stream + sizeof(uint32_t),
+	                         rdata_size - sizeof(uint32_t), ttl, NULL);
 }
 
 void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
@@ -470,16 +463,13 @@ int knot_rrset_add_rr(knot_rrset_t *rrset,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *p = knot_rrset_create_rr(rrset, size, ttl, mm);
-	memcpy(p, rdata, size);
+	// Create knot_rr_t from given data
+	knot_rr_t rr[knot_rr_array_size(size)];
+	knot_rr_set_size(rr, size);
+	knot_rr_set_ttl(rr, ttl);
+	memcpy(knot_rr_get_rdata(rr), rdata, size);
 
-	return KNOT_EOK;
-}
-
-uint8_t* knot_rrset_create_rr(knot_rrset_t *rrset, const uint16_t size,
-                              const uint32_t ttl, mm_ctx_t *mm)
-{
-	return knot_rrs_create_rr(&rrset->rrs, size, ttl, mm);
+	return knot_rrs_add_rr(&rrset->rrs, rr, mm);
 }
 
 uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos)
@@ -561,8 +551,13 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
-		return knot_rrset_create_rr(rrset, 0, ttl, mm) == NULL ?
-		       KNOT_ENOMEM : KNOT_EOK;
+		uint8_t *empty_rdata = malloc(1);
+		if (empty_rdata == NULL) {
+			return KNOT_ENOMEM;
+		}
+		int ret = knot_rrset_add_rr(rrset, empty_rdata, 0, ttl, mm);
+		free(empty_rdata);
+		return ret;
 	}
 
 	dbg_rrset_detail("rr: parse_rdata_wire: Parsing RDATA of size=%zu,"
@@ -703,14 +698,7 @@ dbg_rrset_exec_detail(
 		}
 	}
 
-	uint8_t *rdata = knot_rrset_create_rr(rrset, offset, ttl, mm);
-	if (rdata == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	memcpy(rdata, rdata_buffer, offset);
-
-	return KNOT_EOK;
+	return knot_rrset_add_rr(rrset, rdata_buffer, offset, ttl, mm);
 }
 
 bool knot_rrset_equal(const knot_rrset_t *r1,
@@ -996,20 +984,11 @@ int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
 		return KNOT_EINVAL;
 	}
 
-	/* Get size and TTL of RR to be copied. */
-	uint16_t size = knot_rrset_rr_size(source, rdata_pos);
-	uint32_t ttl = knot_rrset_rr_ttl(source, rdata_pos);
-	/* Reserve space in dest RRSet. */
-	uint8_t *rdata = knot_rrset_create_rr(dest, size, ttl, mm);
-	if (rdata == NULL) {
-		dbg_rrset("rr: add_rr_from_rrset: Could not create RDATA.\n");
-		return KNOT_ERROR;
-	}
-
-	/* Copy actual data. */
-	memcpy(rdata, knot_rrset_rr_rdata(source, rdata_pos), size);
-
-	return KNOT_EOK;
+	/* Get RDATA, size and TTL of RR to be copied. */
+	const uint8_t *rdata = knot_rrset_rr_rdata(source, rdata_pos);
+	const uint16_t size = knot_rrset_rr_size(source, rdata_pos);
+	const uint32_t ttl = knot_rrset_rr_ttl(source, rdata_pos);
+	return knot_rrset_add_rr(dest, rdata, size, ttl, mm);
 }
 
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,

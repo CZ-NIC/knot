@@ -63,12 +63,6 @@ typedef enum {
 	KNOT_RRSET_COMPARE_WHOLE
 } knot_rrset_compare_type_t;
 
-typedef enum  {
-	KNOT_RRSET_DUPL_MERGE,
-	KNOT_RRSET_DUPL_REPLACE,
-	KNOT_RRSET_DUPL_SKIP
-} knot_rrset_dupl_handling_t;
-
 /*----------------------------------------------------------------------------*/
 
 /*!
@@ -115,21 +109,6 @@ knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl, mm_ctx_t *mm);
 int knot_rrset_add_rr(knot_rrset_t *rrset, const uint8_t *rdata,
                       const uint16_t size, const uint32_t ttl,
                       mm_ctx_t *mm);
-
-/*!
- * \brief Creates RDATA memory and returns a pointer to it.
- *        If the RRSet is not empty, function will return a memory
- *        pointing to a beginning of a new RR.
- *
- * \param rrset  RRSet to add the RDATA to.
- * \param size   Size of RR RDATA (Size in internal representation)
- * \param mm     Memory context.
- *
- * \retval  Pointer to memory to be written to.
- * \retval  NULL if arguments are invalid / no memory.
- */
-uint8_t* knot_rrset_create_rr(knot_rrset_t *rrset, const uint16_t size,
-                              const uint32_t ttl, mm_ctx_t *mm);
 
 /*!
  * \brief Returns RDATA of RR on given position.

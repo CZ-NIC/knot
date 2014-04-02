@@ -64,15 +64,17 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	assert(to->owner);
 	size_t next_owner_size = knot_dname_size(to->owner);
 	size_t rdata_size = next_owner_size + bitmap_size(&rr_types);
-	uint8_t *rdata = knot_rrset_create_rr(rrset, rdata_size, ttl, NULL);
-	if (!rdata) {
-		knot_rrset_free(&rrset, NULL);
-		return NULL;
-	}
+	uint8_t rdata[rdata_size];
 
 	// Fill RDATA
 	memcpy(rdata, to->owner, next_owner_size);
 	bitmap_write(&rr_types, rdata + next_owner_size);
+
+	int ret = knot_rrset_add_rr(rrset, rdata, rdata_size, ttl, NULL);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&rrset, NULL);
+		return NULL;
+	}
 
 	return rrset;
 }

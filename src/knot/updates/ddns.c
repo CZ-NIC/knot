@@ -685,7 +685,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	                     type == KNOT_RRTYPE_NS;
 	if (apex_ns) {
 		const knot_rrs_t *ns_rrs = knot_node_rrs(node, KNOT_RRTYPE_NS);
-		if (*apex_ns_rem == knot_rrs_rr_count(ns_rrs) - 1) {
+		if (*apex_ns_rem == ns_rrs->rr_count - 1) {
 			// Cannot remove last apex NS RR
 			return KNOT_EOK;
 		}
