@@ -489,9 +489,28 @@ void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents)
 	contents->flags |= KNOT_ZONE_FLAGS_GEN_NEW;
 }
 
+static knot_node_t *knot_zone_contents_get_node(const knot_zone_contents_t *zone,
+				    const knot_dname_t *name)
+{
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
+	knot_node_t *n;
+	int ret = knot_zone_tree_get(zone->nodes, name, &n);
+	if (ret != KNOT_EOK) {
+		dbg_zone("Failed to find name in the zone tree.\n");
+		return NULL;
+	}
+
+	return n;
+}
+
+
+
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_add_node(knot_zone_contents_t *zone,
+static int knot_zone_contents_add_node(knot_zone_contents_t *zone,
                                   knot_node_t *node, int create_parents,
                                   uint8_t flags)
 {
@@ -586,37 +605,58 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_create_node(knot_zone_contents_t *contents,
-                                   const knot_rrset_t *rr,
-                                   knot_node_t **node)
+static int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
+                                        knot_node_t *node, int create_parents,
+                                        uint8_t flags)
 {
-	if (contents == NULL || rr == NULL || node == NULL) {
+	UNUSED(create_parents);
+	UNUSED(flags);
+
+	if (zone == NULL || node == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	*node = knot_node_new(rr->owner, NULL, 0);
-	if (*node == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Add to the proper tree. */
-	int ret = KNOT_EOK;
-	if (knot_rrset_is_nsec3rel(rr)) {
-		ret = knot_zone_contents_add_nsec3_node(contents, *node, 1, 0);
-	} else {
-		ret = knot_zone_contents_add_node(contents, *node, 1, 0);
-	}
-
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to add new node to zone contents.\n");
-		knot_node_free(node);
+	int ret = 0;
+	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
+		dbg_zone("Failed node check: %s\n", knot_strerror(ret));
 		return ret;
 	}
 
-	return ret;
+	// how to know if this is successfull??
+	ret = knot_zone_tree_insert(zone->nsec3_nodes, node);
+	if (ret != KNOT_EOK) {
+		dbg_zone("Failed to insert node into NSEC3 tree: %s.\n",
+			 knot_strerror(ret));
+		return ret;
+	}
+
+	// no parents to be created, the only parent is the zone apex
+	// set the apex as the parent of the node
+	knot_node_set_parent(node, zone->apex);
+
+	// cannot be wildcard child, so nothing to be done
+
+	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
+static knot_node_t *knot_zone_contents_get_nsec3_node(
+	const knot_zone_contents_t *zone, const knot_dname_t *name)
+{
+	if (zone == NULL || name == NULL) {
+		return NULL;
+	}
+
+	knot_node_t *n;
+	int ret = knot_zone_tree_get(zone->nsec3_nodes, name, &n);
+
+	if (ret != KNOT_EOK) {
+		dbg_zone("Failed to find NSEC3 name in the zone tree."
+				  "\n");
+		return NULL;
+	}
+
+	return n;
+}
 
 static int insert_rr(knot_zone_contents_t *z,
                      const knot_rrset_t *rr, knot_node_t **n,
@@ -653,95 +693,10 @@ static int insert_rr(knot_zone_contents_t *z,
 	return knot_node_add_rrset(*n, rr);
 }
 
-static bool to_nsec3_tree(const knot_rrset_t *rr)
-{
-	return knot_rrset_is_nsec3rel(rr);
-}
-
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
                               const knot_rrset_t *rr, knot_node_t **n)
 {
-	return insert_rr(z, rr, n, to_nsec3_tree(rr));
-}
-
-int knot_zone_contents_add_rrset(knot_zone_contents_t *zone,
-                                 knot_rrset_t *rrset, knot_node_t **node,
-                                 knot_rrset_dupl_handling_t dupl)
-{
-	if (zone == NULL || rrset == NULL || zone->apex == NULL
-	    || zone->apex->owner == NULL || node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-dbg_zone_exec_detail(
-	char *name = knot_dname_to_str(knot_rrset_owner(rrset));
-	dbg_zone_detail("Adding RRSet to zone contents: %s, type %d\n",
-			name, knot_rrset_type(rrset));
-	free(name);
-);
-
-	// check if the RRSet belongs to the zone
-	if (!knot_dname_is_equal(rrset->owner, zone->apex->owner)
-	    && !knot_dname_is_sub(rrset->owner, zone->apex->owner)) {
-		return KNOT_EOUTOFZONE;
-	}
-
-	if ((*node) == NULL
-	    && (*node = knot_zone_contents_get_node(zone,
-	                                            rrset->owner)) == NULL) {
-		return KNOT_ENONODE;
-	}
-
-	assert(*node != NULL);
-
-	// add all domain names from the RRSet to domain name table
-	int rc;
-	rc = knot_node_add_rrset(*node, rrset);
-	if (rc < 0) {
-		dbg_zone("Failed to add RRSet to node.\n");
-		return rc;
-	}
-
-	int ret = rc;
-
-	dbg_zone_detail("RRSet OK (%d).\n", ret);
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
-                                        knot_node_t *node, int create_parents,
-                                        uint8_t flags)
-{
-	UNUSED(create_parents);
-	UNUSED(flags);
-
-	if (zone == NULL || node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = 0;
-	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
-		dbg_zone("Failed node check: %s\n", knot_strerror(ret));
-		return ret;
-	}
-
-	// how to know if this is successfull??
-	ret = knot_zone_tree_insert(zone->nsec3_nodes, node);
-	if (ret != KNOT_EOK) {
-		dbg_zone("Failed to insert node into NSEC3 tree: %s.\n",
-			 knot_strerror(ret));
-		return ret;
-	}
-
-	// no parents to be created, the only parent is the zone apex
-	// set the apex as the parent of the node
-	knot_node_set_parent(node, zone->apex);
-
-	// cannot be wildcard child, so nothing to be done
-
-	return KNOT_EOK;
+	return insert_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -787,46 +742,6 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 	assert(removed_node);
 
 	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_zone_contents_get_node(const knot_zone_contents_t *zone,
-				    const knot_dname_t *name)
-{
-	if (zone == NULL || name == NULL) {
-		return NULL;
-	}
-
-	knot_node_t *n;
-	int ret = knot_zone_tree_get(zone->nodes, name, &n);
-	if (ret != KNOT_EOK) {
-		dbg_zone("Failed to find name in the zone tree.\n");
-		return NULL;
-	}
-
-	return n;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_zone_contents_get_nsec3_node(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
-{
-	if (zone == NULL || name == NULL) {
-		return NULL;
-	}
-
-	knot_node_t *n;
-	int ret = knot_zone_tree_get(zone->nsec3_nodes, name, &n);
-
-	if (ret != KNOT_EOK) {
-		dbg_zone("Failed to find NSEC3 name in the zone tree."
-				  "\n");
-		return NULL;
-	}
-
-	return n;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -931,7 +846,7 @@ dbg_zone_exec(
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_get_previous(
+static knot_node_t *knot_zone_contents_get_previous(
 	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
 	if (zone == NULL || name == NULL) {
@@ -954,33 +869,6 @@ const knot_node_t *knot_zone_contents_find_previous(
 	const knot_zone_contents_t *zone, const knot_dname_t *name)
 {
 	return knot_zone_contents_get_previous(zone, name);
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_zone_contents_get_previous_nsec3(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
-{
-	if (zone == NULL || name == NULL) {
-		return NULL;
-	}
-
-	knot_node_t *found = NULL, *prev = NULL;
-
-	int exact_match = knot_zone_contents_find_in_tree(zone->nsec3_nodes,
-							   name, &found, &prev);
-	assert(exact_match >= 0);
-	assert(prev != NULL);
-
-	return prev;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_node_t *knot_zone_contents_find_previous_nsec3(
-	const knot_zone_contents_t *zone, const knot_dname_t *name)
-{
-	return knot_zone_contents_get_previous_nsec3(zone, name);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1122,17 +1010,6 @@ dbg_zone_exec_detail(
 
 const knot_node_t *knot_zone_contents_apex(
 	const knot_zone_contents_t *zone)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return zone->apex;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
 {
 	if (zone == NULL) {
 		return NULL;

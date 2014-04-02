@@ -651,8 +651,7 @@ static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
 			int merged = 0;
 			int deleted_rrs = 0;
 			int rc = knot_rrset_merge_sort((knot_rrset_t *)&pkt->rr[i],
-			                               rr, &merged, &deleted_rrs,
-			                               &pkt->mm);
+			                               rr, &pkt->mm);
 			if (rc != KNOT_EOK) {
 				dbg_packet("%s: failed to merge RR %p (%d)\n", __func__, rr, rc);
 				return rc;

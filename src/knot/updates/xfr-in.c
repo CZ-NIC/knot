@@ -949,7 +949,7 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
                                    list_t *new_rrs)
 {
 	dbg_xfrin("Replacing SOA record.\n");
-	knot_node_t *node = knot_zone_contents_get_apex(contents);
+	knot_node_t *node = contents->apex;
 	assert(node != NULL);
 
 	assert(node != NULL);

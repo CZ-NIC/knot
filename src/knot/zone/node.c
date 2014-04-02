@@ -196,10 +196,8 @@ int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset)
 			if (node_rrset == NULL) {
 				return KNOT_ENOMEM;
 			}
-			int merged, deleted_rrs;
 			int ret = knot_rrset_merge_sort(node_rrset,
-			                                rrset, &merged,
-			                                &deleted_rrs, NULL);
+			                                rrset, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(&node_rrset, NULL);
 				return ret;
@@ -207,11 +205,7 @@ int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset)
 				rr_data_clear(&node->rrs[i], NULL);
 				rr_data_from(node_rrset, &node->rrs[i], NULL);
 				knot_rrset_free(&node_rrset, NULL);
-				if (merged || deleted_rrs) {
-					return 1;
-				} else {
-					return 0;
-				}
+				return KNOT_EOK;
 			}
 		}
 	}

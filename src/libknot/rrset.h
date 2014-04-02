@@ -283,14 +283,11 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
  *
  * \param r1           Pointer to RRSet to be merged into.
  * \param r2           Pointer to RRSet to be merged.
- * \param merged       Count of merged RRs.
- * \param deleted_rrs  Count of deleted duplicated RRs.
  * \param mm           Memory context.
  *
  * \return KNOT_E*
  */
-int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
-                          int *merged, int *deleted_rrs, mm_ctx_t *mm);
+int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, mm_ctx_t *mm);
 
 /*!
  * \brief Sort RDATA in RRSet to be in canonical order.

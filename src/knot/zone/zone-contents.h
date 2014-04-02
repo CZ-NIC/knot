@@ -93,116 +93,14 @@ int knot_zone_contents_gen_is_new(const knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
 
-/*!
- * \brief Adds a node to the given zone.
- *
- * Checks if the node belongs to the zone, i.e. if its owner is a subdomain of
- * the zone's apex. It thus also forbids adding node with the same name as the
- * zone apex.
- *
- * \warning This function may destroy domain names saved in the node, that
- *          are already present in the zone.
- *
- * \param zone Zone to add the node into.
- * \param node Node to add into the zone.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EOUTOFZONE
- * \retval KNOT_EHASH
- */
-int knot_zone_contents_add_node(knot_zone_contents_t *contents,
-                                  knot_node_t *node, int create_parents,
-                                  uint8_t flags);
-
-/*!
- * \brief Create new node in the zone contents for given RRSet.
- *
- * \param contents Zone to add the node into.
- * \param rr Given RRSet.
- * \param node Returns created node.
- * \return
- */
-int knot_zone_contents_create_node(knot_zone_contents_t *contents,
-                                   const knot_rrset_t *rr,
-                                   knot_node_t **node);
-
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
                               const knot_rrset_t *rr, knot_node_t **n);
-
-/*!
- * \brief Adds a RRSet to the given zone.
- *
- * Checks if the RRSet belongs to the zone, i.e. if its owner is a subdomain of
- * the zone's apex. The RRSet is inserted only if the node is given, or if
- * a node where the RRSet should belong is found in the zone.
- *
- * \warning The function does not check if the node is already inserted in the
- *          zone, just assumes that it is.
- * \warning This function may destroy domain names saved in the RRSet, that
- *          are already present in the zone.
- *
- * \param zone Zone to add the node into.
- * \param rrset RRSet to add into the zone.
- * \param node Node the RRSet should be inserted into. (Should be a node of the
- *             given zone.) If set to NULL, the function will find proper node
- *             and set it to this parameter.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EOUTOFZONE
- */
-int knot_zone_contents_add_rrset(knot_zone_contents_t *contents,
-                                 knot_rrset_t *rrset, knot_node_t **node,
-                                 knot_rrset_dupl_handling_t dupl);
-
-/*!
- * \brief Adds a node holding NSEC3 records to the given zone.
- *
- * Checks if the node belongs to the zone, i.e. if its owner is a subdomain of
- * the zone's apex. It does not check if the node really contains any NSEC3
- * records, nor if the name is a hash (as there is actually no way of
- * determining this).
- *
- * \param zone Zone to add the node into.
- * \param node Node to add into the zone.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EOUTOFZONE
- */
-int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *contents,
-                                        knot_node_t *node, int create_parents,
-                                        uint8_t flags);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 	const knot_dname_t *owner);
 
 int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
 	const knot_dname_t *owner);
-
-/*!
- * \brief Tries to find a node with the specified name in the zone.
- *
- * \param zone Zone where the name should be searched for.
- * \param name Name to find.
- *
- * \return Corresponding node if found, NULL otherwise.
- */
-knot_node_t *knot_zone_contents_get_node(
-	const knot_zone_contents_t *contents, const knot_dname_t *name);
-
-/*!
- * \brief Tries to find a node with the specified name among the NSEC3 nodes
- *        of the zone.
- *
- * \param zone Zone where the name should be searched for.
- * \param name Name to find.
- *
- * \return Corresponding node if found, NULL otherwise.
- */
-knot_node_t *knot_zone_contents_get_nsec3_node(
-	const knot_zone_contents_t *contents, const knot_dname_t *name);
 
 /*!
  * \brief Tries to find a node with the specified name in the zone.
@@ -248,15 +146,6 @@ int knot_zone_contents_find_dname(const knot_zone_contents_t *contents,
  * \return Previous node in canonical order, or NULL if some parameter is wrong.
  */
 const knot_node_t *knot_zone_contents_find_previous(
-	const knot_zone_contents_t *contents, const knot_dname_t *name);
-
-knot_node_t *knot_zone_contents_get_previous(
-	const knot_zone_contents_t *contents, const knot_dname_t *name);
-
-const knot_node_t *knot_zone_contents_find_previous_nsec3(
-	const knot_zone_contents_t *contents, const knot_dname_t *name);
-
-knot_node_t *knot_zone_contents_get_previous_nsec3(
 	const knot_zone_contents_t *contents, const knot_dname_t *name);
 
 /*!
@@ -308,9 +197,6 @@ int knot_zone_contents_find_nsec3_for_name(
  * \return Zone apex node.
  */
 const knot_node_t *knot_zone_contents_apex(
-	const knot_zone_contents_t *contents);
-
-knot_node_t *knot_zone_contents_get_apex(
 	const knot_zone_contents_t *contents);
 
 /*!

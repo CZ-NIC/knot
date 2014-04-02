@@ -141,8 +141,7 @@ static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 		ptrnode_t *ptr_n = (ptrnode_t *)n;
 		knot_rrset_t *rrset = (knot_rrset_t *)ptr_n->d;
 		if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_HEADER)) {
-			int ret = knot_rrset_merge_sort(rrset, rr, NULL,
-			                                NULL, NULL);
+			int ret = knot_rrset_merge_sort(rrset, rr, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
