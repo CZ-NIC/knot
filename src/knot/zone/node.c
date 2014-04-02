@@ -269,8 +269,6 @@ void knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
-			1 == 1; // old zone corrupted
-			free(node->rrs[i].additional);
 			memmove(node->rrs + i, node->rrs + i + 1, (node->rrset_count - i - 1) * sizeof(struct rr_data));
 			--node->rrset_count;
 			return;

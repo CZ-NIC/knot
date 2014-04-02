@@ -47,7 +47,7 @@ static void rrs_list_clear(list_t *l, mm_ctx_t *mm)
 	ptrnode_t *n;
 	node_t *nxt;
 	WALK_LIST_DELSAFE(n, nxt, *l) {
-		mm_free(mm, (knot_rr_t *)n->d);
+		mm_free(mm, (void *)n->d);
 		mm_free(mm, n);
 	};
 }
@@ -784,7 +784,9 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 static void clear_new_rrs(knot_node_t *node, uint16_t type)
 {
 	knot_rrs_t *new_rrs = knot_node_get_rrs(node, type);
-	knot_rrs_clear(new_rrs, NULL);
+	if (new_rrs) {
+		knot_rrs_clear(new_rrs, NULL);
+	}
 }
 
 static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
@@ -807,6 +809,33 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 	return true;
 }
 
+static int add_old_data(knot_changeset_t *chset, knot_rr_t *old_data,
+                        knot_node_t **old_additional)
+{
+	if (ptrlist_add(&chset->old_data, old_data, NULL) == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	if (!old_additional) {
+		return KNOT_EOK;
+	}
+
+	if (ptrlist_add(&chset->old_data, old_additional, NULL) == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
+}
+
+static int add_new_data(knot_changeset_t *chset, knot_rr_t *new_data)
+{
+	if (ptrlist_add(&chset->new_data, new_data, NULL) == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
+}
+
 static int xfrin_apply_remove(knot_zone_contents_t *contents,
                               knot_changeset_t *chset,
                               list_t *old_rrs, list_t *new_rrs)
@@ -820,34 +849,39 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 			continue;
 		}
 
-		1 == 1; // store additional
-		knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
-		knot_rr_t *old_data = rrs->data;
-
-		int ret = xfrin_replace_rrs_with_copy(node, rrs, rr->type, NULL);
+		knot_rrset_t removed_rrset = RRSET_INIT(node, rr->type);
+		knot_rr_t *old_data = removed_rrset.rrs.data;
+		knot_node_t **old_additional = removed_rrset.additional;
+		int ret = xfrin_replace_rrs_with_copy(node,
+		                                      &removed_rrset.rrs,
+		                                      rr->type, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
-		if (ptrlist_add(old_rrs, old_data, NULL) == NULL) {
-			clear_new_rrs(node, rr->type);
-			return KNOT_ENOMEM;
-		}
-
-		knot_rrset_t rrset = RRSET_INIT(node, rr->type);
-		ret = knot_rrset_remove_rr_using_rrset(&rrset, rr, NULL);
+		ret = add_old_data(chset, old_data, old_additional);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
 			return ret;
 		}
 
-		if (rrset.rrs.rr_count > 0) {
-			if (ptrlist_add(new_rrs, rrset.rrs.data, NULL) == NULL) {
-				knot_rrs_clear(rrs, NULL);
-				return KNOT_ENOMEM;
+		knot_rrset_t changed_rrset = RRSET_INIT(node, rr->type);
+		ret = knot_rrset_remove_rr_using_rrset(&changed_rrset, rr, NULL);
+		if (ret != KNOT_EOK) {
+			clear_new_rrs(node, rr->type);
+			return ret;
+		}
+
+		if (changed_rrset.rrs.rr_count > 0) {
+			ret = add_new_data(chset, changed_rrset.rrs.data);
+			if (ret != KNOT_EOK) {
+				knot_rrs_clear(&changed_rrset.rrs, NULL);
+				return ret;
 			}
-			rrs = knot_node_get_rrs(node, rr->type);
-			*rrs = rrset.rrs;
+
+			// Replace with changed data
+			knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
+			*rrs = changed_rrset.rrs;
 		} else {
 			knot_node_remove_rrset(node, rr->type);
 		}
@@ -869,17 +903,22 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 			return KNOT_ENOMEM;
 		}
 
-		knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
-		if (rrs) {
-			knot_rr_t *old_data = rrs->data;
-			int ret = xfrin_replace_rrs_with_copy(node, rrs, rr->type, NULL);
+		knot_rrset_t changed_rrset = RRSET_INIT(node, rr->type);
+		if (!knot_rrset_empty(&changed_rrset)) {
+			knot_rr_t *old_data = changed_rrset.rrs.data;
+			knot_node_t **old_additional = changed_rrset.additional;
+			int ret = xfrin_replace_rrs_with_copy(node,
+			                                      &changed_rrset.rrs,
+			                                      rr->type, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
+
 			// Store old RRS for cleanup
-			if (ptrlist_add(old_rrs, old_data, NULL) == NULL) {
+			ret = add_old_data(chset, old_data, old_additional);
+			if (ret != KNOT_EOK) {
 				clear_new_rrs(node, rr->type);
-				return KNOT_ENOMEM;
+				return ret;
 			}
 		}
 
@@ -890,12 +929,12 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 			return ret;
 		}
 
-		rrs = knot_node_get_rrs(node, rr->type);
-		assert(rrs);
+		knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
 		// Store new RRS for rollback
-		if (ptrlist_add(new_rrs, rrs->data, NULL) == NULL) {
+		ret = add_new_data(chset, rrs->data);
+		if (ret != KNOT_EOK) {
 			knot_rrs_clear(rrs, NULL);
-			return KNOT_ENOMEM;
+			return ret;
 		}
 	}
 
