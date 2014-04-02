@@ -1187,7 +1187,7 @@ const knot_node_t *knot_zone_contents_find_wildcard_child(
 	wildcard_name = knot_dname_cat(wildcard_name, knot_node_owner(parent));
 	const knot_node_t *node = knot_zone_contents_find_node(contents,
 	                                                       wildcard_name);
-	knot_dname_free(&wildcard_name, NULL);
+	knot_dname_free(&wildcard_name);
 	return node;
 }
 
