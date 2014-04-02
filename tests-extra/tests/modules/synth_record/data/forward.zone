@@ -1,0 +1,22 @@
+$ORIGIN forward.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 2010111213 10800 3600 1209600 7200
+	NS	dns1
+	NS	dns2
+
+dns1	A	192.0.2.1
+	AAAA	2001:DB8::1
+
+dns2	A	192.0.2.2
+	AAAA	2001:DB8::2
+
+; Two static record for each type
+static4-a	IN	A 192.168.1.42
+static4-b	IN	A 192.168.1.43 
+static6-a	IN	AAAA 2620:0:b61::42
+static6-b	IN	AAAA 2620:0:b61::43
+
+; Two aliases
+cname4		IN	CNAME	dynamic4-192-168-1-1
+cname6		IN	CNAME	dynamic6-2620-0000-0b61-0000-0000-0000-0000-0001		

@@ -669,8 +669,13 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
                                   uint64_t prev_time_signed,
                                   int use_times)
 {
-	if (!tsig_rr || !wire || !tsig_key) {
+	if (!wire || !tsig_key) {
 		return KNOT_EINVAL;
+	}
+
+	/* No TSIG record means verification failure. */
+	if (tsig_rr == NULL) {
+		return KNOT_TSIG_EBADKEY;
 	}
 
 	/* Check time signed. */

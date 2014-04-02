@@ -31,7 +31,8 @@ check_PROGRAMS = \
 	dnssec_zone_nsec	\
 	rrset			\
 	pkt			\
-	process_query
+	process_query	\
+	query_module
 
 check-compile-only: $(check_PROGRAMS)
 

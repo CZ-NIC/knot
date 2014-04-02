@@ -69,11 +69,9 @@ typedef enum {
  */
 enum {
 	KNOT_PF_NULL      = 0 << 0, /*!< No flags. */
-	KNOT_PF_WILDCARD  = 1 << 1, /*!< Query to wildcard name. */
-	KNOT_PF_FREE      = 1 << 2, /*!< Free with packet. */
-	KNOT_PF_NOTRUNC   = 1 << 3, /*!< Don't truncate. */
-	KNOT_PF_CHECKDUP  = 1 << 4,  /*!< Check for duplicates. */
-	KNOT_PF_NO_MERGE = 1 << 5 /* Don't add duplicate rdata to rrset. */
+	KNOT_PF_FREE      = 1 << 1, /*!< Free with packet. */
+	KNOT_PF_NOTRUNC   = 1 << 2, /*!< Don't truncate. */
+	KNOT_PF_CHECKDUP  = 1 << 3  /*!< Check for duplicates. */
 };
 
 /*!

@@ -47,7 +47,6 @@ static int delete_nsec3_chain(const knot_zone_contents_t *zone,
                               knot_changeset_t *changeset)
 {
 	assert(zone);
-	assert(zone->nsec3_nodes);
 	assert(changeset);
 
 	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
@@ -153,7 +152,7 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 static int mark_removed_nsec3(knot_changeset_t *out_ch,
                               const knot_zone_contents_t *zone)
 {
-	if (zone->nsec3_nodes == NULL) {
+	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_EOK;
 	}
 

@@ -104,6 +104,8 @@ src/knot/dnssec/zone-sign.c
 src/knot/dnssec/zone-sign.h
 src/knot/knot.h
 src/knot/main.c
+src/knot/modules/synth_record.c
+src/knot/modules/synth_record.h
 src/knot/nameserver/axfr.c
 src/knot/nameserver/axfr.h
 src/knot/nameserver/chaos.c
@@ -116,6 +118,8 @@ src/knot/nameserver/nsec_proofs.c
 src/knot/nameserver/nsec_proofs.h
 src/knot/nameserver/process_query.c
 src/knot/nameserver/process_query.h
+src/knot/nameserver/query_module.c
+src/knot/nameserver/query_module.h
 src/knot/nameserver/update.c
 src/knot/nameserver/update.h
 src/knot/other/debug.h
@@ -277,6 +281,7 @@ tests/hhash.c
 tests/journal.c
 tests/pkt.c
 tests/process_query.c
+tests/query_module.c
 tests/rrl.c
 tests/rrset.c
 tests/sample_conf.h

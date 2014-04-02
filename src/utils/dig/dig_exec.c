@@ -317,7 +317,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PF_NO_MERGE) != KNOT_EOK) {
+		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
 			net_close(net);
@@ -408,7 +408,7 @@ static void process_query(const query_t *query)
 	WALK_LIST(server, query->servers) {
 		srv_info_t *remote = (srv_info_t *)server;
 
-		DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+		DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 		    "port(%s), protocol(%s)\n", query->owner, query->class_num,
 		    query->type_num, remote->name, remote->service,
 		    get_sockname(socktype));
@@ -538,7 +538,7 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PF_NO_MERGE) != KNOT_EOK) {
+		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
 			net_close(net);
@@ -651,7 +651,7 @@ static void process_query_xfr(const query_t *query)
 	// Use the first nameserver from the list.
 	srv_info_t *remote = HEAD(query->servers);
 
-	DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+	DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 	    "port(%s), protocol(%s)\n", query->owner, query->class_num,
 	    query->type_num, remote->name, remote->service,
 	    get_sockname(socktype));

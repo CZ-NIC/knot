@@ -28,10 +28,23 @@
 #define _KNOT_INTERNET_H_
 
 #include "libknot/packet/pkt.h"
-#include "knot/zone/zonedb.h"
 
 /* Query data (from query processing). */
 struct query_data;
+struct query_plan;
+struct query_module;
+
+/*! \brief Internet query processing states. */
+enum {
+	BEGIN,   /* Begin name resolution. */
+	NODATA,  /* Positive result with NO data. */
+	HIT,     /* Positive result. */
+	MISS,    /* Negative result. */
+	DELEG,   /* Result is delegation. */
+	FOLLOW,  /* Resolution not complete (CNAME/DNAME chain). */
+	ERROR,   /* Resolution failed. */
+	TRUNC    /* Finished, but truncated. */
+};
 
 /*!
  * \brief Answer query from IN class zone.
@@ -40,6 +53,13 @@ struct query_data;
  * \retval DONE if finished.
  */
 int internet_answer(knot_pkt_t *resp, struct query_data *qdata);
+
+/*!
+ * \brief Initialize query plan for IN class zone.
+ * \param plan
+ * \return
+ */
+int internet_query_plan(struct query_plan *plan);
 
 /*!
  * \brief Puts RRSet to packet, will store its RRSIG for later use.

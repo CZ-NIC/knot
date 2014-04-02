@@ -64,10 +64,11 @@ class IxfrTopology():
         if not self.init_soa:
             self.init_soa = soa
 
-        self.test.xfr_diff(self.ref_master, self.master, self.zone, serial=self.init_soa)
-        self.test.xfr_diff(self.ref_master, self.ref_slave, self.zone, serial=self.init_soa)
-        self.test.xfr_diff(self.ref_master, self.slave1, self.zone, serial=self.init_soa)
-        self.test.xfr_diff(self.ref_master, self.slave2, self.zone, serial=self.init_soa)
+        serial = {self.zone[0].name: self.init_soa}
+        self.test.xfr_diff(self.ref_master, self.master, self.zone, serial)
+        self.test.xfr_diff(self.ref_master, self.ref_slave, self.zone, serial)
+        self.test.xfr_diff(self.ref_master, self.slave1, self.zone, serial)
+        self.test.xfr_diff(self.ref_master, self.slave2, self.zone, serial)
 
         check_log("====================================")
 

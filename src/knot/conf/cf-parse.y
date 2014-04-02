@@ -35,6 +35,7 @@
 #include "libknot/binary.h"
 #include "libknot/edns.h"
 #include "knot/server/rrl.h"
+#include "knot/nameserver/query_module.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/libknotd_la-cf-parse.h" /* Automake generated header. */
 
@@ -275,6 +276,17 @@ static void conf_acl_item(void *scanner, char *item)
 	free(item);
 }
 
+static void query_module_create(void *scanner, const char *name, const char *param)
+{
+	struct query_module *module = query_module_open(name, param, NULL);
+	if (module == NULL) {
+		cf_error(scanner, "cannot load query module '%s'", name);
+		return;
+	}
+
+	add_tail(&this_zone->query_modules, &module->node);
+}
+
 static int conf_key_exists(void *scanner, char *item)
 {
 	/* Find existing node in keys. */
@@ -472,6 +484,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> SIGNATURE_LIFETIME
 %token <tok> SERIAL_POLICY
 %token <tok> SERIAL_POLICY_VAL
+%token <tok> QUERY_MODULE
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -827,6 +840,14 @@ zone_acl:
    }
  ;
 
+query_module:
+ TEXT TEXT { query_module_create(scanner, $1.t, $2.t); free($1.t); free($2.t); }
+ ;
+
+query_module_list:
+ | query_module ';' query_module_list
+ ;
+
 zone_start:
  | USER  { conf_zone_start(scanner, strdup($1.t)); }
  | REMOTES { conf_zone_start(scanner, strdup($1.t)); }
@@ -891,6 +912,7 @@ zone:
  | zone SERIAL_POLICY SERIAL_POLICY_VAL ';' {
 	this_zone->serial_policy = $3.i;
  }
+ | zone QUERY_MODULE '{' query_module_list '}'
  ;
 
 zones:

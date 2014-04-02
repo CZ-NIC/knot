@@ -33,7 +33,6 @@ class Test(object):
         self.out_dir = params.out_dir
         self.data_dir = params.test_dir + "/data/"
         self.zones_dir = self.out_dir + "/zones/"
-        self.key_dir = self.out_dir + "/keys/"
 
         self.ip = ip if ip else random.choice([4, 6])
         if self.ip not in [4, 6]:
@@ -100,7 +99,7 @@ class Test(object):
         elif server == "dummy":
             srv = dnstest.server.Dummy()
         else:
-            raise Exception("Usupported server %s" % server)
+            raise Exception("Usupported server '%s'" % server)
 
         type(srv).count += 1
 
@@ -177,7 +176,7 @@ class Test(object):
             server.start(clean=True)
 
             if not server.running():
-                raise Exception("Server %s not running" % server.name)
+                raise Exception("Server '%s' not running" % server.name)
 
             if not server.listening():
                 self.stop(check=False)
@@ -226,7 +225,7 @@ class Test(object):
             zone = dnstest.zonefile.ZoneFile(self.zones_dir)
             zone.set_name(name)
             zone.gen_file(dnssec=dnssec, nsec3=nsec3, records=records,
-                          serial=serial, keydir=self.key_dir)
+                          serial=serial)
             zones.append(zone)
 
         return zones
@@ -258,7 +257,7 @@ class Test(object):
                     item_lower = item[0].lower() + " " + item[1]
 
                     if item_lower in unique and rrset.rdtype != dns.rdatatype.SOA:
-                        detail_log("!Duplicate record %s:" % server.name)
+                        detail_log("!Duplicate record server='%s':" % server.name)
                         detail_log("  %s" % item_lower)
                         continue
 
@@ -274,14 +273,14 @@ class Test(object):
         diff1 = sorted(list(unique1 - unique2))
         if diff1:
             set_err("AXFR DIFF")
-            detail_log("!Extra records %s:" % server1.name)
+            detail_log("!Extra records server='%s':" % server1.name)
             for record in diff1:
                 detail_log("  %s" % record)
 
         diff2 = sorted(list(unique2 - unique1))
         if diff2:
             set_err("AXFR DIFF")
-            detail_log("!Extra records %s:" % server2.name)
+            detail_log("!Extra records server='%s':" % server2.name)
             for record in diff2:
                 detail_log("  %s" % record)
 
@@ -312,7 +311,7 @@ class Test(object):
             if len(self.removed) != len(other.removed):
                 set_err("IXFR CHANGE DIFF")
                 detail_log("!Number of remove records:")
-                detail_log("  (%s) != (%s)" %
+                detail_log("  (%i) != (%i)" %
                            (len(self.removed), len(other.removed)))
 
             for rem1, rem2 in zip(self.removed, other.removed):
@@ -331,7 +330,7 @@ class Test(object):
             if len(self.added) != len(other.added):
                 set_err("IXFR CHANGE DIFF")
                 detail_log("!Number of add records:")
-                detail_log("  (%s) != (%s)" %
+                detail_log("  (%i) != (%i)" %
                            (len(self.added), len(other.added)))
 
             for add1, add2 in zip(self.added, other.added):
@@ -362,28 +361,32 @@ class Test(object):
                             soa = item_lower
                             continue
 
-                        if not change.soa_old: # First change.
+                        if not change.soa_old: # Remove change section.
                             change.soa_old = item_lower
                             continue
 
-                        if not change.soa_new: # Removed rdata SOA.
+                        if not change.soa_new: # Add change section.
                             change.soa_new = item_lower
-                        else: # Added rdata SOA.
-                            change.sort()
-                            changes.append(change)
-                            change = Test.IxfrChange()
-                            change.soa_old = item_lower
+                            continue
+
+                        # Next change -> store the actual one.
+                        change.sort()
+                        changes.append(change)
+                        change = Test.IxfrChange()
+                        change.soa_old = item_lower
                     else:
                         if not soa:
                             set_err("IXFR FORMAT")
-                            detail_log("!Missing leading SOA %s:%s before:" %
-                                       (server.name, zone.name))
+                            detail_log("!Missing leading SOA zone='%s', " \
+                                       "server='%s' before:" %
+                                       (zone.name, server.name))
                             detail_log("  %s" % item_lower)
 
                         if not change.soa_old:
                             set_err("IXFR FORMAT")
-                            detail_log("!Expected SOA %s:%s before:" %
-                                       (server.name, zone.name))
+                            detail_log("!Expected SOA zone='%s', server='%s' " \
+                                       "before:" %
+                                       (zone.name, server.name))
                             detail_log("  %s" % item_lower)
 
                         if not change.soa_new:
@@ -393,16 +396,17 @@ class Test(object):
 
         if not soa:
             set_err("IXFR FORMAT")
-            detail_log("!Missing leading SOA %s:%s" %
-                       (server.name, zone.name))
+            detail_log("!Missing leading SOA zone='%s', server='%s'" %
+                       (zone.name, server.name))
         elif change.removed or change.added:
             set_err("IXFR FORMAT")
-            detail_log("!Missing trailing SOA %s:%s" %
-                       (server.name, zone.name))
+            detail_log("!Missing trailing SOA zone='%s', server='%s'" %
+                       (zone.name, server.name))
         elif change.soa_old and change.soa_old != soa:
             set_err("IXFR FORMAT")
-            detail_log("!Trailing SOA differs from the leading one %s:%s" %
-                       (server.name, zone.name))
+            detail_log("!Trailing SOA differs from the leading one " \
+                       "zone='%s', server='%s'" %
+                       (zone.name, server.name))
 
         return soa, changes
 
@@ -419,19 +423,19 @@ class Test(object):
         if len(changes1) != len(changes2):
             set_err("IXFR DIFF")
             detail_log("!Number of changes:")
-            detail_log("  (%s:%s) != (%s:%s)" %
+            detail_log("  (server='%s', num='%i') != (server='%s', num='%i')" %
                        (server1.name, len(changes1),
                         server2.name, len(changes2)))
 
         for change1, change2 in zip(changes1, changes2):
             change1.cmp(change2)
 
-    def xfr_diff(self, server1, server2, zones, serial=None, udp=False):
+    def xfr_diff(self, server1, server2, zones, serials=None, udp=False):
         for zone in zones:
-            check_log("CHECK %sXFR DIFF %s %s<->%s" % ("I" if serial else "A",
+            check_log("CHECK %sXFR DIFF %s %s<->%s" % ("I" if serials else "A",
                       zone.name, server1.name, server2.name))
-            if serial:
-                self._ixfr_diff(server1, server2, zone, serial, udp)
+            if serials:
+                self._ixfr_diff(server1, server2, zone, serials[zone.name], udp)
             else:
                 self._axfr_diff(server1, server2, zone)
 

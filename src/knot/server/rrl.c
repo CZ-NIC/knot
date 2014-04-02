@@ -94,7 +94,7 @@ static uint8_t rrl_clsid(rrl_req_t *p)
 	}
 
 	/* Check if answered from a qname */
-	if (ret == CLS_NORMAL && p->flags & KNOT_PF_WILDCARD) {
+	if (ret == CLS_NORMAL && p->flags & RRL_WILDCARD) {
 		return CLS_WILDCARD;
 	}
 

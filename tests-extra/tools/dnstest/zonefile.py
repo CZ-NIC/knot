@@ -13,11 +13,13 @@ class ZoneFile(object):
     def __init__(self, file_dir):
         prepare_dir(file_dir)
         self.file_dir = file_dir
+        self.key_dir = file_dir + "/keys/"
         self.file_name = ""
         self.name = ""
 
         # Directory containing source zone file/updates.
         self.storage = None
+
 
         self.backup_num = 1
 
@@ -65,15 +67,14 @@ class ZoneFile(object):
 
             shutil.copyfile(src_file, self.path)
         except:
-            raise Exception("Can't use zone file %s" % src_file)
+            raise Exception("Can't use zone file '%s'" % src_file)
 
     def upd_file(self, file_name=None, storage=None, version=None):
         '''Replace zone file with a different one.'''
 
         self.set_file(file_name=file_name, storage=storage, version=version)
 
-    def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None,
-                 keydir=None):
+    def gen_file(self, dnssec=None, nsec3=None, records=None, serial=None):
         '''Generate zone file.'''
 
         if dnssec == None:
@@ -90,12 +91,12 @@ class ZoneFile(object):
         try:
             params = ["-i", serial, "-o", self.path, self.name, records]
             if dnssec:
-                prepare_dir(keydir)
-                params = ["-s", "-3", "y" if nsec3 else "n", "-k", keydir] \
+                prepare_dir(self.key_dir)
+                params = ["-s", "-3", "y" if nsec3 else "n", "-k", self.key_dir] \
                          + params
             zone_generate.main(params)
         except OSError:
-            raise Exception("Can't create zone file %s" % self.path)
+            raise Exception("Can't create zone file '%s'" % self.path)
 
     def dnssec_verify(self):
         '''Call dnssec-verify on the zone file.'''
@@ -151,7 +152,7 @@ class ZoneFile(object):
             shutil.copyfile(self.path, self.path + ".back" + str(self.backup_num))
             self.backup_num += 1
         except:
-            raise Exception("Can't make a copy of zone file %s" % self.path)
+            raise Exception("Can't make a copy of zone file '%s'" % self.path)
 
     def update_serial(self, new_serial=None):
         '''Change SOA serial.'''
@@ -173,5 +174,35 @@ class ZoneFile(object):
                     first = True
                 else:
                     new_file.write(line)
+
+        os.remove(old_name)
+
+    def update_rnd(self):
+        '''Add random records or resign zone.'''
+
+        dnssec = False
+        nsec3 = False
+
+        self.update_serial()
+
+        old_name = self.path + ".old"
+        os.rename(self.path, old_name)
+
+        with open(old_name, 'r') as old_file:
+            for line in old_file:
+                if "RRSIG" in line:
+                    dnssec = True
+                if "NSEC3PARAM" in line:
+                    nsec3 = True
+
+        try:
+            params = ["-u", old_name, "-o", self.path, self.name]
+            if dnssec:
+                prepare_dir(self.key_dir)
+                params = ["-s", "-3", "y" if nsec3 else "n", "-k", self.key_dir] \
+                         + params
+            zone_generate.main(params)
+        except OSError:
+            raise Exception("Can't modify zone file '%s'" % self.path)
 
         os.remove(old_name)

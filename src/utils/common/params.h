@@ -98,7 +98,7 @@ typedef struct {
 	bool	hide_cname;
 } style_t;
 
-/*! \brief Parametr handler. */
+/*! \brief Parameter handler. */
 typedef int (*param_handle_f)(const char *arg, void *params);
 
 /*! \brief Parameter argument type. */

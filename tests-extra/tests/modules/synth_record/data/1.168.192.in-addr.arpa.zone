@@ -1,0 +1,14 @@
+$ORIGIN 1.168.192.in-addr.arpa. 
+$TTL 172800     ; 2 days
+@                   IN SOA  localhost root. (
+                                43         ; serial
+                                7200       ; refresh (2 hours)
+                                300        ; retry (5 minutes)
+                                2419200    ; expire (4 weeks)
+                                10800      ; minimum (3 hours)
+                                )
+                        NS      localhost
+
+; Two static records
+42					IN	PTR	static4-a.forward.
+43					IN	PTR	static4-b.forward.

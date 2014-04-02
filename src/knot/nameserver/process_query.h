@@ -199,6 +199,8 @@ int process_query_verify(struct query_data *qdata);
  */
 int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata);
 
+int process_query_hooks(int qclass, int stage, knot_pkt_t *pkt, struct query_data *qdata);
+
 #endif /* _PROCESS_QUERY_H_ */
 
 /*! @} */

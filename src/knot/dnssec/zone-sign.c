@@ -93,23 +93,31 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 }
 
 /*!
- * \brief Check if key can be used to sign the RR type.
+ * \brief Check if key can be used to sign given RR.
  *
- * \param key           Zone key.
- * \param covered_type  Type of signed RR.
+ * \param key      Zone key.
+ * \param covered  RR to be checked.
  *
  * \return The RR should be signed.
  */
-static bool use_key(const knot_zone_key_t *key, uint16_t covered_type)
+static bool use_key(const knot_zone_key_t *key, const knot_rrset_t *covered)
 {
 	assert(key);
+	assert(covered);
 
 	if (!key->is_active) {
 		return false;
 	}
 
-	if (covered_type != KNOT_RRTYPE_DNSKEY && key->is_ksk) {
-		return false;
+	if (key->is_ksk) {
+		if (covered->type != KNOT_RRTYPE_DNSKEY) {
+			return false;
+		}
+
+		// use KSK only in the zone apex
+		if (!knot_dname_is_equal(key->dnssec_key.name, covered->owner)) {
+			return false;
+		}
 	}
 
 	return true;
@@ -135,7 +143,7 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const knot_zone_key_t *key = &zone_keys->keys[i];
-		if (!use_key(key, covered->type)) {
+		if (!use_key(key, covered)) {
 			continue;
 		}
 
@@ -301,7 +309,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const knot_zone_key_t *key = &zone_keys->keys[i];
-		if (!use_key(key, covered->type)) {
+		if (!use_key(key, covered)) {
 			continue;
 		}
 
@@ -579,7 +587,6 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
                           knot_changeset_t *changeset,
                           uint32_t *expires_at)
 {
-	assert(tree);
 	assert(zone_keys);
 	assert(policy);
 	assert(changeset);
@@ -1458,19 +1465,20 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
-	// SOA entry is maintained separately
-	if (rrset->type == KNOT_RRTYPE_SOA) {
-		return KNOT_EOK;
-	}
-
-	// DNSKEYs are maintained separately
-	if (rrset->type == KNOT_RRTYPE_DNSKEY) {
-		return KNOT_EOK;
-	}
-
 	// We do not want to sign RRSIGs
 	if (rrset->type == KNOT_RRTYPE_RRSIG) {
 		return KNOT_EOK;
+	}
+
+	// SOA and DNSKEYs are handled separately in the zone apex
+	if (knot_node_is_apex(node)) {
+		if (rrset->type == KNOT_RRTYPE_SOA) {
+			return KNOT_EOK;
+		}
+
+		if (rrset->type == KNOT_RRTYPE_DNSKEY) {
+			return KNOT_EOK;
+		}
 	}
 
 	// At delegation points we only want to sign NSECs and DSs

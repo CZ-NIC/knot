@@ -29,6 +29,7 @@
 #include "knot/conf/extra.h"
 #include "knot/knot.h"
 #include "knot/ctl/remote.h"
+#include "knot/nameserver/internet.h"
 
 /*
  * Defaults.
@@ -261,7 +262,8 @@ static int conf_process(conf_t *conf)
 	if (z_iter == NULL) {
 		return KNOT_ERROR;
 	}
-	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
+	for (; !hattrie_iter_finished(z_iter) && ret == KNOT_EOK; hattrie_iter_next(z_iter)) {
+
 		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 
 		// Default policy for dbsync timeout
@@ -413,6 +415,27 @@ static int conf_process(conf_t *conf)
 		}
 		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
+
+		/* Initialize query plan if modules exist. */
+		if (!EMPTY_LIST(zone->query_modules)) {
+			zone->query_plan = query_plan_create(NULL);
+			if (zone->query_plan == NULL) {
+				ret = KNOT_ENOMEM;
+				continue;
+			}
+
+			/* Only supported zone class is now IN. */
+			internet_query_plan(zone->query_plan);
+		}
+
+		/* Load query modules. */
+		struct query_module *module = NULL;
+		WALK_LIST(module, zone->query_modules) {
+			ret = module->load(zone->query_plan, module);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
 	}
 	hattrie_iter_free(z_iter);
 
@@ -939,6 +962,9 @@ void conf_init_zone(conf_zone_t *zone)
 	init_list(&zone->acl.notify_in);
 	init_list(&zone->acl.notify_out);
 	init_list(&zone->acl.update_in);
+
+	// Initialize synthesis templates
+	init_list(&zone->query_modules);
 }
 
 void conf_free_zone(conf_zone_t *zone)
@@ -953,6 +979,15 @@ void conf_free_zone(conf_zone_t *zone)
 	WALK_LIST_FREE(zone->acl.notify_in);
 	WALK_LIST_FREE(zone->acl.notify_out);
 	WALK_LIST_FREE(zone->acl.update_in);
+
+	/* Unload query modules. */
+	struct query_module *module = NULL, *next = NULL;
+	WALK_LIST_DELSAFE(module, next, zone->query_modules) {
+		query_module_close(module);
+	}
+
+	/* Free query plan. */
+	query_plan_free(zone->query_plan);
 
 	free(zone->name);
 	free(zone->file);
