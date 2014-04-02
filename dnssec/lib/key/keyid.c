@@ -9,19 +9,24 @@
 
 /* -- internal API --------------------------------------------------------- */
 
+#define convert(type, key, id) \
+{ \
+	size_t id_size = DNSSEC_KEY_ID_SIZE; \
+	gnutls_##type##_get_key_id(key, 0, id, &id_size); \
+	assert(id_size == DNSSEC_KEY_ID_SIZE); \
+}
+
 void gnutls_pubkey_to_key_id(gnutls_pubkey_t key, dnssec_key_id_t id)
 {
-	size_t id_size = DNSSEC_KEY_ID_SIZE;
-	gnutls_pubkey_get_key_id(key, 0, id, &id_size);
-	assert(id_size == DNSSEC_KEY_ID_SIZE);
+	convert(pubkey, key, id);
 }
 
 void gnutls_x509_privkey_to_key_id(gnutls_x509_privkey_t key, dnssec_key_id_t id)
 {
-	size_t id_size = DNSSEC_KEY_ID_SIZE;
-	gnutls_x509_privkey_get_key_id(key, 0, id, &id_size);
-	assert(id_size == DNSSEC_KEY_ID_SIZE);
+	convert(x509_privkey, key, id);
 }
+
+#undef convert
 
 /* -- public API ----------------------------------------------------------- */
 
@@ -54,4 +59,10 @@ int dnssec_key_id_cmp(const dnssec_key_id_t one, const dnssec_key_id_t two)
 	} else {
 		return memcmp(one, two, DNSSEC_KEY_ID_SIZE);
 	}
+}
+
+_public_
+bool dnssec_key_id_equal(const dnssec_key_id_t one, const dnssec_key_id_t two)
+{
+	return dnssec_key_id_cmp(one, two) == 0;
 }

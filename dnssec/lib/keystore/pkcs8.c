@@ -125,7 +125,7 @@ static int pkcs8_get_private(void *_ctx, const dnssec_key_id_t id,
 
 	// check the result
 
-	if (dnssec_key_id_cmp(key_id, id) != 0) {
+	if (!dnssec_key_id_equal(key_id, id)) {
 		gnutls_privkey_deinit(key);
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}

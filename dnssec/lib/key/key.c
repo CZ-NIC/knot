@@ -7,27 +7,16 @@
 #include "binary.h"
 #include "error.h"
 #include "key.h"
+#include "keystore.h"
 #include "key/algorithm.h"
+#include "key/convert.h"
 #include "key/dnskey.h"
 #include "key/internal.h"
 #include "key/keyid.h"
 #include "key/keytag.h"
-#include "key/privkey.h"
 #include "keystore/pem.h"
 #include "shared.h"
 #include "wire.h"
-
-/*!
- * DNSKEY RDATA fields offsets.
- *
- * \see RFC 4034 (section 2.1)
- */
-enum dnskey_rdata_offsets {
-	DNSKEY_RDATA_OFFSET_FLAGS = 0,
-	DNSKEY_RDATA_OFFSET_PROTOCOL = 2,
-	DNSKEY_RDATA_OFFSET_ALGORITHM = 3,
-	DNSKEY_RDATA_OFFSET_PUBKEY = 4,
-};
 
 /*!
  * Minimal size of DNSKEY RDATA.
@@ -70,7 +59,7 @@ int dnssec_key_new(dnssec_key_t **key_ptr)
 /*!
  * Clear public and private keys used by crypto backend.
  */
-static void crypto_free_keys(dnssec_key_t *key)
+static void free_keys(dnssec_key_t *key)
 {
 	assert(key);
 
@@ -92,7 +81,7 @@ void dnssec_key_clear(dnssec_key_t *key)
 	dnssec_binary_t rdata = key->rdata;
 
 	// clear the structure
-	crypto_free_keys(key);
+	free_keys(key);
 	clear_struct(key);
 
 	// restore template RDATA (downsize, no need to realloc)
@@ -110,7 +99,7 @@ void dnssec_key_free(dnssec_key_t *key)
 		return;
 	}
 
-	crypto_free_keys(key);
+	free_keys(key);
 	dnssec_binary_free(&key->rdata);
 
 	free(key);
@@ -252,41 +241,6 @@ static bool can_change_algorithm(dnssec_key_t *key, uint8_t algorithm)
 	return current == new;
 }
 
-/*!
- * Create a public key.
- */
-static int crypto_create_pubkey(const dnssec_binary_t *rdata,
-				gnutls_pubkey_t *key_ptr)
-{
-	assert(rdata);
-	assert(key_ptr);
-
-	uint8_t algorithm = 0;
-	dnssec_binary_t rdata_pubkey = { 0 };
-
-	wire_ctx_t wire = wire_init_binary(rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
-	algorithm = wire_read_u8(&wire);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
-	wire_available_binary(&wire, &rdata_pubkey);
-
-	gnutls_pubkey_t key = NULL;
-	int result = gnutls_pubkey_init(&key);
-	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
-	}
-
-	result = dnskey_rdata_to_pubkey(algorithm, &rdata_pubkey, key);
-	if (result != DNSSEC_EOK) {
-		gnutls_pubkey_deinit(key);
-		return result;
-	}
-
-	*key_ptr = key;
-
-	return DNSSEC_EOK;
-}
-
 _public_
 int dnssec_key_get_algorithm(const dnssec_key_t *key, uint8_t *algorithm)
 {
@@ -343,27 +297,23 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 		return DNSSEC_KEY_ALREADY_PRESENT;
 	}
 
-	// new RDATA
-
 	dnssec_binary_t new_rdata = key->rdata;
-	size_t new_size = DNSKEY_RDATA_OFFSET_PUBKEY + pubkey->size;
-	int result = dnssec_binary_resize(&new_rdata, new_size);
+	int result = dnskey_rdata_set_pubkey(&new_rdata, pubkey);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
 
-	wire_ctx_t wire = wire_init_binary(&new_rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
-	wire_write_binary(&wire, pubkey);
-
-	// public key
-
-	result = crypto_create_pubkey(&new_rdata, &key->public_key);
+	gnutls_pubkey_t new_pubkey = NULL;
+	result = dnskey_rdata_to_crypto_key(&new_rdata, &new_pubkey);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
+
+	// commit result
 
 	key->rdata = new_rdata;
+	key->public_key = new_pubkey;
+
 	update_key_id(key);
 	update_keytag(key);
 
@@ -401,83 +351,20 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 		return result;
 	}
 
+	gnutls_pubkey_t new_pubkey = NULL;
+	result = dnskey_rdata_to_crypto_key(rdata, &new_pubkey);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
 	memmove(new_rdata.data, rdata->data, rdata->size);
 
-	result = crypto_create_pubkey(&new_rdata, &key->public_key);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
+	// commit result
 
 	key->rdata = new_rdata;
-	update_key_id(key);
-	update_keytag(key);
-
-	return DNSSEC_EOK;
-}
-
-/* -- private key import --------------------------------------------------- */
-
-_public_
-int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
-{
-	if (!key || !pem) {
-		return DNSSEC_EINVAL;
-	}
-
-	// create private key
-
-	gnutls_privkey_t new_privkey = NULL;
-	dnssec_key_id_t new_key_id = { 0 };
-	int result = pem_to_privkey(pem, &new_privkey, new_key_id);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	if (key->public_key && dnssec_key_id_cmp(key->id, new_key_id) != 0) {
-		gnutls_privkey_deinit(new_privkey);
-		return DNSSEC_INVALID_KEY_ID;
-	}
-
-	if (key->public_key) {
-		key->private_key = new_privkey;
-		return DNSSEC_EOK;
-	}
-
-	// create public key if not present
-
-	gnutls_pubkey_t new_pubkey = NULL;
-	result = pubkey_from_privkey(new_privkey, &new_pubkey);
-	if (result != DNSSEC_EOK) {
-		gnutls_privkey_deinit(new_privkey);
-		return result;
-	}
-
-	_cleanup_binary_ dnssec_binary_t rdata_pubkey = { 0 };
-	result = dnskey_pubkey_to_rdata(new_pubkey, &rdata_pubkey);
-	if (result != DNSSEC_EOK) {
-		gnutls_privkey_deinit(new_privkey);
-		gnutls_pubkey_deinit(new_pubkey);
-		return result;
-	}
-
-	size_t rdata_size = DNSKEY_RDATA_OFFSET_PUBKEY + rdata_pubkey.size;
-	result = dnssec_binary_resize(&key->rdata, rdata_size);
-	if (result != DNSSEC_EOK) {
-		gnutls_privkey_deinit(new_privkey);
-		gnutls_pubkey_deinit(new_pubkey);
-		return result;
-	}
-
-	// write the result
-
 	key->public_key = new_pubkey;
-	key->private_key = new_privkey;
 
-	wire_ctx_t wire = wire_init_binary(&key->rdata);
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
-	wire_write_binary(&wire, &rdata_pubkey);
-
-	dnssec_key_id_copy(new_key_id, key->id);
+	update_key_id(key);
 	update_keytag(key);
 
 	return DNSSEC_EOK;
@@ -495,4 +382,14 @@ _public_
 bool dnssec_key_can_verify(const dnssec_key_t *key)
 {
 	return key && key->public_key;
+}
+
+/* -- internal API --------------------------------------------------------- */
+
+void key_update_identifiers(dnssec_key_t *key)
+{
+	assert(key);
+
+	update_keytag(key);
+	update_key_id(key);
 }

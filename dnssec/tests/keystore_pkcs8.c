@@ -85,7 +85,7 @@ int main(void)
 	ok(test_open_called, "test_open() called");
 	ok(test_read_called, "test_read() called");
 	ok(test_write_called, "test_write() called");
-	ok(dnssec_key_id_cmp(test_write_id, gen_id) == 0, "test_write() with correct key id");
+	ok(dnssec_key_id_equal(test_write_id, gen_id), "test_write() with correct key id");
 	ok(test_close_called, "test_close() called");
 
 	dnssec_crypto_cleanup();

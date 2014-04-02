@@ -1,14 +1,10 @@
-#include <assert.h>
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
 
-#include "binary.h"
 #include "error.h"
-#include "key.h"
-#include "key/privkey.h"
 #include "shared.h"
 
-int pubkey_from_privkey(gnutls_privkey_t privkey, gnutls_pubkey_t *pubkey)
+int public_from_private(gnutls_privkey_t privkey, gnutls_pubkey_t *pubkey)
 {
 	assert(privkey);
 	assert(pubkey);

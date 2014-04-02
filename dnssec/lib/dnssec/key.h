@@ -30,6 +30,11 @@ void dnssec_key_id_copy(const dnssec_key_id_t from, dnssec_key_id_t to);
 int dnssec_key_id_cmp(const dnssec_key_id_t one, const dnssec_key_id_t two);
 
 /*!
+ * Check if two key IDs are equal.
+ */
+bool dnssec_key_id_equal(const dnssec_key_id_t one, const dnssec_key_id_t two);
+
+/*!
  * DNSKEY algorithm numbers.
  *
  * \see https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml
@@ -95,15 +100,6 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey);
 
 int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata);
 int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata);
-
-int dnssec_key_set_params(dnssec_key_t *key, uint16_t flags, uint8_t protocol,
-			  uint8_t algorithm, const dnssec_binary_t *public_key);
-
-/*!
- * Load private key from key store.
- */
-int dnssec_key_from_privkey(dnssec_key_t *key, void *store, uint8_t algorithm, dnssec_key_id_t id);
-int dnssec_key_load_privkey(dnssec_key_t *key, void *store);
 
 /*!
  * Load PKCS #8 private key in unencrypted PEM format.

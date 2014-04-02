@@ -2,10 +2,16 @@
 #include <stdlib.h>
 
 #include "error.h"
+#include "key.h"
 #include "key/algorithm.h"
+#include "key/dnskey.h"
+#include "key/internal.h"
+#include "key/keyid.h"
 #include "keystore.h"
 #include "keystore/internal.h"
+#include "keystore/public.h"
 #include "shared.h"
+#include "wire.h"
 
 /* -- internal API --------------------------------------------------------- */
 
@@ -98,4 +104,83 @@ int dnssec_keystore_delete_key(dnssec_keystore_t *store,
 	}
 
 	return store->functions->delete_key(store, key_id);
+}
+
+static bool valid_params(dnssec_key_t *key, dnssec_key_id_t id,
+			 dnssec_key_algorithm_t algorithm)
+{
+	assert(key);
+
+	// no public key, parameters must be present
+
+	if (key->public_key == NULL) {
+		return (id != NULL && algorithm != 0);
+	}
+
+	// public key present, parameters must match or be NULL
+
+	if (algorithm != 0) {
+		uint8_t current_algorithm = 0;
+		dnssec_key_get_algorithm(key, &current_algorithm);
+		if (algorithm != current_algorithm) {
+			return false;
+		}
+	}
+
+	if (id != NULL && !dnssec_key_id_equal(key->id, id)) {
+		return false;
+	}
+
+	return true;
+}
+
+
+_public_
+int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
+			       dnssec_key_id_t id, dnssec_key_algorithm_t algorithm)
+{
+	if (!key || !keystore || !valid_params(key, id, algorithm)) {
+		return DNSSEC_EINVAL;
+	}
+
+	if (key->private_key) {
+		return DNSSEC_KEY_ALREADY_PRESENT;
+	}
+
+	// define search ID and algorithm
+
+	if (id == NULL) {
+		assert(key->public_key);
+		id = key->id;
+	}
+
+	if (algorithm == 0) {
+		assert(key->public_key);
+		uint8_t algorithm8 = 0;
+		dnssec_key_get_algorithm(key, &algorithm8);
+		algorithm = algorithm8;
+	}
+
+	// retrieve and set the private key
+
+	gnutls_privkey_t privkey = NULL;
+	int r = keystore->functions->get_private(keystore->ctx, id, &privkey);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	r = key_set_private_key(key, privkey);
+	if (r != DNSSEC_EOK) {
+		gnutls_privkey_deinit(privkey);
+		return r;
+	}
+
+	return DNSSEC_EOK;
+}
+
+_public_
+int dnssec_key_import_private_keystore(dnssec_key_t *key,
+				       dnssec_keystore_t *keystore)
+{
+	return dnssec_key_import_keystore(key, keystore, NULL, 0);
 }

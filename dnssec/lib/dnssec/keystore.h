@@ -38,3 +38,22 @@ int dnssec_keystore_close(dnssec_keystore_t *store);
 int dnssec_keystore_list_keys(dnssec_keystore_t *store, void *list);
 int dnssec_keystore_generate_key(dnssec_keystore_t *store, dnssec_key_algorithm_t algorithm, unsigned bits, dnssec_key_id_t key_id);
 int dnssec_keystore_delete_key(dnssec_keystore_t *store, const dnssec_key_id_t key_id);
+
+// private key access
+
+/*!
+ * Import a key from the key store.
+ *
+ * \param keystore
+ * \param key
+ * \param id
+ * \param algorithm
+ *
+ */
+int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
+			       dnssec_key_id_t id, dnssec_key_algorithm_t algorithm);
+
+/*!
+ * Import private key for known public key.
+ */
+int dnssec_key_import_private_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore);
