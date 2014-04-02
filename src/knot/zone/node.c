@@ -196,7 +196,7 @@ int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset)
 			if (node_rrset == NULL) {
 				return KNOT_ENOMEM;
 			}
-			int ret = knot_rrset_merge_sort(node_rrset,
+			int ret = knot_rrset_merge(node_rrset,
 			                                rrset, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(&node_rrset, NULL);

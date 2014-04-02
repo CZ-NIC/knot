@@ -135,9 +135,6 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
  */
 knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *ch);
 
-const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
-                                           knot_changeset_part_t part);
-
 /*!
  * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
  *        'remove' list. Will *not* try to merge with previous RRSets.
@@ -151,20 +148,6 @@ const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
  */
 int knot_changeset_add_rrset(knot_changeset_t *chgs,
                              knot_rrset_t *rrset, knot_changeset_part_t part);
-
-/*!
- * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
- *        'remove' list. *Will* try to merge with previous RRSets.
- *
- * \param chgs Changeset to add RRSet into.
- * \param rrset RRSet to be added.
- * \param part Add to 'add' or 'remove'?
- *
- * \retval KNOT_EOK on success.
- * \retval Error code on failure.
- */
-int knot_changeset_add_rr(knot_changeset_t *chgs,
-                          knot_rrset_t *rrset, knot_changeset_part_t part);
 
 /*!
  * \brief Adds a source/destination SOA RRSet to changeset.

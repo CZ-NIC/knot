@@ -542,8 +542,8 @@ dbg_xfrin_exec_verb(
 					ret = KNOT_ENOMEM;
 					goto cleanup;
 				}
-				ret = knot_changeset_add_rr(chset, cpy,
-				                            KNOT_CHANGESET_REMOVE);
+				ret = knot_changeset_add_rrset(chset, cpy,
+				                               KNOT_CHANGESET_REMOVE);
 				if (ret != KNOT_EOK) {
 					goto cleanup;
 				}
@@ -566,8 +566,8 @@ dbg_xfrin_exec_verb(
 					ret = KNOT_ENOMEM;
 					goto cleanup;
 				}
-				ret = knot_changeset_add_rr(chset, cpy,
-				                            KNOT_CHANGESET_ADD);
+				ret = knot_changeset_add_rrset(chset, cpy,
+				                               KNOT_CHANGESET_ADD);
 				if (ret != KNOT_EOK) {
 					goto cleanup;
 				}

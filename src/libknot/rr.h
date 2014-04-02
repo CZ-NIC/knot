@@ -36,6 +36,8 @@ uint8_t* knot_rrs_create_rr(knot_rrs_t *rrs, const uint16_t size,
 uint8_t* knot_rrs_create_rr_at_pos(knot_rrs_t *rrs,
                                    size_t pos, uint16_t size,
                                    uint32_t ttl, mm_ctx_t *mm);
+int knot_rrs_add_rr_at_pos(knot_rrs_t *rrs, const knot_rr_t *rr,
+                           size_t pos, mm_ctx_t *mm);
 int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm);
 void knot_rrs_clear(knot_rrs_t *rrs, mm_ctx_t *mm);
 int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2);
@@ -43,4 +45,6 @@ bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2);
 int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm);
 int knot_rrs_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
                          knot_rrs_t *out_sig, mm_ctx_t *mm);
+int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm);
+int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm);
 

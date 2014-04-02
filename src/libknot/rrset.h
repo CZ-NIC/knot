@@ -267,18 +267,6 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, struct knot_compr *compr);
 
 /*!
- * \brief Merges two RRSets, no duplicate check is done, no sorting either.
- *
- * \param r1  Pointer to RRSet to be merged into.
- * \param r2  Pointer to RRSet to be merged.
- * \param mm  Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
-                     mm_ctx_t *mm);
-
-/*!
  * \brief Merges two RRSets, duplicate check is done, preserves canonical ordering.
  *
  * \param r1           Pointer to RRSet to be merged into.
@@ -287,16 +275,7 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
  *
  * \return KNOT_E*
  */
-int knot_rrset_merge_sort(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, mm_ctx_t *mm);
-
-/*!
- * \brief Sort RDATA in RRSet to be in canonical order.
- * \todo Not optimal, rewrite!
- *
- * \param rrset  RRSet to be sorted.
- * \return Error code, KNOT_EOK when successful.
- */
-int knot_rrset_sort_rdata(knot_rrset_t *rrset);
+int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, mm_ctx_t *mm);
 
 /*!
  * \brief Return true if the RRSet is an NSEC3 related type.

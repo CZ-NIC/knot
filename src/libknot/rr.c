@@ -213,6 +213,25 @@ uint8_t* knot_rrs_create_rr_at_pos(knot_rrs_t *rrs,
 	return knot_rr_get_rdata(old_rr);
 }
 
+int knot_rrs_add_rr_at_pos(knot_rrs_t *rrs, const knot_rr_t *rr,
+                           size_t pos, mm_ctx_t *mm)
+{
+	if (rrs == NULL || pos > rrs->rr_count) {
+		return KNOT_EINVAL;
+	}
+
+	uint8_t *created_rdata = knot_rrs_create_rr_at_pos(rrs, pos,
+	                                                   knot_rr_size(rr),
+	                                                   knot_rr_ttl(rr),
+	                                                   mm);
+	if (created_rdata == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	memcpy(created_rdata, knot_rr_rdata(rr), knot_rr_size(rr));
+	return KNOT_EOK;
+}
+
 uint8_t* knot_rrs_create_rr(knot_rrs_t *rrs, const uint16_t size,
                             const uint32_t ttl, mm_ctx_t *mm)
 {
@@ -239,22 +258,6 @@ uint8_t* knot_rrs_create_rr(knot_rrs_t *rrs, const uint16_t size,
 	knot_rr_set_ttl(rr, ttl);
 
 	return knot_rr_get_rdata(rr);
-}
-
-int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm)
-{
-	if (rrs == NULL || rr == NULL) {
-		return KNOT_EINVAL;
-	}
-	
-	uint8_t *data =
-		knot_rrs_create_rr(rrs, knot_rr_size(rr), knot_rr_ttl(rr), mm);
-	if (data == NULL) {
-		return KNOT_ENOMEM;
-	}
-	memcpy(data, knot_rr_rdata(rr), knot_rr_size(rr));
-	
-	return KNOT_EOK;
 }
 
 knot_rrs_t *knot_rrs_new(mm_ctx_t *mm)
@@ -360,4 +363,43 @@ bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2)
 	}
 	
 	return true;
+}
+
+int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm)
+{
+	if (rrs == NULL || rr == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
+		const knot_rr_t *rrset_rr = knot_rrs_rr(rrs, i);
+		int cmp = knot_rr_cmp(rrset_rr, rr);
+		if (cmp == 0) {
+			// Duplication - no need to add this RR
+			return KNOT_EOK;
+		} else if (cmp > 0) {
+			// Found position to insert
+			return knot_rrs_add_rr_at_pos(rrs, rr, i, mm);
+		}
+	}
+
+	// If flow gets here, it means that we should insert at the last position
+	return knot_rrs_add_rr_at_pos(rrs, rr, rrs->rr_count, mm);
+}
+
+int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm)
+{
+	if (rrs1 == NULL || rrs2 == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (uint16_t i = 0; i < rrs2->rr_count; ++i) {
+		const knot_rr_t *rr = knot_rrs_rr(rrs2, i);
+		int ret = knot_rrs_add_rr(rrs1, rr, mm);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	return KNOT_EOK;
 }

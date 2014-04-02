@@ -457,7 +457,8 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 				knot_rrset_free(&to_remove, NULL);
 				return ret;
 			}
-			ret = knot_changeset_add_rr(changeset, to_remove, KNOT_CHANGESET_REMOVE);
+			ret = knot_changeset_add_rrset(changeset,
+			                               to_remove, KNOT_CHANGESET_REMOVE);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(&to_remove, NULL);
 				return ret;
@@ -861,12 +862,6 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	}
 
 	if (to_add != NULL && result == KNOT_EOK) {
-		//! \todo Sorting should be handled by changesets application.
-		result = knot_rrset_sort_rdata(to_add);
-		if (result != KNOT_EOK) {
-			knot_rrset_free(&to_add, NULL);
-			return result;
-		}
 		result = knot_changeset_add_rrset(changeset, to_add,
 		                                  KNOT_CHANGESET_ADD);
 	}
@@ -937,11 +932,6 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 		if (result != KNOT_EOK) {
 			goto fail;
 		}
-	}
-
-	result = knot_rrset_sort_rdata(new_dnskeys);
-	if (result != KNOT_EOK) {
-		goto fail;
 	}
 
 	result = add_missing_rrsigs(new_dnskeys, NULL, zone_keys, policy,

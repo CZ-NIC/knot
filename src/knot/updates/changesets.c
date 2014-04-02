@@ -27,12 +27,6 @@
 #include "common/debug.h"
 #include "libknot/rdata.h"
 
-static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
-                                         const knot_rrset_t *rrset2)
-{
-	return knot_rrset_equal(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER);
-}
-
 int knot_changesets_init(knot_changesets_t **changesets)
 {
 	// Create new changesets structure
@@ -111,24 +105,6 @@ knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *chs)
 	return (knot_changeset_t *)(TAIL(chs->sets));
 }
 
-const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
-                                           knot_changeset_part_t part)
-{
-	if (ch == NULL) {
-		return NULL;
-	}
-
-	if (part == KNOT_CHANGESET_ADD) {
-		knot_rr_ln_t *n = TAIL(ch->add);
-		return n ? n->rr : NULL;
-	} else if (part == KNOT_CHANGESET_REMOVE) {
-		knot_rr_ln_t *n = TAIL(ch->remove);
-		return n ? n->rr : NULL;
-	}
-
-	return NULL;
-}
-
 int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
                              knot_changeset_part_t part)
 {
@@ -149,29 +125,6 @@ int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
 	}
 
 	return KNOT_EOK;
-}
-
-int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
-                          knot_changeset_part_t part)
-{
-	// Just check the last RRSet. If the RR belongs to it, merge it,
-	// otherwise just add the RR to the end of the list
-	list_t *l = part == KNOT_CHANGESET_ADD ? &(chgs->add) : &(chgs->remove);
-	knot_rrset_t *tail_rr =
-		EMPTY_LIST(*l) ? NULL : ((knot_rr_ln_t *)(TAIL(*l)))->rr;
-
-	if (tail_rr && knot_changeset_rrsets_match(tail_rr, rr)) {
-		// Create changesets exactly as they came, with possibly
-		// duplicate records
-		if (knot_rrset_merge(tail_rr, rr, NULL) != KNOT_EOK) {
-			return KNOT_ERROR;
-		}
-
-		knot_rrset_free(&rr, NULL);
-		return KNOT_EOK;
-	} else {
-		return knot_changeset_add_rrset(chgs, rr, part);
-	}
 }
 
 static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
