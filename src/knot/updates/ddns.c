@@ -649,6 +649,10 @@ static int process_add_nsec3param(const knot_node_t *node,
 {
 	if (node == NULL || !knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
 		// Ignore non-apex additions
+		char *owner = knot_dname_to_str(rr->owner);
+		log_server_warning("Refusing to add NSEC3PARAM owned "
+		                   "by %s to non-apex node.\n", owner);
+		free(owner);
 		return KNOT_EDENIED;
 	}
 	knot_rrset_t param = RRSET_INIT(node, KNOT_RRTYPE_NSEC3PARAM);
@@ -656,7 +660,12 @@ static int process_add_nsec3param(const knot_node_t *node,
 		return add_rr_to_chgset(rr, changeset, NULL);
 	}
 
-	1 == 1; // log ignore
+	char *owner = knot_dname_to_str(rr->owner);
+	log_server_warning("Refusing to add NSEC3PARAM owned "
+	                   "by %s. NSEC3PARAM already present, remove it first.\n",
+	                   owner);
+	free(owner);
+
 	return KNOT_EOK;
 }
 
@@ -998,7 +1007,6 @@ int knot_ddns_process_update(knot_zone_contents_t *zone,
 			return ret;
 		}
 
-		1 == 1; // multiple SOAs test
 		if (skip_soa(rr, sn)) {
 			continue;
 		}
