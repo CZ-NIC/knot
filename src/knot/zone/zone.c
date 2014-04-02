@@ -145,6 +145,103 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
+knot_changeset_t *zone_change_prepare(knot_changesets_t *chset)
+{
+	return knot_changesets_create_changeset(chset);
+}
+
+int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset)
+{
+	assert(contents);
+
+	if (knot_changesets_empty(chset)) {
+		return KNOT_EOK;
+	}
+
+	/* Apply DNSSEC changeset to the new zone. */
+	int ret = xfrin_apply_changesets_directly(contents, chset->changes, chset);
+	if (ret == KNOT_EOK) {
+		ret = xfrin_finalize_updated_zone(contents, true, NULL);
+	}
+
+	if (ret == KNOT_EOK) {
+		/* No need to do rollback, the whole new zone will be
+		 * discarded. */
+		xfrin_cleanup_successful_update(chset->changes);
+	}
+
+	return ret;
+}
+
+int zone_change_store(zone_t *zone, knot_changesets_t *chset)
+{
+	assert(zone);
+	assert(chset);
+
+	/*! \bug This is not going to work because xfrin_apply_changeset() removes
+	 *       applied rrsets from the changeset list. I'm not sure how the
+	 *       changeset/changes work really. It should however apply the changes
+	 *       and keep the changeset intact for storing.
+	 */
+#warning This is not going to work until the note above is resolved.
+
+	conf_zone_t *conf = zone->conf;
+
+	int ret = journal_store_changesets(chset, conf->ixfr_db, conf->ixfr_fslimit);
+	if (ret == KNOT_EBUSY) {
+		log_zone_notice("Journal for '%s' is full, flushing.\n", conf->name);
+
+		/* Transaction rolled back, journal released, we may flush. */
+		ret = zone_flush_journal(zone);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		return journal_store_changesets(chset, conf->ixfr_db, conf->ixfr_fslimit);
+	}
+
+	return ret;
+}
+
+/*! \note @mvavrusa Moved from zones.c, this needs a common API. */
+int zone_change_apply_and_store(knot_changesets_t *chs,
+                                zone_t *zone,
+                                zone_contents_t **new_contents,
+                                const char *msgpref)
+{
+	int ret = KNOT_EOK;
+
+	/* Now, try to apply the changesets to the zone. */
+	ret = xfrin_apply_changesets(zone, chs, new_contents);
+	if (ret != KNOT_EOK) {
+		log_zone_error("%s Failed to apply changesets.\n", msgpref);
+
+		/* Free changesets, but not the data. */
+		knot_changesets_free(&chs);
+		return ret;  // propagate the error above
+	}
+
+	/* Write changes to journal if all went well. */
+	ret = zone_change_store(zone, chs);
+	if (ret != KNOT_EOK) {
+		log_zone_error("%s Failed to store changesets.\n", msgpref);
+
+		/* Free changesets, but not the data. */
+		knot_changesets_free(&chs);
+		return ret;  // propagate the error above
+	}
+
+	/* Switch zone contents. */
+	zone_contents_t *old_contents = xfrin_switch_zone(zone, *new_contents);
+	xfrin_zone_contents_free(&old_contents);
+
+	/* Free changesets, but not the data. */
+	xfrin_cleanup_successful_update(chs->changes);
+	knot_changesets_free(&chs);
+	assert(ret == KNOT_EOK);
+	return KNOT_EOK;
+}
+
 zone_contents_t *zone_switch_contents(zone_t *zone,
 					   zone_contents_t *new_contents)
 {

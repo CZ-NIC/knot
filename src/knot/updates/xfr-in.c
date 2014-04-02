@@ -381,8 +381,8 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 	if (*chs == NULL) {
 		dbg_xfrin_verb("Changesets empty, creating new.\n");
 
-		ret = knot_changesets_init(chs);
-		if (ret != KNOT_EOK) {
+		*chs = knot_changesets_create(0);
+		if (*chs == NULL) {
 			knot_rrset_deep_free(&rr, 1, NULL);
 			knot_pkt_free(&packet);
 			return ret;
@@ -1781,12 +1781,10 @@ int xfrin_apply_changesets(zone_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_switch_zone(zone_t *zone,
-                      zone_contents_t *new_contents,
-                      int transfer_type)
+zone_contents_t *xfrin_switch_zone(zone_t *zone, zone_contents_t *new_contents)
 {
 	if (zone == NULL || new_contents == NULL) {
-		return KNOT_EINVAL;
+		return NULL;
 	}
 
 	dbg_xfrin("Switching zone contents.\n");
@@ -1808,15 +1806,5 @@ int xfrin_switch_zone(zone_t *zone,
 	dbg_xfrin_verb("Waiting for readers to finish...\n");
 	synchronize_rcu();
 
-	// destroy the old zone
-	dbg_xfrin_verb("Freeing old zone: %p\n", old);
-
-	if (transfer_type == XFR_TYPE_AIN) {
-		zone_contents_deep_free(&old);
-	} else {
-		assert(old != NULL);
-		xfrin_zone_contents_free(&old);
-	}
-
-	return KNOT_EOK;
+	return old;
 }

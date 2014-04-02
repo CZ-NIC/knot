@@ -10,6 +10,7 @@
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
 #include "libknot/tsig-op.h"
+#include "knot/zone/zone.h"
 
 /* Forward decls. */
 static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
@@ -193,13 +194,12 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
  * NOTE: Mostly copied from xfrin_apply_changesets(). Should be refactored in
  *       order to get rid of duplicate code.
  */
-int knot_ns_process_update(const knot_pkt_t *query,
-                           zone_contents_t *old_contents,
+static int knot_ns_process_update(const knot_pkt_t *query,
+                           zone_t *zone,
                            zone_contents_t **new_contents,
-                           knot_changesets_t *chgs, knot_rcode_t *rcode,
-                           uint32_t new_serial)
+                           knot_changesets_t *chgs, knot_rcode_t *rcode)
 {
-	if (query == NULL || old_contents == NULL || chgs == NULL ||
+	if (query == NULL || zone == NULL || chgs == NULL ||
 	    EMPTY_LIST(chgs->sets) || new_contents == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -209,7 +209,7 @@ int knot_ns_process_update(const knot_pkt_t *query,
 	// 1) Create zone shallow copy.
 	dbg_ns_verb("Creating shallow copy of the zone...\n");
 	zone_contents_t *contents_copy = NULL;
-	int ret = xfrin_prepare_zone_copy(old_contents, &contents_copy);
+	int ret = xfrin_prepare_zone_copy(zone->contents, &contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to prepare zone copy: %s\n",
 		          knot_strerror(ret));
@@ -219,14 +219,14 @@ int knot_ns_process_update(const knot_pkt_t *query,
 
 	// 2) Apply the UPDATE and create changesets.
 	dbg_ns_verb("Applying the UPDATE and creating changeset...\n");
-	ret = knot_ddns_process_update(contents_copy, query,
+	ret = knot_ddns_process_update(zone, contents_copy, query,
 	                               knot_changesets_get_last(chgs),
-	                               chgs->changes, rcode, new_serial);
+	                               chgs->changes, rcode);
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to apply UPDATE to the zone copy or no update"
 		       " made: %s\n", (ret < 0) ? knot_strerror(ret)
 		                                : "No change made.");
-		xfrin_rollback_update(old_contents, &contents_copy,
+		xfrin_rollback_update(zone->contents, &contents_copy,
 		                      chgs->changes);
 		return ret;
 	}
@@ -238,7 +238,7 @@ int knot_ns_process_update(const knot_pkt_t *query,
 	if (ret != KNOT_EOK) {
 		dbg_ns("Failed to finalize updated zone: %s\n",
 		       knot_strerror(ret));
-		xfrin_rollback_update(old_contents, &contents_copy,
+		xfrin_rollback_update(zone->contents, &contents_copy,
 		                      chgs->changes);
 		*rcode = (ret == KNOT_EMALF) ? KNOT_RCODE_FORMERR
 		                             : KNOT_RCODE_SERVFAIL;
@@ -263,6 +263,32 @@ static int replan_zone_sign_after_ddns(zone_t *zone, uint32_t refresh_at)
 	zones_cancel_dnssec(zone);
 	return zones_schedule_dnssec(zone, refresh_at);
 #endif
+}
+
+static bool apex_rr_changed(const zone_contents_t *old_contents,
+                            const zone_contents_t *new_contents,
+                            uint16_t type)
+{
+	const knot_rrset_t *old_rr = knot_node_rrset(old_contents->apex, type);
+	const knot_rrset_t *new_rr = knot_node_rrset(new_contents->apex, type);
+	if (old_rr== NULL) {
+		return new_rr != NULL;
+	} else if (new_rr == NULL) {
+		return old_rr != NULL;
+	}
+	return !knot_rrset_equal(old_rr, new_rr, KNOT_RRSET_COMPARE_WHOLE);
+}
+
+static bool zones_dnskey_changed(const zone_contents_t *old_contents,
+                                 const zone_contents_t *new_contents)
+{
+	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_DNSKEY);
+}
+
+static bool zones_nsec3param_changed(const zone_contents_t *old_contents,
+                                     const zone_contents_t *new_contents)
+{
+	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM);
 }
 
 /*! \brief Process UPDATE query.
@@ -302,28 +328,22 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	 * We must prepare a changesets_t structure even though there will
 	 * be only one changeset - because of the API.
 	 */
-	knot_changesets_t *chgsets = knot_changesets_create();
+	knot_changesets_t *chgsets = knot_changesets_create(1);
 	if (chgsets == NULL) {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		log_zone_error("%s Cannot create changesets structure.\n", msg);
 		free(msg);
 		return ret;
 	}
+	knot_changeset_t *diff_ch = knot_changesets_get_last(chgsets);
 
 	// Process the UPDATE packet, apply to zone, create changesets.
-	if (knot_changesets_create_changeset(chgsets) == NULL) {
-		knot_changesets_free(&chgsets);
-		free(msg);
-		return KNOT_ENOMEM;
-	}
 	*rcode = KNOT_RCODE_SERVFAIL; /* SERVFAIL unless it applies correctly. */
-
-	uint32_t new_serial = zones_next_serial(zone);
 
 	zone_contents_t *new_contents = NULL;
 	zone_contents_t *old_contents = zone->contents;
-	ret = knot_ns_process_update(query, old_contents, &new_contents,
-	                             chgsets, rcode, new_serial);
+	ret = knot_ns_process_update(query, zone, &new_contents,
+	                             chgsets, rcode);
 	if (ret != KNOT_EOK) {
 		if (ret > 0) {
 			log_zone_notice("%s: No change to zone made.\n", msg);
@@ -341,15 +361,16 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 
 	assert(zone->conf);
 	if (zone->conf->dnssec_enable) {
-		sec_chs = knot_changesets_create();
-		sec_ch = knot_changesets_create_changeset(sec_chs);
-		if (sec_chs == NULL || sec_ch == NULL) {
+		sec_chs = knot_changesets_create(1);
+		if (sec_chs == NULL) {
 			xfrin_rollback_update(zone->contents, &new_contents,
 			                      chgsets->changes);
 			knot_changesets_free(&chgsets);
 			free(msg);
 			return KNOT_ENOMEM;
 		}
+
+		sec_ch = knot_changesets_get_last(sec_chs);
 	}
 
 	// Apply changeset to zone created by DDNS processing
@@ -367,14 +388,14 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 			ret = knot_dnssec_zone_sign(new_contents, zone->conf,
 			                            sec_ch,
 			                            KNOT_SOA_SERIAL_KEEP,
-			                            &refresh_at, new_serial);
+			                            &refresh_at);
 		} else {
 			// Sign the created changeset
 			ret = knot_dnssec_sign_changeset(new_contents, zone->conf,
-			                      knot_changesets_get_last(chgsets),
-			                      sec_ch, KNOT_SOA_SERIAL_KEEP,
+			                      diff_ch,
+			                      sec_ch,
 			                      &refresh_at,
-			                      new_serial, &sorted_changes);
+			                      &sorted_changes);
 		}
 
 		if (ret != KNOT_EOK) {
@@ -390,21 +411,18 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	}
 
 	// Merge changesets
-	journal_t *journal = NULL;
-	ret = zones_merge_and_store_changesets(zone, chgsets, sec_chs,
-	                                       &journal);
+	ret = knot_changeset_merge(diff_ch, sec_ch);
 	if (ret != KNOT_EOK) {
-		log_zone_error("%s: Failed to save new entry to journal (%s)\n",
-		               msg, knot_strerror(ret));
 		xfrin_rollback_update(zone->contents, &new_contents,
-		                      chgsets->changes);
-		zones_free_merged_changesets(chgsets, sec_chs);
+				      chgsets->changes);
+		knot_changesets_free(&chgsets);
+		knot_changesets_free(&sec_chs);
 		free(msg);
 		return ret;
 	}
 
-	bool new_signatures = !knot_changeset_is_empty(sec_ch);
 	// Apply DNSSEC changeset
+	bool new_signatures = !knot_changeset_is_empty(sec_ch);
 	if (new_signatures) {
 		ret = xfrin_apply_changesets_dnssec_ddns(old_contents,
 		                                    new_contents,
@@ -416,8 +434,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update (%s)"
 			               "\n", msg, knot_strerror(ret));
-			zones_store_changesets_rollback(journal);
-			zones_free_merged_changesets(chgsets, sec_chs);
+			knot_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
 
@@ -427,16 +444,14 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to replan zone sign (%s)\n",
 			               msg, knot_strerror(ret));
-			zones_store_changesets_rollback(journal);
-			zones_free_merged_changesets(chgsets, sec_chs);
+			knot_free_merged_changesets(chgsets, sec_chs);
 			return ret;
 		}
 	} else {
 		// Set NSEC3 nodes if no new signatures were created (or auto DNSSEC is off)
 		ret = zone_contents_adjust_nsec3_pointers(new_contents);
 		if (ret != KNOT_EOK) {
-			zones_store_changesets_rollback(journal);
-			zones_free_merged_changesets(chgsets, sec_chs);
+			knot_free_merged_changesets(chgsets, sec_chs);
 			xfrin_rollback_update(zone->contents, &new_contents,
 			                      chgsets->changes);
 			free(msg);
@@ -444,37 +459,13 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 		}
 	}
 
-	// Commit transaction.
-	if (journal) {
-		ret = zones_store_changesets_commit(journal);
-		if (ret != KNOT_EOK) {
-			log_zone_error("%s: Failed to commit new journal entry "
-			               "(%s).\n", msg, knot_strerror(ret));
-			xfrin_rollback_update(zone->contents, &new_contents,
-			                      chgsets->changes);
-			zones_free_merged_changesets(chgsets, sec_chs);
-			free(msg);
-			return ret;
-		}
-	}
+#warning Journal is unprotected now, this will not be safe until DDNS is made a zone event.
+	/* Write changes to journal if all went well. */
+	ret = zone_change_store(zone, chgsets);
 
 	// Switch zone contents.
-	zone_retain(zone);      /* Retain pointer for safe RCU unlock. */
-	rcu_read_unlock();      /* Unlock for switch. */
-	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
-	rcu_read_lock();        /* Relock */
-	zone_release(zone);     /* Release held pointer. */
-	if (ret != KNOT_EOK) {
-		log_zone_error("%s: Failed to replace current zone (%s)\n",
-		               msg, knot_strerror(ret));
-		// Cleanup old and new contents
-		xfrin_rollback_update(zone->contents, &new_contents,
-		                      chgsets->changes);
-
-		/* Free changesets, but not the data. */
-		zones_free_merged_changesets(chgsets, sec_chs);
-		return KNOT_ERROR;
-	}
+	old_contents = xfrin_switch_zone(zone, new_contents);
+	xfrin_zone_contents_free(&old_contents);
 
 	// Cleanup.
 	xfrin_cleanup_successful_update(chgsets->changes);
@@ -483,7 +474,7 @@ static int zones_process_update_auth(zone_t *zone, knot_pkt_t *query,
 	}
 
 	// Free changesets, but not the data.
-	zones_free_merged_changesets(chgsets, sec_chs);
+	knot_free_merged_changesets(chgsets, sec_chs);
 	assert(ret == KNOT_EOK);
 	*rcode = KNOT_RCODE_NOERROR; /* Mark as successful. */
 	if (new_signatures) {

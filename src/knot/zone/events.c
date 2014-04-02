@@ -41,11 +41,23 @@ static int event_reload(zone_t *zone)
 
 	int result = apply_journal(content, zone->conf);
 	if (result != KNOT_EOK) {
-		zone_contents_free(&content);
+		zone_contents_deep_free(&content);
 		return result;
 	}
 
 	// TODO: do diff and sign
+	result = post_load(content, zone);
+	if (result != KNOT_EOK) {
+		if (result == KNOT_ESPACE) {
+			log_zone_error("Zone '%s' journal size is too small to fit the changes.\n",
+			               zone->conf->name);
+		} else {
+			log_zone_error("Zone '%s' failed to store changes in the journal - %s\n",
+			               zone->conf->name, knot_strerror(result));
+		}
+		zone_contents_deep_free(&content);
+		return result;
+	}
 
 	zone_contents_t *old = zone_switch_contents(zone, content);
 	if (old != NULL) {
@@ -154,9 +166,8 @@ static int event_dnssec(zone_t *zone)
 
 	if (!zones_changesets_empty(chs)) {
 		zone_contents_t *new_c = NULL;
-		ret = zones_store_and_apply_chgsets(chs, zone, &new_c, "DNSSEC",
-						    XFR_TYPE_UPDATE);
-		chs = NULL; // freed by zones_store_and_apply_chgsets()
+		ret = zone_change_apply_and_store(chs, zone, &new_c, "DNSSEC");
+		chs = NULL; // freed by zone_change_apply_and_store()
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
 				       msgpref, knot_strerror(ret));

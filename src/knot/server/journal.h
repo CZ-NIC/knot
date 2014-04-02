@@ -54,8 +54,7 @@ typedef enum journal_flag_t {
 	JOURNAL_NULL  = 0 << 0, /*!< Invalid journal entry. */
 	JOURNAL_FREE  = 1 << 0, /*!< Free journal entry. */
 	JOURNAL_VALID = 1 << 1, /*!< Valid journal entry. */
-	JOURNAL_DIRTY = 1 << 2, /*!< Journal entry cannot be evicted. */
-	JOURNAL_TRANS = 1 << 3  /*!< Entry is in transaction (uncommited). */
+	JOURNAL_DIRTY = 1 << 2  /*!< Journal entry cannot be evicted. */
 } journal_flag_t;
 
 /*!
@@ -103,7 +102,7 @@ typedef struct journal_t
  * Journal defaults and constants.
  */
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
-#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '5', '0'}
+#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '5', '1'}
 #define MAGIC_LENGTH 7
 /* HEADER = magic, crc, max_entries, qhead, qtail */
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3)
@@ -151,45 +150,6 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size, bool r
 int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize);
 
 /*!
- * \brief Begin transaction of multiple entries.
- *
- * \note Only one transaction at a time is supported.
- *
- * \param journal Associated journal.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_EBUSY if transaction is already pending.
- */
-int journal_trans_begin(journal_t *journal);
-
-/*!
- * \brief Commit pending transaction.
- *
- * \note Only one transaction at a time is supported.
- *
- * \param journal Associated journal.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOENT if no transaction is pending.
- */
-int journal_trans_commit(journal_t *journal);
-
-/*!
- * \brief Rollback pending transaction.
- *
- * \note Only one transaction at a time is supported.
- *
- * \param journal Associated journal.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOENT if no transaction is pending.
- */
-int journal_trans_rollback(journal_t *journal);
-
-/*!
  * \brief Close journal file.
  *
  * \param journal Associated journal.
@@ -215,6 +175,24 @@ bool journal_exists(const char *path);
  */
 int journal_load_changesets(const char *path, knot_changesets_t *dst,
                             uint32_t from, uint32_t to);
+
+/*!
+ * \brief Store changesets in journal.
+ *
+ * Changesets will be stored to a permanent storage.
+ * Journal may be compacted, resulting in flattening changeset history.
+ *
+ * \param zone Zone associated with the changeset.
+ * \param src Changesets.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ * \retval KNOT_EAGAIN if journal needs to be synced with zonefile first.
+ *
+ * \todo Expects the xfr structure to be initialized in some way.
+ * \todo Update documentation!!!
+ */
+int journal_store_changesets(knot_changesets_t *src,  const char *path, size_t size_limit);
 
 /*! \brief Function for unmarking dirty nodes. */
 int journal_mark_synced(const char *path);

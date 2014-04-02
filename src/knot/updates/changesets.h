@@ -113,27 +113,25 @@ typedef enum {
 /*----------------------------------------------------------------------------*/
 
 /*!
- * \brief Inits changesets structure. The structure has to be freed
- *        using 'knot_changesets_free()' function.
- *
- * \param changesets Double pointer to changesets structure.
- * \param flags IXFR / DDNS flag.
- *
- * \retval KNOT_EOK on success.
- * \retval Error code on failure.
- */
-int knot_changesets_init(knot_changesets_t **changesets);
-
-/*!
  * \brief Creates changesets structure. The created structure has to be freed
  *        using 'knot_changesets_free()' function.
  *
- * \param flags IXFR / DDNS flag.
+ * \param count Create 'count' changesets (0 for empty).
  *
  * \retval Created structure on success.
  * \retval NULL on failure.
  */
-knot_changesets_t *knot_changesets_create();
+knot_changesets_t *knot_changesets_create(unsigned count);
+
+/*!
+ * \brief Frees the 'changesets' structure, including all its internal data.
+ *
+ * \param changesets Double pointer to changesets structure to be freed.
+ */
+void knot_changesets_free(knot_changesets_t **changesets);
+
+/*! \brief Reinitialize changesets structure. */
+int knot_changesets_clear(knot_changesets_t *changesets);
 
 /*!
  * \brief Creates new changeset structure and returns it to caller.
@@ -156,8 +154,12 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
  */
 knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *ch);
 
+
 const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
                                            knot_changeset_part_t part);
+
+/*! \brief Return true if changesets structure is empty. */
+bool knot_changesets_empty(const knot_changesets_t *chs);
 
 /*!
  * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
@@ -240,13 +242,6 @@ int knot_changeset_apply(knot_changeset_t *changeset,
                          int (*func)(knot_rrset_t *, void *), void *data);
 
 /*!
- * \brief Frees the 'changesets' structure, including all its internal data.
- *
- * \param changesets Double pointer to changesets structure to be freed.
- */
-void knot_changesets_free(knot_changesets_t **changesets);
-
-/*!
  * \brief Add RRSet to changes structure.
  *        RRSet is either inserted to 'old' or to 'new' list.
  *
@@ -274,6 +269,10 @@ int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
  * \retval Error code on failure.
  */
 int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2);
+
+/*! \note @mvavrusa Moved from zones.c, this should be gone soon. */
+void knot_free_merged_changesets(knot_changesets_t *diff_chs,
+                                  knot_changesets_t *sec_chs);
 
 /*!
  * \param changes Double pointer of changes structure to be freed.

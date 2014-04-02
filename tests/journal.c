@@ -38,7 +38,7 @@ static int randstr(char* dst, size_t len)
 
 int main(int argc, char *argv[])
 {
-	plan(11);
+	plan(7);
 
 	/* Create tmpdir */
 	int fsize = 10 * 1024 * 1024;
@@ -87,45 +87,9 @@ int main(int argc, char *argv[])
 	journal_unmap(journal, chk_key, mptr, 1);
 	is_int(0, ret, "journal: data integrity check after close/open");
 
-	/* Make a transaction. */
-	uint64_t tskey = 0x75750000;
-	ret = journal_trans_begin(journal);
-	is_int(0, ret, "journal: transaction begin");
-	for (int i = 0; i < 16; ++i) {
-		chk_key = tskey + i;
-		journal_map(journal, chk_key, &mptr, sizeof(chk_buf), false);
-		journal_unmap(journal, chk_key, mptr, 1);
-	}
-
-	/* Read unfinished transaction. */
-	chk_key = tskey + rand() % 16;
-	int read_ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
-	journal_unmap(journal, chk_key, mptr, 1);
-	ok(read_ret != 0, "journal: read unfinished transaction");
-
-	/* Commit transaction. */
-	ret = journal_trans_commit(journal);
-	read_ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
-	journal_unmap(journal, chk_key, mptr, 1);
-	ok(ret == 0 && read_ret == 0, "journal: transaction commit");
-
-	/* Rollback transaction. */
-	tskey = 0x6B6B0000;
-	journal_trans_begin(journal);
-	for (int i = 0; i < 16; ++i) {
-		chk_key = tskey + i;
-		journal_map(journal, chk_key, &mptr, sizeof(chk_buf), false);
-		journal_unmap(journal, chk_key, mptr, 1);
-	}
-	chk_key = tskey + rand() % 16;
-	ret = journal_trans_rollback(journal);
-	read_ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
-	journal_unmap(journal, chk_key, mptr, 1);
-	ok(ret == 0 && read_ret != 0, "journal: transaction rollback");
-
 	/*  Write random data. */
 	ret = 0;
-	tskey = 0xDEAD0000;
+	uint64_t tskey = 0xDEAD0000;
 	for (int i = 0; i < 512; ++i) {
 		chk_key = tskey + i;
 		ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), false);

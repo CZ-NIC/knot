@@ -698,10 +698,6 @@ int zone_contents_create_diff(const zone_contents_t *z1,
                                    const zone_contents_t *z2,
                                    knot_changeset_t *changeset)
 {
-	if (z1 == NULL || z2 == NULL) {
-		dbg_zonediff("zone_diff: create_changesets: NULL arguments.\n");
-		return KNOT_EINVAL;
-	}
 	int ret = zone_contents_diff(z1, z2, changeset);
 	if (ret != KNOT_EOK) {
 		dbg_zonediff("zone_diff: create_changesets: "

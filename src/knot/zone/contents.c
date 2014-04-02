@@ -1492,6 +1492,34 @@ uint32_t zone_contents_serial(const zone_contents_t *zone)
 	return knot_rdata_soa_serial(soa);
 }
 
+uint32_t zone_contents_next_serial(const zone_contents_t *zone, int policy)
+{
+	assert(zone);
+
+	uint32_t old_serial = zone_contents_serial(zone);
+	uint32_t new_serial;
+
+	switch (policy) {
+	case CONF_SERIAL_INCREMENT:
+		new_serial = (uint32_t)old_serial + 1;
+		break;
+	case CONF_SERIAL_UNIXTIME:
+		new_serial = (uint32_t)time(NULL);
+		break;
+	default:
+		assert(0);
+	}
+
+	/* If the new serial is 'lower' or equal than the new one, warn the user.*/
+	if (knot_serial_compare(old_serial, new_serial) >= 0) {
+		log_zone_warning("New serial will be lower than "
+		                 "the current one. Old: %u new: %u.\n",
+		                 old_serial, new_serial);
+	}
+
+	return new_serial;
+}
+
 bool zone_contents_is_signed(const zone_contents_t *zone)
 {
 	return knot_node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);

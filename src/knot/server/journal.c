@@ -103,6 +103,15 @@ static inline int journal_key_from_cmp(uint64_t k, uint64_t from)
 	return ((uint64_t)journal_key_from(k)) - from;
 }
 
+/*! \brief Make key for journal from serials. */
+static inline uint64_t ixfrdb_key_make(uint32_t from, uint32_t to)
+{
+	/*      64    32       0
+	 * key = [TO   |   FROM]
+	 */
+	return (((uint64_t)to) << ((uint64_t)32)) | ((uint64_t)from);
+}
+
 /*! \brief Recover metadata from journal. */
 static int journal_recover(journal_t *j)
 {
@@ -780,9 +789,8 @@ static int journal_fetch(journal_t *journal, uint64_t id,
 	size_t i = jnode_prev(journal, journal->qtail);
 	size_t endp = jnode_prev(journal, journal->qhead);
 	for(; i != endp; i = jnode_prev(journal, i)) {
-		/* Ignore nodes in uncommited transaction. */
 		journal_node_t *n = journal->nodes + i;
-		if (!(n->flags & JOURNAL_TRANS) && cf(n->id, id) == 0) {
+		if (cf(n->id, id) == 0) {
 			*dst = journal->nodes + i;
 			return KNOT_EOK;
 		}
@@ -916,69 +924,6 @@ int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize)
 	return ret;
 }
 
-int journal_trans_begin(journal_t *journal)
-{
-	if (journal == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Already pending transactions. */
-	if (journal->bflags & JOURNAL_TRANS) {
-		return KNOT_EBUSY;
-	}
-
-	journal->bflags |= JOURNAL_TRANS;
-	journal->tmark = journal->qtail;
-	dbg_journal("journal: starting transaction at qtail=%hu\n",
-	            journal->tmark);
-
-	return KNOT_EOK;
-}
-
-int journal_trans_commit(journal_t *journal)
-{
-	if (journal == NULL) {
-		return KNOT_EINVAL;
-	}
-	if ((journal->bflags & JOURNAL_TRANS) == 0) {
-		return KNOT_ENOENT;
-	}
-
-	/* Mark affected nodes as commited. */
-	int ret = KNOT_EOK;
-	size_t i = journal->tmark;
-	for(; i != journal->qtail; i = (i + 1) % journal->max_nodes) {
-		journal->nodes[i].flags &= (~JOURNAL_TRANS);
-		ret = journal_update(journal, journal->nodes + i);
-		if (ret != KNOT_EOK) {
-			dbg_journal("journal: failed to clear TRANS flag from "
-			            "node %zu\n", i);
-			return ret;
-		}
-	}
-
-	/* Clear in-transaction flags. */
-	journal->tmark = 0;
-	journal->bflags &= (~JOURNAL_TRANS);
-	return KNOT_EOK;
-}
-
-int journal_trans_rollback(journal_t *journal)
-{
-	if (journal == NULL) {
-		return KNOT_EINVAL;
-	}
-	if ((journal->bflags & JOURNAL_TRANS) == 0) {
-		return KNOT_ENOENT;
-	}
-
-	/* Clear in-transaction flags. */
-	journal->tmark = 0;
-	journal->bflags &= (~JOURNAL_TRANS);
-
-	return KNOT_EOK;
-}
-
 int journal_close(journal_t *journal)
 {
 	/* Check journal. */
@@ -1007,91 +952,208 @@ bool journal_exists(const char *path)
 	return stat(path, &st) == 0;
 }
 
-/*! \brief No doc here. Moved from zones.h (@mvavrusa) */
-static int changesets_unpack(knot_changesets_t *chgsets)
+static int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 {
-	/*! \todo #1291 Why doesn't this just increment stream ptr? */
+	if (chgset == NULL || size == NULL) {
+		return KNOT_EINVAL;
+	}
 
-	assert(chgsets != NULL);
-	/*
-	 * Parses changesets from the binary format stored in chgsets->data
-	 * into the changeset_t structures.
-	 */
-	knot_rrset_t *rrset = 0;
-	int ret = 0;
+	size_t soa_from_size = rrset_binary_size(chgset->soa_from);
+	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
 
-	knot_changeset_t* chs = NULL;
-	WALK_LIST(chs, chgsets->sets) {
-		/* Read changeset flags. */
-		if (chs->data == NULL) {
-			return KNOT_EMALF;
-		}
-		size_t remaining = chs->size;
-		memcpy(&chs->flags, chs->data, sizeof(uint32_t));
-		remaining -= sizeof(uint32_t);
+	size_t remove_size = 0;
+	knot_rr_ln_t *rr_node = NULL;
+	WALK_LIST(rr_node, chgset->remove) {
+		knot_rrset_t *rrset = rr_node->rr;
+		remove_size += rrset_binary_size(rrset);
+	}
 
-		/* Read initial changeset RRSet - SOA. */
-		uint8_t *stream = chs->data + (chs->size - remaining);
+	size_t add_size = 0;
+	WALK_LIST(rr_node, chgset->add) {
+		knot_rrset_t *rrset = rr_node->rr;
+		add_size += rrset_binary_size(rrset);
+	}
+
+	/*! \todo How is the changeset serialized? Any other parts? */
+	*size = soa_from_size + soa_to_size + remove_size + add_size;
+	/* + Changeset flags. */
+	*size += sizeof(uint32_t);
+
+	return KNOT_EOK;
+}
+
+/*! \brief No doc here. Moved from zones.h (@mvavrusa) */
+static int changesets_unpack(knot_changeset_t *chs)
+{
+
+	knot_rrset_t *rrset = NULL;
+
+	/* Read changeset flags. */
+	if (chs->data == NULL) {
+		return KNOT_EMALF;
+	}
+	size_t remaining = chs->size;
+	memcpy(&chs->flags, chs->data, sizeof(uint32_t));
+	remaining -= sizeof(uint32_t);
+
+	/* Read initial changeset RRSet - SOA. */
+	uint8_t *stream = chs->data + (chs->size - remaining);
+	int ret = rrset_deserialize(stream, &remaining, &rrset);
+	if (ret != KNOT_EOK) {
+		return KNOT_EMALF;
+	}
+
+	/* in this special case (changesets loaded
+			 * from journal) the SOA serial should already
+			 * be set, check it.
+			 */
+	assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
+	assert(chs->serial_from == knot_rdata_soa_serial(rrset));
+	knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
+
+	/* Read remaining RRSets */
+	int in_remove_section = 1;
+	while (remaining > 0) {
+
+		/* Parse next RRSet. */
+		rrset = 0;
+		stream = chs->data + (chs->size - remaining);
 		ret = rrset_deserialize(stream, &remaining, &rrset);
 		if (ret != KNOT_EOK) {
 			return KNOT_EMALF;
 		}
 
-		/* in this special case (changesets loaded
-		 * from journal) the SOA serial should already
-		 * be set, check it.
-		 */
-		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
-		assert(chs->serial_from == knot_rdata_soa_serial(rrset));
-		knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
+		/* Check for next SOA. */
+		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
 
-		/* Read remaining RRSets */
-		int in_remove_section = 1;
-		while (remaining > 0) {
-
-			/* Parse next RRSet. */
-			rrset = 0;
-			stream = chs->data + (chs->size - remaining);
-			ret = rrset_deserialize(stream, &remaining, &rrset);
-			if (ret != KNOT_EOK) {
-				return KNOT_EMALF;
-			}
-
-			/* Check for next SOA. */
-			if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
-
-				/* Move to ADD section if in REMOVE. */
-				if (in_remove_section) {
-					knot_changeset_add_soa(chs, rrset,
-					                       KNOT_CHANGESET_ADD);
-					in_remove_section = 0;
-				} else {
-					/* Final SOA. */
-					knot_rrset_deep_free(&rrset, 1, NULL);
-					break;
-				}
+			/* Move to ADD section if in REMOVE. */
+			if (in_remove_section) {
+				knot_changeset_add_soa(chs, rrset,
+				                       KNOT_CHANGESET_ADD);
+				in_remove_section = 0;
 			} else {
-				/* Remove RRSets. */
-				if (in_remove_section) {
-					ret = knot_changeset_add_rrset(
-						chs, rrset,
-						KNOT_CHANGESET_REMOVE);
-				} else {
+				/* Final SOA. */
+				knot_rrset_deep_free(&rrset, 1, NULL);
+				break;
+			}
+		} else {
+			/* Remove RRSets. */
+			if (in_remove_section) {
+				ret = knot_changeset_add_rrset(
+				              chs, rrset,
+				              KNOT_CHANGESET_REMOVE);
+			} else {
 				/* Add RRSets. */
-					ret = knot_changeset_add_rrset(
-						chs, rrset,
-						KNOT_CHANGESET_ADD);
-				}
-
-				/* Check result. */
-				if (ret != KNOT_EOK) {
-					return KNOT_ERROR;
-				}
+				ret = knot_changeset_add_rrset(
+				              chs, rrset,
+				              KNOT_CHANGESET_ADD);
 			}
 		}
 	}
 
+	return ret;
+}
+
+static int zones_rrset_write_to_mem(const knot_rrset_t *rr, char **entry,
+                                    size_t *remaining) {
+	size_t written = 0;
+	int ret = rrset_serialize(rr, *((uint8_t **)entry),
+	                          &written);
+	if (ret == KNOT_EOK) {
+		assert(written <= *remaining);
+		*remaining -= written;
+		*entry += written;
+	}
+
+	return ret;
+}
+
+static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
+                                            char *entry, size_t max_size)
+{
+	/* Write changeset flags. */
+	memcpy(entry, (char*)&chs->flags, sizeof(uint32_t));
+	entry += sizeof(uint32_t);
+	max_size -= sizeof(uint32_t);
+
+	/* Serialize SOA 'from'. */
+	int ret = zones_rrset_write_to_mem(chs->soa_from, &entry, &max_size);
+	if (ret != KNOT_EOK) {
+		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
+		return KNOT_ERROR;  /*! \todo Other code? */
+	}
+
+	/* Serialize RRSets from the 'remove' section. */
+	knot_rr_ln_t *rr_node = NULL;
+	WALK_LIST(rr_node, chs->remove) {
+		knot_rrset_t *rrset = rr_node->rr;
+		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
+		if (ret != KNOT_EOK) {
+			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
+			return KNOT_ERROR;  /*! \todo Other code? */
+		}
+	}
+
+	/* Serialize SOA 'to'. */
+	ret = zones_rrset_write_to_mem(chs->soa_to, &entry, &max_size);
+	if (ret != KNOT_EOK) {
+		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
+		return KNOT_ERROR;  /*! \todo Other code? */
+	}
+
+	/* Serialize RRSets from the 'add' section. */
+	WALK_LIST(rr_node, chs->add) {
+		knot_rrset_t *rrset = rr_node->rr;
+		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
+		if (ret != KNOT_EOK) {
+			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
+			return KNOT_ERROR;  /*! \todo Other code? */
+		}
+
+	}
+
 	return KNOT_EOK;
+}
+
+static int changeset_pack(const knot_changeset_t *chs, journal_t *j)
+{
+	assert(chs != NULL);
+	assert(j != NULL);
+
+	dbg_xfr("Saving changeset from %u to %u.\n",
+	        chs->serial_from, chs->serial_to);
+
+	uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
+
+	/* Count the size of the entire changeset in serialized form. */
+	size_t entry_size = 0;
+
+	int ret = zones_changeset_binary_size(chs, &entry_size);
+	assert(ret == KNOT_EOK);
+
+	dbg_xfr_verb("Size in serialized form: %zu\n", entry_size);
+
+	/* Reserve space for the journal entry. */
+	char *journal_entry = NULL;
+	ret = journal_map(j, k, &journal_entry, entry_size, false);
+	if (ret != KNOT_EOK) {
+		dbg_xfr("Failed to map space for journal entry: %s.\n",
+		        knot_strerror(ret));
+		return ret;
+	}
+
+	assert(journal_entry != NULL);
+
+	/* Serialize changeset, saving it bit by bit. */
+	ret = zones_serialize_and_store_chgset(chs, journal_entry, entry_size);
+	/* Unmap the journal entry.
+	 * If successfuly written changeset to journal, validate the entry. */
+	int unmap_ret = journal_unmap(j, k, journal_entry, ret == KNOT_EOK);
+	if (ret == KNOT_EOK && unmap_ret != KNOT_EOK) {
+		ret = unmap_ret; /* Propagate the result. */
+	}
+
+	return ret;
 }
 
 /*! \brief Helper for iterating journal (this is temporary until #80) */
@@ -1120,7 +1182,7 @@ static int journal_walk(const char *fn, uint32_t from, uint32_t to,
 		}
 
 		/* Skip wrong changesets. */
-		if (!(n->flags & JOURNAL_VALID) || n->flags & JOURNAL_TRANS) {
+		if (!(n->flags & JOURNAL_VALID)) {
 			++n;
 			continue;
 		}
@@ -1176,9 +1238,17 @@ int journal_load_changesets(const char *path, knot_changesets_t *dst,
 	}
 
 	/* Unpack binary data. */
-	ret = changesets_unpack(dst);
-	if (ret != KNOT_EOK) {
-		return ret;
+	assert(dst != NULL);
+	/*
+	 * Parses changesets from the binary format stored in chgsets->data
+	 * into the changeset_t structures.
+	 */
+	knot_changeset_t* chs = NULL;
+	WALK_LIST(chs, dst->sets) {
+		ret = changesets_unpack(chs);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	/* Check for complete history. */
@@ -1188,6 +1258,34 @@ int journal_load_changesets(const char *path, knot_changesets_t *dst,
 	}
 
 	return KNOT_EOK;
+}
+
+int journal_store_changesets(knot_changesets_t *src, const char *path, size_t size_limit)
+{
+	if (src == NULL || path == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Open journal for reading. */
+	int ret = KNOT_EOK;
+	journal_t *journal = journal_open(path, size_limit);
+	if (journal == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Begin writing to journal. */
+	knot_changeset_t *chs = NULL;
+	WALK_LIST(chs, src->sets) {
+		/* Make key from serials. */
+		ret = changeset_pack(chs, journal);
+		if (ret != KNOT_EOK)
+			break;
+	}
+
+	/*! @note If the journal is full, this function returns KNOT_EBUSY. */
+
+	/* Written changesets to journal. */
+	return journal_close(journal);
 }
 
 static void mark_synced(journal_t *journal, journal_node_t *node)

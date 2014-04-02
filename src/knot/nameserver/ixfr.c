@@ -140,7 +140,7 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const zone_t *zone,
 		return KNOT_EUPTODATE;
 	}
 
-	*chgsets = knot_changesets_create();
+	*chgsets = knot_changesets_create(0);
 	if (*chgsets == NULL) {
 		return KNOT_ENOMEM;
 	}

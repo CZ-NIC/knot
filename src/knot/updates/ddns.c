@@ -1647,13 +1647,13 @@ static int knot_ddns_process_rr(const knot_rrset_t *rr,
  * If anything fails, rollback must be done. The xfrin_rollback_update() may
  * be good for this.
  */
-int knot_ddns_process_update(zone_contents_t *zone,
+int knot_ddns_process_update(zone_t *zone, zone_contents_t *contents,
                              const knot_pkt_t *query,
                              knot_changeset_t *changeset,
                              knot_changes_t *changes,
-                             knot_rcode_t *rcode, uint32_t new_serial)
+                             knot_rcode_t *rcode)
 {
-	if (zone == NULL || query == NULL || changeset == NULL || rcode == NULL
+	if (contents == NULL || query == NULL || changeset == NULL || rcode == NULL
 	    || changes == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -1661,7 +1661,7 @@ int knot_ddns_process_update(zone_contents_t *zone,
 	int ret = KNOT_EOK;
 
 	/* Copy base SOA RR. */
-	const knot_rrset_t *soa = knot_node_rrset(zone_contents_apex(zone),
+	const knot_rrset_t *soa = knot_node_rrset(zone_contents_apex(contents),
 						  KNOT_RRTYPE_SOA);
 	knot_rrset_t *soa_begin = NULL;
 	knot_rrset_t *soa_end = NULL;
@@ -1680,7 +1680,7 @@ int knot_ddns_process_update(zone_contents_t *zone,
 
 	/* Set the new serial according to policy. */
 	if (sn > -1) {
-		sn_new = new_serial;
+		sn_new = zone_contents_next_serial(contents, zone->conf->serial_policy);
 		assert(sn_new != KNOT_EINVAL);
 	} else {
 		*rcode = KNOT_RCODE_SERVFAIL;
@@ -1734,7 +1734,7 @@ int knot_ddns_process_update(zone_contents_t *zone,
 		}
 
 		dbg_ddns_verb("Processing RR %p...\n", rr);
-		ret = knot_ddns_process_rr(rr, zone, changeset, changes,
+		ret = knot_ddns_process_rr(rr, contents, changeset, changes,
 		                           knot_pkt_qclass(query),
 		                           &rr_copy);
 
@@ -1780,8 +1780,8 @@ int knot_ddns_process_update(zone_contents_t *zone,
 
 		/* And replace it in the zone. */
 		ret = xfrin_replace_rrset_in_node(
-		                        zone_contents_get_apex(zone),
-		                        soa_end, changes, zone);
+		                        zone_contents_get_apex(contents),
+		                        soa_end, changes, contents);
 		if (ret != KNOT_EOK) {
 			dbg_ddns("Failed to copy replace SOA in zone: %s\n",
 			         knot_strerror(ret));

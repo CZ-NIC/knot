@@ -204,9 +204,7 @@ int xfrin_finalize_updated_zone(zone_contents_t *contents_copy,
                                 bool set_nsec3_names,
                                 const hattrie_t *sorted_changes);
 
-int xfrin_switch_zone(zone_t *zone,
-                      zone_contents_t *new_contents,
-                      int transfer_type);
+zone_contents_t *xfrin_switch_zone(zone_t *zone, zone_contents_t *new_contents);
 
 void xfrin_cleanup_successful_update(knot_changes_t *changes);
 

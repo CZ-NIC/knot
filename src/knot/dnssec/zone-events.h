@@ -40,14 +40,12 @@
  * \param out_ch       New records will be added to this changeset.
  * \param soa_up       SOA serial update policy.
  * \param refresh_at   Signature refresh time of the oldest signature in zone.
- * \param new_serial
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_zone_sign(zone_contents_t *zone, conf_zone_t *zone_config,
+int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
                           knot_changeset_t *out_ch,
-                          knot_update_serial_t soa_up, uint32_t *refresh_at,
-                          uint32_t new_serial);
+                          knot_update_serial_t soa_up, uint32_t *refresh_at);
 
 /*!
  * \brief DNSSEC sign zone, store new records into changeset. Even valid
@@ -57,13 +55,12 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, conf_zone_t *zone_config,
  * \param zone_config  Zone/DNSSEC configuration.
  * \param out_ch       New records will be added to this changeset.
  * \param refresh_at   Signature refresh time of the oldest signature in zone.
- * \param new_serial
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_dnssec_zone_sign_force(zone_contents_t *zone, conf_zone_t *zone_config,
+int knot_dnssec_zone_sign_force(zone_contents_t *zone, const conf_zone_t *zone_config,
                                 knot_changeset_t *out_ch,
-                                uint32_t *refresh_at, uint32_t new_serial);
+                                uint32_t *refresh_at);
 
 /*!
  * \brief Sign changeset created by DDNS or zone-diff.
@@ -72,9 +69,7 @@ int knot_dnssec_zone_sign_force(zone_contents_t *zone, conf_zone_t *zone_config,
  * \param zone_config     Zone/DNSSEC configuration.
  * \param in_ch           Changeset created bvy DDNS or zone-diff
  * \param out_ch          New records will be added to this changeset.
- * \param soa_up          SOA serial update policy.
  * \param refresh_at      Signature refresh time of the new signatures.
- * \param new_serial      New SOA serial.
  * \param sorted_changes  Info about made changes, used for partial adjustment.
  *
  * \return Error code, KNOT_EOK if successful.
@@ -83,9 +78,7 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                conf_zone_t *zone_config,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
-                               knot_update_serial_t soa_up,
-                               uint32_t *refresh_at, uint32_t new_serial,
-                               hattrie_t **sorted_changes);
+                               uint32_t *refresh_at, hattrie_t **sorted_changes);
 
 #endif // _KNOT_DNSSEC_ZONE_EVENTS_H_
 /*! @} */

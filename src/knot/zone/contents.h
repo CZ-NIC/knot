@@ -439,6 +439,9 @@ void zone_contents_deep_free(zone_contents_t **contents);
  */
 uint32_t zone_contents_serial(const zone_contents_t *zone);
 
+/*! \brief Calculate next serial. */
+uint32_t zone_contents_next_serial(const zone_contents_t *zone, int policy);
+
 /*!
  * \brief Return true if zone is signed.
  */

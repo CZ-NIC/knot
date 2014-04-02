@@ -16,10 +16,11 @@
 
 #include "common/log.h"
 #include "knot/server/journal.h"
-#include "knot/zone/contents.h"
+#include "knot/zone/zone-diff.h"
 #include "knot/zone/load.h"
-#include "knot/zone/zone.h"
+#include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
+#include "knot/dnssec/zone-events.h"
 #include "knot/updates/xfr-in.h"
 #include "libknot/rdata.h"
 
@@ -57,7 +58,7 @@ int apply_journal(zone_contents_t *contents, conf_zone_t *conf)
 	uint32_t serial = knot_rdata_soa_serial(soa);
 
 	/* Load all pending changesets. */
-	knot_changesets_t* chsets = knot_changesets_create();
+	knot_changesets_t* chsets = knot_changesets_create(0);
 	if (chsets == NULL) {
 		return KNOT_ERROR;
 	}
@@ -75,22 +76,93 @@ int apply_journal(zone_contents_t *contents, conf_zone_t *conf)
 	}
 
 	/* Apply changesets. */
-	log_zone_info("Applying '%zu' changesets from journal to zone '%s'.\n",
-	              chsets->count, conf->name);
-	ret = xfrin_apply_changesets_directly(contents, chsets->changes, chsets);
-	if (ret != KNOT_EOK) {
-		log_zone_error("Failed to apply changesets to '%s' - %s\n",
-		               conf->name, knot_strerror(ret));
-		knot_changesets_free(&chsets);
-		return ret;
-	}
-	/* Switch zone immediately. */
-	log_zone_info("Zone '%s' serial %u -> %u.\n",
+	ret = xfrin_apply_changesets_directly(contents, chsets->changes, chsets);	
+	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
 	              conf->name,
-	              serial, zone_contents_serial(contents));
+	              serial, zone_contents_serial(contents),
+	              knot_strerror(ret));
 
 	/* Free changesets and return. */
-	xfrin_cleanup_successful_update(chsets->changes);
+	if (ret == KNOT_EOK) {
+		xfrin_cleanup_successful_update(chsets->changes);
+	}
+
 	knot_changesets_free(&chsets);
+	return ret;
+}
+
+int post_load(zone_contents_t *new_contents, zone_t *zone)
+{
+	if (zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_EOK;
+	const conf_zone_t *conf = zone->conf;
+	knot_changeset_t  *change = NULL;
+	knot_changesets_t *chset = knot_changesets_create(0);
+	if (chset == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Sign zone using DNSSEC (if configured). */
+	if (conf->dnssec_enable) {
+		change = zone_change_prepare(chset);
+		if (change == NULL) {
+			knot_changesets_free(&chset);
+			return KNOT_ENOMEM;
+		}
+#warning What to do with the refresh_at here?
+		uint32_t refresh_at = 0;
+		ret = knot_dnssec_zone_sign(new_contents, conf, change,
+		                            KNOT_SOA_SERIAL_UPDATE, &refresh_at);
+	}
+
+	/* Calculate IXFR from differences (if configured). */
+	bool contents_changed = zone->contents && (new_contents != zone->contents);
+	if (ret == KNOT_EOK && contents_changed && conf->build_diffs) {
+
+		/* Commit existing zone change and prepare new. */
+		int ret = zone_change_commit(new_contents, chset);
+		if (ret != KNOT_EOK) {
+			knot_changesets_free(&chset);
+			return ret;
+		} else {
+			knot_changesets_clear(chset);
+			change = zone_change_prepare(chset);
+			if (change == NULL) {
+				knot_changesets_free(&chset);
+				return KNOT_ENOMEM;
+			}
+		}
+
+		ret = zone_contents_create_diff(zone->contents, new_contents, change);
+		if (ret == KNOT_ENODIFF) {
+			log_zone_warning("Zone %s: Zone file changed, "
+			                 "but serial didn't - won't "
+			                 "create journal entry.\n",
+			                 conf->name);
+		} else if (ret != KNOT_EOK) {
+			log_zone_error("Zone %s: Failed to calculate "
+			               "differences from the zone "
+			               "file update: %s\n",
+			               conf->name, knot_strerror(ret));
+		}
+	}
+
+	/* Now commit current change. */
+	if (ret == KNOT_EOK) {
+		ret = zone_change_commit(new_contents, chset);
+		if (ret != KNOT_EOK) {
+			knot_changesets_free(&chset);
+			return ret;
+		}
+
+		/* Write changes to journal if all went well. */
+		ret = zone_change_store(zone, chset);
+	}
+
+	/* Free changesets and return. */
+	knot_changesets_free(&chset);
 	return ret;
 }

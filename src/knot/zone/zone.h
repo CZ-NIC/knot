@@ -121,6 +121,15 @@ static inline void zone_release(zone_t *zone)
 	ref_release(&zone->ref);
 }
 
+/*! \note Zone change API, subject to change. */
+knot_changeset_t *zone_change_prepare(knot_changesets_t *chset);
+int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset);
+int zone_change_store(zone_t *zone, knot_changesets_t *chset);
+/*! \note @mvavrusa Moved from zones.c, this needs a common API. */
+int zone_change_apply_and_store(knot_changesets_t *chs,
+                                zone_t *zone,
+                                zone_contents_t **new_contents,
+                                const char *msgpref);
 /*!
  * \brief Atomically switch the content of the zone.
  */

@@ -28,7 +28,7 @@
 #include "knot/zone/zone.h"
 
 static int init_dnssec_structs(const zone_contents_t *zone,
-                               conf_zone_t *config,
+                               const conf_zone_t *config,
                                knot_zone_keys_t *zone_keys,
                                knot_dnssec_policy_t *policy,
                                knot_update_serial_t soa_up, bool force)
@@ -65,10 +65,9 @@ static int init_dnssec_structs(const zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-static int zone_sign(zone_contents_t *zone, conf_zone_t *zone_config,
+static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
                      knot_changeset_t *out_ch, bool force,
-                     knot_update_serial_t soa_up, uint32_t *refresh_at,
-                     uint32_t new_serial)
+                     knot_update_serial_t soa_up, uint32_t *refresh_at)
 {
 	assert(zone);
 	assert(out_ch);
@@ -77,6 +76,9 @@ static int zone_sign(zone_contents_t *zone, conf_zone_t *zone_config,
 	if (msgpref == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	log_zone_info("DNSSEC: Zone %s - Signing started...\n", zone_config->name);
+	uint32_t new_serial = zone_contents_next_serial(zone, zone_config->serial_policy);
 
 	dbg_dnssec_verb("Changeset empty before generating NSEC chain: %d\n",
 	                knot_changeset_is_empty(out_ch));
@@ -147,42 +149,39 @@ static int zone_sign(zone_contents_t *zone, conf_zone_t *zone_config,
 	knot_free_zone_keys(&zone_keys);
 	dbg_dnssec_detail("Zone signed: changes=%zu\n",
 	                  knot_changeset_size(out_ch));
+
+	log_zone_info("%s Successfully signed.\n", msgpref);
 	free(msgpref);
 
 	return KNOT_EOK;
 }
 
-int knot_dnssec_zone_sign(zone_contents_t *zone, conf_zone_t *zone_config,
+int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
                           knot_changeset_t *out_ch,
-                          knot_update_serial_t soa_up, uint32_t *refresh_at,
-                          uint32_t new_serial)
+                          knot_update_serial_t soa_up, uint32_t *refresh_at)
 {
 	if (zone == NULL || zone_config == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, zone_config, out_ch, false, soa_up, refresh_at, new_serial);
+	return zone_sign(zone, zone_config, out_ch, false, soa_up, refresh_at);
 }
 
-int knot_dnssec_zone_sign_force(zone_contents_t *zone, conf_zone_t *zone_config,
-                                knot_changeset_t *out_ch, uint32_t *refresh_at,
-                                uint32_t new_serial)
+int knot_dnssec_zone_sign_force(zone_contents_t *zone, const conf_zone_t *zone_config,
+                                knot_changeset_t *out_ch, uint32_t *refresh_at)
 {
 	if (zone == NULL || zone_config == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, zone_config, out_ch, true, KNOT_SOA_SERIAL_UPDATE, refresh_at,
-	                 new_serial);
+	return zone_sign(zone, zone_config, out_ch, true, KNOT_SOA_SERIAL_UPDATE, refresh_at);
 }
 
 int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                conf_zone_t *zone_config,
                                const knot_changeset_t *in_ch,
                                knot_changeset_t *out_ch,
-                               knot_update_serial_t soa_up,
                                uint32_t *refresh_at,
-                               uint32_t new_serial,
                                hattrie_t **sorted_changes)
 {
 	if (!refresh_at || !sorted_changes) {
@@ -192,6 +191,10 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
 	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
+
+	// Keep the original serial
+	knot_update_serial_t soa_up = KNOT_SOA_SERIAL_KEEP;
+	uint32_t new_serial = zone_contents_serial(zone);
 
 	// Init needed structures
 	knot_zone_keys_t zone_keys = { '\0' };

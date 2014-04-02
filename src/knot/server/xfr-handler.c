@@ -572,56 +572,53 @@ static int xfr_async_finish(fdset_t *set, unsigned id)
 	return ret;
 }
 
-/*! \brief Switch zone contents with new. */
-int knot_ns_switch_zone(knot_ns_xfr_t *xfr)
+static int zones_save_zone(const knot_ns_xfr_t *xfr)
 {
+	/* Zone is already referenced, no need for RCU locking. */
+
 	if (xfr == NULL || xfr->new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	zone_contents_t *zone = (zone_contents_t *)xfr->new_contents;
+	dbg_xfr("xfr: %s Saving new zone file.\n", xfr->msg);
 
-	dbg_xfr("Replacing zone by new one: %p\n", zone);
-	if (zone == NULL) {
-		dbg_xfr("No new zone!\n");
-		return KNOT_ENOZONE;
-	}
-
-	/* Zone must not be looked-up from server, as it may be a different zone if
-	 * a reload occurs when transfer is pending. */
-	zone_t *z = xfr->zone;
-	if (z == NULL) {
-		char *name = knot_dname_to_str(knot_node_owner(
-				zone_contents_apex(zone)));
-		dbg_xfr("Failed to replace zone %s, old zone "
-		       "not found\n", name);
-		free(name);
-
-		return KNOT_ENOZONE;
-	}
-
-	rcu_read_unlock();
-	int ret = xfrin_switch_zone(z, zone, xfr->type);
 	rcu_read_lock();
 
+	zone_contents_t *new_zone = xfr->new_contents;
+
+	const char *zonefile = xfr->zone->conf->file;
+
+	/* Check if the new zone apex dname matches zone name. */
+	knot_dname_t *cur_name = knot_dname_from_str(xfr->zone->conf->name);
+	const knot_dname_t *new_name = NULL;
+	new_name = knot_node_owner(zone_contents_apex(new_zone));
+	int r = knot_dname_cmp(cur_name, new_name);
+	knot_dname_free(&cur_name);
+	if (r != 0) {
+		rcu_read_unlock();
+		return KNOT_EINVAL;
+	}
+
+	assert(zonefile != NULL);
+
+	/* dump the zone into text zone file */
+	int ret = zonefile_write(zonefile, new_zone, &xfr->addr);
+	rcu_read_unlock();
 	return ret;
 }
+
 
 /*! \brief Finalize XFR/IN transfer. */
 static int xfr_task_finalize(knot_ns_xfr_t *rq)
 {
 	int ret = KNOT_EINVAL;
-	rcu_read_lock();
 
 	if (rq->type == XFR_TYPE_AIN) {
 		ret = zones_save_zone(rq);
 		if (ret == KNOT_EOK) {
-			ret = knot_ns_switch_zone(rq);
-			if (ret != KNOT_EOK) {
-				log_zone_error("%s %s\n", rq->msg, knot_strerror(ret));
-				log_zone_error("%s Failed to switch in-memory "
-				               "zone.\n", rq->msg);
-			}
+			zone_contents_t *old_contents = NULL;
+			old_contents = xfrin_switch_zone(rq->zone, rq->new_contents);
+			zone_contents_deep_free(&old_contents);
 		} else {
 			log_zone_error("%s %s\n",
 			               rq->msg, knot_strerror(ret));
@@ -630,10 +627,9 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
 		knot_changesets_t *chs = (knot_changesets_t *)rq->data;
-		ret = zones_store_and_apply_chgsets(chs, rq->zone,
-		                                    &rq->new_contents,
-		                                    rq->msg,
-		                                    XFR_TYPE_IIN);
+		ret = zone_change_apply_and_store(chs, rq->zone,
+		                                  &rq->new_contents,
+		                                  rq->msg);
 		rq->data = NULL; /* Freed or applied in prev function. */
 	}
 
@@ -648,9 +644,101 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 		rq->new_contents = NULL; /* Do not free. */
 	}
 
-	rcu_read_unlock();
-
 	return ret;
+}
+
+static int xfr_task_resp_process(server_t *server,
+                                 int exp_msgid,
+                                 struct sockaddr_storage *from,
+                                 knot_pkt_t *packet)
+{
+	if (server == NULL || from == NULL || packet == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Handle SOA query response, cancel EXPIRE timer
+	 * and start AXFR transfer if needed.
+	 * Reset REFRESH timer on finish.
+	 */
+	if (knot_pkt_qtype(packet) == KNOT_RRTYPE_SOA) {
+
+		if (knot_wire_get_rcode(packet->wire) != KNOT_RCODE_NOERROR) {
+			/*! \todo Handle error response. */
+			return KNOT_ERROR;
+		}
+
+		/* Find matching zone and ID. */
+		rcu_read_lock();
+		const knot_dname_t *zone_name = knot_pkt_qname(packet);
+		/*! \todo Change the access to the zone db. */
+		zone_t *zone = knot_zonedb_find(server->zone_db, zone_name);
+
+		/* Get zone contents. */
+		if (!zone || !zone->contents) {
+			rcu_read_unlock();
+			return KNOT_EINVAL;
+		}
+
+		/* Match ID against awaited. */
+		uint16_t pkt_id = knot_wire_get_id(packet->wire);
+		if ((int)pkt_id != exp_msgid) {
+			rcu_read_unlock();
+			return KNOT_ERROR;
+		}
+
+		/* Check SOA SERIAL. */
+		int ret = xfrin_transfer_needed(zone->contents, packet);
+		dbg_zones_verb("xfrin_transfer_needed() returned %s\n",
+		               knot_strerror(ret));
+		if (ret < 0) {
+			/* RETRY/EXPIRE timers running, do not interfere. */
+			rcu_read_unlock();
+			return KNOT_ERROR;
+		}
+
+		/* No updates available. */
+		if (ret == 0) {
+			zones_schedule_refresh(zone, REFRESH_DEFAULT);
+			rcu_read_unlock();
+			return KNOT_EUPTODATE;
+		}
+
+		assert(ret > 0);
+
+		/* Check zone transfer state. */
+		pthread_mutex_lock(&zone->lock);
+		if (zone->xfr_in.state == XFR_PENDING) {
+			pthread_mutex_unlock(&zone->lock);
+			rcu_read_unlock();
+			return KNOT_EOK; /* Already pending. */
+		} else {
+			zone->xfr_in.state = XFR_PENDING;
+		}
+
+		/* Prepare XFR client transfer. */
+		int rqtype = zones_transfer_to_use(zone);
+		knot_ns_xfr_t *rq = xfr_task_create(zone, rqtype, XFR_FLAG_TCP);
+		if (!rq) {
+			pthread_mutex_unlock(&zone->lock);
+			rcu_read_unlock();
+			return KNOT_ENOMEM;
+		}
+
+		const conf_iface_t *master = zone_master(zone);
+		xfr_task_setaddr(rq, &master->addr, &master->via);
+		rq->tsig_key = master->key;
+
+		rcu_read_unlock();
+#warning "XFR enqueue."
+//		ret = xfr_enqueue(server->xfr, rq);
+//		if (ret != KNOT_EOK) {
+//			xfr_task_free(rq);
+//			zone->xfr_in.state = XFR_SCHED; /* Revert state */
+//		}
+		pthread_mutex_unlock(&zone->lock);
+	}
+
+	return KNOT_EOK;
 }
 
 /*! \brief Query response event handler function. */
@@ -702,8 +790,8 @@ static int xfr_task_resp(xfrhandler_t *xfr, knot_ns_xfr_t *rq)
 	/* Process response. */
 	switch(rt) {
 	case KNOT_RESPONSE_NORMAL:
-		ret = zones_process_response(xfr->server, rq->packet_nr, &rq->addr,
-		                             re);
+		ret = xfr_task_resp_process(xfr->server, rq->packet_nr, &rq->addr,
+		                            re);
 		break;
 	case KNOT_RESPONSE_NOTIFY:
 		ret = notify_process_response(re, rq->packet_nr);
