@@ -711,7 +711,6 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	memset(wire_to_sign, 0, sizeof(uint8_t) * size);
 	memcpy(wire_to_sign, wire, size);
 
-
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
 	assert(knot_rrset_rr_count(tsig_rr) > 0);
@@ -842,10 +841,8 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	/* Set original ID */
 	tsig_rdata_set_orig_id(tmp_tsig, knot_wire_get_id(msg));
 
-
 	/* Set other len. */
 	tsig_rdata_set_other_data(tmp_tsig, 0, 0);
-
 
 	/* Append TSIG RR. */
 	int ret = knot_tsig_append(msg, msg_len, msg_max_len, tsig_rr);

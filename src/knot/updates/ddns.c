@@ -592,7 +592,7 @@ static int process_add_cname(const knot_node_t *node,
 		if (knot_rrset_equal(&cname, rr, KNOT_RRSET_COMPARE_WHOLE)) {
 			return KNOT_EOK;
 		}
-	
+
 		int ret = rem_rr_to_chgset(&cname, changeset, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;

@@ -631,4 +631,3 @@ int knot_nsec3_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 
 	return result;
 }
-

@@ -128,10 +128,10 @@ static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	if (addr_label == NULL || addr_label[0] <= prefix_len) {
 		return KNOT_EINVAL;
 	}
-	
+
 	int addr_len = *addr_label - prefix_len;
 	memcpy(addr_str, addr_label + 1 + prefix_len, addr_len);
-	
+
 	/* Restore correct address format. */
 	char sep = str_separator(tpl->subnet.ss.ss_family);
 	str_subst(addr_str, addr_len, '-', sep);

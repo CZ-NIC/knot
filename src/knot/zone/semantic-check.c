@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>	
+#include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include "knot/knot.h"
@@ -110,7 +110,6 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	/* ^
 	   | Important errors (to be logged on first occurence and counted) */
 
-
 	/* Below are errors of lesser importance, to be counted unless
 	   specified otherwise */
 
@@ -165,7 +164,7 @@ static void log_error_from_node(err_handler_t *handler,
 		log_zone_warning("Unknown error.\n");
 		return;
 	}
-	
+
 	if (node == NULL) {
 		log_zone_warning("Total number of warnings is: %d for error: %s\n",
 		                 handler->errors[-error], error_messages[-error]);
@@ -195,8 +194,8 @@ int err_handler_handle_error(err_handler_t *handler, const knot_node_t *node,
 		return KNOT_EINVAL;
 	}
 
-	/* 
-	 * A missing SOA can only occur once, so there needn't be 
+	/*
+	 * A missing SOA can only occur once, so there needn't be
 	 * an option for it.
 	 */
 
@@ -413,7 +412,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
 	 * one of the records has to match. Signer name has been checked
 	 * before */
-	
+
 	int match = 0;
 	uint8_t rrsig_alg = knot_rrs_rrsig_algorithm(rrsig, rr_pos);
 	uint16_t key_tag_rrsig = knot_rrs_rrsig_key_tag(rrsig, rr_pos);
@@ -424,7 +423,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		if (rrsig_alg != dnskey_alg) {
 			continue;
 		}
-		
+
 		/* Calculate keytag. */
 		uint16_t dnskey_key_tag =
 			knot_keytag(knot_rrset_rr_rdata(dnskey_rrset, i),
@@ -432,7 +431,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		if (key_tag_rrsig != dnskey_key_tag) {
 			continue;
 		}
-		
+
 		/* Final step - check DNSKEY validity. */
 		if (check_dnskey_rdata(dnskey_rrset, i) == KNOT_EOK) {
 			match = 1;
@@ -442,7 +441,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 			                         "DNSKEY RDATA not matching.");
 		}
 	}
-	
+
 	if (!match) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_NO_DNSKEY, info_str);
@@ -503,7 +502,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		                         info_str);
 		/* Safe to continue, nothing is malformed. */
 	}
-	
+
 	const knot_rr_t *sig_rr = knot_rrs_rr(&rrsigs, 0);
 	if (knot_rrset_rr_ttl(rrset, 0) != knot_rr_ttl(sig_rr)) {
 		err_handler_handle_error(handler, node,
@@ -556,7 +555,7 @@ static int rdata_nsec_to_type_array(const knot_rrs_t *rrs, uint16_t type,
                                     size_t pos, uint16_t **array, size_t *count)
 {
 	assert(*array == NULL);
-	
+
 	uint8_t *data = NULL;
 	uint16_t rr_bitmap_size = 0;
 	if (type == KNOT_RRTYPE_NSEC) {
@@ -567,7 +566,7 @@ static int rdata_nsec_to_type_array(const knot_rrs_t *rrs, uint16_t type,
 	if (data == NULL) {
 		return KNOT_EMALF;
 	}
-	
+
 	*count = 0;
 	int increment = 0;
 	for (int i = 0; i < rr_bitmap_size; i += increment) {
@@ -715,7 +714,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	}
 
 	knot_dname_free(&next_dname, NULL);
-	
+
 	size_t arr_size;
 	uint16_t *array = NULL;
 	/* TODO only works for one NSEC3 RR. */
@@ -725,7 +724,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	
+
 	uint16_t type = 0;
 	for (int j = 0; j < arr_size; j++) {
 		/* test for each type's presence */
@@ -733,14 +732,14 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		if (type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
-		
+
 		if (!knot_node_rrtype_exists(node, type)) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_NSEC3_RDATA_BITMAP,
 			                         NULL);
 		}
 	}
-	
+
 	/* Check that the node only contains NSEC3 and RRSIG. */
 	for (int i = 0; i < knot_node_rrset_count(nsec3_node); i++) {
 		uint16_t type = nsec3_node->rrs[i].type;
@@ -787,7 +786,7 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 			                         ZC_ERR_CNAME_EXTRA_RECORDS,
 			                         NULL);
 		}
-	
+
 		if (node->children != 0) {
 			*fatal_error = true;
 			err_handler_handle_error(handler, node,
@@ -795,14 +794,14 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 			                         "Error triggered by parent node.");
 		}
 	}
-	
+
 	if (node->parent && knot_node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
 		*fatal_error = true;
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_DNAME_CHILDREN,
 		                         "Error triggered by child node.");
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -827,7 +826,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 			knot_rrs_ns_name(ns_rrs, i);
 		const knot_node_t *glue_node =
 			knot_zone_contents_find_node(zone, ns_dname);
-	
+
 		if (knot_dname_is_sub(ns_dname,
 			      knot_node_owner(knot_zone_contents_apex(zone)))) {
 			if (glue_node == NULL) {
@@ -837,7 +836,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 				knot_dname_to_wire(wildcard + 2,
 				                   knot_wire_next_label(ns_dname, NULL),
 				                   sizeof(wildcard));
-				const knot_node_t *wildcard_node = 
+				const knot_node_t *wildcard_node =
 					knot_zone_contents_find_node(zone,
 				                                     wildcard);
 				if (wildcard_node == NULL) {
@@ -857,7 +856,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 			}
 		}
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -953,7 +952,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 				                         ZC_ERR_NO_NSEC, NULL);
 				return KNOT_EOK;
 			}
-		
+
 			/* check NSEC/NSEC3 bitmap */
 			size_t count;
 			uint16_t *array = NULL;
@@ -1051,7 +1050,7 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 	knot_node_t **last_node = (knot_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
-	
+
 	char do_checks = *((char *)(args->arg3));
 
 	if (do_checks) {
@@ -1100,10 +1099,10 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 	if (fatal_error) {
 		return KNOT_ERROR;
 	}
-	
+
 	log_cyclic_errors_in_zone(handler, zone, last_node, first_nsec3_node,
 	                          last_nsec3_node, do_checks);
-	
+
 	return KNOT_EOK;
 }
 

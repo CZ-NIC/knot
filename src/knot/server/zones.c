@@ -847,8 +847,6 @@ bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
 	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM);
 }
 
-
-
 /*----------------------------------------------------------------------------*/
 
 static int zones_open_free_filename(const char *old_name, char **new_name)

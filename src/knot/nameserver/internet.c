@@ -1,4 +1,3 @@
-
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
@@ -50,7 +49,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 		return KNOT_EINVAL;
 	}
 	dbg_ns("%s(%p, %p)\n", __func__, dname_rr, qname);
-	
+
 	cname_rrset->owner = knot_dname_copy(qname, mm);
 	if (cname_rrset->owner == NULL) {
 		return KNOT_ENOMEM;
@@ -236,7 +235,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 			return ret;
 		}
 		knot_rrset_rr_set_ttl(&soa_rrset, 0, min);
-		
+
 		flags |= KNOT_PF_FREE;
 		soa_rrset = copy;
 	}
@@ -283,12 +282,12 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	for (uint16_t i = 0; i < rr_rdata_count; i++) {
 		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
 		node = rr->additional[i];
-		
+
 		/* No additional node for this record. */
 		if (node == NULL) {
 			continue;
 		}
-		
+
 		knot_rrset_t rrsigs = NODE_RR_INIT(node, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
 			knot_rrset_t additional = NODE_RR_INIT(node, ar_type_list[k]);
@@ -328,7 +327,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	case KNOT_ESPACE: return TRUNC;
 	default:          return ERROR;
 	}
-	
+
 	/* Check if RR count increased. */
 	if (pkt->rrset_count <= rr_count_before) {
 		dbg_ns("%s: RR %p already inserted => CNAME loop\n",
@@ -575,7 +574,6 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 	}
 
 	int ret = KNOT_ERROR;
-
 
 	/* Authenticated denial of existence. */
 	switch (state) {

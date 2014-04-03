@@ -242,7 +242,6 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 		return res;
 	}
 
-
 	return knot_rrset_add_rr(rrsigs, result, size,
 	                         knot_rrset_rr_ttl(covered, 0), NULL);
 }

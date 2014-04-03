@@ -276,7 +276,6 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 	// Init zone creator
 	zcreator_t zc = {.z = *zone, .ret = KNOT_EOK };
 
-
 	while (ret == KNOT_EOK && rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
 		    knot_node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
@@ -513,7 +512,7 @@ dbg_xfrin_exec_verb(
 					ret = KNOT_ENOMEM;
 					goto cleanup;
 				}
-				
+
 				knot_changeset_add_soa(chset, soa, KNOT_CHANGESET_REMOVE);
 
 				// change state to REMOVE
@@ -1291,7 +1290,7 @@ int xfrin_apply_changesets(zone_t *zone,
 	    || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	knot_zone_contents_t *old_contents = zone->contents;
 	if (!old_contents) {
 		dbg_xfrin("Cannot apply changesets to empty zone.\n");

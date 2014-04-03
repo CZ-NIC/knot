@@ -509,7 +509,6 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 	// Get stop query time and start reply time.
 	gettimeofday(&t_query, NULL);
 
-
 	// Print query packet if required.
 	if (style->show_query) {
 		print_packet(query, net,

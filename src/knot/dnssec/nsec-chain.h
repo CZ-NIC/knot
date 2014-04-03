@@ -56,7 +56,6 @@ enum {
 typedef int (*chain_iterate_create_cb)(knot_node_t *, knot_node_t *,
                                        nsec_chain_iterate_data_t *);
 
-
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */

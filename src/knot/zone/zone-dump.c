@@ -77,7 +77,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
-	
+
 	return KNOT_EOK;
 }
 

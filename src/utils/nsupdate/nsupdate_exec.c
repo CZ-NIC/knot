@@ -383,7 +383,6 @@ static int build_query(nsupdate_params_t *params)
 	return rr_list_to_packet(query, &params->update_list);
 }
 
-
 static int pkt_sendrecv(nsupdate_params_t *params)
 {
 	net_t net;
@@ -523,7 +522,6 @@ int cmd_update(const char* lp, nsupdate_params_t *params)
 
 	return h[bp](tok_skipspace(lp + TOK_L(cmd_array[bp])), params);
 }
-
 
 int cmd_add(const char* lp, nsupdate_params_t *params)
 {

@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <stdlib.h>
@@ -208,4 +207,3 @@ int knot_rrs_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
  * \return KNOT_E*
  */
 int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm);
-

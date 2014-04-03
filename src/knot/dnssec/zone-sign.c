@@ -1500,4 +1500,3 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	*should_sign = true;
 	return KNOT_EOK;
 }
-

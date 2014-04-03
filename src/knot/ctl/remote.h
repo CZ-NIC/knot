@@ -171,7 +171,6 @@ int remote_build_rr(knot_rrset_t *rr, const char *k, uint16_t t);
  */
 int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len);
 
-
 /*!
  * \brief Create a CNAME rdata.
  * \param d Domain name as a string.

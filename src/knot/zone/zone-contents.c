@@ -178,7 +178,7 @@ static int discover_additionals(struct rr_data *rr_data,
 		if (node == NULL && encloser && encloser->wildcard_child) {
 			node = encloser->wildcard_child;
 		}
-		
+
 		rr_data->additional[i] = (knot_node_t *)node;
 	}
 
@@ -330,7 +330,7 @@ static int adjust_additional(knot_node_t **tnode, void *data)
 	int ret = KNOT_EOK;
 	knot_zone_adjust_arg_t *args = (knot_zone_adjust_arg_t *)data;
 	knot_node_t *node = *tnode;
-	
+
 	/* Lookup additional records for specific nodes. */
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
 		struct rr_data *rr_data = &node->rrs[i];
@@ -598,7 +598,6 @@ dbg_zone_exec_detail(
 }
 
 /*----------------------------------------------------------------------------*/
-
 
 int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
                                         knot_node_t *node, int create_parents,
@@ -892,7 +891,6 @@ int knot_zone_contents_find_nsec3_for_name(const knot_zone_contents_t *zone,
 	    || nsec3_node == NULL || nsec3_previous == NULL) {
 		return KNOT_EINVAL;
 	}
-
 
 	// check if the NSEC3 tree is not empty
 	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {

@@ -316,7 +316,6 @@ static void wire_type_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
-
 static int hex_encode(const uint8_t  *in,
                       const uint32_t in_len,
                       uint8_t        *out,

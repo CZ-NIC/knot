@@ -41,7 +41,6 @@ typedef enum {
 	KNOT_CHANGESET_TYPE_DNSSEC = 1 << 2
 } knot_changeset_flag_t;
 
-
 /*! \brief One changeset received from wire, with parsed RRs. */
 typedef struct knot_changeset {
 	node_t n; /*!< List node. */

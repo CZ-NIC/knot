@@ -540,7 +540,6 @@ static int knot_zone_diff_load_trees(knot_zone_tree_t *nodes1,
 	return result;
 }
 
-
 static int knot_zone_diff_load_content(const knot_zone_contents_t *zone1,
                                        const knot_zone_contents_t *zone2,
                                        knot_changeset_t *changeset)
@@ -556,7 +555,6 @@ static int knot_zone_diff_load_content(const knot_zone_contents_t *zone1,
 
 	return result;
 }
-
 
 static int knot_zone_contents_diff(const knot_zone_contents_t *zone1,
                             const knot_zone_contents_t *zone2,

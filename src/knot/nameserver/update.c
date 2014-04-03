@@ -1,4 +1,3 @@
-
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"

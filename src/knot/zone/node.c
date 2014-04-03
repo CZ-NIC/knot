@@ -133,7 +133,7 @@ static int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *r
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	const size_t nlen = (node->rrset_count + 1) * sizeof(struct rr_data);
 	void *p = realloc(node->rrs, nlen);
 	if (p == NULL) {
@@ -597,7 +597,6 @@ int knot_node_is_apex(const knot_node_t *node)
 	return knot_node_flags_get(node, KNOT_NODE_FLAGS_APEX);
 }
 
-
 /*----------------------------------------------------------------------------*/
 
 void knot_node_free_rrsets(knot_node_t *node)
@@ -743,4 +742,3 @@ void knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
 	rrset->rrs = rr_data->rrs;
 	rrset->additional = rr_data->additional;
 }
-

@@ -1090,11 +1090,11 @@ int knot_rrset_copy_int(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm
 	if (dst == NULL || src == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	dst->type = src->type;
 	dst->additional = src->additional;
 	dst->rclass = src->rclass;
-	
+
 	dst->owner = knot_dname_copy(src->owner, mm);
 	if (dst->owner == NULL) {
 		return KNOT_ENOMEM;
@@ -1105,7 +1105,7 @@ int knot_rrset_copy_int(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm
 		knot_dname_free(&dst->owner, mm);
 		return ret;
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -1129,4 +1129,3 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 	rrset->additional = NULL;
 	return rrset;
 }
-

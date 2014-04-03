@@ -461,7 +461,7 @@ static inline struct rr_data *knot_node_rr_data_n(const knot_node_t *node,
 	if (node == NULL || pos >= node->rrset_count) {
 		return &NODE_EMPTY_DATA;
 	}
-	
+
 	return &node->rrs[pos];
 }
 

@@ -118,7 +118,6 @@ static int knot_rrs_add_rr_at_pos(knot_rrs_t *rrs, const knot_rr_t *rr,
 	return KNOT_EOK;
 }
 
-
 uint16_t knot_rr_size(const knot_rr_t *rr)
 {
 	return *((uint16_t *)rr);
@@ -228,7 +227,7 @@ const uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos)
 	if (rrs == NULL || pos >= rrs->rr_count) {
 		return NULL;
 	}
-	
+
 	return knot_rr_rdata(knot_rrs_rr(rrs, pos));
 }
 
@@ -242,7 +241,7 @@ uint16_t knot_rrs_rr_size(const knot_rrs_t *rrs, size_t pos)
 	if (rrs == NULL || pos >= rrs->rr_count) {
 		return 0;
 	}
-	
+
 	return knot_rr_size(knot_rrs_rr(rrs, pos));
 }
 
@@ -251,7 +250,7 @@ uint32_t knot_rrs_rr_ttl(const knot_rrs_t *rrs, size_t pos)
 	if (rrs == NULL || pos >= rrs->rr_count) {
 		return 0;
 	}
-	
+
 	return knot_rr_ttl(knot_rrs_rr(rrs, pos));
 }
 
@@ -323,7 +322,7 @@ bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2)
 	if (rrs1->rr_count != rrs2->rr_count) {
 		return false;
 	}
-	
+
 	for (uint16_t i = 0; i < rrs1->rr_count; ++i) {
 		const knot_rr_t *rr1 = knot_rrs_rr(rrs1, i);
 		const knot_rr_t *rr2 = knot_rrs_rr(rrs2, i);
@@ -331,7 +330,7 @@ bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2)
 			return false;
 		}
 	}
-	
+
 	return true;
 }
 

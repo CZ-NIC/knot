@@ -305,4 +305,3 @@ int knot_nsec_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 	return knot_nsec_chain_iterate_create(zone->nodes,
 	                                      connect_nsec_nodes, &data);
 }
-

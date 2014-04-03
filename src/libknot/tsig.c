@@ -379,7 +379,6 @@ size_t tsig_rdata_tsig_timers_length()
 	return KNOT_TSIG_TIMERS_LENGTH;
 }
 
-
 int tsig_rdata_store_current_time(knot_rrset_t *tsig)
 {
 	if (!tsig) {

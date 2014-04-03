@@ -50,7 +50,6 @@ static bool pkt_contains(const knot_pkt_t *packet,
 	return false;
 }
 
-
 /*! \brief Free all RRSets and reset RRSet count. */
 static void pkt_free_data(knot_pkt_t *pkt)
 {
@@ -590,7 +589,7 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	if (pkt == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Check at least header size. */
 	if (pkt->size < KNOT_WIRE_HEADER_SIZE) {
 		dbg_packet("%s: smaller than DNS header, NOREPLY\n", __func__);
@@ -620,7 +619,7 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	if (len <= 0) {
 		return KNOT_EMALF;
 	}
-	
+
 	/* Check QCLASS/QTYPE size. */
 	uint16_t question_size = len + 2 * sizeof(uint16_t); /* QCLASS + QTYPE */
 	if (pkt->parsed + question_size > pkt->size) {
@@ -628,7 +627,7 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 		return KNOT_EMALF;
 	}
 
-	pkt->parsed += question_size; 
+	pkt->parsed += question_size;
 	pkt->qname_size = len;
 
 	return KNOT_EOK;
@@ -666,7 +665,7 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	rrset->type = type;
 	rrset->rclass = rclass;
 	rrset->additional = NULL;
-	
+
 	*pos += KNOT_RR_HEADER_SIZE;
 
 	dbg_packet_verb("%s: read type %u, class %u, ttl %u, rdlength %u\n",
@@ -720,7 +719,7 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 		dbg_packet("%s: failed to parse RR\n", __func__);
 		return ret;
 	}
-	
+
 	/* Calculate parsed RR size from before/after parsing. */
 	rr_size = (pkt->parsed - rr_size);
 

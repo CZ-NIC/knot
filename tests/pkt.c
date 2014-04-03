@@ -34,7 +34,7 @@ knot_rrset_t *copy;
          remove
         t_rrset_free(&copy, NULL)
 knot_rrset_copy(cname_rr, &copy, NULL)e_rr = copy;
-        
+
         "ns2.example.com"
 };
 

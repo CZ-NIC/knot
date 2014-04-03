@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
@@ -36,7 +35,7 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	int i = state->cur_rrset;
 	int rrset_count = knot_node_rrset_count(node);
 	unsigned flags = KNOT_PF_NOTRUNC;
-	
+
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
 		knot_rrset_t rrset = NODE_RR_INIT_N(node, i);

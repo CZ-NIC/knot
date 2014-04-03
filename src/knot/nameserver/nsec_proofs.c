@@ -1,4 +1,3 @@
-
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
@@ -791,7 +790,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 			break;
 		}
 		/* RRSIG is owned by packet now. */
-		knot_rrs_init(&info->synth_rrsig.rrs); 
+		knot_rrs_init(&info->synth_rrsig.rrs);
 	};
 
 	/* Clear the list. */

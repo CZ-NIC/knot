@@ -284,4 +284,3 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 	// Sign newly created records right away
 	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
 }
-
