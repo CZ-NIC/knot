@@ -344,7 +344,7 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		}
 
 		// just store the first SOA for later use
-		(*chs)->first_soa = knot_rrset_cpy(rr, NULL);
+		(*chs)->first_soa = knot_rrset_copy(rr, NULL);
 		if ((*chs)->first_soa == NULL) {
 			ret = KNOT_ENOMEM;
 			goto cleanup;
@@ -508,7 +508,7 @@ dbg_xfrin_exec_verb(
 				if (chset == NULL) {
 					goto cleanup;
 				}
-				knot_rrset_t *soa = knot_rrset_cpy(rr, NULL);
+				knot_rrset_t *soa = knot_rrset_copy(rr, NULL);
 				if (soa == NULL) {
 					ret = KNOT_ENOMEM;
 					goto cleanup;
@@ -526,7 +526,7 @@ dbg_xfrin_exec_verb(
 			if (rr->type == KNOT_RRTYPE_SOA) {
 				// we should not be here if soa_from is not set
 				assert(chset->soa_from != NULL);
-				knot_rrset_t *soa = knot_rrset_cpy(rr, NULL);
+				knot_rrset_t *soa = knot_rrset_copy(rr, NULL);
 				if (soa == NULL) {
 					ret = KNOT_ENOMEM;
 					goto cleanup;
@@ -537,7 +537,7 @@ dbg_xfrin_exec_verb(
 			} else {
 				// just add the RR to the REMOVE part and
 				// continue
-				knot_rrset_t *cpy = knot_rrset_cpy(rr, NULL);
+				knot_rrset_t *cpy = knot_rrset_copy(rr, NULL);
 				if (cpy == NULL) {
 					ret = KNOT_ENOMEM;
 					goto cleanup;
@@ -561,7 +561,7 @@ dbg_xfrin_exec_verb(
 				continue;
 			} else {
 				// just add the RR to the ADD part and continue
-				knot_rrset_t *cpy = knot_rrset_cpy(rr, NULL);
+				knot_rrset_t *cpy = knot_rrset_copy(rr, NULL);
 				if (cpy == NULL) {
 					ret = KNOT_ENOMEM;
 					goto cleanup;

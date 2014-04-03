@@ -59,9 +59,9 @@ int knot_ddns_process_prereqs(const knot_pkt_t *query,
  * \return KNOT_E*
  */
 int knot_ddns_process_update(const knot_zone_contents_t *zone,
-                              const knot_pkt_t *query,
-                              knot_changeset_t *changeset,
-                              uint16_t *rcode, uint32_t new_serial);
+                             const knot_pkt_t *query,
+                             knot_changeset_t *changeset,
+                             uint16_t *rcode, uint32_t new_serial);
 
 #endif /* _KNOT_DDNS_H_ */
 

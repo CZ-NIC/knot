@@ -724,31 +724,6 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 	return true;
 }
 
-int knot_rrset_copy(const knot_rrset_t *from, knot_rrset_t **to, mm_ctx_t *mm)
-{
-	if (from == NULL || to == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	dbg_rrset_detail("rr: deep_copy: Copying RRs of type %d\n",
-	                 from->type);
-	*to = knot_rrset_new_from(from, mm);
-	if (*to == NULL) {
-		*to = NULL;
-		return KNOT_ENOMEM;
-	}
-
-	int ret = knot_rrs_copy(&(*to)->rrs, &from->rrs, mm);
-	if (ret != KNOT_EOK) {
-		knot_rrset_free(to, mm);
-		return ret;
-	}
-
-	(*to)->additional = NULL;
-
-	return KNOT_EOK;
-}
-
 static void rrset_deep_free_content(knot_rrset_t *rrset,
                                     mm_ctx_t *mm)
 {
@@ -1134,10 +1109,24 @@ int knot_rrset_copy_int(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm
 	return KNOT_EOK;
 }
 
-knot_rrset_t *knot_rrset_cpy(const knot_rrset_t *src, mm_ctx_t *mm)
+knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 {
-	knot_rrset_t *dst = NULL;
-	int ret = knot_rrset_copy(src, &dst, mm);
-	return ret == KNOT_EOK ? dst : NULL;
+	if (src == NULL) {
+		return NULL;
+	}
+
+	knot_rrset_t *rrset = knot_rrset_new_from(src, mm);
+	if (rrset == NULL) {
+		return NULL;
+	}
+
+	int ret = knot_rrs_copy(&rrset->rrs, &src->rrs, mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&rrset, mm);
+		return NULL;
+	}
+
+	rrset->additional = NULL;
+	return rrset;
 }
 

@@ -174,17 +174,6 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
                       knot_rrset_compare_type_t cmp);
 
 /*!
- * \brief Complete copy of RRSet structure.
- *
- * \param from  Source data.
- * \param to    Destionation data.
- * \param mm    Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_copy(const knot_rrset_t *from, knot_rrset_t **to, mm_ctx_t *mm);
-
-/*!
  * \brief Destroys the RRSet structure and all its substructures.
  )
  * Also sets the given pointer to NULL.
@@ -346,9 +335,48 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
                            const knot_rrset_t *rrsigs,
                            knot_rrset_t **out_sig, mm_ctx_t *mm);
 
+/*!
+ * \brief Checks whether RRSet is empty.
+ *
+ * \param rrset  RRSet to check.
+ *
+ * \retval True if RRSet is empty.
+ * \retval False if RRSet is not empty.
+ */
 bool knot_rrset_empty(const knot_rrset_t *rrset);
+
+/*!
+ * \brief Deep copies one RRSet into another.
+ *
+ * \param dst  Destination RRSet.
+ * \param src  Source RRSet.
+ * \param mm   Memory context.
+ *
+ * \return KNOT_E*
+ */
 int knot_rrset_copy_int(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm);
-knot_rrset_t *knot_rrset_cpy(const knot_rrset_t *src, mm_ctx_t *mm);
+
+/*!
+ * \brief Creates new RRSet from \a src RRSet.
+ *
+ * \param src  Source RRSet.
+ * \param mm   Memory context.
+ *
+ * \retval Pointer to new RRSet if all went OK.
+ * \retval NULL on error.
+ */
+knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
+
+/*!
+ * \brief RRSet intersection.
+ *
+ * \param a    First RRSet to intersect.
+ * \param b    Second RRset to intersect.
+ * \param out  Output RRSet with intersection.
+ * \param mm   Memory context.
+ *
+ * \return KNOT_E*
+ */
 int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
                             knot_rrset_t *out, mm_ctx_t *mm);
 

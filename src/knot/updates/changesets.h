@@ -55,8 +55,8 @@ typedef struct knot_changeset {
 	uint32_t serial_from; /*!< SOA start serial. */
 	uint32_t serial_to; /*!< SOA destination serial. */
 	uint32_t flags; /*!< DDNS / IXFR flags. */
-	list_t old_data;
-	list_t new_data;
+	list_t old_data; /*!< Old data, to be freed after succesfull update. */
+	list_t new_data; /*!< New data, to be freed after failed update. */
 } knot_changeset_t;
 
 /*----------------------------------------------------------------------------*/

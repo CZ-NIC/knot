@@ -61,7 +61,7 @@ static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 		}
 	};
 
-	knot_rrset_t *rr_copy = knot_rrset_cpy(rr, NULL);
+	knot_rrset_t *rr_copy = knot_rrset_copy(rr, NULL);
 	if (rr_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -497,7 +497,7 @@ static bool skip_record_addition(knot_changeset_t *changeset,
 static int add_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
                             int *apex_ns_rem)
 {
-	knot_rrset_t *rr_copy = knot_rrset_cpy(rr, NULL);
+	knot_rrset_t *rr_copy = knot_rrset_copy(rr, NULL);
 	if (rr_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -536,7 +536,7 @@ static bool skip_record_removal(knot_changeset_t *changeset, knot_rrset_t *rr)
 static int rem_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
                             int *apex_ns_rem)
 {
-	knot_rrset_t *rr_copy = knot_rrset_cpy(rr, NULL);
+	knot_rrset_t *rr_copy = knot_rrset_copy(rr, NULL);
 	if (rr_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -1016,7 +1016,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 			}
 			int64_t sn_rr = knot_rrs_soa_serial(&rr->rrs);
 			assert(knot_serial_compare(sn_rr, sn_old) > 0);
-			soa_end = knot_rrset_cpy(rr, NULL);
+			soa_end = knot_rrset_copy(rr, NULL);
 			if (soa_end == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -1030,7 +1030,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 			return KNOT_EOK;
 		}
 
-		soa_end = knot_rrset_cpy(soa_begin, NULL);
+		soa_end = knot_rrset_copy(soa_begin, NULL);
 		if (soa_end == NULL) {
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return KNOT_ENOMEM;

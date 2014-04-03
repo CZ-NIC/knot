@@ -107,15 +107,14 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_copy(rrset, &rrset_copy, NULL);
-	if (ret != KNOT_EOK) {
+	knot_rrset_t *rrset_copy = knot_rrset_copy(rrset, NULL);
+	if (rrset_copy == NULL) {
 		dbg_zonediff("zone_diff: add_rrset: Cannot copy RRSet.\n");
-		return ret;
+		return KNOT_ENOMEM;
 	}
 
-	ret = knot_changeset_add_rrset(changeset, rrset_copy,
-	                               KNOT_CHANGESET_ADD);
+	int ret = knot_changeset_add_rrset(changeset, rrset_copy,
+	                                   KNOT_CHANGESET_ADD);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now! */
 		knot_rrset_free(&rrset_copy, NULL);
@@ -146,15 +145,14 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t *rrset_copy = NULL;
-	int ret = knot_rrset_copy(rrset, &rrset_copy, NULL);
-	if (ret != KNOT_EOK) {
+	knot_rrset_t *rrset_copy = knot_rrset_copy(rrset, NULL);
+	if (rrset_copy == NULL) {
 		dbg_zonediff("zone_diff: remove_rrset: Cannot copy RRSet.\n");
-		return ret;
+		return KNOT_ENOMEM;
 	}
 
-	ret = knot_changeset_add_rrset(changeset, rrset_copy,
-	                               KNOT_CHANGESET_REMOVE);
+	int ret = knot_changeset_add_rrset(changeset, rrset_copy,
+	                                   KNOT_CHANGESET_REMOVE);
 	if (ret != KNOT_EOK) {
 		/* We have to free the copy now. */
 		knot_rrset_free(&rrset_copy, NULL);

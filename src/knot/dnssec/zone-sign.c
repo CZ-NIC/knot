@@ -742,7 +742,8 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 
 	if (knot_rrset_rr_ttl(dnskeys, 0) != knot_rrset_rr_ttl(soa, 0)) {
 		dbg_dnssec_detail("removing DNSKEYs (SOA TTL differs)\n");
-		result = knot_rrset_copy(dnskeys, &to_remove, NULL);
+		to_remove = knot_rrset_copy(dnskeys, NULL);
+		result = to_remove ? KNOT_EOK : KNOT_ENOMEM;
 		goto done;
 	}
 
@@ -1351,15 +1352,15 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 	knot_rrset_t *soa_from = NULL;
 	knot_rrset_t *soa_to = NULL;
 
-	result = knot_rrset_copy(soa, &soa_from, NULL);
-	if (result != KNOT_EOK) {
-		return result;
+	soa_from = knot_rrset_copy(soa, NULL);
+	if (soa_from == NULL) {
+		return KNOT_ENOMEM;
 	}
 
-	result = knot_rrset_copy(soa, &soa_to, NULL);
-	if (result != KNOT_EOK) {
+	soa_to =  knot_rrset_copy(soa, NULL);
+	if (soa_to == NULL) {
 		knot_rrset_free(&soa_from, NULL);
-		return result;
+		return KNOT_ENOMEM;
 	}
 
 	knot_rrs_soa_serial_set(&soa_to->rrs, new_serial);
