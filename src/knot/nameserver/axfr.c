@@ -113,7 +113,10 @@ static int axfr_answer_init(struct query_data *qdata)
 	/* Put data to process. */
 	gettimeofday(&xfer->tstamp, NULL);
 	ptrlist_add(&xfer->nodes, zone->nodes, mm);
-	ptrlist_add(&xfer->nodes, zone->nsec3_nodes, mm);
+	/* Put NSEC3 data if exists. */
+	if (!knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+		ptrlist_add(&xfer->nodes, zone->nsec3_nodes, mm);
+	}
 
 	/* Set up cleanup callback. */
 	qdata->ext = xfer;
@@ -260,8 +263,6 @@ int axfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		// save the zone contents to the xfr->data
 		xfr->new_contents = zone;
 		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
-
-		assert(zone->nsec3_nodes != NULL);
 	}
 
 	return ret;

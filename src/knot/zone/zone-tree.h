@@ -54,7 +54,7 @@ knot_zone_tree_t* knot_zone_tree_create();
  * \param tree Zone tree.
  * \return number of nodes in tree.
  */
-size_t knot_zone_tree_weight(knot_zone_tree_t* tree);
+size_t knot_zone_tree_weight(const knot_zone_tree_t* tree);
 
 /*!
  * \brief Checks if the zone tree is empty.
@@ -63,7 +63,7 @@ size_t knot_zone_tree_weight(knot_zone_tree_t* tree);
  *
  * \return Nonzero if the zone tree is empty.
  */
-int knot_zone_tree_is_empty(knot_zone_tree_t *tree);
+int knot_zone_tree_is_empty(const knot_zone_tree_t *tree);
 
 /*!
  * \brief Inserts the given node into the zone tree.
@@ -241,9 +241,6 @@ void knot_zone_tree_free(knot_zone_tree_t **tree);
  *                    as well. Set to 0 otherwise.
  */
 void knot_zone_tree_deep_free(knot_zone_tree_t **tree);
-
-void hattrie_insert_dname(hattrie_t *tr, knot_dname_t *dname);
-knot_dname_t *hattrie_get_dname(hattrie_t *tr, knot_dname_t *dname);
 
 /*----------------------------------------------------------------------------*/
 
