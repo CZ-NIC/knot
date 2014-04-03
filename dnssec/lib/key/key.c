@@ -127,6 +127,14 @@ static void update_key_id(dnssec_key_t *key)
 	gnutls_pubkey_to_key_id(key->public_key, key->id);
 }
 
+void key_update_identifiers(dnssec_key_t *key)
+{
+	assert(key);
+
+	update_keytag(key);
+	update_key_id(key);
+}
+
 _public_
 int dnssec_key_get_keytag(const dnssec_key_t *key, uint16_t *keytag)
 {
@@ -314,8 +322,7 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 	key->rdata = new_rdata;
 	key->public_key = new_pubkey;
 
-	update_key_id(key);
-	update_keytag(key);
+	key_update_identifiers(key);
 
 	return DNSSEC_EOK;
 }
@@ -364,8 +371,7 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 	key->rdata = new_rdata;
 	key->public_key = new_pubkey;
 
-	update_key_id(key);
-	update_keytag(key);
+	key_update_identifiers(key);
 
 	return DNSSEC_EOK;
 }
@@ -382,14 +388,4 @@ _public_
 bool dnssec_key_can_verify(const dnssec_key_t *key)
 {
 	return key && key->public_key;
-}
-
-/* -- internal API --------------------------------------------------------- */
-
-void key_update_identifiers(dnssec_key_t *key)
-{
-	assert(key);
-
-	update_keytag(key);
-	update_key_id(key);
 }
