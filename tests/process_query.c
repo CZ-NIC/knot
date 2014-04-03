@@ -53,7 +53,7 @@ void create_root_zone(server_t *server, mm_ctx_t *mm)
 	                                         KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
 	                                         NULL);
 	knot_rrset_add_rr(soa_rrset, SOA_RDATA, SOA_RDLEN, 7200, NULL);
-	knot_node_add_rrset(root->contents->apex, soa_rrset, NULL);
+	knot_node_add_rrset(root->contents->apex, soa_rrset);
 
 	/* Bake the zone. */
 	knot_node_t *first_nsec3 = NULL, *last_nsec3 = NULL;
