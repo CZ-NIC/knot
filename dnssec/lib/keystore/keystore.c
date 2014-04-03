@@ -7,9 +7,9 @@
 #include "key/dnskey.h"
 #include "key/internal.h"
 #include "key/keyid.h"
+#include "key/privkey.h"
 #include "keystore.h"
 #include "keystore/internal.h"
-#include "keystore/public.h"
 #include "shared.h"
 #include "wire.h"
 

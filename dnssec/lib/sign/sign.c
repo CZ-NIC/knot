@@ -19,7 +19,7 @@
  * \param from  Data in source format.
  * \param to    Allocated data in target format.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 typedef int (*signature_convert_cb)(dnssec_sign_ctx_t *ctx,
 				    const dnssec_binary_t *from,

@@ -40,6 +40,8 @@ libdnssec_la_SOURCES = \
 	lib/key/keyid.h \
 	lib/key/keytag.c \
 	lib/key/keytag.h \
+	lib/key/privkey.c \
+	lib/key/privkey.h \
 	lib/key/simple.c \
 	lib/keystore/internal.h \
 	lib/keystore/keystore.c \
@@ -48,8 +50,6 @@ libdnssec_la_SOURCES = \
 	lib/keystore/pkcs11.c \
 	lib/keystore/pkcs8.c \
 	lib/keystore/pkcs8_dir.c \
-	lib/keystore/public.c \
-	lib/keystore/public.h \
 	lib/nsec/bitmap.c \
 	lib/nsec/hash.c \
 	lib/random.c \

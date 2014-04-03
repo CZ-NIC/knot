@@ -36,7 +36,7 @@ void dnssec_nsec3_params_free(dnssec_nsec3_params_t *params);
  * \param params  Output parameters.
  * \param rdata   NSEC3PARAM RDATA.
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 				   const dnssec_binary_t *rdata);
@@ -50,7 +50,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
  * \param[in]  params  NSEC3 parameters.
  * \param[out] hash    Computed hash (will be allocated or resized).
  *
- * \return Error code, KNOT_EOK if successful.
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_nsec3_hash(const dnssec_binary_t *data,
 		      const dnssec_nsec3_params_t *params,
