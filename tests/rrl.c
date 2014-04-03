@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 
 	knot_dname_t *qname = knot_dname_from_str("beef.");
 	int ret = knot_pkt_put_question(query, qname, KNOT_CLASS_IN, KNOT_RRTYPE_A);
-	knot_dname_free(&qname);
+	knot_dname_free(&qname, NULL);
 	if (ret != KNOT_EOK) {
 		knot_pkt_free(&query);
 		return KNOT_ERROR; /* Fatal */

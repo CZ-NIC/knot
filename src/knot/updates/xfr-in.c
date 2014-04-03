@@ -85,11 +85,6 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 
 	int64_t local_serial = knot_rrs_soa_serial(soa_rrs);
 	if (local_serial < 0) {
-dbg_xfrin_exec(
-		char *name = knot_dname_to_str(knot_rrset_owner(soa_rrset));
-		dbg_xfrin("Malformed data in SOA of zone %s\n", name);
-		free(name);
-);
 		return KNOT_EMALF;  // maybe some other error
 	}
 
@@ -448,13 +443,6 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 	/*! \todo This may be implemented with much less IFs! */
 
 	while (ret == KNOT_EOK && rr != NULL) {
-dbg_xfrin_exec_verb(
-		dbg_xfrin_detail("Next loop, state: %d\n", state);
-		char *name = knot_dname_to_str(knot_rrset_owner(rr));
-		dbg_xfrin_detail("Actual RR: %s, type %u.\n", name,
-				 knot_rrset_type(rr));
-		free(name);
-);
 		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// out-of-zone domain

@@ -20,7 +20,6 @@ LE
 
 #include "common/errcode.h"
 #include "common/mempool.h"
-#include "libknot/rrset.h"
 #include "libknot/rdata.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/tsig.h"
@@ -29,12 +28,8 @@ LE
 #define NAMECOUNT 3
 #define DATACOUNT 3
 const char *g_names[NAMECOUNT] = {
-         remove the copy
-knot_rrset_t *copy;
-         remove
-        t_rrset_free(&copy, NULL)
-knot_rrset_copy(cname_rr, &copy, NULL)e_rr = copy;
-
+        "example.com",
+        "ns1.example.com",
         "ns2.example.com"
 };
 
@@ -167,7 +162,7 @@ int main(int argc, char *argv[])
 	/* Check RRs */
 	int rr_matched = 0;
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		if (knot_rrset_equal(out->rr[i], in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
+		if (knot_rrset_equal(&out->rr[i], &in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
 			++rr_matched;
 		}
 	}

@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 
 	free(digest);
 	free(params.salt);
-	knot_dname_free(&dname);
+	knot_dname_free(&dname, NULL);
 
 	return 0;
 }

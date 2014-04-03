@@ -414,9 +414,6 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 
 		knot_rrset_t rrset_from_second_node = NODE_RR_INIT(node_in_second_tree, rrset.type);
 		if (knot_rrset_empty(&rrset_from_second_node)) {
-			dbg_zonediff("zone_diff: diff_node: There is no counterpart "
-			       "for RRSet of type %u in second tree.\n",
-			       rrset->type);
 			/* RRSet has been removed. Make a copy and remove. */
 			int ret = knot_zone_diff_changeset_remove_rrset(
 				param->changeset,
