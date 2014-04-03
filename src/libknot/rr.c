@@ -23,6 +23,8 @@
 #include "libknot/common.h"
 #include "common/errcode.h"
 
+// __i386__
+
 /*!< \brief RR metadata size. */
 static const size_t RR_META_SIZE = sizeof(uint16_t) + sizeof(uint32_t);
 

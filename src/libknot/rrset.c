@@ -1129,3 +1129,13 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 	rrset->additional = NULL;
 	return rrset;
 }
+
+void knot_rrset_init_empty(knot_rrset_t *rrset)
+{
+	rrset->owner = NULL;
+	rrset->type = 0;
+	rrset->rclass = KNOT_CLASS_IN;
+	knot_rrs_init(&rrset->rrs);
+	rrset->additional = NULL;
+}
+

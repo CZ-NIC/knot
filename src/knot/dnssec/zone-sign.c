@@ -498,11 +498,10 @@ static int sign_node_rrsets(const knot_node_t *node,
 	assert(policy);
 
 	int result = KNOT_EOK;
-	knot_rrset_t rrsigs;
-	knot_node_fill_rrset(node, KNOT_RRTYPE_RRSIG, &rrsigs);
+	knot_rrset_t rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 
 	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rrset = NODE_RR_INIT_N(node, i);
+		knot_rrset_t rrset = knot_node_rrset_n(node, i);
 		if (rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
@@ -979,13 +978,9 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	assert(changeset);
 
 	const knot_node_t *apex = zone->apex;
-	knot_rrset_t dnskeys = { 0 };
-	knot_rrset_t soa = { 0 };
-	knot_rrset_t rrsigs = { 0 };
-	knot_node_fill_rrset(apex, KNOT_RRTYPE_SOA, &soa);
-	knot_node_fill_rrset(apex, KNOT_RRTYPE_RRSIG, &rrsigs);
-	knot_node_fill_rrset(apex, KNOT_RRTYPE_DNSKEY, &dnskeys);
-
+	knot_rrset_t dnskeys = knot_node_rrset(apex, KNOT_RRTYPE_DNSKEY);
+	knot_rrset_t soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t rrsigs = knot_node_rrset(apex, KNOT_RRTYPE_RRSIG);
 	if (knot_rrset_empty(&soa)) {
 		return KNOT_EINVAL;
 	}
@@ -1156,8 +1151,8 @@ static int sign_changeset_wrap(knot_rrset_t *chg_rrset, void *data)
 
 	// If node is not in zone, all its RRSIGs were dropped - no-op
 	if (node) {
-		knot_rrset_t zone_rrset = NODE_RR_INIT(node, chg_rrset->type);
-		knot_rrset_t rrsigs = NODE_RR_INIT(node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t zone_rrset = knot_node_rrset(node, chg_rrset->type);
+		knot_rrset_t rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 		bool should_sign = false;
 
 		int ret = knot_zone_sign_rr_should_be_signed(node, &zone_rrset,
@@ -1300,8 +1295,8 @@ bool knot_zone_sign_soa_expired(const knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_t soa = NODE_RR_INIT(zone->apex, KNOT_RRTYPE_SOA);
-	knot_rrset_t rrsigs = NODE_RR_INIT(zone->apex, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t soa = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	assert(!knot_rrset_empty(&soa));
 	return !all_signatures_exist(&soa, &rrsigs, zone_keys, policy);
 }

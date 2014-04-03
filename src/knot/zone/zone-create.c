@@ -267,7 +267,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 
 	if (loader->semantic_checks) {
 		int check_level = SEM_CHECK_UNSIGNED;
-		knot_rrset_t soa_rr = NODE_RR_INIT(zc->z->apex, KNOT_RRTYPE_SOA);
+		knot_rrset_t soa_rr = knot_node_rrset(zc->z->apex, KNOT_RRTYPE_SOA);
 		assert(!knot_rrset_empty(&soa_rr)); // In this point, SOA has to exist
 		const bool have_nsec3param =
 			knot_node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_NSEC3PARAM);

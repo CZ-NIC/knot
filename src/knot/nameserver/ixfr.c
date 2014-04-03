@@ -262,7 +262,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Guaranteed to have zone contents. */
 	const knot_node_t *apex = qdata->zone->contents->apex;
-	knot_rrset_t soa_rr = NODE_RR_INIT(apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rr = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa_rr)) {
 		return NS_PROC_FAIL;
 	}

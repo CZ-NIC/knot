@@ -69,31 +69,21 @@ static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 	node->flags &= ~flag;
 }
 
-void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
+static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
 {
 	knot_rrs_clear(&data->rrs, mm);
 	free(data->additional);
 }
 
-int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
+static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
 {
 	int ret = knot_rrs_copy(&data->rrs, &rrset->rrs, mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	data->type = rrset->type;
-	if (rrset->additional) {
-		data->additional = malloc(data->rrs.rr_count * sizeof(void *));
-		if (data->additional == NULL) {
-			ERR_ALLOC_FAILED;
-			knot_rrs_clear(&data->rrs, mm);
-			return ret;
-		}
-		memcpy(data->additional, rrset->additional,
-		       data->rrs.rr_count * sizeof(void *));
-	} else {
-		data->additional = NULL;
-	}
+	data->additional = NULL;
+
 	return KNOT_EOK;
 }
 
@@ -198,7 +188,7 @@ knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type)
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
-			knot_rrset_t rrset = NODE_RR_INIT_N(node, i);
+			knot_rrset_t rrset = knot_node_rrset_n(node, i);
 			return knot_rrset_copy(&rrset, NULL);
 		}
 	}
@@ -695,50 +685,3 @@ bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type)
 	return knot_node_rrs(node, type) != NULL;
 }
 
-static void clear_rrset(knot_rrset_t *rrset)
-{
-	rrset->owner = NULL;
-	rrset->type = 0;
-	rrset->rclass = KNOT_CLASS_IN;
-	knot_rrs_init(&rrset->rrs);
-	rrset->additional = NULL;
-}
-
-void knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
-                          knot_rrset_t *rrset)
-{
-	if (node == NULL || rrset == NULL) {
-		return;
-	}
-	bool hit = false;
-	for (uint i = 0; i < node->rrset_count; ++i) {
-		hit = node->rrs[i].type == type;
-		if (hit) {
-			struct rr_data *rr_data = &node->rrs[i];
-			rrset->owner = node->owner;
-			rrset->type = type;
-			rrset->rclass = KNOT_CLASS_IN;
-			rrset->rrs = rr_data->rrs;
-			rrset->additional = rr_data->additional;
-			return;
-		}
-	}
-	if (!hit) {
-		clear_rrset(rrset);
-	}
-}
-
-void knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
-                              knot_rrset_t *rrset)
-{
-	if (node == NULL || pos >= node->rrset_count || rrset == NULL) {
-		clear_rrset(rrset);
-		return;
-	}
-	struct rr_data *rr_data = &node->rrs[pos];
-	rrset->owner = node->owner;
-	rrset->type = rr_data->type;
-	rrset->rclass = KNOT_CLASS_IN;
-	rrset->rrs = rr_data->rrs;
-	rrset->additional = rr_data->additional;
-}

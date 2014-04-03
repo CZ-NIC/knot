@@ -380,4 +380,11 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
 int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
                             knot_rrset_t *out, mm_ctx_t *mm);
 
+/*!
+ * \brief Initializes given RRSet structure.
+ *
+ * \param rrset  RRSet to init.
+ */
+void knot_rrset_init_empty(knot_rrset_t *rrset);
+
 /*! @} */

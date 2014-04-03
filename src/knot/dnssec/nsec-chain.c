@@ -125,7 +125,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 		return KNOT_ENOMEM;
 	}
 
-	knot_rrset_t old_nsec = NODE_RR_INIT(a, KNOT_RRTYPE_NSEC);
+	knot_rrset_t old_nsec = knot_node_rrset(a, KNOT_RRTYPE_NSEC);
 	if (!knot_rrset_empty(&old_nsec)) {
 		if (knot_rrset_equal(new_nsec, &old_nsec,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
@@ -278,7 +278,7 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n)
 {
 	assert(n);
 	for (int i = 0; i < n->rrset_count; ++i) {
-		knot_rrset_t rrset = NODE_RR_INIT_N(n, i);
+		knot_rrset_t rrset = knot_node_rrset_n(n, i);
 		if (rrset.type != KNOT_RRTYPE_NSEC &&
 		    rrset.type != KNOT_RRTYPE_RRSIG) {
 			return false;

@@ -135,7 +135,7 @@ int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt)
 
 	/* Add SOA RR to authority section for IXFR. */
 	knot_node_t *apex = zone->contents->apex;
-	knot_rrset_t soa = NODE_RR_INIT(apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
 	ret = knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa, 0);
 	return ret;
@@ -781,7 +781,7 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 	if (node == NULL) {
 		return false;
 	}
-	knot_rrset_t node_rrset = NODE_RR_INIT(node, rr->type);
+	knot_rrset_t node_rrset = knot_node_rrset(node, rr->type);
 	if (knot_rrset_empty(&node_rrset)) {
 		return false;
 	}
@@ -839,7 +839,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 			continue;
 		}
 
-		knot_rrset_t removed_rrset = NODE_RR_INIT(node, rr->type);
+		knot_rrset_t removed_rrset = knot_node_rrset(node, rr->type);
 		knot_rr_t *old_data = removed_rrset.rrs.data;
 		knot_node_t **old_additional = removed_rrset.additional;
 		int ret = xfrin_replace_rrs_with_copy(node,
@@ -856,7 +856,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 			return ret;
 		}
 
-		knot_rrset_t changed_rrset = NODE_RR_INIT(node, rr->type);
+		knot_rrset_t changed_rrset = knot_node_rrset(node, rr->type);
 		ret = knot_rrset_remove_rr_using_rrset(&changed_rrset, rr, NULL);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
@@ -896,7 +896,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 			return KNOT_ENOMEM;
 		}
 
-		knot_rrset_t changed_rrset = NODE_RR_INIT(node, rr->type);
+		knot_rrset_t changed_rrset = knot_node_rrset(node, rr->type);
 		if (!knot_rrset_empty(&changed_rrset)) {
 			knot_rr_t *old_data = changed_rrset.rrs.data;
 			knot_node_t **old_additional = changed_rrset.additional;
