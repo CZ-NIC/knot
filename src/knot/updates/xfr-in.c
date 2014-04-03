@@ -830,9 +830,12 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chset->remove) {
 		const knot_rrset_t *rr = rr_node->rr;
+
+		// Find node for this owner
 		knot_node_t *node = zone_contents_find_node_for_rr(contents,
 		                                                   rr);
 		if (!can_remove(node, rr)) {
+			// Nothing to remove from, skip.
 			continue;
 		}
 
@@ -846,6 +849,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 			return ret;
 		}
 
+		// Store old data for cleanup.
 		ret = add_old_data(chset, old_data, old_additional);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
@@ -866,10 +870,11 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 				return ret;
 			}
 
-			// Replace with changed data
+			// Replace data in node with changed data
 			knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
 			*rrs = changed_rrset.rrs;
 		} else {
+			// Removed last RR in RRSet, remove it from node.
 			knot_node_remove_rrset(node, rr->type);
 		}
 	}
@@ -885,6 +890,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 	WALK_LIST(rr_node, chset->add) {
 		knot_rrset_t *rr = rr_node->rr;
 
+		// Get or create node with this owner
 		knot_node_t *node = zone_contents_get_node_for_rr(contents, rr);
 		if (node == NULL) {
 			return KNOT_ENOMEM;
@@ -909,7 +915,10 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 			}
 		}
 
-		// Either node did not exist before, and we add new RR, or merge
+		/*
+		 *  Either node did not exist before, and we add new RR,
+		 *  or we merge with copy created above.
+		 */
 		int ret = knot_node_add_rrset(node, rr);
 		if (ret < 0) {
 			clear_new_rrs(node, rr->type);
@@ -947,9 +956,10 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 		return ret;
 	}
 
-	if (ptrlist_add(old_rrs, old_data, NULL) == NULL) {
+	ret = add_old_data(chset, old_data, NULL);
+	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, KNOT_RRTYPE_SOA);
-		return KNOT_ENOMEM;
+		return ret;
 	}
 
 	soa_rrs = knot_node_get_rrs(node, KNOT_RRTYPE_SOA);
@@ -960,10 +970,12 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 		return KNOT_ENOMEM;
 	}
 
-	if (ptrlist_add(new_rrs, soa_rrs->data, NULL) == NULL) {
+	ret = add_new_data(chset, soa_rrs->data);
+	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, KNOT_RRTYPE_SOA);
-		return KNOT_ENOMEM;
+		return ret;
 	}
+
 	return KNOT_EOK;
 }
 
