@@ -331,7 +331,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	/* Check if RR count increased. */
 	if (pkt->rrset_count <= rr_count_before) {
 		dbg_ns("%s: RR %p already inserted => CNAME loop\n",
-		       __func__, cname_rr);
+		       __func__, &cname_rr);
 		qdata->node = NULL; /* Act is if the name leads to nowhere. */
 		return HIT;
 	}
