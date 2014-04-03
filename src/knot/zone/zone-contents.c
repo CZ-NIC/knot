@@ -203,8 +203,8 @@ static int adjust_pointers(knot_node_t **tnode, void *data)
 		args->first_node = node;
 	}
 
-	// clear flags, so no relicts remain
-	node->flags = 0;
+	// clear Removed NSEC flag so that no relicts remain
+	knot_node_clear_removed_nsec(node);
 
 	// check if this node is not a wildcard child of its parent
 
