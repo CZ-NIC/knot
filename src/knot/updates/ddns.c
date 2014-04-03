@@ -870,8 +870,7 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 	/* First check if the TTL of the new RR is equal to that of the first
 	 * RR in the node's RRSet. If not, refuse the UPDATE.
 	 */
-	if (knot_rrset_rr_ttl(*rr_copy, 0)
-	    != knot_rrset_rr_ttl(node_rrset_copy, 0)) {
+	if (!knot_rrset_ttl_equal(*rr_copy, node_rrset_copy)) {
 		assert(knot_rrset_type(*rr_copy) != KNOT_RRTYPE_RRSIG);
 		char type_str[16] = { '\0' };
 		knot_rrtype_to_string(knot_rrset_type(*rr_copy), type_str,

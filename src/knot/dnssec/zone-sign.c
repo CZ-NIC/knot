@@ -743,7 +743,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 	knot_rrset_t *to_remove = NULL;
 	int result = KNOT_EOK;
 
-	if (knot_rrset_rr_ttl(dnskeys, 0) != knot_rrset_rr_ttl(soa, 0)) {
+	if (!knot_rrset_ttl_equal(dnskeys, soa)) {
 		dbg_dnssec_detail("removing DNSKEYs (SOA TTL differs)\n");
 		result = knot_rrset_copy(dnskeys, &to_remove, NULL);
 		goto done;
@@ -840,8 +840,7 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 
 	knot_rrset_t *to_add = NULL;
 	int result = KNOT_EOK;
-	bool add_all = (dnskeys == NULL ||
-	                knot_rrset_rr_ttl(dnskeys, 0) != knot_rrset_rr_ttl(soa, 0));
+	bool add_all = (dnskeys == NULL || !knot_rrset_ttl_equal(dnskeys, soa));
 
 	for (int i = 0; i < zone_keys->count; i++) {
 		const knot_zone_key_t *key = &zone_keys->keys[i];

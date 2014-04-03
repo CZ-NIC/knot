@@ -949,7 +949,7 @@ dbg_xfrin_exec_detail(
 	  * the case here.
 	  */
 	if (knot_rrset_type(add) != KNOT_RRTYPE_RRSIG
-	    && knot_rrset_rr_ttl(add, 0) != knot_rrset_rr_ttl(*rrset, 0)) {
+	    && !knot_rrset_ttl_equal(add, *rrset)) {
 		char type_str[16] = { '\0' };
 		knot_rrtype_to_string(knot_rrset_type(add), type_str,
 		                      sizeof(type_str));

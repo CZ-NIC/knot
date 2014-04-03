@@ -756,6 +756,16 @@ void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl)
 	}
 }
 
+bool knot_rrset_ttl_equal(const knot_rrset_t *r1, const knot_rrset_t *r2)
+{
+	if (r1 == NULL || r2 == NULL
+	    || r1->rr_count == 0 || r2->rr_count == 0) {
+		return false;
+	}
+
+	return (knot_rrset_rr_ttl(r1, 0) == knot_rrset_rr_ttl(r2, 0));
+}
+
 const knot_dname_t *knot_rrset_owner(const knot_rrset_t *rrset)
 {
 	return rrset->owner;

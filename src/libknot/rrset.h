@@ -220,6 +220,17 @@ uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
 void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
 
 /*!
+ * \brief Compares TTL of first RRs of two RRSets.
+ *
+ * \param r1 First RRSet.
+ * \param r2 Second RRSet.
+ *
+ * \retval True if TTLs are equal.
+ * \retval False otherwise.
+ */
+bool knot_rrset_ttl_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
+
+/*!
  * \brief Returns count of RRs in RRSet.
  *
  * \param rrset  RRSet.
