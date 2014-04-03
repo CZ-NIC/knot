@@ -133,6 +133,20 @@ def do_normal_tests(master, zone, dnssec=False):
     compare(resp.count(), 0, "Added CNAME when it shouldn't")
     verify(master, zone, dnssec)
 
+    # create new node by adding RR + try to add CNAME
+    # the update should ignore the CNAME
+    check_log("Add new node + add CNAME to it")
+    up = master.update(zone)
+    up.add("rrtest2.ddns.", "3600", "MX", "10 something.ddns.")
+    up.add("rrtest2.ddns.", "3600", "CNAME", "ignore.me.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("rrtest2.ddns.", "ANY")
+    resp.check(rcode="NOERROR")
+    resp.check_record(rtype="MX", rdata="10 something.ddns.")
+    # TODO: don't know how to do check: "no CNAME in response"
+    resp.check_record(rtype="CNAME", nordata="ignore.me.ddns.")
+    verify(master, zone, dnssec)
+
     # add A to CNAME node, should be ignored
     check_log("Add A to CNAME node")
     up = master.update(zone)
@@ -144,6 +158,20 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_record(rtype="CNAME", rdata="mail.ddns.")
     verify(master, zone, dnssec)
 
+    # add new node with CNAME + add A to the same node
+    # the A should be ignored
+    check_log("Add new CNAME node + add A to it")
+    up = master.update(zone)
+    up.add("rrtest3.ddns.", "3600", "CNAME", "dont.ignore.me.ddns.")
+    up.add("rrtest3.ddns.", "3600", "TXT", "ignore")
+    up.send("NOERROR")
+    resp = master.dig("rrtest3.ddns.", "ANY")
+    resp.check(rcode="NOERROR")
+    resp.check_record(rtype="CNAME", rdata="dont.ignore.me.ddns.")
+    # TODO: don't know how to do check: "no other RR in response"
+    resp.check_record(rtype="TXT", nordata="ignore")
+    verify(master, zone, dnssec)
+
     # add CNAME to CNAME node, should be replaced
     check_log("CNAME to CNAME addition")
     up = master.update(zone)
@@ -152,6 +180,18 @@ def do_normal_tests(master, zone, dnssec=False):
     resp = master.dig("cname.ddns.", "CNAME")
     resp.check(rcode="NOERROR", rdata="new-cname.ddns.")
     resp.check(rcode="NOERROR", nordata="mail.ddns.")
+    verify(master, zone, dnssec)
+
+    # add new CNAME node + another CNAME to it; last CNAME should stay in zone
+    check_log("Add two CNAMEs to a new node")
+    up = master.update(zone)
+    up.add("rrtest4.ddns.", "3600", "CNAME", "ignore.me.ddns.")
+    up.add("rrtest4.ddns.", "3600", "CNAME", "dont.ignore.me.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("rrtest3.ddns.", "ANY")
+    resp.check(rcode="NOERROR") 
+    resp.check_record(rtype="CNAME", rdata="dont.ignore.me.ddns.")
+    resp.check_record(rtype="CNAME", nordata="ignore.me.ddns")
     verify(master, zone, dnssec)
 
     # add SOA with higher than current serial, serial starting from 2010111213
@@ -165,6 +205,20 @@ def do_normal_tests(master, zone, dnssec=False):
                rdata="dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
 
+    # add SOA with higher serial + remove it in the same UPDATE
+    # should result in replacing the SOA (i.e. the remove should be ignored)
+    check_log("Newer SOA addition + removal")
+    up = master.update(zone)
+    up.add("ddns.", 3600, "SOA",
+           "dns1.ddns. hostmaster.ddns. 2012111213 10800 3600 1209600 7200")
+    up.delete("ddns.", "SOA",
+           "dns1.ddns. hostmaster.ddns. 2012111213 10800 3600 1209600 7200")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "SOA")
+    resp.check(rcode="NOERROR",
+               rdata="dns1.ddns. hostmaster.ddns. 2012111213 10800 3600 1209600 7200")
+    verify(master, zone, dnssec)
+
     # add SOA with lower serial, should be ignored
     check_log("Older SOA addition")
     up = master.update(zone)
@@ -172,7 +226,7 @@ def do_normal_tests(master, zone, dnssec=False):
            "dns1.ddns. hostmaster.ddns. 2010111213 10800 3600 1209600 7200")
     resp = master.dig("ddns.", "SOA")
     resp.check(rcode="NOERROR",
-               rdata="dns1.ddns. hostmaster.ddns. 2011111213 10800 3600 1209600 7200")
+               rdata="dns1.ddns. hostmaster.ddns. 2012111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
 
     # add and remove the same record
@@ -214,7 +268,7 @@ def do_normal_tests(master, zone, dnssec=False):
     verify(master, zone, dnssec)
 
     # remove all from APEX (NS should stay)
-    check_log("Remove all")
+    check_log("Remove all NS")
     up = master.update(zone)
     up.delete("ddns.", "ANY")
     up.send("NOERROR")
@@ -225,6 +279,94 @@ def do_normal_tests(master, zone, dnssec=False):
     resp = master.dig("ddns.", "MX")
     resp.check(rcode="NOERROR")
     compare(resp.count(section="answer"), 0, "MX rrset removal")
+    verify(master, zone, dnssec)
+
+    # remove all NS + add 1 new; result: 3 RRs
+    check_log("Remove all NS + add 1 new")
+    up = master.update(zone)
+    up.delete("ddns.", "NS")
+    up.add("ddns.", 3600, "NS", "dns3.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "NS")
+    resp.check(rcode="NOERROR")
+    resp.check_record(rtype="NS", rdata="dns1.ddns.")
+    resp.check_record(rtype="NS", rdata="dns2.ddns.")
+    resp.check_record(rtype="NS", rdata="dns3.ddns.")
+    verify(master, zone, dnssec)
+
+    # remove NSs one at a time + add one new
+    # the last one + the new one should remain in the zone
+    check_log("Remove NSs one at a time + add 1 new")
+    up = master.update(zone)
+    up.delete("ddns.", "NS", "dns1.ddns.")
+    up.delete("ddns.", "NS", "dns2.ddns.")
+    up.delete("ddns.", "NS", "dns3.ddns.")
+    up.add("ddns.", 3600, "NS", "dns4.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "NS")
+    resp.check(rcode="NOERROR", nordata="dns1.ddns.")
+    resp.check(nordata="dns2.ddns.")
+    resp.check_record(rtype="NS", rdata="dns3.ddns.")
+    resp.check_record(rtype="NS", rdata="dns4.ddns.")
+    verify(master, zone, dnssec)
+
+    # add new NS + remove all one at a time
+    # only the new NS should remain in the zone
+    check_log("Add 1 NS + remove all NSs one at a time")
+    up = master.update(zone)
+    up.add("ddns.", 3600, "NS", "dns5.ddns.")
+    up.delete("ddns.", "NS", "dns3.ddns.")
+    up.delete("ddns.", "NS", "dns4.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "NS")
+    resp.check(rcode="NOERROR", nordata="dns3.ddns.")
+    resp.check(nordata="dns4.ddns.")
+    resp.check_record(rtype="NS", rdata="dns5.ddns.")
+    verify(master, zone, dnssec)
+
+    # add new NS + remove the old one; only the new one should remain
+    check_log("Add 1 NS + remove old NS")
+    up = master.update(zone)
+    up.add("ddns.", 3600, "NS", "dns1.ddns.")
+    up.delete("ddns.", "NS", "dns5.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "NS")
+    resp.check(rcode="NOERROR", nordata="dns5.ddns.")
+    resp.check_record(rtype="NS", rdata="dns1.ddns.")
+    verify(master, zone, dnssec)
+
+    # remove old NS + add new NS; both should remain in the zone
+    check_log("Remove old NS + add 1 NS")
+    up = master.update(zone)
+    up.delete("ddns.", "NS", "dns1.ddns.")
+    up.add("ddns.", 3600, "NS", "dns2.ddns.")
+    up.send("NOERROR") 
+    resp = master.dig("ddns.", "NS")
+    resp.check(rcode="NOERROR")
+    resp.check_record(rtype="NS", rdata="dns1.ddns.")
+    resp.check_record(rtype="NS", rdata="dns2.ddns.")
+    verify(master, zone, dnssec)
+
+    # remove NSs one at a time; the last one should remain in the zone
+    check_log("Remove NSs one at a time")
+    up = master.update(zone)
+    up.delete("ddns.", "NS", "dns1.ddns.")
+    up.delete("ddns.", "NS", "dns2.ddns.")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "NS")
+    resp.check(rcode="NOERROR", nordata="dns1.ddns.")
+    resp.check_record(rtype="NS", rdata="dns2.ddns.")
+    verify(master, zone, dnssec)
+
+    # add new NS + remove ALL NS; should ignore the remove and add the NS
+    check_log("Add new NS + remove ALL NSs at once")
+    up = master.update(zone)
+    up.add("ddns.", 3600, "NS", "dns1.ddns.")
+    up.delete("ddns.", "NS")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "NS")
+    resp.check_record(rtype="NS", rdata="dns1.ddns.")
+    resp.check_record(rtype="NS", rdata="dns2.ddns.")
     verify(master, zone, dnssec)
 
     if dnssec:
