@@ -867,6 +867,21 @@ static int knot_ddns_add_rr_merge_normal(knot_rrset_t *node_rrset_copy,
 
 	dbg_ddns_verb("Merging normal RR to existing RRSet.\n");
 
+	/* First check if the TTL of the new RR is equal to that of the first
+	 * RR in the node's RRSet. If not, refuse the UPDATE.
+	 */
+	if (!knot_rrset_ttl_equal(*rr_copy, node_rrset_copy)) {
+		assert(knot_rrset_type(*rr_copy) != KNOT_RRTYPE_RRSIG);
+		char type_str[16] = { '\0' };
+		knot_rrtype_to_string(knot_rrset_type(*rr_copy), type_str,
+		                      sizeof(type_str));
+		char *name = knot_dname_to_str(knot_rrset_owner(*rr_copy));
+		log_zone_error("UPDATE: TTL mismatch in %s, type %s\n",
+		               name, type_str);
+		free(name);
+		return KNOT_ETTL;
+	}
+
 	int rdata_in_copy = knot_rrset_rr_count(*rr_copy);
 	int merged = 0, deleted_rrs = 0;
 	int ret = knot_rrset_merge_sort(node_rrset_copy, *rr_copy, &merged,
