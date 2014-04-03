@@ -203,6 +203,9 @@ static int adjust_pointers(knot_node_t **tnode, void *data)
 		args->first_node = node;
 	}
 
+	// clear flags, so no relicts remain
+	node->flags = 0;
+
 	// check if this node is not a wildcard child of its parent
 
 	if (knot_dname_is_wildcard(knot_node_owner(node))) {

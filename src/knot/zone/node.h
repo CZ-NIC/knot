@@ -100,7 +100,7 @@ typedef enum {
 	 *  \todo Remove after dname refactoring, update description in node. */
 	KNOT_NODE_FLAGS_EMPTY = 1 << 4,
 	/*! \brief Node has a wildcard child. */
-	KNOT_NODE_FLAGS_WILDCARD_CHILD = (uint8_t)0x08,
+	KNOT_NODE_FLAGS_WILDCARD_CHILD = 1 << 5
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
