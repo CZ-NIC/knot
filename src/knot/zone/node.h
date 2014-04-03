@@ -33,11 +33,6 @@
 #include "libknot/rrset.h"
 #include "libknot/rr.h"
 
-/*! \brief RRSet count in node if there is only NSEC (and possibly its RRSIG).*/
-#define KNOT_NODE_RRSET_COUNT_ONLY_NSEC 2
-
-/*----------------------------------------------------------------------------*/
-
 struct rr_data;
 
 /*!

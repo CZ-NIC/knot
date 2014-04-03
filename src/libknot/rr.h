@@ -67,18 +67,11 @@ uint32_t knot_rr_ttl(const knot_rr_t *rr);
 void knot_rr_set_ttl(knot_rr_t *rr, uint32_t ttl);
 
 /*!
- * \brief Returns const pointer to RR data.
- * \param rr  RR whose data we want.
- * \return RR data const pointer.
- */
-const uint8_t *knot_rr_rdata(const knot_rr_t *rr);
-
-/*!
  * \brief Returns pointer to RR data.
  * \param rr  RR whose data we want.
  * \return RR data pointer.
  */
-uint8_t *knot_rr_get_rdata(knot_rr_t *rr);
+uint8_t *knot_rr_rdata(const knot_rr_t *rr);
 
 /* ----------------------------- RR misc ------------------------------------ */
 

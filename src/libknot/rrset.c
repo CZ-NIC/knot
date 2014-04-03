@@ -467,7 +467,7 @@ int knot_rrset_add_rr(knot_rrset_t *rrset,
 	knot_rr_t rr[knot_rr_array_size(size)];
 	knot_rr_set_size(rr, size);
 	knot_rr_set_ttl(rr, ttl);
-	memcpy(knot_rr_get_rdata(rr), rdata, size);
+	memcpy(knot_rr_rdata(rr), rdata, size);
 
 	return knot_rrs_add_rr(&rrset->rrs, rr, mm);
 }
@@ -504,7 +504,7 @@ uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos)
 {
 	knot_rr_t *rr = knot_rrs_get_rr(&rrset->rrs, pos);
 	if (rr) {
-		return knot_rr_get_rdata(rr);
+		return knot_rr_rdata(rr);
 	} else {
 		return NULL;
 	}
