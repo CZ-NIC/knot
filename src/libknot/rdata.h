@@ -42,7 +42,7 @@
 
 static inline uint8_t *data_offset(const knot_rrs_t *rrs, size_t pos,
                                    size_t offset) {
-	knot_rr_t *rr = knot_rrs_get_rr(rrs, pos);
+	knot_rr_t *rr = knot_rrs_rr(rrs, pos);
 	return knot_rr_rdata(rr) + offset;
 }
 
@@ -205,7 +205,7 @@ void knot_rrs_rrsig_signature(const knot_rrs_t *rrs, size_t pos,
 	uint8_t *rdata = data_offset(rrs, pos, 0);
 	uint8_t *signer = rdata + 18;
 	const knot_rr_t *rr = knot_rrs_rr(rrs, pos);
-	size_t total_size = knot_rr_size(rr);
+	size_t total_size = knot_rr_rdata_size(rr);
 	size_t header_size = 18 + knot_dname_size(signer);
 
 	*signature = rdata + header_size;
@@ -241,7 +241,7 @@ void knot_rrs_dnskey_key(const knot_rrs_t *rrs, size_t pos, uint8_t **key,
 	RRS_CHECK(rrs, pos, return);
 	*key = data_offset(rrs, pos, 4);
 	const knot_rr_t *rr = knot_rrs_rr(rrs, pos);
-	*key_size = knot_rr_size(rr) - 4;
+	*key_size = knot_rr_rdata_size(rr) - 4;
 }
 
 static inline
@@ -256,11 +256,11 @@ void knot_rrs_nsec_bitmap(const knot_rrs_t *rrs,
                             uint8_t **bitmap, uint16_t *size)
 {
 	RRS_CHECK(rrs, 0, return);
-	knot_rr_t *rr = knot_rrs_get_rr(rrs, 0);
+	knot_rr_t *rr = knot_rrs_rr(rrs, 0);
 	int next_size = knot_dname_size(knot_rrs_nsec_next(rrs));
 
 	*bitmap = knot_rr_rdata(rr) + next_size;
-	*size = knot_rr_size(rr) - next_size;
+	*size = knot_rr_rdata_size(rr) - next_size;
 }
 
 static inline
@@ -326,7 +326,7 @@ void knot_rrs_nsec3_bitmap(const knot_rrs_t *rrs, size_t pos,
 
 	*bitmap = data_offset(rrs, pos, offset);
 	const knot_rr_t *rr = knot_rrs_rr(rrs, pos);
-	*size = knot_rr_size(rr) - offset;
+	*size = knot_rr_rdata_size(rr) - offset;
 }
 
 static inline

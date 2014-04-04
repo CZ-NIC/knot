@@ -36,6 +36,27 @@ struct rr_offsets {
 
 #warning "missing #ifdefs for #pragma once, couldn't find the right define"
 
+static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
+{
+	if (mm) {
+		void *p = mm->alloc(mm->ctx, size);
+		if (knot_unlikely(p == NULL)) {
+			return NULL;
+		} else {
+			if (what) {
+				memcpy(p, what,
+				       prev_size < size ? prev_size : size);
+			}
+			if (mm->free) {
+				mm->free(what);
+			}
+			return p;
+		}
+	} else {
+		return realloc(what, size);
+	}
+}
+
 static knot_rr_t *rr_seek(knot_rr_t *d, size_t pos)
 {
 	if (d == NULL) {
@@ -45,7 +66,7 @@ static knot_rr_t *rr_seek(knot_rr_t *d, size_t pos)
 	size_t offset = 0;
 	for (size_t i = 0; i < pos; i++) {
 		knot_rr_t *rr = d + offset;
-		offset += knot_rr_array_size(knot_rr_size(rr));
+		offset += knot_rr_array_size(knot_rr_rdata_size(rr));
 	}
 
 	return d + offset;
@@ -61,7 +82,7 @@ static size_t knot_rrs_size(const knot_rrs_t *rrs)
 	for (size_t i = 0; i < rrs->rr_count; ++i) {
 		const knot_rr_t *rr = knot_rrs_rr(rrs, i);
 		assert(rr);
-		total_size += knot_rr_array_size(knot_rr_size(rr));
+		total_size += knot_rr_array_size(knot_rr_rdata_size(rr));
 	}
 
 	return total_size;
@@ -92,36 +113,36 @@ static uint8_t* knot_rrs_create_rr_at_pos(knot_rrs_t *rrs,
 	if (rrs->rr_count == 0) {
 		rrs->rr_count++;
 		assert(pos == 0);
-		knot_rr_t *new_rr = knot_rrs_get_rr(rrs, pos);
+		knot_rr_t *new_rr = knot_rrs_rr(rrs, pos);
 		knot_rr_set_size(new_rr, size);
 		knot_rr_set_ttl(new_rr, ttl);
 		return knot_rr_rdata(new_rr);
 	}
 
-	knot_rr_t *last_rr = knot_rrs_get_rr(rrs, rrs->rr_count - 1);
+	knot_rr_t *last_rr = knot_rrs_rr(rrs, rrs->rr_count - 1);
 	assert(last_rr);
 	// Last RR
 	if (pos == rrs->rr_count) {
 		rrs->rr_count++;
-		knot_rr_t *new_rr = knot_rrs_get_rr(rrs, pos);
+		knot_rr_t *new_rr = knot_rrs_rr(rrs, pos);
 		knot_rr_set_size(new_rr, size);
 		knot_rr_set_ttl(new_rr, ttl);
 		return knot_rr_rdata(new_rr);
 	}
 
-	knot_rr_t *old_rr = knot_rrs_get_rr(rrs, pos);
+	knot_rr_t *old_rr = knot_rrs_rr(rrs, pos);
 	assert(old_rr);
 
 	// Make space for new data by moving the array
 	memmove(old_rr + knot_rr_array_size(size), old_rr,
-	        (last_rr + knot_rr_array_size(knot_rr_size(last_rr))) - old_rr);
+	        (last_rr + knot_rr_array_size(knot_rr_rdata_size(last_rr))) - old_rr);
 
 	// Set size for new RR
 	knot_rr_set_size(old_rr, size);
 	knot_rr_set_ttl(old_rr, ttl);
 
 	rrs->rr_count++;
-	assert(knot_rr_size(old_rr) > 0);
+	assert(knot_rr_rdata_size(old_rr) > 0);
 	return knot_rr_rdata(old_rr);
 }
 
@@ -133,18 +154,18 @@ static int knot_rrs_add_rr_at_pos(knot_rrs_t *rrs, const knot_rr_t *rr,
 	}
 
 	uint8_t *created_rdata = knot_rrs_create_rr_at_pos(rrs, pos,
-	                                                   knot_rr_size(rr),
+	                                                   knot_rr_rdata_size(rr),
 	                                                   knot_rr_ttl(rr),
 	                                                   mm);
 	if (created_rdata == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(created_rdata, knot_rr_rdata(rr), knot_rr_size(rr));
+	memcpy(created_rdata, knot_rr_rdata(rr), knot_rr_rdata_size(rr));
 	return KNOT_EOK;
 }
 
-uint16_t knot_rr_size(const knot_rr_t *rr)
+uint16_t knot_rr_rdata_size(const knot_rr_t *rr)
 {
 	return ((struct rr_offsets *)rr)->size;
 }
@@ -181,8 +202,8 @@ int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2)
 	}
 	const uint8_t *r1 = knot_rr_rdata(rr1);
 	const uint8_t *r2 = knot_rr_rdata(rr2);
-	uint16_t l1 = knot_rr_size(rr1);
-	uint16_t l2 = knot_rr_size(rr2);
+	uint16_t l1 = knot_rr_rdata_size(rr1);
+	uint16_t l2 = knot_rr_rdata_size(rr2);
 	int cmp = memcmp(r1, r2, MIN(l1, l2));
 	if (cmp == 0 && l1 != l2) {
 		cmp = l1 < l2 ? -1 : 1;
@@ -225,7 +246,7 @@ int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm)
 	return KNOT_EOK;
 }
 
-knot_rr_t *knot_rrs_get_rr(const knot_rrs_t *rrs, size_t pos)
+knot_rr_t *knot_rrs_rr(const knot_rrs_t *rrs, size_t pos)
 {
 	if (rrs == NULL || pos >= rrs->rr_count) {
 		return NULL;
@@ -234,16 +255,7 @@ knot_rr_t *knot_rrs_get_rr(const knot_rrs_t *rrs, size_t pos)
 	return rr_seek(rrs->data, pos);
 }
 
-const knot_rr_t *knot_rrs_rr(const knot_rrs_t *rrs, size_t pos)
-{
-	if (rrs == NULL || pos >= rrs->rr_count) {
-		return NULL;
-	}
-
-	return (const knot_rr_t *)rr_seek(rrs->data, pos);
-}
-
-const uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos)
+uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos)
 {
 	if (rrs == NULL || pos >= rrs->rr_count) {
 		return NULL;
@@ -252,18 +264,13 @@ const uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos)
 	return knot_rr_rdata(knot_rrs_rr(rrs, pos));
 }
 
-uint8_t *knot_rrs_rr_get_rdata(const knot_rrs_t *rrs, size_t pos)
-{
-	return (uint8_t *)knot_rrs_rr_rdata(rrs, pos);
-}
-
 uint16_t knot_rrs_rr_size(const knot_rrs_t *rrs, size_t pos)
 {
 	if (rrs == NULL || pos >= rrs->rr_count) {
 		return 0;
 	}
 
-	return knot_rr_size(knot_rrs_rr(rrs, pos));
+	return knot_rr_rdata_size(knot_rrs_rr(rrs, pos));
 }
 
 uint32_t knot_rrs_rr_ttl(const knot_rrs_t *rrs, size_t pos)
@@ -303,16 +310,16 @@ int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm)
 		return KNOT_EINVAL;
 	}
 
-	knot_rr_t *old_rr = knot_rrs_get_rr(rrs, pos);
-	knot_rr_t *last_rr = knot_rrs_get_rr(rrs, rrs->rr_count - 1);
+	knot_rr_t *old_rr = knot_rrs_rr(rrs, pos);
+	knot_rr_t *last_rr = knot_rrs_rr(rrs, rrs->rr_count - 1);
 	assert(old_rr);
 	assert(last_rr);
 
 	size_t total_size = knot_rrs_size(rrs);
-	uint16_t old_size = knot_rr_size(old_rr);
+	uint16_t old_size = knot_rr_rdata_size(old_rr);
 
 	void *old_threshold = old_rr + knot_rr_array_size(old_size);
-	void *last_threshold = last_rr + knot_rr_array_size(knot_rr_size(last_rr));
+	void *last_threshold = last_rr + knot_rr_array_size(knot_rr_rdata_size(last_rr));
 	// Move RDATA
 	memmove(old_rr, old_threshold,
 	        last_threshold - old_threshold);

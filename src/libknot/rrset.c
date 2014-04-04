@@ -386,7 +386,7 @@ static size_t rrset_binary_size_one(const knot_rrset_t *rrset,
 	const knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, rdata_pos);
 	if (rr) {
 		// RR size + TTL
-		return knot_rr_size(rr) + sizeof(uint32_t);
+		return knot_rr_rdata_size(rr) + sizeof(uint32_t);
 	} else {
 		return 0;
 	}
@@ -399,7 +399,7 @@ static void rrset_serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
 	assert(rr);
 	uint32_t ttl = knot_rr_ttl(rr);
 	memcpy(stream, &ttl, sizeof(uint32_t));
-	memcpy(stream + sizeof(uint32_t), knot_rr_rdata(rr), knot_rr_size(rr));
+	memcpy(stream + sizeof(uint32_t), knot_rr_rdata(rr), knot_rr_rdata_size(rr));
 }
 
 static int rrset_deserialize_rr(knot_rrset_t *rrset,
@@ -476,7 +476,7 @@ uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos)
 {
 	const knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, pos);
 	if (rr) {
-		return knot_rr_size(rr);
+		return knot_rr_rdata_size(rr);
 	} else {
 		return 0;
 	}
@@ -494,7 +494,7 @@ uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos)
 
 void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl)
 {
-	knot_rr_t *rr = knot_rrs_get_rr(&rrset->rrs, pos);
+	knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, pos);
 	if (rr) {
 		knot_rr_set_ttl(rr, ttl);
 	}
@@ -502,7 +502,7 @@ void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl)
 
 uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos)
 {
-	knot_rr_t *rr = knot_rrs_get_rr(&rrset->rrs, pos);
+	knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, pos);
 	if (rr) {
 		return knot_rr_rdata(rr);
 	} else {

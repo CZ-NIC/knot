@@ -34,16 +34,19 @@
 
 /* ---------------------------- Single RR ----------------------------------- */
 
-typedef uint8_t knot_rr_t;  /*!< \brief Single RR containing size, TTL and RDATA. */
+/*!
+ * \brief knot_rr_t Array holding single RR payload, i.e. ttl, size and RDATA.
+ */
+typedef uint8_t knot_rr_t;
 
 /* ------------------------- RR getters/setters ----------------------------- */
 
 /*!
- * \brief Returns size of single RR.
+ * \brief Returns RDATA size of single RR.
  * \param rr  RR whose size we want.
  * \return  RR size.
  */
-uint16_t knot_rr_size(const knot_rr_t *rr);
+uint16_t knot_rr_rdata_size(const knot_rr_t *rr);
 
 /*!
  * \brief Sets size for given RR.
@@ -94,7 +97,7 @@ int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2);
 
 /* --------------------------- Multiple RRs ----------------------------------*/
 
-/*!< \brief Array of RRs */
+/*!< \brief Array of RRs. */
 typedef struct knot_rrs {
 	uint16_t rr_count;  /*!< \brief Count of RRs stored in the structure. */
 	knot_rr_t *data;    /*!< \brief Actual data, canonically sorted. */
@@ -132,15 +135,7 @@ int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm);
  * \param pos  Position to use.
  * \return Pointer to RR at \a pos position.
  */
-knot_rr_t *knot_rrs_get_rr(const knot_rrs_t *rrs, size_t pos);
-
-/*!
- * \brief Gets RR from RRS structure, using given position.
- * \param rrs  RRS structure to get RR from.
- * \param pos  Position to use.
- * \return Const pointer to RR at \a pos position.
- */
-const knot_rr_t *knot_rrs_rr(const knot_rrs_t *rrs, size_t pos);
+knot_rr_t *knot_rrs_rr(const knot_rrs_t *rrs, size_t pos);
 
 /*!
  * \brief Gets RDATA from RR at \a pos position.
@@ -148,15 +143,7 @@ const knot_rr_t *knot_rrs_rr(const knot_rrs_t *rrs, size_t pos);
  * \param pos  Position to use.
  * \return Pointer to RDATA of RR at \a pos position.
  */
-const uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos);
-
-/*!
- * \brief Gets RDATA from RR at \a pos position.
- * \param rrs  RRS to get RDATA from.
- * \param pos  Position to use.
- * \return Const pointer to RDATA of RR at \a pos position.
- */
-uint8_t *knot_rrs_rr_get_rdata(const knot_rrs_t *rrs, size_t pos);
+uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos);
 
 /*!
  * \brief Gets size from RR at \a pos position.
