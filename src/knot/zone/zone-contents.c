@@ -1351,7 +1351,7 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 		return ret;
 	}
 
-	if (contents->nsec3_nodes) {
+	if (from->nsec3_nodes) {
 		ret = recreate_nsec3_tree(from, contents);
 		if (ret != KNOT_EOK) {
 			knot_zone_tree_free(&contents->nodes);

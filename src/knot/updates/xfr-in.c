@@ -885,9 +885,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 /*----------------------------------------------------------------------------*/
 
 static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
-                                   knot_changeset_t *chset,
-                                   list_t *old_rrs,
-                                   list_t *new_rrs)
+                                   knot_changeset_t *chset)
 {
 	dbg_xfrin("Replacing SOA record.\n");
 	knot_node_t *node = contents->apex;
@@ -957,7 +955,7 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 		return ret;
 	}
 
-	return xfrin_apply_replace_soa(contents, chset, old_rrs, new_rrs);
+	return xfrin_apply_replace_soa(contents, chset);
 }
 
 /*----------------------------------------------------------------------------*/
