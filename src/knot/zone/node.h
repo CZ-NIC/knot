@@ -405,6 +405,7 @@ static void inline knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
                                         knot_rrset_t *rrset)
 {
 	if (node == NULL || rrset == NULL) {
+		knot_rrset_init_empty(rrset);
 		return;
 	}
 	for (uint i = 0; i < node->rrset_count; ++i) {

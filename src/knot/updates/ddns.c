@@ -295,61 +295,70 @@ static int knot_ddns_check_prereq(const knot_rrset_t *rrset,
 
 /* ----------------------- changeset lists helpers -------------------------- */
 
+#warning TODO: Store changesets as a lookup structure
+
+/*!< \brief Returns true if \a cmp code returns true for one RR in list. */
+#define LIST_MATCH(l, cmp) \
+	knot_rr_ln_t *_n; \
+	WALK_LIST(_n, l) { \
+		const knot_rrset_t *list_rr = _n->rr; \
+		if (cmp) { \
+			return true; \
+		} \
+	}; \
+	return false;
+
+/*!< \brief Deletes RR from list if \a cmp code returns true for it. */
+#define LIST_DEL_MATCH(l, cmp) \
+	knot_rr_ln_t *_n; \
+	node_t *_nxt; \
+	WALK_LIST_DELSAFE(_n, _nxt, l) { \
+		knot_rrset_t *list_rr = _n->rr; \
+		if (cmp) { \
+			knot_rrset_free(&list_rr, NULL); \
+			rem_node((node_t *)_n); \
+		} \
+	};
+
 /*!< \brief Checks whether RR was already removed. */
 static bool removed_rr(const knot_changeset_t *changeset, const knot_rrset_t *rr)
 {
-	knot_rr_ln_t *n;
-	WALK_LIST(n, changeset->remove) {
-		const knot_rrset_t *list_rr = n->rr;
-		if (knot_rrset_equal(rr, list_rr, KNOT_RRSET_COMPARE_WHOLE)) {
-			return true;
-		}
-	};
+	LIST_MATCH(changeset->remove,
+	           knot_rrset_equal(rr, list_rr, KNOT_RRSET_COMPARE_WHOLE));
+}
 
-	return false;
+/*!< \brief Checks whether any CNAME RR under dname was added. */
+static bool cname_added(const knot_changeset_t *changeset, const knot_dname_t *d)
+{
+	knot_rrset_t mock_cname;
+	knot_rrset_init(&mock_cname, (knot_dname_t *)d,
+	                KNOT_RRTYPE_CNAME, KNOT_CLASS_IN);
+	LIST_MATCH(changeset->add,
+	           knot_rrset_equal(&mock_cname, list_rr, KNOT_RRSET_COMPARE_HEADER));
+}
+
+/*!< \brief Checks whether any RR under given name was added. */
+static bool name_added(const knot_changeset_t *changeset, const knot_dname_t *d)
+{
+	LIST_MATCH(changeset->add, knot_dname_is_equal(d, list_rr->owner));
 }
 
 /*!< \brief Removes RR from list, full equality check. */
 static void remove_rr_from_list(list_t *l, const knot_rrset_t *rr)
 {
-	knot_rr_ln_t *rr_node = NULL;
-	node_t *nxt = NULL;
-	WALK_LIST_DELSAFE(rr_node, nxt, *l) {
-		knot_rrset_t *rrset = rr_node->rr;
-		if (knot_rrset_equal(rrset, rr, KNOT_RRSET_COMPARE_WHOLE)) {
-			knot_rrset_free(&rrset, NULL);
-			rem_node((node_t *)rr_node);
-			return;
-		}
-	}
+	LIST_DEL_MATCH(*l, knot_rrset_equal(list_rr, rr, KNOT_RRSET_COMPARE_WHOLE));
 }
 
 /*!< \brief Removes RR from list, owner and type check. */
 static void remove_header_from_list(list_t *l, const knot_rrset_t *rr)
 {
-	knot_rr_ln_t *rr_node = NULL;
-	node_t *nxt = NULL;
-	WALK_LIST_DELSAFE(rr_node, nxt, *l) {
-		knot_rrset_t *rrset = rr_node->rr;
-		if (knot_rrset_equal(rrset, rr, KNOT_RRSET_COMPARE_HEADER)) {
-			knot_rrset_free(&rrset, NULL);
-			rem_node((node_t *)rr_node);
-		}
-	}
+	LIST_DEL_MATCH(*l, knot_rrset_equal(list_rr, rr, KNOT_RRSET_COMPARE_HEADER));
 }
 
 /*!< \brief Removes RR from list, owner check. */
 static void remove_owner_from_list(list_t *l, const knot_dname_t *owner)
 {
-	knot_rr_ln_t *rr_node = NULL;
-	node_t *nxt = NULL;
-	WALK_LIST_DELSAFE(rr_node, nxt, *l) {
-		knot_rrset_t *rrset = rr_node->rr;
-		if (knot_dname_is_equal(rrset->owner, owner)) {
-			knot_rrset_free(&rrset, NULL);
-			rem_node((node_t *)rr_node);
-		}
-	}
+	LIST_DEL_MATCH(*l, knot_dname_is_equal(list_rr->owner, owner));
 }
 
 /* --------------------- true/false helper functions ------------------------ */
@@ -393,9 +402,16 @@ static bool should_replace(const knot_rrset_t *chg_rrset,
 }
 
 /*!< \brief Returns true if node will be empty after update application. */
-static bool node_empty(const knot_node_t *node, const knot_changeset_t *changeset)
+static bool node_empty(const knot_node_t *node, knot_dname_t *owner,
+                       const knot_changeset_t *changeset)
 {
+	if (node == NULL && name_added(changeset, owner)) {
+		// Node created in update.
+		return false;
+	}
+
 	if (node == NULL) {
+		// Node empty.
 		return true;
 	}
 
@@ -406,6 +422,7 @@ static bool node_empty(const knot_node_t *node, const knot_changeset_t *changese
 		for (uint16_t j = 0; j < node_rrset.rrs.rr_count; ++j) {
 			knot_rrset_add_rr_from_rrset(&node_rr, &node_rrset, j, NULL);
 			if (!removed_rr(changeset, &node_rr)) {
+				// One of the RRs from node was not removed.
 				knot_rrs_clear(&node_rr.rrs, NULL);
 				return false;
 			}
@@ -437,9 +454,15 @@ static bool node_contains_rr(const knot_node_t *node,
 }
 
 /*!< \brief Returns true if CNAME is in this node. */
-static bool adding_to_cname(const knot_node_t *node,
+static bool adding_to_cname(const knot_dname_t *owner,
+                            const knot_node_t *node,
                             knot_changeset_t *changeset)
 {
+	if (cname_added(changeset, owner)) {
+		// Added a CNAME in this update.
+		return true;
+	}
+
 	if (node == NULL) {
 		// Node did not exist before update.
 		return false;
@@ -451,8 +474,13 @@ static bool adding_to_cname(const knot_node_t *node,
 		return false;
 	}
 
-	// Return true if we have not removed CNAME in this update.
-	return !removed_rr(changeset, &cname);
+	if (removed_rr(changeset, &cname)) {
+		// Node did contain CNAME, but it was removed in this update.
+		return false;
+	}
+
+	// CNAME present
+	return true;
 }
 
 /*!< \brief Used to ignore SOA deletions and SOAs with lower serial than zone. */
@@ -481,7 +509,7 @@ static bool skip_record_addition(knot_changeset_t *changeset,
 		if (should_replace(rr, rrset)) {
 			// Replacing singleton RR.
 			knot_rrset_free(&rrset, NULL);
-			rrset = rr;
+			rr_node->rr = rr;
 			return true;
 		} else if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
 			// Freeing duplication.
@@ -599,7 +627,7 @@ static int process_add_cname(const knot_node_t *node,
 		}
 
 		return add_rr_to_chgset(rr, changeset, NULL);
-	} else if (!node_empty(node, changeset)) {
+	} else if (!node_empty(node, rr->owner, changeset)) {
 		// Other occupied node => ignore.
 		return KNOT_EOK;
 	} else {
@@ -665,7 +693,7 @@ static int process_add_normal(const knot_node_t *node,
                               knot_changeset_t *changeset,
                               int *apex_ns_rem)
 {
-	if (adding_to_cname(node, changeset)) {
+	if (adding_to_cname(rr->owner, node, changeset)) {
 		// Adding RR to CNAME node, ignore.
 		return KNOT_EOK;
 	}
@@ -708,22 +736,21 @@ static int process_rem_rr(const knot_rrset_t *rr,
                           knot_changeset_t *changeset,
                           int *apex_ns_rem)
 {
-	// Remove possible previously added RR
-	remove_rr_from_list(&changeset->add, rr);
-	if (node == NULL) {
-		// Removing from node that did not exists before update
-		return KNOT_EOK;
-	}
-
-	uint16_t type = rr->type;
 	const bool apex_ns = knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
-	                     type == KNOT_RRTYPE_NS;
+	                     rr->type == KNOT_RRTYPE_NS;
 	if (apex_ns) {
 		const knot_rrs_t *ns_rrs = knot_node_rrs(node, KNOT_RRTYPE_NS);
 		if (*apex_ns_rem == ns_rrs->rr_count - 1) {
 			// Cannot remove last apex NS RR
 			return KNOT_EOK;
 		}
+	}
+
+	// Remove possible previously added RR
+	remove_rr_from_list(&changeset->add, rr);
+	if (node == NULL) {
+		// Removing from node that did not exists before update
+		return KNOT_EOK;
 	}
 
 	knot_rrset_t to_modify = knot_node_rrset(node, rr->type);
@@ -754,12 +781,6 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
                              const knot_node_t *node,
                              knot_changeset_t *changeset)
 {
-	// Removing all previously added RRs with this owner and type from changeset
-	remove_header_from_list(&changeset->add, rrset);
-	if (node == NULL) {
-		return KNOT_EOK;
-	}
-
 	if (rrset->type == KNOT_RRTYPE_SOA ||
 	    knot_rrtype_is_ddns_forbidden(rrset->type)) {
 		// Ignore SOA and DNSSEC removals.
@@ -769,6 +790,12 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 	if (knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
 	    rrset->type == KNOT_RRTYPE_NS) {
 		// Ignore NS apex RRSet removals.
+		return KNOT_EOK;
+	}
+
+	// Remove all previously added RRs with this owner and type from changeset
+	remove_header_from_list(&changeset->add, rrset);
+	if (node == NULL) {
 		return KNOT_EOK;
 	}
 
