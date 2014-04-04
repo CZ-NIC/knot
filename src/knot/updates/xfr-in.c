@@ -597,24 +597,6 @@ cleanup:
 /* Applying changesets to zone                                                */
 /*----------------------------------------------------------------------------*/
 
-void xfrin_zone_contents_free(knot_zone_contents_t **contents)
-{
-	/*! \todo This should be all in some API!! */
-
-	// free the zone tree with nodes
-	dbg_zone("Destroying zone tree.\n");
-	knot_zone_tree_deep_free(&(*contents)->nodes);
-	dbg_zone("Destroying NSEC3 zone tree.\n");
-	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes);
-
-	knot_nsec3_params_free(&(*contents)->nsec3_params);
-
-	free(*contents);
-	*contents = NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-
 void xfrin_cleanup_successful_update(knot_changesets_t *chgs)
 {
 	if (chgs == NULL) {
@@ -633,45 +615,9 @@ void xfrin_cleanup_successful_update(knot_changesets_t *chgs)
 }
 
 /*----------------------------------------------------------------------------*/
-/* New changeset applying                                                     */
-/*----------------------------------------------------------------------------*/
 
-static int xfrin_switch_nodes_in_node(knot_node_t **node, void *data)
+static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 {
-	UNUSED(data);
-
-	assert(node && *node);
-	assert(knot_node_new_node(*node) == NULL);
-
-	knot_node_update_refs(*node);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static int xfrin_switch_nodes(knot_zone_contents_t *contents_copy)
-{
-	assert(contents_copy != NULL);
-
-	// Traverse the trees and for each node check every reference
-	// stored in that node. The node itself should be new.
-	int ret = knot_zone_tree_apply(contents_copy->nodes,
-	                               xfrin_switch_nodes_in_node, NULL);
-	if (ret == KNOT_EOK) {
-		ret = knot_zone_tree_apply(contents_copy->nsec3_nodes,
-		                           xfrin_switch_nodes_in_node, NULL);
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
-{
-	/*! \todo This should be all in some API!! */
-
 	// free the zone tree, but only the structure
 	// (nodes are already destroyed)
 	dbg_zone("Destroying zone tree.\n");
@@ -687,44 +633,22 @@ static void xfrin_zone_contents_free2(knot_zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_cleanup_old_nodes(knot_node_t **node, void *data)
+static void xfrin_cleanup_failed_update(knot_zone_contents_t **new_contents)
 {
-	UNUSED(data);
-	assert(node && *node);
-
-	knot_node_set_new_node(*node, NULL);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void xfrin_cleanup_failed_update(knot_zone_contents_t *old_contents,
-                                        knot_zone_contents_t **new_contents)
-{
-	if (old_contents == NULL && new_contents == NULL) {
+	if (new_contents == NULL) {
 		return;
 	}
 
 	if (*new_contents != NULL) {
 		// destroy the shallow copy of zone
-		xfrin_zone_contents_free2(new_contents);
+		xfrin_zone_contents_free(new_contents);
 	}
 
-	if (old_contents != NULL) {
-		// cleanup old zone tree - reset pointers to new node to NULL
-		knot_zone_tree_apply(old_contents->nodes, xfrin_cleanup_old_nodes,
-				     NULL);
-
-		knot_zone_tree_apply(old_contents->nsec3_nodes, xfrin_cleanup_old_nodes,
-				     NULL);
-	}
 }
 
 /*----------------------------------------------------------------------------*/
 
 void xfrin_rollback_update(knot_changesets_t *chgs,
-                           knot_zone_contents_t *old_contents,
                            knot_zone_contents_t **new_contents)
 {
 	if (chgs != NULL) {
@@ -734,11 +658,11 @@ void xfrin_rollback_update(knot_changesets_t *chgs,
 			rrs_list_clear(&change->new_data, NULL);
 			// Keep old RR data
 			ptrlist_free(&change->old_data, NULL);
-				init_list(&change->new_data);
-		init_list(&change->old_data);
+			init_list(&change->new_data);
+			init_list(&change->old_data);
 		};
 	}
-	xfrin_cleanup_failed_update(old_contents, new_contents);
+	xfrin_cleanup_failed_update(new_contents);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -999,7 +923,7 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 	if (soa == NULL || knot_rrs_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
-		return KNOT_ERROR;
+		return KNOT_EINVAL;
 	}
 
 	int ret = xfrin_apply_remove(contents, chset, old_rrs, new_rrs);
@@ -1140,7 +1064,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 	 * updated.
 	 *
 	 * This will create new zone contents structures (normal nodes' tree,
-	 * NSEC3 tree, hash table, domain name table), and copy all nodes.
+	 * NSEC3 tree), and copy all nodes.
 	 * The data in the nodes (RRSets) remain the same though.
 	 */
 	knot_zone_contents_t *contents_copy = NULL;
@@ -1153,19 +1077,6 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 		return ret;
 	}
 
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
-
-	/*
-	 * Fix references to new nodes. Some references in new nodes may point
-	 * to old nodes. Hash table contains only old nodes.
-	 */
-	dbg_xfrin("Switching ptrs pointing to old nodes to the new nodes.\n");
-	ret = xfrin_switch_nodes(contents_copy);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to switch pointers in nodes.\n");
-		knot_zone_contents_free(&contents_copy);
-		return ret;
-	}
 	assert(knot_zone_contents_apex(contents_copy) != NULL);
 
 	*new_contents = contents_copy;
@@ -1246,12 +1157,11 @@ int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
 
 /* Post-DDNS application, no need to shallow copy. */
 int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
-                                       knot_zone_contents_t *z_old,
                                        knot_zone_contents_t *z_new,
                                        knot_changesets_t *sec_chsets,
                                        knot_changesets_t *chsets)
 {
-	if (zone == NULL || z_old == NULL || z_new == NULL ||
+	if (zone == NULL || z_new == NULL ||
 	    sec_chsets == NULL || chsets == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -1262,7 +1172,7 @@ int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
 	/* Apply changes. */
 	int ret = xfrin_apply_changesets_directly(z_new, sec_chsets);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update(sec_chsets, z_old, &z_new);
+		xfrin_rollback_update(sec_chsets, &z_new);
 		dbg_xfrin("Failed to apply changesets to zone: "
 		          "%s\n", knot_strerror(ret));
 		return ret;
@@ -1273,7 +1183,7 @@ int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 		          knot_strerror(ret));
-		xfrin_rollback_update(sec_chsets, z_old, &z_new);
+		xfrin_rollback_update(sec_chsets, &z_new);
 		return ret;
 	}
 
@@ -1320,8 +1230,7 @@ int xfrin_apply_changesets(zone_t *zone,
 		                            &set->new_data,
 		                            contents_copy, set);
 		if (ret != KNOT_EOK) {
-			xfrin_rollback_update(chsets, old_contents,
-			                      &contents_copy);
+			xfrin_rollback_update(chsets, &contents_copy);
 			dbg_xfrin("Failed to apply changesets to zone: "
 				  "%s\n", knot_strerror(ret));
 			return ret;
@@ -1338,7 +1247,7 @@ int xfrin_apply_changesets(zone_t *zone,
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to finalize updated zone: %s\n",
 			  knot_strerror(ret));
-		xfrin_rollback_update(chsets, old_contents, &contents_copy);
+		xfrin_rollback_update(chsets, &contents_copy);
 		return ret;
 	}
 

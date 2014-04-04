@@ -566,7 +566,6 @@ dbg_zone_exec_detail(
 
 			/* Insert node to a tree. */
 			dbg_zone_detail("Inserting new node to zone tree.\n");
-			assert(knot_zone_contents_find_node(zone, parent) == NULL);
 			ret = knot_zone_tree_insert(zone->nodes, next_node);
 			if (ret != KNOT_EOK) {
 				knot_node_free(&next_node);
@@ -599,13 +598,9 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
-                                        knot_node_t *node, int create_parents,
-                                        uint8_t flags)
+static int knot_zone_contents_add_nsec3_node(knot_zone_contents_t *zone,
+                                             knot_node_t *node)
 {
-	UNUSED(create_parents);
-	UNUSED(flags);
-
 	if (zone == NULL || node == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -684,7 +679,7 @@ static int insert_rr(knot_zone_contents_t *z,
 			if (*n == NULL) {
 				return KNOT_ENOMEM;
 			}
-			ret = nsec3 ? knot_zone_contents_add_nsec3_node(z, *n, true, 0) :
+			ret = nsec3 ? knot_zone_contents_add_nsec3_node(z, *n) :
 			              knot_zone_contents_add_node(z, *n, true, 0);
 			if (ret != KNOT_EOK) {
 				knot_node_free(n);
@@ -693,6 +688,97 @@ static int insert_rr(knot_zone_contents_t *z,
 	}
 
 	return knot_node_add_rrset(*n, rr);
+}
+
+static int recreate_normal_tree(const knot_zone_contents_t *z,
+                                knot_zone_contents_t *out)
+{
+	out->nodes = hattrie_dup(z->nodes, NULL);
+	if (out->nodes == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	// Insert APEX first.
+	knot_node_t *apex_cpy;
+	int ret = knot_node_shallow_copy(z->apex, &apex_cpy);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Normal additions need apex ... so we need to insert directly.
+	ret = knot_zone_tree_insert(out->nodes, apex_cpy);
+	if (ret != KNOT_EOK) {
+		knot_node_free(&apex_cpy);
+		return ret;
+	}
+
+	out->apex = apex_cpy;
+
+	hattrie_iter_t *itt = hattrie_iter_begin(z->nodes, true);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
+	}
+	while (!hattrie_iter_finished(itt)) {
+		const knot_node_t *to_cpy = (knot_node_t *)*hattrie_iter_val(itt);
+		if (to_cpy == z->apex) {
+			// Inserted already.
+			hattrie_iter_next(itt);
+			continue;
+		}
+		knot_node_t *to_add;
+		int ret = knot_node_shallow_copy(to_cpy, &to_add);
+		if (ret != KNOT_EOK) {
+			hattrie_iter_free(itt);
+			return ret;
+		}
+		ret = knot_zone_contents_add_node(out, to_add, true, 0);
+		if (ret != KNOT_EOK) {
+			knot_node_free(&to_add);
+			hattrie_iter_free(itt);
+			return ret;
+		}
+		hattrie_iter_next(itt);
+	}
+
+	hattrie_iter_free(itt);
+	hattrie_build_index(out->nodes);
+
+	return KNOT_EOK;
+}
+
+static int recreate_nsec3_tree(const knot_zone_contents_t *z,
+                               knot_zone_contents_t *out)
+{
+	out->nsec3_nodes = hattrie_dup(z->nsec3_nodes, NULL);
+	if (out->nsec3_nodes == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	hattrie_iter_t *itt = hattrie_iter_begin(z->nsec3_nodes, false);
+	if (itt == NULL) {
+		return KNOT_ENOMEM;
+	}
+	while (!hattrie_iter_finished(itt)) {
+		const knot_node_t *to_cpy = (knot_node_t *)*hattrie_iter_val(itt);
+		knot_node_t *to_add;
+		int ret = knot_node_shallow_copy(to_cpy, &to_add);
+		if (ret != KNOT_EOK) {
+			hattrie_iter_free(itt);
+			return ret;
+		}
+		ret = knot_zone_contents_add_nsec3_node(out, to_add);
+		if (ret != KNOT_EOK) {
+			hattrie_iter_free(itt);
+			knot_node_free(&to_add);
+			return ret;
+		}
+		hattrie_iter_next(itt);
+	}
+
+	hattrie_iter_free(itt);
+	hattrie_build_index(out->nsec3_nodes);
+
+	return KNOT_EOK;
 }
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
@@ -1249,41 +1335,36 @@ int knot_zone_contents_shallow_copy(const knot_zone_contents_t *from,
 		return KNOT_EINVAL;
 	}
 
-	int ret = KNOT_EOK;
-
-	knot_zone_contents_t *contents = (knot_zone_contents_t *)calloc(
-					     1, sizeof(knot_zone_contents_t));
+	knot_zone_contents_t *contents = calloc(1, sizeof(knot_zone_contents_t));
 	if (contents == NULL) {
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
 
-	//contents->apex = from->apex;
-
-	contents->node_count = from->node_count;
 	contents->flags = from->flags;
-	// set the 'new' flag
 	knot_zone_contents_set_gen_new(contents);
 
-	if ((ret = knot_zone_tree_deep_copy(from->nodes,
-					    &contents->nodes)) != KNOT_EOK
-	    || (ret = knot_zone_tree_deep_copy(from->nsec3_nodes,
-					  &contents->nsec3_nodes)) != KNOT_EOK) {
-		goto cleanup;
+	int ret = recreate_normal_tree(from, contents);
+	if (ret != KNOT_EOK) {
+		knot_zone_tree_free(&contents->nodes);
+		free(contents);
+		return ret;
 	}
 
-	contents->apex = knot_node_get_new_node(from->apex);
-
-	dbg_zone("knot_zone_contents_shallow_copy: finished OK\n");
+	if (contents->nsec3_nodes) {
+		ret = recreate_nsec3_tree(from, contents);
+		if (ret != KNOT_EOK) {
+			knot_zone_tree_free(&contents->nodes);
+			knot_zone_tree_free(&contents->nsec3_nodes);
+			free(contents);
+			return ret;
+		}
+	} else {
+		contents->nsec3_nodes = NULL;
+	}
 
 	*to = contents;
 	return KNOT_EOK;
-
-cleanup:
-	knot_zone_tree_free(&contents->nodes);
-	knot_zone_tree_free(&contents->nsec3_nodes);
-	free(contents);
-	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1368,7 +1449,7 @@ knot_node_t *zone_contents_get_node_for_rr(knot_zone_contents_t *zone,
 		if (!nsec3) {
 			ret = knot_zone_contents_add_node(zone, node, 1, 0);
 		} else {
-			ret = knot_zone_contents_add_nsec3_node(zone, node, 1, 0);
+			ret = knot_zone_contents_add_nsec3_node(zone, node);
 		}
 		if (ret != KNOT_EOK) {
 			knot_node_free(&node);

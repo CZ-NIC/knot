@@ -117,7 +117,7 @@ static int add_rr_at(knot_rrs_t *rrs, const knot_rr_t *rr, size_t pos,
 		knot_rr_t *new_rr = knot_rrs_rr(rrs, pos);
 		knot_rr_set_size(new_rr, size);
 		knot_rr_set_ttl(new_rr, ttl);
-		memcpy(knot_rr_rdata, rdata, size);
+		memcpy(knot_rr_rdata(new_rr), rdata, size);
 		return KNOT_EOK;
 	}
 

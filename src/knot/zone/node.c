@@ -401,63 +401,6 @@ const knot_node_t *knot_node_wildcard_child(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_new_node(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->new_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_node_get_new_node(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->new_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_new_node(knot_node_t *node,
-                              knot_node_t *new_node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	node->new_node = new_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static void knot_node_update_ref(knot_node_t **ref)
-{
-	if (*ref != NULL && (*ref)->new_node != NULL) {
-		*ref = (*ref)->new_node;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_update_refs(knot_node_t *node)
-{
-	// reference to previous node
-	knot_node_update_ref(&node->prev);
-	// reference to parent
-	knot_node_update_ref(&node->parent);
-	// reference to wildcard child
-	knot_node_update_ref(&node->wildcard_child);
-	// reference to NSEC3 node
-	knot_node_update_ref(&node->nsec3_node);
-}
-
-/*----------------------------------------------------------------------------*/
-
 void knot_node_set_deleg_point(knot_node_t *node)
 {
 	if (node == NULL) {
@@ -638,18 +581,21 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
+	memset(*to, 0, sizeof(knot_node_t));
 
-	// do not use the API function to set parent, so that children count
-	// is not changed
-	memcpy(*to, from, sizeof(knot_node_t));
+	// Copy owner
 	(*to)->owner = knot_dname_copy(from->owner, NULL);
+	if ((*to)->owner == NULL) {
+		free(*to);
+		return KNOT_ENOMEM;
+	}
 
 	// copy RRSets
+	(*to)->rrset_count = from->rrset_count;
 	size_t rrlen = sizeof(struct rr_data) * from->rrset_count;
 	(*to)->rrs = malloc(rrlen);
 	if ((*to)->rrs == NULL) {
-		free(*to);
-		*to = NULL;
+		knot_node_free(to);
 		return KNOT_ENOMEM;
 	}
 	memcpy((*to)->rrs, from->rrs, rrlen);

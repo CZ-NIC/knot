@@ -155,7 +155,6 @@ int xfrin_apply_changesets(zone_t *zone,
 /*!
  * \brief Applies DNSSEC changesets after DDNS.
  *
- * \param z_old           Old contents for possible rollbacks.
  * \param z_new           Post DDNS/reload zone.
  * \param sec_chsets      Changes with RRSIGs/NSEC(3)s.
  * \param chsets          DDNS/reload changes, for rollback.
@@ -165,7 +164,7 @@ int xfrin_apply_changesets(zone_t *zone,
  * by the UPDATE-processing function. It uses new and old zones from this
  * operation.
  */
-int xfrin_apply_changesets_dnssec_ddns(zone_t *zone, knot_zone_contents_t *z_old,
+int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
                                        knot_zone_contents_t *z_new,
                                        knot_changesets_t *sec_chsets,
                                        knot_changesets_t *chsets);
@@ -199,7 +198,7 @@ int xfrin_switch_zone(zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type);
 
-void xfrin_rollback_update(knot_changesets_t *chgs, knot_zone_contents_t *old_contents,
+void xfrin_rollback_update(knot_changesets_t *chgs,
                            knot_zone_contents_t **new_contents);
 
 int xfrin_copy_rrset(knot_node_t *node, uint16_t type,
@@ -211,7 +210,6 @@ int xfrin_replace_rrset_in_node(knot_node_t *node,
                                 knot_rrset_t *rrset_new,
                                 knot_zone_contents_t *contents);
 
-void xfrin_zone_contents_free(knot_zone_contents_t **contents);
 void xfrin_cleanup_successful_update(knot_changesets_t *chgs);
 
 #endif /* _KNOTXFR_IN_H_ */

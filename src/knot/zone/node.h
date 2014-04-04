@@ -68,8 +68,6 @@ struct knot_node {
 	 */
 	struct knot_node *nsec3_node;
 
-	struct knot_node *new_node;
-
 	unsigned int children;
 
 	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
@@ -285,14 +283,6 @@ void knot_node_set_wildcard_child(knot_node_t *node,
                                   knot_node_t *wildcard_child);
 
 knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node);
-
-const knot_node_t *knot_node_new_node(const knot_node_t *node);
-
-knot_node_t *knot_node_get_new_node(const knot_node_t *node);
-
-void knot_node_set_new_node(knot_node_t *node, knot_node_t *new_node);
-
-void knot_node_update_refs(knot_node_t *node);
 
 /*!
  * \brief Mark the node as a delegation point.

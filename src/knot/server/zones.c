@@ -1470,7 +1470,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	/* Commit transaction. */
 	ret = zones_store_changesets_commit(transaction);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update(chs, zone->contents, new_contents);
+		xfrin_rollback_update(chs, new_contents);
 		log_zone_error("%s Failed to commit stored changesets.\n", msgpref);
 		knot_changesets_free(&chs);
 		return ret;
@@ -1486,7 +1486,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	if (switch_ret != KNOT_EOK) {
 		log_zone_error("%s Failed to replace current zone.\n", msgpref);
 		// Cleanup old and new contents
-		xfrin_rollback_update(chs, zone->contents, new_contents);
+		xfrin_rollback_update(chs, new_contents);
 
 		/* Free changesets, but not the data. */
 		knot_changesets_free(&chs);
@@ -1930,7 +1930,6 @@ int zones_journal_apply(zone_t *zone)
 
 					// Cleanup old and new contents
 					xfrin_rollback_update(chsets,
-					                      zone->contents,
 					                      &contents);
 				}
 			}
@@ -2151,7 +2150,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			               "switching zone (%s).\n",
 			               zone->conf->name, knot_strerror(ret));
 			// Cleanup old and new contents
-			xfrin_rollback_update(diff_chs, zone->contents, &new_contents);
+			xfrin_rollback_update(diff_chs, &new_contents);
 			return ret;
 		}
 
