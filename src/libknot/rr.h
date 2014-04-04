@@ -192,6 +192,8 @@ int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm);
  */
 bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2);
 
+size_t knot_rrs_size(const knot_rrs_t *rrs);
+
 /*!
  * \brief Creates new RRS using \a rrsig_rrs as a source. Only those RRs that
  *        cover given \a type are copied into \a out_sig

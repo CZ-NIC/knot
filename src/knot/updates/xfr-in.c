@@ -668,26 +668,26 @@ void xfrin_rollback_update(knot_changesets_t *chgs,
 /*----------------------------------------------------------------------------*/
 
 static int xfrin_replace_rrs_with_copy(knot_node_t *node,
-                                       knot_rrs_t *rrs, uint16_t type,
-                                       mm_ctx_t *mm)
+                                       uint16_t type)
 {
-	// Create RRS copy
-	knot_rrset_t new_rr;
-	knot_rrset_init(&new_rr, node->owner, type, KNOT_CLASS_IN);
-	int ret = knot_rrs_copy(&new_rr.rrs, rrs, mm);
-	if (ret != KNOT_EOK) {
-		return ret;
+	struct rr_data *data = NULL;
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			data = &node->rrs[i];
+		}
+	}
+	assert(data);
+	knot_rrs_t *rrs = &data->rrs;
+	void *copy = malloc(knot_rrs_size(rrs));
+	if (copy == NULL) {
+		return KNOT_ENOMEM;
 	}
 
-	// Remove from new tree
-	knot_node_remove_rrset(node, type);
+	memcpy(copy, rrs->data, knot_rrs_size(rrs));
 
-	// Add copied RRSet
-	ret = knot_node_add_rrset(node, &new_rr);
-	knot_rrs_clear(&new_rr.rrs, mm);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	// Clear additional from node in new tree.
+	data->additional = NULL;
+	rrs->data = copy;
 
 	return KNOT_EOK;
 }
@@ -747,9 +747,51 @@ static int add_new_data(knot_changeset_t *chset, knot_rr_t *new_data)
 	return KNOT_EOK;
 }
 
+static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
+                     knot_changeset_t *chset)
+{
+	knot_rrset_t removed_rrset = knot_node_rrset(node, rr->type);
+	knot_rr_t *old_data = removed_rrset.rrs.data;
+	knot_node_t **old_additional = removed_rrset.additional;
+	int ret = xfrin_replace_rrs_with_copy(node, rr->type);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Store old data for cleanup.
+	ret = add_old_data(chset, old_data, old_additional);
+	if (ret != KNOT_EOK) {
+		clear_new_rrs(node, rr->type);
+		return ret;
+	}
+
+	knot_rrset_t changed_rrset = knot_node_rrset(node, rr->type);
+	ret = knot_rrset_remove_rr_using_rrset(&changed_rrset, rr, NULL);
+	if (ret != KNOT_EOK) {
+		clear_new_rrs(node, rr->type);
+		return ret;
+	}
+
+	if (changed_rrset.rrs.rr_count > 0) {
+		ret = add_new_data(chset, changed_rrset.rrs.data);
+		if (ret != KNOT_EOK) {
+			knot_rrs_clear(&changed_rrset.rrs, NULL);
+			return ret;
+		}
+
+		// Replace data in node with changed data
+		knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
+		*rrs = changed_rrset.rrs;
+	} else {
+		// Removed last RR in RRSet, remove it from node.
+		knot_node_remove_rrset(node, rr->type);
+	}
+
+	return KNOT_EOK;
+}
+
 static int xfrin_apply_remove(knot_zone_contents_t *contents,
-                              knot_changeset_t *chset,
-                              list_t *old_rrs, list_t *new_rrs)
+                              knot_changeset_t *chset)
 {
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chset->remove) {
@@ -763,52 +805,63 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 			continue;
 		}
 
-		knot_rrset_t removed_rrset = knot_node_rrset(node, rr->type);
-		knot_rr_t *old_data = removed_rrset.rrs.data;
-		knot_node_t **old_additional = removed_rrset.additional;
-		int ret = xfrin_replace_rrs_with_copy(node,
-		                                      &removed_rrset.rrs,
-		                                      rr->type, NULL);
+		int ret = remove_rr(node, rr, chset);
 		if (ret != KNOT_EOK) {
 			return ret;
-		}
-
-		// Store old data for cleanup.
-		ret = add_old_data(chset, old_data, old_additional);
-		if (ret != KNOT_EOK) {
-			clear_new_rrs(node, rr->type);
-			return ret;
-		}
-
-		knot_rrset_t changed_rrset = knot_node_rrset(node, rr->type);
-		ret = knot_rrset_remove_rr_using_rrset(&changed_rrset, rr, NULL);
-		if (ret != KNOT_EOK) {
-			clear_new_rrs(node, rr->type);
-			return ret;
-		}
-
-		if (changed_rrset.rrs.rr_count > 0) {
-			ret = add_new_data(chset, changed_rrset.rrs.data);
-			if (ret != KNOT_EOK) {
-				knot_rrs_clear(&changed_rrset.rrs, NULL);
-				return ret;
-			}
-
-			// Replace data in node with changed data
-			knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
-			*rrs = changed_rrset.rrs;
-		} else {
-			// Removed last RR in RRSet, remove it from node.
-			knot_node_remove_rrset(node, rr->type);
 		}
 	}
 
 	return KNOT_EOK;
 }
 
+static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
+                  knot_changeset_t *chset)
+{
+	knot_rrset_t changed_rrset = knot_node_rrset(node, rr->type);
+	if (!knot_rrset_empty(&changed_rrset)) {
+		// Modifying existing RRSet.
+		knot_rr_t *old_data = changed_rrset.rrs.data;
+		knot_node_t **old_additional = changed_rrset.additional;
+		int ret = xfrin_replace_rrs_with_copy(node, rr->type);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+
+		// Store old RRS for cleanup.
+		ret = add_old_data(chset, old_data, old_additional);
+		if (ret != KNOT_EOK) {
+			clear_new_rrs(node, rr->type);
+			return ret;
+		}
+
+		// Extract copy, merge into it
+		knot_rrs_t *changed_rrs = knot_node_get_rrs(node, rr->type);
+		ret = knot_rrs_merge(changed_rrs, &rr->rrs, NULL);
+		if (ret != KNOT_EOK) {
+			clear_new_rrs(node, rr->type);
+			return ret;
+		}
+	} else {
+		// Inserting new RRSet, data will be copied.
+		int ret = knot_node_add_rrset(node, rr);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
+	// Store new RRS for rollback
+	int ret = add_new_data(chset, rrs->data);
+	if (ret != KNOT_EOK) {
+		knot_rrs_clear(rrs, NULL);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
 static int xfrin_apply_add(knot_zone_contents_t *contents,
-                           knot_changeset_t *chset,
-                           list_t *old_rrs, list_t *new_rrs)
+                           knot_changeset_t *chset)
 {
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chset->add) {
@@ -820,40 +873,8 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 			return KNOT_ENOMEM;
 		}
 
-		knot_rrset_t changed_rrset = knot_node_rrset(node, rr->type);
-		if (!knot_rrset_empty(&changed_rrset)) {
-			knot_rr_t *old_data = changed_rrset.rrs.data;
-			knot_node_t **old_additional = changed_rrset.additional;
-			int ret = xfrin_replace_rrs_with_copy(node,
-			                                      &changed_rrset.rrs,
-			                                      rr->type, NULL);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-
-			// Store old RRS for cleanup
-			ret = add_old_data(chset, old_data, old_additional);
-			if (ret != KNOT_EOK) {
-				clear_new_rrs(node, rr->type);
-				return ret;
-			}
-		}
-
-		/*
-		 *  Either node did not exist before, and we add new RR,
-		 *  or we merge with copy created above.
-		 */
-		int ret = knot_node_add_rrset(node, rr);
-		if (ret < 0) {
-			clear_new_rrs(node, rr->type);
-			return ret;
-		}
-
-		knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
-		// Store new RRS for rollback
-		ret = add_new_data(chset, rrs->data);
+		int ret = add_rr(node, rr, chset);
 		if (ret != KNOT_EOK) {
-			knot_rrs_clear(rrs, NULL);
 			return ret;
 		}
 	}
@@ -875,7 +896,7 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 	assert(node != NULL);
 	knot_rrs_t *soa_rrs = knot_node_get_rrs(node, KNOT_RRTYPE_SOA);
 	knot_rr_t *old_data = soa_rrs->data;
-	int ret = xfrin_replace_rrs_with_copy(node, soa_rrs, KNOT_RRTYPE_SOA, NULL);
+	int ret = xfrin_replace_rrs_with_copy(node, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -926,12 +947,12 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 		return KNOT_EINVAL;
 	}
 
-	int ret = xfrin_apply_remove(contents, chset, old_rrs, new_rrs);
+	int ret = xfrin_apply_remove(contents, chset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = xfrin_apply_add(contents, chset, old_rrs, new_rrs);
+	ret = xfrin_apply_add(contents, chset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
