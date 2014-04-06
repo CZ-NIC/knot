@@ -57,4 +57,6 @@ libdnssec_la_SOURCES = \
 	lib/sign/der.c \
 	lib/sign/der.h \
 	lib/sign/sign.c \
-	lib/wire.h
+	lib/wire.h \
+	lib/yml.c \
+	lib/yml.h

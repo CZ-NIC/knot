@@ -11,7 +11,7 @@
 /* -- internal functions --------------------------------------------------- */
 
 /*!
- * Parse a node of expected type.
+ * Parse a node of expected type and drop it.
  */
 static bool parse_and_expect(yaml_parser_t *parser, int type)
 {
@@ -28,17 +28,17 @@ static bool parse_and_expect(yaml_parser_t *parser, int type)
 
 typedef struct {
 	const dnssec_binary_t *label;
-	yaml_node_t *found;
+	yml_node_t found;
 } mapping_find_data_t;
 
-static int mapping_find_cb(yaml_document_t *document, dnssec_binary_t *key,
-			   yaml_node_t *node, void *_data)
+static int mapping_find_cb(dnssec_binary_t *key, yml_node_t *value,
+			   void *_data, bool *interrupt)
 {
 	mapping_find_data_t *data = _data;
 
-	if (dnssec_binary_cmp(key, data->label)) {
-		data->found = node;
-		return DNSSEC_EOK_INTERRUPT;
+	if (dnssec_binary_cmp(key, data->label) == 0) {
+		data->found = *value;
+		*interrupt = true;
 	}
 
 	return DNSSEC_EOK;
@@ -47,27 +47,60 @@ static int mapping_find_cb(yaml_document_t *document, dnssec_binary_t *key,
 /*!
  * Find a value (node) for a given key (scalar) in a YAML mapping.
  */
-static yaml_node_t *mapping_find(yaml_document_t *document, yaml_node_t *mapping,
-				 const dnssec_binary_t *label)
+static int mapping_find(yml_node_t *mapping, const dnssec_binary_t *label,
+			yml_node_t *result)
 {
 	mapping_find_data_t data = { .label = label };
 
-	int result = yml_mapping_each(document, mapping, mapping_find_cb, &data);
-	if (result != DNSSEC_EOK) {
-		return NULL;
+	int r = yml_mapping_each(mapping, mapping_find_cb, &data);
+	if (r != DNSSEC_EOK) {
+		return r;
 	}
 
-	return data.found;
+	if (data.found.node == NULL) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	*result = data.found;
+
+	return DNSSEC_EOK;
 }
 
 /* -- internal API --------------------------------------------------------- */
 
+int yml_node_init(yml_node_t *node)
+{
+	if (!node) {
+		return DNSSEC_EINVAL;
+	}
+
+	clear_struct(node);
+	node->document = calloc(1, sizeof(yaml_document_t));
+	if (!node->document) {
+		return DNSSEC_ENOMEM;
+	}
+
+	return DNSSEC_EOK;
+}
+
+void yml_node_deinit(yml_node_t *node)
+{
+	if (!node) {
+		return;
+	}
+
+	yaml_document_delete(node->document);
+	free(node->document);
+
+	clear_struct(node);
+}
+
 /*!
  * Parse YAML file and return instance of parsed document.
  */
-int yml_parse_file(const char *filename, yaml_document_t *document)
+int yml_parse_file(const char *filename, yml_node_t *root)
 {
-	if (!filename) {
+	if (!filename || !root) {
 		return DNSSEC_EINVAL;
 	}
 
@@ -90,14 +123,26 @@ int yml_parse_file(const char *filename, yaml_document_t *document)
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	if (!yaml_parser_load(&parser, document)) {
+	yaml_document_t document;
+	if (!yaml_parser_load(&parser, &document)) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
 	if (!parse_and_expect(&parser, YAML_STREAM_END_TOKEN)) {
-		yaml_document_delete(document);
+		yaml_document_delete(&document);
 		return DNSSEC_MALFORMED_DATA;
 	}
+
+	// finalize
+
+	int result = yml_node_init(root);
+	if (result != DNSSEC_EOK) {
+		yaml_document_delete(&document);
+		return result;
+	}
+
+	*root->document = document;
+	root->node = yaml_document_get_root_node(root->document);
 
 	return DNSSEC_EOK;
 }
@@ -105,17 +150,16 @@ int yml_parse_file(const char *filename, yaml_document_t *document)
 /*!
  * Traverse over the parsed YAML document.
  */
-yaml_node_t *yml_traverse(yaml_document_t *document, yaml_node_t *from,
-			  const char *path)
+int yml_traverse(yml_node_t *from, const char *path, yml_node_t *to)
 {
-	if (!document || !from || !path) {
-		return NULL;
+	if (!from || !path || !to) {
+		return DNSSEC_EINVAL;
 	}
 
-	yaml_node_t *node = from;
+	yml_node_t node = *from;
 	const char *label = path;
 
-	while (node && *label != '\0') {
+	while (*label != '\0') {
 		// find next label
 		size_t label_size = 0;
 		const char *next_label = strchr(label, YML_PATH_SEPARATOR);
@@ -128,35 +172,44 @@ yaml_node_t *yml_traverse(yaml_document_t *document, yaml_node_t *from,
 		}
 
 		// non walkable nodes
-		if (from->type != YAML_MAPPING_NODE) {
-			return NULL;
+		if (node.node->type != YAML_MAPPING_NODE) {
+			return DNSSEC_EINVAL;
 		}
 
 		// walk
-		dnssec_binary_t bin_label = { .size = label_size,
-					      .data = (uint8_t *)label };
-		node = mapping_find(document, node, &bin_label);
+		yml_node_t next;
+		dnssec_binary_t bin_label = {
+			.size = label_size,
+			.data = (uint8_t *)label
+		};
+		int r = mapping_find(&node, &bin_label, &next);
+		if (r != DNSSEC_EOK) {
+			return r;
+		}
+
+		node = next;
 		label = next_label;
 	}
 
-	return node;
+	*to = node;
+	return DNSSEC_EOK;
 }
 
 /*!
  * Get value stored in a scalar node (as a reference).
  */
-int yml_get_value(yaml_node_t *node, dnssec_binary_t *data)
+int yml_get_value(yml_node_t *node, dnssec_binary_t *data)
 {
 	if (!node || !data) {
 		return DNSSEC_EINVAL;
 	}
 
-	if (node->type != YAML_SCALAR_NODE) {
+	if (node->node->type != YAML_SCALAR_NODE) {
 		return DNSSEC_EINVAL;
 	}
 
-	data->data = node->data.scalar.value;
-	data->size = node->data.scalar.length;
+	data->data = node->node->data.scalar.value;
+	data->size = node->node->data.scalar.length;
 
 	return DNSSEC_EOK;
 }
@@ -164,7 +217,7 @@ int yml_get_value(yaml_node_t *node, dnssec_binary_t *data)
 /*!
  * Get string stored in a scalar node (as a copy).
  */
-char *yml_get_string(yaml_node_t *node)
+char *yml_get_string(yml_node_t *node)
 {
 	dnssec_binary_t binary = { 0 };
 	int r = yml_get_value(node, &binary);
@@ -178,29 +231,31 @@ char *yml_get_string(yaml_node_t *node)
 /*!
  * Run a callback for each node in a sequence.
  */
-int yml_sequence_each(yaml_document_t *document, yaml_node_t *sequence,
-		      yml_sequence_cb callback, void *data)
+int yml_sequence_each(yml_node_t *sequence, yml_sequence_cb callback, void *data)
 {
-	if (!document || !sequence || !callback) {
+	if (!sequence || !callback) {
 		return DNSSEC_EINVAL;
 	}
 
-	if (sequence->type != YAML_SEQUENCE_NODE) {
+	if (sequence->node->type != YAML_SEQUENCE_NODE) {
 		return DNSSEC_EINVAL;
 	}
 
-	yaml_node_item_t *start = sequence->data.sequence.items.start;
-	yaml_node_item_t *top = sequence->data.sequence.items.top;
+	yaml_document_t *doc = sequence->document;
+	yml_node_t value = { .document = doc };
+
+	yaml_node_item_t *start = sequence->node->data.sequence.items.start;
+	yaml_node_item_t *top = sequence->node->data.sequence.items.top;
 	for (yaml_node_item_t *item = start; item < top; item++) {
-		yaml_node_t *value = yaml_document_get_node(document, *item);
-		if (!value) {
+		// get value
+		value.node = yaml_document_get_node(doc, *item);
+		if (!value.node) {
 			return DNSSEC_MALFORMED_DATA;
 		}
-
-		int result = callback(document, value, data);
-		if (result == DNSSEC_EOK_INTERRUPT) {
-			return DNSSEC_EOK;
-		} else if (result != DNSSEC_EOK) {
+		// run callback
+		bool interrupt = false;
+		int result = callback(&value, data, &interrupt);
+		if (result != DNSSEC_EOK || interrupt) {
 			return result;
 		}
 	}
@@ -211,35 +266,40 @@ int yml_sequence_each(yaml_document_t *document, yaml_node_t *sequence,
 /*!
  * Run a callback for each key-value pair in a mapping.
  */
-int yml_mapping_each(yaml_document_t *document, yaml_node_t *mapping,
-		     yml_mapping_cb callback, void *data)
+int yml_mapping_each(yml_node_t *mapping, yml_mapping_cb callback, void *data)
 {
-	if (!document || !mapping || !callback) {
+	if (!mapping || !callback) {
 		return DNSSEC_EINVAL;
 	}
 
-	if (mapping->type != YAML_MAPPING_NODE) {
+	if (mapping->node->type != YAML_MAPPING_NODE) {
 		return DNSSEC_EINVAL;
 	}
 
-	yaml_node_pair_t *start = mapping->data.mapping.pairs.start;
-	yaml_node_pair_t *top = mapping->data.mapping.pairs.top;
+	yaml_document_t *doc = mapping->document;
+	yml_node_t value = { .document = doc };
+
+	yaml_node_pair_t *start = mapping->node->data.mapping.pairs.start;
+	yaml_node_pair_t *top = mapping->node->data.mapping.pairs.top;
 	for (yaml_node_pair_t *pair = start; pair < top; pair++) {
-		yaml_node_t *key = yaml_document_get_node(document, pair->key);
-		yaml_node_t *value = yaml_document_get_node(document, pair->value);
-		if (!key || !value || key->type != YAML_SCALAR_NODE) {
+		// get key and value nodes
+		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
+		if (!key|| key->type != YAML_SCALAR_NODE) {
 			return DNSSEC_MALFORMED_DATA;
 		}
-
+		value.node = yaml_document_get_node(doc, pair->value);
+		if (!value.node) {
+			return DNSSEC_MALFORMED_DATA;
+		}
+		// wrap key into binary
 		dnssec_binary_t bin_key = {
 			.size = key->data.scalar.length,
 			.data = key->data.scalar.value
 		};
-
-		int result = callback(document, &bin_key, value, data);
-		if (result == DNSSEC_EOK_INTERRUPT) {
-			return DNSSEC_EOK;
-		} else if (result != DNSSEC_EOK) {
+		// run callback
+		bool interrupt = false;
+		int result = callback(&bin_key, &value, data, &interrupt);
+		if (result != DNSSEC_EOK || interrupt) {
 			return result;
 		}
 	}

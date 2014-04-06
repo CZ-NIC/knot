@@ -6,7 +6,14 @@
 #include "binary.h"
 
 #define YML_PATH_SEPARATOR '/'
-#define DNSSEC_EOK_INTERRUPT (DNSSEC_EOK + 1)
+
+typedef struct yml_node {
+	yaml_document_t *document;
+	yaml_node_t *node;
+} yml_node_t;
+
+int yml_node_init(yml_node_t *node);
+void yml_node_deinit(yml_node_t *node);
 
 /*!
  * Parse YAML file and return an instance of parsed document.
@@ -19,21 +26,20 @@
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int yml_parse_file(const char *filename, yaml_document_t *document);
+int yml_parse_file(const char *filename, yml_node_t *root);
 
 /*!
  * Traverse over the parsed YAML document.
  *
- * Traversable nodes have \ref YAML_MAPPING_NODE type.
+ * Only nodes of type \ref YAML_MAPPING_NODE can be traversed.
  *
- * \param document  Document into which the starting node belongs.
- * \param from      Starting node.
- * \param path      Path to the target node, components are separated by '/'.
+ * \param[in]  from  Search start node.
+ * \param[in]  path  Path to the target node, components are separated by '/'.
+ * \param[out] to    Node found by traversal.
  *
- * \return Target node, or NULL if the path does not exist.
+ * \return Error code, DNSSEC_EOK if successful.
  */
-yaml_node_t *yml_traverse(yaml_document_t *document, yaml_node_t *from,
-			  const char *path);
+int yml_traverse(yml_node_t *from, const char *path, yml_node_t *to);
 
 /*!
  * Get value stored in a scalar node (as a reference).
@@ -43,46 +49,39 @@ yaml_node_t *yml_traverse(yaml_document_t *document, yaml_node_t *from,
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int yml_get_value(yaml_node_t *node, dnssec_binary_t *data);
+int yml_get_value(yml_node_t *node, dnssec_binary_t *data);
 
 /*!
  * Get string stored in a scalar node (as a copy).
  *
  * \param node  Scalar node.
  *
- * \return Copy of the string
- *
+ * \return Copy of the string, NULL in case of error.
  */
-char *yml_get_string(yaml_node_t *node);
+char *yml_get_string(yml_node_t *node);
 
 /*!
  * Callback parameter for \ref yml_sequence_each.
  */
-typedef int (*yml_sequence_cb)(yaml_document_t *document, yaml_node_t *item, void *data);
+typedef int (*yml_sequence_cb)(yml_node_t *item, void *data, bool *interrupt);
 
 /*!
  * Run a callback for each node in a sequence.
  *
- * \param document  Associated document.
  * \param sequence  Sequence to be iterated.
  * \param callback  Callback function to be called for each item in the sequence.
  * \param data      Custom data passed to the callback function.
  *
- * \return Error code, DNSSEC_EOK if successful. A failure in a callback
- *         function is propagated and the iteration is interrupted. If the
- *         callback function returns DNSSEC_EOK_INTERRUPT, the iteration is
- *         interrupted, but DNSSEC_EOK is returned.
+ * \return Error code, DNSSEC_EOK if successful.
  */
-int yml_sequence_each(yaml_document_t *document, yaml_node_t *sequence,
-		      yml_sequence_cb callback, void *data);
+int yml_sequence_each(yml_node_t *sequence, yml_sequence_cb callback, void *data);
 
-typedef int (*yml_mapping_cb)(yaml_document_t *document, dnssec_binary_t *key,
-			      yaml_node_t *value, void *data);
+typedef int (*yml_mapping_cb)(dnssec_binary_t *key, yml_node_t *value, void *data,
+			      bool *interrupt);
 
 /*!
  * Run a callback for each key-value pair in a mapping.
  *
  * Parameters and semantic are the same as for \ref yml_sequence_each.
  */
-int yml_mapping_each(yaml_document_t *document, yaml_node_t *mapping,
-		     yml_mapping_cb callback, void *data);
+int yml_mapping_each(yml_node_t *mapping, yml_mapping_cb callback, void *data);
