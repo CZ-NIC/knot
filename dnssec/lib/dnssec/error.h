@@ -4,26 +4,19 @@
 
 #define errno2error(errno) (-(100 + (errno)))
 
+/*!
+ * Library error codes.
+ */
 enum dnssec_error {
 	DNSSEC_EOK = 0,
 
-	/* Directly mapped error codes. */
 	DNSSEC_ENOMEM = errno2error(ENOMEM),
 	DNSSEC_EINVAL = errno2error(EINVAL),
-	DNSSEC_EIO = errno2error(EIO),
-	DNSSEC_ENOTSUP = errno2error(ENOTSUP),
-//	DNSSEC_EBUSY = errno2error(EBUSY),
-//	DNSSEC_EAGAIN = errno2error(EAGAIN),
-//	DNSSEC_EACCES = errno2error(EACCES),
-//	DNSSEC_ECONNREFUSED = errno2error(ECONNREFUSED),
-//	DNSSEC_EISCONN = errno2error(EISCONN),
-//	DNSSEC_EADDRINUSE = errno2error(EADDRINUSE),
-//	DNSSEC_ENOENT = errno2error(ENOENT),
-//	DNSSEC_ERANGE = errno2error(ERANGE),
 
 	DNSSEC_ERROR = -1000,
 	DNSSEC_NOT_IMPLEMENTED_ERROR,
 	DNSSEC_MALFORMED_DATA,
+	DNSSEC_OUT_OF_RANGE,
 	DNSSEC_NOT_FOUND,
 
 	DNSSEC_PKCS8_IMPORT_ERROR,
@@ -48,6 +41,18 @@ enum dnssec_error {
 	DNSSEC_NSEC3_HASHING_ERROR,
 };
 
+/*!
+ * Translate error code to error message.
+ *
+ * \param error  Error code.
+ *
+ * \return Statically allocated error message string.
+ */
+const char *dnssec_strerror(int error);
+
+/*!
+ * Convert errno to error code.
+ */
 static inline int dnssec_errno_to_error(int ecode)
 {
 	return errno2error(ecode);
