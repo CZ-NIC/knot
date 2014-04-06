@@ -82,7 +82,7 @@ static uint32_t acl_fill_mask32(short nbits)
 	return htonl(r);
 }
 
-static int addr_match(const netblock_t *a1, const struct sockaddr_storage *a2)
+int netblock_match(const netblock_t *a1, const struct sockaddr_storage *a2)
 {
 	int ret = 0;
 	uint32_t mask = 0xffffffff;
@@ -173,7 +173,7 @@ acl_match_t* acl_find(acl_t *acl, const struct sockaddr_storage *addr, const kno
 
 	acl_match_t *cur = NULL;
 	WALK_LIST(cur, *acl) {
-		if (addr_match(&cur->netblock, addr) == 0) {
+		if (netblock_match(&cur->netblock, addr) == 0) {
 			/* NOKEY entry. */
 			if (cur->key == NULL) {
 				if (key_name == NULL) {

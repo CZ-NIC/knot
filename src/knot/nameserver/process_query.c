@@ -2,14 +2,6 @@
 #include <urcu.h>
 
 #include "knot/nameserver/process_query.h"
-#include "libknot/consts.h"
-#include "common/debug.h"
-#include "libknot/common.h"
-#include "libknot/tsig-op.h"
-#include "common/descriptor.h"
-#include "knot/updates/acl.h"
-
-/*! \todo Move close to server when done. */
 #include "knot/nameserver/chaos.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/axfr.h"
@@ -19,7 +11,11 @@
 #include "knot/server/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/rrl.h"
+#include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
+#include "libknot/tsig-op.h"
+#include "common/descriptor.h"
+#include "common/debug.h"
 
 /* Forward decls. */
 static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb);

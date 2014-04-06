@@ -229,16 +229,6 @@ void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
 uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset);
 
 /*!
- * \brief RRSet RDATA equality check.
- *
- * \param r1  First RRSet.
- * \param r2  Second RRSet.
- *
- * \return True if RRs in r1 are equal to RRs in r2, false otherwise.
- */
-bool knot_rrset_rdata_equal(const knot_rrset_t *r1, const knot_rrset_t *r2);
-
-/*!
  * \brief Compares two RRSets for equality.
  *
  * \param r1   First RRSet.

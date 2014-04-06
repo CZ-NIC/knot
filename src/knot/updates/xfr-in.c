@@ -223,50 +223,11 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_parse(knot_pkt_t **dst, uint8_t *wire, size_t wire_size)
-{
-	assert(dst != NULL);
-
-	int ret = KNOT_EOK;
-	knot_pkt_t *pkt = knot_pkt_new(wire, wire_size, NULL);
-	if (pkt == NULL) {
-		knot_pkt_free(&pkt);
-		return KNOT_ENOMEM;
-	}
-
-	/* This is important, don't merge RRs together. The SOAs are ordered
-	 * in a special way for a reason. */
-	ret = knot_pkt_parse(pkt, KNOT_PF_NO_MERGE);
-	if (ret != KNOT_EOK) {
-		knot_pkt_free(&pkt);
-		return ret;
-	}
-
-	// check if the response is OK
-	if (knot_wire_get_rcode(pkt->wire) != KNOT_RCODE_NOERROR) {
-		knot_pkt_free(&pkt);
-		return KNOT_EXFRREFUSED;
-	}
-
-	// check if the TC bit is set (it must not be)
-	if (knot_wire_get_tc(pkt->wire)) {
-		knot_pkt_free(&pkt);
-		return KNOT_EMALF;
-	}
-
-	*dst = pkt;
-	return KNOT_EOK;
-}
-
 static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uint16_t *cur)
 {
 	int ret = KNOT_EOK;
 	if (*cur < answer->count) {
-		/*! \note For now, the RRSets are allocated using malloc(),
-		 *        clearing the KNOT_PF_FREE flags takes their ownership.
-		 */
-		*rr = (knot_rrset_t *)answer->rr[*cur];
-		answer->rrinfo[*cur].flags &= ~KNOT_PF_FREE;
+		ret = knot_rrset_copy(answer->rr[*cur], rr, NULL);
 		*cur += 1;
 	} else {
 		*rr = NULL;
@@ -278,23 +239,17 @@ static int xfrin_take_rr(const knot_pktsection_t *answer, knot_rrset_t **rr, uin
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
+int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 {
-	if (xfr->wire == NULL) {
+	if (pkt == NULL) {
 		return KNOT_EINVAL;
-	}
-
-	knot_pkt_t *packet = NULL;
-	int ret = xfrin_parse(&packet, xfr->wire, xfr->wire_size);
-	if (ret != KNOT_EOK ) {
-		return ret;
 	}
 
 	uint16_t rr_id = 0;
 	knot_rrset_t *rr = NULL;
-	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
-	ret = xfrin_take_rr(answer, &rr, &rr_id);
+	int ret = xfrin_take_rr(answer, &rr, &rr_id);
 	if (*zone == NULL) {
 		// Transfer start, init zone
 		if (rr->type != KNOT_RRTYPE_SOA) {
@@ -302,7 +257,7 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 		}
 		*zone = knot_zone_contents_new(rr->owner);
 		if (*zone == NULL) {
-			knot_pkt_free(&packet);
+			knot_rrset_free(&rr, NULL);
 			return KNOT_ENOMEM;
 		}
 		xfr->packet_nr = 0;
@@ -311,16 +266,14 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 	}
 
 	// Init zone creator
-	zcreator_t zc = {.z = *zone,
-	                 .last_node = NULL, .ret = KNOT_EOK };
+	zcreator_t zc = {.z = *zone, .ret = KNOT_EOK };
 
 
 	while (ret == KNOT_EOK && rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
 		    knot_node_rrset(zc.z->apex, KNOT_RRTYPE_SOA)) {
 			// Last SOA, last message, check TSIG.
-			ret = xfrin_check_tsig(packet, xfr, 1);
-			knot_pkt_free(&packet);
+			ret = xfrin_check_tsig(pkt, xfr, 1);
 			knot_rrset_free(&rr, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
@@ -329,7 +282,6 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 		} else {
 			ret = zcreator_step(&zc, rr);
 			if (ret != KNOT_EOK) {
-				knot_pkt_free(&packet);
 				knot_rrset_free(&rr, NULL);
 				return ret;
 			}
@@ -339,34 +291,26 @@ int xfrin_process_axfr_packet(knot_ns_xfr_t *xfr, knot_zone_contents_t **zone)
 
 	assert(rr == NULL);
 	// Check possible TSIG at the end of DNS message.
-	ret = xfrin_check_tsig(packet, xfr,
+	ret = xfrin_check_tsig(pkt, xfr,
 	                       knot_ns_tsig_required(xfr->packet_nr));
-	knot_pkt_free(&packet);
 	return ret; // ret == KNOT_EOK means processing continues.
 }
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
+int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 {
 	knot_changesets_t **chs = (knot_changesets_t **)(&xfr->data);
-	if (xfr->wire == NULL || chs == NULL) {
+	if (pkt == NULL || chs == NULL) {
 		dbg_xfrin("Wrong parameters supported.\n");
 		return KNOT_EINVAL;
 	}
 
-	knot_pkt_t *packet = NULL;
-	int ret = xfrin_parse(&packet, xfr->wire, xfr->wire_size);
-	if (ret != KNOT_EOK ) {
-		return ret;
-	}
-
 	uint16_t rr_id = 0;
 	knot_rrset_t *rr = NULL;
-	const knot_pktsection_t *answer = knot_pkt_section(packet, KNOT_ANSWER);
-	ret = xfrin_take_rr(answer, &rr, &rr_id);
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	int ret = xfrin_take_rr(answer, &rr, &rr_id);
 	if (ret != KNOT_EOK) {
-		knot_pkt_free(&packet);
 		return KNOT_EXFRREFUSED; /* Empty, try again with AXFR */
 	}
 
@@ -383,7 +327,6 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		ret = knot_changesets_init(chs);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&rr, NULL);
-			knot_pkt_free(&packet);
 			return ret;
 		}
 
@@ -422,11 +365,9 @@ int xfrin_process_ixfr_packet(knot_ns_xfr_t *xfr)
 		 */
 		if (rr == NULL) {
 			dbg_xfrin("Response containing only SOA,\n");
-			knot_pkt_free(&packet);
 			return XFRIN_RES_SOA_ONLY;
 		} else if (knot_rrset_type(rr) != KNOT_RRTYPE_SOA) {
 			knot_rrset_free(&rr, NULL);
-			knot_pkt_free(&packet);
 			dbg_xfrin("Fallback to AXFR.\n");
 			ret = XFRIN_RES_FALLBACK;
 			return ret;
@@ -539,11 +480,10 @@ dbg_xfrin_exec_verb(
 				/*! \note [TSIG] Check TSIG, we're at the end of
 				 *               transfer.
 				 */
-				ret = xfrin_check_tsig(packet, xfr, 1);
+				ret = xfrin_check_tsig(pkt, xfr, 1);
 
 				// last SOA, discard and end
 				knot_rrset_free(&rr, NULL);
-				knot_pkt_free(&packet);
 
 				/*! \note [TSIG] If TSIG validates, consider
 				 *        transfer complete. */
@@ -625,7 +565,7 @@ dbg_xfrin_exec_verb(
 	/*! \note Check TSIG, we're at the end of packet. It may not be
 	 *        required.
 	 */
-	ret = xfrin_check_tsig(packet, xfr,
+	ret = xfrin_check_tsig(pkt, xfr,
 			       knot_ns_tsig_required(xfr->packet_nr));
 	dbg_xfrin_verb("xfrin_check_tsig() returned %d\n", ret);
 	++xfr->packet_nr;
@@ -637,7 +577,6 @@ dbg_xfrin_exec_verb(
 
 	// here no RRs remain in the packet but the transfer is not finished
 	// yet, return EOK
-	knot_pkt_free(&packet);
 	return KNOT_EOK;
 
 cleanup:
@@ -646,7 +585,6 @@ cleanup:
 
 	dbg_xfrin_detail("Cleanup after processing IXFR/IN packet.\n");
 	knot_changesets_free(chs);
-	knot_pkt_free(&packet);
 	xfr->data = 0;
 	return ret;
 }

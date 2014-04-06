@@ -798,7 +798,7 @@ static int zones_serial_policy(const zone_t *zone)
 	return zone->conf->serial_policy;
 }
 
-uint32_t zones_next_serial(zone_t *zone)
+uint32_t zones_next_serial(const zone_t *zone)
 {
 	assert(zone);
 
@@ -1664,6 +1664,10 @@ int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *refresh_at)
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
+
+	/* Trim extra heap. */
+	mem_trim();
+
 	return ret;
 }
 
@@ -1746,7 +1750,7 @@ void zones_schedule_zonefile_sync(zone_t *zone, uint32_t timeout)
 
 int zones_verify_tsig_query(const knot_pkt_t *query,
                             const knot_tsig_key_t *key,
-                            knot_rcode_t *rcode, uint16_t *tsig_rcode,
+                            uint16_t *rcode, uint16_t *tsig_rcode,
                             uint64_t *tsig_prev_time_signed)
 {
 	assert(key != NULL);
@@ -2248,6 +2252,9 @@ int zones_do_diff_and_sign(zone_t *zone, zone_t *old_zone, bool zone_changed)
 
 	knot_changesets_free(&diff_chs);
 	rcu_read_unlock();
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	if (ret == KNOT_EOK && zone_signed) {
 		log_zone_info("DNSSEC: Zone %s - Successfully signed.\n",

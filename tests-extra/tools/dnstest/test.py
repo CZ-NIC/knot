@@ -99,7 +99,7 @@ class Test(object):
         elif server == "dummy":
             srv = dnstest.server.Dummy()
         else:
-            raise Exception("Usupported server %s" % server)
+            raise Exception("Usupported server '%s'" % server)
 
         type(srv).count += 1
 
@@ -124,10 +124,7 @@ class Test(object):
         srv.ferr = srv.dir + "/stderr"
         srv.confile = srv.dir + "/%s.conf" % srv.name
 
-        try:
-            os.mkdir(srv.dir)
-        except:
-            raise Exception("Can't create directory %s" % srv.dir)
+        prepare_dir(srv.dir)
 
         if srv.ctlkey:
             srv.ctlkeyfile = srv.dir + "/%s.ctlkey" % srv.name
@@ -179,7 +176,7 @@ class Test(object):
             server.start(clean=True)
 
             if not server.running():
-                raise Exception("Server %s not running" % server.name)
+                raise Exception("Server '%s' not running" % server.name)
 
             if not server.listening():
                 self.stop(check=False)
@@ -227,7 +224,8 @@ class Test(object):
         for name in names:
             zone = dnstest.zonefile.ZoneFile(self.zones_dir)
             zone.set_name(name)
-            zone.gen_file(dnssec=dnssec, nsec3=nsec3, records=records, serial=serial)
+            zone.gen_file(dnssec=dnssec, nsec3=nsec3, records=records,
+                          serial=serial)
             zones.append(zone)
 
         return zones

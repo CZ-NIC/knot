@@ -2,23 +2,12 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/zone/zonedb.h"
 #include "libknot/common.h"
 #include "libknot/rdata.h"
 #include "common/debug.h"
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
-
-/*! \brief Query processing states. */
-enum {
-	BEGIN,   /* Begin name resolution. */
-	NODATA,  /* Positive result with NO data. */
-	HIT,     /* Positive result. */
-	MISS,    /* Negative result. */
-	DELEG,   /* Result is delegation. */
-	FOLLOW,  /* Resolution not complete (CNAME/DNAME chain). */
-	ERROR,   /* Resolution failed. */
-	TRUNC    /* Finished, but truncated. */
-};
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const knot_node_t *node)
@@ -495,7 +484,7 @@ static int solve_name(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	}
 }
 
-static int solve_answer_section(int state, knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	/* Get answer to QNAME. */
 	state = solve_name(state, pkt, qdata);
@@ -514,7 +503,7 @@ static int solve_answer_section(int state, knot_pkt_t *pkt, struct query_data *q
 	return state;
 }
 
-static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (!have_dnssec(qdata)) {
 		return state; /* DNSSEC not supported. */
@@ -529,7 +518,7 @@ static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qd
 	}
 }
 
-static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	int ret = KNOT_ERROR;
 	const knot_zone_contents_t *zone_contents = qdata->zone->contents;
@@ -569,7 +558,7 @@ static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata)
 	}
 }
 
-static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (!have_dnssec(qdata)) {
 		return state; /* DNSSEC not supported. */
@@ -612,7 +601,7 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 	}
 }
 
-static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	/* Put OPT RR. */
 	int ret = knot_pkt_put_opt(pkt);
@@ -638,7 +627,7 @@ static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata
 	}
 }
 
-static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata)
+static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
 	if (!have_dnssec(qdata)) {
 		return state; /* DNSSEC not supported. */
@@ -705,13 +694,72 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 }
 
 /*! \brief Helper for internet_answer repetitive code. */
-#define SOLVE_STEP(solver, state) \
-	state = solver(state, response, qdata); \
+#define SOLVE_STEP(solver, state, context) \
+	state = (solver)(state, response, qdata, context); \
 	if (state == TRUNC) { \
 		return NS_PROC_DONE; \
 	} else if (state == ERROR) { \
 		return NS_PROC_FAIL; \
 	}
+
+static int default_answer(knot_pkt_t *response, struct query_data *qdata)
+{
+	int state = BEGIN;
+
+	/* Resolve ANSWER. */
+	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
+	knot_pkt_begin(response, KNOT_ANSWER);
+	SOLVE_STEP(solve_answer, state, NULL);
+	SOLVE_STEP(solve_answer_dnssec, state, NULL);
+
+	/* Resolve AUTHORITY. */
+	dbg_ns("%s: writing %p AUTHORITY\n", __func__, response);
+	knot_pkt_begin(response, KNOT_AUTHORITY);
+	SOLVE_STEP(solve_authority, state, NULL);
+	SOLVE_STEP(solve_authority_dnssec, state, NULL);
+
+	/* Resolve ADDITIONAL. */
+	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, response);
+	knot_pkt_begin(response, KNOT_ADDITIONAL);
+	SOLVE_STEP(solve_additional, state, NULL);
+	SOLVE_STEP(solve_additional_dnssec, state, NULL);
+
+	/* Write resulting RCODE. */
+	knot_wire_set_rcode(response->wire, qdata->rcode);
+
+	return NS_PROC_DONE;
+}
+
+static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct query_data *qdata)
+{
+	/* Before query processing code. */
+	int state = BEGIN;
+	struct query_step *step = NULL;
+	WALK_LIST(step, plan->stage[QPLAN_BEGIN]) {
+		SOLVE_STEP(step->process, state, step->ctx);
+	}
+
+	/* Begin processing. */
+	for (int section = KNOT_ANSWER; section <= KNOT_ADDITIONAL; ++section) {
+		dbg_ns("%s: writing section %u\n", __func__, section);
+		knot_pkt_begin(response, section);
+		WALK_LIST(step, plan->stage[QPLAN_STAGE + section]) {
+			SOLVE_STEP(step->process, state, step->ctx);
+		}
+	}
+
+	/* Write resulting RCODE. */
+	knot_wire_set_rcode(response->wire, qdata->rcode);
+
+	/* After query processing code. */
+	WALK_LIST(step, plan->stage[QPLAN_END]) {
+		SOLVE_STEP(step->process, state, step->ctx);
+	}
+
+	return NS_PROC_DONE;
+}
+
+#undef SOLVE_STEP
 
 int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 {
@@ -735,32 +783,25 @@ int internet_answer(knot_pkt_t *response, struct query_data *qdata)
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Expired */
 
 	/* Get answer to QNAME. */
-	dbg_ns("%s: writing %p ANSWER\n", __func__, response);
-	knot_pkt_begin(response, KNOT_ANSWER);
 	qdata->name = knot_pkt_qname(qdata->query);
 
-	/* Begin processing. */
-	int state = BEGIN;
-	SOLVE_STEP(solve_answer_section, state);
-	SOLVE_STEP(solve_answer_dnssec, state);
+	/* If the zone doesn't have a query plan, go for fast default. */
+	conf_zone_t *zone_config = qdata->zone->conf;
+	if (zone_config->query_plan == NULL) {
+		return default_answer(response, qdata);
+	}
 
-	/* Resolve AUTHORITY. */
-	dbg_ns("%s: writing %p AUTHORITY\n", __func__, response);
-	knot_pkt_begin(response, KNOT_AUTHORITY);
-	SOLVE_STEP(solve_authority, state);
-	SOLVE_STEP(solve_authority_dnssec, state);
-
-	/* Resolve ADDITIONAL. */
-	dbg_ns("%s: writing %p ADDITIONAL\n", __func__, response);
-	knot_pkt_begin(response, KNOT_ADDITIONAL);
-	SOLVE_STEP(solve_additional, state);
-	SOLVE_STEP(solve_additional_dnssec, state);
-
-	/* Write resulting RCODE. */
-	knot_wire_set_rcode(response->wire, qdata->rcode);
-
-	/* Complete response. */
-	return NS_PROC_DONE;
+	return planned_answer(zone_config->query_plan, response, qdata);
 }
 
-#undef SOLVE_STEP
+int internet_query_plan(struct query_plan *plan)
+{
+	query_plan_step(plan, QPLAN_ANSWER, solve_answer, NULL);
+	query_plan_step(plan, QPLAN_ANSWER, solve_answer_dnssec, NULL);
+	query_plan_step(plan, QPLAN_AUTHORITY, solve_authority, NULL);
+	query_plan_step(plan, QPLAN_AUTHORITY, solve_authority_dnssec, NULL);
+	query_plan_step(plan, QPLAN_ADDITIONAL, solve_additional, NULL);
+	query_plan_step(plan, QPLAN_ADDITIONAL, solve_additional_dnssec, NULL);
+
+	return KNOT_EOK;
+}

@@ -58,19 +58,19 @@ typedef struct knot_ddns_prereq_t {
 } knot_ddns_prereq_t;
 
 int knot_ddns_check_zone(const knot_zone_contents_t *zone,
-                         const knot_pkt_t *query, knot_rcode_t *rcode);
+                         const knot_pkt_t *query, uint16_t *rcode);
 
 int knot_ddns_process_prereqs(const knot_pkt_t *query,
-                              knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode);
+                              knot_ddns_prereq_t **prereqs, uint16_t *rcode);
 
 int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
-                            knot_ddns_prereq_t **prereqs, knot_rcode_t *rcode);
+                            knot_ddns_prereq_t **prereqs, uint16_t *rcode);
 
 int knot_ddns_process_update(knot_zone_contents_t *zone,
                               const knot_pkt_t *query,
                               knot_changeset_t *changeset,
                               knot_changes_t *changes,
-                              knot_rcode_t *rcode, uint32_t new_serial);
+                              uint16_t *rcode, uint32_t new_serial);
 
 void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq);
 

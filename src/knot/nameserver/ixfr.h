@@ -45,6 +45,7 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
 /*!
  * \brief Process an IXFR query response.
  *
+ * \param pkt Processed packet.
  * \param xfr Persistent transfer-specific data.
  *
  * \retval KNOT_EOK If this packet was processed successfuly and another packet
@@ -64,7 +65,7 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
  * \retval Other If any other error occured. The connection should be closed.
  *
  */
-int ixfr_process_answer(knot_ns_xfr_t *xfr);
+int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr);
 
 #endif /* _KNOT_IXFR_H_ */
 
