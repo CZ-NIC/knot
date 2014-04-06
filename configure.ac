@@ -103,6 +103,9 @@ fi
 # GnuTLS crypto backend
 PKG_CHECK_MODULES([gnutls], [gnutls nettle])
 
+# YAML for DNSSEC status storage
+PKG_CHECK_MODULES([yaml], [yaml-0.1])
+
 # Debug modules
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug=server,zones,xfr,packet,rr,ns,loader,dnssec],
@@ -396,5 +399,6 @@ echo "
   Utils with IDN: ${libidn}
   Use systemd notifications: ${enable_systemd}
   GnuTLS: CFLAGS: ${gnutls_CFLAGS} LIBS: ${gnutls_LIBS}
+  YAML: CFLAGS: ${yaml_CFLAGS} LIBS: ${yaml_LIBS}
 
   Continue with 'make' command"

@@ -6,12 +6,12 @@ AM_CPPFLAGS = \
 lib_LTLIBRARIES = libdnssec.la
 
 libdnssec_la_CFLAGS = \
-	$(AM_CFLAGS) $(gnutls_CFLAGS) \
+	$(AM_CFLAGS) $(gnutls_CFLAGS) $(yaml_CFLAGS) \
 	-fvisibility=hidden \
 	-Ilib -Ilib/dnssec
 
 libdnssec_la_LDFLAGS = \
-	$(gnutls_LIBS) \
+	$(gnutls_LIBS) $(yaml_LIBS) \
 	-version-info 0:1:0
 
 libdnssec_la_SOURCES = \
