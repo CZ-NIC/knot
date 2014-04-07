@@ -4,8 +4,11 @@
 #include <yaml.h>
 
 #include "binary.h"
+#include "shared.h"
 
 #define YML_PATH_SEPARATOR '/'
+
+#define _cleanup_yml_node_ _cleanup_(yml_node_deinit)
 
 typedef struct yml_node {
 	yaml_document_t *document;
