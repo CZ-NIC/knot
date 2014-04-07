@@ -410,20 +410,6 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 	return ret;
 }
 
-knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl, mm_ctx_t *mm)
-{
-	if (!tpl) {
-		return NULL;
-	}
-
-	knot_dname_t *owner = knot_dname_copy(tpl->owner, mm);
-	if (!owner) {
-		return NULL;
-	}
-
-	return knot_rrset_new(owner, tpl->type, tpl->rclass, mm);
-}
-
 int knot_rrset_add_rr(knot_rrset_t *rrset,
                       const uint8_t *rdata, const uint16_t size,
                       const uint32_t ttl, mm_ctx_t *mm)
@@ -934,8 +920,14 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 		return NULL;
 	}
 
-	knot_rrset_t *rrset = knot_rrset_new_from(src, mm);
+	knot_dname_t *owner_cpy = knot_dname_copy(src->owner, mm);
+	if (owner_cpy == NULL) {
+		return NULL;
+	}
+
+	knot_rrset_t *rrset = knot_rrset_new(owner_cpy, src->type, src->rclass, mm);
 	if (rrset == NULL) {
+		knot_dname_free(&owner_cpy, NULL);
 		return NULL;
 	}
 

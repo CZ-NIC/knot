@@ -52,6 +52,23 @@ static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 	                      NULL);
 }
 
+/*!
+ * \brief Create empty RRSet from given template RRSet.
+ */
+static knot_rrset_t *new_rrset_from(const knot_rrset_t *tpl)
+{
+	if (!tpl) {
+		return NULL;
+	}
+
+	knot_dname_t *owner = knot_dname_copy(tpl->owner, NULL);
+	if (!owner) {
+		return NULL;
+	}
+
+	return knot_rrset_new(owner, tpl->type, tpl->rclass, NULL);
+}
+
 /*- private API - signing of in-zone nodes -----------------------------------*/
 
 /*!
@@ -456,7 +473,7 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		uint16_t type_covered = knot_rrs_rrsig_type_covered(&rrsigs->rrs, i);
 		if (!knot_node_rrtype_exists(node, type_covered)) {
-			knot_rrset_t *to_remove = knot_rrset_new_from(rrsigs, NULL);
+			knot_rrset_t *to_remove = new_rrset_from(rrsigs);
 			if (to_remove == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -767,7 +784,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 		dbg_dnssec_detail("removing DNSKEY with tag %d\n", keytag);
 
 		if (to_remove == NULL) {
-			to_remove = knot_rrset_new_from(dnskeys, NULL);
+			to_remove = new_rrset_from(dnskeys);
 			if (to_remove == NULL) {
 				result = KNOT_ENOMEM;
 				break;

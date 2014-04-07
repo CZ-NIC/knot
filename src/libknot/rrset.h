@@ -80,19 +80,16 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
                              uint16_t rclass,
                              mm_ctx_t *mm);
 
+/*!
+ * \brief Initializes RRSet structure with given data.
+ *
+ * \param rrset   RRSet to init.
+ * \param owner   RRSet owner to use.
+ * \param type    RR type to use.
+ * \param rclass  Class to use.
+ */
 void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
                      uint16_t rclass);
-
-/*!
- * \brief Creates a new RRSet according to given template RRSet.
- *
- * OWNER, TYPE, CLASS, and TTL values from template RRSet are used.
- *
- * \param tmp  RRSet template.
- *
- * \return New RRSet, NULL if an error occured.
- */
-knot_rrset_t *knot_rrset_new_from(const knot_rrset_t *tpl, mm_ctx_t *mm);
 
 /*!
  * \brief Adds the given RDATA to the RRSet.
@@ -336,7 +333,8 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
  *
  * \param a    First RRSet to intersect.
  * \param b    Second RRset to intersect.
- * \param out  Output RRSet with intersection.
+ * \param out  Output RRSet with intersection, RDATA are created anew, owner is
+ *             just a reference.
  * \param mm   Memory context.
  *
  * \return KNOT_E*
