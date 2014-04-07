@@ -245,21 +245,6 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    mm_ctx_t *mm);
 
 /*!
- * \brief Creates RRSIG record from node RRSIGs for given RRSet.
- *
- * \param owner    Owner to use for the RRSIG.
- * \param type     Type to cover.
- * \param rrsigs   Node RRSIGs.
- * \param out_sig  Output RRSIG.
- * \param mm       Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
-                           const knot_rrset_t *rrsigs,
-                           knot_rrset_t **out_sig, mm_ctx_t *mm);
-
-/*!
  * \brief Checks whether RRSet is empty.
  *
  * \param rrset  RRSet to check.

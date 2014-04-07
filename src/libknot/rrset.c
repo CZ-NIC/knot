@@ -680,22 +680,13 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 	return true;
 }
 
-static void rrset_deep_free_content(knot_rrset_t *rrset,
-                                    mm_ctx_t *mm)
-{
-	assert(rrset);
-
-	knot_rrs_clear(&rrset->rrs, mm);
-	knot_dname_free(&rrset->owner, mm);
-}
-
 void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 {
 	if (rrset == NULL || *rrset == NULL) {
 		return;
 	}
 
-	rrset_deep_free_content(*rrset, mm);
+	knot_rrset_clear(*rrset, mm);
 
 	mm_free(mm, *rrset);
 	*rrset = NULL;
@@ -703,7 +694,10 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 
 void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 {
-	rrset_deep_free_content(rrset, mm);
+	if (rrset) {
+		knot_rrs_clear(&rrset->rrs, mm);
+		knot_dname_free(&rrset->owner, mm);
+	}
 }
 
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
@@ -813,38 +807,6 @@ int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
 				return ret;
 			}
 		}
-	}
-
-	return KNOT_EOK;
-}
-
-int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
-                           const knot_rrset_t *rrsigs,
-                           knot_rrset_t **out_sig, mm_ctx_t *mm)
-{
-	if (knot_rrset_empty(rrsigs)) {
-		return KNOT_ENOENT;
-	}
-
-	if (out_sig == NULL || owner == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_dname_t *owner_copy = knot_dname_copy(owner, mm);
-	if (owner_copy == NULL) {
-		return KNOT_ENOMEM;
-	}
-	*out_sig = knot_rrset_new(owner_copy,
-	                          KNOT_RRTYPE_RRSIG, rrsigs->rclass, mm);
-	if (*out_sig == NULL) {
-		knot_dname_free(&owner_copy, mm);
-		return KNOT_ENOMEM;
-	}
-
-	int ret = knot_rrs_synth_rrsig(type, &rrsigs->rrs, &(*out_sig)->rrs, mm);
-	if (ret != KNOT_EOK) {
-		knot_rrset_free(out_sig, mm);
-		return ret;
 	}
 
 	return KNOT_EOK;

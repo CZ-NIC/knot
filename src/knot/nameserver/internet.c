@@ -7,6 +7,7 @@
 #include "common/debug.h"
 #include "common/descriptor.h"
 #include "knot/server/zones.h"
+#include "libknot/dnssec/rrset-sign.h"
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const knot_node_t *node)
@@ -133,8 +134,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 {
 	knot_rrset_t synth_sig;
 	knot_rrs_init(&synth_sig.rrs);
-	int ret = knot_rrs_synth_rrsig(type, &rrsigs->rrs,
-	                               &synth_sig.rrs, qdata->mm);
+	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_sig.rrs, qdata->mm);
 	if (ret == KNOT_ENOENT) {
 		// No signature
 		return KNOT_EOK;

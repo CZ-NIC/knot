@@ -21,6 +21,7 @@
 #include "common/debug.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/zone-sign.h"
+#include "libknot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
 /* - NSEC chain construction ------------------------------------------------ */
@@ -222,34 +223,41 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 	if (nsec == NULL) {
 		nsec = knot_node_create_rrset(n, KNOT_RRTYPE_NSEC3);
 	}
-	knot_rrset_t *rrsigs = knot_node_create_rrset(n, KNOT_RRTYPE_RRSIG);
 	if (nsec) {
 		// update changeset
 		result = knot_changeset_add_rrset(changeset, nsec,
 		                                  KNOT_CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
-			knot_rrset_free(&rrsigs, NULL);
 			knot_rrset_free(&nsec, NULL);
 			return result;
 		}
 	}
 
-	if (rrsigs) {
+	knot_rrset_t rrsigs = knot_node_rrset(n, KNOT_RRTYPE_RRSIG);
+	if (!knot_rrset_empty(&rrsigs)) {
 		// Sythesize RRSets' RRSIG
-		knot_rrset_t *synth_rrsigs = NULL;
-		result = knot_rrset_synth_rrsig(rrsigs->owner, KNOT_RRTYPE_NSEC,
-		                                rrsigs, &synth_rrsigs, NULL);
-
+		knot_dname_t *dname_cpy = knot_dname_copy(n->owner, NULL);
+		if (dname_cpy == NULL) {
+			return KNOT_ENOMEM;
+		}
+		knot_rrset_t *synth_rrsigs = knot_rrset_new(dname_cpy,
+		                                            KNOT_RRTYPE_RRSIG,
+		                                            KNOT_CLASS_IN,
+		                                            NULL);
+		if (synth_rrsigs == NULL) {
+			knot_dname_free(&dname_cpy, NULL);
+			return KNOT_ENOMEM;
+		}
+		result = knot_synth_rrsig(KNOT_RRTYPE_NSEC, &rrsigs.rrs,
+		                          &synth_rrsigs->rrs, NULL);
 		if (result == KNOT_ENOENT) {
 			// Try removing NSEC3 RRSIGs
-			result = knot_rrset_synth_rrsig(rrsigs->owner,
-			                                KNOT_RRTYPE_NSEC3,
-			                                rrsigs, &synth_rrsigs,
-			                                NULL);
+			result = knot_synth_rrsig(KNOT_RRTYPE_NSEC3, &rrsigs.rrs,
+			                              &synth_rrsigs->rrs, NULL);
 		}
 
 		if (result != KNOT_EOK) {
-			knot_rrset_free(&rrsigs, NULL);
+			knot_rrset_free(&synth_rrsigs, NULL);
 			if (result != KNOT_ENOENT) {
 				return result;
 			}
@@ -261,11 +269,9 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 		                                  KNOT_CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
 			knot_rrset_free(&synth_rrsigs, NULL);
-			knot_rrset_free(&rrsigs, NULL);
 			return result;
 		}
 	}
-	knot_rrset_free(&rrsigs, NULL);
 
 	return KNOT_EOK;
 }

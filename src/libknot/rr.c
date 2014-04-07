@@ -75,22 +75,6 @@ static knot_rr_t *rr_seek(knot_rr_t *d, size_t pos)
 	return d + offset;
 }
 
-size_t knot_rrs_size(const knot_rrs_t *rrs)
-{
-	if (rrs == NULL) {
-		return 0;
-	}
-
-	size_t total_size = 0;
-	for (size_t i = 0; i < rrs->rr_count; ++i) {
-		const knot_rr_t *rr = knot_rrs_rr(rrs, i);
-		assert(rr);
-		total_size += knot_rr_array_size(knot_rr_rdata_size(rr));
-	}
-
-	return total_size;
-}
-
 static int add_rr_at(knot_rrs_t *rrs, const knot_rr_t *rr, size_t pos,
                      mm_ctx_t *mm)
 {
@@ -258,6 +242,22 @@ uint32_t knot_rrs_rr_ttl(const knot_rrs_t *rrs, size_t pos)
 	return knot_rr_ttl(knot_rrs_rr(rrs, pos));
 }
 
+size_t knot_rrs_size(const knot_rrs_t *rrs)
+{
+	if (rrs == NULL) {
+		return 0;
+	}
+
+	size_t total_size = 0;
+	for (size_t i = 0; i < rrs->rr_count; ++i) {
+		const knot_rr_t *rr = knot_rrs_rr(rrs, i);
+		assert(rr);
+		total_size += knot_rr_array_size(knot_rr_rdata_size(rr));
+	}
+
+	return total_size;
+}
+
 int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm)
 {
 	if (rrs == NULL || rr == NULL) {
@@ -336,31 +336,6 @@ bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2)
 	}
 
 	return true;
-}
-
-int knot_rrs_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
-                         knot_rrs_t *out_sig, mm_ctx_t *mm)
-{
-	if (rrsig_rrs == NULL) {
-		return KNOT_ENOENT;
-	}
-
-	if (out_sig == NULL || out_sig->rr_count > 0) {
-		return KNOT_EINVAL;
-	}
-
-	for (int i = 0; i < rrsig_rrs->rr_count; ++i) {
-		if (type == knot_rrs_rrsig_type_covered(rrsig_rrs, i)) {
-			const knot_rr_t *rr_to_copy = knot_rrs_rr(rrsig_rrs, i);
-			int ret = knot_rrs_add_rr(out_sig, rr_to_copy, mm);
-			if (ret != KNOT_EOK) {
-				knot_rrs_clear(out_sig, mm);
-				return ret;
-			}
-		}
-	}
-
-	return out_sig->rr_count > 0 ? KNOT_EOK : KNOT_ENOENT;
 }
 
 int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm)

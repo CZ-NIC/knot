@@ -161,6 +161,13 @@ uint16_t knot_rrs_rr_size(const knot_rrs_t *rrs, size_t pos);
  */
 uint32_t knot_rrs_rr_ttl(const knot_rrs_t *rrs, size_t pos);
 
+/*!
+ * \brief Returns size of array with RRs.
+ * \param rrs  RR array.
+ * \return Array size.
+ */
+size_t knot_rrs_size(const knot_rrs_t *rrs);
+
 /* ----------------------- RRs RR manipulation ------------------------------ */
 
 /*!
@@ -191,20 +198,6 @@ int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm);
  * \retval false if rrs1 != rrs2.
  */
 bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2);
-
-size_t knot_rrs_size(const knot_rrs_t *rrs);
-
-/*!
- * \brief Creates new RRS using \a rrsig_rrs as a source. Only those RRs that
- *        cover given \a type are copied into \a out_sig
- * \param type       Covered type.
- * \param rrsig_rrs  Source RRS.
- * \param out_sig    Output RRS.
- * \param mm         Memory context.
- * \return KNOT_E*
- */
-int knot_rrs_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
-                         knot_rrs_t *out_sig, mm_ctx_t *mm);
 
 /*!
  * \brief Merges two RRS into the first one. Second RRS is left intact.

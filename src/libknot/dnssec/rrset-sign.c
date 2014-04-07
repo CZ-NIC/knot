@@ -268,6 +268,31 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	                           sig_expire);
 }
 
+int knot_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
+                         knot_rrs_t *out_sig, mm_ctx_t *mm)
+{
+	if (rrsig_rrs == NULL) {
+		return KNOT_ENOENT;
+	}
+
+	if (out_sig == NULL || out_sig->rr_count > 0) {
+		return KNOT_EINVAL;
+	}
+
+	for (int i = 0; i < rrsig_rrs->rr_count; ++i) {
+		if (type == knot_rrs_rrsig_type_covered(rrsig_rrs, i)) {
+			const knot_rr_t *rr_to_copy = knot_rrs_rr(rrsig_rrs, i);
+			int ret = knot_rrs_add_rr(out_sig, rr_to_copy, mm);
+			if (ret != KNOT_EOK) {
+				knot_rrs_clear(out_sig, mm);
+				return ret;
+			}
+		}
+	}
+
+	return out_sig->rr_count > 0 ? KNOT_EOK : KNOT_ENOENT;
+}
+
 /*- Verification of signatures -----------------------------------------------*/
 
 /*!
@@ -337,3 +362,4 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	return knot_dnssec_sign_verify(ctx, signature, signature_size);
 }
+
