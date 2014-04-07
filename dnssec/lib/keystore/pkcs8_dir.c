@@ -4,18 +4,14 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include "binary.h"
 #include "error.h"
 #include "key.h"
 #include "keystore.h"
-#include "shared.h"
 #include "keystore/internal.h"
-
-#ifndef MAX_PATH
-#define MAX_PATH 4096
-#endif
+#include "path.h"
+#include "shared.h"
 
 /*!
  * Context for PKCS #8 key directory.
@@ -25,28 +21,6 @@ typedef struct pkcs8_dir_handle {
 } pkcs8_dir_handle_t;
 
 /* -- internal functions --------------------------------------------------- */
-
-/*!
- * Normalize path to a directory.
- */
-static char *normalize_dir(const char *path)
-{
-	char real[MAX_PATH] = { '\0' };
-	if (!realpath(path, real)) {
-		return NULL;
-	};
-
-	struct stat st = { 0 };
-	if (stat(real, &st) == -1) {
-		return NULL;
-	}
-
-	if (!S_ISDIR(st.st_mode)) {
-		return NULL;
-	}
-
-	return strdup(real);
-}
 
 /*!
  * Get path to a private key in PKCS #8 PEM format.
@@ -137,10 +111,10 @@ static int pkcs8_dir_open(void **handle_ptr, const char *path)
 		return DNSSEC_ENOMEM;
 	}
 
-	handle->dir_name = normalize_dir(path);
+	handle->dir_name = path_normalize(path);
 	if (!handle->dir_name) {
 		free(handle);
-		return DNSSEC_ERROR;
+		return DNSSEC_NOT_FOUND;
 	}
 
 	*handle_ptr = handle;

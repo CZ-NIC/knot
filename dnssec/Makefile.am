@@ -15,6 +15,8 @@ libshared_la_CFLAGS = \
 libshared_la_SOURCES = \
 	shared/hex.c \
 	shared/hex.h \
+	shared/path.c \
+	shared/path.h \
 	shared/shared.h \
 	shared/wire.h \
 	shared/yml.c \
