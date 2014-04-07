@@ -1,7 +1,8 @@
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/libtap \
-	-I$(srcdir)/../lib/dnssec \
-	-I$(srcdir)/../lib
+	-I$(srcdir)/../shared \
+	-I$(srcdir)/../lib \
+	-I$(srcdir)/../lib/dnssec
 
 AM_LDFLAGS = \
 	-static

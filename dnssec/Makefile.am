@@ -1,17 +1,32 @@
 SUBDIRS = . tests
 
 AM_CPPFLAGS = \
-	-include $(top_builddir)/src/config.h
+	-include $(top_builddir)/src/config.h \
+	-Ishared -Ilib -Ilib/dnssec \
+	$(gnutls_CFLAGS) \
+	$(yaml_CFLAGS)
 
+noinst_LTLIBRARIES = libshared.la
 lib_LTLIBRARIES = libdnssec.la
 
+libshared_la_CFLAGS = \
+	$(AM_CFLAGS)
+
+libshared_la_SOURCES = \
+	shared/hex.c \
+	shared/hex.h \
+	shared/shared.h \
+	shared/wire.h \
+	shared/yml.c \
+	shared/yml.h
+
 libdnssec_la_CFLAGS = \
-	$(AM_CFLAGS) $(gnutls_CFLAGS) $(yaml_CFLAGS) \
-	-fvisibility=hidden \
-	-Ilib -Ilib/dnssec
+	$(AM_CFLAGS) \
+	-fvisibility=hidden
 
 libdnssec_la_LDFLAGS = \
-	$(gnutls_LIBS) $(yaml_LIBS) \
+	$(gnutls_LIBS) \
+	$(yaml_LIBS) \
 	-version-info 0:1:0
 
 libdnssec_la_SOURCES = \
@@ -26,8 +41,6 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
 	lib/error.c \
-	lib/hex.c \
-	lib/hex.h \
 	lib/key/algorithm.c \
 	lib/key/algorithm.h \
 	lib/key/convert.c \
@@ -54,10 +67,6 @@ libdnssec_la_SOURCES = \
 	lib/nsec/bitmap.c \
 	lib/nsec/hash.c \
 	lib/random.c \
-	lib/shared.h \
 	lib/sign/der.c \
 	lib/sign/der.h \
-	lib/sign/sign.c \
-	lib/wire.h \
-	lib/yml.c \
-	lib/yml.h
+	lib/sign/sign.c
