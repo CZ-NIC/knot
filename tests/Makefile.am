@@ -2,6 +2,9 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/libtap \
 	-I$(top_srcdir)/src
 
+AM_LDFLAGS = \
+	$(libcrypto_LIBS)
+
 LDADD = \
 	$(top_builddir)/libtap/libtap.a \
 	$(top_builddir)/src/libknotd.la \

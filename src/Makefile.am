@@ -11,8 +11,8 @@ AM_CPPFLAGS = \
 	-DCONFIG_DIR='"${config_dir}"' \
 	-DSTORAGE_DIR='"${storage_dir}"' \
 	-DRUN_DIR='"${run_dir}"'
-AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
-AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
+AM_CFLAGS = $(CODE_COVERAGE_CFLAGS) $(libcrypto_CFLAGS)
+AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS) $(libcrypto_LIBS)
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -128,7 +128,7 @@ libknotus_la_SOURCES =				\
 
 # dynamic: libknot
 libknot_la_LDFLAGS =				\
-	$(CODE_COVERAGE_LDFLAGS)			\
+	$(AM_LD_FLAGS)				\
 	-version-info 0:1:0			\
 	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone)_'
 
@@ -289,7 +289,7 @@ libknotd_la_LIBADD = libknots.la libknot.la
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
 knotd_CPPFLAGS = $(AM_CPPFLAGS) ${systemd_daemon_CFLAGS}
-knotd_LDFLAGS = $(CODE_COVERAGE_LDFLAGS) ${systemd_daemon_LIBS}
+knotd_LDFLAGS = $(AM_LDFLAGS) ${systemd_daemon_LIBS}
 
 knotc_LDADD = libknot.la libknotd.la
 

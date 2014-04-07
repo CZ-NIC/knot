@@ -259,8 +259,6 @@ AC_ARG_WITH(openssl,
 
 AS_IF([test "$with_openssl" != "no"],[
   PKG_CHECK_MODULES([libcrypto], libcrypto, [
-    CPPFLAGS="$CPPFLAGS $libcrypto_CFLAGS"
-    LIBS="$LIBS $libcrypto_LIBS"
     with_openssl=yes
   ],[
 
@@ -281,7 +279,6 @@ AS_IF([test "$with_openssl" != "no"],[
 
       AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto], [
         with_openssl=yes
-	break
       ],[
         with_openssl=no
 	# do not cache result of AC_SEARCH_LIBS test
@@ -399,7 +396,8 @@ echo "
   Ragel: ${RAGEL} ${FSM_TYPE}
   Utils with IDN: ${libidn}
   Use systemd notifications: ${enable_systemd}
-  GnuTLS: CFLAGS: ${gnutls_CFLAGS} LIBS: ${gnutls_LIBS}
-  YAML: CFLAGS: ${yaml_CFLAGS} LIBS: ${yaml_LIBS}
+  OpenSSL: ${libcrypto_CFLAGS} ${libcrypto_LIBS}
+  GnuTLS: ${gnutls_CFLAGS} ${gnutls_LIBS}
+  YAML: ${yaml_CFLAGS} ${yaml_LIBS}
 
   Continue with 'make' command"
