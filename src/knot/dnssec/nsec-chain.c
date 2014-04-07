@@ -253,7 +253,7 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 		if (result == KNOT_ENOENT) {
 			// Try removing NSEC3 RRSIGs
 			result = knot_synth_rrsig(KNOT_RRTYPE_NSEC3, &rrsigs.rrs,
-			                              &synth_rrsigs->rrs, NULL);
+			                          &synth_rrsigs->rrs, NULL);
 		}
 
 		if (result != KNOT_EOK) {
