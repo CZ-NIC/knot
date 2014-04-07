@@ -32,3 +32,10 @@ void dname_normalize(uint8_t *dname);
  * The last label is NOT terminated by dot.
  */
 char *dname_to_ascii(const uint8_t *dname);
+
+/*!
+ * Normalize ASCII domain name.
+ *
+ * Convert to lower case, trim rightmost empty labels.
+ */
+char *dname_ascii_normalize(const char *dname);

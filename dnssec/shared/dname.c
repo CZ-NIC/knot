@@ -101,3 +101,37 @@ char *dname_to_ascii(const uint8_t *dname)
 
 	return (char *)copy;
 }
+
+char *dname_ascii_normalize(const char *dname)
+{
+	if (!dname) {
+		return NULL;
+	}
+
+	// real length without rightmost empty labels
+
+	size_t length = strlen(dname);
+	while (length > 0 && dname[length - 1] == '.') {
+		length -= 1;
+	}
+
+	// allocate result (zero terminated)
+
+	if (length + 1 > DNAME_MAX_LENGTH) {
+		return NULL;
+	}
+
+	char *result = malloc(length + 1);
+	if (!result) {
+		return NULL;
+	}
+
+	// normalize
+
+	for (size_t i = 0; i < length; i++) {
+		result[i] = tolower(dname[i]);
+	}
+	result[length] = '\0';
+
+	return result;
+}
