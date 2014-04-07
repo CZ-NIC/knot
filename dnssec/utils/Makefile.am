@@ -8,4 +8,5 @@ LDADD = \
 	$(builddir)/../libshared.la \
 	$(builddir)/../libdnssec.la
 
-bin_PROGRAMS =
+bin_PROGRAMS = \
+	parsekey
