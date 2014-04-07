@@ -395,7 +395,7 @@ bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type);
 static inline knot_rrset_t knot_node_rrset(const knot_node_t *node, uint16_t type)
 {
 	knot_rrset_t rrset;
-	for (uint i = 0; node && i < node->rrset_count; ++i) {
+	for (uint16_t i = 0; node && i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
 			struct rr_data *rr_data = &node->rrs[i];
 			rrset.owner = node->owner;

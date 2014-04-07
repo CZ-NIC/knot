@@ -717,8 +717,8 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 	return knot_rrs_merge(&rrset1->rrs, &rrset2->rrs, mm);
 }
 
-static uint16_t find_rr_pos(const knot_rrset_t *rr_search_in,
-                            const knot_rrset_t *rr_reference, size_t pos)
+static int find_rr_pos(const knot_rrset_t *rr_search_in,
+                       const knot_rrset_t *rr_reference, size_t pos)
 {
 	bool found = false;
 	uint16_t rr_count = knot_rrset_rr_count(rr_search_in);
@@ -741,7 +741,7 @@ static int knot_rrset_remove_rr(knot_rrset_t *rrset,
 	 * Position in first and second rrset can differ, we have
 	 * to search for position first.
 	 */
-	uint16_t pos_to_remove = find_rr_pos(rrset, rr_from, rdata_pos);
+	int pos_to_remove = find_rr_pos(rrset, rr_from, rdata_pos);
 	if (pos_to_remove >= 0) {
 		/* Position found, can be removed. */
 		return knot_rrs_remove_rr_at_pos(&rrset->rrs, pos_to_remove, mm);
