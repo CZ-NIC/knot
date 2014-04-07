@@ -29,6 +29,9 @@ libdnssec_la_LDFLAGS = \
 	$(yaml_LIBS) \
 	-version-info 0:1:0
 
+libdnssec_la_LIBADD = \
+	libshared.la
+
 libdnssec_la_SOURCES = \
 	lib/binary.c \
 	lib/crypto.c \
