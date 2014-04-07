@@ -373,6 +373,7 @@ AC_CONFIG_FILES([Makefile
 		 tests/Makefile
 		 src/zscanner/Makefile
 		 dnssec/Makefile
+		 dnssec/utils/Makefile
 		 dnssec/tests/Makefile
 		 man/khost.1
 		 man/knotc.8
