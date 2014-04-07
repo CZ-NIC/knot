@@ -175,15 +175,7 @@ size_t knot_rr_array_size(uint16_t size)
 
 int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2)
 {
-	if (rr1 == NULL && rr2 != NULL) {
-		return -1;
-	}
-	if (rr1 != NULL && rr2 == NULL) {
-		return 1;
-	}
-	if (rr1 == NULL && rr2 == NULL) {
-		return 0;
-	}
+	assert(rr1 && rr2);
 	const uint8_t *r1 = knot_rr_rdata(rr1);
 	const uint8_t *r2 = knot_rr_rdata(rr2);
 	uint16_t l1 = knot_rr_rdata_size(rr1);
