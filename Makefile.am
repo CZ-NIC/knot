@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = libtap dnssec src tests samples doc man patches
+SUBDIRS = libtap src/zscanner dnssec src tests samples doc man patches
 
 code_coverage_quiet = --quiet
 
