@@ -188,7 +188,7 @@ knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type)
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
-			knot_rrset_t rrset = knot_node_rrset_n(node, i);
+			knot_rrset_t rrset = knot_node_rrset_at(node, i);
 			return knot_rrset_copy(&rrset, NULL);
 		}
 	}

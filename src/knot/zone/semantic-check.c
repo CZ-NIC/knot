@@ -935,7 +935,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	int ret = KNOT_EOK;
 
 	for (int i = 0; i < rrset_count; i++) {
-		knot_rrset_t rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		if (auth && !deleg && rrset.type != KNOT_RRTYPE_RRSIG &&
 		    (ret = check_rrsig_in_rrset(handler, node,
 		                                &rrset, &dnskey_rrset)) != 0) {

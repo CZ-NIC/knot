@@ -57,7 +57,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 
 	// Dump other records.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		switch (rrset.type) {
 		case KNOT_RRTYPE_NSEC:
 			continue;
@@ -94,7 +94,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		switch (rrset.type) {
 		case KNOT_RRTYPE_RRSIG:
 			if (params->dump_rrsig) {

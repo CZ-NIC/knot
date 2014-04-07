@@ -501,7 +501,7 @@ static int sign_node_rrsets(const knot_node_t *node,
 	knot_rrset_t rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
 
 	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		if (rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}

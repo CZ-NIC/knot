@@ -166,7 +166,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 			return KNOT_ESPACE;
 		}
 		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
-			rrset = knot_node_rrset_n(qdata->node, i);
+			rrset = knot_node_rrset_at(qdata->node, i);
 			ret = ns_put_rr(pkt, &rrset, NULL, compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
 				break;

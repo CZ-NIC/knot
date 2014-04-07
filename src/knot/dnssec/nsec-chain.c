@@ -278,7 +278,7 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n)
 {
 	assert(n);
 	for (int i = 0; i < n->rrset_count; ++i) {
-		knot_rrset_t rrset = knot_node_rrset_n(n, i);
+		knot_rrset_t rrset = knot_node_rrset_at(n, i);
 		if (rrset.type != KNOT_RRTYPE_NSEC &&
 		    rrset.type != KNOT_RRTYPE_RRSIG) {
 			return false;

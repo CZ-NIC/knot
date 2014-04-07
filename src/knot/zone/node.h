@@ -385,56 +385,6 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type);
 bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type);
 
 /*!
- * \brief Initializes given RRSet structure with data from node.
- *
- * \param node   Node containing RRSet.
- * \param type   RRSet type we want to get.
- * \param rrset  Structure to be initialized.
- */
-static void inline knot_node_fill_rrset(const knot_node_t *node, uint16_t type,
-                                        knot_rrset_t *rrset)
-{
-	if (node == NULL || rrset == NULL) {
-		knot_rrset_init_empty(rrset);
-		return;
-	}
-	for (uint i = 0; i < node->rrset_count; ++i) {
-		if (node->rrs[i].type == type) {
-			struct rr_data *rr_data = &node->rrs[i];
-			rrset->owner = node->owner;
-			rrset->type = type;
-			rrset->rclass = KNOT_CLASS_IN;
-			rrset->rrs = rr_data->rrs;
-			rrset->additional = rr_data->additional;
-			return;
-		}
-	}
-	knot_rrset_init_empty(rrset);
-}
-
-/*!
- * \brief Initializes given RRSet structure with data from node.
- *
- * \param node   Node containing RRSet.
- * \param pos    Position to use for initialization.
- * \param rrset  Structure to be initialized.
- */
-static void inline knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
-                                            knot_rrset_t *rrset)
-{
-	if (node == NULL || pos >= node->rrset_count || rrset == NULL) {
-		knot_rrset_init_empty(rrset);
-		return;
-	}
-	struct rr_data *rr_data = &node->rrs[pos];
-	rrset->owner = node->owner;
-	rrset->type = rr_data->type;
-	rrset->rclass = KNOT_CLASS_IN;
-	rrset->rrs = rr_data->rrs;
-	rrset->additional = rr_data->additional;
-}
-
-/*!
  * \brief Returns RRSet structure initialized with data from node.
  *
  * \param node   Node containing RRSet.
@@ -444,9 +394,20 @@ static void inline knot_node_fill_rrset_pos(const knot_node_t *node, size_t pos,
  */
 static inline knot_rrset_t knot_node_rrset(const knot_node_t *node, uint16_t type)
 {
-	knot_rrset_t ret;
-	knot_node_fill_rrset(node, type, &ret);
-	return ret;
+	knot_rrset_t rrset;
+	for (uint i = 0; node && i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			struct rr_data *rr_data = &node->rrs[i];
+			rrset.owner = node->owner;
+			rrset.type = type;
+			rrset.rclass = KNOT_CLASS_IN;
+			rrset.rrs = rr_data->rrs;
+			rrset.additional = rr_data->additional;
+			return rrset;
+		}
+	}
+	knot_rrset_init_empty(&rrset);
+	return rrset;
 }
 
 /*!
@@ -458,11 +419,22 @@ static inline knot_rrset_t knot_node_rrset(const knot_node_t *node, uint16_t typ
  *
  * \return RRSet structure with data from wanted position, or empty RRSet.
  */
-static inline knot_rrset_t knot_node_rrset_n(const knot_node_t *node, size_t pos)
+static inline knot_rrset_t knot_node_rrset_at(const knot_node_t *node, size_t pos)
 {
-	knot_rrset_t ret;
-	knot_node_fill_rrset_pos(node, pos, &ret);
-	return ret;
+	knot_rrset_t rrset;
+	if (node == NULL || pos >= node->rrset_count) {
+		knot_rrset_init_empty(&rrset);
+		return rrset;
+	}
+
+	struct rr_data *rr_data = &node->rrs[pos];
+	rrset.owner = node->owner;
+	rrset.type = rr_data->type;
+	rrset.rclass = KNOT_CLASS_IN;
+	rrset.rrs = rr_data->rrs;
+	rrset.additional = rr_data->additional;
+
+	return rrset;
 }
 
 #endif /* _KNOT_NODE_H_ */

@@ -887,39 +887,15 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
                                    knot_changeset_t *chset)
 {
-	dbg_xfrin("Replacing SOA record.\n");
-	knot_node_t *node = contents->apex;
-	assert(node != NULL);
-
-	assert(node != NULL);
-	knot_rrs_t *soa_rrs = knot_node_get_rrs(node, KNOT_RRTYPE_SOA);
-	knot_rr_t *old_data = soa_rrs->data;
-	int ret = xfrin_replace_rrs_with_copy(node, KNOT_RRTYPE_SOA);
+	assert(chset->soa_from);
+	int ret = remove_rr(contents->apex, chset->soa_from, chset);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = add_old_data(chset, old_data, NULL);
-	if (ret != KNOT_EOK) {
-		clear_new_rrs(node, KNOT_RRTYPE_SOA);
-		return ret;
-	}
+	assert(!knot_node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA));
 
-	soa_rrs = knot_node_get_rrs(node, KNOT_RRTYPE_SOA);
-	knot_rrs_clear(soa_rrs, NULL);
-	ret = knot_rrs_copy(soa_rrs, &chset->soa_to->rrs, NULL);
-	if (ret != KNOT_EOK) {
-		clear_new_rrs(node, KNOT_RRTYPE_SOA);
-		return KNOT_ENOMEM;
-	}
-
-	ret = add_new_data(chset, soa_rrs->data);
-	if (ret != KNOT_EOK) {
-		clear_new_rrs(node, KNOT_RRTYPE_SOA);
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return add_rr(contents->apex, chset->soa_to, chset);
 }
 
 /*----------------------------------------------------------------------------*/

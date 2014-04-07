@@ -393,8 +393,7 @@ static bool should_replace(const knot_rrset_t *chg_rrset,
                            const knot_rrset_t *rrset)
 {
 	if (rrset->type != KNOT_RRTYPE_CNAME &&
-	    rrset->type != KNOT_RRTYPE_NSEC3PARAM &&
-	    rrset->type != KNOT_RRTYPE_SOA) {
+	    rrset->type != KNOT_RRTYPE_NSEC3PARAM) {
 		return false;
 	} else {
 		return chg_rrset->type == rrset->type;
@@ -416,7 +415,7 @@ static bool node_empty(const knot_node_t *node, knot_dname_t *owner,
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_t node_rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t node_rrset = knot_node_rrset_at(node, i);
 		knot_rrset_t node_rr;
 		knot_rrset_init(&node_rr, node->owner, node_rrset.type, KNOT_CLASS_IN);
 		for (uint16_t j = 0; j < node_rrset.rrs.rr_count; ++j) {
@@ -678,13 +677,25 @@ static int process_add_soa(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
-	/* Get the current SOA RR from the node. */
+	// Get current SOA RR.
 	knot_rrset_t removed = knot_node_rrset(node, KNOT_RRTYPE_SOA);
-	/* If they are identical, ignore. */
 	if (knot_rrset_equal(&removed, rr, KNOT_RRSET_COMPARE_WHOLE)) {
+		// If they are identical, ignore.
 		return KNOT_EOK;
 	}
-	return add_rr_to_chgset(rr, changeset, NULL);
+
+	// Store SOA copy into changeset.
+	if (changeset->soa_to != NULL) {
+		// Discard previous SOA - "There can be only one!"
+		knot_rrset_free(&changeset->soa_to, NULL);
+	}
+	knot_rrset_t *soa_cpy = knot_rrset_copy(rr, NULL);
+	if (soa_cpy == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_changeset_add_soa(changeset, soa_cpy, KNOT_CHANGESET_ADD);
+	return KNOT_EOK;
 }
 
 /*!< \brief Adds normal RR, ignores when CNAME exists in node. */
@@ -821,7 +832,7 @@ static int process_rem_node(const knot_rrset_t *rr,
 
 	// Remove all RRSets from node
 	for (int i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_t rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		int ret = process_rem_rrset(&rrset, node, changeset);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -1014,7 +1025,6 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 	/* Process all RRs the Authority (Update) section. */
 
 	dbg_ddns("Processing UPDATE section.\n");
-	knot_rrset_t *soa_end = NULL;
 	int apex_ns_rem = 0;
 	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
 	for (uint16_t i = 0; i < authority->count; ++i) {
@@ -1035,36 +1045,23 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 			*rcode = ret_to_rcode(ret);
 			return ret;
 		}
-
-		if (rr->type == KNOT_RRTYPE_SOA) {
-			// Using new SOA that came in the update
-			if (soa_end == NULL) {
-				knot_rrset_free(&soa_end, NULL);
-			}
-			int64_t sn_rr = knot_rrs_soa_serial(&rr->rrs);
-			assert(knot_serial_compare(sn_rr, sn_old) > 0);
-			soa_end = knot_rrset_copy(rr, NULL);
-			if (soa_end == NULL) {
-				return KNOT_ENOMEM;
-			}
-		}
 	}
 
-	if (soa_end == NULL) {
+	if (changeset->soa_to == NULL) {
 		// No SOA in the update, create according to current policy
 		if (knot_changeset_is_empty(changeset)) {
 			// No change, no new SOA
 			return KNOT_EOK;
 		}
 
-		soa_end = knot_rrset_copy(soa_begin, NULL);
-		if (soa_end == NULL) {
+		knot_rrset_t *soa_cpy = knot_rrset_copy(soa_begin, NULL);
+		if (soa_cpy == NULL) {
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return KNOT_ENOMEM;
 		}
-		knot_rrs_soa_serial_set(&soa_end->rrs, new_serial);
+		knot_rrs_soa_serial_set(&soa_cpy->rrs, new_serial);
+		knot_changeset_add_soa(changeset, soa_cpy, KNOT_CHANGESET_ADD);
 	}
 
-	knot_changeset_add_soa(changeset, soa_end, KNOT_CHANGESET_ADD);
 	return KNOT_EOK;
 }

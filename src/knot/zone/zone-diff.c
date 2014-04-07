@@ -169,7 +169,7 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 {
 	/* Add all rrsets from node. */
 	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
-		knot_rrset_t rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		int ret = knot_zone_diff_changeset_add_rrset(changeset,
 		                                             &rrset);
 		if (ret != KNOT_EOK) {
@@ -187,7 +187,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 {
 	/* Remove all the RRSets of the node. */
 	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
-		knot_rrset_t rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		int ret = knot_zone_diff_changeset_remove_rrset(changeset,
 		                                                &rrset);
 		if (ret != KNOT_EOK) {
@@ -405,7 +405,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 
 	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
 		/* Search for the RRSet in the node from the second tree. */
-		knot_rrset_t rrset = knot_node_rrset_n(node, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 
 		/* SOAs are handled explicitely. */
 		if (rrset.type == KNOT_RRTYPE_SOA) {
@@ -438,7 +438,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 
 	for (uint i = 0; i < knot_node_rrset_count(node_in_second_tree); i++) {
 		/* Search for the RRSet in the node from the second tree. */
-		knot_rrset_t rrset = knot_node_rrset_n(node_in_second_tree, i);
+		knot_rrset_t rrset = knot_node_rrset_at(node_in_second_tree, i);
 
 		/* SOAs are handled explicitely. */
 		if (rrset.type == KNOT_RRTYPE_SOA) {
