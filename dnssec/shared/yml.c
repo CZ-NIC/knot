@@ -196,20 +196,47 @@ int yml_traverse(yml_node_t *from, const char *path, yml_node_t *to)
 }
 
 /*!
+ * Traverse from the node, updating the node itself.
+ */
+static int self_traverse(yml_node_t *node, const char *path)
+{
+	assert(node);
+
+	if (!path) {
+		return DNSSEC_EOK;
+	}
+
+	yml_node_t new_node = { 0 };
+	int result = yml_traverse(node, path, &new_node);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	*node = new_node;
+	return DNSSEC_EOK;
+}
+
+/*!
  * Get value stored in a scalar node (as a reference).
  */
-int yml_get_value(yml_node_t *node, dnssec_binary_t *data)
+int yml_get_value(yml_node_t *node, const char *path, dnssec_binary_t *data)
 {
 	if (!node || !data) {
 		return DNSSEC_EINVAL;
 	}
 
-	if (node->node->type != YAML_SCALAR_NODE) {
+	yml_node_t target = *node;
+	int result = self_traverse(&target, path);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	if (target.node->type != YAML_SCALAR_NODE) {
 		return DNSSEC_EINVAL;
 	}
 
-	data->data = node->node->data.scalar.value;
-	data->size = node->node->data.scalar.length;
+	data->data = target.node->data.scalar.value;
+	data->size = target.node->data.scalar.length;
 
 	return DNSSEC_EOK;
 }
@@ -217,10 +244,10 @@ int yml_get_value(yml_node_t *node, dnssec_binary_t *data)
 /*!
  * Get string stored in a scalar node (as a copy).
  */
-char *yml_get_string(yml_node_t *node)
+char *yml_get_string(yml_node_t *node, const char *path)
 {
 	dnssec_binary_t binary = { 0 };
-	int r = yml_get_value(node, &binary);
+	int r = yml_get_value(node, path, &binary);
 	if (r != DNSSEC_EOK || binary.size == 0) {
 		return NULL;
 	}

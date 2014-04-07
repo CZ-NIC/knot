@@ -48,20 +48,22 @@ int yml_traverse(yml_node_t *from, const char *path, yml_node_t *to);
  * Get value stored in a scalar node (as a reference).
  *
  * \param[in]  node  Scalar node.
+ * \param[in]  path  Optional path to perform traverse before retrieving value.
  * \param[out] data  Reference to data within the node.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int yml_get_value(yml_node_t *node, dnssec_binary_t *data);
+int yml_get_value(yml_node_t *node, const char *path, dnssec_binary_t *data);
 
 /*!
  * Get string stored in a scalar node (as a copy).
  *
  * \param node  Scalar node.
+ * \param path  Optional path to perform traverse before retrieving value.
  *
  * \return Copy of the string, NULL in case of error.
  */
-char *yml_get_string(yml_node_t *node);
+char *yml_get_string(yml_node_t *node, const char *path);
 
 /*!
  * Callback parameter for \ref yml_sequence_each.
