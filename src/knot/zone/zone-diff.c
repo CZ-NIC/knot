@@ -207,7 +207,8 @@ static bool rr_exists(const knot_rrset_t *in, const knot_rrset_t *ref,
 	// Create RRSet with single RR fron 'ref' RRSet, position 'ref_pos'.
 	knot_rrset_t ref_rr;
 	knot_rrset_init(&ref_rr, ref->owner, ref->type, ref->rclass);
-	int ret = knot_rrset_add_rr_from_rrset(&ref_rr, ref, ref_pos, NULL);
+	knot_rr_t *to_add = knot_rrs_rr(&ref->rrs, ref_pos);
+	int ret = knot_rrs_add_rr(&ref_rr.rrs, to_add, NULL);
 	if (ret != KNOT_EOK) {
 		return false;
 	}
@@ -264,14 +265,12 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	uint16_t rr1_count = knot_rrset_rr_count(rrset1);
 	for (uint16_t i = 0; i < rr1_count; ++i) {
 		if (!rr_exists(rrset2, rrset1, i)) {
-			/* No such RR is present in 'rrset2'. */
-			dbg_zonediff("zone_diff: diff_rdata: "
-			       "No match for RR (type=%u owner=%p).\n",
-			       rrset1->type,
-			       rrset1->owner);
-			/* We'll copy index 'i' into 'changes' RRSet. */
-			int ret = knot_rrset_add_rr_from_rrset(*changes,
-			                                       rrset1, i, NULL);
+			/*
+			 * No such RR is present in 'rrset2'. We'll copy
+			 * index 'i' into 'changes' RRSet.
+			 */
+			knot_rr_t *add_rr = knot_rrs_rr(&rrset1->rrs, i);
+			int ret = knot_rrs_add_rr(&(*changes)->rrs, add_rr, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(changes, NULL);
 				return ret;

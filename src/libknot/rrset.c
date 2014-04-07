@@ -751,21 +751,6 @@ static int knot_rrset_remove_rr(knot_rrset_t *rrset,
 	}
 }
 
-int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
-                                 size_t rdata_pos, mm_ctx_t *mm)
-{
-	if (dest == NULL || source == NULL ||
-	    rdata_pos >= knot_rrset_rr_count(source)) {
-		return KNOT_EINVAL;
-	}
-
-	/* Get RDATA, size and TTL of RR to be copied. */
-	const uint8_t *rdata = knot_rrset_rr_rdata(source, rdata_pos);
-	const uint16_t size = knot_rrset_rr_size(source, rdata_pos);
-	const uint32_t ttl = knot_rrset_rr_ttl(source, rdata_pos);
-	return knot_rrset_add_rr(dest, rdata, size, ttl, mm);
-}
-
 int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
                                      mm_ctx_t *mm)
@@ -822,7 +807,7 @@ int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
 		const knot_rr_t *rr = knot_rrs_rr(&a->rrs, i);
 		if (has_rr(b, rr, cmp_ttl)) {
 			// Add RR into output intersection RRSet.
-			int ret = knot_rrset_add_rr_from_rrset(out, a, i, mm);
+			int ret = knot_rrs_add_rr(&out->rrs, rr, mm);
 			if (ret != KNOT_EOK) {
 				knot_rrs_clear(&out->rrs, mm);
 				return ret;

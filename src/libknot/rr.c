@@ -379,3 +379,4 @@ int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm)
 
 	return KNOT_EOK;
 }
+

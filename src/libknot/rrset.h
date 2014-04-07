@@ -214,19 +214,6 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, mm_ctx_t *mm);
 
 /*!
- * \brief Adds RR on 'pos' position from 'source' to 'dest'.
- *
- * \param dest       Destination RRSet.
- * \param source     Source RRSet.
- * \param rdata_pos  RR position from 'source' to add to 'dest'.
- * \param mm         Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
-                                 size_t rdata_pos, mm_ctx_t *mm);
-
-/*!
  * \brief Removes RRs contained in 'what' RRSet from 'from' RRSet.
  *
  * \param from        Delete from.

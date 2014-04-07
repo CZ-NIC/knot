@@ -419,7 +419,8 @@ static bool node_empty(const knot_node_t *node, knot_dname_t *owner,
 		knot_rrset_t node_rr;
 		knot_rrset_init(&node_rr, node->owner, node_rrset.type, KNOT_CLASS_IN);
 		for (uint16_t j = 0; j < node_rrset.rrs.rr_count; ++j) {
-			knot_rrset_add_rr_from_rrset(&node_rr, &node_rrset, j, NULL);
+			knot_rr_t *add_rr = knot_rrs_rr(&node_rrset.rrs, j);
+			knot_rrs_add_rr(&node_rr.rrs, add_rr, NULL);
 			if (!removed_rr(changeset, &node_rr)) {
 				// One of the RRs from node was not removed.
 				knot_rrs_clear(&node_rr.rrs, NULL);
@@ -592,7 +593,8 @@ static int rem_rrset_to_chgset(const knot_rrset_t *rrset,
 	knot_rrset_t rr;
 	knot_rrset_init(&rr, rrset->owner, rrset->type, rrset->rclass);
 	for (uint16_t i = 0; i < rrset->rrs.rr_count; ++i) {
-		int ret = knot_rrset_add_rr_from_rrset(&rr, rrset, i, NULL);
+		knot_rr_t *rr_add = knot_rrs_rr(&rrset->rrs, i);
+		int ret = knot_rrs_add_rr(&rr.rrs, rr_add, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

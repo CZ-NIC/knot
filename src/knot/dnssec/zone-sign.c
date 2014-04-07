@@ -280,7 +280,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 			}
 		}
 
-		result = knot_rrset_add_rr_from_rrset(to_remove, synth_rrsig, i, NULL);
+		knot_rr_t *rr_rem = knot_rrs_rr(&synth_rrsig->rrs, i);
+		result = knot_rrs_add_rr(&to_remove->rrs, rr_rem, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -477,7 +478,8 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 			if (to_remove == NULL) {
 				return KNOT_ENOMEM;
 			}
-			int ret = knot_rrset_add_rr_from_rrset(to_remove, rrsigs, i, NULL);
+			knot_rr_t *rr_rem = knot_rrs_rr(&rrsigs->rrs, i);
+			int ret = knot_rrs_add_rr(&to_remove->rrs, rr_rem, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(&to_remove, NULL);
 				return ret;
@@ -791,7 +793,8 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 			}
 		}
 
-		result = knot_rrset_add_rr_from_rrset(to_remove, dnskeys, i, NULL);
+		knot_rr_t *to_rem = knot_rrs_rr(&dnskeys->rrs, i);
+		result = knot_rrs_add_rr(&to_remove->rrs, to_rem, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -938,7 +941,8 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 			continue;
 		}
 
-		result = knot_rrset_add_rr_from_rrset(new_dnskeys, dnskeys, i, NULL);
+		knot_rr_t *to_add = knot_rrs_rr(&dnskeys->rrs, i);
+		result = knot_rrs_add_rr(&new_dnskeys->rrs, to_add, NULL);
 		if (result != KNOT_EOK) {
 			goto fail;
 		}
