@@ -439,8 +439,10 @@ static bool node_contains_rr(const knot_node_t *node,
 	knot_rrset_t zone_rrset = knot_node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&zone_rrset)) {
 		knot_rrset_t intersection;
+		const bool compare_ttls = false;
 		int ret = knot_rrset_intersection(&zone_rrset, rr,
-		                                  &intersection, NULL);
+		                                  &intersection, compare_ttls,
+		                                  NULL);
 		if (ret != KNOT_EOK) {
 			return false;
 		}
@@ -771,7 +773,9 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	}
 
 	knot_rrset_t intersection;
-	int ret = knot_rrset_intersection(&to_modify, rr, &intersection, NULL);
+	const bool compare_ttls = false;
+	int ret = knot_rrset_intersection(&to_modify, rr, &intersection,
+	                                  compare_ttls, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

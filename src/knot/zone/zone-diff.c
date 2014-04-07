@@ -201,6 +201,31 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 	return KNOT_EOK;
 }
 
+static bool rr_exists(const knot_rrset_t *in, const knot_rrset_t *ref,
+                      size_t ref_pos)
+{
+	// Create RRSet with single RR fron 'ref' RRSet, position 'ref_pos'.
+	knot_rrset_t ref_rr;
+	knot_rrset_init(&ref_rr, ref->owner, ref->type, ref->rclass);
+	int ret = knot_rrset_add_rr_from_rrset(&ref_rr, ref, ref_pos, NULL);
+	if (ret != KNOT_EOK) {
+		return false;
+	}
+
+	// Do an intersection with 'in' rrset, if non-empty, RR exists.
+	knot_rrset_t int_rr;
+	const bool compare_ttls = true;
+	ret = knot_rrset_intersection(in, &ref_rr, &int_rr, compare_ttls, NULL);
+	knot_rrs_clear(&ref_rr.rrs, NULL);
+	if (ret != KNOT_EOK) {
+		return false;
+	}
+
+	const bool exists = !knot_rrset_empty(&int_rr);
+	knot_rrs_clear(&int_rr.rrs, NULL);
+	return exists;
+}
+
 static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
                                                const knot_rrset_t *rrset2,
                                                knot_rrset_t **changes)
@@ -238,35 +263,19 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 
 	uint16_t rr1_count = knot_rrset_rr_count(rrset1);
 	for (uint16_t i = 0; i < rr1_count; ++i) {
-		size_t rr_pos = 0;
-		int ret = knot_rrset_find_rr_pos(rrset2, rrset1, i, &rr_pos);
-		if (ret == KNOT_ENOENT) {
+		if (!rr_exists(rrset2, rrset1, i)) {
 			/* No such RR is present in 'rrset2'. */
 			dbg_zonediff("zone_diff: diff_rdata: "
 			       "No match for RR (type=%u owner=%p).\n",
 			       rrset1->type,
 			       rrset1->owner);
 			/* We'll copy index 'i' into 'changes' RRSet. */
-			ret = knot_rrset_add_rr_from_rrset(*changes, rrset1, i, NULL);
+			int ret = knot_rrset_add_rr_from_rrset(*changes,
+			                                       rrset1, i, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(changes, NULL);
 				return ret;
 			}
-		} else if (ret == KNOT_EOK) {
-			if (knot_rrset_rr_ttl(rrset1, i) !=
-			    knot_rrset_rr_ttl(rrset2, rr_pos)) {
-				// TTLs differ add a change
-				ret = knot_rrset_add_rr_from_rrset(*changes, rrset1, i, NULL);
-				if (ret != KNOT_EOK) {
-					knot_rrset_free(changes, NULL);
-					return ret;
-				}
-			}
-		} else {
-			dbg_zonediff("zone_diff: diff_rdata: Could not search "
-			             "for RR (%s).\n", knot_strerror(ret));
-			knot_rrset_free(changes, NULL);
-			return ret;
 		}
 	}
 

@@ -664,11 +664,11 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 		return r1 == r2;
 	}
 
-	if (!knot_dname_is_equal(r1->owner, r2->owner)) {
+	if (r1->type != r2->type) {
 		return false;
 	}
 
-	if (r1->type != r2->type) {
+	if (!knot_dname_is_equal(r1->owner, r2->owner)) {
 		return false;
 	}
 
@@ -731,9 +731,8 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 	            == KNOT_RRTYPE_NSEC3));
 }
 
-int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
-                           const knot_rrset_t *rr_reference, size_t pos,
-                           size_t *pos_out)
+static uint16_t find_rr_pos(const knot_rrset_t *rr_search_in,
+                            const knot_rrset_t *rr_reference, size_t pos)
 {
 	bool found = false;
 	uint16_t rr_count = knot_rrset_rr_count(rr_search_in);
@@ -741,12 +740,11 @@ int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
 		const knot_rr_t *in_rr = knot_rrs_rr(&rr_search_in->rrs, i);
 		const knot_rr_t *ref_rr = knot_rrs_rr(&rr_reference->rrs, pos);
 		if (knot_rr_cmp(in_rr, ref_rr) == 0) {
-			*pos_out = i;
-			found = true;
+			return i;
 		}
 	}
 
-	return found ? KNOT_EOK : KNOT_ENOENT;
+	return KNOT_ENOENT;
 }
 
 static int knot_rrset_remove_rr(knot_rrset_t *rrset,
@@ -757,27 +755,14 @@ static int knot_rrset_remove_rr(knot_rrset_t *rrset,
 	 * Position in first and second rrset can differ, we have
 	 * to search for position first.
 	 */
-	size_t pos_to_remove = 0;
-	int ret = knot_rrset_find_rr_pos(rrset, rr_from, rdata_pos,
-	                                 &pos_to_remove);
-	if (ret == KNOT_EOK) {
+	uint16_t pos_to_remove = find_rr_pos(rrset, rr_from, rdata_pos);
+	if (pos_to_remove >= 0) {
 		/* Position found, can be removed. */
-		dbg_rrset_detail("rr: remove_rr: Counter position found=%zu\n",
-		                 pos_to_remove);
-		assert(pos_to_remove < knot_rrset_rr_count(rrset));
-		ret = knot_rrs_remove_rr_at_pos(&rrset->rrs, pos_to_remove, mm);
-		if (ret != KNOT_EOK) {
-			dbg_rrset("Cannot remove RDATA from RRSet (%s).\n",
-			          knot_strerror(ret));
-			return ret;
-		}
+		return knot_rrs_remove_rr_at_pos(&rrset->rrs, pos_to_remove, mm);
 	} else {
-		dbg_rrset_verb("rr: remove_rr: RDATA not found (%s).\n",
-		               knot_strerror(ret));
-		return ret;
+		assert(pos_to_remove == KNOT_ENOENT);
+		return KNOT_ENOENT;
 	}
-
-	return KNOT_EOK;
 }
 
 int knot_rrset_add_rr_from_rrset(knot_rrset_t *dest, const knot_rrset_t *source,
@@ -816,19 +801,30 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
 	return KNOT_EOK;
 }
 
-static bool has_rr(const knot_rrset_t *rrset, const knot_rr_t *rr)
+static bool has_rr(const knot_rrset_t *rrset, const knot_rr_t *rr, bool cmp_ttl)
 {
 	for (uint16_t i = 0; i < rrset->rrs.rr_count; ++i) {
 		const knot_rr_t *cmp_rr = knot_rrs_rr(&rrset->rrs, i);
-		if (knot_rr_cmp(cmp_rr, rr) == 0) {
+		if (cmp_ttl) {
+			if (knot_rr_ttl(rr) != knot_rr_ttl(cmp_rr)) {
+				continue;
+			}
+		}
+		int cmp = knot_rr_cmp(cmp_rr, rr);
+		if (cmp == 0) {
+			// Match.
 			return true;
+		}
+		if (cmp > 0) {
+			// 'Bigger' RR present, no need to continue.
+			return false;
 		}
 	}
 	return false;
 }
 
 int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
-                            knot_rrset_t *out, mm_ctx_t *mm)
+                            knot_rrset_t *out, bool cmp_ttl, mm_ctx_t *mm)
 {
 	if (a == NULL || b == NULL || !knot_dname_is_equal(a->owner, b->owner) ||
 	    a->type != b->type) {
@@ -838,7 +834,8 @@ int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
 	knot_rrset_init(out, a->owner, a->type, a->rclass);
 	for (uint16_t i = 0; i < a->rrs.rr_count; ++i) {
 		const knot_rr_t *rr = knot_rrs_rr(&a->rrs, i);
-		if (has_rr(b, rr)) {
+		if (has_rr(b, rr, cmp_ttl)) {
+			// Add RR into output intersection RRSet.
 			int ret = knot_rrset_add_rr_from_rrset(out, a, i, mm);
 			if (ret != KNOT_EOK) {
 				knot_rrs_clear(&out->rrs, mm);

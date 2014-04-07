@@ -711,7 +711,9 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 	}
 
 	knot_rrset_t intersection;
-	knot_rrset_intersection(&node_rrset, rr, &intersection, NULL);
+	const bool compare_ttls = false;
+	knot_rrset_intersection(&node_rrset, rr, &intersection,
+	                        compare_ttls, NULL);
 	if (knot_rrset_empty(&intersection)) {
 		return false;
 	}

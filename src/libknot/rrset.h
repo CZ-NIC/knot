@@ -246,22 +246,6 @@ int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
                                      const knot_rrset_t *what,
                                      mm_ctx_t *mm);
 
-/*!
- * \brief Finds RR at 'pos' position in 'rr_reference' RRSet in
- *        'rr_search_in' RRSet. Position returned in 'pos_out'.
- *
- * \param rr_search_in  Search in this RRSet.
- * \param rr_reference  Use RR from this RRSet.
- * \param pos           Index for 'rr_reference'.
- * \param pos_out       If found, position returned here.
- *
- * \retval KNOT_EOK     if found, pos_out is set.
- * \retval KNOT_ENOENT  if not found.
- */
-int knot_rrset_find_rr_pos(const knot_rrset_t *rr_search_in,
-                           const knot_rrset_t *rr_reference, size_t pos,
-                           size_t *pos_out);
-
  /*!
  * \brief Creates one RR from wire, stores it into 'rrset'
  *
@@ -329,18 +313,19 @@ bool knot_rrset_empty(const knot_rrset_t *rrset);
 knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
 
 /*!
- * \brief RRSet intersection.
+ * \brief RRSet intersection. Full compare is done, including RDATA.
  *
- * \param a    First RRSet to intersect.
- * \param b    Second RRset to intersect.
- * \param out  Output RRSet with intersection, RDATA are created anew, owner is
- *             just a reference.
- * \param mm   Memory context.
+ * \param a        First RRSet to intersect.
+ * \param b        Second RRset to intersect.
+ * \param out      Output RRSet with intersection, RDATA are created anew, owner is
+ *                 just a reference.
+ * \param cmp_ttl  If set to true, TTLs will be compared as well.
+ * \param mm       Memory context. Will be used to create new RDATA.
  *
  * \return KNOT_E*
  */
 int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
-                            knot_rrset_t *out, mm_ctx_t *mm);
+                            knot_rrset_t *out, bool cmp_ttl, mm_ctx_t *mm);
 
 /*!
  * \brief Initializes given RRSet structure.
