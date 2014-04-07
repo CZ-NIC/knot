@@ -312,7 +312,6 @@ static int zones_process_update_auth(struct query_data *qdata)
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s: Failed to sign incoming update (%s)"
 			               "\n", msg, knot_strerror(ret));
-			1 == 1; // TODO: rollback
 			xfrin_rollback_update(chgsets, &new_contents);
 			knot_changesets_free(&chgsets);
 			knot_changesets_free(&sec_chs);
@@ -345,6 +344,8 @@ static int zones_process_update_auth(struct query_data *qdata)
 			log_zone_error("%s: Failed to sign incoming update (%s)"
 			               "\n", msg, knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
+			xfrin_rollback_update(chgsets, &new_contents);
+			xfrin_rollback_update(sec_chs, &new_contents);
 			zones_free_merged_changesets(chgsets, sec_chs);
 			free(msg);
 			return ret;
@@ -357,6 +358,8 @@ static int zones_process_update_auth(struct query_data *qdata)
 			log_zone_error("%s: Failed to replan zone sign (%s)\n",
 			               msg, knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
+			xfrin_rollback_update(chgsets, &new_contents);
+			xfrin_rollback_update(sec_chs, &new_contents);
 			zones_free_merged_changesets(chgsets, sec_chs);
 			free(msg);
 			return ret;
@@ -380,6 +383,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 			log_zone_error("%s: Failed to commit new journal entry "
 			               "(%s).\n", msg, knot_strerror(ret));
 			xfrin_rollback_update(chgsets, &new_contents);
+			xfrin_rollback_update(sec_chs, &new_contents);
 			zones_free_merged_changesets(chgsets, sec_chs);
 			free(msg);
 			return ret;
@@ -396,6 +400,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 		               msg, knot_strerror(ret));
 		// Cleanup old and new contents
 		xfrin_rollback_update(chgsets, &new_contents);
+		xfrin_rollback_update(sec_chs, &new_contents);
 
 		/* Free changesets, but not the data. */
 		zones_free_merged_changesets(chgsets, sec_chs);
