@@ -18,6 +18,7 @@ libshared_la_SOURCES = \
 	shared/path.c \
 	shared/path.h \
 	shared/shared.h \
+	shared/strtonum.h \
 	shared/wire.h \
 	shared/yml.c \
 	shared/yml.h
