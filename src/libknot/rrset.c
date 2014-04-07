@@ -506,6 +506,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
+		// Alloc data for empty RR.
 		uint8_t *empty_rdata = malloc(1);
 		if (empty_rdata == NULL) {
 			return KNOT_ENOMEM;
@@ -696,10 +697,6 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 
 	rrset_deep_free_content(*rrset, mm);
 
-	if (rrset_additional_needed((*rrset)->type)) {
-		free((*rrset)->additional);
-	}
-
 	mm_free(mm, *rrset);
 	*rrset = NULL;
 }
@@ -710,7 +707,7 @@ void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 }
 
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
-                          mm_ctx_t *mm)
+                     mm_ctx_t *mm)
 {
 	if (rrset1 == NULL || rrset2 == NULL ||
 	    !knot_rrset_equal(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER)) {
@@ -718,17 +715,6 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2,
 	}
 
 	return knot_rrs_merge(&rrset1->rrs, &rrset2->rrs, mm);
-}
-
-bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
-{
-	assert(rr != NULL);
-
-	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
-	return ((rr->type == KNOT_RRTYPE_NSEC3)
-	        || (rr->type == KNOT_RRTYPE_RRSIG
-	            && knot_rrs_rrsig_type_covered(&rr->rrs, 0)
-	            == KNOT_RRTYPE_NSEC3));
 }
 
 static uint16_t find_rr_pos(const knot_rrset_t *rr_search_in,
@@ -847,32 +833,6 @@ int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
 	return KNOT_EOK;
 }
 
-int rrset_additional_needed(uint16_t rrtype)
-{
-	return (rrtype == KNOT_RRTYPE_NS ||
-		rrtype == KNOT_RRTYPE_MX ||
-		rrtype == KNOT_RRTYPE_SRV);
-}
-
-static int add_rdata_to_rrsig(knot_rrset_t *new_sig, uint16_t type,
-                              const knot_rrset_t *rrsigs, mm_ctx_t *mm)
-{
-	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
-	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
-		const uint16_t type_covered =
-			knot_rrs_rrsig_type_covered(&rrsigs->rrs, i);
-		if (type_covered == type) {
-			int ret = knot_rrset_add_rr_from_rrset(new_sig, rrsigs,
-			                                       i, mm);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
-	}
-
-	return knot_rrset_rr_count(new_sig) > 0 ? KNOT_EOK : KNOT_ENOENT;
-}
-
 int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
                            const knot_rrset_t *rrsigs,
                            knot_rrset_t **out_sig, mm_ctx_t *mm)
@@ -896,7 +856,7 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = add_rdata_to_rrsig(*out_sig, type, rrsigs, mm);
+	int ret = knot_rrs_synth_rrsig(type, &rrsigs->rrs, &(*out_sig)->rrs, mm);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(out_sig, mm);
 		return ret;

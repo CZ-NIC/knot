@@ -214,13 +214,6 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, mm_ctx_t *mm);
 
 /*!
- * \brief Return true if the RRSet is an NSEC3 related type.
- *
- * \param rr RRSet.
- */
-bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
-
-/*!
  * \brief Adds RR on 'pos' position from 'source' to 'dest'.
  *
  * \param dest       Destination RRSet.
@@ -263,18 +256,6 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    const uint8_t *wire, size_t *pos,
                                    size_t total_size, uint32_t ttl, size_t rdlength,
                                    mm_ctx_t *mm);
-
-/*!
- * \brief Checks whether the given type requires additional processing.
- *
- * Only MX, NS and SRV types require additional processing.
- *
- * \param rrtype Type to check.
- *
- * \retval <> 0 if additional processing is needed for \a qtype.
- * \retval 0 otherwise.
- */
-int rrset_additional_needed(uint16_t rrtype);
 
 /*!
  * \brief Creates RRSIG record from node RRSIGs for given RRSet.

@@ -334,7 +334,7 @@ static int adjust_additional(knot_node_t **tnode, void *data)
 	/* Lookup additional records for specific nodes. */
 	for(uint16_t i = 0; i < node->rrset_count; ++i) {
 		struct rr_data *rr_data = &node->rrs[i];
-		if (rrset_additional_needed(rr_data->type)) {
+		if (knot_rrtype_additional_needed(rr_data->type)) {
 			ret = discover_additionals(rr_data, args->zone);
 			if (ret != KNOT_EOK) {
 				break;
@@ -781,10 +781,23 @@ static int recreate_nsec3_tree(const knot_zone_contents_t *z,
 	return KNOT_EOK;
 }
 
+static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
+{
+	if (rr == NULL) {
+		return false;
+	}
+
+	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
+	return ((rr->type == KNOT_RRTYPE_NSEC3)
+	        || (rr->type == KNOT_RRTYPE_RRSIG
+	            && knot_rrs_rrsig_type_covered(&rr->rrs, 0)
+	            == KNOT_RRTYPE_NSEC3));
+}
+
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
                               const knot_rrset_t *rr, knot_node_t **n)
 {
-	return insert_rr(z, rr, n, knot_rrset_is_nsec3rel(rr));
+	return insert_rr(z, rr, n, rrset_is_nsec3rel(rr));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1436,7 +1449,7 @@ knot_node_t *zone_contents_get_node_for_rr(knot_zone_contents_t *zone,
 	}
 
 	knot_node_t *node;
-	const bool nsec3 = knot_rrset_is_nsec3rel(rrset);
+	const bool nsec3 = rrset_is_nsec3rel(rrset);
 	if (!nsec3) {
 		node = knot_zone_contents_get_node(zone, rrset->owner);
 	} else {
@@ -1470,7 +1483,7 @@ knot_node_t *zone_contents_find_node_for_rr(knot_zone_contents_t *zone,
 	}
 
 	knot_node_t *node;
-	const bool nsec3 = knot_rrset_is_nsec3rel(rrset);
+	const bool nsec3 = rrset_is_nsec3rel(rrset);
 	if (!nsec3) {
 		node = knot_zone_contents_get_node(zone, rrset->owner);
 	} else {

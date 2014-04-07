@@ -642,7 +642,7 @@ static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata
 	/* Scan all RRs in ANSWER/AUTHORITY. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
 		/* Skip types for which it doesn't apply. */
-		if (!rrset_additional_needed(pkt->rr[i].type)) {
+		if (!knot_rrtype_additional_needed(pkt->rr[i].type)) {
 			continue;
 		}
 		/* Put additional records for given type. */

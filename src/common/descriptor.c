@@ -323,3 +323,11 @@ int knot_rrtype_is_ddns_forbidden(const uint16_t type)
 	       type == KNOT_RRTYPE_NSEC       ||
 	       type == KNOT_RRTYPE_NSEC3;
 }
+
+int knot_rrtype_additional_needed(const uint16_t rrtype)
+{
+	return (rrtype == KNOT_RRTYPE_NS ||
+		rrtype == KNOT_RRTYPE_MX ||
+		rrtype == KNOT_RRTYPE_SRV);
+}
+
