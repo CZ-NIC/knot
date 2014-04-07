@@ -13,6 +13,8 @@ libshared_la_CFLAGS = \
 	$(AM_CFLAGS)
 
 libshared_la_SOURCES = \
+	shared/dname.c \
+	shared/dname.h \
 	shared/hex.c \
 	shared/hex.h \
 	shared/path.c \
