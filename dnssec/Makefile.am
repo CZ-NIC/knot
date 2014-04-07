@@ -40,12 +40,16 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/binary.h \
 	lib/dnssec/crypto.h \
 	lib/dnssec/error.h \
+	lib/dnssec/kasp.h \
 	lib/dnssec/key.h \
 	lib/dnssec/keystore.h \
 	lib/dnssec/nsec.h \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
 	lib/error.c \
+	lib/kasp/dir.c \
+	lib/kasp/internal.h \
+	lib/kasp/kasp.c \
 	lib/key/algorithm.c \
 	lib/key/algorithm.h \
 	lib/key/convert.c \
