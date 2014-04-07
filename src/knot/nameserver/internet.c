@@ -39,6 +39,31 @@ static int wildcard_visit(struct query_data *qdata, const knot_node_t *node, con
 	return KNOT_EOK;
 }
 
+/*! \brief Moves data from 'src' to 'dst', owner and RRs are deep copied. */
+int move_rrset(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm)
+{
+	if (dst == NULL || src == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	dst->type = src->type;
+	dst->additional = src->additional;
+	dst->rclass = src->rclass;
+
+	dst->owner = knot_dname_copy(src->owner, mm);
+	if (dst->owner == NULL) {
+		return KNOT_ENOMEM;
+	}
+	knot_rrs_init(&dst->rrs);
+	int ret = knot_rrs_copy(&dst->rrs, &src->rrs, mm);
+	if (ret != KNOT_EOK) {
+		knot_dname_free(&dst->owner, mm);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
 /*! \brief Synthetizes a CNAME RR from a DNAME. */
 static int dname_cname_synth(const knot_rrset_t *dname_rr,
                              const knot_dname_t *qname,
@@ -230,7 +255,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 	uint32_t min = knot_rrs_soa_minimum(&soa_rrset.rrs);
 	if (min < knot_rrset_rr_ttl(&soa_rrset, 0)) {
 		knot_rrset_t copy;
-		ret = knot_rrset_copy_int(&copy, &soa_rrset, &pkt->mm);
+		ret = move_rrset(&copy, &soa_rrset, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -675,7 +700,7 @@ int ns_put_rr(knot_pkt_t *pkt, knot_rrset_t *rr,
 	if (compr_hint == COMPR_HINT_NONE && expand) {
 		rr->owner = (knot_dname_t *)qdata->name;
 		knot_rrset_t copy;
-		int ret = knot_rrset_copy_int(&copy, rr, &pkt->mm);
+		int ret = move_rrset(&copy, rr, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

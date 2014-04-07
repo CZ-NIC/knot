@@ -82,7 +82,6 @@ knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
 
 void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
                      uint16_t rclass);
-void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
 
 /*!
  * \brief Creates a new RRSet according to given template RRSet.
@@ -184,6 +183,14 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
 
 /*!
+ * \brief Frees structures inside RRSet, but not the RRSet itself.
+ *
+ * \param rrset  RRSet to be cleared.
+ * \param mm     Memory context used for allocations.
+ */
+void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
+
+/*!
  * \brief Converts RRSet structure to wireformat, compression included.
  *
  * \param rrset     RRSet to be converted.
@@ -215,38 +222,6 @@ int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, mm_ctx_t 
  * \param rr RRSet.
  */
 bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
-
-/*!
- * \brief Returns binary size of RRSet.
- *
- * \param rrset  RRSet.
- *
- * \return  Binary size.
- */
-uint64_t rrset_binary_size(const knot_rrset_t *rrset);
-
-/*!
- * \brief Serializes RRSet into given stream.
- *
- * \param rrset   RRSet to be serialized.
- * \param stream  Output stream
- * \param size    Size written.
- *
- * \return KNOT_E*
- */
-int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size);
-
-/*!
- * \brief Deserializes RRSet structure.
- *
- * \param stream       Input stream.
- * \param stream_size  Input stream size.
- * \param rrset        Output RRSet.
- *
- * \return KNOT_E*
- */
-int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
-                      knot_rrset_t **rrset);
 
 /*!
  * \brief Adds RR on 'pos' position from 'source' to 'dest'.
@@ -344,17 +319,6 @@ int knot_rrset_synth_rrsig(const knot_dname_t *owner, uint16_t type,
  * \retval False if RRSet is not empty.
  */
 bool knot_rrset_empty(const knot_rrset_t *rrset);
-
-/*!
- * \brief Deep copies one RRSet into another.
- *
- * \param dst  Destination RRSet.
- * \param src  Source RRSet.
- * \param mm   Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_copy_int(knot_rrset_t *dst, const knot_rrset_t *src, mm_ctx_t *mm);
 
 /*!
  * \brief Creates new RRSet from \a src RRSet.
