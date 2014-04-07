@@ -24,17 +24,20 @@
 #include "libknot/common.h"
 #include "common/errcode.h"
 
+#ifndef STRICT_ALIGNMENT
 #pragma pack(push, 1)
+#endif
 
+/*!< \brief Helper structure - offsets in RR array. */
 struct rr_offsets {
 	uint32_t ttl;
 	uint16_t size;
 	uint8_t rdata[];
 };
 
+#ifndef STRICT_ALIGNMENT
 #pragma pack(pop)
-
-#warning "missing #ifdefs for #pragma once, couldn't find the right define"
+#endif
 
 static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 {
