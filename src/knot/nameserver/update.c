@@ -142,6 +142,12 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FAIL;
 	}
 
+	/* Check if the zone is not discarded. */
+	if (zone->flags & ZONE_DISCARDED) {
+		pthread_mutex_unlock(&zone->ddns_lock);
+		return NS_PROC_FAIL;
+	}
+
 	struct timeval t_start = {0}, t_end = {0};
 	gettimeofday(&t_start, NULL);
 	UPDATE_LOG(LOG_INFO, "Started (serial %u).", knot_zone_serial(qdata->zone->contents));
@@ -149,10 +155,22 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
-	/* Process UPDATE. */
-	int ret = update_process(pkt, qdata);
+	/* Retain zone for the whole processing so it doesn't disappear
+	 * for example during reload.
+	 * @note This is going to be fixed when this is made a zone event. */
+	zone_retain(zone);
 
+	/* Process UPDATE. */
+	rcu_read_unlock();
+	int ret = update_process(pkt, qdata);
+	rcu_read_lock();
+
+	/* Since we unlocked RCU read lock, it is possible that the
+	 * zone was modified/removed in the background. Therefore,
+	 * we must NOT touch the zone after we release it here. */
 	pthread_mutex_unlock(&zone->ddns_lock);
+	zone_release(zone);
+	qdata->zone = NULL;
 
 	/* Evaluate */
 	switch(ret) {
@@ -335,7 +353,6 @@ static int zones_process_update_auth(struct query_data *qdata)
 	}
 
 	// Apply changeset to zone created by DDNS processing
-
 	if (zone_config->dnssec_enable) {
 		/*!
 		 * Check if the UPDATE changed DNSKEYs. If yes, resign the whole
@@ -436,10 +453,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 	}
 
 	// Switch zone contents.
-	zone_retain(zone);      /* Retain pointer for safe RCU unlock. */
-	rcu_read_unlock();      /* Unlock for switch. */
 	ret = xfrin_switch_zone(zone, new_contents, XFR_TYPE_UPDATE);
-	rcu_read_lock();        /* Relock */
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s: Failed to replace current zone (%s)\n",
 		               msg, knot_strerror(ret));
@@ -449,8 +463,6 @@ static int zones_process_update_auth(struct query_data *qdata)
 
 		/* Free changesets, but not the data. */
 		zones_free_merged_changesets(chgsets, sec_chs);
-		zone_release(zone);
-		qdata->zone = NULL;
 		return KNOT_ERROR;
 	}
 
@@ -478,12 +490,6 @@ static int zones_process_update_auth(struct query_data *qdata)
 	if (zone_config->dbsync_timeout == 0) {
 		zones_schedule_zonefile_sync(zone, 0);
 	}
-
-	/* Since we unlocked RCU read lock, it is possible that the
-	 * zone was modified/removed in the background. Therefore,
-	 * we must NOT touch the zone after we release it here. */
-	zone_release(zone);
-	qdata->zone = NULL;
 
 	return ret;
 }
