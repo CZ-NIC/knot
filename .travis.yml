@@ -4,8 +4,6 @@ compiler:
   - gcc
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq autotools-dev autoconf automake libtool  
-install:
-  - sudo apt-get build-dep knot
+  - sudo apt-get install -qq autotools-dev autoconf automake libtool libssl-dev liburcu-dev flex bison ragel pkg-config texinfo texlive
 before_script:
   - autoreconf -fi
