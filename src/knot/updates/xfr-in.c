@@ -44,6 +44,11 @@
 
 static void rrs_list_clear(list_t *l, mm_ctx_t *mm)
 {
+	/*
+	 * Frees data that are in the tree that will not be used, these are:
+	 *  - actual data inside knot_rrs_t. (the rest is part of the node)
+	 *  - arrays allocated for additional nodes. (nodes are kept)
+	 */
 	ptrnode_t *n;
 	node_t *nxt;
 	WALK_LIST_DELSAFE(n, nxt, *l) {
@@ -670,6 +675,7 @@ void xfrin_rollback_update(knot_changesets_t *chgs,
 static int xfrin_replace_rrs_with_copy(knot_node_t *node,
                                        uint16_t type)
 {
+	// Find data to copy.
 	struct rr_data *data = NULL;
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
@@ -677,6 +683,8 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 		}
 	}
 	assert(data);
+
+	// Create new data.
 	knot_rrs_t *rrs = &data->rrs;
 	void *copy = malloc(knot_rrs_size(rrs));
 	if (copy == NULL) {
@@ -685,8 +693,12 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 
 	memcpy(copy, rrs->data, knot_rrs_size(rrs));
 
-	// Clear additional from node in new tree.
+	/*
+	 * Clear additional array from node in new tree. It's callers
+	 * responsibility to store it for cleanup.
+	 */
 	data->additional = NULL;
+	// Store new data into node RRS.
 	rrs->data = copy;
 
 	return KNOT_EOK;
@@ -703,10 +715,12 @@ static void clear_new_rrs(knot_node_t *node, uint16_t type)
 static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 {
 	if (node == NULL) {
+		// Node does not exist, cannot remove anything.
 		return false;
 	}
 	const knot_rrs_t *node_rrs = knot_node_rrs(node, rr->type);
 	if (node_rrs == NULL) {
+		// Node does not have this type at all.
 		return false;
 	}
 
@@ -714,9 +728,12 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 	for (uint16_t i = 0; i < rr->rrs.rr_count; ++i) {
 		knot_rr_t *rr_cmp = knot_rrs_rr(&rr->rrs, i);
 		if (knot_rrs_member(node_rrs, rr_cmp, compare_ttls)) {
+			// At least one RR matches.
 			return true;
 		}
 	}
+
+	// Node does have the type, but no RRs match.
 	return false;
 }
 
@@ -766,6 +783,7 @@ static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
 	}
 
 	knot_rrs_t *changed_rrs = knot_node_get_rrs(node, rr->type);
+	// Subtract changeset RRS from node RRS.
 	ret = knot_rrs_subtract(changed_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
@@ -773,13 +791,14 @@ static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
 	}
 
 	if (changed_rrs->rr_count > 0) {
+		// Subtraction left some data in RRSet, store it for rollback.
 		ret = add_new_data(chset, changed_rrs->data);
 		if (ret != KNOT_EOK) {
 			knot_rrs_clear(changed_rrs, NULL);
 			return ret;
 		}
 	} else {
-		// Removed last RR in RRSet, remove it from node.
+		// RRSet is empty now, remove it from node, all data freed.
 		knot_node_remove_rrset(node, rr->type);
 	}
 
@@ -823,7 +842,7 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 			return ret;
 		}
 
-		// Store old RRS for cleanup.
+		// Store old RRS and additional for cleanup.
 		ret = add_old_data(chset, old_data, old_additional);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
@@ -845,8 +864,8 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		}
 	}
 
+	// Get changed RRS and store for possible rollback.
 	knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
-	// Store new RRS for rollback
 	int ret = add_new_data(chset, rrs->data);
 	if (ret != KNOT_EOK) {
 		knot_rrs_clear(rrs, NULL);
