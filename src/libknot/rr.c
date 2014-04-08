@@ -75,6 +75,19 @@ static knot_rr_t *rr_seek(knot_rr_t *d, size_t pos)
 	return d + offset;
 }
 
+static int find_rr_pos(const knot_rrs_t *search_in,
+                       const knot_rr_t *rr)
+{
+	for (uint16_t i = 0; i < search_in->rr_count; ++i) {
+		const knot_rr_t *search_rr = knot_rrs_rr(search_in, i);
+		if (knot_rr_cmp(rr, search_rr) == 0) {
+			return i;
+		}
+	}
+
+	return KNOT_ENOENT;
+}
+
 static int add_rr_at(knot_rrs_t *rrs, const knot_rr_t *rr, size_t pos,
                      mm_ctx_t *mm)
 {
@@ -124,6 +137,47 @@ static int add_rr_at(knot_rrs_t *rrs, const knot_rr_t *rr, size_t pos,
 	memcpy(knot_rr_rdata(old_rr), rdata, size);
 
 	rrs->rr_count++;
+	return KNOT_EOK;
+}
+
+static int remove_rr_at(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm)
+{
+	if (rrs == NULL || pos >= rrs->rr_count) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rr_t *old_rr = knot_rrs_rr(rrs, pos);
+	knot_rr_t *last_rr = knot_rrs_rr(rrs, rrs->rr_count - 1);
+	assert(old_rr);
+	assert(last_rr);
+
+	size_t total_size = knot_rrs_size(rrs);
+	uint16_t old_size = knot_rr_rdata_size(old_rr);
+
+	void *old_threshold = old_rr + knot_rr_array_size(old_size);
+	void *last_threshold = last_rr + knot_rr_array_size(knot_rr_rdata_size(last_rr));
+	// Move RDATA
+	memmove(old_rr, old_threshold,
+	        last_threshold - old_threshold);
+
+	if (rrs->rr_count > 1) {
+		// Realloc RDATA
+		void *tmp = mm_realloc(mm, rrs->data,
+		                       total_size - (knot_rr_array_size(old_size)),
+		                       total_size);
+		if (tmp == NULL) {
+			ERR_ALLOC_FAILED;
+			return KNOT_ENOMEM;
+		} else {
+			rrs->data = tmp;
+		}
+	} else {
+		// Free RDATA
+		mm_free(mm, rrs->data);
+		rrs->data = NULL;
+	}
+	rrs->rr_count--;
+
 	return KNOT_EOK;
 }
 
@@ -215,33 +269,6 @@ knot_rr_t *knot_rrs_rr(const knot_rrs_t *rrs, size_t pos)
 	return rr_seek(rrs->data, pos);
 }
 
-uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos)
-{
-	if (rrs == NULL || pos >= rrs->rr_count) {
-		return NULL;
-	}
-
-	return knot_rr_rdata(knot_rrs_rr(rrs, pos));
-}
-
-uint16_t knot_rrs_rr_size(const knot_rrs_t *rrs, size_t pos)
-{
-	if (rrs == NULL || pos >= rrs->rr_count) {
-		return 0;
-	}
-
-	return knot_rr_rdata_size(knot_rrs_rr(rrs, pos));
-}
-
-uint32_t knot_rrs_rr_ttl(const knot_rrs_t *rrs, size_t pos)
-{
-	if (rrs == NULL || pos >= rrs->rr_count) {
-		return 0;
-	}
-
-	return knot_rr_ttl(knot_rrs_rr(rrs, pos));
-}
-
 size_t knot_rrs_size(const knot_rrs_t *rrs)
 {
 	if (rrs == NULL) {
@@ -280,47 +307,6 @@ int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm)
 	return add_rr_at(rrs, rr, rrs->rr_count, mm);
 }
 
-int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm)
-{
-	if (rrs == NULL || pos >= rrs->rr_count) {
-		return KNOT_EINVAL;
-	}
-
-	knot_rr_t *old_rr = knot_rrs_rr(rrs, pos);
-	knot_rr_t *last_rr = knot_rrs_rr(rrs, rrs->rr_count - 1);
-	assert(old_rr);
-	assert(last_rr);
-
-	size_t total_size = knot_rrs_size(rrs);
-	uint16_t old_size = knot_rr_rdata_size(old_rr);
-
-	void *old_threshold = old_rr + knot_rr_array_size(old_size);
-	void *last_threshold = last_rr + knot_rr_array_size(knot_rr_rdata_size(last_rr));
-	// Move RDATA
-	memmove(old_rr, old_threshold,
-	        last_threshold - old_threshold);
-
-	if (rrs->rr_count > 1) {
-		// Realloc RDATA
-		void *tmp = mm_realloc(mm, rrs->data,
-		                       total_size - (knot_rr_array_size(old_size)),
-		                       total_size);
-		if (tmp == NULL) {
-			ERR_ALLOC_FAILED;
-			return KNOT_ENOMEM;
-		} else {
-			rrs->data = tmp;
-		}
-	} else {
-		// Free RDATA
-		mm_free(mm, rrs->data);
-		rrs->data = NULL;
-	}
-	rrs->rr_count--;
-
-	return KNOT_EOK;
-}
-
 bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2)
 {
 	if (rrs1->rr_count != rrs2->rr_count) {
@@ -338,6 +324,28 @@ bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2)
 	return true;
 }
 
+bool knot_rrs_member(const knot_rrs_t *rrs, const knot_rr_t *rr, bool cmp_ttl)
+{
+	for (uint16_t i = 0; i < rrs->rr_count; ++i) {
+		const knot_rr_t *cmp_rr = knot_rrs_rr(rrs, i);
+		if (cmp_ttl) {
+			if (knot_rr_ttl(rr) != knot_rr_ttl(cmp_rr)) {
+				continue;
+			}
+		}
+		int cmp = knot_rr_cmp(cmp_rr, rr);
+		if (cmp == 0) {
+			// Match.
+			return true;
+		}
+		if (cmp > 0) {
+			// 'Bigger' RR present, no need to continue.
+			return false;
+		}
+	}
+	return false;
+}
+
 int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm)
 {
 	if (rrs1 == NULL || rrs2 == NULL) {
@@ -349,6 +357,50 @@ int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm)
 		int ret = knot_rrs_add_rr(rrs1, rr, mm);
 		if (ret != KNOT_EOK) {
 			return ret;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+int knot_rrs_intersect(const knot_rrs_t *a, const knot_rrs_t *b,
+                       knot_rrs_t *out, mm_ctx_t *mm)
+{
+	if (a == NULL || b == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rrs_init(out);
+	const bool compare_ttls = false;
+	for (uint16_t i = 0; i < a->rr_count; ++i) {
+		const knot_rr_t *rr = knot_rrs_rr(a, i);
+		if (knot_rrs_member(b, rr, compare_ttls)) {
+			// Add RR into output intersection RRSet.
+			int ret = knot_rrs_add_rr(out, rr, mm);
+			if (ret != KNOT_EOK) {
+				knot_rrs_clear(out, mm);
+				return ret;
+			}
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+int knot_rrs_subtract(knot_rrs_t *from, const knot_rrs_t *what, mm_ctx_t *mm)
+{
+	if (from == NULL || what == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (uint16_t i = 0; i < what->rr_count; ++i) {
+		const knot_rr_t *to_remove = knot_rrs_rr(what, i);
+		int pos_to_remove = find_rr_pos(from, to_remove);
+		if (pos_to_remove >= 0) {
+			int ret = remove_rr_at(from, pos_to_remove, mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 		}
 	}
 

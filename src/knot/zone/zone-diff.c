@@ -204,27 +204,9 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 static bool rr_exists(const knot_rrset_t *in, const knot_rrset_t *ref,
                       size_t ref_pos)
 {
-	// Create RRSet with single RR fron 'ref' RRSet, position 'ref_pos'.
-	knot_rrset_t ref_rr;
-	knot_rrset_init(&ref_rr, ref->owner, ref->type, ref->rclass);
-	knot_rr_t *to_add = knot_rrs_rr(&ref->rrs, ref_pos);
-	int ret = knot_rrs_add_rr(&ref_rr.rrs, to_add, NULL);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-
-	// Do an intersection with 'in' rrset, if non-empty, RR exists.
-	knot_rrset_t int_rr;
+	knot_rr_t *to_check = knot_rrs_rr(&ref->rrs, ref_pos);
 	const bool compare_ttls = true;
-	ret = knot_rrset_intersection(in, &ref_rr, &int_rr, compare_ttls, NULL);
-	knot_rrs_clear(&ref_rr.rrs, NULL);
-	if (ret != KNOT_EOK) {
-		return false;
-	}
-
-	const bool exists = !knot_rrset_empty(&int_rr);
-	knot_rrs_clear(&int_rr.rrs, NULL);
-	return exists;
+	return knot_rrs_member(&in->rrs, to_check, compare_ttls);
 }
 
 static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,

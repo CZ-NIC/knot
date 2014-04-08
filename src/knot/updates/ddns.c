@@ -53,7 +53,7 @@ static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 		ptrnode_t *ptr_n = (ptrnode_t *)n;
 		knot_rrset_t *rrset = (knot_rrset_t *)ptr_n->d;
 		if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_HEADER)) {
-			int ret = knot_rrset_merge(rrset, rr, NULL);
+			int ret = knot_rrs_merge(&rrset->rrs, &rr->rrs, NULL);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -437,19 +437,12 @@ static bool node_empty(const knot_node_t *node, knot_dname_t *owner,
 static bool node_contains_rr(const knot_node_t *node,
                              const knot_rrset_t *rr)
 {
-	knot_rrset_t zone_rrset = knot_node_rrset(node, rr->type);
-	if (!knot_rrset_empty(&zone_rrset)) {
-		knot_rrset_t intersection;
+	const knot_rrs_t *zone_rrs = knot_node_rrs(node, rr->type);
+	if (zone_rrs) {
+		assert(rr->rrs.rr_count == 1);
 		const bool compare_ttls = false;
-		int ret = knot_rrset_intersection(&zone_rrset, rr,
-		                                  &intersection, compare_ttls,
-		                                  NULL);
-		if (ret != KNOT_EOK) {
-			return false;
-		}
-		const bool contains = !knot_rrset_empty(&intersection);
-		knot_rrs_clear(&intersection.rrs, NULL);
-		return contains;
+		return knot_rrs_member(zone_rrs, knot_rrs_rr(&rr->rrs, 0),
+		                       compare_ttls);
 	} else {
 		return false;
 	}
@@ -775,9 +768,9 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	}
 
 	knot_rrset_t intersection;
-	const bool compare_ttls = false;
-	int ret = knot_rrset_intersection(&to_modify, rr, &intersection,
-	                                  compare_ttls, NULL);
+	knot_rrset_init(&intersection, to_modify.owner, to_modify.type, KNOT_CLASS_IN);
+	int ret = knot_rrs_intersect(&to_modify.rrs, &rr->rrs, &intersection.rrs,
+	                             NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

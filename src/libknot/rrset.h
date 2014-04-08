@@ -202,30 +202,6 @@ void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, struct knot_compr *compr);
 
-/*!
- * \brief Merges two RRSets, duplicate check is done, preserves canonical ordering.
- *
- * \param r1           Pointer to RRSet to be merged into.
- * \param r2           Pointer to RRSet to be merged.
- * \param mm           Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_merge(knot_rrset_t *rrset1, const knot_rrset_t *rrset2, mm_ctx_t *mm);
-
-/*!
- * \brief Removes RRs contained in 'what' RRSet from 'from' RRSet.
- *
- * \param from        Delete from.
- * \param what        Delete what.
- * \param mm          Memory context.
- *
- * \return KNOT_E*
- */
-int knot_rrset_remove_rr_using_rrset(knot_rrset_t *from,
-                                     const knot_rrset_t *what,
-                                     mm_ctx_t *mm);
-
  /*!
  * \brief Creates one RR from wire, stores it into 'rrset'
  *
@@ -264,21 +240,6 @@ bool knot_rrset_empty(const knot_rrset_t *rrset);
  * \retval NULL on error.
  */
 knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
-
-/*!
- * \brief RRSet intersection. Full compare is done, including RDATA.
- *
- * \param a        First RRSet to intersect.
- * \param b        Second RRset to intersect.
- * \param out      Output RRSet with intersection, RDATA are created anew, owner is
- *                 just a reference.
- * \param cmp_ttl  If set to true, TTLs will be compared as well.
- * \param mm       Memory context. Will be used to create new RDATA.
- *
- * \return KNOT_E*
- */
-int knot_rrset_intersection(const knot_rrset_t *a, const knot_rrset_t *b,
-                            knot_rrset_t *out, bool cmp_ttl, mm_ctx_t *mm);
 
 /*!
  * \brief Initializes given RRSet structure.

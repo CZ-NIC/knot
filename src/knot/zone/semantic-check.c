@@ -25,6 +25,7 @@
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/key.h"
+#include "libknot/dnssec/rrset-sign.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
 #include "common/descriptor.h"
@@ -687,10 +688,11 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
+	const knot_rr_t *nsec3_rr = knot_rrs_rr(nsec3_rrs, 0);
 	const knot_rrs_t *soa_rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs);
 	uint32_t minimum_ttl = knot_rrs_soa_minimum(soa_rrs);
-	if (knot_rrs_rr_ttl(nsec3_rrs, 0) != minimum_ttl) {
+	if (knot_rr_ttl(nsec3_rr) != minimum_ttl) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_NSEC3_RDATA_TTL, NULL);
 	}

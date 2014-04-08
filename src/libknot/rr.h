@@ -86,7 +86,7 @@ uint8_t *knot_rr_rdata(const knot_rr_t *rr);
 size_t knot_rr_array_size(uint16_t size);
 
 /*!
- * \brief Canonical comparison of two RRs.
+ * \brief Canonical comparison of two RRs. Both RRs *must* exist.
  * \param rr1  First RR to compare.
  * \param rr2  Second RR to compare.
  * \retval 0 if rr1 == rr2.
@@ -138,30 +138,6 @@ int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm);
 knot_rr_t *knot_rrs_rr(const knot_rrs_t *rrs, size_t pos);
 
 /*!
- * \brief Gets RDATA from RR at \a pos position.
- * \param rrs  RRS to get RDATA from.
- * \param pos  Position to use.
- * \return Pointer to RDATA of RR at \a pos position.
- */
-uint8_t *knot_rrs_rr_rdata(const knot_rrs_t *rrs, size_t pos);
-
-/*!
- * \brief Gets size from RR at \a pos position.
- * \param rrs  RRS to get size from.
- * \param pos  Position to use.
- * \return Size of RR at \a pos position.
- */
-uint16_t knot_rrs_rr_size(const knot_rrs_t *rrs, size_t pos);
-
-/*!
- * \brief Gets TTL from RR at \a pos position.
- * \param rrs  RRS to get TTL from.
- * \param pos  Position to use.
- * \return Size of TTL at \a pos position.
- */
-uint32_t knot_rrs_rr_ttl(const knot_rrs_t *rrs, size_t pos);
-
-/*!
  * \brief Returns size of array with RRs.
  * \param rrs  RR array.
  * \return Array size.
@@ -179,16 +155,7 @@ size_t knot_rrs_size(const knot_rrs_t *rrs);
  */
 int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm);
 
-/*!
- * \brief Removes RR at a given position from RRS structure. RR is dropped.
- * \param rrs  RRS structure to remove from.
- * \param pos  Position to use.
- * \param mm   Memory context.
- * \return KNOT_E*
- */
-int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm);
-
-/* ----------------------------- RRs misc ----------------------------------- */
+/* ---------------------- RRs set-like operations --------------------------- */
 
 /*!
  * \brief RRS equality check.
@@ -200,6 +167,16 @@ int knot_rrs_remove_rr_at_pos(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm);
 bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2);
 
 /*!
+ * \brief Returns true if \a rr is present in \a rrs, false otherwise.
+ * \param rrs      RRS to search in.
+ * \param rr       RR to compare with.
+ * \param cmp_ttl  If set to true, TTLs will be compared as well.
+ * \retval true if \a rr is present in \a rrs.
+ * \retval false if \a rr is not present in \a rrs.
+ */
+bool knot_rrs_member(const knot_rrs_t *rrs, const knot_rr_t *rr, bool cmp_ttl);
+
+/*!
  * \brief Merges two RRS into the first one. Second RRS is left intact.
  *        Canonical order is preserved.
  * \param rrs1  Destination RRS (merge here).
@@ -208,3 +185,24 @@ bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2);
  * \return KNOT_E*
  */
 int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm);
+
+/*!
+ * \brief RRS set-like intersection. Full compare is done.
+ * \param a        First RRS to intersect.
+ * \param b        Second RRS to intersect.
+ * \param out      Output RRS with intersection, RDATA are created anew.
+ * \param mm       Memory context. Will be used to create new RDATA.
+ * \return KNOT_E*
+ */
+int knot_rrs_intersect(const knot_rrs_t *a, const knot_rrs_t *b,
+                       knot_rrs_t *out, mm_ctx_t *mm);
+
+/*!
+ * \brief Does set-like RRS subtraction. \a from RRS is changed.
+ * \param from  RRS to subtract from.
+ * \param what  RRS to subtract.
+ * \param mm    Memory context use to reallocated \a from data.
+ * \return KNOT_E*
+ */
+int knot_rrs_subtract(knot_rrs_t *from, const knot_rrs_t *what,
+                      mm_ctx_t *mm);

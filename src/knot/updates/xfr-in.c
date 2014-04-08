@@ -705,21 +705,19 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 	if (node == NULL) {
 		return false;
 	}
-	knot_rrset_t node_rrset = knot_node_rrset(node, rr->type);
-	if (knot_rrset_empty(&node_rrset)) {
+	const knot_rrs_t *node_rrs = knot_node_rrs(node, rr->type);
+	if (node_rrs == NULL) {
 		return false;
 	}
 
-	knot_rrset_t intersection;
 	const bool compare_ttls = false;
-	knot_rrset_intersection(&node_rrset, rr, &intersection,
-	                        compare_ttls, NULL);
-	if (knot_rrset_empty(&intersection)) {
-		return false;
+	for (uint16_t i = 0; i < rr->rrs.rr_count; ++i) {
+		knot_rr_t *rr_cmp = knot_rrs_rr(&rr->rrs, i);
+		if (knot_rrs_member(node_rrs, rr_cmp, compare_ttls)) {
+			return true;
+		}
 	}
-	knot_rrs_clear(&intersection.rrs, NULL);
-
-	return true;
+	return false;
 }
 
 static int add_old_data(knot_changeset_t *chset, knot_rr_t *old_data,
@@ -767,23 +765,19 @@ static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
 		return ret;
 	}
 
-	knot_rrset_t changed_rrset = knot_node_rrset(node, rr->type);
-	ret = knot_rrset_remove_rr_using_rrset(&changed_rrset, rr, NULL);
+	knot_rrs_t *changed_rrs = knot_node_get_rrs(node, rr->type);
+	ret = knot_rrs_subtract(changed_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
 		return ret;
 	}
 
-	if (changed_rrset.rrs.rr_count > 0) {
-		ret = add_new_data(chset, changed_rrset.rrs.data);
+	if (changed_rrs->rr_count > 0) {
+		ret = add_new_data(chset, changed_rrs->data);
 		if (ret != KNOT_EOK) {
-			knot_rrs_clear(&changed_rrset.rrs, NULL);
+			knot_rrs_clear(changed_rrs, NULL);
 			return ret;
 		}
-
-		// Replace data in node with changed data
-		knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
-		*rrs = changed_rrset.rrs;
 	} else {
 		// Removed last RR in RRSet, remove it from node.
 		knot_node_remove_rrset(node, rr->type);
