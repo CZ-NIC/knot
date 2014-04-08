@@ -192,7 +192,6 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; i++) {
 		int item = desc->block_types[i];
 		if (compr && descriptor_item_is_compr_dname(item)) {
-			dbg_packet("%s: putting compressed name\n", __func__);
 			const knot_dname_t *dname = rdata + offset;
 			int ret = knot_compr_put_dname(dname, *pos,
 			                             max_size - size - rdlength,
@@ -204,25 +203,12 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 			if (!knot_pkt_compr_hint(compr->rrinfo, hint_id)) {
 				knot_pkt_compr_hint_set(compr->rrinfo, hint_id, compr->wire_pos, ret);
 			}
-			assert(ret + size + rdlength <= max_size);
-dbg_response_exec_detail(
-			char *name = knot_dname_to_str(dname);
-			dbg_response_detail("Compressed dname=%s size: %d\n",
-			                    name, ret);
-			free(name);
-);
 			*pos += ret;
 			rdlength += ret;
 			offset += knot_dname_size(dname);
 			compr->wire_pos += ret;
 		} else if (descriptor_item_is_dname(item)) {
-			dbg_packet("%s: putting uncompressed name\n", __func__);
 			const knot_dname_t *dname = rdata + offset;
-dbg_rrset_exec_detail(
-			char *name = knot_dname_to_str(dname);
-			dbg_rrset_detail("Saving this DNAME=%s\n", name);
-			free(name);
-);
 			// save whole domain name
 			size_t maxb = max_size - size - rdlength;
 			int dname_size = knot_dname_to_wire(*pos, dname, maxb);
@@ -232,8 +218,6 @@ dbg_rrset_exec_detail(
 			if (compr && !knot_pkt_compr_hint(compr->rrinfo, hint_id)) {
 				knot_pkt_compr_hint_set(compr->rrinfo, hint_id, compr->wire_pos, dname_size);
 			}
-			dbg_rrset_detail("Uncompressed dname size: %d\n",
-			                 dname_size);
 			*pos += dname_size;
 			rdlength += dname_size;
 			offset += dname_size;
@@ -241,8 +225,6 @@ dbg_rrset_exec_detail(
 				compr->wire_pos += dname_size;
 			}
 		} else if (descriptor_item_is_fixed(item)) {
-			dbg_rrset_detail("Saving static chunk, size=%d\n",
-			                 item);
 			/* Fixed length chunk. */
 			if (size + rdlength + item > max_size) {
 				return KNOT_ESPACE;
@@ -259,13 +241,7 @@ dbg_rrset_exec_detail(
 			size_t remainder_size =
 				rrset_rdata_remainder_size(rrset, offset,
 			                                   rdata_pos);
-			dbg_rrset_detail("Saving remaining chunk, size=%zu, "
-			                 "size with remainder=%zu\n",
-			                 remainder_size,
-			                 size + rdlength + remainder_size);
 			if (size + rdlength + remainder_size > max_size) {
-				dbg_rrset("rr: to_wire: Remainder does not fit "
-				          "to wire.\n");
 				return KNOT_ESPACE;
 			}
 			memcpy(*pos, rdata + offset, remainder_size);
@@ -281,8 +257,6 @@ dbg_rrset_exec_detail(
 			uint16_t chunk_size =
 			    rrset_rdata_naptr_bin_chunk_size(rrset, rdata_pos);
 			if (size + rdlength + chunk_size > max_size) {
-				dbg_rrset("rr: to_wire: NAPTR chunk does not "
-				          "fit to wire.\n");
 				return KNOT_ESPACE;
 			}
 			memcpy(*pos, rdata + offset, chunk_size);
@@ -299,7 +273,6 @@ dbg_rrset_exec_detail(
 	size += rdlength;
 
 	*knot_rr_size = size;
-	dbg_packet("%s: written rrset %zu bytes\n", __func__, *knot_rr_size);
 	assert(size <= max_size);
 	return KNOT_EOK;
 }
@@ -354,12 +327,9 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	return size;
 }
 
-static int knot_rrset_rdata_store_binary(uint8_t *rdata, size_t *offset,
-                                         size_t packet_offset,
-                                         const uint8_t *wire,
-                                         size_t *pos,
-                                         size_t rdlength,
-                                         size_t size)
+static int binary_store(uint8_t *rdata, size_t *offset, size_t packet_offset,
+                        const uint8_t *wire, size_t *pos, size_t rdlength,
+                        size_t size)
 {
 	assert(rdata);
 	assert(wire);
@@ -516,10 +486,6 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		return ret;
 	}
 
-	dbg_rrset_detail("rr: parse_rdata_wire: Parsing RDATA of size=%zu,"
-	                 " wire_size=%zu, type=%d.\n", rdlength, total_size,
-	                 rrset->type);
-
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
 
 	/* Check for obsolete record. */
@@ -527,23 +493,12 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		desc = get_obsolete_rdata_descriptor(rrset->type);
 	}
 
-	/*! \todo This estimate is very rough - just to have enough space for
-	 *        possible unpacked dname. Should be later replaced by exact
-	 *        size counting.
-	 */
 	uint8_t rdata_buffer[rdlength + KNOT_DNAME_MAXLEN];
 	memset(rdata_buffer, 0, rdlength + KNOT_DNAME_MAXLEN);
 
 	size_t offset = 0; // offset within in-memory RDATA
 	size_t parsed = 0; // actual count of parsed octets
 	const size_t packet_offset = *pos;
-
-	/*! \todo [RRSet refactor]
-	 *        This could be A LOT simpler - copy it as a whole,
-	 *        unpack dnames and just do some format checks if necessary.
-	 *        But it's questionable, if copying the memory when unpacking
-	 *        dnames, wouldn't be too expensive.
-	 */
 
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END &&
 	     parsed < rdlength; ++i) {
@@ -564,51 +519,21 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 
 			parsed += wire_size;
 
-dbg_rrset_exec_detail(
-			dbg_rrset_detail("rr: parse_rdata_wire: Parsed DNAME, "
-			                 "length=%d.\n", wire_size);
-			char *name = knot_dname_to_str(rdata_buffer + offset);
-			dbg_rrset_detail("rr: parse_rdata_wire: Parsed "
-			                 "DNAME=%s\n", name);
-			free(name);
-);
 			*pos += wire_size;
 			offset += unpacked_size;
 		} else if (descriptor_item_is_fixed(item)) {
-			dbg_rrset_detail("rr: parse_rdata_wire: Saving static "
-			                 "chunk of size=%u\n", item);
-			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
-			                                        &offset,
-			                                        packet_offset,
-			                                        wire,
-			                                        pos,
-			                                        rdlength,
-			                                        item);
+			int ret = binary_store(rdata_buffer, &offset, packet_offset,
+			                       wire, pos, rdlength, item);
 			if (ret != KNOT_EOK) {
-				dbg_rrset("rrset: rdata_from_wire: "
-				          "Cannot store fixed RDATA chunk. "
-				          "Reason: %s.\n", knot_strerror(ret));
 				return ret;
 			}
 			parsed += item;
 		} else if (descriptor_item_is_remainder(item)) {
 			/* Item size has to be calculated. */
 			size_t remainder_size = rdlength - parsed;
-			dbg_rrset_detail("rr: parse_rdata_wire: Saving remaining "
-			                 "chunk of size=%zu\n", remainder_size);
-			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
-			                                        &offset,
-			                                        packet_offset,
-			                                        wire,
-			                                        pos,
-			                                        rdlength,
-			                                        remainder_size);
+			int ret = binary_store(rdata_buffer, &offset, packet_offset,
+			                       wire, pos, rdlength, remainder_size);
 			if (ret != KNOT_EOK) {
-				dbg_rrset("rrset: rdata_from_wire: "
-				          "Cannot store RDATA remainder of "
-				          "size=%zu, RDLENGTH=%zu. "
-				          "Reason: %s.\n", remainder_size,
-				          rdlength, knot_strerror(ret));
 				return ret;
 			}
 			parsed += remainder_size;
@@ -616,38 +541,19 @@ dbg_rrset_exec_detail(
 			assert(rrset->type == KNOT_RRTYPE_NAPTR);
 			/* Read fixed part - 2 shorts. */
 			const size_t naptr_fixed_part_size = 4;
-			int ret = knot_rrset_rdata_store_binary(rdata_buffer,
-			                                        &offset,
-			                                        packet_offset,
-			                                        wire,
-			                                        pos,
-			                                        rdlength,
-			                                        naptr_fixed_part_size);
+			int ret = binary_store(rdata_buffer, &offset, packet_offset,
+			                       wire, pos, rdlength, naptr_fixed_part_size);
 			if (ret != KNOT_EOK) {
-				dbg_rrset("rrset: rdata_from_wire: "
-				          "Cannot store NAPTR fixed part. "
-				          "Reason: %s.\n", knot_strerror(ret));
 				return ret;
 			}
 			parsed += naptr_fixed_part_size;
 			for (int j = 0; j < 3; ++j) {
 				/* Read sizes of TXT's - one byte. */
 				uint8_t txt_size = *(wire + (*pos)) + 1;
-				dbg_rrset_detail("rrset: rdata_from_wire: "
-				                 "Read TXT nr=%d size=%d\n", j,
-				                 txt_size);
-				int ret = knot_rrset_rdata_store_binary(rdata_buffer,
-				                                        &offset,
-				                                        packet_offset,
-				                                        wire,
-				                                        pos,
-				                                        rdlength,
-				                                        txt_size);
+				int ret = binary_store(rdata_buffer, &offset,
+				                       packet_offset, wire, pos,
+				                       rdlength, txt_size);
 				if (ret != KNOT_EOK) {
-					dbg_rrset("rrset: rdata_from_wire: "
-					          "Cannot store NAPTR TXTs. "
-					          "Reason: %s.\n", knot_strerror(ret));
-					return ret;
 				}
 				parsed += txt_size;
 			}
