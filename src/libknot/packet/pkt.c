@@ -26,12 +26,6 @@
 #include "libknot/tsig.h"
 #include "libknot/tsig-op.h"
 
-static void clear_pkt_rr(knot_rrset_t *rr, mm_ctx_t *mm)
-{
-	knot_dname_free(&rr->owner, mm);
-	knot_rrs_clear(&rr->rrs, mm);
-}
-
 /*! \brief Scan packet for RRSet existence. */
 static bool pkt_contains(const knot_pkt_t *packet,
 			 const knot_rrset_t *rrset)
@@ -58,7 +52,7 @@ static void pkt_free_data(knot_pkt_t *pkt)
 	/* Free RRSets if applicable. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
 		if (pkt->rr_info[i].flags & KNOT_PF_FREE) {
-			clear_pkt_rr(&pkt->rr[i], &pkt->mm);
+			knot_rrset_clear(&pkt->rr[i], &pkt->mm);
 		}
 	}
 
@@ -673,7 +667,7 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	if (size - *pos < rdlength) {
 		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
-		clear_pkt_rr(rrset, mm);
+		knot_rrset_clear(rrset, mm);
 		return KNOT_EMALF;
 	}
 
@@ -685,7 +679,7 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
 		dbg_packet("%s: couldn't parse RDATA (%d)\n", __func__, ret);
-		clear_pkt_rr(rrset, mm);
+		knot_rrset_clear(rrset, mm);
 		return ret;
 	}
 

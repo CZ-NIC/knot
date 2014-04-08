@@ -74,8 +74,8 @@ int internet_query_plan(struct query_plan *plan);
  *
  * \return KNOT_E*
  */
-int ns_put_rr(knot_pkt_t *pkt, knot_rrset_t *rr,
-              knot_rrset_t *rrsigs, uint16_t compr_hint,
+int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
+              const knot_rrset_t *rrsigs, uint16_t compr_hint,
               uint32_t flags, struct query_data *qdata);
 
 /*! \brief Require given QUERY TYPE or return error code. */
