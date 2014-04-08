@@ -2,6 +2,7 @@
 #include <gnutls/abstract.h>
 #include <string.h>
 
+#include "error.h"
 #include "hex.h"
 #include "key.h"
 #include "key/keyid.h"
@@ -31,14 +32,39 @@ void gnutls_x509_privkey_to_key_id(gnutls_x509_privkey_t key, dnssec_key_id_t id
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-char *dnssec_key_id_to_string(const dnssec_key_id_t id)
+int dnssec_key_id_to_string(const dnssec_key_id_t id, char **string)
 {
+	if (!id || !string) {
+		return DNSSEC_EINVAL;
+	}
+
 	const dnssec_binary_t binary = {
 		.data = (uint8_t *)id,
 		.size = DNSSEC_KEY_ID_SIZE
 	};
 
-	return hex_to_string(&binary);
+	return bin_to_hex(&binary, string);
+}
+
+_public_
+int dnssec_key_id_from_string(const char *string, dnssec_key_id_t id)
+{
+	if (!string || !id) {
+		return DNSSEC_EINVAL;
+	}
+
+	_cleanup_binary_ dnssec_binary_t binary = { 0 };
+	int result = hex_to_bin(string, &binary);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
+
+	if (binary.size != DNSSEC_KEY_ID_SIZE) {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	memcpy(id, binary.data, binary.size);
+	return DNSSEC_EOK;
 }
 
 _public_

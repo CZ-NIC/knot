@@ -17,7 +17,12 @@ typedef uint8_t dnssec_key_id_t[20];
 /*!
  * Convert DNSSEC key id to hexadecimal string.
  */
-char *dnssec_key_id_to_string(const dnssec_key_id_t key_id);
+int dnssec_key_id_to_string(const dnssec_key_id_t key_id, char **string);
+
+/*!
+ * Convert hexadecimal string to DNSSEC key id.
+ */
+int dnssec_key_id_from_string(const char *string, dnssec_key_id_t key_id);
 
 /*!
  * Copy key ID.
