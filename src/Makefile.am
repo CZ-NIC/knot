@@ -256,6 +256,8 @@ libknotd_la_SOURCES =				\
 	knot/server/zone-load.h			\
 	knot/server/zones.c			\
 	knot/server/zones.h			\
+	knot/server/serialization.c		\
+	knot/server/serialization.h		\
 	knot/updates/acl.c			\
 	knot/updates/acl.h			\
 	knot/updates/changesets.c		\

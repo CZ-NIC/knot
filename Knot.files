@@ -293,3 +293,5 @@ tests/slab.c
 tests/wire.c
 tests/zonedb.c
 tests/ztree.c
+src/knot/server/serialization.c
+src/knot/server/serialization.h
