@@ -519,8 +519,6 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 		knot_zonedb_iter_next(&it);
 	}
 
-	synchronize_rcu();
-
 	/* Delete all deprecated zones and delete the old database. */
 	knot_zonedb_deep_free(&db_old);
 
