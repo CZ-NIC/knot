@@ -1,17 +1,177 @@
+#include <time.h>
+
 #include "dname.h"
 #include "error.h"
 #include "kasp.h"
 #include "kasp/internal.h"
 #include "path.h"
 #include "shared.h"
+#include "strtonum.h"
 #include "yml.h"
 
-static int parse_zone_key(yml_node_t *key, void *data, bool *interrupt)
-{
-	char *id = yml_get_string(key, "id");
+#define DATE_FORMAT "%Y-%m-%d %H:%M:%S"
 
-	fprintf(stderr, "[key] %sx\n", id);
-	free(id);
+static int str_to_keyid(const char *string, void *_key_id)
+{
+	assert(string);
+	assert(_key_id);
+	dnssec_key_id_t *key_id = _key_id;
+
+	return dnssec_key_id_from_string(string, *key_id);
+}
+
+/*!
+ * Parse algorithm string to algorithm.
+ *
+ * \todo Understands only algorithm number, may also understand name, e.g. RSASHA256.
+ */
+static int str_to_algorithm(const char *string, void *_algorithm)
+{
+	assert(string);
+	assert(_algorithm);
+	dnssec_key_algorithm_t *algorithm = _algorithm;
+
+	uint8_t number = 0;
+	int r = str_to_u8(string, &number);
+	if (r != DNSSEC_EOK) {
+		return r;
+	}
+
+	*algorithm = number;
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Parse date to a time stamp.
+ */
+static int str_to_time(const char *string, void *_time)
+{
+	assert(string);
+	assert(_time);
+	time_t *time = _time;
+
+	struct tm tm = { 0 };
+	char *end = strptime(string, DATE_FORMAT, &tm);
+	if (end == NULL || *end != '\0') {
+		return DNSSEC_MALFORMED_DATA;
+	}
+
+	*time = timegm(&tm);
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Parse boolean value.
+ */
+static int str_to_bool(const char *string, void *_enabled)
+{
+	assert(string);
+	assert(_enabled);
+	bool *enabled = _enabled;
+
+	*enabled = (strcasecmp(string, "true") == 0);
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Parse Base 64 encoded string to binary data.
+ */
+static int str_to_binary(const char *string, void *_binary)
+{
+	assert(string);
+	assert(_binary);
+
+	dnssec_binary_t *binary = _binary;
+	const dnssec_binary_t base64 = {
+		.data = (uint8_t *)string,
+		.size = strlen(string)
+	};
+
+	return dnssec_binary_from_base64(&base64, binary);
+}
+
+typedef struct {
+	dnssec_key_id_t id;
+	dnssec_key_algorithm_t algorithm;
+	dnssec_binary_t public_key;
+	bool is_ksk;
+	time_t publish;
+	time_t active;
+	time_t retire;
+	time_t remove;
+} kasp_key_params_t;
+
+typedef struct {
+	const char *key;
+	int (*parse_cb)(const char *value, void *target);
+	size_t target_off;
+} key_parse_line_t;
+
+#define parse_offset(member) offsetof(kasp_key_params_t, member)
+
+static const key_parse_line_t KEY_PARSE_LINES[] = {
+	{ "id",         str_to_keyid,     parse_offset(id) },
+	{ "algorithm",  str_to_algorithm, parse_offset(algorithm) },
+	{ "public_key", str_to_binary,    parse_offset(public_key) },
+	{ "ksk",        str_to_bool,      parse_offset(is_ksk) },
+	{ "publish",    str_to_time,      parse_offset(publish) },
+	{ "active",     str_to_time,      parse_offset(active) },
+	{ "retire",     str_to_time,      parse_offset(retire) },
+	{ "remove",     str_to_time,      parse_offset(remove) },
+	{ 0 }
+};
+
+static int parse_zone_key(yml_node_t *node, void *data, bool *interrupt)
+{
+	kasp_key_params_t params = {};
+
+	for (const key_parse_line_t *line = KEY_PARSE_LINES; line->key; line++) {
+		char *value_str = yml_get_string(node, line->key);
+		if (!value_str) {
+			continue;
+		}
+
+		void *target = ((void *)&params) + line->target_off;
+		int result = line->parse_cb(value_str, target);
+
+		free(value_str);
+
+		if (result != DNSSEC_EOK) {
+			printf("invalid value for %s\n", line->key);
+			break;
+		}
+	}
+
+	printf("key pub size %zu algo %d ksk %s pub %zu act %zu ret %zu rem %zu\n",
+	params.public_key.size,
+	params.algorithm,
+	params.is_ksk ? "true" : "false",
+	params.publish,
+	params.active,
+	params.retire,
+	params.remove
+	);
+
+	if (params.algorithm == 0 && params.public_key.size == 0) {
+		return DNSSEC_ERROR;
+	}
+
+	dnssec_key_t *key = NULL;
+	int r = dnssec_key_new(&key);
+	assert(r == DNSSEC_EOK);
+
+	dnssec_key_set_algorithm(key, params.algorithm);
+	dnssec_key_set_flags(key, params.is_ksk ? 257 : 256);
+	r = dnssec_key_set_pubkey(key, &params.public_key);
+	assert(r == DNSSEC_EOK);
+
+	uint16_t keytag = 0;
+	dnssec_key_get_keytag(key, &keytag);
+	printf("keytag %u\n", keytag);
+	printf("\n");
 
 	return DNSSEC_EOK;
 }
