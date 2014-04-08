@@ -8,6 +8,6 @@ before_install:
 before_script:
   - autoreconf -fi
 script:
-  - ./configure --enable-code-coverage && make && make check
+  - ./configure --enable-code-coverage && make && make -k check
 after_success:
   - coveralls --exclude-pattern '.*/tests/.*' --verbose
