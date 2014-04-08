@@ -1,9 +1,13 @@
 language: c
 compiler:
-  - clang
   - gcc
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq autotools-dev autoconf automake libtool libssl-dev liburcu-dev flex bison ragel pkg-config texinfo texlive
+  - sudo pip install cpp-coveralls --use-mirrors
 before_script:
   - autoreconf -fi
+script:
+  - ./configure --enable-code-coverage && make && make check
+after_success:
+  - coveralls --exclude-pattern '.*/tests/.*' --verbose
