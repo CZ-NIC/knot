@@ -817,21 +817,15 @@ const char* conf_find_default()
 
 int conf_open(const char* path)
 {
-	/* Check path. */
-	if (!path) {
-		return KNOT_EINVAL;
-	}
-
 	/* Find real path of the config file */
 	char *config_realpath = realpath(path, NULL);
 	if (config_realpath == NULL) {
-		return KNOT_ENOMEM;
+		return knot_map_errno(EINVAL, ENOENT);
 	}
 
-	/* Check if exists. */
-	struct stat st;
-	if (stat(config_realpath, &st) != 0) {
-		return KNOT_ENOENT;
+	/* Check if accessible. */
+	if (access(path, F_OK | R_OK) != 0) {
+		return KNOT_EACCES;
 	}
 
 	/* Create new config. */

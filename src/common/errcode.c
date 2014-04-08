@@ -35,7 +35,7 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_ECONNREFUSED, "Connection refused." },
 	{ KNOT_EISCONN, "Already connected." },
 	{ KNOT_EADDRINUSE, "Address already in use." },
-	{ KNOT_ENOENT, "Resource not found." },
+	{ KNOT_ENOENT, "Not exists." },
 	{ KNOT_ERANGE, "Value is out of range." },
 
 	/* General errors. */
