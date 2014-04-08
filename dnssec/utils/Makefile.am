@@ -9,4 +9,5 @@ LDADD = \
 	$(builddir)/../libdnssec.la
 
 bin_PROGRAMS = \
+	generate \
 	parsekey
