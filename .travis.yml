@@ -1,0 +1,11 @@
+language: c
+compiler:
+  - clang
+  - gcc
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq autotools-dev autoconf automake libtool  
+install:
+  - sudo apt-get build-dep knot
+before_script:
+  - autoreconf -fi
