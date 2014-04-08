@@ -79,7 +79,7 @@ static int pkcs8_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 
 	// save key
 
-	r = ctx->functions->write(ctx->data, id, &data);
+	r = ctx->functions->write(ctx->data, new_id, &data);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
