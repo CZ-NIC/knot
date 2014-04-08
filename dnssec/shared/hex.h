@@ -5,4 +5,9 @@
 /**
  * Convert binary data to hexadeciml string.
  */
-char *hex_to_string(const dnssec_binary_t *data);
+int bin_to_hex(const dnssec_binary_t *bin, char **hex_ptr);
+
+/*!
+ * Convert hex encoded string to binary data.
+ */
+int hex_to_bin(const char *hex, dnssec_binary_t *bin);
