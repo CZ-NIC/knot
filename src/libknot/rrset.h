@@ -38,11 +38,10 @@
 struct knot_compr;
 struct knot_node;
 
-/*----------------------------------------------------------------------------*/
 /*!
- * \brief Structure for representing an RRSet.
+ * \brief Structure for representing RRSet.
  *
- * For definition of a RRSet see RFC2181, Section 5.
+ * For RRSet definition see RFC2181, Section 5.
  */
 struct knot_rrset {
 	knot_dname_t *owner;  /*!< Domain name being the owner of the RRSet. */
@@ -55,15 +54,13 @@ struct knot_rrset {
 
 typedef struct knot_rrset knot_rrset_t;
 
-/*----------------------------------------------------------------------------*/
-
 typedef enum {
 	KNOT_RRSET_COMPARE_PTR,
 	KNOT_RRSET_COMPARE_HEADER,
 	KNOT_RRSET_COMPARE_WHOLE
 } knot_rrset_compare_type_t;
 
-/*----------------------------------------------------------------------------*/
+/* -------------------- Creation / initialization --------------------------- */
 
 /*!
  * \brief Creates a new RRSet with the given properties.
@@ -92,19 +89,44 @@ void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
                      uint16_t rclass);
 
 /*!
- * \brief Adds the given RDATA to the RRSet.
+ * \brief Initializes given RRSet structure.
  *
- * \param rrset  RRSet to add the RDATA to.
- * \param rdata  RDATA to add to the RRSet.
- * \param size   Size of RDATA.
- * \param size   TTL for RR.
- * \param mm     Memory context.
- *
- * \return KNOT_E*
+ * \param rrset  RRSet to init.
  */
-int knot_rrset_add_rr(knot_rrset_t *rrset, const uint8_t *rdata,
-                      const uint16_t size, const uint32_t ttl,
-                      mm_ctx_t *mm);
+void knot_rrset_init_empty(knot_rrset_t *rrset);
+
+/*!
+ * \brief Creates new RRSet from \a src RRSet.
+ *
+ * \param src  Source RRSet.
+ * \param mm   Memory context.
+ *
+ * \retval Pointer to new RRSet if all went OK.
+ * \retval NULL on error.
+ */
+knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
+
+/* ---------------------------- Cleanup ------------------------------------- */
+
+/*!
+ * \brief Destroys the RRSet structure and all its substructures.
+ )
+ * Also sets the given pointer to NULL.
+ *
+ * \param rrset  RRset to be destroyed.
+ * \param mm     Memory context.
+ */
+void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
+
+/*!
+ * \brief Frees structures inside RRSet, but not the RRSet itself.
+ *
+ * \param rrset  RRSet to be cleared.
+ * \param mm     Memory context used for allocations.
+ */
+void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
+
+/* ----------- Getters / Setters (legacy, functionality in rr_t) ------------ */
 
 /*!
  * \brief Returns RDATA of RR on given position.
@@ -155,37 +177,7 @@ void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
  */
 uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset);
 
-/*!
- * \brief Compares two RRSets for equality.
- *
- * \param r1   First RRSet.
- * \param r2   Second RRSet.
- * \param cmp  Type of comparison to perform.
- *
- * \retval True   if RRSets are equal.
- * \retval False  if RRSets are not equal.
- */
-bool knot_rrset_equal(const knot_rrset_t *r1,
-                      const knot_rrset_t *r2,
-                      knot_rrset_compare_type_t cmp);
-
-/*!
- * \brief Destroys the RRSet structure and all its substructures.
- )
- * Also sets the given pointer to NULL.
- *
- * \param rrset  RRset to be destroyed.
- * \param mm     Memory context.
- */
-void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
-
-/*!
- * \brief Frees structures inside RRSet, but not the RRSet itself.
- *
- * \param rrset  RRSet to be cleared.
- * \param mm     Memory context used for allocations.
- */
-void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
+/* ---------- Wire conversions (legacy, to be done in knot_pkt_t) ----------- */
 
 /*!
  * \brief Converts RRSet structure to wireformat, compression included.
@@ -220,6 +212,38 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    size_t total_size, uint32_t ttl, size_t rdlength,
                                    mm_ctx_t *mm);
 
+/* ---------- RR addition. (legacy, functionality in knot_rrs_t) ------------ */
+
+/*!
+ * \brief Adds the given RDATA to the RRSet.
+ *
+ * \param rrset  RRSet to add the RDATA to.
+ * \param rdata  RDATA to add to the RRSet.
+ * \param size   Size of RDATA.
+ * \param ttl   TTL for RR.
+ * \param mm     Memory context.
+ *
+ * \return KNOT_E*
+ */
+int knot_rrset_add_rr(knot_rrset_t *rrset, const uint8_t *rdata,
+                      const uint16_t size, const uint32_t ttl,
+                      mm_ctx_t *mm);
+
+/* ------------------ Equality / emptines bool checks ----------------------- */
+
+/*!
+ * \brief Compares two RRSets for equality.
+ *
+ * \param r1   First RRSet.
+ * \param r2   Second RRSet.
+ * \param cmp  Type of comparison to perform.
+ *
+ * \retval True   if RRSets are equal.
+ * \retval False  if RRSets are not equal.
+ */
+bool knot_rrset_equal(const knot_rrset_t *r1, const knot_rrset_t *r2,
+                      knot_rrset_compare_type_t cmp);
+
 /*!
  * \brief Checks whether RRSet is empty.
  *
@@ -229,23 +253,5 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
  * \retval False if RRSet is not empty.
  */
 bool knot_rrset_empty(const knot_rrset_t *rrset);
-
-/*!
- * \brief Creates new RRSet from \a src RRSet.
- *
- * \param src  Source RRSet.
- * \param mm   Memory context.
- *
- * \retval Pointer to new RRSet if all went OK.
- * \retval NULL on error.
- */
-knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm);
-
-/*!
- * \brief Initializes given RRSet structure.
- *
- * \param rrset  RRSet to init.
- */
-void knot_rrset_init_empty(knot_rrset_t *rrset);
 
 /*! @} */
