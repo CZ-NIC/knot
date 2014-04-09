@@ -1126,17 +1126,6 @@ const knot_node_t *knot_zone_contents_apex(
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_zone_contents_get_apex(const knot_zone_contents_t *zone)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return zone->apex;
-}
-
-/*----------------------------------------------------------------------------*/
-
 const knot_node_t *knot_zone_contents_find_wildcard_child(
                 const knot_zone_contents_t *contents, const knot_node_t *parent)
 {
