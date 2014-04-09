@@ -134,6 +134,8 @@ src/knot/server/notify.c
 src/knot/server/notify.h
 src/knot/server/rrl.c
 src/knot/server/rrl.h
+src/knot/server/serialization.c
+src/knot/server/serialization.h
 src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/tcp-handler.c
@@ -293,5 +295,3 @@ tests/slab.c
 tests/wire.c
 tests/zonedb.c
 tests/ztree.c
-src/knot/server/serialization.c
-src/knot/server/serialization.h
