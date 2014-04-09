@@ -49,38 +49,39 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_t *soa_rrset1 = knot_node_create_rrset(apex1, KNOT_RRTYPE_SOA);
-	knot_rrset_t *soa_rrset2 = knot_node_create_rrset(apex2, KNOT_RRTYPE_SOA);
-	if (soa_rrset1 == NULL || soa_rrset2 == NULL) {
+	knot_rrset_t soa_rrset1 = knot_node_rrset(apex1, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rrset2 = knot_node_rrset(apex2, KNOT_RRTYPE_SOA);
+	if (knot_rrset_empty(&soa_rrset1) || knot_rrset_empty(&soa_rrset2)) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_rrset_rr_count(soa_rrset1) == 0 ||
-	    knot_rrset_rr_count(soa_rrset2) == 0) {
-		knot_rrset_free(&soa_rrset1, NULL);
-		knot_rrset_free(&soa_rrset2, NULL);
+	if (knot_rrset_rr_count(&soa_rrset1) == 0 ||
+	    knot_rrset_rr_count(&soa_rrset2) == 0) {
 		return KNOT_EINVAL;
 	}
 
-	int64_t soa_serial1 = knot_rrs_soa_serial(&soa_rrset1->rrs);
-	int64_t soa_serial2 = knot_rrs_soa_serial(&soa_rrset2->rrs);
+	int64_t soa_serial1 = knot_rrs_soa_serial(&soa_rrset1.rrs);
+	int64_t soa_serial2 = knot_rrs_soa_serial(&soa_rrset2.rrs);
 
 	if (knot_serial_compare(soa_serial1, soa_serial2) == 0) {
-		knot_rrset_free(&soa_rrset1, NULL);
-		knot_rrset_free(&soa_rrset2, NULL);
 		return KNOT_ENODIFF;
 	}
 
 	if (knot_serial_compare(soa_serial1, soa_serial2) > 0) {
-		knot_rrset_free(&soa_rrset1, NULL);
-		knot_rrset_free(&soa_rrset2, NULL);
 		return KNOT_ERANGE;
 	}
 
 	assert(changeset);
 
-	changeset->soa_from = soa_rrset1;
-	changeset->soa_to = soa_rrset2;
+	changeset->soa_from = knot_rrset_copy(&soa_rrset1, NULL);
+	if (changeset->soa_from == NULL) {
+		return KNOT_ENOMEM;
+	}
+	changeset->soa_to = knot_rrset_copy(&soa_rrset2, NULL);
+	if (changeset->soa_to == NULL) {
+		knot_rrset_free(&changeset->soa_from, NULL);
+		return KNOT_ENOMEM;
+	}
 
 	changeset->serial_from = soa_serial1;
 	changeset->serial_to = soa_serial2;
