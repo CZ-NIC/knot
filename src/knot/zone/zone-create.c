@@ -77,16 +77,15 @@ static bool handle_err(zcreator_t *zc,
 	}
 }
 
-int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
+int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 {
 	if (zc == NULL || rr == NULL || knot_rrset_rr_count(rr) != 1) {
 		return KNOT_EINVAL;
 	}
 
 	if (rr->type == KNOT_RRTYPE_SOA &&
-	    knot_node_rrset(zc->z->apex, KNOT_RRTYPE_SOA)) {
+	    knot_node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_SOA)) {
 		// Ignore extra SOA
-		knot_rrset_free(&rr, NULL);
 		return KNOT_EOK;
 	}
 
@@ -99,7 +98,6 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 			return ret;
 		}
 		// Recoverable error, skip record
-		knot_rrset_free(&rr, NULL);
 		return KNOT_EOK;
 	}
 	assert(node);
@@ -132,10 +130,6 @@ int zcreator_step(zcreator_t *zc, knot_rrset_t *rr)
 		}
 	}
 
-	if (ret > 0) {
-		knot_rrset_free(&rr, NULL);
-	}
-
 	ret = sem_check_node_plain(zc->z, node,
 	                           &err_handler, true,
 	                           &sem_fatal_error);
@@ -154,37 +148,30 @@ static void loader_process(const zs_scanner_t *scanner)
 		return;
 	}
 
-	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
+	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
 	if (owner == NULL) {
 		zc->ret = KNOT_ENOMEM;
 		return;
 	}
 	knot_dname_to_lower(owner);
 
-	knot_rrset_t *rr = knot_rrset_new(owner,
-	                                  scanner->r_type,
-	                                  scanner->r_class,
-	                                  NULL);
-	if (rr == NULL) {
-		knot_dname_free(&owner);
-		zc->ret = KNOT_ENOMEM;
-		return;
-	}
-
-	int ret = add_rdata_to_rr(rr, scanner);
+	knot_rrset_t rr;
+	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class);
+	int ret = add_rdata_to_rr(&rr, scanner);
 	if (ret != KNOT_EOK) {
-		char *rr_name = knot_dname_to_str(rr->owner);
+		char *rr_name = knot_dname_to_str(rr.owner);
 		log_zone_error("%s:%"PRIu64": Can't add RDATA for '%s'.\n",
 		               scanner->file_name, scanner->line_counter, rr_name);
 		free(rr_name);
-		knot_rrset_free(&rr, NULL);
+		knot_dname_free(&owner, NULL);
 		zc->ret = ret;
 		return;
 	}
 
-	ret = zcreator_step(zc, rr);
+	ret = zcreator_step(zc, &rr);
+	knot_dname_free(&owner, NULL);
+	knot_rrs_clear(&rr.rrs, NULL);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&rr, NULL);
 		zc->ret = ret;
 		return;
 	}
@@ -201,7 +188,7 @@ static knot_zone_contents_t *create_zone_from_name(const char *origin)
 	}
 	knot_dname_to_lower(owner);
 	knot_zone_contents_t *z = knot_zone_contents_new(owner);
-	knot_dname_free(&owner);
+	knot_dname_free(&owner, NULL);
 	return z;
 }
 
@@ -280,7 +267,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	if (knot_node_rrset(loader->creator->z->apex, KNOT_RRTYPE_SOA) == NULL) {
+	if (!knot_node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
 		log_zone_error("%s: no SOA record in the zone file.\n",
 		               loader->source);
 		goto fail;
@@ -299,17 +286,14 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 
 	if (loader->semantic_checks) {
 		int check_level = SEM_CHECK_UNSIGNED;
-		const knot_rrset_t *soa_rr =
-			knot_node_rrset(zc->z->apex,
-		                        KNOT_RRTYPE_SOA);
-		assert(soa_rr); // In this point, SOA has to exist
-		const knot_rrset_t *nsec3param_rr =
-			knot_node_rrset(zc->z->apex,
-		                        KNOT_RRTYPE_NSEC3PARAM);
-		if (knot_zone_contents_is_signed(zc->z) && nsec3param_rr == NULL) {
+		knot_rrset_t soa_rr = knot_node_rrset(zc->z->apex, KNOT_RRTYPE_SOA);
+		assert(!knot_rrset_empty(&soa_rr)); // In this point, SOA has to exist
+		const bool have_nsec3param =
+			knot_node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_NSEC3PARAM);
+		if (knot_zone_contents_is_signed(zc->z) && have_nsec3param) {
 			/* Set check level to DNSSEC. */
 			check_level = SEM_CHECK_NSEC;
-		} else if (knot_zone_contents_is_signed(zc->z) && nsec3param_rr) {
+		} else if (knot_zone_contents_is_signed(zc->z) && have_nsec3param) {
 			check_level = SEM_CHECK_NSEC3;
 		}
 		err_handler_t err_handler;
@@ -317,7 +301,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		zone_do_sem_checks(zc->z, check_level,
 		                   &err_handler, first_nsec3_node,
 		                   last_nsec3_node);
-		char *zname = knot_dname_to_str(knot_rrset_owner(soa_rr));
+		char *zname = knot_dname_to_str(soa_rr.owner);
 		log_zone_info("Semantic checks completed for zone=%s\n", zname);
 		free(zname);
 	}

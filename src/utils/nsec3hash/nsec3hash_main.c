@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 
 fail:
 	knot_nsec3_params_free(&nsec3_params);
-	knot_dname_free(&dname);
+	knot_dname_free(&dname, NULL);
 	free(digest);
 	free(b32_digest);
 

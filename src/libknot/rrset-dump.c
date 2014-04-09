@@ -316,7 +316,6 @@ static void wire_type_to_str(rrset_dump_params_t *p)
 	p->ret = 0;
 }
 
-
 static int hex_encode(const uint8_t  *in,
                       const uint32_t in_len,
                       uint8_t        *out,
@@ -1797,7 +1796,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 
 	int ret = 0;
 
-	switch (knot_rrset_type(rrset)) {
+	switch (rrset->type) {
 		case KNOT_RRTYPE_A:
 			ret = dump_a(data, data_len, dst, maxlen, style);
 			break;
@@ -1978,7 +1977,7 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
                         const size_t            maxlen,
                         const knot_dump_style_t *style)
 {
-	if (rrset == NULL || dst == NULL || style == NULL) {
+	if (knot_rrset_empty(rrset) || dst == NULL || style == NULL) {
 		return KNOT_EINVAL;
 	}
 

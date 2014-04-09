@@ -317,6 +317,10 @@ hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
 {
     hattrie_t *N = hattrie_create_n(T->bsize, &T->mm);
 
+    if (nval == NULL) {
+        return N;
+    }
+
     /* assignment */
     if (!nval) nval = hattrie_setval;
 

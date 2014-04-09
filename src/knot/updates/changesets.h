@@ -41,7 +41,6 @@ typedef enum {
 	KNOT_CHANGESET_TYPE_DNSSEC = 1 << 2
 } knot_changeset_flag_t;
 
-
 /*! \brief One changeset received from wire, with parsed RRs. */
 typedef struct knot_changeset {
 	node_t n; /*!< List node. */
@@ -55,6 +54,8 @@ typedef struct knot_changeset {
 	uint32_t serial_from; /*!< SOA start serial. */
 	uint32_t serial_to; /*!< SOA destination serial. */
 	uint32_t flags; /*!< DDNS / IXFR flags. */
+	list_t old_data; /*!< Old data, to be freed after succesfull update. */
+	list_t new_data; /*!< New data, to be freed after failed update. */
 } knot_changeset_t;
 
 /*----------------------------------------------------------------------------*/
@@ -64,23 +65,6 @@ typedef struct knot_rr_ln {
 	node_t n; /*!< List node. */
 	knot_rrset_t *rr; /*!< Actual usable data. */
 } knot_rr_ln_t;
-
-/*! \brief Partial changes done to zones - used for update/transfer rollback. */
-typedef struct {
-	/*!
-	 * Memory context. Ideally a pool allocator since there is a possibility
-	 * of many changes in one transfer/update.
-	 */
-	mm_ctx_t mem_ctx;
-	/*!
-	 * Deleted after successful update.
-	 */
-	list_t old_rrsets;
-	/*!
-	 * Deleted after failed update.
-	 */
-	list_t new_rrsets;
-} knot_changes_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -95,7 +79,6 @@ typedef struct {
 	size_t count; /*!< Changeset count. */
 	knot_rrset_t *first_soa; /*!< First received SOA. */
 	uint32_t flags; /*!< DDNS / IXFR flags. */
-	knot_changes_t *changes; /*!< Partial changes. */
 } knot_changesets_t;
 
 /*----------------------------------------------------------------------------*/
@@ -104,11 +87,6 @@ typedef enum {
 	KNOT_CHANGESET_ADD,
 	KNOT_CHANGESET_REMOVE
 } knot_changeset_part_t;
-
-typedef enum {
-	KNOT_CHANGES_OLD,
-	KNOT_CHANGES_NEW,
-} knot_changes_part_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -156,9 +134,6 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch);
  */
 knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *ch);
 
-const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
-                                           knot_changeset_part_t part);
-
 /*!
  * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
  *        'remove' list. Will *not* try to merge with previous RRSets.
@@ -172,20 +147,6 @@ const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
  */
 int knot_changeset_add_rrset(knot_changeset_t *chgs,
                              knot_rrset_t *rrset, knot_changeset_part_t part);
-
-/*!
- * \brief Add RRSet to changeset. RRSet is either inserted to 'add' or to
- *        'remove' list. *Will* try to merge with previous RRSets.
- *
- * \param chgs Changeset to add RRSet into.
- * \param rrset RRSet to be added.
- * \param part Add to 'add' or 'remove'?
- *
- * \retval KNOT_EOK on success.
- * \retval Error code on failure.
- */
-int knot_changeset_add_rr(knot_changeset_t *chgs,
-                          knot_rrset_t *rrset, knot_changeset_part_t part);
 
 /*!
  * \brief Adds a source/destination SOA RRSet to changeset.
@@ -247,20 +208,6 @@ int knot_changeset_apply(knot_changeset_t *changeset,
 void knot_changesets_free(knot_changesets_t **changesets);
 
 /*!
- * \brief Add RRSet to changes structure.
- *        RRSet is either inserted to 'old' or to 'new' list.
- *
- * \param chgs Change to add RRSet into.
- * \param rrset RRSet to be added.
- * \param part Add to 'old' or 'new'?
- *
- * \retval KNOT_EOK on success.
- * \retval Error code on failure.
- */
-int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
-                           knot_changes_part_t part);
-
-/*!
  * \brief Merges two changesets together, second changeset's lists are kept.
  *
  * \param ch1 Changeset to merge into
@@ -274,11 +221,6 @@ int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
  * \retval Error code on failure.
  */
 int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2);
-
-/*!
- * \param changes Double pointer of changes structure to be freed.
- */
-void knot_changes_free(knot_changes_t **changes);
 
 #endif /* _KNOT_CHANGESETS_H_ */
 

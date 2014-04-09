@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
@@ -36,14 +35,14 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	int i = state->cur_rrset;
 	int rrset_count = knot_node_rrset_count(node);
 	unsigned flags = KNOT_PF_NOTRUNC;
-	const knot_rrset_t **rrset = knot_node_rrsets_no_copy(node);
 
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
-		if (rrset[i]->type == KNOT_RRTYPE_SOA) {
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
-		ret = knot_pkt_put(pkt, 0, rrset[i], flags);
+		ret = knot_pkt_put(pkt, 0, &rrset, flags);
 
 		/* If something failed, remember the current RR for later. */
 		if (ret != KNOT_EOK) {
@@ -135,11 +134,11 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 	mm_ctx_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->ext;
 	knot_zone_contents_t *zone = qdata->zone->contents;
-	knot_rrset_t *soa_rr = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rr = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 
 	/* Prepend SOA on first packet. */
 	if (xfer->npkts == 0) {
-		ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_NOTRUNC);
+		ret = knot_pkt_put(pkt, 0, &soa_rr, KNOT_PF_NOTRUNC);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -160,7 +159,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 
 	/* Append SOA on last packet. */
 	if (ret == KNOT_EOK) {
-		ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_NOTRUNC);
+		ret = knot_pkt_put(pkt, 0, &soa_rr, KNOT_PF_NOTRUNC);
 	}
 
 	/* Update counters. */

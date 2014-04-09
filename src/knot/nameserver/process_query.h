@@ -108,7 +108,7 @@ struct wildcard_hit {
 /*! \brief RRSIG info node list. */
 struct rrsig_info {
 	node_t n;
-	knot_rrset_t *synth_rrsig;  /* Synthesized RRSIG. */
+	knot_rrset_t synth_rrsig;  /* Synthesized RRSIG. */
 	knot_rrinfo_t *rrinfo;      /* RR info. */
 };
 

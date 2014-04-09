@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 	} else {
 		ok(0, "TSIG key dname check - NO KEY FOUND");
 	}
-	knot_dname_free(&sample);
+	knot_dname_free(&sample, NULL);
 
 skip_all:
 

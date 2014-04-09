@@ -40,27 +40,25 @@ typedef struct {
 
 static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 {
-	const knot_rrset_t *soa = knot_node_rrset(node, KNOT_RRTYPE_SOA);
-
+	knot_rrset_t soa = knot_node_rrset(node, KNOT_RRTYPE_SOA);
 	knot_dump_style_t soa_style = *params->style;
 
 	// Dump SOA record as a first.
 	if (!params->dump_nsec) {
 		soa_style.show_class = true;
-		if (knot_rrset_txt_dump(soa, params->buf, params->buflen,
+		if (knot_rrset_txt_dump(&soa, params->buf, params->buflen,
 					&soa_style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		params->rr_count += knot_rrset_rr_count(soa);
+		params->rr_count += knot_rrset_rr_count(&soa);
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
 
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
-
 	// Dump other records.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		switch (rrsets[i]->type) {
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		switch (rrset.type) {
 		case KNOT_RRTYPE_NSEC:
 			continue;
 		case KNOT_RRTYPE_RRSIG:
@@ -71,11 +69,11 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 			break;
 		}
 
-		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
+		if (knot_rrset_txt_dump(&rrset, params->buf, params->buflen,
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		params->rr_count +=  knot_rrset_rr_count(rrsets[i]);
+		params->rr_count +=  knot_rrset_rr_count(&rrset);
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -94,11 +92,10 @@ static int node_dump_text(knot_node_t *node, void *data)
 		return KNOT_EOK;
 	}
 
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
-
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		switch (rrsets[i]->type) {
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		switch (rrset.type) {
 		case KNOT_RRTYPE_RRSIG:
 			if (params->dump_rrsig) {
 				break;
@@ -121,11 +118,11 @@ static int node_dump_text(knot_node_t *node, void *data)
 			break;
 		}
 
-		if (knot_rrset_txt_dump(rrsets[i], params->buf, params->buflen,
+		if (knot_rrset_txt_dump(&rrset, params->buf, params->buflen,
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		params->rr_count += knot_rrset_rr_count(rrsets[i]);
+		params->rr_count += knot_rrset_rr_count(&rrset);
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}

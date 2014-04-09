@@ -27,12 +27,6 @@
 #include "common/debug.h"
 #include "libknot/rdata.h"
 
-static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
-                                         const knot_rrset_t *rrset2)
-{
-	return knot_rrset_equal(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER);
-}
-
 int knot_changesets_init(knot_changesets_t **changesets)
 {
 	// Create new changesets structure
@@ -53,14 +47,6 @@ int knot_changesets_init(knot_changesets_t **changesets)
 
 	// Init list with changesets
 	init_list(&(*changesets)->sets);
-
-	// Init changes structure
-	(*changesets)->changes = xmalloc(sizeof(knot_changes_t));
-	// Init changes' allocator (storing RRs)
-	(*changesets)->changes->mem_ctx = (*changesets)->mmc_rr;
-	// Init changes' lists
-	init_list(&(*changesets)->changes->new_rrsets);
-	init_list(&(*changesets)->changes->old_rrsets);
 
 	return KNOT_EOK;
 }
@@ -98,6 +84,10 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	init_list(&set->add);
 	init_list(&set->remove);
 
+	// Init change lists
+	init_list(&set->new_data);
+	init_list(&set->old_data);
+
 	// Insert into list of sets
 	add_tail(&ch->sets, (node_t *)set);
 
@@ -113,24 +103,6 @@ knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *chs)
 	}
 
 	return (knot_changeset_t *)(TAIL(chs->sets));
-}
-
-const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
-                                           knot_changeset_part_t part)
-{
-	if (ch == NULL) {
-		return NULL;
-	}
-
-	if (part == KNOT_CHANGESET_ADD) {
-		knot_rr_ln_t *n = TAIL(ch->add);
-		return n ? n->rr : NULL;
-	} else if (part == KNOT_CHANGESET_REMOVE) {
-		knot_rr_ln_t *n = TAIL(ch->remove);
-		return n ? n->rr : NULL;
-	}
-
-	return NULL;
 }
 
 int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
@@ -155,60 +127,11 @@ int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
-int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
-                          knot_changeset_part_t part)
-{
-	// Just check the last RRSet. If the RR belongs to it, merge it,
-	// otherwise just add the RR to the end of the list
-	list_t *l = part == KNOT_CHANGESET_ADD ? &(chgs->add) : &(chgs->remove);
-	knot_rrset_t *tail_rr =
-		EMPTY_LIST(*l) ? NULL : ((knot_rr_ln_t *)(TAIL(*l)))->rr;
-
-	if (tail_rr && knot_changeset_rrsets_match(tail_rr, rr)) {
-		// Create changesets exactly as they came, with possibly
-		// duplicate records
-		if (knot_rrset_merge(tail_rr, rr, NULL) != KNOT_EOK) {
-			return KNOT_ERROR;
-		}
-
-		knot_rrset_free(&rr, NULL);
-		return KNOT_EOK;
-	} else {
-		return knot_changeset_add_rrset(chgs, rr, part);
-	}
-}
-
-int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
-                           knot_changes_part_t part)
-{
-	if (ch == NULL || rrset == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_rr_ln_t *rr_node =
-		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_rr_ln_t));
-	if (rr_node == NULL) {
-		// This will not happen with mp_alloc, but allocator can change
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	}
-	rr_node->rr = rrset;
-
-	if (part == KNOT_CHANGES_NEW) {
-		add_tail(&ch->new_rrsets, (node_t *)rr_node);
-	} else {
-		assert(part == KNOT_CHANGES_OLD);
-		add_tail(&ch->old_rrsets, (node_t *)rr_node);
-	}
-
-	return KNOT_EOK;
-}
-
 static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                      uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
-	*chg_serial = knot_rdata_soa_serial(soa);
+	*chg_serial = knot_rrs_soa_serial(&soa->rrs);
 }
 
 void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
@@ -337,7 +260,6 @@ void knot_changesets_free(knot_changesets_t **changesets)
 
 	knot_rrset_free(&(*changesets)->first_soa, NULL);
 
-	free((*changesets)->changes);
 	free(*changesets);
 	*changesets = NULL;
 }

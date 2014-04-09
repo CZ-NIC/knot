@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 		} else {
 			diag("knot_zonedb_find(%s) failed", zone_list[i]);
 		}
-		knot_dname_free(&dname);
+		knot_dname_free(&dname, NULL);
 	}
 	ok(nr_passed == ZONE_COUNT, "zonedb: find exact zones");
 
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 		} else {
 			diag("knot_zonedb_find_suffix(%s) failed", buf);
 		}
-		knot_dname_free(&dname);
+		knot_dname_free(&dname, NULL);
 	}
 	ok(nr_passed == ZONE_COUNT, "zonedb: find zones for subnames");
 
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 		} else {
 			diag("knot_zonedb_remove_zone(%s) failed", zone_list[i]);
 		}
-		knot_dname_free(&dname);
+		knot_dname_free(&dname, NULL);
 	}
 	ok(nr_passed == ZONE_COUNT, "zonedb: removed all zones");
 

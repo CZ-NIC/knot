@@ -24,23 +24,6 @@
 #include "common/hattrie/hat-trie.h"
 
 /*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
-
-static value_t knot_zone_node_copy(value_t v)
-{
-	return v;
-}
-
-static value_t knot_zone_node_deep_copy(value_t v)
-{
-	knot_node_t *n = NULL;
-	knot_node_shallow_copy((knot_node_t *)v, &n);
-	knot_node_set_new_node((knot_node_t *)v, n);
-	return (value_t)n;
-}
-
-/*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
@@ -275,42 +258,6 @@ int knot_zone_tree_apply(knot_zone_tree_t *tree,
 	}
 
 	return hattrie_apply_rev(tree, (int (*)(value_t*,void*))function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
-                                  knot_zone_tree_t **to)
-{
-	if (to == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (from != NULL) {
-		*to = hattrie_dup(from, knot_zone_node_copy);
-	} else {
-		*to = NULL;
-	}
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
-                             knot_zone_tree_t **to)
-{
-	if (to == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (from != NULL) {
-		*to = hattrie_dup(from, knot_zone_node_deep_copy);
-	} else {
-		*to = NULL;
-	}
-
-	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

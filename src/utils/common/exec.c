@@ -199,10 +199,7 @@ static void print_section_question(const knot_dname_t *owner,
 {
 	size_t buflen = 8192;
 	char   *buf = calloc(buflen, 1);
-
-	knot_dname_t *owner_copy = knot_dname_copy(owner);
-	knot_rrset_t *question = knot_rrset_new(owner_copy, qtype,
-	                                        qclass, NULL);
+	knot_rrset_t *question = knot_rrset_new(owner, qtype, qclass, NULL);
 
 	if (knot_rrset_txt_dump_header(question, 0, buf, buflen,
 	    &(style->style)) < 0) {
@@ -215,7 +212,7 @@ static void print_section_question(const knot_dname_t *owner,
 	free(buf);
 }
 
-static void print_section_full(const knot_rrset_t **rrsets,
+static void print_section_full(const knot_rrset_t *rrsets,
                                const uint16_t     count,
                                const style_t      *style)
 {
@@ -223,11 +220,11 @@ static void print_section_full(const knot_rrset_t **rrsets,
 	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
-		if (rrsets[i]->type == KNOT_RRTYPE_OPT) {
+		if (rrsets[i].type == KNOT_RRTYPE_OPT) {
 			continue;
 		}
 
-		while (knot_rrset_txt_dump(rrsets[i], buf, buflen,
+		while (knot_rrset_txt_dump(&rrsets[i], buf, buflen,
 		                           &(style->style)) < 0) {
 			buflen += 4096;
 			// Oversize protection.
@@ -249,7 +246,7 @@ static void print_section_full(const knot_rrset_t **rrsets,
 	free(buf);
 }
 
-static void print_section_dig(const knot_rrset_t **rrsets,
+static void print_section_dig(const knot_rrset_t *rrsets,
                               const uint16_t     count,
                               const style_t      *style)
 {
@@ -257,7 +254,7 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
-		const knot_rrset_t *rrset = rrsets[i];
+		const knot_rrset_t *rrset = &rrsets[i];
 		uint16_t rrset_rdata_count = knot_rrset_rr_count(rrset);
 		for (uint16_t j = 0; j < rrset_rdata_count; j++) {
 			while (knot_rrset_txt_dump_data(rrset, j, buf, buflen,
@@ -283,7 +280,7 @@ static void print_section_dig(const knot_rrset_t **rrsets,
 	free(buf);
 }
 
-static void print_section_host(const knot_rrset_t **rrsets,
+static void print_section_host(const knot_rrset_t *rrsets,
                                const uint16_t     count,
                                const style_t      *style)
 {
@@ -291,7 +288,7 @@ static void print_section_host(const knot_rrset_t **rrsets,
 	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
-		const knot_rrset_t  *rrset = rrsets[i];
+		const knot_rrset_t  *rrset = &rrsets[i];
 		knot_lookup_table_t *descr;
 		char                type[32] = "NULL";
 		char                *owner;
