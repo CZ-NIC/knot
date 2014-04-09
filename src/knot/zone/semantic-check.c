@@ -341,8 +341,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		return KNOT_ENOMEM;
 	}
 
-	if (knot_rrs_rrsig_type_covered(rrsig, 0) !=
-	    rrset->type) {
+	if (knot_rrs_rrsig_type_covered(rrsig, 0) != rrset->type) {
 		/* zoneparser would not let this happen
 		 * but to be on the safe side
 		 */
@@ -372,8 +371,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* check original TTL */
-	uint32_t original_ttl =
-		knot_rrs_rrsig_original_ttl(rrsig, rr_pos);
+	uint32_t original_ttl = knot_rrs_rrsig_original_ttl(rrsig, rr_pos);
 
 	uint16_t rr_count = knot_rrset_rr_count(rrset);
 	for (uint16_t i = 0; i < rr_count; ++i) {
@@ -403,8 +401,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	/* dnskey is in the apex node */
 	if (!knot_rrset_empty(dnskey_rrset) &&
-	    knot_dname_cmp(signer_name, dnskey_rrset->owner) != 0
-	) {
+	    !knot_dname_is_equal(signer_name, dnskey_rrset->owner)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
 		                         info_str);
@@ -479,7 +476,8 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrs_t rrsigs = { 0 };
+	knot_rrs_t rrsigs;
+	knot_rrs_init(&rrsigs);
 	ret = knot_synth_rrsig(rrset->type,
 	                           knot_node_rrs(node, KNOT_RRTYPE_RRSIG),
 	                           &rrsigs, NULL);
@@ -765,7 +763,8 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 	if (cname_rrs) {
 		if (knot_node_rrset_count(node) != 1) {
 			/* With DNSSEC node can contain RRSIGs or NSEC */
-			if (!(knot_node_rrtype_exists(node, KNOT_RRTYPE_NSEC) || knot_node_rrtype_exists(node, KNOT_RRTYPE_RRSIG)) ||
+			if (!(knot_node_rrtype_exists(node, KNOT_RRTYPE_NSEC) ||
+			      knot_node_rrtype_exists(node, KNOT_RRTYPE_RRSIG)) ||
 			    knot_node_rrset_count(node) > 3) {
 				*fatal_error = true;
 				err_handler_handle_error(handler, node,
