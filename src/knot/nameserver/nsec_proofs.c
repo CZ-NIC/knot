@@ -808,7 +808,7 @@ void nsec_clear_rrsigs(struct query_data *qdata)
 	struct rrsig_info *info = NULL;
 	WALK_LIST(info, qdata->rrsigs) {
 		knot_rrset_t *rrsig = &info->synth_rrsig;
-		knot_rrs_clear(&rrsig->rrs, qdata->mm);
+		knot_rrset_clear(rrsig, qdata->mm);
 	};
 
 	ptrlist_free(&qdata->rrsigs, qdata->mm);
