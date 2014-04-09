@@ -288,7 +288,6 @@ static inline
 uint8_t knot_rrs_nsec3_salt_length(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
-
 	return *(data_offset(rrs, pos, 0) + 4);
 }
 
