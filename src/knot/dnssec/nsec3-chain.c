@@ -121,7 +121,7 @@ static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 	if (knot_rrset_empty(&from_sig)) {
 		return KNOT_EOK;
 	}
-	return knot_node_add_rrset(to, &from_sig);
+	return knot_node_add_rrset(to, &from_sig, NULL);
 }
 
 /*!
@@ -297,7 +297,7 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 		return NULL;
 	}
 
-	ret = knot_node_add_rrset(new_node, &nsec3_rrset);
+	ret = knot_node_add_rrset(new_node, &nsec3_rrset, NULL);
 	knot_rrset_clear(&nsec3_rrset, NULL);
 	if (ret != KNOT_EOK) {
 		knot_node_free(&new_node);

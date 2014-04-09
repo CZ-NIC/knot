@@ -139,15 +139,26 @@ static int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *r
 	return KNOT_EOK;
 }
 
-int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset)
+int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
 {
-	if (node == NULL) {
+	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
+
+			/* Check if the added RR has the same TTL as the first
+			 * RR in the RRSet.
+			 */
+			knot_rr_t *first = knot_rrs_rr(&node_data->rrs, 0);
+			uint32_t inserted_ttl = knot_rrset_rr_ttl(rrset, 0);
+			if (ttl_err && rrset->type != KNOT_RRTYPE_RRSIG &&
+			    inserted_ttl != knot_rr_ttl(first)) {
+				*ttl_err = true;
+			}
+
 			return knot_rrs_merge(&node_data->rrs, &rrset->rrs, NULL);
 		}
 	}

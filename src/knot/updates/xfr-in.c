@@ -268,7 +268,8 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 	}
 
 	// Init zone creator
-	zcreator_t zc = {.z = *zone, .ret = KNOT_EOK };
+	zcreator_t zc = {.z = *zone,
+	                 .master = false, .ret = KNOT_EOK };
 
 	while (rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
@@ -845,9 +846,21 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		}
 	} else {
 		// Inserting new RRSet, data will be copied.
-		int ret = knot_node_add_rrset(node, rr);
+		bool ttl_err = false;
+		int ret = knot_node_add_rrset(node, rr, &ttl_err);
 		if (ret != KNOT_EOK) {
 			return ret;
+		}
+
+		if (ttl_err) {
+			char type_str[16] = { '\0' };
+			knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
+			char *name = knot_dname_to_str(rr->owner);
+			char *zname = knot_dname_to_str(chset->soa_from->owner);
+			log_zone_warning("Changes application to zone %s: TTL mismatch"
+			                 " in %s, type %s\n", zname, name, type_str);
+			free(name);
+			free(zname);
 		}
 	}
 

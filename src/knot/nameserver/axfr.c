@@ -22,7 +22,7 @@
 #include "common/lists.h"
 #include "knot/server/zones.h"
 
-/* AXFR context. */
+/* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
 	struct xfr_proc proc;
 	hattrie_iter_t *i;
@@ -85,10 +85,10 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item, struct xfr_
 
 static void axfr_answer_cleanup(struct query_data *qdata)
 {
-	struct xfr_proc *axfr = (struct xfr_proc *)qdata->ext;
+	struct axfr_proc *axfr = (struct axfr_proc *)qdata->ext;
 	mm_ctx_t *mm = qdata->mm;
 
-	ptrlist_free(&axfr->nodes, mm);
+	ptrlist_free(&axfr->proc.nodes, mm);
 	mm->free(axfr);
 
 	/* Allow zone changes (finished). */
@@ -102,23 +102,23 @@ static int axfr_answer_init(struct query_data *qdata)
 	/* Create transfer processing context. */
 	mm_ctx_t *mm = qdata->mm;
 	knot_zone_contents_t *zone = qdata->zone->contents;
-	struct xfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
-	if (xfer == NULL) {
+	struct axfr_proc *axfr = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
+	if (axfr == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(xfer, 0, sizeof(struct axfr_proc));
-	init_list(&xfer->nodes);
+	memset(axfr, 0, sizeof(struct axfr_proc));
+	init_list(&axfr->proc.nodes);
 
 	/* Put data to process. */
-	gettimeofday(&xfer->tstamp, NULL);
-	ptrlist_add(&xfer->nodes, zone->nodes, mm);
+	gettimeofday(&axfr->proc.tstamp, NULL);
+	ptrlist_add(&axfr->proc.nodes, zone->nodes, mm);
 	/* Put NSEC3 data if exists. */
 	if (!knot_zone_tree_is_empty(zone->nsec3_nodes)) {
-		ptrlist_add(&xfer->nodes, zone->nsec3_nodes, mm);
+		ptrlist_add(&axfr->proc.nodes, zone->nsec3_nodes, mm);
 	}
 
 	/* Set up cleanup callback. */
-	qdata->ext = xfer;
+	qdata->ext = axfr;
 	qdata->ext_cleanup = &axfr_answer_cleanup;
 
 	/* No zone changes during multipacket answer (unlocked in axfr_answer_cleanup) */
@@ -208,7 +208,7 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* Answer current packet (or continue). */
-	struct xfr_proc *xfer = qdata->ext;
+	struct axfr_proc *axfr = (struct axfr_proc *)qdata->ext;
 	ret = xfr_process_list(pkt, &axfr_process_node_tree, qdata);
 	switch(ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
@@ -216,8 +216,8 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
 		AXFR_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
-		         time_diff(&xfer->tstamp, &now) / 1000.0,
-		         xfer->npkts, xfer->nbytes / 1024.0);
+		         time_diff(&axfr->proc.tstamp, &now) / 1000.0,
+		         axfr->proc.npkts, axfr->proc.nbytes / 1024.0);
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */

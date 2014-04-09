@@ -134,7 +134,7 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR if the RRSet could not be inserted.
  */
-int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset);
+int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset, bool *ttl_err);
 
 const knot_rrs_t *knot_node_rrs(const knot_node_t *node, uint16_t type);
 knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);

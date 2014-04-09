@@ -664,6 +664,15 @@ static int process_add_normal(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
+	/* First check if the TTL of the new RR is equal to that of the first
+	 * RR in the node's RRSet. If not, refuse the UPDATE.
+	 */
+	knot_rrset_t rr_in_zone = knot_node_rrset(node, rr->type);
+	if (knot_node_rrtype_exists(node, rr->type) &&
+	    knot_rrset_rr_ttl(rr, 0) != knot_rrset_rr_ttl(&rr_in_zone, 0)) {
+		return KNOT_ETTL;
+	}
+
 	const bool apex_ns = knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
 	                     rr->type == KNOT_RRTYPE_NS;
 	return add_rr_to_chgset(rr, changeset, apex_ns ? apex_ns_rem : NULL);

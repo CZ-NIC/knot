@@ -76,6 +76,16 @@ static void conf_init_iface(void *scanner, char* ifname)
 	this_iface->name = ifname;
 }
 
+static void conf_set_iface(void *scanner, struct sockaddr_storage *ss, int family, char* addr, int port)
+{
+	int ret = sockaddr_set(ss, family, addr, port);
+	if (ret != KNOT_EOK) {
+		cf_error(scanner, "invalid address for '%s': %s@%d\n",
+		                  this_iface->name, addr, port);
+	}
+	free(addr);
+}
+
 static void conf_start_iface(void *scanner, char* ifname)
 {
 	conf_init_iface(scanner, ifname);
@@ -525,20 +535,16 @@ interface:
      }
    }
  | interface ADDRESS IPA ';' {
-     sockaddr_set(&this_iface->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
-     free($3.t);
+     conf_set_iface(scanner, &this_iface->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
    }
  | interface ADDRESS IPA '@' NUM ';' {
-     sockaddr_set(&this_iface->addr, AF_INET, $3.t, $5.i);
-     free($3.t);
+     conf_set_iface(scanner, &this_iface->addr, AF_INET, $3.t, $5.i);
    }
  | interface ADDRESS IPA6 ';' {
-     sockaddr_set(&this_iface->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
-     free($3.t);
+     conf_set_iface(scanner, &this_iface->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
    }
  | interface ADDRESS IPA6 '@' NUM ';' {
-     sockaddr_set(&this_iface->addr, AF_INET, $3.t, $5.i);
-     free($3.t);
+     conf_set_iface(scanner, &this_iface->addr, AF_INET6, $3.t, $5.i);
    }
  ;
 
@@ -701,34 +707,28 @@ remote:
      }
    }
  | remote ADDRESS IPA ';' {
-     sockaddr_set(&this_remote->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
      this_remote->prefix = IPV4_PREFIXLEN;
-     free($3.t);
    }
  | remote ADDRESS IPA '/' NUM ';' {
-     sockaddr_set(&this_remote->addr, AF_INET, $3.t, 0);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET, $3.t, 0);
      SET_NUM(this_remote->prefix, $5.i, 0, IPV4_PREFIXLEN, "prefix length");
-     free($3.t);
    }
  | remote ADDRESS IPA '@' NUM ';' {
-     sockaddr_set(&this_remote->addr, AF_INET, $3.t, $5.i);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET, $3.t, $5.i);
      this_remote->prefix = IPV4_PREFIXLEN;
-     free($3.t);
    }
  | remote ADDRESS IPA6 ';' {
-     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
      this_remote->prefix = IPV6_PREFIXLEN;
-     free($3.t);
    }
  | remote ADDRESS IPA6 '/' NUM ';' {
-     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, 0);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET6, $3.t, 0);
      SET_NUM(this_remote->prefix, $5.i, 0, IPV6_PREFIXLEN, "prefix length");
-     free($3.t);
    }
  | remote ADDRESS IPA6 '@' NUM ';' {
-     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, $5.i);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET6, $3.t, $5.i);
      this_remote->prefix = IPV6_PREFIXLEN;
-     free($3.t);
    }
  | remote KEY TEXT ';' {
      if (this_remote->key != 0) {
@@ -739,12 +739,10 @@ remote:
      free($3.t);
    }
  | remote VIA IPA ';' {
-     sockaddr_set(&this_remote->via, AF_INET, $3.t, 0);
-     free($3.t);
+     conf_set_iface(scanner, &this_remote->via, AF_INET, $3.t, 0);
    }
  | remote VIA IPA6 ';' {
-     sockaddr_set(&this_remote->via, AF_INET6, $3.t, 0);
-     free($3.t);
+     conf_set_iface(scanner, &this_remote->via, AF_INET6, $3.t, 0);
    }
  | remote VIA TEXT ';' {
      conf_remote_set_via(scanner, $3.t);

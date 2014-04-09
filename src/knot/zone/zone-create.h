@@ -37,6 +37,8 @@
  */
 typedef struct zcreator {
 	knot_zone_contents_t *z;  /*!< Created zone. */
+	bool master;              /*!< Master flag. True if server is a primary
+	                               master for the zone. */
 	int ret;                  /*!< Return value. */
 } zcreator_t;
 

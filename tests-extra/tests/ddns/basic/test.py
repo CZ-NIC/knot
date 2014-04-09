@@ -143,8 +143,8 @@ def do_normal_tests(master, zone, dnssec=False):
     resp = master.dig("rrtest2.ddns.", "ANY")
     resp.check(rcode="NOERROR")
     resp.check_record(rtype="MX", rdata="10 something.ddns.")
-    # TODO: don't know how to do check: "no CNAME in response"
-    resp.check_record(rtype="CNAME", nordata="ignore.me.ddns.")
+    resp = master.dig("rrtest2.ddns.", "CNAME")
+    compare(resp.count(section="answer"), 0, "Added CNAME when it shouldn't")
     verify(master, zone, dnssec)
 
     # add A to CNAME node, should be ignored
@@ -168,8 +168,7 @@ def do_normal_tests(master, zone, dnssec=False):
     resp = master.dig("rrtest3.ddns.", "ANY")
     resp.check(rcode="NOERROR")
     resp.check_record(rtype="CNAME", rdata="dont.ignore.me.ddns.")
-    # TODO: don't know how to do check: "no other RR in response"
-    resp.check_record(rtype="TXT", nordata="ignore")
+    compare(resp.count(section="answer"), 1, "Other RRs than CNAME in node")
     verify(master, zone, dnssec)
 
     # add CNAME to CNAME node, should be replaced
@@ -219,6 +218,19 @@ def do_normal_tests(master, zone, dnssec=False):
                rdata="dns1.ddns. hostmaster.ddns. 2012111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
 
+    # add SOA with higher serial + remove all SOA in the same UPDATE
+    # the removal should be ignored, only replacing the SOA
+    check_log("Newer SOA addition + removal of all SOA")
+    up = master.update(zone)
+    up.add("ddns.", 3600, "SOA",
+           "dns1.ddns. hostmaster.ddns. 2013111213 10800 3600 1209600 7200")
+    up.delete("ddns.", "SOA")
+    up.send("NOERROR")
+    resp = master.dig("ddns.", "SOA")
+    resp.check(rcode="NOERROR")
+    resp.check_record(rtype="SOA", rdata="dns1.ddns. hostmaster.ddns. 2013111213 10800 3600 1209600 7200")
+    verify(master, zone, dnssec)
+
     # add SOA with lower serial, should be ignored
     check_log("Older SOA addition")
     up = master.update(zone)
@@ -226,7 +238,7 @@ def do_normal_tests(master, zone, dnssec=False):
            "dns1.ddns. hostmaster.ddns. 2010111213 10800 3600 1209600 7200")
     resp = master.dig("ddns.", "SOA")
     resp.check(rcode="NOERROR",
-               rdata="dns1.ddns. hostmaster.ddns. 2012111213 10800 3600 1209600 7200")
+               rdata="dns1.ddns. hostmaster.ddns. 2014111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
 
     # add and remove the same record
