@@ -609,7 +609,7 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	/* Process question. */
 	int len = knot_dname_wire_check(pkt->wire + pkt->parsed,
 	                                pkt->wire + pkt->size,
-	                                pkt->wire);
+	                                NULL /* No compression in QNAME. */);
 	if (len <= 0) {
 		return KNOT_EMALF;
 	}
