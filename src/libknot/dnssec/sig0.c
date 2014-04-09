@@ -38,11 +38,7 @@
  */
 static knot_rrset_t *sig0_create_rrset(void)
 {
-	knot_dname_t *root = knot_dname_from_str(".");
-	knot_rrset_t *sig_record = knot_rrset_new(root, KNOT_RRTYPE_SIG,
-	                                          KNOT_CLASS_ANY, NULL);
-	knot_dname_free(&root, NULL);
-	return sig_record;
+	return knot_rrset_new((uint8_t *)"", KNOT_RRTYPE_SIG, KNOT_CLASS_ANY, NULL);
 }
 
 static void sig0_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key)
