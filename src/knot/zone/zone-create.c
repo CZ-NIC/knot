@@ -133,11 +133,8 @@ static void loader_process(const zs_scanner_t *scanner)
 	}
 	knot_dname_to_lower(owner);
 
-	knot_rrset_t rr = {.owner = owner,
-	                   .type = scanner->r_type,
-	                   .rclass = scanner->r_class,
-	                   .additional = NULL};
-	knot_rrs_init(&rr.rrs);
+	knot_rrset_t rr;
+	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class);
 	int ret = add_rdata_to_rr(&rr, scanner);
 	if (ret != KNOT_EOK) {
 		char *rr_name = knot_dname_to_str(rr.owner);
