@@ -1133,9 +1133,8 @@ const knot_node_t *knot_zone_contents_find_wildcard_child(
 		return NULL;
 	}
 
-	knot_dname_t wildcard[KNOT_DNAME_MAXLEN];
-	memcpy(wildcard, "\x1""*", 2);
-	knot_dname_to_wire(wildcard + 2, parent->owner, sizeof(wildcard));
+	knot_dname_t wildcard[KNOT_DNAME_MAXLEN] = { 0x01, '*' };
+	knot_dname_to_wire(wildcard + 2, parent->owner, KNOT_DNAME_MAXLEN - 2);
 	return knot_zone_contents_find_node(contents, wildcard);
 }
 
