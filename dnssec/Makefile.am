@@ -52,7 +52,6 @@ libdnssec_la_SOURCES = \
 	lib/error.c \
 	lib/kasp/dir.c \
 	lib/kasp/internal.h \
-	lib/kasp/kasp.c \
 	lib/key/algorithm.c \
 	lib/key/algorithm.h \
 	lib/key/convert.c \
