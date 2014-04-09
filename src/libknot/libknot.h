@@ -36,7 +36,7 @@
 #include "libknot/rdataset.h"
 #include "libknot/rrset.h"
 #include "libknot/rrset-dump.h"
-#include "libknot/rdata/dname.h"
+#include "libknot/rdata/rdname.h"
 #include "libknot/rdata/dnskey.h"
 #include "libknot/rdata/nsec3.h"
 #include "libknot/rdata/nsec3param.h"

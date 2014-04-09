@@ -47,7 +47,7 @@ struct knot_rrset {
 	knot_dname_t *owner;  /*!< Domain name being the owner of the RRSet. */
 	uint16_t type;        /*!< TYPE of the RRset. */
 	uint16_t rclass;      /*!< CLASS of the RRSet. */
-	knot_rrs_t rrs;       /*!< RRSet's RRs */
+	knot_rdataset_t rrs;  /*!< RRSet's RRs */
 	/* Optional fields. */
 	struct knot_node **additional; /*!< Additional records. */
 };

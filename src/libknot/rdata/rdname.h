@@ -21,42 +21,42 @@
 #include "libknot/dname.h"
 
 static inline
-const knot_dname_t *knot_cname_name(const knot_rrs_t *rrs)
+const knot_dname_t *knot_cname_name(const knot_rdataset_t *rrs)
 {
-	RRS_CHECK(rrs, 0, return NULL);
-	return data_offset(rrs, 0, 0);
+	KNOT_RDATASET_CHECK(rrs, 0, return NULL);
+	return knot_rdata_offset(rrs, 0, 0);
 }
 
 static inline
-const knot_dname_t *knot_dname_target(const knot_rrs_t *rrs)
+const knot_dname_t *knot_dname_target(const knot_rdataset_t *rrs)
 {
-	RRS_CHECK(rrs, 0, return NULL);
-	return data_offset(rrs, 0, 0);
+	KNOT_RDATASET_CHECK(rrs, 0, return NULL);
+	return knot_rdata_offset(rrs, 0, 0);
 }
 
 static inline
-const knot_dname_t *knot_ns_name(const knot_rrs_t *rrs, size_t pos)
+const knot_dname_t *knot_ns_name(const knot_rdataset_t *rrs, size_t pos)
 {
-	RRS_CHECK(rrs, pos, return 0);
-	return data_offset(rrs, pos, 0);
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_rdata_offset(rrs, pos, 0);
 }
 
 static inline
-const knot_dname_t *knot_mx_name(const knot_rrs_t *rrs, size_t pos)
+const knot_dname_t *knot_mx_name(const knot_rdataset_t *rrs, size_t pos)
 {
-	RRS_CHECK(rrs, pos, return 0);
-	return data_offset(rrs, pos, 2);
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_rdata_offset(rrs, pos, 2);
 }
 
 static inline
-const knot_dname_t *knot_srv_name(const knot_rrs_t *rrs, size_t pos)
+const knot_dname_t *knot_srv_name(const knot_rdataset_t *rrs, size_t pos)
 {
-	RRS_CHECK(rrs, pos, return 0);
-	return data_offset(rrs, pos, 6);
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_rdata_offset(rrs, pos, 6);
 }
 
 static inline
-const knot_dname_t *knot_rdata_name(const knot_rrs_t *rrs, size_t pos, uint16_t type)
+const knot_dname_t *knot_rdata_name(const knot_rdataset_t *rrs, size_t pos, uint16_t type)
 {
 	switch (type) {
 		case KNOT_RRTYPE_NS:

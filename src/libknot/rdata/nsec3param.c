@@ -22,7 +22,7 @@
  * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
  */
 int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
-                                const knot_rrs_t *rrs)
+                                const knot_rdataset_t *rrs)
 {
 	if (params == NULL || rrs == NULL || rrs->rr_count == 0) {
 		return KNOT_EINVAL;

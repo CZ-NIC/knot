@@ -289,7 +289,7 @@ static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
  */
 static int check_rrsig_rdata(err_handler_t *handler,
                              const knot_node_t *node,
-                             const knot_rrs_t *rrsig,
+                             const knot_rdataset_t *rrsig,
                              size_t rr_pos,
                              const knot_rrset_t *rrset,
                              const knot_rrset_t *dnskey_rrset)
@@ -438,8 +438,8 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrs_t rrsigs;
-	knot_rrs_init(&rrsigs);
+	knot_rdataset_t rrsigs;
+	knot_rdataset_init(&rrsigs);
 	ret = knot_synth_rrsig(rrset->type,
 	                           knot_node_rrs(node, KNOT_RRTYPE_RRSIG),
 	                           &rrsigs, NULL);
@@ -464,8 +464,8 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		/* Safe to continue, nothing is malformed. */
 	}
 
-	const knot_rr_t *sig_rr = knot_rrs_rr(&rrsigs, 0);
-	if (knot_rrset_rr_ttl(rrset, 0) != knot_rr_ttl(sig_rr)) {
+	const knot_rdata_t *sig_rr = knot_rdataset_at(&rrsigs, 0);
+	if (knot_rrset_rr_ttl(rrset, 0) != knot_rdata_ttl(sig_rr)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_TTL,
 		                         info_str);
@@ -481,7 +481,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		}
 	}
 
-	knot_rrs_clear(&rrsigs, NULL);
+	knot_rdataset_clear(&rrsigs, NULL);
 	return ret;
 }
 
@@ -512,7 +512,7 @@ static int get_bit(uint8_t *bits, size_t index)
  * \retval KNOT_OK on success.
  * \retval KNOT_NOMEM on memory error.
  */
-static int rdata_nsec_to_type_array(const knot_rrs_t *rrs, uint16_t type,
+static int rdata_nsec_to_type_array(const knot_rdataset_t *rrs, uint16_t type,
                                     size_t pos, uint16_t **array, size_t *count)
 {
 	assert(*array == NULL);
@@ -620,7 +620,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 
 			assert(nsec3_previous);
 
-			const knot_rrs_t *previous_rrs =
+			const knot_rdataset_t *previous_rrs =
 				knot_node_rrs(nsec3_previous, KNOT_RRTYPE_NSEC3);
 
 			assert(previous_rrs);
@@ -640,7 +640,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		}
 	}
 
-	const knot_rrs_t *nsec3_rrs = knot_node_rrs(nsec3_node,
+	const knot_rdataset_t *nsec3_rrs = knot_node_rrs(nsec3_node,
 	                                            KNOT_RRTYPE_NSEC3);
 	if (nsec3_rrs == NULL) {
 		err_handler_handle_error(handler, node,
@@ -648,11 +648,11 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		return KNOT_EOK;
 	}
 
-	const knot_rr_t *nsec3_rr = knot_rrs_rr(nsec3_rrs, 0);
-	const knot_rrs_t *soa_rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_SOA);
+	const knot_rdata_t *nsec3_rr = knot_rdataset_at(nsec3_rrs, 0);
+	const knot_rdataset_t *soa_rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs);
 	uint32_t minimum_ttl = knot_soa_minimum(soa_rrs);
-	if (knot_rr_ttl(nsec3_rr) != minimum_ttl) {
+	if (knot_rdata_ttl(nsec3_rr) != minimum_ttl) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_NSEC3_RDATA_TTL, NULL);
 	}
@@ -721,7 +721,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 static int sem_check_node_mandatory(const knot_node_t *node,
                                     err_handler_t *handler, bool *fatal_error)
 {
-	const knot_rrs_t *cname_rrs = knot_node_rrs(node, KNOT_RRTYPE_CNAME);
+	const knot_rdataset_t *cname_rrs = knot_node_rrs(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrs) {
 		if (knot_node_rrset_count(node) != 1) {
 			/* With DNSSEC node can contain RRSIGs or NSEC */
@@ -741,7 +741,7 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 		}
 	}
 
-	const knot_rrs_t *dname_rrs = knot_node_rrs(node, KNOT_RRTYPE_DNAME);
+	const knot_rdataset_t *dname_rrs = knot_node_rrs(node, KNOT_RRTYPE_DNAME);
 	if (dname_rrs) {
 		if (cname_rrs) {
 			*fatal_error = true;
@@ -776,7 +776,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 	                node)) {
 		return KNOT_EOK;
 	}
-	const knot_rrs_t *ns_rrs = knot_node_rrs(node, KNOT_RRTYPE_NS);
+	const knot_rdataset_t *ns_rrs = knot_node_rrs(node, KNOT_RRTYPE_NS);
 	if (ns_rrs == NULL) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_MISSING_NS_DEL_POINT,
@@ -895,7 +895,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 
 		if (!nsec3 && auth) {
 			/* check for NSEC record */
-			const knot_rrs_t *nsec_rrs =
+			const knot_rdataset_t *nsec_rrs =
 				knot_node_rrs(node, KNOT_RRTYPE_NSEC);
 			if (nsec_rrs == NULL) {
 				err_handler_handle_error(handler, node,
@@ -1068,7 +1068,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		if (last_nsec3_node == NULL || first_nsec3_node == NULL) {
 			return;
 		}
-		const knot_rrs_t *nsec3_rrs =
+		const knot_rdataset_t *nsec3_rrs =
 			knot_node_rrs(last_nsec3_node, KNOT_RRTYPE_NSEC3);
 		if (nsec3_rrs == NULL) {
 			err_handler_handle_error(handler, last_nsec3_node,
@@ -1114,7 +1114,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 				ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 				return;
 		} else {
-			const knot_rrs_t *nsec_rrs =
+			const knot_rdataset_t *nsec_rrs =
 				knot_node_rrs(last_node, KNOT_RRTYPE_NSEC);
 
 			if (nsec_rrs == NULL) {

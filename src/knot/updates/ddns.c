@@ -53,7 +53,7 @@ static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 		ptrnode_t *ptr_n = (ptrnode_t *)n;
 		knot_rrset_t *rrset = (knot_rrset_t *)ptr_n->d;
 		if (knot_rrset_equal(rr, rrset, KNOT_RRSET_COMPARE_HEADER)) {
-			return knot_rrs_merge(&rrset->rrs, &rr->rrs, NULL);
+			return knot_rdataset_merge(&rrset->rrs, &rr->rrs, NULL);
 		}
 	};
 
@@ -372,14 +372,14 @@ static bool node_empty(const knot_node_t *node, knot_dname_t *owner,
 		knot_rrset_t node_rr;
 		knot_rrset_init(&node_rr, node->owner, node_rrset.type, KNOT_CLASS_IN);
 		for (uint16_t j = 0; j < node_rrset.rrs.rr_count; ++j) {
-			knot_rr_t *add_rr = knot_rrs_rr(&node_rrset.rrs, j);
-			knot_rrs_add_rr(&node_rr.rrs, add_rr, NULL);
+			knot_rdata_t *add_rr = knot_rdataset_at(&node_rrset.rrs, j);
+			knot_rdataset_add(&node_rr.rrs, add_rr, NULL);
 			if (!removed_rr(changeset, &node_rr)) {
 				// One of the RRs from node was not removed.
-				knot_rrs_clear(&node_rr.rrs, NULL);
+				knot_rdataset_clear(&node_rr.rrs, NULL);
 				return false;
 			}
-			knot_rrs_clear(&node_rr.rrs, NULL);
+			knot_rdataset_clear(&node_rr.rrs, NULL);
 		}
 	}
 
@@ -390,11 +390,11 @@ static bool node_empty(const knot_node_t *node, knot_dname_t *owner,
 static bool node_contains_rr(const knot_node_t *node,
                              const knot_rrset_t *rr)
 {
-	const knot_rrs_t *zone_rrs = knot_node_rrs(node, rr->type);
+	const knot_rdataset_t *zone_rrs = knot_node_rrs(node, rr->type);
 	if (zone_rrs) {
 		assert(rr->rrs.rr_count == 1);
 		const bool compare_ttls = false;
-		return knot_rrs_member(zone_rrs, knot_rrs_rr(&rr->rrs, 0),
+		return knot_rdataset_member(zone_rrs, knot_rdataset_at(&rr->rrs, 0),
 		                       compare_ttls);
 	} else {
 		return false;
@@ -539,13 +539,13 @@ static int rem_rrset_to_chgset(const knot_rrset_t *rrset,
 	knot_rrset_t rr;
 	knot_rrset_init(&rr, rrset->owner, rrset->type, rrset->rclass);
 	for (uint16_t i = 0; i < rrset->rrs.rr_count; ++i) {
-		knot_rr_t *rr_add = knot_rrs_rr(&rrset->rrs, i);
-		int ret = knot_rrs_add_rr(&rr.rrs, rr_add, NULL);
+		knot_rdata_t *rr_add = knot_rdataset_at(&rrset->rrs, i);
+		int ret = knot_rdataset_add(&rr.rrs, rr_add, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 		ret = rem_rr_to_chgset(&rr, changeset, apex_ns_rem);
-		knot_rrs_clear(&rr.rrs, NULL);
+		knot_rdataset_clear(&rr.rrs, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -707,7 +707,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	const bool apex_ns = knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
 	                     rr->type == KNOT_RRTYPE_NS;
 	if (apex_ns) {
-		const knot_rrs_t *ns_rrs = knot_node_rrs(node, KNOT_RRTYPE_NS);
+		const knot_rdataset_t *ns_rrs = knot_node_rrs(node, KNOT_RRTYPE_NS);
 		if (*apex_ns_rem == ns_rrs->rr_count - 1) {
 			// Cannot remove last apex NS RR
 			return KNOT_EOK;
@@ -729,7 +729,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 
 	knot_rrset_t intersection;
 	knot_rrset_init(&intersection, to_modify.owner, to_modify.type, KNOT_CLASS_IN);
-	int ret = knot_rrs_intersect(&to_modify.rrs, &rr->rrs, &intersection.rrs,
+	int ret = knot_rdataset_intersect(&to_modify.rrs, &rr->rrs, &intersection.rrs,
 	                             NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -742,7 +742,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	assert(intersection.rrs.rr_count == 1);
 	ret = rem_rr_to_chgset(&intersection, changeset,
 	                       apex_ns ? apex_ns_rem : NULL);
-	knot_rrs_clear(&intersection.rrs, NULL);
+	knot_rdataset_clear(&intersection.rrs, NULL);
 	return ret;
 }
 

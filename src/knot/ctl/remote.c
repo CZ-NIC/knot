@@ -26,7 +26,7 @@
 #include "libknot/packet/wire.h"
 #include "common/descriptor.h"
 #include "libknot/tsig-op.h"
-#include "libknot/rdata/dname.h"
+#include "libknot/rdata/rdname.h"
 #include "libknot/rdata/soa.h"
 #include "libknot/dnssec/random.h"
 #include "knot/dnssec/zone-sign.h"
@@ -236,7 +236,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		const zone_t *zone = knot_zonedb_iter_val(&it);
 
 		/* Fetch latest serial. */
-		const knot_rrs_t *soa_rrs = NULL;
+		const knot_rdataset_t *soa_rrs = NULL;
 		uint32_t serial = 0;
 		if (zone->contents) {
 			soa_rrs = knot_node_rrs(zone->contents->apex,

@@ -30,7 +30,7 @@
 #include "libknot/rdata/rrsig.h"
 #include "libknot/rdata/nsec3.h"
 #include "libknot/rdata/soa.h"
-#include "libknot/rdata/dname.h"
+#include "libknot/rdata/rdname.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -160,7 +160,7 @@ static int discover_additionals(struct rr_data *rr_data,
 {
 	const knot_node_t *node = NULL, *encloser = NULL, *prev = NULL;
 	const knot_dname_t *dname = NULL;
-	const knot_rrs_t *rrs = &rr_data->rrs;
+	const knot_rdataset_t *rrs = &rr_data->rrs;
 
 	/* Create new additional nodes. */
 	uint16_t rdcount = rrs->rr_count;
@@ -389,7 +389,7 @@ static int knot_zone_contents_find_in_tree(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zc_nsec3_parameters_match(const knot_rrs_t *rrs,
+static int knot_zc_nsec3_parameters_match(const knot_rdataset_t *rrs,
                                           const knot_nsec3_params_t *params,
                                           size_t rdata_pos)
 {
@@ -1059,7 +1059,7 @@ dbg_zone_exec_detail(
 	 * from the right chain. Check iterations, hash algorithm and salt
 	 * values and compare them to the ones from NSEC3PARAM.
 	 */
-	const knot_rrs_t *nsec3_rrs =
+	const knot_rdataset_t *nsec3_rrs =
 		knot_node_rrs(*nsec3_previous, KNOT_RRTYPE_NSEC3);
 	assert(nsec3_rrs);
 	const knot_node_t *original_prev = *nsec3_previous;
@@ -1271,7 +1271,7 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	const knot_rrs_t *rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
+	const knot_rdataset_t *rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
 	if (rrs!= NULL) {
 		int r = knot_nsec3param_from_wire(&zone->nsec3_params, rrs);
 		if (r != KNOT_EOK) {
@@ -1433,7 +1433,7 @@ void knot_zone_contents_deep_free(knot_zone_contents_t **contents)
 uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
 {
 	if (!zone) return 0;
-	const knot_rrs_t *soa = NULL;
+	const knot_rdataset_t *soa = NULL;
 	soa = knot_node_rrs(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	uint32_t serial = knot_soa_serial(soa);
 	return serial;

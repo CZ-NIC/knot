@@ -80,7 +80,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 	/*
 	 * Retrieve the local Serial
 	 */
-	const knot_rrs_t *soa_rrs =
+	const knot_rdataset_t *soa_rrs =
 		knot_node_rrs(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	if (soa_rrs == NULL) {
 		char *name = knot_dname_to_str(knot_node_owner(
@@ -673,13 +673,13 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 	assert(data);
 
 	// Create new data.
-	knot_rrs_t *rrs = &data->rrs;
-	void *copy = malloc(knot_rrs_size(rrs));
+	knot_rdataset_t *rrs = &data->rrs;
+	void *copy = malloc(knot_rdataset_size(rrs));
 	if (copy == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	memcpy(copy, rrs->data, knot_rrs_size(rrs));
+	memcpy(copy, rrs->data, knot_rdataset_size(rrs));
 
 	/*
 	 * Clear additional array from node in new tree. It's callers
@@ -694,9 +694,9 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 
 static void clear_new_rrs(knot_node_t *node, uint16_t type)
 {
-	knot_rrs_t *new_rrs = knot_node_get_rrs(node, type);
+	knot_rdataset_t *new_rrs = knot_node_get_rrs(node, type);
 	if (new_rrs) {
-		knot_rrs_clear(new_rrs, NULL);
+		knot_rdataset_clear(new_rrs, NULL);
 	}
 }
 
@@ -706,7 +706,7 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 		// Node does not exist, cannot remove anything.
 		return false;
 	}
-	const knot_rrs_t *node_rrs = knot_node_rrs(node, rr->type);
+	const knot_rdataset_t *node_rrs = knot_node_rrs(node, rr->type);
 	if (node_rrs == NULL) {
 		// Node does not have this type at all.
 		return false;
@@ -714,8 +714,8 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 
 	const bool compare_ttls = false;
 	for (uint16_t i = 0; i < rr->rrs.rr_count; ++i) {
-		knot_rr_t *rr_cmp = knot_rrs_rr(&rr->rrs, i);
-		if (knot_rrs_member(node_rrs, rr_cmp, compare_ttls)) {
+		knot_rdata_t *rr_cmp = knot_rdataset_at(&rr->rrs, i);
+		if (knot_rdataset_member(node_rrs, rr_cmp, compare_ttls)) {
 			// At least one RR matches.
 			return true;
 		}
@@ -725,7 +725,7 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 	return false;
 }
 
-static int add_old_data(knot_changeset_t *chset, knot_rr_t *old_data,
+static int add_old_data(knot_changeset_t *chset, knot_rdata_t *old_data,
                         knot_node_t **old_additional)
 {
 	if (ptrlist_add(&chset->old_data, old_data, NULL) == NULL) {
@@ -743,7 +743,7 @@ static int add_old_data(knot_changeset_t *chset, knot_rr_t *old_data,
 	return KNOT_EOK;
 }
 
-static int add_new_data(knot_changeset_t *chset, knot_rr_t *new_data)
+static int add_new_data(knot_changeset_t *chset, knot_rdata_t *new_data)
 {
 	if (ptrlist_add(&chset->new_data, new_data, NULL) == NULL) {
 		return KNOT_ENOMEM;
@@ -756,7 +756,7 @@ static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
                      knot_changeset_t *chset)
 {
 	knot_rrset_t removed_rrset = knot_node_rrset(node, rr->type);
-	knot_rr_t *old_data = removed_rrset.rrs.data;
+	knot_rdata_t *old_data = removed_rrset.rrs.data;
 	knot_node_t **old_additional = removed_rrset.additional;
 	int ret = xfrin_replace_rrs_with_copy(node, rr->type);
 	if (ret != KNOT_EOK) {
@@ -770,9 +770,9 @@ static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
 		return ret;
 	}
 
-	knot_rrs_t *changed_rrs = knot_node_get_rrs(node, rr->type);
+	knot_rdataset_t *changed_rrs = knot_node_get_rrs(node, rr->type);
 	// Subtract changeset RRS from node RRS.
-	ret = knot_rrs_subtract(changed_rrs, &rr->rrs, NULL);
+	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
 		return ret;
@@ -782,7 +782,7 @@ static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
 		// Subtraction left some data in RRSet, store it for rollback.
 		ret = add_new_data(chset, changed_rrs->data);
 		if (ret != KNOT_EOK) {
-			knot_rrs_clear(changed_rrs, NULL);
+			knot_rdataset_clear(changed_rrs, NULL);
 			return ret;
 		}
 	} else {
@@ -823,7 +823,7 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 	knot_rrset_t changed_rrset = knot_node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
 		// Modifying existing RRSet.
-		knot_rr_t *old_data = changed_rrset.rrs.data;
+		knot_rdata_t *old_data = changed_rrset.rrs.data;
 		knot_node_t **old_additional = changed_rrset.additional;
 		int ret = xfrin_replace_rrs_with_copy(node, rr->type);
 		if (ret != KNOT_EOK) {
@@ -838,8 +838,8 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		}
 
 		// Extract copy, merge into it
-		knot_rrs_t *changed_rrs = knot_node_get_rrs(node, rr->type);
-		ret = knot_rrs_merge(changed_rrs, &rr->rrs, NULL);
+		knot_rdataset_t *changed_rrs = knot_node_get_rrs(node, rr->type);
+		ret = knot_rdataset_merge(changed_rrs, &rr->rrs, NULL);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
 			return ret;
@@ -865,10 +865,10 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 	}
 
 	// Get changed RRS and store for possible rollback.
-	knot_rrs_t *rrs = knot_node_get_rrs(node, rr->type);
+	knot_rdataset_t *rrs = knot_node_get_rrs(node, rr->type);
 	int ret = add_new_data(chset, rrs->data);
 	if (ret != KNOT_EOK) {
-		knot_rrs_clear(rrs, NULL);
+		knot_rdataset_clear(rrs, NULL);
 		return ret;
 	}
 
@@ -929,7 +929,7 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 		  chset->serial_from, chset->serial_to);
 
 	// check if serial matches
-	const knot_rrs_t *soa = knot_node_rrs(contents->apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa = knot_node_rrs(contents->apex, KNOT_RRTYPE_SOA);
 	if (soa == NULL || knot_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");

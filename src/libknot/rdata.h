@@ -35,9 +35,9 @@
 /* ---------------------------- Single RR ----------------------------------- */
 
 /*!
- * \brief knot_rr_t Array holding single RR payload, i.e. ttl, size and RDATA.
+ * \brief knot_rdata_t Array holding single RR payload, i.e. TTL, RDLENGTH and RDATA.
  */
-typedef uint8_t knot_rr_t;
+typedef uint8_t knot_rdata_t;
 
 /* ------------------------- RR getters/setters ----------------------------- */
 
@@ -46,35 +46,35 @@ typedef uint8_t knot_rr_t;
  * \param rr  RR whose size we want.
  * \return  RR size.
  */
-uint16_t knot_rr_rdata_size(const knot_rr_t *rr);
+uint16_t knot_rdata_rdlen(const knot_rdata_t *rr);
 
 /*!
  * \brief Sets size for given RR.
  * \param rr    RR whose size we want to set.
  * \param size  Size to be set.
  */
-void knot_rr_set_size(knot_rr_t *rr, uint16_t size);
+void knot_rdata_set_rdlen(knot_rdata_t *rr, uint16_t size);
 
 /*!
  * \brief Returns TTL of single RR.
  * \param rr  RR whose TTL we want.
  * \return  RR TTL.
  */
-uint32_t knot_rr_ttl(const knot_rr_t *rr);
+uint32_t knot_rdata_ttl(const knot_rdata_t *rr);
 
 /*!
  * \brief Sets TTL for given RR.
  * \param rr   RR whose TTL we want to set.
  * \param ttl  TTL to be set.
  */
-void knot_rr_set_ttl(knot_rr_t *rr, uint32_t ttl);
+void knot_rdata_set_ttl(knot_rdata_t *rr, uint32_t ttl);
 
 /*!
  * \brief Returns pointer to RR data.
  * \param rr  RR whose data we want.
  * \return RR data pointer.
  */
-uint8_t *knot_rr_rdata(const knot_rr_t *rr);
+uint8_t *knot_rdata_data(const knot_rdata_t *rr);
 
 /* ----------------------------- RR misc ------------------------------------ */
 
@@ -83,7 +83,7 @@ uint8_t *knot_rr_rdata(const knot_rr_t *rr);
  * \param size  RDATA size.
  * \return Actual structure size.
  */
-size_t knot_rr_array_size(uint16_t size);
+size_t knot_rdata_array_size(uint16_t size);
 
 /*!
  * \brief Canonical comparison of two RRs. Both RRs *must* exist.
@@ -93,4 +93,4 @@ size_t knot_rr_array_size(uint16_t size);
  * \retval < 0 if rr1 < rr2.
  * \retval > 0 if rr1 > rr2.
  */
-int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2);
+int knot_rdata_cmp(const knot_rdata_t *rr1, const knot_rdata_t *rr2);

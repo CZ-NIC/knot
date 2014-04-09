@@ -21,10 +21,10 @@
 
 static size_t rr_binary_size(const knot_rrset_t *rrset, size_t rdata_pos)
 {
-	const knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, rdata_pos);
+	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, rdata_pos);
 	if (rr) {
 		// RR size + TTL
-		return knot_rr_rdata_size(rr) + sizeof(uint32_t);
+		return knot_rdata_rdlen(rr) + sizeof(uint32_t);
 	} else {
 		return 0;
 	}
@@ -54,11 +54,11 @@ static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 static void serialize_rr(const knot_rrset_t *rrset, size_t rdata_pos,
                          uint8_t *stream)
 {
-	const knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, rdata_pos);
+	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, rdata_pos);
 	assert(rr);
-	uint32_t ttl = knot_rr_ttl(rr);
+	uint32_t ttl = knot_rdata_ttl(rr);
 	memcpy(stream, &ttl, sizeof(uint32_t));
-	memcpy(stream + sizeof(uint32_t), knot_rr_rdata(rr), knot_rr_rdata_size(rr));
+	memcpy(stream + sizeof(uint32_t), knot_rdata_data(rr), knot_rdata_rdlen(rr));
 }
 
 static int deserialize_rr(knot_rrset_t *rrset, const uint8_t *stream, uint32_t rdata_size)

@@ -167,7 +167,7 @@ libknot_la_SOURCES =				\
 	libknot/packet/wire.h			\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\
-	libknot/rdata/dname.h			\
+	libknot/rdata/rdname.h			\
 	libknot/rdata/dnskey.h			\
 	libknot/rdata/nsec.h			\
 	libknot/rdata/nsec3.c			\

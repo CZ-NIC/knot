@@ -88,7 +88,7 @@ typedef struct knot_node knot_node_t;
 /*!< \brief Structure storing RR data. */
 struct rr_data {
 	uint16_t type; /*!< \brief RR type of data. */
-	knot_rrs_t rrs; /*!< \brief Data of given type. */
+	knot_rdataset_t rrs; /*!< \brief Data of given type. */
 	knot_node_t **additional; /*!< \brief Additional nodes with glues. */
 };
 
@@ -136,8 +136,8 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  */
 int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset, bool *ttl_err);
 
-const knot_rrs_t *knot_node_rrs(const knot_node_t *node, uint16_t type);
-knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);
+const knot_rdataset_t *knot_node_rrs(const knot_node_t *node, uint16_t type);
+knot_rdataset_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns the RRSet of the given type from the node (non-const version).

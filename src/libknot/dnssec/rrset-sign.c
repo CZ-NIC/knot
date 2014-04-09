@@ -268,8 +268,8 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	                           sig_expire);
 }
 
-int knot_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
-                     knot_rrs_t *out_sig, mm_ctx_t *mm)
+int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
+                     knot_rdataset_t *out_sig, mm_ctx_t *mm)
 {
 	if (rrsig_rrs == NULL) {
 		return KNOT_ENOENT;
@@ -281,10 +281,10 @@ int knot_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
 
 	for (int i = 0; i < rrsig_rrs->rr_count; ++i) {
 		if (type == knot_rrsig_type_covered(rrsig_rrs, i)) {
-			const knot_rr_t *rr_to_copy = knot_rrs_rr(rrsig_rrs, i);
-			int ret = knot_rrs_add_rr(out_sig, rr_to_copy, mm);
+			const knot_rdata_t *rr_to_copy = knot_rdataset_at(rrsig_rrs, i);
+			int ret = knot_rdataset_add(out_sig, rr_to_copy, mm);
 			if (ret != KNOT_EOK) {
-				knot_rrs_clear(out_sig, mm);
+				knot_rdataset_clear(out_sig, mm);
 				return ret;
 			}
 		}

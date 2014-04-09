@@ -210,13 +210,13 @@ src/libknot/processing/process.c
 src/libknot/processing/process.h
 src/libknot/rdata.c
 src/libknot/rdata.h
-src/libknot/rdata/dname.h
 src/libknot/rdata/dnskey.h
 src/libknot/rdata/nsec.h
 src/libknot/rdata/nsec3.c
 src/libknot/rdata/nsec3.h
 src/libknot/rdata/nsec3param.c
 src/libknot/rdata/nsec3param.h
+src/libknot/rdata/rdname.h
 src/libknot/rdata/rrsig.h
 src/libknot/rdata/soa.h
 src/libknot/rdata/tsig.c

@@ -38,43 +38,43 @@ struct rr_offsets {
 #pragma pack(pop)
 #endif
 
-uint16_t knot_rr_rdata_size(const knot_rr_t *rr)
+uint16_t knot_rdata_rdlen(const knot_rdata_t *rr)
 {
 	return ((struct rr_offsets *)rr)->size;
 }
 
-void knot_rr_set_size(knot_rr_t *rr, uint16_t size)
+void knot_rdata_set_rdlen(knot_rdata_t *rr, uint16_t size)
 {
 	((struct rr_offsets *)rr)->size = size;
 }
 
-uint32_t knot_rr_ttl(const knot_rr_t *rr)
+uint32_t knot_rdata_ttl(const knot_rdata_t *rr)
 {
 	return ((struct rr_offsets *)rr)->ttl;
 }
 
-void knot_rr_set_ttl(knot_rr_t *rr, uint32_t ttl)
+void knot_rdata_set_ttl(knot_rdata_t *rr, uint32_t ttl)
 {
 	((struct rr_offsets *)rr)->ttl = ttl;
 }
 
-uint8_t *knot_rr_rdata(const knot_rr_t *rr)
+uint8_t *knot_rdata_data(const knot_rdata_t *rr)
 {
 	return ((struct rr_offsets *)rr)->rdata;
 }
 
-size_t knot_rr_array_size(uint16_t size)
+size_t knot_rdata_array_size(uint16_t size)
 {
 	return size + sizeof(struct rr_offsets);
 }
 
-int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2)
+int knot_rdata_cmp(const knot_rdata_t *rr1, const knot_rdata_t *rr2)
 {
 	assert(rr1 && rr2);
-	const uint8_t *r1 = knot_rr_rdata(rr1);
-	const uint8_t *r2 = knot_rr_rdata(rr2);
-	uint16_t l1 = knot_rr_rdata_size(rr1);
-	uint16_t l2 = knot_rr_rdata_size(rr2);
+	const uint8_t *r1 = knot_rdata_data(rr1);
+	const uint8_t *r2 = knot_rdata_data(rr2);
+	uint16_t l1 = knot_rdata_rdlen(rr1);
+	uint16_t l2 = knot_rdata_rdlen(rr2);
 	int cmp = memcmp(r1, r2, MIN(l1, l2));
 	if (cmp == 0 && l1 != l2) {
 		cmp = l1 < l2 ? -1 : 1;

@@ -169,7 +169,7 @@ static void loader_process(const zs_scanner_t *scanner)
 
 	ret = zcreator_step(zc, &rr);
 	knot_dname_free(&owner, NULL);
-	knot_rrs_clear(&rr.rrs, NULL);
+	knot_rdataset_clear(&rr.rrs, NULL);
 	if (ret != KNOT_EOK) {
 		zc->ret = ret;
 		return;

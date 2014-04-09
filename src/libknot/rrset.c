@@ -366,7 +366,7 @@ void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner, uint16_t type,
 	rrset->owner = owner;
 	rrset->type = type;
 	rrset->rclass = rclass;
-	knot_rrs_init(&rrset->rrs);
+	knot_rdataset_init(&rrset->rrs);
 	rrset->additional = NULL;
 }
 
@@ -387,7 +387,7 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 		return NULL;
 	}
 
-	int ret = knot_rrs_copy(&rrset->rrs, &src->rrs, mm);
+	int ret = knot_rdataset_copy(&rrset->rrs, &src->rrs, mm);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&rrset, mm);
 		return NULL;
@@ -411,16 +411,16 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm)
 void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 {
 	if (rrset) {
-		knot_rrs_clear(&rrset->rrs, mm);
+		knot_rdataset_clear(&rrset->rrs, mm);
 		knot_dname_free(&rrset->owner, mm);
 	}
 }
 
 uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos)
 {
-	knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, pos);
+	knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
 	if (rr) {
-		return knot_rr_rdata(rr);
+		return knot_rdata_data(rr);
 	} else {
 		return NULL;
 	}
@@ -428,9 +428,9 @@ uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos)
 
 uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos)
 {
-	const knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, pos);
+	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
 	if (rr) {
-		return knot_rr_rdata_size(rr);
+		return knot_rdata_rdlen(rr);
 	} else {
 		return 0;
 	}
@@ -438,9 +438,9 @@ uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos)
 
 uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos)
 {
-	const knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, pos);
+	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
 	if (rr) {
-		return knot_rr_ttl(rr);
+		return knot_rdata_ttl(rr);
 	} else {
 		return 0;
 	}
@@ -448,9 +448,9 @@ uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos)
 
 void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl)
 {
-	knot_rr_t *rr = knot_rrs_rr(&rrset->rrs, pos);
+	knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
 	if (rr) {
-		knot_rr_set_ttl(rr, ttl);
+		knot_rdata_set_ttl(rr, ttl);
 	}
 }
 
@@ -599,13 +599,12 @@ int knot_rrset_add_rr(knot_rrset_t *rrset,
 		return KNOT_EINVAL;
 	}
 
-	// Create knot_rr_t from given data
-	knot_rr_t rr[knot_rr_array_size(size)];
-	knot_rr_set_size(rr, size);
-	knot_rr_set_ttl(rr, ttl);
-	memcpy(knot_rr_rdata(rr), rdata, size);
+	knot_rdata_t rr[knot_rdata_array_size(size)];
+	knot_rdata_set_rdlen(rr, size);
+	knot_rdata_set_ttl(rr, ttl);
+	memcpy(knot_rdata_data(rr), rdata, size);
 
-	return knot_rrs_add_rr(&rrset->rrs, rr, mm);
+	return knot_rdataset_add(&rrset->rrs, rr, mm);
 }
 
 bool knot_rrset_equal(const knot_rrset_t *r1,
@@ -625,7 +624,7 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 	}
 
 	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {
-		return knot_rrs_eq(&r1->rrs, &r2->rrs);
+		return knot_rdataset_eq(&r1->rrs, &r2->rrs);
 	}
 
 	return true;

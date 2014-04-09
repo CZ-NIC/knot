@@ -17,7 +17,7 @@
 #include "common/debug.h"
 #include "common/descriptor.h"
 #include "libknot/common.h"
-#include "libknot/rdata/dname.h"
+#include "libknot/rdata/rdname.h"
 #include "libknot/rdata/soa.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "knot/nameserver/internet.h"
@@ -129,8 +129,8 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
                      knot_rrinfo_t *rrinfo,
                      struct query_data *qdata)
 {
-	knot_rrs_t synth_rrs;
-	knot_rrs_init(&synth_rrs);
+	knot_rdataset_t synth_rrs;
+	knot_rdataset_init(&synth_rrs);
 	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrs, qdata->mm);
 	if (ret == KNOT_ENOENT) {
 		// No signature
@@ -143,7 +143,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	/* Create rrsig info structure. */
 	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
 	if (info == NULL) {
-		knot_rrs_clear(&synth_rrs, qdata->mm);
+		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
 
@@ -151,7 +151,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	knot_dname_t *owner_copy = knot_dname_copy(sig_owner, qdata->mm);
 	if (owner_copy == NULL) {
 		mm_free(qdata->mm, info);
-		knot_rrs_clear(&synth_rrs, qdata->mm);
+		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
 	knot_rrset_init(&info->synth_rrsig, owner_copy, rrsigs->type, rrsigs->rclass);
@@ -262,7 +262,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 			return KNOT_ENOMEM;
 		}
 		knot_rrset_init(&copy, dname_cpy, soa_rrset.type, soa_rrset.rclass);
-		int ret = knot_rrs_copy(&copy.rrs, &soa_rrset.rrs, &pkt->mm);
+		int ret = knot_rdataset_copy(&copy.rrs, &soa_rrset.rrs, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			knot_dname_free(&dname_cpy, &pkt->mm);
 			return ret;
@@ -709,7 +709,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			return KNOT_ENOMEM;
 		}
 		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass);
-		int ret = knot_rrs_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
+		int ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			knot_dname_free(&qname_cpy, &pkt->mm);
 		}

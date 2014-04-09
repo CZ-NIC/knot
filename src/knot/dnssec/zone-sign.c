@@ -31,7 +31,7 @@
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sign.h"
-#include "libknot/rdata/dname.h"
+#include "libknot/rdata/rdname.h"
 #include "libknot/rdata/rrsig.h"
 #include "libknot/rdata/soa.h"
 #include "knot/dnssec/zone-keys.h"
@@ -266,8 +266,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 			}
 		}
 
-		knot_rr_t *rr_rem = knot_rrs_rr(&synth_rrsig.rrs, i);
-		result = knot_rrs_add_rr(&to_remove->rrs, rr_rem, NULL);
+		knot_rdata_t *rr_rem = knot_rdataset_at(&synth_rrsig.rrs, i);
+		result = knot_rdataset_add(&to_remove->rrs, rr_rem, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -282,7 +282,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		knot_rrset_free(&to_remove, NULL);
 	}
 
-	knot_rrs_clear(&synth_rrsig.rrs, NULL);
+	knot_rdataset_clear(&synth_rrsig.rrs, NULL);
 
 	return result;
 }
@@ -470,8 +470,8 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 			if (to_remove == NULL) {
 				return KNOT_ENOMEM;
 			}
-			knot_rr_t *rr_rem = knot_rrs_rr(&rrsigs->rrs, i);
-			int ret = knot_rrs_add_rr(&to_remove->rrs, rr_rem, NULL);
+			knot_rdata_t *rr_rem = knot_rdataset_at(&rrsigs->rrs, i);
+			int ret = knot_rdataset_add(&to_remove->rrs, rr_rem, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(&to_remove, NULL);
 				return ret;
@@ -788,8 +788,8 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 			}
 		}
 
-		knot_rr_t *to_rem = knot_rrs_rr(&dnskeys->rrs, i);
-		result = knot_rrs_add_rr(&to_remove->rrs, to_rem, NULL);
+		knot_rdata_t *to_rem = knot_rdataset_at(&dnskeys->rrs, i);
+		result = knot_rdataset_add(&to_remove->rrs, to_rem, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -930,8 +930,8 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 			continue;
 		}
 
-		knot_rr_t *to_add = knot_rrs_rr(&dnskeys->rrs, i);
-		result = knot_rrs_add_rr(&new_dnskeys->rrs, to_add, NULL);
+		knot_rdata_t *to_add = knot_rdataset_at(&dnskeys->rrs, i);
+		result = knot_rdataset_add(&new_dnskeys->rrs, to_add, NULL);
 		if (result != KNOT_EOK) {
 			goto fail;
 		}
@@ -1022,7 +1022,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	bool signatures_exist = (!knot_rrset_empty(&dnskeys) &&
 	                        all_signatures_exist(&dnskeys, &dnskey_rrsig,
 	                                             zone_keys, policy));
-	knot_rrs_clear(&dnskey_rrsig.rrs, NULL);
+	knot_rdataset_clear(&dnskey_rrsig.rrs, NULL);
 	if (!modified && signatures_exist) {
 		return KNOT_EOK;
 	}
