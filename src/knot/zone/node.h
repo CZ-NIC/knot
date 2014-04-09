@@ -35,7 +35,6 @@
 
 struct rr_data;
 
-
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
  *        name in a zone.
@@ -73,11 +72,7 @@ struct knot_node {
 	/*!
 	 * \brief Various flags.
 	 *
-	 *   0x01 - node is a delegation point
-	 *   0x02 - node is non-authoritative (under a delegation point)
-	 *   0x04 - NSEC(3) was removed from the node.
-	 *   0x08 - Node has a wildcard child.
-	 *   0x10 - node is empty and will be deleted after update
+	 * \ref knot_node_flags_t
 	 */
 	uint8_t flags;
 };

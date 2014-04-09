@@ -469,8 +469,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 		int next_state = name_found(pkt, qdata);
 
 		/* Put to wildcard node list. */
-		if (wildcard_visit(qdata, wildcard_node, qdata->name)
-		    != KNOT_EOK) {
+		if (wildcard_visit(qdata, wildcard_node, qdata->name) != KNOT_EOK) {
 			next_state = ERROR;
 		}
 
