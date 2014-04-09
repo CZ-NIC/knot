@@ -158,8 +158,7 @@ def do_normal_tests(master, zone, dnssec=False):
     resp.check_record(rtype="CNAME", rdata="mail.ddns.")
     verify(master, zone, dnssec)
 
-    # add new node with CNAME + add A to the same node
-    # the A should be ignored
+    # add new node with CNAME + add A to the same node, A should be ignored
     check_log("Add new CNAME node + add A to it")
     up = master.update(zone)
     up.add("rrtest3.ddns.", "3600", "CNAME", "dont.ignore.me.ddns.")
@@ -167,8 +166,8 @@ def do_normal_tests(master, zone, dnssec=False):
     up.send("NOERROR")
     resp = master.dig("rrtest3.ddns.", "ANY")
     resp.check(rcode="NOERROR")
+    resp.check_record(rtype="TXT", nordata="ignore")
     resp.check_record(rtype="CNAME", rdata="dont.ignore.me.ddns.")
-    compare(resp.count(section="answer"), 1, "Other RRs than CNAME in node")
     verify(master, zone, dnssec)
 
     # add CNAME to CNAME node, should be replaced
@@ -238,7 +237,7 @@ def do_normal_tests(master, zone, dnssec=False):
            "dns1.ddns. hostmaster.ddns. 2010111213 10800 3600 1209600 7200")
     resp = master.dig("ddns.", "SOA")
     resp.check(rcode="NOERROR",
-               rdata="dns1.ddns. hostmaster.ddns. 2014111213 10800 3600 1209600 7200")
+               rdata="dns1.ddns. hostmaster.ddns. 2013111213 10800 3600 1209600 7200")
     verify(master, zone, dnssec)
 
     # add and remove the same record
