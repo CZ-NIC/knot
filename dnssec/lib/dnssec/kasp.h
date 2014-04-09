@@ -48,3 +48,6 @@ int dnssec_kasp_get_zone(dnssec_kasp_t *kasp, const char *zone_name,
 			 dnssec_kasp_zone_t **zone);
 
 void dnssec_kasp_free_zone(dnssec_kasp_zone_t *zone);
+
+int dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone,
+			      dnssec_kasp_key_t **keys, size_t *count);

@@ -434,3 +434,21 @@ void dnssec_kasp_free_zone(dnssec_kasp_zone_t *zone)
 
 	free(zone);
 }
+
+_public_
+int dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone,
+			      dnssec_kasp_key_t **keys_ptr, size_t *count)
+{
+	if (!zone || !keys_ptr || !count) {
+		return DNSSEC_EINVAL;
+	}
+
+	*count = zone->keys_count;
+	if (zone->keys_count > 0) {
+		*keys_ptr = zone->keys;
+	} else {
+		*keys_ptr = NULL;
+	}
+
+	return DNSSEC_EOK;
+}
