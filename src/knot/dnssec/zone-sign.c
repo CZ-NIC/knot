@@ -50,18 +50,6 @@ static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 			      covered->rclass, NULL);
 }
 
-/*!
- * \brief Create empty RRSet from given template RRSet.
- */
-static knot_rrset_t *new_rrset_from(const knot_rrset_t *tpl)
-{
-	if (!tpl) {
-		return NULL;
-	}
-
-	return knot_rrset_new(tpl->owner, tpl->type, tpl->rclass, NULL);
-}
-
 /*- private API - signing of in-zone nodes -----------------------------------*/
 
 /*!
@@ -238,7 +226,6 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 	knot_rrset_t synth_rrsig;
 	knot_rrset_init(&synth_rrsig, rrsigs->owner, KNOT_RRTYPE_RRSIG,
 	                KNOT_CLASS_IN);
-
 	result = knot_synth_rrsig(covered->type, &rrsigs->rrs,
 	                          &synth_rrsig.rrs, NULL);
 	if (result != KNOT_EOK) {
@@ -377,7 +364,6 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 	if (synth_rrsig == NULL) {
 		return KNOT_ENOMEM;
 	}
-
 	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrsig->rrs, NULL);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&synth_rrsig, NULL);
@@ -474,7 +460,10 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		uint16_t type_covered = knot_rrs_rrsig_type_covered(&rrsigs->rrs, i);
 		if (!knot_node_rrtype_exists(node, type_covered)) {
-			knot_rrset_t *to_remove = new_rrset_from(rrsigs);
+			knot_rrset_t *to_remove = knot_rrset_new(rrsigs->owner,
+			                                         rrsigs->type,
+			                                         rrsigs->rclass,
+			                                         NULL);
 			if (to_remove == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -786,7 +775,10 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 		dbg_dnssec_detail("removing DNSKEY with tag %d\n", keytag);
 
 		if (to_remove == NULL) {
-			to_remove = new_rrset_from(dnskeys);
+			to_remove = knot_rrset_new(dnskeys->owner,
+			                           dnskeys->type,
+			                           dnskeys->rclass,
+			                           NULL);
 			if (to_remove == NULL) {
 				result = KNOT_ENOMEM;
 				break;
@@ -1012,27 +1004,22 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	if (result != KNOT_EOK) {
 		return result;
 	}
-	knot_rrset_t *dnskey_rrsig = knot_rrset_new(apex->owner,
-	                                            KNOT_RRTYPE_RRSIG,
-	                                            KNOT_CLASS_IN,
-	                                            NULL);
-	if (dnskey_rrsig == NULL) {
-		return KNOT_ENOMEM;
-	}
+	knot_rrset_t dnskey_rrsig;
+	knot_rrset_init(&dnskey_rrsig, apex->owner, KNOT_RRTYPE_RRSIG,
+	                KNOT_CLASS_IN);
 	result = knot_synth_rrsig(KNOT_RRTYPE_DNSKEY, &rrsigs.rrs,
-	                          &dnskey_rrsig->rrs, NULL);
+	                          &dnskey_rrsig.rrs, NULL);
 	if (result != KNOT_EOK) {
 		if (result != KNOT_ENOENT) {
-			knot_rrset_free(&dnskey_rrsig, NULL);
 			return result;
 		}
 	}
 
 	bool modified = (knot_changeset_size(changeset) != changes_before);
 	bool signatures_exist = (!knot_rrset_empty(&dnskeys) &&
-	                        all_signatures_exist(&dnskeys, dnskey_rrsig,
+	                        all_signatures_exist(&dnskeys, &dnskey_rrsig,
 	                                             zone_keys, policy));
-	knot_rrset_free(&dnskey_rrsig, NULL);
+	knot_rrs_clear(&dnskey_rrsig.rrs, NULL);
 	if (!modified && signatures_exist) {
 		return KNOT_EOK;
 	}
