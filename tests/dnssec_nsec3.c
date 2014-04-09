@@ -23,8 +23,8 @@
 #include "common/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
-#include "libknot/dnssec/nsec3.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata/nsec3.h"
 
 int main(int argc, char *argv[])
 {

@@ -4,7 +4,6 @@
 #include "knot/dnssec/zone-nsec.h"
 
 #include "libknot/common.h"
-#include "libknot/rdata.h"
 #include "common/debug.h"
 
 #define DNSSEC_ENABLED 1

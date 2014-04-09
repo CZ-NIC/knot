@@ -1,14 +1,3 @@
-/*!
- * \file nsec3.h
- *
- * \author Lubos Slovak <lubos.slovak@nic.cz>
- * \author Jan Vcelak <jan.vcelak@nic.cz>
- *
- * \brief Functions for computation of NSEC3 hashes.
- *
- * \addtogroup libknot
- * @{
- */
 /*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -25,51 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_DNSSEC_NSEC3_H_
-#define _KNOT_DNSSEC_NSEC3_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "libknot/consts.h"
-#include "libknot/rrset.h"
-
-/*---------------------------------------------------------------------------*/
-
-/*!
- * \brief Get length of the raw NSEC3 hash.
- *
- * \param algorithm  NSEC3 hash algorithm.
- *
- * \return Length of the hash, 0 for unknown hash algorithm.
- */
-inline static size_t knot_nsec3_hash_length(uint8_t algorithm)
-{
-	if (algorithm == KNOT_NSEC3_ALGORITHM_SHA1) {
-		return 20;
-	} else {
-		return 0;
-	}
-}
-
-/*!
- * \brief Get length of the NSEC3 hash encoded in Base32 encoding.
- *
- * \param algorithm  NSEC3 hash algorithm.
- *
- * \return Length of the hash, 0 for unknown hash algorithm.
- */
-inline static size_t knot_nsec3_hash_b32_length(uint8_t algorithm)
-{
-	if (algorithm == KNOT_NSEC3_ALGORITHM_SHA1) {
-		return 32;
-	} else {
-		return 0;
-	}
-}
-
-/*---------------------------------------------------------------------------*/
+#include "libknot/rr.h"
 
 /*!
  * \brief Structure representing the NSEC3PARAM resource record.
@@ -83,6 +35,41 @@ typedef struct {
 } knot_nsec3_params_t;
 
 /*---------------------------------------------------------------------------*/
+
+static inline
+uint8_t knot_rrs_nsec3param_algorithm(const knot_rrs_t *rrs, size_t pos)
+{
+	RRS_CHECK(rrs, pos, return 0);
+	return *data_offset(rrs, pos, 0);
+}
+
+static inline
+uint8_t knot_rrs_nsec3param_flags(const knot_rrs_t *rrs, size_t pos)
+{
+	RRS_CHECK(rrs, pos, return 0);
+	return *data_offset(rrs, pos, 1);
+}
+
+static inline
+uint16_t knot_rrs_nsec3param_iterations(const knot_rrs_t *rrs, size_t pos)
+{
+	RRS_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u16(data_offset(rrs, pos, 2));
+}
+
+static inline
+uint8_t knot_rrs_nsec3param_salt_length(const knot_rrs_t *rrs, size_t pos)
+{
+	RRS_CHECK(rrs, pos, return 0);
+	return *data_offset(rrs, pos, 4);
+}
+
+static inline
+const uint8_t *knot_rrs_nsec3param_salt(const knot_rrs_t *rrs, size_t pos)
+{
+	RRS_CHECK(rrs, pos, return 0);
+	return data_offset(rrs, pos, 5);
+}
 
 /*!
  * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
@@ -100,21 +87,3 @@ int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
  * \param params Structure with NSEC3 params.
  */
 void knot_nsec3_params_free(knot_nsec3_params_t *params);
-
-/*!
- * \brief Compute NSEC3 hash for given data.
- *
- * \param[in]  params       NSEC3 parameters.
- * \param[in]  data         Data to compute hash for.
- * \param[in]  size         Size of the data.
- * \param[out] digest       Computed hash.
- * \param[out] digest_size  Size of the computed hash.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
-                    size_t size, uint8_t **digest, size_t *digest_size);
-
-#endif // _KNOT_DNSSEC_NSEC3_H_
-
-/*! @} */

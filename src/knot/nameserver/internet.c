@@ -1,13 +1,30 @@
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "common/debug.h"
+#include "common/descriptor.h"
+#include "libknot/common.h"
+#include "libknot/rdata/dname.h"
+#include "libknot/rdata/soa.h"
+#include "libknot/dnssec/rrset-sign.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/zone/zonedb.h"
-#include "libknot/common.h"
-#include "libknot/rdata.h"
-#include "common/debug.h"
-#include "common/descriptor.h"
 #include "knot/server/zones.h"
-#include "libknot/dnssec/rrset-sign.h"
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const knot_node_t *node)

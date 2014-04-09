@@ -211,6 +211,13 @@ src/libknot/packet/wire.h
 src/libknot/processing/process.c
 src/libknot/processing/process.h
 src/libknot/rdata.h
+src/libknot/rdata/dname.h
+src/libknot/rdata/dnskey.h
+src/libknot/rdata/nsec.h
+src/libknot/rdata/nsec3.h
+src/libknot/rdata/nsec3param.h
+src/libknot/rdata/rrsig.h
+src/libknot/rdata/soa.h
 src/libknot/rr.c
 src/libknot/rr.h
 src/libknot/rrset-dump.c

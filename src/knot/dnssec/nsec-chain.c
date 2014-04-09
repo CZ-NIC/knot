@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include "libknot/rdata.h"
 #include "common/debug.h"
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/zone-sign.h"

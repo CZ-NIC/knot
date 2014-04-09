@@ -32,7 +32,6 @@
 #include "libknot/packet/wire.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/dname.h"
-#include "libknot/rdata.h"
 
 static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
                                                size_t pos)

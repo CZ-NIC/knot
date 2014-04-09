@@ -27,7 +27,10 @@
 #include "knot/zone/zone-tree.h"
 #include "libknot/packet/wire.h"
 #include "libknot/consts.h"
-#include "libknot/rdata.h"
+#include "libknot/rdata/rrsig.h"
+#include "libknot/rdata/nsec3.h"
+#include "libknot/rdata/soa.h"
+#include "libknot/rdata/dname.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */

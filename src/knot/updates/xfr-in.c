@@ -32,13 +32,13 @@
 #include "libknot/dnssec/random.h"
 #include "libknot/common.h"
 #include "knot/updates/changesets.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/semantic-check.h"
 #include "common/lists.h"
 #include "common/descriptor.h"
-#include "libknot/rdata.h"
 #include "libknot/util/utils.h"
+#include "libknot/rdata/soa.h"
 
 #define KNOT_NS_TSIG_FREQ 100
 

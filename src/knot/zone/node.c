@@ -24,7 +24,7 @@
 #include "knot/zone/node.h"
 #include "libknot/rrset.h"
 #include "libknot/rr.h"
-#include "libknot/rdata.h"
+#include "libknot/rdata/rrsig.h"
 #include "common/descriptor.h"
 #include "common/debug.h"
 #include "common/mempattern.h"

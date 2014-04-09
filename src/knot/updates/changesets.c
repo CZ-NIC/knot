@@ -24,8 +24,8 @@
 #include "common/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata/soa.h"
 #include "common/debug.h"
-#include "libknot/rdata.h"
 
 int knot_changesets_init(knot_changesets_t **changesets)
 {

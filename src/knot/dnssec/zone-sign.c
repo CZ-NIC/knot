@@ -19,21 +19,24 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <time.h>
+
+#include "common/debug.h"
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "common/hattrie/hat-trie.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
+#include "libknot/rrset.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sign.h"
+#include "libknot/rdata/dname.h"
+#include "libknot/rdata/rrsig.h"
+#include "libknot/rdata/soa.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-sign.h"
-#include "libknot/rdata.h"
-#include "libknot/rrset.h"
 #include "knot/updates/changesets.h"
-#include "common/debug.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-contents.h"
 

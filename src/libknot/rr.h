@@ -206,3 +206,16 @@ int knot_rrs_intersect(const knot_rrs_t *a, const knot_rrs_t *b,
  */
 int knot_rrs_subtract(knot_rrs_t *from, const knot_rrs_t *what,
                       mm_ctx_t *mm);
+
+/*! \brief Accession helpers. */
+#define RRS_CHECK(rrs, pos, code) \
+	if (rrs == NULL || rrs->data == NULL || rrs->rr_count == 0 || \
+	    pos >= rrs->rr_count) { \
+		code; \
+	}
+
+static inline uint8_t *data_offset(const knot_rrs_t *rrs, size_t pos,
+                                   size_t offset) {
+	knot_rr_t *rr = knot_rrs_rr(rrs, pos);
+	return knot_rr_rdata(rr) + offset;
+}

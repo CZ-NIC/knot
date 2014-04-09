@@ -22,8 +22,8 @@
 #include "common/errcode.h"
 #include "knot/zone/zone-diff.h"
 #include "common/descriptor.h"
-#include "libknot/rdata.h"
 #include "libknot/util/utils.h"
+#include "libknot/rdata/soa.h"
 
 struct zone_diff_param {
 	knot_zone_tree_t *nodes;

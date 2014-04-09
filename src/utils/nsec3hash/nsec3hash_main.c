@@ -27,7 +27,6 @@
 #include "common/hex.h"
 #include "common/strtonum.h"
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/nsec3.h"
 
 #define PROGRAM_NAME "knsec3hash"
 

@@ -17,17 +17,10 @@
 #include <assert.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
 
-#include "common/descriptor.h"
-#include "common/memdup.h"
-#include "libknot/common.h"
-#include "libknot/consts.h"
-#include "libknot/dnssec/nsec3.h"
-#include "libknot/rdata.h"
+#include "libknot/rdata/nsec3.h"
 #include "libknot/util/tolower.h"
+#include "common/errcode.h"
 
 /*!
  * \brief Compute NSEC3 SHA1 hash.
@@ -100,49 +93,6 @@ static int nsec3_sha1(const uint8_t *salt, uint8_t salt_length,
 	*digest_size = (size_t)result_size;
 
 	return KNOT_EOK;
-}
-
-/* - public API -------------------------------------------------------------*/
-
-/*!
- * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
- */
-int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
-                                const knot_rrs_t *rrs)
-{
-	if (params == NULL || rrs == NULL || rrs->rr_count == 0) {
-		return KNOT_EINVAL;
-	}
-
-	knot_nsec3_params_t result = { 0 };
-
-	result.algorithm   = knot_rrs_nsec3param_algorithm(rrs, 0);
-	result.iterations  = knot_rrs_nsec3param_iterations(rrs, 0);
-	result.flags       = knot_rrs_nsec3param_flags(rrs, 0);
-	result.salt_length = knot_rrs_nsec3param_salt_length(rrs, 0);
-
-	if (result.salt_length > 0) {
-		result.salt = knot_memdup(knot_rrs_nsec3param_salt(rrs, 0),
-		                          result.salt_length);
-		if (!result.salt) {
-			return KNOT_ENOMEM;
-		}
-	} else {
-		result.salt = NULL;
-	}
-
-	knot_nsec3_params_free(params);
-	*params = result;
-
-	return KNOT_EOK;
-}
-
-/*!
- * \brief Clean up structure with NSEC3 params (do not deallocate).
- */
-void knot_nsec3_params_free(knot_nsec3_params_t *params)
-{
-	free(params->salt);
 }
 
 /*!

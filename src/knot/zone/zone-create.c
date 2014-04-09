@@ -34,7 +34,6 @@
 #include "knot/other/debug.h"
 #include "knot/zone/zone-create.h"
 #include "zscanner/zscanner.h"
-#include "libknot/rdata.h"
 
 void process_error(const zs_scanner_t *s)
 {

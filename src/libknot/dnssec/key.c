@@ -32,7 +32,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sig0.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 #include "zscanner/zscanner.h"
 
 /*!

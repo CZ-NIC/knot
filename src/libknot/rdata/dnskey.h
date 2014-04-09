@@ -1,0 +1,53 @@
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include "libknot/rr.h"
+
+#define KNOT_RDATA_DNSKEY_FLAG_KSK 1
+
+static inline
+uint16_t knot_rrs_dnskey_flags(const knot_rrs_t *rrs, size_t pos)
+{
+	RRS_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u16(data_offset(rrs, pos, 0));
+}
+
+static inline
+uint8_t knot_rrs_dnskey_proto(const knot_rrs_t *rrs, size_t pos)
+{
+	RRS_CHECK(rrs, pos, return 0);
+
+	return *data_offset(rrs, pos, 2);
+}
+
+static inline
+uint8_t knot_rrs_dnskey_alg(const knot_rrs_t *rrs, size_t pos)
+{
+	RRS_CHECK(rrs, pos, return 0);
+	return *data_offset(rrs, pos, 3);
+}
+
+static inline
+void knot_rrs_dnskey_key(const knot_rrs_t *rrs, size_t pos, uint8_t **key,
+                           uint16_t *key_size)
+{
+	RRS_CHECK(rrs, pos, return);
+	*key = data_offset(rrs, pos, 4);
+	const knot_rr_t *rr = knot_rrs_rr(rrs, pos);
+	*key_size = knot_rr_rdata_size(rr) - 4;
+}

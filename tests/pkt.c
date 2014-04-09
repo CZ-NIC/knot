@@ -19,9 +19,9 @@
 
 #include "common/errcode.h"
 #include "common/mempool.h"
-#include "libknot/rdata.h"
+#include "common/descriptor.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 
 #define TTL 7200
 #define NAMECOUNT 3

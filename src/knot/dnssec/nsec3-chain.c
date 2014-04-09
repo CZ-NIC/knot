@@ -19,7 +19,6 @@
 #include "common/base32hex.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
-#include "libknot/rdata.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/zone-contents.h"
 #include "knot/zone/zone-diff.h"
@@ -27,6 +26,7 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/bitmap.h"
+#include "libknot/rdata/nsec3.h"
 
 /* - Forward declarations --------------------------------------------------- */
 

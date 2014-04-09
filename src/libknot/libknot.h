@@ -33,13 +33,20 @@
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
 #include "libknot/packet/pkt.h"
+#include "libknot/rr.h"
 #include "libknot/rrset.h"
 #include "libknot/rrset-dump.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/dname.h"
+#include "libknot/rdata/dnskey.h"
+#include "libknot/rdata/nsec3.h"
+#include "libknot/rdata/nsec3param.h"
+#include "libknot/rdata/nsec.h"
+#include "libknot/rdata/rrsig.h"
+#include "libknot/rdata/soa.h"
+#include "libknot/rdata/tsig.h"
 #include "libknot/tsig-op.h"
 #include "libknot/util/tolower.h"
 #include "libknot/util/utils.h"
-#include "libknot/rdata.h"
 
 #endif
 

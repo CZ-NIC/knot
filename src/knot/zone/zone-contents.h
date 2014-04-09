@@ -27,10 +27,9 @@
 #ifndef _KNOT_ZONE_CONTENTS_H_
 #define _KNOT_ZONE_CONTENTS_H_
 
-#include "knot/zone/node.h"
-#include "libknot/dnssec/nsec3.h"
 #include "common/lists.h"
-
+#include "libknot/rdata/nsec3param.h"
+#include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"
 
 struct zone_t;
