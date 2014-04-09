@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 
 static inline
 const knot_dname_t *knot_nsec_next(const knot_rrs_t *rrs)

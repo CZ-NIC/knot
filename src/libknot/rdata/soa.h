@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 #include "libknot/dname.h"
 
 static inline

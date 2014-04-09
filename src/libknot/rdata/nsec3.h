@@ -32,7 +32,7 @@
 #include <string.h>
 
 #include "libknot/consts.h"
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 #include "libknot/rdata/nsec3param.h"
 
 static inline

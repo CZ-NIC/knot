@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 
 static inline
 uint16_t knot_rrsig_type_covered(const knot_rrs_t *rrs, size_t pos)

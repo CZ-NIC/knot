@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 
 #define KNOT_RDATA_DNSKEY_FLAG_KSK 1
 

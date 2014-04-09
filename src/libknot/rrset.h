@@ -33,7 +33,7 @@
 #include "common/mempattern.h"
 
 #include "libknot/dname.h"
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 
 struct knot_compr;
 struct knot_node;

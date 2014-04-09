@@ -21,7 +21,7 @@
 #include <string.h>
 
 #include "libknot/consts.h"
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 
 /*!
  * \brief Structure representing the NSEC3PARAM resource record.

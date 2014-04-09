@@ -19,24 +19,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 #include "libknot/common.h"
-#include "common/errcode.h"
-
-#ifndef STRICT_ALIGNMENT
-#pragma pack(push, 1)
-#endif
-
-/*!< \brief Helper structure - offsets in RR array. */
-struct rr_offsets {
-	uint32_t ttl;
-	uint16_t size;
-	uint8_t rdata[];
-};
-
-#ifndef STRICT_ALIGNMENT
-#pragma pack(pop)
-#endif
 
 static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 {
@@ -58,6 +42,7 @@ static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 		return realloc(what, size);
 	}
 }
+
 
 static knot_rr_t *rr_seek(knot_rr_t *d, size_t pos)
 {
@@ -178,50 +163,6 @@ static int remove_rr_at(knot_rrs_t *rrs, size_t pos, mm_ctx_t *mm)
 	rrs->rr_count--;
 
 	return KNOT_EOK;
-}
-
-uint16_t knot_rr_rdata_size(const knot_rr_t *rr)
-{
-	return ((struct rr_offsets *)rr)->size;
-}
-
-void knot_rr_set_size(knot_rr_t *rr, uint16_t size)
-{
-	((struct rr_offsets *)rr)->size = size;
-}
-
-uint32_t knot_rr_ttl(const knot_rr_t *rr)
-{
-	return ((struct rr_offsets *)rr)->ttl;
-}
-
-void knot_rr_set_ttl(knot_rr_t *rr, uint32_t ttl)
-{
-	((struct rr_offsets *)rr)->ttl = ttl;
-}
-
-uint8_t *knot_rr_rdata(const knot_rr_t *rr)
-{
-	return ((struct rr_offsets *)rr)->rdata;
-}
-
-size_t knot_rr_array_size(uint16_t size)
-{
-	return size + sizeof(struct rr_offsets);
-}
-
-int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2)
-{
-	assert(rr1 && rr2);
-	const uint8_t *r1 = knot_rr_rdata(rr1);
-	const uint8_t *r2 = knot_rr_rdata(rr2);
-	uint16_t l1 = knot_rr_rdata_size(rr1);
-	uint16_t l2 = knot_rr_rdata_size(rr2);
-	int cmp = memcmp(r1, r2, MIN(l1, l2));
-	if (cmp == 0 && l1 != l2) {
-		cmp = l1 < l2 ? -1 : 1;
-	}
-	return cmp;
 }
 
 void knot_rrs_init(knot_rrs_t *rrs)
@@ -405,4 +346,3 @@ int knot_rrs_subtract(knot_rrs_t *from, const knot_rrs_t *what, mm_ctx_t *mm)
 
 	return KNOT_EOK;
 }
-

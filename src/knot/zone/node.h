@@ -31,7 +31,7 @@
 #include "common/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 
 struct rr_data;
 

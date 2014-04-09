@@ -33,7 +33,7 @@
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/rr.h"
+#include "libknot/rdataset.h"
 #include "libknot/rrset.h"
 #include "libknot/rrset-dump.h"
 #include "libknot/rdata/dname.h"
