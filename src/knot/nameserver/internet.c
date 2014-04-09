@@ -126,7 +126,6 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	/* Create rrsig info structure. */
 	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
 	if (info == NULL) {
-		ERR_ALLOC_FAILED;
 		knot_rrs_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
@@ -134,7 +133,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	/* Store RRSIG into info structure. */
 	knot_dname_t *owner_copy = knot_dname_copy(sig_owner, qdata->mm);
 	if (owner_copy == NULL) {
-		free(info);
+		mm_free(qdata->mm, info);
 		knot_rrs_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
