@@ -655,11 +655,6 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	uint32_t ttl = knot_wire_read_u32(wire + *pos + 2 * sizeof(uint16_t));
 	uint16_t rdlength = knot_wire_read_u16(wire + *pos + 4 * sizeof(uint16_t));
 
-	rrset->owner = owner;
-	rrset->type = type;
-	rrset->rclass = rclass;
-	rrset->additional = NULL;
-
 	*pos += KNOT_RR_HEADER_SIZE;
 
 	dbg_packet_verb("%s: read type %u, class %u, ttl %u, rdlength %u\n",
@@ -667,14 +662,11 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	if (size - *pos < rdlength) {
 		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
-		knot_rrset_clear(rrset, mm);
+		knot_dname_free(&owner, mm);
 		return KNOT_EMALF;
 	}
 
-	// parse RDATA
-	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
-	 *        probably. */
-	knot_rrs_init(&rrset->rrs);
+	knot_rrset_init(rrset, owner, type, rclass);
 	int ret = knot_rrset_rdata_from_wire_one(rrset, wire, pos, size, ttl,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
