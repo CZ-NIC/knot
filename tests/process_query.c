@@ -48,8 +48,7 @@ void create_root_zone(server_t *server, mm_ctx_t *mm)
 	zone_t *root = zone_new(conf);
 	root->contents = knot_zone_contents_new(root->name);
 
-	knot_dname_t *root_name = knot_dname_copy(root->name, NULL);
-	knot_rrset_t *soa_rrset = knot_rrset_new(root_name,
+	knot_rrset_t *soa_rrset = knot_rrset_new(root->name,
 	                                         KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
 	                                         NULL);
 	knot_rrset_add_rr(soa_rrset, SOA_RDATA, SOA_RDLEN, 7200, NULL);

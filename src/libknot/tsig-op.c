@@ -449,18 +449,11 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 		return KNOT_EINVAL;
 	}
 
-	knot_dname_t *key_name_copy = knot_dname_copy(key->name, NULL);
-	if (!key_name_copy) {
-		dbg_tsig("TSIG: key_name_copy = NULL\n");
-		return KNOT_ENOMEM;
-	}
-
 	knot_rrset_t *tmp_tsig =
-		knot_rrset_new(key_name_copy,
-			       KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY, NULL);
+		knot_rrset_new(key->name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY,
+		               NULL);
 	if (!tmp_tsig) {
 		dbg_tsig("TSIG: tmp_tsig = NULL\n");
-		knot_dname_free(&key_name_copy, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -556,15 +549,9 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	uint8_t digest_tmp[KNOT_TSIG_MAX_DIGEST_SIZE];
 	size_t digest_tmp_len = 0;
-
-	/* Create tmp TSIG. */
-	knot_dname_t *owner_copy = knot_dname_copy(key->name, NULL);
-	knot_rrset_t *tmp_tsig = knot_rrset_new(owner_copy,
-	                                        KNOT_RRTYPE_TSIG,
-	                                        KNOT_CLASS_ANY,
-	                                        NULL);
+	knot_rrset_t *tmp_tsig = knot_rrset_new(key->name, KNOT_RRTYPE_TSIG,
+	                                        KNOT_CLASS_ANY, NULL);
 	if (!tmp_tsig) {
-		knot_dname_free(&owner_copy, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -813,19 +800,11 @@ int knot_tsig_add(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	/*! \todo What key to use, when we do not sign? Does this even work? */
-	knot_dname_t *key_name =
-			knot_dname_copy(tsig_rr->owner, NULL);
-	if (key_name == NULL) {
-		dbg_tsig("TSIG: failed to copy owner\n");
-		return KNOT_ERROR;
-	}
-
 	knot_rrset_t *tmp_tsig =
-		knot_rrset_new(key_name, KNOT_RRTYPE_TSIG, KNOT_CLASS_ANY,
-		               NULL);
+		knot_rrset_new(tsig_rr->owner, KNOT_RRTYPE_TSIG,
+		               KNOT_CLASS_ANY, NULL);
 	if (!tmp_tsig) {
 		dbg_tsig("TSIG: tmp_tsig = NULL\n");
-		knot_dname_free(&key_name, NULL);
 		return KNOT_ENOMEM;
 	}
 

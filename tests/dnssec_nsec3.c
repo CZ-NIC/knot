@@ -55,7 +55,9 @@ int main(int argc, char *argv[])
 		'a', 'b', 'c', 'd'     // salt
 	};
 
-	rrset = knot_rrset_new(NULL, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
+	knot_dname_t *owner = knot_dname_from_str("test.");
+	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
+	knot_dname_free(&owner, NULL);
 
 	result = knot_rrset_add_rr(rrset, rdata, sizeof(rdata), 0, NULL);
 	if (result == KNOT_EOK) {

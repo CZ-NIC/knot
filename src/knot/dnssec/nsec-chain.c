@@ -41,14 +41,9 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 {
 	assert(from);
 	assert(to);
-
-	// Create new RRSet
-	knot_dname_t *owner_cpy = knot_dname_copy(from->owner, NULL);
-	knot_rrset_t *rrset = knot_rrset_new(owner_cpy,
-	                                     KNOT_RRTYPE_NSEC, KNOT_CLASS_IN,
-	                                     NULL);
+	knot_rrset_t *rrset = knot_rrset_new(from->owner, KNOT_RRTYPE_NSEC,
+					     KNOT_CLASS_IN, NULL);
 	if (!rrset) {
-		knot_dname_free(&owner_cpy, NULL);
 		return NULL;
 	}
 
@@ -235,17 +230,11 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 
 	knot_rrset_t rrsigs = knot_node_rrset(n, KNOT_RRTYPE_RRSIG);
 	if (!knot_rrset_empty(&rrsigs)) {
-		// Sythesize RRSets' RRSIG
-		knot_dname_t *dname_cpy = knot_dname_copy(n->owner, NULL);
-		if (dname_cpy == NULL) {
-			return KNOT_ENOMEM;
-		}
-		knot_rrset_t *synth_rrsigs = knot_rrset_new(dname_cpy,
-		                                            KNOT_RRTYPE_RRSIG,
-		                                            KNOT_CLASS_IN,
-		                                            NULL);
+		knot_rrset_t *synth_rrsigs = knot_rrset_new(n->owner,
+							    KNOT_RRTYPE_RRSIG,
+							    KNOT_CLASS_IN,
+							    NULL);
 		if (synth_rrsigs == NULL) {
-			knot_dname_free(&dname_cpy, NULL);
 			return KNOT_ENOMEM;
 		}
 		result = knot_synth_rrsig(KNOT_RRTYPE_NSEC, &rrsigs.rrs,

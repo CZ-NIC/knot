@@ -227,14 +227,10 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 	* changed/removed rdatas. This has awful computation time.
 	*/
 	/* Create fake RRSet, it will be easier to handle. */
-	knot_dname_t *owner_copy = knot_dname_copy(rrset1->owner,
-								 NULL);
-	*changes = knot_rrset_new(owner_copy,
-	                          rrset1->type,
-	                          rrset1->rclass,
-	                          NULL);
+
+	*changes = knot_rrset_new(rrset1->owner, rrset1->type,
+	                          rrset1->rclass, NULL);
 	if (*changes == NULL) {
-		knot_dname_free(&owner_copy, NULL);
 		dbg_zonediff("zone_diff: diff_rdata: "
 		             "Could not create RRSet with changes.\n");
 		return KNOT_ENOMEM;

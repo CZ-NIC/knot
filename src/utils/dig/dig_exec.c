@@ -107,8 +107,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		                                   KNOT_RRTYPE_SOA,
 		                                   query->class_num,
 		                                   &packet->mm);
+		knot_dname_free(&qname, NULL);
 		if (soa == NULL) {
-			knot_dname_free(&qname, NULL);
 			knot_pkt_free(&packet);
 			return NULL;
 		}

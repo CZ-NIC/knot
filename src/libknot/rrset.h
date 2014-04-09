@@ -73,9 +73,8 @@ typedef enum {
  *
  * \return New RRSet structure or NULL if an error occured.
  */
-knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
-                             uint16_t rclass,
-                             mm_ctx_t *mm);
+knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
+                             uint16_t rclass, mm_ctx_t *mm);
 
 /*!
  * \brief Initializes RRSet structure with given data.

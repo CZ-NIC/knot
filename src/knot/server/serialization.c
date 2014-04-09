@@ -167,8 +167,8 @@ int rrset_deserialize(const uint8_t *stream, size_t *stream_size,
 
 	/* Create new RRSet. */
 	*rrset = knot_rrset_new(owner, type, rclass, NULL);
+	knot_dname_free(&owner, NULL);
 	if (*rrset == NULL) {
-		knot_dname_free(&owner, NULL);
 		return KNOT_ENOMEM;
 	}
 

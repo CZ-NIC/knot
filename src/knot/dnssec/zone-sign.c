@@ -46,10 +46,8 @@ static knot_rrset_t *create_empty_rrsigs_for(const knot_rrset_t *covered)
 {
 	assert(!knot_rrset_empty(covered));
 
-	knot_dname_t *owner_copy = knot_dname_copy(covered->owner, NULL);
-
-	return knot_rrset_new(owner_copy, KNOT_RRTYPE_RRSIG, covered->rclass,
-	                      NULL);
+	return knot_rrset_new(covered->owner, KNOT_RRTYPE_RRSIG,
+			      covered->rclass, NULL);
 }
 
 /*!
@@ -61,12 +59,7 @@ static knot_rrset_t *new_rrset_from(const knot_rrset_t *tpl)
 		return NULL;
 	}
 
-	knot_dname_t *owner = knot_dname_copy(tpl->owner, NULL);
-	if (!owner) {
-		return NULL;
-	}
-
-	return knot_rrset_new(owner, tpl->type, tpl->rclass, NULL);
+	return knot_rrset_new(tpl->owner, tpl->type, tpl->rclass, NULL);
 }
 
 /*- private API - signing of in-zone nodes -----------------------------------*/
@@ -379,15 +372,9 @@ static int remove_rrset_rrsigs(const knot_dname_t *owner, uint16_t type,
 {
 	assert(owner);
 	assert(changeset);
-
-	knot_dname_t *dname_cpy = knot_dname_copy(owner, NULL);
-	if (dname_cpy == NULL) {
-		return KNOT_ENOMEM;
-	}
-	knot_rrset_t *synth_rrsig = knot_rrset_new(dname_cpy, KNOT_RRTYPE_RRSIG,
-	                                           KNOT_CLASS_IN, NULL);
+	knot_rrset_t *synth_rrsig =
+		knot_rrset_new(owner, KNOT_RRTYPE_RRSIG, KNOT_CLASS_IN, NULL);
 	if (synth_rrsig == NULL) {
-		knot_dname_free(&dname_cpy, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -838,13 +825,7 @@ static knot_rrset_t *create_dnskey_rrset_from_soa(const knot_rrset_t *soa)
 {
 	assert(soa);
 
-	knot_dname_t *owner = knot_dname_copy(soa->owner, NULL);
-	if (!owner) {
-		return NULL;
-	}
-
-	return knot_rrset_new(owner, KNOT_RRTYPE_DNSKEY, soa->rclass,
-	                      NULL);
+	return knot_rrset_new(soa->owner, KNOT_RRTYPE_DNSKEY, soa->rclass, NULL);
 }
 
 /*!
@@ -1031,15 +1012,11 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	if (result != KNOT_EOK) {
 		return result;
 	}
-
-	knot_dname_t *dname_cpy = knot_dname_copy(apex->owner, NULL);
-	if (dname_cpy == NULL) {
-		return KNOT_ENOMEM;
-	}
-	knot_rrset_t *dnskey_rrsig = knot_rrset_new(dname_cpy, KNOT_RRTYPE_RRSIG,
-	                                            KNOT_CLASS_IN, NULL);
+	knot_rrset_t *dnskey_rrsig = knot_rrset_new(apex->owner,
+	                                            KNOT_RRTYPE_RRSIG,
+	                                            KNOT_CLASS_IN,
+	                                            NULL);
 	if (dnskey_rrsig == NULL) {
-		knot_dname_free(&dname_cpy, NULL);
 		return KNOT_ENOMEM;
 	}
 	result = knot_synth_rrsig(KNOT_RRTYPE_DNSKEY, &rrsigs.rrs,

@@ -341,16 +341,22 @@ static int binary_store(uint8_t *rdata, size_t *offset, size_t packet_offset,
 	return KNOT_EOK;
 }
 
-knot_rrset_t *knot_rrset_new(knot_dname_t *owner, uint16_t type,
+knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
                              uint16_t rclass, mm_ctx_t *mm)
 {
-	knot_rrset_t *ret = mm_alloc(mm, sizeof(knot_rrset_t));
-	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
+	knot_dname_t *owner_cpy = knot_dname_copy(owner, mm);
+	if (owner_cpy == NULL) {
 		return NULL;
 	}
 
-	knot_rrset_init(ret, owner, type, rclass);
+	knot_rrset_t *ret = mm_alloc(mm, sizeof(knot_rrset_t));
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		knot_dname_free(&owner_cpy, mm);
+		return NULL;
+	}
+
+	knot_rrset_init(ret, owner_cpy, type, rclass);
 
 	return ret;
 }
@@ -376,14 +382,9 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 		return NULL;
 	}
 
-	knot_dname_t *owner_cpy = knot_dname_copy(src->owner, mm);
-	if (owner_cpy == NULL) {
-		return NULL;
-	}
-
-	knot_rrset_t *rrset = knot_rrset_new(owner_cpy, src->type, src->rclass, mm);
+	knot_rrset_t *rrset = knot_rrset_new(src->owner, src->type,
+	                                     src->rclass, mm);
 	if (rrset == NULL) {
-		knot_dname_free(&owner_cpy, NULL);
 		return NULL;
 	}
 
@@ -393,7 +394,6 @@ knot_rrset_t *knot_rrset_copy(const knot_rrset_t *src, mm_ctx_t *mm)
 		return NULL;
 	}
 
-	rrset->additional = NULL;
 	return rrset;
 }
 

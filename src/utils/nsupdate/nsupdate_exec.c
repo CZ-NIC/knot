@@ -290,16 +290,10 @@ static srv_info_t *parse_host(const char *lp, const char* default_port)
 /* Append parsed RRSet to list. */
 static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 {
-	/* Form a rrset. */
-	knot_dname_t *owner = knot_dname_copy(s->r_owner, NULL);
-	if (!owner) {
-		DBG("%s: failed to create dname\n", __func__);
-		return KNOT_ENOMEM;
-	}
-	knot_rrset_t *rr = knot_rrset_new(owner, s->r_type, s->r_class, NULL);
+	knot_rrset_t *rr = knot_rrset_new(s->r_owner, s->r_type, s->r_class,
+	                                  NULL);
 	if (!rr) {
 		DBG("%s: failed to create rrset\n", __func__);
-		knot_dname_free(&owner, NULL);
 		return KNOT_ENOMEM;
 	}
 
