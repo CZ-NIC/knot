@@ -231,7 +231,7 @@ static knot_rrset_t *synth_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t 
 	knot_dname_t* qname = knot_dname_copy(qdata->name, &pkt->mm);
 	knot_rrset_t *rr = knot_rrset_new(qname, 0, KNOT_CLASS_IN, &pkt->mm);
 	if (rr == NULL) {
-		knot_dname_free(&qname, NULL);
+		knot_dname_free(&qname, &pkt->mm);
 		return NULL;
 	}
 
