@@ -78,7 +78,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	if (owner_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrset_init(cname_rrset, owner_copy, KNOT_RRTYPE_CNAME, dname_rr->type);
+	knot_rrset_init(cname_rrset, owner_copy, KNOT_RRTYPE_CNAME, dname_rr->rclass);
 
 	/* Replace last labels of qname with DNAME. */
 	const knot_dname_t *dname_wire = dname_rr->owner;
