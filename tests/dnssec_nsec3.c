@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 	result = knot_rrset_add_rr(rrset, rdata, sizeof(rdata), 0, NULL);
 	if (result == KNOT_EOK) {
-		result = knot_nsec3_params_from_wire(&params, &rrset->rrs);
+		result = knot_nsec3param_from_wire(&params, &rrset->rrs);
 	}
 
 	is_int(1, params.algorithm, "parse algorithm from wire");
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	is_int(0, memcmp(params.salt, "abcd", 4), "parse salt from wire");
 
 	knot_rrset_free(&rrset, NULL);
-	knot_nsec3_params_free(&params);
+	knot_nsec3param_free(&params);
 
 	// hash computation
 

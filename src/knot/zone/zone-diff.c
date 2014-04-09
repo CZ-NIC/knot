@@ -60,8 +60,8 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-	int64_t soa_serial1 = knot_rrs_soa_serial(&soa_rrset1.rrs);
-	int64_t soa_serial2 = knot_rrs_soa_serial(&soa_rrset2.rrs);
+	int64_t soa_serial1 = knot_soa_serial(&soa_rrset1.rrs);
+	int64_t soa_serial2 = knot_soa_serial(&soa_rrset2.rrs);
 
 	if (knot_serial_compare(soa_serial1, soa_serial2) == 0) {
 		return KNOT_ENODIFF;

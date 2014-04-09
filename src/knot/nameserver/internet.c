@@ -76,7 +76,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 
 	/* Replace last labels of qname with DNAME. */
 	const knot_dname_t *dname_wire = dname_rr->owner;
-	const knot_dname_t *dname_tgt = knot_rrs_dname_target(&dname_rr->rrs);
+	const knot_dname_t *dname_tgt = knot_dname_target(&dname_rr->rrs);
 	int labels = knot_dname_labels(dname_wire, NULL);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
 	if (cname == NULL) {
@@ -108,7 +108,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 {
 	if (knot_dname_labels(qname, NULL)
 		- knot_dname_labels(rrset->owner, NULL)
-		+ knot_dname_labels(knot_rrs_dname_target(&rrset->rrs), NULL)
+		+ knot_dname_labels(knot_dname_target(&rrset->rrs), NULL)
 		> KNOT_DNAME_MAXLABELS) {
 		return true;
 	} else {
@@ -254,7 +254,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 	// MINIMUM as TTL
 	int ret = KNOT_EOK;
 	uint32_t flags = KNOT_PF_NOTRUNC;
-	uint32_t min = knot_rrs_soa_minimum(&soa_rrset.rrs);
+	uint32_t min = knot_soa_minimum(&soa_rrset.rrs);
 	if (min < knot_rrset_rr_ttl(&soa_rrset, 0)) {
 		knot_rrset_t copy;
 		knot_dname_t *dname_cpy = knot_dname_copy(soa_rrset.owner, &pkt->mm);
@@ -409,7 +409,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	}
 
 	/* Now follow the next CNAME TARGET. */
-	qdata->name = knot_rrs_cname_name(&cname_rr.rrs);
+	qdata->name = knot_cname_name(&cname_rr.rrs);
 
 #ifdef KNOT_NS_DEBUG
 	char *cname_str = knot_dname_to_str(cname_node->owner);

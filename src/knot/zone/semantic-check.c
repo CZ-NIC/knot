@@ -303,7 +303,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		return KNOT_ENOMEM;
 	}
 
-	if (knot_rrs_rrsig_type_covered(rrsig, 0) != rrset->type) {
+	if (knot_rrsig_type_covered(rrsig, 0) != rrset->type) {
 		/* zoneparser would not let this happen
 		 * but to be on the safe side
 		 */
@@ -313,7 +313,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* label number at the 2nd index should be same as owner's */
-	uint8_t labels_rdata = knot_rrs_rrsig_labels(rrsig, rr_pos);
+	uint8_t labels_rdata = knot_rrsig_labels(rrsig, rr_pos);
 
 	int tmp = knot_dname_labels(rrset->owner, NULL) - labels_rdata;
 
@@ -333,7 +333,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* check original TTL */
-	uint32_t original_ttl = knot_rrs_rrsig_original_ttl(rrsig, rr_pos);
+	uint32_t original_ttl = knot_rrsig_original_ttl(rrsig, rr_pos);
 
 	uint16_t rr_count = knot_rrset_rr_count(rrset);
 	for (uint16_t i = 0; i < rr_count; ++i) {
@@ -345,7 +345,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* Check for expired signature. */
-	if (knot_rrs_rrsig_sig_expiration(rrsig, rr_pos) < time(NULL)) {
+	if (knot_rrsig_sig_expiration(rrsig, rr_pos) < time(NULL)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_EXPIRATION,
 		                         info_str);
@@ -359,7 +359,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	/* signer's name is same as in the zone apex */
 	const knot_dname_t *signer_name =
-		knot_rrs_rrsig_signer_name(rrsig, rr_pos);
+		knot_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
 	if (!knot_rrset_empty(dnskey_rrset) &&
@@ -374,12 +374,12 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	 * before */
 
 	int match = 0;
-	uint8_t rrsig_alg = knot_rrs_rrsig_algorithm(rrsig, rr_pos);
-	uint16_t key_tag_rrsig = knot_rrs_rrsig_key_tag(rrsig, rr_pos);
+	uint8_t rrsig_alg = knot_rrsig_algorithm(rrsig, rr_pos);
+	uint16_t key_tag_rrsig = knot_rrsig_key_tag(rrsig, rr_pos);
 	for (uint16_t i = 0; i < knot_rrset_rr_count(dnskey_rrset) &&
 	     !match; ++i) {
 		uint8_t dnskey_alg =
-			knot_rrs_dnskey_alg(&dnskey_rrset->rrs, i);
+			knot_dnskey_alg(&dnskey_rrset->rrs, i);
 		if (rrsig_alg != dnskey_alg) {
 			continue;
 		}
@@ -520,9 +520,9 @@ static int rdata_nsec_to_type_array(const knot_rrs_t *rrs, uint16_t type,
 	uint8_t *data = NULL;
 	uint16_t rr_bitmap_size = 0;
 	if (type == KNOT_RRTYPE_NSEC) {
-		knot_rrs_nsec_bitmap(rrs, &data, &rr_bitmap_size);
+		knot_nsec_bitmap(rrs, &data, &rr_bitmap_size);
 	} else {
-		knot_rrs_nsec3_bitmap(rrs, pos, &data, &rr_bitmap_size);
+		knot_nsec3_bitmap(rrs, pos, &data, &rr_bitmap_size);
 	}
 	if (data == NULL) {
 		return KNOT_EMALF;
@@ -627,7 +627,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 
 			/* check for Opt-Out flag */
 			uint8_t flags =
-				knot_rrs_nsec3_flags(previous_rrs, 0);
+				knot_nsec3_flags(previous_rrs, 0);
 			uint8_t opt_out_mask = 1;
 
 			if (!(flags & opt_out_mask)) {
@@ -651,7 +651,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	const knot_rr_t *nsec3_rr = knot_rrs_rr(nsec3_rrs, 0);
 	const knot_rrs_t *soa_rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs);
-	uint32_t minimum_ttl = knot_rrs_soa_minimum(soa_rrs);
+	uint32_t minimum_ttl = knot_soa_minimum(soa_rrs);
 	if (knot_rr_ttl(nsec3_rr) != minimum_ttl) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_NSEC3_RDATA_TTL, NULL);
@@ -661,7 +661,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	const knot_node_t *apex = knot_zone_contents_apex(zone);
 	uint8_t *next_dname_str = NULL;
 	uint8_t next_dname_size = 0;
-	knot_rrs_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
+	knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
 	                           &next_dname_size);
 	knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
 	                                                    next_dname_size,
@@ -786,7 +786,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 
 	for (int i = 0; i < ns_rrs->rr_count; ++i) {
 		const knot_dname_t *ns_dname =
-			knot_rrs_ns_name(ns_rrs, i);
+			knot_ns_name(ns_rrs, i);
 		const knot_node_t *glue_node =
 			knot_zone_contents_find_node(zone, ns_dname);
 
@@ -946,7 +946,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			 * the next link in each node.
 			 */
 			const knot_dname_t *next_domain =
-				knot_rrs_nsec_next(nsec_rrs);
+				knot_nsec_next(nsec_rrs);
 			// Convert name to lowercase for trie lookup
 			knot_dname_t *lowercase = knot_dname_copy(next_domain, NULL);
 			if (lowercase == NULL) {
@@ -1080,7 +1080,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		const knot_node_t *apex = knot_zone_contents_apex(zone);
 		uint8_t *next_dname_str = NULL;
 		uint8_t next_dname_size = 0;
-		knot_rrs_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
+		knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
 		                           &next_dname_size);
 		knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
 		                                                    next_dname_size,
@@ -1123,7 +1123,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 				return;
 			}
 
-			const knot_dname_t *next_dname = knot_rrs_nsec_next(nsec_rrs);
+			const knot_dname_t *next_dname = knot_nsec_next(nsec_rrs);
 			assert(next_dname);
 
 			const knot_dname_t *apex_dname =

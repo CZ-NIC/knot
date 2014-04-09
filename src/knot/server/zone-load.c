@@ -205,7 +205,7 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 	if (zone->contents && zone->contents->apex) {
 		const knot_rrs_t *soa = knot_node_rrs(zone->contents->apex,
 		                                      KNOT_RRTYPE_SOA);
-		serial = knot_rrs_soa_serial(soa);
+		serial = knot_soa_serial(soa);
 	}
 
 	log_zone_info("Zone '%s' %s (serial %" PRId64 ")\n", zone_name, action, serial);

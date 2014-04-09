@@ -104,7 +104,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
  */
 static uint32_t zones_soa_refresh(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrs_soa_refresh);
+	return zones_soa_timer(zone, knot_soa_refresh);
 }
 
 /*!
@@ -115,7 +115,7 @@ static uint32_t zones_soa_refresh(zone_t *zone)
  */
 static uint32_t zones_soa_retry(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrs_soa_retry);
+	return zones_soa_timer(zone, knot_soa_retry);
 }
 
 /*!
@@ -126,7 +126,7 @@ static uint32_t zones_soa_retry(zone_t *zone)
  */
 static uint32_t zones_soa_expire(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rrs_soa_expire);
+	return zones_soa_timer(zone, knot_soa_expire);
 }
 
 /*!
@@ -509,7 +509,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		dbg_xfr_verb("xfr: reading RRSets to REMOVE, first RR is %hu\n",
 		             rrset->type);
 		assert(rrset->type == KNOT_RRTYPE_SOA);
-		assert(chs->serial_from == knot_rrs_soa_serial(&rrset->rrs));
+		assert(chs->serial_from == knot_soa_serial(&rrset->rrs));
 		knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
 
 		/* Read remaining RRSets */
@@ -955,7 +955,7 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 	                                          KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 
-	int64_t serial_ret = knot_rrs_soa_serial(soa_rrs);
+	int64_t serial_ret = knot_soa_serial(soa_rrs);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		pthread_mutex_unlock(&zone->lock);
@@ -1839,7 +1839,7 @@ int zones_journal_apply(zone_t *zone)
 	const knot_rrs_t *soa_rrs = 0;
 	soa_rrs = knot_node_rrs(contents->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
-	int64_t serial_ret = knot_rrs_soa_serial(soa_rrs);
+	int64_t serial_ret = knot_soa_serial(soa_rrs);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		return KNOT_EINVAL;

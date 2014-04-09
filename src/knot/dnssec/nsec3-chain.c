@@ -369,14 +369,14 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b,
 
 	knot_rrs_t *a_rrs = knot_node_get_rrs(a, KNOT_RRTYPE_NSEC3);
 	assert(a_rrs);
-	uint8_t algorithm = knot_rrs_nsec3_algorithm(a_rrs, 0);
+	uint8_t algorithm = knot_nsec3_algorithm(a_rrs, 0);
 	if (algorithm == 0) {
 		return KNOT_EINVAL;
 	}
 
 	uint8_t *raw_hash = NULL;
 	uint8_t raw_length = 0;
-	knot_rrs_nsec3_next_hashed(a_rrs, 0, &raw_hash, &raw_length);
+	knot_nsec3_next_hashed(a_rrs, 0, &raw_hash, &raw_length);
 	if (raw_hash == NULL) {
 		return KNOT_EINVAL;
 	}

@@ -437,7 +437,7 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 	if (rr->type == KNOT_RRTYPE_SOA
 	    && (rr->rclass == KNOT_CLASS_NONE
 	        || rr->rclass == KNOT_CLASS_ANY
-	        || knot_serial_compare(knot_rrs_soa_serial(&rr->rrs),
+	        || knot_serial_compare(knot_soa_serial(&rr->rrs),
 	                               sn) <= 0)) {
 		return true;
 	}
@@ -1014,7 +1014,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return KNOT_ENOMEM;
 		}
-		knot_rrs_soa_serial_set(&soa_cpy->rrs, new_serial);
+		knot_soa_serial_set(&soa_cpy->rrs, new_serial);
 		knot_changeset_add_soa(changeset, soa_cpy, KNOT_CHANGESET_ADD);
 	}
 

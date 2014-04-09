@@ -280,7 +280,7 @@ int knot_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
 	}
 
 	for (int i = 0; i < rrsig_rrs->rr_count; ++i) {
-		if (type == knot_rrs_rrsig_type_covered(rrsig_rrs, i)) {
+		if (type == knot_rrsig_type_covered(rrsig_rrs, i)) {
 			const knot_rr_t *rr_to_copy = knot_rrs_rr(rrsig_rrs, i);
 			int ret = knot_rrs_add_rr(out_sig, rr_to_copy, mm);
 			if (ret != KNOT_EOK) {
@@ -311,7 +311,7 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(policy);
 
-	uint32_t expiration = knot_rrs_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	uint32_t expiration = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
 
 	return (expiration <= policy->refresh_before);
 }
@@ -343,7 +343,7 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	uint8_t *signature = NULL;
 	size_t signature_size = 0;
-	knot_rrs_rrsig_signature(&rrsigs->rrs, pos, &signature, &signature_size);
+	knot_rrsig_signature(&rrsigs->rrs, pos, &signature, &signature_size);
 	if (!signature) {
 		return KNOT_EINVAL;
 	}

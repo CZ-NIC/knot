@@ -19,56 +19,56 @@
 #include "libknot/rr.h"
 
 static inline
-uint16_t knot_rrs_rrsig_type_covered(const knot_rrs_t *rrs, size_t pos)
+uint16_t knot_rrsig_type_covered(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return knot_wire_read_u16(data_offset(rrs, pos, 0));
 }
 
 static inline
-uint8_t knot_rrs_rrsig_algorithm(const knot_rrs_t *rrs, size_t pos)
+uint8_t knot_rrsig_algorithm(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return *data_offset(rrs, pos, 2);
 }
 
 static inline
-uint8_t knot_rrs_rrsig_labels(const knot_rrs_t *rrs, size_t pos)
+uint8_t knot_rrsig_labels(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return *data_offset(rrs, pos, 3);
 }
 
 static inline
-uint32_t knot_rrs_rrsig_original_ttl(const knot_rrs_t *rrs, size_t pos)
+uint32_t knot_rrsig_original_ttl(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return knot_wire_read_u32(data_offset(rrs, pos, 4));
 }
 
 static inline
-uint32_t knot_rrs_rrsig_sig_expiration(const knot_rrs_t *rrs, size_t pos)
+uint32_t knot_rrsig_sig_expiration(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return knot_wire_read_u32(data_offset(rrs, pos, 8));
 }
 
 static inline
-uint32_t knot_rrs_rrsig_sig_inception(const knot_rrs_t *rrs, size_t pos)
+uint32_t knot_rrsig_sig_inception(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return knot_wire_read_u32(data_offset(rrs, pos, 12));
 }
 
 static inline
-uint16_t knot_rrs_rrsig_key_tag(const knot_rrs_t *rrs, size_t pos)
+uint16_t knot_rrsig_key_tag(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return knot_wire_read_u16(data_offset(rrs, pos, 16));
 }
 
 static inline
-const knot_dname_t *knot_rrs_rrsig_signer_name(const knot_rrs_t *rrs,
+const knot_dname_t *knot_rrsig_signer_name(const knot_rrs_t *rrs,
                                                  size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
@@ -76,7 +76,7 @@ const knot_dname_t *knot_rrs_rrsig_signer_name(const knot_rrs_t *rrs,
 }
 
 static inline
-void knot_rrs_rrsig_signature(const knot_rrs_t *rrs, size_t pos,
+void knot_rrsig_signature(const knot_rrs_t *rrs, size_t pos,
                                 uint8_t **signature, size_t *signature_size)
 {
 	if (!signature || !signature_size) {

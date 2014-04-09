@@ -90,7 +90,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 		return KNOT_ERROR;
 	}
 
-	uint32_t local_serial = knot_rrs_soa_serial(soa_rrs);
+	uint32_t local_serial = knot_soa_serial(soa_rrs);
 	/*
 	 * Retrieve the remote Serial
 	 */
@@ -104,7 +104,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 		return KNOT_EMALF;
 	}
 
-	uint32_t remote_serial = knot_rrs_soa_serial(&soa_rr.rrs);
+	uint32_t remote_serial = knot_soa_serial(&soa_rr.rrs);
 	return (knot_serial_compare(local_serial, remote_serial) < 0);
 }
 
@@ -457,8 +457,8 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 				goto cleanup;
 			}
 
-			if (knot_rrs_soa_serial(&rr->rrs)
-			    == knot_rrs_soa_serial(&(*chs)->first_soa->rrs)) {
+			if (knot_soa_serial(&rr->rrs)
+			    == knot_soa_serial(&(*chs)->first_soa->rrs)) {
 
 				/*! \note [TSIG] Check TSIG, we're at the end of
 				 *               transfer.
@@ -534,8 +534,8 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 			if (rr->type == KNOT_RRTYPE_SOA) {
 				log_zone_info("%s Serial %u -> %u.\n",
 					      xfr->msg,
-					      knot_rrs_soa_serial(&chset->soa_from->rrs),
-					      knot_rrs_soa_serial(&chset->soa_to->rrs));
+					      knot_soa_serial(&chset->soa_from->rrs),
+					      knot_soa_serial(&chset->soa_to->rrs));
 				state = -1;
 				continue;
 			} else {
@@ -617,7 +617,7 @@ static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 	dbg_zone("Destroying NSEC3 zone tree.\n");
 	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes);
 
-	knot_nsec3_params_free(&(*contents)->nsec3_params);
+	knot_nsec3param_free(&(*contents)->nsec3_params);
 
 	free(*contents);
 	*contents = NULL;
@@ -930,7 +930,7 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 
 	// check if serial matches
 	const knot_rrs_t *soa = knot_node_rrs(contents->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL || knot_rrs_soa_serial(soa)
+	if (soa == NULL || knot_soa_serial(soa)
 			   != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
 		return KNOT_EINVAL;

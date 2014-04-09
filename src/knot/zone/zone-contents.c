@@ -176,7 +176,7 @@ static int discover_additionals(struct rr_data *rr_data,
 	for (uint16_t i = 0; i < rdcount; i++) {
 
 		/* Try to find node for the dname in the RDATA. */
-		dname = knot_rrs_name(rrs, i, rr_data->type);
+		dname = knot_rdata_name(rrs, i, rr_data->type);
 		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
 		if (node == NULL && encloser && encloser->wildcard_child) {
 			node = encloser->wildcard_child;
@@ -397,19 +397,19 @@ static int knot_zc_nsec3_parameters_match(const knot_rrs_t *rrs,
 
 	dbg_zone_detail("RDATA algo: %u, iterations: %u, salt length: %u, salt:"
 			" %.*s\n",
-			knot_rrs_nsec3_algorithm(rrs, rdata_pos),
-			knot_rrs_nsec3_iterations(rrs, rdata_pos),
-			knot_rrs_nsec3_salt_length(rrs, rdata_pos),
-			knot_rrs_nsec3_salt_length(rrs, rdata_pos),
-			knot_rrs_nsec3_salt(rrs, rdata_pos));
+			knot_nsec3_algorithm(rrs, rdata_pos),
+			knot_nsec3_iterations(rrs, rdata_pos),
+			knot_nsec3_salt_length(rrs, rdata_pos),
+			knot_nsec3_salt_length(rrs, rdata_pos),
+			knot_nsec3_salt(rrs, rdata_pos));
 	dbg_zone_detail("NSEC3PARAM algo: %u, iterations: %u, salt length: %u, "
 			"salt: %.*s\n",  params->algorithm, params->iterations,
 			params->salt_length, params->salt_length, params->salt);
 
-	return (knot_rrs_nsec3_algorithm(rrs, rdata_pos) == params->algorithm
-		&& knot_rrs_nsec3_iterations(rrs, rdata_pos) == params->iterations
-		&& knot_rrs_nsec3_salt_length(rrs, rdata_pos) == params->salt_length
-		&& strncmp((const char *)knot_rrs_nsec3_salt(rrs, rdata_pos),
+	return (knot_nsec3_algorithm(rrs, rdata_pos) == params->algorithm
+		&& knot_nsec3_iterations(rrs, rdata_pos) == params->iterations
+		&& knot_nsec3_salt_length(rrs, rdata_pos) == params->salt_length
+		&& strncmp((const char *)knot_nsec3_salt(rrs, rdata_pos),
 			   (const char *)params->salt, params->salt_length)
 		   == 0);
 }
@@ -793,7 +793,7 @@ static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
 	/* Is NSEC3 or non-empty RRSIG covering NSEC3. */
 	return ((rr->type == KNOT_RRTYPE_NSEC3)
 	        || (rr->type == KNOT_RRTYPE_RRSIG
-	            && knot_rrs_rrsig_type_covered(&rr->rrs, 0)
+	            && knot_rrsig_type_covered(&rr->rrs, 0)
 	            == KNOT_RRTYPE_NSEC3));
 }
 
@@ -1273,7 +1273,7 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 
 	const knot_rrs_t *rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
 	if (rrs!= NULL) {
-		int r = knot_nsec3_params_from_wire(&zone->nsec3_params, rrs);
+		int r = knot_nsec3param_from_wire(&zone->nsec3_params, rrs);
 		if (r != KNOT_EOK) {
 			dbg_zone("Failed to load NSEC3PARAM (%s).\n",
 			         knot_strerror(r));
@@ -1397,7 +1397,7 @@ void knot_zone_contents_free(knot_zone_contents_t **contents)
 	dbg_zone("Destroying NSEC3 zone tree.\n");
 	knot_zone_tree_free(&(*contents)->nsec3_nodes);
 
-	knot_nsec3_params_free(&(*contents)->nsec3_params);
+	knot_nsec3param_free(&(*contents)->nsec3_params);
 
 	free(*contents);
 	*contents = NULL;
@@ -1435,7 +1435,7 @@ uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
 	if (!zone) return 0;
 	const knot_rrs_t *soa = NULL;
 	soa = knot_node_rrs(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
-	uint32_t serial = knot_rrs_soa_serial(soa);
+	uint32_t serial = knot_soa_serial(soa);
 	return serial;
 }
 

@@ -20,72 +20,72 @@
 #include "libknot/dname.h"
 
 static inline
-const knot_dname_t *knot_rrs_soa_primary_ns(const knot_rrs_t *rrs)
+const knot_dname_t *knot_soa_primary_ns(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return NULL);
 	return data_offset(rrs, 0, 0);
 }
 
 static inline
-const knot_dname_t *knot_rrs_soa_mailbox(const knot_rrs_t *rrs)
+const knot_dname_t *knot_soa_mailbox(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return NULL);
-	return data_offset(rrs, 0, knot_dname_size(knot_rrs_soa_primary_ns(rrs)));
+	return data_offset(rrs, 0, knot_dname_size(knot_soa_primary_ns(rrs)));
 }
 
 static inline
-size_t knot_rrs_soa_names_len(const knot_rrs_t *rrs)
+size_t knot_soa_names_len(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return 0);
-	return knot_dname_size(knot_rrs_soa_primary_ns(rrs))
-	       + knot_dname_size(knot_rrs_soa_mailbox(rrs));
+	return knot_dname_size(knot_soa_primary_ns(rrs))
+	       + knot_dname_size(knot_soa_mailbox(rrs));
 }
 
 static inline
-uint32_t knot_rrs_soa_serial(const knot_rrs_t *rrs)
+uint32_t knot_soa_serial(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return 0);
 	return knot_wire_read_u32(data_offset(rrs, 0,
-	                                      knot_rrs_soa_names_len(rrs)));
+	                                      knot_soa_names_len(rrs)));
 }
 
 static inline
-void knot_rrs_soa_serial_set(knot_rrs_t *rrs, uint32_t serial)
+void knot_soa_serial_set(knot_rrs_t *rrs, uint32_t serial)
 {
 	RRS_CHECK(rrs, 0, return);
 	// the number is in network byte order, transform it
-	knot_wire_write_u32(data_offset(rrs, 0, knot_rrs_soa_names_len(rrs)),
+	knot_wire_write_u32(data_offset(rrs, 0, knot_soa_names_len(rrs)),
 	                    serial);
 }
 
 static inline
-uint32_t knot_rrs_soa_refresh(const knot_rrs_t *rrs)
+uint32_t knot_soa_refresh(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return 0);
 	return knot_wire_read_u32(data_offset(rrs, 0,
-	                                      knot_rrs_soa_names_len(rrs) + 4));
+	                                      knot_soa_names_len(rrs) + 4));
 }
 
 static inline
-uint32_t knot_rrs_soa_retry(const knot_rrs_t *rrs)
+uint32_t knot_soa_retry(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return 0);
 	return knot_wire_read_u32(data_offset(rrs, 0,
-	                                      knot_rrs_soa_names_len(rrs) + 8));
+	                                      knot_soa_names_len(rrs) + 8));
 }
 
 static inline
-uint32_t knot_rrs_soa_expire(const knot_rrs_t *rrs)
+uint32_t knot_soa_expire(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return 0);
 	return knot_wire_read_u32(data_offset(rrs, 0,
-	                                      knot_rrs_soa_names_len(rrs) + 12));
+	                                      knot_soa_names_len(rrs) + 12));
 }
 
 static inline
-uint32_t knot_rrs_soa_minimum(const knot_rrs_t *rrs)
+uint32_t knot_soa_minimum(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return 0);
 	return knot_wire_read_u32(data_offset(rrs, 0,
-	                                      knot_rrs_soa_names_len(rrs) + 16));
+	                                      knot_soa_names_len(rrs) + 16));
 }

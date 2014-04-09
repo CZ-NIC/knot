@@ -37,35 +37,35 @@ typedef struct {
 /*---------------------------------------------------------------------------*/
 
 static inline
-uint8_t knot_rrs_nsec3param_algorithm(const knot_rrs_t *rrs, size_t pos)
+uint8_t knot_nsec3param_algorithm(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return *data_offset(rrs, pos, 0);
 }
 
 static inline
-uint8_t knot_rrs_nsec3param_flags(const knot_rrs_t *rrs, size_t pos)
+uint8_t knot_nsec3param_flags(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return *data_offset(rrs, pos, 1);
 }
 
 static inline
-uint16_t knot_rrs_nsec3param_iterations(const knot_rrs_t *rrs, size_t pos)
+uint16_t knot_nsec3param_iterations(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return knot_wire_read_u16(data_offset(rrs, pos, 2));
 }
 
 static inline
-uint8_t knot_rrs_nsec3param_salt_length(const knot_rrs_t *rrs, size_t pos)
+uint8_t knot_nsec3param_salt_length(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return *data_offset(rrs, pos, 4);
 }
 
 static inline
-const uint8_t *knot_rrs_nsec3param_salt(const knot_rrs_t *rrs, size_t pos)
+const uint8_t *knot_nsec3param_salt(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return data_offset(rrs, pos, 5);
@@ -79,11 +79,11 @@ const uint8_t *knot_rrs_nsec3param_salt(const knot_rrs_t *rrs, size_t pos)
  *
  * \return Error code, KNOT_EOK on success.
  */
-int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
+int knot_nsec3param_from_wire(knot_nsec3_params_t *params,
                                 const knot_rrs_t *rrs);
 /*!
  * \brief Clean up structure with NSEC3 params (do not deallocate).
  *
  * \param params Structure with NSEC3 params.
  */
-void knot_nsec3_params_free(knot_nsec3_params_t *params);
+void knot_nsec3param_free(knot_nsec3_params_t *params);

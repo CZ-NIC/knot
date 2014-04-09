@@ -628,7 +628,7 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 	uint16_t rrsigs_rdata_count = rrsigs->rr_count;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		const uint16_t type_covered =
-			knot_rrs_rrsig_type_covered(rrsigs, i);
+			knot_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
 			return true;
 		}

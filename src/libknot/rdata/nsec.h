@@ -19,19 +19,19 @@
 #include "libknot/rr.h"
 
 static inline
-const knot_dname_t *knot_rrs_nsec_next(const knot_rrs_t *rrs)
+const knot_dname_t *knot_nsec_next(const knot_rrs_t *rrs)
 {
 	RRS_CHECK(rrs, 0, return NULL);
 	return data_offset(rrs, 0, 0);
 }
 
 static inline
-void knot_rrs_nsec_bitmap(const knot_rrs_t *rrs,
+void knot_nsec_bitmap(const knot_rrs_t *rrs,
                             uint8_t **bitmap, uint16_t *size)
 {
 	RRS_CHECK(rrs, 0, return);
 	knot_rr_t *rr = knot_rrs_rr(rrs, 0);
-	int next_size = knot_dname_size(knot_rrs_nsec_next(rrs));
+	int next_size = knot_dname_size(knot_nsec_next(rrs));
 
 	*bitmap = knot_rr_rdata(rr) + next_size;
 	*size = knot_rr_rdata_size(rr) - next_size;

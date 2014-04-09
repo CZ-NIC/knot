@@ -21,14 +21,14 @@
 #define KNOT_RDATA_DNSKEY_FLAG_KSK 1
 
 static inline
-uint16_t knot_rrs_dnskey_flags(const knot_rrs_t *rrs, size_t pos)
+uint16_t knot_dnskey_flags(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return knot_wire_read_u16(data_offset(rrs, pos, 0));
 }
 
 static inline
-uint8_t knot_rrs_dnskey_proto(const knot_rrs_t *rrs, size_t pos)
+uint8_t knot_dnskey_proto(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 
@@ -36,14 +36,14 @@ uint8_t knot_rrs_dnskey_proto(const knot_rrs_t *rrs, size_t pos)
 }
 
 static inline
-uint8_t knot_rrs_dnskey_alg(const knot_rrs_t *rrs, size_t pos)
+uint8_t knot_dnskey_alg(const knot_rrs_t *rrs, size_t pos)
 {
 	RRS_CHECK(rrs, pos, return 0);
 	return *data_offset(rrs, pos, 3);
 }
 
 static inline
-void knot_rrs_dnskey_key(const knot_rrs_t *rrs, size_t pos, uint8_t **key,
+void knot_dnskey_key(const knot_rrs_t *rrs, size_t pos, uint8_t **key,
                            uint16_t *key_size)
 {
 	RRS_CHECK(rrs, pos, return);

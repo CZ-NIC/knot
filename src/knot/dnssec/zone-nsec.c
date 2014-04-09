@@ -98,7 +98,7 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 		return false;
 	}
 
-	uint32_t result =  knot_rrs_soa_minimum(soa);
+	uint32_t result =  knot_soa_minimum(soa);
 	if (result == 0) {
 		return false;
 	}
