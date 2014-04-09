@@ -42,13 +42,15 @@
 
 #define KNOT_NS_TSIG_FREQ 100
 
+/*!
+ * \brief Post update cleanup: frees data that are in the tree that will not
+ *        be used (old tree if success, new tree if failure).
+ *          Freed data:
+ *           - actual data inside knot_rrs_t. (the rest is part of the node)
+ *           - arrays allocated for additional nodes. (optional, nodes are kept)
+ */
 static void rrs_list_clear(list_t *l, mm_ctx_t *mm)
 {
-	/*
-	 * Frees data that are in the tree that will not be used, these are:
-	 *  - actual data inside knot_rrs_t. (the rest is part of the node)
-	 *  - arrays allocated for additional nodes. (nodes are kept)
-	 */
 	ptrnode_t *n;
 	node_t *nxt;
 	WALK_LIST_DELSAFE(n, nxt, *l) {
@@ -88,11 +90,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 		return KNOT_ERROR;
 	}
 
-	int64_t local_serial = knot_rrs_soa_serial(soa_rrs);
-	if (local_serial < 0) {
-		return KNOT_EMALF;  // maybe some other error
-	}
-
+	uint32_t local_serial = knot_rrs_soa_serial(soa_rrs);
 	/*
 	 * Retrieve the remote Serial
 	 */
@@ -106,11 +104,7 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 		return KNOT_EMALF;
 	}
 
-	int64_t remote_serial = knot_rrs_soa_serial(&soa_rr.rrs);
-	if (remote_serial < 0) {
-		return KNOT_EMALF;	// maybe some other error
-	}
-
+	uint32_t remote_serial = knot_rrs_soa_serial(&soa_rr.rrs);
 	return (knot_serial_compare(local_serial, remote_serial) < 0);
 }
 
@@ -236,17 +230,14 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_take_rr(const knot_pktsection_t *answer, const knot_rrset_t **rr, uint16_t *cur)
+static void xfrin_take_rr(const knot_pktsection_t *answer, const knot_rrset_t **rr, uint16_t *cur)
 {
-	int ret = KNOT_EOK;
 	if (*cur < answer->count) {
 		*rr = &answer->rr[*cur];
 		*cur += 1;
 	} else {
 		*rr = NULL;
 	}
-
-	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -261,7 +252,7 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 	const knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
-	int ret = xfrin_take_rr(answer, &rr, &rr_id);
+	xfrin_take_rr(answer, &rr, &rr_id);
 	if (*zone == NULL) {
 		// Transfer start, init zone
 		if (rr->type != KNOT_RRTYPE_SOA) {
@@ -279,30 +270,27 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 	// Init zone creator
 	zcreator_t zc = {.z = *zone, .ret = KNOT_EOK };
 
-	while (ret == KNOT_EOK && rr) {
+	while (rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
 		    knot_node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
 			// Last SOA, last message, check TSIG.
-			ret = xfrin_check_tsig(pkt, xfr, 1);
+			int ret = xfrin_check_tsig(pkt, xfr, 1);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
 			return 1; // Signal that transfer finished.
 		} else {
-			ret = zcreator_step(&zc, rr);
+			int ret = zcreator_step(&zc, rr);
 			if (ret != KNOT_EOK) {
 				// 'rr' is either inserted, or free'd
 				return ret;
 			}
-			ret = xfrin_take_rr(answer, &rr, &rr_id);
+			xfrin_take_rr(answer, &rr, &rr_id);
 		}
 	}
 
-	assert(rr == NULL);
 	// Check possible TSIG at the end of DNS message.
-	ret = xfrin_check_tsig(pkt, xfr,
-	                       knot_ns_tsig_required(xfr->packet_nr));
-	return ret; // ret == KNOT_EOK means processing continues.
+	return xfrin_check_tsig(pkt, xfr, knot_ns_tsig_required(xfr->packet_nr));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -318,21 +306,17 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 	uint16_t rr_id = 0;
 	const knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	int ret = xfrin_take_rr(answer, &rr, &rr_id);
-	if (ret != KNOT_EOK) {
+	xfrin_take_rr(answer, &rr, &rr_id);
+	if (rr == NULL) {
 		return KNOT_EXFRREFUSED; /* Empty, try again with AXFR */
 	}
 
 	// state of the transfer
 	// -1 .. a SOA is expected to create a new changeset
 	int state = 0;
-
-	/*! \todo Replace with RRSet duplicate checking. */
-//	xfrin_insert_rrset_dnames_to_table(rr, xfr->lookup_tree);
-
+	int ret = KNOT_EOK;
 	if (*chs == NULL) {
 		dbg_xfrin_verb("Changesets empty, creating new.\n");
-
 		ret = knot_changesets_init(chs);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -356,7 +340,7 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		dbg_xfrin_verb("First SOA of IXFR saved, state set to -1.\n");
 
 		// take next RR
-		ret = xfrin_take_rr(answer, &rr, &rr_id);
+		xfrin_take_rr(answer, &rr, &rr_id);
 
 		/*
 		 * If there is no other records in the response than the SOA, it
@@ -379,8 +363,7 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 			return XFRIN_RES_SOA_ONLY;
 		} else if (rr->type != KNOT_RRTYPE_SOA) {
 			dbg_xfrin("Fallback to AXFR.\n");
-			ret = XFRIN_RES_FALLBACK;
-			return ret;
+			return XFRIN_RES_FALLBACK;
 		}
 	} else {
 		if ((*chs)->first_soa == NULL) {
@@ -450,12 +433,12 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 
 	/*! \todo This may be implemented with much less IFs! */
 
-	while (ret == KNOT_EOK && rr != NULL) {
+	while (rr != NULL) {
 		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
 		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
 			// out-of-zone domain
 			// take next RR
-			ret = xfrin_take_rr(answer, &rr, &rr_id);
+			xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
 		}
 
@@ -571,7 +554,7 @@ int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		}
 
 		// take next RR
-		ret = xfrin_take_rr(answer, &rr, &rr_id);
+		xfrin_take_rr(answer, &rr, &rr_id);
 	}
 
 	/*! \note Check TSIG, we're at the end of packet. It may not be
@@ -615,10 +598,10 @@ void xfrin_cleanup_successful_update(knot_changesets_t *chgs)
 	WALK_LIST(change, chgs->sets) {
 		// Delete old RR data
 		rrs_list_clear(&change->old_data, NULL);
+		init_list(&change->old_data);
 		// Keep new RR data
 		ptrlist_free(&change->new_data, NULL);
 		init_list(&change->new_data);
-		init_list(&change->old_data);
 	};
 }
 
@@ -664,9 +647,9 @@ void xfrin_rollback_update(knot_changesets_t *chgs,
 		WALK_LIST(change, chgs->sets) {
 			// Delete new RR data
 			rrs_list_clear(&change->new_data, NULL);
+			init_list(&change->new_data);
 			// Keep old RR data
 			ptrlist_free(&change->old_data, NULL);
-			init_list(&change->new_data);
 			init_list(&change->old_data);
 		};
 	}
@@ -683,6 +666,7 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
 			data = &node->rrs[i];
+			break;
 		}
 	}
 	assert(data);
