@@ -304,9 +304,6 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	if (knot_rrsig_type_covered(rrsig, 0) != rrset->type) {
-		/* zoneparser would not let this happen
-		 * but to be on the safe side
-		 */
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
 		                         info_str);
@@ -1092,9 +1089,6 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		/* Check it points somewhere first. */
 		if (knot_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
-			assert(knot_zone_contents_find_node(zone,
-			                                    next_dname) ==
-			                                    NULL);
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 		} else {
@@ -1108,9 +1102,9 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		/* Directly discard. */
 		knot_dname_free(&next_dname, NULL);
 
-	} else if (do_checks == 2 ) {
+	} else if (do_checks == SEM_CHECK_NSEC) {
 		if (last_node == NULL) {
-			err_handler_handle_error(handler, last_node,
+			err_handler_handle_error(handler, zone->apex,
 				ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 				return;
 		} else {
