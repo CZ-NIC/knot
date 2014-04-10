@@ -798,7 +798,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 				memcpy(wildcard, "\x1""*", 2);
 				knot_dname_to_wire(wildcard + 2,
 				                   knot_wire_next_label(ns_dname, NULL),
-				                   sizeof(wildcard));
+				                   sizeof(wildcard) - 2);
 				const knot_node_t *wildcard_node =
 					knot_zone_contents_find_node(zone,
 				                                     wildcard);
