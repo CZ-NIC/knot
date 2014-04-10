@@ -208,25 +208,6 @@ int knot_zone_tree_apply(knot_zone_tree_t *tree,
                          knot_zone_tree_apply_cb_t function, void *data);
 
 /*!
- * \brief Copies the whole zone tree structure (but not the data contained
- *        within).
- *
- * \warning This function does not check if the target zone tree is empty,
- *          it just replaces the root pointer.
- *
- * \param from Original zone tree.
- * \param to Zone tree to copy the original one into.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ENOMEM
- */
-int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
-                                  knot_zone_tree_t **to);
-
-int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
-                             knot_zone_tree_t **to);
-
-/*!
  * \brief Destroys the zone tree, not touching the saved data.
  *
  * \param tree Zone tree to be destroyed.

@@ -14,6 +14,7 @@ doc/reference.texi
 doc/requirements.texi
 doc/running.texi
 doc/security.texi
+doc/synth_record.texi
 doc/troubleshooting.texi
 libtap/Makefile.am
 libtap/runtests.c
@@ -208,6 +209,8 @@ src/libknot/packet/wire.h
 src/libknot/processing/process.c
 src/libknot/processing/process.h
 src/libknot/rdata.h
+src/libknot/rr.c
+src/libknot/rr.h
 src/libknot/rrset-dump.c
 src/libknot/rrset-dump.h
 src/libknot/rrset.c
@@ -290,3 +293,5 @@ tests/slab.c
 tests/wire.c
 tests/zonedb.c
 tests/ztree.c
+src/knot/server/serialization.c
+src/knot/server/serialization.h

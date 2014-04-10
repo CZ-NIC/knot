@@ -91,7 +91,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	ret = knot_pkt_put_question(packet, qname, query->class_num,
 	                            query->type_num);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&qname);
+		knot_dname_free(&qname, NULL);
 		knot_pkt_free(&packet);
 		return NULL;
 	}
@@ -107,8 +107,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		                                   KNOT_RRTYPE_SOA,
 		                                   query->class_num,
 		                                   &packet->mm);
+		knot_dname_free(&qname, NULL);
 		if (soa == NULL) {
-			knot_dname_free(&qname);
 			knot_pkt_free(&packet);
 			return NULL;
 		}
@@ -125,7 +125,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		}
 
 		// Set SOA serial.
-		knot_rdata_soa_serial_set(soa, query->xfr_serial);
+		knot_rrs_soa_serial_set(&soa->rrs, query->xfr_serial);
 
 		// Add authority section.
 		knot_pkt_begin(packet, KNOT_AUTHORITY);
@@ -136,7 +136,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 			return NULL;
 		}
 	} else {
-		knot_dname_free(&qname);
+		knot_dname_free(&qname, NULL);
 	}
 
 	// Create EDNS section if required.
@@ -227,12 +227,12 @@ static int64_t first_serial_check(const knot_pkt_t *reply)
 		return -1;
 	}
 
-	const knot_rrset_t *first = answer->rr[0];
+	const knot_rrset_t *first = &answer->rr[0];
 
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
 	} else {
-		return knot_rdata_soa_serial(first);
+		return knot_rrs_soa_serial(&first->rrs);
 	}
 }
 
@@ -243,13 +243,12 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 		return false;
 	}
 
-	const knot_rrset_t *last = answer->rr[answer->count - 1];
+	const knot_rrset_t *last = &answer->rr[answer->count - 1];
 
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
 	} else {
-		int64_t last_serial = knot_rdata_soa_serial(last);
-
+		int64_t last_serial = knot_rrs_soa_serial(&last->rrs);
 		if (last_serial == serial) {
 			return true;
 		} else {
@@ -509,7 +508,6 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 
 	// Get stop query time and start reply time.
 	gettimeofday(&t_query, NULL);
-
 
 	// Print query packet if required.
 	if (style->show_query) {

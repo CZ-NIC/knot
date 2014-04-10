@@ -93,12 +93,12 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	assert(ttl);
 
 	knot_node_t *apex = zone->apex;
-	knot_rrset_t *soa = knot_node_get_rrset(apex, KNOT_RRTYPE_SOA);
+	const knot_rrs_t *soa = knot_node_rrs(apex, KNOT_RRTYPE_SOA);
 	if (!soa) {
 		return false;
 	}
 
-	uint32_t result =  knot_rdata_soa_minimum(soa);
+	uint32_t result =  knot_rrs_soa_minimum(soa);
 	if (result == 0) {
 		return false;
 	}
@@ -127,9 +127,9 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 	knot_node_t *node = NULL;
 	int ret;
 
-	if (knot_rrset_type(rrset) == KNOT_RRTYPE_NSEC3) {
+	if (rrset->type == KNOT_RRTYPE_NSEC3) {
 		// Find the name in the NSEC3 tree and mark the node
-		ret = knot_zone_tree_get(nsec3s, knot_rrset_owner(rrset),
+		ret = knot_zone_tree_get(nsec3s, rrset->owner,
 		                         &node);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -284,4 +284,3 @@ int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
 	// Sign newly created records right away
 	return knot_zone_sign_nsecs_in_changeset(zone_keys, policy, changeset);
 }
-

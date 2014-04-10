@@ -78,6 +78,22 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
                     const knot_dnssec_policy_t *policy);
 
 /*!
+ * \brief Creates new RRS using \a rrsig_rrs as a source. Only those RRs that
+ *        cover given \a type are copied into \a out_sig
+ *
+ * \param type       Covered type.
+ * \param rrsig_rrs  Source RRS.
+ * \param out_sig    Output RRS.
+ * \param mm         Memory context.
+ *
+ * \retval KNOT_EOK if some RRSIG was found.
+ * \retval KNOT_EINVAL if no RRSIGs were found.
+ * \retval Error code other than EINVAL on error.
+ */
+int knot_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
+                     knot_rrs_t *out_sig, mm_ctx_t *mm);
+
+/*!
  * \brief Check if RRSIG signature is valid.
  *
  * \param covered  RRs covered by the signature.

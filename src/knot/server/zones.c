@@ -27,6 +27,7 @@
 #include "knot/server/xfr-handler.h"
 #include "knot/server/zone-load.h"
 #include "knot/server/zones.h"
+#include "knot/server/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
@@ -64,7 +65,7 @@ static uint32_t zones_jitter(uint32_t interval)
  * \param rr_func RDATA specificator.
  * \return Timer in miliseconds.
  */
-static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrset_t*))
+static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs_t*))
 {
 	if (!zone) {
 		dbg_zones_verb("zones: zones_soa_timer() called "
@@ -75,7 +76,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
 	uint32_t ret = 0;
 
 	/* Retrieve SOA RDATA. */
-	const knot_rrset_t *soa_rrs = 0;
+	const knot_rrs_t *soa_rrs = NULL;
 
 	rcu_read_lock();
 
@@ -85,7 +86,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
 		return 0;
 	}
 
-	soa_rrs = knot_node_rrset(zc->apex, KNOT_RRTYPE_SOA);
+	soa_rrs = knot_node_rrs(zc->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 	ret = rr_func(soa_rrs);
 
@@ -103,7 +104,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
  */
 static uint32_t zones_soa_refresh(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rdata_soa_refresh);
+	return zones_soa_timer(zone, knot_rrs_soa_refresh);
 }
 
 /*!
@@ -114,7 +115,7 @@ static uint32_t zones_soa_refresh(zone_t *zone)
  */
 static uint32_t zones_soa_retry(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rdata_soa_retry);
+	return zones_soa_timer(zone, knot_rrs_soa_retry);
 }
 
 /*!
@@ -125,7 +126,7 @@ static uint32_t zones_soa_retry(zone_t *zone)
  */
 static uint32_t zones_soa_expire(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rdata_soa_expire);
+	return zones_soa_timer(zone, knot_rrs_soa_expire);
 }
 
 /*!
@@ -506,9 +507,9 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 		 * be set, check it.
 		 */
 		dbg_xfr_verb("xfr: reading RRSets to REMOVE, first RR is %hu\n",
-		             knot_rrset_type(rrset));
-		assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
-		assert(chs->serial_from == knot_rdata_soa_serial(rrset));
+		             rrset->type);
+		assert(rrset->type == KNOT_RRTYPE_SOA);
+		assert(chs->serial_from == knot_rrs_soa_serial(&rrset->rrs));
 		knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
 
 		/* Read remaining RRSets */
@@ -527,7 +528,7 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets)
 			}
 
 			/* Check for next SOA. */
-			if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
+			if (rrset->type == KNOT_RRTYPE_SOA) {
 
 				/* Move to ADD section if in REMOVE. */
 				if (in_remove_section) {
@@ -710,14 +711,8 @@ void zones_free_merged_changesets(knot_changesets_t *diff_chs,
 			knot_changesets_free(&sec_chs);
 			knot_changesets_free(&diff_chs);
 		} else {
-			/*!
-			 * Ending SOA from the merged changeset was used in
-			 * zone (same as in DNSSEC changeset). It must not
-			 * be freed.
-			 */
 			assert(knot_changesets_get_last(diff_chs)->serial_to ==
 			       knot_changesets_get_last(sec_chs)->serial_to);
-			knot_changesets_get_last(diff_chs)->soa_to = NULL;
 			knot_changesets_free(&diff_chs);
 
 			/*!
@@ -831,14 +826,14 @@ static bool apex_rr_changed(const knot_zone_contents_t *old_contents,
                             const knot_zone_contents_t *new_contents,
                             uint16_t type)
 {
-	const knot_rrset_t *old_rr = knot_node_rrset(old_contents->apex, type);
-	const knot_rrset_t *new_rr = knot_node_rrset(new_contents->apex, type);
-	if (old_rr== NULL) {
-		return new_rr != NULL;
-	} else if (new_rr == NULL) {
-		return old_rr != NULL;
+	knot_rrset_t old_rr = knot_node_rrset(old_contents->apex, type);
+	knot_rrset_t new_rr = knot_node_rrset(new_contents->apex, type);
+	if (knot_rrset_empty(&old_rr)) {
+		return !knot_rrset_empty(&new_rr);
+	} else if (knot_rrset_empty(&new_rr)) {
+		return !knot_rrset_empty(&old_rr);
 	}
-	return !knot_rrset_equal(old_rr, new_rr, KNOT_RRSET_COMPARE_WHOLE);
+	return !knot_rrset_equal(&old_rr, &new_rr, KNOT_RRSET_COMPARE_WHOLE);
 }
 
 bool zones_dnskey_changed(const knot_zone_contents_t *old_contents,
@@ -852,8 +847,6 @@ bool zones_nsec3param_changed(const knot_zone_contents_t *old_contents,
 {
 	return apex_rr_changed(old_contents, new_contents, KNOT_RRTYPE_NSEC3PARAM);
 }
-
-
 
 /*----------------------------------------------------------------------------*/
 
@@ -958,11 +951,11 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 	}
 
 	/* Latest zone serial. */
-	const knot_rrset_t *soa_rrs = 0;
-	soa_rrs = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+	const knot_rrs_t *soa_rrs = knot_node_rrs(contents->apex,
+	                                          KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 
-	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
+	int64_t serial_ret = knot_rrs_soa_serial(soa_rrs);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		pthread_mutex_unlock(&zone->lock);
@@ -1161,7 +1154,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	const knot_dname_t *new_name = NULL;
 	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
 	int r = knot_dname_cmp(cur_name, new_name);
-	knot_dname_free(&cur_name);
+	knot_dname_free(&cur_name, NULL);
 	if (r != 0) {
 		rcu_read_unlock();
 		return KNOT_EINVAL;
@@ -1173,40 +1166,6 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	int ret = save_transferred_zone(new_zone, &xfr->addr, zonefile);
 	rcu_read_unlock();
 	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-/* Counting size of changeset in serialized form.                             */
-/*----------------------------------------------------------------------------*/
-
-int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
-{
-	if (chgset == NULL || size == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	size_t soa_from_size = rrset_binary_size(chgset->soa_from);
-	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
-
-	size_t remove_size = 0;
-	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, chgset->remove) {
-		knot_rrset_t *rrset = rr_node->rr;
-		remove_size += rrset_binary_size(rrset);
-	}
-
-	size_t add_size = 0;
-	WALK_LIST(rr_node, chgset->add) {
-		knot_rrset_t *rrset = rr_node->rr;
-		add_size += rrset_binary_size(rrset);
-	}
-
-	/*! \todo How is the changeset serialized? Any other parts? */
-	*size = soa_from_size + soa_to_size + remove_size + add_size;
-	/* + Changeset flags. */
-	*size += sizeof(uint32_t);
-
-	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1239,7 +1198,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	int ret = zones_rrset_write_to_mem(chs->soa_from, &entry, &max_size);
 	if (ret != KNOT_EOK) {
 		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
-		return KNOT_ERROR;  /*! \todo Other code? */
+		return ret;
 	}
 
 	/* Serialize RRSets from the 'remove' section. */
@@ -1249,7 +1208,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
 			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
-			return KNOT_ERROR;  /*! \todo Other code? */
+			return ret;
 		}
 	}
 
@@ -1257,7 +1216,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 	ret = zones_rrset_write_to_mem(chs->soa_to, &entry, &max_size);
 	if (ret != KNOT_EOK) {
 		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
-		return KNOT_ERROR;  /*! \todo Other code? */
+		return ret;
 	}
 
 	/* Serialize RRSets from the 'add' section. */
@@ -1266,7 +1225,7 @@ static int zones_serialize_and_store_chgset(const knot_changeset_t *chs,
 		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
 			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
-			return KNOT_ERROR;  /*! \todo Other code? */
+			return ret;
 		}
 
 	}
@@ -1290,7 +1249,7 @@ static int zones_store_changeset(const knot_changeset_t *chs, journal_t *j,
 	/* Count the size of the entire changeset in serialized form. */
 	size_t entry_size = 0;
 
-	int ret = zones_changeset_binary_size(chs, &entry_size);
+	int ret = changeset_binary_size(chs, &entry_size);
 	assert(ret == KNOT_EOK);
 
 	dbg_xfr_verb("Size in serialized form: %zu\n", entry_size);
@@ -1478,8 +1437,7 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	/* Commit transaction. */
 	ret = zones_store_changesets_commit(transaction);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update(zone->contents, new_contents,
-		                      chs->changes);
+		xfrin_rollback_update(chs, new_contents);
 		log_zone_error("%s Failed to commit stored changesets.\n", msgpref);
 		knot_changesets_free(&chs);
 		return ret;
@@ -1495,15 +1453,14 @@ int zones_store_and_apply_chgsets(knot_changesets_t *chs,
 	if (switch_ret != KNOT_EOK) {
 		log_zone_error("%s Failed to replace current zone.\n", msgpref);
 		// Cleanup old and new contents
-		xfrin_rollback_update(zone->contents, new_contents,
-		                      chs->changes);
+		xfrin_rollback_update(chs, new_contents);
 
 		/* Free changesets, but not the data. */
 		knot_changesets_free(&chs);
 		return KNOT_ERROR;
 	}
 
-	xfrin_cleanup_successful_update(chs->changes);
+	xfrin_cleanup_successful_update(chs);
 
 	/* Free changesets, but not the data. */
 	knot_changesets_free(&chs);
@@ -1779,7 +1736,7 @@ int zones_verify_tsig_query(const knot_pkt_t *query,
 		return KNOT_TSIG_EBADKEY;
 	}
 
-	const knot_dname_t *kname = knot_rrset_owner(query->tsig_rr);
+	const knot_dname_t *kname = query->tsig_rr->owner;
 	assert(kname != NULL);
 
 	/*
@@ -1879,10 +1836,10 @@ int zones_journal_apply(zone_t *zone)
 	}
 
 	/* Fetch SOA serial. */
-	const knot_rrset_t *soa_rrs = 0;
-	soa_rrs = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+	const knot_rrs_t *soa_rrs = 0;
+	soa_rrs = knot_node_rrs(contents->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
-	int64_t serial_ret = knot_rdata_soa_serial(soa_rrs);
+	int64_t serial_ret = knot_rrs_soa_serial(soa_rrs);
 	if (serial_ret < 0) {
 		rcu_read_unlock();
 		return KNOT_EINVAL;
@@ -1930,8 +1887,7 @@ int zones_journal_apply(zone_t *zone)
 							      XFR_TYPE_IIN);
 				rcu_read_lock();
 				if (apply_ret == KNOT_EOK) {
-					xfrin_cleanup_successful_update(
-							chsets->changes);
+					xfrin_cleanup_successful_update(chsets);
 				} else {
 					log_zone_error("Failed to apply "
 					               "changesets to '%s' - Switch failed: "
@@ -1940,9 +1896,8 @@ int zones_journal_apply(zone_t *zone)
 					ret = KNOT_ERROR;
 
 					// Cleanup old and new contents
-					xfrin_rollback_update(zone->contents,
-					                      &contents,
-					                      chsets->changes);
+					xfrin_rollback_update(chsets,
+					                      &contents);
 				}
 			}
 		}
@@ -2023,10 +1978,7 @@ static int diff_after_load(zone_t *zone, zone_t *old_zone,
 	if (*diff_chs != NULL) {
 		assert(!zones_changesets_empty(*diff_chs));
 		/* Apply DNSSEC changeset to the new zone. */
-		ret = xfrin_apply_changesets_directly(zone->contents,
-		                                      (*diff_chs)->changes,
-		                                      *diff_chs);
-
+		ret = xfrin_apply_changesets_directly(zone->contents, *diff_chs);
 		if (ret == KNOT_EOK) {
 			ret = xfrin_finalize_updated_zone(
 			                        zone->contents, true);
@@ -2042,7 +1994,7 @@ static int diff_after_load(zone_t *zone, zone_t *old_zone,
 			return ret;
 		}
 
-		xfrin_cleanup_successful_update((*diff_chs)->changes);
+		xfrin_cleanup_successful_update(*diff_chs);
 		knot_changesets_free(diff_chs);
 		assert(zone->conf->build_diffs);
 	}
@@ -2113,7 +2065,6 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			assert(!old_zone ||
 			       old_zone->contents != zone->contents);
 			ret = xfrin_apply_changesets_directly(zone->contents,
-			                                      diff_chs->changes,
 			                                      diff_chs);
 			if (ret == KNOT_EOK) {
 				ret = xfrin_finalize_updated_zone(
@@ -2137,7 +2088,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			return ret;
 		}
 
-		xfrin_cleanup_successful_update(diff_chs->changes);
+		xfrin_cleanup_successful_update(diff_chs);
 	}
 
 	/* Commit transaction. */
@@ -2166,8 +2117,7 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			               "switching zone (%s).\n",
 			               zone->conf->name, knot_strerror(ret));
 			// Cleanup old and new contents
-			xfrin_rollback_update(zone->contents, &new_contents,
-			                      diff_chs->changes);
+			xfrin_rollback_update(diff_chs, &new_contents);
 			return ret;
 		}
 

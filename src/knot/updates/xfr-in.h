@@ -155,7 +155,6 @@ int xfrin_apply_changesets(zone_t *zone,
 /*!
  * \brief Applies DNSSEC changesets after DDNS.
  *
- * \param z_old           Old contents for possible rollbacks.
  * \param z_new           Post DDNS/reload zone.
  * \param sec_chsets      Changes with RRSIGs/NSEC(3)s.
  * \param chsets          DDNS/reload changes, for rollback.
@@ -165,7 +164,7 @@ int xfrin_apply_changesets(zone_t *zone,
  * by the UPDATE-processing function. It uses new and old zones from this
  * operation.
  */
-int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
+int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
                                        knot_zone_contents_t *z_new,
                                        knot_changesets_t *sec_chsets,
                                        knot_changesets_t *chsets);
@@ -174,9 +173,6 @@ int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
  * \brief Applies changesets directly to the zone, without copying it.
  *
  * \param contents Zone contents to apply the changesets to. Will be modified.
- * \param changes  Structure to store changes made during application. It
- *                 doesn't have to be empty, present changes will not be
- *                 modified.
  * \param chsets   Changesets to be applied to the zone.
  *
  * \retval KNOT_EOK if successful.
@@ -184,7 +180,6 @@ int xfrin_apply_changesets_dnssec_ddns(knot_zone_contents_t *z_old,
  * \return Other error code if the application went wrong.
  */
 int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
-                                    knot_changes_t *changes,
                                     knot_changesets_t *chsets);
 
 int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
@@ -203,25 +198,19 @@ int xfrin_switch_zone(zone_t *zone,
                       knot_zone_contents_t *new_contents,
                       int transfer_type);
 
-void xfrin_cleanup_successful_update(knot_changes_t *changes);
-
-void xfrin_rollback_update(knot_zone_contents_t *old_contents,
-                           knot_zone_contents_t **new_contents,
-                           knot_changes_t *changes);
+void xfrin_rollback_update(knot_changesets_t *chgs,
+                           knot_zone_contents_t **new_contents);
 
 int xfrin_copy_rrset(knot_node_t *node, uint16_t type,
-                     knot_rrset_t **rrset, knot_changes_t *changes,
-                     int save_new);
+                     knot_rrset_t **rrset);
 
-int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy,
-                         knot_changes_t *changes, int save_new);
+int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy);
 
 int xfrin_replace_rrset_in_node(knot_node_t *node,
                                 knot_rrset_t *rrset_new,
-                                knot_changes_t *changes,
                                 knot_zone_contents_t *contents);
 
-void xfrin_zone_contents_free(knot_zone_contents_t **contents);
+void xfrin_cleanup_successful_update(knot_changesets_t *chgs);
 
 #endif /* _KNOTXFR_IN_H_ */
 

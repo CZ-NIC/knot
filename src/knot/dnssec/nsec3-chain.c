@@ -30,11 +30,12 @@
 
 /* - Forward declarations --------------------------------------------------- */
 
-static knot_rrset_t *create_nsec3_rrset(knot_dname_t *,
-                                        const knot_nsec3_params_t *,
-                                        const bitmap_t *,
-                                        const uint8_t *,
-                                        uint32_t);
+static int create_nsec3_rrset(knot_rrset_t *rrset,
+                              knot_dname_t *dname,
+                              const knot_nsec3_params_t *,
+                              const bitmap_t *,
+                              const uint8_t *,
+                              uint32_t);
 
 /* - Helper functions ------------------------------------------------------- */
 
@@ -51,12 +52,12 @@ inline static bool valid_nsec3_node(const knot_node_t *node)
 		return false;
 	}
 
-	const knot_rrset_t *nsec3 = knot_node_rrset(node, KNOT_RRTYPE_NSEC3);
+	const knot_rrs_t *nsec3 = knot_node_rrs(node, KNOT_RRTYPE_NSEC3);
 	if (nsec3 == NULL) {
 		return false;
 	}
 
-	if (knot_rrset_rr_count(nsec3) != 1) {
+	if (nsec3->rr_count != 1) {
 		return false;
 	}
 
@@ -72,10 +73,9 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
 		return false;
 	}
 
-	const knot_rrset_t *a_rrset = knot_node_rrset(a, KNOT_RRTYPE_NSEC3);
-	const knot_rrset_t *b_rrset = knot_node_rrset(b, KNOT_RRTYPE_NSEC3);
-
-	return knot_rrset_equal(a_rrset, b_rrset, KNOT_RRSET_COMPARE_WHOLE);
+	knot_rrset_t a_rrset = knot_node_rrset(a, KNOT_RRTYPE_NSEC3);
+	knot_rrset_t b_rrset = knot_node_rrset(b, KNOT_RRTYPE_NSEC3);
+	return knot_rrset_equal(&a_rrset, &b_rrset, KNOT_RRSET_COMPARE_WHOLE);
 }
 
 /*!
@@ -88,14 +88,14 @@ static bool are_nsec3_nodes_equal(const knot_node_t *a, const knot_node_t *b)
  */
 static bool node_should_be_signed_nsec3(const knot_node_t *n)
 {
-	knot_rrset_t **node_rrsets = knot_node_get_rrsets_no_copy(n);
 	for (int i = 0; i < n->rrset_count; i++) {
-		if (node_rrsets[i]->type == KNOT_RRTYPE_NSEC ||
-		    node_rrsets[i]->type == KNOT_RRTYPE_RRSIG) {
+		knot_rrset_t rrset = knot_node_rrset_at(n, i);
+		if (rrset.type == KNOT_RRTYPE_NSEC ||
+		    rrset.type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
 		bool should_sign = false;
-		int ret = knot_zone_sign_rr_should_be_signed(n, node_rrsets[i],
+		int ret = knot_zone_sign_rr_should_be_signed(n, &rrset,
 		                                             &should_sign);
 		assert(ret == KNOT_EOK); // No tree inside the function, no fail
 		if (should_sign) {
@@ -117,11 +117,11 @@ static int shallow_copy_signature(const knot_node_t *from, knot_node_t *to)
 	assert(valid_nsec3_node(from));
 	assert(valid_nsec3_node(to));
 
-	knot_rrset_t *from_sig = knot_node_get_rrset(from, KNOT_RRTYPE_RRSIG);
-	if (from_sig == NULL) {
+	knot_rrset_t from_sig = knot_node_rrset(from, KNOT_RRTYPE_RRSIG);
+	if (knot_rrset_empty(&from_sig)) {
 		return KNOT_EOK;
 	}
-	return knot_node_add_rrset(to, from_sig, NULL);
+	return knot_node_add_rrset(to, &from_sig, NULL);
 }
 
 /*!
@@ -165,9 +165,6 @@ static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 /*!
  * \brief Custom NSEC3 tree free function.
  *
- * - Leaves RRSIGs, as these are only referenced (shallow copied).
- * - Deep frees NSEC3 RRs, as these nodes were created.
- *
  */
 static void free_nsec3_tree(knot_zone_tree_t *nodes)
 {
@@ -178,9 +175,10 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 		// newly allocated NSEC3 nodes
-		knot_rrset_t *nsec3 = knot_node_get_rrset(node,
-		                                          KNOT_RRTYPE_NSEC3);
-		knot_rrset_free(&nsec3, NULL);
+		knot_rrs_t *nsec3 = knot_node_get_rrs(node, KNOT_RRTYPE_NSEC3);
+		knot_rrs_t *rrsig = knot_node_get_rrs(node, KNOT_RRTYPE_RRSIG);
+		knot_rrs_clear(nsec3, NULL);
+		knot_rrs_clear(rrsig, NULL);
 		knot_node_free(&node);
 	}
 
@@ -250,32 +248,25 @@ static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
  *
  * \return Pointer to created RRSet on success, NULL on errors.
  */
-static knot_rrset_t *create_nsec3_rrset(knot_dname_t *owner,
-                                        const knot_nsec3_params_t *params,
-                                        const bitmap_t *rr_types,
-                                        const uint8_t *next_hashed,
-                                        uint32_t ttl)
+static int create_nsec3_rrset(knot_rrset_t *rrset,
+                              knot_dname_t *owner,
+                              const knot_nsec3_params_t *params,
+                              const bitmap_t *rr_types,
+                              const uint8_t *next_hashed,
+                              uint32_t ttl)
 {
+	assert(rrset);
 	assert(owner);
 	assert(params);
 	assert(rr_types);
 
-	knot_rrset_t *rrset;
-	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN, NULL);
-	if (!rrset) {
-		return NULL;
-	}
+	knot_rrset_init(rrset, owner, KNOT_RRTYPE_NSEC3, KNOT_CLASS_IN);
 
 	size_t rdata_size = nsec3_rdata_size(params, rr_types);
-	uint8_t *rdata = knot_rrset_create_rr(rrset, rdata_size, ttl, NULL);
-	if (!rdata) {
-		knot_rrset_free(&rrset, NULL);
-		return NULL;
-	}
-
+	uint8_t rdata[rdata_size];
 	nsec3_fill_rdata(rdata, params, rr_types, next_hashed, ttl);
 
-	return rrset;
+	return knot_rrset_add_rr(rrset, rdata, rdata_size, ttl, NULL);
 }
 
 /*!
@@ -298,16 +289,17 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 		return NULL;
 	}
 
-	knot_rrset_t *nsec3_rrset;
-	nsec3_rrset = create_nsec3_rrset(owner, nsec3_params,
-	                                           rr_types, NULL, ttl);
-	if (!nsec3_rrset) {
+	knot_rrset_t nsec3_rrset;
+	int ret = create_nsec3_rrset(&nsec3_rrset, owner, nsec3_params,
+	                             rr_types, NULL, ttl);
+	if (ret != KNOT_EOK) {
 		knot_node_free(&new_node);
 		return NULL;
 	}
 
-	if (knot_node_add_rrset_no_merge(new_node, nsec3_rrset) != KNOT_EOK) {
-		knot_rrset_free(&nsec3_rrset, NULL);
+	ret = knot_node_add_rrset(new_node, &nsec3_rrset, NULL);
+	knot_rrset_clear(&nsec3_rrset, NULL);
+	if (ret != KNOT_EOK) {
 		knot_node_free(&new_node);
 		return NULL;
 	}
@@ -375,16 +367,16 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b,
 
 	assert(a->rrset_count == 1);
 
-	knot_rrset_t *a_rrset = knot_node_get_rrset(a, KNOT_RRTYPE_NSEC3);
-	assert(a_rrset);
-	uint8_t algorithm = knot_rdata_nsec3_algorithm(a_rrset, 0);
+	knot_rrs_t *a_rrs = knot_node_get_rrs(a, KNOT_RRTYPE_NSEC3);
+	assert(a_rrs);
+	uint8_t algorithm = knot_rrs_nsec3_algorithm(a_rrs, 0);
 	if (algorithm == 0) {
 		return KNOT_EINVAL;
 	}
 
 	uint8_t *raw_hash = NULL;
 	uint8_t raw_length = 0;
-	knot_rdata_nsec3_next_hashed(a_rrset, 0, &raw_hash, &raw_length);
+	knot_rrs_nsec3_next_hashed(a_rrs, 0, &raw_hash, &raw_length);
 	if (raw_hash == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -447,7 +439,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 		if (result != KNOT_EOK) {
 			break;
 		}
-		if (knot_node_rrset(node, KNOT_RRTYPE_NSEC)) {
+		if (knot_node_rrtype_exists(node, KNOT_RRTYPE_NSEC)) {
 			knot_node_set_removed_nsec(node);
 		}
 		if (knot_node_is_non_auth(node) || knot_node_is_empty(node)) {
@@ -637,4 +629,3 @@ int knot_nsec3_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
 
 	return result;
 }
-

@@ -36,10 +36,10 @@ int main(int argc, char *argv[])
 	knot_dname_t *result = knot_create_nsec3_owner(owner, apex, &params);
 	is_int(0, knot_dname_cmp(result, expect), "create_nsec3_owner()");
 
-	knot_dname_free(&result);
-	knot_dname_free(&owner);
-	knot_dname_free(&apex);
-	knot_dname_free(&expect);
+	knot_dname_free(&result, NULL);
+	knot_dname_free(&owner, NULL);
+	knot_dname_free(&apex, NULL);
+	knot_dname_free(&expect, NULL);
 
 	return 0;
 }

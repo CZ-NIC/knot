@@ -80,9 +80,9 @@ enum {
  * This structure is required for random access to packet sections.
  */
 typedef struct {
-	const knot_rrset_t **rr;     /*!< Array of RRSets for this section. */
-	knot_rrinfo_t *rrinfo;       /*!< Compression info for each RRSet. */
-	uint16_t count;              /*!< Number of RRSets in this section. */
+	const knot_rrset_t *rr;     /*!< Array of RRSets for this section. */
+	knot_rrinfo_t *rrinfo;      /*!< Compression info for each RRSet. */
+	uint16_t count;             /*!< Number of RRSets in this section. */
 } knot_pktsection_t;
 
 /*!
@@ -106,13 +106,13 @@ typedef struct knot_pkt {
 	/* Packet sections. */
 	knot_section_t current;
 	knot_pktsection_t sections[KNOT_PKT_SECTIONS];
-	
+
 	/*! \note <== Memory below this point is not cleared on init for performance reasons. */
-	
+
 	/* Packet RRSet (meta)data. */
 	knot_rrinfo_t rr_info[KNOT_PKT_MAX_RRS];
-	const knot_rrset_t *rr[KNOT_PKT_MAX_RRS];
-	
+	knot_rrset_t rr[KNOT_PKT_MAX_RRS];
+
 	mm_ctx_t mm; /*!< Memory allocation context. */
 } knot_pkt_t;
 
@@ -154,7 +154,6 @@ void knot_pkt_free(knot_pkt_t **pkt);
  */
 int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size);
 
-
 /*! \brief Classify packet according to the question.
  *  \return see enum knot_pkt_type_t
  */
@@ -174,7 +173,7 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt);
 
 /*!
  * \brief Begin reading/writing packet section.
- * 
+ *
  * \note You must proceed in the natural order (ANSWER, AUTHORITY, ADDITIONAL).
  *
  * \param pkt
@@ -211,7 +210,7 @@ int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t l
  */
 int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t qclass, uint16_t qtype);
 
-/*! \brief Write OPT RR to wireformat. 
+/*! \brief Write OPT RR to wireformat.
  *  \note Legacy API.
  */
 int knot_pkt_put_opt(knot_pkt_t *pkt);
@@ -332,7 +331,6 @@ int knot_pkt_add_opt(knot_pkt_t *resp,
 
 /*----------------------------------------------------------------------------*/
 /*** >>> #190 DEPRECATED */
-
 
 #endif /* _KNOT_PACKET_H_ */
 

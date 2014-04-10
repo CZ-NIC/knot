@@ -46,7 +46,7 @@ static void ztree_init_data()
 static void ztree_free_data()
 {
 	for (unsigned i = 0; i < NCOUNT; ++i)
-		knot_dname_free(NAME + i);
+		knot_dname_free(NAME + i, NULL);
 }
 
 static int ztree_iter_data(knot_node_t **node, void *data)
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 	const knot_node_t *prev = NULL;
 	knot_dname_t *tmp_dn = knot_dname_from_str("z.ac.");
 	knot_zone_tree_find_less_or_equal(t, tmp_dn, &node, &prev);
-	knot_dname_free(&tmp_dn);
+	knot_dname_free(&tmp_dn, NULL);
 	ok(prev == NODE + 1, "ztree: ordered lookup");
 
 	/* 5. ordered traversal */
