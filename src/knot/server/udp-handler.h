@@ -59,11 +59,6 @@ void udp_free_ctx(void *ctx);
  */
 int udp_master(dthread_t *thread);
 
-/*!
- * \brief Destructor for UDP handler thread.
- */
-int udp_master_destruct(dthread_t *thread);
-
 #endif
 
 /*! @} */

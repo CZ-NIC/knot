@@ -141,19 +141,6 @@ libknot_la_SOURCES =				\
 	libknot/consts.h			\
 	libknot/dname.c				\
 	libknot/dname.h				\
-	libknot/dnssec/config.h			\
-	libknot/dnssec/crypto.c			\
-	libknot/dnssec/crypto.h			\
-	libknot/dnssec/key.c			\
-	libknot/dnssec/key.h			\
-	libknot/dnssec/policy.c			\
-	libknot/dnssec/policy.h			\
-	libknot/dnssec/rrset-sign.c		\
-	libknot/dnssec/rrset-sign.h		\
-	libknot/dnssec/sig0.c			\
-	libknot/dnssec/sig0.h			\
-	libknot/dnssec/sign.c			\
-	libknot/dnssec/sign.h			\
 	libknot/edns.c				\
 	libknot/edns.h				\
 	libknot/libknot.h			\
@@ -169,19 +156,19 @@ libknot_la_SOURCES =				\
 	libknot/rdata/nsec.h			\
 	libknot/rdata/nsec3.c			\
 	libknot/rdata/nsec3.h			\
-	libknot/rdata/nsec3param.h			\
-	libknot/rdata/nsec3param.c			\
+	libknot/rdata/nsec3param.h		\
+	libknot/rdata/nsec3param.c		\
 	libknot/rdata/nsec.h			\
 	libknot/rdata/rrsig.h			\
 	libknot/rdata/soa.h			\
-	libknot/rdata/tsig.c				\
-	libknot/rdata/tsig.h				\
+	libknot/rdata/tsig.c			\
+	libknot/rdata/tsig.h			\
 	libknot/rrset-dump.c			\
 	libknot/rrset-dump.h			\
 	libknot/rdata.c				\
 	libknot/rdata.h				\
-	libknot/rdataset.c				\
-	libknot/rdataset.h				\
+	libknot/rdataset.c			\
+	libknot/rdataset.h			\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	libknot/tsig-op.c			\

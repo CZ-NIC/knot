@@ -89,11 +89,6 @@ int tcp_recv(int fd, uint8_t *buf, size_t len, struct sockaddr *addr);
  */
 int tcp_master(dthread_t *thread);
 
-/*!
- * \brief Destructor for TCP handler thread.
- */
-int tcp_master_destruct(dthread_t *thread);
-
 #endif // _KNOTD_TCPHANDLER_H_
 
 /*! @} */

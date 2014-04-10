@@ -40,7 +40,6 @@
 #include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
-#include "libknot/dnssec/crypto.h"
 #include "dnssec/random.h"
 
 /*! \brief TCP context data. */
@@ -437,10 +436,4 @@ finish:
 	ref_release(ref);
 
 	return ret;
-}
-
-int tcp_master_destruct(dthread_t *thread)
-{
-	knot_crypto_cleanup_thread();
-	return KNOT_EOK;
 }

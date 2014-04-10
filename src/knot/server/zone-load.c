@@ -24,7 +24,6 @@
 #include "knot/server/zones.h"
 #include "knot/zone/zone-create.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/crypto.h"
 #include "dnssec/random.h"
 #include "libknot/rdata/soa.h"
 #include "knot/zone/zone.h"
@@ -421,12 +420,6 @@ static int zone_loader_thread(dthread_t *thread)
 	return KNOT_EOK;
 }
 
-static int zone_loader_destruct(dthread_t *thread)
-{
-	knot_crypto_cleanup_thread();
-	return KNOT_EOK;
-}
-
 /*!
  * \brief Fill the new database with zones.
  *
@@ -469,8 +462,7 @@ static knot_zonedb_t *load_zonedb(server_t *server, const conf_t *conf)
 	/* Initialize threads. */
 	size_t thread_count = MIN(hattrie_weight(conf->zones), dt_optimal_size());
 	dt_unit_t *unit = NULL;
-	unit = dt_create(thread_count, &zone_loader_thread,
-	                 &zone_loader_destruct, &ctx);
+	unit = dt_create(thread_count, &zone_loader_thread, NULL, &ctx);
 	if (unit != NULL) {
 		/* Start loading. */
 		dt_start(unit);

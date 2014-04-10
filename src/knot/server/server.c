@@ -31,7 +31,6 @@
 #include "knot/conf/conf.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/crypto.h"
 #include "dnssec/random.h"
 
 /*! \brief Event scheduler loop. */
@@ -63,13 +62,6 @@ static int evsched_run(dthread_t *thread)
 		}
 	}
 
-	return KNOT_EOK;
-}
-
-/*! \brief Event scheduler thread destructor. */
-static int evsched_destruct(dthread_t *thread)
-{
-	knot_crypto_cleanup_thread();
 	return KNOT_EOK;
 }
 
@@ -273,7 +265,7 @@ int server_init(server_t *server)
 	if (evsched_init(&server->sched, server) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
-	server->iosched = dt_create(1, evsched_run, evsched_destruct, &server->sched);
+	server->iosched = dt_create(1, evsched_run, NULL, &server->sched);
 	if (server->iosched == NULL) {
 		evsched_deinit(&server->sched);
 		return KNOT_ENOMEM;
@@ -502,8 +494,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		}
 
 		/* Initialize I/O handlers. */
-		ret = server_init_handler(server, IO_UDP, tu_size,
-		                          &udp_master, &udp_master_destruct);
+		ret = server_init_handler(server, IO_UDP, tu_size, &udp_master, NULL);
 		if (ret != KNOT_EOK) {
 			log_server_error("Failed to create UDP threads: %s\n",
 			                 knot_strerror(ret));
@@ -513,7 +504,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		/* Create at least CONFIG_XFERS threads for TCP for faster
 		 * processing of massive bootstrap queries. */
 		ret = server_init_handler(server, IO_TCP, MAX(tu_size * 2, CONFIG_XFERS),
-		                          &tcp_master, &tcp_master_destruct);
+		                          &tcp_master, NULL);
 		if (ret != KNOT_EOK) {
 			log_server_error("Failed to create TCP threads: %s\n",
 			                 knot_strerror(ret));

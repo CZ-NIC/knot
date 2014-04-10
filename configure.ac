@@ -253,57 +253,6 @@ AS_IF([test "$with_urcu" != "no"], [
 
 AC_SEARCH_LIBS([urcu_init], [urcu], [AC_MSG_ERROR([liburcu is too old (< 0.4.0), urcu_init symbol found])], [])
 
-dnl Check for OpenSSL
-AC_ARG_WITH(openssl,
-[  --with-openssl=DIR        where to find openssl library])
-
-AS_IF([test "$with_openssl" != "no"],[
-  PKG_CHECK_MODULES([libcrypto], libcrypto, [
-    with_openssl=yes
-  ],[
-
-    for try_openssl in "$with_openssl" "" "/usr/local"; do
-      save_LIBS="$LIBS"
-      save_CPPFLAGS="$CPPFLAGS"
-
-      AS_IF([test -d "$try_openssl"], [
-        libcrypto_CFLAGS="-I$try_openssl/include"
-        libcrypto_LIBS="-L$try_openssl/lib"
-      ],[
-        libcrypto_CFLAGS=""
-        libcrypto_LIBS=""
-      ])
-
-      CPPFLAGS="$CPPFLAGS $libcrypto_CFLAGS"
-      LIBS="$LIBS $libcrypto_LIBS"
-
-      AC_SEARCH_LIBS([OpenSSL_add_all_digests], [crypto], [
-        with_openssl=yes
-      ],[
-        with_openssl=no
-	# do not cache result of AC_SEARCH_LIBS test
-	unset ac_cv_search_OpenSSL_add_all_digests
-      ])
-
-      CPPFLAGS="$save_CPPFLAGS"
-      LIBS="$save_LIBS"
-    done
-
-  ])
-])
-
-AS_IF([test "$with_openssl" = "no"],[
-  AC_MSG_ERROR([OpenSSL library is required.])
-])
-
-AC_EGREP_CPP(openssl_version_ok,
-  [#include <openssl/crypto.h>
-   #if (OPENSSL_VERSION_NUMBER >= 0x10000000L)
-   openssl_version_ok
-   #endif
-  ],[],[AC_MSG_ERROR([OpenSSL library version >= 1.0.0 is required.])]
-)
-
 AC_ARG_WITH(libidn, AC_HELP_STRING([--with-libidn=[DIR]],
     [Support IDN (needs GNU Libidn)]),
     libidn=$withval, libidn=yes)
@@ -396,7 +345,6 @@ echo "
   Ragel: ${RAGEL} ${FSM_TYPE}
   Utils with IDN: ${libidn}
   Use systemd notifications: ${enable_systemd}
-  OpenSSL: ${libcrypto_CFLAGS} ${libcrypto_LIBS}
   GnuTLS: ${gnutls_CFLAGS} ${gnutls_LIBS}
   YAML: ${yaml_CFLAGS} ${yaml_LIBS}
 

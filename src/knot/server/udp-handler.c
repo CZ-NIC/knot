@@ -47,7 +47,6 @@
 #include "libknot/packet/pkt.h"
 #include "knot/server/zones.h"
 #include "knot/server/notify.h"
-#include "libknot/dnssec/crypto.h"
 #include "libknot/processing/process.h"
 
 /* Buffer identifiers. */
@@ -546,11 +545,5 @@ int udp_master(dthread_t *thread)
 	_udp_deinit(rq);
 	ref_release((ref_t *)ref);
 	mp_delete(udp.query_ctx.mm.ctx);
-	return KNOT_EOK;
-}
-
-int udp_master_destruct(dthread_t *thread)
-{
-	knot_crypto_cleanup_thread();
 	return KNOT_EOK;
 }
