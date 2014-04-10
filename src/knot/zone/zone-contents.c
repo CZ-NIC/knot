@@ -175,8 +175,12 @@ static int discover_additionals(struct rr_data *rr_data,
 		/* Try to find node for the dname in the RDATA. */
 		dname = knot_rrs_name(rrs, i, rr_data->type);
 		knot_zone_contents_find_dname(zone, dname, &node, &encloser, &prev);
-		if (node == NULL && encloser && encloser->wildcard_child) {
-			node = encloser->wildcard_child;
+		if (node == NULL && encloser
+		    && knot_node_has_wildcard_child(encloser)) {
+			/* Find wildcard child in the zone. */
+			node = knot_zone_contents_find_wildcard_child(zone,
+			                                              encloser);
+			assert(node != NULL);
 		}
 
 		rr_data->additional[i] = (knot_node_t *)node;
@@ -200,11 +204,14 @@ static int adjust_pointers(knot_node_t **tnode, void *data)
 		args->first_node = node;
 	}
 
+	// clear Removed NSEC flag so that no relicts remain
+	knot_node_clear_removed_nsec(node);
+
 	// check if this node is not a wildcard child of its parent
 
 	if (knot_dname_is_wildcard(knot_node_owner(node))) {
 		assert(knot_node_parent(node) != NULL);
-		knot_node_set_wildcard_child(knot_node_get_parent(node), node);
+		knot_node_set_wildcard_child(knot_node_get_parent(node));
 	}
 
 	// set flags (delegation point, non-authoritative)
@@ -551,7 +558,7 @@ dbg_zone_exec_detail(
 
 		// check if the node is not wildcard child of the parent
 		if (knot_dname_is_wildcard(knot_node_owner(node))) {
-			knot_node_set_wildcard_child(zone->apex, node);
+			knot_node_set_wildcard_child(zone->apex);
 		}
 	} else {
 		while (parent != NULL &&
@@ -575,7 +582,7 @@ dbg_zone_exec_detail(
 			/* Update node pointers. */
 			knot_node_set_parent(node, next_node);
 			if (knot_dname_is_wildcard(knot_node_owner(node))) {
-				knot_node_set_wildcard_child(next_node, node);
+				knot_node_set_wildcard_child(next_node);
 			}
 
 			++zone->node_count;
@@ -1115,6 +1122,20 @@ const knot_node_t *knot_zone_contents_apex(
 	}
 
 	return zone->apex;
+}
+
+/*----------------------------------------------------------------------------*/
+
+const knot_node_t *knot_zone_contents_find_wildcard_child(
+                const knot_zone_contents_t *contents, const knot_node_t *parent)
+{
+	if (contents == NULL || parent == NULL || parent->owner == NULL) {
+		return NULL;
+	}
+
+	knot_dname_t wildcard[KNOT_DNAME_MAXLEN] = { 0x01, '*' };
+	knot_dname_to_wire(wildcard + 2, parent->owner, KNOT_DNAME_MAXLEN - 2);
+	return knot_zone_contents_find_node(contents, wildcard);
 }
 
 /*----------------------------------------------------------------------------*/
