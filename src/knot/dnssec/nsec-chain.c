@@ -65,7 +65,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	memcpy(rdata, to->owner, next_owner_size);
 	bitmap_write(&rr_types, rdata + next_owner_size);
 
-	int ret = knot_rrset_add_rr(rrset, rdata, rdata_size, ttl, NULL);
+	int ret = knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&rrset, NULL);
 		return NULL;

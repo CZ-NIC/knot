@@ -509,7 +509,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		if (empty_rdata == NULL) {
 			return KNOT_ENOMEM;
 		}
-		int ret = knot_rrset_add_rr(rrset, empty_rdata, 0, ttl, mm);
+		int ret = knot_rrset_add_rdata(rrset, empty_rdata, 0, ttl, mm);
 		free(empty_rdata);
 		return ret;
 	}
@@ -588,10 +588,10 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 		}
 	}
 
-	return knot_rrset_add_rr(rrset, rdata_buffer, offset, ttl, mm);
+	return knot_rrset_add_rdata(rrset, rdata_buffer, offset, ttl, mm);
 }
 
-int knot_rrset_add_rr(knot_rrset_t *rrset,
+int knot_rrset_add_rdata(knot_rrset_t *rrset,
                       const uint8_t *rdata, const uint16_t size,
                       const uint32_t ttl, mm_ctx_t *mm)
 {

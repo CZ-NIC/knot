@@ -51,7 +51,7 @@ void process_error(const zs_scanner_t *s)
 
 static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 {
-	return knot_rrset_add_rr(rrset, scanner->r_data, scanner->r_data_length,
+	return knot_rrset_add_rdata(rrset, scanner->r_data, scanner->r_data_length,
 	                         scanner->r_ttl, NULL);
 }
 

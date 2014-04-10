@@ -65,7 +65,7 @@ static int deserialize_rr(knot_rrset_t *rrset, const uint8_t *stream, uint32_t r
 {
 	uint32_t ttl;
 	memcpy(&ttl, stream, sizeof(uint32_t));
-	return knot_rrset_add_rr(rrset, stream + sizeof(uint32_t),
+	return knot_rrset_add_rdata(rrset, stream + sizeof(uint32_t),
 	                         rdata_size - sizeof(uint32_t), ttl, NULL);
 }
 

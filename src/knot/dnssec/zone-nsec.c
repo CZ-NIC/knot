@@ -93,7 +93,7 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	assert(ttl);
 
 	knot_node_t *apex = zone->apex;
-	const knot_rdataset_t *soa = knot_node_rrs(apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa = knot_node_rdataset(apex, KNOT_RRTYPE_SOA);
 	if (!soa) {
 		return false;
 	}

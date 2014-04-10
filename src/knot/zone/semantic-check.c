@@ -438,7 +438,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	knot_rdataset_t rrsigs;
 	knot_rdataset_init(&rrsigs);
 	ret = knot_synth_rrsig(rrset->type,
-	                           knot_node_rrs(node, KNOT_RRTYPE_RRSIG),
+	                           knot_node_rdataset(node, KNOT_RRTYPE_RRSIG),
 	                           &rrsigs, NULL);
 	if (ret != KNOT_EOK) {
 		if (ret != KNOT_ENOENT) {
@@ -618,7 +618,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 			assert(nsec3_previous);
 
 			const knot_rdataset_t *previous_rrs =
-				knot_node_rrs(nsec3_previous, KNOT_RRTYPE_NSEC3);
+				knot_node_rdataset(nsec3_previous, KNOT_RRTYPE_NSEC3);
 
 			assert(previous_rrs);
 
@@ -637,7 +637,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		}
 	}
 
-	const knot_rdataset_t *nsec3_rrs = knot_node_rrs(nsec3_node,
+	const knot_rdataset_t *nsec3_rrs = knot_node_rdataset(nsec3_node,
 	                                            KNOT_RRTYPE_NSEC3);
 	if (nsec3_rrs == NULL) {
 		err_handler_handle_error(handler, node,
@@ -646,7 +646,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	}
 
 	const knot_rdata_t *nsec3_rr = knot_rdataset_at(nsec3_rrs, 0);
-	const knot_rdataset_t *soa_rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa_rrs = knot_node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs);
 	uint32_t minimum_ttl = knot_soa_minimum(soa_rrs);
 	if (knot_rdata_ttl(nsec3_rr) != minimum_ttl) {
@@ -718,7 +718,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 static int sem_check_node_mandatory(const knot_node_t *node,
                                     err_handler_t *handler, bool *fatal_error)
 {
-	const knot_rdataset_t *cname_rrs = knot_node_rrs(node, KNOT_RRTYPE_CNAME);
+	const knot_rdataset_t *cname_rrs = knot_node_rdataset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrs) {
 		if (knot_node_rrset_count(node) != 1) {
 			/* With DNSSEC node can contain RRSIGs or NSEC */
@@ -738,7 +738,7 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 		}
 	}
 
-	const knot_rdataset_t *dname_rrs = knot_node_rrs(node, KNOT_RRTYPE_DNAME);
+	const knot_rdataset_t *dname_rrs = knot_node_rdataset(node, KNOT_RRTYPE_DNAME);
 	if (dname_rrs) {
 		if (cname_rrs) {
 			*fatal_error = true;
@@ -773,7 +773,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 	                node)) {
 		return KNOT_EOK;
 	}
-	const knot_rdataset_t *ns_rrs = knot_node_rrs(node, KNOT_RRTYPE_NS);
+	const knot_rdataset_t *ns_rrs = knot_node_rdataset(node, KNOT_RRTYPE_NS);
 	if (ns_rrs == NULL) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_MISSING_NS_DEL_POINT,
@@ -893,7 +893,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 		if (!nsec3 && auth) {
 			/* check for NSEC record */
 			const knot_rdataset_t *nsec_rrs =
-				knot_node_rrs(node, KNOT_RRTYPE_NSEC);
+				knot_node_rdataset(node, KNOT_RRTYPE_NSEC);
 			if (nsec_rrs == NULL) {
 				err_handler_handle_error(handler, node,
 				                         ZC_ERR_NO_NSEC, NULL);
@@ -1066,7 +1066,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			return;
 		}
 		const knot_rdataset_t *nsec3_rrs =
-			knot_node_rrs(last_nsec3_node, KNOT_RRTYPE_NSEC3);
+			knot_node_rdataset(last_nsec3_node, KNOT_RRTYPE_NSEC3);
 		if (nsec3_rrs == NULL) {
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
@@ -1109,7 +1109,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 				return;
 		} else {
 			const knot_rdataset_t *nsec_rrs =
-				knot_node_rrs(last_node, KNOT_RRTYPE_NSEC);
+				knot_node_rdataset(last_node, KNOT_RRTYPE_NSEC);
 
 			if (nsec_rrs == NULL) {
 				err_handler_handle_error(handler, last_node,

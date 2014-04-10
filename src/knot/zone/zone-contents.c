@@ -1067,7 +1067,7 @@ dbg_zone_exec_detail(
 	 * values and compare them to the ones from NSEC3PARAM.
 	 */
 	const knot_rdataset_t *nsec3_rrs =
-		knot_node_rrs(*nsec3_previous, KNOT_RRTYPE_NSEC3);
+		knot_node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
 	assert(nsec3_rrs);
 	const knot_node_t *original_prev = *nsec3_previous;
 
@@ -1091,7 +1091,7 @@ dbg_zone_exec_detail(
 
 		/* This RRSET was not a match, try the one from previous node. */
 		*nsec3_previous = knot_node_previous(*nsec3_previous);
-		nsec3_rrs = knot_node_rrs(*nsec3_previous, KNOT_RRTYPE_NSEC3);
+		nsec3_rrs = knot_node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
 		dbg_zone_exec_detail(
 		char *name = (*nsec3_previous)
 				? knot_dname_to_str(
@@ -1292,7 +1292,7 @@ int knot_zone_contents_load_nsec3param(knot_zone_contents_t *zone)
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdataset_t *rrs = knot_node_rrs(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
+	const knot_rdataset_t *rrs = knot_node_rdataset(zone->apex, KNOT_RRTYPE_NSEC3PARAM);
 	if (rrs!= NULL) {
 		int r = knot_nsec3param_from_wire(&zone->nsec3_params, rrs);
 		if (r != KNOT_EOK) {
@@ -1455,7 +1455,7 @@ uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
 {
 	if (!zone) return 0;
 	const knot_rdataset_t *soa = NULL;
-	soa = knot_node_rrs(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
+	soa = knot_node_rdataset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
 	uint32_t serial = knot_soa_serial(soa);
 	return serial;
 }

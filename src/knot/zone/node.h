@@ -132,8 +132,8 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  */
 int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset, bool *ttl_err);
 
-const knot_rdataset_t *knot_node_rrs(const knot_node_t *node, uint16_t type);
-knot_rdataset_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type);
+const knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type);
+knot_rdataset_t *knot_node_get_rdataset(const knot_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns the RRSet of the given type from the node (non-const version).

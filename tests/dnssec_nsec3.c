@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
 	knot_dname_free(&owner, NULL);
 
-	result = knot_rrset_add_rr(rrset, rdata, sizeof(rdata), 0, NULL);
+	result = knot_rrset_add_rdata(rrset, rdata, sizeof(rdata), 0, NULL);
 	if (result == KNOT_EOK) {
 		result = knot_nsec3param_from_wire(&params, &rrset->rrs);
 	}

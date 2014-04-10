@@ -90,7 +90,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	memcpy(cname_rdata, cname, cname_size);
 	knot_dname_free(&cname, NULL);
 
-	int ret = knot_rrset_add_rr(cname_rrset, cname_rdata, cname_size,
+	int ret = knot_rrset_add_rdata(cname_rrset, cname_rdata, cname_size,
 	                            knot_rrset_rr_ttl(dname_rr, 0), mm);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&owner_copy, mm);

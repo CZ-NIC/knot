@@ -86,7 +86,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rda
 		return 0;
 	}
 
-	soa_rrs = knot_node_rrs(zc->apex, KNOT_RRTYPE_SOA);
+	soa_rrs = knot_node_rdataset(zc->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 	ret = rr_func(soa_rrs);
 
@@ -951,7 +951,7 @@ int zones_zonefile_sync(zone_t *zone, journal_t *journal)
 	}
 
 	/* Latest zone serial. */
-	const knot_rdataset_t *soa_rrs = knot_node_rrs(contents->apex,
+	const knot_rdataset_t *soa_rrs = knot_node_rdataset(contents->apex,
 	                                          KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 
@@ -1837,7 +1837,7 @@ int zones_journal_apply(zone_t *zone)
 
 	/* Fetch SOA serial. */
 	const knot_rdataset_t *soa_rrs = 0;
-	soa_rrs = knot_node_rrs(contents->apex, KNOT_RRTYPE_SOA);
+	soa_rrs = knot_node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 	int64_t serial_ret = knot_soa_serial(soa_rrs);
 	if (serial_ret < 0) {

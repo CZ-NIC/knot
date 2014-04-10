@@ -74,7 +74,7 @@ static int create_txt_rrset(knot_rrset_t *rrset, const knot_dname_t *owner,
 	rdata[0] = response_len;
 	memcpy(&rdata[1], response, response_len);
 
-	int ret = knot_rrset_add_rr(rrset, rdata, response_len + 1, 0, mm);
+	int ret = knot_rrset_add_rdata(rrset, rdata, response_len + 1, 0, mm);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&rrset->owner, mm);
 		return ret;

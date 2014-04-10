@@ -125,7 +125,7 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
  */
 void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
 
-/* ----------- Getters / Setters (legacy, functionality in rr_t) ------------ */
+/* ----------- Getters / Setters (legacy, functionality in rdata_t) ------------ */
 
 /*!
  * \brief Returns RDATA of RR on given position.
@@ -211,7 +211,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
                                    size_t total_size, uint32_t ttl, size_t rdlength,
                                    mm_ctx_t *mm);
 
-/* ---------- RR addition. (legacy, functionality in knot_rrs_t) ------------ */
+/* ---------- RR addition. (legacy, functionality in knot_rdataset_t) ------- */
 
 /*!
  * \brief Adds the given RDATA to the RRSet.
@@ -224,9 +224,9 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
  *
  * \return KNOT_E*
  */
-int knot_rrset_add_rr(knot_rrset_t *rrset, const uint8_t *rdata,
-                      const uint16_t size, const uint32_t ttl,
-                      mm_ctx_t *mm);
+int knot_rrset_add_rdata(knot_rrset_t *rrset, const uint8_t *rdata,
+                         const uint16_t size, const uint32_t ttl,
+                         mm_ctx_t *mm);
 
 /* ------------------ Equality / emptines bool checks ----------------------- */
 

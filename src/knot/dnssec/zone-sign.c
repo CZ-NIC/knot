@@ -717,7 +717,7 @@ static int rrset_add_zone_key(knot_rrset_t *rrset,
 
 	const knot_binary_t *key_rdata = &zone_key->dnssec_key.dnskey_rdata;
 
-	return knot_rrset_add_rr(rrset, key_rdata->data, key_rdata->size, ttl,
+	return knot_rrset_add_rdata(rrset, key_rdata->data, key_rdata->size, ttl,
 	                         NULL);
 }
 

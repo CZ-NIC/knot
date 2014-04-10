@@ -390,7 +390,7 @@ static bool node_empty(const knot_node_t *node, knot_dname_t *owner,
 static bool node_contains_rr(const knot_node_t *node,
                              const knot_rrset_t *rr)
 {
-	const knot_rdataset_t *zone_rrs = knot_node_rrs(node, rr->type);
+	const knot_rdataset_t *zone_rrs = knot_node_rdataset(node, rr->type);
 	if (zone_rrs) {
 		assert(rr->rrs.rr_count == 1);
 		const bool compare_ttls = false;
@@ -707,7 +707,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	const bool apex_ns = knot_node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
 	                     rr->type == KNOT_RRTYPE_NS;
 	if (apex_ns) {
-		const knot_rdataset_t *ns_rrs = knot_node_rrs(node, KNOT_RRTYPE_NS);
+		const knot_rdataset_t *ns_rrs = knot_node_rdataset(node, KNOT_RRTYPE_NS);
 		if (*apex_ns_rem == ns_rrs->rr_count - 1) {
 			// Cannot remove last apex NS RR
 			return KNOT_EOK;

@@ -239,7 +239,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		const knot_rdataset_t *soa_rrs = NULL;
 		uint32_t serial = 0;
 		if (zone->contents) {
-			soa_rrs = knot_node_rrs(zone->contents->apex,
+			soa_rrs = knot_node_rdataset(zone->contents->apex,
 			                        KNOT_RRTYPE_SOA);
 			assert(soa_rrs != NULL);
 			serial = knot_soa_serial(soa_rrs);
@@ -817,7 +817,7 @@ int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len)
 		memcpy(raw + off, v + p, r);
 	}
 
-	return knot_rrset_add_rr(rr, raw, v_len + chunks, 0, NULL);
+	return knot_rrset_add_rdata(rr, raw, v_len + chunks, 0, NULL);
 }
 
 int remote_create_ns(knot_rrset_t *rr, const char *d)
@@ -834,7 +834,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 
 	/* Build RDATA. */
 	int dn_size = knot_dname_size(dn);
-	int result = knot_rrset_add_rr(rr, dn, dn_size, 0, NULL);
+	int result = knot_rrset_add_rdata(rr, dn, dn_size, 0, NULL);
 	knot_dname_free(&dn, NULL);
 
 	return result;
