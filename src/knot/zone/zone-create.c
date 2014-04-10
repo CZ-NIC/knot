@@ -290,7 +290,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		assert(!knot_rrset_empty(&soa_rr)); // In this point, SOA has to exist
 		const bool have_nsec3param =
 			knot_node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_NSEC3PARAM);
-		if (knot_zone_contents_is_signed(zc->z) && have_nsec3param) {
+		if (knot_zone_contents_is_signed(zc->z) && !have_nsec3param) {
 			/* Set check level to DNSSEC. */
 			check_level = SEM_CHECK_NSEC;
 		} else if (knot_zone_contents_is_signed(zc->z) && have_nsec3param) {
