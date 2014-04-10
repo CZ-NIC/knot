@@ -24,8 +24,8 @@
 #include "common/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata/soa.h"
 #include "common/debug.h"
-#include "libknot/rdata.h"
 
 int knot_changesets_init(knot_changesets_t **changesets)
 {
@@ -131,7 +131,7 @@ static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                      uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
-	*chg_serial = knot_rrs_soa_serial(&soa->rrs);
+	*chg_serial = knot_soa_serial(&soa->rrs);
 }
 
 void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,

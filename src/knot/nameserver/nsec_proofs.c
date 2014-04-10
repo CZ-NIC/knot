@@ -4,7 +4,6 @@
 #include "knot/dnssec/zone-nsec.h"
 
 #include "libknot/common.h"
-#include "libknot/rdata.h"
 #include "common/debug.h"
 
 #define DNSSEC_ENABLED 1
@@ -790,7 +789,7 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, struct query_data *qdata, bool optional)
 			break;
 		}
 		/* RRSIG is owned by packet now. */
-		knot_rrs_init(&info->synth_rrsig.rrs);
+		knot_rdataset_init(&info->synth_rrsig.rrs);
 	};
 
 	/* Clear the list. */

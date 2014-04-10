@@ -34,7 +34,6 @@
 #include "knot/other/debug.h"
 #include "knot/zone/zone-create.h"
 #include "zscanner/zscanner.h"
-#include "libknot/rdata.h"
 
 void process_error(const zs_scanner_t *s)
 {
@@ -52,7 +51,7 @@ void process_error(const zs_scanner_t *s)
 
 static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 {
-	return knot_rrset_add_rr(rrset, scanner->r_data, scanner->r_data_length,
+	return knot_rrset_add_rdata(rrset, scanner->r_data, scanner->r_data_length,
 	                         scanner->r_ttl, NULL);
 }
 
@@ -170,7 +169,7 @@ static void loader_process(const zs_scanner_t *scanner)
 
 	ret = zcreator_step(zc, &rr);
 	knot_dname_free(&owner, NULL);
-	knot_rrs_clear(&rr.rrs, NULL);
+	knot_rdataset_clear(&rr.rrs, NULL);
 	if (ret != KNOT_EOK) {
 		zc->ret = ret;
 		return;

@@ -24,8 +24,8 @@
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sign.h"
-#include "libknot/rdata.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata/rrsig.h"
 
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024)
 #define RRSIG_RDATA_SIGNER_OFFSET 18
@@ -242,7 +242,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 		return res;
 	}
 
-	return knot_rrset_add_rr(rrsigs, result, size,
+	return knot_rrset_add_rdata(rrsigs, result, size,
 	                         knot_rrset_rr_ttl(covered, 0), NULL);
 }
 
@@ -268,8 +268,8 @@ int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
 	                           sig_expire);
 }
 
-int knot_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
-                     knot_rrs_t *out_sig, mm_ctx_t *mm)
+int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
+                     knot_rdataset_t *out_sig, mm_ctx_t *mm)
 {
 	if (rrsig_rrs == NULL) {
 		return KNOT_ENOENT;
@@ -280,11 +280,11 @@ int knot_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
 	}
 
 	for (int i = 0; i < rrsig_rrs->rr_count; ++i) {
-		if (type == knot_rrs_rrsig_type_covered(rrsig_rrs, i)) {
-			const knot_rr_t *rr_to_copy = knot_rrs_rr(rrsig_rrs, i);
-			int ret = knot_rrs_add_rr(out_sig, rr_to_copy, mm);
+		if (type == knot_rrsig_type_covered(rrsig_rrs, i)) {
+			const knot_rdata_t *rr_to_copy = knot_rdataset_at(rrsig_rrs, i);
+			int ret = knot_rdataset_add(out_sig, rr_to_copy, mm);
 			if (ret != KNOT_EOK) {
-				knot_rrs_clear(out_sig, mm);
+				knot_rdataset_clear(out_sig, mm);
 				return ret;
 			}
 		}
@@ -311,7 +311,7 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(policy);
 
-	uint32_t expiration = knot_rrs_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	uint32_t expiration = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
 
 	return (expiration <= policy->refresh_before);
 }
@@ -343,7 +343,7 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	uint8_t *signature = NULL;
 	size_t signature_size = 0;
-	knot_rrs_rrsig_signature(&rrsigs->rrs, pos, &signature, &signature_size);
+	knot_rrsig_signature(&rrsigs->rrs, pos, &signature, &signature_size);
 	if (!signature) {
 		return KNOT_EINVAL;
 	}

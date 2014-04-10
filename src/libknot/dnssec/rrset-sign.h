@@ -90,8 +90,8 @@ int knot_sign_rrset(knot_rrset_t *rrsigs,
  * \retval KNOT_EINVAL if no RRSIGs were found.
  * \retval Error code other than EINVAL on error.
  */
-int knot_synth_rrsig(uint16_t type, const knot_rrs_t *rrsig_rrs,
-                     knot_rrs_t *out_sig, mm_ctx_t *mm);
+int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
+                     knot_rdataset_t *out_sig, mm_ctx_t *mm);
 
 /*!
  * \brief Check if RRSIG signature is valid.

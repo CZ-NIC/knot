@@ -125,7 +125,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		}
 
 		// Set SOA serial.
-		knot_rrs_soa_serial_set(&soa->rrs, query->xfr_serial);
+		knot_soa_serial_set(&soa->rrs, query->xfr_serial);
 
 		// Add authority section.
 		knot_pkt_begin(packet, KNOT_AUTHORITY);
@@ -232,7 +232,7 @@ static int64_t first_serial_check(const knot_pkt_t *reply)
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
 	} else {
-		return knot_rrs_soa_serial(&first->rrs);
+		return knot_soa_serial(&first->rrs);
 	}
 }
 
@@ -248,7 +248,7 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
 	} else {
-		int64_t last_serial = knot_rrs_soa_serial(&last->rrs);
+		int64_t last_serial = knot_soa_serial(&last->rrs);
 		if (last_serial == serial) {
 			return true;
 		} else {

@@ -15,7 +15,7 @@
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
+    This program is distributed in the hope tha t it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_TSIG_H_
-#define _KNOT_TSIG_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -138,7 +137,5 @@ size_t tsig_wire_maxsize(const knot_tsig_key_t *key);
 size_t tsig_wire_actsize(const knot_rrset_t *tsig);
 
 int tsig_rdata_is_ok(const knot_rrset_t *tsig);
-
-#endif /* _KNOT_TSIG_H_ */
 
 /*! @} */

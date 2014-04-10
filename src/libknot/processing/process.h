@@ -29,7 +29,7 @@
 
 #include "common/mempattern.h"
 #include "libknot/consts.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 #include "libknot/packet/pkt.h"
 
 /*! \brief Main packet processing states.

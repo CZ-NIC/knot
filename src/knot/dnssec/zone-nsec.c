@@ -21,18 +21,18 @@
 #include <limits.h>
 
 #include "common/base32hex.h"
+#include "common/debug.h"
 #include "common/descriptor.h"
 #include "common/hhash.h"
-#include "knot/dnssec/nsec-chain.h"
-#include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dnssec/bitmap.h"
-#include "libknot/dnssec/nsec3.h"
-#include "knot/dnssec/zone-nsec.h"
-#include "knot/dnssec/zone-sign.h"
-#include "libknot/rdata.h"
-#include "common/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
+#include "libknot/rdata/soa.h"
+#include "libknot/rdata/nsec3.h"
+#include "knot/dnssec/nsec-chain.h"
+#include "knot/dnssec/nsec3-chain.h"
+#include "knot/dnssec/zone-nsec.h"
+#include "knot/dnssec/zone-sign.h"
 #include "knot/zone/zone-contents.h"
 #include "knot/zone/zone-diff.h"
 
@@ -93,12 +93,12 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	assert(ttl);
 
 	knot_node_t *apex = zone->apex;
-	const knot_rrs_t *soa = knot_node_rrs(apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa = knot_node_rdataset(apex, KNOT_RRTYPE_SOA);
 	if (!soa) {
 		return false;
 	}
 
-	uint32_t result =  knot_rrs_soa_minimum(soa);
+	uint32_t result =  knot_soa_minimum(soa);
 	if (result == 0) {
 		return false;
 	}

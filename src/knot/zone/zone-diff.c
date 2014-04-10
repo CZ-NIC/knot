@@ -22,8 +22,8 @@
 #include "common/errcode.h"
 #include "knot/zone/zone-diff.h"
 #include "common/descriptor.h"
-#include "libknot/rdata.h"
 #include "libknot/util/utils.h"
+#include "libknot/rdata/soa.h"
 
 struct zone_diff_param {
 	knot_zone_tree_t *nodes;
@@ -60,8 +60,8 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-	int64_t soa_serial1 = knot_rrs_soa_serial(&soa_rrset1.rrs);
-	int64_t soa_serial2 = knot_rrs_soa_serial(&soa_rrset2.rrs);
+	int64_t soa_serial1 = knot_soa_serial(&soa_rrset1.rrs);
+	int64_t soa_serial2 = knot_soa_serial(&soa_rrset2.rrs);
 
 	if (knot_serial_compare(soa_serial1, soa_serial2) == 0) {
 		return KNOT_ENODIFF;
@@ -205,9 +205,9 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
 static bool rr_exists(const knot_rrset_t *in, const knot_rrset_t *ref,
                       size_t ref_pos)
 {
-	knot_rr_t *to_check = knot_rrs_rr(&ref->rrs, ref_pos);
+	knot_rdata_t *to_check = knot_rdataset_at(&ref->rrs, ref_pos);
 	const bool compare_ttls = true;
-	return knot_rrs_member(&in->rrs, to_check, compare_ttls);
+	return knot_rdataset_member(&in->rrs, to_check, compare_ttls);
 }
 
 static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
@@ -248,8 +248,8 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 			 * No such RR is present in 'rrset2'. We'll copy
 			 * index 'i' into 'changes' RRSet.
 			 */
-			knot_rr_t *add_rr = knot_rrs_rr(&rrset1->rrs, i);
-			int ret = knot_rrs_add_rr(&(*changes)->rrs, add_rr, NULL);
+			knot_rdata_t *add_rr = knot_rdataset_at(&rrset1->rrs, i);
+			int ret = knot_rdataset_add(&(*changes)->rrs, add_rr, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(changes, NULL);
 				return ret;

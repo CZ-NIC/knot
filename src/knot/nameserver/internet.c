@@ -1,13 +1,30 @@
+/*  Copyright (C) 2013 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "common/debug.h"
+#include "common/descriptor.h"
+#include "libknot/common.h"
+#include "libknot/rdata/rdname.h"
+#include "libknot/rdata/soa.h"
+#include "libknot/dnssec/rrset-sign.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/zone/zonedb.h"
-#include "libknot/common.h"
-#include "libknot/rdata.h"
-#include "common/debug.h"
-#include "common/descriptor.h"
 #include "knot/server/zones.h"
-#include "libknot/dnssec/rrset-sign.h"
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const knot_node_t *node)
@@ -59,7 +76,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 
 	/* Replace last labels of qname with DNAME. */
 	const knot_dname_t *dname_wire = dname_rr->owner;
-	const knot_dname_t *dname_tgt = knot_rrs_dname_target(&dname_rr->rrs);
+	const knot_dname_t *dname_tgt = knot_dname_target(&dname_rr->rrs);
 	int labels = knot_dname_labels(dname_wire, NULL);
 	knot_dname_t *cname = knot_dname_replace_suffix(qname, labels, dname_tgt);
 	if (cname == NULL) {
@@ -73,7 +90,7 @@ static int dname_cname_synth(const knot_rrset_t *dname_rr,
 	memcpy(cname_rdata, cname, cname_size);
 	knot_dname_free(&cname, NULL);
 
-	int ret = knot_rrset_add_rr(cname_rrset, cname_rdata, cname_size,
+	int ret = knot_rrset_add_rdata(cname_rrset, cname_rdata, cname_size,
 	                            knot_rrset_rr_ttl(dname_rr, 0), mm);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&owner_copy, mm);
@@ -91,7 +108,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 {
 	if (knot_dname_labels(qname, NULL)
 		- knot_dname_labels(rrset->owner, NULL)
-		+ knot_dname_labels(knot_rrs_dname_target(&rrset->rrs), NULL)
+		+ knot_dname_labels(knot_dname_target(&rrset->rrs), NULL)
 		> KNOT_DNAME_MAXLABELS) {
 		return true;
 	} else {
@@ -112,8 +129,8 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
                      knot_rrinfo_t *rrinfo,
                      struct query_data *qdata)
 {
-	knot_rrs_t synth_rrs;
-	knot_rrs_init(&synth_rrs);
+	knot_rdataset_t synth_rrs;
+	knot_rdataset_init(&synth_rrs);
 	int ret = knot_synth_rrsig(type, &rrsigs->rrs, &synth_rrs, qdata->mm);
 	if (ret == KNOT_ENOENT) {
 		// No signature
@@ -126,7 +143,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	/* Create rrsig info structure. */
 	struct rrsig_info *info = mm_alloc(qdata->mm, sizeof(struct rrsig_info));
 	if (info == NULL) {
-		knot_rrs_clear(&synth_rrs, qdata->mm);
+		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
 
@@ -134,7 +151,7 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	knot_dname_t *owner_copy = knot_dname_copy(sig_owner, qdata->mm);
 	if (owner_copy == NULL) {
 		mm_free(qdata->mm, info);
-		knot_rrs_clear(&synth_rrs, qdata->mm);
+		knot_rdataset_clear(&synth_rrs, qdata->mm);
 		return KNOT_ENOMEM;
 	}
 	knot_rrset_init(&info->synth_rrsig, owner_copy, rrsigs->type, rrsigs->rclass);
@@ -237,7 +254,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 	// MINIMUM as TTL
 	int ret = KNOT_EOK;
 	uint32_t flags = KNOT_PF_NOTRUNC;
-	uint32_t min = knot_rrs_soa_minimum(&soa_rrset.rrs);
+	uint32_t min = knot_soa_minimum(&soa_rrset.rrs);
 	if (min < knot_rrset_rr_ttl(&soa_rrset, 0)) {
 		knot_rrset_t copy;
 		knot_dname_t *dname_cpy = knot_dname_copy(soa_rrset.owner, &pkt->mm);
@@ -245,7 +262,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 			return KNOT_ENOMEM;
 		}
 		knot_rrset_init(&copy, dname_cpy, soa_rrset.type, soa_rrset.rclass);
-		int ret = knot_rrs_copy(&copy.rrs, &soa_rrset.rrs, &pkt->mm);
+		int ret = knot_rdataset_copy(&copy.rrs, &soa_rrset.rrs, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			knot_dname_free(&dname_cpy, &pkt->mm);
 			return ret;
@@ -392,7 +409,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 	}
 
 	/* Now follow the next CNAME TARGET. */
-	qdata->name = knot_rrs_cname_name(&cname_rr.rrs);
+	qdata->name = knot_cname_name(&cname_rr.rrs);
 
 #ifdef KNOT_NS_DEBUG
 	char *cname_str = knot_dname_to_str(cname_node->owner);
@@ -699,7 +716,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			return KNOT_ENOMEM;
 		}
 		knot_rrset_init(&to_add, qname_cpy, rr->type, rr->rclass);
-		int ret = knot_rrs_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
+		int ret = knot_rdataset_copy(&to_add.rrs, &rr->rrs, &pkt->mm);
 		if (ret != KNOT_EOK) {
 			knot_dname_free(&qname_cpy, &pkt->mm);
 		}

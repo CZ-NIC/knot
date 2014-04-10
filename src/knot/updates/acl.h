@@ -33,7 +33,7 @@
 #include "common/lists.h"
 #include "common/sockaddr.h"
 #include "common/mempattern.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 
 struct knot_tsig_key;
 

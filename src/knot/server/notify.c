@@ -31,11 +31,11 @@
 #include "common/evsched.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
-#include "libknot/rdata.h"
 #include "knot/nameserver/internet.h"
 #include "common/debug.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/rdata/soa.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -96,7 +96,7 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 	if (answer->count > 0) {
 		const knot_rrset_t *soa = &answer->rr[0];
 		if (soa->type == KNOT_RRTYPE_SOA) {
-			serial = knot_rrs_soa_serial(&soa->rrs);
+			serial = knot_soa_serial(&soa->rrs);
 			dbg_ns("%s: received serial %u\n", __func__, serial);
 		} else { /* Ignore */
 			dbg_ns("%s: NOTIFY answer != SOA_RR\n", __func__);

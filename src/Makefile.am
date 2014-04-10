@@ -148,8 +148,6 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/key.c			\
 	libknot/dnssec/key.h			\
 	libknot/dnssec/bitmap.h			\
-	libknot/dnssec/nsec3.c			\
-	libknot/dnssec/nsec3.h			\
 	libknot/dnssec/policy.c			\
 	libknot/dnssec/policy.h			\
 	libknot/dnssec/random.h			\
@@ -169,17 +167,28 @@ libknot_la_SOURCES =				\
 	libknot/packet/wire.h			\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\
-	libknot/rdata.h				\
+	libknot/rdata/rdname.h			\
+	libknot/rdata/dnskey.h			\
+	libknot/rdata/nsec.h			\
+	libknot/rdata/nsec3.c			\
+	libknot/rdata/nsec3.h			\
+	libknot/rdata/nsec3param.h			\
+	libknot/rdata/nsec3param.c			\
+	libknot/rdata/nsec.h			\
+	libknot/rdata/rrsig.h			\
+	libknot/rdata/soa.h			\
+	libknot/rdata/tsig.c				\
+	libknot/rdata/tsig.h				\
 	libknot/rrset-dump.c			\
 	libknot/rrset-dump.h			\
-	libknot/rr.c				\
-	libknot/rr.h				\
+	libknot/rdata.c				\
+	libknot/rdata.h				\
+	libknot/rdataset.c				\
+	libknot/rdataset.h				\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	libknot/tsig-op.c			\
 	libknot/tsig-op.h			\
-	libknot/tsig.c				\
-	libknot/tsig.h				\
 	libknot/util/endian.h			\
 	libknot/util/tolower.c			\
 	libknot/util/tolower.h			\

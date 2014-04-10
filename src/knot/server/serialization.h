@@ -1,5 +1,5 @@
 /*!
- * \file rr.h
+ * \file serialization.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *

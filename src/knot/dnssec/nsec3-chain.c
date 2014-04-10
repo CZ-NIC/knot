@@ -19,7 +19,6 @@
 #include "common/base32hex.h"
 #include "knot/dnssec/nsec3-chain.h"
 #include "libknot/dname.h"
-#include "libknot/rdata.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/zone-contents.h"
 #include "knot/zone/zone-diff.h"
@@ -27,6 +26,7 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/bitmap.h"
+#include "libknot/rdata/nsec3.h"
 
 /* - Forward declarations --------------------------------------------------- */
 
@@ -52,7 +52,7 @@ inline static bool valid_nsec3_node(const knot_node_t *node)
 		return false;
 	}
 
-	const knot_rrs_t *nsec3 = knot_node_rrs(node, KNOT_RRTYPE_NSEC3);
+	const knot_rdataset_t *nsec3 = knot_node_rdataset(node, KNOT_RRTYPE_NSEC3);
 	if (nsec3 == NULL) {
 		return false;
 	}
@@ -175,10 +175,10 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 		// newly allocated NSEC3 nodes
-		knot_rrs_t *nsec3 = knot_node_get_rrs(node, KNOT_RRTYPE_NSEC3);
-		knot_rrs_t *rrsig = knot_node_get_rrs(node, KNOT_RRTYPE_RRSIG);
-		knot_rrs_clear(nsec3, NULL);
-		knot_rrs_clear(rrsig, NULL);
+		knot_rdataset_t *nsec3 = knot_node_get_rdataset(node, KNOT_RRTYPE_NSEC3);
+		knot_rdataset_t *rrsig = knot_node_get_rdataset(node, KNOT_RRTYPE_RRSIG);
+		knot_rdataset_clear(nsec3, NULL);
+		knot_rdataset_clear(rrsig, NULL);
 		knot_node_free(&node);
 	}
 
@@ -266,7 +266,7 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 	uint8_t rdata[rdata_size];
 	nsec3_fill_rdata(rdata, params, rr_types, next_hashed, ttl);
 
-	return knot_rrset_add_rr(rrset, rdata, rdata_size, ttl, NULL);
+	return knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL);
 }
 
 /*!
@@ -367,16 +367,16 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b,
 
 	assert(a->rrset_count == 1);
 
-	knot_rrs_t *a_rrs = knot_node_get_rrs(a, KNOT_RRTYPE_NSEC3);
+	knot_rdataset_t *a_rrs = knot_node_get_rdataset(a, KNOT_RRTYPE_NSEC3);
 	assert(a_rrs);
-	uint8_t algorithm = knot_rrs_nsec3_algorithm(a_rrs, 0);
+	uint8_t algorithm = knot_nsec3_algorithm(a_rrs, 0);
 	if (algorithm == 0) {
 		return KNOT_EINVAL;
 	}
 
 	uint8_t *raw_hash = NULL;
 	uint8_t raw_length = 0;
-	knot_rrs_nsec3_next_hashed(a_rrs, 0, &raw_hash, &raw_length);
+	knot_nsec3_next_hashed(a_rrs, 0, &raw_hash, &raw_length);
 	if (raw_hash == NULL) {
 		return KNOT_EINVAL;
 	}

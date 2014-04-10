@@ -23,7 +23,7 @@
 #include "libknot/common.h"
 #include "common/descriptor.h"
 #include "libknot/packet/wire.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 #include "libknot/tsig-op.h"
 
 /*! \brief Scan packet for RRSet existence. */

@@ -25,17 +25,80 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_DNSSEC_NSEC3_H_
-#define _KNOT_DNSSEC_NSEC3_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "libknot/consts.h"
-#include "libknot/rrset.h"
+#include "libknot/rdataset.h"
+#include "libknot/rdata/nsec3param.h"
 
-/*---------------------------------------------------------------------------*/
+static inline
+uint8_t knot_nsec3_algorithm(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return *knot_rdata_offset(rrs, pos, 0);
+}
+
+static inline
+uint8_t knot_nsec3_flags(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return *knot_rdata_offset(rrs, pos, 1);
+}
+
+static inline
+uint16_t knot_nsec3_iterations(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return knot_wire_read_u16(knot_rdata_offset(rrs, pos, 2));
+}
+
+static inline
+uint8_t knot_nsec3_salt_length(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return 0);
+	return *(knot_rdata_offset(rrs, pos, 0) + 4);
+}
+
+static inline
+const uint8_t *knot_nsec3_salt(const knot_rdataset_t *rrs, size_t pos)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return NULL);
+	return knot_rdata_offset(rrs, pos, 5);
+}
+
+static inline
+void knot_nsec3_next_hashed(const knot_rdataset_t *rrs, size_t pos,
+                                  uint8_t **name, uint8_t *name_size)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return);
+	uint8_t salt_size = knot_nsec3_salt_length(rrs, pos);
+	*name_size = *knot_rdata_offset(rrs, pos, 4 + salt_size + 1);
+	*name = knot_rdata_offset(rrs, pos, 4 + salt_size + 2);
+}
+
+static inline
+void knot_nsec3_bitmap(const knot_rdataset_t *rrs, size_t pos,
+                             uint8_t **bitmap, uint16_t *size)
+{
+	KNOT_RDATASET_CHECK(rrs, pos, return);
+
+	/* Bitmap is last, skip all the items. */
+	size_t offset = 6; //hash alg., flags, iterations, salt len., hash len.
+	offset += knot_nsec3_salt_length(rrs, pos); //salt
+
+	uint8_t *next_hashed = NULL;
+	uint8_t next_hashed_size = 0;
+	knot_nsec3_next_hashed(rrs, pos, &next_hashed, &next_hashed_size);
+	offset += next_hashed_size; //hash
+
+	*bitmap = knot_rdata_offset(rrs, pos, offset);
+	const knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
+	*size = knot_rdata_rdlen(rr) - offset;
+}
 
 /*!
  * \brief Get length of the raw NSEC3 hash.
@@ -69,38 +132,6 @@ inline static size_t knot_nsec3_hash_b32_length(uint8_t algorithm)
 	}
 }
 
-/*---------------------------------------------------------------------------*/
-
-/*!
- * \brief Structure representing the NSEC3PARAM resource record.
- */
-typedef struct {
-	uint8_t algorithm;    //!< Hash algorithm.
-	uint8_t flags;        //!< Flags.
-	uint16_t iterations;  //!< Additional iterations of the hash function.
-	uint8_t salt_length;  //!< Length of the salt field in bytes.
-	uint8_t *salt;        //!< Salt used in hashing.
-} knot_nsec3_params_t;
-
-/*---------------------------------------------------------------------------*/
-
-/*!
- * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.
- *
- * \param params      Structure to initialize.
- * \param nsec3param  The NSEC3PARAM RRs.
- *
- * \return Error code, KNOT_EOK on success.
- */
-int knot_nsec3_params_from_wire(knot_nsec3_params_t *params,
-                                const knot_rrs_t *rrs);
-/*!
- * \brief Clean up structure with NSEC3 params (do not deallocate).
- *
- * \param params Structure with NSEC3 params.
- */
-void knot_nsec3_params_free(knot_nsec3_params_t *params);
-
 /*!
  * \brief Compute NSEC3 hash for given data.
  *
@@ -114,7 +145,5 @@ void knot_nsec3_params_free(knot_nsec3_params_t *params);
  */
 int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
                     size_t size, uint8_t **digest, size_t *digest_size);
-
-#endif // _KNOT_DNSSEC_NSEC3_H_
 
 /*! @} */

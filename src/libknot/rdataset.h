@@ -1,5 +1,5 @@
 /*!
- * \file rr.h
+ * \file rdataset.h
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
@@ -31,77 +31,15 @@
 #include <stdbool.h>
 
 #include "common/mempattern.h"
-
-/* ---------------------------- Single RR ----------------------------------- */
-
-/*!
- * \brief knot_rr_t Array holding single RR payload, i.e. ttl, size and RDATA.
- */
-typedef uint8_t knot_rr_t;
-
-/* ------------------------- RR getters/setters ----------------------------- */
-
-/*!
- * \brief Returns RDATA size of single RR.
- * \param rr  RR whose size we want.
- * \return  RR size.
- */
-uint16_t knot_rr_rdata_size(const knot_rr_t *rr);
-
-/*!
- * \brief Sets size for given RR.
- * \param rr    RR whose size we want to set.
- * \param size  Size to be set.
- */
-void knot_rr_set_size(knot_rr_t *rr, uint16_t size);
-
-/*!
- * \brief Returns TTL of single RR.
- * \param rr  RR whose TTL we want.
- * \return  RR TTL.
- */
-uint32_t knot_rr_ttl(const knot_rr_t *rr);
-
-/*!
- * \brief Sets TTL for given RR.
- * \param rr   RR whose TTL we want to set.
- * \param ttl  TTL to be set.
- */
-void knot_rr_set_ttl(knot_rr_t *rr, uint32_t ttl);
-
-/*!
- * \brief Returns pointer to RR data.
- * \param rr  RR whose data we want.
- * \return RR data pointer.
- */
-uint8_t *knot_rr_rdata(const knot_rr_t *rr);
-
-/* ----------------------------- RR misc ------------------------------------ */
-
-/*!
- * \brief Returns actual size of RR structure for given RDATA size.
- * \param size  RDATA size.
- * \return Actual structure size.
- */
-size_t knot_rr_array_size(uint16_t size);
-
-/*!
- * \brief Canonical comparison of two RRs. Both RRs *must* exist.
- * \param rr1  First RR to compare.
- * \param rr2  Second RR to compare.
- * \retval 0 if rr1 == rr2.
- * \retval < 0 if rr1 < rr2.
- * \retval > 0 if rr1 > rr2.
- */
-int knot_rr_cmp(const knot_rr_t *rr1, const knot_rr_t *rr2);
+#include "libknot/rdata.h"
 
 /* --------------------------- Multiple RRs ----------------------------------*/
 
-/*!< \brief Array of RRs. */
-typedef struct knot_rrs {
+/*!< \brief Set of RRs. */
+typedef struct knot_rdataset {
 	uint16_t rr_count;  /*!< \brief Count of RRs stored in the structure. */
-	knot_rr_t *data;    /*!< \brief Actual data, canonically sorted. */
-} knot_rrs_t;
+	knot_rdata_t *data; /*!< \brief Actual data, canonically sorted. */
+} knot_rdataset_t;
 
 /* -------------------------- RRs init/clear ---------------------------------*/
 
@@ -109,14 +47,14 @@ typedef struct knot_rrs {
  * \brief Initializes RRS structure.
  * \param rrs  Structure to be initialized.
  */
-void knot_rrs_init(knot_rrs_t *rrs);
+void knot_rdataset_init(knot_rdataset_t *rrs);
 
 /*!
  * \brief Frees data initialized by RRS structure, but not the structure itself.
  * \param rrs  Structure to be cleared.
  * \param mm   Memory context used to create allocations.
  */
-void knot_rrs_clear(knot_rrs_t *rrs, mm_ctx_t *mm);
+void knot_rdataset_clear(knot_rdataset_t *rrs, mm_ctx_t *mm);
 
 /*!
  * \brief Deep copies RRS structure. All data are duplicated.
@@ -125,7 +63,7 @@ void knot_rrs_clear(knot_rrs_t *rrs, mm_ctx_t *mm);
  * \param mm   Memory context.
  * \return KNOT_E*
  */
-int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm);
+int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, mm_ctx_t *mm);
 
 /* ----------------------- RRs getters/setters ------------------------------ */
 
@@ -135,14 +73,14 @@ int knot_rrs_copy(knot_rrs_t *dst, const knot_rrs_t *src, mm_ctx_t *mm);
  * \param pos  Position to use.
  * \return Pointer to RR at \a pos position.
  */
-knot_rr_t *knot_rrs_rr(const knot_rrs_t *rrs, size_t pos);
+knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, size_t pos);
 
 /*!
- * \brief Returns size of array with RRs.
+ * \brief Returns size of the RR set.
  * \param rrs  RR array.
  * \return Array size.
  */
-size_t knot_rrs_size(const knot_rrs_t *rrs);
+size_t knot_rdataset_size(const knot_rdataset_t *rrs);
 
 /* ----------------------- RRs RR manipulation ------------------------------ */
 
@@ -153,7 +91,7 @@ size_t knot_rrs_size(const knot_rrs_t *rrs);
  * \param mm   Memory context.
  * \return KNOT_E*
  */
-int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm);
+int knot_rdataset_add(knot_rdataset_t *rrs, const knot_rdata_t *rr, mm_ctx_t *mm);
 
 /* ---------------------- RRs set-like operations --------------------------- */
 
@@ -164,7 +102,7 @@ int knot_rrs_add_rr(knot_rrs_t *rrs, const knot_rr_t *rr, mm_ctx_t *mm);
  * \retval true if rrs1 == rrs2.
  * \retval false if rrs1 != rrs2.
  */
-bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2);
+bool knot_rdataset_eq(const knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2);
 
 /*!
  * \brief Returns true if \a rr is present in \a rrs, false otherwise.
@@ -174,7 +112,7 @@ bool knot_rrs_eq(const knot_rrs_t *rrs1, const knot_rrs_t *rrs2);
  * \retval true if \a rr is present in \a rrs.
  * \retval false if \a rr is not present in \a rrs.
  */
-bool knot_rrs_member(const knot_rrs_t *rrs, const knot_rr_t *rr, bool cmp_ttl);
+bool knot_rdataset_member(const knot_rdataset_t *rrs, const knot_rdata_t *rr, bool cmp_ttl);
 
 /*!
  * \brief Merges two RRS into the first one. Second RRS is left intact.
@@ -184,7 +122,7 @@ bool knot_rrs_member(const knot_rrs_t *rrs, const knot_rr_t *rr, bool cmp_ttl);
  * \param mm    Memory context.
  * \return KNOT_E*
  */
-int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm);
+int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, mm_ctx_t *mm);
 
 /*!
  * \brief RRS set-like intersection. Full compare is done.
@@ -194,8 +132,8 @@ int knot_rrs_merge(knot_rrs_t *rrs1, const knot_rrs_t *rrs2, mm_ctx_t *mm);
  * \param mm       Memory context. Will be used to create new RDATA.
  * \return KNOT_E*
  */
-int knot_rrs_intersect(const knot_rrs_t *a, const knot_rrs_t *b,
-                       knot_rrs_t *out, mm_ctx_t *mm);
+int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
+                            knot_rdataset_t *out, mm_ctx_t *mm);
 
 /*!
  * \brief Does set-like RRS subtraction. \a from RRS is changed.
@@ -204,5 +142,18 @@ int knot_rrs_intersect(const knot_rrs_t *a, const knot_rrs_t *b,
  * \param mm    Memory context use to reallocated \a from data.
  * \return KNOT_E*
  */
-int knot_rrs_subtract(knot_rrs_t *from, const knot_rrs_t *what,
-                      mm_ctx_t *mm);
+int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
+                           mm_ctx_t *mm);
+
+/*! \brief Accession helpers. */
+#define KNOT_RDATASET_CHECK(rrs, pos, code) \
+	if (rrs == NULL || rrs->data == NULL || rrs->rr_count == 0 || \
+	    pos >= rrs->rr_count) { \
+		code; \
+	}
+
+static inline
+uint8_t *knot_rdata_offset(const knot_rdataset_t *rrs, size_t pos, size_t offset) {
+	knot_rdata_t *rr = knot_rdataset_at(rrs, pos);
+	return knot_rdata_data(rr) + offset;
+}

@@ -27,7 +27,6 @@
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/rdata.h"
 #include "libknot/util/utils.h"
 
 /*!

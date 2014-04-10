@@ -23,8 +23,8 @@
 #include "common/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
-#include "libknot/dnssec/nsec3.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata/nsec3.h"
 
 int main(int argc, char *argv[])
 {
@@ -59,9 +59,9 @@ int main(int argc, char *argv[])
 	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
 	knot_dname_free(&owner, NULL);
 
-	result = knot_rrset_add_rr(rrset, rdata, sizeof(rdata), 0, NULL);
+	result = knot_rrset_add_rdata(rrset, rdata, sizeof(rdata), 0, NULL);
 	if (result == KNOT_EOK) {
-		result = knot_nsec3_params_from_wire(&params, &rrset->rrs);
+		result = knot_nsec3param_from_wire(&params, &rrset->rrs);
 	}
 
 	is_int(1, params.algorithm, "parse algorithm from wire");
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	is_int(0, memcmp(params.salt, "abcd", 4), "parse salt from wire");
 
 	knot_rrset_free(&rrset, NULL);
-	knot_nsec3_params_free(&params);
+	knot_nsec3param_free(&params);
 
 	// hash computation
 

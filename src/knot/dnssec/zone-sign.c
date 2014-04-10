@@ -19,21 +19,24 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <time.h>
+
+#include "common/debug.h"
 #include "common/descriptor.h"
 #include "common/errcode.h"
 #include "common/hattrie/hat-trie.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
+#include "libknot/rrset.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sign.h"
+#include "libknot/rdata/rdname.h"
+#include "libknot/rdata/rrsig.h"
+#include "libknot/rdata/soa.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/dnssec/zone-sign.h"
-#include "libknot/rdata.h"
-#include "libknot/rrset.h"
 #include "knot/updates/changesets.h"
-#include "common/debug.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-contents.h"
 
@@ -77,8 +80,8 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 
 	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
 	for (uint16_t i = 0; i < rrsigs_rdata_count; i++) {
-		uint16_t keytag = knot_rrs_rrsig_key_tag(&rrsigs->rrs, i);
-		uint16_t type_covered = knot_rrs_rrsig_type_covered(&rrsigs->rrs, i);
+		uint16_t keytag = knot_rrsig_key_tag(&rrsigs->rrs, i);
+		uint16_t type_covered = knot_rrsig_type_covered(&rrsigs->rrs, i);
 		if (keytag != key->keytag || type_covered != covered->type) {
 			continue;
 		}
@@ -169,7 +172,7 @@ static const knot_zone_key_t *get_matching_zone_key(const knot_rrset_t *rrsigs,
 	assert(rrsigs && rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(keys);
 
-	uint16_t keytag = knot_rrs_rrsig_key_tag(&rrsigs->rrs, pos);
+	uint16_t keytag = knot_rrsig_key_tag(&rrsigs->rrs, pos);
 
 	return knot_get_zone_key(keys, keytag);
 }
@@ -187,7 +190,7 @@ static void note_earliest_expiration(const knot_rrset_t *rrsigs, size_t pos,
 	assert(rrsigs);
 	assert(expires_at);
 
-	const uint32_t current = knot_rrs_rrsig_sig_expiration(&rrsigs->rrs, pos);
+	const uint32_t current = knot_rrsig_sig_expiration(&rrsigs->rrs, pos);
 	if (current < *expires_at) {
 		*expires_at = current;
 	}
@@ -263,8 +266,8 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 			}
 		}
 
-		knot_rr_t *rr_rem = knot_rrs_rr(&synth_rrsig.rrs, i);
-		result = knot_rrs_add_rr(&to_remove->rrs, rr_rem, NULL);
+		knot_rdata_t *rr_rem = knot_rdataset_at(&synth_rrsig.rrs, i);
+		result = knot_rdataset_add(&to_remove->rrs, rr_rem, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -279,7 +282,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		knot_rrset_free(&to_remove, NULL);
 	}
 
-	knot_rrs_clear(&synth_rrsig.rrs, NULL);
+	knot_rdataset_clear(&synth_rrsig.rrs, NULL);
 
 	return result;
 }
@@ -458,7 +461,7 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 
 	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
-		uint16_t type_covered = knot_rrs_rrsig_type_covered(&rrsigs->rrs, i);
+		uint16_t type_covered = knot_rrsig_type_covered(&rrsigs->rrs, i);
 		if (!knot_node_rrtype_exists(node, type_covered)) {
 			knot_rrset_t *to_remove = knot_rrset_new(rrsigs->owner,
 			                                         rrsigs->type,
@@ -467,8 +470,8 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 			if (to_remove == NULL) {
 				return KNOT_ENOMEM;
 			}
-			knot_rr_t *rr_rem = knot_rrs_rr(&rrsigs->rrs, i);
-			int ret = knot_rrs_add_rr(&to_remove->rrs, rr_rem, NULL);
+			knot_rdata_t *rr_rem = knot_rdataset_at(&rrsigs->rrs, i);
+			int ret = knot_rdataset_add(&to_remove->rrs, rr_rem, NULL);
 			if (ret != KNOT_EOK) {
 				knot_rrset_free(&to_remove, NULL);
 				return ret;
@@ -714,7 +717,7 @@ static int rrset_add_zone_key(knot_rrset_t *rrset,
 
 	const knot_binary_t *key_rdata = &zone_key->dnssec_key.dnskey_rdata;
 
-	return knot_rrset_add_rr(rrset, key_rdata->data, key_rdata->size, ttl,
+	return knot_rrset_add_rdata(rrset, key_rdata->data, key_rdata->size, ttl,
 	                         NULL);
 }
 
@@ -785,8 +788,8 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 			}
 		}
 
-		knot_rr_t *to_rem = knot_rrs_rr(&dnskeys->rrs, i);
-		result = knot_rrs_add_rr(&to_remove->rrs, to_rem, NULL);
+		knot_rdata_t *to_rem = knot_rdataset_at(&dnskeys->rrs, i);
+		result = knot_rdataset_add(&to_remove->rrs, to_rem, NULL);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -927,8 +930,8 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 			continue;
 		}
 
-		knot_rr_t *to_add = knot_rrs_rr(&dnskeys->rrs, i);
-		result = knot_rrs_add_rr(&new_dnskeys->rrs, to_add, NULL);
+		knot_rdata_t *to_add = knot_rdataset_at(&dnskeys->rrs, i);
+		result = knot_rdataset_add(&new_dnskeys->rrs, to_add, NULL);
 		if (result != KNOT_EOK) {
 			goto fail;
 		}
@@ -1019,7 +1022,7 @@ static int update_dnskeys(const knot_zone_contents_t *zone,
 	bool signatures_exist = (!knot_rrset_empty(&dnskeys) &&
 	                        all_signatures_exist(&dnskeys, &dnskey_rrsig,
 	                                             zone_keys, policy));
-	knot_rrs_clear(&dnskey_rrsig.rrs, NULL);
+	knot_rdataset_clear(&dnskey_rrsig.rrs, NULL);
 	if (!modified && signatures_exist) {
 		return KNOT_EOK;
 	}
@@ -1325,7 +1328,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	dbg_dnssec_verb("Updating SOA...\n");
 
-	uint32_t serial = knot_rrs_soa_serial(&soa->rrs);
+	uint32_t serial = knot_soa_serial(&soa->rrs);
 	if (serial == UINT32_MAX && policy->soa_up == KNOT_SOA_SERIAL_UPDATE) {
 		// TODO: this is wrong, the value should be 'rewound' to 0 in this case
 		return KNOT_EINVAL;
@@ -1366,7 +1369,7 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 		return KNOT_ENOMEM;
 	}
 
-	knot_rrs_soa_serial_set(&soa_to->rrs, new_serial);
+	knot_soa_serial_set(&soa_to->rrs, new_serial);
 
 	// add signatures for new SOA
 

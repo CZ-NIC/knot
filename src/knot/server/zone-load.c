@@ -26,7 +26,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/rdata.h"
+#include "libknot/rdata/soa.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
@@ -203,9 +203,9 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 
 	int64_t serial = 0;
 	if (zone->contents && zone->contents->apex) {
-		const knot_rrs_t *soa = knot_node_rrs(zone->contents->apex,
+		const knot_rdataset_t *soa = knot_node_rdataset(zone->contents->apex,
 		                                      KNOT_RRTYPE_SOA);
-		serial = knot_rrs_soa_serial(soa);
+		serial = knot_soa_serial(soa);
 	}
 
 	log_zone_info("Zone '%s' %s (serial %" PRId64 ")\n", zone_name, action, serial);

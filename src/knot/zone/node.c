@@ -23,8 +23,8 @@
 #include "libknot/common.h"
 #include "knot/zone/node.h"
 #include "libknot/rrset.h"
-#include "libknot/rr.h"
-#include "libknot/rdata.h"
+#include "libknot/rdataset.h"
+#include "libknot/rdata/rrsig.h"
 #include "common/descriptor.h"
 #include "common/debug.h"
 #include "common/mempattern.h"
@@ -71,13 +71,13 @@ static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 
 static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
 {
-	knot_rrs_clear(&data->rrs, mm);
+	knot_rdataset_clear(&data->rrs, mm);
 	free(data->additional);
 }
 
 static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
 {
-	int ret = knot_rrs_copy(&data->rrs, &rrset->rrs, mm);
+	int ret = knot_rdataset_copy(&data->rrs, &rrset->rrs, mm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -152,14 +152,14 @@ int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset,  bool *ttl
 			/* Check if the added RR has the same TTL as the first
 			 * RR in the RRSet.
 			 */
-			knot_rr_t *first = knot_rrs_rr(&node_data->rrs, 0);
+			knot_rdata_t *first = knot_rdataset_at(&node_data->rrs, 0);
 			uint32_t inserted_ttl = knot_rrset_rr_ttl(rrset, 0);
 			if (ttl_err && rrset->type != KNOT_RRTYPE_RRSIG &&
-			    inserted_ttl != knot_rr_ttl(first)) {
+			    inserted_ttl != knot_rdata_ttl(first)) {
 				*ttl_err = true;
 			}
 
-			return knot_rrs_merge(&node_data->rrs, &rrset->rrs, NULL);
+			return knot_rdataset_merge(&node_data->rrs, &rrset->rrs, NULL);
 		}
 	}
 
@@ -169,12 +169,12 @@ int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset,  bool *ttl
 
 /*----------------------------------------------------------------------------*/
 
-const knot_rrs_t *knot_node_rrs(const knot_node_t *node, uint16_t type)
+const knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type)
 {
-	return (const knot_rrs_t *)knot_node_get_rrs(node, type);
+	return (const knot_rdataset_t *)knot_node_get_rdataset(node, type);
 }
 
-knot_rrs_t *knot_node_get_rrs(const knot_node_t *node, uint16_t type)
+knot_rdataset_t *knot_node_get_rdataset(const knot_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return NULL;
@@ -610,7 +610,7 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 		return false;
 	}
 
-	const knot_rrs_t *rrsigs = knot_node_rrs(node, KNOT_RRTYPE_RRSIG);
+	const knot_rdataset_t *rrsigs = knot_node_rdataset(node, KNOT_RRTYPE_RRSIG);
 	if (rrsigs == NULL) {
 		return false;
 	}
@@ -618,7 +618,7 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 	uint16_t rrsigs_rdata_count = rrsigs->rr_count;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		const uint16_t type_covered =
-			knot_rrs_rrsig_type_covered(rrsigs, i);
+			knot_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
 			return true;
 		}
@@ -629,5 +629,5 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 
 bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type)
 {
-	return knot_node_rrs(node, type) != NULL;
+	return knot_node_rdataset(node, type) != NULL;
 }

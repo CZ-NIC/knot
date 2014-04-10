@@ -70,7 +70,7 @@ static uint8_t *sig0_create_rdata(knot_rrset_t *rrset, knot_dnssec_key_t *key)
 	const uint32_t ttl = 0;
 	uint8_t rdata[rdata_size];
 	sig0_write_rdata(rdata, key);
-	if (knot_rrset_add_rr(rrset, rdata, rdata_size, ttl, NULL) != KNOT_EOK) {
+	if (knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL) != KNOT_EOK) {
 		return NULL;
 	}
 
