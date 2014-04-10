@@ -19,13 +19,24 @@
 /*!
  * Convert hex encoded key ID into binary key ID.
  */
-static int str_to_keyid(const char *string, void *_key_id)
+static int str_to_keyid(const char *string, void *_keyid_ptr)
 {
 	assert(string);
-	assert(_key_id);
-	dnssec_key_id_t *key_id = _key_id;
+	assert(_keyid_ptr);
+	char **keyid_ptr = _keyid_ptr;
 
-	return dnssec_key_id_from_string(string, *key_id);
+	if (!dnssec_keyid_is_valid(string)) {
+		return DNSSEC_CONFIG_MALFORMED;
+	}
+
+	char *keyid = dnssec_keyid_copy(string);
+	if (!keyid) {
+		return DNSSEC_ENOMEM;
+	}
+
+	*keyid_ptr = keyid;
+
+	return DNSSEC_EOK;
 }
 
 /*!
@@ -116,7 +127,7 @@ typedef struct {
 	dnssec_key_algorithm_t algorithm;
 	dnssec_binary_t public_key;
 	bool is_ksk;
-	dnssec_key_id_t id;
+	char *id;
 	dnssec_kasp_key_timing_t timing;
 } kasp_key_params_t;
 
@@ -204,14 +215,13 @@ static int create_key_from_params(kasp_key_params_t *params, dnssec_key_t **key_
 		return result;
 	}
 
-	dnssec_key_id_t key_id = { 0 };
-	result = dnssec_key_get_id(key, key_id);
-	if (result != DNSSEC_EOK) {
+	const char *key_id = dnssec_key_get_id(key);
+	if (!key_id) {
 		dnssec_key_free(key);
-		return result;
+		return DNSSEC_INVALID_PUBLIC_KEY;
 	}
 
-	if (!dnssec_key_id_equal(params->id, key_id)) {
+	if (!dnssec_keyid_equal(params->id, key_id)) {
 		dnssec_key_free(key);
 		return DNSSEC_INVALID_KEY_ID;
 	}
@@ -227,7 +237,11 @@ static int create_key_from_params(kasp_key_params_t *params, dnssec_key_t **key_
 static void kasp_key_params_free(kasp_key_params_t *params)
 {
 	assert(params);
+
+	free(params->id);
 	dnssec_binary_free(&params->public_key);
+
+	clear_struct(params);
 }
 
 static int load_zone_key(yml_node_t *node, void *data, _unused_ bool *interrupt)

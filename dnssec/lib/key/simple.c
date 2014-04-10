@@ -19,8 +19,7 @@ static bool has_algorithm(dnssec_key_t *key)
 {
 	assert(key);
 
-	uint8_t algorithm = 0;
-	dnssec_key_get_algorithm(key, &algorithm);
+	uint8_t algorithm = dnssec_key_get_algorithm(key);
 	return algorithm != 0;
 }
 
@@ -38,13 +37,13 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 	}
 
 	gnutls_privkey_t privkey = NULL;
-	dnssec_key_id_t id = { 0 };
-	int r = pem_to_privkey(pem, &privkey, id);
+	_cleanup_free_ char *id = NULL;
+	int r = pem_to_privkey(pem, &privkey, &id);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
-	if (key->public_key && !dnssec_key_id_equal(key->id, id)) {
+	if (key->public_key && !dnssec_keyid_equal(key->id, id)) {
 		gnutls_privkey_deinit(privkey);
 		return DNSSEC_INVALID_KEY_ID;
 	}

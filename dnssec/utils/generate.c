@@ -32,21 +32,15 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	dnssec_key_id_t key_id = { 0 };
-	r = dnssec_keystore_generate_key(keystore, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 2048, key_id);
+	char *key_id = NULL;
+	r = dnssec_keystore_generate_key(keystore, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 2048, &key_id);
 	if (r != DNSSEC_EOK) {
 		fprintf(stderr, "Cannot generate key (%s).\n", dnssec_strerror(r));
 		goto fail;
 	}
 
-	char *key_id_str = NULL;
-	r = dnssec_key_id_to_string(key_id, &key_id_str);
-	if (r != DNSSEC_EOK) {
-		fprintf(stderr, "Cannot get key ID (%s).\n", dnssec_strerror(r));
-		goto fail;
-	}
-	fprintf(stderr, "Generated key id: %s\n", key_id_str);
-	free(key_id_str);
+	fprintf(stderr, "Generated key id: %s\n", key_id);
+	free(key_id);
 
 	exit_status = 0;
 

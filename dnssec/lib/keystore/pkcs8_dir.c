@@ -25,16 +25,10 @@ typedef struct pkcs8_dir_handle {
 /*!
  * Get path to a private key in PKCS #8 PEM format.
  */
-static char *key_path(const char *dir, const dnssec_key_id_t id)
+static char *key_path(const char *dir, const char *id)
 {
 	char buffer[MAX_PATH] = { 0 };
-
-	_cleanup_free_ char *keyname = NULL;
-	if (dnssec_key_id_to_string(id, &keyname) != DNSSEC_EOK) {
-		return NULL;
-	}
-
-	int wrote = snprintf(buffer, MAX_PATH, "%s/%s.pem", dir, keyname);
+	int wrote = snprintf(buffer, MAX_PATH, "%s/%s.pem", dir, id);
 	if (wrote < 0 || wrote > MAX_PATH) {
 		return NULL;
 	}
@@ -65,7 +59,7 @@ static int file_size(int fd, size_t *size)
 /*!
  * Open a key file and get the descriptor.
  */
-static int key_open(const char *dir_name, const dnssec_key_id_t id, int flags,
+static int key_open(const char *dir_name, const char *id, int flags,
 		    mode_t mode, int *fd_ptr)
 {
 	assert(dir_name);
@@ -87,12 +81,12 @@ static int key_open(const char *dir_name, const dnssec_key_id_t id, int flags,
 	return DNSSEC_EOK;
 }
 
-static int key_open_read(const char *dir_name, const dnssec_key_id_t id, int *fd_ptr)
+static int key_open_read(const char *dir_name, const char *id, int *fd_ptr)
 {
 	return key_open(dir_name, id, O_RDONLY, 0, fd_ptr);
 }
 
-static int key_open_write(const char *dir_name, const dnssec_key_id_t id, int *fd_ptr)
+static int key_open_write(const char *dir_name, const char *id, int *fd_ptr)
 {
 	return key_open(dir_name, id, O_WRONLY|O_CREAT|O_EXCL,
 			S_IRUSR|S_IWUSR|S_IRGRP, fd_ptr);
@@ -136,7 +130,7 @@ static int pkcs8_dir_close(void *_handle)
 	return DNSSEC_EOK;
 }
 
-static int pkcs8_dir_read(void *_handle, const dnssec_key_id_t id, dnssec_binary_t *pem)
+static int pkcs8_dir_read(void *_handle, const char *id, dnssec_binary_t *pem)
 {
 	if (!_handle || !id || !pem) {
 		return DNSSEC_EINVAL;
@@ -182,7 +176,7 @@ static int pkcs8_dir_read(void *_handle, const dnssec_key_id_t id, dnssec_binary
 	return DNSSEC_EOK;
 }
 
-static int pkcs8_dir_write(void *_handle, const dnssec_key_id_t id, const dnssec_binary_t *pem)
+static int pkcs8_dir_write(void *_handle, const char *id, const dnssec_binary_t *pem)
 {
 	if (!_handle || !id || !pem) {
 		return DNSSEC_EINVAL;

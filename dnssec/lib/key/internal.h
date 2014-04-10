@@ -1,17 +1,21 @@
 #pragma once
 
 #include <gnutls/abstract.h>
+#include <stdint.h>
 
 #include "key.h"
+#include "keyid.h"
+#include "dname.h"
 
 /*!
  * DNSSEC key.
  */
 struct dnssec_key {
-	dnssec_key_id_t id;
-	uint16_t keytag;
-
+	uint8_t *dname;
 	dnssec_binary_t rdata;
+
+	char id[DNSSEC_KEYID_SIZE + 1];
+	uint16_t keytag;
 
 	gnutls_pubkey_t public_key;
 	gnutls_privkey_t private_key;

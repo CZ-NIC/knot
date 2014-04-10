@@ -45,6 +45,7 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/error.h \
 	lib/dnssec/kasp.h \
 	lib/dnssec/key.h \
+	lib/dnssec/keyid.h \
 	lib/dnssec/keystore.h \
 	lib/dnssec/nsec.h \
 	lib/dnssec/random.h \
@@ -61,13 +62,14 @@ libdnssec_la_SOURCES = \
 	lib/key/ds.c \
 	lib/key/internal.h \
 	lib/key/key.c \
-	lib/key/keyid.c \
 	lib/key/keyid.h \
 	lib/key/keytag.c \
 	lib/key/keytag.h \
 	lib/key/privkey.c \
 	lib/key/privkey.h \
 	lib/key/simple.c \
+	lib/keyid/internal.h \
+	lib/keyid/keyid.c \
 	lib/keystore/internal.h \
 	lib/keystore/keystore.c \
 	lib/keystore/pem.c \

@@ -272,8 +272,7 @@ static const algorithm_functions_t ecdsa_functions = {
 
 static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 {
-	uint8_t algorithm = 0;
-	dnssec_key_get_algorithm(key, &algorithm);
+	uint8_t algorithm = dnssec_key_get_algorithm(key);
 
 	switch ((dnssec_key_algorithm_t)algorithm) {
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
@@ -297,8 +296,7 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
  */
 static gnutls_digest_algorithm_t get_digest_algorithm(const dnssec_key_t *key)
 {
-	uint8_t algorithm = 0;
-	dnssec_key_get_algorithm(key, &algorithm);
+	uint8_t algorithm = dnssec_key_get_algorithm(key);
 
 	switch ((dnssec_key_algorithm_t)algorithm) {
 	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:

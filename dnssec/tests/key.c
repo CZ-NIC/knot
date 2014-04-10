@@ -9,27 +9,21 @@
 #include "sample_keys.h"
 
 #define check_attr_scalar(key, type, name, def_val, set_val) { \
-	type value = -1; \
-	int r = dnssec_key_get_##name(key, &value); \
-	ok(r == DNSSEC_EOK && value == def_val, #name " default"); \
-	r = dnssec_key_set_##name(key, set_val); \
+	type value = dnssec_key_get_##name(key); \
+	ok(value == def_val, #name " default"); \
+	int r = dnssec_key_set_##name(key, set_val); \
 	ok(r == DNSSEC_EOK, #name " set"); \
-	value = -1; \
-	r = dnssec_key_get_##name(key, &value); \
-	ok(r == DNSSEC_EOK && value == set_val, #name " get"); \
+	value = dnssec_key_get_##name(key); \
+	ok(value == set_val, #name " get"); \
 }
 
 static void check_key_ids(dnssec_key_t *key, const key_parameters_t *params)
 {
-	uint16_t keytag = 0;
-	int r = dnssec_key_get_keytag(key, &keytag);
-	ok(r == DNSSEC_EOK && keytag == params->keytag, "get keytag");
+	uint16_t keytag = dnssec_key_get_keytag(key);
+	ok(keytag == params->keytag, "get keytag");
 
-	dnssec_key_id_t key_id = { 0 };
-	r = dnssec_key_get_id(key, key_id);
-	ok(r == DNSSEC_EOK &&
-	   memcmp(key_id, params->key_id.data, params->key_id.size) == 0,
-	   "get key ID");
+	const char *key_id = dnssec_key_get_id(key);
+	ok(strcmp(key_id, params->key_id) == 0, "get key ID");
 }
 
 static void test_public_key(const key_parameters_t *params)

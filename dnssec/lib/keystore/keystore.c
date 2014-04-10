@@ -75,9 +75,9 @@ int dnssec_keystore_list_keys(dnssec_keystore_t *store, void *list)
 _public_
 int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 				 dnssec_key_algorithm_t _algorithm,
-				 unsigned bits, dnssec_key_id_t key_id)
+				 unsigned bits, char **id_ptr)
 {
-	if (!store || !_algorithm || !key_id) {
+	if (!store || !_algorithm || !id_ptr) {
 		return DNSSEC_EINVAL;
 	}
 
@@ -92,12 +92,12 @@ int dnssec_keystore_generate_key(dnssec_keystore_t *store,
 		return DNSSEC_INVALID_KEY_SIZE;
 	}
 
-	return store->functions->generate_key(store->ctx, algorithm, bits, key_id);
+	return store->functions->generate_key(store->ctx, algorithm, bits, id_ptr);
 }
 
 _public_
 int dnssec_keystore_delete_key(dnssec_keystore_t *store,
-			       const dnssec_key_id_t key_id)
+			       const char *key_id)
 {
 	if (!store || !key_id) {
 		return DNSSEC_EINVAL;
@@ -106,7 +106,7 @@ int dnssec_keystore_delete_key(dnssec_keystore_t *store,
 	return store->functions->delete_key(store, key_id);
 }
 
-static bool valid_params(dnssec_key_t *key, dnssec_key_id_t id,
+static bool valid_params(dnssec_key_t *key, const char *id,
 			 dnssec_key_algorithm_t algorithm)
 {
 	assert(key);
@@ -120,14 +120,13 @@ static bool valid_params(dnssec_key_t *key, dnssec_key_id_t id,
 	// public key present, parameters must match or be NULL
 
 	if (algorithm != 0) {
-		uint8_t current_algorithm = 0;
-		dnssec_key_get_algorithm(key, &current_algorithm);
-		if (algorithm != current_algorithm) {
+		uint8_t current = dnssec_key_get_algorithm(key);
+		if (algorithm != current) {
 			return false;
 		}
 	}
 
-	if (id != NULL && !dnssec_key_id_equal(key->id, id)) {
+	if (id != NULL && !dnssec_keyid_equal(key->id, id)) {
 		return false;
 	}
 
@@ -137,7 +136,7 @@ static bool valid_params(dnssec_key_t *key, dnssec_key_id_t id,
 
 _public_
 int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
-			       dnssec_key_id_t id, dnssec_key_algorithm_t algorithm)
+			       const char *id, dnssec_key_algorithm_t algorithm)
 {
 	if (!key || !keystore || !valid_params(key, id, algorithm)) {
 		return DNSSEC_EINVAL;
@@ -156,8 +155,7 @@ int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
 
 	if (algorithm == 0) {
 		assert(key->public_key);
-		uint8_t algorithm8 = 0;
-		dnssec_key_get_algorithm(key, &algorithm8);
+		uint8_t algorithm8 = dnssec_key_get_algorithm(key);
 		algorithm = algorithm8;
 	}
 

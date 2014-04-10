@@ -56,23 +56,23 @@ static int pkcs8_close(void *_ctx)
 
 static int pkcs8_list_keys(void *_ctx, void *list)
 {
-	pkcs8_ctx_t *ctx = _ctx;
+	//pkcs8_ctx_t *ctx = _ctx;
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
 static int pkcs8_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
-			      unsigned bits, dnssec_key_id_t id)
+			      unsigned bits, char **id_ptr)
 {
 	assert(_ctx);
-	assert(id);
+	assert(id_ptr);
 
 	pkcs8_ctx_t *ctx = _ctx;
 
 	// generate key
 
-	dnssec_key_id_t new_id = { 0 };
+	char *new_id = NULL;
 	_cleanup_binary_ dnssec_binary_t data = { 0 };
-	int r = pem_generate(algorithm, bits, &data, new_id);
+	int r = pem_generate(algorithm, bits, &data, &new_id);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
@@ -86,19 +86,18 @@ static int pkcs8_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 
 	// finish
 
-	dnssec_key_id_copy(new_id, id);
+	*id_ptr = new_id;
 
 	return DNSSEC_EOK;
 }
 
-static int pkcs8_delete_key(void *_ctx, const dnssec_key_id_t id)
+static int pkcs8_delete_key(void *_ctx, const char *id)
 {
-	pkcs8_ctx_t *ctx = _ctx;
+	//pkcs8_ctx_t *ctx = _ctx;
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
-static int pkcs8_get_private(void *_ctx, const dnssec_key_id_t id,
-			     gnutls_privkey_t *key_ptr)
+static int pkcs8_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_ptr)
 {
 	assert(_ctx);
 	assert(id);
@@ -117,15 +116,15 @@ static int pkcs8_get_private(void *_ctx, const dnssec_key_id_t id,
 	// construct the key
 
 	gnutls_privkey_t key = NULL;
-	dnssec_key_id_t key_id = { 0 };
-	r = pem_to_privkey(&pem, &key, key_id);
+	_cleanup_free_ char *key_id = NULL;
+	r = pem_to_privkey(&pem, &key, &key_id);
 	if (r != DNSSEC_EOK) {
 		return r;
 	}
 
 	// check the result
 
-	if (!dnssec_key_id_equal(key_id, id)) {
+	if (!dnssec_keyid_equal(key_id, id)) {
 		gnutls_privkey_deinit(key);
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}

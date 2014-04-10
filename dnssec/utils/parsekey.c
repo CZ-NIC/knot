@@ -53,16 +53,9 @@ int main(int argc, char *argv[])
 
 	printf("keytag  ID\n");
 	for (size_t i = 0; i < keys_count; i++) {
-		dnssec_key_id_t id = { 0 };
-		dnssec_key_get_id(keys[i].key, id);
-		char *id_str = NULL;
-		dnssec_key_id_to_string(id, &id_str);
-
-		uint16_t keytag = 0;
-		dnssec_key_get_keytag(keys[i].key, &keytag);
-
-		printf("%-6d  %s\n", keytag, id_str);
-		free(id_str);
+		const char *id = dnssec_key_get_id(keys[i].key);
+		uint16_t keytag = dnssec_key_get_keytag(keys[i].key);
+		printf("%-6d  %s\n", keytag, id);
 	}
 
 	exit_code = 0;

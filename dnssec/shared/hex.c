@@ -1,33 +1,56 @@
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "binary.h"
 #include "error.h"
 
+/* -- binary to hex -------------------------------------------------------- */
+
 static const char BIN_TO_HEX[] = { '0', '1', '2', '3', '4', '5', '6', '7',
 				   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
+int bin_to_hex_static(const dnssec_binary_t *bin, dnssec_binary_t *hex)
+{
+	if (!bin || !hex) {
+		return DNSSEC_EINVAL;
+	}
+
+	if (bin->size * 2 != hex->size) {
+		return DNSSEC_EINVAL;
+	}
+
+	for (size_t i = 0; i < bin->size; i++) {
+		hex->data[2*i]   = BIN_TO_HEX[bin->data[i] >> 4];
+		hex->data[2*i+1] = BIN_TO_HEX[bin->data[i] & 0x0f];
+	}
+
+	return DNSSEC_EOK;
+}
+
 int bin_to_hex(const dnssec_binary_t *bin, char **hex_ptr)
 {
-	assert(bin);
-	assert(hex_ptr);
+	if (!bin || !hex_ptr) {
+		return DNSSEC_EINVAL;
+	}
 
-	char *hex = malloc(bin->size * 2 + 1);
+	size_t hex_size = bin->size * 2;
+	char *hex = malloc(hex_size + 1);
 	if (!hex) {
 		return DNSSEC_ENOMEM;
 	}
 
-	for (size_t i = 0; i < bin->size; i++) {
-		hex[2*i]   = BIN_TO_HEX[bin->data[i] >> 4];
-		hex[2*i+1] = BIN_TO_HEX[bin->data[i] & 0x0f];
-	}
-	hex[2 * bin->size] = '\0';
+	dnssec_binary_t hex_bin = { .data = (uint8_t *)hex, .size = hex_size };
+	bin_to_hex_static(bin, &hex_bin);
+	hex[hex_size] = '\0';
 
 	*hex_ptr = hex;
 
 	return DNSSEC_EOK;
 }
+
+/* -- hex to binary -------------------------------------------------------- */
 
 /*!
  * Convert HEX character to numeric value (assumes valid and lowercase input).
@@ -36,33 +59,80 @@ static uint8_t hex_to_number(const char hex)
 {
 	if (hex >= '0' && hex <= '9') {
 		return hex - '0';
-	} else {
+	} else if (hex >= 'a' && hex <= 'f') {
 		return hex - 'a' + 10;
+	} else {
+		assert(hex >= 'A' && hex <= 'F');
+		return hex - 'A' + 10;
 	}
 }
 
-int hex_to_bin(const char *hex, dnssec_binary_t *bin)
+/*!
+ * Check if the input string has valid size and contains valid characters.
+ */
+static bool hex_valid_input(const dnssec_binary_t *hex)
+{
+	assert(hex);
+
+	if (hex->size % 2 != 0) {
+		return false;
+	}
+
+	for (int i = 0; i < hex->size; i++) {
+		if (!isxdigit(hex->data[i])) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/*!
+ * Perform hex to bin conversion without checking the validity.
+ */
+static void hex_to_bin_convert(const dnssec_binary_t *hex, dnssec_binary_t *bin)
 {
 	assert(hex);
 	assert(bin);
 
-	// validate input
+	for (size_t i = 0; i < bin->size; i++) {
+		uint8_t high = hex_to_number(hex->data[2 * i]);
+		uint8_t low  = hex_to_number(hex->data[2 * i + 1]);
+		bin->data[i] = high << 4 | low;
+	}
+}
 
-	size_t hex_size = strlen(hex);
+int hex_to_bin_static(const dnssec_binary_t *hex, dnssec_binary_t *bin)
+{
+	if (!hex || !bin) {
+		return DNSSEC_EINVAL;
+	}
 
-	if (hex_size % 2 != 0) {
+	if (hex->size / 2 != bin->size) {
+		return DNSSEC_EINVAL;
+	}
+
+	if (!hex_valid_input(hex)) {
 		return DNSSEC_MALFORMED_DATA;
 	}
 
-	for (int i = 0; i < hex_size; i++) {
-		if (!isxdigit(hex[i])) {
-			return DNSSEC_MALFORMED_DATA;
-		}
+	hex_to_bin_convert(hex, bin);
+
+	return DNSSEC_EOK;
+}
+
+int hex_to_bin(const char *hex_str, dnssec_binary_t *bin)
+{
+	if (!hex_str || !bin) {
+		return DNSSEC_EINVAL;
 	}
 
-	// build output
+	dnssec_binary_t hex = { .data = (uint8_t *)hex_str, .size = strlen(hex_str) };
+	if (!hex_valid_input(&hex)) {
+		return DNSSEC_MALFORMED_DATA;
+	}
 
-	size_t bin_size = hex_size / 2;
+	size_t bin_size = hex.size / 2;
 	if (bin_size == 0) {
 		bin->size = 0;
 		bin->data = NULL;
@@ -74,11 +144,7 @@ int hex_to_bin(const char *hex, dnssec_binary_t *bin)
 		return result;
 	}
 
-	for (size_t i = 0; i < bin_size; i++) {
-		uint8_t high = hex_to_number(tolower(hex[2 * i]));
-		uint8_t low  = hex_to_number(tolower(hex[2 * i + 1]));
-		bin->data[i] = high << 4 | low;
-	}
+	hex_to_bin_static(&hex, bin);
 
 	return DNSSEC_EOK;
 }

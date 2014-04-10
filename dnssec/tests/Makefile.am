@@ -16,8 +16,8 @@ check_PROGRAMS = \
 	crypto		\
 	key		\
 	key_algorithm	\
-	key_keyid	\
 	key_keytag	\
+	keyid		\
 	keystore_pkcs8	\
 	keystore_pkcs8_dir \
 	nsec_bitmap	\

@@ -7,13 +7,14 @@
 #include "binary.h"
 #include "error.h"
 #include "key.h"
-#include "keystore.h"
 #include "key/algorithm.h"
 #include "key/convert.h"
 #include "key/dnskey.h"
 #include "key/internal.h"
-#include "key/keyid.h"
 #include "key/keytag.h"
+#include "keyid.h"
+#include "keyid/internal.h"
+#include "keystore.h"
 #include "keystore/pem.h"
 #include "shared.h"
 #include "wire.h"
@@ -124,7 +125,9 @@ static void update_key_id(dnssec_key_t *key)
 	assert(key);
 	assert(key->public_key);
 
-	gnutls_pubkey_to_key_id(key->public_key, key->id);
+	_cleanup_free_ char *new_id = gnutls_pubkey_hex_key_id(key->public_key);
+	assert(new_id);
+	memcpy(key->id, new_id, sizeof(key->id));
 }
 
 void key_update_identifiers(dnssec_key_t *key)
@@ -135,56 +138,73 @@ void key_update_identifiers(dnssec_key_t *key)
 	update_key_id(key);
 }
 
-_public_
-int dnssec_key_get_keytag(const dnssec_key_t *key, uint16_t *keytag)
+static bool has_valid_id(const dnssec_key_t *key)
 {
-	if (!key || !keytag) {
-		return DNSSEC_EINVAL;
-	}
+	assert(key);
 
-	*keytag = key->keytag;
-
-	return DNSSEC_EOK;
+	return (key->id[0] != '\0');
 }
 
 _public_
-int dnssec_key_get_id(const dnssec_key_t *key, dnssec_key_id_t id)
+uint16_t dnssec_key_get_keytag(const dnssec_key_t *key)
 {
-	if (!key || !id) {
-		return DNSSEC_EINVAL;
+	if (!key || !has_valid_id(key)) {
+		return 0;
 	}
 
-	dnssec_key_id_copy(key->id, id);
+	return key->keytag;
+}
 
-	return DNSSEC_EOK;
+_public_
+const char *dnssec_key_get_id(const dnssec_key_t *key)
+{
+	if (!key || !has_valid_id(key)) {
+		return NULL;
+	}
+
+	return key->id;
 }
 
 /* -- freely modifiable attributes ----------------------------------------- */
 
-#define rdata_read(rdata, offset, size, var) \
-{\
-	wire_ctx_t wire = wire_init_binary(rdata); \
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_##offset); \
-	*var = wire_read_u##size(&wire); \
-}
+_public_
+const uint8_t *dnssec_key_get_dname(const dnssec_key_t *key)
+{
+	if (!key) {
+		return NULL;
+	}
 
-#define rdata_write(rdata, offset, size, var) \
-{\
-	wire_ctx_t wire = wire_init_binary(rdata); \
-	wire_seek(&wire, DNSKEY_RDATA_OFFSET_##offset); \
-	wire_write_u##size(&wire, var); \
+	return key->dname;
 }
 
 _public_
-int dnssec_key_get_flags(const dnssec_key_t *key, uint16_t *flags)
+int dnssec_key_set_dname(dnssec_key_t *key, const uint8_t *dname)
 {
-	if (!key || !flags) {
+	if (!key || !dname) {
 		return DNSSEC_EINVAL;
 	}
 
-	rdata_read(&key->rdata, FLAGS, 16, flags);
+	uint8_t *copy = dname_copy(dname);
+	if (!copy) {
+		return DNSSEC_ENOMEM;
+	}
+
+	dname_normalize(copy);
+	key->dname = copy;
 
 	return DNSSEC_EOK;
+}
+
+_public_
+uint16_t dnssec_key_get_flags(const dnssec_key_t *key)
+{
+	if (!key) {
+		return 0;
+	}
+
+	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_seek(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
+	return wire_read_u16(&wire);
 }
 
 _public_
@@ -194,22 +214,25 @@ int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags)
 		return DNSSEC_EINVAL;
 	}
 
-	rdata_write(&key->rdata, FLAGS, 16, flags);
+	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_seek(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
+	wire_write_u16(&wire, flags);
+
 	update_keytag(key);
 
 	return DNSSEC_EOK;
 }
 
 _public_
-int dnssec_key_get_protocol(const dnssec_key_t *key, uint8_t *protocol)
+uint8_t dnssec_key_get_protocol(const dnssec_key_t *key)
 {
-	if (!key || !protocol) {
+	if (!key) {
 		return DNSSEC_EINVAL;
 	}
 
-	rdata_read(&key->rdata, PROTOCOL, 8, protocol);
-
-	return DNSSEC_EOK;
+	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
+	return wire_read_u8(&wire);
 }
 
 _public_
@@ -219,7 +242,10 @@ int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol)
 		return DNSSEC_EINVAL;
 	}
 
-	rdata_write(&key->rdata, PROTOCOL, 8, protocol);
+	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
+	wire_write_u8(&wire, protocol);
+
 	update_keytag(key);
 
 	return DNSSEC_EOK;
@@ -250,15 +276,15 @@ static bool can_change_algorithm(dnssec_key_t *key, uint8_t algorithm)
 }
 
 _public_
-int dnssec_key_get_algorithm(const dnssec_key_t *key, uint8_t *algorithm)
+uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key)
 {
-	if (!key || !algorithm) {
-		return DNSSEC_EINVAL;
+	if (!key) {
+		return 0;
 	}
 
-	rdata_read(&key->rdata, ALGORITHM, 8, algorithm);
-
-	return DNSSEC_EOK;
+	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
+	return wire_read_u8(&wire);
 }
 
 _public_
@@ -272,7 +298,10 @@ int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 		return DNSSEC_INVALID_KEY_ALGORITHM;
 	}
 
-	rdata_write(&key->rdata, ALGORITHM, 8, algorithm);
+	wire_ctx_t wire = wire_init_binary(&key->rdata);
+	wire_seek(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
+	wire_write_u8(&wire, algorithm);
+
 	update_keytag(key);
 
 	return DNSSEC_EOK;

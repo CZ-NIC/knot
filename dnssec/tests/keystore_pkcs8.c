@@ -32,23 +32,24 @@ static int test_close(void *handle)
 }
 
 static bool test_read_called = false;
-static dnssec_key_id_t test_read_id = { 0 };
-static int test_read(void *handle, const dnssec_key_id_t id, dnssec_binary_t *pem)
+static char *test_read_id = NULL;
+static int test_read(void *handle, const char *id, dnssec_binary_t *pem)
 {
 	test_read_called = (handle == test_handle && id && pem);
-	dnssec_key_id_copy(id, test_read_id);
+	test_read_id = dnssec_keyid_copy(id);
 
 	return DNSSEC_EOK;
 }
 
 static bool test_write_called = false;
-static dnssec_key_id_t test_write_id = { 0 };
+static char *test_write_id = NULL;
 static dnssec_binary_t test_write_binary = { 0 };
-static int test_write(void *handle, const dnssec_key_id_t id, const dnssec_binary_t *pem)
+static int test_write(void *handle, const char *id, const dnssec_binary_t *pem)
 {
 	test_write_called = (handle == test_handle && id &&
 			     pem && pem->size > 0 && pem->data);
-	dnssec_key_id_copy(id, test_write_id);
+
+	test_write_id = dnssec_keyid_copy(id);
 	test_write_binary = *pem;
 
 	return DNSSEC_EOK;
@@ -75,8 +76,8 @@ int main(void)
 	r = dnssec_keystore_create_pkcs8_custom(&store, &custom_store, "hello");
 	ok(r == DNSSEC_EOK, "dnssec_keystore_create_pkcs8_custom()");
 
-	dnssec_key_id_t gen_id = { 0 };
-	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 512, gen_id);
+	char *gen_id = NULL;
+	r = dnssec_keystore_generate_key(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256, 512, &gen_id);
 	ok(r == DNSSEC_EOK, "dnssec_keystore_generate_key()");
 
 	r = dnssec_keystore_close(store);
@@ -84,9 +85,14 @@ int main(void)
 
 	ok(test_open_called, "test_open() called");
 	ok(test_read_called, "test_read() called");
+	ok(test_read_id && 0, "test_read() with correct key id");
 	ok(test_write_called, "test_write() called");
-	ok(dnssec_key_id_equal(test_write_id, gen_id), "test_write() with correct key id");
+	ok(strcmp(test_write_id, gen_id) == 0, "test_write() with correct key id");
 	ok(test_close_called, "test_close() called");
+
+	free(gen_id);
+	free(test_read_id);
+	free(test_write_id);
 
 	dnssec_crypto_cleanup();
 

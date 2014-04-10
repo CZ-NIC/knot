@@ -46,12 +46,12 @@ static int pkcs11_list_keys(void *ctx, void *list)
 }
 
 static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
-			       unsigned bits, dnssec_key_id_t id)
+			       unsigned bits, char **id_ptr)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
-static int pkcs11_delete_key(void *_ctx, const dnssec_key_id_t id)
+static int pkcs11_delete_key(void *_ctx, const char *id)
 {
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }

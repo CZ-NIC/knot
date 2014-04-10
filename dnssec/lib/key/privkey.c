@@ -18,11 +18,10 @@
  */
 static bool valid_algorithm(dnssec_key_t *key, gnutls_privkey_t privkey)
 {
-	uint8_t current_algorithm = 0;
-	dnssec_key_get_algorithm(key, &current_algorithm);
+	uint8_t current = dnssec_key_get_algorithm(key);
 	int gnu_algorithm = gnutls_privkey_get_pk_algorithm(privkey, NULL);
 
-	return (gnu_algorithm == algorithm_to_gnutls(current_algorithm));
+	return (gnu_algorithm == algorithm_to_gnutls(current));
 }
 
 /*!

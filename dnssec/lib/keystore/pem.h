@@ -3,19 +3,18 @@
 #include <gnutls/abstract.h>
 
 #include "binary.h"
-#include "key.h"
 
 /*!
  * Create GnuTLS private key from unencrypted PEM data.
  *
- * \param[in]  data    PEM binary data.
- * \param[out] key     Resulting private key.
- * \param[out] key_id  Key ID.
+ * \param[in]  data  PEM binary data.
+ * \param[out] key   Resulting private key.
+ * \param[out] id    Key ID.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
 int pem_to_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key,
-		   dnssec_key_id_t key_id);
+		   char **id);
 
 /*!
  * Generate a private key.
@@ -28,4 +27,4 @@ int pem_to_privkey(const dnssec_binary_t *data, gnutls_privkey_t *key,
  * \return Error code, DNSSEC_EOK if successful.
  */
 int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
-		 dnssec_binary_t *pem, dnssec_key_id_t id);
+		 dnssec_binary_t *pem, char **id);
