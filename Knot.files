@@ -3,6 +3,9 @@ KNOWN_ISSUES
 Makefile.am
 README
 configure.ac
+dnssec/Makefile.am
+dnssec/tests/Makefile.am
+dnssec/utils/Makefile.am
 doc/Makefile.am
 doc/configuration.texi
 doc/indices.texi
@@ -183,7 +186,6 @@ src/libknot/consts.c
 src/libknot/consts.h
 src/libknot/dname.c
 src/libknot/dname.h
-src/libknot/dnssec/bitmap.h
 src/libknot/dnssec/config.h
 src/libknot/dnssec/crypto.c
 src/libknot/dnssec/crypto.h

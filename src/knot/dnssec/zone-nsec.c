@@ -24,7 +24,7 @@
 #include "common/debug.h"
 #include "common/descriptor.h"
 #include "common/hhash.h"
-#include "libknot/dnssec/bitmap.h"
+#include "dnssec/nsec.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rdata/soa.h"

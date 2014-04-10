@@ -25,7 +25,7 @@
 #include "knot/dnssec/nsec-chain.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
-#include "libknot/dnssec/bitmap.h"
+#include "dnssec/nsec.h"
 #include "libknot/rdata/nsec3.h"
 
 /* - Forward declarations --------------------------------------------------- */
@@ -33,7 +33,7 @@
 static int create_nsec3_rrset(knot_rrset_t *rrset,
                               knot_dname_t *dname,
                               const knot_nsec3_params_t *,
-                              const bitmap_t *,
+                              const dnssec_nsec_bitmap_t *,
                               const uint8_t *,
                               uint32_t);
 
@@ -192,14 +192,14 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
  * \brief Get NSEC3 RDATA size.
  */
 static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
-                               const bitmap_t *rr_types)
+                               const dnssec_nsec_bitmap_t *rr_types)
 {
 	assert(params);
 	assert(rr_types);
 
 	return 6 + params->salt_length
 	       + knot_nsec3_hash_length(params->algorithm)
-	       + bitmap_size(rr_types);
+	       + dnssec_nsec_bitmap_size(rr_types);
 }
 
 /*!
@@ -208,7 +208,7 @@ static size_t nsec3_rdata_size(const knot_nsec3_params_t *params,
  * \note Content of next hash field is not changed.
  */
 static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
-                             const bitmap_t *rr_types,
+                             const dnssec_nsec_bitmap_t *rr_types,
                              const uint8_t *next_hashed, uint32_t ttl)
 {
 	assert(rdata);
@@ -234,7 +234,7 @@ static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
 		memcpy(rdata, next_hashed, hash_length);
 	}
 	rdata += hash_length;
-	bitmap_write(rr_types, rdata);                    // RR types bit map
+	dnssec_nsec_bitmap_write(rr_types, rdata);        // RR types bit map
 }
 
 /*!
@@ -251,7 +251,7 @@ static void nsec3_fill_rdata(uint8_t *rdata, const knot_nsec3_params_t *params,
 static int create_nsec3_rrset(knot_rrset_t *rrset,
                               knot_dname_t *owner,
                               const knot_nsec3_params_t *params,
-                              const bitmap_t *rr_types,
+                              const dnssec_nsec_bitmap_t *rr_types,
                               const uint8_t *next_hashed,
                               uint32_t ttl)
 {
@@ -275,7 +275,7 @@ static int create_nsec3_rrset(knot_rrset_t *rrset,
 static knot_node_t *create_nsec3_node(knot_dname_t *owner,
                                       const knot_nsec3_params_t *nsec3_params,
                                       knot_node_t *apex_node,
-                                      const bitmap_t *rr_types,
+                                      const dnssec_nsec_bitmap_t *rr_types,
                                       uint32_t ttl)
 {
 	assert(owner);
@@ -332,17 +332,22 @@ static knot_node_t *create_nsec3_node_for_node(knot_node_t *node,
 		return NULL;
 	}
 
-	bitmap_t rr_types = { 0 };
-	bitmap_add_node_rrsets(&rr_types, node);
+	dnssec_nsec_bitmap_t *rr_types = dnssec_nsec_bitmap_new();
+	if (!rr_types) {
+		return NULL;
+	}
+
+	bitmap_add_node_rrsets(rr_types, node);
 	if (node->rrset_count > 0 && node_should_be_signed_nsec3(node)) {
-		bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
+		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_RRSIG);
 	}
 	if (node == apex) {
-		bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
+		dnssec_nsec_bitmap_add(rr_types, KNOT_RRTYPE_DNSKEY);
 	}
 
 	knot_node_t *nsec3_node;
-	nsec3_node = create_nsec3_node(nsec3_owner, params, apex, &rr_types, ttl);
+	nsec3_node = create_nsec3_node(nsec3_owner, params, apex, rr_types, ttl);
+	dnssec_nsec_bitmap_free(rr_types);
 
 	return nsec3_node;
 }
