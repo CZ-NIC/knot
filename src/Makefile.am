@@ -7,8 +7,13 @@ lib_LTLIBRARIES = libknot.la
 noinst_LTLIBRARIES = libknotd.la libknots.la libknotus.la
 
 # $(YACC) will generate header file
-AM_CPPFLAGS = -DCONFIG_DIR='"${config_dir}"' -DSTORAGE_DIR='"${storage_dir}"' \
-	      -DRUN_DIR='"${run_dir}"'
+AM_CPPFLAGS = \
+	-include $(top_builddir)/src/config.h \
+	-DCONFIG_DIR='"${config_dir}"' \
+	-DSTORAGE_DIR='"${storage_dir}"' \
+	-DRUN_DIR='"${run_dir}"'
+AM_CFLAGS = $(CODE_COVERAGE_CFLAGS)
+AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 AM_YFLAGS = -d
 libknotd_la_YFLAGS = -pcf_ -d
 libknotd_la_LFLAGS = # TODO: reentrant parser, prefix
@@ -124,6 +129,7 @@ libknotus_la_SOURCES =				\
 
 # dynamic: libknot
 libknot_la_LDFLAGS =				\
+	$(CODE_COVERAGE_LDFLAGS)			\
 	-version-info 0:1:0			\
 	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone)_'
 
@@ -142,8 +148,6 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/key.c			\
 	libknot/dnssec/key.h			\
 	libknot/dnssec/bitmap.h			\
-	libknot/dnssec/nsec3.c			\
-	libknot/dnssec/nsec3.h			\
 	libknot/dnssec/policy.c			\
 	libknot/dnssec/policy.h			\
 	libknot/dnssec/random.h			\
@@ -163,15 +167,28 @@ libknot_la_SOURCES =				\
 	libknot/packet/wire.h			\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\
-	libknot/rdata.h				\
+	libknot/rdata/rdname.h			\
+	libknot/rdata/dnskey.h			\
+	libknot/rdata/nsec.h			\
+	libknot/rdata/nsec3.c			\
+	libknot/rdata/nsec3.h			\
+	libknot/rdata/nsec3param.h			\
+	libknot/rdata/nsec3param.c			\
+	libknot/rdata/nsec.h			\
+	libknot/rdata/rrsig.h			\
+	libknot/rdata/soa.h			\
+	libknot/rdata/tsig.c				\
+	libknot/rdata/tsig.h				\
 	libknot/rrset-dump.c			\
 	libknot/rrset-dump.h			\
+	libknot/rdata.c				\
+	libknot/rdata.h				\
+	libknot/rdataset.c				\
+	libknot/rdataset.h				\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	libknot/tsig-op.c			\
 	libknot/tsig-op.h			\
-	libknot/tsig.c				\
-	libknot/tsig.h				\
 	libknot/util/endian.h			\
 	libknot/util/tolower.c			\
 	libknot/util/tolower.h			\
@@ -219,8 +236,12 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
+	knot/nameserver/query_module.c		\
+	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/modules/synth_record.c		\
+	knot/modules/synth_record.h		\
 	knot/other/debug.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
@@ -244,6 +265,8 @@ libknotd_la_SOURCES =				\
 	knot/server/zone-load.h			\
 	knot/server/zones.c			\
 	knot/server/zones.h			\
+	knot/server/serialization.c		\
+	knot/server/serialization.h		\
 	knot/updates/acl.c			\
 	knot/updates/acl.h			\
 	knot/updates/changesets.c		\
@@ -289,8 +312,8 @@ libknotd_la_LIBADD = libknots.la libknot.la
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
-knotd_CPPFLAGS = ${systemd_daemon_CFLAGS}
-knotd_LDFLAGS = ${systemd_daemon_LIBS}
+knotd_CPPFLAGS = $(AM_CPPFLAGS) ${systemd_daemon_CFLAGS}
+knotd_LDFLAGS = $(CODE_COVERAGE_LDFLAGS) ${systemd_daemon_LIBS}
 
 knotc_LDADD = libknot.la libknotd.la
 

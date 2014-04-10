@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -29,7 +28,8 @@
 #include "libknot/common.h"
 #include "knot/other/debug.h"
 #include "knot/server/journal.h"
-#include "libknot/rdata.h"
+#include "knot/server/serialization.h"
+#include "libknot/rdata/soa.h"
 
 /*! \brief Infinite file size limit. */
 #define FSLIMIT_INF (~((size_t)0))
@@ -952,36 +952,6 @@ bool journal_exists(const char *path)
 	return stat(path, &st) == 0;
 }
 
-static int zones_changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
-{
-	if (chgset == NULL || size == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	size_t soa_from_size = rrset_binary_size(chgset->soa_from);
-	size_t soa_to_size = rrset_binary_size(chgset->soa_to);
-
-	size_t remove_size = 0;
-	knot_rr_ln_t *rr_node = NULL;
-	WALK_LIST(rr_node, chgset->remove) {
-		knot_rrset_t *rrset = rr_node->rr;
-		remove_size += rrset_binary_size(rrset);
-	}
-
-	size_t add_size = 0;
-	WALK_LIST(rr_node, chgset->add) {
-		knot_rrset_t *rrset = rr_node->rr;
-		add_size += rrset_binary_size(rrset);
-	}
-
-	/*! \todo How is the changeset serialized? Any other parts? */
-	*size = soa_from_size + soa_to_size + remove_size + add_size;
-	/* + Changeset flags. */
-	*size += sizeof(uint32_t);
-
-	return KNOT_EOK;
-}
-
 /*! \brief No doc here. Moved from zones.h (@mvavrusa) */
 static int changesets_unpack(knot_changeset_t *chs)
 {
@@ -1007,8 +977,8 @@ static int changesets_unpack(knot_changeset_t *chs)
 			 * from journal) the SOA serial should already
 			 * be set, check it.
 			 */
-	assert(knot_rrset_type(rrset) == KNOT_RRTYPE_SOA);
-	assert(chs->serial_from == knot_rdata_soa_serial(rrset));
+	assert(rrset->type == KNOT_RRTYPE_SOA);
+	assert(chs->serial_from == knot_soa_serial(&rrset->rrs));
 	knot_changeset_add_soa(chs, rrset, KNOT_CHANGESET_REMOVE);
 
 	/* Read remaining RRSets */
@@ -1024,7 +994,7 @@ static int changesets_unpack(knot_changeset_t *chs)
 		}
 
 		/* Check for next SOA. */
-		if (knot_rrset_type(rrset) == KNOT_RRTYPE_SOA) {
+		if (rrset->type == KNOT_RRTYPE_SOA) {
 
 			/* Move to ADD section if in REMOVE. */
 			if (in_remove_section) {
@@ -1033,7 +1003,7 @@ static int changesets_unpack(knot_changeset_t *chs)
 				in_remove_section = 0;
 			} else {
 				/* Final SOA. */
-				knot_rrset_deep_free(&rrset, 1, NULL);
+				knot_rrset_free(&rrset, NULL);
 				break;
 			}
 		} else {
@@ -1128,7 +1098,7 @@ static int changeset_pack(const knot_changeset_t *chs, journal_t *j)
 	/* Count the size of the entire changeset in serialized form. */
 	size_t entry_size = 0;
 
-	int ret = zones_changeset_binary_size(chs, &entry_size);
+	int ret = changeset_binary_size(chs, &entry_size);
 	assert(ret == KNOT_EOK);
 
 	dbg_xfr_verb("Size in serialized form: %zu\n", entry_size);

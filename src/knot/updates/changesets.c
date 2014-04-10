@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -25,36 +24,8 @@
 #include "common/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata/soa.h"
 #include "common/debug.h"
-#include "libknot/rdata.h"
-
-static int knot_changeset_rrsets_match(const knot_rrset_t *rrset1,
-                                         const knot_rrset_t *rrset2)
-{
-	return knot_rrset_equal(rrset1, rrset2, KNOT_RRSET_COMPARE_HEADER);
-}
-
-static void knot_free_changeset(knot_changeset_t *changeset)
-{
-	if (changeset == NULL) {
-		return;
-	}
-
-	// Delete RRSets in lists, in case there are any left
-	knot_rr_ln_t *rr_node;
-	WALK_LIST(rr_node, changeset->add) {
-		knot_rrset_deep_free(&rr_node->rr, 1, NULL);
-	}
-	WALK_LIST(rr_node, changeset->remove) {
-		knot_rrset_deep_free(&rr_node->rr, 1, NULL);
-	}
-
-	knot_rrset_deep_free(&changeset->soa_from, 1, NULL);
-	knot_rrset_deep_free(&changeset->soa_to, 1, NULL);
-
-	// Delete binary data
-	free(changeset->data);
-}
 
 static int knot_changesets_init(knot_changesets_t *changesets)
 {
@@ -80,34 +51,7 @@ static int knot_changesets_init(knot_changesets_t *changesets)
 	// Init list with changesets
 	init_list(&changesets->sets);
 
-	// Init changes structure
-	changesets->changes = xmalloc(sizeof(knot_changes_t));
-	// Init changes' allocator (storing RRs)
-	changesets->changes->mem_ctx = changesets->mmc_rr;
-	// Init changes' lists
-	init_list(&changesets->changes->new_rrsets);
-	init_list(&changesets->changes->old_rrsets);
-
 	return KNOT_EOK;
-}
-
-static void knot_changesets_deinit(knot_changesets_t *changesets)
-{
-	if (!EMPTY_LIST(changesets->sets)) {
-		knot_changeset_t *chg = NULL;
-		WALK_LIST(chg, changesets->sets) {
-			knot_free_changeset(chg);
-		}
-	}
-
-	// Free pool with sets themselves
-	mp_delete(changesets->mmc_chs.ctx);
-	// Free pool with RRs in sets / changes
-	mp_delete(changesets->mmc_rr.ctx);
-
-	knot_rrset_deep_free(&changesets->first_soa, 1, NULL);
-
-	free(changesets->changes);
 }
 
 knot_changesets_t *knot_changesets_create(unsigned count)
@@ -129,29 +73,6 @@ knot_changesets_t *knot_changesets_create(unsigned count)
 	return ch;
 }
 
-void knot_changesets_free(knot_changesets_t **changesets)
-{
-	if (changesets == NULL || *changesets == NULL) {
-		return;
-	}
-
-	knot_changesets_deinit(*changesets);
-
-	free(*changesets);
-	*changesets = NULL;
-}
-
-
-int knot_changesets_clear(knot_changesets_t *changesets)
-{
-	if (changesets == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_changesets_deinit(changesets);
-	return knot_changesets_init(changesets);
-}
-
 knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 {
 	if (ch == NULL) {
@@ -162,7 +83,6 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	knot_changeset_t *set = ch->mmc_chs.alloc(ch->mmc_chs.ctx,
 	                                          sizeof(knot_changeset_t));
 	if (set == NULL) {
-		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 	memset(set, 0, sizeof(knot_changeset_t));
@@ -173,6 +93,10 @@ knot_changeset_t *knot_changesets_create_changeset(knot_changesets_t *ch)
 	// Init local lists
 	init_list(&set->add);
 	init_list(&set->remove);
+
+	// Init change lists
+	init_list(&set->new_data);
+	init_list(&set->old_data);
 
 	// Insert into list of sets
 	add_tail(&ch->sets, (node_t *)set);
@@ -189,24 +113,6 @@ knot_changeset_t *knot_changesets_get_last(const knot_changesets_t *chs)
 	}
 
 	return (knot_changeset_t *)(TAIL(chs->sets));
-}
-
-const knot_rrset_t *knot_changeset_last_rr(const knot_changeset_t *ch,
-                                           knot_changeset_part_t part)
-{
-	if (ch == NULL) {
-		return NULL;
-	}
-
-	if (part == KNOT_CHANGESET_ADD) {
-		knot_rr_ln_t *n = TAIL(ch->add);
-		return n ? n->rr : NULL;
-	} else if (part == KNOT_CHANGESET_REMOVE) {
-		knot_rr_ln_t *n = TAIL(ch->remove);
-		return n ? n->rr : NULL;
-	}
-
-	return NULL;
 }
 
 bool knot_changesets_empty(const knot_changesets_t *chs)
@@ -241,60 +147,11 @@ int knot_changeset_add_rrset(knot_changeset_t *chgs, knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
-int knot_changeset_add_rr(knot_changeset_t *chgs, knot_rrset_t *rr,
-                          knot_changeset_part_t part)
-{
-	// Just check the last RRSet. If the RR belongs to it, merge it,
-	// otherwise just add the RR to the end of the list
-	list_t *l = part == KNOT_CHANGESET_ADD ? &(chgs->add) : &(chgs->remove);
-	knot_rrset_t *tail_rr =
-		EMPTY_LIST(*l) ? NULL : ((knot_rr_ln_t *)(TAIL(*l)))->rr;
-
-	if (tail_rr && knot_changeset_rrsets_match(tail_rr, rr)) {
-		// Create changesets exactly as they came, with possibly
-		// duplicate records
-		if (knot_rrset_merge(tail_rr, rr, NULL) != KNOT_EOK) {
-			return KNOT_ERROR;
-		}
-
-		knot_rrset_deep_free(&rr, 1, NULL);
-		return KNOT_EOK;
-	} else {
-		return knot_changeset_add_rrset(chgs, rr, part);
-	}
-}
-
-int knot_changes_add_rrset(knot_changes_t *ch, knot_rrset_t *rrset,
-                           knot_changes_part_t part)
-{
-	if (ch == NULL || rrset == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_rr_ln_t *rr_node =
-		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_rr_ln_t));
-	if (rr_node == NULL) {
-		// This will not happen with mp_alloc, but allocator can change
-		ERR_ALLOC_FAILED;
-		return KNOT_ENOMEM;
-	}
-	rr_node->rr = rrset;
-
-	if (part == KNOT_CHANGES_NEW) {
-		add_tail(&ch->new_rrsets, (node_t *)rr_node);
-	} else {
-		assert(part == KNOT_CHANGES_OLD);
-		add_tail(&ch->old_rrsets, (node_t *)rr_node);
-	}
-
-	return KNOT_EOK;
-}
-
 static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
                                      uint32_t *chg_serial, knot_rrset_t *soa)
 {
 	*chg_soa = soa;
-	*chg_serial = knot_rdata_soa_serial(soa);
+	*chg_serial = knot_soa_serial(&soa->rrs);
 }
 
 void knot_changeset_add_soa(knot_changeset_t *changeset, knot_rrset_t *soa,
@@ -374,59 +231,109 @@ int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2)
 
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
-	knot_rrset_deep_free(&ch1->soa_to, 1, NULL);
+	knot_rrset_free(&ch1->soa_to, NULL);
 	ch1->soa_to = ch2->soa_to;
 	ch1->serial_to = ch2->serial_to;
 
 	return KNOT_EOK;
 }
 
-void knot_free_merged_changesets(knot_changesets_t *diff_chs,
-                                  knot_changesets_t *sec_chs)
+static void knot_free_changeset(knot_changeset_t *changeset)
+{
+	if (changeset == NULL) {
+		return;
+	}
+
+	// Delete RRSets in lists, in case there are any left
+	knot_rr_ln_t *rr_node;
+	WALK_LIST(rr_node, changeset->add) {
+		knot_rrset_free(&rr_node->rr, NULL);
+	}
+	WALK_LIST(rr_node, changeset->remove) {
+		knot_rrset_free(&rr_node->rr, NULL);
+	}
+
+	knot_rrset_free(&changeset->soa_from, NULL);
+	knot_rrset_free(&changeset->soa_to, NULL);
+
+	// Delete binary data
+	free(changeset->data);
+}
+
+static void knot_changesets_deinit(knot_changesets_t *changesets)
+{
+	if (!EMPTY_LIST(changesets->sets)) {
+		knot_changeset_t *chg = NULL;
+		WALK_LIST(chg, changesets->sets) {
+			knot_free_changeset(chg);
+		}
+	}
+
+	// Free pool with sets themselves
+	mp_delete(changesets->mmc_chs.ctx);
+	// Free pool with RRs in sets / changes
+	mp_delete(changesets->mmc_rr.ctx);
+
+	knot_rrset_free(&changesets->first_soa, NULL);
+}
+
+void knot_changesets_free(knot_changesets_t **changesets)
+{
+	if (changesets == NULL || *changesets == NULL) {
+		return;
+	}
+
+	knot_changesets_deinit(*changesets);
+
+	free(*changesets);
+	*changesets = NULL;
+}
+
+int knot_changesets_clear(knot_changesets_t *changesets)
+{
+	if (changesets == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_changesets_deinit(changesets);
+	return knot_changesets_init(changesets);
+}
+
+void knot_changesets_free_merged(knot_changesets_t *diff_chs,
+                                 knot_changesets_t *sec_chs)
 {
 	/*!
 	 * Merged changesets freeing can be quite complicated, since there
 	 * are several cases to handle. (NULL and empty changesets)
 	 */
-	if (diff_chs == NULL &&
-	    sec_chs == NULL) {
+	if (diff_chs == NULL && sec_chs == NULL) {
 		return;
-	} else if (diff_chs == NULL &&
-	           sec_chs != NULL) {
+	} else if (diff_chs == NULL && sec_chs != NULL) {
 		knot_changesets_free(&sec_chs);
-	} else if (sec_chs == NULL &&
-	           diff_chs != NULL) {
+	} else if (sec_chs == NULL && diff_chs != NULL) {
 		knot_changesets_free(&diff_chs);
 	} else {
 		/*!
 		 * Merged changesets, deep free 'diff_chs',
 		 * shallow free 'sec_chs', unless one of them is empty.
 		 */
-		if (knot_changesets_empty(sec_chs)
-		    || knot_changesets_empty(diff_chs)) {
+		if (knot_changesets_empty(sec_chs) || knot_changesets_empty(diff_chs)) {
 			if (knot_changesets_get_last(diff_chs)->soa_to) {
 				knot_changesets_get_last(diff_chs)->soa_to = NULL;
 			}
 			knot_changesets_free(&sec_chs);
 			knot_changesets_free(&diff_chs);
 		} else {
-			/*!
-			 * Ending SOA from the merged changeset was used in
-			 * zone (same as in DNSSEC changeset). It must not
-			 * be freed.
-			 */
 			assert(knot_changesets_get_last(diff_chs)->serial_to ==
 			       knot_changesets_get_last(sec_chs)->serial_to);
-			knot_changesets_get_last(diff_chs)->soa_to = NULL;
 			knot_changesets_free(&diff_chs);
 
 			/*!
 			 * From SOAs from the second changeset was not used,
 			 * it must be freed.
 			 */
-			knot_rrset_deep_free(
-			  &(knot_changesets_get_last(sec_chs)->soa_from), 1,
-			                        NULL);
+			knot_rrset_free(&(knot_changesets_get_last(sec_chs)->soa_from),
+					     NULL);
 
 			// Reset sec_chs' chngeset list, else we'd double free.
 			init_list(&sec_chs->sets);

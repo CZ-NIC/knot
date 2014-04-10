@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 
 AC_PREREQ([2.60])
-AC_INIT([knot], [1.5.0-dev], [knot-dns@labs.nic.cz])
+AC_INIT([knot], [1.5.0-alpha], [knot-dns@labs.nic.cz])
 AM_INIT_AUTOMAKE([gnits subdir-objects dist-xz -Wall -Werror])
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([src/knot/main.c])
@@ -354,6 +354,9 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 # Let's leave it default now and use -export-symbols-regex in LDFLAGS
 #gl_VISIBILITY()
 #CFLAGS="$CFLAGS $CFLAG_VISIBILITY"
+
+# Add code coverage macro
+AX_CODE_COVERAGE
 
 AC_CONFIG_FILES([Makefile
 		 doc/Makefile

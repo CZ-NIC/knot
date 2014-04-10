@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -23,23 +22,6 @@
 #include "knot/zone/node.h"
 #include "common/debug.h"
 #include "common/hattrie/hat-trie.h"
-
-/*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
-
-static value_t knot_zone_node_copy(value_t v)
-{
-	return v;
-}
-
-static value_t knot_zone_node_deep_copy(value_t v)
-{
-	knot_node_t *n = NULL;
-	knot_node_shallow_copy((knot_node_t *)v, &n);
-	knot_node_set_new_node((knot_node_t *)v, n);
-	return (value_t)n;
-}
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -52,12 +34,12 @@ knot_zone_tree_t* knot_zone_tree_create()
 
 /*----------------------------------------------------------------------------*/
 
-size_t knot_zone_tree_weight(knot_zone_tree_t* tree)
+size_t knot_zone_tree_weight(const knot_zone_tree_t* tree)
 {
 	return hattrie_weight(tree);
 }
 
-int knot_zone_tree_is_empty(knot_zone_tree_t *tree)
+int knot_zone_tree_is_empty(const knot_zone_tree_t *tree)
 {
 	return knot_zone_tree_weight(tree) == 0;
 }
@@ -66,6 +48,10 @@ int knot_zone_tree_is_empty(knot_zone_tree_t *tree)
 
 int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 {
+	if (tree == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	assert(tree && node && node->owner);
 	uint8_t lf[KNOT_DNAME_MAXLEN];
 	knot_dname_lf(lf, node->owner, NULL);
@@ -79,7 +65,7 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node)
 int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
                           const knot_node_t **found)
 {
-	if (tree == NULL || owner == NULL || found == NULL) {
+	if (owner == NULL || found == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -91,8 +77,12 @@ int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
 int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
                          knot_node_t **found)
 {
-	if (tree == NULL || owner == NULL) {
+	if (owner == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (knot_zone_tree_is_empty(tree)) {
+		return KNOT_ENONODE;
 	}
 
 	uint8_t lf[KNOT_DNAME_MAXLEN];
@@ -115,7 +105,7 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
                                         const knot_node_t **found,
                                         const knot_node_t **previous)
 {
-	if (tree == NULL || owner == NULL || found == NULL || previous == NULL) {
+	if (owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -135,9 +125,12 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
                                        knot_node_t **found,
                                        knot_node_t **previous)
 {
-	if (tree == NULL || owner == NULL || found == NULL
-	    || previous == NULL) {
+	if (owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (knot_zone_tree_is_empty(tree)) {
+		return KNOT_ENONODE;
 	}
 
 	uint8_t lf[KNOT_DNAME_MAXLEN];
@@ -198,8 +191,12 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             const knot_dname_t *owner,
                           knot_node_t **removed)
 {
-	if (tree == NULL || owner == NULL) {
+	if (owner == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (knot_zone_tree_is_empty(tree)) {
+		return KNOT_ENONODE;
 	}
 
 	uint8_t lf[KNOT_DNAME_MAXLEN];
@@ -223,8 +220,12 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
                                  knot_zone_tree_apply_cb_t function,
                                  void *data)
 {
-	if (tree == NULL || function == NULL) {
+	if (function == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (knot_zone_tree_is_empty(tree)) {
+		return KNOT_EOK;
 	}
 
 	int result = KNOT_EOK;
@@ -248,39 +249,15 @@ int knot_zone_tree_apply(knot_zone_tree_t *tree,
                          knot_zone_tree_apply_cb_t function,
                          void *data)
 {
-	if (tree == NULL || function == NULL) {
+	if (function == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (knot_zone_tree_is_empty(tree)) {
+		return KNOT_EOK;
 	}
 
 	return hattrie_apply_rev(tree, (int (*)(value_t*,void*))function, data);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_tree_shallow_copy(knot_zone_tree_t *from,
-                                  knot_zone_tree_t **to)
-{
-	if (to == NULL || from == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	*to = hattrie_dup(from, knot_zone_node_copy);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_zone_tree_deep_copy(knot_zone_tree_t *from,
-                             knot_zone_tree_t **to)
-{
-	if (to == NULL || from == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	*to = hattrie_dup(from, knot_zone_node_deep_copy);
-
-	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -313,32 +290,4 @@ void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
 
 	knot_zone_tree_apply(*tree, knot_zone_tree_free_node, NULL);
 	knot_zone_tree_free(tree);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void hattrie_insert_dname(hattrie_t *tr, knot_dname_t *dname)
-{
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, dname, NULL);
-	*hattrie_get(tr, (char*)lf+1, *lf) = dname;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_dname_t *hattrie_get_dname(hattrie_t *tr, knot_dname_t *dname)
-{
-	if (tr == NULL || dname == NULL) {
-		return NULL;
-	}
-
-	uint8_t lf[KNOT_DNAME_MAXLEN];
-	knot_dname_lf(lf, dname, NULL);
-
-	value_t *val = hattrie_tryget(tr, (char*)lf+1, *lf);
-	if (val == NULL) {
-		return NULL;
-	} else {
-		return (knot_dname_t *)(*val);
-	}
 }

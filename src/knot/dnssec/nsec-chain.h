@@ -17,7 +17,6 @@
  * \file nsec-chain.h
  *
  * \author Jan Vcelak <jan.vcelak@nic.cz> (chain creation)
- * \author Jan Kadlec <jan.kadlec@nic.cz> (chain fix)
  *
  * \brief NSEC chain fix and creation.
  *
@@ -36,21 +35,6 @@
 #include "libknot/dnssec/bitmap.h"
 
 /*!
- * \brief Parameters to be used when fixing NSEC(3) chain.
- */
-typedef struct chain_fix_data {
-	const zone_contents_t *zone;     // Zone to fix
-	knot_changeset_t *out_ch;             // Outgoing changes
-	const knot_dname_t *chain_start;      // Possible new starting node
-	bool old_connected;                   // Marks old start connection
-	const knot_dname_t *last_used_dname;  // Last dname used in chain
-	const knot_node_t *last_used_node;    // Last covered node used in chain
-	knot_dname_t *next_dname;             // Used to reconnect broken chain
-	const hattrie_t *sorted_changes;      // Iterated trie
-	uint32_t ttl;                         // TTL for NSEC(3) records
-} chain_fix_data_t;
-
-/*!
  * \brief Parameters to be used in connect_nsec_nodes callback.
  */
 typedef struct {
@@ -64,18 +48,7 @@ typedef struct {
  */
 enum {
 	NSEC_NODE_SKIP = 1,
-	NSEC_NODE_RESET = 2
 };
-/*!
- * \brief Callback used when fixing NSEC chains.
- */
-typedef int (*chain_iterate_fix_cb)(knot_dname_t *, knot_dname_t *,
-                                    knot_dname_t *, knot_dname_t *,
-                                    chain_fix_data_t *);
-/*!
- * \brief Callback used when finalizing NSEC chains.
- */
-typedef int (*chain_finalize_cb)(chain_fix_data_t *);
 
 /*!
  * \brief Callback used when creating NSEC chains.
@@ -83,19 +56,17 @@ typedef int (*chain_finalize_cb)(chain_fix_data_t *);
 typedef int (*chain_iterate_create_cb)(knot_node_t *, knot_node_t *,
                                        nsec_chain_iterate_data_t *);
 
-
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
 inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
                                           const knot_node_t *node)
 {
-	const knot_rrset_t **node_rrsets = knot_node_rrsets_no_copy(node);
 	for (int i = 0; i < node->rrset_count; i++) {
-		const knot_rrset_t *rr = node_rrsets[i];
-		if (rr->type != KNOT_RRTYPE_NSEC &&
-		    rr->type != KNOT_RRTYPE_RRSIG) {
-			bitmap_add_type(bitmap, rr->type);
+		knot_rrset_t rr = knot_node_rrset_at(node, i);
+		if (rr.type != KNOT_RRTYPE_NSEC &&
+		    rr.type != KNOT_RRTYPE_RRSIG) {
+			bitmap_add_type(bitmap, rr.type);
 		}
 	}
 }
@@ -117,25 +88,6 @@ int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
                                    nsec_chain_iterate_data_t *data);
 
 /*!
- * \brief Iterates sorted changeset and calls callback function - works for
- *        NSEC and NSEC3 chain.
- *
- * \note If the callback function returns anything other than KNOT_EOK, the
- *       iteration is terminated and the error code is propagated.
- *
- * \param  nodes     Tree to fix.
- * \param  callback  Callback to call.
- * \param  finalize  Finalization callback.
- * \param  data      Data needed for fixing.
- *
- * \return KNOT_E*
- */
-int knot_nsec_chain_iterate_fix(hattrie_t *nodes,
-                                chain_iterate_fix_cb callback,
-                                chain_finalize_cb finalize,
-                                chain_fix_data_t *data);
-
-/*!
  * \brief Add entry for removed NSEC(3) and its RRSIG to the changeset.
  *
  * \param n          Node to extract NSEC(3) from.
@@ -155,7 +107,7 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
  * \retval true if the node is empty or contains only NSEC and RRSIGs.
  * \retval false otherwise.
  */
-bool knot_nsec_only_nsec_and_rrsigs_in_node(const knot_node_t *n);
+bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n);
 
 /*!
  * \brief Create new NSEC chain, add differences from current into a changeset.
@@ -168,17 +120,5 @@ bool knot_nsec_only_nsec_and_rrsigs_in_node(const knot_node_t *n);
  */
 int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
                            knot_changeset_t *changeset);
-
-/*!
- * \brief Fixes NSEC chain after DDNS/reload
- *
- * \param sorted_changes  Sorted changes created by changeset sign function.
- * \param fix_data        Chain fix data.
- *
- * \return KNOT_E*
- */
-int knot_nsec_fix_chain(hattrie_t *sorted_changes,
-                        chain_fix_data_t *fix_data);
-
 
 #endif // _KNOT_DNSSEC_NSEC_CHAIN_FIX_H_

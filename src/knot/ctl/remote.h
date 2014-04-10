@@ -161,7 +161,7 @@ int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
  *
  * \return created RR set or NULL.
  */
-knot_rrset_t* remote_build_rr(const char *k, uint16_t t);
+int remote_build_rr(knot_rrset_t *rr, const char *k, uint16_t t);
 
 /*!
  * \brief Create a TXT rdata.
@@ -170,7 +170,6 @@ knot_rrset_t* remote_build_rr(const char *k, uint16_t t);
  * \return Created rdata or NULL.
  */
 int remote_create_txt(knot_rrset_t *rr, const char *v, size_t v_len);
-
 
 /*!
  * \brief Create a CNAME rdata.

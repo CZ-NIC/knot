@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 #include <openssl/dsa.h>
 #include <openssl/evp.h>
@@ -1117,7 +1116,7 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 		return KNOT_EINVAL;
 	}
 
-	knot_dname_t *name = knot_dname_copy(params->name);
+	knot_dname_t *name = knot_dname_copy(params->name, NULL);
 	if (!name) {
 		return KNOT_ENOMEM;
 	}
@@ -1125,21 +1124,21 @@ int knot_dnssec_key_from_params(const knot_key_params_t *params,
 	knot_dnssec_key_data_t *data;
 	data = calloc(1, sizeof(knot_dnssec_key_data_t));
 	if (!data) {
-		knot_dname_free(&name);
+		knot_dname_free(&name, NULL);
 		return KNOT_ENOMEM;
 	}
 
 	knot_binary_t rdata_copy = { 0 };
 	int result = knot_binary_dup(&params->rdata, &rdata_copy);
 	if (result != KNOT_EOK) {
-		knot_dname_free(&name);
+		knot_dname_free(&name, NULL);
 		free(data);
 		return result;
 	}
 
 	result = init_algorithm_data(params, data);
 	if (result != KNOT_EOK) {
-		knot_dname_free(&name);
+		knot_dname_free(&name, NULL);
 		free(data);
 		knot_binary_free(&rdata_copy);
 		return result;
@@ -1163,7 +1162,7 @@ int knot_dnssec_key_free(knot_dnssec_key_t *key)
 		return KNOT_EINVAL;
 	}
 
-	knot_dname_free(&key->name);
+	knot_dname_free(&key->name, NULL);
 
 	if (key->data) {
 		clean_algorithm_data(key->data);

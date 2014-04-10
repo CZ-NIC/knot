@@ -33,7 +33,7 @@ Knot DNS supports the following DNS features:
 - AXFR - master, slave
 - IXFR - master (primary master experimental), slave
 - TSIG
-- ENDS0
+- EDNS0
 - DNSSEC, including NSEC3
 - NSID
 - Unknown RR types

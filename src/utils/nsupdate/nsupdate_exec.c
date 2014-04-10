@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
@@ -134,18 +133,18 @@ static int dname_isvalid(const char *lp, size_t len) {
 	if (dn == NULL) {
 		return 0;
 	}
-	knot_dname_free(&dn);
+	knot_dname_free(&dn, NULL);
 	return 1;
 }
 
 /* This is probably redundant, but should be a bit faster so let's keep it. */
-static int parse_full_rr(scanner_t *s, const char* lp)
+static int parse_full_rr(zs_scanner_t *s, const char* lp)
 {
-	if (scanner_process(lp, lp + strlen(lp), 0, s) < 0) {
+	if (zs_scanner_process(lp, lp + strlen(lp), 0, s) < 0) {
 		return KNOT_EPARSEFAIL;
 	}
 	char nl = '\n'; /* Ensure newline after complete RR */
-	if (scanner_process(&nl, &nl+sizeof(char), 1, s) < 0) { /* Terminate */
+	if (zs_scanner_process(&nl, &nl+sizeof(char), 1, s) < 0) { /* Terminate */
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -160,7 +159,7 @@ static int parse_full_rr(scanner_t *s, const char* lp)
 	return KNOT_EOK;
 }
 
-static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
+static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags) {
 	int ret = KNOT_EOK;
 	char b1[32], b2[32]; /* Should suffice for both class/type */
 
@@ -189,7 +188,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Parse only name? */
 	if (flags & PARSE_NAMEONLY) {
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, NULL);
 		return KNOT_EOK;
 	}
 
@@ -219,7 +218,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 		char cls_s[16] = {0};
 		knot_rrclass_to_string(s->default_class, cls_s, sizeof(cls_s));
 		ERR("class mismatch: '%s'\n", cls_s);
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, NULL);
 		return KNOT_EPARSEFAIL;
 	}
 
@@ -234,7 +233,7 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 
 	/* Remainder */
 	if (*lp == '\0') {
-		knot_dname_free(&owner);
+		knot_dname_free(&owner, NULL);
 		return ret; /* No RDATA */
 	}
 
@@ -246,13 +245,13 @@ static int parse_partial_rr(scanner_t *s, const char *lp, unsigned flags) {
 	/* Need to parse rdata, synthetize input. */
 	char *rr = sprintf_alloc("%s %u %s %s %s\n",
 	                         owner_s, s->r_ttl, b1, b2, lp);
-	if (scanner_process(rr, rr + strlen(rr), 1, s) < 0) {
+	if (zs_scanner_process(rr, rr + strlen(rr), 1, s) < 0) {
 		ret = KNOT_EPARSEFAIL;
 	}
 
 	free(owner_s);
 	free(rr);
-	knot_dname_free(&owner);
+	knot_dname_free(&owner, NULL);
 	return ret;
 }
 
@@ -289,18 +288,12 @@ static srv_info_t *parse_host(const char *lp, const char* default_port)
 }
 
 /* Append parsed RRSet to list. */
-static int rr_list_append(scanner_t *s, list_t *target_list, mm_ctx_t *mm)
+static int rr_list_append(zs_scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 {
-	/* Form a rrset. */
-	knot_dname_t *owner = knot_dname_copy(s->r_owner);
-	if (!owner) {
-		DBG("%s: failed to create dname\n", __func__);
-		return KNOT_ENOMEM;
-	}
-	knot_rrset_t *rr = knot_rrset_new(owner, s->r_type, s->r_class, NULL);
+	knot_rrset_t *rr = knot_rrset_new(s->r_owner, s->r_type, s->r_class,
+	                                  NULL);
 	if (!rr) {
 		DBG("%s: failed to create rrset\n", __func__);
-		knot_dname_free(&owner);
 		return KNOT_ENOMEM;
 	}
 
@@ -315,13 +308,13 @@ static int rr_list_append(scanner_t *s, list_t *target_list, mm_ctx_t *mm)
 		if (ret != KNOT_EOK) {
 			DBG("%s: failed to set rrset from wire - %s\n",
 			    __func__, knot_strerror(ret));
-			knot_rrset_free(&rr);
+			knot_rrset_free(&rr, NULL);
 			return ret;
 		}
 	}
 
 	if (ptrlist_add(target_list, rr, mm) == NULL) {
-		knot_rrset_free(&rr);
+		knot_rrset_free(&rr, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -358,7 +351,7 @@ static int build_query(nsupdate_params_t *params)
 	knot_wire_set_opcode(query->wire, KNOT_OPCODE_UPDATE);
 	knot_dname_t *qname = knot_dname_from_str(params->zone);
 	int ret = knot_pkt_put_question(query, qname, params->class_num, params->type_num);
-	knot_dname_free(&qname);
+	knot_dname_free(&qname, NULL);
 	if (ret != KNOT_EOK)
 		return ret;
 
@@ -383,7 +376,6 @@ static int build_query(nsupdate_params_t *params)
 	/* Write UPDATE data. */
 	return rr_list_to_packet(query, &params->update_list);
 }
-
 
 static int pkt_sendrecv(nsupdate_params_t *params)
 {
@@ -525,7 +517,6 @@ int cmd_update(const char* lp, nsupdate_params_t *params)
 	return h[bp](tok_skipspace(lp + TOK_L(cmd_array[bp])), params);
 }
 
-
 int cmd_add(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
@@ -541,7 +532,7 @@ int cmd_del(const char* lp, nsupdate_params_t *params)
 {
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	scanner_t *rrp = params->parser;
+	zs_scanner_t *rrp = params->parser;
 	if (parse_partial_rr(rrp, lp, PARSE_NODEFAULT) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
@@ -575,7 +566,7 @@ int cmd_class(const char* lp, nsupdate_params_t *params)
 		return KNOT_EPARSEFAIL;
 	} else {
 		params->class_num = cls;
-		scanner_t *s = params->parser;
+		zs_scanner_t *s = params->parser;
 		s->default_class = params->class_num;
 	}
 
@@ -609,7 +600,7 @@ int cmd_prereq_domain(const char *lp, nsupdate_params_t *params, unsigned type)
 	UNUSED(type);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	scanner_t *s = params->parser;
+	zs_scanner_t *s = params->parser;
 	int ret = parse_partial_rr(s, lp, PARSE_NODEFAULT|PARSE_NAMEONLY);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -623,7 +614,7 @@ int cmd_prereq_rrset(const char *lp, nsupdate_params_t *params, unsigned type)
 	UNUSED(type);
 	DBG("%s: lp='%s'\n", __func__, lp);
 
-	scanner_t *rrp = params->parser;
+	zs_scanner_t *rrp = params->parser;
 	if (parse_partial_rr(rrp, lp, 0) != KNOT_EOK) {
 		return KNOT_EPARSEFAIL;
 	}
@@ -664,7 +655,7 @@ int cmd_prereq(const char* lp, nsupdate_params_t *params)
 
 	/* Append to packet. */
 	if (ret == KNOT_EOK) {
-		scanner_t *s = params->parser;
+		zs_scanner_t *s = params->parser;
 		s->r_ttl = 0; /* Set TTL = 0 for prereq. */
 		/* YX{RRSET,DOMAIN} - cls ANY */
 		if (prereq_type == PQ_YXRRSET || prereq_type == PQ_YXDOMAIN) {
@@ -719,7 +710,7 @@ int cmd_send(const char* lp, nsupdate_params_t *params)
 	}
 
 	/* Parse response. */
-	ret = knot_pkt_parse(params->answer, KNOT_PF_NO_MERGE);
+	ret = knot_pkt_parse(params->answer, 0);
 	if (ret != KNOT_EOK) {
 		ERR("failed to parse response, %s\n", knot_strerror(ret));
 		free_sign_context(&sign_ctx);

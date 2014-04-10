@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
@@ -24,9 +23,11 @@
 #include "libknot/common.h"
 #include "knot/zone/node.h"
 #include "libknot/rrset.h"
-#include "libknot/rdata.h"
+#include "libknot/rdataset.h"
+#include "libknot/rdata/rrsig.h"
 #include "common/descriptor.h"
 #include "common/debug.h"
+#include "common/mempattern.h"
 
 /*----------------------------------------------------------------------------*/
 /* Non-API functions                                                          */
@@ -68,6 +69,24 @@ static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
 	node->flags &= ~flag;
 }
 
+static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
+{
+	knot_rdataset_clear(&data->rrs, mm);
+	free(data->additional);
+}
+
+static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
+{
+	int ret = knot_rdataset_copy(&data->rrs, &rrset->rrs, mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	data->type = rrset->type;
+	data->additional = NULL;
+
+	return KNOT_EOK;
+}
+
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
@@ -87,11 +106,11 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
 	 *        do the copying (or not if he decides to do so).
 	 */
 	if (owner) {
-		ret->owner = knot_dname_copy(owner);
+		ret->owner = knot_dname_copy(owner, NULL);
 	}
 
 	knot_node_set_parent(ret, parent);
-	ret->rrset_tree = NULL;
+	ret->rrs = NULL;
 	ret->flags = flags;
 
 	assert(ret->children == 0);
@@ -99,92 +118,71 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
 	return ret;
 }
 
-int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset)
+static int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *rrset)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	size_t nlen = (node->rrset_count + 1) * sizeof(knot_rrset_t*);
-	void *p = realloc(node->rrset_tree, nlen);
+	const size_t nlen = (node->rrset_count + 1) * sizeof(struct rr_data);
+	void *p = realloc(node->rrs, nlen);
 	if (p == NULL) {
 		return KNOT_ENOMEM;
 	}
-	node->rrset_tree = p;
-	node->rrset_tree[node->rrset_count] = rrset;
+	node->rrs = p;
+	int ret = rr_data_from(rrset, node->rrs + node->rrset_count, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	++node->rrset_count;
 
 	return KNOT_EOK;
 }
 
-int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset)
+int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
 {
-	if (node == NULL) {
+	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		if (node->rrset_tree[i]->type == rrset->type) {
-		node->rrset_tree[i] = rrset;
-		}
-	}
+		if (node->rrs[i].type == rrset->type) {
+			struct rr_data *node_data = &node->rrs[i];
 
-	return knot_node_add_rrset_no_merge(node, rrset);
-}
-
-int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                        knot_rrset_t **out_rrset)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		if (node->rrset_tree[i]->type == rrset->type) {
-			if (out_rrset) {
-				*out_rrset = node->rrset_tree[i];
+			/* Check if the added RR has the same TTL as the first
+			 * RR in the RRSet.
+			 */
+			knot_rdata_t *first = knot_rdataset_at(&node_data->rrs, 0);
+			uint32_t inserted_ttl = knot_rrset_rr_ttl(rrset, 0);
+			if (ttl_err && rrset->type != KNOT_RRTYPE_RRSIG &&
+			    inserted_ttl != knot_rdata_ttl(first)) {
+				*ttl_err = true;
 			}
-			int merged, deleted_rrs;
-			int ret = knot_rrset_merge_sort(node->rrset_tree[i],
-			                                rrset, &merged,
-			                                &deleted_rrs, NULL);
-			if (ret != KNOT_EOK) {
-				return ret;
-			} else if (merged || deleted_rrs) {
-				return 1;
-			} else {
-				return 0;
-			}
+
+			return knot_rdataset_merge(&node_data->rrs, &rrset->rrs, NULL);
 		}
 	}
 
 	// New RRSet (with one RR)
-	if (out_rrset) {
-		*out_rrset = rrset;
-	}
 	return knot_node_add_rrset_no_merge(node, rrset);
 }
 
 /*----------------------------------------------------------------------------*/
 
-const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
-                                        uint16_t type)
+const knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type)
 {
-	return knot_node_get_rrset(node, type);
+	return (const knot_rdataset_t *)knot_node_get_rdataset(node, type);
 }
 
-/*----------------------------------------------------------------------------*/
-
-knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type)
+knot_rdataset_t *knot_node_get_rdataset(const knot_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return NULL;
 	}
 
-	knot_rrset_t **rrs = node->rrset_tree;
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		if (rrs[i]->type == type) {
-			return rrs[i];
+		if (node->rrs[i].type == type) {
+			return &node->rrs[i].rrs;
 		}
 	}
 
@@ -193,36 +191,39 @@ knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type)
 
 /*----------------------------------------------------------------------------*/
 
-knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type)
+knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return NULL;
 	}
 
-	uint16_t i = 0;
-	knot_rrset_t *ret = NULL;
-	knot_rrset_t **rrs = node->rrset_tree;
-	for (; i < node->rrset_count && ret == NULL; ++i) {
-		if (rrs[i]->type == type) {
-			ret = rrs[i];
-			memmove(rrs + i, rrs + i + 1, (node->rrset_count - i - 1) * sizeof(knot_rrset_t *));
-			--node->rrset_count;
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			knot_rrset_t rrset = knot_node_rrset_at(node, i);
+			return knot_rrset_copy(&rrset, NULL);
 		}
 	}
 
-	return ret;
+	return NULL;
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_remove_all_rrsets(knot_node_t *node)
+void knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return;
 	}
 
-	// remove RRSets but do not delete them
-	node->rrset_count = 0;
+	for (int i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			memmove(node->rrs + i, node->rrs + i + 1, (node->rrset_count - i - 1) * sizeof(struct rr_data));
+			--node->rrset_count;
+			return;
+		}
+	}
+
+	return;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -234,48 +235,6 @@ short knot_node_rrset_count(const knot_node_t *node)
 	}
 
 	return node->rrset_count;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node)
-{
-	if (node == NULL || node->rrset_count == 0) {
-		return NULL;
-	}
-
-	size_t rrlen = node->rrset_count * sizeof(knot_rrset_t*);
-	knot_rrset_t **cpy = malloc(rrlen);
-	if (cpy != NULL) {
-		memcpy(cpy, node->rrset_tree, rrlen);
-	}
-
-	return cpy;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_rrset_t **knot_node_rrsets(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return (const knot_rrset_t **)knot_node_get_rrsets(node);
-}
-
-knot_rrset_t **knot_node_get_rrsets_no_copy(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->rrset_tree;
-}
-
-const knot_rrset_t **knot_node_rrsets_no_copy(const knot_node_t *node)
-{
-	return (const knot_rrset_t **)knot_node_get_rrsets_no_copy(node);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -418,94 +377,27 @@ knot_dname_t *knot_node_get_owner(const knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->wildcard_child;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_wildcard_child(knot_node_t *node,
-                                  knot_node_t *wildcard_child)
+void knot_node_set_wildcard_child(knot_node_t *node)
 {
 	if (node == NULL) {
 		return;
 	}
 
-	node->wildcard_child = wildcard_child;
-//	assert(wildcard_child->parent == node);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
 }
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_wildcard_child(const knot_node_t *node)
+int knot_node_has_wildcard_child(const knot_node_t *node)
 {
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return knot_node_get_wildcard_child(node);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
 }
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_node_new_node(const knot_node_t *node)
+void knot_node_clear_wildcard_child(knot_node_t *node)
 {
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->new_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_node_get_new_node(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->new_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_new_node(knot_node_t *node,
-                              knot_node_t *new_node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	node->new_node = new_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_update_ref(knot_node_t **ref)
-{
-	if (*ref != NULL && (*ref)->new_node != NULL) {
-		*ref = (*ref)->new_node;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_update_refs(knot_node_t *node)
-{
-	// reference to previous node
-	knot_node_update_ref(&node->prev);
-	// reference to parent
-	knot_node_update_ref(&node->parent);
-	// reference to wildcard child
-	knot_node_update_ref(&node->wildcard_child);
-	// reference to NSEC3 node
-	knot_node_update_ref(&node->nsec3_node);
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -598,23 +490,45 @@ void knot_node_clear_empty(knot_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_node_is_replaced_nsec(const knot_node_t *node)
+int knot_node_is_removed_nsec(const knot_node_t *node)
 {
-	return knot_node_flags_get(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_set_replaced_nsec(knot_node_t *node)
+void knot_node_set_removed_nsec(knot_node_t *node)
 {
-	knot_node_flags_set(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
 }
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_clear_replaced_nsec(knot_node_t *node)
+void knot_node_clear_removed_nsec(knot_node_t *node)
 {
-	knot_node_flags_clear(node, KNOT_NODE_FLAGS_REPLACED_NSEC);
+	knot_node_flags_clear(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_node_set_apex(knot_node_t *node)
+{
+	if (node == NULL) {
+		return;
+	}
+
+	knot_node_flags_set(node, KNOT_NODE_FLAGS_APEX);
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_node_is_apex(const knot_node_t *node)
+{
+	if (node == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return knot_node_flags_get(node, KNOT_NODE_FLAGS_APEX);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -625,9 +539,8 @@ void knot_node_free_rrsets(knot_node_t *node)
 		return;
 	}
 
-	knot_rrset_t **rrs = node->rrset_tree;
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		knot_rrset_deep_free(&(rrs[i]), 1, NULL);
+		rr_data_clear(&node->rrs[i], NULL);
 	}
 }
 
@@ -641,14 +554,14 @@ void knot_node_free(knot_node_t **node)
 
 	dbg_node_detail("Freeing node: %p\n", *node);
 
-	if ((*node)->rrset_tree != NULL) {
+	if ((*node)->rrs != NULL) {
 		dbg_node_detail("Freeing RRSets.\n");
-		free((*node)->rrset_tree);
-		(*node)->rrset_tree = NULL;
+		free((*node)->rrs);
+		(*node)->rrs = NULL;
 		(*node)->rrset_count = 0;
 	}
 
-	knot_dname_free(&(*node)->owner);
+	knot_dname_free(&(*node)->owner, NULL);
 
 	free(*node);
 	*node = NULL;
@@ -669,21 +582,24 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
+	memset(*to, 0, sizeof(knot_node_t));
 
-	// do not use the API function to set parent, so that children count
-	// is not changed
-	memcpy(*to, from, sizeof(knot_node_t));
-	(*to)->owner = knot_dname_copy(from->owner);
-
-	// copy RRSets
-	size_t rrlen = sizeof(knot_rrset_t*) * from->rrset_count;
-	(*to)->rrset_tree = malloc(rrlen);
-	if ((*to)->rrset_tree == NULL) {
+	// Copy owner
+	(*to)->owner = knot_dname_copy(from->owner, NULL);
+	if ((*to)->owner == NULL) {
 		free(*to);
-		*to = NULL;
 		return KNOT_ENOMEM;
 	}
-	memcpy((*to)->rrset_tree, from->rrset_tree, rrlen);
+
+	// copy RRSets
+	(*to)->rrset_count = from->rrset_count;
+	size_t rrlen = sizeof(struct rr_data) * from->rrset_count;
+	(*to)->rrs = malloc(rrlen);
+	if ((*to)->rrs == NULL) {
+		knot_node_free(to);
+		return KNOT_ENOMEM;
+	}
+	memcpy((*to)->rrs, from->rrs, rrlen);
 
 	return KNOT_EOK;
 }
@@ -694,19 +610,24 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 		return false;
 	}
 
-	const knot_rrset_t *rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+	const knot_rdataset_t *rrsigs = knot_node_rdataset(node, KNOT_RRTYPE_RRSIG);
 	if (rrsigs == NULL) {
 		return false;
 	}
 
-	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	uint16_t rrsigs_rdata_count = rrsigs->rr_count;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		const uint16_t type_covered =
-			knot_rdata_rrsig_type_covered(rrsigs, i);
+			knot_rrsig_type_covered(rrsigs, i);
 		if (type_covered == type) {
 			return true;
 		}
 	}
 
 	return false;
+}
+
+bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type)
+{
+	return knot_node_rdataset(node, type) != NULL;
 }

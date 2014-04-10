@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include "common/base32hex.h"
 #include "common/errcode.h"
 
@@ -262,7 +261,10 @@ int32_t base32hex_encode_alloc(const uint8_t  *in,
                                const uint32_t in_len,
                                uint8_t        **out)
 {
-	// Check input (output is longer).
+	// Checking inputs.
+	if (out == NULL) {
+		return KNOT_EINVAL;
+	}
 	if (in_len > MAX_BIN_DATA_LEN) {
 		return KNOT_ERANGE;
 	}
@@ -321,7 +323,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 
 		// Check 8. char if is bad or padding.
 		if (c8 >= PD) {
-			if (c8 == PD) {
+			if (c8 == PD && pad_len == 0) {
 				pad_len = 1;
 			} else {
 				return KNOT_BASE32HEX_ECHAR;
@@ -330,7 +332,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 
 		// Check 7. char if is bad or padding (if so, 6. must be too).
 		if (c7 >= PD) {
-			if (c7 == PD && c6 == PD) {
+			if (c7 == PD && c6 == PD && pad_len == 1) {
 				pad_len = 3;
 			} else {
 				return KNOT_BASE32HEX_ECHAR;
@@ -339,16 +341,14 @@ int32_t base32hex_decode(const uint8_t  *in,
 
 		// Check 6. char if is bad or padding.
 		if (c6 >= PD) {
-			if (c6 == PD) {
-				pad_len = 3;
-			} else {
+			if (!(c6 == PD && pad_len == 3)) {
 				return KNOT_BASE32HEX_ECHAR;
 			}
 		}
 
 		// Check 5. char if is bad or padding.
 		if (c5 >= PD) {
-			if (c5 == PD) {
+			if (c5 == PD && pad_len == 3) {
 				pad_len = 4;
 			} else {
 				return KNOT_BASE32HEX_ECHAR;
@@ -357,7 +357,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 
 		// Check 4. char if is bad or padding (if so, 3. must be too).
 		if (c4 >= PD) {
-			if (c4 == PD && c3 == PD) {
+			if (c4 == PD && c3 == PD && pad_len == 4) {
 				pad_len = 6;
 			} else {
 				return KNOT_BASE32HEX_ECHAR;
@@ -366,9 +366,7 @@ int32_t base32hex_decode(const uint8_t  *in,
 
 		// Check 3. char if is bad or padding.
 		if (c3 >= PD) {
-			if (c3 == PD) {
-				pad_len = 6;
-			} else {
+			if (!(c3 == PD && pad_len == 6)) {
 				return KNOT_BASE32HEX_ECHAR;
 			}
 		}
@@ -420,6 +418,11 @@ int32_t base32hex_decode_alloc(const uint8_t  *in,
                                const uint32_t in_len,
                                uint8_t        **out)
 {
+	// Checking inputs.
+	if (out == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	// Compute output buffer length.
 	uint32_t out_len = ((in_len + 7) / 8) * 5;
 

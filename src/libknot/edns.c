@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -55,13 +54,13 @@ knot_opt_rr_t *knot_edns_new()
 int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 {
 	if (opt_rr == NULL || rrset == NULL
-	    || knot_rrset_type(rrset) != KNOT_RRTYPE_OPT ||
+	    || rrset->type != KNOT_RRTYPE_OPT ||
 	    knot_rrset_rr_count(rrset) == 0) {
 		return KNOT_EINVAL;
 	}
 
 	dbg_edns_verb("Parsing payload.\n");
-	opt_rr->payload = knot_rrset_class(rrset);
+	opt_rr->payload = rrset->rclass;
 
 	/* RFC6891, 6.2.5 Value < 512B should be treated as 512. */
 	if (opt_rr->payload < EDNS_MIN_UDP_PAYLOAD) {
@@ -118,7 +117,6 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 			pos += 4 + opt_size;
 		}
 	}
-
 
 	dbg_edns_verb("EDNS created.\n");
 

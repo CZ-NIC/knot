@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,27 +40,6 @@ void *mm_alloc(mm_ctx_t *mm, size_t size)
 		return mm->alloc(mm->ctx, size);
 	} else {
 		return malloc(size);
-	}
-}
-
-void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
-{
-	if (mm) {
-		void *p = mm->alloc(mm->ctx, size);
-		if (knot_unlikely(p == NULL)) {
-			return NULL;
-		} else {
-			if (what) {
-				memcpy(p, what,
-				       prev_size < size ? prev_size : size);
-			}
-			if (mm->free) {
-				mm->free(what);
-			}
-			return p;
-		}
-	} else {
-		return realloc(what, size);
 	}
 }
 

@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include "utils/dig/dig_exec.h"
 
 #include <stdlib.h>			// free
@@ -92,7 +91,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	ret = knot_pkt_put_question(packet, qname, query->class_num,
 	                            query->type_num);
 	if (ret != KNOT_EOK) {
-		knot_dname_free(&qname);
+		knot_dname_free(&qname, NULL);
 		knot_pkt_free(&packet);
 		return NULL;
 	}
@@ -108,8 +107,8 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		                                   KNOT_RRTYPE_SOA,
 		                                   query->class_num,
 		                                   &packet->mm);
+		knot_dname_free(&qname, NULL);
 		if (soa == NULL) {
-			knot_dname_free(&qname);
 			knot_pkt_free(&packet);
 			return NULL;
 		}
@@ -120,24 +119,24 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		                                     0, sizeof(wire),
 		                                     &packet->mm);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&soa, 1, &packet->mm);
+			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);
 			return NULL;
 		}
 
 		// Set SOA serial.
-		knot_rdata_soa_serial_set(soa, query->xfr_serial);
+		knot_soa_serial_set(&soa->rrs, query->xfr_serial);
 
 		// Add authority section.
 		knot_pkt_begin(packet, KNOT_AUTHORITY);
 		ret = knot_pkt_put(packet, 0, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {
-			knot_rrset_deep_free(&soa, 1, &packet->mm);
+			knot_rrset_free(&soa, &packet->mm);
 			knot_pkt_free(&packet);
 			return NULL;
 		}
 	} else {
-		knot_dname_free(&qname);
+		knot_dname_free(&qname, NULL);
 	}
 
 	// Create EDNS section if required.
@@ -228,12 +227,12 @@ static int64_t first_serial_check(const knot_pkt_t *reply)
 		return -1;
 	}
 
-	const knot_rrset_t *first = answer->rr[0];
+	const knot_rrset_t *first = &answer->rr[0];
 
 	if (first->type != KNOT_RRTYPE_SOA) {
 		return -1;
 	} else {
-		return knot_rdata_soa_serial(first);
+		return knot_soa_serial(&first->rrs);
 	}
 }
 
@@ -244,13 +243,12 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 		return false;
 	}
 
-	const knot_rrset_t *last = answer->rr[answer->count - 1];
+	const knot_rrset_t *last = &answer->rr[answer->count - 1];
 
 	if (last->type != KNOT_RRTYPE_SOA) {
 		return false;
 	} else {
-		int64_t last_serial = knot_rdata_soa_serial(last);
-
+		int64_t last_serial = knot_soa_serial(&last->rrs);
 		if (last_serial == serial) {
 			return true;
 		} else {
@@ -319,7 +317,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PF_NO_MERGE) != KNOT_EOK) {
+		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
 			net_close(net);
@@ -410,7 +408,7 @@ static void process_query(const query_t *query)
 	WALK_LIST(server, query->servers) {
 		srv_info_t *remote = (srv_info_t *)server;
 
-		DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+		DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 		    "port(%s), protocol(%s)\n", query->owner, query->class_num,
 		    query->type_num, remote->name, remote->service,
 		    get_sockname(socktype));
@@ -511,7 +509,6 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 	// Get stop query time and start reply time.
 	gettimeofday(&t_query, NULL);
 
-
 	// Print query packet if required.
 	if (style->show_query) {
 		print_packet(query, net,
@@ -540,7 +537,7 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 		}
 
 		// Parse reply to the packet structure.
-		if (knot_pkt_parse(reply, KNOT_PF_NO_MERGE) != KNOT_EOK) {
+		if (knot_pkt_parse(reply, 0) != KNOT_EOK) {
 			ERR("malformed reply packet from %s\n", net->remote_str);
 			knot_pkt_free(&reply);
 			net_close(net);
@@ -653,7 +650,7 @@ static void process_query_xfr(const query_t *query)
 	// Use the first nameserver from the list.
 	srv_info_t *remote = HEAD(query->servers);
 
-	DBG("Quering for owner(%s), class(%u), type(%u), server(%s), "
+	DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
 	    "port(%s), protocol(%s)\n", query->owner, query->class_num,
 	    query->type_num, remote->name, remote->service,
 	    get_sockname(socktype));

@@ -30,7 +30,9 @@ extern "C" {
 
 /* Hat-trie defines. */
 #define TRIE_ZEROBUCKETS  0    /* Do not use hash buckets (pure trie). */
-#define TRIE_BUCKET_SIZE  765  /* Exactly 3x4K pages for 1 hhash. */
+#define TRIE_BUCKET_SIZE  253  /* 253, 509, 765 for n*4K pages per 1 hhash. */
+#define TRIE_BUCKET_INCR  256  /* Size increase. */
+#define TRIE_BUCKET_MAX   4    /* Maximum N table increments. */
 #define TRIE_MAXCHAR      0xff /* Use 7-bit ASCII alphabet. */
 #define TRIE_EOK          KNOT_EOK
 

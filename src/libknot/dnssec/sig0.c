@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 #include <time.h>
 #include "common/errcode.h"
@@ -39,11 +38,7 @@
  */
 static knot_rrset_t *sig0_create_rrset(void)
 {
-	knot_dname_t *root = knot_dname_from_str(".");
-	knot_rrset_t *sig_record = knot_rrset_new(root, KNOT_RRTYPE_SIG,
-	                                          KNOT_CLASS_ANY, NULL);
-
-	return sig_record;
+	return knot_rrset_new((uint8_t *)"", KNOT_RRTYPE_SIG, KNOT_CLASS_ANY, NULL);
 }
 
 static void sig0_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key)
@@ -72,15 +67,14 @@ static uint8_t *sig0_create_rdata(knot_rrset_t *rrset, knot_dnssec_key_t *key)
 	assert(key);
 
 	size_t rdata_size = knot_rrsig_rdata_size(key);
-	uint32_t ttl = 0;
-	uint8_t *rdata = knot_rrset_create_rr(rrset, rdata_size, ttl, NULL);
-	if (!rdata) {
+	const uint32_t ttl = 0;
+	uint8_t rdata[rdata_size];
+	sig0_write_rdata(rdata, key);
+	if (knot_rrset_add_rdata(rrset, rdata, rdata_size, ttl, NULL) != KNOT_EOK) {
 		return NULL;
 	}
 
-	sig0_write_rdata(rdata, key);
-
-	return rdata;
+	return knot_rrset_rr_rdata(rrset, 0);
 }
 
 /*!
@@ -141,7 +135,7 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 
 	uint8_t *sig_rdata = sig0_create_rdata(sig_rrset, key);
 	if (!sig_rdata) {
-		knot_rrset_deep_free(&sig_rrset, 1, NULL);
+		knot_rrset_free(&sig_rrset, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -155,7 +149,7 @@ int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
 	int result = knot_rrset_to_wire(sig_rrset, wire_end, &wire_sig_size,
 	                                wire_avail_size, &written_rr_count,
 	                                NULL);
-	knot_rrset_deep_free(&sig_rrset, 1, NULL);
+	knot_rrset_free(&sig_rrset, NULL);
 	if (result != KNOT_EOK) {
 		return result;
 	}

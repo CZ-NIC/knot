@@ -48,11 +48,10 @@ void create_root_zone(server_t *server, mm_ctx_t *mm)
 	zone_t *root = zone_new(conf);
 	root->contents = zone_contents_new(root->name);
 
-	knot_dname_t *root_name = knot_dname_copy(root->name);
-	knot_rrset_t *soa_rrset = knot_rrset_new(root_name,
+	knot_rrset_t *soa_rrset = knot_rrset_new(root->name,
 	                                         KNOT_RRTYPE_SOA, KNOT_CLASS_IN,
 	                                         NULL);
-	knot_rrset_add_rr(soa_rrset, SOA_RDATA, SOA_RDLEN, 7200, NULL);
+	knot_rrset_add_rdata(soa_rrset, SOA_RDATA, SOA_RDLEN, 7200, NULL);
 	knot_node_add_rrset(root->contents->apex, soa_rrset, NULL);
 
 	/* Bake the zone. */
@@ -197,9 +196,9 @@ int main(int argc, char *argv[])
 	/* Forge IXFR query (well formed). */
 	knot_process_reset(&query_ctx);
 	/* Append SOA RR. */
-	knot_rrset_t *soa_rr = knot_node_get_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rr = knot_node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	knot_pkt_begin(query, KNOT_AUTHORITY);
-	knot_pkt_put(query, COMPR_HINT_NONE, soa_rr, 0);
+	knot_pkt_put(query, COMPR_HINT_NONE, &soa_rr, 0);
 	exec_query(&query_ctx, "IN/ixfr", query->wire, query->size, KNOT_RCODE_NOTAUTH);
 
 	/* \note Tests below are not possible without proper zone and zone data. */

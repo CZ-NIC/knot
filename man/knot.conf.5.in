@@ -369,6 +369,13 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
     # List of servers to allow UPDATE queries
     update-in server0, admins;
+
+	# Query modules are dynamically loaded modules that can alter query plan
+	# Configuration is always module-specific, but passed as a simple string
+	query_module {
+		module_one "configuration string";
+		module_two "specific configuration string";
+	}
   }
  }
 

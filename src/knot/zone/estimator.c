@@ -14,14 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 
 #include "knot/zone/estimator.h"
 #include "libknot/dname.h"
 #include "common/lists.h"
 #include "knot/zone/node.h"
-#include "zscanner/scanner.h"
+#include "zscanner/zscanner.h"
 #include "common/descriptor.h"
 
 // Constants used for tweaking, mostly malloc overhead
@@ -108,10 +107,10 @@ static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
 	}
 }
 
-static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
+static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 {
 	// Handle RRSet's owner
-	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
+	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
 	if (owner == NULL) {
 		return;
 	}
@@ -124,7 +123,7 @@ static void rrset_memsize(zone_estim_t *est, const scanner_t *scanner)
 		est->dname_size += dname_memsize(owner);
 		// Trie's nodes handled at the end of computation
 	}
-	knot_dname_free(&owner);
+	knot_dname_free(&owner, NULL);
 	assert(n);
 
 	// We will always add RDATA
@@ -206,7 +205,7 @@ size_t estimator_trie_ahtable_memsize(hattrie_t *table)
 	return size;
 }
 
-void estimator_rrset_memsize_wrap(const scanner_t *scanner)
+void estimator_rrset_memsize_wrap(const zs_scanner_t *scanner)
 {
 	rrset_memsize(scanner->data, scanner);
 }

@@ -36,6 +36,12 @@
 #define RRL_SLIP_MAX 100
 #define RRL_LOCK_GRANULARITY 32 /* Last digit granularity */
 
+/*! \brief RRL flags. */
+enum {
+	RRL_NOFLAG    = 0 << 0, /*!< No flags. */
+	RRL_WILDCARD  = 1 << 1  /*!< Query to wildcard name. */
+};
+
 struct zone_t;
 
 /*!

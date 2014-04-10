@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -63,14 +62,6 @@ int net_unbound_socket(int type, struct sockaddr_storage *ss)
 		return socket;
 	}
 
-	/* Make the socket IPv6 only to allow 'any' for IPv4 and IPv6 at the same time. */
-	if (ss->ss_family == AF_INET6) {
-		/* Do not support mapping IPv4 in IPv6 sockets. */
-		int flag = 1;
-		(void) setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
-		                  &flag, sizeof(flag));
-	}
-
 	return socket;
 }
 
@@ -93,6 +84,12 @@ int net_bound_socket(int type, struct sockaddr_storage *ss)
 	/* Unlink UNIX socket if exists. */
 	if (ss->ss_family == AF_UNIX) {
 		unlink(addr_str);
+	}
+
+	/* Make the socket IPv6 only to allow 'any' for IPv4 and IPv6 at the same time. */
+	if (ss->ss_family == AF_INET6) {
+		(void) setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
+		                  &flag, sizeof(flag));
 	}
 
 	/* Bind to specified address. */

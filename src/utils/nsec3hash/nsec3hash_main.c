@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 #include <getopt.h>
 #include <stdbool.h>
@@ -28,7 +27,6 @@
 #include "common/hex.h"
 #include "common/strtonum.h"
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/nsec3.h"
 
 #define PROGRAM_NAME "knsec3hash"
 
@@ -184,8 +182,8 @@ int main(int argc, char *argv[])
 	       nsec3_params.iterations);
 
 fail:
-	knot_nsec3_params_free(&nsec3_params);
-	knot_dname_free(&dname);
+	knot_nsec3param_free(&nsec3_params);
+	knot_dname_free(&dname, NULL);
 	free(digest);
 	free(b32_digest);
 

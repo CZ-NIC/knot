@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,7 +34,7 @@ int log_reconfigure(const struct conf_t *conf, void *data)
 	UNUSED(data);
 
 	// Use defaults if no 'log' section is configured.
-	if (conf->logs_count < 0) {
+	if (EMPTY_LIST(conf->logs)) {
 		log_close();
 		log_init();
 		return KNOT_EOK;

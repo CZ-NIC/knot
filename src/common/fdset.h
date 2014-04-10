@@ -27,7 +27,6 @@
 #ifndef _KNOTD_FDSET_H_
 #define _KNOTD_FDSET_H_
 
-#include <config.h>
 #include <stddef.h>
 #include <poll.h>
 #include <sys/time.h>

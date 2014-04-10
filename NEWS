@@ -1,7 +1,16 @@
 Knot DNS NEWS
 
-1.5.0-dev - ?
+1.5.0 - ?
 ---------------------
+Features:
+	* Split libknot DNS library
+	* Pluggable query processing modules
+	* 'synth_record' automatic reverse/forward records module
+Improvements:
+	* Query processing and core functionality overhaul 
+	* Memory requirements 
+	* RFC compliant responses in some corner cases
+	* Log messages
 
 v1.4.2 - Jan 27, 2014
 ---------------------

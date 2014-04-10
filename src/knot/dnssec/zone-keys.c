@@ -14,21 +14,20 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <assert.h>
 #include <dirent.h>
 #include <stdbool.h>
 #include <inttypes.h>
+
+#include "common/debug.h"
 #include "common/errcode.h"
 #include "common/mempattern.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
-#include "libknot/dnssec/nsec3.h"
+#include "libknot/rdata/dnskey.h"
 #include "libknot/dnssec/sign.h"
 #include "knot/dnssec/zone-keys.h"
-#include "libknot/rdata.h"
-#include "common/debug.h"
 
 /*!
  * \brief Free DNSSEC signing context for each key.

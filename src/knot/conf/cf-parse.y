@@ -35,6 +35,7 @@
 #include "libknot/binary.h"
 #include "libknot/edns.h"
 #include "knot/server/rrl.h"
+#include "knot/nameserver/query_module.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/libknotd_la-cf-parse.h" /* Automake generated header. */
 
@@ -75,11 +76,20 @@ static void conf_init_iface(void *scanner, char* ifname)
 	this_iface->name = ifname;
 }
 
+static void conf_set_iface(void *scanner, struct sockaddr_storage *ss, int family, char* addr, int port)
+{
+	int ret = sockaddr_set(ss, family, addr, port);
+	if (ret != KNOT_EOK) {
+		cf_error(scanner, "invalid address for '%s': %s@%d\n",
+		                  this_iface->name, addr, port);
+	}
+	free(addr);
+}
+
 static void conf_start_iface(void *scanner, char* ifname)
 {
 	conf_init_iface(scanner, ifname);
 	add_tail(&new_config->ifaces, &this_iface->n);
-	++new_config->ifaces_count;
 }
 
 static conf_iface_t *conf_get_remote(const char *name)
@@ -110,7 +120,6 @@ static void conf_start_remote(void *scanner, char *remote)
 	memset(this_remote, 0, sizeof(conf_iface_t));
 	this_remote->name = remote;
 	add_tail(&new_config->remotes, &this_remote->n);
-	++new_config->remotes_count;
 }
 
 static void conf_remote_set_via(void *scanner, char *item) {
@@ -277,6 +286,17 @@ static void conf_acl_item(void *scanner, char *item)
 	free(item);
 }
 
+static void query_module_create(void *scanner, const char *name, const char *param)
+{
+	struct query_module *module = query_module_open(name, param, NULL);
+	if (module == NULL) {
+		cf_error(scanner, "cannot load query module '%s'", name);
+		return;
+	}
+
+	add_tail(&this_zone->query_modules, &module->node);
+}
+
 static int conf_key_exists(void *scanner, char *item)
 {
 	/* Find existing node in keys. */
@@ -286,12 +306,12 @@ static int conf_key_exists(void *scanner, char *item)
 	WALK_LIST (r, new_config->keys) {
 		if (knot_dname_cmp(r->k.name, sample) == 0) {
 			cf_error(scanner, "key '%s' is already defined", item);
-			knot_dname_free(&sample);
+			knot_dname_free(&sample, NULL);
 			return 1;
 		}
 	}
 
-	knot_dname_free(&sample);
+	knot_dname_free(&sample, NULL);
 	return 0;
 }
 
@@ -308,13 +328,13 @@ static int conf_key_add(void *scanner, knot_tsig_key_t **key, char *item)
 	WALK_LIST (r, new_config->keys) {
 		if (knot_dname_cmp(r->k.name, sample) == 0) {
 			*key = &r->k;
-			knot_dname_free(&sample);
+			knot_dname_free(&sample, NULL);
 			return 0;
 		}
 	}
 
 	cf_error(scanner, "key '%s' is not defined", item);
-	knot_dname_free(&sample);
+	knot_dname_free(&sample, NULL);
 	return 1;
 }
 
@@ -358,11 +378,11 @@ static void conf_zone_start(void *scanner, char *name) {
 		cf_error(scanner, "invalid zone origin");
 	} else {
 	/* Check for duplicates. */
-	if (hattrie_tryget(new_config->names, (const char *)dn,
+	if (hattrie_tryget(new_config->zones, (const char *)dn,
 	                   knot_dname_size(dn)) != NULL) {
 		cf_error(scanner, "zone '%s' is already present, refusing to "
 		         "duplicate", this_zone->name);
-		knot_dname_free(&dn);
+		knot_dname_free(&dn, NULL);
 		free(this_zone->name);
 		this_zone->name = NULL;
 		/* Must not free, some versions of flex might continue after
@@ -372,12 +392,9 @@ static void conf_zone_start(void *scanner, char *name) {
 		return;
 	}
 
-	/* Directly discard dname, won't be needed. */
-	add_tail(&new_config->zones, &this_zone->n);
-	*hattrie_get(new_config->names, (const char *)dn,
-	             knot_dname_size(dn)) = (void *)1;
-	++new_config->zones_count;
-	knot_dname_free(&dn);
+	*hattrie_get(new_config->zones, (const char *)dn,
+	             knot_dname_size(dn)) = this_zone;
+	knot_dname_free(&dn, NULL);
 	}
 }
 
@@ -477,6 +494,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> SIGNATURE_LIFETIME
 %token <tok> SERIAL_POLICY
 %token <tok> SERIAL_POLICY_VAL
+%token <tok> QUERY_MODULE
 
 %token <tok> INTERFACES ADDRESS PORT
 %token <tok> IPA
@@ -517,20 +535,16 @@ interface:
      }
    }
  | interface ADDRESS IPA ';' {
-     sockaddr_set(&this_iface->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
-     free($3.t);
+     conf_set_iface(scanner, &this_iface->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
    }
  | interface ADDRESS IPA '@' NUM ';' {
-     sockaddr_set(&this_iface->addr, AF_INET, $3.t, $5.i);
-     free($3.t);
+     conf_set_iface(scanner, &this_iface->addr, AF_INET, $3.t, $5.i);
    }
  | interface ADDRESS IPA6 ';' {
-     sockaddr_set(&this_iface->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
-     free($3.t);
+     conf_set_iface(scanner, &this_iface->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
    }
  | interface ADDRESS IPA6 '@' NUM ';' {
-     sockaddr_set(&this_iface->addr, AF_INET, $3.t, $5.i);
-     free($3.t);
+     conf_set_iface(scanner, &this_iface->addr, AF_INET6, $3.t, $5.i);
    }
  ;
 
@@ -664,11 +678,10 @@ keys:
              k->k.algorithm = $3.alg;
              if (knot_binary_from_base64($4.t, &(k->k.secret)) != 0) {
                  cf_error(scanner, "invalid key secret '%s'", $4.t);
-                 knot_dname_free(&dname);
+                 knot_dname_free(&dname, NULL);
                  free(k);
              } else {
                  add_tail(&new_config->keys, &k->n);
-                 ++new_config->key_count;
              }
          }
      }
@@ -694,34 +707,28 @@ remote:
      }
    }
  | remote ADDRESS IPA ';' {
-     sockaddr_set(&this_remote->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET, $3.t, CONFIG_DEFAULT_PORT);
      this_remote->prefix = IPV4_PREFIXLEN;
-     free($3.t);
    }
  | remote ADDRESS IPA '/' NUM ';' {
-     sockaddr_set(&this_remote->addr, AF_INET, $3.t, 0);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET, $3.t, 0);
      SET_NUM(this_remote->prefix, $5.i, 0, IPV4_PREFIXLEN, "prefix length");
-     free($3.t);
    }
  | remote ADDRESS IPA '@' NUM ';' {
-     sockaddr_set(&this_remote->addr, AF_INET, $3.t, $5.i);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET, $3.t, $5.i);
      this_remote->prefix = IPV4_PREFIXLEN;
-     free($3.t);
    }
  | remote ADDRESS IPA6 ';' {
-     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET6, $3.t, CONFIG_DEFAULT_PORT);
      this_remote->prefix = IPV6_PREFIXLEN;
-     free($3.t);
    }
  | remote ADDRESS IPA6 '/' NUM ';' {
-     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, 0);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET6, $3.t, 0);
      SET_NUM(this_remote->prefix, $5.i, 0, IPV6_PREFIXLEN, "prefix length");
-     free($3.t);
    }
  | remote ADDRESS IPA6 '@' NUM ';' {
-     sockaddr_set(&this_remote->addr, AF_INET6, $3.t, $5.i);
+     conf_set_iface(scanner, &this_remote->addr, AF_INET6, $3.t, $5.i);
      this_remote->prefix = IPV6_PREFIXLEN;
-     free($3.t);
    }
  | remote KEY TEXT ';' {
      if (this_remote->key != 0) {
@@ -732,12 +739,10 @@ remote:
      free($3.t);
    }
  | remote VIA IPA ';' {
-     sockaddr_set(&this_remote->via, AF_INET, $3.t, 0);
-     free($3.t);
+     conf_set_iface(scanner, &this_remote->via, AF_INET, $3.t, 0);
    }
  | remote VIA IPA6 ';' {
-     sockaddr_set(&this_remote->via, AF_INET6, $3.t, 0);
-     free($3.t);
+     conf_set_iface(scanner, &this_remote->via, AF_INET6, $3.t, 0);
    }
  | remote VIA TEXT ';' {
      conf_remote_set_via(scanner, $3.t);
@@ -833,6 +838,14 @@ zone_acl:
    }
  ;
 
+query_module:
+ TEXT TEXT { query_module_create(scanner, $1.t, $2.t); free($1.t); free($2.t); }
+ ;
+
+query_module_list:
+ | query_module ';' query_module_list
+ ;
+
 zone_start:
  | USER  { conf_zone_start(scanner, strdup($1.t)); }
  | REMOTES { conf_zone_start(scanner, strdup($1.t)); }
@@ -897,6 +910,7 @@ zone:
  | zone SERIAL_POLICY SERIAL_POLICY_VAL ';' {
 	this_zone->serial_policy = $3.i;
  }
+ | zone QUERY_MODULE '{' query_module_list '}'
  ;
 
 zones:
@@ -976,7 +990,6 @@ log_dest: LOG_DEST {
     this_log->file = 0;
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
-    ++new_config->logs_count;
   }
 }
 ;
@@ -1003,7 +1016,6 @@ log_file: FILENAME TEXT {
     this_log->file = strcpath($2.t);
     init_list(&this_log->map);
     add_tail(&new_config->logs, &this_log->n);
-    ++new_config->logs_count;
   }
 }
 ;
@@ -1017,7 +1029,7 @@ log_start:
  | log_start log_file '{' log_src '}'
  ;
 
-log: LOG { new_config->logs_count = 0; } '{' log_start log_end
+log: LOG { } '{' log_start log_end
  ;
 
 ctl_listen_start:

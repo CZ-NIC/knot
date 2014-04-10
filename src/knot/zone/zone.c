@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -31,7 +30,6 @@
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/rdata.h"
 #include "libknot/util/utils.h"
 
 /*!
@@ -125,9 +123,10 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_t *zone = *zone_ptr;
 
+
 	zone_events_deinit(zone);
 
-	knot_dname_free(&zone->name);
+	knot_dname_free(&zone->name, NULL);
 
 	acl_delete(&zone->xfr_out);
 	acl_delete(&zone->notify_in);
@@ -159,15 +158,15 @@ int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset)
 	}
 
 	/* Apply DNSSEC changeset to the new zone. */
-	int ret = xfrin_apply_changesets_directly(contents, chset->changes, chset);
+	int ret = xfrin_apply_changesets_directly(contents, chset);
 	if (ret == KNOT_EOK) {
-		ret = xfrin_finalize_updated_zone(contents, true, NULL);
+		ret = xfrin_finalize_updated_zone(contents, true);
 	}
 
 	if (ret == KNOT_EOK) {
 		/* No need to do rollback, the whole new zone will be
 		 * discarded. */
-		xfrin_cleanup_successful_update(chset->changes);
+		xfrin_cleanup_successful_update(chset);
 	}
 
 	return ret;
@@ -236,14 +235,13 @@ int zone_change_apply_and_store(knot_changesets_t *chs,
 	xfrin_zone_contents_free(&old_contents);
 
 	/* Free changesets, but not the data. */
-	xfrin_cleanup_successful_update(chs->changes);
+	xfrin_cleanup_successful_update(chs);
 	knot_changesets_free(&chs);
 	assert(ret == KNOT_EOK);
 	return KNOT_EOK;
 }
 
-zone_contents_t *zone_switch_contents(zone_t *zone,
-					   zone_contents_t *new_contents)
+zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)
 {
 	if (zone == NULL) {
 		return NULL;

@@ -42,8 +42,8 @@
 
 /* Constants. */
 #define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
-#define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Interval between AXFR BS retries. */
-#define AXFR_RETRY_MAXTIME (10*60*1000) /*!< Maximum interval 10mins */
+#define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Jitter cap between AXFR bootstrap retries. */
+#define AXFR_RETRY_MAXTIME (24*60*60*1000) /*!< Maximum AXFR retry interval cap of 24 hours. */
 
 /* Timer special values. */
 #define REFRESH_DEFAULT -1 /* Use time value from zone structure. */
@@ -100,10 +100,8 @@ int zones_cancel_dnssec(zone_t *zone);
  */
 int zones_schedule_dnssec(zone_t *zone, time_t unixtime);
 
-
 /*! \brief Just sign current zone. */
 int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *expires_at);
-
 
 #endif // _KNOTD_ZONES_H_
 

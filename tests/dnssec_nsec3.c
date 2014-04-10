@@ -23,8 +23,8 @@
 #include "common/errcode.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
-#include "libknot/dnssec/nsec3.h"
 #include "libknot/rrset.h"
+#include "libknot/rdata/nsec3.h"
 
 int main(int argc, char *argv[])
 {
@@ -55,10 +55,13 @@ int main(int argc, char *argv[])
 		'a', 'b', 'c', 'd'     // salt
 	};
 
-	rrset = knot_rrset_new(NULL, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
-	result = knot_rrset_add_rr(rrset, rdata, sizeof(rdata), 0, NULL);
+	knot_dname_t *owner = knot_dname_from_str("test.");
+	rrset = knot_rrset_new(owner, KNOT_RRTYPE_NSEC3PARAM, KNOT_CLASS_IN, NULL);
+	knot_dname_free(&owner, NULL);
+
+	result = knot_rrset_add_rdata(rrset, rdata, sizeof(rdata), 0, NULL);
 	if (result == KNOT_EOK) {
-		result = knot_nsec3_params_from_wire(&params, rrset);
+		result = knot_nsec3param_from_wire(&params, &rrset->rrs);
 	}
 
 	is_int(1, params.algorithm, "parse algorithm from wire");
@@ -67,8 +70,8 @@ int main(int argc, char *argv[])
 	is_int(4, params.salt_length, "parse salt length from wire");
 	is_int(0, memcmp(params.salt, "abcd", 4), "parse salt from wire");
 
-	knot_rrset_deep_free(&rrset, 1, NULL);
-	knot_nsec3_params_free(&params);
+	knot_rrset_free(&rrset, NULL);
+	knot_nsec3param_free(&params);
 
 	// hash computation
 
@@ -96,7 +99,7 @@ int main(int argc, char *argv[])
 
 	free(digest);
 	free(params.salt);
-	knot_dname_free(&dname);
+	knot_dname_free(&dname, NULL);
 
 	return 0;
 }

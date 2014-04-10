@@ -33,7 +33,7 @@
 #include "common/lists.h"
 #include "common/sockaddr.h"
 #include "common/mempattern.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 
 struct knot_tsig_key;
 
@@ -52,6 +52,9 @@ typedef struct acl_match {
 	netblock_t netblock;
 	struct knot_tsig_key *key; /*!< \brief TSIG key. */
 } acl_match_t;
+
+/*! \brief Match address against netblock. */
+int netblock_match(const netblock_t *a1, const struct sockaddr_storage *a2);
 
 /*!
  * \brief Create a new ACL.

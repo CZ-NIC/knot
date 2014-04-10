@@ -31,7 +31,7 @@
 
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
-#include "zscanner/zscanner.h"		// scanner_t
+#include "zscanner/zscanner.h"		// zs_scanner_t
 #include "utils/common/netio.h"		// server_t
 #include "utils/common/params.h"	// protocol_t
 #include "libknot/dnssec/key.h"		// knot_key_params_t
@@ -43,7 +43,7 @@
 
 /*! \brief nsupdate-specific params data. */
 typedef struct {
-	/*!< Stop processing - just pring help, version,... */
+	/*!< Stop processing - just print help, version,... */
 	bool		stop;
 	/*!< List of files with query data. */
 	list_t		qfiles;
@@ -68,7 +68,7 @@ typedef struct {
 	/*!< Current zone. */
 	char		*zone;
 	/*!< RR parser. */
-	scanner_t	*parser;
+	zs_scanner_t	*parser;
 	/*!< Current packet. */
 	knot_pkt_t	*query;
 	/*!< Current response. */

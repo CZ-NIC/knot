@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -28,13 +27,14 @@
 #include "knot/server/xfr-handler.h"
 #include "knot/server/zone-load.h"
 #include "knot/server/zones.h"
+#include "knot/server/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/rdata/soa.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/nameserver/chaos.h"
-#include "libknot/rdata.h"
 #include "libknot/tsig-op.h"
 #include "knot/updates/changesets.h"
 #include "knot/updates/ddns.h"
@@ -66,7 +66,7 @@ static uint32_t zones_jitter(uint32_t interval)
  * \param rr_func RDATA specificator.
  * \return Timer in miliseconds.
  */
-static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrset_t*))
+static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rdataset_t*))
 {
 	if (!zone) {
 		dbg_zones_verb("zones: zones_soa_timer() called "
@@ -77,7 +77,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
 	uint32_t ret = 0;
 
 	/* Retrieve SOA RDATA. */
-	const knot_rrset_t *soa_rrs = 0;
+	const knot_rdataset_t *soa_rrs = NULL;
 
 	rcu_read_lock();
 
@@ -87,7 +87,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
 		return 0;
 	}
 
-	soa_rrs = knot_node_rrset(zc->apex, KNOT_RRTYPE_SOA);
+	soa_rrs = knot_node_rdataset(zc->apex, KNOT_RRTYPE_SOA);
 	assert(soa_rrs != NULL);
 	ret = rr_func(soa_rrs);
 
@@ -105,7 +105,7 @@ static uint32_t zones_soa_timer(zone_t *zone, uint32_t (*rr_func)(const knot_rrs
  */
 static uint32_t zones_soa_refresh(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rdata_soa_refresh);
+	return zones_soa_timer(zone, knot_soa_refresh);
 }
 
 /*!
@@ -116,7 +116,7 @@ static uint32_t zones_soa_refresh(zone_t *zone)
  */
 static uint32_t zones_soa_retry(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rdata_soa_retry);
+	return zones_soa_timer(zone, knot_soa_retry);
 }
 
 /*!
@@ -127,7 +127,7 @@ static uint32_t zones_soa_retry(zone_t *zone)
  */
 static uint32_t zones_soa_expire(zone_t *zone)
 {
-	return zones_soa_timer(zone, knot_rdata_soa_expire);
+	return zones_soa_timer(zone, knot_soa_expire);
 }
 
 /*!
@@ -207,7 +207,6 @@ int zones_refresh_ev(event_t *event)
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
-
 
 /*----------------------------------------------------------------------------*/
 
@@ -367,6 +366,10 @@ int zones_dnssec_sign(zone_t *zone, bool force, uint32_t *refresh_at)
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
+
+	/* Trim extra heap. */
+	mem_trim();
+
 	return ret;
 }
 
@@ -433,9 +436,8 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
 
 	// schedule
 
+
 //	evsched_schedule(zone->dnssec.timer, relative * 1000);
 
 	return KNOT_EOK;
 }
-
-

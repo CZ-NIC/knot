@@ -38,7 +38,8 @@
  */
 typedef struct zcreator {
 	zone_contents_t *z;  /*!< Created zone. */
-	knot_node_t *last_node;   /*!< Last used node, use to save zone lookup. */
+	bool master;              /*!< Master flag. True if server is a primary
+	                               master for the zone. */
 	int ret;                  /*!< Return value. */
 } zcreator_t;
 
@@ -50,7 +51,7 @@ typedef struct zloader_t {
 	char *origin;                /*!< Zone's origin string. */
 	bool semantic_checks;        /*!< Do semantic checks. */
 	err_handler_t *err_handler;  /*!< Semantic checks error handler. */
-	file_loader_t *file_loader;  /*!< Scanner's file loader. */
+	zs_loader_t *file_loader;    /*!< Scanner's file loader. */
 	zcreator_t *creator;         /*!< Loader context. */
 } zloader_t;
 
@@ -92,9 +93,9 @@ int zonefile_write(const char *path, zone_contents_t *zone,
  */
 void zonefile_close(zloader_t *loader);
 
-int zcreator_step(zcreator_t *zl, knot_rrset_t *rr);
+int zcreator_step(zcreator_t *zl, const knot_rrset_t *rr);
 
-void process_error(const scanner_t *scanner);
+void process_error(const zs_scanner_t *scanner);
 
 #endif /* _KNOTD_ZONELOAD_H_ */
 

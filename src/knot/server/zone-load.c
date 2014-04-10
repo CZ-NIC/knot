@@ -14,13 +14,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 #include <sys/stat.h>
 
 #include "knot/conf/conf.h"
 #include "knot/server/zone-load.h"
 #include "knot/server/zones.h"
+#include "libknot/rdata/soa.h"
+#include "knot/zone/zone.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
@@ -110,7 +111,14 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 	}
 	assert(action);
 
-	log_zone_info("Zone '%s' %s.\n", zone_name, action);
+	uint32_t serial = 0;
+	if (zone->contents && zone->contents->apex) {
+		const knot_rdataset_t *soa = knot_node_rdataset(zone->contents->apex,
+		                                      KNOT_RRTYPE_SOA);
+		serial = knot_soa_serial(soa);
+	}
+
+	log_zone_info("Zone '%s' %s (serial %u)\n", zone_name, action, serial);
 }
 
 /*!
@@ -239,7 +247,7 @@ static int update_zone_postcond(zone_t *new_zone, const conf_t *config)
 	}
 
 	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
-	if (knot_zone_contents_is_signed(new_zone->contents)) {
+	if (zone_contents_is_signed(new_zone->contents)) {
 		unsigned edns_dnssec_min = EDNS_MIN_DNSSEC_PAYLOAD;
 		if (config->max_udp_payload < edns_dnssec_min) {
 			log_zone_warning("EDNS payload lower than %uB for "
@@ -249,7 +257,7 @@ static int update_zone_postcond(zone_t *new_zone, const conf_t *config)
 	}
 
 	/* Check NSEC3PARAM state if present. */
-	int result = knot_zone_contents_load_nsec3param(new_zone->contents);
+	int result = zone_contents_load_nsec3param(new_zone->contents);
 	if (result != KNOT_EOK) {
 		log_zone_error("NSEC3 signed zone has invalid or no "
 			       "NSEC3PARAM record.\n");
@@ -266,6 +274,34 @@ static int update_zone_postcond(zone_t *new_zone, const conf_t *config)
 /*! Thread entrypoint for loading zones. */
 static int zone_loader_thread(dthread_t *thread)
 {
+	if (thread == NULL || thread->data == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	zone_t *zone = NULL;
+	conf_zone_t *zone_config = NULL;
+	zone_loader_ctx_t *ctx = (zone_loader_ctx_t *)thread->data;
+	for(;;) {
+		/* Fetch zone configuration from the list. */
+		pthread_mutex_lock(&ctx->lock);
+		if (hattrie_iter_finished(ctx->z_iter)) {
+			pthread_mutex_unlock(&ctx->lock);
+			break;
+		}
+
+		/* Disconnect from the list and start processing. */
+		zone_config = (conf_zone_t *)*hattrie_iter_val(ctx->z_iter);
+		hattrie_iter_next(ctx->z_iter);
+		pthread_mutex_unlock(&ctx->lock);
+
+		/* Retrive old zone (if exists). */
+		knot_dname_t *apex = knot_dname_from_str(zone_config->name);
+		if (!apex) {
+			return KNOT_ENOMEM;
+		}
+		zone_t *old_zone = knot_zonedb_find(ctx->db_old, apex);
+		knot_dname_free(&apex, NULL);
+
 
 		/* Update the zone. */
 		zone = update_zone(old_zone, zone_config, ctx->server);
@@ -319,18 +355,19 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 	assert(server);
 	
 	knot_zonedb_t *db_old = server->zone_db;
-	knot_zonedb_t *db_new = knot_zonedb_new(conf->zones_count);
+	knot_zonedb_t *db_new = knot_zonedb_new(hattrie_weight(conf->zones));
 	if (!db_new) {
 		return NULL;
 	}
 
-	node_t *n = NULL;
-	WALK_LIST(n, conf->zones) {
-		conf_zone_t *zone_config = (conf_zone_t *)n;
+	hattrie_iter_t *it = hattrie_iter_begin(conf->zones, false);
+	for (; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
+
+		conf_zone_t *zone_config = (conf_zone_t *)*hattrie_iter_val(it);
 
 		knot_dname_t *apex = knot_dname_from_str(zone_config->name);
 		zone_t *old_zone = knot_zonedb_find(db_old, apex);
-		knot_dname_free(&apex);
+		knot_dname_free(&apex, NULL);
 
 		zone_t *zone = create_zone(zone_config, server, old_zone);
 		if (!zone) {
@@ -342,6 +379,7 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 
 		knot_zonedb_insert(db_new, zone);
 	}
+	hattrie_iter_free(it);
 	
 	return db_new;
 }
@@ -375,8 +413,7 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 		knot_zonedb_iter_next(&it);
 	}
 
-	synchronize_rcu();
-
+	/* Delete all deprecated zones and delete the old database. */
 	knot_zonedb_deep_free(&db_old);
 
 	return KNOT_EOK;
@@ -421,7 +458,7 @@ int load_zones_from_config(const conf_t *conf, struct server_t *server)
 	/* Thaw zone events now that the database is published. */
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
-		// TODO: emit after loading
+#warning TODO: emit after loading
 		//knot_zonedb_foreach(server->zone_db, zones_schedule_notify, server);
 	}
 

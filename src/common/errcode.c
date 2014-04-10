@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
 #include "common/errcode.h"
 #include "common/errors.h"
 
@@ -36,11 +35,11 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_ECONNREFUSED, "Connection refused." },
 	{ KNOT_EISCONN, "Already connected." },
 	{ KNOT_EADDRINUSE, "Address already in use." },
-	{ KNOT_ENOENT, "Resource not found." },
+	{ KNOT_ENOENT, "Not exists." },
 	{ KNOT_ERANGE, "Value is out of range." },
 
 	/* General errors. */
-	{ KNOT_ERROR, "General error." },
+	{ -10000 /*KNOT_ERROR*/, "General error." },
 	{ KNOT_ENOTRUNNING, "Resource is not running." },
 	{ KNOT_EPARSEFAIL, "Parser failed." },
 	{ KNOT_EEXPIRED, "Resource is expired." },
@@ -62,6 +61,7 @@ const error_table_t knot_error_msgs[] = {
 	{ KNOT_EPAYLOAD, "Payload in OPT RR larger than max wire size." },
 	{ KNOT_ECRC, "CRC check failed." },
 	{ KNOT_EPREREQ, "UPDATE prerequisity not met." },
+	{ KNOT_ETTL, "TTL mismatch." },
 	{ KNOT_ENOXFR, "Transfer was not sent." },
 	{ KNOT_ENOIXFR, "Transfer is not IXFR (is in AXFR format)." },
 	{ KNOT_EXFRREFUSED, "Zone transfer refused by the server." },

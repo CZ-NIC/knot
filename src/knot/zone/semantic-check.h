@@ -224,19 +224,6 @@ int sem_check_node_plain(const zone_contents_t *zone,
                          bool only_mandatory,
                          bool *fatal_error);
 
-/*!
- * \brief Checks RRSet for semantic errors. Logs errors via error handler.
- *
- * \param node     Node containg the RRSet.
- * \param rrset    RRSet to be tested.
- * \param handler  Error handler.
- *
- * \return KNOT_E*
- */
-int sem_check_rrset(const knot_node_t *node,
-                    const knot_rrset_t *rrset,
-                    err_handler_t *handler);
-
 #endif // _KNOT_SEMANTIC_CHECK_H_
 
 /*! @} */

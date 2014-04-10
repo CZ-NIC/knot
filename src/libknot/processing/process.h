@@ -29,13 +29,14 @@
 
 #include "common/mempattern.h"
 #include "libknot/consts.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 #include "libknot/packet/pkt.h"
 
 /*! \brief Main packet processing states.
  *         Each state describes the current machine processing step
  *         and determines readiness for next action.
  */
+
 enum knot_process_state {
 	NS_PROC_NOOP = 0,      /* N/A */
 	NS_PROC_MORE = 1 << 0, /* More input data. */

@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <string.h>
@@ -30,6 +29,7 @@
 #include "knot/conf/extra.h"
 #include "knot/knot.h"
 #include "knot/ctl/remote.h"
+#include "knot/nameserver/internet.h"
 
 /*
  * Defaults.
@@ -100,19 +100,6 @@ void cf_error(void *scanner, const char *format, ...)
 	va_end(ap);
 
 	cf_print_error(scanner, buffer);
-}
-
-static void conf_parse_begin(conf_t *conf)
-{
-	conf->names = hattrie_create();
-}
-
-static void conf_parse_end(conf_t *conf)
-{
-	if (conf->names) {
-		hattrie_free(conf->names);
-		conf->names = NULL;
-	}
 }
 
 /*!
@@ -269,9 +256,15 @@ static int conf_process(conf_t *conf)
 
 	// Postprocess zones
 	int ret = KNOT_EOK;
-	node_t *n = NULL;
-	WALK_LIST (n, conf->zones) {
-		conf_zone_t *zone = (conf_zone_t*)n;
+
+	const bool sorted = false;
+	hattrie_iter_t *z_iter = hattrie_iter_begin(conf->zones, sorted);
+	if (z_iter == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(z_iter) && ret == KNOT_EOK; hattrie_iter_next(z_iter)) {
+
+		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
 
 		// Default policy for dbsync timeout
 		if (zone->dbsync_timeout < 0) {
@@ -422,7 +415,29 @@ static int conf_process(conf_t *conf)
 		}
 		memcpy(dpos + zname_len, dbext, strlen(dbext) + 1);
 		zone->ixfr_db = dest;
+
+		/* Initialize query plan if modules exist. */
+		if (!EMPTY_LIST(zone->query_modules)) {
+			zone->query_plan = query_plan_create(NULL);
+			if (zone->query_plan == NULL) {
+				ret = KNOT_ENOMEM;
+				continue;
+			}
+
+			/* Only supported zone class is now IN. */
+			internet_query_plan(zone->query_plan);
+		}
+
+		/* Load query modules. */
+		struct query_module *module = NULL;
+		WALK_LIST(module, zone->query_modules) {
+			ret = module->load(zone->query_plan, module);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
 	}
+	hattrie_iter_free(z_iter);
 
 	/* Update UID and GID. */
 	if (conf->uid < 0) conf->uid = getuid();
@@ -532,12 +547,14 @@ conf_t *conf_new(char* path)
 	/* Initialize lists. */
 	init_list(&c->logs);
 	init_list(&c->ifaces);
-	init_list(&c->zones);
 	init_list(&c->hooks);
 	init_list(&c->remotes);
 	init_list(&c->groups);
 	init_list(&c->keys);
 	init_list(&c->ctl.allow);
+
+	/* Zones container. */
+	c->zones = hattrie_create();
 
 	/* Defaults. */
 	c->zone_checks = 0;
@@ -552,7 +569,6 @@ conf_t *conf_new(char* path)
 	c->xfers = -1;
 	c->rrl_slip = -1;
 	c->build_diffs = 0; /* Disable by default. */
-	c->logs_count = -1;
 
 	/* DNSSEC. */
 	c->dnssec_enable = 0;
@@ -580,7 +596,6 @@ int conf_add_hook(conf_t * conf, int sections,
 	hook->update = on_update;
 	hook->data = data;
 	add_tail(&conf->hooks, &hook->n);
-	++conf->hooks_count;
 
 	return KNOT_EOK;
 }
@@ -588,9 +603,7 @@ int conf_add_hook(conf_t * conf, int sections,
 int conf_parse(conf_t *conf)
 {
 	/* Parse file. */
-	conf_parse_begin(conf);
 	int ret = conf_fparser(conf);
-	conf_parse_end(conf);
 
 	/* Postprocess config. */
 	if (ret == 0) {
@@ -609,9 +622,7 @@ int conf_parse(conf_t *conf)
 int conf_parse_str(conf_t *conf, const char* src)
 {
 	/* Parse config from string. */
-	conf_parse_begin(conf);
 	int ret = conf_strparser(conf, src);
-	conf_parse_end(conf);
 
 	/* Postprocess config. */
 	conf_process(conf);
@@ -640,7 +651,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 			/*! \todo Call hook unload (issue #1583) */
 			free((conf_hook_t*)n);
 		}
-		conf->hooks_count = 0;
 		init_list(&conf->hooks);
 	}
 
@@ -653,21 +663,18 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	WALK_LIST_DELSAFE(n, nxt, conf->ifaces) {
 		conf_free_iface((conf_iface_t*)n);
 	}
-	conf->ifaces_count = 0;
 	init_list(&conf->ifaces);
 
 	// Free logs
 	WALK_LIST_DELSAFE(n, nxt, conf->logs) {
 		conf_free_log((conf_log_t*)n);
 	}
-	conf->logs_count = -1;
 	init_list(&conf->logs);
 
 	// Free remote interfaces
 	WALK_LIST_DELSAFE(n, nxt, conf->remotes) {
 		conf_free_iface((conf_iface_t*)n);
 	}
-	conf->remotes_count = 0;
 	init_list(&conf->remotes);
 
 	// Free groups of remotes
@@ -677,11 +684,10 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	init_list(&conf->groups);
 
 	// Free zones
-	WALK_LIST_DELSAFE(n, nxt, conf->zones) {
-		conf_free_zone((conf_zone_t*)n);
+	if (conf->zones) {
+		hattrie_free(conf->zones);
+		conf->zones = NULL;
 	}
-	conf->zones_count = 0;
-	init_list(&conf->zones);
 
 	conf->dnssec_enable = -1;
 	if (conf->filename) {
@@ -721,7 +727,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	WALK_LIST_DELSAFE(n, nxt, conf->ctl.allow) {
 		conf_free_remote((conf_remote_t*)n);
 	}
-	conf->remotes_count = 0;
 	init_list(&conf->remotes);
 
 	/* Free remote control ACL. */
@@ -754,21 +759,15 @@ const char* conf_find_default()
 
 int conf_open(const char* path)
 {
-	/* Check path. */
-	if (!path) {
-		return KNOT_EINVAL;
-	}
-
 	/* Find real path of the config file */
 	char *config_realpath = realpath(path, NULL);
 	if (config_realpath == NULL) {
-		return KNOT_ENOMEM;
+		return knot_map_errno(EINVAL, ENOENT);
 	}
 
-	/* Check if exists. */
-	struct stat st;
-	if (stat(config_realpath, &st) != 0) {
-		return KNOT_ENOENT;
+	/* Check if accessible. */
+	if (access(path, F_OK | R_OK) != 0) {
+		return KNOT_EACCES;
 	}
 
 	/* Create new config. */
@@ -779,9 +778,7 @@ int conf_open(const char* path)
 	}
 
 	/* Parse config. */
-	conf_parse_begin(nconf);
 	int ret = conf_fparser(nconf);
-	conf_parse_end(nconf);
 	if (ret == KNOT_EOK) {
 		/* Postprocess config. */
 		ret = conf_process(nconf);
@@ -901,6 +898,9 @@ void conf_init_zone(conf_zone_t *zone)
 	init_list(&zone->acl.notify_in);
 	init_list(&zone->acl.notify_out);
 	init_list(&zone->acl.update_in);
+
+	// Initialize synthesis templates
+	init_list(&zone->query_modules);
 }
 
 void conf_free_zone(conf_zone_t *zone)
@@ -915,6 +915,15 @@ void conf_free_zone(conf_zone_t *zone)
 	WALK_LIST_FREE(zone->acl.notify_in);
 	WALK_LIST_FREE(zone->acl.notify_out);
 	WALK_LIST_FREE(zone->acl.update_in);
+
+	/* Unload query modules. */
+	struct query_module *module = NULL, *next = NULL;
+	WALK_LIST_DELSAFE(module, next, zone->query_modules) {
+		query_module_close(module);
+	}
+
+	/* Free query plan. */
+	query_plan_free(zone->query_plan);
 
 	free(zone->name);
 	free(zone->file);

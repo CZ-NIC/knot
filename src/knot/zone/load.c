@@ -34,6 +34,12 @@ zone_contents_t *zone_load_contents(conf_zone_t *conf)
 		return NULL;
 	}
 
+	/* Set the zone type (master/slave). If zone has no master set, we
+	 * are the primary master for this zone (i.e. zone type = master).
+	 */
+//	zl.creator->master = (zone_master(zone) == NULL);
+#warning Implement this ^^^.
+
 	zone_contents_t *zone_contents = zonefile_load(&zl);
 	zonefile_close(&zl);
 	if (zone_contents == NULL) {
@@ -54,8 +60,7 @@ int apply_journal(zone_contents_t *contents, conf_zone_t *conf)
 	}
 
 	/* Fetch SOA serial. */
-	const knot_rrset_t *soa = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-	uint32_t serial = knot_rdata_soa_serial(soa);
+	uint32_t serial = zone_contents_serial(contents);
 
 	/* Load all pending changesets. */
 	knot_changesets_t* chsets = knot_changesets_create(0);
@@ -76,7 +81,7 @@ int apply_journal(zone_contents_t *contents, conf_zone_t *conf)
 	}
 
 	/* Apply changesets. */
-	ret = xfrin_apply_changesets_directly(contents, chsets->changes, chsets);	
+	ret = xfrin_apply_changesets_directly(contents,  chsets);
 	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
 	              conf->name,
 	              serial, zone_contents_serial(contents),
@@ -84,7 +89,7 @@ int apply_journal(zone_contents_t *contents, conf_zone_t *conf)
 
 	/* Free changesets and return. */
 	if (ret == KNOT_EOK) {
-		xfrin_cleanup_successful_update(chsets->changes);
+		xfrin_cleanup_successful_update(chsets);
 	}
 
 	knot_changesets_free(&chsets);

@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -120,7 +119,7 @@ void help(void)
 static int cmd_remote_print_reply(const knot_rrset_t *rr)
 {
 	/* Process first RRSet in data section. */
-	if (knot_rrset_type(rr) != KNOT_RRTYPE_TXT) {
+	if (rr->type != KNOT_RRTYPE_TXT) {
 		return KNOT_EMALF;
 	}
 
@@ -163,7 +162,7 @@ static int cmd_remote_reply(int c)
 	switch(ret) {
 	case KNOT_RCODE_NOERROR:
 		if (authority->count > 0) {
-			ret = cmd_remote_print_reply(authority->rr[0]);
+			ret = cmd_remote_print_reply(&authority->rr[0]);
 		}
 		break;
 	case KNOT_RCODE_REFUSED:
@@ -200,24 +199,29 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 
 	/* Build query data. */
 	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	knot_rrset_t *rr = NULL;
 	if (argc > 0) {
-		rr = remote_build_rr("data.", rrt);
+		knot_rrset_t rr;
+		int res = remote_build_rr(&rr, "data.", rrt);
+		if (res != KNOT_EOK) {
+			log_server_error("Couldn't create the query.\n");
+			knot_pkt_free(&pkt);
+			return 1;
+		}
 		for (int i = 0; i < argc; ++i) {
 			switch(rrt) {
 			case KNOT_RRTYPE_NS:
-				remote_create_ns(rr, argv[i]);
+				remote_create_ns(&rr, argv[i]);
 				break;
 			case KNOT_RRTYPE_TXT:
 			default:
-				remote_create_txt(rr, argv[i], strlen(argv[i]));
+				remote_create_txt(&rr, argv[i], strlen(argv[i]));
 				break;
 			}
 		}
-		int res = knot_pkt_put(pkt, 0, rr, KNOT_PF_FREE);
+		res = knot_pkt_put(pkt, 0, &rr, KNOT_PF_FREE);
 		if (res != KNOT_EOK) {
 			log_server_error("Couldn't create the query.\n");
-			knot_rrset_deep_free(&rr, 1, NULL);
+			knot_rrset_clear(&rr, NULL);
 			knot_pkt_free(&pkt);
 			return 1;
 		}
@@ -664,8 +668,14 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 	int rc = 0;
 
 	/* Generate databases for all zones */
-	conf_zone_t *zone = NULL, *next = NULL;
-	WALK_LIST_DELSAFE(zone, next, conf()->zones) {
+	const bool sorted = false;
+	hattrie_iter_t *z_iter = hattrie_iter_begin(conf()->zones, sorted);
+	if (z_iter == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
+		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
+
 		/* Fetch zone */
 		int zone_match = 0;
 		for (unsigned i = 0; i < (unsigned)argc; ++i) {
@@ -682,7 +692,7 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		if (!zone_match && argc > 0) {
-			/* WALK_LIST is a for-cycle. */
+			conf_free_zone(zone);
 			continue;
 		}
 
@@ -694,9 +704,9 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		log_zone_info("Zone %s OK.\n", zone->name);
-		rem_node((node_t *)zone);
 		zone_free(&loaded_zone);
 	}
+	hattrie_iter_free(z_iter);
 
 	return rc;
 }
@@ -707,13 +717,18 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 	/* Zone checking */
 	int rc = 0;
-	node_t *n = 0;
 	size_t total_size = 0;
 
 	/* Generate databases for all zones */
-	WALK_LIST(n, conf()->zones) {
+	const bool sorted = false;
+	hattrie_iter_t *z_iter = hattrie_iter_begin(conf()->zones, sorted);
+	if (z_iter == NULL) {
+		return KNOT_ERROR;
+	}
+	for (; !hattrie_iter_finished(z_iter); hattrie_iter_next(z_iter)) {
+		conf_zone_t *zone = (conf_zone_t *)*hattrie_iter_val(z_iter);
+
 		/* Fetch zone */
-		conf_zone_t *zone = (conf_zone_t *) n;
 		int zone_match = 0;
 		for (unsigned i = 0; i < (unsigned)argc; ++i) {
 			size_t len = strlen(zone->name);
@@ -729,7 +744,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		if (!zone_match && argc > 0) {
-			/* WALK_LIST is a for-cycle. */
+			conf_free_zone(zone);
 			continue;
 		}
 
@@ -750,11 +765,11 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Create file loader. */
-		file_loader_t *loader = file_loader_create(zone->file, zone->name,
-		                                           KNOT_CLASS_IN, 3600,
-		                                           estimator_rrset_memsize_wrap,
-		                                           process_error,
-		                                           &est);
+		zs_loader_t *loader = zs_loader_create(zone->file, zone->name,
+		                                       KNOT_CLASS_IN, 3600,
+		                                       estimator_rrset_memsize_wrap,
+		                                       process_error,
+		                                       &est);
 		if (loader == NULL) {
 			rc = 1;
 			log_zone_error("Could not load zone %s\n", zone->name);
@@ -764,13 +779,13 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Do a parser run, but do not actually create the zone. */
-		int ret = file_loader_process(loader);
+		int ret = zs_loader_process(loader);
 		if (ret != KNOT_EOK) {
 			rc = 1;
 			log_zone_error("Failed to parse zone %s.\n", zone->name);
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
-			file_loader_free(loader);
+			zs_loader_free(loader);
 			break;
 		}
 
@@ -791,9 +806,11 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		log_zone_info("Zone %s: %zu RRs, used memory estimation is %zuMB.\n",
 		              zone->name, est.record_count, zone_size);
-		file_loader_free(loader);
+		zs_loader_free(loader);
 		total_size += zone_size;
+		conf_free_zone(zone);
 	}
+	hattrie_iter_free(z_iter);
 
 	if (rc == 0 && argc == 0) { // for all zones
 		log_zone_info("Estimated memory consumption for all zones is %zuMB.\n", total_size);
