@@ -29,7 +29,7 @@
 #include "knot/zone/zone-create.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 #include "libknot/common.h"
 #include "knot/updates/changesets.h"
 #include "libknot/rdata/tsig.h"

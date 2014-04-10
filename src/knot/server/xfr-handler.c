@@ -41,7 +41,7 @@
 #include "common/evsched.h"
 #include "common/descriptor.h"
 #include "libknot/rrset.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 
 /* Constants */
 
@@ -118,7 +118,7 @@ static int forward_packet(knot_ns_xfr_t *data, knot_pkt_t *pkt)
 
 	/* Assign new message id. */
 	data->packet_nr = knot_wire_get_id(pkt->wire);
-	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
+	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 
 	return KNOT_EOK;
 }
@@ -280,7 +280,7 @@ static int xfr_task_close(knot_ns_xfr_t *rq)
 	if (rq->type == XFR_TYPE_AIN && !rq->zone->contents) {
 		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
 		zone->xfr_in.bootstrap_retry *= 2;
-		zone->xfr_in.bootstrap_retry += knot_random_uint32_t() % AXFR_BOOTSTRAP_RETRY;
+		zone->xfr_in.bootstrap_retry += dnssec_random_uint32_t() % AXFR_BOOTSTRAP_RETRY;
 		if (zone->xfr_in.bootstrap_retry > AXFR_RETRY_MAXTIME) {
 			zone->xfr_in.bootstrap_retry = AXFR_RETRY_MAXTIME;
 		}
@@ -340,7 +340,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 	knot_pkt_t *pkt = knot_pkt_new(rq->wire, rq->wire_maxlen, NULL);
 	CHECK_ALLOC_LOG(pkt, KNOT_ENOMEM);
 	knot_pkt_clear(pkt);
-	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
+	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 
 	/* Prepare TSIG key if set. */
 	if (rq->tsig_key) {

@@ -25,7 +25,7 @@
 #include "knot/zone/zone-create.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 #include "libknot/rdata/soa.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone.h"
@@ -99,7 +99,7 @@ static zone_t *bootstrap_zone(conf_zone_t *conf)
 	}
 
 	/* Initialize bootstrap timer. */
-	new_zone->xfr_in.bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
+	new_zone->xfr_in.bootstrap_retry = dnssec_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
 
 	return new_zone;
 }

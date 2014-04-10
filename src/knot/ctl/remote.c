@@ -28,7 +28,7 @@
 #include "libknot/tsig-op.h"
 #include "libknot/rdata/rdname.h"
 #include "libknot/rdata/soa.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 
@@ -728,7 +728,7 @@ knot_pkt_t* remote_query(const char *query, const knot_tsig_key_t *key)
 		return NULL;
 	}
 
-	knot_wire_set_id(pkt->wire, knot_random_uint16_t());
+	knot_wire_set_id(pkt->wire, dnssec_random_uint16_t());
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
 
 	/* Question section. */

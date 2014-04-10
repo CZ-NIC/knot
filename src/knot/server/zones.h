@@ -47,7 +47,7 @@
 
 /* Timer special values. */
 #define REFRESH_DEFAULT -1 /* Use time value from zone structure. */
-#define REFRESH_NOW (knot_random_uint16_t() % 1000) /* Now, but with jitter. */
+#define REFRESH_NOW (dnssec_random_uint16_t() % 1000) /* Now, but with jitter. */
 
 /*!
  * \brief Sync zone data back to text zonefile.

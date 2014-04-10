@@ -32,7 +32,7 @@
 #include "knot/zone/zonedb.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 
 /*! \brief Event scheduler loop. */
 static int evsched_run(dthread_t *thread)

@@ -17,21 +17,23 @@
 #include <stdlib.h>				// EXIT_FAILURE
 
 #include "common/errcode.h"			// KNOT_EOK
+#include "dnssec/crypto.h"
 #include "utils/nsupdate/nsupdate_params.h"	// params_t
 #include "utils/nsupdate/nsupdate_exec.h"	// host_exec
 #include "libknot/dnssec/crypto.h"		// knot_crypto_cleanup
 
 int main(int argc, char *argv[])
 {
-	atexit(knot_crypto_cleanup);
 
 	int ret = EXIT_SUCCESS;
 
 	nsupdate_params_t params;
 	if (nsupdate_parse(&params, argc, argv) == KNOT_EOK) {
+		dnssec_crypto_init();
 		if (!params.stop && nsupdate_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
+		dnssec_crypto_cleanup();
 	} else {
 		ret = EXIT_FAILURE;
 	}

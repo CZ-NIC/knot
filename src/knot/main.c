@@ -29,6 +29,7 @@
 #include <systemd/sd-daemon.h>
 #endif
 
+#include "dnssec/crypto.h"
 #include "libknot/common.h"
 #include "libknot/dnssec/crypto.h"
 #include "knot/knot.h"
@@ -56,6 +57,7 @@ static void init_signal_started(void)
 /*! \brief atexit() handler for server code. */
 static void knot_crypto_deinit(void)
 {
+	dnssec_crypto_cleanup();
 	knot_crypto_cleanup();
 	knot_crypto_cleanup_threads();
 }
@@ -258,6 +260,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Initialize cryptographic backend. */
+    dnssec_crypto_init();
 	knot_crypto_init();
 	knot_crypto_init_threads();
 	atexit(knot_crypto_deinit);

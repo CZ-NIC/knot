@@ -26,7 +26,7 @@
 #include "knot/zone/zone-contents.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 #include "libknot/util/utils.h"
 
 /*!

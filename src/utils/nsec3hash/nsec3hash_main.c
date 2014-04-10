@@ -26,6 +26,7 @@
 #include "common/errcode.h"
 #include "common/hex.h"
 #include "common/strtonum.h"
+#include "dnssec/crypto.h"
 #include "libknot/dnssec/crypto.h"
 
 #define PROGRAM_NAME "knsec3hash"
@@ -129,7 +130,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	atexit(knot_crypto_cleanup);
+	dnssec_crypto_init();
 
 	int exit_code = 1;
 	knot_nsec3_params_t nsec3_params = { 0 };
@@ -186,6 +187,8 @@ fail:
 	knot_dname_free(&dname, NULL);
 	free(digest);
 	free(b32_digest);
+
+	dnssec_crypto_cleanup();
 
 	return exit_code;
 }

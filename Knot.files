@@ -193,7 +193,6 @@ src/libknot/dnssec/key.c
 src/libknot/dnssec/key.h
 src/libknot/dnssec/policy.c
 src/libknot/dnssec/policy.h
-src/libknot/dnssec/random.h
 src/libknot/dnssec/rrset-sign.c
 src/libknot/dnssec/rrset-sign.h
 src/libknot/dnssec/sig0.c

@@ -30,7 +30,7 @@
 #include "knot/server/serialization.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/dname.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 #include "libknot/rdata/soa.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-sign.h"
@@ -55,7 +55,7 @@
  */
 static uint32_t zones_jitter(uint32_t interval)
 {
-	return (interval * (100 - (knot_random_uint32_t() % ZONES_JITTER_PCT))) / 100;
+	return (interval * (100 - (dnssec_random_uint32_t() % ZONES_JITTER_PCT))) / 100;
 }
 
 /*!

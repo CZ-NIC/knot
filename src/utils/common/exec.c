@@ -28,7 +28,7 @@
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
 #include "libknot/dnssec/sig0.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 
 static knot_lookup_table_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },
@@ -378,7 +378,7 @@ knot_pkt_t* create_empty_packet(const size_t max_size)
 	}
 
 	// Set random sequence id.
-	knot_wire_set_id(packet->wire, knot_random_uint16_t());
+	knot_wire_set_id(packet->wire, dnssec_random_uint16_t());
 
 	return packet;
 }

@@ -148,7 +148,6 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/key.h			\
 	libknot/dnssec/policy.c			\
 	libknot/dnssec/policy.h			\
-	libknot/dnssec/random.h			\
 	libknot/dnssec/rrset-sign.c		\
 	libknot/dnssec/rrset-sign.h		\
 	libknot/dnssec/sig0.c			\
@@ -297,6 +296,7 @@ libknotd_la_SOURCES =				\
 # libraries
 libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknot.la ../dnssec/libdnssec.la
+libknotus_la_LIBADD = ../dnssec/libdnssec.la
 
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la

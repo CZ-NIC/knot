@@ -27,6 +27,7 @@
 
 #include "knot/knot.h"
 #include "common/descriptor.h"
+#include "dnssec/crypto.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
@@ -578,7 +579,9 @@ int main(int argc, char **argv)
 	}
 
 	/* Execute command. */
+	dnssec_crypto_init();
 	rc = cmd->cb(argc - optind - 1, argv + optind + 1, flags);
+	dnssec_crypto_cleanup();
 
 exit:
 	/* Finish */

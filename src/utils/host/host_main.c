@@ -17,6 +17,7 @@
 #include <stdlib.h>			// EXIT_FAILURE
 
 #include "common/errcode.h"		// KNOT_EOK
+#include "dnssec/crypto.h"
 #include "utils/host/host_params.h"	// host_parse
 #include "utils/dig/dig_exec.h"		// dig_exec
 
@@ -26,9 +27,11 @@ int main(int argc, char *argv[])
 
 	dig_params_t params;
 	if (host_parse(&params, argc, argv) == KNOT_EOK) {
+		dnssec_crypto_init();
 		if (!params.stop && dig_exec(&params) != KNOT_EOK) {
 			ret = EXIT_FAILURE;
 		}
+		dnssec_crypto_cleanup();
 	} else {
 		ret = EXIT_FAILURE;
 	}

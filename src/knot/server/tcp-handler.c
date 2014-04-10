@@ -41,7 +41,7 @@
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/random.h"
+#include "dnssec/random.h"
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
@@ -61,7 +61,7 @@ typedef struct tcp_context {
 
 /*! \brief Calculate TCP throttle time (random). */
 static inline int tcp_throttle() {
-	return TCP_THROTTLE_LO + (knot_random_uint16_t() % TCP_THROTTLE_HI);
+	return TCP_THROTTLE_LO + (dnssec_random_uint16_t() % TCP_THROTTLE_HI);
 }
 
 /*! \brief Sweep TCP connection. */
