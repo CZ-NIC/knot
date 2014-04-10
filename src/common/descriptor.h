@@ -287,6 +287,18 @@ int knot_rrtype_is_metatype(const uint16_t type);
  */
 int knot_rrtype_is_ddns_forbidden(const uint16_t type);
 
+/*!
+ * \brief Checks whether the given type requires additional processing.
+ *
+ * Only MX, NS and SRV types require additional processing.
+ *
+ * \param rrtype Type to check.
+ *
+ * \retval <> 0 if additional processing is needed for \a qtype.
+ * \retval 0 otherwise.
+ */
+int knot_rrtype_additional_needed(const uint16_t rrtype);
+
 #endif // _KNOT_DESCRIPTOR_H_
 
 /*! @} */

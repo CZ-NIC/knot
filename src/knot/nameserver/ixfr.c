@@ -1,13 +1,12 @@
-
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
 #include "common/debug.h"
-#include "libknot/rdata.h"
 #include "knot/server/zones.h"
 #include "common/descriptor.h"
 #include "libknot/util/utils.h"
+#include "libknot/rdata/soa.h"
 
 /*! \brief Current IXFR answer sections. */
 enum {
@@ -130,10 +129,8 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const zone_t *zone,
 	assert(zone);
 
 	/* Compare serials. */
-	const knot_node_t *apex = zone->contents->apex;
-	const knot_rrset_t *our_soa = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
-	uint32_t serial_to = knot_rdata_soa_serial(our_soa);
-	uint32_t serial_from = knot_rdata_soa_serial(their_soa);
+	uint32_t serial_to = knot_zone_serial(zone->contents);
+	uint32_t serial_from = knot_soa_serial(&their_soa->rrs);
 	int ret = knot_serial_compare(serial_to, serial_from);
 	if (ret <= 0) { /* We have older/same age zone. */
 		return KNOT_EUPTODATE;
@@ -162,8 +159,8 @@ static int ixfr_query_check(struct query_data *qdata)
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_IXFR, KNOT_RCODE_FORMERR);
 	/* Need SOA authority record. */
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
-	const knot_rrset_t *their_soa = authority->rr[0];
-	if (authority->count < 1 || knot_rrset_type(their_soa) != KNOT_RRTYPE_SOA) {
+	const knot_rrset_t *their_soa = &authority->rr[0];
+	if (authority->count < 1 || their_soa->type != KNOT_RRTYPE_SOA) {
 		qdata->rcode = KNOT_RCODE_FORMERR;
 		return NS_PROC_FAIL;
 	}
@@ -203,7 +200,7 @@ static int ixfr_answer_init(struct query_data *qdata)
 	}
 
 	/* Compare serials. */
-	const knot_rrset_t *their_soa = knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
+	const knot_rrset_t *their_soa = &knot_pkt_section(qdata->query, KNOT_AUTHORITY)->rr[0];
 	knot_changesets_t *chgsets = NULL;
 	int ret = ixfr_load_chsets(&chgsets, qdata->zone, their_soa);
 	if (ret != KNOT_EOK) {
@@ -265,8 +262,11 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 
 	/* Guaranteed to have zone contents. */
 	const knot_node_t *apex = qdata->zone->contents->apex;
-	const knot_rrset_t *soa_rr = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
-	int ret = knot_pkt_put(pkt, 0, soa_rr, 0);
+	knot_rrset_t soa_rr = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+	if (knot_rrset_empty(&soa_rr)) {
+		return NS_PROC_FAIL;
+	}
+	int ret = knot_pkt_put(pkt, 0, &soa_rr, 0);
 	if (ret != KNOT_EOK) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return NS_PROC_FAIL;
@@ -297,8 +297,8 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 		case KNOT_EOK:      /* OK */
 			ixfr = (struct ixfr_proc*)qdata->ext;
 			IXFR_LOG(LOG_INFO, "Started (serial %u -> %u).",
-			         knot_rdata_soa_serial(ixfr->soa_from),
-			         knot_rdata_soa_serial(ixfr->soa_to));
+			         knot_soa_serial(&ixfr->soa_from->rrs),
+			         knot_soa_serial(&ixfr->soa_to->rrs));
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
 			IXFR_LOG(LOG_INFO, "Zone is up-to-date.");
@@ -385,20 +385,10 @@ int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		case XFRIN_RES_SOA_ONLY: {
 			// compare the SERIAL from the changeset with the zone's
 			// serial
-			const knot_node_t *apex = zone->contents->apex;
-			if (apex == NULL) {
-				return KNOT_ERROR;
-			}
-
-			const knot_rrset_t *zone_soa = knot_node_rrset(
-					apex, KNOT_RRTYPE_SOA);
-			if (zone_soa == NULL) {
-				return KNOT_ERROR;
-			}
-
+			uint32_t zone_serial = knot_zone_serial(zone->contents);
 			if (knot_serial_compare(
-			      knot_rdata_soa_serial(chgsets->first_soa),
-			      knot_rdata_soa_serial(zone_soa))
+			      knot_soa_serial(&chgsets->first_soa->rrs),
+			      zone_serial)
 			    > 0) {
 				if ((xfr->flags & XFR_FLAG_UDP) != 0) {
 					// IXFR over UDP

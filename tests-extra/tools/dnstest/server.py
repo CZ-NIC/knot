@@ -329,7 +329,8 @@ class Server(object):
                 check_call([params.gdb_bin, "-ex", "set confirm off", "-ex",
                             "target remote | %s --pid=%s" %
                             (params.vgdb_bin, self.proc.pid),
-                            "-ex", "bt full", "-ex", "q", self.daemon_bin],
+                            "-ex", "thread apply all bt full", "-ex", "q",
+                            self.daemon_bin],
                            stdout=open(self.dir + "/gdb.out", mode="a"),
                            stderr=open(self.dir + "/gdb.err", mode="a"))
             except:
@@ -538,9 +539,15 @@ class Server(object):
 
         return _serial
 
-    def zones_wait(self, zone_list):
+    def zones_wait(self, zone_list, serials=None):
+        new_serials = dict()
+
         for zone in zone_list:
-            self.zone_wait(zone)
+            old_serial = serials[zone.name] if serials else None
+            new_serial = self.zone_wait(zone, serial=old_serial)
+            new_serials[zone.name] = new_serial
+
+        return new_serials
 
     def zone_verify(self, zone):
         zone = zone_arg_check(zone)
@@ -598,10 +605,13 @@ class Server(object):
 
         self.zones[zone.name].zfile.backup()
 
-    def update_zonefile(self, zone, version):
+    def update_zonefile(self, zone, version=None, random=False):
         zone = zone_arg_check(zone)
 
-        self.zones[zone.name].zfile.upd_file(version=version)
+        if random:
+            self.zones[zone.name].zfile.update_rnd()
+        else:
+            self.zones[zone.name].zfile.upd_file(version=version)
 
     def add_query_module(self, zone, module, param):
         # Convert one item list to single object.
@@ -868,6 +878,7 @@ class Knot(Server):
         s.item("zonefile-sync", "0")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
+        s.item("semantic-checks", "on")
         if self.disable_any:
             s.item("disable-any", "on")
         if self.dnssec_enable:

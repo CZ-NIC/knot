@@ -31,11 +31,11 @@
 #include "common/evsched.h"
 #include "knot/other/debug.h"
 #include "knot/server/server.h"
-#include "libknot/rdata.h"
 #include "knot/nameserver/internet.h"
 #include "common/debug.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/random.h"
+#include "libknot/rdata/soa.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
@@ -51,8 +51,9 @@ int notify_create_request(const zone_t *zone, knot_pkt_t *pkt)
 	knot_wire_set_aa(pkt->wire);
 	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
 
-	const knot_rrset_t *soa_rr = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-	return knot_pkt_put_question(pkt, soa_rr->owner, soa_rr->rclass, soa_rr->type);
+	knot_rrset_t soa_rr = knot_node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+	assert(!knot_rrset_empty(&soa_rr));
+	return knot_pkt_put_question(pkt, soa_rr.owner, soa_rr.rclass, soa_rr.type);
 }
 
 int notify_process_response(knot_pkt_t *notify, int msgid)
@@ -93,9 +94,9 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 	unsigned serial = 0;
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
 	if (answer->count > 0) {
-		const knot_rrset_t *soa = answer->rr[0];
-		if (knot_rrset_type(soa) == KNOT_RRTYPE_SOA) {
-			serial = knot_rdata_soa_serial(soa);
+		const knot_rrset_t *soa = &answer->rr[0];
+		if (soa->type == KNOT_RRTYPE_SOA) {
+			serial = knot_soa_serial(&soa->rrs);
 			dbg_ns("%s: received serial %u\n", __func__, serial);
 		} else { /* Ignore */
 			dbg_ns("%s: NOTIFY answer != SOA_RR\n", __func__);

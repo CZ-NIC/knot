@@ -23,19 +23,20 @@
 #include "libknot/common.h"
 #include "common/descriptor.h"
 #include "libknot/packet/wire.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 #include "libknot/tsig-op.h"
 
 /*! \brief Scan packet for RRSet existence. */
 static bool pkt_contains(const knot_pkt_t *packet,
-			 const knot_rrset_t *rrset,
-			 knot_rrset_compare_type_t cmp)
+			 const knot_rrset_t *rrset)
 {
 	assert(packet);
 	assert(rrset);
 
 	for (int i = 0; i < packet->rrset_count; ++i) {
-		if (knot_rrset_equal(packet->rr[i], rrset, cmp)) {
+		const uint16_t type = packet->rr[i].type;
+		const uint8_t *data = packet->rr[i].rrs.data;
+		if (type == rrset->type && data == rrset->rrs.data) {
 			return true;
 		}
 	}
@@ -43,18 +44,15 @@ static bool pkt_contains(const knot_pkt_t *packet,
 	return false;
 }
 
-
 /*! \brief Free all RRSets and reset RRSet count. */
 static void pkt_free_data(knot_pkt_t *pkt)
 {
 	assert(pkt);
 
 	/* Free RRSets if applicable. */
-	knot_rrset_t *rr  = NULL;
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
 		if (pkt->rr_info[i].flags & KNOT_PF_FREE) {
-			rr = (knot_rrset_t *)pkt->rr[i];
-			knot_rrset_free(&rr, &pkt->mm);
+			knot_rrset_clear(&pkt->rr[i], &pkt->mm);
 		}
 	}
 
@@ -506,11 +504,11 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, u
 	rrinfo->pos = pkt->size;
 	rrinfo->flags = flags;
 	rrinfo->compress_ptr[0] = compr_hint;
-	pkt->rr[pkt->rrset_count] = rr;
+	pkt->rr[pkt->rrset_count] = *rr;
 
 	/* Check for double insertion. */
 	if ((flags & KNOT_PF_CHECKDUP) &&
-	    pkt_contains(pkt, rr, KNOT_RRSET_COMPARE_PTR)) {
+	    pkt_contains(pkt, rr)) {
 		return KNOT_EOK; /*! \todo return rather a number of added RRs */
 	}
 
@@ -585,7 +583,7 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	if (pkt == NULL) {
 		return KNOT_EINVAL;
 	}
-	
+
 	/* Check at least header size. */
 	if (pkt->size < KNOT_WIRE_HEADER_SIZE) {
 		dbg_packet("%s: smaller than DNS header, NOREPLY\n", __func__);
@@ -615,7 +613,7 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 	if (len <= 0) {
 		return KNOT_EMALF;
 	}
-	
+
 	/* Check QCLASS/QTYPE size. */
 	uint16_t question_size = len + 2 * sizeof(uint16_t); /* QCLASS + QTYPE */
 	if (pkt->parsed + question_size > pkt->size) {
@@ -623,68 +621,33 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 		return KNOT_EMALF;
 	}
 
-	pkt->parsed += question_size; 
+	pkt->parsed += question_size;
 	pkt->qname_size = len;
 
 	return KNOT_EOK;
-}
-
-static int knot_pkt_merge_rr(knot_pkt_t *pkt, knot_rrset_t *rr, unsigned flags)
-{
-	dbg_packet("%s(%p, %p, %u)\n", __func__, pkt, rr, flags);
-	assert(pkt);
-	assert(rr);
-
-	/* Don't want to merge, okay. */
-	if (flags & KNOT_PF_NO_MERGE) {
-		return KNOT_ENOENT;
-	}
-
-	// try to find the RRSet in this array of RRSets
-	for (int i = 0; i < pkt->rrset_count; ++i) {
-
-		if (knot_rrset_equal(pkt->rr[i], rr, KNOT_RRSET_COMPARE_HEADER)) {
-			int merged = 0;
-			int deleted_rrs = 0;
-			int rc = knot_rrset_merge_sort((knot_rrset_t *)pkt->rr[i],
-			                               rr, &merged, &deleted_rrs,
-			                               &pkt->mm);
-			if (rc != KNOT_EOK) {
-				dbg_packet("%s: failed to merge RR %p (%d)\n", __func__, rr, rc);
-				return rc;
-			}
-
-			dbg_packet("%s: merged RR %p\n", __func__, rr);
-			knot_rrset_free(&rr, &pkt->mm);
-			return KNOT_EOK;
-		}
-	}
-
-
-	return KNOT_ENOENT;
 }
 
 /*! \note Legacy code, mainly for transfers and updates.
  *        RRSets should use packet memory context for allocation and
  *        should be copied if they are supposed to be stored in zone permanently.
  */
-static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
-                                           size_t size, mm_ctx_t *mm)
+static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
+                                 size_t size, mm_ctx_t *mm, knot_rrset_t *rrset)
 {
 	dbg_packet("%s(%p, %zu, %zu)\n", __func__, wire, *pos, size);
 	assert(wire);
 	assert(pos);
 
-	knot_dname_t *owner = knot_dname_parse(wire, pos, size);
+	knot_dname_t *owner = knot_dname_parse(wire, pos, size, mm);
 	if (owner == NULL) {
-		return NULL;
+		return KNOT_EMALF;
 	}
 	knot_dname_to_lower(owner);
 
 	if (size - *pos < KNOT_RR_HEADER_SIZE) {
 		dbg_packet("%s: not enough data to parse RR HEADER\n", __func__);
-		knot_dname_free(&owner);
-		return NULL;
+		knot_dname_free(&owner, mm);
+		return KNOT_EMALF;
 	}
 
 	uint16_t type = knot_wire_read_u16(wire + *pos);
@@ -692,11 +655,6 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 	uint32_t ttl = knot_wire_read_u32(wire + *pos + 2 * sizeof(uint16_t));
 	uint16_t rdlength = knot_wire_read_u16(wire + *pos + 4 * sizeof(uint16_t));
 
-	knot_rrset_t *rrset = knot_rrset_new(owner, type, rclass, mm);
-	if (rrset == NULL) {
-		knot_dname_free(&owner);
-		return NULL;
-	}
 	*pos += KNOT_RR_HEADER_SIZE;
 
 	dbg_packet_verb("%s: read type %u, class %u, ttl %u, rdlength %u\n",
@@ -704,22 +662,20 @@ static knot_rrset_t *knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	if (size - *pos < rdlength) {
 		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
-		knot_rrset_free(&rrset, mm);
-		return NULL;
+		knot_dname_free(&owner, mm);
+		return KNOT_EMALF;
 	}
 
-	// parse RDATA
-	/*! \todo Merge with add_rdata_to_rr in zcompile, should be a rrset func
-	 *        probably. */
+	knot_rrset_init(rrset, owner, type, rclass);
 	int ret = knot_rrset_rdata_from_wire_one(rrset, wire, pos, size, ttl,
 	                                         rdlength, mm);
 	if (ret != KNOT_EOK) {
 		dbg_packet("%s: couldn't parse RDATA (%d)\n", __func__, ret);
-		knot_rrset_free(&rrset, mm);
-		return NULL;
+		knot_rrset_clear(rrset, mm);
+		return ret;
 	}
 
-	return rrset;
+	return KNOT_EOK;
 }
 
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
@@ -742,31 +698,25 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 
 	/* Parse wire format. */
 	size_t rr_size = pkt->parsed;
-	knot_rrset_t *rr = NULL;
-	rr = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
-	                           &pkt->mm);
-	if (rr == NULL) {
+	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
+	ret = knot_pkt_rr_from_wire(pkt->wire, &pkt->parsed, pkt->max_size,
+	                           &pkt->mm, rr);
+	if (ret != KNOT_EOK) {
 		dbg_packet("%s: failed to parse RR\n", __func__);
-		return KNOT_EMALF;
+		return ret;
 	}
-	
+
 	/* Calculate parsed RR size from before/after parsing. */
 	rr_size = (pkt->parsed - rr_size);
 
-	/* Merge with existing RRSet if possible, otherwise add new RR set. */
-	if (knot_pkt_merge_rr(pkt, rr, flags) == KNOT_EOK) {
-		return KNOT_EOK;
-	}
-
-	/* Append to RR list. */
-	pkt->rr[pkt->rrset_count] = rr;
+	/* Update packet RRSet count. */
 	++pkt->rrset_count;
 
 	/* Update section RRSet count. */
 	++pkt->sections[pkt->current].count;
 
 	/* Check RR constraints. */
-	switch(knot_rrset_type(rr)) {
+	switch(rr->type) {
 	case KNOT_RRTYPE_TSIG:
 		// if there is some TSIG already, treat as malformed
 		if (pkt->tsig_rr != NULL) {
@@ -854,7 +804,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	/* TSIG must be last record of AR if present. */
 	const knot_pktsection_t *ar = knot_pkt_section(pkt, KNOT_ADDITIONAL);
 	if (pkt->tsig_rr != NULL) {
-		if (ar->count > 0 && pkt->tsig_rr != ar->rr[ar->count - 1]) {
+		if (ar->count > 0 && pkt->tsig_rr->rrs.data != ar->rr[ar->count - 1].rrs.data) {
 			dbg_packet("%s: TSIG not last RR in AR.\n", __func__);
 			return KNOT_EMALF;
 		}

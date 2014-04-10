@@ -14,7 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
@@ -23,7 +22,7 @@
 #include "common/lists.h"
 #include "knot/server/zones.h"
 
-/* AXFR context. */
+/* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
 	struct xfr_proc proc;
 	hattrie_iter_t *i;
@@ -36,14 +35,14 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 	int i = state->cur_rrset;
 	int rrset_count = knot_node_rrset_count(node);
 	unsigned flags = KNOT_PF_NOTRUNC;
-	const knot_rrset_t **rrset = knot_node_rrsets_no_copy(node);
 
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
-		if (rrset[i]->type == KNOT_RRTYPE_SOA) {
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
-		ret = knot_pkt_put(pkt, 0, rrset[i], flags);
+		ret = knot_pkt_put(pkt, 0, &rrset, flags);
 
 		/* If something failed, remember the current RR for later. */
 		if (ret != KNOT_EOK) {
@@ -86,10 +85,10 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item, struct xfr_
 
 static void axfr_answer_cleanup(struct query_data *qdata)
 {
-	struct xfr_proc *axfr = (struct xfr_proc *)qdata->ext;
+	struct axfr_proc *axfr = (struct axfr_proc *)qdata->ext;
 	mm_ctx_t *mm = qdata->mm;
 
-	ptrlist_free(&axfr->nodes, mm);
+	ptrlist_free(&axfr->proc.nodes, mm);
 	mm->free(axfr);
 
 	/* Allow zone changes (finished). */
@@ -103,20 +102,23 @@ static int axfr_answer_init(struct query_data *qdata)
 	/* Create transfer processing context. */
 	mm_ctx_t *mm = qdata->mm;
 	knot_zone_contents_t *zone = qdata->zone->contents;
-	struct xfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
-	if (xfer == NULL) {
+	struct axfr_proc *axfr = mm->alloc(mm->ctx, sizeof(struct axfr_proc));
+	if (axfr == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(xfer, 0, sizeof(struct axfr_proc));
-	init_list(&xfer->nodes);
+	memset(axfr, 0, sizeof(struct axfr_proc));
+	init_list(&axfr->proc.nodes);
 
 	/* Put data to process. */
-	gettimeofday(&xfer->tstamp, NULL);
-	ptrlist_add(&xfer->nodes, zone->nodes, mm);
-	ptrlist_add(&xfer->nodes, zone->nsec3_nodes, mm);
+	gettimeofday(&axfr->proc.tstamp, NULL);
+	ptrlist_add(&axfr->proc.nodes, zone->nodes, mm);
+	/* Put NSEC3 data if exists. */
+	if (!knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+		ptrlist_add(&axfr->proc.nodes, zone->nsec3_nodes, mm);
+	}
 
 	/* Set up cleanup callback. */
-	qdata->ext = xfer;
+	qdata->ext = axfr;
 	qdata->ext_cleanup = &axfr_answer_cleanup;
 
 	/* No zone changes during multipacket answer (unlocked in axfr_answer_cleanup) */
@@ -132,11 +134,11 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 	mm_ctx_t *mm = qdata->mm;
 	struct xfr_proc *xfer = qdata->ext;
 	knot_zone_contents_t *zone = qdata->zone->contents;
-	knot_rrset_t *soa_rr = knot_node_get_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rr = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 
 	/* Prepend SOA on first packet. */
 	if (xfer->npkts == 0) {
-		ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_NOTRUNC);
+		ret = knot_pkt_put(pkt, 0, &soa_rr, KNOT_PF_NOTRUNC);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -157,7 +159,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 
 	/* Append SOA on last packet. */
 	if (ret == KNOT_EOK) {
-		ret = knot_pkt_put(pkt, 0, soa_rr, KNOT_PF_NOTRUNC);
+		ret = knot_pkt_put(pkt, 0, &soa_rr, KNOT_PF_NOTRUNC);
 	}
 
 	/* Update counters. */
@@ -206,7 +208,7 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* Answer current packet (or continue). */
-	struct xfr_proc *xfer = qdata->ext;
+	struct axfr_proc *axfr = (struct axfr_proc *)qdata->ext;
 	ret = xfr_process_list(pkt, &axfr_process_node_tree, qdata);
 	switch(ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
@@ -214,8 +216,8 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
 		AXFR_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
-		         time_diff(&xfer->tstamp, &now) / 1000.0,
-		         xfer->npkts, xfer->nbytes / 1024.0);
+		         time_diff(&axfr->proc.tstamp, &now) / 1000.0,
+		         axfr->proc.npkts, axfr->proc.nbytes / 1024.0);
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
@@ -260,8 +262,6 @@ int axfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 		// save the zone contents to the xfr->data
 		xfr->new_contents = zone;
 		xfr->flags |= XFR_FLAG_AXFR_FINISHED;
-
-		assert(zone->nsec3_nodes != NULL);
 	}
 
 	return ret;

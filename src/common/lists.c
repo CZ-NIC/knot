@@ -185,7 +185,7 @@ size_t list_size(const list_t *l)
  */
 ptrnode_t *ptrlist_add(list_t *to, const void *val, mm_ctx_t *mm)
 {
-	ptrnode_t *node = mm->alloc(mm->ctx, sizeof(ptrnode_t));
+	ptrnode_t *node = mm_alloc(mm , sizeof(ptrnode_t));
 	if (node == NULL) {
 		return NULL;
 	} else {
@@ -204,7 +204,7 @@ void ptrlist_free(list_t *list, mm_ctx_t *mm)
 {
 	node_t *n = NULL, *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, *list) {
-		mm->free(n);
+		mm_free(mm, n);
 	}
 	init_list(list);
 }

@@ -1,4 +1,4 @@
-@subsection Automatic forward/reverse records module
+@subsection @code{synth_record} - Automatic forward/reverse records
 
 This module is able to synthetise either forward or reverse records for given prefix and subnet.
 The module configuration string looks like this: @code{(forward|reverse) <prefix> <ttl> <address>/<netblock>}.
@@ -11,13 +11,13 @@ Here are a few examples:
 
 @subsubsection Automatic forward records
 
-@code{synth_record "forward dynamic- 400 2620:0:b61::/52"} on @code{forward.} zone will result in following
+@code{synth_record "forward dynamic- 400 2620:0:b61::/52"} on @code{example.} zone will result in following
 answer.
 @example
-$ kdig AAAA dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.forward.
+$ kdig AAAA dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.example.
 ...
 ;; QUESTION SECTION:
-;; dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.forward. 0	IN	AAAA
+;; dynamic-2620-0000-0b61-0100-0000-0000-0000-0000.example. 0	IN	AAAA
 
 ;; ANSWER SECTION:
 dynamic-2620-0000-0b61-0100... 400 IN AAAA 2620:0:b61:100::
@@ -25,20 +25,20 @@ dynamic-2620-0000-0b61-0100... 400 IN AAAA 2620:0:b61:100::
 
 You can also have CNAME aliases to the dynamic records, which are going to be further resoluted.
 @example
-$ kdig AAAA hostalias.forward.
+$ kdig AAAA hostalias.example.
 ...
 ;; QUESTION SECTION:
-;hostalias.forward. 0	IN	AAAA
+;hostalias.example. 0	IN	AAAA
 
 ;; ANSWER SECTION:
-hostalias.forward. 3600 IN CNAME dynamic-2620-0000-0b61-0100...
+hostalias.example. 3600 IN CNAME dynamic-2620-0000-0b61-0100...
 dynamic-2620-0000-0b61-0100... 400  IN AAAA  2620:0:b61:100::
 @end example
 
 @subsubsection Automatic reverse records
 
 Module can be configured to synthetise reverse records as well.
-With the @code{synth_record "reverse dynamic- forward. 400 2620:0:b61::/52"} string in the
+With the @code{synth_record "reverse dynamic- example. 400 2620:0:b61::/52"} string in the
 @code{1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.} zone configuration:
 @example
 $ kdig PTR 1.0.0...1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.
@@ -47,14 +47,14 @@ $ kdig PTR 1.0.0...1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa.
 ;; 1.0.0...1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa. 0	IN	PTR
 
 ;; ANSWER SECTION:
-... 400 IN PTR dynamic-2620-0000-0b61-0000-0000-0000-0000-0001.forward.
+... 400 IN PTR dynamic-2620-0000-0b61-0000-0000-0000-0000-0001.example.
 @end example
 
 
 
 Here's a full configuration of the aforementioned zones. Note that the zone files have to exist.
 @example
-forward. @{
+example. @{
   query_module @{
     synth_record "forward dynamic- 400 2620:0:b61::/52";
     synth_record "forward dynamic- 400 192.168.1.0/25";
@@ -62,12 +62,12 @@ forward. @{
 @}
 1.168.192.in-addr.arpa @{
   query_module @{
-    synth_record "reverse dynamic- forward. 400 192.168.1.0/25";
+    synth_record "reverse dynamic- example. 400 192.168.1.0/25";
   @}
 @}
 1.6.b.0.0.0.0.0.0.2.6.2.ip6.arpa @{
   query_module @{
-    synth_record "reverse dynamic- forward. 400 2620:0:b61::/52";
+    synth_record "reverse dynamic- example. 400 2620:0:b61::/52";
   @}
 @}
 @end example

@@ -28,13 +28,13 @@
 #ifndef _KNOT_NODE_H_
 #define _KNOT_NODE_H_
 
+#include "common/descriptor.h"
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
+#include "libknot/rdataset.h"
 
-/*! \brief RRSet count in node if there is only NSEC (and possibly its RRSIG).*/
-#define KNOT_NODE_RRSET_COUNT_ONLY_NSEC 2
+struct rr_data;
 
-/*----------------------------------------------------------------------------*/
 /*!
  * \brief Structure representing one node in a domain name tree, i.e. one domain
  *        name in a zone.
@@ -45,11 +45,8 @@ struct knot_node {
 	knot_dname_t *owner; /*!< Domain name being the owner of this node. */
 	struct knot_node *parent; /*!< Parent node in the name hierarchy. */
 
-	/*! \brief Type-ordered list of RRSets belonging to this node. */
-	knot_rrset_t **rrset_tree;
-
-	/*! \brief Wildcard node being the direct descendant of this node. */
-	struct knot_node *wildcard_child;
+	/*! \brief Type-ordered array of RRSets belonging to this node. */
+	struct rr_data *rrs;
 
 	/*!
 	 * \brief Previous node in canonical order.
@@ -68,8 +65,6 @@ struct knot_node {
 	 */
 	struct knot_node *nsec3_node;
 
-	struct knot_node *new_node;
-
 	unsigned int children;
 
 	uint16_t rrset_count; /*!< Number of RRSets stored in the node. */
@@ -77,15 +72,19 @@ struct knot_node {
 	/*!
 	 * \brief Various flags.
 	 *
-	 *   0x01 - node is a delegation point
-	 *   0x02 - node is non-authoritative (under a delegation point)
-	 *   0x04 - NSEC(3) was removed from the node.
-	 *   0x10 - node is empty and will be deleted after update
+	 * \ref knot_node_flags_t
 	 */
 	uint8_t flags;
 };
 
 typedef struct knot_node knot_node_t;
+
+/*!< \brief Structure storing RR data. */
+struct rr_data {
+	uint16_t type; /*!< \brief RR type of data. */
+	knot_rdataset_t rrs; /*!< \brief Data of given type. */
+	knot_node_t **additional; /*!< \brief Additional nodes with glues. */
+};
 
 /*----------------------------------------------------------------------------*/
 /*! \brief Flags used to mark nodes with some property. */
@@ -101,6 +100,8 @@ typedef enum {
 	/*! \brief Node is empty and will be deleted after update.
 	 *  \todo Remove after dname refactoring, update description in node. */
 	KNOT_NODE_FLAGS_EMPTY = 1 << 4,
+	/*! \brief Node has a wildcard child. */
+	KNOT_NODE_FLAGS_WILDCARD_CHILD = 1 << 5
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
@@ -125,29 +126,14 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  *
  * \param node Node to add the RRSet to.
  * \param rrset RRSet to add.
- * \param rrset Stores destination RRSet in case of merge.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_ERROR if the RRSet could not be inserted.
  */
-int knot_node_add_rrset(knot_node_t *node, knot_rrset_t *rrset,
-                        knot_rrset_t **out_rrset);
+int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset, bool *ttl_err);
 
-int knot_node_add_rrset_replace(knot_node_t *node, knot_rrset_t *rrset);
-
-int knot_node_add_rrset_no_merge(knot_node_t *node, knot_rrset_t *rrset);
-
-/*!
- * \brief Returns the RRSet of the given type from the node.
- *
- * \param node Node to get the RRSet from.
- * \param type Type of the RRSet to retrieve.
- *
- * \return RRSet from node \a node having type \a type, or NULL if no such
- *         RRSet exists in this node.
- */
-const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
-                                        uint16_t type);
+const knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type);
+knot_rdataset_t *knot_node_get_rdataset(const knot_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns the RRSet of the given type from the node (non-const version).
@@ -158,11 +144,9 @@ const knot_rrset_t *knot_node_rrset(const knot_node_t *node,
  * \return RRSet from node \a node having type \a type, or NULL if no such
  *         RRSet exists in this node.
  */
-knot_rrset_t *knot_node_get_rrset(const knot_node_t *node, uint16_t type);
+knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type);
 
-knot_rrset_t *knot_node_remove_rrset(knot_node_t *node, uint16_t type);
-
-void knot_node_remove_all_rrsets(knot_node_t *node);
+void knot_node_remove_rrset(knot_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns number of RRSets in the node.
@@ -172,31 +156,6 @@ void knot_node_remove_all_rrsets(knot_node_t *node);
  * \return Number of RRSets in \a node.
  */
 short knot_node_rrset_count(const knot_node_t *node);
-
-/*!
- * \brief Returns all RRSets from the node.
- *
- * \param node Node to get the RRSets from.
- *
- * \return Newly allocated array of RRSets or NULL if an error occured.
- */
-knot_rrset_t **knot_node_get_rrsets(const knot_node_t *node);
-
-/*!
- * \brief Returns all RRSets from the node.
- *
- * \note This function is identical to knot_node_get_rrsets(), only it returns
- *       non-modifiable data.
- *
- * \param node Node to get the RRSets from.
- *
- * \return Newly allocated array of RRSets or NULL if an error occured.
- */
-const knot_rrset_t **knot_node_rrsets(const knot_node_t *node);
-const knot_rrset_t **knot_node_rrsets_no_copy(const knot_node_t *node);
-knot_rrset_t **knot_node_get_rrsets_no_copy(const knot_node_t *node);
-
-int knot_node_count_rrsets(const knot_node_t *node);
 
 /*!
  * \brief Returns the parent of the node.
@@ -297,43 +256,37 @@ void knot_node_set_nsec3_node(knot_node_t *node, knot_node_t *nsec3_node);
 const knot_dname_t *knot_node_owner(const knot_node_t *node);
 
 /*!
- * \todo Document me.
+ * \brief Returns the owner of the node as a non-const reference.
+ *
+ * \param node Node to get the owner of.
+ *
+ * \return Owner of the given node.
  */
 knot_dname_t *knot_node_get_owner(const knot_node_t *node);
 
 /*!
- * \brief Returns the wildcard child of the node.
+ * \brief Sets the wildcard child flag of the node.
  *
- * \param node Node to get the owner of.
- *
- * \return Wildcard child of the given node or NULL if it has none.
+ * \param node Node that has wildcard.
  */
-const knot_node_t *knot_node_wildcard_child(const knot_node_t *node);
+void knot_node_set_wildcard_child(knot_node_t *node);
 
 /*!
- * \brief Sets the wildcard child of the node.
+ * \brief Checks if node has a wildcard child.
  *
- * \param node Node to set the wildcard child of.
- * \param wildcard_child Wildcard child of the node.
+ * \param node Node to check.
+ *
+ * \retval > 0 if the node has a wildcard child.
+ * \retval 0 otherwise.
  */
-void knot_node_set_wildcard_child(knot_node_t *node,
-                                  knot_node_t *wildcard_child);
+int knot_node_has_wildcard_child(const knot_node_t *node);
 
-knot_node_t *knot_node_get_wildcard_child(const knot_node_t *node);
-
-//const knot_node_t *knot_node_current(const knot_node_t *node);
-
-//knot_node_t *knot_node_get_current(knot_node_t *node);
-
-const knot_node_t *knot_node_new_node(const knot_node_t *node);
-
-knot_node_t *knot_node_get_new_node(const knot_node_t *node);
-
-void knot_node_set_new_node(knot_node_t *node, knot_node_t *new_node);
-
-void knot_node_update_ref(knot_node_t **ref);
-
-void knot_node_update_refs(knot_node_t *node);
+/*!
+ * \brief Clears the node's wildcard child flag.
+ *
+ * \param node Node to clear the flag in.
+ */
+void knot_node_clear_wildcard_child(knot_node_t *node);
 
 /*!
  * \brief Mark the node as a delegation point.
@@ -417,12 +370,76 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to);
 
 /*!
  * \brief Checks whether node contains an RRSIG for given type.
+ *
  * \param node  Node to check in.
  * \param node  Type to check for.
  *
  * \return True/False.
  */
 bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type);
+
+/*!
+ * \brief Checks whether node contains RRSet for given type.
+ *
+ * \param node  Node to check in.
+ * \param node  Type to check for.
+ *
+ * \return True/False.
+ */
+bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type);
+
+/*!
+ * \brief Returns RRSet structure initialized with data from node.
+ *
+ * \param node   Node containing RRSet.
+ * \param type   RRSet type we want to get.
+ *
+ * \return RRSet structure with wanted type, or empty RRSet.
+ */
+static inline knot_rrset_t knot_node_rrset(const knot_node_t *node, uint16_t type)
+{
+	knot_rrset_t rrset;
+	for (uint16_t i = 0; node && i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			struct rr_data *rr_data = &node->rrs[i];
+			rrset.owner = node->owner;
+			rrset.type = type;
+			rrset.rclass = KNOT_CLASS_IN;
+			rrset.rrs = rr_data->rrs;
+			rrset.additional = rr_data->additional;
+			return rrset;
+		}
+	}
+	knot_rrset_init_empty(&rrset);
+	return rrset;
+}
+
+/*!
+ * \brief Returns RRSet structure initialized with data from node at position
+ *        equal to \a pos.
+ *
+ * \param node  Node containing RRSet.
+ * \param pos   RRSet position we want to get.
+ *
+ * \return RRSet structure with data from wanted position, or empty RRSet.
+ */
+static inline knot_rrset_t knot_node_rrset_at(const knot_node_t *node, size_t pos)
+{
+	knot_rrset_t rrset;
+	if (node == NULL || pos >= node->rrset_count) {
+		knot_rrset_init_empty(&rrset);
+		return rrset;
+	}
+
+	struct rr_data *rr_data = &node->rrs[pos];
+	rrset.owner = node->owner;
+	rrset.type = rr_data->type;
+	rrset.rclass = KNOT_CLASS_IN;
+	rrset.rrs = rr_data->rrs;
+	rrset.additional = rr_data->additional;
+
+	return rrset;
+}
 
 #endif /* _KNOT_NODE_H_ */
 

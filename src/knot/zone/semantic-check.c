@@ -18,18 +18,22 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>	
+#include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include "knot/knot.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/key.h"
+#include "libknot/dnssec/rrset-sign.h"
+#include "libknot/rdata/rrsig.h"
+#include "libknot/rdata/soa.h"
+#include "libknot/rdata/nsec.h"
+#include "libknot/rdata/nsec3.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
 #include "common/descriptor.h"
 #include "common/mempattern.h"
-#include "libknot/rdata.h"
 #include "knot/dnssec/zone-nsec.h"
 
 #include "knot/zone/semantic-check.h"
@@ -110,7 +114,6 @@ static char *error_messages[(-ZC_ERR_UNKNOWN) + 1] = {
 	/* ^
 	   | Important errors (to be logged on first occurence and counted) */
 
-
 	/* Below are errors of lesser importance, to be counted unless
 	   specified otherwise */
 
@@ -165,7 +168,7 @@ static void log_error_from_node(err_handler_t *handler,
 		log_zone_warning("Unknown error.\n");
 		return;
 	}
-	
+
 	if (node == NULL) {
 		log_zone_warning("Total number of warnings is: %d for error: %s\n",
 		                 handler->errors[-error], error_messages[-error]);
@@ -195,8 +198,8 @@ int err_handler_handle_error(err_handler_t *handler, const knot_node_t *node,
 		return KNOT_EINVAL;
 	}
 
-	/* 
-	 * A missing SOA can only occur once, so there needn't be 
+	/*
+	 * A missing SOA can only occur once, so there needn't be
 	 * an option for it.
 	 */
 
@@ -248,47 +251,6 @@ void err_handler_log_all(err_handler_t *handler)
 	}
 }
 
-/* TODO: optimize */
-static bool rrset_ttls_equal(const knot_rrset_t *rrset)
-{
-	uint16_t rr_count = knot_rrset_rr_count(rrset);
-	if (rr_count == 0) {
-		return true;
-	}
-
-	uint32_t prev_ttl = knot_rrset_rr_ttl(rrset, 0);
-	for (uint16_t i = 1; i < rr_count; ++i) {
-		uint32_t cur_ttl = knot_rrset_rr_ttl(rrset, i);
-		if (cur_ttl != prev_ttl) {
-			return false;
-		}
-		prev_ttl = cur_ttl;
-	}
-
-	return true;
-}
-
-/*!
- * \brief Logs a warning if merging RRs with different TTLs.
- *
- * \param ttl_first TTL of the first RR in the RRSet.
- * \param ttl_new TTL to be inserted.
- * \param rr RRSet we're adding into.
- * \param zname Zone name for logging.
- */
-static void rrset_ttl_check(err_handler_t *handler,
-                            const knot_rrset_t *rr, const knot_node_t *n)
-{
-	if (rr->type != KNOT_RRTYPE_RRSIG && !rrset_ttls_equal(rr)) {
-		/* Prepare additional info string. */
-		char info_str[64] = { '\0' };
-		char type_str[16] = { '\0' };
-		knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-		snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
-		err_handler_handle_error(handler, n, ZC_ERR_TTL_MISMATCH, info_str);
-	}
-}
-
 /*!
  * \brief Check whether DNSKEY rdata are valid.
  *
@@ -327,7 +289,7 @@ static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
  */
 static int check_rrsig_rdata(err_handler_t *handler,
                              const knot_node_t *node,
-                             const knot_rrset_t *rrsig,
+                             const knot_rdataset_t *rrsig,
                              size_t rr_pos,
                              const knot_rrset_t *rrset,
                              const knot_rrset_t *dnskey_rrset)
@@ -335,30 +297,26 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* Prepare additional info string. */
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
-	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
+	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.", type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
 
-	if (knot_rdata_rrsig_type_covered(rrsig, 0) !=
-	    knot_rrset_type(rrset)) {
-		/* zoneparser would not let this happen
-		 * but to be on the safe side
-		 */
+	if (knot_rrsig_type_covered(rrsig, 0) != rrset->type) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_TYPE_COVERED,
 		                         info_str);
 	}
 
 	/* label number at the 2nd index should be same as owner's */
-	uint8_t labels_rdata = knot_rdata_rrsig_labels(rrsig, rr_pos);
+	uint8_t labels_rdata = knot_rrsig_labels(rrsig, rr_pos);
 
-	int tmp = knot_dname_labels(knot_rrset_owner(rrset), NULL) - labels_rdata;
+	int tmp = knot_dname_labels(rrset->owner, NULL) - labels_rdata;
 
 	if (tmp != 0) {
 		/* if name has wildcard, label must not be included */
-		if (!knot_dname_is_wildcard(knot_rrset_owner(rrset))) {
+		if (!knot_dname_is_wildcard(rrset->owner)) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_RRSIG_RDATA_LABELS,
 			                         info_str);
@@ -372,8 +330,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* check original TTL */
-	uint32_t original_ttl =
-		knot_rdata_rrsig_original_ttl(rrsig, rr_pos);
+	uint32_t original_ttl = knot_rrsig_original_ttl(rrsig, rr_pos);
 
 	uint16_t rr_count = knot_rrset_rr_count(rrset);
 	for (uint16_t i = 0; i < rr_count; ++i) {
@@ -385,26 +342,25 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	}
 
 	/* Check for expired signature. */
-	if (knot_rdata_rrsig_sig_expiration(rrsig, rr_pos) < time(NULL)) {
+	if (knot_rrsig_sig_expiration(rrsig, rr_pos) < time(NULL)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_EXPIRATION,
 		                         info_str);
 	}
 
 	/* Check if DNSKEY exists. */
-	if (!dnskey_rrset) {
+	if (knot_rrset_empty(dnskey_rrset)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_NO_DNSKEY, info_str);
 	}
 
 	/* signer's name is same as in the zone apex */
 	const knot_dname_t *signer_name =
-		knot_rdata_rrsig_signer_name(rrsig, rr_pos);
+		knot_rrsig_signer_name(rrsig, rr_pos);
 
 	/* dnskey is in the apex node */
-	if (dnskey_rrset &&
-	    knot_dname_cmp(signer_name, knot_rrset_owner(dnskey_rrset)) != 0
-	) {
+	if (!knot_rrset_empty(dnskey_rrset) &&
+	    !knot_dname_is_equal(signer_name, dnskey_rrset->owner)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_RDATA_DNSKEY_OWNER,
 		                         info_str);
@@ -413,18 +369,18 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* Compare algorithm, key tag and signer's name with DNSKEY rrset
 	 * one of the records has to match. Signer name has been checked
 	 * before */
-	
+
 	int match = 0;
-	uint8_t rrsig_alg = knot_rdata_rrsig_algorithm(rrsig, rr_pos);
-	uint16_t key_tag_rrsig = knot_rdata_rrsig_key_tag(rrsig, rr_pos);
+	uint8_t rrsig_alg = knot_rrsig_algorithm(rrsig, rr_pos);
+	uint16_t key_tag_rrsig = knot_rrsig_key_tag(rrsig, rr_pos);
 	for (uint16_t i = 0; i < knot_rrset_rr_count(dnskey_rrset) &&
 	     !match; ++i) {
 		uint8_t dnskey_alg =
-			knot_rdata_dnskey_alg(dnskey_rrset, i);
+			knot_dnskey_alg(&dnskey_rrset->rrs, i);
 		if (rrsig_alg != dnskey_alg) {
 			continue;
 		}
-		
+
 		/* Calculate keytag. */
 		uint16_t dnskey_key_tag =
 			knot_keytag(knot_rrset_rr_rdata(dnskey_rrset, i),
@@ -432,7 +388,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		if (key_tag_rrsig != dnskey_key_tag) {
 			continue;
 		}
-		
+
 		/* Final step - check DNSKEY validity. */
 		if (check_dnskey_rdata(dnskey_rrset, i) == KNOT_EOK) {
 			match = 1;
@@ -442,7 +398,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 			                         "DNSKEY RDATA not matching.");
 		}
 	}
-	
+
 	if (!match) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_NO_DNSKEY, info_str);
@@ -473,24 +429,24 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	/* Prepare additional info string. */
 	char info_str[50] = { '\0' };
 	char type_str[16] = { '\0' };
-	knot_rrtype_to_string(knot_rrset_type(rrset), type_str, sizeof(type_str));
+	knot_rrtype_to_string(rrset->type, type_str, sizeof(type_str));
 	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.",
 	                   type_str);
 	if (ret < 0 || ret >= sizeof(info_str)) {
 		return KNOT_ENOMEM;
 	}
-	knot_rrset_t *rrsigs = NULL;
-	ret = knot_rrset_synth_rrsig(rrset->owner,
-	                             rrset->type,
-	                             knot_node_rrset(node, KNOT_RRTYPE_RRSIG),
-	                             &rrsigs, NULL);
+	knot_rdataset_t rrsigs;
+	knot_rdataset_init(&rrsigs);
+	ret = knot_synth_rrsig(rrset->type,
+	                           knot_node_rdataset(node, KNOT_RRTYPE_RRSIG),
+	                           &rrsigs, NULL);
 	if (ret != KNOT_EOK) {
 		if (ret != KNOT_ENOENT) {
 			return ret;
 		}
 	}
 
-	if (rrsigs == NULL) {
+	if (ret == KNOT_ENOENT) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_NO_RRSIG,
 		                         info_str);
@@ -505,36 +461,15 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		/* Safe to continue, nothing is malformed. */
 	}
 
-	/* Different owner, class, ttl */
-	if (knot_dname_cmp(knot_rrset_owner(rrset),
-				 knot_rrset_owner(rrsigs)) != 0) {
-		err_handler_handle_error(handler, node,
-		                         ZC_ERR_RRSIG_OWNER,
-		                         info_str);
-	}
-
-	if (knot_rrset_class(rrset) != knot_rrset_class(rrsigs)) {
-		err_handler_handle_error(handler, node,
-		                         ZC_ERR_RRSIG_CLASS,
-		                         info_str);
-	}
-
-	if (knot_rrset_rr_ttl(rrset, 0) != knot_rrset_rr_ttl(rrsigs, 0)) {
+	const knot_rdata_t *sig_rr = knot_rdataset_at(&rrsigs, 0);
+	if (knot_rrset_rr_ttl(rrset, 0) != knot_rdata_ttl(sig_rr)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_TTL,
 		                         info_str);
 	}
 
-	if (knot_rrset_rr_count(rrsigs) == 0) {
-		err_handler_handle_error(handler, node,
-		                         ZC_ERR_RRSIG_RDATA_SIGNED_WRONG,
-		                         info_str);
-		knot_rrset_free(&rrsigs, NULL);
-		return KNOT_EOK;
-	}
-	
-	for (uint16_t i = 0; i < knot_rrset_rr_count(rrsigs); ++i) {
-		int ret = check_rrsig_rdata(handler, node, rrsigs, i, rrset,
+	for (uint16_t i = 0; i < (&rrsigs)->rr_count; ++i) {
+		int ret = check_rrsig_rdata(handler, node, &rrsigs, i, rrset,
 		                            dnskey_rrset);
 		if (ret != KNOT_EOK) {
 			dbg_semcheck("Could not check RRSIG properly (%s).\n",
@@ -543,7 +478,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 		}
 	}
 
-	knot_rrset_free(&rrsigs, NULL);
+	knot_rdataset_clear(&rrsigs, NULL);
 	return ret;
 }
 
@@ -574,23 +509,22 @@ static int get_bit(uint8_t *bits, size_t index)
  * \retval KNOT_OK on success.
  * \retval KNOT_NOMEM on memory error.
  */
-static int rdata_nsec_to_type_array(const knot_rrset_t *rrset, size_t pos,
-				    uint16_t **array, size_t *count)
+static int rdata_nsec_to_type_array(const knot_rdataset_t *rrs, uint16_t type,
+                                    size_t pos, uint16_t **array, size_t *count)
 {
 	assert(*array == NULL);
-	assert(rrset->type == KNOT_RRTYPE_NSEC || rrset->type == KNOT_RRTYPE_NSEC3);
-	
+
 	uint8_t *data = NULL;
 	uint16_t rr_bitmap_size = 0;
-	if (rrset->type == KNOT_RRTYPE_NSEC) {
-		knot_rdata_nsec_bitmap(rrset, &data, &rr_bitmap_size);
+	if (type == KNOT_RRTYPE_NSEC) {
+		knot_nsec_bitmap(rrs, &data, &rr_bitmap_size);
 	} else {
-		knot_rdata_nsec3_bitmap(rrset, pos, &data, &rr_bitmap_size);
+		knot_nsec3_bitmap(rrs, pos, &data, &rr_bitmap_size);
 	}
 	if (data == NULL) {
 		return KNOT_EMALF;
 	}
-	
+
 	*count = 0;
 	int increment = 0;
 	for (int i = 0; i < rr_bitmap_size; i += increment) {
@@ -656,7 +590,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	if (nsec3_node == NULL) {
 		/* I know it's probably not what RFCs say, but it will have to
 		 * do for now. */
-		if (knot_node_rrset(node, KNOT_RRTYPE_DS) != NULL) {
+		if (knot_node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
 			err_handler_handle_error(handler, node,
 					ZC_ERR_NSEC3_UNSECURED_DELEGATION,
 			                         NULL);
@@ -683,15 +617,14 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 
 			assert(nsec3_previous);
 
-			const knot_rrset_t *previous_rrset =
-				knot_node_rrset(nsec3_previous,
-						KNOT_RRTYPE_NSEC3);
+			const knot_rdataset_t *previous_rrs =
+				knot_node_rdataset(nsec3_previous, KNOT_RRTYPE_NSEC3);
 
-			assert(previous_rrset);
+			assert(previous_rrs);
 
 			/* check for Opt-Out flag */
 			uint8_t flags =
-				knot_rdata_nsec3_flags(previous_rrset, 0);
+				knot_nsec3_flags(previous_rrs, 0);
 			uint8_t opt_out_mask = 1;
 
 			if (!(flags & opt_out_mask)) {
@@ -704,32 +637,29 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		}
 	}
 
-	const knot_rrset_t *nsec3_rrset =
-		knot_node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
-
-	if (nsec3_rrset == NULL) {
+	const knot_rdataset_t *nsec3_rrs = knot_node_rdataset(nsec3_node,
+	                                            KNOT_RRTYPE_NSEC3);
+	if (nsec3_rrs == NULL) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 		return KNOT_EOK;
 	}
 
-	const knot_rrset_t *soa_rrset =
-		knot_node_rrset(knot_zone_contents_apex(zone),
-	                        KNOT_RRTYPE_SOA);
-	assert(soa_rrset);
-	uint32_t minimum_ttl = knot_rdata_soa_minimum(soa_rrset);
-
-	if (knot_rrset_rr_ttl(nsec3_rrset, 0) != minimum_ttl) {
-			err_handler_handle_error(handler, node,
-						 ZC_ERR_NSEC3_RDATA_TTL, NULL);
+	const knot_rdata_t *nsec3_rr = knot_rdataset_at(nsec3_rrs, 0);
+	const knot_rdataset_t *soa_rrs = knot_node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
+	assert(soa_rrs);
+	uint32_t minimum_ttl = knot_soa_minimum(soa_rrs);
+	if (knot_rdata_ttl(nsec3_rr) != minimum_ttl) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_NSEC3_RDATA_TTL, NULL);
 	}
 
 	/* Result is a dname, it can't be larger */
 	const knot_node_t *apex = knot_zone_contents_apex(zone);
 	uint8_t *next_dname_str = NULL;
 	uint8_t next_dname_size = 0;
-	knot_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
-	                             &next_dname_size);
+	knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
+	                           &next_dname_size);
 	knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
 	                                                    next_dname_size,
 	                                                    apex->owner);
@@ -742,19 +672,18 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 					 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 	}
 
-	knot_dname_free(&next_dname);
-	
+	knot_dname_free(&next_dname, NULL);
+
 	size_t arr_size;
 	uint16_t *array = NULL;
 	/* TODO only works for one NSEC3 RR. */
-	int ret = rdata_nsec_to_type_array(nsec3_rrset, 0, &array, &arr_size);
+	int ret = rdata_nsec_to_type_array(nsec3_rrs,
+	                                   KNOT_RRTYPE_NSEC3, 0,
+	                                   &array, &arr_size);
 	if (ret != KNOT_EOK) {
-		dbg_semcheck("semchecks: check_nsec3_node: Could not "
-		             "convert NSEC to type array. Reason: %s\n",
-		             knot_strerror(ret));
 		return ret;
 	}
-	
+
 	uint16_t type = 0;
 	for (int j = 0; j < arr_size; j++) {
 		/* test for each type's presence */
@@ -762,22 +691,17 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 		if (type == KNOT_RRTYPE_RRSIG) {
 			continue;
 		}
-		
-		if (knot_node_rrset(node, type) == NULL) {
+
+		if (!knot_node_rrtype_exists(node, type)) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_NSEC3_RDATA_BITMAP,
 			                         NULL);
 		}
 	}
-	
+
 	/* Check that the node only contains NSEC3 and RRSIG. */
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(nsec3_node);
-	if (rrsets == NULL) {
-		return KNOT_ENOMEM;
-	}
-	
 	for (int i = 0; i < knot_node_rrset_count(nsec3_node); i++) {
-		uint16_t type = knot_rrset_type(rrsets[i]);
+		uint16_t type = nsec3_node->rrs[i].type;
 		if (!(type == KNOT_RRTYPE_NSEC3 ||
 		    type == KNOT_RRTYPE_RRSIG)) {
 			err_handler_handle_error(handler, nsec3_node,
@@ -794,12 +718,12 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 static int sem_check_node_mandatory(const knot_node_t *node,
                                     err_handler_t *handler, bool *fatal_error)
 {
-	const knot_rrset_t *cname_rrset =
-			knot_node_rrset(node, KNOT_RRTYPE_CNAME);
-	if (cname_rrset) {
+	const knot_rdataset_t *cname_rrs = knot_node_rdataset(node, KNOT_RRTYPE_CNAME);
+	if (cname_rrs) {
 		if (knot_node_rrset_count(node) != 1) {
 			/* With DNSSEC node can contain RRSIGs or NSEC */
-			if (!(knot_node_rrset(node, KNOT_RRTYPE_NSEC) || knot_node_rrset(node, KNOT_RRTYPE_RRSIG)) ||
+			if (!(knot_node_rrtype_exists(node, KNOT_RRTYPE_NSEC) ||
+			      knot_node_rrtype_exists(node, KNOT_RRTYPE_RRSIG)) ||
 			    knot_node_rrset_count(node) > 3) {
 				*fatal_error = true;
 				err_handler_handle_error(handler, node,
@@ -807,23 +731,22 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 			}
 		}
 
-		if (knot_rrset_rr_count(cname_rrset) != 1) {
+		if (cname_rrs->rr_count != 1) {
 			*fatal_error = true;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_MULTIPLE, NULL);
 		}
 	}
 
-	const knot_rrset_t *dname_rrset =
-		knot_node_rrset(node, KNOT_RRTYPE_DNAME);
-	if (dname_rrset) {
-		if (cname_rrset) {
+	const knot_rdataset_t *dname_rrs = knot_node_rdataset(node, KNOT_RRTYPE_DNAME);
+	if (dname_rrs) {
+		if (cname_rrs) {
 			*fatal_error = true;
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_CNAME_EXTRA_RECORDS,
 			                         NULL);
 		}
-	
+
 		if (node->children != 0) {
 			*fatal_error = true;
 			err_handler_handle_error(handler, node,
@@ -831,14 +754,14 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 			                         "Error triggered by parent node.");
 		}
 	}
-	
-	if (node->parent && knot_node_rrset(node->parent, KNOT_RRTYPE_DNAME)) {
+
+	if (node->parent && knot_node_rrtype_exists(node->parent, KNOT_RRTYPE_DNAME)) {
 		*fatal_error = true;
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_DNAME_CHILDREN,
 		                         "Error triggered by child node.");
 	}
-	
+
 	return KNOT_EOK;
 }
 
@@ -846,28 +769,24 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
                                    const knot_node_t *node,
                                    err_handler_t *handler)
 {
-	if (knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
-	                node) {
-		const knot_rrset_t *ns_rrset =
-				knot_node_rrset(node, KNOT_RRTYPE_NS);
-		if (ns_rrset == NULL) {
-			err_handler_handle_error(handler, node,
-			                         ZC_ERR_MISSING_NS_DEL_POINT,
-			                         NULL);
-			return KNOT_EOK;
-		}
+	if (!(knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
+	                node)) {
+		return KNOT_EOK;
+	}
+	const knot_rdataset_t *ns_rrs = knot_node_rdataset(node, KNOT_RRTYPE_NS);
+	if (ns_rrs == NULL) {
+		err_handler_handle_error(handler, node,
+		                         ZC_ERR_MISSING_NS_DEL_POINT,
+		                         NULL);
+		return KNOT_EOK;
+	}
 
-		/* TODO How about multiple RRs? */
-		knot_dname_t *ns_dname =
-			knot_dname_copy(knot_rdata_ns_name(ns_rrset,
-		                             0));
-		if (ns_dname == NULL) {
-			return KNOT_ENOMEM;
-		}
-
+	for (int i = 0; i < ns_rrs->rr_count; ++i) {
+		const knot_dname_t *ns_dname =
+			knot_ns_name(ns_rrs, i);
 		const knot_node_t *glue_node =
-				knot_zone_contents_find_node(zone, ns_dname);
-		
+			knot_zone_contents_find_node(zone, ns_dname);
+
 		if (knot_dname_is_sub(ns_dname,
 			      knot_node_owner(knot_zone_contents_apex(zone)))) {
 			if (glue_node == NULL) {
@@ -876,38 +795,28 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 				memcpy(wildcard, "\x1""*", 2);
 				knot_dname_to_wire(wildcard + 2,
 				                   knot_wire_next_label(ns_dname, NULL),
-				                   sizeof(wildcard));
-				const knot_node_t *wildcard_node = 
+				                   sizeof(wildcard) - 2);
+				const knot_node_t *wildcard_node =
 					knot_zone_contents_find_node(zone,
 				                                     wildcard);
 				if (wildcard_node == NULL) {
 					err_handler_handle_error(handler, node,
 							 ZC_ERR_GLUE_NODE,
 							NULL );
-				} else {
-					/* Look for A or AAAA. */
-					if ((knot_node_rrset(wildcard_node,
-					    KNOT_RRTYPE_A) == NULL) &&
-					    (knot_node_rrset(wildcard_node,
-					    KNOT_RRTYPE_AAAA) == NULL)) {
-						err_handler_handle_error(handler, node,
-								 ZC_ERR_GLUE_RECORD,
-								 NULL);
-					}
-				}	
-			} else {
-				if ((knot_node_rrset(glue_node,
-					       KNOT_RRTYPE_A) == NULL) &&
-				    (knot_node_rrset(glue_node,
-					       KNOT_RRTYPE_AAAA) == NULL)) {
-					err_handler_handle_error(handler, node,
-							 ZC_ERR_GLUE_RECORD,
-							 NULL);
+					// Cannot continue
+					return KNOT_EOK;
 				}
+				glue_node = wildcard_node;
+			}
+			if (!knot_node_rrtype_exists(glue_node, KNOT_RRTYPE_A) &&
+			    !knot_node_rrtype_exists(glue_node, KNOT_RRTYPE_AAAA)) {
+				err_handler_handle_error(handler, node,
+				                         ZC_ERR_GLUE_RECORD,
+				                         NULL);
 			}
 		}
-		knot_dname_free(&ns_dname);
 	}
+
 	return KNOT_EOK;
 }
 
@@ -945,18 +854,6 @@ int sem_check_node_plain(const knot_zone_contents_t *zone,
 	}
 }
 
-int sem_check_rrset(const knot_node_t *node,
-                    const knot_rrset_t *rrset,
-                    err_handler_t *handler)
-{
-	if (node == NULL || rrset == NULL || handler == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	rrset_ttl_check(handler, rrset, node);
-	return KNOT_EOK;
-}
-
 /*!
  * \brief Run semantic checks for node with DNSSEC-related types.
  *
@@ -971,83 +868,71 @@ int sem_check_rrset(const knot_node_t *node,
  * \return Appropriate error code if error was found.
  */
 static int semantic_checks_dnssec(knot_zone_contents_t *zone,
-				  knot_node_t *node,
-				  knot_node_t **last_node,
-				  err_handler_t *handler,
-				  char nsec3)
+                                  knot_node_t *node,
+                                  knot_node_t **last_node,
+                                  err_handler_t *handler,
+                                  char nsec3)
 {
 	assert(handler);
 	assert(node);
-	char auth = !knot_node_is_non_auth(node);
-	char deleg = knot_node_is_deleg_point(node);
-	uint rrset_count = knot_node_rrset_count(node);
-	const knot_rrset_t **rrsets = knot_node_rrsets_no_copy(node);
-	const knot_rrset_t *dnskey_rrset =
-		knot_node_rrset(knot_zone_contents_apex(zone),
-				  KNOT_RRTYPE_DNSKEY);
+	bool auth = !knot_node_is_non_auth(node);
+	bool deleg = knot_node_is_deleg_point(node);
+	short rrset_count = knot_node_rrset_count(node);
+	knot_rrset_t dnskey_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_DNSKEY);
 
-	int ret = 0;
+	int ret = KNOT_EOK;
 
 	for (int i = 0; i < rrset_count; i++) {
-		const knot_rrset_t *rrset = rrsets[i];
-		if (auth && !deleg && rrset->type != KNOT_RRTYPE_RRSIG &&
+		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		if (auth && !deleg && rrset.type != KNOT_RRTYPE_RRSIG &&
 		    (ret = check_rrsig_in_rrset(handler, node,
-		                                rrset, dnskey_rrset)) != 0) {
+		                                &rrset, &dnskey_rrset)) != 0) {
 			err_handler_handle_error(handler, node, ret, NULL);
 		}
 
 		if (!nsec3 && auth) {
 			/* check for NSEC record */
-			const knot_rrset_t *nsec_rrset =
-					knot_node_rrset(node,
-							  KNOT_RRTYPE_NSEC);
-
-			if (nsec_rrset == NULL) {
+			const knot_rdataset_t *nsec_rrs =
+				knot_node_rdataset(node, KNOT_RRTYPE_NSEC);
+			if (nsec_rrs == NULL) {
 				err_handler_handle_error(handler, node,
-							 ZC_ERR_NO_NSEC, NULL);
-			} else {
-				/* check NSEC/NSEC3 bitmap */
-				size_t count;
-				uint16_t *array = NULL;
-				
-				int ret = rdata_nsec_to_type_array(nsec_rrset,
-				                                   0,
-				                                   &array,
-				                                   &count);
-				if (ret != KNOT_EOK) {
-					dbg_semcheck("semchecks: "
-					             "Could not create type "
-					             "array. Reason: %s.\n",
-					             knot_strerror(ret));
-					return ret;
-				}
-
-				uint16_t type = 0;
-				for (int j = 0; j < count; j++) {
-					/* test for each type's presence */
-					type = array[j];
-					if (type == KNOT_RRTYPE_RRSIG) {
-						continue;
-					}
-					if (knot_node_rrset(node,
-							      type) == NULL) {
-					err_handler_handle_error(
-						handler,
-						node,
-						ZC_ERR_NSEC_RDATA_BITMAP, NULL);
-					}
-				}
-				free(array);
+				                         ZC_ERR_NO_NSEC, NULL);
+				return KNOT_EOK;
 			}
 
-			/* Test that only one record is in the
-				 * NSEC RRSet */
+			/* check NSEC/NSEC3 bitmap */
+			size_t count;
+			uint16_t *array = NULL;
+			int ret = rdata_nsec_to_type_array(nsec_rrs,
+			                                   KNOT_RRTYPE_NSEC,
+			                                   0,
+			                                   &array,
+			                                   &count);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
 
-			if (knot_rrset_rr_count(nsec_rrset) != 1) {
+			uint16_t type = 0;
+			for (int j = 0; j < count; j++) {
+				/* test for each type's presence */
+				type = array[j];
+				if (type == KNOT_RRTYPE_RRSIG) {
+					continue;
+				}
+				if (!knot_node_rrtype_exists(node, type)) {
+					err_handler_handle_error(handler,
+					                         node,
+					                         ZC_ERR_NSEC_RDATA_BITMAP,
+					                         NULL);
+				}
+			}
+			free(array);
+			/* Test that only one record is in the NSEC RRSet */
+			if (nsec_rrs->rr_count != 1) {
 				err_handler_handle_error(handler,
-						 node,
-						 ZC_ERR_NSEC_RDATA_MULTIPLE,
-				                NULL);
+				                         node,
+				                         ZC_ERR_NSEC_RDATA_MULTIPLE,
+				                         NULL);
 			}
 
 			/*
@@ -1057,31 +942,26 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 			 * so checking should only be matter of testing
 			 * the next link in each node.
 			 */
-
-			if (nsec_rrset != NULL) {
-				const knot_dname_t *next_domain =
-					knot_rdata_nsec_next(nsec_rrset);
-				assert(next_domain);
-				// Convert name to lowercase for trie lookup
-				knot_dname_t *lowercase = knot_dname_copy(next_domain);
-				if (lowercase == NULL) {
-					return KNOT_ENOMEM;
-				}
-				knot_dname_to_lower(lowercase);
-
-				if (knot_zone_contents_find_node(zone, lowercase) == NULL) {
-					err_handler_handle_error(handler, node,
-						ZC_ERR_NSEC_RDATA_CHAIN, NULL);
-				}
-
-				if (knot_dname_cmp(lowercase,
-				    knot_node_owner(knot_zone_contents_apex(zone)))
-					== 0) {
-					/* saving the last node */
-					*last_node = node;
-				}
-				knot_dname_free(&lowercase);
+			const knot_dname_t *next_domain =
+				knot_nsec_next(nsec_rrs);
+			// Convert name to lowercase for trie lookup
+			knot_dname_t *lowercase = knot_dname_copy(next_domain, NULL);
+			if (lowercase == NULL) {
+				return KNOT_ENOMEM;
 			}
+			knot_dname_to_lower(lowercase);
+
+			if (knot_zone_contents_find_node(zone, lowercase) == NULL) {
+				err_handler_handle_error(handler, node,
+				                         ZC_ERR_NSEC_RDATA_CHAIN,
+				                         NULL);
+			}
+
+			if (knot_dname_is_equal(lowercase, zone->apex->owner)) {
+				/* saving the last node */
+				*last_node = node;
+			}
+			knot_dname_free(&lowercase, NULL);
 		} else if (nsec3 && (auth || deleg)) { /* nsec3 */
 			int ret = check_nsec3_node_in_zone(zone, node,
 			                                   handler);
@@ -1117,7 +997,7 @@ static int do_checks_in_tree(knot_node_t *node, void *data)
 	knot_node_t **last_node = (knot_node_t **)args->arg5;
 
 	err_handler_t *handler = (err_handler_t *)args->arg6;
-	
+
 	char do_checks = *((char *)(args->arg3));
 
 	if (do_checks) {
@@ -1166,10 +1046,10 @@ int zone_do_sem_checks(knot_zone_contents_t *zone, int do_checks,
 	if (fatal_error) {
 		return KNOT_ERROR;
 	}
-	
+
 	log_cyclic_errors_in_zone(handler, zone, last_node, first_nsec3_node,
 	                          last_nsec3_node, do_checks);
-	
+
 	return KNOT_EOK;
 }
 
@@ -1180,15 +1060,14 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
                                const knot_node_t *last_nsec3_node,
                                char do_checks)
 {
-	if (do_checks == 3) {
+	if (do_checks == SEM_CHECK_NSEC3) {
 		/* Each NSEC3 node should only contain one RRSET. */
 		if (last_nsec3_node == NULL || first_nsec3_node == NULL) {
 			return;
 		}
-		const knot_rrset_t *nsec3_rrset =
-			knot_node_rrset(last_nsec3_node,
-		                              KNOT_RRTYPE_NSEC3);
-		if (nsec3_rrset == NULL) {
+		const knot_rdataset_t *nsec3_rrs =
+			knot_node_rdataset(last_nsec3_node, KNOT_RRTYPE_NSEC3);
+		if (nsec3_rrs == NULL) {
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 			return;
@@ -1198,8 +1077,8 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		const knot_node_t *apex = knot_zone_contents_apex(zone);
 		uint8_t *next_dname_str = NULL;
 		uint8_t next_dname_size = 0;
-		knot_rdata_nsec3_next_hashed(nsec3_rrset, 0, &next_dname_str,
-		                             &next_dname_size);
+		knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
+		                           &next_dname_size);
 		knot_dname_t *next_dname = knot_nsec3_hash_to_dname(next_dname_str,
 		                                                    next_dname_size,
 		                                                    apex->owner);
@@ -1210,9 +1089,6 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 
 		/* Check it points somewhere first. */
 		if (knot_zone_contents_find_nsec3_node(zone, next_dname) == NULL) {
-			assert(knot_zone_contents_find_node(zone,
-			                                    next_dname) ==
-			                                    NULL);
 			err_handler_handle_error(handler, last_nsec3_node,
 						 ZC_ERR_NSEC3_RDATA_CHAIN, NULL);
 		} else {
@@ -1224,26 +1100,24 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		}
 
 		/* Directly discard. */
-		knot_dname_free(&next_dname);
+		knot_dname_free(&next_dname, NULL);
 
-	} else if (do_checks == 2 ) {
+	} else if (do_checks == SEM_CHECK_NSEC) {
 		if (last_node == NULL) {
-			err_handler_handle_error(handler, last_node,
+			err_handler_handle_error(handler, zone->apex,
 				ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 				return;
 		} else {
-			const knot_rrset_t *nsec_rrset =
-				knot_node_rrset(last_node,
-						  KNOT_RRTYPE_NSEC);
+			const knot_rdataset_t *nsec_rrs =
+				knot_node_rdataset(last_node, KNOT_RRTYPE_NSEC);
 
-			if (nsec_rrset == NULL) {
+			if (nsec_rrs == NULL) {
 				err_handler_handle_error(handler, last_node,
 					 ZC_ERR_NSEC_RDATA_CHAIN_NOT_CYCLIC, NULL);
 				return;
 			}
 
-			const knot_dname_t *next_dname =
-				knot_rdata_nsec_next(nsec_rrset);
+			const knot_dname_t *next_dname = knot_nsec_next(nsec_rrs);
 			assert(next_dname);
 
 			const knot_dname_t *apex_dname =

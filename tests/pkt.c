@@ -19,10 +19,9 @@
 
 #include "common/errcode.h"
 #include "common/mempool.h"
-#include "libknot/rrset.h"
-#include "libknot/rdata.h"
+#include "common/descriptor.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/tsig.h"
+#include "libknot/rdata/tsig.h"
 
 #define TTL 7200
 #define NAMECOUNT 3
@@ -104,7 +103,8 @@ int main(int argc, char *argv[])
 
 	/* Write ANSWER section. */
 	rrsets[0] = knot_rrset_new(dnames[0], KNOT_RRTYPE_A, KNOT_CLASS_IN, NULL);
-	knot_rrset_add_rr(rrsets[0], RDVAL(0), RDLEN(0), TTL, NULL);
+	knot_dname_free(&dnames[0], NULL);
+	knot_rrset_add_rdata(rrsets[0], RDVAL(0), RDLEN(0), TTL, NULL);
 	ret = knot_pkt_put(out, COMPR_HINT_QNAME, rrsets[0], 0);
 	ok(ret == KNOT_EOK, "pkt: write ANSWER");
 
@@ -116,7 +116,8 @@ int main(int argc, char *argv[])
 	ret = KNOT_EOK;
 	for (unsigned i = 1; i < NAMECOUNT; ++i) {
 		rrsets[i] = knot_rrset_new(dnames[i], KNOT_RRTYPE_NS, KNOT_CLASS_IN, NULL);
-		knot_rrset_add_rr(rrsets[i], RDVAL(i), RDLEN(i), TTL, NULL);
+		knot_dname_free(&dnames[i], NULL);
+		knot_rrset_add_rdata(rrsets[i], RDVAL(i), RDLEN(i), TTL, NULL);
 		ret |= knot_pkt_put(out, COMPR_HINT_NONE, rrsets[i], 0);
 	}
 	ok(ret == KNOT_EOK, "pkt: write AUTHORITY(%u)", NAMECOUNT - 1);
@@ -162,7 +163,7 @@ int main(int argc, char *argv[])
 	/* Check RRs */
 	int rr_matched = 0;
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		if (knot_rrset_equal(out->rr[i], in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
+		if (knot_rrset_equal(&out->rr[i], &in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
 			++rr_matched;
 		}
 	}

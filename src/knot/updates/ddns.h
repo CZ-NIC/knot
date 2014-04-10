@@ -2,6 +2,7 @@
  * \file ddns.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
  * \brief Dynamic updates processing.
  *
@@ -30,49 +31,37 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/rrset.h"
 #include "libknot/dname.h"
-#include "libknot/consts.h"
-#include "common/lists.h"
 
-typedef struct knot_ddns_prereq_t {
-	knot_rrset_t **exist;
-	size_t exist_count;
-	size_t exist_allocd;
-
-	knot_rrset_t **exist_full;
-	size_t exist_full_count;
-	size_t exist_full_allocd;
-
-	knot_rrset_t **not_exist;
-	size_t not_exist_count;
-	size_t not_exist_allocd;
-
-	knot_dname_t **in_use;
-	size_t in_use_count;
-	size_t in_use_allocd;
-
-	knot_dname_t **not_in_use;
-	size_t not_in_use_count;
-	size_t not_in_use_allocd;
-} knot_ddns_prereq_t;
-
-int knot_ddns_check_zone(const knot_zone_contents_t *zone,
-                         const knot_pkt_t *query, uint16_t *rcode);
-
+/*!
+ * \brief Checks update prerequisite section.
+ *
+ * \param query  DNS message containing the update.
+ * \param zone   Zone to be checked.
+ * \param rcode  Returned DNS RCODE.
+ *
+ * \return KNOT_E*
+ */
 int knot_ddns_process_prereqs(const knot_pkt_t *query,
-                              knot_ddns_prereq_t **prereqs, uint16_t *rcode);
+                              const knot_zone_contents_t *zone,
+                              uint16_t *rcode);
 
-int knot_ddns_check_prereqs(const knot_zone_contents_t *zone,
-                            knot_ddns_prereq_t **prereqs, uint16_t *rcode);
-
-int knot_ddns_process_update(knot_zone_contents_t *zone,
-                              const knot_pkt_t *query,
-                              knot_changeset_t *changeset,
-                              knot_changes_t *changes,
-                              uint16_t *rcode, uint32_t new_serial);
-
-void knot_ddns_prereqs_free(knot_ddns_prereq_t **prereq);
+/*!
+ * \brief Processes DNS update and creates a changeset out of it. Zone is left
+ *        intact.
+ *
+ * \param zone        Zone to be updated.
+ * \param query       DNS message containing the update.
+ * \param changeset   Output changeset.
+ * \param rcode       Output DNS RCODE.
+ * \param new_serial  New serial to use for updated zone.
+ *
+ * \return KNOT_E*
+ */
+int knot_ddns_process_update(const knot_zone_contents_t *zone,
+                             const knot_pkt_t *query,
+                             knot_changeset_t *changeset,
+                             uint16_t *rcode, uint32_t new_serial);
 
 #endif /* _KNOT_DDNS_H_ */
 

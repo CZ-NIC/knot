@@ -101,7 +101,8 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
+knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos,
+                               mm_ctx_t *mm)
 {
 	if (pkt == NULL || pos == NULL)
 		return NULL;
@@ -120,7 +121,7 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 	}
 
 	/* Allocate space for the name. */
-	knot_dname_t *res = malloc(decompressed_len);
+	knot_dname_t *res = mm_alloc(mm, decompressed_len);
 	if (res) {
 		/* Unpack name (expand compression pointers). */
 		if (knot_dname_unpack(res, name, decompressed_len, pkt) > 0) {
@@ -136,22 +137,23 @@ knot_dname_t *knot_dname_parse(const uint8_t *pkt, size_t *pos, size_t maxpos)
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_copy(const knot_dname_t *name)
+knot_dname_t *knot_dname_copy(const knot_dname_t *name, mm_ctx_t *mm)
 {
 	if (name == NULL)
 		return NULL;
 
-	return knot_dname_copy_part(name, knot_dname_size(name));
+	return knot_dname_copy_part(name, knot_dname_size(name), mm);
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len)
+knot_dname_t *knot_dname_copy_part(const knot_dname_t *name, unsigned len,
+                                   mm_ctx_t *mm)
 {
 	if (name == NULL || len == 0)
 		return NULL;
 
-	knot_dname_t *dst = malloc(len);
+	knot_dname_t *dst = mm_alloc(mm, len);
 	if (knot_dname_to_wire(dst, name, len) < 1) {
 		free(dst);
 		return NULL;
@@ -540,12 +542,12 @@ knot_dname_t *knot_dname_replace_suffix(const knot_dname_t *name, unsigned label
 
 /*----------------------------------------------------------------------------*/
 
-void knot_dname_free(knot_dname_t **name)
+void knot_dname_free(knot_dname_t **name, mm_ctx_t *mm)
 {
 	if (name == NULL || *name == NULL)
 		return;
 
-	free(*name);
+	mm_free(mm, *name);
 	*name = NULL;
 }
 
@@ -615,7 +617,7 @@ knot_dname_t *knot_dname_cat(knot_dname_t *d1, const knot_dname_t *d2)
 
 	/* Like if we are reallocating d1. */
 	if (ret != NULL)
-		knot_dname_free(&d1);
+		knot_dname_free(&d1, NULL);
 
 	return ret;
 }

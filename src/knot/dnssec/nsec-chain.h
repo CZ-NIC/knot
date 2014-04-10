@@ -56,19 +56,17 @@ enum {
 typedef int (*chain_iterate_create_cb)(knot_node_t *, knot_node_t *,
                                        nsec_chain_iterate_data_t *);
 
-
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
 inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
                                           const knot_node_t *node)
 {
-	const knot_rrset_t **node_rrsets = knot_node_rrsets_no_copy(node);
 	for (int i = 0; i < node->rrset_count; i++) {
-		const knot_rrset_t *rr = node_rrsets[i];
-		if (rr->type != KNOT_RRTYPE_NSEC &&
-		    rr->type != KNOT_RRTYPE_RRSIG) {
-			bitmap_add_type(bitmap, rr->type);
+		knot_rrset_t rr = knot_node_rrset_at(node, i);
+		if (rr.type != KNOT_RRTYPE_NSEC &&
+		    rr.type != KNOT_RRTYPE_RRSIG) {
+			bitmap_add_type(bitmap, rr.type);
 		}
 	}
 }

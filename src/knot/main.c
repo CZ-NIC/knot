@@ -262,40 +262,51 @@ int main(int argc, char **argv)
 	knot_crypto_init_threads();
 	atexit(knot_crypto_deinit);
 
-	/* Initialize log. */
-	log_init();
-
-	/* Verbose mode. */
-	if (verbose) {
-		int mask = LOG_MASK(LOG_INFO)|LOG_MASK(LOG_DEBUG);
-		log_levels_add(LOGT_STDOUT, LOG_ANY, mask);
-	}
-
 	/* Initialize pseudorandom number generator. */
 	srand(time(NULL));
 
 	/* POSIX 1003.1e capabilities. */
 	setup_capabilities();
 
+	/* Default logging to std out/err. */
+	log_init();
+
 	/* Open configuration. */
-	log_server_info("Reading configuration '%s' ...\n", config_fn);
-	int conf_ret = conf_open(config_fn);
+	int res = conf_open(config_fn);
 	conf_t *config = conf();
-	if (conf_ret != KNOT_EOK) {
-		if (conf_ret == KNOT_ENOENT) {
-			log_server_error("Couldn't open configuration file "
-			                 "'%s'.\n", config_fn);
-		} else {
-			log_server_error("Failed to load configuration '%s'.\n",
-			                 config_fn);
-		}
+	if (res != KNOT_EOK) {
+		log_server_fatal("Couldn't load configuration '%s': %s\n",
+		                 config_fn, knot_strerror(res));
+		return EXIT_FAILURE;
+	}
+
+	/* Initialize logging subsystem.
+	 * @note We're logging since now. */
+	log_reconfigure(config, NULL);
+	conf_add_hook(config, CONF_LOG, log_reconfigure, NULL);
+
+	/* Initialize server. */
+	server_t server;
+	res = server_init(&server);
+	if (res != KNOT_EOK) {
+		log_server_fatal("Could not initialize server: %s\n",
+		                 knot_strerror(res));
 		log_close();
 		return EXIT_FAILURE;
 	}
 
+	/* Reconfigure server interfaces.
+	 * @note This MUST be done before we drop privileges. */
+	server_reconfigure(config, &server);
+	conf_add_hook(config, CONF_ALL, server_reconfigure, &server);
+	log_server_info("Configured %zu interfaces and %zu zones.\n",
+	                list_size(&config->ifaces), hattrie_weight(config->zones));
+
+
 	/* Alter privileges. */
 	log_update_privileges(config->uid, config->gid);
 	if (proc_update_privileges(config->uid, config->gid) != KNOT_EOK) {
+		server_deinit(&server);
 		log_close();
 		return EXIT_FAILURE;
 	}
@@ -306,6 +317,8 @@ int main(int argc, char **argv)
 	if (daemonize) {
 		pidfile = pid_check_and_create();
 		if (pidfile == NULL) {
+			server_deinit(&server);
+			log_close();
 			return EXIT_FAILURE;
 		}
 
@@ -328,28 +341,6 @@ int main(int argc, char **argv)
 
 	/* Now we're going multithreaded. */
 	rcu_register_thread();
-
-	/* Initialize configuration hooks. */
-	log_reconfigure(config, NULL);
-	conf_add_hook(config, CONF_LOG, log_reconfigure, NULL);
-
-	/* Initialize server. */
-	server_t server;
-	int res = server_init(&server);
-	if (res != KNOT_EOK) {
-		log_server_fatal("Could not initialize server: %s\n",
-		                 knot_strerror(res));
-		rcu_unregister_thread();
-		pid_cleanup(pidfile);
-		log_close();
-		return EXIT_FAILURE;
-	}
-
-	/* Reconfigure server interfaces. */
-	server_reconfigure(config, &server);
-	conf_add_hook(config, CONF_ALL, server_reconfigure, &server);
-	log_server_info("Configured %zu interfaces and %zu zones.\n",
-	                list_size(&config->ifaces), hattrie_weight(config->zones));
 
 	/* Populate zone database and add reconfiguration hook. */
 	log_server_info("Loading zones...\n");

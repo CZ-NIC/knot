@@ -26,7 +26,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/rdata.h"
+#include "libknot/rdata/soa.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
@@ -117,11 +117,24 @@ zone_t *load_zone_file(conf_zone_t *conf)
 		return NULL;
 	}
 
+	/* Create the new zone. */
+	zone_t *zone = zone_new((conf_zone_t *)conf);
+	if (zone == NULL) {
+		log_zone_error("Failed to create zone '%s': %s\n",
+		               conf->name, knot_strerror(KNOT_ENOMEM));
+		return NULL;
+	}
+
 	struct stat st;
 	if (stat(conf->file, &st) < 0) {
 		/* Go silently and reset mtime to 0. */
 		memset(&st, 0, sizeof(struct stat));
 	}
+
+	/* Set the zone type (master/slave). If zone has no master set, we
+	 * are the primary master for this zone (i.e. zone type = master).
+	 */
+	zl.creator->master = (zone_master(zone) == NULL);
 
 	/* Load the zone contents. */
 	knot_zone_contents_t *zone_contents = zonefile_load(&zl);
@@ -130,15 +143,8 @@ zone_t *load_zone_file(conf_zone_t *conf)
 	/* Check the loader result. */
 	if (zone_contents == NULL) {
 		log_zone_error("Failed to load zone file '%s'.\n", conf->file);
-		return NULL;
-	}
-
-	/* Create the new zone. */
-	zone_t *zone = zone_new((conf_zone_t *)conf);
-	if (zone == NULL) {
-		log_zone_error("Failed to create zone '%s': %s\n",
-		               conf->name, knot_strerror(KNOT_ENOMEM));
-		knot_zone_contents_deep_free(&zone_contents);
+		zone->conf = NULL;
+		zone_free(&zone);
 		return NULL;
 	}
 
@@ -197,9 +203,9 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 
 	int64_t serial = 0;
 	if (zone->contents && zone->contents->apex) {
-		const knot_rrset_t *soa;
-		soa = knot_node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		serial = knot_rdata_soa_serial(soa);
+		const knot_rdataset_t *soa = knot_node_rdataset(zone->contents->apex,
+		                                      KNOT_RRTYPE_SOA);
+		serial = knot_soa_serial(soa);
 	}
 
 	log_zone_info("Zone '%s' %s (serial %" PRId64 ")\n", zone_name, action, serial);
@@ -380,7 +386,7 @@ static int zone_loader_thread(dthread_t *thread)
 			return KNOT_ENOMEM;
 		}
 		zone_t *old_zone = knot_zonedb_find(ctx->db_old, apex);
-		knot_dname_free(&apex);
+		knot_dname_free(&apex, NULL);
 
 		/* Update the zone. */
 		zone = update_zone(old_zone, zone_config, ctx->server);
@@ -512,8 +518,6 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 
 		knot_zonedb_iter_next(&it);
 	}
-
-	synchronize_rcu();
 
 	/* Delete all deprecated zones and delete the old database. */
 	knot_zonedb_deep_free(&db_old);

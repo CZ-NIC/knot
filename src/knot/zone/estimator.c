@@ -110,7 +110,7 @@ static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
 static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 {
 	// Handle RRSet's owner
-	knot_dname_t *owner = knot_dname_copy(scanner->r_owner);
+	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
 	if (owner == NULL) {
 		return;
 	}
@@ -123,7 +123,7 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 		est->dname_size += dname_memsize(owner);
 		// Trie's nodes handled at the end of computation
 	}
-	knot_dname_free(&owner);
+	knot_dname_free(&owner, NULL);
 	assert(n);
 
 	// We will always add RDATA

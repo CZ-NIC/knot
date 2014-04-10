@@ -232,7 +232,7 @@ bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 
 	/* Authenticate with NOKEY if the packet isn't signed. */
 	if (query->tsig_rr) {
-		key_name = knot_rrset_owner(query->tsig_rr);
+		key_name = query->tsig_rr->owner;
 		key_alg = tsig_rdata_alg(query->tsig_rr);
 	}
 	acl_match_t *match = acl_find(acl, query_source, key_name);
@@ -403,7 +403,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	rrl_rq.w = pkt->wire;
 	rrl_rq.query = qdata->query;
 	if (!EMPTY_LIST(qdata->wildcards)) {
-		rrl_rq.flags = KNOT_PF_WILDCARD;
+		rrl_rq.flags = RRL_WILDCARD;
 	}
 	if (rrl_query(server->rrl, qdata->param->query_source,
 	              &rrl_rq, qdata->zone) == KNOT_EOK) {
