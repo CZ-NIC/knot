@@ -25,7 +25,8 @@ check_PROGRAMS = \
 	random		\
 	sign		\
 	sign_der	\
-	wire
+	shared_dname	\
+	shared_wire
 
 check-compile-only: $(check_PROGRAMS)
 

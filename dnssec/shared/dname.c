@@ -102,6 +102,10 @@ char *dname_to_ascii(const uint8_t *dname)
 		scan += 1;
 	}
 
+	if (scan > copy) {
+		*(scan - 1) = '\0';
+	}
+
 	return (char *)copy;
 }
 
@@ -127,7 +131,7 @@ static size_t ascii_length(const char *name)
  */
 uint8_t *dname_from_ascii(const char *_name)
 {
-	if (_name) {
+	if (!_name) {
 		return NULL;
 	}
 
