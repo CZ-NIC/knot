@@ -16,10 +16,10 @@ check_PROGRAMS = \
 	crypto		\
 	key		\
 	key_algorithm	\
-	key_keytag	\
 	keyid		\
 	keystore_pkcs8	\
 	keystore_pkcs8_dir \
+	keytag		\
 	nsec_bitmap	\
 	nsec_hash	\
 	random		\

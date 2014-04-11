@@ -3,7 +3,7 @@
 
 #include "binary.h"
 #include "error.h"
-#include "key/keytag.h"
+#include "keytag.h"
 
 int main(void)
 {
@@ -21,7 +21,7 @@ int main(void)
 	}};
 
 	uint16_t tag = 0;
-	ok(keytag(&rsa_md5_rdata, &tag) == DNSSEC_EOK && tag == 40866,
+	ok(dnssec_keytag(&rsa_md5_rdata, &tag) == DNSSEC_EOK && tag == 40866,
 	   "keytag for RSA/MD5");
 
 	const dnssec_binary_t ecdsa_rdata = { .size = 100, .data = (uint8_t []) {
@@ -38,7 +38,7 @@ int main(void)
 		0xf4, 0xfc, 0xe2, 0x10, 0xd4, 0x26
 	}};
 
-	ok(keytag(&ecdsa_rdata, &tag) == DNSSEC_EOK && tag == 61768,
+	ok(dnssec_keytag(&ecdsa_rdata, &tag) == DNSSEC_EOK && tag == 61768,
 	   "keytag for ECDSA/SHA384");
 
 	return 0;

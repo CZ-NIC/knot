@@ -47,6 +47,7 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/key.h \
 	lib/dnssec/keyid.h \
 	lib/dnssec/keystore.h \
+	lib/dnssec/keytag.h \
 	lib/dnssec/nsec.h \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
@@ -64,7 +65,6 @@ libdnssec_la_SOURCES = \
 	lib/key/key.c \
 	lib/key/keyid.h \
 	lib/key/keytag.c \
-	lib/key/keytag.h \
 	lib/key/privkey.c \
 	lib/key/privkey.h \
 	lib/key/simple.c \

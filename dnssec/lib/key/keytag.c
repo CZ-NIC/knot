@@ -49,7 +49,7 @@ static uint16_t keytag_current(const dnssec_binary_t *rdata)
 /*!
  * Compute keytag for a DNSSEC key.
  */
-int keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
+int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
 {
 	if (!rdata || !keytag) {
 		return DNSSEC_EINVAL;

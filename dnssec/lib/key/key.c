@@ -11,11 +11,11 @@
 #include "key/convert.h"
 #include "key/dnskey.h"
 #include "key/internal.h"
-#include "key/keytag.h"
 #include "keyid.h"
 #include "keyid/internal.h"
 #include "keystore.h"
 #include "keystore/pem.h"
+#include "keytag.h"
 #include "shared.h"
 #include "wire.h"
 
@@ -114,7 +114,7 @@ void dnssec_key_free(dnssec_key_t *key)
 static void update_keytag(dnssec_key_t *key)
 {
 	assert(key);
-	keytag(&key->rdata, &key->keytag);
+	dnssec_keytag(&key->rdata, &key->keytag);
 }
 
 /*!

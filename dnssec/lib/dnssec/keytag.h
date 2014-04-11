@@ -1,6 +1,7 @@
-#include <stdint.h>
+#pragma once
 
-#include "binary.h"
+#include <stdint.h>
+#include <dnssec/binary.h>
 
 /*!
  * Compute keytag for a DNSSEC key.
@@ -10,4 +11,4 @@
  *
  * \return Error code, DNSSEC_EOK of successful.
  */
-int keytag(const dnssec_binary_t *rdata, uint16_t *keytag);
+int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag);
