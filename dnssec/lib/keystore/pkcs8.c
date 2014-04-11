@@ -2,7 +2,7 @@
 
 #include "error.h"
 #include "key/algorithm.h"
-#include "key/keyid.h"
+#include "keyid.h"
 #include "keystore.h"
 #include "keystore/internal.h"
 #include "keystore/pem.h"
