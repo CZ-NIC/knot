@@ -20,11 +20,13 @@ size_t dname_length(const uint8_t *dname)
 		label_len = *scan;
 		scan += 1 + label_len;
 	} while (label_len > 0);
-
 	assert(scan > dname);
 
 	size_t length = scan - dname;
-	assert(length <= DNAME_MAX_LENGTH);
+	if (length > DNAME_MAX_LENGTH) {
+		return 0;
+	}
+
 	return length;
 }
 
@@ -38,7 +40,9 @@ uint8_t *dname_copy(const uint8_t *dname)
 	}
 
 	size_t length = dname_length(dname);
-	assert(length > 0);
+	if (length == 0) {
+		return NULL;
+	}
 
 	uint8_t *copy = malloc(length);
 	if (!copy) {
@@ -59,8 +63,6 @@ void dname_normalize(uint8_t *dname)
 	}
 
 	size_t length = dname_length(dname);
-	assert(length > 0);
-
 	uint8_t *scan = dname;
 	for (size_t i = 0; i < length; i++) {
 		*scan = tolower(*scan);

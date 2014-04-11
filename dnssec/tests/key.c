@@ -115,6 +115,25 @@ static void test_private_key(const key_parameters_t *params)
 	dnssec_key_free(key);
 }
 
+static void test_naming(void)
+{
+	dnssec_key_t *key = NULL;
+	dnssec_key_new(&key);
+
+	const uint8_t *input = (uint8_t *)"\x07""eXample""\x03""COM";
+	const uint8_t *expected = (uint8_t *)"\x07""example""\x03""com";
+	size_t expected_size = 13;
+
+	dnssec_key_set_dname(key, input);
+	const uint8_t *output = dnssec_key_get_dname(key);
+
+	ok(strlen((char *)output) + 1 == 13 &&
+	   memcmp(output, expected, expected_size) == 0,
+	   "dnssec_key_get_dname()");
+
+	dnssec_key_free(key);
+}
+
 typedef struct keyinfo {
 	const char *name;
 	const key_parameters_t *parameters;
@@ -138,6 +157,8 @@ int main(void)
 		test_public_key(k->parameters);
 		test_private_key(k->parameters);
 	}
+
+	test_naming();
 
 	dnssec_crypto_cleanup();
 
