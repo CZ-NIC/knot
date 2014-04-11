@@ -357,6 +357,19 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 }
 
 _public_
+unsigned dnssec_key_get_size(const dnssec_key_t *key)
+{
+	if (!key || !key->public_key) {
+		return 0;
+	}
+
+	unsigned bits = 0;
+	gnutls_pubkey_get_pk_algorithm(key->public_key, &bits);
+
+	return bits;
+}
+
+_public_
 int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata)
 {
 	if (!key || !rdata) {

@@ -17,7 +17,7 @@ typedef struct key_parameters {
 	uint16_t keytag;
 
 	// Key information
-	size_t bit_size;
+	unsigned bit_size;
 
 	// Private key in PEM
 	dnssec_binary_t pem;

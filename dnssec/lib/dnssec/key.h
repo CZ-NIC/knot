@@ -71,6 +71,8 @@ int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm);
 int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey);
 int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey);
 
+unsigned dnssec_key_get_size(const dnssec_key_t *key);
+
 int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata);
 int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata);
 

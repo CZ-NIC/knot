@@ -26,6 +26,20 @@ static void check_key_ids(dnssec_key_t *key, const key_parameters_t *params)
 	ok(strcmp(key_id, params->key_id) == 0, "get key ID");
 }
 
+static void check_key_size(dnssec_key_t *key, const key_parameters_t *params)
+{
+	ok(dnssec_key_get_size(key) == params->bit_size,
+	   "key size %u bits", params->bit_size);
+}
+
+static void check_usage(dnssec_key_t *key, bool ok_verify, bool ok_sign)
+{
+	ok(dnssec_key_can_verify(key) == ok_verify,
+	  "%s verify", ok_verify ? "can" : "cannot");
+	ok(dnssec_key_can_sign(key) == ok_sign,
+	  "%s sign", ok_sign ? "can" : "cannot");
+}
+
 static void test_public_key(const key_parameters_t *params)
 {
 	dnssec_key_t *key = NULL;
@@ -56,11 +70,8 @@ static void test_public_key(const key_parameters_t *params)
 	ok(r == DNSSEC_EOK, "set RDATA");
 
 	check_key_ids(key, params);
-
-	// key usage
-
-	ok(dnssec_key_can_verify(key), "can verify");
-	ok(!dnssec_key_can_sign(key), "cannot sign");
+	check_key_size(key, params);
+	check_usage(key, true, false);
 
 	dnssec_key_free(key);
 }
@@ -91,16 +102,15 @@ static void test_private_key(const key_parameters_t *params)
 	r = dnssec_key_load_pkcs8(key, &params->pem);
 	ok(r == DNSSEC_EOK, "load private key (2)");
 
-	check_key_ids(key, params);
-
 	dnssec_binary_t rdata = { 0 };
 	r = dnssec_key_get_rdata(key, &rdata);
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&rdata, &params->rdata) == 0,
 	   "get RDATA");
 	dnssec_binary_free(&rdata);
 
-	ok(dnssec_key_can_verify(key), "can verify");
-	ok(dnssec_key_can_sign(key), "can sign");
+	check_key_ids(key, params);
+	check_key_size(key, params);
+	check_usage(key, true, true);
 
 	dnssec_key_free(key);
 }
