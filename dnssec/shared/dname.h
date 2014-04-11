@@ -10,6 +10,12 @@
 #define DNAME_MAX_LENGTH 255
 
 /*!
+ * Maximal length of the domain name label, excluding the label size.
+ * \see RFC 1035
+ */
+#define DNAME_MAX_LABEL_LENGTH 63
+
+/*!
  * Get length of a domain name in wire format.
  */
 size_t dname_length(const uint8_t *dname);
@@ -34,8 +40,13 @@ void dname_normalize(uint8_t *dname);
 char *dname_to_ascii(const uint8_t *dname);
 
 /*!
+ * Convert ASCII domain name to wire format.
+ */
+uint8_t *dname_from_ascii(const char *name);
+
+/*!
  * Normalize ASCII domain name.
  *
  * Convert to lower case, trim rightmost empty labels.
  */
-char *dname_ascii_normalize(const char *dname);
+void dname_ascii_normalize(char *name);

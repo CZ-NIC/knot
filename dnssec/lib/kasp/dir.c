@@ -268,6 +268,8 @@ static int load_zone_key(yml_node_t *node, void *data, _unused_ bool *interrupt)
 		return result;
 	}
 
+	dnssec_key_set_dname(key, zone->dname);
+
 	// write result
 
 	dnssec_kasp_key_t *kasp_key = &zone->keys[zone->keys_count];
@@ -370,6 +372,29 @@ static int load_zone_config(dnssec_kasp_zone_t *zone)
 	return parse_zone_config(zone, config);
 }
 
+static int set_names(dnssec_kasp_zone_t *zone, const char *zone_name)
+{
+	assert(zone);
+	assert(zone_name);
+
+	uint8_t *dname = dname_from_ascii(zone_name);
+	if (!dname) {
+		return DNSSEC_EINVAL;
+	}
+	dname_normalize(dname);
+
+	char *name = dname_to_ascii(zone->dname);
+	if (!name) {
+		free(dname);
+		return DNSSEC_EINVAL;
+	}
+
+	zone->name = name;
+	zone->dname = dname;
+
+	return DNSSEC_EOK;
+}
+
 /* -- public API ----------------------------------------------------------- */
 
 _public_
@@ -420,15 +445,16 @@ int dnssec_kasp_get_zone(dnssec_kasp_t *kasp, const char *zone_name,
 	}
 
 	zone->kasp = kasp;
-	zone->name = dname_ascii_normalize(zone_name);
-	if (!zone->name) {
-		free(zone);
-		return DNSSEC_EINVAL;
-	}
 
-	int r = load_zone_config(zone);
+	int r = set_names(zone, zone_name);
 	if (r != DNSSEC_EOK) {
 		free(zone);
+		return r;
+	}
+
+	r = load_zone_config(zone);
+	if (r != DNSSEC_EOK) {
+		dnssec_kasp_free_zone(zone);
 		return r;
 	}
 
@@ -445,6 +471,7 @@ void dnssec_kasp_free_zone(dnssec_kasp_zone_t *zone)
 
 	free_zone_config(zone);
 	free(zone->name);
+	free(zone->dname);
 
 	free(zone);
 }
