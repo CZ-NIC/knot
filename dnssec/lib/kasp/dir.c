@@ -383,7 +383,7 @@ static int set_names(dnssec_kasp_zone_t *zone, const char *zone_name)
 	}
 	dname_normalize(dname);
 
-	char *name = dname_to_ascii(zone->dname);
+	char *name = dname_to_ascii(dname);
 	if (!name) {
 		free(dname);
 		return DNSSEC_EINVAL;
