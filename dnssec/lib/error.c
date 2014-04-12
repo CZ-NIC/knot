@@ -1,4 +1,5 @@
 #include "error.h"
+#include "shared.h"
 
 typedef struct error_message_t {
 	int code;
@@ -47,6 +48,7 @@ const error_message_t ERROR_MESSAGES[] = {
 
 const char *FALLBACK_ERROR_MESSAGE = "Unknown error.";
 
+_public_
 const char *dnssec_strerror(int error)
 {
 	for (const error_message_t *m = ERROR_MESSAGES; m->text; m++) {
