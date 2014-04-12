@@ -75,12 +75,13 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 	}
 
 	knot_key_params_t copy = { 0 };
-
 	copy.algorithm = src->algorithm;
 
-	copy.name = knot_dname_copy(src->name, NULL);
-	if (!copy.name) {
-		return KNOT_ENOMEM;
+	if (src->name) {
+		copy.name = knot_dname_copy(src->name, NULL);
+		if (!copy.name) {
+			return KNOT_ENOMEM;
+		}
 	}
 
 	int ret = knot_binary_dup(&src->secret, &copy.secret);
