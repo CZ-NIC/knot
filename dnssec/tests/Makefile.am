@@ -26,7 +26,8 @@ check_PROGRAMS = \
 	sign		\
 	sign_der	\
 	shared_dname	\
-	shared_wire
+	shared_wire	\
+	tsig
 
 check-compile-only: $(check_PROGRAMS)
 

@@ -51,6 +51,7 @@ libdnssec_la_SOURCES = \
 	lib/dnssec/nsec.h \
 	lib/dnssec/random.h \
 	lib/dnssec/sign.h \
+	lib/dnssec/tsig.h \
 	lib/error.c \
 	lib/kasp/dir.c \
 	lib/kasp/internal.h \
@@ -82,4 +83,5 @@ libdnssec_la_SOURCES = \
 	lib/random.c \
 	lib/sign/der.c \
 	lib/sign/der.h \
-	lib/sign/sign.c
+	lib/sign/sign.c \
+	lib/tsig.c
