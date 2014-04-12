@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
 
 sbin_PROGRAMS = knotc knotd
-bin_PROGRAMS = kdig khost knsupdate knsec3hash
+bin_PROGRAMS = kdig khost knsupdate
 lib_LTLIBRARIES = libknot.la
 noinst_LTLIBRARIES = libknotd.la libknots.la libknotus.la
 
@@ -55,9 +55,6 @@ knsupdate_SOURCES =				\
 	utils/nsupdate/nsupdate_main.c		\
 	utils/nsupdate/nsupdate_params.c	\
 	utils/nsupdate/nsupdate_params.h
-
-knsec3hash_SOURCES =				\
-	utils/nsec3hash/nsec3hash_main.c
 
 # static: shared
 libknots_la_SOURCES =				\
@@ -141,9 +138,17 @@ libknot_la_SOURCES =				\
 	libknot/consts.h			\
 	libknot/dname.c				\
 	libknot/dname.h				\
+	libknot/dnssec/key.c			\
+	libknot/dnssec/key.h			\
+	libknot/dnssec/policy.c			\
+	libknot/dnssec/policy.h			\
+	libknot/dnssec/rrset-sign.c		\
+	libknot/dnssec/rrset-sign.h		\
 	libknot/edns.c				\
 	libknot/edns.h				\
 	libknot/libknot.h			\
+	libknot/dnssec/key.c			\
+	libknot/dnssec/key.h			\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.c			\
@@ -154,7 +159,6 @@ libknot_la_SOURCES =				\
 	libknot/rdata/rdname.h			\
 	libknot/rdata/dnskey.h			\
 	libknot/rdata/nsec.h			\
-	libknot/rdata/nsec3.c			\
 	libknot/rdata/nsec3.h			\
 	libknot/rdata/nsec3param.h		\
 	libknot/rdata/nsec3param.c		\
@@ -281,7 +285,7 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonedb.h
 
 # libraries
-libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la
+libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la ../dnssec/libdnssec.la
 libknotd_la_LIBADD = libknots.la libknot.la ../dnssec/libdnssec.la
 libknotus_la_LIBADD = ../dnssec/libdnssec.la
 
@@ -296,7 +300,6 @@ knotc_LDADD = libknot.la libknotd.la
 kdig_LDADD       = libknotus.la libknots.la libknot.la
 khost_LDADD      = libknotus.la libknots.la libknot.la
 knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
-knsec3hash_LDADD = libknotus.la libknots.la libknot.la
 
 # Create storage and run-time directories
 install-data-hook:

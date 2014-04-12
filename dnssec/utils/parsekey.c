@@ -1,5 +1,5 @@
+#include <ctype.h>
 #include <stdio.h>
-#include <yaml.h>
 
 #include <dnssec/crypto.h>
 #include <dnssec/error.h>
@@ -53,9 +53,15 @@ int main(int argc, char *argv[])
 
 	printf("keytag  ID\n");
 	for (size_t i = 0; i < keys_count; i++) {
+		const uint8_t *dname = dnssec_key_get_dname(keys[i].key);
 		const char *id = dnssec_key_get_id(keys[i].key);
 		uint16_t keytag = dnssec_key_get_keytag(keys[i].key);
 		printf("%-6d  %s\n", keytag, id);
+		for (int i = 0; dname[i]; i++) {
+			if (isprint(dname[i])) { putchar(dname[i]); }
+			else { printf("%02x", dname[i]); }
+		}
+		printf("\n");
 	}
 
 	exit_code = 0;

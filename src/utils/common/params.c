@@ -33,6 +33,7 @@
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/resolv.h"	// parse_nameserver
 #include "utils/common/token.h"		// token
+#include "libknot/dnssec/key.h"		// knot_key_params_t
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
@@ -452,27 +453,6 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	DBG("%s: parsed name '%s'\n", __func__, k);
 	DBG("%s: parsed secret '%s'\n", __func__, s);
 	free(h);
-
-	return KNOT_EOK;
-}
-
-int params_parse_keyfile(const char *value, knot_key_params_t *key_params)
-{
-	if (value == NULL || key_params == NULL) {
-		DBG_NULL;
-		return KNOT_EINVAL;
-	}
-
-	if (key_params->name) {
-		ERR("Key specified multiple times.\n");
-		return KNOT_EINVAL;
-	}
-
-	int result = knot_load_key_params(value, key_params);
-	if (result != KNOT_EOK) {
-		ERR("could not read key file: %s\n", knot_strerror(result));
-		return KNOT_EINVAL;
-	}
 
 	return KNOT_EOK;
 }

@@ -19,13 +19,16 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "common/errcode.h"
+#include "common/descriptor.h"
+#include "dnssec/error.h"
+#include "dnssec/key.h"
+#include "dnssec/sign.h"
 #include "libknot/common.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "libknot/dnssec/rrset-sign.h"
-#include "libknot/dnssec/sign.h"
-#include "libknot/rrset.h"
 #include "libknot/rdata/rrsig.h"
+#include "libknot/rrset.h"
 
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024)
 #define RRSIG_RDATA_SIGNER_OFFSET 18
@@ -33,9 +36,9 @@
 /*- Creating of RRSIGs -------------------------------------------------------*/
 
 /*!
- * \brief Get size of RRSIG RDATA for a given key.
+ * \brief Get size of RRSIG RDATA for a given key without signature.
  */
-size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key)
+size_t knot_rrsig_rdata_size(const dnssec_key_t *key)
 {
 	if (!key) {
 		return 0;
@@ -57,9 +60,9 @@ size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key)
 
 	// variable part
 
-	assert(key->name);
-	size += knot_dname_size(key->name);
-	size += knot_dnssec_sign_size(key);
+	const uint8_t *signer = dnssec_key_get_dname(key);
+	assert(signer);
+	size += knot_dname_size(signer);
 
 	return size;
 }
@@ -67,7 +70,7 @@ size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key)
 /*!
  * \brief Write RRSIG RDATA except signature.
  */
-int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
+int knot_rrsig_write_rdata(uint8_t *rdata, const dnssec_key_t *key,
                            uint16_t covered_type, uint8_t owner_labels,
                            uint32_t owner_ttl,  uint32_t sig_incepted,
                            uint32_t sig_expires)
@@ -76,11 +79,15 @@ int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
 		return KNOT_EINVAL;
 	}
 
+	uint8_t algorithm = dnssec_key_get_algorithm(key);
+	uint16_t keytag = dnssec_key_get_keytag(key);
+	const uint8_t *signer = dnssec_key_get_dname(key);
+
 	uint8_t *w = rdata;
 
 	knot_wire_write_u16(w, covered_type);	// type covered
 	w += sizeof(uint16_t);
-	*w = key->algorithm;			// algorithm
+	*w = algorithm;				// algorithm
 	w += sizeof(uint8_t);
 	*w = owner_labels;			// labels
 	w += sizeof(uint8_t);
@@ -90,12 +97,11 @@ int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
 	w += sizeof(uint32_t);
 	knot_wire_write_u32(w, sig_incepted);	// signature inception
 	w += sizeof(uint32_t);
-	knot_wire_write_u16(w, key->keytag);	// key fingerprint
+	knot_wire_write_u16(w, keytag);		// key fingerprint
 	w += sizeof(uint16_t);
 
 	assert(w == rdata + RRSIG_RDATA_SIGNER_OFFSET);
-	assert(key->name);
-	memcpy(w, key->name, knot_dname_size(key->name)); // signer
+	memcpy(w, signer, knot_dname_size(signer)); // signer
 
 	return KNOT_EOK;
 }
@@ -112,16 +118,20 @@ int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int sign_ctx_add_self(knot_dnssec_sign_context_t *ctx,
-                             const uint8_t *rdata)
+static int sign_ctx_add_self(dnssec_sign_ctx_t *ctx, const uint8_t *rdata)
 {
 	assert(ctx);
 	assert(rdata);
 
 	const uint8_t *signer = rdata + RRSIG_RDATA_SIGNER_OFFSET;
-	size_t data_size = RRSIG_RDATA_SIGNER_OFFSET + knot_dname_size(signer);
 
-	return knot_dnssec_sign_add(ctx, rdata, data_size);
+	dnssec_binary_t header = { 0 };
+	header.data = (uint8_t *)rdata;
+	header.size = RRSIG_RDATA_SIGNER_OFFSET + knot_dname_size(signer);
+
+	int result = dnssec_sign_add(ctx, &header);
+
+	return (result == DNSSEC_EOK ? KNOT_EOK : KNOT_DNSSEC_ESIGN);
 }
 
 /*!
@@ -134,8 +144,7 @@ static int sign_ctx_add_self(knot_dnssec_sign_context_t *ctx,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
-                                const knot_rrset_t *covered)
+static int sign_ctx_add_records(dnssec_sign_ctx_t *ctx, const knot_rrset_t *covered)
 {
 	// huge block of rrsets can be optionally created
 	uint8_t *rrwf = malloc(MAX_RR_WIREFORMAT_SIZE);
@@ -154,10 +163,14 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
 		return result;
 	}
 
-	result = knot_dnssec_sign_add(ctx, rrwf, rr_wire_size);
+	dnssec_binary_t rrset_wire = { 0 };
+	rrset_wire.size = rr_wire_size;
+	rrset_wire.data = rrwf;
+	result = dnssec_sign_add(ctx, &rrset_wire);
+
 	free(rrwf);
 
-	return result;
+	return (result == DNSSEC_EOK ? KNOT_EOK : KNOT_DNSSEC_ESIGN);
 }
 
 /*!
@@ -174,7 +187,7 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int sign_ctx_add_data(knot_dnssec_sign_context_t *ctx,
+static int sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
                              const uint8_t *rrsig_rdata,
                              const knot_rrset_t *covered)
 {
@@ -187,10 +200,10 @@ static int sign_ctx_add_data(knot_dnssec_sign_context_t *ctx,
 }
 
 /*!
- * \brief Create RRSIG RDATA (all fields except signature are filled).
+ * \brief Create RRSIG RDATA.
  *
  * \param[in]  rrsigs        RR set with RRSIGS.
- * \param[in]  rrsigs        DNSSEC signing context.
+ * \param[in]  ctx           DNSSEC signing context.
  * \param[in]  covered       RR covered by the signature.
  * \param[in]  key           Key used for signing.
  * \param[in]  sig_incepted  Timestamp of signature inception.
@@ -198,60 +211,63 @@ static int sign_ctx_add_data(knot_dnssec_sign_context_t *ctx,
  *
  * \return Error code, KNOT_EOK if succesful.
  */
-static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
-                               knot_dnssec_sign_context_t *context,
-                               const knot_rrset_t *covered,
-                               const knot_dnssec_key_t *key,
-                               uint32_t sig_incepted, uint32_t sig_expires)
+static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
+			       const knot_rrset_t *covered,
+			       const dnssec_key_t *key,
+			       uint32_t sig_incepted, uint32_t sig_expires)
 {
 	assert(rrsigs);
 	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
 	assert(!knot_rrset_empty(covered));
 	assert(key);
 
-	size_t size = knot_rrsig_rdata_size(key);
-	assert(size != 0);
+	size_t header_size = knot_rrsig_rdata_size(key);
+	assert(header_size != 0);
 
 	uint8_t owner_labels = knot_dname_labels(covered->owner, NULL);
 	if (knot_dname_is_wildcard(covered->owner)) {
 		owner_labels -= 1;
 	}
 
-	uint8_t result[size];
-	int res = knot_rrsig_write_rdata(result, key, covered->type, owner_labels,
+	uint8_t header[header_size];
+	int res = knot_rrsig_write_rdata(header, key, covered->type, owner_labels,
 	                                 knot_rrset_rr_ttl(covered, 0),
 	                                 sig_incepted, sig_expires);
 	assert(res == KNOT_EOK);
 
-	res = knot_dnssec_sign_new(context);
+	res = dnssec_sign_init(ctx);
 	if (res != KNOT_EOK) {
 		return res;
 	}
 
-	res = sign_ctx_add_data(context, result, covered);
+	res = sign_ctx_add_data(ctx, header, covered);
 	if (res != KNOT_EOK) {
 		return res;
 	}
 
-	const size_t signature_offset = RRSIG_RDATA_SIGNER_OFFSET + knot_dname_size(key->name);
-	uint8_t *signature = result + signature_offset;
-	const size_t signature_size = size - signature_offset;
-
-	res = knot_dnssec_sign_write(context, signature, signature_size);
-	if (res != KNOT_EOK) {
-		return res;
+	dnssec_binary_t signature = { 0 };
+	res = dnssec_sign_write(ctx, &signature);
+	if (res != DNSSEC_EOK) {
+		return KNOT_DNSSEC_ESIGN;
 	}
+	assert(signature.size > 0);
 
-	return knot_rrset_add_rdata(rrsigs, result, size,
-	                         knot_rrset_rr_ttl(covered, 0), NULL);
+	size_t rrsig_size = header_size + signature.size;
+	uint8_t rrsig[rrsig_size];
+	memcpy(rrsig, header, header_size);
+	memcpy(rrsig + header_size, signature.data, signature.size);
+
+	dnssec_binary_free(&signature);
+
+	return knot_rrset_add_rdata(rrsigs, rrsig, rrsig_size,
+				    knot_rrset_rr_ttl(covered, 0), NULL);
 }
 
 /*!
  * \brief Create RRSIG RR for given RR set.
  */
 int knot_sign_rrset(knot_rrset_t *rrsigs, const knot_rrset_t *covered,
-                    const knot_dnssec_key_t *key,
-                    knot_dnssec_sign_context_t *sign_ctx,
+                    const dnssec_key_t *key, dnssec_sign_ctx_t *sign_ctx,
                     const knot_dnssec_policy_t *policy)
 {
 	if (knot_rrset_empty(covered) || !key || !sign_ctx || !policy ||
@@ -321,8 +337,7 @@ static bool is_expired_signature(const knot_rrset_t *rrsigs, size_t pos,
  */
 int knot_is_valid_signature(const knot_rrset_t *covered,
                             const knot_rrset_t *rrsigs, size_t pos,
-                            const knot_dnssec_key_t *key,
-                            knot_dnssec_sign_context_t *ctx,
+                            const dnssec_key_t *key, dnssec_sign_ctx_t *ctx,
                             const knot_dnssec_policy_t *policy)
 {
 	if (knot_rrset_empty(covered) ||
@@ -341,16 +356,15 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *signature = NULL;
-	size_t signature_size = 0;
-	knot_rrsig_signature(&rrsigs->rrs, pos, &signature, &signature_size);
-	if (!signature) {
+	dnssec_binary_t signature = { 0 };
+	knot_rrsig_signature(&rrsigs->rrs, pos, &signature.data, &signature.size);
+	if (!signature.data) {
 		return KNOT_EINVAL;
 	}
 
 	// perform the validation
 
-	int result = knot_dnssec_sign_new(ctx);
+	int result = dnssec_sign_init(ctx);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -360,6 +374,13 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 		return result;
 	}
 
-	return knot_dnssec_sign_verify(ctx, signature, signature_size);
+	result = dnssec_sign_verify(ctx, &signature);
+	switch (result) {
+	case DNSSEC_EOK:
+		return KNOT_EOK;
+	case DNSSEC_INVALID_SIGNATURE:
+		return KNOT_DNSSEC_EINVALID_SIGNATURE;
+	default:
+		return KNOT_ERROR;
+	}
 }
-

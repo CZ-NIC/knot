@@ -28,10 +28,6 @@ check_PROGRAMS = \
 	dname			\
 	ztree			\
 	zonedb			\
-	dnssec_keys		\
-	dnssec_nsec3		\
-	dnssec_sign		\
-	dnssec_zone_nsec	\
 	rrset			\
 	pkt			\
 	process_query	\

@@ -32,7 +32,8 @@
 #include "common/base64.h"		// base64
 #include "common/base32hex.h"		// base32hex
 #include "common/descriptor.h"		// KNOT_RRTYPE
-#include "libknot/dnssec/key.h"		// knot_keytag
+#include "dnssec/binary.h"		// dnssec_binary_t
+#include "dnssec/keytag.h"		// dnssec_keytag
 #include "libknot/consts.h"		// knot_rcode_names
 #include "libknot/util/utils.h"		// knot_wire_read_u16
 
@@ -1292,15 +1293,19 @@ static void dnskey_info(const uint8_t *rdata,
                         const size_t  out_len)
 {
 	const uint8_t  sep = *(rdata + 1) & 0x01;
-	const uint16_t key_tag = knot_keytag(rdata, rdata_len);
+	uint16_t key_tag = 0;
+
+	const dnssec_binary_t rdata_bin = { .data = (uint8_t *)rdata,
+	                                    .size = rdata_len };
+	dnssec_keytag(&rdata_bin, &key_tag);
 
 	knot_lookup_table_t *alg = NULL;
 	alg = knot_lookup_by_id(knot_dnssec_alg_names, *(rdata + 3));
 
 	int ret = snprintf(out, out_len, "%s, alg = %s, id = %u ",
-	                   sep ? "KSK" : "ZSK",
-	                   alg ? alg->name : "UNKNOWN",
-	                   key_tag );
+	               sep ? "KSK" : "ZSK",
+	               alg ? alg->name : "UNKNOWN",
+	               key_tag );
 	if (ret <= 0) {	// Truncated return is acceptable. Just check for errors.
 		out[0] = '\0';
 	}

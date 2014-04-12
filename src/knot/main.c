@@ -31,7 +31,6 @@
 
 #include "dnssec/crypto.h"
 #include "libknot/common.h"
-#include "libknot/dnssec/crypto.h"
 #include "knot/knot.h"
 #include "knot/server/server.h"
 #include "knot/ctl/process.h"
@@ -52,14 +51,6 @@ static void init_signal_started(void)
 #ifdef ENABLE_SYSTEMD_NOTIFY
 	sd_notify(0, "READY=1");
 #endif
-}
-
-/*! \brief atexit() handler for server code. */
-static void knot_crypto_deinit(void)
-{
-	dnssec_crypto_cleanup();
-	knot_crypto_cleanup();
-	knot_crypto_cleanup_threads();
 }
 
 /*! \brief PID file cleanup handler. */
@@ -260,10 +251,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Initialize cryptographic backend. */
-    dnssec_crypto_init();
-	knot_crypto_init();
-	knot_crypto_init_threads();
-	atexit(knot_crypto_deinit);
+	dnssec_crypto_init();
+	atexit(dnssec_crypto_cleanup);
 
 	/* Initialize pseudorandom number generator. */
 	srand(time(NULL));

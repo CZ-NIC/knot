@@ -24,24 +24,24 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_RRSET_SIGN_H_
-#define _KNOT_DNSSEC_RRSET_SIGN_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "dnssec/key.h"
+#include "dnssec/sign.h"
 #include "libknot/dnssec/policy.h"
-#include "libknot/dnssec/sign.h"
 #include "libknot/rrset.h"
 
 /*!
- * \brief Get size of RRSIG RDATA for a given key.
+ * \brief Get size of RRSIG RDATA for a given key without signature.
  *
  * \param key  DNSSEC key to be used for creating the signature.
  *
  * \return RRSIG RDATA size in bytes.
  */
-size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key);
+size_t knot_rrsig_rdata_header_size(const dnssec_key_t *key);
 
 /*!
  * \brief Write RRSIG RDATA except the signature field.
@@ -55,7 +55,7 @@ size_t knot_rrsig_rdata_size(const knot_dnssec_key_t *key);
  * \param sig_incepted  Timestamp of signature inception.
  * \param sig_expires   Timestamp of signature expiration.
  */
-int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
+int knot_rrsig_write_rdata(uint8_t *rdata, const dnssec_key_t *key,
                            uint16_t covered_type, uint8_t owner_labels,
                            uint32_t owner_ttl,  uint32_t sig_incepted,
                            uint32_t sig_expires);
@@ -73,8 +73,8 @@ int knot_rrsig_write_rdata(uint8_t *rdata, const knot_dnssec_key_t *key,
  */
 int knot_sign_rrset(knot_rrset_t *rrsigs,
                     const knot_rrset_t *covered,
-                    const knot_dnssec_key_t *key,
-                    knot_dnssec_sign_context_t *sign_ctx,
+                    const dnssec_key_t *key,
+                    dnssec_sign_ctx_t *sign_ctx,
                     const knot_dnssec_policy_t *policy);
 
 /*!
@@ -108,10 +108,7 @@ int knot_synth_rrsig(uint16_t type, const knot_rdataset_t *rrsig_rrs,
  */
 int knot_is_valid_signature(const knot_rrset_t *covered,
                             const knot_rrset_t *rrsigs, size_t pos,
-                            const knot_dnssec_key_t *key,
-                            knot_dnssec_sign_context_t *ctx,
+                            const dnssec_key_t *key, dnssec_sign_ctx_t *ctx,
                             const knot_dnssec_policy_t *policy);
-
-#endif // _KNOT_DNSSEC_RRSET_SIGN_H_
 
 /*! @} */

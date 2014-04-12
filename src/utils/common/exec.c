@@ -27,7 +27,6 @@
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg
-#include "libknot/dnssec/sig0.h"
 #include "dnssec/random.h"
 
 static knot_lookup_table_t rtypes[] = {
@@ -594,10 +593,6 @@ void free_sign_context(sign_context_t *ctx)
 		knot_tsig_key_free(&ctx->tsig_key);
 	}
 
-	if (ctx->dnssec_key.name) {
-		knot_dnssec_key_free(&ctx->dnssec_key);
-	}
-
 	free(ctx->digest);
 
 	memset(ctx, '\0', sizeof(sign_context_t));
@@ -618,44 +613,24 @@ int sign_packet(knot_pkt_t              *pkt,
 	size_t  *wire_size = &pkt->size;
 	size_t  max_size = pkt->max_size;
 
-	switch (knot_get_key_type(key_params)) {
-	case KNOT_KEY_TSIG:
-	{
-		result = knot_tsig_key_from_params(key_params,
-		                                   &sign_ctx->tsig_key);
-		if (result != KNOT_EOK) {
-			return result;
-		}
-
-		knot_tsig_key_t *key = &sign_ctx->tsig_key;
-
-		sign_ctx->digest_size = knot_tsig_digest_length(key->algorithm);
-		sign_ctx->digest = malloc(sign_ctx->digest_size);
-
-		knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
-
-		result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
-		                        sign_ctx->digest, &sign_ctx->digest_size,
-		                        key, 0, 0);
-
+	result = knot_tsig_key_from_params(key_params,
+					   &sign_ctx->tsig_key);
+	if (result != KNOT_EOK) {
 		return result;
 	}
-	case KNOT_KEY_DNSSEC:
-	{
-		result = knot_dnssec_key_from_params(key_params,
-		                                     &sign_ctx->dnssec_key);
-		if (result != KNOT_EOK) {
-			return result;
-		}
 
-		knot_dnssec_key_t *key = &sign_ctx->dnssec_key;
-		result = knot_sig0_sign(wire, wire_size, max_size, key);
+	knot_tsig_key_t *key = &sign_ctx->tsig_key;
 
-		return result;
-	}
-	default:
-		return KNOT_DNSSEC_EINVALID_KEY;
-	}
+	sign_ctx->digest_size = knot_tsig_digest_length(key->algorithm);
+	sign_ctx->digest = malloc(sign_ctx->digest_size);
+
+	knot_pkt_reserve(pkt, tsig_wire_maxsize(key));
+
+	result = knot_tsig_sign(wire, wire_size, max_size, NULL, 0,
+				sign_ctx->digest, &sign_ctx->digest_size,
+				key, 0, 0);
+
+	return result;
 }
 
 int verify_packet(const knot_pkt_t        *pkt,
@@ -672,28 +647,14 @@ int verify_packet(const knot_pkt_t        *pkt,
 	const uint8_t *wire = pkt->wire;
 	const size_t  *wire_size = &pkt->size;
 
-	switch (knot_get_key_type(key_params)) {
-	case KNOT_KEY_TSIG:
-	{
-		if (pkt->tsig_rr == NULL) {
-			return KNOT_ENOTSIG;
-		}
+	if (pkt->tsig_rr == NULL) {
+		return KNOT_ENOTSIG;
+	}
 
-		result = knot_tsig_client_check(pkt->tsig_rr, wire, *wire_size,
-		                                sign_ctx->digest,
-		                                sign_ctx->digest_size,
-		                                &sign_ctx->tsig_key, 0);
+	result = knot_tsig_client_check(pkt->tsig_rr, wire, *wire_size,
+					sign_ctx->digest,
+					sign_ctx->digest_size,
+					&sign_ctx->tsig_key, 0);
 
-		return result;
-	}
-	case KNOT_KEY_DNSSEC:
-	{
-		// Uses public key cryptography, server cannot sign the
-		// response, because the private key should be known only
-		// to the client.
-		return KNOT_EOK;
-	}
-	default:
-		return KNOT_EINVAL;
-	}
+	return result;
 }

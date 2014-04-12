@@ -16,8 +16,6 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <openssl/hmac.h>
-#include <openssl/evp.h>
 #include <time.h>
 #include <inttypes.h>
 
@@ -107,6 +105,8 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	dbg_tsig_hex_detail((char *)key->secret.data, key->secret.size);
 	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);
 
+	return KNOT_ERROR;
+#if 0
 	/* Compute digest. */
 	HMAC_CTX ctx;
 
@@ -145,8 +145,8 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	*digest_len = tmp_dig_len;
 
 	HMAC_CTX_cleanup(&ctx);
-
 	return KNOT_EOK;
+#endif
 }
 
 static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr,

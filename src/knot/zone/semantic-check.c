@@ -24,8 +24,8 @@
 #include "knot/knot.h"
 #include "knot/other/debug.h"
 #include "libknot/libknot.h"
-#include "libknot/dnssec/key.h"
 #include "libknot/dnssec/rrset-sign.h"
+#include "dnssec/keytag.h"
 #include "libknot/rdata/rrsig.h"
 #include "libknot/rdata/soa.h"
 #include "libknot/rdata/nsec.h"
@@ -382,9 +382,12 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		}
 
 		/* Calculate keytag. */
-		uint16_t dnskey_key_tag =
-			knot_keytag(knot_rrset_rr_rdata(dnskey_rrset, i),
-		                    knot_rrset_rr_size(dnskey_rrset, i));
+		dnssec_binary_t rdata = {
+			.size = knot_rrset_rr_size(dnskey_rrset, i),
+			.data = knot_rrset_rr_rdata(dnskey_rrset, i)
+		};
+		uint16_t dnskey_key_tag = 0;
+		dnssec_keytag(&rdata, &dnskey_key_tag);
 		if (key_tag_rrsig != dnskey_key_tag) {
 			continue;
 		}

@@ -25,8 +25,8 @@
  * \addtogroup dnssec
  * @{
  */
-#ifndef _KNOT_DNSSEC_ZONE_EVENTS_H_
-#define _KNOT_DNSSEC_ZONE_EVENTS_H_
+
+#pragma once
 
 #include "knot/zone/zone.h"
 #include "knot/updates/changesets.h"
@@ -85,5 +85,4 @@ int knot_dnssec_sign_changeset(const knot_zone_contents_t *zone,
                                knot_update_serial_t soa_up,
                                uint32_t *refresh_at, uint32_t new_serial);
 
-#endif // _KNOT_DNSSEC_ZONE_EVENTS_H_
 /*! @} */

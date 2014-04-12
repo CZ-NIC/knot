@@ -26,8 +26,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_ZONE_NSEC_H_
-#define _KNOT_DNSSEC_ZONE_NSEC_H_
+#pragma once
 
 #include <stdbool.h>
 #include "knot/updates/changesets.h"
@@ -82,9 +81,7 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
  */
 int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
                                 knot_changeset_t *changeset,
-                                const knot_zone_keys_t *zone_keys,
+                                const zone_keyset_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
-
-#endif // _KNOT_DNSSEC_ZONE_NSEC_H_
 
 /*! @} */

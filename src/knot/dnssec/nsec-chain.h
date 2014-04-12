@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_NSEC_CHAIN_FIX_H_
-#define _KNOT_DNSSEC_NSEC_CHAIN_FIX_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -120,5 +119,3 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n);
  */
 int knot_nsec_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
                            knot_changeset_t *changeset);
-
-#endif // _KNOT_DNSSEC_NSEC_CHAIN_FIX_H_

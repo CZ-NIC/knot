@@ -132,18 +132,4 @@ inline static size_t knot_nsec3_hash_b32_length(uint8_t algorithm)
 	}
 }
 
-/*!
- * \brief Compute NSEC3 hash for given data.
- *
- * \param[in]  params       NSEC3 parameters.
- * \param[in]  data         Data to compute hash for.
- * \param[in]  size         Size of the data.
- * \param[out] digest       Computed hash.
- * \param[out] digest_size  Size of the computed hash.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-int knot_nsec3_hash(const knot_nsec3_params_t *params, const uint8_t *data,
-                    size_t size, uint8_t **digest, size_t *digest_size);
-
 /*! @} */

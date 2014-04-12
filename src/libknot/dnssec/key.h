@@ -24,122 +24,30 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_KEY_H_
-#define _KNOT_DNSSEC_KEY_H_
+#pragma once
 
-#include <stdint.h>
-#include <time.h>
 #include "libknot/dname.h"
 #include "libknot/binary.h"
 #include "libknot/rdata/tsig.h"
 
-/*----------------------------------------------------------------------------*/
-
 /*!
  * \brief Key attributes loaded from keyfile.
  */
-typedef struct {
-	// common parameters
+typedef struct knot_key_params {
 	knot_dname_t *name;
-	knot_binary_t rdata;
 	int algorithm;
-	uint16_t keytag;
-	uint16_t flags;
-
-	// shared key
 	knot_binary_t secret;
-
-	// RSA
-	knot_binary_t modulus;
-	knot_binary_t public_exponent;
-	knot_binary_t private_exponent;
-	knot_binary_t prime_one;
-	knot_binary_t prime_two;
-	knot_binary_t exponent_one;
-	knot_binary_t exponent_two;
-	knot_binary_t coefficient;
-
-	// DSA
-	knot_binary_t prime;
-	knot_binary_t subprime;
-	knot_binary_t base;
-	knot_binary_t private_value;
-	knot_binary_t public_value;
-
-	// EC/GOST
-	knot_binary_t private_key;
-
-	// key lifetime
-	//time_t time_created;
-	time_t time_publish;
-	time_t time_activate;
-	//time_t time_revoke;
-	time_t time_inactive;
-	time_t time_delete;
 } knot_key_params_t;
 
-typedef enum {
-	KNOT_KEY_UNKNOWN = 0,
-	KNOT_KEY_DNSSEC, //!< DNSSEC key. Described in RFC 2535 and RFC 4034.
-	KNOT_KEY_TSIG,   //!< Transaction Signature. Described in RFC 2845.
-	KNOT_KEY_TKEY    //!< Transaction Key. Described in RFC 2930.
-} knot_key_type_t;
-
-/*----------------------------------------------------------------------------*/
-
 /*!
- * \brief Calculates keytag from key wire.
- *
- * \param rdata      Key wireformat.
- * \param rdata_len  Wireformat size.
- *
- * \return Calculated keytag.
- */
-uint16_t knot_keytag(const uint8_t *rdata, uint16_t rdata_len);
-
-/*----------------------------------------------------------------------------*/
-
-/*!
- * \brief Reads the key files and extracts key parameters.
- *
- * \param filename    The name of the file with stored key. It can be either
- *                    the name with '.key' or '.private' suffix or without
- *                    the suffix at all.
- * \param key_params  Output key parameters.
- *
- * \returns Error code, KNOT_EOK when succeeded.
- */
-int knot_load_key_params(const char *filename, knot_key_params_t *key_params);
-
-/*!
- * \brief Copies key params structure content.
- *
- * \param src  Source structure.
- * \param dst  Destination structure.
- *
- * \return Error code, KNOT_EOK when succeeded.
+ * \brief Copy key parameters.
  */
 int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst);
 
 /*!
- * \brief Frees the key parameters.
- *
- * \param key_params  Key parameters to be freed.
- *
- * \return Error code, KNOT_EOK when succeeded.
+ * \brief Free key parameters.
  */
 int knot_free_key_params(knot_key_params_t *key_params);
-
-/*!
- * \brief Get the type of the key.
- *
- * \param key_params	Key parameters.
- *
- * \return Key type.
- */
-knot_key_type_t knot_get_key_type(const knot_key_params_t *key_params);
-
-/*----------------------------------------------------------------------------*/
 
 /*!
  * \brief Creates TSIG key.
@@ -155,15 +63,14 @@ int knot_tsig_create_key(const char *name, int algorithm,
                          const char *b64secret, knot_tsig_key_t *key);
 
 /*!
- * \brief Creates TSIG key from key parameters.
+ * \brief Copies key params structure content.
  *
- * \param params  Structure with key parameters.
- * \param key     Output TSIG key.
+ * \param src  Source structure.
+ * \param dst  Destination structure.
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
-int knot_tsig_key_from_params(const knot_key_params_t *params,
-                              knot_tsig_key_t *key);
+int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst);
 
 /*!
  * \brief Frees TSIG key.
@@ -176,6 +83,15 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
  */
 int knot_tsig_key_free(knot_tsig_key_t *key);
 
-#endif // _KNOT_DNSSEC_KEY_H_
+/*!
+ * \brief Creates TSIG key from key parameters.
+ *
+ * \param params  Structure with key parameters.
+ * \param key     Output TSIG key.
+ *
+ * \return Error code, KNOT_EOK when succeeded.
+ */
+int knot_tsig_key_from_params(const knot_key_params_t *params,
+                              knot_tsig_key_t *key);
 
 /*! @} */
