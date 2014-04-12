@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -197,4 +198,16 @@ void dname_ascii_normalize(char *name)
 	}
 
 	name[length] = '\0';
+}
+
+/*!
+ * Check if two dnames are equal.
+ */
+bool dname_equal(const uint8_t *one, const uint8_t *two)
+{
+	if (!one || !two) {
+		return false;
+	}
+
+	return (strcasecmp((char *)one, (char *)two) == 0);
 }

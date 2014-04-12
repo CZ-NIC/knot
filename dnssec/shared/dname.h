@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -50,3 +51,10 @@ uint8_t *dname_from_ascii(const char *name);
  * Convert to lower case, trim rightmost empty labels.
  */
 void dname_ascii_normalize(char *name);
+
+/*!
+ * Check if two dnames are equal.
+ *
+ * Case insensitive.
+ */
+bool dname_equal(const uint8_t *one, const uint8_t *two);

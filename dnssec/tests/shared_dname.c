@@ -18,7 +18,7 @@ static void test_length(void)
 	ok_length("\x7""example""\x3""com", 13, "example.com.");
 }
 
-static bool dname_equal(const uint8_t *one, const uint8_t *two)
+static bool dname_binary_equal(const uint8_t *one, const uint8_t *two)
 {
 	size_t length_one = dname_length(one);
 	size_t length_two = dname_length(two);
@@ -34,7 +34,7 @@ static void test_copy(void)
 {
 	const uint8_t *dname = (uint8_t *)"\x3""www""\x8""KNOT-DNS""\x2""cz";
 	uint8_t *copy = dname_copy(dname);
-	ok(dname_equal(dname, copy), "dname_copy()");
+	ok(dname_binary_equal(dname, copy), "dname_copy()");
 	free(copy);
 }
 
@@ -44,7 +44,7 @@ static void test_normalize(void)
 	uint8_t denorm[] = "\x6""rAnDoM""\x6""doMAIN""\x4""TesT";
 
 	dname_normalize(denorm);
-	ok(dname_equal(norm, denorm), "dname_normalize()");
+	ok(dname_binary_equal(norm, denorm), "dname_normalize()");
 
 	const char *anorm = "hello.world.domain";
 	char adenorm[] = "Hello.World.DOmaIN.";
@@ -68,7 +68,7 @@ static void test_ascii(void)
 	const uint8_t *expect = (uint8_t *)"\x3""not""\x4""very""\x4""easy"
 					   "\x6""domain""\x4""name";
 	uint8_t *converted = dname_from_ascii(name);
-	ok(dname_equal(converted, expect), "dname_from_ascii()");
+	ok(dname_binary_equal(converted, expect), "dname_from_ascii()");
 	free(converted);
 	}
 }
