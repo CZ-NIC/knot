@@ -782,8 +782,7 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 	dbg_tsig_verb("TSIG: given digest:\n");
 	dbg_tsig_hex_verb((char *)tsig_mac, mac_length);
 
-	if (strncasecmp((char *)(tsig_mac), (char *)digest_tmp,
-	                mac_length) != 0) {
+	if (memcmp(tsig_mac, digest_tmp, mac_length) != 0) {
 		return KNOT_TSIG_EBADSIG;
 	}
 
