@@ -102,8 +102,6 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	dbg_tsig_hex_detail((char *)key->secret.data, key->secret.size);
 	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);
 
-	return KNOT_ERROR;
-
 	dnssec_tsig_ctx_t *ctx = NULL;
 	int result = dnssec_tsig_new(&ctx, key->algorithm, &key->secret);
 	if (result != DNSSEC_EOK) {
@@ -113,10 +111,7 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 	dnssec_binary_t cover = { .const_data = wire, .size = wire_len };
 	dnssec_tsig_add(ctx, &cover);
 
-	size_t size = dnssec_tsig_size(ctx);
-	assert(size > 0 && size <= *digest_len);
-	*digest_len = size;
-
+	*digest_len = dnssec_tsig_size(ctx);
 	dnssec_tsig_write(ctx, digest);
 	dnssec_tsig_free(ctx);
 
