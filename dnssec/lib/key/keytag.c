@@ -4,6 +4,7 @@
 
 #include "binary.h"
 #include "error.h"
+#include "shared.h"
 
 /*!
  * Compute keytag for RSA/MD5 key.
@@ -44,11 +45,12 @@ static uint16_t keytag_current(const dnssec_binary_t *rdata)
 	return ac & 0xFFFF;
 }
 
-/* -- internal API --------------------------------------------------------- */
+/* -- public API ----------------------------------------------------------- */
 
 /*!
  * Compute keytag for a DNSSEC key.
  */
+_public_
 int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
 {
 	if (!rdata || !keytag) {
