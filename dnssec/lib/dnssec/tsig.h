@@ -22,7 +22,14 @@ typedef enum {
  *
  * \see https://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml
  */
-dnssec_tsig_algorithm_t dnssec_tsig_get_algorithm(const uint8_t *dname);
+dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_dname(const uint8_t *dname);
+
+/*!
+ * Get TSIG algorithm number from MAC name.
+ *
+ * \example dnssec_tsig_algorithm_from_name("hmac-sha256")
+ */
+dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_name(const char *name);
 
 /*!
  * TSIG signing context.

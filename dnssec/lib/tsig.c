@@ -33,8 +33,9 @@ static gnutls_mac_algorithm_t algorithm_to_gnutls(dnssec_tsig_algorithm_t tsig)
 }
 
 typedef struct {
-	const uint8_t *dname;
 	dnssec_tsig_algorithm_t algorithm;
+	const char *hmac_name;
+	const char *dname;
 } algorithm_match_t;
 
 /*!
@@ -42,23 +43,50 @@ typedef struct {
  */
 static const algorithm_match_t ALGORITHM_TABLE[] = {
 	// RFC 4635
-	{ (uint8_t *)"\x9hmac-sha1",   DNSSEC_TSIG_HMAC_SHA1 },
-	{ (uint8_t *)"\xbhmac-sha224", DNSSEC_TSIG_HMAC_SHA224 },
-	{ (uint8_t *)"\xbhmac-sha256", DNSSEC_TSIG_HMAC_SHA256 },
-	{ (uint8_t *)"\xbhmac-sha384", DNSSEC_TSIG_HMAC_SHA384 },
-	{ (uint8_t *)"\xbhmac-sha512", DNSSEC_TSIG_HMAC_SHA512 },
+	{ DNSSEC_TSIG_HMAC_SHA1,   "sha1",   "\x9hmac-sha1"   },
+	{ DNSSEC_TSIG_HMAC_SHA224, "sha224", "\xbhmac-sha224" },
+	{ DNSSEC_TSIG_HMAC_SHA256, "sha256", "\xbhmac-sha256" },
+	{ DNSSEC_TSIG_HMAC_SHA384, "sha384", "\xbhmac-sha384" },
+	{ DNSSEC_TSIG_HMAC_SHA512, "sha512", "\xbhmac-sha512" },
 	// RFC 2845
-	{ (uint8_t *)"\x8hmac-md5\x7sig-alg\x3reg\x3int", DNSSEC_TSIG_HMAC_MD5 },
-	{ NULL }
+	{ DNSSEC_TSIG_HMAC_MD5, "md5", "\x8hmac-md5\x7sig-alg\x3reg\x3int" },
+	{ 0 }
 };
 
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-dnssec_tsig_algorithm_t dnssec_tsig_get_algorithm(const uint8_t *dname)
+dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_dname(const uint8_t *dname)
 {
+	if (!dname) {
+		return DNSSEC_TSIG_UNKNOWN;
+	}
+
 	for (const algorithm_match_t *m = ALGORITHM_TABLE; m->dname; m++) {
-		if (dname_equal(dname, m->dname)) {
+		if (dname_equal(dname, (uint8_t *)m->dname)) {
+			return m->algorithm;
+		}
+	}
+
+	return DNSSEC_TSIG_UNKNOWN;
+}
+
+_public_
+dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_name(const char *name)
+{
+	if (!name) {
+		return DNSSEC_TSIG_UNKNOWN;
+	}
+
+	char *prefix = "hmac-";
+	size_t prefix_len = strlen(prefix);
+	if (strncasecmp(name, prefix, prefix_len) != 0) {
+		return DNSSEC_TSIG_UNKNOWN;
+	}
+
+	const char *hmac_name = name + prefix_len;
+	for (const algorithm_match_t *m = ALGORITHM_TABLE; m->dname; m++) {
+		if (strcasecmp(hmac_name, m->hmac_name) == 0) {
 			return m->algorithm;
 		}
 	}
