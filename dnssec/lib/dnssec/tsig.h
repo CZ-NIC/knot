@@ -7,7 +7,7 @@
 /*!
  * TSIG algorithms.
  */
-typedef enum {
+typedef enum dnssec_tsig_algorithm {
 	DNSSEC_TSIG_UNKNOWN = 0,
 	DNSSEC_TSIG_HMAC_MD5,
 	DNSSEC_TSIG_HMAC_SHA1,
@@ -23,6 +23,7 @@ typedef enum {
  * \see https://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml
  */
 dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_dname(const uint8_t *dname);
+const uint8_t *dnssec_tsig_algorithm_to_dname(dnssec_tsig_algorithm_t algorithm);
 
 /*!
  * Get TSIG algorithm number from MAC name.
@@ -30,6 +31,8 @@ dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_dname(const uint8_t *dname);
  * \example dnssec_tsig_algorithm_from_name("hmac-sha256")
  */
 dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_name(const char *name);
+const char *dnssec_tsig_algorithm_to_name(dnssec_tsig_algorithm_t algorithm);
+
 
 /*!
  * TSIG signing context.

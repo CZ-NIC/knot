@@ -16,42 +16,78 @@ struct dnssec_tsig_ctx {
 };
 
 /*!
- * Convert TSIG algorithm identifier to GnuTLS identifier.
+ * TSIG algorithm indentifiers.
  */
-static gnutls_mac_algorithm_t algorithm_to_gnutls(dnssec_tsig_algorithm_t tsig)
-{
-	switch(tsig) {
-	case DNSSEC_TSIG_HMAC_MD5:    return GNUTLS_MAC_MD5;
-	case DNSSEC_TSIG_HMAC_SHA1:   return GNUTLS_MAC_SHA1;
-	case DNSSEC_TSIG_HMAC_SHA224: return GNUTLS_MAC_SHA224;
-	case DNSSEC_TSIG_HMAC_SHA256: return GNUTLS_MAC_SHA256;
-	case DNSSEC_TSIG_HMAC_SHA384: return GNUTLS_MAC_SHA384;
-	case DNSSEC_TSIG_HMAC_SHA512: return GNUTLS_MAC_SHA512;
-	default:
-		return GNUTLS_MAC_UNKNOWN;
-	}
-}
-
 typedef struct {
-	dnssec_tsig_algorithm_t algorithm;
-	const char *hmac_name;
+	dnssec_tsig_algorithm_t id;
+	gnutls_mac_algorithm_t gnutls_id;
+	const char *name;
 	const char *dname;
-} algorithm_match_t;
+} algorithm_id_t;
 
 /*!
  * DNAME to algorithm conversion table.
  */
-static const algorithm_match_t ALGORITHM_TABLE[] = {
+static const algorithm_id_t ALGORITHM_ID_TABLE[] = {
 	// RFC 4635
-	{ DNSSEC_TSIG_HMAC_SHA1,   "sha1",   "\x9hmac-sha1"   },
-	{ DNSSEC_TSIG_HMAC_SHA224, "sha224", "\xbhmac-sha224" },
-	{ DNSSEC_TSIG_HMAC_SHA256, "sha256", "\xbhmac-sha256" },
-	{ DNSSEC_TSIG_HMAC_SHA384, "sha384", "\xbhmac-sha384" },
-	{ DNSSEC_TSIG_HMAC_SHA512, "sha512", "\xbhmac-sha512" },
+	{ DNSSEC_TSIG_HMAC_SHA1,   GNUTLS_MAC_SHA1,   "hmac-sha1",   "\x9hmac-sha1"   },
+	{ DNSSEC_TSIG_HMAC_SHA224, GNUTLS_MAC_SHA224, "hmac-sha224", "\xbhmac-sha224" },
+	{ DNSSEC_TSIG_HMAC_SHA256, GNUTLS_MAC_SHA256, "hmac-sha256", "\xbhmac-sha256" },
+	{ DNSSEC_TSIG_HMAC_SHA384, GNUTLS_MAC_SHA384, "hmac-sha384", "\xbhmac-sha384" },
+	{ DNSSEC_TSIG_HMAC_SHA512, GNUTLS_MAC_SHA512, "hmac-sha512", "\xbhmac-sha512" },
 	// RFC 2845
-	{ DNSSEC_TSIG_HMAC_MD5, "md5", "\x8hmac-md5\x7sig-alg\x3reg\x3int" },
+	{ DNSSEC_TSIG_HMAC_MD5, GNUTLS_MAC_MD5, "hmac-md5", "\x8hmac-md5\x7sig-alg\x3reg\x3int" },
 	{ 0 }
 };
+
+/*!
+ * Algorithm match callback prototype.
+ */
+typedef bool (*algorithm_match_cb)(const algorithm_id_t *m, const void *data);
+
+/*!
+ * Lookup an algorithm in the algorithm table.
+ */
+static const algorithm_id_t *lookup_algorithm(algorithm_match_cb match,
+					      const void *data)
+{
+	assert(match);
+
+	for (const algorithm_id_t *a = ALGORITHM_ID_TABLE; a->id; a++) {
+		if (match(a, data)) {
+			return a;
+		}
+	}
+
+	return NULL;
+}
+
+bool match_dname(const algorithm_id_t *algorithm, const void *data)
+{
+	const uint8_t *search = data;
+	return dname_equal(search, (uint8_t *)algorithm->dname);
+}
+
+bool match_name(const algorithm_id_t *algorithm, const void *data)
+{
+	const char *search = data;
+	return strcasecmp(search, algorithm->name) == 0;
+}
+
+bool match_id(const algorithm_id_t *algorithm, const void *data)
+{
+	dnssec_tsig_algorithm_t search = (dnssec_tsig_algorithm_t)data;
+	return algorithm->id == search;
+}
+
+/*!
+ * Convert TSIG algorithm identifier to GnuTLS identifier.
+ */
+static gnutls_mac_algorithm_t algorithm_to_gnutls(dnssec_tsig_algorithm_t tsig)
+{
+	const algorithm_id_t *found = lookup_algorithm(match_id, (void *)tsig);
+	return (found ? found->gnutls_id : GNUTLS_MAC_UNKNOWN);
+}
 
 /* -- public API ----------------------------------------------------------- */
 
@@ -62,13 +98,15 @@ dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_dname(const uint8_t *dname)
 		return DNSSEC_TSIG_UNKNOWN;
 	}
 
-	for (const algorithm_match_t *m = ALGORITHM_TABLE; m->dname; m++) {
-		if (dname_equal(dname, (uint8_t *)m->dname)) {
-			return m->algorithm;
-		}
-	}
+	const algorithm_id_t *found = lookup_algorithm(match_dname, dname);
+	return (found ? found->id : DNSSEC_TSIG_UNKNOWN);
+}
 
-	return DNSSEC_TSIG_UNKNOWN;
+_public_
+const uint8_t *dnssec_tsig_algorithm_to_dname(dnssec_tsig_algorithm_t algorithm)
+{
+	const algorithm_id_t *found = lookup_algorithm(match_id, (void *)algorithm);
+	return (found ? (uint8_t *)found->dname : NULL);
 }
 
 _public_
@@ -78,20 +116,15 @@ dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_name(const char *name)
 		return DNSSEC_TSIG_UNKNOWN;
 	}
 
-	char *prefix = "hmac-";
-	size_t prefix_len = strlen(prefix);
-	if (strncasecmp(name, prefix, prefix_len) != 0) {
-		return DNSSEC_TSIG_UNKNOWN;
-	}
+	const algorithm_id_t *found = lookup_algorithm(match_name, name);
+	return (found ? found->id : DNSSEC_TSIG_UNKNOWN);
+}
 
-	const char *hmac_name = name + prefix_len;
-	for (const algorithm_match_t *m = ALGORITHM_TABLE; m->dname; m++) {
-		if (strcasecmp(hmac_name, m->hmac_name) == 0) {
-			return m->algorithm;
-		}
-	}
-
-	return DNSSEC_TSIG_UNKNOWN;
+_public_
+const char *dnssec_tsig_algorithm_to_name(dnssec_tsig_algorithm_t algorithm)
+{
+	const algorithm_id_t *found = lookup_algorithm(match_id, (void *)algorithm);
+	return (found ? found->name : NULL);
 }
 
 _public_
