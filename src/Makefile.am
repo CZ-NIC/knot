@@ -147,8 +147,6 @@ libknot_la_SOURCES =				\
 	libknot/edns.c				\
 	libknot/edns.h				\
 	libknot/libknot.h			\
-	libknot/dnssec/key.c			\
-	libknot/dnssec/key.h			\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
 	libknot/packet/pkt.c			\
