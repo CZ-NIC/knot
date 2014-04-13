@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "dnssec/binary.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/key.h"
@@ -25,10 +26,10 @@
 /*!
  * \brief Creates TSIG key.
  */
-int knot_tsig_create_key(const char *name, int algorithm,
-                         const char *b64secret, knot_tsig_key_t *key)
+int knot_tsig_create_key(const char *name, dnssec_tsig_algorithm_t algorithm,
+                         const char *b64secret_str, knot_tsig_key_t *key)
 {
-	if (!name || !b64secret || !key) {
+	if (!name || !b64secret_str || !key) {
 		return KNOT_EINVAL;
 	}
 
@@ -38,8 +39,12 @@ int knot_tsig_create_key(const char *name, int algorithm,
 		return KNOT_ENOMEM;
 	}
 
-	knot_binary_t secret;
-	int result = knot_binary_from_base64(b64secret, &secret);
+	dnssec_binary_t b64secret = { 0 };
+	b64secret.data = (uint8_t *)b64secret_str;
+	b64secret.size = strlen(b64secret_str);
+
+	dnssec_binary_t secret = { 0 };
+	int result = dnssec_binary_from_base64(&b64secret, &secret);
 	if (result != KNOT_EOK) {
 		knot_dname_free(&dname, NULL);
 		return result;
@@ -62,7 +67,7 @@ int knot_tsig_key_free(knot_tsig_key_t *key)
 	}
 
 	knot_dname_free(&key->name, NULL);
-	knot_binary_free(&key->secret);
+	dnssec_binary_free(&key->secret);
 	memset(key, '\0', sizeof(knot_tsig_key_t));
 
 	return KNOT_EOK;
@@ -84,7 +89,7 @@ int knot_copy_key_params(const knot_key_params_t *src, knot_key_params_t *dst)
 		}
 	}
 
-	int ret = knot_binary_dup(&src->secret, &copy.secret);
+	int ret = dnssec_binary_dup(&src->secret, &copy.secret);
 	if (ret != KNOT_EOK) {
 		knot_dname_free(&copy.name, NULL);
 	}
@@ -101,13 +106,12 @@ int knot_free_key_params(knot_key_params_t *key_params)
 	}
 
 	knot_dname_free(&key_params->name, NULL);
-	knot_binary_free(&key_params->secret);
+	dnssec_binary_free(&key_params->secret);
 
 	memset(key_params, '\0', sizeof(*key_params));
 
 	return KNOT_EOK;
 }
-
 
 int knot_tsig_key_from_params(const knot_key_params_t *params,
                               knot_tsig_key_t *key_ptr)
@@ -125,7 +129,7 @@ int knot_tsig_key_from_params(const knot_key_params_t *params,
 		return KNOT_ENOMEM;
 	}
 
-	int result = knot_binary_dup(&params->secret, &key.secret);
+	int result = dnssec_binary_dup(&params->secret, &key.secret);
 	if (result != KNOT_EOK) {
 		knot_dname_free(&key.name, NULL);
 		return result;

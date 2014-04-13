@@ -36,7 +36,7 @@
 typedef struct knot_key_params {
 	knot_dname_t *name;
 	int algorithm;
-	knot_binary_t secret;
+	dnssec_binary_t secret;
 } knot_key_params_t;
 
 /*!
@@ -59,7 +59,7 @@ int knot_free_key_params(knot_key_params_t *key_params);
  *
  * \return Error code, KNOT_EOK when succeeded.
  */
-int knot_tsig_create_key(const char *name, int algorithm,
+int knot_tsig_create_key(const char *name, dnssec_tsig_algorithm_t algorithm,
                          const char *b64secret, knot_tsig_key_t *key);
 
 /*!

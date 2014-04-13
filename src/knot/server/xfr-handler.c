@@ -193,7 +193,7 @@ static int xfr_task_setsig(knot_ns_xfr_t *rq, knot_tsig_key_t *key)
 	int ret = KNOT_EOK;
 	rq->tsig_key = key;
 	rq->tsig_size = tsig_wire_maxsize(key);
-	rq->digest_max_size = knot_tsig_digest_length(key->algorithm);
+	rq->digest_max_size = dnssec_tsig_algorithm_size(key->algorithm);
 	rq->digest = malloc(rq->digest_max_size);
 	if (rq->digest == NULL) {
 		rq->tsig_key = NULL;

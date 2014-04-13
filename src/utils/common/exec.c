@@ -621,7 +621,7 @@ int sign_packet(knot_pkt_t              *pkt,
 
 	knot_tsig_key_t *key = &sign_ctx->tsig_key;
 
-	sign_ctx->digest_size = knot_tsig_digest_length(key->algorithm);
+	sign_ctx->digest_size = dnssec_tsig_algorithm_size(key->algorithm);
 	sign_ctx->digest = malloc(sign_ctx->digest_size);
 
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(key));

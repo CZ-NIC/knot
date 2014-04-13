@@ -417,14 +417,13 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	}
 
 	/* Determine algorithm. */
-	key_params->algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+	key_params->algorithm = DNSSEC_TSIG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
-		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(knot_tsig_alg_names, h);
-		if (alg) {
+		dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_name(h);
+		if (alg != DNSSEC_TSIG_UNKNOWN) {
 			DBG("%s: parsed algorithm '%s'\n", __func__, h);
-			key_params->algorithm = alg->id;
+			key_params->algorithm = alg;
 		} else {
 			ERR("invalid TSIG algorithm name '%s'\n", h);
 			free(h);
@@ -444,7 +443,8 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	/* Set key name and secret. */
 	key_params->name = knot_dname_from_str(k);
 	knot_dname_to_lower(key_params->name);
-	int r = knot_binary_from_base64(s, &key_params->secret);
+	dnssec_binary_t secret64 = { .size = strlen(s), .data = (uint8_t *) s };
+	int r = dnssec_binary_from_base64(&secret64, &key_params->secret);
 	if (r != KNOT_EOK) {
 		free(h);
 		return r;

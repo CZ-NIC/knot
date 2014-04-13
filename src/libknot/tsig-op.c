@@ -21,6 +21,9 @@
 
 #include "libknot/common.h"
 #include "common/descriptor.h"
+#include "dnssec/binary.h"
+#include "dnssec/error.h"
+#include "dnssec/tsig.h"
 #include "libknot/rdata/tsig.h"
 #include "libknot/tsig-op.h"
 #include "libknot/packet/wire.h"
@@ -42,8 +45,8 @@ static int knot_tsig_check_algorithm(const knot_rrset_t *tsig_rr)
 		return KNOT_EMALF;
 	}
 
-	knot_tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
-	if (alg == 0) {
+	dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_dname(alg_name);
+	if (alg == DNSSEC_TSIG_UNKNOWN) {
 		/*!< \todo is this error OK? */
 		dbg_tsig("TSIG: unknown algorithm.\n");
 		return KNOT_TSIG_EBADSIG;
@@ -94,59 +97,30 @@ static int knot_tsig_compute_digest(const uint8_t *wire, size_t wire_len,
 		return KNOT_EMALF;
 	}
 
-	knot_tsig_algorithm_t tsig_alg = key->algorithm;
-	if (tsig_alg == 0) {
-		dbg_tsig("TSIG: digest: unknown algorithm\n");
-		return KNOT_TSIG_EBADSIG;
-	}
-
 	dbg_tsig_detail("TSIG: key size: %zu\n", key->secret.size);
 	dbg_tsig_detail("TSIG: key:\n");
 	dbg_tsig_hex_detail((char *)key->secret.data, key->secret.size);
 	dbg_tsig_detail("Wire for signing is %zu bytes long.\n", wire_len);
 
 	return KNOT_ERROR;
-#if 0
-	/* Compute digest. */
-	HMAC_CTX ctx;
 
-	switch (tsig_alg) {
-		case KNOT_TSIG_ALG_HMAC_MD5:
-			HMAC_Init(&ctx, key->secret.data,
-			          key->secret.size, EVP_md5());
-			break;
-		case KNOT_TSIG_ALG_HMAC_SHA1:
-			HMAC_Init(&ctx, key->secret.data,
-			          key->secret.size, EVP_sha1());
-			break;
-		case KNOT_TSIG_ALG_HMAC_SHA224:
-			HMAC_Init(&ctx, key->secret.data,
-			          key->secret.size, EVP_sha224());
-			break;
-		case KNOT_TSIG_ALG_HMAC_SHA256:
-			HMAC_Init(&ctx, key->secret.data,
-			          key->secret.size, EVP_sha256());
-			break;
-		case KNOT_TSIG_ALG_HMAC_SHA384:
-			HMAC_Init(&ctx, key->secret.data,
-			          key->secret.size, EVP_sha384());
-			break;
-		case KNOT_TSIG_ALG_HMAC_SHA512:
-			HMAC_Init(&ctx, key->secret.data,
-			          key->secret.size, EVP_sha512());
-			break;
-		default:
-			return KNOT_ENOTSUP;
-	} /* switch */
+	dnssec_tsig_ctx_t *ctx = NULL;
+	int result = dnssec_tsig_new(&ctx, key->algorithm, &key->secret);
+	if (result != DNSSEC_EOK) {
+		return KNOT_TSIG_EBADSIG;
+	}
 
-	unsigned tmp_dig_len = *digest_len;
-	HMAC_Update(&ctx, (const unsigned char *)wire, wire_len);
-	HMAC_Final(&ctx, digest, &tmp_dig_len);
-	*digest_len = tmp_dig_len;
+	dnssec_binary_t cover = { .const_data = wire, .size = wire_len };
+	dnssec_tsig_add(ctx, &cover);
 
-	HMAC_CTX_cleanup(&ctx);
+	size_t size = dnssec_tsig_size(ctx);
+	assert(size > 0 && size <= *digest_len);
+	*digest_len = size;
+
+	dnssec_tsig_write(ctx, digest);
+	dnssec_tsig_free(ctx);
+
 	return KNOT_EOK;
-#endif
 }
 
 static int knot_tsig_check_time_signed(const knot_rrset_t *tsig_rr,
@@ -461,8 +435,10 @@ int knot_tsig_sign(uint8_t *msg, size_t *msg_len,
 	uint16_t rdata_rcode = 0;
 	if (tsig_rcode == KNOT_RCODE_BADTIME)
 		rdata_rcode = tsig_rcode;
-	tsig_create_rdata(tmp_tsig, tsig_alg_to_dname(key->algorithm),
-	                  knot_tsig_digest_length(key->algorithm), rdata_rcode);
+
+	const uint8_t *alg_name = dnssec_tsig_algorithm_to_dname(key->algorithm);
+	size_t alg_size = dnssec_tsig_algorithm_size(key->algorithm);
+	tsig_create_rdata(tmp_tsig, alg_name, alg_size, rdata_rcode);
 
 	/* Distinguish BADTIME response. */
 	if (tsig_rcode == KNOT_RCODE_BADTIME) {
@@ -556,8 +532,9 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 	}
 
 	/* Create rdata for TSIG RR. */
-	tsig_create_rdata(tmp_tsig, tsig_alg_to_dname(key->algorithm),
-	                  knot_tsig_digest_length(key->algorithm), 0);
+	const uint8_t *alg_name = dnssec_tsig_algorithm_to_dname(key->algorithm);
+	size_t alg_size = dnssec_tsig_algorithm_size(key->algorithm);
+	tsig_create_rdata(tmp_tsig, alg_name, alg_size, 0);
 	tsig_rdata_store_current_time(tmp_tsig);
 	tsig_rdata_set_fudge(tmp_tsig, KNOT_TSIG_FUDGE_DEFAULT);
 
@@ -730,13 +707,13 @@ static int knot_tsig_check_digest(const knot_rrset_t *tsig_rr,
 
 	/*!< \todo move to function. */
 	const knot_dname_t *alg_name = tsig_rdata_alg_name(tsig_rr);
-	knot_tsig_algorithm_t alg = tsig_alg_from_name(alg_name);
+	dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_dname(alg_name);
 
 	/*! \todo [TSIG] TRUNCATION */
 	uint16_t mac_length = tsig_rdata_mac_length(tsig_rr);
 	const uint8_t *tsig_mac = tsig_rdata_mac(tsig_rr);
 
-	if (mac_length != knot_tsig_digest_length(alg)) {
+	if (mac_length != dnssec_tsig_algorithm_size(alg)) {
 		dbg_tsig("TSIG: calculated digest length and given length do "
 		         "not match!\n");
 		return KNOT_TSIG_EBADSIG;

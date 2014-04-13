@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <pwd.h>
 #include <grp.h>
+#include "dnssec/binary.h"
+#include "dnssec/tsig.h"
 #include "common/sockaddr.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
@@ -445,7 +447,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 		char *t;
 		long i;
 		size_t l;
-		knot_tsig_algorithm_t alg;
+		dnssec_tsig_algorithm_t alg;
 	} tok;
 }
 
@@ -641,7 +643,7 @@ keys:
    KEYS '{'
  | keys TEXT TSIG_ALGO_NAME TEXT ';' {
      /* Check algorithm length. */
-     if (knot_tsig_digest_length($3.alg) == 0) {
+     if (dnssec_tsig_algorithm_size($3.alg) == 0) {
         cf_error(scanner, "unsupported digest algorithm");
      }
 
@@ -676,7 +678,8 @@ keys:
              memset(k, 0, sizeof(conf_key_t));
              k->k.name = dname;
              k->k.algorithm = $3.alg;
-             if (knot_binary_from_base64($4.t, &(k->k.secret)) != 0) {
+             dnssec_binary_t secret64 = { .data = (uint8_t *)$4.t, .size = strlen($4.t) };
+             if (dnssec_binary_from_base64(&secret64, &(k->k.secret)) != 0) {
                  cf_error(scanner, "invalid key secret '%s'", $4.t);
                  knot_dname_free(&dname, NULL);
                  free(k);

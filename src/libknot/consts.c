@@ -47,38 +47,6 @@ knot_lookup_table_t knot_rcode_names[] = {
 	{ 0, NULL }
 };
 
-knot_lookup_table_t knot_tsig_alg_names[] = {
-	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5" },
-	{ KNOT_TSIG_ALG_HMAC_SHA1,   "hmac-sha1" },
-	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224" },
-	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256" },
-	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384" },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512" },
-	{ KNOT_TSIG_ALG_NULL, NULL }
-};
-
-knot_lookup_table_t knot_tsig_alg_dnames_str[] = {
-	{ KNOT_TSIG_ALG_GSS_TSIG,    "gss-tsig." },
-	{ KNOT_TSIG_ALG_HMAC_MD5,    "hmac-md5.sig-alg.reg.int." },
-	{ KNOT_TSIG_ALG_HMAC_SHA1,   "hmac-sha1." },
-	{ KNOT_TSIG_ALG_HMAC_SHA224, "hmac-sha224." },
-	{ KNOT_TSIG_ALG_HMAC_SHA256, "hmac-sha256." },
-	{ KNOT_TSIG_ALG_HMAC_SHA384, "hmac-sha384." },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "hmac-sha512." },
-	{ KNOT_TSIG_ALG_NULL, NULL }
-};
-
-knot_lookup_table_t knot_tsig_alg_dnames[] = {
-        { KNOT_TSIG_ALG_GSS_TSIG,    "\x08" "gss-tsig" },
-        { KNOT_TSIG_ALG_HMAC_MD5,    "\x08" "hmac-md5" "\x07" "sig-alg" "\x03" "reg" "\x03" "int" },
-	{ KNOT_TSIG_ALG_HMAC_SHA1,   "\x09" "hmac-sha1" },
-	{ KNOT_TSIG_ALG_HMAC_SHA224, "\x0B" "hmac-sha224" },
-	{ KNOT_TSIG_ALG_HMAC_SHA256, "\x0B" "hmac-sha256" },
-	{ KNOT_TSIG_ALG_HMAC_SHA384, "\x0B" "hmac-sha384" },
-	{ KNOT_TSIG_ALG_HMAC_SHA512, "\x0B" "hmac-sha512" },
-	{ KNOT_TSIG_ALG_NULL, NULL }
-};
-
 knot_lookup_table_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_RSAMD5,             "RSAMD5" },
 	{ KNOT_DNSSEC_ALG_DH,                 "DH" },
@@ -93,28 +61,6 @@ knot_lookup_table_t knot_dnssec_alg_names[] = {
 	{ KNOT_DNSSEC_ALG_ECDSAP384SHA384,    "ECDSAP384SHA384" },
 	{ 0, NULL }
 };
-
-size_t knot_tsig_digest_length(const uint8_t algorithm)
-{
-	switch (algorithm) {
-	case KNOT_TSIG_ALG_GSS_TSIG:
-		return KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG;
-	case KNOT_TSIG_ALG_HMAC_MD5:
-		return KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5;
-	case KNOT_TSIG_ALG_HMAC_SHA1:
-		return KNOT_TSIG_ALG_DIG_LENGTH_SHA1;
-	case KNOT_TSIG_ALG_HMAC_SHA224:
-		return KNOT_TSIG_ALG_DIG_LENGTH_SHA224;
-	case KNOT_TSIG_ALG_HMAC_SHA256:
-		return KNOT_TSIG_ALG_DIG_LENGTH_SHA256;
-	case KNOT_TSIG_ALG_HMAC_SHA384:
-		return KNOT_TSIG_ALG_DIG_LENGTH_SHA384;
-	case KNOT_TSIG_ALG_HMAC_SHA512:
-		return KNOT_TSIG_ALG_DIG_LENGTH_SHA512;
-	default:
-		return 0;
-	}
-}
 
 size_t knot_ds_digest_length(const uint8_t algorithm)
 {

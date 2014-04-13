@@ -309,13 +309,12 @@ static int tsig_parse_str(knot_tsig_key_t *key, const char *str)
 
 	/* Determine algorithm. */
 
-	int algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+	int algorithm = DNSSEC_TSIG_HMAC_MD5;
 	if (s) {
 		*s++ = '\0';               /* Last part separator */
-		knot_lookup_table_t *alg = NULL;
-		alg = knot_lookup_by_name(knot_tsig_alg_dnames_str, h);
-		if (alg) {
-			algorithm = alg->id;
+		dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_name(h);
+		if (alg != DNSSEC_TSIG_UNKNOWN) {
+			algorithm = alg;
 		} else {
 			free(h);
 			return KNOT_EINVAL;
@@ -362,15 +361,13 @@ static int tsig_parse_line(knot_tsig_key_t *k, char *l)
 	}
 
 	/* Lookup algorithm. */
-	knot_lookup_table_t *alg;
-	alg = knot_lookup_by_name(knot_tsig_alg_names, a);
-
-	if (!alg) {
+	dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_name(a);
+	if (alg == DNSSEC_TSIG_UNKNOWN) {
 		return KNOT_EMALF;
 	}
 
 	/* Create the key data. */
-	return knot_tsig_create_key(n, alg->id, s, k);
+	return knot_tsig_create_key(n, alg, s, k);
 }
 
 static int tsig_parse_file(knot_tsig_key_t *k, const char *f)

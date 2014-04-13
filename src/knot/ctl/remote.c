@@ -758,7 +758,7 @@ int remote_query_sign(uint8_t *wire, size_t *size, size_t maxlen,
 		return KNOT_EINVAL;
 	}
 
-	size_t dlen = knot_tsig_digest_length(key->algorithm);
+	size_t dlen = dnssec_tsig_algorithm_size(key->algorithm);
 	uint8_t *digest = malloc(dlen);
 	if (!digest) {
 		return KNOT_ENOMEM;

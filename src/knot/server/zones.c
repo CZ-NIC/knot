@@ -31,6 +31,7 @@
 #include "knot/zone/zone-dump.h"
 #include "libknot/dname.h"
 #include "dnssec/random.h"
+#include "dnssec/tsig.h"
 #include "libknot/rdata/soa.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-sign.h"
@@ -1723,8 +1724,8 @@ int zones_verify_tsig_query(const knot_pkt_t *query,
 	/*
 	 * 1) Check if we support the requested algorithm.
 	 */
-	knot_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
-	if (knot_tsig_digest_length(alg) == 0) {
+	dnssec_tsig_algorithm_t alg = tsig_rdata_alg(query->tsig_rr);
+	if (dnssec_tsig_algorithm_size(alg) == 0) {
 		log_answer_info("Unsupported digest algorithm "
 		                "requested, treating as bad key\n");
 		/*! \todo [TSIG] It is unclear from RFC if I
@@ -1758,7 +1759,7 @@ int zones_verify_tsig_query(const knot_pkt_t *query,
 	/* Prepare variables for TSIG */
 	/*! \todo These need to be saved to the response somehow. */
 	//size_t tsig_size = tsig_wire_maxsize(key);
-	size_t digest_max_size = knot_tsig_digest_length(key->algorithm);
+	size_t digest_max_size = dnssec_tsig_algorithm_size(key->algorithm);
 	//size_t digest_size = 0;
 	//uint64_t tsig_prev_time_signed = 0;
 	//uint8_t *digest = (uint8_t *)malloc(digest_max_size);

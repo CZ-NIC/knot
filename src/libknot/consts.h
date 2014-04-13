@@ -92,35 +92,6 @@ typedef enum {
 } knot_section_t;
 
 /*!
- * \brief TSIG algorithm numbers.
- *
- * These constants were taken from the Bind file key format (dnssec-keygen).
- */
-typedef enum {
-	KNOT_TSIG_ALG_NULL        =   0,
-	KNOT_TSIG_ALG_GSS_TSIG    = 128,
-	KNOT_TSIG_ALG_HMAC_MD5    = 157,
-	KNOT_TSIG_ALG_HMAC_SHA1   = 161,
-	KNOT_TSIG_ALG_HMAC_SHA224 = 162,
-	KNOT_TSIG_ALG_HMAC_SHA256 = 163,
-	KNOT_TSIG_ALG_HMAC_SHA384 = 164,
-	KNOT_TSIG_ALG_HMAC_SHA512 = 165
-} knot_tsig_algorithm_t;
-
-/*!
- * \brief Lengths of TSIG algorithm digests.
- */
-typedef enum {
-	KNOT_TSIG_ALG_DIG_LENGTH_GSS_TSIG =  0,
-	KNOT_TSIG_ALG_DIG_LENGTH_HMAC_MD5 = 16,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA1     = 20,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA224   = 28,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA256   = 32,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA384   = 48,
-	KNOT_TSIG_ALG_DIG_LENGTH_SHA512   = 64
-} knot_tsig_algorithm_digest_length_t;
-
-/*!
  * \brief DS digest lengths.
  */
 enum knot_ds_algorithm_len
@@ -183,33 +154,9 @@ extern knot_lookup_table_t knot_opcode_names[];
 extern knot_lookup_table_t knot_rcode_names[];
 
 /*!
- * \brief TSIG key algorithm names.
- */
-extern knot_lookup_table_t knot_tsig_alg_names[];
-
-/*!
- * \brief TSIG key algorithm names in a domain form.
- */
-extern knot_lookup_table_t knot_tsig_alg_dnames_str[];
-
-/*!
- * \brief TSIG key algorithm domain names.
- */
-extern knot_lookup_table_t knot_tsig_alg_dnames[];
-
-/*!
  * \brief DNSSEC algorithm names.
  */
 extern knot_lookup_table_t knot_dnssec_alg_names[];
-
-/*!
- * \brief Returns length of TSIG digest for given algorithm.
- *
- * \param algorithm Algorithm code to be used.
- *
- * \retval Digest length for given algorithm.
- */
-size_t knot_tsig_digest_length(const uint8_t algorithm);
 
 /*!
  * \brief Returns length of DS digest for given algorithm.

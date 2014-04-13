@@ -28,6 +28,8 @@
 
 #include <stdint.h>
 
+#include "dnssec/binary.h"
+#include "dnssec/tsig.h"
 #include "libknot/rrset.h"
 #include "libknot/binary.h"
 #include "libknot/util/utils.h"
@@ -35,8 +37,8 @@
 
 struct knot_tsig_key {
 	knot_dname_t *name;
-	knot_tsig_algorithm_t algorithm;
-	knot_binary_t secret;
+	dnssec_tsig_algorithm_t algorithm;
+	dnssec_binary_t secret;
 };
 
 typedef struct knot_tsig_key knot_tsig_key_t;
@@ -91,7 +93,7 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t length,
                               const uint8_t *other_data);
 
 const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig);
-knot_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig);
+dnssec_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig);
 uint64_t tsig_rdata_time_signed(const knot_rrset_t *tsig);
 uint16_t tsig_rdata_fudge(const knot_rrset_t *tsig);
 const uint8_t *tsig_rdata_mac(const knot_rrset_t *tsig);
@@ -103,28 +105,6 @@ uint16_t tsig_rdata_other_data_length(const knot_rrset_t *tsig);
 size_t tsig_rdata_tsig_variables_length(const knot_rrset_t *tsig);
 
 size_t tsig_rdata_tsig_timers_length();
-
-int tsig_alg_from_name(const knot_dname_t *name);
-
-/*!
- * \brief Convert TSIG algorithm identifier to name.
- *
- * \param alg TSIG algorithm identifier.
- *
- * \retval TSIG algorithm string name.
- * \retval Empty string if undefined.
- */
-const char* tsig_alg_to_str(knot_tsig_algorithm_t alg);
-
-/*!
- * \brief Convert TSIG algorithm identifier to domain name.
- *
- * \param alg TSIG algorithm identifier.
- *
- * \retval TSIG algorithm string name.
- * \retval Empty string if undefined.
- */
-const knot_dname_t* tsig_alg_to_dname(knot_tsig_algorithm_t alg);
 
 /*!
  * \brief Return TSIG RRSET maximum wire size for given algorithm.

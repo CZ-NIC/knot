@@ -20,6 +20,7 @@
 #include "common/errcode.h"
 #include "common/mempool.h"
 #include "common/descriptor.h"
+#include "dnssec/tsig.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rdata/tsig.h"
 
@@ -86,7 +87,7 @@ int main(int argc, char *argv[])
 	/* Secure packet. */
 	const char *tsig_secret = "abcd";
 	knot_tsig_key_t tsig_key;
-	tsig_key.algorithm = KNOT_TSIG_ALG_HMAC_MD5;
+	tsig_key.algorithm = DNSSEC_TSIG_HMAC_MD5;
 	tsig_key.name = dnames[0];
 	tsig_key.secret.data = (uint8_t *)strdup(tsig_secret);
 	tsig_key.secret.size = strlen(tsig_secret);

@@ -16,6 +16,7 @@
 #include "libknot/tsig-op.h"
 #include "common/descriptor.h"
 #include "common/debug.h"
+#include "dnssec/tsig.h"
 
 /* Forward decls. */
 static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb);
@@ -223,7 +224,7 @@ bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 	knot_pkt_t *query = qdata->query;
 	struct sockaddr_storage *query_source = qdata->param->query_source;
 	const knot_dname_t *key_name = NULL;
-	knot_tsig_algorithm_t key_alg = KNOT_TSIG_ALG_NULL;
+	dnssec_tsig_algorithm_t key_alg = DNSSEC_TSIG_UNKNOWN;
 
 	/* Skip if already checked and valid. */
 	if (qdata->sign.tsig_key != NULL) {
@@ -311,7 +312,7 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 
 		/* Sign query response. */
 		dbg_ns("%s: signing response using key %p\n", __func__, ctx->tsig_key);
-		size_t new_digest_len = knot_tsig_digest_length(ctx->tsig_key->algorithm);
+		size_t new_digest_len = dnssec_tsig_algorithm_size(ctx->tsig_key->algorithm);
 		if (ctx->pkt_count == 0) {
 			ret = knot_tsig_sign(pkt->wire, &pkt->size, pkt->max_size,
 			                     ctx->tsig_digest, ctx->tsig_digestlen,
