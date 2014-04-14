@@ -70,10 +70,12 @@ int main(void)
 	r = func->read(data, TEST_PEM_A.id, &bin);
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&TEST_PEM_A.data, &bin) == 0,
 	   "read A");
+	dnssec_binary_free(&bin);
 
 	r = func->read(data, TEST_PEM_B.id, &bin);
 	ok(r == DNSSEC_EOK && dnssec_binary_cmp(&TEST_PEM_B.data, &bin) == 0,
 	   "read B");
+	dnssec_binary_free(&bin);
 
 	// cleanup
 
