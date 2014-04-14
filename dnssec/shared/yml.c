@@ -89,8 +89,10 @@ void yml_node_deinit(yml_node_t *node)
 		return;
 	}
 
-	yaml_document_delete(node->document);
-	free(node->document);
+	if (node->document) {
+		yaml_document_delete(node->document);
+		free(node->document);
+	}
 
 	clear_struct(node);
 }
