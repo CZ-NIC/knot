@@ -701,7 +701,8 @@ static int check_nsec3_node_in_zone(zone_contents_t *zone,
 
 	/* Check that the node only contains NSEC3 and RRSIG. */
 	for (int i = 0; i < knot_node_rrset_count(nsec3_node); i++) {
-		uint16_t type = nsec3_node->rrs[i].type;
+		knot_rrset_t rrset = knot_node_rrset_at(nsec3_node, i);
+		uint16_t type = rrset.type;
 		if (!(type == KNOT_RRTYPE_NSEC3 ||
 		    type == KNOT_RRTYPE_RRSIG)) {
 			err_handler_handle_error(handler, nsec3_node,

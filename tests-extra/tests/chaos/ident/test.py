@@ -25,7 +25,7 @@ resp.check('"' + name + '"')
 
 # 2) FQDN hostname.
 resp = server2.dig("id.server", "TXT", "CH")
-resp.check(socket.getfqdn())
+resp.check(socket.gethostname())
 
 # 3) Explicitly disabled.
 resp = server3.dig("id.server", "TXT", "CH")

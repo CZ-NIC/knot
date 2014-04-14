@@ -94,7 +94,9 @@ class ZoneFile(object):
                 prepare_dir(self.key_dir)
                 params = ["-s", "-3", "y" if nsec3 else "n", "-k", self.key_dir] \
                          + params
-            zone_generate.main(params)
+            if zone_generate.main(params) != 0:
+                raise OSError
+            
         except OSError:
             raise Exception("Can't create zone file '%s'" % self.path)
 

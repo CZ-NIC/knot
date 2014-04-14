@@ -416,9 +416,8 @@ static int knot_zc_nsec3_parameters_match(const knot_rdataset_t *rrs,
 	return (knot_nsec3_algorithm(rrs, rdata_pos) == params->algorithm
 		&& knot_nsec3_iterations(rrs, rdata_pos) == params->iterations
 		&& knot_nsec3_salt_length(rrs, rdata_pos) == params->salt_length
-		&& strncmp((const char *)knot_nsec3_salt(rrs, rdata_pos),
-			   (const char *)params->salt, params->salt_length)
-		   == 0);
+		&& memcmp(knot_nsec3_salt(rrs, rdata_pos), params->salt,
+		          params->salt_length) == 0);
 }
 
 /*----------------------------------------------------------------------------*/

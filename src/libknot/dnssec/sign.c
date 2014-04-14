@@ -1082,7 +1082,7 @@ static int init_algorithm_data(const knot_key_params_t *params,
 	assert(params);
 	assert(data);
 
-	knot_dnssec_key_data_t result = { '\0' };
+	knot_dnssec_key_data_t result = { 0 };
 
 	result.functions = get_implementation(params->algorithm);
 	if (!result.functions) {
