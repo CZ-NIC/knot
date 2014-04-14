@@ -373,7 +373,10 @@ static bool node_empty(const knot_node_t *node, knot_dname_t *owner,
 		knot_rrset_init(&node_rr, node->owner, node_rrset.type, KNOT_CLASS_IN);
 		for (uint16_t j = 0; j < node_rrset.rrs.rr_count; ++j) {
 			knot_rdata_t *add_rr = knot_rdataset_at(&node_rrset.rrs, j);
-			knot_rdataset_add(&node_rr.rrs, add_rr, NULL);
+			int ret = knot_rdataset_add(&node_rr.rrs, add_rr, NULL);
+			if (ret != KNOT_EOK) {
+				return false;
+			}
 			if (!removed_rr(changeset, &node_rr)) {
 				// One of the RRs from node was not removed.
 				knot_rdataset_clear(&node_rr.rrs, NULL);
@@ -708,8 +711,12 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	                     rr->type == KNOT_RRTYPE_NS;
 	if (apex_ns) {
 		const knot_rdataset_t *ns_rrs = knot_node_rdataset(node, KNOT_RRTYPE_NS);
+		if (ns_rrs == NULL) {
+			// Zone without apex NS.
+			return KNOT_EOK;
+		}
 		if (*apex_ns_rem == ns_rrs->rr_count - 1) {
-			// Cannot remove last apex NS RR
+			// Cannot remove last apex NS RR.
 			return KNOT_EOK;
 		}
 	}

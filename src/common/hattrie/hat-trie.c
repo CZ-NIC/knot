@@ -230,10 +230,6 @@ static inline node_ptr hattrie_find(node_ptr *parent, const char **key, size_t *
     return hattrie_find_ns(&parent, &sp, 0, key, len);
 }
 
-static inline value_t hattrie_setval(value_t v) {
-    return v;
-}
-
 /* initialize root node */
 static void hattrie_initroot(hattrie_t *T)
 {
@@ -320,9 +316,6 @@ hattrie_t* hattrie_dup(const hattrie_t* T, value_t (*nval)(value_t))
     if (nval == NULL) {
         return N;
     }
-
-    /* assignment */
-    if (!nval) nval = hattrie_setval;
 
     /*! \todo could be probably implemented faster */
 
