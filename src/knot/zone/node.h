@@ -132,8 +132,7 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  */
 int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset, bool *ttl_err);
 
-const knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type);
-knot_rdataset_t *knot_node_get_rdataset(const knot_node_t *node, uint16_t type);
+knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns the RRSet of the given type from the node (non-const version).
@@ -149,120 +148,12 @@ knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type);
 void knot_node_remove_rrset(knot_node_t *node, uint16_t type);
 
 /*!
- * \brief Returns number of RRSets in the node.
- *
- * \param node Node to get the RRSet count from.
- *
- * \return Number of RRSets in \a node.
- */
-short knot_node_rrset_count(const knot_node_t *node);
-
-/*!
- * \brief Returns the parent of the node.
- *
- * \param node Node to get the parent of.
- *
- * \return Parent node of the given node or NULL if no parent has been set (e.g.
- *         node in a zone apex has no parent).
- */
-const knot_node_t *knot_node_parent(const knot_node_t *node);
-
-knot_node_t *knot_node_get_parent(const knot_node_t *node);
-
-/*!
  * \brief Sets the parent of the node.
  *
  * \param node Node to set the parent of.
  * \param parent Parent to set to the node.
  */
 void knot_node_set_parent(knot_node_t *node, knot_node_t *parent);
-
-unsigned int knot_node_children(const knot_node_t *node);
-
-/*!
- * \brief Returns the previous authoritative node or delegation point in
- *        canonical order or the first node in zone.
- *
- * \param node Node to get the previous node of.
- *
- * \return Previous authoritative node or delegation point in canonical order or
- *         the first node in zone if \a node is the last node in zone.
- * \retval NULL if previous node is not set.
- */
-const knot_node_t *knot_node_previous(const knot_node_t *node);
-
-/*!
- * \brief Returns the previous authoritative node or delegation point in
- *        canonical order or the first node in zone.
- *
- * \note This function is identical to knot_node_previous() except that it
- *       returns non-const node.
- *
- * \param node Node to get the previous node of.
- *
- * \return Previous authoritative node or delegation point in canonical order or
- *         the first node in zone if \a node is the last node in zone.
- * \retval NULL if previous node is not set.
- */
-knot_node_t *knot_node_get_previous(const knot_node_t *node);
-
-/*!
- * \brief Sets the previous node of the given node.
- *
- * \param node Node to set the previous node to.
- * \param prev Previous node to set.
- */
-void knot_node_set_previous(knot_node_t *node, knot_node_t *prev);
-
-/*!
- * \brief Returns the NSEC3 node corresponding to the given node.
- *
- * \param node Node to get the NSEC3 node for.
- *
- * \return NSEC3 node corresponding to \a node (i.e. node with owner name
- *         created by concatenating the hash of owner domain name of \a node
- *         and the name of the zone \a node belongs to).
- * \retval NULL if the NSEC3 node is not set.
- */
-knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node);
-
-/*!
- * \brief Returns the NSEC3 node corresponding to the given node.
- *
- * \param node Node to get the NSEC3 node for.
- *
- * \return NSEC3 node corresponding to \a node (i.e. node with owner name
- *         created by concatenating the hash of owner domain name of \a node
- *         and the name of the zone \a node belongs to).
- * \retval NULL if the NSEC3 node is not set.
- */
-const knot_node_t *knot_node_nsec3_node(const knot_node_t *node);
-
-/*!
- * \brief Sets the corresponding NSEC3 node of the given node.
- *
- * \param node Node to set the NSEC3 node to.
- * \param nsec3_node NSEC3 node to set.
- */
-void knot_node_set_nsec3_node(knot_node_t *node, knot_node_t *nsec3_node);
-
-/*!
- * \brief Returns the owner of the node.
- *
- * \param node Node to get the owner of.
- *
- * \return Owner of the given node.
- */
-const knot_dname_t *knot_node_owner(const knot_node_t *node);
-
-/*!
- * \brief Returns the owner of the node as a non-const reference.
- *
- * \param node Node to get the owner of.
- *
- * \return Owner of the given node.
- */
-knot_dname_t *knot_node_get_owner(const knot_node_t *node);
 
 /*!
  * \brief Sets the wildcard child flag of the node.

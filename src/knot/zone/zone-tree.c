@@ -141,7 +141,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	if (fval) *found = (knot_node_t *)(*fval);
 	int exact_match = 0;
 	if (ret == 0) {
-		*previous = knot_node_get_previous(*found);
+		*previous = (*found)->prev;
 		exact_match = 1;
 	} else if (ret < 0) {
 		*previous = *found;
@@ -154,14 +154,14 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 		/*! \todo We could store rightmost node in zonetree probably. */
 		hattrie_iter_t *i = hattrie_iter_begin(tree, 1);
 		*previous = *(knot_node_t **)hattrie_iter_val(i); /* leftmost */
-		*previous = knot_node_get_previous(*previous); /* rightmost */
+		*previous = (*previous)->prev; /* rightmost */
 		*found = NULL;
 		hattrie_iter_free(i);
 	}
 
 	/* Previous node for proof must be non-empty and authoritative. */
-	if (knot_node_rrset_count(*previous) == 0 || knot_node_is_non_auth(*previous)) {
-		*previous = knot_node_get_previous(*previous);
+	if ((*previous)->rrset_count == 0 || knot_node_is_non_auth(*previous)) {
+		*previous = (*previous)->prev;
 	}
 
 dbg_zone_exec_detail(

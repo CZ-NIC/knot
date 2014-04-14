@@ -169,7 +169,7 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
                                    knot_changeset_t *changeset)
 {
 	/* Add all rrsets from node. */
-	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
+	for (uint i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		int ret = knot_zone_diff_changeset_add_rrset(changeset,
 		                                             &rrset);
@@ -187,7 +187,7 @@ static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
                                                 const knot_node_t *node)
 {
 	/* Remove all the RRSets of the node. */
-	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
+	for (uint i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 		int ret = knot_zone_diff_changeset_remove_rrset(changeset,
 		                                                &rrset);
@@ -352,7 +352,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 	 * node, if not, the whole node has been removed.
 	 */
 	const knot_node_t *node_in_second_tree = NULL;
-	const knot_dname_t *node_owner = knot_node_owner(node);
+	const knot_dname_t *node_owner = node->owner;
 	assert(node_owner);
 
 	knot_zone_tree_find(param->nodes, node_owner, &node_in_second_tree);
@@ -390,7 +390,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 		return ret;
 	}
 
-	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
+	for (uint i = 0; i < node->rrset_count; i++) {
 		/* Search for the RRSet in the node from the second tree. */
 		knot_rrset_t rrset = knot_node_rrset_at(node, i);
 
@@ -423,7 +423,7 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 		}
 	}
 
-	for (uint i = 0; i < knot_node_rrset_count(node_in_second_tree); i++) {
+	for (uint i = 0; i < node_in_second_tree->rrset_count; i++) {
 		/* Search for the RRSet in the node from the second tree. */
 		knot_rrset_t rrset = knot_node_rrset_at(node_in_second_tree, i);
 
@@ -474,7 +474,7 @@ static int knot_zone_diff_add_new_nodes(knot_node_t **node_ptr, void *data)
 	* already handled.
 	*/
 
-	const knot_dname_t *node_owner = knot_node_owner(node);
+	const knot_dname_t *node_owner = node->owner;
 	/*
 	 * Node should definitely have an owner, otherwise it would not be in
 	 * the tree.

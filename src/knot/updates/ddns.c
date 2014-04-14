@@ -164,7 +164,7 @@ static int check_in_use(const knot_zone_contents_t *zone,
 	if (node == NULL) {
 		*rcode = KNOT_RCODE_NXDOMAIN;
 		return KNOT_EPREREQ;
-	} else if (knot_node_rrset_count(node) == 0) {
+	} else if (node->rrset_count == 0) {
 		*rcode = KNOT_RCODE_NXDOMAIN;
 		return KNOT_EPREREQ;
 	}
@@ -183,7 +183,7 @@ static int check_not_in_use(const knot_zone_contents_t *zone,
 	const knot_node_t *node = knot_zone_contents_find_node(zone, dname);
 	if (node == NULL) {
 		return KNOT_EOK;
-	} else if (knot_node_rrset_count(node) == 0) {
+	} else if (node->rrset_count == 0) {
 		return KNOT_EOK;
 	}
 

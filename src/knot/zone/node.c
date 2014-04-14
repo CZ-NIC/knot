@@ -169,12 +169,7 @@ int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset,  bool *ttl
 
 /*----------------------------------------------------------------------------*/
 
-const knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type)
-{
-	return (const knot_rdataset_t *)knot_node_get_rdataset(node, type);
-}
-
-knot_rdataset_t *knot_node_get_rdataset(const knot_node_t *node, uint16_t type)
+knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return NULL;
@@ -228,39 +223,6 @@ void knot_node_remove_rrset(knot_node_t *node, uint16_t type)
 
 /*----------------------------------------------------------------------------*/
 
-short knot_node_rrset_count(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return node->rrset_count;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_node_t *knot_node_parent(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return knot_node_get_parent(node);
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_node_get_parent(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->parent;
-}
-
-/*----------------------------------------------------------------------------*/
-
 void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 {
 	if (node == NULL || node->parent == parent) {
@@ -278,101 +240,6 @@ void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 	if (parent != NULL) {
 		++parent->children;
 	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-unsigned int knot_node_children(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return node->children;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_node_t *knot_node_previous(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return knot_node_get_previous(node);
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_node_get_previous(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->prev;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_previous(knot_node_t *node, knot_node_t *prev)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	node->prev = prev;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->nsec3_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_node_t *knot_node_nsec3_node(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return knot_node_get_nsec3_node(node);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_nsec3_node(knot_node_t *node, knot_node_t *nsec3_node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	node->nsec3_node = nsec3_node;
-}
-
-/*----------------------------------------------------------------------------*/
-
-const knot_dname_t *knot_node_owner(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	return node->owner;
-}
-
-/*----------------------------------------------------------------------------*/
-
-knot_dname_t *knot_node_get_owner(const knot_node_t *node)
-{
-	return node->owner;
 }
 
 /*----------------------------------------------------------------------------*/

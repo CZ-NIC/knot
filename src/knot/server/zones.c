@@ -1152,7 +1152,7 @@ int zones_save_zone(const knot_ns_xfr_t *xfr)
 	/* Check if the new zone apex dname matches zone name. */
 	knot_dname_t *cur_name = knot_dname_from_str(xfr->zone->conf->name);
 	const knot_dname_t *new_name = NULL;
-	new_name = knot_node_owner(knot_zone_contents_apex(new_zone));
+	new_name = knot_zone_contents_apex(new_zone)->owner;
 	int r = knot_dname_cmp(cur_name, new_name);
 	knot_dname_free(&cur_name, NULL);
 	if (r != 0) {

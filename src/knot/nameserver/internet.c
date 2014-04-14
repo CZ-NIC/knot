@@ -192,7 +192,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 			knot_wire_set_tc(pkt->wire);
 			return KNOT_ESPACE;
 		}
-		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
+		for (unsigned i = 0; i < qdata->node->rrset_count; ++i) {
 			rrset = knot_node_rrset_at(qdata->node, i);
 			ret = ns_put_rr(pkt, &rrset, NULL, compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
@@ -286,7 +286,7 @@ static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* Find closest delegation point. */
 	while (!knot_node_is_deleg_point(qdata->node)) {
-		qdata->node = knot_node_parent(qdata->node);
+		qdata->node = qdata->node->parent;
 	}
 
 	/* Insert NS record. */

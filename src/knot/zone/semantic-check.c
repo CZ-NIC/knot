@@ -177,7 +177,7 @@ static void log_error_from_node(err_handler_t *handler,
 
 	handler->error_count++;
 
-	char *name = knot_dname_to_str(knot_node_owner(node));
+	char *name = knot_dname_to_str(node->owner);
 	const char *errmsg = error_messages[-error];
 
 	log_zone_warning("Semantic warning in node: %s: %s%s%s\n",
@@ -585,7 +585,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
                                     knot_node_t *node, err_handler_t *handler)
 {
 	assert(handler);
-	const knot_node_t *nsec3_node = knot_node_nsec3_node(node);
+	const knot_node_t *nsec3_node = node->nsec3_node;
 
 	if (nsec3_node == NULL) {
 		/* I know it's probably not what RFCs say, but it will have to
@@ -602,7 +602,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 			const knot_node_t *nsec3_node;
 
 			if (knot_zone_contents_find_nsec3_for_name(zone,
-						knot_node_owner(node),
+						node->owner,
 						&nsec3_node,
 						&nsec3_previous) != 0) {
 				err_handler_handle_error(handler, node,
@@ -700,7 +700,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	}
 
 	/* Check that the node only contains NSEC3 and RRSIG. */
-	for (int i = 0; i < knot_node_rrset_count(nsec3_node); i++) {
+	for (int i = 0; i < nsec3_node->rrset_count; i++) {
 		knot_rrset_t rrset = knot_node_rrset_at(nsec3_node, i);
 		uint16_t type = rrset.type;
 		if (!(type == KNOT_RRTYPE_NSEC3 ||
@@ -721,11 +721,11 @@ static int sem_check_node_mandatory(const knot_node_t *node,
 {
 	const knot_rdataset_t *cname_rrs = knot_node_rdataset(node, KNOT_RRTYPE_CNAME);
 	if (cname_rrs) {
-		if (knot_node_rrset_count(node) != 1) {
+		if (node->rrset_count != 1) {
 			/* With DNSSEC node can contain RRSIGs or NSEC */
 			if (!(knot_node_rrtype_exists(node, KNOT_RRTYPE_NSEC) ||
 			      knot_node_rrtype_exists(node, KNOT_RRTYPE_RRSIG)) ||
-			    knot_node_rrset_count(node) > 3) {
+			    node->rrset_count > 3) {
 				*fatal_error = true;
 				err_handler_handle_error(handler, node,
 				ZC_ERR_CNAME_EXTRA_RECORDS_DNSSEC, NULL);
@@ -789,7 +789,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 			knot_zone_contents_find_node(zone, ns_dname);
 
 		if (knot_dname_is_sub(ns_dname,
-			      knot_node_owner(knot_zone_contents_apex(zone)))) {
+			      knot_zone_contents_apex(zone)->owner)) {
 			if (glue_node == NULL) {
 				/* Try wildcard ([1]* + suffix). */
 				knot_dname_t wildcard[KNOT_DNAME_MAXLEN];
@@ -878,7 +878,7 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 	assert(node);
 	bool auth = !knot_node_is_non_auth(node);
 	bool deleg = knot_node_is_deleg_point(node);
-	short rrset_count = knot_node_rrset_count(node);
+	short rrset_count = node->rrset_count;
 	knot_rrset_t dnskey_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_DNSKEY);
 
 	int ret = KNOT_EOK;
@@ -1122,7 +1122,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			assert(next_dname);
 
 			const knot_dname_t *apex_dname =
-				knot_node_owner(knot_zone_contents_apex(zone));
+				knot_zone_contents_apex(zone)->owner;
 			assert(apex_dname);
 
 			if (knot_dname_cmp(next_dname, apex_dname) !=0) {

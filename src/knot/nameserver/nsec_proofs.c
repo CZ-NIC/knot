@@ -174,10 +174,10 @@ dbg_ns_exec_detail(
 	 */
 	const knot_node_t *nsec3_node = NULL;
 	const knot_dname_t *next_closer = NULL;
-	while ((nsec3_node = knot_node_nsec3_node((*closest_encloser)))
+	while ((nsec3_node = (*closest_encloser)->nsec3_node)
 	       == NULL) {
-		next_closer = knot_node_owner((*closest_encloser));
-		*closest_encloser = knot_node_parent(*closest_encloser);
+		next_closer = (*closest_encloser)->owner;
+		*closest_encloser = (*closest_encloser)->parent;
 		if (*closest_encloser == NULL) {
 			// there are no NSEC3s to add
 			return KNOT_EOK;
@@ -212,8 +212,8 @@ dbg_ns_exec_verb(
 	 */
 	if (next_closer == NULL) {
 		// create the "next closer" name by appending from qname
-		knot_dname_t *new_next_closer = ns_next_closer(
-			knot_node_owner(*closest_encloser), qname);
+		knot_dname_t *new_next_closer = ns_next_closer((*closest_encloser)->owner,
+							       qname);
 
 		if (new_next_closer == NULL) {
 			return KNOT_ERROR; /*servfail */
@@ -292,7 +292,7 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 		 * knot_zone_contents_adjust_node_in_tree_ptr()
 		 */
 		while (!knot_node_is_auth(previous)) {
-			previous = knot_node_previous(previous);
+			previous = previous->prev;
 		}
 	}
 
@@ -432,8 +432,8 @@ static int ns_put_nsec_nsec3_wildcard_answer(const knot_node_t *node,
 	// if wildcard answer, add NSEC / NSEC3
 
 	int ret = KNOT_EOK;
-	if (knot_dname_is_wildcard(knot_node_owner(node))
-	    && !knot_dname_is_equal(qname, knot_node_owner(node))) {
+	if (knot_dname_is_wildcard(node->owner)
+	    && !knot_dname_is_equal(qname, node->owner)) {
 		dbg_ns_verb("Adding NSEC/NSEC3 for wildcard answer.\n");
 		if (knot_is_nsec3_enabled(zone)) {
 			ret = ns_put_nsec3_wildcard(zone, closest_encloser,
@@ -486,7 +486,7 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 		 * knot_zone_contents_adjust_node_in_tree_ptr()
 		 */
 		while (!knot_node_is_auth(previous)) {
-			previous = knot_node_previous(previous);
+			previous = previous->prev;
 		}
 	}
 
@@ -526,18 +526,16 @@ dbg_ns_exec_verb(
 
 	const knot_node_t *prev_new = previous;
 
-	while (knot_dname_cmp(knot_node_owner(prev_new),
-				    wildcard) > 0) {
+	while (knot_dname_cmp(prev_new->owner, wildcard) > 0) {
 dbg_ns_exec_verb(
 		char *name = knot_dname_to_str(knot_node_owner(prev_new));
 		dbg_ns_verb("Previous node: %s\n", name);
 		free(name);
 );
 		assert(prev_new != knot_zone_contents_apex(zone));
-		prev_new = knot_node_previous(prev_new);
+		prev_new = prev_new->prev;
 	}
-	assert(knot_dname_cmp(knot_node_owner(prev_new),
-	                            wildcard) < 0);
+	assert(knot_dname_cmp(prev_new->owner, wildcard) < 0);
 
 dbg_ns_exec_verb(
 	char *name = knot_dname_to_str(knot_node_owner(prev_new));
@@ -665,7 +663,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
                                     knot_pkt_t *resp)
 {
 	// This case must be handled first, before handling the wildcard case
-	if (knot_node_rrset_count(node) == 0 && !knot_is_nsec3_enabled(zone)) {
+	if (node->rrset_count == 0 && !knot_is_nsec3_enabled(zone)) {
 		// node is an empty non-terminal => NSEC for NXDOMAIN
 		return ns_put_nsec_nxdomain(qname, zone, previous,
 		                            closest_encloser, qdata, resp);
@@ -687,7 +685,7 @@ static int ns_put_nsec_nsec3_nodata(const knot_node_t *node,
 
 		/* RFC5155 7.2.3-7.2.5 common proof. */
 		dbg_ns("%s: adding NSEC3 NODATA\n", __func__);
-		const knot_node_t *nsec3_node = knot_node_nsec3_node(node);
+		const knot_node_t *nsec3_node = node->nsec3_node;
 		if (nsec3_node) {
 			ret = ns_put_nsec3_from_node(nsec3_node, qdata, resp);
 		} else {
@@ -722,7 +720,7 @@ int nsec_prove_wildcards(knot_pkt_t *pkt, struct query_data *qdata)
 	WALK_LIST(item, qdata->wildcards) {
 		ret = ns_put_nsec_nsec3_wildcard_answer(
 					item->node,
-					knot_node_parent(item->node),
+					item->node->parent,
 					NULL, qdata->zone->contents,
 					item->sname, qdata,
 					pkt);

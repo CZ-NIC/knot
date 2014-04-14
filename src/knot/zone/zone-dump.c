@@ -152,7 +152,7 @@ int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *fr
 	params.buf = buf;
 	params.buflen = DUMP_BUF_LEN;
 	params.rr_count = 0;
-	params.origin = knot_node_owner(apex);
+	params.origin = apex->owner;
 	params.style = &KNOT_DUMP_STYLE_DEFAULT;
 
 	int ret;

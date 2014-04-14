@@ -175,8 +175,8 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 		// newly allocated NSEC3 nodes
-		knot_rdataset_t *nsec3 = knot_node_get_rdataset(node, KNOT_RRTYPE_NSEC3);
-		knot_rdataset_t *rrsig = knot_node_get_rdataset(node, KNOT_RRTYPE_RRSIG);
+		knot_rdataset_t *nsec3 = knot_node_rdataset(node, KNOT_RRTYPE_NSEC3);
+		knot_rdataset_t *rrsig = knot_node_rdataset(node, KNOT_RRTYPE_RRSIG);
 		knot_rdataset_clear(nsec3, NULL);
 		knot_rdataset_clear(rrsig, NULL);
 		knot_node_free(&node);
@@ -367,7 +367,7 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b,
 
 	assert(a->rrset_count == 1);
 
-	knot_rdataset_t *a_rrs = knot_node_get_rdataset(a, KNOT_RRTYPE_NSEC3);
+	knot_rdataset_t *a_rrs = knot_node_rdataset(a, KNOT_RRTYPE_NSEC3);
 	assert(a_rrs);
 	uint8_t algorithm = knot_nsec3_algorithm(a_rrs, 0);
 	if (algorithm == 0) {
@@ -480,7 +480,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
  */
 static bool nsec3_is_empty(knot_node_t *node)
 {
-	if (knot_node_children(node) > 0) {
+	if (node->children > 0) {
 		return false;
 	}
 
