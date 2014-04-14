@@ -436,18 +436,6 @@ static inline uint32_t ixfrdb_key_to(uint64_t k)
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief Compare function to match entries with target serial. */
-static inline int ixfrdb_key_to_cmp(uint64_t k, uint64_t to)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Most significant 32 bits.
-	 */
-	return ((uint64_t)ixfrdb_key_to(k)) - to;
-}
-
-/*----------------------------------------------------------------------------*/
-
 /*! \brief Compare function to match entries with starting serial. */
 static inline int ixfrdb_key_from_cmp(uint64_t k, uint64_t from)
 {
