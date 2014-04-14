@@ -1,5 +1,10 @@
 Knot DNS NEWS
 
+v1.4.5 - Apr 14, 2014
+---------------------
+Bugfixes:
+	* Fix possible weakness in TSIG signature checking
+
 v1.4.4 - Mar 24, 2014
 ---------------------
 Features:
