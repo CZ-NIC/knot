@@ -310,7 +310,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	const knot_node_t *node = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
-	uint16_t rr_rdata_count = knot_rrset_rr_count(rr);
+	uint16_t rr_rdata_count = rr->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_rdata_count; i++) {
 		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
 		node = rr->additional[i];
@@ -693,7 +693,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
               const knot_rrset_t *rrsigs, uint16_t compr_hint,
               uint32_t flags, struct query_data *qdata)
 {
-	if (knot_rrset_rr_count(rr) < 1) {
+	if (rr->rrs.rr_count < 1) {
 		dbg_ns("%s: refusing to put empty RR of type %u\n", __func__, rr->type);
 		return KNOT_EMALF;
 	}

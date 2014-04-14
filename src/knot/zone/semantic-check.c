@@ -332,7 +332,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	/* check original TTL */
 	uint32_t original_ttl = knot_rrsig_original_ttl(rrsig, rr_pos);
 
-	uint16_t rr_count = knot_rrset_rr_count(rrset);
+	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; ++i) {
 		if (original_ttl != knot_rrset_rr_ttl(rrset, i)) {
 			err_handler_handle_error(handler, node,
@@ -373,7 +373,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 	int match = 0;
 	uint8_t rrsig_alg = knot_rrsig_algorithm(rrsig, rr_pos);
 	uint16_t key_tag_rrsig = knot_rrsig_key_tag(rrsig, rr_pos);
-	for (uint16_t i = 0; i < knot_rrset_rr_count(dnskey_rrset) &&
+	for (uint16_t i = 0; i < dnskey_rrset->rrs.rr_count &&
 	     !match; ++i) {
 		uint8_t dnskey_alg =
 			knot_dnskey_alg(&dnskey_rrset->rrs, i);

@@ -36,7 +36,7 @@
 static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
                                                size_t pos)
 {
-	if (rrset == NULL || pos >= knot_rrset_rr_count(rrset)) {
+	if (rrset == NULL || pos >= rrset->rrs.rr_count) {
 		return 0;
 	}
 
@@ -277,7 +277,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	assert(*pos != NULL);
 
 	// No RDATA, just save header and 0 RDLENGTH.
-	if (knot_rrset_rr_count(rrset) == 0) {
+	if (rrset->rrs.rr_count == 0) {
 		size_t header_size = 0;
 		int ret = knot_rrset_header_to_wire(rrset, 0, pos, max_size, comp,
 		                                    &header_size);
@@ -294,7 +294,7 @@ static int knot_rrset_to_wire_aux(const knot_rrset_t *rrset, uint8_t **pos,
 	}
 
 	// Save rrset records.
-	for (uint16_t i = 0; i < knot_rrset_rr_count(rrset); ++i) {
+	for (uint16_t i = 0; i < rrset->rrs.rr_count; ++i) {
 		dbg_rrset_detail("rrset: to_wire: Current max_size=%zu\n",
 			         max_size);
 		size_t knot_rr_size = 0;
@@ -454,15 +454,6 @@ void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl)
 	}
 }
 
-uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset)
-{
-	if (rrset == NULL) {
-		return 0;
-	}
-
-	return rrset->rrs.rr_count;
-}
-
 int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
                        size_t max_size, uint16_t *rr_count, knot_compr_t *compr)
 {
@@ -488,7 +479,7 @@ int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire, size_t *size,
 	dbg_rrset_detail("Size after: %zu\n", *size);
 
 	// If the rrset is empty set record counter to 1.
-	*rr_count = knot_rrset_rr_count(rrset) > 0 ? knot_rrset_rr_count(rrset) : 1;
+	*rr_count = rrset->rrs.rr_count > 0 ? rrset->rrs.rr_count : 1;
 
 	return KNOT_EOK;
 }
@@ -632,7 +623,11 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 
 bool knot_rrset_empty(const knot_rrset_t *rrset)
 {
-	uint16_t rr_count = knot_rrset_rr_count(rrset);
-	return rr_count == 0;
+	if (rrset) {
+		uint16_t rr_count = rrset->rrs.rr_count;
+		return rr_count == 0;
+	} else {
+		return true;
+	}
 }
 

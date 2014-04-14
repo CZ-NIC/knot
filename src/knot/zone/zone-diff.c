@@ -55,8 +55,8 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-	if (knot_rrset_rr_count(&soa_rrset1) == 0 ||
-	    knot_rrset_rr_count(&soa_rrset2) == 0) {
+	if (soa_rrset1.rrs.rr_count == 0 ||
+	    soa_rrset2.rrs.rr_count == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -103,7 +103,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 		return KNOT_EINVAL;
 	}
 
-	if (knot_rrset_rr_count(rrset) == 0) {
+	if (rrset->rrs.rr_count == 0) {
 		dbg_zonediff_detail("zone_diff: Nothing to add.\n");
 		return KNOT_EOK;
 	}
@@ -140,7 +140,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 		return KNOT_EOK;
 	}
 
-	if (knot_rrset_rr_count(rrset) == 0) {
+	if (rrset->rrs.rr_count == 0) {
 		/* RDATA are the same, however*/
 		dbg_zonediff_detail("zone_diff: Nothing to remove.\n");
 		return KNOT_EOK;
@@ -241,7 +241,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 		get_rdata_descriptor(rrset1->type);
 	assert(desc);
 
-	uint16_t rr1_count = knot_rrset_rr_count(rrset1);
+	uint16_t rr1_count = rrset1->rrs.rr_count;
 	for (uint16_t i = 0; i < rr1_count; ++i) {
 		if (!rr_exists(rrset2, rrset1, i)) {
 			/*

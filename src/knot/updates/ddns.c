@@ -194,7 +194,7 @@ static int check_not_in_use(const knot_zone_contents_t *zone,
 /*!< \brief Returns true if rrset has 0 data or RDATA of size 0 (we need TTL). */
 static bool rrset_empty(const knot_rrset_t *rrset)
 {
-	uint16_t rr_count = knot_rrset_rr_count(rrset);
+	uint16_t rr_count = rrset->rrs.rr_count;
 	if (rr_count == 0) {
 		return true;
 	}

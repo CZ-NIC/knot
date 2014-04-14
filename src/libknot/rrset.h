@@ -167,15 +167,6 @@ uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
  */
 void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
 
-/*!
- * \brief Returns count of RRs in RRSet.
- *
- * \param rrset  RRSet.
- *
- * \return RR count.
- */
-uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset);
-
 /* ---------- Wire conversions (legacy, to be done in knot_pkt_t) ----------- */
 
 /*!

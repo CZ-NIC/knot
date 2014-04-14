@@ -78,7 +78,7 @@ static bool valid_signature_exists(const knot_rrset_t *covered,
 		return false;
 	}
 
-	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	uint16_t rrsigs_rdata_count = rrsigs->rrs.rr_count;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; i++) {
 		uint16_t keytag = knot_rrsig_key_tag(&rrsigs->rrs, i);
 		uint16_t type_covered = knot_rrsig_type_covered(&rrsigs->rrs, i);
@@ -238,7 +238,7 @@ static int remove_expired_rrsigs(const knot_rrset_t *covered,
 		return KNOT_EOK;
 	}
 
-	uint16_t rrsig_rdata_count = knot_rrset_rr_count(&synth_rrsig);
+	uint16_t rrsig_rdata_count = synth_rrsig.rrs.rr_count;
 	for (uint16_t i = 0; i < rrsig_rdata_count; i++) {
 		const knot_zone_key_t *key;
 		key = get_matching_zone_key(&synth_rrsig, i, zone_keys);
@@ -459,7 +459,7 @@ static int remove_standalone_rrsigs(const knot_node_t *node,
 		return KNOT_EOK;
 	}
 
-	uint16_t rrsigs_rdata_count = knot_rrset_rr_count(rrsigs);
+	uint16_t rrsigs_rdata_count = rrsigs->rrs.rr_count;
 	for (uint16_t i = 0; i < rrsigs_rdata_count; ++i) {
 		uint16_t type_covered = knot_rrsig_type_covered(&rrsigs->rrs, i);
 		if (!knot_node_rrtype_exists(node, type_covered)) {
@@ -696,7 +696,7 @@ static bool dnskey_exists_in_zone(const knot_rrset_t *dnskeys,
 	assert(!knot_rrset_empty(dnskeys));
 	assert(key);
 
-	uint16_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
 	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
 		uint16_t rdata_size = knot_rrset_rr_size(dnskeys, i);
@@ -757,7 +757,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 		goto done;
 	}
 
-	uint16_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
 	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
 		uint16_t rdata_size = knot_rrset_rr_size(dnskeys, i);
@@ -921,7 +921,7 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	}
 
 	// add unknown keys from zone
-	uint16_t dnskeys_rdata_count = knot_rrset_rr_count(dnskeys);
+	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
 	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
 		uint8_t *rdata = knot_rrset_rr_rdata(dnskeys, i);
 		uint16_t rdata_size = knot_rrset_rr_size(dnskeys, i);
