@@ -52,7 +52,6 @@ void dnssec_key_free(dnssec_key_t *key);
 /*!
  * Get the key tag of the DNSKEY.
  */
-
 uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);
 const char *dnssec_key_get_id(const dnssec_key_t *key);
 
@@ -68,11 +67,13 @@ int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol);
 uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key);
 int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm);
 
+// returns reference, no copy
 int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey);
 int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey);
 
 unsigned dnssec_key_get_size(const dnssec_key_t *key);
 
+// returns reference, no copy
 int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata);
 int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata);
 

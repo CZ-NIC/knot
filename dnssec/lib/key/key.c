@@ -58,11 +58,14 @@ int dnssec_key_new(dnssec_key_t **key_ptr)
 }
 
 /*!
- * Clear public and private keys used by crypto backend.
+ * Clear allocated fields inside the key structure, except RDATA.
  */
-static void free_keys(dnssec_key_t *key)
+static void key_free_internals(dnssec_key_t *key)
 {
 	assert(key);
+
+	free(key->dname);
+	key->dname = NULL;
 
 	gnutls_privkey_deinit(key->private_key);
 	key->private_key = NULL;
@@ -82,7 +85,7 @@ void dnssec_key_clear(dnssec_key_t *key)
 	dnssec_binary_t rdata = key->rdata;
 
 	// clear the structure
-	free_keys(key);
+	key_free_internals(key);
 	clear_struct(key);
 
 	// restore template RDATA (downsize, no need to realloc)
@@ -100,7 +103,7 @@ void dnssec_key_free(dnssec_key_t *key)
 		return;
 	}
 
-	free_keys(key);
+	key_free_internals(key);
 	dnssec_binary_free(&key->rdata);
 
 	free(key);
