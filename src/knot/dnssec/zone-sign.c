@@ -569,13 +569,13 @@ static int sign_node(knot_node_t **node, void *data)
 		return KNOT_EOK;
 	}
 
-	if (knot_node_is_non_auth(*node)) {
+	if ((*node)->flags & KNOT_NODE_FLAGS_NONAUTH) {
 		return KNOT_EOK;
 	}
 
 	int result = sign_node_rrsets(*node, args->zone_keys, args->policy,
 	                              args->changeset, &args->expires_at);
-	knot_node_clear_removed_nsec(*node);
+	(*node)->flags &= ~KNOT_NODE_FLAGS_REMOVED_NSEC;
 
 	return result;
 }
@@ -1478,7 +1478,7 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	}
 
 	// SOA and DNSKEYs are handled separately in the zone apex
-	if (knot_node_is_apex(node)) {
+	if (node->flags & KNOT_NODE_FLAGS_APEX) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			return KNOT_EOK;
 		}
@@ -1489,7 +1489,7 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	}
 
 	// At delegation points we only want to sign NSECs and DSs
-	if (knot_node_is_deleg_point(node)) {
+	if ((node->flags & KNOT_NODE_FLAGS_DELEG)) {
 		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
 		    rrset->type == KNOT_RRTYPE_DS)) {
 			return KNOT_EOK;
@@ -1497,7 +1497,7 @@ int knot_zone_sign_rr_should_be_signed(const knot_node_t *node,
 	}
 
 	// These RRs have their signatures stored in changeset already
-	if (knot_node_is_removed_nsec(node)
+	if (node->flags & KNOT_NODE_FLAGS_REMOVED_NSEC
 	    && ((rrset->type == KNOT_RRTYPE_NSEC)
 	         || (rrset->type == KNOT_RRTYPE_NSEC3))) {
 		return KNOT_EOK;

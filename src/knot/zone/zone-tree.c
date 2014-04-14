@@ -160,7 +160,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	}
 
 	/* Previous node for proof must be non-empty and authoritative. */
-	if ((*previous)->rrset_count == 0 || knot_node_is_non_auth(*previous)) {
+	if ((*previous)->rrset_count == 0 || (*previous)->flags & KNOT_NODE_FLAGS_NONAUTH) {
 		*previous = (*previous)->prev;
 	}
 

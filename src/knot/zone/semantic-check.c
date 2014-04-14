@@ -770,7 +770,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
                                    const knot_node_t *node,
                                    err_handler_t *handler)
 {
-	if (!(knot_node_is_deleg_point(node) || knot_zone_contents_apex(zone) ==
+	if (!((node->flags & KNOT_NODE_FLAGS_DELEG) || knot_zone_contents_apex(zone) ==
 	                node)) {
 		return KNOT_EOK;
 	}
@@ -876,8 +876,8 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
 {
 	assert(handler);
 	assert(node);
-	bool auth = !knot_node_is_non_auth(node);
-	bool deleg = knot_node_is_deleg_point(node);
+	bool auth = !(node->flags & KNOT_NODE_FLAGS_NONAUTH);
+	bool deleg = (node->flags & KNOT_NODE_FLAGS_DELEG);
 	short rrset_count = node->rrset_count;
 	knot_rrset_t dnskey_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_DNSKEY);
 

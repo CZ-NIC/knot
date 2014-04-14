@@ -89,37 +89,31 @@ struct rr_data {
 /*----------------------------------------------------------------------------*/
 /*! \brief Flags used to mark nodes with some property. */
 typedef enum {
+	/*! \brief Empty flag initializer. */
+	KNOT_NODE_FLAGS_NULL =            0 << 0,
+	/*! \brief Node is authoritative. */
+	KNOT_NODE_FLAGS_AUTH =            1 << 0,
 	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
-	KNOT_NODE_FLAGS_DELEG = 1 << 0,
+	KNOT_NODE_FLAGS_DELEG =           1 << 1,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
-	KNOT_NODE_FLAGS_NONAUTH = 1 << 1,
+	KNOT_NODE_FLAGS_NONAUTH =         1 << 2,
 	/*! \brief Node is an apex node. */
-	KNOT_NODE_FLAGS_APEX = 1 << 2,
+	KNOT_NODE_FLAGS_APEX =            1 << 3,
 	/*! \brief NSEC/NSEC3 was removed from this node. */
-	KNOT_NODE_FLAGS_REMOVED_NSEC = 1 << 3,
-	/*! \brief Node is empty and will be deleted after update.
-	 *  \todo Remove after dname refactoring, update description in node. */
-	KNOT_NODE_FLAGS_EMPTY = 1 << 4,
+	KNOT_NODE_FLAGS_REMOVED_NSEC =    1 << 4,
+	/*! \brief Node is empty and will be deleted after update. */
+	KNOT_NODE_FLAGS_EMPTY =           1 << 5,
 	/*! \brief Node has a wildcard child. */
-	KNOT_NODE_FLAGS_WILDCARD_CHILD = 1 << 5
+	KNOT_NODE_FLAGS_WILDCARD_CHILD =  1 << 6
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates and initializes new node structure.
  *
- * \todo Owner reference counter will be increased.
- *
- * \param owner Owner of the created node.
- * \param parent Parent of the created node.
- * \param flags Document me.
- *
- * \todo Document missing parameters.
- *
  * \return Newly created node or NULL if an error occured.
  */
-knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
-                               uint8_t flags);
+knot_node_t *knot_node_new(const knot_dname_t *owner);
 
 /*!
  * \brief Adds an RRSet to the node.
@@ -154,86 +148,6 @@ void knot_node_remove_rrset(knot_node_t *node, uint16_t type);
  * \param parent Parent to set to the node.
  */
 void knot_node_set_parent(knot_node_t *node, knot_node_t *parent);
-
-/*!
- * \brief Sets the wildcard child flag of the node.
- *
- * \param node Node that has wildcard.
- */
-void knot_node_set_wildcard_child(knot_node_t *node);
-
-/*!
- * \brief Checks if node has a wildcard child.
- *
- * \param node Node to check.
- *
- * \retval > 0 if the node has a wildcard child.
- * \retval 0 otherwise.
- */
-int knot_node_has_wildcard_child(const knot_node_t *node);
-
-/*!
- * \brief Clears the node's wildcard child flag.
- *
- * \param node Node to clear the flag in.
- */
-void knot_node_clear_wildcard_child(knot_node_t *node);
-
-/*!
- * \brief Mark the node as a delegation point.
- *
- * \param node Node to mark as a delegation point.
- */
-void knot_node_set_deleg_point(knot_node_t *node);
-
-/*!
- * \brief Checks if the node is a delegation point.
- *
- * \param node Node to check.
- *
- * \retval <> 0 if \a node is marked as delegation point.
- * \retval 0 otherwise.
- */
-int knot_node_is_deleg_point(const knot_node_t *node);
-
-/*!
- * \brief Mark the node as non-authoritative.
- *
- * \param node Node to mark as non-authoritative.
- */
-void knot_node_set_non_auth(knot_node_t *node);
-
-/*!
- * \brief Checks if the node is non-authoritative.
- *
- * \param node Node to check.
- *
- * \retval <> 0 if \a node is marked as non-authoritative.
- * \retval 0 otherwise.
- */
-int knot_node_is_non_auth(const knot_node_t *node);
-
-void knot_node_set_auth(knot_node_t *node);
-
-int knot_node_is_auth(const knot_node_t *node);
-
-int knot_node_is_removed_nsec(const knot_node_t *node);
-
-void knot_node_set_removed_nsec(knot_node_t *node);
-
-void knot_node_clear_removed_nsec(knot_node_t *node);
-
-void knot_node_set_apex(knot_node_t *node);
-
-int knot_node_is_apex(const knot_node_t *node);
-
-//! \todo remove after dname refactoring
-int knot_node_is_empty(const knot_node_t *node);
-
-//! \todo remove after dname refactoring
-void knot_node_set_empty(knot_node_t *node);
-
-void knot_node_clear_empty(knot_node_t *node);
 
 /*!
  * \brief Destroys the RRSets within the node structure.

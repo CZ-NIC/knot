@@ -979,7 +979,7 @@ static int xfrin_mark_empty(knot_node_t **node_p, void *data)
 	list_t *l = (list_t *)data;
 	assert(data);
 	if (node->rrset_count == 0 && node->children == 0 &&
-	    !knot_node_is_empty(node)) {
+	    !(node->flags & KNOT_NODE_FLAGS_EMPTY)) {
 		/*!
 		 * Mark this node and all parent nodes that have 0 RRSets and
 		 * no children for removal.
@@ -988,11 +988,11 @@ static int xfrin_mark_empty(knot_node_t **node_p, void *data)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		knot_node_set_empty(node);
+		node->flags |= KNOT_NODE_FLAGS_EMPTY;
 		if (node->parent) {
-			if (knot_node_has_wildcard_child(node->parent)
+			if ((node->parent->flags & KNOT_NODE_FLAGS_WILDCARD_CHILD)
 			    && knot_dname_is_wildcard(node->owner)) {
-				knot_node_clear_wildcard_child(node->parent);
+				node->parent->flags &= ~KNOT_NODE_FLAGS_WILDCARD_CHILD;
 			}
 			node->parent->children--;
 			// Recurse using the parent node

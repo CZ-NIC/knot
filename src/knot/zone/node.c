@@ -44,30 +44,6 @@ static inline void knot_node_flags_set(knot_node_t *node, uint8_t flag)
 }
 
 /*----------------------------------------------------------------------------*/
-/*!
- * \brief Returns the given flag from node's flags.
- *
- * \param node Node to set the flag in.
- * \param flag Flag to retrieve.
- *
- * \return A byte with only the given flag set if it was set in \a node.
- */
-static inline uint8_t knot_node_flags_get(const knot_node_t *node, uint8_t flag)
-{
-	return node->flags & flag;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Clears the given flag in node's flags.
- *
- * \param node Node to clear the flag in.
- * \param flag Flag to clear.
- */
-static inline void knot_node_flags_clear(knot_node_t *node, uint8_t flag)
-{
-	node->flags &= ~flag;
-}
 
 static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
 {
@@ -91,29 +67,29 @@ static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
-                           uint8_t flags)
+knot_node_t *knot_node_new(const knot_dname_t *owner)
 {
-	knot_node_t *ret = (knot_node_t *)calloc(1, sizeof(knot_node_t));
+	knot_node_t *ret = malloc(sizeof(knot_node_t));
 	if (ret == NULL) {
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 
-	/*! \todo This is inconsistent: knot_rrset_new() does not copy owner.
-	 *        Either copy in all _new() functions, or in none. I vote for
-	 *        the former, as it should be responsibility of the caller to
-	 *        do the copying (or not if he decides to do so).
-	 */
 	if (owner) {
 		ret->owner = knot_dname_copy(owner, NULL);
+		if (ret->owner == NULL) {
+			free(ret);
+			return NULL;
+		}
 	}
 
-	knot_node_set_parent(ret, parent);
+	ret->parent = NULL;
 	ret->rrs = NULL;
-	ret->flags = flags;
-
-	assert(ret->children == 0);
+	ret->prev = NULL;
+	ret->nsec3_node = NULL;
+	ret->children = 0;
+	ret->rrset_count = 0;
+	ret->flags = KNOT_NODE_FLAGS_NULL;
 
 	return ret;
 }
@@ -244,162 +220,6 @@ void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 
 /*----------------------------------------------------------------------------*/
 
-void knot_node_set_wildcard_child(knot_node_t *node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	knot_node_flags_set(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_has_wildcard_child(const knot_node_t *node)
-{
-	return knot_node_flags_get(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_clear_wildcard_child(knot_node_t *node)
-{
-	knot_node_flags_clear(node, KNOT_NODE_FLAGS_WILDCARD_CHILD);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_deleg_point(knot_node_t *node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	knot_node_flags_set(node, KNOT_NODE_FLAGS_DELEG);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_is_deleg_point(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return knot_node_flags_get(node, KNOT_NODE_FLAGS_DELEG);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_non_auth(knot_node_t *node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	knot_node_flags_set(node, KNOT_NODE_FLAGS_NONAUTH);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_is_non_auth(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return knot_node_flags_get(node, KNOT_NODE_FLAGS_NONAUTH);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_auth(knot_node_t *node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	knot_node_flags_clear(node, KNOT_NODE_FLAGS_NONAUTH);
-	knot_node_flags_clear(node, KNOT_NODE_FLAGS_DELEG);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_is_auth(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return (node->flags == 0);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_is_empty(const knot_node_t *node)
-{
-	return knot_node_flags_get(node, KNOT_NODE_FLAGS_EMPTY);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_empty(knot_node_t *node)
-{
-	knot_node_flags_set(node, KNOT_NODE_FLAGS_EMPTY);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_clear_empty(knot_node_t *node)
-{
-	knot_node_flags_clear(node, KNOT_NODE_FLAGS_EMPTY);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_is_removed_nsec(const knot_node_t *node)
-{
-	return knot_node_flags_get(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_removed_nsec(knot_node_t *node)
-{
-	knot_node_flags_set(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_clear_removed_nsec(knot_node_t *node)
-{
-	knot_node_flags_clear(node, KNOT_NODE_FLAGS_REMOVED_NSEC);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_apex(knot_node_t *node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	knot_node_flags_set(node, KNOT_NODE_FLAGS_APEX);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_is_apex(const knot_node_t *node)
-{
-	if (node == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return knot_node_flags_get(node, KNOT_NODE_FLAGS_APEX);
-}
-
-/*----------------------------------------------------------------------------*/
-
 void knot_node_free_rrsets(knot_node_t *node)
 {
 	if (node == NULL) {
@@ -445,18 +265,12 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 	}
 
 	// create new node
-	*to = knot_node_new(NULL, NULL, from->flags);
+	*to = knot_node_new(from->owner);
 	if (*to == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(*to, 0, sizeof(knot_node_t));
-
-	// Copy owner
-	(*to)->owner = knot_dname_copy(from->owner, NULL);
-	if ((*to)->owner == NULL) {
-		free(*to);
-		return KNOT_ENOMEM;
-	}
+	
+	(*to)->flags = from->flags;
 
 	// copy RRSets
 	(*to)->rrset_count = from->rrset_count;

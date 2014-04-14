@@ -285,7 +285,7 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* Find closest delegation point. */
-	while (!knot_node_is_deleg_point(qdata->node)) {
+	while (!(qdata->node->flags & KNOT_NODE_FLAGS_DELEG)) {
 		qdata->node = qdata->node->parent;
 	}
 
@@ -438,7 +438,7 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 	/* DS query is answered normally, but everything else at/below DP
 	 * triggers referral response. */
 	if (qtype != KNOT_RRTYPE_DS &&
-	    (knot_node_is_deleg_point(qdata->node) || knot_node_is_non_auth(qdata->node))) {
+	    ((qdata->node->flags & KNOT_NODE_FLAGS_DELEG) || qdata->node->flags & KNOT_NODE_FLAGS_NONAUTH)) {
 		dbg_ns("%s: solving REFERRAL\n", __func__);
 		return DELEG;
 	}
@@ -468,7 +468,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	/* Name is covered by wildcard. */
-	if (knot_node_has_wildcard_child(qdata->encloser)) {
+	if (qdata->encloser->flags & KNOT_NODE_FLAGS_WILDCARD_CHILD) {
 		dbg_ns("%s: name %p covered by wildcard\n", __func__, qdata->name);
 
 		/* Find wildcard child in the zone. */
@@ -502,7 +502,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Name is below delegation. */
-	if (knot_node_is_deleg_point(qdata->encloser)) {
+	if ((qdata->encloser->flags & KNOT_NODE_FLAGS_DELEG)) {
 		dbg_ns("%s: name below delegation point %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser;
 		return DELEG;

@@ -286,14 +286,6 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 	if (previous == NULL) {
 		previous = knot_zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
-
-		/*!
-		 * \todo isn't this handled in adjusting?
-		 * knot_zone_contents_adjust_node_in_tree_ptr()
-		 */
-		while (!knot_node_is_auth(previous)) {
-			previous = previous->prev;
-		}
 	}
 
 	knot_rrset_t rrset = knot_node_rrset(previous, KNOT_RRTYPE_NSEC);
@@ -480,14 +472,6 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 		/*! \todo Check version. */
 		previous = knot_zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
-
-		/*!
-		 * \todo isn't this handled in adjusting?
-		 * knot_zone_contents_adjust_node_in_tree_ptr()
-		 */
-		while (!knot_node_is_auth(previous)) {
-			previous = previous->prev;
-		}
 	}
 
 dbg_ns_exec_verb(
