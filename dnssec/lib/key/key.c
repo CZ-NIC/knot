@@ -314,13 +314,11 @@ int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey)
 		return DNSSEC_EINVAL;
 	}
 
-	dnssec_binary_t rdata_pubkey = { 0 };
-
 	wire_ctx_t wire = wire_init_binary(&key->rdata);
 	wire_seek(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
-	wire_available_binary(&wire, &rdata_pubkey);
+	wire_available_binary(&wire, pubkey);
 
-	return dnssec_binary_dup(&rdata_pubkey, pubkey);
+	return DNSSEC_EOK;
 }
 
 _public_
@@ -376,7 +374,9 @@ int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata)
 		return DNSSEC_EINVAL;
 	}
 
-	return dnssec_binary_dup(&key->rdata, rdata);
+	*rdata = key->rdata;
+
+	return DNSSEC_EOK;
 }
 
 _public_
