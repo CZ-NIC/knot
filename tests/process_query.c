@@ -23,7 +23,6 @@
 #include "common/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
-#include "knot/server/zones.h"
 
 /* SOA RDATA. */
 #define SOA_RDLEN 30

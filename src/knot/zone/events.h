@@ -23,6 +23,10 @@
 #include "knot/worker/pool.h"
 #include "knot/worker/task.h"
 
+/* Timer special values. */
+#define REFRESH_DEFAULT -1 /* Use time value from zone structure. */
+#define REFRESH_NOW (knot_random_uint16_t() % 1000) /* Now, but with jitter. */
+
 struct zone_t;
 
 struct server_t;
@@ -93,3 +97,48 @@ void zone_events_cancel_all(struct zone_t *zone);
  * \brief Start the events processing.
  */
 void zone_events_start(struct zone_t *zone);
+
+/* ------------ Legacy API to be converted (not functional now) ------------- */
+
+/*!
+ * \brief Update zone timers.
+ *
+ * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
+ *
+ * \param zone Related zone.
+ * \param time Specific timeout or REFRESH_DEFAULT for default.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ERROR
+ */
+int zones_schedule_refresh(struct zone_t *zone, int64_t timeout);
+
+/*!
+ * \brief Schedule NOTIFY after zone update.
+ * \param zone Related zone.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_ERROR
+ */
+int zones_schedule_notify(struct zone_t *zone, struct server_t *server);
+
+/*!
+ * \brief Schedule DNSSEC event.
+ * \param zone Related zone.
+ * \param unixtime When to schedule.
+ * \param force Force sign or not
+ *
+ * \return Error code, KNOT_OK if successful.
+ */
+int zones_schedule_dnssec(struct zone_t *zone, time_t unixtime);
+
+/*!
+ * \brief Cancel DNSSEC event.
+ *
+ * \param zone  Related zone.
+ *
+ * \return Error code, KNOT_OK if successful.
+ */
+int zones_cancel_dnssec(struct zone_t *zone);
+

@@ -316,6 +316,9 @@ void zone_contents_free(zone_contents_t **contents);
 
 void zone_contents_deep_free(zone_contents_t **contents);
 
+/*! \brief Return zone SOA rdataset. */
+const knot_rdataset_t *zone_contents_soa(const zone_contents_t *zone);
+
 /*!
  * \brief Fetch zone serial.
  *
@@ -324,6 +327,7 @@ void zone_contents_deep_free(zone_contents_t **contents);
  * \return serial or 0
  */
 uint32_t zone_contents_serial(const zone_contents_t *zone);
+
 
 /*! \brief Calculate next serial. */
 uint32_t zone_contents_next_serial(const zone_contents_t *zone, int policy);

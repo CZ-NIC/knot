@@ -23,8 +23,10 @@
 #include "knot/worker/pool.h"
 #include "knot/worker/task.h"
 #include "knot/zone/events.h"
-#include "knot/zone/load.h"
 #include "knot/zone/zone.h"
+#include "knot/zone/zone-load.h"
+#include "knot/zone/zonefile.h"
+#include "libknot/rdata/soa.h"
 
 /* -- zone events handling callbacks --------------------------------------- */
 
@@ -34,45 +36,121 @@ static int event_reload(zone_t *zone)
 {
 	assert(zone);
 
-	zone_contents_t *content = zone_load_contents(zone->conf);
-	if (!content) {
+	/* Take zone file mtime and load it. */
+	time_t mtime = zonefile_mtime(zone->conf->file);
+	conf_zone_t *zone_config = zone->conf;
+	zone_contents_t *contents = zone_load_contents(zone_config);
+	if (!contents) {
 		return KNOT_ERROR; // TODO: specific error code
 	}
 
-	int result = apply_journal(content, zone->conf);
+	/* Apply changes in journal. */
+	int result = zone_load_journal(contents, zone_config);
 	if (result != KNOT_EOK) {
-		zone_contents_deep_free(&content);
-		return result;
+		goto fail;
 	}
 
-	// TODO: do diff and sign
-	result = post_load(content, zone);
+	/* Post load actions - calculate delta, sign with DNSSEC... */
+	result = zone_load_post(contents, zone);
 	if (result != KNOT_EOK) {
 		if (result == KNOT_ESPACE) {
 			log_zone_error("Zone '%s' journal size is too small to fit the changes.\n",
-			               zone->conf->name);
+			               zone_config->name);
 		} else {
 			log_zone_error("Zone '%s' failed to store changes in the journal - %s\n",
-			               zone->conf->name, knot_strerror(result));
+			               zone_config->name, knot_strerror(result));
 		}
-		zone_contents_deep_free(&content);
-		return result;
+		goto fail;
 	}
 
-	zone_contents_t *old = zone_switch_contents(zone, content);
+	/* Check zone contents consistency. */
+	result = zone_load_check(contents, zone_config);
+	if (result != KNOT_EOK) {
+		goto fail;
+	}
+
+	/* Everything went alright, switch the contents. */
+	zone->zonefile_mtime = mtime;
+	zone_contents_t *old = zone_switch_contents(zone, contents);
 	if (old != NULL) {
 		synchronize_rcu();
 		zone_contents_deep_free(&old);
 	}
 
-	log_zone_info("Zone '%s' loaded.\n", zone->conf->name);
-
+	log_zone_info("Zone '%s' loaded.\n", zone_config->name);
 	return KNOT_EOK;
+
+fail:
+	zone_contents_deep_free(&contents);
+	return result;
 }
 
 static int event_refresh(zone_t *zone)
 {
 	assert(zone);
+#warning TODO: implement event_refresh
+#if 0
+	assert(event);
+
+	dbg_zones("zone: REFRESH/RETRY timer event\n");
+	rcu_read_lock();
+	zone_t *zone = (zone_t *)event->data;
+	if (zone == NULL) {
+		rcu_read_unlock();
+		return KNOT_EINVAL;
+	}
+
+	if (zone->flags & ZONE_DISCARDED) {
+		rcu_read_unlock();
+		return KNOT_EOK;
+	}
+
+	/* Create XFR request. */
+	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_SOA, XFR_FLAG_TCP);
+	rcu_read_unlock(); /* rq now holds a reference to zone */
+	if (!rq) {
+		return KNOT_EINVAL;
+	}
+
+	const conf_iface_t *master = zone_master(zone);
+	xfr_task_setaddr(rq, &master->addr, &master->via);
+	rq->tsig_key = master->key;
+
+	/* Check for contents. */
+	int ret = KNOT_EOK;
+	if (!zone->contents) {
+
+		/* Bootstrap over TCP. */
+		rq->type = XFR_TYPE_AIN;
+		rq->flags = XFR_FLAG_TCP;
+		evsched_end_process(event->sched);
+
+		/* Check transfer state. */
+		pthread_mutex_lock(&zone->lock);
+		if (zone->xfr_in.state == XFR_PENDING) {
+			pthread_mutex_unlock(&zone->lock);
+			xfr_task_free(rq);
+			return KNOT_EOK;
+		} else {
+			zone->xfr_in.state = XFR_PENDING;
+		}
+
+		/* Issue request. */
+#warning "XFR enqueue."
+		pthread_mutex_unlock(&zone->lock);
+		return ret;
+	}
+
+	/* Reschedule as RETRY timer. */
+	uint32_t retry_tmr = zones_jitter(zones_soa_retry(zone));
+	evsched_schedule(event, retry_tmr);
+	dbg_zones("zone: RETRY of '%s' after %u seconds\n",
+	          zone->conf->name, retry_tmr / 1000);
+
+	/* Issue request. */
+	evsched_end_process(event->sched);
+#warning "XFR enqueue."
+#endif
 
 //	zone_schedule_event(zone, ZONE_EVENT_REFRESH, time);
 
@@ -94,7 +172,7 @@ static int event_expire(zone_t *zone)
 
 static int event_flush(zone_t *zone)
 {
-#warning Implement me.
+#warning TODO: implement event_flush
 #if 0
 	assert(event);
 	dbg_zones("zone: zonefile SYNC timer event\n");
@@ -123,6 +201,7 @@ static int event_dnssec(zone_t *zone)
 {
 	assert(zone);
 
+#warning TODO: implement event_dnssec
 	return KNOT_ERROR;
 #if 0
 	knot_changesets_t *chs = knot_changesets_create();
@@ -451,4 +530,152 @@ void zone_events_start(zone_t *zone)
 	pthread_mutex_lock(&zone->events.mx);
 	reschedule(&zone->events);
 	pthread_mutex_unlock(&zone->events.mx);
+}
+
+/* ------------ Legacy API to be converted (not functional now) ------------- */
+#warning TODO: vvv legacy API to be converted vvv
+
+
+int zones_schedule_refresh(zone_t *zone, int64_t timeout)
+{
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+#warning TODO: reimplement schedule_refresh
+#if 0
+	/* Cancel REFRESH/EXPIRE timer. */
+//	evsched_cancel(zone->xfr_in.expire);
+//	evsched_cancel(zone->xfr_in.timer);
+
+	/* Check XFR/IN master server. */
+	pthread_mutex_lock(&zone->lock);
+	rcu_read_lock();
+	if (zone_master(zone) != NULL) {
+
+		knot_rdataset_t *soa = zone_contents_soa(zone->contents);
+
+		/* Schedule EXPIRE timer. */
+		if (zone->contents != NULL) {
+			int64_t expire_tmr = knot_soa_expire(soa);
+			// Allow for timeouts.  Otherwise zones with very short
+			// expiry may expire before the timeout is reached.
+			expire_tmr += 2 * (conf()->max_conn_idle * 1000);
+//			evsched_schedule(zone->xfr_in.expire, expire_tmr);
+
+		}
+
+		/* Schedule REFRESH timer. */
+		if (timeout < 0) {
+			if (zone->contents) {
+				timeout = knot_soa_refresh(soa);
+			} else {
+				timeout = zone->xfr_in.bootstrap_retry;
+			}
+		}
+//		evsched_schedule(zone->xfr_in.timer, timeout);
+
+	}
+	rcu_read_unlock();
+	pthread_mutex_unlock(&zone->lock);
+#endif
+
+	return KNOT_EOK;
+}
+
+int zones_schedule_notify(zone_t *zone, server_t *server)
+{
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+
+#warning TODO: reimplement schedule_notify
+#if 0
+	/* Do not issue NOTIFY queries if stub. */
+	if (!zone->contents) {
+		return KNOT_EOK;
+	}
+
+	/* Schedule NOTIFY to slaves. */
+	conf_zone_t *cfg = zone->conf;
+	conf_remote_t *r = 0;
+	WALK_LIST(r, cfg->acl.notify_out) {
+
+		/* Fetch remote. */
+		conf_iface_t *cfg_if = r->remote;
+
+		/* Create request. */
+		knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_NOTIFY, XFR_FLAG_UDP);
+		if (!rq) {
+			log_zone_error("Failed to create NOTIFY for '%s', "
+			               "not enough memory.\n", cfg->name);
+			continue;
+		}
+
+		xfr_task_setaddr(rq, &cfg_if->addr, &cfg_if->via);
+		rq->tsig_key = cfg_if->key;
+
+		rq->data = (void *)((long)cfg->notify_retries);
+#warning "XFR enqueue."
+//		if (xfr_enqueue(server->xfr, rq) != KNOT_EOK) {
+//			log_zone_error("Failed to enqueue NOTIFY for '%s'.\n",
+//			               cfg->name);
+//			continue;
+//		}
+	}
+#endif
+
+	return KNOT_EOK;
+}
+
+int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
+{
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+#warning TODO: reimplement schedule_dnssec
+#if 0
+	char *zname = knot_dname_to_str(zone->name);
+
+	// absolute time -> relative time
+
+	time_t now = time(NULL);
+	int32_t relative = 0;
+	if (unixtime <= now) {
+		log_zone_warning("DNSSEC: Zone %s: Signature life time too low, "
+		                 "set higher value in configuration!\n", zname);
+	} else {
+		relative = unixtime - now;
+	}
+
+	// log the message
+
+	char time_str[64] = {'\0'};
+	struct tm time_gm = {0};
+
+	gmtime_r(&unixtime, &time_gm);
+
+	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+
+	log_zone_info("DNSSEC: Zone %s: Next signing planned on %s.\n",
+	              zname, time_str);
+
+	free(zname);
+
+	// schedule
+
+
+//	evsched_schedule(zone->dnssec.timer, relative * 1000);
+#endif
+	return KNOT_EOK;
+}
+
+int zones_cancel_dnssec(zone_t *zone)
+{
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+#warning TODO: reimplement cancel_dnssec
+//	evsched_cancel(zone->dnssec.timer);
+
+	return KNOT_EOK;
 }

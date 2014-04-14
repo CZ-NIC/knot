@@ -1248,8 +1248,9 @@ int journal_store_changesets(knot_changesets_t *src, const char *path, size_t si
 	WALK_LIST(chs, src->sets) {
 		/* Make key from serials. */
 		ret = changeset_pack(chs, journal);
-		if (ret != KNOT_EOK)
+		if (ret != KNOT_EOK) {
 			break;
+		}
 	}
 
 	/*! @note If the journal is full, this function returns KNOT_EBUSY. */

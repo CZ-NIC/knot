@@ -17,10 +17,10 @@
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/updates/xfr-in.h"
 #include "common/debug.h"
 #include "common/descriptor.h"
 #include "common/lists.h"
-#include "knot/server/zones.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {

@@ -933,8 +933,7 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 
 	// check if serial matches
 	const knot_rdataset_t *soa = knot_node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL || knot_soa_serial(soa)
-			   != chset->serial_from) {
+	if (soa == NULL || knot_soa_serial(soa) != chset->serial_from) {
 		dbg_xfrin("SOA serials do not match!!\n");
 		return KNOT_EINVAL;
 	}

@@ -8,7 +8,7 @@
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/nsec_proofs.h"
-#include "knot/server/notify.h"
+#include "knot/nameserver/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/rrl.h"
 #include "knot/updates/acl.h"

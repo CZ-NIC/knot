@@ -19,7 +19,6 @@
 #include "knot/zone/zone-dump.h"
 #include "common/descriptor.h"
 #include "knot/conf/conf.h"
-#include "knot/server/zones.h"
 #include "libknot/libknot.h"
 #include "knot/dnssec/zone-nsec.h"
 

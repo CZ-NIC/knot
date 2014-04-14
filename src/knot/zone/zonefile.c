@@ -315,6 +315,17 @@ fail:
 	return NULL;
 }
 
+/*! \brief Return zone file mtime. */
+time_t zonefile_mtime(const char *path)
+{
+	struct stat zonefile_st = { 0 };
+	int result = stat(path, &zonefile_st);
+	if (result < 0) {
+		return result;
+	}
+	return zonefile_st.st_mtime;
+}
+
 /*! \brief Moved from zones.c, no doc. @mvavrusa */
 static int zones_open_free_filename(const char *old_name, char **new_name)
 {

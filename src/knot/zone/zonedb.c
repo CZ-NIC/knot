@@ -21,7 +21,6 @@
 
 #include "knot/zone/zonedb.h"
 #include "knot/server/server.h"
-#include "knot/server/zones.h"
 #include "libknot/common.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"

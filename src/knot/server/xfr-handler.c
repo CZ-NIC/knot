@@ -35,7 +35,8 @@
 #include "knot/updates/xfr-in.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/ixfr.h"
-#include "knot/server/zones.h"
+#include "knot/nameserver/internet.h"
+#include "knot/nameserver/notify.h"
 #include "knot/knot.h"
 #include "libknot/tsig-op.h"
 #include "common/evsched.h"
@@ -51,6 +52,10 @@
 #define XFR_SWEEP_INTERVAL 2 /*! [seconds] between sweeps. */
 #define XFR_MSG_DLTTR 9 /*! Index of letter differentiating IXFR/AXFR in log msg. */
 #define XFR_TSIG_DATA_MAX_SIZE (100 * 64 * 1024) /*! Naximum size of TSIG buffers. */
+
+#define ZONES_JITTER_PCT    10 /*!< +-N% jitter to timers. */
+#define AXFR_BOOTSTRAP_RETRY (30*1000) /*!< Jitter cap between AXFR bootstrap retries. */
+#define AXFR_RETRY_MAXTIME (24*60*60*1000) /*!< Maximum AXFR retry interval cap of 24 hours. */
 
 /* Messages */
 
@@ -615,6 +620,15 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 	}
 
 	return ret;
+}
+
+knot_ns_xfr_type_t zones_transfer_to_use(zone_t *zone)
+{
+	if (zone == NULL || !journal_exists(zone->conf->ixfr_db)) {
+		return XFR_TYPE_AIN;
+	}
+
+	return XFR_TYPE_IIN;
 }
 
 static int xfr_task_resp_process(server_t *server,

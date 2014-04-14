@@ -22,7 +22,6 @@
 #include "knot/conf/conf.h"
 #include "knot/server/net.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
 #include "common/descriptor.h"
 #include "libknot/tsig-op.h"
@@ -148,13 +147,15 @@ static int remote_zone_sign(server_t *server, const zone_t *zone)
 	char *zone_name = knot_dname_to_str(zone->name);
 	log_server_info("Requested zone resign for '%s'.\n", zone_name);
 	free(zone_name);
-
+#warning TODO: remote_zone_sign should create and wait for zone sign event
+#if 0
 	uint32_t refresh_at = 0;
 	zone_t *wzone = (zone_t *)zone;
 
 	zones_cancel_dnssec(wzone);
 	zones_dnssec_sign(wzone, true, &refresh_at);
 	zones_schedule_dnssec(wzone, refresh_at);
+#endif
 
 	return KNOT_EOK;
 }

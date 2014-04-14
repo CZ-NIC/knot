@@ -24,7 +24,6 @@
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/zone/zonedb.h"
-#include "knot/server/zones.h"
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(struct query_data *qdata, const knot_node_t *node)

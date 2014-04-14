@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include "knot/server/notify.h"
+#include "knot/nameserver/notify.h"
 
 #include "libknot/dname.h"
 #include "common/descriptor.h"
@@ -26,7 +26,6 @@
 #include "knot/zone/zonedb.h"
 #include "libknot/common.h"
 #include "libknot/packet/wire.h"
-#include "knot/server/zones.h"
 #include "knot/updates/acl.h"
 #include "common/evsched.h"
 #include "knot/other/debug.h"

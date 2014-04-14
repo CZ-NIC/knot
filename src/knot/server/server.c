@@ -25,11 +25,9 @@
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/zones.h"
-#include "knot/server/zone-load.h"
 #include "knot/conf/conf.h"
 #include "knot/worker/pool.h"
-#include "knot/zone/zonedb.h"
+#include "knot/zone/zonedb-load.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
@@ -606,7 +604,7 @@ int server_update_zones(const struct conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 
-	int ret = load_zones_from_config(conf, server);
+	int ret = zonedb_reload(conf, server);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

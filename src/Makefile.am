@@ -240,6 +240,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/nameserver/notify.c			\
+	knot/nameserver/notify.h			\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
 	knot/other/debug.h			\
@@ -247,8 +249,6 @@ libknotd_la_SOURCES =				\
 	knot/server/dthreads.h			\
 	knot/server/journal.c			\
 	knot/server/journal.h			\
-	knot/server/notify.c			\
-	knot/server/notify.h			\
 	knot/server/rrl.c			\
 	knot/server/rrl.h			\
 	knot/server/server.c			\
@@ -261,10 +261,6 @@ libknotd_la_SOURCES =				\
 	knot/server/udp-handler.h		\
 	knot/server/xfr-handler.c		\
 	knot/server/xfr-handler.h		\
-	knot/server/zone-load.c			\
-	knot/server/zone-load.h			\
-	knot/server/zones.c			\
-	knot/server/zones.h			\
 	knot/server/serialization.c		\
 	knot/server/serialization.h		\
 	knot/updates/acl.c			\
@@ -287,8 +283,6 @@ libknotd_la_SOURCES =				\
 	knot/zone/estimator.h			\
 	knot/zone/events.c			\
 	knot/zone/events.h			\
-	knot/zone/load.c			\
-	knot/zone/load.h			\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
@@ -301,8 +295,12 @@ libknotd_la_SOURCES =				\
 	knot/zone/zone-tree.h			\
 	knot/zone/zone.c			\
 	knot/zone/zone.h			\
+	knot/zone/zone-load.c			\
+	knot/zone/zone-load.h			\
 	knot/zone/zonedb.c			\
 	knot/zone/zonedb.h			\
+	knot/zone/zonedb-load.c			\
+	knot/zone/zonedb-load.h			\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 

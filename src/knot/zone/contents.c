@@ -1446,10 +1446,22 @@ void zone_contents_deep_free(zone_contents_t **contents)
 
 /*----------------------------------------------------------------------------*/
 
+const knot_rdataset_t *zone_contents_soa(const zone_contents_t *zone)
+{
+	if (zone == NULL) {
+		return NULL;
+	}
+
+	return knot_node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
+}
+
 uint32_t zone_contents_serial(const zone_contents_t *zone)
 {
-	if (!zone) return 0;
-	const knot_rdataset_t *soa = knot_node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa = zone_contents_soa(zone);
+	if (soa == NULL) {
+		return 0;
+	}
+
 	return knot_soa_serial(soa);
 }
 

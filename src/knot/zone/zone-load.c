@@ -17,7 +17,7 @@
 #include "common/log.h"
 #include "knot/server/journal.h"
 #include "knot/zone/zone-diff.h"
-#include "knot/zone/load.h"
+#include "knot/zone/zone-load.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
 #include "knot/dnssec/zone-events.h"
@@ -37,8 +37,7 @@ zone_contents_t *zone_load_contents(conf_zone_t *conf)
 	/* Set the zone type (master/slave). If zone has no master set, we
 	 * are the primary master for this zone (i.e. zone type = master).
 	 */
-//	zl.creator->master = (zone_master(zone) == NULL);
-#warning Implement this ^^^.
+	zl.creator->master = !zone_load_can_bootstrap(conf);
 
 	zone_contents_t *zone_contents = zonefile_load(&zl);
 	zonefile_close(&zl);
@@ -49,10 +48,39 @@ zone_contents_t *zone_load_contents(conf_zone_t *conf)
 	return zone_contents;
 }
 
+/*! \brief Check zone configuration constraints. */
+int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
+{
+	/* Bootstrapped zone, no checks apply. */
+	if (contents == NULL) {
+		return KNOT_EOK;
+	}
+
+	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
+	if (zone_contents_is_signed(contents)) {
+		unsigned edns_dnssec_min = EDNS_MIN_DNSSEC_PAYLOAD;
+		if (conf()->max_udp_payload < edns_dnssec_min) {
+			log_zone_warning("EDNS payload lower than %uB for "
+			                 "DNSSEC-enabled zone '%s'.\n",
+			                 edns_dnssec_min, zone_config->name);
+		}
+	}
+
+	/* Check NSEC3PARAM state if present. */
+	int result = zone_contents_load_nsec3param(contents);
+	if (result != KNOT_EOK) {
+		log_zone_error("NSEC3 signed zone has invalid or no "
+			       "NSEC3PARAM record.\n");
+		return result;
+	}
+
+	return KNOT_EOK;
+}
+
 /*!
  * \brief Apply changesets to zone from journal.
  */
-int apply_journal(zone_contents_t *contents, conf_zone_t *conf)
+int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 {
 	/* Check if journal is used and zone is not empty. */
 	if (!journal_exists(conf->ixfr_db) || zone_contents_is_empty(contents)) {
@@ -96,7 +124,7 @@ int apply_journal(zone_contents_t *contents, conf_zone_t *conf)
 	return ret;
 }
 
-int post_load(zone_contents_t *new_contents, zone_t *zone)
+int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -171,3 +199,9 @@ int post_load(zone_contents_t *new_contents, zone_t *zone)
 	knot_changesets_free(&chset);
 	return ret;
 }
+
+bool zone_load_can_bootstrap(const conf_zone_t *conf)
+{
+	return conf && !EMPTY_LIST(conf->acl.xfr_in);
+}
+

@@ -45,8 +45,6 @@
 #include "libknot/packet/wire.h"
 #include "libknot/consts.h"
 #include "libknot/packet/pkt.h"
-#include "knot/server/zones.h"
-#include "knot/server/notify.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/processing/process.h"
 

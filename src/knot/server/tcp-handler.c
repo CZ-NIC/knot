@@ -37,7 +37,6 @@
 #include "knot/knot.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/server/xfr-handler.h"
-#include "knot/server/zones.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/crypto.h"

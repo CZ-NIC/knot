@@ -115,6 +115,8 @@ src/knot/nameserver/internet.c
 src/knot/nameserver/internet.h
 src/knot/nameserver/ixfr.c
 src/knot/nameserver/ixfr.h
+src/knot/nameserver/notify.c
+src/knot/nameserver/notify.h
 src/knot/nameserver/nsec_proofs.c
 src/knot/nameserver/nsec_proofs.h
 src/knot/nameserver/process_query.c
@@ -130,8 +132,6 @@ src/knot/server/journal.c
 src/knot/server/journal.h
 src/knot/server/net.c
 src/knot/server/net.h
-src/knot/server/notify.c
-src/knot/server/notify.h
 src/knot/server/rrl.c
 src/knot/server/rrl.h
 src/knot/server/serialization.c
@@ -144,10 +144,6 @@ src/knot/server/udp-handler.c
 src/knot/server/udp-handler.h
 src/knot/server/xfr-handler.c
 src/knot/server/xfr-handler.h
-src/knot/server/zone-load.c
-src/knot/server/zone-load.h
-src/knot/server/zones.c
-src/knot/server/zones.h
 src/knot/updates/acl.c
 src/knot/updates/acl.h
 src/knot/updates/changesets.c
@@ -168,8 +164,6 @@ src/knot/zone/estimator.c
 src/knot/zone/estimator.h
 src/knot/zone/events.c
 src/knot/zone/events.h
-src/knot/zone/load.c
-src/knot/zone/load.h
 src/knot/zone/node.c
 src/knot/zone/node.h
 src/knot/zone/semantic-check.c
@@ -178,10 +172,14 @@ src/knot/zone/zone-diff.c
 src/knot/zone/zone-diff.h
 src/knot/zone/zone-dump.c
 src/knot/zone/zone-dump.h
+src/knot/zone/zone-load.c
+src/knot/zone/zone-load.h
 src/knot/zone/zone-tree.c
 src/knot/zone/zone-tree.h
 src/knot/zone/zone.c
 src/knot/zone/zone.h
+src/knot/zone/zonedb-load.c
+src/knot/zone/zonedb-load.h
 src/knot/zone/zonedb.c
 src/knot/zone/zonedb.h
 src/knot/zone/zonefile.c

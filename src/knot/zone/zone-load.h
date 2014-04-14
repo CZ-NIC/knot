@@ -22,5 +22,11 @@
 #include "knot/zone/zone.h"
 
 zone_contents_t *zone_load_contents(conf_zone_t *conf);
-int apply_journal(zone_contents_t *contents, conf_zone_t *conf);
-int post_load(zone_contents_t *new_contents, zone_t *zone);
+int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config);
+int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf);
+int zone_load_post(zone_contents_t *new_contents, zone_t *zone);
+
+/*!
+ * \brief Check if zone can be bootstrapped.
+ */
+bool zone_load_can_bootstrap(const conf_zone_t *conf);

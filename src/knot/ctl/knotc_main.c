@@ -33,7 +33,6 @@
 #include "knot/zone/zonefile.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
-#include "knot/server/zone-load.h"
 #include "knot/zone/estimator.h"
 
 /*! \brief Controller flags. */

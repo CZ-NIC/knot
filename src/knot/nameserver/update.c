@@ -1,12 +1,12 @@
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/updates/xfr-in.h"
 #include "knot/dnssec/zone-sign.h"
 #include "common/debug.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/ddns.h"
 #include "common/descriptor.h"
-#include "knot/server/zones.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
 
