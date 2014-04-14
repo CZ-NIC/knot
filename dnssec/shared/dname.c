@@ -150,7 +150,7 @@ uint8_t *dname_from_ascii(const char *_name)
 
 	// allocate result (zero terminated)
 
-	uint8_t *dname = malloc(length + 1);
+	uint8_t *dname = malloc(length + 2);
 	if (!dname) {
 		return NULL;
 	}
