@@ -154,7 +154,7 @@ static void get_addr_str(const struct sockaddr_storage *ss,
 	if (*dst != NULL) {
 		int ret = snprintf(*dst, buflen, "%s(%s)", addr_str, sock_name);
 		if (ret <= 0 || ret >= buflen) {
-			*dst = '\0';
+			**dst = '\0';
 		}
 	}
 }
