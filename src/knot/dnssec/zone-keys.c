@@ -134,7 +134,13 @@ static int load_private_keys(const char *kasp_dir, zone_keyset_t *keyset)
 		if (!keyset->keys[i].is_active) {
 			continue;
 		}
-		#warning "Missing private key loading here."
+
+		dnssec_key_t *key = keyset->keys[i].key;
+		result = dnssec_key_import_private_keystore(key, keystore);
+		if (result != DNSSEC_EOK) {
+			result = KNOT_DNSSEC_EINVALID_KEY;
+			break;
+		}
 	}
 
 	result = KNOT_EOK;

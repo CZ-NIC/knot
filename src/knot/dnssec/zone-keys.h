@@ -41,7 +41,7 @@
 #define KNOT_MAX_ZONE_KEYS 8
 
 typedef struct zone_key {
-	const dnssec_key_t *key;
+	dnssec_key_t *key;
 	dnssec_sign_ctx_t *ctx;
 
 	time_t next_event;
