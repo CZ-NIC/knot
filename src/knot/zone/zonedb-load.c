@@ -135,10 +135,10 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 	switch (zstatus) {
 	case ZONE_STATUS_FOUND_NEW:
 	case ZONE_STATUS_FOUND_UPDATED:
-		zone_events_schedule(zone, ZONE_EVENT_RELOAD, 1);
+		zone_events_schedule(zone, ZONE_EVENT_RELOAD, ZONE_EVENT_NOW);
 		break;
 	case ZONE_STATUS_BOOSTRAP:
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, 1);
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		break;
 	case ZONE_STATUS_NOT_FOUND:
 	case ZONE_STATUS_FOUND_CURRENT:
@@ -279,8 +279,6 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	/* Thaw zone events now that the database is published. */
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
-#warning TODO: emit after loading
-		//knot_zonedb_foreach(server->zone_db, zones_schedule_notify, server);
 	}
 
 	/*

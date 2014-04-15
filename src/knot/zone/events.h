@@ -24,8 +24,7 @@
 #include "knot/worker/task.h"
 
 /* Timer special values. */
-#define REFRESH_DEFAULT -1 /* Use time value from zone structure. */
-#define REFRESH_NOW (knot_random_uint16_t() % 1000) /* Now, but with jitter. */
+#define ZONE_EVENT_NOW 0
 
 struct zone_t;
 
@@ -38,6 +37,7 @@ typedef enum zone_event_type {
 	ZONE_EVENT_REFRESH,
 	ZONE_EVENT_EXPIRE,
 	ZONE_EVENT_FLUSH,
+	ZONE_EVENT_NOTIFY,
 	ZONE_EVENT_DNSSEC,
 	// terminator
 	ZONE_EVENT_COUNT,
@@ -79,9 +79,14 @@ int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
 void zone_events_deinit(struct zone_t *zone);
 
 /*!
- * \brief Schedule new zone event.
+ * \brief Schedule new zone event to absolute time.
  */
-void zone_events_schedule(struct zone_t *zone, zone_event_type_t type, time_t time);
+void zone_events_schedule_at(struct zone_t *zone, zone_event_type_t type, time_t time);
+
+/*!
+ * \brief Schedule new zone event using relative time to current time.
+ */
+void zone_events_schedule(struct zone_t *zone, zone_event_type_t type, unsigned dt);
 
 /*!
  * \brief Cancel one zone event.
@@ -99,6 +104,8 @@ void zone_events_cancel_all(struct zone_t *zone);
 void zone_events_start(struct zone_t *zone);
 
 /* ------------ Legacy API to be converted (not functional now) ------------- */
+
+#define REFRESH_DEFAULT -1
 
 /*!
  * \brief Update zone timers.
@@ -132,13 +139,4 @@ int zones_schedule_notify(struct zone_t *zone, struct server_t *server);
  * \return Error code, KNOT_OK if successful.
  */
 int zones_schedule_dnssec(struct zone_t *zone, time_t unixtime);
-
-/*!
- * \brief Cancel DNSSEC event.
- *
- * \param zone  Related zone.
- *
- * \return Error code, KNOT_OK if successful.
- */
-int zones_cancel_dnssec(struct zone_t *zone);
 

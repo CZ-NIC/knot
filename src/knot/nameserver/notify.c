@@ -105,7 +105,7 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 	int next_state = NS_PROC_FAIL;
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
-	int ret =  zones_schedule_refresh((zone_t *)qdata->zone, REFRESH_NOW);
+	int ret =  zones_schedule_refresh((zone_t *)qdata->zone, ZONE_EVENT_NOW);
 
 	/* Format resulting log message. */
 	if (ret != KNOT_EOK) {

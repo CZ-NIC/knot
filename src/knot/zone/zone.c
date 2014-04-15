@@ -177,13 +177,6 @@ int zone_change_store(zone_t *zone, knot_changesets_t *chset)
 	assert(zone);
 	assert(chset);
 
-	/*! \bug This is not going to work because xfrin_apply_changeset() removes
-	 *       applied rrsets from the changeset list. I'm not sure how the
-	 *       changeset/changes work really. It should however apply the changes
-	 *       and keep the changeset intact for storing.
-	 */
-#warning This is not going to work until the note above is resolved.
-
 	conf_zone_t *conf = zone->conf;
 
 	int ret = journal_store_changesets(chset, conf->ixfr_db, conf->ixfr_fslimit);

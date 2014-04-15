@@ -340,7 +340,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, REFRESH_NOW);
+		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, ZONE_EVENT_NOW);
 		return KNOT_EOK;
 	}
 

@@ -35,6 +35,7 @@ typedef int (*zone_event_cb)(zone_t *zone);
 static int event_reload(zone_t *zone)
 {
 	assert(zone);
+	fprintf(stderr, "RELOAD of '%s'\n", zone->conf->name);
 
 	/* Take zone file mtime and load it. */
 	time_t mtime = zonefile_mtime(zone->conf->file);
@@ -77,6 +78,14 @@ static int event_reload(zone_t *zone)
 		zone_contents_deep_free(&old);
 	}
 
+	/* Schedule notify and refresh after load. */
+	const knot_rdataset_t *soa = zone_contents_soa(contents);
+	assert(soa); /* We just checked the contents, it MUST be consistent. */
+	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+	zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
+	zone_events_schedule(zone, ZONE_EVENT_FLUSH,   zone_config->dbsync_timeout);
+
 	log_zone_info("Zone '%s' loaded.\n", zone_config->name);
 	return KNOT_EOK;
 
@@ -88,6 +97,7 @@ fail:
 static int event_refresh(zone_t *zone)
 {
 	assert(zone);
+	fprintf(stderr, "REFRESH of '%s'\n", zone->conf->name);
 #warning TODO: implement event_refresh
 #if 0
 	assert(event);
@@ -154,12 +164,13 @@ static int event_refresh(zone_t *zone)
 
 //	zone_schedule_event(zone, ZONE_EVENT_REFRESH, time);
 
-	return KNOT_ERROR;
+	return KNOT_ENOTSUP;
 }
 
 static int event_expire(zone_t *zone)
 {
 	assert(zone);
+	fprintf(stderr, "EXPIRE of '%s'\n", zone->conf->name);
 
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
 	synchronize_rcu();
@@ -172,6 +183,8 @@ static int event_expire(zone_t *zone)
 
 static int event_flush(zone_t *zone)
 {
+	assert(zone);
+	fprintf(stderr, "FLUSH of '%s'\n", zone->conf->name);
 #warning TODO: implement event_flush
 #if 0
 	assert(event);
@@ -194,15 +207,25 @@ static int event_flush(zone_t *zone)
 	rcu_read_unlock();
 	return ret;
 #endif
-	return KNOT_ERROR;
+	return KNOT_ENOTSUP;
+}
+
+static int event_notify(zone_t *zone)
+{
+	assert(zone);
+	fprintf(stderr, "NOTIFY of '%s'\n", zone->conf->name);
+#warning TODO: implement event_notify
+
+	return KNOT_ENOTSUP;
 }
 
 static int event_dnssec(zone_t *zone)
 {
 	assert(zone);
+	fprintf(stderr, "DNSSEC of '%s'\n", zone->conf->name);
 
 #warning TODO: implement event_dnssec
-	return KNOT_ERROR;
+	return KNOT_ENOTSUP;
 #if 0
 	knot_changesets_t *chs = knot_changesets_create();
 	if (chs == NULL) {
@@ -277,6 +300,13 @@ static bool valid_event(zone_event_type_t type)
 	return (type >= 0 && type < ZONE_EVENT_COUNT);
 }
 
+/*! \brief Return remaining time to planned event (seconds). */
+static time_t time_until(time_t planned)
+{
+	time_t now = time(NULL);
+	return now < planned ? (planned - now) : 0;
+}
+
 /*!
  * \brief Find next scheduled zone event.
  *
@@ -334,15 +364,12 @@ static void reschedule(zone_events_t *events)
 	}
 
 	zone_event_type_t type = get_next_event(events);
-	if (!valid_event) {
 	if (!valid_event(type)) {
 		evsched_cancel(events->event);
 		return;
 	}
 
-	time_t now = time(NULL);
-	time_t planned = events->time[type];
-	time_t diff = now < planned ? (planned - now) : 0;
+	time_t diff = time_until(events->time[type]);
 
 	evsched_schedule(events->event, diff * 1000);
 }
@@ -360,6 +387,7 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_REFRESH, event_refresh, "refresh" },
 	{ ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
 	{ ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
+        { ZONE_EVENT_NOTIFY,  event_notify,  "notify" },
 	{ ZONE_EVENT_DNSSEC,  event_dnssec,  "DNSSEC resign" },
 	{ 0 }
 };
@@ -487,7 +515,7 @@ void zone_events_deinit(zone_t *zone)
 	memset(&zone->events, 0, sizeof(zone->events));
 }
 
-void zone_events_schedule(zone_t *zone, zone_event_type_t type, time_t time)
+void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 {
 	if (!zone || !valid_event(type)) {
 		return;
@@ -501,9 +529,17 @@ void zone_events_schedule(zone_t *zone, zone_event_type_t type, time_t time)
 	pthread_mutex_unlock(&events->mx);
 }
 
+void zone_events_schedule(zone_t *zone, zone_event_type_t type, unsigned dt)
+{
+	fprintf(stderr, "%s: %s '%s' in '%u' seconds\n",
+	        __func__, zone->conf->name, get_event_info(type)->name, dt);
+	time_t abstime = time(NULL) + dt;
+	return zone_events_schedule_at(zone, type, abstime);
+}
+
 void zone_events_cancel(zone_t *zone, zone_event_type_t type)
 {
-	zone_events_schedule(zone, type, 0);
+	zone_events_schedule_at(zone, type, 0);
 }
 
 void zone_events_cancel_all(zone_t *zone)
@@ -667,16 +703,5 @@ int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
 
 //	evsched_schedule(zone->dnssec.timer, relative * 1000);
 #endif
-	return KNOT_EOK;
-}
-
-int zones_cancel_dnssec(zone_t *zone)
-{
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-#warning TODO: reimplement cancel_dnssec
-//	evsched_cancel(zone->dnssec.timer);
-
 	return KNOT_EOK;
 }

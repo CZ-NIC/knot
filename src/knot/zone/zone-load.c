@@ -145,7 +145,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 			knot_changesets_free(&chset);
 			return KNOT_ENOMEM;
 		}
-#warning What to do with the refresh_at here?
+#warning TODO: this time value must be retrieved in events_reload after contents switch.
 		uint32_t refresh_at = 0;
 		ret = knot_dnssec_zone_sign(new_contents, conf, change,
 		                            KNOT_SOA_SERIAL_UPDATE, &refresh_at);
