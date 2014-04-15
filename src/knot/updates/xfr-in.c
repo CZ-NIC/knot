@@ -704,11 +704,6 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 
 	memcpy(copy, rrs->data, knot_rdataset_size(rrs));
 
-	/*
-	 * Clear additional array from node in new tree. It's callers
-	 * responsibility to store it for cleanup.
-	 */
-	data->additional = NULL;
 	// Store new data into node RRS.
 	rrs->data = copy;
 
