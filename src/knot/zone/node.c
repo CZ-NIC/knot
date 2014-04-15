@@ -75,6 +75,8 @@ knot_node_t *knot_node_new(const knot_dname_t *owner)
 		return NULL;
 	}
 
+	memset(ret, 0, sizeof(*ret));
+
 	if (owner) {
 		ret->owner = knot_dname_copy(owner, NULL);
 		if (ret->owner == NULL) {
@@ -83,12 +85,6 @@ knot_node_t *knot_node_new(const knot_dname_t *owner)
 		}
 	}
 
-	ret->parent = NULL;
-	ret->rrs = NULL;
-	ret->prev = NULL;
-	ret->nsec3_node = NULL;
-	ret->children = 0;
-	ret->rrset_count = 0;
 	ret->flags = KNOT_NODE_FLAGS_NULL;
 
 	return ret;
