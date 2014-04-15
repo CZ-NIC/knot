@@ -335,6 +335,7 @@ static void reschedule(zone_events_t *events)
 
 	zone_event_type_t type = get_next_event(events);
 	if (!valid_event) {
+	if (!valid_event(type)) {
 		evsched_cancel(events->event);
 		return;
 	}
