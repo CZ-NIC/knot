@@ -70,6 +70,6 @@ code-coverage-clean:
 	-find . -name "*.gcda" -o -name "*.gcov" -delete
 endif
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-code-coverage
+DISTCHECK_CONFIGURE_FLAGS = --without-ragel --disable-code-coverage
 
 .PHONY: check-code-coverage code-coverage-initial code-coverage-capture code-coverage-html code-coverage-clean
