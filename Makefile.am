@@ -2,6 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = libtap src tests samples doc man patches
 
 AM_DISTCHECK_CONFIGURE_FLAGS =		\
+	--without-ragel			\
 	--disable-code-coverage
 
 code_coverage_quiet = --quiet
