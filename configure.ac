@@ -65,7 +65,17 @@ AS_IF([test "x$YACC_BISON" != "xbison"],
 AC_PROG_INSTALL
 
 # Check for Ragel
-AC_PATH_PROG([RAGEL], [ragel], [false])
+AC_ARG_WITH([ragel],
+    AC_HELP_STRING([--with-ragel=path], [Path to Ragel binary. [default=auto]]),
+    [with_ragel=$withval],
+    [with_ragel=auto])
+
+AS_CASE([$with_ragel],
+    [yes|auto], [AC_PATH_PROG([RAGEL], [ragel], [false])],
+    [no], [RAGEL=false],
+    [*], [RAGEL=$with_ragel],
+)
+
 AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "false")
 
 # Set FSM type for Ragel
