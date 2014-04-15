@@ -988,9 +988,6 @@ static int semantic_checks_dnssec(knot_zone_contents_t *zone,
  */
 static int do_checks_in_tree(knot_node_t *node, void *data)
 {
-	dbg_semcheck_verb("semcheck: do_check_in_tree: Checking node: %s\n",
-	                  knot_dname_to_str(node->owner));
-
 	arg_t *args = (arg_t *)data;
 
 	knot_zone_contents_t *zone = (knot_zone_contents_t *)args->arg1;
