@@ -129,7 +129,7 @@ libknotus_la_SOURCES =				\
 
 # dynamic: libknot
 libknot_la_LDFLAGS =				\
-	$(CODE_COVERAGE_LDFLAGS)			\
+	$(AM_LDFLAGS)				\
 	-version-info 0:1:0			\
 	-export-symbols-regex '^(knot|KNOT|rrset|tsig|zone)_'
 
@@ -303,7 +303,7 @@ libknotd_la_LIBADD = libknots.la libknot.la
 # sbin programs
 knotd_LDADD = libknot.la libknotd.la
 knotd_CPPFLAGS = $(AM_CPPFLAGS) ${systemd_daemon_CFLAGS}
-knotd_LDFLAGS = $(CODE_COVERAGE_LDFLAGS) ${systemd_daemon_LIBS}
+knotd_LDFLAGS = $(AM_LDFLAGS) ${systemd_daemon_LIBS}
 
 knotc_LDADD = libknot.la libknotd.la
 

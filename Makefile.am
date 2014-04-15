@@ -1,6 +1,9 @@
 ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = libtap src tests samples doc man patches
 
+AM_DISTCHECK_CONFIGURE_FLAGS =		\
+	--disable-code-coverage
+
 code_coverage_quiet = --quiet
 
 check-code-coverage:
@@ -69,7 +72,5 @@ code-coverage-clean:
 	        $(PACKAGE_NAME)-$(PACKAGE_VERSION)-coverage/
 	-find . -name "*.gcda" -o -name "*.gcov" -delete
 endif
-
-DISTCHECK_CONFIGURE_FLAGS = --without-ragel --disable-code-coverage
 
 .PHONY: check-code-coverage code-coverage-initial code-coverage-capture code-coverage-html code-coverage-clean

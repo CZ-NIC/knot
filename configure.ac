@@ -401,5 +401,6 @@ echo "
   Ragel: ${RAGEL} ${FSM_TYPE}
   Utils with IDN: ${libidn}
   Use systemd notifications: ${enable_systemd}
+  Code coverage: ${enable_code_coverage}
 
   Continue with 'make' command"
