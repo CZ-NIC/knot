@@ -613,6 +613,11 @@ void xfrin_cleanup_successful_update(knot_changesets_t *chgs)
 static int free_additional(knot_node_t **node, void *data)
 {
 	UNUSED(data);
+	if ((*node)->flags & KNOT_NODE_FLAGS_NONAUTH) {
+		// non-auth nodes have no additionals.
+		return KNOT_EOK;
+	}
+
 	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
 		struct rr_data *data = &(*node)->rrs[i];
 		if (data->additional) {
