@@ -167,7 +167,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 dbg_zone_exec_detail(
 		char *name = knot_dname_to_str(owner);
 		char *name_f = (*found != NULL)
-			? knot_dname_to_str(knot_node_owner(*found))
+			? knot_dname_to_str((*found)->owner)
 			: "none";
 
 		dbg_zone_detail("Searched for owner %s in zone tree.\n",

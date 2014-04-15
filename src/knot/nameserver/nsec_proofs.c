@@ -163,7 +163,7 @@ dbg_ns_exec_verb(
 	}
 
 dbg_ns_exec_detail(
-	char *name = knot_dname_to_str(knot_node_owner(*closest_encloser));
+	char *name = knot_dname_to_str((*closest_encloser)->owner);
 	dbg_ns_detail("Closest encloser: %s\n", name);
 	free(name);
 );
@@ -511,7 +511,7 @@ dbg_ns_exec_verb(
 
 	while (knot_dname_cmp(prev_new->owner, wildcard) > 0) {
 dbg_ns_exec_verb(
-		char *name = knot_dname_to_str(knot_node_owner(prev_new));
+		char *name = knot_dname_to_str(prev_new->owner);
 		dbg_ns_verb("Previous node: %s\n", name);
 		free(name);
 );
@@ -521,7 +521,7 @@ dbg_ns_exec_verb(
 	assert(knot_dname_cmp(prev_new->owner, wildcard) < 0);
 
 dbg_ns_exec_verb(
-	char *name = knot_dname_to_str(knot_node_owner(prev_new));
+	char *name = knot_dname_to_str(prev_new->owner);
 	dbg_ns_verb("Previous node: %s\n", name);
 	free(name);
 );

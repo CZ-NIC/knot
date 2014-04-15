@@ -93,15 +93,6 @@ static int knot_zone_contents_check_node(
 
 	if (!knot_dname_is_sub(node->owner,
 				       contents->apex->owner)) {
-dbg_zone_exec(
-		char *node_owner = knot_dname_to_str(knot_node_owner(node));
-		char *apex_owner = knot_dname_to_str(contents->apex->owner);
-		dbg_zone("zone: Trying to insert foreign node to a "
-			 "zone. Node owner: %s, zone apex: %s\n",
-			 node_owner, apex_owner);
-		free(node_owner);
-		free(apex_owner);
-);
 		return KNOT_EOUTOFZONE;
 	}
 	return KNOT_EOK;
@@ -522,12 +513,6 @@ static int knot_zone_contents_add_node(knot_zone_contents_t *zone,
 		return KNOT_EINVAL;
 	}
 
-dbg_zone_exec_detail(
-	char *name = knot_dname_to_str(knot_node_owner(node));
-	dbg_zone_detail("Adding node to zone: %s.\n", name);
-	free(name);
-);
-
 	int ret = 0;
 	if ((ret = knot_zone_contents_check_node(zone, node)) != 0) {
 		dbg_zone("Node check failed.\n");
@@ -942,7 +927,7 @@ dbg_zone_detail("Search function returned %d, node %s (%p) and prev: %s (%p)\n",
 		}
 	}
 dbg_zone_exec(
-	char *n = knot_dname_to_str(knot_node_owner((*closest_encloser)));
+	char *n = knot_dname_to_str((*closest_encloser)->owner);
 	dbg_zone_detail("Closest encloser: %s\n", n);
 	free(n);
 );
@@ -1093,8 +1078,7 @@ dbg_zone_exec_detail(
 		nsec3_rrs = knot_node_rdataset(*nsec3_previous, KNOT_RRTYPE_NSEC3);
 		dbg_zone_exec_detail(
 		char *name = (*nsec3_previous)
-				? knot_dname_to_str(
-					  knot_node_owner(*nsec3_previous))
+				? knot_dname_to_str((*nsec3_previous)->owner)
 				: "none";
 		dbg_zone_detail("Previous node: %s, checking parameters...\n",
 				name);
