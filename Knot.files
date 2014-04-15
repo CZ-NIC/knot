@@ -119,6 +119,8 @@ src/knot/nameserver/notify.c
 src/knot/nameserver/notify.h
 src/knot/nameserver/nsec_proofs.c
 src/knot/nameserver/nsec_proofs.h
+src/knot/nameserver/process_answer.c
+src/knot/nameserver/process_answer.h
 src/knot/nameserver/process_query.c
 src/knot/nameserver/process_query.h
 src/knot/nameserver/query_module.c

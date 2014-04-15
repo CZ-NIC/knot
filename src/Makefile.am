@@ -236,6 +236,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
+	knot/nameserver/process_answer.c		\
+	knot/nameserver/process_answer.h		\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
