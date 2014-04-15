@@ -560,7 +560,7 @@ int knot_ns_switch_zone(knot_ns_xfr_t *xfr)
 	 * a reload occurs when transfer is pending. */
 	zone_t *z = xfr->zone;
 	if (z == NULL) {
-		char *name = knot_dname_to_str(knot_zone_contents_apex(zone)->owner);
+		char *name = knot_dname_to_str(zone->apex->owner);
 		dbg_xfr("Failed to replace zone %s, old zone "
 		       "not found\n", name);
 		free(name);

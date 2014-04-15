@@ -81,9 +81,9 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 	 * Retrieve the local Serial
 	 */
 	const knot_rdataset_t *soa_rrs =
-		knot_node_rdataset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
+		knot_node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
 	if (soa_rrs == NULL) {
-		char *name = knot_dname_to_str(knot_zone_contents_apex(zone)->owner);
+		char *name = knot_dname_to_str(zone->apex->owner);
 		dbg_xfrin("SOA RRSet missing in the zone %s!\n", name);
 		free(name);
 		return KNOT_ERROR;
@@ -1091,7 +1091,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 		return ret;
 	}
 
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
+	assert(contents_copy->apex != NULL);
 
 	*new_contents = contents_copy;
 
@@ -1140,7 +1140,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 		return ret;
 	}
 
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
+	assert(contents_copy->apex != NULL);
 
 	return KNOT_EOK;
 }
@@ -1250,7 +1250,7 @@ int xfrin_apply_changesets(zone_t *zone,
 			return ret;
 		}
 	}
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
+	assert(contents_copy->apex != NULL);
 
 	/*!
 	 * \todo Test failure of IXFR.

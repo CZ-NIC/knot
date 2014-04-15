@@ -655,7 +655,7 @@ static int check_nsec3_node_in_zone(knot_zone_contents_t *zone,
 	}
 
 	/* Result is a dname, it can't be larger */
-	const knot_node_t *apex = knot_zone_contents_apex(zone);
+	const knot_node_t *apex = zone->apex;
 	uint8_t *next_dname_str = NULL;
 	uint8_t next_dname_size = 0;
 	knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
@@ -770,7 +770,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
                                    const knot_node_t *node,
                                    err_handler_t *handler)
 {
-	if (!((node->flags & KNOT_NODE_FLAGS_DELEG) || knot_zone_contents_apex(zone) ==
+	if (!((node->flags & KNOT_NODE_FLAGS_DELEG) || zone->apex ==
 	                node)) {
 		return KNOT_EOK;
 	}
@@ -789,7 +789,7 @@ static int sem_check_node_optional(const knot_zone_contents_t *zone,
 			knot_zone_contents_find_node(zone, ns_dname);
 
 		if (knot_dname_is_sub(ns_dname,
-			      knot_zone_contents_apex(zone)->owner)) {
+			      zone->apex->owner)) {
 			if (glue_node == NULL) {
 				/* Try wildcard ([1]* + suffix). */
 				knot_dname_t wildcard[KNOT_DNAME_MAXLEN];
@@ -1075,7 +1075,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 		}
 
 		/* Result is a dname, it can't be larger */
-		const knot_node_t *apex = knot_zone_contents_apex(zone);
+		const knot_node_t *apex = zone->apex;
 		uint8_t *next_dname_str = NULL;
 		uint8_t next_dname_size = 0;
 		knot_nsec3_next_hashed(nsec3_rrs, 0, &next_dname_str,
@@ -1122,7 +1122,7 @@ void log_cyclic_errors_in_zone(err_handler_t *handler,
 			assert(next_dname);
 
 			const knot_dname_t *apex_dname =
-				knot_zone_contents_apex(zone)->owner;
+				zone->apex->owner;
 			assert(apex_dname);
 
 			if (knot_dname_cmp(next_dname, apex_dname) !=0) {

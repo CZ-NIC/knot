@@ -43,8 +43,8 @@ static int knot_zone_diff_load_soas(const knot_zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-	const knot_node_t *apex1 = knot_zone_contents_apex(zone1);
-	const knot_node_t *apex2 = knot_zone_contents_apex(zone2);
+	const knot_node_t *apex1 = zone1->apex;
+	const knot_node_t *apex2 = zone2->apex;
 	if (apex1 == NULL || apex2 == NULL) {
 		return KNOT_EINVAL;
 	}

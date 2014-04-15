@@ -188,15 +188,6 @@ int knot_zone_contents_find_nsec3_for_name(
                                     const knot_dname_t *name,
                                     const knot_node_t **nsec3_node,
                                     const knot_node_t **nsec3_previous);
-/*!
- * \brief Returns the apex node of the zone.
- *
- * \param zone Zone to get the apex of.
- *
- * \return Zone apex node.
- */
-const knot_node_t *knot_zone_contents_apex(
-	const knot_zone_contents_t *contents);
 
 const knot_node_t *knot_zone_contents_find_wildcard_child(
                const knot_zone_contents_t *contents, const knot_node_t *parent);

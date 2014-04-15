@@ -1116,18 +1116,6 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-const knot_node_t *knot_zone_contents_apex(
-	const knot_zone_contents_t *zone)
-{
-	if (zone == NULL) {
-		return NULL;
-	}
-
-	return zone->apex;
-}
-
-/*----------------------------------------------------------------------------*/
-
 const knot_node_t *knot_zone_contents_find_wildcard_child(
                 const knot_zone_contents_t *contents, const knot_node_t *parent)
 {
@@ -1453,7 +1441,7 @@ uint32_t knot_zone_serial(const knot_zone_contents_t *zone)
 {
 	if (!zone) return 0;
 	const knot_rdataset_t *soa = NULL;
-	soa = knot_node_rdataset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
+	soa = knot_node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
 	uint32_t serial = knot_soa_serial(soa);
 	return serial;
 }

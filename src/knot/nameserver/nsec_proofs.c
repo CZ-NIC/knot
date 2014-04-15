@@ -155,8 +155,7 @@ static int ns_put_nsec3_closest_encloser_proof(
 
 	if (knot_zone_contents_nsec3params(zone) == NULL) {
 dbg_ns_exec_verb(
-		char *name = knot_dname_to_str(knot_node_owner(
-				knot_zone_contents_apex(zone)));
+		char *name = knot_dname_to_str(zone->apex->owner);
 		dbg_ns_verb("No NSEC3PARAM found in zone %s.\n", name);
 		free(name);
 );
@@ -516,7 +515,7 @@ dbg_ns_exec_verb(
 		dbg_ns_verb("Previous node: %s\n", name);
 		free(name);
 );
-		assert(prev_new != knot_zone_contents_apex(zone));
+		assert(prev_new != zone->apex);
 		prev_new = prev_new->prev;
 	}
 	assert(knot_dname_cmp(prev_new->owner, wildcard) < 0);
