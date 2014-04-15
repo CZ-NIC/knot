@@ -756,9 +756,9 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		/* Init memory estimation context. */
 		zone_estim_t est = {.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
-		                    .dname_size = 0, .rrset_size = 0,
-		                    .node_size = 0, .ahtable_size = 0,
-		                    .rdata_size = 0, .record_count = 0 };
+		                    .dname_size = 0, .node_size = 0,
+		                    .ahtable_size = 0, .rdata_size = 0,
+		                    .record_count = 0 };
 		if (est.node_table == NULL) {
 			log_server_error("Not enough memory.\n");
 			continue;
@@ -799,7 +799,6 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		size_t zone_size = (size_t)(((double)(est.rdata_size +
 		                   est.node_size +
-		                   est.rrset_size +
 		                   est.dname_size +
 		                   est.ahtable_size +
 		                   malloc_size) * ESTIMATE_MAGIC) / (1024.0 * 1024.0));

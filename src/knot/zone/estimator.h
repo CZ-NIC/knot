@@ -31,7 +31,7 @@
 #include "zscanner/zscanner.h"
 
 // Mutiplicative constant, needed because of malloc's fragmentation
-static const double ESTIMATE_MAGIC = 1.2;
+static const double ESTIMATE_MAGIC = 1.3;
 
 /*!
  * \brief Memory estimation context.
@@ -42,7 +42,6 @@ typedef struct zone_estim {
 	size_t dname_size; /*!< Estimated DNAME size. */
 	size_t node_size; /*!< Estimated node size. */
 	size_t ahtable_size; /*!< Estimated ahtable size. */
-	size_t rrset_size; /*!< Estimated RRSet size. */
 	size_t record_count; /*!< Total record count for zone. */
 } zone_estim_t;
 

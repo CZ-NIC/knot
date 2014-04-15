@@ -23,19 +23,13 @@
 #include "zscanner/zscanner.h"
 #include "common/descriptor.h"
 
-// Constants used for tweaking, mostly malloc overhead
+// Addition constants used for tweaking, mostly malloc overhead
 enum estim_consts {
-	MALLOC_OVER = sizeof(size_t), // according to malloc.c, this is minimum
-	DNAME_MULT = 1,
-	DNAME_ADD = MALLOC_OVER * 3, // dname itself, labels, name
-	RDATA_MULT = 1,
-	RDATA_ADD = MALLOC_OVER, // just raw rdata, but allocation is there
-	RRSET_MULT = 1,
-	RRSET_ADD = MALLOC_OVER * 3, // rrset itself, rdata array, indices
-	NODE_MULT = 1,
-	NODE_ADD = MALLOC_OVER * 2, // node itself, rrset array
-	AHTABLE_ADD = MALLOC_OVER * 3, // table, slots, slot sizes
-	MALLOC_MIN = 3 * MALLOC_OVER // minimun size of malloc'd chunk, -overhead
+	MALLOC_OVERHEAD = sizeof(size_t),   // set according to malloc.c
+	DNAME_ADD = MALLOC_OVERHEAD,        // just dname allocation
+	NODE_ADD = MALLOC_OVERHEAD * 2,     // node itself, rrset array
+	AHTABLE_ADD = MALLOC_OVERHEAD * 2,  // table, index
+	MALLOC_MIN = MALLOC_OVERHEAD * 3    // minimum size of malloc'd chunk
 };
 
 typedef struct type_list_item {
@@ -44,7 +38,6 @@ typedef struct type_list_item {
 } type_list_item_t;
 
 typedef struct dummy_node {
-	// For now only contains list of RR types
 	list_t node_list;
 } dummy_node_t;
 
@@ -81,7 +74,7 @@ static size_t dname_memsize(const knot_dname_t *d)
 		d_size = MALLOC_MIN;
 	}
 
-	return d_size * DNAME_MULT + DNAME_ADD;
+	return d_size + DNAME_ADD;
 }
 
 // return: 0 - unique, 1 - duplicate
@@ -118,7 +111,7 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	dummy_node_t *n = NULL;
 	if (insert_dname_into_table(est->node_table, owner, &n) == 0) {
 		// First time we see this name == new node
-		est->node_size += sizeof(knot_node_t) * NODE_MULT + NODE_ADD;
+		est->node_size += sizeof(knot_node_t) + NODE_ADD;
 		// Also, RRSet's owner will now contain full dname
 		est->dname_size += dname_memsize(owner);
 		// Trie's nodes handled at the end of computation
@@ -126,8 +119,9 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	knot_dname_free(&owner, NULL);
 	assert(n);
 
-	// We will always add RDATA
-	size_t rdlen = scanner->r_data_length;
+	// Add RDATA + size + TTL
+	size_t rdlen = scanner->r_data_length + sizeof(uint16_t) +
+	               sizeof(uint32_t);
 	if (rdlen < MALLOC_MIN) {
 		rdlen = MALLOC_MIN;
 	}
@@ -140,30 +134,18 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	 * Do not add for RRs that would be merged.
 	 * All possible duplicates will be added to total size.
 	 */
-
 	if (dummy_node_add_type(n, scanner->r_type) == 0) {
 		/*
-		 * New RR type, add actual RRSet struct's size:
-		 * MALLOC_MIN is added because of index array - usually not many RRs
-		 * are in the RRSet and values in the array are type uint32, so
-		 * 3 would be needed on 32bit system and 6 on 32bit system in order to
-		 * be larger than MALLOC_MIN, so we use it instead. Of course, if there
-		 * are more than 3/6 records in RRSet, measurement will not be precise.
+		 * New RR type, add actual rr_data struct's size.
 		 */
-		est->rrset_size += (sizeof(knot_rrset_t) + MALLOC_MIN)
-		                   * RRSET_MULT + RRSET_ADD;
-		// Add pointer in node's array
-		est->node_size += sizeof(knot_rrset_t *);
-	} else {
-		// Merge would happen, so just RDATA index is added
-		//est->rrset_size += sizeof(uint32_t);
+		est->node_size += sizeof(struct rr_data);
 	}
 }
 
 void *estimator_malloc(void *ctx, size_t len)
 {
 	size_t *count = (size_t *)ctx;
-	*count += len + MALLOC_OVER;
+	*count += len + MALLOC_OVERHEAD;
 	return xmalloc(len);
 }
 
@@ -178,7 +160,7 @@ static int get_ahtable_size(void *t, void *d)
 	size_t *size = (size_t *)d;
 
 	/* Size of the empty table. */
-	*size += sizeof(hhash_t) + table->size*sizeof(hhelem_t);
+	*size += sizeof(hhash_t) + table->size * sizeof(hhelem_t) + AHTABLE_ADD;
 
 	/* Allocated keys. */
 	uint16_t key_len = 0;
