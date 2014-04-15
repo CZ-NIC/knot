@@ -55,7 +55,7 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 {
 	if (opt_rr == NULL || rrset == NULL
 	    || rrset->type != KNOT_RRTYPE_OPT ||
-	    knot_rrset_rr_count(rrset) == 0) {
+	    rrset->rrs.rr_count == 0) {
 		return KNOT_EINVAL;
 	}
 

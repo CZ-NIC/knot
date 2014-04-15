@@ -32,7 +32,7 @@ static size_t rr_binary_size(const knot_rrset_t *rrset, size_t rdata_pos)
 
 static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 {
-	if (rrset == NULL || knot_rrset_rr_count(rrset) == 0) {
+	if (rrset == NULL || rrset->rrs.rr_count == 0) {
 		return 0;
 	}
 	uint64_t size = sizeof(uint64_t) + // size at the beginning
@@ -40,7 +40,7 @@ static uint64_t rrset_binary_size(const knot_rrset_t *rrset)
 	              sizeof(uint16_t) + // type
 	              sizeof(uint16_t) + // class
 	              sizeof(uint16_t);  //RR count
-	uint16_t rdata_count = knot_rrset_rr_count(rrset);
+	uint16_t rdata_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rdata_count; i++) {
 		/* Space to store length of one RR. */
 		size += sizeof(uint32_t);
@@ -109,7 +109,7 @@ int rrset_serialize(const knot_rrset_t *rrset, uint8_t *stream, size_t *size)
 
 	size_t offset = sizeof(uint64_t);
 	/* Save RR count. */
-	const uint16_t rr_count = knot_rrset_rr_count(rrset);
+	const uint16_t rr_count = rrset->rrs.rr_count;
 	memcpy(stream + offset, &rr_count, sizeof(uint16_t));
 	offset += sizeof(uint16_t);
 	/* Save owner. */

@@ -93,7 +93,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	assert(b);
 	assert(data);
 
-	if (b->rrset_count == 0 || knot_node_is_non_auth(b)) {
+	if (b->rrset_count == 0 || b->flags & KNOT_NODE_FLAGS_NONAUTH) {
 		return NSEC_NODE_SKIP;
 	}
 
@@ -132,7 +132,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 
 		dbg_dnssec_detail("NSECs not equal, replacing.\n");
 		// Mark the node so that we do not sign this NSEC
-		knot_node_set_removed_nsec(a);
+		a->flags |= KNOT_NODE_FLAGS_REMOVED_NSEC;
 		ret = knot_nsec_changeset_remove(a, data->changeset);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&new_nsec, NULL);

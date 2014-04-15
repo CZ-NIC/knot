@@ -192,7 +192,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 			knot_wire_set_tc(pkt->wire);
 			return KNOT_ESPACE;
 		}
-		for (unsigned i = 0; i < knot_node_rrset_count(qdata->node); ++i) {
+		for (unsigned i = 0; i < qdata->node->rrset_count; ++i) {
 			rrset = knot_node_rrset_at(qdata->node, i);
 			ret = ns_put_rr(pkt, &rrset, NULL, compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
@@ -285,8 +285,8 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* Find closest delegation point. */
-	while (!knot_node_is_deleg_point(qdata->node)) {
-		qdata->node = knot_node_parent(qdata->node);
+	while (!(qdata->node->flags & KNOT_NODE_FLAGS_DELEG)) {
+		qdata->node = qdata->node->parent;
 	}
 
 	/* Insert NS record. */
@@ -310,7 +310,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	const knot_node_t *node = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
-	uint16_t rr_rdata_count = knot_rrset_rr_count(rr);
+	uint16_t rr_rdata_count = rr->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_rdata_count; i++) {
 		hint = knot_pkt_compr_hint(info, COMPR_HINT_RDATA + i);
 		node = rr->additional[i];
@@ -438,7 +438,7 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 	/* DS query is answered normally, but everything else at/below DP
 	 * triggers referral response. */
 	if (qtype != KNOT_RRTYPE_DS &&
-	    (knot_node_is_deleg_point(qdata->node) || knot_node_is_non_auth(qdata->node))) {
+	    ((qdata->node->flags & KNOT_NODE_FLAGS_DELEG) || qdata->node->flags & KNOT_NODE_FLAGS_NONAUTH)) {
 		dbg_ns("%s: solving REFERRAL\n", __func__);
 		return DELEG;
 	}
@@ -468,7 +468,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	/* Name is covered by wildcard. */
-	if (knot_node_has_wildcard_child(qdata->encloser)) {
+	if (qdata->encloser->flags & KNOT_NODE_FLAGS_WILDCARD_CHILD) {
 		dbg_ns("%s: name %p covered by wildcard\n", __func__, qdata->name);
 
 		/* Find wildcard child in the zone. */
@@ -502,7 +502,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Name is below delegation. */
-	if (knot_node_is_deleg_point(qdata->encloser)) {
+	if ((qdata->encloser->flags & KNOT_NODE_FLAGS_DELEG)) {
 		dbg_ns("%s: name below delegation point %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser;
 		return DELEG;
@@ -693,7 +693,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
               const knot_rrset_t *rrsigs, uint16_t compr_hint,
               uint32_t flags, struct query_data *qdata)
 {
-	if (knot_rrset_rr_count(rr) < 1) {
+	if (rr->rrs.rr_count < 1) {
 		dbg_ns("%s: refusing to put empty RR of type %u\n", __func__, rr->type);
 		return KNOT_EMALF;
 	}

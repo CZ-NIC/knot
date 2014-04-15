@@ -89,37 +89,31 @@ struct rr_data {
 /*----------------------------------------------------------------------------*/
 /*! \brief Flags used to mark nodes with some property. */
 typedef enum {
+	/*! \brief Empty flag initializer. */
+	KNOT_NODE_FLAGS_NULL =            0 << 0,
+	/*! \brief Node is authoritative. */
+	KNOT_NODE_FLAGS_AUTH =            1 << 0,
 	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
-	KNOT_NODE_FLAGS_DELEG = 1 << 0,
+	KNOT_NODE_FLAGS_DELEG =           1 << 1,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
-	KNOT_NODE_FLAGS_NONAUTH = 1 << 1,
+	KNOT_NODE_FLAGS_NONAUTH =         1 << 2,
 	/*! \brief Node is an apex node. */
-	KNOT_NODE_FLAGS_APEX = 1 << 2,
+	KNOT_NODE_FLAGS_APEX =            1 << 3,
 	/*! \brief NSEC/NSEC3 was removed from this node. */
-	KNOT_NODE_FLAGS_REMOVED_NSEC = 1 << 3,
-	/*! \brief Node is empty and will be deleted after update.
-	 *  \todo Remove after dname refactoring, update description in node. */
-	KNOT_NODE_FLAGS_EMPTY = 1 << 4,
+	KNOT_NODE_FLAGS_REMOVED_NSEC =    1 << 4,
+	/*! \brief Node is empty and will be deleted after update. */
+	KNOT_NODE_FLAGS_EMPTY =           1 << 5,
 	/*! \brief Node has a wildcard child. */
-	KNOT_NODE_FLAGS_WILDCARD_CHILD = 1 << 5
+	KNOT_NODE_FLAGS_WILDCARD_CHILD =  1 << 6
 } knot_node_flags_t;
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Creates and initializes new node structure.
  *
- * \todo Owner reference counter will be increased.
- *
- * \param owner Owner of the created node.
- * \param parent Parent of the created node.
- * \param flags Document me.
- *
- * \todo Document missing parameters.
- *
  * \return Newly created node or NULL if an error occured.
  */
-knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
-                               uint8_t flags);
+knot_node_t *knot_node_new(const knot_dname_t *owner);
 
 /*!
  * \brief Adds an RRSet to the node.
@@ -132,8 +126,7 @@ knot_node_t *knot_node_new(const knot_dname_t *owner, knot_node_t *parent,
  */
 int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset, bool *ttl_err);
 
-const knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type);
-knot_rdataset_t *knot_node_get_rdataset(const knot_node_t *node, uint16_t type);
+knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type);
 
 /*!
  * \brief Returns the RRSet of the given type from the node (non-const version).
@@ -149,200 +142,12 @@ knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type);
 void knot_node_remove_rrset(knot_node_t *node, uint16_t type);
 
 /*!
- * \brief Returns number of RRSets in the node.
- *
- * \param node Node to get the RRSet count from.
- *
- * \return Number of RRSets in \a node.
- */
-short knot_node_rrset_count(const knot_node_t *node);
-
-/*!
- * \brief Returns the parent of the node.
- *
- * \param node Node to get the parent of.
- *
- * \return Parent node of the given node or NULL if no parent has been set (e.g.
- *         node in a zone apex has no parent).
- */
-const knot_node_t *knot_node_parent(const knot_node_t *node);
-
-knot_node_t *knot_node_get_parent(const knot_node_t *node);
-
-/*!
  * \brief Sets the parent of the node.
  *
  * \param node Node to set the parent of.
  * \param parent Parent to set to the node.
  */
 void knot_node_set_parent(knot_node_t *node, knot_node_t *parent);
-
-unsigned int knot_node_children(const knot_node_t *node);
-
-/*!
- * \brief Returns the previous authoritative node or delegation point in
- *        canonical order or the first node in zone.
- *
- * \param node Node to get the previous node of.
- *
- * \return Previous authoritative node or delegation point in canonical order or
- *         the first node in zone if \a node is the last node in zone.
- * \retval NULL if previous node is not set.
- */
-const knot_node_t *knot_node_previous(const knot_node_t *node);
-
-/*!
- * \brief Returns the previous authoritative node or delegation point in
- *        canonical order or the first node in zone.
- *
- * \note This function is identical to knot_node_previous() except that it
- *       returns non-const node.
- *
- * \param node Node to get the previous node of.
- *
- * \return Previous authoritative node or delegation point in canonical order or
- *         the first node in zone if \a node is the last node in zone.
- * \retval NULL if previous node is not set.
- */
-knot_node_t *knot_node_get_previous(const knot_node_t *node);
-
-/*!
- * \brief Sets the previous node of the given node.
- *
- * \param node Node to set the previous node to.
- * \param prev Previous node to set.
- */
-void knot_node_set_previous(knot_node_t *node, knot_node_t *prev);
-
-/*!
- * \brief Returns the NSEC3 node corresponding to the given node.
- *
- * \param node Node to get the NSEC3 node for.
- *
- * \return NSEC3 node corresponding to \a node (i.e. node with owner name
- *         created by concatenating the hash of owner domain name of \a node
- *         and the name of the zone \a node belongs to).
- * \retval NULL if the NSEC3 node is not set.
- */
-knot_node_t *knot_node_get_nsec3_node(const knot_node_t *node);
-
-/*!
- * \brief Returns the NSEC3 node corresponding to the given node.
- *
- * \param node Node to get the NSEC3 node for.
- *
- * \return NSEC3 node corresponding to \a node (i.e. node with owner name
- *         created by concatenating the hash of owner domain name of \a node
- *         and the name of the zone \a node belongs to).
- * \retval NULL if the NSEC3 node is not set.
- */
-const knot_node_t *knot_node_nsec3_node(const knot_node_t *node);
-
-/*!
- * \brief Sets the corresponding NSEC3 node of the given node.
- *
- * \param node Node to set the NSEC3 node to.
- * \param nsec3_node NSEC3 node to set.
- */
-void knot_node_set_nsec3_node(knot_node_t *node, knot_node_t *nsec3_node);
-
-/*!
- * \brief Returns the owner of the node.
- *
- * \param node Node to get the owner of.
- *
- * \return Owner of the given node.
- */
-const knot_dname_t *knot_node_owner(const knot_node_t *node);
-
-/*!
- * \brief Returns the owner of the node as a non-const reference.
- *
- * \param node Node to get the owner of.
- *
- * \return Owner of the given node.
- */
-knot_dname_t *knot_node_get_owner(const knot_node_t *node);
-
-/*!
- * \brief Sets the wildcard child flag of the node.
- *
- * \param node Node that has wildcard.
- */
-void knot_node_set_wildcard_child(knot_node_t *node);
-
-/*!
- * \brief Checks if node has a wildcard child.
- *
- * \param node Node to check.
- *
- * \retval > 0 if the node has a wildcard child.
- * \retval 0 otherwise.
- */
-int knot_node_has_wildcard_child(const knot_node_t *node);
-
-/*!
- * \brief Clears the node's wildcard child flag.
- *
- * \param node Node to clear the flag in.
- */
-void knot_node_clear_wildcard_child(knot_node_t *node);
-
-/*!
- * \brief Mark the node as a delegation point.
- *
- * \param node Node to mark as a delegation point.
- */
-void knot_node_set_deleg_point(knot_node_t *node);
-
-/*!
- * \brief Checks if the node is a delegation point.
- *
- * \param node Node to check.
- *
- * \retval <> 0 if \a node is marked as delegation point.
- * \retval 0 otherwise.
- */
-int knot_node_is_deleg_point(const knot_node_t *node);
-
-/*!
- * \brief Mark the node as non-authoritative.
- *
- * \param node Node to mark as non-authoritative.
- */
-void knot_node_set_non_auth(knot_node_t *node);
-
-/*!
- * \brief Checks if the node is non-authoritative.
- *
- * \param node Node to check.
- *
- * \retval <> 0 if \a node is marked as non-authoritative.
- * \retval 0 otherwise.
- */
-int knot_node_is_non_auth(const knot_node_t *node);
-
-void knot_node_set_auth(knot_node_t *node);
-
-int knot_node_is_auth(const knot_node_t *node);
-
-int knot_node_is_removed_nsec(const knot_node_t *node);
-
-void knot_node_set_removed_nsec(knot_node_t *node);
-
-void knot_node_clear_removed_nsec(knot_node_t *node);
-
-void knot_node_set_apex(knot_node_t *node);
-
-int knot_node_is_apex(const knot_node_t *node);
-
-//! \todo remove after dname refactoring
-int knot_node_is_empty(const knot_node_t *node);
-
-//! \todo remove after dname refactoring
-void knot_node_set_empty(knot_node_t *node);
-
-void knot_node_clear_empty(knot_node_t *node);
 
 /*!
  * \brief Destroys the RRSets within the node structure.

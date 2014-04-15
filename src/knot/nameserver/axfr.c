@@ -33,7 +33,7 @@ static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *stat
 {
 	int ret = KNOT_EOK;
 	int i = state->cur_rrset;
-	int rrset_count = knot_node_rrset_count(node);
+	uint16_t rrset_count = node->rrset_count;
 	unsigned flags = KNOT_PF_NOTRUNC;
 
 	/* Append all RRs. */
