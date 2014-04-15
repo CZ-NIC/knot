@@ -81,10 +81,9 @@ int xfrin_transfer_needed(const knot_zone_contents_t *zone,
 	 * Retrieve the local Serial
 	 */
 	const knot_rdataset_t *soa_rrs =
-		knot_node_rdataset(knot_zone_contents_apex(zone), KNOT_RRTYPE_SOA);
+		knot_node_rdataset(zone->apex, KNOT_RRTYPE_SOA);
 	if (soa_rrs == NULL) {
-		char *name = knot_dname_to_str(knot_node_owner(
-				knot_zone_contents_apex(zone)));
+		char *name = knot_dname_to_str(zone->apex->owner);
 		dbg_xfrin("SOA RRSet missing in the zone %s!\n", name);
 		free(name);
 		return KNOT_ERROR;
@@ -698,7 +697,7 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 
 static void clear_new_rrs(knot_node_t *node, uint16_t type)
 {
-	knot_rdataset_t *new_rrs = knot_node_get_rdataset(node, type);
+	knot_rdataset_t *new_rrs = knot_node_rdataset(node, type);
 	if (new_rrs) {
 		knot_rdataset_clear(new_rrs, NULL);
 	}
@@ -774,7 +773,7 @@ static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
 		return ret;
 	}
 
-	knot_rdataset_t *changed_rrs = knot_node_get_rdataset(node, rr->type);
+	knot_rdataset_t *changed_rrs = knot_node_rdataset(node, rr->type);
 	// Subtract changeset RRS from node RRS.
 	ret = knot_rdataset_subtract(changed_rrs, &rr->rrs, NULL);
 	if (ret != KNOT_EOK) {
@@ -842,7 +841,7 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 		}
 
 		// Extract copy, merge into it
-		knot_rdataset_t *changed_rrs = knot_node_get_rdataset(node, rr->type);
+		knot_rdataset_t *changed_rrs = knot_node_rdataset(node, rr->type);
 		ret = knot_rdataset_merge(changed_rrs, &rr->rrs, NULL);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
@@ -869,7 +868,7 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 	}
 
 	// Get changed RRS and store for possible rollback.
-	knot_rdataset_t *rrs = knot_node_get_rdataset(node, rr->type);
+	knot_rdataset_t *rrs = knot_node_rdataset(node, rr->type);
 	int ret = add_new_data(chset, rrs->data);
 	if (ret != KNOT_EOK) {
 		knot_rdataset_clear(rrs, NULL);
@@ -980,7 +979,7 @@ static int xfrin_mark_empty(knot_node_t **node_p, void *data)
 	list_t *l = (list_t *)data;
 	assert(data);
 	if (node->rrset_count == 0 && node->children == 0 &&
-	    !knot_node_is_empty(node)) {
+	    !(node->flags & KNOT_NODE_FLAGS_EMPTY)) {
 		/*!
 		 * Mark this node and all parent nodes that have 0 RRSets and
 		 * no children for removal.
@@ -989,11 +988,11 @@ static int xfrin_mark_empty(knot_node_t **node_p, void *data)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		knot_node_set_empty(node);
+		node->flags |= KNOT_NODE_FLAGS_EMPTY;
 		if (node->parent) {
-			if (knot_node_has_wildcard_child(node->parent)
+			if ((node->parent->flags & KNOT_NODE_FLAGS_WILDCARD_CHILD)
 			    && knot_dname_is_wildcard(node->owner)) {
-				knot_node_clear_wildcard_child(node->parent);
+				node->parent->flags &= ~KNOT_NODE_FLAGS_WILDCARD_CHILD;
 			}
 			node->parent->children--;
 			// Recurse using the parent node
@@ -1092,7 +1091,7 @@ int xfrin_prepare_zone_copy(knot_zone_contents_t *old_contents,
 		return ret;
 	}
 
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
+	assert(contents_copy->apex != NULL);
 
 	*new_contents = contents_copy;
 
@@ -1141,7 +1140,7 @@ int xfrin_finalize_updated_zone(knot_zone_contents_t *contents_copy,
 		return ret;
 	}
 
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
+	assert(contents_copy->apex != NULL);
 
 	return KNOT_EOK;
 }
@@ -1251,7 +1250,7 @@ int xfrin_apply_changesets(zone_t *zone,
 			return ret;
 		}
 	}
-	assert(knot_zone_contents_apex(contents_copy) != NULL);
+	assert(contents_copy->apex != NULL);
 
 	/*!
 	 * \todo Test failure of IXFR.

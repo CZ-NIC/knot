@@ -175,8 +175,8 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	for (/* NOP */; !hattrie_iter_finished(it); hattrie_iter_next(it)) {
 		knot_node_t *node = (knot_node_t *)*hattrie_iter_val(it);
 		// newly allocated NSEC3 nodes
-		knot_rdataset_t *nsec3 = knot_node_get_rdataset(node, KNOT_RRTYPE_NSEC3);
-		knot_rdataset_t *rrsig = knot_node_get_rdataset(node, KNOT_RRTYPE_RRSIG);
+		knot_rdataset_t *nsec3 = knot_node_rdataset(node, KNOT_RRTYPE_NSEC3);
+		knot_rdataset_t *rrsig = knot_node_rdataset(node, KNOT_RRTYPE_RRSIG);
 		knot_rdataset_clear(nsec3, NULL);
 		knot_rdataset_clear(rrsig, NULL);
 		knot_node_free(&node);
@@ -283,11 +283,12 @@ static knot_node_t *create_nsec3_node(knot_dname_t *owner,
 	assert(apex_node);
 	assert(rr_types);
 
-	uint8_t flags = 0;
-	knot_node_t *new_node = knot_node_new(owner, apex_node, flags);
+	knot_node_t *new_node = knot_node_new(owner);
 	if (!new_node) {
 		return NULL;
 	}
+	
+	knot_node_set_parent(new_node, apex_node);
 
 	knot_rrset_t nsec3_rrset;
 	int ret = create_nsec3_rrset(&nsec3_rrset, owner, nsec3_params,
@@ -367,7 +368,7 @@ static int connect_nsec3_nodes(knot_node_t *a, knot_node_t *b,
 
 	assert(a->rrset_count == 1);
 
-	knot_rdataset_t *a_rrs = knot_node_get_rdataset(a, KNOT_RRTYPE_NSEC3);
+	knot_rdataset_t *a_rrs = knot_node_rdataset(a, KNOT_RRTYPE_NSEC3);
 	assert(a_rrs);
 	uint8_t algorithm = knot_nsec3_algorithm(a_rrs, 0);
 	if (algorithm == 0) {
@@ -440,9 +441,9 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
 			break;
 		}
 		if (knot_node_rrtype_exists(node, KNOT_RRTYPE_NSEC)) {
-			knot_node_set_removed_nsec(node);
+			node->flags |= KNOT_NODE_FLAGS_REMOVED_NSEC;
 		}
-		if (knot_node_is_non_auth(node) || knot_node_is_empty(node)) {
+		if (node->flags & KNOT_NODE_FLAGS_NONAUTH || node->flags & KNOT_NODE_FLAGS_EMPTY) {
 			hattrie_iter_next(it);
 			continue;
 		}
@@ -480,7 +481,7 @@ static int create_nsec3_nodes(const knot_zone_contents_t *zone, uint32_t ttl,
  */
 static bool nsec3_is_empty(knot_node_t *node)
 {
-	if (knot_node_children(node) > 0) {
+	if (node->children > 0) {
 		return false;
 	}
 
@@ -499,12 +500,12 @@ static int nsec3_mark_empty(knot_node_t **node_p, void *data)
 	UNUSED(data);
 	knot_node_t *node = *node_p;
 
-	if (!knot_node_is_empty(node) && nsec3_is_empty(node)) {
+	if (!(node->flags & KNOT_NODE_FLAGS_EMPTY) && nsec3_is_empty(node)) {
 		/*!
 		 * Mark this node and all parent nodes that meet the same
 		 * criteria as empty.
 		 */
-		knot_node_set_empty(node);
+		node->flags |= KNOT_NODE_FLAGS_EMPTY;
 
 		if (node->parent) {
 			/* We must decrease the parent's children count,
@@ -548,13 +549,13 @@ static int nsec3_reset(knot_node_t **node_p, void *data)
 	UNUSED(data);
 	knot_node_t *node = *node_p;
 
-	if (knot_node_is_empty(node)) {
+	if (node->flags & KNOT_NODE_FLAGS_EMPTY) {
 		/* If node was marked as empty, increase its parent's children
 		 * count.
 		 */
 		node->parent->children++;
 		/* Clear the 'empty' flag. */
-		knot_node_clear_empty(node);
+		node->flags &= ~KNOT_NODE_FLAGS_EMPTY;
 	}
 
 	return KNOT_EOK;

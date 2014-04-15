@@ -136,7 +136,7 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 		}
 
 		if (node != NULL) {
-			knot_node_set_removed_nsec(node);
+			node->flags |= KNOT_NODE_FLAGS_REMOVED_NSEC;
 		}
 	}
 

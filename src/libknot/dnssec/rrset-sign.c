@@ -149,7 +149,7 @@ static int sign_ctx_add_records(knot_dnssec_sign_context_t *ctx,
 	uint16_t rr_count = 0;
 	result = knot_rrset_to_wire(covered, rrwf, &rr_wire_size,
 	                            MAX_RR_WIREFORMAT_SIZE, &rr_count, NULL);
-	if (result != KNOT_EOK || rr_count != knot_rrset_rr_count(covered)) {
+	if (result != KNOT_EOK || rr_count != covered->rrs.rr_count) {
 		free(rrwf);
 		return result;
 	}

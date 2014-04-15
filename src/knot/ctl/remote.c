@@ -99,7 +99,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 			continue;
 		}
 
-		uint16_t rr_count = knot_rrset_rr_count(rr);
+		uint16_t rr_count = rr->rrs.rr_count;
 		for (uint16_t i = 0; i < rr_count; i++) {
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, i);
 			rcu_read_lock();
@@ -537,7 +537,7 @@ static void log_command(const char *cmd, const remote_cmdargs_t* args)
 			continue;
 		}
 
-		uint16_t rr_count = knot_rrset_rr_count(rr);
+		uint16_t rr_count = rr->rrs.rr_count;
 		for (uint16_t j = 0; j < rr_count; j++) {
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, j);
 			char *name = knot_dname_to_str(dn);
@@ -842,7 +842,7 @@ int remote_create_ns(knot_rrset_t *rr, const char *d)
 
 int remote_print_txt(const knot_rrset_t *rr, uint16_t i)
 {
-	if (!rr || knot_rrset_rr_count(rr) < 1) {
+	if (!rr || rr->rrs.rr_count < 1) {
 		return -1;
 	}
 

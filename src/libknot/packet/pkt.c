@@ -657,9 +657,6 @@ static int knot_pkt_rr_from_wire(const uint8_t *wire, size_t *pos,
 
 	*pos += KNOT_RR_HEADER_SIZE;
 
-	dbg_packet_verb("%s: read type %u, class %u, ttl %u, rdlength %u\n",
-	                __func__, rrset->type, rrset->rclass, ttl, rdlength);
-
 	if (size - *pos < rdlength) {
 		dbg_packet("%s: not enough data to parse RDATA\n", __func__);
 		knot_dname_free(&owner, mm);
