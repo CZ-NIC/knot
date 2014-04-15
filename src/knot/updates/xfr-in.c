@@ -837,7 +837,7 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 			return ret;
 		}
 
-		// Store old RRS and additional for cleanup.
+		// Store old RRS for cleanup.
 		ret = add_old_data(chset, old_data);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
