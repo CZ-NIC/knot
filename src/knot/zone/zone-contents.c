@@ -1132,7 +1132,9 @@ static int knot_zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
 	hattrie_build_index(nodes);
 	int result = knot_zone_tree_apply_inorder(nodes, callback, adjust_arg);
 
-	adjust_arg->first_node->prev = adjust_arg->previous_node;
+	if (adjust_arg->first_node) {
+		adjust_arg->first_node->prev = adjust_arg->previous_node;
+	}
 
 	return result;
 }
