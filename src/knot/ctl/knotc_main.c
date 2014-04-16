@@ -717,7 +717,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 	/* Zone checking */
 	int rc = 0;
-	size_t total_size = 0;
+	double total_size = 0;
 
 	/* Generate databases for all zones */
 	const bool sorted = false;
@@ -756,9 +756,9 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 
 		/* Init memory estimation context. */
 		zone_estim_t est = {.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
-		                    .dname_size = 0, .rrset_size = 0,
-		                    .node_size = 0, .ahtable_size = 0,
-		                    .rdata_size = 0, .record_count = 0 };
+		                    .dname_size = 0, .node_size = 0,
+		                    .htable_size = 0, .rdata_size = 0,
+		                    .record_count = 0 };
 		if (est.node_table == NULL) {
 			log_server_error("Not enough memory.\n");
 			continue;
@@ -773,9 +773,8 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		if (loader == NULL) {
 			rc = 1;
 			log_zone_error("Could not load zone %s\n", zone->name);
-			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
-			break;
+			continue;
 		}
 
 		/* Do a parser run, but do not actually create the zone. */
@@ -786,26 +785,25 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 			hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 			hattrie_free(est.node_table);
 			zs_loader_free(loader);
-			break;
+			continue;
 		}
 
 		/* Only size of ahtables inside trie's nodes is missing. */
-		assert(est.ahtable_size == 0);
-		est.ahtable_size = estimator_trie_ahtable_memsize(est.node_table);
+		assert(est.htable_size == 0);
+		est.htable_size = estimator_trie_htable_memsize(est.node_table);
 
 		/* Cleanup */
 		hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
 		hattrie_free(est.node_table);
 
-		size_t zone_size = (size_t)(((double)(est.rdata_size +
+		double zone_size = ((double)(est.rdata_size +
 		                   est.node_size +
-		                   est.rrset_size +
 		                   est.dname_size +
-		                   est.ahtable_size +
-		                   malloc_size) * ESTIMATE_MAGIC) / (1024.0 * 1024.0));
+		                   est.htable_size +
+		                   malloc_size) * ESTIMATE_MAGIC) / (1024.0 * 1024.0);
 
 		log_zone_info("Zone %s: %zu RRs, used memory estimation is %zuMB.\n",
-		              zone->name, est.record_count, zone_size);
+		              zone->name, est.record_count, (size_t)zone_size);
 		zs_loader_free(loader);
 		total_size += zone_size;
 		conf_free_zone(zone);
@@ -813,7 +811,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 	hattrie_iter_free(z_iter);
 
 	if (rc == 0 && argc == 0) { // for all zones
-		log_zone_info("Estimated memory consumption for all zones is %zuMB.\n", total_size);
+		log_zone_info("Estimated memory consumption for all zones is %zuMB.\n", (size_t)total_size);
 	}
 
 	return rc;
