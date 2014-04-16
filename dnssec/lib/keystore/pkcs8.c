@@ -5,7 +5,7 @@
 #include "keyid.h"
 #include "keystore.h"
 #include "keystore/internal.h"
-#include "keystore/pem.h"
+#include "pem.h"
 #include "shared.h"
 
 /*!

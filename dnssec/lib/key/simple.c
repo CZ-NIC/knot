@@ -7,7 +7,7 @@
 #include "key/dnskey.h"
 #include "key/internal.h"
 #include "key/privkey.h"
-#include "keystore/pem.h"
+#include "pem.h"
 #include "shared.h"
 
 /* -- internal functions --------------------------------------------------- */

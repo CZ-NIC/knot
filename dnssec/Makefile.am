@@ -19,6 +19,8 @@ libshared_la_SOURCES = \
 	shared/hex.h \
 	shared/path.c \
 	shared/path.h \
+	shared/pem.c \
+	shared/pem.h \
 	shared/shared.h \
 	shared/strtonum.h \
 	shared/wire.h \
@@ -73,8 +75,6 @@ libdnssec_la_SOURCES = \
 	lib/keyid/keyid.c \
 	lib/keystore/internal.h \
 	lib/keystore/keystore.c \
-	lib/keystore/pem.c \
-	lib/keystore/pem.h \
 	lib/keystore/pkcs11.c \
 	lib/keystore/pkcs8.c \
 	lib/keystore/pkcs8_dir.c \

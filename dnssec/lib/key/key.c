@@ -14,8 +14,8 @@
 #include "keyid.h"
 #include "keyid/internal.h"
 #include "keystore.h"
-#include "keystore/pem.h"
 #include "keytag.h"
+#include "pem.h"
 #include "shared.h"
 #include "wire.h"
 
