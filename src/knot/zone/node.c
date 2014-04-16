@@ -15,10 +15,7 @@
  */
 
 #include <stdlib.h>
-#include <assert.h>
 #include <stdio.h>
-
-#include <urcu.h>
 
 #include "libknot/common.h"
 #include "knot/zone/node.h"
@@ -26,31 +23,16 @@
 #include "libknot/rdataset.h"
 #include "libknot/rdata/rrsig.h"
 #include "common/descriptor.h"
-#include "common/debug.h"
 #include "common/mempattern.h"
 
-/*----------------------------------------------------------------------------*/
-/* Non-API functions                                                          */
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the given flag to node's flags.
- *
- * \param node Node to set the flag in.
- * \param flag Flag to set.
- */
-static inline void knot_node_flags_set(knot_node_t *node, uint8_t flag)
-{
-	node->flags |= flag;
-}
-
-/*----------------------------------------------------------------------------*/
-
+/*! \brief Clears allocated data in RRSet entry. */
 static void rr_data_clear(struct rr_data *data, mm_ctx_t *mm)
 {
 	knot_rdataset_clear(&data->rrs, mm);
 	free(data->additional);
 }
 
+/*! \brief Clears allocated data in RRSet entry. */
 static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_t *mm)
 {
 	int ret = knot_rdataset_copy(&data->rrs, &rrset->rrs, mm);
@@ -63,34 +45,8 @@ static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, mm_ctx_
 	return KNOT_EOK;
 }
 
-/*----------------------------------------------------------------------------*/
-/* API functions                                                              */
-/*----------------------------------------------------------------------------*/
-
-knot_node_t *knot_node_new(const knot_dname_t *owner)
-{
-	knot_node_t *ret = malloc(sizeof(knot_node_t));
-	if (ret == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-
-	memset(ret, 0, sizeof(*ret));
-
-	if (owner) {
-		ret->owner = knot_dname_copy(owner, NULL);
-		if (ret->owner == NULL) {
-			free(ret);
-			return NULL;
-		}
-	}
-
-	ret->flags = KNOT_NODE_FLAGS_NULL;
-
-	return ret;
-}
-
-static int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *rrset)
+/*! \brief Adds RRSet to node directly. */
+static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset)
 {
 	if (node == NULL) {
 		return KNOT_EINVAL;
@@ -111,7 +67,99 @@ static int knot_node_add_rrset_no_merge(knot_node_t *node, const knot_rrset_t *r
 	return KNOT_EOK;
 }
 
-int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
+/*! \brief Checks if the added RR has the same TTL as the first RR in the node. */
+static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
+{
+	if (rrset->type == KNOT_RRTYPE_RRSIG) {
+		return false;
+	}
+
+	const uint32_t inserted_ttl = knot_rrset_rr_ttl(rrset, 0);
+	// Get first RR from node.
+	const knot_rdata_t *node_rdata = knot_rdataset_at(&node_data->rrs, 0);
+	const uint32_t node_ttl = knot_rdata_ttl(node_rdata);
+	// Return error if TTLs don't match.
+	return inserted_ttl != node_ttl;
+}
+
+zone_node_t *node_new(const knot_dname_t *owner)
+{
+	zone_node_t *ret = malloc(sizeof(zone_node_t));
+	if (ret == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+	memset(ret, 0, sizeof(*ret));
+
+	if (owner) {
+		ret->owner = knot_dname_copy(owner, NULL);
+		if (ret->owner == NULL) {
+			free(ret);
+			return NULL;
+		}
+	}
+
+	// Node is authoritive by default.
+	ret->flags = NODE_FLAGS_AUTH;
+
+	return ret;
+}
+
+void node_free_rrsets(zone_node_t *node)
+{
+	if (node == NULL) {
+		return;
+	}
+
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		rr_data_clear(&node->rrs[i], NULL);
+	}
+}
+
+void node_free(zone_node_t **node)
+{
+	if (node == NULL || *node == NULL) {
+		return;
+	}
+
+	if ((*node)->rrs != NULL) {
+		free((*node)->rrs);
+	}
+
+	knot_dname_free(&(*node)->owner, NULL);
+
+	free(*node);
+	*node = NULL;
+}
+
+int node_shallow_copy(zone_node_t **dst, const zone_node_t *src)
+{
+	if (dst == NULL || src == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// create new node
+	*dst = node_new(src->owner);
+	if (*dst == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	(*dst)->flags = src->flags;
+
+	// copy RRSets
+	(*dst)->rrset_count = src->rrset_count;
+	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
+	(*dst)->rrs = malloc(rrlen);
+	if ((*dst)->rrs == NULL) {
+		node_free(dst);
+		return KNOT_ENOMEM;
+	}
+	memcpy((*dst)->rrs, src->rrs, rrlen);
+
+	return KNOT_EOK;
+}
+
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
 {
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -120,28 +168,53 @@ int knot_node_add_rrset(knot_node_t *node, const knot_rrset_t *rrset,  bool *ttl
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
-
-			/* Check if the added RR has the same TTL as the first
-			 * RR in the RRSet.
-			 */
-			knot_rdata_t *first = knot_rdataset_at(&node_data->rrs, 0);
-			uint32_t inserted_ttl = knot_rrset_rr_ttl(rrset, 0);
-			if (ttl_err && rrset->type != KNOT_RRTYPE_RRSIG &&
-			    inserted_ttl != knot_rdata_ttl(first)) {
-				*ttl_err = true;
+			if (ttl_err) {
+				// Do TTL check.
+				*ttl_err = ttl_error(node_data, rrset);
 			}
 
-			return knot_rdataset_merge(&node_data->rrs, &rrset->rrs, NULL);
+			return knot_rdataset_merge(&node_data->rrs,
+			                           &rrset->rrs, NULL);
 		}
 	}
 
 	// New RRSet (with one RR)
-	return knot_node_add_rrset_no_merge(node, rrset);
+	return add_rrset_no_merge(node, rrset);
 }
 
-/*----------------------------------------------------------------------------*/
+void node_remove_rrs(zone_node_t *node, uint16_t type)
+{
+	if (node == NULL) {
+		return;
+	}
 
-knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type)
+	for (int i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			memmove(node->rrs + i, node->rrs + i + 1,
+			        (node->rrset_count - i - 1) * sizeof(struct rr_data));
+			--node->rrset_count;
+			return;
+		}
+	}
+}
+
+knot_rrset_t *node_create_rrset(const zone_node_t *node, uint16_t type)
+{
+	if (node == NULL) {
+		return NULL;
+	}
+
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			knot_rrset_t rrset = node_rrset_at(node, i);
+			return knot_rrset_copy(&rrset, NULL);
+		}
+	}
+
+	return NULL;
+}
+
+knot_rdataset_t *node_rdataset(const zone_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return NULL;
@@ -156,46 +229,7 @@ knot_rdataset_t *knot_node_rdataset(const knot_node_t *node, uint16_t type)
 	return NULL;
 }
 
-/*----------------------------------------------------------------------------*/
-
-knot_rrset_t *knot_node_create_rrset(const knot_node_t *node, uint16_t type)
-{
-	if (node == NULL) {
-		return NULL;
-	}
-
-	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		if (node->rrs[i].type == type) {
-			knot_rrset_t rrset = knot_node_rrset_at(node, i);
-			return knot_rrset_copy(&rrset, NULL);
-		}
-	}
-
-	return NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_remove_rrset(knot_node_t *node, uint16_t type)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	for (int i = 0; i < node->rrset_count; ++i) {
-		if (node->rrs[i].type == type) {
-			memmove(node->rrs + i, node->rrs + i + 1, (node->rrset_count - i - 1) * sizeof(struct rr_data));
-			--node->rrset_count;
-			return;
-		}
-	}
-
-	return;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
+void node_set_parent(zone_node_t *node, zone_node_t *parent)
 {
 	if (node == NULL || node->parent == parent) {
 		return;
@@ -214,80 +248,13 @@ void knot_node_set_parent(knot_node_t *node, knot_node_t *parent)
 	}
 }
 
-/*----------------------------------------------------------------------------*/
-
-void knot_node_free_rrsets(knot_node_t *node)
-{
-	if (node == NULL) {
-		return;
-	}
-
-	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		rr_data_clear(&node->rrs[i], NULL);
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_node_free(knot_node_t **node)
-{
-	if (node == NULL || *node == NULL) {
-		return;
-	}
-
-	dbg_node_detail("Freeing node: %p\n", *node);
-
-	if ((*node)->rrs != NULL) {
-		dbg_node_detail("Freeing RRSets.\n");
-		free((*node)->rrs);
-		(*node)->rrs = NULL;
-		(*node)->rrset_count = 0;
-	}
-
-	knot_dname_free(&(*node)->owner, NULL);
-
-	free(*node);
-	*node = NULL;
-
-	dbg_node_detail("Done.\n");
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
-{
-	if (from == NULL || to == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// create new node
-	*to = knot_node_new(from->owner);
-	if (*to == NULL) {
-		return KNOT_ENOMEM;
-	}
-	
-	(*to)->flags = from->flags;
-
-	// copy RRSets
-	(*to)->rrset_count = from->rrset_count;
-	size_t rrlen = sizeof(struct rr_data) * from->rrset_count;
-	(*to)->rrs = malloc(rrlen);
-	if ((*to)->rrs == NULL) {
-		knot_node_free(to);
-		return KNOT_ENOMEM;
-	}
-	memcpy((*to)->rrs, from->rrs, rrlen);
-
-	return KNOT_EOK;
-}
-
-bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
+bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return false;
 	}
 
-	const knot_rdataset_t *rrsigs = knot_node_rdataset(node, KNOT_RRTYPE_RRSIG);
+	const knot_rdataset_t *rrsigs = node_rdataset(node, KNOT_RRTYPE_RRSIG);
 	if (rrsigs == NULL) {
 		return false;
 	}
@@ -304,7 +271,7 @@ bool knot_node_rrtype_is_signed(const knot_node_t *node, uint16_t type)
 	return false;
 }
 
-bool knot_node_rrtype_exists(const knot_node_t *node, uint16_t type)
+bool node_rrtype_exists(const zone_node_t *node, uint16_t type)
 {
-	return knot_node_rdataset(node, type) != NULL;
+	return node_rdataset(node, type) != NULL;
 }

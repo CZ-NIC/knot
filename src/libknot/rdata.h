@@ -3,7 +3,7 @@
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * \brief API for manipulating RRs and RR arrays.
+ * \brief API for manipulating RRs.
  *
  * \addtogroup libknot
  * @{

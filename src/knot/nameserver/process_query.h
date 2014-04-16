@@ -82,7 +82,7 @@ struct query_data {
 	list_t rrsigs;        /*!< Section RRSIGs. */
 
 	/* Current processed name and nodes. */
-	const knot_node_t *node, *encloser, *previous;
+	const zone_node_t *node, *encloser, *previous;
 	const knot_dname_t *name;
 
 	/* Original QNAME case. */
@@ -101,7 +101,7 @@ struct query_data {
 /*! \brief Visited wildcard node list. */
 struct wildcard_hit {
 	node_t n;
-	const knot_node_t *node;   /* Visited node. */
+	const zone_node_t *node;   /* Visited node. */
 	const knot_dname_t *sname; /* Name leading to this node. */
 };
 

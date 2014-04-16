@@ -239,7 +239,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		const knot_rdataset_t *soa_rrs = NULL;
 		uint32_t serial = 0;
 		if (zone->contents) {
-			soa_rrs = knot_node_rdataset(zone->contents->apex,
+			soa_rrs = node_rdataset(zone->contents->apex,
 			                        KNOT_RRTYPE_SOA);
 			assert(soa_rrs != NULL);
 			serial = knot_soa_serial(soa_rrs);

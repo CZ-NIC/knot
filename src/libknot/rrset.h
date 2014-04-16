@@ -49,7 +49,7 @@ struct knot_rrset {
 	uint16_t rclass;      /*!< CLASS of the RRSet. */
 	knot_rdataset_t rrs;  /*!< RRSet's RRs */
 	/* Optional fields. */
-	struct knot_node **additional; /*!< Additional records. */
+	struct zone_node **additional; /*!< Additional records. */
 };
 
 typedef struct knot_rrset knot_rrset_t;

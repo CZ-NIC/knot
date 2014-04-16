@@ -118,7 +118,7 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	dummy_node_t *n = NULL;
 	if (insert_dname_into_table(est->node_table, owner, &n) == 0) {
 		// First time we see this name == new node
-		est->node_size += sizeof(knot_node_t) * NODE_MULT + NODE_ADD;
+		est->node_size += sizeof(zone_node_t) * NODE_MULT + NODE_ADD;
 		// Also, RRSet's owner will now contain full dname
 		est->dname_size += dname_memsize(owner);
 		// Trie's nodes handled at the end of computation
