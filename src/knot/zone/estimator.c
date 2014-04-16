@@ -26,9 +26,6 @@
 // Addition constants used for tweaking, mostly malloc overhead
 enum estim_consts {
 	MALLOC_OVERHEAD = sizeof(size_t),   // set according to malloc.c
-	DNAME_ADD = MALLOC_OVERHEAD,        // just dname allocation
-	NODE_ADD = MALLOC_OVERHEAD * 2,     // node itself, rrset array
-	AHTABLE_ADD = MALLOC_OVERHEAD * 2,  // table, index
 	MALLOC_MIN = MALLOC_OVERHEAD * 3    // minimum size of malloc'd chunk
 };
 
@@ -37,9 +34,10 @@ typedef struct type_list_item {
 	uint16_t type;
 } type_list_item_t;
 
-typedef struct dummy_node {
-	list_t node_list;
-} dummy_node_t;
+static size_t add_overhead(size_t size)
+{
+	return MALLOC_OVERHEAD + size + size % MALLOC_MIN;
+}
 
 // return: 0 not present, 1 - present
 static int find_in_list(list_t *node_list, uint16_t type)
@@ -61,25 +59,14 @@ static int find_in_list(list_t *node_list, uint16_t type)
 }
 
 // return: 0 not present (added), 1 - present
-static int dummy_node_add_type(dummy_node_t *n, uint16_t t)
+static int dummy_node_add_type(list_t *l, uint16_t t)
 {
-	return find_in_list(&n->node_list, t);
-}
-
-static size_t dname_memsize(const knot_dname_t *d)
-{
-
-	size_t d_size = knot_dname_size(d);
-	if (d_size < MALLOC_MIN) {
-		d_size = MALLOC_MIN;
-	}
-
-	return d_size + DNAME_ADD;
+	return find_in_list(l, t);
 }
 
 // return: 0 - unique, 1 - duplicate
-static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
-                                   dummy_node_t **n)
+static int insert_dname_into_table(hattrie_t *table, const knot_dname_t *d,
+                                   list_t **dummy_node)
 {
 	int d_size = knot_dname_size(d);
 	if (d_size < 0) {
@@ -89,13 +76,13 @@ static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
 	value_t *val = hattrie_tryget(table, (char *)d, d_size);
 	if (val == NULL) {
 		// Create new dummy node to use for this dname
-		*n = xmalloc(sizeof(dummy_node_t));
-		init_list(&(*n)->node_list);
-		*hattrie_get(table, (char *)d, d_size) = *n;
+		*dummy_node = xmalloc(sizeof(list_t));
+		init_list(*dummy_node);
+		*hattrie_get(table, (char *)d, d_size) = *dummy_node;
 		return 0;
 	} else {
 		// Return previously found dummy node
-		*n = (dummy_node_t *)(*val);
+		*dummy_node = (list_t *)(*val);
 		return 1;
 	}
 }
@@ -103,30 +90,19 @@ static int insert_dname_into_table(hattrie_t *table, knot_dname_t *d,
 static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 {
 	// Handle RRSet's owner
-	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
-	if (owner == NULL) {
-		return;
-	}
-
-	dummy_node_t *n = NULL;
-	if (insert_dname_into_table(est->node_table, owner, &n) == 0) {
+	list_t *dummy_node = NULL;
+	if (insert_dname_into_table(est->node_table, scanner->r_owner, &dummy_node) == 0) {
 		// First time we see this name == new node
-		est->node_size += sizeof(knot_node_t) + NODE_ADD;
-		// Also, RRSet's owner will now contain full dname
-		est->dname_size += dname_memsize(owner);
+		est->node_size += add_overhead(sizeof(knot_node_t));
+		// Also, node has an owner.
+		est->dname_size += add_overhead(knot_dname_size(scanner->r_owner));
 		// Trie's nodes handled at the end of computation
 	}
-	knot_dname_free(&owner, NULL);
-	assert(n);
+	assert(dummy_node);
 
 	// Add RDATA + size + TTL
-	size_t rdlen = scanner->r_data_length + sizeof(uint16_t) +
-	               sizeof(uint32_t);
-	if (rdlen < MALLOC_MIN) {
-		rdlen = MALLOC_MIN;
-	}
-
-	est->rdata_size += rdlen;
+	size_t rdlen = knot_rdata_array_size(scanner->r_data_length);
+	est->rdata_size += add_overhead(rdlen);
 	est->record_count++;
 
 	/*
@@ -134,18 +110,20 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	 * Do not add for RRs that would be merged.
 	 * All possible duplicates will be added to total size.
 	 */
-	if (dummy_node_add_type(n, scanner->r_type) == 0) {
+	if (dummy_node_add_type(dummy_node, scanner->r_type) == 0) {
 		/*
-		 * New RR type, add actual rr_data struct's size.
+		 * New RR type, add actual rr_data struct's size. No way to
+		 * guess the actual overhead taken up by the array, so we add
+		 * it each time.
 		 */
-		est->node_size += sizeof(struct rr_data);
+		est->node_size += add_overhead(sizeof(struct rr_data));
 	}
 }
 
 void *estimator_malloc(void *ctx, size_t len)
 {
 	size_t *count = (size_t *)ctx;
-	*count += len + MALLOC_OVERHEAD;
+	*count += add_overhead(len);
 	return xmalloc(len);
 }
 
@@ -154,13 +132,13 @@ void estimator_free(void *p)
 	free(p);
 }
 
-static int get_ahtable_size(void *t, void *d)
+static int get_htable_size(void *t, void *d)
 {
 	hhash_t *table = (hhash_t *)t;
 	size_t *size = (size_t *)d;
 
 	/* Size of the empty table. */
-	*size += sizeof(hhash_t) + table->size * sizeof(hhelem_t) + AHTABLE_ADD;
+	*size += add_overhead(sizeof(hhash_t) + table->size * sizeof(hhelem_t));
 
 	/* Allocated keys. */
 	uint16_t key_len = 0;
@@ -168,22 +146,22 @@ static int get_ahtable_size(void *t, void *d)
 	hhash_iter_begin(table, &it, false);
 	while (!hhash_iter_finished(&it)) {
 		(void)hhash_iter_key(&it, &key_len);
-		*size += sizeof(value_t) + sizeof(uint16_t) + key_len;
+		*size += add_overhead(sizeof(value_t) + sizeof(uint16_t) + key_len);
 		hhash_iter_next(&it);
 	}
 
 	return KNOT_EOK;
 }
 
-size_t estimator_trie_ahtable_memsize(hattrie_t *table)
+size_t estimator_trie_htable_memsize(hattrie_t *table)
 {
 	/*
-	 * Iterate through trie's node, and get stats from each ahtable.
+	 * Iterate through trie's node, and get stats from each htable.
 	 * Space taken up by the trie itself is measured using malloc wrapper.
 	 * (Even for large zones, space taken by trie itself is very small)
 	 */
 	size_t size = 0;
-	hattrie_apply_rev_ahtable(table, get_ahtable_size, &size);
+	hattrie_apply_rev_ahtable(table, get_htable_size, &size);
 	return size;
 }
 
@@ -195,8 +173,8 @@ void estimator_rrset_memsize_wrap(const zs_scanner_t *scanner)
 int estimator_free_trie_node(value_t *val, void *data)
 {
 	UNUSED(data);
-	dummy_node_t *trie_n = (dummy_node_t *)(*val);
-	WALK_LIST_FREE(trie_n->node_list);
+	list_t *trie_n = (list_t *)(*val);
+	WALK_LIST_FREE(*trie_n);
 	free(trie_n);
 
 	return KNOT_EOK;

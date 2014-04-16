@@ -757,7 +757,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		/* Init memory estimation context. */
 		zone_estim_t est = {.node_table = hattrie_create_n(TRIE_BUCKET_SIZE, &mem_ctx),
 		                    .dname_size = 0, .node_size = 0,
-		                    .ahtable_size = 0, .rdata_size = 0,
+		                    .htable_size = 0, .rdata_size = 0,
 		                    .record_count = 0 };
 		if (est.node_table == NULL) {
 			log_server_error("Not enough memory.\n");
@@ -790,8 +790,8 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Only size of ahtables inside trie's nodes is missing. */
-		assert(est.ahtable_size == 0);
-		est.ahtable_size = estimator_trie_ahtable_memsize(est.node_table);
+		assert(est.htable_size == 0);
+		est.htable_size = estimator_trie_htable_memsize(est.node_table);
 
 		/* Cleanup */
 		hattrie_apply_rev(est.node_table, estimator_free_trie_node, NULL);
@@ -800,7 +800,7 @@ static int cmd_memstats(int argc, char *argv[], unsigned flags)
 		size_t zone_size = (size_t)(((double)(est.rdata_size +
 		                   est.node_size +
 		                   est.dname_size +
-		                   est.ahtable_size +
+		                   est.htable_size +
 		                   malloc_size) * ESTIMATE_MAGIC) / (1024.0 * 1024.0));
 
 		log_zone_info("Zone %s: %zu RRs, used memory estimation is %zuMB.\n",
