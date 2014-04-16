@@ -1,0 +1,69 @@
+#include <assert.h>
+
+// Knot zone scanner
+#include "scanner.h"
+#include "loader.h"
+
+#include "dnssec/error.h"
+#include "dnssec/binary.h"
+#include "dnssec/key.h"
+
+#include "legacy/pubkey.h"
+
+#define CLASS_IN 1
+#define RTYPE_DNSKEY 48
+
+/*!
+ * Parse DNSKEY record.
+ *
+ * \todo Currently, the function waits for the first DNSKEY record, and skips
+ * the others. We should be more strict and report other records as errors.
+ * However, there is currently no API to stop the scanner.
+ */
+static void parse_record(const zs_scanner_t *scanner)
+{
+	assert(scanner);
+	assert(scanner->data);
+
+	dnssec_key_t *key = scanner->data;
+
+	if (dnssec_key_get_dname(key) != NULL) {
+		// skip till the the parser finishes
+		return;
+	}
+
+	if (scanner->r_type != RTYPE_DNSKEY) {
+		// should report error
+		return;
+	}
+
+	dnssec_binary_t rdata = {
+		.const_data = scanner->r_data,
+		.size = scanner->r_data_length
+	};
+	dnssec_key_set_dname(key, scanner->dname);
+	dnssec_key_set_rdata(key, &rdata);
+}
+
+dnssec_key_t *legacy_pubkey_parse(const char *filename)
+{
+	dnssec_key_t *key = NULL;
+	int r = dnssec_key_new(&key);
+	if (r != DNSSEC_EOK) {
+		return NULL;
+	}
+
+	uint16_t class = CLASS_IN;
+	uint32_t ttl = 0;
+	zs_loader_t *loader = zs_loader_create(filename, ".", class, ttl,
+					       parse_record, NULL, key);
+	if (!loader) {
+		dnssec_key_free(key);
+		return NULL;
+	}
+
+	zs_loader_process(loader);
+	zs_loader_free(loader);
+
+	return key;
+}
