@@ -213,6 +213,9 @@ static int adjust_pointers(zone_node_t **tnode, void *data)
 		node->flags |= NODE_FLAGS_NONAUTH;
 	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != args->zone->apex) {
 		node->flags |= NODE_FLAGS_DELEG;
+	} else {
+		// Default.
+		node->flags = NODE_FLAGS_AUTH;
 	}
 
 	// set pointer to previous node

@@ -285,6 +285,9 @@ static int ns_put_nsec_wildcard(const knot_zone_contents_t *zone,
 	if (previous == NULL) {
 		previous = knot_zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
+		while (previous->flags != NODE_FLAGS_AUTH) {
+			previous = previous->prev;
+		}
 	}
 
 	knot_rrset_t rrset = node_rrset(previous, KNOT_RRTYPE_NSEC);
@@ -468,9 +471,11 @@ static int ns_put_nsec_nxdomain(const knot_dname_t *qname,
 
 	// check if we have previous; if not, find one using the tree
 	if (previous == NULL) {
-		/*! \todo Check version. */
 		previous = knot_zone_contents_find_previous(zone, qname);
 		assert(previous != NULL);
+		while (previous->flags != NODE_FLAGS_AUTH) {
+			previous = previous->prev;
+		}
 	}
 
 dbg_ns_exec_verb(
