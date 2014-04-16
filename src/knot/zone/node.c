@@ -277,6 +277,10 @@ int knot_node_shallow_copy(const knot_node_t *from, knot_node_t **to)
 		return KNOT_ENOMEM;
 	}
 	memcpy((*to)->rrs, from->rrs, rrlen);
+	for (uint16_t i = 0; i < from->rrset_count; ++i) {
+		// Clear additionals in the copy.
+		(*to)->rrs[i].additional = NULL;
+	}
 
 	return KNOT_EOK;
 }

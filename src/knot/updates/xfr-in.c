@@ -47,7 +47,6 @@
  *        be used (old tree if success, new tree if failure).
  *          Freed data:
  *           - actual data inside knot_rrs_t. (the rest is part of the node)
- *           - arrays allocated for additional nodes. (optional, nodes are kept)
  */
 static void rrs_list_clear(list_t *l, mm_ctx_t *mm)
 {
@@ -611,11 +610,32 @@ void xfrin_cleanup_successful_update(knot_changesets_t *chgs)
 
 /*----------------------------------------------------------------------------*/
 
+static int free_additional(knot_node_t **node, void *data)
+{
+	UNUSED(data);
+	if ((*node)->flags & KNOT_NODE_FLAGS_NONAUTH) {
+		// non-auth nodes have no additionals.
+		return KNOT_EOK;
+	}
+
+	for (uint16_t i = 0; i < (*node)->rrset_count; ++i) {
+		struct rr_data *data = &(*node)->rrs[i];
+		if (data->additional) {
+			free(data->additional);
+			data->additional = NULL;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 static void xfrin_zone_contents_free(knot_zone_contents_t **contents)
 {
 	// free the zone tree, but only the structure
 	// (nodes are already destroyed)
 	dbg_zone("Destroying zone tree.\n");
+	// free additional arrays
+	knot_zone_tree_apply((*contents)->nodes, free_additional, NULL);
 	knot_zone_tree_deep_free(&(*contents)->nodes);
 	dbg_zone("Destroying NSEC3 zone tree.\n");
 	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes);
@@ -684,11 +704,6 @@ static int xfrin_replace_rrs_with_copy(knot_node_t *node,
 
 	memcpy(copy, rrs->data, knot_rdataset_size(rrs));
 
-	/*
-	 * Clear additional array from node in new tree. It's callers
-	 * responsibility to store it for cleanup.
-	 */
-	data->additional = NULL;
 	// Store new data into node RRS.
 	rrs->data = copy;
 
@@ -728,18 +743,9 @@ static bool can_remove(const knot_node_t *node, const knot_rrset_t *rr)
 	return false;
 }
 
-static int add_old_data(knot_changeset_t *chset, knot_rdata_t *old_data,
-                        knot_node_t **old_additional)
+static int add_old_data(knot_changeset_t *chset, knot_rdata_t *old_data)
 {
 	if (ptrlist_add(&chset->old_data, old_data, NULL) == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	if (!old_additional) {
-		return KNOT_EOK;
-	}
-
-	if (ptrlist_add(&chset->old_data, old_additional, NULL) == NULL) {
 		return KNOT_ENOMEM;
 	}
 
@@ -760,14 +766,13 @@ static int remove_rr(knot_node_t *node, const knot_rrset_t *rr,
 {
 	knot_rrset_t removed_rrset = knot_node_rrset(node, rr->type);
 	knot_rdata_t *old_data = removed_rrset.rrs.data;
-	knot_node_t **old_additional = removed_rrset.additional;
 	int ret = xfrin_replace_rrs_with_copy(node, rr->type);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	// Store old data for cleanup.
-	ret = add_old_data(chset, old_data, old_additional);
+	ret = add_old_data(chset, old_data);
 	if (ret != KNOT_EOK) {
 		clear_new_rrs(node, rr->type);
 		return ret;
@@ -827,14 +832,13 @@ static int add_rr(knot_node_t *node, const knot_rrset_t *rr,
 	if (!knot_rrset_empty(&changed_rrset)) {
 		// Modifying existing RRSet.
 		knot_rdata_t *old_data = changed_rrset.rrs.data;
-		knot_node_t **old_additional = changed_rrset.additional;
 		int ret = xfrin_replace_rrs_with_copy(node, rr->type);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 
-		// Store old RRS and additional for cleanup.
-		ret = add_old_data(chset, old_data, old_additional);
+		// Store old RRS for cleanup.
+		ret = add_old_data(chset, old_data);
 		if (ret != KNOT_EOK) {
 			clear_new_rrs(node, rr->type);
 			return ret;
