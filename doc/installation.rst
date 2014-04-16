@@ -1,10 +1,13 @@
+.. _Knot DNS Installation:
+
 *********************
 Knot DNS Installation
 *********************
 
-Required build environment
-====================
+.. _Required build environment:
 
+Required build environment
+==========================
 
 GCC at least 4.1 is strictly required for atomic built-ins, but 4.2 or
 newer is recommended.  Another requirement is ``_GNU_SOURCE`` support,
@@ -18,6 +21,8 @@ Knot DNS build system relies on these standard tools:
 * autoconf >= 2.65
 * flex >= 2.5.31
 * bison >= 2.3
+
+.. _Required libraries:
 
 Required libraries
 ==================
@@ -36,6 +41,8 @@ rights are stripped from the exposed threads for security reasons.
 You can probably find OpenSSL and zlib libraries already included in
 your system or distribution.  If not, zlib resides at http://zlib.net,
 and OpenSSL can be found at http://www.openssl.org.
+
+.. _Userspace RCU:
 
 Userspace RCU
 -------------
@@ -56,6 +63,8 @@ It is crucial especially on non-Linux systems, as we got some compatibility
 patches accepted to later releases of Userspace RCU.
 OpenBSD, NetBSD and OS X platforms are supported from version 0.7.0.
 
+.. _Installation from the source:
+
 Installation from the sources
 =============================
 
@@ -64,6 +73,8 @@ Alternatively, you can fetch the sources from git repository `<git://git.nic.cz/
 
 After unpacking the sources, the compilation and installation is a
 quite straightforward process using autotools.
+
+.. _Configuring and generating Makefiles:
 
 Configuring and generating Makefiles
 ------------------------------------
@@ -98,7 +109,7 @@ For example::
     $ ./configure --enable-debug=server,packet --enable-debuglevel=brief
     $ ./configure --enable-debug=server,packet --enable-debuglevel=verbose
 
-For more detailed information, see @ref{Debug messages}.
+For more detailed information, see @ref{Debug messages}. ##TODO
 
 In most simple case you can just run configure without any options::
 
@@ -146,8 +157,8 @@ Knot DNS is already available from Debian wheezy upwards.  In addition
 to the official packages we also provide custom repository, which can
 be used by adding::
 
-    deb     @url{http://deb.knot-dns.cz/debian/} <codename> main
-    deb-src @url{http://deb.knot-dns.cz/debian/} <codename> main
+    deb     http://deb.knot-dns.cz/debian/ <codename> main
+    deb-src http://deb.knot-dns.cz/debian/ <codename> main
 
 to your ``/etc/apt/sources.list`` or into separate file in
 ``/etc/apt/sources.list.d/``.
@@ -194,9 +205,9 @@ Installing Knot DNS packages on Fedora
 --------------------------------------
 
 The RPM packages for ``Knot DNS`` are available in official Fedora
-repositories since Fedora@tie{}18 (Spherical Cow). Look for
-``knot`` package in your package manager. To install the package
-using Yum, run a following command as the root user::
+repositories since Fedora 18 (Spherical Cow). Look for ``knot``
+package in your package manager. To install the package using Yum, run
+a following command as the root user::
 
     # yum install knot
 
@@ -234,9 +245,13 @@ Knot DNS is in ports tree under ``dns/knot``::
 Installing Knot DNS on Arch Linux
 ---------------------------------
 
-TODO
+Knot DNS is available official package repository (AUR)::
+
+    https://aur.archlinux.org/packages/knot/
 
 Installing Knot DNS on Gentoo Linux
 -----------------------------------
 
-TODO
+Knot DNS is available from Gentoo package repository::
+
+    https://packages.gentoo.org/package/net-dns/knot
