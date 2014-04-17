@@ -187,7 +187,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
 	return add_rrset_no_merge(node, rrset);
 }
 
-void node_remove_rrs(zone_node_t *node, uint16_t type)
+void node_remove_rdataset(zone_node_t *node, uint16_t type)
 {
 	if (node == NULL) {
 		return;

@@ -795,7 +795,7 @@ static int remove_rr(zone_node_t *node, const knot_rrset_t *rr,
 		}
 	} else {
 		// RRSet is empty now, remove it from node, all data freed.
-		node_remove_rrs(node, rr->type);
+		node_remove_rdataset(node, rr->type);
 	}
 
 	return KNOT_EOK;

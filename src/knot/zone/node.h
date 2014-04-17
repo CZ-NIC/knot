@@ -139,7 +139,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, bool *ttl_err);
  * \param node  Node we want to delete from.
  * \param type  RR type to delete.
  */
-void node_remove_rrs(zone_node_t *node, uint16_t type);
+void node_remove_rdataset(zone_node_t *node, uint16_t type);
 
 /* ---------------------------- Data getters ---------------------------------*/
 
