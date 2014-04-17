@@ -191,7 +191,6 @@ static void help(void)
 	printf("\nParameters:\n"
 	       " -c, --config <file>     Select configuration file.\n"
 	       " -d, --daemonize=[dir]   Run server as a daemon.\n"
-	       " -v, --verbose           Verbose mode - additional runtime information.\n"
 	       " -V, --version           Print version of the server.\n"
 	       " -h, --help              Print help and usage.\n");
 }
@@ -200,7 +199,6 @@ int main(int argc, char **argv)
 {
 	/* Parse command line arguments. */
 	int c = 0, li = 0;
-	int verbose = 0;
 	int daemonize = 0;
 	const char *config_fn = conf_find_default();
 	const char *daemon_root = "/";
@@ -209,13 +207,12 @@ int main(int argc, char **argv)
 	struct option opts[] = {
 		{"config",    required_argument, 0, 'c'},
 		{"daemonize", optional_argument, 0, 'd'},
-		{"verbose",   no_argument,       0, 'v'},
 		{"version",   no_argument,       0, 'V'},
 		{"help",      no_argument,       0, 'h'},
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "c:dvVh", opts, &li)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:dVh", opts, &li)) != -1) {
 		switch (c)
 		{
 		case 'c':
@@ -226,9 +223,6 @@ int main(int argc, char **argv)
 			if (optarg) {
 				daemon_root = optarg;
 			}
-			break;
-		case 'v':
-			verbose = 1;
 			break;
 		case 'V':
 			printf("%s, version %s\n", "Knot DNS", PACKAGE_VERSION);
