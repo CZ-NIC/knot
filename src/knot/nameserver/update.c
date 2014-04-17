@@ -42,8 +42,8 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Don't set TSIG key, as it's only forwarded. */
 
 	/* Copy query originator data. */
-	rq->fwd_src_fd = qdata->param->query_socket;
-	memcpy(&rq->fwd_addr, qdata->param->query_source, sizeof(struct sockaddr_storage));
+	rq->fwd_src_fd = qdata->param->socket;
+	memcpy(&rq->fwd_addr, qdata->param->remote, sizeof(struct sockaddr_storage));
 	rq->packet_nr = knot_wire_get_id(query->wire);
 
 	/* Duplicate query to keep it in memory during forwarding. */
@@ -250,7 +250,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 	zone_t *zone = (zone_t *)qdata->zone;
 	conf_zone_t *zone_config = zone->conf;
 	knot_tsig_key_t *tsig_key = qdata->sign.tsig_key;
-	const struct sockaddr_storage *addr = qdata->param->query_source;
+	const struct sockaddr_storage *addr = qdata->param->remote;
 
 	/* Create log message prefix. */
 	char *keytag = NULL;

@@ -2,6 +2,7 @@
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/process_answer.h"
 #include "knot/updates/xfr-in.h"
 #include "common/debug.h"
 #include "common/descriptor.h"

@@ -100,8 +100,8 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	struct sockaddr_storage ss;
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 	struct process_query_param param = {0};
-	param.query_socket = fd;
-	param.query_source = &ss;
+	param.socket = fd;
+	param.remote = &ss;
 	param.server = tcp->server;
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;

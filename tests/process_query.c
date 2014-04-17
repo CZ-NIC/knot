@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 	sockaddr_set(&ss, AF_INET, "127.0.0.1", 53);
 	struct process_query_param param = {0};
-	param.query_source = &ss;
+	param.remote = &ss;
 	param.server = &server;
 
 	/* Query processor (CH zone) */

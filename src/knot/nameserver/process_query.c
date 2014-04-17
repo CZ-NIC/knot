@@ -56,7 +56,7 @@ int process_query_begin(knot_process_t *ctx, void *module_param)
 	/* Initialize context. */
 	assert(ctx);
 	ctx->type = NS_PROC_QUERY_ID;
-	ctx->data = ctx->mm.alloc(ctx->mm.ctx, sizeof(struct query_data));
+	ctx->data = mm_alloc(&ctx->mm, sizeof(struct query_data));
 
 	/* Initialize persistent data. */
 	query_data_init(ctx, module_param);
@@ -221,7 +221,7 @@ int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
-	struct sockaddr_storage *query_source = qdata->param->query_source;
+	struct sockaddr_storage *query_source = qdata->param->remote;
 	const knot_dname_t *key_name = NULL;
 	knot_tsig_algorithm_t key_alg = KNOT_TSIG_ALG_NULL;
 
@@ -405,7 +405,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	if (!EMPTY_LIST(qdata->wildcards)) {
 		rrl_rq.flags = RRL_WILDCARD;
 	}
-	if (rrl_query(server->rrl, qdata->param->query_source,
+	if (rrl_query(server->rrl, qdata->param->remote,
 	              &rrl_rq, qdata->zone) == KNOT_EOK) {
 		/* Rate limiting not applied. */
 		return state;

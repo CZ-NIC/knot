@@ -39,7 +39,7 @@ extern const knot_process_module_t _process_query;
 /*! \brief Query processing logging common base. */
 #define NS_PROC_LOG(severity, qdata, what, msg, ...) do { \
 	char addr_str[SOCKADDR_STRLEN] = {0}; \
-	sockaddr_tostr((qdata)->param->query_source, addr_str, sizeof(addr_str)); \
+	sockaddr_tostr((qdata)->param->remote, addr_str, sizeof(addr_str)); \
 	char *zone_str = knot_dname_to_str(knot_pkt_qname((qdata)->query)); \
 	log_msg(LOG_SERVER, severity, what msg "\n", \
 	                zone_str, addr_str, ##__VA_ARGS__); \
@@ -66,9 +66,9 @@ enum process_query_flag {
 /* Module load parameters. */
 struct process_query_param {
 	uint16_t   proc_flags;
-	int        query_socket;
-	struct sockaddr_storage *query_source;
 	server_t   *server;
+	int        socket;
+	struct sockaddr_storage *remote;
 };
 
 /*! \brief Query processing intermediate data. */

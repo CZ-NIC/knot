@@ -118,11 +118,11 @@ int udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 
 	/* Create query processing parameter. */
 	struct process_query_param param = {0};
-	param.query_source = ss;
+	param.remote = ss;
 	param.proc_flags  = NS_QUERY_NO_AXFR|NS_QUERY_NO_IXFR; /* No transfers. */
 	param.proc_flags |= NS_QUERY_LIMIT_SIZE; /* Enforce UDP packet size limit. */
 	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
-	param.query_socket = fd;
+	param.socket = fd;
 	param.server = udp->server;
 
 	/* Rate limit is applied? */
