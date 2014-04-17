@@ -156,6 +156,11 @@ int node_shallow_copy(zone_node_t **dst, const zone_node_t *src)
 	}
 	memcpy((*dst)->rrs, src->rrs, rrlen);
 
+	for (uint16_t i = 0; i < src->rrset_count; ++i) {
+		// Clear additionals in the copy.
+		(*dst)->rrs[i].additional = NULL;
+	}
+
 	return KNOT_EOK;
 }
 
