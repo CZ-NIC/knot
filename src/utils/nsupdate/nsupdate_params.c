@@ -55,7 +55,7 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_footer = false
 };
 
-static void parse_err(const zs_scanner_t *s) {
+static void parse_err(zs_scanner_t *s) {
 	ERR("failed to parse RR: %s\n", zs_strerror(s->error_code));
 }
 

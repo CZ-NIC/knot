@@ -163,9 +163,9 @@ struct scanner {
 	uint32_t default_ttl;
 
 	/*! Callback function for correct zone record. */
-	void (*process_record)(const zs_scanner_t *);
+	void (*process_record)(zs_scanner_t *);
 	/*! Callback function for wrong situations. */
-	void (*process_error)(const zs_scanner_t *);
+	void (*process_error)(zs_scanner_t *);
 	/*! Arbitrary data useful inside callback functions. */
 	void *data;
 
@@ -237,8 +237,8 @@ zs_scanner_t* zs_scanner_create(const char     *file_name,
                                 const char     *origin,
                                 const uint16_t rclass,
                                 const uint32_t ttl,
-                                void (*process_record)(const zs_scanner_t *),
-                                void (*process_error)(const zs_scanner_t *),
+                                void (*process_record)(zs_scanner_t *),
+                                void (*process_error)(zs_scanner_t *),
                                 void *data);
 
 /*!

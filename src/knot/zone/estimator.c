@@ -165,7 +165,7 @@ size_t estimator_trie_htable_memsize(hattrie_t *table)
 	return size;
 }
 
-void estimator_rrset_memsize_wrap(const zs_scanner_t *scanner)
+void estimator_rrset_memsize_wrap(zs_scanner_t *scanner)
 {
 	rrset_memsize(scanner->data, scanner);
 }

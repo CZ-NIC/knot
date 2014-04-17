@@ -35,7 +35,7 @@
 #include "knot/zone/zone-create.h"
 #include "zscanner/zscanner.h"
 
-void process_error(const zs_scanner_t *s)
+void process_error(zs_scanner_t *s)
 {
 	if (s->stop == true) {
 		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "
@@ -151,7 +151,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
-static void loader_process(const zs_scanner_t *scanner)
+static void loader_process(zs_scanner_t *scanner)
 {
 	zcreator_t *zc = scanner->data;
 	if (zc->ret != KNOT_EOK) {

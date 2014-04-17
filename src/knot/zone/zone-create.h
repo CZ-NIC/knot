@@ -84,7 +84,7 @@ void zonefile_close(zloader_t *loader);
 
 int zcreator_step(zcreator_t *zl, const knot_rrset_t *rr);
 
-void process_error(const zs_scanner_t *scanner);
+void process_error(zs_scanner_t *scanner);
 
 #endif /* _KNOTD_ZONELOAD_H_ */
 
