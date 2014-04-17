@@ -17,7 +17,6 @@ Parameters:
  -c, --config <file>    Select configuration file.
  -d, --daemonize=[dir]  Run server as a daemon. Working directory may
                         be set.
- -v, --verbose          Verbose mode - additional runtime information.
  -V, --version          Print version of the server.
  -h, --help             Print help and usage.
 @end example

@@ -1961,7 +1961,7 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 	if (knot_rrtype_to_string(rrset->type, buf, sizeof(buf)) < 0) {
 		return KNOT_ESPACE;
 	}
-	if (knot_rrset_rr_count(rrset) > 0) {
+	if (rrset->rrs.rr_count > 0) {
 		ret = snprintf(dst + len, maxlen - len, "%s%c", buf, sep);
 	} else {
 		ret = snprintf(dst + len, maxlen - len, "%s", buf);
@@ -1985,7 +1985,7 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	int    ret;
 
 	// UPDATE delete may have empty RDATA => dump header.
-	if (knot_rrset_rr_count(rrset) == 0) {
+	if (rrset->rrs.rr_count == 0) {
 		// Dump rdata owner, class, ttl and type.
 		ret = knot_rrset_txt_dump_header(rrset, 0, dst + len,
 		                                 maxlen - len, style);
@@ -2003,7 +2003,7 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	}
 
 	// Loop over rdata in rrset.
-	uint16_t rr_count = knot_rrset_rr_count(rrset);
+	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; i++) {
 		// Dump rdata owner, class, ttl and type.
 		ret = knot_rrset_txt_dump_header(rrset,

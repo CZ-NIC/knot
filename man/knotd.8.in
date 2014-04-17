@@ -14,9 +14,6 @@ Select configuration file.
 \fB\-d\fR, \fB\-\-daemonize\fR=[\fIdir\fR]
 Run server as a daemon. Working directory may be set.
 .TP
-\fB\-v\fR, \fB\-\-verbose\fR
-Verbose mode \- additional runtime information.
-.TP
 \fB\-V\fR, \fB\-\-version\fR
 Print version of the server.
 .TP

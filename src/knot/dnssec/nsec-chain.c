@@ -34,8 +34,8 @@
  *
  * \return NSEC RR set, NULL on error.
  */
-static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
-                                       const knot_node_t *to,
+static knot_rrset_t *create_nsec_rrset(const zone_node_t *from,
+                                       const zone_node_t *to,
                                        uint32_t ttl)
 {
 	assert(from);
@@ -51,7 +51,7 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
 	bitmap_add_node_rrsets(&rr_types, from);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_NSEC);
 	bitmap_add_type(&rr_types, KNOT_RRTYPE_RRSIG);
-	if (knot_node_rrtype_exists(from, KNOT_RRTYPE_SOA)) {
+	if (node_rrtype_exists(from, KNOT_RRTYPE_SOA)) {
 		bitmap_add_type(&rr_types, KNOT_RRTYPE_DNSKEY);
 	}
 
@@ -86,14 +86,14 @@ static knot_rrset_t *create_nsec_rrset(const knot_node_t *from,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
+static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
                               nsec_chain_iterate_data_t *data)
 {
 	assert(a);
 	assert(b);
 	assert(data);
 
-	if (b->rrset_count == 0 || knot_node_is_non_auth(b)) {
+	if (b->rrset_count == 0 || b->flags & NODE_FLAGS_NONAUTH) {
 		return NSEC_NODE_SKIP;
 	}
 
@@ -103,7 +103,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 	 * If the node has no other RRSets than NSEC (and possibly RRSIGs),
 	 * just remove the NSEC and its RRSIG, they are redundant
 	 */
-	if (knot_node_rrtype_exists(b, KNOT_RRTYPE_NSEC)
+	if (node_rrtype_exists(b, KNOT_RRTYPE_NSEC)
 	    && knot_nsec_empty_nsec_and_rrsigs_in_node(b)) {
 		ret = knot_nsec_changeset_remove(b, data->changeset);
 		if (ret != KNOT_EOK) {
@@ -120,7 +120,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 		return KNOT_ENOMEM;
 	}
 
-	knot_rrset_t old_nsec = knot_node_rrset(a, KNOT_RRTYPE_NSEC);
+	knot_rrset_t old_nsec = node_rrset(a, KNOT_RRTYPE_NSEC);
 	if (!knot_rrset_empty(&old_nsec)) {
 		if (knot_rrset_equal(new_nsec, &old_nsec,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
@@ -132,7 +132,7 @@ static int connect_nsec_nodes(knot_node_t *a, knot_node_t *b,
 
 		dbg_dnssec_detail("NSECs not equal, replacing.\n");
 		// Mark the node so that we do not sign this NSEC
-		knot_node_set_removed_nsec(a);
+		a->flags |= NODE_FLAGS_REMOVED_NSEC;
 		ret = knot_nsec_changeset_remove(a, data->changeset);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&new_nsec, NULL);
@@ -170,15 +170,15 @@ int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
 		return KNOT_EINVAL;
 	}
 
-	knot_node_t *first = (knot_node_t *)*hattrie_iter_val(it);
-	knot_node_t *previous = first;
-	knot_node_t *current = first;
+	zone_node_t *first = (zone_node_t *)*hattrie_iter_val(it);
+	zone_node_t *previous = first;
+	zone_node_t *current = first;
 
 	hattrie_iter_next(it);
 
 	int result = KNOT_EOK;
 	while (!hattrie_iter_finished(it)) {
-		current = (knot_node_t *)*hattrie_iter_val(it);
+		current = (zone_node_t *)*hattrie_iter_val(it);
 
 		result = callback(previous, current, data);
 		if (result == NSEC_NODE_SKIP) {
@@ -204,7 +204,7 @@ int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
 /*!
  * \brief Add entry for removed NSEC to the changeset.
  */
-int knot_nsec_changeset_remove(const knot_node_t *n,
+int knot_nsec_changeset_remove(const zone_node_t *n,
                                knot_changeset_t *changeset)
 {
 	if (changeset == NULL) {
@@ -213,9 +213,9 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 
 	int result = KNOT_EOK;
 
-	knot_rrset_t *nsec = knot_node_create_rrset(n, KNOT_RRTYPE_NSEC);
+	knot_rrset_t *nsec = node_create_rrset(n, KNOT_RRTYPE_NSEC);
 	if (nsec == NULL) {
-		nsec = knot_node_create_rrset(n, KNOT_RRTYPE_NSEC3);
+		nsec = node_create_rrset(n, KNOT_RRTYPE_NSEC3);
 	}
 	if (nsec) {
 		// update changeset
@@ -227,7 +227,7 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
 		}
 	}
 
-	knot_rrset_t rrsigs = knot_node_rrset(n, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t rrsigs = node_rrset(n, KNOT_RRTYPE_RRSIG);
 	if (!knot_rrset_empty(&rrsigs)) {
 		knot_rrset_t *synth_rrsigs = knot_rrset_new(n->owner,
 							    KNOT_RRTYPE_RRSIG,
@@ -268,11 +268,11 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
  * \brief Checks whether the node is empty or eventually contains only NSEC and
  *        RRSIGs.
  */
-bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n)
+bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n)
 {
 	assert(n);
 	for (int i = 0; i < n->rrset_count; ++i) {
-		knot_rrset_t rrset = knot_node_rrset_at(n, i);
+		knot_rrset_t rrset = node_rrset_at(n, i);
 		if (rrset.type != KNOT_RRTYPE_NSEC &&
 		    rrset.type != KNOT_RRTYPE_RRSIG) {
 			return false;

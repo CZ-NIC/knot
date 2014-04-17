@@ -99,8 +99,8 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 
 	uint32_t serial = 0;
 	if (zone->contents && zone->contents->apex) {
-		const knot_rdataset_t *soa = knot_node_rdataset(zone->contents->apex,
-		                                      KNOT_RRTYPE_SOA);
+		const knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
+		                                           KNOT_RRTYPE_SOA);
 		serial = knot_soa_serial(soa);
 	}
 

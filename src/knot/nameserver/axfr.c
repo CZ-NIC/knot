@@ -30,16 +30,16 @@ struct axfr_proc {
 	unsigned cur_rrset;
 };
 
-static int put_rrsets(knot_pkt_t *pkt, knot_node_t *node, struct axfr_proc *state)
+static int put_rrsets(knot_pkt_t *pkt, zone_node_t *node, struct axfr_proc *state)
 {
 	int ret = KNOT_EOK;
 	int i = state->cur_rrset;
-	int rrset_count = knot_node_rrset_count(node);
+	uint16_t rrset_count = node->rrset_count;
 	unsigned flags = KNOT_PF_NOTRUNC;
 
 	/* Append all RRs. */
 	for (;i < rrset_count; ++i) {
-		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		knot_rrset_t rrset = node_rrset_at(node, i);
 		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
@@ -66,9 +66,9 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item, struct xfr_
 
 	/* Put responses. */
 	int ret = KNOT_EOK;
-	knot_node_t *node = NULL;
+	zone_node_t *node = NULL;
 	while(!hattrie_iter_finished(axfr->i)) {
-		node = (knot_node_t *)*hattrie_iter_val(axfr->i);
+		node = (zone_node_t *)*hattrie_iter_val(axfr->i);
 		ret = put_rrsets(pkt, node, axfr);
 		if (ret != KNOT_EOK) {
 			break;
@@ -137,7 +137,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 	struct xfr_proc *xfer = qdata->ext;
 
 	zone_contents_t *zone = qdata->zone->contents;
-	knot_rrset_t soa_rr = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rr = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 
 	/* Prepend SOA on first packet. */
 	if (xfer->npkts == 0) {

@@ -21,7 +21,7 @@
 
 #define NCOUNT 4
 static knot_dname_t* NAME[NCOUNT];
-static knot_node_t NODE[NCOUNT];
+static zone_node_t NODE[NCOUNT];
 static knot_dname_t* ORDER[NCOUNT];
 static void ztree_init_data()
 {
@@ -36,7 +36,7 @@ static void ztree_init_data()
 	memcpy(ORDER, order, NCOUNT * sizeof(knot_dname_t*));
 
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		memset(NODE + i, 0, sizeof(knot_node_t));
+		memset(NODE + i, 0, sizeof(zone_node_t));
 		NODE[i].owner = NAME[i];
 		NODE[i].prev = NODE + ((NCOUNT + i - 1) % NCOUNT);
 		NODE[i].rrset_count = 1; /* required for ordered search */
@@ -49,7 +49,7 @@ static void ztree_free_data()
 		knot_dname_free(NAME + i, NULL);
 }
 
-static int ztree_iter_data(knot_node_t **node, void *data)
+static int ztree_iter_data(zone_node_t **node, void *data)
 {
 	unsigned *i = (unsigned *)data;
 	knot_dname_t *owner = (*node)->owner;
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
 	/* 3. check data test */
 	passed = 1;
-	const knot_node_t *node = NULL;
+	const zone_node_t *node = NULL;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
 		int r = knot_zone_tree_find(t, NAME[i], &node);
 		if (r != KNOT_EOK || node != NODE + i) {
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	/* 4. ordered lookup */
 	passed = 1;
 	node = NULL;
-	const knot_node_t *prev = NULL;
+	const zone_node_t *prev = NULL;
 	knot_dname_t *tmp_dn = knot_dname_from_str("z.ac.");
 	knot_zone_tree_find_less_or_equal(t, tmp_dn, &node, &prev);
 	knot_dname_free(&tmp_dn, NULL);

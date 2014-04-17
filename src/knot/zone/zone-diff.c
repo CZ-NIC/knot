@@ -43,20 +43,20 @@ static int knot_zone_diff_load_soas(const zone_contents_t *zone1,
 		return KNOT_EINVAL;
 	}
 
-	const knot_node_t *apex1 = zone_contents_apex(zone1);
-	const knot_node_t *apex2 = zone_contents_apex(zone2);
+	const zone_node_t *apex1 = zone1->apex;
+	const zone_node_t *apex2 = zone2->apex;
 	if (apex1 == NULL || apex2 == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_t soa_rrset1 = knot_node_rrset(apex1, KNOT_RRTYPE_SOA);
-	knot_rrset_t soa_rrset2 = knot_node_rrset(apex2, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rrset1 = node_rrset(apex1, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa_rrset2 = node_rrset(apex2, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa_rrset1) || knot_rrset_empty(&soa_rrset2)) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_rrset_rr_count(&soa_rrset1) == 0 ||
-	    knot_rrset_rr_count(&soa_rrset2) == 0) {
+	if (soa_rrset1.rrs.rr_count == 0 ||
+	    soa_rrset2.rrs.rr_count == 0) {
 		return KNOT_EINVAL;
 	}
 
@@ -103,7 +103,7 @@ static int knot_zone_diff_changeset_add_rrset(knot_changeset_t *changeset,
 		return KNOT_EINVAL;
 	}
 
-	if (knot_rrset_rr_count(rrset) == 0) {
+	if (rrset->rrs.rr_count == 0) {
 		dbg_zonediff_detail("zone_diff: Nothing to add.\n");
 		return KNOT_EOK;
 	}
@@ -140,7 +140,7 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 		return KNOT_EOK;
 	}
 
-	if (knot_rrset_rr_count(rrset) == 0) {
+	if (rrset->rrs.rr_count == 0) {
 		/* RDATA are the same, however*/
 		dbg_zonediff_detail("zone_diff: Nothing to remove.\n");
 		return KNOT_EOK;
@@ -165,12 +165,12 @@ static int knot_zone_diff_changeset_remove_rrset(knot_changeset_t *changeset,
 	return KNOT_EOK;
 }
 
-static int knot_zone_diff_add_node(const knot_node_t *node,
+static int knot_zone_diff_add_node(const zone_node_t *node,
                                    knot_changeset_t *changeset)
 {
 	/* Add all rrsets from node. */
-	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
-		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+	for (uint i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
 		int ret = knot_zone_diff_changeset_add_rrset(changeset,
 		                                             &rrset);
 		if (ret != KNOT_EOK) {
@@ -184,11 +184,11 @@ static int knot_zone_diff_add_node(const knot_node_t *node,
 }
 
 static int knot_zone_diff_remove_node(knot_changeset_t *changeset,
-                                                const knot_node_t *node)
+                                                const zone_node_t *node)
 {
 	/* Remove all the RRSets of the node. */
-	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
-		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+	for (uint i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
 		int ret = knot_zone_diff_changeset_remove_rrset(changeset,
 		                                                &rrset);
 		if (ret != KNOT_EOK) {
@@ -241,7 +241,7 @@ static int knot_zone_diff_rdata_return_changes(const knot_rrset_t *rrset1,
 		get_rdata_descriptor(rrset1->type);
 	assert(desc);
 
-	uint16_t rr1_count = knot_rrset_rr_count(rrset1);
+	uint16_t rr1_count = rrset1->rrs.rr_count;
 	for (uint16_t i = 0; i < rr1_count; ++i) {
 		if (!rr_exists(rrset2, rrset1, i)) {
 			/*
@@ -332,14 +332,14 @@ static int knot_zone_diff_rrsets(const knot_rrset_t *rrset1,
 }
 
 /*!< \todo this could be generic function for adding / removing. */
-static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
+static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 {
 	if (node_ptr == NULL || *node_ptr == NULL || data == NULL) {
 		dbg_zonediff("zone_diff: diff_node: NULL arguments.\n");
 		return KNOT_EINVAL;
 	}
 
-	knot_node_t *node = *node_ptr;
+	zone_node_t *node = *node_ptr;
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL) {
@@ -351,8 +351,8 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 	 * First, we have to search the second tree to see if there's according
 	 * node, if not, the whole node has been removed.
 	 */
-	const knot_node_t *node_in_second_tree = NULL;
-	const knot_dname_t *node_owner = knot_node_owner(node);
+	const zone_node_t *node_in_second_tree = NULL;
+	const knot_dname_t *node_owner = node->owner;
 	assert(node_owner);
 
 	knot_zone_tree_find(param->nodes, node_owner, &node_in_second_tree);
@@ -390,16 +390,16 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 		return ret;
 	}
 
-	for (uint i = 0; i < knot_node_rrset_count(node); i++) {
+	for (uint i = 0; i < node->rrset_count; i++) {
 		/* Search for the RRSet in the node from the second tree. */
-		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		knot_rrset_t rrset = node_rrset_at(node, i);
 
 		/* SOAs are handled explicitely. */
 		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
 
-		knot_rrset_t rrset_from_second_node = knot_node_rrset(node_in_second_tree, rrset.type);
+		knot_rrset_t rrset_from_second_node = node_rrset(node_in_second_tree, rrset.type);
 		if (knot_rrset_empty(&rrset_from_second_node)) {
 			/* RRSet has been removed. Make a copy and remove. */
 			int ret = knot_zone_diff_changeset_remove_rrset(
@@ -423,16 +423,16 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 		}
 	}
 
-	for (uint i = 0; i < knot_node_rrset_count(node_in_second_tree); i++) {
+	for (uint i = 0; i < node_in_second_tree->rrset_count; i++) {
 		/* Search for the RRSet in the node from the second tree. */
-		knot_rrset_t rrset = knot_node_rrset_at(node_in_second_tree, i);
+		knot_rrset_t rrset = node_rrset_at(node_in_second_tree, i);
 
 		/* SOAs are handled explicitely. */
 		if (rrset.type == KNOT_RRTYPE_SOA) {
 			continue;
 		}
 
-		knot_rrset_t rrset_from_first_node = knot_node_rrset(node, rrset.type);
+		knot_rrset_t rrset_from_first_node = node_rrset(node, rrset.type);
 		if (knot_rrset_empty(&rrset_from_first_node)) {
 			/* RRSet has been added. Make a copy and add. */
 			int ret = knot_zone_diff_changeset_add_rrset(
@@ -453,14 +453,14 @@ static int knot_zone_diff_node(knot_node_t **node_ptr, void *data)
 }
 
 /*!< \todo possibly not needed! */
-static int knot_zone_diff_add_new_nodes(knot_node_t **node_ptr, void *data)
+static int knot_zone_diff_add_new_nodes(zone_node_t **node_ptr, void *data)
 {
 	if (node_ptr == NULL || *node_ptr == NULL || data == NULL) {
 		dbg_zonediff("zone_diff: add_new_nodes: NULL arguments.\n");
 		return KNOT_EINVAL;
 	}
 
-	knot_node_t *node = *node_ptr;
+	zone_node_t *node = *node_ptr;
 
 	struct zone_diff_param *param = (struct zone_diff_param *)data;
 	if (param->changeset == NULL) {
@@ -474,14 +474,14 @@ static int knot_zone_diff_add_new_nodes(knot_node_t **node_ptr, void *data)
 	* already handled.
 	*/
 
-	const knot_dname_t *node_owner = knot_node_owner(node);
+	const knot_dname_t *node_owner = node->owner;
 	/*
 	 * Node should definitely have an owner, otherwise it would not be in
 	 * the tree.
 	 */
 	assert(node_owner);
 
-	knot_node_t *new_node = NULL;
+	zone_node_t *new_node = NULL;
 	knot_zone_tree_get(param->nodes, node_owner, &new_node);
 
 	int ret = KNOT_EOK;

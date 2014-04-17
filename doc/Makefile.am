@@ -10,5 +10,6 @@ knot_TEXINFOS = 				\
 		requirements.texi		\
 		running.texi			\
 		security.texi			\
+		synth_record.texi		\
 		troubleshooting.texi		\
 		version.texi

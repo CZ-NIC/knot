@@ -78,20 +78,44 @@ static bool handle_err(zcreator_t *zc,
 	}
 }
 
+static int log_ttl(const zcreator_t *zc, const zone_node_t *node,
+                   const knot_rrset_t *rr)
+{
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
+	// Prepare additional info string.
+	char info_str[64] = { '\0' };
+	char type_str[16] = { '\0' };
+	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
+	snprintf(info_str, sizeof(info_str), "Record type: %s.",
+	         type_str);
+
+	if (zc->master) {
+		/*!< \todo REPLACE WITH FATAL ERROR */
+		err_handler_handle_error(&err_handler, node,
+		                         ZC_ERR_TTL_MISMATCH, info_str);
+		return KNOT_EMALF;
+	} else {
+		err_handler_handle_error(&err_handler, node,
+		                         ZC_ERR_TTL_MISMATCH, info_str);
+		return KNOT_EOK;
+	}
+}
+
 int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 {
-	if (zc == NULL || rr == NULL || knot_rrset_rr_count(rr) != 1) {
+	if (zc == NULL || rr == NULL || rr->rrs.rr_count != 1) {
 		return KNOT_EINVAL;
 	}
 
 	if (rr->type == KNOT_RRTYPE_SOA &&
-	    knot_node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_SOA)) {
+	    node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_SOA)) {
 		// Ignore extra SOA
 		return KNOT_EOK;
 	}
 
 	bool ttl_err = false;
-	knot_node_t *node = NULL;
+	zone_node_t *node = NULL;
 	int ret = zone_contents_add_rr(zc->z, rr, &node, &ttl_err);
 	if (ret < 0) {
 		if (!handle_err(zc, rr, ret)) {
@@ -103,33 +127,17 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	}
 	assert(node);
 
-	// Do RRSet and node semantic checks
-	bool sem_fatal_error = false;
-	err_handler_t err_handler;
-	err_handler_init(&err_handler);
-
-	/* Check if TTL of the added RR is equal to the TTL of the RRSet.
-	 * It's sufficient to compare with the first RR, because each RR in the
-	 * RRSet already underwent this check.
-	 */
 	if (ttl_err) {
-		/* Prepare additional info string. */
-		char info_str[64] = { '\0' };
-		char type_str[16] = { '\0' };
-		knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-		snprintf(info_str, sizeof(info_str), "Record type: %s.",
-		         type_str);
-
-		if (zc->master) {
-			/*! \todo REPLACE WITH FATAL ERROR */
-			err_handler_handle_error(&err_handler, node,
-			                         ZC_ERR_TTL_MISMATCH, info_str);
-			return KNOT_EMALF;
-		} else {
-			err_handler_handle_error(&err_handler, node,
-			                         ZC_ERR_TTL_MISMATCH, info_str);
+		ret = log_ttl(zc, node, rr);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
+
+	// Do node semantic checks
+	err_handler_t err_handler;
+	err_handler_init(&err_handler);
+	bool sem_fatal_error = false;
 
 	ret = sem_check_node_plain(zc->z, node,
 	                           &err_handler, true,
@@ -269,14 +277,14 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 		goto fail;
 	}
 
-	if (!knot_node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
+	if (!node_rrtype_exists(loader->creator->z->apex, KNOT_RRTYPE_SOA)) {
 		log_zone_error("%s: no SOA record in the zone file.\n",
 		               loader->source);
 		goto fail;
 	}
 
-	knot_node_t *first_nsec3_node = NULL;
-	knot_node_t *last_nsec3_node = NULL;
+	zone_node_t *first_nsec3_node = NULL;
+	zone_node_t *last_nsec3_node = NULL;
 
 	int kret = zone_contents_adjust_full(zc->z,
 	                                          &first_nsec3_node, &last_nsec3_node);
@@ -288,11 +296,12 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	if (loader->semantic_checks) {
 		int check_level = SEM_CHECK_UNSIGNED;
-		knot_rrset_t soa_rr = knot_node_rrset(zc->z->apex, KNOT_RRTYPE_SOA);
+		knot_rrset_t soa_rr = node_rrset(zc->z->apex, KNOT_RRTYPE_SOA);
 		assert(!knot_rrset_empty(&soa_rr)); // In this point, SOA has to exist
 		const bool have_nsec3param =
-			knot_node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_NSEC3PARAM);
+			node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_NSEC3PARAM);
 		if (zone_contents_is_signed(zc->z) && !have_nsec3param) {
+
 			/* Set check level to DNSSEC. */
 			check_level = SEM_CHECK_NSEC;
 		} else if (zone_contents_is_signed(zc->z) && have_nsec3param) {

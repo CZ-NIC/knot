@@ -54,7 +54,7 @@ static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list
 	 * rejoin the iteration at any point. */
 	while(ixfr->cur->next) {
 		knot_rr_ln_t *rr_item = (knot_rr_ln_t *)(ixfr->cur);
-		if (knot_rrset_rr_count(rr_item->rr) > 0) {
+		if (rr_item->rr->rrs.rr_count > 0) {
 			IXFR_SAFE_PUT(pkt, rr_item->rr);
 		} else {
 			dbg_ns("%s: empty RR %p, skipping\n", __func__, rr_item->rr);
@@ -262,8 +262,8 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
 
 	/* Guaranteed to have zone contents. */
-	const knot_node_t *apex = qdata->zone->contents->apex;
-	knot_rrset_t soa_rr = knot_node_rrset(apex, KNOT_RRTYPE_SOA);
+	const zone_node_t *apex = qdata->zone->contents->apex;
+	knot_rrset_t soa_rr = node_rrset(apex, KNOT_RRTYPE_SOA);
 	if (knot_rrset_empty(&soa_rr)) {
 		return NS_PROC_FAIL;
 	}

@@ -39,7 +39,7 @@ typedef hattrie_t knot_zone_tree_t;
 /*!
  * \brief Signature of callback for zone apply functions.
  */
-typedef int (*knot_zone_tree_apply_cb_t)(knot_node_t **node, void *data);
+typedef int (*knot_zone_tree_apply_cb_t)(zone_node_t **node, void *data);
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -75,7 +75,7 @@ int knot_zone_tree_is_empty(const knot_zone_tree_t *tree);
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
-int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node);
+int knot_zone_tree_insert(knot_zone_tree_t *tree, zone_node_t *node);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.
@@ -89,7 +89,7 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, knot_node_t *node);
  */
 int knot_zone_tree_find(knot_zone_tree_t *tree,
                           const knot_dname_t *owner,
-                          const knot_node_t **found);
+                          const zone_node_t **found);
 
 /*!
  * \brief Finds node with the given owner in the zone tree.
@@ -106,7 +106,7 @@ int knot_zone_tree_find(knot_zone_tree_t *tree,
  */
 int knot_zone_tree_get(knot_zone_tree_t *tree,
                          const knot_dname_t *owner,
-                         knot_node_t **found);
+                         zone_node_t **found);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
@@ -129,8 +129,8 @@ int knot_zone_tree_get(knot_zone_tree_t *tree,
  */
 int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
                                         const knot_dname_t *owner,
-                                        const knot_node_t **found,
-                                        const knot_node_t **previous);
+                                        const zone_node_t **found,
+                                        const zone_node_t **previous);
 
 /*!
  * \brief Tries to find the given domain name in the zone tree and returns the
@@ -156,8 +156,8 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
  */
 int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
                                        const knot_dname_t *owner,
-                                       knot_node_t **found,
-                                       knot_node_t **previous);
+                                       zone_node_t **found,
+                                       zone_node_t **previous);
 
 /*!
  * \brief Removes node with the given owner from the zone tree and returns it.
@@ -170,7 +170,7 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
  */
 int knot_zone_tree_remove(knot_zone_tree_t *tree,
                             const knot_dname_t *owner,
-                            knot_node_t **removed);
+                            zone_node_t **removed);
 
 /*!
  * \brief Applies the given function to each node in the zone.

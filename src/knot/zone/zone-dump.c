@@ -37,9 +37,9 @@ typedef struct {
 	const knot_dump_style_t *style;
 } dump_params_t;
 
-static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
+static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 {
-	knot_rrset_t soa = knot_node_rrset(node, KNOT_RRTYPE_SOA);
+	knot_rrset_t soa = node_rrset(node, KNOT_RRTYPE_SOA);
 	knot_dump_style_t soa_style = *params->style;
 
 	// Dump SOA record as a first.
@@ -49,14 +49,14 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 					&soa_style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		params->rr_count += knot_rrset_rr_count(&soa);
+		params->rr_count += soa.rrs.rr_count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
 
 	// Dump other records.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		knot_rrset_t rrset = node_rrset_at(node, i);
 		switch (rrset.type) {
 		case KNOT_RRTYPE_NSEC:
 			continue;
@@ -72,7 +72,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		params->rr_count +=  knot_rrset_rr_count(&rrset);
+		params->rr_count +=  rrset.rrs.rr_count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -80,7 +80,7 @@ static int apex_node_dump_text(knot_node_t *node, dump_params_t *params)
 	return KNOT_EOK;
 }
 
-static int node_dump_text(knot_node_t *node, void *data)
+static int node_dump_text(zone_node_t *node, void *data)
 {
 	dump_params_t *params = (dump_params_t *)data;
 
@@ -93,7 +93,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rrset = knot_node_rrset_at(node, i);
+		knot_rrset_t rrset = node_rrset_at(node, i);
 		switch (rrset.type) {
 		case KNOT_RRTYPE_RRSIG:
 			if (params->dump_rrsig) {
@@ -121,7 +121,7 @@ static int node_dump_text(knot_node_t *node, void *data)
 		                        params->style) < 0) {
 			return KNOT_ENOMEM;
 		}
-		params->rr_count += knot_rrset_rr_count(&rrset);
+		params->rr_count += rrset.rrs.rr_count;
 		fprintf(params->file, "%s", params->buf);
 		params->buf[0] = '\0';
 	}
@@ -145,13 +145,13 @@ int zone_dump_text(zone_contents_t *zone, const struct sockaddr_storage *from, F
 	fprintf(file, ";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
 
 	// Set structure with parameters.
-	knot_node_t *apex = zone->apex;
+	zone_node_t *apex = zone->apex;
 	dump_params_t params;
 	params.file = file;
 	params.buf = buf;
 	params.buflen = DUMP_BUF_LEN;
 	params.rr_count = 0;
-	params.origin = knot_node_owner(apex);
+	params.origin = apex->owner;
 	params.style = &KNOT_DUMP_STYLE_DEFAULT;
 
 	int ret;

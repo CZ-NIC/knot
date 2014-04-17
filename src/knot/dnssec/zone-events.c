@@ -129,8 +129,8 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 	}
 
 	// update SOA if there were any changes
-	knot_rrset_t soa = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	knot_rrset_t rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	assert(!knot_rrset_empty(&soa));
 	result = knot_zone_sign_update_soa(&soa, &rrsigs, &zone_keys, &policy,
 	                                   new_serial, out_ch);
@@ -240,8 +240,8 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
 	}
 
 	// Update SOA RRSIGs
-	knot_rrset_t soa = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	knot_rrset_t rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 	ret = knot_zone_sign_update_soa(&soa, &rrsigs, &zone_keys, &policy,
 	                                new_serial, out_ch);
 	if (ret != KNOT_EOK) {

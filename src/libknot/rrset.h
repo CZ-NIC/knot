@@ -36,7 +36,6 @@
 #include "libknot/rdataset.h"
 
 struct knot_compr;
-struct knot_node;
 
 /*!
  * \brief Structure for representing RRSet.
@@ -49,7 +48,7 @@ struct knot_rrset {
 	uint16_t rclass;      /*!< CLASS of the RRSet. */
 	knot_rdataset_t rrs;  /*!< RRSet's RRs */
 	/* Optional fields. */
-	struct knot_node **additional; /*!< Additional records. */
+	struct zone_node **additional; /*!< Additional records. */
 };
 
 typedef struct knot_rrset knot_rrset_t;
@@ -166,15 +165,6 @@ uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
  * \param ttl    TTL to be set.
  */
 void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
-
-/*!
- * \brief Returns count of RRs in RRSet.
- *
- * \param rrset  RRSet.
- *
- * \return RR count.
- */
-uint16_t knot_rrset_rr_count(const knot_rrset_t *rrset);
 
 /* ---------- Wire conversions (legacy, to be done in knot_pkt_t) ----------- */
 

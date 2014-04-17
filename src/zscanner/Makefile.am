@@ -21,12 +21,12 @@ else
 
 if G2_PARSER
 scanner.c: scanner.c.g2
-	cp $@.g2 $@
+	cp $(srcdir)/$@.g2 $@
 endif
 
 if T0_PARSER
 scanner.c: scanner.c.t0
-	cp $@.t0 $@
+	cp $(srcdir)/$@.t0 $@
 endif
 
 endif #HAVE_RAGEL
@@ -38,13 +38,15 @@ endif
 libzscanner_la_SOURCES =		\
 	zscanner.h			\
 	scanner.h			\
-	scanner.c			\
 	error.h				\
 	error.c				\
 	loader.h			\
 	loader.c			\
 	functions.h			\
 	functions.c
+
+nodist_libzscanner_la_SOURCES =		\
+	scanner.c
 
 libzscanner_la_CFLAGS = $(CODE_COVERAGE_CFLAGS)
 libzscanner_la_LDFLAGS =		\

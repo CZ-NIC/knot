@@ -43,7 +43,6 @@ static void *mm_realloc(mm_ctx_t *mm, void *what, size_t size, size_t prev_size)
 	}
 }
 
-
 static knot_rdata_t *rr_seek(knot_rdata_t *d, size_t pos)
 {
 	if (d == NULL) {

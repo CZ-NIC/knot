@@ -198,12 +198,12 @@ zone_contents_t *xfrin_switch_zone(zone_t *zone, zone_contents_t *new_contents);
 void xfrin_rollback_update(knot_changesets_t *chgs,
                            zone_contents_t **new_contents);
 
-int xfrin_copy_rrset(knot_node_t *node, uint16_t type,
+int xfrin_copy_rrset(zone_node_t *node, uint16_t type,
                      knot_rrset_t **rrset);
 
 int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy);
 
-int xfrin_replace_rrset_in_node(knot_node_t *node,
+int xfrin_replace_rrset_in_node(zone_node_t *node,
                                 knot_rrset_t *rrset_new,
                                 zone_contents_t *contents);
 

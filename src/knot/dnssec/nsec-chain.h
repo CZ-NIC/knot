@@ -53,17 +53,17 @@ enum {
 /*!
  * \brief Callback used when creating NSEC chains.
  */
-typedef int (*chain_iterate_create_cb)(knot_node_t *, knot_node_t *,
+typedef int (*chain_iterate_create_cb)(zone_node_t *, zone_node_t *,
                                        nsec_chain_iterate_data_t *);
 
 /*!
  * \brief Add all RR types from a node into the bitmap.
  */
 inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
-                                          const knot_node_t *node)
+                                          const zone_node_t *node)
 {
 	for (int i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rr = knot_node_rrset_at(node, i);
+		knot_rrset_t rr = node_rrset_at(node, i);
 		if (rr.type != KNOT_RRTYPE_NSEC &&
 		    rr.type != KNOT_RRTYPE_RRSIG) {
 			bitmap_add_type(bitmap, rr.type);
@@ -95,7 +95,7 @@ int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_changeset_remove(const knot_node_t *n,
+int knot_nsec_changeset_remove(const zone_node_t *n,
                                knot_changeset_t *changeset);
 
 /*!
@@ -107,7 +107,7 @@ int knot_nsec_changeset_remove(const knot_node_t *n,
  * \retval true if the node is empty or contains only NSEC and RRSIGs.
  * \retval false otherwise.
  */
-bool knot_nsec_empty_nsec_and_rrsigs_in_node(const knot_node_t *n);
+bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
 
 /*!
  * \brief Create new NSEC chain, add differences from current into a changeset.
