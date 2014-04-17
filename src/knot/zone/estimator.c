@@ -93,7 +93,7 @@ static void rrset_memsize(zone_estim_t *est, const zs_scanner_t *scanner)
 	list_t *dummy_node = NULL;
 	if (insert_dname_into_table(est->node_table, scanner->r_owner, &dummy_node) == 0) {
 		// First time we see this name == new node
-		est->node_size += add_overhead(sizeof(knot_node_t));
+		est->node_size += add_overhead(sizeof(zone_node_t));
 		// Also, node has an owner.
 		est->dname_size += add_overhead(knot_dname_size(scanner->r_owner));
 		// Trie's nodes handled at the end of computation
@@ -179,3 +179,4 @@ int estimator_free_trie_node(value_t *val, void *data)
 
 	return KNOT_EOK;
 }
+

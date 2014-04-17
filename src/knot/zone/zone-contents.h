@@ -42,7 +42,7 @@ enum zone_contents_find_dname_result {
 /*----------------------------------------------------------------------------*/
 
 typedef struct knot_zone_contents_t {
-	knot_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
+	zone_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 
 	knot_zone_tree_t *nodes;
 	knot_zone_tree_t *nsec3_nodes;
@@ -73,14 +73,14 @@ typedef struct knot_zone_contents_t {
 
 /*!< \brief Helper linked list list for CNAME loop checking */
 typedef struct cname_chain {
-	const knot_node_t *node;
+	const zone_node_t *node;
 	struct cname_chain *next;
 } cname_chain_t;
 
 /*!
  * \brief Signature of callback for zone contents apply functions.
  */
-typedef int (*knot_zone_contents_apply_cb_t)(knot_node_t *node, void *data);
+typedef int (*knot_zone_contents_apply_cb_t)(zone_node_t *node, void *data);
 
 /*----------------------------------------------------------------------------*/
 
@@ -93,7 +93,7 @@ void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
-                              const knot_rrset_t *rr, knot_node_t **n, bool *ttl_err);
+                              const knot_rrset_t *rr, zone_node_t **n, bool *ttl_err);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 	const knot_dname_t *owner);
@@ -112,7 +112,7 @@ int knot_zone_contents_remove_nsec3_node(knot_zone_contents_t *contents,
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-const knot_node_t *knot_zone_contents_find_node(
+const zone_node_t *knot_zone_contents_find_node(
 	const knot_zone_contents_t *contents, const knot_dname_t *name);
 
 /*!
@@ -132,9 +132,9 @@ const knot_node_t *knot_zone_contents_find_node(
  */
 int knot_zone_contents_find_dname(const knot_zone_contents_t *contents,
                            const knot_dname_t *name,
-                           const knot_node_t **node,
-                           const knot_node_t **closest_encloser,
-                           const knot_node_t **previous);
+                           const zone_node_t **node,
+                           const zone_node_t **closest_encloser,
+                           const zone_node_t **previous);
 
 /*!
  * \brief Finds previous name in canonical order to the given name in the zone.
@@ -144,7 +144,7 @@ int knot_zone_contents_find_dname(const knot_zone_contents_t *contents,
  *
  * \return Previous node in canonical order, or NULL if some parameter is wrong.
  */
-const knot_node_t *knot_zone_contents_find_previous(
+const zone_node_t *knot_zone_contents_find_previous(
 	const knot_zone_contents_t *contents, const knot_dname_t *name);
 
 /*!
@@ -159,7 +159,7 @@ const knot_node_t *knot_zone_contents_find_previous(
  *
  * \return Corresponding node if found, NULL otherwise.
  */
-const knot_node_t *knot_zone_contents_find_nsec3_node(
+const zone_node_t *knot_zone_contents_find_nsec3_node(
 	const knot_zone_contents_t *contents, const knot_dname_t *name);
 
 /*!
@@ -186,11 +186,11 @@ const knot_node_t *knot_zone_contents_find_nsec3_node(
 int knot_zone_contents_find_nsec3_for_name(
                                     const knot_zone_contents_t *contents,
                                     const knot_dname_t *name,
-                                    const knot_node_t **nsec3_node,
-                                    const knot_node_t **nsec3_previous);
+                                    const zone_node_t **nsec3_node,
+                                    const zone_node_t **nsec3_previous);
 
-const knot_node_t *knot_zone_contents_find_wildcard_child(
-               const knot_zone_contents_t *contents, const knot_node_t *parent);
+const zone_node_t *knot_zone_contents_find_wildcard_child(
+               const knot_zone_contents_t *contents, const zone_node_t *parent);
 
 /*!
  * \brief Sets parent and previous pointers and node flags. (cheap operation)
@@ -214,8 +214,8 @@ int knot_zone_contents_adjust_nsec3_pointers(knot_zone_contents_t *);
  * \param zone Zone to adjust domain names in.
  */
 int knot_zone_contents_adjust_full(knot_zone_contents_t *contents,
-                                   knot_node_t **first_nsec3_node,
-                                   knot_node_t **last_nsec3_node);
+                                   zone_node_t **first_nsec3_node,
+                                   zone_node_t **last_nsec3_node);
 
 /*!
  * \brief Parses the NSEC3PARAM record stored in the zone.
@@ -322,10 +322,10 @@ uint32_t knot_zone_serial(const knot_zone_contents_t *zone);
  */
 bool knot_zone_contents_is_signed(const knot_zone_contents_t *zone);
 
-knot_node_t *zone_contents_get_node_for_rr(knot_zone_contents_t *zone,
+zone_node_t *zone_contents_get_node_for_rr(knot_zone_contents_t *zone,
                                            const knot_rrset_t *rrset);
 
-knot_node_t *zone_contents_find_node_for_rr(knot_zone_contents_t *zone,
+zone_node_t *zone_contents_find_node_for_rr(knot_zone_contents_t *zone,
                                             const knot_rrset_t *rrset);
 
 #endif

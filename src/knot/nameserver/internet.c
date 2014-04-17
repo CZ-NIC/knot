@@ -27,7 +27,7 @@
 #include "knot/server/zones.h"
 
 /*! \brief Check if given node was already visited. */
-static int wildcard_has_visited(struct query_data *qdata, const knot_node_t *node)
+static int wildcard_has_visited(struct query_data *qdata, const zone_node_t *node)
 {
 	struct wildcard_hit *item = NULL;
 	WALK_LIST(item, qdata->wildcards) {
@@ -39,7 +39,7 @@ static int wildcard_has_visited(struct query_data *qdata, const knot_node_t *nod
 }
 
 /*! \brief Mark given node as visited. */
-static int wildcard_visit(struct query_data *qdata, const knot_node_t *node, const knot_dname_t *sname)
+static int wildcard_visit(struct query_data *qdata, const zone_node_t *node, const knot_dname_t *sname)
 {
 	assert(qdata);
 	assert(node);
@@ -193,7 +193,7 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 			return KNOT_ESPACE;
 		}
 		for (unsigned i = 0; i < qdata->node->rrset_count; ++i) {
-			rrset = knot_node_rrset_at(qdata->node, i);
+			rrset = node_rrset_at(qdata->node, i);
 			ret = ns_put_rr(pkt, &rrset, NULL, compr_hint, 0, qdata);
 			if (ret != KNOT_EOK) {
 				break;
@@ -202,9 +202,9 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, struct query_data *qdata)
 		break;
 	}
 	default: /* Single RRSet of given type. */
-		rrset = knot_node_rrset(qdata->node, type);
+		rrset = node_rrset(qdata->node, type);
 		if (!knot_rrset_empty(&rrset)) {
-			knot_rrset_t rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+			knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 			ret = ns_put_rr(pkt, &rrset, &rrsigs, compr_hint, 0, qdata);
 		}
 		break;
@@ -231,9 +231,9 @@ static int put_authority_ns(knot_pkt_t *pkt, struct query_data *qdata)
 		return KNOT_EOK;
 	}
 
-	knot_rrset_t ns_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_NS);
+	knot_rrset_t ns_rrset = node_rrset(zone->apex, KNOT_RRTYPE_NS);
 	if (!knot_rrset_empty(&ns_rrset)) {
-		knot_rrset_t rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 		return ns_put_rr(pkt, &ns_rrset, &rrsigs, COMPR_HINT_NONE,
 		                 KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP, qdata);
 	} else {
@@ -247,8 +247,8 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
                              const knot_zone_contents_t *zone)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, zone);
-	knot_rrset_t soa_rrset = knot_node_rrset(zone->apex, KNOT_RRTYPE_SOA);
-	knot_rrset_t rrsigs = knot_node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t soa_rrset = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
 
 	// if SOA's TTL is larger than MINIMUM, copy the RRSet and set
 	// MINIMUM as TTL
@@ -285,13 +285,13 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 static int put_delegation(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/* Find closest delegation point. */
-	while (!(qdata->node->flags & KNOT_NODE_FLAGS_DELEG)) {
+	while (!(qdata->node->flags & NODE_FLAGS_DELEG)) {
 		qdata->node = qdata->node->parent;
 	}
 
 	/* Insert NS record. */
-	knot_rrset_t rrset = knot_node_rrset(qdata->node, KNOT_RRTYPE_NS);
-	knot_rrset_t rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+	knot_rrset_t rrset = node_rrset(qdata->node, KNOT_RRTYPE_NS);
+	knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 	return ns_put_rr(pkt, &rrset, &rrsigs, COMPR_HINT_NONE, 0, qdata);
 }
 
@@ -307,7 +307,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	int ret = KNOT_EOK;
 	uint32_t flags = KNOT_PF_NOTRUNC|KNOT_PF_CHECKDUP;
 	uint16_t hint = COMPR_HINT_NONE;
-	const knot_node_t *node = NULL;
+	const zone_node_t *node = NULL;
 
 	/* All RRs should have additional node cached or NULL. */
 	uint16_t rr_rdata_count = rr->rrs.rr_count;
@@ -320,9 +320,9 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 			continue;
 		}
 
-		knot_rrset_t rrsigs = knot_node_rrset(node, KNOT_RRTYPE_RRSIG);
+		knot_rrset_t rrsigs = node_rrset(node, KNOT_RRTYPE_RRSIG);
 		for (int k = 0; k < ar_type_count; ++k) {
-			knot_rrset_t additional = knot_node_rrset(node, ar_type_list[k]);
+			knot_rrset_t additional = node_rrset(node, ar_type_list[k]);
 			if (knot_rrset_empty(&additional)) {
 				continue;
 			}
@@ -341,9 +341,9 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, struct query_data *qda
 {
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
-	const knot_node_t *cname_node = qdata->node;
-	knot_rrset_t cname_rr = knot_node_rrset(qdata->node, rrtype);
-	knot_rrset_t rrsigs = knot_node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
+	const zone_node_t *cname_node = qdata->node;
+	knot_rrset_t cname_rr = node_rrset(qdata->node, rrtype);
+	knot_rrset_t rrsigs = node_rrset(qdata->node, KNOT_RRTYPE_RRSIG);
 	int ret = KNOT_EOK;
 
 	assert(!knot_rrset_empty(&cname_rr));
@@ -427,7 +427,7 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 	uint16_t qtype = knot_pkt_qtype(pkt);
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
-	if (knot_node_rrtype_exists(qdata->node, KNOT_RRTYPE_CNAME)
+	if (node_rrtype_exists(qdata->node, KNOT_RRTYPE_CNAME)
 	    && qtype != KNOT_RRTYPE_CNAME
 	    && qtype != KNOT_RRTYPE_RRSIG
 	    && qtype != KNOT_RRTYPE_ANY) {
@@ -438,7 +438,7 @@ static int name_found(knot_pkt_t *pkt, struct query_data *qdata)
 	/* DS query is answered normally, but everything else at/below DP
 	 * triggers referral response. */
 	if (qtype != KNOT_RRTYPE_DS &&
-	    ((qdata->node->flags & KNOT_NODE_FLAGS_DELEG) || qdata->node->flags & KNOT_NODE_FLAGS_NONAUTH)) {
+	    ((qdata->node->flags & NODE_FLAGS_DELEG) || qdata->node->flags & NODE_FLAGS_NONAUTH)) {
 		dbg_ns("%s: solving REFERRAL\n", __func__);
 		return DELEG;
 	}
@@ -468,11 +468,11 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	dbg_ns("%s(%p, %p)\n", __func__, pkt, qdata);
 
 	/* Name is covered by wildcard. */
-	if (qdata->encloser->flags & KNOT_NODE_FLAGS_WILDCARD_CHILD) {
+	if (qdata->encloser->flags & NODE_FLAGS_WILDCARD_CHILD) {
 		dbg_ns("%s: name %p covered by wildcard\n", __func__, qdata->name);
 
 		/* Find wildcard child in the zone. */
-		const knot_node_t *wildcard_node =
+		const zone_node_t *wildcard_node =
 		                knot_zone_contents_find_wildcard_child(
 		                        qdata->zone->contents, qdata->encloser);
 
@@ -494,7 +494,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Name is under DNAME, use it for substitution. */
-	knot_rrset_t dname_rrset = knot_node_rrset(qdata->encloser, KNOT_RRTYPE_DNAME);
+	knot_rrset_t dname_rrset = node_rrset(qdata->encloser, KNOT_RRTYPE_DNAME);
 	if (!knot_rrset_empty(&dname_rrset)) {
 		dbg_ns("%s: solving DNAME for name %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser; /* Follow encloser as new node. */
@@ -502,7 +502,7 @@ static int name_not_found(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Name is below delegation. */
-	if ((qdata->encloser->flags & KNOT_NODE_FLAGS_DELEG)) {
+	if ((qdata->encloser->flags & NODE_FLAGS_DELEG)) {
 		dbg_ns("%s: name below delegation point %p\n", __func__, qdata->name);
 		qdata->node = qdata->encloser;
 		return DELEG;

@@ -92,8 +92,8 @@ static bool get_zone_soa_min_ttl(const knot_zone_contents_t *zone,
 	assert(zone->apex);
 	assert(ttl);
 
-	knot_node_t *apex = zone->apex;
-	const knot_rdataset_t *soa = knot_node_rdataset(apex, KNOT_RRTYPE_SOA);
+	zone_node_t *apex = zone->apex;
+	const knot_rdataset_t *soa = node_rdataset(apex, KNOT_RRTYPE_SOA);
 	if (!soa) {
 		return false;
 	}
@@ -124,7 +124,7 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 	assert(data != NULL);
 
 	knot_zone_tree_t *nsec3s = (knot_zone_tree_t *)data;
-	knot_node_t *node = NULL;
+	zone_node_t *node = NULL;
 	int ret;
 
 	if (rrset->type == KNOT_RRTYPE_NSEC3) {
@@ -136,7 +136,7 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 		}
 
 		if (node != NULL) {
-			node->flags |= KNOT_NODE_FLAGS_REMOVED_NSEC;
+			node->flags |= NODE_FLAGS_REMOVED_NSEC;
 		}
 	}
 

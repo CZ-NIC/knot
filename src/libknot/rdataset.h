@@ -3,7 +3,7 @@
  *
  * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * \brief API for manipulating RRs and RR arrays.
+ * \brief API for manipulating RR arrays.
  *
  * \addtogroup libknot
  * @{
@@ -32,8 +32,6 @@
 
 #include "common/mempattern.h"
 #include "libknot/rdata.h"
-
-/* --------------------------- Multiple RRs ----------------------------------*/
 
 /*!< \brief Set of RRs. */
 typedef struct knot_rdataset {
@@ -126,10 +124,10 @@ int knot_rdataset_merge(knot_rdataset_t *rrs1, const knot_rdataset_t *rrs2, mm_c
 
 /*!
  * \brief RRS set-like intersection. Full compare is done.
- * \param a        First RRS to intersect.
- * \param b        Second RRS to intersect.
- * \param out      Output RRS with intersection, RDATA are created anew.
- * \param mm       Memory context. Will be used to create new RDATA.
+ * \param a    First RRS to intersect.
+ * \param b    Second RRS to intersect.
+ * \param out  Output RRS with intersection, RDATA are created anew.
+ * \param mm   Memory context. Will be used to create new RDATA.
  * \return KNOT_E*
  */
 int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
