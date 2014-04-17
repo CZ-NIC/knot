@@ -2,6 +2,7 @@
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "dnssec/binary.h"
 #include "dnssec/error.h"
@@ -17,7 +18,7 @@ static gnutls_datum_t binary2datum(const dnssec_binary_t *from)
 	return to;
 }
 
-static int rsa_params_to_pem(const legacy_privkey_t *params)
+static int rsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pem)
 {
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
@@ -37,31 +38,147 @@ static int rsa_params_to_pem(const legacy_privkey_t *params)
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	dnssec_binary_t pem = { 0 };
-	result = pem_gnutls_x509_export(key, &pem);
-	if (result != DNSSEC_EOK) {
-		return result;
-	}
-
-	fwrite(pem.data, pem.size, 1, stdout);
-	printf("\n");
-
-	dnssec_binary_free(&pem);
-
-	//result = gnutls_x509_privkey_export_pkcs8(key, pem, NULL, pain
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return pem_gnutls_x509_export(key, pem);
 }
 
-/* -- */
+static int dsa_params_to_pem(const legacy_privkey_t *params, dnssec_binary_t *pem)
+{
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	int result = gnutls_x509_privkey_init(&key);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
 
-static void get_key_names(const char *input, char **public_ptr, char **private_ptr)
+	gnutls_datum_t p = binary2datum(&params->prime);
+	gnutls_datum_t q = binary2datum(&params->subprime);
+	gnutls_datum_t g = binary2datum(&params->base);
+	gnutls_datum_t x = binary2datum(&params->private_value);
+	gnutls_datum_t y = binary2datum(&params->public_value);
+
+	result = gnutls_x509_privkey_import_dsa_raw(key, &p, &q, &g, &y, &x);
+	if (result != DNSSEC_EOK) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	return pem_gnutls_x509_export(key, pem);
+}
+
+/*!
+ * \see lib/key/convert.h
+ */
+static gnutls_ecc_curve_t choose_ecdsa_curve(size_t pubkey_size)
+{
+	switch (pubkey_size) {
+	case 64: return GNUTLS_ECC_CURVE_SECP256R1;
+	case 96: return GNUTLS_ECC_CURVE_SECP384R1;
+	default: return GNUTLS_ECC_CURVE_INVALID;
+	}
+}
+
+static void ecdsa_extract_public_params(dnssec_key_t *key, gnutls_ecc_curve_t *curve,
+					gnutls_datum_t *x, gnutls_datum_t *y)
+{
+	dnssec_binary_t pubkey = { 0 };
+	dnssec_key_get_pubkey(key, &pubkey);
+
+	*curve = choose_ecdsa_curve(pubkey.size);
+
+	size_t param_size = pubkey.size / 2;
+	x->data = pubkey.data;
+	x->size = param_size;
+	y->data = pubkey.data + param_size;
+	y->size = param_size;
+}
+
+
+static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const legacy_privkey_t *params,
+			       dnssec_binary_t *pem)
+{
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	int result = gnutls_x509_privkey_init(&key);
+	if (result != GNUTLS_E_SUCCESS) {
+		return DNSSEC_ENOMEM;
+	}
+
+	gnutls_ecc_curve_t curve = 0;
+	gnutls_datum_t x = { 0 };
+	gnutls_datum_t y = { 0 };
+	ecdsa_extract_public_params(dnskey, &curve, &x, &y);
+
+	gnutls_datum_t k = binary2datum(&params->private_key);
+
+	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, &y, &k);
+	if (result != DNSSEC_EOK) {
+		return DNSSEC_KEY_IMPORT_ERROR;
+	}
+
+	gnutls_x509_privkey_fix(key);
+
+	return pem_gnutls_x509_export(key, pem);
+}
+
+static int params_to_pem(dnssec_key_t *key, legacy_privkey_t *params, dnssec_binary_t *pem)
+{
+	dnssec_key_algorithm_t algorithm = dnssec_key_get_algorithm(key);
+	switch (algorithm) {
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_DSA_SHA1_NSEC3:
+		return dsa_params_to_pem(params, pem);
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA256:
+	case DNSSEC_KEY_ALGORITHM_RSA_SHA512:
+		return rsa_params_to_pem(params, pem);
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
+		return ecdsa_params_to_pem(key, params, pem);
+	default:
+		return DNSSEC_INVALID_KEY_ALGORITHM;
+	}
+}
+
+
+/*!
+ * \brief Extract private and public key file names from input filename.
+ *
+ * If the input file name has an empty extension (ends with a dot),
+ * extension 'private', or extension 'key', the appropriate filenames are
+ * derived from the previous part of the string. Otherwise, just append the
+ * extensions.
+ */
+static int get_key_names(const char *input, char **public_ptr, char **private_ptr)
 {
 	assert(input);
 	assert(public_ptr);
 	assert(private_ptr);
 
-	asprintf(public_ptr, "%s.key", input);
-	asprintf(private_ptr, "%s.private", input);
+	char *name_end = strrchr(input, '.');
+	int base_length;
+
+	if (name_end && (*(name_end + 1) == '\0' ||
+	                 strcmp(name_end, ".key") == 0 ||
+	                 strcmp(name_end, ".private") == 0)
+	) {
+		base_length = name_end - input;
+	} else {
+		base_length = strlen(input);
+	}
+
+	char *public = NULL;
+	if (asprintf(&public, "%.*s.key", base_length, input) < 0) {
+		return DNSSEC_ENOMEM;
+	}
+
+	char *private = NULL;
+	if (asprintf(&private, "%.*s.private", base_length, input) < 0) {
+		free(public);
+		return DNSSEC_ENOMEM;
+	}
+
+	*public_ptr = public;
+	*private_ptr = private;
+
+	return DNSSEC_EOK;
 }
 
 int legacy_key_import(const char *filename)
@@ -70,28 +187,36 @@ int legacy_key_import(const char *filename)
 		return DNSSEC_EINVAL;
 	}
 
-	_cleanup_free_ char *filename_pubkey = NULL;
+	_cleanup_free_ char *filename_public = NULL;
 	_cleanup_free_ char *filename_private = NULL;
-	get_key_names(filename, &filename_pubkey, &filename_private);
-	if (!filename_pubkey || !filename_private) {
-		return DNSSEC_EINVAL;
+	int result = get_key_names(filename, &filename_public, &filename_private);
+	if (result != DNSSEC_EOK) {
+		return result;
 	}
 
-	dnssec_key_t *key = legacy_pubkey_parse(filename_pubkey);
-	if (!key) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+	dnssec_key_t *key = NULL;
+	result = legacy_pubkey_parse(filename_public, &key);
+	if (result != DNSSEC_EOK) {
+		return result;
 	}
 
 	legacy_privkey_t params = { 0 };
-	int r = legacy_privkey_parse(filename_private, &params);
-	if (r != DNSSEC_EOK) {
-		return r;
+	result = legacy_privkey_parse(filename_private, &params);
+	if (result != DNSSEC_EOK) {
+		dnssec_key_free(key);
+		return result;
+	}
+
+	dnssec_binary_t pem = { 0 };
+	result = params_to_pem(key, &params, &pem);
+	if (result != DNSSEC_EOK) {
+		legacy_privkey_free(&params);
+		return result;
 	}
 
 	printf("public key %s (%d)\n", dnssec_key_get_id(key), dnssec_key_get_keytag(key));
 	printf("conversion happens here\n");
-
-	rsa_params_to_pem(&params);
+	fwrite(pem.data, pem.size, 1, stdout);
 
 	legacy_privkey_free(&params);
 

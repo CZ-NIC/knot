@@ -45,12 +45,15 @@ static void parse_record(const zs_scanner_t *scanner)
 	dnssec_key_set_rdata(key, &rdata);
 }
 
-dnssec_key_t *legacy_pubkey_parse(const char *filename)
+int legacy_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 {
+	assert(filename);
+	assert(key_ptr);
+
 	dnssec_key_t *key = NULL;
-	int r = dnssec_key_new(&key);
-	if (r != DNSSEC_EOK) {
-		return NULL;
+	int result = dnssec_key_new(&key);
+	if (result != DNSSEC_EOK) {
+		return result;
 	}
 
 	uint16_t class = CLASS_IN;
@@ -59,11 +62,17 @@ dnssec_key_t *legacy_pubkey_parse(const char *filename)
 					       parse_record, NULL, key);
 	if (!loader) {
 		dnssec_key_free(key);
-		return NULL;
+		return DNSSEC_NOT_FOUND;
 	}
 
 	zs_loader_process(loader);
 	zs_loader_free(loader);
 
-	return key;
+	if (dnssec_key_get_dname(key) == NULL) {
+		dnssec_key_free(key);
+		return DNSSEC_INVALID_PUBLIC_KEY;
+	}
+
+	*key_ptr = key;
+	return DNSSEC_EOK;
 }

@@ -3,6 +3,6 @@
 #include "dnssec/key.h"
 
 /*!
- * Parse public key in legacy (actually zone) format.
+ * Parse public key in legacy format.
  */
-dnssec_key_t *legacy_pubkey_parse(const char *filename);
+int legacy_pubkey_parse(const char *filename, dnssec_key_t **key_ptr);
