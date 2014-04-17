@@ -275,7 +275,7 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, knot_zone_con
 
 	while (rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
-		    knot_node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
+		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
 			// Last SOA, last message, check TSIG.
 			int ret = xfrin_check_tsig(pkt, xfr, 1);
 			if (ret != KNOT_EOK) {
@@ -610,10 +610,10 @@ void xfrin_cleanup_successful_update(knot_changesets_t *chgs)
 
 /*----------------------------------------------------------------------------*/
 
-static int free_additional(knot_node_t **node, void *data)
+static int free_additional(zone_node_t **node, void *data)
 {
 	UNUSED(data);
-	if ((*node)->flags & KNOT_NODE_FLAGS_NONAUTH) {
+	if ((*node)->flags & NODE_FLAGS_NONAUTH) {
 		// non-auth nodes have no additionals.
 		return KNOT_EOK;
 	}
