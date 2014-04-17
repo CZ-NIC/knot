@@ -112,12 +112,11 @@ void node_free(zone_node_t **node);
 /*!
  * \brief Creates a shallow copy of node structure, RR data are shared.
  *
- * \param dst  Store the shallow copy here, space will be allocated.
  * \param src  Source of the copy.
  *
- * \return KNOT_E*
+ * \return Copied node if success, NULL otherwise.
  */
-int node_shallow_copy(zone_node_t **dst, const zone_node_t *src);
+zone_node_t *node_shallow_copy(const zone_node_t *src);
 
 /* ----------------------- Data addition/removal -----------------------------*/
 

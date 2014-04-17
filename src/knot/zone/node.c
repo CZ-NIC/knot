@@ -132,36 +132,36 @@ void node_free(zone_node_t **node)
 	*node = NULL;
 }
 
-int node_shallow_copy(zone_node_t **dst, const zone_node_t *src)
+zone_node_t *node_shallow_copy(const zone_node_t *src)
 {
-	if (dst == NULL || src == NULL) {
-		return KNOT_EINVAL;
+	if (src == NULL) {
+		return NULL;
 	}
 
 	// create new node
-	*dst = node_new(src->owner);
-	if (*dst == NULL) {
-		return KNOT_ENOMEM;
+	zone_node_t *dst = node_new(src->owner);
+	if (dst == NULL) {
+		return NULL;
 	}
 
-	(*dst)->flags = src->flags;
+	dst->flags = src->flags;
 
 	// copy RRSets
-	(*dst)->rrset_count = src->rrset_count;
+	dst->rrset_count = src->rrset_count;
 	size_t rrlen = sizeof(struct rr_data) * src->rrset_count;
-	(*dst)->rrs = malloc(rrlen);
-	if ((*dst)->rrs == NULL) {
-		node_free(dst);
-		return KNOT_ENOMEM;
+	dst->rrs = malloc(rrlen);
+	if (dst->rrs == NULL) {
+		node_free(&dst);
+		return NULL;
 	}
-	memcpy((*dst)->rrs, src->rrs, rrlen);
+	memcpy(dst->rrs, src->rrs, rrlen);
 
 	for (uint16_t i = 0; i < src->rrset_count; ++i) {
 		// Clear additionals in the copy.
-		(*dst)->rrs[i].additional = NULL;
+		dst->rrs[i].additional = NULL;
 	}
 
-	return KNOT_EOK;
+	return dst;
 }
 
 int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)

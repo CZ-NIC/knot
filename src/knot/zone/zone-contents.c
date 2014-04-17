@@ -686,14 +686,13 @@ static int recreate_normal_tree(const knot_zone_contents_t *z,
 	}
 
 	// Insert APEX first.
-	zone_node_t *apex_cpy;
-	int ret = node_shallow_copy(&apex_cpy, z->apex);
-	if (ret != KNOT_EOK) {
-		return ret;
+	zone_node_t *apex_cpy = node_shallow_copy(z->apex);
+	if (apex_cpy == NULL) {
+		return KNOT_ENOMEM;
 	}
 
 	// Normal additions need apex ... so we need to insert directly.
-	ret = knot_zone_tree_insert(out->nodes, apex_cpy);
+	int ret = knot_zone_tree_insert(out->nodes, apex_cpy);
 	if (ret != KNOT_EOK) {
 		node_free(&apex_cpy);
 		return ret;
@@ -712,13 +711,12 @@ static int recreate_normal_tree(const knot_zone_contents_t *z,
 			hattrie_iter_next(itt);
 			continue;
 		}
-		zone_node_t *to_add;
-		int ret = node_shallow_copy(&to_add, to_cpy);
-		if (ret != KNOT_EOK) {
+		zone_node_t *to_add = node_shallow_copy(to_cpy);
+		if (to_add == NULL) {
 			hattrie_iter_free(itt);
-			return ret;
+			return KNOT_ENOMEM;
 		}
-		ret = knot_zone_contents_add_node(out, to_add, true);
+		int ret = knot_zone_contents_add_node(out, to_add, true);
 		if (ret != KNOT_EOK) {
 			node_free(&to_add);
 			hattrie_iter_free(itt);
@@ -747,13 +745,12 @@ static int recreate_nsec3_tree(const knot_zone_contents_t *z,
 	}
 	while (!hattrie_iter_finished(itt)) {
 		const zone_node_t *to_cpy = (zone_node_t *)*hattrie_iter_val(itt);
-		zone_node_t *to_add;
-		int ret = node_shallow_copy(&to_add, to_cpy);
-		if (ret != KNOT_EOK) {
+		zone_node_t *to_add = node_shallow_copy(to_cpy);
+		if (to_add == NULL) {
 			hattrie_iter_free(itt);
-			return ret;
+			return KNOT_ENOMEM;
 		}
-		ret = knot_zone_contents_add_nsec3_node(out, to_add);
+		int ret = knot_zone_contents_add_nsec3_node(out, to_add);
 		if (ret != KNOT_EOK) {
 			hattrie_iter_free(itt);
 			node_free(&to_add);
