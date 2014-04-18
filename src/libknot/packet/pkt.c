@@ -725,10 +725,12 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 		}
 
 		/* Strip TSIG RR from wireformat and decrease ARCOUNT. */
-		pkt->parsed -= rr_size;
-		pkt->size -= rr_size;
-		knot_wire_set_id(pkt->wire, tsig_rdata_orig_id(rr));
-		knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
+		if (!(flags & KNOT_PF_KEEPWIRE)) {
+			pkt->parsed -= rr_size;
+			pkt->size -= rr_size;
+			knot_wire_set_id(pkt->wire, tsig_rdata_orig_id(rr));
+			knot_wire_set_arcount(pkt->wire, knot_wire_get_arcount(pkt->wire) - 1);
+		}
 
 		/* Remember TSIG RR. */
 		pkt->tsig_rr = rr;
