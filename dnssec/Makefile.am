@@ -13,6 +13,8 @@ libshared_la_CFLAGS = \
 	$(AM_CFLAGS)
 
 libshared_la_SOURCES = \
+	shared/clists.c \
+	shared/clists.h \
 	shared/dname.c \
 	shared/dname.h \
 	shared/hex.c \
@@ -57,6 +59,7 @@ libdnssec_la_SOURCES = \
 	lib/error.c \
 	lib/kasp/dir.c \
 	lib/kasp/internal.h \
+	lib/kasp/keyset.c \
 	lib/key/algorithm.c \
 	lib/key/algorithm.h \
 	lib/key/convert.c \
