@@ -298,11 +298,13 @@ tests/dnssec_nsec3.c
 tests/dnssec_sign.c
 tests/dnssec_zone_nsec.c
 tests/dthreads.c
+tests/fake_server.h
 tests/fdset.c
 tests/hattrie.c
 tests/hhash.c
 tests/journal.c
 tests/pkt.c
+tests/process_answer.c
 tests/process_query.c
 tests/query_module.c
 tests/rrl.c

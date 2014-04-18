@@ -23,6 +23,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/process_answer.h"
 #include "knot/zone/zonedb.h"
 
 /*! \brief Check if given node was already visited. */
@@ -743,7 +744,7 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	return ret;
 }
 
-/*! \brief Helper for internet_answer repetitive code. */
+/*! \brief Helper for internet_query repetitive code. */
 #define SOLVE_STEP(solver, state, context) \
 	state = (solver)(state, response, qdata, context); \
 	if (state == TRUNC) { \
@@ -811,7 +812,7 @@ static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct 
 
 #undef SOLVE_STEP
 
-int internet_answer(knot_pkt_t *response, struct query_data *qdata)
+int internet_query(knot_pkt_t *response, struct query_data *qdata)
 {
 	dbg_ns("%s(%p, %p)\n", __func__, response, qdata);
 	if (response == NULL || qdata == NULL) {
@@ -854,4 +855,44 @@ int internet_query_plan(struct query_plan *plan)
 	query_plan_step(plan, QPLAN_ADDITIONAL, solve_additional_dnssec, NULL);
 
 	return KNOT_EOK;
+}
+
+/*! \brief Process answer to SOA query. */
+static int internet_answer_soa(knot_pkt_t *pkt, struct answer_data *data)
+{
+	zone_t *zone  = data->param->zone;
+
+	/* Expect SOA in answer section. */
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	if (answer->count < 1 || answer->rr[0].type != KNOT_RRTYPE_SOA) {
+		return NS_PROC_FAIL;
+	}
+
+	/* Check if master has newer zone and schedule transfer. */
+	knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	uint32_t our_serial = knot_soa_serial(soa);
+	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
+	if (knot_serial_compare(our_serial, their_serial) >= 0) {
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+		return NS_PROC_DONE; /* Our zone is up to date. */
+	}
+
+	/* Our zone is outdated, schedule zone transfer. */
+	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
+	return NS_PROC_DONE;
+}
+
+int internet_answer(knot_pkt_t *pkt, struct answer_data *data)
+{
+	if (pkt == NULL || data == NULL) {
+		return NS_PROC_FAIL;
+	}
+
+	/* As of now, server can only issue SOA queries. */
+	switch(knot_pkt_qtype(pkt)) {
+	case KNOT_RRTYPE_SOA:
+		return internet_answer_soa(pkt, data);
+	default:
+		return NS_PROC_NOOP;
+	}
 }

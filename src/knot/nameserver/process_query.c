@@ -363,7 +363,7 @@ static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 
 	switch(data->packet_type) {
 	case KNOT_QUERY_NORMAL:
-		next_state = internet_answer(pkt, data);
+		next_state = internet_query(pkt, data);
 		break;
 	case KNOT_QUERY_NOTIFY:
 		next_state = internet_notify(pkt, data);

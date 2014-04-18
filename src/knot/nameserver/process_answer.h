@@ -26,9 +26,8 @@ extern const knot_process_module_t _process_answer;
 /* Module load parameters. */
 struct process_answer_param {
 	zone_t   *zone;
-	int        socket;
 	const knot_pkt_t *query;
-	struct sockaddr_storage *remote;
+	const struct sockaddr_storage *remote;
 };
 
 struct answer_data
@@ -79,12 +78,3 @@ int process_answer_finish(knot_process_t *ctx);
  * \retval FAIL (processing failed)
  */
 int process_answer(knot_pkt_t *pkt, knot_process_t *ctx);
-
-/*!
- * \brief Cleanup after failed answer processing.
- *
- * \param pkt
- * \param ctx
- * \retval DONE (finished)
- */
-int process_answer_cleanup(knot_pkt_t *pkt, knot_process_t *ctx);
