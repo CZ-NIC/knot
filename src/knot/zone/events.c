@@ -166,6 +166,11 @@ static int event_refresh(zone_t *zone)
 
 //	zone_schedule_event(zone, ZONE_EVENT_REFRESH, time);
 
+static int event_xfer(zone_t *zone)
+{
+	assert(zone);
+	fprintf(stderr, "XFER of '%s'\n", zone->conf->name);
+#warning TODO: implement event_xfer
 	return KNOT_ENOTSUP;
 }
 
@@ -385,13 +390,14 @@ typedef struct event_info_t {
 } event_info_t;
 
 static const event_info_t EVENT_INFO[] = {
-	{ ZONE_EVENT_RELOAD,  event_reload,  "reload" },
-	{ ZONE_EVENT_REFRESH, event_refresh, "refresh" },
-	{ ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
-	{ ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
+        { ZONE_EVENT_RELOAD,  event_reload,  "reload" },
+        { ZONE_EVENT_REFRESH, event_refresh, "refresh" },
+        { ZONE_EVENT_XFER,    event_xfer,    "transfer" },
+        { ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
+        { ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
         { ZONE_EVENT_NOTIFY,  event_notify,  "notify" },
-	{ ZONE_EVENT_DNSSEC,  event_dnssec,  "DNSSEC resign" },
-	{ 0 }
+        { ZONE_EVENT_DNSSEC,  event_dnssec,  "DNSSEC resign" },
+        { 0 }
 };
 
 static const event_info_t *get_event_info(zone_event_type_t type)
