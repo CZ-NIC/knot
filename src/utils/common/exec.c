@@ -95,7 +95,7 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 		strcat(flags, " cd");
 	}
 
-	// Print formated info.
+	// Print formatted info.
 	switch (style->format) {
 	case FORMAT_NSUPDATE:
 		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
@@ -199,10 +199,14 @@ static void print_section_question(const knot_dname_t *owner,
 {
 	size_t buflen = 8192;
 	char   *buf = calloc(buflen, 1);
+
+	// Don't print zero TTL.
+	knot_dump_style_t qstyle = style->style;
+	qstyle.empty_ttl = true;
+
 	knot_rrset_t *question = knot_rrset_new(owner, qtype, qclass, NULL);
 
-	if (knot_rrset_txt_dump_header(question, 0, buf, buflen,
-	    &(style->style)) < 0) {
+	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &qstyle) < 0) {
 		WARN("can't print whole question section\n");
 	}
 
@@ -422,8 +426,10 @@ void print_data_xfr(const knot_pkt_t *packet,
 		return;
 	}
 
-	const knot_pktsection_t *answers = knot_pkt_section(packet, KNOT_ANSWER);
-	const knot_pktsection_t *additional = knot_pkt_section(packet, KNOT_ADDITIONAL);
+	const knot_pktsection_t *answers = knot_pkt_section(packet,
+	                                                    KNOT_ANSWER);
+	const knot_pktsection_t *additional = knot_pkt_section(packet,
+	                                                       KNOT_ADDITIONAL);
 
 	switch (style->format) {
 	case FORMAT_DIG:
@@ -474,14 +480,18 @@ void print_packet(const knot_pkt_t *packet,
 		return;
 	}
 
-	const knot_pktsection_t *answers = knot_pkt_section(packet, KNOT_ANSWER);
-	const knot_pktsection_t *authority = knot_pkt_section(packet, KNOT_AUTHORITY);
-	const knot_pktsection_t *additional = knot_pkt_section(packet, KNOT_ADDITIONAL);
+	const knot_pktsection_t *answers = knot_pkt_section(packet,
+	                                                    KNOT_ANSWER);
+	const knot_pktsection_t *authority = knot_pkt_section(packet,
+	                                                      KNOT_AUTHORITY);
+	const knot_pktsection_t *additional = knot_pkt_section(packet,
+	                                                       KNOT_ADDITIONAL);
 
 	uint8_t rcode = knot_wire_get_rcode(packet->wire);
 	uint16_t qdcount = knot_wire_get_qdcount(packet->wire);
-	uint16_t arcount = additional->count;
 	uint16_t ancount = answers->count;
+	uint16_t nscount = authority->count;
+	uint16_t arcount = additional->count;
 
 	// Print packet information header.
 	if (style->show_header) {
@@ -521,24 +531,24 @@ void print_packet(const knot_pkt_t *packet,
 			                       style);
 		}
 
-		if (style->show_answer && answers->count > 0) {
+		if (style->show_answer && ancount > 0) {
 			printf("\n;; PREREQUISITE SECTION:\n");
 			print_section_full(answers->rr,
-			                   answers->count,
+			                   ancount,
 			                   style);
 		}
 
-		if (style->show_authority && authority->count > 0) {
+		if (style->show_authority && nscount > 0) {
 			printf("\n;; UPDATE SECTION:\n");
 			print_section_full(authority->rr,
-			                   authority->count,
+			                   nscount,
 			                   style);
 		}
 
-		if (style->show_additional && additional->count > 0) {
+		if (style->show_additional && arcount > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
 			print_section_full(additional->rr,
-			                   additional->count,
+			                   arcount,
 			                   style);
 		}
 		break;
@@ -551,21 +561,21 @@ void print_packet(const knot_pkt_t *packet,
 			                       style);
 		}
 
-		if (style->show_answer && answers->count > 0) {
+		if (style->show_answer && ancount > 0) {
 			printf("\n;; ANSWER SECTION:\n");
 			print_section_full(answers->rr,
-			                   answers->count,
+			                   ancount,
 			                   style);
 		}
 
-		if (style->show_authority && authority->count > 0) {
+		if (style->show_authority && nscount > 0) {
 			printf("\n;; AUTHORITY SECTION:\n");
 			print_section_full(authority->rr,
-			                   authority->count,
+			                   nscount,
 			                   style);
 		}
 
-		if (style->show_additional && additional->count > 0) {
+		if (style->show_additional && arcount > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
 			print_section_full(additional->rr,
 			                   arcount,

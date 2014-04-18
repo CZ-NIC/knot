@@ -130,7 +130,8 @@ static int node_dump_text(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *from, FILE *file)
+int zone_dump_text(knot_zone_contents_t *zone, const struct sockaddr_storage *from,
+                   FILE *file)
 {
 	if (zone == NULL || file == NULL) {
 		return KNOT_EINVAL;

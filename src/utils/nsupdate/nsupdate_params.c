@@ -39,6 +39,7 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 		.show_class = true,
 		.show_ttl = true,
 		.verbose = false,
+		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
 		.ascii_to_idn = NULL
@@ -50,7 +51,7 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
-	.show_footer = false,
+	.show_footer = false
 };
 
 static void parse_err(const zs_scanner_t *s) {

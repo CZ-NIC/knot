@@ -57,6 +57,7 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.show_class = false,
 	.show_ttl = true,
 	.verbose = false,
+	.empty_ttl = false,
 	.human_ttl = false,
 	.human_tmstamp = true,
 	.ascii_to_idn = NULL
@@ -1904,7 +1905,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 	}
 
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
-                               uint32_t                ttl,
+                               const uint32_t          ttl,
                                char                    *dst,
                                const size_t            maxlen,
                                const knot_dump_style_t *style)
@@ -1933,7 +1934,9 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 
 	// Dump rrset ttl.
 	if (style->show_ttl) {
-		if (style->human_ttl) {
+		if (style->empty_ttl) {
+			ret = snprintf(dst + len, maxlen - len, "%c", sep);
+		} else if (style->human_ttl) {
 			// Create human readable ttl string.
 			if (time_to_human_str(buf, sizeof(buf), ttl) < 0) {
 				return KNOT_ESPACE;

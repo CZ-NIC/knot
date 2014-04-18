@@ -40,6 +40,7 @@ static const style_t DEFAULT_STYLE_HOST = {
 		.show_class = true,
 		.show_ttl = true,
 		.verbose = false,
+		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
 		.ascii_to_idn = name_to_idn
@@ -51,7 +52,7 @@ static const style_t DEFAULT_STYLE_HOST = {
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
-	.show_footer = false,
+	.show_footer = false
 };
 
 static int host_init(dig_params_t *params)

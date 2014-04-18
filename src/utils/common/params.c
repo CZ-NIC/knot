@@ -103,17 +103,6 @@ static int cmp_prefix(const char *pref, const size_t pref_len,
 	}
 }
 
-/*!
- * \brief Find the best parameter match in table based on prefix equality.
- *
- * \param str		Parameter name to look up.
- * \param str_len	Parameter name length.
- * \param tbl		Parameter table.
- * \param unique	Indication if output is unique result.
- *
- * \retval >=0		looked up parameter position in \a tbl.
- * \retval err		if error.
- */
 int best_param(const char *str, const size_t str_len, const param_t *tbl,
                bool *unique)
 {
