@@ -33,7 +33,9 @@ check_PROGRAMS = \
 	pkt					\
 	process_query		\
 	process_answer		\
+	requestor			\
 	query_module
+
 
 check-compile-only: $(check_PROGRAMS)
 

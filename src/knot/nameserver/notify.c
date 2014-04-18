@@ -40,36 +40,23 @@
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int notify_create_request(const zone_t *zone, knot_pkt_t *pkt)
+knot_pkt_t *notify_create_query(const zone_t *zone, mm_ctx_t *mm)
 {
-	if (zone == NULL || pkt == NULL) {
-		return KNOT_EINVAL;
+	if (zone == NULL || zone->contents == NULL) {
+		return NULL;
 	}
 
-	zone_contents_t *contents = zone->contents;
-	if (contents == NULL) {
-		return KNOT_EINVAL; /* Not valid for stub zones. */
+	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
+	if (pkt == NULL) {
+		return NULL;
 	}
 
+	zone_node_t *apex = zone->contents->apex;
 	knot_wire_set_aa(pkt->wire);
 	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
+	knot_pkt_put_question(pkt, apex->owner, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
+	return pkt;
 
-	knot_dname_t *apex = contents->apex->owner;
-	return knot_pkt_put_question(pkt, apex, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-}
-
-int notify_process_response(knot_pkt_t *notify, int msgid)
-{
-	if (!notify) {
-		return KNOT_EINVAL;
-	}
-
-	/* Match ID against awaited. */
-	if (knot_wire_get_id(notify->wire) != msgid) {
-		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
 }
 
 /* NOTIFY-specific logging (internal, expects 'qdata' variable set). */

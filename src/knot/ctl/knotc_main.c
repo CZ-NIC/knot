@@ -241,7 +241,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&r->addr, addr_str, sizeof(addr_str));
 
-	int s = net_connected_socket(SOCK_STREAM, &r->addr, &r->via);
+	int s = net_connected_socket(SOCK_STREAM, &r->addr, &r->via, 0);
 	if (s < 0) {
 		log_server_error("Couldn't connect to remote host '%s'.\n", addr_str);
 		knot_pkt_free(&pkt);
