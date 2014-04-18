@@ -268,11 +268,11 @@ static inline int clist_is_linked(cnode_t *n)
 /*!
  * \brief Generic pointer list implementation.
  */
-typedef struct ptrnode {
+typedef struct cptrnode {
 	cnode_t n;
 	void *ptr;
-} ptrnode_t;
+} cptrnode_t;
 
-ptrnode_t *ptrlist_add(clist_t *, void *);
-void ptrlist_free(clist_t *);
-bool ptrlist_contains(clist_t *, const void *);
+cptrnode_t *cptrlist_add(clist_t *, void *);
+void cptrlist_free(clist_t *);
+bool cptrlist_contains(clist_t *, const void *);

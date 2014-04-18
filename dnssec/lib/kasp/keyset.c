@@ -7,13 +7,13 @@
 #include "shared.h"
 
 _public_
-void dnssec_kasp_keyset_init(dnssec_kasp_keyset_t *keys)
+void dnssec_kasp_keyset_init(dnssec_kasp_keyset_t *keyset)
 {
-	if (!keys) {
+	if (!keyset) {
 		return;
 	}
 
-	clist_init(&keys->list);
+	clist_init(&keyset->list);
 }
 
 _public_
@@ -44,7 +44,7 @@ dnssec_kasp_key_t *dnssec_kasp_keyset_at(dnssec_kasp_keyset_t *keys, size_t sear
 	}
 
 	size_t index = 0;
-	CLIST_FOR_EACH(ptrnode_t *, node, keys->list) {
+	CLIST_FOR_EACH(cptrnode_t *, node, keys->list) {
 		if (index++ == search) {
 			return node->ptr;
 		}
@@ -60,7 +60,7 @@ int dnssec_kasp_keyset_add(dnssec_kasp_keyset_t *keys, dnssec_kasp_key_t *kasp_k
 		return DNSSEC_EINVAL;
 	}
 
-	ptrnode_t *added = ptrlist_add(&keys->list, kasp_key);
+	cptrnode_t *added = cptrlist_add(&keys->list, kasp_key);
 	if (!added) {
 		return DNSSEC_ENOMEM;
 	}
@@ -81,7 +81,7 @@ int dnssec_kasp_keyset_remove(dnssec_kasp_keyset_t *keys, dnssec_kasp_key_t *sea
 		return DNSSEC_EINVAL;
 	}
 
-	CLIST_FOR_EACH(ptrnode_t *, node, keys->list) {
+	CLIST_FOR_EACH(cptrnode_t *, node, keys->list) {
 		if (node->ptr == search) {
 			free_kasp_key(node->ptr);
 			clist_remove((cnode_t *)node);
@@ -100,11 +100,11 @@ void dnssec_kasp_keyset_empty(dnssec_kasp_keyset_t *keys)
 		return;
 	}
 
-	ptrnode_t *current = NULL, *next = NULL;
+	cptrnode_t *current = NULL, *next = NULL;
 	CLIST_WALK_DELSAFE(current, keys->list, next) {
 		free_kasp_key(current->ptr);
 		free(current);
 	}
 
-	clist_init(&keys->list);
+	dnssec_kasp_keyset_init(keys);
 }

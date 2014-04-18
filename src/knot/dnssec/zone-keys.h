@@ -35,11 +35,6 @@
 #include "dnssec/kasp.h"
 #include "dnssec/sign.h"
 
-/*!
- * Maximal count of active keys for one zone.
- */
-#define KNOT_MAX_ZONE_KEYS 8
-
 typedef struct zone_key {
 	dnssec_key_t *key;
 	dnssec_sign_ctx_t *ctx;

@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	r = dnssec_kasp_get_zone(kasp, zone_name, &zone);
+	r = dnssec_kasp_zone_get(kasp, zone_name, &zone);
 	if (r != DNSSEC_EOK) {
 		error("dnssec_kasp_get_zone()", r);
 		goto fail;
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 	exit_code = 0;
 
 fail:
-	dnssec_kasp_free_zone(zone);
+	dnssec_kasp_zone_free(zone);
 	dnssec_kasp_close(kasp);
 	dnssec_crypto_cleanup();
 

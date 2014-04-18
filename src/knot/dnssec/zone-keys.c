@@ -172,7 +172,7 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 		return KNOT_ERROR;
 	}
 
-	r = dnssec_kasp_get_zone(keyset.kasp, zone_name, &keyset.kasp_zone);
+	r = dnssec_kasp_zone_get(keyset.kasp, zone_name, &keyset.kasp_zone);
 	if (r != DNSSEC_EOK) {
 		log_zone_error("Zone %s: failed to get zone from KASP - %s.\n",
 		               zone_name, dnssec_strerror(r));
@@ -180,9 +180,8 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 		return KNOT_ERROR;
 	}
 
-	dnssec_kasp_key_t *kasp_keys = NULL;
-	size_t keys_count = 0;
-	dnssec_kasp_zone_get_keys(keyset.kasp_zone, &kasp_keys, &keys_count);
+	dnssec_kasp_keyset_t *kasp_keys = dnssec_kasp_zone_get_keys(keyset.kasp_zone);
+	size_t keys_count = dnssec_kasp_keyset_count(kasp_keys);
 	if (keys_count == 0) {
 		log_zone_error("Zone %s: no signing keys available.\n",
 		               zone_name);
@@ -198,7 +197,8 @@ int load_zone_keys(const char *keydir_name, const char *zone_name,
 
 	keyset.count = keys_count;
 	for (size_t i = 0; i < keys_count; i++) {
-		set_key(&kasp_keys[i], &keyset.keys[i]);
+		dnssec_kasp_key_t *kasp_key = dnssec_kasp_keyset_at(kasp_keys, i);
+		set_key(kasp_key, &keyset.keys[i]);
 	}
 
 	r = load_private_keys(keydir_name, &keyset);
@@ -224,7 +224,7 @@ void free_zone_keys(zone_keyset_t *keyset)
 		dnssec_sign_free(keyset->keys[i].ctx);
 	}
 
-	dnssec_kasp_free_zone(keyset->kasp_zone);
+	dnssec_kasp_zone_free(keyset->kasp_zone);
 	dnssec_kasp_close(keyset->kasp);
 	free(keyset->keys);
 
