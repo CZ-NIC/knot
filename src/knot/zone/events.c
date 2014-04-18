@@ -81,9 +81,11 @@ static int event_reload(zone_t *zone)
 	/* Schedule notify and refresh after load. */
 	const knot_rdataset_t *soa = zone_contents_soa(contents);
 	assert(soa); /* We just checked the contents, it MUST be consistent. */
-	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-	zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
+	if (zone_master(zone)) {
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+	}
+	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW + 10);
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH,   zone_config->dbsync_timeout);
 
 	log_zone_info("Zone '%s' loaded.\n", zone_config->name);
