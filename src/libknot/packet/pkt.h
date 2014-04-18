@@ -71,7 +71,8 @@ enum {
 	KNOT_PF_NULL      = 0 << 0, /*!< No flags. */
 	KNOT_PF_FREE      = 1 << 1, /*!< Free with packet. */
 	KNOT_PF_NOTRUNC   = 1 << 2, /*!< Don't truncate. */
-	KNOT_PF_CHECKDUP  = 1 << 3  /*!< Check for duplicates. */
+	KNOT_PF_CHECKDUP  = 1 << 3, /*!< Check for duplicates. */
+	KNOT_PF_KEEPWIRE  = 1 << 4  /*!< Keep wireformat untouched when parsing. */
 };
 
 /*!
@@ -242,8 +243,10 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t 
  * Parses both QUESTION and all packet sections,
  * includes semantic checks over specific RRs (TSIG, OPT).
  *
+ * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
+ *
  * \param pkt Given packet.
- * \param flags Parsing flags (allowed KNOT_PACKET_DUPL_NO_MERGE )
+ * \param flags Parsing flags (allowed KNOT_PF_KEEPWIRE)
  * \return KNOT_EOK, KNOT_EMALF and other errors
  */
 int knot_pkt_parse(knot_pkt_t *pkt, unsigned flags);
@@ -256,16 +259,35 @@ int knot_pkt_parse_question(knot_pkt_t *pkt);
 /*!
  * \brief Parse single resource record.
  *
+ * \note When KNOT_PF_KEEPWIRE is set, TSIG RR is not stripped from the wire
+ *       and is processed as any other RR.
+ *
  * \param pkt
  * \param flags
  * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
  */
 int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags);
 
-/*! \brief Parse current packet section. */
+/*!
+ * \brief Parse current packet section.
+ *
+ * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
+ *
+ * \param pkt
+ * \param flags
+ * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
+ */
 int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags);
 
-/*! \brief Parse whole packet payload */
+/*!
+ * \brief Parse whole packet payload.
+ *
+ * \note For KNOT_PF_KEEPWIRE see note for \fn knot_pkt_parse_rr
+ *
+ * \param pkt
+ * \param flags
+ * \return KNOT_EOK, KNOT_EFEWDATA if not enough data or various errors
+ */
 int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
 
 /*!
