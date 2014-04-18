@@ -162,7 +162,7 @@ static const key_parse_line_t KEY_PARSE_LINES[] = {
  * \param[in]  node    Key node in the YAML tree.
  * \param[out] params  Loaded key parameters.
  */
-static int parse_zone_key_params(yml_node_t *node, kasp_key_params_t *params)
+static int kasp_key_params_parse(yml_node_t *node, kasp_key_params_t *params)
 {
 	assert(params);
 
@@ -193,7 +193,22 @@ static int parse_zone_key_params(yml_node_t *node, kasp_key_params_t *params)
 	return DNSSEC_EOK;
 }
 
-static int create_key_from_params(kasp_key_params_t *params, dnssec_key_t **key_ptr)
+/*!
+ * Free KASP key parameters.
+ */
+static void kasp_key_params_free(kasp_key_params_t *params)
+{
+	assert(params);
+
+	free(params->id);
+	dnssec_binary_free(&params->public_key);
+
+	clear_struct(params);
+}
+
+/* -- KASP key construction ------------------------------------------------ */
+
+static int dnssec_key_from_params(kasp_key_params_t *params, dnssec_key_t **key_ptr)
 {
 	assert(params);
 	assert(key_ptr);
@@ -231,18 +246,48 @@ static int create_key_from_params(kasp_key_params_t *params, dnssec_key_t **key_
 	return DNSSEC_EOK;
 }
 
-/*!
- * Free KASP key parameters.
- */
-static void kasp_key_params_free(kasp_key_params_t *params)
+/* -- KASP key construction ------------------------------------------------ */
+
+static int kasp_key_create(kasp_key_params_t *params,
+			   dnssec_kasp_key_t **kasp_key_ptr)
 {
-	assert(params);
+	if (!params || !kasp_key_ptr) {
+		return DNSSEC_EINVAL;
+	}
 
-	free(params->id);
-	dnssec_binary_free(&params->public_key);
+	dnssec_key_t *key = NULL;
+	int result = dnssec_key_from_params(params, &key);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
 
-	clear_struct(params);
+	dnssec_kasp_key_t *kasp_key = malloc(sizeof(*kasp_key));
+	if (!kasp_key) {
+		dnssec_key_free(key);
+		return DNSSEC_ENOMEM;
+	}
+
+	clear_struct(kasp_key);
+	kasp_key->key = key;
+	kasp_key->timing = params->timing;
+
+	*kasp_key_ptr = kasp_key;
+
+	return DNSSEC_EOK;
 }
+
+static void kasp_key_free(dnssec_kasp_key_t *kasp_key)
+{
+	if (!kasp_key) {
+		return;
+	}
+
+	dnssec_key_free(kasp_key->key);
+
+	free(kasp_key);
+}
+
+/* -- KASP keyset construction --------------------------------------------- */
 
 static int load_zone_key(yml_node_t *node, void *data, _unused_ bool *interrupt)
 {
@@ -250,48 +295,32 @@ static int load_zone_key(yml_node_t *node, void *data, _unused_ bool *interrupt)
 	assert(data);
 
 	dnssec_kasp_zone_t *zone = data;
-	if (zone->keys_count == KASP_MAX_KEYS) {
-		return DNSSEC_CONFIG_TOO_MANY_KEYS;
-	}
 
 	// construct the key from key parameters
 
 	_cleanup_key_params_ kasp_key_params_t params = { 0 };
-	int result = parse_zone_key_params(node, &params);
+	int result = kasp_key_params_parse(node, &params);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
 
-	dnssec_key_t *key = NULL;
-	result = create_key_from_params(&params, &key);
+	dnssec_kasp_key_t *kasp_key = NULL;
+	result = kasp_key_create(&params, &kasp_key);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
 
-	dnssec_key_set_dname(key, zone->dname);
+	dnssec_key_set_dname(kasp_key->key, zone->dname);
 
 	// write result
 
-	dnssec_kasp_key_t *kasp_key = &zone->keys[zone->keys_count];
-	zone->keys_count += 1;
-
-	kasp_key->timing = params.timing;
-	kasp_key->key = key;
-
-	return DNSSEC_EOK;
-}
-
-/* -- KASP configuration parsing ------------------------------------------- */
-
-static void free_zone_keys(dnssec_kasp_zone_t *zone)
-{
-	assert(zone);
-
-	for (int i = 0; i < zone->keys_count; i++) {
-		dnssec_key_free(zone->keys[i].key);
+	result = dnssec_kasp_keyset_add(&zone->keys, kasp_key);
+	if (result != DNSSEC_EOK) {
+		kasp_key_free(kasp_key);
+		return result;
 	}
 
-	zone->keys_count = 0;
+	return DNSSEC_EOK;
 }
 
 static int parse_zone_keys(dnssec_kasp_zone_t *zone, yml_node_t *root)
@@ -305,9 +334,10 @@ static int parse_zone_keys(dnssec_kasp_zone_t *zone, yml_node_t *root)
 		return result;
 	}
 
+	dnssec_kasp_keyset_init(&zone->keys);
 	result = yml_sequence_each(&keys, load_zone_key, zone);
 	if (result != DNSSEC_EOK) {
-		free_zone_keys(zone);
+		dnssec_kasp_keyset_empty(&zone->keys);
 	}
 
 	return result;
@@ -317,7 +347,7 @@ static void free_zone_config(dnssec_kasp_zone_t *zone)
 {
 	assert(zone);
 
-	free_zone_keys(zone);
+	dnssec_kasp_keyset_empty(&zone->keys);
 }
 
 static int parse_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
@@ -474,22 +504,4 @@ void dnssec_kasp_free_zone(dnssec_kasp_zone_t *zone)
 	free(zone->dname);
 
 	free(zone);
-}
-
-_public_
-int dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone,
-			      dnssec_kasp_key_t **keys_ptr, size_t *count)
-{
-	if (!zone || !keys_ptr || !count) {
-		return DNSSEC_EINVAL;
-	}
-
-	*count = zone->keys_count;
-	if (zone->keys_count > 0) {
-		*keys_ptr = zone->keys;
-	} else {
-		*keys_ptr = NULL;
-	}
-
-	return DNSSEC_EOK;
 }

@@ -24,6 +24,9 @@ typedef struct dnssec_kasp_key {
 	dnssec_kasp_key_timing_t timing;
 } dnssec_kasp_key_t;
 
+struct dnssec_kasp_keyset;
+typedef struct dnssec_kasp_keyset dnssec_kasp_keyset_t;
+
 struct dnssec_kasp_event;
 typedef struct dnssec_kasp_event dnssec_kasp_event_t;
 
@@ -49,5 +52,18 @@ int dnssec_kasp_get_zone(dnssec_kasp_t *kasp, const char *zone_name,
 
 void dnssec_kasp_free_zone(dnssec_kasp_zone_t *zone);
 
-int dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone,
-			      dnssec_kasp_key_t **keys, size_t *count);
+// zone keys
+
+void dnssec_kasp_keyset_init(dnssec_kasp_keyset_t *keys);
+
+dnssec_kasp_keyset_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone);
+
+size_t dnssec_kasp_keyset_count(dnssec_kasp_keyset_t *keys);
+
+dnssec_kasp_key_t *dnssec_kasp_keyset_at(dnssec_kasp_keyset_t *keys, size_t number);
+
+int dnssec_kasp_keyset_add(dnssec_kasp_keyset_t *keys, dnssec_kasp_key_t *key);
+
+int dnssec_kasp_keyset_remove(dnssec_kasp_keyset_t *keys, dnssec_kasp_key_t *key);
+
+void dnssec_kasp_keyset_empty(dnssec_kasp_keyset_t *keys);

@@ -43,19 +43,21 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	dnssec_kasp_key_t *keys = NULL;
-	size_t keys_count = 0;
-	r = dnssec_kasp_zone_get_keys(zone, &keys, &keys_count);
-	if (r != DNSSEC_EOK) {
-		error("dnssec_kasp_zone_get_keys()", r);
+	dnssec_kasp_keyset_t *keys = dnssec_kasp_zone_get_keys(zone);
+	if (!keys) {
+		error("dnssec_kasp_zone_get_keys()", DNSSEC_ENOMEM);
 		goto fail;
 	}
 
+	size_t keys_count = dnssec_kasp_keyset_count(keys);
+
 	printf("keytag  ID\n");
 	for (size_t i = 0; i < keys_count; i++) {
-		const uint8_t *dname = dnssec_key_get_dname(keys[i].key);
-		const char *id = dnssec_key_get_id(keys[i].key);
-		uint16_t keytag = dnssec_key_get_keytag(keys[i].key);
+		dnssec_kasp_key_t *key = dnssec_kasp_keyset_at(keys, i);
+
+		const uint8_t *dname = dnssec_key_get_dname(key->key);
+		const char *id = dnssec_key_get_id(key->key);
+		uint16_t keytag = dnssec_key_get_keytag(key->key);
 		printf("%-6d  %s\n", keytag, id);
 		for (int i = 0; dname[i]; i++) {
 			if (isprint(dname[i])) { putchar(dname[i]); }
