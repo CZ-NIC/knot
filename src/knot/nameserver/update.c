@@ -21,7 +21,8 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/*! \todo This will be reimplemented when RESPONSE and REQUEST processors
 	 *        are written. */
-
+#warning TODO: reimplement update_forward
+#if 0
 	zone_t* zone = (zone_t *)qdata->zone;
 	knot_pkt_t *query = qdata->query;
 
@@ -67,8 +68,6 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 		}
 	}
 
-#warning "XFR."
-#if 0
 	/* Retain pointer to zone and issue. */
 	xfrhandler_t *xfr = qdata->param->server->xfr;
 	ret = xfr_enqueue(xfr, rq);
@@ -76,11 +75,13 @@ static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 		xfr_task_free(rq);
 		return NS_PROC_FAIL;
 	}
-#endif
 
 	/* No immediate response. */
 	pkt->size = 0;
 	return NS_PROC_DONE;
+#endif
+	assert(0);
+	return NS_PROC_FAIL;
 }
 
 static int update_prereq_check(struct query_data *qdata)
@@ -246,7 +247,8 @@ static int zones_process_update_auth(struct query_data *qdata)
 {
 	assert(qdata);
 	assert(qdata->zone);
-
+#warning TODO: reimplement zones_process_update_auth
+#if 0
 	zone_t *zone = (zone_t *)qdata->zone;
 	conf_zone_t *zone_config = zone->conf;
 	knot_tsig_key_t *tsig_key = qdata->sign.tsig_key;
@@ -445,6 +447,9 @@ static int zones_process_update_auth(struct query_data *qdata)
 	}
 
 	return ret;
+#endif
+	assert(0);
+	return KNOT_ENOTSUP;
 }
 
 #undef UPDATE_LOG

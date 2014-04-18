@@ -20,9 +20,8 @@
 
 #include "knot/conf/conf.h"
 #include "knot/other/debug.h"
-#include "knot/server/zone-load.h"
-#include "knot/server/zones.h"
-#include "knot/zone/zone-create.h"
+#include "knot/zone/contents.h"
+#include "knot/zone/zonefile.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"

@@ -59,7 +59,7 @@ int tcp_accept(int fd);
  * \retval Number of sent data on success.
  * \retval KNOT_ERROR on error.
  */
-int tcp_send(int fd, uint8_t *msg, size_t msglen);
+int tcp_send(int fd, const uint8_t *msg, size_t msglen);
 
 /*!
  * \brief Receive TCP message.

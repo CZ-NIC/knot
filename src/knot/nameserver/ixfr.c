@@ -339,8 +339,10 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	return ret;
 }
 
-int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
+int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
+#warning TODO: reimplement ixfr_process_answer
+#if 0
 	dbg_ns("ns_process_ixfrin: incoming packet\n");
 
 	/*
@@ -419,6 +421,8 @@ int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 	/*! \todo In case of error, shouldn't the zone be destroyed here? */
 
 	return ret;
+#endif
+	return KNOT_ENOTSUP;
 }
 
 #undef IXFR_LOG

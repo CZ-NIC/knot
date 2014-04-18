@@ -36,7 +36,6 @@
 #include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/server/xfr-handler.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_query.h"
 #include "libknot/dnssec/crypto.h"
@@ -194,14 +193,14 @@ int tcp_accept(int fd)
 	return incoming;
 }
 
-int tcp_send(int fd, uint8_t *msg, size_t msglen)
+int tcp_send(int fd, const uint8_t *msg, size_t msglen)
 {
 	/* Create iovec for gathered write. */
 	struct iovec iov[2];
 	uint16_t pktsize = htons(msglen);
 	iov[0].iov_base = &pktsize;
 	iov[0].iov_len = sizeof(uint16_t);
-	iov[1].iov_base = msg;
+	iov[1].iov_base = (void *)msg;
 	iov[1].iov_len = msglen;
 
 	/* Send. */

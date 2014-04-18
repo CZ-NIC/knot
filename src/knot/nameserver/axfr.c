@@ -229,8 +229,10 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 }
 
-int axfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
+int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
+#warning TODO: reimplement axfr_process_answer
+#if 0
 	/*
 	 * Here we assume that 'xfr' contains TSIG information
 	 * and the digest of the query sent to the master or the previous
@@ -267,6 +269,8 @@ int axfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
 	}
 
 	return ret;
+#endif
+	return KNOT_ENOTSUP;
 }
 
 #undef AXFR_LOG

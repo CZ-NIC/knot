@@ -29,9 +29,9 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
-#include "knot/server/xfr-handler.h"
 
 struct query_data;
+struct answer_data;
 
 /*!
  * \brief IXFR query processing module.
@@ -65,7 +65,7 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
  * \retval Other If any other error occured. The connection should be closed.
  *
  */
-int ixfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr);
+int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
 #endif /* _KNOT_IXFR_H_ */
 

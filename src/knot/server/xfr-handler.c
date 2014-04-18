@@ -230,7 +230,7 @@ static int xfr_task_connect(knot_ns_xfr_t *rq)
 {
 	/* Create socket by type. */
 	int stype = (rq->flags & XFR_FLAG_TCP) ? SOCK_STREAM : SOCK_DGRAM;
-	int ret = net_connected_socket(stype, &rq->addr, &rq->saddr);
+	int ret = net_connected_socket(stype, &rq->addr, &rq->saddr, O_NONBLOCK);
 	if (ret < 0) {
 		return ret;
 	}
@@ -370,7 +370,7 @@ static int xfr_task_start(knot_ns_xfr_t *rq)
 		ret = xfrin_create_soa_query(zone, pkt);
 		break;
 	case XFR_TYPE_NOTIFY:
-		ret = notify_create_request(zone, pkt);
+		ret = notify_create_query(zone, pkt);
 		break;
 	case XFR_TYPE_FORWARD:
 		ret = forward_packet(rq, pkt);

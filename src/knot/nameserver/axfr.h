@@ -29,9 +29,9 @@
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
-#include "knot/server/xfr-handler.h"
 
 struct query_data;
+struct answer_data;
 
 /*! \brief Generic transfer processing state. */
 struct xfr_proc {
@@ -66,7 +66,7 @@ int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
  * \param xfr Persistent transfer-specific data.
  *
  */
-int axfr_process_answer(knot_pkt_t *pkt, knot_ns_xfr_t *xfr);
+int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *xfr);
 
 #endif /* _KNOT_AXFR_H_ */
 
