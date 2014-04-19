@@ -8,20 +8,26 @@
 
 #define YML_PATH_SEPARATOR '/'
 
-#define _cleanup_yml_deinit_ _cleanup_(yml_deinit)
+#define _cleanup_yml_document_free_ _cleanup_(yml_document_free)
 
 /*!
  * Node of YAML document.
  */
 typedef struct yml_node {
-	yaml_document_t *document;
-	yaml_node_t *node;
+	yaml_document_t *document;	//!< Reference to document.
+	yaml_node_item_t node_id;	//!< Numeric ID of the node.
+	yaml_node_t *node;		//!< Pointer to actual node.
 } yml_node_t;
 
 /*!
  * Deinitialize root node, freeing the whole document.
  */
-void yml_deinit(yml_node_t *root);
+void yml_document_free(yml_node_t *root);
+
+/*!
+ * Create new document with empty YAML mapping as a root node.
+ */
+int yml_document_new(yml_node_t *root);
 
 /*!
  * Parse YAML file and return an instance of parsed document.
@@ -29,12 +35,22 @@ void yml_deinit(yml_node_t *root);
  * Does not support multiple documents within one YAML stream.
  *
  * \param[in]  filename  File to be parsed.
- * \param[out] document  Parsed document. Must be destoryed with
+ * \param[out] root      Parsed document. Must be destoryed with
  *                       \ref yaml_document_destroy (libyaml).
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
-int yml_parse_file(const char *filename, yml_node_t *root);
+int yml_document_load(const char *filename, yml_node_t *root);
+
+/*!
+ * Dump YAML document into the file.
+ *
+ * \param[in] filename  File to be written.
+ * \param[in] root      Document to be written.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
+ */
+int yml_document_save(const char *filename, yml_node_t *root);
 
 /*!
  * Traverse over the parsed YAML document.

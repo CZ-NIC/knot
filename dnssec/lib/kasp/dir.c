@@ -350,8 +350,8 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 	assert(zone);
 	assert(filename);
 
-	_cleanup_yml_deinit_ yml_node_t root = { 0 };
-	int result = yml_parse_file(filename, &root);
+	_cleanup_yml_document_free_ yml_node_t root = { 0 };
+	int result = yml_document_load(filename, &root);
 	if (result != DNSSEC_EOK) {
 		return result;
 	}
@@ -405,7 +405,11 @@ static int save_zone_config(const char *dir, dnssec_kasp_zone_t *zone)
 		return DNSSEC_ENOMEM;
 	}
 
-	printf("config: %s\n", config);
+	_cleanup_yml_document_free_ yml_node_t document = { 0 };
+	int result = yml_document_new(&document);
+	if (result != DNSSEC_EOK) {
+		return result;
+	}
 
 	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }

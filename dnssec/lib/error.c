@@ -40,7 +40,6 @@ const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_NSEC3_HASHING_ERROR,	"NSEC3 hashing error" },
 
 	{ DNSSEC_CONFIG_MALFORMED,	"Malformed config value" },
-	{ DNSSEC_CONFIG_TOO_MANY_KEYS,	"Config contains too many keys" },
 	{ DNSSEC_CONFIG_INVALID_KEY_ID,	"Invalid key ID in config" },
 
 	{ 0 }

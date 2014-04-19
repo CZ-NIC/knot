@@ -6,26 +6,7 @@
 #include "shared.h"
 #include "yml.h"
 
-#define _cleanup_parser_ _cleanup_(yaml_parser_delete)
-
 /* -- internal functions --------------------------------------------------- */
-
-static int yml_root_init(yml_node_t *root)
-{
-	if (!root) {
-		return DNSSEC_EINVAL;
-	}
-
-	clear_struct(root);
-	root->document = malloc(sizeof(*root->document));
-	if (!root->document) {
-		return DNSSEC_ENOMEM;
-	}
-
-	clear_struct(root->document);
-
-	return DNSSEC_EOK;
-}
 
 /*!
  * Parse a node of expected type and drop it.
@@ -85,7 +66,32 @@ static int mapping_find(yml_node_t *mapping, const dnssec_binary_t *label,
 
 /* -- internal API --------------------------------------------------------- */
 
-void yml_deinit(yml_node_t *root)
+/*!
+ * Initialize document root node.
+ *
+ * \note yaml_document_t inside is allocated, but not initialized.
+ */
+static int yml_document_init(yml_node_t *root)
+{
+	if (!root) {
+		return DNSSEC_EINVAL;
+	}
+
+	clear_struct(root);
+
+	root->document = malloc(sizeof(*root->document));
+	if (!root->document) {
+		return DNSSEC_ENOMEM;
+	}
+	clear_struct(root->document);
+
+	return DNSSEC_EOK;
+}
+
+/*!
+ * Deinitialize root node, freeing the whole document.
+ */
+void yml_document_free(yml_node_t *root)
 {
 	if (!root) {
 		return;
@@ -100,9 +106,37 @@ void yml_deinit(yml_node_t *root)
 }
 
 /*!
+ * Create new document with empty YAML mapping as a root node.
+ */
+int yml_document_new(yml_node_t *root_ptr)
+{
+	if (!root_ptr) {
+		return DNSSEC_EINVAL;
+	}
+
+	yml_node_t root;
+	yml_document_init(&root);
+
+	if (!yaml_document_initialize(root.document, NULL, NULL, NULL, 1, 1)) {
+		yml_document_free(&root);
+		return DNSSEC_ENOMEM;
+	}
+
+	root.node_id = yaml_document_add_mapping(root.document, NULL, YAML_BLOCK_MAPPING_STYLE);
+	root.node = yaml_document_get_root_node(root.document);
+	assert(root.node == yaml_document_get_node(root.document, root.node_id));
+
+	*root_ptr = root;
+
+	return DNSSEC_EOK;
+}
+
+#define _cleanup_parser_ _cleanup_(yaml_parser_delete)
+
+/*!
  * Parse YAML file and return instance of parsed document.
  */
-int yml_parse_file(const char *filename, yml_node_t *root)
+int yml_document_load(const char *filename, yml_node_t *root)
 {
 	if (!filename || !root) {
 		return DNSSEC_EINVAL;
@@ -139,7 +173,7 @@ int yml_parse_file(const char *filename, yml_node_t *root)
 
 	// finalize
 
-	int result = yml_root_init(root);
+	int result = yml_document_init(root);
 	if (result != DNSSEC_EOK) {
 		yaml_document_delete(&document);
 		return result;
@@ -147,6 +181,32 @@ int yml_parse_file(const char *filename, yml_node_t *root)
 
 	*root->document = document;
 	root->node = yaml_document_get_root_node(root->document);
+
+	return DNSSEC_EOK;
+}
+
+#define _cleanup_emitter_ _cleanup_(yaml_emitter_delete)
+
+int yml_document_save(const char *filename, yml_node_t *root)
+{
+	if (!filename || !root) {
+		return DNSSEC_EINVAL;
+	}
+
+	_cleanup_fclose_ FILE *file = fopen(filename, "w");
+	if (!file) {
+		return DNSSEC_NOT_FOUND;
+	}
+
+	_cleanup_emitter_ yaml_emitter_t emitter = {0};
+	if (!yaml_emitter_initialize(&emitter)) {
+		return DNSSEC_ENOMEM;
+	}
+	yaml_emitter_set_output_file(&emitter, file);
+
+	if (!yaml_emitter_dump(&emitter, root->document)) {
+		return DNSSEC_MALFORMED_DATA;
+	}
 
 	return DNSSEC_EOK;
 }
@@ -279,10 +339,12 @@ int yml_sequence_each(yml_node_t *sequence, yml_sequence_cb callback, void *data
 	yaml_node_item_t *top = sequence->node->data.sequence.items.top;
 	for (yaml_node_item_t *item = start; item < top; item++) {
 		// get value
+		value.node_id = *item;
 		value.node = yaml_document_get_node(doc, *item);
 		if (!value.node) {
 			return DNSSEC_MALFORMED_DATA;
 		}
+
 		// run callback
 		bool interrupt = false;
 		int result = callback(&value, data, &interrupt);
@@ -315,9 +377,10 @@ int yml_mapping_each(yml_node_t *mapping, yml_mapping_cb callback, void *data)
 	for (yaml_node_pair_t *pair = start; pair < top; pair++) {
 		// get key and value nodes
 		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-		if (!key|| key->type != YAML_SCALAR_NODE) {
+		if (!key || key->type != YAML_SCALAR_NODE) {
 			return DNSSEC_MALFORMED_DATA;
 		}
+		value.node_id = pair->value;
 		value.node = yaml_document_get_node(doc, pair->value);
 		if (!value.node) {
 			return DNSSEC_MALFORMED_DATA;
