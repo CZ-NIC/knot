@@ -350,7 +350,7 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 	assert(zone);
 	assert(filename);
 
-	_cleanup_yml_node_ yml_node_t root = { 0 };
+	_cleanup_yml_deinit_ yml_node_t root = { 0 };
 	int result = yml_parse_file(filename, &root);
 	if (result != DNSSEC_EOK) {
 		return result;
@@ -368,22 +368,46 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 	return DNSSEC_EOK;
 }
 
+static char *zone_config(const char *dir, char *zone_name)
+{
+	char *config = NULL;
+	int result = asprintf(&config, "%s/zone_%s.yaml", dir, zone_name);
+	if (result == -1) {
+		return NULL;
+	}
+
+	return config;
+}
+
 /*!
  * Load zone configuration.
  */
 static int load_zone_config(const char *dir, dnssec_kasp_zone_t *zone)
 {
+	assert(dir);
 	assert(zone);
 
-	char *config = NULL;
-	int result = asprintf(&config, "%s/zone_%s.yaml", dir, zone->name);
-	if (result == -1) {
+	_cleanup_free_ char *config = zone_config(dir, zone->name);
+	if (!config) {
 		return DNSSEC_ENOMEM;
 	}
 
-	result = parse_zone_config(zone, config);
-	free(config);
-	return result;
+	return parse_zone_config(zone, config);
+}
+
+static int save_zone_config(const char *dir, dnssec_kasp_zone_t *zone)
+{
+	assert(dir);
+	assert(zone);
+
+	_cleanup_free_ char *config = zone_config(dir, zone->name);
+	if (!config) {
+		return DNSSEC_ENOMEM;
+	}
+
+	printf("config: %s\n", config);
+
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
 }
 
 /* -- internal API --------------------------------------------------------- */
@@ -425,19 +449,22 @@ static void kasp_dir_close(void *_ctx)
 
 static int kasp_dir_load_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 {
-	if (!zone) {
-		return DNSSEC_EINVAL;
-	}
-
+	assert(zone);
 	assert(_ctx);
+
 	kasp_dir_ctx_t *ctx = _ctx;
 
 	return load_zone_config(ctx->path, zone);
 }
 
-static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *ctx)
+static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *_ctx)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	assert(zone);
+	assert(_ctx);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	return save_zone_config(ctx->path, zone);
 }
 
 static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
