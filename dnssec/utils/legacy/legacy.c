@@ -156,8 +156,8 @@ static int get_key_names(const char *input, char **public_ptr, char **private_pt
 	int base_length;
 
 	if (name_end && (*(name_end + 1) == '\0' ||
-	                 strcmp(name_end, ".key") == 0 ||
-	                 strcmp(name_end, ".private") == 0)
+			 streq(name_end, ".key") ||
+			 streq(name_end, ".private"))
 	) {
 		base_length = name_end - input;
 	} else {

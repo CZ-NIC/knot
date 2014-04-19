@@ -28,4 +28,5 @@ LDADD = libutils.la
 bin_PROGRAMS = \
 	generate \
 	import \
+	keymgr \
 	parsekey

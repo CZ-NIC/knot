@@ -24,6 +24,8 @@
  */
 #define clear_struct(pointer) memset((pointer), '\0', sizeof(*(pointer)))
 
+#define streq(one, two) (strcmp((one), (two)) == 0)
+
 /* -- cleanup macros ------------------------------------------------------- */
 
 #define _cleanup_(var) __attribute__((cleanup(var)))
