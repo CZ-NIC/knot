@@ -5,6 +5,7 @@
 #include "dname.h"
 #include "kasp.h"
 #include "kasp/internal.h"
+#include "kasp/zone.h"
 #include "shared.h"
 
 /*!

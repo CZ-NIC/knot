@@ -3,7 +3,8 @@
 #include "clists.h"
 #include "error.h"
 #include "kasp.h"
-#include "kasp/internal.h"
+#include "kasp/keyset.h"
+#include "kasp/zone.h"
 #include "shared.h"
 
 _public_
