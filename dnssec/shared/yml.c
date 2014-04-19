@@ -108,7 +108,7 @@ int yml_parse_file(const char *filename, yml_node_t *root)
 
 	_cleanup_fclose_ FILE *file = fopen(filename, "r");
 	if (!file) {
-		return dnssec_errno_to_error(errno);
+		return DNSSEC_NOT_FOUND;
 	}
 
 	// initialize parser

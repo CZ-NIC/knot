@@ -369,89 +369,88 @@ static int parse_zone_config(dnssec_kasp_zone_t *zone, const char *filename)
 }
 
 /*!
- * Get zone config file name.
- */
-static char *zone_config_file(dnssec_kasp_t *kasp, const char *zone)
-{
-	assert(kasp);
-	assert(zone);
-
-	char *result = NULL;
-	asprintf(&result, "%s/zone_%s.yaml", kasp->path, zone);
-
-	return result;
-}
-
-/*!
  * Load zone configuration.
  */
-static int load_zone_config(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone)
+static int load_zone_config(const char *dir, dnssec_kasp_zone_t *zone)
 {
 	assert(zone);
 
-	_cleanup_free_ char *config = zone_config_file(kasp, zone->name);
-	if (!config) {
+	char *config = NULL;
+	int result = asprintf(&config, "%s/zone_%s.yaml", dir, zone->name);
+	if (result == -1) {
 		return DNSSEC_ENOMEM;
 	}
 
-	return parse_zone_config(zone, config);
+	result = parse_zone_config(zone, config);
+	free(config);
+	return result;
 }
+
+/* -- internal API --------------------------------------------------------- */
+
+typedef struct kasp_dir_ctx {
+	char *path;
+} kasp_dir_ctx_t;
+
+static int kasp_dir_open(void **ctx_ptr, const char *config)
+{
+	assert(ctx_ptr);
+	assert(config);
+
+	kasp_dir_ctx_t *ctx = malloc(sizeof(*ctx));
+	if (!ctx) {
+		return DNSSEC_ENOMEM;
+	}
+
+	clear_struct(ctx);
+	ctx->path = path_normalize(config);
+	if (!ctx->path) {
+		free(ctx);
+		return DNSSEC_NOT_FOUND;
+	}
+
+	*ctx_ptr = ctx;
+	return DNSSEC_EOK;
+}
+
+static void kasp_dir_close(void *_ctx)
+{
+	assert(_ctx);
+
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	free(ctx->path);
+	free(ctx);
+}
+
+static int kasp_dir_load_zone(dnssec_kasp_zone_t *zone, void *_ctx)
+{
+	if (!zone) {
+		return DNSSEC_EINVAL;
+	}
+
+	assert(_ctx);
+	kasp_dir_ctx_t *ctx = _ctx;
+
+	return load_zone_config(ctx->path, zone);
+}
+
+static int kasp_dir_save_zone(dnssec_kasp_zone_t *zone, void *ctx)
+{
+	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+}
+
+static const dnssec_kasp_store_functions_t KASP_DIR_FUNCTIONS = {
+	.open = kasp_dir_open,
+	.close = kasp_dir_close,
+	.load_zone = kasp_dir_load_zone,
+	.save_zone = kasp_dir_save_zone,
+};
 
 /* -- public API ----------------------------------------------------------- */
 
 _public_
 int dnssec_kasp_open_dir(const char *path, dnssec_kasp_t **kasp_ptr)
 {
-	if (!path || !kasp_ptr) {
-		return DNSSEC_EINVAL;
-	}
-
-	dnssec_kasp_t *kasp = calloc(1, sizeof(*kasp));
-	if (!kasp) {
-		return DNSSEC_ENOMEM;
-	}
-
-	kasp->path = path_normalize(path);
-	if (!kasp->path) {
-		free(kasp);
-		return DNSSEC_NOT_FOUND;
-	}
-
-	*kasp_ptr = kasp;
-
-	return DNSSEC_EOK;
-}
-
-_public_
-void dnssec_kasp_close(dnssec_kasp_t *kasp)
-{
-	if (!kasp) {
-		return;
-	}
-
-	free(kasp->path);
-	free(kasp);
-}
-
-_public_
-int dnssec_kasp_zone_get(dnssec_kasp_t *kasp, const char *zone_name,
-			 dnssec_kasp_zone_t **zone_ptr)
-{
-	if (!kasp || !zone_name || !zone_ptr) {
-		return DNSSEC_EINVAL;
-	}
-
-	dnssec_kasp_zone_t *zone = dnssec_kasp_zone_new(zone_name);
-	if (!zone) {
-		return DNSSEC_ENOMEM;
-	}
-
-	int result = load_zone_config(kasp, zone);
-	if (result != DNSSEC_EOK) {
-		dnssec_kasp_zone_free(zone);
-		return result;
-	}
-
-	*zone_ptr = zone;
-	return DNSSEC_EOK;
+	return dnssec_kasp_create(kasp_ptr, &KASP_DIR_FUNCTIONS, path);
 }

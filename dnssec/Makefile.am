@@ -59,8 +59,11 @@ libdnssec_la_SOURCES = \
 	lib/error.c \
 	lib/kasp/dir.c \
 	lib/kasp/internal.h \
+	lib/kasp/kasp.c \
 	lib/kasp/keyset.c \
+	lib/kasp/keyset.h \
 	lib/kasp/zone.c \
+	lib/kasp/zone.h \
 	lib/key/algorithm.c \
 	lib/key/algorithm.h \
 	lib/key/convert.c \
@@ -70,7 +73,6 @@ libdnssec_la_SOURCES = \
 	lib/key/ds.c \
 	lib/key/internal.h \
 	lib/key/key.c \
-	lib/key/keyid.h \
 	lib/key/keytag.c \
 	lib/key/privkey.c \
 	lib/key/privkey.h \

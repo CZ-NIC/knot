@@ -38,8 +38,10 @@ dnssec_kasp_zone_t *dnssec_kasp_zone_new(const char *name);
 
 void dnssec_kasp_zone_free(dnssec_kasp_zone_t *zone);
 
-int dnssec_kasp_zone_get(dnssec_kasp_t *kasp, const char *zone_name,
-			 dnssec_kasp_zone_t **zone);
+int dnssec_kasp_load_zone(dnssec_kasp_t *kasp, const char *zone_name,
+			  dnssec_kasp_zone_t **zone);
+
+int dnssec_kasp_save_zone(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
 
 /*
  * POLICY
