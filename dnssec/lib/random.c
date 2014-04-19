@@ -19,7 +19,7 @@ int dnssec_random_buffer(uint8_t *data, size_t size)
 
 	int result = gnutls_rnd(GNUTLS_RND_RANDOM, data, size);
 	if (result != 0) {
-		assert(0);
+		assert_unreachable();
 		return DNSSEC_ERROR;
 	}
 
