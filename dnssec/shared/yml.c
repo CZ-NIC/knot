@@ -10,6 +10,23 @@
 
 /* -- internal functions --------------------------------------------------- */
 
+static int yml_root_init(yml_node_t *root)
+{
+	if (!root) {
+		return DNSSEC_EINVAL;
+	}
+
+	clear_struct(root);
+	root->document = malloc(sizeof(*root->document));
+	if (!root->document) {
+		return DNSSEC_ENOMEM;
+	}
+
+	clear_struct(root->document);
+
+	return DNSSEC_EOK;
+}
+
 /*!
  * Parse a node of expected type and drop it.
  */
@@ -68,33 +85,18 @@ static int mapping_find(yml_node_t *mapping, const dnssec_binary_t *label,
 
 /* -- internal API --------------------------------------------------------- */
 
-int yml_node_init(yml_node_t *node)
+void yml_deinit(yml_node_t *root)
 {
-	if (!node) {
-		return DNSSEC_EINVAL;
-	}
-
-	clear_struct(node);
-	node->document = calloc(1, sizeof(yaml_document_t));
-	if (!node->document) {
-		return DNSSEC_ENOMEM;
-	}
-
-	return DNSSEC_EOK;
-}
-
-void yml_node_deinit(yml_node_t *node)
-{
-	if (!node) {
+	if (!root) {
 		return;
 	}
 
-	if (node->document) {
-		yaml_document_delete(node->document);
-		free(node->document);
+	if (root->document) {
+		yaml_document_delete(root->document);
+		free(root->document);
 	}
 
-	clear_struct(node);
+	clear_struct(root);
 }
 
 /*!
@@ -137,7 +139,7 @@ int yml_parse_file(const char *filename, yml_node_t *root)
 
 	// finalize
 
-	int result = yml_node_init(root);
+	int result = yml_root_init(root);
 	if (result != DNSSEC_EOK) {
 		yaml_document_delete(&document);
 		return result;

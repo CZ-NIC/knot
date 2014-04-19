@@ -8,15 +8,20 @@
 
 #define YML_PATH_SEPARATOR '/'
 
-#define _cleanup_yml_node_ _cleanup_(yml_node_deinit)
+#define _cleanup_yml_deinit_ _cleanup_(yml_deinit)
 
+/*!
+ * Node of YAML document.
+ */
 typedef struct yml_node {
 	yaml_document_t *document;
 	yaml_node_t *node;
 } yml_node_t;
 
-int yml_node_init(yml_node_t *node);
-void yml_node_deinit(yml_node_t *node);
+/*!
+ * Deinitialize root node, freeing the whole document.
+ */
+void yml_deinit(yml_node_t *root);
 
 /*!
  * Parse YAML file and return an instance of parsed document.
