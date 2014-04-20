@@ -138,6 +138,9 @@ Show authority section.
 .BR + [ no ] additional
 Show additional section.
 .TP
+.BR + [ no ] tsig
+Show TSIG pseudosection.
+.TP
 .BR + [ no ] stats
 Show trailing packet statistics.
 .TP
