@@ -299,7 +299,7 @@ static inline bool knot_pkt_have_edns(const knot_pkt_t *pkt)
 }
 
 /*!
- * \brief Checks if EDNS is supported (i.e. has EDNS VERSION != UNSUPPORTED).
+ * \brief Checks if TSIG is present.
  */
 static inline bool knot_pkt_have_tsig(const knot_pkt_t *pkt)
 {

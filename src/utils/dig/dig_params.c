@@ -62,6 +62,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
+	.show_tsig = true,
 	.show_footer = true
 };
 

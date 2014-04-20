@@ -51,6 +51,7 @@ static const style_t DEFAULT_STYLE_NSUPDATE = {
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
+	.show_tsig = true,
 	.show_footer = false
 };
 
