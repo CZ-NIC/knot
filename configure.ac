@@ -384,6 +384,7 @@ AC_CONFIG_FILES([Makefile
 		 libtap/Makefile
 		 src/Makefile
 		 tests/Makefile
+		 src/dnstap/Makefile
 		 src/zscanner/Makefile
 		 man/khost.1
 		 man/knotc.8
