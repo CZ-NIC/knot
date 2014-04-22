@@ -248,7 +248,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 
 /* ----------------------- changeset lists helpers -------------------------- */
 
-#warning TODO: Store changesets as a lookup structure
+/*! \todo Store changesets as a lookup structure. */
 
 /*!< \brief Returns true if \a cmp code returns true for one RR in list. */
 #define LIST_MATCH(l, cmp) \

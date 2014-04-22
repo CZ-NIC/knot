@@ -143,9 +143,10 @@ int zones_changesets_from_binary(knot_changesets_t *chgsets);
 /*! \todo Document me. */
 int zones_changesets_to_binary(knot_changesets_t *chgsets);
 
+/*! \todo DEPRECATED. */
 int zones_load_changesets(const zone_t *zone,
 			  knot_changesets_t *dst,
-			  uint32_t from, uint32_t to) __attribute__((deprecated));
+			  uint32_t from, uint32_t to);
 
 /*!
  * \brief Creates changesets from zones difference.
