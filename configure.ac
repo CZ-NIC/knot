@@ -328,6 +328,14 @@ if test "$libidn" != "no" ; then
     AC_DEFINE(LIBIDN, 1, [Define to 1 if you want IDN support.])
 fi
 
+dnl Check for dnstap.
+dt_DNSTAP([
+    LIBS="$LIBS $DNSTAP_LIBS"
+    CPPFLAGS="$CPPFLAGS $DNSTAP_CFLAGS"
+    AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support])
+])
+AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
@@ -401,6 +409,7 @@ echo "
   Ragel: ${RAGEL} ${FSM_TYPE}
   Utils with IDN: ${libidn}
   Use systemd notifications: ${enable_systemd}
+  Use dnstap support: ${opt_dnstap}
   Code coverage: ${enable_code_coverage}
 
   Continue with 'make' command"
