@@ -300,6 +300,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 		if (sec_chs == NULL || sec_ch == NULL) {
 			xfrin_rollback_update(chgsets, &new_contents);
 			knot_changesets_free(&chgsets);
+			knot_changesets_free(&sec_chs);
 			free(msg);
 			return KNOT_ENOMEM;
 		}
