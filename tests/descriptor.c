@@ -26,7 +26,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan(81);
+	plan(108);
 
 	const    rdata_descriptor_t *descr;
 	char     name[BUF_LEN];
@@ -38,9 +38,9 @@ int main(int argc, char *argv[])
 	descr = get_rdata_descriptor(0);
 	ok(descr->type_name == 0, "get TYPE0 descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
-	       "get TYPE0 descriptor 1. item type");
+	   "get TYPE0 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get TYPE0 descriptor 2. item type");
+	   "get TYPE0 descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(0, name, BUF_LEN);
 	ok(ret != -1, "get TYPE0 ret");
@@ -50,9 +50,9 @@ int main(int argc, char *argv[])
 	descr = get_rdata_descriptor(1);
 	ok(strcmp(descr->type_name, "A") == 0, "get A descriptor name");
 	ok(descr->block_types[0] == 4,
-	       "get A descriptor 1. item type");
+	   "get A descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get A descriptor 2. item type");
+	   "get A descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(1, name, BUF_LEN);
 	ok(ret != -1, "get A ret");
@@ -62,9 +62,9 @@ int main(int argc, char *argv[])
 	descr = get_rdata_descriptor(5);
 	ok(strcmp(descr->type_name, "CNAME") == 0, "get CNAME descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_COMPRESSED_DNAME,
-	       "get CNAME descriptor 1. item type");
+	   "get CNAME descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get CNAME descriptor 2. item type");
+	   "get CNAME descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(5, name, BUF_LEN);
 	ok(ret != -1, "get CNAME ret");
@@ -74,9 +74,9 @@ int main(int argc, char *argv[])
 	descr = get_rdata_descriptor(38);
 	ok(descr->type_name == 0, "get TYPE38 descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
-	       "get TYPE38 descriptor 1. item type");
+	   "get TYPE38 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get TYPE38 descriptor 2. item type");
+	   "get TYPE38 descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(38, name, BUF_LEN);
 	ok(ret != -1, "get TYPE38 ret");
@@ -86,9 +86,9 @@ int main(int argc, char *argv[])
 	descr = get_rdata_descriptor(255);
 	ok(strcmp(descr->type_name, "ANY") == 0, "get ANY descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
-	       "get ANY descriptor 1. item type");
+	   "get ANY descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get ANY descriptor 2. item type");
+	   "get ANY descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(255, name, BUF_LEN);
 	ok(ret != -1, "get ANY ret");
@@ -98,9 +98,9 @@ int main(int argc, char *argv[])
 	descr = get_rdata_descriptor(256);
 	ok(descr->type_name == 0, "get TYPE256 descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
-	       "get TYPE256 descriptor 1. item type");
+	   "get TYPE256 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get TYPE256 descriptor 2. item type");
+	   "get TYPE256 descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(256, name, BUF_LEN);
 	ok(ret != -1, "get TYPE256 ret");
@@ -222,35 +222,107 @@ int main(int argc, char *argv[])
 	descr = get_obsolete_rdata_descriptor(0);
 	ok(descr->type_name == 0, "get TYPE0 descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
-	       "get TYPE0 descriptor 1. item type");
+	   "get TYPE0 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get TYPE0 descriptor 2. item type");
+	   "get TYPE0 descriptor 2. item type");
 
 	// 31. MD
 	descr = get_obsolete_rdata_descriptor(3);
 	ok(strcmp(descr->type_name, "MD") == 0, "get MD descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_COMPRESSED_DNAME,
-	       "get A descriptor 1. item type");
+	   "get A descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get A descriptor 2. item type");
+	   "get A descriptor 2. item type");
 
 	// 32. NXT
 	descr = get_obsolete_rdata_descriptor(30);
 	ok(strcmp(descr->type_name, "NXT") == 0, "get NXT descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_COMPRESSED_DNAME,
-	       "get CNAME descriptor 1. item type");
+	   "get CNAME descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_REMAINDER,
-	       "get CNAME descriptor 2. item type");
+	   "get CNAME descriptor 2. item type");
 	ok(descr->block_types[2] == KNOT_RDATA_WF_END,
-	       "get CNAME descriptor 3. item type");
+	   "get CNAME descriptor 3. item type");
 
 	// 33. TYPE38 (A6)
 	descr = get_obsolete_rdata_descriptor(38);
 	ok(descr->type_name == 0, "get TYPE38 descriptor name");
 	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
-	       "get TYPE38 descriptor 1. item type");
+	   "get TYPE38 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	       "get TYPE38 descriptor 2. item type");
+	   "get TYPE38 descriptor 2. item type");
+
+	// knot_rrtype_to_string invalid output buffer size
+	ret = knot_rrtype_to_string(1, NULL, 0);
+	ok(ret == -1, "knot_rrtype_to_string: invalid output buffer size");
+
+	// knot_rrclass_to_string invalid output buffer size
+	ret = knot_rrclass_to_string(1, NULL, 0);
+	ok(ret == -1, "knot_rrclass_to_string: invalid output buffer size");
+
+	// descriptor_item_is_dname
+	ok(descriptor_item_is_dname(KNOT_RDATA_WF_END) == 0,
+	   "descriptor is not dname");
+	ok(descriptor_item_is_dname(KNOT_RDATA_WF_COMPRESSED_DNAME) != 0,
+	   "descriptor is compressed dname");
+	ok(descriptor_item_is_dname(KNOT_RDATA_WF_UNCOMPRESSED_DNAME) != 0,
+	   "descriptor is uncompressed dname");
+
+	// descriptor_item_is_compr_dname
+	ok(descriptor_item_is_compr_dname(KNOT_RDATA_WF_END) == 0,
+	   "descriptor is not compressed dname");
+	ok(descriptor_item_is_compr_dname(KNOT_RDATA_WF_COMPRESSED_DNAME) != 0,
+	   "descriptor is compressed dname");
+
+	// descriptor_item_is_fixed
+	ok(descriptor_item_is_fixed(0) == 0,
+	   "descriptor is not fixed");
+	ok(descriptor_item_is_fixed(1) != 0,
+	   "descriptor is fixed");
+
+	// descriptor_item_is_remainder
+	ok(descriptor_item_is_remainder(0) == 0,
+	   "descriptor is not remainder");
+	ok(descriptor_item_is_remainder(KNOT_RDATA_WF_REMAINDER) != 0,
+	   "descriptor is remainder");
+
+	// knot_rrtype_is_metatype
+	ok(knot_rrtype_is_metatype(0) == 0,
+	   "rrtype is not metatype");
+	ok(knot_rrtype_is_metatype(KNOT_RRTYPE_SIG) != 0,
+	   "rrtype is SIG");
+	ok(knot_rrtype_is_metatype(KNOT_RRTYPE_OPT) != 0,
+	   "rrtype is OPT");
+	ok(knot_rrtype_is_metatype(KNOT_RRTYPE_TKEY) != 0,
+	   "rrtype is TKEY");
+	ok(knot_rrtype_is_metatype(KNOT_RRTYPE_TSIG) != 0,
+	   "rrtype is TSIG");
+	ok(knot_rrtype_is_metatype(KNOT_RRTYPE_IXFR) != 0,
+	   "rrtype is IXFR");
+	ok(knot_rrtype_is_metatype(KNOT_RRTYPE_AXFR) != 0,
+	   "rrtype is AXFR");
+	ok(knot_rrtype_is_metatype(KNOT_RRTYPE_ANY) != 0,
+	   "rrtype is ANY");
+
+	// knot_rrtype_is_ddns_forbidden
+	ok(knot_rrtype_is_ddns_forbidden(0) == 0,
+	   "rrtype is not ddns forbidden");
+	ok(knot_rrtype_is_ddns_forbidden(KNOT_RRTYPE_RRSIG) != 0,
+	   "rrtype is RRSIG");
+	ok(knot_rrtype_is_ddns_forbidden(KNOT_RRTYPE_NSEC) != 0,
+	   "rrtype is NSEC");
+	ok(knot_rrtype_is_ddns_forbidden(KNOT_RRTYPE_NSEC3) != 0,
+	   "rrtype is NSEC3");
+
+	// knot_rrtype_additional_needed
+	ok(knot_rrtype_additional_needed(0) == 0,
+	   "rrtype is not additional needed");
+	ok(knot_rrtype_additional_needed(KNOT_RRTYPE_NS) != 0,
+	   "rrtype is NS");
+	ok(knot_rrtype_additional_needed(KNOT_RRTYPE_MX) != 0,
+	   "rrtype is MX");
+	ok(knot_rrtype_additional_needed(KNOT_RRTYPE_SRV) != 0,
+	   "rrtype is SRV");
 
 	return 0;
 }
