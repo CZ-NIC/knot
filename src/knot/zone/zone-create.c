@@ -85,8 +85,11 @@ static int log_ttl(const zcreator_t *zc, const zone_node_t *node,
 	char info_str[64] = { '\0' };
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-	snprintf(info_str, sizeof(info_str), "Record type: %s.",
-	         type_str);
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.",
+	                   type_str);
+	if (ret <= 0 || ret >= sizeof(info_str)) {
+		*info_str = '\0';
+	}
 
 	if (zc->master) {
 		/*!< \todo REPLACE WITH FATAL ERROR */
