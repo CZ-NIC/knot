@@ -901,6 +901,11 @@ void dig_clean(dig_params_t *params)
 		query_free((query_t *)n);
 	}
 
+#if USE_DNSTAP
+	// Cleanup dnstap.
+	dt_writer_free(params->config->dt_writer);
+#endif
+
 	// Clean up config.
 	query_free((query_t *)params->config);
 
@@ -1077,6 +1082,24 @@ static int parse_type(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
+#if USE_DNSTAP
+static int parse_dnstap_export(const char *value, query_t *query)
+{
+	DBG("Exporting to dnstap output file %s\n", value);
+
+	if (query->dt_writer != NULL) {
+		dt_writer_free(query->dt_writer);
+	}
+
+	query->dt_writer = dt_writer_create(value, "kdig " PACKAGE_VERSION);
+	if (query->dt_writer == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+#endif
+
 static void complete_servers(query_t *query, const query_t *conf)
 {
 	node_t *n = NULL;
@@ -1187,6 +1210,11 @@ void complete_queries(list_t *queries, const query_t *conf)
 
 		// Complete nameservers list.
 		complete_servers(q, conf);
+
+#if USE_DNSTAP
+		// Complete dnstap.
+		q->dt_writer = conf->dt_writer;
+#endif
 	}
 }
 
@@ -1194,7 +1222,7 @@ static void dig_help(void)
 {
 	printf("Usage: kdig [-4] [-6] [-dh] [-b address] [-c class] [-p port]\n"
 	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"
-	       "            [-y [algo:]keyname:key] name @server\n"
+	       "            [-y [algo:]keyname:key] [-E tapfile] name @server\n"
 	       "\n"
 	       "       +[no]multiline  Wrap long records to more lines.\n"
 	       "       +[no]short      Show record data only.\n"
@@ -1389,6 +1417,23 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 		*index += add;
+		break;
+	case 'E':
+#if USE_DNSTAP
+		if (val == NULL) {
+			ERR("missing filename\n");
+			return KNOT_EINVAL;
+		}
+
+		if (parse_dnstap_export(val, query) != KNOT_EOK) {
+			ERR("unable to open dnstap output file %s\n", val);
+			return KNOT_EINVAL;
+		}
+		*index += add;
+#else
+		ERR("no dnstap support but -E specified\n");
+		return KNOT_EINVAL;
+#endif
 		break;
 	case '-':
 		if (strcmp(opt, "-help") == 0) {

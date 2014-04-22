@@ -30,6 +30,11 @@
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
 
+#if USE_DNSTAP
+# include "dnstap/message.h"
+# include "dnstap/writer.h"
+#endif
+
 static knot_pkt_t* create_query_packet(const query_t *query)
 {
 	knot_pkt_t *packet;
@@ -259,6 +264,7 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 
 static int process_query_packet(const knot_pkt_t        *query,
                                 net_t                   *net,
+                                const query_t           *query_ctx,
                                 const bool              ignore_tc,
                                 const sign_context_t    *sign_ctx,
                                 const knot_key_params_t *key_params,
@@ -306,6 +312,21 @@ static int process_query_packet(const knot_pkt_t        *query,
 			ERR("can't print query packet\n");
 		}
 
+#if USE_DNSTAP
+		// Make the dnstap copy of the query.
+		if (query_ctx->dt_writer != NULL) {
+			Dnstap__Message m;
+			if (dt_message_fill(&m,
+				DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
+				net->srv->ai_addr, net->srv->ai_protocol,
+				query->wire, query->size,
+				&t_query, NULL) == KNOT_EOK)
+			{
+				dt_writer_write(query_ctx->dt_writer,
+				        (const ProtobufCMessage *) &m);
+			}
+		}
+#endif
 		printf("\n");
 	}
 
@@ -320,6 +341,21 @@ static int process_query_packet(const knot_pkt_t        *query,
 
 		// Get stop reply time.
 		gettimeofday(&t_end, NULL);
+
+#if USE_DNSTAP
+		// Make the dnstap copy of the response.
+		if (query_ctx->dt_writer != NULL) {
+			Dnstap__Message m;
+			if (dt_message_fill(&m,
+			        DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE,
+			        net->srv->ai_addr, net->srv->ai_protocol,
+			        in, in_len, &t_query, &t_end) == KNOT_EOK)
+			{
+				dt_writer_write(query_ctx->dt_writer,
+				        (const ProtobufCMessage *) &m);
+			}
+		}
+#endif
 
 		// Create reply packet structure to fill up.
 		reply = knot_pkt_new(in, in_len, NULL);
@@ -359,8 +395,8 @@ static int process_query_packet(const knot_pkt_t        *query,
 
 		net->socktype = SOCK_STREAM;
 
-		return process_query_packet(query, net, true, sign_ctx,
-		                            key_params, style);
+		return process_query_packet(query, net, query_ctx, true,
+		                            sign_ctx, key_params, style);
 	}
 
 	// Check for question sections equality.
@@ -437,6 +473,7 @@ static void process_query(const query_t *query)
 			// Loop over all resolved addresses for remote.
 			while (net.srv != NULL) {
 				ret = process_query_packet(out_packet, &net,
+							   query,
 							   query->ignore_tc,
 							   &query->sign_ctx,
 							   &query->key_params,

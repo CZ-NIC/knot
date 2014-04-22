@@ -81,6 +81,10 @@ Use TSIG key with a name \fIkeyname\fR to authenticate the request. The \fIalgo\
 part specifies the algorithm (the default is hmac\-md5) and \fIkey\fR specifies
 the shared secret encoded in Base64.
 .TP
+.BI \-E \ tapfile
+Export a dnstap trace of the response messages received to the file
+\fItapfile\fR. If \fB+qr\fR is specified, also export query messages.
+.TP
 .BR + [ no ] multiline
 Wrap long records to more lines and improve human readability.
 .TP

@@ -32,6 +32,10 @@
 #include "utils/common/params.h"	// protocol_t
 #include "utils/common/exec.h"		// sign_context_t
 
+#if USE_DNSTAP
+# include "dnstap/writer.h"
+#endif
+
 #define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
 
 /*! \brief Operation mode of dig. */
@@ -112,6 +116,10 @@ typedef struct {
 	knot_key_params_t key_params;
 	/*!< Context for operations with signatures. */
 	sign_context_t	sign_ctx;
+#if USE_DNSTAP
+	/*!< Context for dnstap writer output. */
+	dt_writer_t	*dt_writer;
+#endif
 } query_t;
 
 /*! \brief Settings for dig. */

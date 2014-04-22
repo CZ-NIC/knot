@@ -313,6 +313,11 @@ khost_LDADD      = libknotus.la libknots.la libknot.la
 knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
 knsec3hash_LDADD = libknotus.la libknots.la libknot.la
 
+if HAVE_DNSTAP
+kdig_LDADD	+= dnstap/libdnstap.la
+khost_LDADD	+= dnstap/libdnstap.la
+endif
+
 # Create storage and run-time directories
 install-data-hook:
 	$(INSTALL) -d $(DESTDIR)/@config_dir@
