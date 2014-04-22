@@ -138,10 +138,14 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 
 	value_t *fval = NULL;
 	int ret = hattrie_find_leq(tree, (char*)lf+1, *lf, &fval);
-	if (fval) *found = (zone_node_t *)(*fval);
+	if (fval) {
+		*found = (zone_node_t *)(*fval);
+	}
 	int exact_match = 0;
 	if (ret == 0) {
-		*previous = (*found)->prev;
+		if (fval) {
+			*previous = (*found)->prev;
+		}
 		exact_match = 1;
 	} else if (ret < 0) {
 		*previous = *found;
@@ -160,7 +164,8 @@ int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
 	}
 
 	/* Previous node for proof must be non-empty and authoritative. */
-	if ((*previous)->rrset_count == 0 || (*previous)->flags & NODE_FLAGS_NONAUTH) {
+	if (*previous &&
+	    ((*previous)->rrset_count == 0 || (*previous)->flags & NODE_FLAGS_NONAUTH)) {
 		*previous = (*previous)->prev;
 	}
 
