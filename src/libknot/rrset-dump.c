@@ -1792,8 +1792,9 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t   *data = knot_rrset_rr_rdata(rrset, pos);
-	uint16_t  data_len = knot_rrset_rr_size(rrset, pos);
+	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
+	uint8_t *data = knot_rdata_data(rr);
+	uint16_t data_len = knot_rdata_rdlen(rr);
 
 	int ret = 0;
 

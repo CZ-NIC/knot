@@ -86,9 +86,10 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 
 	int rc = 0;
 	dbg_edns_verb("Parsing options.\n");
-	uint16_t size = knot_rrset_rr_size(rrset, 0);
+	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, 0);
+	uint16_t size = knot_rdata_rdlen(rr);
 	if (size > 0) {
-		uint8_t *raw = knot_rrset_rr_rdata(rrset, 0);
+		uint8_t *raw = knot_rdata_data(rr);
 		size_t pos = 0;
 		while (pos < size) {
 			// ensure there is enough data to parse the OPTION CODE

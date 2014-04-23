@@ -199,7 +199,8 @@ static bool rrset_empty(const knot_rrset_t *rrset)
 		return true;
 	}
 	if (rr_count == 1) {
-		return knot_rrset_rr_size(rrset, 0) == 0;
+		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, 0);
+		return knot_rdata_rdlen(rr) == 0;
 	}
 	return false;
 }

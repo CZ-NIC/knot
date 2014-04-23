@@ -57,14 +57,15 @@ typedef enum tsig_off_t {
  */
 static uint8_t* tsig_rdata_seek(const knot_rrset_t *rr, tsig_off_t id, size_t nb)
 {
-	uint8_t *rd = knot_rrset_rr_rdata(rr, 0);
+	const knot_rdata_t *rdata = knot_rdataset_at(&rr->rrs, 0);
+	uint8_t *rd = knot_rdata_data(rdata);
 	if (rd == NULL) {
 		return NULL;
 	}
 
 	/* TSIG RR names should be already sanitized on parse. */
 	int alg_len = knot_dname_size(rd);
-	uint16_t lim = knot_rrset_rr_size(rr, 0);
+	uint16_t lim = knot_rdata_rdlen(rdata);
 	if (lim < alg_len + 5 * sizeof(uint16_t)) {
 		dbg_tsig("TSIG: rdata: not enough items "
 		         "(has %"PRIu16", min %zu).\n",
@@ -224,7 +225,8 @@ int tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 
 const knot_dname_t *tsig_rdata_alg_name(const knot_rrset_t *tsig)
 {
-	return knot_rrset_rr_rdata(tsig, 0);
+	const knot_rdata_t *rr = knot_rdataset_at(&tsig->rrs, 0);
+	return knot_rdata_data(rr);
 }
 
 knot_tsig_algorithm_t tsig_rdata_alg(const knot_rrset_t *tsig)
@@ -467,8 +469,9 @@ size_t tsig_wire_actsize(const knot_rrset_t *tsig)
 int tsig_rdata_is_ok(const knot_rrset_t *tsig)
 {
 	/*! \todo Check size, needs to check variable-length fields. */
+	const knot_rdata_t *rr = knot_rdataset_at(&tsig->rrs, 0);
 	return (tsig
-	        && knot_rrset_rr_rdata(tsig, 0) != NULL
+	        && knot_rdata_data(rr) != NULL
 	        && tsig_rdata_seek(tsig, TSIG_OTHER_O, 0) != NULL
 	        && tsig_rdata_alg_name(tsig) != NULL
 	        && tsig_rdata_time_signed(tsig) != 0);

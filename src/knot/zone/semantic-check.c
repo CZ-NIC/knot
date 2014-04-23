@@ -264,9 +264,8 @@ static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 	/* check that Zone key bit it set - position 7 in net order */
 	const uint16_t mask = 1 << 8; //0b0000000100000000;
 
-	uint16_t flags =
-		knot_wire_read_u16(knot_rrset_rr_rdata(rrset, rdata_pos));
-
+	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, rdata_pos);
+	uint16_t flags = knot_wire_read_u16(knot_rdata_data(rr));
 	if (flags & mask) {
 		return KNOT_EOK;
 	} else {
@@ -382,9 +381,9 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		}
 
 		/* Calculate keytag. */
+		const knot_rdata_t *rr = knot_rdataset_at(&dnskey_rrset->rrs, i);
 		uint16_t dnskey_key_tag =
-			knot_keytag(knot_rrset_rr_rdata(dnskey_rrset, i),
-		                    knot_rrset_rr_size(dnskey_rrset, i));
+			knot_keytag(knot_rdata_data(rr), knot_rdata_rdlen(rr));
 		if (key_tag_rrsig != dnskey_key_tag) {
 			continue;
 		}

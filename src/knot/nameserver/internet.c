@@ -267,7 +267,8 @@ static int put_authority_soa(knot_pkt_t *pkt, struct query_data *qdata,
 			knot_dname_free(&dname_cpy, &pkt->mm);
 			return ret;
 		}
-		knot_rrset_rr_set_ttl(&copy, 0, min);
+		knot_rdata_t *soa_rr = knot_rdataset_at(&copy.rrs, 0);
+		knot_rdata_set_ttl(soa_rr, min);
 
 		flags |= KNOT_PF_FREE;
 		soa_rrset = copy;
