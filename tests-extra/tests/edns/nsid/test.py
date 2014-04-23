@@ -3,7 +3,6 @@
 '''Test for EDNS0/NSID identification'''
 
 from dnstest.test import Test
-import socket
 
 t = Test()
 
@@ -30,12 +29,7 @@ resp.check_edns(nsid=name)
 
 # 2) FQDN hostname.
 resp = server2.dig("example.com", "SOA", nsid=True)
-try:
-    addrinfo = socket.getaddrinfo(socket.gethostname(), 0, socket.AF_UNSPEC,
-                                  socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
-    resp.check_edns(nsid=addrinfo[0][3])
-except:
-    resp.check_edns(nsid=socket.gethostname())
+resp.check_edns(nsid=t.hostname)
 
 # 3) Explicitly disabled.
 resp = server3.dig("example.com", "SOA", nsid=True)
