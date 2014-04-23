@@ -30,7 +30,12 @@ resp.check_edns(nsid=name)
 
 # 2) FQDN hostname.
 resp = server2.dig("example.com", "SOA", nsid=True)
-resp.check_edns(nsid=socket.gethostname())
+try:
+    addrinfo = socket.getaddrinfo(socket.gethostname(), 0, socket.AF_UNSPEC,
+                                  socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
+    resp.check_edns(nsid=addrinfo[0][3])
+except:
+    resp.check_edns(nsid=socket.gethostname())
 
 # 3) Explicitly disabled.
 resp = server3.dig("example.com", "SOA", nsid=True)
