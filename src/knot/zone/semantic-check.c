@@ -264,8 +264,8 @@ static int check_dnskey_rdata(const knot_rrset_t *rrset, size_t rdata_pos)
 	/* check that Zone key bit it set - position 7 in net order */
 	const uint16_t mask = 1 << 8; //0b0000000100000000;
 
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, rdata_pos);
-	uint16_t flags = knot_wire_read_u16(knot_rdata_data(rr));
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, rdata_pos);
+	uint16_t flags = knot_wire_read_u16(knot_rdata_data(rr_data));
 	if (flags & mask) {
 		return KNOT_EOK;
 	} else {
@@ -333,7 +333,7 @@ static int check_rrsig_rdata(err_handler_t *handler,
 
 	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; ++i) {
-		if (original_ttl != knot_rrset_rr_ttl(rrset, i)) {
+		if (original_ttl != knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, i))) {
 			err_handler_handle_error(handler, node,
 			                         ZC_ERR_RRSIG_RDATA_TTL,
 			                         info_str);
@@ -381,9 +381,9 @@ static int check_rrsig_rdata(err_handler_t *handler,
 		}
 
 		/* Calculate keytag. */
-		const knot_rdata_t *rr = knot_rdataset_at(&dnskey_rrset->rrs, i);
+		const knot_rdata_t *rr_data = knot_rdataset_at(&dnskey_rrset->rrs, i);
 		uint16_t dnskey_key_tag =
-			knot_keytag(knot_rdata_data(rr), knot_rdata_rdlen(rr));
+			knot_keytag(knot_rdata_data(rr_data), knot_rdata_rdlen(rr_data));
 		if (key_tag_rrsig != dnskey_key_tag) {
 			continue;
 		}
@@ -461,7 +461,7 @@ static int check_rrsig_in_rrset(err_handler_t *handler,
 	}
 
 	const knot_rdata_t *sig_rr = knot_rdataset_at(&rrsigs, 0);
-	if (knot_rrset_rr_ttl(rrset, 0) != knot_rdata_ttl(sig_rr)) {
+	if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != knot_rdata_ttl(sig_rr)) {
 		err_handler_handle_error(handler, node,
 		                         ZC_ERR_RRSIG_TTL,
 		                         info_str);

@@ -69,8 +69,7 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 
 	// TTL has switched bytes
 	uint32_t ttl;
-	dbg_edns_detail("TTL: %u\n", knot_rrset_rr_ttl(rrset, 0));
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_rr_ttl(rrset, 0));
+	knot_wire_write_u32((uint8_t *)&ttl, knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)));
 	// first byte of TTL is extended RCODE
 	dbg_edns_detail("TTL: %u\n", ttl);
 	memcpy(&opt_rr->ext_rcode, &ttl, 1);
@@ -86,10 +85,10 @@ int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
 
 	int rc = 0;
 	dbg_edns_verb("Parsing options.\n");
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, 0);
-	uint16_t size = knot_rdata_rdlen(rr);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, 0);
+	uint16_t size = knot_rdata_rdlen(rr_data);
 	if (size > 0) {
-		uint8_t *raw = knot_rdata_data(rr);
+		uint8_t *raw = knot_rdata_data(rr_data);
 		size_t pos = 0;
 		while (pos < size) {
 			// ensure there is enough data to parse the OPTION CODE

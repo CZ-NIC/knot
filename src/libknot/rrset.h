@@ -125,18 +125,6 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
  */
 void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
 
-/* ----------- Getters / Setters (legacy, functionality in rdata_t) ------------ */
-
-/*!
- * \brief Returns TTL of an RR on a given position.
- *
- * \param rrset  RRSet holding RR RDATA.
- * \param pos    RR position.
- *
- * \return TTL.
- */
-uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
-
 /* ---------- Wire conversions (legacy, to be done in knot_pkt_t) ----------- */
 
 /*!

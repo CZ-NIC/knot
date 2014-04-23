@@ -41,8 +41,8 @@ static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 	}
 
 	size_t size = 0;
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
-	uint8_t *rdata = knot_rdata_data(rr);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, pos);
+	uint8_t *rdata = knot_rdata_data(rr_data);
 	assert(rdata);
 
 	/* Two shorts at the beginning. */
@@ -63,8 +63,8 @@ static uint16_t rrset_rdata_naptr_bin_chunk_size(const knot_rrset_t *rrset,
 static size_t rrset_rdata_remainder_size(const knot_rrset_t *rrset,
                                          uint16_t offset, size_t pos)
 {
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
-	return knot_rdata_rdlen(rr) - offset;
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, pos);
+	return knot_rdata_rdlen(rr_data) - offset;
 }
 
 static int knot_rrset_header_to_wire(const knot_rrset_t *rrset, uint32_t ttl,
@@ -149,7 +149,8 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 
 	/* Put RR header to wire. */
 	size_t size = 0;
-	int ret = knot_rrset_header_to_wire(rrset, knot_rrset_rr_ttl(rrset, rdata_pos),
+	int ret = knot_rrset_header_to_wire(rrset,
+	                                    knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, rdata_pos)),
 	                                    pos, max_size,
 	                                    compr, &size);
 	if (ret != KNOT_EOK) {
@@ -168,8 +169,8 @@ static int knot_rrset_rdata_to_wire_one(const knot_rrset_t *rrset,
 	}
 
 	/* Get pointer into RDATA array. */
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, rdata_pos);
-	uint8_t *rdata = knot_rdata_data(rr);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, rdata_pos);
+	uint8_t *rdata = knot_rdata_data(rr_data);
 	assert(rdata);
 	/* Offset into one RDATA array. */
 	size_t offset = 0;
@@ -415,16 +416,6 @@ void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm)
 	if (rrset) {
 		knot_rdataset_clear(&rrset->rrs, mm);
 		knot_dname_free(&rrset->owner, mm);
-	}
-}
-
-uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos)
-{
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
-	if (rr) {
-		return knot_rdata_ttl(rr);
-	} else {
-		return 0;
 	}
 }
 

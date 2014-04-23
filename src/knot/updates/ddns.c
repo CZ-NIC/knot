@@ -210,7 +210,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
                           const knot_zone_contents_t *zone, uint16_t *rcode,
                           list_t *rrset_list)
 {
-	if (knot_rrset_rr_ttl(rrset, 0) != 0) {
+	if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0) {
 		return KNOT_EMALF;
 	}
 
@@ -671,9 +671,12 @@ static int process_add_normal(const zone_node_t *node,
 	 * RR in the node's RRSet. If not, refuse the UPDATE.
 	 */
 	knot_rrset_t rr_in_zone = node_rrset(node, rr->type);
-	if (node_rrtype_exists(node, rr->type) &&
-	    knot_rrset_rr_ttl(rr, 0) != knot_rrset_rr_ttl(&rr_in_zone, 0)) {
-		return KNOT_ETTL;
+	if (node_rrtype_exists(node, rr->type)) {
+		const knot_rdata_t *add_data = knot_rdataset_at(&rr->rrs, 0);
+		const knot_rdata_t *zone_data = knot_rdataset_at(&rr_in_zone.rrs, 0);
+		if (knot_rdata_ttl(add_data) != knot_rdata_ttl(zone_data)) {
+			return KNOT_ETTL;
+		}
 	}
 
 	const bool apex_ns = node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
@@ -890,7 +893,7 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 			return KNOT_EMALF;
 		}
 	} else if (rrset->rclass == KNOT_CLASS_NONE) {
-		if (knot_rrset_rr_ttl(rrset, 0) != 0
+		if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0
 		    || knot_rrtype_is_metatype(rrset->type)) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
@@ -928,7 +931,7 @@ static uint16_t ret_to_rcode(int ret)
 {
 	if (ret == KNOT_EMALF) {
 		return KNOT_RCODE_FORMERR;
-	} else if (ret == KNOT_EDENIED) {
+	} else if (ret == KNOT_EDENIED || ret == KNOT_ETTL) {
 		return KNOT_RCODE_REFUSED;
 	} else {
 		return KNOT_RCODE_SERVFAIL;

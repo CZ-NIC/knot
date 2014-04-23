@@ -1792,9 +1792,9 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, pos);
-	uint8_t *data = knot_rdata_data(rr);
-	uint16_t data_len = knot_rdata_rdlen(rr);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, pos);
+	uint8_t *data = knot_rdata_data(rr_data);
+	uint16_t data_len = knot_rdata_rdlen(rr_data);
 
 	int ret = 0;
 
@@ -2010,8 +2010,8 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; i++) {
 		// Dump rdata owner, class, ttl and type.
-		ret = knot_rrset_txt_dump_header(rrset,
-		                                 knot_rrset_rr_ttl(rrset, i),
+		const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, i);
+		ret = knot_rrset_txt_dump_header(rrset, knot_rdata_ttl(rr_data),
 		                                 dst + len, maxlen - len, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;

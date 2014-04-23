@@ -70,11 +70,11 @@ static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset)
 /*! \brief Checks if the added RR has the same TTL as the first RR in the node. */
 static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
 {
-	if (rrset->type == KNOT_RRTYPE_RRSIG) {
+	if (rrset->type == KNOT_RRTYPE_RRSIG || node_data->rrs.rr_count == 0) {
 		return false;
 	}
 
-	const uint32_t inserted_ttl = knot_rrset_rr_ttl(rrset, 0);
+	const uint32_t inserted_ttl = knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0));
 	// Get first RR from node.
 	const knot_rdata_t *node_rdata = knot_rdataset_at(&node_data->rrs, 0);
 	const uint32_t node_ttl = knot_rdata_ttl(node_rdata);
