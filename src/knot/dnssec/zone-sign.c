@@ -762,6 +762,7 @@ static int remove_invalid_dnskeys(const knot_rrset_t *soa,
 
 	uint16_t dnskeys_rdata_count = dnskeys->rrs.rr_count;
 	for (uint16_t i = 0; i < dnskeys_rdata_count; i++) {
+		dnskeys_data = knot_rdataset_at(&dnskeys->rrs, i);
 		uint8_t *rdata = knot_rdata_data(dnskeys_data);
 		uint16_t rdata_size = knot_rdata_rdlen(dnskeys_data);
 		uint16_t keytag = knot_keytag(rdata, rdata_size);
