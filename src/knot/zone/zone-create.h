@@ -82,9 +82,33 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader);
  */
 void zonefile_close(zloader_t *loader);
 
+/*!
+ * \brief Adds one RR into zone.
+ *
+ * \param zl  Zone loader.
+ * \param rr  RR to add.
+ *
+ * \return KNOT_E*
+ */
 int zcreator_step(zcreator_t *zl, const knot_rrset_t *rr);
 
+/*!
+ * \brief Scanner error processing function.
+ * \param scanner  Scanner to use.
+ */
 void process_error(zs_scanner_t *scanner);
+
+/*!
+ * \brief Logs TTL mismatch error.
+ *
+ * \param node    Node with TTL mismatch.
+ * \param rr      RR that caused the mismatch.
+ * \param master  Master/slave switch.
+ *
+ * \retval KNOT_EOK if slave.
+ * \retval KNOT_ETTL if master.
+ */
+int log_ttl_error(const zone_node_t *node, const knot_rrset_t *rr, bool master);
 
 #endif /* _KNOTD_ZONELOAD_H_ */
 

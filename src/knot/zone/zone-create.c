@@ -76,8 +76,7 @@ static bool handle_err(zcreator_t *zc,
 	}
 }
 
-static int log_ttl(const zcreator_t *zc, const zone_node_t *node,
-                   const knot_rrset_t *rr)
+int log_ttl_error(const zone_node_t *node, const knot_rrset_t *rr, bool master)
 {
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
@@ -91,11 +90,11 @@ static int log_ttl(const zcreator_t *zc, const zone_node_t *node,
 		*info_str = '\0';
 	}
 
-	if (zc->master) {
+	if (master) {
 		/*!< \todo REPLACE WITH FATAL ERROR */
 		err_handler_handle_error(&err_handler, node,
 		                         ZC_ERR_TTL_MISMATCH, info_str);
-		return KNOT_EMALF;
+		return KNOT_ETTL;
 	} else {
 		err_handler_handle_error(&err_handler, node,
 		                         ZC_ERR_TTL_MISMATCH, info_str);
@@ -129,7 +128,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	assert(node);
 
 	if (ttl_err) {
-		ret = log_ttl(zc, node, rr);
+		ret = log_ttl_error(node, rr, zc->master);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

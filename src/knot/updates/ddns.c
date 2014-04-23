@@ -667,18 +667,6 @@ static int process_add_normal(const zone_node_t *node,
 		return KNOT_EOK;
 	}
 
-	/* First check if the TTL of the new RR is equal to that of the first
-	 * RR in the node's RRSet. If not, refuse the UPDATE.
-	 */
-	knot_rrset_t rr_in_zone = node_rrset(node, rr->type);
-	if (node_rrtype_exists(node, rr->type)) {
-		const knot_rdata_t *add_data = knot_rdataset_at(&rr->rrs, 0);
-		const knot_rdata_t *zone_data = knot_rdataset_at(&rr_in_zone.rrs, 0);
-		if (knot_rdata_ttl(add_data) != knot_rdata_ttl(zone_data)) {
-			return KNOT_ETTL;
-		}
-	}
-
 	const bool apex_ns = node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
 	                     rr->type == KNOT_RRTYPE_NS;
 	return add_rr_to_chgset(rr, changeset, apex_ns ? apex_ns_rem : NULL);
@@ -931,7 +919,7 @@ static uint16_t ret_to_rcode(int ret)
 {
 	if (ret == KNOT_EMALF) {
 		return KNOT_RCODE_FORMERR;
-	} else if (ret == KNOT_EDENIED || ret == KNOT_ETTL) {
+	} else if (ret == KNOT_EDENIED) {
 		return KNOT_RCODE_REFUSED;
 	} else {
 		return KNOT_RCODE_SERVFAIL;
