@@ -1152,7 +1152,7 @@ int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
 		}
 	}
 
-	return KNOT_EOK;
+	return xfrin_finalize_updated_zone(contents, true);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1177,15 +1177,6 @@ int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
 		xfrin_rollback_update(sec_chsets, &z_new);
 		dbg_xfrin("Failed to apply changesets to zone: "
 		          "%s\n", knot_strerror(ret));
-		return ret;
-	}
-
-	const bool handle_nsec3 = true;
-	ret = xfrin_finalize_updated_zone(z_new, handle_nsec3);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to finalize updated zone: %s\n",
-		          knot_strerror(ret));
-		xfrin_rollback_update(sec_chsets, &z_new);
 		return ret;
 	}
 

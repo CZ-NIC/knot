@@ -1967,18 +1967,19 @@ static int diff_after_load(zone_t *zone, zone_t *old_zone,
 		assert(!zones_changesets_empty(*diff_chs));
 		/* Apply DNSSEC changeset to the new zone. */
 		ret = xfrin_apply_changesets_directly(zone->contents, *diff_chs);
-		if (ret == KNOT_EOK) {
-			ret = xfrin_finalize_updated_zone(
-			                        zone->contents, true);
-		}
-
 		if (ret != KNOT_EOK) {
 			log_zone_error("DNSSEC: Zone %s - Signing failed while "
 			               "modifying zone (%s).\n",
 			               zone->conf->name, knot_strerror(ret));
+			/* HACK ALERT!
+			 * Since we've applied the changesets directly
+			 * to the zone, we have to clean *old* data,
+			 * if something went wrong, not new data as
+			 * we would do normally. Not doing so would
+			 * cause double frees. New zone API will fix this.
+			 */
+			xfrin_cleanup_successful_update(*diff_chs);
 			knot_changesets_free(diff_chs);
-			/* No need to do rollback, the whole new zone will be
-			 * discarded. */
 			return ret;
 		}
 
@@ -2054,9 +2055,10 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			       old_zone->contents != zone->contents);
 			ret = xfrin_apply_changesets_directly(zone->contents,
 			                                      diff_chs);
-			if (ret == KNOT_EOK) {
-				ret = xfrin_finalize_updated_zone(
-				                    zone->contents, true);
+			if (ret != KNOT_EOK) {
+				/* HACK ALERT! see previous call of
+				 * 'apply_changesets_directly' for explanation. */
+				xfrin_cleanup_successful_update(diff_chs);
 			}
 		} else {
 			assert(old_zone != NULL);
@@ -2064,6 +2066,10 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 
 			ret = xfrin_apply_changesets(zone, diff_chs,
 			                             &new_contents);
+			if (ret != KNOT_EOK) {
+				// Do a regular rollback, since we did a copy.
+				xfrin_rollback_update(diff_chs, &new_contents);
+			}
 		}
 
 		if (ret != KNOT_EOK) {
@@ -2071,8 +2077,6 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			               "modifying zone (%s).\n",
 			               zone->conf->name, knot_strerror(ret));
 			zones_store_changesets_rollback(transaction);
-			/* No zone rollback needed, the whole new zone will be
-			 * discarded. */
 			return ret;
 		}
 
