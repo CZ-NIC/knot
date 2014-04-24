@@ -103,12 +103,8 @@ void process_error(zs_scanner_t *scanner);
  *
  * \param node    Node with TTL mismatch.
  * \param rr      RR that caused the mismatch.
- * \param master  Master/slave switch.
- *
- * \retval KNOT_EOK if slave.
- * \retval KNOT_ETTL if master.
  */
-int log_ttl_error(const zone_node_t *node, const knot_rrset_t *rr, bool master);
+void log_ttl_error(const zone_node_t *node, const knot_rrset_t *rr);
 
 #endif /* _KNOTD_ZONELOAD_H_ */
 

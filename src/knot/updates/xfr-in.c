@@ -845,14 +845,15 @@ static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
 		}
 	}
 	// Insert new RR to RRSet, data will be copied.
-	bool ttl_err = false;
-	int ret = node_add_rrset(node, rr, &ttl_err);
+	int ret = node_add_rrset(node, rr);
 	if (ret != KNOT_EOK) {
-		return ret;
-	}
-	if (ttl_err) {
-		ret = log_ttl_error(node, rr, master);
-		if (ret != KNOT_EOK) {
+		if (ret == KNOT_ETTL) {
+			log_ttl_error(node, rr);
+			if (master) {
+				// TTL errors fatal on master.
+				return KNOT_ETTL;
+			}
+		} else {
 			return ret;
 		}
 	}

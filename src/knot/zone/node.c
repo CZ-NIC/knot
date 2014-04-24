@@ -164,7 +164,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src)
 	return dst;
 }
 
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset)
 {
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -173,13 +173,14 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
-			if (ttl_err) {
-				// Do TTL check.
-				*ttl_err = ttl_error(node_data, rrset);
+			const bool ttl_err = ttl_error(node_data, rrset);
+			int ret = knot_rdataset_merge(&node_data->rrs,
+			                              &rrset->rrs, NULL);
+			if (ret != KNOT_EOK) {
+				return ret;
+			} else {
+				return ttl_err ? KNOT_ETTL : KNOT_EOK;
 			}
-
-			return knot_rdataset_merge(&node_data->rrs,
-			                           &rrset->rrs, NULL);
 		}
 	}
 

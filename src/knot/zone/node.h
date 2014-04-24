@@ -126,12 +126,10 @@ zone_node_t *node_shallow_copy(const zone_node_t *src);
  *
  * \param node     Node to add the RRSet to.
  * \param rrset    RRSet to add.
- * \param ttl_err  Set to true if TTL error occured when inserting. New zone API
- *                 will obsolete this parameter.
  *
  * \return KNOT_E*
  */
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, bool *ttl_err);
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset);
 
 /*!
  * \brief Removes data for given RR type from node.
