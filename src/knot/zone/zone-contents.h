@@ -93,7 +93,7 @@ void knot_zone_contents_set_gen_old(knot_zone_contents_t *contents);
 void knot_zone_contents_set_gen_new(knot_zone_contents_t *contents);
 
 int knot_zone_contents_add_rr(knot_zone_contents_t *z,
-                              const knot_rrset_t *rr, zone_node_t **n, bool *ttl_err);
+                              const knot_rrset_t *rr, zone_node_t **n);
 
 int knot_zone_contents_remove_node(knot_zone_contents_t *contents,
 	const knot_dname_t *owner);
