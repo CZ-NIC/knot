@@ -64,36 +64,11 @@ AS_IF([test "x$YACC_BISON" != "xbison"],
     [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
-# Check for Ragel
-AC_ARG_WITH([ragel],
-    AC_HELP_STRING([--with-ragel=path], [Path to Ragel binary. [default=auto]]),
-    [with_ragel=$withval],
-    [with_ragel=auto])
-
-AS_CASE([$with_ragel],
-    [yes|auto], [AC_PATH_PROG([RAGEL], [ragel], [false])],
-    [no], [RAGEL=false],
-    [*], [RAGEL=$with_ragel],
-)
-
-AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "false")
-
-# Set FSM type for Ragel
+# Set zone parser type
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--disable-fastparser], [Don't use faster zone parser]),
-    [],
-    [enable_fastparser=yes])
-
-AS_CASE([$enable_fastparser],
-    [no], [AC_SUBST([FSM_TYPE], [-T0])],
-    [yes], [AC_SUBST([FSM_TYPE], [-G2])],
-    [*], [
-        AS_IF([test "$RAGEL" = "false"],
-	    [AC_MSG_ERROR([Ragel is needed to generate different parsers])])
-        AC_SUBST([FSM_TYPE], [$enable_fastparser])
-    ])
-AM_CONDITIONAL([G2_PARSER], test "$enable_fastparser" = "yes")
-AM_CONDITIONAL([T0_PARSER], test "$enable_fastparser" = "no")
+    AS_HELP_STRING([--disable-fastparser], [Use slower zone parser]),
+    [], [enable_fastparser=yes])
+AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = yes])
 
 # Systemd integration
 AC_ARG_ENABLE([systemd],
@@ -398,9 +373,9 @@ echo "
   CFlags: ${CFLAGS} ${CPPFLAGS}
   LDFlags: ${LDFLAGS}
   Libs: ${LIBS}
-  Ragel: ${RAGEL} ${FSM_TYPE}
+  Fast zone parser: ${enable_fastparser}
   Utils with IDN: ${libidn}
-  Use systemd notifications: ${enable_systemd}
+  Systemd notifications: ${enable_systemd}
   Code coverage: ${enable_code_coverage}
 
   Continue with 'make' command"
