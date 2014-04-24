@@ -22,7 +22,7 @@ up = master.update(zone)
 up.add("mail.example.com.", 1000, "A", "1.2.3.4")
 up.send("REFUSED")
 resp = master.dig("mail.example.com.", "A")
-resp.check_record(section="answer", rtype="A", rdata="192.0.2.3")
+resp.check_record(section="answer", rtype="A", ttl="3600", rdata="192.0.2.3")
 resp.check_record(section="answer", rtype="A", nordata="1.2.3.4")
 
 # Try to add two RRs belonging to one RRSet, but with different TTLs
@@ -48,7 +48,7 @@ up.send("NOERROR")
 resp = master.dig("mail.example.com.", "ANY")
 resp.check_record(section="answer", rtype="A", ttl="1000", rdata="1.2.3.4")
 resp.check_record(section="answer", rtype="A", nordata="192.0.2.3")
-resp.check_record(section="answer", rtype="AAAA", rdata="2001:db8::3")
+resp.check_record(section="answer", rtype="AAAA", ttl="3600", rdata="2001:db8::3")
 
 # Some prerequisities for the next test
 up = master.update(zone)
