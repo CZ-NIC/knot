@@ -28,7 +28,6 @@
 #define _KNOT_IXFR_H_
 
 #include "libknot/packet/pkt.h"
-#include "knot/zone/zonedb.h"
 
 struct query_data;
 struct answer_data;

@@ -30,24 +30,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
-#include "knot/zone/zonedb.h"
-#include "common/lists.h"
-#include "common/sockaddr.h"
+#include "knot/zone/contents.h"
 
 struct query_data;
 
 #define NOTIFY_TIMEOUT 3 /*!< Interval between NOTIFY retries. */
-
-/*!
- * \brief Creates a NOTIFY request message for SOA RR of the given zone.
- *
- * \param zone Zone for which a query should be created.
- *
- * \return new packet
- */
-knot_pkt_t *notify_create_query(const zone_t *zone, mm_ctx_t *mm);
 
 /*!
  * \brief Answer IN class zone NOTIFY message (RFC1996).

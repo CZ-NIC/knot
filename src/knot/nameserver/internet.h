@@ -28,6 +28,7 @@
 #define _KNOT_INTERNET_H_
 
 #include "libknot/packet/pkt.h"
+#include "knot/zone/contents.h"
 
 /* Query data (from query processing). */
 struct query_data;

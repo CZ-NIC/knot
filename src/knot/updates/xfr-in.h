@@ -36,6 +36,8 @@
 #include "knot/server/xfr-handler.h"
 #include "knot/updates/changesets.h"
 
+struct xfr_proc;
+
 /*----------------------------------------------------------------------------*/
 
 typedef enum xfrin_transfer_result {
@@ -114,7 +116,7 @@ int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt);
  *
  * \todo Refactor!!!
  */
-int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, zone_contents_t **zone);
+int xfrin_process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc);
 
 /*!
  * \brief Destroys the whole changesets structure.

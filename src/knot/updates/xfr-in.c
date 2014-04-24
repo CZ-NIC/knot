@@ -39,6 +39,7 @@
 #include "common/descriptor.h"
 #include "libknot/util/utils.h"
 #include "libknot/rdata/soa.h"
+#include "knot/nameserver/axfr.h"
 
 #define KNOT_NS_TSIG_FREQ 100
 
@@ -240,44 +241,30 @@ static void xfrin_take_rr(const knot_pktsection_t *answer, const knot_rrset_t **
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, zone_contents_t **zone)
+int xfrin_process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 {
 	if (pkt == NULL) {
 		return KNOT_EINVAL;
 	}
 
+	int ret = KNOT_EOK;
 	uint16_t rr_id = 0;
 	const knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 
 	xfrin_take_rr(answer, &rr, &rr_id);
-	if (*zone == NULL) {
-		if (rr == NULL) {
-			// Empty transfer.
-			return KNOT_EMALF;
-		}
-		// Transfer start, init zone
-		if (rr->type != KNOT_RRTYPE_SOA) {
-			return KNOT_EMALF;
-		}
-		*zone = zone_contents_new(rr->owner);
-		if (*zone == NULL) {
-			return KNOT_ENOMEM;
-		}
-		xfr->packet_nr = 0;
-	} else {
-		++xfr->packet_nr;
-	}
+	++proc->npkts;
 
 	// Init zone creator
-	zcreator_t zc = {.z = *zone,
+	zcreator_t zc = {.z = proc->zone,
 	                 .master = false, .ret = KNOT_EOK };
 
 	while (rr) {
 		if (rr->type == KNOT_RRTYPE_SOA &&
 		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
 			// Last SOA, last message, check TSIG.
-			int ret = xfrin_check_tsig(pkt, xfr, 1);
+//			int ret = xfrin_check_tsig(pkt, xfr, 1);
+#warning TODO: TSIG API
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -293,7 +280,9 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr, zone_contents
 	}
 
 	// Check possible TSIG at the end of DNS message.
-	return xfrin_check_tsig(pkt, xfr, knot_ns_tsig_required(xfr->packet_nr));
+//	return xfrin_check_tsig(pkt, xfr, knot_ns_tsig_required(xfr->packet_nr));
+#warning TODO: TSIG API
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/

@@ -39,6 +39,7 @@ struct xfr_proc {
 	unsigned npkts;  /* Packets processed. */
 	unsigned nbytes; /* Bytes processed. */
 	struct timeval tstamp; /* Start time. */
+	zone_contents_t *zone; /* Processed zone. */
 };
 
 /*! \brief Generic transfer processing (reused for IXFR).
@@ -57,7 +58,7 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb put, struct query_data *qdata);
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int axfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
+int axfr_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief Processes an AXFR query response.

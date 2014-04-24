@@ -28,9 +28,44 @@
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
 #include "libknot/rdata/soa.h"
+#include "libknot/dnssec/random.h"
+#include "knot/nameserver/internet.h"
 #include "knot/nameserver/notify.h"
 #include "knot/nameserver/requestor.h"
 #include "knot/nameserver/process_answer.h"
+
+#define BOOTSTRAP_RETRY (30) /*!< Interval between AXFR bootstrap retries. */
+#define BOOTSTRAP_MAXTIME (24*60*60) /*!< Maximum AXFR retry interval cap of 24 hours. */
+
+/*! \brief Progressive bootstrap retry timer. */
+static void bootstrap_next(uint32_t *timer)
+{
+	*timer *= 2;
+	*timer += knot_random_uint32_t() % BOOTSTRAP_RETRY;
+	if (*timer > BOOTSTRAP_MAXTIME) {
+		*timer = BOOTSTRAP_MAXTIME;
+	}
+}
+
+static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
+{
+	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
+	if (pkt == NULL) {
+		return NULL;
+	}
+
+	knot_wire_set_aa(pkt->wire);
+	knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, qtype);
+
+	/* Put current SOA in authority (optional). */
+	zone_contents_t *contents = zone->contents;
+	if (!zone_contents_is_empty(contents)) {
+		knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
+		knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa_rr, 0);
+	}
+
+	return pkt;
+}
 
 /* -- zone events handling callbacks --------------------------------------- */
 
@@ -89,8 +124,11 @@ static int event_reload(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
 	}
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW + 10);
-	zone_events_schedule(zone, ZONE_EVENT_FLUSH,   zone_config->dbsync_timeout);
+	if (!zone_contents_is_empty(contents)) {
+		zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->xfr_in.bootstrap_retry);
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH,   zone_config->dbsync_timeout);
+	}
 
 	log_zone_info("Zone '%s' loaded.\n", zone_config->name);
 	return KNOT_EOK;
@@ -108,7 +146,7 @@ static int event_refresh(zone_t *zone)
 	zone_contents_t *contents = zone->contents;
 	if (contents == NULL) {
 		/* No contents, schedule retransfer now. */
-		zone_events_schedule(zone, ZONE_EVENT_XFER,  ZONE_EVENT_NOW);
+		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 		return KNOT_EOK;
 	}
 
@@ -119,54 +157,109 @@ static int event_refresh(zone_t *zone)
 	}
 
 	/* Create a memory pool for this task. */
+	int ret = KNOT_EOK;
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, 4096);
+	char addr_str[SOCKADDR_STRLEN] = {'\0'};
 
 	/* Create a SOA query. */
-	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, &mm);
+	knot_pkt_t *query = zone_query(zone, KNOT_RRTYPE_SOA, &mm);
 	if (query == NULL) {
-		mp_delete(mm.ctx);
 		return KNOT_ENOMEM;
 	}
 
-	zone_node_t *apex = contents->apex;
-	knot_pkt_put_question(query, apex->owner, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-
 	/* Create requestor instance. */
-	struct process_answer_param param;
 	struct requestor re;
-	requestor_init(&re, &mm);
-	re.origin = &master->via;
-	re.remote = &master->addr;
+	requestor_init(&re, NS_PROC_ANSWER, &mm);
+
+	/* Create a request. */
+	struct request *req = requestor_make(&re, &master->via, &master->addr, query);
+	struct process_answer_param param;
 	param.zone = zone;
 	param.query = query;
 	param.remote = &master->addr;
-	char addr_str[SOCKADDR_STRLEN] = {'\0'};
-	sockaddr_tostr(&master->addr, addr_str, sizeof(addr_str));
+	requestor_enqueue(&re, req, &param);
 
+	/* Execute the SOA request. */
 	struct timeval tv = { conf()->max_conn_hs, 0 };
-	requestor_enqueue(&re, query, NS_PROC_ANSWER, &param);
-	int ret = requestor_exec(&re, &tv);
+	ret = requestor_exec(&re, &tv);
 	if (ret != KNOT_EOK) {
+		sockaddr_tostr(&master->addr, addr_str, sizeof(addr_str));
 		log_zone_error("SOA query for '%s' to '%s': %s\n",
 		               zone->conf->name, addr_str, knot_strerror(ret));
 	}
 
+	/*! \todo Try another master if it fails. */
+
 	requestor_clear(&re);
 
 	/* Reschedule retry. */
-	knot_rdataset_t *soa = node_rdataset(apex, KNOT_RRTYPE_SOA);
+	knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
+
 	mp_delete(mm.ctx);
-	return KNOT_EOK;
+	return ret;
 }
 
 static int event_xfer(zone_t *zone)
 {
 	assert(zone);
 	fprintf(stderr, "XFER of '%s'\n", zone->conf->name);
-#warning TODO: implement event_xfer
-	return KNOT_ENOTSUP;
+
+	const conf_iface_t *master = zone_master(zone);
+	if (master == NULL) {
+		return KNOT_EOK;
+	}
+
+	/* Create a memory pool for this task. */
+	int ret = KNOT_EOK;
+	mm_ctx_t mm;
+	mm_ctx_mempool(&mm, 4096);
+	char addr_str[SOCKADDR_STRLEN] = {'\0'};
+
+	/* Create a zone transfer request. */
+	/*! \todo Select transfer mode. */
+	knot_pkt_t *query = zone_query(zone, KNOT_RRTYPE_AXFR, &mm);
+	if (query == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	/* Create requestor instance. */
+	struct requestor re;
+	requestor_init(&re, NS_PROC_ANSWER, &mm);
+
+	/* Create a request. */
+	struct request *req = requestor_make(&re, &master->via, &master->addr, query);
+	struct process_answer_param param;
+	param.zone = zone;
+	param.query = query;
+	param.remote = &master->addr;
+	requestor_enqueue(&re, req, &param);
+
+	/* Execute the request. */
+	struct timeval tv = { conf()->max_conn_hs, 0 };
+	ret = requestor_exec(&re, &tv);
+	if (ret != KNOT_EOK) {
+		sockaddr_tostr(&master->addr, addr_str, sizeof(addr_str));
+		log_zone_error("Zone transfer of '%s' to '%s': %s\n",
+		               zone->conf->name, addr_str, knot_strerror(ret));
+	}
+
+	requestor_clear(&re);
+
+	/* Reschedule retry. */
+	if (zone_contents_is_empty(zone->contents)) {
+		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
+		bootstrap_next(&zone->xfr_in.bootstrap_retry);
+	} else {
+		knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->xfr_in.bootstrap_retry);
+		zone->xfr_in.bootstrap_retry = 0;
+	}
+
+	mp_delete(mm.ctx);
+	return ret;
 }
 
 static int event_expire(zone_t *zone)
@@ -187,29 +280,14 @@ static int event_flush(zone_t *zone)
 {
 	assert(zone);
 	fprintf(stderr, "FLUSH of '%s'\n", zone->conf->name);
-#warning TODO: implement event_flush
-#if 0
-	assert(event);
-	dbg_zones("zone: zonefile SYNC timer event\n");
-
-	/* Fetch zone. */
-	zone_t *zone = (zone_t *)event->data;
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = zones_zonefile_sync_from_ev(zone);
 
 	/* Reschedule. */
-	rcu_read_lock();
 	int next_timeout = zone->conf->dbsync_timeout;
 	if (next_timeout > 0) {
-		zones_schedule_zonefile_sync(zone, next_timeout * 1000);
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, next_timeout);
 	}
-	rcu_read_unlock();
-	return ret;
-#endif
-	return KNOT_ENOTSUP;
+
+	return zone_flush_journal(zone);
 }
 
 static int event_notify(zone_t *zone)
@@ -218,44 +296,43 @@ static int event_notify(zone_t *zone)
 	fprintf(stderr, "NOTIFY of '%s'\n", zone->conf->name);
 
 	/* Create a memory pool for this task. */
+	int ret = KNOT_EOK;
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, 4096);
+	char addr_str[SOCKADDR_STRLEN] = {'\0'};
 
 	/* Create requestor instance. */
-	struct process_answer_param param;
 	struct requestor re;
-	requestor_init(&re, &mm);
+	requestor_init(&re, NS_PROC_ANSWER, &mm);
+	struct process_answer_param param = { '\0' };
+	param.zone = zone;
 
 	/* Walk through configured remotes and send messages. */
-	int ret = KNOT_EOK;
 	conf_remote_t *remote = 0;
 	WALK_LIST(remote, zone->conf->acl.notify_out) {
 		conf_iface_t *iface = remote->remote;
 
-		char addr_str[SOCKADDR_STRLEN] = {'\0'};
-		sockaddr_tostr(&iface->addr, addr_str, sizeof(addr_str));
-
-		/* Create notification message. */
-#warning TODO: streamline API so the requestor only gets a function to build a packet
-		knot_pkt_t *query = notify_create_query(zone, &mm);
+		knot_pkt_t *query = zone_query(zone, KNOT_RRTYPE_SOA, &mm);
+		knot_wire_set_opcode(query->wire, KNOT_OPCODE_NOTIFY);
 		if (query == NULL) {
-			mp_delete(mm.ctx);
-			return KNOT_ENOMEM;
+			ret = KNOT_ENOMEM;
+			break;
 		}
 
-#warning TODO: requestor should accept remote/origin/key per-request
-#warning       this would make an API to allow multiple requests processed at once
-		re.origin = &iface->via;
-		re.remote = &iface->addr;
-		param.zone = zone;
-		param.query = query;
+		/* Create a request. */
+		struct request *req = requestor_make(&re, &iface->via, &iface->addr, query);
 		param.remote = &iface->addr;
+		param.query = query;
+		requestor_enqueue(&re, req, &param);
 
+		/* Execute the NOTIFY message. */
 		struct timeval tv = { zone->conf->notify_timeout, 0 };
-		requestor_enqueue(&re, query, NS_PROC_ANSWER, &param);
 		ret = requestor_exec(&re, &tv);
-		log_zone_error("NOTIFY message for '%s' to '%s': %s\n",
-		               zone->conf->name, addr_str, knot_strerror(ret));
+		if (ret != KNOT_EOK) {
+			sockaddr_tostr(&iface->addr, addr_str, sizeof(addr_str));
+			log_zone_error("NOTIFY message for '%s' to '%s': %s\n",
+			               zone->conf->name, addr_str, knot_strerror(ret));
+		}
 	}
 
 	requestor_clear(&re);

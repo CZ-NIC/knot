@@ -40,25 +40,6 @@
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_pkt_t *notify_create_query(const zone_t *zone, mm_ctx_t *mm)
-{
-	if (zone == NULL || zone->contents == NULL) {
-		return NULL;
-	}
-
-	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
-	if (pkt == NULL) {
-		return NULL;
-	}
-
-	zone_node_t *apex = zone->contents->apex;
-	knot_wire_set_aa(pkt->wire);
-	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
-	knot_pkt_put_question(pkt, apex->owner, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-	return pkt;
-
-}
-
 /* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
 #define NOTIFY_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
