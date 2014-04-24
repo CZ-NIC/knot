@@ -50,7 +50,7 @@ typedef struct remote_cmdargs_t {
 typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
 
 /*! \brief Callback prototype for per-zone operations. */
-typedef int (remote_zonef_t)(server_t*, const zone_t *);
+typedef int (remote_zonef_t)(server_t*, zone_t *);
 
 /*! \brief Remote command table item. */
 typedef struct remote_cmd_t {
@@ -114,31 +114,29 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 }
 
 /*! \brief Zone refresh callback. */
-static int remote_zone_refresh(server_t *server, const zone_t *zone)
+static int remote_zone_refresh(server_t *server, zone_t *zone)
 {
 	if (!server || !zone) {
 		return KNOT_EINVAL;
 	}
 
-#warning Implement me (schedule zone refresh)
-
+	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
 
 /*! \brief Zone flush callback. */
-static int remote_zone_flush(server_t *server, const zone_t *zone)
+static int remote_zone_flush(server_t *server, zone_t *zone)
 {
 	if (!server || !zone) {
 		return KNOT_EINVAL;
 	}
 
-#warning Implement me (schedule zone file flush)
-
+	zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
 
 /*! \brief Sign zone callback. */
-static int remote_zone_sign(server_t *server, const zone_t *zone)
+static int remote_zone_sign(server_t *server, zone_t *zone)
 {
 	if (!server || !zone) {
 		return KNOT_EINVAL;
@@ -340,7 +338,8 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		knot_zonedb_foreach(s->zone_db, zones_schedule_refresh, ZONE_EVENT_NOW);
+		knot_zonedb_foreach(s->zone_db, zone_events_schedule,
+		                    ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		return KNOT_EOK;
 	}
 

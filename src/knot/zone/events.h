@@ -106,31 +106,6 @@ void zone_events_start(struct zone_t *zone);
 
 /* ------------ Legacy API to be converted (not functional now) ------------- */
 
-#define REFRESH_DEFAULT -1
-
-/*!
- * \brief Update zone timers.
- *
- * REFRESH/RETRY/EXPIRE timers are updated according to SOA.
- *
- * \param zone Related zone.
- * \param time Specific timeout or REFRESH_DEFAULT for default.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ERROR
- */
-int zones_schedule_refresh(struct zone_t *zone, int64_t timeout);
-
-/*!
- * \brief Schedule NOTIFY after zone update.
- * \param zone Related zone.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ERROR
- */
-int zones_schedule_notify(struct zone_t *zone, struct server_t *server);
-
 /*!
  * \brief Schedule DNSSEC event.
  * \param zone Related zone.

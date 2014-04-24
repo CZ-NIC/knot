@@ -27,10 +27,6 @@
 #include "knot/server/server.h"
 #include "libknot/dname.h"
 
-/* Constants */
-
-#define XFRIN_BOOTSTRAP_DELAY 2000 /*!< AXFR bootstrap avg. delay */
-
 /*- zone file status --------------------------------------------------------*/
 
 /*!

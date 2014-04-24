@@ -63,46 +63,6 @@ int xfrin_transfer_needed(const zone_contents_t *zone,
                           knot_pkt_t *soa_response);
 
 /*!
- * \brief Creates normal query for the given zone name and the SOA type.
- *
- * \param zone Zone for which a query should be created.
- * \param pkt Packet to be written.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
- */
-int xfrin_create_soa_query(const zone_t *zone, knot_pkt_t *pkt);
-
-/*!
- * \brief Creates normal query for the given zone name and the AXFR type.
- *
- * \param zone Zone for which a query should be created.
- * \param pkt Packet to be written.
- *
- * \todo Parameter use_tsig probably not needed.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
- */
-int xfrin_create_axfr_query(const zone_t *zone, knot_pkt_t *pkt);
-
-/*!
- * \brief Creates normal query for the given zone name and the IXFR type.
- *
- * \param zone Zone for which a query should be created.
- * \param pkt Packet to be written.
- *
- * \todo Parameter use_tsig probably not needed.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
- */
-int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt);
-
-/*!
  * \brief Processes one incoming packet of AXFR transfer by updating the given
  *        zone.
  *

@@ -109,41 +109,6 @@ int xfrin_transfer_needed(const zone_contents_t *zone,
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_create_soa_query(const zone_t *zone, knot_pkt_t *pkt)
-{
-	return knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int xfrin_create_axfr_query(const zone_t *zone, knot_pkt_t *pkt)
-{
-	return knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_AXFR);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int xfrin_create_ixfr_query(const zone_t *zone, knot_pkt_t *pkt)
-{
-	if (zone->contents == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = knot_pkt_put_question(pkt, zone->name, KNOT_CLASS_IN, KNOT_RRTYPE_IXFR);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	/* Add SOA RR to authority section for IXFR. */
-	zone_node_t *apex = zone->contents->apex;
-	knot_rrset_t soa = node_rrset(apex, KNOT_RRTYPE_SOA);
-	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	ret = knot_pkt_put(pkt, COMPR_HINT_QNAME, &soa, 0);
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
 static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
                             int tsig_req)
 {

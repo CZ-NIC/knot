@@ -51,11 +51,12 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* RFC1996 require SOA question. */
+	zone_t *zone = (zone_t *)qdata->zone;
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
 	/* Check valid zone, transaction security. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata->zone->notify_in, qdata);
+	NS_NEED_AUTH(zone->notify_in, qdata);
 
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
@@ -73,19 +74,10 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 		}
 	}
 
-	int next_state = NS_PROC_FAIL;
-
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
-	int ret =  zones_schedule_refresh((zone_t *)qdata->zone, ZONE_EVENT_NOW);
+	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 
 	/* Format resulting log message. */
-	if (ret != KNOT_EOK) {
-		next_state = NS_PROC_NOOP; /* RFC1996: Ignore. */
-		NOTIFY_LOG(LOG_ERR, "%s", knot_strerror(ret));
-	} else {
-		next_state = NS_PROC_DONE;
-		NOTIFY_LOG(LOG_INFO, "received serial %u.", serial);
-	}
-
-	return next_state;
+	NOTIFY_LOG(LOG_INFO, "received serial %u.", serial);
+	return NS_PROC_DONE;
 }
