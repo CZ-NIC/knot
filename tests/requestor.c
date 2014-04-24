@@ -64,18 +64,19 @@ static void* responder_thread(void *arg)
 #define CONNECTED_TESTS    4
 #define TESTS_COUNT DISCONNECTED_TESTS + CONNECTED_TESTS
 
-static knot_pkt_t *make_query(mm_ctx_t *mm)
+static struct request *make_query(struct requestor *requestor, struct sockaddr_storage *remote)
 {
-	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, mm);
+	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	assert(pkt);
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-	return pkt;
+
+	return requestor_make(requestor, NULL, remote, pkt);
 }
 
-static void test_disconnected(struct requestor *requestor)
+static void test_disconnected(struct requestor *requestor, struct sockaddr_storage *remote)
 {
 	/* Enqueue packet. */
-	int ret = requestor_enqueue(requestor, make_query(requestor->mm), &dummy_module, NULL);
+	int ret = requestor_enqueue(requestor, make_query(requestor, remote), NULL);
 	is_int(KNOT_EOK, ret, "requestor: disconnected/enqueue");
 
 	/* Wait for completion. */
@@ -84,10 +85,10 @@ static void test_disconnected(struct requestor *requestor)
 	is_int(KNOT_ECONNREFUSED, ret, "requestor: disconnected/wait");
 }
 
-static void test_connected(struct requestor *requestor)
+static void test_connected(struct requestor *requestor, struct sockaddr_storage *remote)
 {
 	/* Enqueue packet. */
-	int ret = requestor_enqueue(requestor, make_query(requestor->mm), &dummy_module, NULL);
+	int ret = requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
 	is_int(KNOT_EOK, ret, "requestor: connected/enqueue");
 
 	/* Wait for completion. */
@@ -98,7 +99,7 @@ static void test_connected(struct requestor *requestor)
 	/* Enqueue multiple queries. */
 	ret = KNOT_EOK;
 	for (unsigned i = 0; i < 10; ++i) {
-		ret |= requestor_enqueue(requestor, make_query(requestor->mm), &dummy_module, NULL);
+		ret |= requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
 	}
 	is_int(KNOT_EOK, ret, "requestor: multiple enqueue");
 
@@ -127,12 +128,10 @@ int main(int argc, char *argv[])
 
 	/* Initialize requestor. */
 	struct requestor requestor;
-	requestor_init(&requestor, &mm);
-	requestor.remote = &remote;
-	requestor.origin = NULL;
+	requestor_init(&requestor, &dummy_module, &mm);
 
 	/* Test requestor in disconnected environment. */
-	test_disconnected(&requestor);
+	test_disconnected(&requestor, &remote);
 
 	/* Bind to random port. */
 	int origin_fd = net_bound_socket(SOCK_STREAM, &remote);
@@ -147,7 +146,7 @@ int main(int argc, char *argv[])
 	pthread_create(&thread, 0, responder_thread, &origin_fd);
 
 	/* Test requestor in connected environment. */
-	test_connected(&requestor);
+	test_connected(&requestor, &remote);
 
 	/* TSIG secured. */
 #warning TODO: when ported sign_packet/verify_packet

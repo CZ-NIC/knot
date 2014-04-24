@@ -125,6 +125,8 @@ src/knot/nameserver/process_query.c
 src/knot/nameserver/process_query.h
 src/knot/nameserver/query_module.c
 src/knot/nameserver/query_module.h
+src/knot/nameserver/requestor.c
+src/knot/nameserver/requestor.h
 src/knot/nameserver/update.c
 src/knot/nameserver/update.h
 src/knot/other/debug.h
@@ -308,6 +310,7 @@ tests/pkt.c
 tests/process_answer.c
 tests/process_query.c
 tests/query_module.c
+tests/requestor.c
 tests/rrl.c
 tests/rrset.c
 tests/sample_conf.h

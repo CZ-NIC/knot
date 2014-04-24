@@ -23,6 +23,7 @@ struct request {
 	node_t node;
 	int fd;
 	int state;
+	const struct sockaddr_storage *remote, *origin;
 	knot_pkt_t *query;
 	knot_process_t process;
 	uint8_t *pkt_buf;
@@ -118,12 +119,13 @@ static int request_recv(struct request *request, struct timeval *timeout)
 		return NS_PROC_FAIL;
 	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
-void requestor_init(struct requestor *requestor, mm_ctx_t *mm)
+void requestor_init(struct requestor *requestor, const knot_process_module_t *module, mm_ctx_t *mm)
 {
 	memset(requestor, 0, sizeof(struct requestor));
+	requestor->module = module;
 	requestor->mm = mm;
 	init_list(&requestor->pending);
 }
@@ -139,33 +141,47 @@ bool requestor_finished(struct requestor *requestor)
 	return requestor == NULL || EMPTY_LIST(requestor->pending);
 }
 
-int requestor_enqueue(struct requestor *requestor, knot_pkt_t *query,
-                      const knot_process_module_t *module, void *param)
+struct request *requestor_make(struct requestor *requestor,
+                               const struct sockaddr_storage *from,
+                               const struct sockaddr_storage *to,
+                               knot_pkt_t *query)
 {
-	if (requestor == NULL || query == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Fetch a bound socket. */
-	int fd = net_connected_socket(SOCK_STREAM, requestor->remote,
-	                              requestor->origin, O_NONBLOCK);
-	if (fd < 0) {
-		return KNOT_ECONN;
+	if (requestor == NULL || query == NULL || to == NULL) {
+		return NULL;
 	}
 
 	/* Form a pending request. */
 	struct request *request = request_make(requestor->mm);
 	if (request == NULL) {
-		close(fd);
-		return KNOT_ENOMEM;
+		return NULL;
 	}
 
-	request->fd = fd;
+	request->origin = from;
+	request->remote = to;
+	request->fd = -1;
 	request->query = query;
+	return request;
+}
+
+int requestor_enqueue(struct requestor *requestor, struct request * request, void *param)
+{
+	if (requestor == NULL || request == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Fetch a bound socket. */
+	int fd = net_connected_socket(SOCK_STREAM, request->remote,
+	                              request->origin, O_NONBLOCK);
+	if (fd < 0) {
+		return KNOT_ECONN;
+	}
+
+	/* Form a pending request. */
+	request->fd = fd;
 	request->state = NS_PROC_FULL; /* We have a query to be sent. */
 	memcpy(&request->process.mm, requestor->mm, sizeof(mm_ctx_t));
 
-	knot_process_begin(&request->process, param, module);
+	knot_process_begin(&request->process, param, requestor->module);
 
 	add_tail(&requestor->pending, &request->node);
 
@@ -198,15 +214,18 @@ static int exec_request(struct request *last, struct timeval *timeout)
 
 	/* Receive and process expected answers. */
 	while(last->state == NS_PROC_MORE) {
-		ret = request_recv(last, timeout);
-		if (ret != KNOT_EOK) {
-			return ret;
+		int rcvd = request_recv(last, timeout);
+		if (rcvd <= 0) {
+			return rcvd;
 		}
 
-		last->state = knot_process_in(last->pkt_buf, ret, &last->process);
+		last->state = knot_process_in(last->pkt_buf, rcvd, &last->process);
+		if (last->state == NS_PROC_FAIL) {
+			return KNOT_ERROR;
+		}
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 int requestor_exec(struct requestor *requestor, struct timeval *timeout)

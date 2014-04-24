@@ -20,13 +20,15 @@
 #include "knot/nameserver/process_answer.h"
 #include "common/lists.h"
 
+struct request;
+
 /*! \brief Requestor structure.
  *
  *  Requestor holds a FIFO of pending queries with given remote.
  */
 struct requestor {
 	/* Requestor target and source address. */
-	const struct sockaddr_storage *remote, *origin;
+	const knot_process_module_t *module;
 
 	//knot_sign_context_t tsig; /* @note not implemented */
 
@@ -37,7 +39,7 @@ struct requestor {
 /*!
  * \brief Initialize requestor structure.
  */
-void requestor_init(struct requestor *requestor, mm_ctx_t *mm);
+void requestor_init(struct requestor *requestor, const knot_process_module_t *module, mm_ctx_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.
@@ -46,6 +48,13 @@ void requestor_clear(struct requestor *requestor);
 
 /*! \brief Return true if there are no pending queries. */
 bool requestor_finished(struct requestor *requestor);
+
+
+/*! \brief Make request out of endpoints and query. */
+struct request *requestor_make(struct requestor *requestor,
+                               const struct sockaddr_storage *from,
+                               const struct sockaddr_storage *to,
+                               knot_pkt_t *query);
 
 /*!
  * \brief Enqueue a query for processing.
@@ -60,8 +69,7 @@ bool requestor_finished(struct requestor *requestor);
  *
  * \return KNOT_EOK or error
  */
-int requestor_enqueue(struct requestor *requestor, knot_pkt_t *query,
-                      const knot_process_module_t *module, void *param);
+int requestor_enqueue(struct requestor *requestor, struct request *request, void *param);
 
 /*!
  * \brief Close first pending request.
