@@ -1,0 +1,33 @@
+; File written on Thu Apr 24 15:36:29 2014
+; dnssec_signzone version 9.9.3-rpz2+rl.13214.22-P2-Ubuntu-1:9.9.3.dfsg.P2-4ubuntu1.1
+example.com.				      3600 IN SOA	dns1.example.com. hostmaster.example.com. 3 10800 3600 1209600 7200
+example.com.				      3600 IN RRSIG	SOA 5 2 3600 20500101000000 20140424123629 26931 example.com. EhKJox6H7CkP3MaazA/h8Er0MPLkag8MZ3XI2LpKoEXL1bB/veP7dkHI ZNlUU8o/VMFnuTU31lnpGK55Mjdl+bcvTyFYa+rf+WVYLf+wvq18ClN/ OjquqXCSZG1PZ8EO7ehj6pwRrtFpM42wjhU2J55U8HH4giUCCXtrawCg JwA=
+example.com.				      3600 IN NS	dns1.example.com.
+example.com.				      3600 IN NS	dns2.example.com.
+example.com.				      3600 IN RRSIG	NS 5 2 3600 20500101000000 20140424123629 26931 example.com. efXIzAKSk9l0M9x8XSrDrnJ4QdBkiunsfSsXgA7aZKzSk0klj3Nzs8e4 NTHmwAxLIirRiCEzQcoYeHEbrzZbxxp4k8PUE/CfhttlANF2m/amJk7a JiOwetdNAO7xULIDjzdxbuKVfqF/IzGFgDpsG662fl2fGjUjlK2gWr62 pNM=
+example.com.				      3600 IN MX	10 mail.example.com.
+example.com.				      3600 IN RRSIG	MX 5 2 3600 20500101000000 20140424123629 26931 example.com. jPp0ZZ5ekaNEkOb9SBgTcTwqDLuTyUMnk2gzX1wCpznk99c1ydAexB3D aveKTdWzqble/w6/JIcWVgkdFLYJt1LMpZ9m0dwuAJkYB9h2ITEVdAG5 rLG5cB9hHhqIrCuIB95VaGN87cQSCUCq/2zkhff7X/uNUKJwBMHDlSQG M0g=
+example.com.				      7200 IN NSEC	dns1.example.com. NS SOA MX RRSIG NSEC DNSKEY
+example.com.				      7200 IN RRSIG	NSEC 5 2 7200 20500101000000 20140424123629 26931 example.com. YYD6j7NY2ibe2AfyfMHgB/87budXM5fH3h8Erzy+G/4yQVX7AxyVRP10 EoKSSO3ydJvTjdqYLt+uAm0TnsOIs6OufT5uW+dzLGblMwubYkItvgQ1 qDEXjuZqGjlxcJ59VjuGII00WyeN4bqUjrJ5JGyY62QH3nnaoShQhYGg vps=
+example.com.				      3600 IN DNSKEY	256 3 5 AwEAAceip6n1xgT5vUutYA+5Rf6xnLinPztKytdhCGHspOFd/EHN9t36 EDB0xBHBKR5WEKv8NMk6uF8QXZI7PUFzQ2gPOsnr6ezY54MRDY/tb/sv wVFLSR6yzdb+9MYofWPTaAqBNqxnhnn18aib6xvPVsebquprIfpKuUrg aFkqKygP
+example.com.				      3600 IN DNSKEY	257 3 5 AwEAAbGn7Ws42gRgmNmqZoZrdMUm7bzhDyNg3IfaAwXeV+kgm2C/WBsn u8TUpZrV5fi0b0duywPFCRXZsJtSBSWDjoI5wD8HNUQ+TgTPWkkzACMm BU21RXPeoBYbRBx7TvN1TyBRfXZO7pldWv5r7ax6HQ1XQtEjIJyQsc2g lQ+YR2feVN76rGiBCeJshFJQk4MZx6pyJdMgWf9gBSp/bZ4Cezy4AtlL mSQyM6oWX/N7lVDKid2gV3V13Pot0DQSn0ZLIHRcbxDup/ztOtLKMYgN VU2AdleuORgBuxJgeJWOfS48mJexdRm4fmJu9dYZGbcWsZfpybQAlS4b 7QxhO6kel9c=
+example.com.				      3600 IN RRSIG	DNSKEY 5 2 3600 20500101000000 20140424123629 26931 example.com. W8CTd9ddCWSVINhz1no+A9APclnSXthsR7h2D2cMUVF6umsxtKnsvvtA wu3+3grGcnglek9qW5RzbgFYzxwpNuNxRsTZbEjx/K+lUd0+DIcp5lG9 A75l53vD52doT2IW5/iU8ioRHDGnJ3+tYL3pdkpnV7AdBjwcLqdfgn4W bB0=
+example.com.				      3600 IN RRSIG	DNSKEY 5 2 3600 20500101000000 20140424123629 41407 example.com. ouIQC+v1aZXrMSFigm7qYndCgnMxdEaZpOK2IanVIzO/LHQrFPED/+cC eKHCpVFM+5rntq30ZD2EN/8X0CZh51sLkwraInVjgbGQV9RH6XcPpgcB Qe0T39dJyVivmMN6/tsSJtti+Cid3ReCicgAzToAsDk2leDeudkpqYU2 cRRcUYF5vMSdlzTEUKiWpffiJFL0d1AGsAYKcJbyb1tBe6d6F3GJYu2C WHyPQ82S2iC/ySY6I9TWf63INftggE1hcmJEc6WvclVpJk2o5RCLWdDR 872EqpZIW9mUcLJOf/Yyylbydj79uCNk6m3ScHpmoDr23NyxonWns4aY qXUbMg==
+dns1.example.com.			      3600 IN A		192.0.2.1
+dns1.example.com.			      3600 IN RRSIG	A 5 3 3600 20500101000000 20140424123629 26931 example.com. e3grqrfNoO3QfRHf8Y/968yauetK5U8dkMwU3zUNG+AHMObf+oJH0nz5 Glurzswk3nl/71ShYM4ZR10MuJ3cAyCeMQ+T8aRz8lTw87auLkKPjncr 4sQM8Jtg88/o4Ih3KkvfvTpnydC6jA5QS2eSCXS6eIcBZdp3n0R/BGMk I44=
+dns1.example.com.			      3600 IN AAAA	2001:db8::1
+dns1.example.com.			      3600 IN RRSIG	AAAA 5 3 3600 20500101000000 20140424123629 26931 example.com. tOC096uezc6wMiCa1aEqz7maWQBknahy0RbapJHxmXRLFyY+l2C9h8nZ EsBPJjwO33xu1YgYUIl3SZm+u8VYonoiRJJfnpIqUkHerFK1j2mViOva ZEi7Du2uWq2ZmLBsiSKQucWhi9pcS1q2SsPaVBImtdY8sfMOQhG1gXSR jMs=
+dns1.example.com.			      7200 IN NSEC	dns2.example.com. A AAAA RRSIG NSEC
+dns1.example.com.			      7200 IN RRSIG	NSEC 5 3 7200 20500101000000 20140424123629 26931 example.com. KbvO11Z0jy5Tk5JJkNZuLnV3HaDTk13dWebVE7SggWHDFUTeV/G8MsFx eO+SepdVgpp3qUqjF5rNhuZqThhFLwOjZtXoWITiyKtEAWsPnLGcfA+t 1oA6pD9nAds3AkKIRIZe8LnCAh05hki54bhA1ikx2ApkwEzpp4WGAr00 mRI=
+dns2.example.com.			      3600 IN A		192.0.2.2
+dns2.example.com.			      3600 IN RRSIG	A 5 3 3600 20500101000000 20140424123629 26931 example.com. QhzIfYDeidYQw0yvRsGVszHttZGHRT+52woPQFS4urAPQbDlTqzArt+4 qbDLgTZ7IjSyb0CRhiEm/FC9rg6LaxKKzJK84QrIR8gIDsHfvV2O6nBq 0oPfxXA807i6XclJHEn0+Pkx+hS5C63rkaK0HMwQuZ4l9Bn9OC4Gp3DB UD4=
+dns2.example.com.			      3600 IN AAAA	2001:db8::2
+dns2.example.com.			      3600 IN RRSIG	AAAA 5 3 3600 20500101000000 20140424123629 26931 example.com. Ehzzvbg47XCUWe17Pvh60GHZ6nBK0AF+qVD0dYVN1XchOcvnnQyH1GSz S+EPaB1/CnsMGK/Oy+sk6dvFhL5BJTbU5wL5Xfge5ap5jUe9xBvDWp7W 22dsvE2vlfSeiQ3EMN5J/MSFeD6H31uhIMY6+Z2LmtgY6aY0/NiFSJIX rrc=
+dns2.example.com.			      7200 IN NSEC	mail.example.com. A AAAA RRSIG NSEC
+dns2.example.com.			      7200 IN RRSIG	NSEC 5 3 7200 20500101000000 20140424123629 26931 example.com. daI7+KJchAnoZEnW10ruxVsZrXU4oSaL/XLxp77Fi1Ic3toNnL+wcxWu gtcVm+0YEJdbzONAQPehv8uhKCflQERK0zfiju+t4Mm0dG7S/wngiHgA vHe2a9IZXDud2F7+I4id+5Q4KP02NI3F5Q7jRyRdNIvHnFgZORUN+VTR NjY=
+mail.example.com.			      3600 IN A		192.0.2.3
+mail.example.com.			      3600 IN RRSIG	A 5 3 3600 20500101000000 20140424123629 26931 example.com. sbVd/0ZWWhAP16JwsS5ixVYZIrF2hPvZWx+PJLVQmbKqmo6w4lmCNWXp SEyJuco0wnWG5cMGayH/lqWGefgt2u2MH3VfD5eUXNO2mPUtW6QyvP6U rP1jvxiDclRr2e3lPTt8cPy4RJb3F0jNQFolOrNkMpKnzbSqC3RevC3W hgM=
+mail.example.com.			      3600 IN AAAA	2001:db8::3
+mail.example.com.			      3600 IN RRSIG	AAAA 5 3 3600 20500101000000 20140424123629 26931 example.com. Sov5oJswCrcHjIc+X7AoRgaPtMmJsYfCnWj7B0WLmyx5Az1jfkMgiLNP YR8JbgvGwsc93HnRYEnK8STvSGLV6X9+XT/38Rvm78bIY5ZFF6mf7te3 puMX6UvAsb2UZZrov/lrw5YYNeSDnGLhHMUxXEInXMAhnoZ2bZQs8gHp xgI=
+mail.example.com.			      7200 IN NSEC	example.com. A AAAA RRSIG NSEC
+mail.example.com.			      7200 IN RRSIG	NSEC 5 3 7200 20500101000000 20140424123629 26931 example.com. n4WOxjhZFrRxV00qZE6nlQ7DR56TjJR90WzBZQ+cj/P3tVTnV/OMmlPj r5Kl0fo8iWl1sWaxA81T2+HmDqaB+qlkOQdFi2rF9iuiYs/FeiJ83RY6 7opwsmrkUHPPv5WGyw3L4wFx7cOgkWHuEF1KGtakYoTSoAGCiFjsxeEU MK4=
