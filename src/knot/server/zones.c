@@ -2056,13 +2056,8 @@ static int store_chgsets_after_load(zone_t *old_zone, zone_t *zone,
 			ret = xfrin_apply_changesets_directly(zone->contents,
 			                                      diff_chs);
 			if (ret != KNOT_EOK) {
-				/* HACK ALERT!
-				 * Since we've applied the changesets directly
-				 * to the zone, we have to clean *old* data,
-				 * if something went wrong, not new data as
-				 * we would do normally. Not doing so would
-				 * cause double frees. New zone API will fix this.
-				 */
+				/* HACK ALERT! see previous call of
+				 * 'apply_changesets_directly' for explanation. */
 				xfrin_cleanup_successful_update(diff_chs);
 			}
 		} else {
