@@ -874,6 +874,7 @@ static int internet_answer_soa(knot_pkt_t *pkt, struct answer_data *data)
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
 	if (knot_serial_compare(our_serial, their_serial) >= 0) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
 		return NS_PROC_DONE; /* Our zone is up to date. */
 	}
 

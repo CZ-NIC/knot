@@ -103,16 +103,3 @@ void zone_events_cancel_all(struct zone_t *zone);
  * \brief Start the events processing.
  */
 void zone_events_start(struct zone_t *zone);
-
-/* ------------ Legacy API to be converted (not functional now) ------------- */
-
-/*!
- * \brief Schedule DNSSEC event.
- * \param zone Related zone.
- * \param unixtime When to schedule.
- * \param force Force sign or not
- *
- * \return Error code, KNOT_OK if successful.
- */
-int zones_schedule_dnssec(struct zone_t *zone, time_t unixtime);
-

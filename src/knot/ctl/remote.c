@@ -145,17 +145,14 @@ static int remote_zone_sign(server_t *server, zone_t *zone)
 	char *zone_name = knot_dname_to_str(zone->name);
 	log_server_info("Requested zone resign for '%s'.\n", zone_name);
 	free(zone_name);
-#warning TODO: remote_zone_sign should create and wait for zone sign event
-#if 0
-	uint32_t refresh_at = 0;
-	zone_t *wzone = (zone_t *)zone;
 
-	zones_cancel_dnssec(wzone);
-	zones_dnssec_sign(wzone, true, &refresh_at);
-	zones_schedule_dnssec(wzone, refresh_at);
-#endif
+	if (zone->conf->dnssec_enable) {
+		zone->dnssec.next_force = true;
+		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+		return KNOT_EOK;
+	}
 
-	return KNOT_EOK;
+	return KNOT_EINVAL;
 }
 
 /*!
@@ -385,8 +382,6 @@ static int remote_c_signzone(server_t *server, remote_cmdargs_t* arguments)
 	dbg_server("remote: %s\n", __func__);
 
 	if (arguments->argc == 0) {
-		log_server_error("signzone for all zone was requested\n");
-		// TODO
 		return KNOT_ENOTSUP;
 	}
 

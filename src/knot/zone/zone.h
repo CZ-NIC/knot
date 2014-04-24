@@ -84,7 +84,8 @@ typedef struct zone_t {
 	} xfr_in;
 
 	struct {
-		uint32_t refresh_at;  /*!< Next refresh time. */
+		uint32_t refresh_at; /*!< Next DNSSEC resign event. */
+		bool next_force;     /*!< Drop existing signatures. */
 	} dnssec;
 
 } zone_t;

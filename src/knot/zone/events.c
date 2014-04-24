@@ -21,6 +21,7 @@
 #include "common/mempool.h"
 #include "knot/server/server.h"
 #include "knot/updates/changesets.h"
+#include "knot/dnssec/zone-events.h"
 #include "knot/worker/pool.h"
 #include "knot/worker/task.h"
 #include "knot/zone/events.h"
@@ -65,6 +66,34 @@ static knot_pkt_t *zone_query(const zone_t *zone, uint16_t qtype, mm_ctx_t *mm)
 	}
 
 	return pkt;
+}
+
+/*!
+ * \todo Separate signing from zone loading and drop this function.
+ *
+ * DNSSEC signing is planned from two places - after zone loading and after
+ * successful resign. This function just logs the message and reschedules the
+ * DNSSEC timer.
+ *
+ * I would rather see the invocation of the signing from event_dnssec()
+ * function. This would require to split refresh event to zone load and zone
+ * publishing.
+ */
+static void schedule_dnssec(zone_t *zone)
+{
+	// log a message
+
+	char time_str[64] = { 0 };
+	struct tm time_gm = { 0 };
+	time_t unixtime = zone->dnssec.refresh_at;
+	gmtime_r(&unixtime, &time_gm);
+	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+	log_zone_info("DNSSEC: Zone %s - Next event on %s.\n",
+	              zone->conf->name, time_str);
+
+	// schedule
+
+	zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, unixtime);
 }
 
 /* -- zone events handling callbacks --------------------------------------- */
@@ -118,17 +147,19 @@ static int event_reload(zone_t *zone)
 	}
 
 	/* Schedule notify and refresh after load. */
-	const knot_rdataset_t *soa = zone_contents_soa(contents);
-	assert(soa); /* We just checked the contents, it MUST be consistent. */
 	if (zone_master(zone)) {
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	}
 	if (!zone_contents_is_empty(contents)) {
 		zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->xfr_in.bootstrap_retry);
-		zone_events_schedule(zone, ZONE_EVENT_FLUSH,   zone_config->dbsync_timeout);
 	}
+	if (zone->conf->dnssec_enable) {
+		schedule_dnssec(zone);
+	}
+
+	/* Periodic execution. */
+	zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone_config->dbsync_timeout);
 
 	log_zone_info("Zone '%s' loaded.\n", zone_config->name);
 	return KNOT_EOK;
@@ -187,15 +218,14 @@ static int event_refresh(zone_t *zone)
 		sockaddr_tostr(&master->addr, addr_str, sizeof(addr_str));
 		log_zone_error("SOA query for '%s' to '%s': %s\n",
 		               zone->conf->name, addr_str, knot_strerror(ret));
+
+		knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
 	}
 
 	/*! \todo Try another master if it fails. */
 
 	requestor_clear(&re);
-
-	/* Reschedule retry. */
-	knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
 
 	mp_delete(mm.ctx);
 	return ret;
@@ -239,6 +269,7 @@ static int event_xfer(zone_t *zone)
 	/* Execute the request. */
 	struct timeval tv = { conf()->max_conn_hs, 0 };
 	ret = requestor_exec(&re, &tv);
+
 	if (ret != KNOT_EOK) {
 		sockaddr_tostr(&master->addr, addr_str, sizeof(addr_str));
 		log_zone_error("Zone transfer of '%s' to '%s': %s\n",
@@ -249,12 +280,12 @@ static int event_xfer(zone_t *zone)
 
 	/* Reschedule retry. */
 	if (zone_contents_is_empty(zone->contents)) {
-		/* Progressive retry interval up to AXFR_RETRY_MAXTIME */
 		bootstrap_next(&zone->xfr_in.bootstrap_retry);
+		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->xfr_in.bootstrap_retry);
 	} else {
 		knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_retry(soa));
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->xfr_in.bootstrap_retry);
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 		zone->xfr_in.bootstrap_retry = 0;
 	}
 
@@ -287,6 +318,10 @@ static int event_flush(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, next_timeout);
 	}
 
+	if (zone_contents_is_empty(zone->contents)) {
+		return KNOT_EOK;
+	}
+
 	return zone_flush_journal(zone);
 }
 
@@ -304,7 +339,7 @@ static int event_notify(zone_t *zone)
 	/* Create requestor instance. */
 	struct requestor re;
 	requestor_init(&re, NS_PROC_ANSWER, &mm);
-	struct process_answer_param param = { '\0' };
+	struct process_answer_param param = { 0 };
 	param.zone = zone;
 
 	/* Walk through configured remotes and send messages. */
@@ -347,49 +382,42 @@ static int event_dnssec(zone_t *zone)
 	assert(zone);
 	fprintf(stderr, "DNSSEC of '%s'\n", zone->conf->name);
 
-#warning TODO: implement event_dnssec
-	return KNOT_ENOTSUP;
-#if 0
-	knot_changesets_t *chs = knot_changesets_create();
+	knot_changesets_t *chs = knot_changesets_create(1);
 	if (chs == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	knot_changeset_t *ch = knot_changesets_create_changeset(chs);
-	if (ch == NULL) {
-		return KNOT_ENOMEM;
-	}
+	knot_changeset_t *ch = knot_changesets_get_last(chs);
+	assert(ch);
 
+	int ret = KNOT_ERROR;
 	char *zname = knot_dname_to_str(zone->name);
-	msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
+	char *msgpref = sprintf_alloc("DNSSEC: Zone %s -", zname);
 	free(zname);
 	if (msgpref == NULL) {
 		ret = KNOT_ENOMEM;
 		goto done;
 	}
 
-	if (force) {
+	uint32_t refresh_at = 0;
+	if (zone->dnssec.next_force) {
 		log_zone_info("%s Complete resign started (dropping all "
 			      "previous signatures)...\n", msgpref);
+
+		zone->dnssec.next_force = false;
+		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
+		                                  ch, &refresh_at);
 	} else {
 		log_zone_info("%s Signing zone...\n", msgpref);
-	}
-
-	uint32_t new_serial = zones_next_serial(zone);
-
-	if (force) {
-		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
-		                                  ch, refresh_at, new_serial);
-	} else {
 		ret = knot_dnssec_zone_sign(zone->contents, zone->conf,
 		                            ch, KNOT_SOA_SERIAL_UPDATE,
-		                            refresh_at, new_serial);
+		                            &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
 
-	if (!zones_changesets_empty(chs)) {
+	if (!knot_changesets_empty(chs)) {
 		zone_contents_t *new_c = NULL;
 		ret = zone_change_apply_and_store(chs, zone, &new_c, "DNSSEC");
 		chs = NULL; // freed by zone_change_apply_and_store()
@@ -400,20 +428,19 @@ static int event_dnssec(zone_t *zone)
 		}
 	}
 
-	log_zone_info("%s Successfully signed.\n", msgpref);
+	// Schedule dependent events.
+
+	zone->dnssec.refresh_at = refresh_at;
+	schedule_dnssec(zone);
+	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
+	if (zone->conf->dbsync_timeout == 0) {
+		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
+	}
 
 done:
 	knot_changesets_free(&chs);
 	free(msgpref);
 	return ret;
-	knot_
-
-	zones_dnssec_
-
-
-	fprintf(stderr, "RESIGNING ZONE %p\n", zone);
-//	zone_schedule_event(zone, ZONE_EVENT_REFRESH, time);
-#endif
 }
 
 /* -- internal API --------------------------------------------------------- */
@@ -691,48 +718,4 @@ void zone_events_start(zone_t *zone)
 	pthread_mutex_lock(&zone->events.mx);
 	reschedule(&zone->events);
 	pthread_mutex_unlock(&zone->events.mx);
-}
-
-/* ------------ Legacy API to be converted (not functional now) ------------- */
-
-int zones_schedule_dnssec(zone_t *zone, time_t unixtime)
-{
-	if (!zone) {
-		return KNOT_EINVAL;
-	}
-#warning TODO: reimplement schedule_dnssec
-#if 0
-	char *zname = knot_dname_to_str(zone->name);
-
-	// absolute time -> relative time
-
-	time_t now = time(NULL);
-	int32_t relative = 0;
-	if (unixtime <= now) {
-		log_zone_warning("DNSSEC: Zone %s: Signature life time too low, "
-		                 "set higher value in configuration!\n", zname);
-	} else {
-		relative = unixtime - now;
-	}
-
-	// log the message
-
-	char time_str[64] = {'\0'};
-	struct tm time_gm = {0};
-
-	gmtime_r(&unixtime, &time_gm);
-
-	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
-
-	log_zone_info("DNSSEC: Zone %s: Next signing planned on %s.\n",
-	              zname, time_str);
-
-	free(zname);
-
-	// schedule
-
-
-//	evsched_schedule(zone->dnssec.timer, relative * 1000);
-#endif
-	return KNOT_EOK;
 }
