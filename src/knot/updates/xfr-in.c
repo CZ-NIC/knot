@@ -844,29 +844,29 @@ static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
 			return ret;
 		}
 	}
+
 	// Insert new RR to RRSet, data will be copied.
 	int ret = node_add_rrset(node, rr);
-	if (ret != KNOT_EOK) {
+	if (ret == KNOT_EOK || ret == KNOT_ETTL) {
+		// RR added, store for possible rollback.
+		knot_rdataset_t *rrs = node_rdataset(node, rr->type);
+		int data_ret = add_new_data(chset, rrs->data);
+		if (data_ret != KNOT_EOK) {
+			knot_rdataset_clear(rrs, NULL);
+			return data_ret;
+		}
+
 		if (ret == KNOT_ETTL) {
+			// Handle possible TTL errors.
 			log_ttl_error(node, rr);
-			if (master) {
-				// TTL errors fatal on master.
-				return KNOT_ETTL;
+			if (!master) {
+				// TTL errors fatal only for master.
+				return KNOT_EOK;
 			}
-		} else {
-			return ret;
 		}
 	}
 
-	// Get changed RRS and store for possible rollback.
-	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
-	ret = add_new_data(chset, rrs->data);
-	if (ret != KNOT_EOK) {
-		knot_rdataset_clear(rrs, NULL);
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return ret;
 }
 
 static int xfrin_apply_add(knot_zone_contents_t *contents,
