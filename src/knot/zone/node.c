@@ -70,11 +70,11 @@ static int add_rrset_no_merge(zone_node_t *node, const knot_rrset_t *rrset)
 /*! \brief Checks if the added RR has the same TTL as the first RR in the node. */
 static bool ttl_error(struct rr_data *node_data, const knot_rrset_t *rrset)
 {
-	if (rrset->type == KNOT_RRTYPE_RRSIG) {
+	if (rrset->type == KNOT_RRTYPE_RRSIG || node_data->rrs.rr_count == 0) {
 		return false;
 	}
 
-	const uint32_t inserted_ttl = knot_rrset_rr_ttl(rrset, 0);
+	const uint32_t inserted_ttl = knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0));
 	// Get first RR from node.
 	const knot_rdata_t *node_rdata = knot_rdataset_at(&node_data->rrs, 0);
 	const uint32_t node_ttl = knot_rdata_ttl(node_rdata);
@@ -164,7 +164,7 @@ zone_node_t *node_shallow_copy(const zone_node_t *src)
 	return dst;
 }
 
-int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
+int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset)
 {
 	if (node == NULL || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -173,13 +173,14 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset,  bool *ttl_err)
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
-			if (ttl_err) {
-				// Do TTL check.
-				*ttl_err = ttl_error(node_data, rrset);
+			const bool ttl_err = ttl_error(node_data, rrset);
+			int ret = knot_rdataset_merge(&node_data->rrs,
+			                              &rrset->rrs, NULL);
+			if (ret != KNOT_EOK) {
+				return ret;
+			} else {
+				return ttl_err ? KNOT_ETTL : KNOT_EOK;
 			}
-
-			return knot_rdataset_merge(&node_data->rrs,
-			                           &rrset->rrs, NULL);
 		}
 	}
 

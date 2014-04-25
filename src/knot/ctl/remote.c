@@ -967,8 +967,9 @@ int remote_print_txt(const knot_rrset_t *rr, uint16_t i)
 	/* Packet parser should have already checked the packet validity. */
 	char buf[256];
 	uint16_t parsed = 0;
-	uint16_t rlen = knot_rrset_rr_size(rr, i);
-	uint8_t *p = knot_rrset_rr_rdata(rr, i);
+	const knot_rdata_t *rdata = knot_rdataset_at(&rr->rrs, i);
+	uint8_t *p = knot_rdata_data(rdata);
+	uint16_t rlen = knot_rdata_rdlen(rdata);
 	while (parsed < rlen) {
 		memcpy(buf, (const char*)(p+1), *p);
 		buf[*p] = '\0';

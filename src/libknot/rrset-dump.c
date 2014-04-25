@@ -57,6 +57,7 @@ const knot_dump_style_t KNOT_DUMP_STYLE_DEFAULT = {
 	.show_class = false,
 	.show_ttl = true,
 	.verbose = false,
+	.empty_ttl = false,
 	.human_ttl = false,
 	.human_tmstamp = true,
 	.ascii_to_idn = NULL
@@ -1791,8 +1792,9 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		return KNOT_EINVAL;
 	}
 
-	uint8_t   *data = knot_rrset_rr_rdata(rrset, pos);
-	uint16_t  data_len = knot_rrset_rr_size(rrset, pos);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, pos);
+	uint8_t *data = knot_rdata_data(rr_data);
+	uint16_t data_len = knot_rdata_rdlen(rr_data);
 
 	int ret = 0;
 
@@ -1904,7 +1906,7 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 	}
 
 int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
-                               uint32_t                ttl,
+                               const uint32_t          ttl,
                                char                    *dst,
                                const size_t            maxlen,
                                const knot_dump_style_t *style)
@@ -1933,7 +1935,9 @@ int knot_rrset_txt_dump_header(const knot_rrset_t      *rrset,
 
 	// Dump rrset ttl.
 	if (style->show_ttl) {
-		if (style->human_ttl) {
+		if (style->empty_ttl) {
+			ret = snprintf(dst + len, maxlen - len, "%c", sep);
+		} else if (style->human_ttl) {
 			// Create human readable ttl string.
 			if (time_to_human_str(buf, sizeof(buf), ttl) < 0) {
 				return KNOT_ESPACE;
@@ -2006,8 +2010,8 @@ int knot_rrset_txt_dump(const knot_rrset_t      *rrset,
 	uint16_t rr_count = rrset->rrs.rr_count;
 	for (uint16_t i = 0; i < rr_count; i++) {
 		// Dump rdata owner, class, ttl and type.
-		ret = knot_rrset_txt_dump_header(rrset,
-		                                 knot_rrset_rr_ttl(rrset, i),
+		const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, i);
+		ret = knot_rrset_txt_dump_header(rrset, knot_rdata_ttl(rr_data),
 		                                 dst + len, maxlen - len, style);
 		if (ret < 0) {
 			return KNOT_ESPACE;

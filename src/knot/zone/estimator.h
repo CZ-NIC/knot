@@ -75,7 +75,7 @@ size_t estimator_trie_htable_memsize(hattrie_t *table);
  *
  * \param scanner Scanner context.
  */
-void estimator_rrset_memsize_wrap(const zs_scanner_t *scanner);
+void estimator_rrset_memsize_wrap(zs_scanner_t *scanner);
 
 /*!
  * \brief Cleanup function for use with hattrie.

@@ -41,7 +41,7 @@
 /*!
  * \brief Empty function which is called if no callback function is specified.
  */
-static inline void noop(const zs_scanner_t *s)
+static inline void noop(zs_scanner_t *s)
 {
 	(void)s;
 }
@@ -93,8 +93,8 @@ zs_scanner_t* zs_scanner_create(const char     *file_name,
                                 const char     *origin,
                                 const uint16_t rclass,
                                 const uint32_t ttl,
-                                void (*process_record)(const zs_scanner_t *),
-                                void (*process_error)(const zs_scanner_t *),
+                                void (*process_record)(zs_scanner_t *),
+                                void (*process_error)(zs_scanner_t *),
                                 void *data)
 {
 	char settings[1024];

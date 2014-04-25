@@ -93,7 +93,7 @@ static char *strndup_with_suffix(const char *base, int length, char *suffix)
 	return result;
 }
 
-static void key_scan_set_done(const zs_scanner_t *s)
+static void key_scan_set_done(zs_scanner_t *s)
 {
 	*((bool *)s->data) = true;
 }

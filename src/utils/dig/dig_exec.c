@@ -291,9 +291,21 @@ static int process_query_packet(const knot_pkt_t        *query,
 
 	// Print query packet if required.
 	if (style->show_query) {
-		print_packet(query, net,
-		             time_diff(&t_start, &t_query),
-		             false, style);
+		// Create copy of query packet for parsing.
+		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+		if (q != NULL) {
+			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
+				print_packet(q, net, query->size,
+					     time_diff(&t_start, &t_query),
+					     false, style);
+			} else {
+				ERR("can't print query packet\n");
+			}
+			knot_pkt_free(&q);
+		} else {
+			ERR("can't print query packet\n");
+		}
+
 		printf("\n");
 	}
 
@@ -367,7 +379,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 	}
 
 	// Print reply packet.
-	print_packet(reply, net, time_diff(&t_query, &t_end),
+	print_packet(reply, net, in_len, time_diff(&t_query, &t_end),
 	             true, style);
 
 	knot_pkt_free(&reply);
@@ -474,7 +486,7 @@ static void process_query(const query_t *query)
 	knot_pkt_free(&out_packet);
 }
 
-static int process_packet_xfr(const knot_pkt_t     *query,
+static int process_packet_xfr(const knot_pkt_t        *query,
                               net_t                   *net,
                               const sign_context_t    *sign_ctx,
                               const knot_key_params_t *key_params,
@@ -511,7 +523,7 @@ static int process_packet_xfr(const knot_pkt_t     *query,
 
 	// Print query packet if required.
 	if (style->show_query) {
-		print_packet(query, net,
+		print_packet(query, net, query->size,
 		             time_diff(&t_start, &t_query),
 		             false, style);
 		printf("\n");

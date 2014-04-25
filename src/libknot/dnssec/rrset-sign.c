@@ -218,8 +218,9 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	}
 
 	uint8_t result[size];
+	const knot_rdata_t *covered_data = knot_rdataset_at(&covered->rrs, 0);
 	int res = knot_rrsig_write_rdata(result, key, covered->type, owner_labels,
-	                                 knot_rrset_rr_ttl(covered, 0),
+	                                 knot_rdata_ttl(covered_data),
 	                                 sig_incepted, sig_expires);
 	assert(res == KNOT_EOK);
 
@@ -243,7 +244,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs,
 	}
 
 	return knot_rrset_add_rdata(rrsigs, result, size,
-	                         knot_rrset_rr_ttl(covered, 0), NULL);
+	                            knot_rdata_ttl(covered_data), NULL);
 }
 
 /*!
@@ -336,7 +337,8 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
 
 	// identify fields in the signature being validated
 
-	uint8_t *rdata = knot_rrset_rr_rdata(rrsigs, pos);
+	const knot_rdata_t *rr_data = knot_rdataset_at(&rrsigs->rrs, pos);
+	uint8_t *rdata = knot_rdata_data(rr_data);
 	if (!rdata) {
 		return KNOT_EINVAL;
 	}

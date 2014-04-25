@@ -203,7 +203,8 @@ static bool rrset_empty(const knot_rrset_t *rrset)
 		return true;
 	}
 	if (rr_count == 1) {
-		return knot_rrset_rr_size(rrset, 0) == 0;
+		const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, 0);
+		return knot_rdata_rdlen(rr) == 0;
 	}
 	return false;
 }
@@ -213,7 +214,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
                           const zone_contents_t *zone, uint16_t *rcode,
                           list_t *rrset_list)
 {
-	if (knot_rrset_rr_ttl(rrset, 0) != 0) {
+	if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0) {
 		return KNOT_EMALF;
 	}
 
@@ -252,7 +253,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 
 /* ----------------------- changeset lists helpers -------------------------- */
 
-#warning TODO: Store changesets as a lookup structure
+/*! \todo Store changesets as a lookup structure. */
 
 /*!< \brief Returns true if \a cmp code returns true for one RR in list. */
 #define LIST_MATCH(l, cmp) \
@@ -670,15 +671,6 @@ static int process_add_normal(const zone_node_t *node,
 		return KNOT_EOK;
 	}
 
-	/* First check if the TTL of the new RR is equal to that of the first
-	 * RR in the node's RRSet. If not, refuse the UPDATE.
-	 */
-	knot_rrset_t rr_in_zone = node_rrset(node, rr->type);
-	if (node_rrtype_exists(node, rr->type) &&
-	    knot_rrset_rr_ttl(rr, 0) != knot_rrset_rr_ttl(&rr_in_zone, 0)) {
-		return KNOT_ETTL;
-	}
-
 	const bool apex_ns = node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
 	                     rr->type == KNOT_RRTYPE_NS;
 	return add_rr_to_chgset(rr, changeset, apex_ns ? apex_ns_rem : NULL);
@@ -894,7 +886,7 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 			return KNOT_EMALF;
 		}
 	} else if (rrset->rclass == KNOT_CLASS_NONE) {
-		if (knot_rrset_rr_ttl(rrset, 0) != 0
+		if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0
 		    || knot_rrtype_is_metatype(rrset->type)) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;

@@ -50,6 +50,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 		.show_class = true,
 		.show_ttl = true,
 		.verbose = false,
+		.empty_ttl = false,
 		.human_ttl = false,
 		.human_tmstamp = true,
 		.ascii_to_idn = name_to_idn
@@ -61,6 +62,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 	.show_answer = true,
 	.show_authority = true,
 	.show_additional = true,
+	.show_tsig = true,
 	.show_footer = true
 };
 
@@ -405,6 +407,26 @@ static int opt_noadditional(const char *arg, void *query)
 	query_t *q = query;
 
 	q->style.show_additional = false;
+	q->style.show_edns = false;
+	q->style.show_tsig = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_tsig(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_tsig = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_notsig(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.show_tsig = false;
 
 	return KNOT_EOK;
 }
@@ -689,6 +711,9 @@ static const param_t dig_opts2[] = {
 
 	{ "additional",   ARG_NONE,     opt_additional },
 	{ "noadditional", ARG_NONE,     opt_noadditional },
+
+	{ "tsig",         ARG_NONE,     opt_tsig },
+	{ "notsig",       ARG_NONE,     opt_notsig },
 
 	{ "stats",        ARG_NONE,     opt_stats },
 	{ "nostats",      ARG_NONE,     opt_nostats },
@@ -1190,6 +1215,7 @@ static void dig_help(void)
 	       "       +[no]answer     Show answer section.\n"
 	       "       +[no]authority  Show authority section.\n"
 	       "       +[no]additional Show additional section.\n"
+	       "       +[no]tsig       Show TSIG pseudosection.\n"
 	       "       +[no]stats      Show trailing packet statistics.\n"
 	       "       +[no]class      Show DNS class.\n"
 	       "       +[no]ttl        Show TTL value.\n"

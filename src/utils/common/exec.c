@@ -95,28 +95,31 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 		strcat(flags, " cd");
 	}
 
-	// Print formated info.
+	uint16_t id = knot_wire_get_id(packet->wire);
+	uint16_t qdcount = knot_wire_get_qdcount(packet->wire);
+	uint16_t ancount = knot_wire_get_ancount(packet->wire);
+	uint16_t nscount = knot_wire_get_nscount(packet->wire);
+	uint16_t arcount = knot_wire_get_arcount(packet->wire);
+
+	if (knot_pkt_have_tsig(packet)) {
+		arcount++;
+	}
+
+	// Print formatted info.
 	switch (style->format) {
 	case FORMAT_NSUPDATE:
 		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
 		       ";; Flags:%1s; "
 		       "ZONE: %u; PREREQ: %u; UPDATE: %u; ADDITIONAL: %u\n",
-		       opcode_str, rcode_str, knot_wire_get_id(packet->wire),
-		       flags, knot_wire_get_qdcount(packet->wire),
-		       knot_wire_get_ancount(packet->wire),
-		       knot_wire_get_nscount(packet->wire),
-		       knot_wire_get_arcount(packet->wire));
-
+		       opcode_str, rcode_str, id, flags, qdcount, ancount,
+		       nscount, arcount);
 		break;
 	default:
 		printf(";; ->>HEADER<<- opcode: %s; status: %s; id: %u\n"
 		       ";; Flags:%1s; "
 		       "QUERY: %u; ANSWER: %u; AUTHORITY: %u; ADDITIONAL: %u\n",
-		       opcode_str, rcode_str, knot_wire_get_id(packet->wire),
-		       flags, knot_wire_get_qdcount(packet->wire),
-		       knot_wire_get_ancount(packet->wire),
-		       knot_wire_get_nscount(packet->wire),
-		       knot_wire_get_arcount(packet->wire));
+		       opcode_str, rcode_str, id, flags, qdcount, ancount,
+		       nscount, arcount);
 		break;
 	}
 }
@@ -170,7 +173,7 @@ static void print_footer(const size_t total_len,
 	}
 }
 
-static void print_opt_section(const knot_opt_rr_t *rr)
+static void print_section_opt(const knot_opt_rr_t *rr)
 {
 	printf("Version: %u; flags: %s; UDP size: %u B\n",
 	       knot_edns_get_version(rr),
@@ -199,10 +202,14 @@ static void print_section_question(const knot_dname_t *owner,
 {
 	size_t buflen = 8192;
 	char   *buf = calloc(buflen, 1);
+
+	// Don't print zero TTL.
+	knot_dump_style_t qstyle = style->style;
+	qstyle.empty_ttl = true;
+
 	knot_rrset_t *question = knot_rrset_new(owner, qtype, qclass, NULL);
 
-	if (knot_rrset_txt_dump_header(question, 0, buf, buflen,
-	    &(style->style)) < 0) {
+	if (knot_rrset_txt_dump_header(question, 0, buf, buflen, &qstyle) < 0) {
 		WARN("can't print whole question section\n");
 	}
 
@@ -214,13 +221,20 @@ static void print_section_question(const knot_dname_t *owner,
 
 static void print_section_full(const knot_rrset_t *rrsets,
                                const uint16_t     count,
-                               const style_t      *style)
+                               const style_t      *style,
+                               const bool         no_tsig)
 {
 	size_t buflen = 8192;
 	char   *buf = calloc(buflen, 1);
 
 	for (size_t i = 0; i < count; i++) {
+		// Ignore OPT records.
 		if (rrsets[i].type == KNOT_RRTYPE_OPT) {
+			continue;
+		}
+
+		// Exclude TSIG record.
+		if (no_tsig && rrsets[i].type == KNOT_RRTYPE_TSIG) {
 			continue;
 		}
 
@@ -228,7 +242,7 @@ static void print_section_full(const knot_rrset_t *rrsets,
 		                           &(style->style)) < 0) {
 			buflen += 4096;
 			// Oversize protection.
-			if (buflen > 1000000) {
+			if (buflen > 100000) {
 				WARN("can't print whole section\n");
 				break;
 			}
@@ -261,7 +275,7 @@ static void print_section_dig(const knot_rrset_t *rrsets,
 			                                &(style->style)) < 0) {
 				buflen += 4096;
 				// Oversize protection.
-				if (buflen > 1000000) {
+				if (buflen > 100000) {
 					WARN("can't print whole section\n");
 					break;
 				}
@@ -310,7 +324,7 @@ static void print_section_host(const knot_rrset_t *rrsets,
 			                                &(style->style)) < 0) {
 				buflen += 4096;
 				// Oversize protection.
-				if (buflen > 1000000) {
+				if (buflen > 100000) {
 					WARN("can't print whole section\n");
 					break;
 				}
@@ -422,8 +436,8 @@ void print_data_xfr(const knot_pkt_t *packet,
 		return;
 	}
 
-	const knot_pktsection_t *answers = knot_pkt_section(packet, KNOT_ANSWER);
-	const knot_pktsection_t *additional = knot_pkt_section(packet, KNOT_ADDITIONAL);
+	const knot_pktsection_t *answers = knot_pkt_section(packet,
+	                                                    KNOT_ANSWER);
 
 	switch (style->format) {
 	case FORMAT_DIG:
@@ -433,12 +447,11 @@ void print_data_xfr(const knot_pkt_t *packet,
 		print_section_host(answers->rr, answers->count, style);
 		break;
 	case FORMAT_FULL:
-		print_section_full(answers->rr, answers->count, style);
+		print_section_full(answers->rr, answers->count, style, true);
 
-		// Print TSIG record if any.
-		if (style->show_additional) {
-			print_section_full(additional->rr, additional->count,
-			                   style);
+		// Print TSIG record.
+		if (style->show_tsig && knot_pkt_have_tsig(packet)) {
+			print_section_full(packet->tsig_rr, 1, style, false);
 		}
 		break;
 	default:
@@ -465,6 +478,7 @@ void print_footer_xfr(const size_t  total_len,
 
 void print_packet(const knot_pkt_t *packet,
                   const net_t      *net,
+                  const size_t     size,
                   const float      elapsed,
                   const bool       incoming,
                   const style_t    *style)
@@ -474,14 +488,24 @@ void print_packet(const knot_pkt_t *packet,
 		return;
 	}
 
-	const knot_pktsection_t *answers = knot_pkt_section(packet, KNOT_ANSWER);
-	const knot_pktsection_t *authority = knot_pkt_section(packet, KNOT_AUTHORITY);
-	const knot_pktsection_t *additional = knot_pkt_section(packet, KNOT_ADDITIONAL);
+	const knot_pktsection_t *answers = knot_pkt_section(packet,
+	                                                    KNOT_ANSWER);
+	const knot_pktsection_t *authority = knot_pkt_section(packet,
+	                                                      KNOT_AUTHORITY);
+	const knot_pktsection_t *additional = knot_pkt_section(packet,
+	                                                       KNOT_ADDITIONAL);
 
 	uint8_t rcode = knot_wire_get_rcode(packet->wire);
 	uint16_t qdcount = knot_wire_get_qdcount(packet->wire);
-	uint16_t arcount = additional->count;
-	uint16_t ancount = answers->count;
+	uint16_t ancount = knot_wire_get_ancount(packet->wire);
+	uint16_t nscount = knot_wire_get_nscount(packet->wire);
+	uint16_t arcount = knot_wire_get_arcount(packet->wire);
+
+	// Disable additionals printing if there are no other records.
+	// OPT record may be placed anywhere within additionals!
+	if (knot_pkt_have_edns(packet) && arcount == 1) {
+		arcount = 0;
+	}
 
 	// Print packet information header.
 	if (style->show_header) {
@@ -489,13 +513,9 @@ void print_packet(const knot_pkt_t *packet,
 	}
 
 	// Print EDNS section.
-	if (knot_pkt_have_edns(packet)) {
-		if (style->show_edns) {
-			printf("\n;; EDNS PSEUDOSECTION:\n;; ");
-			print_opt_section(&packet->opt_rr);
-		}
-
-		arcount--;
+	if (style->show_edns && knot_pkt_have_edns(packet)) {
+		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
+		print_section_opt(&packet->opt_rr);
 	}
 
 	// Print DNS sections.
@@ -521,25 +541,19 @@ void print_packet(const knot_pkt_t *packet,
 			                       style);
 		}
 
-		if (style->show_answer && answers->count > 0) {
+		if (style->show_answer && ancount > 0) {
 			printf("\n;; PREREQUISITE SECTION:\n");
-			print_section_full(answers->rr,
-			                   answers->count,
-			                   style);
+			print_section_full(answers->rr, ancount, style, true);
 		}
 
-		if (style->show_authority && authority->count > 0) {
+		if (style->show_authority && nscount > 0) {
 			printf("\n;; UPDATE SECTION:\n");
-			print_section_full(authority->rr,
-			                   authority->count,
-			                   style);
+			print_section_full(authority->rr, nscount, style, true);
 		}
 
-		if (style->show_additional && additional->count > 0) {
+		if (style->show_additional && arcount > 0) {
 			printf("\n;; ADDITIONAL DATA:\n");
-			print_section_full(additional->rr,
-			                   additional->count,
-			                   style);
+			print_section_full(additional->rr, arcount, style, true);
 		}
 		break;
 	case FORMAT_FULL:
@@ -551,35 +565,35 @@ void print_packet(const knot_pkt_t *packet,
 			                       style);
 		}
 
-		if (style->show_answer && answers->count > 0) {
+		if (style->show_answer && ancount > 0) {
 			printf("\n;; ANSWER SECTION:\n");
-			print_section_full(answers->rr,
-			                   answers->count,
-			                   style);
+			print_section_full(answers->rr, ancount, style, true);
 		}
 
-		if (style->show_authority && authority->count > 0) {
+		if (style->show_authority && nscount > 0) {
 			printf("\n;; AUTHORITY SECTION:\n");
-			print_section_full(authority->rr,
-			                   authority->count,
-			                   style);
+			print_section_full(authority->rr, nscount, style, true);
 		}
 
-		if (style->show_additional && additional->count > 0) {
+		if (style->show_additional && arcount > 0) {
 			printf("\n;; ADDITIONAL SECTION:\n");
-			print_section_full(additional->rr,
-			                   arcount,
-			                   style);
+			print_section_full(additional->rr, arcount, style, true);
 		}
 		break;
 	default:
 		break;
 	}
 
+	// Print TSIG section.
+	if (style->show_tsig && knot_pkt_have_tsig(packet)) {
+		printf("\n;; TSIG PSEUDOSECTION:\n");
+		print_section_full(packet->tsig_rr, 1, style, false);
+	}
+
 	// Print packet statistics.
 	if (style->show_footer) {
 		printf("\n");
-		print_footer(packet->size, 0, 0, net, elapsed, incoming);
+		print_footer(size, 0, 0, net, elapsed, incoming);
 	}
 }
 

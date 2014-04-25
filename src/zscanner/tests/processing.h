@@ -29,13 +29,13 @@
 
 #include "zscanner/scanner.h"
 
-void debug_process_error(const zs_scanner_t *scanner);
+void debug_process_error(zs_scanner_t *scanner);
 
-void debug_process_record(const zs_scanner_t *scanner);
+void debug_process_record(zs_scanner_t *scanner);
 
-void test_process_error(const zs_scanner_t *scanner);
+void test_process_error(zs_scanner_t *scanner);
 
-void test_process_record(const zs_scanner_t *scanner);
+void test_process_record(zs_scanner_t *scanner);
 
 #endif // _ZSCANNER__PROCESSING_H_
 

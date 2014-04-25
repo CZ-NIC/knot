@@ -636,8 +636,9 @@ static zone_node_t *zone_contents_get_nsec3_node(const zone_contents_t *zone,
 	return n;
 }
 
-static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n,
-                     bool nsec3, bool *ttl_err)
+static int insert_rr(knot_zone_contents_t *z,
+                     const knot_rrset_t *rr, zone_node_t **n,
+                     bool nsec3)
 {
 	if (z == NULL || knot_rrset_empty(rr) || n == NULL) {
 		return KNOT_EINVAL;
@@ -667,7 +668,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n
 		}
 	}
 
-	return node_add_rrset(*n, rr, ttl_err);
+	return node_add_rrset(*n, rr);
 }
 
 static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
@@ -770,10 +771,10 @@ static bool rrset_is_nsec3rel(const knot_rrset_t *rr)
 	            == KNOT_RRTYPE_NSEC3));
 }
 
-int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr,
-                         zone_node_t **n, bool *ttl_err)
+int knot_zone_contents_add_rr(knot_zone_contents_t *z,
+                              const knot_rrset_t *rr, zone_node_t **n)
 {
-	return insert_rr(z, rr, n, rrset_is_nsec3rel(rr), ttl_err);
+	return insert_rr(z, rr, n, rrset_is_nsec3rel(rr));
 }
 
 /*----------------------------------------------------------------------------*/

@@ -36,8 +36,8 @@ zs_loader_t* zs_loader_create(const char     *file_name,
                               const char     *origin,
                               const uint16_t rclass,
                               const uint32_t ttl,
-                              void (*process_record)(const zs_scanner_t *),
-                              void (*process_error)(const zs_scanner_t *),
+                              void (*process_record)(zs_scanner_t *),
+                              void (*process_error)(zs_scanner_t *),
                               void *data)
 {
 	// Creating zeroed structure.

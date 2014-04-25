@@ -124,48 +124,6 @@ void knot_rrset_free(knot_rrset_t **rrset, mm_ctx_t *mm);
  */
 void knot_rrset_clear(knot_rrset_t *rrset, mm_ctx_t *mm);
 
-/* ----------- Getters / Setters (legacy, functionality in rdata_t) ------------ */
-
-/*!
- * \brief Returns RDATA of RR on given position.
- *
- * \param rrset  RRSet to get the RDATA from.
- * \param pos    Position of RR to get.
- *
- * \retval  NULL if no RDATA on rdata_pos exist.
- * \retval  Pointer to RDATA on given position if successfull.
- */
-uint8_t *knot_rrset_rr_rdata(const knot_rrset_t *rrset, size_t pos);
-
-/*!
- * \brief Returns size of an RR RDATA on a given position.
- *
- * \param rrset  RRSet holding RR RDATA.
- * \param pos    RR position.
- *
- * \return Item size.
- */
-uint16_t knot_rrset_rr_size(const knot_rrset_t *rrset, size_t pos);
-
-/*!
- * \brief Returns TTL of an RR on a given position.
- *
- * \param rrset  RRSet holding RR RDATA.
- * \param pos    RR position.
- *
- * \return TTL.
- */
-uint32_t knot_rrset_rr_ttl(const knot_rrset_t *rrset, size_t pos);
-
-/*!
- * \brief Sets TTL for RR on a given position.
- *
- * \param rrset  RRSet containing RR.
- * \param pos    RR position.
- * \param ttl    TTL to be set.
- */
-void knot_rrset_rr_set_ttl(const knot_rrset_t *rrset, size_t pos, uint32_t ttl);
-
 /* ---------- Wire conversions (legacy, to be done in knot_pkt_t) ----------- */
 
 /*!

@@ -308,7 +308,11 @@ static int zones_process_update_auth(struct query_data *qdata)
 		ret = xfrin_apply_changesets(zone, chgsets, &new_contents);
 		if (ret != KNOT_EOK) {
 			log_zone_notice("%s: Failed to process: %s.\n", msg, knot_strerror(ret));
-			qdata->rcode = KNOT_RCODE_SERVFAIL;
+			if (ret == KNOT_ETTL) {
+				qdata->rcode = KNOT_RCODE_REFUSED;
+			} else {
+				qdata->rcode = KNOT_RCODE_SERVFAIL;
+			}
 			knot_changesets_free(&chgsets);
 			free(msg);
 			return ret;
@@ -326,6 +330,7 @@ static int zones_process_update_auth(struct query_data *qdata)
 		if (sec_chs == NULL) {
 			xfrin_rollback_update(chgsets, &new_contents);
 			knot_changesets_free(&chgsets);
+			knot_changesets_free(&sec_chs);
 			free(msg);
 			return KNOT_ENOMEM;
 		}

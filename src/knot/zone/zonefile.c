@@ -57,9 +57,8 @@ static int add_rdata_to_rr(knot_rrset_t *rrset, const zs_scanner_t *scanner)
 	                         scanner->r_ttl, NULL);
 }
 
-static bool handle_err(zcreator_t *zc,
-                       const knot_rrset_t *rr,
-                       int ret)
+static bool handle_err(zcreator_t *zc, const zone_node_t *node,
+                       const knot_rrset_t *rr, int ret, bool master)
 {
 	char *zname = zc->z ? knot_dname_to_str(zc->z->apex->owner) : NULL;
 	char *rrname = rr ? knot_dname_to_str(rr->owner) : NULL;
@@ -69,6 +68,13 @@ static bool handle_err(zcreator_t *zc,
 		free(zname);
 		free(rrname);
 		return true;
+	} else if (ret == KNOT_ETTL) {
+		free(zname);
+		free(rrname);
+		assert(node);
+		log_ttl_error(node, rr);
+		// Fail if we're the master for this zone.
+		return !master;
 	} else {
 		log_zone_error("Zone %s: Cannot process record %s, stopping.\n",
 		               zname ? zname : "unknown", rrname ? rrname : "unknown");
@@ -78,8 +84,7 @@ static bool handle_err(zcreator_t *zc,
 	}
 }
 
-static int log_ttl(const zcreator_t *zc, const zone_node_t *node,
-                   const knot_rrset_t *rr)
+void log_ttl_error(const zone_node_t *node, const knot_rrset_t *rr)
 {
 	err_handler_t err_handler;
 	err_handler_init(&err_handler);
@@ -87,19 +92,15 @@ static int log_ttl(const zcreator_t *zc, const zone_node_t *node,
 	char info_str[64] = { '\0' };
 	char type_str[16] = { '\0' };
 	knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-	snprintf(info_str, sizeof(info_str), "Record type: %s.",
-	         type_str);
-
-	if (zc->master) {
-		/*!< \todo REPLACE WITH FATAL ERROR */
-		err_handler_handle_error(&err_handler, node,
-		                         ZC_ERR_TTL_MISMATCH, info_str);
-		return KNOT_EMALF;
-	} else {
-		err_handler_handle_error(&err_handler, node,
-		                         ZC_ERR_TTL_MISMATCH, info_str);
-		return KNOT_EOK;
+	int ret = snprintf(info_str, sizeof(info_str), "Record type: %s.",
+	                   type_str);
+	if (ret <= 0 || ret >= sizeof(info_str)) {
+		*info_str = '\0';
 	}
+
+	/*!< \todo REPLACE WITH FATAL ERROR for master. */
+	err_handler_handle_error(&err_handler, node,
+	                         ZC_ERR_TTL_MISMATCH, info_str);
 }
 
 int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
@@ -114,25 +115,19 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 		return KNOT_EOK;
 	}
 
-	bool ttl_err = false;
 	zone_node_t *node = NULL;
-	int ret = zone_contents_add_rr(zc->z, rr, &node, &ttl_err);
-	if (ret < 0) {
-		if (!handle_err(zc, rr, ret)) {
+	int ret = knot_zone_contents_add_rr(zc->z, rr, &node);
+	if (ret != KNOT_EOK) {
+		if (!handle_err(zc, node, rr, ret, zc->master)) {
 			// Fatal error
 			return ret;
 		}
-		// Recoverable error, skip record
-		return KNOT_EOK;
-	}
-	assert(node);
-
-	if (ttl_err) {
-		ret = log_ttl(zc, node, rr);
-		if (ret != KNOT_EOK) {
-			return ret;
+		if (ret == KNOT_EOUTOFZONE) {
+			// Skip out-of-zone record
+			return KNOT_EOK;
 		}
 	}
+	assert(node);
 
 	// Do node semantic checks
 	err_handler_t err_handler;
