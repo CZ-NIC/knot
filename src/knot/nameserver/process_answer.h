@@ -23,6 +23,14 @@ extern const knot_process_module_t _process_answer;
 #define NS_PROC_ANSWER (&_process_answer)
 #define NS_PROC_ANSWER_ID 2
 
+/*! \brief Answer processsing logging base. */
+#define ANSWER_LOG(severity, data, what, msg...) do {\
+	const char *zone_str = (data)->param->zone->conf->name; \
+	NS_PROC_LOG(severity, LOG_SERVER, (data)->param->remote, zone_str, \
+	            what " of '%s' from '%s': ", msg); \
+	} while(0)
+
+
 /* Module load parameters. */
 struct process_answer_param {
 	zone_t   *zone;

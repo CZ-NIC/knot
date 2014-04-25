@@ -37,11 +37,13 @@
 #include "knot/zone/contents.h"
 #include "libknot/dname.h"
 
+struct process_query_param;
+
 /*!
  * \brief Zone flags.
  */
 typedef enum zone_flag_t {
-	ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
+	ZONE_FORCE_AXFR   = 1 << 0, /* Force AXFR, zone master may not be IXFR-capable. */
 } zone_flag_t;
 
 /*!
@@ -64,10 +66,9 @@ typedef struct zone_t {
 	/*! \brief Shortcut to zone config entry. */
 	conf_zone_t *conf;
 
-	/*! \brief Zone data lock for exclusive access. */
-	pthread_mutex_t lock;
-	/*! \brief Zone lock for DDNS. */
+	/*! \brief DDNS queue and lock. */
 	pthread_mutex_t ddns_lock;
+	list_t ddns_queue;
 
 	/*! \brief Access control lists. */
 	acl_t *xfr_out;    /*!< ACL for outgoing transfers.*/
@@ -110,18 +111,6 @@ zone_t *zone_new(conf_zone_t *conf);
  */
 void zone_free(zone_t **zone_ptr);
 
-/*! \brief Increase zone reference count. */
-static inline void zone_retain(zone_t *zone)
-{
-	ref_retain(&zone->ref);
-}
-
-/*! \brief Decrease zone reference count. */
-static inline void zone_release(zone_t *zone)
-{
-	ref_release(&zone->ref);
-}
-
 /*! \note Zone change API, subject to change. */
 knot_changeset_t *zone_change_prepare(knot_changesets_t *chset);
 int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset);
@@ -137,36 +126,19 @@ int zone_change_apply_and_store(knot_changesets_t *chs,
 zone_contents_t *zone_switch_contents(zone_t *zone,
 					   zone_contents_t *new_contents);
 
-/*!
- * \brief Return zone master interface.
- */
+/*! \brief Return zone master remote. */
 const conf_iface_t *zone_master(const zone_t *zone);
+
+/*! \brief Rotate list of master remotes for current zone. */
+void zone_master_rotate(const zone_t *zone);
 
 /*! \brief Synchronize zone file with journal. */
 int zone_flush_journal(zone_t *zone);
 
-//int zone_start_events(zone_t *zone, evsched_t *scheduler);
-//
-//void zone_events_freeze(zone_t *zone)
-//{
-//}
-//
-//void zone_events_wait(zone_t *zone)
-//{
-//}
-//
-//void zone_events_thaw(zone_t *zone)
-//{
-//}
-//
-////void zone_event_plan(type, when)
-//
-//void zone_event_plan_reload(zone_t *zone)
-//{
-//	zone->events.load = true;
-//
-//	evsched_cancel(zone->next_event);
-//	evsched_schedule(zone->next_event, 0);
-//}
+/*! \brief Enqueue UPDATE request for processing. */
+int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param);
+
+/*! \brief Dequeue UPDATE request. */
+struct request_data *zone_update_dequeue(zone_t *zone);
 
 /*! @} */

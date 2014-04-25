@@ -29,7 +29,7 @@ struct ixfr_proc {
 
 /* IXFR-specific logging (internal, expects 'qdata' variable set). */
 #define IXFR_LOG(severity, msg...) \
-	ANSWER_LOG(severity, qdata, "Outgoing IXFR", msg)
+	QUERY_LOG(severity, qdata, "Outgoing IXFR", msg)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -422,7 +422,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 
 	return ret;
 #endif
-	return KNOT_ENOTSUP;
+	return NS_PROC_FAIL;
 }
 
 #undef IXFR_LOG

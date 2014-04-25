@@ -40,6 +40,10 @@ struct query_data;
  */
 int update_answer(knot_pkt_t *pkt, struct query_data *qdata);
 
+
+/*! \brief Process already authenticated packet. */
+int zones_process_update_auth(zone_t *zone, const knot_pkt_t *query);
+
 #endif /* _KNOT_UPDATE_H_ */
 
 /*! @} */

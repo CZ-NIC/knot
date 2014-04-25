@@ -871,22 +871,29 @@ static int internet_answer_soa(knot_pkt_t *pkt, struct answer_data *data)
 		return NS_PROC_FAIL;
 	}
 
+	/* Our zone is expired, schedule transfer. */
+	if (zone_contents_is_empty(zone->contents)) {
+		zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
+		return NS_PROC_DONE;
+	}
+
 	/* Check if master has newer zone and schedule transfer. */
 	knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	uint32_t our_serial = knot_soa_serial(soa);
 	uint32_t their_serial =	knot_soa_serial(&answer->rr[0].rrs);
 	if (knot_serial_compare(our_serial, their_serial) >= 0) {
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+		ANSWER_LOG(LOG_INFO, data, "Refresh", "Zone is up-to-date.");
 		return NS_PROC_DONE; /* Our zone is up to date. */
 	}
 
 	/* Our zone is outdated, schedule zone transfer. */
+	ANSWER_LOG(LOG_INFO, data, "Refresh", "master has newer serial %u -> %u.",
+	           our_serial, their_serial);
 	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	return NS_PROC_DONE;
 }
 
-int internet_answer(knot_pkt_t *pkt, struct answer_data *data)
+int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
 	if (pkt == NULL || data == NULL) {
 		return NS_PROC_FAIL;

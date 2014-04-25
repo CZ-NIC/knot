@@ -174,8 +174,8 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 }
 
 /* AXFR-specific logging (internal, expects 'qdata' variable set). */
-#define AXFR_QLOG(severity, msg...) \
-	ANSWER_LOG(severity, qdata, "Outgoing AXFR", msg)
+#define AXFROUT_LOG(severity, msg...) \
+	QUERY_LOG(severity, qdata, "Outgoing AXFR", msg)
 
 int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
@@ -201,10 +201,10 @@ int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 		ret = axfr_query_init(qdata);
 		if (ret != KNOT_EOK) {
-			AXFR_QLOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
+			AXFROUT_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
 			return ret;
 		} else {
-			AXFR_QLOG(LOG_INFO, "Started (serial %u).", zone_contents_serial(qdata->zone->contents));
+			AXFROUT_LOG(LOG_INFO, "Started (serial %u).", zone_contents_serial(qdata->zone->contents));
 		}
 	}
 
@@ -219,13 +219,13 @@ int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
-		AXFR_QLOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
+		AXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
 		         time_diff(&axfr->proc.tstamp, &now) / 1000.0,
 		         axfr->proc.npkts, axfr->proc.nbytes / 1024.0);
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
-		AXFR_QLOG(LOG_ERR, "%s", knot_strerror(ret));
+		AXFROUT_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		return NS_PROC_FAIL;
 	}
 }
@@ -271,8 +271,8 @@ static int axfr_answer_init(struct answer_data *data)
 }
 
 /* AXFR-specific logging (internal, expects 'data' variable set). */
-#define AXFR_QRLOG(severity, msg...) \
-	fprintf(stderr, "Incoming AXFR: " msg)
+#define AXFRIN_LOG(severity, msg...) \
+	ANSWER_LOG(severity, data, "Incoming AXFR", msg)
 
 static int axfr_answer_finalize(struct answer_data *data)
 {
@@ -298,11 +298,11 @@ static int axfr_answer_finalize(struct answer_data *data)
 
 	/* Switch contents. */
 	zone_contents_t *old_contents = xfrin_switch_zone(zone, proc->zone);
-	AXFR_QRLOG(LOG_INFO, "Serial %u -> %u\n",
+	AXFRIN_LOG(LOG_INFO, "Serial %u -> %u\n",
 	           zone_contents_serial(old_contents),
 	           zone_contents_serial(proc->zone));
 
-	AXFR_QRLOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).\n",
+	AXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).\n",
 	         time_diff(&proc->tstamp, &now) / 1000.0,
 	         proc->npkts, proc->nbytes / 1024.0);
 
@@ -315,7 +315,7 @@ static int axfr_answer_finalize(struct answer_data *data)
 
 int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
-	/* Initialize processing context. */
+	/* Initialize processing with first packet. */
 	int ret = KNOT_EOK;
 	if (data->ext == NULL) {
 		ret = axfr_answer_init(data);
@@ -324,17 +324,22 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 		}
 	}
 
+	/* Process answer packet. */
 	ret = xfrin_process_axfr_packet(pkt, (struct xfr_proc *)data->ext);
-	if (ret > 0) { // transfer finished
+#warning TODO: this function wraps the old processing interface, hence the retval conversion below
+	if (ret > 0) {
+
+		/* This was the last packet, finalize zone and publish it. */
 		ret = axfr_answer_finalize(data);
-		if (ret == KNOT_EOK) {
-			return NS_PROC_DONE;
+		if (ret != KNOT_EOK) {
+			return NS_PROC_FAIL;
 		}
 
-		return KNOT_EOK;
+		return NS_PROC_DONE;
 	}
 
 	if (ret != KNOT_EOK) {
+		fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
 		return NS_PROC_FAIL;
 	}
 

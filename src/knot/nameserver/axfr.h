@@ -67,7 +67,7 @@ int axfr_query(knot_pkt_t *pkt, struct query_data *qdata);
  * \param xfr Persistent transfer-specific data.
  *
  */
-int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *xfr);
+int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
 #endif /* _KNOT_AXFR_H_ */
 

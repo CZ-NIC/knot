@@ -37,22 +37,19 @@ extern const knot_process_module_t _process_query;
 #define NS_PROC_QUERY_ID 1
 
 /*! \brief Query processing logging common base. */
-#define NS_PROC_LOG(severity, qdata, what, msg, ...) do { \
+#define NS_PROC_LOG(severity, log_type, remote, zone_str, what, msg, ...) do { \
 	char addr_str[SOCKADDR_STRLEN] = {0}; \
-	sockaddr_tostr((qdata)->param->remote, addr_str, sizeof(addr_str)); \
-	char *zone_str = knot_dname_to_str(knot_pkt_qname((qdata)->query)); \
-	log_msg(LOG_SERVER, severity, what msg "\n", \
-	                zone_str, addr_str, ##__VA_ARGS__); \
-	free(zone_str); \
+	sockaddr_tostr(remote, addr_str, sizeof(addr_str)); \
+	log_msg(log_type, severity, what msg "\n", zone_str, addr_str, ##__VA_ARGS__); \
 	} while (0)
 
 /*! \brief Query logging common base. */
-#define QUERY_LOG(severity, qdata, what, msg...) \
-	NS_PROC_LOG(severity, qdata, what " of '%s' from '%s': ", msg)
-
-/*! \brief Answer logging common base. */
-#define ANSWER_LOG(severity, qdata, what, msg...)  \
-	NS_PROC_LOG(severity, qdata, what " of '%s' to '%s': ", msg)
+#define QUERY_LOG(severity, qdata, what, msg...) do {\
+	char *zone_str = knot_dname_to_str(knot_pkt_qname((qdata)->query)); \
+	NS_PROC_LOG(severity, LOG_SERVER, (qdata)->param->remote, zone_str, \
+	            what " of '%s' with '%s': ", msg); \
+	free(zone_str); \
+	} while(0)
 
 /* Query processing specific flags. */
 enum process_query_flag {

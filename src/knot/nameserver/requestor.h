@@ -36,6 +36,14 @@ struct requestor {
 	mm_ctx_t *mm;                      /*!< Memory context. */
 };
 
+/*! \brief Request data (payload and endpoints). */
+struct request_data {
+	node_t node;
+	int fd;
+	const struct sockaddr_storage *remote, *origin;
+	knot_pkt_t *query;
+};
+
 /*!
  * \brief Initialize requestor structure.
  */

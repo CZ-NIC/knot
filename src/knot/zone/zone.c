@@ -27,18 +27,11 @@
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
 #include "knot/updates/xfr-in.h"
+#include "knot/nameserver/requestor.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/util/utils.h"
-
-/*!
- * \brief Called when the reference count for zone drops to zero.
-  */
-static void knot_zone_dtor(struct ref_t *p) {
-	zone_t *z = (zone_t *)p;
-	zone_free(&z);
-}
 
 /*!
  * \brief Set ACL list from configuration.
@@ -94,15 +87,12 @@ zone_t* zone_new(conf_zone_t *conf)
 		return NULL;
 	}
 
-	ref_init(&zone->ref, knot_zone_dtor);
-	zone_retain(zone);
-
 	// Configuration
 	zone->conf = conf;
 
-	// Mutexes
-	pthread_mutex_init(&zone->lock, 0);
+	// DDNS
 	pthread_mutex_init(&zone->ddns_lock, 0);
+	init_list(&zone->ddns_queue);
 
 	// ACLs
 	set_acl(&zone->xfr_out,    &conf->acl.xfr_out);
@@ -131,7 +121,6 @@ void zone_free(zone_t **zone_ptr)
 	acl_delete(&zone->xfr_out);
 	acl_delete(&zone->notify_in);
 	acl_delete(&zone->update_in);
-	pthread_mutex_destroy(&zone->lock);
 	pthread_mutex_destroy(&zone->ddns_lock);
 
 	/* Free assigned config. */
@@ -248,7 +237,15 @@ const conf_iface_t *zone_master(const zone_t *zone)
 	return master->remote;
 }
 
+void zone_master_rotate(const zone_t *zone)
+{
+	if (zone_master(zone) == NULL) {
+		return;
+	}
 
+	list_t *master_list = &zone->conf->acl.xfr_in;
+	add_tail(master_list, HEAD(*master_list));
+}
 
 int zone_flush_journal(zone_t *zone)
 {
@@ -295,6 +292,53 @@ int zone_flush_journal(zone_t *zone)
 	zone->zonefile_mtime = st.st_mtime;
 	zone->zonefile_serial = serial_to;
 	journal_mark_synced(zone->conf->ixfr_db);
+
+	return ret;
+}
+
+int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param)
+{
+	struct request_data *req = malloc(sizeof(struct request_data));
+	if (req == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	memset(req, 0, sizeof(struct request_data));
+	req->fd = param->socket;
+	req->origin = param->remote;
+	req->query = knot_pkt_copy(pkt, NULL);
+	if (req->query == NULL) {
+		free(req);
+		return KNOT_ENOMEM;
+	}
+
+	pthread_mutex_lock(&zone->ddns_lock);
+	/* Schedule UPDATE event if this is a first item in the list. */
+	if (EMPTY_LIST(zone->ddns_queue)) {
+		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
+	}
+	/* Enqueue created request. */
+#warning TODO: scan the queue if the same source/msgid is not already enqueued
+	add_tail(&zone->ddns_queue, (node_t *)req);
+	pthread_mutex_unlock(&zone->ddns_lock);
+
+	return KNOT_EOK;
+}
+
+struct request_data *zone_update_dequeue(zone_t *zone)
+{
+	if (zone == NULL) {
+		return NULL;
+	}
+
+	struct request_data *ret = NULL;
+
+	pthread_mutex_lock(&zone->ddns_lock);
+	if (!EMPTY_LIST(zone->ddns_queue)) {
+		ret = HEAD(zone->ddns_queue);
+		rem_node((node_t *)ret);
+	}
+	pthread_mutex_unlock(&zone->ddns_lock);
 
 	return ret;
 }

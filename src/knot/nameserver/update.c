@@ -10,9 +10,6 @@
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
 
-/* Forward decls. */
-static int zones_process_update_auth(struct query_data *qdata);
-
 /* AXFR-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "UPDATE", msg)
@@ -101,8 +98,8 @@ static int update_process(knot_pkt_t *resp, struct query_data *qdata)
 		return ret;
 	}
 
-	/*! \todo Reusing the API for compatibility reasons. */
-	return zones_process_update_auth(qdata);
+	/* Passed, enqueue it. */
+	return zone_update_enqueue((zone_t *)qdata->zone, qdata->query, qdata->param);
 }
 
 int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
@@ -123,59 +120,15 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	NS_NEED_AUTH(zone->update_in, qdata);
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
-	/*
-	 * Check if UPDATE not running already.
-	 */
-	if (pthread_mutex_trylock(&zone->ddns_lock) != 0) {
-		qdata->rcode = KNOT_RCODE_SERVFAIL;
-		log_zone_error("Failed to process UPDATE for "
-		               "zone %s: Another UPDATE in progress.\n",
-		               zone->conf->name);
-		return NS_PROC_FAIL;
-	}
-
-	/* Check if the zone is not discarded. */
-	if (zone->flags & ZONE_DISCARDED) {
-		pthread_mutex_unlock(&zone->ddns_lock);
-		return NS_PROC_FAIL;
-	}
-
-	struct timeval t_start = {0}, t_end = {0};
-	gettimeofday(&t_start, NULL);
-	UPDATE_LOG(LOG_INFO, "Started (serial %u).", zone_contents_serial(qdata->zone->contents));
-
-	/* Reserve space for TSIG. */
-	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
-
-	/* Retain zone for the whole processing so it doesn't disappear
-	 * for example during reload.
-	 * @note This is going to be fixed when this is made a zone event. */
-	zone_retain(zone);
-
 	/* Process UPDATE. */
-	rcu_read_unlock();
 	int ret = update_process(pkt, qdata);
-	rcu_read_lock();
-
-	/* Since we unlocked RCU read lock, it is possible that the
-	 * zone was modified/removed in the background. Therefore,
-	 * we must NOT touch the zone after we release it here. */
-	pthread_mutex_unlock(&zone->ddns_lock);
-	zone_release(zone);
-	qdata->zone = NULL;
-
-	/* Evaluate */
-	switch(ret) {
-	case KNOT_EOK:    /* Last response. */
-		gettimeofday(&t_end, NULL);
-		UPDATE_LOG(LOG_INFO, "Finished in %.02fs.",
-		           time_diff(&t_start, &t_end) / 1000.0);
-		return NS_PROC_DONE;
-		break;
-	default:          /* Generic error. */
-		UPDATE_LOG(LOG_ERR, "%s", knot_strerror(ret));
+	if (ret != KNOT_EOK) {
 		return NS_PROC_FAIL;
 	}
+
+	/* No immediate response. */
+	pkt->size = 0;
+	return NS_PROC_DONE;
 }
 
 static int knot_ns_process_update(const knot_pkt_t *query,
@@ -243,10 +196,8 @@ static bool zones_nsec3param_changed(const zone_contents_t *old_contents,
  * \retval KNOT_EOK if successful.
  * \retval error if not.
  */
-static int zones_process_update_auth(struct query_data *qdata)
+int zones_process_update_auth(zone_t *zone, const knot_pkt_t *query)
 {
-	assert(qdata);
-	assert(qdata->zone);
 #warning TODO: reimplement zones_process_update_auth
 #if 0
 	zone_t *zone = (zone_t *)qdata->zone;

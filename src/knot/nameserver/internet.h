@@ -70,7 +70,7 @@ int internet_query_plan(struct query_plan *plan);
  * \retval DONE if finished.
  * \retval NOOP if not supported.
  */
-int internet_answer(knot_pkt_t *pkt, struct answer_data *data);
+int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
 /*!
  * \brief Puts RRSet to packet, will store its RRSIG for later use.

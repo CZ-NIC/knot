@@ -20,11 +20,8 @@
 #include "knot/server/tcp-handler.h"
 
 struct request {
-	node_t node;
-	int fd;
+	struct request_data data;
 	int state;
-	const struct sockaddr_storage *remote, *origin;
-	knot_pkt_t *query;
 	knot_process_t process;
 	uint8_t *pkt_buf;
 };
@@ -55,9 +52,9 @@ static void request_close(mm_ctx_t *mm, struct request *request)
 	}
 	knot_process_finish(&request->process);
 
-	rem_node(&request->node);
-	close(request->fd);
-	knot_pkt_free(&request->query);
+	rem_node(&request->data.node);
+	close(request->data.fd);
+	knot_pkt_free(&request->data.query);
 	mm_free(mm, request->pkt_buf);
 	mm_free(mm, request);
 }
@@ -82,7 +79,7 @@ static int request_wait(int fd, int state, struct timeval *timeout)
 static int request_send(struct request *request, struct timeval *timeout)
 {
 	/* Wait for writeability. */
-	int ret = request_wait(request->fd, NS_PROC_FULL, timeout);
+	int ret = request_wait(request->data.fd, NS_PROC_FULL, timeout);
 	if (ret <= 0) {
 		return KNOT_EAGAIN;
 	}
@@ -90,14 +87,14 @@ static int request_send(struct request *request, struct timeval *timeout)
 	/* Check socket error. */
 	int err = 0;
 	socklen_t len = sizeof(int);
-	getsockopt(request->fd, SOL_SOCKET, SO_ERROR, &err, &len);
+	getsockopt(request->data.fd, SOL_SOCKET, SO_ERROR, &err, &len);
 	if (err != 0) {
 		return KNOT_ECONNREFUSED;
 	}
 
 	/* Send query. */
-	knot_pkt_t *query = request->query;
-	ret = tcp_send(request->fd, query->wire, query->size);
+	knot_pkt_t *query = request->data.query;
+	ret = tcp_send(request->data.fd, query->wire, query->size);
 	if (ret <= 0) {
 		return KNOT_ECONN;
 	}
@@ -108,13 +105,13 @@ static int request_send(struct request *request, struct timeval *timeout)
 static int request_recv(struct request *request, struct timeval *timeout)
 {
 	/* Wait for response. */
-	int ret = request_wait(request->fd, NS_PROC_MORE, timeout);
+	int ret = request_wait(request->data.fd, NS_PROC_MORE, timeout);
 	if (ret <= 0) {
 		return NS_PROC_FAIL;
 	}
 
 	/* Receive it */
-	ret = tcp_recv(request->fd, request->pkt_buf, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	ret = tcp_recv(request->data.fd, request->pkt_buf, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	if (ret <= 0) {
 		return NS_PROC_FAIL;
 	}
@@ -156,10 +153,11 @@ struct request *requestor_make(struct requestor *requestor,
 		return NULL;
 	}
 
-	request->origin = from;
-	request->remote = to;
-	request->fd = -1;
-	request->query = query;
+	request->state = NS_PROC_DONE;
+	request->data.origin = from;
+	request->data.remote = to;
+	request->data.fd = -1;
+	request->data.query = query;
 	return request;
 }
 
@@ -170,20 +168,20 @@ int requestor_enqueue(struct requestor *requestor, struct request * request, voi
 	}
 
 	/* Fetch a bound socket. */
-	int fd = net_connected_socket(SOCK_STREAM, request->remote,
-	                              request->origin, O_NONBLOCK);
+	int fd = net_connected_socket(SOCK_STREAM, request->data.remote,
+	                              request->data.origin, O_NONBLOCK);
 	if (fd < 0) {
 		return KNOT_ECONN;
 	}
 
 	/* Form a pending request. */
-	request->fd = fd;
+	request->data.fd = fd;
 	request->state = NS_PROC_FULL; /* We have a query to be sent. */
 	memcpy(&request->process.mm, requestor->mm, sizeof(mm_ctx_t));
 
 	knot_process_begin(&request->process, param, requestor->module);
 
-	add_tail(&requestor->pending, &request->node);
+	add_tail(&requestor->pending, &request->data.node);
 
 	return KNOT_EOK;
 }
@@ -221,7 +219,7 @@ static int exec_request(struct request *last, struct timeval *timeout)
 
 		last->state = knot_process_in(last->pkt_buf, rcvd, &last->process);
 		if (last->state == NS_PROC_FAIL) {
-			return KNOT_ERROR;
+			return KNOT_EMALF;
 		}
 	}
 

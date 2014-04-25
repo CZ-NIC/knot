@@ -44,7 +44,7 @@
 #define NOTIFY_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
 
-int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
+int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
@@ -80,4 +80,9 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Format resulting log message. */
 	NOTIFY_LOG(LOG_INFO, "received serial %u.", serial);
 	return NS_PROC_DONE;
+}
+
+int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data)
+{
+	return NS_PROC_DONE; /* No processing. */
 }

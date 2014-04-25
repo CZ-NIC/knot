@@ -34,6 +34,7 @@
 #include "knot/zone/contents.h"
 
 struct query_data;
+struct answer_data;
 
 #define NOTIFY_TIMEOUT 3 /*!< Interval between NOTIFY retries. */
 
@@ -43,7 +44,15 @@ struct query_data;
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int internet_notify(knot_pkt_t *pkt, struct query_data *qdata);
+int notify_query(knot_pkt_t *pkt, struct query_data *qdata);
+
+/*!
+ * \brief Process an answer to the NOTIFY query.
+ *
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
+ */
+int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
 
 #endif /* _KNOTD_NOTIFY_H_ */

@@ -39,13 +39,9 @@
 /*! \brief Discard zone in zone database. */
 static void discard_zone(zone_t *zone)
 {
-	/* @note Exclude DDNS. */
-	pthread_mutex_lock(&zone->ddns_lock);
-	zone->flags |= ZONE_DISCARDED;
-	pthread_mutex_unlock(&zone->ddns_lock);
 	/* Wait for current operations. */
 	synchronize_rcu();
-	zone_release(zone);
+	zone_free(&zone);
 }
 
 /*----------------------------------------------------------------------------*/
