@@ -259,11 +259,11 @@ Default value: ``4096``
 system Example
 --------------
 
-::
+.. parsed-literal ::
 
     system {
-      identity "Knot DNS @VERSION@";
-      version "@VERSION@";
+      identity "Knot DNS |version|";
+      version "|version|";
       nsid    "amaterasu";
       rundir "/var/run/knot";
       workers 16;
