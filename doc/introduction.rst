@@ -36,18 +36,25 @@ Server features:
 * IPv4 / IPv6 support
 * Semantic checks of zones
 
-For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`.
+For more info and downloads see `www.knot-dns.cz <https://www.knot-dns.cz>`_.
 
-Git repository: `git://git.nic.cz/knot-dns.git`
+Git repository: `git://git.nic.cz/knot-dns.git <git://git.nic.cz/knot-dns.git>`_
 
-Git repository browser: `gitlab.labs.nic.cz/knot/tree/master <https://gitlab.labs.nic.cz/knot/tree/master>`
+Git repository browser: `gitlab.labs.nic.cz/knot/tree/master <https://gitlab.labs.nic.cz/knot/tree/master>`_
 
-Knot DNS issue tracker: `gitlab.labs.nic.cz/knot/issues <https://gitlab.labs.nic.cz/knot/issues>`
+Knot DNS issue tracker: `gitlab.labs.nic.cz/knot/issues <https://gitlab.labs.nic.cz/knot/issues>`_
 
-Knot DNS users mailing list: `knot-dns-users@lists.nic.cz <mailto:knot-dns-users@@lists.nic.cz>`
+Knot DNS users mailing list: `knot-dns-users@lists.nic.cz <mailto:knot-dns-users@@lists.nic.cz>`_
 
 Scope of this document
 ----------------------
 
 This document covers the basic information on installing, configuring
 and troubleshooting the Knot DNS server.
+
+License
+-------
+
+Knot DNS is licensed under `GNU General Public License <https://www.gnu.org/copyleft/gpl.html>`_
+version 3 or (at your option) any later version. The full text of the license
+is available in the ``COPYING`` file distributed with the source codes.

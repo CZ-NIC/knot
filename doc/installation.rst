@@ -52,7 +52,7 @@ data synchronization library provides read-side access which scales
 linearly with the number of cores. It does so by allowing multiple
 copies of a given data structure to live at the same time, and by
 monitoring the data structure accesses to detect grace periods after
-which memory reclamation is possible.  `Userspace RSU <http://lttng.org/urcu>`
+which memory reclamation is possible.  `Userspace RSU <http://lttng.org/urcu>`_
 
 Binary packages for Debian can be found under ``liburcu1`` for the
 library and ``liburcu-dev`` for development files.
@@ -68,8 +68,8 @@ OpenBSD, NetBSD and OS X platforms are supported from version 0.7.0.
 Installation from the sources
 =============================
 
-You can find the source files for the latest release on `www.knot-dns.cz <https://www.knot-dns.cz>`.
-Alternatively, you can fetch the sources from git repository `<git://git.nic.cz/knot-dns.git>`.
+You can find the source files for the latest release on `www.knot-dns.cz <https://www.knot-dns.cz>`_.
+Alternatively, you can fetch the sources from git repository `<git://git.nic.cz/knot-dns.git>`_.
 
 After unpacking the sources, the compilation and installation is a
 quite straightforward process using autotools.
@@ -183,7 +183,7 @@ option to upgrade to last stable version of the Knot DNS or to install
 it on older versions of Ubuntu Linux.
 
 We typically provide packages for all supported versions of Ubuntu
-Linux including 5 year support for `LTS <https://wiki.ubuntu.com/LTS>`
+Linux including 5 year support for `LTS <https://wiki.ubuntu.com/LTS>`_
 versions of Ubuntu Linux.  At the time of writing this manual this
 includes Ubuntu 10.04 LTS, 11.04, 11.10 and 12.04 LTS.
 

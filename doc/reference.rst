@@ -52,7 +52,7 @@ identity
 
 Identity of the server returned in a response for the query for TXT
 record ``id.server.`` or ``hostname.bind.`` in the CHAOS class (see
-`RFC\ 4892 <http://tools.ietf.org/html/rfc4892>`).
+`RFC\ 4892 <http://tools.ietf.org/html/rfc4892>`_).
 
 If not specified or empty, the server returns REFUSED status code.  If
 a boolean value of ``on`` is used, FQDN hostname is used as a default.
@@ -71,7 +71,7 @@ version
 
 Version of the server software returned in a response for the query
 for TXT record ``version.server.`` or ``version.bind.`` in the CHAOS
-class (see `RFC\ 4892 <http://tools.ietf.org/html/rfc4892>`).
+class (see `RFC\ 4892 <http://tools.ietf.org/html/rfc4892>`_).
 
 Option allows a boolean value ``on|off``, if ``on``, automatic version
 string is set as a default.  If not specified or empty, the server
@@ -89,7 +89,7 @@ returns REFUSED status code.
 nsid
 ^^^^
 
-DNS Name Server Identifier (see `RFC\ 5001 <http://tools.ietf.org/html/rfc5001>`).
+DNS Name Server Identifier (see `RFC\ 5001 <http://tools.ietf.org/html/rfc5001>`_).
 
 Use a string format "text" or a hexstring (e.g.  0x01ab00) If a
 boolean value of ``on`` is used, FQDN hostname is used as a default.
@@ -929,7 +929,7 @@ update, no change is made.
 careful with transition to unix time.  It may happen that the new
 serial will be 'lower' than the old one.  If this is the case, the
 transition should be done by hand (see `RFC\ 1982
-<https://tools.ietf.org/html/rfc1982>`).
+<https://tools.ietf.org/html/rfc1982>`_).
 
 Default value: ``increment``
 
