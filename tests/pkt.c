@@ -41,9 +41,32 @@ const char *g_rdata[DATACOUNT] = {
 #define RDVAL(i) ((const uint8_t*)(g_rdata[(i)] + 1))
 #define RDLEN(i) ((uint16_t)(g_rdata[(i)][0]))
 
+/* @note Packet equivalence test, 5 checks. */
+static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
+{
+	/* Check counts */
+	is_int(knot_wire_get_qdcount(out->wire),
+	       knot_wire_get_qdcount(in->wire), "pkt: QD match");
+	is_int(knot_wire_get_ancount(out->wire),
+	       knot_wire_get_ancount(in->wire), "pkt: AN match");
+	is_int(knot_wire_get_nscount(out->wire),
+	       knot_wire_get_nscount(in->wire), "pkt: NS match");
+	is_int(knot_wire_get_arcount(out->wire),
+	       knot_wire_get_arcount(in->wire), "pkt: AR match");
+
+	/* Check RRs */
+	int rr_matched = 0;
+	for (unsigned i = 0; i < NAMECOUNT; ++i) {
+		if (knot_rrset_equal(&out->rr[i], &in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
+			++rr_matched;
+		}
+	}
+	is_int(NAMECOUNT, rr_matched, "pkt: RR content match");
+}
+
 int main(int argc, char *argv[])
 {
-	plan(25);
+	plan(30);
 
 	/* Create memory pool context. */
 	int ret = 0;
@@ -146,34 +169,23 @@ int main(int argc, char *argv[])
 	ret = knot_pkt_parse_payload(in, 0);
 	ok(ret == KNOT_EOK, "pkt: read payload");
 
-	/* Check qname. */
-	ok(knot_dname_is_equal(knot_pkt_qname(out),
-	                       knot_pkt_qname(in)), "pkt: equal qname");
+	/* Compare parsed packet to written packet. */
+	packet_match(in, out);
 
-	/* Check counts */
-	is_int(knot_wire_get_qdcount(out->wire),
-	       knot_wire_get_qdcount(in->wire), "pkt: QD match");
-	is_int(knot_wire_get_ancount(out->wire),
-	       knot_wire_get_ancount(in->wire), "pkt: AN match");
-	is_int(knot_wire_get_nscount(out->wire),
-	       knot_wire_get_nscount(in->wire), "pkt: NS match");
-	is_int(knot_wire_get_arcount(out->wire),
-	       knot_wire_get_arcount(in->wire), "pkt: AR match");
+	/*
+	 * Copied packet tests.
+	 */
+	knot_pkt_t *copy = knot_pkt_copy(in, &in->mm);
+	ok(copy != NULL, "pkt: create packet copy");
 
-	/* Check RRs */
-	int rr_matched = 0;
-	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		if (knot_rrset_equal(&out->rr[i], &in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
-			++rr_matched;
-		}
-	}
-	is_int(NAMECOUNT, rr_matched, "pkt: RR content match");
+	/* Compare copied packet to original. */
+	packet_match(in, copy);
 
 	/* Free packets. */
+	knot_pkt_free(&copy);
 	knot_pkt_free(&out);
 	knot_pkt_free(&in);
-	ok(in == NULL, "pkt: free");
-	ok(out == NULL, "pkt: free");
+	ok(in == NULL && out == NULL && copy == NULL, "pkt: free");
 
 	/* Free extra data. */
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {

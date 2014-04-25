@@ -202,6 +202,37 @@ knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm)
 	return pkt_new_mm(wire, len, mm);
 }
 
+knot_pkt_t *knot_pkt_copy(const knot_pkt_t *pkt, mm_ctx_t *mm)
+{
+	dbg_packet("%s(%p, %p)\n", __func__, pkt, mm);
+	if (pkt == NULL) {
+		return NULL;
+	}
+
+	knot_pkt_t *copy = knot_pkt_new(NULL, pkt->max_size, mm);
+	if (copy == NULL) {
+		return NULL;
+	}
+
+	copy->size = pkt->size;
+	memcpy(copy->wire, pkt->wire, copy->size);
+
+	/* Copy TSIG RR back to wire. */
+	if (pkt->tsig_rr) {
+		int ret = knot_tsig_append(copy->wire, &copy->size, copy->max_size,
+		                           pkt->tsig_rr);
+		if (ret != KNOT_EOK) {
+			knot_pkt_free(&copy);
+			return NULL;
+		}
+	}
+
+	/* @note This could be done more effectively if needed. */
+	knot_pkt_parse(copy, 0);
+
+	return copy;
+}
+
 int knot_pkt_init_response(knot_pkt_t *pkt, const knot_pkt_t *query)
 {
 	dbg_packet("%s(%p, %p)\n", __func__, pkt, query);

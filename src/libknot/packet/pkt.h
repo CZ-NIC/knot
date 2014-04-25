@@ -131,6 +131,18 @@ typedef struct knot_pkt {
 knot_pkt_t *knot_pkt_new(void *wire, uint16_t len, mm_ctx_t *mm);
 
 /*!
+ * \brief Copy packet.
+ *
+ * \note Current implementation is not very efficient, as it re-parses the wire.
+ *
+ * \param pkt Source packet.
+ * \param mm Memory context.
+ *
+ * \return new packet or NULL
+ */
+knot_pkt_t *knot_pkt_copy(const knot_pkt_t *pkt, mm_ctx_t *mm);
+
+/*!
  * \brief Initialized response from query packet.
  *
  * \note Question is not checked, it is expected to be checked already.
