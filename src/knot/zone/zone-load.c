@@ -115,11 +115,6 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
-	/* Free changesets and return. */
-	if (ret == KNOT_EOK) {
-		xfrin_cleanup_successful_update(chsets);
-	}
-
 	knot_changesets_free(&chsets);
 	return ret;
 }

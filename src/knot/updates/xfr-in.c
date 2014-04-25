@@ -1099,23 +1099,29 @@ int xfrin_apply_changesets_directly(zone_contents_t *contents,
 		const bool master = true; // Only DNSSEC changesets are applied directly.
 		int ret = xfrin_apply_changeset(contents, set, master);
 		if (ret != KNOT_EOK) {
+			xfrin_cleanup_successful_update(chsets);
 			return ret;
 		}
 	}
 
-	return xfrin_finalize_updated_zone(contents, true);
+	int ret = xfrin_finalize_updated_zone(contents, true);
+
+	/*
+	 * HACK: Cleanup for successful update is used for both success and fail
+	 * when modifying the zone directly, will fix in new zone API.
+	 */
+	xfrin_cleanup_successful_update(chsets);
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
 
 /* Post-DDNS application, no need to shallow copy. */
-int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
-                                       zone_contents_t *z_new,
+int xfrin_apply_changesets_dnssec_ddns(zone_contents_t *z_new,
                                        knot_changesets_t *sec_chsets,
                                        knot_changesets_t *chsets)
 {
-	if (zone == NULL || z_new == NULL ||
-	    sec_chsets == NULL || chsets == NULL) {
+	if (z_new == NULL || sec_chsets == NULL || chsets == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -1125,7 +1131,6 @@ int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
 	/* Apply changes. */
 	int ret = xfrin_apply_changesets_directly(z_new, sec_chsets);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update(sec_chsets, &z_new);
 		dbg_xfrin("Failed to apply changesets to zone: "
 		          "%s\n", knot_strerror(ret));
 		return ret;

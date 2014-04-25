@@ -37,7 +37,7 @@
 #include "libknot/rdata.h"
 #include "knot/zone/zone-dump.h"
 
-void process_error(const zs_scanner_t *s)
+void process_error(zs_scanner_t *s)
 {
 	if (s->stop == true) {
 		log_zone_error("Fatal error in zone file %s:%"PRIu64": %s "
@@ -116,7 +116,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	}
 
 	zone_node_t *node = NULL;
-	int ret = knot_zone_contents_add_rr(zc->z, rr, &node);
+	int ret = zone_contents_add_rr(zc->z, rr, &node);
 	if (ret != KNOT_EOK) {
 		if (!handle_err(zc, node, rr, ret, zc->master)) {
 			// Fatal error
@@ -145,7 +145,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 }
 
 /*! \brief Creates RR from parser input, passes it to handling function. */
-static void loader_process(const zs_scanner_t *scanner)
+static void loader_process(zs_scanner_t *scanner)
 {
 	zcreator_t *zc = scanner->data;
 	if (zc->ret != KNOT_EOK) {

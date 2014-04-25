@@ -158,18 +158,7 @@ int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset)
 	}
 
 	/* Apply DNSSEC changeset to the new zone. */
-	int ret = xfrin_apply_changesets_directly(contents, chset);
-	if (ret == KNOT_EOK) {
-		ret = xfrin_finalize_updated_zone(contents, true);
-	}
-
-	if (ret == KNOT_EOK) {
-		/* No need to do rollback, the whole new zone will be
-		 * discarded. */
-		xfrin_cleanup_successful_update(chset);
-	}
-
-	return ret;
+	return xfrin_apply_changesets_directly(contents, chset);
 }
 
 int zone_change_store(zone_t *zone, knot_changesets_t *chset)
@@ -207,7 +196,6 @@ int zone_change_apply_and_store(knot_changesets_t *chs,
 	ret = xfrin_apply_changesets(zone, chs, new_contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to apply changesets.\n", msgpref);
-
 		/* Free changesets, but not the data. */
 		knot_changesets_free(&chs);
 		return ret;  // propagate the error above
@@ -217,7 +205,7 @@ int zone_change_apply_and_store(knot_changesets_t *chs,
 	ret = zone_change_store(zone, chs);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to store changesets.\n", msgpref);
-
+		xfrin_rollback_update(chs, new_contents);
 		/* Free changesets, but not the data. */
 		knot_changesets_free(&chs);
 		return ret;  // propagate the error above

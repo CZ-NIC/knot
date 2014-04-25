@@ -91,8 +91,7 @@ int zone_contents_gen_is_new(const zone_contents_t *contents);
 void zone_contents_set_gen_old(zone_contents_t *contents);
 void zone_contents_set_gen_new(zone_contents_t *contents);
 
-int knot_zone_contents_add_rr(knot_zone_contents_t *z,
-                              const knot_rrset_t *rr, zone_node_t **n);
+int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
 
 int zone_contents_remove_node(zone_contents_t *contents, const knot_dname_t *owner);
 

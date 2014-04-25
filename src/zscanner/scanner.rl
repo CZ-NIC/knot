@@ -41,7 +41,7 @@
 /*!
  * \brief Empty function which is called if no callback function is specified.
  */
-static inline void noop(zs_scanner_t *s)
+static inline void noop(const zs_scanner_t *s)
 {
 	(void)s;
 }
