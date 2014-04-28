@@ -506,6 +506,17 @@ static void event_set_time(zone_events_t *events, zone_event_type_t type, time_t
 }
 
 /*!
+ * \brief Get time of a given event type.
+ */
+static time_t event_get_time(zone_events_t *events, zone_event_type_t type)
+{
+	assert(events);
+	assert(valid_event(type));
+
+	return events->time[type];
+}
+
+/*!
  * \brief Cancel scheduled item, schedule first enqueued item.
  *
  * The events mutex must be locked when calling this function.
@@ -682,8 +693,13 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 	zone_events_t *events = &zone->events;
 
 	pthread_mutex_lock(&events->mx);
-	event_set_time(events, type, time);
-	reschedule(events);
+
+	time_t current = event_get_time(events, type);
+	if (current == 0 || time == 0 || time < current) {
+		event_set_time(events, type, time);
+		reschedule(events);
+	}
+
 	pthread_mutex_unlock(&events->mx);
 }
 
