@@ -27,37 +27,31 @@
 #ifndef _DNSTAP__WRITER_H_
 #define _DNSTAP__WRITER_H_
 
-#include <stdio.h>			// FILE
-#include <stdint.h>			// uint8_t
-
-#include <fstrm.h>			// fstrm_control
-#include <protobuf-c/protobuf-c.h>	// ProtobufCMessage
+#include <fstrm.h>
+#include <protobuf-c/protobuf-c.h>
 
 /*! \brief Structure for dnstap file writer. */
 typedef struct {
-	/*!< Output FILE. */
-	FILE			*fp;
+	/*!< Output writer. */
+	struct fstrm_writer	*fw;
 
 	/*!< dnstap "version" field. */
-	uint8_t			*version;
+	void			*version;
 
 	/*!< length of dnstap "version" field. */
 	size_t			len_version;
-
-	/*!< Frame Streams control frame structure. */
-	struct fstrm_control	*control;
 } dt_writer_t;
 
 /*!
  * \brief Creates dnstap file writer structure.
  *
- * \param file_name		Name of file to write output to.
+ * \param file_path		Name of file to write output to.
  * \param version		Version string of software. May be NULL.
  *
  * \retval writer		if success.
  * \retval NULL			if error.
  */
-dt_writer_t* dt_writer_create(const char *file_name, const char *version);
+dt_writer_t* dt_writer_create(const char *file_path, const char *version);
 
 /*!
  * \brief Finish writing dnstap file writer and free resources.

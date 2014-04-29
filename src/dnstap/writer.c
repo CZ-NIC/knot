@@ -14,8 +14,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arpa/inet.h>                  // htonl
-#include <errno.h>
 #include <stdint.h>                     // uint8_t, uint32_t
 #include <stdio.h>                      // fopen, fwrite
 #include <stdlib.h>                     // calloc, free
@@ -24,41 +22,13 @@
 #include "common/errcode.h"
 #include "libknot/common.h"
 
-#include "dnstap/dnstap.pb-c.h"
 #include "dnstap/dnstap.h"
 #include "dnstap/writer.h"
 
-#define DNSTAP_INITIAL_BUF_SIZE         256
-
-static int dt_writer_write_control(dt_writer_t *writer,
-                                   fstrm_control_type type)
+dt_writer_t* dt_writer_create(const char *file_path, const char *version)
 {
-	fstrm_res res;
-
-	// Encode the control frame.
-	res = fstrm_control_set_type(writer->control, type);
-	if (res != fstrm_res_success) {
-		return KNOT_ERROR;
-	}
-
-	// Write the control frame.
-	if (writer->fp != NULL) {
-		uint8_t frame[FSTRM_MAX_CONTROL_FRAME_LENGTH];
-		size_t len = sizeof(frame);
-
-		res = fstrm_control_encode(writer->control, frame, &len,
-                                           FSTRM_CONTROL_FLAG_WITH_HEADER);
-		if (res != fstrm_res_success) {
-			return KNOT_ERROR;
-		}
-		fwrite(frame, len, 1, writer->fp);
-	}
-
-	return KNOT_EOK;
-}
-
-dt_writer_t* dt_writer_create(const char *file_name, const char *version)
-{
+	struct fstrm_file_options *fopt = NULL;
+	struct fstrm_writer_options *wopt = NULL;
 	dt_writer_t *writer = NULL;
 	fstrm_res res;
 	
@@ -70,29 +40,27 @@ dt_writer_t* dt_writer_create(const char *file_name, const char *version)
 	// Set "version".
 	if (version != NULL) {
 		writer->len_version = strlen(version);
-		writer->version = (uint8_t *)strdup(version);
+		writer->version = strdup(version);
 		if (!writer->version) {
 			goto fail;
 		}
 	}
 
-	// Open file.
-	writer->fp = fopen(file_name, "w");
-	if (writer->fp == NULL) {
-		goto fail;
-	}
-
-	// Initialize the control frame object.
-	writer->control = fstrm_control_init();
-	res = fstrm_control_add_field_content_type(writer->control,
+	// Open writer.
+	fopt = fstrm_file_options_init();
+	fstrm_file_options_set_file_path(fopt, file_path);
+	wopt = fstrm_writer_options_init();
+	fstrm_writer_options_add_content_type(wopt,
 		(const uint8_t *) DNSTAP_CONTENT_TYPE,
 		strlen(DNSTAP_CONTENT_TYPE));
-	if (res != fstrm_res_success) {
+	writer->fw = fstrm_file_writer_init(fopt, wopt);
+	fstrm_file_options_destroy(&fopt);
+	fstrm_writer_options_destroy(&wopt);
+	if (writer->fw == NULL) {
 		goto fail;
 	}
-
-	// Write the START control frame.
-	if (dt_writer_write_control(writer, FSTRM_CONTROL_START) != KNOT_EOK) {
+	res = fstrm_writer_open(writer->fw);
+	if (res != fstrm_res_success) {
 		goto fail;
 	}
 
@@ -102,48 +70,25 @@ fail:
 	return NULL;
 }
 
-int dt_writer_close(dt_writer_t *writer)
-{
-	FILE *fp;
-	int rv = KNOT_EOK;
-
-	// Write the STOP control frame.
-	if (writer->fp != NULL) {
-		rv = dt_writer_write_control(writer, FSTRM_CONTROL_STOP);
-	}
-
-	// Close file.
-	fp = writer->fp;
-	writer->fp = NULL;
-	if (fp != NULL) {
-		if (fclose(fp) != 0) {
-			return knot_map_errno(errno);
-		}
-	}
-
-	return rv;
-}
-
 int dt_writer_free(dt_writer_t *writer)
 {
-	int rv = KNOT_EOK;
 	if (writer != NULL) {
-		rv = dt_writer_close(writer);
-		fstrm_control_destroy(&writer->control);
+		fstrm_res res = fstrm_writer_destroy(&writer->fw);
 		free(writer->version);
 		free(writer);
+		if (res != fstrm_res_success)
+			return KNOT_ERROR;
 	}
-	return rv;
+	return KNOT_EOK;
 }
 
 int dt_writer_write(dt_writer_t *writer, const ProtobufCMessage *msg)
 {
-	uint32_t be_len;
+	Dnstap__Dnstap dnstap = DNSTAP__DNSTAP__INIT;
 	size_t len;
 	uint8_t *data;
-	Dnstap__Dnstap dnstap = DNSTAP__DNSTAP__INIT;
 
-	if (writer->fp == NULL)
+	if (writer->fw == NULL)
 		return KNOT_EOK;
 
 	// Only handle dnstap/Message.
@@ -164,9 +109,8 @@ int dt_writer_write(dt_writer_t *writer, const ProtobufCMessage *msg)
 		return KNOT_ENOMEM;
 
 	// Write the dnstap frame to the output stream.
-	be_len = htonl(len);
-	fwrite(&be_len, sizeof(be_len), 1, writer->fp);
-	fwrite(data, len, 1, writer->fp);
+	if (fstrm_writer_write(writer->fw, data, len) != fstrm_res_success)
+		return KNOT_ERROR;
 
 	// Cleanup.
 	free(data);
