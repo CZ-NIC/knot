@@ -1116,31 +1116,6 @@ int xfrin_apply_changesets_directly(zone_contents_t *contents,
 
 /*----------------------------------------------------------------------------*/
 
-/* Post-DDNS application, no need to shallow copy. */
-int xfrin_apply_changesets_dnssec_ddns(zone_contents_t *z_new,
-                                       knot_changesets_t *sec_chsets,
-                                       knot_changesets_t *chsets)
-{
-	if (z_new == NULL || sec_chsets == NULL || chsets == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Set generation to old. Zone should be long locked at this point. */
-	zone_contents_set_gen_old(z_new);
-
-	/* Apply changes. */
-	int ret = xfrin_apply_changesets_directly(z_new, sec_chsets);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to apply changesets to zone: "
-		          "%s\n", knot_strerror(ret));
-		return ret;
-	}
-
-	return ret;
-}
-
-/*----------------------------------------------------------------------------*/
-
 int xfrin_apply_changesets(zone_t *zone,
                            knot_changesets_t *chsets,
                            zone_contents_t **new_contents)

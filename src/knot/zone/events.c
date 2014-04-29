@@ -309,24 +309,57 @@ static int event_xfer(zone_t *zone)
 	return ret;
 }
 
+static knot_pkt_t *create_ddns_resp(const knot_pkt_t *query, uint16_t rcode)
+{
+	knot_pkt_t *resp = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	if (resp == KNOT_EOK) {
+		return NULL;
+	}
+
+	int ret = knot_pkt_init_response(resp, query);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&resp);
+	}
+
+	knot_wire_set_rcode(resp->wire, rcode);
+	return resp;
+}
+
 static int event_update(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "UPDATE of '%s'\n", zone->conf->name);
+	fprintf(stderr, "UPDATE of '%s' started.\n", zone->conf->name);
 
 	struct request_data *update = zone_update_dequeue(zone);
-	if (update == NULL) {
-		return KNOT_EOK; /* No scheduled data. */
+	assert(update);
+	uint16_t rcode = KNOT_RCODE_NOERROR;
+	const uint32_t old_serial = zone_contents_serial(zone->contents);
+	int ret = process_ddns_pkt(zone, update->query, &rcode);
+	const uint32_t new_serial = zone_contents_serial(zone->contents);
+
+	if (old_serial != new_serial) {
+		fprintf(stderr, "UPDATE of '%s': finished: %s\n.",
+		        zone->conf->name, knot_strerror(ret));
+	} else {
+		fprintf(stderr, "UPDATE of '%s': No change to zone made.\n",
+		        zone->conf->name);
 	}
 
-	int ret = zones_process_update_auth(zone, update->query);
-#warning TODO: prepare response based on the result
+	knot_pkt_t *resp = create_ddns_resp(update->query, rcode);
+	if (resp == NULL) {
+		knot_pkt_free(&resp);
+		knot_pkt_free(&update->query);
+		return KNOT_ENOMEM;
+	}
 
-#warning TODO: prettier cleanup
+	// Send response to knsupdate.
+	sendto(update->fd, resp->wire, resp->size, 0,
+	       (struct sockaddr *)update->remote, sockaddr_len(update->remote));
+
+	knot_pkt_free(&resp);
 	knot_pkt_free(&update->query);
 	free(update);
 
-#warning TODO: reschedule or loop until the queue is empty
 	return ret;
 }
 

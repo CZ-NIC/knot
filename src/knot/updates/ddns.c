@@ -934,8 +934,8 @@ static uint16_t ret_to_rcode(int ret)
 
 /* ---------------------------------- API ----------------------------------- */
 
-int knot_ddns_process_prereqs(const knot_pkt_t *query, const zone_contents_t *zone,
-                              uint16_t *rcode)
+int ddns_process_prereqs(const knot_pkt_t *query, const zone_contents_t *zone,
+                         uint16_t *rcode)
 {
 	if (query == NULL || rcode == NULL || zone == NULL) {
 		return KNOT_EINVAL;
@@ -962,10 +962,8 @@ int knot_ddns_process_prereqs(const knot_pkt_t *query, const zone_contents_t *zo
 	return ret;
 }
 
-int knot_ddns_process_update(const zone_t *zone,
-                             const knot_pkt_t *query,
-                             knot_changeset_t *changeset,
-                             uint16_t *rcode)
+int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
+                        knot_changeset_t *changeset, uint16_t *rcode)
 {
 	if (zone == NULL || query == NULL || changeset == NULL || rcode == NULL) {
 		return KNOT_EINVAL;
@@ -983,7 +981,6 @@ int knot_ddns_process_update(const zone_t *zone,
 
 	/* Process all RRs the Authority (Update) section. */
 
-	dbg_ddns("Processing UPDATE section.\n");
 	int apex_ns_rem = 0;
 	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
 	for (uint16_t i = 0; i < authority->count; ++i) {

@@ -42,9 +42,8 @@
  *
  * \return KNOT_E*
  */
-int knot_ddns_process_prereqs(const knot_pkt_t *query,
-                              const zone_contents_t *zone,
-                              uint16_t *rcode);
+int ddns_process_prereqs(const knot_pkt_t *query, const zone_contents_t *zone,
+                         uint16_t *rcode);
 
 /*!
  * \brief Processes DNS update and creates a changeset out of it. Zone is left
@@ -57,10 +56,8 @@ int knot_ddns_process_prereqs(const knot_pkt_t *query,
  *
  * \return KNOT_E*
  */
-int knot_ddns_process_update(const zone_t *zone,
-                             const knot_pkt_t *query,
-                             knot_changeset_t *changeset,
-                             uint16_t *rcode);
+int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
+                        knot_changeset_t *changeset, uint16_t *rcode);
 
 #endif /* _KNOT_DDNS_H_ */
 

@@ -179,11 +179,7 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                knot_changeset_t *out_ch,
                                uint32_t *refresh_at)
 {
-	if (!refresh_at) {
-		return KNOT_EINVAL;
-	}
-
-	if (zone == NULL || in_ch == NULL || out_ch == NULL) {
+	if (!refresh_at || zone == NULL || in_ch == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
 	}
 

@@ -66,6 +66,17 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 	return KNOT_EOK;
 }
 
+static void free_ddns_q(zone_t *z)
+{
+	struct request_data *n = NULL;
+	node_t *nxt = NULL;
+	WALK_LIST_DELSAFE(n, nxt, z->ddns_queue) {
+		knot_pkt_free(&n->query);
+		rem_node((node_t *)n);
+		free(n);
+	}
+}
+
 zone_t* zone_new(conf_zone_t *conf)
 {
 	if (!conf) {
@@ -121,6 +132,7 @@ void zone_free(zone_t **zone_ptr)
 	acl_delete(&zone->xfr_out);
 	acl_delete(&zone->notify_in);
 	acl_delete(&zone->update_in);
+	free_ddns_q(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
 
 	/* Free assigned config. */
@@ -298,6 +310,8 @@ int zone_flush_journal(zone_t *zone)
 
 int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param)
 {
+
+	/* Create serialized request. */
 	struct request_data *req = malloc(sizeof(struct request_data));
 	if (req == NULL) {
 		return KNOT_ENOMEM;
@@ -305,7 +319,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 
 	memset(req, 0, sizeof(struct request_data));
 	req->fd = param->socket;
-	req->origin = param->remote;
+	req->remote = param->remote;
 	req->query = knot_pkt_copy(pkt, NULL);
 	if (req->query == NULL) {
 		free(req);
@@ -313,14 +327,14 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	}
 
 	pthread_mutex_lock(&zone->ddns_lock);
-	/* Schedule UPDATE event if this is a first item in the list. */
-	if (EMPTY_LIST(zone->ddns_queue)) {
-		zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
-	}
+
 	/* Enqueue created request. */
-#warning TODO: scan the queue if the same source/msgid is not already enqueued
 	add_tail(&zone->ddns_queue, (node_t *)req);
+
 	pthread_mutex_unlock(&zone->ddns_lock);
+
+	/* Schedule UPDATE event. If already scheduled, older event will stay. */
+	zone_events_schedule(zone, ZONE_EVENT_UPDATE, ZONE_EVENT_NOW);
 
 	return KNOT_EOK;
 }
@@ -331,13 +345,10 @@ struct request_data *zone_update_dequeue(zone_t *zone)
 		return NULL;
 	}
 
-	struct request_data *ret = NULL;
-
 	pthread_mutex_lock(&zone->ddns_lock);
-	if (!EMPTY_LIST(zone->ddns_queue)) {
-		ret = HEAD(zone->ddns_queue);
-		rem_node((node_t *)ret);
-	}
+	assert(!EMPTY_LIST(zone->ddns_queue));
+	struct request_data *ret = HEAD(zone->ddns_queue);
+	rem_node((node_t *)ret);
 	pthread_mutex_unlock(&zone->ddns_lock);
 
 	return ret;

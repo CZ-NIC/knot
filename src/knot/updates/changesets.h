@@ -223,10 +223,6 @@ void knot_changesets_free(knot_changesets_t **changesets);
  */
 int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2);
 
-/*! \note @mvavrusa Moved from zones.c, this should be gone soon. */
-void knot_changesets_free_merged(knot_changesets_t *diff_chs,
-                                 knot_changesets_t *sec_chs);
-
 #endif /* _KNOT_CHANGESETS_H_ */
 
 /*! @} */

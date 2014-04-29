@@ -115,22 +115,6 @@ int xfrin_apply_changesets(zone_t *zone,
                            zone_contents_t **new_contents);
 
 /*!
- * \brief Applies DNSSEC changesets after DDNS.
- *
- * \param z_new           Post DDNS/reload zone.
- * \param sec_chsets      Changes with RRSIGs/NSEC(3)s.
- * \param chsets          DDNS/reload changes, for rollback.
- * \return KNOT_E*
- *
- * This function does not do shallow copy of the zone, as it is already created
- * by the UPDATE-processing function. It uses new and old zones from this
- * operation.
- */
-int xfrin_apply_changesets_dnssec_ddns(zone_contents_t *z_new,
-                                       knot_changesets_t *sec_chsets,
-                                       knot_changesets_t *chsets);
-
-/*!
  * \brief Applies changesets directly to the zone, without copying it.
  *
  * \param contents Zone contents to apply the changesets to. Will be modified.

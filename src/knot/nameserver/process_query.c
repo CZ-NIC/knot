@@ -477,7 +477,12 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 		 */
 	}
 	if (zone == NULL) {
-		zone = knot_zonedb_find_suffix(zonedb, qname);
+		if (knot_pkt_type(query) != KNOT_QUERY_UPDATE) {
+			zone = knot_zonedb_find_suffix(zonedb, qname);
+		} else {
+			// Direct matches only for DDNS.
+			zone = knot_zonedb_find(zonedb, qname);
+		}
 	}
 
 	return zone;

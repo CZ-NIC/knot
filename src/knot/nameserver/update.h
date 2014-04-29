@@ -42,7 +42,17 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata);
 
 
 /*! \brief Process already authenticated packet. */
-int zones_process_update_auth(zone_t *zone, const knot_pkt_t *query);
+/*!
+ * \brief Processes serialized packet with DDNS. Function expects that the
+ *        query is already authenticated and TSIG signature is verified.
+ *
+ * \param zone   Zone to be updated.
+ * \param query  Packet containing DDNS.
+ * \param rcode  Output response code.
+ *
+ * \return KNOT_E*
+ */
+int process_ddns_pkt(zone_t *zone, const knot_pkt_t *query, uint16_t *rcode);
 
 #endif /* _KNOT_UPDATE_H_ */
 

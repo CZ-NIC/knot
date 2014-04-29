@@ -228,7 +228,10 @@ knot_pkt_t *knot_pkt_copy(const knot_pkt_t *pkt, mm_ctx_t *mm)
 	}
 
 	/* @note This could be done more effectively if needed. */
-	knot_pkt_parse(copy, 0);
+	int ret = knot_pkt_parse(copy, 0);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(&copy);
+	}
 
 	return copy;
 }

@@ -1165,18 +1165,6 @@ int zone_contents_adjust_pointers(zone_contents_t *contents)
 
 /*----------------------------------------------------------------------------*/
 
-int zone_contents_adjust_nsec3_pointers(zone_contents_t *contents)
-{
-	// adjusting parameters
-	zone_adjust_arg_t adjust_arg = { .first_node = NULL,
-	                                 .previous_node = NULL,
-	                                 .zone = contents };
-	return zone_contents_adjust_nodes(contents->nodes, &adjust_arg,
-	                                       adjust_nsec3_pointers);
-}
-
-/*----------------------------------------------------------------------------*/
-
 int zone_contents_adjust_full(zone_contents_t *zone,
                               zone_node_t **first_nsec3_node,
                               zone_node_t **last_nsec3_node)

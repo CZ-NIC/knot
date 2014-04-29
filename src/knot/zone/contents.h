@@ -194,11 +194,6 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 int zone_contents_adjust_pointers(zone_contents_t *contents);
 
 /*!
- * \brief Sets NSEC3 nodes for normal nodes. (costly operation, calculates hash)
- */
-int zone_contents_adjust_nsec3_pointers(zone_contents_t *);
-
-/*!
  * \brief Sets parent and previous pointers, sets node flags and NSEC3 links.
  *        This has to be called before the zone can be served.
  *
