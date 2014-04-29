@@ -154,8 +154,8 @@ struct request *requestor_make(struct requestor *requestor,
 	}
 
 	request->state = NS_PROC_DONE;
-	request->data.origin = from;
-	request->data.remote = to;
+	memcpy(&request->data.origin, from, sizeof(struct sockaddr_storage));
+	memcpy(&request->data.remote, to, sizeof(struct sockaddr_storage));
 	request->data.fd = -1;
 	request->data.query = query;
 	return request;
@@ -168,8 +168,8 @@ int requestor_enqueue(struct requestor *requestor, struct request * request, voi
 	}
 
 	/* Fetch a bound socket. */
-	int fd = net_connected_socket(SOCK_STREAM, request->data.remote,
-	                              request->data.origin, O_NONBLOCK);
+	int fd = net_connected_socket(SOCK_STREAM, &request->data.remote,
+	                              &request->data.origin, O_NONBLOCK);
 	if (fd < 0) {
 		return KNOT_ECONN;
 	}

@@ -40,7 +40,7 @@ struct requestor {
 struct request_data {
 	node_t node;
 	int fd;
-	const struct sockaddr_storage *remote, *origin;
+	struct sockaddr_storage remote, origin;
 	knot_pkt_t *query;
 };
 
