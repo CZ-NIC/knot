@@ -84,7 +84,7 @@ dt_writer_t* dt_writer_create(const char *file_name, const char *version)
 
 	// Initialize the control frame object.
 	writer->control = fstrm_control_init();
-	res = fstrm_control_set_field_content_type(writer->control,
+	res = fstrm_control_add_field_content_type(writer->control,
 		(const uint8_t *) DNSTAP_CONTENT_TYPE,
 		strlen(DNSTAP_CONTENT_TYPE));
 	if (res != fstrm_res_success) {
