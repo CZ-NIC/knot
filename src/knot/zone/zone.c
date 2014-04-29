@@ -319,7 +319,7 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 
 	memset(req, 0, sizeof(struct request_data));
 	req->fd = param->socket;
-	req->remote = param->remote;
+	memcpy(&req->remote, param->remote, sizeof(struct sockaddr_storage));
 	req->query = knot_pkt_copy(pkt, NULL);
 	if (req->query == NULL) {
 		free(req);

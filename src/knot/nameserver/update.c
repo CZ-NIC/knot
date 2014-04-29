@@ -10,6 +10,10 @@
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
 
+/* UPDATE-specific logging (internal, expects 'qdata' variable set). */
+#define UPDATE_LOG(severity, msg...) \
+	QUERY_LOG(severity, qdata, "UPDATE", msg)
+
 #warning merge file with ddns.c
 
 static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
@@ -185,8 +189,14 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	return ret;
 }
 
-int process_ddns_pkt(zone_t *zone, const knot_pkt_t *query, uint16_t *rcode)
+static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 {
+	assert(rcode);
+	assert(qdata);
+
+	const knot_pkt_t *query = qdata->query;
+	zone_t *zone = (zone_t *)qdata->zone;
+
 	int ret = ddns_process_prereqs(query, zone->contents, rcode);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -263,6 +273,42 @@ int process_ddns_pkt(zone_t *zone, const knot_pkt_t *query, uint16_t *rcode)
 
 	*rcode = KNOT_RCODE_NOERROR;
 	return ret;
+}
+
+
+int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	assert(pkt);
+	assert(qdata);
+
+	UPDATE_LOG(LOG_INFO, "Started.");
+
+	/* Keep original state. */
+	struct timeval t_start, t_end;
+	gettimeofday(&t_start, NULL);
+	const zone_t *zone = qdata->zone;
+	const uint32_t old_serial = zone_contents_serial(zone->contents);
+
+	/* Process authenticated packet. */
+	uint16_t rcode = KNOT_RCODE_NOERROR;
+	int ret = process_authenticated(&rcode, qdata);
+	if (ret != KNOT_EOK) {
+		UPDATE_LOG(LOG_ERR, "%s\n", knot_strerror(ret));
+		knot_wire_set_rcode(pkt->wire, rcode);
+		return ret;
+	}
+
+	/* Evaluate response. */
+	const uint32_t new_serial = zone_contents_serial(zone->contents);
+	if (new_serial == old_serial) {
+		UPDATE_LOG(LOG_NOTICE, "No change to zone made.");
+		return KNOT_EOK;
+	}
+
+	gettimeofday(&t_end, NULL);
+	UPDATE_LOG(LOG_INFO, "Serial %u -> %u\n", old_serial, new_serial);
+	UPDATE_LOG(LOG_INFO, "Finished in %.02fs.", time_diff(&t_start, &t_end) / 1000.0);
+	return KNOT_EOK;
 }
 
 #undef UPDATE_LOG

@@ -41,18 +41,16 @@ struct query_data;
 int update_answer(knot_pkt_t *pkt, struct query_data *qdata);
 
 
-/*! \brief Process already authenticated packet. */
 /*!
  * \brief Processes serialized packet with DDNS. Function expects that the
  *        query is already authenticated and TSIG signature is verified.
  *
- * \param zone   Zone to be updated.
- * \param query  Packet containing DDNS.
- * \param rcode  Output response code.
+ * \param pkt    Prepared response packet.
+ * \param qdata  Minimal query data context.
  *
  * \return KNOT_E*
  */
-int process_ddns_pkt(zone_t *zone, const knot_pkt_t *query, uint16_t *rcode);
+int update_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 #endif /* _KNOT_UPDATE_H_ */
 
