@@ -298,11 +298,11 @@ static int axfr_answer_finalize(struct answer_data *data)
 
 	/* Switch contents. */
 	zone_contents_t *old_contents = xfrin_switch_zone(zone, proc->zone);
-	AXFRIN_LOG(LOG_INFO, "Serial %u -> %u\n",
+	AXFRIN_LOG(LOG_INFO, "Serial %u -> %u",
 	           zone_contents_serial(old_contents),
 	           zone_contents_serial(proc->zone));
 
-	AXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).\n",
+	AXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
 	         time_diff(&proc->tstamp, &now) / 1000.0,
 	         proc->npkts, proc->nbytes / 1024.0);
 
