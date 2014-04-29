@@ -204,9 +204,9 @@ def main(args):
     msg_skips = ", SKIPPED: %i" % skip_cnt if skip_cnt > 0 else ""
     msg_res = ", FAILED: %i" % fail_cnt if fail_cnt > 0 else ", SUCCESS"
     log.info(msg_cases + msg_skips + msg_res)
-    log_failed(outs_dir, "Total %i/%i" % (fail_cnt, case_cnt), indent=False)
 
     if fail_cnt:
+        log_failed(outs_dir, "Total %i/%i" % (fail_cnt, case_cnt), indent=False)
         sys.exit(1)
     else:
         sys.exit(0)
