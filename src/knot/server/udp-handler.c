@@ -107,8 +107,8 @@ static inline void udp_pps_begin() {}
 static inline void udp_pps_sample(unsigned n, unsigned thr_id) {}
 #endif
 
-int udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
-               struct iovec *rx, struct iovec *tx)
+void udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
+                struct iovec *rx, struct iovec *tx)
 {
 #ifdef DEBUG_ENABLE_BRIEF
 	char addr_str[SOCKADDR_STRLEN] = {0};
@@ -157,7 +157,6 @@ int udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 
 	/* Reset context. */
 	knot_process_finish(&udp->query_ctx);
-	return KNOT_EOK;
 }
 
 /* Check for sendmmsg syscall. */
@@ -239,12 +238,9 @@ static int udp_recvfrom_handle(udp_context_t *ctx, void *d)
 	rq->iov[TX].iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Process received pkt. */
-	int ret = udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
-	if (ret != KNOT_EOK) {
-		rq->iov[TX].iov_len = 0;
-	}
+	udp_handle(ctx, rq->fd, &rq->addr, &rq->iov[RX], &rq->iov[TX]);
 
-	return ret;
+	return KNOT_EOK;
 }
 
 static int udp_recvfrom_send(void *d)
@@ -375,19 +371,18 @@ static int udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 	struct udp_recvmmsg *rq = (struct udp_recvmmsg *)d;
 
 	/* Handle each received msg. */
-	int ret = 0;
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		struct iovec *rx = rq->msgs[RX][i].msg_hdr.msg_iov;
 		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
 		rx->iov_len = rq->msgs[RX][i].msg_len; /* Received bytes. */
 
-		ret = udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
-		if (ret != KNOT_EOK) { /* Do not send. */
-			tx->iov_len = 0;
-		}
-
+		udp_handle(ctx, rq->fd, rq->addrs + i, rx, tx);
 		rq->msgs[TX][i].msg_len = tx->iov_len;
-		rq->msgs[TX][i].msg_hdr.msg_namelen = rq->msgs[RX][i].msg_hdr.msg_namelen;
+		rq->msgs[TX][i].msg_hdr.msg_namelen = 0;
+		if (tx->iov_len > 0) {
+			/* @note sendmmsg() workaround to prevent sending the packet */
+			rq->msgs[TX][i].msg_hdr.msg_namelen = rq->msgs[RX][i].msg_hdr.msg_namelen;
+		}
 	}
 
 	return KNOT_EOK;
