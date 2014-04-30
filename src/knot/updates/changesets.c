@@ -220,8 +220,7 @@ int knot_changeset_apply(knot_changeset_t *changeset,
 
 int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2)
 {
-	if (ch1 == NULL || ch2 == NULL || ch1->data != NULL ||
-	    ch2->data != NULL) {
+	if (ch1 == NULL || ch2 == NULL || ch1->data != NULL || ch2->data != NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -232,6 +231,7 @@ int knot_changeset_merge(knot_changeset_t *ch1, knot_changeset_t *ch2)
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
 	knot_rrset_free(&ch1->soa_to, NULL);
+	knot_rrset_free(&ch2->soa_from, NULL);
 	ch1->soa_to = ch2->soa_to;
 	ch1->serial_to = ch2->serial_to;
 
