@@ -312,7 +312,8 @@ void server_deinit(server_t *server)
 	rrl_destroy(server->rrl);
 
 	/* Free zone database. */
-	knot_edns_free(&server->opt_rr);
+//	knot_edns_free(&server->opt_rr);
+	knot_edns_free_params(&server->edns);
 	knot_zonedb_deep_free(&server->zone_db);
 
 	/* Free remaining events. */
@@ -454,30 +455,30 @@ void server_stop(server_t *server)
 }
 
 /*! \brief Reconfigure server OPT RR. */
-static int opt_rr_reconfigure(const struct conf_t *conf, server_t *server)
+static int edns_reconfigure(const struct conf_t *conf, server_t *server)
 {
 	dbg_server("%s(%p, %p)\n", __func__, conf, server);
 
-	/* New OPT RR: keep the old pointer and free it after RCU sync. */
-	knot_opt_rr_t *opt_rr = knot_edns_new();
-	if (opt_rr == NULL) {
-		log_server_error("Couldn't create OPT RR, please restart.\n");
+	/* New EDNS options: keep the old pointer and free it after RCU sync. */
+	knot_edns_params_t *edns = knot_edns_new_params();
+	if (edns == NULL) {
+		log_server_error("Couldn't initialize EDNS(0), please restart.\n");
 	} else {
-		knot_edns_set_version(opt_rr, EDNS_VERSION);
-		knot_edns_set_payload(opt_rr, conf->max_udp_payload);
+		edns->version = EDNS_VERSION;
+		edns->payload = conf->max_udp_payload;
 		if (conf->nsid_len > 0) {
-			knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
-			                     conf->nsid_len,
-			                     (const uint8_t *)conf->nsid);
+			edns->nsid_len = conf->nsid_len;
+			edns->nsid = (uint8_t *)malloc(edns->nsid_len);
+			memcpy(edns->nsid, conf->nsid, edns->nsid_len);
 		}
 	}
 
-	knot_opt_rr_t *opt_rr_old = server->opt_rr;
-	server->opt_rr = opt_rr;
+	knot_edns_params_t *edns_old = server->edns;
+	server->edns = edns;
 
 	synchronize_rcu();
 
-	knot_edns_free(&opt_rr_old);
+	knot_edns_free_params(&edns_old);
 
 	return KNOT_EOK;
 }
@@ -580,7 +581,7 @@ int server_reconfigure(const struct conf_t *conf, void *data)
 	}
 
 	/* Reconfigure OPT RR. */
-	if ((ret = opt_rr_reconfigure(conf, server)) < 0) {
+	if ((ret = edns_reconfigure(conf, server)) < 0) {
 		log_server_error("Failed to reconfigure EDNS settings.\n");
 		return ret;
 	}

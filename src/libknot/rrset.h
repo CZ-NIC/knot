@@ -201,4 +201,15 @@ bool knot_rrset_equal(const knot_rrset_t *r1, const knot_rrset_t *r2,
  */
 bool knot_rrset_empty(const knot_rrset_t *rrset);
 
+/* --------------------------- Miscelaneous --------------------------------- */
+
+/*!
+ * \brief Returns the TTL of the RRSet (of its first RR).
+ *
+ * \param rrset RRSet to get the TTL of.
+ *
+ * \retval TTL of the RRSet (precisely of its first RR).
+ */
+uint32_t knot_rrset_ttl(const knot_rrset_t *rrset);
+
 /*! @} */

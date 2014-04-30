@@ -531,7 +531,14 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	if (!knot_pkt_have_edns(query)) {
 		return KNOT_EOK;
 	}
-	ret = knot_pkt_add_opt(resp, server->opt_rr, knot_pkt_have_nsid(query));
+	/*! \todo Remove when OPT RR is stored in server. */
+	knot_rrset_t *opt_rr = knot_edns_new_from_params(server->edns,
+	                                             knot_pkt_have_nsid(query));
+	if (opt_rr == NULL) {
+		dbg_ns("%s: can't create OPT RR (%d)\n", __func__, ret);
+		return ret;
+	}
+	ret = knot_pkt_add_opt(resp, opt_rr);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't add OPT RR (%d)\n", __func__, ret);
 		return ret;
@@ -540,19 +547,26 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	/* Copy DO bit if set (DNSSEC requested). */
 	if (knot_pkt_have_dnssec(query)) {
 		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
-		knot_edns_set_do(&resp->opt_rr);
+		knot_edns_set_do(resp->opt_rr);
 	}
 
 	/* Set minimal supported size from EDNS(0). */
-	uint16_t client_maxlen = knot_edns_get_payload(&query->opt_rr);
-	uint16_t server_maxlen = knot_edns_get_payload(&resp->opt_rr);
-	resp->opt_rr.payload = MIN(client_maxlen, server_maxlen);
+	uint16_t client_maxlen = knot_edns_get_payload(query->opt_rr);
+	uint16_t server_maxlen = knot_edns_get_payload(resp->opt_rr);
+
+	/*! \warning [OPT] This is wrong: we should always advertise the
+	 *           server's max allowed payload. This minimum only applies for
+	 *           this response.
+	 */
+	/*! \todo [OPT] REWRITE */
+//	resp->opt_rr.payload = MIN(client_maxlen, server_maxlen);
 
 	/* Update packet size limit. */
-	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
-		resp->max_size =  MAX(resp->max_size, resp->opt_rr.payload);
-		dbg_ns("%s: packet size limit <= %zuB\n", __func__, resp->max_size);
-	}
+	/*! \todo [OPT] REWRITE */
+//	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
+//		resp->max_size =  MAX(resp->max_size, resp->opt_rr.payload);
+//		dbg_ns("%s: packet size limit <= %zuB\n", __func__, resp->max_size);
+//	}
 
 	return ret;
 }

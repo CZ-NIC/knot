@@ -105,7 +105,9 @@ typedef struct server_t {
 	volatile unsigned state;
 
 	knot_zonedb_t *zone_db; /*!< Zone database. */
-	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
+//	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
+	/*! \todo [OPT] Replace "back" by the OPT RR! */
+	knot_edns_params_t *edns;   /*!< Server-specific EDNS(0) parameters. */
 
 	/*! \brief I/O handlers. */
 	unsigned tu_size;

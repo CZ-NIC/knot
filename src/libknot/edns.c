@@ -25,186 +25,215 @@
 
 /*! \brief Various EDNS constatns. */
 enum knot_edns_consts {
-	/*! \brief Mask for the DO bit. */
-	KNOT_EDNS_DO_MASK = (uint16_t)0x8000,
+	/*! \brief Mask for the DO bit in little endian. */
+	KNOT_EDNS_DO_MASK = (uint32_t)0x800000,
 	/*! \brief Step for allocation of space for option entries. */
-	KNOT_EDNS_OPTION_STEP = 1
+	KNOT_EDNS_OPTION_STEP = 1,
+
+	KNOT_EDNS_OFFSET_RCODE = 3,
+	KNOT_EDNS_OFFSET_VERSION = 2
 };
 
-/*----------------------------------------------------------------------------*/
-
-knot_opt_rr_t *knot_edns_new()
+///*----------------------------------------------------------------------------*/
+/*! \todo [OPT] REWRITE */
+knot_rrset_t *knot_edns_new()
 {
-	knot_opt_rr_t *opt_rr = (knot_opt_rr_t *)malloc(sizeof(knot_opt_rr_t));
-	CHECK_ALLOC_LOG(opt_rr, NULL);
-	memset(opt_rr, 0, sizeof(knot_opt_rr_t));
-	opt_rr->size = EDNS_MIN_SIZE;
-	opt_rr->option_count = 0;
-	opt_rr->options_max = 0;
+	return NULL;
+//	knot_opt_rr_t *opt_rr = (knot_opt_rr_t *)malloc(sizeof(knot_opt_rr_t));
+//	CHECK_ALLOC_LOG(opt_rr, NULL);
+//	memset(opt_rr, 0, sizeof(knot_opt_rr_t));
+//	opt_rr->size = EDNS_MIN_SIZE;
+//	opt_rr->option_count = 0;
+//	opt_rr->options_max = 0;
 
-	opt_rr->ext_rcode = 0;
-	opt_rr->flags = 0;
-	opt_rr->version = 0;
+//	opt_rr->ext_rcode = 0;
+//	opt_rr->flags = 0;
+//	opt_rr->version = 0;
 
-	return opt_rr;
+//	return opt_rr;
 }
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
-{
-	if (opt_rr == NULL || rrset == NULL
-	    || rrset->type != KNOT_RRTYPE_OPT ||
-	    rrset->rrs.rr_count == 0) {
-		return KNOT_EINVAL;
-	}
+//int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
+//{
+//	if (opt_rr == NULL || rrset == NULL
+//	    || rrset->type != KNOT_RRTYPE_OPT ||
+//	    rrset->rrs.rr_count == 0) {
+//		return KNOT_EINVAL;
+//	}
 
-	dbg_edns_verb("Parsing payload.\n");
-	opt_rr->payload = rrset->rclass;
+//	dbg_edns_verb("Parsing payload.\n");
+//	opt_rr->payload = rrset->rclass;
 
-	/* RFC6891, 6.2.5 Value < 512B should be treated as 512. */
-	if (opt_rr->payload < EDNS_MIN_UDP_PAYLOAD) {
-		opt_rr->payload = EDNS_MIN_UDP_PAYLOAD;
-	}
+//	/* RFC6891, 6.2.5 Value < 512B should be treated as 512. */
+//	if (opt_rr->payload < EDNS_MIN_UDP_PAYLOAD) {
+//		opt_rr->payload = EDNS_MIN_UDP_PAYLOAD;
+//	}
 
-	// TTL has switched bytes
-	uint32_t ttl;
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)));
-	// first byte of TTL is extended RCODE
-	dbg_edns_detail("TTL: %u\n", ttl);
-	memcpy(&opt_rr->ext_rcode, &ttl, 1);
-	dbg_edns_detail("Parsed extended RCODE: %u.\n", opt_rr->ext_rcode);
-	// second is the version
-	memcpy(&opt_rr->version, (const uint8_t *)(&ttl) + 1, 1);
-	dbg_edns_detail("Parsed version: %u.\n", opt_rr->version);
-	// third and fourth are flags
-	opt_rr->flags = knot_wire_read_u16((const uint8_t *)(&ttl) + 2);
-	dbg_edns_detail("Parsed flags: %u.\n", opt_rr->flags);
-	// size of the header, options are counted elsewhere
-	opt_rr->size = 11;
+//	// TTL has switched bytes
+//	uint32_t ttl;
+//	knot_wire_write_u32((uint8_t *)&ttl, knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)));
+//	// first byte of TTL is extended RCODE
+//	dbg_edns_detail("TTL: %u\n", ttl);
+//	memcpy(&opt_rr->ext_rcode, &ttl, 1);
+//	dbg_edns_detail("Parsed extended RCODE: %u.\n", opt_rr->ext_rcode);
+//	// second is the version
+//	memcpy(&opt_rr->version, (const uint8_t *)(&ttl) + 1, 1);
+//	dbg_edns_detail("Parsed version: %u.\n", opt_rr->version);
+//	// third and fourth are flags
+//	opt_rr->flags = knot_wire_read_u16((const uint8_t *)(&ttl) + 2);
+//	dbg_edns_detail("Parsed flags: %u.\n", opt_rr->flags);
+//	// size of the header, options are counted elsewhere
+//	opt_rr->size = 11;
 
-	int rc = 0;
-	dbg_edns_verb("Parsing options.\n");
-	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, 0);
-	uint16_t size = knot_rdata_rdlen(rr_data);
-	if (size > 0) {
-		uint8_t *raw = knot_rdata_data(rr_data);
-		size_t pos = 0;
-		while (pos < size) {
-			// ensure there is enough data to parse the OPTION CODE
-			// and OPTION LENGTH
-			if (size - pos + 2 < 4) {
-				dbg_edns("Not enough data to parse.\n");
-				return KNOT_EMALF;
-			}
-			uint16_t opt_code = knot_wire_read_u16(raw + pos);
-			uint16_t opt_size = knot_wire_read_u16(raw + pos + 2);
+//	int rc = 0;
+//	dbg_edns_verb("Parsing options.\n");
+//	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, 0);
+//	uint16_t size = knot_rdata_rdlen(rr_data);
+//	if (size > 0) {
+//		uint8_t *raw = knot_rdata_data(rr_data);
+//		size_t pos = 0;
+//		while (pos < size) {
+//			// ensure there is enough data to parse the OPTION CODE
+//			// and OPTION LENGTH
+//			if (size - pos + 2 < 4) {
+//				dbg_edns("Not enough data to parse.\n");
+//				return KNOT_EMALF;
+//			}
+//			uint16_t opt_code = knot_wire_read_u16(raw + pos);
+//			uint16_t opt_size = knot_wire_read_u16(raw + pos + 2);
 
-			// there should be enough data for parsing the OPTION
-			// data
-			if (size - pos < opt_size) {
-				dbg_edns("Not enough data to parse options: "
-				         "size - pos=%zu, opt_size=%d\n",
-				         size - pos, opt_size);
-				return KNOT_EMALF;
-			}
-			rc = knot_edns_add_option(opt_rr, opt_code, opt_size,
-			                          raw + pos + 4);
-			if (rc != KNOT_EOK) {
-				dbg_edns("Could not add option.\n");
-				return rc;
-			}
-			pos += 4 + opt_size;
-		}
-	}
+//			// there should be enough data for parsing the OPTION
+//			// data
+//			if (size - pos < opt_size) {
+//				dbg_edns("Not enough data to parse options: "
+//				         "size - pos=%zu, opt_size=%d\n",
+//				         size - pos, opt_size);
+//				return KNOT_EMALF;
+//			}
+//			rc = knot_edns_add_option(opt_rr, opt_code, opt_size,
+//			                          raw + pos + 4);
+//			if (rc != KNOT_EOK) {
+//				dbg_edns("Could not add option.\n");
+//				return rc;
+//			}
+//			pos += 4 + opt_size;
+//		}
+//	}
 
-	dbg_edns_verb("EDNS created.\n");
+//	dbg_edns_verb("EDNS created.\n");
 
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-uint16_t knot_edns_get_payload(const knot_opt_rr_t *opt_rr)
-{
-	assert(opt_rr != NULL);
-	return opt_rr->payload;
-}
+//	return KNOT_EOK;
+//}
 
 /*----------------------------------------------------------------------------*/
-
-void knot_edns_set_payload(knot_opt_rr_t *opt_rr,
-                             uint16_t payload)
+/* [OPT] Done */
+uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-	opt_rr->payload = payload;
+	return opt_rr->rclass;
 }
 
 /*----------------------------------------------------------------------------*/
-
-uint8_t knot_edns_get_ext_rcode(const knot_opt_rr_t *opt_rr)
-{
-	return opt_rr->ext_rcode;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_edns_set_ext_rcode(knot_opt_rr_t *opt_rr,
-                               uint8_t ext_rcode)
+/* [OPT] Done */
+void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
 {
 	assert(opt_rr != NULL);
-	opt_rr->ext_rcode = ext_rcode;
+	opt_rr->rclass = payload;
 }
 
 /*----------------------------------------------------------------------------*/
-
-uint8_t knot_edns_get_version(const knot_opt_rr_t *opt_rr)
+/* [OPT] Done */
+uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-	return opt_rr->version;
+
+	// TTL has bytes in an inverse order
+	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	uint8_t rcode;
+	memcpy(&rcode, &ttl + KNOT_EDNS_OFFSET_RCODE, 1);
+
+	return rcode;
 }
 
 /*----------------------------------------------------------------------------*/
-
-void knot_edns_set_version(knot_opt_rr_t *opt_rr,
-                                           uint8_t version)
+/* [OPT] Done */
+void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 {
 	assert(opt_rr != NULL);
-	opt_rr->version = version;
+
+	// TTL has bytes in an inverse order
+	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	memcpy(&ttl + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
+	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
 }
 
 /*----------------------------------------------------------------------------*/
-
-uint16_t knot_edns_get_flags(const knot_opt_rr_t *opt_rr)
+/* [OPT] Done */
+uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
-	return opt_rr->flags;
+
+	// TTL has bytes in an inverse order
+	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	uint8_t version;
+	memcpy(&version, &ttl + KNOT_EDNS_OFFSET_VERSION, 1);
+
+	return version;
 }
 
 /*----------------------------------------------------------------------------*/
-
-int knot_edns_do(const knot_opt_rr_t *opt_rr)
+/* [OPT] Done */
+void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 {
-	if (opt_rr == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(opt_rr != NULL);
 
-	return (opt_rr->flags & KNOT_EDNS_DO_MASK);
+	// TTL has bytes in an inverse order
+	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	memcpy(&ttl + KNOT_EDNS_OFFSET_VERSION, &version, 1);
+	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
 }
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
+///* [OPT] Done */
+//uint16_t knot_edns_get_flags(const knot_rrset_t *opt_rr)
+//{
+//	assert(opt_rr != NULL);
 
-void knot_edns_set_do(knot_opt_rr_t *opt_rr)
+//	// TTL has bytes in an inverse order
+//	uint32_t ttl = knot_rrset_ttl(opt_rr);
+//	uint16_t flags;
+//	knot_wire_write_u16(ttl_ptr(opt_rr), &flags);
+
+//	return flags;
+//}
+
+/*----------------------------------------------------------------------------*/
+/* [OPT] Done */
+bool knot_edns_do(const knot_rrset_t *opt_rr)
 {
-	if (opt_rr == NULL) {
-		return;
-	}
+	assert(opt_rr != NULL);
 
-	opt_rr->flags |= KNOT_EDNS_DO_MASK;
+	// TTL has bytes in an inverse order
+	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	return ttl & KNOT_EDNS_DO_MASK;
 }
 
 /*----------------------------------------------------------------------------*/
+/* [OPT] Done */
+void knot_edns_set_do(knot_rrset_t *opt_rr)
+{
+	assert(opt_rr != NULL);
 
+	// TTL has bytes in an inverse order
+	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	ttl |= KNOT_EDNS_DO_MASK;
+	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
+}
+
+/*----------------------------------------------------------------------------*/
+/*! \todo [OPT] REWRITE */
 int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
                            uint16_t length, const uint8_t *data)
 {
@@ -246,108 +275,162 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
 }
 
 /*----------------------------------------------------------------------------*/
-
-int knot_edns_has_option(const knot_opt_rr_t *opt_rr, uint16_t code)
+/*! \todo [OPT] REWRITE */
+int knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 {
 	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	int i = 0;
-	while (i < opt_rr->option_count && opt_rr->options[i].code != code) {
-		++i;
-	}
+	/*! \todo [OPT] REWRITE */
+	return 0;
+//	int i = 0;
+//	while (i < opt_rr->option_count && opt_rr->options[i].code != code) {
+//		++i;
+//	}
 
-	assert(i >= opt_rr->option_count || opt_rr->options[i].code == code);
+//	assert(i >= opt_rr->option_count || opt_rr->options[i].code == code);
 
-	return (i < opt_rr->option_count);
+//	return (i < opt_rr->option_count);
 }
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-short knot_edns_to_wire(const knot_opt_rr_t *opt_rr, uint8_t *wire,
-                        size_t max_size)
+//short knot_edns_to_wire(const knot_rrset_t *opt_rr, uint8_t *wire,
+//                        size_t max_size)
+//{
+//	if (opt_rr == NULL || opt_rr->type != KNOT_RRTYPE_OPT) {
+//		return KNOT_EINVAL;
+//	}
+
+//	assert(EDNS_MIN_SIZE <= (int)max_size);
+
+//	if (max_size < opt_rr->size) {
+//		dbg_packet("%s: not enough space for OPT RR\n", __func__);
+//		return KNOT_ESPACE;
+//	}
+
+//	uint8_t *pos = wire;
+
+//	*(pos++) = 0;
+//	knot_wire_write_u16(pos, KNOT_RRTYPE_OPT);
+//	pos += 2;
+//	knot_wire_write_u16(pos, opt_rr->payload);
+//	pos += 2;
+//	*(pos++) = opt_rr->ext_rcode;
+//	*(pos++) = opt_rr->version;
+//	knot_wire_write_u16(pos, opt_rr->flags);
+//	pos += 2;
+
+//	uint8_t *rdlen = pos;
+//	uint16_t len = 0;
+//	pos += 2;
+
+//	// OPTIONs
+//	for (int i = 0; i < opt_rr->option_count; ++i) {
+//		dbg_edns_detail("Inserting option #%d at pos %zu\n",
+//		                i, (size_t)(pos - wire));
+//		knot_wire_write_u16(pos, opt_rr->options[i].code);
+//		pos += 2;
+//		knot_wire_write_u16(pos, opt_rr->options[i].length);
+//		pos += 2;
+//		memcpy(pos, opt_rr->options[i].data, opt_rr->options[i].length);
+//		pos += opt_rr->options[i].length;
+//		len += 4 + opt_rr->options[i].length;
+//	}
+
+//	knot_wire_write_u16(rdlen, len);
+
+//	return opt_rr->size;
+//}
+
+/*----------------------------------------------------------------------------*/
+/* [OPT] Done */
+size_t knot_edns_size(knot_rrset_t *opt_rr)
 {
 	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	assert(EDNS_MIN_SIZE <= (int)max_size);
+	size_t size = EDNS_MIN_SIZE;
+	// Only one RDATA in OPT RRSet
+	size += knot_rdata_rdlen(knot_rdataset_at(&opt_rr->rrs, 0));
 
-	if (max_size < opt_rr->size) {
-		dbg_packet("%s: not enough space for OPT RR\n", __func__);
-		return KNOT_ESPACE;
-	}
-
-	uint8_t *pos = wire;
-
-	*(pos++) = 0;
-	knot_wire_write_u16(pos, KNOT_RRTYPE_OPT);
-	pos += 2;
-	knot_wire_write_u16(pos, opt_rr->payload);
-	pos += 2;
-	*(pos++) = opt_rr->ext_rcode;
-	*(pos++) = opt_rr->version;
-	knot_wire_write_u16(pos, opt_rr->flags);
-	pos += 2;
-
-	uint8_t *rdlen = pos;
-	uint16_t len = 0;
-	pos += 2;
-
-	// OPTIONs
-	for (int i = 0; i < opt_rr->option_count; ++i) {
-		dbg_edns_detail("Inserting option #%d at pos %zu\n",
-		                i, (size_t)(pos - wire));
-		knot_wire_write_u16(pos, opt_rr->options[i].code);
-		pos += 2;
-		knot_wire_write_u16(pos, opt_rr->options[i].length);
-		pos += 2;
-		memcpy(pos, opt_rr->options[i].data, opt_rr->options[i].length);
-		pos += opt_rr->options[i].length;
-		len += 4 + opt_rr->options[i].length;
-	}
-
-	knot_wire_write_u16(rdlen, len);
-
-	return opt_rr->size;
+	return size;
 }
 
+///*----------------------------------------------------------------------------*/
+
+//void knot_edns_free_options(knot_opt_rr_t *opt_rr)
+//{
+//	if (opt_rr->option_count > 0) {
+//		/* Free the option data, if any. */
+//		for (int i = 0; i < opt_rr->option_count; i++) {
+//			knot_opt_option_t *option = &(opt_rr->options[i]);
+//			free(option->data);
+//		}
+//		free(opt_rr->options);
+//	}
+//}
+
+///*----------------------------------------------------------------------------*/
+
+//void knot_edns_free(knot_opt_rr_t **opt_rr)
+//{
+//	if (opt_rr == NULL || *opt_rr == NULL) {
+//		return;
+//	}
+
+//	knot_edns_free_options(*opt_rr);
+
+//	free(*opt_rr);
+//	*opt_rr = NULL;
+//}
+
+/*----------------------------------------------------------------------------*/
+/* NEW API                                                                    */
 /*----------------------------------------------------------------------------*/
 
-short knot_edns_size(knot_opt_rr_t *opt_rr)
+knot_edns_params_t *knot_edns_new_params()
 {
-	if (opt_rr == NULL) {
-		return KNOT_EINVAL;
-	}
+	knot_edns_params_t *opt =
+	               (knot_edns_params_t *)malloc(sizeof(knot_edns_params_t));
+	CHECK_ALLOC_LOG(opt, NULL);
 
-	return opt_rr->size;
+	memset(opt, 0, sizeof(knot_edns_params_t));
+	return opt;
 }
 
-/*----------------------------------------------------------------------------*/
-
-void knot_edns_free_options(knot_opt_rr_t *opt_rr)
+void knot_edns_free_params(knot_edns_params_t **opt)
 {
-	if (opt_rr->option_count > 0) {
-		/* Free the option data, if any. */
-		for (int i = 0; i < opt_rr->option_count; i++) {
-			knot_opt_option_t *option = &(opt_rr->options[i]);
-			free(option->data);
-		}
-		free(opt_rr->options);
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_edns_free(knot_opt_rr_t **opt_rr)
-{
-	if (opt_rr == NULL || *opt_rr == NULL) {
+	if (opt == NULL || *opt == NULL) {
 		return;
 	}
 
-	knot_edns_free_options(*opt_rr);
+	free((*opt)->nsid);
+	free(*opt);
+	*opt = NULL;
+}
 
-	free(*opt_rr);
-	*opt_rr = NULL;
+/*! \todo Rewrite and remove the edns_params_t type. */
+knot_rrset_t *knot_edns_new_from_params(const knot_edns_params_t *params,
+                                        bool add_nsid)
+{
+	if (params == NULL) {
+		return NULL;
+	}
+
+	knot_rrset_t *rrset = (knot_rrset_t *)malloc(sizeof(knot_rrset_t *));
+	rrset->owner = knot_dname_from_str(".");
+	rrset->type = KNOT_RRTYPE_OPT;
+
+	knot_edns_set_payload(rrset, params->payload);
+	knot_edns_set_ext_rcode(rrset, 0);
+	knot_edns_set_version(rrset, params->version);
+
+	if (add_nsid) {
+		/*! \todo */
+	}
+
+	return rrset;
 }

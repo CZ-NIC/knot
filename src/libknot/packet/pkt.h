@@ -101,7 +101,8 @@ typedef struct knot_pkt {
 	uint16_t flags;        /*!< Packet flags. */
 
 	/*! \todo OPT should be refactored separately as a simple RRSet. */
-	knot_opt_rr_t opt_rr;   /*!< OPT RR included in the packet. */
+//	knot_opt_rr_t opt_rr;   /*!< OPT RR included in the packet. */
+	knot_rrset_t *opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
 	/* Packet sections. */
@@ -195,19 +196,19 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt);
  */
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id);
 
-/*!
- * \brief Set packet OPTion.
- *
- * \note OPT RR is not written immediately, call knot_pkt_put_opt for that.
- * \todo This will be a subject of OPT refactoring later on.
- *
- * \param pkt
- * \param opt  For list of available options, see enum knot_edns_option.
- * \param data Option-specific data.
- * \param len  Data length.
- * \return KNOT_EOK, KNOT_EINVAL, KNOT_ENOTSUP
- */
-int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len);
+///*!
+// * \brief Set packet OPTion.
+// *
+// * \note OPT RR is not written immediately, call knot_pkt_put_opt for that.
+// * \todo This will be a subject of OPT refactoring later on.
+// *
+// * \param pkt
+// * \param opt  For list of available options, see enum knot_edns_option.
+// * \param data Option-specific data.
+// * \param len  Data length.
+// * \return KNOT_EOK, KNOT_EINVAL, KNOT_ENOTSUP
+// */
+//int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len);
 
 /*!
  * \brief Put QUESTION in the packet.
@@ -221,12 +222,8 @@ int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t l
  * \param qtype
  * \return KNOT_EOK or various errors
  */
-int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t qclass, uint16_t qtype);
-
-/*! \brief Write OPT RR to wireformat.
- *  \note Legacy API.
- */
-int knot_pkt_put_opt(knot_pkt_t *pkt);
+int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname,
+                          uint16_t qclass, uint16_t qtype);
 
 /*!
  * \brief Put RRSet into packet.
@@ -235,15 +232,57 @@ int knot_pkt_put_opt(knot_pkt_t *pkt);
  * \note Available flags: PF_FREE, KNOT_PF_CHECKDUP, KNOT_PF_NOTRUNC
  *
  * \param pkt
- * \param compr_hint Compression hint, see enum knot_compr_hint or absolute position.
+ * \param compr_hint Compression hint, see enum knot_compr_hint or absolute
+ *                   position.
  * \param rr Given RRSet.
- * \param flags RRSet flags (set PF_FREE if you want RRSet to be freed with the packet).
+ * \param flags RRSet flags (set PF_FREE if you want RRSet to be freed with the
+ *              packet).
  * \return KNOT_EOK, KNOT_ESPACE, various errors
  */
-int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, uint16_t flags);
+int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
+                 uint16_t flags);
 
 /*! \brief Get description of the given packet section. */
-const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt, knot_section_t section_id);
+const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
+                                          knot_section_t section_id);
+
+/*
+ * EDNS(0)-related API
+ */
+
+/*** <<< #190 DEPRECATED */
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Sets the OPT RR of the response.
+ *
+ * This function also allocates space for the wireformat of the response, if
+ * the payload in the OPT RR is larger than the current maximum size of the
+ * response and copies the current wireformat over to the new space.
+ *
+ * \note The contents of the OPT RR are copied.
+ *
+ * \note It is expected that resp.max_size is already set to correct value as
+ *       it is impossible to distinguish TCP scenario in this function.
+ *
+ * \param resp Response to set the OPT RR to.
+ * \param opt_rr OPT RR to set.
+ *
+ * \retval KNOT_EOK
+ * \retval KNOT_EINVAL
+ * \retval KNOT_ENOMEM
+ *
+ * \todo Needs test.
+ */
+int knot_pkt_add_opt(knot_pkt_t *pkt, knot_rrset_t *opt_rr);
+
+/*----------------------------------------------------------------------------*/
+/*** >>> #190 DEPRECATED */
+
+/*! \brief Write OPT RR to wireformat.
+ *  \note Legacy API.
+ */
+int knot_pkt_put_opt(knot_pkt_t *pkt);
+
 
 /*
  * Packet parsing API.
@@ -307,7 +346,7 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
  */
 static inline bool knot_pkt_have_edns(const knot_pkt_t *pkt)
 {
-	return pkt && (knot_edns_get_version(&pkt->opt_rr) != EDNS_NOT_SUPPORTED);
+	return pkt && (pkt->opt_rr != NULL);
 }
 
 /*!
@@ -323,7 +362,7 @@ static inline bool knot_pkt_have_tsig(const knot_pkt_t *pkt)
  */
 static inline bool knot_pkt_have_dnssec(const knot_pkt_t *pkt)
 {
-	return knot_pkt_have_edns(pkt) && knot_edns_do(&pkt->opt_rr);
+	return knot_pkt_have_edns(pkt) && knot_edns_do(pkt->opt_rr);
 }
 
 /*!
@@ -333,38 +372,8 @@ static inline bool knot_pkt_have_dnssec(const knot_pkt_t *pkt)
 static inline bool knot_pkt_have_nsid(const knot_pkt_t *pkt)
 {
 	return knot_pkt_have_edns(pkt)
-	       && knot_edns_has_option(&pkt->opt_rr, EDNS_OPTION_NSID);
+	       && knot_edns_has_option(pkt->opt_rr, EDNS_OPTION_NSID);
 }
-
-/*** <<< #190 DEPRECATED */
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Sets the OPT RR of the response.
- *
- * This function also allocates space for the wireformat of the response, if
- * the payload in the OPT RR is larger than the current maximum size of the
- * response and copies the current wireformat over to the new space.
- *
- * \note The contents of the OPT RR are copied.
- *
- * \note It is expected that resp.max_size is already set to correct value as
- *       it is impossible to distinguish TCP scenario in this function.
- *
- * \param resp Response to set the OPT RR to.
- * \param opt_rr OPT RR to set.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_ENOMEM
- *
- * \todo Needs test.
- */
-int knot_pkt_add_opt(knot_pkt_t *resp,
-                          const knot_opt_rr_t *opt_rr,
-                          int add_nsid);
-
-/*----------------------------------------------------------------------------*/
-/*** >>> #190 DEPRECATED */
 
 #endif /* _KNOT_PACKET_H_ */
 

@@ -144,20 +144,28 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	    query->edns > -1) {
 		uint8_t version = query->edns > -1 ? query->edns : 0;
 
-		ret = knot_pkt_opt_set(packet, KNOT_PKT_EDNS_PAYLOAD,
-		                       &max_size, sizeof(max_size));
-		ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_VERSION,
-		                       &version, sizeof(version));
+		/*! \todo [OPT] Maybe set the parameters directly in the OPT RR.
+		 */
+		/*TODO: flags*/
+		uint8_t flags;
+		knot_rrset_t *opt_rr = knot_edns_new();
+		knot_pkt_add_opt(packet, opt_rr);
 
-		if (query->flags.do_flag) {
-			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_FLAG_DO,
-			                        NULL, 0);
-		}
+//		ret = knot_pkt_opt_set(packet, KNOT_PKT_EDNS_PAYLOAD,
+//		                       &max_size, sizeof(max_size));
+//		ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_VERSION,
+//		                       &version, sizeof(version));
 
-		if (query->nsid) {
-			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_NSID,
-			                        NULL, 0);
-		}
+//		if (query->flags.do_flag) {
+//			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_FLAG_DO,
+//			                        NULL, 0);
+//		}
+
+//		if (query->nsid) {
+//			/*! \note This sets an empty option - why? */
+//			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_NSID,
+//			                        NULL, 0);
+//		}
 
 		// Write prepared OPT to wire
 		knot_pkt_begin(packet, KNOT_ADDITIONAL);

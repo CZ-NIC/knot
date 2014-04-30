@@ -651,7 +651,8 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 	}
 }
 
-static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int solve_additional(int state, knot_pkt_t *pkt,
+                            struct query_data *qdata, void *ctx)
 {
 	/* Put OPT RR. */
 	int ret = knot_pkt_put_opt(pkt);

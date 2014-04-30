@@ -133,8 +133,9 @@ static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 	pkt->mm = mm;
 
 	/* Initialize OPT RR defaults. */
-	pkt->opt_rr.version = EDNS_NOT_SUPPORTED;
-	pkt->opt_rr.size = EDNS_MIN_SIZE;
+	/*! \todo [OPT] REWRITE */
+//	pkt->opt_rr.version = EDNS_NOT_SUPPORTED;
+//	pkt->opt_rr.size = EDNS_MIN_SIZE;
 
 	/* Initialize wire. */
 	if (wire == NULL) {
@@ -296,8 +297,10 @@ void knot_pkt_free(knot_pkt_t **pkt)
 		(*pkt)->mm.free((*pkt)->wire);
 	}
 
-	// free EDNS options
-	knot_edns_free_options(&(*pkt)->opt_rr);
+	// free OPT RR
+	/*! \todo [OPT] memory context?? */
+	knot_rrset_free(&(*pkt)->opt_rr, NULL);
+//	knot_edns_free_options(&(*pkt)->opt_rr);
 
 	dbg_packet("Freeing packet structure\n");
 	(*pkt)->mm.free(*pkt);
@@ -407,38 +410,39 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 	return knot_wire_read_u16(pkt->wire + off);
 }
 
-/*----------------------------------------------------------------------------*/
+///*----------------------------------------------------------------------------*/
 
-int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len)
-{
-	dbg_packet("%s(%p, %u, %p, %hu)\n", __func__, pkt, opt, data, len);
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
+//int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len)
+//{
+//	dbg_packet("%s(%p, %u, %p, %hu)\n", __func__, pkt, opt, data, len);
+//	if (pkt == NULL) {
+//		return KNOT_EINVAL;
+//	}
 
-	knot_opt_rr_t *rr = &pkt->opt_rr;
+//	/*! \todo [OPT] Maybe set the parameters directly in the caller. */
 
-	switch (opt) {
-	case KNOT_PKT_EDNS_PAYLOAD:
-		knot_edns_set_payload(rr, *(uint16_t *)data);
-		break;
-	case KNOT_PKT_EDNS_RCODE:
-		knot_edns_set_ext_rcode(rr, *(uint8_t *)data);
-		break;;
-	case KNOT_PKT_EDNS_VERSION:
-		knot_edns_set_version(rr, *(uint8_t *)data);
-		break;
-	case KNOT_PKT_EDNS_FLAG_DO:
-		knot_edns_set_do(rr);
-		break;
-	case KNOT_PKT_EDNS_NSID:
-		return knot_edns_add_option(rr, EDNS_OPTION_NSID, len, data);
-	default:
-		return KNOT_ENOTSUP;
-	}
+//	switch (opt) {
+//	case KNOT_PKT_EDNS_PAYLOAD:
+//		knot_edns_set_payload(pkt->opt_rr, *(uint16_t *)data);
+//		break;
+//	case KNOT_PKT_EDNS_RCODE:
+//		knot_edns_set_ext_rcode(pkt->opt_rr, *(uint8_t *)data);
+//		break;;
+//	case KNOT_PKT_EDNS_VERSION:
+//		knot_edns_set_version(pkt->opt_rr, *(uint8_t *)data);
+//		break;
+//	case KNOT_PKT_EDNS_FLAG_DO:
+//		knot_edns_set_do(pkt->opt_rr);
+//		break;
+//	case KNOT_PKT_EDNS_NSID:
+//		return knot_edns_add_option(pkt->opt_rr, EDNS_OPTION_NSID, len,
+//		                            data);
+//	default:
+//		return KNOT_ENOTSUP;
+//	}
 
-	return KNOT_EOK;
-}
+//	return KNOT_EOK;
+//}
 
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 {
@@ -494,39 +498,8 @@ int knot_pkt_put_question(knot_pkt_t *pkt, const knot_dname_t *qname, uint16_t q
 	return knot_pkt_begin(pkt, KNOT_ANSWER);
 }
 
-int knot_pkt_put_opt(knot_pkt_t *pkt)
-{
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* OPT should be only in the AR. */
-	if (pkt->current != KNOT_ADDITIONAL) {
-		return KNOT_ENOTSUP;
-	}
-
-	/* \note #190, not going to be pretty until then */
-	if (pkt->opt_rr.version == EDNS_NOT_SUPPORTED) {
-		return KNOT_EOK;
-	}
-
-	int ret = knot_edns_to_wire(&pkt->opt_rr,
-	                            pkt->wire + pkt->size,
-	                            pkt->max_size - pkt->size);
-	if (ret <= 0) {
-		return ret;
-	}
-
-	pkt_rr_wirecount_add(pkt, pkt->current, 1);
-	pkt->size += ret;
-	pkt->reserved -= ret;
-
-	dbg_packet("%s: OPT RR written, new packet size %zu\n", __func__, pkt->size);
-
-	return KNOT_EOK;
-}
-
-int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr, uint16_t flags)
+int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
+                 uint16_t flags)
 {
 	dbg_packet("%s(%p, %u, %p, %u)\n", __func__, pkt, compr_hint, rr, flags);
 	if (pkt == NULL || rr == NULL) {
@@ -770,11 +743,15 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 		pkt->tsig_rr = rr;
 		break;
 	case KNOT_RRTYPE_OPT:
-		ret = knot_edns_new_from_rr(&pkt->opt_rr, rr);
-		if (ret != KNOT_EOK) {
-			dbg_packet("%s: couldn't parse OPT RR = %d\n",
-				   __func__, ret);
+		// if there is some OPT already, treat as malformed
+		if (pkt->opt_rr != NULL) {
+			dbg_packet("%s: found 2nd OPT\n", __func__);
+			return KNOT_EMALF;
 		}
+		/*! \todo May an OPT RR be malformed if successfuly parsed? */
+
+		// store pointer to the OPT in the packet
+		pkt->opt_rr = rr;
 		break;
 	default:
 		break;
@@ -853,61 +830,120 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	return KNOT_EOK;
 }
 
-/*** <<< #8 DEPRECATED */
+/*----------------------------------------------------------------------------*/
+/* EDNS(0)-related functions                                                  */
 /*----------------------------------------------------------------------------*/
 
-int knot_pkt_add_opt(knot_pkt_t *resp, const knot_opt_rr_t *opt_rr, int add_nsid)
+int knot_pkt_add_opt(knot_pkt_t *pkt, knot_rrset_t *opt_rr)
 {
-	if (resp == NULL || opt_rr == NULL) {
+	if (pkt == NULL || opt_rr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	// copy the OPT RR
+	pkt->opt_rr = opt_rr;
 
-	/*! \todo Change the way OPT RR is handled in response.
-	 *        Pointer to nameserver->opt_rr should be enough.
+//	// copy the OPT RR
+
+//	/*! \todo Change the way OPT RR is handled in response.
+//	 *        Pointer to nameserver->opt_rr should be enough.
+//	 */
+
+//	resp->opt_rr.version = opt_rr->version;
+//	resp->opt_rr.ext_rcode = opt_rr->ext_rcode;
+//	resp->opt_rr.payload = opt_rr->payload;
+
+//	/*
+//	 * Add options only if NSID is requested.
+//	 *
+//	 * This is a bit hack and should be resolved in other way before some
+//	 * other options are supported.
+//	 */
+
+//	if (add_nsid && opt_rr->option_count > 0) {
+//		resp->opt_rr.option_count = opt_rr->option_count;
+//		assert(resp->opt_rr.options == NULL);
+//		resp->opt_rr.options = (knot_opt_option_t *)malloc(
+//				 resp->opt_rr.option_count * sizeof(knot_opt_option_t));
+//		CHECK_ALLOC_LOG(resp->opt_rr.options, KNOT_ENOMEM);
+
+//		memcpy(resp->opt_rr.options, opt_rr->options,
+//		       resp->opt_rr.option_count * sizeof(knot_opt_option_t));
+
+//		// copy all data
+//		for (int i = 0; i < opt_rr->option_count; i++) {
+//			resp->opt_rr.options[i].data = (uint8_t *)malloc(
+//						resp->opt_rr.options[i].length);
+//			CHECK_ALLOC_LOG(resp->opt_rr.options[i].data, KNOT_ENOMEM);
+
+//			memcpy(resp->opt_rr.options[i].data,
+//			       opt_rr->options[i].data,
+//			       resp->opt_rr.options[i].length);
+//		}
+//		resp->opt_rr.size = opt_rr->size;
+//	} else {
+//		resp->opt_rr.size = EDNS_MIN_SIZE;
+//	}
+
+	/* OPT RR is not directly converted to wire, thus we must reserve space
+	 * for it.
 	 */
-
-	resp->opt_rr.version = opt_rr->version;
-	resp->opt_rr.ext_rcode = opt_rr->ext_rcode;
-	resp->opt_rr.payload = opt_rr->payload;
-
-	/*
-	 * Add options only if NSID is requested.
-	 *
-	 * This is a bit hack and should be resolved in other way before some
-	 * other options are supported.
-	 */
-
-	if (add_nsid && opt_rr->option_count > 0) {
-		resp->opt_rr.option_count = opt_rr->option_count;
-		assert(resp->opt_rr.options == NULL);
-		resp->opt_rr.options = (knot_opt_option_t *)malloc(
-				 resp->opt_rr.option_count * sizeof(knot_opt_option_t));
-		CHECK_ALLOC_LOG(resp->opt_rr.options, KNOT_ENOMEM);
-
-		memcpy(resp->opt_rr.options, opt_rr->options,
-		       resp->opt_rr.option_count * sizeof(knot_opt_option_t));
-
-		// copy all data
-		for (int i = 0; i < opt_rr->option_count; i++) {
-			resp->opt_rr.options[i].data = (uint8_t *)malloc(
-						resp->opt_rr.options[i].length);
-			CHECK_ALLOC_LOG(resp->opt_rr.options[i].data, KNOT_ENOMEM);
-
-			memcpy(resp->opt_rr.options[i].data,
-			       opt_rr->options[i].data,
-			       resp->opt_rr.options[i].length);
-		}
-		resp->opt_rr.size = opt_rr->size;
-	} else {
-		resp->opt_rr.size = EDNS_MIN_SIZE;
-	}
-
-	resp->reserved += resp->opt_rr.size;
+	pkt->reserved += knot_edns_size(opt_rr);
 
 	return KNOT_EOK;
 }
 
-/*** >>> #8 DEPRECATED */
 /*----------------------------------------------------------------------------*/
+
+int knot_pkt_put_opt(knot_pkt_t *pkt)
+{
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* OPT should be only in the AR. */
+	if (pkt->current != KNOT_ADDITIONAL) {
+		return KNOT_ENOTSUP;
+	}
+
+	/* If there is no OPT RR, do nothing. */
+	if (pkt->opt_rr == NULL) {
+		return KNOT_EOK;
+	}
+
+	uint8_t *pos = pkt->wire + pkt->size;
+	uint16_t rr_added = 0;
+	/*! \note Counting the size is a bit awkward, but there's no other way*/
+	size_t maxlen = knot_edns_size(pkt->opt_rr);
+	size_t len = 0;
+
+	int ret = knot_rrset_to_wire(pkt->opt_rr, pos, &len, maxlen, &rr_added,
+	                             NULL);
+	if (ret != KNOT_EOK) {
+		dbg_packet("%s: rr_to_wire = %s\n,", __func__,
+		           knot_strerror(ret));
+		return ret;
+	}
+
+	if (rr_added > 0) {
+		pkt->size += len;
+		pkt_rr_wirecount_add(pkt, pkt->current, rr_added);
+		pkt->reserved -= ret;
+	}
+
+
+//	int ret = knot_edns_to_wire(pkt->opt_rr,
+//	                            pkt->wire + pkt->size,
+//	                            pkt->max_size - pkt->size);
+//	if (ret <= 0) {
+//		return ret;
+//	}
+
+//	pkt_rr_wirecount_add(pkt, pkt->current, 1);
+//	pkt->size += ret;
+//	pkt->reserved -= ret;
+
+	dbg_packet("%s: OPT RR written, new packet size %zu\n", __func__,
+	           pkt->size);
+
+	return KNOT_EOK;
+}

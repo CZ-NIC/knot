@@ -173,26 +173,29 @@ static void print_footer(const size_t total_len,
 	}
 }
 
-static void print_section_opt(const knot_opt_rr_t *rr)
+static void print_section_opt(const knot_rrset_t *rr)
 {
-	printf("Version: %u; flags: %s; UDP size: %u B\n",
+	printf("Version: %u; flags: %s; UDP size: %u B, RCODE: %u\n",
 	       knot_edns_get_version(rr),
 	       (knot_edns_do(rr) != 0) ? "do" : "",
-	       knot_edns_get_payload(rr));
+	       knot_edns_get_payload(rr),
+	       knot_edns_get_ext_rcode(rr));
 
-	for (int i = 0; i < rr->option_count; i++) {
-		knot_opt_option_t *opt = &(rr->options[i]);
+	/*! \todo REWRITE!!! */
 
-		if (opt->code == EDNS_OPTION_NSID) {
-			printf(";; NSID: ");
-			short_hex_print(opt->data, opt->length);
-			printf(";;     :  ");
-			txt_print(opt->data, opt->length);
-		} else {
-			printf(";; Option (%u): ", opt->code);
-			short_hex_print(opt->data, opt->length);
-		}
-	}
+//	for (int i = 0; i < rr->option_count; i++) {
+//		knot_opt_option_t *opt = &(rr->options[i]);
+
+//		if (opt->code == EDNS_OPTION_NSID) {
+//			printf(";; NSID: ");
+//			short_hex_print(opt->data, opt->length);
+//			printf(";;     :  ");
+//			txt_print(opt->data, opt->length);
+//		} else {
+//			printf(";; Option (%u): ", opt->code);
+//			short_hex_print(opt->data, opt->length);
+//		}
+//	}
 }
 
 static void print_section_question(const knot_dname_t *owner,
@@ -515,7 +518,7 @@ void print_packet(const knot_pkt_t *packet,
 	// Print EDNS section.
 	if (style->show_edns && knot_pkt_have_edns(packet)) {
 		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
-		print_section_opt(&packet->opt_rr);
+		print_section_opt(packet->opt_rr);
 	}
 
 	// Print DNS sections.
