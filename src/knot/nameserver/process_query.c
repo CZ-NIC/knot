@@ -221,7 +221,7 @@ int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
-	struct sockaddr_storage *query_source = qdata->param->remote;
+	const struct sockaddr_storage *query_source = qdata->param->remote;
 	const knot_dname_t *key_name = NULL;
 	knot_tsig_algorithm_t key_alg = KNOT_TSIG_ALG_NULL;
 

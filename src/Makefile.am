@@ -240,6 +240,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/process_answer.h		\
 	knot/nameserver/requestor.c		\
 	knot/nameserver/requestor.h		\
+	knot/nameserver/requestor_tsig.c	\
+	knot/nameserver/requestor_tsig.h	\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\

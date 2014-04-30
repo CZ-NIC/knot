@@ -103,8 +103,6 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 	/* Class specific answer processing. */
 	ANSWER_REQUIRES(knot_pkt_qclass(pkt) == KNOT_CLASS_IN, NS_PROC_NOOP);
 
-#warning TODO: check TSIG here?
-
 	/* Call appropriate processing handler. */
 	int next_state = NS_PROC_NOOP;
 	switch(knot_pkt_type(pkt)) {

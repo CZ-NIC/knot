@@ -127,6 +127,8 @@ src/knot/nameserver/query_module.c
 src/knot/nameserver/query_module.h
 src/knot/nameserver/requestor.c
 src/knot/nameserver/requestor.h
+src/knot/nameserver/requestor_tsig.c
+src/knot/nameserver/requestor_tsig.h
 src/knot/nameserver/update.c
 src/knot/nameserver/update.h
 src/knot/other/debug.h

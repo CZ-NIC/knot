@@ -113,7 +113,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	requestor_init(&re, NS_PROC_ANSWER, &mm);
 
 	/* Create a request. */
-	struct request *req = requestor_make(&re, &remote->via, &remote->addr, query);
+	struct request *req = requestor_make(&re, remote, query);
 	if (req == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -330,7 +330,7 @@ static int event_update(zone_t *zone)
 
 	/* Create minimal query data context. */
 	struct process_query_param param = {0};
-	param.remote = &update->remote;
+	param.remote = &update->remote->addr;
 	struct query_data qdata = {0};
 	qdata.param = &param;
 	qdata.query = update->query;
