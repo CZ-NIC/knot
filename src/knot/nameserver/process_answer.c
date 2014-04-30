@@ -25,16 +25,6 @@ static int noop(knot_pkt_t *pkt, knot_process_t *ctx)
 	return NS_PROC_NOOP;
 }
 
-/*! \brief Module implementation. */
-const knot_process_module_t _process_answer = {
-        &process_answer_begin,
-        &process_answer_reset,
-        &process_answer_finish,
-        &process_answer,
-        &noop, /* No output */
-        &noop  /* No error processing. */
-};
-
 /*! \brief Accessor to query-specific data. */
 #define ANSWER_DATA(ctx) ((struct answer_data *)(ctx)->data)
 
@@ -56,7 +46,7 @@ static bool is_answer_to_query(const knot_pkt_t *query, knot_pkt_t *answer)
 	       knot_dname_is_equal(knot_pkt_qname(query), knot_pkt_qname(answer));
 }
 
-int process_answer_begin(knot_process_t *ctx, void *module_param)
+static int process_answer_begin(knot_process_t *ctx, void *module_param)
 {
 	/* Initialize context. */
 	assert(ctx);
@@ -70,7 +60,7 @@ int process_answer_begin(knot_process_t *ctx, void *module_param)
 	return NS_PROC_MORE;
 }
 
-int process_answer_reset(knot_process_t *ctx)
+static int process_answer_reset(knot_process_t *ctx)
 {
 	assert(ctx);
 
@@ -81,7 +71,7 @@ int process_answer_reset(knot_process_t *ctx)
 	return NS_PROC_MORE;
 }
 
-int process_answer_finish(knot_process_t *ctx)
+static int process_answer_finish(knot_process_t *ctx)
 {
 	process_answer_reset(ctx);
 	mm_free(&ctx->mm, ctx->data);
@@ -97,7 +87,7 @@ int process_answer_finish(knot_process_t *ctx)
 		return ret; \
 	}
 
-int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
+static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	assert(pkt && ctx);
 	struct answer_data *data = ANSWER_DATA(ctx);
@@ -140,3 +130,18 @@ int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 }
 
 #undef ANSWER_REQUIRES
+
+/*! \brief Module implementation. */
+static const knot_process_module_t PROCESS_ANSWER_MODULE = {
+        &process_answer_begin,
+        &process_answer_reset,
+        &process_answer_finish,
+        &process_answer,
+        &noop, /* No output. */
+        &noop  /* No error processing. */
+};
+
+const knot_process_module_t *process_answer_get_module(void)
+{
+	return &PROCESS_ANSWER_MODULE;
+}

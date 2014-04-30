@@ -19,8 +19,8 @@
 #include "knot/nameserver/process_query.h"
 
 /* Query processing module implementation. */
-extern const knot_process_module_t _process_answer;
-#define NS_PROC_ANSWER (&_process_answer)
+const knot_process_module_t *process_answer_get_module(void);
+#define NS_PROC_ANSWER process_answer_get_module()
 #define NS_PROC_ANSWER_ID 2
 
 /*! \brief Answer processsing logging base. */
@@ -29,7 +29,6 @@ extern const knot_process_module_t _process_answer;
 	NS_PROC_LOG(severity, LOG_SERVER, (data)->param->remote, zone_str, \
 	            what " of '%s' from '%s': ", msg); \
 	} while(0)
-
 
 /* Module load parameters. */
 struct process_answer_param {
@@ -49,40 +48,3 @@ struct answer_data
 	struct process_answer_param *param; /*!< Module parameters. */
 	mm_ctx_t *mm;                      /*!< Memory context. */
 };
-
-/*!
- * \brief Initialize answer processing context.
- *
- * \param ctx
- * \param module_param
- * \return MORE (awaits answer)
- */
-int process_answer_begin(knot_process_t *ctx, void *module_param);
-
-/*!
- * \brief Reset answer processing context.
- *
- * \param ctx
- * \return MORE (awaits next answer)
- */
-int process_answer_reset(knot_process_t *ctx);
-
-/*!
- * \brief Finish and close current answer processing.
- *
- * \param ctx
- * \return NOOP (context will be inoperable further on)
- */
-int process_answer_finish(knot_process_t *ctx);
-
-/*!
- * \brief Process single answer packet.
- *
- * \param pkt
- * \param ctx
- * \retval NOOP (unsupported answer)
- * \return MORE (awaits next answer)
- * \retval DONE (processing finished)
- * \retval FAIL (processing failed)
- */
-int process_answer(knot_pkt_t *pkt, knot_process_t *ctx);

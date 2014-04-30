@@ -211,7 +211,7 @@ static int exec_request(struct request *last, struct timeval *timeout)
 	}
 
 	/* Receive and process expected answers. */
-	while(last->state == NS_PROC_MORE) {
+	while (last->state == NS_PROC_MORE) {
 		int rcvd = request_recv(last, timeout);
 		if (rcvd <= 0) {
 			return rcvd;

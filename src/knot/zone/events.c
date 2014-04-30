@@ -86,7 +86,6 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	case KNOT_QUERY_AXFR: query_type = KNOT_RRTYPE_AXFR; break;
 	case KNOT_QUERY_IXFR: query_type = KNOT_RRTYPE_IXFR; break;
 	case KNOT_QUERY_NOTIFY: opcode = KNOT_OPCODE_NOTIFY; break;
-	case KNOT_QUERY_UPDATE: opcode = KNOT_OPCODE_UPDATE; break;
 	}
 
 	/* Create a memory pool for this task. */
@@ -94,7 +93,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, 4096);
 
-	/* Create a zone transfer request. */
+	/* Create a query message. */
 	knot_pkt_t *query = zone_query(zone, query_type, &mm);
 	if (query == NULL) {
 		return KNOT_ENOMEM;
@@ -115,6 +114,10 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 
 	/* Create a request. */
 	struct request *req = requestor_make(&re, &remote->via, &remote->addr, query);
+	if (req == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	struct process_answer_param param;
 	param.zone = zone;
 	param.query = query;
