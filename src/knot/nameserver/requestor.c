@@ -55,6 +55,7 @@ static void request_close(mm_ctx_t *mm, struct request *request)
 	knot_process_finish(&request->process);
 
 	rem_node(&request->data.node);
+	requestor_tsig_cleanup(&request->data.tsig_ctx);
 	close(request->data.fd);
 	knot_pkt_free(&request->data.query);
 	mm_free(mm, request->pkt_buf);
