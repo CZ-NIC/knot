@@ -441,8 +441,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 	if (!knot_changesets_empty(chs)) {
-		zone_contents_t *new_c = NULL;
-		ret = zone_change_apply_and_store(chs, zone, &new_c, "DNSSEC");
+		ret = zone_change_apply_and_store(chs, zone, "DNSSEC", NULL);
 		chs = NULL; // freed by zone_change_apply_and_store()
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
@@ -461,7 +460,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 done:
-	knot_changesets_free(&chs);
+	knot_changesets_free(&chs, NULL);
 	free(msgpref);
 	return ret;
 }

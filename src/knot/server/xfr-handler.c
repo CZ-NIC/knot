@@ -862,7 +862,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq, knot_pkt_t *pkt)
 		ret = axfr_process_answer(pkt, rq);
 		break;
 	case XFR_TYPE_IIN:
-		ret = ixfr_process_answer(pkt, rq);
+		ret = ixfrin_process_answer(pkt, rq);
 		break;
 	default:
 		ret = KNOT_EINVAL;

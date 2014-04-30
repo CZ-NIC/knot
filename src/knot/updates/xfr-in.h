@@ -37,6 +37,7 @@
 #include "knot/updates/changesets.h"
 
 struct xfr_proc;
+struct ixfrin_proc;
 
 /*----------------------------------------------------------------------------*/
 
@@ -100,7 +101,7 @@ void xfrin_free_changesets(knot_changesets_t **changesets);
  * \retval KNOT_EMALF
  * \retval KNOT_ENOMEM
  */
-int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr);
+int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct ixfrin_proc *proc);
 
 /*!
  * \brief Applies changesets *with* zone shallow copy.

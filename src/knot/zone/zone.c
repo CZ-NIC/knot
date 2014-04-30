@@ -188,17 +188,18 @@ int zone_change_store(zone_t *zone, knot_changesets_t *chset)
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */
 int zone_change_apply_and_store(knot_changesets_t *chs,
                                 zone_t *zone,
-                                zone_contents_t **new_contents,
-                                const char *msgpref)
+                                const char *msgpref,
+                                mm_ctx_t *rr_mm)
 {
 	int ret = KNOT_EOK;
 
 	/* Now, try to apply the changesets to the zone. */
-	ret = xfrin_apply_changesets(zone, chs, new_contents);
+	zone_contents_t *new_contents;
+	ret = xfrin_apply_changesets(zone, chs, &new_contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to apply changesets.\n", msgpref);
 		/* Free changesets, but not the data. */
-		knot_changesets_free(&chs);
+		knot_changesets_free(&chs, rr_mm);
 		return ret;  // propagate the error above
 	}
 
@@ -206,19 +207,19 @@ int zone_change_apply_and_store(knot_changesets_t *chs,
 	ret = zone_change_store(zone, chs);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to store changesets.\n", msgpref);
-		xfrin_rollback_update(chs, new_contents);
+		xfrin_rollback_update(chs, &new_contents);
 		/* Free changesets, but not the data. */
-		knot_changesets_free(&chs);
+		knot_changesets_free(&chs, rr_mm);
 		return ret;  // propagate the error above
 	}
 
 	/* Switch zone contents. */
-	zone_contents_t *old_contents = xfrin_switch_zone(zone, *new_contents);
+	zone_contents_t *old_contents = xfrin_switch_zone(zone, new_contents);
 	xfrin_zone_contents_free(&old_contents);
 
 	/* Free changesets, but not the data. */
 	xfrin_cleanup_successful_update(chs);
-	knot_changesets_free(&chs);
+	knot_changesets_free(&chs, rr_mm);
 	assert(ret == KNOT_EOK);
 	return KNOT_EOK;
 }

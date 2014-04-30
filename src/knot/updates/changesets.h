@@ -101,15 +101,8 @@ typedef enum {
  */
 knot_changesets_t *knot_changesets_create(unsigned count);
 
-/*!
- * \brief Frees the 'changesets' structure, including all its internal data.
- *
- * \param changesets Double pointer to changesets structure to be freed.
- */
-void knot_changesets_free(knot_changesets_t **changesets);
-
 /*! \brief Reinitialize changesets structure. */
-int knot_changesets_clear(knot_changesets_t *changesets);
+int knot_changesets_clear(knot_changesets_t *changesets, mm_ctx_t *rr_mm);
 
 /*!
  * \brief Creates new changeset structure and returns it to caller.
@@ -204,9 +197,10 @@ int knot_changeset_apply(knot_changeset_t *changeset,
 /*!
  * \brief Frees the 'changesets' structure, including all its internal data.
  *
- * \param changesets Double pointer to changesets structure to be freed.
+ * \param changesets  Double pointer to changesets structure to be freed.
+ * \param mm          Memory context used to allocate RRSets.
  */
-void knot_changesets_free(knot_changesets_t **changesets);
+void knot_changesets_free(knot_changesets_t **changesets, mm_ctx_t *rr_mm);
 
 /*!
  * \brief Merges two changesets together, second changeset's lists are kept.

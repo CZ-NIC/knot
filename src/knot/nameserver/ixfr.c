@@ -17,8 +17,8 @@ enum {
 	ADD
 };
 
-/*! \brief Extended structure for IXFR processing. */
-struct ixfr_proc {
+/*! \brief Extended structure for IXFR-out processing. */
+struct ixfrout_proc {
 	struct xfr_proc proc;
 	node_t *cur;
 	unsigned state;
@@ -28,8 +28,11 @@ struct ixfr_proc {
 };
 
 /* IXFR-specific logging (internal, expects 'qdata' variable set). */
-#define IXFR_LOG(severity, msg...) \
+#define IXFROUT_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "Outgoing IXFR", msg)
+
+#define IXFRIN_LOG(severity, msg...) \
+	ANSWER_LOG(severity, adata, "Incoming IXFR", msg)
 
 /*! \brief Helper macro for putting RRs into packet. */
 #define IXFR_SAFE_PUT(pkt, rr) \
@@ -38,7 +41,7 @@ struct ixfr_proc {
 		return ret; \
 	}
 
-static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list)
+static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfrout_proc *ixfr, list_t *list)
 {
 	assert(pkt);
 	assert(ixfr);
@@ -77,7 +80,7 @@ static int ixfr_put_rrlist(knot_pkt_t *pkt, struct ixfr_proc *ixfr, list_t *list
 static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item, struct xfr_proc *xfer)
 {
 	int ret = KNOT_EOK;
-	struct ixfr_proc *ixfr = (struct ixfr_proc *)xfer;
+	struct ixfrout_proc *ixfr = (struct ixfrout_proc *)xfer;
 	knot_changeset_t *chgset = (knot_changeset_t *)item;
 
 	/* Put former SOA. */
@@ -115,8 +118,8 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item, struct xfr_
 	}
 
 	/* Finished change set. */
-	struct query_data *qdata = ixfr->qdata; /*< Required for IXFR_LOG() */
-	IXFR_LOG(LOG_INFO, "Serial %u -> %u.", chgset->serial_from, chgset->serial_to);
+	struct query_data *qdata = ixfr->qdata; /*< Required for IXFROUT_LOG() */
+	IXFROUT_LOG(LOG_INFO, "Serial %u -> %u.", chgset->serial_from, chgset->serial_to);
 
 	return ret;
 }
@@ -145,7 +148,7 @@ static int ixfr_load_chsets(knot_changesets_t **chgsets, const zone_t *zone,
 	ret = journal_load_changesets(zone->conf->ixfr_db, *chgsets,
 	                              serial_from, serial_to);
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(chgsets);
+		knot_changesets_free(chgsets, NULL);
 	}
 
 	return ret;
@@ -177,11 +180,11 @@ static int ixfr_query_check(struct query_data *qdata)
 
 static void ixfr_answer_cleanup(struct query_data *qdata)
 {
-	struct ixfr_proc *ixfr = (struct ixfr_proc *)qdata->ext;
+	struct ixfrout_proc *ixfr = (struct ixfrout_proc *)qdata->ext;
 	mm_ctx_t *mm = qdata->mm;
 
 	ptrlist_free(&ixfr->proc.nodes, mm);
-	knot_changesets_free(&ixfr->changesets);
+	knot_changesets_free(&ixfr->changesets, NULL);
 	mm->free(qdata->ext);
 
 	/* Allow zone changes (finished). */
@@ -211,12 +214,12 @@ static int ixfr_answer_init(struct query_data *qdata)
 
 	/* Initialize transfer processing. */
 	mm_ctx_t *mm = qdata->mm;
-	struct ixfr_proc *xfer = mm->alloc(mm->ctx, sizeof(struct ixfr_proc));
+	struct ixfrout_proc *xfer = mm->alloc(mm->ctx, sizeof(struct ixfrout_proc));
 	if (xfer == NULL) {
-		knot_changesets_free(&chgsets);
+		knot_changesets_free(&chgsets, NULL);
 		return KNOT_ENOMEM;
 	}
-	memset(xfer, 0, sizeof(struct ixfr_proc));
+	memset(xfer, 0, sizeof(struct ixfrout_proc));
 	gettimeofday(&xfer->proc.tstamp, NULL);
 	init_list(&xfer->proc.nodes);
 	xfer->qdata = qdata;
@@ -276,7 +279,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, struct query_data *qdata)
 	return NS_PROC_DONE;
 }
 
-int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
+int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
@@ -284,7 +287,7 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 
 	int ret = KNOT_EOK;
 	struct timeval now = {0};
-	struct ixfr_proc *ixfr = (struct ixfr_proc*)qdata->ext;
+	struct ixfrout_proc *ixfr = (struct ixfrout_proc*)qdata->ext;
 
 	/* If IXFR is disabled, respond with SOA. */
 	if (qdata->param->proc_flags & NS_QUERY_NO_IXFR) {
@@ -296,21 +299,21 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 		ret = ixfr_answer_init(qdata);
 		switch(ret) {
 		case KNOT_EOK:      /* OK */
-			ixfr = (struct ixfr_proc*)qdata->ext;
-			IXFR_LOG(LOG_INFO, "Started (serial %u -> %u).",
-			         knot_soa_serial(&ixfr->soa_from->rrs),
-			         knot_soa_serial(&ixfr->soa_to->rrs));
+			ixfr = (struct ixfrout_proc*)qdata->ext;
+			IXFROUT_LOG(LOG_INFO, "Started (serial %u -> %u).",
+			            knot_soa_serial(&ixfr->soa_from->rrs),
+			            knot_soa_serial(&ixfr->soa_to->rrs));
 			break;
 		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
-			IXFR_LOG(LOG_INFO, "Zone is up-to-date.");
+			IXFROUT_LOG(LOG_INFO, "Zone is up-to-date.");
 			return ixfr_answer_soa(pkt, qdata);
 		case KNOT_ERANGE:   /* No history -> AXFR. */
 		case KNOT_ENOENT:
-			IXFR_LOG(LOG_INFO, "Incomplete history, fallback to AXFR.");
+			IXFROUT_LOG(LOG_INFO, "Incomplete history, fallback to AXFR.");
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
 			return axfr_query(pkt, qdata);
 		default:            /* Server errors. */
-			IXFR_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
+			IXFROUT_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 	}
@@ -325,13 +328,13 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
-		IXFR_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
-		         time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
-		         ixfr->proc.npkts, ixfr->proc.nbytes / 1024.0);
+		IXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
+		            time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
+		            ixfr->proc.npkts, ixfr->proc.nbytes / 1024.0);
 		ret = NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
-		IXFR_LOG(LOG_ERR, "%s", knot_strerror(ret));
+		IXFROUT_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		ret = NS_PROC_FAIL;
 		break;
 	}
@@ -339,90 +342,98 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	return ret;
 }
 
-int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
+static void ixfrin_cleanup(struct answer_data *data)
 {
-#warning TODO: reimplement ixfr_process_answer
-#if 0
-	dbg_ns("ns_process_ixfrin: incoming packet\n");
-
-	/*
-	 * [TSIG] Here we assume that 'xfr' contains TSIG information
-	 * and the digest of the query sent to the master or the previous
-	 * digest.
-	 */
-	int ret = xfrin_process_ixfr_packet(pkt, xfr);
-
-	if (ret == XFRIN_RES_FALLBACK) {
-		dbg_ns("ns_process_ixfrin: Fallback to AXFR.\n");
-		ret = KNOT_ENOIXFR;
+	struct ixfrin_proc *proc = data->ext;
+	if (proc) {
+		knot_changesets_free(&proc->changesets, data->mm);
+		mm_free(data->mm, proc);
+		data->ext = NULL;
 	}
-
-	if (ret < 0) {
-		knot_pkt_free(&xfr->query);
-		return ret;
-	} else if (ret > 0) {
-		dbg_ns("ns_process_ixfrin: IXFR finished\n");
-		gettimeofday(&xfr->t_end, NULL);
-
-		knot_changesets_t *chgsets = (knot_changesets_t *)xfr->data;
-		if (chgsets == NULL || chgsets->first_soa == NULL) {
-			// nothing to be done??
-			dbg_ns("No changesets created for incoming IXFR!\n");
-			return ret;
-		}
-
-		// find zone associated with the changesets
-		/* Must not search for the zone in zonedb as it may fetch a
-		 * different zone than the one the transfer started on. */
-		zone_t *zone = xfr->zone;
-		if (zone == NULL) {
-			dbg_ns("No zone found for incoming IXFR!\n");
-			knot_changesets_free(
-				(knot_changesets_t **)(&xfr->data));
-			return KNOT_ENOZONE;
-		}
-
-		switch (ret) {
-		case XFRIN_RES_COMPLETE:
-			break;
-		case XFRIN_RES_SOA_ONLY: {
-			// compare the SERIAL from the changeset with the zone's
-			// serial
-			uint32_t zone_serial = zone_contents_serial(zone->contents);
-			if (knot_serial_compare(
-			      knot_soa_serial(&chgsets->first_soa->rrs),
-			      zone_serial)
-			    > 0) {
-				if ((xfr->flags & XFR_FLAG_UDP) != 0) {
-					// IXFR over UDP
-					dbg_ns("Update did not fit.\n");
-					return KNOT_EIXFRSPACE;
-				} else {
-					// fallback to AXFR
-					dbg_ns("ns_process_ixfrin: "
-					       "Fallback to AXFR.\n");
-					knot_changesets_free(
-					      (knot_changesets_t **)&xfr->data);
-					knot_pkt_free(&xfr->query);
-					return KNOT_ENOIXFR;
-				}
-
-			} else {
-				// free changesets
-				dbg_ns("No update needed.\n");
-				knot_changesets_free(
-					(knot_changesets_t **)(&xfr->data));
-				return KNOT_ENOXFR;
-			}
-		} break;
-		}
-	}
-
-	/*! \todo In case of error, shouldn't the zone be destroyed here? */
-
-	return ret;
-#endif
-	return NS_PROC_FAIL;
 }
 
-#undef IXFR_LOG
+static int ixfrin_answer_init(struct answer_data *data)
+{
+	struct ixfrin_proc *proc = mm_alloc(data->mm, sizeof(struct ixfrin_proc));
+	data->ext = malloc(sizeof(struct ixfrin_proc));
+	if (proc == NULL) {
+		return KNOT_ENOMEM;
+	}
+	memset(proc, 0, sizeof(struct ixfrin_proc));
+
+	proc->changesets = knot_changesets_create(0);
+	if (proc->changesets == NULL) {
+		mm_free(data->mm, proc);
+		return KNOT_ENOMEM;
+	}
+	proc->state = IXFR_START;
+	proc->zone = data->param->zone;
+
+	data->ext = proc;
+	data->ext_cleanup = &ixfrin_cleanup;
+
+	return KNOT_EOK;
+}
+
+static int ixfrin_finalize(struct answer_data *adata)
+{
+	struct ixfrin_proc *proc = adata->ext;
+	zone_t *zone = proc->zone;
+	knot_changesets_t *changesets = proc->changesets;
+
+#warning if we need to check serials, here's the place
+
+	if (knot_changesets_empty(changesets) || proc->state != IXFR_DONE) {
+		ixfrin_cleanup(adata);
+		IXFRIN_LOG(LOG_INFO, "Fallback to AXFR.");
+		return KNOT_ENOIXFR;
+	}
+
+	int ret = zone_change_apply_and_store(changesets, zone, "IXFR", adata->mm);
+	if (ret != KNOT_EOK) {
+		free(proc);
+		return ret;
+	}
+
+	proc->changesets = NULL; // Free'd by apply_and_store()
+	ixfrin_cleanup(adata);
+
+	IXFRIN_LOG(LOG_INFO, "Finished.");
+#warning TODO: schedule zone events, count transfer size and message count, time
+
+	return KNOT_EOK;
+}
+
+int ixfrin_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
+{
+	if (adata->ext == NULL) {
+		IXFRIN_LOG(LOG_INFO, "Starting.");
+		// First packet with IXFR, init context
+		int ret = ixfrin_answer_init(adata);
+		if (ret != KNOT_EOK) {
+			IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
+			return NS_PROC_FAIL;
+		}
+	}
+
+	int ret = xfrin_process_ixfr_packet(pkt, (struct ixfrin_proc *)adata->ext);
+	if (ret == NS_PROC_DONE) {
+		int fret = ixfrin_finalize(adata);
+#warning get rid of this rcode mix
+		if (fret != KNOT_EOK) {
+			if (fret != KNOT_ENOIXFR) {
+				ret = NS_PROC_FAIL;
+			} else {
+				return KNOT_ENOIXFR;
+			}
+		}
+	}
+
+	if (ret == NS_PROC_FAIL) {
+		IXFRIN_LOG(LOG_ERR, "Failed.");
+	}
+
+	return ret;
+}
+
+#undef IXFROUT_LOG

@@ -125,7 +125,7 @@ int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 		next_state = axfr_process_answer(pkt, data);
 		break;
 	case KNOT_RESPONSE_IXFR:
-		next_state = ixfr_process_answer(pkt, data);
+		next_state = ixfrin_process_answer(pkt, data);
 		break;
 	case KNOT_RESPONSE_NOTIFY:
 		next_state = notify_process_answer(pkt, data);

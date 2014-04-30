@@ -162,7 +162,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 		                                 &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&sec_chs);
+		knot_changesets_free(&sec_chs, NULL);
 		return ret;
 	}
 
@@ -170,14 +170,14 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	zone_contents_set_gen_old(new_contents);
 	ret = xfrin_apply_changesets_directly(new_contents, sec_chs);
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&sec_chs);
+		knot_changesets_free(&sec_chs, NULL);
 		return ret;
 	}
 
 	// Merge changesets
 	ret = knot_changeset_merge(ddns_ch, sec_ch);
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&sec_chs);
+		knot_changesets_free(&sec_chs, NULL);
 		return ret;
 	}
 
@@ -211,7 +211,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	knot_changeset_t *ddns_ch = knot_changesets_get_last(ddns_chs);
 	ret = ddns_process_update(zone, query, ddns_ch, rcode);
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&ddns_chs);
+		knot_changesets_free(&ddns_chs, NULL);
 		return ret;
 	}
 
@@ -225,11 +225,11 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 			} else {
 				*rcode = KNOT_RCODE_SERVFAIL;
 			}
-			knot_changesets_free(&ddns_chs);
+			knot_changesets_free(&ddns_chs, NULL);
 			return ret;
 		}
 	} else {
-		knot_changesets_free(&ddns_chs);
+		knot_changesets_free(&ddns_chs, NULL);
 		*rcode = KNOT_RCODE_NOERROR;
 		return KNOT_EOK;
 	}
@@ -239,7 +239,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 		ret = sign_update(zone, zone->contents, new_contents, ddns_ch);
 		if (ret != KNOT_EOK) {
 			xfrin_rollback_update(ddns_chs, &new_contents);
-			knot_changesets_free(&ddns_chs);
+			knot_changesets_free(&ddns_chs, NULL);
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
@@ -249,7 +249,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	ret = zone_change_store(zone, ddns_chs);
 	if (ret != KNOT_EOK) {
 		xfrin_rollback_update(ddns_chs, &new_contents);
-		knot_changesets_free(&ddns_chs);
+		knot_changesets_free(&ddns_chs, NULL);
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
@@ -261,7 +261,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	xfrin_zone_contents_free(&old_contents);
 
 	xfrin_cleanup_successful_update(ddns_chs);
-	knot_changesets_free(&ddns_chs);
+	knot_changesets_free(&ddns_chs, NULL);
 
 	/* Trim extra heap. */
 	mem_trim();

@@ -24,6 +24,7 @@
 #include "libknot/packet/wire.h"
 #include "common/debug.h"
 #include "libknot/packet/pkt.h"
+#include "libknot/processing/process.h"
 #include "libknot/dname.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -40,6 +41,7 @@
 #include "libknot/util/utils.h"
 #include "libknot/rdata/soa.h"
 #include "knot/nameserver/axfr.h"
+#include "knot/nameserver/ixfr.h"
 
 #define KNOT_NS_TSIG_FREQ 100
 
@@ -252,292 +254,172 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_process_ixfr_packet(knot_pkt_t *pkt, knot_ns_xfr_t *xfr)
+static int solve_start(const knot_rrset_t *rr, knot_changesets_t *changesets, mm_ctx_t *mm)
 {
-	knot_changesets_t **chs = (knot_changesets_t **)(&xfr->data);
-	if (pkt == NULL || chs == NULL) {
-		dbg_xfrin("Wrong parameters supported.\n");
-		return KNOT_EINVAL;
+	assert(changesets->first_soa == NULL);
+	if (rr->type != KNOT_RRTYPE_SOA) {
+		return NS_PROC_FAIL;
 	}
 
+	// Store the first SOA for later use.
+	changesets->first_soa = knot_rrset_copy(rr, mm);
+	if (changesets->first_soa == NULL) {
+		return NS_PROC_FAIL;
+	}
+
+	return NS_PROC_MORE;
+}
+
+static int solve_soa_from(const knot_rrset_t *rr, knot_changesets_t *changesets,
+                          int *state, mm_ctx_t *mm)
+{
+	if (rr->type != KNOT_RRTYPE_SOA) {
+		return NS_PROC_FAIL;
+	}
+
+	if (knot_rrset_equal(rr, changesets->first_soa, KNOT_RRSET_COMPARE_WHOLE)) {
+		// Last SOA encountered, transfer done.
+		*state = IXFR_DONE;
+		return NS_PROC_DONE;
+	}
+
+	// Create new changeset.
+	knot_changeset_t *change = knot_changesets_create_changeset(changesets);
+	if (change == NULL) {
+		return NS_PROC_FAIL;
+	}
+
+	// Store SOA into changeset.
+	change->soa_from = knot_rrset_copy(rr, mm);
+	if (change->soa_from == NULL) {
+		return NS_PROC_FAIL;
+	}
+	change->serial_from = knot_soa_serial(&rr->rrs);
+
+	return NS_PROC_MORE;
+}
+
+static int solve_soa_to(const knot_rrset_t *rr, knot_changeset_t *change, mm_ctx_t *mm)
+{
+	if (rr->type != KNOT_RRTYPE_SOA) {
+		return NS_PROC_FAIL;
+	}
+
+	change->soa_to= knot_rrset_copy(rr, mm);
+	if (change->soa_to == NULL) {
+		return NS_PROC_FAIL;
+	}
+	change->serial_to = knot_soa_serial(&rr->rrs);
+
+	return NS_PROC_MORE;
+}
+
+static int add_part(const knot_rrset_t *rr, knot_changeset_t *change, int part, mm_ctx_t *mm)
+{
+	knot_rrset_t *copy = knot_rrset_copy(rr, mm);
+	if (copy) {
+		int ret = knot_changeset_add_rrset(change, copy, part);
+		if (ret != KNOT_EOK) {
+			return NS_PROC_FAIL;
+		} else {
+			return NS_PROC_MORE;
+		}
+	} else {
+		return NS_PROC_FAIL;
+	}
+}
+
+static int solve_del(const knot_rrset_t *rr, knot_changeset_t *change, mm_ctx_t *mm)
+{
+	return add_part(rr, change, KNOT_CHANGESET_REMOVE, mm);
+}
+
+static int solve_add(const knot_rrset_t *rr, knot_changeset_t *change, mm_ctx_t *mm)
+{
+	return add_part(rr, change, KNOT_CHANGESET_ADD, mm);
+}
+
+static int ixfrin_step(const knot_rrset_t *rr, knot_changesets_t *changesets,
+                       int *state, bool *next, mm_ctx_t *mm)
+{
+	switch (*state) {
+		case IXFR_START:
+			*state = IXFR_SOA_FROM;
+			*next = true;
+			return solve_start(rr, changesets, mm);
+		case IXFR_SOA_FROM:
+			*state = IXFR_DEL;
+			*next = true;
+			return solve_soa_from(rr, changesets, state, mm);
+		case IXFR_DEL:
+			if (rr->type == KNOT_RRTYPE_SOA) {
+				*state = IXFR_SOA_TO;
+				*next = false;
+				return NS_PROC_MORE;
+			}
+			*next = true;
+			return solve_del(rr, knot_changesets_get_last(changesets), mm);
+		case IXFR_SOA_TO:
+			*state = IXFR_ADD;
+			*next = true;
+			return solve_soa_to(rr, knot_changesets_get_last(changesets), mm);
+		case IXFR_ADD:
+			if (rr->type == KNOT_RRTYPE_SOA) {
+				*state = IXFR_SOA_FROM;
+				*next = false;
+				return NS_PROC_MORE;
+			}
+			*next = true;
+			return solve_add(rr, knot_changesets_get_last(changesets), mm);
+		default:
+			assert(0);
+	}
+}
+
+static bool journal_limit_exceeded(struct ixfrin_proc *proc)
+{
+	return proc->changesets->count > JOURNAL_NCOUNT;
+}
+
+static bool out_of_zone(const knot_rrset_t *rr, struct ixfrin_proc *proc)
+{
+	return !knot_dname_is_sub(rr->owner, proc->zone->name) &&
+	       !knot_dname_is_equal(rr->owner, proc->zone->name);
+}
+
+int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct ixfrin_proc *proc)
+{
 	uint16_t rr_id = 0;
 	const knot_rrset_t *rr = NULL;
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	xfrin_take_rr(answer, &rr, &rr_id);
-	if (rr == NULL) {
-		return KNOT_EXFRREFUSED; /* Empty, try again with AXFR */
-	}
-
-	// state of the transfer
-	// -1 .. a SOA is expected to create a new changeset
-	int state = 0;
-	int ret = KNOT_EOK;
-	if (*chs == NULL) {
-		dbg_xfrin_verb("Changesets empty, creating new.\n");
-		*chs = knot_changesets_create(0);
-		if (*chs == NULL) {
-			return KNOT_ENOMEM;
+	knot_changesets_t *changesets = proc->changesets;
+	int ret = NS_PROC_NOOP;
+	while (rr) {
+		if (journal_limit_exceeded(proc)) {
+			assert(proc->state != IXFR_DONE);
+			return NS_PROC_DONE;
 		}
 
-		// the first RR must be a SOA
-		if (rr->type != KNOT_RRTYPE_SOA) {
-			dbg_xfrin("First RR is not a SOA RR!\n");
-			ret = KNOT_EMALF;
-			goto cleanup;
-		}
-
-		// just store the first SOA for later use
-		(*chs)->first_soa = knot_rrset_copy(rr, NULL);
-		if ((*chs)->first_soa == NULL) {
-			ret = KNOT_ENOMEM;
-			goto cleanup;
-		}
-		state = -1;
-
-		dbg_xfrin_verb("First SOA of IXFR saved, state set to -1.\n");
-
-		// take next RR
-		xfrin_take_rr(answer, &rr, &rr_id);
-
-		/*
-		 * If there is no other records in the response than the SOA, it
-		 * means one of these three cases:
-		 *
-		 * 1) The server does not have newer zone than ours.
-		 *    This is indicated by serial equal to the one of our zone.
-		 * 2) The server wants to send the transfer but is unable to fit
-		 *    it in the packet. This is indicated by serial different
-		 *    (newer) from the one of our zone, but applies only for
-		 *    IXFR/UDP.
-		 * 3) The master is weird and sends only SOA in the first packet
-		 *    of a fallback to AXFR answer (PowerDNS does this).
-		 *
-		 * The serials must be compared in other parts of the server, so
-		 * just indicate that the answer contains only one SOA.
-		 */
-		if (rr == NULL) {
-			dbg_xfrin("Response containing only SOA,\n");
-			return XFRIN_RES_SOA_ONLY;
-		} else if (rr->type != KNOT_RRTYPE_SOA) {
-			dbg_xfrin("Fallback to AXFR.\n");
-			return XFRIN_RES_FALLBACK;
-		}
-	} else {
-		if ((*chs)->first_soa == NULL) {
-			dbg_xfrin("Changesets don't contain SOA first!\n");
-			ret = KNOT_EINVAL;
-			goto cleanup;
-		}
-		dbg_xfrin_detail("Changesets present.\n");
-	}
-
-	/*
-	 * Process the next RR. Different requirements are in place in
-	 * different cases:
-	 *
-	 * 1) Last changeset has both soa_from and soa_to.
-	 *    a) The next RR is a SOA.
-	 *      i) The next RR is equal to the first_soa saved in changesets.
-	 *         This denotes the end of the transfer. It may be dropped and
-	 *         the end should be signalised by returning positive value.
-	 *
-	 *      ii) The next RR is some other SOA.
-	 *          This means a start of new changeset - create it and add it
-	 *          to the list.
-	 *
-	 *    b) The next RR is not a SOA.
-	 *       Put the RR into the ADD part of the last changeset as this is
-	 *       not finished yet. Continue while SOA is not encountered. Then
-	 *       jump to 1-a.
-	 *
-	 * 2) Last changeset has only the soa_from and does not have soa_to.
-	 *    a) The next RR is a SOA.
-	 *       This means start of the ADD section. Put the SOA to the
-	 *       changeset. Continue adding RRs to the ADD section while SOA
-	 *       is not encountered. This is identical to 1-b.
-	 *
-	 *    b) The next RR is not a SOA.
-	 *       This means the REMOVE part is not finished yet. Add the RR to
-	 *       the REMOVE part. Continue adding next RRs until a SOA is
-	 *       encountered. Then jump to 2-a.
-	 */
-
-	// first, find out in what state we are
-	/*! \todo It would be more elegant to store the state in the
-	 *        changesets structure, or in some place persistent between
-	 *        calls to this function.
-	 */
-	knot_changeset_t *chset = knot_changesets_get_last(*chs);
-	if (state != -1) {
-		dbg_xfrin_detail("State is not -1, deciding...\n");
-		// there should be at least one started changeset right now
-		if (EMPTY_LIST((*chs)->sets)) {
-			ret = KNOT_EMALF;
-			goto cleanup;
-		}
-
-		// a changeset should be created only when there is a SOA
-		assert(chset->soa_from != NULL);
-
-		if (chset->soa_to == NULL) {
-			state = KNOT_CHANGESET_REMOVE;
-		} else {
-			state = KNOT_CHANGESET_ADD;
-		}
-	}
-
-	dbg_xfrin_detail("State before the loop: %d\n", state);
-
-	/*! \todo This may be implemented with much less IFs! */
-
-	while (rr != NULL) {
-		if (!knot_dname_is_sub(rr->owner, xfr->zone->name) &&
-		    !knot_dname_is_equal(rr->owner, xfr->zone->name)) {
-			// out-of-zone domain
-			// take next RR
-			xfrin_take_rr(answer, &rr, &rr_id);
+		if (out_of_zone(rr, proc)) {
 			continue;
 		}
 
-		switch (state) {
-		case -1:
-			// a SOA is expected
-			// this may be either a start of a changeset or the
-			// last SOA (in case the transfer was empty, but that
-			// is quite weird in fact
-			if (rr->type != KNOT_RRTYPE_SOA) {
-				dbg_xfrin("First RR is not a SOA RR!\n");
-				dbg_xfrin_verb("RR type: %u\n",
-					       rr->type);
-				ret = KNOT_EMALF;
-				goto cleanup;
-			}
-
-			if (knot_soa_serial(&rr->rrs)
-			    == knot_soa_serial(&(*chs)->first_soa->rrs)) {
-
-				/*! \note [TSIG] Check TSIG, we're at the end of
-				 *               transfer.
-				 */
-				ret = xfrin_check_tsig(pkt, xfr, 1);
-
-				// last SOA, discard and end
-				/*! \note [TSIG] If TSIG validates, consider
-				 *        transfer complete. */
-				if (ret == KNOT_EOK) {
-					ret = XFRIN_RES_COMPLETE;
-				}
-
-				return ret;
-			} else {
-				// normal SOA, start new changeset
-				/* Check changesets for maximum count (so they fit into journal). */
-				if ((*chs)->count + 1 > JOURNAL_NCOUNT)
-					ret = KNOT_ESPACE;
-
-				if (ret != KNOT_EOK) {
-					goto cleanup;
-				}
-
-				chset = knot_changesets_create_changeset(*chs);
-				if (chset == NULL) {
-					goto cleanup;
-				}
-				knot_rrset_t *soa = knot_rrset_copy(rr, NULL);
-				if (soa == NULL) {
-					ret = KNOT_ENOMEM;
-					goto cleanup;
-				}
-
-				knot_changeset_add_soa(chset, soa, KNOT_CHANGESET_REMOVE);
-
-				// change state to REMOVE
-				state = KNOT_CHANGESET_REMOVE;
-			}
-			break;
-		case KNOT_CHANGESET_REMOVE:
-			// if the next RR is SOA, store it and change state to
-			// ADD
-			if (rr->type == KNOT_RRTYPE_SOA) {
-				// we should not be here if soa_from is not set
-				assert(chset->soa_from != NULL);
-				knot_rrset_t *soa = knot_rrset_copy(rr, NULL);
-				if (soa == NULL) {
-					ret = KNOT_ENOMEM;
-					goto cleanup;
-				}
-				knot_changeset_add_soa(chset, soa, KNOT_CHANGESET_ADD);
-
-				state = KNOT_CHANGESET_ADD;
-			} else {
-				// just add the RR to the REMOVE part and
-				// continue
-				knot_rrset_t *cpy = knot_rrset_copy(rr, NULL);
-				if (cpy == NULL) {
-					ret = KNOT_ENOMEM;
-					goto cleanup;
-				}
-				ret = knot_changeset_add_rrset(chset, cpy,
-				                               KNOT_CHANGESET_REMOVE);
-				if (ret != KNOT_EOK) {
-					goto cleanup;
-				}
-			}
-			break;
-		case KNOT_CHANGESET_ADD:
-			// if the next RR is SOA change to state -1 and do not
-			// parse next RR
-			if (rr->type == KNOT_RRTYPE_SOA) {
-				log_zone_info("%s Serial %u -> %u.\n",
-					      xfr->msg,
-					      knot_soa_serial(&chset->soa_from->rrs),
-					      knot_soa_serial(&chset->soa_to->rrs));
-				state = -1;
-				continue;
-			} else {
-				// just add the RR to the ADD part and continue
-				knot_rrset_t *cpy = knot_rrset_copy(rr, NULL);
-				if (cpy == NULL) {
-					ret = KNOT_ENOMEM;
-					goto cleanup;
-				}
-				ret = knot_changeset_add_rrset(chset, cpy,
-				                               KNOT_CHANGESET_ADD);
-				if (ret != KNOT_EOK) {
-					goto cleanup;
-				}
-			}
-			break;
+		// Process RR.
+		bool next = false;
+		ret = ixfrin_step(rr, changesets, &proc->state, &next, proc->mm);
+		if (ret == NS_PROC_FAIL || ret == NS_PROC_DONE) {
+			// Quit on errors and if we're done.
+			return ret;
 		}
 
-		// take next RR
-		xfrin_take_rr(answer, &rr, &rr_id);
+		if (next) {
+			xfrin_take_rr(answer, &rr, &rr_id);
+		}
 	}
 
-	/*! \note Check TSIG, we're at the end of packet. It may not be
-	 *        required.
-	 */
-	ret = xfrin_check_tsig(pkt, xfr,
-			       knot_ns_tsig_required(xfr->packet_nr));
-	dbg_xfrin_verb("xfrin_check_tsig() returned %d\n", ret);
-	++xfr->packet_nr;
-
-	/*! \note [TSIG] Cleanup and propagate error if TSIG validation fails.*/
-	if (ret != KNOT_EOK) {
-		goto cleanup;
-	}
-
-	// here no RRs remain in the packet but the transfer is not finished
-	// yet, return EOK
-	return KNOT_EOK;
-
-cleanup:
-	/* We should go here only if some error occured. */
-	assert(ret < 0);
-
-	dbg_xfrin_detail("Cleanup after processing IXFR/IN packet.\n");
-	knot_changesets_free(chs);
-	xfr->data = 0;
+#warning TODO TSIG
+	assert(ret == NS_PROC_MORE);
 	return ret;
 }
 

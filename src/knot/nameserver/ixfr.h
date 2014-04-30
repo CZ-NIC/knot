@@ -28,9 +28,30 @@
 #define _KNOT_IXFR_H_
 
 #include "libknot/packet/pkt.h"
+#include "knot/updates/changesets.h"
+#include "knot/zone/zone.h"
 
 struct query_data;
 struct answer_data;
+struct xfr_proc;
+
+/*! \brief IXFR-in processing states. */
+enum ixfrin_states {
+	IXFR_START = 0,
+	IXFR_SOA_FROM = 1,
+	IXFR_SOA_TO = 2,
+	IXFR_DEL = 3,
+	IXFR_ADD = 4,
+	IXFR_DONE = 5
+};
+
+/*! \brief Extended structure for IXFR-in processing. */
+struct ixfrin_proc {
+	int state;
+	knot_changesets_t *changesets;
+	zone_t *zone;
+	mm_ctx_t *mm;
+};
 
 /*!
  * \brief IXFR query processing module.
@@ -39,7 +60,7 @@ struct answer_data;
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
+int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
  * \brief Process an IXFR query response.
@@ -64,7 +85,7 @@ int ixfr_answer(knot_pkt_t *pkt, struct query_data *qdata);
  * \retval Other If any other error occured. The connection should be closed.
  *
  */
-int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *data);
+int ixfrin_process_answer(knot_pkt_t *pkt, struct answer_data *adata);
 
 #endif /* _KNOT_IXFR_H_ */
 

@@ -99,7 +99,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	/*! \todo Check what should be the upper bound. */
 	int ret = journal_load_changesets(conf->ixfr_db, chsets, serial, serial - 1);
 	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chsets->sets)) {
-		knot_changesets_free(&chsets);
+		knot_changesets_free(&chsets, NULL);
 		/* Absence of records is not an error. */
 		if (ret == KNOT_ENOENT) {
 			return KNOT_EOK;
@@ -115,7 +115,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
-	knot_changesets_free(&chsets);
+	knot_changesets_free(&chsets, NULL);
 	return ret;
 }
 
@@ -137,7 +137,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 	if (conf->dnssec_enable) {
 		change = zone_change_prepare(chset);
 		if (change == NULL) {
-			knot_changesets_free(&chset);
+			knot_changesets_free(&chset, NULL);
 			return KNOT_ENOMEM;
 		}
 
@@ -153,13 +153,13 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 		/* Commit existing zone change and prepare new. */
 		int ret = zone_change_commit(new_contents, chset);
 		if (ret != KNOT_EOK) {
-			knot_changesets_free(&chset);
+			knot_changesets_free(&chset, NULL);
 			return ret;
 		} else {
-			knot_changesets_clear(chset);
+			knot_changesets_clear(chset, NULL);
 			change = zone_change_prepare(chset);
 			if (change == NULL) {
-				knot_changesets_free(&chset);
+				knot_changesets_free(&chset, NULL);
 				return KNOT_ENOMEM;
 			}
 		}
@@ -182,7 +182,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 	if (ret == KNOT_EOK) {
 		ret = zone_change_commit(new_contents, chset);
 		if (ret != KNOT_EOK) {
-			knot_changesets_free(&chset);
+			knot_changesets_free(&chset, NULL);
 			return ret;
 		}
 
@@ -191,7 +191,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 	}
 
 	/* Free changesets and return. */
-	knot_changesets_free(&chset);
+	knot_changesets_free(&chset, NULL);
 	return ret;
 }
 

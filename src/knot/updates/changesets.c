@@ -65,7 +65,7 @@ knot_changesets_t *knot_changesets_create(unsigned count)
 	for (unsigned i = 0; i < count; ++i) {
 		knot_changeset_t *change = knot_changesets_create_changeset(ch);
 		if (change == NULL) {
-			knot_changesets_free(&ch);
+			knot_changesets_free(&ch, NULL);
 			return NULL;
 		}
 	}
@@ -260,7 +260,7 @@ static void knot_free_changeset(knot_changeset_t *changeset)
 	free(changeset->data);
 }
 
-static void knot_changesets_deinit(knot_changesets_t *changesets)
+static void knot_changesets_deinit(knot_changesets_t *changesets, mm_ctx_t *rr_mm)
 {
 	if (!EMPTY_LIST(changesets->sets)) {
 		knot_changeset_t *chg = NULL;
@@ -274,28 +274,28 @@ static void knot_changesets_deinit(knot_changesets_t *changesets)
 	// Free pool with RRs in sets / changes
 	mp_delete(changesets->mmc_rr.ctx);
 
-	knot_rrset_free(&changesets->first_soa, NULL);
+	knot_rrset_free(&changesets->first_soa, rr_mm);
 }
 
-void knot_changesets_free(knot_changesets_t **changesets)
+void knot_changesets_free(knot_changesets_t **changesets, mm_ctx_t *rr_mm)
 {
 	if (changesets == NULL || *changesets == NULL) {
 		return;
 	}
 
-	knot_changesets_deinit(*changesets);
+	knot_changesets_deinit(*changesets, rr_mm);
 
 	free(*changesets);
 	*changesets = NULL;
 }
 
-int knot_changesets_clear(knot_changesets_t *changesets)
+int knot_changesets_clear(knot_changesets_t *changesets, mm_ctx_t *rr_mm)
 {
 	if (changesets == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_changesets_deinit(changesets);
+	knot_changesets_deinit(changesets, rr_mm);
 	return knot_changesets_init(changesets);
 }
 
