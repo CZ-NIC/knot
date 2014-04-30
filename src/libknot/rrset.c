@@ -571,6 +571,12 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 		return r1 == r2;
 	}
 
+	if (knot_rrset_empty(r1)) {
+		return knot_rrset_empty(r2);
+	} else if (knot_rrset_empty(r2)) {
+		return knot_rrset_empty(r1);
+	}
+
 	if (r1->type != r2->type) {
 		return false;
 	}
