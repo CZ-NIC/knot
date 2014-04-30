@@ -484,7 +484,10 @@ class Server(object):
 
                 if not log_no_sep:
                     detail_log(SEP)
+
                 return dnstest.response.Response(self, resp, args)
+            except dns.exception.Timeout:
+                pass
             except:
                 time.sleep(timeout)
 
@@ -515,20 +518,26 @@ class Server(object):
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
         for t in range(20):
-            resp = self.dig(zone.name, "SOA", udp=True, tries=1, log_no_sep=True)
-            if resp.resp.rcode() == 0:
-                if not resp.resp.answer:
-                    raise Exception("No SOA in ANSWER, zone='%s', server='%s'" %
-                                    (zone.name, self.name))
+            try:
+                resp = self.dig(zone.name, "SOA", udp=True, tries=1,
+                                log_no_sep=True)
+            except:
+                pass
+            else:
+                if resp.resp.rcode() == 0:
+                    if not resp.resp.answer:
+                        raise Exception("No SOA in ANSWER, zone='%s', server='%s'" %
+                                        (zone.name, self.name))
 
-                soa = str((resp.resp.answer[0]).to_rdataset())
-                _serial = int(soa.split()[5])
-                if serial:
-                    if serial < _serial:
+                    soa = str((resp.resp.answer[0]).to_rdataset())
+                    _serial = int(soa.split()[5])
+
+                    if serial:
+                        if serial < _serial:
+                            break
+                    else:
                         break
-                else:
-                    break
-            time.sleep(2)
+            time.sleep(4)
         else:
             self.backtrace()
             raise Exception("Can't get SOA%s, zone='%s', server='%s'" %

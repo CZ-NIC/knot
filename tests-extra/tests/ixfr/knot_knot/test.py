@@ -24,9 +24,7 @@ for i in range(4):
     # Update zone files on master.
     for zone in zones:
         master.update_zonefile(zone, random=True)
-
     master.reload()
-    t.sleep(5)
 
     # Wait for IXFR to slave.
     serials = master.zones_wait(zones, serials_prev)
