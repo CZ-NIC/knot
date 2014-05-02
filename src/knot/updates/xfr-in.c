@@ -254,6 +254,9 @@ int xfrin_process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 
 /*----------------------------------------------------------------------------*/
 
+/* ------------------------- IXFR-in processing ----------------------------- */
+
+/*! \brief Stores starting SOA into changesets structure. */
 static int solve_start(const knot_rrset_t *rr, knot_changesets_t *changesets, mm_ctx_t *mm)
 {
 	assert(changesets->first_soa == NULL);
@@ -270,6 +273,10 @@ static int solve_start(const knot_rrset_t *rr, knot_changesets_t *changesets, mm
 	return NS_PROC_MORE;
 }
 
+/*!
+ * \brief Decides what to do with a starting SOA - either ends the processing or
+ *        creates a new changeset and stores the SOA into it.
+ */
 static int solve_soa_from(const knot_rrset_t *rr, knot_changesets_t *changesets,
                           int *state, mm_ctx_t *mm)
 {
@@ -299,6 +306,7 @@ static int solve_soa_from(const knot_rrset_t *rr, knot_changesets_t *changesets,
 	return NS_PROC_MORE;
 }
 
+/*! \brief Stores ending SOA into changeset. */
 static int solve_soa_to(const knot_rrset_t *rr, knot_changeset_t *change, mm_ctx_t *mm)
 {
 	if (rr->type != KNOT_RRTYPE_SOA) {
@@ -314,8 +322,10 @@ static int solve_soa_to(const knot_rrset_t *rr, knot_changeset_t *change, mm_ctx
 	return NS_PROC_MORE;
 }
 
+/*! \brief Adds single RR into given section of changeset. */
 static int add_part(const knot_rrset_t *rr, knot_changeset_t *change, int part, mm_ctx_t *mm)
 {
+	assert(rr->type != KNOT_RRTYPE_SOA);
 	knot_rrset_t *copy = knot_rrset_copy(rr, mm);
 	if (copy) {
 		int ret = knot_changeset_add_rrset(change, copy, part);
@@ -329,58 +339,75 @@ static int add_part(const knot_rrset_t *rr, knot_changeset_t *change, int part, 
 	}
 }
 
+/*! \brief Adds single RR into REMOVE section of changeset. */
 static int solve_del(const knot_rrset_t *rr, knot_changeset_t *change, mm_ctx_t *mm)
 {
 	return add_part(rr, change, KNOT_CHANGESET_REMOVE, mm);
 }
 
+/*! \brief Adds single RR into ADD section of changeset. */
 static int solve_add(const knot_rrset_t *rr, knot_changeset_t *change, mm_ctx_t *mm)
 {
 	return add_part(rr, change, KNOT_CHANGESET_ADD, mm);
 }
 
+/*!
+ * \brief Processes single RR according to current IXFR-in state. The states
+ *        correspond with IXFR-in message structure, in the order they are
+ *        mentioned in the code.
+ * \param rr          RR to process.
+ * \param changesets  Output changesets.
+ * \param state       Current IXFR-in state.
+ * \param next        Output parameter - set to true if next RR should be fetched.
+ * \param mm          Memory context used to create RR copies.
+ * \return NS_PROC_MORE, NS_PROC_DONE, NS_PROC_FAIL.
+ */
 static int ixfrin_step(const knot_rrset_t *rr, knot_changesets_t *changesets,
                        int *state, bool *next, mm_ctx_t *mm)
 {
 	switch (*state) {
-		case IXFR_START:
+	case IXFR_START:
+		*state = IXFR_SOA_FROM;
+		*next = true;
+		return solve_start(rr, changesets, mm);
+	case IXFR_SOA_FROM:
+		*state = IXFR_DEL;
+		*next = true;
+		return solve_soa_from(rr, changesets, state, mm);
+	case IXFR_DEL:
+		if (rr->type == KNOT_RRTYPE_SOA) {
+			// Encountered SOA, do not consume the RR.
+			*state = IXFR_SOA_TO;
+			*next = false;
+			return NS_PROC_MORE;
+		}
+		*next = true;
+		return solve_del(rr, knot_changesets_get_last(changesets), mm);
+	case IXFR_SOA_TO:
+		*state = IXFR_ADD;
+		*next = true;
+		return solve_soa_to(rr, knot_changesets_get_last(changesets), mm);
+	case IXFR_ADD:
+		if (rr->type == KNOT_RRTYPE_SOA) {
+			// Encountered SOA, do not consume the RR.
 			*state = IXFR_SOA_FROM;
-			*next = true;
-			return solve_start(rr, changesets, mm);
-		case IXFR_SOA_FROM:
-			*state = IXFR_DEL;
-			*next = true;
-			return solve_soa_from(rr, changesets, state, mm);
-		case IXFR_DEL:
-			if (rr->type == KNOT_RRTYPE_SOA) {
-				*state = IXFR_SOA_TO;
-				*next = false;
-				return NS_PROC_MORE;
-			}
-			*next = true;
-			return solve_del(rr, knot_changesets_get_last(changesets), mm);
-		case IXFR_SOA_TO:
-			*state = IXFR_ADD;
-			*next = true;
-			return solve_soa_to(rr, knot_changesets_get_last(changesets), mm);
-		case IXFR_ADD:
-			if (rr->type == KNOT_RRTYPE_SOA) {
-				*state = IXFR_SOA_FROM;
-				*next = false;
-				return NS_PROC_MORE;
-			}
-			*next = true;
-			return solve_add(rr, knot_changesets_get_last(changesets), mm);
-		default:
-			assert(0);
+			*next = false;
+			return NS_PROC_MORE;
+		}
+		*next = true;
+		return solve_add(rr, knot_changesets_get_last(changesets), mm);
+	default:
+		return NS_PROC_FAIL;
 	}
 }
 
+/*! \brief Checks whether journal node limit has not been exceeded. */
 static bool journal_limit_exceeded(struct ixfrin_proc *proc)
 {
 	return proc->changesets->count > JOURNAL_NCOUNT;
 }
 
+/*! \brief Checks whether RR belongs into zone. */
 static bool out_of_zone(const knot_rrset_t *rr, struct ixfrin_proc *proc)
 {
 	return !knot_dname_is_sub(rr->owner, proc->zone->name) &&
@@ -390,18 +417,20 @@ static bool out_of_zone(const knot_rrset_t *rr, struct ixfrin_proc *proc)
 int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct ixfrin_proc *proc)
 {
 	uint16_t rr_id = 0;
-	const knot_rrset_t *rr = NULL;
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	xfrin_take_rr(answer, &rr, &rr_id);
 	knot_changesets_t *changesets = proc->changesets;
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	const knot_rrset_t *rr = NULL;
+	xfrin_take_rr(answer, &rr, &rr_id);
 	int ret = NS_PROC_NOOP;
 	while (rr) {
 		if (journal_limit_exceeded(proc)) {
+			// Will revert to AXFR.
 			assert(proc->state != IXFR_DONE);
 			return NS_PROC_DONE;
 		}
 
 		if (out_of_zone(rr, proc)) {
+			xfrin_take_rr(answer, &rr, &rr_id);
 			continue;
 		}
 
@@ -494,7 +523,6 @@ static void xfrin_cleanup_failed_update(zone_contents_t **new_contents)
 		// destroy the shallow copy of zone
 		xfrin_zone_contents_free(new_contents);
 	}
-
 }
 
 /*----------------------------------------------------------------------------*/
@@ -877,7 +905,7 @@ static int xfrin_remove_empty_nodes(zone_contents_t *z)
 
 /*----------------------------------------------------------------------------*/
 
-int xfrin_prepare_zone_copy(zone_contents_t *old_contents, zone_contents_t **new_contents)
+static int xfrin_prepare_zone_copy(zone_contents_t *old_contents, zone_contents_t **new_contents)
 {
 	if (old_contents == NULL || new_contents == NULL) {
 		return KNOT_EINVAL;
@@ -939,10 +967,6 @@ int xfrin_finalize_updated_zone(zone_contents_t *contents_copy,
 	 * - PROFIT
 	 */
 
-	/*
-	 * Select and remove empty nodes from zone trees. Do not free them right
-	 * away as they may be referenced by some domain names.
-	 */
 	int ret = xfrin_remove_empty_nodes(contents_copy);
 	if (ret != KNOT_EOK) {
 		dbg_xfrin("Failed to remove empty nodes: %s\n",

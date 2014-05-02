@@ -70,12 +70,6 @@ typedef struct zone_contents_t {
 	uint8_t flags;
 } zone_contents_t;
 
-/*!< \brief Helper linked list list for CNAME loop checking */
-typedef struct cname_chain {
-	const zone_node_t *node;
-	struct cname_chain *next;
-} cname_chain_t;
-
 /*!
  * \brief Signature of callback for zone contents apply functions.
  */

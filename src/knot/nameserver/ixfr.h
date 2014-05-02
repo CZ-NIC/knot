@@ -37,12 +37,12 @@ struct xfr_proc;
 
 /*! \brief IXFR-in processing states. */
 enum ixfrin_states {
-	IXFR_START = 0,
-	IXFR_SOA_FROM = 1,
-	IXFR_SOA_TO = 2,
-	IXFR_DEL = 3,
-	IXFR_ADD = 4,
-	IXFR_DONE = 5
+	IXFR_START =     0,  /* IXFR-in starting, expecting final SOA. */
+	IXFR_SOA_FROM =  1,  /* Expecting starting SOA. */
+	IXFR_SOA_TO =    2,  /* Expecting ending SOA. */
+	IXFR_DEL =       3,  /* Expecting RR to delete. */
+	IXFR_ADD =       4,  /* Expecting RR to add. */
+	IXFR_DONE =      5   /* Processing done, IXFR-in complete. */
 };
 
 /*! \brief Extended structure for IXFR-in processing. */

@@ -80,26 +80,12 @@ int xfrin_transfer_needed(const zone_contents_t *zone,
 int xfrin_process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc);
 
 /*!
- * \brief Destroys the whole changesets structure.
- *
- * Frees all RRSets present in the changesets and all their data. Also frees
- * the changesets structure and sets the parameter to NULL.
- *
- * \param changesets Changesets to destroy.
- */
-void xfrin_free_changesets(knot_changesets_t **changesets);
-
-/*!
  * \brief Parses IXFR reply packet and fills in the changesets structure.
  *
- * \param pkt Packet containing the IXFR reply in wire format.
- * \param size Size of the packet in bytes.
- * \param changesets Changesets to be filled in.
+ * \param pkt   Packet containing the IXFR reply in wire format.
+ * \param proc  Processing context.
  *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL
- * \retval KNOT_EMALF
- * \retval KNOT_ENOMEM
+ * \return NS_PROC_MORE, NS_PROC_DONE, NS_PROC_FAIL
  */
 int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct ixfrin_proc *proc);
 
@@ -128,9 +114,6 @@ int xfrin_apply_changesets(zone_t *zone,
 int xfrin_apply_changesets_directly(zone_contents_t *contents,
                                     knot_changesets_t *chsets);
 
-int xfrin_prepare_zone_copy(zone_contents_t *old_contents,
-                            zone_contents_t **new_contents);
-
 /*!
  * \brief Sets pointers and NSEC3 nodes after signing/DDNS.
  * \param contents_copy    Contents to be updated.
@@ -144,15 +127,6 @@ zone_contents_t *xfrin_switch_zone(zone_t *zone, zone_contents_t *new_contents);
 
 void xfrin_rollback_update(knot_changesets_t *chgs,
                            zone_contents_t **new_contents);
-
-int xfrin_copy_rrset(zone_node_t *node, uint16_t type,
-                     knot_rrset_t **rrset);
-
-int xfrin_copy_old_rrset(knot_rrset_t *old, knot_rrset_t **copy);
-
-int xfrin_replace_rrset_in_node(zone_node_t *node,
-                                knot_rrset_t *rrset_new,
-                                zone_contents_t *contents);
 
 void xfrin_cleanup_successful_update(knot_changesets_t *chgs);
 
