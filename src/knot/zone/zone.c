@@ -257,7 +257,8 @@ knot_zone_contents_t *zone_switch_contents(zone_t *zone,
 	}
 
 	knot_zone_contents_t *old_contents;
-	old_contents = rcu_xchg_pointer(&zone->contents, new_contents);
+	knot_zone_contents_t **current_contents = &zone->contents;
+	old_contents = rcu_xchg_pointer(current_contents, new_contents);
 
 	return old_contents;
 }

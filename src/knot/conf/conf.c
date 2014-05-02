@@ -848,7 +848,8 @@ int conf_open(const char* path)
 	}
 
 	/* Replace current config. */
-	conf_t *oldconf = rcu_xchg_pointer(&s_config, nconf);
+	conf_t **current_config = &s_config;
+	conf_t *oldconf = rcu_xchg_pointer(current_config, nconf);
 
 	/* Synchronize. */
 	synchronize_rcu();
