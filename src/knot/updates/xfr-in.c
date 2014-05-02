@@ -79,6 +79,7 @@ static int knot_ns_tsig_required(int packet_nr)
 int xfrin_transfer_needed(const zone_contents_t *zone,
                           knot_pkt_t *soa_response)
 {
+#warning Reimplement or remove
 	/*
 	 * Retrieve the local Serial
 	 */
@@ -194,66 +195,6 @@ static int xfrin_check_tsig(knot_pkt_t *packet, knot_ns_xfr_t *xfr,
 
 	return KNOT_EOK;
 }
-
-/*----------------------------------------------------------------------------*/
-
-static void xfrin_take_rr(const knot_pktsection_t *answer, const knot_rrset_t **rr, uint16_t *cur)
-{
-	if (*cur < answer->count) {
-		*rr = &answer->rr[*cur];
-		*cur += 1;
-	} else {
-		*rr = NULL;
-	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-int xfrin_process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
-{
-	if (pkt == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	int ret = KNOT_EOK;
-	uint16_t rr_id = 0;
-	const knot_rrset_t *rr = NULL;
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-
-	xfrin_take_rr(answer, &rr, &rr_id);
-	++proc->npkts;
-
-	// Init zone creator
-	zcreator_t zc = {.z = proc->zone,
-	                 .master = false, .ret = KNOT_EOK };
-
-	while (rr) {
-		if (rr->type == KNOT_RRTYPE_SOA &&
-		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
-			// Last SOA, last message, check TSIG.
-//			int ret = xfrin_check_tsig(pkt, xfr, 1);
-#warning TODO: TSIG API
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-			return 1; // Signal that transfer finished.
-		} else {
-			int ret = zcreator_step(&zc, rr);
-			if (ret != KNOT_EOK) {
-				// 'rr' is either inserted, or free'd
-				return ret;
-			}
-			xfrin_take_rr(answer, &rr, &rr_id);
-		}
-	}
-
-	// Check possible TSIG at the end of DNS message.
-//	return xfrin_check_tsig(pkt, xfr, knot_ns_tsig_required(xfr->packet_nr));
-#warning TODO: TSIG API
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------*/
 /* Applying changesets to zone                                                */

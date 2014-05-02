@@ -313,6 +313,43 @@ static int axfr_answer_finalize(struct answer_data *data)
 	return KNOT_EOK;
 }
 
+static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
+{
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	++proc->npkts;
+
+	// Init zone creator
+	zcreator_t zc = {.z = proc->zone, .master = false, .ret = KNOT_EOK };
+
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	for (uint16_t i = 0; i < answer->count; ++i) {
+		const knot_rrset_t *rr = &answer->rr[i];
+		if (rr->type == KNOT_RRTYPE_SOA &&
+		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
+			// Last SOA, last message, check TSIG.
+//			int ret = xfrin_check_tsig(pkt, xfr, 1);
+#warning TODO: TSIG API
+//			if (ret != KNOT_EOK) {
+//				return ret;
+//			}
+			return NS_PROC_DONE;
+		} else {
+			int ret = zcreator_step(&zc, rr);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	// Check possible TSIG at the end of DNS message.
+//	return xfrin_check_tsig(pkt, xfr, knot_ns_tsig_required(xfr->packet_nr));
+#warning TODO: TSIG API
+	return NS_PROC_MORE;
+}
+
 int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
 	/* Initialize processing with first packet. */
@@ -325,25 +362,18 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	}
 
 	/* Process answer packet. */
-	ret = xfrin_process_axfr_packet(pkt, (struct xfr_proc *)data->ext);
-#warning TODO: this function wraps the old processing interface, hence the retval conversion below
-	if (ret > 0) {
-
+	ret = process_axfr_packet(pkt, (struct xfr_proc *)data->ext);
+	if (ret == NS_PROC_DONE) {
 		/* This was the last packet, finalize zone and publish it. */
 		ret = axfr_answer_finalize(data);
 		if (ret != KNOT_EOK) {
 			return NS_PROC_FAIL;
 		}
 
-		return NS_PROC_DONE;
+		return ret;
 	}
 
-	if (ret != KNOT_EOK) {
-		fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
-		return NS_PROC_FAIL;
-	}
-
-	return NS_PROC_MORE;
+	return ret;
 }
 
 #undef AXFR_QRLOG
