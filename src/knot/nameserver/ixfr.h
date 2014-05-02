@@ -35,24 +35,6 @@ struct query_data;
 struct answer_data;
 struct xfr_proc;
 
-/*! \brief IXFR-in processing states. */
-enum ixfrin_states {
-	IXFR_START =     0,  /* IXFR-in starting, expecting final SOA. */
-	IXFR_SOA_FROM =  1,  /* Expecting starting SOA. */
-	IXFR_SOA_TO =    2,  /* Expecting ending SOA. */
-	IXFR_DEL =       3,  /* Expecting RR to delete. */
-	IXFR_ADD =       4,  /* Expecting RR to add. */
-	IXFR_DONE =      5   /* Processing done, IXFR-in complete. */
-};
-
-/*! \brief Extended structure for IXFR-in processing. */
-struct ixfrin_proc {
-	int state;
-	knot_changesets_t *changesets;
-	zone_t *zone;
-	mm_ctx_t *mm;
-};
-
 /*!
  * \brief IXFR query processing module.
  *
@@ -63,27 +45,11 @@ struct ixfrin_proc {
 int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*!
- * \brief Process an IXFR query response.
+ * \brief IXFR query response processing module.
  *
- * \param pkt Processed packet.
- * \param xfr Persistent transfer-specific data.
- *
- * \retval KNOT_EOK If this packet was processed successfuly and another packet
- *                  is expected. (RFC1995bis, case c)
- * \retval KNOT_ENOXFR If the transfer is not taking place because server's
- *                     SERIAL is the same as this client's SERIAL. The client
- *                     should close the connection and do no further processing.
- *                     (RFC1995bis case a).
- * \retval KNOT_EAGAIN If the server could not fit the transfer into the packet.
- *                     This should happen only if UDP was used. In this case
- *                     the client should retry the request via TCP. If UDP was
- *                     not used, it should be considered that the transfer was
- *                     malformed and the connection should be closed.
- *                     (RFC1995bis case b).
- * \retval >0 Transfer successully finished. Changesets are created and furter
- *            processing is needed.
- * \retval Other If any other error occured. The connection should be closed.
- *
+ * \retval MORE if more data are required.
+ * \retval FAIL if it encountered an error, retry over AXFR will be done.
+ * \retval DONE if finished.
  */
 int ixfrin_process_answer(knot_pkt_t *pkt, struct answer_data *adata);
 

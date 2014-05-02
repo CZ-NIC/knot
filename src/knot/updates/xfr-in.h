@@ -80,16 +80,6 @@ int xfrin_transfer_needed(const zone_contents_t *zone,
 int xfrin_process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc);
 
 /*!
- * \brief Parses IXFR reply packet and fills in the changesets structure.
- *
- * \param pkt   Packet containing the IXFR reply in wire format.
- * \param proc  Processing context.
- *
- * \return NS_PROC_MORE, NS_PROC_DONE, NS_PROC_FAIL
- */
-int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct ixfrin_proc *proc);
-
-/*!
  * \brief Applies changesets *with* zone shallow copy.
  *
  * \param zone          Zone to be updated.
