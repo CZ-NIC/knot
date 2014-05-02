@@ -18,7 +18,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
 #include "common/debug.h"
 #include "common/descriptor.h"
@@ -297,7 +297,7 @@ static int axfr_answer_finalize(struct answer_data *data)
 	}
 
 	/* Switch contents. */
-	zone_contents_t *old_contents = xfrin_switch_zone(zone, proc->zone);
+	zone_contents_t *old_contents = update_switch_contents(zone, proc->zone);
 	AXFRIN_LOG(LOG_INFO, "Serial %u -> %u",
 	           zone_contents_serial(old_contents),
 	           zone_contents_serial(proc->zone));

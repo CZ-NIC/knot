@@ -21,7 +21,7 @@
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "libknot/rdata.h"
 
 zone_contents_t *zone_load_contents(conf_zone_t *conf)
@@ -109,7 +109,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	}
 
 	/* Apply changesets. */
-	ret = xfrin_apply_changesets_directly(contents,  chsets);
+	ret = apply_changesets_directly(contents,  chsets);
 	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
 	              conf->name,
 	              serial, zone_contents_serial(contents),

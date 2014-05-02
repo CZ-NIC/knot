@@ -32,7 +32,7 @@
 #include "knot/server/net.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/internet.h"
@@ -590,7 +590,7 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 		ret = zones_save_zone(rq);
 		if (ret == KNOT_EOK) {
 			zone_contents_t *old_contents = NULL;
-			old_contents = xfrin_switch_zone(rq->zone, rq->new_contents);
+			old_contents = update_switch_contents(rq->zone, rq->new_contents);
 			zone_contents_deep_free(&old_contents);
 		} else {
 			log_zone_error("%s %s\n",

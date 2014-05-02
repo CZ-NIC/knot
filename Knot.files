@@ -155,8 +155,8 @@ src/knot/updates/changesets.c
 src/knot/updates/changesets.h
 src/knot/updates/ddns.c
 src/knot/updates/ddns.h
-src/knot/updates/xfr-in.c
-src/knot/updates/xfr-in.h
+src/knot/updates/apply.c
+src/knot/updates/apply.h
 src/knot/worker/pool.c
 src/knot/worker/pool.h
 src/knot/worker/queue.c

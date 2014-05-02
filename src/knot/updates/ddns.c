@@ -20,7 +20,7 @@
 
 #include "knot/updates/ddns.h"
 #include "knot/updates/changesets.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "knot/zone/semantic-check.h"
 #include "common/debug.h"
 #include "libknot/packet/pkt.h"
@@ -30,6 +30,8 @@
 #include "common/mempattern.h"
 #include "common/descriptor.h"
 #include "common/lists.h"
+
+#warning merge with update.c
 
 /* ----------------------------- prereq check ------------------------------- */
 

@@ -3,7 +3,7 @@
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "common/debug.h"
 #include "common/descriptor.h"
 #include "libknot/util/utils.h"
@@ -292,6 +292,7 @@ enum ixfrin_states {
 
 /*! \brief Extended structure for IXFR-in processing. */
 struct ixfrin_proc {
+	struct xfr_proc *xfr_proc;      /* Generic transfer processing context. */
 	int state;                      /* IXFR-in state. */
 	knot_changesets_t *changesets;  /* Created changesets. */
 	zone_t *zone;                   /* Modified zone. */

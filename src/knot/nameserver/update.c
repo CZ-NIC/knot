@@ -1,7 +1,7 @@
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/process_query.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "knot/dnssec/zone-sign.h"
 #include "common/debug.h"
 #include "knot/dnssec/zone-events.h"
@@ -168,7 +168,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 
 	// Apply DNSSEC changeset
 	zone_contents_set_gen_old(new_contents);
-	ret = xfrin_apply_changesets_directly(new_contents, sec_chs);
+	ret = apply_changesets_directly(new_contents, sec_chs);
 	if (ret != KNOT_EOK) {
 		knot_changesets_free(&sec_chs, NULL);
 		return ret;
@@ -218,7 +218,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	zone_contents_t *new_contents = NULL;
 	const bool change_made = !knot_changeset_is_empty(ddns_ch);
 	if (change_made) {
-		ret = xfrin_apply_changesets(zone, ddns_chs, &new_contents);
+		ret = apply_changesets(zone, ddns_chs, &new_contents);
 		if (ret != KNOT_EOK) {
 			if (ret == KNOT_ETTL) {
 				*rcode = KNOT_RCODE_REFUSED;
@@ -238,7 +238,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	if (zone->conf->dnssec_enable) {
 		ret = sign_update(zone, zone->contents, new_contents, ddns_ch);
 		if (ret != KNOT_EOK) {
-			xfrin_rollback_update(ddns_chs, &new_contents);
+			update_rollback(ddns_chs, &new_contents);
 			knot_changesets_free(&ddns_chs, NULL);
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
@@ -248,19 +248,17 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	// Write changes to journal if all went well. (DNSSEC merged)
 	ret = zone_change_store(zone, ddns_chs);
 	if (ret != KNOT_EOK) {
-		xfrin_rollback_update(ddns_chs, &new_contents);
+		update_rollback(ddns_chs, &new_contents);
 		knot_changesets_free(&ddns_chs, NULL);
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
 
 	// Switch zone contents.
-	zone_contents_t *old_contents = xfrin_switch_zone(zone, new_contents);
-	// Wait for readers.
-	synchronize_rcu();
-	xfrin_zone_contents_free(&old_contents);
+	zone_contents_t *old_contents = update_switch_contents(zone, new_contents);
+	update_free_old_zone(&old_contents);
 
-	xfrin_cleanup_successful_update(ddns_chs);
+	update_cleanup(ddns_chs);
 	knot_changesets_free(&ddns_chs, NULL);
 
 	/* Trim extra heap. */

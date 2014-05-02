@@ -1,9 +1,10 @@
 /*!
- * \file xfr-in.h
+ * \file apply.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
+ * \author Jan Kadlec <jan.kadlec@nic.cz>
  *
- * \brief XFR client API.
+ * \brief Changesets application and update helpers.
  *
  * \addtogroup xfr
  * @{
@@ -24,30 +25,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_XFR_IN_H_
-#define _KNOT_XFR_IN_H_
+#pragma once
 
 #include <stdint.h>
 #include <string.h>
 
-#include "libknot/dname.h"
 #include "knot/zone/zone.h"
-#include "libknot/packet/pkt.h"
 #include "knot/server/xfr-handler.h"
 #include "knot/updates/changesets.h"
-
-struct xfr_proc;
-struct ixfrin_proc;
-
-/*----------------------------------------------------------------------------*/
-
-typedef enum xfrin_transfer_result {
-	XFRIN_RES_COMPLETE = 1,
-	XFRIN_RES_SOA_ONLY = 2,
-	XFRIN_RES_FALLBACK = 3
-} xfrin_transfer_result_t;
-
-/*----------------------------------------------------------------------------*/
 
 /*!
  * \brief Checks if a zone transfer is required by comparing the zone's SOA with
@@ -64,32 +49,16 @@ int xfrin_transfer_needed(const zone_contents_t *zone,
                           knot_pkt_t *soa_response);
 
 /*!
- * \brief Processes one incoming packet of AXFR transfer by updating the given
- *        zone.
- *
- * \param pkt Incoming packet in wire format.
- * \param size Size of the packet in bytes.
- * \param zone Zone being built. If there is no such zone (i.e. this is the
- *             first packet, \a *zone may be set to NULL, in which case a new
- *             zone structure is created).
- *
- * \retval KNOT_EOK
- *
- * \todo Refactor!!!
- */
-int xfrin_process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc);
-
-/*!
  * \brief Applies changesets *with* zone shallow copy.
  *
  * \param zone          Zone to be updated.
  * \param chsets        Changes to be made.
  * \param new_contents  New zone will be returned using this arg.
+ *
  * \return KNOT_E*
  */
-int xfrin_apply_changesets(zone_t *zone,
-                           knot_changesets_t *chsets,
-                           zone_contents_t **new_contents);
+int apply_changesets(zone_t *zone, knot_changesets_t *chsets,
+                     zone_contents_t **new_contents);
 
 /*!
  * \brief Applies changesets directly to the zone, without copying it.
@@ -101,28 +70,40 @@ int xfrin_apply_changesets(zone_t *zone,
  * \retval KNOT_EINVAL if given one of the arguments is NULL.
  * \return Other error code if the application went wrong.
  */
-int xfrin_apply_changesets_directly(zone_contents_t *contents,
-                                    knot_changesets_t *chsets);
+int apply_changesets_directly(zone_contents_t *contents,
+                              knot_changesets_t *chsets);
 
 /*!
- * \brief Sets pointers and NSEC3 nodes after signing/DDNS.
- * \param contents_copy    Contents to be updated.
- * \param set_nsec3_names  Set to true if NSEC3 hashes should be set.
+ * \brief Switches zone contents in the zone.
+ *
+ * \param zone          Zone whose contents we want to switch.
+ * \param new_contents  New zone contents.
+ *
  * \return KNOT_E*
  */
-int xfrin_finalize_updated_zone(zone_contents_t *contents_copy,
-                                bool set_nsec3_names);
+zone_contents_t *update_switch_contents(zone_t *zone,
+                                        zone_contents_t *new_contents);
 
-zone_contents_t *xfrin_switch_zone(zone_t *zone, zone_contents_t *new_contents);
+/*!
+ * \brief Cleanups successful update. (IXFR, DNSSEC, DDNS).
+ * \param chgs  Changesets used to create the update.
+ */
+void update_cleanup(knot_changesets_t *chgs);
 
-void xfrin_rollback_update(knot_changesets_t *chgs,
-                           zone_contents_t **new_contents);
+/*!
+ * \brief Rollbacks failed update (IXFR, DNSSEC, DDNS).
+ *
+ * \param chgs          Changesets used to create the update.
+ * \param new_contents  Created zone contents.
+ */
+void update_rollback(knot_changesets_t *chgs, zone_contents_t **new_contents);
 
-void xfrin_cleanup_successful_update(knot_changesets_t *chgs);
-
-/* @note Exported because of update.c */
-void xfrin_zone_contents_free(zone_contents_t **contents);
-
-#endif /* _KNOTXFR_IN_H_ */
+/*!
+ * \brief Frees old zone contents - i.e. contents that were used to create the
+ *        shallow copy, but are now obsolete.
+ * \note Exported because of update.c, zone.c.
+ * \param contents  Contents to free.
+ */
+void update_free_old_zone(zone_contents_t **contents);
 
 /*! @} */
