@@ -65,7 +65,7 @@ struct process_query_param {
 	uint16_t   proc_flags;
 	server_t   *server;
 	int        socket;
-	struct sockaddr_storage *remote;
+	const struct sockaddr_storage *remote;
 };
 
 /*! \brief Query processing intermediate data. */

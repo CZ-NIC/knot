@@ -18,6 +18,7 @@
 
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
+#include "knot/nameserver/requestor_tsig.h"
 #include "common/lists.h"
 
 struct request;
@@ -40,8 +41,9 @@ struct requestor {
 struct request_data {
 	node_t node;
 	int fd;
-	struct sockaddr_storage remote, origin;
+	const conf_iface_t *remote;
 	knot_pkt_t *query;
+	requestor_tsig_ctx_t tsig_ctx;
 };
 
 /*!
@@ -60,8 +62,7 @@ bool requestor_finished(struct requestor *requestor);
 
 /*! \brief Make request out of endpoints and query. */
 struct request *requestor_make(struct requestor *requestor,
-                               const struct sockaddr_storage *from,
-                               const struct sockaddr_storage *to,
+                               const conf_iface_t *remote,
                                knot_pkt_t *query);
 
 /*!
