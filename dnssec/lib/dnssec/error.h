@@ -13,6 +13,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * Library error codes.
+ */
 
 #pragma once
 
@@ -70,7 +75,7 @@ enum dnssec_error {
 const char *dnssec_strerror(int error);
 
 /*!
- * Convert errno to error code.
+ * Convert errno value to DNSSEC error code.
  */
 static inline int dnssec_errno_to_error(int ecode)
 {

@@ -13,6 +13,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * DNSSEC keys.
+ */
 
 #pragma once
 
@@ -48,6 +53,9 @@ typedef struct dnssec_key dnssec_key_t;
 /*!
  * Allocate new DNSSEC key.
  *
+ * The protocol field of the key is set to 3 (DNSSEC).
+ * The flags field of the key is set to 256 (zone key, no SEP).
+ *
  * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_key_new(dnssec_key_t **key);
@@ -64,37 +72,100 @@ void dnssec_key_clear(dnssec_key_t *key);
  */
 void dnssec_key_free(dnssec_key_t *key);
 
-
 /*!
- * Get the key tag of the DNSKEY.
+ * Get the key tag of the DNSSEC key.
  */
 uint16_t dnssec_key_get_keytag(const dnssec_key_t *key);
+
+/*!
+ * Get the key ID of the DNSSEC key.
+ */
 const char *dnssec_key_get_id(const dnssec_key_t *key);
 
+/*!
+ * Get the domain name of the DNSSEC key.
+ */
 const uint8_t *dnssec_key_get_dname(const dnssec_key_t *key);
+
+/*!
+ * Set the domain name of the DNSSEC key.
+ */
 int dnssec_key_set_dname(dnssec_key_t *key, const uint8_t *dname);
 
+/*!
+ * Get the flags field of the DNSSEC key.
+ */
 uint16_t dnssec_key_get_flags(const dnssec_key_t *key);
+
+/*!
+ * Set the flags field of the DNSSEC key.
+ */
 int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags);
 
+/*!
+ * Get the protocol field of the DNSSEC key.
+ */
 uint8_t dnssec_key_get_protocol(const dnssec_key_t *key);
+
+/*!
+ * Get the protocol field of the DNSSEC key.
+ */
 int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol);
 
+/*!
+ * Get the algorithm field of the DNSSEC key.
+ */
 uint8_t dnssec_key_get_algorithm(const dnssec_key_t *key);
+
+/*!
+ * Set the algorithm field of the DNSSEC key.
+ *
+ * The function will fail if the algorithm is incompatible with the
+ * loaded key. This means, that the function can be used to set the initial
+ * algorithm and later, only the hashing algorithm can be changed.
+ */
 int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm);
 
-// returns reference, no copy
+/*!
+ * Get the public key field of the DNSSEC key.
+ *
+ * The returned content must not be modified by the caller. A reference
+ * to internally allocated structure is returned.
+ */
 int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey);
+
+/*!
+ * Set the public key field of the DNSSEC key.
+ *
+ * A valid algorithm has to be set prior to calling this function.
+ *
+ * The function will fail if the key is already loaded in the structure.
+ */
 int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey);
 
+/*!
+ * Get the bit size of the cryptographic key used with the DNSSEC key.
+ */
 unsigned dnssec_key_get_size(const dnssec_key_t *key);
 
-// returns reference, no copy
+/*!
+ * Get the RDATA of the DNSSEC key.
+ *
+ * The returned content must not be modified by the caller. A reference
+ * to internally allocated structure is returned.
+ */
 int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata);
+
+/*!
+ * Set the RDATA of the DNSSEC key.
+ *
+ * Calling this function has the same effect as setting the individual
+ * fields of the key step-by-step. The same limitations apply.
+ */
 int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata);
 
 /*!
- * Load PKCS #8 private key in unencrypted PEM format.
+ * Load PKCS #8 private key in the unencrypted PEM format.
  *
  * At least an algorithm must be set prior to calling this function.
  *

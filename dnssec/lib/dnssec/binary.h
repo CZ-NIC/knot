@@ -13,6 +13,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * Binary data container.
+ */
 
 #pragma once
 
@@ -60,8 +65,8 @@ int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to);
 /*!
  * Resize binary structure to a new size.
  *
- * Internally uses \ref realloc, which means that this function can be
- * also used as alloc and free.
+ * Internally uses realloc, which means that this function can be also used
+ * as a malloc or free.
  *
  * \param data      Binary to be resized.
  * \param new_size  New size.

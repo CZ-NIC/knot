@@ -13,6 +13,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * Low-level TSIG signing API.
+ */
 
 #pragma once
 
@@ -22,6 +27,8 @@
 
 /*!
  * TSIG algorithms.
+ *
+ * \note The numeric values are library specific.
  */
 typedef enum dnssec_tsig_algorithm {
 	DNSSEC_TSIG_UNKNOWN = 0,
@@ -37,18 +44,39 @@ typedef enum dnssec_tsig_algorithm {
  * Get TSIG algorithm number from domain name.
  *
  * \see https://www.iana.org/assignments/tsig-algorithm-names/tsig-algorithm-names.xhtml
+ *
+ * \param dname  Domain name of the algorithm (e.g., 0x0b hmac-sha256).
+ *
+ * \return TSIG algorithm.
  */
 dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_dname(const uint8_t *dname);
+
+/*!
+ * Get a domain name of the TSIG algorithm.
+ *
+ * \param algorithm  TSIG algorithm.
+ *
+ * \return Domain name of the TSIG algorithm.
+ */
 const uint8_t *dnssec_tsig_algorithm_to_dname(dnssec_tsig_algorithm_t algorithm);
 
 /*!
- * Get TSIG algorithm number from MAC name.
+ * Get TSIG algorithm from a MAC name.
  *
- * \example dnssec_tsig_algorithm_from_name("hmac-sha256")
+ * \param name  MAC name (e.g., hmac-sha256).
+ *
+ * \return TSIG algorithm.
  */
 dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_name(const char *name);
-const char *dnssec_tsig_algorithm_to_name(dnssec_tsig_algorithm_t algorithm);
 
+/*!
+ * Get MAC name from a TSIG algorithm.
+ *
+ * \param algorithm  TSIG algorithm.
+ *
+ * \return MAC name of the TSIG algorithm.
+ */
+const char *dnssec_tsig_algorithm_to_name(dnssec_tsig_algorithm_t algorithm);
 
 /*!
  * TSIG signing context.
@@ -58,31 +86,57 @@ typedef struct dnssec_tsig_ctx dnssec_tsig_ctx_t;
 
 /*!
  * Create new TSIG signing context.
+ *
+ * \param[out] ctx        Resulting TSIG context.
+ * \param[in]  algorithm  TSIG algorithm.
+ * \param[in]  key        Shared key to be used for signing.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_tsig_new(dnssec_tsig_ctx_t **ctx, dnssec_tsig_algorithm_t algorithm,
 		    const dnssec_binary_t *key);
 
 /*!
- * Cleanup TSIG signing context.
+ * Free the TSIG signing context.
+ *
+ * \param ctx  TSIG signing context to be freed.
  */
 void dnssec_tsig_free(dnssec_tsig_ctx_t *ctx);
 
 /*!
  * Add data to be signed by TSIG.
+ *
+ * \param ctx   TSIG signing context.
+ * \param data  Data to be signed.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_tsig_add(dnssec_tsig_ctx_t *ctx, const dnssec_binary_t *data);
 
 /*!
  * Get size of the TSIG signature for given signing context.
+ *
+ * \param ctx  TSIG signing context.
+ *
+ * \return The size of the TSIG signature.
  */
 size_t dnssec_tsig_size(dnssec_tsig_ctx_t *ctx);
 
 /*!
  * Get size of the TSIG signature for given algorithm.
+ *
+ * \param algorithm  TSIG algorithm.
+ *
+ * \return The size of the TSIG signature.
  */
 size_t dnssec_tsig_algorithm_size(dnssec_tsig_algorithm_t algorithm);
 
 /*!
  * Write TSIG signature.
+ *
+ * \param[in]  ctx  TSIG signing context.
+ * \param[out] mac  Resulting TSIG signature.
+ *
+ * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_tsig_write(dnssec_tsig_ctx_t *ctx, uint8_t *mac);

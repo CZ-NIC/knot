@@ -13,6 +13,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+/*!
+ * \file
+ *
+ * Low-level key tag computation API.
+ */
 
 #pragma once
 
@@ -20,7 +25,7 @@
 #include <dnssec/binary.h>
 
 /*!
- * Compute keytag for a DNSSEC key.
+ * Compute a key tag for a DNSSEC key.
  *
  * \param[in]  rdata   DNSKEY RDATA.
  * \param[out] keytag  Computed keytag.
