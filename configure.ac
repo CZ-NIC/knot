@@ -162,10 +162,6 @@ AC_ARG_ENABLE([microseconds-log],
 
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
 
-# Disable strict aliasing
-# FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
-AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
-
 # Default directories
 run_dir="${localstatedir}/run/knot"
 AC_ARG_WITH([rundir],
