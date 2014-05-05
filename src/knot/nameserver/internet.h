@@ -127,6 +127,11 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		} \
 	}
 
+#define NS_NEED_TSIG_SIGNED(tsig_ctx, max_unsigned) \
+	if (tsig_unsigned_count(tsig_ctx) > max_unsigned) { \
+		return NS_PROC_FAIL; \
+	}
+
 #endif /* _KNOT_INTERNET_H_ */
 
 /*! @} */

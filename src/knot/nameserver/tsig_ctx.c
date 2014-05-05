@@ -21,9 +21,9 @@
 #include "common/errcode.h"
 #include "libknot/rdata/tsig.h"
 #include "libknot/tsig-op.h"
-#include "knot/nameserver/requestor_tsig.h"
+#include "knot/nameserver/tsig_ctx.h"
 
-void requestor_tsig_init(requestor_tsig_ctx_t *ctx, const knot_tsig_key_t *key)
+void tsig_init(tsig_ctx_t *ctx, const knot_tsig_key_t *key)
 {
 	if (!ctx) {
 		return;
@@ -31,19 +31,12 @@ void requestor_tsig_init(requestor_tsig_ctx_t *ctx, const knot_tsig_key_t *key)
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->key = key;
+
+
+
 }
 
-void requestor_tsig_cleanup(requestor_tsig_ctx_t *ctx)
-{
-	if (!ctx) {
-		return;
-	}
-
-	free(ctx->digest);
-	memset(ctx, 0, sizeof(*ctx));
-}
-
-int requestor_tsig_sign_packet(requestor_tsig_ctx_t *ctx, knot_pkt_t *packet)
+int tsig_sign_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
 {
 	if (!ctx || !packet) {
 		return KNOT_EINVAL;
@@ -54,14 +47,8 @@ int requestor_tsig_sign_packet(requestor_tsig_ctx_t *ctx, knot_pkt_t *packet)
 	}
 
 	int ret = KNOT_ERROR;
-
 	if (ctx->digest_size == 0) {
 		ctx->digest_size = knot_tsig_digest_length(ctx->key->algorithm);
-		ctx->digest = malloc(ctx->digest_size);
-		if (!ctx->digest) {
-			return KNOT_ENOMEM;
-		}
-
 		ret = knot_tsig_sign(packet->wire, &packet->size, packet->max_size,
 		                     NULL, 0,
 		                     ctx->digest, &ctx->digest_size,
@@ -79,7 +66,23 @@ int requestor_tsig_sign_packet(requestor_tsig_ctx_t *ctx, knot_pkt_t *packet)
 	return ret;
 }
 
-int requestor_tsig_verify_packet(requestor_tsig_ctx_t *ctx, knot_pkt_t *packet)
+static int update_ctx_after_verify(tsig_ctx_t *ctx, knot_rrset_t *tsig_rr)
+{
+	assert(ctx);
+	assert(tsig_rr);
+
+	if (ctx->digest_size != tsig_rdata_mac_length(tsig_rr)) {
+		return KNOT_EMALF;
+	}
+
+	memcpy(ctx->digest, tsig_rdata_mac(tsig_rr), ctx->digest_size);
+	ctx->last_signed = tsig_rdata_time_signed(tsig_rr);
+	ctx->unsigned_count = 0;
+
+	return KNOT_EOK;
+}
+
+int tsig_verify_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
 {
 	if (!ctx || !packet) {
 		return KNOT_EINVAL;
@@ -89,7 +92,40 @@ int requestor_tsig_verify_packet(requestor_tsig_ctx_t *ctx, knot_pkt_t *packet)
 		return KNOT_EOK;
 	}
 
-	#warning "TODO: TSIG verify invocation."
-	//return KNOT_ENOTSUP;
+	if (packet->tsig_rr == NULL) {
+		ctx->unsigned_count += 1;
+		return KNOT_EOK;
+	}
+
+	int ret = KNOT_ERROR;
+	if (ctx->last_signed == 0) {
+		ret = knot_tsig_client_check(packet->tsig_rr, packet->wire,
+		                             packet->size, ctx->digest,
+		                             ctx->digest_size, ctx->key, 0);
+	} else {
+		ret = knot_tsig_client_check_next(packet->tsig_rr, packet->wire,
+		                                  packet->size, ctx->digest,
+		                                  ctx->digest_size, ctx->key,
+		                                  ctx->last_signed);
+	}
+
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = update_ctx_after_verify(ctx, packet->tsig_rr);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	return KNOT_EOK;
+}
+
+unsigned tsig_unsigned_count(tsig_ctx_t *ctx)
+{
+	if (!ctx) {
+		return -1;
+	}
+
+	return ctx->unsigned_count;
 }

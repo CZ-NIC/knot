@@ -318,10 +318,14 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	/* Initialize processing with first packet. */
 	int ret = KNOT_EOK;
 	if (data->ext == NULL) {
+		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
+
 		ret = axfr_answer_init(data);
 		if (ret != KNOT_EOK) {
 			return NS_PROC_FAIL;
 		}
+	} else {
+		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 100);
 	}
 
 	/* Process answer packet. */

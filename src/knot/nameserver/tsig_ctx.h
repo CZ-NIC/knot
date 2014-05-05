@@ -21,17 +21,26 @@
 
 #include "libknot/packet/pkt.h"
 #include "libknot/rdata/tsig.h"
+#include "libknot/tsig-op.h"
 
-typedef struct requestor_tsig_ctx {
+#define TSIG_MAX_DIGEST_SIZE 64
+
+typedef struct tsig_ctx {
 	const knot_tsig_key_t *key;
-	uint8_t *digest;
+	uint8_t digest[TSIG_MAX_DIGEST_SIZE];
 	size_t digest_size;
-} requestor_tsig_ctx_t;
 
-void requestor_tsig_init(requestor_tsig_ctx_t *ctx, const knot_tsig_key_t *key);
+	uint64_t last_signed;
+	unsigned unsigned_count;
+} tsig_ctx_t;
 
-void requestor_tsig_cleanup(requestor_tsig_ctx_t *ctx);
+void tsig_init(tsig_ctx_t *ctx, const knot_tsig_key_t *key);
 
-int requestor_tsig_sign_packet(requestor_tsig_ctx_t *ctx, knot_pkt_t *packet);
+int tsig_sign_packet(tsig_ctx_t *ctx, knot_pkt_t *packet);
 
-int requestor_tsig_verify_packet(requestor_tsig_ctx_t *ctx, knot_pkt_t *packet);
+int tsig_verify_packet(tsig_ctx_t *ctx, knot_pkt_t *packet);
+
+/*!
+ * \brief Get number of unsigned packets since the last signed one.
+ */
+unsigned tsig_unsigned_count(tsig_ctx_t *ctx);

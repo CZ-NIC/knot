@@ -33,6 +33,8 @@
 #include "knot/nameserver/internet.h"
 #include "common/debug.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/tsig_ctx.h"
+#include "knot/nameserver/process_answer.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/rdata/soa.h"
 
@@ -84,5 +86,7 @@ int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
+	NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
+
 	return NS_PROC_DONE; /* No processing. */
 }

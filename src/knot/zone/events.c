@@ -34,6 +34,7 @@
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/notify.h"
 #include "knot/nameserver/requestor.h"
+#include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 
 /* ------------------------- bootstrap timer logic -------------------------- */
@@ -108,6 +109,19 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		knot_pkt_put(query, COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
+	/* Answer processing parameters. */
+	struct process_answer_param param = { 0 };
+	param.zone = zone;
+	param.query = query;
+	param.remote = &remote->addr;
+	tsig_init(&param.tsig_ctx, remote->key);
+
+	ret = tsig_sign_packet(&param.tsig_ctx, query);
+	if (ret != KNOT_EOK) {
+		mp_delete(mm.ctx);
+		return ret;
+	}
+
 	/* Create requestor instance. */
 	struct requestor re;
 	requestor_init(&re, NS_PROC_ANSWER, &mm);
@@ -115,13 +129,10 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create a request. */
 	struct request *req = requestor_make(&re, remote, query);
 	if (req == NULL) {
+		mp_delete(mm.ctx);
 		return KNOT_ENOMEM;
 	}
 
-	struct process_answer_param param;
-	param.zone = zone;
-	param.query = query;
-	param.remote = &remote->addr;
 	requestor_enqueue(&re, req, &param);
 
 	/* Send the queries and process responses. */
@@ -330,7 +341,7 @@ static int event_update(zone_t *zone)
 
 	/* Create minimal query data context. */
 	struct process_query_param param = {0};
-	param.remote = &update->remote->addr;
+	param.remote = &update->remote;
 	struct query_data qdata = {0};
 	qdata.param = &param;
 	qdata.query = update->query;
