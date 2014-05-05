@@ -39,7 +39,7 @@ struct xfr_proc {
 	unsigned npkts;  /* Packets processed. */
 	unsigned nbytes; /* Bytes processed. */
 	struct timeval tstamp; /* Start time. */
-	zone_contents_t *zone; /* Processed zone. */
+	zone_contents_t *contents; /* Processed zone. */
 };
 
 /*! \brief Generic transfer processing (reused for IXFR).

@@ -51,7 +51,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata);
  * \retval FAIL if it encountered an error, retry over AXFR will be done.
  * \retval DONE if finished.
  */
-int ixfrin_process_answer(knot_pkt_t *pkt, struct answer_data *adata);
+int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata);
 
 #endif /* _KNOT_IXFR_H_ */
 

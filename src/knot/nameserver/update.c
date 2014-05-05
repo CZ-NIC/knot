@@ -135,13 +135,13 @@ static bool zones_nsec3param_changed(const zone_contents_t *old_contents,
 }
 
 static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
-                       zone_contents_t *new_contents, knot_changeset_t *ddns_ch)
+                       zone_contents_t *new_contents, changeset_t *ddns_ch)
 {
-	knot_changesets_t *sec_chs = knot_changesets_create(1);
+	changesets_t *sec_chs = changesets_create(1);
 	if (sec_chs == NULL) {
 		return KNOT_ENOMEM;
 	}
-	knot_changeset_t *sec_ch = knot_changesets_get_last(sec_chs);
+	changeset_t *sec_ch = changesets_get_last(sec_chs);
 
 	/*
 	 * Check if the UPDATE changed DNSKEYs or NSEC3PARAM.
@@ -162,7 +162,7 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 		                                 &refresh_at);
 	}
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&sec_chs, NULL);
+		changesets_free(&sec_chs, NULL);
 		return ret;
 	}
 
@@ -170,14 +170,14 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	zone_contents_set_gen_old(new_contents);
 	ret = apply_changesets_directly(new_contents, sec_chs);
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&sec_chs, NULL);
+		changesets_free(&sec_chs, NULL);
 		return ret;
 	}
 
 	// Merge changesets
-	ret = knot_changeset_merge(ddns_ch, sec_ch);
+	ret = changeset_merge(ddns_ch, sec_ch);
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&sec_chs, NULL);
+		changesets_free(&sec_chs, NULL);
 		return ret;
 	}
 
@@ -203,20 +203,20 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	}
 
 	// Create DDNS changesets
-	knot_changesets_t *ddns_chs = knot_changesets_create(1);
+	changesets_t *ddns_chs = changesets_create(1);
 	if (ddns_chs == NULL) {
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return KNOT_ENOMEM;
 	}
-	knot_changeset_t *ddns_ch = knot_changesets_get_last(ddns_chs);
+	changeset_t *ddns_ch = changesets_get_last(ddns_chs);
 	ret = ddns_process_update(zone, query, ddns_ch, rcode);
 	if (ret != KNOT_EOK) {
-		knot_changesets_free(&ddns_chs, NULL);
+		changesets_free(&ddns_chs, NULL);
 		return ret;
 	}
 
 	zone_contents_t *new_contents = NULL;
-	const bool change_made = !knot_changeset_is_empty(ddns_ch);
+	const bool change_made = !changeset_is_empty(ddns_ch);
 	if (change_made) {
 		ret = apply_changesets(zone, ddns_chs, &new_contents);
 		if (ret != KNOT_EOK) {
@@ -225,11 +225,11 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 			} else {
 				*rcode = KNOT_RCODE_SERVFAIL;
 			}
-			knot_changesets_free(&ddns_chs, NULL);
+			changesets_free(&ddns_chs, NULL);
 			return ret;
 		}
 	} else {
-		knot_changesets_free(&ddns_chs, NULL);
+		changesets_free(&ddns_chs, NULL);
 		*rcode = KNOT_RCODE_NOERROR;
 		return KNOT_EOK;
 	}
@@ -239,7 +239,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 		ret = sign_update(zone, zone->contents, new_contents, ddns_ch);
 		if (ret != KNOT_EOK) {
 			update_rollback(ddns_chs, &new_contents);
-			knot_changesets_free(&ddns_chs, NULL);
+			changesets_free(&ddns_chs, NULL);
 			*rcode = KNOT_RCODE_SERVFAIL;
 			return ret;
 		}
@@ -249,7 +249,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	ret = zone_change_store(zone, ddns_chs);
 	if (ret != KNOT_EOK) {
 		update_rollback(ddns_chs, &new_contents);
-		knot_changesets_free(&ddns_chs, NULL);
+		changesets_free(&ddns_chs, NULL);
 		*rcode = KNOT_RCODE_SERVFAIL;
 		return ret;
 	}
@@ -259,7 +259,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	update_free_old_zone(&old_contents);
 
 	update_cleanup(ddns_chs);
-	knot_changesets_free(&ddns_chs, NULL);
+	changesets_free(&ddns_chs, NULL);
 
 	/* Trim extra heap. */
 	mem_trim();

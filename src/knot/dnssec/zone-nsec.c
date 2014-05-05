@@ -44,7 +44,7 @@
  * \return KNOT_E*
  */
 static int delete_nsec3_chain(const zone_contents_t *zone,
-                              knot_changeset_t *changeset)
+                              changeset_t *changeset)
 {
 	assert(zone);
 	assert(changeset);
@@ -149,14 +149,14 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
  * For each NSEC3 RRSet in the changeset finds its node and marks it with the
  * 'removed' flag.
  */
-static int mark_removed_nsec3(knot_changeset_t *out_ch,
+static int mark_removed_nsec3(changeset_t *out_ch,
                               const zone_contents_t *zone)
 {
 	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_EOK;
 	}
 
-	int ret = knot_changeset_apply(out_ch, KNOT_CHANGESET_REMOVE,
+	int ret = changeset_apply(out_ch, CHANGESET_REMOVE,
 	                               mark_nsec3, (void *)zone->nsec3_nodes);
 	return ret;
 }
@@ -246,7 +246,7 @@ knot_dname_t *knot_nsec3_hash_to_dname(const uint8_t *hash, size_t hash_size,
  * \brief Create NSEC or NSEC3 chain in the zone.
  */
 int knot_zone_create_nsec_chain(const zone_contents_t *zone,
-                                knot_changeset_t *changeset,
+                                changeset_t *changeset,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy)
 {

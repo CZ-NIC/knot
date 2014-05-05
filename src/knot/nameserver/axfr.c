@@ -235,7 +235,7 @@ static void axfr_answer_cleanup(struct answer_data *data)
 {
 	struct xfr_proc *proc = data->ext;
 	if (proc) {
-		zone_contents_deep_free(&proc->zone);
+		zone_contents_deep_free(&proc->contents);
 		mm_free(data->mm, proc);
 		data->ext = NULL;
 	}
@@ -260,7 +260,7 @@ static int axfr_answer_init(struct answer_data *data)
 	}
 
 	memset(proc, 0, sizeof(struct xfr_proc));
-	proc->zone = new_contents;
+	proc->contents = new_contents;
 	gettimeofday(&proc->tstamp, NULL);
 
 	/* Set up cleanup callback. */
@@ -284,23 +284,23 @@ static int axfr_answer_finalize(struct answer_data *data)
 	 * marked authoritative / delegation point.
 	 */
 	struct xfr_proc *proc = data->ext;
-	int rc = zone_contents_adjust_full(proc->zone, NULL, NULL);
+	int rc = zone_contents_adjust_full(proc->contents, NULL, NULL);
 	if (rc != KNOT_EOK) {
 		return rc;
 	}
 
 	/* Write zone file. */
 	zone_t *zone = data->param->zone;
-	rc = zonefile_write(zone->conf->file, proc->zone, data->param->remote);
+	rc = zonefile_write(zone->conf->file, proc->contents, data->param->remote);
 	if (rc != KNOT_EOK) {
 		return rc;
 	}
 
 	/* Switch contents. */
-	zone_contents_t *old_contents = update_switch_contents(zone, proc->zone);
+	zone_contents_t *old_contents = update_switch_contents(zone, proc->contents);
 	AXFRIN_LOG(LOG_INFO, "Serial %u -> %u",
 	           zone_contents_serial(old_contents),
-	           zone_contents_serial(proc->zone));
+	           zone_contents_serial(proc->contents));
 
 	AXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
 	         time_diff(&proc->tstamp, &now) / 1000.0,
@@ -308,7 +308,7 @@ static int axfr_answer_finalize(struct answer_data *data)
 
 	/* Do not free new contents with cleanup. */
 	zone_contents_deep_free(&old_contents);
-	proc->zone = NULL;
+	proc->contents = NULL;
 
 	return KNOT_EOK;
 }
@@ -322,7 +322,7 @@ static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	++proc->npkts;
 
 	// Init zone creator
-	zcreator_t zc = {.z = proc->zone, .master = false, .ret = KNOT_EOK };
+	zcreator_t zc = {.z = proc->contents, .master = false, .ret = KNOT_EOK };
 
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	for (uint16_t i = 0; i < answer->count; ++i) {

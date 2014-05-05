@@ -408,12 +408,12 @@ static int event_dnssec(zone_t *zone)
 	assert(zone);
 	fprintf(stderr, "DNSSEC of '%s'\n", zone->conf->name);
 
-	knot_changesets_t *chs = knot_changesets_create(1);
+	changesets_t *chs = changesets_create(1);
 	if (chs == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	knot_changeset_t *ch = knot_changesets_get_last(chs);
+	changeset_t *ch = changesets_get_last(chs);
 	assert(ch);
 
 	int ret = KNOT_ERROR;
@@ -443,7 +443,7 @@ static int event_dnssec(zone_t *zone)
 		goto done;
 	}
 
-	if (!knot_changesets_empty(chs)) {
+	if (!changesets_empty(chs)) {
 		ret = zone_change_apply_and_store(chs, zone, "DNSSEC", NULL);
 		chs = NULL; // freed by zone_change_apply_and_store()
 		if (ret != KNOT_EOK) {
@@ -463,7 +463,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 done:
-	knot_changesets_free(&chs, NULL);
+	changesets_free(&chs, NULL);
 	free(msgpref);
 	return ret;
 }

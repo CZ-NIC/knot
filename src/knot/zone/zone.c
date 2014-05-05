@@ -145,16 +145,16 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-knot_changeset_t *zone_change_prepare(knot_changesets_t *chset)
+changeset_t *zone_change_prepare(changesets_t *chset)
 {
-	return knot_changesets_create_changeset(chset);
+	return changesets_create_changeset(chset);
 }
 
-int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset)
+int zone_change_commit(zone_contents_t *contents, changesets_t *chset)
 {
 	assert(contents);
 
-	if (knot_changesets_empty(chset)) {
+	if (changesets_empty(chset)) {
 		return KNOT_EOK;
 	}
 
@@ -162,7 +162,7 @@ int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset)
 	return apply_changesets_directly(contents, chset);
 }
 
-int zone_change_store(zone_t *zone, knot_changesets_t *chset)
+int zone_change_store(zone_t *zone, changesets_t *chset)
 {
 	assert(zone);
 	assert(chset);
@@ -186,7 +186,7 @@ int zone_change_store(zone_t *zone, knot_changesets_t *chset)
 }
 
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */
-int zone_change_apply_and_store(knot_changesets_t *chs,
+int zone_change_apply_and_store(changesets_t *chs,
                                 zone_t *zone,
                                 const char *msgpref,
                                 mm_ctx_t *rr_mm)
@@ -199,7 +199,7 @@ int zone_change_apply_and_store(knot_changesets_t *chs,
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to apply changesets.\n", msgpref);
 		/* Free changesets, but not the data. */
-		knot_changesets_free(&chs, rr_mm);
+		changesets_free(&chs, rr_mm);
 		return ret;  // propagate the error above
 	}
 
@@ -209,7 +209,7 @@ int zone_change_apply_and_store(knot_changesets_t *chs,
 		log_zone_error("%s Failed to store changesets.\n", msgpref);
 		update_rollback(chs, &new_contents);
 		/* Free changesets, but not the data. */
-		knot_changesets_free(&chs, rr_mm);
+		changesets_free(&chs, rr_mm);
 		return ret;  // propagate the error above
 	}
 
@@ -219,7 +219,7 @@ int zone_change_apply_and_store(knot_changesets_t *chs,
 
 	/* Free changesets, but not the data. */
 	update_cleanup(chs);
-	knot_changesets_free(&chs, rr_mm);
+	changesets_free(&chs, rr_mm);
 	assert(ret == KNOT_EOK);
 	return KNOT_EOK;
 }

@@ -255,8 +255,8 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 			rq->data = NULL;
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
-		knot_changesets_t *chs = (knot_changesets_t *)rq->data;
-		knot_changesets_free(&chs);
+		changesets_t *chs = (changesets_t *)rq->data;
+		changesets_free(&chs);
 		rq->data = NULL;
 		assert(rq->new_contents == NULL);
 	} else if (rq->type == XFR_TYPE_FORWARD) {
@@ -599,7 +599,7 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 			               rq->msg);
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
-		knot_changesets_t *chs = (knot_changesets_t *)rq->data;
+		changesets_t *chs = (changesets_t *)rq->data;
 		ret = zone_change_apply_and_store(chs, rq->zone,
 		                                  &rq->new_contents,
 		                                  rq->msg);

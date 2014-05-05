@@ -242,7 +242,7 @@ static void clear_new_rrs(zone_node_t *node, uint16_t type)
 }
 
 /*! \brief Stores RR data for update cleanup. */
-static int add_old_data(knot_changeset_t *chset, knot_rdata_t *old_data)
+static int add_old_data(changeset_t *chset, knot_rdata_t *old_data)
 {
 	if (ptrlist_add(&chset->old_data, old_data, NULL) == NULL) {
 		return KNOT_ENOMEM;
@@ -252,7 +252,7 @@ static int add_old_data(knot_changeset_t *chset, knot_rdata_t *old_data)
 }
 
 /*! \brief Stores RR data for update rollback. */
-static int add_new_data(knot_changeset_t *chset, knot_rdata_t *new_data)
+static int add_new_data(changeset_t *chset, knot_rdata_t *new_data)
 {
 	if (ptrlist_add(&chset->new_data, new_data, NULL) == NULL) {
 		return KNOT_ENOMEM;
@@ -289,7 +289,7 @@ static bool can_remove(const zone_node_t *node, const knot_rrset_t *rr)
 
 /*! \brief Removes single RR from zone contents. */
 static int remove_rr(zone_node_t *node, const knot_rrset_t *rr,
-                     knot_changeset_t *chset)
+                     changeset_t *chset)
 {
 	knot_rrset_t removed_rrset = node_rrset(node, rr->type);
 	knot_rdata_t *old_data = removed_rrset.rrs.data;
@@ -329,7 +329,7 @@ static int remove_rr(zone_node_t *node, const knot_rrset_t *rr,
 }
 
 /*! \brief Removes all RRs from changeset from zone contents. */
-static int apply_remove(zone_contents_t *contents, knot_changeset_t *chset)
+static int apply_remove(zone_contents_t *contents, changeset_t *chset)
 {
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chset->remove) {
@@ -354,7 +354,7 @@ static int apply_remove(zone_contents_t *contents, knot_changeset_t *chset)
 
 /*! \brief Adds a single RR into zone contents. */
 static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
-                  knot_changeset_t *chset, bool master)
+                  changeset_t *chset, bool master)
 {
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
@@ -398,7 +398,7 @@ static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
 }
 
 /*! \brief Adds all RRs from changeset into zone contents. */
-static int apply_add(zone_contents_t *contents, knot_changeset_t *chset,
+static int apply_add(zone_contents_t *contents, changeset_t *chset,
                      bool master)
 {
 	knot_rr_ln_t *rr_node = NULL;
@@ -421,7 +421,7 @@ static int apply_add(zone_contents_t *contents, knot_changeset_t *chset,
 }
 
 /*! \brief Replace old SOA with a new one. */
-static int apply_replace_soa(zone_contents_t *contents, knot_changeset_t *chset)
+static int apply_replace_soa(zone_contents_t *contents, changeset_t *chset)
 {
 	assert(chset->soa_from);
 	int ret = remove_rr(contents->apex, chset->soa_from, chset);
@@ -435,7 +435,7 @@ static int apply_replace_soa(zone_contents_t *contents, knot_changeset_t *chset)
 }
 
 /*! \brief Apply single change to zone contents structure. */
-static int apply_changeset(zone_contents_t *contents, knot_changeset_t *chset,
+static int apply_changeset(zone_contents_t *contents, changeset_t *chset,
                            bool master)
 {
 	/*
@@ -606,10 +606,10 @@ static int finalize_updated_zone(zone_contents_t *contents_copy,
 
 /* ------------------------------- API -------------------------------------- */
 
-int apply_changesets(zone_t *zone, knot_changesets_t *chsets,
+int apply_changesets(zone_t *zone, changesets_t *chsets,
                      zone_contents_t **new_contents)
 {
-	if (zone == NULL || knot_changesets_empty(chsets) || new_contents == NULL) {
+	if (zone == NULL || changesets_empty(chsets) || new_contents == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -627,7 +627,7 @@ int apply_changesets(zone_t *zone, knot_changesets_t *chsets,
 	/*
 	 * Apply the changesets.
 	 */
-	knot_changeset_t *set = NULL;
+	changeset_t *set = NULL;
 	const bool master = (zone_master(zone) == NULL);
 	WALK_LIST(set, chsets->sets) {
 		ret = apply_changeset(contents_copy, set, master);
@@ -650,13 +650,13 @@ int apply_changesets(zone_t *zone, knot_changesets_t *chsets,
 	return KNOT_EOK;
 }
 
-int apply_changesets_directly(zone_contents_t *contents, knot_changesets_t *chsets)
+int apply_changesets_directly(zone_contents_t *contents, changesets_t *chsets)
 {
 	if (contents == NULL || chsets == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	knot_changeset_t *set = NULL;
+	changeset_t *set = NULL;
 	WALK_LIST(set, chsets->sets) {
 		const bool master = true; // Only DNSSEC changesets are applied directly.
 		int ret = apply_changeset(contents, set, master);
@@ -694,13 +694,13 @@ zone_contents_t *update_switch_contents(zone_t *zone, zone_contents_t *new_conte
 	return old;
 }
 
-void update_cleanup(knot_changesets_t *chgs)
+void update_cleanup(changesets_t *chgs)
 {
 	if (chgs == NULL) {
 		return;
 	}
 
-	knot_changeset_t *change = NULL;
+	changeset_t *change = NULL;
 	WALK_LIST(change, chgs->sets) {
 		// Delete old RR data
 		rrs_list_clear(&change->old_data, NULL);
@@ -711,10 +711,10 @@ void update_cleanup(knot_changesets_t *chgs)
 	};
 }
 
-void update_rollback(knot_changesets_t *chgs, zone_contents_t **new_contents)
+void update_rollback(changesets_t *chgs, zone_contents_t **new_contents)
 {
 	if (chgs != NULL) {
-		knot_changeset_t *change = NULL;
+		changeset_t *change = NULL;
 		WALK_LIST(change, chgs->sets) {
 			// Delete new RR data
 			rrs_list_clear(&change->new_data, NULL);

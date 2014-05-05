@@ -415,7 +415,7 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
  */
 static int create_nsec3_nodes(const zone_contents_t *zone, uint32_t ttl,
                               knot_zone_tree_t *nsec3_nodes,
-                              knot_changeset_t *chgset)
+                              changeset_t *chgset)
 {
 	assert(zone);
 	assert(nsec3_nodes);
@@ -583,7 +583,7 @@ static void reset_nodes(const zone_contents_t *zone)
  * \brief Create new NSEC3 chain, add differences from current into a changeset.
  */
 int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
-                            knot_changeset_t *changeset)
+                            changeset_t *changeset)
 {
 	assert(zone);
 	assert(changeset);

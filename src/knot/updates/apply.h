@@ -57,7 +57,7 @@ int xfrin_transfer_needed(const zone_contents_t *zone,
  *
  * \return KNOT_E*
  */
-int apply_changesets(zone_t *zone, knot_changesets_t *chsets,
+int apply_changesets(zone_t *zone, changesets_t *chsets,
                      zone_contents_t **new_contents);
 
 /*!
@@ -71,7 +71,7 @@ int apply_changesets(zone_t *zone, knot_changesets_t *chsets,
  * \return Other error code if the application went wrong.
  */
 int apply_changesets_directly(zone_contents_t *contents,
-                              knot_changesets_t *chsets);
+                              changesets_t *chsets);
 
 /*!
  * \brief Switches zone contents in the zone.
@@ -88,7 +88,7 @@ zone_contents_t *update_switch_contents(zone_t *zone,
  * \brief Cleanups successful update. (IXFR, DNSSEC, DDNS).
  * \param chgs  Changesets used to create the update.
  */
-void update_cleanup(knot_changesets_t *chgs);
+void update_cleanup(changesets_t *chgs);
 
 /*!
  * \brief Rollbacks failed update (IXFR, DNSSEC, DDNS).
@@ -96,7 +96,7 @@ void update_cleanup(knot_changesets_t *chgs);
  * \param chgs          Changesets used to create the update.
  * \param new_contents  Created zone contents.
  */
-void update_rollback(knot_changesets_t *chgs, zone_contents_t **new_contents);
+void update_rollback(changesets_t *chgs, zone_contents_t **new_contents);
 
 /*!
  * \brief Frees old zone contents - i.e. contents that were used to create the
