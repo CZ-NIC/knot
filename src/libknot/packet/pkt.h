@@ -236,22 +236,18 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
  * EDNS(0)-related API
  */
 
-/*** <<< #190 DEPRECATED */
-/*----------------------------------------------------------------------------*/
 /*!
- * \brief Sets the OPT RR of the response.
+ * \brief Stores OPT RR to the packet.
  *
- * This function also allocates space for the wireformat of the response, if
- * the payload in the OPT RR is larger than the current maximum size of the
- * response and copies the current wireformat over to the new space.
+ * The given OPT RR is used (i.e. pointer to it is stored in the packet). Be
+ * careful not to free the OPT RR somewhere else. In fact, it will be freed
+ * by the packet structure.
  *
- * \note The contents of the OPT RR are copied.
+ * \warning This function does not write the OPT RR to wireformat of the packet.
+ *          To do that, call knot_pkt_write_opt() after this function.
  *
- * \note It is expected that resp.max_size is already set to correct value as
- *       it is impossible to distinguish TCP scenario in this function.
- *
- * \param resp Response to set the OPT RR to.
- * \param opt_rr OPT RR to set.
+ * \param pkt     Packet to set the OPT RR to.
+ * \param opt_rr  OPT RR to set.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
@@ -261,13 +257,28 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
  */
 int knot_pkt_add_opt(knot_pkt_t *pkt, knot_rrset_t *opt_rr);
 
-/*----------------------------------------------------------------------------*/
-/*** >>> #190 DEPRECATED */
-
-/*! \brief Write OPT RR to wireformat.
- *  \note Legacy API.
+/*!
+ * \brief Write OPT RR to wireformat.
+ *
+ * If used properly (i.e. the OPT RR was added by knot_pkt_add_opt()), there
+ * should be space reserved for the OPT RR, so it does not matter when during
+ * Additional processing this function is called. (Well, it should not be used
+ * after signing the packet with TSIG, of course.)
+ *
+ * \note This function should be called only after the Additional section of
+ *       packet was started.
+ *
+ * \param pkt Packet in which the OPT RR should be written.
+ *
+ * \retval KNOT_EOK if successful.
+ * \retval KNOT_EINVAL if the parameter is NULL.
+ * \retval KNOT_ENOTSUP if the Additional section of the packet was not yet
+ *                      started.
+ * \retval KNOT_ESPACE if the RR did not fit in. (Should not happen as the
+ *                     packet should have reserved space for the OPT RR when it
+ *                     was added.
  */
-int knot_pkt_put_opt(knot_pkt_t *pkt);
+int knot_pkt_write_opt(knot_pkt_t *pkt);
 
 
 /*

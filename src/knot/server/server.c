@@ -463,7 +463,7 @@ static int edns_reconfigure(const struct conf_t *conf, server_t *server)
 	knot_edns_params_t *edns =
 		knot_edns_new_params(conf->max_udp_payload, KNOT_EDNS_VERSION,
 	                             KNOT_EDNS_DEFAULT_FLAGS, conf->nsid_len,
-	                             conf->nsid);
+	                             (uint8_t *)conf->nsid);
 	if (edns == NULL) {
 		log_server_error("Couldn't initialize EDNS(0), please restart.\n");
 	}

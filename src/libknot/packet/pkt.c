@@ -808,50 +808,8 @@ int knot_pkt_add_opt(knot_pkt_t *pkt, knot_rrset_t *opt_rr)
 
 	pkt->opt_rr = opt_rr;
 
-//	// copy the OPT RR
-
-//	/*! \todo Change the way OPT RR is handled in response.
-//	 *        Pointer to nameserver->opt_rr should be enough.
-//	 */
-
-//	resp->opt_rr.version = opt_rr->version;
-//	resp->opt_rr.ext_rcode = opt_rr->ext_rcode;
-//	resp->opt_rr.payload = opt_rr->payload;
-
-//	/*
-//	 * Add options only if NSID is requested.
-//	 *
-//	 * This is a bit hack and should be resolved in other way before some
-//	 * other options are supported.
-//	 */
-
-//	if (add_nsid && opt_rr->option_count > 0) {
-//		resp->opt_rr.option_count = opt_rr->option_count;
-//		assert(resp->opt_rr.options == NULL);
-//		resp->opt_rr.options = (knot_opt_option_t *)malloc(
-//				 resp->opt_rr.option_count * sizeof(knot_opt_option_t));
-//		CHECK_ALLOC_LOG(resp->opt_rr.options, KNOT_ENOMEM);
-
-//		memcpy(resp->opt_rr.options, opt_rr->options,
-//		       resp->opt_rr.option_count * sizeof(knot_opt_option_t));
-
-//		// copy all data
-//		for (int i = 0; i < opt_rr->option_count; i++) {
-//			resp->opt_rr.options[i].data = (uint8_t *)malloc(
-//						resp->opt_rr.options[i].length);
-//			CHECK_ALLOC_LOG(resp->opt_rr.options[i].data, KNOT_ENOMEM);
-
-//			memcpy(resp->opt_rr.options[i].data,
-//			       opt_rr->options[i].data,
-//			       resp->opt_rr.options[i].length);
-//		}
-//		resp->opt_rr.size = opt_rr->size;
-//	} else {
-//		resp->opt_rr.size = EDNS_MIN_SIZE;
-//	}
-
-	/* OPT RR is not directly converted to wire, thus we must reserve space
-	 * for it.
+	/* OPT RR is not directly converted to wire, we must wait till the
+	 * Additional section is started. Now just reserve space for it.
 	 */
 	pkt->reserved += knot_edns_size(opt_rr);
 
@@ -860,7 +818,7 @@ int knot_pkt_add_opt(knot_pkt_t *pkt, knot_rrset_t *opt_rr)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_pkt_put_opt(knot_pkt_t *pkt)
+int knot_pkt_write_opt(knot_pkt_t *pkt)
 {
 	if (pkt == NULL) {
 		return KNOT_EINVAL;
@@ -894,22 +852,10 @@ int knot_pkt_put_opt(knot_pkt_t *pkt)
 		pkt->size += len;
 		pkt_rr_wirecount_add(pkt, pkt->current, rr_added);
 		pkt->reserved -= ret;
+
+		dbg_packet("%s: OPT RR written, new packet size %zu\n",
+		           __func__, pkt->size);
 	}
-
-
-//	int ret = knot_edns_to_wire(pkt->opt_rr,
-//	                            pkt->wire + pkt->size,
-//	                            pkt->max_size - pkt->size);
-//	if (ret <= 0) {
-//		return ret;
-//	}
-
-//	pkt_rr_wirecount_add(pkt, pkt->current, 1);
-//	pkt->size += ret;
-//	pkt->reserved -= ret;
-
-	dbg_packet("%s: OPT RR written, new packet size %zu\n", __func__,
-	           pkt->size);
 
 	return KNOT_EOK;
 }

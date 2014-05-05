@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: begin ADDITIONALS");
 
 	/* Encode OPT RR. */
-	ret = knot_pkt_put_opt(out);
+	ret = knot_pkt_write_opt(out);
 	ok(ret == KNOT_EOK, "pkt: write OPT RR");
 
 	/*
