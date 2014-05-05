@@ -3,12 +3,13 @@
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
- * \brief Functions for manipulating and parsing EDNS OPT pseudo-RR.
+ * \brief Functions for manipulating the EDNS OPT pseudo-RR and EDNS server
+ *        parameters.
  *
  * \addtogroup libknot
  * @{
  */
-/*  Copyright (C) 2011 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,64 +33,36 @@
 #include "libknot/util/utils.h"
 #include "libknot/rrset.h"
 
+/* Forward declaration. */
 struct knot_packet;
 
-/*----------------------------------------------------------------------------*/
-/*! \brief Structure representing one OPT RR Option. */
-struct knot_opt_option {
-	uint16_t code;
-	uint16_t length;
-	uint8_t *data;
-};
-
-/*! \brief Structure representing one OPT RR Option. */
-typedef struct knot_opt_option knot_opt_option_t;
-
-/*!
- * \brief Structure for holding EDNS parameters.
- *
- * \todo NSID
- */
-struct knot_opt_rr {
-	uint16_t payload;    /*!< UDP payload. */
-	uint8_t ext_rcode;   /*!< Extended RCODE. */
-
-	/*!
-	 * \brief Supported version of EDNS.
-	 *
-	 * Set to EDNS_NOT_SUPPORTED if not supported.
-	 */
-	uint8_t version;
-
-	uint16_t flags;                /*!< EDNS flags. */
-	knot_opt_option_t *options;  /*!< EDNS options. */
-	short option_count;         /*!< Count of EDNS options in this OPT RR.*/
-	short options_max;          /*!< Maximum count of options. */
-	short size;             /*!< Total size of the OPT RR in wire format. */
-};
-
-/*! \brief Structure for holding EDNS parameters. */
-typedef struct knot_opt_rr knot_opt_rr_t;
-
+/*! \brief Structure holding basic EDNS parameters of the server. */
 struct knot_edns_params {
 	uint16_t payload;    /*!< Max UDP payload. */
 	uint8_t version;     /*!< Supported version of EDNS. */
 	uint16_t nsid_len;   /*!< Length of NSID string. */
 	uint8_t *nsid;       /*!< NSID string. */
+	uint16_t flags;      /*!< EDNS flags. Store in wire byte order. */
 };
 
 typedef struct knot_edns_params knot_edns_params_t;
 
-/*----------------------------------------------------------------------------*/
-/*! \brief Constants for EDNS. */
+/*! \brief Various constants related to EDNS. */
 enum knot_edns_const {
-	EDNS_MIN_UDP_PAYLOAD = 512,  /*!< Minimal UDP payload with EDNS enabled. */
-	EDNS_MIN_DNSSEC_PAYLOAD = 1220, /*!< Minimal payload when using DNSSEC (RFC4035/sec.3) */
-	EDNS_MAX_UDP_PAYLOAD = 4096, /*!< Maximal UDP payload with EDNS enabled. */
-	EDNS_VERSION         = 0,    /*!< Supported EDNS version. */
-	EDNS_NOT_SUPPORTED   = 255,  /*!< EDNS not supported. */
-	EDNS_OPTION_NSID     = 3,    /*!< NSID option code. */
-	EDNS_MIN_SIZE        = 11    /*!< Minimum size of EDNS OPT RR in wire format. */
+	/*! \brief Minimal UDP payload with EDNS enabled. */
+	KNOT_EDNS_MIN_UDP_PAYLOAD = 512,
+	/*! \brief Minimal payload when using DNSSEC (RFC4035/sec.3) */
+	KNOT_EDNS_MIN_DNSSEC_PAYLOAD = 1220,
+	/*! \brief Maximal UDP payload with EDNS enabled. */
+	KNOT_EDNS_MAX_UDP_PAYLOAD = 4096,
+	/*! \brief Supported EDNS version. */
+	KNOT_EDNS_VERSION = 0,
+	/*! \brief Default EDNS flags to be set in OPT RR. */
+	KNOT_EDNS_DEFAULT_FLAGS = 0,
+	/*! \brief NSID option code. */
+	KNOT_EDNS_OPTION_NSID     = 3,
+	/*! \brief Minimum size of EDNS OPT RR in wire format. */
+	KNOT_EDNS_MIN_SIZE        = 11
 };
 
 /*! \brief Enumeration of named options. */
@@ -104,44 +77,90 @@ enum knot_edns_option {
 /*! \brief EDNS flags.
  *
  * \note Use only with unsigned 2-byte variables.
- * \warning Flags are represented in little endian, i.e. in reverse order than
- *          on the wire (DO bit is not 1st but 9th).
+ * \warning Flags are represented in wire byte order.
  */
 enum knot_edns_flags {
-	KNOT_EDNS_FLAG_DO = (uint16_t)1 << 8
+	KNOT_EDNS_FLAG_DO = (uint16_t)1 << 15
 };
 
 /*----------------------------------------------------------------------------*/
-/*! \todo [OPT] REWRITE */
+/* EDNS server parameters handling functions                                  */
+/*----------------------------------------------------------------------------*/
 /*!
- * \brief Creates new empty OPT RR structure for holding EDNS parameters.
+ * \brief Creates new structure for holding server's EDNS parameters.
  *
- * \return New empty knot_opt_rr_t structure, or NULL if not successful.
+ * \param max_payload  Max UDP payload.
+ * \param ver          EDNS version.
+ * \param flags        Flags (in wire byte order).
+ * \param nsid_len     Length of the NSID string. (Set to 0 if none.)
+ * \param nsid         NSID string. (Set to NULL if none.)
+ *
+ * \return New EDNS parameters structure or NULL if an error occured.
+ */
+knot_edns_params_t *knot_edns_new_params(uint16_t max_payload, uint8_t ver,
+                                         uint16_t flags, uint16_t nsid_len,
+                                         uint8_t *nsid);
+
+/*!
+ * \brief Properly frees the EDNS parameters structure. (With the NSID.)
+ *
+ * \param edns EDNS parameters structure to be freed.
+ */
+void knot_edns_free_params(knot_edns_params_t **edns);
+
+/*----------------------------------------------------------------------------*/
+/* EDNS OPT RR handling functions.                                            */
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Creates new OPT RR structure with the given parameters.
+ *
+ * \param max_pld     Max UDP payload.
+ * \param ext_rcode   Extended RCODE.
+ * \param ver         EDNS version.
+ * \param flags       Flags (in wire byte order).
+ * \param mm          Memory context to use (set to NULL if none available).
+ *
+ * \return New valid OPT RR initialized with the given parameters. NULL if
+ *         some error occured.
  */
 knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
                             uint16_t flags, mm_ctx_t *mm);
 
 /*!
- * \brief Returns the UDP payload stored in the OPT RR.
+ * \brief Creates new OPT RR structure with parameters taken from the given
+ *        structure.
+ *
+ * \param params    EDNS parameters structure to use.
+ * \param add_nsid  Add NSID from the parameters to the OPT RR.
+ * \param mm        Memory context to use (set to NULL if none available).
+ *
+ * \return New valid OPT RR initialized with the given parameters. NULL if
+ *         some error occured.
+ */
+knot_rrset_t *knot_edns_new_from_params(const knot_edns_params_t *params,
+                                        bool add_nsid, mm_ctx_t *mm);
+
+/*!
+ * \brief Returns the Max UDP payload value stored in the OPT RR.
  *
  * \warning This function does not check the parameter, so ensure to check it
  *          before calling the function. It must not be NULL.
  * \note There is an assert() for debug checking of the parameter.
  *
- * \param opt_rr OPT RR to get the payload from.
+ * \param opt_rr OPT RR to get the value from.
  *
- * \return UDP payload in bytes.
+ * \return Max UDP payload in bytes.
  */
 uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr);
 
 /*!
- * \brief Sets the UDP payload field in the OPT RR.
+ * \brief Sets the Max UDP payload field in the OPT RR.
  *
  * \warning This function does not check the parameter, so ensure to check it
  *          before calling the function. It must not be NULL.
  * \note There is an assert() for debug checking of the parameter.
  *
- * \param opt_rr OPT RR to set the payload to.
+ * \param opt_rr OPT RR to set the value to.
  * \param payload UDP payload in bytes.
  */
 void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload);
@@ -219,10 +238,6 @@ bool knot_edns_do(const knot_rrset_t *opt_rr);
  */
 void knot_edns_set_do(knot_rrset_t *opt_rr);
 
-/*
- * <<<<< TODO: REFACTOR
- */
-
 /*!
  * \brief Adds EDNS Option to the OPT RR.
  *
@@ -256,21 +271,6 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
  * \return Size of the OPT RR in bytes.
  */
 size_t knot_edns_size(knot_rrset_t *opt_rr);
-
-/*
- * >>>>> TODO: REFACTOR
- */
-
-/*----------------------------------------------------------------------------*/
-/* NEW API                                                                    */
-/*----------------------------------------------------------------------------*/
-
-knot_edns_params_t *knot_edns_new_params();
-
-void knot_edns_free_params(knot_edns_params_t **opt);
-
-knot_rrset_t *knot_edns_new_from_params(const knot_edns_params_t *params,
-                                        bool add_nsid);
 
 #endif /* _KNOT_EDNS_H_ */
 

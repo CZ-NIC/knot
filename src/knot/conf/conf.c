@@ -561,7 +561,7 @@ conf_t *conf_new(char* path)
 	c->notify_retries = CONFIG_NOTIFY_RETRIES;
 	c->notify_timeout = CONFIG_NOTIFY_TIMEOUT;
 	c->dbsync_timeout = CONFIG_DBSYNC_TIMEOUT;
-	c->max_udp_payload = EDNS_MAX_UDP_PAYLOAD;
+	c->max_udp_payload = KNOT_EDNS_MAX_UDP_PAYLOAD;
 	c->sig_lifetime = KNOT_DNSSEC_DEFAULT_LIFETIME;
 	c->serial_policy = CONFIG_SERIAL_DEFAULT;
 	c->uid = -1;

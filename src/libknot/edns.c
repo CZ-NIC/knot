@@ -23,21 +23,64 @@
 #include "common/descriptor.h"
 #include "common/debug.h"
 
-/*! \brief Various EDNS constatns. */
-enum knot_edns_consts {
-	/*! \brief Mask for the DO bit in little endian. */
-	KNOT_EDNS_DO_MASK = (uint32_t)0x800000,
-	/*! \brief Step for allocation of space for option entries. */
-	KNOT_EDNS_OPTION_STEP = 1,
-
-	KNOT_EDNS_OFFSET_RCODE = 3,
-	KNOT_EDNS_OFFSET_VERSION = 2
+/*! \brief Some implementation-related constants. */
+enum knot_edns_private_consts {
+	/*! \brief Mask for the DO bit in TTL in wire byte order. */
+	KNOT_EDNS_DO_MASK = (uint32_t)1 << 15,
+	/*! \brief Offset of Extended RCODE field in TTL in wire byte order. */
+	KNOT_EDNS_OFFSET_RCODE = 0,
+	/*! \brief Offset of the Version field in TTL in wire byte order. */
+	KNOT_EDNS_OFFSET_VERSION = 1
 };
 
 #define DUMMY_RDATA_SIZE 1
 
 /*----------------------------------------------------------------------------*/
-/*! \todo [OPT] Done */
+/* EDNS server parameters handling functions                                  */
+/*----------------------------------------------------------------------------*/
+
+knot_edns_params_t *knot_edns_new_params(uint16_t max_payload, uint8_t ver,
+                                         uint16_t flags, uint16_t nsid_len,
+                                         uint8_t *nsid)
+{
+	knot_edns_params_t *edns =
+	               (knot_edns_params_t *)malloc(sizeof(knot_edns_params_t));
+	CHECK_ALLOC_LOG(edns, NULL);
+
+	edns->version = ver;
+	edns->payload = max_payload;
+	edns->nsid_len = nsid_len;
+	edns->flags = flags;
+
+	if (nsid_len > 0) {
+		edns->nsid = (uint8_t *)malloc(edns->nsid_len);
+		if (edns->nsid == NULL) {
+			free(edns);
+			return NULL;
+		}
+		memcpy(edns->nsid, nsid, nsid_len);
+	}
+
+	return edns;
+}
+
+/*----------------------------------------------------------------------------*/
+
+void knot_edns_free_params(knot_edns_params_t **edns)
+{
+	if (edns == NULL || *edns == NULL) {
+		return;
+	}
+
+	free((*edns)->nsid);
+	free(*edns);
+	*edns = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+/* EDNS OPT RR handling functions.                                            */
+/*----------------------------------------------------------------------------*/
+
 knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
                             uint16_t flags, mm_ctx_t *mm)
 {
@@ -56,13 +99,19 @@ knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
 		return NULL;
 	}
 
+	/* For easier manipulation, use wire order to assebmle the TTL, then
+	 * convert it to machine byte order.
+	 */
 	uint32_t ttl = 0;
 	memcpy(&ttl + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
 	memcpy(&ttl + KNOT_EDNS_OFFSET_VERSION, &ver, 1);
-	// Flags must be in inverse order than on wire (i.e. DO is 9th bit)
+	/* Flags are in wire order, so just copy them. */
 	memcpy(&ttl, &flags, 2);
 
-	int ret = knot_rrset_add_rdata(opt, rdata, 0, ttl, mm);
+	/* Now convert the TTL to machine byte order. */
+	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
+
+	int ret = knot_rrset_add_rdata(opt, rdata, 0, ttl_local, mm);
 	if (ret != KNOT_EOK) {
 		knot_rrset_free(&opt, mm);
 		return NULL;
@@ -72,7 +121,33 @@ knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
+knot_rrset_t *knot_edns_new_from_params(const knot_edns_params_t *params,
+                                        bool add_nsid, mm_ctx_t *mm)
+{
+	if (params == NULL) {
+		return NULL;
+	}
+
+	knot_rrset_t *opt = knot_edns_new(params->payload, 0, params->version,
+	                                  0, mm);
+	if (opt == NULL) {
+		return NULL;
+	}
+
+	if (add_nsid) {
+		int ret = knot_edns_add_option(opt, KNOT_EDNS_OPTION_NSID,
+		                            params->nsid_len, params->nsid, mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_free(&opt, mm);
+		}
+	}
+
+	return opt;
+}
+
+/*----------------------------------------------------------------------------*/
+
 uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
@@ -80,7 +155,7 @@ uint16_t knot_edns_get_payload(const knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
 {
 	assert(opt_rr != NULL);
@@ -88,82 +163,103 @@ void knot_edns_set_payload(knot_rrset_t *opt_rr, uint16_t payload)
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 
-	// TTL has bytes in an inverse order
-	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	uint32_t ttl = 0;
+	// TTL is stored in machine byte order. Convert it to wire order first.
+	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+
 	uint8_t rcode;
-	memcpy(&rcode, &ttl + KNOT_EDNS_OFFSET_RCODE, 1);
+	memcpy(&rcode, ((uint8_t *)&ttl) + KNOT_EDNS_OFFSET_RCODE, 1);
 
 	return rcode;
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 {
 	assert(opt_rr != NULL);
 
-	// TTL has bytes in an inverse order
-	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	uint32_t ttl = 0;
+	// TTL is stored in machine byte order. Convert it to wire order first.
+	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+	// Set the Extended RCODE in the converted TTL
 	memcpy(&ttl + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
-	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
+	// Convert it back to machine byte order
+	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
+	// Store the TTL to the RDATA
+	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 
-	// TTL has bytes in an inverse order
-	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	uint32_t ttl = 0;
+	// TTL is stored in machine byte order. Convert it to wire order first.
+	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+
 	uint8_t version;
-	memcpy(&version, &ttl + KNOT_EDNS_OFFSET_VERSION, 1);
+	memcpy(&version, ((uint8_t *)&ttl) + KNOT_EDNS_OFFSET_VERSION, 1);
 
 	return version;
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 {
 	assert(opt_rr != NULL);
 
-	// TTL has bytes in an inverse order
-	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	uint32_t ttl = 0;
+	// TTL is stored in machine byte order. Convert it to wire order first.
+	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+	// Set the version in the converted TTL
 	memcpy(&ttl + KNOT_EDNS_OFFSET_VERSION, &version, 1);
-	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
+	// Convert it back to machine byte order
+	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
+	// Store the TTL to the RDATA
+	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 bool knot_edns_do(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 
-	// TTL has bytes in an inverse order
-	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	uint32_t ttl = 0;
+	// TTL is stored in machine byte order. Convert it to wire order first.
+	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+
 	return ttl & KNOT_EDNS_DO_MASK;
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 void knot_edns_set_do(knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 
-	// TTL has bytes in an inverse order
-	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	uint32_t ttl = 0;
+	// TTL is stored in machine byte order. Convert it to wire order first.
+	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+	// Set the DO bit in the converted TTL
 	ttl |= KNOT_EDNS_DO_MASK;
-	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
+	// Convert it back to machine byte order
+	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
+	// Store the TTL to the RDATA
+	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
                          uint16_t length, const uint8_t *data, mm_ctx_t *mm)
 {
@@ -223,7 +319,7 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 {
 	if (opt_rr == NULL) {
@@ -250,64 +346,16 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 }
 
 /*----------------------------------------------------------------------------*/
-/* [OPT] Done */
+
 size_t knot_edns_size(knot_rrset_t *opt_rr)
 {
 	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	size_t size = EDNS_MIN_SIZE;
+	size_t size = KNOT_EDNS_MIN_SIZE;
 	// Only one RDATA in OPT RRSet
 	size += knot_rdata_rdlen(knot_rdataset_at(&opt_rr->rrs, 0));
 
 	return size;
-}
-
-/*----------------------------------------------------------------------------*/
-/* NEW API                                                                    */
-/*----------------------------------------------------------------------------*/
-
-knot_edns_params_t *knot_edns_new_params()
-{
-	knot_edns_params_t *opt =
-	               (knot_edns_params_t *)malloc(sizeof(knot_edns_params_t));
-	CHECK_ALLOC_LOG(opt, NULL);
-
-	memset(opt, 0, sizeof(knot_edns_params_t));
-	return opt;
-}
-
-void knot_edns_free_params(knot_edns_params_t **opt)
-{
-	if (opt == NULL || *opt == NULL) {
-		return;
-	}
-
-	free((*opt)->nsid);
-	free(*opt);
-	*opt = NULL;
-}
-
-/*! \todo Rewrite and remove the edns_params_t type. */
-knot_rrset_t *knot_edns_new_from_params(const knot_edns_params_t *params,
-                                        bool add_nsid)
-{
-	if (params == NULL) {
-		return NULL;
-	}
-
-	knot_rrset_t *rrset = (knot_rrset_t *)malloc(sizeof(knot_rrset_t *));
-	rrset->owner = knot_dname_from_str(".");
-	rrset->type = KNOT_RRTYPE_OPT;
-
-	knot_edns_set_payload(rrset, params->payload);
-	knot_edns_set_ext_rcode(rrset, 0);
-	knot_edns_set_version(rrset, params->version);
-
-	if (add_nsid) {
-		/*! \todo */
-	}
-
-	return rrset;
 }

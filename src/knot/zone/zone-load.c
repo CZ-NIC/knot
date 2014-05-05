@@ -58,7 +58,7 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 
 	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
 	if (zone_contents_is_signed(contents)) {
-		unsigned edns_dnssec_min = EDNS_MIN_DNSSEC_PAYLOAD;
+		unsigned edns_dnssec_min = KNOT_EDNS_MIN_DNSSEC_PAYLOAD;
 		if (conf()->max_udp_payload < edns_dnssec_min) {
 			log_zone_warning("EDNS payload lower than %uB for "
 			                 "DNSSEC-enabled zone '%s'.\n",

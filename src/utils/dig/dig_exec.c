@@ -144,7 +144,7 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	    query->edns > -1) {
 		uint8_t version = query->edns > -1 ? query->edns : 0;
 
-		knot_rrset_t *opt_rr = knot_edns_new(KNOT_PKT_EDNS_PAYLOAD,
+		knot_rrset_t *opt_rr = knot_edns_new(DEFAULT_EDNS_SIZE,
 		                                     0, version,
 		                                     KNOT_EDNS_FLAG_DO, NULL);
 //		if (query->nsid) {

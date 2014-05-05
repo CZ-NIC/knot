@@ -91,21 +91,6 @@ int main(int argc, char *argv[])
 	/* Mark as response (not part of the test). */
 	knot_wire_set_qr(out->wire);
 
-	/* Packet options. */
-	const char* nsid = "string";
-	uint16_t data = 4096;
-	uint8_t version = 0, rcode = 0;
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_PAYLOAD, &data, sizeof(data));
-	ok(ret == KNOT_EOK, "pkt: set EDNS max payload");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_VERSION, &version, sizeof(version));
-	ok(ret == KNOT_EOK, "pkt: set EDNS version");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_RCODE,   &rcode, sizeof(rcode));
-	ok(ret == KNOT_EOK, "pkt: set EDNS extended RCODE");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_FLAG_DO, NULL, 0);
-	ok(ret == KNOT_EOK, "pkt: set EDNS DO flag");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_NSID,    nsid, strlen(nsid));
-	ok(ret == KNOT_EOK, "pkt: set NSID");
-
 	/* Secure packet. */
 	const char *tsig_secret = "abcd";
 	knot_tsig_key_t tsig_key;

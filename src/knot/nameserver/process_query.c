@@ -531,9 +531,10 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	if (!knot_pkt_have_edns(query)) {
 		return KNOT_EOK;
 	}
-	/*! \todo Remove when OPT RR is stored in server. */
+
 	knot_rrset_t *opt_rr = knot_edns_new_from_params(server->edns,
-	                                             knot_pkt_have_nsid(query));
+	                                             knot_pkt_have_nsid(query),
+	                                             mm); /* TODO-REVIEW: ok to use memory context? */
 	if (opt_rr == NULL) {
 		dbg_ns("%s: can't create OPT RR (%d)\n", __func__, ret);
 		return ret;

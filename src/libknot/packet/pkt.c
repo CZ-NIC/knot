@@ -410,40 +410,6 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt)
 	return knot_wire_read_u16(pkt->wire + off);
 }
 
-///*----------------------------------------------------------------------------*/
-
-//int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len)
-//{
-//	dbg_packet("%s(%p, %u, %p, %hu)\n", __func__, pkt, opt, data, len);
-//	if (pkt == NULL) {
-//		return KNOT_EINVAL;
-//	}
-
-//	/*! \todo [OPT] Maybe set the parameters directly in the caller. */
-
-//	switch (opt) {
-//	case KNOT_PKT_EDNS_PAYLOAD:
-//		knot_edns_set_payload(pkt->opt_rr, *(uint16_t *)data);
-//		break;
-//	case KNOT_PKT_EDNS_RCODE:
-//		knot_edns_set_ext_rcode(pkt->opt_rr, *(uint8_t *)data);
-//		break;;
-//	case KNOT_PKT_EDNS_VERSION:
-//		knot_edns_set_version(pkt->opt_rr, *(uint8_t *)data);
-//		break;
-//	case KNOT_PKT_EDNS_FLAG_DO:
-//		knot_edns_set_do(pkt->opt_rr);
-//		break;
-//	case KNOT_PKT_EDNS_NSID:
-//		return knot_edns_add_option(pkt->opt_rr, EDNS_OPTION_NSID, len,
-//		                            data);
-//	default:
-//		return KNOT_ENOTSUP;
-//	}
-
-//	return KNOT_EOK;
-//}
-
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id)
 {
 	if (pkt == NULL) {

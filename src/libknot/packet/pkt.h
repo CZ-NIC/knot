@@ -196,20 +196,6 @@ uint16_t knot_pkt_qclass(const knot_pkt_t *pkt);
  */
 int knot_pkt_begin(knot_pkt_t *pkt, knot_section_t section_id);
 
-///*!
-// * \brief Set packet OPTion.
-// *
-// * \note OPT RR is not written immediately, call knot_pkt_put_opt for that.
-// * \todo This will be a subject of OPT refactoring later on.
-// *
-// * \param pkt
-// * \param opt  For list of available options, see enum knot_edns_option.
-// * \param data Option-specific data.
-// * \param len  Data length.
-// * \return KNOT_EOK, KNOT_EINVAL, KNOT_ENOTSUP
-// */
-//int knot_pkt_opt_set(knot_pkt_t *pkt, unsigned opt, const void *data, uint16_t len);
-
 /*!
  * \brief Put QUESTION in the packet.
  *
@@ -372,7 +358,7 @@ static inline bool knot_pkt_have_dnssec(const knot_pkt_t *pkt)
 static inline bool knot_pkt_have_nsid(const knot_pkt_t *pkt)
 {
 	return knot_pkt_have_edns(pkt)
-	       && knot_edns_has_option(pkt->opt_rr, EDNS_OPTION_NSID);
+	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
 }
 
 #endif /* _KNOT_PACKET_H_ */
