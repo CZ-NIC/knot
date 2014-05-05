@@ -31,9 +31,6 @@ void tsig_init(tsig_ctx_t *ctx, const knot_tsig_key_t *key)
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->key = key;
-
-
-
 }
 
 int tsig_sign_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
@@ -76,7 +73,7 @@ static int update_ctx_after_verify(tsig_ctx_t *ctx, knot_rrset_t *tsig_rr)
 	}
 
 	memcpy(ctx->digest, tsig_rdata_mac(tsig_rr), ctx->digest_size);
-	ctx->last_signed = tsig_rdata_time_signed(tsig_rr);
+	ctx->prev_signed_time = tsig_rdata_time_signed(tsig_rr);
 	ctx->unsigned_count = 0;
 
 	return KNOT_EOK;
@@ -98,7 +95,7 @@ int tsig_verify_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
 	}
 
 	int ret = KNOT_ERROR;
-	if (ctx->last_signed == 0) {
+	if (ctx->prev_signed_time == 0) {
 		ret = knot_tsig_client_check(packet->tsig_rr, packet->wire,
 		                             packet->size, ctx->digest,
 		                             ctx->digest_size, ctx->key, 0);
@@ -106,7 +103,7 @@ int tsig_verify_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
 		ret = knot_tsig_client_check_next(packet->tsig_rr, packet->wire,
 		                                  packet->size, ctx->digest,
 		                                  ctx->digest_size, ctx->key,
-		                                  ctx->last_signed);
+		                                  ctx->prev_signed_time);
 	}
 
 	if (ret != KNOT_EOK) {
