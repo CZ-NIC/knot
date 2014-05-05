@@ -144,7 +144,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 
 	knot_free_zone_keys(&zone_keys);
 	dbg_dnssec_detail("Zone signed: changes=%zu\n",
-	                  knot_changeset_size(out_ch));
+	                  changeset_size(out_ch));
 
 	log_zone_info("%s Successfully signed.\n", msgpref);
 	free(msgpref);
