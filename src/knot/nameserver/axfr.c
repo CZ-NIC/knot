@@ -339,7 +339,7 @@ static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 		} else {
 			int ret = zcreator_step(&zc, rr);
 			if (ret != KNOT_EOK) {
-				return ret;
+				return NS_PROC_FAIL;
 			}
 		}
 	}

@@ -345,13 +345,12 @@ static int ixfrin_finalize(struct answer_data *adata)
 		return ret;
 	}
 
-	ixfrin_cleanup(adata);
-
 	struct timeval now = {0};
 	gettimeofday(&now, NULL);
 	IXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
 	           time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
 	           ixfr->proc.npkts, ixfr->proc.nbytes / 1024.0);
+	ixfrin_cleanup(adata);
 
 	return KNOT_EOK;
 }
@@ -361,7 +360,7 @@ static int solve_start(const knot_rrset_t *rr, changesets_t *changesets, mm_ctx_
 {
 	assert(changesets->first_soa == NULL);
 	if (rr->type != KNOT_RRTYPE_SOA) {
-		return KNOT_EINVAL;
+		return KNOT_EMALF;
 	}
 
 	// Store the first SOA for later use.
@@ -373,15 +372,12 @@ static int solve_start(const knot_rrset_t *rr, changesets_t *changesets, mm_ctx_
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Decides what to do with a starting SOA - either ends the processing or
- *        creates a new changeset and stores the SOA into it.
- */
+/*! \brief Decides what to do with a starting SOA (deletions). */
 static int solve_soa_del(const knot_rrset_t *rr, changesets_t *changesets,
                          mm_ctx_t *mm)
 {
 	if (rr->type != KNOT_RRTYPE_SOA) {
-		return KNOT_EINVAL;
+		return KNOT_EMALF;
 	}
 
 	// Create new changeset.
@@ -403,10 +399,7 @@ static int solve_soa_del(const knot_rrset_t *rr, changesets_t *changesets,
 /*! \brief Stores ending SOA into changeset. */
 static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 {
-	if (rr->type != KNOT_RRTYPE_SOA) {
-		return KNOT_EINVAL;
-	}
-
+	assert(rr->type == KNOT_RRTYPE_SOA);
 	change->soa_to= knot_rrset_copy(rr, mm);
 	if (change->soa_to == NULL) {
 		return KNOT_ENOMEM;
@@ -534,7 +527,7 @@ static bool out_of_zone(const knot_rrset_t *rr, struct ixfr_proc *proc)
  *
  * \return NS_PROC_MORE, NS_PROC_DONE, NS_PROC_FAIL
  */
-static int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct answer_data *adata)
+static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)adata->ext;
 	// Update counters.
@@ -648,7 +641,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		}
 	}
 
-	int ret = xfrin_process_ixfr_packet(pkt, adata);
+	int ret = process_ixfrin_packet(pkt, adata);
 	if (ret == NS_PROC_DONE) {
 		int fret = ixfrin_finalize(adata);
 		if (fret != KNOT_EOK) {

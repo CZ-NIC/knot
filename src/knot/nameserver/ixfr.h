@@ -28,12 +28,9 @@
 #define _KNOT_IXFR_H_
 
 #include "libknot/packet/pkt.h"
-#include "knot/updates/changesets.h"
-#include "knot/zone/zone.h"
 
 struct query_data;
 struct answer_data;
-struct xfr_proc;
 
 /*!
  * \brief IXFR query processing module.
