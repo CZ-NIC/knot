@@ -34,98 +34,42 @@ enum knot_edns_consts {
 	KNOT_EDNS_OFFSET_VERSION = 2
 };
 
-///*----------------------------------------------------------------------------*/
-/*! \todo [OPT] REWRITE */
-knot_rrset_t *knot_edns_new()
+#define DUMMY_RDATA_SIZE 1
+
+/*----------------------------------------------------------------------------*/
+/*! \todo [OPT] Done */
+knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
+                            uint16_t flags, mm_ctx_t *mm)
 {
-	return NULL;
-//	knot_opt_rr_t *opt_rr = (knot_opt_rr_t *)malloc(sizeof(knot_opt_rr_t));
-//	CHECK_ALLOC_LOG(opt_rr, NULL);
-//	memset(opt_rr, 0, sizeof(knot_opt_rr_t));
-//	opt_rr->size = EDNS_MIN_SIZE;
-//	opt_rr->option_count = 0;
-//	opt_rr->options_max = 0;
+	knot_dname_t *owner = knot_dname_from_str(".");
+	CHECK_ALLOC_LOG(owner, NULL);
+	knot_rrset_t *opt = knot_rrset_new(owner, KNOT_RRTYPE_OPT, max_pld, mm);
+	if (opt == NULL) {
+		ERR_ALLOC_FAILED;
+		free(owner);
+		return NULL;
+	}
+	uint8_t *rdata = (uint8_t *)malloc(DUMMY_RDATA_SIZE);
+	if (rdata == NULL) {
+		ERR_ALLOC_FAILED;
+		knot_rrset_free(&opt, mm);
+		return NULL;
+	}
 
-//	opt_rr->ext_rcode = 0;
-//	opt_rr->flags = 0;
-//	opt_rr->version = 0;
+	uint32_t ttl = 0;
+	memcpy(&ttl + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
+	memcpy(&ttl + KNOT_EDNS_OFFSET_VERSION, &ver, 1);
+	// Flags must be in inverse order than on wire (i.e. DO is 9th bit)
+	memcpy(&ttl, &flags, 2);
 
-//	return opt_rr;
+	int ret = knot_rrset_add_rdata(opt, rdata, 0, ttl, mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&opt, mm);
+		return NULL;
+	}
+
+	return opt;
 }
-
-///*----------------------------------------------------------------------------*/
-
-//int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset)
-//{
-//	if (opt_rr == NULL || rrset == NULL
-//	    || rrset->type != KNOT_RRTYPE_OPT ||
-//	    rrset->rrs.rr_count == 0) {
-//		return KNOT_EINVAL;
-//	}
-
-//	dbg_edns_verb("Parsing payload.\n");
-//	opt_rr->payload = rrset->rclass;
-
-//	/* RFC6891, 6.2.5 Value < 512B should be treated as 512. */
-//	if (opt_rr->payload < EDNS_MIN_UDP_PAYLOAD) {
-//		opt_rr->payload = EDNS_MIN_UDP_PAYLOAD;
-//	}
-
-//	// TTL has switched bytes
-//	uint32_t ttl;
-//	knot_wire_write_u32((uint8_t *)&ttl, knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)));
-//	// first byte of TTL is extended RCODE
-//	dbg_edns_detail("TTL: %u\n", ttl);
-//	memcpy(&opt_rr->ext_rcode, &ttl, 1);
-//	dbg_edns_detail("Parsed extended RCODE: %u.\n", opt_rr->ext_rcode);
-//	// second is the version
-//	memcpy(&opt_rr->version, (const uint8_t *)(&ttl) + 1, 1);
-//	dbg_edns_detail("Parsed version: %u.\n", opt_rr->version);
-//	// third and fourth are flags
-//	opt_rr->flags = knot_wire_read_u16((const uint8_t *)(&ttl) + 2);
-//	dbg_edns_detail("Parsed flags: %u.\n", opt_rr->flags);
-//	// size of the header, options are counted elsewhere
-//	opt_rr->size = 11;
-
-//	int rc = 0;
-//	dbg_edns_verb("Parsing options.\n");
-//	const knot_rdata_t *rr_data = knot_rdataset_at(&rrset->rrs, 0);
-//	uint16_t size = knot_rdata_rdlen(rr_data);
-//	if (size > 0) {
-//		uint8_t *raw = knot_rdata_data(rr_data);
-//		size_t pos = 0;
-//		while (pos < size) {
-//			// ensure there is enough data to parse the OPTION CODE
-//			// and OPTION LENGTH
-//			if (size - pos + 2 < 4) {
-//				dbg_edns("Not enough data to parse.\n");
-//				return KNOT_EMALF;
-//			}
-//			uint16_t opt_code = knot_wire_read_u16(raw + pos);
-//			uint16_t opt_size = knot_wire_read_u16(raw + pos + 2);
-
-//			// there should be enough data for parsing the OPTION
-//			// data
-//			if (size - pos < opt_size) {
-//				dbg_edns("Not enough data to parse options: "
-//				         "size - pos=%zu, opt_size=%d\n",
-//				         size - pos, opt_size);
-//				return KNOT_EMALF;
-//			}
-//			rc = knot_edns_add_option(opt_rr, opt_code, opt_size,
-//			                          raw + pos + 4);
-//			if (rc != KNOT_EOK) {
-//				dbg_edns("Could not add option.\n");
-//				return rc;
-//			}
-//			pos += 4 + opt_size;
-//		}
-//	}
-
-//	dbg_edns_verb("EDNS created.\n");
-
-//	return KNOT_EOK;
-//}
 
 /*----------------------------------------------------------------------------*/
 /* [OPT] Done */
@@ -195,20 +139,6 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
 }
 
-///*----------------------------------------------------------------------------*/
-///* [OPT] Done */
-//uint16_t knot_edns_get_flags(const knot_rrset_t *opt_rr)
-//{
-//	assert(opt_rr != NULL);
-
-//	// TTL has bytes in an inverse order
-//	uint32_t ttl = knot_rrset_ttl(opt_rr);
-//	uint16_t flags;
-//	knot_wire_write_u16(ttl_ptr(opt_rr), &flags);
-
-//	return flags;
-//}
-
 /*----------------------------------------------------------------------------*/
 /* [OPT] Done */
 bool knot_edns_do(const knot_rrset_t *opt_rr)
@@ -233,116 +163,91 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
-/*! \todo [OPT] REWRITE */
-int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
-                           uint16_t length, const uint8_t *data)
+/* [OPT] Done */
+int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
+                         uint16_t length, const uint8_t *data, mm_ctx_t *mm)
 {
-	if (opt_rr == NULL) {
+	if (opt_rr == NULL || (length != 0 && data == NULL)) {
 		return KNOT_EINVAL;
 	}
 
-	if (opt_rr->option_count == opt_rr->options_max) {
-		knot_opt_option_t *options_new =
-			(knot_opt_option_t *)calloc(
-				(opt_rr->options_max + KNOT_EDNS_OPTION_STEP),
-				sizeof(knot_opt_option_t));
-		CHECK_ALLOC_LOG(options_new, KNOT_ENOMEM);
-		memcpy(options_new, opt_rr->options,
-		       opt_rr->option_count * sizeof(knot_opt_option_t));
+	/* We need to replace the RDATA currently in the OPT RR */
 
-		knot_opt_option_t *old_options = opt_rr->options;
-		opt_rr->options = options_new;
-		opt_rr->options_max += KNOT_EDNS_OPTION_STEP;
-		free(old_options);
+	/* 1) create new RDATA by appending the new option after the current
+	 *    RDATA.
+	 */
+	assert(opt_rr->rrs.rr_count == 1);
+	knot_rdata_t *old_rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+
+	uint8_t *old_data = knot_rdata_data(old_rdata);
+	uint16_t old_data_len = knot_rdata_rdlen(old_rdata);
+	uint16_t new_data_len = old_data_len + 4 + length;
+
+	uint8_t *new_data = (uint8_t *)mm_alloc(mm, new_data_len);
+	CHECK_ALLOC_LOG(new_data, KNOT_ENOMEM);
+
+	dbg_edns_verb("EDNS: Adding option. Code: %u, length: %u, data:\n",
+	              code, length);
+	dbg_edns_hex_verb(data, length);
+
+	memcpy(new_data, old_data, old_data_len);
+	// write length and code in wireformat (convert endian)
+	knot_wire_write_u16(new_data + old_data_len, code);
+	knot_wire_write_u16(new_data + old_data_len + 2, length);
+	// write the option data
+	memcpy(new_data + old_data_len + 4, data, length);
+
+	/* 2) Create new RDATA structure (we need to preserve the TTL).
+	 */
+	size_t new_rdata_size = knot_rdata_array_size(new_data_len);
+	knot_rdata_t *new_rdata = (knot_rdata_t *)mm_alloc(mm, new_rdata_size);
+	if (new_rdata == NULL) {
+		mm_free(mm, new_data);
+		return KNOT_ENOMEM;
 	}
+	knot_rdata_set_ttl(new_rdata, knot_rdata_ttl(old_rdata));
+	knot_rdata_set_rdlen(new_rdata, new_data_len);
+	memcpy(knot_rdata_data(new_rdata), new_data, new_data_len);
 
-	dbg_edns_verb("Adding option.\n");
-	dbg_edns_verb("Code: %u.\n", code);
-	dbg_edns_verb("Length: %u.\n", length);
-	dbg_edns_verb("Data: %p.\n", data);
+	/* 3) Replace the RDATA in the rdataset. This is an ugly hack, but
+	 *    there is no better way around the current API.
+	 */
+	opt_rr->rrs.data = new_rdata;
 
-	opt_rr->options[opt_rr->option_count].data = (uint8_t *)malloc(length);
-	CHECK_ALLOC_LOG(opt_rr->options[opt_rr->option_count].data, KNOT_ENOMEM);
-	memcpy(opt_rr->options[opt_rr->option_count].data, data, length);
-
-	opt_rr->options[opt_rr->option_count].code = code;
-	opt_rr->options[opt_rr->option_count].length = length;
-
-	++opt_rr->option_count;
-	opt_rr->size += 4 + length;
+	/* 4) Delete the old RDATA.
+	 * WARNING: This assumes the data isn't shared.
+	 */
+	mm_free(mm, old_rdata);
 
 	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
-/*! \todo [OPT] REWRITE */
-int knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
+/* [OPT] Done */
+bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 {
 	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/*! \todo [OPT] REWRITE */
-	return 0;
-//	int i = 0;
-//	while (i < opt_rr->option_count && opt_rr->options[i].code != code) {
-//		++i;
-//	}
+	assert(opt_rr->rrs.rr_count == 1);
 
-//	assert(i >= opt_rr->option_count || opt_rr->options[i].code == code);
+	// Get the actual RDATA
+	uint8_t *data = knot_rdata_data(knot_rdataset_at(&opt_rr->rrs, 0));
+	uint16_t data_len = knot_rdata_rdlen(knot_rdataset_at(&opt_rr->rrs, 0));
 
-//	return (i < opt_rr->option_count);
+	int pos = 0;
+	while (data_len - pos > 4) {
+		uint16_t opt_code = knot_wire_read_u16(data + pos);
+		if (opt_code == code) {
+			return true;
+		}
+		uint16_t opt_len = knot_wire_read_u16(data + pos + 2);
+		pos += (4 + opt_len);
+	}
+
+	return false;
 }
-
-///*----------------------------------------------------------------------------*/
-
-//short knot_edns_to_wire(const knot_rrset_t *opt_rr, uint8_t *wire,
-//                        size_t max_size)
-//{
-//	if (opt_rr == NULL || opt_rr->type != KNOT_RRTYPE_OPT) {
-//		return KNOT_EINVAL;
-//	}
-
-//	assert(EDNS_MIN_SIZE <= (int)max_size);
-
-//	if (max_size < opt_rr->size) {
-//		dbg_packet("%s: not enough space for OPT RR\n", __func__);
-//		return KNOT_ESPACE;
-//	}
-
-//	uint8_t *pos = wire;
-
-//	*(pos++) = 0;
-//	knot_wire_write_u16(pos, KNOT_RRTYPE_OPT);
-//	pos += 2;
-//	knot_wire_write_u16(pos, opt_rr->payload);
-//	pos += 2;
-//	*(pos++) = opt_rr->ext_rcode;
-//	*(pos++) = opt_rr->version;
-//	knot_wire_write_u16(pos, opt_rr->flags);
-//	pos += 2;
-
-//	uint8_t *rdlen = pos;
-//	uint16_t len = 0;
-//	pos += 2;
-
-//	// OPTIONs
-//	for (int i = 0; i < opt_rr->option_count; ++i) {
-//		dbg_edns_detail("Inserting option #%d at pos %zu\n",
-//		                i, (size_t)(pos - wire));
-//		knot_wire_write_u16(pos, opt_rr->options[i].code);
-//		pos += 2;
-//		knot_wire_write_u16(pos, opt_rr->options[i].length);
-//		pos += 2;
-//		memcpy(pos, opt_rr->options[i].data, opt_rr->options[i].length);
-//		pos += opt_rr->options[i].length;
-//		len += 4 + opt_rr->options[i].length;
-//	}
-
-//	knot_wire_write_u16(rdlen, len);
-
-//	return opt_rr->size;
-//}
 
 /*----------------------------------------------------------------------------*/
 /* [OPT] Done */
@@ -358,34 +263,6 @@ size_t knot_edns_size(knot_rrset_t *opt_rr)
 
 	return size;
 }
-
-///*----------------------------------------------------------------------------*/
-
-//void knot_edns_free_options(knot_opt_rr_t *opt_rr)
-//{
-//	if (opt_rr->option_count > 0) {
-//		/* Free the option data, if any. */
-//		for (int i = 0; i < opt_rr->option_count; i++) {
-//			knot_opt_option_t *option = &(opt_rr->options[i]);
-//			free(option->data);
-//		}
-//		free(opt_rr->options);
-//	}
-//}
-
-///*----------------------------------------------------------------------------*/
-
-//void knot_edns_free(knot_opt_rr_t **opt_rr)
-//{
-//	if (opt_rr == NULL || *opt_rr == NULL) {
-//		return;
-//	}
-
-//	knot_edns_free_options(*opt_rr);
-
-//	free(*opt_rr);
-//	*opt_rr = NULL;
-//}
 
 /*----------------------------------------------------------------------------*/
 /* NEW API                                                                    */

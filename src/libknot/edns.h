@@ -101,6 +101,16 @@ enum knot_edns_option {
 	KNOT_PKT_EDNS_NSID    = 4
 };
 
+/*! \brief EDNS flags.
+ *
+ * \note Use only with unsigned 2-byte variables.
+ * \warning Flags are represented in little endian, i.e. in reverse order than
+ *          on the wire (DO bit is not 1st but 9th).
+ */
+enum knot_edns_flags {
+	KNOT_EDNS_FLAG_DO = (uint16_t)1 << 8
+};
+
 /*----------------------------------------------------------------------------*/
 /*! \todo [OPT] REWRITE */
 /*!
@@ -108,19 +118,8 @@ enum knot_edns_option {
  *
  * \return New empty knot_opt_rr_t structure, or NULL if not successful.
  */
-knot_rrset_t *knot_edns_new();
-
-///*!
-// * \brief Initializes OPT RR structure from given OPT RRSet.
-// *
-// * \param opt_rr OPT RR structure to initialize.
-// * \param rrset OPT RRSet to parse.
-// *
-// * \retval KNOT_EOK
-// * \retval KNOT_EINVAL
-// * \retval KNOT_EMALF
-// */
-//int knot_edns_new_from_rr(knot_opt_rr_t *opt_rr, const knot_rrset_t *rrset);
+knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
+                            uint16_t flags, mm_ctx_t *mm);
 
 /*!
  * \brief Returns the UDP payload stored in the OPT RR.
@@ -197,19 +196,6 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr);
  */
 void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version);
 
-///*!
-// * \brief Returns the flags stored in the OPT RR.
-// *
-// * \warning This function does not check the parameter, so ensure to check it
-// *          before calling the function. It must not be NULL.
-// * \note There is an assert() for debug checking of the parameter.
-// *
-// * \param opt_rr OPT RR to get the flags from.
-// *
-// * \return EDNS flags.
-// */
-//uint16_t knot_edns_get_flags(const knot_rrset_t *opt_rr);
-
 /*!
  * \brief Returns the state of the DO bit in the OPT RR flags.
  *
@@ -248,8 +234,8 @@ void knot_edns_set_do(knot_rrset_t *opt_rr);
  * \retval KNOT_EOK
  * \retval KNOT_ENOMEM
  */
-int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
-                           uint16_t length, const uint8_t *data);
+int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
+                         uint16_t length, const uint8_t *data, mm_ctx_t *mm);
 
 /*!
  * \brief Checks if the OPT RR contains Option with the specified code.
@@ -260,21 +246,7 @@ int knot_edns_add_option(knot_opt_rr_t *opt_rr, uint16_t code,
  * \retval <> 0 if the OPT RR contains Option with Option code \a code.
  * \retval 0 otherwise.
  */
-int knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
-
-
-///*!
-// * \brief Converts the given OPT RR into wire format.
-// *
-// * \param opt_rr OPT RR structure to convert into wire format.
-// * \param wire Place to put the wire format to.
-// * \param max_size Maximum space available for the wire format in bytes.
-// *
-// * \return Size of the wire format in bytes if successful.
-// * \retval KNOT_ESPACE
-// */
-//short knot_edns_to_wire(const knot_rrset_t *opt_rr, uint8_t *wire,
-//                        size_t max_size);
+bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
 
 /*!
  * \brief Returns size of the OPT RR in wire format.
@@ -284,15 +256,6 @@ int knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
  * \return Size of the OPT RR in bytes.
  */
 size_t knot_edns_size(knot_rrset_t *opt_rr);
-
-//void knot_edns_free_options(knot_opt_rr_t *opt_rr);
-
-/*!
- * \brief Properly destroys the OPT RR structure.
- *
- * \note Also sets the given pointer to NULL.
- */
-void knot_edns_free(knot_opt_rr_t **opt_rr);
 
 /*
  * >>>>> TODO: REFACTOR

@@ -74,7 +74,7 @@ int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, mm_ctx_
 knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, size_t pos);
 
 /*!
- * \brief Returns size of the RR set.
+ * \brief Returns size of the structures holding the RR set.
  * \param rrs  RR array.
  * \return Array size.
  */

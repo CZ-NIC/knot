@@ -144,28 +144,16 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	    query->edns > -1) {
 		uint8_t version = query->edns > -1 ? query->edns : 0;
 
-		/*! \todo [OPT] Maybe set the parameters directly in the OPT RR.
-		 */
-		/*TODO: flags*/
-		uint8_t flags;
-		knot_rrset_t *opt_rr = knot_edns_new();
-		knot_pkt_add_opt(packet, opt_rr);
-
-//		ret = knot_pkt_opt_set(packet, KNOT_PKT_EDNS_PAYLOAD,
-//		                       &max_size, sizeof(max_size));
-//		ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_VERSION,
-//		                       &version, sizeof(version));
-
-//		if (query->flags.do_flag) {
-//			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_FLAG_DO,
-//			                        NULL, 0);
-//		}
-
+		knot_rrset_t *opt_rr = knot_edns_new(KNOT_PKT_EDNS_PAYLOAD,
+		                                     0, version,
+		                                     KNOT_EDNS_FLAG_DO, NULL);
 //		if (query->nsid) {
 //			/*! \note This sets an empty option - why? */
 //			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_NSID,
 //			                        NULL, 0);
 //		}
+
+		knot_pkt_add_opt(packet, opt_rr);
 
 		// Write prepared OPT to wire
 		knot_pkt_begin(packet, KNOT_ADDITIONAL);
