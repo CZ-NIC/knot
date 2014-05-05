@@ -305,7 +305,6 @@ static void ixfrin_cleanup(struct answer_data *data)
 /*! \brief Initializes IXFR-in processing context. */
 static int ixfrin_answer_init(struct answer_data *data)
 {
-#warning TODO query check
 	struct ixfr_proc *proc = mm_alloc(data->mm, sizeof(struct ixfr_proc));
 	data->ext = malloc(sizeof(struct ixfr_proc));
 	if (proc == NULL) {
@@ -332,8 +331,6 @@ static int ixfrin_answer_init(struct answer_data *data)
 static int ixfrin_finalize(struct answer_data *adata)
 {
 	struct ixfr_proc *ixfr = adata->ext;
-
-#warning if we need to check serials, here's the place
 
 	assert(ixfr->state == IXFR_DONE);
 	int ret = zone_change_apply_and_store(&ixfr->changesets,
@@ -519,6 +516,19 @@ static bool out_of_zone(const knot_rrset_t *rr, struct ixfr_proc *proc)
 	       !knot_dname_is_equal(rr->owner, proc->zone->name);
 }
 
+/*! \brief Returns true if final SOA in transfer has newer serial than zone */
+static bool transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
+{
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	const knot_rrset_t soa = answer->rr[0];
+	if (soa.type != KNOT_RRTYPE_SOA) {
+		return false;
+	}
+
+	return knot_serial_compare(zone_contents_serial(zone->contents),
+	                           knot_soa_serial(&soa.rrs)) < 0;
+}
+
 /*!
  * \brief Processes IXFR reply packet and fills in the changesets structure.
  *
@@ -632,6 +642,11 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	if (adata->ext == NULL) {
+		if (!transfer_needed(adata->param->zone, pkt)) {
+			IXFRIN_LOG(LOG_INFO, "Server has newer zone.");
+			return NS_PROC_DONE;
+		}
+
 		IXFRIN_LOG(LOG_INFO, "Starting.");
 		// First packet with IXFR, init context
 		int ret = ixfrin_answer_init(adata);
