@@ -186,7 +186,7 @@ int zone_change_store(zone_t *zone, changesets_t *chset)
 }
 
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */
-int zone_change_apply_and_store(changesets_t *chs,
+int zone_change_apply_and_store(changesets_t **chs,
                                 zone_t *zone,
                                 const char *msgpref,
                                 mm_ctx_t *rr_mm)
@@ -195,21 +195,21 @@ int zone_change_apply_and_store(changesets_t *chs,
 
 	/* Now, try to apply the changesets to the zone. */
 	zone_contents_t *new_contents;
-	ret = apply_changesets(zone, chs, &new_contents);
+	ret = apply_changesets(zone, *chs, &new_contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to apply changesets.\n", msgpref);
 		/* Free changesets, but not the data. */
-		changesets_free(&chs, rr_mm);
+		changesets_free(chs, rr_mm);
 		return ret;  // propagate the error above
 	}
 
 	/* Write changes to journal if all went well. */
-	ret = zone_change_store(zone, chs);
+	ret = zone_change_store(zone, *chs);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to store changesets.\n", msgpref);
-		update_rollback(chs, &new_contents);
+		update_rollback(*chs, &new_contents);
 		/* Free changesets, but not the data. */
-		changesets_free(&chs, rr_mm);
+		changesets_free(chs, rr_mm);
 		return ret;  // propagate the error above
 	}
 
@@ -218,8 +218,8 @@ int zone_change_apply_and_store(changesets_t *chs,
 	update_free_old_zone(&old_contents);
 
 	/* Free changesets, but not the data. */
-	update_cleanup(chs);
-	changesets_free(&chs, rr_mm);
+	update_cleanup(*chs);
+	changesets_free(chs, rr_mm);
 	assert(ret == KNOT_EOK);
 	return KNOT_EOK;
 }

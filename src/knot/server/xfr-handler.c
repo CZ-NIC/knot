@@ -600,7 +600,7 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
 		changesets_t *chs = (changesets_t *)rq->data;
-		ret = zone_change_apply_and_store(chs, rq->zone,
+		ret = zone_change_apply_and_store(&chs, rq->zone,
 		                                  &rq->new_contents,
 		                                  rq->msg);
 		rq->data = NULL; /* Freed or applied in prev function. */

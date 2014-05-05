@@ -336,16 +336,15 @@ static int ixfrin_finalize(struct answer_data *adata)
 #warning if we need to check serials, here's the place
 
 	assert(ixfr->state == IXFR_DONE);
-	int ret = zone_change_apply_and_store(ixfr->changesets,
+	int ret = zone_change_apply_and_store(&ixfr->changesets,
 	                                      ixfr->zone, "IXFR", adata->mm);
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
 		           knot_strerror(ret));
-		free(ixfr);
+		ixfrin_cleanup(adata);
 		return ret;
 	}
 
-	ixfr->changesets = NULL; // Free'd by apply_and_store()
 	ixfrin_cleanup(adata);
 
 	struct timeval now = {0};
@@ -449,7 +448,8 @@ static int solve_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 static int ixfrin_next_state(struct ixfr_proc *proc, const knot_rrset_t *rr)
 {
 	const bool soa = rr->type == KNOT_RRTYPE_SOA;
-	if (soa && proc->state != IXFR_START) {
+	if (soa &&
+	    (proc->state == IXFR_SOA_ADD || proc->state == IXFR_ADD)) {
 		// Check end of transfer.
 		if (knot_rrset_equal(rr, proc->changesets->first_soa,
 		                     KNOT_RRSET_COMPARE_WHOLE)) {
@@ -537,9 +537,15 @@ static bool out_of_zone(const knot_rrset_t *rr, struct ixfr_proc *proc)
 static int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	struct ixfr_proc *ixfr = (struct ixfr_proc *)adata->ext;
+	// Update counters.
+	ixfr->proc.npkts  += 1;
+	ixfr->proc.nbytes += pkt->size;
+
+	// Process RRs in the message.
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	for (uint16_t i = 0; i < answer->count; ++i) {
 		if (journal_limit_exceeded(ixfr)) {
+			IXFRIN_LOG(LOG_WARNING, "Journal is full.");
 			return NS_PROC_FAIL;
 		}
 
@@ -550,6 +556,7 @@ static int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct answer_data *adata)
 
 		int ret = ixfrin_step(rr, ixfr);
 		if (ret != KNOT_EOK) {
+			IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
 
@@ -560,10 +567,6 @@ static int xfrin_process_ixfr_packet(knot_pkt_t *pkt, struct answer_data *adata)
 	}
 
 #warning TODO TSIG
-
-	// Update counters.
-	ixfr->proc.npkts  += 1;
-	ixfr->proc.nbytes += pkt->size;
 
 	return NS_PROC_MORE;
 }
@@ -655,6 +658,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 	}
 
 	if (ret == NS_PROC_FAIL) {
+		ixfrin_cleanup(adata);
 		IXFRIN_LOG(LOG_ERR, "Failed.");
 	}
 
