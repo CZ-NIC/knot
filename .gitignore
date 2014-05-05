@@ -58,9 +58,9 @@
 /src/knot/conf/libknotd_la-cf-lex.c
 /src/knot/conf/libknotd_la-cf-parse.c
 /src/knot/conf/libknotd_la-cf-parse.h
-/src/zscanner/scanner.c
 
 # zscanner
+/src/zscanner/scanner.c
 /src/zscanner/tests/tmp/
 /src/zscanner/tests/unittests
 /src/zscanner/tests/zscanner-tool
@@ -74,7 +74,7 @@
 /src/knsec3hash
 *.gcda
 *.gcno
-/*-coverage.info
+/*.info
 /*coverage/
 
 # alternative allocators
