@@ -286,9 +286,12 @@ static int event_xfer(zone_t *zone)
 	int ret = zone_query_execute(zone, pkt_type, master);
 
 	/* IXFR failed, revert to AXFR. */
-	if (pkt_type == KNOT_RRTYPE_IXFR && ret != KNOT_EOK) {
+	if (pkt_type == KNOT_QUERY_IXFR && ret != KNOT_EOK) {
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "AXFR", "Fallback to IXFR");
 		zone->flags |= ZONE_FORCE_AXFR;
-		return event_xfer(zone);
+		ret = event_xfer(zone);
+		zone->flags &= ~ZONE_FORCE_AXFR;
+		return ret;
 	}
 
 	if (zone_contents_is_empty(zone->contents)) {
