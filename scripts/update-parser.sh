@@ -17,4 +17,8 @@ ragel -G2 -s -o $OUT $IN
 sed '/#line/d' $OUT > $OUT.g2
 rm $OUT
 
+# Remove unused constants because of clang 3.4 warnings
+sed -e '/static\ const\ int\ zone_scanner_en_/d' -e '/zone_scanner_first_final/d' $OUT.g2 > ./tmp
+mv -f ./tmp $OUT.g2
+
 popd
