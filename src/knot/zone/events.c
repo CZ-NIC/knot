@@ -287,7 +287,7 @@ static int event_xfer(zone_t *zone)
 
 	/* IXFR failed, revert to AXFR. */
 	if (pkt_type == KNOT_QUERY_IXFR && ret != KNOT_EOK) {
-		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "AXFR", "Fallback to IXFR");
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "IXFR", "Fallback to AXFR");
 		zone->flags |= ZONE_FORCE_AXFR;
 		ret = event_xfer(zone);
 		zone->flags &= ~ZONE_FORCE_AXFR;
