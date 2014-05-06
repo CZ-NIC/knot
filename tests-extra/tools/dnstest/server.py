@@ -739,8 +739,8 @@ class Bind(Server):
                 s.item("type", "master")
                 s.item("notify", "explicit")
 
-                if z.ixfr and not z.ddns:
-                    s.item("ixfr-from-differences", "yes")
+            if z.ixfr and not z.master:
+                s.item("ixfr-from-differences", "yes")
 
             if z.slaves:
                 slaves = ""

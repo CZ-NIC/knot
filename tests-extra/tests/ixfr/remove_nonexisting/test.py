@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test for record addition over IXFR to slave zone which already contains this record'''
+'''Test for record removal over IXFR to slave zone which doesn't contain this record'''
 
 from dnstest.test import Test
 
@@ -13,7 +13,7 @@ zone = t.zone("existing.", storage=".")
 
 t.link(zone, master, slave, ixfr=True)
 
-# Insert the record to slave zone file (no SOA serial change).
+# Remove the record from slave zone file (no SOA serial change).
 slave.update_zonefile(zone, version=2)
 
 t.start()
@@ -22,7 +22,7 @@ t.start()
 serial = master.zone_wait(zone)
 slave.zone_wait(zone)
 
-# Update master file with the record (new SOA serial).
+# Update master file without the record (new SOA serial).
 master.update_zonefile(zone, version=1)
 master.reload()
 
