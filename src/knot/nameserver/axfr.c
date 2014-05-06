@@ -332,6 +332,7 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	ret = xfrin_process_axfr_packet(pkt, (struct xfr_proc *)data->ext);
 #warning TODO: this function wraps the old processing interface, hence the retval conversion below
 	if (ret > 0) {
+		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
 
 		/* This was the last packet, finalize zone and publish it. */
 		ret = axfr_answer_finalize(data);
