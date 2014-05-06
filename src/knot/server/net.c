@@ -114,6 +114,11 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 
 	int socket = -1;
 
+	/* Check port. */
+	if (sockaddr_port(dst_addr) == 0) {
+		return KNOT_ECONN;
+	}
+
 	/* Bind to specific source address - if set. */
 	if (src_addr != NULL && src_addr->ss_family != AF_UNSPEC) {
 		socket = net_bound_socket(type, src_addr);
