@@ -312,8 +312,6 @@ void server_deinit(server_t *server)
 	rrl_destroy(server->rrl);
 
 	/* Free zone database. */
-//	knot_edns_free(&server->opt_rr);
-	knot_edns_free_params(&server->edns);
 	knot_zonedb_deep_free(&server->zone_db);
 
 	/* Free remaining events. */
