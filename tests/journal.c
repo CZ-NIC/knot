@@ -68,24 +68,30 @@ int main(int argc, char *argv[])
 	char chk_buf[64] = {'\0'};
 	randstr(chk_buf, sizeof(chk_buf));
 	int ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), false);
-	memcpy(mptr, chk_buf, sizeof(chk_buf));
-	journal_unmap(journal, chk_key, mptr, 1);
-	is_int(0, ret, "journal: write data");
+	is_int(KNOT_EOK, ret, "journal: write data");
+	if (ret == KNOT_EOK) {
+		memcpy(mptr, chk_buf, sizeof(chk_buf));
+		journal_unmap(journal, chk_key, mptr, 1);
+	}
 
-	journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
-	ret = memcmp(chk_buf, mptr, sizeof(chk_buf));
-	journal_unmap(journal, chk_key, mptr, 1);
-	is_int(0, ret, "journal: data integrity check");
+	ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
+	if (ret == KNOT_EOK) {
+		ret = memcmp(chk_buf, mptr, sizeof(chk_buf));
+		journal_unmap(journal, chk_key, mptr, 1);
+	}
+	is_int(KNOT_EOK, ret, "journal: data integrity check");
 
 	/* Reopen log and re-read value. */
 	journal_close(journal);
 	journal = journal_open(jfilename, fsize);
 	ok(journal != NULL, "journal: open journal '%s'", jfilename);
 
-	journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
-	ret = memcmp(chk_buf, mptr, sizeof(chk_buf));
-	journal_unmap(journal, chk_key, mptr, 1);
-	is_int(0, ret, "journal: data integrity check after close/open");
+	ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
+	if (ret == KNOT_EOK) {
+		ret = memcmp(chk_buf, mptr, sizeof(chk_buf));
+		journal_unmap(journal, chk_key, mptr, 1);
+	}
+	is_int(KNOT_EOK, ret, "journal: data integrity check after close/open");
 
 	/*  Write random data. */
 	ret = 0;
@@ -103,7 +109,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	is_int(0, ret, "journal: sustained mmap r/w");
+	is_int(KNOT_EOK, ret, "journal: sustained mmap r/w");
 
 	/* Close journal. */
 	journal_close(journal);
