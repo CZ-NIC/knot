@@ -14,6 +14,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
+
 #include "knot/nameserver/requestor.h"
 #include "knot/nameserver/process_answer.h"
 #include "knot/server/net.h"
@@ -139,11 +141,10 @@ bool requestor_finished(struct requestor *requestor)
 }
 
 struct request *requestor_make(struct requestor *requestor,
-                               const struct sockaddr_storage *from,
-                               const struct sockaddr_storage *to,
+                               const conf_iface_t *remote,
                                knot_pkt_t *query)
 {
-	if (requestor == NULL || query == NULL || to == NULL) {
+	if (requestor == NULL || query == NULL || remote == NULL) {
 		return NULL;
 	}
 
@@ -153,9 +154,10 @@ struct request *requestor_make(struct requestor *requestor,
 		return NULL;
 	}
 
+	memcpy(&request->data.origin, &remote->via, sizeof(remote->via));
+	memcpy(&request->data.remote, &remote->addr, sizeof(remote->addr));
+
 	request->state = NS_PROC_DONE;
-	memcpy(&request->data.origin, from, sizeof(struct sockaddr_storage));
-	memcpy(&request->data.remote, to, sizeof(struct sockaddr_storage));
 	request->data.fd = -1;
 	request->data.query = query;
 	return request;
@@ -211,7 +213,7 @@ static int exec_request(struct request *last, struct timeval *timeout)
 	}
 
 	/* Receive and process expected answers. */
-	while(last->state == NS_PROC_MORE) {
+	while (last->state == NS_PROC_MORE) {
 		int rcvd = request_recv(last, timeout);
 		if (rcvd <= 0) {
 			return rcvd;

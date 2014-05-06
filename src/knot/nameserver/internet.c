@@ -900,6 +900,8 @@ int internet_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 		return NS_PROC_FAIL;
 	}
 
+	NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
+
 	/* As of now, server can only issue SOA queries. */
 	switch(knot_pkt_qtype(pkt)) {
 	case KNOT_RRTYPE_SOA:

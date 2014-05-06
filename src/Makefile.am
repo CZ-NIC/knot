@@ -246,6 +246,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/update.h		\
 	knot/nameserver/notify.c			\
 	knot/nameserver/notify.h			\
+	knot/nameserver/tsig_ctx.c		\
+	knot/nameserver/tsig_ctx.h		\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
 	knot/other/debug.h			\

@@ -60,8 +60,7 @@ bool requestor_finished(struct requestor *requestor);
 
 /*! \brief Make request out of endpoints and query. */
 struct request *requestor_make(struct requestor *requestor,
-                               const struct sockaddr_storage *from,
-                               const struct sockaddr_storage *to,
+                               const conf_iface_t *remote,
                                knot_pkt_t *query);
 
 /*!
