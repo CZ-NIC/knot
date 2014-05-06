@@ -55,7 +55,6 @@ static void request_close(mm_ctx_t *mm, struct request *request)
 	knot_process_finish(&request->process);
 
 	rem_node(&request->data.node);
-	requestor_tsig_cleanup(&request->data.tsig_ctx);
 	close(request->data.fd);
 	knot_pkt_free(&request->data.query);
 	mm_free(mm, request->pkt_buf);
@@ -155,11 +154,12 @@ struct request *requestor_make(struct requestor *requestor,
 		return NULL;
 	}
 
+	memcpy(&request->data.origin, &remote->via, sizeof(remote->via));
+	memcpy(&request->data.remote, &remote->addr, sizeof(remote->addr));
+
 	request->state = NS_PROC_DONE;
-	request->data.remote = remote;
 	request->data.fd = -1;
 	request->data.query = query;
-	requestor_tsig_init(&request->data.tsig_ctx, remote->key);
 	return request;
 }
 
@@ -170,8 +170,8 @@ int requestor_enqueue(struct requestor *requestor, struct request * request, voi
 	}
 
 	/* Fetch a bound socket. */
-	int fd = net_connected_socket(SOCK_STREAM, &request->data.remote->addr,
-	                              &request->data.remote->via, O_NONBLOCK);
+	int fd = net_connected_socket(SOCK_STREAM, &request->data.remote,
+	                              &request->data.origin, O_NONBLOCK);
 	if (fd < 0) {
 		return KNOT_ECONN;
 	}
@@ -199,39 +199,12 @@ int requestor_dequeue(struct requestor *requestor)
 	return KNOT_EOK;
 }
 
-/*!
- * \brief Sign outbound packet using TSIG.
- */
-static int request_sign(struct request *request)
-{
-	assert(request);
-
-	return requestor_tsig_sign_packet(&request->data.tsig_ctx,
-	                                  request->data.query);
-}
-
-/*!
- * \brief Check inbound packet TSIG signature.
- */
-static int request_verify(struct request *request)
-{
-	assert(request);
-
-	return requestor_tsig_verify_packet(&request->data.tsig_ctx,
-	                                    request->data.query);
-}
-
 static int exec_request(struct request *last, struct timeval *timeout)
 {
 	int ret = KNOT_EOK;
 
 	/* Process any pending data. */
 	if (last->state == NS_PROC_FULL) {
-		ret = request_sign(last);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-
 		ret = request_send(last, timeout);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -244,11 +217,6 @@ static int exec_request(struct request *last, struct timeval *timeout)
 		int rcvd = request_recv(last, timeout);
 		if (rcvd <= 0) {
 			return rcvd;
-		}
-
-		ret = request_verify(last);
-		if (ret != KNOT_EOK) {
-			return ret;
 		}
 
 		last->state = knot_process_in(last->pkt_buf, rcvd, &last->process);

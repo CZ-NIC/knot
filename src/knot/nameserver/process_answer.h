@@ -17,6 +17,7 @@
 #pragma once
 
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/tsig_ctx.h"
 
 /* Query processing module implementation. */
 const knot_process_module_t *process_answer_get_module(void);
@@ -35,6 +36,7 @@ struct process_answer_param {
 	zone_t   *zone;
 	const knot_pkt_t *query;
 	const struct sockaddr_storage *remote;
+	tsig_ctx_t tsig_ctx;
 };
 
 struct answer_data

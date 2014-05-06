@@ -240,14 +240,14 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/process_answer.h		\
 	knot/nameserver/requestor.c		\
 	knot/nameserver/requestor.h		\
-	knot/nameserver/requestor_tsig.c	\
-	knot/nameserver/requestor_tsig.h	\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
 	knot/nameserver/notify.c			\
 	knot/nameserver/notify.h			\
+	knot/nameserver/tsig_ctx.c		\
+	knot/nameserver/tsig_ctx.h		\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
 	knot/other/debug.h			\
