@@ -319,6 +319,9 @@ void server_deinit(server_t *server)
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
 
+	/* Free EDNS parameters. */
+	knot_edns_free_params(&edns_old);
+
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
 }
@@ -466,6 +469,7 @@ static int edns_reconfigure(const struct conf_t *conf, server_t *server)
 	                             (uint8_t *)conf->nsid);
 	if (edns == NULL) {
 		log_server_error("Couldn't initialize EDNS(0), please restart.\n");
+		return KNOT_ENOMEM;
 	}
 
 	knot_edns_params_t *edns_old = server->edns;

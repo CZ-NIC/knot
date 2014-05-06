@@ -144,16 +144,13 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	    query->edns > -1) {
 		uint8_t version = query->edns > -1 ? query->edns : 0;
 
-		knot_rrset_t *opt_rr = knot_edns_new(DEFAULT_EDNS_SIZE,
-		                                     0, version,
-		                                     KNOT_EDNS_FLAG_DO, NULL);
-//		if (query->nsid) {
-//			/*! \note This sets an empty option - why? */
-//			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_NSID,
-//			                        NULL, 0);
-//		}
+		knot_edns_params_t edns_params = { .payload = DEFAULT_EDNS_SIZE,
+		                                   .version = version,
+		                                   .nsid_len = 0,
+		                                   .nsid = NULL,
+		                                   .flags = KNOT_EDNS_FLAG_DO };
 
-		knot_pkt_add_opt(packet, opt_rr);
+		knot_pkt_add_opt(packet, &edns_params, false);
 
 		// Write prepared OPT to wire
 		knot_pkt_begin(packet, KNOT_ADDITIONAL);

@@ -132,11 +132,6 @@ static int pkt_reset(knot_pkt_t *pkt, void *wire, uint16_t len)
 	memset(pkt, 0, offsetof(knot_pkt_t, rr_info));
 	pkt->mm = mm;
 
-	/* Initialize OPT RR defaults. */
-	/*! \todo [OPT] REWRITE */
-//	pkt->opt_rr.version = EDNS_NOT_SUPPORTED;
-//	pkt->opt_rr.size = EDNS_MIN_SIZE;
-
 	/* Initialize wire. */
 	if (wire == NULL) {
 		ret = pkt_wire_alloc(pkt, len);
@@ -296,11 +291,6 @@ void knot_pkt_free(knot_pkt_t **pkt)
 	if ((*pkt)->flags & KNOT_PF_FREE) {
 		(*pkt)->mm.free((*pkt)->wire);
 	}
-
-	// free OPT RR
-	/*! \todo [OPT] memory context?? */
-	knot_rrset_free(&(*pkt)->opt_rr, NULL);
-//	knot_edns_free_options(&(*pkt)->opt_rr);
 
 	dbg_packet("Freeing packet structure\n");
 	(*pkt)->mm.free(*pkt);
@@ -800,18 +790,25 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 /* EDNS(0)-related functions                                                  */
 /*----------------------------------------------------------------------------*/
 
-int knot_pkt_add_opt(knot_pkt_t *pkt, knot_rrset_t *opt_rr)
+int knot_pkt_add_opt(knot_pkt_t *pkt, knot_edns_params_t *edns, bool add_nsid)
 {
-	if (pkt == NULL || opt_rr == NULL) {
+	if (pkt == NULL || edns == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	pkt->opt_rr = opt_rr;
+	/* Take one RR from the pool and initialize an OPT RR. */
+	int ret = knot_edns_init_from_params(&pkt->rr[pkt->rrset_count],
+	                                     edns, add_nsid, &pkt->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	pkt->opt_rr = &pkt->rr[pkt->rrset_count++];
 
 	/* OPT RR is not directly converted to wire, we must wait till the
 	 * Additional section is started. Now just reserve space for it.
 	 */
-	pkt->reserved += knot_edns_size(opt_rr);
+	pkt->reserved += knot_edns_size(pkt->opt_rr);
 
 	return KNOT_EOK;
 }

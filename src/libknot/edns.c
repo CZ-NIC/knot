@@ -81,25 +81,18 @@ void knot_edns_free_params(knot_edns_params_t **edns)
 /* EDNS OPT RR handling functions.                                            */
 /*----------------------------------------------------------------------------*/
 
-knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
-                            uint16_t flags, mm_ctx_t *mm)
+static int init_opt(knot_rrset_t *opt_rr, uint8_t ext_rcode,
+                    uint8_t ver, uint16_t flags, mm_ctx_t *mm)
 {
-	knot_dname_t *owner = knot_dname_from_str(".");
-	CHECK_ALLOC_LOG(owner, NULL);
-	knot_rrset_t *opt = knot_rrset_new(owner, KNOT_RRTYPE_OPT, max_pld, mm);
-	if (opt == NULL) {
-		ERR_ALLOC_FAILED;
-		free(owner);
-		return NULL;
-	}
-	uint8_t *rdata = (uint8_t *)malloc(DUMMY_RDATA_SIZE);
+	assert(opt_rr != NULL);
+
+	uint8_t *rdata = (uint8_t *)mm_alloc(mm, DUMMY_RDATA_SIZE);
 	if (rdata == NULL) {
 		ERR_ALLOC_FAILED;
-		knot_rrset_free(&opt, mm);
-		return NULL;
+		return KNOT_ENOMEM;
 	}
 
-	/* For easier manipulation, use wire order to assebmle the TTL, then
+	/* For easier manipulation, use wire order to assemble the TTL, then
 	 * convert it to machine byte order.
 	 */
 	uint32_t ttl = 0;
@@ -111,39 +104,35 @@ knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
 	/* Now convert the TTL to machine byte order. */
 	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
 
-	int ret = knot_rrset_add_rdata(opt, rdata, 0, ttl_local, mm);
+	int ret = knot_rrset_add_rdata(opt_rr, rdata, 0, ttl_local, mm);
 	if (ret != KNOT_EOK) {
-		knot_rrset_free(&opt, mm);
-		return NULL;
+		mm_free(mm, rdata);
+		return ret;
 	}
 
-	return opt;
+	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
 
-knot_rrset_t *knot_edns_new_from_params(const knot_edns_params_t *params,
-                                        bool add_nsid, mm_ctx_t *mm)
+int knot_edns_init_from_params(knot_rrset_t *opt_rr,
+                               const knot_edns_params_t *params, bool add_nsid,
+                               mm_ctx_t *mm)
 {
-	if (params == NULL) {
-		return NULL;
+	if (opt_rr == NULL || params == NULL) {
+		return KNOT_EINVAL;
 	}
 
-	knot_rrset_t *opt = knot_edns_new(params->payload, 0, params->version,
-	                                  0, mm);
-	if (opt == NULL) {
-		return NULL;
-	}
+	opt_rr->rclass = params->payload;
+	init_opt(opt_rr, 0, params->version, 0, mm);
 
+	int ret = KNOT_EOK;
 	if (add_nsid) {
-		int ret = knot_edns_add_option(opt, KNOT_EDNS_OPTION_NSID,
-		                            params->nsid_len, params->nsid, mm);
-		if (ret != KNOT_EOK) {
-			knot_rrset_free(&opt, mm);
-		}
+		ret = knot_edns_add_option(opt_rr, KNOT_EDNS_OPTION_NSID,
+		                           params->nsid_len, params->nsid, mm);
 	}
 
-	return opt;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/

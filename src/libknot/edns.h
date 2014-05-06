@@ -112,33 +112,21 @@ void knot_edns_free_params(knot_edns_params_t **edns);
 /* EDNS OPT RR handling functions.                                            */
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Creates new OPT RR structure with the given parameters.
+ * \brief Initializes given RRSet structure as an OPT RR with parameters taken
+ *        from the given EDNS params.
  *
- * \param max_pld     Max UDP payload.
- * \param ext_rcode   Extended RCODE.
- * \param ver         EDNS version.
- * \param flags       Flags (in wire byte order).
- * \param mm          Memory context to use (set to NULL if none available).
- *
- * \return New valid OPT RR initialized with the given parameters. NULL if
- *         some error occured.
- */
-knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode, uint8_t ver,
-                            uint16_t flags, mm_ctx_t *mm);
-
-/*!
- * \brief Creates new OPT RR structure with parameters taken from the given
- *        structure.
- *
+ * \param opt_rr    RRSet to initialize.
  * \param params    EDNS parameters structure to use.
  * \param add_nsid  Add NSID from the parameters to the OPT RR.
  * \param mm        Memory context to use (set to NULL if none available).
  *
- * \return New valid OPT RR initialized with the given parameters. NULL if
- *         some error occured.
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL when bad parameters are supplied.
+ * \retval KNOT_ENOMEM if some allocation failed.
  */
-knot_rrset_t *knot_edns_new_from_params(const knot_edns_params_t *params,
-                                        bool add_nsid, mm_ctx_t *mm);
+int knot_edns_init_from_params(knot_rrset_t *opt_rr,
+                               const knot_edns_params_t *params, bool add_nsid,
+                               mm_ctx_t *mm);
 
 /*!
  * \brief Returns the Max UDP payload value stored in the OPT RR.

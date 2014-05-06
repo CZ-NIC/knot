@@ -100,8 +100,6 @@ typedef struct knot_pkt {
 	uint16_t rrset_count;  /*!< Packet RRSet count. */
 	uint16_t flags;        /*!< Packet flags. */
 
-	/*! \todo OPT should be refactored separately as a simple RRSet. */
-//	knot_opt_rr_t opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *opt_rr;   /*!< OPT RR included in the packet. */
 	knot_rrset_t *tsig_rr;  /*!< TSIG RR stored in the packet. */
 
@@ -255,7 +253,7 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
  *
  * \todo Needs test.
  */
-int knot_pkt_add_opt(knot_pkt_t *pkt, knot_rrset_t *opt_rr);
+int knot_pkt_add_opt(knot_pkt_t *pkt, knot_edns_params_t *edns, bool add_nsid);
 
 /*!
  * \brief Write OPT RR to wireformat.
