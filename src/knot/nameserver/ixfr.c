@@ -641,6 +641,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	if (adata->ext == NULL) {
+		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		if (!transfer_needed(adata->param->zone, pkt)) {
 			IXFRIN_LOG(LOG_INFO, "Server has newer zone.");
 			return NS_PROC_DONE;
@@ -653,10 +654,13 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 			IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
 			return NS_PROC_FAIL;
 		}
+	} else {
+		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 100);
 	}
 
 	int ret = process_ixfrin_packet(pkt, adata);
 	if (ret == NS_PROC_DONE) {
+		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		int fret = ixfrin_finalize(adata);
 		if (fret != KNOT_EOK) {
 			IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
