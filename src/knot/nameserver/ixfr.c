@@ -319,6 +319,7 @@ static int ixfrin_answer_init(struct answer_data *data)
 	}
 	proc->state = IXFR_START;
 	proc->zone = data->param->zone;
+	proc->mm = data->mm;
 
 	data->ext = proc;
 	data->ext_cleanup = &ixfrin_cleanup;
@@ -515,19 +516,6 @@ static bool out_of_zone(const knot_rrset_t *rr, struct ixfr_proc *proc)
 	       !knot_dname_is_equal(rr->owner, proc->zone->name);
 }
 
-/*! \brief Returns true if final SOA in transfer has newer serial than zone */
-static bool transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
-{
-	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
-	const knot_rrset_t soa = answer->rr[0];
-	if (soa.type != KNOT_RRTYPE_SOA) {
-		return false;
-	}
-
-	return knot_serial_compare(zone_contents_serial(zone->contents),
-	                           knot_soa_serial(&soa.rrs)) < 0;
-}
-
 /*!
  * \brief Processes IXFR reply packet and fills in the changesets structure.
  *
@@ -567,8 +555,6 @@ static int process_ixfrin_packet(knot_pkt_t *pkt, struct answer_data *adata)
 			return NS_PROC_DONE;
 		}
 	}
-
-#warning TODO TSIG
 
 	return NS_PROC_MORE;
 }
@@ -642,7 +628,7 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 {
 	if (adata->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
-		if (!transfer_needed(adata->param->zone, pkt)) {
+		if (!zone_transfer_needed(adata->param->zone, pkt)) {
 			IXFRIN_LOG(LOG_INFO, "Server has newer zone.");
 			return NS_PROC_DONE;
 		}

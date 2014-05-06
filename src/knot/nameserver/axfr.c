@@ -225,7 +225,7 @@ int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
-		AXFROUT_LOG(LOG_ERR, "%s", knot_strerror(ret));
+		AXFROUT_LOG(LOG_ERR, "Failed: %s", knot_strerror(ret));
 		return NS_PROC_FAIL;
 	}
 }
@@ -329,12 +329,6 @@ static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 		const knot_rrset_t *rr = &answer->rr[i];
 		if (rr->type == KNOT_RRTYPE_SOA &&
 		    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
-			// Last SOA, last message, check TSIG.
-//			int ret = xfrin_check_tsig(pkt, xfr, 1);
-#warning TODO: TSIG API
-//			if (ret != KNOT_EOK) {
-//				return ret;
-//			}
 			return NS_PROC_DONE;
 		} else {
 			int ret = zcreator_step(&zc, rr);
@@ -344,9 +338,6 @@ static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 		}
 	}
 
-	// Check possible TSIG at the end of DNS message.
-//	return xfrin_check_tsig(pkt, xfr, knot_ns_tsig_required(xfr->packet_nr));
-#warning TODO: TSIG API
 	return NS_PROC_MORE;
 }
 
@@ -356,6 +347,11 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	int ret = KNOT_EOK;
 	if (data->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
+		if (!zone_transfer_needed(data->param->zone, pkt)) {
+			AXFRIN_LOG(LOG_INFO, "Zone is up-to-date.");
+			return NS_PROC_DONE;
+		}
+
 		ret = axfr_answer_init(data);
 		if (ret != KNOT_EOK) {
 			return NS_PROC_FAIL;

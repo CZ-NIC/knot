@@ -32,6 +32,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/util/utils.h"
+#include "libknot/rdata/soa.h"
 
 /*!
  * \brief Set ACL list from configuration.
@@ -354,3 +355,16 @@ struct request_data *zone_update_dequeue(zone_t *zone)
 
 	return ret;
 }
+
+bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
+{
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	const knot_rrset_t soa = answer->rr[0];
+	if (soa.type != KNOT_RRTYPE_SOA) {
+		return false;
+	}
+
+	return knot_serial_compare(zone_contents_serial(zone->contents),
+	                           knot_soa_serial(&soa.rrs)) < 0;
+}
+
