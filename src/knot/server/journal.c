@@ -897,7 +897,15 @@ int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize)
 	}
 
 	/* Mapped node is on tail. */
+	/* @todo: This is hack to allow read-only correct unmap. */
+	int ret = KNOT_EOK;
 	journal_node_t *n = journal->nodes + journal->qtail;
+	if (!finalize) {
+		ret = journal_fetch(journal, id, journal_cmp_eq, &n);
+		if (ret != KNOT_EOK) {
+			return KNOT_ENOENT;
+		}
+	}
 	if(n->id != id) {
 		dbg_journal("journal: failed to find mmap node with id=%llu\n",
 		            (unsigned long long)id);
@@ -917,7 +925,6 @@ int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize)
 	}
 
 	/* Finalize. */
-	int ret = KNOT_EOK;
 	if (finalize) {
 		ret = journal_write_out(journal, n);
 	}

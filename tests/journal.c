@@ -38,7 +38,7 @@ static int randstr(char* dst, size_t len)
 
 int main(int argc, char *argv[])
 {
-	plan(7);
+	plan(10);
 
 	/* Create tmpdir */
 	int fsize = 10 * 1024 * 1024;
@@ -68,18 +68,21 @@ int main(int argc, char *argv[])
 	char chk_buf[64] = {'\0'};
 	randstr(chk_buf, sizeof(chk_buf));
 	int ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), false);
-	is_int(KNOT_EOK, ret, "journal: write data");
+	is_int(KNOT_EOK, ret, "journal: write data (map)");
 	if (ret == KNOT_EOK) {
 		memcpy(mptr, chk_buf, sizeof(chk_buf));
-		journal_unmap(journal, chk_key, mptr, 1);
+		ret = journal_unmap(journal, chk_key, mptr, 1);
+		is_int(KNOT_EOK, ret, "journal: write data (unmap)");
 	}
 
 	ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
+	is_int(KNOT_EOK, ret, "journal: data integrity check (map)");
 	if (ret == KNOT_EOK) {
 		ret = memcmp(chk_buf, mptr, sizeof(chk_buf));
-		journal_unmap(journal, chk_key, mptr, 1);
+		is_int(0, ret, "journal: data integrity check (cmp)");
+		ret = journal_unmap(journal, chk_key, mptr, 0);
+		is_int(KNOT_EOK, ret, "journal: data integrity check (unmap)");
 	}
-	is_int(KNOT_EOK, ret, "journal: data integrity check");
 
 	/* Reopen log and re-read value. */
 	journal_close(journal);
@@ -89,7 +92,7 @@ int main(int argc, char *argv[])
 	ret = journal_map(journal, chk_key, &mptr, sizeof(chk_buf), true);
 	if (ret == KNOT_EOK) {
 		ret = memcmp(chk_buf, mptr, sizeof(chk_buf));
-		journal_unmap(journal, chk_key, mptr, 1);
+		journal_unmap(journal, chk_key, mptr, 0);
 	}
 	is_int(KNOT_EOK, ret, "journal: data integrity check after close/open");
 
