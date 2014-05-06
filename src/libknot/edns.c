@@ -83,18 +83,37 @@ void knot_edns_free_params(knot_edns_params_t **edns)
 /* EDNS OPT RR handling functions.                                            */
 /*----------------------------------------------------------------------------*/
 
-static int init_opt(knot_rrset_t *opt_rr, uint8_t ext_rcode,
+static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
                     uint8_t ver, uint16_t flags, mm_ctx_t *mm)
 {
 	assert(opt_rr != NULL);
 
+	/* Owner: root label.
+	 *
+	 * Allocate from memory context and set the dname by hand. Although it's
+	 * not very neat and it's implementation-specific , it's much easier,
+	 * faster + moreover the knot_dname_from_str() function does not support
+	 * memory contexts.
+	 */
+	opt_rr->owner = (knot_dname_t *)mm_alloc(mm, 1);
+	if (opt_rr->owner == NULL) {
+		return KNOT_ENOMEM;
+	}
+	*opt_rr->owner = '\0';
+
+	/* CLASS = max UDP payload */
+	opt_rr->rclass = max_pld;
+
+	/* Empty RDATA */
 	uint8_t *rdata = (uint8_t *)mm_alloc(mm, DUMMY_RDATA_SIZE);
 	if (rdata == NULL) {
 		ERR_ALLOC_FAILED;
+		knot_dname_free(&opt_rr->owner, mm);
 		return KNOT_ENOMEM;
 	}
 
-	/* For easier manipulation, use wire order to assemble the TTL, then
+	/* TTL: extended RCODE + version + flags.
+	 * For easier manipulation, use wire order to assemble the TTL, then
 	 * convert it to machine byte order.
 	 */
 	uint32_t ttl = 0;
@@ -125,8 +144,7 @@ int knot_edns_init_from_params(knot_rrset_t *opt_rr,
 		return KNOT_EINVAL;
 	}
 
-	opt_rr->rclass = params->payload;
-	init_opt(opt_rr, 0, params->version, 0, mm);
+	init_opt(opt_rr, params->payload, 0, params->version, 0, mm);
 
 	int ret = KNOT_EOK;
 	if (add_nsid) {
