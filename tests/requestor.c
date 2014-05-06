@@ -70,7 +70,11 @@ static struct request *make_query(struct requestor *requestor, struct sockaddr_s
 	assert(pkt);
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
-	return requestor_make(requestor, NULL, remote, pkt);
+	conf_iface_t iface;
+	memset(&iface, 0, sizeof(conf_iface_t));
+	memcpy(&iface.addr, remote, sizeof(struct sockaddr_storage));
+
+	return requestor_make(requestor, &iface, pkt);
 }
 
 static void test_disconnected(struct requestor *requestor, struct sockaddr_storage *remote)

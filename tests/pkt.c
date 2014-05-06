@@ -66,7 +66,7 @@ static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
 
 int main(int argc, char *argv[])
 {
-	plan(30);
+	plan(29);
 
 	/* Create memory pool context. */
 	int ret = 0;
