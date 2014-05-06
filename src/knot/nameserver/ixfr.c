@@ -306,7 +306,6 @@ static void ixfrin_cleanup(struct answer_data *data)
 static int ixfrin_answer_init(struct answer_data *data)
 {
 	struct ixfr_proc *proc = mm_alloc(data->mm, sizeof(struct ixfr_proc));
-	data->ext = malloc(sizeof(struct ixfr_proc));
 	if (proc == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -437,7 +436,7 @@ static int solve_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *mm)
 /*! \brief Decides what the next IXFR-in state should be. */
 static int ixfrin_next_state(struct ixfr_proc *proc, const knot_rrset_t *rr)
 {
-	const bool soa = rr->type == KNOT_RRTYPE_SOA;
+	const bool soa = (rr->type == KNOT_RRTYPE_SOA);
 	if (soa &&
 	    (proc->state == IXFR_SOA_ADD || proc->state == IXFR_ADD)) {
 		// Check end of transfer.
