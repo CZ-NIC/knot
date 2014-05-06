@@ -320,7 +320,7 @@ void server_deinit(server_t *server)
 	evsched_deinit(&server->sched);
 
 	/* Free EDNS parameters. */
-	knot_edns_free_params(&edns_old);
+	knot_edns_free_params(&server->edns);
 
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
