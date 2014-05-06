@@ -787,6 +787,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->class_num = -1;
 		query->type_num = -1;
 		query->xfr_serial = 0;
+		query->notify = false;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
 		query->idn = true;
@@ -815,6 +816,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->class_num = conf->class_num;
 		query->type_num = conf->type_num;
 		query->xfr_serial = conf->xfr_serial;
+		query->notify = conf->notify;
 		query->flags = conf->flags;
 		query->style = conf->style;
 		query->idn = conf->idn;
@@ -1066,13 +1068,20 @@ static int parse_type(const char *value, query_t *query)
 {
 	uint16_t rtype;
 	uint32_t serial;
+	bool     notify;
 
-	if (params_parse_type(value, &rtype, &serial) != KNOT_EOK) {
+	if (params_parse_type(value, &rtype, &serial, &notify) != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
 
 	query->type_num = rtype;
 	query->xfr_serial = serial;
+	query->notify = notify;
+
+	// If NOTIFY, reset default RD flag.
+	if (query->notify) {
+		query->flags.rd_flag = false;
+	}
 
 	return KNOT_EOK;
 }

@@ -238,6 +238,7 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 	query_t  *conf = params->config;
 	uint16_t rclass, rtype;
 	uint32_t serial;
+	bool     notify;
 
 	// Long options.
 	struct option opts[] = {
@@ -301,13 +302,19 @@ int host_parse(dig_params_t *params, int argc, char *argv[])
 			conf->class_num = rclass;
 			break;
 		case 't':
-			if (params_parse_type(optarg, &rtype, &serial)
+			if (params_parse_type(optarg, &rtype, &serial, &notify)
 			    != KNOT_EOK) {
 				ERR("bad type %s\n", optarg);
 				return KNOT_EINVAL;
 			}
 			conf->type_num = rtype;
 			conf->xfr_serial = serial;
+			conf->notify = notify;
+
+			// If NOTIFY, reset default RD flag.
+			if (conf->notify) {
+				conf->flags.rd_flag = false;
+			}
 			break;
 		case 'R':
 			if (params_parse_num(optarg, &conf->retries)
