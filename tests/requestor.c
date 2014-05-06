@@ -73,6 +73,7 @@ static struct request *make_query(struct requestor *requestor, struct sockaddr_s
 	conf_iface_t iface;
 	memset(&iface, 0, sizeof(conf_iface_t));
 	memcpy(&iface.addr, remote, sizeof(struct sockaddr_storage));
+	sockaddr_set(&iface.via, AF_UNSPEC, "", 0);
 
 	return requestor_make(requestor, &iface, pkt);
 }
