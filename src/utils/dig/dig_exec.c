@@ -486,6 +486,11 @@ static void process_query(const query_t *query)
 
 		WARN("failed to query server %s#%s(%s)\n",
 		     remote->name, remote->service, get_sockname(socktype));
+
+		// If not last server, print separation.
+		if (server->next->next) {
+			printf("\n");
+		}
 	}
 
 	knot_pkt_free(&out_packet);
@@ -729,6 +734,11 @@ int dig_exec(const dig_params_t *params)
 		default:
 			ERR("unsupported operation\n");
 			break;
+		}
+
+		// If not last query, print separation.
+		if (n->next->next) {
+			printf("\n");
 		}
 	}
 
