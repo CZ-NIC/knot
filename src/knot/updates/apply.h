@@ -74,17 +74,6 @@ int apply_changesets_directly(zone_contents_t *contents,
                               changesets_t *chsets);
 
 /*!
- * \brief Switches zone contents in the zone.
- *
- * \param zone          Zone whose contents we want to switch.
- * \param new_contents  New zone contents.
- *
- * \return KNOT_E*
- */
-zone_contents_t *update_switch_contents(zone_t *zone,
-                                        zone_contents_t *new_contents);
-
-/*!
  * \brief Cleanups successful update. (IXFR, DNSSEC, DDNS).
  * \param chgs  Changesets used to create the update.
  */

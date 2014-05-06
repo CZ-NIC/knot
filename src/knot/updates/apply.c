@@ -554,13 +554,6 @@ static int prepare_zone_copy(zone_contents_t *old_contents,
 		return KNOT_EINVAL;
 	}
 
-	// Ensure that the zone generation is set to old.
-	if (!zone_contents_gen_is_old(old_contents)) {
-#warning TODO - does this still make sense?
-		// This means that the previous update was not completed.
-		return KNOT_EAGAIN;
-	}
-
 	/*
 	 * Create a shallow copy of the zone, so that the structures may be
 	 * updated.
@@ -675,24 +668,6 @@ int apply_changesets_directly(zone_contents_t *contents, changesets_t *chsets)
 	 */
 	update_cleanup(chsets);
 	return ret;
-}
-
-zone_contents_t *update_switch_contents(zone_t *zone, zone_contents_t *new_contents)
-{
-	if (zone == NULL || new_contents == NULL) {
-		return NULL;
-	}
-
-	zone_contents_t *old = zone_switch_contents(zone, new_contents);
-
-	// set generation to old, so that the flags may be used in next transfer
-	// and we do not search for new nodes anymore
-	zone_contents_set_gen_old(new_contents);
-
-	// wait for readers to finish
-	synchronize_rcu();
-
-	return old;
 }
 
 void update_cleanup(changesets_t *chgs)

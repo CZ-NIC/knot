@@ -167,7 +167,6 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 	}
 
 	// Apply DNSSEC changeset
-	zone_contents_set_gen_old(new_contents);
 	ret = apply_changesets_directly(new_contents, sec_chs);
 	if (ret != KNOT_EOK) {
 		changesets_free(&sec_chs, NULL);
@@ -255,7 +254,8 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	}
 
 	// Switch zone contents.
-	zone_contents_t *old_contents = update_switch_contents(zone, new_contents);
+	zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+	synchronize_rcu();
 	update_free_old_zone(&old_contents);
 
 	update_cleanup(ddns_chs);

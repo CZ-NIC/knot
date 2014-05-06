@@ -215,7 +215,8 @@ int zone_change_apply_and_store(changesets_t **chs,
 	}
 
 	/* Switch zone contents. */
-	zone_contents_t *old_contents = update_switch_contents(zone, new_contents);
+	zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+	synchronize_rcu();
 	update_free_old_zone(&old_contents);
 
 	/* Free changesets, but not the data. */

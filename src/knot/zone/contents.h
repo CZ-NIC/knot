@@ -47,27 +47,6 @@ typedef struct zone_contents_t {
 	knot_zone_tree_t *nsec3_nodes;
 
 	knot_nsec3_params_t nsec3_params;
-
-	/*!
-	 * \todo Unify the use of this field - authoritative nodes vs. all.
-	 */
-	size_t node_count;
-
-	/*! \brief Various flags
-	 *
-	 * Two rightmost bits denote zone contents generation.
-	 *
-	 * Possible values:
-	 * - 00 - Original version of the zone. Old nodes should be used.
-	 * - 01 - New (updated) zone. New nodes should be used.
-	 * - 10 - New (updated) zone, but exactly the stored nodes should be
-	 *        used, no matter their generation.
-	 *
-	 * The third bit denotes whether ANY queries are enabled or disabled:
-	 * - 1xx - ANY queries disabled
-	 * - 0xx - ANY queries enabled
-	 */
-	uint8_t flags;
 } zone_contents_t;
 
 /*!
@@ -78,12 +57,6 @@ typedef int (*zone_contents_apply_cb_t)(zone_node_t *node, void *data);
 /*----------------------------------------------------------------------------*/
 
 zone_contents_t *zone_contents_new(const knot_dname_t *apex_name);
-
-int zone_contents_gen_is_old(const zone_contents_t *contents);
-int zone_contents_gen_is_new(const zone_contents_t *contents);
-
-void zone_contents_set_gen_old(zone_contents_t *contents);
-void zone_contents_set_gen_new(zone_contents_t *contents);
 
 int zone_contents_add_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n);
 
