@@ -278,6 +278,7 @@ int server_init(server_t *server)
 	}
 
 	/* Create zone events threads. */
+#warning TODO: config option
 	server->workers = worker_pool_create(4); //! \todo config option
 	if (server->workers == NULL) {
 		dt_delete(&server->iosched);

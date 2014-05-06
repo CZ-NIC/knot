@@ -297,9 +297,12 @@ static int event_xfer(zone_t *zone)
 	int ret = zone_query_execute(zone, pkt_type, master);
 
 	/* IXFR failed, revert to AXFR. */
-	if (pkt_type == KNOT_RRTYPE_IXFR && ret != KNOT_EOK) {
+	if (pkt_type == KNOT_QUERY_IXFR && ret != KNOT_EOK) {
+		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "IXFR", "Fallback to AXFR");
 		zone->flags |= ZONE_FORCE_AXFR;
-		return event_xfer(zone);
+		ret = event_xfer(zone);
+		zone->flags &= ~ZONE_FORCE_AXFR;
+		return ret;
 	}
 
 	if (zone_contents_is_empty(zone->contents)) {
@@ -419,12 +422,12 @@ static int event_dnssec(zone_t *zone)
 	assert(zone);
 	fprintf(stderr, "DNSSEC of '%s'\n", zone->conf->name);
 
-	knot_changesets_t *chs = knot_changesets_create(1);
+	changesets_t *chs = changesets_create(1);
 	if (chs == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	knot_changeset_t *ch = knot_changesets_get_last(chs);
+	changeset_t *ch = changesets_get_last(chs);
 	assert(ch);
 
 	int ret = KNOT_ERROR;
@@ -454,10 +457,8 @@ static int event_dnssec(zone_t *zone)
 		goto done;
 	}
 
-	if (!knot_changesets_empty(chs)) {
-		zone_contents_t *new_c = NULL;
-		ret = zone_change_apply_and_store(chs, zone, &new_c, "DNSSEC");
-		chs = NULL; // freed by zone_change_apply_and_store()
+	if (!changesets_empty(chs)) {
+		ret = zone_change_apply_and_store(&chs, zone, "DNSSEC", NULL);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
 				       msgpref, knot_strerror(ret));
@@ -475,7 +476,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 done:
-	knot_changesets_free(&chs);
+	changesets_free(&chs, NULL);
 	free(msgpref);
 	return ret;
 }

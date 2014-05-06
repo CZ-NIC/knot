@@ -81,7 +81,7 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_zone_create_nsec_chain(const zone_contents_t *zone,
-                                knot_changeset_t *changeset,
+                                changeset_t *changeset,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
 

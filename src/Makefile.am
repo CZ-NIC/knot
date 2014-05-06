@@ -273,8 +273,8 @@ libknotd_la_SOURCES =				\
 	knot/updates/changesets.h		\
 	knot/updates/ddns.c			\
 	knot/updates/ddns.h			\
-	knot/updates/xfr-in.c			\
-	knot/updates/xfr-in.h			\
+	knot/updates/apply.c			\
+	knot/updates/apply.h			\
 	knot/worker/pool.c			\
 	knot/worker/pool.h			\
 	knot/worker/queue.c			\

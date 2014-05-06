@@ -49,13 +49,6 @@ typedef struct {
 
 /*----------------------------------------------------------------------------*/
 
-const uint8_t KNOT_ZONE_FLAGS_GEN_OLD  = 0;            /* xxxxxx00 */
-const uint8_t KNOT_ZONE_FLAGS_GEN_NEW  = 1 << 0;       /* xxxxxx01 */
-const uint8_t KNOT_ZONE_FLAGS_GEN_FIN  = 1 << 1;       /* xxxxxx10 */
-const uint8_t KNOT_ZONE_FLAGS_GEN_MASK = 3;            /* 00000011 */
-
-/*----------------------------------------------------------------------------*/
-
 static int tree_apply_cb(zone_node_t **node, void *data)
 {
 	if (node == NULL || data == NULL) {
@@ -418,7 +411,6 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 	}
 
 	memset(contents, 0, sizeof(zone_contents_t));
-	contents->node_count = 1;
 	contents->apex = node_new(apex_name);
 	if (contents->apex == NULL) {
 		goto cleanup;
@@ -444,36 +436,6 @@ cleanup:
 }
 
 /*----------------------------------------------------------------------------*/
-
-int zone_contents_gen_is_old(const zone_contents_t *contents)
-{
-	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
-		== KNOT_ZONE_FLAGS_GEN_OLD);
-}
-
-/*----------------------------------------------------------------------------*/
-
-int zone_contents_gen_is_new(const zone_contents_t *contents)
-{
-	return ((contents->flags & KNOT_ZONE_FLAGS_GEN_MASK)
-		== KNOT_ZONE_FLAGS_GEN_NEW);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void zone_contents_set_gen_old(zone_contents_t *contents)
-{
-	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
-	contents->flags |= KNOT_ZONE_FLAGS_GEN_OLD;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void zone_contents_set_gen_new(zone_contents_t *contents)
-{
-	contents->flags &= ~KNOT_ZONE_FLAGS_GEN_MASK;
-	contents->flags |= KNOT_ZONE_FLAGS_GEN_NEW;
-}
 
 static zone_node_t *zone_contents_get_node(const zone_contents_t *zone,
                                            const knot_dname_t *name)
@@ -512,8 +474,6 @@ static int zone_contents_add_node(zone_contents_t *zone, zone_node_t *node,
 		dbg_zone("Failed to insert node into zone tree.\n");
 		return ret;
 	}
-
-	++zone->node_count;
 
 	if (!create_parents) {
 		return KNOT_EOK;
@@ -560,8 +520,6 @@ static int zone_contents_add_node(zone_contents_t *zone, zone_node_t *node,
 			if (knot_dname_is_wildcard(node->owner)) {
 				next_node->flags |= NODE_FLAGS_WILDCARD_CHILD;
 			}
-
-			++zone->node_count;
 
 			dbg_zone_detail("Next parent.\n");
 			node = next_node;
@@ -1310,9 +1268,6 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 		ERR_ALLOC_FAILED;
 		return KNOT_ENOMEM;
 	}
-
-	contents->flags = from->flags;
-	zone_contents_set_gen_new(contents);
 
 	int ret = recreate_normal_tree(from, contents);
 	if (ret != KNOT_EOK) {

@@ -102,7 +102,7 @@ typedef struct journal_t
  * Journal defaults and constants.
  */
 #define JOURNAL_NCOUNT 1024 /*!< Default node count. */
-#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '5', '1'}
+#define JOURNAL_MAGIC {'k', 'n', 'o', 't', '1', '5', '2'}
 #define MAGIC_LENGTH 7
 /* HEADER = magic, crc, max_entries, qhead, qtail */
 #define JOURNAL_HSIZE (MAGIC_LENGTH + sizeof(crc_t) + sizeof(uint16_t) * 3)
@@ -173,7 +173,7 @@ bool journal_exists(const char *path);
  *
  * \param changesets Double pointer to changesets structure to be freed.
  */
-int journal_load_changesets(const char *path, knot_changesets_t *dst,
+int journal_load_changesets(const char *path, changesets_t *dst,
                             uint32_t from, uint32_t to);
 
 /*!
@@ -192,7 +192,7 @@ int journal_load_changesets(const char *path, knot_changesets_t *dst,
  * \todo Expects the xfr structure to be initialized in some way.
  * \todo Update documentation!!!
  */
-int journal_store_changesets(knot_changesets_t *src,  const char *path, size_t size_limit);
+int journal_store_changesets(changesets_t *src,  const char *path, size_t size_limit);
 
 /*! \brief Function for unmarking dirty nodes. */
 int journal_mark_synced(const char *path);

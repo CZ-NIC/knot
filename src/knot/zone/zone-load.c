@@ -21,7 +21,7 @@
 #include "knot/zone/contents.h"
 #include "knot/zone/zonefile.h"
 #include "knot/dnssec/zone-events.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "libknot/rdata.h"
 
 zone_contents_t *zone_load_contents(conf_zone_t *conf)
@@ -91,7 +91,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	uint32_t serial = zone_contents_serial(contents);
 
 	/* Load all pending changesets. */
-	knot_changesets_t* chsets = knot_changesets_create(0);
+	changesets_t* chsets = changesets_create(0);
 	if (chsets == NULL) {
 		return KNOT_ERROR;
 	}
@@ -99,7 +99,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	/*! \todo Check what should be the upper bound. */
 	int ret = journal_load_changesets(conf->ixfr_db, chsets, serial, serial - 1);
 	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chsets->sets)) {
-		knot_changesets_free(&chsets);
+		changesets_free(&chsets, NULL);
 		/* Absence of records is not an error. */
 		if (ret == KNOT_ENOENT) {
 			return KNOT_EOK;
@@ -109,13 +109,13 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	}
 
 	/* Apply changesets. */
-	ret = xfrin_apply_changesets_directly(contents,  chsets);
+	ret = apply_changesets_directly(contents,  chsets);
 	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
 	              conf->name,
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
-	knot_changesets_free(&chsets);
+	changesets_free(&chsets, NULL);
 	return ret;
 }
 
@@ -127,8 +127,8 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 
 	int ret = KNOT_EOK;
 	const conf_zone_t *conf = zone->conf;
-	knot_changeset_t  *change = NULL;
-	knot_changesets_t *chset = knot_changesets_create(0);
+	changeset_t  *change = NULL;
+	changesets_t *chset = changesets_create(0);
 	if (chset == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -137,7 +137,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 	if (conf->dnssec_enable) {
 		change = zone_change_prepare(chset);
 		if (change == NULL) {
-			knot_changesets_free(&chset);
+			changesets_free(&chset, NULL);
 			return KNOT_ENOMEM;
 		}
 
@@ -153,13 +153,13 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 		/* Commit existing zone change and prepare new. */
 		int ret = zone_change_commit(new_contents, chset);
 		if (ret != KNOT_EOK) {
-			knot_changesets_free(&chset);
+			changesets_free(&chset, NULL);
 			return ret;
 		} else {
-			knot_changesets_clear(chset);
+			changesets_clear(chset, NULL);
 			change = zone_change_prepare(chset);
 			if (change == NULL) {
-				knot_changesets_free(&chset);
+				changesets_free(&chset, NULL);
 				return KNOT_ENOMEM;
 			}
 		}
@@ -182,7 +182,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 	if (ret == KNOT_EOK) {
 		ret = zone_change_commit(new_contents, chset);
 		if (ret != KNOT_EOK) {
-			knot_changesets_free(&chset);
+			changesets_free(&chset, NULL);
 			return ret;
 		}
 
@@ -191,7 +191,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 	}
 
 	/* Free changesets and return. */
-	knot_changesets_free(&chset);
+	changesets_free(&chset, NULL);
 	return ret;
 }
 
