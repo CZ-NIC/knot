@@ -101,11 +101,14 @@ static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
 	}
 	*opt_rr->owner = '\0';
 
+	/* TYPE = OPT */
+	opt_rr->type = KNOT_RRTYPE_OPT;
+
 	/* CLASS = max UDP payload */
 	opt_rr->rclass = max_pld;
 
 	/* Empty RDATA */
-	uint8_t *rdata = (uint8_t *)mm_alloc(mm, DUMMY_RDATA_SIZE);
+	uint8_t *rdata = (uint8_t *)malloc(DUMMY_RDATA_SIZE);
 	if (rdata == NULL) {
 		ERR_ALLOC_FAILED;
 		knot_dname_free(&opt_rr->owner, mm);
@@ -126,8 +129,8 @@ static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
 	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
 
 	int ret = knot_rrset_add_rdata(opt_rr, rdata, 0, ttl_local, mm);
+	free(rdata);
 	if (ret != KNOT_EOK) {
-		mm_free(mm, rdata);
 		return ret;
 	}
 
