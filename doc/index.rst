@@ -1,8 +1,6 @@
 Welcome to Knot DNS's documentation!
 ====================================
 
-Contents:
-
 .. toctree::
    :maxdepth: 2
 
