@@ -339,6 +339,21 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 # Add code coverage macro
 AX_CODE_COVERAGE
 
+AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
+AS_IF([test "$SPHINXBUILD" = "false"],
+  [AC_MSG_WARN([Could not find the 'sphinx-build' executable, you will be unable to regenerate documentation.])],
+  [AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
+   AS_IF([test "$PDFLATEX" = ""],
+     [AC_MSG_WARN([Could not find the 'pdflatex' executable, you will be unable to generate PDF documentation.])])
+   AC_PATH_PROG([MAKEINFO], [makeinfo], [false])
+   AS_IF([test "$MAKEINFO" = "false"],
+     [AC_MSG_WARN([Could not find the 'makeinfo' executable, you will be unable to generate info documentation.])])
+  ])
+
+AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
+AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
+AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
+
 AC_CONFIG_FILES([Makefile
 		 doc/Makefile
 		 man/Makefile
@@ -348,6 +363,7 @@ AC_CONFIG_FILES([Makefile
 		 src/Makefile
 		 tests/Makefile
 		 src/zscanner/Makefile
+		 doc/conf.py
 		 man/khost.1
 		 man/knotc.8
 		 man/knotd.8
