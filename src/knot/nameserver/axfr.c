@@ -352,9 +352,11 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 			AXFRIN_LOG(LOG_INFO, "Zone is up-to-date.");
 			return NS_PROC_DONE;
 		}
+		AXFRIN_LOG(LOG_INFO, "Starting.\n");
 
 		ret = axfr_answer_init(data);
 		if (ret != KNOT_EOK) {
+			AXFRIN_LOG(LOG_ERR, "Failed.\n");
 			return NS_PROC_FAIL;
 		}
 	} else {
@@ -366,12 +368,14 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	if (ret == NS_PROC_DONE) {
 		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
 		/* This was the last packet, finalize zone and publish it. */
-		ret = axfr_answer_finalize(data);
-		if (ret != KNOT_EOK) {
-			return NS_PROC_FAIL;
+		int fret = axfr_answer_finalize(data);
+		if (fret != KNOT_EOK) {
+			ret = NS_PROC_FAIL;
 		}
+	}
 
-		return ret;
+	if (ret == NS_PROC_FAIL) {
+		AXFRIN_LOG(LOG_ERR, "Failed.\n");
 	}
 
 	return ret;
