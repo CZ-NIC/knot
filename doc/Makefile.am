@@ -51,3 +51,6 @@ else
 html pdf info doctest:
 	@echo "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
 endif
+
+clean-local:
+	-rm -rf _build
