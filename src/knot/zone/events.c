@@ -305,25 +305,28 @@ static int event_xfer(zone_t *zone)
 		return ret;
 	}
 
-	if (zone_contents_is_empty(zone->contents)) {
+	if (ret != KNOT_EOK) {
 		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_ERR, zone, master, "AXFR", "%s", knot_strerror(ret));
+		ZONE_QUERY_LOG(LOG_ERR, zone, master, "%s", "%s",
+		               pkt_type == KNOT_QUERY_AXFR ? "AXFR" : "IXFR",
+		               knot_strerror(ret));
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
 		bootstrap_next(&zone->xfr_in.bootstrap_retry);
 		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->xfr_in.bootstrap_retry);
 		return ret;
-	} else {
-		/* New zone transferred, reschedule zone expiration and refresh
-		 * timers and send notifications to slaves. */
-		knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
-		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
-		zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
 	}
 
-	return ret;
+	assert(!zone_contents_is_empty(zone->contents));
+	/* New zone transferred, reschedule zone expiration and refresh
+	 * timers and send notifications to slaves. */
+	knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
+	zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
+
+	return KNOT_EOK;
 }
 
 static int event_update(zone_t *zone)
