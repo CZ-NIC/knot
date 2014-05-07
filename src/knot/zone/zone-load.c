@@ -172,6 +172,13 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 			                 conf->name);
 			ret = KNOT_EOK;
 			changesets_free(&diff_change, NULL);
+		} else if (ret == KNOT_ERANGE) {
+			log_zone_warning("Zone %s: Zone file changed, "
+			                 "but serial is lower than before - "
+			                 "IXFR history will be lost.\n",
+			                 conf->name);
+			ret = KNOT_EOK;
+			changesets_free(&diff_change, NULL);
 		} else if (ret != KNOT_EOK) {
 			log_zone_error("Zone %s: Failed to calculate "
 			               "differences from the zone "
