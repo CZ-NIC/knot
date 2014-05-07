@@ -359,6 +359,10 @@ struct request_data *zone_update_dequeue(zone_t *zone)
 
 bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
 {
+	if (zone_contents_is_empty(zone->contents)) {
+		return true;
+	}
+
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	const knot_rrset_t soa = answer->rr[0];
 	if (soa.type != KNOT_RRTYPE_SOA) {
