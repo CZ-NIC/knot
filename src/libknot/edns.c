@@ -25,12 +25,17 @@
 
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
-	/*! \brief Mask for the DO bit in TTL in wire byte order. */
-	KNOT_EDNS_DO_MASK = (uint32_t)1 << 15,
+	/*! \brief Mask for the DO bit.
+	 * This mask should be used on TTL in machine byte order, no matter what
+	 * it is. Hell if I know why it works this way, but it does.
+	 */
+	KNOT_EDNS_DO_MASK = (uint32_t)(1 << 15),
 	/*! \brief Offset of Extended RCODE field in TTL in wire byte order. */
 	KNOT_EDNS_OFFSET_RCODE = 0,
 	/*! \brief Offset of the Version field in TTL in wire byte order. */
-	KNOT_EDNS_OFFSET_VERSION = 1
+	KNOT_EDNS_OFFSET_VERSION = 1,
+	/*! \brief Offset of the Flags field in TTL in wire byte order. */
+	KNOT_EDNS_OFFSET_FLAGS = 2
 };
 
 #define DUMMY_RDATA_SIZE 1
@@ -108,33 +113,25 @@ static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
 	opt_rr->rclass = max_pld;
 
 	/* Empty RDATA */
-	uint8_t *rdata = (uint8_t *)malloc(DUMMY_RDATA_SIZE);
-	if (rdata == NULL) {
-		ERR_ALLOC_FAILED;
-		knot_dname_free(&opt_rr->owner, mm);
-		return KNOT_ENOMEM;
-	}
+	uint8_t rdata[1] = { 0 };
 
 	/* TTL: extended RCODE + version + flags.
 	 * For easier manipulation, use wire order to assemble the TTL, then
 	 * convert it to machine byte order.
 	 */
 	uint32_t ttl = 0;
-	memcpy(&ttl + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
-	memcpy(&ttl + KNOT_EDNS_OFFSET_VERSION, &ver, 1);
-	/* Flags are in wire order, so just copy them. */
-	memcpy(&ttl, &flags, 2);
+	uint8_t *ttl_ptr = (uint8_t *)&ttl;
+	memcpy(ttl_ptr + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
+	memcpy(ttl_ptr + KNOT_EDNS_OFFSET_VERSION, &ver, 1);
+	/* Flags are in machine order, convert them to wire byt order. */
+	knot_wire_write_u16(ttl_ptr + KNOT_EDNS_OFFSET_FLAGS, flags);
 
 	/* Now convert the TTL to machine byte order. */
 	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
 
 	int ret = knot_rrset_add_rdata(opt_rr, rdata, 0, ttl_local, mm);
-	free(rdata);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -147,7 +144,8 @@ int knot_edns_init_from_params(knot_rrset_t *opt_rr,
 		return KNOT_EINVAL;
 	}
 
-	init_opt(opt_rr, params->payload, 0, params->version, 0, mm);
+	init_opt(opt_rr, params->payload, 0, params->version, params->flags,
+	         mm);
 
 	int ret = KNOT_EOK;
 	if (add_nsid) {
@@ -181,11 +179,12 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 	assert(opt_rr != NULL);
 
 	uint32_t ttl = 0;
+	uint8_t *ttl_ptr = (uint8_t *)&ttl;
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 
 	uint8_t rcode;
-	memcpy(&rcode, ((uint8_t *)&ttl) + KNOT_EDNS_OFFSET_RCODE, 1);
+	memcpy(&rcode, ttl_ptr + KNOT_EDNS_OFFSET_RCODE, 1);
 
 	return rcode;
 }
@@ -197,12 +196,13 @@ void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 	assert(opt_rr != NULL);
 
 	uint32_t ttl = 0;
+	uint8_t *ttl_ptr = (uint8_t *)&ttl;
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 	// Set the Extended RCODE in the converted TTL
-	memcpy(&ttl + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
+	memcpy(ttl_ptr + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
 	// Convert it back to machine byte order
-	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
+	uint32_t ttl_local = knot_wire_read_u32(ttl_ptr);
 	// Store the TTL to the RDATA
 	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
@@ -214,11 +214,12 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 	assert(opt_rr != NULL);
 
 	uint32_t ttl = 0;
+	uint8_t *ttl_ptr = (uint8_t *)&ttl;
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 
 	uint8_t version;
-	memcpy(&version, ((uint8_t *)&ttl) + KNOT_EDNS_OFFSET_VERSION, 1);
+	memcpy(&version, ttl_ptr + KNOT_EDNS_OFFSET_VERSION, 1);
 
 	return version;
 }
@@ -230,12 +231,13 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 	assert(opt_rr != NULL);
 
 	uint32_t ttl = 0;
+	uint8_t *ttl_ptr = (uint8_t *)&ttl;
 	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
+	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 	// Set the version in the converted TTL
-	memcpy(&ttl + KNOT_EDNS_OFFSET_VERSION, &version, 1);
+	memcpy(ttl_ptr + KNOT_EDNS_OFFSET_VERSION, &version, 1);
 	// Convert it back to machine byte order
-	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
+	uint32_t ttl_local = knot_wire_read_u32(ttl_ptr);
 	// Store the TTL to the RDATA
 	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
@@ -246,11 +248,7 @@ bool knot_edns_do(const knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 
-	uint32_t ttl = 0;
-	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
-
-	return ttl & KNOT_EDNS_DO_MASK;
+	return knot_rrset_ttl(opt_rr) & KNOT_EDNS_DO_MASK;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -259,15 +257,12 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 
-	uint32_t ttl = 0;
-	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32((uint8_t *)&ttl, knot_rrset_ttl(opt_rr));
-	// Set the DO bit in the converted TTL
+	// Read the TTL
+	uint32_t ttl = knot_rrset_ttl(opt_rr);
+	// Set the DO bit
 	ttl |= KNOT_EDNS_DO_MASK;
-	// Convert it back to machine byte order
-	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
 	// Store the TTL to the RDATA
-	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
+	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl);
 }
 
 /*----------------------------------------------------------------------------*/

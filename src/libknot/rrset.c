@@ -462,7 +462,6 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	if (rdlength == 0) {
 		// Alloc data for empty RR.
 		uint8_t *empty_rdata = malloc(1);
-		/* ^^^ WARNING: Doesn't this leak? ^^^ */
 		if (empty_rdata == NULL) {
 			return KNOT_ENOMEM;
 		}

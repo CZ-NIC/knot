@@ -144,11 +144,16 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	    query->edns > -1) {
 		uint8_t version = query->edns > -1 ? query->edns : 0;
 
-		knot_edns_params_t edns_params = { .payload = DEFAULT_EDNS_SIZE,
-		                                   .version = version,
-		                                   .nsid_len = 0,
-		                                   .nsid = NULL,
-		                                   .flags = KNOT_EDNS_FLAG_DO };
+		printf("DO bit? %s\n", (query->flags.do_flag) ? "yes" : "no");
+
+		knot_edns_params_t edns_params =
+		        { .payload = DEFAULT_EDNS_SIZE,
+		          .version = version,
+		          .nsid_len = 0,
+		          .nsid = NULL,
+		          .flags = (query->flags.do_flag)
+		                  ? KNOT_EDNS_FLAG_DO
+		                  : 0};
 
 		knot_pkt_add_opt(packet, &edns_params, false);
 

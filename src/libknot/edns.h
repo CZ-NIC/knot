@@ -77,7 +77,7 @@ enum knot_edns_option {
 /*! \brief EDNS flags.
  *
  * \note Use only with unsigned 2-byte variables.
- * \warning Flags are represented in wire byte order.
+ * \warning Flags are represented in machine byte order.
  */
 enum knot_edns_flags {
 	KNOT_EDNS_FLAG_DO = (uint16_t)1 << 15
