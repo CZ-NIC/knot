@@ -127,12 +127,11 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 
 	int ret = KNOT_EOK;
 	const conf_zone_t *conf = zone->conf;
-	changesets_t *dnssec_change = NULL;
-	changesets_t *diff_change = NULL;
 
 	/* Sign zone using DNSSEC (if configured). */
 	if (conf->dnssec_enable) {
-		dnssec_change = changesets_create(1);
+		assert(conf->build_diffs);
+		changesets_t *dnssec_change = changesets_create(1);
 		if (dnssec_change == NULL) {
 			return KNOT_ENOMEM;
 		}
@@ -148,18 +147,18 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 
 		/* Apply DNSSEC changes. */
 		ret = zone_change_commit(new_contents, dnssec_change);
+		changesets_free(&dnssec_change, NULL);
 		if (ret != KNOT_EOK) {
-			changesets_free(&dnssec_change, NULL);
 			return ret;
 		}
 	}
 
 	/* Calculate IXFR from differences (if configured). */
 	const bool contents_changed = zone->contents && (new_contents != zone->contents);
+	changesets_t *diff_change = NULL;
 	if (contents_changed && conf->build_diffs) {
 		diff_change = changesets_create(1);
 		if (diff_change == NULL) {
-			changesets_free(&dnssec_change, NULL);
 			return KNOT_ENOMEM;
 		}
 
@@ -170,46 +169,32 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 			                 "but serial didn't - won't "
 			                 "create journal entry.\n",
 			                 conf->name);
-			ret = KNOT_EOK;
 			changesets_free(&diff_change, NULL);
 		} else if (ret == KNOT_ERANGE) {
 			log_zone_warning("Zone %s: Zone file changed, "
 			                 "but serial is lower than before - "
 			                 "IXFR history will be lost.\n",
 			                 conf->name);
-			ret = KNOT_EOK;
 			changesets_free(&diff_change, NULL);
 		} else if (ret != KNOT_EOK) {
 			log_zone_error("Zone %s: Failed to calculate "
 			               "differences from the zone "
 			               "file update: %s\n",
 			               conf->name, knot_strerror(ret));
-			changesets_free(&dnssec_change, NULL);
 			changesets_free(&diff_change, NULL);
 			return ret;
 		}
 	}
 
-	changesets_t *to_store = NULL;
-	if (dnssec_change) {
-		if (diff_change) {
-			/* Merge changes to store them under one entry. */
-			changeset_merge(changesets_get_last(dnssec_change),
-			                     changesets_get_last(diff_change));
-			free(diff_change);
-		}
-		to_store = dnssec_change;
-	} else if (diff_change) {
-		to_store = diff_change;
+	if (diff_change) {
+		/* Write changes (DNSSEC and diff both) to journal if all went well. */
+		ret = zone_change_store(zone, diff_change);
+		changesets_free(&diff_change, NULL);
+		return ret;
 	}
 
-	/* Write changes (DNSSEC and diff both) to journal if all went well. */
-	if (to_store) {
-		ret = zone_change_store(zone, to_store);
-		changesets_free(&to_store, NULL);
-	}
-
-	return ret;
+	// No-op.
+	return KNOT_EOK;
 }
 
 bool zone_load_can_bootstrap(const conf_zone_t *conf)
