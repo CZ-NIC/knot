@@ -262,6 +262,43 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 	}
 }
 
+static int dump_dnstap(const char                  *filename,
+                       const Dnstap__Message__Type msg_type,
+                       const uint8_t               *wire,
+                       const size_t                wire_len,
+                       const net_t                 *net,
+                       const struct timeval        *qtime,
+                       const struct timeval        *rtime)
+{
+#if USE_DNSTAP
+	dt_writer_t     *dt_writer;
+	Dnstap__Message msg;
+	int             ret;
+
+	if (filename == NULL) {
+		return KNOT_EOK;
+	}
+
+	// Create dnstap writer.
+	dt_writer = dt_writer_create(filename, "kdig " PACKAGE_VERSION);
+	if (dt_writer == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// Dump the message.
+	ret = dt_message_fill(&msg, msg_type, net->srv->ai_addr,
+	                      net->srv->ai_protocol, wire, wire_len,
+	                      qtime, rtime);
+	if (ret == KNOT_EOK) {
+		dt_writer_write(dt_writer, (const ProtobufCMessage *) &msg);
+	}
+
+	// Destroy dnstap writer.
+	dt_writer_free(dt_writer);
+#endif
+	return KNOT_EOK;
+}
+
 static int process_query_packet(const knot_pkt_t        *query,
                                 net_t                   *net,
                                 const query_t           *query_ctx,
@@ -312,21 +349,11 @@ static int process_query_packet(const knot_pkt_t        *query,
 			ERR("can't print query packet\n");
 		}
 
-#if USE_DNSTAP
 		// Make the dnstap copy of the query.
-		if (query_ctx->dt_writer != NULL) {
-			Dnstap__Message m;
-			if (dt_message_fill(&m,
-				DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
-				net->srv->ai_addr, net->srv->ai_protocol,
-				query->wire, query->size,
-				&t_query, NULL) == KNOT_EOK)
-			{
-				dt_writer_write(query_ctx->dt_writer,
-				        (const ProtobufCMessage *) &m);
-			}
-		}
-#endif
+		dump_dnstap(query_ctx->dnstap_out,
+		            DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
+		            query->wire, query->size, net, &t_query, NULL);
+
 		printf("\n");
 	}
 
@@ -342,20 +369,11 @@ static int process_query_packet(const knot_pkt_t        *query,
 		// Get stop reply time.
 		gettimeofday(&t_end, NULL);
 
-#if USE_DNSTAP
+
 		// Make the dnstap copy of the response.
-		if (query_ctx->dt_writer != NULL) {
-			Dnstap__Message m;
-			if (dt_message_fill(&m,
-			        DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE,
-			        net->srv->ai_addr, net->srv->ai_protocol,
-			        in, in_len, &t_query, &t_end) == KNOT_EOK)
-			{
-				dt_writer_write(query_ctx->dt_writer,
-				        (const ProtobufCMessage *) &m);
-			}
-		}
-#endif
+		dump_dnstap(query_ctx->dnstap_out,
+		            DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE,
+		            in, in_len, net, &t_query, &t_end);
 
 		// Create reply packet structure to fill up.
 		reply = knot_pkt_new(in, in_len, NULL);
@@ -736,6 +754,55 @@ static void process_query_xfr(const query_t *query)
 	knot_pkt_free(&out_packet);
 }
 
+static void process_dnstap_file(const query_t *query)
+{
+#if USE_DNSTAP
+	dt_reader_t *dt_reader;
+	int         ret;
+
+	if (query->dnstap_in == NULL) {
+		return;
+	}
+
+	// Create dnstap reader.
+	dt_reader = dt_reader_create(query->dnstap_in);
+	if (dt_reader == NULL) {
+		ERR("can't create dnstap reader\n");
+		return;
+	}
+
+	// Read and print messages.
+	Dnstap__Dnstap  *frame = NULL;
+
+	for (;;) {
+		ret = dt_reader_read(dt_reader, &frame);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+
+		ProtobufCBinaryData msg = frame->message->response_message;
+		knot_pkt_t *pkt = knot_pkt_new(msg.data, msg.len, NULL);
+		if (pkt == NULL) {
+			ERR("can't allocate packet\n");
+			dnstap__dnstap__free_unpacked(frame, NULL);
+			break;
+		}
+
+		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
+			print_packet(pkt, NULL, pkt->size, 0, false, &query->style);
+		} else {
+			ERR("can't print query packet\n");
+		}
+
+		dnstap__dnstap__free_unpacked(frame, NULL);
+		knot_pkt_free(&pkt);
+	}
+
+	// Destroy dnstap reader.
+	dt_reader_free(dt_reader);
+#endif
+}
+
 int dig_exec(const dig_params_t *params)
 {
 	node_t *n = NULL;
@@ -755,6 +822,9 @@ int dig_exec(const dig_params_t *params)
 			break;
 		case OPERATION_XFR:
 			process_query_xfr(query);
+			break;
+		case OPERATION_LIST_DNSTAP:
+			process_dnstap_file(query);
 			break;
 		case OPERATION_LIST_SOA:
 			break;

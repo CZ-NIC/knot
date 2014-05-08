@@ -76,6 +76,15 @@ src/common/slab/slab.h
 src/common/sockaddr.c
 src/common/sockaddr.h
 src/common/strtonum.h
+src/dnstap/Makefile.am
+src/dnstap/dnstap.c
+src/dnstap/dnstap.h
+src/dnstap/message.c
+src/dnstap/message.h
+src/dnstap/reader.c
+src/dnstap/reader.h
+src/dnstap/writer.c
+src/dnstap/writer.h
 src/knot/conf/cf-lex.l
 src/knot/conf/cf-parse.y
 src/knot/conf/conf.c

@@ -445,6 +445,22 @@ int params_parse_tsig(const char *value, knot_key_params_t *key_params)
 	return KNOT_EOK;
 }
 
+int params_filename(const char *value, char **filename)
+{
+	if (value == NULL || filename == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	*filename = strdup(value);
+
+	if (*filename == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	return KNOT_EOK;
+}
+
 int params_parse_keyfile(const char *value, knot_key_params_t *key_params)
 {
 	if (value == NULL || key_params == NULL) {

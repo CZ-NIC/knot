@@ -28,7 +28,7 @@
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// parse_class
 #include "utils/common/resolv.h"	// get_nameservers
-
+#include "config.h"
 #define DEFAULT_RETRIES_DIG	2
 #define DEFAULT_TIMEOUT_DIG	5
 
@@ -792,6 +792,10 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->idn = true;
 		query->nsid = false;
 		query->edns = -1;
+#if USE_DNSTAP
+		query->dnstap_in = NULL;
+		query->dnstap_out = NULL;
+#endif
 	} else {
 		if (conf->local != NULL) {
 			query->local = srv_info_create(conf->local->name,
@@ -820,6 +824,16 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->idn = conf->idn;
 		query->nsid = conf->nsid;
 		query->edns = conf->edns;
+#if USE_DNSTAP
+		query->dnstap_in = NULL;
+		if (conf->dnstap_in) {
+			query->dnstap_in = strdup(conf->dnstap_in);
+		}
+		query->dnstap_out = NULL;
+		if (conf->dnstap_out) {
+			query->dnstap_out = strdup(conf->dnstap_out);
+		}
+#endif
 
 		if (knot_copy_key_params(&conf->key_params, &query->key_params)
 		    != KNOT_EOK) {
@@ -859,6 +873,11 @@ void query_free(query_t *query)
 	// Cleanup cryptographic content.
 	free_sign_context(&query->sign_ctx);
 	knot_free_key_params(&query->key_params);
+
+#if USE_DNSTAP
+	free(query->dnstap_in);
+	free(query->dnstap_out);
+#endif
 
 	free(query->owner);
 	free(query->port);
@@ -900,12 +919,6 @@ void dig_clean(dig_params_t *params)
 	WALK_LIST_DELSAFE(n, nxt, params->queries) {
 		query_free((query_t *)n);
 	}
-
-#if USE_DNSTAP
-	// Cleanup dnstap.
-	dt_reader_free(params->config->dt_reader);
-	dt_writer_free(params->config->dt_writer);
-#endif
 
 	// Clean up config.
 	query_free((query_t *)params->config);
@@ -1083,40 +1096,6 @@ static int parse_type(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
-#if USE_DNSTAP
-static int parse_dnstap_export(const char *value, query_t *query)
-{
-	DBG("Exporting to dnstap output file %s\n", value);
-
-	if (query->dt_writer != NULL) {
-		dt_writer_free(query->dt_writer);
-	}
-
-	query->dt_writer = dt_writer_create(value, "kdig " PACKAGE_VERSION);
-	if (query->dt_writer == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
-}
-
-static int parse_dnstap_generate(const char *value, query_t *query)
-{
-	DBG("Generating message output from dnstap input file %s\n", value);
-
-	if (query->dt_reader != NULL) {
-		dt_reader_free(query->dt_reader);
-	}
-
-	query->dt_reader = dt_reader_create(value);
-	if (query->dt_reader == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
-}
-#endif
-
 static void complete_servers(query_t *query, const query_t *conf)
 {
 	node_t *n = NULL;
@@ -1227,11 +1206,6 @@ void complete_queries(list_t *queries, const query_t *conf)
 
 		// Complete nameservers list.
 		complete_servers(q, conf);
-
-#if USE_DNSTAP
-		// Complete dnstap.
-		q->dt_writer = conf->dt_writer;
-#endif
 	}
 }
 
@@ -1443,7 +1417,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_dnstap_export(val, query) != KNOT_EOK) {
+		if (params_filename(val, &query->dnstap_out) != KNOT_EOK) {
 			ERR("unable to open dnstap output file %s\n", val);
 			return KNOT_EINVAL;
 		}
@@ -1460,10 +1434,11 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_dnstap_generate(val, query) != KNOT_EOK) {
+		if (params_filename(val, &query->dnstap_in) != KNOT_EOK) {
 			ERR("unable to open dnstap input file %s\n", val);
 			return KNOT_EINVAL;
 		}
+		query->operation = OPERATION_LIST_DNSTAP;
 		*index += add;
 #else
 		ERR("no dnstap support but -G specified\n");

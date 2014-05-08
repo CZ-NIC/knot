@@ -45,6 +45,8 @@ typedef enum {
 	OPERATION_QUERY,
 	/*!< Zone transfer (AXFR or IXFR). */
 	OPERATION_XFR,
+	/*!< Dump dnstap file. */
+	OPERATION_LIST_DNSTAP,
 	/*!< Query for NS and all authoritative SOA records. */
 	OPERATION_LIST_SOA
 } operation_t;
@@ -118,10 +120,10 @@ typedef struct {
 	/*!< Context for operations with signatures. */
 	sign_context_t	sign_ctx;
 #if USE_DNSTAP
-	/*!< Context for dnstap reader input. */
-	dt_reader_t	*dt_reader;
-	/*!< Context for dnstap writer output. */
-	dt_writer_t	*dt_writer;
+	/*!< Input dnstap file name. */
+	char		*dnstap_in;
+	/*!< Output dnstap file name. */
+	char		*dnstap_out;
 #endif
 } query_t;
 
