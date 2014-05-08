@@ -59,10 +59,12 @@ dt_writer_t* dt_writer_create(const char *file_path, const char *version)
 	if (writer->fw == NULL) {
 		goto fail;
 	}
+	/*
 	res = fstrm_writer_open(writer->fw);
 	if (res != fstrm_res_success) {
 		goto fail;
 	}
+	*/
 
 	return writer;
 fail:
