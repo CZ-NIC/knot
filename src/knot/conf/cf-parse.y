@@ -286,7 +286,7 @@ static void conf_acl_item(void *scanner, char *item)
 	free(item);
 }
 
-static void query_module_create(void *scanner, const char *name, const char *param)
+static void query_module_create(void *scanner, const char *name, const char *param, bool on_zone)
 {
 	struct query_module *module = query_module_open(name, param, NULL);
 	if (module == NULL) {
@@ -294,7 +294,11 @@ static void query_module_create(void *scanner, const char *name, const char *par
 		return;
 	}
 
-	add_tail(&this_zone->query_modules, &module->node);
+	if (on_zone) {
+		add_tail(&this_zone->query_modules, &module->node);
+	} else {
+		add_tail(&new_config->query_modules, &module->node);
+	}
 }
 
 static int conf_key_exists(void *scanner, char *item)
@@ -839,7 +843,7 @@ zone_acl:
  ;
 
 query_module:
- TEXT TEXT { query_module_create(scanner, $1.t, $2.t); free($1.t); free($2.t); }
+ TEXT TEXT { query_module_create(scanner, $1.t, $2.t, true); free($1.t); free($2.t); }
  ;
 
 query_module_list:
@@ -913,6 +917,13 @@ zone:
  | zone QUERY_MODULE '{' query_module_list '}'
  ;
 
+query_genmodule:
+ TEXT TEXT { query_module_create(scanner, $1.t, $2.t, false); free($1.t); free($2.t); }
+ ;
+query_genmodule_list:
+ | query_genmodule ';' query_genmodule_list
+ ;
+
 zones:
    ZONES '{'
  | zones zone '}'
@@ -949,6 +960,7 @@ zones:
  | zones SERIAL_POLICY SERIAL_POLICY_VAL ';' {
 	new_config->serial_policy = $3.i;
  }
+ | zones QUERY_MODULE '{' query_genmodule_list '}'
  ;
 
 log_prios_start: {

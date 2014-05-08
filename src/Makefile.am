@@ -242,6 +242,8 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/update.h		\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
+	knot/modules/dnstap.c		\
+	knot/modules/dnstap.h		\
 	knot/other/debug.h			\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\

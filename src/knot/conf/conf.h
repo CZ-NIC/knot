@@ -266,6 +266,8 @@ typedef struct conf_t {
 	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
 	int serial_policy;   /*!< Serial policy when updating zone. */
+	struct query_plan *query_plan;
+	list_t query_modules;
 
 	/*
 	 * Remote control interface.
