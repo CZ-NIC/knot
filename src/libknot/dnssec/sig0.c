@@ -74,7 +74,8 @@ static uint8_t *sig0_create_rdata(knot_rrset_t *rrset, knot_dnssec_key_t *key)
 		return NULL;
 	}
 
-	return knot_rrset_rr_rdata(rrset, 0);
+	const knot_rdata_t *rr = knot_rdataset_at(&rrset->rrs, 0);
+	return knot_rdata_data(rr);
 }
 
 /*!

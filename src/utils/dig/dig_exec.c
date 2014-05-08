@@ -63,26 +63,31 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	}
 
 	// Set flags to wireformat.
-	if (query->flags.aa_flag == true) {
+	if (query->flags.aa_flag) {
 		knot_wire_set_aa(packet->wire);
 	}
-	if (query->flags.tc_flag == true) {
+	if (query->flags.tc_flag) {
 		knot_wire_set_tc(packet->wire);
 	}
-	if (query->flags.rd_flag == true) {
+	if (query->flags.rd_flag) {
 		knot_wire_set_rd(packet->wire);
 	}
-	if (query->flags.ra_flag == true) {
+	if (query->flags.ra_flag) {
 		knot_wire_set_ra(packet->wire);
 	}
-	if (query->flags.z_flag == true) {
+	if (query->flags.z_flag) {
 		knot_wire_set_z(packet->wire);
 	}
-	if (query->flags.ad_flag == true) {
+	if (query->flags.ad_flag) {
 		knot_wire_set_ad(packet->wire);
 	}
-	if (query->flags.cd_flag == true) {
+	if (query->flags.cd_flag) {
 		knot_wire_set_cd(packet->wire);
+	}
+
+	// Set NOTIFY opcode.
+	if (query->notify) {
+		knot_wire_set_opcode(packet->wire, KNOT_OPCODE_NOTIFY);
 	}
 
 	// Create QNAME from string.
@@ -536,6 +541,11 @@ static void process_query(const query_t *query)
 
 		WARN("failed to query server %s#%s(%s)\n",
 		     remote->name, remote->service, get_sockname(socktype));
+
+		// If not last server, print separation.
+		if (server->next->next) {
+			printf("\n");
+		}
 	}
 
 	knot_pkt_free(&out_packet);
@@ -831,6 +841,11 @@ int dig_exec(const dig_params_t *params)
 		default:
 			ERR("unsupported operation\n");
 			break;
+		}
+
+		// If not last query, print separation.
+		if (n->next->next) {
+			printf("\n");
 		}
 	}
 

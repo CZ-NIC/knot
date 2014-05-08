@@ -105,6 +105,8 @@ typedef struct {
 	int32_t		type_num;
 	/*!< SOA serial for XFR. */
 	uint32_t	xfr_serial;
+	/*!< NOTIFY query. */
+	bool		notify;
 	/*!< Header flags. */
 	flags_t		flags;
 	/*!< Output settings. */

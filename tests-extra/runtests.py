@@ -69,6 +69,16 @@ def parse_args(cmd_args):
 
     return included, excluded
 
+def log_failed(log_dir, msg, indent=True):
+    fname = log_dir + "/failed.log"
+    first = False if os.path.isfile(fname) else True
+
+    file = open(fname, mode="a")
+    if first:
+        print("Failed tests:", file=file)
+    print("%s%s" % (" * " if indent else "", msg), file=file)
+    file.close()
+
 def main(args):
     included, excluded = parse_args(args)
 
@@ -128,6 +138,7 @@ def main(args):
             test_file = case_dir + "/test.py"
             if not os.path.isfile(test_file):
                 log.error(" * case \'%s\':\tMISSING" % case)
+                log_failed(outs_dir, "%s/%s\tMISSING" % (test, case))
                 fail_cnt += 1
                 continue
 
@@ -144,6 +155,8 @@ def main(args):
             except OsError:
                 log.error(" * case \'%s\':\tEXCEPTION (no dir \'%s\')" %
                           (case, out_dir))
+                log_failed(outs_dir, "%s/%s\tEXCEPTION (no dir \'%s\')" %
+                           (test, case, out_dir))
                 fail_cnt += 1
                 continue
 
@@ -154,11 +167,18 @@ def main(args):
                 skip_cnt += 1
             except Exception as exc:
                 save_traceback(params.out_dir)
+
+                desc = format(exc)
+                msg = desc if desc else exc.__class__.__name__
+
+                log.error(" * case \'%s\':\tEXCEPTION (%s)" %
+                          (case, msg))
+                log_failed(outs_dir, "%s/%s\tEXCEPTION (%s)" %
+                           (test, case, msg))
+
                 if params.debug:
                     traceback.print_exc()
-                else:
-                    log.error(" * case \'%s\':\tEXCEPTION (%s)" %
-                              (case, format(exc)))
+
                 fail_cnt += 1
             except BaseException as exc:
                 save_traceback(params.out_dir)
@@ -174,6 +194,7 @@ def main(args):
                 if params.err:
                     msg = " (%s)" % params.err_msg if params.err_msg else ""
                     log.info(" * case \'%s\':\tFAILED%s" % (case, msg))
+                    log_failed(outs_dir, "%s/%s\tFAILED%s" % (test, case, msg))
                     fail_cnt += 1
                 else:
                     log.info(" * case \'%s\':\tOK" % case)
@@ -190,6 +211,7 @@ def main(args):
     log.info(msg_cases + msg_skips + msg_res)
 
     if fail_cnt:
+        log_failed(outs_dir, "Total %i/%i" % (fail_cnt, case_cnt), indent=False)
         sys.exit(1)
     else:
         sys.exit(0)

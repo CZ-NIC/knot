@@ -156,7 +156,8 @@ char* get_fqd_name(const char *name);
 
 int params_parse_class(const char *value, uint16_t *rclass);
 
-int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial);
+int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial,
+                      bool *notify);
 
 int params_parse_server(const char *value, list_t *servers, const char *def_port);
 

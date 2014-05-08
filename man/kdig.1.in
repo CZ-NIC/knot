@@ -68,6 +68,7 @@ Set query name. An explicit variant of \fIname\fR specification.
 .BI \-t \ type
 Set query type (e.g. \fINS\fR, \fIIXFR=12345\fR, \fITYPE65535\fR).
 An explicit variant of \fItype\fR specification. The default type is \fIA\fR.
+It is also possible to use \fINOTIFY\fR parameter to send a notify message.
 .TP
 .BR \-v ,\  \-\-version
 Print program version.

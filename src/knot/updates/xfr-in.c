@@ -826,7 +826,7 @@ static int xfrin_apply_remove(knot_zone_contents_t *contents,
 }
 
 static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
-                  knot_changeset_t *chset)
+                  knot_changeset_t *chset, bool master)
 {
 	knot_rrset_t changed_rrset = node_rrset(node, rr->type);
 	if (!knot_rrset_empty(&changed_rrset)) {
@@ -843,47 +843,34 @@ static int add_rr(zone_node_t *node, const knot_rrset_t *rr,
 			clear_new_rrs(node, rr->type);
 			return ret;
 		}
+	}
 
-		// Extract copy, merge into it
-		knot_rdataset_t *changed_rrs = node_rdataset(node, rr->type);
-		ret = knot_rdataset_merge(changed_rrs, &rr->rrs, NULL);
-		if (ret != KNOT_EOK) {
-			clear_new_rrs(node, rr->type);
-			return ret;
-		}
-	} else {
-		// Inserting new RRSet, data will be copied.
-		bool ttl_err = false;
-		int ret = node_add_rrset(node, rr, &ttl_err);
-		if (ret != KNOT_EOK) {
-			return ret;
+	// Insert new RR to RRSet, data will be copied.
+	int ret = node_add_rrset(node, rr);
+	if (ret == KNOT_EOK || ret == KNOT_ETTL) {
+		// RR added, store for possible rollback.
+		knot_rdataset_t *rrs = node_rdataset(node, rr->type);
+		int data_ret = add_new_data(chset, rrs->data);
+		if (data_ret != KNOT_EOK) {
+			knot_rdataset_clear(rrs, NULL);
+			return data_ret;
 		}
 
-		if (ttl_err) {
-			char type_str[16] = { '\0' };
-			knot_rrtype_to_string(rr->type, type_str, sizeof(type_str));
-			char *name = knot_dname_to_str(rr->owner);
-			char *zname = knot_dname_to_str(chset->soa_from->owner);
-			log_zone_warning("Changes application to zone %s: TTL mismatch"
-			                 " in %s, type %s\n", zname, name, type_str);
-			free(name);
-			free(zname);
+		if (ret == KNOT_ETTL) {
+			// Handle possible TTL errors.
+			log_ttl_error(node, rr);
+			if (!master) {
+				// TTL errors fatal only for master.
+				return KNOT_EOK;
+			}
 		}
 	}
 
-	// Get changed RRS and store for possible rollback.
-	knot_rdataset_t *rrs = node_rdataset(node, rr->type);
-	int ret = add_new_data(chset, rrs->data);
-	if (ret != KNOT_EOK) {
-		knot_rdataset_clear(rrs, NULL);
-		return ret;
-	}
-
-	return KNOT_EOK;
+	return ret;
 }
 
 static int xfrin_apply_add(knot_zone_contents_t *contents,
-                           knot_changeset_t *chset)
+                           knot_changeset_t *chset, bool master)
 {
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chset->add) {
@@ -895,7 +882,7 @@ static int xfrin_apply_add(knot_zone_contents_t *contents,
 			return KNOT_ENOMEM;
 		}
 
-		int ret = add_rr(node, rr, chset);
+		int ret = add_rr(node, rr, chset, master);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -917,14 +904,13 @@ static int xfrin_apply_replace_soa(knot_zone_contents_t *contents,
 
 	assert(!node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA));
 
-	return add_rr(contents->apex, chset->soa_to, chset);
+	return add_rr(contents->apex, chset->soa_to, chset, false);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
-                                 knot_zone_contents_t *contents,
-                                 knot_changeset_t *chset)
+static int xfrin_apply_changeset(knot_zone_contents_t *contents,
+                                 knot_changeset_t *chset, bool master)
 {
 	/*
 	 * Applies one changeset to the zone. Checks if the changeset may be
@@ -948,7 +934,7 @@ static int xfrin_apply_changeset(list_t *old_rrs, list_t *new_rrs,
 		return ret;
 	}
 
-	ret = xfrin_apply_add(contents, chset);
+	ret = xfrin_apply_add(contents, chset, master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -1160,15 +1146,14 @@ int xfrin_apply_changesets_directly(knot_zone_contents_t *contents,
 
 	knot_changeset_t *set = NULL;
 	WALK_LIST(set, chsets->sets) {
-		int ret = xfrin_apply_changeset(&set->old_data,
-		                                &set->new_data,
-		                                contents, set);
+		const bool master = true; // Only DNSSEC changesets are applied directly.
+		int ret = xfrin_apply_changeset(contents, set, master);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 	}
 
-	return KNOT_EOK;
+	return xfrin_finalize_updated_zone(contents, true);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1193,15 +1178,6 @@ int xfrin_apply_changesets_dnssec_ddns(zone_t *zone,
 		xfrin_rollback_update(sec_chsets, &z_new);
 		dbg_xfrin("Failed to apply changesets to zone: "
 		          "%s\n", knot_strerror(ret));
-		return ret;
-	}
-
-	const bool handle_nsec3 = true;
-	ret = xfrin_finalize_updated_zone(z_new, handle_nsec3);
-	if (ret != KNOT_EOK) {
-		dbg_xfrin("Failed to finalize updated zone: %s\n",
-		          knot_strerror(ret));
-		xfrin_rollback_update(sec_chsets, &z_new);
 		return ret;
 	}
 
@@ -1243,10 +1219,9 @@ int xfrin_apply_changesets(zone_t *zone,
 	dbg_xfrin_verb("Old contents apex: %p, new apex: %p\n",
 		       old_contents->apex, contents_copy->apex);
 	knot_changeset_t *set = NULL;
+	const bool master = (zone_master(zone) == NULL);
 	WALK_LIST(set, chsets->sets) {
-		ret = xfrin_apply_changeset(&set->old_data,
-		                            &set->new_data,
-		                            contents_copy, set);
+		ret = xfrin_apply_changeset(contents_copy, set, master);
 		if (ret != KNOT_EOK) {
 			xfrin_rollback_update(chsets, &contents_copy);
 			dbg_xfrin("Failed to apply changesets to zone: "

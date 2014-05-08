@@ -64,36 +64,11 @@ AS_IF([test "x$YACC_BISON" != "xbison"],
     [AC_MSG_ERROR([GNU bison needed for reentrant parsers, set the \$YACC variable before running configure])])
 AC_PROG_INSTALL
 
-# Check for Ragel
-AC_ARG_WITH([ragel],
-    AC_HELP_STRING([--with-ragel=path], [Path to Ragel binary. [default=auto]]),
-    [with_ragel=$withval],
-    [with_ragel=auto])
-
-AS_CASE([$with_ragel],
-    [yes|auto], [AC_PATH_PROG([RAGEL], [ragel], [false])],
-    [no], [RAGEL=false],
-    [*], [RAGEL=$with_ragel],
-)
-
-AM_CONDITIONAL([HAVE_RAGEL], test "$RAGEL" != "false")
-
-# Set FSM type for Ragel
+# Set zone parser type
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--disable-fastparser], [Don't use faster zone parser]),
-    [],
-    [enable_fastparser=yes])
-
-AS_CASE([$enable_fastparser],
-    [no], [AC_SUBST([FSM_TYPE], [-T0])],
-    [yes], [AC_SUBST([FSM_TYPE], [-G2])],
-    [*], [
-        AS_IF([test "$RAGEL" = "false"],
-	    [AC_MSG_ERROR([Ragel is needed to generate different parsers])])
-        AC_SUBST([FSM_TYPE], [$enable_fastparser])
-    ])
-AM_CONDITIONAL([G2_PARSER], test "$enable_fastparser" = "yes")
-AM_CONDITIONAL([T0_PARSER], test "$enable_fastparser" = "no")
+    AS_HELP_STRING([--disable-fastparser], [Use slower zone parser]),
+    [], [enable_fastparser=yes])
+AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = yes])
 
 # Systemd integration
 AC_ARG_ENABLE([systemd],
@@ -186,10 +161,6 @@ AC_ARG_ENABLE([microseconds-log],
     AC_DEFINE([ENABLE_MICROSECONDS_LOG], [1], [microseconds in log messages]))
 
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
-
-# Disable strict aliasing
-# FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
-AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
 
 # Default directories
 run_dir="${localstatedir}/run/knot"
@@ -376,6 +347,21 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 # Add code coverage macro
 AX_CODE_COVERAGE
 
+AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
+AS_IF([test "$SPHINXBUILD" = "false"],
+  [AC_MSG_WARN([Could not find the 'sphinx-build' executable, you will be unable to regenerate documentation.])],
+  [AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
+   AS_IF([test "$PDFLATEX" = ""],
+     [AC_MSG_WARN([Could not find the 'pdflatex' executable, you will be unable to generate PDF documentation.])])
+   AC_PATH_PROG([MAKEINFO], [makeinfo], [false])
+   AS_IF([test "$MAKEINFO" = "false"],
+     [AC_MSG_WARN([Could not find the 'makeinfo' executable, you will be unable to generate info documentation.])])
+  ])
+
+AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
+AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
+AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
+
 AC_CONFIG_FILES([Makefile
 		 doc/Makefile
 		 man/Makefile
@@ -386,6 +372,7 @@ AC_CONFIG_FILES([Makefile
 		 tests/Makefile
 		 src/dnstap/Makefile
 		 src/zscanner/Makefile
+		 doc/conf.py
 		 man/khost.1
 		 man/knotc.8
 		 man/knotd.8
@@ -407,7 +394,7 @@ echo "
   CFlags: ${CFLAGS} ${CPPFLAGS}
   LDFlags: ${LDFLAGS}
   Libs: ${LIBS}
-  Ragel: ${RAGEL} ${FSM_TYPE}
+  Fast zone parser: ${enable_fastparser}
   Utils with IDN: ${libidn}
   Use systemd notifications: ${enable_systemd}
   Use dnstap support: ${opt_dnstap}

@@ -88,6 +88,13 @@ class Test(object):
         Test.last_port = port
         return port
 
+    @property
+    def hostname(self):
+        hostname = socket.gethostname()
+        addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
+                                      socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
+        return addrinfo[0][3] if addrinfo else hostname
+
     def server(self, server, nsid=None, ident=None, version=None, \
                valgrind=None):
         if server == "knot":
