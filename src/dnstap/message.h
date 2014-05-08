@@ -36,14 +36,10 @@
 /*!
  * \brief Fill a Dnstap__Message structure with the given parameters.
  * 
- * Supported message types:
- *      \c DNSTAP__MESSAGE__TYPE__TOOL_QUERY
- *      \c DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE
- * 
  * \param[out] m
  *      Dnstap__Message structure to fill. Will be zeroed first.
  * \param type
- *      One of the supported message type values.
+ *      One of the DNSTAP__MESSAGE__TYPE__* values.
  * \param response_sa
  *      sockaddr_in or sockaddr_in6 to use when filling the 'socket_family',
  *      'response_address', 'response_port' fields.
