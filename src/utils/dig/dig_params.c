@@ -903,6 +903,7 @@ void dig_clean(dig_params_t *params)
 
 #if USE_DNSTAP
 	// Cleanup dnstap.
+	dt_reader_free(params->config->dt_reader);
 	dt_writer_free(params->config->dt_writer);
 #endif
 
@@ -1098,6 +1099,22 @@ static int parse_dnstap_export(const char *value, query_t *query)
 
 	return KNOT_EOK;
 }
+
+static int parse_dnstap_generate(const char *value, query_t *query)
+{
+	DBG("Generating message output from dnstap input file %s\n", value);
+
+	if (query->dt_reader != NULL) {
+		dt_reader_free(query->dt_reader);
+	}
+
+	query->dt_reader = dt_reader_create(value);
+	if (query->dt_reader == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
 #endif
 
 static void complete_servers(query_t *query, const query_t *conf)
@@ -1223,6 +1240,7 @@ static void dig_help(void)
 	printf("Usage: kdig [-4] [-6] [-dh] [-b address] [-c class] [-p port]\n"
 	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"
 	       "            [-y [algo:]keyname:key] [-E tapfile] name @server\n"
+	       "       kdig [-G tapfile]\n"
 	       "\n"
 	       "       +[no]multiline  Wrap long records to more lines.\n"
 	       "       +[no]short      Show record data only.\n"
@@ -1432,6 +1450,23 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 		*index += add;
 #else
 		ERR("no dnstap support but -E specified\n");
+		return KNOT_EINVAL;
+#endif
+		break;
+	case 'G':
+#if USE_DNSTAP
+		if (val == NULL) {
+			ERR("missing filename\n");
+			return KNOT_EINVAL;
+		}
+
+		if (parse_dnstap_generate(val, query) != KNOT_EOK) {
+			ERR("unable to open dnstap input file %s\n", val);
+			return KNOT_EINVAL;
+		}
+		*index += add;
+#else
+		ERR("no dnstap support but -G specified\n");
 		return KNOT_EINVAL;
 #endif
 		break;

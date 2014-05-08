@@ -33,6 +33,7 @@
 #include "utils/common/exec.h"		// sign_context_t
 
 #if USE_DNSTAP
+# include "dnstap/reader.h"
 # include "dnstap/writer.h"
 #endif
 
@@ -117,6 +118,8 @@ typedef struct {
 	/*!< Context for operations with signatures. */
 	sign_context_t	sign_ctx;
 #if USE_DNSTAP
+	/*!< Context for dnstap reader input. */
+	dt_reader_t	*dt_reader;
 	/*!< Context for dnstap writer output. */
 	dt_writer_t	*dt_writer;
 #endif
