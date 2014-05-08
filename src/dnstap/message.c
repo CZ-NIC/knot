@@ -35,12 +35,6 @@ int dt_message_fill(Dnstap__Message *m,
 	memset(m, 0, sizeof(*m));
 	m->base.descriptor = &dnstap__message__descriptor;
 
-	if (type != DNSTAP__MESSAGE__TYPE__TOOL_QUERY &&
-	    type != DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE)
-	{
-		return KNOT_EINVAL;
-	}
-
 	// Message.type
 	m->type = type;
 
@@ -92,12 +86,16 @@ int dt_message_fill(Dnstap__Message *m,
 	}
 	m->has_socket_protocol = 1;
 
-	if (type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY) {
+	if (type == DNSTAP__MESSAGE__TYPE__AUTH_QUERY ||
+	    type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY)
+	{
 		// Message.query_message
 		m->query_message.len = len_wire;
 		m->query_message.data = (uint8_t *)wire;
 		m->has_query_message = 1;
-	} else if (type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE) {
+	} else if (type == DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE ||
+		   type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE)
+	{
 		// Message.response_message
 		m->response_message.len = len_wire;
 		m->response_message.data = (uint8_t *)wire;

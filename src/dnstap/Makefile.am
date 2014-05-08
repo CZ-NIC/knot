@@ -29,6 +29,7 @@ libdnstap_la_LDFLAGS =			\
 libdnstap_la_SOURCES =			\
 	dnstap.c			\
 	message.c			\
+	reader.c			\
 	writer.c
 
 nodist_libdnstap_la_SOURCES =		\
