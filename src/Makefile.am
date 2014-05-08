@@ -318,6 +318,7 @@ knsec3hash_LDADD = libknotus.la libknots.la libknot.la
 if HAVE_DNSTAP
 kdig_LDADD	+= dnstap/libdnstap.la
 khost_LDADD	+= dnstap/libdnstap.la
+libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 
 # Create storage and run-time directories
