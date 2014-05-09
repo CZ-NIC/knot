@@ -26,6 +26,7 @@
 #include "common/print.h"		// time_diff
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/descriptor.h"		// KNOT_RRTYPE_
+#include "common/sockaddr.h"
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
@@ -753,6 +754,8 @@ static void process_query_xfr(const query_t *query)
 	knot_pkt_free(&out_packet);
 }
 
+
+
 static void process_dnstap_file(const query_t *query)
 {
 #if USE_DNSTAP
@@ -797,7 +800,39 @@ static void process_dnstap_file(const query_t *query)
 		}
 
 		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
-			print_packet(pkt, NULL, pkt->size, 0, is_response, &query->style);
+			ProtobufCBinaryData *addr = NULL;
+
+			uint32_t port = 0;
+			net_t net_ctx = { 0 };
+			if (is_response) {
+				addr = &frame->message->response_address;
+				port = frame->message->response_port;
+			} else {
+				addr = &frame->message->query_address;
+				port = frame->message->query_port;
+			}
+
+			char addrstr[INET6_ADDRSTRLEN + 1];
+			if (addr->data != NULL) {
+				assert(frame->message->has_socket_family);
+
+				struct sockaddr_storage ss;
+				int family;
+				switch (frame->message->socket_family){
+				case DNSTAP__SOCKET_FAMILY__INET: family = AF_INET; break;
+				case DNSTAP__SOCKET_FAMILY__INET6: family = AF_INET6; break;
+				default:
+					abort();
+				}
+
+				sockaddr_set_raw(&ss, family, addr->data);
+				sockaddr_port_set(&ss, port);
+				sockaddr_tostr(&ss, addrstr, INET6_ADDRSTRLEN);
+				net_ctx.remote_str = addrstr;
+			}
+
+			print_packet(pkt, &net_ctx, pkt->size, 0,
+				     is_response, &query->style);
 		} else {
 			ERR("can't print query packet\n");
 		}
