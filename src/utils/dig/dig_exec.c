@@ -334,7 +334,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 		if (q != NULL) {
 			if (knot_pkt_parse(q, 0) == KNOT_EOK) {
 				print_packet(q, net, query->size,
-					     time_diff(&t_start, &t_query),
+					     time_diff(&t_start, &t_query), 0,
 					     false, style);
 			} else {
 				ERR("can't print query packet\n");
@@ -428,7 +428,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 	}
 
 	// Print reply packet.
-	print_packet(reply, net, in_len, time_diff(&t_query, &t_end),
+	print_packet(reply, net, in_len, time_diff(&t_query, &t_end), 0,
 	             true, style);
 
 	knot_pkt_free(&reply);
@@ -579,7 +579,7 @@ static int process_packet_xfr(const knot_pkt_t        *query,
 	// Print query packet if required.
 	if (style->show_query) {
 		print_packet(query, net, query->size,
-		             time_diff(&t_start, &t_query),
+		             time_diff(&t_start, &t_query), 0,
 		             false, style);
 		printf("\n");
 	}
@@ -685,7 +685,7 @@ static int process_packet_xfr(const knot_pkt_t        *query,
 
 	// Print trailing transfer information.
 	print_footer_xfr(total_len, msg_count, rr_count, net,
-	                 time_diff(&t_query, &t_end), style);
+	                 time_diff(&t_query, &t_end), 0, style);
 
 	net_close(net);
 
@@ -754,7 +754,17 @@ static void process_query_xfr(const query_t *query)
 	knot_pkt_free(&out_packet);
 }
 
+#if USE_DNSTAP
+static float get_query_time(const Dnstap__Dnstap *frame)
+{
+	struct timeval from = {.tv_sec = frame->message->query_time_sec,
+		.tv_usec = frame->message->query_time_nsec / 1000};
 
+	struct timeval to = {.tv_sec = frame->message->response_time_sec,
+		.tv_usec = frame->message->response_time_nsec / 1000};
+	return time_diff(&from, &to);
+}
+#endif
 
 static void process_dnstap_file(const query_t *query)
 {
@@ -831,7 +841,16 @@ static void process_dnstap_file(const query_t *query)
 				net_ctx.remote_str = addrstr;
 			}
 
-			print_packet(pkt, &net_ctx, pkt->size, 0,
+			const float query_time = is_response ? get_query_time(frame) : 0.0;
+
+			time_t time = 0;
+			if (is_response) {
+				time = frame->message->response_time_sec;
+			} else {
+				time = frame->message->query_time_sec;
+			}
+
+			print_packet(pkt, &net_ctx, pkt->size, query_time, time,
 				     is_response, &query->style);
 		} else {
 			ERR("can't print query packet\n");

@@ -75,6 +75,7 @@ void print_data_xfr(const knot_pkt_t *packet, const style_t *style);
  * \param rr_count	Total number of answer records.
  * \param net		Connection information.
  * \param elapsed	Total elapsed time.
+ * \param exec_time     Time of the packet creation.
  * \param style		Style of the otput.
  */
 void print_footer_xfr(const size_t  total_len,
@@ -82,6 +83,7 @@ void print_footer_xfr(const size_t  total_len,
                       const size_t  rr_count,
                       const net_t   *net,
                       const float   elapsed,
+                      const time_t  exec_time,
                       const style_t *style);
 
 /*!
@@ -91,6 +93,7 @@ void print_footer_xfr(const size_t  total_len,
  * \param net		Connection information.
  * \param size		Original packet wire size.
  * \param elapsed	Total elapsed time.
+ * \param exec_time     Time of the packet creation.
  * \param incoming	Indicates if the packet is input.
  * \param style		Style of the otput.
  */
@@ -98,6 +101,7 @@ void print_packet(const knot_pkt_t *packet,
                   const net_t      *net,
                   const size_t     size,
                   const float      elapsed,
+		  const time_t     exec_time,
                   const bool       incoming,
                   const style_t    *style);
 
