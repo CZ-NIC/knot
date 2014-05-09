@@ -72,6 +72,14 @@ int dt_reader_free(dt_reader_t *reader);
  */
 int dt_reader_read(dt_reader_t *reader, Dnstap__Dnstap **d);
 
+/*!
+ * \brief free the frame allocated by dt_read_data.
+ *
+ * \param reader                Dnstap reader context.
+ * \param d                     The frame to be freed.
+ */
+void dt_reader_free_frame(dt_reader_t *reader, Dnstap__Dnstap **d);
+
 #endif // _DNSTAP__DNSTAP_H_
 
 /*! @} */

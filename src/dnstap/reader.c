@@ -92,3 +92,13 @@ int dt_reader_read(dt_reader_t *reader, Dnstap__Dnstap **d)
 
 	return KNOT_EOK;
 }
+
+void dt_reader_free_frame(dt_reader_t *reader, Dnstap__Dnstap **frame_ptr)
+{
+	if (!*frame_ptr) {
+		return;
+	}
+
+	dnstap__dnstap__free_unpacked(*frame_ptr, NULL);
+	*frame_ptr = NULL;
+}
