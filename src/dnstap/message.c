@@ -36,7 +36,6 @@ static void set_address(const struct sockaddr *sockaddr,
 	}
 
 	*has_addr = 1;
-	*has_addr = 1;
 	*has_port = 1;
 
 	if (sockaddr->sa_family == AF_INET) {

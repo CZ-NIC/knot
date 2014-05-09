@@ -335,6 +335,11 @@ static int process_query_packet(const knot_pkt_t        *query,
 	// Get stop query time and start reply time.
 	gettimeofday(&t_query, NULL);
 
+	// Make the dnstap copy of the query.
+	dump_dnstap(query_ctx->dt_writer,
+			DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
+			query->wire, query->size, net, &t_query, NULL);
+
 	// Print query packet if required.
 	if (style->show_query) {
 		// Create copy of query packet for parsing.
@@ -351,11 +356,6 @@ static int process_query_packet(const knot_pkt_t        *query,
 		} else {
 			ERR("can't print query packet\n");
 		}
-
-		// Make the dnstap copy of the query.
-		dump_dnstap(query_ctx->dt_writer,
-		            DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
-		            query->wire, query->size, net, &t_query, NULL);
 
 		printf("\n");
 	}
@@ -803,6 +803,9 @@ static void process_dnstap_file(const query_t *query)
 			msg = &frame->message->response_message;
 			is_response = true;
 		} else if (frame->message->has_query_message) {
+			if (!query->style.show_query) {
+				continue;
+			}
 			msg = &frame->message->query_message;
 			is_response = false;
 		} else {
