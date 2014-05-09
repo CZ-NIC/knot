@@ -81,6 +81,31 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 	return KNOT_EINVAL;
 }
 
+int sockaddr_set_raw(struct sockaddr_storage *ss, int family, const uint8_t *raw_addr)
+{
+	if (ss == NULL || raw_addr == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	/* Clear the structure and set family and port. */
+	memset(ss, 0, sizeof(struct sockaddr_storage));
+	ss->ss_family = family;
+
+	/* Initialize address depending on address family. */
+	socklen_t addr_len = sockaddr_len(ss);
+	if (family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
+		memcpy(&ipv6->sin6_addr, raw_addr, addr_len);
+		return KNOT_EOK;
+	} else if (family == AF_INET) {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
+		memcpy(&ipv4->sin_addr, raw_addr, addr_len);
+		return KNOT_EOK;
+	}
+
+	return KNOT_EINVAL;
+}
+
 int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen)
 {
 	if (ss == NULL || buf == NULL) {
