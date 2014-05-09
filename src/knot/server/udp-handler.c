@@ -127,6 +127,7 @@ int udp_handle(udp_context_t *udp, int fd, struct sockaddr_storage *ss,
 	param.proc_flags |= NS_QUERY_LIMIT_ANY;  /* Limit ANY over UDP (depends on zone as well). */
 	param.query_socket = fd;
 	param.server = udp->server;
+	param.thread_id = udp->thread_id;
 
 	/* Rate limit is applied? */
 	if (knot_unlikely(udp->server->rrl != NULL) && udp->server->rrl->rate > 0) {
@@ -499,6 +500,7 @@ int udp_master(dthread_t *thread)
 		/* Check handler state. */
 		if (knot_unlikely(*iostate & ServerReload)) {
 			*iostate &= ~ServerReload;
+			udp.thread_id = handler->thread_id[thr_id];
 			maxfd = 0;
 			minfd = INT_MAX;
 			FD_ZERO(&fds);
