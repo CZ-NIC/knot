@@ -23,8 +23,53 @@
 
 #include "dnstap/message.h"
 
+static void set_address(const struct sockaddr *sockaddr,
+		       ProtobufCBinaryData *addr,
+		       protobuf_c_boolean *has_addr,
+		       uint32_t *port,
+		       protobuf_c_boolean *has_port)
+{
+	if (sockaddr == NULL) {
+		*has_addr = 0;
+		*has_port = 0;
+		return;
+	}
+
+	*has_addr = 1;
+	*has_addr = 1;
+	*has_port = 1;
+
+	if (sockaddr->sa_family == AF_INET) {
+		const struct sockaddr_in *sai = (const struct sockaddr_in *)sockaddr;
+		addr->len = 4;
+		addr->data = (uint8_t *)&sai->sin_addr.s_addr;
+		*port = ntohs(sai->sin_port);
+	} else if (sockaddr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *sai6 = (const struct sockaddr_in6 *)sockaddr;
+		addr->len = 16;
+		addr->data = (uint8_t *)&sai6->sin6_addr.s6_addr;
+		*port = ntohs(sai6->sin6_port);
+	}
+}
+
+static int get_family(const struct sockaddr *query_sa,
+	              const struct sockaddr *response_sa)
+{
+	const struct sockaddr *source = query_sa ? query_sa : response_sa;
+	if (!source) {
+		return 0;
+	}
+
+	switch (source->sa_family) {
+	case AF_INET: return DNSTAP__SOCKET_FAMILY__INET;
+	case AF_INET6: return DNSTAP__SOCKET_FAMILY__INET6;
+	default: return 0;
+	};
+}
+
 int dt_message_fill(Dnstap__Message *m,
                     const Dnstap__Message__Type type,
+                    const struct sockaddr *query_sa,
                     const struct sockaddr *response_sa,
                     const int protocol,
                     const void *wire,
@@ -38,43 +83,9 @@ int dt_message_fill(Dnstap__Message *m,
 	// Message.type
 	m->type = type;
 
-	if (response_sa->sa_family == AF_INET) {
-		const struct sockaddr_in *sai =
-			(const struct sockaddr_in *)response_sa;
-
-		// Message.socket_family
-		m->has_socket_family = 1;
-		m->socket_family = DNSTAP__SOCKET_FAMILY__INET;
-
-		// Message.response_address
-		m->response_address.len = 4;
-		m->response_address.data = (uint8_t *)
-			&sai->sin_addr.s_addr;
-		m->has_response_address = 1;
-
-		// Message.response_port
-		m->has_response_port = 1;
-		m->response_port = ntohs(sai->sin_port);
-	} else if (response_sa->sa_family == AF_INET6) {
-		const struct sockaddr_in6 *sai6 =
-			(const struct sockaddr_in6 *)response_sa;
-
-		// Message.socket_family
-		m->socket_family = DNSTAP__SOCKET_FAMILY__INET6;
-		m->has_socket_family = 1;
-
-		// Message.response_address
-		m->response_address.len = 16;
-		m->response_address.data = (uint8_t *)
-			&sai6->sin6_addr.s6_addr;
-		m->has_response_address = 1;
-
-		// Message.response_port
-		m->has_response_port = 1;
-		m->response_port = ntohs(sai6->sin6_port);
-	} else {
-		return KNOT_EINVAL;
-	}
+	// Message.socket_family
+	m->socket_family = get_family(query_sa, response_sa);
+	m->has_socket_family = m->socket_family != 0;
 
 	// Message.socket_protocol
 	if (protocol == IPPROTO_UDP) {
@@ -82,9 +93,15 @@ int dt_message_fill(Dnstap__Message *m,
 	} else if (protocol == IPPROTO_TCP) {
 		m->socket_protocol = DNSTAP__SOCKET_PROTOCOL__TCP;
 	} else {
-		return KNOT_EINVAL;
+		m->socket_protocol = 0;
 	}
-	m->has_socket_protocol = 1;
+	m->has_socket_protocol = m->socket_protocol != 0;
+
+	// Message addresses
+	set_address(query_sa, &m->query_address, &m->has_query_address,
+	            &m->query_port, &m->has_query_port);
+	set_address(response_sa, &m->response_address, &m->has_response_address,
+	            &m->response_port, &m->has_response_port);
 
 	if (type == DNSTAP__MESSAGE__TYPE__AUTH_QUERY ||
 	    type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY)

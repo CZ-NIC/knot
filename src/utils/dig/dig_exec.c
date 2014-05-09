@@ -284,7 +284,7 @@ static int dump_dnstap(dt_writer_t                 *writer,
 		return KNOT_EOK;
 	}
 
-	ret = dt_message_fill(&msg, msg_type, net->srv->ai_addr,
+	ret = dt_message_fill(&msg, msg_type, NULL, net->srv->ai_addr,
 	                      net->srv->ai_protocol, wire, wire_len,
 	                      qtime, rtime);
 	if (ret == KNOT_EOK) {

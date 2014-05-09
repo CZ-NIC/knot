@@ -58,7 +58,9 @@ static int log_message(int state, const knot_pkt_t *pkt, struct query_data *qdat
 	/* Create a dnstap message. */
 	Dnstap__Message msg;
 	ret = dt_message_fill(&msg, msgtype,
-	                      qdata->param->query_source, protocol,
+			      NULL, /* todo: fill me! */
+	                      (const struct sockaddr *)qdata->param->query_source,
+			      protocol,
 	                      pkt->wire, pkt->size, &tv, &tv);
 	if (ret != KNOT_EOK) {
 		return NS_PROC_FAIL; 

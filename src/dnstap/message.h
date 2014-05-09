@@ -59,6 +59,7 @@
  */
 int dt_message_fill(Dnstap__Message *m,
                     const Dnstap__Message__Type type,
+                    const struct sockaddr *query_sa,
                     const struct sockaddr *response_sa,
                     const int protocol,
                     const void *wire,
