@@ -960,6 +960,21 @@ char* strcpath(char *path)
 	return path;
 }
 
+size_t conf_udp_threads(const conf_t *conf)
+{
+	if (conf->workers < 1) {
+		return dt_optimal_size();
+	}
+
+	return conf->workers;
+}
+
+size_t conf_tcp_threads(const conf_t *conf)
+{
+	size_t thrcount = conf_udp_threads(conf);
+	return MAX(thrcount * 2, CONFIG_XFERS);
+}
+
 void conf_init_zone(conf_zone_t *zone)
 {
 	if (!zone) {
