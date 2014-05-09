@@ -51,6 +51,7 @@ typedef struct tcp_context {
 	unsigned client_threshold;  /*!< Index of first TCP client. */
 	timev_t last_poll_time;     /*!< Time of the last socket poll. */
 	fdset_t set;                /*!< Set of server/client sockets. */
+	unsigned thread_id;			/*!< Thread identifier. */
 } tcp_context_t;
 
 /*
@@ -104,6 +105,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd,
 	param.query_socket = fd;
 	param.query_source = &ss;
 	param.server = tcp->server;
+	param.thread_id = tcp->thread_id;
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
@@ -371,6 +373,7 @@ int tcp_master(dthread_t *thread)
 
 	/* Create TCP answering context. */
 	tcp.server = handler->server;
+	tcp.thread_id = handler->thread_id[dt_get_id(thread)];
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&tcp.query_ctx.mm, 4 * sizeof(knot_pkt_t));

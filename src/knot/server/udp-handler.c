@@ -61,6 +61,7 @@ enum {
 typedef struct udp_context {
 	knot_process_t query_ctx; /*!< Query processing context. */
 	server_t *server;         /*!< Name server structure. */
+	unsigned thread_id;       /*!< Thread identifier. */
 } udp_context_t;
 
 /* FD_COPY macro compat. */
@@ -478,6 +479,7 @@ int udp_master(dthread_t *thread)
 	udp_context_t udp;
 	memset(&udp, 0, sizeof(udp_context_t));
 	udp.server = handler->server;
+	udp.thread_id = handler->thread_id[thr_id];
 
 	/* Create big enough memory cushion. */
 	mm_ctx_mempool(&udp.query_ctx.mm, 4 * sizeof(knot_pkt_t));

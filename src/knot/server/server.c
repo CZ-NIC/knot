@@ -242,11 +242,13 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 	s->ifaces = newlist;
 
 	/* Update TCP+UDP ifacelist (reload all threads). */
+	unsigned thread_count = 0;
 	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
 		dt_unit_t *tu = s->handler[proto].unit;
 		for (unsigned i = 0; i < tu->size; ++i) {
 			ref_retain((ref_t *)newlist);
 			s->handler[proto].thread_state[i] |= ServerReload;
+			s->handler[proto].thread_id[i] = thread_count++;
 			if (s->state & ServerRunning) {
 				dt_activate(tu->threads[i]);
 				dt_signalize(tu->threads[i], SIGALRM);
@@ -342,6 +344,13 @@ static int server_init_handler(server_t *server, int index, int thread_count,
 		return KNOT_ENOMEM;
 	}
 
+	h->thread_id = calloc(thread_count, sizeof(unsigned));
+	if (h->thread_id == NULL) {
+		free(h->thread_id);
+		dt_delete(&h->unit);
+		return KNOT_ENOMEM;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -360,6 +369,7 @@ static void server_free_handler(iohandler_t *h)
 	/* Destroy worker context. */
 	dt_delete(&h->unit);
 	free(h->thread_state);
+	free(h->thread_id);
 	memset(h, 0, sizeof(iohandler_t));
 }
 
