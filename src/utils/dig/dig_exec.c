@@ -284,7 +284,15 @@ static int dump_dnstap(dt_writer_t                 *writer,
 		return KNOT_EOK;
 	}
 
-	ret = dt_message_fill(&msg, msg_type, NULL, net->srv->ai_addr,
+	const struct sockaddr *qa = NULL;
+	const struct sockaddr *ra = NULL;
+	if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY) {
+		qa = net->srv->ai_addr;
+	} else if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE) {
+		ra = net->srv->ai_addr;
+	}
+
+	ret = dt_message_fill(&msg, msg_type, qa, ra,
 	                      net->srv->ai_protocol, wire, wire_len,
 	                      qtime, rtime);
 	if (ret == KNOT_EOK) {
