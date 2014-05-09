@@ -757,6 +757,7 @@ static void process_dnstap_file(const query_t *query)
 {
 #if USE_DNSTAP
 	Dnstap__Dnstap *frame = NULL;
+	dt_reader_t    *reader = query->dt_reader;
 	int            ret;
 
 	if (query->dt_reader == NULL) {
@@ -764,26 +765,44 @@ static void process_dnstap_file(const query_t *query)
 	}
 
 	for (;;) {
-		ret = dt_reader_read(query->dt_reader, &frame);
+		ret = dt_reader_read(reader, &frame);
 		if (ret != KNOT_EOK) {
 			break;
 		}
 
-		ProtobufCBinaryData msg = frame->message->response_message;
-		knot_pkt_t *pkt = knot_pkt_new(msg.data, msg.len, NULL);
+		ProtobufCBinaryData *msg = NULL;
+		bool is_query;
+
+		if (frame->type != DNSTAP__DNSTAP__TYPE__MESSAGE) {
+			dt_reader_free_frame(reader, &frame);
+			continue;
+		}
+
+		if (frame->message->has_response_message) {
+			msg = &frame->message->response_message;
+			is_query = false;
+		} else if (frame->message->has_query_message) {
+			msg = &frame->message->query_message;
+			is_query = true;
+		} else {
+			dt_reader_free_frame(reader, &frame);
+			continue;
+		}
+
+		knot_pkt_t *pkt = knot_pkt_new(msg->data, msg->len, NULL);
 		if (pkt == NULL) {
 			ERR("can't allocate packet\n");
-			dnstap__dnstap__free_unpacked(frame, NULL);
+			dt_reader_free_frame(reader, &frame);
 			break;
 		}
 
 		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
-			print_packet(pkt, NULL, pkt->size, 0, false, &query->style);
+			print_packet(pkt, NULL, pkt->size, 0, is_query, &query->style);
 		} else {
 			ERR("can't print query packet\n");
 		}
 
-		dnstap__dnstap__free_unpacked(frame, NULL);
+		dt_reader_free_frame(reader, &frame);
 		knot_pkt_free(&pkt);
 	}
 #endif
