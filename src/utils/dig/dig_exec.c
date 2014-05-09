@@ -267,7 +267,7 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 	}
 }
 
-static int dump_dnstap(const char                  *filename,
+static int dump_dnstap(dt_writer_t                 *writer,
                        const Dnstap__Message__Type msg_type,
                        const uint8_t               *wire,
                        const size_t                wire_len,
@@ -276,30 +276,19 @@ static int dump_dnstap(const char                  *filename,
                        const struct timeval        *rtime)
 {
 #if USE_DNSTAP
-	dt_writer_t     *dt_writer;
 	Dnstap__Message msg;
 	int             ret;
 
-	if (filename == NULL) {
+	if (writer == NULL) {
 		return KNOT_EOK;
 	}
 
-	// Create dnstap writer.
-	dt_writer = dt_writer_create(filename, "kdig " PACKAGE_VERSION);
-	if (dt_writer == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// Dump the message.
 	ret = dt_message_fill(&msg, msg_type, net->srv->ai_addr,
 	                      net->srv->ai_protocol, wire, wire_len,
 	                      qtime, rtime);
 	if (ret == KNOT_EOK) {
-		dt_writer_write(dt_writer, (const ProtobufCMessage *) &msg);
+		dt_writer_write(writer, (const ProtobufCMessage *) &msg);
 	}
-
-	// Destroy dnstap writer.
-	dt_writer_free(dt_writer);
 #endif
 	return KNOT_EOK;
 }
@@ -355,7 +344,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 		}
 
 		// Make the dnstap copy of the query.
-		dump_dnstap(query_ctx->dnstap_out,
+		dump_dnstap(query_ctx->dt_writer,
 		            DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
 		            query->wire, query->size, net, &t_query, NULL);
 
@@ -376,7 +365,7 @@ static int process_query_packet(const knot_pkt_t        *query,
 
 
 		// Make the dnstap copy of the response.
-		dump_dnstap(query_ctx->dnstap_out,
+		dump_dnstap(query_ctx->dt_writer,
 		            DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE,
 		            in, in_len, net, &t_query, &t_end);
 
@@ -767,25 +756,15 @@ static void process_query_xfr(const query_t *query)
 static void process_dnstap_file(const query_t *query)
 {
 #if USE_DNSTAP
-	dt_reader_t *dt_reader;
-	int         ret;
+	Dnstap__Dnstap *frame = NULL;
+	int            ret;
 
-	if (query->dnstap_in == NULL) {
+	if (query->dt_reader == NULL) {
 		return;
 	}
-
-	// Create dnstap reader.
-	dt_reader = dt_reader_create(query->dnstap_in);
-	if (dt_reader == NULL) {
-		ERR("can't create dnstap reader\n");
-		return;
-	}
-
-	// Read and print messages.
-	Dnstap__Dnstap  *frame = NULL;
 
 	for (;;) {
-		ret = dt_reader_read(dt_reader, &frame);
+		ret = dt_reader_read(query->dt_reader, &frame);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -807,9 +786,6 @@ static void process_dnstap_file(const query_t *query)
 		dnstap__dnstap__free_unpacked(frame, NULL);
 		knot_pkt_free(&pkt);
 	}
-
-	// Destroy dnstap reader.
-	dt_reader_free(dt_reader);
 #endif
 }
 

@@ -167,8 +167,6 @@ int params_parse_num(const char *value, uint32_t *dst);
 
 int params_parse_tsig(const char *value, knot_key_params_t *key_params);
 
-int params_filename(const char *value, char **filename);
-
 int params_parse_keyfile(const char *value, knot_key_params_t *key_params);
 
 #endif // _UTILS__PARAMS_H_

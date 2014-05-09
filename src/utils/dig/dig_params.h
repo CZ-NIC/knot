@@ -72,9 +72,12 @@ typedef struct {
 } flags_t;
 
 /*! \brief Basic parameters for DNS query. */
-typedef struct {
+typedef struct query query_t; // Forward declaration due to configuration.
+struct query {
 	/*!< List node (for list container). */
 	node_t		n;
+	/*!< Reference to global config. */
+	query_t		*conf;
 	/*!< Name to query on. */
 	char		*owner;
 	/*!< List of nameservers to query to. */
@@ -122,12 +125,12 @@ typedef struct {
 	/*!< Context for operations with signatures. */
 	sign_context_t	sign_ctx;
 #if USE_DNSTAP
-	/*!< Input dnstap file name. */
-	char		*dnstap_in;
-	/*!< Output dnstap file name. */
-	char		*dnstap_out;
+	/*!< Context for dnstap reader input. */
+	dt_reader_t	*dt_reader;
+	/*!< Context for dnstap writer output. */
+	dt_writer_t	*dt_writer;
 #endif
-} query_t;
+};
 
 /*! \brief Settings for dig. */
 typedef struct {
