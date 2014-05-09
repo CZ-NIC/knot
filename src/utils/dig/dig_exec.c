@@ -771,7 +771,7 @@ static void process_dnstap_file(const query_t *query)
 		}
 
 		ProtobufCBinaryData *msg = NULL;
-		bool is_query;
+		bool is_response;
 
 		if (frame->type != DNSTAP__DNSTAP__TYPE__MESSAGE) {
 			dt_reader_free_frame(reader, &frame);
@@ -780,10 +780,10 @@ static void process_dnstap_file(const query_t *query)
 
 		if (frame->message->has_response_message) {
 			msg = &frame->message->response_message;
-			is_query = false;
+			is_response = true;
 		} else if (frame->message->has_query_message) {
 			msg = &frame->message->query_message;
-			is_query = true;
+			is_response = false;
 		} else {
 			dt_reader_free_frame(reader, &frame);
 			continue;
@@ -797,7 +797,7 @@ static void process_dnstap_file(const query_t *query)
 		}
 
 		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
-			print_packet(pkt, NULL, pkt->size, 0, is_query, &query->style);
+			print_packet(pkt, NULL, pkt->size, 0, is_response, &query->style);
 		} else {
 			ERR("can't print query packet\n");
 		}
