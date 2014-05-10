@@ -7,7 +7,10 @@ EXTRA_DIST = \
 	reference.rst		\
 	requirements.rst	\
 	running.rst		\
-	troubleshooting.rst
+	troubleshooting.rst	\
+	\
+	logo.pdf		\
+	logo.png
 
 SPHINXBUILDDIR = _build
 ALLSPHINXOPTS  = -n -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHINXOPTS) .
