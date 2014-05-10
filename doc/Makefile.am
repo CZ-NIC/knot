@@ -1,5 +1,5 @@
 SPHINXBUILDDIR = _build
-ALLSPHINXOPTS  = -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHINXOPTS) .
+ALLSPHINXOPTS  = -n -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHINXOPTS) .
 
 .PHONY: help html dirhtml singlehtml pdf info doctest
 
