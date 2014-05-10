@@ -1,3 +1,14 @@
+EXTRA_DIST = \
+	configuration.rst	\
+	index.rst		\
+	installation.rst	\
+	introduction.rst	\
+	migration.rst		\
+	reference.rst		\
+	requirements.rst	\
+	running.rst		\
+	troubleshooting.rst
+
 SPHINXBUILDDIR = _build
 ALLSPHINXOPTS  = -n -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHINXOPTS) .
 
