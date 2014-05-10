@@ -10,7 +10,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
 
 # Automatically update release date based on configure.ac date
-release_date=`doc/mdate-sh configure.ac`
+release_date=`LC_ALL=POSIX date +"%d %B %Y" -r configure.ac`
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
