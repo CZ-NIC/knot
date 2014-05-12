@@ -383,21 +383,24 @@ AC_CONFIG_FILES([Makefile
 		 ])
 
 AC_OUTPUT
+AC_MSG_RESULT([
+  $PACKAGE $VERSION
 
-echo "
-  Version: ${PACKAGE_VERSION}
-  Target: $host_os $host_cpu
-  Prefix: ${prefix}
-  Run dir: ${run_dir}
-  Storage dir: ${storage_dir}
-  Config dir: ${config_dir}
-  Compiler: ${CC}
-  CFlags: ${CFLAGS} ${CPPFLAGS}
-  LDFlags: ${LDFLAGS}
-  Libs: ${LIBS}
-  Fast zone parser: ${enable_fastparser}
-  Utils with IDN: ${libidn}
-  Systemd notifications: ${enable_systemd}
-  Code coverage: ${enable_code_coverage}
+    Target:   $host_os $host_cpu
+    Compiler: ${CC}
+    CFlags:   ${CFLAGS} ${CPPFLAGS}
+    LDFlags:  ${LDFLAGS}
+    Libs:     ${LIBS}
 
-  Continue with 'make' command"
+    Prefix:      ${prefix}
+    Run dir:     ${run_dir}
+    Storage dir: ${storage_dir}
+    Config dir:  ${config_dir}
+
+    Fast zone parser:      ${enable_fastparser}
+    Utils with IDN:        ${libidn}
+    Systemd notifications: ${enable_systemd}
+    Code coverage:         ${enable_code_coverage}
+
+  Continue with 'make' command
+])
