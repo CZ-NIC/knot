@@ -8,9 +8,18 @@ AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
+AC_CANONICAL_HOST
 
 # Automatically update release date based on configure.ac date
-release_date=`LC_ALL=POSIX date +"%d %B %Y" -r configure.ac`
+case "$host_os" in
+linux*)
+    release_date=`date +"%Y-%m-%d" -r configure.ac`
+    ;;
+*)
+    tmstamp=`stat -f %m configure.ac`
+    release_date=`date -r $tmstamp +"%Y-%m-%d"`
+    ;;
+esac
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
@@ -377,6 +386,7 @@ AC_OUTPUT
 
 echo "
   Version: ${PACKAGE_VERSION}
+  Target: $host_os $host_cpu
   Prefix: ${prefix}
   Run dir: ${run_dir}
   Storage dir: ${storage_dir}
