@@ -796,6 +796,9 @@ int knot_pkt_add_opt(knot_pkt_t *pkt, knot_edns_params_t *edns, bool add_nsid)
 		return KNOT_EINVAL;
 	}
 
+	knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count];
+	memset(rrinfo, 0, sizeof(knot_rrinfo_t));
+
 	/* Take one RR from the pool and initialize an OPT RR. */
 	int ret = knot_edns_init_from_params(&pkt->rr[pkt->rrset_count],
 	                                     edns, add_nsid, &pkt->mm);
@@ -804,6 +807,7 @@ int knot_pkt_add_opt(knot_pkt_t *pkt, knot_edns_params_t *edns, bool add_nsid)
 	}
 
 	pkt->opt_rr = &pkt->rr[pkt->rrset_count++];
+	pkt->sections[KNOT_ADDITIONAL].count += 1;
 
 	/* OPT RR is not directly converted to wire, we must wait till the
 	 * Additional section is started. Now just reserve space for it.
@@ -833,8 +837,7 @@ int knot_pkt_write_opt(knot_pkt_t *pkt)
 
 	uint8_t *pos = pkt->wire + pkt->size;
 	uint16_t rr_added = 0;
-	/*! \note Counting the size is a bit awkward, but there's no other way*/
-	size_t maxlen = knot_edns_size(pkt->opt_rr);
+	size_t maxlen = pkt_remaining(pkt);
 	size_t len = 0;
 
 	int ret = knot_rrset_to_wire(pkt->opt_rr, pos, &len, maxlen, &rr_added,
@@ -848,7 +851,7 @@ int knot_pkt_write_opt(knot_pkt_t *pkt)
 	if (rr_added > 0) {
 		pkt->size += len;
 		pkt_rr_wirecount_add(pkt, pkt->current, rr_added);
-		pkt->reserved -= ret;
+		pkt->reserved -= len;
 
 		dbg_packet("%s: OPT RR written, new packet size %zu\n",
 		           __func__, pkt->size);

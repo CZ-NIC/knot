@@ -93,6 +93,9 @@ static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
 {
 	assert(opt_rr != NULL);
 
+	/* First clear the RR, so that no old data remains there. */
+	memset(opt_rr, 0, sizeof(knot_rrset_t));
+
 	/* Owner: root label.
 	 *
 	 * Allocate from memory context and set the dname by hand. Although it's
@@ -291,7 +294,7 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	dbg_edns_verb("EDNS: Adding option. Code: %u, length: %u, data:\n",
 	              code, length);
-	dbg_edns_hex_verb(data, length);
+	dbg_edns_hex_verb((char *)data, length);
 
 	memcpy(new_data, old_data, old_data_len);
 	// write length and code in wireformat (convert endian)
