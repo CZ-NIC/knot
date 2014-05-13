@@ -254,11 +254,12 @@ const conf_iface_t *zone_master(const zone_t *zone)
 
 void zone_master_rotate(const zone_t *zone)
 {
-	if (zone_master(zone) == NULL) {
+
+	list_t *master_list = &zone->conf->acl.xfr_in;
+	if (list_size(master_list) < 2) {
 		return;
 	}
 
-	list_t *master_list = &zone->conf->acl.xfr_in;
 	add_tail(master_list, HEAD(*master_list));
 }
 
