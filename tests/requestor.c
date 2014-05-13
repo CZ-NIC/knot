@@ -46,13 +46,13 @@ static void* responder_thread(void *arg)
 		if (client < 0) {
 			break;
 		}
-		int len = tcp_recv(client, buf, sizeof(buf), NULL);
+		int len = tcp_recv_msg(client, buf, sizeof(buf), NULL);
 		if (len < KNOT_WIRE_HEADER_SIZE) {
 			close(client);
 			break;
 		}
 		knot_wire_set_qr(buf);
-		tcp_send(client, buf, len);
+		tcp_send_msg(client, buf, len);
 		close(client);
 	}
 	return NULL;
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 	/* Terminate responder. */
 	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL, 0);
 	assert(responder > 0);
-	tcp_send(responder, (const uint8_t *)"", 1);
+	tcp_send_msg(responder, (const uint8_t *)"", 1);
 	(void) pthread_join(thread, 0);
 	close(responder);
 
