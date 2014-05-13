@@ -77,7 +77,7 @@ struct query {
 	/*!< List node (for list container). */
 	node_t		n;
 	/*!< Reference to global config. */
-	query_t		*conf;
+	const query_t	*conf;
 	/*!< Name to query on. */
 	char		*owner;
 	/*!< List of nameservers to query to. */

@@ -799,7 +799,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->dt_writer = NULL;
 #endif
 	} else {
-		query->conf = conf->conf;
+		query->conf = conf;
 		if (conf->local != NULL) {
 			query->local = srv_info_create(conf->local->name,
 			                               conf->local->service);
@@ -873,18 +873,16 @@ void query_free(query_t *query)
 	knot_free_key_params(&query->key_params);
 
 #if USE_DNSTAP
-	/*
-	if (query->dt_reader != NULL &&
-	    query->dt_reader != query->conf->dt_reader) {
+	if (query->dt_reader != NULL) {
 		dt_reader_free(query->dt_reader);
-		query->dt_reader = NULL;
 	}
-	if (query->dt_writer != NULL &&
-	    query->dt_writer != query->conf->dt_writer) {
-		dt_writer_free(query->dt_writer);
-		query->dt_writer = NULL;
+	if (query->dt_writer != NULL) {
+		// Global writer can be shared!
+		if (query->conf == NULL ||
+		    query->conf->dt_writer != query->dt_writer) {
+			dt_writer_free(query->dt_writer);
+		}
 	}
-	*/
 #endif
 
 	free(query->owner);
@@ -1112,10 +1110,8 @@ static int parse_type(const char *value, query_t *query)
 }
 
 #if USE_DNSTAP
-static int parse_dnstap_export(const char *value, query_t *query)
+static int parse_dnstap_output(const char *value, query_t *query)
 {
-	DBG("Exporting to dnstap output file %s\n", value);
-
 	if (query->dt_writer != NULL) {
 		if (query->conf == NULL ||
 		    query->conf->dt_writer != query->dt_writer) {
@@ -1131,15 +1127,11 @@ static int parse_dnstap_export(const char *value, query_t *query)
 	return KNOT_EOK;
 }
 
-static int parse_dnstap_generate(const char *value, query_t *query)
+static int parse_dnstap_input(const char *value, query_t *query)
 {
-	DBG("Generating message output from dnstap input file %s\n", value);
-
+	// Just in case, shouldn't happen.
 	if (query->dt_reader != NULL) {
-		if (query->conf == NULL ||
-		    query->conf->dt_reader != query->dt_reader) {
-			dt_reader_free(query->dt_reader);
-		}
+		dt_reader_free(query->dt_reader);
 	}
 
 	query->dt_reader = dt_reader_create(value);
@@ -1268,8 +1260,8 @@ static void dig_help(void)
 {
 	printf("Usage: kdig [-4] [-6] [-dh] [-b address] [-c class] [-p port]\n"
 	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"
-	       "            [-y [algo:]keyname:key] [-E tapfile] name @server\n"
-	       "       kdig [-G tapfile]\n"
+	       "            [-y [algo:]keyname:key] [-E tapfile] [-G tapfile]\n"
+	       "            name [type] [class] [@server]\n"
 	       "\n"
 	       "       +[no]multiline  Wrap long records to more lines.\n"
 	       "       +[no]short      Show record data only.\n"
@@ -1472,7 +1464,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_dnstap_export(val, query) != KNOT_EOK) {
+		if (parse_dnstap_output(val, query) != KNOT_EOK) {
 			ERR("unable to open dnstap output file %s\n", val);
 			return KNOT_EINVAL;
 		}
@@ -1489,11 +1481,19 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 
-		if (parse_dnstap_generate(val, query) != KNOT_EOK) {
+		query = query_create(NULL, params->config);
+		if (query == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		if (parse_dnstap_input(val, query) != KNOT_EOK) {
 			ERR("unable to open dnstap input file %s\n", val);
 			return KNOT_EINVAL;
 		}
+
 		query->operation = OPERATION_LIST_DNSTAP;
+		add_tail(&params->queries, (node_t *)query);
+
 		*index += add;
 #else
 		ERR("no dnstap support but -G specified\n");
