@@ -20,6 +20,8 @@
 #include "common/evsched.h"
 #include "common/mempool.h"
 #include "knot/server/server.h"
+#include "knot/server/udp-handler.h"
+#include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/worker/pool.h"
@@ -370,16 +372,20 @@ static int event_update(zone_t *zone)
 	int ret = update_process_query(resp, &qdata);
 
 	/* Send response. */
-#warning TODO: proper API for this
-	sendto(update->fd, resp->wire, resp->size, 0,
-	       (struct sockaddr *)param.remote, sockaddr_len(param.remote));
+	if (net_is_connected(update->fd)) {
+		tcp_send_msg(update->fd, resp->wire, resp->size);
+	} else {
+		udp_send_msg(update->fd, resp->wire, resp->size,
+		             (struct sockaddr *)param.remote);
+	}
 
 	/* Cleanup. */
+	close(update->fd);
 	knot_pkt_free(&resp);
 	knot_pkt_free(&update->query);
 	free(update);
 
-	return ret;
+	return KNOT_EOK;
 }
 
 static int event_expire(zone_t *zone)

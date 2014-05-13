@@ -442,6 +442,17 @@ void __attribute__ ((constructor)) udp_master_init()
 #endif /* HAVE_RECVMMSG */
 }
 
+int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct sockaddr *addr)
+{
+	int addr_len = sockaddr_len((struct sockaddr_storage *)addr);
+	int ret = sendto(fd, msg, msglen, 0, addr, addr_len);
+	if (ret != msglen) {
+		return KNOT_ECONN;
+	}
+
+	return ret;
+}
+
 int udp_master(dthread_t *thread)
 {
 	unsigned cpu = dt_online_cpus();

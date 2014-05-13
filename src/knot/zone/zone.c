@@ -72,6 +72,7 @@ static void free_ddns_q(zone_t *z)
 	struct request_data *n = NULL;
 	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, z->ddns_queue) {
+		close(n->fd);
 		knot_pkt_free(&n->query);
 		rem_node((node_t *)n);
 		free(n);
@@ -124,7 +125,6 @@ void zone_free(zone_t **zone_ptr)
 	}
 
 	zone_t *zone = *zone_ptr;
-
 
 	zone_events_deinit(zone);
 
@@ -320,9 +320,10 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	if (req == NULL) {
 		return KNOT_ENOMEM;
 	}
-
 	memset(req, 0, sizeof(struct request_data));
-	req->fd = param->socket;
+
+	/* Copy socket and request. */
+	req->fd = dup(param->socket);
 	memcpy(&req->remote, param->remote, sizeof(struct sockaddr_storage));
 	req->query = knot_pkt_copy(pkt, NULL);
 	if (req->query == NULL) {

@@ -291,7 +291,7 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = process_authenticated(&rcode, qdata);
 	if (ret != KNOT_EOK) {
-		UPDATE_LOG(LOG_ERR, "%s\n", knot_strerror(ret));
+		UPDATE_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		knot_wire_set_rcode(pkt->wire, rcode);
 		return ret;
 	}
@@ -304,7 +304,7 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	gettimeofday(&t_end, NULL);
-	UPDATE_LOG(LOG_INFO, "Serial %u -> %u\n", old_serial, new_serial);
+	UPDATE_LOG(LOG_INFO, "Serial %u -> %u", old_serial, new_serial);
 	UPDATE_LOG(LOG_INFO, "Finished in %.02fs.", time_diff(&t_start, &t_end) / 1000.0);
 	return KNOT_EOK;
 }
