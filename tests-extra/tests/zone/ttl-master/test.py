@@ -14,8 +14,8 @@ t.link(zone, master)
 
 t.start()
 
-# Just check if the zone was loaded. It should be refused on master.
+# Just check if the zone was loaded. It should be unloadable on master.
 resp = master.dig(zone, "SOA")
-resp.check(rcode="REFUSED", flags="QR", noflags="AA TC AD RA")
+resp.check(rcode="SERVFAIL", flags="QR", noflags="AA TC AD RA")
 
 t.end()
