@@ -81,6 +81,11 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 	int flag = 1;
 	(void) setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 
+	/* Reuse port if available. */
+#if defined(SO_REUSEPORT)
+	(void) setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
+#endif
+
 	/* Unlink UNIX socket if exists. */
 	if (ss->ss_family == AF_UNIX) {
 		unlink(addr_str);
