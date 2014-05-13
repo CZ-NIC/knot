@@ -101,7 +101,7 @@ void print_packet(const knot_pkt_t *packet,
                   const net_t      *net,
                   const size_t     size,
                   const float      elapsed,
-		  const time_t     exec_time,
+                  const time_t     exec_time,
                   const bool       incoming,
                   const style_t    *style);
 
