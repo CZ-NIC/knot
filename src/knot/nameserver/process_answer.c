@@ -37,13 +37,18 @@ static void answer_data_init(knot_process_t *ctx, void *module_param)
 	data->param = module_param;
 }
 
-/*! \brief Answer is paired to query if MsgId and QUESTION matches. */
+/*! \brief Answer is paired to query if MsgId matches.
+ *  @note Zone transfers are deliberate with QUESTION section and may not
+ *        include it in multi-packet responses, therefore the response can be
+ *        paired by MsgId only.
+ */
 static bool is_answer_to_query(const knot_pkt_t *query, knot_pkt_t *answer)
 {
-	return knot_wire_get_id(query->wire) == knot_wire_get_id(answer->wire) &&
-	       knot_pkt_qtype(query)  == knot_pkt_qtype(answer)  &&
-	       knot_pkt_qclass(query) == knot_pkt_qclass(answer) &&
-	       knot_dname_is_equal(knot_pkt_qname(query), knot_pkt_qname(answer));
+	bool ret = knot_wire_get_id(query->wire) == knot_wire_get_id(answer->wire);
+	if (!ret) {
+		assert(0);
+	}
+	return ret;
 }
 
 static int process_answer_begin(knot_process_t *ctx, void *module_param)
@@ -99,9 +104,7 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 	ANSWER_REQUIRES(knot_wire_get_qr(pkt->wire), NS_PROC_NOOP);
 	/* Check if we want answer paired to query. */
 	const knot_pkt_t *query = data->param->query;
-	ANSWER_REQUIRES(query == NULL || is_answer_to_query(query, pkt), NS_PROC_NOOP);
-	/* Class specific answer processing. */
-	ANSWER_REQUIRES(knot_pkt_qclass(pkt) == KNOT_CLASS_IN, NS_PROC_NOOP);
+	ANSWER_REQUIRES(is_answer_to_query(query, pkt), NS_PROC_NOOP);
 
 	/* Verify incoming packet. */
 	int ret = tsig_verify_packet(&data->param->tsig_ctx, pkt);
@@ -111,7 +114,9 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 
 	/* Call appropriate processing handler. */
 	int next_state = NS_PROC_NOOP;
-	switch(knot_pkt_type(pkt)) {
+	int response_type = knot_pkt_type(query) | KNOT_RESPONSE;
+	/* @note We can't derive type from response, as it may not contain QUESTION at all. */
+	switch(response_type) {
 	case KNOT_RESPONSE_NORMAL:
 		next_state = internet_process_answer(pkt, data);
 		break;
