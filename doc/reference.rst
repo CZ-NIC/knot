@@ -39,7 +39,7 @@ else.
       [ rate-limit-slip integer; ]
       [ max-udp-payload integer; ]
     }
-    
+
 .. _system Statement Definition and Usage:
 
 ``system`` Statement Definition and Usage
@@ -270,7 +270,7 @@ system Example
       user knot.knot;
       max-udp-payload 4096;
     }
-    
+
 .. _keys:
 
 ``keys`` Statement
@@ -347,8 +347,8 @@ keys Example
 
 .. _interfaces:
 
-interfaces Statement
-====================
+``interfaces`` Statement
+========================
 
 The ``interfaces`` statement contains IP interfaces where Knot DNS
 listens for incoming queries.
@@ -398,9 +398,9 @@ Long form::
     }
 
 Short form::
-    
+
     interfaces {
-      my_second_ip { address 198.51.100.1@@53; }
+      my_second_ip { address 198.51.100.1@53; }
     }
 
 Short form without port (defaults to 53)::
@@ -437,7 +437,7 @@ different zone.
              [ via [ interface_id | ip_address ]; ]
           }
         )
-      [ remote_id @dots{}; @dots{}; ]
+      [ remote_id ...; ...; ]
     }
 
 .. _remotes Statement Definition and Grammar:
@@ -501,10 +501,10 @@ with this ``remote``.  This section is optional.
         # via 82.35.64.59;    # direct IPv4
         # via [::cafe];       # direct IPv6
       }
-    
+
       # Short form:
       server1 {
-        address 127.0.0.1@@53001;
+        address 127.0.0.1@53001;
       }
     }
 
@@ -572,11 +572,11 @@ specified in :ref:`remotes` section.
         # ...
       }
     }
-    
+
     groups {
       admins { alice, bob }
     }
-    
+
     # example usage:
     control {
       # ...
@@ -603,10 +603,10 @@ default UNIX sockets.
 
     control {
       [ listen-on {
-        ( address ip_address[@@port_number] |
+        ( address ip_address[@port_number] |
           { address ip_address; [ port port_number; ] } )
       } ]
-      [ allow remote_id [, remote_id, @dots{} ]; ]
+      [ allow remote_id [, remote_id, ... ]; ]
     }
 
 .. _control Statement Definition and Grammar:
@@ -664,16 +664,16 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
       [ zone_options ]
       zone_id {
         file "string";
-        [ xfr-in remote_id [, remote_id, @dots{} ]; ]
-        [ xfr-out remote_id [, remote_id, @dots{} ]; ]
-        [ notify-in remote_id [, remote_id, @dots{} ]; ]
-        [ notify-out remote_id [, remote_id, @dots{} ]; ]
-        [ update-in remote_id [, remote_id, @dots{} ]; ]
-        [ query_module { module_name "string"; [ module_name "string"; @dots{} ] } ]
+        [ xfr-in remote_id [, remote_id, ... ]; ]
+        [ xfr-out remote_id [, remote_id, ... ]; ]
+        [ notify-in remote_id [, remote_id, ... ]; ]
+        [ notify-out remote_id [, remote_id, ... ]; ]
+        [ update-in remote_id [, remote_id, ... ]; ]
+        [ query_module { module_name "string"; [ module_name "string"; ... ] } ]
         [ zone_options ]
       }
     }
-    
+
     zone_options :=
       [ storage "string"; ]
       [ semantic-checks boolean; ]
@@ -701,7 +701,7 @@ The ``zones`` statement contains definition of zones served by Knot DNS.
 
 ``zone_id`` is a zone origin, and as such is a domain name that may or
 may not end with a ".".  If no $ORIGIN directive is found inside
-actual zone file, this domain name will be used in place of "@@".  SOA
+actual zone file, this domain name will be used in place of "@".  SOA
 record in the zone must have this name as its owner.
 
 .. _file:
@@ -858,9 +858,9 @@ but zone file on a disk will only be synced after ``zonefile-sync``
 time has expired (or synced manually via ``knotc flush`` - see
 :ref:`Running Knot DNS`).  This is applicable when the zone is updated
 via IXFR, DDNS or automatic DNSSEC signing.  Possible values are 0 to
-INT_MAX, optionally suffixed by unit size (s/m/h/d) - @emph{1s} is one
-second, @emph{1m} one minute, @emph{1h} one hour and @emph{1d} one day
-with default value set to @emph{0s}.
+INT_MAX, optionally suffixed by unit size (s/m/h/d) - *1s* is one
+second, *1m* one minute, *1h* one hour and *1d* one day
+with default value set to *0s*.
 
 *Important note:* If you are serving large zones with frequent
 updates where the immediate sync to zone file is not desirable, set
@@ -941,7 +941,7 @@ Default value: ``increment``
 ::
 
     zones {
-    
+
       # Shared options for all listed zones
       storage "/var/lib/knot";
       ixfr-from-differences off;
@@ -984,7 +984,7 @@ The ``semantic-checks`` statement turns on extra zone file semantic
 checks.  Several checks are enabled by default and cannot be turned
 off.  If an error is found using these mandatory checks, the zone file
 will not be loaded.  Upon loading a zone file, occurred errors and
-counts of their occurrence will be logged to @emph{stderr}.  These
+counts of their occurrence will be logged to *stderr*.  These
 checks are the following:
 
 * An extra record together with CNAME record (except for RRSIG and DS)
@@ -1028,10 +1028,10 @@ an error:
 
     log {
       [ log_name {
-        [ category severity [, severity @dots{} ]; ]
+        [ category severity [, severity ... ]; ]
       } ]
       [ log_file filename {
-        [ category severity [, severity @dots{} ]; ]
+        [ category severity [, severity ... ]; ]
       } ]
     }
 
@@ -1106,17 +1106,17 @@ log Example
 ::
 
     log {
-    
+
       syslog {
         any error;
         zone warning, notice;
         server info;
       }
-    
+
       stderr {
         any error, warning;
       }
-    
+
       file "/tmp/knot-sample/knotd.debug" {
         server debug;
       }
@@ -1152,7 +1152,7 @@ configuration file currently being processed.
 ::
 
     include "keys.conf";
-    
+
     remotes {
       ctl {
         address 127.0.0.1;
@@ -1160,5 +1160,5 @@ configuration file currently being processed.
       }
       include "remotes.conf";
     }
-    
+
     include "zones";
