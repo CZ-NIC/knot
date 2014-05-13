@@ -54,18 +54,19 @@ knot_edns_params_t *knot_edns_new_params(uint16_t max_payload, uint8_t ver,
 
 	edns->version = ver;
 	edns->payload = max_payload;
-	edns->nsid_len = nsid_len;
 	edns->flags = flags;
 
-	if (nsid_len > 0) {
+	if (nsid_len > 0 && nsid != NULL) {
 		edns->nsid = (uint8_t *)malloc(edns->nsid_len);
 		if (edns->nsid == NULL) {
 			free(edns);
 			return NULL;
 		}
 		memcpy(edns->nsid, nsid, nsid_len);
+		edns->nsid_len = nsid_len;
 	} else {
 		edns->nsid = NULL;
+		edns->nsid_len = 0;
 	}
 
 	return edns;
