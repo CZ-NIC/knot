@@ -143,3 +143,10 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 
 	return socket;
 }
+
+int net_is_connected(int fd)
+{
+	struct sockaddr_in6 ss;
+	socklen_t len = sizeof(ss);
+	return getpeername(fd, &ss, &len) == 0;
+}
