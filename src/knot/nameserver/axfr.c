@@ -352,7 +352,7 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 			AXFRIN_LOG(LOG_INFO, "Zone is up-to-date.");
 			return NS_PROC_DONE;
 		}
-		AXFRIN_LOG(LOG_INFO, "Starting.\n");
+		AXFRIN_LOG(LOG_INFO, "Starting.");
 
 		ret = axfr_answer_init(data);
 		if (ret != KNOT_EOK) {

@@ -136,7 +136,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	requestor_enqueue(&re, req, &param);
 
 	/* Send the queries and process responses. */
-	struct timeval tv = { conf()->max_conn_hs, 0 };
+	struct timeval tv = { conf()->max_conn_reply, 0 };
 	ret = requestor_exec(&re, &tv);
 
 	/* Cleanup. */
@@ -145,6 +145,36 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 
 	return ret;
 }
+
+/* @note Module specific, expects some variables set. */
+#define ZONE_XFER_LOG(severity, pkt_type, msg...) \
+	if (pkt_type == KNOT_QUERY_AXFR) { \
+		ZONE_QUERY_LOG(severity, zone, master, "AXFR", msg); \
+	} else { \
+		ZONE_QUERY_LOG(severity, zone, master, "IXFR", msg); \
+	}
+
+static int zone_query_transfer(zone_t *zone, const conf_iface_t *master, uint16_t pkt_type)
+{
+	assert(zone);
+	assert(master);
+
+	int ret = zone_query_execute(zone, pkt_type, master);
+	if (ret != KNOT_EOK) {
+		/* IXFR failed, revert to AXFR. */
+		if (pkt_type == KNOT_QUERY_IXFR) {
+			ZONE_XFER_LOG(LOG_NOTICE, pkt_type, "Fallback to AXFR.");
+			return zone_query_transfer(zone, master, KNOT_QUERY_AXFR);
+		}
+
+		/* Log connection errors. */
+		ZONE_XFER_LOG(LOG_ERR, pkt_type, "%s", knot_strerror(ret));
+	}
+
+	return ret;
+}
+
+#undef ZONE_XFER_LOG
 
 /*!
  * \todo Separate signing from zone loading and drop this function.
@@ -284,47 +314,30 @@ static int event_refresh(zone_t *zone)
 static int event_xfer(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "XFER of '%s'\n", zone->conf->name);
 
-	const conf_iface_t *master = zone_master(zone);
-	assert(master);
-
+	/* Determine transfer type. */
 	uint16_t pkt_type = KNOT_QUERY_IXFR;
 	if (zone_contents_is_empty(zone->contents) || zone->flags & ZONE_FORCE_AXFR) {
 		pkt_type = KNOT_QUERY_AXFR;
 	}
 
-	int ret = zone_query_execute(zone, pkt_type, master);
-
-	/* IXFR failed, revert to AXFR. */
-	if (pkt_type == KNOT_QUERY_IXFR && ret != KNOT_EOK) {
-		ZONE_QUERY_LOG(LOG_WARNING, zone, master, "IXFR", "Fallback to AXFR");
-		zone->flags |= ZONE_FORCE_AXFR;
-		ret = event_xfer(zone);
-		zone->flags &= ~ZONE_FORCE_AXFR;
-		return ret;
-	}
-
-	if (ret != KNOT_EOK) {
-		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_ERR, zone, master, "%s", "%s",
-		               pkt_type == KNOT_QUERY_AXFR ? "AXFR" : "IXFR",
-		               knot_strerror(ret));
+	/* Execute zone transfer and reschedule timers. */
+	int ret = zone_query_transfer(zone, zone_master(zone), pkt_type);
+	if (ret == KNOT_EOK) {
+		assert(!zone_contents_is_empty(zone->contents));
+		/* New zone transferred, reschedule zone expiration and refresh
+		 * timers and send notifications to slaves. */
+		knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
+		zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
+	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
 		bootstrap_next(&zone->xfr_in.bootstrap_retry);
 		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->xfr_in.bootstrap_retry);
-		return ret;
 	}
-
-	assert(!zone_contents_is_empty(zone->contents));
-	/* New zone transferred, reschedule zone expiration and refresh
-	 * timers and send notifications to slaves. */
-	knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
-	zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
-	zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
-	zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
 
 	return KNOT_EOK;
 }
