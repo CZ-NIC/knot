@@ -70,7 +70,7 @@ static struct request *make_query(struct requestor *requestor, struct sockaddr_s
 	assert(pkt);
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
-	return requestor_make(requestor, NULL, remote, pkt);
+	return requestor_make(requestor, remote, pkt);
 }
 
 static void test_disconnected(struct requestor *requestor, struct sockaddr_storage *remote)
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 
 	/* Create fake server environment. */
 	server_t server;
-	int ret = create_fake_server(&server, &proc.mm);
+	int ret = create_fake_server(&server, &mm);
 	ok(ret == KNOT_EOK, "requestor: failed to initialize fake server");
 
 	/* Initialize requestor. */
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 	assert(origin_fd > 0);
 	socklen_t addr_len = sockaddr_len(&remote);
 	getsockname(origin_fd, (struct sockaddr *)&remote, &addr_len);
-	int ret = listen(origin_fd, 10);
+	ret = listen(origin_fd, 10);
 	assert(ret == 0);
 
 	/* Responder thread. */

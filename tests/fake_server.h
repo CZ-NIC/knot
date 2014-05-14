@@ -59,9 +59,8 @@ static inline int create_fake_server(server_t *server, mm_ctx_t *mm)
 	server->edns = knot_edns_new_params(KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                    KNOT_EDNS_VERSION,
 	                                    KNOT_EDNS_DEFAULT_FLAGS,
-	                                    conf->nsid_len,
-	                                    (uint8_t *)conf->nsid);
-	if (edns == NULL) {
+	                                    0, NULL);
+	if (server->edns == NULL) {
 		return KNOT_ENOMEM;
 	}
 
