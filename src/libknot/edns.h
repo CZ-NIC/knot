@@ -231,6 +231,9 @@ void knot_edns_set_do(knot_rrset_t *opt_rr);
 /*!
  * \brief Adds EDNS Option to the OPT RR.
  *
+ * \note The function now supports adding empty OPTION (just having its code).
+ *       This does not make much sense now with NSID, but may be ok use later.
+ *
  * \param opt_rr  OPT RR structure to add the Option to.
  * \param code    Option code.
  * \param length  Option data length in bytes.

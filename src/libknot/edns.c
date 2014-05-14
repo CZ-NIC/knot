@@ -152,7 +152,7 @@ int knot_edns_init_from_params(knot_rrset_t *opt_rr,
 	         mm);
 
 	int ret = KNOT_EOK;
-	if (add_nsid) {
+	if (add_nsid && params->nsid_len > 0 && params->nsid != NULL) {
 		ret = knot_edns_add_option(opt_rr, KNOT_EDNS_OPTION_NSID,
 		                           params->nsid_len, params->nsid, mm);
 	}
