@@ -208,6 +208,7 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version);
  *
  * \warning This function does not check the parameter, so ensure to check it
  *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr OPT RR to get the DO bit from.
  *
@@ -221,6 +222,7 @@ bool knot_edns_do(const knot_rrset_t *opt_rr);
  *
  * \warning This function does not check the parameter, so ensure to check it
  *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
  *
  * \param opt_rr OPT RR to set the DO bit in.
  */
@@ -229,10 +231,10 @@ void knot_edns_set_do(knot_rrset_t *opt_rr);
 /*!
  * \brief Adds EDNS Option to the OPT RR.
  *
- * \param opt_rr OPT RR structure to add the Option to.
- * \param code Option code.
- * \param length Option data length in bytes.
- * \param data Option data.
+ * \param opt_rr  OPT RR structure to add the Option to.
+ * \param code    Option code.
+ * \param length  Option data length in bytes.
+ * \param data    Option data.
  *
  * \retval KNOT_EOK
  * \retval KNOT_ENOMEM

@@ -333,10 +333,7 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 {
-	if (opt_rr == NULL) {
-		return KNOT_EINVAL;
-	}
-
+	assert(opt_rr != NULL);
 	assert(opt_rr->rrs.rr_count == 1);
 
 	// Get the actual RDATA
