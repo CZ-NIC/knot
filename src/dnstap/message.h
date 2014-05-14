@@ -35,7 +35,7 @@
 
 /*!
  * \brief Fill a Dnstap__Message structure with the given parameters.
- * 
+ *
  * \param[out] m
  *      Dnstap__Message structure to fill. Will be zeroed first.
  * \param type
@@ -57,15 +57,15 @@
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
-int dt_message_fill(Dnstap__Message *m,
+int dt_message_fill(Dnstap__Message             *m,
                     const Dnstap__Message__Type type,
-                    const struct sockaddr *query_sa,
-                    const struct sockaddr *response_sa,
-                    const int protocol,
-                    const void *wire,
-                    const size_t len_wire,
-                    const struct timeval *qtime,
-                    const struct timeval *rtime);
+                    const struct sockaddr       *query_sa,
+                    const struct sockaddr       *response_sa,
+                    const int                   protocol,
+                    const void                  *wire,
+                    const size_t                len_wire,
+                    const struct timeval        *qtime,
+                    const struct timeval        *rtime);
 
 #endif // _DNSTAP__MESSAGE_H_
 

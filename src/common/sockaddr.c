@@ -92,14 +92,13 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family, const uint8_t *raw
 	ss->ss_family = family;
 
 	/* Initialize address depending on address family. */
-	socklen_t addr_len = sockaddr_len(ss);
 	if (family == AF_INET6) {
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
-		memcpy(&ipv6->sin6_addr, raw_addr, addr_len);
+		memcpy(&ipv6->sin6_addr, raw_addr, sizeof(ipv6->sin6_addr));
 		return KNOT_EOK;
 	} else if (family == AF_INET) {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
-		memcpy(&ipv4->sin_addr, raw_addr, addr_len);
+		memcpy(&ipv4->sin_addr, raw_addr, sizeof(ipv4->sin_addr));
 		return KNOT_EOK;
 	}
 

@@ -272,7 +272,7 @@ static int dump_dnstap(dt_writer_t                 *writer,
                        const Dnstap__Message__Type msg_type,
                        const uint8_t               *wire,
                        const size_t                wire_len,
-                       const net_t                 *net,
+                       net_t                       *net,
                        const struct timeval        *qtime,
                        const struct timeval        *rtime)
 {
@@ -286,9 +286,13 @@ static int dump_dnstap(dt_writer_t                 *writer,
 		return KNOT_EOK;
 	}
 
+	net_set_local_info(net);
+
 	if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY) {
 		qa = net->srv->ai_addr;
+		ra = net->local_info->ai_addr;
 	} else if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE) {
+		qa = net->local_info->ai_addr;
 		ra = net->srv->ai_addr;
 	}
 
@@ -798,42 +802,52 @@ static float get_query_time(const Dnstap__Dnstap *frame)
 static void process_dnstap(const query_t *query)
 {
 #if USE_DNSTAP
-	Dnstap__Dnstap *frame = NULL;
-	dt_reader_t    *reader = query->dt_reader;
-	int            ret;
+	dt_reader_t *reader = query->dt_reader;
+	int         ret;
 
 	if (query->dt_reader == NULL) {
 		return;
 	}
 
 	for (;;) {
+		Dnstap__Dnstap      *frame = NULL;
+		ProtobufCBinaryData *msg = NULL;
+		bool                is_response;
+
+		// Read next message.
 		ret = dt_reader_read(reader, &frame);
-		if (ret != KNOT_EOK) {
+		if (ret == KNOT_EOF) {
+			break;
+		} else if (ret != KNOT_EOK) {
+			ERR("can't read dnstap message\n");
 			break;
 		}
 
-		ProtobufCBinaryData *msg = NULL;
-		bool is_response;
-
+		// Check for dnstap message.
 		if (frame->type != DNSTAP__DNSTAP__TYPE__MESSAGE) {
+			WARN("ignoring non-dnstap message\n");
 			dt_reader_free_frame(reader, &frame);
 			continue;
 		}
 
+		// Check for the type of dnstap message.
 		if (frame->message->has_response_message) {
 			msg = &frame->message->response_message;
 			is_response = true;
 		} else if (frame->message->has_query_message) {
 			if (!query->style.show_query) {
+				dt_reader_free_frame(reader, &frame);
 				continue;
 			}
 			msg = &frame->message->query_message;
 			is_response = false;
 		} else {
+			WARN("unsupported dnstap message\n");
 			dt_reader_free_frame(reader, &frame);
 			continue;
 		}
 
+		// Create dns packet based on dnstap wire data.
 		knot_pkt_t *pkt = knot_pkt_new(msg->data, msg->len, NULL);
 		if (pkt == NULL) {
 			ERR("can't allocate packet\n");
@@ -841,55 +855,71 @@ static void process_dnstap(const query_t *query)
 			break;
 		}
 
+		// Parse packet and reconstruct required data.
 		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
 			ProtobufCBinaryData *addr = NULL;
+			uint32_t            port = 0;
+			time_t              timestamp = 0;
+			float               query_time = 0.0;
+			net_t               net_ctx = { 0 };
 
-			uint32_t port = 0;
-			net_t net_ctx = { 0 };
 			if (is_response) {
 				addr = &frame->message->response_address;
 				port = frame->message->response_port;
+
+				timestamp = frame->message->response_time_sec;
+				query_time = get_query_time(frame);
 			} else {
 				addr = &frame->message->query_address;
 				port = frame->message->query_port;
+
+				timestamp = frame->message->query_time_sec;
 			}
 
-			char addrstr[INET6_ADDRSTRLEN + 1];
-			if (addr->data != NULL) {
-				assert(frame->message->has_socket_family);
-
+			// Prepare connection information string.
+			if (addr->data != NULL &&
+			    frame->message->has_socket_family &&
+			    frame->message->has_socket_protocol) {
 				struct sockaddr_storage ss;
-				int family;
-				switch (frame->message->socket_family){
-				case DNSTAP__SOCKET_FAMILY__INET: family = AF_INET; break;
-				case DNSTAP__SOCKET_FAMILY__INET6: family = AF_INET6; break;
+				int    family = AF_UNSPEC, proto = 0;
+
+				switch (frame->message->socket_family) {
+				case DNSTAP__SOCKET_FAMILY__INET:
+					family = AF_INET;
+					break;
+				case DNSTAP__SOCKET_FAMILY__INET6:
+					family = AF_INET6;
+					break;
 				default:
-					abort();
+					break;
+				}
+
+				switch (frame->message->socket_protocol) {
+				case DNSTAP__SOCKET_PROTOCOL__UDP:
+					proto = SOCK_DGRAM;
+					break;
+				case DNSTAP__SOCKET_PROTOCOL__TCP:
+					proto = SOCK_STREAM;
+					break;
+				default:
+					break;
 				}
 
 				sockaddr_set_raw(&ss, family, addr->data);
 				sockaddr_port_set(&ss, port);
-				sockaddr_tostr(&ss, addrstr, INET6_ADDRSTRLEN);
-				net_ctx.remote_str = addrstr;
+				get_addr_str(&ss, proto, &net_ctx.remote_str);
 			}
 
-			const float query_time = is_response ? get_query_time(frame) : 0.0;
+			print_packet(pkt, &net_ctx, pkt->size, query_time,
+			             timestamp, is_response, &query->style);
 
-			time_t time = 0;
-			if (is_response) {
-				time = frame->message->response_time_sec;
-			} else {
-				time = frame->message->query_time_sec;
-			}
-
-			print_packet(pkt, &net_ctx, pkt->size, query_time, time,
-				     is_response, &query->style);
+			net_clean(&net_ctx);
 		} else {
-			ERR("can't print query packet\n");
+			ERR("can't print dnstap message\n");
 		}
 
-		dt_reader_free_frame(reader, &frame);
 		knot_pkt_free(&pkt);
+		dt_reader_free_frame(reader, &frame);
 	}
 #endif
 }

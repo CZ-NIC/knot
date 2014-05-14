@@ -24,10 +24,10 @@
 #include "dnstap/message.h"
 
 static void set_address(const struct sockaddr *sockaddr,
-		       ProtobufCBinaryData *addr,
-		       protobuf_c_boolean *has_addr,
-		       uint32_t *port,
-		       protobuf_c_boolean *has_port)
+                        ProtobufCBinaryData   *addr,
+                        protobuf_c_boolean    *has_addr,
+                        uint32_t              *port,
+                        protobuf_c_boolean    *has_port)
 {
 	if (sockaddr == NULL) {
 		*has_addr = 0;
@@ -39,13 +39,15 @@ static void set_address(const struct sockaddr *sockaddr,
 	*has_port = 1;
 
 	if (sockaddr->sa_family == AF_INET) {
-		const struct sockaddr_in *sai = (const struct sockaddr_in *)sockaddr;
-		addr->len = 4;
+		const struct sockaddr_in *sai;
+		sai = (const struct sockaddr_in *)sockaddr;
+		addr->len = sizeof(sai->sin_addr);
 		addr->data = (uint8_t *)&sai->sin_addr.s_addr;
 		*port = ntohs(sai->sin_port);
 	} else if (sockaddr->sa_family == AF_INET6) {
-		const struct sockaddr_in6 *sai6 = (const struct sockaddr_in6 *)sockaddr;
-		addr->len = 16;
+		const struct sockaddr_in6 *sai6;
+		sai6 = (const struct sockaddr_in6 *)sockaddr;
+		addr->len = sizeof(sai6->sin6_addr);
 		addr->data = (uint8_t *)&sai6->sin6_addr.s6_addr;
 		*port = ntohs(sai6->sin6_port);
 	}
@@ -55,28 +57,37 @@ static int get_family(const struct sockaddr *query_sa,
 	              const struct sockaddr *response_sa)
 {
 	const struct sockaddr *source = query_sa ? query_sa : response_sa;
-	if (!source) {
+
+	if (source == NULL) {
 		return 0;
 	}
 
 	switch (source->sa_family) {
-	case AF_INET: return DNSTAP__SOCKET_FAMILY__INET;
-	case AF_INET6: return DNSTAP__SOCKET_FAMILY__INET6;
-	default: return 0;
-	};
+	case AF_INET:
+		return DNSTAP__SOCKET_FAMILY__INET;
+	case AF_INET6:
+		return DNSTAP__SOCKET_FAMILY__INET6;
+	default:
+		return 0;
+	}
 }
 
-int dt_message_fill(Dnstap__Message *m,
+int dt_message_fill(Dnstap__Message             *m,
                     const Dnstap__Message__Type type,
-                    const struct sockaddr *query_sa,
-                    const struct sockaddr *response_sa,
-                    const int protocol,
-                    const void *wire,
-                    const size_t len_wire,
-                    const struct timeval *qtime,
-                    const struct timeval *rtime)
+                    const struct sockaddr       *query_sa,
+                    const struct sockaddr       *response_sa,
+                    const int                   protocol,
+                    const void                  *wire,
+                    const size_t                len_wire,
+                    const struct timeval        *qtime,
+                    const struct timeval        *rtime)
 {
+	if (m == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	memset(m, 0, sizeof(*m));
+
 	m->base.descriptor = &dnstap__message__descriptor;
 
 	// Message.type
@@ -110,7 +121,7 @@ int dt_message_fill(Dnstap__Message *m,
 		m->query_message.data = (uint8_t *)wire;
 		m->has_query_message = 1;
 	} else if (type == DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE ||
-		   type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE)
+	           type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE)
 	{
 		// Message.response_message
 		m->response_message.len = len_wire;
