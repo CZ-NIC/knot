@@ -344,7 +344,7 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 	uint16_t data_len = knot_rdata_rdlen(knot_rdataset_at(&opt_rr->rrs, 0));
 
 	int pos = 0;
-	while (data_len - pos > 4) {
+	while (data_len - pos >= 4) {
 		uint16_t opt_code = knot_wire_read_u16(data + pos);
 		if (opt_code == code) {
 			return true;

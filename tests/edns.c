@@ -20,12 +20,18 @@
 #include "common/errcode.h"
 #include "libknot/edns.h"
 
-static const uint16_t EDNS_FLAGS = KNOT_EDNS_FLAGS_DO;
+static const uint16_t E_FLAGS = (uint16_t)1 << 13;
 static const uint16_t E_MAX_PLD = 10000;
+static const uint16_t E_MAX_PLD2 = 20000;
 static const uint8_t E_VERSION = 1;
+static const uint8_t E_VERSION2 = 1;
+static const uint8_t E_RCODE = 200;
+static const uint8_t E_RCODE2 = 300;
 static const char *E_NSID_STR = "FooBar";
 static const uint16_t E_NSID_LEN = strlen(E_NSID_STR);
-static const uint8_t E_RCODE = 0;
+static const uint16_t E_OPT2_CODE = 23;
+static const char *E_OPT2_DATA = "Deadbeef";
+static const uint16_t E_OPT2_LEN = strlen(E_OPT2_DATA);
 
 enum offsets {
 	/*! \brief Offset of Extended RCODE in wire order of TTL. */
@@ -42,65 +48,181 @@ enum offsets {
 	OFFSET_OPT_DATA = 4
 };
 
-static int opt_rr_check(knot_rrset_t *opt_rr, knot_edns_params_t *params)
+static bool check_ttl(knot_rdata_t *rdata, uint8_t ext_rcode, uint8_t ver,
+                      uint16_t flags, char *msg, int *done)
 {
-	assert(opt_rr != NULL);
-	assert(params != NULL);
-	int failed = 0;
-	int check = 0;
-
-	/* TODO find out whether some test failed. */
-
-	/* Check values in OPT RR by hand. */
-	/* CLASS == Max UDP payload */
-	check = opt_rr->rclass == params->payload;
-	ok(check, "OPT RR: init: wrong max payload");
-
-	/* The OPT RR should have exactly one RDATA. */
-	ok(opt_rr->rrs.rr_count == 1, "OPT RR: RR count is not 1");
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	ok(rdata != NULL, "OPT RR: missing RDATA");
-
 	/* TTL should be stored in machine byte order.
 	   We need network byte order to compare its parts. */
 	uint8_t ttl_wire[4] = { 0, 0, 0, 0 };
 	knot_wire_write_u32(ttl_wire, knot_rdata_ttl(rdata));
 
 	/* Convert Flags from EDNS parameters to wire format for comparison. */
-	uint8_t param_flags_wire[2] = { 0, 0 };
-	knot_wire_write_u16(param_flags_wire, params->flags);
+	uint8_t flags_wire[2] = { 0, 0 };
+	knot_wire_write_u16(flags_wire, flags);
+
+	bool success = true;
 
 	/* TTL = Ext RCODE + Version + Flags */
-	ok(ttl_wire[OFFSET_ERCODE] == E_RCODE, "OPT RR: init: RCODE is not 0");
-	ok(ttl_wire[OFFSET_VER] == params->version,
-	   "OPT RR: init: wrong version");
-	ok(memcpy(param_flags_wire, ttl_wire + OFFSET_FLAGS, 2) == 0,
-	   "OPT RR: init: wrong flags");
+	bool check = ttl_wire[OFFSET_ERCODE] == ext_rcode;
+	ok(check, "%s: RCODE is not right", msg);
+	success &= check;
+	(*done)++;
 
-	/* NSID in RDATA = Code + Length + Data. */
+	check = ttl_wire[OFFSET_VER] == ver;
+	ok(check, "%s: wrong version", msg);
+	success &= check;
+	(*done)++;
+
+	check = memcmp(flags_wire, ttl_wire + OFFSET_FLAGS, 2) == 0;
+	ok(check, "%s: OPT RR: wrong flags", msg);
+	success &= check;
+	(*done)++;
+
+	return success;
+}
+
+static bool check_option(knot_rdata_t *rdata, uint16_t opt_code,
+                         uint16_t opt_len, uint8_t *opt_data, char *msg,
+                         int *done)
+{
+	bool success = true;
 
 	uint8_t *data = knot_rdata_data(rdata);
 	uint16_t data_len = knot_rdata_rdlen(rdata);
-	/* Check RDLENGTH according to given NSID. */
-	ok(data_len == 4 + E_NSID_LEN, "OPT RR: init: wrong RDLENGTH");
 
-	/* Check that the first OPTION is NSID. */
-	uint16_t opt_code = knot_wire_read_u16(data + OFFSET_OPT_CODE);
-	ok(opt_code == KNOT_EDNS_OPTION_NSID, "OPT RR: init: wrong OPTION code");
+	/* Check RDLENGTH according to given data length. */
+	bool check = (data_len >= 4 + opt_len);
+	ok(check, "%s: wrong RDLENGTH", msg);
+	success &= check;
+	(*done)++;
 
-	/* Check that the first OPTION's size si the size of the NSID string. */
-	uint16_t opt_size = knot_wire_read_u16(data + OFFSET_OPT_SIZE);
-	ok(opt_size == E_NSID_LEN, "OPT RR: init: wrong NSID data size");
+	/* Find the desired option. */
+	bool found = false;
+	int pos = 0;
+	while (pos <= data_len - 4) {
+		uint16_t code = knot_wire_read_u16(data + pos + OFFSET_OPT_CODE);
+		if (code == opt_code) {
+			found = true;
+			break;
+		}
+	}
+
+	/* Check that the option is present. */
+	ok(found, "%s: OPTION %u not found in OPT RR", msg, opt_code);
+	success &= found;
+	(*done)++;
+
+	/* Check that the first OPTION's size si the size of the option data. */
+	uint16_t opt_size = knot_wire_read_u16(data + pos + OFFSET_OPT_SIZE);
+	check = (opt_size == opt_len);
+	ok(check, "%s: wrong OPTION data size", msg);
+	success &= check;
+	(*done)++;
 
 	/* Check the actual NSID data. */
-	ok(memcpy(data + OFFSET_OPT_DATA, E_NSID_STR, E_NSID_LEN) == 0,
-	   "OPT RR: init: wrong NSID data");
+	check = memcpy(data + pos + OFFSET_OPT_DATA, opt_data, opt_len) == 0;
+	ok(check, "%s: wrong OPTION data", msg);
+	success &= check;
+	(*done)++;
 
-	/* TOTAL: 10 tests. */
-	return 0;
+	return success;
 }
 
-#define TEST_COUNT 10
+static bool opt_rr_check(knot_rrset_t *opt_rr, uint16_t payload, uint8_t ver,
+                         uint16_t flags, uint8_t ext_rcode, uint16_t opt_code,
+                         uint16_t opt_len, uint8_t *opt_data, char *msg,
+                         int *done)
+{
+	assert(opt_rr != NULL);
+	assert(params != NULL);
+	bool check;
+	bool success = true;
+
+	/* Check values in OPT RR by hand. */
+	/* CLASS == Max UDP payload */
+	check = opt_rr->rclass == payload;
+	ok(check, "%s: wrong max payload", msg);
+	success &= check;
+	(*done)++;
+
+	/* The OPT RR should have exactly one RDATA. */
+	check = opt_rr->rrs.rr_count == 1;
+	ok(check, "%s: RR count is not 1", msg);
+	success &= check;
+	(*done)++;
+
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	check = rdata != NULL;
+	ok(check, "%s: missing RDATA", msg);
+	success &= check;
+	(*done)++;
+
+	success &= check_ttl(rdata, ext_rcode, ver, flags, msg, done);
+
+	/* OPTION in RDATA = Code + Length + Data. */
+	success &= check_option(rdata, opt_code, opt_len, opt_data, msg, done);
+
+	return success;
+}
+
+static bool test_getters(knot_rrset_t *opt_rr, knot_edns_params_t *params,
+                         int *done)
+{
+	bool success = true;
+
+	/* Payload */
+	bool check = knot_edns_get_payload(opt_rr) == params->payload;
+	ok(check, "OPT RR getters: wrong payload");
+	success &= check;
+	(*done)++;
+
+	/* Extended RCODE */
+	check = knot_edns_get_ext_rcode(opt_rr) == E_RCODE;
+	ok(check, "OPT RR getters: wrong Extended RCODE");
+	success &= check;
+	(*done)++;
+
+	/* Extended RCODE */
+	check = knot_edns_get_version(opt_rr) == params->version;
+	ok(check, "OPT RR getters: wrong version");
+	success &= check;
+	(*done)++;
+
+	/* DO bit */
+	check = !knot_edns_do(opt_rr);
+	ok(check, "OPT RR getters: wrong DO bit check");
+	success &= check;
+	(*done)++;
+
+	/* NSID */
+	check = knot_edns_has_option(opt_rr, KNOT_EDNS_OPTION_NSID) ==
+	                (params->nsid != NULL && params->nsid_len > 0);
+	ok(check, "OPT RR getters: NSID not found");
+	success &= check;
+	(*done)++;
+
+	return success;
+}
+
+static bool test_setters(knot_rrset_t *opt_rr, int *done)
+{
+	knot_edns_set_payload(opt_rr, E_MAX_PLD2);
+	knot_edns_set_ext_rcode(opt_rr, E_RCODE2);
+	knot_edns_set_version(opt_rr, E_VERSION2);
+	knot_edns_set_do(opt_rr, KNOT_EDNS_FLAG_DO);
+	knot_edns_add_option(opt_rr, E_OPT2_CODE, E_OPT2_LEN, E_OPT2_DATA, NULL);
+
+	return opt_rr_check(opt_rr, E_MAX_PLD2, E_VERSION2,
+	                    E_FLAGS || KNOT_EDNS_FLAG_DO, E_RCODE2,
+	                    E_OPT2_CODE, E_OPT2_LEN, E_OPT2_DATA,
+	                    "OPT RR setters", done);
+}
+
+#define TEST_COUNT 35
+
+static inline int remaining(int done) {
+	return TEST_COUNT - done - 1;
+}
 
 int main(int argc, char *argv[])
 {
@@ -111,9 +233,9 @@ int main(int argc, char *argv[])
 
 	/* 1) Creating EDNS params structure with proper data + NSID. */
 
-	knot_edns_params_t *p1 =
-		knot_edns_new_params(E_MAX_PLD, E_VERSION, E_FLAGS, E_NSID_LEN,
-	                             E_NSID_STR);
+	knot_edns_params_t *p1 = knot_edns_new_params(E_MAX_PLD, E_VERSION,
+	                                              E_FLAGS, E_NSID_LEN,
+	                                              E_NSID_STR);
 	ok(p1 != NULL, "EDNS params: new");
 	done++;
 	/* NOTE: if this fails, the test should probably not continue, otherwise
@@ -133,40 +255,43 @@ int main(int argc, char *argv[])
 	done++;
 
 	if (p1 == NULL || p2 == NULL || p3 == NULL) {
-		skip_block(TEST_COUNT - done - 1,
-		           "Failed to initialize EDNS params.");
+		skip_block(remaining(done), "Failed to initialize EDNS params.");
 		goto exit;
 	}
 
+	bool success = true;
+	bool check;
 	/* 4-6) Check that all parameters are properly set. */
-	bool p1_ok = p1->payload == E_MAX_PLD
-	             && p1->version == E_VERSION
-	             && p1->flags == E_FLAGS
-	             && p1->nsid_len == E_NSID_LEN
-	             && memcmp(p1->nsid, E_NSID_STR, E_NSID_LEN) == 0;
-	ok(p1_ok, "EDNS params: parameter values (with NSID)");
+	check = p1->payload == E_MAX_PLD
+	        && p1->version == E_VERSION
+	        && p1->flags == E_FLAGS
+	        && p1->nsid_len == E_NSID_LEN
+	        && memcmp(p1->nsid, E_NSID_STR, E_NSID_LEN) == 0;
+	ok(check, "EDNS params: parameter values (with NSID)");
+	success &= check;
 	done++;
 
-	bool p2_ok = p2->payload == E_MAX_PLD
-	             && p2->version == E_VERSION
-	             && p2->flags == E_FLAGS
-	             && p2->nsid_len == 0
-	             && p2->nsid == 0;
+	check = p2->payload == E_MAX_PLD
+	        && p2->version == E_VERSION
+	        && p2->flags == E_FLAGS
+	        && p2->nsid_len == 0
+	        && p2->nsid == 0;
 
-	ok(p2_ok, "EDNS params: parameter values (NSID length = 0)");
+	ok(check, "EDNS params: parameter values (NSID length = 0)");
+	success &= check;
 	done++;
 
-	bool p3_ok = p3->payload == E_MAX_PLD
-	             && p3->version == E_VERSION
-	             && p3->flags == E_FLAGS
-	             && p3->nsid_len == 0
-	             && p3->nsid == 0;
-	ok(p3_ok, "EDNS params: parameter values (NSID = NULL)");
+	check = p3->payload == E_MAX_PLD
+	        && p3->version == E_VERSION
+	        && p3->flags == E_FLAGS
+	        && p3->nsid_len == 0
+	        && p3->nsid == 0;
+	ok(check, "EDNS params: parameter values (NSID = NULL)");
+	success &= check;
 	done++;
 
-	if (!(p1_ok && p2_ok && p3_ok)) {
-		skip_block(TEST_COUNT - done - 1,
-		           "EDNS params have wrong values.");
+	if (!success) {
+		skip_block(remaining(done), "EDNS params have wrong values.");
 		goto exit;
 	}
 
@@ -184,27 +309,35 @@ int main(int argc, char *argv[])
 	done++;
 
 	if (ret != KNOT_EOK) {
-		skip_block(TEST_COUNT - done - 1,
-		           "OPT RR not initialized.");
+		skip_block(remaining(done), "OPT RR not initialized.");
 		goto exit;
 	}
 
 	/* 10-19) Check initialized values. */
-	ret = opt_rr_check(opt_rr, p1);
-	done += 10;
-	if (ret != 0) {
-		skip_block(TEST_COUNT - done - 1,
-		           "OPT RR not initialized properly");
+	success = opt_rr_check(opt_rr, p1->payload, p1->version, p1->flags,
+	                       E_RCODE, KNOT_EDNS_OPTION_NSID, p1->nsid_len,
+	                       p1->nsid, "OPT RR init", &done);
+	if (!success) {
+		skip_block(remaining(done), "OPT RR not initialized properly");
 		goto exit;
 	}
 
-	/* 20- ) Getters / setters */
-	/* Payload */
+	/* 20-23 ) Getters
+	   Note: NULL parameters are not supported, so no test for that. */
+	success = test_getters(opt_rr, p1, &done);
 
+	if (!success) {
+		skip_block(remaining(done), "OPT RR: getters error");
+		goto exit;
+	}
 
+	/* 24-27) Setters */
+	success = test_setters(opt_rr, &done);
 
-	/* Adding option. */
-
+	if (!success) {
+		skip_block(remaining(done), "OPT RR: setters error");
+		goto exit;
+	}
 
 exit:
 	/* Free the parameters. */
