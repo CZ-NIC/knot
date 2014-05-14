@@ -139,7 +139,7 @@ static int cmd_remote_reply(int c)
 	}
 
 	/* Read response packet. */
-	int n = tcp_recv(c, pkt->wire, pkt->max_size, NULL);
+	int n = tcp_recv_msg(c, pkt->wire, pkt->max_size, NULL);
 	if (n <= 0) {
 		dbg_server("remote: couldn't receive response = %s\n", knot_strerror(n));
 		knot_pkt_free(&pkt);
@@ -258,7 +258,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Send and free packet. */
-	int ret = tcp_send(s, pkt->wire, pkt->size);
+	int ret = tcp_send_msg(s, pkt->wire, pkt->size);
 	knot_pkt_free(&pkt);
 
 	/* Evaluate and wait for reply. */

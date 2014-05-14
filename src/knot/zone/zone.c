@@ -26,12 +26,13 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/contents.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "knot/nameserver/requestor.h"
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/util/utils.h"
+#include "libknot/rdata/soa.h"
 
 /*!
  * \brief Set ACL list from configuration.
@@ -71,6 +72,7 @@ static void free_ddns_q(zone_t *z)
 	struct request_data *n = NULL;
 	node_t *nxt = NULL;
 	WALK_LIST_DELSAFE(n, nxt, z->ddns_queue) {
+		close(n->fd);
 		knot_pkt_free(&n->query);
 		rem_node((node_t *)n);
 		free(n);
@@ -124,7 +126,6 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_t *zone = *zone_ptr;
 
-
 	zone_events_deinit(zone);
 
 	knot_dname_free(&zone->name, NULL);
@@ -145,24 +146,24 @@ void zone_free(zone_t **zone_ptr)
 	*zone_ptr = NULL;
 }
 
-knot_changeset_t *zone_change_prepare(knot_changesets_t *chset)
+changeset_t *zone_change_prepare(changesets_t *chset)
 {
-	return knot_changesets_create_changeset(chset);
+	return changesets_create_changeset(chset);
 }
 
-int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset)
+int zone_change_commit(zone_contents_t *contents, changesets_t *chset)
 {
 	assert(contents);
 
-	if (knot_changesets_empty(chset)) {
+	if (changesets_empty(chset)) {
 		return KNOT_EOK;
 	}
 
 	/* Apply DNSSEC changeset to the new zone. */
-	return xfrin_apply_changesets_directly(contents, chset);
+	return apply_changesets_directly(contents, chset);
 }
 
-int zone_change_store(zone_t *zone, knot_changesets_t *chset)
+int zone_change_store(zone_t *zone, changesets_t *chset)
 {
 	assert(zone);
 	assert(chset);
@@ -186,39 +187,41 @@ int zone_change_store(zone_t *zone, knot_changesets_t *chset)
 }
 
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */
-int zone_change_apply_and_store(knot_changesets_t *chs,
+int zone_change_apply_and_store(changesets_t **chs,
                                 zone_t *zone,
-                                zone_contents_t **new_contents,
-                                const char *msgpref)
+                                const char *msgpref,
+                                mm_ctx_t *rr_mm)
 {
 	int ret = KNOT_EOK;
 
 	/* Now, try to apply the changesets to the zone. */
-	ret = xfrin_apply_changesets(zone, chs, new_contents);
+	zone_contents_t *new_contents;
+	ret = apply_changesets(zone, *chs, &new_contents);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to apply changesets.\n", msgpref);
 		/* Free changesets, but not the data. */
-		knot_changesets_free(&chs);
+		changesets_free(chs, rr_mm);
 		return ret;  // propagate the error above
 	}
 
 	/* Write changes to journal if all went well. */
-	ret = zone_change_store(zone, chs);
+	ret = zone_change_store(zone, *chs);
 	if (ret != KNOT_EOK) {
 		log_zone_error("%s Failed to store changesets.\n", msgpref);
-		xfrin_rollback_update(chs, new_contents);
+		update_rollback(*chs, &new_contents);
 		/* Free changesets, but not the data. */
-		knot_changesets_free(&chs);
+		changesets_free(chs, rr_mm);
 		return ret;  // propagate the error above
 	}
 
 	/* Switch zone contents. */
-	zone_contents_t *old_contents = xfrin_switch_zone(zone, *new_contents);
-	xfrin_zone_contents_free(&old_contents);
+	zone_contents_t *old_contents = zone_switch_contents(zone, new_contents);
+	synchronize_rcu();
+	update_free_old_zone(&old_contents);
 
 	/* Free changesets, but not the data. */
-	xfrin_cleanup_successful_update(chs);
-	knot_changesets_free(&chs);
+	update_cleanup(*chs);
+	changesets_free(chs, rr_mm);
 	assert(ret == KNOT_EOK);
 	return KNOT_EOK;
 }
@@ -251,11 +254,12 @@ const conf_iface_t *zone_master(const zone_t *zone)
 
 void zone_master_rotate(const zone_t *zone)
 {
-	if (zone_master(zone) == NULL) {
+
+	list_t *master_list = &zone->conf->acl.xfr_in;
+	if (list_size(master_list) < 2) {
 		return;
 	}
 
-	list_t *master_list = &zone->conf->acl.xfr_in;
 	add_tail(master_list, HEAD(*master_list));
 }
 
@@ -316,9 +320,10 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 	if (req == NULL) {
 		return KNOT_ENOMEM;
 	}
-
 	memset(req, 0, sizeof(struct request_data));
-	req->fd = param->socket;
+
+	/* Copy socket and request. */
+	req->fd = dup(param->socket);
 	memcpy(&req->remote, param->remote, sizeof(struct sockaddr_storage));
 	req->query = knot_pkt_copy(pkt, NULL);
 	if (req->query == NULL) {
@@ -353,3 +358,20 @@ struct request_data *zone_update_dequeue(zone_t *zone)
 
 	return ret;
 }
+
+bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt)
+{
+	if (zone_contents_is_empty(zone->contents)) {
+		return true;
+	}
+
+	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
+	const knot_rrset_t soa = answer->rr[0];
+	if (soa.type != KNOT_RRTYPE_SOA) {
+		return false;
+	}
+
+	return knot_serial_compare(zone_contents_serial(zone->contents),
+	                           knot_soa_serial(&soa.rrs)) < 0;
+}
+

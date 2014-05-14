@@ -64,7 +64,7 @@ static int init_dnssec_structs(const zone_contents_t *zone,
 }
 
 static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
-                     knot_changeset_t *out_ch, bool force,
+                     changeset_t *out_ch, bool force,
                      knot_update_serial_t soa_up, uint32_t *refresh_at)
 {
 	assert(zone);
@@ -79,7 +79,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 	uint32_t new_serial = zone_contents_next_serial(zone, zone_config->serial_policy);
 
 	dbg_dnssec_verb("Changeset empty before generating NSEC chain: %d\n",
-	                knot_changeset_is_empty(out_ch));
+	                changeset_is_empty(out_ch));
 
 	// Init needed structs
 	knot_zone_keys_t zone_keys = { '\0' };
@@ -102,7 +102,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 		return result;
 	}
 	dbg_dnssec_verb("Changeset empty after generating NSEC chain: %d\n",
-	                knot_changeset_is_empty(out_ch));
+	                changeset_is_empty(out_ch));
 
 	// add missing signatures
 	result = knot_zone_sign(zone, &zone_keys, &policy, out_ch,
@@ -115,16 +115,16 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 		return result;
 	}
 	dbg_dnssec_verb("Changeset emtpy after signing: %d\n",
-	                knot_changeset_is_empty(out_ch));
+	                changeset_is_empty(out_ch));
 
 	// Check if only SOA changed
-	if (knot_changeset_is_empty(out_ch) &&
+	if (changeset_is_empty(out_ch) &&
 	    !knot_zone_sign_soa_expired(zone, &zone_keys, &policy)) {
 		log_zone_info("%s No signing performed, zone is valid.\n",
 		              msgpref);
 		free(msgpref);
 		knot_free_zone_keys(&zone_keys);
-		assert(knot_changeset_is_empty(out_ch));
+		assert(changeset_is_empty(out_ch));
 		return KNOT_EOK;
 	}
 
@@ -144,7 +144,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 
 	knot_free_zone_keys(&zone_keys);
 	dbg_dnssec_detail("Zone signed: changes=%zu\n",
-	                  knot_changeset_size(out_ch));
+	                  changeset_size(out_ch));
 
 	log_zone_info("%s Successfully signed.\n", msgpref);
 	free(msgpref);
@@ -153,7 +153,7 @@ static int zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 }
 
 int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
-                          knot_changeset_t *out_ch,
+                          changeset_t *out_ch,
                           knot_update_serial_t soa_up, uint32_t *refresh_at)
 {
 	if (zone == NULL || zone_config == NULL || out_ch == NULL) {
@@ -164,7 +164,7 @@ int knot_dnssec_zone_sign(zone_contents_t *zone, const conf_zone_t *zone_config,
 }
 
 int knot_dnssec_zone_sign_force(zone_contents_t *zone, const conf_zone_t *zone_config,
-                                knot_changeset_t *out_ch, uint32_t *refresh_at)
+                                changeset_t *out_ch, uint32_t *refresh_at)
 {
 	if (zone == NULL || zone_config == NULL || out_ch == NULL) {
 		return KNOT_EINVAL;
@@ -175,8 +175,8 @@ int knot_dnssec_zone_sign_force(zone_contents_t *zone, const conf_zone_t *zone_c
 
 int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                conf_zone_t *zone_config,
-                               const knot_changeset_t *in_ch,
-                               knot_changeset_t *out_ch,
+                               const changeset_t *in_ch,
+                               changeset_t *out_ch,
                                uint32_t *refresh_at)
 {
 	if (!refresh_at || zone == NULL || in_ch == NULL || out_ch == NULL) {

@@ -50,7 +50,19 @@
 int tcp_accept(int fd);
 
 /*!
- * \brief Send TCP message.
+ * \brief Receive a block of data from TCP socket with wait.
+ *
+ * \param fd  File descriptor.
+ * \param buf Data buffer.
+ * \param len Block length.
+ * \param timeout Timeout for the operation, NULL for infinite.
+ *
+ * \return number of bytes received or an error
+ */
+int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout);
+
+/*!
+ * \brief Send a TCP message.
  *
  * \param fd Associated socket.
  * \param msg Buffer for a query wireformat.
@@ -59,21 +71,21 @@ int tcp_accept(int fd);
  * \retval Number of sent data on success.
  * \retval KNOT_ERROR on error.
  */
-int tcp_send(int fd, const uint8_t *msg, size_t msglen);
+int tcp_send_msg(int fd, const uint8_t *msg, size_t msglen);
 
 /*!
- * \brief Receive TCP message.
+ * \brief Receive a TCP message.
  *
  * \param fd Associated socket.
  * \param buf Buffer for incoming bytestream.
  * \param len Buffer maximum size.
- * \param addr Source address.
+ * \param timeout Message receive timeout.
  *
  * \retval Number of read bytes on success.
  * \retval KNOT_ERROR on error.
  * \retval KNOT_ENOMEM on potential buffer overflow.
  */
-int tcp_recv(int fd, uint8_t *buf, size_t len, struct sockaddr *addr);
+int tcp_recv_msg(int fd, uint8_t *buf, size_t len, struct timeval *timeout);
 
 /*!
  * \brief TCP handler thread runnable.

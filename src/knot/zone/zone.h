@@ -112,14 +112,14 @@ zone_t *zone_new(conf_zone_t *conf);
 void zone_free(zone_t **zone_ptr);
 
 /*! \note Zone change API, subject to change. */
-knot_changeset_t *zone_change_prepare(knot_changesets_t *chset);
-int zone_change_commit(zone_contents_t *contents, knot_changesets_t *chset);
-int zone_change_store(zone_t *zone, knot_changesets_t *chset);
+changeset_t *zone_change_prepare(changesets_t *chset);
+int zone_change_commit(zone_contents_t *contents, changesets_t *chset);
+int zone_change_store(zone_t *zone, changesets_t *chset);
 /*! \note @mvavrusa Moved from zones.c, this needs a common API. */
-int zone_change_apply_and_store(knot_changesets_t *chs,
+int zone_change_apply_and_store(changesets_t **chs,
                                 zone_t *zone,
-                                zone_contents_t **new_contents,
-                                const char *msgpref);
+                                const char *msgpref,
+                                mm_ctx_t *rr_mm);
 /*!
  * \brief Atomically switch the content of the zone.
  */
@@ -140,5 +140,9 @@ int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_para
 
 /*! \brief Dequeue UPDATE request. */
 struct request_data *zone_update_dequeue(zone_t *zone);
+
+/*! \brief Returns true if final SOA in transfer has newer serial than zone */
+bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);
+
 
 /*! @} */

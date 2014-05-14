@@ -46,13 +46,13 @@ static void* responder_thread(void *arg)
 		if (client < 0) {
 			break;
 		}
-		int len = tcp_recv(client, buf, sizeof(buf), NULL);
+		int len = tcp_recv_msg(client, buf, sizeof(buf), NULL);
 		if (len < KNOT_WIRE_HEADER_SIZE) {
 			close(client);
 			break;
 		}
 		knot_wire_set_qr(buf);
-		tcp_send(client, buf, len);
+		tcp_send_msg(client, buf, len);
 		close(client);
 	}
 	return NULL;
@@ -64,7 +64,7 @@ static void* responder_thread(void *arg)
 #define CONNECTED_TESTS    4
 #define TESTS_COUNT DISCONNECTED_TESTS + CONNECTED_TESTS
 
-static struct request *make_query(struct requestor *requestor, struct sockaddr_storage *remote)
+static struct request *make_query(struct requestor *requestor,  conf_iface_t *remote)
 {
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, requestor->mm);
 	assert(pkt);
@@ -73,19 +73,19 @@ static struct request *make_query(struct requestor *requestor, struct sockaddr_s
 	return requestor_make(requestor, remote, pkt);
 }
 
-static void test_disconnected(struct requestor *requestor, struct sockaddr_storage *remote)
+static void test_disconnected(struct requestor *requestor, conf_iface_t *remote)
 {
 	/* Enqueue packet. */
 	int ret = requestor_enqueue(requestor, make_query(requestor, remote), NULL);
-	is_int(KNOT_EOK, ret, "requestor: disconnected/enqueue");
+	is_int(KNOT_ECONN, ret, "requestor: disconnected/enqueue");
 
 	/* Wait for completion. */
 	struct timeval tv = { 5, 0 };
 	ret = requestor_exec(requestor, &tv);
-	is_int(KNOT_ECONNREFUSED, ret, "requestor: disconnected/wait");
+	is_int(KNOT_ENOENT, ret, "requestor: disconnected/wait");
 }
 
-static void test_connected(struct requestor *requestor, struct sockaddr_storage *remote)
+static void test_connected(struct requestor *requestor, conf_iface_t *remote)
 {
 	/* Enqueue packet. */
 	int ret = requestor_enqueue(requestor, make_query(requestor, remote), NULL);;
@@ -118,9 +118,10 @@ int main(int argc, char *argv[])
 
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, 4096);
-	struct sockaddr_storage remote, origin;
-	sockaddr_set(&remote, AF_INET, "127.0.0.1", 0);
-	sockaddr_set(&origin, AF_INET, "127.0.0.1", 0);
+	conf_iface_t remote;
+	memset(&remote, 0, sizeof(conf_iface_t));
+	sockaddr_set(&remote.addr, AF_INET, "127.0.0.1", 0);
+	sockaddr_set(&remote.via, AF_INET, "127.0.0.1", 0);
 
 	/* Create fake server environment. */
 	server_t server;
@@ -135,10 +136,10 @@ int main(int argc, char *argv[])
 	test_disconnected(&requestor, &remote);
 
 	/* Bind to random port. */
-	int origin_fd = net_bound_socket(SOCK_STREAM, &remote);
+	int origin_fd = net_bound_socket(SOCK_STREAM, &remote.addr);
 	assert(origin_fd > 0);
-	socklen_t addr_len = sockaddr_len(&remote);
-	getsockname(origin_fd, (struct sockaddr *)&remote, &addr_len);
+	socklen_t addr_len = sockaddr_len(&remote.addr);
+	getsockname(origin_fd, (struct sockaddr *)&remote.addr, &addr_len);
 	ret = listen(origin_fd, 10);
 	assert(ret == 0);
 
@@ -153,9 +154,9 @@ int main(int argc, char *argv[])
 #warning TODO: when ported sign_packet/verify_packet
 
 	/* Terminate responder. */
-	int responder = net_connected_socket(SOCK_STREAM, &remote, NULL, 0);
+	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL, 0);
 	assert(responder > 0);
-	tcp_send(responder, (const uint8_t *)"", 1);
+	tcp_send_msg(responder, (const uint8_t *)"", 1);
 	(void) pthread_join(thread, 0);
 	close(responder);
 

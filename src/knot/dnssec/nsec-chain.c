@@ -142,8 +142,8 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 
 	dbg_dnssec_detail("Adding new NSEC to changeset.\n");
 	// Add new NSEC to the changeset (no matter if old was removed)
-	return knot_changeset_add_rrset(data->changeset, new_nsec,
-	                                KNOT_CHANGESET_ADD);
+	return changeset_add_rrset(data->changeset, new_nsec,
+	                                CHANGESET_ADD);
 }
 
 /* - API - iterations ------------------------------------------------------- */
@@ -205,7 +205,7 @@ int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
  * \brief Add entry for removed NSEC to the changeset.
  */
 int knot_nsec_changeset_remove(const zone_node_t *n,
-                               knot_changeset_t *changeset)
+                               changeset_t *changeset)
 {
 	if (changeset == NULL) {
 		return KNOT_EINVAL;
@@ -219,8 +219,8 @@ int knot_nsec_changeset_remove(const zone_node_t *n,
 	}
 	if (nsec) {
 		// update changeset
-		result = knot_changeset_add_rrset(changeset, nsec,
-		                                  KNOT_CHANGESET_REMOVE);
+		result = changeset_add_rrset(changeset, nsec,
+		                                  CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
 			knot_rrset_free(&nsec, NULL);
 			return result;
@@ -253,8 +253,8 @@ int knot_nsec_changeset_remove(const zone_node_t *n,
 		}
 
 		// store RRSIG
-		result = knot_changeset_add_rrset(changeset, synth_rrsigs,
-		                                  KNOT_CHANGESET_REMOVE);
+		result = changeset_add_rrset(changeset, synth_rrsigs,
+		                                  CHANGESET_REMOVE);
 		if (result != KNOT_EOK) {
 			knot_rrset_free(&synth_rrsigs, NULL);
 			return result;
@@ -288,7 +288,7 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n)
  * \brief Create new NSEC chain, add differences from current into a changeset.
  */
 int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
-                           knot_changeset_t *changeset)
+                           changeset_t *changeset)
 {
 	assert(zone);
 	assert(zone->nodes);

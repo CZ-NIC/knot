@@ -65,6 +65,16 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss);
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
                          const struct sockaddr_storage *src_addr, unsigned flags);
 
+/*!
+ * \brief Return true if the socket is connected.
+ *
+ * @note This could be used to identify connected TCP from UDP sockets.
+ *
+ * \param fd Socket.
+ *
+ * \return true if connected
+ */
+int net_is_connected(int fd);
 
 #endif // _KNOTD_NET_H_
 

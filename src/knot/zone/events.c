@@ -20,6 +20,8 @@
 #include "common/evsched.h"
 #include "common/mempool.h"
 #include "knot/server/server.h"
+#include "knot/server/udp-handler.h"
+#include "knot/server/tcp-handler.h"
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/worker/pool.h"
@@ -136,7 +138,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	requestor_enqueue(&re, req, &param);
 
 	/* Send the queries and process responses. */
-	struct timeval tv = { conf()->max_conn_hs, 0 };
+	struct timeval tv = { conf()->max_conn_reply, 0 };
 	ret = requestor_exec(&re, &tv);
 
 	/* Cleanup. */
@@ -145,6 +147,36 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 
 	return ret;
 }
+
+/* @note Module specific, expects some variables set. */
+#define ZONE_XFER_LOG(severity, pkt_type, msg...) \
+	if (pkt_type == KNOT_QUERY_AXFR) { \
+		ZONE_QUERY_LOG(severity, zone, master, "AXFR", msg); \
+	} else { \
+		ZONE_QUERY_LOG(severity, zone, master, "IXFR", msg); \
+	}
+
+static int zone_query_transfer(zone_t *zone, const conf_iface_t *master, uint16_t pkt_type)
+{
+	assert(zone);
+	assert(master);
+
+	int ret = zone_query_execute(zone, pkt_type, master);
+	if (ret != KNOT_EOK) {
+		/* IXFR failed, revert to AXFR. */
+		if (pkt_type == KNOT_QUERY_IXFR) {
+			ZONE_XFER_LOG(LOG_NOTICE, pkt_type, "Fallback to AXFR.");
+			return zone_query_transfer(zone, master, KNOT_QUERY_AXFR);
+		}
+
+		/* Log connection errors. */
+		ZONE_XFER_LOG(LOG_ERR, pkt_type, "%s", knot_strerror(ret));
+	}
+
+	return ret;
+}
+
+#undef ZONE_XFER_LOG
 
 /*!
  * \todo Separate signing from zone loading and drop this function.
@@ -284,33 +316,17 @@ static int event_refresh(zone_t *zone)
 static int event_xfer(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "XFER of '%s'\n", zone->conf->name);
 
-	const conf_iface_t *master = zone_master(zone);
-	assert(master);
-
+	/* Determine transfer type. */
 	uint16_t pkt_type = KNOT_QUERY_IXFR;
 	if (zone_contents_is_empty(zone->contents) || zone->flags & ZONE_FORCE_AXFR) {
 		pkt_type = KNOT_QUERY_AXFR;
 	}
 
-	int ret = zone_query_execute(zone, pkt_type, master);
-
-	/* IXFR failed, revert to AXFR. */
-	if (pkt_type == KNOT_RRTYPE_IXFR && ret != KNOT_EOK) {
-		zone->flags |= ZONE_FORCE_AXFR;
-		return event_xfer(zone);
-	}
-
-	if (zone_contents_is_empty(zone->contents)) {
-		/* Log connection errors. */
-		ZONE_QUERY_LOG(LOG_ERR, zone, master, "AXFR", "%s", knot_strerror(ret));
-		/* Zone contents is still empty, increment bootstrap retry timer
-		 * and try again. */
-		bootstrap_next(&zone->xfr_in.bootstrap_retry);
-		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->xfr_in.bootstrap_retry);
-		return ret;
-	} else {
+	/* Execute zone transfer and reschedule timers. */
+	int ret = zone_query_transfer(zone, zone_master(zone), pkt_type);
+	if (ret == KNOT_EOK) {
+		assert(!zone_contents_is_empty(zone->contents));
 		/* New zone transferred, reschedule zone expiration and refresh
 		 * timers and send notifications to slaves. */
 		knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
@@ -318,9 +334,14 @@ static int event_xfer(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 		zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
+	} else {
+		/* Zone contents is still empty, increment bootstrap retry timer
+		 * and try again. */
+		bootstrap_next(&zone->xfr_in.bootstrap_retry);
+		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->xfr_in.bootstrap_retry);
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 static int event_update(zone_t *zone)
@@ -351,16 +372,20 @@ static int event_update(zone_t *zone)
 	int ret = update_process_query(resp, &qdata);
 
 	/* Send response. */
-#warning TODO: proper API for this
-	sendto(update->fd, resp->wire, resp->size, 0,
-	       (struct sockaddr *)param.remote, sockaddr_len(param.remote));
+	if (net_is_connected(update->fd)) {
+		tcp_send_msg(update->fd, resp->wire, resp->size);
+	} else {
+		udp_send_msg(update->fd, resp->wire, resp->size,
+		             (struct sockaddr *)param.remote);
+	}
 
 	/* Cleanup. */
+	close(update->fd);
 	knot_pkt_free(&resp);
 	knot_pkt_free(&update->query);
 	free(update);
 
-	return ret;
+	return KNOT_EOK;
 }
 
 static int event_expire(zone_t *zone)
@@ -419,12 +444,12 @@ static int event_dnssec(zone_t *zone)
 	assert(zone);
 	fprintf(stderr, "DNSSEC of '%s'\n", zone->conf->name);
 
-	knot_changesets_t *chs = knot_changesets_create(1);
+	changesets_t *chs = changesets_create(1);
 	if (chs == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	knot_changeset_t *ch = knot_changesets_get_last(chs);
+	changeset_t *ch = changesets_get_last(chs);
 	assert(ch);
 
 	int ret = KNOT_ERROR;
@@ -454,10 +479,8 @@ static int event_dnssec(zone_t *zone)
 		goto done;
 	}
 
-	if (!knot_changesets_empty(chs)) {
-		zone_contents_t *new_c = NULL;
-		ret = zone_change_apply_and_store(chs, zone, &new_c, "DNSSEC");
-		chs = NULL; // freed by zone_change_apply_and_store()
+	if (!changesets_empty(chs)) {
+		ret = zone_change_apply_and_store(&chs, zone, "DNSSEC", NULL);
 		if (ret != KNOT_EOK) {
 			log_zone_error("%s Could not sign zone (%s).\n",
 				       msgpref, knot_strerror(ret));
@@ -475,7 +498,7 @@ static int event_dnssec(zone_t *zone)
 	}
 
 done:
-	knot_changesets_free(&chs);
+	changesets_free(&chs, NULL);
 	free(msgpref);
 	return ret;
 }

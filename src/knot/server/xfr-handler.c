@@ -32,7 +32,7 @@
 #include "knot/server/net.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
-#include "knot/updates/xfr-in.h"
+#include "knot/updates/apply.h"
 #include "knot/nameserver/axfr.h"
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/internet.h"
@@ -255,8 +255,8 @@ static void xfr_task_cleanup(knot_ns_xfr_t *rq)
 			rq->data = NULL;
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
-		knot_changesets_t *chs = (knot_changesets_t *)rq->data;
-		knot_changesets_free(&chs);
+		changesets_t *chs = (changesets_t *)rq->data;
+		changesets_free(&chs);
 		rq->data = NULL;
 		assert(rq->new_contents == NULL);
 	} else if (rq->type == XFR_TYPE_FORWARD) {
@@ -590,7 +590,7 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 		ret = zones_save_zone(rq);
 		if (ret == KNOT_EOK) {
 			zone_contents_t *old_contents = NULL;
-			old_contents = xfrin_switch_zone(rq->zone, rq->new_contents);
+			old_contents = update_switch_contents(rq->zone, rq->new_contents);
 			zone_contents_deep_free(&old_contents);
 		} else {
 			log_zone_error("%s %s\n",
@@ -599,8 +599,8 @@ static int xfr_task_finalize(knot_ns_xfr_t *rq)
 			               rq->msg);
 		}
 	} else if (rq->type == XFR_TYPE_IIN) {
-		knot_changesets_t *chs = (knot_changesets_t *)rq->data;
-		ret = zone_change_apply_and_store(chs, rq->zone,
+		changesets_t *chs = (changesets_t *)rq->data;
+		ret = zone_change_apply_and_store(&chs, rq->zone,
 		                                  &rq->new_contents,
 		                                  rq->msg);
 		rq->data = NULL; /* Freed or applied in prev function. */
@@ -862,7 +862,7 @@ static int xfr_task_xfer(xfrhandler_t *xfr, knot_ns_xfr_t *rq, knot_pkt_t *pkt)
 		ret = axfr_process_answer(pkt, rq);
 		break;
 	case XFR_TYPE_IIN:
-		ret = ixfr_process_answer(pkt, rq);
+		ret = ixfrin_process_answer(pkt, rq);
 		break;
 	default:
 		ret = KNOT_EINVAL;

@@ -46,12 +46,13 @@ static struct request *request_make(mm_ctx_t *mm)
 	return request;
 }
 
-static void request_close(mm_ctx_t *mm, struct request *request)
+static int request_close(mm_ctx_t *mm, struct request *request)
 {
 	/* Reset processing if didn't complete. */
 	if (request->state != NS_PROC_DONE) {
 		knot_process_reset(&request->process);
 	}
+
 	knot_process_finish(&request->process);
 
 	rem_node(&request->data.node);
@@ -59,6 +60,8 @@ static void request_close(mm_ctx_t *mm, struct request *request)
 	knot_pkt_free(&request->data.query);
 	mm_free(mm, request->pkt_buf);
 	mm_free(mm, request);
+
+	return KNOT_EOK;
 }
 
 /*! \brief Wait for socket readiness. */
@@ -78,10 +81,13 @@ static int request_wait(int fd, int state, struct timeval *timeout)
 	}
 }
 
-static int request_send(struct request *request, struct timeval *timeout)
+static int request_send(struct request *request, const struct timeval *timeout)
 {
+	/* Each request has unique timeout. */
+	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
+
 	/* Wait for writeability. */
-	int ret = request_wait(request->data.fd, NS_PROC_FULL, timeout);
+	int ret = request_wait(request->data.fd, NS_PROC_FULL, &tv);
 	if (ret <= 0) {
 		return KNOT_EAGAIN;
 	}
@@ -96,26 +102,24 @@ static int request_send(struct request *request, struct timeval *timeout)
 
 	/* Send query. */
 	knot_pkt_t *query = request->data.query;
-	ret = tcp_send(request->data.fd, query->wire, query->size);
-	if (ret <= 0) {
+	ret = tcp_send_msg(request->data.fd, query->wire, query->size);
+	if (ret != query->size) {
 		return KNOT_ECONN;
 	}
 
 	return KNOT_EOK;
 }
 
-static int request_recv(struct request *request, struct timeval *timeout)
+static int request_recv(struct request *request, const struct timeval *timeout)
 {
-	/* Wait for response. */
-	int ret = request_wait(request->data.fd, NS_PROC_MORE, timeout);
-	if (ret <= 0) {
-		return NS_PROC_FAIL;
-	}
+	/* Each request has unique timeout. */
+	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
 
 	/* Receive it */
-	ret = tcp_recv(request->data.fd, request->pkt_buf, KNOT_WIRE_MAX_PKTSIZE, NULL);
-	if (ret <= 0) {
-		return NS_PROC_FAIL;
+	int ret = tcp_recv_msg(request->data.fd, request->pkt_buf,
+	                       KNOT_WIRE_MAX_PKTSIZE, &tv);
+	if (ret < 0) {
+		return ret;
 	}
 
 	return ret;
@@ -195,8 +199,7 @@ int requestor_dequeue(struct requestor *requestor)
 	}
 
 	struct request *last = HEAD(requestor->pending);
-	request_close(requestor->mm, last);
-	return KNOT_EOK;
+	return request_close(requestor->mm, last);
 }
 
 static int exec_request(struct request *last, struct timeval *timeout)
@@ -215,14 +218,16 @@ static int exec_request(struct request *last, struct timeval *timeout)
 	/* Receive and process expected answers. */
 	while (last->state == NS_PROC_MORE) {
 		int rcvd = request_recv(last, timeout);
-		if (rcvd <= 0) {
+		if (rcvd < 0) {
 			return rcvd;
 		}
 
 		last->state = knot_process_in(last->pkt_buf, rcvd, &last->process);
-		if (last->state == NS_PROC_FAIL) {
-			return KNOT_EMALF;
-		}
+	}
+
+	/* Expect complete request. */
+	if (last->state != NS_PROC_DONE) {
+		return KNOT_EMALF;
 	}
 
 	return KNOT_EOK;

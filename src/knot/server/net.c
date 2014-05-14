@@ -81,6 +81,11 @@ int net_bound_socket(int type, const struct sockaddr_storage *ss)
 	int flag = 1;
 	(void) setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 
+	/* Reuse port if available. */
+#if defined(SO_REUSEPORT)
+	(void) setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
+#endif
+
 	/* Unlink UNIX socket if exists. */
 	if (ss->ss_family == AF_UNIX) {
 		unlink(addr_str);
@@ -114,6 +119,11 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 
 	int socket = -1;
 
+	/* Check port. */
+	if (sockaddr_port(dst_addr) == 0) {
+		return KNOT_ECONN;
+	}
+
 	/* Bind to specific source address - if set. */
 	if (src_addr != NULL && src_addr->ss_family != AF_UNSPEC) {
 		socket = net_bound_socket(type, src_addr);
@@ -137,4 +147,11 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	}
 
 	return socket;
+}
+
+int net_is_connected(int fd)
+{
+	struct sockaddr_in6 ss;
+	socklen_t len = sizeof(ss);
+	return getpeername(fd, &ss, &len) == 0;
 }

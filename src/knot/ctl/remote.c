@@ -399,7 +399,7 @@ static int remote_senderr(int c, uint8_t *qbuf, size_t buflen)
 {
 	knot_wire_set_qr(qbuf);
 	knot_wire_set_rcode(qbuf, KNOT_RCODE_REFUSED);
-	return tcp_send(c, qbuf, buflen);
+	return tcp_send_msg(c, qbuf, buflen);
 }
 
 /* Public APIs. */
@@ -472,7 +472,7 @@ int remote_recv(int sock, struct sockaddr *addr, uint8_t* buf, size_t *buflen)
 	}
 
 	/* Receive data. */
-	int n = tcp_recv(c, buf, *buflen, addr);
+	int n = tcp_recv_msg(c, buf, *buflen, NULL);
 	*buflen = n;
 	if (n <= 0) {
 		dbg_server("remote: failed to receive data\n");
@@ -521,7 +521,7 @@ static int remote_send_chunk(int c, knot_pkt_t *query, const char* d, uint16_t l
 		goto failed;
 	}
 
-	ret = tcp_send(c, resp->wire, resp->size);
+	ret = tcp_send_msg(c, resp->wire, resp->size);
 
 failed:
 

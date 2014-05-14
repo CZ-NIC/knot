@@ -40,6 +40,6 @@
  * \return KNOT_E*
  */
 int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
-                            knot_changeset_t *changeset);
+                            changeset_t *changeset);
 
 #endif // _KNOT_DNSSEC_NSEC3_CHAIN_FIX_H_
