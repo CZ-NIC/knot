@@ -357,9 +357,7 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 
 size_t knot_edns_size(knot_rrset_t *opt_rr)
 {
-	if (opt_rr == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(opt_rr != NULL);
 
 	size_t size = KNOT_EDNS_MIN_SIZE;
 	// Only one RDATA in OPT RRSet

@@ -256,6 +256,10 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
 /*!
  * \brief Returns size of the OPT RR in wire format.
  *
+ * \warning This function does not check the parameter, so ensure to check it
+ *          before calling the function. It must not be NULL.
+ * \note There is an assert() for debug checking of the parameter.
+ *
  * \param opt_rr OPT RR to get the size of.
  *
  * \return Size of the OPT RR in bytes.
