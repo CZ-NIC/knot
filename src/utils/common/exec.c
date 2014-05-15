@@ -175,11 +175,20 @@ static void print_footer(const size_t total_len,
 
 static void print_section_opt(const knot_rrset_t *rr)
 {
-	printf("Version: %u; flags: %s; UDP size: %u B, RCODE: %u\n",
+	uint8_t             ext_rcode_id = knot_edns_get_ext_rcode(rr);
+	const char          *ext_rcode_str = "NULL";
+	knot_lookup_table_t *ext_rcode;
+
+	ext_rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode_id);
+	if (ext_rcode != NULL) {
+		ext_rcode_str = ext_rcode->name;
+	}
+
+	printf("Version: %u; flags: %s; UDP size: %u B, status: %s\n",
 	       knot_edns_get_version(rr),
 	       (knot_edns_do(rr) != 0) ? "do" : "",
 	       knot_edns_get_payload(rr),
-	       knot_edns_get_ext_rcode(rr));
+	       ext_rcode_str);
 
 	/*! \todo REWRITE!!! */
 
