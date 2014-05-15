@@ -29,6 +29,7 @@
 
 #include <stdint.h>			// uint_t
 #include <netdb.h>			// addrinfo
+#include <sys/socket.h>			// sockaddr_storage (BSD)
 
 #include "common/lists.h"		// node
 #include "utils/common/params.h"	// params_t
