@@ -797,7 +797,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 #if USE_DNSTAP
 		query->dt_reader = NULL;
 		query->dt_writer = NULL;
-#endif
+#endif // USE_DNSTAP
 	} else {
 		query->conf = conf;
 		if (conf->local != NULL) {
@@ -831,7 +831,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 #if USE_DNSTAP
 		query->dt_reader = conf->dt_reader;
 		query->dt_writer = conf->dt_writer;
-#endif
+#endif // USE_DNSTAP
 
 		if (knot_copy_key_params(&conf->key_params, &query->key_params)
 		    != KNOT_EOK) {
@@ -883,7 +883,7 @@ void query_free(query_t *query)
 			dt_writer_free(query->dt_writer);
 		}
 	}
-#endif
+#endif // USE_DNSTAP
 
 	free(query->owner);
 	free(query->port);
@@ -1141,7 +1141,7 @@ static int parse_dnstap_input(const char *value, query_t *query)
 
 	return KNOT_EOK;
 }
-#endif
+#endif // USE_DNSTAP
 
 static void complete_servers(query_t *query, const query_t *conf)
 {
@@ -1472,7 +1472,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 #else
 		ERR("no dnstap support but -E specified\n");
 		return KNOT_EINVAL;
-#endif
+#endif // USE_DNSTAP
 		break;
 	case 'G':
 #if USE_DNSTAP
@@ -1498,7 +1498,7 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 #else
 		ERR("no dnstap support but -G specified\n");
 		return KNOT_EINVAL;
-#endif
+#endif // USE_DNSTAP
 		break;
 	case '-':
 		if (strcmp(opt, "-help") == 0) {

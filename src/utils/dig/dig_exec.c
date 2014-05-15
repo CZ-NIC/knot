@@ -26,7 +26,7 @@
 #include "common/print.h"		// time_diff
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/descriptor.h"		// KNOT_RRTYPE_
-#include "common/sockaddr.h"
+#include "common/sockaddr.h"		// sockaddr_set_raw
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/netio.h"		// get_socktype
 #include "utils/common/exec.h"		// print_packet
@@ -34,7 +34,182 @@
 #if USE_DNSTAP
 # include "dnstap/message.h"
 # include "dnstap/writer.h"
-#endif
+
+static int dump_dnstap(dt_writer_t                 *writer,
+                       const Dnstap__Message__Type msg_type,
+                       const uint8_t               *wire,
+                       const size_t                wire_len,
+                       net_t                       *net,
+                       const struct timeval        *qtime,
+                       const struct timeval        *rtime)
+{
+	const struct sockaddr *qa = NULL;
+	const struct sockaddr *ra = NULL;
+	Dnstap__Message       msg;
+	int                   ret;
+
+	if (writer == NULL) {
+		return KNOT_EOK;
+	}
+
+	net_set_local_info(net);
+
+	if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY) {
+		qa = net->srv->ai_addr;
+		ra = net->local_info->ai_addr;
+	} else if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE) {
+		qa = net->local_info->ai_addr;
+		ra = net->srv->ai_addr;
+	}
+
+	ret = dt_message_fill(&msg, msg_type, qa, ra,
+	                      net->srv->ai_protocol, wire, wire_len,
+	                      qtime, rtime);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	return dt_writer_write(writer, (const ProtobufCMessage *) &msg);
+}
+
+static float get_query_time(const Dnstap__Dnstap *frame)
+{
+	struct timeval from = {
+		.tv_sec = frame->message->query_time_sec,
+		.tv_usec = frame->message->query_time_nsec / 1000
+	};
+
+	struct timeval to = {
+		.tv_sec = frame->message->response_time_sec,
+		.tv_usec = frame->message->response_time_nsec / 1000
+	};
+
+	return time_diff(&from, &to);
+}
+
+static void process_dnstap(const query_t *query)
+{
+	dt_reader_t *reader = query->dt_reader;
+	int         ret;
+
+	if (query->dt_reader == NULL) {
+		return;
+	}
+
+	for (;;) {
+		Dnstap__Dnstap      *frame = NULL;
+		ProtobufCBinaryData *msg = NULL;
+		bool                is_response;
+
+		// Read next message.
+		ret = dt_reader_read(reader, &frame);
+		if (ret == KNOT_EOF) {
+			break;
+		} else if (ret != KNOT_EOK) {
+			ERR("can't read dnstap message\n");
+			break;
+		}
+
+		// Check for dnstap message.
+		if (frame->type != DNSTAP__DNSTAP__TYPE__MESSAGE) {
+			WARN("ignoring non-dnstap message\n");
+			dt_reader_free_frame(reader, &frame);
+			continue;
+		}
+
+		// Check for the type of dnstap message.
+		if (frame->message->has_response_message) {
+			msg = &frame->message->response_message;
+			is_response = true;
+		} else if (frame->message->has_query_message) {
+			if (!query->style.show_query) {
+				dt_reader_free_frame(reader, &frame);
+				continue;
+			}
+			msg = &frame->message->query_message;
+			is_response = false;
+		} else {
+			WARN("unsupported dnstap message\n");
+			dt_reader_free_frame(reader, &frame);
+			continue;
+		}
+
+		// Create dns packet based on dnstap wire data.
+		knot_pkt_t *pkt = knot_pkt_new(msg->data, msg->len, NULL);
+		if (pkt == NULL) {
+			ERR("can't allocate packet\n");
+			dt_reader_free_frame(reader, &frame);
+			break;
+		}
+
+		// Parse packet and reconstruct required data.
+		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
+			ProtobufCBinaryData *addr = NULL;
+			uint32_t            port = 0;
+			time_t              timestamp = 0;
+			float               query_time = 0.0;
+			net_t               net_ctx = { 0 };
+
+			if (is_response) {
+				addr = &frame->message->response_address;
+				port = frame->message->response_port;
+
+				timestamp = frame->message->response_time_sec;
+				query_time = get_query_time(frame);
+			} else {
+				addr = &frame->message->query_address;
+				port = frame->message->query_port;
+
+				timestamp = frame->message->query_time_sec;
+			}
+
+			// Prepare connection information string.
+			if (addr->data != NULL &&
+			    frame->message->has_socket_family &&
+			    frame->message->has_socket_protocol) {
+				struct sockaddr_storage ss;
+				int    family = AF_UNSPEC, proto = 0;
+
+				switch (frame->message->socket_family) {
+				case DNSTAP__SOCKET_FAMILY__INET:
+					family = AF_INET;
+					break;
+				case DNSTAP__SOCKET_FAMILY__INET6:
+					family = AF_INET6;
+					break;
+				default:
+					break;
+				}
+
+				switch (frame->message->socket_protocol) {
+				case DNSTAP__SOCKET_PROTOCOL__UDP:
+					proto = SOCK_DGRAM;
+					break;
+				case DNSTAP__SOCKET_PROTOCOL__TCP:
+					proto = SOCK_STREAM;
+					break;
+				default:
+					break;
+				}
+
+				sockaddr_set_raw(&ss, family, addr->data);
+				sockaddr_port_set(&ss, port);
+				get_addr_str(&ss, proto, &net_ctx.remote_str);
+			}
+
+			print_packet(pkt, &net_ctx, pkt->size, query_time,
+			             timestamp, is_response, &query->style);
+
+			net_clean(&net_ctx);
+		} else {
+			ERR("can't print dnstap message\n");
+		}
+
+		knot_pkt_free(&pkt);
+		dt_reader_free_frame(reader, &frame);
+	}
+}
+#endif // USE_DNSTAP
 
 static knot_pkt_t* create_query_packet(const query_t *query)
 {
@@ -268,46 +443,6 @@ static bool last_serial_check(const uint32_t serial, const knot_pkt_t *reply)
 	}
 }
 
-static int dump_dnstap(dt_writer_t                 *writer,
-                       const Dnstap__Message__Type msg_type,
-                       const uint8_t               *wire,
-                       const size_t                wire_len,
-                       net_t                       *net,
-                       const struct timeval        *qtime,
-                       const struct timeval        *rtime)
-{
-#if USE_DNSTAP
-	const struct sockaddr *qa = NULL;
-	const struct sockaddr *ra = NULL;
-	Dnstap__Message       msg;
-	int                   ret;
-
-	if (writer == NULL) {
-		return KNOT_EOK;
-	}
-
-	net_set_local_info(net);
-
-	if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY) {
-		qa = net->srv->ai_addr;
-		ra = net->local_info->ai_addr;
-	} else if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE) {
-		qa = net->local_info->ai_addr;
-		ra = net->srv->ai_addr;
-	}
-
-	ret = dt_message_fill(&msg, msg_type, qa, ra,
-	                      net->srv->ai_protocol, wire, wire_len,
-	                      qtime, rtime);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	return dt_writer_write(writer, (const ProtobufCMessage *) &msg);
-#endif
-	return KNOT_EOK;
-}
-
 static int process_query_packet(const knot_pkt_t        *query,
                                 net_t                   *net,
                                 const query_t           *query_ctx,
@@ -341,10 +476,12 @@ static int process_query_packet(const knot_pkt_t        *query,
 	// Get stop query time and start reply time.
 	gettimeofday(&t_query, NULL);
 
+#if USE_DNSTAP
 	// Make the dnstap copy of the query.
 	dump_dnstap(query_ctx->dt_writer,
 	            DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
 	            query->wire, query->size, net, &t_query, NULL);
+#endif // USE_DNSTAP
 
 	// Print query packet if required.
 	if (style->show_query) {
@@ -378,10 +515,12 @@ static int process_query_packet(const knot_pkt_t        *query,
 		// Get stop reply time.
 		gettimeofday(&t_end, NULL);
 
+#if USE_DNSTAP
 		// Make the dnstap copy of the response.
 		dump_dnstap(query_ctx->dt_writer,
 		            DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE,
 		            in, in_len, net, &t_query, &t_end);
+#endif // USE_DNSTAP
 
 		// Create reply packet structure to fill up.
 		reply = knot_pkt_new(in, in_len, NULL);
@@ -590,10 +729,12 @@ static int process_xfr_packet(const knot_pkt_t        *query,
 	// Get stop query time and start reply time.
 	gettimeofday(&t_query, NULL);
 
+#if USE_DNSTAP
 	// Make the dnstap copy of the query.
 	dump_dnstap(query_ctx->dt_writer,
 	            DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
 	            query->wire, query->size, net, &t_query, NULL);
+#endif // USE_DNSTAP
 
 	// Print query packet if required.
 	if (style->show_query) {
@@ -618,10 +759,12 @@ static int process_xfr_packet(const knot_pkt_t        *query,
 		// Get stop message time.
 		gettimeofday(&t_end, NULL);
 
+#if USE_DNSTAP
 		// Make the dnstap copy of the response.
 		dump_dnstap(query_ctx->dt_writer,
 		            DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE,
 		            in, in_len, net, &t_query, &t_end);
+#endif // USE_DNSTAP
 
 		// Create reply packet structure to fill up.
 		reply = knot_pkt_new(in, in_len, NULL);
@@ -782,148 +925,6 @@ static void process_xfr(const query_t *query)
 	knot_pkt_free(&out_packet);
 }
 
-#if USE_DNSTAP
-static float get_query_time(const Dnstap__Dnstap *frame)
-{
-	struct timeval from = {
-		.tv_sec = frame->message->query_time_sec,
-		.tv_usec = frame->message->query_time_nsec / 1000
-	};
-
-	struct timeval to = {
-		.tv_sec = frame->message->response_time_sec,
-		.tv_usec = frame->message->response_time_nsec / 1000
-	};
-
-	return time_diff(&from, &to);
-}
-#endif
-
-static void process_dnstap(const query_t *query)
-{
-#if USE_DNSTAP
-	dt_reader_t *reader = query->dt_reader;
-	int         ret;
-
-	if (query->dt_reader == NULL) {
-		return;
-	}
-
-	for (;;) {
-		Dnstap__Dnstap      *frame = NULL;
-		ProtobufCBinaryData *msg = NULL;
-		bool                is_response;
-
-		// Read next message.
-		ret = dt_reader_read(reader, &frame);
-		if (ret == KNOT_EOF) {
-			break;
-		} else if (ret != KNOT_EOK) {
-			ERR("can't read dnstap message\n");
-			break;
-		}
-
-		// Check for dnstap message.
-		if (frame->type != DNSTAP__DNSTAP__TYPE__MESSAGE) {
-			WARN("ignoring non-dnstap message\n");
-			dt_reader_free_frame(reader, &frame);
-			continue;
-		}
-
-		// Check for the type of dnstap message.
-		if (frame->message->has_response_message) {
-			msg = &frame->message->response_message;
-			is_response = true;
-		} else if (frame->message->has_query_message) {
-			if (!query->style.show_query) {
-				dt_reader_free_frame(reader, &frame);
-				continue;
-			}
-			msg = &frame->message->query_message;
-			is_response = false;
-		} else {
-			WARN("unsupported dnstap message\n");
-			dt_reader_free_frame(reader, &frame);
-			continue;
-		}
-
-		// Create dns packet based on dnstap wire data.
-		knot_pkt_t *pkt = knot_pkt_new(msg->data, msg->len, NULL);
-		if (pkt == NULL) {
-			ERR("can't allocate packet\n");
-			dt_reader_free_frame(reader, &frame);
-			break;
-		}
-
-		// Parse packet and reconstruct required data.
-		if (knot_pkt_parse(pkt, 0) == KNOT_EOK) {
-			ProtobufCBinaryData *addr = NULL;
-			uint32_t            port = 0;
-			time_t              timestamp = 0;
-			float               query_time = 0.0;
-			net_t               net_ctx = { 0 };
-
-			if (is_response) {
-				addr = &frame->message->response_address;
-				port = frame->message->response_port;
-
-				timestamp = frame->message->response_time_sec;
-				query_time = get_query_time(frame);
-			} else {
-				addr = &frame->message->query_address;
-				port = frame->message->query_port;
-
-				timestamp = frame->message->query_time_sec;
-			}
-
-			// Prepare connection information string.
-			if (addr->data != NULL &&
-			    frame->message->has_socket_family &&
-			    frame->message->has_socket_protocol) {
-				struct sockaddr_storage ss;
-				int    family = AF_UNSPEC, proto = 0;
-
-				switch (frame->message->socket_family) {
-				case DNSTAP__SOCKET_FAMILY__INET:
-					family = AF_INET;
-					break;
-				case DNSTAP__SOCKET_FAMILY__INET6:
-					family = AF_INET6;
-					break;
-				default:
-					break;
-				}
-
-				switch (frame->message->socket_protocol) {
-				case DNSTAP__SOCKET_PROTOCOL__UDP:
-					proto = SOCK_DGRAM;
-					break;
-				case DNSTAP__SOCKET_PROTOCOL__TCP:
-					proto = SOCK_STREAM;
-					break;
-				default:
-					break;
-				}
-
-				sockaddr_set_raw(&ss, family, addr->data);
-				sockaddr_port_set(&ss, port);
-				get_addr_str(&ss, proto, &net_ctx.remote_str);
-			}
-
-			print_packet(pkt, &net_ctx, pkt->size, query_time,
-			             timestamp, is_response, &query->style);
-
-			net_clean(&net_ctx);
-		} else {
-			ERR("can't print dnstap message\n");
-		}
-
-		knot_pkt_free(&pkt);
-		dt_reader_free_frame(reader, &frame);
-	}
-#endif
-}
-
 int dig_exec(const dig_params_t *params)
 {
 	node_t *n = NULL;
@@ -944,9 +945,11 @@ int dig_exec(const dig_params_t *params)
 		case OPERATION_XFR:
 			process_xfr(query);
 			break;
+#if USE_DNSTAP
 		case OPERATION_LIST_DNSTAP:
 			process_dnstap(query);
 			break;
+#endif // USE_DNSTAP
 		case OPERATION_LIST_SOA:
 			break;
 		default:

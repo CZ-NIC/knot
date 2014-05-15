@@ -35,7 +35,7 @@
 #if USE_DNSTAP
 # include "dnstap/reader.h"
 # include "dnstap/writer.h"
-#endif
+#endif // USE_DNSTAP
 
 #define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
 
@@ -129,7 +129,7 @@ struct query {
 	dt_reader_t	*dt_reader;
 	/*!< Context for dnstap writer output. */
 	dt_writer_t	*dt_writer;
-#endif
+#endif // USE_DNSTAP
 };
 
 /*! \brief Settings for dig. */

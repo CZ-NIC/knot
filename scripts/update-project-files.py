@@ -7,7 +7,7 @@
 SOURCES = [
     # documentation
     "README", "KNOWN_ISSUES", 
-    "Doxyfile*", "Doxy.file.h", "doc/*.texi",
+    "Doxyfile*", "Doxy.file.h", "doc/*.rst",
 
     # build-system
     "*.ac", "*.am",
