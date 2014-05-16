@@ -118,12 +118,16 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
 
+#if defined(SO_REUSEPORT)
+	/* Each thread binds own socket. */
+	int sock = -1;
+#else
 	/* Create bound UDP socket. */
 	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr);
 	if (sock < 0) {
 		return sock;
 	}
-
+#endif
 	new_if->fd[IO_UDP] = sock;
 
 	/* Create bound TCP socket. */
