@@ -302,6 +302,11 @@ int process_query_verify(struct query_data *qdata)
 
 int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 {
+	if (pkt->size == 0) {
+		// Nothing to sign.
+		return KNOT_EOK;
+	}
+
 	int ret = KNOT_EOK;
 	knot_pkt_t *query = qdata->query;
 	knot_sign_context_t *ctx = &qdata->sign;
