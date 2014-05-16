@@ -92,8 +92,6 @@ int changeset_binary_size(const changeset_t *chgset, size_t *size)
 	}
 
 	*size = soa_from_size + soa_to_size + remove_size + add_size;
-	/* + Changeset flags. */
-	*size += sizeof(uint32_t);
 
 	return KNOT_EOK;
 }
