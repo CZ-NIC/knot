@@ -66,8 +66,9 @@ int dt_reader_free(dt_reader_t *reader)
 	if (reader != NULL) {
 		fstrm_res res = fstrm_reader_destroy(&reader->fr);
 		free(reader);
-		if (res != fstrm_res_success)
+		if (res != fstrm_res_success) {
 			return KNOT_ERROR;
+		}
 	}
 	return KNOT_EOK;
 }

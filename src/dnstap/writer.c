@@ -77,8 +77,9 @@ int dt_writer_free(dt_writer_t *writer)
 		fstrm_res res = fstrm_writer_destroy(&writer->fw);
 		free(writer->version);
 		free(writer);
-		if (res != fstrm_res_success)
+		if (res != fstrm_res_success) {
 			return KNOT_ERROR;
+		}
 	}
 	return KNOT_EOK;
 }
@@ -89,12 +90,14 @@ int dt_writer_write(dt_writer_t *writer, const ProtobufCMessage *msg)
 	size_t len;
 	uint8_t *data;
 
-	if (writer->fw == NULL)
+	if (writer->fw == NULL) {
 		return KNOT_EOK;
+	}
 
 	// Only handle dnstap/Message.
-	if (knot_unlikely(msg->descriptor != &dnstap__message__descriptor))
+	if (knot_unlikely(msg->descriptor != &dnstap__message__descriptor)) {
 		return KNOT_EINVAL;
+	}
 
 	// Fill out 'dnstap'.
 	if (writer->version) {
@@ -106,12 +109,14 @@ int dt_writer_write(dt_writer_t *writer, const ProtobufCMessage *msg)
 	dnstap.message = (Dnstap__Message *)msg;
 
 	// Serialize the dnstap frame.
-	if (!dt_pack(&dnstap, &data, &len))
+	if (!dt_pack(&dnstap, &data, &len)) {
 		return KNOT_ENOMEM;
+	}
 
 	// Write the dnstap frame to the output stream.
-	if (fstrm_writer_write(writer->fw, data, len) != fstrm_res_success)
+	if (fstrm_writer_write(writer->fw, data, len) != fstrm_res_success) {
 		return KNOT_ERROR;
+	}
 
 	// Cleanup.
 	free(data);

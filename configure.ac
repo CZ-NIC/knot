@@ -396,8 +396,8 @@ echo "
   Libs: ${LIBS}
   Fast zone parser: ${enable_fastparser}
   Utils with IDN: ${libidn}
-  Use systemd notifications: ${enable_systemd}
-  Use dnstap support: ${opt_dnstap}
+  Systemd notifications: ${enable_systemd}
+  Dnstap support: ${opt_dnstap}
   Code coverage: ${enable_code_coverage}
 
   Continue with 'make' command"

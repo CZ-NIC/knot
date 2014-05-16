@@ -29,8 +29,9 @@ uint8_t* dt_pack(const Dnstap__Dnstap *d, uint8_t **buf, size_t *sz)
 	sbuf.len = 0;
 	sbuf.alloced = DNSTAP_INITIAL_BUF_SIZE;
 	sbuf.data = malloc(sbuf.alloced);
-	if (sbuf.data == NULL)
+	if (sbuf.data == NULL) {
 		return NULL;
+	}
 	sbuf.must_free_data = 1;
 
 	*sz = dnstap__dnstap__pack_to_buffer(d, (ProtobufCBuffer *) &sbuf);
