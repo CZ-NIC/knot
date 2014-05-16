@@ -35,20 +35,6 @@
 #include "knot/updates/changesets.h"
 
 /*!
- * \brief Checks if a zone transfer is required by comparing the zone's SOA with
- *        the one received from master server.
- *
- * \param zone Zone to check.
- * \param soa_response Response to SOA query received from master server.
- *
- * \retval < 0 if an error occured.
- * \retval 1 if the transfer is needed.
- * \retval 0 if the transfer is not needed.
- */
-int xfrin_transfer_needed(const zone_contents_t *zone,
-                          knot_pkt_t *soa_response);
-
-/*!
  * \brief Applies changesets *with* zone shallow copy.
  *
  * \param zone          Zone to be updated.

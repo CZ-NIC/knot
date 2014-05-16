@@ -669,7 +669,7 @@ static int xfr_task_resp_process(server_t *server,
 		}
 
 		/* Check SOA SERIAL. */
-		int ret = xfrin_transfer_needed(zone->contents, packet);
+//		int ret = xfrin_transfer_needed(zone->contents, packet);
 		dbg_zones_verb("xfrin_transfer_needed() returned %s\n",
 		               knot_strerror(ret));
 		if (ret < 0) {
