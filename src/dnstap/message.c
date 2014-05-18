@@ -22,6 +22,7 @@
 
 #include "common/errcode.h"
 
+#include "dnstap/convert.h"
 #include "dnstap/message.h"
 
 static void set_address(const struct sockaddr *sockaddr,
@@ -58,44 +59,11 @@ static int get_family(const struct sockaddr *query_sa,
 	              const struct sockaddr *response_sa)
 {
 	const struct sockaddr *source = query_sa ? query_sa : response_sa;
-
 	if (source == NULL) {
 		return 0;
 	}
 
-	switch (source->sa_family) {
-	case AF_INET:
-		return DNSTAP__SOCKET_FAMILY__INET;
-	case AF_INET6:
-		return DNSTAP__SOCKET_FAMILY__INET6;
-	default:
-		return 0;
-	}
-}
-
-static bool is_query(Dnstap__Message__Type type)
-{
-	switch (type) {
-	case DNSTAP__MESSAGE__TYPE__STUB_QUERY:
-	case DNSTAP__MESSAGE__TYPE__CLIENT_QUERY:
-	case DNSTAP__MESSAGE__TYPE__RESOLVER_QUERY:
-	case DNSTAP__MESSAGE__TYPE__AUTH_QUERY:
-		return true;
-	default:
-		return false;
-	}
-}
-
-static bool is_response(Dnstap__Message__Type type)
-{
-	switch (type) {
-	case DNSTAP__MESSAGE__TYPE__STUB_RESPONSE:
-	case DNSTAP__MESSAGE__TYPE__CLIENT_RESPONSE:
-	case DNSTAP__MESSAGE__TYPE__RESOLVER_RESPONSE:
-	case DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE:
-	default:
-		return false;
-	}
+	return dt_family_encode(source->sa_family);
 }
 
 int dt_message_fill(Dnstap__Message             *m,
@@ -124,13 +92,7 @@ int dt_message_fill(Dnstap__Message             *m,
 	m->has_socket_family = m->socket_family != 0;
 
 	// Message.socket_protocol
-	if (protocol == IPPROTO_UDP) {
-		m->socket_protocol = DNSTAP__SOCKET_PROTOCOL__UDP;
-	} else if (protocol == IPPROTO_TCP) {
-		m->socket_protocol = DNSTAP__SOCKET_PROTOCOL__TCP;
-	} else {
-		m->socket_protocol = 0;
-	}
+	m->socket_protocol = dt_protocol_encode(protocol);
 	m->has_socket_protocol = m->socket_protocol != 0;
 
 	// Message addresses
@@ -139,12 +101,12 @@ int dt_message_fill(Dnstap__Message             *m,
 	set_address(response_sa, &m->response_address, &m->has_response_address,
 	            &m->response_port, &m->has_response_port);
 
-	if (is_query(type)) {
+	if (dt_message_type_is_query(type)) {
 		// Message.query_message
 		m->query_message.len = len_wire;
 		m->query_message.data = (uint8_t *)wire;
 		m->has_query_message = 1;
-	} else if (is_response(type)) {
+	} else if (dt_message_type_is_response(type)) {
 		// Message.response_message
 		m->response_message.len = len_wire;
 		m->response_message.data = (uint8_t *)wire;

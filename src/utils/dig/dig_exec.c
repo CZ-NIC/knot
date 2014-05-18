@@ -32,6 +32,7 @@
 #include "utils/common/exec.h"		// print_packet
 
 #if USE_DNSTAP
+# include "dnstap/convert.h"
 # include "dnstap/message.h"
 # include "dnstap/writer.h"
 
@@ -57,7 +58,7 @@ static int write_dnstap(dt_writer_t          *writer,
 	                       : DNSTAP__MESSAGE__TYPE__TOOL_QUERY;
 
 	ret = dt_message_fill(&msg, msg_type, net->local_info->ai_addr,
-	                      net->srv->ai_addr, net->local_info->ai_protocol,
+	                      net->srv->ai_addr, net->srv->ai_protocol,
 			      wire, wire_len, qtime, rtime);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -160,35 +161,21 @@ static void process_dnstap(const query_t *query)
 			    message->has_socket_family &&
 			    message->has_socket_protocol) {
 				struct sockaddr_storage ss;
-				int    family = AF_UNSPEC, proto = 0;
+				int family, proto, sock_type;
 
-				switch (message->socket_family) {
-				case DNSTAP__SOCKET_FAMILY__INET:
-					family = AF_INET;
-					break;
-				case DNSTAP__SOCKET_FAMILY__INET6:
-					family = AF_INET6;
-					break;
-				default:
-					break;
-				}
-
-				switch (message->socket_protocol) {
-				case DNSTAP__SOCKET_PROTOCOL__UDP:
-					proto = SOCK_DGRAM;
-					break;
-				case DNSTAP__SOCKET_PROTOCOL__TCP:
-					proto = SOCK_STREAM;
-					break;
-				default:
-					break;
+				family = dt_family_decode(message->socket_family);
+				proto = dt_protocol_decode(message->socket_protocol);
+				switch (proto) {
+				case IPPROTO_TCP: sock_type = SOCK_STREAM; break;
+				case IPPROTO_UDP: sock_type = SOCK_DGRAM; break;
+				default: sock_type = 0; break;
 				}
 
 				sockaddr_set_raw(&ss, family,
 				                 message->response_address.data,
 				                 message->response_address.len);
 				sockaddr_port_set(&ss, message->response_port);
-				get_addr_str(&ss, proto, &net_ctx.remote_str);
+				get_addr_str(&ss, sock_type, &net_ctx.remote_str);
 			}
 
 			print_packet(pkt, &net_ctx, pkt->size, query_time,
