@@ -35,17 +35,16 @@
 # include "dnstap/message.h"
 # include "dnstap/writer.h"
 
-static int dump_dnstap(dt_writer_t                 *writer,
-                       const Dnstap__Message__Type msg_type,
-                       const uint8_t               *wire,
-                       const size_t                wire_len,
-                       net_t                       *net,
-                       const struct timeval        *qtime,
-                       const struct timeval        *rtime)
+static int write_dnstap(dt_writer_t          *writer,
+                        const bool           is_response,
+                        const uint8_t        *wire,
+                        const size_t         wire_len,
+                        net_t                *net,
+                        const struct timeval *qtime,
+                        const struct timeval *rtime)
 {
-	const struct sockaddr *qa = NULL;
-	const struct sockaddr *ra = NULL;
 	Dnstap__Message       msg;
+	Dnstap__Message__Type msg_type;
 	int                   ret;
 
 	if (writer == NULL) {
@@ -54,17 +53,12 @@ static int dump_dnstap(dt_writer_t                 *writer,
 
 	net_set_local_info(net);
 
-	if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY) {
-		qa = net->srv->ai_addr;
-		ra = net->local_info->ai_addr;
-	} else if (msg_type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE) {
-		qa = net->local_info->ai_addr;
-		ra = net->srv->ai_addr;
-	}
+	msg_type = is_response ? DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE
+	                       : DNSTAP__MESSAGE__TYPE__TOOL_QUERY;
 
-	ret = dt_message_fill(&msg, msg_type, qa, ra,
-	                      net->srv->ai_protocol, wire, wire_len,
-	                      qtime, rtime);
+	ret = dt_message_fill(&msg, msg_type, net->local_info->ai_addr,
+	                      net->srv->ai_addr, net->local_info->ai_protocol,
+			      wire, wire_len, qtime, rtime);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -478,9 +472,8 @@ static int process_query_packet(const knot_pkt_t        *query,
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
-	dump_dnstap(query_ctx->dt_writer,
-	            DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
-	            query->wire, query->size, net, &t_query, NULL);
+	write_dnstap(query_ctx->dt_writer, false, query->wire, query->size,
+	             net, &t_query, NULL);
 #endif // USE_DNSTAP
 
 	// Print query packet if required.
@@ -517,9 +510,8 @@ static int process_query_packet(const knot_pkt_t        *query,
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
-		dump_dnstap(query_ctx->dt_writer,
-		            DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE,
-		            in, in_len, net, &t_query, &t_end);
+		write_dnstap(query_ctx->dt_writer, true, in, in_len, net,
+		             &t_query, &t_end);
 #endif // USE_DNSTAP
 
 		// Create reply packet structure to fill up.
@@ -731,9 +723,8 @@ static int process_xfr_packet(const knot_pkt_t        *query,
 
 #if USE_DNSTAP
 	// Make the dnstap copy of the query.
-	dump_dnstap(query_ctx->dt_writer,
-	            DNSTAP__MESSAGE__TYPE__TOOL_QUERY,
-	            query->wire, query->size, net, &t_query, NULL);
+	write_dnstap(query_ctx->dt_writer, false, query->wire, query->size,
+	             net, &t_query, NULL);
 #endif // USE_DNSTAP
 
 	// Print query packet if required.
@@ -761,9 +752,8 @@ static int process_xfr_packet(const knot_pkt_t        *query,
 
 #if USE_DNSTAP
 		// Make the dnstap copy of the response.
-		dump_dnstap(query_ctx->dt_writer,
-		            DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE,
-		            in, in_len, net, &t_query, &t_end);
+		write_dnstap(query_ctx->dt_writer, true, in, in_len, net,
+		             &t_query, &t_end);
 #endif // USE_DNSTAP
 
 		// Create reply packet structure to fill up.
