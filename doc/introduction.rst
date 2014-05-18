@@ -44,7 +44,7 @@ Git repository browser: `gitlab.labs.nic.cz/knot/tree/master <https://gitlab.lab
 
 Knot DNS issue tracker: `gitlab.labs.nic.cz/knot/issues <https://gitlab.labs.nic.cz/knot/issues>`_
 
-Knot DNS users mailing list: `knot-dns-users@lists.nic.cz <mailto:knot-dns-users@@lists.nic.cz>`_
+Knot DNS users mailing list: `knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_
 
 Scope of this document
 ----------------------

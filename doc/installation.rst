@@ -109,7 +109,7 @@ For example::
     $ ./configure --enable-debug=server,packet --enable-debuglevel=brief
     $ ./configure --enable-debug=server,packet --enable-debuglevel=verbose
 
-For more detailed information, see @ref{Debug messages}. ##TODO
+For more detailed information, see :ref:`Debug messages`. ##TODO
 
 In most simple case you can just run configure without any options::
 
@@ -213,7 +213,7 @@ a following command as the root user::
 
 Using official distribution repository is highly recommended, however you may
 want to run ``Knot DNS`` on older releases of Fedora. In this case you can
-set up an unofficial repository by creating @file{/etc/yum.repos.d/knot.conf}
+set up an unofficial repository by creating :file:`/etc/yum.repos.d/knot.conf`
 file with the following content::
 
     [knot]
@@ -229,7 +229,7 @@ builds for i686 and x86_64 architecture.
 
 When upgrading to Fedora 18 or higher, backup the configuration and
 switch to the latest package provided in the official repository by running the
-following command as the root user:
+following command as the root user::
 
     # yum distro-sync knot
 

@@ -14,7 +14,7 @@ Submitting a bugreport
 If you are unable to solve the problem by yourselves, you can submit a
 bugreport to the Knot DNS team.  For security issues (e.g.  crash) do
 not use the public mailinglist.  Instead, write to
-`knot-dns@labs.nic.cz <mailto:knot-dns@@labs.nic.cz>`_.  All other bugs
+`knot-dns@labs.nic.cz <mailto:knot-dns@labs.nic.cz>`_.  All other bugs
 and questions may be directed to the Knot DNS users mailinglist
 (`knot-dns-users@lists.nic.cz <mailto:knot-dns-users@lists.nic.cz>`_).
 

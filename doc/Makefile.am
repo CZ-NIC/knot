@@ -1,18 +1,27 @@
-SPHINXBUILDDIR = _build
-ALLSPHINXOPTS  = -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHINXOPTS) .
+EXTRA_DIST = \
+	configuration.rst	\
+	index.rst		\
+	installation.rst	\
+	introduction.rst	\
+	migration.rst		\
+	reference.rst		\
+	requirements.rst	\
+	running.rst		\
+	troubleshooting.rst	\
+	\
+	logo.pdf		\
+	logo.png
 
-.PHONY: help html dirhtml singlehtml pdf info doctest
+SPHINXBUILDDIR = _build
+ALLSPHINXOPTS  = -n -d $(SPHINXBUILDDIR)/doctrees -D latex_paper_size=a4 $(SPHINXOPTS) .
+
+.PHONY: html-local singlehtml pdf-local info-local
 
 if HAVE_SPHINXBUILD
-html:
+html-local:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/html."
-
-dirhtml:
-	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/dirhtml
-	@echo
-	@echo "Build finished. The HTML pages are in $(SPHINXBUILDDIR)/dirhtml."
 
 singlehtml:
 	$(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
@@ -20,7 +29,7 @@ singlehtml:
 	@echo "Build finished. The HTML page is in $(SPHINXBUILDDIR)/singlehtml."
 
 if HAVE_PDFLATEX
-pdf:
+pdf-local:
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
 	@echo "Running LaTeX files through pdflatex..."
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
@@ -32,7 +41,7 @@ pdf:
 endif
 
 if HAVE_MAKEINFO
-info:
+info-local:
 	$(SPHINXBUILD) -b texinfo $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/texinfo
 	@echo "Running Texinfo files through makeinfo..."
 	make -C $(SPHINXBUILDDIR)/texinfo info
@@ -42,13 +51,8 @@ else
 	@echo "able to generate info pages."
 endif
 
-doctest:
-	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/doctest
-	@echo "Testing of doctests in the sources finished, look at the " \
-	      "results in $(SPHINXBUILDDIR)/doctest/output.txt."
-
 else
-html pdf info doctest:
+html-local singlehtml pdf-local info-local:
 	@echo "Please install sphinx (python-sphinx) to generate Knot DNS documentation."
 endif
 

@@ -8,9 +8,18 @@ AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
+AC_CANONICAL_HOST
 
 # Automatically update release date based on configure.ac date
-release_date=`doc/mdate-sh configure.ac`
+case "$host_os" in
+linux*)
+    release_date=`date +"%Y-%m-%d" -r configure.ac`
+    ;;
+*)
+    tmstamp=`stat -f %m configure.ac`
+    release_date=`date -r $tmstamp +"%Y-%m-%d"`
+    ;;
+esac
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
@@ -383,21 +392,25 @@ AC_CONFIG_FILES([Makefile
 		 ])
 
 AC_OUTPUT
+AC_MSG_RESULT([
+  $PACKAGE $VERSION
 
-echo "
-  Version: ${PACKAGE_VERSION}
-  Prefix: ${prefix}
-  Run dir: ${run_dir}
-  Storage dir: ${storage_dir}
-  Config dir: ${config_dir}
-  Compiler: ${CC}
-  CFlags: ${CFLAGS} ${CPPFLAGS}
-  LDFlags: ${LDFLAGS}
-  Libs: ${LIBS}
-  Fast zone parser: ${enable_fastparser}
-  Utils with IDN: ${libidn}
-  Systemd notifications: ${enable_systemd}
-  Dnstap support: ${opt_dnstap}
-  Code coverage: ${enable_code_coverage}
+    Target:   $host_os $host_cpu
+    Compiler: ${CC}
+    CFlags:   ${CFLAGS} ${CPPFLAGS}
+    LDFlags:  ${LDFLAGS}
+    Libs:     ${LIBS}
 
-  Continue with 'make' command"
+    Prefix:      ${prefix}
+    Run dir:     ${run_dir}
+    Storage dir: ${storage_dir}
+    Config dir:  ${config_dir}
+
+    Fast zone parser:      ${enable_fastparser}
+    Utilities with IDN:    ${libidn}
+    Systemd notifications: ${enable_systemd}
+    Dnstap support:        ${opt_dnstap}
+    Code coverage:         ${enable_code_coverage}
+
+  Continue with 'make' command
+])
