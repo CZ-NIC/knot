@@ -71,17 +71,15 @@ fail:
 	return NULL;
 }
 
-int dt_writer_free(dt_writer_t *writer)
+void dt_writer_free(dt_writer_t *writer)
 {
-	if (writer != NULL) {
-		fstrm_res res = fstrm_writer_destroy(&writer->fw);
-		free(writer->version);
-		free(writer);
-		if (res != fstrm_res_success) {
-			return KNOT_ERROR;
-		}
+	if (writer == NULL) {
+		return;
 	}
-	return KNOT_EOK;
+
+	fstrm_writer_destroy(&writer->fw);
+	free(writer->version);
+	free(writer);
 }
 
 int dt_writer_write(dt_writer_t *writer, const ProtobufCMessage *msg)

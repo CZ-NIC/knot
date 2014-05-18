@@ -50,11 +50,8 @@ dt_reader_t* dt_reader_create(const char *file_path);
  * \brief Close dnstap file reader.
  *
  * \param reader		dnstap file reader structure.
- *
- * \retval KNOT_EOK
- * \retval errcode		if error.
  */
-int dt_reader_free(dt_reader_t *reader);
+void dt_reader_free(dt_reader_t *reader);
 
 /*!
  * \brief Read a dnstap protobuf from a dnstap file reader.

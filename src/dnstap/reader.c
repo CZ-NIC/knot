@@ -61,16 +61,14 @@ fail:
 	return NULL;
 }
 
-int dt_reader_free(dt_reader_t *reader)
+void dt_reader_free(dt_reader_t *reader)
 {
-	if (reader != NULL) {
-		fstrm_res res = fstrm_reader_destroy(&reader->fr);
-		free(reader);
-		if (res != fstrm_res_success) {
-			return KNOT_ERROR;
-		}
+	if (reader == NULL) {
+		return;
 	}
-	return KNOT_EOK;
+
+	fstrm_reader_destroy(&reader->fr);
+	free(reader);
 }
 
 int dt_reader_read(dt_reader_t *reader, Dnstap__Dnstap **d)
@@ -99,6 +97,8 @@ void dt_reader_free_frame(dt_reader_t *reader, Dnstap__Dnstap **frame_ptr)
 	if (!*frame_ptr) {
 		return;
 	}
+
+	UNUSED(reader);
 
 	dnstap__dnstap__free_unpacked(*frame_ptr, NULL);
 	*frame_ptr = NULL;

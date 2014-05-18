@@ -57,11 +57,8 @@ dt_writer_t* dt_writer_create(const char *file_path, const char *version);
  * \brief Finish writing dnstap file writer and free resources.
  *
  * \param writer		dnstap file writer structure.
- *
- * \retval KNOT_EOK
- * \retval errcode		if error.
  */
-int dt_writer_free(dt_writer_t *writer);
+void dt_writer_free(dt_writer_t *writer);
 
 /*!
  * \brief Write a protobuf to the dnstap file writer.
