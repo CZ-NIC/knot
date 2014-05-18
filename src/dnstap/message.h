@@ -40,6 +40,9 @@
  *      Dnstap__Message structure to fill. Will be zeroed first.
  * \param type
  *      One of the DNSTAP__MESSAGE__TYPE__* values.
+ * \param query_sa
+ *      sockaddr_in or sockaddr_in6 to use when filling the 'socket_family',
+ *      'query_address', 'query_port' fields.
  * \param response_sa
  *      sockaddr_in or sockaddr_in6 to use when filling the 'socket_family',
  *      'response_address', 'response_port' fields.
