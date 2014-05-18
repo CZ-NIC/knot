@@ -15,6 +15,7 @@
  */
 
 #include <netinet/in.h>                 // sockaddr_in
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>                     // memset
@@ -72,6 +73,31 @@ static int get_family(const struct sockaddr *query_sa,
 	}
 }
 
+static bool is_query(Dnstap__Message__Type type)
+{
+	switch (type) {
+	case DNSTAP__MESSAGE__TYPE__STUB_QUERY:
+	case DNSTAP__MESSAGE__TYPE__CLIENT_QUERY:
+	case DNSTAP__MESSAGE__TYPE__RESOLVER_QUERY:
+	case DNSTAP__MESSAGE__TYPE__AUTH_QUERY:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool is_response(Dnstap__Message__Type type)
+{
+	switch (type) {
+	case DNSTAP__MESSAGE__TYPE__STUB_RESPONSE:
+	case DNSTAP__MESSAGE__TYPE__CLIENT_RESPONSE:
+	case DNSTAP__MESSAGE__TYPE__RESOLVER_RESPONSE:
+	case DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE:
+	default:
+		return false;
+	}
+}
+
 int dt_message_fill(Dnstap__Message             *m,
                     const Dnstap__Message__Type type,
                     const struct sockaddr       *query_sa,
@@ -113,16 +139,12 @@ int dt_message_fill(Dnstap__Message             *m,
 	set_address(response_sa, &m->response_address, &m->has_response_address,
 	            &m->response_port, &m->has_response_port);
 
-	if (type == DNSTAP__MESSAGE__TYPE__AUTH_QUERY ||
-	    type == DNSTAP__MESSAGE__TYPE__TOOL_QUERY)
-	{
+	if (is_query(type)) {
 		// Message.query_message
 		m->query_message.len = len_wire;
 		m->query_message.data = (uint8_t *)wire;
 		m->has_query_message = 1;
-	} else if (type == DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE ||
-	           type == DNSTAP__MESSAGE__TYPE__TOOL_RESPONSE)
-	{
+	} else if (is_response(type)) {
 		// Message.response_message
 		m->response_message.len = len_wire;
 		m->response_message.data = (uint8_t *)wire;
