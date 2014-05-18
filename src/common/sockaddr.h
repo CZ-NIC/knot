@@ -79,15 +79,15 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 /*!
  * \brief Set raw address.
  *
- * @note It is the caller's responsibility of have correct raw_addr length.
- *
  * \param ss Socket address storage.
  * \param family Address family.
- * \param addr IP address in binary format.
+ * \param raw_addr IP address in binary format.
+ * \param raw_addr_size Size of the binary address.
  *
  * return KNOT_EOK on success or an error code
  */
-int sockaddr_set_raw(struct sockaddr_storage *ss, int family, const uint8_t *raw_addr);
+int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
+                     const uint8_t *raw_addr, size_t raw_addr_size);
 
 /*!
  * \brief Return string representation of socket address.

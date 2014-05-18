@@ -81,28 +81,35 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 	return KNOT_EINVAL;
 }
 
-int sockaddr_set_raw(struct sockaddr_storage *ss, int family, const uint8_t *raw_addr)
+int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
+                     const uint8_t *raw_addr, size_t raw_addr_size)
 {
 	if (ss == NULL || raw_addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Clear the structure and set family and port. */
-	memset(ss, 0, sizeof(struct sockaddr_storage));
-	ss->ss_family = family;
+	void *sa_data = NULL;
+	size_t sa_size = 0;
 
-	/* Initialize address depending on address family. */
-	if (family == AF_INET6) {
-		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
-		memcpy(&ipv6->sin6_addr, raw_addr, sizeof(ipv6->sin6_addr));
-		return KNOT_EOK;
-	} else if (family == AF_INET) {
+	if (family == AF_INET) {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)ss;
-		memcpy(&ipv4->sin_addr, raw_addr, sizeof(ipv4->sin_addr));
-		return KNOT_EOK;
+		sa_data = &ipv4->sin_addr;
+		sa_size = sizeof(ipv4->sin_addr);
+	} else if (family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)ss;
+		sa_data = &ipv6->sin6_addr;
+		sa_size = sizeof(ipv6->sin6_addr);
 	}
 
-	return KNOT_EINVAL;
+	if (sa_data == NULL || sa_size != raw_addr_size) {
+		return KNOT_EINVAL;
+	}
+
+	memset(ss, 0, sizeof(*ss));
+	ss->ss_family = family;
+	memcpy(sa_data, raw_addr, sa_size);
+
+	return KNOT_EOK;
 }
 
 int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen)
