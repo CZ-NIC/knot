@@ -93,9 +93,7 @@ int dt_writer_write(dt_writer_t *writer, const ProtobufCMessage *msg)
 	}
 
 	// Only handle dnstap/Message.
-	if (knot_unlikely(msg->descriptor != &dnstap__message__descriptor)) {
-		return KNOT_EINVAL;
-	}
+	assert(msg->descriptor == &dnstap__message__descriptor);
 
 	// Fill out 'dnstap'.
 	if (writer->version) {
