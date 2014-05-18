@@ -74,6 +74,8 @@ src/common/sockaddr.c
 src/common/sockaddr.h
 src/common/strtonum.h
 src/dnstap/Makefile.am
+src/dnstap/convert.c
+src/dnstap/convert.h
 src/dnstap/dnstap.c
 src/dnstap/dnstap.h
 src/dnstap/message.c

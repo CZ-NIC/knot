@@ -27,10 +27,16 @@ libdnstap_la_LDFLAGS =			\
 	$(DNSTAP_LIBS)
 
 libdnstap_la_SOURCES =			\
+	convert.c			\
+	convert.h			\
 	dnstap.c			\
+	dnstap.h			\
 	message.c			\
+	message.h			\
 	reader.c			\
-	writer.c
+	reader.h			\
+	writer.c			\
+	writer.h
 
 nodist_libdnstap_la_SOURCES =		\
 	dnstap.pb-c.c			\
