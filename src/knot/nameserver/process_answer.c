@@ -44,11 +44,7 @@ static void answer_data_init(knot_process_t *ctx, void *module_param)
  */
 static bool is_answer_to_query(const knot_pkt_t *query, knot_pkt_t *answer)
 {
-	bool ret = knot_wire_get_id(query->wire) == knot_wire_get_id(answer->wire);
-	if (!ret) {
-		assert(0);
-	}
-	return ret;
+	return knot_wire_get_id(query->wire) == knot_wire_get_id(answer->wire);
 }
 
 static int process_answer_begin(knot_process_t *ctx, void *module_param)
@@ -104,6 +100,9 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 	ANSWER_REQUIRES(knot_wire_get_qr(pkt->wire), NS_PROC_NOOP);
 	/* Check if we want answer paired to query. */
 	const knot_pkt_t *query = data->param->query;
+	if (!query) {
+		return NS_PROC_FAIL;
+	}
 	ANSWER_REQUIRES(is_answer_to_query(query, pkt), NS_PROC_NOOP);
 
 	/* Verify incoming packet. */
