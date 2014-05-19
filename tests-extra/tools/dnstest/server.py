@@ -879,7 +879,7 @@ class Knot(Server):
 
         s.begin("zones")
         s.item_str("storage", self.dir)
-        s.item("zonefile-sync", "0")
+        s.item("zonefile-sync", "1d")
         s.item("notify-timeout", "5")
         s.item("notify-retries", "5")
         s.item("semantic-checks", "on")
