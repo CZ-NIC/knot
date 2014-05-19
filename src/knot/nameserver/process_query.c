@@ -535,7 +535,9 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	assert(resp->rrset_count < KNOT_PKT_MAX_RRS);
 	/* Add OPT RR to the packet, initialized by server's EDNS parameters. */
 	ret = knot_pkt_add_opt(resp, server->edns,
-	                       knot_pkt_have_nsid(query));
+	                       knot_pkt_have_nsid(query)
+	                       && server->edns->nsid != NULL
+	                       && server->edns->nsid_len > 0);
 	if (ret != KNOT_EOK) {
 		dbg_ns("%s: can't add OPT RR to response (%d)\n", __func__, ret);
 		/* Free the OPT RR. */

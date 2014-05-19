@@ -235,17 +235,21 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
  */
 
 /*!
- * \brief Stores OPT RR to the packet.
+ * \brief Stores OPT RR created from given parameters to the packet.
  *
- * The given OPT RR is used (i.e. pointer to it is stored in the packet). Be
- * careful not to free the OPT RR somewhere else. In fact, it will be freed
- * by the packet structure.
+ * The function uses packet's preallocated space for RRs to create an OPT RRSet
+ * and initializes it using the values given in \a edns.
+ *
+ * \note This function allows adding empty NSID to the packet. If \a add_nsid is
+ *       \e true and \a edns does not contain NSID string, an empty NSID option
+ *       is added.
  *
  * \warning This function does not write the OPT RR to wireformat of the packet.
  *          To do that, call knot_pkt_write_opt() after this function.
  *
- * \param pkt     Packet to set the OPT RR to.
- * \param opt_rr  OPT RR to set.
+ * \param pkt       Packet to set the OPT RR to.
+ * \param edns      EDNS parameters used to initialize the OPT RR.
+ * \param add_nsid  Set to \e true if NSID OPTION should be added to the OPT RR.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL

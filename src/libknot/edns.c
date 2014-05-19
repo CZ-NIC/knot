@@ -26,8 +26,7 @@
 /*! \brief Some implementation-related constants. */
 enum knot_edns_private_consts {
 	/*! \brief Mask for the DO bit.
-	 * This mask should be used on TTL in machine byte order, no matter what
-	 * it is. Hell if I know why it works this way, but it does.
+	 * This mask should be used on TTL in machine byte order.
 	 */
 	KNOT_EDNS_DO_MASK = (uint32_t)(1 << 15),
 	/*! \brief Offset of Extended RCODE field in TTL in wire byte order. */
@@ -95,7 +94,7 @@ static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
 	assert(opt_rr != NULL);
 
 	/* First clear the RR, so that no old data remains there. */
-	memset(opt_rr, 0, sizeof(knot_rrset_t));
+	knot_rrset_init_empty(opt_rr);
 
 	/* Owner: root label.
 	 *
@@ -152,7 +151,7 @@ int knot_edns_init_from_params(knot_rrset_t *opt_rr,
 	         mm);
 
 	int ret = KNOT_EOK;
-	if (add_nsid && params->nsid_len > 0 && params->nsid != NULL) {
+	if (add_nsid) {
 		ret = knot_edns_add_option(opt_rr, KNOT_EDNS_OPTION_NSID,
 		                           params->nsid_len, params->nsid, mm);
 	}

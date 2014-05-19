@@ -190,21 +190,31 @@ static void print_section_opt(const knot_rrset_t *rr)
 	       knot_edns_get_payload(rr),
 	       ext_rcode_str);
 
-	/*! \todo REWRITE!!! */
+	knot_rdata_t *rdata = knot_rdataset_at(rr, 0);
+	assert(rdata != NULL);
 
-//	for (int i = 0; i < rr->option_count; i++) {
-//		knot_opt_option_t *opt = &(rr->options[i]);
+	uint16_t data_len = knot_rdata_rdlen(rdata);
+	uint8_t *data = knot_rdata_data(rdata);
+	int pos = 0;
 
-//		if (opt->code == EDNS_OPTION_NSID) {
-//			printf(";; NSID: ");
-//			short_hex_print(opt->data, opt->length);
-//			printf(";;     :  ");
-//			txt_print(opt->data, opt->length);
-//		} else {
-//			printf(";; Option (%u): ", opt->code);
-//			short_hex_print(opt->data, opt->length);
-//		}
-//	}
+	while (pos < data_len - 4) {
+		uint16_t opt_code = knot_wire_read_u16(data + pos);
+		uint16_t opt_len = knot_wire_read_u16(data + pos + 2);
+		uint8_t *opt_data = data + pos + 4;
+
+		if (opt_code == KNOT_EDNS_OPTION_NSID) {
+			printf(";; NSID: ");
+			short_hex_print(opt_data, opt_len);
+			printf(";;     :  ");
+			txt_print(opt_data, opt_len);
+		} else {
+			printf(";; Option (%u): ", opt_code);
+			short_hex_print(opt_data, opt_len);
+		}
+
+		printf("\n");
+		pos += 4 + opt_len;
+	}
 }
 
 static void print_section_question(const knot_dname_t *owner,
