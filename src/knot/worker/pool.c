@@ -25,6 +25,7 @@
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
 #include "knot/worker/queue.h"
+#include "libknot/dnssec/crypto.h"
 
 /*!
  * \brief Worker pool state.
@@ -86,6 +87,13 @@ static int worker_main(dthread_t *thread)
 	return KNOT_EOK;
 }
 
+static int worker_cleanup(dthread_t *thread)
+{
+	knot_crypto_cleanup_thread();
+
+	return KNOT_EOK;
+}
+
 /* -- public API ------------------------------------------------------------ */
 
 worker_pool_t *worker_pool_create(unsigned threads)
@@ -96,7 +104,7 @@ worker_pool_t *worker_pool_create(unsigned threads)
 	}
 
 	memset(pool, 0, sizeof(worker_pool_t));
-	pool->threads = dt_create(threads, worker_main, NULL, pool);
+	pool->threads = dt_create(threads, worker_main, worker_cleanup, pool);
 	if (pool->threads == NULL) {
 		free(pool);
 		return NULL;
