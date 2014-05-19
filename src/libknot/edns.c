@@ -96,18 +96,9 @@ static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
 	/* First clear the RR, so that no old data remains there. */
 	knot_rrset_init_empty(opt_rr);
 
-	/* Owner: root label.
-	 *
-	 * Allocate from memory context and set the dname by hand. Although it's
-	 * not very neat and it's implementation-specific , it's much easier,
-	 * faster + moreover the knot_dname_from_str() function does not support
-	 * memory contexts.
-	 */
-	opt_rr->owner = (knot_dname_t *)mm_alloc(mm, 1);
-	if (opt_rr->owner == NULL) {
-		return KNOT_ENOMEM;
-	}
-	*opt_rr->owner = '\0';
+	/* Owner: root label. */
+	size_t pos = 0;
+	opt_rr->owner = knot_dname_parse((uint8_t *)"\0", &pos, 1, mm);
 
 	/* TYPE = OPT */
 	opt_rr->type = KNOT_RRTYPE_OPT;

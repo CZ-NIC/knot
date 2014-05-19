@@ -190,7 +190,7 @@ static void print_section_opt(const knot_rrset_t *rr)
 	       knot_edns_get_payload(rr),
 	       ext_rcode_str);
 
-	knot_rdata_t *rdata = knot_rdataset_at(rr, 0);
+	knot_rdata_t *rdata = knot_rdataset_at(&rr->rrs, 0);
 	assert(rdata != NULL);
 
 	uint16_t data_len = knot_rdata_rdlen(rdata);
