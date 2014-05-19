@@ -66,7 +66,7 @@ static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
 
 int main(int argc, char *argv[])
 {
-	plan(29);
+	plan(25);
 
 	/* Create memory pool context. */
 	int ret = 0;
@@ -79,6 +79,16 @@ int main(int argc, char *argv[])
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {
 		dnames[i] = knot_dname_from_str(g_names[i]);
 	}
+
+	uint8_t *edns_str = (uint8_t *)"ab";
+	/* Create EDNS parameters. */
+	knot_edns_params_t edns_params = {
+		.payload = 1024,
+		.version = 0,
+		.nsid_len = 2,
+		.nsid = edns_str,
+		.flags = KNOT_EDNS_FLAG_DO
+	};
 
 	/*
 	 * Packet writer tests.
@@ -104,6 +114,10 @@ int main(int argc, char *argv[])
 	/* Write question. */
 	ret = knot_pkt_put_question(out, dnames[0], KNOT_CLASS_IN, KNOT_RRTYPE_A);
 	ok(ret == KNOT_EOK, "pkt: put question");
+
+	/* Add OPT to packet (empty NSID). */
+	ret = knot_pkt_add_opt(out, &edns_params, true);
+	ok(ret == KNOT_EOK, "pkt: add OPT RR");
 
 	/* Begin ANSWER section. */
 	ret = knot_pkt_begin(out, KNOT_ANSWER);

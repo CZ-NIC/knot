@@ -114,7 +114,7 @@ static void test_connected(struct requestor *requestor, conf_iface_t *remote)
 
 int main(int argc, char *argv[])
 {
-	plan(TESTS_COUNT);
+	plan(TESTS_COUNT + 1);
 
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, 4096);

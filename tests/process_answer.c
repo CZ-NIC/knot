@@ -118,7 +118,7 @@ static void test_inclass(knot_pkt_t *pkt, knot_process_t *proc, struct process_a
 
 int main(int argc, char *argv[])
 {
-	plan(2 + TEST_COUNT);
+	plan(3 + TEST_COUNT);
 
 	/* Create processing context. */
 	knot_process_t proc;

@@ -75,7 +75,7 @@ static void exec_query(knot_process_t *query_ctx, const char *name,
 
 int main(int argc, char *argv[])
 {
-	plan(8*6 + 3); /* exec_query = 6 TAP tests */
+	plan(8*6 + 4); /* exec_query = 6 TAP tests */
 
 	/* Create processing context. */
 	knot_process_t proc;
