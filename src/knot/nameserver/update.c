@@ -9,6 +9,7 @@
 #include "common/descriptor.h"
 #include "libknot/tsig-op.h"
 #include "knot/zone/zone.h"
+#include "knot/zone/events.h"
 
 /* UPDATE-specific logging (internal, expects 'qdata' variable set). */
 #define UPDATE_LOG(severity, msg...) \
@@ -282,7 +283,7 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Keep original state. */
 	struct timeval t_start, t_end;
 	gettimeofday(&t_start, NULL);
-	const zone_t *zone = qdata->zone;
+	zone_t *zone = (zone_t *)qdata->zone;
 	const uint32_t old_serial = zone_contents_serial(zone->contents);
 
 	/* Process authenticated packet. */
@@ -304,6 +305,9 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	gettimeofday(&t_end, NULL);
 	UPDATE_LOG(LOG_INFO, "Serial %u -> %u", old_serial, new_serial);
 	UPDATE_LOG(LOG_INFO, "Finished in %.02fs.", time_diff(&t_start, &t_end) / 1000.0);
+	
+	zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
+
 	return KNOT_EOK;
 }
 
