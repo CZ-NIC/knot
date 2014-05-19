@@ -199,7 +199,7 @@ static zone_contents_t *create_zone_from_name(const char *origin)
 int zonefile_open(zloader_t *loader, const char *source, const char *origin,
 		  bool semantic_checks)
 {
-	if (!loader || !conf) {
+	if (!loader) {
 		return KNOT_EINVAL;
 	}
 

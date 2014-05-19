@@ -14,8 +14,6 @@
 #define UPDATE_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "UPDATE", msg)
 
-#warning merge file with ddns.c
-
 static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	/*! \todo This will be reimplemented when RESPONSE and REQUEST processors

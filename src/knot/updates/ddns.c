@@ -31,8 +31,6 @@
 #include "common/descriptor.h"
 #include "common/lists.h"
 
-#warning merge with update.c
-
 /* ----------------------------- prereq check ------------------------------- */
 
 /*!< \brief Clears prereq RRSet list. */

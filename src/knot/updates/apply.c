@@ -52,7 +52,6 @@ static void rrs_list_clear(list_t *l, mm_ctx_t *mm)
 /*! \brief Frees additional data from single node */
 static int free_additional(zone_node_t **node, void *data)
 {
-#warning - TODO: still needed?
 	UNUSED(data);
 	if ((*node)->flags & NODE_FLAGS_NONAUTH) {
 		// non-auth nodes have no additionals.
