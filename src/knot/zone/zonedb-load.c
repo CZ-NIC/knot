@@ -253,8 +253,8 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	}
 
 	/* Freeze zone timers. */
+#warning "Workers have to be suspended and unsuspended outside this function."
 	if (server->zone_db) {
-		// TODO: ne, tohle nechceme
 		//knot_zonedb_foreach(server->zone_db, zone_events_freeze);
 	}
 
