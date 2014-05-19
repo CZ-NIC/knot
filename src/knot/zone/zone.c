@@ -67,7 +67,7 @@ static int set_acl(acl_t **acl, list_t* acl_list)
 	return KNOT_EOK;
 }
 
-static void free_ddns_q(zone_t *z)
+static void free_ddns_queue(zone_t *z)
 {
 	struct request_data *n = NULL;
 	node_t *nxt = NULL;
@@ -133,7 +133,7 @@ void zone_free(zone_t **zone_ptr)
 	acl_delete(&zone->xfr_out);
 	acl_delete(&zone->notify_in);
 	acl_delete(&zone->update_in);
-	free_ddns_q(zone);
+	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
 
 	/* Free assigned config. */
