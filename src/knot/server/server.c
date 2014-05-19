@@ -261,7 +261,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 	return bound;
 }
 
-int server_init(server_t *server)
+int server_init(server_t *server, int bg_workers)
 {
 	/* Clear the structure. */
 	dbg_server("%s(%p)\n", __func__, server);
@@ -282,8 +282,12 @@ int server_init(server_t *server)
 	}
 
 	/* Create zone events threads. */
-#warning TODO: config option
-	server->workers = worker_pool_create(4); //! \todo config option
+	if (bg_workers < 1) {
+		bg_workers = dt_optimal_size();
+	}
+	assert(bg_workers > 0);
+
+	server->workers = worker_pool_create(bg_workers);
 	if (server->workers == NULL) {
 		dt_delete(&server->iosched);
 		evsched_deinit(&server->sched);

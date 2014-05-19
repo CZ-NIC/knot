@@ -132,7 +132,7 @@ typedef struct server_t {
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL on invalid parameters.
  */
-int server_init(server_t *server);
+int server_init(server_t *server, int bg_workers);
 
 /*!
  * \brief Properly destroys the server structure.

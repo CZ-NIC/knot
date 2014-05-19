@@ -461,6 +461,7 @@ static void ident_auto(int tok, conf_t *conf, bool val)
 %token <tok> MAX_UDP_PAYLOAD
 %token <tok> TSIG_ALGO_NAME
 %token <tok> WORKERS
+%token <tok> BACKGROUND_WORKERS
 %token <tok> USER
 %token <tok> RUNDIR
 %token <tok> PIDFILE
@@ -589,6 +590,9 @@ system:
  }
  | system WORKERS NUM ';' {
      SET_NUM(new_config->workers, $3.i, 1, 255, "workers");
+ }
+ | system BACKGROUND_WORKERS NUM ';' {
+     SET_NUM(new_config->bg_workers, $3.i, 1, 255, "background-workers");
  }
  | system USER TEXT ';' {
      new_config->uid = new_config->gid = -1; // Invalidate
