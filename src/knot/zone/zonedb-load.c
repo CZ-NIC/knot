@@ -137,7 +137,11 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		break;
 	case ZONE_STATUS_NOT_FOUND:
+		break;
 	case ZONE_STATUS_FOUND_CURRENT:
+		if (zone->conf->dnssec_enable) {
+			zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+		}
 		break;
 	default:
 		assert(0);
@@ -249,8 +253,8 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	}
 
 	/* Freeze zone timers. */
+#warning "Workers have to be suspended and unsuspended outside this function."
 	if (server->zone_db) {
-		// TODO: ne, tohle nechceme
 		//knot_zonedb_foreach(server->zone_db, zone_events_freeze);
 	}
 

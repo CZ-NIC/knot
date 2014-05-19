@@ -656,7 +656,6 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 
 	if (ret == NS_PROC_FAIL) {
 		ixfrin_cleanup(adata);
-		IXFRIN_LOG(LOG_ERR, "Failed.");
 	}
 
 	return ret;

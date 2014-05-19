@@ -571,18 +571,14 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 		return r1 == r2;
 	}
 
-	if (knot_rrset_empty(r1)) {
-		return knot_rrset_empty(r2);
-	} else if (knot_rrset_empty(r2)) {
-		return knot_rrset_empty(r1);
-	}
-
 	if (r1->type != r2->type) {
 		return false;
 	}
 
-	if (!knot_dname_is_equal(r1->owner, r2->owner)) {
-		return false;
+	if (r1->owner && r2->owner) {
+		if (!knot_dname_is_equal(r1->owner, r2->owner)) {
+			return false;
+		}
 	}
 
 	if (cmp == KNOT_RRSET_COMPARE_WHOLE) {

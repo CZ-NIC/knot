@@ -238,7 +238,7 @@ int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 	return KNOT_EOK;
 }
 
-static void knot_free_changeset(changeset_t *changeset)
+static void knot_free_changeset(changeset_t *changeset, mm_ctx_t *rr_mm)
 {
 	if (changeset == NULL) {
 		return;
@@ -247,14 +247,14 @@ static void knot_free_changeset(changeset_t *changeset)
 	// Delete RRSets in lists, in case there are any left
 	knot_rr_ln_t *rr_node;
 	WALK_LIST(rr_node, changeset->add) {
-		knot_rrset_free(&rr_node->rr, NULL);
+		knot_rrset_free(&rr_node->rr, rr_mm);
 	}
 	WALK_LIST(rr_node, changeset->remove) {
-		knot_rrset_free(&rr_node->rr, NULL);
+		knot_rrset_free(&rr_node->rr, rr_mm);
 	}
 
-	knot_rrset_free(&changeset->soa_from, NULL);
-	knot_rrset_free(&changeset->soa_to, NULL);
+	knot_rrset_free(&changeset->soa_from, rr_mm);
+	knot_rrset_free(&changeset->soa_to, rr_mm);
 
 	// Delete binary data
 	free(changeset->data);
@@ -265,7 +265,7 @@ static void knot_changesets_deinit(changesets_t *changesets, mm_ctx_t *rr_mm)
 	if (!EMPTY_LIST(changesets->sets)) {
 		changeset_t *chg = NULL;
 		WALK_LIST(chg, changesets->sets) {
-			knot_free_changeset(chg);
+			knot_free_changeset(chg, rr_mm);
 		}
 	}
 

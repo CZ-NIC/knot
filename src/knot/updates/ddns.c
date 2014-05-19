@@ -31,8 +31,6 @@
 #include "common/descriptor.h"
 #include "common/lists.h"
 
-#warning merge with update.c
-
 /* ----------------------------- prereq check ------------------------------- */
 
 /*!< \brief Clears prereq RRSet list. */
@@ -1018,8 +1016,9 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 			return KNOT_ENOMEM;
 		}
 
-		int new_serial = zone_contents_next_serial(zone->contents,
-		                                           zone->conf->serial_policy);
+		uint32_t new_serial =
+			zone_contents_next_serial(zone->contents,
+		                                  zone->conf->serial_policy);
 		knot_soa_serial_set(&soa_cpy->rrs, new_serial);
 		changeset_add_soa(changeset, soa_cpy, CHANGESET_ADD);
 	}

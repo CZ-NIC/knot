@@ -368,8 +368,8 @@ static int event_update(zone_t *zone)
 	qdata.query = update->query;
 	qdata.zone  = zone;
 
-	/* Process the update query. */
-	int ret = update_process_query(resp, &qdata);
+	/* Process the update query. If processing fails, resp will be set. */
+	update_process_query(resp, &qdata);
 
 	/* Send response. */
 	if (net_is_connected(update->fd)) {

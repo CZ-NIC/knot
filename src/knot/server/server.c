@@ -116,12 +116,16 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
 
+#if defined(SO_REUSEPORT)
+	/* Each thread binds own socket. */
+	int sock = -1;
+#else
 	/* Create bound UDP socket. */
 	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr);
 	if (sock < 0) {
 		return sock;
 	}
-
+#endif
 	new_if->fd[IO_UDP] = sock;
 
 	/* Create bound TCP socket. */
@@ -257,7 +261,7 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 	return bound;
 }
 
-int server_init(server_t *server)
+int server_init(server_t *server, int bg_workers)
 {
 	/* Clear the structure. */
 	dbg_server("%s(%p)\n", __func__, server);
@@ -278,8 +282,12 @@ int server_init(server_t *server)
 	}
 
 	/* Create zone events threads. */
-#warning TODO: config option
-	server->workers = worker_pool_create(4); //! \todo config option
+	if (bg_workers < 1) {
+		bg_workers = dt_optimal_size();
+	}
+	assert(bg_workers > 0);
+
+	server->workers = worker_pool_create(bg_workers);
 	if (server->workers == NULL) {
 		dt_delete(&server->iosched);
 		evsched_deinit(&server->sched);

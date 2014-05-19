@@ -280,7 +280,7 @@ int main(int argc, char **argv)
 
 	/* Initialize server. */
 	server_t server;
-	res = server_init(&server);
+	res = server_init(&server, config->bg_workers);
 	if (res != KNOT_EOK) {
 		log_server_fatal("Could not initialize server: %s\n",
 		                 knot_strerror(res));

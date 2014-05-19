@@ -317,7 +317,7 @@ static int axfr_answer_finalize(struct answer_data *data)
 static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 {
 	if (pkt == NULL) {
-		return KNOT_EINVAL;
+		return NS_PROC_FAIL;
 	}
 
 	++proc->npkts;
@@ -345,7 +345,6 @@ static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
 	/* Initialize processing with first packet. */
-	int ret = KNOT_EOK;
 	if (data->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
 		if (!zone_transfer_needed(data->param->zone, pkt)) {
@@ -354,7 +353,7 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 		}
 		AXFRIN_LOG(LOG_INFO, "Starting.");
 
-		ret = axfr_answer_init(data);
+		int ret = axfr_answer_init(data);
 		if (ret != KNOT_EOK) {
 			AXFRIN_LOG(LOG_ERR, "Failed.\n");
 			return NS_PROC_FAIL;
@@ -364,7 +363,7 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	}
 
 	/* Process answer packet. */
-	ret = process_axfr_packet(pkt, (struct xfr_proc *)data->ext);
+	int ret = process_axfr_packet(pkt, (struct xfr_proc *)data->ext);
 	if (ret == NS_PROC_DONE) {
 		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
 		/* This was the last packet, finalize zone and publish it. */
