@@ -137,7 +137,11 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 		break;
 	case ZONE_STATUS_NOT_FOUND:
+		break;
 	case ZONE_STATUS_FOUND_CURRENT:
+		if (zone->conf->dnssec_enable) {
+			zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+		}
 		break;
 	default:
 		assert(0);
