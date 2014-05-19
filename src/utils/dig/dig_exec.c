@@ -165,10 +165,17 @@ static void process_dnstap(const query_t *query)
 
 				family = dt_family_decode(message->socket_family);
 				proto = dt_protocol_decode(message->socket_protocol);
+
 				switch (proto) {
-				case IPPROTO_TCP: sock_type = SOCK_STREAM; break;
-				case IPPROTO_UDP: sock_type = SOCK_DGRAM; break;
-				default: sock_type = 0; break;
+				case IPPROTO_TCP:
+					sock_type = SOCK_STREAM;
+					break;
+				case IPPROTO_UDP:
+					sock_type = SOCK_DGRAM;
+					break;
+				default:
+					sock_type = 0;
+					break;
 				}
 
 				sockaddr_set_raw(&ss, family,
