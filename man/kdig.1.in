@@ -14,7 +14,7 @@ have individual \fIsettings\fR, or it can be specified globally via \fIcommon\-s
 which must precede \fIquery\fR specification.
 .TP 4
 .I query
-\fIname\fR | \fB\-q\fR \fIname\fR | \fB\-x\fR \fIaddress\fR
+\fIname\fR | \fB\-q\fR \fIname\fR | \fB\-x\fR \fIaddress\fR | \fB\-G\fR \fItapfile\fR
 .TP
 .I common\-settings, settings
 [\fIclass\fR] [\fItype\fR] [\fB@\fIserver\fR]... [\fIoptions\fR]
@@ -81,6 +81,13 @@ class and type is set automatically.
 Use TSIG key with a name \fIkeyname\fR to authenticate the request. The \fIalgo\fR
 part specifies the algorithm (the default is hmac\-md5) and \fIkey\fR specifies
 the shared secret encoded in Base64.
+.TP
+.BI \-E \ tapfile
+Export a dnstap trace of the query and response messages received to the file
+\fItapfile\fR.
+.TP
+.BI \-G \ tapfile
+Generate message output from a previously saved dnstap file \fItapfile\fR.
 .TP
 .BR + [ no ] multiline
 Wrap long records to more lines and improve human readability.

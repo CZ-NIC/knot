@@ -135,9 +135,9 @@ static int get_addr(const srv_info_t *server,
 	return 0;
 }
 
-static void get_addr_str(const struct sockaddr_storage *ss,
-                         const int                     socktype,
-                         char                          **dst)
+void get_addr_str(const struct sockaddr_storage *ss,
+                  const int                     socktype,
+                  char                          **dst)
 {
 	char addr_str[SOCKADDR_STRLEN] = {0};
 
@@ -234,13 +234,9 @@ int net_connect(net_t *net)
 
 	// Bind address to socket if specified.
 	if (net->local_info != NULL) {
-		// Set local information string.
-		get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
-		             net->socktype, &net->local_str);
-
 		if (bind(sockfd, net->local_info->ai_addr,
 		         net->local_info->ai_addrlen) == -1) {
-			WARN("can't assign address %s\n", net->local_str);
+			WARN("can't assign address %s\n", net->local->name);
 			return KNOT_NET_ESOCKET;
 		}
 	}
@@ -272,6 +268,39 @@ int net_connect(net_t *net)
 
 	// Store socket descriptor.
 	net->sockfd = sockfd;
+
+	return KNOT_EOK;
+}
+
+int net_set_local_info(net_t *net)
+{
+	if (net == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	if (net->local_info != NULL) {
+		freeaddrinfo(net->local_info);
+	}
+
+	socklen_t local_addr_len = sizeof(struct sockaddr_storage);
+	struct sockaddr_storage *local_addr = calloc(1, local_addr_len);
+
+	if (getsockname(net->sockfd, (struct sockaddr *)local_addr,
+			&local_addr_len) == -1) {
+		WARN("can't get local address\n");
+		return KNOT_NET_ESOCKET;
+	}
+
+	net->local_info = calloc(1, sizeof(struct addrinfo));
+	net->local_info->ai_family = net->srv->ai_family;
+	net->local_info->ai_socktype = net->srv->ai_socktype;
+	net->local_info->ai_protocol = net->srv->ai_protocol;
+	net->local_info->ai_addrlen = local_addr_len;
+	net->local_info->ai_addr = (struct sockaddr *)local_addr;
+
+	get_addr_str((struct sockaddr_storage *)net->local_info->ai_addr,
+	             net->socktype, &net->local_str);
 
 	return KNOT_EOK;
 }

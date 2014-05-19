@@ -69,6 +69,7 @@ struct process_query_param {
 	int        query_socket;
 	struct sockaddr_storage *query_source;
 	server_t   *server;
+	unsigned   thread_id;
 };
 
 /*! \brief Query processing intermediate data. */

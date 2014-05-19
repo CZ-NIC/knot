@@ -266,6 +266,8 @@ typedef struct conf_t {
 	int dnssec_enable;   /*!< DNSSEC: Online signing enabled. */
 	int sig_lifetime;    /*!< DNSSEC: Signature lifetime. */
 	int serial_policy;   /*!< Serial policy when updating zone. */
+	struct query_plan *query_plan;
+	list_t query_modules;
 
 	/*
 	 * Remote control interface.
@@ -404,6 +406,12 @@ static inline conf_t* conf() {
  * \retval Pointer to normalized path.
  */
 char* strcpath(char *path);
+
+/*! \brief Return the number of UDP threads according to the configuration. */
+size_t conf_udp_threads(const conf_t *conf);
+
+/*! \brief Return the number of TCP threads according to the configuration. */
+size_t conf_tcp_threads(const conf_t *conf);
 
 /* \brief Initialize zone config. */
 void conf_init_zone(conf_zone_t *zone);

@@ -802,13 +802,13 @@ static int planned_answer(struct query_plan *plan, knot_pkt_t *response, struct 
 		}
 	}
 
-	/* Write resulting RCODE. */
-	knot_wire_set_rcode(response->wire, qdata->rcode);
-
 	/* After query processing code. */
 	WALK_LIST(step, plan->stage[QPLAN_END]) {
 		SOLVE_STEP(step->process, state, step->ctx);
 	}
+
+	/* Write resulting RCODE. */
+	knot_wire_set_rcode(response->wire, qdata->rcode);
 
 	return NS_PROC_DONE;
 }

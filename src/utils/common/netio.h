@@ -29,6 +29,7 @@
 
 #include <stdint.h>			// uint_t
 #include <netdb.h>			// addrinfo
+#include <sys/socket.h>			// sockaddr_storage (BSD)
 
 #include "common/lists.h"		// node
 #include "utils/common/params.h"	// params_t
@@ -125,6 +126,17 @@ int get_socktype(const protocol_t proto, const uint16_t type);
 const char* get_sockname(const int socktype);
 
 /*!
+ * \brief Translates int socket type to the common string one.
+ *
+ * \param ss		Socket address storage.
+ * \param socktype	Socket type (SOCK_STREAM or SOCK_DGRAM).
+ * \param dst[out]	Output string.
+ */
+void get_addr_str(const struct sockaddr_storage *ss,
+                  const int                     socktype,
+                  char                          **dst);
+
+/*!
  * \brief Initializes network structure and resolves local and remote addresses.
  *
  * \param local		Local address and service description.
@@ -154,6 +166,16 @@ int net_init(const srv_info_t *local,
  * \retval errcode	if error.
  */
 int net_connect(net_t *net);
+
+/*!
+ * \brief Fills in local address information.
+ *
+ * \param net		Connection parameters.
+ *
+ * \retval KNOT_EOK	if success.
+ * \retval errcode	if error.
+ */
+int net_set_local_info(net_t *net);
 
 /*!
  * \brief Sends data to connected remote server.

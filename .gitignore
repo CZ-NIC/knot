@@ -56,6 +56,12 @@
 /src/knot/conf/libknotd_la-cf-parse.c
 /src/knot/conf/libknotd_la-cf-parse.h
 
+# dnstap
+/src/dnstap/Makefile
+/src/dnstap/Makefile.in
+/src/dnstap/dnstap.pb-c.c
+/src/dnstap/dnstap.pb-c.h
+
 # zscanner
 /src/zscanner/scanner.c
 /src/zscanner/tests/tmp/

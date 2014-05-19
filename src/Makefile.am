@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I $(top_srcdir)/m4
-SUBDIRS = zscanner .
+SUBDIRS = zscanner dnstap .
 
 sbin_PROGRAMS = knotc knotd
 bin_PROGRAMS = kdig khost knsupdate knsec3hash
@@ -172,19 +172,19 @@ libknot_la_SOURCES =				\
 	libknot/rdata/nsec.h			\
 	libknot/rdata/nsec3.c			\
 	libknot/rdata/nsec3.h			\
-	libknot/rdata/nsec3param.h			\
-	libknot/rdata/nsec3param.c			\
+	libknot/rdata/nsec3param.h		\
+	libknot/rdata/nsec3param.c		\
 	libknot/rdata/nsec.h			\
 	libknot/rdata/rrsig.h			\
 	libknot/rdata/soa.h			\
-	libknot/rdata/tsig.c				\
-	libknot/rdata/tsig.h				\
+	libknot/rdata/tsig.c			\
+	libknot/rdata/tsig.h			\
 	libknot/rrset-dump.c			\
 	libknot/rrset-dump.h			\
 	libknot/rdata.c				\
 	libknot/rdata.h				\
-	libknot/rdataset.c				\
-	libknot/rdataset.h				\
+	libknot/rdataset.c			\
+	libknot/rdataset.h			\
 	libknot/rrset.c				\
 	libknot/rrset.h				\
 	libknot/tsig-op.c			\
@@ -253,8 +253,8 @@ libknotd_la_SOURCES =				\
 	knot/server/rrl.h			\
 	knot/server/server.c			\
 	knot/server/server.h			\
-	knot/server/net.c				\
-	knot/server/net.h				\
+	knot/server/net.c			\
+	knot/server/net.h			\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
@@ -312,6 +312,16 @@ kdig_LDADD       = libknotus.la libknots.la libknot.la
 khost_LDADD      = libknotus.la libknots.la libknot.la
 knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
 knsec3hash_LDADD = libknotus.la libknots.la libknot.la
+
+if HAVE_DNSTAP
+libknotd_la_SOURCES +=				\
+	knot/modules/dnstap.c			\
+	knot/modules/dnstap.h
+
+kdig_LDADD	+= dnstap/libdnstap.la
+khost_LDADD	+= dnstap/libdnstap.la
+libknotd_la_LIBADD += dnstap/libdnstap.la
+endif
 
 # Create storage and run-time directories
 install-data-hook:

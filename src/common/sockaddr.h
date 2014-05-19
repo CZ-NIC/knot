@@ -77,6 +77,19 @@ int sockaddr_cmp(const struct sockaddr_storage *k1, const struct sockaddr_storag
 int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, int port);
 
 /*!
+ * \brief Set raw address.
+ *
+ * \param ss Socket address storage.
+ * \param family Address family.
+ * \param raw_addr IP address in binary format.
+ * \param raw_addr_size Size of the binary address.
+ *
+ * return KNOT_EOK on success or an error code
+ */
+int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
+                     const uint8_t *raw_addr, size_t raw_addr_size);
+
+/*!
  * \brief Return string representation of socket address.
  *
  * \note String format: <address>[@<port>], f.e. '127.0.0.1@53'

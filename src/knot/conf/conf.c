@@ -257,6 +257,23 @@ static int conf_process(conf_t *conf)
 	// Postprocess zones
 	int ret = KNOT_EOK;
 
+	/* Initialize query plan if modules exist. */
+	if (!EMPTY_LIST(conf->query_modules)) {
+		conf->query_plan = query_plan_create(NULL);
+		if (conf->query_plan == NULL) {
+			return KNOT_ENOMEM;
+		}
+	}
+
+	/* Load query modules. */
+	struct query_module *module = NULL;
+	WALK_LIST(module, conf->query_modules) {
+		ret = module->load(conf->query_plan, module);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
 	const bool sorted = false;
 	hattrie_iter_t *z_iter = hattrie_iter_begin(conf->zones, sorted);
 	if (z_iter == NULL) {
@@ -613,6 +630,7 @@ conf_t *conf_new(char* path)
 
 	/* Zones container. */
 	c->zones = hattrie_create();
+	init_list(&c->query_modules);
 
 	/* Defaults. */
 	c->zone_checks = 0;
@@ -746,6 +764,15 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 		hattrie_free(conf->zones);
 		conf->zones = NULL;
 	}
+
+	/* Unload query modules. */
+	struct query_module *module = NULL, *next = NULL;
+	WALK_LIST_DELSAFE(module, next, conf->query_modules) {
+		query_module_close(module);
+	}
+
+	/* Free query plan. */
+	query_plan_free(conf->query_plan);
 
 	conf->dnssec_enable = -1;
 	if (conf->filename) {
@@ -931,6 +958,21 @@ char* strcpath(char *path)
 	}
 
 	return path;
+}
+
+size_t conf_udp_threads(const conf_t *conf)
+{
+	if (conf->workers < 1) {
+		return dt_optimal_size();
+	}
+
+	return conf->workers;
+}
+
+size_t conf_tcp_threads(const conf_t *conf)
+{
+	size_t thrcount = conf_udp_threads(conf);
+	return MAX(thrcount * 2, CONFIG_XFERS);
 }
 
 void conf_init_zone(conf_zone_t *zone)

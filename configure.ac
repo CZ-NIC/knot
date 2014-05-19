@@ -308,6 +308,14 @@ if test "$libidn" != "no" ; then
     AC_DEFINE(LIBIDN, 1, [Define to 1 if you want IDN support.])
 fi
 
+dnl Check for dnstap.
+dt_DNSTAP([
+    LIBS="$LIBS $DNSTAP_LIBS"
+    CPPFLAGS="$CPPFLAGS $DNSTAP_CFLAGS"
+    AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support])
+])
+AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
@@ -371,6 +379,7 @@ AC_CONFIG_FILES([Makefile
 		 libtap/Makefile
 		 src/Makefile
 		 tests/Makefile
+		 src/dnstap/Makefile
 		 src/zscanner/Makefile
 		 doc/conf.py
 		 man/khost.1
@@ -398,8 +407,9 @@ AC_MSG_RESULT([
     Config dir:  ${config_dir}
 
     Fast zone parser:      ${enable_fastparser}
-    Utils with IDN:        ${libidn}
+    Utilities with IDN:    ${libidn}
     Systemd notifications: ${enable_systemd}
+    Dnstap support:        ${opt_dnstap}
     Code coverage:         ${enable_code_coverage}
 
   Continue with 'make' command
