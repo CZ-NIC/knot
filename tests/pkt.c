@@ -116,8 +116,8 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: put question");
 
 	/* Add OPT to packet (empty NSID). */
-	ret = knot_pkt_add_opt(out, &edns_params, true);
-	ok(ret == KNOT_EOK, "pkt: add OPT RR");
+	ret = knot_pkt_reserve(out, knot_edns_wire_size(&edns_params));
+	ok(ret == KNOT_EOK, "pkt: reserve OPT RR");
 
 	/* Begin ANSWER section. */
 	ret = knot_pkt_begin(out, KNOT_ANSWER);
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: begin ADDITIONALS");
 
 	/* Encode OPT RR. */
-	ret = knot_pkt_write_opt(out);
+	ret = knot_pkt_write_opt(out, &edns_params, true);
 	ok(ret == KNOT_EOK, "pkt: write OPT RR");
 
 	/*

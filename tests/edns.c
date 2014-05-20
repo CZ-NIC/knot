@@ -46,8 +46,6 @@ static const uint16_t E_OPT4_CODE = 30;
 static const char *E_OPT4_DATA = NULL;
 static const uint16_t E_OPT4_LEN = 0;
 
-static const size_t E_HEADER_SIZE = 11;
-
 enum offsets {
 	/*! \brief Offset of Extended RCODE in wire order of TTL. */
 	OFFSET_ERCODE = 0,
@@ -241,15 +239,6 @@ static bool test_getters(knot_rrset_t *opt_rr, knot_edns_params_t *params,
 	success &= check;
 	(*done)++;
 
-	/* Size */
-	size_t exp_size = E_HEADER_SIZE;
-	exp_size += knot_rdata_rdlen(knot_rdataset_at(&opt_rr->rrs, 0));
-	check = (knot_edns_size(opt_rr) == exp_size);
-	ok(check, "OPT RR getters: size (real: %zu, expected: %zu)",
-	   knot_edns_size(opt_rr), exp_size);
-	success &= check;
-	(*done)++;
-
 	return success;
 }
 
@@ -331,7 +320,7 @@ static bool test_setters(knot_rrset_t *opt_rr, int *done)
 	return success;
 }
 
-#define TEST_COUNT 45
+#define TEST_COUNT 44
 
 static inline int remaining(int done) {
 	return TEST_COUNT - done - 1;

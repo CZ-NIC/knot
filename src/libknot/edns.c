@@ -85,6 +85,18 @@ void knot_edns_free_params(knot_edns_params_t **edns)
 }
 
 /*----------------------------------------------------------------------------*/
+
+size_t knot_edns_wire_size(knot_edns_params_t *edns)
+{
+	if (edns == NULL) {
+		return 0;
+	}
+
+#warning: TODO: check if this is enough please
+	return KNOT_EDNS_MIN_SIZE + edns->nsid_len;
+}
+
+/*----------------------------------------------------------------------------*/
 /* EDNS OPT RR handling functions.                                            */
 /*----------------------------------------------------------------------------*/
 
@@ -345,13 +357,9 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 
 /*----------------------------------------------------------------------------*/
 
-size_t knot_edns_size(knot_rrset_t *opt_rr)
+bool knot_edns_check_record(knot_rrset_t *opt_rr)
 {
-	assert(opt_rr != NULL);
-
-	size_t size = KNOT_EDNS_MIN_SIZE;
-	// Only one RDATA in OPT RRSet
-	size += knot_rdata_rdlen(knot_rdataset_at(&opt_rr->rrs, 0));
-
-	return size;
+	/* \todo Semantic checks for the OPT. */
+#warning: check semantics here
+	return true;
 }

@@ -655,7 +655,14 @@ static int solve_additional(int state, knot_pkt_t *pkt,
                             struct query_data *qdata, void *ctx)
 {
 	/* Put OPT RR. */
-	int ret = knot_pkt_write_opt(pkt);
+	server_t *server = qdata->param->server;
+	int ret = knot_pkt_write_opt(pkt, server->edns,
+	                             knot_pkt_have_nsid(qdata->query)
+	                             && server->edns->nsid != NULL
+	                             && server->edns->nsid_len > 0);
+	if (ret != KNOT_EOK) {
+		return ERROR;
+	}
 
 	/* Scan all RRs in ANSWER/AUTHORITY. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {

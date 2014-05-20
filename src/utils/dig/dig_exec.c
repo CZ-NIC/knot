@@ -324,12 +324,9 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 			.flags = query->flags.do_flag ? KNOT_EDNS_FLAG_DO : 0
 		};
 
-		ret = knot_pkt_add_opt(packet, &edns_params, query->nsid);
-
 		// Write prepared OPT to wire
 		knot_pkt_begin(packet, KNOT_ADDITIONAL);
-		ret |= knot_pkt_write_opt(packet);
-
+		ret = knot_pkt_write_opt(packet, &edns_params, query->nsid);
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");
 			knot_pkt_free(&packet);

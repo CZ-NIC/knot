@@ -108,6 +108,16 @@ knot_edns_params_t *knot_edns_new_params(uint16_t max_payload, uint8_t ver,
  */
 void knot_edns_free_params(knot_edns_params_t **edns);
 
+
+/*!
+ * \brief Returns size of the OPT RR in wire format.
+ *
+ * \param edns EDNS parameters.
+ *
+ * \return Size of the OPT RR in bytes.
+ */
+size_t knot_edns_wire_size(knot_edns_params_t *edns);
+
 /*----------------------------------------------------------------------------*/
 /* EDNS OPT RR handling functions.                                            */
 /*----------------------------------------------------------------------------*/
@@ -257,17 +267,13 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
 
 /*!
- * \brief Returns size of the OPT RR in wire format.
+ * \brief Check OPT RR semantics.
  *
- * \warning This function does not check the parameter, so ensure to check it
- *          before calling the function. It must not be NULL.
- * \note There is an assert() for debug checking of the parameter.
+ * \param opt_rr
  *
- * \param opt_rr OPT RR to get the size of.
- *
- * \return Size of the OPT RR in bytes.
+ * \return true if passed, false if failed
  */
-size_t knot_edns_size(knot_rrset_t *opt_rr);
+bool knot_edns_check_record(knot_rrset_t *opt_rr);
 
 #endif /* _KNOT_EDNS_H_ */
 

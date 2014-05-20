@@ -554,13 +554,10 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	}
 
 	assert(resp->rrset_count < KNOT_PKT_MAX_RRS);
-	/* Add OPT RR to the packet, initialized by server's EDNS parameters. */
-	ret = knot_pkt_add_opt(resp, server->edns,
-	                       knot_pkt_have_nsid(query)
-	                       && server->edns->nsid != NULL
-	                       && server->edns->nsid_len > 0);
+	/* Reserve OPT RR to the packet, initialized by server's EDNS parameters. */
+	ret = knot_pkt_reserve(resp, knot_edns_wire_size(server->edns));
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't add OPT RR to response (%d)\n", __func__, ret);
+		dbg_ns("%s: can't reserve OPT RR in response (%d)\n", __func__, ret);
 		/* Free the OPT RR. */
 		return ret;
 	}

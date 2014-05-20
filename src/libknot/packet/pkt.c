@@ -699,14 +699,18 @@ int knot_pkt_parse_rr(knot_pkt_t *pkt, unsigned flags)
 		pkt->tsig_rr = rr;
 		break;
 	case KNOT_RRTYPE_OPT:
-		// if there is some OPT already, treat as malformed
+		/* If there is some OPT already, treat as malformed. */
 		if (pkt->opt_rr != NULL) {
 			dbg_packet("%s: found 2nd OPT\n", __func__);
 			return KNOT_EMALF;
 		}
-		/*! \todo May an OPT RR be malformed if successfuly parsed? */
 
-		// store pointer to the OPT in the packet
+		/* Semantic checks for the OPT. */
+		if (!knot_edns_check_record(rr)) {
+			dbg_packet("%s: OPT RR check failed\n", __func__);
+			return KNOT_EMALF;
+		}
+
 		pkt->opt_rr = rr;
 		break;
 	default:
@@ -790,72 +794,36 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 /* EDNS(0)-related functions                                                  */
 /*----------------------------------------------------------------------------*/
 
-int knot_pkt_add_opt(knot_pkt_t *pkt, knot_edns_params_t *edns, bool add_nsid)
-{
-	if (pkt == NULL || edns == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_rrinfo_t *rrinfo = &pkt->rr_info[pkt->rrset_count];
-	memset(rrinfo, 0, sizeof(knot_rrinfo_t));
-
-	/* Take one RR from the pool and initialize an OPT RR. */
-	int ret = knot_edns_init_from_params(&pkt->rr[pkt->rrset_count],
-	                                     edns, add_nsid, &pkt->mm);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	pkt->opt_rr = &pkt->rr[pkt->rrset_count++];
-	pkt->sections[KNOT_ADDITIONAL].count += 1;
-
-	/* OPT RR is not directly converted to wire, we must wait till the
-	 * Additional section is started. Now just reserve space for it.
-	 */
-	pkt->reserved += knot_edns_size(pkt->opt_rr);
-
-	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_pkt_write_opt(knot_pkt_t *pkt)
+int knot_pkt_write_opt(knot_pkt_t *pkt, knot_edns_params_t *edns, bool add_nsid)
 {
 	if (pkt == NULL) {
+		assert(0);
 		return KNOT_EINVAL;
 	}
 
 	/* OPT should be only in the AR. */
 	if (pkt->current != KNOT_ADDITIONAL) {
+		assert(0);
 		return KNOT_ENOTSUP;
 	}
 
-	/* If there is no OPT RR, do nothing. */
-	if (pkt->opt_rr == NULL) {
-		return KNOT_EOK;
-	}
-
-	uint8_t *pos = pkt->wire + pkt->size;
-	uint16_t rr_added = 0;
-	size_t maxlen = pkt_remaining(pkt);
-	size_t len = 0;
-
-	int ret = knot_rrset_to_wire(pkt->opt_rr, pos, &len, maxlen, &rr_added,
-	                             NULL);
+	/* Initialize an OPT RR. */
+	knot_rrset_t opt_rr;
+	int ret = knot_edns_init_from_params(&opt_rr, edns, add_nsid, &pkt->mm);
 	if (ret != KNOT_EOK) {
-		dbg_packet("%s: rr_to_wire = %s\n,", __func__,
-		           knot_strerror(ret));
+		assert(0);
 		return ret;
 	}
 
-	if (rr_added > 0) {
-		pkt->size += len;
-		pkt_rr_wirecount_add(pkt, pkt->current, rr_added);
-		pkt->reserved -= len;
-
-		dbg_packet("%s: OPT RR written, new packet size %zu\n",
-		           __func__, pkt->size);
+	/* Write it to the wire. */
+	ret = knot_pkt_put(pkt, COMPR_HINT_NONE, &opt_rr, 0);
+	if (ret != KNOT_EOK) {
+		assert(0);
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+		return ret;
 	}
 
-	return KNOT_EOK;
+	/* Store for compatibility with the packet parsing code. */
+	pkt->opt_rr = &pkt->rr[pkt->rrset_count - 1];
+	return ret;
 }
