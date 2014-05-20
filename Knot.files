@@ -331,3 +331,4 @@ tests/slab.c
 tests/wire.c
 tests/zonedb.c
 tests/ztree.c
+tests/node.c
