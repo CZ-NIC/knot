@@ -233,7 +233,8 @@ zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_content
 	}
 
 	zone_contents_t *old_contents;
-	old_contents = rcu_xchg_pointer(&zone->contents, new_contents);
+	zone_contents_t **current_contents = &zone->contents;
+	old_contents = rcu_xchg_pointer(current_contents, new_contents);
 
 	return old_contents;
 }

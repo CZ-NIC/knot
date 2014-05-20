@@ -243,36 +243,40 @@ int params_parse_class(const char *value, uint16_t *rclass)
 	}
 }
 
-int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
+int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial,
+                      bool *notify)
 {
 	if (value == NULL || rtype == NULL || xfr_serial == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
+	// Find and parse type name.
 	size_t param_pos = strcspn(value, "=");
+	char *type_char = strndup(value, param_pos);
 
-	// There is no additional parameter.
-	if (param_pos == strlen(value)) {
-		if (knot_rrtype_from_string(value, rtype) != 0) {
+	if (knot_rrtype_from_string(type_char, rtype) != 0) {
+		if (strncasecmp(type_char, "NOTIFY", param_pos) == 0) {
+			*rtype = KNOT_RRTYPE_SOA;
+			*notify = true;
+		} else {
+			free(type_char);
 			return KNOT_EINVAL;
 		}
+	} else {
+		*notify = false;
+	}
 
+	free(type_char);
+
+	// Parse additional parameter.
+	if (param_pos == strlen(value)) {
 		// IXFR requires serial parameter.
 		if (*rtype == KNOT_RRTYPE_IXFR) {
 			DBG("SOA serial is required for IXFR query\n");
 			return KNOT_EINVAL;
 		}
 	} else {
-		char *type_char = strndup(value, param_pos);
-
-		if (knot_rrtype_from_string(type_char, rtype) != 0) {
-			free(type_char);
-			return KNOT_EINVAL;
-		}
-
-		free(type_char);
-
 		// Additional parameter is accepted for IXFR only.
 		if (*rtype == KNOT_RRTYPE_IXFR) {
 			const char *param_str = value + 1 + param_pos;
@@ -290,9 +294,7 @@ int params_parse_type(const char *value, uint16_t *rtype, uint32_t *xfr_serial)
 
 			*xfr_serial = serial;
 		} else {
-			char buf[64] = "";
-			knot_rrtype_to_string(*rtype, buf, sizeof(buf));
-			DBG("type %s can't have a parameter\n", buf);
+			DBG("unsupported parameter in query type '%s'\n", value);
 			return KNOT_EINVAL;
 		}
 	}

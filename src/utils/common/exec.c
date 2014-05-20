@@ -129,16 +129,19 @@ static void print_footer(const size_t total_len,
                          const size_t rr_count,
                          const net_t  *net,
                          const float  elapsed,
+                         time_t       exec_time,
                          const bool   incoming)
 {
 	struct tm tm;
 	char      date[64];
 
 	// Get current timestamp.
-	time_t now = time(NULL);
-	localtime_r(&now, &tm);
+	if (exec_time == 0) {
+		exec_time = time(NULL);
+	}
 
 	// Create formated date-time string.
+	localtime_r(&exec_time, &tm);
 	strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
 	// Print messages statistics.
@@ -486,6 +489,7 @@ void print_footer_xfr(const size_t  total_len,
                       const size_t  rr_count,
                       const net_t   *net,
                       const float   elapsed,
+                      const time_t  exec_time,
                       const style_t *style)
 {
 	if (style == NULL) {
@@ -494,7 +498,8 @@ void print_footer_xfr(const size_t  total_len,
 	}
 
 	if (style->show_footer) {
-		print_footer(total_len, msg_count, rr_count, net, elapsed, true);
+		print_footer(total_len, msg_count, rr_count, net, elapsed,
+		             exec_time, true);
 	}
 }
 
@@ -502,6 +507,7 @@ void print_packet(const knot_pkt_t *packet,
                   const net_t      *net,
                   const size_t     size,
                   const float      elapsed,
+                  const time_t     exec_time,
                   const bool       incoming,
                   const style_t    *style)
 {
@@ -615,7 +621,7 @@ void print_packet(const knot_pkt_t *packet,
 	// Print packet statistics.
 	if (style->show_footer) {
 		printf("\n");
-		print_footer(size, 0, 0, net, elapsed, incoming);
+		print_footer(size, 0, 0, net, elapsed, exec_time, incoming);
 	}
 }
 

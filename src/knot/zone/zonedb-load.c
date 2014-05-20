@@ -271,7 +271,8 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	knot_zonedb_build_index(db_new);
 
 	/* Switch the databases. */
-	knot_zonedb_t *db_old = rcu_xchg_pointer(&server->zone_db, db_new);
+	knot_zonedb_t **db_current = &server->zone_db;
+	knot_zonedb_t *db_old = rcu_xchg_pointer(db_current, db_new);
 
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();

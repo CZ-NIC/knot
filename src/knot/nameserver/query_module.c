@@ -4,6 +4,9 @@
 
 /* Compiled-in module headers. */
 #include "knot/modules/synth_record.h"
+#if USE_DNSTAP
+#include "knot/modules/dnstap.h"
+#endif
 
 /* Compiled-in module table. */
 struct compiled_module {
@@ -11,11 +14,16 @@ struct compiled_module {
 	qmodule_load_t load;
 	qmodule_unload_t unload;
 };
+
 /*! \note All modules should be dynamically loaded later on. */
-#define MODULE_COUNT 1
-struct compiled_module MODULES[MODULE_COUNT] = {
-        { "synth_record", &synth_record_load, &synth_record_unload }
+struct compiled_module MODULES[] = {
+        { "synth_record", &synth_record_load, &synth_record_unload },
+#if USE_DNSTAP
+        { "dnstap",       &dnstap_load,       &dnstap_unload }
+#endif
 };
+
+#define MODULE_COUNT sizeof(MODULES) / sizeof(MODULES[0])
 
 struct query_plan *query_plan_create(mm_ctx_t *mm)
 {

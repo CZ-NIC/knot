@@ -31,12 +31,13 @@
 	knot_pkt_clear(pkt)
 
 #define TEST_EXEC(expect, info) {\
+	pkt->parsed = pkt->size; /* Simulate parsed packet. */ \
 	int state = knot_process_in(pkt->wire, pkt->size, proc); \
 	is_int((expect), state, "proc_answer: " info); \
 	}
 
 #define INVALID_COUNT  2
-#define SPECIFIC_COUNT 4
+#define SPECIFIC_COUNT 1
 #define INCLASS_COUNT  2
 #define TEST_COUNT INVALID_COUNT + SPECIFIC_COUNT + INCLASS_COUNT
 
@@ -71,27 +72,6 @@ static void test_specific(knot_pkt_t *pkt, knot_process_t *proc, struct process_
 	knot_wire_set_id(pkt->wire, 0xDEAD);
 	TEST_EXEC(NS_PROC_NOOP, "ignored mismatching MSGID");
 
-	/* QCLASS mismatch */
-	TEST_RESET();
-	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_CH, KNOT_RRTYPE_SOA);
-	knot_wire_set_id(pkt->wire, query_id);
-	knot_wire_set_qr(pkt->wire);
-	TEST_EXEC(NS_PROC_NOOP, "ignored mismatching QCLASS");
-
-	/* QTYPE mismatch. */
-	TEST_RESET();
-	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_TXT);
-	knot_wire_set_id(pkt->wire, query_id);
-	knot_wire_set_qr(pkt->wire);
-	TEST_EXEC(NS_PROC_NOOP, "ignored mismatching QTYPE");
-
-	/* QNAME mismatch. */
-	TEST_RESET();
-	knot_pkt_put_question(pkt, EXAMPLE_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-	knot_wire_set_id(pkt->wire, query_id);
-	knot_wire_set_qr(pkt->wire);
-	TEST_EXEC(NS_PROC_NOOP, "ignored mismatching QNAME");
-
 	/* Clear the specific query. */
 	knot_pkt_free(&query);
 	param->query = NULL;
@@ -99,6 +79,12 @@ static void test_specific(knot_pkt_t *pkt, knot_process_t *proc, struct process_
 
 static void test_inclass(knot_pkt_t *pkt, knot_process_t *proc, struct process_answer_param *param)
 {
+	/* Set specific SOA query. */
+	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MIN_PKTSIZE, &proc->mm);
+	assert(query);
+	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
+	param->query = query;
+
 	/* SOA query answer. */
 	TEST_RESET();
 	zone_node_t *apex = param->zone->contents->apex;
@@ -114,6 +100,10 @@ static void test_inclass(knot_pkt_t *pkt, knot_process_t *proc, struct process_a
 	knot_pkt_put_question(pkt, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_TXT);
 	knot_wire_set_qr(pkt->wire);
 	TEST_EXEC(NS_PROC_NOOP, "IN/unsupported answer");
+
+	/* Clear the specific query. */
+	knot_pkt_free(&query);
+	param->query = NULL;
 }
 
 int main(int argc, char *argv[])
@@ -164,6 +154,7 @@ int main(int argc, char *argv[])
 	/* Cleanup. */
 	mp_delete((struct mempool *)proc.mm.ctx);
 	server_deinit(&server);
+	conf_free(conf());
 
 	return 0;
 }

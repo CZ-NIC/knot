@@ -124,6 +124,8 @@ int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 {
 	assert(pkt && ctx);
 	struct query_data *qdata = QUERY_DATA(ctx);
+	struct query_plan *plan = conf()->query_plan;
+	struct query_step *step = NULL;
 
 	rcu_read_lock();
 
@@ -146,6 +148,13 @@ int process_query_out(knot_pkt_t *pkt, knot_process_t *ctx)
 	if (ret != KNOT_EOK) {
 		next_state = NS_PROC_FAIL;
 		goto finish;
+	}
+
+	/* Before query processing code. */
+	if (plan) {
+		WALK_LIST(step, plan->stage[QPLAN_BEGIN]) {
+			next_state = step->process(next_state, pkt, qdata, step->ctx);
+		}
 	}
 
 	/* Answer based on qclass. */
@@ -183,6 +192,13 @@ finish:
 	/* Rate limits (if applicable). */
 	if (qdata->param->proc_flags & NS_QUERY_LIMIT_RATE) {
 		next_state = ratelimit_apply(next_state, pkt, ctx);
+	}
+
+	/* Before query processing code. */
+	if (plan) {
+		WALK_LIST(step, plan->stage[QPLAN_END]) {
+			next_state = step->process(next_state, pkt, qdata, step->ctx);
+		}
 	}
 
 	rcu_read_unlock();

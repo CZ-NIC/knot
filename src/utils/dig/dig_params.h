@@ -32,6 +32,11 @@
 #include "utils/common/params.h"	// protocol_t
 #include "utils/common/exec.h"		// sign_context_t
 
+#if USE_DNSTAP
+# include "dnstap/reader.h"
+# include "dnstap/writer.h"
+#endif // USE_DNSTAP
+
 #define KDIG_VERSION "kdig, version " PACKAGE_VERSION "\n"
 
 /*! \brief Operation mode of dig. */
@@ -40,6 +45,8 @@ typedef enum {
 	OPERATION_QUERY,
 	/*!< Zone transfer (AXFR or IXFR). */
 	OPERATION_XFR,
+	/*!< Dump dnstap file. */
+	OPERATION_LIST_DNSTAP,
 	/*!< Query for NS and all authoritative SOA records. */
 	OPERATION_LIST_SOA
 } operation_t;
@@ -65,9 +72,12 @@ typedef struct {
 } flags_t;
 
 /*! \brief Basic parameters for DNS query. */
-typedef struct {
+typedef struct query query_t; // Forward declaration due to configuration.
+struct query {
 	/*!< List node (for list container). */
 	node_t		n;
+	/*!< Reference to global config. */
+	const query_t	*conf;
 	/*!< Name to query on. */
 	char		*owner;
 	/*!< List of nameservers to query to. */
@@ -98,6 +108,8 @@ typedef struct {
 	int32_t		type_num;
 	/*!< SOA serial for XFR. */
 	uint32_t	xfr_serial;
+	/*!< NOTIFY query. */
+	bool		notify;
 	/*!< Header flags. */
 	flags_t		flags;
 	/*!< Output settings. */
@@ -112,7 +124,13 @@ typedef struct {
 	knot_key_params_t key_params;
 	/*!< Context for operations with signatures. */
 	sign_context_t	sign_ctx;
-} query_t;
+#if USE_DNSTAP
+	/*!< Context for dnstap reader input. */
+	dt_reader_t	*dt_reader;
+	/*!< Context for dnstap writer output. */
+	dt_writer_t	*dt_writer;
+#endif // USE_DNSTAP
+};
 
 /*! \brief Settings for dig. */
 typedef struct {

@@ -51,7 +51,7 @@ static inline void create_root_zone(server_t *server, mm_ctx_t *mm)
 static inline int create_fake_server(server_t *server, mm_ctx_t *mm)
 {
 	/* Create name server. */
-	int ret = server_init(server);
+	int ret = server_init(server, 1);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -61,6 +61,7 @@ static inline int create_fake_server(server_t *server, mm_ctx_t *mm)
 	                                    KNOT_EDNS_DEFAULT_FLAGS,
 	                                    0, NULL);
 	if (server->edns == NULL) {
+		server_deinit(server);
 		return KNOT_ENOMEM;
 	}
 

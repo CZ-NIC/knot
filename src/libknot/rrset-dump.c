@@ -381,10 +381,10 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 		p->total += out_len;
 	} else {
 		int  src_begin, src_len;
-		char *buf;
+		uint8_t *buf;
 
 		// Encode data to the temporary buffer.
-		ret = enc_alloc(p->in, in_len, (uint8_t **)&buf);
+		ret = enc_alloc(p->in, in_len, &buf);
 		if (ret <= 0) {
 			return;
 		}

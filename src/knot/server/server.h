@@ -56,7 +56,8 @@ typedef struct iohandler {
 	struct node        n;
 	struct server_t    *server; /*!< Reference to server */
 	dt_unit_t          *unit;   /*!< Threading unit */
-	unsigned           *thread_state; /*< Thread state */
+	unsigned           *thread_state; /*!< Thread state */
+	unsigned           *thread_id; /*!< Thread identifier. */
 } iohandler_t;
 
 /*! \brief Round-robin mechanism of switching.

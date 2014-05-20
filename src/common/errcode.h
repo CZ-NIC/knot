@@ -94,6 +94,7 @@ enum knot_error {
 	KNOT_ENOTSIG,         /*!< Expected a TSIG or SIG(0). */
 	KNOT_ELIMIT,          /*!< Exceeded response rate limit. */
 	KNOT_EWRITABLE,       /*!< File is not writable. */
+	KNOT_EOF,             /*!< End of file. */
 
 	/* Control states. */
 	KNOT_CTL_STOP,        /*!< Stop requested. */

@@ -774,6 +774,7 @@ query_t* query_create(const char *owner, const query_t *conf)
 
 	// Initialization with defaults or with reference query.
 	if (conf == NULL) {
+		query->conf = NULL;
 		query->local = NULL;
 		query->operation = OPERATION_QUERY;
 		query->ip = IP_ALL;
@@ -787,12 +788,18 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->class_num = -1;
 		query->type_num = -1;
 		query->xfr_serial = 0;
+		query->notify = false;
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
 		query->idn = true;
 		query->nsid = false;
 		query->edns = -1;
+#if USE_DNSTAP
+		query->dt_reader = NULL;
+		query->dt_writer = NULL;
+#endif // USE_DNSTAP
 	} else {
+		query->conf = conf;
 		if (conf->local != NULL) {
 			query->local = srv_info_create(conf->local->name,
 			                               conf->local->service);
@@ -815,11 +822,16 @@ query_t* query_create(const char *owner, const query_t *conf)
 		query->class_num = conf->class_num;
 		query->type_num = conf->type_num;
 		query->xfr_serial = conf->xfr_serial;
+		query->notify = conf->notify;
 		query->flags = conf->flags;
 		query->style = conf->style;
 		query->idn = conf->idn;
 		query->nsid = conf->nsid;
 		query->edns = conf->edns;
+#if USE_DNSTAP
+		query->dt_reader = conf->dt_reader;
+		query->dt_writer = conf->dt_writer;
+#endif // USE_DNSTAP
 
 		if (knot_copy_key_params(&conf->key_params, &query->key_params)
 		    != KNOT_EOK) {
@@ -859,6 +871,19 @@ void query_free(query_t *query)
 	// Cleanup cryptographic content.
 	free_sign_context(&query->sign_ctx);
 	knot_free_key_params(&query->key_params);
+
+#if USE_DNSTAP
+	if (query->dt_reader != NULL) {
+		dt_reader_free(query->dt_reader);
+	}
+	if (query->dt_writer != NULL) {
+		// Global writer can be shared!
+		if (query->conf == NULL ||
+		    query->conf->dt_writer != query->dt_writer) {
+			dt_writer_free(query->dt_writer);
+		}
+	}
+#endif // USE_DNSTAP
 
 	free(query->owner);
 	free(query->port);
@@ -902,7 +927,7 @@ void dig_clean(dig_params_t *params)
 	}
 
 	// Clean up config.
-	query_free((query_t *)params->config);
+	query_free(params->config);
 
 	// Clean up the structure.
 	memset(params, 0, sizeof(*params));
@@ -1066,16 +1091,57 @@ static int parse_type(const char *value, query_t *query)
 {
 	uint16_t rtype;
 	uint32_t serial;
+	bool     notify;
 
-	if (params_parse_type(value, &rtype, &serial) != KNOT_EOK) {
+	if (params_parse_type(value, &rtype, &serial, &notify) != KNOT_EOK) {
 		return KNOT_EINVAL;
 	}
 
 	query->type_num = rtype;
 	query->xfr_serial = serial;
+	query->notify = notify;
+
+	// If NOTIFY, reset default RD flag.
+	if (query->notify) {
+		query->flags.rd_flag = false;
+	}
 
 	return KNOT_EOK;
 }
+
+#if USE_DNSTAP
+static int parse_dnstap_output(const char *value, query_t *query)
+{
+	if (query->dt_writer != NULL) {
+		if (query->conf == NULL ||
+		    query->conf->dt_writer != query->dt_writer) {
+			dt_writer_free(query->dt_writer);
+		}
+	}
+
+	query->dt_writer = dt_writer_create(value, "kdig " PACKAGE_VERSION);
+	if (query->dt_writer == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+static int parse_dnstap_input(const char *value, query_t *query)
+{
+	// Just in case, shouldn't happen.
+	if (query->dt_reader != NULL) {
+		dt_reader_free(query->dt_reader);
+	}
+
+	query->dt_reader = dt_reader_create(value);
+	if (query->dt_reader == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+#endif // USE_DNSTAP
 
 static void complete_servers(query_t *query, const query_t *conf)
 {
@@ -1194,7 +1260,8 @@ static void dig_help(void)
 {
 	printf("Usage: kdig [-4] [-6] [-dh] [-b address] [-c class] [-p port]\n"
 	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"
-	       "            [-y [algo:]keyname:key] name @server\n"
+	       "            [-y [algo:]keyname:key] [-E tapfile] [-G tapfile]\n"
+	       "            name [type] [class] [@server]\n"
 	       "\n"
 	       "       +[no]multiline  Wrap long records to more lines.\n"
 	       "       +[no]short      Show record data only.\n"
@@ -1389,6 +1456,49 @@ static int parse_opt1(const char *opt, const char *value, dig_params_t *params,
 			return KNOT_EINVAL;
 		}
 		*index += add;
+		break;
+	case 'E':
+#if USE_DNSTAP
+		if (val == NULL) {
+			ERR("missing filename\n");
+			return KNOT_EINVAL;
+		}
+
+		if (parse_dnstap_output(val, query) != KNOT_EOK) {
+			ERR("unable to open dnstap output file %s\n", val);
+			return KNOT_EINVAL;
+		}
+		*index += add;
+#else
+		ERR("no dnstap support but -E specified\n");
+		return KNOT_EINVAL;
+#endif // USE_DNSTAP
+		break;
+	case 'G':
+#if USE_DNSTAP
+		if (val == NULL) {
+			ERR("missing filename\n");
+			return KNOT_EINVAL;
+		}
+
+		query = query_create(NULL, params->config);
+		if (query == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		if (parse_dnstap_input(val, query) != KNOT_EOK) {
+			ERR("unable to open dnstap input file %s\n", val);
+			return KNOT_EINVAL;
+		}
+
+		query->operation = OPERATION_LIST_DNSTAP;
+		add_tail(&params->queries, (node_t *)query);
+
+		*index += add;
+#else
+		ERR("no dnstap support but -G specified\n");
+		return KNOT_EINVAL;
+#endif // USE_DNSTAP
 		break;
 	case '-':
 		if (strcmp(opt, "-help") == 0) {
