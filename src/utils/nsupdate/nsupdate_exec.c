@@ -800,7 +800,7 @@ int cmd_show(const char* lp, nsupdate_params_t *params)
 	if (!params->query) return KNOT_EOK;
 	printf("Update query:\n");
 	build_query(params);
-	print_packet(params->query, NULL, 0, -1, false, &params->style);
+	print_packet(params->query, NULL, 0, -1, 0, false, &params->style);
 	printf("\n");
 	return KNOT_EOK;
 }
@@ -812,7 +812,7 @@ int cmd_answer(const char* lp, nsupdate_params_t *params)
 	/* Show current answer. */
 	if (!params->answer) return KNOT_EOK;
 	printf("\nAnswer:\n");
-	print_packet(params->answer, NULL, 0, -1, true, &params->style);
+	print_packet(params->answer, NULL, 0, -1, 0, true, &params->style);
 	return KNOT_EOK;
 }
 

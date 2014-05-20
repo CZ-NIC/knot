@@ -244,11 +244,13 @@ static int reconfigure_sockets(const struct conf_t *conf, server_t *s)
 	s->ifaces = newlist;
 
 	/* Update TCP+UDP ifacelist (reload all threads). */
+	unsigned thread_count = 0;
 	for (unsigned proto = IO_UDP; proto <= IO_TCP; ++proto) {
 		dt_unit_t *tu = s->handler[proto].unit;
 		for (unsigned i = 0; i < tu->size; ++i) {
 			ref_retain((ref_t *)newlist);
 			s->handler[proto].thread_state[i] |= ServerReload;
+			s->handler[proto].thread_id[i] = thread_count++;
 			if (s->state & ServerRunning) {
 				dt_activate(tu->threads[i]);
 				dt_signalize(tu->threads[i], SIGALRM);
@@ -349,6 +351,13 @@ static int server_init_handler(server_t *server, int index, int thread_count,
 		return KNOT_ENOMEM;
 	}
 
+	h->thread_id = calloc(thread_count, sizeof(unsigned));
+	if (h->thread_id == NULL) {
+		free(h->thread_id);
+		dt_delete(&h->unit);
+		return KNOT_ENOMEM;
+	}
+
 	return KNOT_EOK;
 }
 
@@ -367,6 +376,7 @@ static void server_free_handler(iohandler_t *h)
 	/* Destroy worker context. */
 	dt_delete(&h->unit);
 	free(h->thread_state);
+	free(h->thread_id);
 	memset(h, 0, sizeof(iohandler_t));
 }
 
@@ -496,10 +506,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 {
 	/* Estimate number of threads/manager. */
 	int ret = KNOT_EOK;
-	int tu_size = conf->workers;
-	if (tu_size < 1) {
-		tu_size = dt_optimal_size();
-	}
+	int tu_size = conf_udp_threads(conf); 
 	if ((unsigned)tu_size != server->tu_size) {
 		/* Free old handlers */
 		if (server->tu_size > 0) {
@@ -509,7 +516,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 		}
 
 		/* Initialize I/O handlers. */
-		ret = server_init_handler(server, IO_UDP, tu_size,
+		ret = server_init_handler(server, IO_UDP, conf_udp_threads(conf),
 		                          &udp_master, &udp_master_destruct);
 		if (ret != KNOT_EOK) {
 			log_server_error("Failed to create UDP threads: %s\n",
@@ -519,7 +526,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 
 		/* Create at least CONFIG_XFERS threads for TCP for faster
 		 * processing of massive bootstrap queries. */
-		ret = server_init_handler(server, IO_TCP, MAX(tu_size * 2, CONFIG_XFERS),
+		ret = server_init_handler(server, IO_TCP, conf_tcp_threads(conf),
 		                          &tcp_master, &tcp_master_destruct);
 		if (ret != KNOT_EOK) {
 			log_server_error("Failed to create TCP threads: %s\n",

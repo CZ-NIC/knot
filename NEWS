@@ -1,11 +1,12 @@
 Knot DNS NEWS
 
-1.5.0 - ?
+1.5.0-alpha - ?
 ---------------------
 Features:
 	* Split libknot DNS library
 	* Pluggable query processing modules
 	* 'synth_record' automatic reverse/forward records module
+	* NOTIFY message support and new TSIG section in kdig
 Improvements:
 	* Query processing and core functionality overhaul 
 	* Memory requirements 

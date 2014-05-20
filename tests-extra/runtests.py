@@ -167,13 +167,18 @@ def main(args):
                 skip_cnt += 1
             except Exception as exc:
                 save_traceback(params.out_dir)
+
+                desc = format(exc)
+                msg = desc if desc else exc.__class__.__name__
+
+                log.error(" * case \'%s\':\tEXCEPTION (%s)" %
+                          (case, msg))
+                log_failed(outs_dir, "%s/%s\tEXCEPTION (%s)" %
+                           (test, case, msg))
+
                 if params.debug:
                     traceback.print_exc()
-                else:
-                    log.error(" * case \'%s\':\tEXCEPTION (%s)" %
-                              (case, format(exc)))
-                log_failed(outs_dir, "%s/%s\tEXCEPTION (%s)" %
-                           (test, case, format(exc)))
+
                 fail_cnt += 1
             except BaseException as exc:
                 save_traceback(params.out_dir)

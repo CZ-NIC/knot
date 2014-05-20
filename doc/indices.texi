@@ -1,4 +1,0 @@
-@node Statement Index, Knot DNS Configuration Reference, Troubleshooting, Top
-@unnumbered Statement Index
-
-@printindex st

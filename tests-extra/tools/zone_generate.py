@@ -507,6 +507,11 @@ def main(args):
     if UPDATE:
         shutil.copyfile(UPDATE, in_fname)
 
+        # Disable additional CNAME generation
+        for idx, val in enumerate(RRTYPES):
+            if val[0] == 'CNAME':
+                RRTYPES[idx][2] = 0
+
     outf = open(in_fname, "a")
 
     if not UPDATE:

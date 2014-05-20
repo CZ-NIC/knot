@@ -8,9 +8,18 @@ AC_CONFIG_SRCDIR([src/knot/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS([_GNU_SOURCE])
+AC_CANONICAL_HOST
 
 # Automatically update release date based on configure.ac date
-release_date=`doc/mdate-sh configure.ac`
+case "$host_os" in
+linux*)
+    release_date=`date +"%Y-%m-%d" -r configure.ac`
+    ;;
+*)
+    tmstamp=`stat -f %m configure.ac`
+    release_date=`date -r $tmstamp +"%Y-%m-%d"`
+    ;;
+esac
 AC_SUBST([RELEASE_DATE], $release_date)
 
 # Set compiler compatibility flags
@@ -162,10 +171,6 @@ AC_ARG_ENABLE([microseconds-log],
 
 AX_CHECK_COMPILE_FLAG("-fpredictive-commoning", [CFLAGS="$CFLAGS -fpredictive-commoning"], [], "-Werror")
 
-# Disable strict aliasing
-# FIXME: we break strict aliasing on many occurenes, disable it until resolved or kept
-AX_CHECK_COMPILE_FLAG("-fno-strict-aliasing", [CFLAGS="$CFLAGS -fno-strict-aliasing"], [])
-
 # Default directories
 run_dir="${localstatedir}/run/knot"
 AC_ARG_WITH([rundir],
@@ -303,6 +308,14 @@ if test "$libidn" != "no" ; then
     AC_DEFINE(LIBIDN, 1, [Define to 1 if you want IDN support.])
 fi
 
+dnl Check for dnstap.
+dt_DNSTAP([
+    LIBS="$LIBS $DNSTAP_LIBS"
+    CPPFLAGS="$CPPFLAGS $DNSTAP_CFLAGS"
+    AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support])
+])
+AM_CONDITIONAL([HAVE_DNSTAP], test "$opt_dnstap" != "no")
+
 AC_SEARCH_LIBS([pow], [m])
 AC_SEARCH_LIBS([pthread_create], [pthread], [], [AC_MSG_ERROR([pthreads not found])])
 AC_SEARCH_LIBS([dlopen], [dl])
@@ -343,6 +356,21 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 # Add code coverage macro
 AX_CODE_COVERAGE
 
+AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
+AS_IF([test "$SPHINXBUILD" = "false"],
+  [AC_MSG_WARN([Could not find the 'sphinx-build' executable, you will be unable to regenerate documentation.])],
+  [AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
+   AS_IF([test "$PDFLATEX" = ""],
+     [AC_MSG_WARN([Could not find the 'pdflatex' executable, you will be unable to generate PDF documentation.])])
+   AC_PATH_PROG([MAKEINFO], [makeinfo], [false])
+   AS_IF([test "$MAKEINFO" = "false"],
+     [AC_MSG_WARN([Could not find the 'makeinfo' executable, you will be unable to generate info documentation.])])
+  ])
+
+AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
+AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
+AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
+
 AC_CONFIG_FILES([Makefile
 		 doc/Makefile
 		 man/Makefile
@@ -351,7 +379,9 @@ AC_CONFIG_FILES([Makefile
 		 libtap/Makefile
 		 src/Makefile
 		 tests/Makefile
+		 src/dnstap/Makefile
 		 src/zscanner/Makefile
+		 doc/conf.py
 		 man/khost.1
 		 man/knotc.8
 		 man/knotd.8
@@ -362,20 +392,25 @@ AC_CONFIG_FILES([Makefile
 		 ])
 
 AC_OUTPUT
+AC_MSG_RESULT([
+  $PACKAGE $VERSION
 
-echo "
-  Version: ${PACKAGE_VERSION}
-  Prefix: ${prefix}
-  Run dir: ${run_dir}
-  Storage dir: ${storage_dir}
-  Config dir: ${config_dir}
-  Compiler: ${CC}
-  CFlags: ${CFLAGS} ${CPPFLAGS}
-  LDFlags: ${LDFLAGS}
-  Libs: ${LIBS}
-  Fast zone parser: ${enable_fastparser}
-  Utils with IDN: ${libidn}
-  Systemd notifications: ${enable_systemd}
-  Code coverage: ${enable_code_coverage}
+    Target:   $host_os $host_cpu
+    Compiler: ${CC}
+    CFlags:   ${CFLAGS} ${CPPFLAGS}
+    LDFlags:  ${LDFLAGS}
+    Libs:     ${LIBS}
 
-  Continue with 'make' command"
+    Prefix:      ${prefix}
+    Run dir:     ${run_dir}
+    Storage dir: ${storage_dir}
+    Config dir:  ${config_dir}
+
+    Fast zone parser:      ${enable_fastparser}
+    Utilities with IDN:    ${libidn}
+    Systemd notifications: ${enable_systemd}
+    Dnstap support:        ${opt_dnstap}
+    Code coverage:         ${enable_code_coverage}
+
+  Continue with 'make' command
+])
