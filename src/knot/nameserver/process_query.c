@@ -549,23 +549,34 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	}
 
 	/* Check if EDNS is supported. */
-	if (!knot_pkt_have_edns(query)) {
+	if (knot_pkt_has_edns(query)) {
 		return KNOT_EOK;
 	}
 
-	assert(resp->rrset_count < KNOT_PKT_MAX_RRS);
-	/* Reserve OPT RR to the packet, initialized by server's EDNS parameters. */
-	ret = knot_pkt_reserve(resp, knot_edns_wire_size(server->edns));
-	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't reserve OPT RR in response (%d)\n", __func__, ret);
-		/* Free the OPT RR. */
-		return ret;
+	/* Create copy of the OPT RR and store it in packet. */
+	resp->opt_rr = knot_rrset_copy(server->opt_rr, &resp->mm);
+	if (resp->opt_rr == NULL) {
+		return KNOT_ENOMEM;
 	}
 
-	/* Copy DO bit if set (DNSSEC requested). */
-	if (knot_pkt_have_dnssec(query)) {
+	/* Remove OPTIONs from RDATA. Retain NSID if requested. */
+	knot_edns_clear_options(resp->opt_rr, pkt_has_nsid(query));
+
+	/* Set DO bit if set (DNSSEC requested). */
+	if (pkt_has_dnssec(query)) {
 		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
 		knot_edns_set_do(resp->opt_rr);
+	}
+
+	/* Reserve space for OPT RR in the packet. Using size of the server's
+	 * OPT RR, because that's the maximum size (RDATA may or may not be
+	 * used).
+	 */
+	ret = knot_pkt_reserve(resp, knot_edns_wire_size(resp->opt_rr));
+	if (ret != KNOT_EOK) {
+		dbg_ns("%s: can't reserve OPT RR in response (%d)\n", __func__, ret);
+		knot_rrset_free(&resp->opt_rr, &resp->mm);
+		return ret;
 	}
 
 	/* Get minimal supported size from EDNS(0). */
@@ -579,7 +590,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 		dbg_ns("%s: packet size limit <= %zuB\n", __func__, resp->max_size);
 	}
 
-	/* In the response, always advertise its maximum UPD payload size.*/
+	/* In the response, always advertise server's maximum UPD payload. */
 
 	return ret;
 }

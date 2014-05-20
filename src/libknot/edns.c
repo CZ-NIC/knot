@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include <string.h>
 #include "libknot/edns.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
@@ -40,83 +41,26 @@ enum knot_edns_private_consts {
 #define DUMMY_RDATA_SIZE 1
 
 /*----------------------------------------------------------------------------*/
-/* EDNS server parameters handling functions                                  */
-/*----------------------------------------------------------------------------*/
 
-knot_edns_params_t *knot_edns_new_params(uint16_t max_payload, uint8_t ver,
-                                         uint16_t flags, uint16_t nsid_len,
-                                         uint8_t *nsid)
+knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode,
+                            uint8_t ver, uint16_t flags, mm_ctx_t *mm)
 {
-	knot_edns_params_t *edns =
-	               (knot_edns_params_t *)malloc(sizeof(knot_edns_params_t));
-	CHECK_ALLOC_LOG(edns, NULL);
-
-	edns->version = ver;
-	edns->payload = max_payload;
-	edns->flags = flags;
-
-	if (nsid_len > 0 && nsid != NULL) {
-		edns->nsid = (uint8_t *)malloc(edns->nsid_len);
-		if (edns->nsid == NULL) {
-			free(edns);
-			return NULL;
-		}
-		memcpy(edns->nsid, nsid, nsid_len);
-		edns->nsid_len = nsid_len;
-	} else {
-		edns->nsid = NULL;
-		edns->nsid_len = 0;
-	}
-
-	return edns;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void knot_edns_free_params(knot_edns_params_t **edns)
-{
-	if (edns == NULL || *edns == NULL) {
-		return;
-	}
-
-	free((*edns)->nsid);
-	free(*edns);
-	*edns = NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-
-size_t knot_edns_wire_size(knot_edns_params_t *edns)
-{
-	if (edns == NULL) {
-		return 0;
-	}
-
-#warning: TODO: check if this is enough please
-	return KNOT_EDNS_MIN_SIZE + edns->nsid_len;
-}
-
-/*----------------------------------------------------------------------------*/
-/* EDNS OPT RR handling functions.                                            */
-/*----------------------------------------------------------------------------*/
-
-static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
-                    uint8_t ver, uint16_t flags, mm_ctx_t *mm)
-{
-	assert(opt_rr != NULL);
-
-	/* First clear the RR, so that no old data remains there. */
-	knot_rrset_init_empty(opt_rr);
-
 	/* Owner: root label. */
+	/*! \todo Maybe later modify dname_from_str() to use memory pool. */
 	size_t pos = 0;
-	opt_rr->owner = knot_dname_parse((uint8_t *)"\0", &pos, 1, mm);
+	knot_dname_t *owner = knot_dname_parse((uint8_t *)"\0", &pos, 1, mm);
+	if (owner == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 
-	/* TYPE = OPT */
-	opt_rr->type = KNOT_RRTYPE_OPT;
-
-	/* CLASS = max UDP payload */
-	opt_rr->rclass = max_pld;
+	knot_rrset_t *opt_rr = knot_rrset_new(owner, KNOT_RRTYPE_OPT, max_pld,
+	                                      mm);
+	if (opt_rr == NULL) {
+		knot_dname_free(&owner, mm);
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
 
 	/* Empty RDATA */
 	uint8_t rdata[1] = { 0 };
@@ -136,30 +80,25 @@ static int init_opt(knot_rrset_t *opt_rr, uint16_t max_pld, uint8_t ext_rcode,
 	uint32_t ttl_local = knot_wire_read_u32((uint8_t *)&ttl);
 
 	int ret = knot_rrset_add_rdata(opt_rr, rdata, 0, ttl_local, mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(&opt_rr, mm);
+	}
 
-	return ret;
+	return opt_rr;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_edns_init_from_params(knot_rrset_t *opt_rr,
-                               const knot_edns_params_t *params, bool add_nsid,
-                               mm_ctx_t *mm)
+size_t knot_edns_wire_size(knot_rrset_t *opt_rr)
 {
-	if (opt_rr == NULL || params == NULL) {
-		return KNOT_EINVAL;
+	if (opt_rr == NULL) {
+		return 0;
 	}
 
-	init_opt(opt_rr, params->payload, 0, params->version, params->flags,
-	         mm);
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	assert(rdata != NULL);
 
-	int ret = KNOT_EOK;
-	if (add_nsid) {
-		ret = knot_edns_add_option(opt_rr, KNOT_EDNS_OPTION_NSID,
-		                           params->nsid_len, params->nsid, mm);
-	}
-
-	return ret;
+	return KNOT_EDNS_MIN_SIZE + knot_rdata_rdlen(rdata);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -272,6 +211,62 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 }
 
 /*----------------------------------------------------------------------------*/
+/*!
+ * \brief Find OPTION with the given code in the OPT RDATA.
+ *
+ * \param rdata     RDATA to search in.
+ * \param opt_code  Code of the OPTION to find.
+ * \param[out] pos  Position of the OPTION or NULL if not found.
+ */
+static void find_option(knot_rdata_t *rdata, uint16_t opt_code, uint8_t **pos)
+{
+	uint8_t *data = knot_rdata_data(rdata);
+	uint16_t rdlength = knot_rdata_rdlen(rdata);
+
+	*pos = NULL;
+
+	int i = 0;
+	while (i + 4 < rdlength) {
+		uint16_t code = knot_wire_read_u16(data + i);
+		if (opt_code == code) {
+			*pos = data + i;
+			return;
+		}
+		uint16_t opt_len = knot_wire_read_u16(data + i + 2);
+		i += (4 + opt_len);
+	}
+}
+
+/*----------------------------------------------------------------------------*/
+
+int knot_edns_clear_options(knot_rrset_t *opt_rr, bool retain_nsid)
+{
+	/*! \todo [OPT] IMPLEMENT */
+	if (opt_rr == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+
+	if (retain_nsid) {
+		/* Search for NSID and move it to the beginning. Then crop. */
+		uint8_t *pos = NULL;
+		find_option(rdata, KNOT_EDNS_OPTION_NSID, &pos);
+
+		uint16_t nsid_len = knot_wire_read_u16(pos + 2);
+		uint16_t total_len = nsid_len + 4;
+
+		memmove(knot_rdata_data(rdata), pos, total_len);
+		knot_rdata_set_rdlen(rdata, total_len);
+	} else {
+		/* Clear the whole RDATA. No other OPTIONS supported now. */
+		knot_rdata_set_rdlen(rdata, 0);
+	}
+
+	return KNOT_EOK;
+}
+
+/*----------------------------------------------------------------------------*/
 
 int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
                          uint16_t length, const uint8_t *data, mm_ctx_t *mm)
@@ -338,28 +333,20 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 	assert(opt_rr != NULL);
 	assert(opt_rr->rrs.rr_count == 1);
 
-	// Get the actual RDATA
-	uint8_t *data = knot_rdata_data(knot_rdataset_at(&opt_rr->rrs, 0));
-	uint16_t data_len = knot_rdata_rdlen(knot_rdataset_at(&opt_rr->rrs, 0));
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	assert(rdata != NULL);
 
-	int pos = 0;
-	while (data_len - pos >= 4) {
-		uint16_t opt_code = knot_wire_read_u16(data + pos);
-		if (opt_code == code) {
-			return true;
-		}
-		uint16_t opt_len = knot_wire_read_u16(data + pos + 2);
-		pos += (4 + opt_len);
-	}
+	uint8_t *pos = NULL;
+	find_option(rdata, KNOT_EDNS_OPTION_NSID, &pos);
 
-	return false;
+	return pos != NULL;
 }
 
 /*----------------------------------------------------------------------------*/
 
 bool knot_edns_check_record(knot_rrset_t *opt_rr)
 {
-	/* \todo Semantic checks for the OPT. */
+	/*! \todo [OPT] Semantic checks for the OPT. */
 #warning: check semantics here
 	return true;
 }

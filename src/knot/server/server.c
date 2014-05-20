@@ -328,8 +328,8 @@ void server_deinit(server_t *server)
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
 
-	/* Free EDNS parameters. */
-	knot_edns_free_params(&server->edns);
+	/* Free OPT RR. */
+	knot_rrset_free(&server->opt_rr, NULL);
 
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
@@ -479,21 +479,19 @@ static int edns_reconfigure(const struct conf_t *conf, server_t *server)
 {
 	dbg_server("%s(%p, %p)\n", __func__, conf, server);
 
-	/* New EDNS options: keep the old pointer and free it after RCU sync. */
-	knot_edns_params_t *edns =
-		knot_edns_new_params(conf->max_udp_payload, KNOT_EDNS_VERSION,
-	                             KNOT_EDNS_DEFAULT_FLAGS, conf->nsid_len,
-	                             (uint8_t *)conf->nsid);
-	if (edns == NULL) {
+	knot_rrset_t *opt_rr = knot_edns_new(conf->max_udp_payload, 0,
+	                                     KNOT_EDNS_VERSION,
+	                                     KNOT_EDNS_DEFAULT_FLAGS, NULL);
+	if (opt_rr == NULL) {
 		log_server_error("Couldn't initialize EDNS(0), please restart.\n");
 		return KNOT_ENOMEM;
 	}
 
-	knot_edns_params_t *edns_old = server->edns;
-	server->edns = edns;
+	knot_rrset_t *opt_old = server->opt_rr;
+	server->opt_rr = opt_rr;
 
 	synchronize_rcu();
-	knot_edns_free_params(&edns_old);
+	knot_rrset_free(&opt_old, NULL);
 
 	return KNOT_EOK;
 }

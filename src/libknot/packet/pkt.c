@@ -292,6 +292,9 @@ void knot_pkt_free(knot_pkt_t **pkt)
 		(*pkt)->mm.free((*pkt)->wire);
 	}
 
+	/* Free the OPT RR. */
+	knot_rrset_free(&(*pkt)->opt_rr, &(*pkt)->mm);
+
 	dbg_packet("Freeing packet structure\n");
 	(*pkt)->mm.free(*pkt);
 	*pkt = NULL;
@@ -788,42 +791,4 @@ int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags)
 	}
 
 	return KNOT_EOK;
-}
-
-/*----------------------------------------------------------------------------*/
-/* EDNS(0)-related functions                                                  */
-/*----------------------------------------------------------------------------*/
-
-int knot_pkt_write_opt(knot_pkt_t *pkt, knot_edns_params_t *edns, bool add_nsid)
-{
-	if (pkt == NULL) {
-		assert(0);
-		return KNOT_EINVAL;
-	}
-
-	/* OPT should be only in the AR. */
-	if (pkt->current != KNOT_ADDITIONAL) {
-		assert(0);
-		return KNOT_ENOTSUP;
-	}
-
-	/* Initialize an OPT RR. */
-	knot_rrset_t opt_rr;
-	int ret = knot_edns_init_from_params(&opt_rr, edns, add_nsid, &pkt->mm);
-	if (ret != KNOT_EOK) {
-		assert(0);
-		return ret;
-	}
-
-	/* Write it to the wire. */
-	ret = knot_pkt_put(pkt, COMPR_HINT_NONE, &opt_rr, 0);
-	if (ret != KNOT_EOK) {
-		assert(0);
-		knot_rrset_clear(&opt_rr, &pkt->mm);
-		return ret;
-	}
-
-	/* Store for compatibility with the packet parsing code. */
-	pkt->opt_rr = &pkt->rr[pkt->rrset_count - 1];
-	return ret;
 }

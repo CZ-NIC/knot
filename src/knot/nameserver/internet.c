@@ -120,7 +120,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 /*! \brief DNSSEC both requested & available. */
 static bool have_dnssec(struct query_data *qdata)
 {
-	return knot_pkt_have_dnssec(qdata->query) &&
+	return pkt_has_dnssec(qdata->query) &&
 	       zone_contents_is_signed(qdata->zone->contents);
 }
 
@@ -655,11 +655,7 @@ static int solve_additional(int state, knot_pkt_t *pkt,
                             struct query_data *qdata, void *ctx)
 {
 	/* Put OPT RR. */
-	server_t *server = qdata->param->server;
-	int ret = knot_pkt_write_opt(pkt, server->edns,
-	                             knot_pkt_have_nsid(qdata->query)
-	                             && server->edns->nsid != NULL
-	                             && server->edns->nsid_len > 0);
+	int ret = knot_pkt_put(pkt, COMPR_HINT_NONE, pkt->opt_rr, 0);
 	if (ret != KNOT_EOK) {
 		return ERROR;
 	}
@@ -834,7 +830,7 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 	NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
 
 	/* No applicable ACL, refuse transaction security. */
-	if (knot_pkt_have_tsig(qdata->query)) {
+	if (knot_pkt_has_tsig(qdata->query)) {
 		/* We have been challenged... */
 		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
 

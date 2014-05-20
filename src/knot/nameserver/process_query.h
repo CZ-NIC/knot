@@ -199,6 +199,19 @@ int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata);
 
 int process_query_hooks(int qclass, int stage, knot_pkt_t *pkt, struct query_data *qdata);
 
+/*! \brief Checks if DO bit is set in the packet's OPT RR. */
+static inline bool pkt_has_dnssec(const knot_pkt_t *pkt)
+{
+	return knot_pkt_has_edns(pkt) && knot_edns_do(pkt->opt_rr);
+}
+
+/*! \brief Checks if there is an NSID OPTION in the packet's OPT RR. */
+static inline bool pkt_has_nsid(const knot_pkt_t *pkt)
+{
+	return knot_pkt_has_edns(pkt)
+	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
+}
+
 #endif /* _PROCESS_QUERY_H_ */
 
 /*! @} */

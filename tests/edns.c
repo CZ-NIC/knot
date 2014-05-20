@@ -331,6 +331,8 @@ int main(int argc, char *argv[])
 	plan(TEST_COUNT);
 	int done = 0;
 
+	/*! \todo [OPT] REWRITE */
+
 	knot_dname_t *root = knot_dname_from_str(".");
 	knot_rrset_t *opt_rr = knot_rrset_new(root, KNOT_RRTYPE_OPT,
 	                                      KNOT_CLASS_IN, NULL);

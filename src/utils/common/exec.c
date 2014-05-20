@@ -101,7 +101,7 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 	uint16_t nscount = knot_wire_get_nscount(packet->wire);
 	uint16_t arcount = knot_wire_get_arcount(packet->wire);
 
-	if (knot_pkt_have_tsig(packet)) {
+	if (knot_pkt_has_tsig(packet)) {
 		arcount++;
 	}
 
@@ -475,7 +475,7 @@ void print_data_xfr(const knot_pkt_t *packet,
 		print_section_full(answers->rr, answers->count, style, true);
 
 		// Print TSIG record.
-		if (style->show_tsig && knot_pkt_have_tsig(packet)) {
+		if (style->show_tsig && knot_pkt_has_tsig(packet)) {
 			print_section_full(packet->tsig_rr, 1, style, false);
 		}
 		break;
@@ -531,7 +531,7 @@ void print_packet(const knot_pkt_t *packet,
 
 	// Disable additionals printing if there are no other records.
 	// OPT record may be placed anywhere within additionals!
-	if (knot_pkt_have_edns(packet) && arcount == 1) {
+	if (knot_pkt_has_edns(packet) && arcount == 1) {
 		arcount = 0;
 	}
 
@@ -541,7 +541,7 @@ void print_packet(const knot_pkt_t *packet,
 	}
 
 	// Print EDNS section.
-	if (style->show_edns && knot_pkt_have_edns(packet)) {
+	if (style->show_edns && knot_pkt_has_edns(packet)) {
 		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
 		print_section_opt(packet->opt_rr);
 	}
@@ -613,7 +613,7 @@ void print_packet(const knot_pkt_t *packet,
 	}
 
 	// Print TSIG section.
-	if (style->show_tsig && knot_pkt_have_tsig(packet)) {
+	if (style->show_tsig && knot_pkt_has_tsig(packet)) {
 		printf("\n;; TSIG PSEUDOSECTION:\n");
 		print_section_full(packet->tsig_rr, 1, style, false);
 	}

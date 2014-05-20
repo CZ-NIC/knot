@@ -316,17 +316,31 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 	// Create EDNS section if required.
 	if (query->udp_size > 0 || query->flags.do_flag || query->nsid ||
 	    query->edns > -1) {
-		knot_edns_params_t edns_params = {
-			.payload = max_size,
-			.version = query->edns > -1 ? query->edns : 0,
-			.nsid_len = 0,
-			.nsid = NULL,
-			.flags = query->flags.do_flag ? KNOT_EDNS_FLAG_DO : 0
-		};
+		packet->opt_rr = knot_edns_new(max_size, 0,
+		                               query->edns > -1
+		                                 ? query->edns : 0,
+		                               query->flags.do_flag
+		                                 ? KNOT_EDNS_FLAG_DO : 0, NULL);
+		if (packet->opt_rr == NULL) {
+			ERR("can't set up EDNS section\n");
+			knot_pkt_free(&packet);
+			return NULL;
+		}
+
+		if (query->nsid) {
+			ret = knot_edns_add_option(packet->opt_rr,
+			                           KNOT_EDNS_OPTION_NSID, 0,
+			                           NULL, NULL);
+			if (ret != KNOT_EOK) {
+				ERR("can't set up EDNS section\n");
+				knot_pkt_free(&packet);
+				return NULL;
+			}
+		}
 
 		// Write prepared OPT to wire
 		knot_pkt_begin(packet, KNOT_ADDITIONAL);
-		ret = knot_pkt_write_opt(packet, &edns_params, query->nsid);
+		ret = knot_pkt_put(packet, COMPR_HINT_NONE, packet->opt_rr, 0);
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");
 			knot_pkt_free(&packet);

@@ -231,34 +231,6 @@ const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
                                           knot_section_t section_id);
 
 /*
- * EDNS(0)-related API
- */
-
-/*!
- * \brief Write OPT RR to wireformat.
- *
- * If used properly (i.e. the OPT RR was added by knot_pkt_add_opt()), there
- * should be space reserved for the OPT RR, so it does not matter when during
- * Additional processing this function is called. (Well, it should not be used
- * after signing the packet with TSIG, of course.)
- *
- * \note This function should be called only after the Additional section of
- *       packet was started.
- *
- * \param pkt Packet in which the OPT RR should be written.
- *
- * \retval KNOT_EOK if successful.
- * \retval KNOT_EINVAL if the parameter is NULL.
- * \retval KNOT_ENOTSUP if the Additional section of the packet was not yet
- *                      started.
- * \retval KNOT_ESPACE if the RR did not fit in. (Should not happen as the
- *                     packet should have reserved space for the OPT RR when it
- *                     was added.
- */
-int knot_pkt_write_opt(knot_pkt_t *pkt, knot_edns_params_t *edns, bool add_nsid);
-
-
-/*
  * Packet parsing API.
  */
 
@@ -316,37 +288,19 @@ int knot_pkt_parse_section(knot_pkt_t *pkt, unsigned flags);
 int knot_pkt_parse_payload(knot_pkt_t *pkt, unsigned flags);
 
 /*!
- * \brief Checks if EDNS is supported (i.e. has EDNS VERSION != UNSUPPORTED).
+ * \brief Checks if there is an OPT RR in the packet.
  */
-static inline bool knot_pkt_have_edns(const knot_pkt_t *pkt)
+static inline bool knot_pkt_has_edns(const knot_pkt_t *pkt)
 {
-	return pkt && (pkt->opt_rr != NULL);
+	return pkt != NULL && pkt->opt_rr != NULL;
 }
 
 /*!
  * \brief Checks if TSIG is present.
  */
-static inline bool knot_pkt_have_tsig(const knot_pkt_t *pkt)
+static inline bool knot_pkt_has_tsig(const knot_pkt_t *pkt)
 {
 	return pkt && pkt->tsig_rr;
-}
-
-/*!
- * \brief Checks if DNSSEC was requested (i.e. the DO bit was set).
- */
-static inline bool knot_pkt_have_dnssec(const knot_pkt_t *pkt)
-{
-	return knot_pkt_have_edns(pkt) && knot_edns_do(pkt->opt_rr);
-}
-
-/*!
- * \brief Checks if NSID was requested (i.e. the NSID option was
- *        present in the query OPT RR).
- */
-static inline bool knot_pkt_have_nsid(const knot_pkt_t *pkt)
-{
-	return knot_pkt_have_edns(pkt)
-	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
 }
 
 #endif /* _KNOT_PACKET_H_ */
