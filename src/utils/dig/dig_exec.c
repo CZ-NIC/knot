@@ -649,7 +649,7 @@ static void process_query(const query_t *query)
 				return;
 			// SERVFAIL.
 			} else if (ret == 1 && query->servfail_stop == true) {
-				WARN("failed to query server %s#%s(%s)\n",
+				WARN("failed to query server %s@%s(%s)\n",
 				     remote->name, remote->service,
 				     get_sockname(socktype));
 				net_clean(&net);
@@ -659,7 +659,7 @@ static void process_query(const query_t *query)
 
 			if (i < query->retries) {
 				printf("\n");
-				DBG("retrying server %s#%s(%s)\n",
+				DBG("retrying server %s@%s(%s)\n",
 				    remote->name, remote->service,
 				    get_sockname(socktype));
 			}
@@ -667,7 +667,7 @@ static void process_query(const query_t *query)
 			net_clean(&net);
 		}
 
-		WARN("failed to query server %s#%s(%s)\n",
+		WARN("failed to query server %s@%s(%s)\n",
 		     remote->name, remote->service, get_sockname(socktype));
 
 		// If not last server, print separation.
@@ -901,7 +901,7 @@ static void process_xfr(const query_t *query)
 	}
 
 	if (ret != 0) {
-		ERR("failed to query server %s#%s(%s)\n",
+		ERR("failed to query server %s@%s(%s)\n",
 		    remote->name, remote->service, get_sockname(socktype));
 	}
 
