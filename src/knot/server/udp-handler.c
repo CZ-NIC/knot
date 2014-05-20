@@ -451,30 +451,6 @@ void __attribute__ ((constructor)) udp_master_init()
 #endif /* HAVE_RECVMMSG */
 }
 
-static void unbind_ifaces(ifacelist_t *ifaces, fd_set *set, int maxfd)
-{
-	ref_release((ref_t *)ifaces);
-#if defined(SO_REUSEPORT)
-	for (int fd = 0; fd <= maxfd; ++fd) {
-		if (FD_ISSET(fd, set)) {
-			close(fd);
-		}
-	}
-#endif
-	FD_ZERO(set);
-}
-
-static int bind_iface(iface_t *iface, fd_set *set)
-{
-#if defined(SO_REUSEPORT)
-	int fd = net_bound_socket(SOCK_DGRAM, &iface->addr);
-#else
-	int fd = iface->fd[IO_UDP];
-#endif
-	FD_SET(fd, set);
-	return fd;
-}
-
 int udp_master(dthread_t *thread)
 {
 	unsigned cpu = dt_online_cpus();
@@ -530,14 +506,13 @@ int udp_master(dthread_t *thread)
 			FD_ZERO(&fds);
 
 			rcu_read_lock();
-			unbind_ifaces(ref, &fds, maxfd);
-			maxfd = 0;
-			minfd = INT_MAX;
+			ref_release((ref_t *)ref);
 			ref = handler->server->ifaces;
 			if (ref) {
 				iface_t *i = NULL;
 				WALK_LIST(i, ref->l) {
-					int fd = bind_iface(i, &fds);
+					int fd = i->fd[IO_UDP];
+					FD_SET(fd, &fds);
 					maxfd = MAX(fd, maxfd);
 					minfd = MIN(fd, minfd);
 				}
@@ -573,7 +548,7 @@ int udp_master(dthread_t *thread)
 	}
 
 	_udp_deinit(rq);
-	unbind_ifaces(ref, &fds, maxfd);
+	ref_release((ref_t *)ref);
 	mp_delete(udp.query_ctx.mm.ctx);
 	return KNOT_EOK;
 }
