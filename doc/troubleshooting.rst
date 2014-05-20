@@ -41,9 +41,8 @@ Generating backtrace
 There are several ways to achieve that, the most common way is to
 leave core dumps and then extract a backtrace from it.  This doesn't
 affect any server operation, you just need to make sure the OS is
-configured to generate them.
+configured to generate them::
 
-::
     $ ulimit -c unlimited # enable unlimited core dump size
     ...
     $ gdb $(which knotd) core.<KNOT_PID>   # start gdb on a core dump
@@ -53,9 +52,8 @@ configured to generate them.
 If the error is repeatable, you can run the binary in a ``gdb``
 debugger or attach the debugger to the running process.  The backtrace
 from a running process is generally useful when debugging problems
-like stuck process and similar.
+like stuck process and similar::
 
-::
     $ knotc -c knot.conf start
     $ sudo gdb --pid <KNOT_PID>
     (gdb) continue
@@ -112,7 +110,6 @@ to do this:
 
 Debug messages Example
 ----------------------
-
 ::
 
     $ ./configure --enable-debug=server,zones --enable-debuglevel=verbose
