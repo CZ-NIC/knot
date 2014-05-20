@@ -37,7 +37,7 @@ static bool check_rrset(const knot_rrset_t *rrset,
 
 int main(int argc, char *argv[])
 {
-	plan(16);
+	plan(17);
 	
 	// Test new
 	knot_dname_t *dummy_owner = knot_dname_from_str("test.");
@@ -52,13 +52,14 @@ int main(int argc, char *argv[])
 	   "rrset: set fields during create.");
 	
 	// Test init
+	knot_dname_free(&dummy_owner, NULL);
 	dummy_owner = knot_dname_from_str("test2.");
 	assert(dummy_owner);
 	
+	knot_dname_free(&rrset->owner, NULL);
 	knot_rrset_init(rrset, dummy_owner, KNOT_RRTYPE_A, KNOT_CLASS_CH);
 	ok(check_rrset(rrset, dummy_owner, KNOT_RRTYPE_A, KNOT_CLASS_CH),
 	   "rrset: init.");
-	knot_dname_free(&dummy_owner, NULL);
 	
 	// Test copy
 	knot_rrset_t *copy = knot_rrset_copy(rrset, NULL);
@@ -87,18 +88,23 @@ int main(int argc, char *argv[])
 	   "rrset: cmp headers - rdata");
 	
 	// Test clear
-	knot_rrset_clear(copy, NULL);
-	ok(copy->owner == NULL, "rrset: clear.");
+	knot_rrset_clear(rrset, NULL);
+	ok(rrset->owner == NULL, "rrset: clear.");
 	
 	// Test empty
-	ok(knot_rrset_empty(copy), "rrset: empty.");
+	ok(knot_rrset_empty(rrset), "rrset: empty.");
 	ok(knot_rrset_empty(NULL), "rrset: empty NULL.");
-	rrset->rrs.rr_count = 1;
-	ok(!knot_rrset_empty(rrset), "rrset: not empty.");
+	copy->rrs.rr_count = 1;
+	ok(!knot_rrset_empty(copy), "rrset: not empty.");
 	
 	// Test init empty
 	knot_rrset_init_empty(rrset);
 	ok(check_rrset(rrset, NULL, 0, KNOT_CLASS_IN), "rrset: init empty.");
+	
+	// "Test" freeing
+	knot_rrset_free(&rrset, NULL);
+	knot_rrset_free(&copy, NULL);
+	ok(rrset == NULL && copy == NULL, "rrset: free.");
 	
 	return 0;
 }
