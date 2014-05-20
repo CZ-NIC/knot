@@ -74,6 +74,11 @@ enum knot_edns_flags {
 	KNOT_EDNS_FLAG_DO = (uint16_t)1 << 15
 };
 
+/*! \brief Extended RCODEs. */
+enum knot_edns_ext_rcode {
+	KNOT_EDNS_RCODE_BADVERS = (uint8_t)16
+};
+
 /*----------------------------------------------------------------------------*/
 /* EDNS OPT RR handling functions.                                            */
 /*----------------------------------------------------------------------------*/
@@ -230,9 +235,11 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
 
 /*!
- * \brief Check OPT RR semantics.
+ * \brief Checks OPT RR semantics.
  *
- * \param opt_rr
+ * Checks whether RDATA are OK, i.e. that all OPTIONs have proper lengths.
+ *
+ * \param opt_rr OPT RR to check.
  *
  * \return true if passed, false if failed
  */

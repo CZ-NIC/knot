@@ -241,7 +241,6 @@ static void find_option(knot_rdata_t *rdata, uint16_t opt_code, uint8_t **pos)
 
 int knot_edns_clear_options(knot_rrset_t *opt_rr, bool retain_nsid)
 {
-	/*! \todo [OPT] IMPLEMENT */
 	if (opt_rr == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -331,13 +330,12 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 {
 	assert(opt_rr != NULL);
-	assert(opt_rr->rrs.rr_count == 1);
 
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
 	assert(rdata != NULL);
 
 	uint8_t *pos = NULL;
-	find_option(rdata, KNOT_EDNS_OPTION_NSID, &pos);
+	find_option(rdata, code, &pos);
 
 	return pos != NULL;
 }
@@ -346,7 +344,19 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 
 bool knot_edns_check_record(knot_rrset_t *opt_rr)
 {
-	/*! \todo [OPT] Semantic checks for the OPT. */
-#warning: check semantics here
-	return true;
+	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
+	assert(rdata != NULL);
+
+	uint8_t *data = knot_rdata_data(rdata);
+	uint16_t rdlength = knot_rdata_rdlen(rdata);
+	int pos = 0;
+	while (pos + 4 < rdlength) {
+		uint16_t opt_len = knot_wire_read_u16(data + pos + 2);
+		pos += 4 + opt_len;
+	}
+
+	/* If not at the end of the RDATA, there are either some redundant data
+	 * (pos < rdlength) or the last OPTION is too long (pos > rdlength).
+	 */
+	return pos == rdlength;
 }
