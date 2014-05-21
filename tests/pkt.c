@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	uint8_t *edns_str = (uint8_t *)"ab";
 	/* Create OPT RR. */
 	knot_rrset_t *opt_rr = knot_edns_new(1024, 0, 0, KNOT_EDNS_FLAG_DO, &mm);
-	if (opt_rr != NULL) {
+	if (opt_rr == NULL) {
 		skip_block(25, "Failed to allocate OPT RR.");
 		return 0;
 	}

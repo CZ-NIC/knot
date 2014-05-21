@@ -162,6 +162,9 @@ static void pkt_clear_payload(knot_pkt_t *pkt)
 	pkt->current = KNOT_ANSWER;
 	pkt->sections[pkt->current].rr = pkt->rr;
 	pkt->sections[pkt->current].rrinfo = pkt->rr_info;
+
+	/* Free OPT RR */
+	knot_rrset_free(&pkt->opt_rr, &pkt->mm);
 }
 
 /*! \brief Allocate new packet using memory context. */

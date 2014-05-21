@@ -549,7 +549,7 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	}
 
 	/* Check if EDNS is supported. */
-	if (!knot_pkt_has_edns(query)) {
+	if (!knot_pkt_has_edns(query) || server->opt_rr == NULL) {
 		return KNOT_EOK;
 	}
 

@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 	/* Create fake server environment. */
 	server_t server;
 	int ret = create_fake_server(&server, &proc.mm);
-	ok(ret == KNOT_EOK, "proc_answer: failed to initialize fake server");
+	ok(ret == KNOT_EOK, "proc_answer: fake server initialization");
 
 	/* Prepare. */
 	struct sockaddr_storage remote;
