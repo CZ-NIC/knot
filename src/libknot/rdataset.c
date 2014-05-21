@@ -172,8 +172,7 @@ void knot_rdataset_clear(knot_rdataset_t *rrs, mm_ctx_t *mm)
 {
 	if (rrs) {
 		mm_free(mm, rrs->data);
-		rrs->data = NULL;
-		rrs->rr_count = 0;
+		knot_rdataset_init(rrs);
 	}
 }
 
@@ -324,7 +323,7 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
 
 int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what, mm_ctx_t *mm)
 {
-	if (from == NULL || what == NULL) {
+	if (from == NULL || what == NULL || from->data == what->data) {
 		return KNOT_EINVAL;
 	}
 
