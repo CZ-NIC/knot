@@ -39,6 +39,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /*! \brief Error codes used in the library. */
 enum knot_error {
 	KNOT_EOK = 0,             /*!< OK */
+	KNOT_EOK_INTERRUPT,       /*!< OK, but should not continue. */
 
 	/* TSIG errors. */
 	KNOT_TSIG_EBADSIG = -16,  /*!< Failed to verify TSIG MAC. */

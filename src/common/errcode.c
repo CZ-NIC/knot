@@ -19,6 +19,7 @@
 
 const error_table_t knot_error_msgs[] = {
 	{ KNOT_EOK, "OK" },
+	{ KNOT_EOK_INTERRUPT, "OK, should not continue." },
 
 	/* TSIG errors. */
 	{ KNOT_TSIG_EBADSIG, "Failed to verify TSIG MAC." },

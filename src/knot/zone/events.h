@@ -33,7 +33,8 @@ struct server_t;
 typedef enum zone_event_type {
 	ZONE_EVENT_INVALID = -1,
 	// supported event types
-	ZONE_EVENT_RELOAD = 0,
+	ZONE_EVENT_DELETE = 0,
+	ZONE_EVENT_RELOAD,
 	ZONE_EVENT_REFRESH,
 	ZONE_EVENT_XFER,
 	ZONE_EVENT_UPDATE,

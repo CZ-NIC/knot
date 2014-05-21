@@ -210,6 +210,15 @@ static void schedule_dnssec(zone_t *zone)
 
 typedef int (*zone_event_cb)(zone_t *zone);
 
+static int event_delete(zone_t *zone)
+{
+	assert(zone);
+	fprintf(stderr, "DELETING ZONE '%s'\n", zone->conf->name);
+	zone_free(&zone);
+
+	return KNOT_EOK_INTERRUPT;
+}
+
 static int event_reload(zone_t *zone)
 {
 	assert(zone);
@@ -606,10 +615,11 @@ typedef struct event_info_t {
 } event_info_t;
 
 static const event_info_t EVENT_INFO[] = {
+	{ ZONE_EVENT_DELETE,  event_delete,  "delete" },
         { ZONE_EVENT_RELOAD,  event_reload,  "reload" },
         { ZONE_EVENT_REFRESH, event_refresh, "refresh" },
         { ZONE_EVENT_XFER,    event_xfer,    "transfer" },
-        { ZONE_EVENT_UPDATE,  event_update,  "UPDATE" },
+        { ZONE_EVENT_UPDATE,  event_update,  "update" },
         { ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
         { ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
         { ZONE_EVENT_NOTIFY,  event_notify,  "notify" },
@@ -658,7 +668,9 @@ static void event_wrap(task_t *task)
 
 	const event_info_t *info = get_event_info(type);
 	int result = info->callback(zone);
-	if (result != KNOT_EOK) {
+	if (result == KNOT_EOK_INTERRUPT) {
+		return;
+	} else if (result != KNOT_EOK) {
 		log_zone_error("[%s] %s failed - %s\n", zone->conf->name,
 		               info->name, knot_strerror(result));
 	}
