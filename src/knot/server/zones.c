@@ -2797,7 +2797,9 @@ int zones_dnssec_ev(event_t *event)
 	uint32_t refresh_at = 0;
 
 	int ret = zones_dnssec_sign(zone, false, &refresh_at);
-	ret = zones_schedule_dnssec(zone, refresh_at);
+	if (ret == KNOT_EOK) {
+		ret = zones_schedule_dnssec(zone, refresh_at);
+	}
 
 	rcu_read_unlock();
 
@@ -2852,9 +2854,8 @@ int zones_schedule_dnssec(knot_zone_t *zone, time_t unixtime)
 	// log the message
 	char dnssec_buf[128] = { '\0' };
 	log_zone_info("DNSSEC: Zone %s: Next signing planned on %s.\n",
-	              zname, zones_dnssec_info_str(zd, dnssec_buf, 128));
+	              zname, zones_dnssec_info_str(zd, dnssec_buf, sizeof(dnssec_buf)));
 	free(zname);
-
 
 	return KNOT_EOK;
 }
