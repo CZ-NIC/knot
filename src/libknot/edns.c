@@ -46,18 +46,10 @@ knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode,
                             uint8_t ver, uint16_t flags, mm_ctx_t *mm)
 {
 	/* Owner: root label. */
-	/*! \todo Maybe later modify dname_from_str() to use memory pool. */
-	size_t pos = 0;
-	knot_dname_t *owner = knot_dname_parse((uint8_t *)"\0", &pos, 1, mm);
-	if (owner == NULL) {
-		ERR_ALLOC_FAILED;
-		return NULL;
-	}
-
+	uint8_t owner[1] = "\0";
 	knot_rrset_t *opt_rr = knot_rrset_new(owner, KNOT_RRTYPE_OPT, max_pld,
 	                                      mm);
 	if (opt_rr == NULL) {
-		knot_dname_free(&owner, mm);
 		ERR_ALLOC_FAILED;
 		return NULL;
 	}
@@ -226,7 +218,7 @@ static void find_option(knot_rdata_t *rdata, uint16_t opt_code, uint8_t **pos)
 	*pos = NULL;
 
 	int i = 0;
-	while (i + 4 < rdlength) {
+	while (i + 4 <= rdlength) {
 		uint16_t code = knot_wire_read_u16(data + i);
 		if (opt_code == code) {
 			*pos = data + i;

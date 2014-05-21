@@ -81,14 +81,19 @@ int main(int argc, char *argv[])
 	}
 
 	uint8_t *edns_str = (uint8_t *)"ab";
-	/* Create EDNS parameters. */
-	knot_edns_params_t edns_params = {
-		.payload = 1024,
-		.version = 0,
-		.nsid_len = 2,
-		.nsid = edns_str,
-		.flags = KNOT_EDNS_FLAG_DO
-	};
+	/* Create OPT RR. */
+	knot_rrset_t *opt_rr = knot_edns_new(1024, 0, 0, KNOT_EDNS_FLAG_DO, &mm);
+	if (opt_rr != NULL) {
+		skip_block(25, "Failed to allocate OPT RR.");
+		return 0;
+	}
+	/* Add NSID */
+	ret = knot_edns_add_option(opt_rr, KNOT_EDNS_OPTION_NSID,
+	                           strlen((char *)edns_str), edns_str, &mm);
+	if (ret != KNOT_EOK) {
+		skip_block(25, "Failed to add NSID to OPT RR.");
+		return 0;
+	}
 
 	/*
 	 * Packet writer tests.
@@ -116,7 +121,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: put question");
 
 	/* Add OPT to packet (empty NSID). */
-	ret = knot_pkt_reserve(out, knot_edns_wire_size(&edns_params));
+	ret = knot_pkt_reserve(out, knot_edns_wire_size(opt_rr));
 	ok(ret == KNOT_EOK, "pkt: reserve OPT RR");
 
 	/* Begin ANSWER section. */
@@ -149,7 +154,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: begin ADDITIONALS");
 
 	/* Encode OPT RR. */
-	ret = knot_pkt_write_opt(out, &edns_params, true);
+	ret = knot_pkt_put(out, COMPR_HINT_NONE, opt_rr, 0);
 	ok(ret == KNOT_EOK, "pkt: write OPT RR");
 
 	/*
