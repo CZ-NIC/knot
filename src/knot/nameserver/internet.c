@@ -655,7 +655,7 @@ static int solve_additional(int state, knot_pkt_t *pkt,
                             struct query_data *qdata, void *ctx)
 {
 	/* Put OPT RR. */
-	int ret;
+	int ret = KNOT_EOK;
 	if (pkt->opt_rr != NULL) {
 		ret = knot_pkt_put(pkt, COMPR_HINT_NONE, pkt->opt_rr, 0);
 		if (ret != KNOT_EOK) {
