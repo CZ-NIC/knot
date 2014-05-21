@@ -29,6 +29,7 @@ check_PROGRAMS = \
 	dnssec_nsec3		\
 	dnssec_sign			\
 	dnssec_zone_nsec	\
+	rdata				\
 	rrset				\
 	node				\
 	pkt					\
