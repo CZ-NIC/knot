@@ -22,7 +22,6 @@ def update_zone(master, slave, zone, changes, change_serial=False, serials=None)
         master.flush()
         t.sleep(1)
         master.zone_verify(zone)
-        slave.reload()
         slave.zone_wait(zone, serial)
         t.xfr_diff(master, slave, zone)
 

@@ -548,17 +548,15 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 }
 
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
-                      const uint8_t *rdata, const uint16_t size,
-                      const uint32_t ttl, mm_ctx_t *mm)
+                         const uint8_t *rdata, const uint16_t size,
+                         const uint32_t ttl, mm_ctx_t *mm)
 {
 	if (rrset == NULL || rdata == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t rr[knot_rdata_array_size(size)];
-	knot_rdata_set_rdlen(rr, size);
-	knot_rdata_set_ttl(rr, ttl);
-	memcpy(knot_rdata_data(rr), rdata, size);
+	knot_rdata_init(rr, size, rdata, ttl);
 
 	return knot_rdataset_add(&rrset->rrs, rr, mm);
 }

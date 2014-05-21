@@ -28,12 +28,15 @@ check_PROGRAMS = \
 	dnssec_keys			\
 	dnssec_nsec3			\
 	dnssec_sign			\
-	dnssec_zone_nsec		\
+	dnssec_zone_nsec	\
+	rdata				\
+	rdataset			\
 	rrset				\
-	edns				\
-	pkt				\
-	process_query			\
-	process_answer			\
+	node				\
+	edns                            \
+	pkt					\
+	process_query		\
+	process_answer		\
 	requestor			\
 	query_module
 

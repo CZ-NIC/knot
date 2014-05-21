@@ -21,8 +21,10 @@ hattrie
 hhash
 journal
 pkt
+process_answer
 process_query
 query_module
+requestor
 rrl
 rrset
 server
