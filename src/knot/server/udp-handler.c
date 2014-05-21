@@ -473,6 +473,10 @@ static int udp_recvmmsg_handle(struct answer_ctx *st, void *d)
 			rlen = 0;
 		}
 		cvec->iov_len = rlen;
+		if (cvec->iov_len == 0) {
+			/* @note sendmmsg() workaround to prevent sending the packet */
+			rq->msgs[i].msg_hdr.msg_namelen = 0;
+		}
 	}
 	return KNOT_EOK;
 }
