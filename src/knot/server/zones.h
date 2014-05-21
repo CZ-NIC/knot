@@ -377,6 +377,9 @@ int zones_journal_apply(knot_zone_t *zone);
 int zones_do_diff_and_sign(const conf_zone_t *z, knot_zone_t *zone,
                            const knot_nameserver_t *ns, bool zone_changed);
 
+/*! \brief Writes time of next DNSSEC sig into buffer. */
+char *zones_dnssec_info_str(const zonedata_t *zd, char *buf, size_t buf_size);
+
 /*! \brief Just sign current zone. */
 int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *expires_at);
 

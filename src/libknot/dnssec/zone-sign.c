@@ -1073,9 +1073,13 @@ int knot_zone_sign(const knot_zone_contents_t *zone,
 
 	// DNSKEY updates
 	uint32_t dnskey_update = knot_get_next_zone_key_event(zone_keys);
-	expiration = MIN(expiration, dnskey_update);
-
-	*refresh_at = knot_dnssec_policy_refresh_time(policy, expiration);
+	if (expiration < dnskey_update) {
+		// Signatures expire before keys do
+		*refresh_at = knot_dnssec_policy_refresh_time(policy, expiration);
+	} else {
+		// Keys expire before signatures
+		*refresh_at = dnskey_update;
+	}
 
 	return KNOT_EOK;
 }

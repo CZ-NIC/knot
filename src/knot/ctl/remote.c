@@ -241,21 +241,6 @@ static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 	return KNOT_EOK;
 }
 
-static char *dnssec_info(const zonedata_t *zd, char *buf, size_t buf_size)
-{
-	assert(zd && zd->dnssec_timer);
-	assert(buf);
-
-	time_t diff_time = zd->dnssec_timer->tv.tv_sec;
-	struct tm *t = localtime(&diff_time);
-
-	size_t written = strftime(buf, buf_size, "%c", t);
-	if (written == 0) {
-		return NULL;
-	}
-
-	return buf;
-}
 
 /*!
  * \brief Remote command 'zonestatus' handler.
@@ -336,7 +321,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		                 state ? state : "",
 		                 when ? when : "",
 		                 zd->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "",
-		                 zd->conf->dnssec_enable ? dnssec_info(zd, dnssec_buf, sizeof(dnssec_buf)) : "");
+		                 zd->conf->dnssec_enable ? zones_dnssec_info_str(zd, dnssec_buf, sizeof(dnssec_buf)) : "");
 		free(when);
 		if (n < 0 || (size_t)n > rb) {
 			*dst = '\0';

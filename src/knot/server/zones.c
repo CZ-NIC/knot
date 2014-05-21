@@ -2701,6 +2701,22 @@ int zones_schedule_refresh(knot_zone_t *zone, int64_t time)
 	return KNOT_EOK;
 }
 
+char *zones_dnssec_info_str(const zonedata_t *zd, char *buf, size_t buf_size)
+{
+	assert(zd && zd->dnssec_timer);
+	assert(buf);
+
+	time_t diff_time = zd->dnssec_timer->tv.tv_sec;
+	struct tm *t = localtime(&diff_time);
+
+	size_t written = strftime(buf, buf_size, "%c", t);
+	if (written == 0) {
+		return NULL;
+	}
+
+	return buf;
+}
+
 int zones_dnssec_sign(knot_zone_t *zone, bool force, uint32_t *refresh_at)
 {
 	int ret = KNOT_EOK;
@@ -2781,9 +2797,8 @@ int zones_dnssec_ev(event_t *event)
 	uint32_t refresh_at = 0;
 
 	int ret = zones_dnssec_sign(zone, false, &refresh_at);
-	if (refresh_at != 0) {
-		ret = zones_schedule_dnssec(zone, refresh_at);
-	}
+	ret = zones_schedule_dnssec(zone, refresh_at);
+
 	rcu_read_unlock();
 
 	return ret;
@@ -2824,31 +2839,22 @@ int zones_schedule_dnssec(knot_zone_t *zone, time_t unixtime)
 	// absolute time -> relative time
 
 	time_t now = time(NULL);
-	int32_t relative = 0;
+	int32_t relative;
 	if (unixtime <= now) {
-		log_zone_warning("DNSSEC: Zone %s: Signature life time too low, "
-		                 "set higher value in configuration!\n", zname);
+		relative = 0;
 	} else {
 		relative = unixtime - now;
 	}
 
+	// schedule
+	evsched_schedule(scheduler, zd->dnssec_timer, relative * 1000);
+
 	// log the message
-
-	char time_str[64] = {'\0'};
-	struct tm time_gm = {0};
-
-	gmtime_r(&unixtime, &time_gm);
-
-	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
-
+	char dnssec_buf[128] = { '\0' };
 	log_zone_info("DNSSEC: Zone %s: Next signing planned on %s.\n",
-	              zname, time_str);
-
+	              zname, zones_dnssec_info_str(zd, dnssec_buf, 128));
 	free(zname);
 
-	// schedule
-
-	evsched_schedule(scheduler, zd->dnssec_timer, relative * 1000);
 
 	return KNOT_EOK;
 }
