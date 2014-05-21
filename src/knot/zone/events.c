@@ -746,7 +746,6 @@ void zone_events_deinit(zone_t *zone)
 	evsched_cancel(zone->events.event);
 	evsched_event_free(zone->events.event);
 
-	assert(zone->events.running == false);
 	pthread_mutex_destroy(&zone->events.mx);
 
 	memset(&zone->events, 0, sizeof(zone->events));
