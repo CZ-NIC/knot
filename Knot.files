@@ -333,3 +333,4 @@ tests/zonedb.c
 tests/ztree.c
 tests/node.c
 tests/rdata.c
+tests/rdataset.c
