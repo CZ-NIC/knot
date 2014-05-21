@@ -98,9 +98,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 		// No need to rearange RDATA
 		rrs->rr_count++;
 		knot_rdata_t *new_rr = knot_rdataset_at(rrs, pos);
-		knot_rdata_set_rdlen(new_rr, size);
-		knot_rdata_set_ttl(new_rr, ttl);
-		memcpy(knot_rdata_data(new_rr), rdata, size);
+		knot_rdata_init(new_rr, size, rdata, ttl);
 		return KNOT_EOK;
 	}
 
@@ -115,9 +113,7 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, size_t pos,
 	        (last_rr + knot_rdata_array_size(knot_rdata_rdlen(last_rr))) - old_rr);
 
 	// Set new RR
-	knot_rdata_set_rdlen(old_rr, size);
-	knot_rdata_set_ttl(old_rr, ttl);
-	memcpy(knot_rdata_data(old_rr), rdata, size);
+	knot_rdata_init(old_rr, size, rdata, ttl);
 
 	rrs->rr_count++;
 	return KNOT_EOK;
