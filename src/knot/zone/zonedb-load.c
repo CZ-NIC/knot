@@ -206,9 +206,9 @@ static knot_zonedb_t *create_zonedb(const conf_t *conf, server_t *server)
 }
 
 /*!
- * \brief Remove old zones and zone database.
+ * \brief Schedule deletion of old zones, and free the zone db structure.
  *
- * \note Zone may be preserved in the new zone database, in this case
+ * \note Zone content may be preserved in the new zone database, in this case
  *       new and old zone share the contents. Shared content is not freed.
  *
  * \param db_new New zone database.
@@ -229,13 +229,13 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 		
 		if (old_zone) {
 			old_zone->contents = NULL;
+			zone_events_schedule(old_zone, ZONE_EVENT_DELETE, 0);
 		}
 
 		knot_zonedb_iter_next(&it);
 	}
 
-	/* Delete all deprecated zones and delete the old database. */
-	knot_zonedb_deep_free(&db_old);
+	knot_zonedb_free(&db_old);
 
 	return KNOT_EOK;
 }
@@ -250,12 +250,6 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	/* Check parameters */
 	if (conf == NULL || server == NULL) {
 		return KNOT_EINVAL;
-	}
-
-	/* Freeze zone timers. */
-#warning "Workers have to be suspended and unsuspended outside this function."
-	if (server->zone_db) {
-		//knot_zonedb_foreach(server->zone_db, zone_events_freeze);
 	}
 
 	/* Insert all required zones to the new zone DB. */
@@ -277,7 +271,6 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();
 
-	/* Thaw zone events now that the database is published. */
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}

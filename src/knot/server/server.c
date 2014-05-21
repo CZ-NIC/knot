@@ -620,15 +620,17 @@ int server_update_zones(const struct conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 
+	worker_pool_suspend(server->workers);
+	worker_pool_wait(server->workers);
+
 	int ret = zonedb_reload(conf, server);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+
+	worker_pool_continue(server->workers);
 
 	/* Trim extra heap. */
 	mem_trim();
 
-	return KNOT_EOK;
+	return ret;
 }
 
 ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type)
