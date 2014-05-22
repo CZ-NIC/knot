@@ -105,7 +105,7 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 
 	for (int i = 0; i < 4; i++) {
 		uint32_t ts = timestamps[i];
-		if (ts != 0 && now <= ts && ts < next_event) {
+		if (ts != 0 && now < ts && ts < next_event) {
 			next_event = ts;
 		}
 	}
@@ -115,10 +115,10 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 	key->is_ksk = params->flags & KNOT_RDATA_DNSKEY_FLAG_KSK;
 
 	key->is_active = params->time_activate <= now &&
-	                 (params->time_inactive == 0 || now <= params->time_inactive);
+	                 (params->time_inactive == 0 || now < params->time_inactive);
 
 	key->is_public = params->time_publish <= now &&
-	                 (params->time_delete == 0 || now <= params->time_delete);
+	                 (params->time_delete == 0 || now < params->time_delete);
 }
 
 /*!
