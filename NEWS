@@ -1,5 +1,11 @@
 Knot DNS NEWS
 
+v1.4.6 - May 22, 2014
+---------------------
+Bugfixes:
+	* Fix possible signing loop when doing key rollover
+	* Fixed sending of malformed UDP empty responses
+
 v1.4.5 - Apr 14, 2014
 ---------------------
 Bugfixes:
