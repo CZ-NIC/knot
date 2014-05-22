@@ -166,7 +166,7 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
  * new. New zones are loaded.
  *
  * \param conf    New server configuration.
- * \param old_db  Old zone database (can be NULL).
+ * \param server  Server instance.
  *
  * \return New zone database.
  */
@@ -229,13 +229,12 @@ static int remove_old_zonedb(const knot_zonedb_t *db_new, knot_zonedb_t *db_old)
 		
 		if (old_zone) {
 			old_zone->contents = NULL;
-			zone_events_schedule(old_zone, ZONE_EVENT_DELETE, 0);
 		}
 
 		knot_zonedb_iter_next(&it);
 	}
 
-	knot_zonedb_free(&db_old);
+	knot_zonedb_deep_free(&db_old);
 
 	return KNOT_EOK;
 }
@@ -270,10 +269,6 @@ int zonedb_reload(const conf_t *conf, struct server_t *server)
 
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();
-
-	if (server->zone_db) {
-		knot_zonedb_foreach(server->zone_db, zone_events_start);
-	}
 
 	/*
 	 * Remove all zones present in the new DB from the old DB.

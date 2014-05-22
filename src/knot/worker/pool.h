@@ -51,23 +51,10 @@ void worker_pool_stop(worker_pool_t *pool);
 void worker_pool_join(worker_pool_t *pool);
 
 /*!
- * \brief Suspend execution of new tasks, existing task are not terminated.
+ * \brief Wait till the number of pending tasks is zero.
  *
- * No workes will be started.
- */
-void worker_pool_suspend(worker_pool_t *pool);
-
-/*!
- * \brief Wait till the number of running tasks is zero.
- *
- * The pool must be suspended, otherwise no waiting will be performed.
  */
 void worker_pool_wait(worker_pool_t *pool);
-
-/*!
- * \brief Continue execution of new tasks.
- */
-void worker_pool_continue(worker_pool_t *pool);
 
 /*!
  * \brief Assign a task to be performed by a worker in the pool.

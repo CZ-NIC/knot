@@ -33,8 +33,7 @@ struct server_t;
 typedef enum zone_event_type {
 	ZONE_EVENT_INVALID = -1,
 	// supported event types
-	ZONE_EVENT_DELETE = 0,
-	ZONE_EVENT_RELOAD,
+	ZONE_EVENT_RELOAD = 0,
 	ZONE_EVENT_REFRESH,
 	ZONE_EVENT_XFER,
 	ZONE_EVENT_UPDATE,
@@ -49,6 +48,7 @@ typedef enum zone_event_type {
 typedef struct zone_events {
 	pthread_mutex_t mx;		//!< Mutex protecting the struct.
 	bool running;			//!< Some zone event is being run.
+	bool frozen;			//!< Terminated, don't schedule new events.
 
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
@@ -97,9 +97,9 @@ void zone_events_schedule(struct zone_t *zone, zone_event_type_t type, unsigned 
 void zone_events_cancel(struct zone_t *zone, zone_event_type_t type);
 
 /*!
- * \brief Cancel all zone events.
+ * \brief Freeze all zone events and prevent new events from running.
  */
-void zone_events_cancel_all(struct zone_t *zone);
+void zone_events_freeze(struct zone_t *zone);
 
 /*!
  * \brief Start the events processing.
