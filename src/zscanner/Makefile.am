@@ -11,7 +11,7 @@ EXTRA_DIST =				\
 
 BUILT_SOURCES = descriptor.h descriptor.c
 CLEANFILES = descriptor.h descriptor.c
-nodist_libzscanner_la_SOURCES = descriptor.h descriptor.c
+nodist_libzscanner_la_SOURCES = descriptor.h descriptor.c scanner.c
 
 descriptor.h: $(top_srcdir)/src/common/descriptor.h
 	cp $(top_srcdir)/src/common/descriptor.h $@
@@ -29,13 +29,13 @@ else
 
 if G2_PARSER
 scanner.c: scanner.c.g2
-	cp $@.g2 $@
+	cp $(srcdir)/$@.g2 $@
 	@echo "NOTE: Compilation of scanner.c can take several minutes!"
 endif
 
 if T0_PARSER
 scanner.c: scanner.c.t0
-	cp $@.t0 $@
+	cp $(srcdir)/$@.t0 $@
 endif
 
 endif #HAVE_RAGEL
@@ -43,7 +43,6 @@ endif #HAVE_RAGEL
 libzscanner_la_SOURCES =		\
 	zscanner.h			\
 	scanner.h			\
-	scanner.c			\
 	error.h				\
 	error.c				\
 	file_loader.h			\
