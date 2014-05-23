@@ -551,7 +551,7 @@ int knot_rrset_add_rdata(knot_rrset_t *rrset,
                          const uint8_t *rdata, const uint16_t size,
                          const uint32_t ttl, mm_ctx_t *mm)
 {
-	if (rrset == NULL || rdata == NULL) {
+	if (rrset == NULL || (rdata == NULL && size > 0)) {
 		return KNOT_EINVAL;
 	}
 
