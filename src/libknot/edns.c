@@ -337,14 +337,18 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 bool knot_edns_check_record(knot_rrset_t *opt_rr)
 {
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	assert(rdata != NULL);
+	if (rdata == NULL) {
+		return false;
+	}
 
 	uint8_t *data = knot_rdata_data(rdata);
 	uint16_t rdlength = knot_rdata_rdlen(rdata);
-	int pos = 0;
-	while (pos + 4 < rdlength) {
-		uint16_t opt_len = knot_wire_read_u16(data + pos + 2);
-		pos += 4 + opt_len;
+	uint32_t pos = 0;
+
+	/* RFC2671 4.4: {uint16_t code, uint16_t len, data} */
+	while (pos + KNOT_EDNS_OPTION_HDRLEN <= rdlength) {
+		uint16_t opt_len = knot_wire_read_u16(data + pos + sizeof(uint16_t));
+		pos += KNOT_EDNS_OPTION_HDRLEN + opt_len;
 	}
 
 	/* If not at the end of the RDATA, there are either some redundant data
