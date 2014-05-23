@@ -609,7 +609,7 @@ static const event_info_t EVENT_INFO[] = {
         { ZONE_EVENT_RELOAD,  event_reload,  "reload" },
         { ZONE_EVENT_REFRESH, event_refresh, "refresh" },
         { ZONE_EVENT_XFER,    event_xfer,    "transfer" },
-        { ZONE_EVENT_UPDATE,  event_update,  "UPDATE" },
+        { ZONE_EVENT_UPDATE,  event_update,  "update" },
         { ZONE_EVENT_EXPIRE,  event_expire,  "expiration" },
         { ZONE_EVENT_FLUSH,   event_flush,   "journal flush" },
         { ZONE_EVENT_NOTIFY,  event_notify,  "notify" },
@@ -734,7 +734,6 @@ void zone_events_deinit(zone_t *zone)
 	evsched_cancel(zone->events.event);
 	evsched_event_free(zone->events.event);
 
-	assert(zone->events.running == false);
 	pthread_mutex_destroy(&zone->events.mx);
 
 	memset(&zone->events, 0, sizeof(zone->events));
@@ -749,6 +748,12 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 	zone_events_t *events = &zone->events;
 
 	pthread_mutex_lock(&events->mx);
+
+	/* Don't schedule new events if frozen. */
+	if (events->frozen) {
+		pthread_mutex_unlock(&events->mx);
+		return;
+	}
 
 	time_t current = event_get_time(events, type);
 	if (current == 0 || time == 0 || time < current) {
@@ -772,7 +777,7 @@ void zone_events_cancel(zone_t *zone, zone_event_type_t type)
 	zone_events_schedule_at(zone, type, 0);
 }
 
-void zone_events_cancel_all(zone_t *zone)
+void zone_events_freeze(zone_t *zone)
 {
 	if (!zone) {
 		return;
@@ -781,10 +786,9 @@ void zone_events_cancel_all(zone_t *zone)
 	zone_events_t *events = &zone->events;
 
 	pthread_mutex_lock(&events->mx);
-	for (int i = 0; i < ZONE_EVENT_COUNT; i++) {
-		event_set_time(events, i, 0);
-	}
-	reschedule(events);
+	/* Cancel pending event and prevent new. */
+	events->frozen = true;
+	evsched_cancel(events->event);
 	pthread_mutex_unlock(&events->mx);
 }
 

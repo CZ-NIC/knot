@@ -116,16 +116,12 @@ static int server_init_iface(iface_t *new_if, conf_iface_t *cfg_if)
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&cfg_if->addr, addr_str, sizeof(addr_str));
 
-#if defined(SO_REUSEPORT)
-	/* Each thread binds own socket. */
-	int sock = -1;
-#else
 	/* Create bound UDP socket. */
 	int sock = net_bound_socket(SOCK_DGRAM, &cfg_if->addr);
 	if (sock < 0) {
 		return sock;
 	}
-#endif
+
 	new_if->fd[IO_UDP] = sock;
 
 	/* Create bound TCP socket. */
@@ -615,15 +611,26 @@ int server_update_zones(const struct conf_t *conf, void *data)
 {
 	server_t *server = (server_t *)data;
 
+	/* Prevent new events on zones waiting to be replaced. */
+	if (server->zone_db) {
+		knot_zonedb_foreach(server->zone_db, zone_events_freeze);
+	}
+
+	/* Finish operations already in the queue. */
+	worker_pool_wait(server->workers);
+
+	/* Reload zone database and free old zones. */
 	int ret = zonedb_reload(conf, server);
-	if (ret != KNOT_EOK) {
-		return ret;
+
+	/* Plan events on new zones. */
+	if (server->zone_db) {
+		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
 
 	/* Trim extra heap. */
 	mem_trim();
 
-	return KNOT_EOK;
+	return ret;
 }
 
 ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type)

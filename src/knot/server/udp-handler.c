@@ -456,28 +456,33 @@ int udp_send_msg(int fd, const uint8_t *msg, size_t msglen, struct sockaddr *add
 	return ret;
 }
 
-static void unbind_ifaces(ifacelist_t *ifaces, fd_set *set, int maxfd)
+/*! \brief Release the reference on the interface list and clear watched fdset. */
+static void forget_ifaces(ifacelist_t *ifaces, fd_set *set, int maxfd)
 {
 	ref_release((ref_t *)ifaces);
-#if defined(SO_REUSEPORT)
-	for (int fd = 0; fd <= maxfd; ++fd) {
-		if (FD_ISSET(fd, set)) {
-			close(fd);
-		}
-	}
-#endif
 	FD_ZERO(set);
 }
 
-static int bind_iface(iface_t *iface, fd_set *set)
+/*! \brief Add interface sockets to the watched fdset. */
+static int track_ifaces(ifacelist_t *ifaces, fd_set *set, int *maxfd, int *minfd)
 {
-#if defined(SO_REUSEPORT)
-	int fd = net_bound_socket(SOCK_DGRAM, &iface->addr);
-#else
-	int fd = iface->fd[IO_UDP];
-#endif
-	FD_SET(fd, set);
-	return fd;
+	FD_ZERO(set);
+	*maxfd = -1;
+	*minfd = 0;
+
+	if (ifaces == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	iface_t *iface = NULL;
+	WALK_LIST(iface, ifaces->l) {
+		int fd = iface->fd[IO_UDP];
+		*maxfd = MAX(fd, *maxfd);
+		*minfd = MIN(fd, *minfd);
+		FD_SET(fd, set);
+	}
+
+	return KNOT_EOK;
 }
 
 int udp_master(dthread_t *thread)
@@ -532,18 +537,9 @@ int udp_master(dthread_t *thread)
 			udp.thread_id = handler->thread_id[thr_id];
 
 			rcu_read_lock();
-			unbind_ifaces(ref, &fds, maxfd);
-			maxfd = 0;
-			minfd = INT_MAX;
+			forget_ifaces(ref, &fds, maxfd);
 			ref = handler->server->ifaces;
-			if (ref) {
-				iface_t *i = NULL;
-				WALK_LIST(i, ref->l) {
-					int fd = bind_iface(i, &fds);
-					maxfd = MAX(fd, maxfd);
-					minfd = MIN(fd, minfd);
-				}
-			}
+			track_ifaces(ref, &fds, &maxfd, &minfd);
 			rcu_read_unlock();
 		}
 
@@ -575,7 +571,7 @@ int udp_master(dthread_t *thread)
 	}
 
 	_udp_deinit(rq);
-	unbind_ifaces(ref, &fds, maxfd);
+	forget_ifaces(ref, &fds, maxfd);
 	mp_delete(udp.query_ctx.mm.ctx);
 	return KNOT_EOK;
 }
