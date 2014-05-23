@@ -56,15 +56,6 @@ static inline int create_fake_server(server_t *server, mm_ctx_t *mm)
 		return ret;
 	}
 
-	server->opt_rr = knot_edns_new(KNOT_EDNS_MAX_UDP_PAYLOAD,
-	                               KNOT_EDNS_VERSION,
-	                               KNOT_EDNS_DEFAULT_FLAGS, 0, NULL);
-
-	if (server->opt_rr == NULL) {
-		server_deinit(server);
-		return KNOT_ENOMEM;
-	}
-
 	/* Create configuration. */
 	s_config = conf_new(strdup("rc:/noconf"));
 	conf()->identity = strdup("bogus.ns");

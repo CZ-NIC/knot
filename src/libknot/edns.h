@@ -36,17 +36,6 @@
 /* Forward declaration. */
 struct knot_packet;
 
-/*! \brief Structure holding basic EDNS parameters of the server. */
-struct knot_edns_params {
-	uint16_t payload;    /*!< Max UDP payload. */
-	uint8_t version;     /*!< Supported version of EDNS. */
-	uint16_t nsid_len;   /*!< Length of NSID string. */
-	uint8_t *nsid;       /*!< NSID string. */
-	uint16_t flags;      /*!< EDNS flags. Store in wire byte order. */
-};
-
-typedef struct knot_edns_params knot_edns_params_t;
-
 /*! \brief Various constants related to EDNS. */
 enum knot_edns_const {
 	/*! \brief Minimal UDP payload with EDNS enabled. */
@@ -57,12 +46,12 @@ enum knot_edns_const {
 	KNOT_EDNS_MAX_UDP_PAYLOAD = 4096,
 	/*! \brief Supported EDNS version. */
 	KNOT_EDNS_VERSION = 0,
-	/*! \brief Default EDNS flags to be set in OPT RR. */
-	KNOT_EDNS_DEFAULT_FLAGS = 0,
 	/*! \brief NSID option code. */
 	KNOT_EDNS_OPTION_NSID     = 3,
 	/*! \brief Minimum size of EDNS OPT RR in wire format. */
-	KNOT_EDNS_MIN_SIZE        = 11
+	KNOT_EDNS_MIN_SIZE        = 11,
+	/*! \brief EDNS OPT header size. */
+	KNOT_EDNS_OPTION_HDRLEN   = 2 * sizeof(uint16_t)
 };
 
 /*! \brief EDNS flags.
@@ -83,8 +72,19 @@ enum knot_edns_ext_rcode {
 /* EDNS OPT RR handling functions.                                            */
 /*----------------------------------------------------------------------------*/
 
-knot_rrset_t *knot_edns_new(uint16_t max_pld, uint8_t ext_rcode,
-                            uint8_t ver, uint16_t flags, mm_ctx_t *mm);
+/*!
+ * \brief Initialize OPT RR.
+ *
+ * \param max_pld   Max UDP payload.
+ * \param ext_rcode Extended RCODE.
+ * \param ver       Version.
+ * \param mm        Memory context.
+ *
+ * \return KNOT_EOK or an error
+ */
+int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
+                  uint8_t ext_rcode, uint8_t ver, mm_ctx_t *mm);
+
 
 /*!
  * \brief Returns size of the OPT RR in wire format.
@@ -233,6 +233,9 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
  * \retval 0 otherwise.
  */
 bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code);
+
+/*! \brief Return true if RRSet has NSID option. */
+bool knot_edns_has_nsid(const knot_rrset_t *opt_rr);
 
 /*!
  * \brief Checks OPT RR semantics.

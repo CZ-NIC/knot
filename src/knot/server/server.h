@@ -107,8 +107,6 @@ typedef struct server_t {
 
 	knot_zonedb_t *zone_db; /*!< Zone database. */
 
-	knot_rrset_t *opt_rr;   /*!< Server-specific OPT RR (EDNS(0)). */
-
 	/*! \brief I/O handlers. */
 	unsigned tu_size;
 	iohandler_t handler[IO_COUNT];

@@ -58,6 +58,10 @@ static void pkt_free_data(knot_pkt_t *pkt)
 
 	/* Reset RR count. */
 	pkt->rrset_count = 0;
+
+	/* Reset special types. */
+	pkt->opt_rr = NULL;
+	pkt->tsig_rr = NULL;
 }
 
 /*! \brief Allocate new wireformat of given length. */
@@ -162,9 +166,6 @@ static void pkt_clear_payload(knot_pkt_t *pkt)
 	pkt->current = KNOT_ANSWER;
 	pkt->sections[pkt->current].rr = pkt->rr;
 	pkt->sections[pkt->current].rrinfo = pkt->rr_info;
-
-	/* Free OPT RR */
-	knot_rrset_free(&pkt->opt_rr, &pkt->mm);
 }
 
 /*! \brief Allocate new packet using memory context. */
@@ -295,15 +296,10 @@ void knot_pkt_free(knot_pkt_t **pkt)
 		(*pkt)->mm.free((*pkt)->wire);
 	}
 
-	/* Free the OPT RR. */
-	knot_rrset_free(&(*pkt)->opt_rr, &(*pkt)->mm);
-
 	dbg_packet("Freeing packet structure\n");
 	(*pkt)->mm.free(*pkt);
 	*pkt = NULL;
 }
-
-/*----------------------------------------------------------------------------*/
 
 int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size)
 {
@@ -321,7 +317,21 @@ int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size)
 	}
 }
 
-/*----------------------------------------------------------------------------*/
+int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size)
+{
+	dbg_packet("%s(%p, %hu)\n", __func__, pkt, size);
+	if (pkt == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (pkt->reserved >= size) {
+		pkt->reserved -= size;
+		return KNOT_EOK;
+	} else {
+		return KNOT_ERANGE;
+	}
+
+}
 
 uint16_t knot_pkt_type(const knot_pkt_t *pkt)
 {
@@ -506,6 +516,11 @@ int knot_pkt_put(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
 				knot_wire_set_tc(pkt->wire);
 		}
 		return ret;
+	}
+
+	/* Keep reference to special types. */
+	if (rr->type == KNOT_RRTYPE_OPT) {
+		pkt->opt_rr = &pkt->rr[pkt->rrset_count];
 	}
 
 	if (rr_added > 0) {

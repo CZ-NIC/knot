@@ -22,7 +22,6 @@
 #include "libknot/edns.h"
 #include "common/descriptor.h"
 
-static const uint16_t E_FLAGS = (uint16_t)1 << 13;
 static const uint16_t E_MAX_PLD = 10000;
 static const uint16_t E_MAX_PLD2 = 20000;
 static const uint8_t E_VERSION = 1;
@@ -265,7 +264,7 @@ static bool test_setters(knot_rrset_t *opt_rr, int *done)
 
 	bool success = true;
 	bool check = check_header(opt_rr, E_MAX_PLD2, E_VERSION2,
-	                          E_FLAGS | KNOT_EDNS_FLAG_DO, E_RCODE2,
+	                          KNOT_EDNS_FLAG_DO, E_RCODE2,
 	                          "OPT RR setters", done);
 	success &= check;
 
@@ -391,23 +390,22 @@ int main(int argc, char *argv[])
 	plan(TEST_COUNT);
 	int done = 0;
 
-	knot_rrset_t *opt_rr = knot_edns_new(E_MAX_PLD, E_RCODE, E_VERSION,
-	                                     E_FLAGS, NULL);
-	ok(opt_rr != NULL, "OPT RR: new");
+	knot_rrset_t opt_rr;
+	int ret = knot_edns_init(&opt_rr, E_MAX_PLD, E_RCODE, E_VERSION, NULL);
+
+	ok(ret == KNOT_EOK, "OPT RR: init");
 	done++;
 
-	bool success;
-
 	/* Check initialized values (no NSID yet). */
-	success = check_header(opt_rr, E_MAX_PLD, E_VERSION, E_FLAGS, E_RCODE,
-	                       "OPT RR: new", &done);
+	bool success = check_header(&opt_rr, E_MAX_PLD, E_VERSION, 0, E_RCODE,
+	                            "OPT RR: check header", &done);
 	if (!success) {
 		skip_block(remaining(done), "OPT RR not initialized properly");
 		goto exit;
 	}
 
 	/* Setters */
-	success = test_setters(opt_rr, &done);
+	success = test_setters(&opt_rr, &done);
 
 	if (!success) {
 		skip_block(remaining(done), "OPT RR: setters error");
@@ -416,17 +414,17 @@ int main(int argc, char *argv[])
 
 	/* Getters
 	   Note: NULL parameters are not supported, so no test for that. */
-	success = test_getters(opt_rr, &done);
+	success = test_getters(&opt_rr, &done);
 
 	if (!success) {
 		skip_block(remaining(done), "OPT RR: getters error");
 		goto exit;
 	}
 
-	(void)test_options(opt_rr, &done);
+	(void)test_options(&opt_rr, &done);
 
 exit:
-	knot_rrset_free(&opt_rr, NULL);
+	knot_rrset_clear(&opt_rr, NULL);
 
 	return 0;
 }

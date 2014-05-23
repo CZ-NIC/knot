@@ -166,6 +166,14 @@ void knot_pkt_free(knot_pkt_t **pkt);
  */
 int knot_pkt_reserve(knot_pkt_t *pkt, uint16_t size);
 
+/*!
+ * \brief Reclaim reserved size.
+ *
+ * \return KNOT_EOK
+ * \return KNOT_ERANGE if size can't be reclaimed
+ */
+int knot_pkt_reclaim(knot_pkt_t *pkt, uint16_t size);
+
 /*! \brief Classify packet according to the question.
  *  \return see enum knot_pkt_type_t
  */

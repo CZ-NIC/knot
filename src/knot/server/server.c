@@ -324,9 +324,6 @@ void server_deinit(server_t *server)
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
 
-	/* Free OPT RR. */
-	knot_rrset_free(&server->opt_rr, NULL);
-
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
 }
@@ -470,28 +467,6 @@ void server_stop(server_t *server)
 	server->state &= ~ServerRunning;
 }
 
-/*! \brief Reconfigure server OPT RR. */
-static int edns_reconfigure(const struct conf_t *conf, server_t *server)
-{
-	dbg_server("%s(%p, %p)\n", __func__, conf, server);
-
-	knot_rrset_t *opt_rr = knot_edns_new(conf->max_udp_payload, 0,
-	                                     KNOT_EDNS_VERSION,
-	                                     KNOT_EDNS_DEFAULT_FLAGS, NULL);
-	if (opt_rr == NULL) {
-		log_server_error("Couldn't initialize EDNS(0), please restart.\n");
-		return KNOT_ENOMEM;
-	}
-
-	knot_rrset_t *opt_old = server->opt_rr;
-	server->opt_rr = opt_rr;
-
-	synchronize_rcu();
-	knot_rrset_free(&opt_old, NULL);
-
-	return KNOT_EOK;
-}
-
 /*! \brief Reconfigure UDP and TCP query processing threads. */
 static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 {
@@ -583,12 +558,6 @@ int server_reconfigure(const struct conf_t *conf, void *data)
 	int ret = KNOT_EOK;
 	if ((ret = reconfigure_rate_limits(conf, server)) < 0) {
 		log_server_error("Failed to reconfigure rate limits.\n");
-		return ret;
-	}
-
-	/* Reconfigure OPT RR. */
-	if ((ret = edns_reconfigure(conf, server)) < 0) {
-		log_server_error("Failed to reconfigure EDNS settings.\n");
 		return ret;
 	}
 
