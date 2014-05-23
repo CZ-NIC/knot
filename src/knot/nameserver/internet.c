@@ -19,6 +19,7 @@
 #include "libknot/common.h"
 #include "libknot/rdata/rdname.h"
 #include "libknot/rdata/soa.h"
+#include "libknot/edns.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
@@ -118,9 +119,10 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 }
 
 /*! \brief DNSSEC both requested & available. */
-static bool have_dnssec(struct query_data *qdata)
+static bool have_dnssec(struct query_data *qdata, knot_pkt_t *response)
 {
 	return pkt_has_dnssec(qdata->query) &&
+	       knot_edns_do(response->opt_rr) &&
 	       zone_contents_is_signed(qdata->zone->contents);
 }
 
@@ -556,7 +558,7 @@ static int solve_answer(int state, knot_pkt_t *pkt, struct query_data *qdata, vo
 
 static int solve_answer_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
-	if (!have_dnssec(qdata)) {
+	if (!have_dnssec(qdata, pkt)) {
 		return state; /* DNSSEC not supported. */
 	}
 
@@ -611,7 +613,7 @@ static int solve_authority(int state, knot_pkt_t *pkt, struct query_data *qdata,
 
 static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
-	if (!have_dnssec(qdata)) {
+	if (!have_dnssec(qdata, pkt)) {
 		return state; /* DNSSEC not supported. */
 	}
 
@@ -686,7 +688,7 @@ static int solve_additional(int state, knot_pkt_t *pkt,
 
 static int solve_additional_dnssec(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
 {
-	if (!have_dnssec(qdata)) {
+	if (!have_dnssec(qdata, pkt)) {
 		return state; /* DNSSEC not supported. */
 	}
 

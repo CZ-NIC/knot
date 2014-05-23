@@ -561,13 +561,9 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 
 	/* Check EDNS version and return BADVERS if not supported.
 	 * Also do not add NSID if the version is not supported.
-	 *
-	 * TODO: DNSSEC is now processed if the query has the DO bit set.
-	 * If it has unsupported version of EDNS, DNSSEC processing probably
-	 * shouldn't occur.
 	 */
-	bool ver_ok = knot_edns_get_version(query->opt_rr)
-	                != knot_edns_get_version(resp->opt_rr);
+	bool ver_ok = (knot_edns_get_version(query->opt_rr)
+	                != knot_edns_get_version(resp->opt_rr));
 	if (ver_ok) {
 		dbg_ns("%s: unsupported EDNS version required.\n", __func__);
 		knot_edns_set_ext_rcode(resp->opt_rr, KNOT_EDNS_RCODE_BADVERS);
