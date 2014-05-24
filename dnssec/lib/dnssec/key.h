@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file key.h
  *
- * DNSSEC keys.
+ * \defgroup key Key
+ *
+ * DNSSEC public and private key manipulation.
+ *
+ * @{
  */
 
 #pragma once
@@ -44,10 +48,11 @@ typedef enum dnssec_key_algorithm {
 	DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384 = 14,
 } dnssec_key_algorithm_t;
 
+struct dnssec_key;
+
 /*!
  * DNSSEC key.
  */
-struct dnssec_key;
 typedef struct dnssec_key dnssec_key_t;
 
 /*!
@@ -231,3 +236,5 @@ typedef enum dnssec_key_digest {
  */
 int dnssec_key_create_ds(const dnssec_key_t *key, dnssec_key_digest_t digest,
 			 dnssec_binary_t *rdata);
+
+/** @} */

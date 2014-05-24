@@ -14,15 +14,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file error.h
  *
- * Library error codes.
+ * \defgroup error Error
+ *
+ * Error codes and error reporting.
+ *
+ * @{
  */
 
 #pragma once
 
 #include <errno.h>
 
+/*!
+ * Convert errno error code to the library internal error code.
+ */
 #define errno2error(errno) (-(100 + (errno)))
 
 /*!
@@ -77,9 +84,11 @@ const char *dnssec_strerror(int error);
 /*!
  * Convert errno value to DNSSEC error code.
  */
-static inline int dnssec_errno_to_error(int ecode)
+inline int dnssec_errno_to_error(int ecode)
 {
 	return errno2error(ecode);
 }
 
 #undef errno2error
+
+/*! @} */

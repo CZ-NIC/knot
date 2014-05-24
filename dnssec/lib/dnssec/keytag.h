@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file keytag.h
+ *
+ * \defgroup keytag Key tag
  *
  * Low-level key tag computation API.
+ *
+ * @{
  */
 
 #pragma once
@@ -33,3 +37,7 @@
  * \return Error code, DNSSEC_EOK of successful.
  */
 int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag);
+
+/*!
+ * @}
+ */

@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file kasp.h
+ *
+ * \defgroup kasp KASP
  *
  * Key and Signature Policy access.
+ *
+ * @{
  */
 
 #pragma once
@@ -24,10 +28,11 @@
 #include <dnssec/key.h>
 #include <time.h>
 
+struct dnssec_kasp;
+
 /*!
  * KASP store.
  */
-struct dnssec_kasp;
 typedef struct dnssec_kasp dnssec_kasp_t;
 
 /*!
@@ -35,8 +40,8 @@ typedef struct dnssec_kasp dnssec_kasp_t;
  *
  * This KASP provider stores the state in YAML files in a directory.
  *
- * \param[in]  path   Path to the KASP storage.
- * \param[out] store  Pointer to KASP store instance.
+ * \param[in]  path  Path to the KASP storage.
+ * \param[out] kasp  Pointer to KASP store instance.
  *
  * \return Error code, DNSSEC_EOK if successful.
  */
@@ -45,14 +50,15 @@ int dnssec_kasp_open_dir(const char *path, dnssec_kasp_t **kasp);
 /*!
  * Close KASP store.
  *
- * \param store  KASP store to be closed.
+ * \param kasp  KASP store to be closed.
  */
 void dnssec_kasp_close(dnssec_kasp_t *kasp);
+
+struct dnssec_kasp_zone;
 
 /*!
  * Zone state structure in the KASP.
  */
-struct dnssec_kasp_zone;
 typedef struct dnssec_kasp_zone dnssec_kasp_zone_t;
 
 /*!
@@ -91,16 +97,18 @@ int dnssec_kasp_load_zone(dnssec_kasp_t *kasp, const char *zone_name,
  */
 int dnssec_kasp_save_zone(dnssec_kasp_t *kasp, dnssec_kasp_zone_t *zone);
 
+struct dnssec_kasp_policy;
+
 /*!
  * Key and signature policy.
  */
-struct dnssec_kasp_policy;
 typedef struct dnssec_kasp_policy dnssec_kasp_policy_t;
+
+struct dnssec_kasp_event;
 
 /*!
  * External signing policy event.
  */
-struct dnssec_kasp_event;
 typedef struct dnssec_kasp_event dnssec_kasp_event_t;
 
 /*!
@@ -121,10 +129,11 @@ typedef struct dnssec_kasp_key {
 	dnssec_kasp_key_timing_t timing;	/*!< Key timing information. */
 } dnssec_kasp_key_t;
 
+struct dnssec_kasp_keyset;
+
 /*!
  * A set of zone keys.
  */
-struct dnssec_kasp_keyset;
 typedef struct dnssec_kasp_keyset dnssec_kasp_keyset_t;
 
 /*!
@@ -173,3 +182,5 @@ void dnssec_kasp_keyset_empty(dnssec_kasp_keyset_t *keys);
  * Get the set of keys associated with the zone.
  */
 dnssec_kasp_keyset_t *dnssec_kasp_zone_get_keys(dnssec_kasp_zone_t *zone);
+
+/*! @} */

@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file nsec.h
  *
- * NSEC3 bitmap and hash computation API.
+ * \defgroup nsec NSEC
+ *
+ * NSEC bitmap and NSEC3 hash computation API.
+ *
+ * @{
  */
 
 #pragma once
@@ -40,10 +44,10 @@ typedef enum dnssec_nsec_algorithm {
  * \todo Disclose this and add setters?
  */
 typedef struct dnssec_nsec3_params {
-	dnssec_nsec3_algorithm_t algorithm;
-	uint8_t flags;
-	uint16_t iterations;
-	dnssec_binary_t salt;
+	dnssec_nsec3_algorithm_t algorithm; /*!< NSEC3 algorithm. */
+	uint8_t flags;                      /*!< NSEC3 flags. */
+	uint16_t iterations;                /*!< NSEC3 iterations count. */
+	dnssec_binary_t salt;               /*!< NSEC3 salt. */
 } dnssec_nsec3_params_t;
 
 /*!
@@ -86,10 +90,11 @@ int dnssec_nsec3_hash(const dnssec_binary_t *data,
  */
 size_t dnssec_nsec3_hash_length(dnssec_nsec3_algorithm_t algorithm);
 
+struct dnssec_nsec_bitmap;
+
 /*!
  * Context for encoding of RR types bitmap used in NSEC/NSEC3.
  */
-struct dnssec_nsec_bitmap;
 typedef struct dnssec_nsec_bitmap dnssec_nsec_bitmap_t;
 
 /*!
@@ -121,3 +126,5 @@ size_t dnssec_nsec_bitmap_size(const dnssec_nsec_bitmap_t *bitmap);
  * Write encoded bitmap into the given buffer.
  */
 void dnssec_nsec_bitmap_write(const dnssec_nsec_bitmap_t *bitmap, uint8_t *output);
+
+/*! @} */

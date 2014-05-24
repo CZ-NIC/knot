@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file keystore.h
  *
- * Private key store.
+ * \defgroup keystore Key store
+ *
+ * Private key store access.
+ *
+ * @{
  */
 
 #pragma once
@@ -24,19 +28,48 @@
 #include <dnssec/binary.h>
 #include <dnssec/key.h>
 
+struct dnssec_keystore;
+
 /*!
  * DNSSEC private keys store.
  */
-struct dnssec_keystore;
 typedef struct dnssec_keystore dnssec_keystore_t;
 
 /*!
  * PKCS #8 key store callback functions for custom providers.
  */
 typedef struct dnssec_keystore_pkcs8_functions {
+	/*!
+	 * Callback to open the key store.
+	 *
+	 * \param[out] handle_ptr  Allocated key store handle.
+	 * \param[in]  config      Configuration string.
+	 */
 	int (*open)(void **handle_ptr, const char *config);
+
+	/*!
+	 * Callback to close the key store.
+	 *
+	 * \param handle  Key store handle.
+	 */
 	int (*close)(void *handle);
+
+	/*!
+	 * Callback to read a PEM key.
+	 *
+	 * \param[in]  handle  Key store handle.
+	 * \param[in]  id      Key ID of the key to be retrieved (ASCII form).
+	 * \param[out] pem     Key material in uncencrypted PEM format.
+	 */
 	int (*read)(void *handle, const char *id, dnssec_binary_t *pem);
+
+	/*!
+	 * Callback to write a PEM key.
+	 *
+	 * \param handle  Key store handle.
+	 * \param id      Key ID of the key to be saved (ASCII form).
+	 * \param pem     Key material in unencrypted PEM format.
+	 */
 	int (*write)(void *handle, const char *id, const dnssec_binary_t *pem);
 } dnssec_keystore_pkcs8_functions_t;
 
@@ -144,3 +177,5 @@ int dnssec_key_import_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore,
  * \param keystore  Private key store.
  */
 int dnssec_key_import_private_keystore(dnssec_key_t *key, dnssec_keystore_t *keystore);
+
+/*! @} */

@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file sign.h
+ *
+ * \defgroup sign Sign
  *
  * DNSSEC signing API.
+ *
+ * @{
  */
 
 #pragma once
@@ -27,10 +31,11 @@
 #include <dnssec/binary.h>
 #include <dnssec/key.h>
 
+struct dnssec_sign_ctx;
+
 /*!
  * DNSSEC signing context.
  */
-struct dnssec_sign_ctx;
 typedef struct dnssec_sign_ctx dnssec_sign_ctx_t;
 
 /*!
@@ -92,3 +97,5 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_binary_t *signature);
  * \retval DNSSEC_INVALID_SIGNATURE  Validation successful, invalid signature.
  */
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *signature);
+
+/** @} */

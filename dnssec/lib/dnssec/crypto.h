@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file crypto.h
+ *
+ * \defgroup crypto Crypto
  *
  * Cryptographic backend initialization.
+ *
+ * @{
  */
 
 #pragma once
@@ -39,3 +43,5 @@ void dnssec_crypto_reinit(void);
  * Should be called when terminating the application.
  */
 void dnssec_crypto_cleanup(void);
+
+/*! @} */

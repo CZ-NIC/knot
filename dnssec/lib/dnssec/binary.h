@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file binary.h
+ *
+ * \defgroup binary Binary
  *
  * Binary data container.
+ *
+ * @{
  */
 
 #pragma once
@@ -28,10 +32,10 @@
  * Universal structure to hold binary data.
  */
 typedef struct dnssec_binary {
-	size_t size;
+	size_t size;				/*!< Size of the binary data. */
 	union {
-		uint8_t *data;
-		const uint8_t *const_data;
+		uint8_t *data;			/*!< Stored non-const data. */
+		const uint8_t *const_data;	/*!< Stored const data. */
 	};
 } dnssec_binary_t;
 
@@ -106,3 +110,5 @@ void dnssec_binary_ltrim(dnssec_binary_t *binary);
  */
 int dnssec_binary_from_base64(const dnssec_binary_t *base64,
 			      dnssec_binary_t *binary);
+
+/*! @} */

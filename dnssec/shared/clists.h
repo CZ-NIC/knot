@@ -266,7 +266,7 @@ static inline int clist_is_linked(cnode_t *n)
 }
 
 /*!
- * \brief Generic pointer list implementation.
+ * Generic pointer list implementation.
  */
 typedef struct cptrnode {
 	cnode_t n;

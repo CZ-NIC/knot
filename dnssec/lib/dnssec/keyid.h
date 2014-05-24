@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file keyid.h
  *
- * DNSSEC key ID functions.
+ * \defgroup keyid Key ID
+ *
+ * DNSSEC key ID manipulation.
+ *
+ * @{
  */
 
 #pragma once
@@ -24,7 +28,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/*!
+ * Length of the key ID in presentation form (ASCII).
+ */
 #define DNSSEC_KEYID_SIZE 40
+
+/*!
+ * Length of the key ID in internal form (binary).
+ */
 #define DNSSEC_KEYID_BINARY_SIZE 20
 
 /*!
@@ -46,3 +57,5 @@ char *dnssec_keyid_copy(const char *id);
  * Check if two key IDs are equal.
  */
 bool dnssec_keyid_equal(const char *one, const char *two);
+
+/*! @} */

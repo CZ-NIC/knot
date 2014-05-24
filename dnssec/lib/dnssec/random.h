@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file random.h
+ *
+ * \defgroup random Random
  *
  * Pseudo-random number generating API.
+ *
+ * @{
  */
 
 #pragma once
@@ -44,14 +48,28 @@ int dnssec_random_buffer(uint8_t *data, size_t size);
 int dnssec_random_binary(dnssec_binary_t *data);
 
 /*!
- * \brief Declare function dnssec_random_<type>().
+ * Declare function dnssec_random_<type>().
  */
 #define dnssec_register_random_type(type) \
-	static inline type dnssec_random_##type(void) { \
+	inline type dnssec_random_##type(void) { \
 		type value; \
 		dnssec_random_buffer((uint8_t *)&value, sizeof(value)); \
 		return value; \
 	}
 
+/*!
+ * Generate pseudo-random 16-bit number.
+ */
+inline uint16_t dnssec_random_uint16_t(void);
+
+/*!
+ * Generate pseudo-random 32-bit number.
+ */
+inline uint32_t dnssec_random_uint32_t(void);
+
+/*! \cond */
 dnssec_register_random_type(uint16_t);
 dnssec_register_random_type(uint32_t);
+/*! \endcond */
+
+/*! @} */

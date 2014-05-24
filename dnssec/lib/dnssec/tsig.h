@@ -14,9 +14,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file
+ * \file tsig.h
+ *
+ * \defgroup tsig TSIG
  *
  * Low-level TSIG signing API.
+ *
+ * @{
  */
 
 #pragma once
@@ -78,10 +82,11 @@ dnssec_tsig_algorithm_t dnssec_tsig_algorithm_from_name(const char *name);
  */
 const char *dnssec_tsig_algorithm_to_name(dnssec_tsig_algorithm_t algorithm);
 
+struct dnssec_tsig_ctx;
+
 /*!
  * TSIG signing context.
  */
-struct dnssec_tsig_ctx;
 typedef struct dnssec_tsig_ctx dnssec_tsig_ctx_t;
 
 /*!
@@ -140,3 +145,5 @@ size_t dnssec_tsig_algorithm_size(dnssec_tsig_algorithm_t algorithm);
  * \return Error code, DNSSEC_EOK if successful.
  */
 int dnssec_tsig_write(dnssec_tsig_ctx_t *ctx, uint8_t *mac);
+
+/*! @} */

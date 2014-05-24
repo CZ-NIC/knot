@@ -75,7 +75,7 @@ void dnssec_nsec_bitmap_free(dnssec_nsec_bitmap_t *bitmap)
 }
 
 /*!
- * \brief Add one RR type into the bitmap.
+ * Add one RR type into the bitmap.
  */
 _public_
 void dnssec_nsec_bitmap_add(dnssec_nsec_bitmap_t *bitmap, uint16_t type)
