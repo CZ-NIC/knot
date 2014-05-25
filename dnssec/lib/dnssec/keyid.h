@@ -14,11 +14,32 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file keyid.h
+ * \file
+ *
+ * DNSSEC key ID manipulation.
  *
  * \defgroup keyid Key ID
  *
  * DNSSEC key ID manipulation.
+ *
+ * The module contains auxiliary functions for manipulation with key IDs.
+ *
+ * Example:
+ *
+ * ~~~~~ {.c}
+ *
+ * char *key_id = "ef26672cafede0732dd18fba6488fa390b5589af";
+ * assert(dnssec_keyid_is_valid(key_id));
+ *
+ * char copy[DNSSEC_KEY_ID_SIZE + 1] = { 0 };
+ * memcpy(copy, key_id, sizeof(copy));
+ * for (int i = 0; i < DNSSEC_KEY_ID_SIZE; i++) {
+ *     copy[i] = toupper(copy[i]);
+ * }
+ *
+ * assert(dnssec_keyid_equal(key_id, copy));
+ *
+ * ~~~~~
  *
  * @{
  */

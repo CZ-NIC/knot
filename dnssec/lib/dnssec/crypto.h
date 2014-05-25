@@ -14,11 +14,40 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file crypto.h
+ * \file
+ *
+ * Cryptographic backend initialization.
  *
  * \defgroup crypto Crypto
  *
  * Cryptographic backend initialization.
+ *
+ * For most cryptographic operations, the library requires global
+ * initialization. Also, if the application creates a subprocess, the
+ * library has to be reinitialized in the child process after \c fork().
+ *
+ * ~~~~~ {.c}
+ * int main(void)
+ * {
+ *     int exit_code = 0;
+ *
+ *     dnssec_crypto_init();
+ *
+ *     pid_t child_pid = fork();
+ *     if (child_pid < 0) {
+ *         perror("fork");
+ *         exit_code = 1;
+ *     } else if (child_pid == 0) {
+ *         dnssec_crypto_reinit();
+ *         exit_code = child();
+ *     } else {
+ *         exit_code = parent();
+ *     }
+ *
+ *     dnssec_crypto_cleanup();
+ *     return exit_code;
+ * }
+ * ~~~~~
  *
  * @{
  */

@@ -14,11 +14,59 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file key.h
+ * \file
+ *
+ * DNSSEC public and private key manipulation.
  *
  * \defgroup key Key
  *
  * DNSSEC public and private key manipulation.
+ *
+ * The \ref dnssec_key_t is an abstraction for a DNSSEC key pair. If the key
+ * key is initialized with a public key data only, it can be used only for
+ * signature verification. In order to use the key for signing, private key
+ * has to be loaded. If only a private key is loaded into the structure,
+ * the public key is automatically constructed.
+ *
+ * The module interface provides various functions to retrieve information
+ * about the key. But the key is mostly used by other modules of the library.
+ *
+ * The following example shows construction of a key from DNSKEY RDATA:
+ *
+ * ~~~~~ {.c}
+ *
+ * dnssec_binary_t rdata = // ...;
+ *
+ * int result;
+ * dnssec_key_t *key = NULL;
+ *
+ * // create new DNSSEC key
+ * result = dnssec_key_new(&key);
+ * if (result != DNSSEC_EOK) {
+ *     return result;
+ * }
+ *
+ * // load the DNSKEY RDATA
+ * result = dnssec_key_set_rdata(key, &rdata);
+ * if (result != DNSSEC_EOK) {
+ *     dnssec_key_free(key);
+ *     return result;
+ * }
+ *
+ * // print key ID and key tag.
+ * printf("key %s (%s)\n", dnssec_key_get_id(key),
+ *                         dnssec_key_get_keytag(key));
+ *
+ * // make sure what we can do with the key
+ * assert(dnssec_key_can_verify(key) == true);
+ * assert(dnssec_key_can_sign(key) == false);
+ *
+ * // ...
+ *
+ * // cleanup
+ * dnssec_key_free(key);
+ *
+ * ~~~~~
  *
  * @{
  */

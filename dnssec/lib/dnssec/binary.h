@@ -14,11 +14,34 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file binary.h
+ * \file
+ *
+ * Universal binary data container.
  *
  * \defgroup binary Binary
  *
- * Binary data container.
+ * Universal binary data container.
+ *
+ * The module provides universal binary data container extensively used by
+ * a lot of functions provided by the library.
+ *
+ * Example of use:
+ * ~~~~~ {.c}
+ *
+ * dnssec_binary_t data = { 0 };
+ *
+ * int result = dnssec_binary_alloc(&data, 32);
+ * if (result != DNSSEC_EOK) {
+ *     return result;
+ * }
+ *
+ * memcpy(&data.data, buffer, data.size);
+ *
+ * // ...
+ *
+ * dnssec_binary_free(&data);
+ *
+ * ~~~~~
  *
  * @{
  */

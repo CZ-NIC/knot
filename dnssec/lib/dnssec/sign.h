@@ -14,11 +14,49 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file sign.h
+ * \file
+ *
+ * DNSSEC signing API.
  *
  * \defgroup sign Sign
  *
  * DNSSEC signing API.
+ *
+ * The module provides the low level DNSSEC signing and verification.
+ *
+ * Example of signature validation:
+ *
+ * ~~~~~ {.c}
+ *
+ * dnssec_key_t *dnskey = // ... ;
+ * dnssec_binary_t *rrsig_header = // ... ;
+ * dnssec_binary_t *covered_rdata = // ... ;
+ * dnssec_binary_t *signature = // ... ;
+ *
+ * int result;
+ * dnssec_sign_ctx_t *ctx = NULL;
+ *
+ * result = dnssec_sign_new(&ctx, dnskey);
+ * if (result != DNSSEC_EOK) {
+ *     return result;
+ * }
+ *
+ * dnssec_sign_add(ctx, rrsig_header);
+ * dnssec_sign_add(ctx, covered_rdata);
+ *
+ * result = dnssec_sign_verify(ctx, signature);
+ * if (result == DNSSEC_EOK) {
+ *     // valid signature
+ * } else if (result == DNSSEC_INVALID_SIGNATURE) {
+ *     // invalid signature
+ * } else {
+ *     // error
+ * }
+ *
+ * dnssec_sign_free(ctx);
+ *
+ * ~~~~~
+ *
  *
  * @{
  */

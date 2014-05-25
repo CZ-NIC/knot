@@ -14,11 +14,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file random.h
+ * \file
+ *
+ * Pseudo-random number generating API.
  *
  * \defgroup random Random
  *
  * Pseudo-random number generating API.
+ *
+ * The module provides generating of pseudo-random numbers and buffers.
+ *
+ * Example:
+ *
+ * ~~~
+ *
+ * uint16_t transaction_id = dnssec_random_uint16_t();
+ *
+ * ~~~
  *
  * @{
  */

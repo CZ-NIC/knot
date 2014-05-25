@@ -14,11 +14,33 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file keytag.h
+ * \file
+ *
+ * Low-level key tag computation API.
  *
  * \defgroup keytag Key tag
  *
  * Low-level key tag computation API.
+ *
+ * The module provides simple interface for DNSKEY key id computation.
+ *
+ * Example:
+ *
+ * ~~~~~ {.c}
+ *
+ * dnssec_binary_t dnskey_rdata = // ... ;
+ *
+ * int result;
+ * uint16_t keytag = 0;
+ *
+ * result = dnssec_keytag(&dnskey_rdata, &keytag);
+ * if (result != DNSSEC_EOK) {
+ *     return result;
+ * }
+ *
+ * printf("keytag: %s\n", keytag);
+ *
+ * ~~~~~
  *
  * @{
  */

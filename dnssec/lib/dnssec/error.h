@@ -14,11 +14,26 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file error.h
+ * \file
+ *
+ * Error codes and error reporting.
  *
  * \defgroup error Error
  *
  * Error codes and error reporting.
+ *
+ * The module defines all error codes used in the library, and functions
+ * to convert the error codes to sensible error strings.
+ *
+ * ~~~~~ {.c}
+ * int result;
+ *
+ * result = dnssec_key_set_pubkey(NULL, NULL);
+ * assert(result == DNSSEC_EINVAL);
+ *
+ * fprintf(stderr, "Error: %s.\n", dnssec_strerror(result));
+ * // Error: Invalid argument.
+ * ~~~~~
  *
  * @{
  */
@@ -27,10 +42,9 @@
 
 #include <errno.h>
 
-/*!
- * Convert errno error code to the library internal error code.
- */
+/*! \cond */
 #define errno2error(errno) (-(100 + (errno)))
+/*! \endcond */
 
 /*!
  * Library error codes.

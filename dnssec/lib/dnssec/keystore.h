@@ -14,12 +14,71 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file keystore.h
+ * \file
+ *
+ * Private key store access.
  *
  * \defgroup keystore Key store
  *
  * Private key store access.
  *
+ * The module provides abstraction for private key store. Basically, PKCS #8
+ * and PKCS #11 interfaces are supported.
+ *
+ * PKCS #8 uses unencrypted PEM, and allows implementation of custom stores.
+ *
+ * PKCS #11 allows to access Hardware Security Modules.
+ *
+ * Example of using default PKCS #8 and to generate an RSA key:
+ *
+ * ~~~~~ {.c}
+ *
+ * int result;
+ * dnssec_keystore_t *store = NULL;
+ *
+ * // open the default PKCS #8 key store
+ * result = dnssec_keystore_create_pkcs8_dir(&store, "/path/to/keydb");
+ * if (result != DNSSEC_EOK) {
+ *     return result;
+ * }
+ *
+ * // generate new private key in the key store
+ * int algorithm = DNSSEC_KEY_ALGORITHM_RSA_SHA256;
+ * unsigned bits = 2048;
+ * char *id = NULL;
+ * int dnssec_keystore_generate_key(store, algorithm, bits, &key_id);
+ * if (result != DNSSEC_EOK) {
+ *     dnssec_keystore_close(store);
+ *     return result;
+ * }
+ * printf("ID of the new key: %s\n", key_id);
+ *
+ * // create new signing key
+ * dnssec_key_t *key = NULL;
+ * result = dnssec_key_new(&key);
+ * if (result != DNSSEC_EOK) {
+ *     free(key_id);
+ *     dnssec_keystore_close(store);
+ *     return result;
+ * }
+ *
+ * // import the key from the key store
+ * result = dnssec_key_import_keystore(key, store, key_id, algorithm);
+ * if (result != DNSSEC_EOK) {
+ *     free(key_id);
+ *     dnssec_key_free(key);
+ *     dnssec_keystore_close(store);
+ *     return result;
+ * }
+ *
+ * // use the key for signing ...
+ *
+ * // cleanup
+ * free(key_id);
+ * dnssec_key_free(key);
+ * dnssec_keystore_close(store);
+ *
+ * ~~~~~
  * @{
  */
 

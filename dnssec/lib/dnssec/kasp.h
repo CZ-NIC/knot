@@ -14,11 +14,65 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 /*!
- * \file kasp.h
+ * \file
+ *
+ * Key and Signature Policy access.
  *
  * \defgroup kasp KASP
  *
  * Key and Signature Policy access.
+ *
+ * The module provides access to Key and Signature Policy (KASP), which
+ * keeps a signing state of a zone, zone signing policies, a reference
+ * to key stores.
+ *
+ * The functionality of the module is incomplete.
+ *
+ * Example use:
+ *
+ * ~~~~~ {.c}
+ *
+ * int result;
+ * dnssec_kasp_t *kasp = NULL;
+ * dnssec_kasp_zone_t *zone = NULL;
+ * dnssec_kasp_keyset_t *keyset = NULL;
+ *
+ * // open KASP
+ * result = dnssec_kasp_open_dir("keydir", &kasp);
+ * if (result != DNSSEC_EOK) {
+ *     return result;
+ * }
+ *
+ * // get zone state of 'example.com.'
+ * result = dnssec_kasp_load_zone(kasp, "example.com", &zone);
+ * if (result != DNSSEC_EOK) {
+ *     dnssec_kasp_close(kasp);
+ *     return result;
+ * }
+ *
+ * // retrieve zone keys
+ * keys = dnssec_kasp_zone_get_keys(zone);
+ * if (keys == NULL) {
+ *     dnssec_kasp_zone_free(zone);
+ *     dnssec_kasp_close(kasp);
+ *     return KNOT_ENOMEM;
+ * }
+ *
+ * // list key IDs and it they are active
+ * time_t now = time(NULL);
+ * for (size_t i = 0; i < dnssec_kasp_keyset_count(keys); i++) {
+ *     dnssec_kasp_key_t *key = dnssec_kasp_keyset_at(keys, i);
+ *     bool active = key->timing.active <= now && now < key->timing.retire;
+ *     printf("key %s is %s\n", dnssec_key_get_id(key->key),
+ *                              active ? "active" : "inactive");
+ * }
+ *
+ * // cleanup
+ * dnssec_kasp_keyset_free(keys);
+ * dnssec_kasp_zone_free(zone);
+ * dnssec_kasp_close(kasp);
+ *
+ * ~~~~~
  *
  * @{
  */
