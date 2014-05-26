@@ -460,14 +460,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
-		// Alloc data for empty RR.
-		uint8_t *empty_rdata = malloc(1);
-		if (empty_rdata == NULL) {
-			return KNOT_ENOMEM;
-		}
-		int ret = knot_rrset_add_rdata(rrset, empty_rdata, 0, ttl, mm);
-		free(empty_rdata);
-		return ret;
+		return knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm);
 	}
 
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
