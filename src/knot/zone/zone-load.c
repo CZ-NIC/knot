@@ -120,7 +120,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config)
 	return ret;
 }
 
-int zone_load_post(zone_contents_t *contents, zone_t *zone)
+int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_refresh)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -140,7 +140,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone)
 		ret = knot_dnssec_zone_sign(contents, conf,
 		                            changesets_get_last(dnssec_change),
 		                            KNOT_SOA_SERIAL_UPDATE,
-		                            &zone->dnssec_refresh);
+		                            dnssec_refresh);
 		if (ret != KNOT_EOK) {
 			changesets_free(&dnssec_change, NULL);
 			return ret;

@@ -50,7 +50,7 @@ typedef struct remote_cmdargs_t {
 typedef int (*remote_cmdf_t)(server_t*, remote_cmdargs_t*);
 
 /*! \brief Callback prototype for per-zone operations. */
-typedef int (remote_zonef_t)(server_t*, zone_t *);
+typedef int (remote_zonef_t)(zone_t *);
 
 /*! \brief Remote command table item. */
 typedef struct remote_cmd_t {
@@ -103,7 +103,7 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 			const knot_dname_t *dn = knot_ns_name(&rr->rrs, i);
 			rcu_read_lock();
 			zone = knot_zonedb_find(s->zone_db, dn);
-			if (cb(s, zone) != KNOT_EOK) {
+			if (cb(zone) != KNOT_EOK) {
 				a->rc = KNOT_RCODE_SERVFAIL;
 			}
 			rcu_read_unlock();
@@ -114,9 +114,9 @@ static int remote_rdata_apply(server_t *s, remote_cmdargs_t* a, remote_zonef_t *
 }
 
 /*! \brief Zone refresh callback. */
-static int remote_zone_refresh(server_t *server, zone_t *zone)
+static int remote_zone_refresh(zone_t *zone)
 {
-	if (!server || !zone) {
+	if (zone_master(zone) == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -125,9 +125,9 @@ static int remote_zone_refresh(server_t *server, zone_t *zone)
 }
 
 /*! \brief Zone flush callback. */
-static int remote_zone_flush(server_t *server, zone_t *zone)
+static int remote_zone_flush(zone_t *zone)
 {
-	if (!server || !zone) {
+	if (zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -136,23 +136,16 @@ static int remote_zone_flush(server_t *server, zone_t *zone)
 }
 
 /*! \brief Sign zone callback. */
-static int remote_zone_sign(server_t *server, zone_t *zone)
+static int remote_zone_sign(zone_t *zone)
 {
-	if (!server || !zone) {
+	if (zone == NULL || !zone->conf->dnssec_enable) {
 		return KNOT_EINVAL;
 	}
 
-	char *zone_name = knot_dname_to_str(zone->name);
-	log_server_info("Requested zone resign for '%s'.\n", zone_name);
-	free(zone_name);
 
-	if (zone->conf->dnssec_enable) {
-		zone->flags |= ZONE_FORCE_RESIGN;
-		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
-		return KNOT_EOK;
-	}
-
-	return KNOT_EINVAL;
+	zone->flags |= ZONE_FORCE_RESIGN;
+	zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+	return KNOT_EOK;
 }
 
 /*!
@@ -190,31 +183,25 @@ static int remote_c_status(server_t *s, remote_cmdargs_t* a)
 {
 	UNUSED(s);
 	UNUSED(a);
-	/*! \todo #2035 Add some TXT RRs with stats. */
 	dbg_server("remote: %s\n", __func__);
 	return KNOT_EOK;
 }
 
 static char *dnssec_info(const zone_t *zone, char *buf, size_t buf_size)
 {
-	return NULL;
-
-	/*
-
-	assert(zone && zone->dnssec.timer);
+	assert(zone);
 	assert(buf);
 
-	time_t diff_time = zone->dnssec.timer->tv.tv_sec;
-	struct tm *t = localtime(&diff_time);
+	time_t refresh_at = zone_events_get_time(zone, ZONE_EVENT_DNSSEC);
+	struct tm time_gm = { 0 };
 
-	size_t written = strftime(buf, buf_size, "%c", t);
+	gmtime_r(&refresh_at, &time_gm);
+	size_t written = strftime(buf, buf_size, KNOT_LOG_TIME_FORMAT, &time_gm);
 	if (written == 0) {
 		return NULL;
 	}
 
 	return buf;
-
-	*/
 }
 
 /*!
@@ -247,46 +234,25 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			serial = knot_soa_serial(soa_rrs);
 		}
 
-		/* Evalute zone type. */
-		const char *state = NULL;
-		if (serial == 0)  {
-			state = "bootstrap";
-		} else if (zone_master(zone) != NULL) {
-			state = "xfer";
-		}
-
-		/* Evaluate zone state. */
-		char *when = NULL;
-		if (false) {
-// TODO!
-#if 0
-		if (zone->xfr_in.state == XFR_PENDING) {
-			when = strdup("pending");
-		} else if (zone->xfr_in.timer && zone->xfr_in.timer->tv.tv_sec != 0) {
-			struct timeval now, dif;
-			gettimeofday(&now, 0);
-			timersub(&zone->xfr_in.timer->tv, &now, &dif);
-			when = malloc(64);
-			if (when == NULL) {
-				ret = KNOT_ENOMEM;
-				break;
-			}
-			/*! Workaround until proper zone fetching API and locking
-			 *  is implemented (ref #31)
-			 */
-			if (dif.tv_sec < 0) {
-				memcpy(when, "busy", 5);
-			} else if (snprintf(when, 64, "in %uh%um%us",
-			                    (unsigned int)dif.tv_sec / 3600,
-			                    (unsigned int)(dif.tv_sec % 3600) / 60,
-			                    (unsigned int)dif.tv_sec % 60) < 0) {
-				free(when);
+		/* Fetch next zone event. */
+		char when[128] = { '\0' };
+		zone_event_type_t next_type = ZONE_EVENT_INVALID;
+		const char *next_name = "";
+		time_t next_time = zone_events_get_next(zone, &next_type);
+		if (next_type != ZONE_EVENT_INVALID) {
+			next_name = zone_events_get_name(next_type);
+			next_time = next_time - time(NULL);
+			if (next_time < 0) {
+				memcpy(when, "pending", 5);
+			} else if (snprintf(when, sizeof(when), "in %ldh%ldm%lds",
+			                    (next_time / 3600),
+			                    (next_time % 3600) / 60,
+			                    (next_time % 60)) < 0) {
 				ret = KNOT_ESPACE;
 				break;
 			}
-#endif
 		} else {
-			when = strdup("idle");
+			memcpy(when, "idle", strlen("idle"));
 		}
 
 		/* Workaround, some platforms ignore 'size' with snprintf() */
@@ -297,11 +263,10 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 		                 zone->conf->name,
 		                 zone_master(zone) ? "slave" : "master",
 		                 serial,
-		                 state ? state : "",
-		                 when ? when : "",
-		                 zone->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "",
+		                 next_name,
+		                 when,
+		                 zone->conf->dnssec_enable ? "automatic DNSSEC, resigning at:" : "DNSSEC signing disabled",
 		                 zone->conf->dnssec_enable ? dnssec_info(zone, dnssec_buf, sizeof(dnssec_buf)) : "");
-		free(when);
 		if (n < 0 || (size_t)n > rb) {
 			*dst = '\0';
 			ret = KNOT_ESPACE;
@@ -335,8 +300,7 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 	dbg_server("remote: %s\n", __func__);
 	if (a->argc == 0) {
 		dbg_server_verb("remote: refreshing all zones\n");
-		knot_zonedb_foreach(s->zone_db, zone_events_schedule,
-		                    ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+		knot_zonedb_foreach(s->zone_db, remote_zone_refresh);
 		return KNOT_EOK;
 	}
 
@@ -362,7 +326,7 @@ static int remote_c_flush(server_t *s, remote_cmdargs_t* a)
 		knot_zonedb_iter_t it;
 		knot_zonedb_iter_begin(s->zone_db, &it);
 		while(!knot_zonedb_iter_finished(&it)) {
-			ret = remote_zone_flush(s, knot_zonedb_iter_val(&it));
+			ret = remote_zone_flush(knot_zonedb_iter_val(&it));
 			knot_zonedb_iter_next(&it);
 		}
 		rcu_read_unlock();

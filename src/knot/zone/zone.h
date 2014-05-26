@@ -69,7 +69,6 @@ typedef struct zone_t
 	/*! \brief Zone events. */
 	zone_events_t events;     /*!< Zone events timers. */
 	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-	uint32_t dnssec_refresh;  /*!< Next DNSSEC resign event. */
 	time_t zonefile_mtime;
 	uint32_t zonefile_serial;
 

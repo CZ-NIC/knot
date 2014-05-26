@@ -54,7 +54,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config);
  * \param zone
  * \return KNOT_EOK or an error
  */
-int zone_load_post(zone_contents_t *contents, zone_t *zone);
+int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_refresh);
 
 /*!
  * \brief Check if zone can be bootstrapped.
