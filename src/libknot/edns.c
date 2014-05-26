@@ -190,24 +190,28 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
  * \param opt_code  Code of the OPTION to find.
  * \param[out] pos  Position of the OPTION or NULL if not found.
  */
-static void find_option(knot_rdata_t *rdata, uint16_t opt_code, uint8_t **pos)
+static uint8_t *find_option(knot_rdata_t *rdata, uint16_t opt_code)
 {
+	assert(rdata != NULL);
+
 	uint8_t *data = knot_rdata_data(rdata);
 	uint16_t rdlength = knot_rdata_rdlen(rdata);
 
-	*pos = NULL;
+	uint8_t *pos = NULL;
 
 	int i = 0;
 	while (i + KNOT_EDNS_OPTION_HDRLEN <= rdlength) {
 		uint16_t code = knot_wire_read_u16(data + i);
 		if (opt_code == code) {
-			*pos = data + i;
-			return;
+			pos = data + i;
+			break;
 		}
 		uint16_t opt_len = knot_wire_read_u16(data + i
 		                                      + sizeof(uint16_t));
 		i += (KNOT_EDNS_OPTION_HDRLEN + opt_len);
 	}
+
+	return pos;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -260,8 +264,7 @@ bool knot_edns_has_option(const knot_rrset_t *opt_rr, uint16_t code)
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
 	assert(rdata != NULL);
 
-	uint8_t *pos = NULL;
-	find_option(rdata, code, &pos);
+	uint8_t *pos = find_option(rdata, code);
 
 	return pos != NULL;
 }
@@ -277,6 +280,10 @@ bool knot_edns_has_nsid(const knot_rrset_t *opt_rr)
 
 bool knot_edns_check_record(knot_rrset_t *opt_rr)
 {
+	if (opt_rr->rrs.rr_count != 1) {
+		return false;
+	}
+
 	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
 	if (rdata == NULL) {
 		return false;

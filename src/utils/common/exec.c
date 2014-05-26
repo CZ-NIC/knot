@@ -200,7 +200,7 @@ static void print_section_opt(const knot_rrset_t *rr)
 	uint8_t *data = knot_rdata_data(rdata);
 	int pos = 0;
 
-	while (pos < data_len - 4) {
+	while (pos < data_len - KNOT_EDNS_OPTION_HDRLEN) {
 		uint16_t opt_code = knot_wire_read_u16(data + pos);
 		uint16_t opt_len = knot_wire_read_u16(data + pos + 2);
 		uint8_t *opt_data = data + pos + 4;

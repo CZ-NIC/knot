@@ -54,19 +54,17 @@ enum knot_edns_const {
 	KNOT_EDNS_OPTION_HDRLEN   = 2 * sizeof(uint16_t)
 };
 
-/*! \brief EDNS flags.
+/*!
+ * \brief EDNS DO flag.
  *
  * \note Use only with unsigned 2-byte variables.
  * \warning Flags are represented in machine byte order.
  */
-enum knot_edns_flags {
-	KNOT_EDNS_FLAG_DO = (uint16_t)1 << 15
-};
+static const uint16_t KNOT_EDNS_FLAG_DO = (uint16_t)1 << 15;
 
-/*! \brief Extended RCODEs. */
-enum knot_edns_ext_rcode {
-	KNOT_EDNS_RCODE_BADVERS = (uint8_t)16
-};
+/*! \brief Extended RCODE BADVERS. */
+static const uint8_t KNOT_EDNS_RCODE_BADVERS = 16;
+
 
 /*----------------------------------------------------------------------------*/
 /* EDNS OPT RR handling functions.                                            */
