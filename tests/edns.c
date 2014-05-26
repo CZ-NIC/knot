@@ -336,7 +336,7 @@ static bool test_setters(knot_rrset_t *opt_rr, int *done)
 #define TEST_COUNT 38
 
 static inline int remaining(int done) {
-	return TEST_COUNT - done - 1;
+	return TEST_COUNT - done;
 }
 
 int main(int argc, char *argv[])

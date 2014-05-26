@@ -43,7 +43,7 @@ int knot_edns_init(knot_rrset_t *opt_rr, uint16_t max_pld,
 		return KNOT_EINVAL;
 	}
 
-	/* Initialiye RRSet. */
+	/* Initialize RRSet. */
 	knot_dname_t *owner = knot_dname_copy((const uint8_t*)"", mm);
 	if (owner == NULL) {
 		return KNOT_ENOMEM;
@@ -245,11 +245,10 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 	memcpy(new_data + old_data_len + KNOT_EDNS_OPTION_HDRLEN, data, length);
 
 	/* 2) Replace the RDATA in the RRSet. */
+	uint32_t old_ttl = knot_rdata_ttl(old_rdata);
 	knot_rdataset_clear(&opt_rr->rrs, mm);
-	knot_rrset_add_rdata(opt_rr, new_data, new_data_len,
-	                     knot_rdata_ttl(old_rdata), mm);
-
-	return KNOT_EOK;
+	return knot_rrset_add_rdata(opt_rr, new_data, new_data_len,
+	                            old_ttl, mm);
 }
 
 /*----------------------------------------------------------------------------*/
