@@ -31,7 +31,7 @@ enum knot_edns_private_consts {
 	/*! \brief Offset of Extended RCODE field in TTL (network byte order). */
 	KNOT_EDNS_OFFSET_RCODE = 0,
 	/*! \brief Offset of the Version field in TTL (network byte order). */
-	KNOT_EDNS_OFFSET_VERSION = 1,
+	KNOT_EDNS_OFFSET_VERSION = 1
 };
 
 /*----------------------------------------------------------------------------*/
@@ -104,9 +104,26 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 
 	uint8_t rcode;
-	memcpy(&rcode, ttl_ptr + KNOT_EDNS_OFFSET_RCODE, 1);
+	memcpy(&rcode, ttl_ptr + KNOT_EDNS_OFFSET_RCODE, sizeof(uint8_t));
 
 	return rcode;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void set_value_to_ttl(knot_rrset_t *opt_rr, size_t offset, uint8_t value)
+{
+	uint32_t ttl = 0;
+	uint8_t *ttl_ptr = (uint8_t *)&ttl;
+
+	// TTL is stored in machine byte order. Convert it to wire order first.
+	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
+	// Set the Extended RCODE in the converted TTL
+	memcpy(ttl_ptr + offset, &value, sizeof(uint8_t));
+	// Convert it back to machine byte order
+	uint32_t ttl_local = knot_wire_read_u32(ttl_ptr);
+	// Store the TTL to the RDATA
+	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -114,17 +131,7 @@ uint8_t knot_edns_get_ext_rcode(const knot_rrset_t *opt_rr)
 void knot_edns_set_ext_rcode(knot_rrset_t *opt_rr, uint8_t ext_rcode)
 {
 	assert(opt_rr != NULL);
-
-	uint32_t ttl = 0;
-	uint8_t *ttl_ptr = (uint8_t *)&ttl;
-	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
-	// Set the Extended RCODE in the converted TTL
-	memcpy(ttl_ptr + KNOT_EDNS_OFFSET_RCODE, &ext_rcode, 1);
-	// Convert it back to machine byte order
-	uint32_t ttl_local = knot_wire_read_u32(ttl_ptr);
-	// Store the TTL to the RDATA
-	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
+	set_value_to_ttl(opt_rr, KNOT_EDNS_OFFSET_RCODE, ext_rcode);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -139,7 +146,7 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 
 	uint8_t version;
-	memcpy(&version, ttl_ptr + KNOT_EDNS_OFFSET_VERSION, 1);
+	memcpy(&version, ttl_ptr + KNOT_EDNS_OFFSET_VERSION, sizeof(uint8_t));
 
 	return version;
 }
@@ -149,17 +156,7 @@ uint8_t knot_edns_get_version(const knot_rrset_t *opt_rr)
 void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 {
 	assert(opt_rr != NULL);
-
-	uint32_t ttl = 0;
-	uint8_t *ttl_ptr = (uint8_t *)&ttl;
-	// TTL is stored in machine byte order. Convert it to wire order first.
-	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
-	// Set the version in the converted TTL
-	memcpy(ttl_ptr + KNOT_EDNS_OFFSET_VERSION, &version, sizeof(uint8_t));
-	// Convert it back to machine byte order
-	uint32_t ttl_local = knot_wire_read_u32(ttl_ptr);
-	// Store the TTL to the RDATA
-	knot_rdata_set_ttl(knot_rdataset_at(&opt_rr->rrs, 0), ttl_local);
+	set_value_to_ttl(opt_rr, KNOT_EDNS_OFFSET_VERSION, version);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -207,8 +204,9 @@ static void find_option(knot_rdata_t *rdata, uint16_t opt_code, uint8_t **pos)
 			*pos = data + i;
 			return;
 		}
-		uint16_t opt_len = knot_wire_read_u16(data + i + 2);
-		i += (4 + opt_len);
+		uint16_t opt_len = knot_wire_read_u16(data + i
+		                                      + sizeof(uint16_t));
+		i += (KNOT_EDNS_OPTION_HDRLEN + opt_len);
 	}
 }
 
@@ -231,7 +229,7 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 
 	uint8_t *old_data = knot_rdata_data(old_rdata);
 	uint16_t old_data_len = knot_rdata_rdlen(old_rdata);
-	uint16_t new_data_len = old_data_len + 4 + length;
+	uint16_t new_data_len = old_data_len + KNOT_EDNS_OPTION_HDRLEN + length;
 
 	uint8_t *new_data = (uint8_t *)mm_alloc(mm, new_data_len);
 	CHECK_ALLOC_LOG(new_data, KNOT_ENOMEM);
@@ -243,9 +241,9 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 	memcpy(new_data, old_data, old_data_len);
 	// write length and code in wireformat (convert endian)
 	knot_wire_write_u16(new_data + old_data_len, code);
-	knot_wire_write_u16(new_data + old_data_len + 2, length);
+	knot_wire_write_u16(new_data + old_data_len + sizeof(uint16_t), length);
 	// write the option data
-	memcpy(new_data + old_data_len + 4, data, length);
+	memcpy(new_data + old_data_len + KNOT_EDNS_OPTION_HDRLEN, data, length);
 
 	/* 2) Create new RDATA structure (we need to preserve the TTL).
 	 */
@@ -309,7 +307,8 @@ bool knot_edns_check_record(knot_rrset_t *opt_rr)
 
 	/* RFC2671 4.4: {uint16_t code, uint16_t len, data} */
 	while (pos + KNOT_EDNS_OPTION_HDRLEN <= rdlength) {
-		uint16_t opt_len = knot_wire_read_u16(data + pos + sizeof(uint16_t));
+		uint16_t opt_len = knot_wire_read_u16(data + pos
+		                                      + sizeof(uint16_t));
 		pos += KNOT_EDNS_OPTION_HDRLEN + opt_len;
 	}
 
