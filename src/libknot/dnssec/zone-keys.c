@@ -130,7 +130,7 @@ static bool was_removed(const knot_key_params_t *params)
 
 	time_t now = time(NULL);
 
-	return params->time_delete != 0 && now > params->time_delete;
+	return params->time_delete != 0 && params->time_delete <= now;
 }
 
 /*!
