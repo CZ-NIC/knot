@@ -114,7 +114,7 @@ static void test_connected(struct requestor *requestor, conf_iface_t *remote)
 
 int main(int argc, char *argv[])
 {
-	plan(TESTS_COUNT);
+	plan(TESTS_COUNT + 1);
 
 	mm_ctx_t mm;
 	mm_ctx_mempool(&mm, 4096);
@@ -125,7 +125,8 @@ int main(int argc, char *argv[])
 
 	/* Create fake server environment. */
 	server_t server;
-	create_fake_server(&server, &mm);
+	int ret = create_fake_server(&server, &mm);
+	ok(ret == KNOT_EOK, "requestor: failed to initialize fake server");
 
 	/* Initialize requestor. */
 	struct requestor requestor;
@@ -139,7 +140,7 @@ int main(int argc, char *argv[])
 	assert(origin_fd > 0);
 	socklen_t addr_len = sockaddr_len(&remote.addr);
 	getsockname(origin_fd, (struct sockaddr *)&remote.addr, &addr_len);
-	int ret = listen(origin_fd, 10);
+	ret = listen(origin_fd, 10);
 	assert(ret == 0);
 
 	/* Responder thread. */

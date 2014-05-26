@@ -13,26 +13,27 @@ check_PROGRAMS = \
 	hattrie				\
 	hhash				\
 	dthreads			\
-	acl					\
+	acl				\
 	fdset				\
 	base64				\
 	base32hex			\
 	descriptor			\
 	server				\
 	conf				\
-	rrl					\
+	rrl				\
 	wire				\
 	dname				\
 	ztree				\
 	zonedb				\
 	dnssec_keys			\
-	dnssec_nsec3		\
+	dnssec_nsec3			\
 	dnssec_sign			\
 	dnssec_zone_nsec	\
 	rdata				\
 	rdataset			\
 	rrset				\
 	node				\
+	edns                            \
 	pkt					\
 	process_query		\
 	process_answer		\

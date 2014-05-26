@@ -20,7 +20,7 @@
 #include "knot/zone/zonedb-load.h"
 #include "knot/zone/zone-load.h"
 #include "knot/conf/conf.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
 #include "knot/zone/zonedb.h"

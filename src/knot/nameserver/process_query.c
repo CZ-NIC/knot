@@ -549,31 +549,42 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	}
 
 	/* Check if EDNS is supported. */
-	if (!knot_pkt_have_edns(query)) {
+	if (!knot_pkt_has_edns(query)) {
 		return KNOT_EOK;
 	}
-	ret = knot_pkt_add_opt(resp, server->opt_rr, knot_pkt_have_nsid(query));
+
+	/* Check EDNS version and return BADVERS if not supported. */
+	if (knot_edns_get_version(query->opt_rr) != KNOT_EDNS_VERSION) {
+		dbg_ns("%s: unsupported EDNS version required.\n", __func__);
+		qdata->rcode_ext = KNOT_EDNS_RCODE_BADVERS;
+	}
+
+	/* Reserve space for OPT RR in the packet. Using size of the server's
+	 * OPT RR, because that's the maximum size (RDATA may or may not be
+	 * used).
+	 */
+	uint16_t reserve_size = KNOT_EDNS_MIN_SIZE;
+	if (knot_edns_has_nsid(query->opt_rr) && conf()->nsid_len > 0) {
+		reserve_size += KNOT_EDNS_OPTION_HDRLEN + conf()->nsid_len;
+	}
+	ret = knot_pkt_reserve(resp, reserve_size);
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't add OPT RR (%d)\n", __func__, ret);
+		dbg_ns("%s: can't reserve OPT RR in response (%d)\n", __func__, ret);
 		return ret;
 	}
 
-	/* Copy DO bit if set (DNSSEC requested). */
-	if (knot_pkt_have_dnssec(query)) {
-		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
-		knot_edns_set_do(&resp->opt_rr);
-	}
-
-	/* Set minimal supported size from EDNS(0). */
-	uint16_t client_maxlen = knot_edns_get_payload(&query->opt_rr);
-	uint16_t server_maxlen = knot_edns_get_payload(&resp->opt_rr);
-	resp->opt_rr.payload = MIN(client_maxlen, server_maxlen);
+	/* Get minimal supported size from EDNS(0). */
+	uint16_t client_maxlen = knot_edns_get_payload(query->opt_rr);
+	uint16_t server_maxlen = conf()->max_udp_payload;
+	uint16_t min_edns = MIN(client_maxlen, server_maxlen);
 
 	/* Update packet size limit. */
 	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
-		resp->max_size =  MAX(resp->max_size, resp->opt_rr.payload);
+		resp->max_size =  MAX(resp->max_size, min_edns);
 		dbg_ns("%s: packet size limit <= %zuB\n", __func__, resp->max_size);
 	}
+
+	/* In the response, always advertise server's maximum UDP payload. */
 
 	return ret;
 }

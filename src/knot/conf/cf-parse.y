@@ -33,7 +33,7 @@
 #include "common/sockaddr.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
-#include "libknot/edns.h"
+#include "libknot/rrtype/opt.h"
 #include "knot/server/rrl.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/conf/conf.h"
@@ -577,8 +577,8 @@ system:
  | system NSID TEXT ';' { new_config->nsid = $3.t; new_config->nsid_len = strlen(new_config->nsid); }
  | system NSID BOOL ';' { ident_auto(NSID, new_config, $3.i); }
  | system MAX_UDP_PAYLOAD NUM ';' {
-     SET_NUM(new_config->max_udp_payload, $3.i, EDNS_MIN_UDP_PAYLOAD,
-             EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
+     SET_NUM(new_config->max_udp_payload, $3.i, KNOT_EDNS_MIN_UDP_PAYLOAD,
+             KNOT_EDNS_MAX_UDP_PAYLOAD, "max-udp-payload");
  }
  | system STORAGE TEXT ';' {
      fprintf(stderr, "warning: Config option 'system.storage' was relocated. "

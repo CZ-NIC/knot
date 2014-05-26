@@ -21,7 +21,7 @@
 #include <assert.h>
 #include <time.h>
 
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 #include "common/debug.h"
 #include "libknot/common.h"
 #include "libknot/util/utils.h"

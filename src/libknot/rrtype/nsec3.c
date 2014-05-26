@@ -18,7 +18,7 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
-#include "libknot/rdata/nsec3.h"
+#include "libknot/rrtype/nsec3.h"
 #include "libknot/util/tolower.h"
 #include "common/errcode.h"
 

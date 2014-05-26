@@ -48,13 +48,13 @@ static inline void create_root_zone(server_t *server, mm_ctx_t *mm)
 }
 
 /* Create fake server. */
-static inline void create_fake_server(server_t *server, mm_ctx_t *mm)
+static inline int create_fake_server(server_t *server, mm_ctx_t *mm)
 {
 	/* Create name server. */
-	server_init(server, 1);
-	server->opt_rr = knot_edns_new();
-	knot_edns_set_version(server->opt_rr, EDNS_VERSION);
-	knot_edns_set_payload(server->opt_rr, 4096);
+	int ret = server_init(server, 1);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	/* Create configuration. */
 	s_config = conf_new(strdup("rc:/noconf"));
@@ -63,4 +63,6 @@ static inline void create_fake_server(server_t *server, mm_ctx_t *mm)
 
 	/* Insert root zone. */
 	create_root_zone(server, mm);
+
+	return KNOT_EOK;
 }

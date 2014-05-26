@@ -75,7 +75,7 @@ static void exec_query(knot_process_t *query_ctx, const char *name,
 
 int main(int argc, char *argv[])
 {
-	plan(8*6 + 3); /* exec_query = 6 TAP tests */
+	plan(8*6 + 4); /* exec_query = 6 TAP tests */
 
 	/* Create processing context. */
 	knot_process_t proc;
@@ -84,7 +84,9 @@ int main(int argc, char *argv[])
 
 	/* Create fake server environment. */
 	server_t server;
-	create_fake_server(&server, &proc.mm);
+	int ret = create_fake_server(&server, &proc.mm);
+	ok(ret == KNOT_EOK, "ns: fake server initialization");
+
 	zone_t *zone = knot_zonedb_find(server.zone_db, ROOT_DNAME);
 
 	/* Prepare. */

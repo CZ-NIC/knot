@@ -17,8 +17,9 @@
 #include "common/debug.h"
 #include "common/descriptor.h"
 #include "libknot/common.h"
-#include "libknot/rdata/rdname.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/rdname.h"
+#include "libknot/rrtype/soa.h"
+#include "libknot/rrtype/opt.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
@@ -120,7 +121,8 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 /*! \brief DNSSEC both requested & available. */
 static bool have_dnssec(struct query_data *qdata)
 {
-	return knot_pkt_have_dnssec(qdata->query) &&
+	return pkt_has_dnssec(qdata->query) &&
+	       qdata->rcode_ext != KNOT_EDNS_RCODE_BADVERS &&
 	       zone_contents_is_signed(qdata->zone->contents);
 }
 
@@ -163,6 +165,50 @@ static int put_rrsig(const knot_dname_t *sig_owner, uint16_t type,
 	add_tail(&qdata->rrsigs, &info->n);
 
 	return KNOT_EOK;
+}
+
+/*! \brief Put OPT RR to packet. */
+static int put_opt_rr(knot_pkt_t *pkt, struct query_data *qdata)
+{
+	/* Copy OPT RR from server. */
+	dbg_ns("%s: adding OPT RR to the response\n", __func__);
+	const knot_pkt_t *query = qdata->query;
+	knot_rrset_t opt_rr;
+	int ret = knot_edns_init(&opt_rr, conf()->max_udp_payload,
+	                         qdata->rcode_ext, KNOT_EDNS_VERSION, &pkt->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	/* Append NSID if requested and available. */
+	if (knot_edns_has_nsid(query->opt_rr) && conf()->nsid_len > 0) {
+		ret = knot_edns_add_option(&opt_rr,
+		                           KNOT_EDNS_OPTION_NSID, conf()->nsid_len,
+		                           (const uint8_t*)conf()->nsid, &pkt->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &pkt->mm);
+			return ret;
+		}
+	}
+
+	/* Set DO bit if set (DNSSEC requested). */
+	if (pkt_has_dnssec(query)) {
+		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
+		knot_edns_set_do(&opt_rr);
+	}
+
+	/* Reclaim reserved size. */
+	ret = knot_pkt_reclaim(pkt, knot_edns_wire_size(&opt_rr));
+	if (ret == KNOT_EOK) {
+		/* Write to packet. */
+		ret = knot_pkt_put(pkt, COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
+	}
+
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &pkt->mm);
+	}
+
+	return ret;
 }
 
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
@@ -651,10 +697,17 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, struct query_data 
 	}
 }
 
-static int solve_additional(int state, knot_pkt_t *pkt, struct query_data *qdata, void *ctx)
+static int solve_additional(int state, knot_pkt_t *pkt,
+                            struct query_data *qdata, void *ctx)
 {
-	/* Put OPT RR. */
-	int ret = knot_pkt_put_opt(pkt);
+	/* Put OPT RR to the additional section. */
+	int ret = KNOT_EOK;
+	if (knot_pkt_has_edns(qdata->query)) {
+		ret = put_opt_rr(pkt, qdata);
+		if (ret != KNOT_EOK) {
+			return ERROR;
+		}
+	}
 
 	/* Scan all RRs in ANSWER/AUTHORITY. */
 	for (uint16_t i = 0; i < pkt->rrset_count; ++i) {
@@ -826,7 +879,7 @@ int internet_query(knot_pkt_t *response, struct query_data *qdata)
 	NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
 
 	/* No applicable ACL, refuse transaction security. */
-	if (knot_pkt_have_tsig(qdata->query)) {
+	if (knot_pkt_has_tsig(qdata->query)) {
 		/* We have been challenged... */
 		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
 

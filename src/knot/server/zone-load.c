@@ -25,7 +25,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
@@ -132,7 +132,7 @@ static int update_zone_postcond(zone_t *new_zone, const conf_t *config)
 
 	/* Check minimum EDNS0 payload if signed. (RFC4035/sec. 3) */
 	if (knot_zone_contents_is_signed(new_zone->contents)) {
-		unsigned edns_dnssec_min = EDNS_MIN_DNSSEC_PAYLOAD;
+		unsigned edns_dnssec_min = KNOT_EDNS_MIN_DNSSEC_PAYLOAD;
 		if (config->max_udp_payload < edns_dnssec_min) {
 			log_zone_warning("EDNS payload lower than %uB for "
 			                 "DNSSEC-enabled zone '%s'.\n",

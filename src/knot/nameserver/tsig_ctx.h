@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 #include "libknot/packet/pkt.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"
 
 #define TSIG_MAX_DIGEST_SIZE 64

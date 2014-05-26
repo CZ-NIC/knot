@@ -21,7 +21,7 @@
 #include "common/mempool.h"
 #include "common/descriptor.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 
 #define TTL 7200
 #define NAMECOUNT 3
@@ -66,7 +66,7 @@ static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
 
 int main(int argc, char *argv[])
 {
-	plan(29);
+	plan(25);
 
 	/* Create memory pool context. */
 	int ret = 0;
@@ -80,6 +80,23 @@ int main(int argc, char *argv[])
 		dnames[i] = knot_dname_from_str(g_names[i]);
 	}
 
+	uint8_t *edns_str = (uint8_t *)"ab";
+	/* Create OPT RR. */
+	knot_rrset_t opt_rr;
+	ret = knot_edns_init(&opt_rr, 1024, 0, 0, &mm);
+	if (ret != KNOT_EOK) {
+		skip_block(25, "Failed to initialize OPT RR.");
+		return 0;
+	}
+	/* Add NSID */
+	ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_NSID,
+	                           strlen((char *)edns_str), edns_str, &mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &mm);
+		skip_block(25, "Failed to add NSID to OPT RR.");
+		return 0;
+	}
+
 	/*
 	 * Packet writer tests.
 	 */
@@ -90,21 +107,6 @@ int main(int argc, char *argv[])
 
 	/* Mark as response (not part of the test). */
 	knot_wire_set_qr(out->wire);
-
-	/* Packet options. */
-	const char* nsid = "string";
-	uint16_t data = 4096;
-	uint8_t version = 0, rcode = 0;
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_PAYLOAD, &data, sizeof(data));
-	ok(ret == KNOT_EOK, "pkt: set EDNS max payload");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_VERSION, &version, sizeof(version));
-	ok(ret == KNOT_EOK, "pkt: set EDNS version");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_RCODE,   &rcode, sizeof(rcode));
-	ok(ret == KNOT_EOK, "pkt: set EDNS extended RCODE");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_FLAG_DO, NULL, 0);
-	ok(ret == KNOT_EOK, "pkt: set EDNS DO flag");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_NSID,    nsid, strlen(nsid));
-	ok(ret == KNOT_EOK, "pkt: set NSID");
 
 	/* Secure packet. */
 	const char *tsig_secret = "abcd";
@@ -119,6 +121,10 @@ int main(int argc, char *argv[])
 	/* Write question. */
 	ret = knot_pkt_put_question(out, dnames[0], KNOT_CLASS_IN, KNOT_RRTYPE_A);
 	ok(ret == KNOT_EOK, "pkt: put question");
+
+	/* Add OPT to packet (empty NSID). */
+	ret = knot_pkt_reserve(out, knot_edns_wire_size(&opt_rr));
+	ok(ret == KNOT_EOK, "pkt: reserve OPT RR");
 
 	/* Begin ANSWER section. */
 	ret = knot_pkt_begin(out, KNOT_ANSWER);
@@ -150,7 +156,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: begin ADDITIONALS");
 
 	/* Encode OPT RR. */
-	ret = knot_pkt_put_opt(out);
+	ret = knot_pkt_put(out, COMPR_HINT_NONE, &opt_rr, 0);
 	ok(ret == KNOT_EOK, "pkt: write OPT RR");
 
 	/*

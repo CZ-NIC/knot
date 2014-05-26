@@ -30,7 +30,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-load.h"
 #include "knot/zone/zonefile.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 #include "libknot/dnssec/random.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/update.h"

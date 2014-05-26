@@ -199,6 +199,42 @@ static void process_dnstap(const query_t *query)
 }
 #endif // USE_DNSTAP
 
+static int add_query_edns(knot_pkt_t *packet, const query_t *query, int max_size)
+{
+	assert(packet);
+	assert(query);
+
+	/* Initialize OPT RR. */
+	knot_rrset_t opt_rr;
+	int ret = knot_edns_init(&opt_rr, max_size, 0,
+	                         query->edns > -1 ? query->edns : 0, &packet->mm);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (query->flags.do_flag) {
+		knot_edns_set_do(&opt_rr);
+	}
+
+	/* Append NSID. */
+	if (query->nsid) {
+		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_NSID,
+		                           0, NULL, &packet->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+	}
+
+	/* Add prepared OPT to packet. */
+	ret = knot_pkt_put(packet, COMPR_HINT_NONE, &opt_rr, KNOT_PF_FREE);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &packet->mm);
+	}
+
+	return ret;
+}
+
 static knot_pkt_t* create_query_packet(const query_t *query)
 {
 	knot_pkt_t *packet;
@@ -270,6 +306,9 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		return NULL;
 	}
 
+	// Begin authority section
+	knot_pkt_begin(packet, KNOT_AUTHORITY);
+
 	// For IXFR query add authority section.
 	if (query->type_num == KNOT_RRTYPE_IXFR) {
 		// SOA rdata in wireformat.
@@ -301,8 +340,6 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		// Set SOA serial.
 		knot_soa_serial_set(&soa->rrs, query->xfr_serial);
 
-		// Add authority section.
-		knot_pkt_begin(packet, KNOT_AUTHORITY);
 		ret = knot_pkt_put(packet, 0, soa, KNOT_PF_FREE);
 		if (ret != KNOT_EOK) {
 			knot_rrset_free(&soa, &packet->mm);
@@ -313,30 +350,13 @@ static knot_pkt_t* create_query_packet(const query_t *query)
 		knot_dname_free(&qname, NULL);
 	}
 
+	// Begin additional section
+	knot_pkt_begin(packet, KNOT_ADDITIONAL);
+
 	// Create EDNS section if required.
 	if (query->udp_size > 0 || query->flags.do_flag || query->nsid ||
 	    query->edns > -1) {
-		uint8_t version = query->edns > -1 ? query->edns : 0;
-
-		ret = knot_pkt_opt_set(packet, KNOT_PKT_EDNS_PAYLOAD,
-		                       &max_size, sizeof(max_size));
-		ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_VERSION,
-		                       &version, sizeof(version));
-
-		if (query->flags.do_flag) {
-			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_FLAG_DO,
-			                        NULL, 0);
-		}
-
-		if (query->nsid) {
-			ret |= knot_pkt_opt_set(packet, KNOT_PKT_EDNS_NSID,
-			                        NULL, 0);
-		}
-
-		// Write prepared OPT to wire
-		knot_pkt_begin(packet, KNOT_ADDITIONAL);
-		ret |= knot_pkt_put_opt(packet);
-
+		int ret = add_query_edns(packet, query, max_size);
 		if (ret != KNOT_EOK) {
 			ERR("can't set up EDNS section\n");
 			knot_pkt_free(&packet);

@@ -25,7 +25,7 @@
 #include "common/errcode.h"
 #include "knot/updates/acl.h"
 #include "libknot/util/endian.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 
 static inline uint32_t ipv4_chunk(const struct sockaddr_in *ipv4)
 {

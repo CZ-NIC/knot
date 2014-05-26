@@ -35,7 +35,7 @@
 #include <urcu.h>
 
 #include "libknot/dname.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "common/lists.h"

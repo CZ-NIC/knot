@@ -319,7 +319,6 @@ void server_deinit(server_t *server)
 	rrl_destroy(server->rrl);
 
 	/* Free zone database. */
-	knot_edns_free(&server->opt_rr);
 	knot_zonedb_deep_free(&server->zone_db);
 
 	/* Free remaining events. */
@@ -468,35 +467,6 @@ void server_stop(server_t *server)
 	server->state &= ~ServerRunning;
 }
 
-/*! \brief Reconfigure server OPT RR. */
-static int opt_rr_reconfigure(const struct conf_t *conf, server_t *server)
-{
-	dbg_server("%s(%p, %p)\n", __func__, conf, server);
-
-	/* New OPT RR: keep the old pointer and free it after RCU sync. */
-	knot_opt_rr_t *opt_rr = knot_edns_new();
-	if (opt_rr == NULL) {
-		log_server_error("Couldn't create OPT RR, please restart.\n");
-	} else {
-		knot_edns_set_version(opt_rr, EDNS_VERSION);
-		knot_edns_set_payload(opt_rr, conf->max_udp_payload);
-		if (conf->nsid_len > 0) {
-			knot_edns_add_option(opt_rr, EDNS_OPTION_NSID,
-			                     conf->nsid_len,
-			                     (const uint8_t *)conf->nsid);
-		}
-	}
-
-	knot_opt_rr_t *opt_rr_old = server->opt_rr;
-	server->opt_rr = opt_rr;
-
-	synchronize_rcu();
-
-	knot_edns_free(&opt_rr_old);
-
-	return KNOT_EOK;
-}
-
 /*! \brief Reconfigure UDP and TCP query processing threads. */
 static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 {
@@ -588,12 +558,6 @@ int server_reconfigure(const struct conf_t *conf, void *data)
 	int ret = KNOT_EOK;
 	if ((ret = reconfigure_rate_limits(conf, server)) < 0) {
 		log_server_error("Failed to reconfigure rate limits.\n");
-		return ret;
-	}
-
-	/* Reconfigure OPT RR. */
-	if ((ret = opt_rr_reconfigure(conf, server)) < 0) {
-		log_server_error("Failed to reconfigure EDNS settings.\n");
 		return ret;
 	}
 

@@ -108,7 +108,7 @@ static void test_inclass(knot_pkt_t *pkt, knot_process_t *proc, struct process_a
 
 int main(int argc, char *argv[])
 {
-	plan(2 + TEST_COUNT);
+	plan(3 + TEST_COUNT);
 
 	/* Create processing context. */
 	knot_process_t proc;
@@ -117,7 +117,8 @@ int main(int argc, char *argv[])
 
 	/* Create fake server environment. */
 	server_t server;
-	create_fake_server(&server, &proc.mm);
+	int ret = create_fake_server(&server, &proc.mm);
+	ok(ret == KNOT_EOK, "proc_answer: fake server initialization");
 
 	/* Prepare. */
 	struct sockaddr_storage remote;
