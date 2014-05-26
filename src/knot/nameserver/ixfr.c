@@ -338,7 +338,6 @@ static int ixfrin_finalize(struct answer_data *adata)
 	if (ret != KNOT_EOK) {
 		IXFRIN_LOG(LOG_ERR, "Failed to apply changes to zone - %s",
 		           knot_strerror(ret));
-		ixfrin_cleanup(adata);
 		return ret;
 	}
 
@@ -347,7 +346,6 @@ static int ixfrin_finalize(struct answer_data *adata)
 	IXFRIN_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
 	           time_diff(&ixfr->proc.tstamp, &now) / 1000.0,
 	           ixfr->proc.npkts, ixfr->proc.nbytes / 1024.0);
-	ixfrin_cleanup(adata);
 
 	return KNOT_EOK;
 }
@@ -649,13 +647,12 @@ int ixfr_process_answer(knot_pkt_t *pkt, struct answer_data *adata)
 		NS_NEED_TSIG_SIGNED(&adata->param->tsig_ctx, 0);
 		int fret = ixfrin_finalize(adata);
 		if (fret != KNOT_EOK) {
-			IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
 			ret = NS_PROC_FAIL;
 		}
 	}
 
 	if (ret == NS_PROC_FAIL) {
-		ixfrin_cleanup(adata);
+		IXFRIN_LOG(LOG_ERR, "Failed - %s", knot_strerror(ret));
 	}
 
 	return ret;
