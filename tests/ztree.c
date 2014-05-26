@@ -73,13 +73,13 @@ int main(int argc, char *argv[])
 	ztree_init_data();
 
 	/* 1. create test */
-	knot_zone_tree_t* t = knot_zone_tree_create();
+	zone_tree_t* t = zone_tree_create();
 	ok(t != NULL, "ztree: created");
 
 	/* 2. insert test */
 	unsigned passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		if (knot_zone_tree_insert(t, NODE + i) != KNOT_EOK) {
+		if (zone_tree_insert(t, NODE + i) != KNOT_EOK) {
 			passed = 0;
 			break;
 		}
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 	passed = 1;
 	const zone_node_t *node = NULL;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		int r = knot_zone_tree_find(t, NAME[i], &node);
+		int r = zone_tree_find(t, NAME[i], &node);
 		if (r != KNOT_EOK || node != NODE + i) {
 			passed = 0;
 			break;
@@ -106,16 +106,16 @@ int main(int argc, char *argv[])
 	node = NULL;
 	const zone_node_t *prev = NULL;
 	knot_dname_t *tmp_dn = knot_dname_from_str("z.ac.");
-	knot_zone_tree_find_less_or_equal(t, tmp_dn, &node, &prev);
+	zone_tree_find_less_or_equal(t, tmp_dn, &node, &prev);
 	knot_dname_free(&tmp_dn, NULL);
 	ok(prev == NODE + 1, "ztree: ordered lookup");
 
 	/* 5. ordered traversal */
 	unsigned i = 0;
-	int ret = knot_zone_tree_apply_inorder(t, ztree_iter_data, &i);
+	int ret = zone_tree_apply_inorder(t, ztree_iter_data, &i);
 	ok (ret == KNOT_EOK, "ztree: ordered traversal");
 
-	knot_zone_tree_free(&t);
+	zone_tree_free(&t);
 	ztree_free_data();
 	return 0;
 }

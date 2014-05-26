@@ -26,7 +26,7 @@
 #include "libknot/rrtype/soa.h"
 
 struct zone_diff_param {
-	knot_zone_tree_t *nodes;
+	zone_tree_t *nodes;
 	changeset_t *changeset;
 };
 
@@ -355,7 +355,7 @@ static int knot_zone_diff_node(zone_node_t **node_ptr, void *data)
 	const knot_dname_t *node_owner = node->owner;
 	assert(node_owner);
 
-	knot_zone_tree_find(param->nodes, node_owner, &node_in_second_tree);
+	zone_tree_find(param->nodes, node_owner, &node_in_second_tree);
 
 	if (node_in_second_tree == NULL) {
 		dbg_zonediff_detail("zone_diff: diff_node: Node %p is not "
@@ -482,7 +482,7 @@ static int knot_zone_diff_add_new_nodes(zone_node_t **node_ptr, void *data)
 	assert(node_owner);
 
 	zone_node_t *new_node = NULL;
-	knot_zone_tree_get(param->nodes, node_owner, &new_node);
+	zone_tree_get(param->nodes, node_owner, &new_node);
 
 	int ret = KNOT_EOK;
 
@@ -500,8 +500,8 @@ static int knot_zone_diff_add_new_nodes(zone_node_t **node_ptr, void *data)
 	return ret;
 }
 
-static int knot_zone_diff_load_trees(knot_zone_tree_t *nodes1,
-				     knot_zone_tree_t *nodes2,
+static int knot_zone_diff_load_trees(zone_tree_t *nodes1,
+				     zone_tree_t *nodes2,
 				     changeset_t *changeset)
 {
 	assert(changeset);
@@ -511,14 +511,14 @@ static int knot_zone_diff_load_trees(knot_zone_tree_t *nodes1,
 
 	// Traverse one tree, compare every node, each RRSet with its rdata.
 	param.nodes = nodes2;
-	int result = knot_zone_tree_apply(nodes1, knot_zone_diff_node, &param);
+	int result = zone_tree_apply(nodes1, knot_zone_diff_node, &param);
 	if (result != KNOT_EOK) {
 		return result;
 	}
 
 	// Some nodes may have been added. Add missing nodes to changeset.
 	param.nodes = nodes1;
-	result = knot_zone_tree_apply(nodes2, knot_zone_diff_add_new_nodes,
+	result = zone_tree_apply(nodes2, knot_zone_diff_add_new_nodes,
 	                              &param);
 
 	return result;
@@ -572,7 +572,7 @@ int zone_contents_create_diff(const zone_contents_t *z1,
 	return KNOT_EOK;
 }
 
-int knot_zone_tree_add_diff(knot_zone_tree_t *t1, knot_zone_tree_t *t2,
+int zone_tree_add_diff(zone_tree_t *t1, zone_tree_t *t2,
                             changeset_t *changeset)
 {
 	if (!changeset) {

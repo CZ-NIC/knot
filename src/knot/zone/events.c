@@ -198,7 +198,7 @@ static void schedule_dnssec(zone_t *zone)
 
 	char time_str[64] = { 0 };
 	struct tm time_gm = { 0 };
-	time_t unixtime = zone->dnssec.refresh_at;
+	time_t unixtime = zone->dnssec_refresh;
 	gmtime_r(&unixtime, &time_gm);
 	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
 	log_zone_info("DNSSEC: Zone %s - Next event on %s.\n",
@@ -263,8 +263,8 @@ static int event_reload(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	}
 	if (!zone_contents_is_empty(contents)) {
-		zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->xfr_in.bootstrap_retry);
+		zone->bootstrap_retry = ZONE_EVENT_NOW;
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->bootstrap_retry);
 	}
 	if (zone->conf->dnssec_enable) {
 		schedule_dnssec(zone);
@@ -334,12 +334,12 @@ static int event_xfer(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
-		zone->xfr_in.bootstrap_retry = ZONE_EVENT_NOW;
+		zone->bootstrap_retry = ZONE_EVENT_NOW;
 	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
-		zone->xfr_in.bootstrap_retry = bootstrap_next(zone->xfr_in.bootstrap_retry);
-		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->xfr_in.bootstrap_retry);
+		zone->bootstrap_retry = bootstrap_next(zone->bootstrap_retry);
+		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->bootstrap_retry);
 	}
 
 	return KNOT_EOK;
@@ -459,11 +459,11 @@ static int event_dnssec(zone_t *zone)
 	}
 
 	uint32_t refresh_at = 0;
-	if (zone->dnssec.next_force) {
+	if (zone->flags & ZONE_FORCE_RESIGN) {
 		log_zone_info("%s Complete resign started (dropping all "
 			      "previous signatures)...\n", msgpref);
 
-		zone->dnssec.next_force = false;
+		zone->flags &= ~ZONE_FORCE_RESIGN;
 		ret = knot_dnssec_zone_sign_force(zone->contents, zone->conf,
 		                                  ch, &refresh_at);
 	} else {
@@ -487,7 +487,7 @@ static int event_dnssec(zone_t *zone)
 
 	// Schedule dependent events.
 
-	zone->dnssec.refresh_at = refresh_at;
+	zone->dnssec_refresh = refresh_at;
 	schedule_dnssec(zone);
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 	if (zone->conf->dbsync_timeout == 0) {

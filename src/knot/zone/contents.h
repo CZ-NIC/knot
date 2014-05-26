@@ -43,8 +43,8 @@ enum zone_contents_find_dname_result {
 typedef struct zone_contents_t {
 	zone_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 
-	knot_zone_tree_t *nodes;
-	knot_zone_tree_t *nsec3_nodes;
+	zone_tree_t *nodes;
+	zone_tree_t *nsec3_nodes;
 
 	knot_nsec3_params_t nsec3_params;
 } zone_contents_t;

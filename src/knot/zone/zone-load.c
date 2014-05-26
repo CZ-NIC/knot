@@ -140,7 +140,7 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone)
 		ret = knot_dnssec_zone_sign(contents, conf,
 		                            changesets_get_last(dnssec_change),
 		                            KNOT_SOA_SERIAL_UPDATE,
-		                            &zone->dnssec.refresh_at);
+		                            &zone->dnssec_refresh);
 		if (ret != KNOT_EOK) {
 			changesets_free(&dnssec_change, NULL);
 			return ret;

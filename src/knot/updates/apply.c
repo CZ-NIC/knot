@@ -373,7 +373,7 @@ static int remove_empty_nodes(zone_contents_t *z)
 	list_t l;
 	init_list(&l);
 	// walk through the zone and select nodes to be removed
-	int ret = knot_zone_tree_apply(z->nodes, mark_empty, &l);
+	int ret = zone_tree_apply(z->nodes, mark_empty, &l);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -392,7 +392,7 @@ static int remove_empty_nodes(zone_contents_t *z)
 
 	init_list(&l);
 	// Do the same with NSEC3 nodes.
-	ret = knot_zone_tree_apply(z->nsec3_nodes, mark_empty, &l);
+	ret = zone_tree_apply(z->nsec3_nodes, mark_empty, &l);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -577,9 +577,9 @@ void update_free_old_zone(zone_contents_t **contents)
 	 * Free the zone tree, but only the structure
 	 * (nodes are already destroyed) and free additional arrays.
 	 */
-	knot_zone_tree_apply((*contents)->nodes, free_additional, NULL);
-	knot_zone_tree_deep_free(&(*contents)->nodes);
-	knot_zone_tree_deep_free(&(*contents)->nsec3_nodes);
+	zone_tree_apply((*contents)->nodes, free_additional, NULL);
+	zone_tree_deep_free(&(*contents)->nodes);
+	zone_tree_deep_free(&(*contents)->nsec3_nodes);
 
 	knot_nsec3param_free(&(*contents)->nsec3_params);
 

@@ -116,7 +116,7 @@ static int axfr_query_init(struct query_data *qdata)
 	gettimeofday(&axfr->proc.tstamp, NULL);
 	ptrlist_add(&axfr->proc.nodes, zone->nodes, mm);
 	/* Put NSEC3 data if exists. */
-	if (!knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+	if (!zone_tree_is_empty(zone->nsec3_nodes)) {
 		ptrlist_add(&axfr->proc.nodes, zone->nsec3_nodes, mm);
 	}
 

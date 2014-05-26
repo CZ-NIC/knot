@@ -147,7 +147,7 @@ static int remote_zone_sign(server_t *server, zone_t *zone)
 	free(zone_name);
 
 	if (zone->conf->dnssec_enable) {
-		zone->dnssec.next_force = true;
+		zone->flags |= ZONE_FORCE_RESIGN;
 		zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
 		return KNOT_EOK;
 	}

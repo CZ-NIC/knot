@@ -61,7 +61,7 @@ static zone_t *bootstrap_zone(conf_zone_t *conf)
 	}
 
 	/* Initialize bootstrap timer. */
-	new_zone->xfr_in.bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
+	new_zone->bootstrap_retry = knot_random_uint32_t() % XFRIN_BOOTSTRAP_DELAY;
 
 	return new_zone;
 }

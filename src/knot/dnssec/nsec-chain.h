@@ -83,7 +83,7 @@ inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
+int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
                                    chain_iterate_create_cb callback,
                                    nsec_chain_iterate_data_t *data);
 

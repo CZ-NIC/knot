@@ -151,7 +151,7 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 /*!
  * \brief Call a function for each piece of the chain formed by sorted nodes.
  */
-int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
+int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
                                    chain_iterate_create_cb callback,
                                    nsec_chain_iterate_data_t *data)
 {

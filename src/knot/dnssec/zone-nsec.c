@@ -49,20 +49,20 @@ static int delete_nsec3_chain(const zone_contents_t *zone,
 	assert(zone);
 	assert(changeset);
 
-	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+	if (zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_EOK;
 	}
 
 	dbg_dnssec_detail("deleting NSEC3 chain\n");
-	knot_zone_tree_t *empty_tree = knot_zone_tree_create();
+	zone_tree_t *empty_tree = zone_tree_create();
 	if (!empty_tree) {
 		return KNOT_ENOMEM;
 	}
 
-	int result = knot_zone_tree_add_diff(zone->nsec3_nodes, empty_tree,
+	int result = zone_tree_add_diff(zone->nsec3_nodes, empty_tree,
 	                                     changeset);
 
-	knot_zone_tree_free(&empty_tree);
+	zone_tree_free(&empty_tree);
 
 	return result;
 }
@@ -111,7 +111,7 @@ static bool get_zone_soa_min_ttl(const zone_contents_t *zone,
  * \brief Finds a node with the same owner as the given NSEC3 RRSet and marks it
  *        as 'removed'.
  *
- * \param data NSEC3 tree to search for the node in. (type knot_zone_tree_t *).
+ * \param data NSEC3 tree to search for the node in. (type zone_tree_t *).
  * \param rrset RRSet whose owner will be sought in the zone tree. non-NSEC3
  *              RRSets are ignored.
  *
@@ -123,13 +123,13 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 	assert(rrset != NULL);
 	assert(data != NULL);
 
-	knot_zone_tree_t *nsec3s = (knot_zone_tree_t *)data;
+	zone_tree_t *nsec3s = (zone_tree_t *)data;
 	zone_node_t *node = NULL;
 	int ret;
 
 	if (rrset->type == KNOT_RRTYPE_NSEC3) {
 		// Find the name in the NSEC3 tree and mark the node
-		ret = knot_zone_tree_get(nsec3s, rrset->owner,
+		ret = zone_tree_get(nsec3s, rrset->owner,
 		                         &node);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -152,7 +152,7 @@ static int mark_nsec3(knot_rrset_t *rrset, void *data)
 static int mark_removed_nsec3(changeset_t *out_ch,
                               const zone_contents_t *zone)
 {
-	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+	if (zone_tree_is_empty(zone->nsec3_nodes)) {
 		return KNOT_EOK;
 	}
 

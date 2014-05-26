@@ -31,7 +31,6 @@
 #include <string.h>
 
 #include "knot/zone/zone.h"
-#include "knot/server/xfr-handler.h"
 #include "knot/updates/changesets.h"
 
 /*!

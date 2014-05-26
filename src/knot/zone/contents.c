@@ -234,7 +234,7 @@ static int adjust_nsec3_pointers(zone_node_t **tnode, void *data)
 	int ret = zone_contents_nsec3_name(args->zone, node->owner, &nsec3_name);
 	if (ret == KNOT_EOK) {
 		assert(nsec3_name);
-		knot_zone_tree_get(args->zone->nsec3_nodes, nsec3_name, &nsec3);
+		zone_tree_get(args->zone->nsec3_nodes, nsec3_name, &nsec3);
 		node->nsec3_node = nsec3;
 	} else if (ret == KNOT_ENSEC3PAR) {
 		node->nsec3_node = NULL;
@@ -346,7 +346,7 @@ static int adjust_additional(zone_node_t **tnode, void *data)
  * \retval 0 if the domain name was not found. \a node may hold any (or none)
  *           node. \a previous is set properly.
  */
-static int zone_contents_find_in_tree(knot_zone_tree_t *tree,
+static int zone_contents_find_in_tree(zone_tree_t *tree,
                                            const knot_dname_t *name,
                                            zone_node_t **node,
                                            zone_node_t **previous)
@@ -358,7 +358,7 @@ static int zone_contents_find_in_tree(knot_zone_tree_t *tree,
 
 	zone_node_t *found = NULL, *prev = NULL;
 
-	int exact_match = knot_zone_tree_get_less_or_equal(tree, name, &found,
+	int exact_match = zone_tree_get_less_or_equal(tree, name, &found,
 							   &prev);
 
 	assert(exact_match >= 0);
@@ -416,12 +416,12 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name)
 		goto cleanup;
 	}
 
-	contents->nodes = knot_zone_tree_create();
+	contents->nodes = zone_tree_create();
 	if (contents->nodes == NULL) {
 		goto cleanup;
 	}
 
-	if (knot_zone_tree_insert(contents->nodes, contents->apex) != KNOT_EOK) {
+	if (zone_tree_insert(contents->nodes, contents->apex) != KNOT_EOK) {
 		goto cleanup;
 	}
 
@@ -445,7 +445,7 @@ static zone_node_t *zone_contents_get_node(const zone_contents_t *zone,
 	}
 
 	zone_node_t *n;
-	int ret = knot_zone_tree_get(zone->nodes, name, &n);
+	int ret = zone_tree_get(zone->nodes, name, &n);
 	if (ret != KNOT_EOK) {
 		dbg_zone("Failed to find name in the zone tree.\n");
 		return NULL;
@@ -469,7 +469,7 @@ static int zone_contents_add_node(zone_contents_t *zone, zone_node_t *node,
 		return ret;
 	}
 
-	ret = knot_zone_tree_insert(zone->nodes, node);
+	ret = zone_tree_insert(zone->nodes, node);
 	if (ret != KNOT_EOK) {
 		dbg_zone("Failed to insert node into zone tree.\n");
 		return ret;
@@ -509,7 +509,7 @@ static int zone_contents_add_node(zone_contents_t *zone, zone_node_t *node,
 
 			/* Insert node to a tree. */
 			dbg_zone_detail("Inserting new node to zone tree.\n");
-			ret = knot_zone_tree_insert(zone->nodes, next_node);
+			ret = zone_tree_insert(zone->nodes, next_node);
 			if (ret != KNOT_EOK) {
 				node_free(&next_node);
 				return ret;
@@ -553,14 +553,14 @@ static int zone_contents_add_nsec3_node(zone_contents_t *zone, zone_node_t *node
 
 	/* Create NSEC3 tree if not exists. */
 	if (zone->nsec3_nodes == NULL) {
-		zone->nsec3_nodes = knot_zone_tree_create();
+		zone->nsec3_nodes = zone_tree_create();
 		if (zone->nsec3_nodes == NULL) {
 			return KNOT_ENOMEM;
 		}
 	}
 
 	// how to know if this is successfull??
-	ret = knot_zone_tree_insert(zone->nsec3_nodes, node);
+	ret = zone_tree_insert(zone->nsec3_nodes, node);
 	if (ret != KNOT_EOK) {
 		dbg_zone("Failed to insert node into NSEC3 tree: %s.\n",
 			 knot_strerror(ret));
@@ -584,7 +584,7 @@ static zone_node_t *zone_contents_get_nsec3_node(const zone_contents_t *zone,
 	}
 
 	zone_node_t *n;
-	int ret = knot_zone_tree_get(zone->nsec3_nodes, name, &n);
+	int ret = zone_tree_get(zone->nsec3_nodes, name, &n);
 	if (ret != KNOT_EOK) {
 		dbg_zone("Failed to find NSEC3 name in the zone tree."
 				  "\n");
@@ -643,7 +643,7 @@ static int recreate_normal_tree(const zone_contents_t *z, zone_contents_t *out)
 	}
 
 	// Normal additions need apex ... so we need to insert directly.
-	int ret = knot_zone_tree_insert(out->nodes, apex_cpy);
+	int ret = zone_tree_insert(out->nodes, apex_cpy);
 	if (ret != KNOT_EOK) {
 		node_free(&apex_cpy);
 		return ret;
@@ -749,7 +749,7 @@ dbg_zone_exec_verb(
 	free(name);
 );
 	zone_node_t *removed_node = NULL;
-	int ret = knot_zone_tree_remove(contents->nodes, owner, &removed_node);
+	int ret = zone_tree_remove(contents->nodes, owner, &removed_node);
 	if (ret != KNOT_EOK) {
 		return KNOT_ENONODE;
 	}
@@ -768,7 +768,7 @@ int zone_contents_remove_nsec3_node(zone_contents_t *contents, const knot_dname_
 
 	// remove the node from the zone tree
 	zone_node_t *removed_node = NULL;
-	int ret = knot_zone_tree_remove(contents->nsec3_nodes, owner,
+	int ret = zone_tree_remove(contents->nsec3_nodes, owner,
 	                                &removed_node);
 	if (ret != KNOT_EOK) {
 		return KNOT_ENONODE;
@@ -925,7 +925,7 @@ int zone_contents_find_nsec3_for_name(const zone_contents_t *zone,
 	}
 
 	// check if the NSEC3 tree is not empty
-	if (knot_zone_tree_is_empty(zone->nsec3_nodes)) {
+	if (zone_tree_is_empty(zone->nsec3_nodes)) {
 		dbg_zone("NSEC3 tree is empty.\n");
 		return KNOT_ENSEC3CHAIN;
 	}
@@ -946,7 +946,7 @@ dbg_zone_exec_verb(
 	const zone_node_t *found = NULL, *prev = NULL;
 
 	// create dummy node to use for lookup
-	int exact_match = knot_zone_tree_find_less_or_equal(
+	int exact_match = zone_tree_find_less_or_equal(
 		zone->nsec3_nodes, nsec3_name, &found, &prev);
 	assert(exact_match >= 0);
 
@@ -1053,11 +1053,11 @@ const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *cont
 
 /*----------------------------------------------------------------------------*/
 
-static int zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
+static int zone_contents_adjust_nodes(zone_tree_t *nodes,
                                       zone_adjust_arg_t *adjust_arg,
-                                      knot_zone_tree_apply_cb_t callback)
+                                      zone_tree_apply_cb_t callback)
 {
-	if (knot_zone_tree_is_empty(nodes)) {
+	if (zone_tree_is_empty(nodes)) {
 		return KNOT_EOK;
 	}
 
@@ -1069,7 +1069,7 @@ static int zone_contents_adjust_nodes(knot_zone_tree_t *nodes,
 	adjust_arg->previous_node = NULL;
 
 	hattrie_build_index(nodes);
-	int result = knot_zone_tree_apply_inorder(nodes, callback, adjust_arg);
+	int result = zone_tree_apply_inorder(nodes, callback, adjust_arg);
 
 	if (adjust_arg->first_node) {
 		adjust_arg->first_node->prev = adjust_arg->previous_node;
@@ -1230,7 +1230,7 @@ int zone_contents_tree_apply_inorder(zone_contents_t *zone,
 	f.func = function;
 	f.data = data;
 
-	return knot_zone_tree_apply_inorder(zone->nodes, tree_apply_cb, &f);
+	return zone_tree_apply_inorder(zone->nodes, tree_apply_cb, &f);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1246,7 +1246,7 @@ int zone_contents_nsec3_apply_inorder(zone_contents_t *zone,
 	f.func = function;
 	f.data = data;
 
-	return knot_zone_tree_apply_inorder(zone->nsec3_nodes,
+	return zone_tree_apply_inorder(zone->nsec3_nodes,
 	                                    tree_apply_cb, &f);
 }
 
@@ -1271,7 +1271,7 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 
 	int ret = recreate_normal_tree(from, contents);
 	if (ret != KNOT_EOK) {
-		knot_zone_tree_free(&contents->nodes);
+		zone_tree_free(&contents->nodes);
 		free(contents);
 		return ret;
 	}
@@ -1279,8 +1279,8 @@ int zone_contents_shallow_copy(const zone_contents_t *from, zone_contents_t **to
 	if (from->nsec3_nodes) {
 		ret = recreate_nsec3_tree(from, contents);
 		if (ret != KNOT_EOK) {
-			knot_zone_tree_free(&contents->nodes);
-			knot_zone_tree_free(&contents->nsec3_nodes);
+			zone_tree_free(&contents->nodes);
+			zone_tree_free(&contents->nsec3_nodes);
 			free(contents);
 			return ret;
 		}
@@ -1302,9 +1302,9 @@ void zone_contents_free(zone_contents_t **contents)
 
 	// free the zone tree, but only the structure
 	dbg_zone("Destroying zone tree.\n");
-	knot_zone_tree_free(&(*contents)->nodes);
+	zone_tree_free(&(*contents)->nodes);
 	dbg_zone("Destroying NSEC3 zone tree.\n");
-	knot_zone_tree_free(&(*contents)->nsec3_nodes);
+	zone_tree_free(&(*contents)->nsec3_nodes);
 
 	knot_nsec3param_free(&(*contents)->nsec3_params);
 
@@ -1322,13 +1322,13 @@ void zone_contents_deep_free(zone_contents_t **contents)
 
 	if ((*contents) != NULL) {
 		// Delete NSEC3 tree
-		knot_zone_tree_apply(
+		zone_tree_apply(
 			(*contents)->nsec3_nodes,
 			zone_contents_destroy_node_rrsets_from_tree,
 			(void*)1);
 
 		// Delete normal tree
-		knot_zone_tree_apply(
+		zone_tree_apply(
 			(*contents)->nodes,
 			zone_contents_destroy_node_rrsets_from_tree,
 			(void*)1);

@@ -591,7 +591,7 @@ static int sign_node(zone_node_t **node, void *data)
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int zone_tree_sign(knot_zone_tree_t *tree,
+static int zone_tree_sign(zone_tree_t *tree,
                           const knot_zone_keys_t *zone_keys,
                           const knot_dnssec_policy_t *policy,
                           changeset_t *changeset,
@@ -608,7 +608,7 @@ static int zone_tree_sign(knot_zone_tree_t *tree,
 		.expires_at = time(NULL) + policy->sign_lifetime
 	};
 
-	int result = knot_zone_tree_apply(tree, sign_node, &args);
+	int result = zone_tree_apply(tree, sign_node, &args);
 	*expires_at = args.expires_at;
 
 	return result;

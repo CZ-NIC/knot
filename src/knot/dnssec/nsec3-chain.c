@@ -127,9 +127,9 @@ static int shallow_copy_signature(const zone_node_t *from, zone_node_t *to)
 /*!
  * \brief Reuse signatatures by shallow copying them from one tree to another.
  */
-static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
+static int copy_signatures(const zone_tree_t *from, zone_tree_t *to)
 {
-	if (knot_zone_tree_is_empty(from)) {
+	if (zone_tree_is_empty(from)) {
 		return KNOT_EOK;
 	}
 
@@ -142,7 +142,7 @@ static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
 		zone_node_t *node_from = (zone_node_t *)*hattrie_iter_val(it);
 		zone_node_t *node_to = NULL;
 
-		knot_zone_tree_get(to, node_from->owner, &node_to);
+		zone_tree_get(to, node_from->owner, &node_to);
 		if (node_to == NULL) {
 			continue;
 		}
@@ -166,7 +166,7 @@ static int copy_signatures(const knot_zone_tree_t *from, knot_zone_tree_t *to)
  * \brief Custom NSEC3 tree free function.
  *
  */
-static void free_nsec3_tree(knot_zone_tree_t *nodes)
+static void free_nsec3_tree(zone_tree_t *nodes)
 {
 	assert(nodes);
 
@@ -183,7 +183,7 @@ static void free_nsec3_tree(knot_zone_tree_t *nodes)
 	}
 
 	hattrie_iter_free(it);
-	knot_zone_tree_free(&nodes);
+	zone_tree_free(&nodes);
 }
 
 /* - NSEC3 nodes construction ----------------------------------------------- */
@@ -414,7 +414,7 @@ static int connect_nsec3_nodes(zone_node_t *a, zone_node_t *b,
  * \return Error code, KNOT_EOK if successful.
  */
 static int create_nsec3_nodes(const zone_contents_t *zone, uint32_t ttl,
-                              knot_zone_tree_t *nsec3_nodes,
+                              zone_tree_t *nsec3_nodes,
                               changeset_t *chgset)
 {
 	assert(zone);
@@ -456,7 +456,7 @@ static int create_nsec3_nodes(const zone_contents_t *zone, uint32_t ttl,
 			break;
 		}
 
-		result = knot_zone_tree_insert(nsec3_nodes, nsec3_node);
+		result = zone_tree_insert(nsec3_nodes, nsec3_node);
 		if (result != KNOT_EOK) {
 			break;
 		}
@@ -532,7 +532,7 @@ static void mark_empty_nodes_tmp(const zone_contents_t *zone)
 {
 	assert(zone);
 
-	int ret = knot_zone_tree_apply(zone->nodes, nsec3_mark_empty, NULL);
+	int ret = zone_tree_apply(zone->nodes, nsec3_mark_empty, NULL);
 
 	assert(ret == KNOT_EOK);
 }
@@ -572,7 +572,7 @@ static void reset_nodes(const zone_contents_t *zone)
 {
 	assert(zone);
 
-	int ret = knot_zone_tree_apply(zone->nodes, nsec3_reset, NULL);
+	int ret = zone_tree_apply(zone->nodes, nsec3_reset, NULL);
 
 	assert(ret == KNOT_EOK);
 }
@@ -590,7 +590,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 
 	int result;
 
-	knot_zone_tree_t *nsec3_nodes = knot_zone_tree_create();
+	zone_tree_t *nsec3_nodes = zone_tree_create();
 	if (!nsec3_nodes) {
 		return KNOT_ENOMEM;
 	}
@@ -623,7 +623,7 @@ int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
 
 	copy_signatures(zone->nsec3_nodes, nsec3_nodes);
 
-	result = knot_zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes,
+	result = zone_tree_add_diff(zone->nsec3_nodes, nsec3_nodes,
 	                                 changeset);
 
 	free_nsec3_tree(nsec3_nodes);

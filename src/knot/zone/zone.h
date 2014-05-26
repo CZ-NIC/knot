@@ -43,28 +43,19 @@ struct process_query_param;
  * \brief Zone flags.
  */
 typedef enum zone_flag_t {
-	ZONE_FORCE_AXFR   = 1 << 0, /* Force AXFR, zone master may not be IXFR-capable. */
+	ZONE_FORCE_AXFR   = 1 << 0, /* Force AXFR as next transfer. */
+	ZONE_FORCE_RESIGN = 1 << 1  /* Force zone resign. */
 } zone_flag_t;
 
 /*!
  * \brief Structure for holding DNS zone.
  */
-typedef struct zone_t {
-
-	//! \todo Move ACLs into configuration.
-	//! \todo Remove refcounting + flags.
-
-	ref_t ref;     /*!< Reference counting. */
+typedef struct zone_t
+{
 	knot_dname_t *name;
-
 	zone_contents_t *contents;
-	time_t zonefile_mtime;
-	uint32_t zonefile_serial;
-
-	zone_flag_t flags;
-
-	/*! \brief Shortcut to zone config entry. */
 	conf_zone_t *conf;
+	zone_flag_t flags;
 
 	/*! \brief DDNS queue and lock. */
 	pthread_mutex_t ddns_lock;
@@ -76,18 +67,11 @@ typedef struct zone_t {
 	acl_t *update_in;  /*!< ACL for incoming updates.*/
 
 	/*! \brief Zone events. */
-	zone_events_t events;
-
-	/*! \brief XFR-IN scheduler. */
-	struct {
-		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-		unsigned state;
-	} xfr_in;
-
-	struct {
-		uint32_t refresh_at; /*!< Next DNSSEC resign event. */
-		bool next_force;     /*!< Drop existing signatures. */
-	} dnssec;
+	zone_events_t events;     /*!< Zone events timers. */
+	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
+	uint32_t dnssec_refresh;  /*!< Next DNSSEC resign event. */
+	time_t zonefile_mtime;
+	uint32_t zonefile_serial;
 
 } zone_t;
 
@@ -111,7 +95,10 @@ zone_t *zone_new(conf_zone_t *conf);
  */
 void zone_free(zone_t **zone_ptr);
 
-/*! \note Zone change API, subject to change. */
+/*!
+ * \note Zone change API below, subject to change.
+ * \ref #223 New zone API
+ */
 changeset_t *zone_change_prepare(changesets_t *chset);
 int zone_change_commit(zone_contents_t *contents, changesets_t *chset);
 int zone_change_store(zone_t *zone, changesets_t *chset);
