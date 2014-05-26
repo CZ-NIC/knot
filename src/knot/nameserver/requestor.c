@@ -86,9 +86,9 @@ static int request_send(struct request *request, const struct timeval *timeout)
 	/* Each request has unique timeout. */
 	struct timeval tv = { timeout->tv_sec, timeout->tv_usec };
 
-	/* Wait for writeability. */
+	/* Wait for writeability or error. */
 	int ret = request_wait(request->data.fd, NS_PROC_FULL, &tv);
-	if (ret <= 0) {
+	if (ret == 0) {
 		return KNOT_EAGAIN;
 	}
 

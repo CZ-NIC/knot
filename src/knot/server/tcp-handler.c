@@ -242,7 +242,7 @@ int tcp_recv_data(int fd, uint8_t *buf, int len, struct timeval *timeout)
 			if (ret) {
 				continue;
 			} else {
-				return KNOT_EAGAIN;
+				return KNOT_EBUSY;
 			}
 		} else {
 			return KNOT_ECONN;
