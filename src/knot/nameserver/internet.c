@@ -19,7 +19,7 @@
 #include "libknot/common.h"
 #include "libknot/rdata/rdname.h"
 #include "libknot/rdata/soa.h"
-#include "libknot/edns.h"
+#include "libknot/rdata/opt.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"

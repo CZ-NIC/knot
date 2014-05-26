@@ -32,7 +32,7 @@
 
 #include "libknot/dname.h"
 #include "libknot/rrset.h"
-#include "libknot/edns.h"
+#include "libknot/rdata/opt.h"
 #include "libknot/packet/wire.h"
 #include "libknot/packet/compr.h"
 #include "common/mempattern.h"

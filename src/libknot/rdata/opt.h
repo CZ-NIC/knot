@@ -1,10 +1,9 @@
 /*!
- * \file edns.h
+ * \file opt.h
  *
  * \author Lubos Slovak <lubos.slovak@nic.cz>
  *
- * \brief Functions for manipulating the EDNS OPT pseudo-RR and EDNS server
- *        parameters.
+ * \brief Functions for manipulating the EDNS OPT pseudo-RR.
  *
  * \addtogroup libknot
  * @{
@@ -25,8 +24,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_EDNS_H_
-#define _KNOT_EDNS_H_
+#ifndef _KNOT_OPT_H_
+#define _KNOT_OPT_H_
 
 #include <stdint.h>
 
@@ -235,6 +234,6 @@ bool knot_edns_has_nsid(const knot_rrset_t *opt_rr);
  */
 bool knot_edns_check_record(knot_rrset_t *opt_rr);
 
-#endif /* _KNOT_EDNS_H_ */
+#endif /* _KNOT_OPT_H_ */
 
 /*! @} */

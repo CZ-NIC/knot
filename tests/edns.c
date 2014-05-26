@@ -19,7 +19,7 @@
 
 #include <assert.h>
 #include "common/errcode.h"
-#include "libknot/edns.h"
+#include "libknot/rdata/opt.h"
 #include "common/descriptor.h"
 
 static const uint16_t E_MAX_PLD = 10000;

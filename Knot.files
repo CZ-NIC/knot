@@ -223,8 +223,6 @@ src/libknot/dnssec/sig0.c
 src/libknot/dnssec/sig0.h
 src/libknot/dnssec/sign.c
 src/libknot/dnssec/sign.h
-src/libknot/edns.c
-src/libknot/edns.h
 src/libknot/libknot.h
 src/libknot/packet/compr.c
 src/libknot/packet/compr.h
@@ -246,6 +244,8 @@ src/libknot/rdata/rrsig.h
 src/libknot/rdata/soa.h
 src/libknot/rdata/tsig.c
 src/libknot/rdata/tsig.h
+src/libknot/rdata/opt.c
+src/libknot/rdata/opt.h
 src/libknot/rdataset.c
 src/libknot/rdataset.h
 src/libknot/rrset-dump.c
