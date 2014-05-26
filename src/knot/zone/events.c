@@ -192,21 +192,20 @@ static int zone_query_transfer(zone_t *zone, const conf_iface_t *master, uint16_
  * function. This would require to split refresh event to zone load and zone
  * publishing.
  */
-static void schedule_dnssec(zone_t *zone)
+static void schedule_dnssec(zone_t *zone, time_t refresh_at)
 {
 	// log a message
 
 	char time_str[64] = { 0 };
 	struct tm time_gm = { 0 };
-	time_t unixtime = zone->dnssec_refresh;
-	gmtime_r(&unixtime, &time_gm);
+	gmtime_r(&refresh_at, &time_gm);
 	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
 	log_zone_info("DNSSEC: Zone %s - Next event on %s.\n",
 	              zone->conf->name, time_str);
 
 	// schedule
 
-	zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, unixtime);
+	zone_events_schedule_at(zone, ZONE_EVENT_DNSSEC, refresh_at);
 }
 
 /* -- zone events handling callbacks --------------------------------------- */
@@ -219,6 +218,7 @@ static int event_reload(zone_t *zone)
 
 	/* Take zone file mtime and load it. */
 	time_t mtime = zonefile_mtime(zone->conf->file);
+	uint32_t dnssec_refresh = time(NULL);
 	conf_zone_t *zone_config = zone->conf;
 	zone_contents_t *contents = zone_load_contents(zone_config);
 	if (!contents) {
@@ -232,7 +232,8 @@ static int event_reload(zone_t *zone)
 	}
 
 	/* Post load actions - calculate delta, sign with DNSSEC... */
-	result = zone_load_post(contents, zone);
+	/*! \todo issue #242 dnssec signing should occur in the special event */
+	result = zone_load_post(contents, zone, &dnssec_refresh);
 	if (result != KNOT_EOK) {
 		if (result == KNOT_ESPACE) {
 			log_zone_error("Zone '%s' journal size is too small to fit the changes.\n",
@@ -266,8 +267,10 @@ static int event_reload(zone_t *zone)
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->bootstrap_retry);
 	}
+
+	/* Schedule zone resign. */
 	if (zone->conf->dnssec_enable) {
-		schedule_dnssec(zone);
+		schedule_dnssec(zone, dnssec_refresh);
 	}
 
 	/* Periodic execution. */
@@ -311,7 +314,7 @@ static int event_refresh(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
 	}
 
-	return ret;
+	return KNOT_EOK;
 }
 
 static int event_xfer(zone_t *zone)
@@ -458,7 +461,7 @@ static int event_dnssec(zone_t *zone)
 		goto done;
 	}
 
-	uint32_t refresh_at = 0;
+	uint32_t refresh_at = time(NULL);
 	if (zone->flags & ZONE_FORCE_RESIGN) {
 		log_zone_info("%s Complete resign started (dropping all "
 			      "previous signatures)...\n", msgpref);
@@ -487,8 +490,7 @@ static int event_dnssec(zone_t *zone)
 
 	// Schedule dependent events.
 
-	zone->dnssec_refresh = refresh_at;
-	schedule_dnssec(zone);
+	schedule_dnssec(zone, refresh_at);
 	zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 	if (zone->conf->dbsync_timeout == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
@@ -656,7 +658,7 @@ static void event_wrap(task_t *task)
 	const event_info_t *info = get_event_info(type);
 	int result = info->callback(zone);
 	if (result != KNOT_EOK) {
-		log_zone_error("[%s] %s failed - %s\n", zone->conf->name,
+		log_zone_error("Zone '%s' event '%s' failed - %s\n", zone->conf->name,
 		               info->name, knot_strerror(result));
 	}
 
@@ -796,4 +798,60 @@ void zone_events_start(zone_t *zone)
 	pthread_mutex_lock(&zone->events.mx);
 	reschedule(&zone->events);
 	pthread_mutex_unlock(&zone->events.mx);
+}
+
+time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type)
+{
+	if (zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	time_t event_time = KNOT_ENOENT;
+	zone_events_t *events = (zone_events_t *)&zone->events;
+
+	pthread_mutex_lock(&events->mx);
+
+	/* Get next valid event. */
+	if (valid_event(type)) {
+		event_time = event_get_time(events, type);
+	}
+
+	pthread_mutex_unlock(&events->mx);
+
+	return event_time;
+}
+
+const char *zone_events_get_name(zone_event_type_t type)
+{
+	/* Get information about the event and time. */
+	const event_info_t *info = get_event_info(type);
+	if (info == NULL) {
+		return NULL;
+	}
+
+	return info->name;
+}
+
+time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type)
+{
+	if (zone == NULL || type == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	time_t next_time = KNOT_ENOENT;
+	zone_events_t *events = (zone_events_t *)&zone->events;
+
+	pthread_mutex_lock(&events->mx);
+
+	/* Get time of next valid event. */
+	*type = get_next_event(events);
+	if (valid_event(*type)) {
+		next_time = event_get_time(events, *type);
+	} else {
+		*type = ZONE_EVENT_INVALID;
+	}
+
+	pthread_mutex_unlock(&events->mx);
+
+	return next_time;
 }

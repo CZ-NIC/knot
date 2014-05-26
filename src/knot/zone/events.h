@@ -105,3 +105,28 @@ void zone_events_freeze(struct zone_t *zone);
  * \brief Start the events processing.
  */
 void zone_events_start(struct zone_t *zone);
+
+
+/*!
+ * \brief Return time of the occurence of the given event.
+ *
+ * \param zone
+ * \param type
+ *
+ * \return time of the event or an error (negative number)
+ */
+time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type);
+
+/*!
+ * \brief Return text name of the event.
+ */
+const char *zone_events_get_name(zone_event_type_t type);
+
+/*!
+ * \brief Return time and type of the next event.
+ *
+ * \param zone
+ * \param type [out] Type of the next event will be stored in the parameter.
+ * \return time of the next event or an error (negative number)
+ */
+time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type);
