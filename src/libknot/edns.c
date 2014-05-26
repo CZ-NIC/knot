@@ -198,7 +198,7 @@ static void find_option(knot_rdata_t *rdata, uint16_t opt_code, uint8_t **pos)
 	*pos = NULL;
 
 	int i = 0;
-	while (i + 4 <= rdlength) {
+	while (i + KNOT_EDNS_OPTION_HDRLEN <= rdlength) {
 		uint16_t code = knot_wire_read_u16(data + i);
 		if (opt_code == code) {
 			*pos = data + i;
@@ -231,8 +231,7 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 	uint16_t old_data_len = knot_rdata_rdlen(old_rdata);
 	uint16_t new_data_len = old_data_len + KNOT_EDNS_OPTION_HDRLEN + length;
 
-	uint8_t *new_data = (uint8_t *)mm_alloc(mm, new_data_len);
-	CHECK_ALLOC_LOG(new_data, KNOT_ENOMEM);
+	uint8_t new_data[new_data_len];
 
 	dbg_edns_verb("EDNS: Adding option. Code: %u, length: %u, data:\n",
 	              code, length);
@@ -245,27 +244,10 @@ int knot_edns_add_option(knot_rrset_t *opt_rr, uint16_t code,
 	// write the option data
 	memcpy(new_data + old_data_len + KNOT_EDNS_OPTION_HDRLEN, data, length);
 
-	/* 2) Create new RDATA structure (we need to preserve the TTL).
-	 */
-	size_t new_rdata_size = knot_rdata_array_size(new_data_len);
-	knot_rdata_t *new_rdata = (knot_rdata_t *)mm_alloc(mm, new_rdata_size);
-	if (new_rdata == NULL) {
-		mm_free(mm, new_data);
-		return KNOT_ENOMEM;
-	}
-	knot_rdata_set_ttl(new_rdata, knot_rdata_ttl(old_rdata));
-	knot_rdata_set_rdlen(new_rdata, new_data_len);
-	memcpy(knot_rdata_data(new_rdata), new_data, new_data_len);
-
-	/* 3) Replace the RDATA in the rdataset. This is an ugly hack, but
-	 *    there is no better way around the current API.
-	 */
-	opt_rr->rrs.data = new_rdata;
-
-	/* 4) Delete the old RDATA.
-	 * WARNING: This assumes the data isn't shared.
-	 */
-	mm_free(mm, old_rdata);
+	/* 2) Replace the RDATA in the RRSet. */
+	knot_rdataset_clear(&opt_rr->rrs, mm);
+	knot_rrset_add_rdata(opt_rr, new_data, new_data_len,
+	                     knot_rdata_ttl(old_rdata), mm);
 
 	return KNOT_EOK;
 }
