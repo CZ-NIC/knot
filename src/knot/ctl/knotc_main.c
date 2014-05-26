@@ -269,8 +269,8 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Wait for reply. */
-	pfd.events = POLLIN;
-	while (poll(&pfd, 1, conf()->max_conn_reply) > 0) {
+	ret = KNOT_EOK;
+	while (ret == KNOT_EOK) {
 		ret = cmd_remote_reply(s);
 		if (ret != KNOT_EOK) {
 			if (ret != KNOT_ECONN) {
