@@ -88,10 +88,10 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item, struct xfr_
 static void axfr_query_cleanup(struct query_data *qdata)
 {
 	struct axfr_proc *axfr = (struct axfr_proc *)qdata->ext;
-	mm_ctx_t *mm = qdata->mm;
 
-	ptrlist_free(&axfr->proc.nodes, mm);
-	mm->free(axfr);
+	hattrie_iter_free(axfr->i);
+	ptrlist_free(&axfr->proc.nodes, qdata->mm);
+	mm_free(qdata->mm, axfr);
 
 	/* Allow zone changes (finished). */
 	rcu_read_unlock();
