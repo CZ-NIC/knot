@@ -196,17 +196,6 @@ bool knot_edns_do(const knot_rrset_t *opt_rr);
 void knot_edns_set_do(knot_rrset_t *opt_rr);
 
 /*!
- * \brief Removes all OPTIONs from OPT RDATA, possibly except NSID.
- *
- * \param opt_rr       OPT RR to remove the OPTIONs from.
- * \param retain_nsid  Set to true if NSID OPTION should be left in the OPT RR.
- *
- * \retval KNOT_EOK
- * \retval KNOT_EINVAL if \a opt_rr is not set.
- */
-int knot_edns_clear_options(knot_rrset_t *opt_rr, bool retain_nsid);
-
-/*!
  * \brief Adds EDNS Option to the OPT RR.
  *
  * \note The function now supports adding empty OPTION (just having its code).

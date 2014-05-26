@@ -333,53 +333,7 @@ static bool test_setters(knot_rrset_t *opt_rr, int *done)
 	return success;
 }
 
-static bool test_options(knot_rrset_t *opt_rr, int *done)
-{
-	bool check;
-	bool success = true;
-
-	/* Clear options, leave NSID */
-	check = knot_edns_clear_options(opt_rr, true) == KNOT_EOK;
-	ok(check, "OPT RR: clear OPTIONs (leave NSID)");
-	success &= check;
-	(*done)++;
-
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-	if (rdata == NULL) {
-		skip_block(2, "No RDATA in OPT RR.");
-		return false;
-	}
-
-	check = check_option(rdata, KNOT_EDNS_OPTION_NSID, E_NSID_LEN,
-	                     (uint8_t *)E_NSID_STR,
-	                     "OPT RR: clear OPTIONs (NSID check)", done);
-	success &= check;
-
-	check = !knot_edns_has_option(opt_rr, E_OPT3_CODE);
-	ok(check, "OPT RR: clear options (other OPTION");
-	success &= check;
-	(*done)++;
-
-	check = !knot_edns_has_option(opt_rr, E_OPT4_CODE);
-	ok(check, "OPT RR: clear options (other OPTION");
-	success &= check;
-	(*done)++;
-
-	/* Clear options, leave NSID */
-	check = knot_edns_clear_options(opt_rr, false) == KNOT_EOK;
-	ok(check, "OPT RR: clear OPTIONs (all)");
-	success &= check;
-	(*done)++;
-
-	check = !knot_edns_has_option(opt_rr, KNOT_EDNS_OPTION_NSID);
-	ok(check, "OPT RR: clear options (NSID removed)");
-	success &= check;
-	(*done)++;
-
-	return success;
-}
-
-#define TEST_COUNT 47
+#define TEST_COUNT 38
 
 static inline int remaining(int done) {
 	return TEST_COUNT - done - 1;
@@ -420,8 +374,6 @@ int main(int argc, char *argv[])
 		skip_block(remaining(done), "OPT RR: getters error");
 		goto exit;
 	}
-
-	(void)test_options(&opt_rr, &done);
 
 exit:
 	knot_rrset_clear(&opt_rr, NULL);

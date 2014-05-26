@@ -32,8 +32,6 @@ enum knot_edns_private_consts {
 	KNOT_EDNS_OFFSET_RCODE = 0,
 	/*! \brief Offset of the Version field in TTL (network byte order). */
 	KNOT_EDNS_OFFSET_VERSION = 1,
-	/*! \brief Offset of the Flags field in TTL (network byte order). */
-	KNOT_EDNS_OFFSET_FLAGS = 2
 };
 
 /*----------------------------------------------------------------------------*/
@@ -157,7 +155,7 @@ void knot_edns_set_version(knot_rrset_t *opt_rr, uint8_t version)
 	// TTL is stored in machine byte order. Convert it to wire order first.
 	knot_wire_write_u32(ttl_ptr, knot_rrset_ttl(opt_rr));
 	// Set the version in the converted TTL
-	memcpy(ttl_ptr + KNOT_EDNS_OFFSET_VERSION, &version, 1);
+	memcpy(ttl_ptr + KNOT_EDNS_OFFSET_VERSION, &version, sizeof(uint8_t));
 	// Convert it back to machine byte order
 	uint32_t ttl_local = knot_wire_read_u32(ttl_ptr);
 	// Store the TTL to the RDATA
@@ -212,34 +210,6 @@ static void find_option(knot_rdata_t *rdata, uint16_t opt_code, uint8_t **pos)
 		uint16_t opt_len = knot_wire_read_u16(data + i + 2);
 		i += (4 + opt_len);
 	}
-}
-
-/*----------------------------------------------------------------------------*/
-
-int knot_edns_clear_options(knot_rrset_t *opt_rr, bool retain_nsid)
-{
-	if (opt_rr == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_rdata_t *rdata = knot_rdataset_at(&opt_rr->rrs, 0);
-
-	if (retain_nsid) {
-		/* Search for NSID and move it to the beginning. Then crop. */
-		uint8_t *pos = NULL;
-		find_option(rdata, KNOT_EDNS_OPTION_NSID, &pos);
-
-		uint16_t nsid_len = knot_wire_read_u16(pos + 2);
-		uint16_t total_len = nsid_len + 4;
-
-		memmove(knot_rdata_data(rdata), pos, total_len);
-		knot_rdata_set_rdlen(rdata, total_len);
-	} else {
-		/* Clear the whole RDATA. No other OPTIONS supported now. */
-		knot_rdata_set_rdlen(rdata, 0);
-	}
-
-	return KNOT_EOK;
 }
 
 /*----------------------------------------------------------------------------*/
