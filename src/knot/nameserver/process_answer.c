@@ -64,9 +64,18 @@ static int process_answer_begin(knot_process_t *ctx, void *module_param)
 static int process_answer_reset(knot_process_t *ctx)
 {
 	assert(ctx);
+	struct answer_data *data = ANSWER_DATA(ctx);
+
+	/* Remember persistent parameters. */
+	struct process_answer_param *module_param = data->param;
+
+	/* Free allocated data. */
+	if (data->ext_cleanup != NULL) {
+		data->ext_cleanup(data);
+	}
 
 	/* Initialize persistent data. */
-	answer_data_init(ctx, ANSWER_DATA(ctx)->param);
+	answer_data_init(ctx, module_param);
 
 	/* Await packet. */
 	return NS_PROC_MORE;
