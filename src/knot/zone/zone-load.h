@@ -21,12 +21,42 @@
 #include "knot/zone/contents.h"
 #include "knot/zone/zone.h"
 
-zone_contents_t *zone_load_contents(conf_zone_t *conf);
+/*!
+ * \brief Load zone contents according to the configuration.
+ *
+ * \param zone_config
+ * \return new zone contents or NULL
+ */
+zone_contents_t *zone_load_contents(conf_zone_t *zone_config);
+
+/*!
+ * \brief Check loaded zone contents validity.
+ *
+ * \param contents
+ * \param zone_config
+ * \return KNOT_EOK or an error
+ */
 int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config);
-int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf);
-int zone_load_post(zone_contents_t *new_contents, zone_t *zone);
+
+/*!
+ * \brief Update zone contents from the journal.
+ *
+ * \param contents
+ * \param zone_config
+ * \return KNOT_EOK or an error
+ */
+int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config);
+
+/*!
+ * \brief Zone loading post-actions (zone resign, calculation of delta)
+ *
+ * \param contents
+ * \param zone
+ * \return KNOT_EOK or an error
+ */
+int zone_load_post(zone_contents_t *contents, zone_t *zone);
 
 /*!
  * \brief Check if zone can be bootstrapped.
  */
-bool zone_load_can_bootstrap(const conf_zone_t *conf);
+bool zone_load_can_bootstrap(const conf_zone_t *zone_config);

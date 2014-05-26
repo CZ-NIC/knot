@@ -24,12 +24,13 @@
 #include "knot/updates/apply.h"
 #include "libknot/rdata.h"
 
-zone_contents_t *zone_load_contents(conf_zone_t *conf)
+zone_contents_t *zone_load_contents(conf_zone_t *zone_config)
 {
-	assert(conf);
+	assert(zone_config);
 
 	zloader_t zl;
-	int ret = zonefile_open(&zl, conf->file, conf->name, conf->enable_checks);
+	int ret = zonefile_open(&zl, zone_config->file, zone_config->name,
+	                        zone_config->enable_checks);
 	if (ret != KNOT_EOK) {
 		return NULL;
 	}
@@ -37,7 +38,7 @@ zone_contents_t *zone_load_contents(conf_zone_t *conf)
 	/* Set the zone type (master/slave). If zone has no master set, we
 	 * are the primary master for this zone (i.e. zone type = master).
 	 */
-	zl.creator->master = !zone_load_can_bootstrap(conf);
+	zl.creator->master = !zone_load_can_bootstrap(zone_config);
 
 	zone_contents_t *zone_contents = zonefile_load(&zl);
 	zonefile_close(&zl);
@@ -80,10 +81,10 @@ int zone_load_check(zone_contents_t *contents, conf_zone_t *zone_config)
 /*!
  * \brief Apply changesets to zone from journal.
  */
-int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
+int zone_load_journal(zone_contents_t *contents, conf_zone_t *zone_config)
 {
 	/* Check if journal is used and zone is not empty. */
-	if (!journal_exists(conf->ixfr_db) || zone_contents_is_empty(contents)) {
+	if (!journal_exists(zone_config->ixfr_db) || zone_contents_is_empty(contents)) {
 		return KNOT_EOK;
 	}
 
@@ -97,7 +98,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	}
 
 	/*! \todo Check what should be the upper bound. */
-	int ret = journal_load_changesets(conf->ixfr_db, chsets, serial, serial - 1);
+	int ret = journal_load_changesets(zone_config->ixfr_db, chsets, serial, serial - 1);
 	if ((ret != KNOT_EOK && ret != KNOT_ERANGE) || EMPTY_LIST(chsets->sets)) {
 		changesets_free(&chsets, NULL);
 		/* Absence of records is not an error. */
@@ -111,7 +112,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	/* Apply changesets. */
 	ret = apply_changesets_directly(contents,  chsets);
 	log_zone_info("Zone '%s' serial %u -> %u: %s\n",
-	              conf->name,
+	              zone_config->name,
 	              serial, zone_contents_serial(contents),
 	              knot_strerror(ret));
 
@@ -119,7 +120,7 @@ int zone_load_journal(zone_contents_t *contents, conf_zone_t *conf)
 	return ret;
 }
 
-int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
+int zone_load_post(zone_contents_t *contents, zone_t *zone)
 {
 	if (zone == NULL) {
 		return KNOT_EINVAL;
@@ -136,7 +137,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 			return KNOT_ENOMEM;
 		}
 
-		ret = knot_dnssec_zone_sign(new_contents, conf,
+		ret = knot_dnssec_zone_sign(contents, conf,
 		                            changesets_get_last(dnssec_change),
 		                            KNOT_SOA_SERIAL_UPDATE,
 		                            &zone->dnssec.refresh_at);
@@ -146,7 +147,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 		}
 
 		/* Apply DNSSEC changes. */
-		ret = zone_change_commit(new_contents, dnssec_change);
+		ret = zone_change_commit(contents, dnssec_change);
 		changesets_free(&dnssec_change, NULL);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -154,7 +155,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 	}
 
 	/* Calculate IXFR from differences (if configured). */
-	const bool contents_changed = zone->contents && (new_contents != zone->contents);
+	const bool contents_changed = zone->contents && (contents != zone->contents);
 	changesets_t *diff_change = NULL;
 	if (contents_changed && conf->build_diffs) {
 		diff_change = changesets_create(1);
@@ -162,7 +163,7 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 			return KNOT_ENOMEM;
 		}
 
-		ret = zone_contents_create_diff(zone->contents, new_contents,
+		ret = zone_contents_create_diff(zone->contents, contents,
 		                                changesets_get_last(diff_change));
 		if (ret == KNOT_ENODIFF) {
 			log_zone_warning("Zone %s: Zone file changed, "
@@ -186,8 +187,8 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 		}
 	}
 
+	/* Write changes (DNSSEC and diff both) to journal if all went well. */
 	if (diff_change) {
-		/* Write changes (DNSSEC and diff both) to journal if all went well. */
 		ret = zone_change_store(zone, diff_change);
 		changesets_free(&diff_change, NULL);
 		return ret;
@@ -197,8 +198,8 @@ int zone_load_post(zone_contents_t *new_contents, zone_t *zone)
 	return KNOT_EOK;
 }
 
-bool zone_load_can_bootstrap(const conf_zone_t *conf)
+bool zone_load_can_bootstrap(const conf_zone_t *zone_config)
 {
-	return conf && !EMPTY_LIST(conf->acl.xfr_in);
+	return conf && !EMPTY_LIST(zone_config->acl.xfr_in);
 }
 
