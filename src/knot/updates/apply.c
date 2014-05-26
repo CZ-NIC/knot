@@ -29,7 +29,7 @@
 #include "common/lists.h"
 #include "common/descriptor.h"
 #include "libknot/util/utils.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 
 /* --------------------------- Update cleanup ------------------------------- */
 

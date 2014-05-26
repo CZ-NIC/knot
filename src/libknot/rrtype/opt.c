@@ -19,7 +19,7 @@
 #include <assert.h>
 
 #include <string.h>
-#include "libknot/rdata/opt.h"
+#include "libknot/rrtype/opt.h"
 #include "libknot/common.h"
 #include "common/descriptor.h"
 #include "common/debug.h"

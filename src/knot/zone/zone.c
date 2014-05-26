@@ -32,7 +32,7 @@
 #include "libknot/dname.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/util/utils.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 
 /*!
  * \brief Set ACL list from configuration.

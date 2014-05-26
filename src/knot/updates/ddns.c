@@ -26,7 +26,7 @@
 #include "libknot/packet/pkt.h"
 #include "libknot/common.h"
 #include "libknot/consts.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 #include "common/mempattern.h"
 #include "common/descriptor.h"
 #include "common/lists.h"

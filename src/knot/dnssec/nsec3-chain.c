@@ -26,7 +26,7 @@
 #include "knot/dnssec/zone-sign.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "libknot/dnssec/bitmap.h"
-#include "libknot/rdata/nsec3.h"
+#include "libknot/rrtype/nsec3.h"
 
 /* - Forward declarations --------------------------------------------------- */
 

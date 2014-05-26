@@ -33,7 +33,7 @@
 #include "common/sockaddr.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
-#include "libknot/rdata/opt.h"
+#include "libknot/rrtype/opt.h"
 #include "knot/server/rrl.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/conf/conf.h"

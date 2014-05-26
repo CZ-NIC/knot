@@ -31,7 +31,7 @@
 #include <time.h>
 #include "libknot/dname.h"
 #include "libknot/binary.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 
 /*----------------------------------------------------------------------------*/
 

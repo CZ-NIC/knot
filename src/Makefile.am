@@ -157,8 +157,8 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/sig0.h			\
 	libknot/dnssec/sign.c			\
 	libknot/dnssec/sign.h			\
-	libknot/rdata/opt.c			\
-	libknot/rdata/opt.h			\
+	libknot/rrtype/opt.c			\
+	libknot/rrtype/opt.h			\
 	libknot/libknot.h			\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
@@ -167,18 +167,18 @@ libknot_la_SOURCES =				\
 	libknot/packet/wire.h			\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\
-	libknot/rdata/rdname.h			\
-	libknot/rdata/dnskey.h			\
-	libknot/rdata/nsec.h			\
-	libknot/rdata/nsec3.c			\
-	libknot/rdata/nsec3.h			\
-	libknot/rdata/nsec3param.h		\
-	libknot/rdata/nsec3param.c		\
-	libknot/rdata/nsec.h			\
-	libknot/rdata/rrsig.h			\
-	libknot/rdata/soa.h			\
-	libknot/rdata/tsig.c			\
-	libknot/rdata/tsig.h			\
+	libknot/rrtype/rdname.h			\
+	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/nsec3.c			\
+	libknot/rrtype/nsec3.h			\
+	libknot/rrtype/nsec3param.h		\
+	libknot/rrtype/nsec3param.c		\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/rrsig.h			\
+	libknot/rrtype/soa.h			\
+	libknot/rrtype/tsig.c			\
+	libknot/rrtype/tsig.h			\
 	libknot/rrset-dump.c			\
 	libknot/rrset-dump.h			\
 	libknot/rdata.c				\

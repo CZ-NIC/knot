@@ -21,7 +21,7 @@
 #include "common/mempool.h"
 #include "common/descriptor.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 
 #define TTL 7200
 #define NAMECOUNT 3

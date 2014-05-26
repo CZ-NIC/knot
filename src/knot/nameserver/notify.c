@@ -36,7 +36,7 @@
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/nameserver/process_answer.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */

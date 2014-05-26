@@ -25,7 +25,7 @@
 #include "libknot/common.h"
 #include "libknot/dname.h"
 #include "libknot/consts.h"
-#include "libknot/rdata/dnskey.h"
+#include "libknot/rrtype/dnskey.h"
 #include "libknot/dnssec/sign.h"
 #include "knot/dnssec/zone-keys.h"
 

@@ -33,7 +33,7 @@
 
 #include "libknot/consts.h"
 #include "libknot/rdataset.h"
-#include "libknot/rdata/nsec3param.h"
+#include "libknot/rrtype/nsec3param.h"
 
 static inline
 uint8_t knot_nsec3_algorithm(const knot_rdataset_t *rrs, size_t pos)
