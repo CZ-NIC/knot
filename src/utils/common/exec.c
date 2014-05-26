@@ -215,7 +215,6 @@ static void print_section_opt(const knot_rrset_t *rr)
 			short_hex_print(opt_data, opt_len);
 		}
 
-		printf("\n");
 		pos += 4 + opt_len;
 	}
 }
