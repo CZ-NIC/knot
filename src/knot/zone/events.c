@@ -45,13 +45,14 @@
 #define BOOTSTRAP_MAXTIME (24*60*60) /*!< Maximum AXFR retry cap of 24 hours. */
 
 /*! \brief Progressive bootstrap retry timer. */
-static void bootstrap_next(uint32_t *timer)
+static uint32_t bootstrap_next(uint32_t timer)
 {
-	*timer *= 2;
-	*timer += knot_random_uint32_t() % BOOTSTRAP_RETRY;
-	if (*timer > BOOTSTRAP_MAXTIME) {
-		*timer = BOOTSTRAP_MAXTIME;
+	timer *= 2;
+	timer += knot_random_uint32_t() % BOOTSTRAP_RETRY;
+	if (timer > BOOTSTRAP_MAXTIME) {
+		timer = BOOTSTRAP_MAXTIME;
 	}
+	return timer;
 }
 
 /* ------------------------- zone query requesting -------------------------- */
@@ -135,11 +136,12 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		return KNOT_ENOMEM;
 	}
 
-	requestor_enqueue(&re, req, &param);
-
 	/* Send the queries and process responses. */
-	struct timeval tv = { conf()->max_conn_reply, 0 };
-	ret = requestor_exec(&re, &tv);
+	ret = requestor_enqueue(&re, req, &param);
+	if (ret == KNOT_EOK) {
+		struct timeval tv = { conf()->max_conn_reply, 0 };
+		ret = requestor_exec(&re, &tv);
+	}
 
 	/* Cleanup. */
 	requestor_clear(&re);
@@ -156,6 +158,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		ZONE_QUERY_LOG(severity, zone, master, "IXFR", msg); \
 	}
 
+/*! \brief Execute zone transfer request. */
 static int zone_query_transfer(zone_t *zone, const conf_iface_t *master, uint16_t pkt_type)
 {
 	assert(zone);
@@ -213,14 +216,13 @@ typedef int (*zone_event_cb)(zone_t *zone);
 static int event_reload(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "RELOAD of '%s'\n", zone->conf->name);
 
 	/* Take zone file mtime and load it. */
 	time_t mtime = zonefile_mtime(zone->conf->file);
 	conf_zone_t *zone_config = zone->conf;
 	zone_contents_t *contents = zone_load_contents(zone_config);
 	if (!contents) {
-		return KNOT_ERROR; // TODO: specific error code
+		return KNOT_ERROR;
 	}
 
 	/* Apply changes in journal. */
@@ -282,7 +284,6 @@ fail:
 static int event_refresh(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "REFRESH of '%s'\n", zone->conf->name);
 
 	zone_contents_t *contents = zone->contents;
 	if (zone_contents_is_empty(contents)) {
@@ -337,7 +338,7 @@ static int event_xfer(zone_t *zone)
 	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
-		bootstrap_next(&zone->xfr_in.bootstrap_retry);
+		zone->xfr_in.bootstrap_retry = bootstrap_next(zone->xfr_in.bootstrap_retry);
 		zone_events_schedule(zone, ZONE_EVENT_XFER, zone->xfr_in.bootstrap_retry);
 	}
 
@@ -391,7 +392,6 @@ static int event_update(zone_t *zone)
 static int event_expire(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "EXPIRE of '%s'\n", zone->conf->name);
 
 	zone_contents_t *expired = zone_switch_contents(zone, NULL);
 	synchronize_rcu();
@@ -405,7 +405,6 @@ static int event_expire(zone_t *zone)
 static int event_flush(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "FLUSH of '%s'\n", zone->conf->name);
 
 	/* Reschedule. */
 	int next_timeout = zone->conf->dbsync_timeout;
@@ -423,7 +422,6 @@ static int event_flush(zone_t *zone)
 static int event_notify(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "NOTIFY of '%s'\n", zone->conf->name);
 
 	/* Walk through configured remotes and send messages. */
 	conf_remote_t *remote = 0;
@@ -442,7 +440,6 @@ static int event_notify(zone_t *zone)
 static int event_dnssec(zone_t *zone)
 {
 	assert(zone);
-	fprintf(stderr, "DNSSEC of '%s'\n", zone->conf->name);
 
 	changesets_t *chs = changesets_create(1);
 	if (chs == NULL) {
@@ -766,8 +763,6 @@ void zone_events_schedule_at(zone_t *zone, zone_event_type_t type, time_t time)
 
 void zone_events_schedule(zone_t *zone, zone_event_type_t type, unsigned dt)
 {
-	fprintf(stderr, "%s: %s '%s' in '%u' seconds\n",
-	        __func__, zone->conf->name, get_event_info(type)->name, dt);
 	time_t abstime = time(NULL) + dt;
 	return zone_events_schedule_at(zone, type, abstime);
 }
