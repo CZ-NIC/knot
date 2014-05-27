@@ -224,7 +224,8 @@ static int event_reload(zone_t *zone)
 		return KNOT_ERROR;
 	}
 
-	/* Apply changes in journal. */
+	/* Store zonefile serial and apply changes from the journal. */
+	zone->zonefile_serial = zone_contents_serial(contents);
 	int result = zone_load_journal(contents, zone_config);
 	if (result != KNOT_EOK) {
 		goto fail;
