@@ -259,6 +259,9 @@ static int event_reload(zone_t *zone)
 		zone_contents_deep_free(&old);
 	}
 
+	/* Trim extra heap. */
+	mem_trim();
+
 	/* Schedule notify and refresh after load. */
 	if (zone_master(zone)) {
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
@@ -339,6 +342,8 @@ static int event_xfer(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
 		zone->flags &= ~ZONE_FORCE_AXFR;
+		/* Trim extra heap. */
+		mem_trim();
 	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
@@ -389,6 +394,9 @@ static int event_update(zone_t *zone)
 	knot_pkt_free(&resp);
 	knot_pkt_free(&update->query);
 	free(update);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	return KNOT_EOK;
 }

@@ -591,13 +591,13 @@ int server_update_zones(const struct conf_t *conf, void *data)
 	/* Reload zone database and free old zones. */
 	int ret = zonedb_reload(conf, server);
 
+	/* Trim extra heap. */
+	mem_trim();
+
 	/* Plan events on new zones. */
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
-
-	/* Trim extra heap. */
-	mem_trim();
 
 	return ret;
 }

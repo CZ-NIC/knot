@@ -200,9 +200,6 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	update_cleanup(ddns_chs);
 	changesets_free(&ddns_chs, NULL);
 
-	/* Trim extra heap. */
-	mem_trim();
-
 	/* Sync zonefile immediately if configured. */
 	if (zone->conf->dbsync_timeout == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
