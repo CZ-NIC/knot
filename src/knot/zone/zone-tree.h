@@ -29,7 +29,7 @@
 #ifndef _KNOT_ZONE_TREE_H_
 #define _KNOT_ZONE_TREE_H_
 
-#include "common/hattrie/hat-trie.h"
+#include "common-knot/hattrie/hat-trie.h"
 #include "knot/zone/node.h"
 
 /*----------------------------------------------------------------------------*/

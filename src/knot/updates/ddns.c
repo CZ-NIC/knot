@@ -29,7 +29,7 @@
 #include "libknot/rrtype/soa.h"
 #include "libknot/mempattern.h"
 #include "libknot/descriptor.h"
-#include "common/lists.h"
+#include "common-knot/lists.h"
 
 /* ----------------------------- prereq check ------------------------------- */
 

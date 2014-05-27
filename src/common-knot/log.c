@@ -22,8 +22,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include "common/log.h"
-#include "common/lists.h"
+#include "common-knot/log.h"
+#include "common-knot/lists.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */

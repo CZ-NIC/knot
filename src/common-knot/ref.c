@@ -16,7 +16,7 @@
 
 #include <stdio.h>
 
-#include "common/ref.h"
+#include "common-knot/ref.h"
 
 void ref_init(ref_t *p, ref_destructor_t dtor)
 {

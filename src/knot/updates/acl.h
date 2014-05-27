@@ -30,8 +30,8 @@
 #ifndef _KNOTD_ACL_H_
 #define _KNOTD_ACL_H_
 
-#include "common/lists.h"
-#include "common/sockaddr.h"
+#include "common-knot/lists.h"
+#include "common-knot/sockaddr.h"
 #include "libknot/mempattern.h"
 #include "libknot/rrtype/tsig.h"
 

@@ -15,7 +15,7 @@
  */
 
 #include "libknot/errcode.h"
-#include "common/errors.h"
+#include "common-knot/errors.h"
 
 const error_table_t knot_error_msgs[] = {
 	{ KNOT_EOK, "OK" },

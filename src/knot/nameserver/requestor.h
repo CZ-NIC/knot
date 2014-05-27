@@ -18,7 +18,7 @@
 
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/process_answer.h"
-#include "common/lists.h"
+#include "common-knot/lists.h"
 
 struct request;
 

@@ -18,7 +18,7 @@
 #include <string.h>
 #include <netdb.h>
 
-#include "common/sockaddr.h"
+#include "common-knot/sockaddr.h"
 #include "libknot/errcode.h"
 #include "libknot/consts.h"
 

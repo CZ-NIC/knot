@@ -20,8 +20,8 @@
 #include <sys/stat.h>
 
 #include "libknot/descriptor.h"
-#include "common/evsched.h"
-#include "common/lists.h"
+#include "common-knot/evsched.h"
+#include "common-knot/lists.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"

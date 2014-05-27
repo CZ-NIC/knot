@@ -30,8 +30,8 @@
 #include <signal.h>
 #include <stdint.h>
 
-#include "common/print.h"
-#include "common/log.h"
+#include "common-knot/print.h"
+#include "common-knot/log.h"
 #include "libknot/errcode.h"
 #include "knot/other/debug.h"
 

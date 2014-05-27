@@ -31,9 +31,9 @@
 #include <cap-ng.h>
 #endif /* HAVE_CAP_NG_H */
 
-#include "common/sockaddr.h"
-#include "common/fdset.h"
-#include "common/mempool.h"
+#include "common-knot/sockaddr.h"
+#include "common-knot/fdset.h"
+#include "common-knot/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"

@@ -23,8 +23,8 @@
 #include "knot/other/debug.h"
 #include "knot/conf/logconf.h"
 #include "knot/conf/conf.h"
-#include "common/log.h"
-#include "common/lists.h"
+#include "common-knot/log.h"
+#include "common-knot/lists.h"
 #include "knot/knot.h"
 
 int log_reconfigure(const struct conf_t *conf, void *data)

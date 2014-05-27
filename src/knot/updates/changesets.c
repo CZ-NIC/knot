@@ -22,7 +22,7 @@
 #include "libknot/common.h"
 #include "libknot/descriptor.h"
 #include "libknot/mempattern.h"
-#include "common/mempool.h"
+#include "common-knot/mempool.h"
 #include "libknot/rrset.h"
 #include "libknot/rrtype/soa.h"
 #include "common/debug.h"

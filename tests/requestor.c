@@ -19,7 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "common/mempool.h"
+#include "common-knot/mempool.h"
 #include "libknot/processing/process.h"
 #include "knot/nameserver/requestor.h"
 #include "knot/server/tcp-handler.h"

@@ -27,7 +27,7 @@
 #ifndef _KNOT_ESTIMATOR_H_
 #define _KNOT_ESTIMATOR_H_
 
-#include "common/hattrie/hat-trie.h"
+#include "common-knot/hattrie/hat-trie.h"
 #include "zscanner/zscanner.h"
 
 // Mutiplicative constant, needed because of malloc's fragmentation

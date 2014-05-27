@@ -20,7 +20,7 @@
 #include <tap/basic.h>
 
 #include "libknot/errcode.h"
-#include "common/sockaddr.h"
+#include "common-knot/sockaddr.h"
 #include "knot/updates/acl.h"
 
 int main(int argc, char *argv[])

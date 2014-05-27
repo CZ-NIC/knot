@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "common/errors.h"
+#include "common-knot/errors.h"
 #include "libknot/errcode.h"
 
 /*!

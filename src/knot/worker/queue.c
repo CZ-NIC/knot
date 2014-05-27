@@ -16,7 +16,7 @@
 
 #include <config.h>
 
-#include "common/lists.h"
+#include "common-knot/lists.h"
 #include "knot/worker/queue.h"
 #include "knot/worker/task.h"
 

@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-#include "common/crc.h"
+#include "common-knot/crc.h"
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"

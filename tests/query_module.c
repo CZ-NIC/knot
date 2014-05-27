@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 #include "libknot/mempattern.h"
-#include "common/mempool.h"
+#include "common-knot/mempool.h"
 #include "libknot/errcode.h"
 #include "knot/nameserver/query_module.h"
 #include "libknot/packet/pkt.h"

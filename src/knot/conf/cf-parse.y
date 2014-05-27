@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <pwd.h>
 #include <grp.h>
-#include "common/sockaddr.h"
+#include "common-knot/sockaddr.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
 #include "libknot/rrtype/opt.h"

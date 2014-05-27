@@ -21,7 +21,7 @@
 #include "libknot/rrset.h"
 #include "common/base32hex.h"
 #include "libknot/descriptor.h"
-#include "common/hattrie/hat-trie.h"
+#include "common-knot/hattrie/hat-trie.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/zone-tree.h"

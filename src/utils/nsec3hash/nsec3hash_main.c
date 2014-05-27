@@ -24,8 +24,8 @@
 #include "utils/common/params.h"
 #include "common/base32hex.h"
 #include "libknot/errcode.h"
-#include "common/hex.h"
-#include "common/strtonum.h"
+#include "common-knot/hex.h"
+#include "common-knot/strtonum.h"
 #include "libknot/dnssec/crypto.h"
 
 #define PROGRAM_NAME "knsec3hash"

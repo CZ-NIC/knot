@@ -28,7 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _KNOTD_COMMON_ERRCODE_H_
 #define _KNOTD_COMMON_ERRCODE_H_
 
-#include "common/errors.h"
+#include "common-knot/errors.h"
 
 /* errno -> Knot error mapping.
  * \note offset is required, otherwise it would interfere with TSIG errors.

@@ -24,9 +24,9 @@
 #endif /* HAVE_MALLOC_TRIM */
 
 #include "libknot/mempattern.h"
-#include "common/log.h"
-#include "common/slab/alloc-common.h"
-#include "common/mempool.h"
+#include "common-knot/log.h"
+#include "common-knot/slab/alloc-common.h"
+#include "common-knot/mempool.h"
 
 static void *mm_malloc(void *ctx, size_t n)
 {
