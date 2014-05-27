@@ -20,10 +20,8 @@
 #include <time.h>			// localtime_r
 
 #include "libknot/libknot.h"
-#include "common/lists.h"		// list
-#include "common/print.h"		// txt_print
-#include "common/errcode.h"		// KNOT_EOK
-#include "common/descriptor.h"		// KNOT_RRTYPE_
+#include "common-knot/lists.h"		// list
+#include "common-knot/print.h"		// txt_print
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// params_t
 #include "utils/common/netio.h"		// send_msg

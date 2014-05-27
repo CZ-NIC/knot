@@ -19,8 +19,8 @@
 #include <stdio.h>			// fopen
 #include <stdlib.h>			// free
 
-#include "common/lists.h"		// list
-#include "common/errcode.h"		// KNOT_ENOENT
+#include "common-knot/lists.h"		// list
+#include "libknot/errcode.h"		// KNOT_ENOENT
 #include "utils/common/msg.h"		// DBG_NULL
 #include "utils/common/params.h"	// DEFAULT_IPV6_NAME
 

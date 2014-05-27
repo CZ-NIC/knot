@@ -4,7 +4,7 @@ SUBDIRS = zscanner dnstap .
 sbin_PROGRAMS = knotc knotd
 bin_PROGRAMS = kdig khost knsupdate knsec3hash
 lib_LTLIBRARIES = libknot.la
-noinst_LTLIBRARIES = libknotd.la libknots.la libknotus.la
+noinst_LTLIBRARIES = libknotd.la libknots.la libknotus.la libknotcs.la
 
 # $(YACC) will generate header file
 AM_CPPFLAGS = \
@@ -62,41 +62,41 @@ knsec3hash_SOURCES =				\
 
 # static: shared (not in libknot)
 libknots_la_SOURCES =				\
-	common/array-sort.h			\
-	common/binsearch.h			\
-	common/crc.h				\
-	common/errors.c				\
-	common/errors.h				\
-	common/evsched.c			\
-	common/evsched.h			\
-	common/fdset.c				\
-	common/fdset.h				\
-	common/hattrie/hat-trie.c		\
-	common/hattrie/hat-trie.h		\
-	common/hattrie/murmurhash3.c		\
-	common/hattrie/murmurhash3.h		\
-	common/heap.c				\
-	common/heap.h				\
-	common/hex.c				\
-	common/hex.h				\
-	common/hhash.c				\
-	common/hhash.h				\
-	common/lists.c				\
-	common/lists.h				\
-	common/log.c				\
-	common/log.h				\
-	common/mempool.c			\
-	common/mempool.h			\
-	common/print.c				\
-	common/print.h				\
-	common/ref.c				\
-	common/ref.h				\
-	common/slab/alloc-common.h		\
-	common/slab/slab.c			\
-	common/slab/slab.h			\
-	common/sockaddr.c			\
-	common/sockaddr.h			\
-	common/strtonum.h
+	common-knot/array-sort.h		\
+	common-knot/binsearch.h			\
+	common-knot/crc.h			\
+	common-knot/errors.c			\
+	common-knot/errors.h			\
+	common-knot/evsched.c			\
+	common-knot/evsched.h			\
+	common-knot/fdset.c			\
+	common-knot/fdset.h			\
+	common-knot/hattrie/hat-trie.c		\
+	common-knot/hattrie/hat-trie.h		\
+	common-knot/hattrie/murmurhash3.c	\
+	common-knot/hattrie/murmurhash3.h	\
+	common-knot/heap.c			\
+	common-knot/heap.h			\
+	common-knot/hex.c			\
+	common-knot/hex.h			\
+	common-knot/hhash.c			\
+	common-knot/hhash.h			\
+	common-knot/lists.c			\
+	common-knot/lists.h			\
+	common-knot/log.c			\
+	common-knot/log.h			\
+	common-knot/mempool.c			\
+	common-knot/mempool.h			\
+	common-knot/print.c			\
+	common-knot/print.h			\
+	common-knot/ref.c			\
+	common-knot/ref.h			\
+	common-knot/slab/alloc-common.h		\
+	common-knot/slab/slab.c			\
+	common-knot/slab/slab.h			\
+	common-knot/sockaddr.c			\
+	common-knot/sockaddr.h			\
+	common-knot/strtonum.h
 
 # static: common shared (also in libknot)
 libknotcs_la_SOURCES =				\
@@ -239,16 +239,16 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
-	knot/nameserver/process_answer.c		\
-	knot/nameserver/process_answer.h		\
+	knot/nameserver/process_answer.c	\
+	knot/nameserver/process_answer.h	\
 	knot/nameserver/requestor.c		\
 	knot/nameserver/requestor.h		\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
-	knot/nameserver/notify.c			\
-	knot/nameserver/notify.h			\
+	knot/nameserver/notify.c		\
+	knot/nameserver/notify.h		\
 	knot/nameserver/tsig_ctx.c		\
 	knot/nameserver/tsig_ctx.h		\
 	knot/modules/synth_record.c		\

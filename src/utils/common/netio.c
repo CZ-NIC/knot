@@ -29,9 +29,9 @@
 #endif // HAVE_SYS_UIO_H
 
 #include "utils/common/msg.h"		// WARN
-#include "common/descriptor.h"		// KNOT_CLASS_IN
-#include "common/errcode.h"		// KNOT_E
-#include "common/sockaddr.h"		// sockaddr_tostr, sockaddr_portnum
+#include "libknot/descriptor.h"		// KNOT_CLASS_IN
+#include "libknot/errcode.h"		// KNOT_E
+#include "common-knot/sockaddr.h"	// sockaddr_tostr, sockaddr_portnum
 
 srv_info_t* srv_info_create(const char *name, const char *service)
 {
