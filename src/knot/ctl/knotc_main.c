@@ -26,7 +26,7 @@
 #endif
 
 #include "knot/knot.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"

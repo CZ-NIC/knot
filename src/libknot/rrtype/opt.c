@@ -21,7 +21,7 @@
 #include <string.h>
 #include "libknot/rrtype/opt.h"
 #include "libknot/common.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/debug.h"
 
 /*! \brief Some implementation-related constants. */

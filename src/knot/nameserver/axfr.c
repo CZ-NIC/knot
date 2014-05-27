@@ -21,7 +21,7 @@
 #include "knot/updates/apply.h"
 #include "knot/zone/zonefile.h"
 #include "common/debug.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/lists.h"
 
 /* AXFR context. @note aliasing the generic xfr_proc */

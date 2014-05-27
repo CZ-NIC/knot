@@ -15,7 +15,7 @@
  */
 
 #include "common/memdup.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "libknot/rrtype/nsec3param.h"
 
 /*!

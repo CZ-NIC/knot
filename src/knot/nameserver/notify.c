@@ -19,7 +19,7 @@
 #include "knot/nameserver/notify.h"
 
 #include "libknot/dname.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rrset.h"
 #include "libknot/consts.h"

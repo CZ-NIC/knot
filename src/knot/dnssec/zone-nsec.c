@@ -22,7 +22,7 @@
 
 #include "common/base32hex.h"
 #include "common/debug.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/hhash.h"
 #include "libknot/dnssec/bitmap.h"
 #include "libknot/util/utils.h"

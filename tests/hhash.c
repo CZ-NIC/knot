@@ -20,7 +20,7 @@
 #include <tap/basic.h>
 
 #include "common/hhash.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/common.h"
 

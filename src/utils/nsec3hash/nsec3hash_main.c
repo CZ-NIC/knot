@@ -23,7 +23,7 @@
 
 #include "utils/common/params.h"
 #include "common/base32hex.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/hex.h"
 #include "common/strtonum.h"
 #include "libknot/dnssec/crypto.h"

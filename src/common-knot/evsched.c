@@ -20,7 +20,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/evsched.h"
 
 /*! \brief Some implementations of timercmp >= are broken, this is for compat.*/

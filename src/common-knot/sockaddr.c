@@ -19,7 +19,7 @@
 #include <netdb.h>
 
 #include "common/sockaddr.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "libknot/consts.h"
 
 int sockaddr_len(const struct sockaddr_storage *ss)

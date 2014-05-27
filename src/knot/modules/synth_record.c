@@ -18,7 +18,7 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 
 /* Defines. */
 #define ARPA_ZONE_LABELS 2

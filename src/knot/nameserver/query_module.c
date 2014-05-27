@@ -1,6 +1,6 @@
 #include "knot/nameserver/query_module.h"
-#include "common/mempattern.h"
-#include "common/errcode.h"
+#include "libknot/mempattern.h"
+#include "libknot/errcode.h"
 
 /* Compiled-in module headers. */
 #include "knot/modules/synth_record.h"

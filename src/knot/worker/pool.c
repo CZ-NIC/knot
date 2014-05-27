@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
 #include "knot/worker/queue.h"

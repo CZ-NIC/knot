@@ -37,7 +37,7 @@
 #endif /* HAVE_CAP_NG_H */
 
 #include "common/sockaddr.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"

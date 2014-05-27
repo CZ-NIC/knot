@@ -27,8 +27,8 @@
 #include "libknot/common.h"
 #include "libknot/consts.h"
 #include "libknot/rrtype/soa.h"
-#include "common/mempattern.h"
-#include "common/descriptor.h"
+#include "libknot/mempattern.h"
+#include "libknot/descriptor.h"
 #include "common/lists.h"
 
 /* ----------------------------- prereq check ------------------------------- */

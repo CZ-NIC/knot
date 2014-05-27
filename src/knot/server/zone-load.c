@@ -29,7 +29,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 
 /* Constants */
 

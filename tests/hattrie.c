@@ -19,7 +19,7 @@
 #include <time.h>
 #include <tap/basic.h>
 
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "common/hattrie/hat-trie.h"
 
 /* Constants. */

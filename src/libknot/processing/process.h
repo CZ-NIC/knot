@@ -27,7 +27,7 @@
 
 #include <stdint.h>
 
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "libknot/consts.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/packet/pkt.h"

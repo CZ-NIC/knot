@@ -14,7 +14,7 @@
 #include "knot/updates/acl.h"
 #include "knot/conf/conf.h"
 #include "libknot/tsig-op.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/debug.h"
 
 /* Forward decls. */

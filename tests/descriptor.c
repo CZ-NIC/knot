@@ -20,7 +20,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 
 #define BUF_LEN 256
 

@@ -30,7 +30,7 @@
 #include "libknot/rrset.h"
 #include "knot/zone/node.h"
 #include "common/lists.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 
 /*----------------------------------------------------------------------------*/
 

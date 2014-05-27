@@ -19,7 +19,7 @@
 #include <sys/socket.h>
 #include <tap/basic.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/sockaddr.h"
 #include "knot/updates/acl.h"
 

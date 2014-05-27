@@ -19,9 +19,9 @@
 #include <inttypes.h>
 
 #include "common/debug.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "knot/zone/zone-diff.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/util/utils.h"
 #include "libknot/rrtype/soa.h"
 

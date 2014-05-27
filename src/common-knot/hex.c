@@ -19,7 +19,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 /*!
  * \brief Convert HEX char to byte.

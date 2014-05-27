@@ -24,7 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 #ifndef _KNOT_COMMON_H_
 #define _KNOT_COMMON_H_

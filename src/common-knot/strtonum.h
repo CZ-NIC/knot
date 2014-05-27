@@ -30,7 +30,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 typedef long long int knot_strtoll_result_t;
 typedef unsigned long long int knot_strtoull_result_t;

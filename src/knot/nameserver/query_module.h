@@ -42,7 +42,7 @@
 #define _QUERY_MODULE_H
 
 #include "common/lists.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "libknot/consts.h"
 #include "libknot/packet/pkt.h"
 

@@ -26,7 +26,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/getline.h"
 #include "libknot/binary.h"
 #include "libknot/common.h"

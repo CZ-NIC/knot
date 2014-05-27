@@ -24,8 +24,8 @@
 #include "libknot/libknot.h"
 #include "common/lists.h"		// list
 #include "common/print.h"		// time_diff
-#include "common/errcode.h"		// KNOT_EOK
-#include "common/descriptor.h"		// KNOT_RRTYPE_
+#include "libknot/errcode.h"		// KNOT_EOK
+#include "libknot/descriptor.h"		// KNOT_RRTYPE_
 #include "common/sockaddr.h"		// sockaddr_set_raw
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/netio.h"		// get_socktype

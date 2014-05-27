@@ -21,7 +21,7 @@
 #include "libknot/packet/pkt.h"
 #include "common/debug.h"
 #include "libknot/common.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/tsig-op.h"

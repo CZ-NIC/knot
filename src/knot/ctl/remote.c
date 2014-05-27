@@ -23,7 +23,7 @@
 #include "knot/server/net.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"

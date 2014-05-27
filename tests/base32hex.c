@@ -20,7 +20,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/base32hex.h"
 
 #define BUF_LEN			256

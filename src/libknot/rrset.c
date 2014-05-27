@@ -23,10 +23,10 @@
 
 #include "libknot/consts.h"
 #include "libknot/common.h"
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "libknot/rrset.h"
 #include "libknot/rrset-dump.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "common/debug.h"
 #include "libknot/util/utils.h"
 #include "libknot/packet/wire.h"

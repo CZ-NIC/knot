@@ -21,7 +21,7 @@
 
 #include "libknot/rdata.h"
 #include "libknot/common.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 #ifndef STRICT_ALIGNMENT
 #pragma pack(push, 1)

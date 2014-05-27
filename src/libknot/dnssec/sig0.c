@@ -16,8 +16,8 @@
 
 #include <assert.h>
 #include <time.h>
-#include "common/errcode.h"
-#include "common/descriptor.h"
+#include "libknot/errcode.h"
+#include "libknot/descriptor.h"
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sig0.h"
 #include "libknot/dnssec/sign.h"

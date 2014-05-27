@@ -32,8 +32,8 @@
 #include "libknot/rrtype/nsec3.h"
 #include "common/base32hex.h"
 #include "common/crc.h"
-#include "common/descriptor.h"
-#include "common/mempattern.h"
+#include "libknot/descriptor.h"
+#include "libknot/mempattern.h"
 #include "knot/dnssec/zone-nsec.h"
 
 #include "knot/zone/semantic-check.h"

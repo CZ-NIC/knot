@@ -23,9 +23,9 @@
 #include "utils/nsupdate/nsupdate_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
-#include "common/errcode.h"
-#include "common/descriptor.h"
-#include "common/mempattern.h"
+#include "libknot/errcode.h"
+#include "libknot/descriptor.h"
+#include "libknot/mempattern.h"
 #include "common/mempool.h"
 #include "libknot/libknot.h"
 

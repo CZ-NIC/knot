@@ -23,7 +23,7 @@
 #include "dnstap/writer.h"
 #include "dnstap/message.h"
 #include "dnstap/dnstap.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 
 /* Defines. */
 #define MODULE_ERR(msg...) log_zone_error("Module 'dnstap': " msg)

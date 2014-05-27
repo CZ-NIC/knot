@@ -14,7 +14,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/errors.h"
 
 const error_table_t knot_error_msgs[] = {

@@ -15,7 +15,7 @@
  */
 
 #include <assert.h>
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "libknot/packet/compr.h"
 #include "libknot/packet/pkt.h"
 #include "common/debug.h"

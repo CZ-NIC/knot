@@ -23,8 +23,8 @@
 #include <locale.h>			// setlocale
 
 #include "common/lists.h"		// list
-#include "common/errcode.h"		// KNOT_EOK
-#include "common/descriptor.h"		// KNOT_CLASS_IN
+#include "libknot/errcode.h"		// KNOT_EOK
+#include "libknot/descriptor.h"		// KNOT_CLASS_IN
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/params.h"	// name_to_idn
 #include "utils/dig/dig_params.h"	// dig_params_t

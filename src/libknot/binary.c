@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "common/base64.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/memdup.h"
 #include "libknot/binary.h"
 

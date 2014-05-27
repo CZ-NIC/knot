@@ -4,7 +4,7 @@
 
 #include "common/hhash.h"
 #include "common/binsearch.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/hattrie/murmurhash3.h"
 #include "libknot/common.h"
 

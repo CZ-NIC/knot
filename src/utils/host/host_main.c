@@ -16,7 +16,7 @@
 
 #include <stdlib.h>			// EXIT_FAILURE
 
-#include "common/errcode.h"		// KNOT_EOK
+#include "libknot/errcode.h"		// KNOT_EOK
 #include "utils/host/host_params.h"	// host_parse
 #include "utils/dig/dig_exec.h"		// dig_exec
 

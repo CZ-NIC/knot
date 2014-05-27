@@ -17,9 +17,9 @@
 #include <config.h>
 #include <tap/basic.h>
 
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 #include "common/mempool.h"
-#include "common/descriptor.h"
+#include "libknot/descriptor.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/rrtype/tsig.h"
 

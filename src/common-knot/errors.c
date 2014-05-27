@@ -19,7 +19,7 @@
 #include <stdlib.h>
 
 #include "common/errors.h"
-#include "common/errcode.h"
+#include "libknot/errcode.h"
 
 /*!
  * \brief Looks up the given id in the lookup table.

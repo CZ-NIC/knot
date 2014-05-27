@@ -23,7 +23,7 @@
  #include <malloc.h>
 #endif /* HAVE_MALLOC_TRIM */
 
-#include "common/mempattern.h"
+#include "libknot/mempattern.h"
 #include "common/log.h"
 #include "common/slab/alloc-common.h"
 #include "common/mempool.h"
