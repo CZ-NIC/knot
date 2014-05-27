@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "knot/worker/task.h"
+#include "knot/worker/queue.h"
 
 struct worker_pool;
 typedef struct worker_pool worker_pool_t;
@@ -59,7 +59,7 @@ void worker_pool_wait(worker_pool_t *pool);
 /*!
  * \brief Assign a task to be performed by a worker in the pool.
  */
-void worker_pool_assign(worker_pool_t *pool, task_t *task);
+void worker_pool_assign(worker_pool_t *pool, struct task *task);
 
 /*!
  * \brief Clear all tasks enqueued in pool processing queue.

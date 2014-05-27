@@ -25,7 +25,6 @@
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/worker/pool.h"
-#include "knot/worker/task.h"
 #include "knot/zone/events.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-load.h"

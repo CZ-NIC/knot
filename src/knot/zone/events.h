@@ -21,7 +21,6 @@
 
 #include "common/evsched.h"
 #include "knot/worker/pool.h"
-#include "knot/worker/task.h"
 
 /* Timer special values. */
 #define ZONE_EVENT_NOW 0

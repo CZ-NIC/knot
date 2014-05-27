@@ -18,7 +18,6 @@
 
 #include "common/lists.h"
 #include "knot/worker/queue.h"
-#include "knot/worker/task.h"
 
 void worker_queue_init(worker_queue_t *queue)
 {

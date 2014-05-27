@@ -279,8 +279,6 @@ libknotd_la_SOURCES =				\
 	knot/worker/pool.h			\
 	knot/worker/queue.c			\
 	knot/worker/queue.h			\
-	knot/worker/task.c			\
-	knot/worker/task.h			\
 	knot/zone/contents.c			\
 	knot/zone/contents.h			\
 	knot/zone/estimator.c			\
