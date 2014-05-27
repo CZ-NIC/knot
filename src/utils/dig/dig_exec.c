@@ -962,7 +962,7 @@ int dig_exec(const dig_params_t *params)
 		}
 
 		// If not last query, print separation.
-		if (n->next->next) {
+		if (n->next->next && params->config->style.format == FORMAT_FULL) {
 			printf("\n");
 		}
 	}
