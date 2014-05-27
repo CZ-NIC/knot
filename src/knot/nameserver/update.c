@@ -37,7 +37,7 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Need valid transaction security. */
-	NS_NEED_AUTH(zone->update_in, qdata);
+	NS_NEED_AUTH(&zone->conf->acl.update_in, qdata);
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	/* Store update into DDNS queue. */

@@ -234,7 +234,7 @@ int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 	return NS_PROC_DONE;
 }
 
-bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
+bool process_query_acl_check(list_t *acl, struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
 	const struct sockaddr_storage *query_source = qdata->param->remote;
@@ -251,7 +251,7 @@ bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 		key_name = query->tsig_rr->owner;
 		key_alg = tsig_rdata_alg(query->tsig_rr);
 	}
-	acl_match_t *match = acl_find(acl, query_source, key_name);
+	conf_iface_t *match = acl_find(acl, query_source, key_name);
 
 	/* Did not authenticate, no fitting rule found. */
 	if (match == NULL || (match->key && match->key->algorithm != key_alg)) {

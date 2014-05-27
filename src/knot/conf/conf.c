@@ -460,13 +460,6 @@ static int conf_process(conf_t *conf)
 	if (conf->uid < 0) conf->uid = getuid();
 	if (conf->gid < 0) conf->gid = getgid();
 
-	/* Build remote control ACL. */
-	conf_remote_t *r = NULL;
-	WALK_LIST(r, conf->ctl.allow) {
-		conf_iface_t *i = r->remote;
-		acl_insert(conf->ctl.acl, &i->addr, i->prefix, i->key);
-	}
-
 	return ret;
 }
 
@@ -590,14 +583,6 @@ conf_t *conf_new(char* path)
 
 	/* DNSSEC. */
 	c->dnssec_enable = 0;
-
-	/* ACLs. */
-	c->ctl.acl = acl_new();
-	if (!c->ctl.acl) {
-		free(c->filename);
-		free(c);
-		c = NULL;
-	}
 
 	return c;
 }
@@ -756,9 +741,6 @@ void conf_truncate(conf_t *conf, int unload_hooks)
 	}
 	init_list(&conf->remotes);
 
-	/* Free remote control ACL. */
-	acl_truncate(conf->ctl.acl);
-
 	/* Free remote control iface. */
 	conf_free_iface(conf->ctl.iface);
 }
@@ -771,9 +753,6 @@ void conf_free(conf_t *conf)
 
 	/* Truncate config. */
 	conf_truncate(conf, 1);
-
-	/* Free remote control ACL. */
-	acl_delete(&conf->ctl.acl);
 
 	/* Free config. */
 	free(conf);

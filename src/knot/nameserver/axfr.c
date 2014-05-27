@@ -196,7 +196,7 @@ int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 		/* Check valid zone, transaction security and contents. */
 		NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-		NS_NEED_AUTH(qdata->zone->xfr_out, qdata);
+		NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
 		NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 		ret = axfr_query_init(qdata);

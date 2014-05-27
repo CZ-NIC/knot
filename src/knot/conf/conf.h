@@ -193,7 +193,6 @@ typedef struct conf_key_t {
 typedef struct conf_control_t {
 	conf_iface_t *iface; /*!< Remote control interface. */
 	list_t allow;        /*!< List of allowed remotes. */
-	acl_t* acl;          /*!< ACL. */
 	bool have;           /*!< Set if configured. */
 } conf_control_t;
 

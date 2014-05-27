@@ -782,7 +782,7 @@ int remote_process(server_t *s, conf_iface_t *ctl_if, int sock,
 		if (pkt->tsig_rr) {
 			tsig_name = pkt->tsig_rr->owner;
 		}
-		acl_match_t *match = acl_find(conf()->ctl.acl, &ss, tsig_name);
+		conf_iface_t *match = acl_find(&conf()->ctl.allow, &ss, tsig_name);
 		uint16_t ts_rc = 0;
 		uint16_t ts_trc = 0;
 		uint64_t ts_tmsigned = 0;
