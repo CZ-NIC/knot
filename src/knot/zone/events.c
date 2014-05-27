@@ -338,6 +338,7 @@ static int event_xfer(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
+		zone->flags &= ~ZONE_FORCE_AXFR;
 	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */

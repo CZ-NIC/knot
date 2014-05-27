@@ -80,7 +80,7 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
 	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
-	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified)."},
+	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
@@ -608,7 +608,11 @@ static int cmd_refresh(int argc, char *argv[], unsigned flags)
 {
 	UNUSED(flags);
 
-	return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
+	if (flags & F_FORCE) {
+		return cmd_remote("retransfer", KNOT_RRTYPE_NS, argc, argv);
+	} else {
+		return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
+	}
 }
 
 static int cmd_flush(int argc, char *argv[], unsigned flags)

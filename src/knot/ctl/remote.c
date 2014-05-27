@@ -62,6 +62,7 @@ typedef struct remote_cmd_t {
 static int remote_c_stop(server_t *s, remote_cmdargs_t* a);
 static int remote_c_reload(server_t *s, remote_cmdargs_t* a);
 static int remote_c_refresh(server_t *s, remote_cmdargs_t* a);
+static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a);
 static int remote_c_status(server_t *s, remote_cmdargs_t* a);
 static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a);
 static int remote_c_flush(server_t *s, remote_cmdargs_t* a);
@@ -72,6 +73,7 @@ struct remote_cmd_t remote_cmd_tbl[] = {
 	{ "stop",      &remote_c_stop },
 	{ "reload",    &remote_c_reload },
 	{ "refresh",   &remote_c_refresh },
+	{ "retransfer",&remote_c_retransfer },
 	{ "status",    &remote_c_status },
 	{ "zonestatus",&remote_c_zonestatus },
 	{ "flush",     &remote_c_flush },
@@ -121,6 +123,18 @@ static int remote_zone_refresh(zone_t *zone)
 	}
 
 	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
+	return KNOT_EOK;
+}
+
+/*! \brief Zone refresh callback. */
+static int remote_zone_retransfer(zone_t *zone)
+{
+	if (zone_master(zone) == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	zone->flags |= ZONE_FORCE_AXFR;
+	zone_events_schedule(zone, ZONE_EVENT_XFER, ZONE_EVENT_NOW);
 	return KNOT_EOK;
 }
 
@@ -306,6 +320,24 @@ static int remote_c_refresh(server_t *s, remote_cmdargs_t* a)
 
 	/* Refresh specific zones. */
 	return remote_rdata_apply(s, a, &remote_zone_refresh);
+}
+
+/*!
+ * \brief Remote command 'retransfer' handler.
+ *
+ * QNAME: retransfer
+ * DATA: CNAME RRs with zones in RDATA
+ */
+static int remote_c_retransfer(server_t *s, remote_cmdargs_t* a)
+{
+	/* Refresh all. */
+	dbg_server("remote: %s\n", __func__);
+	if (a->argc == 0) {
+		return KNOT_ENOTSUP;
+	}
+
+	/* Refresh specific zones. */
+	return remote_rdata_apply(s, a, &remote_zone_retransfer);
 }
 
 /*!
