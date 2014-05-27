@@ -8,7 +8,7 @@ t = Test()
 
 knot = t.server("knot")
 bind = t.server("bind")
-zones = t.zone("flags.") + t.zone("example.", "example.zone.nsec", local=True)
+zones = t.zone("flags.") + t.zone("example.", "example.zone.nsec", storage=".")
 
 t.link(zones, knot)
 t.link(zones, bind)

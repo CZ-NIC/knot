@@ -5,6 +5,7 @@ import random
 import shutil
 import socket
 import time
+import dns.name
 import dns.zone
 import zone_generate
 from dnstest.utils import *
@@ -37,7 +38,8 @@ class Test(object):
         if self.ip not in [4, 6]:
             raise Exception("Invalid IP version")
 
-        self.tsig = bool(tsig) if tsig != None else random.choice([True, False])
+        use_tsig = bool(tsig) if tsig != None else random.choice([True, False])
+        self.tsig = dnstest.keys.Tsig() if use_tsig else None
 
         self.servers = set()
 
@@ -45,6 +47,8 @@ class Test(object):
         dnstest.server.Bind.count = 0
         dnstest.server.Nsd.count = 0
         dnstest.server.Dummy.count = 0
+
+        params.test = self
 
     def _check_port(self, port):
         if not port:
@@ -78,6 +82,13 @@ class Test(object):
         Test.last_port = port
         return port
 
+    @property
+    def hostname(self):
+        hostname = socket.gethostname()
+        addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
+                                      socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
+        return addrinfo[0][3] if addrinfo else hostname
+
     def server(self, server, nsid=None, ident=None, version=None, \
                valgrind=None):
         if server == "knot":
@@ -89,13 +100,13 @@ class Test(object):
         elif server == "dummy":
             srv = dnstest.server.Dummy()
         else:
-            raise Exception("Usupported server %s" % server)
+            raise Exception("Usupported server '%s'" % server)
 
         type(srv).count += 1
 
         if params.valgrind_bin and \
            (valgrind or (valgrind == None and server == "knot")):
-            srv.valgrind = [params.valgrind_bin, params.valgrind_flags]
+            srv.valgrind = [params.valgrind_bin] + params.valgrind_flags.split()
 
         srv.data_dir = self.data_dir
 
@@ -105,7 +116,6 @@ class Test(object):
 
         srv.ip = self.ip
         srv.addr = Test.LOCAL_ADDR[self.ip]
-        srv.tsig = dnstest.keys.Tsig() if self.tsig else None
 
         srv.name = "%s%s" % (server, srv.count)
         srv.dir = self.out_dir + "/" + srv.name
@@ -113,10 +123,7 @@ class Test(object):
         srv.ferr = srv.dir + "/stderr"
         srv.confile = srv.dir + "/%s.conf" % srv.name
 
-        try:
-            os.mkdir(srv.dir)
-        except:
-            raise Exception("Can't create directory %s" % srv.dir)
+        prepare_dir(srv.dir)
 
         if srv.ctlkey:
             srv.ctlkeyfile = srv.dir + "/%s.ctlkey" % srv.name
@@ -125,7 +132,20 @@ class Test(object):
         self.servers.add(srv)
         return srv
 
-    def _generate_conf(self):
+    def server_remove(self, server=None):
+        # Remove server/servers from the test.
+
+        if server:
+            if server.listening():
+                server.stop()
+            self.servers.discard(server)
+            return
+
+        servers = [srv for srv in self.servers]
+        for server in servers:
+            self.server_remove(server)
+
+    def generate_conf(self):
         # Next two loops can't be merged!
         for server in self.servers:
             server.port = self._gen_port()
@@ -142,7 +162,7 @@ class Test(object):
 
         self.start_tries += 1
 
-        self._generate_conf()
+        self.generate_conf()
 
         def srv_sort(server):
             masters = 0
@@ -150,45 +170,47 @@ class Test(object):
                 if server.zones[z].master: masters += 1
             return masters
 
-        # Sort server list by number of masters. I.e. masters are prefered.
+        # Sort server list by number of masters. I.e. masters are preferred.
         for server in sorted(self.servers, key=srv_sort):
-            server.start()
+            server.start(clean=True)
+
             if not server.running():
-                self.stop()
+                raise Exception("Server '%s' not running" % server.name)
+
+            if not server.listening():
+                self.stop(check=False)
                 self.start()
 
-        params.test = self
         self.start_tries = 0
 
-    def stop(self):
+    def stop(self, check=True):
         '''Stop all servers'''
 
         for server in self.servers:
-            server.stop()
-        params.test = None
+            server.stop(check=check)
 
     def end(self):
         '''Finish testing'''
 
-        self.stop()
-        for server in self.servers:
-            server._valgrind_check()
+        self.stop(check=True)
+        params.test = None
 
     def sleep(self, seconds):
         time.sleep(seconds)
 
-    def zone(self, name, file_name=None, local=False, dnssec=None, serial=None,
-             exists=True):
+    def zone(self, name, file_name=None, storage=None, version=None, exists=True):
 
         zone = dnstest.zonefile.ZoneFile(self.zones_dir)
         zone.set_name(name)
 
-        if local:
+        if storage is ".":
             src_dir = self.data_dir
+        elif storage:
+            src_dir = storage
         else:
             src_dir = params.common_data_dir
 
-        zone.set_file(file_name=file_name, storage=src_dir, dnssec=dnssec,
+        zone.set_file(file_name=file_name, storage=src_dir, version=version,
                       exists=exists)
 
         return [zone]
@@ -201,62 +223,219 @@ class Test(object):
         for name in names:
             zone = dnstest.zonefile.ZoneFile(self.zones_dir)
             zone.set_name(name)
-            zone.gen_file(dnssec=dnssec, nsec3=nsec3, records=records, serial=serial)
+            zone.gen_file(dnssec=dnssec, nsec3=nsec3, records=records,
+                          serial=serial)
             zones.append(zone)
 
         return zones
 
-    def link(self, zones, master, slave=None, ddns=False):
+    def link(self, zones, master, slave=None, ddns=False, ixfr=False):
         for zone in zones:
             if master not in self.servers:
                 raise Exception("Server is out of testing scope")
-            master.set_master(zone, slave, ddns)
+            master.set_master(zone, slave, ddns, ixfr)
 
             if slave:
                 if slave not in self.servers:
                     raise Exception("Server is out of testing scope")
-                slave.set_slave(zone, master, ddns)
+                slave.set_slave(zone, master, ddns, ixfr)
 
-    def xfr_diff(self, server1, server2, zones):
-        check_log("CHECK AXFR DIFF")
+    def _axfr_records(self, server, zone):
+        unique = set()
+        records = list()
+
+        resp = server.dig(zone.name, "AXFR", log_no_sep=True)
+
+        for msg in resp.resp:
+            for rrset in msg.answer:
+                rrs = rrset.to_text(origin=dns.name.from_text(zone.name),
+                                    relativize=False).split("\n")
+                for rr in rrs:
+                    # Owner to lower-case :-(
+                    item = rr.strip().split(" ", 1)
+                    item_lower = item[0].lower() + " " + item[1]
+
+                    if item_lower in unique and rrset.rdtype != dns.rdatatype.SOA:
+                        detail_log("!Duplicate record server='%s':" % server.name)
+                        detail_log("  %s" % item_lower)
+                        continue
+
+                    unique.add(item_lower)
+                    records.append(item_lower)
+
+        return unique, records
+
+    def _axfr_diff(self, server1, server2, zone):
+        unique1, rrsets1 = self._axfr_records(server1, zone)
+        unique2, rrsets2 = self._axfr_records(server2, zone)
+
+        diff1 = sorted(list(unique1 - unique2))
+        if diff1:
+            set_err("AXFR DIFF")
+            detail_log("!Extra records server='%s':" % server1.name)
+            for record in diff1:
+                detail_log("  %s" % record)
+
+        diff2 = sorted(list(unique2 - unique1))
+        if diff2:
+            set_err("AXFR DIFF")
+            detail_log("!Extra records server='%s':" % server2.name)
+            for record in diff2:
+                detail_log("  %s" % record)
+
+    class IxfrChange():
+        def __init__(self):
+            self.soa_old = None
+            self.soa_new = None
+            self.removed = list()
+            self.added = list()
+
+        def rem(self, record):
+            self.removed.append(record)
+
+        def add(self, record):
+            self.added.append(record)
+
+        def sort(self):
+            self.removed.sort()
+            self.added.sort()
+
+        def cmp(self, other):
+            if self.soa_old != other.soa_old:
+                set_err("IXFR CHANGE DIFF")
+                detail_log("!Different remove SOA:")
+                print("  %s" % self.soa_old)
+                print("  %s" % other.soa_old)
+
+            if len(self.removed) != len(other.removed):
+                set_err("IXFR CHANGE DIFF")
+                detail_log("!Number of remove records:")
+                detail_log("  (%i) != (%i)" %
+                           (len(self.removed), len(other.removed)))
+
+            for rem1, rem2 in zip(self.removed, other.removed):
+                if rem1 != rem2:
+                    set_err("IXFR CHANGE DIFF")
+                    detail_log("!Different remove records:")
+                    print("  %s" % rem1)
+                    print("  %s" % rem2)
+
+            if self.soa_new != other.soa_new:
+                set_err("IXFR CHANGE DIFF")
+                detail_log("!Different add SOA:")
+                print("  %s" % self.soa_new)
+                print("  %s" % other.soa_new)
+
+            if len(self.added) != len(other.added):
+                set_err("IXFR CHANGE DIFF")
+                detail_log("!Number of add records:")
+                detail_log("  (%i) != (%i)" %
+                           (len(self.added), len(other.added)))
+
+            for add1, add2 in zip(self.added, other.added):
+                if add1 != add2:
+                    set_err("IXFR CHANGE DIFF")
+                    detail_log("!Different add records:")
+                    print("  %s" % add1)
+                    print("  %s" % add2)
+
+    def _ixfr_changes(self, server, zone, serial, udp):
+        soa = None
+        changes = list()
+
+        resp = server.dig(zone.name, "IXFR", log_no_sep=True, serial=serial,
+                          udp=udp)
+
+        change = Test.IxfrChange()
+        for msg in resp.resp:
+            for rrset in msg.answer:
+                records = rrset.to_text(origin=dns.name.from_text(zone.name),
+                                    relativize=False).split("\n")
+                for record in records:
+                    item = record.strip().split(" ", 1)
+                    item_lower = item[0].lower() + " " + item[1]
+
+                    if rrset.rdtype == dns.rdatatype.SOA:
+                        if not soa: # IXFR leading SOA.
+                            soa = item_lower
+                            continue
+
+                        if not change.soa_old: # Remove change section.
+                            change.soa_old = item_lower
+                            continue
+
+                        if not change.soa_new: # Add change section.
+                            change.soa_new = item_lower
+                            continue
+
+                        # Next change -> store the actual one.
+                        change.sort()
+                        changes.append(change)
+                        change = Test.IxfrChange()
+                        change.soa_old = item_lower
+                    else:
+                        if not soa:
+                            set_err("IXFR FORMAT")
+                            detail_log("!Missing leading SOA zone='%s', " \
+                                       "server='%s' before:" %
+                                       (zone.name, server.name))
+                            detail_log("  %s" % item_lower)
+
+                        if not change.soa_old:
+                            set_err("IXFR FORMAT")
+                            detail_log("!Expected SOA zone='%s', server='%s' " \
+                                       "before:" %
+                                       (zone.name, server.name))
+                            detail_log("  %s" % item_lower)
+
+                        if not change.soa_new:
+                            change.rem(item_lower)
+                        else:
+                            change.add(item_lower)
+
+        if not soa:
+            set_err("IXFR FORMAT")
+            detail_log("!Missing leading SOA zone='%s', server='%s'" %
+                       (zone.name, server.name))
+        elif change.removed or change.added:
+            set_err("IXFR FORMAT")
+            detail_log("!Missing trailing SOA zone='%s', server='%s'" %
+                       (zone.name, server.name))
+        elif change.soa_old and change.soa_old != soa:
+            set_err("IXFR FORMAT")
+            detail_log("!Trailing SOA differs from the leading one " \
+                       "zone='%s', server='%s'" %
+                       (zone.name, server.name))
+
+        return soa, changes
+
+    def _ixfr_diff(self, server1, server2, zone, serial, udp):
+        soa1, changes1 = self._ixfr_changes(server1, zone, serial, udp)
+        soa2, changes2 = self._ixfr_changes(server2, zone, serial, udp)
+
+        if soa1 != soa2:
+            set_err("IXFR DIFF")
+            detail_log("!Different leading SOA records:")
+            detail_log("  %s" % soa1)
+            detail_log("  %s" % soa2)
+
+        if len(changes1) != len(changes2):
+            set_err("IXFR DIFF")
+            detail_log("!Number of changes:")
+            detail_log("  (server='%s', num='%i') != (server='%s', num='%i')" %
+                       (server1.name, len(changes1),
+                        server2.name, len(changes2)))
+
+        for change1, change2 in zip(changes1, changes2):
+            change1.cmp(change2)
+
+    def xfr_diff(self, server1, server2, zones, serials=None, udp=False):
         for zone in zones:
-            detail_log("Zone %s %s-%s:" % (zone.name, server1.name, server2.name))
-            z1 = dns.zone.from_xfr(server1.dig(zone.name, "AXFR").resp)
-            z2 = dns.zone.from_xfr(server2.dig(zone.name, "AXFR").resp)
+            check_log("CHECK %sXFR DIFF %s %s<->%s" % ("I" if serials else "A",
+                      zone.name, server1.name, server2.name))
+            if serials:
+                self._ixfr_diff(server1, server2, zone, serials[zone.name], udp)
+            else:
+                self._axfr_diff(server1, server2, zone)
 
-            z1_keys = set(z1.nodes.keys())
-            z2_keys = set(z2.nodes.keys())
-
-            z1_diff = sorted(list(z1_keys - z2_keys))
-            z2_diff = sorted(list(z2_keys - z1_keys))
-            z_keys = sorted(list(z1_keys & z2_keys))
-
-            if z1_diff:
-                set_err("XFR DIFF")
-                detail_log("Extra records in %s:" % server1.name, True)
-                for key in z1_diff:
-                    for record in z1.nodes[key]:
-                        detail_log("  %s %s" % (key, str(record)), True)
-
-            if z2_diff:
-                set_err("XFR DIFF")
-                detail_log("Extra records in %s:" % server2.name, True)
-                for key in z2_diff:
-                    for record in z2.nodes[key]:
-                        detail_log("  %s %s" % (key, str(record)), True)
-
-            if not z_keys:
-                return
-
-            for key in z_keys:
-                if z1.nodes[key] != z2.nodes[key]:
-                    set_err("XFR DIFF")
-                    detail_log("Different nodes:", True)
-                    detail_log("%s:" % server1.name, True)
-                    for record in z1.nodes[key]:
-                        detail_log("  " + str(record), True)
-                    detail_log("%s:" % server2.name, True)
-                    for record in z2.nodes[key]:
-                        detail_log("  " + str(record), True)
-
-            detail_log(SEP)
+        detail_log(SEP)

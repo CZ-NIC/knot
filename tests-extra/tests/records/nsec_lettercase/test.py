@@ -8,7 +8,7 @@ t = Test()
 
 knot = t.server("knot")
 bind = t.server("bind")
-zone = t.zone("rdatacase.", "rdatacase.zone.signed", local=True)
+zone = t.zone("rdatacase.", "rdatacase.zone.signed", storage=".")
 
 t.link(zone, knot)
 t.link(zone, bind)

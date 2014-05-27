@@ -3,7 +3,6 @@
 '''Test for server identification over CH/TXT'''
 
 from dnstest.test import Test
-import socket
 
 t = Test()
 
@@ -25,7 +24,7 @@ resp.check('"' + name + '"')
 
 # 2) FQDN hostname.
 resp = server2.dig("id.server", "TXT", "CH")
-resp.check(socket.getfqdn())
+resp.check(t.hostname)
 
 # 3) Explicitly disabled.
 resp = server3.dig("id.server", "TXT", "CH")

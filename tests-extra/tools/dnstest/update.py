@@ -25,8 +25,9 @@ class Update(object):
         self.upd.absent(owner, rtype)
 
     def send(self, rcode="NOERROR"):
-        if type(rcode) is str:
-            rc = dns.rcode.from_text(rcode)
+
+        if type(rcode) is not str:
+            rc = dns.rcode.to_text(rcode)
         else:
             rc = rcode
 
@@ -35,4 +36,4 @@ class Update(object):
         detail_log(SEP)
 
         resp = dns.query.tcp(self.upd, self.server.addr, port=self.server.port)
-        compare(resp.rcode(), rc, "update rcode")
+        compare(dns.rcode.to_text(resp.rcode()), rc, "UPDATE RCODE")

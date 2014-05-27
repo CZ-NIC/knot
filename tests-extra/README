@@ -2,11 +2,22 @@ Prerequisites:
 =============
 Python >=3.3
 python3-dnspython >=1.11.1
-dnssec-keygen
+psutil (sudo pip3 install psutil)
 dnssec-signzone
+dnssec-keygen
 dnssec-verify
-Bind 9.9
+Bind 9.9.x
 lsof
+(valgrind)
+(gdb)
 
-Ubuntu - disable apparmor protection for system Bind:
-sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
+Ubuntu:
+-------
+Disable apparmor protection for system Bind:
+# sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.named
+
+Allow ptrace:
+# echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+or
+change file /etc/sysctl.d/10-ptrace.conf
+kernel.yama.ptrace_scope = 0

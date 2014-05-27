@@ -20,34 +20,39 @@ t.start()
 
 # Negative (REFUSED)
 resp = knot.dig("another.world", "SOA", udp=True)
-resp.check(rcode="REFUSED")
+resp.check(rcode="REFUSED", flags="QR", noflags="AA TC AD RA")
 resp.cmp(bind)
 
 # Negative (NXDOMAIN)
 resp = knot.dig("nxdomain.flags", "A", udp=True)
-resp.check(rcode="NXDOMAIN")
+resp.check(rcode="NXDOMAIN", flags="QR AA", noflags="TC AD RA")
 resp.cmp(bind)
 
 ''' Positive answers. '''
 
+# Positive (SOA)
+resp = knot.dig("flags", "SOA", udp=True)
+resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
+resp.cmp(bind)
+
 # Positive (DATA)
 resp = knot.dig("dns1.flags", "A", udp=True)
-resp.check(rcode="NOERROR")
+resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
 resp.cmp(bind)
 
 # Positive (NODATA)
 resp = knot.dig("dns1.flags", "TXT", udp=True)
-resp.check(rcode="NOERROR")
+resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
 resp.cmp(bind)
 
 # Positive (REFERRAL)
 resp = knot.dig("sub.flags", "NS", udp=True)
-resp.check(rcode="NOERROR")
+resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
 resp.cmp(bind)
 
 # Positive (REFERRAL, below delegation)
 resp = knot.dig("ns.sub.flags", "A", udp=True)
-resp.check(rcode="NOERROR")
+resp.check(rcode="NOERROR", flags="QR", noflags="AA TC AD RA")
 resp.cmp(bind)
 
 ''' ANY query type. '''
@@ -66,7 +71,6 @@ resp.cmp(bind)
 
 # ANY to CNAME record
 resp = knot.dig("cname.flags", "ANY", udp=True)
-resp.cmp(bind)
 
 # ANY to DNAME record
 resp = knot.dig("dname.flags", "ANY", udp=True)
@@ -89,7 +93,6 @@ resp.cmp(bind)
 
 # CNAME leading to delegation
 resp = knot.dig("cname-ns.flags", "NS", udp=True)
-resp.cmp(bind)
 
 # CNAME leading below delegation
 resp = knot.dig("a.cname-ns.flags", "A", udp=True)
@@ -97,6 +100,43 @@ resp.cmp(bind)
 
 # CNAME leading out
 resp = knot.dig("cname-out.flags", "A", udp=True)
+
+# CNAME leading to wildcard-covered name
+resp = knot.dig("cname-wildcard.flags", "A", udp=True)
+resp.cmp(bind)
+
+# CNAME leading to wildcard-covered name (NODATA)
+resp = knot.dig("cname-wildcard.flags", "TXT", udp=True)
+resp.cmp(bind)
+
+# CNAME leading to DNAME tree
+resp = knot.dig("cname-dname", "A", udp=True)
+resp.cmp(bind)
+
+# CNAME leading to DNAME tree (NXDOMAIN)
+resp = knot.dig("cname-dname-nx", "A", udp=True)
+resp.cmp(bind)
+
+# CNAME leading to DNAME tree (NODATA)
+resp = knot.dig("cname-dname", "TXT", udp=True)
+resp.cmp(bind)
+
+''' CNAME in Additional '''
+
+# Leading to existing name
+resp = knot.dig("cname-mx", "MX", udp=True)
+resp.cmp(bind)
+
+# Leading to delegation
+resp = knot.dig("cname-mx-deleg", "MX", udp=True)
+resp.cmp(bind)
+
+# Leading to wildcard-covered name
+resp = knot.dig("cname-mx-wc", "MX", udp=True)
+resp.cmp(bind)
+
+# Leading to name outside zone
+resp = knot.dig("cname-mx-out", "MX", udp=True)
 resp.cmp(bind)
 
 ''' DNAME answers. '''
@@ -109,12 +149,30 @@ resp.cmp(bind)
 resp = knot.dig("dname.flags", "DNAME", udp=True)
 resp.cmp(bind)
 
+# DNAME query leading out of zone
+resp = knot.dig("a.dname-out.flags", "A", udp=True)
+
 # DNAME subtree query leading to A
 resp = knot.dig("a.dname.flags", "A", udp=True)
 resp.cmp(bind)
 
 # DNAME subtree query leading to NODATA
 resp = knot.dig("a.dname.flags", "TXT", udp=True)
+resp.cmp(bind)
+
+# DNAME subtree query leading to CNAME
+resp = knot.dig("c.dname.flags", "A", udp=True)
+resp.cmp(bind)
+
+# DNAME subtree query leading to CNAME leading to wildcard
+resp = knot.dig("d.dname.flags", "A", udp=True)
+resp.cmp(bind) 
+
+# DNAME-CNAME-DNAME loop
+resp = knot.dig("e.dname.flags", "A", udp=True)
+
+# DNAME-DNAME loop
+resp = knot.dig("f.dname.flags", "A", udp=True)
 resp.cmp(bind)
 
 ''' Wildcard answers. '''
@@ -160,11 +218,11 @@ resp = knot.dig("a.*.wildcard.flags", "TXT", udp=True)
 resp.cmp(bind)
 
 # Wildcard under DNAME subtree
-resp = knot.dig("wildcard.dname.flags", "A", udp=True)
+resp = knot.dig("a.wildcard.dname.flags", "A", udp=True)
 resp.cmp(bind)
 
 # Wildcard under DNAME subtree (NODATA)
-resp = knot.dig("wildcard.dname.flags", "TXT", udp=True)
+resp = knot.dig("a.wildcard.dname.flags", "TXT", udp=True)
 resp.cmp(bind)
 
 # Wildcard chain to A
@@ -177,10 +235,15 @@ resp.cmp(bind)
 
 # Wildcard chain to NS
 resp = knot.dig("a.wildcard-deleg.flags", "NS", udp=True)
-resp.cmp(bind)
 
 # Wildcard leading out
 resp = knot.dig("a.wildcard-out.flags", "A", udp=True)
+
+# Wildcard leading to CNAME loop
+resp = knot.dig("test.loop-entry.flags", "A", udp=True)
+
+# Wildcard-covered additional record discovery
+resp = knot.dig("mx-additional.flags", "MX", udp=True)
 resp.cmp(bind)
 
 ''' Varied case tests. '''

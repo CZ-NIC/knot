@@ -2,6 +2,7 @@
 
 import inspect
 import os
+import time
 
 import dnstest.params as params
 
@@ -10,6 +11,13 @@ SEP = "------------------------------------"
 class Skip(Exception):
     """Exception for skipping current case."""
     pass
+
+def prepare_dir(path):
+    try:
+        os.makedirs(path)
+    except OSError:
+        if not os.path.isdir(path):
+            raise Exception("Can't create directory '%s'" % path)
 
 def test_info():
     '''Get current test case name'''
@@ -27,28 +35,19 @@ def test_info():
     else:
         return "dnstest"
 
-def check_log(text, stdout=False):
+def check_log(text):
     '''Log message header'''
 
-    msg = "%s (%s)" % (str(text), test_info())
-    params.case_log.write(msg + "\n")
-    if stdout and params.debug:
-        print(msg)
+    msg = "(%s) %s (%s)\n" % (time.strftime("%H:%M:%S"), str(text), test_info())
+    params.case_log.write(msg)
+    params.case_log.flush()
 
-def detail_log(text, stdout=False):
+def detail_log(text):
     '''Log message body'''
 
-    msg = str(text)
-    params.case_log.write(msg + "\n")
-    if stdout and params.debug:
-        print(msg)
-
-def err(text):
-    '''Log error'''
-
-    check_log("ERROR", True)
-    detail_log(text, True)
-    detail_log(SEP, True)
+    msg = "%s\n" % text
+    params.case_log.write(msg)
+    params.case_log.flush()
 
 def set_err(msg):
     '''Set error state'''
@@ -61,37 +60,45 @@ def isset(value, name):
     '''Check if value is True'''
 
     if not value:
-        set_err("IS SET " + name)
-        check_log("IS SET " + name, True)
-        detail_log("  False", True)
-        detail_log(SEP, True)
+        set_err("IS SET \'%s\'" % name)
+        check_log("ERROR: IS SET \'%s\'" % name)
+        detail_log(SEP)
+        return True
+    return False
 
 def compare(value, expected, name):
     '''Compare two values'''
 
     if value != expected:
-        set_err("COMPARE " + name)
-        check_log("COMPARE " + name, True)
-        detail_log("  (" + str(value) + ") != (" + str(expected) + ")", True)
-        detail_log(SEP, True)
+        set_err("COMPARE \'%s\'" % name)
+        check_log("ERROR: COMPARE \'%s\'" % name)
+        detail_log("  (%s) != (%s)" % (value, expected))
+        detail_log(SEP)
+        return True
+    return False
 
 def compare_sections(section1, srv1name, section2, srv2name, name):
     '''Compare two message sections'''
 
-    if section1 == section2:
-        return
-
-    set_err("COMPARE sections " + name)
-    check_log("COMPARE %s SECTIONS" % name, True)
+    different = False
 
     for rrset in section1:
         if rrset not in section2:
-            detail_log("%s has extra rrset:" % srv1name, True)
-            detail_log("  %s" % rrset, True)
+            if not different:
+                different = True
+                set_err("COMPARE SECTION %s" % name)
+                check_log("ERROR: COMPARE SECTION %s" % name)
+            detail_log("!Extra rrset %s:" % srv1name)
+            detail_log("  %s" % rrset)
 
     for rrset in section2:
         if rrset not in section1:
-            detail_log("%s has extra rrset:" % srv2name, True)
-            detail_log("  %s" % rrset, True)
+            if not different:
+                different = True
+                set_err("COMPARE SECTION %s" % name)
+                check_log("ERROR: COMPARE SECTION %s" % name)
+            detail_log("!Extra rrset %s:" % srv2name)
+            detail_log("  %s" % rrset)
 
-    detail_log(SEP, True)
+    if different:
+        detail_log(SEP)
