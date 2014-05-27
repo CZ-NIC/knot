@@ -65,8 +65,6 @@ libknots_la_SOURCES =				\
 	common-knot/array-sort.h		\
 	common-knot/binsearch.h			\
 	common-knot/crc.h			\
-	common-knot/errors.c			\
-	common-knot/errors.h			\
 	common-knot/evsched.c			\
 	common-knot/evsched.h			\
 	common-knot/fdset.c			\
@@ -158,6 +156,8 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/sign.h			\
 	libknot/errcode.c			\
 	libknot/errcode.h			\
+	libknot/errors.c			\
+	libknot/errors.h			\
 	libknot/libknot.h			\
 	libknot/mempattern.c			\
 	libknot/mempattern.h			\

@@ -37,8 +37,6 @@ src/common/mempool.h
 src/common-knot/array-sort.h
 src/common-knot/binsearch.h
 src/common-knot/crc.h
-src/common-knot/errors.c
-src/common-knot/errors.h
 src/common-knot/evsched.c
 src/common-knot/evsched.h
 src/common-knot/fdset.c
@@ -219,6 +217,8 @@ src/libknot/dnssec/sign.c
 src/libknot/dnssec/sign.h
 src/libknot/errcode.c
 src/libknot/errcode.h
+src/libknot/errors.c
+src/libknot/errors.h
 src/libknot/libknot.h
 src/libknot/mempattern.c
 src/libknot/mempattern.h

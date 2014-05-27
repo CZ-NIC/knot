@@ -27,7 +27,7 @@
 #include "common-knot/hattrie/murmurhash3.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/descriptor.h"
-#include "common-knot/errors.h"
+#include "libknot/errors.h"
 #include "knot/zone/zone.h"
 
 /* Hopscotch defines. */
