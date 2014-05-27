@@ -27,7 +27,6 @@
 #ifndef _KNOT_DNSSEC_SIGN_H_
 #define _KNOT_DNSSEC_SIGN_H_
 
-#include "common/descriptor.h"
 #include "libknot/binary.h"
 #include "libknot/consts.h"
 #include "libknot/dnssec/key.h"

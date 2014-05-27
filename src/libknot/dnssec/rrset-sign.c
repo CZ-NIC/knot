@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "common/errcode.h"
+#include "common/descriptor.h"
 #include "libknot/common.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"

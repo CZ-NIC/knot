@@ -25,7 +25,6 @@
  */
 
 #include "common/errcode.h"
-#include "common/mempattern.h"
 
 #ifndef _KNOT_COMMON_H_
 #define _KNOT_COMMON_H_
