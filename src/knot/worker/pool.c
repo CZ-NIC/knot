@@ -14,16 +14,15 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <config.h>
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/errcode.h"
-#include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
+#include "knot/server/dthreads.h"
+#include "common/errcode.h"
 #include "libknot/dnssec/crypto.h"
 
 /*!
@@ -67,7 +66,6 @@ static int worker_main(dthread_t *thread)
 			continue;
 		}
 
-		assert(task);
 		assert(task->run);
 
 		pthread_mutex_unlock(&pool->lock);
@@ -101,16 +99,25 @@ worker_pool_t *worker_pool_create(unsigned threads)
 	memset(pool, 0, sizeof(worker_pool_t));
 	pool->threads = dt_create(threads, worker_main, worker_cleanup, pool);
 	if (pool->threads == NULL) {
-		free(pool);
-		return NULL;
+		goto fail;
 	}
 
-	pthread_mutex_init(&pool->lock, NULL);
-	pthread_cond_init(&pool->wake, NULL);
+	if (pthread_mutex_init(&pool->lock, NULL) != 0) {
+		goto fail;
+	}
+
+	if (pthread_cond_init(&pool->wake, NULL) != 0) {
+		goto fail;
+	}
 
 	worker_queue_init(&pool->tasks);
 
 	return pool;
+
+fail:
+	dt_delete(&pool->threads);
+	free(pool);
+	return NULL;
 }
 
 void worker_pool_destroy(worker_pool_t *pool)
