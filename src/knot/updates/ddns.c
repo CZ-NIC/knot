@@ -215,6 +215,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
                           list_t *rrset_list)
 {
 	if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0) {
+		*rcode = KNOT_RCODE_FORMERR;
 		return KNOT_EMALF;
 	}
 
@@ -225,6 +226,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 
 	if (rrset->rclass == KNOT_CLASS_ANY) {
 		if (!rrset_empty(rrset)) {
+			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
 		}
 		if (rrset->type == KNOT_RRTYPE_ANY) {
@@ -234,6 +236,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		}
 	} else if (rrset->rclass == KNOT_CLASS_NONE) {
 		if (!rrset_empty(rrset)) {
+			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
 		}
 		if (rrset->type == KNOT_RRTYPE_ANY) {
@@ -243,8 +246,13 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		}
 	} else if (rrset->rclass == qclass) {
 		// Store RRs for full check into list
-		return add_rr_to_list(rrset_list, rrset);
+		int ret = add_rr_to_list(rrset_list, rrset);
+		if (ret != KNOT_EOK) {
+			*rcode = KNOT_RCODE_SERVFAIL;
+		}
+		return ret;
 	} else {
+		*rcode = KNOT_RCODE_FORMERR;
 		return KNOT_EMALF;
 	}
 }
@@ -966,12 +974,14 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
                         changeset_t *changeset, uint16_t *rcode)
 {
 	if (zone == NULL || query == NULL || changeset == NULL || rcode == NULL) {
+		*rcode = ret_to_rcode(KNOT_EINVAL);
 		return KNOT_EINVAL;
 	}
 
 	/* Copy base SOA RR. */
 	knot_rrset_t *soa_begin = node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	if (soa_begin == NULL) {
+		*rcode = ret_to_rcode(KNOT_ENOMEM);
 		return KNOT_ENOMEM;
 	}
 
@@ -989,6 +999,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		/* Check if the entry is correct. */
 		int ret = check_update(rr, query, rcode);
 		if (ret != KNOT_EOK) {
+			assert(*rcode != KNOT_RCODE_NOERROR);
 			return ret;
 		}
 
@@ -1006,13 +1017,14 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 	if (changeset->soa_to == NULL) {
 		// No SOA in the update, create according to current policy
 		if (changeset_is_empty(changeset)) {
+			*rcode = KNOT_RCODE_NOERROR;
 			// No change, no new SOA
 			return KNOT_EOK;
 		}
 
 		knot_rrset_t *soa_cpy = knot_rrset_copy(soa_begin, NULL);
 		if (soa_cpy == NULL) {
-			*rcode = KNOT_RCODE_SERVFAIL;
+			*rcode = ret_to_rcode(KNOT_ENOMEM);
 			return KNOT_ENOMEM;
 		}
 
@@ -1023,5 +1035,6 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		changeset_add_soa(changeset, soa_cpy, CHANGESET_ADD);
 	}
 
+	*rcode = KNOT_RCODE_NOERROR;
 	return KNOT_EOK;
 }
