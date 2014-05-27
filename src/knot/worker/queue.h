@@ -28,7 +28,6 @@ typedef struct task {
 	void *ctx;
 	task_cb run;
 } task_t;
->>>>>>> zone-events-queue
 
 /*!
  * \brief Worker queue.
