@@ -31,6 +31,7 @@
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
 #include "knot/zone/zonefile.h"
+#include "knot/zone/zone-load.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "knot/zone/estimator.h"
@@ -700,14 +701,14 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Create zone loader context. */
-		zone_t *loaded_zone = NULL; // TODO load_zone_file(zone);
+		zone_contents_t *loaded_zone = zone_load_contents(zone);
 		if (loaded_zone == NULL) {
 			rc = 1;
 			continue;
 		}
 
-		log_zone_info("Zone %s OK.\n", zone->name);
-		zone_free(&loaded_zone);
+		log_zone_info("Zone '%s' OK.\n", zone->name);
+		zone_contents_deep_free(&loaded_zone);
 	}
 	hattrie_iter_free(z_iter);
 
