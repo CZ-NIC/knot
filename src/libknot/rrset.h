@@ -31,7 +31,6 @@
 #include <stdbool.h>
 
 #include "libknot/mempattern.h"
-
 #include "libknot/dname.h"
 #include "libknot/rdataset.h"
 
