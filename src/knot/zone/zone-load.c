@@ -200,6 +200,6 @@ int zone_load_post(zone_contents_t *contents, zone_t *zone, uint32_t *dnssec_ref
 
 bool zone_load_can_bootstrap(const conf_zone_t *zone_config)
 {
-	return conf && !EMPTY_LIST(zone_config->acl.xfr_in);
+	return conf() && !EMPTY_LIST(zone_config->acl.xfr_in);
 }
 
