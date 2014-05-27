@@ -38,7 +38,7 @@
 
 #include "common-knot/sockaddr.h"
 #include "libknot/mempattern.h"
-#include "common-knot/mempool.h"
+#include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/server.h"

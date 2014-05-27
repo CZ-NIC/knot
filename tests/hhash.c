@@ -21,7 +21,7 @@
 
 #include "common-knot/hhash.h"
 #include "libknot/mempattern.h"
-#include "common-knot/mempool.h"
+#include "common/mempool.h"
 #include "libknot/common.h"
 
 /* Test defines. */

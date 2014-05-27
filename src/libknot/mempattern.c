@@ -24,13 +24,11 @@
 #endif /* HAVE_MALLOC_TRIM */
 
 #include "libknot/mempattern.h"
-#include "common-knot/log.h"
-#include "common-knot/slab/alloc-common.h"
-#include "common-knot/mempool.h"
+#include "common/mempool.h"
 
 static void *mm_malloc(void *ctx, size_t n)
 {
-	UNUSED(ctx);
+	(void)ctx;
 	return malloc(n);
 }
 
@@ -72,7 +70,8 @@ void* xmalloc(size_t l)
 {
 	void *p = malloc(l);
 	if (p == NULL) {
-		log_server_fatal("Failed to allocate %zu bytes.\n", l);
+		// Dependency on server
+//		log_server_fatal("Failed to allocate %zu bytes.\n", l);
 		abort();
 	}
 	return p;
@@ -82,8 +81,9 @@ void *xrealloc(void *p, size_t l)
 {
 	p = realloc(p, l);
 	if (p == NULL) {
-		log_server_fatal("Failed to reallocate to %zu bytes from %p.\n",
-		                 l, p);
+		// Dependency on server
+//		log_server_fatal("Failed to reallocate to %zu bytes from %p.\n",
+//		                 l, p);
 		abort();
 	}
 	return p;

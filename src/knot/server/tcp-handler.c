@@ -33,7 +33,7 @@
 
 #include "common-knot/sockaddr.h"
 #include "common-knot/fdset.h"
-#include "common-knot/mempool.h"
+#include "common/mempool.h"
 #include "knot/knot.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"

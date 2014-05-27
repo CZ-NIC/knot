@@ -85,8 +85,6 @@ libknots_la_SOURCES =				\
 	common-knot/lists.h			\
 	common-knot/log.c			\
 	common-knot/log.h			\
-	common-knot/mempool.c			\
-	common-knot/mempool.h			\
 	common-knot/print.c			\
 	common-knot/print.h			\
 	common-knot/ref.c			\
@@ -105,6 +103,8 @@ libknotcs_la_SOURCES =				\
 	common/base64.c				\
 	common/base64.h				\
 	common/memdup.h				\
+	common/mempool.c			\
+	common/mempool.h			\
 	common/debug.h				\
 	common/getline.c			\
 	common/getline.h
@@ -312,7 +312,7 @@ libknotd_la_SOURCES =				\
 	knot/zone/zonefile.h
 
 # libraries
-libknot_la_LIBADD  = libknots.la libknotcs.la zscanner/libzscanner.la
+libknot_la_LIBADD  = libknotcs.la zscanner/libzscanner.la
 libknotd_la_LIBADD = libknots.la libknotcs.la libknot.la
 
 # sbin programs
@@ -323,10 +323,10 @@ knotd_LDFLAGS = $(AM_LDFLAGS) ${systemd_daemon_LIBS}
 knotc_LDADD = libknot.la libknotd.la
 
 # bin programs
-kdig_LDADD       = libknotus.la libknots.la libknotcs.la libknot.la
-khost_LDADD      = libknotus.la libknots.la libknotcs.la libknot.la
-knsupdate_LDADD  = libknotus.la libknots.la libknotcs.la libknot.la zscanner/libzscanner.la
-knsec3hash_LDADD = libknotus.la libknots.la libknotcs.la libknot.la
+kdig_LDADD       = libknotus.la libknots.la libknot.la
+khost_LDADD      = libknotus.la libknots.la libknot.la
+knsupdate_LDADD  = libknotus.la libknots.la libknot.la zscanner/libzscanner.la
+knsec3hash_LDADD = libknotus.la libknots.la libknot.la
 
 if HAVE_DNSTAP
 libknotd_la_SOURCES +=				\

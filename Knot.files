@@ -32,6 +32,8 @@ src/common/debug.h
 src/common/getline.c
 src/common/getline.h
 src/common/memdup.h
+src/common/mempool.c
+src/common/mempool.h
 src/common-knot/array-sort.h
 src/common-knot/binsearch.h
 src/common-knot/crc.h
@@ -55,8 +57,6 @@ src/common-knot/lists.c
 src/common-knot/lists.h
 src/common-knot/log.c
 src/common-knot/log.h
-src/common-knot/mempool.c
-src/common-knot/mempool.h
 src/common-knot/print.c
 src/common-knot/print.h
 src/common-knot/ref.c

@@ -29,7 +29,7 @@
 #include "knot/zone/node.h"
 #include "common/debug.h"
 #include "libknot/mempattern.h"
-#include "common-knot/mempool.h"
+#include "common/mempool.h"
 
 
 /*----------------------------------------------------------------------------*/

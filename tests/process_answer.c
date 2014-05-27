@@ -19,7 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "common-knot/mempool.h"
+#include "common/mempool.h"
 #include "libknot/descriptor.h"
 #include "libknot/packet/wire.h"
 #include "knot/nameserver/process_answer.h"

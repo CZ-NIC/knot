@@ -18,7 +18,7 @@
 #include <time.h>
 
 #include "common-knot/evsched.h"
-#include "common-knot/mempool.h"
+#include "common/mempool.h"
 #include "knot/server/server.h"
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
