@@ -25,7 +25,6 @@
 #include "knot/updates/changesets.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/worker/pool.h"
-#include "knot/worker/task.h"
 #include "knot/zone/events.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zone-load.h"
@@ -225,7 +224,8 @@ static int event_reload(zone_t *zone)
 		return KNOT_ERROR;
 	}
 
-	/* Apply changes in journal. */
+	/* Store zonefile serial and apply changes from the journal. */
+	zone->zonefile_serial = zone_contents_serial(contents);
 	int result = zone_load_journal(contents, zone_config);
 	if (result != KNOT_EOK) {
 		goto fail;
@@ -258,6 +258,9 @@ static int event_reload(zone_t *zone)
 		synchronize_rcu();
 		zone_contents_deep_free(&old);
 	}
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	/* Schedule notify and refresh after load. */
 	if (zone_master(zone)) {
@@ -338,6 +341,9 @@ static int event_xfer(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
+		zone->flags &= ~ZONE_FORCE_AXFR;
+		/* Trim extra heap. */
+		mem_trim();
 	} else {
 		/* Zone contents is still empty, increment bootstrap retry timer
 		 * and try again. */
@@ -388,6 +394,9 @@ static int event_update(zone_t *zone)
 	knot_pkt_free(&resp);
 	knot_pkt_free(&update->query);
 	free(update);
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	return KNOT_EOK;
 }

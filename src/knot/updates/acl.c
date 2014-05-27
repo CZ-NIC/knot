@@ -24,6 +24,7 @@
 
 #include "libknot/errcode.h"
 #include "knot/updates/acl.h"
+#include "knot/conf/conf.h"
 #include "libknot/util/endian.h"
 #include "libknot/rrtype/tsig.h"
 
@@ -49,10 +50,10 @@ static inline uint32_t ip_chunk(const struct sockaddr_storage *ss, uint8_t idx)
 }
 
 /*! \brief Compare chunks using given mask. */
-static int cmp_chunk(const netblock_t *a1, const struct sockaddr_storage *a2,
+static int cmp_chunk(const conf_iface_t *a1, const struct sockaddr_storage *a2,
                      uint8_t idx, uint32_t mask)
 {
-	const uint32_t c1 = ip_chunk(&a1->ss, idx) & mask;
+	const uint32_t c1 = ip_chunk(&a1->addr, idx) & mask;
 	const uint32_t c2 = ip_chunk(a2, idx) & mask;
 
 	if (c1 > c2)
@@ -82,7 +83,7 @@ static uint32_t acl_fill_mask32(short nbits)
 	return htonl(r);
 }
 
-int netblock_match(const netblock_t *a1, const struct sockaddr_storage *a2)
+int netblock_match(struct conf_iface_t *a1, const struct sockaddr_storage *a2)
 {
 	int ret = 0;
 	uint32_t mask = 0xffffffff;
@@ -90,8 +91,8 @@ int netblock_match(const netblock_t *a1, const struct sockaddr_storage *a2)
 	const short chunk_bits = sizeof(mask) * CHAR_BIT;
 
 	/* Check different length, IPv4 goes first. */
-	if (a1->ss.ss_family != a2->ss_family) {
-		if (a1->ss.ss_family < a2->ss_family) {
+	if (a1->addr.ss_family != a2->ss_family) {
+		if (a1->addr.ss_family < a2->ss_family) {
 			return -1;
 		} else {
 			return 1;
@@ -119,61 +120,17 @@ int netblock_match(const netblock_t *a1, const struct sockaddr_storage *a2)
 	return ret;
 }
 
-acl_t *acl_new()
-{
-	acl_t *acl = malloc(sizeof(acl_t));
-	if (acl == NULL) {
-		return NULL;
-	}
-
-	memset(acl, 0, sizeof(acl_t));
-	init_list(acl);
-	return acl;
-}
-
-void acl_delete(acl_t **acl)
-{
-	if (acl == NULL || *acl == NULL) {
-		return;
-	}
-
-	acl_truncate(*acl);
-
-	/* Free ACL. */
-	free(*acl);
-	*acl = 0;
-}
-
-int acl_insert(acl_t *acl, const struct sockaddr_storage *addr, uint8_t prefix, knot_tsig_key_t *key)
-{
-	if (acl == NULL || addr == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	/* Create new match. */
-	acl_match_t *match = malloc(sizeof(acl_match_t));
-	if (match == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	match->netblock.prefix = prefix;
-	memcpy(&match->netblock.ss, addr, sizeof(struct sockaddr_storage));
-	match->key = key;
-
-	add_tail(acl, &match->n);
-
-	return KNOT_EOK;
-}
-
-acl_match_t* acl_find(acl_t *acl, const struct sockaddr_storage *addr, const knot_dname_t *key_name)
+struct conf_iface_t* acl_find(list_t *acl, const struct sockaddr_storage *addr,
+                              const knot_dname_t *key_name)
 {
 	if (acl == NULL || addr == NULL) {
 		return NULL;
 	}
 
-	acl_match_t *cur = NULL;
-	WALK_LIST(cur, *acl) {
-		if (netblock_match(&cur->netblock, addr) == 0) {
+	conf_remote_t *remote = NULL;
+	WALK_LIST(remote, *acl) {
+		conf_iface_t *cur = remote->remote;
+		if (netblock_match(cur, addr) == 0) {
 			/* NOKEY entry. */
 			if (cur->key == NULL) {
 				if (key_name == NULL) {
@@ -196,13 +153,4 @@ acl_match_t* acl_find(acl_t *acl, const struct sockaddr_storage *addr, const kno
 	}
 
 	return NULL;
-}
-
-void acl_truncate(acl_t *acl)
-{
-	if (acl == NULL) {
-		return;
-	}
-
-	WALK_LIST_FREE(*acl);
 }

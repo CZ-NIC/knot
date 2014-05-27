@@ -30,4 +30,4 @@ def run(i):
     i.check_rec("add4", "TXT", "some_text2")
     i.check_rec("add4", "TXT", "some_text3")
 
-    i.test.end()
+    i.test.stop()

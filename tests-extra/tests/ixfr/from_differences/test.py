@@ -9,8 +9,6 @@ import dnstest.params
 import dnstest.test
 from dnstest.utils import *
 
-t = dnstest.test.Test()
-
 class IxfrTopology():
     '''This class simplifies testing topology.'''
 
@@ -102,6 +100,8 @@ class IxfrTopology():
 
 patern = re.compile("^([0-9][0-9]_)")
 
+t = dnstest.test.Test()
+
 for dirname in sorted(os.listdir(dnstest.params.test_dir)):
     if patern.match(dirname):
         mod_name = dnstest.params.module + "." + dirname + ".step"
@@ -122,3 +122,5 @@ for dirname in sorted(os.listdir(dnstest.params.test_dir)):
 
         mod.run(i)
         i.clean()
+
+t.end()

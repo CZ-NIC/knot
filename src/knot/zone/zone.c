@@ -34,39 +34,6 @@
 #include "libknot/util/utils.h"
 #include "libknot/rrtype/soa.h"
 
-/*!
- * \brief Set ACL list from configuration.
- *
- * \param acl      ACL to be created.
- * \param acl_list List of remotes from configuration.
- *
- * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_ENOMEM on failed memory allocation.
- */
-static int set_acl(acl_t **acl, list_t* acl_list)
-{
-	assert(acl);
-	assert(acl_list);
-
-	/* Create new ACL. */
-	acl_t *new_acl = acl_new();
-	if (new_acl == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	/* Load ACL rules. */
-	conf_remote_t *r = 0;
-	WALK_LIST(r, *acl_list) {
-		conf_iface_t *cfg_if = r->remote;
-		acl_insert(new_acl, &cfg_if->addr, cfg_if->prefix, cfg_if->key);
-	}
-
-	*acl = new_acl;
-
-	return KNOT_EOK;
-}
-
 static void free_ddns_queue(zone_t *z)
 {
 	struct request_data *n = NULL;
@@ -107,11 +74,6 @@ zone_t* zone_new(conf_zone_t *conf)
 	pthread_mutex_init(&zone->ddns_lock, 0);
 	init_list(&zone->ddns_queue);
 
-	// ACLs
-	set_acl(&zone->xfr_out,    &conf->acl.xfr_out);
-	set_acl(&zone->notify_in,  &conf->acl.notify_in);
-	set_acl(&zone->update_in,  &conf->acl.update_in);
-
 	// Initialize events
 	zone_events_init(zone);
 
@@ -130,9 +92,6 @@ void zone_free(zone_t **zone_ptr)
 
 	knot_dname_free(&zone->name, NULL);
 
-	acl_delete(&zone->xfr_out);
-	acl_delete(&zone->notify_in);
-	acl_delete(&zone->update_in);
 	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
 

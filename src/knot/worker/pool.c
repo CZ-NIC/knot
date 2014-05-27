@@ -24,7 +24,6 @@
 #include "libknot/errcode.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"
-#include "knot/worker/queue.h"
 #include "libknot/dnssec/crypto.h"
 
 /*!
@@ -175,7 +174,7 @@ void worker_pool_wait(worker_pool_t *pool)
 	pthread_mutex_unlock(&pool->lock);
 }
 
-void worker_pool_assign(worker_pool_t *pool, task_t *task)
+void worker_pool_assign(worker_pool_t *pool, struct task *task)
 {
 	if (!pool || !task) {
 		return;

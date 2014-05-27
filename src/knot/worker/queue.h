@@ -17,7 +17,18 @@
 #pragma once
 
 #include "common-knot/lists.h"
-#include "knot/worker/task.h"
+
+struct task;
+typedef void (*task_cb)(struct task *);
+
+/*!
+ * \brief Task executable by a worker.
+ */
+typedef struct task {
+	void *ctx;
+	task_cb run;
+} task_t;
+>>>>>>> zone-events-queue
 
 /*!
  * \brief Worker queue.

@@ -61,11 +61,6 @@ typedef struct zone_t
 	pthread_mutex_t ddns_lock;
 	list_t ddns_queue;
 
-	/*! \brief Access control lists. */
-	acl_t *xfr_out;    /*!< ACL for outgoing transfers.*/
-	acl_t *notify_in;  /*!< ACL for incoming notifications.*/
-	acl_t *update_in;  /*!< ACL for incoming updates.*/
-
 	/*! \brief Zone events. */
 	zone_events_t events;     /*!< Zone events timers. */
 	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */

@@ -174,7 +174,7 @@ int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx);
  * \param qdata
  * \return true if accepted, false if denied.
  */
-bool process_query_acl_check(acl_t *acl, struct query_data *qdata);
+bool process_query_acl_check(list_t *acl, struct query_data *qdata);
 
 /*!
  * \brief Verify current query transaction security and update query data.

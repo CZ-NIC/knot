@@ -17,68 +17,8 @@
 
 static int update_forward(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	/*! \todo This will be reimplemented when RESPONSE and REQUEST processors
-	 *        are written. */
-#warning TODO: reimplement update_forward
-#if 0
-	zone_t* zone = (zone_t *)qdata->zone;
-	knot_pkt_t *query = qdata->query;
-
-	/* Check transport type. */
-	unsigned flags = XFR_FLAG_TCP;
-	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
-		flags = XFR_FLAG_UDP;
-	}
-
-	/* Prepare task. */
-	knot_ns_xfr_t *rq = xfr_task_create(zone, XFR_TYPE_FORWARD, flags);
-	if (!rq) {
-		return NS_PROC_FAIL;
-	}
-
-	const conf_iface_t *master = zone_master(zone);
-	xfr_task_setaddr(rq, &master->addr, &master->via);
-	/* Don't set TSIG key, as it's only forwarded. */
-
-	/* Copy query originator data. */
-	rq->fwd_src_fd = qdata->param->socket;
-	memcpy(&rq->fwd_addr, qdata->param->remote, sizeof(struct sockaddr_storage));
-	rq->packet_nr = knot_wire_get_id(query->wire);
-
-	/* Duplicate query to keep it in memory during forwarding. */
-	rq->query = knot_pkt_new(NULL, query->max_size, NULL);
-	if (rq->query == NULL) {
-		xfr_task_free(rq);
-		return NS_PROC_FAIL;
-	} else {
-		memcpy(rq->query->wire, query->wire, query->size);
-		rq->query->size = query->size;
-	}
-
-	/* Copy TSIG. */
-	int ret = KNOT_EOK;
-	if (query->tsig_rr) {
-		ret = knot_tsig_append(rq->query->wire, &rq->query->size,
-		                       rq->query->max_size, query->tsig_rr);
-		if (ret != KNOT_EOK) {
-			xfr_task_free(rq);
-			return NS_PROC_FAIL;
-		}
-	}
-
-	/* Retain pointer to zone and issue. */
-	xfrhandler_t *xfr = qdata->param->server->xfr;
-	ret = xfr_enqueue(xfr, rq);
-	if (ret != KNOT_EOK) {
-		xfr_task_free(rq);
-		return NS_PROC_FAIL;
-	}
-
-	/* No immediate response. */
-	pkt->size = 0;
-	return NS_PROC_DONE;
-#endif
-	assert(0);
+	/*! \todo ref #244 This will be reimplemented later. */
+	qdata->rcode = KNOT_RCODE_NOTIMPL;
 	return NS_PROC_FAIL;
 }
 
@@ -97,7 +37,7 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata)
 	}
 
 	/* Need valid transaction security. */
-	NS_NEED_AUTH(zone->update_in, qdata);
+	NS_NEED_AUTH(&zone->conf->acl.update_in, qdata);
 	NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
 
 	/* Store update into DDNS queue. */
@@ -197,6 +137,7 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 
 	int ret = ddns_process_prereqs(query, zone->contents, rcode);
 	if (ret != KNOT_EOK) {
+		assert(*rcode != KNOT_RCODE_NOERROR);
 		return ret;
 	}
 
@@ -209,9 +150,11 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	changeset_t *ddns_ch = changesets_get_last(ddns_chs);
 	ret = ddns_process_update(zone, query, ddns_ch, rcode);
 	if (ret != KNOT_EOK) {
+		assert(*rcode != KNOT_RCODE_NOERROR);
 		changesets_free(&ddns_chs, NULL);
 		return ret;
 	}
+	assert(*rcode == KNOT_RCODE_NOERROR);
 
 	zone_contents_t *new_contents = NULL;
 	const bool change_made = !changeset_is_empty(ddns_ch);
@@ -260,9 +203,6 @@ static int process_authenticated(uint16_t *rcode, struct query_data *qdata)
 	update_cleanup(ddns_chs);
 	changesets_free(&ddns_chs, NULL);
 
-	/* Trim extra heap. */
-	mem_trim();
-
 	/* Sync zonefile immediately if configured. */
 	if (zone->conf->dbsync_timeout == 0) {
 		zone_events_schedule(zone, ZONE_EVENT_FLUSH, ZONE_EVENT_NOW);
@@ -290,6 +230,7 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	uint16_t rcode = KNOT_RCODE_NOERROR;
 	int ret = process_authenticated(&rcode, qdata);
 	if (ret != KNOT_EOK) {
+		assert(rcode != KNOT_RCODE_NOERROR);
 		UPDATE_LOG(LOG_ERR, "%s", knot_strerror(ret));
 		knot_wire_set_rcode(pkt->wire, rcode);
 		return ret;
@@ -298,6 +239,7 @@ int update_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 	/* Evaluate response. */
 	const uint32_t new_serial = zone_contents_serial(zone->contents);
 	if (new_serial == old_serial) {
+		assert(rcode == KNOT_RCODE_NOERROR);
 		UPDATE_LOG(LOG_NOTICE, "No change to zone made.");
 		return KNOT_EOK;
 	}
