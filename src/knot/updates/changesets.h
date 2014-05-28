@@ -70,7 +70,6 @@ typedef struct {
 	list_t sets; /*!< List of changesets. */
 	size_t count; /*!< Changeset count. */
 	knot_rrset_t *first_soa; /*!< First received SOA. */
-	uint32_t flags; /*!< DDNS / IXFR flags. */
 } changesets_t;
 
 /*----------------------------------------------------------------------------*/
@@ -93,9 +92,6 @@ typedef enum {
  */
 changesets_t *changesets_create(unsigned count);
 
-/*! \brief Reinitialize changesets structure. */
-int changesets_clear(changesets_t *changesets, mm_ctx_t *rr_mm);
-
 /*!
  * \brief Creates new changeset structure and returns it to caller.
  *        The structure is also connected to a list of changesets.
@@ -105,7 +101,7 @@ int changesets_clear(changesets_t *changesets, mm_ctx_t *rr_mm);
  * \retval Created structure on success.
  * \retval NULL on failure.
  */
-changeset_t *changesets_create_changeset(changesets_t *ch);
+changeset_t *changesets_create_changeset(changesets_t *chs);
 
 /*!
  * \brief Gets last changesets from from structure's list.
@@ -115,9 +111,18 @@ changeset_t *changesets_create_changeset(changesets_t *ch);
  * \retval Last changeset on success.
  * \retval NULL on failure.
  */
-changeset_t *changesets_get_last(const changesets_t *ch);
+changeset_t *changesets_get_last(const changesets_t *chs);
 
-/*! \brief Return true if changesets are empty. */
+/*!
+ * \brief Checks whether the changesets are empty.
+ *
+ * Changesets are considered empty if there is no changeset or all changesets
+ * are empty.
+ *
+ * \param chs Changesets to check.
+ *
+ * \return True If there is at least one non-empty changeset. False otherwise.
+ */
 bool changesets_empty(const changesets_t *chs);
 
 /*!
@@ -131,8 +136,8 @@ bool changesets_empty(const changesets_t *chs);
  * \retval KNOT_EOK on success.
  * \retval Error code on failure.
  */
-int changeset_add_rrset(changeset_t *chgs,
-                        knot_rrset_t *rrset, changeset_part_t part);
+int changeset_add_rrset(changeset_t *ch, knot_rrset_t *rrset,
+                        changeset_part_t part);
 
 /*!
  * \brief Adds a source/destination SOA RRSet to changeset.
@@ -141,21 +146,21 @@ int changeset_add_rrset(changeset_t *chgs,
  * \param soa SOA RRSet to be stored to changeset.
  * \param part To which part we store SOA (from = REMOVE, add = TO)
  */
-void changeset_add_soa(changeset_t *changeset, knot_rrset_t *soa,
-                       changeset_part_t part);
+int changeset_add_soa(changeset_t *ch, knot_rrset_t *soa,
+                      changeset_part_t part);
 
 /*!
  * \brief Checks whether changeset is empty.
  *
- * \param changeset Changeset to be checked.
- *
  * Changeset is considered empty if it has no RRs in REMOVE and ADD sections and
  * final SOA (soa_to) is not set.
+ *
+ * \param changeset Changeset to be checked.
  *
  * \retval true if changeset is empty.
  * \retval false if changeset is not empty.
  */
-bool changeset_is_empty(const changeset_t *changeset);
+bool changeset_is_empty(const changeset_t *ch);
 
 /*!
  * \brief Get number of changes (additions and removals) in the changeset.
@@ -164,10 +169,13 @@ bool changeset_is_empty(const changeset_t *changeset);
  *
  * \return Number of changes in the changeset.
  */
-size_t changeset_size(const changeset_t *changeset);
+size_t changeset_size(const changeset_t *ch);
 
 /*!
  * \brief Apply given function to all RRSets in one part of the changeset.
+ *
+ * If the applied function fails, the application aborts and this function
+ * returns the return value of the applied function.
  *
  * \param changeset Changeset to apply the function to.
  * \param part Part of changeset to apply the function to.
@@ -175,15 +183,11 @@ size_t changeset_size(const changeset_t *changeset);
  *             the function returns KNOT_EOK on success.
  * \param data Data to pass to the applied function.
  *
- * If the applied function fails, the application aborts and this function
- * returns the return value of the applied function.
- *
  * \retval KNOT_EOK if OK
  * \retval KNOT_EINVAL if \a changeset or \a func is NULL.
  * \retval Other error code if the applied function failed.
  */
-int changeset_apply(changeset_t *changeset,
-                    changeset_part_t part,
+int changeset_apply(changeset_t *ch, changeset_part_t part,
                     int (*func)(knot_rrset_t *, void *), void *data);
 
 /*!
@@ -192,17 +196,17 @@ int changeset_apply(changeset_t *changeset,
  * \param changesets  Double pointer to changesets structure to be freed.
  * \param mm          Memory context used to allocate RRSets.
  */
-void changesets_free(changesets_t **changesets, mm_ctx_t *rr_mm);
+void changesets_free(changesets_t **chs, mm_ctx_t *rr_mm);
 
 /*!
  * \brief Merges two changesets together, second changeset's lists are kept.
  *
- * \param ch1 Changeset to merge into
- * \param ch2 Changeset to merge
- *
  * Beginning SOA is used from the first changeset, ending SOA from the second.
  * Ending SOA from first changeset is deleted. SOAs in the second changeset are
  * left untouched.
+ *
+ * \param ch1 Changeset to merge into
+ * \param ch2 Changeset to merge
  *
  * \retval KNOT_EOK on success.
  * \retval Error code on failure.

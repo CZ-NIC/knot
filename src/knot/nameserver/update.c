@@ -119,6 +119,8 @@ static int sign_update(zone_t *zone, const zone_contents_t *old_contents,
 		return ret;
 	}
 
+	// Free the DNSSEC changeset's SOA from (not used anymore)
+	knot_rrset_free(&sec_ch->soa_from, NULL);
 	// Shallow free DNSSEC changesets
 	free(sec_chs);
 

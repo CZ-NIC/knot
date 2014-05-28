@@ -984,7 +984,10 @@ static int changesets_unpack(changeset_t *chs)
 			 */
 	assert(rrset->type == KNOT_RRTYPE_SOA);
 	assert(chs->serial_from == knot_soa_serial(&rrset->rrs));
-	changeset_add_soa(chs, rrset, CHANGESET_REMOVE);
+	ret = changeset_add_soa(chs, rrset, CHANGESET_REMOVE);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	/* Read remaining RRSets */
 	int in_remove_section = 1;
@@ -1003,8 +1006,8 @@ static int changesets_unpack(changeset_t *chs)
 
 			/* Move to ADD section if in REMOVE. */
 			if (in_remove_section) {
-				changeset_add_soa(chs, rrset,
-				                       CHANGESET_ADD);
+				ret = changeset_add_soa(chs, rrset,
+				                        CHANGESET_ADD);
 				in_remove_section = 0;
 			} else {
 				/* Final SOA. */

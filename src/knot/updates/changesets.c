@@ -27,29 +27,32 @@
 #include "libknot/rrtype/soa.h"
 #include "common/debug.h"
 
-static int knot_changesets_init(changesets_t *changesets)
+static int knot_changesets_init(changesets_t *chs)
 {
-	if (changesets == NULL) {
-		return KNOT_EINVAL;
-	}
+	assert(chs != NULL);
 
 	// Create new changesets structure
-	memset(changesets, 0, sizeof(changesets_t));
+	memset(chs, 0, sizeof(changesets_t));
 
 	// Initialize memory context for changesets (xmalloc'd)
 	struct mempool *chs_pool = mp_new(sizeof(changeset_t));
-	changesets->mmc_chs.ctx = chs_pool;
-	changesets->mmc_chs.alloc = (mm_alloc_t)mp_alloc;
-	changesets->mmc_chs.free = NULL;
+	chs->mmc_chs.ctx = chs_pool;
+	chs->mmc_chs.alloc = (mm_alloc_t)mp_alloc;
+	chs->mmc_chs.free = NULL;
 
 	// Initialize memory context for RRs in changesets (xmalloc'd)
 	struct mempool *rr_pool = mp_new(sizeof(knot_rr_ln_t));
-	changesets->mmc_rr.ctx = rr_pool;
-	changesets->mmc_rr.alloc = (mm_alloc_t)mp_alloc;
-	changesets->mmc_rr.free = NULL;
+	chs->mmc_rr.ctx = rr_pool;
+	chs->mmc_rr.alloc = (mm_alloc_t)mp_alloc;
+	chs->mmc_rr.free = NULL;
+
+	if (chs_pool == NULL || rr_pool == NULL) {
+		ERR_ALLOC_FAILED;
+		return KNOT_ENOMEM;
+	}
 
 	// Init list with changesets
-	init_list(&changesets->sets);
+	init_list(&chs->sets);
 
 	return KNOT_EOK;
 }
@@ -57,6 +60,11 @@ static int knot_changesets_init(changesets_t *changesets)
 changesets_t *changesets_create(unsigned count)
 {
 	changesets_t *ch = malloc(sizeof(changesets_t));
+	if (ch == NULL) {
+		ERR_ALLOC_FAILED;
+		return NULL;
+	}
+
 	int ret = knot_changesets_init(ch);
 	if (ret != KNOT_EOK) {
 		return NULL;
@@ -73,22 +81,23 @@ changesets_t *changesets_create(unsigned count)
 	return ch;
 }
 
-changeset_t *changesets_create_changeset(changesets_t *ch)
+changeset_t *changesets_create_changeset(changesets_t *chs)
 {
-	if (ch == NULL) {
+	if (chs == NULL) {
 		return NULL;
 	}
 
 	// Create set changesets' memory allocator
-	changeset_t *set = ch->mmc_chs.alloc(ch->mmc_chs.ctx,
-	                                          sizeof(changeset_t));
+	changeset_t *set = chs->mmc_chs.alloc(chs->mmc_chs.ctx,
+	                                      sizeof(changeset_t));
 	if (set == NULL) {
+		ERR_ALLOC_FAILED;
 		return NULL;
 	}
 	memset(set, 0, sizeof(changeset_t));
 
 	// Init set's memory context (Allocator from changests structure is used)
-	set->mem_ctx = ch->mmc_rr;
+	set->mem_ctx = chs->mmc_rr;
 
 	// Init local lists
 	init_list(&set->add);
@@ -99,9 +108,9 @@ changeset_t *changesets_create_changeset(changesets_t *ch)
 	init_list(&set->old_data);
 
 	// Insert into list of sets
-	add_tail(&ch->sets, (node_t *)set);
+	add_tail(&chs->sets, (node_t *)set);
 
-	++ch->count;
+	++chs->count;
 
 	return set;
 }
@@ -117,20 +126,26 @@ changeset_t *changesets_get_last(const changesets_t *chs)
 
 bool changesets_empty(const changesets_t *chs)
 {
-	changeset_t *last = changesets_get_last(chs);
-	if (last == NULL) {
+	if (chs == NULL || EMPTY_LIST(chs->sets)) {
 		return true;
 	}
 
-	return changeset_is_empty(last);
+	changeset_t *ch = NULL;
+	WALK_LIST(ch, chs->sets) {
+		if (!changeset_is_empty(ch)) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
-int changeset_add_rrset(changeset_t *chgs, knot_rrset_t *rrset,
-                             changeset_part_t part)
+int changeset_add_rrset(changeset_t *ch, knot_rrset_t *rrset,
+                        changeset_part_t part)
 {
 	// Create wrapper node for list
 	knot_rr_ln_t *rr_node =
-		chgs->mem_ctx.alloc(chgs->mem_ctx.ctx, sizeof(knot_rr_ln_t));
+		ch->mem_ctx.alloc(ch->mem_ctx.ctx, sizeof(knot_rr_ln_t));
 	if (rr_node == NULL) {
 		// This will not happen with mp_alloc, but allocator can change
 		ERR_ALLOC_FAILED;
@@ -139,9 +154,9 @@ int changeset_add_rrset(changeset_t *chgs, knot_rrset_t *rrset,
 	rr_node->rr = rrset;
 
 	if (part == CHANGESET_ADD) {
-		add_tail(&chgs->add, (node_t *)rr_node);
+		add_tail(&ch->add, (node_t *)rr_node);
 	} else {
-		add_tail(&chgs->remove, (node_t *)rr_node);
+		add_tail(&ch->remove, (node_t *)rr_node);
 	}
 
 	return KNOT_EOK;
@@ -154,60 +169,63 @@ static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
 	*chg_serial = knot_soa_serial(&soa->rrs);
 }
 
-void changeset_add_soa(changeset_t *changeset, knot_rrset_t *soa,
-                            changeset_part_t part)
+int changeset_add_soa(changeset_t *ch, knot_rrset_t *soa,
+                      changeset_part_t part)
 {
+	if (ch == NULL || soa == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	switch (part) {
 	case CHANGESET_ADD:
-		knot_changeset_store_soa(&changeset->soa_to,
-		                          &changeset->serial_to, soa);
+		knot_changeset_store_soa(&ch->soa_to, &ch->serial_to, soa);
 		break;
 	case CHANGESET_REMOVE:
-		knot_changeset_store_soa(&changeset->soa_from,
-		                          &changeset->serial_from, soa);
+		knot_changeset_store_soa(&ch->soa_from, &ch->serial_from, soa);
 		break;
 	default:
-		assert(0);
+		return KNOT_EINVAL;
 	}
+
+	return KNOT_EOK;
 }
 
-bool changeset_is_empty(const changeset_t *changeset)
+bool changeset_is_empty(const changeset_t *ch)
 {
-	if (changeset == NULL) {
+	if (ch == NULL) {
 		return true;
 	}
 
-	return (changeset->soa_to == NULL &&
-	        EMPTY_LIST(changeset->add) && EMPTY_LIST(changeset->remove));
+	return (ch->soa_to == NULL &&
+	        EMPTY_LIST(ch->add) && EMPTY_LIST(ch->remove));
 }
 
-size_t changeset_size(const changeset_t *changeset)
+size_t changeset_size(const changeset_t *ch)
 {
-	if (!changeset || changeset_is_empty(changeset)) {
+	if (!ch || changeset_is_empty(ch)) {
 		return 0;
 	}
 
-	return list_size(&changeset->add) + list_size(&changeset->remove);
+	return list_size(&ch->add) + list_size(&ch->remove);
 }
 
-int changeset_apply(changeset_t *changeset,
-                         changeset_part_t part,
-                         int (*func)(knot_rrset_t *, void *), void *data)
+int changeset_apply(changeset_t *ch, changeset_part_t part,
+                    int (*func)(knot_rrset_t *, void *), void *data)
 {
-	if (changeset == NULL || func == NULL) {
+	if (ch == NULL || func == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	knot_rr_ln_t *rr_node = NULL;
 	if (part == CHANGESET_ADD) {
-		WALK_LIST(rr_node, changeset->add) {
+		WALK_LIST(rr_node, ch->add) {
 			int res = func(rr_node->rr, data);
 			if (res != KNOT_EOK) {
 				return res;
 			}
 		}
 	} else if (part == CHANGESET_REMOVE) {
-		WALK_LIST(rr_node, changeset->remove) {
+		WALK_LIST(rr_node, ch->remove) {
 			int res = func(rr_node->rr, data);
 			if (res != KNOT_EOK) {
 				return res;
@@ -220,7 +238,8 @@ int changeset_apply(changeset_t *changeset,
 
 int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 {
-	if (ch1 == NULL || ch2 == NULL || ch1->data != NULL || ch2->data != NULL) {
+	if (ch1 == NULL || ch2 == NULL || ch1->data != NULL
+	    || ch2->data != NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -231,71 +250,60 @@ int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 	// Use soa_to and serial from the second changeset
 	// soa_to from the first changeset is redundant, delete it
 	knot_rrset_free(&ch1->soa_to, NULL);
-	knot_rrset_free(&ch2->soa_from, NULL);
 	ch1->soa_to = ch2->soa_to;
 	ch1->serial_to = ch2->serial_to;
 
 	return KNOT_EOK;
 }
 
-static void knot_free_changeset(changeset_t *changeset, mm_ctx_t *rr_mm)
+static void knot_free_changeset(changeset_t *ch, mm_ctx_t *rr_mm)
 {
-	if (changeset == NULL) {
+	if (ch == NULL) {
 		return;
 	}
 
 	// Delete RRSets in lists, in case there are any left
 	knot_rr_ln_t *rr_node;
-	WALK_LIST(rr_node, changeset->add) {
+	WALK_LIST(rr_node, ch->add) {
 		knot_rrset_free(&rr_node->rr, rr_mm);
 	}
-	WALK_LIST(rr_node, changeset->remove) {
+	WALK_LIST(rr_node, ch->remove) {
 		knot_rrset_free(&rr_node->rr, rr_mm);
 	}
 
-	knot_rrset_free(&changeset->soa_from, rr_mm);
-	knot_rrset_free(&changeset->soa_to, rr_mm);
+	knot_rrset_free(&ch->soa_from, rr_mm);
+	knot_rrset_free(&ch->soa_to, rr_mm);
 
 	// Delete binary data
-	free(changeset->data);
+	free(ch->data);
 }
 
-static void knot_changesets_deinit(changesets_t *changesets, mm_ctx_t *rr_mm)
+static void knot_changesets_deinit(changesets_t *ch, mm_ctx_t *rr_mm)
 {
-	if (!EMPTY_LIST(changesets->sets)) {
+	if (!EMPTY_LIST(ch->sets)) {
 		changeset_t *chg = NULL;
-		WALK_LIST(chg, changesets->sets) {
+		WALK_LIST(chg, ch->sets) {
 			knot_free_changeset(chg, rr_mm);
 		}
 	}
 
 	// Free pool with sets themselves
-	mp_delete(changesets->mmc_chs.ctx);
+	mp_delete(ch->mmc_chs.ctx);
 	// Free pool with RRs in sets / changes
-	mp_delete(changesets->mmc_rr.ctx);
+	mp_delete(ch->mmc_rr.ctx);
 
-	knot_rrset_free(&changesets->first_soa, rr_mm);
+	knot_rrset_free(&ch->first_soa, rr_mm);
 }
 
-void changesets_free(changesets_t **changesets, mm_ctx_t *rr_mm)
+void changesets_free(changesets_t **chs, mm_ctx_t *rr_mm)
 {
-	if (changesets == NULL || *changesets == NULL) {
+	if (chs == NULL || *chs == NULL) {
 		return;
 	}
 
-	knot_changesets_deinit(*changesets, rr_mm);
+	knot_changesets_deinit(*chs, rr_mm);
 
-	free(*changesets);
-	*changesets = NULL;
-}
-
-int changesets_clear(changesets_t *changesets, mm_ctx_t *rr_mm)
-{
-	if (changesets == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	knot_changesets_deinit(changesets, rr_mm);
-	return knot_changesets_init(changesets);
+	free(*chs);
+	*chs = NULL;
 }
 
