@@ -111,6 +111,10 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		knot_pkt_put(query, COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
+	/* Create requestor instance. */
+	struct requestor re;
+	requestor_init(&re, NS_PROC_ANSWER, &mm);
+
 	/* Answer processing parameters. */
 	struct process_answer_param param = { 0 };
 	param.zone = zone;
@@ -120,19 +124,14 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
 	if (ret != KNOT_EOK) {
-		mp_delete(mm.ctx);
-		return ret;
+		goto fail;
 	}
-
-	/* Create requestor instance. */
-	struct requestor re;
-	requestor_init(&re, NS_PROC_ANSWER, &mm);
 
 	/* Create a request. */
 	struct request *req = requestor_make(&re, remote, query);
 	if (req == NULL) {
-		mp_delete(mm.ctx);
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto fail;
 	}
 
 	/* Send the queries and process responses. */
@@ -142,7 +141,9 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		ret = requestor_exec(&re, &tv);
 	}
 
+fail:
 	/* Cleanup. */
+	tsig_cleanup(&param.tsig_ctx);
 	requestor_clear(&re);
 	mp_delete(mm.ctx);
 

@@ -39,8 +39,7 @@ struct process_answer_param {
 	tsig_ctx_t tsig_ctx;
 };
 
-struct answer_data
-{
+struct answer_data {
 	/* Extensions. */
 	void *ext;
 	void (*ext_cleanup)(struct answer_data*); /*!< Extensions cleanup callback. */
