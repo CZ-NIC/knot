@@ -80,8 +80,6 @@ typedef struct journal_node_t
  * backed by a permanent storage.
  * Each journal has a fixed number of nodes.
  *
- * \todo Organize nodes in an advanced structure, like
- *       btree or hash table to improve lookup time (issue #964).
  */
 typedef struct journal_t
 {
@@ -110,7 +108,7 @@ typedef struct journal_t
 /*!
  * \brief Open journal.
  *
- * \param fn Journal file name.
+ * \param path Journal file name.
  * \param fslimit File size limit (0 for no limit).
  *
  * \retval new journal instance if successful.
@@ -129,7 +127,7 @@ journal_t* journal_open(const char *path, size_t fslimit);
  * \param rdonly If read only.
  *
  * \retval KNOT_EOK if successful.
- * \retval KNOT_EAGAIN if no free node is available, need to remove dirty nodes.
+ * \retval KNOT_ESPACE if entry too big.
  * \retval KNOT_ERROR on I/O error.
  */
 int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size, bool rdonly);
@@ -144,7 +142,6 @@ int journal_map(journal_t *journal, uint64_t id, char **dst, size_t size, bool r
  *
  * \retval KNOT_EOK if successful.
  * \retval KNOT_ENOENT if the entry cannot be found.
- * \retval KNOT_EAGAIN if no free node is available, need to remove dirty nodes.
  * \retval KNOT_ERROR on I/O error.
  */
 int journal_unmap(journal_t *journal, uint64_t id, void *ptr, int finalize);
@@ -171,7 +168,14 @@ bool journal_exists(const char *path);
 /*!
  * \brief Load changesets from journal.
  *
- * \param changesets Double pointer to changesets structure to be freed.
+ * \param path Path to journal file.
+ * \param dst Store changesets here.
+ * \param from Start serial.
+ * \param to End serial.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_ERANGE if given entry was not found.
+ * \return < KNOT_EOK on error.
  */
 int journal_load_changesets(const char *path, changesets_t *dst,
                             uint32_t from, uint32_t to);
@@ -179,22 +183,23 @@ int journal_load_changesets(const char *path, changesets_t *dst,
 /*!
  * \brief Store changesets in journal.
  *
- * Changesets will be stored to a permanent storage.
- * Journal may be compacted, resulting in flattening changeset history.
- *
- * \param zone Zone associated with the changeset.
- * \param src Changesets.
+ * \param src Changesets to store.
+ * \param path Path to journal file.
+ * \param size_limit Size limit extracted from configuration.
  *
  * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL on invalid parameters.
- * \retval KNOT_EAGAIN if journal needs to be synced with zonefile first.
- *
- * \todo Expects the xfr structure to be initialized in some way.
- * \todo Update documentation!!!
+ * \retval KNOT_EBUSY when journal is full.
+ * \return < KNOT_EOK on other errors.
  */
-int journal_store_changesets(changesets_t *src,  const char *path, size_t size_limit);
+int journal_store_changesets(changesets_t *src, const char *path, size_t size_limit);
 
 /*! \brief Function for unmarking dirty nodes. */
+/*!
+ * \brief Function for unmarking dirty nodes.
+ * \param path Path to journal file.
+ * \retval KNOT_ENOMEM if journal could not be opened.
+ * \retval KNOT_EOK on success.
+ */
 int journal_mark_synced(const char *path);
 
 #endif /* _KNOTD_JOURNAL_H_ */
