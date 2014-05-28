@@ -84,7 +84,7 @@ check_log("Common cases")
 key_settime(key_file, Publish=date_future, Activate=date_future)
 t.start()
 t.sleep(WAIT_SIGN)
-check_zone(knot, False, False, "published, not active")
+check_zone(knot, False, False, "not published, not active")
 
 # key published, not active
 key_settime(key_file, Publish=date_past)
