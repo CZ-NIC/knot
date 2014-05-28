@@ -141,6 +141,11 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 	case ZONE_STATUS_FOUND_CURRENT:
 		/* Copy timers to new zone. */
 		for (zone_event_type_t i = ZONE_EVENT_RELOAD; i < ZONE_EVENT_COUNT; ++i) {
+#warning TODO: just check if keys have changed
+			if (i == ZONE_EVENT_DNSSEC && zone->conf->dnssec_enable) {
+				zone_events_schedule(zone, ZONE_EVENT_DNSSEC, ZONE_EVENT_NOW);
+				continue;
+			}
 			time_t event_time = zone_events_get_time(old_zone, i);
 			if (event_time > ZONE_EVENT_NOW) {
 				zone_events_schedule_at(zone, i, event_time);
