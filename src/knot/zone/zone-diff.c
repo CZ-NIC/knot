@@ -83,9 +83,6 @@ static int knot_zone_diff_load_soas(const zone_contents_t *zone1,
 		return KNOT_ENOMEM;
 	}
 
-	changeset->serial_from = soa_serial1;
-	changeset->serial_to = soa_serial2;
-
 	dbg_zonediff_verb("zone_diff: load_soas: SOAs diffed. (%"PRId64" -> %"PRId64")\n",
 	                  soa_serial1, soa_serial2);
 

@@ -44,8 +44,6 @@ typedef struct changeset {
 	list_t add; /*!< List of RRs to add. */
 	uint8_t *data; /*!< Serialized changeset. */
 	size_t size; /*!< Size of serialized changeset. */
-	uint32_t serial_from; /*!< SOA start serial. */
-	uint32_t serial_to; /*!< SOA destination serial. */
 	list_t old_data; /*!< Old data, to be freed after succesfull update. */
 	list_t new_data; /*!< New data, to be freed after failed update. */
 } changeset_t;
@@ -138,16 +136,6 @@ bool changesets_empty(const changesets_t *chs);
  */
 int changeset_add_rrset(changeset_t *ch, knot_rrset_t *rrset,
                         changeset_part_t part);
-
-/*!
- * \brief Adds a source/destination SOA RRSet to changeset.
- *
- * \param changeset Changeset to store SOA to.
- * \param soa SOA RRSet to be stored to changeset.
- * \param part To which part we store SOA (from = REMOVE, add = TO)
- */
-int changeset_add_soa(changeset_t *ch, knot_rrset_t *soa,
-                      changeset_part_t part);
 
 /*!
  * \brief Checks whether changeset is empty.

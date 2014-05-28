@@ -657,7 +657,9 @@ static int process_add_soa(const zone_node_t *node,
 		return KNOT_ENOMEM;
 	}
 
-	return changeset_add_soa(changeset, soa_cpy, CHANGESET_ADD);
+	changeset->soa_to = soa_cpy;
+
+	return KNOT_EOK;
 }
 
 /*!< \brief Adds normal RR, ignores when CNAME exists in node. */
@@ -984,12 +986,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = changeset_add_soa(changeset, soa_begin, CHANGESET_REMOVE);
-	if (ret != KNOT_EOK) {
-		*rcode = ret_to_rcode(ret);
-		return ret;
-	}
-
+	changeset->soa_from = soa_begin;
 	int64_t sn_old = zone_contents_serial(zone->contents);
 
 	/* Process all RRs the Authority (Update) section. */
@@ -1000,7 +997,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 		const knot_rrset_t *rr = &authority->rr[i];
 
 		/* Check if the entry is correct. */
-		ret = check_update(rr, query, rcode);
+		int ret = check_update(rr, query, rcode);
 		if (ret != KNOT_EOK) {
 			assert(*rcode != KNOT_RCODE_NOERROR);
 			return ret;
@@ -1035,11 +1032,7 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
 			zone_contents_next_serial(zone->contents,
 		                                  zone->conf->serial_policy);
 		knot_soa_serial_set(&soa_cpy->rrs, new_serial);
-		ret = changeset_add_soa(changeset, soa_cpy, CHANGESET_ADD);
-		if (ret != KNOT_EOK) {
-			*rcode = ret_to_rcode(ret);
-			return ret;
-		}
+		changeset->soa_to = soa_cpy;
 	}
 
 	*rcode = KNOT_RCODE_NOERROR;

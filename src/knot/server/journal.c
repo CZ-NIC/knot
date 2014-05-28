@@ -983,11 +983,7 @@ static int changesets_unpack(changeset_t *chs)
 			 * be set, check it.
 			 */
 	assert(rrset->type == KNOT_RRTYPE_SOA);
-	assert(chs->serial_from == knot_soa_serial(&rrset->rrs));
-	ret = changeset_add_soa(chs, rrset, CHANGESET_REMOVE);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	chs->soa_from = rrset;
 
 	/* Read remaining RRSets */
 	int in_remove_section = 1;
@@ -1006,8 +1002,7 @@ static int changesets_unpack(changeset_t *chs)
 
 			/* Move to ADD section if in REMOVE. */
 			if (in_remove_section) {
-				ret = changeset_add_soa(chs, rrset,
-				                        CHANGESET_ADD);
+				chs->soa_to = rrset;
 				in_remove_section = 0;
 			} else {
 				/* Final SOA. */
@@ -1096,7 +1091,8 @@ static int changeset_pack(const changeset_t *chs, journal_t *j)
 	dbg_xfr("Saving changeset from %u to %u.\n",
 	        chs->serial_from, chs->serial_to);
 
-	uint64_t k = ixfrdb_key_make(chs->serial_from, chs->serial_to);
+	uint64_t k = ixfrdb_key_make(knot_soa_serial(&chs->soa_from->rrs),
+	                             knot_soa_serial(&chs->soa_to->rrs));
 
 	/* Count the size of the entire changeset in serialized form. */
 	size_t entry_size = 0;
@@ -1184,8 +1180,6 @@ static int load_changeset(journal_t *journal, journal_node_t *n, void *data)
 	}
 
 	/* Initialize changeset. */
-	chs->serial_from = journal_key_from(n->id);
-	chs->serial_to = journal_key_to(n->id);
 	chs->data = malloc(n->len);
 	if (!chs->data) {
 		return KNOT_ENOMEM;
@@ -1226,7 +1220,7 @@ int journal_load_changesets(const char *path, changesets_t *dst,
 
 	/* Check for complete history. */
 	changeset_t *last = changesets_get_last(dst);
-	if (to != last->serial_to) {
+	if (to != knot_soa_serial(&last->soa_to->rrs)) {
 		return KNOT_ERANGE;
 	}
 

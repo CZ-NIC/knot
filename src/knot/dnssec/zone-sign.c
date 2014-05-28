@@ -1394,8 +1394,6 @@ int knot_zone_sign_update_soa(const knot_rrset_t *soa,
 
 	changeset->soa_from = soa_from;
 	changeset->soa_to = soa_to;
-	changeset->serial_from = serial;
-	changeset->serial_to = new_serial;
 
 	return KNOT_EOK;
 }

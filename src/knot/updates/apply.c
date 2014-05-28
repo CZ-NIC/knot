@@ -316,7 +316,7 @@ static int apply_changeset(zone_contents_t *contents, changeset_t *chset,
 
 	// check if serial matches
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
-	if (soa == NULL || knot_soa_serial(soa) != chset->serial_from) {
+	if (soa == NULL || knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs)) {
 		dbg_xfrin("SOA serials do not match!!\n");
 		return KNOT_EINVAL;
 	}

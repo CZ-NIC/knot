@@ -162,34 +162,6 @@ int changeset_add_rrset(changeset_t *ch, knot_rrset_t *rrset,
 	return KNOT_EOK;
 }
 
-static void knot_changeset_store_soa(knot_rrset_t **chg_soa,
-                                     uint32_t *chg_serial, knot_rrset_t *soa)
-{
-	*chg_soa = soa;
-	*chg_serial = knot_soa_serial(&soa->rrs);
-}
-
-int changeset_add_soa(changeset_t *ch, knot_rrset_t *soa,
-                      changeset_part_t part)
-{
-	if (ch == NULL || soa == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	switch (part) {
-	case CHANGESET_ADD:
-		knot_changeset_store_soa(&ch->soa_to, &ch->serial_to, soa);
-		break;
-	case CHANGESET_REMOVE:
-		knot_changeset_store_soa(&ch->soa_from, &ch->serial_from, soa);
-		break;
-	default:
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
-}
-
 bool changeset_is_empty(const changeset_t *ch)
 {
 	if (ch == NULL) {
@@ -251,7 +223,6 @@ int changeset_merge(changeset_t *ch1, changeset_t *ch2)
 	// soa_to from the first changeset is redundant, delete it
 	knot_rrset_free(&ch1->soa_to, NULL);
 	ch1->soa_to = ch2->soa_to;
-	ch1->serial_to = ch2->serial_to;
 
 	return KNOT_EOK;
 }
