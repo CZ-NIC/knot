@@ -129,7 +129,7 @@ static int process_answer(knot_pkt_t *pkt, knot_process_t *ctx)
 		next_state = internet_process_answer(pkt, data);
 		break;
 	case KNOT_RESPONSE_AXFR:
-		next_state = axfr_process_answer(pkt, data);
+		next_state = axfr_answer_process(pkt, data);
 		break;
 	case KNOT_RESPONSE_IXFR:
 		next_state = ixfr_process_answer(pkt, data);

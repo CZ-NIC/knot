@@ -188,10 +188,10 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
 #define AXFROUT_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "Outgoing AXFR", msg)
 
-int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
+int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
-		return KNOT_EINVAL;
+		return NS_PROC_FAIL;
 	}
 
 	int ret = KNOT_EOK;
@@ -216,7 +216,7 @@ int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 		if (ret != KNOT_EOK) {
 			AXFROUT_LOG(LOG_ERR, "Failed to start (%s).",
 			            knot_strerror(ret));
-			return ret;
+			return NS_PROC_FAIL;
 		} else {
 			AXFROUT_LOG(LOG_INFO, "Started (serial %u).",
 			           zone_contents_serial(qdata->zone->contents));
@@ -244,7 +244,7 @@ int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FAIL;
 	}
 }
-#undef AXFR_QLOG
+#undef AXFROUT_LOG
 
 static void axfr_answer_cleanup(struct answer_data *data)
 {
@@ -333,7 +333,7 @@ static int axfr_answer_finalize(struct answer_data *data)
 	return KNOT_EOK;
 }
 
-static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
+static int axfr_answer_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 {
 	assert(pkt != NULL);
 	assert(proc != NULL);
@@ -360,7 +360,7 @@ static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 	return NS_PROC_MORE;
 }
 
-int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
+int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *data)
 {
 	if (pkt == NULL || data == NULL) {
 		return NS_PROC_FAIL;
@@ -385,7 +385,7 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	}
 
 	/* Process answer packet. */
-	int ret = process_axfr_packet(pkt, (struct xfr_proc *)data->ext);
+	int ret = axfr_answer_packet(pkt, (struct xfr_proc *)data->ext);
 	if (ret == NS_PROC_DONE) {
 		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
 		/* This was the last packet, finalize zone and publish it. */
@@ -402,4 +402,4 @@ int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 	return ret;
 }
 
-#undef AXFR_QRLOG
+#undef AXFRIN_LOG

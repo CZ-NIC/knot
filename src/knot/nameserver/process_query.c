@@ -390,7 +390,7 @@ static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 		next_state = notify_query(pkt, data);
 		break;
 	case KNOT_QUERY_AXFR:
-		next_state = axfr_process_query(pkt, data);
+		next_state = axfr_query_process(pkt, data);
 		break;
 	case KNOT_QUERY_IXFR:
 		next_state = ixfr_query(pkt, data);
