@@ -254,6 +254,7 @@ static int event_reload(zone_t *zone)
 	/* Everything went alright, switch the contents. */
 	zone->zonefile_mtime = mtime;
 	zone_contents_t *old = zone_switch_contents(zone, contents);
+	uint32_t old_serial = zone_contents_serial(old);
 	if (old != NULL) {
 		synchronize_rcu();
 		zone_contents_deep_free(&old);
@@ -279,7 +280,9 @@ static int event_reload(zone_t *zone)
 	/* Periodic execution. */
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone_config->dbsync_timeout);
 
-	log_zone_info("Zone '%s' loaded.\n", zone_config->name);
+	uint32_t current_serial = zone_contents_serial(zone->contents);
+	log_zone_info("Zone '%s' loaded (%u -> %u).\n", zone_config->name,
+	              old_serial, current_serial);
 	return KNOT_EOK;
 
 fail:
