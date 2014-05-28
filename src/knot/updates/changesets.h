@@ -34,7 +34,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-/*! \brief One changeset received from wire, with parsed RRs. */
+/*! \brief One zone change, from 'soa_from' to 'soa_to'. */
 typedef struct changeset {
 	node_t n; /*!< List node. */
 	mm_ctx_t mem_ctx; /*!< Memory context */
@@ -59,8 +59,7 @@ typedef struct knot_rr_ln {
 /*----------------------------------------------------------------------------*/
 
 /*!
- * \brief Changeset structure (changes recieved by slave server between two
- *        serial numbers.
+ * \brief List of changesets that should be applied/sent as a bulk.
  */
 typedef struct {
 	mm_ctx_t mmc_chs; /*!< Memory context for creating changesets */
@@ -73,8 +72,8 @@ typedef struct {
 /*----------------------------------------------------------------------------*/
 
 typedef enum {
-	CHANGESET_ADD,
-	CHANGESET_REMOVE
+	CHANGESET_ADD, /*!< Put RR into 'add' section. */
+	CHANGESET_REMOVE /*!< Put RR into 'remove' section. */
 } changeset_part_t;
 
 /*----------------------------------------------------------------------------*/
