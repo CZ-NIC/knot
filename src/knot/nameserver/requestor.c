@@ -74,7 +74,7 @@ static int request_wait(int fd, int state, struct timeval *timeout)
 	switch(state) {
 	case NS_PROC_FULL: /* Wait for writeability. */
 		return select(fd + 1, NULL, &set, NULL, timeout);
-	case NS_PROC_MORE:  /* Wait for data. */
+	case NS_PROC_MORE: /* Wait for data. */
 		return select(fd + 1, &set, NULL, NULL, timeout);
 	default:
 		return -1;
@@ -125,7 +125,8 @@ static int request_recv(struct request *request, const struct timeval *timeout)
 	return ret;
 }
 
-void requestor_init(struct requestor *requestor, const knot_process_module_t *module, mm_ctx_t *mm)
+void requestor_init(struct requestor *requestor, const knot_process_module_t *module,
+                    mm_ctx_t *mm)
 {
 	memset(requestor, 0, sizeof(struct requestor));
 	requestor->module = module;
@@ -167,7 +168,7 @@ struct request *requestor_make(struct requestor *requestor,
 	return request;
 }
 
-int requestor_enqueue(struct requestor *requestor, struct request * request, void *param)
+int requestor_enqueue(struct requestor *requestor, struct request *request, void *param)
 {
 	if (requestor == NULL || request == NULL) {
 		return KNOT_EINVAL;
