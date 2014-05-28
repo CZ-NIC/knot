@@ -31,8 +31,11 @@ struct axfr_proc {
 	unsigned cur_rrset;
 };
 
-static int put_rrsets(knot_pkt_t *pkt, zone_node_t *node, struct axfr_proc *state)
+static int axfr_put_rrsets(knot_pkt_t *pkt, zone_node_t *node,
+                           struct axfr_proc *state)
 {
+	assert(node != NULL);
+
 	int ret = KNOT_EOK;
 	int i = state->cur_rrset;
 	uint16_t rrset_count = node->rrset_count;
@@ -57,8 +60,11 @@ static int put_rrsets(knot_pkt_t *pkt, zone_node_t *node, struct axfr_proc *stat
 	return ret;
 }
 
-static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item, struct xfr_proc *state)
+static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item,
+                                  struct xfr_proc *state)
 {
+	assert(item != NULL);
+
 	struct axfr_proc *axfr = (struct axfr_proc*)state;
 
 	if (axfr->i == NULL) {
@@ -68,9 +74,9 @@ static int axfr_process_node_tree(knot_pkt_t *pkt, const void *item, struct xfr_
 	/* Put responses. */
 	int ret = KNOT_EOK;
 	zone_node_t *node = NULL;
-	while(!hattrie_iter_finished(axfr->i)) {
+	while (!hattrie_iter_finished(axfr->i)) {
 		node = (zone_node_t *)*hattrie_iter_val(axfr->i);
-		ret = put_rrsets(pkt, node, axfr);
+		ret = axfr_put_rrsets(pkt, node, axfr);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -124,14 +130,19 @@ static int axfr_query_init(struct query_data *qdata)
 	qdata->ext = axfr;
 	qdata->ext_cleanup = &axfr_query_cleanup;
 
-	/* No zone changes during multipacket answer (unlocked in axfr_answer_cleanup) */
+	/* No zone changes during multipacket answer
+	   (unlocked in axfr_answer_cleanup) */
 	rcu_read_lock();
 
 	return KNOT_EOK;
 }
 
-int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data *qdata)
+int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item,
+                     struct query_data *qdata)
 {
+	if (pkt == NULL || qdata == NULL || qdata->ext == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	int ret = KNOT_EOK;
 	mm_ctx_t *mm = qdata->mm;
@@ -177,10 +188,11 @@ int xfr_process_list(knot_pkt_t *pkt, xfr_put_cb process_item, struct query_data
 #define AXFROUT_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "Outgoing AXFR", msg)
 
-int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
+int axfr_process_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
-	assert(pkt);
-	assert(qdata);
+	if (pkt == NULL || qdata == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	int ret = KNOT_EOK;
 	struct timeval now = {0};
@@ -197,14 +209,17 @@ int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		/* Check valid zone, transaction security and contents. */
 		NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 		NS_NEED_AUTH(&qdata->zone->conf->acl.xfr_out, qdata);
-		NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL); /* Check expiration. */
+		/* Check expiration. */
+		NS_NEED_ZONE_CONTENTS(qdata, KNOT_RCODE_SERVFAIL);
 
 		ret = axfr_query_init(qdata);
 		if (ret != KNOT_EOK) {
-			AXFROUT_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
+			AXFROUT_LOG(LOG_ERR, "Failed to start (%s).",
+			            knot_strerror(ret));
 			return ret;
 		} else {
-			AXFROUT_LOG(LOG_INFO, "Started (serial %u).", zone_contents_serial(qdata->zone->contents));
+			AXFROUT_LOG(LOG_INFO, "Started (serial %u).",
+			           zone_contents_serial(qdata->zone->contents));
 		}
 	}
 
@@ -219,9 +234,9 @@ int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		return NS_PROC_FULL; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
 		gettimeofday(&now, NULL);
-		AXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01fkB).",
-		         time_diff(&axfr->proc.tstamp, &now) / 1000.0,
-		         axfr->proc.npkts, axfr->proc.nbytes / 1024.0);
+		AXFROUT_LOG(LOG_INFO, "Finished in %.02fs (%u messages, ~%.01f"
+		           "kB).", time_diff(&axfr->proc.tstamp, &now) / 1000.0,
+		           axfr->proc.npkts, axfr->proc.nbytes / 1024.0);
 		return NS_PROC_DONE;
 		break;
 	default:          /* Generic error. */
@@ -233,6 +248,8 @@ int axfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 
 static void axfr_answer_cleanup(struct answer_data *data)
 {
+	assert(data != NULL);
+
 	struct xfr_proc *proc = data->ext;
 	if (proc) {
 		zone_contents_deep_free(&proc->contents);
@@ -291,13 +308,15 @@ static int axfr_answer_finalize(struct answer_data *data)
 
 	/* Write zone file. */
 	zone_t *zone = data->param->zone;
-	rc = zonefile_write(zone->conf->file, proc->contents, data->param->remote);
+	rc = zonefile_write(zone->conf->file, proc->contents,
+	                    data->param->remote);
 	if (rc != KNOT_EOK) {
 		return rc;
 	}
 
 	/* Switch contents. */
-	zone_contents_t *old_contents = zone_switch_contents(zone, proc->contents);
+	zone_contents_t *old_contents =
+	                zone_switch_contents(zone, proc->contents);
 	synchronize_rcu();
 	AXFRIN_LOG(LOG_INFO, "Serial %u -> %u",
 	           zone_contents_serial(old_contents),
@@ -316,9 +335,8 @@ static int axfr_answer_finalize(struct answer_data *data)
 
 static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 {
-	if (pkt == NULL) {
-		return NS_PROC_FAIL;
-	}
+	assert(pkt != NULL);
+	assert(proc != NULL);
 
 	++proc->npkts;
 
@@ -344,6 +362,10 @@ static int process_axfr_packet(knot_pkt_t *pkt, struct xfr_proc *proc)
 
 int axfr_process_answer(knot_pkt_t *pkt, struct answer_data *data)
 {
+	if (pkt == NULL || data == NULL) {
+		return NS_PROC_FAIL;
+	}
+
 	/* Initialize processing with first packet. */
 	if (data->ext == NULL) {
 		NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
