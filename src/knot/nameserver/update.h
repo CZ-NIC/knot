@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_UPDATE_H_
-#define _KNOT_UPDATE_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
@@ -51,7 +50,5 @@ int update_answer(knot_pkt_t *pkt, struct query_data *qdata);
  * \return KNOT_E*
  */
 int update_process_query(knot_pkt_t *pkt, struct query_data *qdata);
-
-#endif /* _KNOT_UPDATE_H_ */
 
 /*! @} */
