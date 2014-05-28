@@ -110,7 +110,15 @@ knot.reload()
 t.sleep(WAIT_SIGN)
 check_zone(knot, False, False, "deleted, inactive")
 
+# key not published, active (algorithm rotation)
+key_settime(key_file, Publish=date_future, Activate=date_past, Inactive=None, Delete=None)
+knot.reload()
+t.sleep(WAIT_SIGN)
+check_zone(knot, False, True, "not published, active")
+
+#
 # Test DNSSEC key event execution
+#
 
 check_log("Planned events")
 
@@ -146,15 +154,5 @@ t.sleep(WAIT_SIGN)
 check_zone(knot, True, True, "to be deleted - pre")
 t.sleep(event_in)
 check_zone(knot, False, False, "to be deleted - post")
-
-#
-# Special cases
-#
-
-# key not published, active (algorithm rotation)
-key_settime(key_file, Publish=date_future, Activate=date_past, Inactive=None, Delete=None)
-knot.reload()
-t.sleep(WAIT_SIGN)
-check_zone(knot, False, True, "not published, active (algorithm rotation)")
 
 t.end()
