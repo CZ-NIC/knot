@@ -197,7 +197,7 @@ static void schedule_dnssec(zone_t *zone, time_t refresh_at)
 
 	char time_str[64] = { 0 };
 	struct tm time_gm = { 0 };
-	gmtime_r(&refresh_at, &time_gm);
+	localtime_r(&refresh_at, &time_gm);
 	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
 	log_zone_info("DNSSEC: Zone %s - Next event on %s.\n",
 	              zone->conf->name, time_str);
