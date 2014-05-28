@@ -70,7 +70,6 @@ int knot_dnssec_zone_sign_force(zone_contents_t *zone, const conf_zone_t *zone_c
  * \param in_ch           Changeset created bvy DDNS or zone-diff
  * \param out_ch          New records will be added to this changeset.
  * \param refresh_at      Signature refresh time of the new signatures.
- * \param new_serial      New SOA serial.
  *
  * \return Error code, KNOT_EOK if successful.
  */

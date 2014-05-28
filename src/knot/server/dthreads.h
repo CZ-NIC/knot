@@ -238,7 +238,7 @@ int dt_compact(dt_unit_t *unit);
  * \retval Number of online CPU's if success.
  * \retval <0 on failure.
  */
-int dt_online_cpus();
+int dt_online_cpus(void);
 
 /*!
  * \brief Return optimal number of threads for instance.
@@ -248,7 +248,7 @@ int dt_online_cpus();
  *
  * \return Number of threads.
  */
-int dt_optimal_size();
+int dt_optimal_size(void);
 
 /*!
  * \brief Return true if thread is cancelled.

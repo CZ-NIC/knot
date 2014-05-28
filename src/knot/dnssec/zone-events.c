@@ -32,9 +32,9 @@ static int init_dnssec_structs(const zone_contents_t *zone,
                                knot_update_serial_t soa_up, bool force)
 {
 	assert(zone);
+	assert(config);
 	assert(zone_keys);
 	assert(policy);
-	assert(config);
 
 	// Read zone keys from disk
 	bool nsec3_enabled = knot_is_nsec3_enabled(zone);
@@ -170,7 +170,8 @@ int knot_dnssec_zone_sign_force(zone_contents_t *zone, const conf_zone_t *zone_c
 		return KNOT_EINVAL;
 	}
 
-	return zone_sign(zone, zone_config, out_ch, true, KNOT_SOA_SERIAL_UPDATE, refresh_at);
+	return zone_sign(zone, zone_config, out_ch, true, KNOT_SOA_SERIAL_UPDATE,
+	                 refresh_at);
 }
 
 int knot_dnssec_sign_changeset(const zone_contents_t *zone,
@@ -179,7 +180,7 @@ int knot_dnssec_sign_changeset(const zone_contents_t *zone,
                                changeset_t *out_ch,
                                uint32_t *refresh_at)
 {
-	if (!refresh_at || zone == NULL || in_ch == NULL || out_ch == NULL) {
+	if (zone == NULL || in_ch == NULL || out_ch == NULL || refresh_at == NULL) {
 		return KNOT_EINVAL;
 	}
 

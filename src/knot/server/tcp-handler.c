@@ -49,7 +49,7 @@ typedef struct tcp_context {
 	unsigned client_threshold;  /*!< Index of first TCP client. */
 	timev_t last_poll_time;     /*!< Time of the last socket poll. */
 	fdset_t set;                /*!< Set of server/client sockets. */
-	unsigned thread_id;			/*!< Thread identifier. */
+	unsigned thread_id;         /*!< Thread identifier. */
 } tcp_context_t;
 
 /*

@@ -257,7 +257,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			next_name = zone_events_get_name(next_type);
 			next_time = next_time - time(NULL);
 			if (next_time < 0) {
-				memcpy(when, "pending", 5);
+				memcpy(when, "pending", strlen("pending"));
 			} else if (snprintf(when, sizeof(when), "in %ldh%ldm%lds",
 			                    (next_time / 3600),
 			                    (next_time % 3600) / 60,
@@ -269,7 +269,7 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			memcpy(when, "idle", strlen("idle"));
 		}
 
-		/* Workaround, some platforms ignore 'size' with snprintf() */
+		/* Prepare zone info. */
 		char buf[512] = { '\0' };
 		char dnssec_buf[128] = { '\0' };
 		int n = snprintf(buf, sizeof(buf),
@@ -636,10 +636,11 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 }
 
 static int zones_verify_tsig_query(const knot_pkt_t *query,
-                            const knot_tsig_key_t *key,
-                            uint16_t *rcode, uint16_t *tsig_rcode,
-                            uint64_t *tsig_prev_time_signed)
+                                   const knot_tsig_key_t *key,
+                                   uint16_t *rcode, uint16_t *tsig_rcode,
+                                   uint64_t *tsig_prev_time_signed)
 {
+	assert(query != NULL);
 	assert(key != NULL);
 	assert(rcode != NULL);
 	assert(tsig_rcode != NULL);

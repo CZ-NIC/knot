@@ -101,9 +101,9 @@ int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
 /*----------------------------------------------------------------------------*/
 
 int zone_tree_find_less_or_equal(zone_tree_t *tree,
-                                        const knot_dname_t *owner,
-                                        const zone_node_t **found,
-                                        const zone_node_t **previous)
+                                 const knot_dname_t *owner,
+                                 const zone_node_t **found,
+                                 const zone_node_t **previous)
 {
 	if (owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
@@ -121,9 +121,9 @@ int zone_tree_find_less_or_equal(zone_tree_t *tree,
 /*----------------------------------------------------------------------------*/
 
 int zone_tree_get_less_or_equal(zone_tree_t *tree,
-                                       const knot_dname_t *owner,
-                                       zone_node_t **found,
-                                       zone_node_t **previous)
+                                const knot_dname_t *owner,
+                                zone_node_t **found,
+                                zone_node_t **previous)
 {
 	if (owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
@@ -193,8 +193,8 @@ dbg_zone_exec_detail(
 /*----------------------------------------------------------------------------*/
 
 int zone_tree_remove(zone_tree_t *tree,
-                            const knot_dname_t *owner,
-                          zone_node_t **removed)
+                     const knot_dname_t *owner,
+                     zone_node_t **removed)
 {
 	if (owner == NULL) {
 		return KNOT_EINVAL;
@@ -222,8 +222,8 @@ int zone_tree_remove(zone_tree_t *tree,
 /*----------------------------------------------------------------------------*/
 
 int zone_tree_apply_inorder(zone_tree_t *tree,
-                                 zone_tree_apply_cb_t function,
-                                 void *data)
+                            zone_tree_apply_cb_t function,
+                            void *data)
 {
 	if (function == NULL) {
 		return KNOT_EINVAL;
@@ -251,8 +251,8 @@ int zone_tree_apply_inorder(zone_tree_t *tree,
 /*----------------------------------------------------------------------------*/
 
 int zone_tree_apply(zone_tree_t *tree,
-                         zone_tree_apply_cb_t function,
-                         void *data)
+                    zone_tree_apply_cb_t function,
+                    void *data)
 {
 	if (function == NULL) {
 		return KNOT_EINVAL;

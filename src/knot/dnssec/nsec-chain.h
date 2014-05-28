@@ -38,9 +38,9 @@
  * \brief Parameters to be used in connect_nsec_nodes callback.
  */
 typedef struct {
-	uint32_t ttl;                      // TTL for NSEC(3) records
-	changeset_t *changeset;       // Changeset for NSEC(3) changes
-	const zone_contents_t *zone;  // Updated zone
+	uint32_t ttl;			// TTL for NSEC(3) records
+	changeset_t *changeset;		// Changeset for NSEC(3) changes
+	const zone_contents_t *zone;	// Updated zone
 } nsec_chain_iterate_data_t;
 
 /*!

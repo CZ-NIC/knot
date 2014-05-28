@@ -194,7 +194,7 @@ finish:
 		next_state = ratelimit_apply(next_state, pkt, ctx);
 	}
 
-	/* Before query processing code. */
+	/* After query processing code. */
 	if (plan) {
 		WALK_LIST(step, plan->stage[QPLAN_END]) {
 			next_state = step->process(next_state, pkt, qdata, step->ctx);
