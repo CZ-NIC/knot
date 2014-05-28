@@ -222,13 +222,8 @@ static int journal_create_file(const char *fn, uint16_t max_nodes)
 	}
 
 	/* File lock. */
-	struct flock fl;
-	memset(&fl, 0, sizeof(struct flock));
-	fl.l_type = F_WRLCK;
-	fl.l_whence = SEEK_SET;
-	fl.l_start = 0;
-	fl.l_len = 0;
-	fl.l_pid = getpid();
+	struct flock fl = { .l_type = F_WRLCK, .l_whence = SEEK_SET,
+	                    .l_start = 0, .l_len = 0, .l_pid = getpid() };
 
 	/* Create journal file. */
 	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
@@ -345,14 +340,8 @@ static int journal_open_file(journal_t *j)
 	}
 
 	/* File lock. */
-	struct flock lock;
-	memset(&lock, 0, sizeof(struct flock));
-	lock.l_type = F_WRLCK;
-	lock.l_whence = SEEK_SET;
-	lock.l_start = 0;
-	lock.l_len = 0;
-	lock.l_pid = 0;
-
+	struct flock lock = { .l_type = F_WRLCK, .l_whence = SEEK_SET,
+	                      .l_start  = 0, .l_len = 0, .l_pid = 0 };
 	/* Attempt to lock. */
 	dbg_journal_verb("journal: locking journal %s\n", j->path);
 	ret = fcntl(j->fd, F_SETLKW, &lock);
@@ -1273,7 +1262,6 @@ int journal_mark_synced(const char *path)
 		return KNOT_ENOMEM;
 	}
 
-	int ret = KNOT_EOK;
 	size_t i = journal->qhead;
 	for(; i != journal->qtail; i = (i + 1) % journal->max_nodes) {
 		mark_synced(journal, journal->nodes + i);
@@ -1281,5 +1269,5 @@ int journal_mark_synced(const char *path)
 
 	journal_close(journal);
 
-	return ret;
+	return KNOT_EOK;
 }
