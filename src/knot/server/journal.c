@@ -967,15 +967,11 @@ static int changesets_unpack(changeset_t *chs)
 		return KNOT_EMALF;
 	}
 
-	/* in this special case (changesets loaded
-			 * from journal) the SOA serial should already
-			 * be set, check it.
-			 */
 	assert(rrset->type == KNOT_RRTYPE_SOA);
 	chs->soa_from = rrset;
 
 	/* Read remaining RRSets */
-	int in_remove_section = 1;
+	bool in_remove_section = true;
 	while (remaining > 0) {
 
 		/* Parse next RRSet. */
@@ -988,11 +984,10 @@ static int changesets_unpack(changeset_t *chs)
 
 		/* Check for next SOA. */
 		if (rrset->type == KNOT_RRTYPE_SOA) {
-
 			/* Move to ADD section if in REMOVE. */
 			if (in_remove_section) {
 				chs->soa_to = rrset;
-				in_remove_section = 0;
+				in_remove_section = false;
 			} else {
 				/* Final SOA. */
 				knot_rrset_free(&rrset, NULL);
@@ -1001,14 +996,12 @@ static int changesets_unpack(changeset_t *chs)
 		} else {
 			/* Remove RRSets. */
 			if (in_remove_section) {
-				ret = changeset_add_rrset(
-				              chs, rrset,
-				              CHANGESET_REMOVE);
+				ret = changeset_add_rrset(chs, rrset,
+				                          CHANGESET_REMOVE);
 			} else {
 				/* Add RRSets. */
-				ret = changeset_add_rrset(
-				              chs, rrset,
-				              CHANGESET_ADD);
+				ret = changeset_add_rrset(chs, rrset,
+				                          CHANGESET_ADD);
 			}
 		}
 	}
@@ -1016,8 +1009,8 @@ static int changesets_unpack(changeset_t *chs)
 	return ret;
 }
 
-static int zones_rrset_write_to_mem(const knot_rrset_t *rr, char **entry,
-                                    size_t *remaining) {
+static int rrset_write_to_mem(const knot_rrset_t *rr, char **entry,
+                              size_t *remaining) {
 	size_t written = 0;
 	int ret = rrset_serialize(rr, *((uint8_t **)entry),
 	                          &written);
@@ -1030,13 +1023,12 @@ static int zones_rrset_write_to_mem(const knot_rrset_t *rr, char **entry,
 	return ret;
 }
 
-static int zones_serialize_and_store_chgset(const changeset_t *chs,
-                                            char *entry, size_t max_size)
+static int serialize_and_store_chgset(const changeset_t *chs,
+                                      char *entry, size_t max_size)
 {
 	/* Serialize SOA 'from'. */
-	int ret = zones_rrset_write_to_mem(chs->soa_from, &entry, &max_size);
+	int ret = rrset_write_to_mem(chs->soa_from, &entry, &max_size);
 	if (ret != KNOT_EOK) {
-		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
 		return ret;
 	}
 
@@ -1044,26 +1036,23 @@ static int zones_serialize_and_store_chgset(const changeset_t *chs,
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, chs->remove) {
 		knot_rrset_t *rrset = rr_node->rr;
-		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
+		ret = rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
-			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
 			return ret;
 		}
 	}
 
 	/* Serialize SOA 'to'. */
-	ret = zones_rrset_write_to_mem(chs->soa_to, &entry, &max_size);
+	ret = rrset_write_to_mem(chs->soa_to, &entry, &max_size);
 	if (ret != KNOT_EOK) {
-		dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
 		return ret;
 	}
 
 	/* Serialize RRSets from the 'add' section. */
 	WALK_LIST(rr_node, chs->add) {
 		knot_rrset_t *rrset = rr_node->rr;
-		ret = zones_rrset_write_to_mem(rrset, &entry, &max_size);
+		ret = rrset_write_to_mem(rrset, &entry, &max_size);
 		if (ret != KNOT_EOK) {
-			dbg_zones("%s:%d ret = %s\n", __func__, __LINE__, knot_strerror(ret));
 			return ret;
 		}
 
@@ -1103,7 +1092,7 @@ static int changeset_pack(const changeset_t *chs, journal_t *j)
 	assert(journal_entry != NULL);
 
 	/* Serialize changeset, saving it bit by bit. */
-	ret = zones_serialize_and_store_chgset(chs, journal_entry, entry_size);
+	ret = serialize_and_store_chgset(chs, journal_entry, entry_size);
 	/* Unmap the journal entry.
 	 * If successfuly written changeset to journal, validate the entry. */
 	int unmap_ret = journal_unmap(j, k, journal_entry, ret == KNOT_EOK);
