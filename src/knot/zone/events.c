@@ -94,7 +94,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create a memory pool for this task. */
 	int ret = KNOT_EOK;
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, 4096);
+	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
 	knot_pkt_t *query = zone_query(zone, query_type, &mm);

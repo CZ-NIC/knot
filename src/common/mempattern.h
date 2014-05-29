@@ -29,6 +29,9 @@
 
 #include <stddef.h>
 
+/* Default memory block size. */
+#define DEFAULT_BLKSIZE 4096
+
 /* Memory allocation function prototypes. */
 typedef void* (*mm_alloc_t)(void* ctx, size_t len);
 typedef void (*mm_free_t)(void *p);
