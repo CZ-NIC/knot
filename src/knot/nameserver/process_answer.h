@@ -1,3 +1,13 @@
+/*!
+ * \file process_answer.h
+ *
+ * \author Marek Vavrusa <marek.vavrusa@nic.cz>
+ *
+ * \brief Answer processor.
+ *
+ * \addtogroup answer_processing
+ * @{
+ */
 /*  Copyright (C) 2014 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
@@ -31,14 +41,19 @@ const knot_process_module_t *process_answer_get_module(void);
 	            what " of '%s' from '%s': ", msg); \
 	} while(0)
 
-/* Module load parameters. */
+/*!
+ * \brief Answer processing parameters.
+ */
 struct process_answer_param {
-	zone_t   *zone;
-	const knot_pkt_t *query;
-	const struct sockaddr_storage *remote;
-	tsig_ctx_t tsig_ctx;
+	zone_t   *zone;                        /*!< Answer bailiwick. */
+	const knot_pkt_t *query;               /*!< Query preceding the answer. */
+	const struct sockaddr_storage *remote; /*!< Answer origin. */
+	tsig_ctx_t tsig_ctx;                   /*!< Signing context. */
 };
 
+/*!
+ * \brief Answer processing context.
+ */
 struct answer_data {
 	/* Extensions. */
 	void *ext;
@@ -49,3 +64,5 @@ struct answer_data {
 	struct process_answer_param *param; /*!< Module parameters. */
 	mm_ctx_t *mm;                      /*!< Memory context. */
 };
+
+/*! @} */

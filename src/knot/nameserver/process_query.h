@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _PROCESS_QUERY_H_
-#define _PROCESS_QUERY_H_
+#pragma once
 
 #include "libknot/processing/process.h"
 #include "knot/server/server.h"
@@ -212,7 +211,5 @@ static inline bool pkt_has_nsid(const knot_pkt_t *pkt)
 	return knot_pkt_has_edns(pkt)
 	       && knot_edns_has_option(pkt->opt_rr, KNOT_EDNS_OPTION_NSID);
 }
-
-#endif /* _PROCESS_QUERY_H_ */
 
 /*! @} */
