@@ -63,69 +63,97 @@ typedef struct zone_events {
  * to do that.
  *
  * \param zone  Pointer to zone (context of execution).
+ *
+ * \return KNOT_E*
  */
 int zone_events_init(struct zone_t *zone);
 
 /*!
  * \brief Set up zone events execution.
  *
+ * \param zone       Zone to setup.
  * \param workers    Worker thread pool.
  * \param scheduler  Event scheduler.
+ *
+ * \return KNOT_E*
  */
 int zone_events_setup(struct zone_t *zone, worker_pool_t *workers,
-		      evsched_t *scheduler);
+                      evsched_t *scheduler);
 
 /*!
  * \brief Deinitialize zone events.
+ *
+ * \param zone  Zone whose events we want to deinitialize.
  */
 void zone_events_deinit(struct zone_t *zone);
 
 /*!
  * \brief Schedule new zone event to absolute time.
+ *
+ * \param zone  Zone to schedule new event for.
+ * \param type  Type of event.
+ * \param time  Absolute time.
  */
 void zone_events_schedule_at(struct zone_t *zone, zone_event_type_t type, time_t time);
 
 /*!
  * \brief Schedule new zone event using relative time to current time.
+ *
+ * \param zone  Zone to schedule new event for.
+ * \param type  Type of event.
+ * \param dt    Relative time.
  */
 void zone_events_schedule(struct zone_t *zone, zone_event_type_t type, unsigned dt);
 
 /*!
  * \brief Cancel one zone event.
+ *
+ * \param zone  Zone to cancel event in.
+ * \param type  Type of event to cancel.
  */
 void zone_events_cancel(struct zone_t *zone, zone_event_type_t type);
 
 /*!
  * \brief Freeze all zone events and prevent new events from running.
+ *
+ * \param zone  Zone to freeze events for.
  */
 void zone_events_freeze(struct zone_t *zone);
 
 /*!
  * \brief Start the events processing.
+ *
+ * \param zone  Zone to start processing for.
  */
 void zone_events_start(struct zone_t *zone);
-
 
 /*!
  * \brief Return time of the occurence of the given event.
  *
- * \param zone
- * \param type
+ * \param zone  Zone to get event time from.
+ * \param type  Event type.
  *
- * \return time of the event or an error (negative number)
+ * \retval time of the event when event found
+ * \retval negative value if event was not found
  */
 time_t zone_events_get_time(const struct zone_t *zone, zone_event_type_t type);
 
 /*!
  * \brief Return text name of the event.
+ *
+ * \param type  Type of event.
+ *
+ * \retval String with event name if it exists.
+ * \retval NULL if the event does not exist.
  */
 const char *zone_events_get_name(zone_event_type_t type);
 
 /*!
  * \brief Return time and type of the next event.
  *
- * \param zone
- * \param type [out] Type of the next event will be stored in the parameter.
+ * \param zone  Zone to get next event from.
+ * \param type  [out] Type of the next event will be stored in the parameter.
+ *
  * \return time of the next event or an error (negative number)
  */
 time_t zone_events_get_next(const struct zone_t *zone, zone_event_type_t *type);
