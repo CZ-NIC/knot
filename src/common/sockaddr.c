@@ -19,6 +19,7 @@
 #include <netdb.h>
 
 #include "common/sockaddr.h"
+#include "common/strlcpy.h"
 #include "common/errcode.h"
 #include "libknot/consts.h"
 
@@ -71,10 +72,10 @@ int sockaddr_set(struct sockaddr_storage *ss, int family, const char *straddr, i
 		return KNOT_EOK;
 	} else if (family == AF_UNIX) {
 		struct sockaddr_un *un = (struct sockaddr_un *)ss;
-		if (strlen(straddr) > sizeof(un->sun_path) - 1) {
+		size_t ret = strlcpy(un->sun_path, straddr, sizeof(un->sun_path));
+		if (ret >= sizeof(un->sun_path)) {
 			return KNOT_ESPACE;
 		}
-		strcpy(un->sun_path, straddr);
 		return KNOT_EOK;
 	}
 
@@ -118,26 +119,24 @@ int sockaddr_tostr(const struct sockaddr_storage *ss, char *buf, size_t maxlen)
 		return KNOT_EINVAL;
 	}
 
-	const char* ret = NULL;
+	const char *out = NULL;
 
 	/* Convert network address string. */
 	if (ss->ss_family == AF_INET6) {
 		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)ss;
-		ret = inet_ntop(ss->ss_family, &s->sin6_addr, buf, maxlen);
+		out = inet_ntop(ss->ss_family, &s->sin6_addr, buf, maxlen);
 	} else if (ss->ss_family == AF_INET) {
 		const struct sockaddr_in *s = (const struct sockaddr_in *)ss;
-		ret = inet_ntop(ss->ss_family, &s->sin_addr, buf, maxlen);
+		out = inet_ntop(ss->ss_family, &s->sin_addr, buf, maxlen);
 	} else if (ss->ss_family == AF_UNIX) {
 		const struct sockaddr_un *s = (const struct sockaddr_un *)ss;
-		if (strlen(s->sun_path) > maxlen - 1) {
-			return KNOT_ESPACE;
-		}
-		ret = strcpy(buf, s->sun_path);
+		size_t ret = strlcpy(buf, s->sun_path, maxlen);
+		out = (ret < maxlen) ? buf : NULL;
 	} else {
 		return KNOT_EINVAL;
 	}
 
-	if (ret == NULL) {
+	if (out == NULL) {
 		*buf = '\0';
 		return KNOT_ESPACE;
 	}

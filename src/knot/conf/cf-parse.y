@@ -31,6 +31,8 @@
 #include <pwd.h>
 #include <grp.h>
 #include "common/sockaddr.h"
+#include "common/strlcat.h"
+#include "common/strlcpy.h"
 #include "libknot/dname.h"
 #include "libknot/binary.h"
 #include "libknot/rrtype/opt.h"
@@ -665,8 +667,8 @@ keys:
 	   fqdn = NULL;
 	   fqdnl = 0;
 	} else {
-	   strncpy(tmpdn, fqdn, fqdnl);
-	   strncat(tmpdn, ".", 1);
+	   strlcpy(tmpdn, fqdn, fqdnl);
+	   strlcat(tmpdn, ".", fqdnl);
 	   free(fqdn);
 	   fqdn = tmpdn;
 	   fqdnl = strlen(fqdn);

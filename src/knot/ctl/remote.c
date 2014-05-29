@@ -24,6 +24,7 @@
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
 #include "common/descriptor.h"
+#include "common/strlcpy.h"
 #include "libknot/tsig-op.h"
 #include "libknot/rrtype/rdname.h"
 #include "libknot/rrtype/soa.h"
@@ -617,7 +618,7 @@ int remote_answer(int sock, server_t *s, knot_pkt_t *pkt)
 	/* Prepare response. */
 	if (ret != KNOT_EOK || args->rlen == 0) {
 		args->rlen = strlen(knot_strerror(ret));
-		strncpy(args->resp, knot_strerror(ret), args->rlen);
+		strlcpy(args->resp, knot_strerror(ret), sizeof(args->resp));
 	}
 
 	unsigned p = 0;
