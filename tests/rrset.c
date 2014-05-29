@@ -29,8 +29,8 @@ static bool check_rrset(const knot_rrset_t *rrset,
                         const knot_dname_t *owner,
                         uint16_t type, uint16_t rclass)
 {
-	const bool dname_cmp = (owner == NULL && rrset->owner == NULL) ||
-		knot_dname_is_equal(rrset->owner, owner);
+	const bool dname_cmp = owner == NULL ? owner == rrset->owner :
+	                                       knot_dname_is_equal(rrset->owner, owner);
 	return rrset->type == type && rrset->rclass == rclass && dname_cmp
 	       && rrset->rrs.rr_count == 0; // We do not test rdataset here
 }
