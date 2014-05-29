@@ -67,6 +67,7 @@ changesets_t *changesets_create(unsigned count)
 
 	int ret = knot_changesets_init(ch);
 	if (ret != KNOT_EOK) {
+		changesets_free(&ch, NULL);
 		return NULL;
 	}
 
