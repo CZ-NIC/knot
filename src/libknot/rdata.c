@@ -38,6 +38,14 @@ struct rr_offsets {
 #pragma pack(pop)
 #endif
 
+void knot_rdata_init(knot_rdata_t *rdata,
+                     uint16_t rdlen, const uint8_t *data, uint32_t ttl)
+{
+	knot_rdata_set_ttl(rdata, ttl);
+	knot_rdata_set_rdlen(rdata, rdlen);
+	memcpy(knot_rdata_data(rdata), data, rdlen);
+}
+
 uint16_t knot_rdata_rdlen(const knot_rdata_t *rr)
 {
 	return ((struct rr_offsets *)rr)->size;

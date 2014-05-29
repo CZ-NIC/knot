@@ -39,6 +39,15 @@
  */
 typedef uint8_t knot_rdata_t;
 
+/* ------------------------------- Init ------------------------------------- */
+
+/*!
+ * \brief Inits knot_rdata_t structure - the structure has to be created using
+ *        knot_rdata_array_size.
+ */
+void knot_rdata_init(knot_rdata_t *rdata,
+                     uint16_t rdlen, const uint8_t *data, uint32_t ttl);
+
 /* ------------------------- RR getters/setters ----------------------------- */
 
 /*!
@@ -87,6 +96,7 @@ size_t knot_rdata_array_size(uint16_t size);
 
 /*!
  * \brief Canonical comparison of two RRs. Both RRs *must* exist.
+ *        TTLs are *not* compared.
  * \param rr1  First RR to compare.
  * \param rr2  Second RR to compare.
  * \retval 0 if rr1 == rr2.

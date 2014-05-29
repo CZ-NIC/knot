@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	sigaction(SIGALRM, &sa, NULL); // Interrupt
 
 	/* Test server for correct initialization */
-	ret = server_init(&server);
+	ret = server_init(&server, 1);
 	ok(ret == KNOT_EOK, "server: initialized");
 	if (ret != KNOT_EOK) {
 		return 1;

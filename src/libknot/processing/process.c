@@ -93,7 +93,7 @@ int knot_process_out(uint8_t *wire, uint16_t *wire_len, knot_process_t *ctx)
 {
 	knot_pkt_t *pkt = knot_pkt_new(wire, *wire_len, &ctx->mm);
 
-	switch(ctx->state) {
+	switch (ctx->state) {
 	case NS_PROC_FULL: ctx->state = ctx->module->out(pkt, ctx); break;
 	case NS_PROC_FAIL: ctx->state = ctx->module->err(pkt, ctx); break;
 	default:

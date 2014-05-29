@@ -4,12 +4,15 @@
 *.swp
 *~
 *.la
+*.a
 *.o
 *.orig
 *.lo
+*.rej
 .libs/
 .deps/
 .dirstamp
+/tmp
 /Knot.creator.user*
 /Makefile
 /Makefile.in

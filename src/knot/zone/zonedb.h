@@ -32,7 +32,7 @@
 
 #include "knot/zone/node.h"
 #include "knot/zone/zone.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "libknot/dname.h"
 #include "common/hhash.h"
 

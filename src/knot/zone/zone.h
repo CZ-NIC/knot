@@ -30,71 +30,43 @@
 
 #include "common/evsched.h"
 #include "common/ref.h"
-#include "libknot/dname.h"
 #include "knot/conf/conf.h"
 #include "knot/server/journal.h"
 #include "knot/updates/acl.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/events.h"
+#include "knot/zone/contents.h"
+#include "libknot/dname.h"
+
+struct process_query_param;
 
 /*!
  * \brief Zone flags.
  */
 typedef enum zone_flag_t {
-	ZONE_DISCARDED = 1 << 1  /*! Zone waiting to be discarded. */
+	ZONE_FORCE_AXFR   = 1 << 0, /* Force AXFR as next transfer. */
+	ZONE_FORCE_RESIGN = 1 << 1  /* Force zone resign. */
 } zone_flag_t;
-
-struct server_t;
 
 /*!
  * \brief Structure for holding DNS zone.
  */
-typedef struct zone_t {
-
-	//! \todo Move ACLs into configuration.
-	//! \todo Remove refcounting + flags.
-	//! \todo Remove server_t.
-	//! \todo Remove zonefile_{serial,mtime}, use zone-dirty flag instead
-
-	ref_t ref;     /*!< Reference counting. */
+typedef struct zone_t
+{
 	knot_dname_t *name;
-
-	knot_zone_contents_t *contents;
-
+	zone_contents_t *contents;
+	conf_zone_t *conf;
 	zone_flag_t flags;
 
-	/*! \brief Zone file flushing. */
+	/*! \brief DDNS queue and lock. */
+	pthread_mutex_t ddns_lock;
+	list_t ddns_queue;
+
+	/*! \brief Zone events. */
+	zone_events_t events;     /*!< Zone events timers. */
+	uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
 	time_t zonefile_mtime;
 	uint32_t zonefile_serial;
 
-	/*! \brief Shortcut to zone config entry. */
-	conf_zone_t *conf;
-
-	/*! \brief Zone data lock for exclusive access. */
-	pthread_mutex_t lock;
-	/*! \brief Zone lock for DDNS. */
-	pthread_mutex_t ddns_lock;
-
-	/*! \brief Access control lists. */
-	acl_t *xfr_out;    /*!< ACL for outgoing transfers.*/
-	acl_t *notify_in;  /*!< ACL for incoming notifications.*/
-	acl_t *update_in;  /*!< ACL for incoming updates.*/
-
-	/*! \brief XFR-IN scheduler. */
-	struct {
-		event_t *timer;           /*!< Timer for REFRESH/RETRY. */
-		event_t *expire;          /*!< Timer for EXPIRE. */
-		uint32_t bootstrap_retry; /*!< AXFR/IN bootstrap retry. */
-		unsigned state;
-	} xfr_in;
-
-	struct {
-		event_t *timer;  /*!< Timer for DNSSEC events. */
-		uint32_t   refresh_at;  /*!< Next refresh time. */
-	} dnssec;
-
-	/*! \brief Zone IXFR history. */
-	journal_t *ixfr_db;
-	event_t *ixfr_dbsync;   /*!< Syncing IXFR db to zonefile. */
 } zone_t;
 
 /*----------------------------------------------------------------------------*/
@@ -117,44 +89,41 @@ zone_t *zone_new(conf_zone_t *conf);
  */
 void zone_free(zone_t **zone_ptr);
 
-/*! \brief Increase zone reference count. */
-static inline void zone_retain(zone_t *zone)
-{
-	ref_retain(&zone->ref);
-}
-
-/*! \brief Decrease zone reference count. */
-static inline void zone_release(zone_t *zone)
-{
-	ref_release(&zone->ref);
-}
-
+/*!
+ * \note Zone change API below, subject to change.
+ * \ref #223 New zone API
+ */
+changeset_t *zone_change_prepare(changesets_t *chset);
+int zone_change_commit(zone_contents_t *contents, changesets_t *chset);
+int zone_change_store(zone_t *zone, changesets_t *chset);
+/*! \note @mvavrusa Moved from zones.c, this needs a common API. */
+int zone_change_apply_and_store(changesets_t **chs,
+                                zone_t *zone,
+                                const char *msgpref,
+                                mm_ctx_t *rr_mm);
 /*!
  * \brief Atomically switch the content of the zone.
  */
-knot_zone_contents_t *zone_switch_contents(zone_t *zone,
-					   knot_zone_contents_t *new_contents);
+zone_contents_t *zone_switch_contents(zone_t *zone,
+					   zone_contents_t *new_contents);
 
-/*!
- * \brief Initialize zone timers.
- *
- * \todo Zone timers should be in a separate file, callbacks are still scattered.
- */
-int zone_timers_create(zone_t *zone, evsched_t *sched);
-
-/*!
- * \brief Freeze the zone timers.
- */
-int zone_timers_freeze(zone_t *zone);
-
-/*!
- * \brief Reschedule frozen zone timers.
- */
-int zone_timers_thaw(zone_t *zone);
-
-/*!
- * \brief Return zone master interface.
- */
+/*! \brief Return zone master remote. */
 const conf_iface_t *zone_master(const zone_t *zone);
+
+/*! \brief Rotate list of master remotes for current zone. */
+void zone_master_rotate(const zone_t *zone);
+
+/*! \brief Synchronize zone file with journal. */
+int zone_flush_journal(zone_t *zone);
+
+/*! \brief Enqueue UPDATE request for processing. */
+int zone_update_enqueue(zone_t *zone, knot_pkt_t *pkt, struct process_query_param *param);
+
+/*! \brief Dequeue UPDATE request. */
+struct request_data *zone_update_dequeue(zone_t *zone);
+
+/*! \brief Returns true if final SOA in transfer has newer serial than zone */
+bool zone_transfer_needed(const zone_t *zone, const knot_pkt_t *pkt);
+
 
 /*! @} */

@@ -31,7 +31,7 @@
 
 #include <stdbool.h>
 #include "knot/updates/changesets.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "libknot/dnssec/policy.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/dnssec/bitmap.h"
@@ -43,7 +43,7 @@
  *
  * \return NSEC3 is enabled.
  */
-bool knot_is_nsec3_enabled(const knot_zone_contents_t *zone);
+bool knot_is_nsec3_enabled(const zone_contents_t *zone);
 
 /*!
  * \brief Create NSEC3 owner name from hash and zone apex.
@@ -80,8 +80,8 @@ knot_dname_t *knot_create_nsec3_owner(const knot_dname_t *owner,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_zone_create_nsec_chain(const knot_zone_contents_t *zone,
-                                knot_changeset_t *changeset,
+int knot_zone_create_nsec_chain(const zone_contents_t *zone,
+                                changeset_t *changeset,
                                 const knot_zone_keys_t *zone_keys,
                                 const knot_dnssec_policy_t *policy);
 

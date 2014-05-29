@@ -21,7 +21,7 @@
 #include "common/mempool.h"
 #include "common/descriptor.h"
 #include "libknot/packet/pkt.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 
 #define TTL 7200
 #define NAMECOUNT 3
@@ -41,6 +41,29 @@ const char *g_rdata[DATACOUNT] = {
 #define RDVAL(i) ((const uint8_t*)(g_rdata[(i)] + 1))
 #define RDLEN(i) ((uint16_t)(g_rdata[(i)][0]))
 
+/* @note Packet equivalence test, 5 checks. */
+static void packet_match(knot_pkt_t *in, knot_pkt_t *out)
+{
+	/* Check counts */
+	is_int(knot_wire_get_qdcount(out->wire),
+	       knot_wire_get_qdcount(in->wire), "pkt: QD match");
+	is_int(knot_wire_get_ancount(out->wire),
+	       knot_wire_get_ancount(in->wire), "pkt: AN match");
+	is_int(knot_wire_get_nscount(out->wire),
+	       knot_wire_get_nscount(in->wire), "pkt: NS match");
+	is_int(knot_wire_get_arcount(out->wire),
+	       knot_wire_get_arcount(in->wire), "pkt: AR match");
+
+	/* Check RRs */
+	int rr_matched = 0;
+	for (unsigned i = 0; i < NAMECOUNT; ++i) {
+		if (knot_rrset_equal(&out->rr[i], &in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
+			++rr_matched;
+		}
+	}
+	is_int(NAMECOUNT, rr_matched, "pkt: RR content match");
+}
+
 int main(int argc, char *argv[])
 {
 	plan(25);
@@ -57,31 +80,33 @@ int main(int argc, char *argv[])
 		dnames[i] = knot_dname_from_str(g_names[i]);
 	}
 
+	uint8_t *edns_str = (uint8_t *)"ab";
+	/* Create OPT RR. */
+	knot_rrset_t opt_rr;
+	ret = knot_edns_init(&opt_rr, 1024, 0, 0, &mm);
+	if (ret != KNOT_EOK) {
+		skip_block(25, "Failed to initialize OPT RR.");
+		return 0;
+	}
+	/* Add NSID */
+	ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_NSID,
+	                           strlen((char *)edns_str), edns_str, &mm);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&opt_rr, &mm);
+		skip_block(25, "Failed to add NSID to OPT RR.");
+		return 0;
+	}
+
 	/*
 	 * Packet writer tests.
 	 */
 
 	/* Create packet. */
-	knot_pkt_t *out = knot_pkt_new(NULL, 4096, &mm);
+	knot_pkt_t *out = knot_pkt_new(NULL, DEFAULT_BLKSIZE, &mm);
 	ok(out != NULL, "pkt: new");
 
 	/* Mark as response (not part of the test). */
 	knot_wire_set_qr(out->wire);
-
-	/* Packet options. */
-	const char* nsid = "string";
-	uint16_t data = 4096;
-	uint8_t version = 0, rcode = 0;
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_PAYLOAD, &data, sizeof(data));
-	ok(ret == KNOT_EOK, "pkt: set EDNS max payload");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_VERSION, &version, sizeof(version));
-	ok(ret == KNOT_EOK, "pkt: set EDNS version");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_RCODE,   &rcode, sizeof(rcode));
-	ok(ret == KNOT_EOK, "pkt: set EDNS extended RCODE");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_FLAG_DO, NULL, 0);
-	ok(ret == KNOT_EOK, "pkt: set EDNS DO flag");
-	ret = knot_pkt_opt_set(out, KNOT_PKT_EDNS_NSID,    nsid, strlen(nsid));
-	ok(ret == KNOT_EOK, "pkt: set NSID");
 
 	/* Secure packet. */
 	const char *tsig_secret = "abcd";
@@ -96,6 +121,10 @@ int main(int argc, char *argv[])
 	/* Write question. */
 	ret = knot_pkt_put_question(out, dnames[0], KNOT_CLASS_IN, KNOT_RRTYPE_A);
 	ok(ret == KNOT_EOK, "pkt: put question");
+
+	/* Add OPT to packet (empty NSID). */
+	ret = knot_pkt_reserve(out, knot_edns_wire_size(&opt_rr));
+	ok(ret == KNOT_EOK, "pkt: reserve OPT RR");
 
 	/* Begin ANSWER section. */
 	ret = knot_pkt_begin(out, KNOT_ANSWER);
@@ -127,7 +156,7 @@ int main(int argc, char *argv[])
 	ok(ret == KNOT_EOK, "pkt: begin ADDITIONALS");
 
 	/* Encode OPT RR. */
-	ret = knot_pkt_put_opt(out);
+	ret = knot_pkt_put(out, COMPR_HINT_NONE, &opt_rr, 0);
 	ok(ret == KNOT_EOK, "pkt: write OPT RR");
 
 	/*
@@ -146,34 +175,23 @@ int main(int argc, char *argv[])
 	ret = knot_pkt_parse_payload(in, 0);
 	ok(ret == KNOT_EOK, "pkt: read payload");
 
-	/* Check qname. */
-	ok(knot_dname_is_equal(knot_pkt_qname(out),
-	                       knot_pkt_qname(in)), "pkt: equal qname");
+	/* Compare parsed packet to written packet. */
+	packet_match(in, out);
 
-	/* Check counts */
-	is_int(knot_wire_get_qdcount(out->wire),
-	       knot_wire_get_qdcount(in->wire), "pkt: QD match");
-	is_int(knot_wire_get_ancount(out->wire),
-	       knot_wire_get_ancount(in->wire), "pkt: AN match");
-	is_int(knot_wire_get_nscount(out->wire),
-	       knot_wire_get_nscount(in->wire), "pkt: NS match");
-	is_int(knot_wire_get_arcount(out->wire),
-	       knot_wire_get_arcount(in->wire), "pkt: AR match");
+	/*
+	 * Copied packet tests.
+	 */
+	knot_pkt_t *copy = knot_pkt_copy(in, &in->mm);
+	ok(copy != NULL, "pkt: create packet copy");
 
-	/* Check RRs */
-	int rr_matched = 0;
-	for (unsigned i = 0; i < NAMECOUNT; ++i) {
-		if (knot_rrset_equal(&out->rr[i], &in->rr[i], KNOT_RRSET_COMPARE_WHOLE) > 0) {
-			++rr_matched;
-		}
-	}
-	is_int(NAMECOUNT, rr_matched, "pkt: RR content match");
+	/* Compare copied packet to original. */
+	packet_match(in, copy);
 
 	/* Free packets. */
+	knot_pkt_free(&copy);
 	knot_pkt_free(&out);
 	knot_pkt_free(&in);
-	ok(in == NULL, "pkt: free");
-	ok(out == NULL, "pkt: free");
+	ok(in == NULL && out == NULL && copy == NULL, "pkt: free");
 
 	/* Free extra data. */
 	for (unsigned i = 0; i < NAMECOUNT; ++i) {

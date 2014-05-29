@@ -460,14 +460,7 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 	}
 
 	if (rdlength == 0) {
-		// Alloc data for empty RR.
-		uint8_t *empty_rdata = malloc(1);
-		if (empty_rdata == NULL) {
-			return KNOT_ENOMEM;
-		}
-		int ret = knot_rrset_add_rdata(rrset, empty_rdata, 0, ttl, mm);
-		free(empty_rdata);
-		return ret;
+		return knot_rrset_add_rdata(rrset, NULL, 0, ttl, mm);
 	}
 
 	const rdata_descriptor_t *desc = get_rdata_descriptor(rrset->type);
@@ -548,17 +541,15 @@ int knot_rrset_rdata_from_wire_one(knot_rrset_t *rrset,
 }
 
 int knot_rrset_add_rdata(knot_rrset_t *rrset,
-                      const uint8_t *rdata, const uint16_t size,
-                      const uint32_t ttl, mm_ctx_t *mm)
+                         const uint8_t *rdata, const uint16_t size,
+                         const uint32_t ttl, mm_ctx_t *mm)
 {
-	if (rrset == NULL || rdata == NULL) {
+	if (rrset == NULL || (rdata == NULL && size > 0)) {
 		return KNOT_EINVAL;
 	}
 
 	knot_rdata_t rr[knot_rdata_array_size(size)];
-	knot_rdata_set_rdlen(rr, size);
-	knot_rdata_set_ttl(rr, ttl);
-	memcpy(knot_rdata_data(rr), rdata, size);
+	knot_rdata_init(rr, size, rdata, ttl);
 
 	return knot_rdataset_add(&rrset->rrs, rr, mm);
 }
@@ -575,7 +566,11 @@ bool knot_rrset_equal(const knot_rrset_t *r1,
 		return false;
 	}
 
-	if (!knot_dname_is_equal(r1->owner, r2->owner)) {
+	if (r1->owner && r2->owner) {
+		if (!knot_dname_is_equal(r1->owner, r2->owner)) {
+			return false;
+		}
+	} else if (r1->owner != r2->owner) { // At least one is NULL.
 		return false;
 	}
 
@@ -594,5 +589,10 @@ bool knot_rrset_empty(const knot_rrset_t *rrset)
 	} else {
 		return true;
 	}
+}
+
+uint32_t knot_rrset_ttl(const knot_rrset_t *rrset)
+{
+	return knot_rdata_ttl(knot_rdataset_at(&(rrset->rrs), 0));
 }
 

@@ -16,7 +16,7 @@
 
 #include "common/memdup.h"
 #include "common/errcode.h"
-#include "libknot/rdata/nsec3param.h"
+#include "libknot/rrtype/nsec3param.h"
 
 /*!
  * \brief Initialize the structure with NSEC3 params from NSEC3PARAM RR set.

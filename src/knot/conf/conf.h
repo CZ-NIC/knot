@@ -35,7 +35,7 @@
 #include <urcu.h>
 
 #include "libknot/dname.h"
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/policy.h"
 #include "common/lists.h"
@@ -193,7 +193,6 @@ typedef struct conf_key_t {
 typedef struct conf_control_t {
 	conf_iface_t *iface; /*!< Remote control interface. */
 	list_t allow;        /*!< List of allowed remotes. */
-	acl_t* acl;          /*!< ACL. */
 	bool have;           /*!< Set if configured. */
 } conf_control_t;
 
@@ -215,6 +214,7 @@ typedef struct conf_t {
 	size_t nsid_len;/*!< Server's NSID length. */
 	size_t max_udp_payload; /*!< Maximal UDP payload size. */
 	int   workers;  /*!< Number of workers per interface. */
+	int   bg_workers; /*!< Number of background workers. */
 	int   uid;      /*!< Specified user id. */
 	int   gid;      /*!< Specified group id. */
 	int   max_conn_idle; /*!< TCP idle timeout. */

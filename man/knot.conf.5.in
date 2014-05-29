@@ -48,6 +48,12 @@ serves as an example of the configuration for knotc(8) and knotd(8).
   # Default: unset (auto-estimates optimal value from the number of online CPUs)
   # workers 3;
 
+  # Number of background workers
+  # This option is used to set number of threads used to execute background
+  # operations (e.g., zone loading, zone signing, XFR zone updates, ...)
+  # Default: unset (auto-estimates optimal value from the number of online CPUs)
+  # background-workers 4;
+
   # User for running server
   # May also specify user.group (e.g. knot.users)
   # user knot.users;
@@ -244,10 +250,10 @@ serves as an example of the configuration for knotc(8) and knotd(8).
 
   # Timeout for syncing changes from zone database to zonefile
   # Possible values: <1..INT_MAX> (seconds)
-  # Default value: 1h (1 hour)
+  # Default value: 0s (immediately)
   # It is also possible to suffix with unit size [s/m/h/d]
   # f.e. 1s = 1 day, 1m = 1 minute, 1h = 1 hour, 1d = 1 day
-  zonefile-sync 1h;
+  zonefile-sync 0s;
 
   # File size limit for IXFR journal
   # Possible values: <1..INT_MAX>

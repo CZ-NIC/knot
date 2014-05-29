@@ -101,7 +101,7 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 	uint16_t nscount = knot_wire_get_nscount(packet->wire);
 	uint16_t arcount = knot_wire_get_arcount(packet->wire);
 
-	if (knot_pkt_have_tsig(packet)) {
+	if (knot_pkt_has_tsig(packet)) {
 		arcount++;
 	}
 
@@ -176,25 +176,46 @@ static void print_footer(const size_t total_len,
 	}
 }
 
-static void print_section_opt(const knot_opt_rr_t *rr)
+static void print_section_opt(const knot_rrset_t *rr)
 {
-	printf("Version: %u; flags: %s; UDP size: %u B\n",
+	uint8_t             ext_rcode_id = knot_edns_get_ext_rcode(rr);
+	const char          *ext_rcode_str = "NULL";
+	knot_lookup_table_t *ext_rcode;
+
+	ext_rcode = knot_lookup_by_id(knot_rcode_names, ext_rcode_id);
+	if (ext_rcode != NULL) {
+		ext_rcode_str = ext_rcode->name;
+	}
+
+	printf("Version: %u; flags: %s; UDP size: %u B, status: %s\n",
 	       knot_edns_get_version(rr),
 	       (knot_edns_do(rr) != 0) ? "do" : "",
-	       knot_edns_get_payload(rr));
+	       knot_edns_get_payload(rr),
+	       ext_rcode_str);
 
-	for (int i = 0; i < rr->option_count; i++) {
-		knot_opt_option_t *opt = &(rr->options[i]);
+	knot_rdata_t *rdata = knot_rdataset_at(&rr->rrs, 0);
+	assert(rdata != NULL);
 
-		if (opt->code == EDNS_OPTION_NSID) {
+	uint16_t data_len = knot_rdata_rdlen(rdata);
+	uint8_t *data = knot_rdata_data(rdata);
+	int pos = 0;
+
+	while (pos < data_len - KNOT_EDNS_OPTION_HDRLEN) {
+		uint16_t opt_code = knot_wire_read_u16(data + pos);
+		uint16_t opt_len = knot_wire_read_u16(data + pos + 2);
+		uint8_t *opt_data = data + pos + 4;
+
+		if (opt_code == KNOT_EDNS_OPTION_NSID) {
 			printf(";; NSID: ");
-			short_hex_print(opt->data, opt->length);
+			short_hex_print(opt_data, opt_len);
 			printf(";;     :  ");
-			txt_print(opt->data, opt->length);
+			txt_print(opt_data, opt_len);
 		} else {
-			printf(";; Option (%u): ", opt->code);
-			short_hex_print(opt->data, opt->length);
+			printf(";; Option (%u): ", opt_code);
+			short_hex_print(opt_data, opt_len);
 		}
+
+		pos += 4 + opt_len;
 	}
 }
 
@@ -453,7 +474,7 @@ void print_data_xfr(const knot_pkt_t *packet,
 		print_section_full(answers->rr, answers->count, style, true);
 
 		// Print TSIG record.
-		if (style->show_tsig && knot_pkt_have_tsig(packet)) {
+		if (style->show_tsig && knot_pkt_has_tsig(packet)) {
 			print_section_full(packet->tsig_rr, 1, style, false);
 		}
 		break;
@@ -509,7 +530,7 @@ void print_packet(const knot_pkt_t *packet,
 
 	// Disable additionals printing if there are no other records.
 	// OPT record may be placed anywhere within additionals!
-	if (knot_pkt_have_edns(packet) && arcount == 1) {
+	if (knot_pkt_has_edns(packet) && arcount == 1) {
 		arcount = 0;
 	}
 
@@ -519,9 +540,9 @@ void print_packet(const knot_pkt_t *packet,
 	}
 
 	// Print EDNS section.
-	if (style->show_edns && knot_pkt_have_edns(packet)) {
+	if (style->show_edns && knot_pkt_has_edns(packet)) {
 		printf("\n;; EDNS PSEUDOSECTION:\n;; ");
-		print_section_opt(&packet->opt_rr);
+		print_section_opt(packet->opt_rr);
 	}
 
 	// Print DNS sections.
@@ -591,7 +612,7 @@ void print_packet(const knot_pkt_t *packet,
 	}
 
 	// Print TSIG section.
-	if (style->show_tsig && knot_pkt_have_tsig(packet)) {
+	if (style->show_tsig && knot_pkt_has_tsig(packet)) {
 		printf("\n;; TSIG PSEUDOSECTION:\n");
 		print_section_full(packet->tsig_rr, 1, style, false);
 	}

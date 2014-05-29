@@ -29,7 +29,7 @@
 
 #include <stdint.h>
 
-#include "libknot/rdata/tsig.h"
+#include "libknot/rrtype/tsig.h"
 #include "libknot/rrset.h"
 #include "libknot/dnssec/key.h"
 

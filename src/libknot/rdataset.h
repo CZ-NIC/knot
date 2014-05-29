@@ -74,7 +74,7 @@ int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, mm_ctx_
 knot_rdata_t *knot_rdataset_at(const knot_rdataset_t *rrs, size_t pos);
 
 /*!
- * \brief Returns size of the RR set.
+ * \brief Returns size of the structures holding the RR set.
  * \param rrs  RR array.
  * \return Array size.
  */
@@ -134,7 +134,8 @@ int knot_rdataset_intersect(const knot_rdataset_t *a, const knot_rdataset_t *b,
                             knot_rdataset_t *out, mm_ctx_t *mm);
 
 /*!
- * \brief Does set-like RRS subtraction. \a from RRS is changed.
+ * \brief Does set-like RRS subtraction. \a from RRS is changed. Both sets must
+          be unique, i.e. data point to different locations.
  * \param from  RRS to subtract from.
  * \param what  RRS to subtract.
  * \param mm    Memory context use to reallocated \a from data.

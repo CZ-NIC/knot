@@ -18,6 +18,7 @@
 #include "knot/nameserver/query_module.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/internet.h"
+#include "knot/conf/conf.h"
 #include "common/descriptor.h"
 
 /* Defines. */
@@ -40,7 +41,7 @@ typedef struct synth_template {
 	const char *prefix;
 	const char *zone;
 	uint32_t ttl;
-	netblock_t subnet;
+	conf_iface_t subnet;
 } synth_template_t;
 
 /*! \brief Substitute all occurences of given character. */
@@ -93,7 +94,7 @@ static int reverse_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	}
 
 	/* Write formatted address string. */
-	char sep = str_separator(tpl->subnet.ss.ss_family);
+	char sep = str_separator(tpl->subnet.addr.ss_family);
 	int sep_frequency = 1;
 	if (sep == ':') {
 		sep_frequency = 4; /* Separator per 4 hexdigits. */
@@ -133,7 +134,7 @@ static int forward_addr_parse(struct query_data *qdata, synth_template_t *tpl, c
 	memcpy(addr_str, addr_label + 1 + prefix_len, addr_len);
 
 	/* Restore correct address format. */
-	char sep = str_separator(tpl->subnet.ss.ss_family);
+	char sep = str_separator(tpl->subnet.addr.ss_family);
 	str_subst(addr_str, addr_len, '-', sep);
 
 	return KNOT_EOK;
@@ -173,7 +174,7 @@ static knot_dname_t *synth_ptrname(const char *addr_str, synth_template_t *tpl)
 	int written = prefix_len;
 
 	/* Write address with substituted separator to '-'. */
-	char sep = str_separator(tpl->subnet.ss.ss_family);
+	char sep = str_separator(tpl->subnet.addr.ss_family);
 	memcpy(ptrname + written, addr_str, addr_len);
 	str_subst(ptrname + written, addr_len, sep, '-');
 	written += addr_len;
@@ -205,15 +206,15 @@ static int reverse_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, kn
 static int forward_rr(char *addr_str, synth_template_t *tpl, knot_pkt_t *pkt, knot_rrset_t *rr)
 {
 	struct sockaddr_storage query_addr = {'\0'};
-	sockaddr_set(&query_addr, tpl->subnet.ss.ss_family, addr_str, 0);
+	sockaddr_set(&query_addr, tpl->subnet.addr.ss_family, addr_str, 0);
 
 	/* Specify address type and data. */
-	if (tpl->subnet.ss.ss_family == AF_INET6) {
+	if (tpl->subnet.addr.ss_family == AF_INET6) {
 		rr->type = KNOT_RRTYPE_AAAA;
 		const struct sockaddr_in6* ip = (const struct sockaddr_in6*)&query_addr;
 		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin6_addr, sizeof(struct in6_addr),
 		                  tpl->ttl, &pkt->mm);
-	} else if (tpl->subnet.ss.ss_family == AF_INET) {
+	} else if (tpl->subnet.addr.ss_family == AF_INET) {
 		rr->type = KNOT_RRTYPE_A;
 		const struct sockaddr_in* ip = (const struct sockaddr_in*)&query_addr;
 		knot_rrset_add_rdata(rr, (const uint8_t *)&ip->sin_addr, sizeof(struct in_addr),
@@ -261,7 +262,7 @@ static int template_match(int state, synth_template_t *tpl, knot_pkt_t *pkt, str
 
 	/* Match against template netblock. */
 	struct sockaddr_storage query_addr = { '\0' };
-	int provided_af = tpl->subnet.ss.ss_family;
+	int provided_af = tpl->subnet.addr.ss_family;
 	ret = sockaddr_set(&query_addr, provided_af, addr_str, 0);
 	if (ret == KNOT_EOK) {
 		ret = netblock_match(&tpl->subnet, &query_addr);
@@ -393,7 +394,7 @@ int synth_record_load(struct query_plan *plan, struct query_module *self)
 		return KNOT_EMALF;
 	}
 
-	int ret = sockaddr_set(&tpl->subnet.ss, family, token, 0);
+	int ret = sockaddr_set(&tpl->subnet.addr, family, token, 0);
 	if (ret != KNOT_EOK) {
 		MODULE_ERR("invalid address '%s'.\n", token);
 		return KNOT_EMALF;

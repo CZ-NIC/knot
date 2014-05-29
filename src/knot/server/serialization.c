@@ -69,7 +69,7 @@ static int deserialize_rr(knot_rrset_t *rrset, const uint8_t *stream, uint32_t r
 	                         rdata_size - sizeof(uint32_t), ttl, NULL);
 }
 
-int changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
+int changeset_binary_size(const changeset_t *chgset, size_t *size)
 {
 	if (chgset == NULL || size == NULL) {
 		return KNOT_EINVAL;
@@ -92,8 +92,6 @@ int changeset_binary_size(const knot_changeset_t *chgset, size_t *size)
 	}
 
 	*size = soa_from_size + soa_to_size + remove_size + add_size;
-	/* + Changeset flags. */
-	*size += sizeof(uint32_t);
 
 	return KNOT_EOK;
 }

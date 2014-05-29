@@ -21,7 +21,6 @@
 
 #include "knot/zone/zonedb.h"
 #include "knot/server/server.h"
-#include "knot/server/zones.h"
 #include "libknot/common.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
@@ -40,13 +39,9 @@
 /*! \brief Discard zone in zone database. */
 static void discard_zone(zone_t *zone)
 {
-	/* @note Exclude DDNS. */
-	pthread_mutex_lock(&zone->ddns_lock);
-	zone->flags |= ZONE_DISCARDED;
-	pthread_mutex_unlock(&zone->ddns_lock);
 	/* Wait for current operations. */
 	synchronize_rcu();
-	zone_release(zone);
+	zone_free(&zone);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -57,7 +52,7 @@ knot_zonedb_t *knot_zonedb_new(uint32_t size)
 {
 	/* Create memory pool context. */
 	mm_ctx_t mm = {0};
-	mm_ctx_mempool(&mm, 4096);
+	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
 	knot_zonedb_t *db = mm.alloc(mm.ctx, sizeof(knot_zonedb_t));
 	if (db == NULL) {
 		return NULL;

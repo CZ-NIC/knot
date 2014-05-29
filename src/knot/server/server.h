@@ -38,10 +38,11 @@
 
 #include "common/evsched.h"
 #include "common/lists.h"
-#include "knot/server/xfr-handler.h"
+#include "common/fdset.h"
 #include "knot/server/dthreads.h"
 #include "knot/server/net.h"
 #include "knot/server/rrl.h"
+#include "knot/worker/pool.h"
 #include "knot/zone/zonedb.h"
 
 /* Forwad declarations. */
@@ -105,12 +106,13 @@ typedef struct server_t {
 	volatile unsigned state;
 
 	knot_zonedb_t *zone_db; /*!< Zone database. */
-	knot_opt_rr_t *opt_rr;  /*!< OPT RR with the server's EDNS0 info. */
 
 	/*! \brief I/O handlers. */
 	unsigned tu_size;
-	xfrhandler_t *xfr;
 	iohandler_t handler[IO_COUNT];
+
+	/*! \brief Background jobs. */
+	worker_pool_t *workers;
 
 	/*! \brief Event scheduler. */
 	dt_unit_t *iosched;
@@ -130,7 +132,7 @@ typedef struct server_t {
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL on invalid parameters.
  */
-int server_init(server_t *server);
+int server_init(server_t *server, int bg_workers);
 
 /*!
  * \brief Properly destroys the server structure.

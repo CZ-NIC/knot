@@ -25,7 +25,7 @@
 #include "libknot/dnssec/rrset-sign.h"
 #include "libknot/dnssec/sign.h"
 #include "libknot/rrset.h"
-#include "libknot/rdata/rrsig.h"
+#include "libknot/rrtype/rrsig.h"
 
 #define MAX_RR_WIREFORMAT_SIZE (64 * 1024)
 #define RRSIG_RDATA_SIGNER_OFFSET 18

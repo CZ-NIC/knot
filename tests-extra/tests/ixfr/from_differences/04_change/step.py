@@ -27,4 +27,4 @@ def run(i):
     i.check_rec("ch3", "MX", nordata="20 ch2.example.com.")
     i.check_rec("ch3", "MX", "40 ch2.example.com.")
 
-    i.test.end()
+    i.test.stop()

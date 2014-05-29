@@ -27,26 +27,26 @@
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-knot_zone_tree_t* knot_zone_tree_create()
+zone_tree_t* zone_tree_create()
 {
 	return hattrie_create();
 }
 
 /*----------------------------------------------------------------------------*/
 
-size_t knot_zone_tree_weight(const knot_zone_tree_t* tree)
+size_t zone_tree_weight(const zone_tree_t* tree)
 {
 	return hattrie_weight(tree);
 }
 
-int knot_zone_tree_is_empty(const knot_zone_tree_t *tree)
+int zone_tree_is_empty(const zone_tree_t *tree)
 {
-	return knot_zone_tree_weight(tree) == 0;
+	return zone_tree_weight(tree) == 0;
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_insert(knot_zone_tree_t *tree, zone_node_t *node)
+int zone_tree_insert(zone_tree_t *tree, zone_node_t *node)
 {
 	if (tree == NULL) {
 		return KNOT_EINVAL;
@@ -62,26 +62,26 @@ int knot_zone_tree_insert(knot_zone_tree_t *tree, zone_node_t *node)
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_find(knot_zone_tree_t *tree, const knot_dname_t *owner,
+int zone_tree_find(zone_tree_t *tree, const knot_dname_t *owner,
                           const zone_node_t **found)
 {
 	if (owner == NULL || found == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return knot_zone_tree_get(tree, owner, (zone_node_t **)found);
+	return zone_tree_get(tree, owner, (zone_node_t **)found);
 }
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
+int zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner,
                          zone_node_t **found)
 {
 	if (owner == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_ENONODE;
 	}
 
@@ -100,17 +100,17 @@ int knot_zone_tree_get(knot_zone_tree_t *tree, const knot_dname_t *owner,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
-                                        const knot_dname_t *owner,
-                                        const zone_node_t **found,
-                                        const zone_node_t **previous)
+int zone_tree_find_less_or_equal(zone_tree_t *tree,
+                                 const knot_dname_t *owner,
+                                 const zone_node_t **found,
+                                 const zone_node_t **previous)
 {
 	if (owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	zone_node_t *f = NULL, *p = NULL;
-	int ret = knot_zone_tree_get_less_or_equal(tree, owner, &f, &p);
+	int ret = zone_tree_get_less_or_equal(tree, owner, &f, &p);
 
 	*found = f;
 	*previous = p;
@@ -120,16 +120,16 @@ int knot_zone_tree_find_less_or_equal(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_get_less_or_equal(knot_zone_tree_t *tree,
-                                       const knot_dname_t *owner,
-                                       zone_node_t **found,
-                                       zone_node_t **previous)
+int zone_tree_get_less_or_equal(zone_tree_t *tree,
+                                const knot_dname_t *owner,
+                                zone_node_t **found,
+                                zone_node_t **previous)
 {
 	if (owner == NULL || found == NULL || previous == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_ENONODE;
 	}
 
@@ -192,15 +192,15 @@ dbg_zone_exec_detail(
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_remove(knot_zone_tree_t *tree,
-                            const knot_dname_t *owner,
-                          zone_node_t **removed)
+int zone_tree_remove(zone_tree_t *tree,
+                     const knot_dname_t *owner,
+                     zone_node_t **removed)
 {
 	if (owner == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_ENONODE;
 	}
 
@@ -221,15 +221,15 @@ int knot_zone_tree_remove(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
-                                 knot_zone_tree_apply_cb_t function,
-                                 void *data)
+int zone_tree_apply_inorder(zone_tree_t *tree,
+                            zone_tree_apply_cb_t function,
+                            void *data)
 {
 	if (function == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_EOK;
 	}
 
@@ -250,15 +250,15 @@ int knot_zone_tree_apply_inorder(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-int knot_zone_tree_apply(knot_zone_tree_t *tree,
-                         knot_zone_tree_apply_cb_t function,
-                         void *data)
+int zone_tree_apply(zone_tree_t *tree,
+                    zone_tree_apply_cb_t function,
+                    void *data)
 {
 	if (function == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	if (knot_zone_tree_is_empty(tree)) {
+	if (zone_tree_is_empty(tree)) {
 		return KNOT_EOK;
 	}
 
@@ -267,7 +267,7 @@ int knot_zone_tree_apply(knot_zone_tree_t *tree,
 
 /*----------------------------------------------------------------------------*/
 
-void knot_zone_tree_free(knot_zone_tree_t **tree)
+void zone_tree_free(zone_tree_t **tree)
 {
 	if (tree == NULL || *tree == NULL) {
 		return;
@@ -278,7 +278,7 @@ void knot_zone_tree_free(knot_zone_tree_t **tree)
 
 /*----------------------------------------------------------------------------*/
 
-static int knot_zone_tree_free_node(zone_node_t **node, void *data)
+static int zone_tree_free_node(zone_node_t **node, void *data)
 {
 	UNUSED(data);
 	if (node) {
@@ -287,12 +287,12 @@ static int knot_zone_tree_free_node(zone_node_t **node, void *data)
 	return KNOT_EOK;
 }
 
-void knot_zone_tree_deep_free(knot_zone_tree_t **tree)
+void zone_tree_deep_free(zone_tree_t **tree)
 {
 	if (tree == NULL || *tree == NULL) {
 		return;
 	}
 
-	knot_zone_tree_apply(*tree, knot_zone_tree_free_node, NULL);
-	knot_zone_tree_free(tree);
+	zone_tree_apply(*tree, zone_tree_free_node, NULL);
+	zone_tree_free(tree);
 }

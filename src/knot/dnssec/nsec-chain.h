@@ -30,7 +30,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/updates/changesets.h"
 #include "libknot/dnssec/bitmap.h"
 
@@ -38,9 +38,9 @@
  * \brief Parameters to be used in connect_nsec_nodes callback.
  */
 typedef struct {
-	uint32_t ttl;                      // TTL for NSEC(3) records
-	knot_changeset_t *changeset;       // Changeset for NSEC(3) changes
-	const knot_zone_contents_t *zone;  // Updated zone
+	uint32_t ttl;			// TTL for NSEC(3) records
+	changeset_t *changeset;		// Changeset for NSEC(3) changes
+	const zone_contents_t *zone;	// Updated zone
 } nsec_chain_iterate_data_t;
 
 /*!
@@ -83,7 +83,7 @@ inline static void bitmap_add_node_rrsets(bitmap_t *bitmap,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
+int knot_nsec_chain_iterate_create(zone_tree_t *nodes,
                                    chain_iterate_create_cb callback,
                                    nsec_chain_iterate_data_t *data);
 
@@ -96,7 +96,7 @@ int knot_nsec_chain_iterate_create(knot_zone_tree_t *nodes,
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_nsec_changeset_remove(const zone_node_t *n,
-                               knot_changeset_t *changeset);
+                               changeset_t *changeset);
 
 /*!
  * \brief Checks whether the node is empty or eventually contains only NSEC and
@@ -118,7 +118,7 @@ bool knot_nsec_empty_nsec_and_rrsigs_in_node(const zone_node_t *n);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int knot_nsec_create_chain(const knot_zone_contents_t *zone, uint32_t ttl,
-                           knot_changeset_t *changeset);
+int knot_nsec_create_chain(const zone_contents_t *zone, uint32_t ttl,
+                           changeset_t *changeset);
 
 #endif // _KNOT_DNSSEC_NSEC_CHAIN_FIX_H_

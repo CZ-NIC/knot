@@ -54,8 +54,6 @@ def date_offset(offset):
     delta = datetime.timedelta(seconds = offset)
     current_time = datetime.datetime.utcnow()
     future_time = current_time + delta
-    print("now ", datetime.datetime.strftime(current_time, "%Y%m%d%H%M%S"))
-    print("future ", datetime.datetime.strftime(future_time, "%Y%m%d%H%M%S"))
     return datetime.datetime.strftime(future_time, "%Y%m%d%H%M%S")
 
 t = Test()
@@ -122,7 +120,7 @@ check_zone(knot, False, True, "not published, active")
 
 check_log("Planned events")
 
-# key about to be published, reset other dates
+# key about to be published
 event_in = 3
 key_settime(key_file, Publish=date_offset(event_in), Activate=date_future, Inactive=None, Delete=None)
 knot.reload()
@@ -148,10 +146,10 @@ t.sleep(event_in)
 check_zone(knot, True, False, "to be inactivated - post")
 
 #key about to be deleted
-key_settime(key_file, Publish=date_past, Activate=date_past, Inactive=None, Delete=date_offset(event_in))
+key_settime(key_file, Publish=date_past, Activate=date_past, Inactive=date_past, Delete=date_offset(event_in))
 knot.reload()
 t.sleep(WAIT_SIGN)
-check_zone(knot, True, True, "to be deleted - pre")
+check_zone(knot, True, False, "to be deleted - pre")
 t.sleep(event_in)
 check_zone(knot, False, False, "to be deleted - post")
 

@@ -30,10 +30,10 @@
 #include "knot/ctl/process.h"
 #include "knot/ctl/remote.h"
 #include "knot/conf/conf.h"
-#include "knot/zone/zone-create.h"
+#include "knot/zone/zonefile.h"
+#include "knot/zone/zone-load.h"
 #include "knot/server/tcp-handler.h"
 #include "libknot/packet/wire.h"
-#include "knot/server/zone-load.h"
 #include "knot/zone/estimator.h"
 
 /*! \brief Controller flags. */
@@ -81,7 +81,7 @@ static int cmd_signzone(int argc, char *argv[], unsigned flags);
 knot_cmd_t knot_cmd_tbl[] = {
 	{&cmd_stop,       0, "stop",       "",       "\t\tStop server."},
 	{&cmd_reload,     0, "reload",     "",       "\tReload configuration and changed zones."},
-	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified)."},
+	{&cmd_refresh,    0, "refresh",    "[zone]", "\tRefresh slave zone (all if not specified). Flag '-f' forces retransfer."},
 	{&cmd_flush,      0, "flush",      "",       "\t\tFlush journal and update zone files."},
 	{&cmd_status,     0, "status",     "",       "\tCheck if server is running."},
 	{&cmd_zonestatus, 0, "zonestatus", "",       "\tShow status of configured zones."},
@@ -140,7 +140,7 @@ static int cmd_remote_reply(int c)
 	}
 
 	/* Read response packet. */
-	int n = tcp_recv(c, pkt->wire, pkt->max_size, NULL);
+	int n = tcp_recv_msg(c, pkt->wire, pkt->max_size, NULL);
 	if (n <= 0) {
 		dbg_server("remote: couldn't receive response = %s\n", knot_strerror(n));
 		knot_pkt_free(&pkt);
@@ -242,7 +242,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	char addr_str[SOCKADDR_STRLEN] = {0};
 	sockaddr_tostr(&r->addr, addr_str, sizeof(addr_str));
 
-	int s = net_connected_socket(SOCK_STREAM, &r->addr, &r->via);
+	int s = net_connected_socket(SOCK_STREAM, &r->addr, &r->via, 0);
 	if (s < 0) {
 		log_server_error("Couldn't connect to remote host '%s'.\n", addr_str);
 		knot_pkt_free(&pkt);
@@ -259,7 +259,7 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Send and free packet. */
-	int ret = tcp_send(s, pkt->wire, pkt->size);
+	int ret = tcp_send_msg(s, pkt->wire, pkt->size);
 	knot_pkt_free(&pkt);
 
 	/* Evaluate and wait for reply. */
@@ -270,8 +270,8 @@ static int cmd_remote(const char *cmd, uint16_t rrt, int argc, char *argv[])
 	}
 
 	/* Wait for reply. */
-	pfd.events = POLLIN;
-	while (poll(&pfd, 1, conf()->max_conn_reply) > 0) {
+	ret = KNOT_EOK;
+	while (ret == KNOT_EOK) {
 		ret = cmd_remote_reply(s);
 		if (ret != KNOT_EOK) {
 			if (ret != KNOT_ECONN) {
@@ -609,7 +609,11 @@ static int cmd_refresh(int argc, char *argv[], unsigned flags)
 {
 	UNUSED(flags);
 
-	return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
+	if (flags & F_FORCE) {
+		return cmd_remote("retransfer", KNOT_RRTYPE_NS, argc, argv);
+	} else {
+		return cmd_remote("refresh", KNOT_RRTYPE_NS, argc, argv);
+	}
 }
 
 static int cmd_flush(int argc, char *argv[], unsigned flags)
@@ -697,14 +701,14 @@ static int cmd_checkzone(int argc, char *argv[], unsigned flags)
 		}
 
 		/* Create zone loader context. */
-		zone_t *loaded_zone = load_zone_file(zone);
+		zone_contents_t *loaded_zone = zone_load_contents(zone);
 		if (loaded_zone == NULL) {
 			rc = 1;
 			continue;
 		}
 
-		log_zone_info("Zone %s OK.\n", zone->name);
-		zone_free(&loaded_zone);
+		log_zone_info("Zone '%s' OK.\n", zone->name);
+		zone_contents_deep_free(&loaded_zone);
 	}
 	hattrie_iter_free(z_iter);
 

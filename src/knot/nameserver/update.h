@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_UPDATE_H_
-#define _KNOT_UPDATE_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
@@ -40,6 +39,16 @@ struct query_data;
  */
 int update_answer(knot_pkt_t *pkt, struct query_data *qdata);
 
-#endif /* _KNOT_UPDATE_H_ */
+
+/*!
+ * \brief Processes serialized packet with DDNS. Function expects that the
+ *        query is already authenticated and TSIG signature is verified.
+ *
+ * \param pkt    Prepared response packet.
+ * \param qdata  Minimal query data context.
+ *
+ * \return KNOT_E*
+ */
+int update_process_query(knot_pkt_t *pkt, struct query_data *qdata);
 
 /*! @} */

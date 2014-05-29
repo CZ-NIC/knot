@@ -38,7 +38,7 @@
  *
  * \return KNOT_E*
  */
-int changeset_binary_size(const knot_changeset_t *chgset, size_t *size);
+int changeset_binary_size(const changeset_t *chgset, size_t *size);
 
 /*!
  * \brief Serializes one RRSet into given stream.

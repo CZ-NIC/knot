@@ -30,39 +30,13 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "knot/zone/zone.h"
 #include "libknot/packet/pkt.h"
-#include "knot/zone/zonedb.h"
-#include "common/lists.h"
-#include "common/sockaddr.h"
+#include "knot/zone/contents.h"
 
 struct query_data;
+struct answer_data;
 
 #define NOTIFY_TIMEOUT 3 /*!< Interval between NOTIFY retries. */
-
-/*!
- * \brief Creates a NOTIFY request message for SOA RR of the given zone.
- *
- * \param zone Zone for which a query should be created.
- * \param pkt Packet to be written.
- *
- * \retval KNOT_EOK
- * \retval KNOT_ESPACE
- * \retval KNOT_ERROR
- */
-int notify_create_request(const zone_t *zone, knot_pkt_t *pkt);
-
-/*!
- * \brief Processes NOTIFY response packet.
- *
- * \param notify Parsed response packet.
- * \param msgid Expected message ID.
- *
- * \retval KNOT_EOK if a valid response was created.
- * \retval KNOT_EINVAL on invalid parameters or packet.
- * \retval KNOT_ERROR on message ID mismatch
- */
-int notify_process_response(knot_pkt_t *notify, int msgid);
 
 /*!
  * \brief Answer IN class zone NOTIFY message (RFC1996).
@@ -70,7 +44,15 @@ int notify_process_response(knot_pkt_t *notify, int msgid);
  * \retval FAIL if it encountered an error.
  * \retval DONE if finished.
  */
-int internet_notify(knot_pkt_t *pkt, struct query_data *qdata);
+int notify_query(knot_pkt_t *pkt, struct query_data *qdata);
+
+/*!
+ * \brief Process an answer to the NOTIFY query.
+ *
+ * \retval FAIL if it encountered an error.
+ * \retval DONE if finished.
+ */
+int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
 
 #endif /* _KNOTD_NOTIFY_H_ */

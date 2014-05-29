@@ -20,13 +20,10 @@
 
 #include "knot/updates/ddns.h"
 #include "knot/updates/changesets.h"
-#include "knot/updates/xfr-in.h"
-#include "knot/zone/semantic-check.h"
-#include "common/debug.h"
 #include "libknot/packet/pkt.h"
 #include "libknot/common.h"
 #include "libknot/consts.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 #include "common/mempattern.h"
 #include "common/descriptor.h"
 #include "common/lists.h"
@@ -64,58 +61,30 @@ static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 	return ptrlist_add(l, rr_copy, NULL) != NULL ? KNOT_EOK : KNOT_ENOMEM;
 }
 
-/*!< \brief Checks whether RR type exists in the zone. */
-static int check_type_exist(const knot_zone_contents_t *zone,
-                            const knot_rrset_t *rrset, uint16_t *rcode)
-{
-	assert(zone != NULL);
-	assert(rrset != NULL);
-	assert(rcode != NULL);
-	assert(rrset->type != KNOT_RRTYPE_ANY);
-	assert(rrset->rclass == KNOT_CLASS_ANY);
-
-	const zone_node_t *node = knot_zone_contents_find_node(zone, rrset->owner);
-	if (node == NULL) {
-		*rcode = KNOT_RCODE_NXRRSET;
-		return KNOT_ENONODE;
-	} else if (!node_rrtype_exists(node, rrset->type)) {
-		*rcode = KNOT_RCODE_NXRRSET;
-		return KNOT_ENORRSET;
-	}
-
-	return KNOT_EOK;
-}
-
 /*!< \brief Checks whether RRSet exists in the zone. */
-static int check_rrset_exists(const knot_zone_contents_t *zone,
+static int check_rrset_exists(const zone_contents_t *zone,
                               const knot_rrset_t *rrset, uint16_t *rcode)
 {
-	assert(zone != NULL);
-	assert(rrset != NULL);
-	assert(rcode != NULL);
 	assert(rrset->type != KNOT_RRTYPE_ANY);
 
-	const zone_node_t *node = knot_zone_contents_find_node(zone, rrset->owner);
-	if (node == NULL) {
-		*rcode = KNOT_RCODE_NXRRSET;
-		return KNOT_EPREREQ;
-	} else if (!node_rrtype_exists(node, rrset->type)) {
+	const zone_node_t *node = zone_contents_find_node(zone, rrset->owner);
+	if (node == NULL || !node_rrtype_exists(node, rrset->type)) {
 		*rcode = KNOT_RCODE_NXRRSET;
 		return KNOT_EPREREQ;
 	} else {
 		knot_rrset_t found = node_rrset(node, rrset->type);
 		assert(!knot_rrset_empty(&found));
-		if (!knot_rrset_equal(&found, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
+		if (knot_rrset_equal(&found, rrset, KNOT_RRSET_COMPARE_WHOLE)) {
+			return KNOT_EOK;
+		} else {
 			*rcode = KNOT_RCODE_NXRRSET;
 			return KNOT_EPREREQ;
 		}
 	}
-
-	return KNOT_EOK;
 }
 
 /*!< \brief Checks whether RRSets in the list exist in the zone. */
-static int check_stored_rrsets(list_t *l, const knot_zone_contents_t *zone,
+static int check_stored_rrsets(list_t *l, const zone_contents_t *zone,
                                uint16_t *rcode)
 {
 	node_t *n;
@@ -131,67 +100,71 @@ static int check_stored_rrsets(list_t *l, const knot_zone_contents_t *zone,
 	return KNOT_EOK;
 }
 
-/*!< \brief Checks whether RR type is not in the zone. */
-static int check_type_not_exist(const knot_zone_contents_t *zone,
-                                const knot_rrset_t *rrset, uint16_t *rcode)
+/*!< \brief Checks whether node of given owner, with given type exists. */
+static bool check_type(const zone_contents_t *zone, const knot_rrset_t *rrset)
 {
-	assert(zone != NULL);
-	assert(rrset != NULL);
-	assert(rcode != NULL);
 	assert(rrset->type != KNOT_RRTYPE_ANY);
-	assert(rrset->rclass == KNOT_CLASS_NONE);
-
-	const zone_node_t *node = knot_zone_contents_find_node(zone, rrset->owner);
-	if (node == NULL) {
-		return KNOT_EOK;
-	} else if (!node_rrtype_exists(node, rrset->type)) {
-		return KNOT_EOK;
+	const zone_node_t *node = zone_contents_find_node(zone, rrset->owner);
+	if (node == NULL || !node_rrtype_exists(node, rrset->type)) {
+		return false;
 	}
 
-	*rcode = KNOT_RCODE_YXRRSET;
-	return KNOT_EPREREQ;
+	return true;
+}
+
+/*!< \brief Checks whether RR type exists in the zone. */
+static int check_type_exist(const zone_contents_t *zone,
+                            const knot_rrset_t *rrset, uint16_t *rcode)
+{
+	assert(rrset->rclass == KNOT_CLASS_ANY);
+	if (check_type(zone, rrset)) {
+		return KNOT_EOK;
+	} else {
+		*rcode = KNOT_RCODE_NXRRSET;
+		return KNOT_EPREREQ;
+	}
+}
+
+/*!< \brief Checks whether RR type is not in the zone. */
+static int check_type_not_exist(const zone_contents_t *zone,
+                                const knot_rrset_t *rrset, uint16_t *rcode)
+{
+	assert(rrset->rclass == KNOT_CLASS_NONE);
+	if (check_type(zone, rrset)) {
+		*rcode = KNOT_RCODE_YXRRSET;
+		return KNOT_EPREREQ;
+	} else {
+		return KNOT_EOK;
+	}
 }
 
 /*!< \brief Checks whether DNAME is in the zone. */
-static int check_in_use(const knot_zone_contents_t *zone,
+static int check_in_use(const zone_contents_t *zone,
                         const knot_dname_t *dname, uint16_t *rcode)
 {
-	assert(zone != NULL);
-	assert(dname != NULL);
-	assert(rcode != NULL);
-
-	const zone_node_t *node = knot_zone_contents_find_node(zone, dname);
-	if (node == NULL) {
+	const zone_node_t *node = zone_contents_find_node(zone, dname);
+	if (node == NULL || node->rrset_count == 0) {
 		*rcode = KNOT_RCODE_NXDOMAIN;
 		return KNOT_EPREREQ;
-	} else if (node->rrset_count == 0) {
-		*rcode = KNOT_RCODE_NXDOMAIN;
-		return KNOT_EPREREQ;
+	} else {
+		return KNOT_EOK;
 	}
-
-	return KNOT_EOK;
 }
 
 /*!< \brief Checks whether DNAME is not in the zone. */
-static int check_not_in_use(const knot_zone_contents_t *zone,
+static int check_not_in_use(const zone_contents_t *zone,
                             const knot_dname_t *dname, uint16_t *rcode)
 {
-	assert(zone != NULL);
-	assert(dname != NULL);
-	assert(rcode != NULL);
-
-	const zone_node_t *node = knot_zone_contents_find_node(zone, dname);
-	if (node == NULL) {
+	const zone_node_t *node = zone_contents_find_node(zone, dname);
+	if (node == NULL || node->rrset_count == 0) {
 		return KNOT_EOK;
-	} else if (node->rrset_count == 0) {
-		return KNOT_EOK;
+	} else {
+		*rcode = KNOT_RCODE_YXDOMAIN;
+		return KNOT_EPREREQ;
 	}
-
-	*rcode = KNOT_RCODE_YXDOMAIN;
-	return KNOT_EPREREQ;
 }
 
-/*!< \brief Returns true if rrset has 0 data or RDATA of size 0 (we need TTL). */
+/*!< \brief Returns true if rrset has 0 data or RDATA of size 0 (we need TTL).*/
 static bool rrset_empty(const knot_rrset_t *rrset)
 {
 	uint16_t rr_count = rrset->rrs.rr_count;
@@ -207,10 +180,11 @@ static bool rrset_empty(const knot_rrset_t *rrset)
 
 /*!< \brief Checks prereq for given packet RR. */
 static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
-                          const knot_zone_contents_t *zone, uint16_t *rcode,
+                          const zone_contents_t *zone, uint16_t *rcode,
                           list_t *rrset_list)
 {
 	if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0) {
+		*rcode = KNOT_RCODE_FORMERR;
 		return KNOT_EMALF;
 	}
 
@@ -221,6 +195,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 
 	if (rrset->rclass == KNOT_CLASS_ANY) {
 		if (!rrset_empty(rrset)) {
+			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
 		}
 		if (rrset->type == KNOT_RRTYPE_ANY) {
@@ -230,6 +205,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		}
 	} else if (rrset->rclass == KNOT_CLASS_NONE) {
 		if (!rrset_empty(rrset)) {
+			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
 		}
 		if (rrset->type == KNOT_RRTYPE_ANY) {
@@ -239,8 +215,13 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 		}
 	} else if (rrset->rclass == qclass) {
 		// Store RRs for full check into list
-		return add_rr_to_list(rrset_list, rrset);
+		int ret = add_rr_to_list(rrset_list, rrset);
+		if (ret != KNOT_EOK) {
+			*rcode = KNOT_RCODE_SERVFAIL;
+		}
+		return ret;
 	} else {
+		*rcode = KNOT_RCODE_FORMERR;
 		return KNOT_EMALF;
 	}
 }
@@ -275,24 +256,24 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 	};
 
 /*!< \brief Checks whether RR was already removed. */
-static bool removed_rr(const knot_changeset_t *changeset, const knot_rrset_t *rr)
+static bool removed_rr(const changeset_t *changeset, const knot_rrset_t *rr)
 {
 	LIST_MATCH(changeset->remove,
 	           knot_rrset_equal(rr, list_rr, KNOT_RRSET_COMPARE_WHOLE));
 }
 
 /*!< \brief Checks whether any CNAME RR under dname was added. */
-static bool cname_added(const knot_changeset_t *changeset, const knot_dname_t *d)
+static bool cname_added(const changeset_t *changeset, const knot_dname_t *d)
 {
 	knot_rrset_t mock_cname;
 	knot_rrset_init(&mock_cname, (knot_dname_t *)d,
 	                KNOT_RRTYPE_CNAME, KNOT_CLASS_IN);
-	LIST_MATCH(changeset->add,
-	           knot_rrset_equal(&mock_cname, list_rr, KNOT_RRSET_COMPARE_HEADER));
+	LIST_MATCH(changeset->add, knot_rrset_equal(&mock_cname, list_rr,
+	           KNOT_RRSET_COMPARE_HEADER));
 }
 
 /*!< \brief Checks whether any RR under given name was added. */
-static bool name_added(const knot_changeset_t *changeset, const knot_dname_t *d)
+static bool name_added(const changeset_t *changeset, const knot_dname_t *d)
 {
 	LIST_MATCH(changeset->add, knot_dname_is_equal(d, list_rr->owner));
 }
@@ -300,13 +281,15 @@ static bool name_added(const knot_changeset_t *changeset, const knot_dname_t *d)
 /*!< \brief Removes RR from list, full equality check. */
 static void remove_rr_from_list(list_t *l, const knot_rrset_t *rr)
 {
-	LIST_DEL_MATCH(*l, knot_rrset_equal(list_rr, rr, KNOT_RRSET_COMPARE_WHOLE));
+	LIST_DEL_MATCH(*l, knot_rrset_equal(list_rr, rr,
+	                                    KNOT_RRSET_COMPARE_WHOLE));
 }
 
 /*!< \brief Removes RR from list, owner and type check. */
 static void remove_header_from_list(list_t *l, const knot_rrset_t *rr)
 {
-	LIST_DEL_MATCH(*l, knot_rrset_equal(list_rr, rr, KNOT_RRSET_COMPARE_HEADER));
+	LIST_DEL_MATCH(*l, knot_rrset_equal(list_rr, rr,
+	                                    KNOT_RRSET_COMPARE_HEADER));
 }
 
 /*!< \brief Removes RR from list, owner check. */
@@ -356,7 +339,7 @@ static bool should_replace(const knot_rrset_t *chg_rrset,
 
 /*!< \brief Returns true if node will be empty after update application. */
 static bool node_empty(const zone_node_t *node, knot_dname_t *owner,
-                       const knot_changeset_t *changeset)
+                       const changeset_t *changeset)
 {
 	if (node == NULL && name_added(changeset, owner)) {
 		// Node created in update.
@@ -409,7 +392,7 @@ static bool node_contains_rr(const zone_node_t *node,
 /*!< \brief Returns true if CNAME is in this node. */
 static bool adding_to_cname(const knot_dname_t *owner,
                             const zone_node_t *node,
-                            knot_changeset_t *changeset)
+                            changeset_t *changeset)
 {
 	if (cname_added(changeset, owner)) {
 		// Added a CNAME in this update.
@@ -451,7 +434,7 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 /* ---------------------- changeset manipulation ---------------------------- */
 
 /*!< \brief Checks whether record should be added or replaced. */
-static bool skip_record_addition(knot_changeset_t *changeset,
+static bool skip_record_addition(changeset_t *changeset,
                                  knot_rrset_t *rr)
 {
 	knot_rr_ln_t *rr_node = NULL;
@@ -473,7 +456,7 @@ static bool skip_record_addition(knot_changeset_t *changeset,
 }
 
 /*!< \brief Adds RR into add section of changeset if it is deemed worthy. */
-static int add_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
+static int add_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
                             int *apex_ns_rem)
 {
 	knot_rrset_t *rr_copy = knot_rrset_copy(rr, NULL);
@@ -492,11 +475,11 @@ static int add_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
 		(*apex_ns_rem)--;
 	}
 
-	return knot_changeset_add_rrset(changeset, rr_copy, KNOT_CHANGESET_ADD);
+	return changeset_add_rrset(changeset, rr_copy, CHANGESET_ADD);
 }
 
 /*!< \brief Checks whether record should be removed (duplicate check). */
-static bool skip_record_removal(knot_changeset_t *changeset, knot_rrset_t *rr)
+static bool skip_record_removal(changeset_t *changeset, knot_rrset_t *rr)
 {
 	knot_rr_ln_t *rr_node = NULL;
 	WALK_LIST(rr_node, changeset->remove) {
@@ -512,7 +495,7 @@ static bool skip_record_removal(knot_changeset_t *changeset, knot_rrset_t *rr)
 }
 
 /*!< \brief Adds RR into remove section of changeset if it is deemed worthy. */
-static int rem_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
+static int rem_rr_to_chgset(const knot_rrset_t *rr, changeset_t *changeset,
                             int *apex_ns_rem)
 {
 	knot_rrset_t *rr_copy = knot_rrset_copy(rr, NULL);
@@ -531,12 +514,12 @@ static int rem_rr_to_chgset(const knot_rrset_t *rr, knot_changeset_t *changeset,
 		(*apex_ns_rem)++;
 	}
 
-	return knot_changeset_add_rrset(changeset, rr_copy, KNOT_CHANGESET_REMOVE);
+	return changeset_add_rrset(changeset, rr_copy, CHANGESET_REMOVE);
 }
 
 /*!< \brief Adds all RRs from RRSet into remove section of changeset. */
 static int rem_rrset_to_chgset(const knot_rrset_t *rrset,
-                               knot_changeset_t *changeset,
+                               changeset_t *changeset,
                                int *apex_ns_rem)
 {
 	knot_rrset_t rr;
@@ -564,7 +547,7 @@ static int rem_rrset_to_chgset(const knot_rrset_t *rrset,
 /*!< \brief Processes CNAME addition (replace or ignore) */
 static int process_add_cname(const zone_node_t *node,
                              const knot_rrset_t *rr,
-                             knot_changeset_t *changeset)
+                             changeset_t *changeset)
 {
 	knot_rrset_t cname = node_rrset(node, KNOT_RRTYPE_CNAME);
 	if (!knot_rrset_empty(&cname)) {
@@ -591,7 +574,7 @@ static int process_add_cname(const zone_node_t *node,
 /*!< \brief Processes CNAME addition (ignore when not removed, or non-apex) */
 static int process_add_nsec3param(const zone_node_t *node,
                                   const knot_rrset_t *rr,
-                                  knot_changeset_t *changeset)
+                                  changeset_t *changeset)
 {
 	if (node == NULL || !node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
 		// Ignore non-apex additions
@@ -607,8 +590,8 @@ static int process_add_nsec3param(const zone_node_t *node,
 	}
 
 	char *owner = knot_dname_to_str(rr->owner);
-	log_server_warning("Refusing to add NSEC3PARAM owned "
-	                   "by %s. NSEC3PARAM already present, remove it first.\n",
+	log_server_warning("Refusing to add NSEC3PARAM owned by %s. "
+	                   "NSEC3PARAM already present, remove it first.\n",
 	                   owner);
 	free(owner);
 
@@ -621,7 +604,7 @@ static int process_add_nsec3param(const zone_node_t *node,
  */
 static int process_add_soa(const zone_node_t *node,
                            const knot_rrset_t *rr,
-                           knot_changeset_t *changeset)
+                           changeset_t *changeset)
 {
 	if (node == NULL || !node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
 		// Adding SOA to non-apex node, ignore
@@ -645,14 +628,15 @@ static int process_add_soa(const zone_node_t *node,
 		return KNOT_ENOMEM;
 	}
 
-	knot_changeset_add_soa(changeset, soa_cpy, KNOT_CHANGESET_ADD);
+	changeset->soa_to = soa_cpy;
+
 	return KNOT_EOK;
 }
 
 /*!< \brief Adds normal RR, ignores when CNAME exists in node. */
 static int process_add_normal(const zone_node_t *node,
                               const knot_rrset_t *rr,
-                              knot_changeset_t *changeset,
+                              changeset_t *changeset,
                               int *apex_ns_rem)
 {
 	if (adding_to_cname(rr->owner, node, changeset)) {
@@ -675,7 +659,7 @@ static int process_add_normal(const zone_node_t *node,
 /*!< \brief Decides what to do with RR addition. */
 static int process_add(const knot_rrset_t *rr,
                        const zone_node_t *node,
-                       knot_changeset_t *changeset,
+                       changeset_t *changeset,
                        int *apex_ns_rem)
 {
 	switch(rr->type) {
@@ -695,13 +679,14 @@ static int process_add(const knot_rrset_t *rr,
 /*!< \brief Removes single RR from zone. */
 static int process_rem_rr(const knot_rrset_t *rr,
                           const zone_node_t *node,
-                          knot_changeset_t *changeset,
+                          changeset_t *changeset,
                           int *apex_ns_rem)
 {
 	const bool apex_ns = node_rrtype_exists(node, KNOT_RRTYPE_SOA) &&
 	                     rr->type == KNOT_RRTYPE_NS;
 	if (apex_ns) {
-		const knot_rdataset_t *ns_rrs = node_rdataset(node, KNOT_RRTYPE_NS);
+		const knot_rdataset_t *ns_rrs =
+			node_rdataset(node, KNOT_RRTYPE_NS);
 		if (ns_rrs == NULL) {
 			// Zone without apex NS.
 			return KNOT_EOK;
@@ -726,7 +711,8 @@ static int process_rem_rr(const knot_rrset_t *rr,
 	}
 
 	knot_rrset_t intersection;
-	knot_rrset_init(&intersection, to_modify.owner, to_modify.type, KNOT_CLASS_IN);
+	knot_rrset_init(&intersection, to_modify.owner, to_modify.type,
+	                KNOT_CLASS_IN);
 	int ret = knot_rdataset_intersect(&to_modify.rrs, &rr->rrs,
 	                                  &intersection.rrs, NULL);
 	if (ret != KNOT_EOK) {
@@ -747,7 +733,7 @@ static int process_rem_rr(const knot_rrset_t *rr,
 /*!< \brief Removes RRSet from zone. */
 static int process_rem_rrset(const knot_rrset_t *rrset,
                              const zone_node_t *node,
-                             knot_changeset_t *changeset)
+                             changeset_t *changeset)
 {
 	if (rrset->type == KNOT_RRTYPE_SOA ||
 	    knot_rrtype_is_ddns_forbidden(rrset->type)) {
@@ -761,7 +747,7 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 		return KNOT_EOK;
 	}
 
-	// Remove all previously added RRs with this owner and type from changeset
+	// Remove all previously added RRs with this owner and type from chgset
 	remove_header_from_list(&changeset->add, rrset);
 	if (node == NULL) {
 		return KNOT_EOK;
@@ -778,7 +764,7 @@ static int process_rem_rrset(const knot_rrset_t *rrset,
 
 /*!< \brief Removes node from zone. */
 static int process_rem_node(const knot_rrset_t *rr,
-                            const zone_node_t *node, knot_changeset_t *changeset)
+                            const zone_node_t *node, changeset_t *changeset)
 {
 	// Remove all previously added records with given owner from changeset
 	remove_owner_from_list(&changeset->add, rr->owner);
@@ -802,7 +788,7 @@ static int process_rem_node(const knot_rrset_t *rr,
 /*!< \brief Decides what to with removal. */
 static int process_remove(const knot_rrset_t *rr,
                           const zone_node_t *node,
-                          knot_changeset_t *changeset,
+                          changeset_t *changeset,
                           int *apex_ns_rem)
 {
 	if (is_rr_removal(rr)) {
@@ -821,12 +807,12 @@ static int process_remove(const knot_rrset_t *rr,
 /*!< \brief Checks whether addition has not violated DNAME rules. */
 static bool sem_check(const knot_rrset_t *rr,
                       const zone_node_t *zone_node,
-                      const knot_zone_contents_t *zone)
+                      const zone_contents_t *zone)
 {
 	// Check that we have not added DNAME child
 	const knot_dname_t *parent_dname = knot_wire_next_label(rr->owner, NULL);
-	const zone_node_t *parent =
-		knot_zone_contents_find_node(zone, parent_dname);
+	const zone_node_t *parent = zone_contents_find_node(zone, parent_dname);
+
 	if (parent == NULL) {
 		return true;
 	}
@@ -856,8 +842,8 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 	/* Accept both subdomain and dname match. */
 	const knot_dname_t *owner = rrset->owner;
 	const knot_dname_t *qname = knot_pkt_qname(query);
-	int is_sub = knot_dname_is_sub(owner, qname);
-	if (!is_sub && knot_dname_cmp(owner, qname) != 0) {
+	const bool is_sub = knot_dname_is_sub(owner, qname);
+	if (!is_sub && !knot_dname_is_equal(owner, qname)) {
 		*rcode = KNOT_RCODE_NOTZONE;
 		return KNOT_EOUTOFZONE;
 	}
@@ -874,15 +860,15 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 			return KNOT_EMALF;
 		}
 	} else if (rrset->rclass == KNOT_CLASS_ANY) {
-		if (!rrset_empty(rrset)
-		    || (knot_rrtype_is_metatype(rrset->type)
-		        && rrset->type != KNOT_RRTYPE_ANY)) {
+		if (!rrset_empty(rrset) ||
+		    (knot_rrtype_is_metatype(rrset->type) &&
+		     rrset->type != KNOT_RRTYPE_ANY)) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
 		}
 	} else if (rrset->rclass == KNOT_CLASS_NONE) {
-		if (knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0
-		    || knot_rrtype_is_metatype(rrset->type)) {
+		if ((knot_rdata_ttl(knot_rdataset_at(&rrset->rrs, 0)) != 0) ||
+		    knot_rrtype_is_metatype(rrset->type)) {
 			*rcode = KNOT_RCODE_FORMERR;
 			return KNOT_EMALF;
 		}
@@ -895,10 +881,11 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 }
 
 /*!< \brief Checks RR and decides what to do with it. */
-static int process_rr(const knot_rrset_t *rr, const knot_zone_contents_t *zone,
-                      knot_changeset_t *changeset, int *apex_ns_rem)
+static int process_rr(const knot_rrset_t *rr, const zone_contents_t *zone,
+                      changeset_t *changeset, int *apex_ns_rem)
 {
-	const zone_node_t *node = knot_zone_contents_find_node(zone, rr->owner);
+	const zone_node_t *node = zone_contents_find_node(zone, rr->owner);
+
 	if (is_addition(rr)) {
 		int ret = process_add(rr, node, changeset, apex_ns_rem);
 		if (ret == KNOT_EOK) {
@@ -928,8 +915,8 @@ static uint16_t ret_to_rcode(int ret)
 
 /* ---------------------------------- API ----------------------------------- */
 
-int knot_ddns_process_prereqs(const knot_pkt_t *query, const knot_zone_contents_t *zone,
-                              uint16_t *rcode)
+int ddns_process_prereqs(const knot_pkt_t *query, const zone_contents_t *zone,
+                         uint16_t *rcode)
 {
 	if (query == NULL || rcode == NULL || zone == NULL) {
 		return KNOT_EINVAL;
@@ -956,35 +943,37 @@ int knot_ddns_process_prereqs(const knot_pkt_t *query, const knot_zone_contents_
 	return ret;
 }
 
-int knot_ddns_process_update(const knot_zone_contents_t *zone,
-                             const knot_pkt_t *query,
-                             knot_changeset_t *changeset,
-                             uint16_t *rcode, uint32_t new_serial)
+int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
+                        changeset_t *changeset, uint16_t *rcode)
 {
 	if (zone == NULL || query == NULL || changeset == NULL || rcode == NULL) {
+		*rcode = ret_to_rcode(KNOT_EINVAL);
 		return KNOT_EINVAL;
 	}
 
 	/* Copy base SOA RR. */
-	knot_rrset_t *soa_begin = node_create_rrset(zone->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_begin =
+		node_create_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
 	if (soa_begin == NULL) {
+		*rcode = ret_to_rcode(KNOT_ENOMEM);
 		return KNOT_ENOMEM;
 	}
-	knot_changeset_add_soa(changeset, soa_begin, KNOT_CHANGESET_REMOVE);
 
-	int64_t sn_old = knot_zone_serial(zone);
+	changeset->soa_from = soa_begin;
+	int64_t sn_old = zone_contents_serial(zone->contents);
 
 	/* Process all RRs the Authority (Update) section. */
 
-	dbg_ddns("Processing UPDATE section.\n");
 	int apex_ns_rem = 0;
-	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
+	const knot_pktsection_t *authority =
+	                knot_pkt_section(query, KNOT_AUTHORITY);
 	for (uint16_t i = 0; i < authority->count; ++i) {
 		const knot_rrset_t *rr = &authority->rr[i];
 
 		/* Check if the entry is correct. */
 		int ret = check_update(rr, query, rcode);
 		if (ret != KNOT_EOK) {
+			assert(*rcode != KNOT_RCODE_NOERROR);
 			return ret;
 		}
 
@@ -992,7 +981,7 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 			continue;
 		}
 
-		ret = process_rr(rr, zone, changeset, &apex_ns_rem);
+		ret = process_rr(rr, zone->contents, changeset, &apex_ns_rem);
 		if (ret != KNOT_EOK) {
 			*rcode = ret_to_rcode(ret);
 			return ret;
@@ -1001,19 +990,25 @@ int knot_ddns_process_update(const knot_zone_contents_t *zone,
 
 	if (changeset->soa_to == NULL) {
 		// No SOA in the update, create according to current policy
-		if (knot_changeset_is_empty(changeset)) {
+		if (changeset_is_empty(changeset)) {
+			*rcode = KNOT_RCODE_NOERROR;
 			// No change, no new SOA
 			return KNOT_EOK;
 		}
 
 		knot_rrset_t *soa_cpy = knot_rrset_copy(soa_begin, NULL);
 		if (soa_cpy == NULL) {
-			*rcode = KNOT_RCODE_SERVFAIL;
+			*rcode = ret_to_rcode(KNOT_ENOMEM);
 			return KNOT_ENOMEM;
 		}
+
+		uint32_t new_serial =
+			zone_contents_next_serial(zone->contents,
+		                                  zone->conf->serial_policy);
 		knot_soa_serial_set(&soa_cpy->rrs, new_serial);
-		knot_changeset_add_soa(changeset, soa_cpy, KNOT_CHANGESET_ADD);
+		changeset->soa_to = soa_cpy;
 	}
 
+	*rcode = KNOT_RCODE_NOERROR;
 	return KNOT_EOK;
 }

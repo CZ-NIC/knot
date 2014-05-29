@@ -8,7 +8,7 @@
 #include "knot/nameserver/ixfr.h"
 #include "knot/nameserver/update.h"
 #include "knot/nameserver/nsec_proofs.h"
-#include "knot/server/notify.h"
+#include "knot/nameserver/notify.h"
 #include "knot/server/server.h"
 #include "knot/server/rrl.h"
 #include "knot/updates/acl.h"
@@ -56,7 +56,7 @@ int process_query_begin(knot_process_t *ctx, void *module_param)
 	/* Initialize context. */
 	assert(ctx);
 	ctx->type = NS_PROC_QUERY_ID;
-	ctx->data = ctx->mm.alloc(ctx->mm.ctx, sizeof(struct query_data));
+	ctx->data = mm_alloc(&ctx->mm, sizeof(struct query_data));
 
 	/* Initialize persistent data. */
 	query_data_init(ctx, module_param);
@@ -194,7 +194,7 @@ finish:
 		next_state = ratelimit_apply(next_state, pkt, ctx);
 	}
 
-	/* Before query processing code. */
+	/* After query processing code. */
 	if (plan) {
 		WALK_LIST(step, plan->stage[QPLAN_END]) {
 			next_state = step->process(next_state, pkt, qdata, step->ctx);
@@ -234,10 +234,10 @@ int process_query_err(knot_pkt_t *pkt, knot_process_t *ctx)
 	return NS_PROC_DONE;
 }
 
-bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
+bool process_query_acl_check(list_t *acl, struct query_data *qdata)
 {
 	knot_pkt_t *query = qdata->query;
-	struct sockaddr_storage *query_source = qdata->param->query_source;
+	const struct sockaddr_storage *query_source = qdata->param->remote;
 	const knot_dname_t *key_name = NULL;
 	knot_tsig_algorithm_t key_alg = KNOT_TSIG_ALG_NULL;
 
@@ -251,7 +251,7 @@ bool process_query_acl_check(acl_t *acl, struct query_data *qdata)
 		key_name = query->tsig_rr->owner;
 		key_alg = tsig_rdata_alg(query->tsig_rr);
 	}
-	acl_match_t *match = acl_find(acl, query_source, key_name);
+	conf_iface_t *match = acl_find(acl, query_source, key_name);
 
 	/* Did not authenticate, no fitting rule found. */
 	if (match == NULL || (match->key && match->key->algorithm != key_alg)) {
@@ -318,6 +318,11 @@ int process_query_verify(struct query_data *qdata)
 
 int process_query_sign_response(knot_pkt_t *pkt, struct query_data *qdata)
 {
+	if (pkt->size == 0) {
+		// Nothing to sign.
+		return KNOT_EOK;
+	}
+
 	int ret = KNOT_EOK;
 	knot_pkt_t *query = qdata->query;
 	knot_sign_context_t *ctx = &qdata->sign;
@@ -379,16 +384,16 @@ static int query_internet(knot_pkt_t *pkt, knot_process_t *ctx)
 
 	switch(data->packet_type) {
 	case KNOT_QUERY_NORMAL:
-		next_state = internet_answer(pkt, data);
+		next_state = internet_query(pkt, data);
 		break;
 	case KNOT_QUERY_NOTIFY:
-		next_state = internet_notify(pkt, data);
+		next_state = notify_query(pkt, data);
 		break;
 	case KNOT_QUERY_AXFR:
-		next_state = axfr_answer(pkt, data);
+		next_state = axfr_query_process(pkt, data);
 		break;
 	case KNOT_QUERY_IXFR:
-		next_state = ixfr_answer(pkt, data);
+		next_state = ixfr_query(pkt, data);
 		break;
 	case KNOT_QUERY_UPDATE:
 		next_state = update_answer(pkt, data);
@@ -421,7 +426,7 @@ static int ratelimit_apply(int state, knot_pkt_t *pkt, knot_process_t *ctx)
 	if (!EMPTY_LIST(qdata->wildcards)) {
 		rrl_rq.flags = RRL_WILDCARD;
 	}
-	if (rrl_query(server->rrl, qdata->param->query_source,
+	if (rrl_query(server->rrl, qdata->param->remote,
 	              &rrl_rq, qdata->zone) == KNOT_EOK) {
 		/* Rate limiting not applied. */
 		return state;
@@ -493,7 +498,12 @@ static const zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zo
 		 */
 	}
 	if (zone == NULL) {
-		zone = knot_zonedb_find_suffix(zonedb, qname);
+		if (knot_pkt_type(query) != KNOT_QUERY_UPDATE) {
+			zone = knot_zonedb_find_suffix(zonedb, qname);
+		} else {
+			// Direct matches only for DDNS.
+			zone = knot_zonedb_find(zonedb, qname);
+		}
 	}
 
 	return zone;
@@ -539,31 +549,42 @@ static int prepare_answer(const knot_pkt_t *query, knot_pkt_t *resp, knot_proces
 	}
 
 	/* Check if EDNS is supported. */
-	if (!knot_pkt_have_edns(query)) {
+	if (!knot_pkt_has_edns(query)) {
 		return KNOT_EOK;
 	}
-	ret = knot_pkt_add_opt(resp, server->opt_rr, knot_pkt_have_nsid(query));
+
+	/* Check EDNS version and return BADVERS if not supported. */
+	if (knot_edns_get_version(query->opt_rr) != KNOT_EDNS_VERSION) {
+		dbg_ns("%s: unsupported EDNS version required.\n", __func__);
+		qdata->rcode_ext = KNOT_EDNS_RCODE_BADVERS;
+	}
+
+	/* Reserve space for OPT RR in the packet. Using size of the server's
+	 * OPT RR, because that's the maximum size (RDATA may or may not be
+	 * used).
+	 */
+	uint16_t reserve_size = KNOT_EDNS_MIN_SIZE;
+	if (knot_edns_has_nsid(query->opt_rr) && conf()->nsid_len > 0) {
+		reserve_size += KNOT_EDNS_OPTION_HDRLEN + conf()->nsid_len;
+	}
+	ret = knot_pkt_reserve(resp, reserve_size);
 	if (ret != KNOT_EOK) {
-		dbg_ns("%s: can't add OPT RR (%d)\n", __func__, ret);
+		dbg_ns("%s: can't reserve OPT RR in response (%d)\n", __func__, ret);
 		return ret;
 	}
 
-	/* Copy DO bit if set (DNSSEC requested). */
-	if (knot_pkt_have_dnssec(query)) {
-		dbg_ns("%s: setting DO=1 in OPT RR\n", __func__);
-		knot_edns_set_do(&resp->opt_rr);
-	}
-
-	/* Set minimal supported size from EDNS(0). */
-	uint16_t client_maxlen = knot_edns_get_payload(&query->opt_rr);
-	uint16_t server_maxlen = knot_edns_get_payload(&resp->opt_rr);
-	resp->opt_rr.payload = MIN(client_maxlen, server_maxlen);
+	/* Get minimal supported size from EDNS(0). */
+	uint16_t client_maxlen = knot_edns_get_payload(query->opt_rr);
+	uint16_t server_maxlen = conf()->max_udp_payload;
+	uint16_t min_edns = MIN(client_maxlen, server_maxlen);
 
 	/* Update packet size limit. */
 	if (qdata->param->proc_flags & NS_QUERY_LIMIT_SIZE) {
-		resp->max_size =  MAX(resp->max_size, resp->opt_rr.payload);
+		resp->max_size =  MAX(resp->max_size, min_edns);
 		dbg_ns("%s: packet size limit <= %zuB\n", __func__, resp->max_size);
 	}
+
+	/* In the response, always advertise server's maximum UDP payload. */
 
 	return ret;
 }

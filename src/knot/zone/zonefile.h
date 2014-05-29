@@ -27,6 +27,7 @@
 #ifndef _KNOT_ZONELOAD_H_
 #define _KNOT_ZONELOAD_H_
 
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "knot/zone/zone.h"
@@ -36,7 +37,7 @@
  * \brief Zone creator structure.
  */
 typedef struct zcreator {
-	knot_zone_contents_t *z;  /*!< Created zone. */
+	zone_contents_t *z;  /*!< Created zone. */
 	bool master;              /*!< Master flag. True if server is a primary
 	                               master for the zone. */
 	int ret;                  /*!< Return value. */
@@ -58,12 +59,15 @@ typedef struct zloader_t {
  * \brief Open zone file for loading.
  *
  * \param zl Output zone loader.
- * \param conf Zone configuration.
+ * \param source Source file name.
+ * \param origin Zone origin.
+ * \param semantic_checks Perform semantic checks.
  *
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
-int zonefile_open(zloader_t *loader, const conf_zone_t *conf);
+int zonefile_open(zloader_t *loader, const char *source, const char *origin,
+		  bool semantic_checks);
 
 /*!
  * \brief Loads zone from a zone file.
@@ -73,7 +77,16 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf);
  * \retval Loaded zone contents on success.
  * \retval NULL otherwise.
  */
-knot_zone_contents_t *zonefile_load(zloader_t *loader);
+zone_contents_t *zonefile_load(zloader_t *loader);
+
+/*! \brief Return zone file mtime. */
+time_t zonefile_mtime(const char *path);
+
+/*!
+ * \brief Write zone contents to zone file.
+ */
+int zonefile_write(const char *path, zone_contents_t *zone,
+                   const struct sockaddr_storage *from);
 
 /*!
  * \brief Close zone file loader.

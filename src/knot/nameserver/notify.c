@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-#include "knot/server/notify.h"
+#include "knot/nameserver/notify.h"
 
 #include "libknot/dname.h"
 #include "common/descriptor.h"
@@ -26,7 +26,6 @@
 #include "knot/zone/zonedb.h"
 #include "libknot/common.h"
 #include "libknot/packet/wire.h"
-#include "knot/server/zones.h"
 #include "knot/updates/acl.h"
 #include "common/evsched.h"
 #include "knot/other/debug.h"
@@ -34,58 +33,32 @@
 #include "knot/nameserver/internet.h"
 #include "common/debug.h"
 #include "knot/nameserver/process_query.h"
+#include "knot/nameserver/tsig_ctx.h"
+#include "knot/nameserver/process_answer.h"
 #include "libknot/dnssec/random.h"
-#include "libknot/rdata/soa.h"
+#include "libknot/rrtype/soa.h"
 
 /*----------------------------------------------------------------------------*/
 /* API functions                                                              */
 /*----------------------------------------------------------------------------*/
 
-int notify_create_request(const zone_t *zone, knot_pkt_t *pkt)
-{
-	knot_zone_contents_t *contents = zone->contents;
-	if (contents == NULL) {
-		return KNOT_EINVAL; /* Not valid for stub zones. */
-	}
-
-	knot_wire_set_aa(pkt->wire);
-	knot_wire_set_opcode(pkt->wire, KNOT_OPCODE_NOTIFY);
-
-	knot_rrset_t soa_rr = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
-	assert(!knot_rrset_empty(&soa_rr));
-	return knot_pkt_put_question(pkt, soa_rr.owner, soa_rr.rclass, soa_rr.type);
-}
-
-int notify_process_response(knot_pkt_t *notify, int msgid)
-{
-	if (!notify) {
-		return KNOT_EINVAL;
-	}
-
-	/* Match ID against awaited. */
-	if (knot_wire_get_id(notify->wire) != msgid) {
-		return KNOT_ERROR;
-	}
-
-	return KNOT_EOK;
-}
-
 /* NOTIFY-specific logging (internal, expects 'qdata' variable set). */
 #define NOTIFY_LOG(severity, msg...) \
 	QUERY_LOG(severity, qdata, "NOTIFY", msg)
 
-int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
+int notify_query(knot_pkt_t *pkt, struct query_data *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return NS_PROC_FAIL;
 	}
 
 	/* RFC1996 require SOA question. */
+	zone_t *zone = (zone_t *)qdata->zone;
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 
 	/* Check valid zone, transaction security. */
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
-	NS_NEED_AUTH(qdata->zone->notify_in, qdata);
+	NS_NEED_AUTH(&zone->conf->acl.notify_in, qdata);
 
 	/* Reserve space for TSIG. */
 	knot_pkt_reserve(pkt, tsig_wire_maxsize(qdata->sign.tsig_key));
@@ -103,19 +76,17 @@ int internet_notify(knot_pkt_t *pkt, struct query_data *qdata)
 		}
 	}
 
-	int next_state = NS_PROC_FAIL;
-
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
-	int ret =  zones_schedule_refresh((zone_t *)qdata->zone, REFRESH_NOW);
+	zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 
 	/* Format resulting log message. */
-	if (ret != KNOT_EOK) {
-		next_state = NS_PROC_NOOP; /* RFC1996: Ignore. */
-		NOTIFY_LOG(LOG_ERR, "%s", knot_strerror(ret));
-	} else {
-		next_state = NS_PROC_DONE;
-		NOTIFY_LOG(LOG_INFO, "received serial %u.", serial);
-	}
+	NOTIFY_LOG(LOG_INFO, "received serial %u.", serial);
+	return NS_PROC_DONE;
+}
 
-	return next_state;
+int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data)
+{
+	NS_NEED_TSIG_SIGNED(&data->param->tsig_ctx, 0);
+
+	return NS_PROC_DONE; /* No processing. */
 }

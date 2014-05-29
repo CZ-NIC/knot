@@ -16,7 +16,10 @@ t.start()
 
 # Check if the server is answering and zone _isn't_ loaded
 resp = master.dig("badrecord.", "SOA", udp=True)
-resp.check(rcode="REFUSED")
+
+# @note Either REFUSED or SERVFAIL is fine, Knot treats unloadable
+# zone as expired while the older version ignored such zone.
+resp.check(rcode="SERVFAIL")
 
 # Stop master.
 master.stop()

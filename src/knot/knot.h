@@ -37,7 +37,6 @@
 
 #define DEFAULT_THR_COUNT 2  /*!< \brief Default thread count. */
 #define TCP_BACKLOG_SIZE 10  /*!< \brief TCP listen backlog size. */
-#define XFR_THREADS_COUNT 3  /*!< \brief Number of threads for XFR handler. */
 #define RECVMMSG_BATCHLEN 64 /*!< \brief Define for recvmmsg() batch size. */
 
 /* Workarounds for clock_gettime() not available on some platforms. */

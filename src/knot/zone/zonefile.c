@@ -29,11 +29,13 @@
 #include "common/crc.h"
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
-#include "knot/zone/zone-contents.h"
+#include "knot/zone/contents.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/other/debug.h"
-#include "knot/zone/zone-create.h"
-#include "zscanner/zscanner.h"
+#include "knot/zone/zonefile.h"
+#include "zscanner/loader.h"
+#include "libknot/rdata.h"
+#include "knot/zone/zone-dump.h"
 
 void process_error(zs_scanner_t *s)
 {
@@ -114,7 +116,7 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 	}
 
 	zone_node_t *node = NULL;
-	int ret = knot_zone_contents_add_rr(zc->z, rr, &node);
+	int ret = zone_contents_add_rr(zc->z, rr, &node);
 	if (ret != KNOT_EOK) {
 		if (!handle_err(zc, node, rr, ret, zc->master)) {
 			// Fatal error
@@ -179,7 +181,7 @@ static void loader_process(zs_scanner_t *scanner)
 	}
 }
 
-static knot_zone_contents_t *create_zone_from_name(const char *origin)
+static zone_contents_t *create_zone_from_name(const char *origin)
 {
 	if (origin == NULL) {
 		return NULL;
@@ -189,19 +191,20 @@ static knot_zone_contents_t *create_zone_from_name(const char *origin)
 		return NULL;
 	}
 	knot_dname_to_lower(owner);
-	knot_zone_contents_t *z = knot_zone_contents_new(owner);
+	zone_contents_t *z = zone_contents_new(owner);
 	knot_dname_free(&owner, NULL);
 	return z;
 }
 
-int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
+int zonefile_open(zloader_t *loader, const char *source, const char *origin,
+		  bool semantic_checks)
 {
-	if (!loader || !conf) {
+	if (!loader) {
 		return KNOT_EINVAL;
 	}
 
 	/* Check zone file. */
-	if (access(conf->file, F_OK | R_OK) != 0) {
+	if (access(source, F_OK | R_OK) != 0) {
 		return KNOT_EACCES;
 	}
 
@@ -213,7 +216,7 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 	}
 	memset(zc, 0, sizeof(zcreator_t));
 
-	zc->z = create_zone_from_name(conf->name);
+	zc->z = create_zone_from_name(origin);
 	if (zc->z == NULL) {
 		free(zc);
 		return KNOT_ENOMEM;
@@ -221,7 +224,7 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 
 	/* Create file loader. */
 	memset(loader, 0, sizeof(zloader_t));
-	loader->file_loader = zs_loader_create(conf->file, conf->name,
+	loader->file_loader = zs_loader_create(source, origin,
 	                                       KNOT_CLASS_IN, 3600,
 	                                       loader_process, process_error,
 	                                       zc);
@@ -230,15 +233,15 @@ int zonefile_open(zloader_t *loader, const conf_zone_t *conf)
 		return KNOT_ERROR;
 	}
 
-	loader->source = strdup(conf->file);
-	loader->origin = strdup(conf->name);
+	loader->source = strdup(source);
+	loader->origin = strdup(origin);
 	loader->creator = zc;
-	loader->semantic_checks = conf->enable_checks;
+	loader->semantic_checks = semantic_checks;
 
 	return KNOT_EOK;
 }
 
-knot_zone_contents_t *zonefile_load(zloader_t *loader)
+zone_contents_t *zonefile_load(zloader_t *loader)
 {
 	dbg_zload("zload: load: Loading zone, loader: %p.\n", loader);
 	if (!loader) {
@@ -278,7 +281,7 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 	zone_node_t *first_nsec3_node = NULL;
 	zone_node_t *last_nsec3_node = NULL;
 
-	int kret = knot_zone_contents_adjust_full(zc->z,
+	int kret = zone_contents_adjust_full(zc->z,
 	                                          &first_nsec3_node, &last_nsec3_node);
 	if (kret != KNOT_EOK) {
 		log_zone_error("%s: Failed to finalize zone contents: %s\n",
@@ -292,10 +295,11 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 		assert(!knot_rrset_empty(&soa_rr)); // In this point, SOA has to exist
 		const bool have_nsec3param =
 			node_rrtype_exists(zc->z->apex, KNOT_RRTYPE_NSEC3PARAM);
-		if (knot_zone_contents_is_signed(zc->z) && !have_nsec3param) {
+		if (zone_contents_is_signed(zc->z) && !have_nsec3param) {
+
 			/* Set check level to DNSSEC. */
 			check_level = SEM_CHECK_NSEC;
-		} else if (knot_zone_contents_is_signed(zc->z) && have_nsec3param) {
+		} else if (zone_contents_is_signed(zc->z) && have_nsec3param) {
 			check_level = SEM_CHECK_NSEC3;
 		}
 		err_handler_t err_handler;
@@ -311,8 +315,92 @@ knot_zone_contents_t *zonefile_load(zloader_t *loader)
 	return zc->z;
 
 fail:
-	knot_zone_contents_deep_free(&zc->z);
+	zone_contents_deep_free(&zc->z);
 	return NULL;
+}
+
+/*! \brief Return zone file mtime. */
+time_t zonefile_mtime(const char *path)
+{
+	struct stat zonefile_st = { 0 };
+	int result = stat(path, &zonefile_st);
+	if (result < 0) {
+		return result;
+	}
+	return zonefile_st.st_mtime;
+}
+
+/*! \brief Moved from zones.c, no doc. @mvavrusa */
+static int zones_open_free_filename(const char *old_name, char **new_name)
+{
+	/* find zone name not present on the disk */
+	size_t name_size = strlen(old_name);
+	*new_name = malloc(name_size + 7 + 1);
+	if (*new_name == NULL) {
+		return -1;
+	}
+	memcpy(*new_name, old_name, name_size + 1);
+	strncat(*new_name, ".XXXXXX", 7);
+	dbg_zones_verb("zones: creating temporary zone file\n");
+	mode_t old_mode = umask(077);
+	int fd = mkstemp(*new_name);
+	UNUSED(umask(old_mode));
+	if (fd < 0) {
+		dbg_zones_verb("zones: couldn't create temporary zone file\n");
+		free(*new_name);
+		*new_name = NULL;
+	}
+
+	return fd;
+}
+
+int zonefile_write(const char *path, zone_contents_t *zone,
+                   const struct sockaddr_storage *from)
+{
+	if (!zone) {
+		return KNOT_EINVAL;
+	}
+
+	char *new_fname = NULL;
+	int fd = zones_open_free_filename(path, &new_fname);
+	if (fd < 0) {
+		return KNOT_EWRITABLE;
+	}
+
+	FILE *f = fdopen(fd, "w");
+	if (f == NULL) {
+		log_zone_warning("Failed to open file descriptor for text zone.\n");
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	if (zone_dump_text(zone, from, f) != KNOT_EOK) {
+		log_zone_warning("Failed to save the transferred zone to '%s'.\n",
+		                 new_fname);
+		fclose(f);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	/* Set zone file rights to 0640. */
+	fchmod(fd, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+
+	/* Swap temporary zonefile and new zonefile. */
+	fclose(f);
+
+	int ret = rename(new_fname, path);
+	if (ret < 0 && ret != EEXIST) {
+		log_zone_warning("Failed to replace old zone file '%s'' with a "
+		                 "new zone file '%s'.\n", path, new_fname);
+		unlink(new_fname);
+		free(new_fname);
+		return KNOT_ERROR;
+	}
+
+	free(new_fname);
+	return KNOT_EOK;
 }
 
 void zonefile_close(zloader_t *loader)

@@ -157,8 +157,8 @@ libknot_la_SOURCES =				\
 	libknot/dnssec/sig0.h			\
 	libknot/dnssec/sign.c			\
 	libknot/dnssec/sign.h			\
-	libknot/edns.c				\
-	libknot/edns.h				\
+	libknot/rrtype/opt.c			\
+	libknot/rrtype/opt.h			\
 	libknot/libknot.h			\
 	libknot/packet/compr.c			\
 	libknot/packet/compr.h			\
@@ -167,18 +167,18 @@ libknot_la_SOURCES =				\
 	libknot/packet/wire.h			\
 	libknot/processing/process.c		\
 	libknot/processing/process.h		\
-	libknot/rdata/rdname.h			\
-	libknot/rdata/dnskey.h			\
-	libknot/rdata/nsec.h			\
-	libknot/rdata/nsec3.c			\
-	libknot/rdata/nsec3.h			\
-	libknot/rdata/nsec3param.h		\
-	libknot/rdata/nsec3param.c		\
-	libknot/rdata/nsec.h			\
-	libknot/rdata/rrsig.h			\
-	libknot/rdata/soa.h			\
-	libknot/rdata/tsig.c			\
-	libknot/rdata/tsig.h			\
+	libknot/rrtype/rdname.h			\
+	libknot/rrtype/dnskey.h			\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/nsec3.c			\
+	libknot/rrtype/nsec3.h			\
+	libknot/rrtype/nsec3param.h		\
+	libknot/rrtype/nsec3param.c		\
+	libknot/rrtype/nsec.h			\
+	libknot/rrtype/rrsig.h			\
+	libknot/rrtype/soa.h			\
+	libknot/rrtype/tsig.c			\
+	libknot/rrtype/tsig.h			\
 	libknot/rrset-dump.c			\
 	libknot/rrset-dump.h			\
 	libknot/rdata.c				\
@@ -236,10 +236,18 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
+	knot/nameserver/process_answer.c	\
+	knot/nameserver/process_answer.h	\
+	knot/nameserver/requestor.c		\
+	knot/nameserver/requestor.h		\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
+	knot/nameserver/notify.c		\
+	knot/nameserver/notify.h		\
+	knot/nameserver/tsig_ctx.c		\
+	knot/nameserver/tsig_ctx.h		\
 	knot/modules/synth_record.c		\
 	knot/modules/synth_record.h		\
 	knot/other/debug.h			\
@@ -247,8 +255,6 @@ libknotd_la_SOURCES =				\
 	knot/server/dthreads.h			\
 	knot/server/journal.c			\
 	knot/server/journal.h			\
-	knot/server/notify.c			\
-	knot/server/notify.h			\
 	knot/server/rrl.c			\
 	knot/server/rrl.h			\
 	knot/server/server.c			\
@@ -259,12 +265,6 @@ libknotd_la_SOURCES =				\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
 	knot/server/udp-handler.h		\
-	knot/server/xfr-handler.c		\
-	knot/server/xfr-handler.h		\
-	knot/server/zone-load.c			\
-	knot/server/zone-load.h			\
-	knot/server/zones.c			\
-	knot/server/zones.h			\
 	knot/server/serialization.c		\
 	knot/server/serialization.h		\
 	knot/updates/acl.c			\
@@ -273,28 +273,38 @@ libknotd_la_SOURCES =				\
 	knot/updates/changesets.h		\
 	knot/updates/ddns.c			\
 	knot/updates/ddns.h			\
-	knot/updates/xfr-in.c			\
-	knot/updates/xfr-in.h			\
+	knot/updates/apply.c			\
+	knot/updates/apply.h			\
+	knot/worker/pool.c			\
+	knot/worker/pool.h			\
+	knot/worker/queue.c			\
+	knot/worker/queue.h			\
+	knot/zone/contents.c			\
+	knot/zone/contents.h			\
 	knot/zone/estimator.c			\
 	knot/zone/estimator.h			\
+	knot/zone/events.c			\
+	knot/zone/events.h			\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
 	knot/zone/semantic-check.c		\
 	knot/zone/semantic-check.h		\
-	knot/zone/zone-contents.c		\
-	knot/zone/zone-contents.h		\
 	knot/zone/zone-diff.c			\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\
 	knot/zone/zone-dump.h			\
-	knot/zone/zone-create.c			\
-	knot/zone/zone-create.h			\
 	knot/zone/zone-tree.c			\
 	knot/zone/zone-tree.h			\
 	knot/zone/zone.c			\
 	knot/zone/zone.h			\
+	knot/zone/zone-load.c			\
+	knot/zone/zone-load.h			\
 	knot/zone/zonedb.c			\
-	knot/zone/zonedb.h
+	knot/zone/zonedb.h			\
+	knot/zone/zonedb-load.c			\
+	knot/zone/zonedb-load.h			\
+	knot/zone/zonefile.c			\
+	knot/zone/zonefile.h
 
 # libraries
 libknot_la_LIBADD  = libknots.la zscanner/libzscanner.la
@@ -318,8 +328,8 @@ libknotd_la_SOURCES +=				\
 	knot/modules/dnstap.c			\
 	knot/modules/dnstap.h
 
-kdig_LDADD	+= dnstap/libdnstap.la
-khost_LDADD	+= dnstap/libdnstap.la
+kdig_LDADD         += dnstap/libdnstap.la
+khost_LDADD        += dnstap/libdnstap.la
 libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 
