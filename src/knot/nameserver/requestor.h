@@ -24,19 +24,15 @@ struct request;
 
 /*! \brief Requestor structure.
  *
- *  Requestor holds a FIFO of pending queries with given remote.
+ *  Requestor holds a FIFO of pending queries.
  */
 struct requestor {
-	/* Requestor target and source address. */
-	const knot_process_module_t *module;
-
-	//knot_sign_context_t tsig; /* @note not implemented */
-
-	list_t pending;
-	mm_ctx_t *mm;                      /*!< Memory context. */
+	const knot_process_module_t *module; /*!< Response processing module. */
+	list_t pending;                      /*!< Pending requests (FIFO). */
+	mm_ctx_t *mm;                        /*!< Memory context. */
 };
 
-/*! \brief Request data (payload and endpoints). */
+/*! \brief Request data (socket, payload and endpoints). */
 struct request_data {
 	node_t node;
 	int fd;

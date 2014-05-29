@@ -21,11 +21,12 @@
 #include "knot/server/net.h"
 #include "knot/server/tcp-handler.h"
 
+/*! \brief Single pending request. */
 struct request {
-	struct request_data data;
-	int state;
-	knot_process_t process;
-	uint8_t *pkt_buf;
+	struct request_data data; /*!< Request data. */
+	int state;                /*!< Processing state. */
+	knot_process_t process;   /*!< Response processor. */
+	uint8_t *pkt_buf;         /*!< Buffers. */
 };
 
 static struct request *request_make(mm_ctx_t *mm)
