@@ -311,9 +311,6 @@ static int apply_changeset(zone_contents_t *contents, changeset_t *chset,
 	 * SOA in the zone apex.
 	 */
 
-	dbg_xfrin("APPLYING CHANGESET: from serial %u to serial %u\n",
-		  chset->serial_from, chset->serial_to);
-
 	// check if serial matches
 	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	if (soa == NULL || knot_soa_serial(soa) != knot_soa_serial(&chset->soa_from->rrs)) {

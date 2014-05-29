@@ -1066,9 +1066,6 @@ static int changeset_pack(const changeset_t *chs, journal_t *j)
 	assert(chs != NULL);
 	assert(j != NULL);
 
-	dbg_xfr("Saving changeset from %u to %u.\n",
-	        chs->serial_from, chs->serial_to);
-
 	uint64_t k = ixfrdb_key_make(knot_soa_serial(&chs->soa_from->rrs),
 	                             knot_soa_serial(&chs->soa_to->rrs));
 
