@@ -269,8 +269,8 @@ static int event_reload(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	}
 	if (!zone_contents_is_empty(contents)) {
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, zone->bootstrap_retry);
 	}
 
 	/* Schedule zone resign. */
