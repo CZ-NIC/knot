@@ -110,6 +110,10 @@ libknots_la_SOURCES =				\
 	common/slab/slab.h			\
 	common/sockaddr.c			\
 	common/sockaddr.h			\
+	common/strlcat.c			\
+	common/strlcat.h			\
+	common/strlcpy.c			\
+	common/strlcpy.h			\
 	common/strtonum.h
 
 # static: utilities shared
