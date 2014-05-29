@@ -150,8 +150,7 @@ int main(int argc, char *argv[])
 	/* Test requestor in connected environment. */
 	test_connected(&requestor, &remote);
 
-	/* TSIG secured. */
-#warning TODO: when ported sign_packet/verify_packet
+	/*! \todo #243 TSIG secured requests test should be implemented. */
 
 	/* Terminate responder. */
 	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL, 0);
