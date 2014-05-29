@@ -24,6 +24,7 @@
 
 #include "common/log.h"
 #include "common/lists.h"
+#include "common/strlcpy.h"
 #include "knot/conf/conf.h"
 
 /*! Log source table. */
@@ -293,7 +294,7 @@ int log_msg(logsrc_t src, int level, const char *msg, ...)
 		return KNOT_ENOMEM;
 	}
 	if (plen > 0) {
-		strncpy(buf, prefix, plen + 1);
+		strlcpy(sbuf, prefix, sizeof(sbuf));
 		buf += plen;
 		buflen -= plen;
 	}
