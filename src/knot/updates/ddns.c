@@ -947,7 +947,9 @@ int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
                         changeset_t *changeset, uint16_t *rcode)
 {
 	if (zone == NULL || query == NULL || changeset == NULL || rcode == NULL) {
-		*rcode = ret_to_rcode(KNOT_EINVAL);
+		if (rcode) {
+			*rcode = ret_to_rcode(KNOT_EINVAL);
+		}
 		return KNOT_EINVAL;
 	}
 
