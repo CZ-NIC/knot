@@ -258,10 +258,11 @@ static int remote_c_zonestatus(server_t *s, remote_cmdargs_t* a)
 			next_time = next_time - time(NULL);
 			if (next_time < 0) {
 				memcpy(when, "pending", strlen("pending"));
-			} else if (snprintf(when, sizeof(when), "in %ldh%ldm%lds",
-			                    (next_time / 3600),
-			                    (next_time % 3600) / 60,
-			                    (next_time % 60)) < 0) {
+			} else if (snprintf(when, sizeof(when),
+			                    "in %lldh%lldm%llds",
+			                    (long long)(next_time / 3600),
+			                    (long long)(next_time % 3600) / 60,
+			                    (long long)(next_time % 60)) < 0) {
 				ret = KNOT_ESPACE;
 				break;
 			}

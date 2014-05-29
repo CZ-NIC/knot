@@ -134,7 +134,8 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 		;
 
 	/* Connect to destination. */
-	int ret = connect(socket, (const struct sockaddr *)dst_addr, sockaddr_len(dst_addr));
+	int ret = connect(socket, (const struct sockaddr *)dst_addr,
+	                  sockaddr_len(dst_addr));
 	if (ret != 0 && errno != EINPROGRESS) {
 		close(socket);
 		return knot_map_errno(EACCES, EADDRINUSE, EAGAIN,
@@ -146,7 +147,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 
 int net_is_connected(int fd)
 {
-	struct sockaddr_in6 ss;
+	struct sockaddr_storage ss;
 	socklen_t len = sizeof(ss);
-	return getpeername(fd, &ss, &len) == 0;
+	return getpeername(fd, (struct sockaddr *)&ss, &len) == 0;
 }

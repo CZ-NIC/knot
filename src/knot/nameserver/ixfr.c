@@ -237,7 +237,6 @@ static int ixfr_answer_init(struct query_data *qdata)
 	changeset_t *chs = NULL;
 	WALK_LIST(chs, chgsets->sets) {
 		ptrlist_add(&xfer->proc.nodes, chs, mm);
-		dbg_ns("%s: preparing %u -> %u\n", __func__, chs->serial_from, chs->serial_to);
 	}
 
 	/* Keep first and last serial. */
