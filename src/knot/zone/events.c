@@ -270,7 +270,7 @@ static int event_reload(zone_t *zone)
 	}
 	if (!zone_contents_is_empty(contents)) {
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->bootstrap_retry);
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, zone->bootstrap_retry);
 	}
 
 	/* Schedule zone resign. */
@@ -307,7 +307,7 @@ static int event_refresh(zone_t *zone)
 
 	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
 
-	knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		/* Log connection errors. */
 		ZONE_QUERY_LOG(LOG_ERR, zone, master, "SOA query", "%s", knot_strerror(ret));
@@ -318,7 +318,7 @@ static int event_refresh(zone_t *zone)
 	} else {
 		/* SOA query answered, reschedule refresh and expire timers. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, knot_soa_expire(soa));
 	}
 
 	return KNOT_EOK;
@@ -340,7 +340,8 @@ static int event_xfer(zone_t *zone)
 		assert(!zone_contents_is_empty(zone->contents));
 		/* New zone transferred, reschedule zone expiration and refresh
 		 * timers and send notifications to slaves. */
-		knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+		const knot_rdataset_t *soa =
+			node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
 		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
@@ -375,15 +376,16 @@ static int event_update(zone_t *zone)
 	knot_pkt_init_response(resp, update->query);
 
 	/* Create minimal query data context. */
-	struct process_query_param param = {0};
+	struct process_query_param param = { 0 };
 	param.remote = &update->remote;
-	struct query_data qdata = {0};
+	struct query_data qdata = { 0 };
 	qdata.param = &param;
 	qdata.query = update->query;
 	qdata.zone  = zone;
 
-	/* Process the update query. If processing fails, resp will be set. */
-	(void)update_process_query(resp, &qdata);
+	/* Process the update query. */
+	int ret = update_process_query(resp, &qdata);
+	UNUSED(ret); /* Don't care about the Knot code, RCODE is set. */
 
 	/* Send response. */
 	if (net_is_connected(update->fd)) {
@@ -521,7 +523,7 @@ done:
 
 static bool valid_event(zone_event_type_t type)
 {
-	return (type >= 0 && type < ZONE_EVENT_COUNT);
+	return (type >= ZONE_EVENT_RELOAD && type < ZONE_EVENT_COUNT);
 }
 
 /*! \brief Return remaining time to planned event (seconds). */
@@ -604,7 +606,7 @@ static void reschedule(zone_events_t *events)
 		return;
 	}
 
-	time_t diff = time_until(events->time[type]);
+	time_t diff = time_until(event_get_time(events, type));
 
 	evsched_schedule(events->event, diff * 1000);
 }
