@@ -42,19 +42,37 @@ struct request_data {
 
 /*!
  * \brief Initialize requestor structure.
+ *
+ * \param requestor Requestor instance.
+ * \param module    Response processing module.
+ * \param mm        Memory context.
  */
 void requestor_init(struct requestor *requestor, const knot_process_module_t *module, mm_ctx_t *mm);
 
 /*!
  * \brief Clear the requestor structure and close pending queries.
+ *
+ * \param requestor Requestor instance.
  */
 void requestor_clear(struct requestor *requestor);
 
-/*! \brief Return true if there are no pending queries. */
+/*!
+ * \brief Return true if there are no pending queries.
+ *
+ * \param requestor Requestor instance.
+ */
 bool requestor_finished(struct requestor *requestor);
 
 
-/*! \brief Make request out of endpoints and query. */
+/*!
+ * \brief Make request out of endpoints and query.
+ *
+ * \param requestor Requestor instance.
+ * \param remote    Remote endpoint descriptor (source, destination, [key])
+ * \param query     Query message.
+ *
+ * \return Prepared request or NULL in case of error.
+ */
 struct request *requestor_make(struct requestor *requestor,
                                const conf_iface_t *remote,
                                knot_pkt_t *query);
@@ -66,9 +84,8 @@ struct request *requestor_make(struct requestor *requestor,
  *       it does not send any data until requestor_exec().
  *
  * \param requestor Requestor instance.
- * \param query     Query (requestor takes ownership if this function succeeds).
- * \param module    Processing module.
- * \param param     Processing module parameter.
+ * \param request   Prepared request.
+ * \param param     Request processing module parameter.
  *
  * \return KNOT_EOK or error
  */
