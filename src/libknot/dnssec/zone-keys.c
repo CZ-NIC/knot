@@ -192,7 +192,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		memset(key, '\0', sizeof(*key));
 		set_zone_key_flags(&params, key);
 
-		dbg_dnssec_detail("next key event %" PRIu32 "\n", key.next_event);
+		dbg_dnssec_detail("next key event %" PRIu32 "\n", key->next_event);
 
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
