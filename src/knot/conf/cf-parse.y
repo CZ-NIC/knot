@@ -665,13 +665,11 @@ keys:
 	   cf_error(scanner, "out of memory when allocating string");
 	   free(fqdn);
 	   fqdn = NULL;
-	   fqdnl = 0;
 	} else {
 	   strlcpy(tmpdn, fqdn, fqdnl);
 	   strlcat(tmpdn, ".", fqdnl);
 	   free(fqdn);
 	   fqdn = tmpdn;
-	   fqdnl = strlen(fqdn);
 	}
      }
 

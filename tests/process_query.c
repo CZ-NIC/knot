@@ -101,28 +101,28 @@ int main(int argc, char *argv[])
 	param.server = &server;
 
 	/* Query processor (CH zone) */
-	int state = knot_process_begin(&proc, &param, NS_PROC_QUERY);
+	knot_process_begin(&proc, &param, NS_PROC_QUERY);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, IDSERVER_DNAME, KNOT_CLASS_CH, KNOT_RRTYPE_TXT);
 	exec_query(&proc, "CH TXT", query->wire, query->size, KNOT_RCODE_NOERROR);
 
 	/* Query processor (valid input). */
-	state = knot_process_reset(&proc);
+	knot_process_reset(&proc);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 	exec_query(&proc, "IN/root", query->wire, query->size, KNOT_RCODE_NOERROR);
 
 	/* Query processor (-1 bytes, not enough data). */
-	state = knot_process_reset(&proc);
+	knot_process_reset(&proc);
 	exec_query(&proc, "IN/few-data", query->wire, query->size - 1, KNOT_RCODE_FORMERR);
 
 	/* Query processor (+1 bytes trailing). */
-	state = knot_process_reset(&proc);
+	knot_process_reset(&proc);
 	query->wire[query->size] = '\1'; /* Initialize the "garbage" value. */
 	exec_query(&proc, "IN/trail-garbage", query->wire, query->size + 1, KNOT_RCODE_FORMERR);
 
 	/* Forge NOTIFY query from SOA query. */
-	state = knot_process_reset(&proc);
+	knot_process_reset(&proc);
 	knot_wire_set_opcode(query->wire, KNOT_OPCODE_NOTIFY);
 	exec_query(&proc, "IN/notify", query->wire, query->size, KNOT_RCODE_NOTAUTH);
 
@@ -152,14 +152,14 @@ int main(int argc, char *argv[])
 	/* #189 Process IXFR client. */
 
 	/* Query processor (smaller than DNS header, ignore). */
-	state = knot_process_reset(&proc);
+	knot_process_reset(&proc);
 	knot_pkt_clear(query);
 	knot_pkt_put_question(query, ROOT_DNAME, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
-	state = knot_process_in(query->wire, KNOT_WIRE_HEADER_SIZE - 1, &proc);
+	int state = knot_process_in(query->wire, KNOT_WIRE_HEADER_SIZE - 1, &proc);
 	ok(state == NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
 
 	/* Query processor (response, ignore). */
-	state = knot_process_reset(&proc);
+	knot_process_reset(&proc);
 	knot_wire_set_qr(query->wire);
 	state = knot_process_in(query->wire, query->size, &proc);
 	ok(state == NS_PROC_NOOP, "ns: IN/less-than-header query ignored");
