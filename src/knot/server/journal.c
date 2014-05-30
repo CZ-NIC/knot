@@ -53,10 +53,6 @@ static inline int sfwrite(const void *src, size_t len, int fd)
 	return write(fd, src, len) == len;
 }
 
-static inline journal_node_t *journal_head(journal_t *journal) {
-	return journal->nodes + journal->qhead;
-}
-
 static inline journal_node_t *journal_end(journal_t *journal) {
 	return journal->nodes +  journal->qtail;
 }
@@ -77,18 +73,6 @@ static inline uint32_t journal_key_from(uint64_t k)
 	 * Need: Least significant 32 bits.
 	 */
 	return (uint32_t)(k & ((uint64_t)0x00000000ffffffff));
-}
-
-/*----------------------------------------------------------------------------*/
-
-/*! \brief Return 'serial_to' part of the key. */
-static inline uint32_t journal_key_to(uint64_t k)
-{
-	/*      64    32       0
-	 * key = [TO   |   FROM]
-	 * Need: Most significant 32 bits.
-	 */
-	return (uint32_t)(k >> (uint64_t)32);
 }
 
 /*----------------------------------------------------------------------------*/
