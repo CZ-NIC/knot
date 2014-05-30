@@ -666,10 +666,10 @@ static int ns_put_nsec_nsec3_nodata(const zone_node_t *node,
 		/* RFC5155 7.2.5 Wildcard No Data Responses */
 		if (!knot_dname_is_wildcard(qname) && knot_dname_is_wildcard(node->owner)) {
 			dbg_ns("%s: adding NSEC3 wildcard NODATA\n", __func__);
-			ret = ns_put_nsec3_closest_encloser_proof(zone,
-			                                          &closest_encloser,
-			                                          qname, qdata,
-			                                          resp);
+			ns_put_nsec3_closest_encloser_proof(zone,
+			                                    &closest_encloser,
+			                                    qname, qdata,
+			                                    resp);
 		}
 
 		/* RFC5155 7.2.3-7.2.5 common proof. */

@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 	result = knot_rrset_add_rdata(rrset, rdata, sizeof(rdata), 0, NULL);
 	if (result == KNOT_EOK) {
-		result = knot_nsec3param_from_wire(&params, &rrset->rrs);
+		knot_nsec3param_from_wire(&params, &rrset->rrs);
 	}
 
 	is_int(1, params.algorithm, "parse algorithm from wire");
@@ -84,16 +84,15 @@ int main(int argc, char *argv[])
 	const char *dname_str = "knot-dns.cz.";
 	knot_dname_t *dname = knot_dname_from_str(dname_str);
 
-	size_t digest_size = 0;
-	uint8_t *digest = NULL;
-	result = knot_nsec3_hash(&params, dname, knot_dname_size(dname),
-	                         &digest, &digest_size);
-
 	uint8_t expected[] = {
 		0x72, 0x40, 0x55, 0x83, 0x92, 0x93, 0x95, 0x28, 0xee, 0xa2,
 		0xcc, 0xe1, 0x13, 0xbe, 0xcd, 0x41, 0xee, 0x8a, 0x71, 0xfd
 	};
 
+	size_t digest_size = 0;
+	uint8_t *digest = NULL;
+	result = knot_nsec3_hash(&params, dname, knot_dname_size(dname),
+	                         &digest, &digest_size);
 	ok(result == KNOT_EOK && digest_size == sizeof(expected) &&
 	   memcmp(digest, expected, sizeof(expected)) == 0, "compute hash");
 
