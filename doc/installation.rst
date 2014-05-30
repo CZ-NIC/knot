@@ -69,7 +69,8 @@ Installation from the sources
 =============================
 
 You can find the source files for the latest release on `www.knot-dns.cz <https://www.knot-dns.cz>`_.
-Alternatively, you can fetch the sources from git repository `<git://git.nic.cz/knot-dns.git>`_.
+Alternatively, you can fetch the sources from git repository
+`git://git.nic.cz/knot-dns.git <https://gitlab.labs.nic.cz/labs/knot/tree/master>`_.
 
 After unpacking the sources, the compilation and installation is a
 quite straightforward process using autotools.
@@ -79,9 +80,13 @@ quite straightforward process using autotools.
 Configuring and generating Makefiles
 ------------------------------------
 
-If you want to compile from Git sources, you need to bootstrap the ``./configure`` file first.::
+If you want to compile from Git sources, you need to bootstrap the ``./configure`` file first::
 
     $ autoreconf -i -f
+
+In most cases you can just run configure without any options::
+
+    $ ./configure
 
 For all available configure options run::
 
@@ -106,47 +111,39 @@ verbosity as ``brief, verbose, details``.
 
 For example::
 
-    $ ./configure --enable-debug=server,packet --enable-debuglevel=brief
     $ ./configure --enable-debug=server,packet --enable-debuglevel=verbose
 
-For more detailed information, see :ref:`Debug messages`. ##TODO
-
-In most simple case you can just run configure without any options::
-
-    $ ./configure
+For more detailed information, see :ref:`Debug messages`.
 
 Compilation
 -----------
 
-(After running ``./configure`` you can compile Knot DNS by running
+After running ``./configure`` you can compile Knot DNS by running
 ``make`` command, which will produce binaries and other related
 files::
 
     $ make
 
 Knot DNS build process is safe to parallelize using ``make -j N``,
-where N is number of concurrent processes.  Using this option can
-increase speed of the compilation.
-
-For example to use maximum 8 concurrent processes you would use::
-
-    $ make -j 8
+where N is a number of concurrent processes. Using this the compilation speed
+can be increased.
 
 Installation
 ------------
 
-When you have finished building the Knot DNS, it's time to install the
+When you have finished building Knot DNS, it's time to install the
 binaries and configuration files into the operation system hierarchy.
-You can do so by executing ``make install`` command.  When installing
-as a non-root user you might have to gain elevated privileges by
-switching to root user, e.g. ``sudo make install`` or ``su -c 'make install'``::
+You can do so by executing::
 
     $ make install
+
+When installing as a non-root user you might have to gain elevated privileges by
+switching to root user, e.g. ``sudo make install`` or ``su -c 'make install'``.
 
 Installation from packages
 ==========================
 
-In addition to providing the packages in .DEB and .RPM format, the
+In addition to providing the packages in .DEB and .RPM format,
 Knot DNS might already be available in your favourite distribution, or
 in a ports tree.
 
@@ -163,12 +160,12 @@ be used by adding::
 to your ``/etc/apt/sources.list`` or into separate file in
 ``/etc/apt/sources.list.d/``.
 
-As an example, for Debian squeeze (current stable) the Knot DNS
-packages can be added by executing following command as the root user::
+As an example, for Debian wheezy the Knot DNS packages can be added by
+executing following command as the root user::
 
     $ cat >/etc/apt/sources.list.d/knot.list <<EOF
-    deb     http://deb.knot-dns.cz/debian/ <codename> main
-    deb-src http://deb.knot-dns.cz/debian/ <codename> main
+    deb     http://deb.knot-dns.cz/debian/ wheezy main
+    deb-src http://deb.knot-dns.cz/debian/ wheezy main
     EOF
     $ apt-get update
     $ apt-get install knot
@@ -176,16 +173,11 @@ packages can be added by executing following command as the root user::
 Installing Knot DNS packages on Ubuntu
 --------------------------------------
 
-Prepackaged version of the Knot DNS can be found in Ubuntu from
+Prepackaged version of Knot DNS can be found in Ubuntu from
 version 12.10 (Quantal Quetzal).  In addition to the package included
 in the main archive, we provide Personal Package Archive (PPA) as an
-option to upgrade to last stable version of the Knot DNS or to install
+option to upgrade to the last stable version of Knot DNS or to install
 it on older versions of Ubuntu Linux.
-
-We typically provide packages for all supported versions of Ubuntu
-Linux including 5 year support for `LTS <https://wiki.ubuntu.com/LTS>`_
-versions of Ubuntu Linux.  At the time of writing this manual this
-includes Ubuntu 10.04 LTS, 11.04, 11.10 and 12.04 LTS.
 
 Adding official PPA repository for Knot DNS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -209,30 +201,7 @@ repositories since Fedora 18 (Spherical Cow). Look for ``knot``
 package in your package manager. To install the package using Yum, run
 a following command as the root user::
 
-    # yum install knot
-
-Using official distribution repository is highly recommended, however you may
-want to run ``Knot DNS`` on older releases of Fedora. In this case you can
-set up an unofficial repository by creating :file:`/etc/yum.repos.d/knot.conf`
-file with the following content::
-
-    [knot]
-    name=Network.CZ Repository
-    baseurl=ftp://repo.network.cz/pub/redhat/
-    enabled=1
-    gpgcheck=0
-    gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-network.cz
-
-After performing this action, you can install ``knot`` package the same way
-as described above. Please note that the unofficial repository contains only
-builds for i686 and x86_64 architecture.
-
-When upgrading to Fedora 18 or higher, backup the configuration and
-switch to the latest package provided in the official repository by running the
-following command as the root user::
-
-    # yum distro-sync knot
-
+    $ yum install knot
 
 Installing Knot DNS from ports on FreeBSD
 -----------------------------------------

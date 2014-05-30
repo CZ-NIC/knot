@@ -28,7 +28,7 @@ Memory requirements
 
 Knot DNS implementation focuses on performance and thus can be quite
 demanding for memory.  The rough estimate for memory requirements is
-5-7 times of the size of the zone in text format.  Again this is only
+3 times of the size of the zone in text format. Again this is only
 an estimate and you are advised to do your own measurements before
 deploying Knot DNS into production.
 
@@ -42,6 +42,5 @@ Supported operating system
 
 Knot DNS itself is written in a portable way, but it depends on
 several libraries. Namely userspace-rcu, which could be a constraint
-when it comes to the operating system support.  As far as we know the
-Knot DNS can be compiled and run on Linux, FreeBSD, OpenBSD, NetBSD
-and Mac OS X.
+when it comes to the operating system support. Knot DNS can be compiled
+and run on most of UNIX-like systems, such as Linux, *BSD and Mac OS X.
