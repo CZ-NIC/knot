@@ -233,7 +233,11 @@ static int journal_create_file(const char *fn, uint16_t max_nodes)
 	}
 
 	/* Lock. */
-	fcntl(fd, F_SETLKW, &fl);
+	if (fcntl(fd, F_SETLKW, &fl) == -1) {
+		close(fd);
+		remove(fn);
+		return KNOT_ERROR;
+	}
 
 	/* Create journal header. */
 	dbg_journal("journal: creating header\n");
