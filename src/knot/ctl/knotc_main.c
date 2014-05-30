@@ -531,6 +531,7 @@ int main(int argc, char **argv)
 	if (has_flag(flags, F_NOCONF) && cmd->need_conf) {
 		log_server_error("Couldn't find a config file, refusing to "
 		                 "continue.\n");
+		rc = 1;
 		goto exit;
 	}
 
