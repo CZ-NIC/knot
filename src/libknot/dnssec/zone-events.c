@@ -95,7 +95,8 @@ static int zone_sign(knot_zone_t *zone, knot_changeset_t *out_ch, bool force,
 	}
 
 	// Init needed structs
-	knot_zone_keys_t zone_keys = { '\0' };
+	knot_zone_keys_t zone_keys;
+	knot_init_zone_keys(&zone_keys);
 	knot_dnssec_policy_t policy = { '\0' };
 	int result = init_dnssec_structs(zone, &zone_keys, &policy, soa_up,
 	                                 force);
@@ -206,7 +207,8 @@ int knot_dnssec_sign_changeset(const knot_zone_t *zone,
 	}
 
 	// Init needed structures
-	knot_zone_keys_t zone_keys = { '\0' };
+	knot_zone_keys_t zone_keys;
+	knot_init_zone_keys(&zone_keys);
 	knot_dnssec_policy_t policy = { '\0' };
 	int ret = init_dnssec_structs(zone, &zone_keys, &policy, soa_up,
 	                              false);

@@ -29,31 +29,17 @@
 #include "libknot/util/debug.h"
 
 /*!
- * \brief Free DNSSEC signing context for each key.
- */
-static void free_sign_contexts(knot_zone_keys_t *keys)
-{
-	assert(keys);
-
-	for (int i = 0; i < keys->count; i++) {
-		knot_dnssec_sign_free(keys->keys[i].context);
-		keys->keys[i].context = NULL;
-	}
-}
-
-
-/*!
  * \brief Initialize DNSSEC signing context for each key.
  */
 static int init_sign_contexts(knot_zone_keys_t *keys)
 {
 	assert(keys);
 
-	for (int i = 0; i < keys->count; i++) {
-		knot_zone_key_t *key = &keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, keys->list) {
+		knot_zone_key_t *key = (knot_zone_key_t *)node;
 		key->context = knot_dnssec_sign_init(&key->dnssec_key);
 		if (key->context == NULL) {
-			free_sign_contexts(keys);
 			return KNOT_ENOMEM;
 		}
 	}
@@ -71,17 +57,15 @@ const knot_zone_key_t *knot_get_zone_key(const knot_zone_keys_t *keys,
 		return NULL;
 	}
 
-	const knot_zone_key_t *result = NULL;
-
-	for (int i = 0; i < keys->count; i++) {
-		const knot_zone_key_t *key = &keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, keys->list) {
+		knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (key->dnssec_key.keytag == keytag) {
-			result = key;
-			break;
+			return key;
 		}
 	}
 
-	return result;
+	return NULL;
 }
 
 /*!
@@ -122,18 +106,6 @@ static void set_zone_key_flags(const knot_key_params_t *params,
 }
 
 /*!
- * \brief Check if key should be already removed from the zone.
- */
-static bool was_removed(const knot_key_params_t *params)
-{
-	assert(params);
-
-	time_t now = time(NULL);
-
-	return params->time_delete != 0 && params->time_delete <= now;
-}
-
-/*!
  * \brief Load zone keys from a key directory.
  *
  * \todo Maybe use dynamic list instead of fixed size array.
@@ -158,11 +130,11 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		return KNOT_ENOMEM;
 	}
 
+	int result = KNOT_EOK;
+
 	struct dirent entry_buf = { 0 };
 	struct dirent *entry = NULL;
-	while (keys->count < KNOT_MAX_ZONE_KEYS &&
-	       readdir_r(keydir, &entry_buf, &entry) == 0 &&
-	       entry != NULL) {
+	while (readdir_r(keydir, &entry_buf, &entry) == 0 && entry != NULL) {
 
 		char *suffix = strrchr(entry->d_name, '.');
 		if (!suffix) {
@@ -190,12 +162,12 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 		dbg_dnssec_detail("loading key '%s'\n", path);
 
 		knot_key_params_t params = { 0 };
-		int result = knot_load_key_params(path, &params);
+		int ret = knot_load_key_params(path, &params);
 		free(path);
 
-		if (result != KNOT_EOK) {
+		if (ret != KNOT_EOK) {
 			log_zone_warning("DNSSEC: Failed to load key %s: %s\n",
-			                  entry->d_name, knot_strerror(result));
+			                  entry->d_name, knot_strerror(ret));
 			knot_free_key_params(&params);
 			continue;
 		}
@@ -212,21 +184,15 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		knot_zone_key_t key;
-		memset(&key, '\0', sizeof(key));
-		set_zone_key_flags(&params, &key);
+		knot_zone_key_t *key = malloc(sizeof(*key));
+		if (!key) {
+			result = KNOT_ENOMEM;
+			break;
+		}
+		memset(key, '\0', sizeof(*key));
+		set_zone_key_flags(&params, key);
 
 		dbg_dnssec_detail("next key event %" PRIu32 "\n", key.next_event);
-
-		if (!key.is_active && !key.is_public && !was_removed(&params)) {
-			log_zone_notice("%s Ignoring key %d (%s): "
-			                "%s, %s.\n", msgpref, params.keytag,
-			                entry->d_name,
-			                key.is_active ? "active" : "inactive",
-			                key.is_public ? "public" : "not-public");
-			knot_free_key_params(&params);
-			continue;
-		}
 
 		if (!knot_dnssec_algorithm_is_zonesign(params.algorithm,
 		                                       nsec3_enabled)
@@ -236,6 +202,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			                " NSEC3 is requested.\n", msgpref,
 			                params.keytag, entry->d_name);
 			knot_free_key_params(&params);
+			free(key);
 			continue;
 		}
 
@@ -244,48 +211,58 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			                "keytag.\n", msgpref, params.keytag,
 			                entry->d_name);
 			knot_free_key_params(&params);
+			free(key);
 			continue;
 		}
 
-		result = knot_dnssec_key_from_params(&params, &key.dnssec_key);
-		if (result != KNOT_EOK) {
+		ret = knot_dnssec_key_from_params(&params, &key->dnssec_key);
+		if (ret != KNOT_EOK) {
 			log_zone_error("%s Failed to process key %d (%s): %s\n",
 			               msgpref, params.keytag, entry->d_name,
-			               knot_strerror(result));
+			               knot_strerror(ret));
 			knot_free_key_params(&params);
+			free(key);
 			continue;
 		}
 
-		log_zone_info("%s - Key is valid, tag %d, file %s, %s, %s, %s\n",
+		log_zone_info("%s - Loaded key %d, file %s, %s, %s, %s\n",
 		              msgpref, params.keytag, entry->d_name,
-		              key.is_ksk ? "KSK" : "ZSK",
-		              key.is_active ? "active" : "inactive",
-		              key.is_public ? "public" : "not-public");
-
-		keys->keys[keys->count] = key;
-		keys->count += 1;
+		              key->is_ksk ? "KSK" : "ZSK",
+		              key->is_active ? "active" : "inactive",
+		              key->is_public ? "public" : "not-public");
 
 		knot_free_key_params(&params);
+
+		add_tail(&keys->list, &key->node);
 	}
 
 	closedir(keydir);
 
-	if (keys->count == 0) {
-		free(msgpref);
-		return KNOT_DNSSEC_ENOKEY;
-	} else if (keys->count == KNOT_MAX_ZONE_KEYS) {
-		log_zone_notice("%s - Reached maximum count of keys.\n",
-		                msgpref);
+	if (result == KNOT_EOK && EMPTY_LIST(keys->list)) {
+		result = KNOT_DNSSEC_ENOKEY;
 	}
-	free(msgpref);
 
-	int result = init_sign_contexts(keys);
+	if (result == KNOT_EOK) {
+		result = init_sign_contexts(keys);
+	}
+
 	if (result != KNOT_EOK) {
 		knot_free_zone_keys(keys);
-		return result;
 	}
 
-	return KNOT_EOK;
+	free(msgpref);
+
+	return result;
+}
+
+void knot_init_zone_keys(knot_zone_keys_t *keys)
+{
+	if (!keys) {
+		return;
+	}
+
+	memset(keys, 0, sizeof(*keys));
+	init_list(&keys->list);
 }
 
 /*!
@@ -297,13 +274,16 @@ void knot_free_zone_keys(knot_zone_keys_t *keys)
 		return;
 	}
 
-	free_sign_contexts(keys);
-
-	for (int i = 0; i < keys->count; i++) {
-		knot_dnssec_key_free(&keys->keys[i].dnssec_key);
+	node_t *node = NULL;
+	node_t *next = NULL;
+	WALK_LIST_DELSAFE(node, next, keys->list) {
+		knot_zone_key_t *key = (knot_zone_key_t *)node;
+		knot_dnssec_sign_free(key->context);
+		knot_dnssec_key_free(&key->dnssec_key);
+		free(key);
 	}
 
-	memset(keys, '\0', sizeof(*keys));
+	init_list(&keys->list);
 }
 
 /*!
@@ -313,8 +293,10 @@ uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys)
 {
 	uint32_t result = UINT32_MAX;
 
-	for (int i = 0; i < keys->count; i++) {
-		result = MIN(result, keys->keys[i].next_event);
+	node_t *node = NULL;
+	WALK_LIST(node, keys->list) {
+		knot_zone_key_t *key = (knot_zone_key_t *)node;
+		result = MIN(result, key->next_event);
 	}
 
 	return result;
