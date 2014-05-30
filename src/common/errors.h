@@ -25,8 +25,7 @@
  * @{
  */
 
-#ifndef _KNOTD_COMMON_ERROR_H_
-#define _KNOTD_COMMON_ERROR_H_
+#pragma once
 
 #include <errno.h>
 
@@ -74,7 +73,5 @@ const char *error_to_str(const error_table_t *table, int code);
  * \return Mapped error code.
  */
 int _map_errno(int fallback_value, int arg0, ...);
-
-#endif /* _KNOTD_COMMON_ERROR_H_ */
 
 /*! @} */

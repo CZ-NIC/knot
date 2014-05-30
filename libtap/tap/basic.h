@@ -27,8 +27,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef TAP_BASIC_H
-#define TAP_BASIC_H 1
+#pragma once
 
 #include "macros.h"
 #include <stdarg.h>             /* va_list */
@@ -131,5 +130,3 @@ char *test_tmpdir(void)
 void test_tmpdir_free(char *path);
 
 END_DECLS
-
-#endif /* TAP_BASIC_H */

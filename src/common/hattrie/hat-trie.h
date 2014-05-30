@@ -15,8 +15,7 @@
  *
  */
 
-#ifndef HATTRIE_HATTRIE_H
-#define HATTRIE_HATTRIE_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,6 +89,4 @@ value_t*        hattrie_iter_val       (hattrie_iter_t*);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

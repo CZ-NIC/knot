@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_CONFIG_H_
-#define _KNOT_DNSSEC_CONFIG_H_
+#pragma once
 
 #include <openssl/opensslconf.h>
 #include <openssl/opensslv.h>
@@ -46,7 +45,5 @@
 #else
   #undef KNOT_ENABLE_GOST
 #endif
-
-#endif // _KNOT_DNSSEC_CONFIG_H_
 
 /*! @} */

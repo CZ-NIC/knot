@@ -33,8 +33,7 @@
  * @{
  */
 
-#ifndef _KNOTD_SERVER_H_
-#define _KNOTD_SERVER_H_
+#pragma once
 
 #include "common/evsched.h"
 #include "common/lists.h"
@@ -205,7 +204,5 @@ int server_update_zones(const struct conf_t *conf, void *data);
  * \return new interface list
  */
 ref_t *server_set_ifaces(server_t *s, fdset_t *fds, int type);
-
-#endif // _KNOTD_SERVER_H_
 
 /*! @} */

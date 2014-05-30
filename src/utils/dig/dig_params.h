@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _DIG__DIG_PARAMS_H_
-#define _DIG__DIG_PARAMS_H_
+#pragma once
 
 #include <stdbool.h>			// bool
 
@@ -149,7 +148,5 @@ void complete_queries(list_t *queries, const query_t *conf);
 int dig_init(dig_params_t *params);
 int dig_parse(dig_params_t *params, int argc, char *argv[]);
 void dig_clean(dig_params_t *params);
-
-#endif // _DIG__DIG_PARAMS_H_
 
 /*! @} */

@@ -25,8 +25,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_DDNS_H_
-#define _KNOT_DDNS_H_
+#pragma once
 
 #include "knot/updates/changesets.h"
 #include "knot/zone/zone.h"
@@ -58,7 +57,5 @@ int ddns_process_prereqs(const knot_pkt_t *query, const zone_contents_t *zone,
  */
 int ddns_process_update(const zone_t *zone, const knot_pkt_t *query,
                         changeset_t *changeset, uint16_t *rcode);
-
-#endif /* _KNOT_DDNS_H_ */
 
 /*! @} */

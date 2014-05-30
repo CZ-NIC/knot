@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_CHANGESETS_H_
-#define _KNOT_CHANGESETS_H_
+#pragma once
 
 #include "libknot/rrset.h"
 #include "knot/zone/node.h"
@@ -199,7 +198,5 @@ void changesets_free(changesets_t **chs, mm_ctx_t *rr_mm);
  * \retval Error code on failure.
  */
 int changeset_merge(changeset_t *ch1, changeset_t *ch2);
-
-#endif /* _KNOT_CHANGESETS_H_ */
 
 /*! @} */

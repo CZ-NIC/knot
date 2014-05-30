@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_AXFR_H_
-#define _KNOT_AXFR_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/zonedb.h"
@@ -67,7 +66,5 @@ int axfr_query_process(knot_pkt_t *pkt, struct query_data *qdata);
  * \return NS_PROC_* processing states
  */
 int axfr_answer_process(knot_pkt_t *pkt, struct answer_data *data);
-
-#endif /* _KNOT_AXFR_H_ */
 
 /*! @} */

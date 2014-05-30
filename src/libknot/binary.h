@@ -25,8 +25,7 @@
  * @{
  */
 
-#ifndef _KNOT_BINARY_H_
-#define _KNOT_BINARY_H_
+#pragma once
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -76,7 +75,5 @@ int knot_binary_free(knot_binary_t *binary);
  * \return Error code, KNOT_EOK if case of success.
  */
 int knot_binary_dup(const knot_binary_t *from, knot_binary_t *to);
-
-#endif // _KNOT_BINARY_H
 
 /*! @} */

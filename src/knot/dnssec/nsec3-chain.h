@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_NSEC3_CHAIN_FIX_H_
-#define _KNOT_DNSSEC_NSEC3_CHAIN_FIX_H_
+#pragma once
 
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/nsec-chain.h"
@@ -41,5 +40,3 @@
  */
 int knot_nsec3_create_chain(const zone_contents_t *zone, uint32_t ttl,
                             changeset_t *changeset);
-
-#endif // _KNOT_DNSSEC_NSEC3_CHAIN_FIX_H_

@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_COMMON_MALLOC_H_
-#define _KNOTD_COMMON_MALLOC_H_
+#pragma once
 
 #include <stddef.h>
 
@@ -122,7 +121,5 @@ void usage_dump();
 
 /*! \brief Trim excess heap memory. */
 void mem_trim(void);
-
-#endif // _KNOTD_COMMON_MALLOC_H_
 
 /*! @} */

@@ -38,8 +38,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _QUERY_MODULE_H
-#define _QUERY_MODULE_H
+#pragma once
 
 #include "common/lists.h"
 #include "common/mempattern.h"
@@ -118,7 +117,5 @@ struct query_module *query_module_open(const char *name, const char *param, mm_c
  * \note Module 'unload' hook is called before closing.
  */
 void query_module_close(struct query_module *module);
-
-#endif /* _QUERY_MODULE_H */
 
 /*! @} */

@@ -25,8 +25,7 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_HEX_H_
-#define _KNOT_COMMON_HEX_H_
+#pragma once
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -42,5 +41,4 @@
  */
 int hex_decode(const char *input, uint8_t **output, size_t *output_size);
 
-#endif // _KNOT_COMMON_HEX_H_
 /*! @} */

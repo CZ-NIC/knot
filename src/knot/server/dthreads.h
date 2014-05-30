@@ -36,8 +36,7 @@
  * @{
  */
 
-#ifndef _KNOTD_DTHREADS_H_
-#define _KNOTD_DTHREADS_H_
+#pragma once
 
 #include <pthread.h>
 
@@ -300,7 +299,5 @@ int dt_unit_lock(dt_unit_t *unit);
  * \retval KNOT_ERROR unspecified error.
  */
 int dt_unit_unlock(dt_unit_t *unit);
-
-#endif // _KNOTD_DTHREADS_H_
 
 /*! @} */

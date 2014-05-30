@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_COMMON_STRTONUM_
-#define _KNOT_COMMON_STRTONUM_
+#pragma once
 
 #include <limits.h>
 #include <stdint.h>
@@ -124,5 +123,4 @@ inline static int knot_str2uint16t(const char *src, uint16_t *dest)
 	KNOT_STR2NUM(uint16_t, knot_strtoull, 0, UINT16_MAX, src, dest)
 }
 
-#endif // _KNOT_COMMON_STRTONUM_
 /*! @} */

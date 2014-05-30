@@ -25,8 +25,7 @@
  * @{
  */
 
-#ifndef _HEAP_H_
-#define _HEAP_H_
+#pragma once
 
 typedef void* heap_val_t;
 
@@ -50,7 +49,5 @@ int heap_insert(struct heap *, void *);
 int heap_find(struct heap *, void *);
 void heap_delete(struct heap *, int);
 
-
-#endif	/* _HEAP_H_ */
 
 /*! @} */

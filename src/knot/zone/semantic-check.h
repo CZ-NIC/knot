@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_SEMANTIC_CHECK_H_
-#define _KNOT_SEMANTIC_CHECK_H_
+#pragma once
 
 #include "knot/zone/node.h"
 #include "knot/zone/contents.h"
@@ -223,7 +222,5 @@ int sem_check_node_plain(const zone_contents_t *zone,
                          err_handler_t *handler,
                          bool only_mandatory,
                          bool *fatal_error);
-
-#endif // _KNOT_SEMANTIC_CHECK_H_
 
 /*! @} */

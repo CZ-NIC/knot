@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _DNSTAP__WRITER_H_
-#define _DNSTAP__WRITER_H_
+#pragma once
 
 #include <fstrm.h>
 #include <protobuf-c/protobuf-c.h>
@@ -74,7 +73,5 @@ void dt_writer_free(dt_writer_t *writer);
  * \retval KNOT_ENOMEM
  */
 int dt_writer_write(dt_writer_t *writer, const ProtobufCMessage *msg);
-
-#endif // _DNSTAP__DNSTAP_H_
 
 /*! @} */

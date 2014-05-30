@@ -82,8 +82,7 @@
  * @{
  */
 
-#ifndef _KNOTD_COMMON_SLAB_H_
-#define _KNOTD_COMMON_SLAB_H_
+#pragma once
 
 #include <pthread.h>
 #include <stdint.h>
@@ -272,7 +271,5 @@ void* slab_cache_alloc(slab_cache_t* cache);
  * \return Number of freed slabs.
  */
 int slab_cache_reap(slab_cache_t* cache);
-
-#endif /* _KNOTD_COMMON_SLAB_H_ */
 
 /*! @} */

@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _UTILS__RESOLV_H_
-#define _UTILS__RESOLV_H_
+#pragma once
 
 #include "common/lists.h"		// list
 #include "utils/common/netio.h"		// server_t
@@ -33,7 +32,5 @@
 srv_info_t* parse_nameserver(const char *str, const char *def_port);
 
 int get_nameservers(list_t *servers, const char *def_port);
-
-#endif // _UTILS__RESOLV_H_
 
 /*! @} */

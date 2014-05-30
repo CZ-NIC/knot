@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_CONSTS_H_
-#define _KNOT_CONSTS_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -229,7 +228,5 @@ size_t knot_ds_digest_length(const uint8_t algorithm);
  * \return Given algorithm is allowed for zone signing.
  */
 bool knot_dnssec_algorithm_is_zonesign(uint8_t algorithm, bool nsec3_enabled);
-
-#endif /* _KNOT_CONSTS_H_ */
 
 /*! @} */

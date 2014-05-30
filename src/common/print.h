@@ -27,8 +27,7 @@
  * @{
  */
 
-#ifndef _KNOTD_COMMON_PRINT_H_
-#define _KNOTD_COMMON_PRINT_H_
+#pragma once
 
 #include <sys/time.h>
 #include <stdint.h>
@@ -99,7 +98,5 @@ void bit_printf(const uint8_t *data, unsigned length, printf_t print_handler);
  * \return time diff
  */
 float time_diff(struct timeval *begin, struct timeval *end);
-
-#endif /* _KNOTD_COMMON_PRINT_H_ */
 
 /*! @} */

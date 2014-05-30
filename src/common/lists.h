@@ -21,8 +21,7 @@
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
-#ifndef _BIRD_LISTS_H_
-#define _BIRD_LISTS_H_
+#pragma once
 
 /*
  * I admit the list structure is very tricky and also somewhat awkward,
@@ -107,5 +106,3 @@ bool ptrlist_contains(list_t *, const void *);
 #endif
 */
 #define LIST_INLINE
-
-#endif

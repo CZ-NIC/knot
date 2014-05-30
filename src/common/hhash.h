@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_HHTABLE_H_
-#define _KNOTD_HHTABLE_H_
+#pragma once
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -191,7 +190,5 @@ const char *hhash_iter_key (hhash_iter_t*, uint16_t* len);
 
 /*! \brief Return current value. */
 value_t *hhash_iter_val(hhash_iter_t*);
-
-#endif /* _KNOTD_HHTABLE_H_ */
 
 /*! @} */

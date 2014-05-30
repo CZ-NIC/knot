@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_DNAME_H_
-#define _KNOT_DNAME_H_
+#pragma once
 
 #include <stdint.h>
 #include <string.h>
@@ -349,7 +348,5 @@ int knot_dname_align(const uint8_t **d1, uint8_t d1_labels,
  * \retval KNOT_EINVAL on invalid parameters
  */
 int knot_dname_lf(uint8_t *dst, const knot_dname_t *src, const uint8_t *pkt);
-
-#endif /* _KNOT_DNAME_H_ */
 
 /*! @} */

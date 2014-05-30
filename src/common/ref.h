@@ -27,8 +27,7 @@
  * @{
  */
 
-#ifndef _KNOTD_REF_H_
-#define _KNOTD_REF_H_
+#pragma once
 
 #include <stddef.h>
 
@@ -84,7 +83,5 @@ void ref_retain(ref_t *p);
  * \param p Reference-counted object.
  */
 void ref_release(ref_t *p);
-
-#endif /* _KNOTD_REF_H_ */
 
 /*! @} */

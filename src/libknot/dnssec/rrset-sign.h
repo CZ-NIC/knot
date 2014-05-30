@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_RRSET_SIGN_H_
-#define _KNOT_DNSSEC_RRSET_SIGN_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -111,7 +110,5 @@ int knot_is_valid_signature(const knot_rrset_t *covered,
                             const knot_dnssec_key_t *key,
                             knot_dnssec_sign_context_t *ctx,
                             const knot_dnssec_policy_t *policy);
-
-#endif // _KNOT_DNSSEC_RRSET_SIGN_H_
 
 /*! @} */

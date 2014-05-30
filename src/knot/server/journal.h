@@ -38,8 +38,7 @@
  * @{
  */
 
-#ifndef _KNOTD_JOURNAL_H_
-#define _KNOTD_JOURNAL_H_
+#pragma once
 
 #include <stdint.h>
 #include <fcntl.h>
@@ -201,7 +200,5 @@ int journal_store_changesets(changesets_t *src, const char *path, size_t size_li
  * \retval KNOT_EOK on success.
  */
 int journal_mark_synced(const char *path);
-
-#endif /* _KNOTD_JOURNAL_H_ */
 
 /*! @} */

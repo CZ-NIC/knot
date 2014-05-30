@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_SIG0_H_
-#define _KNOT_DNSSEC_SIG0_H_
+#pragma once
 
 #include "libknot/dnssec/sign.h"
 
@@ -41,7 +40,5 @@
  */
 int knot_sig0_sign(uint8_t *wire, size_t *wire_size, size_t wire_max_size,
                    knot_dnssec_key_t *key);
-
-#endif // _KNOT_DNSSEC_SIG0_H_
 
 /*! @} */

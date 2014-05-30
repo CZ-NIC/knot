@@ -23,8 +23,7 @@
  * @{
  */
 
-#ifndef _KNOT_CHAOS_H_
-#define _KNOT_CHAOS_H_
+#pragma once
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -35,7 +34,5 @@
  * \brief Create a response for a given query in the CHAOS class.
  */
 int knot_chaos_answer(knot_pkt_t *pkt);
-
-#endif // _KNOT_CHAOS_H_
 
 /*! @} */

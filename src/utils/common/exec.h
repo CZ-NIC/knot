@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _UTILS__EXEC_H_
-#define _UTILS__EXEC_H_
+#pragma once
 
 #include "utils/common/netio.h"		// net_t
 #include "utils/common/params.h"	// style_t
@@ -139,7 +138,5 @@ int sign_packet(knot_pkt_t              *pkt,
 int verify_packet(const knot_pkt_t        *pkt,
                   const sign_context_t    *sign_ctx,
                   const knot_key_params_t *key_params);
-
-#endif // _UTILS__EXEC_H_
 
 /*! @} */

@@ -26,8 +26,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_ZONE_KEYS_H_
-#define _KNOT_DNSSEC_ZONE_KEYS_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -97,7 +96,5 @@ void knot_free_zone_keys(knot_zone_keys_t *keys);
  * \return Timestamp of next key event.
  */
 uint32_t knot_get_next_zone_key_event(const knot_zone_keys_t *keys);
-
-#endif // _KNOT_DNSSEC_ZONE_KEYS_H_
 
 /*! @} */

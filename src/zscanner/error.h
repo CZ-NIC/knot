@@ -22,8 +22,7 @@
  * @{
  */
 
-#ifndef _ZSCANNER__ERROR_H_
-#define _ZSCANNER__ERROR_H_
+#pragma once
 
 enum err_codes {
 	ZS_OK = 0,
@@ -112,7 +111,5 @@ const char* zs_strerror(const int code);
  * \return String containing the error code name.
  */
 const char* zs_errorname(const int code);
-
-#endif // _ZSCANNER__ERROR_H_
 
 /*! @} */

@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_CRYPTO_H_
-#define _KNOT_DNSSEC_CRYPTO_H_
+#pragma once
 
 /*!
  * \brief Initialize cryptographic backend.
@@ -63,7 +62,5 @@ void knot_crypto_load_engines(void);
  * \brief Unload pluggable crypto engines.
  */
 void knot_crypto_unload_engines(void);
-
-#endif // _KNOT_DNSSEC_CRYPTO_H_
 
 /*! @} */

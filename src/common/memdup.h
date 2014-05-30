@@ -14,8 +14,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef KNOT_COMMON_MEMDUP
-#define KNOT_COMMON_MEMDUP
+#pragma once
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -30,5 +29,3 @@ static uint8_t *knot_memdup(const uint8_t *data, size_t data_size)
 
 	return memcpy(result, data, data_size);
 }
-
-#endif // KNOT_COMMON_MEMDUP

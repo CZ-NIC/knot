@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_COMMON_ALLOC_COMMON_H_
-#define _KNOTD_COMMON_ALLOC_COMMON_H_
+#pragma once
 
 #include <stdio.h>
 
@@ -54,7 +53,5 @@
 #else
 #define dbg_mem(msg...)
 #endif
-
-#endif /* _KNOTD_COMMON_ALLOC_COMMON_H_ */
 
 /*! @} */

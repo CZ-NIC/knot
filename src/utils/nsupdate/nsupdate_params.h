@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _NSUPDATE__NSUPDATE_PARAMS_H_
-#define _NSUPDATE__NSUPDATE_PARAMS_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -88,7 +87,5 @@ int nsupdate_set_ttl(nsupdate_params_t *params, const uint32_t ttl);
 int nsupdate_set_origin(nsupdate_params_t *params, const char *origin);
 void nsupdate_clean(nsupdate_params_t *params);
 void nsupdate_reset(nsupdate_params_t *params);
-
-#endif // _NSUPDATE__NSUPDATE_PARAMS_H_
 
 /*! @} */

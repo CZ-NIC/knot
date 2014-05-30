@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_KNOT_H_
-#define _KNOTD_KNOT_H_
+#pragma once
 
 #include <signal.h>
 #include <stdint.h>
@@ -49,7 +48,5 @@ typedef struct timeval timev_t;
 #else
 #error Neither clock_gettime() nor gettimeofday() found. At least one is required.
 #endif
-
-#endif /* _KNOTD_KNOT_H_ */
 
 /*! @} */

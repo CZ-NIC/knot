@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_COMMON_EVSCHED_H_
-#define _KNOTD_COMMON_EVSCHED_H_
+#pragma once
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -176,7 +175,5 @@ event_t* evsched_begin_process(evsched_t *sched);
  * \retval KNOT_ENOTRUNNING
  */
 int evsched_end_process(evsched_t *sched);
-
-#endif /* _KNOTD_COMMON_EVSCHED_H_ */
 
 /*! @} */

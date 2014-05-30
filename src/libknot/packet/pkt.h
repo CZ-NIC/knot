@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_PACKET_H_
-#define _KNOT_PACKET_H_
+#pragma once
 
 #include <stdint.h>
 #include <string.h>
@@ -310,7 +309,5 @@ static inline bool knot_pkt_has_tsig(const knot_pkt_t *pkt)
 {
 	return pkt && pkt->tsig_rr;
 }
-
-#endif /* _KNOT_PACKET_H_ */
 
 /*! @} */

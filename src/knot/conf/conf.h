@@ -25,8 +25,7 @@
  * @{
  */
 
-#ifndef _KNOTD_CONF_H_
-#define _KNOTD_CONF_H_
+#pragma once
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -433,7 +432,5 @@ void conf_free_group(conf_group_t *group);
 
 /*! \brief Free log config. */
 void conf_free_log(conf_log_t *log);
-
-#endif /* _KNOTD_CONF_H_ */
 
 /*! @} */

@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _HOST__HOST_PARAMS_H_
-#define _HOST__HOST_PARAMS_H_
+#pragma once
 
 #include "utils/dig/dig_params.h"	// dig_params_t
 
@@ -33,7 +32,5 @@
 
 int host_parse(dig_params_t *params, int argc, char *argv[]);
 void host_clean(dig_params_t *params);
-
-#endif // _HOST__HOST_PARAMS_H_
 
 /*! @} */

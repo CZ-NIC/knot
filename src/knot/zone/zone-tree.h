@@ -26,8 +26,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_ZONE_TREE_H_
-#define _KNOT_ZONE_TREE_H_
+#pragma once
 
 #include "common/hattrie/hat-trie.h"
 #include "knot/zone/node.h"
@@ -224,7 +223,5 @@ void zone_tree_free(zone_tree_t **tree);
 void zone_tree_deep_free(zone_tree_t **tree);
 
 /*----------------------------------------------------------------------------*/
-
-#endif // _KNOT_ZONE_TREE_H_
 
 /*! @} */

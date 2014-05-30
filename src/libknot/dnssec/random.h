@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOT_DNSSEC_RANDOM_H
-#define _KNOT_DNSSEC_RANDOM_H
+#pragma once
 
 #include <assert.h>
 #include <openssl/rand.h>
@@ -65,7 +64,5 @@ static inline int knot_random_buffer(void *dest, size_t size)
 
 _knot_register_random_type(uint16_t);
 _knot_register_random_type(uint32_t);
-
-#endif // _KNOT_DNSSEC_RANDOM_H
 
 /*! @} */

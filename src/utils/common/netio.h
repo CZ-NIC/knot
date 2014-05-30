@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _UTILS__NETIO_H_
-#define _UTILS__NETIO_H_
+#pragma once
 
 #include <stdint.h>			// uint_t
 #include <netdb.h>			// addrinfo
@@ -214,7 +213,5 @@ void net_close(net_t *net);
  * \param net		Connection parameters.
  */
 void net_clean(net_t *net);
-
-#endif // _UTILS__NETIO_H_
 
 /*! @} */

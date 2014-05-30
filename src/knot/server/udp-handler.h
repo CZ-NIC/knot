@@ -28,8 +28,7 @@
  * @{
  */
 
-#ifndef _KNOTD_UDPHANDLER_H_
-#define _KNOTD_UDPHANDLER_H_
+#pragma once
 
 #include "knot/server/net.h"
 #include "knot/server/server.h"
@@ -66,7 +65,5 @@ int udp_master(dthread_t *thread);
  * \brief Destructor for UDP handler thread.
  */
 int udp_master_destruct(dthread_t *thread);
-
-#endif
 
 /*! @} */

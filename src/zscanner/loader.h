@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _ZSCANNER__LOADER_H_
-#define _ZSCANNER__LOADER_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -86,7 +85,5 @@ void zs_loader_free(zs_loader_t *loader);
  * \retval error_code	if error.
  */
 int zs_loader_process(zs_loader_t *loader);
-
-#endif // _ZSCANNER__LOADER_H_
 
 /*! @} */

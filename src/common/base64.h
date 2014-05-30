@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_COMMON__BASE64_H_
-#define _KNOTD_COMMON__BASE64_H_
+#pragma once
 
 #include <stdint.h>			// uint8_t
 
@@ -106,7 +105,5 @@ int32_t base64_decode(const uint8_t  *in,
 int32_t base64_decode_alloc(const uint8_t  *in,
                             const uint32_t in_len,
                             uint8_t        **out);
-
-#endif // _KNOTD_COMMON__BASE64_H_
 
 /*! @} */

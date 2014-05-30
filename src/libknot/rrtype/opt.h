@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_OPT_H_
-#define _KNOT_OPT_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -233,7 +232,5 @@ bool knot_edns_has_nsid(const knot_rrset_t *opt_rr);
  * \return true if passed, false if failed
  */
 bool knot_edns_check_record(knot_rrset_t *opt_rr);
-
-#endif /* _KNOT_OPT_H_ */
 
 /*! @} */

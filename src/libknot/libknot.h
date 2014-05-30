@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_LIBKNOT_H_
-#define _KNOT_LIBKNOT_H_
+#pragma once
 
 #include "libknot/consts.h"
 #include "libknot/dname.h"
@@ -47,7 +46,5 @@
 #include "libknot/tsig-op.h"
 #include "libknot/util/tolower.h"
 #include "libknot/util/utils.h"
-
-#endif
 
 /*! @} */

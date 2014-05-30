@@ -24,8 +24,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _KNOT_INTERNET_H_
-#define _KNOT_INTERNET_H_
+#pragma once
 
 #include "libknot/packet/pkt.h"
 #include "knot/zone/contents.h"
@@ -131,7 +130,5 @@ int ns_put_rr(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	if (tsig_unsigned_count(tsig_ctx) > max_unsigned) { \
 		return NS_PROC_FAIL; \
 	}
-
-#endif /* _KNOT_INTERNET_H_ */
 
 /*! @} */

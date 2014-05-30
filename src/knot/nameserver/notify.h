@@ -24,8 +24,7 @@
  * @{
  */
 
-#ifndef _KNOTD_NOTIFY_H_
-#define _KNOTD_NOTIFY_H_
+#pragma once
 
 #include <stdint.h>
 #include <string.h>
@@ -54,7 +53,5 @@ int notify_query(knot_pkt_t *pkt, struct query_data *qdata);
  */
 int notify_process_answer(knot_pkt_t *pkt, struct answer_data *data);
 
-
-#endif /* _KNOTD_NOTIFY_H_ */
 
 /*! @} */

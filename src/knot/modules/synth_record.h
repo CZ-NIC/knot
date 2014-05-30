@@ -31,16 +31,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _SYNTH_RECORD_H
+#pragma once
 
 #include "knot/nameserver/query_module.h"
 
 /*! \brief Module interface. */
 int synth_record_load(struct query_plan *plan, struct query_module *self);
 int synth_record_unload(struct query_module *self);
-
-#define _SYNTH_RECORD_H
-
-#endif /* _SYNTH_RECORD_H */
 
 /*! @} */

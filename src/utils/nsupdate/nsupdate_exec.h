@@ -24,13 +24,10 @@
  * @{
  */
 
-#ifndef _NSUPDATE__NSUPDATE_EXEC_H_
-#define _NSUPDATE__NSUPDATE_EXEC_H_
+#pragma once
 
 #include "utils/nsupdate/nsupdate_params.h"	// nsupdate_params_t
 
 int nsupdate_exec(nsupdate_params_t *params);
-
-#endif // _NSUPDATE__NSUPDATE_EXEC_H_
 
 /*! @} */

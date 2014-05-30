@@ -25,8 +25,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _KNOTD_COMMON_ERRCODE_H_
-#define _KNOTD_COMMON_ERRCODE_H_
+#pragma once
 
 #include "common/errors.h"
 
@@ -159,7 +158,5 @@ static inline const char *knot_strerror(int code)
  * \return Mapped error code.
  */
 #define knot_map_errno(err...) map_errno(KNOT_ERROR, err);
-
-#endif /* _KNOTD_COMMON_ERRCODE_H_ */
 
 /*! @} */
