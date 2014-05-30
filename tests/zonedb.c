@@ -17,6 +17,8 @@
 #include <config.h>
 #include <tap/basic.h>
 
+#include "common/strlcat.h"
+#include "common/strlcpy.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonedb.h"
 
@@ -84,9 +86,9 @@ int main(int argc, char *argv[])
 	/* Lookup of sub-names. */
 	nr_passed = 0;
 	for (unsigned i = 0; i < ZONE_COUNT; ++i) {
-		strcpy(buf, prefix);
+		strlcpy(buf, prefix, sizeof(buf));
 		if (strcmp(zone_list[i], ".") != 0) {
-			strncat(buf, zone_list[i], strlen(zone_list[i]));
+			strlcat(buf, zone_list[i], sizeof(buf));
 		}
 		dname = knot_dname_from_str(buf);
 		if (knot_zonedb_find_suffix(db, dname) == zones[i]) {

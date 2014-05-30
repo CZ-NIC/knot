@@ -27,6 +27,8 @@
 #include <inttypes.h>
 
 #include "common/crc.h"
+#include "common/strlcat.h"
+#include "common/strlcpy.h"
 #include "libknot/common.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/contents.h"
@@ -334,13 +336,15 @@ time_t zonefile_mtime(const char *path)
 static int zones_open_free_filename(const char *old_name, char **new_name)
 {
 	/* find zone name not present on the disk */
+	char *suffix = ".XXXXXX";
 	size_t name_size = strlen(old_name);
-	*new_name = malloc(name_size + 7 + 1);
+	size_t max_size = name_size + strlen(suffix) + 1;
+	*new_name = malloc(max_size);
 	if (*new_name == NULL) {
 		return -1;
 	}
-	memcpy(*new_name, old_name, name_size + 1);
-	strncat(*new_name, ".XXXXXX", 7);
+	strlcpy(*new_name, old_name, max_size);
+	strlcat(*new_name, suffix, max_size);
 	dbg_zones_verb("zones: creating temporary zone file\n");
 	mode_t old_mode = umask(077);
 	int fd = mkstemp(*new_name);

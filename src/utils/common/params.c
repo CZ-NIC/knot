@@ -30,6 +30,7 @@
 #include "common/errcode.h"		// KNOT_EOK
 #include "common/mempattern.h"		// strcdup
 #include "common/descriptor.h"		// KNOT_RRTYPE_
+#include "common/strlcpy.h"		// strlcpy
 #include "utils/common/msg.h"		// WARN
 #include "utils/common/resolv.h"	// parse_nameserver
 #include "utils/common/token.h"		// token
@@ -218,9 +219,10 @@ char* get_fqd_name(const char *name)
 		fqd_name = strdup(name);
 	// Else make a copy and append a trailing dot.
 	} else {
-		fqd_name = malloc(name_len + 2);
+		size_t fqd_name_size = name_len + 2;
+		fqd_name = malloc(fqd_name_size);
 		if (fqd_name != NULL) {
-			strncpy(fqd_name, name, name_len + 2);
+			strlcpy(fqd_name, name, fqd_name_size);
 			fqd_name[name_len] = '.';
 			fqd_name[name_len + 1] = 0;
 		}

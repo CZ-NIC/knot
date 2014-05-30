@@ -124,7 +124,9 @@ static int ixfr_process_changeset(knot_pkt_t *pkt, const void *item,
 
 	/* Finished change set. */
 	struct query_data *qdata = ixfr->qdata; /*< Required for IXFROUT_LOG() */
-	IXFROUT_LOG(LOG_INFO, "Serial %u -> %u.", chgset->serial_from, chgset->serial_to);
+	const uint32_t serial_from = knot_soa_serial(&chgset->soa_from->rrs);
+	const uint32_t serial_to = knot_soa_serial(&chgset->soa_to->rrs);
+	IXFROUT_LOG(LOG_INFO, "Serial %u -> %u.", serial_from, serial_to);
 
 	return ret;
 }
@@ -235,7 +237,6 @@ static int ixfr_answer_init(struct query_data *qdata)
 	changeset_t *chs = NULL;
 	WALK_LIST(chs, chgsets->sets) {
 		ptrlist_add(&xfer->proc.nodes, chs, mm);
-		dbg_ns("%s: preparing %u -> %u\n", __func__, chs->serial_from, chs->serial_to);
 	}
 
 	/* Keep first and last serial. */
@@ -386,7 +387,6 @@ static int solve_soa_del(const knot_rrset_t *rr, changesets_t *changesets,
 	if (change->soa_from == NULL) {
 		return KNOT_ENOMEM;
 	}
-	change->serial_from = knot_soa_serial(&rr->rrs);
 
 	return KNOT_EOK;
 }
@@ -399,7 +399,6 @@ static int solve_soa_add(const knot_rrset_t *rr, changeset_t *change, mm_ctx_t *
 	if (change->soa_to == NULL) {
 		return KNOT_ENOMEM;
 	}
-	change->serial_to = knot_soa_serial(&rr->rrs);
 
 	return KNOT_EOK;
 }
@@ -591,7 +590,7 @@ int ixfr_query(knot_pkt_t *pkt, struct query_data *qdata)
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, "Incomplete history, fallback to AXFR.");
 			qdata->packet_type = KNOT_QUERY_AXFR; /* Solve as AXFR. */
-			return axfr_query(pkt, qdata);
+			return axfr_query_process(pkt, qdata);
 		default:            /* Server errors. */
 			IXFROUT_LOG(LOG_ERR, "Failed to start (%s).", knot_strerror(ret));
 			return NS_PROC_FAIL;

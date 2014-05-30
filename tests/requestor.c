@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 	plan(TESTS_COUNT + 1);
 
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, 4096);
+	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
 	conf_iface_t remote;
 	memset(&remote, 0, sizeof(conf_iface_t));
 	sockaddr_set(&remote.addr, AF_INET, "127.0.0.1", 0);
@@ -150,8 +150,7 @@ int main(int argc, char *argv[])
 	/* Test requestor in connected environment. */
 	test_connected(&requestor, &remote);
 
-	/* TSIG secured. */
-#warning TODO: when ported sign_packet/verify_packet
+	/*! \todo #243 TSIG secured requests test should be implemented. */
 
 	/* Terminate responder. */
 	int responder = net_connected_socket(SOCK_STREAM, &remote.addr, NULL, 0);

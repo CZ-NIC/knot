@@ -110,6 +110,10 @@ libknots_la_SOURCES =				\
 	common/slab/slab.h			\
 	common/sockaddr.c			\
 	common/sockaddr.h			\
+	common/strlcat.c			\
+	common/strlcat.h			\
+	common/strlcpy.c			\
+	common/strlcpy.h			\
 	common/strtonum.h
 
 # static: utilities shared
@@ -236,16 +240,16 @@ libknotd_la_SOURCES =				\
 	knot/nameserver/nsec_proofs.h		\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
-	knot/nameserver/process_answer.c		\
-	knot/nameserver/process_answer.h		\
+	knot/nameserver/process_answer.c	\
+	knot/nameserver/process_answer.h	\
 	knot/nameserver/requestor.c		\
 	knot/nameserver/requestor.h		\
 	knot/nameserver/query_module.c		\
 	knot/nameserver/query_module.h		\
 	knot/nameserver/update.c		\
 	knot/nameserver/update.h		\
-	knot/nameserver/notify.c			\
-	knot/nameserver/notify.h			\
+	knot/nameserver/notify.c		\
+	knot/nameserver/notify.h		\
 	knot/nameserver/tsig_ctx.c		\
 	knot/nameserver/tsig_ctx.h		\
 	knot/modules/synth_record.c		\
@@ -328,8 +332,8 @@ libknotd_la_SOURCES +=				\
 	knot/modules/dnstap.c			\
 	knot/modules/dnstap.h
 
-kdig_LDADD	+= dnstap/libdnstap.la
-khost_LDADD	+= dnstap/libdnstap.la
+kdig_LDADD         += dnstap/libdnstap.la
+khost_LDADD        += dnstap/libdnstap.la
 libknotd_la_LIBADD += dnstap/libdnstap.la
 endif
 

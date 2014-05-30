@@ -348,7 +348,7 @@ static int server_init_handler(server_t *server, int index, int thread_count,
 
 	h->thread_id = calloc(thread_count, sizeof(unsigned));
 	if (h->thread_id == NULL) {
-		free(h->thread_id);
+		free(h->thread_state);
 		dt_delete(&h->unit);
 		return KNOT_ENOMEM;
 	}
@@ -472,7 +472,7 @@ static int reconfigure_threads(const struct conf_t *conf, server_t *server)
 {
 	/* Estimate number of threads/manager. */
 	int ret = KNOT_EOK;
-	int tu_size = conf_udp_threads(conf); 
+	int tu_size = conf_udp_threads(conf);
 	if ((unsigned)tu_size != server->tu_size) {
 		/* Free old handlers */
 		if (server->tu_size > 0) {

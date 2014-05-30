@@ -94,7 +94,7 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 	/* Create a memory pool for this task. */
 	int ret = KNOT_EOK;
 	mm_ctx_t mm;
-	mm_ctx_mempool(&mm, 4096);
+	mm_ctx_mempool(&mm, DEFAULT_BLKSIZE);
 
 	/* Create a query message. */
 	knot_pkt_t *query = zone_query(zone, query_type, &mm);
@@ -111,6 +111,10 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		knot_pkt_put(query, COMPR_HINT_QNAME, &soa_rr, 0);
 	}
 
+	/* Create requestor instance. */
+	struct requestor re;
+	requestor_init(&re, NS_PROC_ANSWER, &mm);
+
 	/* Answer processing parameters. */
 	struct process_answer_param param = { 0 };
 	param.zone = zone;
@@ -120,19 +124,14 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 
 	ret = tsig_sign_packet(&param.tsig_ctx, query);
 	if (ret != KNOT_EOK) {
-		mp_delete(mm.ctx);
-		return ret;
+		goto fail;
 	}
-
-	/* Create requestor instance. */
-	struct requestor re;
-	requestor_init(&re, NS_PROC_ANSWER, &mm);
 
 	/* Create a request. */
 	struct request *req = requestor_make(&re, remote, query);
 	if (req == NULL) {
-		mp_delete(mm.ctx);
-		return KNOT_ENOMEM;
+		ret = KNOT_ENOMEM;
+		goto fail;
 	}
 
 	/* Send the queries and process responses. */
@@ -142,7 +141,9 @@ static int zone_query_execute(zone_t *zone, uint16_t pkt_type, const conf_iface_
 		ret = requestor_exec(&re, &tv);
 	}
 
+fail:
 	/* Cleanup. */
+	tsig_cleanup(&param.tsig_ctx);
 	requestor_clear(&re);
 	mp_delete(mm.ctx);
 
@@ -254,6 +255,7 @@ static int event_reload(zone_t *zone)
 	/* Everything went alright, switch the contents. */
 	zone->zonefile_mtime = mtime;
 	zone_contents_t *old = zone_switch_contents(zone, contents);
+	uint32_t old_serial = zone_contents_serial(old);
 	if (old != NULL) {
 		synchronize_rcu();
 		zone_contents_deep_free(&old);
@@ -267,8 +269,8 @@ static int event_reload(zone_t *zone)
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, ZONE_EVENT_NOW);
 	}
 	if (!zone_contents_is_empty(contents)) {
+		zone_events_schedule(zone, ZONE_EVENT_NOTIFY, ZONE_EVENT_NOW);
 		zone->bootstrap_retry = ZONE_EVENT_NOW;
-		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  zone->bootstrap_retry);
 	}
 
 	/* Schedule zone resign. */
@@ -279,7 +281,9 @@ static int event_reload(zone_t *zone)
 	/* Periodic execution. */
 	zone_events_schedule(zone, ZONE_EVENT_FLUSH, zone_config->dbsync_timeout);
 
-	log_zone_info("Zone '%s' loaded.\n", zone_config->name);
+	uint32_t current_serial = zone_contents_serial(zone->contents);
+	log_zone_info("Zone '%s' loaded (%u -> %u).\n", zone_config->name,
+	              old_serial, current_serial);
 	return KNOT_EOK;
 
 fail:
@@ -303,7 +307,7 @@ static int event_refresh(zone_t *zone)
 
 	int ret = zone_query_execute(zone, KNOT_QUERY_NORMAL, master);
 
-	knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
+	const knot_rdataset_t *soa = node_rdataset(contents->apex, KNOT_RRTYPE_SOA);
 	if (ret != KNOT_EOK) {
 		/* Log connection errors. */
 		ZONE_QUERY_LOG(LOG_ERR, zone, master, "SOA query", "%s", knot_strerror(ret));
@@ -314,7 +318,7 @@ static int event_refresh(zone_t *zone)
 	} else {
 		/* SOA query answered, reschedule refresh and expire timers. */
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
-		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
+		zone_events_schedule(zone, ZONE_EVENT_EXPIRE, knot_soa_expire(soa));
 	}
 
 	return KNOT_EOK;
@@ -336,7 +340,8 @@ static int event_xfer(zone_t *zone)
 		assert(!zone_contents_is_empty(zone->contents));
 		/* New zone transferred, reschedule zone expiration and refresh
 		 * timers and send notifications to slaves. */
-		knot_rdataset_t *soa = node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
+		const knot_rdataset_t *soa =
+			node_rdataset(zone->contents->apex, KNOT_RRTYPE_SOA);
 		zone_events_schedule(zone, ZONE_EVENT_EXPIRE,  knot_soa_expire(soa));
 		zone_events_schedule(zone, ZONE_EVENT_REFRESH, knot_soa_refresh(soa));
 		zone_events_schedule(zone, ZONE_EVENT_NOTIFY,  ZONE_EVENT_NOW);
@@ -371,15 +376,16 @@ static int event_update(zone_t *zone)
 	knot_pkt_init_response(resp, update->query);
 
 	/* Create minimal query data context. */
-	struct process_query_param param = {0};
+	struct process_query_param param = { 0 };
 	param.remote = &update->remote;
-	struct query_data qdata = {0};
+	struct query_data qdata = { 0 };
 	qdata.param = &param;
 	qdata.query = update->query;
 	qdata.zone  = zone;
 
-	/* Process the update query. If processing fails, resp will be set. */
-	update_process_query(resp, &qdata);
+	/* Process the update query. */
+	int ret = update_process_query(resp, &qdata);
+	UNUSED(ret); /* Don't care about the Knot code, RCODE is set. */
 
 	/* Send response. */
 	if (net_is_connected(update->fd)) {
@@ -517,7 +523,7 @@ done:
 
 static bool valid_event(zone_event_type_t type)
 {
-	return (type >= 0 && type < ZONE_EVENT_COUNT);
+	return (type >= ZONE_EVENT_RELOAD && type < ZONE_EVENT_COUNT);
 }
 
 /*! \brief Return remaining time to planned event (seconds). */
@@ -600,7 +606,7 @@ static void reschedule(zone_events_t *events)
 		return;
 	}
 
-	time_t diff = time_until(events->time[type]);
+	time_t diff = time_until(event_get_time(events, type));
 
 	evsched_schedule(events->event, diff * 1000);
 }

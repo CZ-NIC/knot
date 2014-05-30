@@ -25,6 +25,8 @@
 #include <errno.h>
 
 #include <urcu.h>
+#include "common/strlcat.h"
+#include "common/strlcpy.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/extra.h"
 #include "knot/knot.h"
@@ -860,18 +862,19 @@ char* strcpath(char *path)
 		}
 
 		// Expand
-		char *npath = malloc(plen + tild_len + 1);
+		size_t npath_size = plen + tild_len + 1;
+		char *npath = malloc(npath_size);
 		if (npath == NULL) {
 			free(tild_exp);
 			return NULL;
 		}
 		npath[0] = '\0';
-		strncpy(npath, path, (size_t)(remainder - path));
-		strncat(npath, tild_exp, tild_len);
+		strlcpy(npath, path, npath_size);
+		strlcat(npath, tild_exp, npath_size);
 
 		// Append remainder
 		++remainder;
-		strncat(npath, remainder, strlen(remainder));
+		strlcat(npath, remainder, npath_size);
 
 		free(tild_exp);
 		free(path);
