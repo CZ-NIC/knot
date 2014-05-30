@@ -226,7 +226,7 @@ int knot_load_zone_keys(const char *keydir_name, const knot_dname_t *zone_name,
 			continue;
 		}
 
-		log_zone_info("%s - Loaded key %d, file %s, %s, %s, %s\n",
+		log_zone_info("%s - Loaded key %5d, file %s, %s, %s, %s\n",
 		              msgpref, params.keytag, entry->d_name,
 		              key->is_ksk ? "KSK" : "ZSK",
 		              key->is_active ? "active" : "inactive",
