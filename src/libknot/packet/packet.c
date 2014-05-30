@@ -234,18 +234,6 @@ dbg_packet_exec_detail(
 			free(name);
 );
 
-			if (knot_rrset_equal((*rrsets)[i], rrset,
-			                     KNOT_RRSET_COMPARE_HEADER)) {
-				int merged = 0;
-				int deleted_rrs = 0;
-				int rc =
-					knot_rrset_merge_sort((knot_rrset_t *)(*rrsets)[i],
-				                              rrset, &merged, &deleted_rrs);
-				if (rc != KNOT_EOK) {
-					return rc;
-				}
-				return 1;
-			}
 		}
 	}
 
