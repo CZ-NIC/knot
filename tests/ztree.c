@@ -102,7 +102,6 @@ int main(int argc, char *argv[])
 	hattrie_build_index(t);
 
 	/* 4. ordered lookup */
-	passed = 1;
 	node = NULL;
 	const zone_node_t *prev = NULL;
 	knot_dname_t *tmp_dn = knot_dname_from_str("z.ac.");

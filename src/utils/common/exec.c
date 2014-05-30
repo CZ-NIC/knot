@@ -95,7 +95,7 @@ static void print_header(const knot_pkt_t *packet, const style_t *style)
 		flags_rest -= strlcat(flags, " ad", flags_rest);
 	}
 	if (knot_wire_get_cd(packet->wire) != 0 && flags_rest > flag_len) {
-		flags_rest -= strlcat(flags, " cd", flags_rest);
+		strlcat(flags, " cd", flags_rest);
 	}
 
 	uint16_t id = knot_wire_get_id(packet->wire);
