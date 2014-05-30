@@ -70,7 +70,7 @@ shutil.copytree(os.path.join(t.data_dir, "keys"), knot.keydir)
 key_file = os.path.join(knot.keydir, "test.private")
 date_past = "19700101000001"
 date_future = "20400101000000"
-WAIT_SIGN = 1
+WAIT_SIGN = 2
 
 #
 # Common cases
@@ -121,7 +121,7 @@ check_zone(knot, False, True, "not published, active")
 check_log("Planned events")
 
 # key about to be published
-event_in = 3
+event_in = 5
 key_settime(key_file, Publish=date_offset(event_in), Activate=date_future, Inactive=None, Delete=None)
 knot.reload()
 t.sleep(WAIT_SIGN)

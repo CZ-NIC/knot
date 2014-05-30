@@ -31,15 +31,13 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "common/lists.h"
 #include "libknot/dname.h"
 #include "libknot/dnssec/sign.h"
 
-/*!
- * Maximal count of active keys for one zone.
- */
-#define KNOT_MAX_ZONE_KEYS 8
-
 typedef struct {
+	node_t node;
+
 	knot_dnssec_key_t dnssec_key;
 	knot_dnssec_sign_context_t *context;
 	uint32_t next_event;                 //!< Timestamp of next key event.
@@ -52,9 +50,13 @@ typedef struct {
  * \brief Keys used for zone signing.
  */
 typedef struct {
-	unsigned count;
-	knot_zone_key_t keys[KNOT_MAX_ZONE_KEYS];
+	list_t list;
 } knot_zone_keys_t;
+
+/*!
+ * \brief Initialize zone keys structure.
+ */
+void knot_init_zone_keys(knot_zone_keys_t *keys);
 
 /*!
  * \brief Load zone keys from a key directory.

@@ -104,6 +104,25 @@ static void log_zone_load_info(const zone_t *zone, const char *zone_name,
 }
 
 /*!
+ * \brief Copy zone events from the old zone.
+ */
+static void update_zone_events(zone_t *zone, const zone_t *old_zone)
+{
+	for (zone_event_type_t i = 0; i < ZONE_EVENT_COUNT; ++i) {
+		/* DNSSEC: keys could have changed, force resign. */
+		if (i == ZONE_EVENT_DNSSEC && zone->conf->dnssec_enable) {
+			zone_events_schedule(zone, i, ZONE_EVENT_NOW);
+			continue;
+		}
+
+		time_t event_time = zone_events_get_time(old_zone, i);
+		if (event_time > ZONE_EVENT_NOW) {
+			zone_events_schedule_at(zone, i, event_time);
+		}
+	}
+}
+
+/*!
  * \brief Load or reload the zone.
  *
  * \param conf      Zone configuration.
@@ -139,16 +158,9 @@ static zone_t *create_zone(conf_zone_t *conf, server_t *server, zone_t *old_zone
 	case ZONE_STATUS_NOT_FOUND:
 		break;
 	case ZONE_STATUS_FOUND_CURRENT:
-		/* Copy timers to new zone. */
-		for (zone_event_type_t i = ZONE_EVENT_RELOAD; i < ZONE_EVENT_COUNT; ++i) {
-			time_t event_time = zone_events_get_time(old_zone, i);
-			if (event_time > ZONE_EVENT_NOW) {
-				zone_events_schedule_at(zone, i, event_time);
-			}
-		}
-		/* Copy zonefile information. */
 		zone->zonefile_mtime = old_zone->zonefile_mtime;
 		zone->zonefile_serial = old_zone->zonefile_serial;
+		update_zone_events(zone, old_zone);
 		break;
 	default:
 		assert(0);

@@ -142,8 +142,9 @@ static bool all_signatures_exist(const knot_rrset_t *covered,
 	assert(!knot_rrset_empty(covered));
 	assert(zone_keys);
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_zone_key_t *key = &zone_keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, zone_keys->list) {
+		const knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (!use_key(key, covered)) {
 			continue;
 		}
@@ -311,8 +312,9 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 	int result = KNOT_EOK;
 	knot_rrset_t *to_add = NULL;
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_zone_key_t *key = &zone_keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, zone_keys->list) {
+		const knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (!use_key(key, covered)) {
 			continue;
 		}
@@ -853,14 +855,14 @@ static int add_missing_dnskeys(const knot_rrset_t *soa,
 	bool add_all = (knot_rrset_empty(dnskeys) ||
 	                knot_rdata_ttl(dnskeys_data) != knot_rdata_ttl(soa_data));
 
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_zone_key_t *key = &zone_keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, zone_keys->list) {
+		const knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (!add_all && dnskey_exists_in_zone(dnskeys, key)) {
 			continue;
 		}
 
 		if (!key->is_public) {
-			dbg_dnssec_detail("not public\n");
 			continue;
 		}
 
@@ -941,8 +943,9 @@ static int update_dnskeys_rrsigs(const knot_rrset_t *dnskeys,
 	}
 
 	// add known keys from key database
-	for (int i = 0; i < zone_keys->count; i++) {
-		const knot_zone_key_t *key = &zone_keys->keys[i];
+	node_t *node = NULL;
+	WALK_LIST(node, zone_keys->list) {
+		const knot_zone_key_t *key = (knot_zone_key_t *)node;
 		if (!key->is_public) {
 			continue;
 		}
@@ -1292,9 +1295,13 @@ int knot_zone_sign(const zone_contents_t *zone,
 
 	// DNSKEY updates
 	uint32_t dnskey_update = knot_get_next_zone_key_event(zone_keys);
-	expiration = MIN(expiration, dnskey_update);
-
-	*refresh_at = knot_dnssec_policy_refresh_time(policy, expiration);
+	if (expiration < dnskey_update) {
+		// Signatures expire before keys do
+		*refresh_at = knot_dnssec_policy_refresh_time(policy, expiration);
+	} else {
+		// Keys expire before signatures
+		*refresh_at = dnskey_update;
+	}
 
 	return KNOT_EOK;
 }
